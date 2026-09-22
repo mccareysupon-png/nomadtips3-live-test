@@ -1,0 +1,179 @@
+name: Deploy Ball46 Default Market Cleanup 20260922
+
+on:
+  push:
+    branches:
+      - work/ball46-default-market-cleanup-20260922
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
+  BALL46_PUBLIC: https://www.ball46.com
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  GOLDEN_SHA: ad34452074b300787c91c7788c02d0e242854d0d
+
+jobs:
+  deploy-default-market-cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Preflight protected core
+        shell: bash
+        run: |
+          set -euo pipefail
+          git cat-file -e "$GOLDEN_SHA^{commit}"
+          for p in \
+            workers/nomadtips3-343-preview/src/index.js \
+            workers/nomadtips3-343-preview/wrangler.ball46.jsonc \
+            workers/nomadtips3-engine-343/src/index.js \
+            nomad-live-343/dashboard-v2-stage3.js \
+            nomad-live-343/dashboard-v2-tune.js \
+            nomad-live-343/bulk-odds-compat-343.js \
+            nomad-live-343/expanded-match-343.js \
+            nomad-live-343/full-market-bookmaker-343.js \
+            nomad-live-343/live-summary-full-odds-343.js \
+            nomad-live-343/singlepage-workspace-343.js; do
+            git diff --quiet "$GOLDEN_SHA"..HEAD -- "$p" || { echo "UNEXPECTED_SOURCE_CHANGE:$p"; exit 1; }
+          done
+          python3 -m py_compile scripts/patch_ball46_default_market_cleanup_20260922.py
+          git diff --check
+
+      - name: Mirror exact current Production baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/prod
+          fetch_required(){
+            name="$1"; safe="${name//\//_}"
+            code=$(curl -sS -L --retry 5 --retry-all-errors --retry-delay 1 --max-time 30 -o "/tmp/prod/$safe" -w '%{http_code}' "$BALL46_WORKER/$name?market-clean-mirror=${GITHUB_RUN_ID}") || true
+            [ "$code" = 200 ] || { echo "REQUIRED_PROD_ASSET_HTTP_${code}:$name"; exit 1; }
+            test -s "/tmp/prod/$safe" || { echo "REQUIRED_PROD_ASSET_EMPTY:$name"; exit 1; }
+            mkdir -p "$(dirname "nomad-live-343/$name")"
+            cp "/tmp/prod/$safe" "nomad-live-343/$name"
+          }
+          fetch_required index.html
+          cp nomad-live-343/index.html /tmp/index.before.html
+          python3 - <<'PY' > /tmp/index-assets.txt
+          from pathlib import Path
+          import re
+          h=Path('/tmp/index.before.html').read_text(errors='ignore')
+          found=set()
+          for x in re.findall(r'''(?:src|href)=["']([^"']+)["']''',h,re.I):
+              x=x.split('?',1)[0].split('#',1)[0].strip().lstrip('./').lstrip('/')
+              if not x or '://' in x or '/' in x: continue
+              if re.search(r'\.(?:js|css|svg|json|png|webp|jpg|jpeg|ico)$',x,re.I): found.add(x)
+          for x in sorted(found): print(x)
+          PY
+          while IFS= read -r name; do
+            [ -n "$name" ] || continue
+            fetch_required "$name"
+          done < /tmp/index-assets.txt
+          fetch_required dashboard-v2.css
+          fetch_required dashboard-v2-stage3.js
+          grep -Fq 'BALL46_DEFAULT_MARKET_DETAIL_20260922' nomad-live-343/dashboard-v2.css
+          grep -Fq 'market-prices-ah' nomad-live-343/dashboard-v2-stage3.js
+          sha256sum nomad-live-343/dashboard-v2-stage3.js | awk '{print $1}' > /tmp/dashboard-js.sha
+          : > /tmp/unchanged.sha
+          while IFS= read -r name; do
+            [ -n "$name" ] || continue
+            case "$name" in dashboard-v2.css|index.html) continue ;; esac
+            [ -f "nomad-live-343/$name" ] || continue
+            printf '%s  %s\n' "$(sha256sum "nomad-live-343/$name" | awk '{print $1}')" "$name" >> /tmp/unchanged.sha
+          done < /tmp/index-assets.txt
+          curl -fsS -L --retry 5 --retry-all-errors --retry-delay 1 --max-time 30 "$BALL46_WORKER/api/engine/board?market-clean-before=${GITHUB_RUN_ID}" -o /tmp/board-before.json
+          curl -fsS -L --retry 5 --retry-all-errors --retry-delay 1 --max-time 30 "$BALL46_WORKER/api/engine/signals?market-clean-before=${GITHUB_RUN_ID}" -o /tmp/signals-before.json
+          curl -fsS -L --retry 5 --retry-all-errors --retry-delay 1 --max-time 30 "$BALL46_WORKER/api/engine/statistics?market-clean-before=${GITHUB_RUN_ID}" -o /tmp/stats-before.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const b=JSON.parse(fs.readFileSync('/tmp/board-before.json'));
+          const s=JSON.parse(fs.readFileSync('/tmp/signals-before.json'));
+          const t=JSON.parse(fs.readFileSync('/tmp/stats-before.json'));
+          if(b?.ok!==true||!Array.isArray(b?.fixtures))throw Error('PRE_BOARD_UNHEALTHY');
+          if(!Array.isArray(s?.signals))throw Error('PRE_SIGNALS_UNHEALTHY');
+          if(t?.ok!==true||!Array.isArray(t?.rows))throw Error('PRE_STATS_UNHEALTHY');
+          console.log('PRE_HEALTH_OK',{fixtures:b.fixtures.length,signals:s.signals.length,stats:t.rows.length});
+          NODE
+
+      - name: Clean market card presentation only
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/patch_ball46_default_market_cleanup_20260922.py
+          grep -Fq 'BALL46_DEFAULT_MARKET_CLEANUP_20260922' nomad-live-343/dashboard-v2.css
+          ! grep -Fq 'BALL46_DEFAULT_MARKET_DETAIL_20260922' nomad-live-343/dashboard-v2.css
+          grep -Fq 'grid-template-columns:minmax(250px,1fr) 62px 142px 146px 146px 92px' nomad-live-343/dashboard-v2.css
+          grep -Fq 'background:transparent' nomad-live-343/dashboard-v2.css
+          grep -Fq 'color-mix(in srgb,var(--line) 68%,transparent)' nomad-live-343/dashboard-v2.css
+          grep -Fq 'dashboard-v2.css?v=343-market-clean-20260922a' nomad-live-343/index.html
+          actual=$(sha256sum nomad-live-343/dashboard-v2-stage3.js | awk '{print $1}')
+          expected=$(cat /tmp/dashboard-js.sha)
+          [ "$actual" = "$expected" ] || { echo DASHBOARD_JS_CHANGED; exit 1; }
+          while read -r expected f; do
+            actual=$(sha256sum "nomad-live-343/$f" | awk '{print $1}')
+            [ "$actual" = "$expected" ] || { echo "UNRELATED_ASSET_CHANGED:$f"; exit 1; }
+          done < /tmp/unchanged.sha
+
+      - name: Dry run Production package
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"; test -n "$CLOUDFLARE_ACCOUNT_ID"
+          cd workers/nomadtips3-343-preview
+          npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.ball46.jsonc
+
+      - name: Deploy default market cleanup
+        working-directory: workers/nomadtips3-343-preview
+        shell: bash
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Verify Production and continuity
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for n in $(seq 1 15); do
+            if curl -fsS -L --retry 2 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/index.html?market-clean-after=${GITHUB_RUN_ID}-$n" -o /tmp/index.after.html \
+              && grep -Fq 'dashboard-v2.css?v=343-market-clean-20260922a' /tmp/index.after.html; then ok=1; break; fi
+            sleep 3
+          done
+          [ "$ok" = 1 ] || { echo MARKET_CLEAN_MARKER_NOT_PROPAGATED; exit 1; }
+          curl -fsS -L --retry 5 --retry-all-errors --retry-delay 1 --max-time 30 "$BALL46_WORKER/dashboard-v2.css?market-clean-verify=${GITHUB_RUN_ID}" -o /tmp/dashboard.after.css
+          curl -fsS -L --retry 5 --retry-all-errors --retry-delay 1 --max-time 30 "$BALL46_WORKER/dashboard-v2-stage3.js?market-clean-verify=${GITHUB_RUN_ID}" -o /tmp/dashboard.after.js
+          grep -Fq 'BALL46_DEFAULT_MARKET_CLEANUP_20260922' /tmp/dashboard.after.css
+          grep -Fq 'grid-template-columns:minmax(250px,1fr) 62px 142px 146px 146px 92px' /tmp/dashboard.after.css
+          grep -Fq 'market-prices-ah' /tmp/dashboard.after.js
+          actual=$(sha256sum /tmp/dashboard.after.js | awk '{print $1}')
+          expected=$(cat /tmp/dashboard-js.sha)
+          [ "$actual" = "$expected" ] || { echo DEPLOYED_DASHBOARD_JS_CHANGED; exit 1; }
+          curl -fsS -L --retry 5 --retry-all-errors --retry-delay 1 --max-time 30 "$BALL46_WORKER/api/engine/board?market-clean-final=${GITHUB_RUN_ID}" -o /tmp/board-after.json
+          curl -fsS -L --retry 5 --retry-all-errors --retry-delay 1 --max-time 30 "$BALL46_WORKER/api/engine/signals?market-clean-final=${GITHUB_RUN_ID}" -o /tmp/signals-after.json
+          curl -fsS -L --retry 5 --retry-all-errors --retry-delay 1 --max-time 30 "$BALL46_WORKER/api/engine/statistics?market-clean-final=${GITHUB_RUN_ID}" -o /tmp/stats-after.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const b=JSON.parse(fs.readFileSync('/tmp/board-after.json'));
+          const s=JSON.parse(fs.readFileSync('/tmp/signals-after.json'));
+          const t=JSON.parse(fs.readFileSync('/tmp/stats-after.json'));
+          if(b?.ok!==true||!Array.isArray(b?.fixtures))throw Error('BOARD_UNHEALTHY');
+          if(!Array.isArray(s?.signals))throw Error('SIGNALS_UNHEALTHY');
+          if(t?.ok!==true||!Array.isArray(t?.rows))throw Error('STATISTICS_UNHEALTHY');
+          console.log('BALL46_MARKET_CLEAN_VERIFY_OK',{fixtures:b.fixtures.length,signals:s.signals.length,stats:t.rows.length});
+          NODE
+          public_ok=0
+          for n in $(seq 1 15); do
+            if curl -fsS -L --retry 2 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_PUBLIC/?market-clean-public=${GITHUB_RUN_ID}-$n" -o /tmp/public.html \
+              && grep -Fq 'dashboard-v2.css?v=343-market-clean-20260922a' /tmp/public.html; then public_ok=1; break; fi
+            sleep 3
+          done
+          [ "$public_ok" = 1 ] || { echo PUBLIC_PROPAGATION_FAILED; exit 1; }
+          echo BALL46_DEFAULT_MARKET_CLEANUP_OK
