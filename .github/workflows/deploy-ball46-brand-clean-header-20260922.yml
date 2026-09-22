@@ -46,7 +46,7 @@ jobs:
             nomad-live-343/singlepage-workspace-343.js; do
             git diff --quiet "$GOLDEN_SHA"..HEAD -- "$p" || { echo "PROTECTED_SOURCE_CHANGED:$p"; exit 1; }
           done
-          grep -Fq '.dash-heading>div:first-child{display:none!important}' nomad-live-343/brand-clean-header-343.css
+          grep -Fq '.dash-heading{display:none!important}' nomad-live-343/brand-clean-header-343.css
           grep -Fq '.workspace-brand-meta{display:none!important}' nomad-live-343/brand-clean-header-343.css
           grep -Fq '.workspace-brand{font-size:24px!important' nomad-live-343/brand-clean-header-343.css
           ! grep -Eq 'fetch\(|/api/|setInterval|MutationObserver' nomad-live-343/brand-clean-header-343.css
@@ -124,7 +124,7 @@ jobs:
           import re
           p=Path('nomad-live-343/index.html'); h=p.read_text()
           h=re.sub(r'\s*<link[^>]+brand-clean-header-343\.css[^>]*>','',h,flags=re.I)
-          tag='<link rel="stylesheet" href="brand-clean-header-343.css?v=343-brand-clean-20260922a">'
+          tag='<link rel="stylesheet" href="brand-clean-header-343.css?v=343-brand-clean-20260922b">'
           if '</head>' not in h: raise SystemExit('INDEX_HEAD_MISSING')
           p.write_text(h.replace('</head>',tag+'\n</head>',1))
           PY
@@ -154,13 +154,13 @@ jobs:
           ok=0
           for n in $(seq 1 15); do
             if curl -fsS -L --retry 2 --retry-all-errors --retry-delay 1 --max-time 20 "$BALL46_WORKER/index.html?brand-after=${GITHUB_RUN_ID}-${n}" -o /tmp/index.after.html \
-              && grep -Fq 'brand-clean-header-343.css?v=343-brand-clean-20260922a' /tmp/index.after.html; then ok=1; break; fi
+              && grep -Fq 'brand-clean-header-343.css?v=343-brand-clean-20260922b' /tmp/index.after.html; then ok=1; break; fi
             sleep 3
           done
           [ "$ok" = 1 ] || { echo 'BRAND_CSS_MARKER_NOT_PROPAGATED'; exit 1; }
           test "$(grep -o 'brand-clean-header-343.css' /tmp/index.after.html | wc -l)" -eq 1
           curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/brand-clean-header-343.css?brand-verify=${GITHUB_RUN_ID}" -o /tmp/brand.css
-          grep -Fq '.dash-heading>div:first-child{display:none!important}' /tmp/brand.css
+          grep -Fq '.dash-heading{display:none!important}' /tmp/brand.css
           grep -Fq '.workspace-brand-meta{display:none!important}' /tmp/brand.css
           grep -Fq '.workspace-brand{font-size:24px!important' /tmp/brand.css
           while read -r expected f; do
