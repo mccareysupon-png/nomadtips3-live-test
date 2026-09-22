@@ -126,34 +126,36 @@ jobs:
             [ "$actual" = "$expected" ] || { echo "MIRRORED_ASSET_CHANGED:$f"; exit 1; }
           done < /tmp/mirrored.sha
 
-      - name: Restore Settings assets from last successful pre-color Ball46 deploy
+      - name: Restore exact pre-color Settings asset set
         shell: bash
         run: |
           set -euo pipefail
-          cat > /tmp/settings-assets.txt <<'EOF'
+          cat > /tmp/settings-keep.txt <<'EOF'
           settings.css
           settings.js
+          EOF
+          cat > /tmp/settings-remove.txt <<'EOF'
           settings-ui-343.css
           settings-runtime-343.js
           settings-core-343.js
           EOF
-          while IFS= read -r name; do
-            git cat-file -e "$VERIFIED_WORKER_REF:nomad-live-343/$name"
-          done < /tmp/settings-assets.txt
-          git checkout "$VERIFIED_WORKER_REF" -- \
-            nomad-live-343/settings.css \
-            nomad-live-343/settings.js \
-            nomad-live-343/settings-ui-343.css \
-            nomad-live-343/settings-runtime-343.js \
-            nomad-live-343/settings-core-343.js
           : > /tmp/settings-restore.sha
           while IFS= read -r name; do
+            git cat-file -e "$VERIFIED_WORKER_REF:nomad-live-343/$name"
+            git checkout "$VERIFIED_WORKER_REF" -- "nomad-live-343/$name"
             expected_blob=$(git rev-parse "$VERIFIED_WORKER_REF:nomad-live-343/$name")
             actual_blob=$(git hash-object "nomad-live-343/$name")
             [ "$actual_blob" = "$expected_blob" ] || { echo "SETTINGS_SOURCE_MISMATCH:$name"; exit 1; }
             printf '%s  %s\n' "$(sha256sum "nomad-live-343/$name" | awk '{print $1}')" "$name" >> /tmp/settings-restore.sha
-          done < /tmp/settings-assets.txt
-          echo BALL46_SETTINGS_PRECOLOR_RESTORE_READY
+          done < /tmp/settings-keep.txt
+          while IFS= read -r name; do
+            if git cat-file -e "$VERIFIED_WORKER_REF:nomad-live-343/$name" 2>/dev/null; then
+              echo "EXPECTED_ABSENT_BUT_PRESENT_IN_PRECOLOR:$name"; exit 1
+            fi
+            rm -f "nomad-live-343/$name"
+            [ ! -e "nomad-live-343/$name" ] || { echo "SETTINGS_REMOVE_FAILED:$name"; exit 1; }
+          done < /tmp/settings-remove.txt
+          echo BALL46_SETTINGS_PRECOLOR_ASSET_SET_READY
 
       - name: Recover latest verified Ball46 Worker harness
         shell: bash
@@ -221,7 +223,11 @@ jobs:
             actual=$(sha256sum "/tmp/settings_after_${name//\//_}" | awk '{print $1}')
             [ "$actual" = "$expected" ] || { echo "SETTINGS_RESTORE_VERIFY_FAILED:$name"; exit 1; }
           done < /tmp/settings-restore.sha
-          echo BALL46_SETTINGS_PRECOLOR_RESTORE_OK
+          while IFS= read -r name; do
+            code=$(curl -sS -L --retry 3 --retry-all-errors --retry-delay 1 --max-time 25 -o "/tmp/removed_${name//\//_}" -w '%{http_code}' "$BALL46_WORKER/$name?settings-remove=${GITHUB_RUN_ID}") || true
+            [ "$code" = 404 ] || { echo "REMOVED_SETTINGS_STILL_SERVED:${name}:HTTP_${code}"; exit 1; }
+          done < /tmp/settings-remove.txt
+          echo BALL46_SETTINGS_PRECOLOR_ASSET_SET_OK
           curl -fsS -L --retry 5 --retry-all-errors --retry-delay 1 --max-time 30 "$BALL46_WORKER/api/engine/board?color-semantics-final=${GITHUB_RUN_ID}" -o /tmp/board-after.json
           curl -fsS -L --retry 5 --retry-all-errors --retry-delay 1 --max-time 30 "$BALL46_WORKER/api/engine/signals?color-semantics-final=${GITHUB_RUN_ID}" -o /tmp/signals-after.json
           curl -fsS -L --retry 5 --retry-all-errors --retry-delay 1 --max-time 30 "$BALL46_WORKER/api/engine/statistics?color-semantics-final=${GITHUB_RUN_ID}" -o /tmp/stats-after.json
