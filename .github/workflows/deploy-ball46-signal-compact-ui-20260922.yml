@@ -1,0 +1,230 @@
+name: Deploy Ball46 Signal Compact UI 20260922
+
+on:
+  push:
+    branches: [work/ball46-signal-compact-ui-20260922]
+    paths:
+      - '.github/workflows/deploy-ball46-signal-compact-ui-20260922.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
+  BALL46_PUBLIC: https://www.ball46.com
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  GOLDEN_SHA: ad34452074b300787c91c7788c02d0e242854d0d
+
+jobs:
+  deploy-signal-compact:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+
+      - name: Preflight presentation-only scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          git cat-file -e "$GOLDEN_SHA^{commit}"
+          for p in \
+            workers/nomadtips3-343-preview/src/index.js \
+            workers/nomadtips3-343-preview/wrangler.ball46.jsonc \
+            workers/nomadtips3-engine-343/src/index.js \
+            nomad-live-343/dashboard-v2-stage3.js \
+            nomad-live-343/dashboard-v2-tune.js \
+            nomad-live-343/bulk-odds-compat-343.js \
+            nomad-live-343/expanded-match-343.js \
+            nomad-live-343/full-market-bookmaker-343.js \
+            nomad-live-343/live-summary-full-odds-343.js \
+            nomad-live-343/signal-next.js \
+            nomad-live-343/singlepage-workspace-343.js; do
+            git diff --quiet "$GOLDEN_SHA"..HEAD -- "$p" || { echo "PROTECTED_SOURCE_CHANGED:$p"; exit 1; }
+          done
+          git diff --check
+
+      - name: Mirror exact current Production baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/prod
+          fetch_required(){
+            name="$1"; safe="${name//\//_}"
+            code=$(curl -sS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 -o "/tmp/prod/$safe" -w '%{http_code}' "$BALL46_WORKER/$name?signal-compact-copy=${GITHUB_RUN_ID}") || true
+            [ "$code" = 200 ] || { echo "REQUIRED_PROD_ASSET_HTTP_${code}:$name"; exit 1; }
+            test -s "/tmp/prod/$safe" || { echo "REQUIRED_PROD_ASSET_EMPTY:$name"; exit 1; }
+            mkdir -p "$(dirname "nomad-live-343/$name")"
+            cp "/tmp/prod/$safe" "nomad-live-343/$name"
+          }
+          fetch_required index.html
+          cp nomad-live-343/index.html /tmp/index.before.html
+          python3 - <<'PY' > /tmp/index-assets.txt
+          from pathlib import Path
+          import re
+          h=Path('/tmp/index.before.html').read_text(errors='ignore')
+          found=set()
+          for x in re.findall(r'''(?:src|href)=["']([^"']+)["']''',h,re.I):
+              x=x.split('?',1)[0].split('#',1)[0].strip().lstrip('./').lstrip('/')
+              if not x or '://' in x or '/' in x: continue
+              if re.search(r'\.(?:js|css|svg|json|png|webp|jpg|jpeg|ico)$',x,re.I): found.add(x)
+          for x in sorted(found): print(x)
+          PY
+          while IFS= read -r name; do
+            [ -n "$name" ] || continue
+            fetch_required "$name"
+          done < /tmp/index-assets.txt
+          fetch_required ball46-next.css
+          fetch_required singlepage-workspace-343.css
+
+          : > /tmp/unchanged.sha
+          while IFS= read -r name; do
+            [ -n "$name" ] || continue
+            case "$name" in ball46-next.css|singlepage-workspace-343.css) continue ;; esac
+            printf '%s  %s\n' "$(sha256sum "nomad-live-343/$name" | awk '{print $1}')" "$name" >> /tmp/unchanged.sha
+          done < /tmp/index-assets.txt
+
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/board?signal-compact-before=${GITHUB_RUN_ID}" -o /tmp/board-before.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/signals?signal-compact-before=${GITHUB_RUN_ID}" -o /tmp/signals-before.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/statistics?signal-compact-before=${GITHUB_RUN_ID}" -o /tmp/stats-before.json
+          node - <<'NODE'
+          const fs=require('fs'),b=JSON.parse(fs.readFileSync('/tmp/board-before.json')),s=JSON.parse(fs.readFileSync('/tmp/signals-before.json')),t=JSON.parse(fs.readFileSync('/tmp/stats-before.json'));
+          if(b?.ok!==true||!Array.isArray(b?.fixtures))throw Error('PRE_BOARD_UNHEALTHY');
+          if(!Array.isArray(s?.signals))throw Error('PRE_SIGNALS_UNHEALTHY');
+          if(t?.ok!==true||!Array.isArray(t?.rows))throw Error('PRE_STATS_UNHEALTHY');
+          console.log('PRE_HEALTH_OK',{fixtures:b.fixtures.length,signals:s.signals.length,stats:t.rows.length});
+          NODE
+
+      - name: Compact canonical Signal CSS
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          def replace_once(text, old, new, label):
+              n=text.count(old)
+              if n != 1:
+                  raise SystemExit(f'{label}_EXPECTED_1_FOUND_{n}')
+              return text.replace(old,new,1)
+
+          p=Path('nomad-live-343/ball46-next.css')
+          css=p.read_text()
+          reps=[
+          ('.next-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:12px}.next-kpis.five{grid-template-columns:repeat(5,minmax(0,1fr))}.next-kpi{min-height:96px;padding:15px 16px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface);box-shadow:var(--shadow-soft)}.next-kpi .label{display:block;color:var(--muted);font-size:10px;font-weight:650;letter-spacing:.035em;text-transform:uppercase}.next-kpi strong{display:block;margin-top:8px;font-size:24px;line-height:1;font-weight:680;letter-spacing:-.035em;font-variant-numeric:tabular-nums}.next-kpi small{display:block;margin-top:7px;color:var(--muted);font-size:10px}.next-kpi.good strong{color:var(--green)}.next-kpi.warn strong{color:var(--amber)}',
+           '.next-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin-bottom:8px}.next-kpis.five{grid-template-columns:repeat(5,minmax(0,1fr))}.next-kpi{min-height:62px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface);box-shadow:var(--shadow-soft)}.next-kpi .label{display:block;color:var(--muted);font-size:8px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}.next-kpi strong{display:block;margin-top:3px;font-size:18px;line-height:1;font-weight:700;letter-spacing:-.03em;font-variant-numeric:tabular-nums}.next-kpi small{display:block;margin-top:3px;color:var(--muted);font-size:7.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.next-kpi.good strong{color:var(--green)}.next-kpi.warn strong{color:var(--amber)}','KPI_BLOCK'),
+          ('.next-market-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:8px;margin:0 0 16px}.next-market-item{padding:11px 13px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2)}.next-market-item span{display:block;color:var(--muted);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.05em}.next-market-item strong{display:block;margin-top:4px;font-size:17px;font-weight:680}.next-market-item small{display:block;margin-top:2px;color:var(--muted);font-size:9px}',
+           '.next-market-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:6px;margin:0 0 8px}.next-market-item{padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2)}.next-market-item span{display:block;color:var(--muted);font-size:7.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em}.next-market-item strong{display:block;margin-top:2px;font-size:13px;font-weight:700}.next-market-item small{display:block;margin-top:1px;color:var(--muted);font-size:7.5px}','MARKET_BLOCK'),
+          ('.next-panel{margin-top:14px;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);box-shadow:var(--shadow);overflow:hidden}.next-panel-head{min-height:66px;padding:14px 17px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:18px}.next-panel-head h2{margin:0;font-size:14px;font-weight:680;letter-spacing:-.012em}.next-panel-head p{margin:4px 0 0;color:var(--muted);font-size:10.5px}.next-panel-badge{flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:6px 9px;background:var(--surface-2);color:var(--muted);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}',
+           '.next-panel{margin-top:8px;border:1px solid var(--line);border-radius:12px;background:var(--surface);box-shadow:var(--shadow);overflow:hidden}.next-panel-head{min-height:44px;padding:8px 11px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:12px}.next-panel-head h2{margin:0;font-size:12.5px;font-weight:700;letter-spacing:-.01em}.next-panel-head p{display:none}.next-panel-badge{flex:0 0 auto;display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line);border-radius:999px;padding:5px 8px;background:var(--surface-2);color:var(--muted);font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}','PANEL_BLOCK'),
+          ('.next-signal-list{padding:10px;display:grid;gap:8px}.next-empty{padding:34px 18px;text-align:center;color:var(--muted);font-size:11px}',
+           '.next-signal-list{padding:6px;display:grid;gap:6px}.next-empty{padding:24px 14px;text-align:center;color:var(--muted);font-size:10px}','LIST_BLOCK'),
+          ('.next-signal-card{border:1px solid var(--line);border-radius:13px;background:var(--surface);overflow:hidden;transition:border-color .16s ease,box-shadow .16s ease}.next-signal-card:hover{border-color:var(--line-strong);box-shadow:var(--shadow-soft)}.next-signal-card.open{border-color:color-mix(in srgb,var(--green) 48%,var(--line))}',
+           '.next-signal-card{border:1px solid var(--line);border-radius:10px;background:var(--surface);overflow:hidden;transition:border-color .16s ease,box-shadow .16s ease}.next-signal-card:hover{border-color:var(--line-strong);box-shadow:var(--shadow-soft)}.next-signal-card.open{border-color:color-mix(in srgb,var(--green) 48%,var(--line))}','CARD_BLOCK'),
+          ('.next-signal-main{display:grid;grid-template-columns:minmax(240px,1.45fr) 95px 125px minmax(260px,1.2fr) 74px;align-items:center;gap:12px;padding:14px 14px 13px}.next-match-id{min-width:0}.next-league{display:flex;align-items:center;gap:7px;margin-bottom:5px;color:var(--muted);font-size:9px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.live-badge{display:inline-flex;align-items:center;border-radius:999px;padding:3px 6px;background:var(--green-soft);color:var(--green-strong);font-size:8px;font-weight:800;letter-spacing:.05em}.next-teams{font-size:13px;font-weight:680;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.next-score{text-align:center}.next-score strong{display:block;font-size:19px;line-height:1;font-weight:700;font-variant-numeric:tabular-nums}.next-score small{display:block;margin-top:5px;color:var(--green);font-size:10px;font-weight:700}.next-entry{text-align:center}.next-entry small,.next-market small{display:block;color:var(--muted);font-size:8px;font-weight:700;letter-spacing:.04em}.next-entry strong{display:block;margin-top:3px;font-size:11px;font-weight:650}.next-market{min-width:0}.next-market-line{display:flex;align-items:center;gap:7px;min-width:0}.next-market-name{flex:0 0 auto;color:var(--muted);font-size:9px;font-weight:750}.next-pick{min-width:0;font-size:11px;font-weight:680;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.next-price{flex:0 0 auto;padding:4px 6px;border-radius:7px;background:var(--green-soft);color:var(--green-strong);font-size:11px;font-weight:750;font-variant-numeric:tabular-nums}.next-book{margin-top:4px;color:var(--muted);font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.next-expand{justify-self:end;width:34px;height:34px;border:1px solid var(--line);border-radius:9px;background:var(--surface-2);cursor:pointer;font-size:12px}.next-expand:hover{border-color:var(--line-strong)}',
+           '.next-signal-main{min-height:58px;display:grid;grid-template-columns:minmax(230px,1.5fr) 72px 94px minmax(240px,1.15fr) 38px;align-items:center;gap:8px;padding:8px 10px}.next-match-id{min-width:0}.next-league{display:flex;align-items:center;gap:5px;margin-bottom:3px;color:var(--muted);font-size:8.5px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.live-badge{display:inline-flex;align-items:center;border-radius:999px;padding:2px 5px;background:var(--green-soft);color:var(--green-strong);font-size:7.5px;font-weight:800;letter-spacing:.04em}.next-teams{font-size:12.5px;font-weight:700;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.next-score{text-align:center}.next-score strong{display:block;font-size:17px;line-height:1;font-weight:700;font-variant-numeric:tabular-nums}.next-score small{display:block;margin-top:3px;color:var(--green);font-size:8.5px;font-weight:700}.next-entry{text-align:center}.next-entry small,.next-market small{display:block;color:var(--muted);font-size:7.5px;font-weight:700;letter-spacing:.04em}.next-entry strong{display:block;margin-top:2px;font-size:10px;font-weight:650}.next-market{min-width:0}.next-market-line{display:flex;align-items:center;gap:6px;min-width:0}.next-market-name{flex:0 0 auto;color:var(--muted);font-size:8px;font-weight:750}.next-pick{min-width:0;font-size:10.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.next-price{flex:0 0 auto;padding:3px 5px;border-radius:6px;background:var(--green-soft);color:var(--green-strong);font-size:10.5px;font-weight:750;font-variant-numeric:tabular-nums}.next-book{margin-top:2px;color:var(--muted);font-size:7.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.next-expand{justify-self:end;width:28px;height:28px;border:1px solid var(--line);border-radius:7px;background:var(--surface-2);cursor:pointer;font-size:11px}.next-expand:hover{border-color:var(--line-strong)}','SIGNAL_MAIN_BLOCK'),
+          ('.next-signal-detail{border-top:1px solid var(--line);background:var(--surface-2);padding:15px}.next-detail-grid{display:grid;grid-template-columns:1.15fr .85fr;gap:12px}.next-detail-card{border:1px solid var(--line);border-radius:11px;background:var(--surface);padding:12px}.next-detail-card h3{margin:0 0 9px;font-size:10px;font-weight:750;letter-spacing:.04em;text-transform:uppercase}.next-stat-row{display:grid;grid-template-columns:38px 1fr 74px 1fr 38px;align-items:center;gap:7px;margin:8px 0}',
+           '.next-signal-detail{border-top:1px solid var(--line);background:var(--surface-2);padding:10px}.next-detail-grid{display:grid;grid-template-columns:1.15fr .85fr;gap:8px}.next-detail-card{border:1px solid var(--line);border-radius:9px;background:var(--surface);padding:10px}.next-detail-card h3{margin:0 0 7px;font-size:9px;font-weight:750;letter-spacing:.04em;text-transform:uppercase}.next-stat-row{display:grid;grid-template-columns:36px 1fr 68px 1fr 36px;align-items:center;gap:6px;margin:6px 0}','DETAIL_BLOCK'),
+          ('@media(max-width:1100px){.next-kpis.five{grid-template-columns:repeat(3,minmax(0,1fr))}.next-signal-main{grid-template-columns:minmax(210px,1.3fr) 82px 110px minmax(220px,1fr) 54px}.next-detail-grid{grid-template-columns:1fr}.next-detail-meta{grid-template-columns:repeat(2,minmax(0,1fr))}}',
+           '@media(max-width:1100px){.next-kpis.five{grid-template-columns:repeat(3,minmax(0,1fr))}.next-signal-main{grid-template-columns:minmax(200px,1.35fr) 68px 88px minmax(210px,1fr) 34px}.next-detail-grid{grid-template-columns:1fr}.next-detail-meta{grid-template-columns:repeat(2,minmax(0,1fr))}}','TABLET_BLOCK'),
+          ('@media(max-width:820px){body{padding-bottom:62px}.next-topbar-inner{height:56px;padding:0 14px;grid-template-columns:auto 1fr auto;gap:12px}.next-logo{font-size:22px}.next-nav{display:none}.next-chip{display:none}.next-theme{height:32px;padding:0 9px}.next-shell{padding:18px 12px 36px}.next-page-head{align-items:flex-start;margin-bottom:15px}.next-page-head h1{font-size:23px}.next-page-head p{font-size:11px}.next-status{padding:6px 8px;font-size:9px}.next-kpis,.next-kpis.five{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.next-kpi{min-height:84px;padding:12px}.next-kpi strong{font-size:21px}.next-panel{border-radius:13px}.next-panel-head{min-height:58px;padding:12px}.next-panel-head p{font-size:9.5px}.next-signal-list{padding:7px}.next-signal-main{grid-template-columns:minmax(0,1fr) 72px 38px;gap:8px;padding:12px}.next-entry{display:none}.next-market{grid-column:1 / 3;margin-top:2px;padding-top:9px;border-top:1px solid var(--line)}.next-expand{grid-column:3;grid-row:1 / 3}.next-detail-meta{grid-template-columns:repeat(2,minmax(0,1fr))}.next-live-row{grid-template-columns:minmax(0,1fr) 64px}.next-live-row .picks{grid-column:1 / 3;justify-content:flex-start;padding-top:7px;border-top:1px solid var(--line)}.next-mobile-nav{position:fixed;left:0;right:0;bottom:0;z-index:60;height:56px;display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--line);background:color-mix(in srgb,var(--surface) 96%,transparent);backdrop-filter:blur(14px)}.next-mobile-nav a{display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:10px;font-weight:650}.next-mobile-nav a.active{color:var(--green);background:var(--green-soft)}}',
+           '@media(max-width:820px){body{padding-bottom:62px}.next-topbar-inner{height:56px;padding:0 14px;grid-template-columns:auto 1fr auto;gap:12px}.next-logo{font-size:22px}.next-nav{display:none}.next-chip{display:none}.next-theme{height:32px;padding:0 9px}.next-shell{padding:14px 8px 32px}.next-page-head{align-items:flex-start;margin-bottom:10px}.next-page-head h1{font-size:20px}.next-page-head p{font-size:10px}.next-status{padding:5px 7px;font-size:8px}.next-kpis,.next-kpis.five{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.next-kpi{min-height:56px;padding:7px 8px}.next-kpi .label{font-size:7px}.next-kpi strong{margin-top:2px;font-size:16px}.next-kpi small{display:none}.next-market-strip{display:flex;overflow-x:auto;gap:6px;margin:0 0 8px;padding-bottom:1px;scrollbar-width:none}.next-market-strip::-webkit-scrollbar{display:none}.next-market-item{flex:0 0 112px;padding:6px 8px}.next-panel{border-radius:10px}.next-panel-head{min-height:42px;padding:7px 8px}.next-panel-head p{display:none}.next-signal-list{padding:5px;gap:5px}.next-signal-main{min-height:0;grid-template-columns:minmax(0,1fr) 62px 30px;gap:6px;padding:8px}.next-entry{display:none}.next-market{grid-column:1 / 3;margin-top:1px;padding-top:6px;border-top:1px solid var(--line)}.next-expand{grid-column:3;grid-row:1 / 3;width:28px;height:28px}.next-detail-meta{grid-template-columns:repeat(2,minmax(0,1fr))}.next-live-row{grid-template-columns:minmax(0,1fr) 64px}.next-live-row .picks{grid-column:1 / 3;justify-content:flex-start;padding-top:7px;border-top:1px solid var(--line)}.next-mobile-nav{position:fixed;left:0;right:0;bottom:0;z-index:60;height:56px;display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--line);background:color-mix(in srgb,var(--surface) 96%,transparent);backdrop-filter:blur(14px)}.next-mobile-nav a{display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:10px;font-weight:650}.next-mobile-nav a.active{color:var(--green);background:var(--green-soft)}}','MOBILE820_BLOCK'),
+          ('@media(max-width:560px){.next-page-head{display:block}.next-status{display:inline-flex;margin-top:12px}.next-kpis,.next-kpis.five{grid-template-columns:1fr 1fr}.next-kpi{min-height:78px}.next-market-strip{grid-template-columns:repeat(2,minmax(0,1fr))}.next-panel-head{align-items:flex-start}.next-panel-badge{display:none}.next-signal-main{grid-template-columns:minmax(0,1fr) 66px 34px}.next-teams{font-size:12px}.next-score strong{font-size:17px}.next-market-line{flex-wrap:wrap}.next-pick{flex:1 1 120px}.next-signal-detail{padding:10px}.next-evidence{grid-template-columns:1fr 1fr}.next-stat-row{grid-template-columns:32px 1fr 60px 1fr 32px}.next-detail-meta{grid-template-columns:1fr 1fr}.next-table td{padding:10px}.next-live-row{grid-template-columns:minmax(0,1fr) 56px}}',
+           '@media(max-width:560px){.next-page-head{display:block}.next-status{display:inline-flex;margin-top:8px}.next-kpis,.next-kpis.five{grid-template-columns:1fr 1fr}.next-kpi{min-height:52px}.next-panel-head{align-items:center}.next-panel-badge{display:none}.next-signal-main{grid-template-columns:minmax(0,1fr) 58px 28px;gap:5px;padding:7px}.next-teams{font-size:11.5px}.next-score strong{font-size:16px}.next-score small{font-size:8px}.next-market-line{flex-wrap:nowrap;gap:5px}.next-pick{flex:1 1 auto;font-size:10px}.next-price{font-size:10px}.next-signal-detail{padding:8px}.next-evidence{grid-template-columns:1fr 1fr;gap:5px}.next-stat-row{grid-template-columns:30px 1fr 56px 1fr 30px;gap:4px}.next-detail-meta{grid-template-columns:1fr 1fr;gap:5px}.next-table td{padding:10px}.next-live-row{grid-template-columns:minmax(0,1fr) 56px}}','MOBILE560_BLOCK')]
+          for old,new,label in reps:
+              css=replace_once(css,old,new,label)
+          css='/* BALL46_SIGNAL_COMPACT_CANONICAL_20260922 */\n'+css
+          p.write_text(css)
+
+          p=Path('nomad-live-343/singlepage-workspace-343.css')
+          sp=p.read_text()
+          old='/* signal subpage inherits proven NEXT cards, but stays inside page 1 */\n.sp-signal .next-kpis{margin:0 0 10px}.sp-signal .next-market-strip{margin:0 0 10px}.sp-signal .next-panel{margin:0}.sp-signal .next-note{margin:10px 2px 0}'
+          new='/* signal subpage canonical compact geometry */\n.sp-signal .workspace-view-head{min-height:46px;margin:0 0 8px;padding:8px 11px}.sp-signal .workspace-view-head .kicker,.sp-signal .workspace-view-head p{display:none}.sp-signal .workspace-view-head h2{margin:0;font-size:14px;line-height:1.1}.sp-signal .workspace-view-state{font-size:8px}.sp-signal .next-kpis{margin:0 0 7px}.sp-signal .next-market-strip{margin:0 0 7px}.sp-signal .next-panel{margin:0}.sp-signal .next-note{margin:7px 2px 0;font-size:8px}\n@media(max-width:760px){.sp-signal .workspace-view-head{min-height:42px;margin-bottom:6px;padding:7px 9px}.sp-signal .workspace-view-head h2{font-size:13px}.sp-signal .workspace-view-state{font-size:7.5px}}'
+          sp=replace_once(sp,old,new,'SINGLEPAGE_SIGNAL_BLOCK')
+          sp='/* BALL46_SIGNAL_WORKSPACE_COMPACT_20260922 */\n'+sp
+          p.write_text(sp)
+
+          p=Path('nomad-live-343/index.html')
+          h=p.read_text()
+          h,n1=re.subn(r'ball46-next\.css(?:\?[^"\']*)?', 'ball46-next.css?v=343-signal-compact-20260922a', h)
+          h,n2=re.subn(r'singlepage-workspace-343\.css(?:\?[^"\']*)?', 'singlepage-workspace-343.css?v=343-signal-compact-20260922a', h)
+          if n1 != 1 or n2 != 1:
+              raise SystemExit(f'CACHE_REF_COUNTS:{n1}:{n2}')
+          p.write_text(h)
+          PY
+
+          grep -Fq 'BALL46_SIGNAL_COMPACT_CANONICAL_20260922' nomad-live-343/ball46-next.css
+          grep -Fq 'BALL46_SIGNAL_WORKSPACE_COMPACT_20260922' nomad-live-343/singlepage-workspace-343.css
+          grep -Fq 'min-height:58px;display:grid;grid-template-columns:minmax(230px,1.5fr)' nomad-live-343/ball46-next.css
+          grep -Fq '.next-kpi{min-height:62px' nomad-live-343/ball46-next.css
+          grep -Fq '.next-kpi{min-height:56px' nomad-live-343/ball46-next.css
+          grep -Fq '.next-market-strip{display:flex;overflow-x:auto' nomad-live-343/ball46-next.css
+          grep -Fq '.sp-signal .workspace-view-head{min-height:46px' nomad-live-343/singlepage-workspace-343.css
+          grep -Fq '343-signal-compact-20260922a' nomad-live-343/index.html
+          git diff --check
+
+          while read -r expected name; do
+            actual=$(sha256sum "nomad-live-343/$name" | awk '{print $1}')
+            [ "$actual" = "$expected" ] || { echo "UNRELATED_LOCAL_CHANGED:$name"; exit 1; }
+          done < /tmp/unchanged.sha
+
+      - name: Dry run Production package
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"; test -n "$CLOUDFLARE_ACCOUNT_ID"
+          cd workers/nomadtips3-343-preview
+          npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.ball46.jsonc
+
+      - name: Deploy Signal compact UI
+        working-directory: workers/nomadtips3-343-preview
+        shell: bash
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Verify Production and core continuity
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for n in $(seq 1 15); do
+            if curl -fsS -L --retry 2 --retry-all-errors --retry-delay 1 --max-time 20 "$BALL46_WORKER/index.html?signal-compact-after=${GITHUB_RUN_ID}-${n}" -o /tmp/index.after.html \
+              && grep -Fq '343-signal-compact-20260922a' /tmp/index.after.html; then ok=1; break; fi
+            sleep 3
+          done
+          [ "$ok" = 1 ] || { echo 'SIGNAL_COMPACT_INDEX_NOT_PROPAGATED'; exit 1; }
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/ball46-next.css?verify=${GITHUB_RUN_ID}" -o /tmp/ball46-next.after.css
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/singlepage-workspace-343.css?verify=${GITHUB_RUN_ID}" -o /tmp/singlepage.after.css
+          grep -Fq 'BALL46_SIGNAL_COMPACT_CANONICAL_20260922' /tmp/ball46-next.after.css
+          grep -Fq 'BALL46_SIGNAL_WORKSPACE_COMPACT_20260922' /tmp/singlepage.after.css
+          grep -Fq '.next-kpi{min-height:62px' /tmp/ball46-next.after.css
+          grep -Fq '.next-market-strip{display:flex;overflow-x:auto' /tmp/ball46-next.after.css
+
+          while read -r expected name; do
+            curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/$name?signal-compact-protected=${GITHUB_RUN_ID}" -o "/tmp/protected-${name//\//_}"
+            actual=$(sha256sum "/tmp/protected-${name//\//_}" | awk '{print $1}')
+            [ "$actual" = "$expected" ] || { echo "UNRELATED_DEPLOYED_CHANGED:$name"; exit 1; }
+          done < /tmp/unchanged.sha
+
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/board?signal-compact-final=${GITHUB_RUN_ID}" -o /tmp/board-after.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/signals?signal-compact-final=${GITHUB_RUN_ID}" -o /tmp/signals-after.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/statistics?signal-compact-final=${GITHUB_RUN_ID}" -o /tmp/stats-after.json
+          node - <<'NODE'
+          const fs=require('fs'),b=JSON.parse(fs.readFileSync('/tmp/board-after.json')),s=JSON.parse(fs.readFileSync('/tmp/signals-after.json')),t=JSON.parse(fs.readFileSync('/tmp/stats-after.json'));
+          if(b?.ok!==true||!Array.isArray(b?.fixtures))throw Error('POST_BOARD_UNHEALTHY');
+          if(!Array.isArray(s?.signals))throw Error('POST_SIGNALS_UNHEALTHY');
+          if(t?.ok!==true||!Array.isArray(t?.rows))throw Error('POST_STATS_UNHEALTHY');
+          console.log('BALL46_SIGNAL_COMPACT_OK',{fixtures:b.fixtures.length,signals:s.signals.length,stats:t.rows.length});
+          NODE
+
+          pub=0
+          for n in $(seq 1 10); do
+            if curl -fsS -L --retry 2 --retry-all-errors --retry-delay 1 --max-time 20 "$BALL46_PUBLIC/?signal-compact-public=${GITHUB_RUN_ID}-${n}" -o /tmp/public.html \
+              && grep -Fq '343-signal-compact-20260922a' /tmp/public.html; then pub=1; break; fi
+            sleep 3
+          done
+          [ "$pub" = 1 ] || { echo 'PUBLIC_SIGNAL_COMPACT_NOT_PROPAGATED'; exit 1; }
