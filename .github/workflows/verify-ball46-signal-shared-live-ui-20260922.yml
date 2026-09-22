@@ -1,0 +1,86 @@
+name: Verify Ball46 Signal Shared Live UI 20260922
+
+on:
+  push:
+    branches: [work/ball46-signal-shared-live-ui-20260922]
+    paths:
+      - '.github/workflows/verify-ball46-signal-shared-live-ui-20260922.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  WORKER: https://ball46-production.mccarey-supon.workers.dev
+  PUBLIC: https://www.ball46.com
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Verify deployed shell and assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          stamp="${GITHUB_RUN_ID}-$(date +%s)"
+          curl -fsSL --retry 4 --retry-all-errors --max-time 25 "$WORKER/index.html?verify=$stamp" -o /tmp/index.html
+          echo "INDEX_FETCH_OK $(wc -c </tmp/index.html) bytes"
+          grep -Fq 'signal-shared-view-343.css?v=20260922a' /tmp/index.html && echo SHARED_CSS_LINK_OK
+          grep -Fq 'dashboard-v2-stage3-v6-signal-shared' /tmp/index.html && echo DASHBOARD_CACHE_MARKER_OK
+          grep -Fq '343-singlepage-20260922-signal-shared' /tmp/index.html && echo ROUTER_CACHE_MARKER_OK
+          grep -Fq 'data-signal-market-toolbar' /tmp/index.html && echo SIGNAL_MARKET_TOOLBAR_OK
+          grep -Fq 'data-featured-kicker' /tmp/index.html && echo FEATURED_CONTEXT_HOOK_OK
+          if grep -Fq 'data-workspace-panel="signal"' /tmp/index.html; then echo STANDALONE_SIGNAL_PANEL_STILL_PRESENT; exit 1; else echo STANDALONE_SIGNAL_PANEL_REMOVED; fi
+          if grep -Fq 'signal-next.js' /tmp/index.html; then echo LEGACY_SIGNAL_SCRIPT_STILL_REFERENCED; exit 1; else echo LEGACY_SIGNAL_SCRIPT_REFERENCE_REMOVED; fi
+
+          curl -fsSL --retry 4 --retry-all-errors --max-time 25 "$WORKER/dashboard-v2-stage3.js?verify=$stamp" -o /tmp/dashboard.js
+          node --check /tmp/dashboard.js
+          grep -Fq 'function signalMarketKey' /tmp/dashboard.js && echo SIGNAL_MARKET_FILTER_RUNTIME_OK
+          grep -Fq "document.body.dataset.workspaceView==='signal'" /tmp/dashboard.js && echo SIGNAL_VIEW_FILTER_RUNTIME_OK
+
+          curl -fsSL --retry 4 --retry-all-errors --max-time 25 "$WORKER/singlepage-workspace-343.js?verify=$stamp" -o /tmp/router.js
+          node --check /tmp/router.js
+          grep -Fq "panelView=view==='signal'?'live':view" /tmp/router.js && echo SIGNAL_REUSES_LIVE_PANEL_OK
+          grep -Fq "signalMarket" /tmp/router.js && echo SIGNAL_MARKET_ROUTE_OK
+
+          curl -fsSL --retry 4 --retry-all-errors --max-time 25 "$WORKER/signal-shared-view-343.css?verify=$stamp" -o /tmp/shared.css
+          grep -Fq '.signal-market-toolbar' /tmp/shared.css && echo SIGNAL_MARKET_CSS_OK
+          grep -Fq '@media(max-width:760px)' /tmp/shared.css && echo SIGNAL_MARKET_MOBILE_CSS_OK
+
+      - name: Verify APIs remain healthy
+        shell: bash
+        run: |
+          set -euo pipefail
+          stamp="${GITHUB_RUN_ID}-$(date +%s)"
+          curl -fsSL --retry 4 --retry-all-errors --max-time 25 "$WORKER/api/engine/board?verify=$stamp" -o /tmp/board.json
+          curl -fsSL --retry 4 --retry-all-errors --max-time 25 "$WORKER/api/engine/signals?verify=$stamp" -o /tmp/signals.json
+          curl -fsSL --retry 4 --retry-all-errors --max-time 25 "$WORKER/api/engine/statistics?verify=$stamp" -o /tmp/stats.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const b=JSON.parse(fs.readFileSync('/tmp/board.json'));
+          const s=JSON.parse(fs.readFileSync('/tmp/signals.json'));
+          const t=JSON.parse(fs.readFileSync('/tmp/stats.json'));
+          if(b?.ok!==true||!Array.isArray(b?.fixtures)) throw Error('BOARD_UNHEALTHY');
+          if(!Array.isArray(s?.signals)) throw Error('SIGNALS_UNHEALTHY');
+          if(t?.ok!==true||!Array.isArray(t?.rows)) throw Error('STATS_UNHEALTHY');
+          const fam={all:s.signals.length,'1x2':0,ah:0,ou:0,corners:0,cards:0,other:0};
+          for(const r of s.signals){const x=String(r.marketLabel||r.market||r.providerMarket||'').toLowerCase();const k=/corner/.test(x)?'corners':/card/.test(x)?'cards':/1x2|match result|moneyline|winner|3way|three way/.test(x)?'1x2':/asian|handicap|(^|[^a-z])ah([^a-z]|$)/.test(x)?'ah':/over|under|o\/u|goal[_ -]?line|total/.test(x)?'ou':'other';fam[k]++}
+          console.log('BALL46_SIGNAL_SHARED_VERIFY_OK',{fixtures:b.fixtures.length,signals:s.signals.length,stats:t.rows.length,signalMarkets:fam});
+          NODE
+
+      - name: Verify public domain propagation
+        shell: bash
+        run: |
+          set -euo pipefail
+          stamp="${GITHUB_RUN_ID}-$(date +%s)"
+          ok=0
+          for n in $(seq 1 10); do
+            if curl -fsSL --retry 2 --retry-all-errors --max-time 20 "$PUBLIC/?view=signal&signalMarket=all&verify=$stamp-$n" -o /tmp/public.html \
+              && grep -Fq 'signal-shared-view-343.css?v=20260922a' /tmp/public.html \
+              && grep -Fq 'data-signal-market-toolbar' /tmp/public.html \
+              && ! grep -Fq 'data-workspace-panel="signal"' /tmp/public.html; then ok=1; break; fi
+            sleep 3
+          done
+          [ "$ok" = 1 ] || { echo PUBLIC_SIGNAL_SHARED_VERIFY_FAILED; exit 1; }
+          echo PUBLIC_SIGNAL_SHARED_VERIFY_OK
