@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-22T18:59:08Z",
+  "updated_at": "2026-09-22T22:17:39Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -199,8 +199,8 @@
       "edge": 45.3,
       "ev": 0.7219,
       "required_confidence": 0.6,
-      "result": "PENDING",
-      "ft": null,
+      "result": "WIN",
+      "ft": "1-0",
       "locked_at": "2026-09-22T01:57:45Z",
       "source_url": "https://www.goaloo.com/football/uefa-women-s-champions-league-arsenal-w-vs-hb-koge-w/h2h-3092350",
       "summary_url": "https://www.goaloo.com/football/uefa-women-s-champions-league-arsenal-w-vs-hb-koge-w/summary-3092350",
@@ -260,7 +260,12 @@
         "away_recent": 10,
         "h2h_n": 2,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": 1.0,
+      "profit": 78.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-22T22:17:39Z"
     },
     {
       "id": "8be0f74bd10045da-AH-AWAY-1p75",
@@ -5489,8 +5494,8 @@
       "edge": 15.4,
       "ev": 0.2357,
       "required_confidence": 0.56,
-      "result": "PENDING",
-      "ft": null,
+      "result": "WIN",
+      "ft": "1-1",
       "locked_at": "2026-09-22T01:57:47Z",
       "source_url": "https://www.goaloo.com/football/uefa-women-s-champions-league-real-madrid-w-vs-paris-saint-germain-w/h2h-3092375",
       "summary_url": "https://www.goaloo.com/football/uefa-women-s-champions-league-real-madrid-w-vs-paris-saint-germain-w/summary-3092375",
@@ -5550,7 +5555,12 @@
         "away_recent": 10,
         "h2h_n": 5,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": 1.0,
+      "profit": 115.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-22T22:17:39Z"
     },
     {
       "id": "881b26ee2fad0bb0-OU-UNDER-2p75",
@@ -128118,6 +128128,186 @@
       "settlement_source": "goaloo-bf_us-direct-index",
       "goaloo_terminal_state": -1,
       "settled_at": "2026-09-22T18:59:08Z"
+    },
+    {
+      "id": "c197780a07f6cba8-AH-AWAY-2p75",
+      "goaloo_id": "3092350",
+      "date": "2026-09-22",
+      "kickoff": "2026-09-22 19:00:00",
+      "league": "UEFA Women's Champions League",
+      "home": "Arsenal (W)",
+      "away": "HB Koge (W)",
+      "market": "AH",
+      "selection": "AWAY",
+      "line": 2.75,
+      "pick": "HB Koge (W) +2.75",
+      "side": "away",
+      "odds": 1.78,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.9665,
+      "model_probability": 0.9665,
+      "market_fair_probability": 0.5137,
+      "market_edge": 0.4528,
+      "edge": 45.3,
+      "ev": 0.7219,
+      "required_confidence": 0.6,
+      "result": "WIN",
+      "ft": "1-0",
+      "locked_at": "2026-09-22T01:57:45Z",
+      "source_url": "https://www.goaloo.com/football/uefa-women-s-champions-league-arsenal-w-vs-hb-koge-w/h2h-3092350",
+      "summary_url": "https://www.goaloo.com/football/uefa-women-s-champions-league-arsenal-w-vs-hb-koge-w/summary-3092350",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 1.499,
+        "lambda_away": 2.282,
+        "home_win": 0.233,
+        "draw": 0.2121,
+        "away_win": 0.5549,
+        "h2h_adjustment": 0.015,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": -0.3398,
+          "gd_edge": -0.5542,
+          "clean_sheet_edge": 0.1756,
+          "failed_to_score_edge": -0.2098,
+          "bounded_adjustment": -0.0248,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 2,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": 1.0,
+      "profit": 78.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-22T22:17:39Z"
+    },
+    {
+      "id": "daafff4ed9ec93ca-OU-UNDER-2p5",
+      "goaloo_id": "3092375",
+      "date": "2026-09-22",
+      "kickoff": "2026-09-22 19:00:00",
+      "league": "UEFA Women's Champions League",
+      "home": "Real Madrid (W)",
+      "away": "Paris Saint Germain (W)",
+      "market": "OU",
+      "selection": "UNDER",
+      "line": 2.5,
+      "pick": "Under 2.5",
+      "side": null,
+      "odds": 2.15,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.5748,
+      "model_probability": 0.5748,
+      "market_fair_probability": 0.4205,
+      "market_edge": 0.1543,
+      "edge": 15.4,
+      "ev": 0.2357,
+      "required_confidence": 0.56,
+      "result": "WIN",
+      "ft": "1-1",
+      "locked_at": "2026-09-22T01:57:47Z",
+      "source_url": "https://www.goaloo.com/football/uefa-women-s-champions-league-real-madrid-w-vs-paris-saint-germain-w/h2h-3092375",
+      "summary_url": "https://www.goaloo.com/football/uefa-women-s-champions-league-real-madrid-w-vs-paris-saint-germain-w/summary-3092375",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 1.453,
+        "lambda_away": 0.928,
+        "home_win": 0.4947,
+        "draw": 0.286,
+        "away_win": 0.2192,
+        "h2h_adjustment": -0.006,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.0618,
+          "gd_edge": 0.3461,
+          "clean_sheet_edge": 0.6,
+          "failed_to_score_edge": 0.0537,
+          "bounded_adjustment": 0.0176,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 5,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": 1.0,
+      "profit": 115.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-22T22:17:39Z"
     }
   ],
   "note": "Automated Full-Time Winner First feed. Supplemental markets remain unpublished.",
