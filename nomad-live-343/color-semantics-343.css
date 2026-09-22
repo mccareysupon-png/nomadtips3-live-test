@@ -1,13 +1,11 @@
 /* BALL46_COLOR_SEMANTICS_20260922
-   Shared presentation owner for side-aware colour language.
+   One shared presentation owner for side-aware colour language.
    HOME = green, AWAY = yellow/gold, LIVE clock = cyan, neutral = muted.
    Presentation only: no odds/provider/engine behaviour lives here. */
 :root{
   --b46-home:#31b878;
   --b46-away:#e2c94c;
   --b46-live:#087da6;
-  --b46-home-accent:#31b878;
-  --b46-away-accent:#e2c94c;
   --b46-neutral:var(--muted);
 }
 
@@ -68,8 +66,8 @@
 [data-featured-away]{color:var(--b46-away)!important}
 .feature-stats .stat-row>b:first-child{color:var(--b46-home)!important}
 .feature-stats .stat-row>b:last-child{color:var(--b46-away)!important}
-.feature-stats .stat-track.home i{background:var(--b46-home-accent)!important}
-.feature-stats .stat-track.away i{background:var(--b46-away-accent)!important}
+.feature-stats .stat-track.home i{background:var(--b46-home)!important}
+.feature-stats .stat-track.away i{background:var(--b46-away)!important}
 
 /* Existing live/stat evidence components. */
 .team-slot.home-slot .team-name,
@@ -91,14 +89,6 @@
 .fmb-market[data-market*="handicap"] tbody tr>td:nth-child(4){color:var(--b46-away)!important;font-weight:800}
 .fmb-market[data-market*="asian"] tbody tr>td:nth-child(2),
 .fmb-market[data-market*="handicap"] tbody tr>td:nth-child(2){color:var(--b46-neutral)!important}
-
-/* Event Flow keeps its canonical exact pair. */
-.expand-flow-legend .home,.nomad-flow-legend .home{color:#31b878!important}
-.expand-flow-legend .away,.nomad-flow-legend .away{color:#e2c94c!important}
-.expand-flow-line.home,.nomad-flow-line.home{stroke:#31b878!important}
-.expand-flow-line.away,.nomad-flow-line.away{stroke:#e2c94c!important}
-.expand-flow-end.home,.nomad-flow-end.home{fill:#31b878!important}
-.expand-flow-end.away,.nomad-flow-end.away{fill:#e2c94c!important}
 
 /* Legacy/stat support where side classes are injected by the semantic decorator. */
 .team-home-name{color:var(--b46-home)!important}
