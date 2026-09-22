@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-22T05:08:28Z",
+  "updated_at": "2026-09-22T10:05:05Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -2234,8 +2234,8 @@
       "edge": 33.4,
       "ev": 0.6399,
       "required_confidence": 0.56,
-      "result": "PENDING",
-      "ft": null,
+      "result": "PUSH",
+      "ft": "0-0",
       "locked_at": "2026-09-22T01:55:11Z",
       "source_url": "https://www.goaloo.com/football/japan-regional-league-toin-yokohama-university-vs-aries-tokyo/h2h-3093700",
       "summary_url": "https://www.goaloo.com/football/japan-regional-league-toin-yokohama-university-vs-aries-tokyo/summary-3093700",
@@ -2295,7 +2295,12 @@
         "away_recent": 10,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": 0.0,
+      "profit": 0.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-22T10:05:05Z"
     },
     {
       "id": "56d5de7789748ee8-AH-HOME-m0p0",
@@ -127643,6 +127648,96 @@
       "settlement_source": "goaloo-bf_us-direct-index",
       "goaloo_terminal_state": -1,
       "settled_at": "2026-09-21T19:35:28Z"
+    },
+    {
+      "id": "82900a68bda46dc3-AH-HOME-m0p0",
+      "goaloo_id": "3093700",
+      "date": "2026-09-22",
+      "kickoff": "2026-09-22 08:00:00",
+      "league": "Japan Regional League",
+      "home": "Toin Yokohama University",
+      "away": "Aries Tokyo",
+      "market": "AH",
+      "selection": "HOME",
+      "line": -0.0,
+      "pick": "Toin Yokohama University -0",
+      "side": "home",
+      "odds": 2.25,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.7403,
+      "model_probability": 0.7403,
+      "market_fair_probability": 0.4063,
+      "market_edge": 0.334,
+      "edge": 33.4,
+      "ev": 0.6399,
+      "required_confidence": 0.56,
+      "result": "PUSH",
+      "ft": "0-0",
+      "locked_at": "2026-09-22T01:55:11Z",
+      "source_url": "https://www.goaloo.com/football/japan-regional-league-toin-yokohama-university-vs-aries-tokyo/h2h-3093700",
+      "summary_url": "https://www.goaloo.com/football/japan-regional-league-toin-yokohama-university-vs-aries-tokyo/summary-3093700",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 2.235,
+        "lambda_away": 1.035,
+        "home_win": 0.6647,
+        "draw": 0.2065,
+        "away_win": 0.1288,
+        "h2h_adjustment": -0.01,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.5106,
+          "gd_edge": 0.6975,
+          "clean_sheet_edge": 0.2683,
+          "failed_to_score_edge": 0.122,
+          "bounded_adjustment": 0.0378,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": 0.0,
+      "profit": 0.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-22T10:05:05Z"
     }
   ],
   "note": "Automated Full-Time Winner First feed. Supplemental markets remain unpublished.",
