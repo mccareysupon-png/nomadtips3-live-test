@@ -1,0 +1,251 @@
+name: Deploy Ball46 UI Geometry Chart Frame 20260922
+
+on:
+  push:
+    branches: [work/ball46-ui-geometry-chart-frame-20260922]
+    paths:
+      - '.github/workflows/deploy-ball46-ui-geometry-chart-frame-20260922.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
+  BALL46_PUBLIC: https://www.ball46.com
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  GOLDEN_SHA: ad34452074b300787c91c7788c02d0e242854d0d
+
+jobs:
+  deploy-ui-geometry-chart-frame:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+
+      - name: Preflight protected source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git cat-file -e "$GOLDEN_SHA^{commit}"
+          for p in \
+            workers/nomadtips3-343-preview/src/index.js \
+            workers/nomadtips3-343-preview/wrangler.ball46.jsonc \
+            workers/nomadtips3-engine-343/src/index.js \
+            nomad-live-343/dashboard-v2-stage3.js \
+            nomad-live-343/dashboard-v2-tune.js \
+            nomad-live-343/bulk-odds-compat-343.js \
+            nomad-live-343/expanded-match-343.js \
+            nomad-live-343/full-market-bookmaker-343.js \
+            nomad-live-343/live-summary-full-odds-343.js \
+            nomad-live-343/singlepage-workspace-343.js \
+            nomad-live-343/longterm-performance-343.js; do
+            git diff --quiet "$GOLDEN_SHA"..HEAD -- "$p" || { echo "UNEXPECTED_SOURCE_CHANGE:$p"; exit 1; }
+          done
+          git diff --check
+
+      - name: Mirror exact current Production baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/prod
+          fetch_required(){
+            name="$1"; safe="${name//\//_}"
+            code=$(curl -sS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 -o "/tmp/prod/$safe" -w '%{http_code}' "$BALL46_WORKER/$name?geometry-required=${GITHUB_RUN_ID}") || true
+            [ "$code" = 200 ] || { echo "REQUIRED_PROD_ASSET_HTTP_${code}:$name"; exit 1; }
+            test -s "/tmp/prod/$safe" || { echo "REQUIRED_PROD_ASSET_EMPTY:$name"; exit 1; }
+            mkdir -p "$(dirname "nomad-live-343/$name")"
+            cp "/tmp/prod/$safe" "nomad-live-343/$name"
+          }
+          fetch_required index.html
+          cp nomad-live-343/index.html /tmp/index.before.html
+          python3 - <<'PY' > /tmp/index-assets.txt
+          from pathlib import Path
+          import re
+          h=Path('/tmp/index.before.html').read_text(errors='ignore')
+          found=set()
+          for x in re.findall(r'''(?:src|href)=["']([^"']+)["']''',h,re.I):
+              x=x.split('?',1)[0].split('#',1)[0].strip().lstrip('./').lstrip('/')
+              if not x or '://' in x or '/' in x: continue
+              if re.search(r'\.(?:js|css|svg|json|png|webp|jpg|jpeg|ico)$',x,re.I): found.add(x)
+          for x in sorted(found): print(x)
+          PY
+          while IFS= read -r name; do
+            [ -n "$name" ] || continue
+            fetch_required "$name"
+          done < /tmp/index-assets.txt
+          for name in dashboard-v2.css singlepage-workspace-343.css longterm-performance-343.css expanded-match-343.css; do fetch_required "$name"; done
+
+          : > /tmp/unchanged.sha
+          while IFS= read -r name; do
+            [ -n "$name" ] || continue
+            case "$name" in dashboard-v2.css|singlepage-workspace-343.css|longterm-performance-343.css|expanded-match-343.css) continue ;; esac
+            [ -f "nomad-live-343/$name" ] || continue
+            printf '%s  %s\n' "$(sha256sum "nomad-live-343/$name" | awk '{print $1}')" "$name" >> /tmp/unchanged.sha
+          done < /tmp/index-assets.txt
+
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/board?geometry-before=${GITHUB_RUN_ID}" -o /tmp/board-before.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/signals?geometry-before=${GITHUB_RUN_ID}" -o /tmp/signals-before.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/statistics?geometry-before=${GITHUB_RUN_ID}" -o /tmp/stats-before.json
+          node - <<'NODE'
+          const fs=require('fs'),b=JSON.parse(fs.readFileSync('/tmp/board-before.json')),s=JSON.parse(fs.readFileSync('/tmp/signals-before.json')),t=JSON.parse(fs.readFileSync('/tmp/stats-before.json'));
+          if(b?.ok!==true||!Array.isArray(b?.fixtures))throw Error('PRE_BOARD_UNHEALTHY');
+          if(!Array.isArray(s?.signals))throw Error('PRE_SIGNALS_UNHEALTHY');
+          if(t?.ok!==true||!Array.isArray(t?.rows))throw Error('PRE_STATS_UNHEALTHY');
+          console.log('PRE_HEALTH_OK',{fixtures:b.fixtures.length,signals:s.signals.length,stats:t.rows.length});
+          NODE
+
+      - name: Normalize sidebar geometry and chart frames
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          def rewrite_rule(path, selector, mutate):
+              p=Path(path); s=p.read_text(); pat=re.escape(selector)+r'\{([^{}]*)\}'; m=re.search(pat,s)
+              if not m: raise SystemExit(f'RULE_NOT_FOUND:{path}:{selector}')
+              body=mutate(m.group(1))
+              s=s[:m.start()]+selector+'{'+body+'}'+s[m.end():]
+              p.write_text(s)
+
+          def strip_props(body, props):
+              for prop in props:
+                  body=re.sub(rf'{re.escape(prop)}:[^;]+;', '', body)
+              return body
+
+          # One desktop geometry for Match Status and League rows.
+          def filter_row(body):
+              body=strip_props(body,['display','grid-template-columns','align-items','justify-content','gap','padding'])
+              return 'display:grid;grid-template-columns:minmax(0,1fr) 38px;align-items:center;gap:8px;padding:10px 11px;'+body
+          rewrite_rule('nomad-live-343/dashboard-v2.css','.filter,.league-filter',filter_row)
+
+          def filter_count(body):
+              body=strip_props(body,['width','min-width','max-width','text-align','padding','font-variant-numeric','font-feature-settings'])
+              return 'width:38px;min-width:38px;max-width:38px;text-align:right;padding:3px 7px 3px 5px;font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1;'+body
+          rewrite_rule('nomad-live-343/dashboard-v2.css','.filter b,.league-filter b',filter_count)
+
+          # Statistics rows use the exact same right edge and numeric column.
+          def nav_row(body):
+              body=strip_props(body,['display','grid-template-columns','align-items','justify-content','gap','padding'])
+              return 'display:grid;grid-template-columns:minmax(0,1fr) 38px;align-items:center;gap:8px;padding:0 11px;'+body
+          rewrite_rule('nomad-live-343/singlepage-workspace-343.css','.workspace-nav-row',nav_row)
+
+          def nav_count(body):
+              body=strip_props(body,['width','min-width','max-width','padding','justify-content','text-align','font-variant-numeric','font-feature-settings'])
+              return 'width:38px;min-width:38px;max-width:38px;padding:0 7px 0 5px;justify-content:flex-end;text-align:right;font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1;'+body
+          rewrite_rule('nomad-live-343/singlepage-workspace-343.css','.workspace-nav-row b',nav_count)
+
+          # Mobile statistics nav intentionally becomes centered cards again because counts are hidden there.
+          p=Path('nomad-live-343/singlepage-workspace-343.css'); s=p.read_text()
+          old='.workspace-stats-card .workspace-nav-row{min-height:31px;border:1px solid var(--line);border-radius:7px;padding:0 6px;justify-content:center;font-size:8px}'
+          new='.workspace-stats-card .workspace-nav-row{min-height:31px;border:1px solid var(--line);border-radius:7px;padding:0 6px;display:flex;justify-content:center;font-size:8px}'
+          if old in s: s=s.replace(old,new,1)
+          p.write_text(s)
+
+          # Give every long-term market chart the same thin plot frame.
+          def perf_chart(body):
+              body=strip_props(body,['box-shadow','border-radius'])
+              return 'box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--line) 90%,transparent);border-radius:8px;'+body
+          rewrite_rule('nomad-live-343/longterm-performance-343.css','.b46-perf-chart-wrap',perf_chart)
+
+          # Event Flow uses the same visual frame so chart presentation is consistent across views.
+          def flow_chart(body):
+              body=strip_props(body,['box-shadow','border-radius'])
+              return 'box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--line) 90%,transparent);border-radius:8px;'+body
+          rewrite_rule('nomad-live-343/expanded-match-343.css','.expand-flow-chart',flow_chart)
+
+          # Cache-bust only CSS files changed here.
+          p=Path('nomad-live-343/index.html'); h=p.read_text()
+          targets={
+            'dashboard-v2.css':'343-geometry-frame-20260922a',
+            'singlepage-workspace-343.css':'343-geometry-frame-20260922a',
+            'longterm-performance-343.css':'343-geometry-frame-20260922a',
+            'expanded-match-343.css':'343-geometry-frame-20260922a',
+          }
+          for name,ver in targets.items():
+              h,n=re.subn(re.escape(name)+r'(?:\?[^"\']*)?',f'{name}?v={ver}',h)
+              if n<1: raise SystemExit(f'CACHE_BUST_TARGET_MISSING:{name}')
+          p.write_text(h)
+          print('BALL46_GEOMETRY_CHART_FRAME_PATCH_OK')
+          PY
+
+          grep -Fq 'grid-template-columns:minmax(0,1fr) 38px' nomad-live-343/dashboard-v2.css
+          grep -Fq 'padding:10px 11px' nomad-live-343/dashboard-v2.css
+          grep -Fq 'grid-template-columns:minmax(0,1fr) 38px' nomad-live-343/singlepage-workspace-343.css
+          grep -Fq 'padding:0 11px' nomad-live-343/singlepage-workspace-343.css
+          grep -Fq 'box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--line) 90%,transparent)' nomad-live-343/longterm-performance-343.css
+          grep -Fq 'box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--line) 90%,transparent)' nomad-live-343/expanded-match-343.css
+          while read -r expected f; do
+            actual=$(sha256sum "nomad-live-343/$f" | awk '{print $1}')
+            [ "$actual" = "$expected" ] || { echo "UNRELATED_ASSET_CHANGED:$f"; exit 1; }
+          done < /tmp/unchanged.sha
+
+      - name: Dry run Production package
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"; test -n "$CLOUDFLARE_ACCOUNT_ID"
+          cd workers/nomadtips3-343-preview
+          npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.ball46.jsonc
+
+      - name: Deploy normalized UI geometry
+        working-directory: workers/nomadtips3-343-preview
+        shell: bash
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Verify Production and core continuity
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for n in $(seq 1 15); do
+            if curl -fsS -L --retry 2 --retry-all-errors --retry-delay 1 --max-time 20 "$BALL46_WORKER/index.html?geometry-after=${GITHUB_RUN_ID}-${n}" -o /tmp/index.after.html \
+              && grep -Fq 'dashboard-v2.css?v=343-geometry-frame-20260922a' /tmp/index.after.html \
+              && grep -Fq 'singlepage-workspace-343.css?v=343-geometry-frame-20260922a' /tmp/index.after.html \
+              && grep -Fq 'longterm-performance-343.css?v=343-geometry-frame-20260922a' /tmp/index.after.html \
+              && grep -Fq 'expanded-match-343.css?v=343-geometry-frame-20260922a' /tmp/index.after.html; then ok=1; break; fi
+            sleep 3
+          done
+          [ "$ok" = 1 ] || { echo GEOMETRY_MARKER_NOT_PROPAGATED; exit 1; }
+
+          for f in dashboard-v2.css singlepage-workspace-343.css longterm-performance-343.css expanded-match-343.css; do
+            curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/$f?geometry-verify=${GITHUB_RUN_ID}" -o "/tmp/${f}.after"
+          done
+          grep -Fq 'grid-template-columns:minmax(0,1fr) 38px' /tmp/dashboard-v2.css.after
+          grep -Fq 'padding:10px 11px' /tmp/dashboard-v2.css.after
+          grep -Fq 'grid-template-columns:minmax(0,1fr) 38px' /tmp/singlepage-workspace-343.css.after
+          grep -Fq 'padding:0 11px' /tmp/singlepage-workspace-343.css.after
+          grep -Fq 'box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--line) 90%,transparent)' /tmp/longterm-performance-343.css.after
+          grep -Fq 'box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--line) 90%,transparent)' /tmp/expanded-match-343.css.after
+
+          while read -r expected f; do
+            curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/$f?geometry-protected=${GITHUB_RUN_ID}" -o "/tmp/protected-${f//\//_}"
+            actual=$(sha256sum "/tmp/protected-${f//\//_}" | awk '{print $1}')
+            [ "$actual" = "$expected" ] || { echo "UNRELATED_DEPLOYED_ASSET_CHANGED:$f"; exit 1; }
+          done < /tmp/unchanged.sha
+
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/board?geometry-final=${GITHUB_RUN_ID}" -o /tmp/board-after.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/signals?geometry-final=${GITHUB_RUN_ID}" -o /tmp/signals-after.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/statistics?geometry-final=${GITHUB_RUN_ID}" -o /tmp/stats-after.json
+          node - <<'NODE'
+          const fs=require('fs'),b=JSON.parse(fs.readFileSync('/tmp/board-after.json')),s=JSON.parse(fs.readFileSync('/tmp/signals-after.json')),t=JSON.parse(fs.readFileSync('/tmp/stats-after.json'));
+          if(b?.ok!==true||!Array.isArray(b?.fixtures))throw Error('POST_BOARD_UNHEALTHY');
+          if(!Array.isArray(s?.signals))throw Error('POST_SIGNALS_UNHEALTHY');
+          if(t?.ok!==true||!Array.isArray(t?.rows))throw Error('POST_STATS_UNHEALTHY');
+          console.log('BALL46_GEOMETRY_CHART_FRAME_OK',{fixtures:b.fixtures.length,signals:s.signals.length,stats:t.rows.length});
+          NODE
+
+          pub=0
+          for n in $(seq 1 10); do
+            if curl -fsS -L --retry 2 --retry-all-errors --retry-delay 1 --max-time 20 "$BALL46_PUBLIC/?geometry-public=${GITHUB_RUN_ID}-${n}" -o /tmp/public.html \
+              && grep -Fq 'dashboard-v2.css?v=343-geometry-frame-20260922a' /tmp/public.html \
+              && grep -Fq 'longterm-performance-343.css?v=343-geometry-frame-20260922a' /tmp/public.html; then pub=1; break; fi
+            sleep 3
+          done
+          [ "$pub" = 1 ] || { echo PUBLIC_GEOMETRY_NOT_PROPAGATED; exit 1; }
