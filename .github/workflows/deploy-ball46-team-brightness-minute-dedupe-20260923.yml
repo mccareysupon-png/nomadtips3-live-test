@@ -1,0 +1,150 @@
+name: Deploy Ball46 Team Brightness + Minute Dedupe 20260923
+
+on:
+  push:
+    branches: [work/ball46-event-icons-complete-20260922]
+    paths:
+      - '.github/workflows/deploy-ball46-team-brightness-minute-dedupe-20260923.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  deploy-ui-fix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+
+      - name: Mirror exact current Production baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/prod
+          fetch_optional(){
+            name="$1"; safe="${name//\//_}"
+            code=$(curl -sS -L --retry 2 --retry-all-errors --retry-delay 1 --max-time 20 -o "/tmp/prod/$safe" -w '%{http_code}' "$BALL46_WORKER/$name?team-minute-copy=${GITHUB_RUN_ID}") || true
+            [ "$code" = 200 ] || return 0
+            test -s "/tmp/prod/$safe" || return 0
+            mkdir -p "$(dirname "nomad-live-343/$name")"
+            cp "/tmp/prod/$safe" "nomad-live-343/$name"
+          }
+          fetch_required(){
+            name="$1"; safe="${name//\//_}"
+            code=$(curl -sS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 -o "/tmp/prod/$safe" -w '%{http_code}' "$BALL46_WORKER/$name?team-minute-required=${GITHUB_RUN_ID}") || true
+            [ "$code" = 200 ] || { echo "REQUIRED_PROD_ASSET_HTTP_${code}:$name"; exit 1; }
+            test -s "/tmp/prod/$safe" || { echo "REQUIRED_PROD_ASSET_EMPTY:$name"; exit 1; }
+            mkdir -p "$(dirname "nomad-live-343/$name")"
+            cp "/tmp/prod/$safe" "nomad-live-343/$name"
+          }
+          while IFS= read -r f; do
+            name="${f#nomad-live-343/}"
+            case "$name" in *.html|*.js|*.css|*.svg|*.json|*.png|*.webp|*.jpg|*.jpeg|*.ico) fetch_optional "$name" ;; esac
+          done < <(find nomad-live-343 -maxdepth 1 -type f | sort)
+          fetch_required index.html
+          python3 - <<'PY' > /tmp/index-assets.txt
+          from pathlib import Path
+          import re
+          h=Path('nomad-live-343/index.html').read_text(errors='ignore')
+          found=set()
+          for x in re.findall(r'''(?:src|href)=["']([^"']+)["']''',h,re.I):
+              x=x.split('?',1)[0].split('#',1)[0].strip().lstrip('./').lstrip('/')
+              if not x or '://' in x or '/' in x: continue
+              if re.search(r'\.(?:js|css|svg|json|png|webp|jpg|jpeg|ico)$',x,re.I): found.add(x)
+          for x in sorted(found): print(x)
+          PY
+          while IFS= read -r name; do
+            [ -n "$name" ] || continue
+            fetch_required "$name"
+          done < /tmp/index-assets.txt
+          fetch_required dashboard-v2-stage3.js
+          fetch_required dashboard-v2.css
+          cp nomad-live-343/dashboard-v2-stage3.js /tmp/dashboard.before.js
+          cp nomad-live-343/dashboard-v2.css /tmp/dashboard.before.css
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/board?team-minute-before=${GITHUB_RUN_ID}" -o /tmp/board-before.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/signals?team-minute-before=${GITHUB_RUN_ID}" -o /tmp/signals-before.json
+          node - <<'NODE'
+          const fs=require('fs'),b=JSON.parse(fs.readFileSync('/tmp/board-before.json')),s=JSON.parse(fs.readFileSync('/tmp/signals-before.json'));
+          if(b?.ok!==true||!Array.isArray(b?.fixtures))throw Error('PRE_BOARD_UNHEALTHY');
+          if(!Array.isArray(s?.signals))throw Error('PRE_SIGNALS_UNHEALTHY');
+          NODE
+
+      - name: Apply two presentation-only fixes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          js_path=Path('nomad-live-343/dashboard-v2-stage3.js')
+          js=js_path.read_text()
+          pattern=r'(<div class="teams-cell">(?:(?!</div>).)*?)<small>\$\{esc\(detailedStatus\(f\)\)\}</small>(</div>)'
+          js2,n=re.subn(pattern,r'\1\2',js,count=1,flags=re.S)
+          if n!=1:
+              raise SystemExit(f'LEFT_MINUTE_PATTERN_COUNT={n}')
+          if '<div class="score-cell">' not in js2 or "clockLabel(f)" not in js2:
+              raise SystemExit('RIGHT_CLOCK_ANCHOR_MISSING')
+          js_path.write_text(js2)
+
+          css_path=Path('nomad-live-343/dashboard-v2.css')
+          css=css_path.read_text()
+          marker='/* BALL46_TEAM_NAME_BRIGHTNESS_15_20260923 */'
+          block='''\n\n/* BALL46_TEAM_NAME_BRIGHTNESS_15_20260923 */\n.match-row .teams-cell > b:nth-of-type(1),\n.match-row .teams-cell > b:nth-of-type(2){filter:brightness(1.15)}\n'''
+          if marker not in css:
+              css += block
+          css_path.write_text(css)
+          PY
+          node --check nomad-live-343/dashboard-v2-stage3.js
+          grep -Fq 'BALL46_TEAM_NAME_BRIGHTNESS_15_20260923' nomad-live-343/dashboard-v2.css
+          grep -Fq 'filter:brightness(1.15)' nomad-live-343/dashboard-v2.css
+          ! grep -Fq '<small>${esc(detailedStatus(f))}</small>' nomad-live-343/dashboard-v2-stage3.js
+          grep -Fq "clockLabel(f)" nomad-live-343/dashboard-v2-stage3.js
+          git diff --check -- nomad-live-343/dashboard-v2-stage3.js nomad-live-343/dashboard-v2.css
+
+      - name: Dry run Production package
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"; test -n "$CLOUDFLARE_ACCOUNT_ID"
+          cd workers/nomadtips3-343-preview
+          npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.ball46.jsonc
+
+      - name: Deploy UI-only fix
+        working-directory: workers/nomadtips3-343-preview
+        shell: bash
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Verify Production UI and backend continuity
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for n in $(seq 1 15); do
+            if curl -fsS -L --retry 2 --retry-all-errors --retry-delay 1 --max-time 20 "$BALL46_WORKER/dashboard-v2-stage3.js?team-minute-after=${GITHUB_RUN_ID}-${n}" -o /tmp/dashboard.after.js \
+              && curl -fsS -L --retry 2 --retry-all-errors --retry-delay 1 --max-time 20 "$BALL46_WORKER/dashboard-v2.css?team-minute-after=${GITHUB_RUN_ID}-${n}" -o /tmp/dashboard.after.css \
+              && ! grep -Fq '<small>${esc(detailedStatus(f))}</small>' /tmp/dashboard.after.js \
+              && grep -Fq "clockLabel(f)" /tmp/dashboard.after.js \
+              && grep -Fq 'BALL46_TEAM_NAME_BRIGHTNESS_15_20260923' /tmp/dashboard.after.css \
+              && grep -Fq 'filter:brightness(1.15)' /tmp/dashboard.after.css; then ok=1; break; fi
+            sleep 3
+          done
+          [ "$ok" = 1 ] || { echo 'UI_FIX_NOT_PROPAGATED'; exit 1; }
+          node --check /tmp/dashboard.after.js
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/board?team-minute-final=${GITHUB_RUN_ID}" -o /tmp/board-after.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/signals?team-minute-final=${GITHUB_RUN_ID}" -o /tmp/signals-after.json
+          node - <<'NODE'
+          const fs=require('fs'),b=JSON.parse(fs.readFileSync('/tmp/board-after.json')),s=JSON.parse(fs.readFileSync('/tmp/signals-after.json'));
+          if(b?.ok!==true||!Array.isArray(b?.fixtures))throw Error('POST_BOARD_UNHEALTHY');
+          if(!Array.isArray(s?.signals))throw Error('POST_SIGNALS_UNHEALTHY');
+          console.log('BALL46_UI_FIX_OK',{fixtures:b.fixtures.length,signals:s.signals.length});
+          NODE
