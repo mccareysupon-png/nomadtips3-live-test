@@ -35,6 +35,7 @@ jobs:
           ! grep -Fq 'fetch(' nomad-live-343/signal-event-flow-line-343.js
           ! grep -Fq 'setInterval' nomad-live-343/signal-event-flow-line-343.js
           ! grep -Fq 'MutationObserver' nomad-live-343/signal-event-flow-line-343.js
+          grep -Fq 'LIVE PREDICT · 10M' nomad-live-343/signal-event-flow-line-343.js
           git diff --check
 
       - name: Mirror exact Production UI baseline
@@ -68,7 +69,7 @@ jobs:
             case "$name" in signal-event-flow-line-343.js|signal-event-flow-line-343.css) continue ;; esac
             fetch_required "$name"
           done < /tmp/assets.txt
-          protected='dashboard-v2-stage3.js dashboard-v2-tune.js bulk-odds-compat-343.js expanded-match-343.js full-market-bookmaker-343.js live-summary-full-odds-343.js signal-next.js singlepage-workspace-343.js mobile-menu-classic-343.js event-flow-icons-343.js'
+          protected='dashboard-v2-stage3.js dashboard-v2-tune.js bulk-odds-compat-343.js expanded-match-343.js full-market-bookmaker-343.js live-summary-full-odds-343.js singlepage-workspace-343.js mobile-menu-classic-343.js event-flow-icons-343.js'
           : > /tmp/protected.sha
           for f in $protected; do
             fetch_required "$f"
@@ -87,8 +88,8 @@ jobs:
           p=Path('nomad-live-343/index.html'); h=p.read_text()
           h=re.sub(r'\s*<link[^>]+signal-event-flow-line-343\.css[^>]*>','',h,flags=re.I)
           h=re.sub(r'\s*<script[^>]+signal-event-flow-line-343\.js[^>]*></script>','',h,flags=re.I)
-          css='<link rel="stylesheet" href="signal-event-flow-line-343.css?v=343-signal-flow-line-20260922a">'
-          js='<script src="signal-event-flow-line-343.js?v=343-signal-flow-line-20260922a" defer></script>'
+          css='<link rel="stylesheet" href="signal-event-flow-line-343.css?v=343-signal-flow-line-20260922b">'
+          js='<script src="signal-event-flow-line-343.js?v=343-signal-flow-line-20260922b" defer></script>'
           if '</head>' not in h or '</body>' not in h: raise SystemExit('INDEX_ANCHOR_MISSING')
           p.write_text(h.replace('</head>',css+'\n</head>',1).replace('</body>',js+'\n</body>',1))
           PY
@@ -116,12 +117,13 @@ jobs:
         run: |
           set -euo pipefail
           curl -fsS -L --retry 5 --retry-all-errors --retry-delay 2 --max-time 25 "$BALL46_WORKER/index.html?signal-flow-after=${GITHUB_RUN_ID}" -o /tmp/index.after.html
-          grep -Fq 'signal-event-flow-line-343.css?v=343-signal-flow-line-20260922a' /tmp/index.after.html
-          grep -Fq 'signal-event-flow-line-343.js?v=343-signal-flow-line-20260922a' /tmp/index.after.html
+          grep -Fq 'signal-event-flow-line-343.css?v=343-signal-flow-line-20260922b' /tmp/index.after.html
+          grep -Fq 'signal-event-flow-line-343.js?v=343-signal-flow-line-20260922b' /tmp/index.after.html
           ! grep -Fq 'event-flow-bars-343.js' /tmp/index.after.html
           curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/signal-event-flow-line-343.js?verify=${GITHUB_RUN_ID}" -o /tmp/signal-flow.js
           node --check /tmp/signal-flow.js
           ! grep -Fq 'fetch(' /tmp/signal-flow.js
+          grep -Fq 'LIVE PREDICT · 10M' /tmp/signal-flow.js
           while read -r expected f; do
             curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/$f?signal-flow-protected=${GITHUB_RUN_ID}" -o "/tmp/protected-$f"
             actual=$(sha256sum "/tmp/protected-$f" | awk '{print $1}')
