@@ -13,9 +13,9 @@ permissions:
 jobs:
   diagnose:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
     steps:
-      - name: Inspect worker and custom domain
+      - name: Inspect live assets and event shape
         shell: bash
         run: |
           set -euo pipefail
@@ -26,26 +26,72 @@ jobs:
             sha256sum "/tmp/${tag}.html"
             echo "=== SCRIPT REFS ==="
             grep -oE '(src|href)="[^"]+"' "/tmp/${tag}.html" | grep -E 'ui-sync|event-flow|expanded-match|signal-next|singlepage-workspace' || true
-            echo "=== OLD OVERLAY REFS ==="
-            grep -Eo 'event-flow-(bars|icons)-343\.(js|css)|ui-sync-fixes-343\.js' "/tmp/${tag}.html" || true
             curl -fsSL --max-time 20 "$base/ui-sync-fixes-343-v2.js?diag=${GITHUB_RUN_ID}" -o "/tmp/${tag}.v2.js"
-            echo "=== V2 SHA ==="
-            sha256sum "/tmp/${tag}.v2.js"
+            grep -Fq "teamRaw=typeof e?.team==='string'" "/tmp/${tag}.v2.js"
+            grep -Fq '.b46-signal-flow-line-chart svg' "/tmp/${tag}.v2.js"
+            grep -Fq '.b46-signal-flow-line-home' "/tmp/${tag}.v2.js"
             curl -fsSL --max-time 20 "$base/api/engine/board?diag=${GITHUB_RUN_ID}" -o "/tmp/${tag}.board.json"
             node - "/tmp/${tag}.board.json" <<'NODE'
           const fs=require('fs');
-          const p=process.argv[2],j=JSON.parse(fs.readFileSync(p,'utf8'));
+          const j=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
           const rows=Array.isArray(j?.fixtures)?j.fixtures:[];
           const live=rows.filter(f=>String(f?.boardState||f?.status||'').toLowerCase().includes('live'));
-          const withEvents=rows.filter(f=>Array.isArray(f?.events)&&f.events.length);
-          console.log('BOARD',{ok:j?.ok,fixtures:rows.length,live:live.length,withEvents:withEvents.length});
-          for(const f of withEvents.slice(0,3)){
-            const e=f.events[0]||{};
-            console.log('EVENT_SAMPLE',JSON.stringify({fixtureId:f.fixtureId,minute:f.minute,home:f.home,away:f.away,eventCount:f.events.length,event:e,eventKeys:Object.keys(e)},null,2));
-          }
+          const liveEvents=live.filter(f=>Array.isArray(f?.events)&&f.events.length);
+          console.log('LIVE_BOARD',{fixtures:rows.length,live:live.length,liveWithEvents:liveEvents.length});
+          for(const f of liveEvents.slice(0,5)) console.log('LIVE_EVENT_FIXTURE',JSON.stringify({fixtureId:String(f.fixtureId),minute:f.minute,home:f.home?.name,away:f.away?.name,eventCount:f.events.length,firstEvent:f.events[0]}));
           NODE
+            for old in event-flow-bars-343.js event-flow-bars-343.css event-flow-icons-343.js ui-sync-fixes-343.js; do
+              code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 "$base/$old?diag=${GITHUB_RUN_ID}" || true)
+              echo "OLD_ASSET $base/$old HTTP=$code"
+            done
           done
-          echo '=== DOMAIN INDEX COMPARE ==='
-          cmp -s /tmp/ball46_production_mccarey_supon_workers_dev.html /tmp/www_ball46_com.html && echo SAME_INDEX || echo DIFFERENT_INDEX
-          echo '=== DOMAIN V2 COMPARE ==='
-          cmp -s /tmp/ball46_production_mccarey_supon_workers_dev.v2.js /tmp/www_ball46_com.v2.js && echo SAME_V2 || echo DIFFERENT_V2
+          cmp -s /tmp/ball46_production_mccarey_supon_workers_dev.html /tmp/www_ball46_com.html && echo SAME_INDEX || { echo DIFFERENT_INDEX; exit 1; }
+          cmp -s /tmp/ball46_production_mccarey_supon_workers_dev.v2.js /tmp/www_ball46_com.v2.js && echo SAME_V2 || { echo DIFFERENT_V2; exit 1; }
+
+      - name: Prove icons render on Page 1 DOM
+        shell: bash
+        run: |
+          set -euo pipefail
+          CHROME=$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)
+          [ -n "$CHROME" ] || { echo CHROME_NOT_FOUND; exit 1; }
+          mkdir -p /tmp/b46diag && cd /tmp/b46diag
+          npm init -y >/dev/null 2>&1
+          npm install --silent playwright-core@1.55.0
+          CHROME="$CHROME" node <<'NODE'
+          const {chromium}=require('playwright-core');
+          (async()=>{
+            const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME,args:['--no-sandbox']});
+            const page=await browser.newPage({viewport:{width:1440,height:1100}});
+            const errors=[]; page.on('pageerror',e=>errors.push(String(e)));
+            await page.goto(`https://www.ball46.com/?diag=${Date.now()}`,{waitUntil:'domcontentloaded',timeout:45000});
+            await page.waitForFunction(()=>document.querySelectorAll('.match-row[data-match-id]').length>0,null,{timeout:45000});
+            const target=await page.evaluate(async()=>{
+              const b=await fetch(`/api/engine/board?domdiag=${Date.now()}`,{cache:'no-store'}).then(r=>r.json());
+              const map=new Map((b.fixtures||[]).map(f=>[String(f.fixtureId),f]));
+              for(const row of document.querySelectorAll('.match-row[data-match-id]')){
+                const f=map.get(String(row.dataset.matchId));
+                if(f&&Array.isArray(f.events)&&f.events.length&&String(f.boardState||'').toLowerCase()==='live') return {id:String(f.fixtureId),events:f.events.length,minute:f.minute,home:f.home?.name,away:f.away?.name};
+              }
+              for(const row of document.querySelectorAll('.match-row[data-match-id]')){
+                const f=map.get(String(row.dataset.matchId));
+                if(f&&Array.isArray(f.events)&&f.events.length) return {id:String(f.fixtureId),events:f.events.length,minute:f.minute,home:f.home?.name,away:f.away?.name};
+              }
+              return null;
+            });
+            if(!target) throw new Error('NO_VISIBLE_FIXTURE_WITH_EVENTS');
+            await page.locator(`.match-row[data-match-id="${target.id}"]`).click();
+            await page.waitForSelector(`.match-expanded[data-expanded-match="${target.id}"] .expand-flow-chart svg`,{timeout:30000});
+            await page.waitForTimeout(700);
+            const proof=await page.evaluate(id=>{
+              const root=document.querySelector(`.match-expanded[data-expanded-match="${CSS.escape(id)}"]`);
+              const svg=root?.querySelector('.expand-flow-chart svg');
+              return {icons:svg?.querySelectorAll('[data-b46-event-icon]').length||0,homeLine:Boolean(svg?.querySelector('.expand-flow-line.home')),awayLine:Boolean(svg?.querySelector('.expand-flow-line.away')),titles:[...(svg?.querySelectorAll('[data-b46-event-icon] title')||[])].slice(0,5).map(x=>x.textContent)};
+            },target.id);
+            console.log('PAGE1_TARGET',target);
+            console.log('PAGE1_ICON_PROOF',proof);
+            console.log('PAGE_ERRORS',errors);
+            if(!proof.homeLine||!proof.awayLine) throw new Error('EVENT_FLOW_LINES_MISSING');
+            if(proof.icons<1) throw new Error('EVENT_ICONS_NOT_RENDERED');
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
