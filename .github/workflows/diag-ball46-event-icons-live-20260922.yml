@@ -1,0 +1,51 @@
+name: DIAG Ball46 Event Icons Live 20260922
+
+on:
+  push:
+    branches: [work/ball46-event-icons-complete-20260922]
+    paths:
+      - '.github/workflows/diag-ball46-event-icons-live-20260922.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Inspect worker and custom domain
+        shell: bash
+        run: |
+          set -euo pipefail
+          for base in https://ball46-production.mccarey-supon.workers.dev https://www.ball46.com; do
+            tag=$(echo "$base" | sed 's#https://##; s#[^A-Za-z0-9]#_#g')
+            curl -fsSL --max-time 20 "$base/index.html?diag=${GITHUB_RUN_ID}" -o "/tmp/${tag}.html"
+            echo "=== $base INDEX SHA ==="
+            sha256sum "/tmp/${tag}.html"
+            echo "=== SCRIPT REFS ==="
+            grep -oE '(src|href)="[^"]+"' "/tmp/${tag}.html" | grep -E 'ui-sync|event-flow|expanded-match|signal-next|singlepage-workspace' || true
+            echo "=== OLD OVERLAY REFS ==="
+            grep -Eo 'event-flow-(bars|icons)-343\.(js|css)|ui-sync-fixes-343\.js' "/tmp/${tag}.html" || true
+            curl -fsSL --max-time 20 "$base/ui-sync-fixes-343-v2.js?diag=${GITHUB_RUN_ID}" -o "/tmp/${tag}.v2.js"
+            echo "=== V2 SHA ==="
+            sha256sum "/tmp/${tag}.v2.js"
+            curl -fsSL --max-time 20 "$base/api/engine/board?diag=${GITHUB_RUN_ID}" -o "/tmp/${tag}.board.json"
+            node - "/tmp/${tag}.board.json" <<'NODE'
+          const fs=require('fs');
+          const p=process.argv[2],j=JSON.parse(fs.readFileSync(p,'utf8'));
+          const rows=Array.isArray(j?.fixtures)?j.fixtures:[];
+          const live=rows.filter(f=>String(f?.boardState||f?.status||'').toLowerCase().includes('live'));
+          const withEvents=rows.filter(f=>Array.isArray(f?.events)&&f.events.length);
+          console.log('BOARD',{ok:j?.ok,fixtures:rows.length,live:live.length,withEvents:withEvents.length});
+          for(const f of withEvents.slice(0,3)){
+            const e=f.events[0]||{};
+            console.log('EVENT_SAMPLE',JSON.stringify({fixtureId:f.fixtureId,minute:f.minute,home:f.home,away:f.away,eventCount:f.events.length,event:e,eventKeys:Object.keys(e)},null,2));
+          }
+          NODE
+          done
+          echo '=== DOMAIN INDEX COMPARE ==='
+          cmp -s /tmp/ball46_production_mccarey_supon_workers_dev.html /tmp/www_ball46_com.html && echo SAME_INDEX || echo DIFFERENT_INDEX
+          echo '=== DOMAIN V2 COMPARE ==='
+          cmp -s /tmp/ball46_production_mccarey_supon_workers_dev.v2.js /tmp/www_ball46_com.v2.js && echo SAME_V2 || echo DIFFERENT_V2
