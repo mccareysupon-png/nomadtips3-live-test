@@ -1,0 +1,298 @@
+name: Deploy Ball46 Default Market Detail 20260922
+
+on:
+  push:
+    branches: [work/ball46-default-market-detail-20260922]
+    paths:
+      - '.github/workflows/deploy-ball46-default-market-detail-20260922.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
+  BALL46_PUBLIC: https://www.ball46.com
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  GOLDEN_SHA: ad34452074b300787c91c7788c02d0e242854d0d
+
+jobs:
+  deploy-default-market-detail:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+
+      - name: Preflight protected source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git cat-file -e "$GOLDEN_SHA^{commit}"
+          for p in \
+            workers/nomadtips3-343-preview/src/index.js \
+            workers/nomadtips3-343-preview/wrangler.ball46.jsonc \
+            workers/nomadtips3-engine-343/src/index.js \
+            nomad-live-343/dashboard-v2-stage3.js \
+            nomad-live-343/dashboard-v2-tune.js \
+            nomad-live-343/bulk-odds-compat-343.js \
+            nomad-live-343/expanded-match-343.js \
+            nomad-live-343/full-market-bookmaker-343.js \
+            nomad-live-343/live-summary-full-odds-343.js \
+            nomad-live-343/singlepage-workspace-343.js; do
+            git diff --quiet "$GOLDEN_SHA"..HEAD -- "$p" || { echo "UNEXPECTED_SOURCE_CHANGE:$p"; exit 1; }
+          done
+          git diff --check
+
+      - name: Mirror exact current Production baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/prod
+          fetch_required(){
+            name="$1"; safe="${name//\//_}"
+            code=$(curl -sS -L --retry 5 --retry-all-errors --retry-delay 1 --max-time 30 -o "/tmp/prod/$safe" -w '%{http_code}' "$BALL46_WORKER/$name?market-detail-mirror=${GITHUB_RUN_ID}") || true
+            [ "$code" = 200 ] || { echo "REQUIRED_PROD_ASSET_HTTP_${code}:$name"; exit 1; }
+            test -s "/tmp/prod/$safe" || { echo "REQUIRED_PROD_ASSET_EMPTY:$name"; exit 1; }
+            mkdir -p "$(dirname "nomad-live-343/$name")"
+            cp "/tmp/prod/$safe" "nomad-live-343/$name"
+          }
+          fetch_required index.html
+          cp nomad-live-343/index.html /tmp/index.before.html
+          python3 - <<'PY' > /tmp/index-assets.txt
+          from pathlib import Path
+          import re
+          h=Path('/tmp/index.before.html').read_text(errors='ignore')
+          found=set()
+          for x in re.findall(r'''(?:src|href)=["']([^"']+)["']''',h,re.I):
+              x=x.split('?',1)[0].split('#',1)[0].strip().lstrip('./').lstrip('/')
+              if not x or '://' in x or '/' in x: continue
+              if re.search(r'\.(?:js|css|svg|json|png|webp|jpg|jpeg|ico)$',x,re.I): found.add(x)
+          for x in sorted(found): print(x)
+          PY
+          while IFS= read -r name; do
+            [ -n "$name" ] || continue
+            fetch_required "$name"
+          done < /tmp/index-assets.txt
+          fetch_required dashboard-v2-stage3.js
+          fetch_required dashboard-v2.css
+
+          cp nomad-live-343/dashboard-v2-stage3.js /tmp/dashboard-v2-stage3.before.js
+          cp nomad-live-343/dashboard-v2.css /tmp/dashboard-v2.before.css
+          sha256sum /tmp/dashboard-v2-stage3.before.js /tmp/dashboard-v2.before.css
+
+          : > /tmp/unchanged.sha
+          while IFS= read -r name; do
+            [ -n "$name" ] || continue
+            case "$name" in dashboard-v2-stage3.js|dashboard-v2.css) continue ;; esac
+            [ -f "nomad-live-343/$name" ] || continue
+            printf '%s  %s\n' "$(sha256sum "nomad-live-343/$name" | awk '{print $1}')" "$name" >> /tmp/unchanged.sha
+          done < /tmp/index-assets.txt
+
+          curl -fsS -L --retry 5 --retry-all-errors --retry-delay 1 --max-time 30 "$BALL46_WORKER/api/engine/board?market-detail-before=${GITHUB_RUN_ID}" -o /tmp/board-before.json
+          curl -fsS -L --retry 5 --retry-all-errors --retry-delay 1 --max-time 30 "$BALL46_WORKER/api/engine/signals?market-detail-before=${GITHUB_RUN_ID}" -o /tmp/signals-before.json
+          curl -fsS -L --retry 5 --retry-all-errors --retry-delay 1 --max-time 30 "$BALL46_WORKER/api/engine/statistics?market-detail-before=${GITHUB_RUN_ID}" -o /tmp/stats-before.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const b=JSON.parse(fs.readFileSync('/tmp/board-before.json','utf8'));
+          const s=JSON.parse(fs.readFileSync('/tmp/signals-before.json','utf8'));
+          const t=JSON.parse(fs.readFileSync('/tmp/stats-before.json','utf8'));
+          if(b?.ok!==true||!Array.isArray(b?.fixtures))throw Error('PRE_BOARD_UNHEALTHY');
+          if(!Array.isArray(s?.signals))throw Error('PRE_SIGNALS_UNHEALTHY');
+          if(t?.ok!==true||!Array.isArray(t?.rows))throw Error('PRE_STATS_UNHEALTHY');
+          console.log('PRE_HEALTH_OK',{fixtures:b.fixtures.length,signals:s.signals.length,stats:t.rows.length});
+          NODE
+
+      - name: Structure 1X2 AH and OU display only
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          js=Path('nomad-live-343/dashboard-v2-stage3.js')
+          s=js.read_text()
+
+          market_value="""function marketValue(target,value){
+  if(target==='1X2'){
+    const h=num(value?.home),d=num(value?.draw),a=num(value?.away);
+    if(h===null&&d===null&&a===null)return null;
+    return{kind:'1X2',home:h,draw:d,away:a};
+  }
+  const line=num(value?.line??value?.hdp??value?.handicap??value?.total);
+  if(target==='AH'){
+    const h=num(value?.home??value?.home_odds??value?.homeOdds),a=num(value?.away??value?.away_odds??value?.awayOdds);
+    if(line===null&&h===null&&a===null)return null;
+    return{kind:'AH',line,home:h,away:a};
+  }
+  const o=num(value?.over??value?.over_odds??value?.overOdds),u=num(value?.under??value?.under_odds??value?.underOdds);
+  if(line===null&&o===null&&u===null)return null;
+  return{kind:'OU',line,over:o,under:u};
+}"""
+          market_compact="""function marketCompact(f,target){
+  const kind=classify(f);
+  for(const book of providerBooks(f)){
+    const market=exactMarket(book.odds,target),stage=stagePick(market,kind);
+    if(!stage)continue;
+    const detail=marketValue(target,stage[1]);
+    if(detail)return{stage:stage[0],detail,book:book.name};
+  }
+  return{stage:'',detail:null,book:''};
+}"""
+          market_cell="""function marketCell(label,data){
+  const title=[data.book,data.stage].filter(Boolean).join(' · '),d=data?.detail||null;
+  const price=v=>num(v)===null?'—':num(v).toFixed(2);
+  const signed=v=>{const n=num(v);if(n===null)return'—';const z=Math.abs(n)<1e-9?0:n;return`${z>0?'+':''}${show(z,2)}`};
+  const plainLine=v=>num(v)===null?'—':show(num(v),2);
+  let body='<div class="market-prices market-prices-empty"><strong>—</strong></div>';
+  if(d?.kind==='1X2'){
+    body=`<div class="market-prices market-prices-1x2"><div class="market-quote"><i>H</i><strong>${esc(price(d.home))}</strong></div><div class="market-quote"><i>D</i><strong>${esc(price(d.draw))}</strong></div><div class="market-quote"><i>A</i><strong>${esc(price(d.away))}</strong></div></div>`;
+  }else if(d?.kind==='AH'){
+    const hl=signed(d.line),al=num(d.line)===null?'—':signed(-num(d.line));
+    body=`<div class="market-prices market-prices-ah"><div class="market-price-row"><i>H</i><em>${esc(hl)}</em><strong>${esc(price(d.home))}</strong></div><div class="market-price-row"><i>A</i><em>${esc(al)}</em><strong>${esc(price(d.away))}</strong></div></div>`;
+  }else if(d?.kind==='OU'){
+    const line=plainLine(d.line);
+    body=`<div class="market-prices market-prices-ou"><div class="market-price-row"><i>O</i><em>${esc(line)}</em><strong>${esc(price(d.over))}</strong></div><div class="market-price-row"><i>U</i><em>${esc(line)}</em><strong>${esc(price(d.under))}</strong></div></div>`;
+  }
+  const kindClass=d?.kind?String(d.kind).toLowerCase().replace(/[^a-z0-9]+/g,'-'):'empty';
+  return `<div class="market-cell market-cell-${kindClass}"${title?` title="${esc(title)}"`:''}><span class="market-head">${esc(label)}${data.stage?` · ${esc(data.stage)}`:''}</span>${body}${data.book?`<small>${esc(data.book)}</small>`:''}</div>`;
+}"""
+
+          def replace_between(text,start_pattern,end_pattern,replacement,label):
+              pat=re.compile(start_pattern+r'.*?(?='+end_pattern+r')',re.S)
+              text2,n=pat.subn(replacement+'\n',text,count=1)
+              if n!=1: raise SystemExit(f'{label}_REPLACE_COUNT_{n}')
+              return text2
+
+          s=replace_between(s,r'function marketValue\(target,value\)\{',r'function marketCompact\(f,target\)\{',market_value,'MARKET_VALUE')
+          s=replace_between(s,r'function marketCompact\(f,target\)\{',r'function metricRows\(f\)\{',market_compact,'MARKET_COMPACT')
+          s=replace_between(s,r'function marketCell\(label,data\)\{',r'function inlineSignalHtml\(s\)\{',market_cell,'MARKET_CELL')
+          js.write_text(s)
+
+          css=Path('nomad-live-343/dashboard-v2.css')
+          c=css.read_text()
+          marker='/* BALL46_DEFAULT_MARKET_DETAIL_20260922 */'
+          if marker in c: raise SystemExit('MARKET_DETAIL_MARKER_ALREADY_PRESENT')
+          c += r'''
+
+/* BALL46_DEFAULT_MARKET_DETAIL_20260922 */
+@media(min-width:761px){
+  .match-row{min-height:66px}
+  .market-cell{min-width:0;min-height:50px;padding:4px 3px;display:flex;flex-direction:column;justify-content:center;overflow:hidden}
+  .market-cell .market-head{display:block;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:7px;line-height:1.05}
+  .market-prices{width:100%;min-width:0;margin-top:3px;font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
+  .market-prices-1x2{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:2px}
+  .market-quote{display:grid;grid-template-rows:auto auto;justify-items:center;min-width:0;line-height:1.05}
+  .market-quote i,.market-price-row i{font-style:normal;color:var(--muted);font-size:6.5px;font-weight:900;line-height:1}
+  .market-quote strong{display:block;max-width:100%;font-size:7.5px;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:clip}
+  .market-prices-ah,.market-prices-ou{display:grid;gap:2px}
+  .market-price-row{display:grid;grid-template-columns:8px minmax(0,1fr) minmax(0,1fr);gap:2px;align-items:center;min-width:0;white-space:nowrap;line-height:1.05}
+  .market-price-row em{min-width:0;font-style:normal;text-align:center;color:var(--text);font-size:7.5px;font-weight:800;overflow:hidden;text-overflow:clip}
+  .market-price-row strong{min-width:0;text-align:right;font-size:7.5px;font-weight:900;overflow:hidden;text-overflow:clip}
+  .market-prices-empty{display:grid;place-items:center;min-height:18px}
+  .market-prices-empty strong{font-size:8px;color:var(--muted)}
+  .market-cell small{display:block;max-width:100%;margin-top:2px;color:var(--muted);font-size:6px;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+}
+'''
+          css.write_text(c)
+
+          p=Path('nomad-live-343/index.html'); h=p.read_text()
+          targets={
+            'dashboard-v2-stage3.js':'343-market-detail-20260922a',
+            'dashboard-v2.css':'343-market-detail-20260922a',
+          }
+          for name,ver in targets.items():
+              h,n=re.subn(re.escape(name)+r'(?:\?[^"\']*)?',f'{name}?v={ver}',h)
+              if n<1: raise SystemExit(f'CACHE_BUST_TARGET_MISSING:{name}')
+          p.write_text(h)
+          print('BALL46_DEFAULT_MARKET_DETAIL_PATCH_OK')
+          PY
+
+          node --check nomad-live-343/dashboard-v2-stage3.js
+          grep -Fq "return{kind:'1X2',home:h,draw:d,away:a}" nomad-live-343/dashboard-v2-stage3.js
+          grep -Fq "return{kind:'AH',line,home:h,away:a}" nomad-live-343/dashboard-v2-stage3.js
+          grep -Fq "return{kind:'OU',line,over:o,under:u}" nomad-live-343/dashboard-v2-stage3.js
+          grep -Fq 'market-prices-1x2' nomad-live-343/dashboard-v2-stage3.js
+          grep -Fq 'market-prices-ah' nomad-live-343/dashboard-v2-stage3.js
+          grep -Fq 'market-prices-ou' nomad-live-343/dashboard-v2-stage3.js
+          grep -Fq 'BALL46_DEFAULT_MARKET_DETAIL_20260922' nomad-live-343/dashboard-v2.css
+          grep -Fq 'dashboard-v2-stage3.js?v=343-market-detail-20260922a' nomad-live-343/index.html
+          grep -Fq 'dashboard-v2.css?v=343-market-detail-20260922a' nomad-live-343/index.html
+
+          cmp -s /tmp/dashboard-v2-stage3.before.js nomad-live-343/dashboard-v2-stage3.js && { echo JS_NOT_CHANGED; exit 1; } || true
+          cmp -s /tmp/dashboard-v2.before.css nomad-live-343/dashboard-v2.css && { echo CSS_NOT_CHANGED; exit 1; } || true
+          while read -r expected f; do
+            actual=$(sha256sum "nomad-live-343/$f" | awk '{print $1}')
+            [ "$actual" = "$expected" ] || { echo "UNRELATED_ASSET_CHANGED:$f"; exit 1; }
+          done < /tmp/unchanged.sha
+
+      - name: Dry run Production package
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"; test -n "$CLOUDFLARE_ACCOUNT_ID"
+          cd workers/nomadtips3-343-preview
+          npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.ball46.jsonc
+
+      - name: Deploy default market detail
+        working-directory: workers/nomadtips3-343-preview
+        shell: bash
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Verify Production and continuity
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for n in $(seq 1 15); do
+            if curl -fsS -L --retry 2 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/index.html?market-detail-after=${GITHUB_RUN_ID}-${n}" -o /tmp/index.after.html \
+              && grep -Fq 'dashboard-v2-stage3.js?v=343-market-detail-20260922a' /tmp/index.after.html \
+              && grep -Fq 'dashboard-v2.css?v=343-market-detail-20260922a' /tmp/index.after.html; then ok=1; break; fi
+            sleep 3
+          done
+          [ "$ok" = 1 ] || { echo MARKET_DETAIL_MARKER_NOT_PROPAGATED; exit 1; }
+
+          curl -fsS -L --retry 5 --retry-all-errors --retry-delay 1 --max-time 30 "$BALL46_WORKER/dashboard-v2-stage3.js?market-detail-verify=${GITHUB_RUN_ID}" -o /tmp/dashboard.after.js
+          curl -fsS -L --retry 5 --retry-all-errors --retry-delay 1 --max-time 30 "$BALL46_WORKER/dashboard-v2.css?market-detail-verify=${GITHUB_RUN_ID}" -o /tmp/dashboard.after.css
+          node --check /tmp/dashboard.after.js
+          grep -Fq "return{kind:'1X2',home:h,draw:d,away:a}" /tmp/dashboard.after.js
+          grep -Fq "return{kind:'AH',line,home:h,away:a}" /tmp/dashboard.after.js
+          grep -Fq "return{kind:'OU',line,over:o,under:u}" /tmp/dashboard.after.js
+          grep -Fq 'market-prices-1x2' /tmp/dashboard.after.js
+          grep -Fq 'market-prices-ah' /tmp/dashboard.after.js
+          grep -Fq 'market-prices-ou' /tmp/dashboard.after.js
+          grep -Fq 'BALL46_DEFAULT_MARKET_DETAIL_20260922' /tmp/dashboard.after.css
+
+          while read -r expected f; do
+            curl -fsS -L --retry 5 --retry-all-errors --retry-delay 1 --max-time 30 "$BALL46_WORKER/$f?market-detail-protected=${GITHUB_RUN_ID}" -o "/tmp/protected-${f//\//_}"
+            actual=$(sha256sum "/tmp/protected-${f//\//_}" | awk '{print $1}')
+            [ "$actual" = "$expected" ] || { echo "UNRELATED_DEPLOYED_ASSET_CHANGED:$f"; exit 1; }
+          done < /tmp/unchanged.sha
+
+          curl -fsS -L --retry 5 --retry-all-errors --retry-delay 1 --max-time 30 "$BALL46_WORKER/api/engine/board?market-detail-final=${GITHUB_RUN_ID}" -o /tmp/board-after.json
+          curl -fsS -L --retry 5 --retry-all-errors --retry-delay 1 --max-time 30 "$BALL46_WORKER/api/engine/signals?market-detail-final=${GITHUB_RUN_ID}" -o /tmp/signals-after.json
+          curl -fsS -L --retry 5 --retry-all-errors --retry-delay 1 --max-time 30 "$BALL46_WORKER/api/engine/statistics?market-detail-final=${GITHUB_RUN_ID}" -o /tmp/stats-after.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const b=JSON.parse(fs.readFileSync('/tmp/board-after.json','utf8'));
+          const s=JSON.parse(fs.readFileSync('/tmp/signals-after.json','utf8'));
+          const t=JSON.parse(fs.readFileSync('/tmp/stats-after.json','utf8'));
+          if(b?.ok!==true||!Array.isArray(b?.fixtures))throw Error('BOARD_UNHEALTHY');
+          if(!Array.isArray(s?.signals))throw Error('SIGNALS_UNHEALTHY');
+          if(t?.ok!==true||!Array.isArray(t?.rows))throw Error('STATISTICS_UNHEALTHY');
+          console.log('BALL46_MARKET_DETAIL_VERIFY_OK',{fixtures:b.fixtures.length,signals:s.signals.length,stats:t.rows.length});
+          NODE
+
+          public_ok=0
+          for n in $(seq 1 12); do
+            if curl -fsS -L --retry 2 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_PUBLIC/?market-detail-public=${GITHUB_RUN_ID}-${n}" -o /tmp/public.html \
+              && grep -Fq 'dashboard-v2-stage3.js?v=343-market-detail-20260922a' /tmp/public.html \
+              && grep -Fq 'dashboard-v2.css?v=343-market-detail-20260922a' /tmp/public.html; then public_ok=1; break; fi
+            sleep 3
+          done
+          [ "$public_ok" = 1 ] || { echo PUBLIC_PROPAGATION_FAILED; exit 1; }
+          echo BALL46_DEFAULT_MARKET_DETAIL_OK
