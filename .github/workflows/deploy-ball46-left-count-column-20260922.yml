@@ -1,0 +1,238 @@
+name: Deploy Ball46 Left Count Column 20260922
+
+on:
+  push:
+    branches: [work/ball46-left-count-column-20260922]
+    paths:
+      - '.github/workflows/deploy-ball46-left-count-column-20260922.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
+  BALL46_PUBLIC: https://www.ball46.com
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  GOLDEN_SHA: ad34452074b300787c91c7788c02d0e242854d0d
+
+jobs:
+  deploy-left-count-column:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+
+      - name: Preflight protected source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git cat-file -e "$GOLDEN_SHA^{commit}"
+          for p in \
+            workers/nomadtips3-343-preview/src/index.js \
+            workers/nomadtips3-343-preview/wrangler.ball46.jsonc \
+            workers/nomadtips3-engine-343/src/index.js \
+            nomad-live-343/dashboard-v2-stage3.js \
+            nomad-live-343/dashboard-v2-tune.js \
+            nomad-live-343/bulk-odds-compat-343.js \
+            nomad-live-343/expanded-match-343.js \
+            nomad-live-343/full-market-bookmaker-343.js \
+            nomad-live-343/live-summary-full-odds-343.js \
+            nomad-live-343/singlepage-workspace-343.js; do
+            git diff --quiet "$GOLDEN_SHA"..HEAD -- "$p" || { echo "UNEXPECTED_SOURCE_CHANGE:$p"; exit 1; }
+          done
+          git diff --check
+
+      - name: Mirror exact current Production baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/prod
+          fetch_optional(){
+            name="$1"; safe="${name//\//_}"
+            code=$(curl -sS -L --retry 2 --retry-all-errors --retry-delay 1 --max-time 20 -o "/tmp/prod/$safe" -w '%{http_code}' "$BALL46_WORKER/$name?left-count-copy=${GITHUB_RUN_ID}") || true
+            [ "$code" = 200 ] || return 0
+            test -s "/tmp/prod/$safe" || return 0
+            mkdir -p "$(dirname "nomad-live-343/$name")"
+            cp "/tmp/prod/$safe" "nomad-live-343/$name"
+          }
+          fetch_required(){
+            name="$1"; safe="${name//\//_}"
+            code=$(curl -sS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 -o "/tmp/prod/$safe" -w '%{http_code}' "$BALL46_WORKER/$name?left-count-required=${GITHUB_RUN_ID}") || true
+            [ "$code" = 200 ] || { echo "REQUIRED_PROD_ASSET_HTTP_${code}:$name"; exit 1; }
+            test -s "/tmp/prod/$safe" || { echo "REQUIRED_PROD_ASSET_EMPTY:$name"; exit 1; }
+            mkdir -p "$(dirname "nomad-live-343/$name")"
+            cp "/tmp/prod/$safe" "nomad-live-343/$name"
+          }
+          while IFS= read -r f; do
+            name="${f#nomad-live-343/}"
+            case "$name" in *.html|*.js|*.css|*.svg|*.json|*.png|*.webp|*.jpg|*.jpeg|*.ico) fetch_optional "$name" ;; esac
+          done < <(find nomad-live-343 -maxdepth 1 -type f | sort)
+          fetch_required index.html
+          cp nomad-live-343/index.html /tmp/index.before.html
+          python3 - <<'PY' > /tmp/index-assets.txt
+          from pathlib import Path
+          import re
+          h=Path('/tmp/index.before.html').read_text(errors='ignore')
+          found=set()
+          for x in re.findall(r'''(?:src|href)=["']([^"']+)["']''',h,re.I):
+              x=x.split('?',1)[0].split('#',1)[0].strip().lstrip('./').lstrip('/')
+              if not x or '://' in x or '/' in x: continue
+              if re.search(r'\.(?:js|css|svg|json|png|webp|jpg|jpeg|ico)$',x,re.I): found.add(x)
+          for x in sorted(found): print(x)
+          PY
+          while IFS= read -r name; do
+            [ -n "$name" ] || continue
+            fetch_required "$name"
+          done < /tmp/index-assets.txt
+          fetch_required dashboard-v2.css
+          fetch_required singlepage-workspace-343.css
+
+          : > /tmp/unchanged.sha
+          while IFS= read -r name; do
+            [ -n "$name" ] || continue
+            case "$name" in dashboard-v2.css|singlepage-workspace-343.css) continue ;; esac
+            [ -f "nomad-live-343/$name" ] || continue
+            printf '%s  %s\n' "$(sha256sum "nomad-live-343/$name" | awk '{print $1}')" "$name" >> /tmp/unchanged.sha
+          done < /tmp/index-assets.txt
+
+          cp nomad-live-343/dashboard-v2.css /tmp/dashboard-v2.before.css
+          cp nomad-live-343/singlepage-workspace-343.css /tmp/singlepage-workspace.before.css
+
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/board?left-count-before=${GITHUB_RUN_ID}" -o /tmp/board-before.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/signals?left-count-before=${GITHUB_RUN_ID}" -o /tmp/signals-before.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/statistics?left-count-before=${GITHUB_RUN_ID}" -o /tmp/stats-before.json
+          node - <<'NODE'
+          const fs=require('fs'),b=JSON.parse(fs.readFileSync('/tmp/board-before.json')),s=JSON.parse(fs.readFileSync('/tmp/signals-before.json')),t=JSON.parse(fs.readFileSync('/tmp/stats-before.json'));
+          if(b?.ok!==true||!Array.isArray(b?.fixtures))throw Error('PRE_BOARD_UNHEALTHY');
+          if(!Array.isArray(s?.signals))throw Error('PRE_SIGNALS_UNHEALTHY');
+          if(t?.ok!==true||!Array.isArray(t?.rows))throw Error('PRE_STATS_UNHEALTHY');
+          console.log('PRE_HEALTH_OK',{fixtures:b.fixtures.length,signals:s.signals.length,stats:t.rows.length});
+          NODE
+
+      - name: Align canonical left rail count columns
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          # Match Status + league counters: fixed numeric column, right-aligned digits.
+          p=Path('nomad-live-343/dashboard-v2.css')
+          s=p.read_text()
+          pat=r'\.filter b,\.league-filter b\{([^{}]*)\}'
+          m=re.search(pat,s)
+          if not m: raise SystemExit('FILTER_COUNT_RULE_NOT_FOUND')
+          body=m.group(1)
+          body=re.sub(r'min-width:[^;]+;', '', body)
+          body=re.sub(r'max-width:[^;]+;', '', body)
+          body=re.sub(r'width:[^;]+;', '', body)
+          body=re.sub(r'text-align:[^;]+;', '', body)
+          body=re.sub(r'padding:[^;]+;', '', body)
+          body=re.sub(r'font-variant-numeric:[^;]+;', '', body)
+          body=re.sub(r'font-feature-settings:[^;]+;', '', body)
+          new='width:38px;min-width:38px;max-width:38px;text-align:right;padding:3px 7px 3px 5px;font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1;'+body
+          s=s[:m.start()]+'.filter b,.league-filter b{'+new+'}'+s[m.end():]
+          # Mobile must not revert counters to content width.
+          s,n=re.subn(r'\.filter b\{display:block;margin:3px auto 0;width:max-content\}', '.filter b{display:block;margin:3px auto 0;width:38px;min-width:38px;max-width:38px;text-align:right;padding-right:7px}', s, count=1)
+          if n!=1: raise SystemExit('MOBILE_FILTER_COUNT_RULE_NOT_FOUND')
+          p.write_text(s)
+
+          # Statistics/navigation counters: same 38px numeric column and right alignment.
+          p=Path('nomad-live-343/singlepage-workspace-343.css')
+          s=p.read_text()
+          pat=r'\.workspace-nav-row b\{([^{}]*)\}'
+          m=re.search(pat,s)
+          if not m: raise SystemExit('WORKSPACE_COUNT_RULE_NOT_FOUND')
+          body=m.group(1)
+          for prop in ('min-width','max-width','width','padding','justify-content','text-align','font-variant-numeric','font-feature-settings'):
+              body=re.sub(rf'{re.escape(prop)}:[^;]+;', '', body)
+          new='width:38px;min-width:38px;max-width:38px;padding:0 7px 0 5px;justify-content:flex-end;text-align:right;font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1;'+body
+          s=s[:m.start()]+'.workspace-nav-row b{'+new+'}'+s[m.end():]
+          p.write_text(s)
+
+          # Cache-bust exactly the two canonical CSS assets.
+          p=Path('nomad-live-343/index.html')
+          h=p.read_text()
+          h,n1=re.subn(r'dashboard-v2\.css(?:\?[^"\']*)?', 'dashboard-v2.css?v=343-left-count-column-20260922a', h)
+          h,n2=re.subn(r'singlepage-workspace-343\.css(?:\?[^"\']*)?', 'singlepage-workspace-343.css?v=343-left-count-column-20260922a', h)
+          if n1<1 or n2<1: raise SystemExit(f'CACHE_BUST_TARGET_MISSING:{n1}:{n2}')
+          p.write_text(h)
+          print('BALL46_LEFT_COUNT_COLUMN_PATCH_OK',n1,n2)
+          PY
+
+          grep -Fq 'width:38px;min-width:38px;max-width:38px;text-align:right' nomad-live-343/dashboard-v2.css
+          grep -Fq 'width:38px;min-width:38px;max-width:38px;padding:0 7px 0 5px;justify-content:flex-end;text-align:right' nomad-live-343/singlepage-workspace-343.css
+          grep -Fq 'dashboard-v2.css?v=343-left-count-column-20260922a' nomad-live-343/index.html
+          grep -Fq 'singlepage-workspace-343.css?v=343-left-count-column-20260922a' nomad-live-343/index.html
+
+          cmp -s /tmp/dashboard-v2.before.css nomad-live-343/dashboard-v2.css && { echo DASHBOARD_CSS_NOT_CHANGED; exit 1; } || true
+          cmp -s /tmp/singlepage-workspace.before.css nomad-live-343/singlepage-workspace-343.css && { echo SINGLEPAGE_CSS_NOT_CHANGED; exit 1; } || true
+
+          while read -r expected f; do
+            actual=$(sha256sum "nomad-live-343/$f" | awk '{print $1}')
+            [ "$actual" = "$expected" ] || { echo "UNRELATED_ASSET_CHANGED:$f"; exit 1; }
+          done < /tmp/unchanged.sha
+
+      - name: Dry run Production package
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"; test -n "$CLOUDFLARE_ACCOUNT_ID"
+          cd workers/nomadtips3-343-preview
+          npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.ball46.jsonc
+
+      - name: Deploy count-column alignment
+        working-directory: workers/nomadtips3-343-preview
+        shell: bash
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Verify Production and core continuity
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for n in $(seq 1 15); do
+            if curl -fsS -L --retry 2 --retry-all-errors --retry-delay 1 --max-time 20 "$BALL46_WORKER/index.html?left-count-after=${GITHUB_RUN_ID}-${n}" -o /tmp/index.after.html \
+              && grep -Fq 'dashboard-v2.css?v=343-left-count-column-20260922a' /tmp/index.after.html \
+              && grep -Fq 'singlepage-workspace-343.css?v=343-left-count-column-20260922a' /tmp/index.after.html; then ok=1; break; fi
+            sleep 3
+          done
+          [ "$ok" = 1 ] || { echo LEFT_COUNT_MARKER_NOT_PROPAGATED; exit 1; }
+
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/dashboard-v2.css?left-count-verify=${GITHUB_RUN_ID}" -o /tmp/dashboard-v2.after.css
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/singlepage-workspace-343.css?left-count-verify=${GITHUB_RUN_ID}" -o /tmp/singlepage-workspace.after.css
+          grep -Fq 'width:38px;min-width:38px;max-width:38px;text-align:right' /tmp/dashboard-v2.after.css
+          grep -Fq 'font-feature-settings:"tnum" 1' /tmp/dashboard-v2.after.css
+          grep -Fq 'width:38px;min-width:38px;max-width:38px;padding:0 7px 0 5px;justify-content:flex-end;text-align:right' /tmp/singlepage-workspace.after.css
+
+          while read -r expected f; do
+            curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/$f?left-count-protected=${GITHUB_RUN_ID}" -o "/tmp/protected-${f//\//_}"
+            actual=$(sha256sum "/tmp/protected-${f//\//_}" | awk '{print $1}')
+            [ "$actual" = "$expected" ] || { echo "UNRELATED_DEPLOYED_ASSET_CHANGED:$f"; exit 1; }
+          done < /tmp/unchanged.sha
+
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/board?left-count-final=${GITHUB_RUN_ID}" -o /tmp/board-after.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/signals?left-count-final=${GITHUB_RUN_ID}" -o /tmp/signals-after.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/statistics?left-count-final=${GITHUB_RUN_ID}" -o /tmp/stats-after.json
+          node - <<'NODE'
+          const fs=require('fs'),b=JSON.parse(fs.readFileSync('/tmp/board-after.json')),s=JSON.parse(fs.readFileSync('/tmp/signals-after.json')),t=JSON.parse(fs.readFileSync('/tmp/stats-after.json'));
+          if(b?.ok!==true||!Array.isArray(b?.fixtures))throw Error('POST_BOARD_UNHEALTHY');
+          if(!Array.isArray(s?.signals))throw Error('POST_SIGNALS_UNHEALTHY');
+          if(t?.ok!==true||!Array.isArray(t?.rows))throw Error('POST_STATS_UNHEALTHY');
+          console.log('BALL46_LEFT_COUNT_COLUMN_OK',{fixtures:b.fixtures.length,signals:s.signals.length,stats:t.rows.length});
+          NODE
+
+          pub=0
+          for n in $(seq 1 10); do
+            if curl -fsS -L --retry 2 --retry-all-errors --retry-delay 1 --max-time 20 "$BALL46_PUBLIC/?left-count-public=${GITHUB_RUN_ID}-${n}" -o /tmp/public.html \
+              && grep -Fq 'dashboard-v2.css?v=343-left-count-column-20260922a' /tmp/public.html \
+              && grep -Fq 'singlepage-workspace-343.css?v=343-left-count-column-20260922a' /tmp/public.html; then pub=1; break; fi
+            sleep 3
+          done
+          [ "$pub" = 1 ] || { echo PUBLIC_LEFT_COUNT_COLUMN_NOT_PROPAGATED; exit 1; }
