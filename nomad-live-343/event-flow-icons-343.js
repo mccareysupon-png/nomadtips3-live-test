@@ -3,7 +3,6 @@
 const NS='http://www.w3.org/2000/svg';
 const HOME='#31b878';
 const AWAY='#e2c94c';
-let signalByFixture=new Map();
 
 const num=v=>{
   if(v===null||v===undefined||v==='')return null;
@@ -27,6 +26,7 @@ const iconFor=e=>{
   if(t.includes('danger'))return'⚡';
   return'•';
 };
+
 function sideOf(e,home,away){
   const raw=String(e?.side??e?.teamSide??e?.homeAway??e?.position??'').toLowerCase();
   if(/(^|\b)home(\b|$)|^h$/.test(raw))return'home';
@@ -44,11 +44,20 @@ function sideOf(e,home,away){
   if(teamName&&awayName&&(teamName===awayName||teamName.includes(awayName)||awayName.includes(teamName)))return'away';
   return null;
 }
+
+function eventList(fixture){
+  if(Array.isArray(fixture?.events))return fixture.events;
+  if(Array.isArray(fixture?.liveEvents))return fixture.liveEvents;
+  if(Array.isArray(fixture?.timelineEvents))return fixture.timelineEvents;
+  return [];
+}
+
 function appendTitle(node,text){
   const t=document.createElementNS(NS,'title');
   t.textContent=text;
   node.appendChild(t);
 }
+
 function addMarkers(svg,events,current,home,away){
   if(!svg||!Array.isArray(events))return;
   svg.querySelectorAll('[data-b46-event-icon]').forEach(n=>n.remove());
@@ -59,7 +68,11 @@ function addMarkers(svg,events,current,home,away){
   const left=42,right=18,top=14,bottom=30;
   const usable=Math.max(1,w-left-right);
   const stack=new Map();
-  const rows=events.map((e,i)=>({e,i,m:eventMinute(e),side:sideOf(e,home,away)})).filter(x=>x.m!==null&&x.m>=0&&x.m<=current&&x.side).sort((a,b)=>a.m-b.m||a.i-b.i);
+  const rows=events
+    .map((e,i)=>({e,i,m:eventMinute(e),side:sideOf(e,home,away)}))
+    .filter(x=>x.m!==null&&x.m>=0&&x.m<=current&&x.side)
+    .sort((a,b)=>a.m-b.m||a.i-b.i);
+
   for(const row of rows){
     const key=`${Math.round(row.m*10)/10}:${row.side}`;
     const level=stack.get(key)||0;
@@ -89,35 +102,16 @@ function addMarkers(svg,events,current,home,away){
     svg.appendChild(g);
   }
 }
+
 function decorateExpanded(root,fixture){
   if(!root||!fixture)return;
   const svg=root.querySelector?.('.expand-flow-chart svg');
   if(!svg)return;
-  addMarkers(svg,Array.isArray(fixture?.events)?fixture.events:[],fixture?.minute,fixture?.home,fixture?.away);
+  addMarkers(svg,eventList(fixture),fixture?.minute,fixture?.home,fixture?.away);
 }
-function decorateSignalFlows(){
-  document.querySelectorAll('.next-signal-card[data-next-card]').forEach(card=>{
-    const svg=card.querySelector('.expand-flow-chart svg');
-    if(!svg)return;
-    const s=signalByFixture.get(String(card.dataset.nextCard||''));
-    if(!s)return;
-    addMarkers(svg,Array.isArray(s?.liveEvents)?s.liveEvents:(Array.isArray(s?.events)?s.events:[]),s?.mirrorMinute??s?.minute,s?.home,s?.away);
-  });
-}
+
 document.addEventListener('nomad343:fixture-ready',e=>{
   const root=e.target?.closest?.('.match-expanded')||e.target;
   requestAnimationFrame(()=>decorateExpanded(root,e.detail?.fixture));
-});
-window.addEventListener('ball46:signals-snapshot',e=>{
-  const rows=Array.isArray(e.detail?.signals)?e.detail.signals:[];
-  signalByFixture=new Map(rows.map(s=>[String(s?.fixtureId??s?.id??''),s]));
-  requestAnimationFrame(decorateSignalFlows);
-});
-document.addEventListener('click',e=>{
-  if(!e.target?.closest?.('[data-next-toggle]'))return;
-  requestAnimationFrame(()=>requestAnimationFrame(decorateSignalFlows));
-});
-document.addEventListener('ball46:workspace-view',e=>{
-  if(e.detail?.view==='signal')requestAnimationFrame(decorateSignalFlows);
 });
 })();
