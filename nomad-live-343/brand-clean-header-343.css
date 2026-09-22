@@ -1,8 +1,7 @@
 /* Ball46 3.43 · brand/header cleanup · presentation only */
 
-/* Remove public-facing workspace copy while keeping live connection state. */
-.dash-heading{justify-content:flex-end;margin-bottom:10px}
-.dash-heading>div:first-child{display:none!important}
+/* Public header copy and bulk-age badge are hidden; the live data system remains untouched. */
+.dash-heading{display:none!important}
 
 /* Brand becomes the primary visual anchor. */
 .workspace-brand-meta{display:none!important}
@@ -17,7 +16,6 @@
 }
 
 @media(max-width:760px){
-  .dash-heading{margin-bottom:8px}
   .workspace-brand{font-size:22px!important}
   .workspace-brand b{font-size:23px!important}
   .workspace.singlepage>.left-rail .workspace-brand-card{height:48px!important;min-height:48px!important;max-height:48px!important}
