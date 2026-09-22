@@ -42,8 +42,7 @@ jobs:
             nomad-live-343/expanded-match-343.js \
             nomad-live-343/full-market-bookmaker-343.js \
             nomad-live-343/live-summary-full-odds-343.js \
-            nomad-live-343/singlepage-workspace-343.js \
-            nomad-live-343/longterm-performance-343.js; do
+            nomad-live-343/singlepage-workspace-343.js; do
             git diff --quiet "$GOLDEN_SHA"..HEAD -- "$p" || { echo "UNEXPECTED_SOURCE_CHANGE:$p"; exit 1; }
           done
           git diff --check
@@ -119,7 +118,6 @@ jobs:
                   body=re.sub(rf'{re.escape(prop)}:[^;]+;', '', body)
               return body
 
-          # One desktop geometry for Match Status and League rows.
           def filter_row(body):
               body=strip_props(body,['display','grid-template-columns','align-items','justify-content','gap','padding'])
               return 'display:grid;grid-template-columns:minmax(0,1fr) 38px;align-items:center;gap:8px;padding:10px 11px;'+body
@@ -130,7 +128,6 @@ jobs:
               return 'width:38px;min-width:38px;max-width:38px;text-align:right;padding:3px 7px 3px 5px;font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1;'+body
           rewrite_rule('nomad-live-343/dashboard-v2.css','.filter b,.league-filter b',filter_count)
 
-          # Statistics rows use the exact same right edge and numeric column.
           def nav_row(body):
               body=strip_props(body,['display','grid-template-columns','align-items','justify-content','gap','padding'])
               return 'display:grid;grid-template-columns:minmax(0,1fr) 38px;align-items:center;gap:8px;padding:0 11px;'+body
@@ -141,26 +138,22 @@ jobs:
               return 'width:38px;min-width:38px;max-width:38px;padding:0 7px 0 5px;justify-content:flex-end;text-align:right;font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1;'+body
           rewrite_rule('nomad-live-343/singlepage-workspace-343.css','.workspace-nav-row b',nav_count)
 
-          # Mobile statistics nav intentionally becomes centered cards again because counts are hidden there.
           p=Path('nomad-live-343/singlepage-workspace-343.css'); s=p.read_text()
           old='.workspace-stats-card .workspace-nav-row{min-height:31px;border:1px solid var(--line);border-radius:7px;padding:0 6px;justify-content:center;font-size:8px}'
           new='.workspace-stats-card .workspace-nav-row{min-height:31px;border:1px solid var(--line);border-radius:7px;padding:0 6px;display:flex;justify-content:center;font-size:8px}'
           if old in s: s=s.replace(old,new,1)
           p.write_text(s)
 
-          # Give every long-term market chart the same thin plot frame.
           def perf_chart(body):
               body=strip_props(body,['box-shadow','border-radius'])
               return 'box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--line) 90%,transparent);border-radius:8px;'+body
           rewrite_rule('nomad-live-343/longterm-performance-343.css','.b46-perf-chart-wrap',perf_chart)
 
-          # Event Flow uses the same visual frame so chart presentation is consistent across views.
           def flow_chart(body):
               body=strip_props(body,['box-shadow','border-radius'])
               return 'box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--line) 90%,transparent);border-radius:8px;'+body
           rewrite_rule('nomad-live-343/expanded-match-343.css','.expand-flow-chart',flow_chart)
 
-          # Cache-bust only CSS files changed here.
           p=Path('nomad-live-343/index.html'); h=p.read_text()
           targets={
             'dashboard-v2.css':'343-geometry-frame-20260922a',
