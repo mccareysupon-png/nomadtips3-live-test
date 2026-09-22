@@ -1,0 +1,209 @@
+name: Deploy Ball46 Signal Shared Live UI 20260922
+
+on:
+  push:
+    branches: [work/ball46-signal-shared-live-ui-20260922]
+    paths:
+      - 'nomad-live-343/signal-shared-view-343.css'
+      - '.github/scripts/patch-ball46-signal-shared-live-ui-20260922.py'
+      - '.github/workflows/deploy-ball46-signal-shared-live-ui-20260922.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
+  BALL46_PUBLIC: https://www.ball46.com
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  GOLDEN_SHA: ad34452074b300787c91c7788c02d0e242854d0d
+
+jobs:
+  deploy-signal-shared-live-ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+
+      - name: Preflight shared-view scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          git cat-file -e "$GOLDEN_SHA^{commit}"
+          for p in \
+            workers/nomadtips3-343-preview/src/index.js \
+            workers/nomadtips3-343-preview/wrangler.ball46.jsonc \
+            workers/nomadtips3-engine-343/src/index.js \
+            nomad-live-343/dashboard-v2-stage3.js \
+            nomad-live-343/dashboard-v2-tune.js \
+            nomad-live-343/bulk-odds-compat-343.js \
+            nomad-live-343/expanded-match-343.js \
+            nomad-live-343/full-market-bookmaker-343.js \
+            nomad-live-343/live-summary-full-odds-343.js \
+            nomad-live-343/singlepage-workspace-343.js; do
+            git diff --quiet "$GOLDEN_SHA"..HEAD -- "$p" || { echo "UNEXPECTED_SOURCE_CHANGE:$p"; exit 1; }
+          done
+          test ! -e nomad-live-343/signal-next.js
+          grep -Fq 'signal-market-toolbar' nomad-live-343/signal-shared-view-343.css
+          python3 -m py_compile .github/scripts/patch-ball46-signal-shared-live-ui-20260922.py
+          git diff --check
+
+      - name: Mirror exact current Production baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/prod
+          cp nomad-live-343/signal-shared-view-343.css /tmp/new-signal-shared.css
+          fetch_optional(){
+            name="$1"; safe="${name//\//_}"
+            code=$(curl -sS -L --retry 2 --retry-all-errors --retry-delay 1 --max-time 20 -o "/tmp/prod/$safe" -w '%{http_code}' "$BALL46_WORKER/$name?signal-shared-copy=${GITHUB_RUN_ID}") || true
+            [ "$code" = 200 ] || return 0
+            test -s "/tmp/prod/$safe" || return 0
+            mkdir -p "$(dirname "nomad-live-343/$name")"
+            cp "/tmp/prod/$safe" "nomad-live-343/$name"
+          }
+          fetch_required(){
+            name="$1"; safe="${name//\//_}"
+            code=$(curl -sS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 -o "/tmp/prod/$safe" -w '%{http_code}' "$BALL46_WORKER/$name?signal-shared-required=${GITHUB_RUN_ID}") || true
+            [ "$code" = 200 ] || { echo "REQUIRED_PROD_ASSET_HTTP_${code}:$name"; exit 1; }
+            test -s "/tmp/prod/$safe" || { echo "REQUIRED_PROD_ASSET_EMPTY:$name"; exit 1; }
+            mkdir -p "$(dirname "nomad-live-343/$name")"
+            cp "/tmp/prod/$safe" "nomad-live-343/$name"
+          }
+          while IFS= read -r f; do
+            name="${f#nomad-live-343/}"
+            case "$name" in signal-shared-view-343.css) continue ;; esac
+            case "$name" in *.html|*.js|*.css|*.svg|*.json|*.png|*.webp|*.jpg|*.jpeg|*.ico) fetch_optional "$name" ;; esac
+          done < <(find nomad-live-343 -maxdepth 1 -type f | sort)
+          fetch_required index.html
+          cp nomad-live-343/index.html /tmp/index.before.html
+          python3 - <<'PY' > /tmp/index-assets.txt
+          from pathlib import Path
+          import re
+          h=Path('/tmp/index.before.html').read_text(errors='ignore')
+          found=set()
+          for x in re.findall(r'''(?:src|href)=["']([^"']+)["']''',h,re.I):
+              x=x.split('?',1)[0].split('#',1)[0].strip().lstrip('./').lstrip('/')
+              if not x or '://' in x or '/' in x: continue
+              if re.search(r'\.(?:js|css|svg|json|png|webp|jpg|jpeg|ico)$',x,re.I): found.add(x)
+          for x in sorted(found): print(x)
+          PY
+          while IFS= read -r name; do
+            [ -n "$name" ] || continue
+            case "$name" in signal-shared-view-343.css) continue ;; esac
+            fetch_required "$name"
+          done < /tmp/index-assets.txt
+          cp /tmp/new-signal-shared.css nomad-live-343/signal-shared-view-343.css
+
+          protected='dashboard-v2.css dashboard-v2-tune.js v2-shared.css v2-shared.js bulk-odds-compat-343.js expanded-match-343.js full-market-bookmaker-343.js live-summary-full-odds-343.js signal-next.js singlepage-workspace-343.css'
+          : > /tmp/protected.sha
+          for f in $protected; do
+            if [ -f "nomad-live-343/$f" ]; then printf '%s  %s\n' "$(sha256sum "nomad-live-343/$f" | awk '{print $1}')" "$f" >> /tmp/protected.sha; fi
+          done
+          cp nomad-live-343/dashboard-v2-stage3.js /tmp/dashboard.before.js
+          cp nomad-live-343/singlepage-workspace-343.js /tmp/singlepage.before.js
+
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/board?signal-shared-before=${GITHUB_RUN_ID}" -o /tmp/board-before.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/signals?signal-shared-before=${GITHUB_RUN_ID}" -o /tmp/signals-before.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/statistics?signal-shared-before=${GITHUB_RUN_ID}" -o /tmp/stats-before.json
+          node - <<'NODE'
+          const fs=require('fs'),b=JSON.parse(fs.readFileSync('/tmp/board-before.json')),s=JSON.parse(fs.readFileSync('/tmp/signals-before.json')),t=JSON.parse(fs.readFileSync('/tmp/stats-before.json'));
+          if(b?.ok!==true||!Array.isArray(b?.fixtures))throw Error('PRE_BOARD_UNHEALTHY');
+          if(!Array.isArray(s?.signals))throw Error('PRE_SIGNALS_UNHEALTHY');
+          if(t?.ok!==true||!Array.isArray(t?.rows))throw Error('PRE_STATS_UNHEALTHY');
+          console.log('PRE_HEALTH_OK',{fixtures:b.fixtures.length,signals:s.signals.length,stats:t.rows.length});
+          NODE
+
+      - name: Build shared Signal view from Production
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/patch-ball46-signal-shared-live-ui-20260922.py
+          node --check nomad-live-343/dashboard-v2-stage3.js
+          node --check nomad-live-343/singlepage-workspace-343.js
+          grep -Fq "function signalMarketKey" nomad-live-343/dashboard-v2-stage3.js
+          grep -Fq "panelView=view==='signal'?'live':view" nomad-live-343/singlepage-workspace-343.js
+          grep -Fq 'data-signal-market-toolbar' nomad-live-343/index.html
+          grep -Fq 'data-featured-kicker' nomad-live-343/index.html
+          ! grep -Fq 'data-workspace-panel="signal"' nomad-live-343/index.html
+          ! grep -Fq 'signal-next.js' nomad-live-343/index.html
+          test ! -e nomad-live-343/signal-next.js
+          while read -r expected f; do
+            [ "$f" = signal-next.js ] && continue
+            actual=$(sha256sum "nomad-live-343/$f" | awk '{print $1}')
+            [ "$actual" = "$expected" ] || { echo "UNRELATED_ASSET_CHANGED:$f"; exit 1; }
+          done < /tmp/protected.sha
+          git diff --check -- nomad-live-343/signal-shared-view-343.css
+
+      - name: Dry run Production package
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"; test -n "$CLOUDFLARE_ACCOUNT_ID"
+          cd workers/nomadtips3-343-preview
+          npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.ball46.jsonc
+
+      - name: Deploy shared Signal view
+        working-directory: workers/nomadtips3-343-preview
+        shell: bash
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Verify Production and core continuity
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for n in $(seq 1 15); do
+            if curl -fsS -L --retry 2 --retry-all-errors --retry-delay 1 --max-time 20 "$BALL46_WORKER/index.html?signal-shared-after=${GITHUB_RUN_ID}-${n}" -o /tmp/index.after.html \
+              && grep -Fq 'signal-shared-view-343.css?v=20260922a' /tmp/index.after.html \
+              && grep -Fq 'dashboard-v2-stage3-v6-signal-shared' /tmp/index.after.html \
+              && grep -Fq '343-singlepage-20260922-signal-shared' /tmp/index.after.html; then ok=1; break; fi
+            sleep 3
+          done
+          [ "$ok" = 1 ] || { echo 'SIGNAL_SHARED_MARKER_NOT_PROPAGATED'; exit 1; }
+          grep -Fq 'data-signal-market-toolbar' /tmp/index.after.html
+          grep -Fq 'data-featured-kicker' /tmp/index.after.html
+          ! grep -Fq 'data-workspace-panel="signal"' /tmp/index.after.html
+          ! grep -Fq 'signal-next.js' /tmp/index.after.html
+
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/dashboard-v2-stage3.js?signal-shared-verify=${GITHUB_RUN_ID}" -o /tmp/dashboard.after.js
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/singlepage-workspace-343.js?signal-shared-verify=${GITHUB_RUN_ID}" -o /tmp/singlepage.after.js
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/signal-shared-view-343.css?signal-shared-verify=${GITHUB_RUN_ID}" -o /tmp/signal-shared.after.css
+          node --check /tmp/dashboard.after.js
+          node --check /tmp/singlepage.after.js
+          grep -Fq 'function signalMarketKey' /tmp/dashboard.after.js
+          grep -Fq "panelView=view==='signal'?'live':view" /tmp/singlepage.after.js
+          grep -Fq 'body[data-workspace-view="signal"] .signal-market-toolbar' /tmp/signal-shared.after.css
+
+          while read -r expected f; do
+            [ "$f" = signal-next.js ] && continue
+            curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/$f?signal-shared-protected=${GITHUB_RUN_ID}" -o "/tmp/protected-$f"
+            actual=$(sha256sum "/tmp/protected-$f" | awk '{print $1}')
+            [ "$actual" = "$expected" ] || { echo "UNRELATED_DEPLOYED_ASSET_CHANGED:$f"; exit 1; }
+          done < /tmp/protected.sha
+
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/board?signal-shared-final=${GITHUB_RUN_ID}" -o /tmp/board-after.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/signals?signal-shared-final=${GITHUB_RUN_ID}" -o /tmp/signals-after.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/statistics?signal-shared-final=${GITHUB_RUN_ID}" -o /tmp/stats-after.json
+          node - <<'NODE'
+          const fs=require('fs'),b=JSON.parse(fs.readFileSync('/tmp/board-after.json')),s=JSON.parse(fs.readFileSync('/tmp/signals-after.json')),t=JSON.parse(fs.readFileSync('/tmp/stats-after.json'));
+          if(b?.ok!==true||!Array.isArray(b?.fixtures))throw Error('POST_BOARD_UNHEALTHY');
+          if(!Array.isArray(s?.signals))throw Error('POST_SIGNALS_UNHEALTHY');
+          if(t?.ok!==true||!Array.isArray(t?.rows))throw Error('POST_STATS_UNHEALTHY');
+          const fam={all:s.signals.length,'1x2':0,ah:0,ou:0,corners:0,cards:0,other:0};
+          for(const r of s.signals){const x=String(r.marketLabel||r.market||r.providerMarket||'').toLowerCase();let k=/corner/.test(x)?'corners':/card/.test(x)?'cards':/1x2|match result|moneyline|winner|3way|three way/.test(x)?'1x2':/asian|handicap|(^|[^a-z])ah([^a-z]|$)/.test(x)?'ah':/over|under|o\/u|goal[_ -]?line|total/.test(x)?'ou':'other';fam[k]++}
+          console.log('BALL46_SIGNAL_SHARED_VIEW_OK',{fixtures:b.fixtures.length,signals:s.signals.length,stats:t.rows.length,signalMarkets:fam});
+          NODE
+
+          pub=0
+          for n in $(seq 1 10); do
+            if curl -fsS -L --retry 2 --retry-all-errors --retry-delay 1 --max-time 20 "$BALL46_PUBLIC/?view=signal&signalMarket=all&signal-shared-public=${GITHUB_RUN_ID}-${n}" -o /tmp/public.html \
+              && grep -Fq 'signal-shared-view-343.css?v=20260922a' /tmp/public.html \
+              && ! grep -Fq 'data-workspace-panel="signal"' /tmp/public.html; then pub=1; break; fi
+            sleep 3
+          done
+          [ "$pub" = 1 ] || { echo 'PUBLIC_SIGNAL_SHARED_VIEW_NOT_PROPAGATED'; exit 1; }
