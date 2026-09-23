@@ -1,4 +1,4 @@
-name: Restore Ball46 Pre-Today-UI Worker 20260923
+name: Restore Ball46 Clean Pre-Today Assets 20260923
 
 on:
   push:
@@ -12,46 +12,114 @@ permissions:
 
 env:
   BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
+  BALL46_PUBLIC: https://www.ball46.com
   CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
   CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-  RESTORE_VERSION: 9779c3d7-cb2a-4ec6-8617-4d9a4227a35a
+  CLEAN_SHA: 9cd6e415e3472e7b52591bf4c38e0dcac49ab7e5
+  GOLDEN_SHA: ad34452074b300787c91c7788c02d0e242854d0d
 
 jobs:
-  restore-pre-today-ui:
+  restore-clean-assets:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
       - uses: actions/setup-node@v4
         with: {node-version: '22'}
 
-      - name: Deploy exact pre-today UI Worker version
-        working-directory: workers/nomadtips3-343-preview
+      - name: Validate clean source before deploy
         shell: bash
-        run: npx --yes wrangler@4.92.0 versions deploy "${RESTORE_VERSION}@100%" -y --config wrangler.ball46.jsonc --message "Restore Ball46 exact pre-palette UI baseline"
+        run: |
+          set -euo pipefail
+          git cat-file -e "$CLEAN_SHA^{commit}"
+          git cat-file -e "$GOLDEN_SHA^{commit}"
+          for p in \
+            workers/nomadtips3-343-preview/src/index.js \
+            workers/nomadtips3-343-preview/wrangler.ball46.jsonc \
+            workers/nomadtips3-engine-343/src/index.js \
+            nomad-live-343/dashboard-v2-stage3.js \
+            nomad-live-343/dashboard-v2-tune.js \
+            nomad-live-343/bulk-odds-compat-343.js \
+            nomad-live-343/expanded-match-343.js \
+            nomad-live-343/full-market-bookmaker-343.js \
+            nomad-live-343/live-summary-full-odds-343.js \
+            nomad-live-343/signal-next.js \
+            nomad-live-343/singlepage-workspace-343.js; do
+            git diff --quiet "$GOLDEN_SHA".."$CLEAN_SHA" -- "$p" || { echo "CORE_DIFF_FROM_GOLDEN:$p"; exit 1; }
+          done
+          git worktree add --detach /tmp/ball46-clean "$CLEAN_SHA"
+          cd /tmp/ball46-clean
+          grep -Fq '"name": "ball46-production"' workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+          grep -Fq '"ENGINE", "service": "nomadtips3-engine-343"' workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+          grep -Fq '"HUB", "service": "nomadtips3-5usd-hub-343"' workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+          grep -Fq '"FULL_MARKET", "service": "nomadtips3-full-market-343-ball46"' workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+          grep -Fq 'data-workspace-panel="live"' nomad-live-343/index.html
+          grep -Fq 'data-workspace-panel="signal"' nomad-live-343/index.html
+          grep -Fq 'data-workspace-panel="statistics"' nomad-live-343/index.html
+          ! grep -Fq '343-team-palette-20260923' nomad-live-343/index.html
+          ! grep -Fq 'logo-size-343.css' nomad-live-343/index.html
+          ! grep -Fq 'data-ball46-favicon="20260923-repair"' nomad-live-343/index.html
+          ! grep -Fq 'BALL46 LIVE MINUTE WHITE 20260923' nomad-live-343/dashboard-v2-tune.css
 
-      - name: Verify restored production
+      - name: Check backend health before restore
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/board?clean-before=${GITHUB_RUN_ID}" -o /tmp/board.before.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/signals?clean-before=${GITHUB_RUN_ID}" -o /tmp/signals.before.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const b=JSON.parse(fs.readFileSync('/tmp/board.before.json'));
+          const s=JSON.parse(fs.readFileSync('/tmp/signals.before.json'));
+          if(b?.ok!==true||!Array.isArray(b?.fixtures)) throw Error('PRE_BOARD_UNHEALTHY');
+          if(!Array.isArray(s?.signals)) throw Error('PRE_SIGNALS_UNHEALTHY');
+          console.log('PRE_RESTORE_CORE_OK',{fixtures:b.fixtures.length,signals:s.signals.length});
+          NODE
+
+      - name: Dry run clean source package
+        working-directory: /tmp/ball46-clean/workers/nomadtips3-343-preview
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.ball46.jsonc
+
+      - name: Deploy clean pre-today source package
+        working-directory: /tmp/ball46-clean/workers/nomadtips3-343-preview
+        shell: bash
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Verify clean assets and core
         shell: bash
         run: |
           set -euo pipefail
           ok=0
           for n in $(seq 1 20); do
-            if curl -fsS -L --retry 2 --retry-all-errors --retry-delay 1 --max-time 20 "$BALL46_WORKER/index.html?restore-pre-today=${GITHUB_RUN_ID}-${n}" -o /tmp/index.after.html; then
-              if [ -s /tmp/index.after.html ] && grep -Eqi 'ball46|dashboard-v2-stage3|data-board-sections|workspace' /tmp/index.after.html; then ok=1; break; fi
-            fi
+            if curl -fsS -L --retry 2 --retry-all-errors --retry-delay 1 --max-time 20 "$BALL46_WORKER/index.html?clean-after=${GITHUB_RUN_ID}-${n}" -o /tmp/index.after.html \
+              && grep -Fq 'data-workspace-panel="live"' /tmp/index.after.html \
+              && grep -Fq 'data-workspace-panel="signal"' /tmp/index.after.html \
+              && grep -Fq 'data-workspace-panel="statistics"' /tmp/index.after.html; then ok=1; break; fi
             sleep 3
           done
-          [ "$ok" = 1 ] || { echo 'INDEX_NOT_RESTORED'; exit 1; }
-          ! grep -Fq '343-team-palette-20260923' /tmp/index.after.html || { echo 'PALETTE_OVERRIDE_STILL_PRESENT'; exit 1; }
-          ! grep -Fq 'logo-size-343.css' /tmp/index.after.html || { echo 'LOGO_OVERRIDE_STILL_PRESENT'; exit 1; }
-          ! grep -Fq 'data-ball46-favicon="20260923-repair"' /tmp/index.after.html || { echo 'FAVICON_REPAIR_STILL_PRESENT'; exit 1; }
-          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/board?restore-board=${GITHUB_RUN_ID}" -o /tmp/board.json
-          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/signals?restore-signals=${GITHUB_RUN_ID}" -o /tmp/signals.json
+          [ "$ok" = 1 ] || { echo 'CLEAN_INDEX_NOT_PROPAGATED'; exit 1; }
+          ! grep -Fq '343-team-palette-20260923' /tmp/index.after.html || { echo 'PALETTE_OVERRIDE_PRESENT'; exit 1; }
+          ! grep -Fq 'logo-size-343.css' /tmp/index.after.html || { echo 'LOGO_OVERRIDE_PRESENT'; exit 1; }
+          ! grep -Fq 'data-ball46-favicon="20260923-repair"' /tmp/index.after.html || { echo 'FAVICON_REPAIR_PRESENT'; exit 1; }
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/dashboard-v2-tune.css?clean-css=${GITHUB_RUN_ID}" -o /tmp/tune.css
+          ! grep -Fq 'BALL46 LIVE MINUTE WHITE 20260923' /tmp/tune.css || { echo 'MINUTE_OVERRIDE_PRESENT'; exit 1; }
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/board?clean-board=${GITHUB_RUN_ID}" -o /tmp/board.after.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/signals?clean-signals=${GITHUB_RUN_ID}" -o /tmp/signals.after.json
           node - <<'NODE'
           const fs=require('fs');
-          const b=JSON.parse(fs.readFileSync('/tmp/board.json'));
-          const s=JSON.parse(fs.readFileSync('/tmp/signals.json'));
-          if(b?.ok!==true||!Array.isArray(b?.fixtures)) throw Error('BOARD_UNHEALTHY');
-          if(!Array.isArray(s?.signals)) throw Error('SIGNALS_UNHEALTHY');
-          console.log('BALL46_PRE_TODAY_UI_RESTORED',{fixtures:b.fixtures.length,signals:s.signals.length});
+          const b=JSON.parse(fs.readFileSync('/tmp/board.after.json'));
+          const s=JSON.parse(fs.readFileSync('/tmp/signals.after.json'));
+          if(b?.ok!==true||!Array.isArray(b?.fixtures)) throw Error('POST_BOARD_UNHEALTHY');
+          if(!Array.isArray(s?.signals)) throw Error('POST_SIGNALS_UNHEALTHY');
+          console.log('BALL46_CLEAN_ASSET_RESTORE_OK',{fixtures:b.fixtures.length,signals:s.signals.length});
           NODE
+          curl -fsS -L --retry 3 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_PUBLIC/?clean-public=${GITHUB_RUN_ID}" -o /tmp/public.html
+          grep -Fq 'data-workspace-panel="live"' /tmp/public.html
+          ! grep -Fq 'data-ball46-favicon="20260923-repair"' /tmp/public.html
+          echo CLEAN_PUBLIC_OK
