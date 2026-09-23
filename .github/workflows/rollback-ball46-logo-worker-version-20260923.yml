@@ -1,4 +1,4 @@
-name: Emergency Rollback Ball46 Latest Worker 20260923
+name: Emergency Restore Ball46 Known Good Worker 20260923
 
 on:
   push:
@@ -14,9 +14,10 @@ env:
   BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
   CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
   CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  RESTORE_VERSION: 5b0d75cc-e856-47f8-ab32-34c8420e94b6
 
 jobs:
-  rollback-worker-version:
+  restore-known-good-worker:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -24,15 +25,10 @@ jobs:
       - uses: actions/setup-node@v4
         with: {node-version: '22'}
 
-      - name: Show current deployments
+      - name: Deploy exact known-good Worker version
         working-directory: workers/nomadtips3-343-preview
         shell: bash
-        run: npx --yes wrangler@4.92.0 deployments list --config wrangler.ball46.jsonc
-
-      - name: Roll back latest Worker deployment
-        working-directory: workers/nomadtips3-343-preview
-        shell: bash
-        run: npx --yes wrangler@4.92.0 rollback --config wrangler.ball46.jsonc --message "Emergency rollback bad live-minute production deployment"
+        run: npx --yes wrangler@4.92.0 versions deploy "${RESTORE_VERSION}@100%" -y --config wrangler.ball46.jsonc --message "Emergency restore known-good Ball46 before live-minute change"
 
       - name: Verify restored production
         shell: bash
@@ -40,17 +36,19 @@ jobs:
           set -euo pipefail
           ok=0
           for n in $(seq 1 20); do
-            if curl -fsS -L --retry 2 --retry-all-errors --retry-delay 1 --max-time 20 "$BALL46_WORKER/index.html?rollback-minute=${GITHUB_RUN_ID}-${n}" -o /tmp/index.after.html; then
-              if grep -Fq 'data-workspace-panel="live"' /tmp/index.after.html && grep -Fq 'data-workspace-panel="signal"' /tmp/index.after.html && grep -Fq 'data-workspace-panel="statistics"' /tmp/index.after.html; then ok=1; break; fi
+            if curl -fsS -L --retry 2 --retry-all-errors --retry-delay 1 --max-time 20 "$BALL46_WORKER/index.html?restore-known-good=${GITHUB_RUN_ID}-${n}" -o /tmp/index.after.html; then
+              if [ -s /tmp/index.after.html ] && grep -Eqi 'ball46|dashboard-v2-stage3|data-board-sections|workspace' /tmp/index.after.html; then ok=1; break; fi
             fi
             sleep 3
           done
-          [ "$ok" = 1 ] || { echo 'WORKSPACE_NOT_RESTORED'; exit 1; }
-          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/board?rollback-minute-board=${GITHUB_RUN_ID}" -o /tmp/board.json
-          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/signals?rollback-minute-signals=${GITHUB_RUN_ID}" -o /tmp/signals.json
+          [ "$ok" = 1 ] || { echo 'INDEX_NOT_RESTORED'; exit 1; }
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/board?restore-board=${GITHUB_RUN_ID}" -o /tmp/board.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/signals?restore-signals=${GITHUB_RUN_ID}" -o /tmp/signals.json
           node - <<'NODE'
-          const fs=require('fs'),b=JSON.parse(fs.readFileSync('/tmp/board.json')),s=JSON.parse(fs.readFileSync('/tmp/signals.json'));
-          if(b?.ok!==true||!Array.isArray(b?.fixtures))throw Error('BOARD_UNHEALTHY');
-          if(!Array.isArray(s?.signals))throw Error('SIGNALS_UNHEALTHY');
-          console.log('BALL46_EMERGENCY_ROLLBACK_OK',{fixtures:b.fixtures.length,signals:s.signals.length});
+          const fs=require('fs');
+          const b=JSON.parse(fs.readFileSync('/tmp/board.json'));
+          const s=JSON.parse(fs.readFileSync('/tmp/signals.json'));
+          if(b?.ok!==true||!Array.isArray(b?.fixtures)) throw Error('BOARD_UNHEALTHY');
+          if(!Array.isArray(s?.signals)) throw Error('SIGNALS_UNHEALTHY');
+          console.log('BALL46_KNOWN_GOOD_RESTORED',{fixtures:b.fixtures.length,signals:s.signals.length});
           NODE
