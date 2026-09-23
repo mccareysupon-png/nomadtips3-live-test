@@ -182,3 +182,5 @@ jobs:
           if(String(f.staleCachePolicy||'')!==fs.readFileSync('/tmp/full-policy','utf8')) throw Error('FULL_MARKET_POLICY_CHANGED');
           console.log('BALL46_NAV_STABILITY_V1_PASS',JSON.stringify({engine:e.version,fullMarket:f.version}));
           NODE
+
+# retrigger 2026-09-23: restore Ball46 nav stability after rollback
