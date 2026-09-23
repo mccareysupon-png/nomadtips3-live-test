@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-23T20:28:57Z",
+  "updated_at": "2026-09-23T23:46:50Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -1934,8 +1934,8 @@
       "edge": 33.6,
       "ev": 0.5478,
       "required_confidence": 0.6,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "3-1",
       "locked_at": "2026-09-23T01:53:09Z",
       "source_url": "https://www.goaloo.com/football/dominican-republic-liga-universidado-m-vs-atlantico-fc/h2h-3094234",
       "summary_url": "https://www.goaloo.com/football/dominican-republic-liga-universidado-m-vs-atlantico-fc/summary-3094234",
@@ -1995,7 +1995,12 @@
         "away_recent": 10,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-23T23:46:50Z"
     },
     {
       "id": "bf8bc5486095ce24-AH-HOME-1p5",
@@ -4899,8 +4904,8 @@
       "edge": 12.8,
       "ev": 0.1794,
       "required_confidence": 0.6,
-      "result": "PENDING",
-      "ft": null,
+      "result": "WIN",
+      "ft": "0-4",
       "locked_at": "2026-09-23T01:53:13Z",
       "source_url": "https://www.goaloo.com/football/chile-cup-curico-unido-vs-d-concepcion/h2h-3086923",
       "summary_url": "https://www.goaloo.com/football/chile-cup-curico-unido-vs-d-concepcion/summary-3086923",
@@ -4960,7 +4965,12 @@
         "away_recent": 10,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": 1.0,
+      "profit": 86.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-23T23:46:50Z"
     },
     {
       "id": "c567201329a3d9a2-OU-UNDER-2p5",
@@ -5074,8 +5084,8 @@
       "edge": 9.4,
       "ev": 0.1016,
       "required_confidence": 0.6,
-      "result": "PENDING",
-      "ft": null,
+      "result": "WIN",
+      "ft": "0-8",
       "locked_at": "2026-09-23T01:53:10Z",
       "source_url": "https://www.goaloo.com/football/concacaf-nations-league-bahamas-font-color-880000-n-font-vs-french-saint-martin/h2h-3092508",
       "summary_url": "https://www.goaloo.com/football/concacaf-nations-league-bahamas-font-color-880000-n-font-vs-french-saint-martin/summary-3092508",
@@ -5135,7 +5145,12 @@
         "away_recent": 8,
         "h2h_n": 0,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": 1.0,
+      "profit": 81.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-23T23:46:50Z"
     },
     {
       "id": "ea7b818d2cfba969-AH-AWAY-0p0",
@@ -131123,6 +131138,276 @@
       "settlement_source": "goaloo-bf_us-direct-index",
       "goaloo_terminal_state": -1,
       "settled_at": "2026-09-23T20:28:57Z"
+    },
+    {
+      "id": "07ae86b799d17b1a-OU-UNDER-3p5",
+      "goaloo_id": "3094234",
+      "date": "2026-09-23",
+      "kickoff": "2026-09-23 20:00:00",
+      "league": "Dominican Republic Liga",
+      "home": "UniversidadO M",
+      "away": "Atlantico FC",
+      "market": "OU",
+      "selection": "UNDER",
+      "line": 3.5,
+      "pick": "Under 3.5",
+      "side": null,
+      "odds": 1.88,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.8233,
+      "model_probability": 0.8233,
+      "market_fair_probability": 0.4877,
+      "market_edge": 0.3356,
+      "edge": 33.6,
+      "ev": 0.5478,
+      "required_confidence": 0.6,
+      "result": "LOSS",
+      "ft": "3-1",
+      "locked_at": "2026-09-23T01:53:09Z",
+      "source_url": "https://www.goaloo.com/football/dominican-republic-liga-universidado-m-vs-atlantico-fc/h2h-3094234",
+      "summary_url": "https://www.goaloo.com/football/dominican-republic-liga-universidado-m-vs-atlantico-fc/summary-3094234",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 1.162,
+        "lambda_away": 1.018,
+        "home_win": 0.3796,
+        "draw": 0.3133,
+        "away_win": 0.3071,
+        "h2h_adjustment": 0.0,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": -0.0065,
+          "gd_edge": 0.0643,
+          "clean_sheet_edge": 0.1854,
+          "failed_to_score_edge": -0.4585,
+          "bounded_adjustment": -0.0002,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-23T23:46:50Z"
+    },
+    {
+      "id": "841e33d0130d2e28-OU-OVER-2p25",
+      "goaloo_id": "3086923",
+      "date": "2026-09-23",
+      "kickoff": "2026-09-23 21:00:00",
+      "league": "Chile Cup",
+      "home": "Curico Unido",
+      "away": "D. Concepcion",
+      "market": "OU",
+      "selection": "OVER",
+      "line": 2.25,
+      "pick": "Over 2.25",
+      "side": null,
+      "odds": 1.86,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.6297,
+      "model_probability": 0.6297,
+      "market_fair_probability": 0.5013,
+      "market_edge": 0.1283,
+      "edge": 12.8,
+      "ev": 0.1794,
+      "required_confidence": 0.6,
+      "result": "WIN",
+      "ft": "0-4",
+      "locked_at": "2026-09-23T01:53:13Z",
+      "source_url": "https://www.goaloo.com/football/chile-cup-curico-unido-vs-d-concepcion/h2h-3086923",
+      "summary_url": "https://www.goaloo.com/football/chile-cup-curico-unido-vs-d-concepcion/summary-3086923",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 1.236,
+        "lambda_away": 1.739,
+        "home_win": 0.2463,
+        "draw": 0.2535,
+        "away_win": 0.5001,
+        "h2h_adjustment": -0.0025,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.0179,
+          "gd_edge": -0.4556,
+          "clean_sheet_edge": -0.4,
+          "failed_to_score_edge": 0.0976,
+          "bounded_adjustment": -0.0147,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": 1.0,
+      "profit": 86.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-23T23:46:50Z"
+    },
+    {
+      "id": "16aa6d37520861a0-OU-OVER-3p5",
+      "goaloo_id": "3092508",
+      "date": "2026-09-23",
+      "kickoff": "2026-09-23 20:00:00",
+      "league": "CONCACAF Nations League",
+      "home": "Bahamas<font color=#880000>(N)</font>",
+      "away": "French Saint-Martin",
+      "market": "OU",
+      "selection": "OVER",
+      "line": 3.5,
+      "pick": "Over 3.5",
+      "side": null,
+      "odds": 1.81,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.6086,
+      "model_probability": 0.6086,
+      "market_fair_probability": 0.5147,
+      "market_edge": 0.0939,
+      "edge": 9.4,
+      "ev": 0.1016,
+      "required_confidence": 0.6,
+      "result": "WIN",
+      "ft": "0-8",
+      "locked_at": "2026-09-23T01:53:10Z",
+      "source_url": "https://www.goaloo.com/football/concacaf-nations-league-bahamas-font-color-880000-n-font-vs-french-saint-martin/h2h-3092508",
+      "summary_url": "https://www.goaloo.com/football/concacaf-nations-league-bahamas-font-color-880000-n-font-vs-french-saint-martin/summary-3092508",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 3.171,
+        "lambda_away": 1.085,
+        "home_win": 0.8107,
+        "draw": 0.1349,
+        "away_win": 0.0544,
+        "h2h_adjustment": 0.0,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.4,
+          "gd_edge": 0.911,
+          "clean_sheet_edge": 0.0244,
+          "failed_to_score_edge": 0.1024,
+          "bounded_adjustment": 0.0372,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 8,
+        "h2h_n": 0,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": 1.0,
+      "profit": 81.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-23T23:46:50Z"
     }
   ],
   "note": "Automated Full-Time Winner First feed. Supplemental markets remain unpublished.",
