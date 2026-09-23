@@ -1,0 +1,91 @@
+name: Diagnose Ball46 Signal Toolbar Transform V2 20260923
+
+on:
+  push:
+    branches: [work/ball46-signal-strip-prod-safe-20260923]
+    paths:
+      - '.github/workflows/diagnose-ball46-signal-toolbar-transform-v2-20260923.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
+
+jobs:
+  diagnose-transform:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Mirror and test transform without deploy
+        shell: bash
+        run: |
+          set -u
+          mkdir -p /tmp/prod
+          fetch_required(){
+            name="$1"; safe="${name//\//_}"
+            code=$(curl -sS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 -o "/tmp/prod/$safe" -w '%{http_code}' "$BALL46_WORKER/$name?diag-transform=${GITHUB_RUN_ID}") || true
+            echo "FETCH $name HTTP=$code"
+            [ "$code" = 200 ] || return 1
+            mkdir -p "$(dirname "nomad-live-343/$name")"
+            cp "/tmp/prod/$safe" "nomad-live-343/$name"
+          }
+          fetch_required index.html || exit 1
+          fetch_required signal-shared-view-343.css || exit 1
+
+          echo '=== LIVE SIGNAL CSS LINK ==='
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          h=Path('nomad-live-343/index.html').read_text(errors='ignore')
+          m=re.findall(r'''(?:href|src)=["']([^"']*signal-shared-view-343\.css[^"']*)["']''',h,re.I)
+          print('matches=',len(m))
+          for x in m: print(repr(x))
+          for needle in ['data-signal-market-toolbar','data-workspace-panel="signal"','data-next-signal-list']:
+              print('marker',needle,'=',needle in h)
+          PY
+
+          cp nomad-live-343/index.html /tmp/index.before.html
+          cp nomad-live-343/signal-shared-view-343.css /tmp/signal.before.css
+          cat >> nomad-live-343/signal-shared-view-343.css <<'CSS'
+
+          /* BALL46_SIGNAL_TOOLBAR_CLEANUP_20260923 — presentation only */
+          .signal-market-toolbar,
+          body[data-workspace-view="signal"] .signal-market-toolbar{display:none!important}
+          CSS
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('nomad-live-343/index.html')
+          h=p.read_text()
+          pattern=r'(signal-shared-view-343\.css)(?:\?[^"\']*)?'
+          h2,n=re.subn(pattern,r'\1?v=343-signal-toolbar-clean-20260923',h,count=1)
+          print('regex replacements=',n)
+          p.write_text(h2)
+          PY
+
+          echo '=== RESULT SIGNAL CSS LINK ==='
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          h=Path('nomad-live-343/index.html').read_text(errors='ignore')
+          m=re.findall(r'''(?:href|src)=["']([^"']*signal-shared-view-343\.css[^"']*)["']''',h,re.I)
+          print('matches=',len(m))
+          for x in m: print(repr(x))
+          checks={
+            'cleanup_css_marker':'BALL46_SIGNAL_TOOLBAR_CLEANUP_20260923' in Path('nomad-live-343/signal-shared-view-343.css').read_text(errors='ignore'),
+            'new_href':'signal-shared-view-343.css?v=343-signal-toolbar-clean-20260923' in h,
+            'toolbar_marker':'data-signal-market-toolbar' in h,
+            'signal_panel':'data-workspace-panel="signal"' in h,
+            'next_signal_list':'data-next-signal-list' in h,
+          }
+          for k,v in checks.items(): print(k,'=',v)
+          PY
+          echo "INDEX_BEFORE=$(sha256sum /tmp/index.before.html | awk '{print $1}')"
+          echo "INDEX_AFTER=$(sha256sum nomad-live-343/index.html | awk '{print $1}')"
+          echo "CSS_BEFORE=$(sha256sum /tmp/signal.before.css | awk '{print $1}')"
+          echo "CSS_AFTER=$(sha256sum nomad-live-343/signal-shared-view-343.css | awk '{print $1}')"
+          echo 'DIAG_ONLY_NO_DEPLOY'
