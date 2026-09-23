@@ -1,0 +1,171 @@
+name: Deploy Ball46 Live Minute White 20260923
+
+on:
+  push:
+    branches: [work/ball46-event-flow-bars-20260922]
+    paths:
+      - '.github/workflows/deploy-ball46-live-minute-white-20260923.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  TARGET_CSS: dashboard-v2-tune.css
+
+jobs:
+  deploy-live-minute-white:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+
+      - name: Snapshot current Production and clean stale local assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/prod-before /tmp/missing
+          : > /tmp/present.list
+          : > /tmp/missing.list
+
+          while IFS= read -r f; do
+            rel="${f#nomad-live-343/}"
+            [ -n "$rel" ] || continue
+            mkdir -p "/tmp/prod-before/$(dirname "$rel")"
+            code=$(curl -sS -L --retry 3 --retry-all-errors --retry-delay 1 --max-time 25 \
+              -o "/tmp/prod-before/$rel" -w '%{http_code}' \
+              "$BALL46_WORKER/$rel?minute-baseline=${GITHUB_RUN_ID}") || true
+            if [ "$code" = 200 ] && [ -s "/tmp/prod-before/$rel" ]; then
+              cp "/tmp/prod-before/$rel" "$f"
+              printf '%s\n' "$rel" >> /tmp/present.list
+            else
+              rm -f "$f" "/tmp/prod-before/$rel"
+              printf '%s\n' "$rel" >> /tmp/missing.list
+            fi
+          done < <(find nomad-live-343 -type f | sort)
+
+          grep -Fxq "$TARGET_CSS" /tmp/present.list || { echo "TARGET_CSS_NOT_LIVE:$TARGET_CSS"; exit 1; }
+          grep -Fq '.mobile-clock' "nomad-live-343/$TARGET_CSS" || { echo 'MOBILE_CLOCK_SELECTOR_NOT_FOUND'; exit 1; }
+          grep -Fq '.score-cell' "nomad-live-343/$TARGET_CSS" || { echo 'SCORE_CELL_SELECTOR_NOT_FOUND'; exit 1; }
+
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 \
+            "$BALL46_WORKER/index.html?minute-index-before=${GITHUB_RUN_ID}" -o /tmp/index.before.html
+          sha256sum /tmp/index.before.html | awk '{print $1}' > /tmp/index.before.sha
+
+          : > /tmp/assets.before.sha
+          while IFS= read -r rel; do
+            sha256sum "/tmp/prod-before/$rel" | awk -v r="$rel" '{print $1"  "r}' >> /tmp/assets.before.sha
+          done < /tmp/present.list
+
+          sha256sum workers/nomadtips3-343-preview/src/index.js workers/nomadtips3-343-preview/wrangler.ball46.jsonc > /tmp/worker-source.before.sha
+
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 \
+            "$BALL46_WORKER/api/engine/board?minute-before=${GITHUB_RUN_ID}" -o /tmp/board.before.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 \
+            "$BALL46_WORKER/api/engine/signals?minute-before=${GITHUB_RUN_ID}" -o /tmp/signals.before.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const b=JSON.parse(fs.readFileSync('/tmp/board.before.json'));
+          const s=JSON.parse(fs.readFileSync('/tmp/signals.before.json'));
+          if(b?.ok!==true||!Array.isArray(b?.fixtures)) throw Error('PRE_BOARD_UNHEALTHY');
+          if(!Array.isArray(s?.signals)) throw Error('PRE_SIGNALS_UNHEALTHY');
+          NODE
+
+      - name: Change only live minute color
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat >> "nomad-live-343/$TARGET_CSS" <<'CSS'
+
+          /* BALL46 LIVE MINUTE WHITE 20260923 · presentation only */
+          [data-status-section="live"] .score-cell>small:not(.half-score),
+          [data-status-section="live"] .mobile-clock{color:#fff!important}
+          CSS
+
+          grep -Fq '[data-status-section="live"] .score-cell>small:not(.half-score)' "nomad-live-343/$TARGET_CSS"
+          grep -Fq '[data-status-section="live"] .mobile-clock{color:#fff!important}' "nomad-live-343/$TARGET_CSS"
+          sha256sum -c /tmp/worker-source.before.sha
+
+          while IFS= read -r rel; do
+            [ "$rel" = "$TARGET_CSS" ] && continue
+            before=$(awk -v r="$rel" '$2==r{print $1}' /tmp/assets.before.sha)
+            now=$(sha256sum "nomad-live-343/$rel" | awk '{print $1}')
+            [ "$before" = "$now" ] || { echo "UNRELATED_ASSET_CHANGED:$rel"; exit 1; }
+          done < /tmp/present.list
+
+      - name: Dry run exact Production-derived package
+        working-directory: workers/nomadtips3-343-preview
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.ball46.jsonc
+
+      - name: Deploy live minute white
+        working-directory: workers/nomadtips3-343-preview
+        shell: bash
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Verify only target CSS changed or rollback automatically
+        shell: bash
+        run: |
+          set +e
+          verify(){
+            set -euo pipefail
+            sleep 2
+            curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 \
+              "$BALL46_WORKER/index.html?minute-index-after=${GITHUB_RUN_ID}" -o /tmp/index.after.html
+            before_index=$(cat /tmp/index.before.sha)
+            after_index=$(sha256sum /tmp/index.after.html | awk '{print $1}')
+            [ "$before_index" = "$after_index" ] || { echo 'INDEX_CHANGED_UNEXPECTEDLY'; return 1; }
+
+            while IFS= read -r rel; do
+              mkdir -p "/tmp/prod-after/$(dirname "$rel")"
+              curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 \
+                "$BALL46_WORKER/$rel?minute-after=${GITHUB_RUN_ID}" -o "/tmp/prod-after/$rel"
+              if [ "$rel" = "$TARGET_CSS" ]; then
+                grep -Fq '[data-status-section="live"] .score-cell>small:not(.half-score)' "/tmp/prod-after/$rel"
+                grep -Fq '[data-status-section="live"] .mobile-clock{color:#fff!important}' "/tmp/prod-after/$rel"
+              else
+                before=$(awk -v r="$rel" '$2==r{print $1}' /tmp/assets.before.sha)
+                after=$(sha256sum "/tmp/prod-after/$rel" | awk '{print $1}')
+                [ "$before" = "$after" ] || { echo "UNRELATED_DEPLOYED_ASSET_CHANGED:$rel"; return 1; }
+              fi
+            done < /tmp/present.list
+
+            while IFS= read -r rel; do
+              [ -n "$rel" ] || continue
+              code=$(curl -sS -L --retry 2 --retry-all-errors --retry-delay 1 --max-time 20 \
+                -o /tmp/missing-check -w '%{http_code}' "$BALL46_WORKER/$rel?minute-missing=${GITHUB_RUN_ID}") || true
+              [ "$code" != 200 ] || { echo "STALE_ASSET_RESURRECTED:$rel"; return 1; }
+            done < /tmp/missing.list
+
+            curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 \
+              "$BALL46_WORKER/api/engine/board?minute-final=${GITHUB_RUN_ID}" -o /tmp/board.after.json
+            curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 \
+              "$BALL46_WORKER/api/engine/signals?minute-final=${GITHUB_RUN_ID}" -o /tmp/signals.after.json
+            node - <<'NODE'
+            const fs=require('fs');
+            const b=JSON.parse(fs.readFileSync('/tmp/board.after.json'));
+            const s=JSON.parse(fs.readFileSync('/tmp/signals.after.json'));
+            if(b?.ok!==true||!Array.isArray(b?.fixtures)) throw Error('POST_BOARD_UNHEALTHY');
+            if(!Array.isArray(s?.signals)) throw Error('POST_SIGNALS_UNHEALTHY');
+            console.log('LIVE_MINUTE_WHITE_OK',{fixtures:b.fixtures.length,signals:s.signals.length});
+            NODE
+          }
+
+          verify
+          rc=$?
+          if [ "$rc" -ne 0 ]; then
+            echo 'VERIFY_FAILED_ROLLING_BACK_CURRENT_WORKER_DEPLOYMENT'
+            cd workers/nomadtips3-343-preview
+            npx --yes wrangler@4.92.0 rollback --config wrangler.ball46.jsonc --message "Auto rollback failed live-minute-white verification"
+            exit "$rc"
+          fi
