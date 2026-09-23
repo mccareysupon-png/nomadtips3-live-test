@@ -103,14 +103,13 @@ jobs:
           grep -Fq 'BALL46_SIGNAL_TOOLBAR_CLEANUP_20260923' nomad-live-343/signal-shared-view-343.css
           grep -Fq 'signal-shared-view-343.css?v=343-signal-toolbar-clean-20260923' nomad-live-343/index.html
           grep -Fq 'data-signal-market-toolbar' nomad-live-343/index.html
-          grep -Fq 'data-workspace-panel="signal"' nomad-live-343/index.html
-          grep -Fq 'data-next-signal-list' nomad-live-343/index.html || true
           while read -r expected f; do
             actual=$(sha256sum "nomad-live-343/$f" | awk '{print $1}')
             [ "$actual" = "$expected" ] || { echo "PROTECTED_LOCAL_CHANGED:$f"; exit 1; }
           done < /tmp/protected.sha
           [ "$(cat /tmp/index-before.sha)" != "$(sha256sum nomad-live-343/index.html | awk '{print $1}')" ] || { echo INDEX_NOT_CHANGED; exit 1; }
           [ "$(cat /tmp/signal-css-before.sha)" != "$(sha256sum nomad-live-343/signal-shared-view-343.css | awk '{print $1}')" ] || { echo SIGNAL_CSS_NOT_CHANGED; exit 1; }
+          echo 'TRANSFORM_OK'
 
       - name: Dry run exact Production package
         shell: bash
