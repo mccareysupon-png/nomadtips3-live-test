@@ -1,4 +1,4 @@
-name: Rollback Ball46 Logo Worker Version 20260923
+name: Emergency Rollback Ball46 Latest Worker 20260923
 
 on:
   push:
@@ -29,10 +29,10 @@ jobs:
         shell: bash
         run: npx --yes wrangler@4.92.0 deployments list --config wrangler.ball46.jsonc
 
-      - name: Roll back one Worker deployment
+      - name: Roll back latest Worker deployment
         working-directory: workers/nomadtips3-343-preview
         shell: bash
-        run: npx --yes wrangler@4.92.0 rollback --config wrangler.ball46.jsonc --message "Rollback accidental logo-size production deployment"
+        run: npx --yes wrangler@4.92.0 rollback --config wrangler.ball46.jsonc --message "Emergency rollback bad live-minute production deployment"
 
       - name: Verify restored production
         shell: bash
@@ -40,17 +40,17 @@ jobs:
           set -euo pipefail
           ok=0
           for n in $(seq 1 20); do
-            if curl -fsS -L --retry 2 --retry-all-errors --retry-delay 1 --max-time 20 "$BALL46_WORKER/index.html?rollback-logo=${GITHUB_RUN_ID}-${n}" -o /tmp/index.after.html; then
-              if ! grep -Fq 'logo-size-343.css' /tmp/index.after.html; then ok=1; break; fi
+            if curl -fsS -L --retry 2 --retry-all-errors --retry-delay 1 --max-time 20 "$BALL46_WORKER/index.html?rollback-minute=${GITHUB_RUN_ID}-${n}" -o /tmp/index.after.html; then
+              if grep -Fq 'data-workspace-panel="live"' /tmp/index.after.html && grep -Fq 'data-workspace-panel="signal"' /tmp/index.after.html && grep -Fq 'data-workspace-panel="statistics"' /tmp/index.after.html; then ok=1; break; fi
             fi
             sleep 3
           done
-          [ "$ok" = 1 ] || { echo 'LOGO_OVERRIDE_STILL_PRESENT'; exit 1; }
-          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/board?rollback-logo-board=${GITHUB_RUN_ID}" -o /tmp/board.json
-          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/signals?rollback-logo-signals=${GITHUB_RUN_ID}" -o /tmp/signals.json
+          [ "$ok" = 1 ] || { echo 'WORKSPACE_NOT_RESTORED'; exit 1; }
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/board?rollback-minute-board=${GITHUB_RUN_ID}" -o /tmp/board.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/signals?rollback-minute-signals=${GITHUB_RUN_ID}" -o /tmp/signals.json
           node - <<'NODE'
           const fs=require('fs'),b=JSON.parse(fs.readFileSync('/tmp/board.json')),s=JSON.parse(fs.readFileSync('/tmp/signals.json'));
           if(b?.ok!==true||!Array.isArray(b?.fixtures))throw Error('BOARD_UNHEALTHY');
           if(!Array.isArray(s?.signals))throw Error('SIGNALS_UNHEALTHY');
-          console.log('BALL46_WORKER_VERSION_ROLLBACK_OK',{fixtures:b.fixtures.length,signals:s.signals.length});
+          console.log('BALL46_EMERGENCY_ROLLBACK_OK',{fixtures:b.fixtures.length,signals:s.signals.length});
           NODE
