@@ -1,0 +1,44 @@
+name: Diagnose Ball46 Hidden Signal Market 20260923
+
+on:
+  push:
+    branches: [work/ball46-signal-strip-prod-safe-20260923]
+    paths:
+      - '.github/workflows/diagnose-ball46-hidden-signal-market-20260923.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
+
+jobs:
+  diagnose-hidden-market-ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read exact live Production UI only
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/index.html?diag=${GITHUB_RUN_ID}" -o /tmp/index.html
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/signal-next.js?diag=${GITHUB_RUN_ID}" -o /tmp/signal-next.js
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/ball46-next.css?diag=${GITHUB_RUN_ID}" -o /tmp/ball46-next.css
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/singlepage-workspace-343.css?diag=${GITHUB_RUN_ID}" -o /tmp/singlepage.css
+          echo '=== INDEX MATCHES ==='
+          grep -ni -C 3 -E 'SIGNAL MARKET|next-market|data-next-market-summary|market-summary' /tmp/index.html || true
+          echo '=== SIGNAL JS MATCHES ==='
+          grep -ni -C 4 -E 'SIGNAL MARKET|next-market|data-next-market-summary|market-summary|renderMarkets' /tmp/signal-next.js || true
+          echo '=== BALL46 NEXT CSS MATCHES ==='
+          grep -ni -C 3 -E 'next-market|market-strip|market-summary' /tmp/ball46-next.css || true
+          echo '=== SINGLEPAGE CSS MATCHES ==='
+          grep -ni -C 3 -E 'next-market|market-strip|market-summary' /tmp/singlepage.css || true
+          echo '=== EXACT TEXT OCCURRENCES ==='
+          python3 - <<'PY'
+          from pathlib import Path
+          for f in ['/tmp/index.html','/tmp/signal-next.js','/tmp/ball46-next.css','/tmp/singlepage.css']:
+              s=Path(f).read_text(errors='ignore')
+              print(f, 'signal_market=', s.lower().count('signal market'), 'next_market=', s.lower().count('next-market'), 'data_target=', s.lower().count('data-next-market-summary'))
+          PY
