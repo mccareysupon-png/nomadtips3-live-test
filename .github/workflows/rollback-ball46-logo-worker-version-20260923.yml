@@ -1,4 +1,4 @@
-name: Emergency Restore Ball46 Known Good Worker 20260923
+name: Restore Ball46 Pre-Today-UI Worker 20260923
 
 on:
   push:
@@ -14,10 +14,10 @@ env:
   BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
   CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
   CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-  RESTORE_VERSION: 5b0d75cc-e856-47f8-ab32-34c8420e94b6
+  RESTORE_VERSION: 9779c3d7-cb2a-4ec6-8617-4d9a4227a35a
 
 jobs:
-  restore-known-good-worker:
+  restore-pre-today-ui:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -25,10 +25,10 @@ jobs:
       - uses: actions/setup-node@v4
         with: {node-version: '22'}
 
-      - name: Deploy exact known-good Worker version
+      - name: Deploy exact pre-today UI Worker version
         working-directory: workers/nomadtips3-343-preview
         shell: bash
-        run: npx --yes wrangler@4.92.0 versions deploy "${RESTORE_VERSION}@100%" -y --config wrangler.ball46.jsonc --message "Emergency restore known-good Ball46 before live-minute change"
+        run: npx --yes wrangler@4.92.0 versions deploy "${RESTORE_VERSION}@100%" -y --config wrangler.ball46.jsonc --message "Restore Ball46 exact pre-palette UI baseline"
 
       - name: Verify restored production
         shell: bash
@@ -36,12 +36,15 @@ jobs:
           set -euo pipefail
           ok=0
           for n in $(seq 1 20); do
-            if curl -fsS -L --retry 2 --retry-all-errors --retry-delay 1 --max-time 20 "$BALL46_WORKER/index.html?restore-known-good=${GITHUB_RUN_ID}-${n}" -o /tmp/index.after.html; then
+            if curl -fsS -L --retry 2 --retry-all-errors --retry-delay 1 --max-time 20 "$BALL46_WORKER/index.html?restore-pre-today=${GITHUB_RUN_ID}-${n}" -o /tmp/index.after.html; then
               if [ -s /tmp/index.after.html ] && grep -Eqi 'ball46|dashboard-v2-stage3|data-board-sections|workspace' /tmp/index.after.html; then ok=1; break; fi
             fi
             sleep 3
           done
           [ "$ok" = 1 ] || { echo 'INDEX_NOT_RESTORED'; exit 1; }
+          ! grep -Fq '343-team-palette-20260923' /tmp/index.after.html || { echo 'PALETTE_OVERRIDE_STILL_PRESENT'; exit 1; }
+          ! grep -Fq 'logo-size-343.css' /tmp/index.after.html || { echo 'LOGO_OVERRIDE_STILL_PRESENT'; exit 1; }
+          ! grep -Fq 'data-ball46-favicon="20260923-repair"' /tmp/index.after.html || { echo 'FAVICON_REPAIR_STILL_PRESENT'; exit 1; }
           curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/board?restore-board=${GITHUB_RUN_ID}" -o /tmp/board.json
           curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/signals?restore-signals=${GITHUB_RUN_ID}" -o /tmp/signals.json
           node - <<'NODE'
@@ -50,5 +53,5 @@ jobs:
           const s=JSON.parse(fs.readFileSync('/tmp/signals.json'));
           if(b?.ok!==true||!Array.isArray(b?.fixtures)) throw Error('BOARD_UNHEALTHY');
           if(!Array.isArray(s?.signals)) throw Error('SIGNALS_UNHEALTHY');
-          console.log('BALL46_KNOWN_GOOD_RESTORED',{fixtures:b.fixtures.length,signals:s.signals.length});
+          console.log('BALL46_PRE_TODAY_UI_RESTORED',{fixtures:b.fixtures.length,signals:s.signals.length});
           NODE
