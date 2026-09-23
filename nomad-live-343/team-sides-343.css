@@ -1,70 +1,111 @@
-/* Ball46 semantic team palette 20260923
-   Visual-only override: HOME = vivid green, AWAY = vivid yellow.
-   No odds/API/engine logic is touched. */
+/* Ball46 canonical team-side palette 20260923b
+   One presentation owner only: HOME = vivid green, AWAY = vivid yellow.
+   UI only. No odds/API/engine logic. */
 :root{
   --team-home:#00c853;
   --team-away:#ffd600;
-  --team-home-soft:#00c853;
-  --team-away-soft:#ffd600;
   --team-home-name:#00c853;
   --team-away-name:#ffd600;
+  --team-home-soft:#00c853;
+  --team-away-soft:#ffd600;
   --b46-flow-home:#00c853;
   --b46-flow-away:#ffd600;
 }
 
-/* Team names, HOME/AWAY labels, score-side labels */
-.team.home .name,
-.team.home .meta,
-.feature-score>div:not(.away)>span,
-.feature-score>div:not(.away)>b,
+/* Canonical semantic spans. */
+.team-home-name{color:var(--team-home)!important}
+.team-away-name{color:var(--team-away)!important}
+.team-separator{color:var(--muted)!important;font-weight:inherit}
+
+/* Page 1 · live board rows + featured match. */
+.match-row .teams-cell>b:first-of-type,
+[data-featured-home],
+.feature-score>div:first-child>span,
+.team-slot.home-slot .team-name,
+.team-axis>b:first-child{color:var(--team-home)!important}
+
+.match-row .teams-cell>b:nth-of-type(2),
+[data-featured-away],
+.feature-score>div.away>span,
+.team-slot.away-slot .team-name,
+.team-axis>b:last-child{color:var(--team-away)!important}
+
+/* Page 2 · Signal cards. Names are split into semantic spans by team-sides-343.js. */
+.next-signal-card .team-home-name,
+.active-signal-card .team-home-name{color:var(--team-home)!important}
+.next-signal-card .team-away-name,
+.active-signal-card .team-away-name{color:var(--team-away)!important}
+
+/* Page 3 · Statistics history. Names are split by team-sides-343.js. */
+.sp-match .team-home-name,
+.next-table .team-home-name,
+.next-live-row .team-home-name{color:var(--team-home)!important}
+.sp-match .team-away-name,
+.next-table .team-away-name,
+.next-live-row .team-away-name{color:var(--team-away)!important}
+
+/* Live statistics bars use exactly the same side language everywhere. */
+.stat-track.home i,
+.next-stat-row .next-bar:not(.away) i,
+.expand-split-fill.home,
+.mirror-row .home i,
+.signal-mirror-row .home i{background:var(--team-home)!important}
+
+.stat-track.away i,
+.next-stat-row .next-bar.away i,
+.expand-split-fill.away,
+.mirror-row .away i,
+.signal-mirror-row .away i{background:var(--team-away)!important}
+
+/* Expanded match / Full Market. */
 .expand-team.home .expand-team-label,
 .expand-team.home .expand-team-name,
 .expand-score-side.home .label,
-.next-teams .b46-team-home,
-.next-teams.is-a span:first-child,
-.expand-flow-legend .home,
-.b46-flow-legend .home{color:var(--team-home)!important}
+.fom-team-strip .home strong,
+.fom-colhead.cols-ah b:first-of-type,
+.fom-colhead.cols-1x2 b:first-of-type{color:var(--team-home)!important}
 
-.team.away .name,
-.team.away .meta,
-.feature-score>div.away>span,
-.feature-score>div.away>b,
 .expand-team.away .expand-team-label,
 .expand-team.away .expand-team-name,
 .expand-score-side.away .label,
-.next-teams .b46-team-away,
-.next-teams.is-a span:last-child,
+.fom-team-strip .away strong,
+.fom-colhead.cols-ah b:last-of-type,
+.fom-colhead.cols-1x2 b:last-of-type{color:var(--team-away)!important}
+
+.expand-flow-legend .home,
+.b46-flow-legend .home,
+.nomad-flow-legend .home{color:var(--team-home)!important}
 .expand-flow-legend .away,
-.b46-flow-legend .away{color:var(--team-away)!important}
+.b46-flow-legend .away,
+.nomad-flow-legend .away{color:var(--team-away)!important}
 
-/* Bars, dots and side markers */
-.feature-score>div:not(.away) i,
 .expand-flow-legend .home i,
-.expand-split-fill.home,
-.next-stat-row .next-bar i,
-.next-bar i,
-.b46-flow-legend .home i{background:var(--team-home)!important}
-
-.feature-score>div.away i,
+.b46-flow-legend .home i,
+.nomad-flow-legend .home i{background:var(--team-home)!important}
 .expand-flow-legend .away i,
-.expand-split-fill.away,
-.next-stat-row .next-bar.away i,
-.next-bar.away i,
-.b46-flow-legend .away i{background:var(--team-away)!important}
+.b46-flow-legend .away i,
+.nomad-flow-legend .away i{background:var(--team-away)!important}
 
-/* Event Flow SVG uses the same exact semantic palette */
+/* Event Flow bars / lines / event dots. */
 .b46-flow-bar.home{fill:var(--team-home)!important}
 .b46-flow-bar.away{fill:var(--team-away)!important}
 .b46-event-stem.home,.b46-event-dot.home{stroke:var(--team-home)!important;fill:var(--team-home)!important}
 .b46-event-stem.away,.b46-event-dot.away{stroke:var(--team-away)!important;fill:var(--team-away)!important}
 .b46-event-minute.home{fill:var(--team-home)!important}
 .b46-event-minute.away{fill:var(--team-away)!important}
+.nomad-flow-line.home{stroke:var(--team-home)!important}
+.nomad-flow-line.away{stroke:var(--team-away)!important}
+.nomad-flow-area.home{fill:color-mix(in srgb,var(--team-home) 16%,transparent)!important}
+.nomad-flow-area.away{fill:color-mix(in srgb,var(--team-away) 15%,transparent)!important}
+.nomad-flow-end.home{fill:var(--team-home)!important}
+.nomad-flow-end.away{fill:var(--team-away)!important}
+.event-line.home{stroke:var(--team-home)!important}
+.event-line.away{stroke:var(--team-away)!important}
+.event-dot.home{fill:var(--team-home)!important}
+.event-dot.away{fill:var(--team-away)!important}
 
-/* Expanded match side language */
+/* Supporting split visuals. */
+.visual-team-key span:first-child{color:var(--team-home)!important}
+.visual-team-key span:last-child{color:var(--team-away)!important}
 .expand-mini-pitch{background:linear-gradient(90deg,color-mix(in srgb,var(--team-home) 13%,var(--panel)) 0 49.85%,var(--line) 49.85% 50.15%,color-mix(in srgb,var(--team-away) 14%,var(--panel)) 50.15% 100%)!important}
 .expand-stat-row:before{background:linear-gradient(90deg,color-mix(in srgb,var(--team-home) 17%,transparent),color-mix(in srgb,var(--team-away) 17%,transparent))!important}
-
-@supports selector(.x:has(.y)){
-  .match-card:has(.team.home.active){border-left-color:var(--team-home)!important}
-  .match-card:has(.team.away.active){border-right-color:var(--team-away)!important}
-}
