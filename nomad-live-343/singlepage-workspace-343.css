@@ -45,3 +45,6 @@ html[data-theme="dark"] .workspace-nav-row.active,html[data-theme="dark"] .sp-fi
 .workspace.singlepage>.left-rail .workspace-stats-card{min-height:302px}
 .workspace.singlepage>.left-rail [data-league-card]{min-height:110px}
 @media(max-width:760px){.workspace.singlepage>.left-rail{gap:8px}.workspace.singlepage>.left-rail .workspace-brand-card{height:44px;min-height:44px;max-height:44px}.workspace.singlepage>.left-rail .workspace-brand-row{height:44px;min-height:44px;max-height:44px}.workspace.singlepage>.left-rail .workspace-stats-card{min-height:0}.workspace.singlepage>.left-rail [data-league-card]{min-height:0}}
+
+/* SIGNAL CLEANUP 20260923: retire legacy market summary from layout only; signal feed remains untouched */
+.sp-signal [data-next-market-summary]{display:none!important}
