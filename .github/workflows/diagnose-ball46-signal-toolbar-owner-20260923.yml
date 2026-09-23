@@ -1,0 +1,47 @@
+name: Diagnose Ball46 Signal Toolbar Owner 20260923
+
+on:
+  push:
+    branches: [work/ball46-signal-strip-prod-safe-20260923]
+    paths:
+      - '.github/workflows/diagnose-ball46-signal-toolbar-owner-20260923.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
+
+jobs:
+  locate-owner:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Scan live Production assets for signal market toolbar ownership
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/live
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/index.html?owner=${GITHUB_RUN_ID}" -o /tmp/live/index.html
+          python3 - <<'PY' > /tmp/assets.txt
+          from pathlib import Path
+          import re
+          h=Path('/tmp/live/index.html').read_text(errors='ignore')
+          found=set()
+          for x in re.findall(r'''(?:src|href)=["']([^"']+)["']''',h,re.I):
+              x=x.split('?',1)[0].split('#',1)[0].strip().lstrip('./').lstrip('/')
+              if not x or '://' in x or '/' in x: continue
+              if re.search(r'\.(?:js|css)$',x,re.I): found.add(x)
+          for x in sorted(found): print(x)
+          PY
+          while IFS= read -r name; do
+            [ -n "$name" ] || continue
+            code=$(curl -sS -L --retry 3 --retry-all-errors --retry-delay 1 --max-time 20 -o "/tmp/live/$name" -w '%{http_code}' "$BALL46_WORKER/$name?owner=${GITHUB_RUN_ID}") || true
+            [ "$code" = 200 ] || continue
+          done < /tmp/assets.txt
+          echo '=== OWNERS ==='
+          grep -Rni -C 3 -E 'signal-market-toolbar|data-signal-market-toolbar|data-signal-market-count|data-signal-market=' /tmp/live || true
+          echo '=== HIDDEN OVERRIDES / SIGNAL VIEW RULES ==='
+          grep -Rni -C 2 -E '\[hidden\]|workspace.*signal|signal.*display|data-workspace-view.*signal' /tmp/live/*.css /tmp/live/*.js 2>/dev/null | head -n 300 || true
