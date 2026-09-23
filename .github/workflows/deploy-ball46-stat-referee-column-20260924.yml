@@ -1,0 +1,191 @@
+name: Deploy Ball46 Statistics Referee Column 20260924
+
+on:
+  push:
+    branches: [work/ball46-stat-referee-column-20260924]
+    paths:
+      - '.github/workflows/deploy-ball46-stat-referee-column-20260924.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
+  BALL46_PUBLIC: https://www.ball46.com
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  deploy-stat-referee-column:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+
+      - name: Mirror exact current Production package
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/prod
+          fetch_required(){
+            name="$1"; safe="${name//\//_}"
+            code=$(curl -sS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 -o "/tmp/prod/$safe" -w '%{http_code}' "$BALL46_WORKER/$name?stat-ref-copy=${GITHUB_RUN_ID}") || true
+            [ "$code" = 200 ] || { echo "REQUIRED_PROD_ASSET_HTTP_${code}:$name"; exit 1; }
+            test -s "/tmp/prod/$safe" || { echo "REQUIRED_PROD_ASSET_EMPTY:$name"; exit 1; }
+            mkdir -p "$(dirname "nomad-live-343/$name")"
+            cp "/tmp/prod/$safe" "nomad-live-343/$name"
+          }
+
+          fetch_required index.html
+          python3 - <<'PY' > /tmp/index-assets.txt
+          from pathlib import Path
+          import re
+          h=Path('nomad-live-343/index.html').read_text(errors='ignore')
+          found=set()
+          for x in re.findall(r'''(?:src|href)=["']([^"']+)["']''',h,re.I):
+              x=x.split('?',1)[0].split('#',1)[0].strip().lstrip('./').lstrip('/')
+              if not x or '://' in x or '/' in x: continue
+              if re.search(r'\.(?:js|css|svg|json|png|webp|jpg|jpeg|ico)$',x,re.I): found.add(x)
+          for x in sorted(found): print(x)
+          PY
+          while IFS= read -r name; do
+            [ -n "$name" ] || continue
+            fetch_required "$name"
+          done < /tmp/index-assets.txt
+
+          fetch_required singlepage-workspace-343.js
+          cp nomad-live-343/singlepage-workspace-343.js /tmp/prod/singlepage-workspace-343.js
+          sha256sum nomad-live-343/index.html | awk '{print $1}' > /tmp/index-before.sha
+
+          : > /tmp/protected.sha
+          protected='dashboard-v2.css dashboard-v2-stage3.js dashboard-v2-tune.js v2-shared.css v2-shared.js bulk-odds-compat-343.js expanded-match-343.js full-market-bookmaker-343.js live-summary-full-odds-343.js signal-next.js singlepage-workspace-343.css ball46-next.css market-registry-343.js'
+          for f in $protected; do
+            fetch_required "$f"
+            printf '%s  %s\n' "$(sha256sum "nomad-live-343/$f" | awk '{print $1}')" "$f" >> /tmp/protected.sha
+          done
+
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/board?stat-ref-before=${GITHUB_RUN_ID}" -o /tmp/board-before.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/signals?stat-ref-before=${GITHUB_RUN_ID}" -o /tmp/signals-before.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/statistics?stat-ref-before=${GITHUB_RUN_ID}" -o /tmp/stats-before.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const b=JSON.parse(fs.readFileSync('/tmp/board-before.json'));
+          const s=JSON.parse(fs.readFileSync('/tmp/signals-before.json'));
+          const t=JSON.parse(fs.readFileSync('/tmp/stats-before.json'));
+          if(b?.ok!==true||!Array.isArray(b?.fixtures))throw Error('PRE_BOARD_UNHEALTHY');
+          if(!Array.isArray(s?.signals))throw Error('PRE_SIGNALS_UNHEALTHY');
+          if(t?.ok!==true||!Array.isArray(t?.rows))throw Error('PRE_STATS_UNHEALTHY');
+          const named=t.rows.filter(r=>r?.referee?.selectedBookmaker||r?.selectedBookmaker||r?.bookmaker).length;
+          console.log('PRE_OK',{fixtures:b.fixtures.length,signals:s.signals.length,settled:t.rows.length,rowsWithReferee:named});
+          NODE
+
+      - name: Patch only current Statistics table renderer
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('nomad-live-343/singlepage-workspace-343.js')
+          s=p.read_text()
+
+          anchor="function lineLabel(r){const n=num(r?.line);if(n===null)return'—';const t=Number.isInteger(n)?String(n):String(Math.round(n*100)/100);return marketKey(r)==='ah'&&n>0?`+${t}`:t}\n"
+          add=anchor+"function refereeLabel(r){return show(r?.referee?.selectedBookmaker??r?.selectedBookmaker??r?.bookmaker??null)}\n"
+          if s.count(anchor)!=1: raise SystemExit(f'LINE_LABEL_ANCHOR_COUNT:{s.count(anchor)}')
+          s=s.replace(anchor,add,1)
+
+          start="function renderTable(rows){const total="
+          start_new="function renderTable(rows){const head=$('[data-sp-table-body]')?.closest('table')?.querySelector('thead tr');if(head&&!head.querySelector('[data-sp-referee-head]')){const th=document.createElement('th');th.dataset.spRefereeHead='1';th.textContent='Referee / Bookmaker';head.insertBefore(th,head.children[6]||null)}const total="
+          if s.count(start)!=1: raise SystemExit(f'RENDER_TABLE_START_COUNT:{s.count(start)}')
+          s=s.replace(start,start_new,1)
+
+          row="<td>${esc(show(r?.odds))}</td><td>${esc(score(r?.entryScore??r?.scoreAt))}</td>"
+          row_new="<td>${esc(show(r?.odds))}</td><td>${esc(refereeLabel(r))}</td><td>${esc(score(r?.entryScore??r?.scoreAt))}</td>"
+          if s.count(row)!=1: raise SystemExit(f'ODDS_ENTRY_ANCHOR_COUNT:{s.count(row)}')
+          s=s.replace(row,row_new,1)
+
+          empty="colspan=\"9\"><div class=\"sp-empty\">No settled results in this view.</div>"
+          empty_new="colspan=\"10\"><div class=\"sp-empty\">No settled results in this view.</div>"
+          if s.count(empty)!=1: raise SystemExit(f'EMPTY_COLSPAN_ANCHOR_COUNT:{s.count(empty)}')
+          s=s.replace(empty,empty_new,1)
+
+          required=['refereeLabel(r)','Referee / Bookmaker','data-sp-referee-head','colspan="10"']
+          for token in required:
+              if token not in s: raise SystemExit('MISSING_PATCH_TOKEN:'+token)
+          p.write_text(s)
+          PY
+
+          node --check nomad-live-343/singlepage-workspace-343.js
+          cmp -s nomad-live-343/index.html /tmp/prod/index.html
+          while read -r expected f; do
+            actual=$(sha256sum "nomad-live-343/$f" | awk '{print $1}')
+            [ "$actual" = "$expected" ] || { echo "PROTECTED_LOCAL_CHANGED:$f"; exit 1; }
+          done < /tmp/protected.sha
+          ! cmp -s nomad-live-343/singlepage-workspace-343.js /tmp/prod/singlepage-workspace-343.js
+
+      - name: Dry run exact Production package with one Statistics renderer change
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"; test -n "$CLOUDFLARE_ACCOUNT_ID"
+          cd workers/nomadtips3-343-preview
+          npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.ball46.jsonc
+
+      - name: Deploy Statistics referee column
+        id: deploy
+        working-directory: workers/nomadtips3-343-preview
+        shell: bash
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Verify Production and untouched systems
+        id: verify
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for n in $(seq 1 20); do
+            if curl -fsS -L --retry 2 --retry-all-errors --retry-delay 1 --max-time 20 "$BALL46_WORKER/singlepage-workspace-343.js?stat-ref-after=${GITHUB_RUN_ID}-${n}" -o /tmp/stat-js.after \
+              && grep -Fq 'Referee / Bookmaker' /tmp/stat-js.after \
+              && grep -Fq 'referee?.selectedBookmaker' /tmp/stat-js.after \
+              && grep -Fq 'colspan="10"' /tmp/stat-js.after; then ok=1; break; fi
+            sleep 3
+          done
+          [ "$ok" = 1 ] || { echo 'STAT_REFEREE_COLUMN_NOT_LIVE'; exit 1; }
+
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/index.html?stat-ref-index=${GITHUB_RUN_ID}" -o /tmp/index.after.html
+          before=$(cat /tmp/index-before.sha)
+          after=$(sha256sum /tmp/index.after.html | awk '{print $1}')
+          [ "$after" = "$before" ] || { echo 'INDEX_CHANGED_UNEXPECTEDLY'; exit 1; }
+
+          while read -r expected f; do
+            curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/$f?stat-ref-protected=${GITHUB_RUN_ID}" -o "/tmp/protected-${f//\//_}"
+            actual=$(sha256sum "/tmp/protected-${f//\//_}" | awk '{print $1}')
+            [ "$actual" = "$expected" ] || { echo "PROTECTED_DEPLOYED_CHANGED:$f"; exit 1; }
+          done < /tmp/protected.sha
+
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/board?stat-ref-final=${GITHUB_RUN_ID}" -o /tmp/board-after.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/signals?stat-ref-final=${GITHUB_RUN_ID}" -o /tmp/signals-after.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/statistics?stat-ref-final=${GITHUB_RUN_ID}" -o /tmp/stats-after.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const b=JSON.parse(fs.readFileSync('/tmp/board-after.json'));
+          const s=JSON.parse(fs.readFileSync('/tmp/signals-after.json'));
+          const t=JSON.parse(fs.readFileSync('/tmp/stats-after.json'));
+          if(b?.ok!==true||!Array.isArray(b?.fixtures))throw Error('POST_BOARD_UNHEALTHY');
+          if(!Array.isArray(s?.signals))throw Error('POST_SIGNALS_UNHEALTHY');
+          if(t?.ok!==true||!Array.isArray(t?.rows))throw Error('POST_STATS_UNHEALTHY');
+          const named=t.rows.filter(r=>r?.referee?.selectedBookmaker||r?.selectedBookmaker||r?.bookmaker).length;
+          console.log('STAT_REFEREE_COLUMN_OK',{fixtures:b.fixtures.length,signals:s.signals.length,settled:t.rows.length,rowsWithReferee:named});
+          NODE
+
+      - name: Restore exact pre-change Production package if verification fails
+        if: ${{ failure() && steps.deploy.outcome == 'success' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp /tmp/prod/singlepage-workspace-343.js nomad-live-343/singlepage-workspace-343.js
+          cd workers/nomadtips3-343-preview
+          npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
