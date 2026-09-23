@@ -1,0 +1,170 @@
+name: Deploy Ball46 Hide Legacy Signal Toolbar 20260923
+
+on:
+  push:
+    branches: [work/ball46-signal-strip-prod-safe-20260923]
+    paths:
+      - '.github/workflows/deploy-ball46-hide-legacy-signal-toolbar-20260923.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
+  BALL46_PUBLIC: https://www.ball46.com
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  GOLDEN_VERSION: 5b0d75cc-e856-47f8-ab32-34c8420e94b6
+
+jobs:
+  hide-legacy-signal-toolbar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+
+      - name: Mirror exact current Production package
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/prod
+          fetch_required(){
+            name="$1"; safe="${name//\//_}"
+            code=$(curl -sS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 -o "/tmp/prod/$safe" -w '%{http_code}' "$BALL46_WORKER/$name?signal-toolbar-copy=${GITHUB_RUN_ID}") || true
+            [ "$code" = 200 ] || { echo "REQUIRED_PROD_ASSET_HTTP_${code}:$name"; exit 1; }
+            test -s "/tmp/prod/$safe" || { echo "REQUIRED_PROD_ASSET_EMPTY:$name"; exit 1; }
+            mkdir -p "$(dirname "nomad-live-343/$name")"
+            cp "/tmp/prod/$safe" "nomad-live-343/$name"
+          }
+          fetch_required index.html
+          python3 - <<'PY' > /tmp/index-assets.txt
+          from pathlib import Path
+          import re
+          h=Path('nomad-live-343/index.html').read_text(errors='ignore')
+          found=set()
+          for x in re.findall(r'''(?:src|href)=["']([^"']+)["']''',h,re.I):
+              x=x.split('?',1)[0].split('#',1)[0].strip().lstrip('./').lstrip('/')
+              if not x or '://' in x or '/' in x: continue
+              if re.search(r'\.(?:js|css|svg|json|png|webp|jpg|jpeg|ico)$',x,re.I): found.add(x)
+          for x in sorted(found): print(x)
+          PY
+          while IFS= read -r name; do
+            [ -n "$name" ] || continue
+            fetch_required "$name"
+          done < /tmp/index-assets.txt
+          fetch_required signal-shared-view-343.css
+
+          protected='dashboard-v2.css dashboard-v2-stage3.js dashboard-v2-tune.js v2-shared.css v2-shared.js bulk-odds-compat-343.js expanded-match-343.js full-market-bookmaker-343.js live-summary-full-odds-343.js signal-next.js singlepage-workspace-343.js singlepage-workspace-343.css'
+          : > /tmp/protected.sha
+          for f in $protected; do
+            fetch_required "$f"
+            printf '%s  %s\n' "$(sha256sum "nomad-live-343/$f" | awk '{print $1}')" "$f" >> /tmp/protected.sha
+          done
+          sha256sum nomad-live-343/index.html | awk '{print $1}' > /tmp/index-before.sha
+          sha256sum nomad-live-343/signal-shared-view-343.css | awk '{print $1}' > /tmp/signal-css-before.sha
+
+          grep -Fq 'data-signal-market-toolbar' nomad-live-343/index.html
+          grep -Fq 'body[data-workspace-view="signal"] .signal-market-toolbar{display:flex}' nomad-live-343/signal-shared-view-343.css
+
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/board?signal-toolbar-before=${GITHUB_RUN_ID}" -o /tmp/board-before.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/signals?signal-toolbar-before=${GITHUB_RUN_ID}" -o /tmp/signals-before.json
+          node - <<'NODE'
+          const fs=require('fs'),b=JSON.parse(fs.readFileSync('/tmp/board-before.json')),s=JSON.parse(fs.readFileSync('/tmp/signals-before.json'));
+          if(b?.ok!==true||!Array.isArray(b?.fixtures))throw Error('PRE_BOARD_UNHEALTHY');
+          if(!Array.isArray(s?.signals))throw Error('PRE_SIGNALS_UNHEALTHY');
+          console.log('PRE_OK',{fixtures:b.fixtures.length,signals:s.signals.length});
+          NODE
+
+      - name: Hide only legacy Signal Market toolbar
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat >> nomad-live-343/signal-shared-view-343.css <<'CSS'
+
+          /* BALL46_SIGNAL_TOOLBAR_CLEANUP_20260923 — presentation only */
+          .signal-market-toolbar,
+          body[data-workspace-view="signal"] .signal-market-toolbar{display:none!important}
+          CSS
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('nomad-live-343/index.html')
+          h=p.read_text()
+          pattern=r'(signal-shared-view-343\.css)(?:\?[^"\']*)?'
+          h2,n=re.subn(pattern,r'\1?v=343-signal-toolbar-clean-20260923',h,count=1)
+          if n != 1:
+              raise SystemExit(f'EXPECTED_ONE_SIGNAL_SHARED_CSS_LINK_FOUND_{n}')
+          p.write_text(h2)
+          PY
+          grep -Fq 'BALL46_SIGNAL_TOOLBAR_CLEANUP_20260923' nomad-live-343/signal-shared-view-343.css
+          grep -Fq 'signal-shared-view-343.css?v=343-signal-toolbar-clean-20260923' nomad-live-343/index.html
+          grep -Fq 'data-signal-market-toolbar' nomad-live-343/index.html
+          grep -Fq 'data-workspace-panel="signal"' nomad-live-343/index.html
+          grep -Fq 'data-next-signal-list' nomad-live-343/index.html || true
+          while read -r expected f; do
+            actual=$(sha256sum "nomad-live-343/$f" | awk '{print $1}')
+            [ "$actual" = "$expected" ] || { echo "PROTECTED_LOCAL_CHANGED:$f"; exit 1; }
+          done < /tmp/protected.sha
+          [ "$(cat /tmp/index-before.sha)" != "$(sha256sum nomad-live-343/index.html | awk '{print $1}')" ] || { echo INDEX_NOT_CHANGED; exit 1; }
+          [ "$(cat /tmp/signal-css-before.sha)" != "$(sha256sum nomad-live-343/signal-shared-view-343.css | awk '{print $1}')" ] || { echo SIGNAL_CSS_NOT_CHANGED; exit 1; }
+
+      - name: Dry run exact Production package
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"; test -n "$CLOUDFLARE_ACCOUNT_ID"
+          cd workers/nomadtips3-343-preview
+          npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.ball46.jsonc
+
+      - name: Deploy presentation-only cleanup
+        id: deploy
+        working-directory: workers/nomadtips3-343-preview
+        shell: bash
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Verify toolbar hidden and backend continuity
+        id: verify
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for n in $(seq 1 20); do
+            if curl -fsS -L --retry 2 --retry-all-errors --retry-delay 1 --max-time 20 "$BALL46_WORKER/index.html?signal-toolbar-after=${GITHUB_RUN_ID}-${n}" -o /tmp/index.after.html \
+              && grep -Fq 'signal-shared-view-343.css?v=343-signal-toolbar-clean-20260923' /tmp/index.after.html; then ok=1; break; fi
+            sleep 3
+          done
+          [ "$ok" = 1 ] || { echo 'INDEX_CACHE_TOKEN_NOT_PROPAGATED'; exit 1; }
+
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/signal-shared-view-343.css?v=343-signal-toolbar-clean-20260923&check=${GITHUB_RUN_ID}" -o /tmp/signal-css-after.css
+          grep -Fq 'BALL46_SIGNAL_TOOLBAR_CLEANUP_20260923' /tmp/signal-css-after.css
+          grep -Fq 'display:none!important' /tmp/signal-css-after.css
+
+          while read -r expected f; do
+            curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/$f?signal-toolbar-protected=${GITHUB_RUN_ID}" -o "/tmp/protected-${f//\//_}"
+            actual=$(sha256sum "/tmp/protected-${f//\//_}" | awk '{print $1}')
+            [ "$actual" = "$expected" ] || { echo "PROTECTED_DEPLOYED_CHANGED:$f"; exit 1; }
+          done < /tmp/protected.sha
+
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/board?signal-toolbar-final=${GITHUB_RUN_ID}" -o /tmp/board-after.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/signals?signal-toolbar-final=${GITHUB_RUN_ID}" -o /tmp/signals-after.json
+          node - <<'NODE'
+          const fs=require('fs'),b=JSON.parse(fs.readFileSync('/tmp/board-after.json')),s=JSON.parse(fs.readFileSync('/tmp/signals-after.json'));
+          if(b?.ok!==true||!Array.isArray(b?.fixtures))throw Error('POST_BOARD_UNHEALTHY');
+          if(!Array.isArray(s?.signals))throw Error('POST_SIGNALS_UNHEALTHY');
+          console.log('SIGNAL_TOOLBAR_CLEANUP_OK',{fixtures:b.fixtures.length,signals:s.signals.length});
+          NODE
+
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_PUBLIC/index.html?signal-toolbar-public=${GITHUB_RUN_ID}" -o /tmp/public-index.html
+          grep -Fq 'signal-shared-view-343.css?v=343-signal-toolbar-clean-20260923' /tmp/public-index.html
+
+      - name: Roll back to Golden 08:09 if post-deploy verification fails
+        if: ${{ failure() && steps.deploy.outcome == 'success' }}
+        working-directory: workers/nomadtips3-343-preview
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.136.3 rollback "$GOLDEN_VERSION" --message "Auto restore Ball46 Golden 08:09 after Signal toolbar cleanup failure" --config wrangler.ball46.jsonc
