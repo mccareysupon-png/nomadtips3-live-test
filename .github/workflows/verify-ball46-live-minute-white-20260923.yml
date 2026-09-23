@@ -1,0 +1,47 @@
+name: Verify Ball46 Live Minute White 20260923
+
+on:
+  push:
+    branches: [work/ball46-event-flow-bars-20260922]
+    paths:
+      - '.github/workflows/verify-ball46-live-minute-white-20260923.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  verify-read-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Verify current Production without deploying
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 \
+            "$BALL46_WORKER/index.html?verify-minute=${GITHUB_RUN_ID}" -o /tmp/index.html
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 \
+            "$BALL46_WORKER/dashboard-v2-tune.css?verify-minute=${GITHUB_RUN_ID}" -o /tmp/tune.css
+          grep -Fq '[data-status-section="live"] .score-cell>small:not(.half-score)' /tmp/tune.css
+          grep -Fq '[data-status-section="live"] .mobile-clock{color:#fff!important}' /tmp/tune.css
+          ! grep -Fq 'logo-size-343.css' /tmp/index.html
+          ! grep -Fq 'team-sides-343.css' /tmp/index.html
+          ! grep -Fq 'team-sides-343.js' /tmp/index.html
+
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 \
+            "$BALL46_WORKER/api/engine/board?verify-minute-board=${GITHUB_RUN_ID}" -o /tmp/board.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 \
+            "$BALL46_WORKER/api/engine/signals?verify-minute-signals=${GITHUB_RUN_ID}" -o /tmp/signals.json
+          node -e "const fs=require('fs');const b=JSON.parse(fs.readFileSync('/tmp/board.json'));const s=JSON.parse(fs.readFileSync('/tmp/signals.json'));if(b?.ok!==true||!Array.isArray(b?.fixtures))throw Error('BOARD_UNHEALTHY');if(!Array.isArray(s?.signals))throw Error('SIGNALS_UNHEALTHY');console.log('READ_ONLY_VERIFY_OK',{fixtures:b.fixtures.length,signals:s.signals.length});"
+
+          cd workers/nomadtips3-343-preview
+          npx --yes wrangler@4.92.0 deployments list --config wrangler.ball46.jsonc
