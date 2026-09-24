@@ -1,0 +1,96 @@
+name: Diagnose Ball46 Bookmakers 20260924
+
+on:
+  push:
+    branches: [work/ball46-bookmaker-live-diagnostic-20260924]
+    paths:
+      - '.github/workflows/diagnose-ball46-bookmakers-20260924.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+
+      - name: Inspect exact Production assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS -L --retry 4 --retry-all-errors --max-time 25 "$BALL46_WORKER/dashboard-v2-stage3.js?diag=${GITHUB_RUN_ID}" -o /tmp/dashboard.js
+          curl -fsS -L --retry 4 --retry-all-errors --max-time 25 "$BALL46_WORKER/full-market-bookmaker-343.js?diag=${GITHUB_RUN_ID}" -o /tmp/full-market.js
+          node - <<'NODE'
+          const fs=require('fs');
+          for(const [name,path] of [['dashboard','/tmp/dashboard.js'],['fullMarket','/tmp/full-market.js']]){
+            const s=fs.readFileSync(path,'utf8');
+            const hit=s.match(/const BOOKS=\[(.*?)\];/s)?.[1]||'';
+            const slugs=[...hit.matchAll(/slug:'([^']+)'|\['([^']+)'/g)].map(m=>m[1]||m[2]);
+            console.log(name,'BOOKS',slugs.length,slugs.join(','));
+          }
+          NODE
+
+      - name: Inspect live board and full-market gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS -L --retry 4 --retry-all-errors --max-time 25 "$BALL46_WORKER/api/engine/board?diag=${GITHUB_RUN_ID}" -o /tmp/board.json
+          node - <<'NODE' > /tmp/fixture-ids.txt
+          const fs=require('fs');
+          const j=JSON.parse(fs.readFileSync('/tmp/board.json','utf8'));
+          if(j?.ok!==true||!Array.isArray(j?.fixtures)) throw Error('BOARD_UNHEALTHY');
+          console.error('BOARD fixtures=',j.fixtures.length);
+          for(const f of j.fixtures.slice(0,30)){
+            const id=String(f?.fixtureId??f?.id??'').trim();
+            if(id) console.log(id);
+          }
+          NODE
+          : > /tmp/gate-report.txt
+          n=0
+          while IFS= read -r id; do
+            [ -n "$id" ] || continue
+            n=$((n+1)); [ "$n" -le 8 ] || break
+            code=$(curl -sS -L --retry 3 --retry-all-errors --max-time 30 -o "/tmp/gate-$n.json" -w '%{http_code}' "$BALL46_WORKER/api/full-market/fixture-odds?fixtureId=$id&diag=${GITHUB_RUN_ID}-$n" || true)
+            echo "FIXTURE $id HTTP $code" | tee -a /tmp/gate-report.txt
+            if [ "$code" = 200 ]; then
+              ID="$id" N="$n" node - <<'NODE' | tee -a /tmp/gate-report.txt
+              const fs=require('fs');
+              const n=process.env.N;
+              const j=JSON.parse(fs.readFileSync(`/tmp/gate-${n}.json`,'utf8'));
+              const norm=x=>String(x??'').toLowerCase().replace(/[^a-z0-9]/g,'');
+              const known=['bet365','pinnacle','williamhill','ladbrokes','vcbet','1xbet','bwin','easybets','interwetten','betfair','snai','macauslot','betsson','betathome','18bet','10bet','12bet','coral','crown'];
+              const found=new Set();
+              function walk(v,depth=0){
+                if(v==null||depth>9)return;
+                if(Array.isArray(v)){for(const x of v)walk(x,depth+1);return}
+                if(typeof v!=='object')return;
+                for(const [k,x] of Object.entries(v)){
+                  const nk=norm(k);
+                  for(const b of known) if(nk===norm(b)) found.add(b);
+                  if(k==='bookmaker'||k==='name'||k==='slug'){
+                    const nv=norm(x); for(const b of known) if(nv===norm(b)) found.add(b);
+                  }
+                  walk(x,depth+1);
+                }
+              }
+              walk(j?.fullOdds);
+              console.log(JSON.stringify({fixtureId:process.env.ID,ok:j?.ok,bookmakerCount:j?.bookmakerCount,source:j?.source,cached:j?.cached,stale:j?.stale,found:[...found]}));
+              NODE
+            fi
+          done < /tmp/fixture-ids.txt
+          cat /tmp/gate-report.txt
+
+      - name: Assert diagnosis is informative
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q '^FIXTURE ' /tmp/gate-report.txt
+          echo 'DIAGNOSTIC_COMPLETE_NO_DEPLOY'
