@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-24T05:02:01Z",
+  "updated_at": "2026-09-24T10:09:52Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -3859,8 +3859,8 @@
       "edge": 10.8,
       "ev": 0.1388,
       "required_confidence": 0.6,
-      "result": "PENDING",
-      "ft": null,
+      "result": "WIN",
+      "ft": "1-2",
       "locked_at": "2026-09-24T01:40:39Z",
       "source_url": "https://www.goaloo.com/football/msg-prime-minister-s-cup-papua-new-guinea-vs-new-caledonia/h2h-3089770",
       "summary_url": "https://www.goaloo.com/football/msg-prime-minister-s-cup-papua-new-guinea-vs-new-caledonia/summary-3089770",
@@ -3920,7 +3920,12 @@
         "away_recent": 10,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": 1.0,
+      "profit": 85.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-24T10:09:52Z"
     },
     {
       "id": "7c7221118206e8e9-OU-UNDER-3p5",
@@ -130083,6 +130088,96 @@
       "settlement_source": "goaloo-bf_us-direct-index",
       "goaloo_terminal_state": -1,
       "settled_at": "2026-09-24T05:02:01Z"
+    },
+    {
+      "id": "74039b2daa15746f-AH-AWAY-0p25",
+      "goaloo_id": "3089770",
+      "date": "2026-09-24",
+      "kickoff": "2026-09-24 07:00:00",
+      "league": "MSG Prime Minister's Cup",
+      "home": "Papua New Guinea",
+      "away": "New Caledonia",
+      "market": "AH",
+      "selection": "AWAY",
+      "line": 0.25,
+      "pick": "New Caledonia +0.25",
+      "side": "away",
+      "odds": 1.85,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.6097,
+      "model_probability": 0.6097,
+      "market_fair_probability": 0.5013,
+      "market_edge": 0.1083,
+      "edge": 10.8,
+      "ev": 0.1388,
+      "required_confidence": 0.6,
+      "result": "WIN",
+      "ft": "1-2",
+      "locked_at": "2026-09-24T01:40:39Z",
+      "source_url": "https://www.goaloo.com/football/msg-prime-minister-s-cup-papua-new-guinea-vs-new-caledonia/h2h-3089770",
+      "summary_url": "https://www.goaloo.com/football/msg-prime-minister-s-cup-papua-new-guinea-vs-new-caledonia/summary-3089770",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 1.155,
+        "lambda_away": 1.308,
+        "home_win": 0.2878,
+        "draw": 0.2921,
+        "away_win": 0.4201,
+        "h2h_adjustment": -0.0075,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": -0.3252,
+          "gd_edge": -0.1643,
+          "clean_sheet_edge": -0.4439,
+          "failed_to_score_edge": -0.3659,
+          "bounded_adjustment": -0.0219,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": 1.0,
+      "profit": 85.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-24T10:09:52Z"
     }
   ],
   "note": "Automated Full-Time Winner First feed. Supplemental markets remain unpublished.",
