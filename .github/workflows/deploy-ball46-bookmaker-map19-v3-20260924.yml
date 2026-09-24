@@ -1,0 +1,190 @@
+name: Deploy Ball46 19 Bookmaker Map v3 20260924
+
+on:
+  push:
+    branches: [work/ball46-bookmaker-map19-prod-safe-20260924]
+    paths:
+      - '.github/workflows/deploy-ball46-bookmaker-map19-v3-20260924.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  deploy-bookmaker-map19:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+
+      - name: Mirror exact current Production package
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/prod
+          fetch_required(){
+            name="$1"; safe="${name//\//_}"
+            code=$(curl -sS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 -o "/tmp/prod/$safe" -w '%{http_code}' "$BALL46_WORKER/$name?book19-copy=${GITHUB_RUN_ID}") || true
+            [ "$code" = 200 ] || { echo "REQUIRED_PROD_ASSET_HTTP_${code}:$name"; exit 1; }
+            test -s "/tmp/prod/$safe" || { echo "REQUIRED_PROD_ASSET_EMPTY:$name"; exit 1; }
+            mkdir -p "$(dirname "nomad-live-343/$name")"
+            cp "/tmp/prod/$safe" "nomad-live-343/$name"
+          }
+
+          fetch_required index.html
+          python3 - <<'PY' > /tmp/index-assets.txt
+          from pathlib import Path
+          import re
+          h=Path('nomad-live-343/index.html').read_text(errors='ignore')
+          found=set()
+          for x in re.findall(r'''(?:src|href)=["']([^"']+)["']''',h,re.I):
+              x=x.split('?',1)[0].split('#',1)[0].strip().lstrip('./').lstrip('/')
+              if not x or '://' in x or '/' in x: continue
+              if re.search(r'\.(?:js|css|svg|json|png|webp|jpg|jpeg|ico)$',x,re.I): found.add(x)
+          for x in sorted(found): print(x)
+          PY
+          while IFS= read -r name; do
+            [ -n "$name" ] || continue
+            fetch_required "$name"
+          done < /tmp/index-assets.txt
+
+          fetch_required dashboard-v2-stage3.js
+          cp nomad-live-343/dashboard-v2-stage3.js /tmp/prod/dashboard-v2-stage3.js
+          sha256sum nomad-live-343/index.html | awk '{print $1}' > /tmp/index-before.sha
+
+          : > /tmp/protected.sha
+          protected='dashboard-v2.css dashboard-v2-tune.js v2-shared.css v2-shared.js bulk-odds-compat-343.js expanded-match-343.js full-market-bookmaker-343.js live-summary-full-odds-343.js signal-next.js singlepage-workspace-343.js singlepage-workspace-343.css ball46-next.css market-registry-343.js'
+          for f in $protected; do
+            fetch_required "$f"
+            printf '%s  %s\n' "$(sha256sum "nomad-live-343/$f" | awk '{print $1}')" "$f" >> /tmp/protected.sha
+          done
+
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/board?book19-before=${GITHUB_RUN_ID}" -o /tmp/board-before.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/signals?book19-before=${GITHUB_RUN_ID}" -o /tmp/signals-before.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/statistics?book19-before=${GITHUB_RUN_ID}" -o /tmp/stats-before.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const b=JSON.parse(fs.readFileSync('/tmp/board-before.json'));
+          const s=JSON.parse(fs.readFileSync('/tmp/signals-before.json'));
+          const t=JSON.parse(fs.readFileSync('/tmp/stats-before.json'));
+          if(b?.ok!==true||!Array.isArray(b?.fixtures)||!b.fixtures.length)throw Error('PRE_BOARD_UNHEALTHY');
+          if(!Array.isArray(s?.signals))throw Error('PRE_SIGNALS_UNHEALTHY');
+          if(t?.ok!==true||!Array.isArray(t?.rows))throw Error('PRE_STATS_UNHEALTHY');
+          console.log('PRE_OK',{fixtures:b.fixtures.length,signals:s.signals.length,settled:t.rows.length});
+          NODE
+
+      - name: Patch only dashboard bookmaker map
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('nomad-live-343/dashboard-v2-stage3.js')
+          s=p.read_text()
+          start=s.find('const BOOKS=[')
+          if start < 0: raise SystemExit('BOOKS_START_NOT_FOUND')
+          end=s.find('];',start)
+          if end < 0: raise SystemExit('BOOKS_END_NOT_FOUND')
+          end += 2
+          old=s[start:end]
+          if old.count("{slug:") != 10: raise SystemExit('CURRENT_DASHBOARD_BOOK_COUNT_NOT_10')
+          new="const BOOKS=[{slug:'bet365',name:'Bet365'},{slug:'pinnacle',name:'Pinnacle'},{slug:'williamhill',name:'William Hill'},{slug:'ladbrokes',name:'Ladbrokes'},{slug:'vcbet',name:'VCBet'},{slug:'1xbet',name:'1xBet'},{slug:'bwin',name:'Bwin'},{slug:'easybets',name:'Easybets'},{slug:'interwetten',name:'Interwetten'},{slug:'betfair',name:'Betfair'},{slug:'snai',name:'SNAI'},{slug:'macauslot',name:'Macau Slot'},{slug:'betsson',name:'Betsson'},{slug:'betathome',name:'Bet-at-home'},{slug:'18bet',name:'18Bet'},{slug:'10bet',name:'10BET'},{slug:'12bet',name:'12Bet'},{slug:'coral',name:'Coral'},{slug:'crown',name:'Crown'}];"
+          if new.count("{slug:") != 19: raise SystemExit('NEW_BOOK_COUNT_NOT_19')
+          p.write_text(s[:start]+new+s[end:])
+          print('PATCHED_BOOKMAKERS_10_TO_19')
+          PY
+          node --check nomad-live-343/dashboard-v2-stage3.js
+          cmp -s nomad-live-343/index.html /tmp/prod/index.html
+          while read -r expected f; do
+            actual=$(sha256sum "nomad-live-343/$f" | awk '{print $1}')
+            [ "$actual" = "$expected" ] || { echo "PROTECTED_LOCAL_CHANGED:$f"; exit 1; }
+          done < /tmp/protected.sha
+          ! cmp -s nomad-live-343/dashboard-v2-stage3.js /tmp/prod/dashboard-v2-stage3.js
+
+      - name: Dry run exact Production package with one dashboard change
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          cd workers/nomadtips3-343-preview
+          npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.ball46.jsonc
+
+      - name: Deploy 19 bookmaker dashboard map
+        id: deploy
+        working-directory: workers/nomadtips3-343-preview
+        shell: bash
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Verify Production and untouched systems
+        id: verify
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for n in $(seq 1 20); do
+            if curl -fsS -L --retry 2 --retry-all-errors --retry-delay 1 --max-time 20 "$BALL46_WORKER/dashboard-v2-stage3.js?book19-after=${GITHUB_RUN_ID}-${n}" -o /tmp/dashboard-after.js && grep -Fq "slug:'williamhill'" /tmp/dashboard-after.js && grep -Fq "slug:'coral'" /tmp/dashboard-after.js; then ok=1; break; fi
+            sleep 3
+          done
+          [ "$ok" = 1 ] || { echo 'DASHBOARD_19_BOOK_MAP_NOT_LIVE'; exit 1; }
+          node - <<'NODE'
+          const fs=require('fs');
+          const s=fs.readFileSync('/tmp/dashboard-after.js','utf8');
+          const start=s.indexOf('const BOOKS=['), end=s.indexOf('];',start)+2;
+          const count=(s.slice(start,end).match(/\{slug:/g)||[]).length;
+          if(count!==19)throw Error('LIVE_DASHBOARD_BOOK_COUNT_'+count);
+          console.log('LIVE_DASHBOARD_BOOK_COUNT',count);
+          NODE
+
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/index.html?book19-index=${GITHUB_RUN_ID}" -o /tmp/index-after.html
+          before=$(cat /tmp/index-before.sha)
+          after=$(sha256sum /tmp/index-after.html | awk '{print $1}')
+          [ "$after" = "$before" ] || { echo 'INDEX_CHANGED_UNEXPECTEDLY'; exit 1; }
+
+          while read -r expected f; do
+            curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/$f?book19-protected=${GITHUB_RUN_ID}" -o "/tmp/protected-${f//\//_}"
+            actual=$(sha256sum "/tmp/protected-${f//\//_}" | awk '{print $1}')
+            [ "$actual" = "$expected" ] || { echo "PROTECTED_DEPLOYED_CHANGED:$f"; exit 1; }
+          done < /tmp/protected.sha
+
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/board?book19-final=${GITHUB_RUN_ID}" -o /tmp/board-after.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/signals?book19-final=${GITHUB_RUN_ID}" -o /tmp/signals-after.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/statistics?book19-final=${GITHUB_RUN_ID}" -o /tmp/stats-after.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const b=JSON.parse(fs.readFileSync('/tmp/board-after.json'));
+          const s=JSON.parse(fs.readFileSync('/tmp/signals-after.json'));
+          const t=JSON.parse(fs.readFileSync('/tmp/stats-after.json'));
+          if(b?.ok!==true||!Array.isArray(b?.fixtures)||!b.fixtures.length)throw Error('POST_BOARD_UNHEALTHY');
+          if(!Array.isArray(s?.signals))throw Error('POST_SIGNALS_UNHEALTHY');
+          if(t?.ok!==true||!Array.isArray(t?.rows))throw Error('POST_STATS_UNHEALTHY');
+          const id=String(b.fixtures[0]?.fixtureId??b.fixtures[0]?.id??'').trim();
+          if(!id)throw Error('POST_NO_FIXTURE_ID');
+          fs.writeFileSync('/tmp/post-fixture-id',id);
+          console.log('POST_CORE_OK',{fixtures:b.fixtures.length,signals:s.signals.length,settled:t.rows.length});
+          NODE
+          id=$(cat /tmp/post-fixture-id)
+          curl -fsS -L --retry 3 --retry-all-errors --retry-delay 1 --max-time 30 "$BALL46_WORKER/api/full-market/fixture-odds?fixtureId=$id&book19-final=${GITHUB_RUN_ID}" -o /tmp/full-after.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const j=JSON.parse(fs.readFileSync('/tmp/full-after.json'));
+          if(j?.ok!==true||!j?.fullOdds||Number(j?.bookmakerCount||0)<19)throw Error('POST_FULL_MARKET_NOT_19');
+          console.log('BOOKMAKER_MAP19_OK',{bookmakerCount:j.bookmakerCount,source:j.source,cached:j.cached,stale:j.stale});
+          NODE
+
+      - name: Restore exact pre-change Production dashboard if verification fails
+        if: ${{ failure() && steps.deploy.outcome == 'success' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp /tmp/prod/dashboard-v2-stage3.js nomad-live-343/dashboard-v2-stage3.js
+          cd workers/nomadtips3-343-preview
+          npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
