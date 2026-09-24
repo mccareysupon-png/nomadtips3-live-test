@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-24T01:42:30Z",
+  "updated_at": "2026-09-24T05:02:01Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -1299,8 +1299,8 @@
       "edge": 29.7,
       "ev": 0.4814,
       "required_confidence": 0.6,
-      "result": "PENDING",
-      "ft": null,
+      "result": "WIN",
+      "ft": "2-2",
       "locked_at": "2026-09-24T01:40:34Z",
       "source_url": "https://www.goaloo.com/football/honduras-liga-de-ascenso-gimnastico-de-tegucigalpa-vs-real-tegus/h2h-3094832",
       "summary_url": "https://www.goaloo.com/football/honduras-liga-de-ascenso-gimnastico-de-tegucigalpa-vs-real-tegus/summary-3094832",
@@ -1360,7 +1360,12 @@
         "away_recent": 10,
         "h2h_n": 0,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": 1.0,
+      "profit": 87.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-24T05:02:01Z"
     },
     {
       "id": "9993a06fb0646af5-AH-AWAY-1p5",
@@ -2659,8 +2664,8 @@
       "edge": 16.3,
       "ev": 0.2353,
       "required_confidence": 0.6,
-      "result": "PENDING",
-      "ft": null,
+      "result": "PUSH",
+      "ft": "3-3",
       "locked_at": "2026-09-24T01:40:33Z",
       "source_url": "https://www.goaloo.com/football/canadian-premier-league-vancouver-fc-vs-york-united-fc/h2h-2937616",
       "summary_url": "https://www.goaloo.com/football/canadian-premier-league-vancouver-fc-vs-york-united-fc/summary-2937616",
@@ -2720,7 +2725,12 @@
         "away_recent": 10,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": 0.0,
+      "profit": 0.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-24T05:02:01Z"
     },
     {
       "id": "92a1184066185a71-OU-OVER-3p25",
@@ -129893,6 +129903,186 @@
       "settlement_source": "goaloo-bf_us-direct-index",
       "goaloo_terminal_state": -1,
       "settled_at": "2026-09-23T23:46:50Z"
+    },
+    {
+      "id": "f10b9aae0c697df3-OU-OVER-2p75",
+      "goaloo_id": "3094832",
+      "date": "2026-09-24",
+      "kickoff": "2026-09-24 02:00:00",
+      "league": "Honduras Liga de Ascenso",
+      "home": "Gimnastico de Tegucigalpa",
+      "away": "Real Tegus",
+      "market": "OU",
+      "selection": "OVER",
+      "line": 2.75,
+      "pick": "Over 2.75",
+      "side": null,
+      "odds": 1.87,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.7893,
+      "model_probability": 0.7893,
+      "market_fair_probability": 0.4918,
+      "market_edge": 0.2975,
+      "edge": 29.7,
+      "ev": 0.4814,
+      "required_confidence": 0.6,
+      "result": "WIN",
+      "ft": "2-2",
+      "locked_at": "2026-09-24T01:40:34Z",
+      "source_url": "https://www.goaloo.com/football/honduras-liga-de-ascenso-gimnastico-de-tegucigalpa-vs-real-tegus/h2h-3094832",
+      "summary_url": "https://www.goaloo.com/football/honduras-liga-de-ascenso-gimnastico-de-tegucigalpa-vs-real-tegus/summary-3094832",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 2.411,
+        "lambda_away": 2.138,
+        "home_win": 0.4507,
+        "draw": 0.2014,
+        "away_win": 0.3479,
+        "h2h_adjustment": 0.0,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.0146,
+          "gd_edge": 0.1223,
+          "clean_sheet_edge": -0.1024,
+          "failed_to_score_edge": 0.0,
+          "bounded_adjustment": 0.0026,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 0,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": 1.0,
+      "profit": 87.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-24T05:02:01Z"
+    },
+    {
+      "id": "9b857947cab4f75c-AH-HOME-m0p0",
+      "goaloo_id": "2937616",
+      "date": "2026-09-24",
+      "kickoff": "2026-09-24 02:00:00",
+      "league": "Canadian Premier League",
+      "home": "Vancouver FC",
+      "away": "York United FC",
+      "market": "AH",
+      "selection": "HOME",
+      "line": -0.0,
+      "pick": "Vancouver FC -0",
+      "side": "home",
+      "odds": 1.85,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.6577,
+      "model_probability": 0.6577,
+      "market_fair_probability": 0.4945,
+      "market_edge": 0.1631,
+      "edge": 16.3,
+      "ev": 0.2353,
+      "required_confidence": 0.6,
+      "result": "PUSH",
+      "ft": "3-3",
+      "locked_at": "2026-09-24T01:40:33Z",
+      "source_url": "https://www.goaloo.com/football/canadian-premier-league-vancouver-fc-vs-york-united-fc/h2h-2937616",
+      "summary_url": "https://www.goaloo.com/football/canadian-premier-league-vancouver-fc-vs-york-united-fc/summary-2937616",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 1.812,
+        "lambda_away": 1.09,
+        "home_win": 0.5594,
+        "draw": 0.2478,
+        "away_win": 0.1928,
+        "h2h_adjustment": -0.005,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.4163,
+          "gd_edge": 0.4724,
+          "clean_sheet_edge": 0.322,
+          "failed_to_score_edge": 0.2634,
+          "bounded_adjustment": 0.0307,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": 0.0,
+      "profit": 0.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-24T05:02:01Z"
     }
   ],
   "note": "Automated Full-Time Winner First feed. Supplemental markets remain unpublished.",
