@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-24T10:09:52Z",
+  "updated_at": "2026-09-24T15:14:17Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -194,8 +194,8 @@
       "edge": 45.7,
       "ev": 0.7243,
       "required_confidence": 0.6,
-      "result": "PENDING",
-      "ft": null,
+      "result": "HALF_WIN",
+      "ft": "2-0",
       "locked_at": "2026-09-24T01:40:51Z",
       "source_url": "https://www.goaloo.com/football/fifa-asean-cup-myanmar-font-color-880000-n-font-vs-timor-leste/h2h-3088953",
       "summary_url": "https://www.goaloo.com/football/fifa-asean-cup-myanmar-font-color-880000-n-font-vs-timor-leste/summary-3088953",
@@ -255,7 +255,12 @@
         "away_recent": 8,
         "h2h_n": 0,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": 0.5,
+      "profit": 37.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-24T15:14:17Z"
     },
     {
       "id": "4541951fddedf2c0-AH-HOME-1p5",
@@ -3094,8 +3099,8 @@
       "edge": 11.7,
       "ev": 0.1529,
       "required_confidence": 0.6,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "1-0",
       "locked_at": "2026-09-24T01:40:54Z",
       "source_url": "https://www.goaloo.com/football/africa-cup-of-nations-namibia-vs-republic-of-the-congo/h2h-3001068",
       "summary_url": "https://www.goaloo.com/football/africa-cup-of-nations-namibia-vs-republic-of-the-congo/summary-3001068",
@@ -3155,7 +3160,12 @@
         "away_recent": 9,
         "h2h_n": 4,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-24T15:14:17Z"
     },
     {
       "id": "bc9026b3538e4e9a-AH-HOME-0p75",
@@ -130178,6 +130188,186 @@
       "settlement_source": "goaloo-bf_us-direct-index",
       "goaloo_terminal_state": -1,
       "settled_at": "2026-09-24T10:09:52Z"
+    },
+    {
+      "id": "c352f95a05b8c4ef-AH-AWAY-2p25",
+      "goaloo_id": "3088953",
+      "date": "2026-09-24",
+      "kickoff": "2026-09-24 12:00:00",
+      "league": "FIFA ASEAN Cup",
+      "home": "Myanmar<font color=#880000>(N)</font>",
+      "away": "Timor Leste",
+      "market": "AH",
+      "selection": "AWAY",
+      "line": 2.25,
+      "pick": "Timor Leste +2.25",
+      "side": "away",
+      "odds": 1.74,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.9903,
+      "model_probability": 0.9903,
+      "market_fair_probability": 0.5335,
+      "market_edge": 0.4568,
+      "edge": 45.7,
+      "ev": 0.7243,
+      "required_confidence": 0.6,
+      "result": "HALF_WIN",
+      "ft": "2-0",
+      "locked_at": "2026-09-24T01:40:51Z",
+      "source_url": "https://www.goaloo.com/football/fifa-asean-cup-myanmar-font-color-880000-n-font-vs-timor-leste/h2h-3088953",
+      "summary_url": "https://www.goaloo.com/football/fifa-asean-cup-myanmar-font-color-880000-n-font-vs-timor-leste/summary-3088953",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 0.862,
+        "lambda_away": 2.969,
+        "home_win": 0.0261,
+        "draw": 0.135,
+        "away_win": 0.8389,
+        "h2h_adjustment": 0.0,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": -0.5496,
+          "gd_edge": -0.9382,
+          "clean_sheet_edge": -0.3902,
+          "failed_to_score_edge": -0.3512,
+          "bounded_adjustment": -0.0483,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 8,
+        "h2h_n": 0,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": 0.5,
+      "profit": 37.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-24T15:14:17Z"
+    },
+    {
+      "id": "c4064122981a72f8-AH-AWAY-0p25",
+      "goaloo_id": "3001068",
+      "date": "2026-09-24",
+      "kickoff": "2026-09-24 13:00:00",
+      "league": "Africa Cup of Nations",
+      "home": "Namibia",
+      "away": "Republic of the Congo",
+      "market": "AH",
+      "selection": "AWAY",
+      "line": 0.25,
+      "pick": "Republic of the Congo +0.25",
+      "side": "away",
+      "odds": 1.78,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.638,
+      "model_probability": 0.638,
+      "market_fair_probability": 0.5215,
+      "market_edge": 0.1165,
+      "edge": 11.7,
+      "ev": 0.1529,
+      "required_confidence": 0.6,
+      "result": "LOSS",
+      "ft": "1-0",
+      "locked_at": "2026-09-24T01:40:54Z",
+      "source_url": "https://www.goaloo.com/football/africa-cup-of-nations-namibia-vs-republic-of-the-congo/h2h-3001068",
+      "summary_url": "https://www.goaloo.com/football/africa-cup-of-nations-namibia-vs-republic-of-the-congo/summary-3001068",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 0.958,
+        "lambda_away": 1.193,
+        "home_win": 0.2692,
+        "draw": 0.3139,
+        "away_win": 0.4169,
+        "h2h_adjustment": 0.0,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": -0.1268,
+          "gd_edge": -0.2447,
+          "clean_sheet_edge": -0.0732,
+          "failed_to_score_edge": -0.4244,
+          "bounded_adjustment": -0.0144,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 9,
+        "h2h_n": 4,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-24T15:14:17Z"
     }
   ],
   "note": "Automated Full-Time Winner First feed. Supplemental markets remain unpublished.",
