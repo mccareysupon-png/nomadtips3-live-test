@@ -1,0 +1,104 @@
+name: Remove Ball46 Scorebar Below Workspace 20260926
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  remove-scorebar-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Mirror exact current Production
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/prod /tmp/rollback
+          fetch_required(){
+            name="$1"; safe="${name//\//_}"
+            code=$(curl -sS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 -o "/tmp/prod/$safe" -w '%{http_code}' "$BALL46_WORKER/$name?scorebar-remove-copy=${GITHUB_RUN_ID}") || true
+            [ "$code" = 200 ] || { echo "PROD_ASSET_HTTP_${code}:$name"; exit 1; }
+            test -s "/tmp/prod/$safe"
+            mkdir -p "$(dirname "nomad-live-343/$name")"
+            cp "/tmp/prod/$safe" "nomad-live-343/$name"
+          }
+          fetch_required index.html
+          python3 - <<'PY' > /tmp/index-assets.txt
+          from pathlib import Path
+          import re
+          h=Path('nomad-live-343/index.html').read_text(errors='ignore')
+          found=set()
+          for x in re.findall(r'''(?:src|href)=["']([^"']+)["']''',h,re.I):
+              x=x.split('?',1)[0].split('#',1)[0].strip().lstrip('./').lstrip('/')
+              if x and '://' not in x and '/' not in x and re.search(r'\.(?:js|css|svg|json|png|webp|jpg|jpeg|ico)$',x,re.I): found.add(x)
+          print('\n'.join(sorted(found)))
+          PY
+          while IFS= read -r f; do [ -z "$f" ] || fetch_required "$f"; done < /tmp/index-assets.txt
+          cp nomad-live-343/index.html /tmp/rollback/index.html
+          sha256sum nomad-live-343/dashboard-v2-stage3.js > /tmp/rollback/dashboard.sha256
+          grep -Fq 'BALL46_SCOREBAR_BELOW_WORKSPACE_20260926' nomad-live-343/index.html
+          grep -Fq 'ball46-scorebar-below-workspace-20260926.js' nomad-live-343/index.html
+
+      - name: Snapshot current scorebar state
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-pre-scorebar-remove-${{ github.run_id }}
+          path: /tmp/rollback
+          retention-days: 30
+
+      - name: Remove only scorebar script reference
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('nomad-live-343/index.html')
+          s=p.read_text()
+          block='<!-- BALL46_SCOREBAR_BELOW_WORKSPACE_20260926 --><script src="ball46-scorebar-below-workspace-20260926.js?v=1" defer></script>'
+          if s.count(block)!=1: raise SystemExit('SCOREBAR_BLOCK_COUNT_'+str(s.count(block)))
+          p.write_text(s.replace(block,'',1))
+          PY
+          ! grep -Fq 'BALL46_SCOREBAR_BELOW_WORKSPACE_20260926' nomad-live-343/index.html
+          [ "$(sha256sum nomad-live-343/dashboard-v2-stage3.js|awk '{print $1}')" = "$(awk '{print $1}' /tmp/rollback/dashboard.sha256)" ]
+
+      - name: Dry run exact package
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"; test -n "$CLOUDFLARE_ACCOUNT_ID"
+          cd workers/nomadtips3-343-preview
+          npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.ball46.jsonc
+
+      - name: Deploy scorebar reference removal
+        working-directory: workers/nomadtips3-343-preview
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Verify scorebar removed and core untouched
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/index.html?scorebar-remove-final=${GITHUB_RUN_ID}" -o /tmp/index-after.html
+          ! grep -Fq 'BALL46_SCOREBAR_BELOW_WORKSPACE_20260926' /tmp/index-after.html
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/dashboard-v2-stage3.js?scorebar-remove-dashboard=${GITHUB_RUN_ID}" -o /tmp/dashboard-after.js
+          [ "$(sha256sum /tmp/dashboard-after.js|awk '{print $1}')" = "$(awk '{print $1}' /tmp/rollback/dashboard.sha256)" ]
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/board?scorebar-remove-final=${GITHUB_RUN_ID}" -o /tmp/board.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/signals?scorebar-remove-final=${GITHUB_RUN_ID}" -o /tmp/signals.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/statistics?scorebar-remove-final=${GITHUB_RUN_ID}" -o /tmp/stats.json
+          node -e "const fs=require('fs');const b=JSON.parse(fs.readFileSync('/tmp/board.json'));const s=JSON.parse(fs.readFileSync('/tmp/signals.json'));const t=JSON.parse(fs.readFileSync('/tmp/stats.json'));if(b?.ok!==true||!Array.isArray(b?.fixtures))throw Error('BOARD');if(!Array.isArray(s?.signals))throw Error('SIGNALS');if(t?.ok!==true||!Array.isArray(t?.rows))throw Error('STATS');console.log('BALL46_SCOREBAR_ONLY_REMOVE_PASS',{fixtures:b.fixtures.length,signals:s.signals.length,settled:t.rows.length})"
