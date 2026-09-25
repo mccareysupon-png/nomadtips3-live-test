@@ -1,0 +1,25 @@
+name: Deploy Engine343 Best19 Production D
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/deploy-engine343-best19-production-20260925d.yml']
+permissions:
+  contents: read
+env:
+  CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  WORK_BRANCH: work/343-best-price-19book-20260918
+  PROD_URL: https://nomadtips3-engine-343.mccarey-supon.workers.dev
+jobs:
+  deploy-production:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.WORK_BRANCH }}
+      - working-directory: workers/nomadtips3-engine-343
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.toml
+      - run: |
+          sleep 4
+          curl -fsS "$PROD_URL/health?_=$RANDOM" | tee /tmp/h.json
+          grep -Fq 'v5-best19-referee' /tmp/h.json
