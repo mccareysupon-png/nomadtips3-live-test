@@ -90,6 +90,10 @@ diag="""    if(u.pathname==='/referee'&&request.method==='GET'){
 """
 s=s[:start]+diag+s[end:]
 s=s.replace("priceReference:'BET365_FULL_MARKET'", "priceReference:'BEST19_CONSENSUS_LINE'")
-s=s.replace("referenceProviderLine:best.referenceProviderLine??null,refereeBookCount:best.bookCount,refereeOfferCount:best.offerCount", "referenceProviderLine:best.referenceProviderLine??null,refereeBookCount:best.bookCount,refereeOfferCount:best.offerCount,refereeConsensusBooks:best.refereeConsensusBooks??null,refereeConsensusSlugs:best.refereeConsensusSlugs??[]")
+anchor="referenceProviderLine:best.referenceProviderLine??null,refereeBookCount:best.bookCount,refereeOfferCount:best.offerCount"
+extra=",refereeConsensusBooks:best.refereeConsensusBooks??null,refereeConsensusSlugs:best.refereeConsensusSlugs??[]"
+while anchor+extra in s:
+    s=s.replace(anchor+extra,anchor)
+s=s.replace(anchor,anchor+extra)
 p.write_text(s)
 print('Best19 all-referee consensus ready')
