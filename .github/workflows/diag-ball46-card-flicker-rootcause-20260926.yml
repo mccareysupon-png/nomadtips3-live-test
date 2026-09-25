@@ -1,0 +1,49 @@
+name: Diagnose Ball46 Card Flicker Root Cause 20260926
+on:
+  push:
+    branches:
+      - diag/ball46-card-flicker-rootcause-20260926
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch exact current production JS
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 30 \
+            'https://ball46-production.mccarey-supon.workers.dev/dashboard-v2-stage3.js?diag-flicker=${{ github.run_id }}' \
+            -o /tmp/prod.js
+          test -s /tmp/prod.js
+          node --check /tmp/prod.js
+          echo '=== SHA256 ==='
+          sha256sum /tmp/prod.js
+          echo '=== SIZE ==='
+          wc -c /tmp/prod.js
+          echo '=== COLLAPSED LIMIT ==='
+          grep -n -F 'COLLAPSED_LIMIT' /tmp/prod.js || true
+      - name: Inspect render and DOM replacement patterns
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '=== MATCHED LINES ==='
+          grep -nE 'renderBoard|innerHTML|replaceChildren|replaceWith|outerHTML|removeChild|appendChild|append\(|prepend\(|textContent|classList|animation|opacity|display|hidden|setInterval|setTimeout|requestAnimationFrame|fixtures|matchList|board' /tmp/prod.js | head -n 500 || true
+          echo '=== CONTEXT AROUND renderBoard ==='
+          line=$(grep -n -m1 -E 'function[[:space:]]+renderBoard|const[[:space:]]+renderBoard|renderBoard[[:space:]]*=' /tmp/prod.js | cut -d: -f1 || true)
+          if [ -n "${line:-}" ]; then
+            start=$((line>120 ? line-120 : 1)); end=$((line+260)); sed -n "${start},${end}p" /tmp/prod.js | nl -ba -v "$start"
+          fi
+          echo '=== CONTEXT AROUND BOARD CONTAINER WRITES ==='
+          grep -nE 'innerHTML[[:space:]]*=|replaceChildren\(|outerHTML[[:space:]]*=|replaceWith\(' /tmp/prod.js | while IFS=: read -r n rest; do
+            start=$((n>25 ? n-25 : 1)); end=$((n+40)); echo "--- around line $n ---"; sed -n "${start},${end}p" /tmp/prod.js | nl -ba -v "$start"; done
+      - name: Inspect polling path and render call frequency
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '=== renderBoard CALLS ==='
+          grep -n -F 'renderBoard(' /tmp/prod.js || true
+          echo '=== POLLING / LOAD FUNCTIONS ==='
+          grep -nE 'setInterval|setTimeout|async function|fetch\(|load|refresh|poll|update' /tmp/prod.js | head -n 400 || true
+          echo '=== END READ ONLY DIAGNOSTIC ==='
