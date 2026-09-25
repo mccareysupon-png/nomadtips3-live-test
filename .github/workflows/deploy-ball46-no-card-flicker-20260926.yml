@@ -68,9 +68,7 @@ jobs:
           curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/board?noflicker-before=${GITHUB_RUN_ID}" -o /tmp/board-before.json
           curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/signals?noflicker-before=${GITHUB_RUN_ID}" -o /tmp/signals-before.json
           curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/statistics?noflicker-before=${GITHUB_RUN_ID}" -o /tmp/stats-before.json
-          node - <<'NODE'
-          const fs=require('fs');const b=JSON.parse(fs.readFileSync('/tmp/board-before.json'));const s=JSON.parse(fs.readFileSync('/tmp/signals-before.json'));const t=JSON.parse(fs.readFileSync('/tmp/stats-before.json'));if(b?.ok!==true||!Array.isArray(b?.fixtures))throw Error('PRE_BOARD');if(!Array.isArray(s?.signals))throw Error('PRE_SIGNALS');if(t?.ok!==true||!Array.isArray(t?.rows))throw Error('PRE_STATS');console.log('PRECHECK_OK',b.fixtures.length,s.signals.length,t.rows.length)
-NODE
+          node -e "const fs=require('fs');const b=JSON.parse(fs.readFileSync('/tmp/board-before.json'));const s=JSON.parse(fs.readFileSync('/tmp/signals-before.json'));const t=JSON.parse(fs.readFileSync('/tmp/stats-before.json'));if(b?.ok!==true||!Array.isArray(b?.fixtures))throw Error('PRE_BOARD');if(!Array.isArray(s?.signals))throw Error('PRE_SIGNALS');if(t?.ok!==true||!Array.isArray(t?.rows))throw Error('PRE_STATS');console.log('PRECHECK_OK',b.fixtures.length,s.signals.length,t.rows.length)"
 
       - name: Upload rollback snapshot
         uses: actions/upload-artifact@v4
@@ -152,9 +150,7 @@ function refreshBoardInPlace(){const host=$('[data-board-sections]');if(!host)re
           curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/board?noflicker-final=${GITHUB_RUN_ID}" -o /tmp/board-after.json
           curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/signals?noflicker-final=${GITHUB_RUN_ID}" -o /tmp/signals-after.json
           curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/statistics?noflicker-final=${GITHUB_RUN_ID}" -o /tmp/stats-after.json
-          node - <<'NODE'
-          const fs=require('fs');const b=JSON.parse(fs.readFileSync('/tmp/board-after.json'));const s=JSON.parse(fs.readFileSync('/tmp/signals-after.json'));const t=JSON.parse(fs.readFileSync('/tmp/stats-after.json'));if(b?.ok!==true||!Array.isArray(b?.fixtures))throw Error('POST_BOARD');if(!Array.isArray(s?.signals))throw Error('POST_SIGNALS');if(t?.ok!==true||!Array.isArray(t?.rows))throw Error('POST_STATS');console.log('BALL46_NO_CARD_FLICKER_PASS',{fixtures:b.fixtures.length,signals:s.signals.length,settled:t.rows.length})
-NODE
+          node -e "const fs=require('fs');const b=JSON.parse(fs.readFileSync('/tmp/board-after.json'));const s=JSON.parse(fs.readFileSync('/tmp/signals-after.json'));const t=JSON.parse(fs.readFileSync('/tmp/stats-after.json'));if(b?.ok!==true||!Array.isArray(b?.fixtures))throw Error('POST_BOARD');if(!Array.isArray(s?.signals))throw Error('POST_SIGNALS');if(t?.ok!==true||!Array.isArray(t?.rows))throw Error('POST_STATS');console.log('BALL46_NO_CARD_FLICKER_PASS',{fixtures:b.fixtures.length,signals:s.signals.length,settled:t.rows.length})"
 
       - name: Surgical rollback target if post-deploy verification fails
         if: failure()
