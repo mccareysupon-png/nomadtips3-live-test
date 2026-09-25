@@ -36,7 +36,7 @@ jobs:
           node --check workers/nomadtips3-engine-343/src/index-bulk.js
           grep -Fq "nomad343-engine-v5-best19-referee" workers/nomadtips3-engine-343/src/index-bulk.js
           grep -Fq "BEST_OF_19_INPLAY" workers/nomadtips3-engine-343/src/index-bulk.js
-          grep -Fq "BET365_FULL_MARKET" workers/nomadtips3-engine-343/src/index-bulk.js
+          grep -Fq "BEST19_CONSENSUS_LINE" workers/nomadtips3-engine-343/src/index-bulk.js
           grep -Fq 'binding = "FULL_MARKET"' workers/nomadtips3-engine-343/wrangler.toml
 
       - name: Save work branch if needed
@@ -45,7 +45,7 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add workers/nomadtips3-engine-343
-          git commit -m 'fix(343): use Bet365 Full Market line for Best19 referee' || true
+          git commit -m 'fix(343): enable all live 5Dollar referees in Best19 consensus' || true
           git push origin HEAD:${WORK_BRANCH}
 
       - name: Dry-run canary
