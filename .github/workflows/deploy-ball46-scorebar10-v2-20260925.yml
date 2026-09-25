@@ -1,0 +1,188 @@
+name: Deploy Ball46 Scorebar 10 V2 20260925
+
+on:
+  push:
+    branches: [work/ball46-scorebar10-prod-safe-20260925]
+    paths:
+      - '.github/workflows/deploy-ball46-scorebar10-v2-20260925.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
+  BALL46_PUBLIC: https://www.ball46.com
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  deploy-scorebar10:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+
+      - name: Mirror exact current Production and create rollback point
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/prod /tmp/rollback-snapshot
+          fetch_required(){
+            name="$1"; safe="${name//\//_}"
+            code=$(curl -sS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 -o "/tmp/prod/$safe" -w '%{http_code}' "$BALL46_WORKER/$name?scorebar10-copy=${GITHUB_RUN_ID}") || true
+            [ "$code" = 200 ] || { echo "REQUIRED_PROD_ASSET_HTTP_${code}:$name"; exit 1; }
+            test -s "/tmp/prod/$safe" || { echo "REQUIRED_PROD_ASSET_EMPTY:$name"; exit 1; }
+            mkdir -p "$(dirname "nomad-live-343/$name")"
+            cp "/tmp/prod/$safe" "nomad-live-343/$name"
+          }
+          fetch_required index.html
+          python3 - <<'PY' > /tmp/index-assets.txt
+          from pathlib import Path
+          import re
+          h=Path('nomad-live-343/index.html').read_text(errors='ignore')
+          found=set()
+          for x in re.findall(r'''(?:src|href)=["']([^"']+)["']''',h,re.I):
+              x=x.split('?',1)[0].split('#',1)[0].strip().lstrip('./').lstrip('/')
+              if not x or '://' in x or '/' in x: continue
+              if re.search(r'\.(?:js|css|svg|json|png|webp|jpg|jpeg|ico)$',x,re.I): found.add(x)
+          for x in sorted(found): print(x)
+          PY
+          while IFS= read -r name; do
+            [ -n "$name" ] || continue
+            fetch_required "$name"
+          done < /tmp/index-assets.txt
+          fetch_required dashboard-v2-stage3.js
+          cp nomad-live-343/dashboard-v2-stage3.js /tmp/prod/dashboard-v2-stage3.js
+          cp nomad-live-343/dashboard-v2-stage3.js /tmp/rollback-snapshot/dashboard-v2-stage3.js
+          cp nomad-live-343/index.html /tmp/rollback-snapshot/index.html
+          : > /tmp/protected.sha
+          protected='dashboard-v2.css dashboard-v2-tune.js v2-shared.css v2-shared.js bulk-odds-compat-343.js expanded-match-343.js full-market-bookmaker-343.js live-summary-full-odds-343.js signal-next.js singlepage-workspace-343.js singlepage-workspace-343.css signal-shared-view-343.css ball46-next.css market-registry-343.js'
+          for f in $protected; do
+            fetch_required "$f"
+            printf '%s  %s\n' "$(sha256sum "nomad-live-343/$f" | awk '{print $1}')" "$f" >> /tmp/protected.sha
+          done
+          cp /tmp/protected.sha /tmp/rollback-snapshot/protected.sha
+          sha256sum nomad-live-343/index.html | awk '{print $1}' > /tmp/index-before.sha
+          sha256sum nomad-live-343/dashboard-v2-stage3.js | awk '{print $1}' > /tmp/target-before.sha
+          grep -Fc 'fetch(' nomad-live-343/dashboard-v2-stage3.js > /tmp/fetch-before.count
+          cp /tmp/index-before.sha /tmp/rollback-snapshot/index-before.sha
+          cp /tmp/target-before.sha /tmp/rollback-snapshot/target-before.sha
+          cp /tmp/fetch-before.count /tmp/rollback-snapshot/fetch-before.count
+          grep -Fq 'const COLLAPSED_LIMIT=10;' nomad-live-343/dashboard-v2-stage3.js
+          grep -Fq 'function renderBoard(){' nomad-live-343/dashboard-v2-stage3.js
+          ! grep -Fq 'BALL46_SCOREBAR10_20260925' nomad-live-343/dashboard-v2-stage3.js
+          printf 'run=%s\nsource=exact-current-production\n' "$GITHUB_RUN_ID" > /tmp/rollback-snapshot/ROLLBACK_POINT.txt
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/board?scorebar10-before=${GITHUB_RUN_ID}" -o /tmp/board-before.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/signals?scorebar10-before=${GITHUB_RUN_ID}" -o /tmp/signals-before.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/statistics?scorebar10-before=${GITHUB_RUN_ID}" -o /tmp/stats-before.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const b=JSON.parse(fs.readFileSync('/tmp/board-before.json'));
+          const s=JSON.parse(fs.readFileSync('/tmp/signals-before.json'));
+          const t=JSON.parse(fs.readFileSync('/tmp/stats-before.json'));
+          if(b?.ok!==true||!Array.isArray(b?.fixtures))throw Error('PRE_BOARD_UNHEALTHY');
+          if(!Array.isArray(s?.signals))throw Error('PRE_SIGNALS_UNHEALTHY');
+          if(t?.ok!==true||!Array.isArray(t?.rows))throw Error('PRE_STATS_UNHEALTHY');
+          console.log('SCOREBAR_ROLLBACK_POINT_OK',{fixtures:b.fixtures.length,signals:s.signals.length,settled:t.rows.length});
+          NODE
+
+      - name: Upload pre-scorebar rollback snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-pre-scorebar10-${{ github.run_id }}
+          path: /tmp/rollback-snapshot
+          retention-days: 30
+
+      - name: Add presentation-only 10-match scorebar
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo 'LyogQkFMTDQ2X1NDT1JFQkFSMTBfMjAyNjA5MjUg4oCUIHByZXNlbnRhdGlvbiBvbmx5OyByZXVzZXMgY3VycmVudCBmaXh0dXJlcywgemVybyBleHRyYSByZXF1ZXN0cyAqLwpmdW5jdGlvbiByZW5kZXJTY29yZWJhcjEwKCl7CiAgbGV0IGJhcj1kb2N1bWVudC5xdWVyeVNlbGVjdG9yKCdbZGF0YS1iYWxsNDYtc2NvcmViYXIxMF0nKTsKICBjb25zdCB3b3Jrc3BhY2U9ZG9jdW1lbnQucXVlcnlTZWxlY3RvcignLndvcmtzcGFjZScpOwogIGlmKCF3b3Jrc3BhY2UpcmV0dXJuOwogIGlmKCFiYXIpewogICAgYmFyPWRvY3VtZW50LmNyZWF0ZUVsZW1lbnQoJ3NlY3Rpb24nKTtiYXIuY2xhc3NOYW1lPSdiYWxsNDYtc2NvcmViYXIxMCc7YmFyLmRhdGFzZXQuYmFsbDQ2U2NvcmViYXIxMD0nMSc7YmFyLnNldEF0dHJpYnV0ZSgnYXJpYS1sYWJlbCcsJ0xpdmUgbWF0Y2ggc2NvcmViYXInKTt3b3Jrc3BhY2UucGFyZW50Tm9kZS5pbnNlcnRCZWZvcmUoYmFyLHdvcmtzcGFjZSk7CiAgICBpZighZG9jdW1lbnQuZ2V0RWxlbWVudEJ5SWQoJ2JhbGw0Ni1zY29yZWJhcjEwLXN0eWxlJykpe2NvbnN0IHN0PWRvY3VtZW50LmNyZWF0ZUVsZW1lbnQoJ3N0eWxlJyk7c3QuaWQ9J2JhbGw0Ni1zY29yZWJhcjEwLXN0eWxlJztzdC50ZXh0Q29udGVudD0nLmJhbGw0Ni1zY29yZWJhcjEwe2Rpc3BsYXk6Z3JpZDtncmlkLXRlbXBsYXRlLWNvbHVtbnM6cmVwZWF0KDEwLG1pbm1heCgwLDFmcikpO2dhcDoxcHg7bWFyZ2luOjAgMCAxMHB4O2JhY2tncm91bmQ6dmFyKC0tbGluZSk7Ym9yZGVyOjFweCBzb2xpZCB2YXIoLS1saW5lKTtib3JkZXItcmFkaXVzOjEycHg7b3ZlcmZsb3c6aGlkZGVuO2JveC1zaGFkb3c6dmFyKC0tc2hhZG93KX0uYmFsbDQ2LXNjb3JlYmFyMTAgLnNiMTAtaXRlbXttaW4td2lkdGg6MDtib3JkZXI6MDtiYWNrZ3JvdW5kOnZhcigtLXBhbmVsKTtjb2xvcjp2YXIoLS10ZXh0KTtwYWRkaW5nOjdweCA4cHg7dGV4dC1hbGlnbjpsZWZ0O2N1cnNvcjpwb2ludGVyfS5iYWxsNDYtc2NvcmViYXIxMCAuc2IxMC1pdGVtOmhvdmVyLC5iYWxsNDYtc2NvcmViYXIxMCAuc2IxMC1pdGVtLmFjdGl2ZXtiYWNrZ3JvdW5kOnZhcigtLWdyZWVuLXNvZnQpfS5iYWxsNDYtc2NvcmViYXIxMCAuc2IxMC1pdGVtLmFjdGl2ZXtib3gtc2hhZG93Omluc2V0IDAgLTJweCB2YXIoLS1ncmVlbil9LmJhbGw0Ni1zY29yZWJhcjEwIC5zYjEwLXRvcHtkaXNwbGF5OmZsZXg7YWxpZ24taXRlbXM6Y2VudGVyO2p1c3RpZnktY29udGVudDpzcGFjZS1iZXR3ZWVuO2dhcDo1cHg7Y29sb3I6dmFyKC0tbXV0ZWQpO2ZvbnQtc2l6ZTo3cHg7Zm9udC13ZWlnaHQ6OTAwfS5iYWxsNDYtc2NvcmViYXIxMCAuc2IxMC1zY29yZXtjb2xvcjp2YXIoLS1ncmVlbik7Zm9udC1zaXplOjEzcHh9LmJhbGw0Ni1zY29yZWJhcjEwIC5zYjEwLXRlYW17ZGlzcGxheTpibG9jazttYXJnaW4tdG9wOjRweDt3aGl0ZS1zcGFjZTpub3dyYXA7b3ZlcmZsb3c6aGlkZGVuO3RleHQtb3ZlcmZsb3c6ZWxsaXBzaXM7Zm9udC1zaXplOjhweDtmb250LXdlaWdodDo4MDB9LmJhbGw0Ni1zY29yZWJhcjEwIC5zYjEwLXRlYW0uYXdheXtjb2xvcjp2YXIoLS15ZWxsb3cpfWJvZHlbZGF0YS13b3Jrc3BhY2Utdmlldz0ic2lnbmFsIl0gLmJhbGw0Ni1zY29yZWJhcjEwLGJvZHlbZGF0YS13b3Jrc3BhY2Utdmlldz0ic3RhdGlzdGljcyJdIC5iYWxsNDYtc2NvcmViYXIxMHtkaXNwbGF5Om5vbmV9QG1lZGlhKG1heC13aWR0aDoxMTgwcHgpey5iYWxsNDYtc2NvcmViYXIxMHtncmlkLXRlbXBsYXRlLWNvbHVtbnM6cmVwZWF0KDEwLG1pbm1heCgxMjBweCwxZnIpKTtvdmVyZmxvdy14OmF1dG99fUBtZWRpYShtYXgtd2lkdGg6NzYwcHgpey5iYWxsNDYtc2NvcmViYXIxMHtkaXNwbGF5Om5vbmUhaW1wb3J0YW50fX0nO2RvY3VtZW50LmhlYWQuYXBwZW5kQ2hpbGQoc3QpfQogIH0KICBjb25zdCByb3dzPXZpc2libGVSb3dzKCkuZmlsdGVyKGY9PmNsYXNzaWZ5KGYpPT09J2xpdmUnKS5zbGljZSgwLDEwKTsKICBpZighcm93cy5sZW5ndGgpe2Jhci5pbm5lckhUTUw9JzxkaXYgY2xhc3M9InNiMTAtaXRlbSI+PHNwYW4gY2xhc3M9InNiMTAtdGVhbSI+Tm8gbGl2ZSBtYXRjaGVzPC9zcGFuPjwvZGl2Pic7cmV0dXJufQogIGJhci5pbm5lckhUTUw9cm93cy5tYXAoZj0+e2NvbnN0IGlkPWZpeHR1cmVLZXkoZikscD1zY29yZVBhaXIoZiksc2NvcmU9cC5ob21lPT09bnVsbHx8cC5hd2F5PT09bnVsbD8n4oCUIjonJzpgeyBzaG93KHAuaG9tZSl94oCTJHsgc2hvdyhwLmF3YXkpIH1gO3JldHVyIGA8YnV0dG9uIHR5cGU9ImJ1dHRvbiIgY2xhc3M9InNiMTAtaXRlbSAke2lkPT09c2VsZWN0ZWRJZD8nYWN0aXZlJzonJ30iIGRhdGEtc2NvcmViYXIxMC1pZD0iJHtlc2MoaWQpfSI+PHNwYW4gY2xhc3M9InNiMTAtdG9wIj48c3Bhbj4ke2VzYyhkZXRhaWxlZFN0YXR1cyhmKSl9PC9zcGFuPjxzdHJvbmcgY2xhc3M9InNiMTAtc2NvcmUiPiR7ZXNjKHNjb3JlKX08L3N0cm9uZz48L3NwYW4+PHNwYW4gY2xhc3M9InNiMTAtdGVhbSI+JHtlc2MoZj8uaG9tZT8ubmFtZXx8J+KAlCcpfTwvc3Bhbj48c3BhbiBjbGFzcz0ic2IxMC10ZWFtIGF3YXkiPiR7ZXNjKGY/LmF3YXk/Lm5hbWV8fCfigJQnKX08L3NwYW4+PC9idXR0b24+YH0pLmpvaW4oJycpOwogIGJhci5xdWVyeVNlbGVjdG9yQWxsKCdbZGF0YS1zY29yZWJhcjEwLWlkXScpLmZvckVhY2goYnRuPT5idG4uYWRkRXZlbnRMaXN0ZW5lcignY2xpY2snLCgpPT57c2VsZWN0ZWRJZD1idG4uZGF0YXNldC5zY29yZWJhcjEwSWQ7cmVuZGVyQm9hcmQoKTtyZW5kZXJGZWF0dXJlZCgpfSkpOwp9Cg==' | base64 -d > /tmp/scorebar-snippet.js
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('nomad-live-343/dashboard-v2-stage3.js')
+          s=p.read_text()
+          anchor='function renderBoard(){'
+          if s.count(anchor)!=1: raise SystemExit(f'RENDER_BOARD_ANCHOR_COUNT:{s.count(anchor)}')
+          code=Path('/tmp/scorebar-snippet.js').read_text()
+          s=s.replace(anchor,code+anchor.replace('{','{renderScorebar10();'),1)
+          p.write_text(s)
+          PY
+          node --check nomad-live-343/dashboard-v2-stage3.js
+          grep -Fq 'BALL46_SCOREBAR10_20260925' nomad-live-343/dashboard-v2-stage3.js
+          grep -Fq "visibleRows().filter(f=>classify(f)==='live').slice(0,10)" nomad-live-343/dashboard-v2-stage3.js
+          grep -Fq 'function renderBoard(){renderScorebar10();' nomad-live-343/dashboard-v2-stage3.js
+          [ "$(cat /tmp/fetch-before.count)" = "$(grep -Fc 'fetch(' nomad-live-343/dashboard-v2-stage3.js)" ] || { echo 'FETCH_CALL_COUNT_CHANGED'; exit 1; }
+          [ "$(cat /tmp/index-before.sha)" = "$(sha256sum nomad-live-343/index.html | awk '{print $1}')" ] || { echo 'INDEX_CHANGED_UNEXPECTEDLY'; exit 1; }
+          while read -r expected f; do
+            actual=$(sha256sum "nomad-live-343/$f" | awk '{print $1}')
+            [ "$actual" = "$expected" ] || { echo "PROTECTED_LOCAL_CHANGED:$f"; exit 1; }
+          done < /tmp/protected.sha
+          [ "$(cat /tmp/target-before.sha)" != "$(sha256sum nomad-live-343/dashboard-v2-stage3.js | awk '{print $1}')" ] || { echo 'TARGET_NOT_CHANGED'; exit 1; }
+          echo 'SCOREBAR10_PRESENTATION_ONLY_PATCH_OK'
+
+      - name: Dry run exact Production package
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"; test -n "$CLOUDFLARE_ACCOUNT_ID"
+          cd workers/nomadtips3-343-preview
+          npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.ball46.jsonc
+
+      - name: Deploy Scorebar 10
+        id: deploy
+        working-directory: workers/nomadtips3-343-preview
+        shell: bash
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Verify scorebar and backend continuity
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for n in $(seq 1 20); do
+            if curl -fsS -L --retry 2 --retry-all-errors --retry-delay 1 --max-time 20 "$BALL46_WORKER/dashboard-v2-stage3.js?scorebar10-after=${GITHUB_RUN_ID}-${n}" -o /tmp/target.after.js \
+              && grep -Fq 'BALL46_SCOREBAR10_20260925' /tmp/target.after.js \
+              && grep -Fq "visibleRows().filter(f=>classify(f)==='live').slice(0,10)" /tmp/target.after.js; then ok=1; break; fi
+            sleep 3
+          done
+          [ "$ok" = 1 ] || { echo 'SCOREBAR10_NOT_LIVE'; exit 1; }
+          [ "$(sha256sum /tmp/target.after.js | awk '{print $1}')" = "$(sha256sum nomad-live-343/dashboard-v2-stage3.js | awk '{print $1}')" ] || { echo 'TARGET_DEPLOY_HASH_MISMATCH'; exit 1; }
+          [ "$(cat /tmp/fetch-before.count)" = "$(grep -Fc 'fetch(' /tmp/target.after.js)" ] || { echo 'DEPLOYED_FETCH_CALL_COUNT_CHANGED'; exit 1; }
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/index.html?scorebar10-index=${GITHUB_RUN_ID}" -o /tmp/index.after.html
+          [ "$(sha256sum /tmp/index.after.html | awk '{print $1}')" = "$(cat /tmp/index-before.sha)" ] || { echo 'INDEX_CHANGED_UNEXPECTEDLY'; exit 1; }
+          while read -r expected f; do
+            curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/$f?scorebar10-protected=${GITHUB_RUN_ID}" -o "/tmp/protected-${f//\//_}"
+            actual=$(sha256sum "/tmp/protected-${f//\//_}" | awk '{print $1}')
+            [ "$actual" = "$expected" ] || { echo "PROTECTED_DEPLOYED_CHANGED:$f"; exit 1; }
+          done < /tmp/protected.sha
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/board?scorebar10-final=${GITHUB_RUN_ID}" -o /tmp/board-after.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/signals?scorebar10-final=${GITHUB_RUN_ID}" -o /tmp/signals-after.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/statistics?scorebar10-final=${GITHUB_RUN_ID}" -o /tmp/stats-after.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const b=JSON.parse(fs.readFileSync('/tmp/board-after.json'));
+          const s=JSON.parse(fs.readFileSync('/tmp/signals-after.json'));
+          const t=JSON.parse(fs.readFileSync('/tmp/stats-after.json'));
+          if(b?.ok!==true||!Array.isArray(b?.fixtures))throw Error('POST_BOARD_UNHEALTHY');
+          if(!Array.isArray(s?.signals))throw Error('POST_SIGNALS_UNHEALTHY');
+          if(t?.ok!==true||!Array.isArray(t?.rows))throw Error('POST_STATS_UNHEALTHY');
+          console.log('SCOREBAR10_BACKEND_CONTINUITY_OK',{fixtures:b.fixtures.length,signals:s.signals.length,settled:t.rows.length});
+          NODE
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_PUBLIC/dashboard-v2-stage3.js?scorebar10-public=${GITHUB_RUN_ID}" -o /tmp/public-target.js
+          grep -Fq 'BALL46_SCOREBAR10_20260925' /tmp/public-target.js
+          echo 'BALL46_SCOREBAR10_PRODUCTION_PASS'
+
+      - name: Restore exact pre-scorebar Production if verification fails
+        if: ${{ failure() && steps.deploy.outcome == 'success' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp /tmp/prod/dashboard-v2-stage3.js nomad-live-343/dashboard-v2-stage3.js
+          cd workers/nomadtips3-343-preview
+          npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+          echo 'BALL46_SCOREBAR10_ROLLBACK_COMPLETE'
