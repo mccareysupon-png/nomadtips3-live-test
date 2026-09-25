@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-25T02:01:48Z",
+  "updated_at": "2026-09-25T07:57:20Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -109,8 +109,8 @@
       "edge": 50.0,
       "ev": 0.8295,
       "required_confidence": 0.6,
-      "result": "PENDING",
-      "ft": null,
+      "result": "HALF_WIN",
+      "ft": "5-1",
       "locked_at": "2026-09-25T01:57:31Z",
       "source_url": "https://www.goaloo.com/football/asian-games-football-women-north-korea-w-font-color-880000-n-font-vs-chinese-taipei-w/h2h-3094456",
       "summary_url": "https://www.goaloo.com/football/asian-games-football-women-north-korea-w-font-color-880000-n-font-vs-chinese-taipei-w/summary-3094456",
@@ -170,7 +170,12 @@
         "away_recent": 10,
         "h2h_n": 0,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": 0.5,
+      "profit": 41.5,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-25T07:57:20Z"
     },
     {
       "id": "143c609fcd27ff7b-AH-AWAY-3p25",
@@ -194,8 +199,8 @@
       "edge": 49.1,
       "ev": 0.7994,
       "required_confidence": 0.6,
-      "result": "PENDING",
-      "ft": null,
+      "result": "WIN",
+      "ft": "0-0",
       "locked_at": "2026-09-25T01:57:32Z",
       "source_url": "https://www.goaloo.com/football/asian-games-football-women-china-w-font-color-880000-n-font-vs-vietnam-w/h2h-3094457",
       "summary_url": "https://www.goaloo.com/football/asian-games-football-women-china-w-font-color-880000-n-font-vs-vietnam-w/summary-3094457",
@@ -255,7 +260,12 @@
         "away_recent": 10,
         "h2h_n": 0,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": 1.0,
+      "profit": 80.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-25T07:57:20Z"
     },
     {
       "id": "a765ae161133d4d7-AH-AWAY-2p75",
@@ -2319,8 +2329,8 @@
       "edge": 35.0,
       "ev": 0.5429,
       "required_confidence": 0.6,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "0-2",
       "locked_at": "2026-09-25T01:57:30Z",
       "source_url": "https://www.goaloo.com/football/india-bangalore-super-division-bangalore-city-vs-kodagu-fc/h2h-3094899",
       "summary_url": "https://www.goaloo.com/football/india-bangalore-super-division-bangalore-city-vs-kodagu-fc/summary-3094899",
@@ -2380,7 +2390,12 @@
         "away_recent": 9,
         "h2h_n": 3,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-25T07:57:20Z"
     },
     {
       "id": "6b61b24f535f4528-AH-AWAY-0p25",
@@ -138493,6 +138508,276 @@
       "settlement_source": "goaloo-bf_us-direct-index",
       "goaloo_terminal_state": -1,
       "settled_at": "2026-09-25T01:36:53Z"
+    },
+    {
+      "id": "33ecb5eb1f52686f-AH-AWAY-4p25",
+      "goaloo_id": "3094456",
+      "date": "2026-09-25",
+      "kickoff": "2026-09-25 06:00:00",
+      "league": "Asian Games football Women",
+      "home": "North Korea (W)<font color=#880000>(N)</font>",
+      "away": "Chinese Taipei (W)",
+      "market": "AH",
+      "selection": "AWAY",
+      "line": 4.25,
+      "pick": "Chinese Taipei (W) +4.25",
+      "side": "away",
+      "odds": 1.83,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.9997,
+      "model_probability": 0.9997,
+      "market_fair_probability": 0.5,
+      "market_edge": 0.4997,
+      "edge": 50.0,
+      "ev": 0.8295,
+      "required_confidence": 0.6,
+      "result": "HALF_WIN",
+      "ft": "5-1",
+      "locked_at": "2026-09-25T01:57:31Z",
+      "source_url": "https://www.goaloo.com/football/asian-games-football-women-north-korea-w-font-color-880000-n-font-vs-chinese-taipei-w/h2h-3094456",
+      "summary_url": "https://www.goaloo.com/football/asian-games-football-women-north-korea-w-font-color-880000-n-font-vs-chinese-taipei-w/summary-3094456",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 0.928,
+        "lambda_away": 3.6,
+        "home_win": 0.01,
+        "draw": 0.0994,
+        "away_win": 0.8906,
+        "h2h_adjustment": 0.0,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": -0.413,
+          "gd_edge": -0.9858,
+          "clean_sheet_edge": -0.6293,
+          "failed_to_score_edge": -0.3756,
+          "bounded_adjustment": -0.048,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 0,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": 0.5,
+      "profit": 41.5,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-25T07:57:20Z"
+    },
+    {
+      "id": "143c609fcd27ff7b-AH-AWAY-3p25",
+      "goaloo_id": "3094457",
+      "date": "2026-09-25",
+      "kickoff": "2026-09-25 06:00:00",
+      "league": "Asian Games football Women",
+      "home": "China (W)<font color=#880000>(N)</font>",
+      "away": "Vietnam (W)",
+      "market": "AH",
+      "selection": "AWAY",
+      "line": 3.25,
+      "pick": "Vietnam (W) +3.25",
+      "side": "away",
+      "odds": 1.8,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.9997,
+      "model_probability": 0.9997,
+      "market_fair_probability": 0.5082,
+      "market_edge": 0.4915,
+      "edge": 49.1,
+      "ev": 0.7994,
+      "required_confidence": 0.6,
+      "result": "WIN",
+      "ft": "0-0",
+      "locked_at": "2026-09-25T01:57:32Z",
+      "source_url": "https://www.goaloo.com/football/asian-games-football-women-china-w-font-color-880000-n-font-vs-vietnam-w/h2h-3094457",
+      "summary_url": "https://www.goaloo.com/football/asian-games-football-women-china-w-font-color-880000-n-font-vs-vietnam-w/summary-3094457",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 0.499,
+        "lambda_away": 2.986,
+        "home_win": 0.0096,
+        "draw": 0.1012,
+        "away_win": 0.8892,
+        "h2h_adjustment": 0.0,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": -0.761,
+          "gd_edge": -0.9702,
+          "clean_sheet_edge": -0.7756,
+          "failed_to_score_edge": -0.4683,
+          "bounded_adjustment": -0.0607,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 0,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": 1.0,
+      "profit": 80.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-25T07:57:20Z"
+    },
+    {
+      "id": "e7f46cbc438a41bd-AH-HOME-0p75",
+      "goaloo_id": "3094899",
+      "date": "2026-09-25",
+      "kickoff": "2026-09-25 05:30:00",
+      "league": "India Bangalore Super Division",
+      "home": "Bangalore City",
+      "away": "Kodagu FC",
+      "market": "AH",
+      "selection": "HOME",
+      "line": 0.75,
+      "pick": "Bangalore City +0.75",
+      "side": "home",
+      "odds": 1.78,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.8636,
+      "model_probability": 0.8636,
+      "market_fair_probability": 0.5137,
+      "market_edge": 0.3499,
+      "edge": 35.0,
+      "ev": 0.5429,
+      "required_confidence": 0.6,
+      "result": "LOSS",
+      "ft": "0-2",
+      "locked_at": "2026-09-25T01:57:30Z",
+      "source_url": "https://www.goaloo.com/football/india-bangalore-super-division-bangalore-city-vs-kodagu-fc/h2h-3094899",
+      "summary_url": "https://www.goaloo.com/football/india-bangalore-super-division-bangalore-city-vs-kodagu-fc/summary-3094899",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 2.1,
+        "lambda_away": 0.994,
+        "home_win": 0.6355,
+        "draw": 0.2178,
+        "away_win": 0.1467,
+        "h2h_adjustment": -0.015,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.3528,
+          "gd_edge": 0.7084,
+          "clean_sheet_edge": 0.278,
+          "failed_to_score_edge": -0.2,
+          "bounded_adjustment": 0.0308,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 9,
+        "away_recent": 9,
+        "h2h_n": 3,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-25T07:57:20Z"
     }
   ],
   "note": "Automated Full-Time Winner First feed. Supplemental markets remain unpublished.",
