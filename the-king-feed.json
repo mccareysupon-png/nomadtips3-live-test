@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-24T22:31:07Z",
+  "updated_at": "2026-09-25T01:36:53Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -3504,8 +3504,8 @@
       "edge": 45.1,
       "ev": 2.3145,
       "required_confidence": 0.62,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "0-2",
       "locked_at": "2026-09-24T01:42:29Z",
       "source_url": "https://www.goaloo.com/football/brazil-campeonato-paraibano-2-picuiense-vs-desportiva-guarabira-pb/h2h-3094867",
       "summary_url": "https://www.goaloo.com/football/brazil-campeonato-paraibano-2-picuiense-vs-desportiva-guarabira-pb/summary-3094867",
@@ -3565,7 +3565,12 @@
         "away_recent": 8,
         "h2h_n": 5,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-25T01:36:53Z"
     },
     {
       "id": "8b942ced7a0bcb70-AH-HOME-m0p25",
@@ -131698,6 +131703,96 @@
       "settlement_source": "goaloo-bf_us-direct-index",
       "goaloo_terminal_state": -1,
       "settled_at": "2026-09-24T22:31:07Z"
+    },
+    {
+      "id": "42a51bfe17b50df0-1X2-HOME",
+      "goaloo_id": "3094867",
+      "date": "2026-09-24",
+      "kickoff": "2026-09-24 22:30:00",
+      "league": "Brazil Campeonato Paraibano 2",
+      "home": "Picuiense",
+      "away": "Desportiva Guarabira PB",
+      "market": "1X2",
+      "selection": "HOME",
+      "line": null,
+      "pick": "Picuiense Win",
+      "side": "home",
+      "odds": 5.31,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.6242,
+      "model_probability": 0.6242,
+      "market_fair_probability": 0.173,
+      "market_edge": 0.4512,
+      "edge": 45.1,
+      "ev": 2.3145,
+      "required_confidence": 0.62,
+      "result": "LOSS",
+      "ft": "0-2",
+      "locked_at": "2026-09-24T01:42:29Z",
+      "source_url": "https://www.goaloo.com/football/brazil-campeonato-paraibano-2-picuiense-vs-desportiva-guarabira-pb/h2h-3094867",
+      "summary_url": "https://www.goaloo.com/football/brazil-campeonato-paraibano-2-picuiense-vs-desportiva-guarabira-pb/summary-3094867",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 2.023,
+        "lambda_away": 1.028,
+        "home_win": 0.6242,
+        "draw": 0.2264,
+        "away_win": 0.1494,
+        "h2h_adjustment": -0.003,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.4943,
+          "gd_edge": 0.5858,
+          "clean_sheet_edge": 0.0244,
+          "failed_to_score_edge": 0.1122,
+          "bounded_adjustment": 0.0318,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 8,
+        "h2h_n": 5,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-25T01:36:53Z"
     }
   ],
   "note": "Automated Full-Time Winner First feed. Supplemental markets remain unpublished.",
