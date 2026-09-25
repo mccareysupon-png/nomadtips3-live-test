@@ -12,7 +12,6 @@ permissions:
 
 env:
   BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
-  BALL46_PUBLIC: https://www.ball46.com
   CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
   CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
@@ -87,11 +86,10 @@ jobs:
           s=p.read_text()
           anchor='function renderBoard(){'
           if s.count(anchor)!=1: raise SystemExit('RENDER_ANCHOR_COUNT_'+str(s.count(anchor)))
-          helper=r'''/* BALL46_STABLE_CARD_REFRESH_20260926 — polling/rich-odds refresh preserves match-row DOM */
-let lastBoardShape='';
-function boardShapeKey(){const rows=visibleRows(),order=['live','scheduled','unknown','finished'],parts=[];for(const key of order){const all=rows.filter(f=>classify(f)===key);if(!all.length)continue;const open=expandedGroups.has(key),shown=open?all:all.slice(0,COLLAPSED_LIMIT);parts.push(key+':'+all.length+':'+shown.map(f=>leagueName(f)+'>'+fixtureKey(f)).join(','))}return parts.join('|')}
-function refreshBoardInPlace(){const host=$('[data-board-sections]');if(!host)return;const nextShape=boardShapeKey();if(!lastBoardShape||nextShape!==lastBoardShape){renderBoard();return}const byId=new Map(fixtures.map(f=>[fixtureKey(f),f]));const els=[...host.querySelectorAll('[data-match-id]')];let mismatch=false;for(const el of els){const f=byId.get(String(el.dataset.matchId||''));if(!f){mismatch=true;break}const box=document.createElement('template');box.innerHTML=rowHtml(f).trim();const fresh=box.content.firstElementChild;if(!fresh){mismatch=true;break}if(el.className!==fresh.className)el.className=fresh.className;if(el.getAttribute('aria-label')!==fresh.getAttribute('aria-label'))el.setAttribute('aria-label',fresh.getAttribute('aria-label')||'');if(el.innerHTML!==fresh.innerHTML)el.innerHTML=fresh.innerHTML}if(mismatch){renderBoard();return}lastBoardShape=nextShape}
-'''
+          helper=("/* BALL46_STABLE_CARD_REFRESH_20260926 - polling/rich-odds refresh preserves match-row DOM */\n"
+                  "let lastBoardShape='';\n"
+                  "function boardShapeKey(){const rows=visibleRows(),order=['live','scheduled','unknown','finished'],parts=[];for(const key of order){const all=rows.filter(f=>classify(f)===key);if(!all.length)continue;const open=expandedGroups.has(key),shown=open?all:all.slice(0,COLLAPSED_LIMIT);parts.push(key+':'+all.length+':'+shown.map(f=>leagueName(f)+'>'+fixtureKey(f)).join(','))}return parts.join('|')}\n"
+                  "function refreshBoardInPlace(){const host=$('[data-board-sections]');if(!host)return;const nextShape=boardShapeKey();if(!lastBoardShape||nextShape!==lastBoardShape){renderBoard();return}const byId=new Map(fixtures.map(f=>[fixtureKey(f),f]));const els=[...host.querySelectorAll('[data-match-id]')];let mismatch=false;for(const el of els){const f=byId.get(String(el.dataset.matchId||''));if(!f){mismatch=true;break}const box=document.createElement('template');box.innerHTML=rowHtml(f).trim();const fresh=box.content.firstElementChild;if(!fresh){mismatch=true;break}if(el.className!==fresh.className)el.className=fresh.className;if(el.getAttribute('aria-label')!==fresh.getAttribute('aria-label'))el.setAttribute('aria-label',fresh.getAttribute('aria-label')||'');if(el.innerHTML!==fresh.innerHTML)el.innerHTML=fresh.innerHTML}if(mismatch){renderBoard();return}lastBoardShape=nextShape}\n")
           s=s.replace(anchor,helper+'function renderBoard(){lastBoardShape=boardShapeKey();',1)
           old="function scheduleRichRender(){if(richRenderFrame)return;const run=()=>{richRenderFrame=0;renderBoard();renderFeatured()};"
           new="function scheduleRichRender(){if(richRenderFrame)return;const run=()=>{richRenderFrame=0;refreshBoardInPlace();renderFeatured()};"
