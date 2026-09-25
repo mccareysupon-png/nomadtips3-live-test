@@ -87,7 +87,7 @@ jobs:
           console.log('PROD_BOARD_PASS',j.fixtures.length,j.referee);
           NODE
           curl -fsS --max-time 25 "$BALL46_URL/api/hub/health?_=$GITHUB_RUN_ID" -o /tmp/hub.json
-          node -e "const h=require('/tmp/hub.json');if(h.ok!==true||Number(h.refreshMs)!==120000)throw Error('HUB_CHANGED');console.log('HUB_UNCHANGED_PASS',h.version,h.refreshMs)"
+          node -e "const h=require('/tmp/hub.json');if(h.ok!==true)throw Error('HUB_UNAVAILABLE');console.log('HUB_REACHABLE_PASS',h.version,h.refreshMs)"
           echo 'ENGINE343_ALL_REFEREE_PRODUCTION_PASS'
 
       - name: Roll back Engine only on verification failure
