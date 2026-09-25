@@ -1,4 +1,4 @@
-name: Engine343 Best19 Canary
+name: Deploy Engine343 All Referee Consensus
 
 on:
   workflow_dispatch:
@@ -14,21 +14,22 @@ env:
   CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
   CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
   WORK_BRANCH: work/343-best-price-19book-20260918
-  CANARY_URL: https://nomadtips3-engine-343-best19-canary.mccarey-supon.workers.dev
+  ROLLBACK_REF: fix/343-bulk-only-standard-20260915
+  BALL46_URL: https://ball46.com
 
 jobs:
-  canary:
+  deploy-engine-only:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
-      - name: Checkout work branch
+      - name: Checkout all-referee engine branch
         uses: actions/checkout@v4
         with:
           ref: ${{ env.WORK_BRANCH }}
           fetch-depth: 1
           token: ${{ github.token }}
 
-      - name: Validate patched Best19 source
+      - name: Validate all-referee Best19 source
         run: |
           set -euo pipefail
           python scripts/patch_engine343_best19.py
@@ -39,31 +40,65 @@ jobs:
           grep -Fq "BEST19_CONSENSUS_LINE" workers/nomadtips3-engine-343/src/index-bulk.js
           grep -Fq 'binding = "FULL_MARKET"' workers/nomadtips3-engine-343/wrangler.toml
 
-      - name: Save work branch if needed
+      - name: Snapshot production settings before cutover
         run: |
           set -euo pipefail
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add workers/nomadtips3-engine-343
-          git commit -m 'fix(343): enable all live 5Dollar referees in Best19 consensus' || true
-          git push origin HEAD:${WORK_BRANCH}
+          curl -fsS --max-time 25 "$BALL46_URL/api/engine/settings?_=$GITHUB_RUN_ID" -o /tmp/pre-settings.json
+          node -e "const j=require('/tmp/pre-settings.json');if(j.ok!==true)throw Error('settings unavailable');console.log('PRE_SETTINGS_PASS',Object.values(j.runState||{}).filter(Boolean).length,'running rules')"
 
-      - name: Dry-run canary
+      - name: Dry-run production Engine only
         working-directory: workers/nomadtips3-engine-343
         env:
           CLOUDFLARE_API_TOKEN: ${{ env.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ env.CF_ACCOUNT_ID }}
-        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.canary.toml
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.toml
 
-      - name: Deploy isolated canary
+      - name: Deploy all-referee consensus to production Engine only
+        id: prod
         working-directory: workers/nomadtips3-engine-343
         env:
           CLOUDFLARE_API_TOKEN: ${{ env.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ env.CF_ACCOUNT_ID }}
-        run: npx --yes wrangler@4.92.0 deploy --config wrangler.canary.toml
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.toml
 
-      - name: Verify Best19 live price referee
+      - name: Verify production Engine and preserve every existing rule
+        id: verifyprod
         run: |
           set -euo pipefail
           sleep 3
-          node scripts/verify_best19_canary.mjs
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/settings?_=$GITHUB_RUN_ID" -o /tmp/post-settings.json
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/health?_=$GITHUB_RUN_ID" -o /tmp/health.json
+          node - <<'NODE'
+          const fs=require('fs'),a=JSON.parse(fs.readFileSync('/tmp/pre-settings.json')),b=JSON.parse(fs.readFileSync('/tmp/post-settings.json')),h=JSON.parse(fs.readFileSync('/tmp/health.json'));
+          if(b.ok!==true) throw Error('post settings unavailable');
+          if(JSON.stringify(a.settings)!==JSON.stringify(b.settings)) throw Error('SETTINGS_CHANGED');
+          if(JSON.stringify(a.runState)!==JSON.stringify(b.runState)) throw Error('RUN_STATE_CHANGED');
+          if(h.version!=='nomad343-engine-v5-best19-referee'||h.revision!=='343-best19-referee-20260918') throw Error('wrong engine '+JSON.stringify(h));
+          console.log('PROD_SETTINGS_PRESERVED_PASS',Object.values(b.runState||{}).filter(Boolean).length);
+          console.log('PROD_ENGINE_ALL_REFEREE_PASS',h.version,h.revision,h.dataMode);
+          NODE
+          curl -fsS --max-time 30 -X POST "$BALL46_URL/api/engine/scan" -o /tmp/scan.json
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/board?_=$GITHUB_RUN_ID" -o /tmp/board.json
+          node - <<'NODE'
+          const j=require('/tmp/board.json');
+          if(j.ok!==true||!Array.isArray(j.fixtures)) throw Error('board unavailable '+JSON.stringify(j));
+          if(j.dataMode!=='BULK_PLUS_BEST19_REFEREE') throw Error('wrong board mode '+j.dataMode);
+          if(j.referee?.mode!=='BEST_OF_19_INPLAY') throw Error('wrong referee '+JSON.stringify(j.referee));
+          console.log('PROD_BOARD_PASS',j.fixtures.length,j.referee);
+          NODE
+          curl -fsS --max-time 25 "$BALL46_URL/api/hub/health?_=$GITHUB_RUN_ID" -o /tmp/hub.json
+          node -e "const h=require('/tmp/hub.json');if(h.ok!==true||Number(h.refreshMs)!==120000)throw Error('HUB_CHANGED');console.log('HUB_UNCHANGED_PASS',h.version,h.refreshMs)"
+          echo 'ENGINE343_ALL_REFEREE_PRODUCTION_PASS'
+
+      - name: Roll back Engine only on verification failure
+        if: failure() && steps.prod.outcome == 'success' && steps.verifyprod.outcome == 'failure'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ env.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ env.CF_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          git fetch origin "$ROLLBACK_REF":"refs/remotes/origin/$ROLLBACK_REF"
+          git worktree add /tmp/rollback "origin/$ROLLBACK_REF"
+          cd /tmp/rollback/workers/nomadtips3-engine-343
+          npx --yes wrangler@4.92.0 deploy --config wrangler.toml
+          echo 'ENGINE343_ROLLBACK_DEPLOYED'
