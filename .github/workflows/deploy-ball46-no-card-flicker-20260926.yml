@@ -1,0 +1,168 @@
+name: Deploy Ball46 No Card Flicker 20260926
+
+on:
+  push:
+    branches: [work/ball46-no-card-flicker-prod-safe-20260926]
+    paths:
+      - '.github/workflows/deploy-ball46-no-card-flicker-20260926.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
+  BALL46_PUBLIC: https://www.ball46.com
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  deploy-no-flicker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+
+      - name: Mirror exact Production and create rollback snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/prod /tmp/rollback
+          fetch_required(){
+            name="$1"; safe="${name//\//_}"
+            code=$(curl -sS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 -o "/tmp/prod/$safe" -w '%{http_code}' "$BALL46_WORKER/$name?noflicker-copy=${GITHUB_RUN_ID}") || true
+            [ "$code" = 200 ] || { echo "PROD_ASSET_HTTP_${code}:$name"; exit 1; }
+            test -s "/tmp/prod/$safe"
+            mkdir -p "$(dirname "nomad-live-343/$name")"
+            cp "/tmp/prod/$safe" "nomad-live-343/$name"
+          }
+          fetch_required index.html
+          python3 - <<'PY' > /tmp/index-assets.txt
+          from pathlib import Path
+          import re
+          h=Path('nomad-live-343/index.html').read_text(errors='ignore')
+          found=set()
+          for x in re.findall(r'''(?:src|href)=["']([^"']+)["']''',h,re.I):
+              x=x.split('?',1)[0].split('#',1)[0].strip().lstrip('./').lstrip('/')
+              if x and '://' not in x and '/' not in x and re.search(r'\.(?:js|css|svg|json|png|webp|jpg|jpeg|ico)$',x,re.I): found.add(x)
+          print('\n'.join(sorted(found)))
+          PY
+          while IFS= read -r f; do [ -z "$f" ] || fetch_required "$f"; done < /tmp/index-assets.txt
+          fetch_required dashboard-v2-stage3.js
+          cp nomad-live-343/dashboard-v2-stage3.js /tmp/rollback/dashboard-v2-stage3.js
+          cp nomad-live-343/index.html /tmp/rollback/index.html
+          sha256sum nomad-live-343/dashboard-v2-stage3.js > /tmp/rollback/target.sha256
+          sha256sum nomad-live-343/index.html > /tmp/rollback/index.sha256
+          grep -Fc 'fetch(' nomad-live-343/dashboard-v2-stage3.js > /tmp/fetch-before.count
+          protected='dashboard-v2.css dashboard-v2-tune.js v2-shared.css v2-shared.js bulk-odds-compat-343.js expanded-match-343.js full-market-bookmaker-343.js live-summary-full-odds-343.js signal-next.js singlepage-workspace-343.js singlepage-workspace-343.css signal-shared-view-343.css ball46-next.css market-registry-343.js'
+          : > /tmp/protected.sha
+          for f in $protected; do fetch_required "$f"; printf '%s  %s\n' "$(sha256sum "nomad-live-343/$f"|awk '{print $1}')" "$f" >> /tmp/protected.sha; done
+          cp /tmp/protected.sha /tmp/rollback/protected.sha
+          grep -Fq 'const COLLAPSED_LIMIT=10;' nomad-live-343/dashboard-v2-stage3.js
+          grep -Fq "host.innerHTML=html.length?html.join('')" nomad-live-343/dashboard-v2-stage3.js
+          grep -Fq 'setInterval(load,POLL_MS)' nomad-live-343/dashboard-v2-stage3.js
+          ! grep -Fq 'BALL46_STABLE_CARD_REFRESH_20260926' nomad-live-343/dashboard-v2-stage3.js
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/board?noflicker-before=${GITHUB_RUN_ID}" -o /tmp/board-before.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/signals?noflicker-before=${GITHUB_RUN_ID}" -o /tmp/signals-before.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/statistics?noflicker-before=${GITHUB_RUN_ID}" -o /tmp/stats-before.json
+          node - <<'NODE'
+          const fs=require('fs');const b=JSON.parse(fs.readFileSync('/tmp/board-before.json'));const s=JSON.parse(fs.readFileSync('/tmp/signals-before.json'));const t=JSON.parse(fs.readFileSync('/tmp/stats-before.json'));if(b?.ok!==true||!Array.isArray(b?.fixtures))throw Error('PRE_BOARD');if(!Array.isArray(s?.signals))throw Error('PRE_SIGNALS');if(t?.ok!==true||!Array.isArray(t?.rows))throw Error('PRE_STATS');console.log('PRECHECK_OK',b.fixtures.length,s.signals.length,t.rows.length)
+NODE
+
+      - name: Upload rollback snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-pre-no-card-flicker-${{ github.run_id }}
+          path: /tmp/rollback
+          retention-days: 30
+
+      - name: Patch refresh path only
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('nomad-live-343/dashboard-v2-stage3.js')
+          s=p.read_text()
+          anchor='function renderBoard(){'
+          if s.count(anchor)!=1: raise SystemExit('RENDER_ANCHOR_COUNT_'+str(s.count(anchor)))
+          helper=r'''/* BALL46_STABLE_CARD_REFRESH_20260926 — polling/rich-odds refresh preserves match-row DOM */
+let lastBoardShape='';
+function boardShapeKey(){const rows=visibleRows(),order=['live','scheduled','unknown','finished'],parts=[];for(const key of order){const all=rows.filter(f=>classify(f)===key);if(!all.length)continue;const open=expandedGroups.has(key),shown=open?all:all.slice(0,COLLAPSED_LIMIT);parts.push(key+':'+all.length+':'+shown.map(f=>leagueName(f)+'>'+fixtureKey(f)).join(','))}return parts.join('|')}
+function refreshBoardInPlace(){const host=$('[data-board-sections]');if(!host)return;const nextShape=boardShapeKey();if(!lastBoardShape||nextShape!==lastBoardShape){renderBoard();return}const byId=new Map(fixtures.map(f=>[fixtureKey(f),f]));const els=[...host.querySelectorAll('[data-match-id]')];let mismatch=false;for(const el of els){const f=byId.get(String(el.dataset.matchId||''));if(!f){mismatch=true;break}const box=document.createElement('template');box.innerHTML=rowHtml(f).trim();const fresh=box.content.firstElementChild;if(!fresh){mismatch=true;break}if(el.className!==fresh.className)el.className=fresh.className;if(el.getAttribute('aria-label')!==fresh.getAttribute('aria-label'))el.setAttribute('aria-label',fresh.getAttribute('aria-label')||'');if(el.innerHTML!==fresh.innerHTML)el.innerHTML=fresh.innerHTML}if(mismatch){renderBoard();return}lastBoardShape=nextShape}
+'''
+          s=s.replace(anchor,helper+'function renderBoard(){lastBoardShape=boardShapeKey();',1)
+          old="function scheduleRichRender(){if(richRenderFrame)return;const run=()=>{richRenderFrame=0;renderBoard();renderFeatured()};"
+          new="function scheduleRichRender(){if(richRenderFrame)return;const run=()=>{richRenderFrame=0;refreshBoardInPlace();renderFeatured()};"
+          if s.count(old)!=1: raise SystemExit('RICH_RENDER_ANCHOR_COUNT_'+str(s.count(old)))
+          s=s.replace(old,new,1)
+          old2='renderCounts();renderLeagueFilters();renderBoard();renderFeatured();setState(true,board)'
+          new2='renderCounts();renderLeagueFilters();refreshBoardInPlace();renderFeatured();setState(true,board)'
+          if s.count(old2)!=1: raise SystemExit('LOAD_RENDER_ANCHOR_COUNT_'+str(s.count(old2)))
+          s=s.replace(old2,new2,1)
+          p.write_text(s)
+          PY
+          node --check nomad-live-343/dashboard-v2-stage3.js
+          grep -Fq 'BALL46_STABLE_CARD_REFRESH_20260926' nomad-live-343/dashboard-v2-stage3.js
+          grep -Fq 'refreshBoardInPlace();renderFeatured();setState(true,board)' nomad-live-343/dashboard-v2-stage3.js
+          grep -Fq 'richRenderFrame=0;refreshBoardInPlace();renderFeatured()' nomad-live-343/dashboard-v2-stage3.js
+          grep -Fq 'function renderBoard(){lastBoardShape=boardShapeKey();' nomad-live-343/dashboard-v2-stage3.js
+          grep -Fq 'const COLLAPSED_LIMIT=10;' nomad-live-343/dashboard-v2-stage3.js
+          [ "$(cat /tmp/fetch-before.count)" = "$(grep -Fc 'fetch(' nomad-live-343/dashboard-v2-stage3.js)" ] || { echo FETCH_COUNT_CHANGED; exit 1; }
+          while read -r expected f; do [ "$(sha256sum "nomad-live-343/$f"|awk '{print $1}')" = "$expected" ] || { echo "PROTECTED_LOCAL_CHANGED:$f"; exit 1; }; done < /tmp/protected.sha
+          echo STABLE_REFRESH_PATCH_OK
+
+      - name: Dry run exact package
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"; test -n "$CLOUDFLARE_ACCOUNT_ID"
+          cd workers/nomadtips3-343-preview
+          npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.ball46.jsonc
+
+      - name: Deploy one-file renderer patch
+        working-directory: workers/nomadtips3-343-preview
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+          touch /tmp/deployed
+
+      - name: Verify Production continuity and patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for n in $(seq 1 20); do
+            if curl -fsS -L --retry 2 --retry-all-errors --retry-delay 1 --max-time 20 "$BALL46_WORKER/dashboard-v2-stage3.js?noflicker-after=${GITHUB_RUN_ID}-${n}" -o /tmp/after.js && grep -Fq 'BALL46_STABLE_CARD_REFRESH_20260926' /tmp/after.js; then ok=1; break; fi
+            sleep 3
+          done
+          [ "$ok" = 1 ]
+          node --check /tmp/after.js
+          grep -Fq 'const COLLAPSED_LIMIT=10;' /tmp/after.js
+          grep -Fq 'refreshBoardInPlace();renderFeatured();setState(true,board)' /tmp/after.js
+          grep -Fq 'richRenderFrame=0;refreshBoardInPlace();renderFeatured()' /tmp/after.js
+          [ "$(cat /tmp/fetch-before.count)" = "$(grep -Fc 'fetch(' /tmp/after.js)" ]
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/index.html?noflicker-index=${GITHUB_RUN_ID}" -o /tmp/index-after.html
+          [ "$(sha256sum /tmp/index-after.html|awk '{print $1}')" = "$(awk '{print $1}' /tmp/rollback/index.sha256)" ]
+          while read -r expected f; do curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/$f?noflicker-protected=${GITHUB_RUN_ID}" -o "/tmp/p-${f//\//_}"; [ "$(sha256sum "/tmp/p-${f//\//_}"|awk '{print $1}')" = "$expected" ] || { echo "PROTECTED_DEPLOY_CHANGED:$f"; exit 1; }; done < /tmp/protected.sha
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/board?noflicker-final=${GITHUB_RUN_ID}" -o /tmp/board-after.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/signals?noflicker-final=${GITHUB_RUN_ID}" -o /tmp/signals-after.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/statistics?noflicker-final=${GITHUB_RUN_ID}" -o /tmp/stats-after.json
+          node - <<'NODE'
+          const fs=require('fs');const b=JSON.parse(fs.readFileSync('/tmp/board-after.json'));const s=JSON.parse(fs.readFileSync('/tmp/signals-after.json'));const t=JSON.parse(fs.readFileSync('/tmp/stats-after.json'));if(b?.ok!==true||!Array.isArray(b?.fixtures))throw Error('POST_BOARD');if(!Array.isArray(s?.signals))throw Error('POST_SIGNALS');if(t?.ok!==true||!Array.isArray(t?.rows))throw Error('POST_STATS');console.log('BALL46_NO_CARD_FLICKER_PASS',{fixtures:b.fixtures.length,signals:s.signals.length,settled:t.rows.length})
+NODE
+
+      - name: Surgical rollback target if post-deploy verification fails
+        if: failure()
+        shell: bash
+        run: |
+          set -euo pipefail
+          [ -f /tmp/deployed ] || { echo 'No Production deploy occurred; rollback not needed'; exit 0; }
+          cp /tmp/rollback/dashboard-v2-stage3.js nomad-live-343/dashboard-v2-stage3.js
+          cd workers/nomadtips3-343-preview
+          npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+          echo 'SURGICAL_TARGET_ROLLBACK_COMPLETED'
