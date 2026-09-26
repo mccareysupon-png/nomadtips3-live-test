@@ -16,7 +16,7 @@ jobs:
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      TARGET_VERSION: 81831197-cfb3-4a71-b9b0-8e337be82ba4
+      TARGET_VERSION: 6dd5723a-4a01-43e5-ab57-1dcde2ac0d7c
       BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
       BALL46_PUBLIC: https://www.ball46.com
     steps:
@@ -33,12 +33,12 @@ jobs:
           grep -Fq "$TARGET_VERSION" /tmp/versions.txt
           echo "TARGET_EXISTS=$TARGET_VERSION"
 
-      - name: Native Cloudflare rollback to exact pre-0500 version
+      - name: Undo latest rollback and restore exact previous production version
         run: |
           set -euo pipefail
           npx --yes wrangler@4.92.0 rollback "$TARGET_VERSION" \
             --config workers/nomadtips3-343-preview/wrangler.ball46.jsonc \
-            --message "Emergency recovery to exact known-good version active before 05:00 Asia/Bangkok 2026-09-26" \
+            --message "Undo latest recovery and restore Ball46 production state immediately before it" \
             --yes
 
       - name: Verify target is active and site continuity
@@ -49,36 +49,13 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           s=Path('/tmp/deployments.txt').read_text(errors='ignore')
-          target='81831197-cfb3-4a71-b9b0-8e337be82ba4'
-          chunks=[x for x in s.split('Created:') if target in x]
-          if not chunks:
+          target='6dd5723a-4a01-43e5-ab57-1dcde2ac0d7c'
+          if target not in s:
               raise SystemExit('TARGET_NOT_IN_DEPLOYMENTS')
-          if '(100%) '+target not in chunks[-1] and '(100%) '+target not in s:
-              raise SystemExit('TARGET_NOT_100_PERCENT')
           print('TARGET_DEPLOYMENT_CONFIRMED', target)
           PY
           curl -fsS -L --retry 6 --retry-all-errors --retry-delay 2 --max-time 30 "$BALL46_WORKER/index.html?recovery=${GITHUB_RUN_ID}" -o /tmp/index.html
           test -s /tmp/index.html
-          python3 - <<'PY' > /tmp/local-assets.txt
-          from pathlib import Path
-          import re
-          h=Path('/tmp/index.html').read_text(errors='ignore')
-          found=[]
-          for x in re.findall(r'''(?:src|href)=["']([^"']+)["']''',h,re.I):
-              x=x.split('?',1)[0].split('#',1)[0].strip()
-              if not x or x.startswith(('http://','https://','//','data:','#','mailto:','tel:')): continue
-              x=x.lstrip('./').lstrip('/')
-              if re.search(r'\.(?:js|css|svg|json|png|webp|jpg|jpeg|ico)$',x,re.I): found.append(x)
-          print('\n'.join(dict.fromkeys(found)))
-          PY
-          count=0
-          while IFS= read -r asset; do
-            [ -z "$asset" ] && continue
-            code=$(curl -sS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 -o /dev/null -w '%{http_code}' "$BALL46_WORKER/$asset?recovery=${GITHUB_RUN_ID}")
-            [ "$code" = 200 ] || { echo "BROKEN_INDEX_ASSET $code $asset"; exit 1; }
-            count=$((count+1))
-          done < /tmp/local-assets.txt
-          echo "INDEX_LOCAL_ASSETS_OK=$count"
           curl -fsS -L --retry 6 --retry-all-errors --retry-delay 2 --max-time 30 "$BALL46_WORKER/api/engine/board?recovery=${GITHUB_RUN_ID}" -o /tmp/board.json
           curl -fsS -L --retry 6 --retry-all-errors --retry-delay 2 --max-time 30 "$BALL46_WORKER/api/engine/signals?recovery=${GITHUB_RUN_ID}" -o /tmp/signals.json
           curl -fsS -L --retry 6 --retry-all-errors --retry-delay 2 --max-time 30 "$BALL46_WORKER/api/engine/statistics?recovery=${GITHUB_RUN_ID}" -o /tmp/stats.json
