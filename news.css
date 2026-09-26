@@ -3,3 +3,13 @@
 .hero{background:linear-gradient(90deg,rgba(10,14,12,.985) 0%,rgba(10,14,12,.93) 36%,rgba(10,14,12,.72) 68%,rgba(10,14,12,.62) 100%),linear-gradient(180deg,rgba(17,19,21,.18),rgba(17,19,21,.72)),url('./news-bg.svg?v=20260904-guardian-v1') center/cover no-repeat,var(--surface)}
 .hero h1{text-shadow:0 3px 20px rgba(0,0,0,.48)}
 .hero>p{color:#d7ddda;text-shadow:0 2px 12px rgba(0,0,0,.44)}
+
+/* Align the wordmark and page tag with the report content edge. */
+.topbar{padding-left:12px;padding-right:12px}
+@media(min-width:700px){.topbar{padding-left:18px;padding-right:18px}}
+@media(min-width:1024px){
+  .topbar{
+    padding-left:max(24px,calc((100vw - 1180px)/2 + 24px));
+    padding-right:max(24px,calc((100vw - 1180px)/2 + 24px));
+  }
+}

@@ -62,7 +62,13 @@
   <link rel="stylesheet" href="primary-nav-three-page.css?v=20260913-v1">
   <link rel="stylesheet" href="statistics-bookmaker-icons.css?v=20260903-rollback-v1">
   <link rel="stylesheet" href="tablet-icon-bridge.css?v=20260904-v1">
-  <style>body .statistics-summary-grid{border-radius:0!important}</style>
+  <style>
+    body .statistics-summary-grid{border-radius:0!important}
+    /* Keep the desktop logo edge aligned with this page's 1440px content shell. */
+    @media(min-width:701px){
+      body[data-odds-role="receiver"] .topbar-inner.public-four-nav{max-width:1440px!important}
+    }
+  </style>
 </head>
 <body data-odds-role="receiver">
   <header class="topbar"><div class="topbar-inner public-four-nav"><div class="brand">nomad<span>tips3</span></div><nav class="topnav"><a href="https://www.nomadtips3.com/">Asian Handicap</a><a class="active" aria-current="page" href="https://www.nomadtips3.com/statistics">Statistics</a><a href="https://www.nomadtips3.com/nomad-live-342/">1X2 · Over/Under</a></nav><div class="source-pill"><span class="dot"></span>RESULT LEDGER · CONNECTING</div></div></header>
