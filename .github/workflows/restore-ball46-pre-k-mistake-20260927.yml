@@ -1,0 +1,44 @@
+name: ONE SHOT - Restore Ball46 Pre-K Mistake 2026-09-27
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/restore-ball46-pre-k-mistake-20260927.yml'
+
+permissions:
+  contents: read
+
+env:
+  TARGET_VERSION: b9cfdc69-cc18-4f62-b5cf-dfefdfa0275b
+  BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  restore-pre-k-mistake:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Restore exact deployment active before K rollback
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.92.0 rollback "$TARGET_VERSION" --name ball46-production --message "Restore exact deployment active before K rollback 2026-09-27"
+      - name: Verify production backend and page
+        shell: bash
+        run: |
+          set -euo pipefail
+          sleep 5
+          curl -fsS -L --retry 5 --retry-all-errors --retry-delay 2 --max-time 25 "$BALL46_WORKER/?restore-check=${GITHUB_RUN_ID}" -o /tmp/index.html
+          test -s /tmp/index.html
+          curl -fsS -L --retry 5 --retry-all-errors --retry-delay 2 --max-time 25 "$BALL46_WORKER/api/engine/health?restore-check=${GITHUB_RUN_ID}" -o /tmp/health.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const h=JSON.parse(fs.readFileSync('/tmp/health.json','utf8'));
+          if(h?.ok!==true) throw Error('HEALTH_NOT_OK');
+          console.log('RESTORE_PRE_K_PASS');
+          NODE
