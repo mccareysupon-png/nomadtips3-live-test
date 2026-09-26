@@ -1,0 +1,40 @@
+name: Diagnose Ball46 Current Deployment Map 20260926
+
+on:
+  push:
+    branches:
+      - diag/ball46-current-deploy-map-20260926
+    paths:
+      - .github/workflows/diag-ball46-current-deploy-map-20260926.yml
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify config exists
+        run: |
+          pwd
+          ls -lah
+          test -f wrangler.ball46.jsonc
+          sed -n '1,120p' wrangler.ball46.jsonc
+      - name: Read current Cloudflare versions and deployments only
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          echo '=== VERSIONS ==='
+          npx --yes wrangler@4.92.0 versions list --config wrangler.ball46.jsonc
+          echo '=== DEPLOYMENTS ==='
+          npx --yes wrangler@4.92.0 deployments list --config wrangler.ball46.jsonc
+          echo '=== LIVE ASSET HASHES ==='
+          curl -fsS --max-time 30 'https://www.ball46.com/singlepage-workspace-343.css?map=1' -o /tmp/live.css
+          curl -fsS --max-time 30 'https://www.ball46.com/dashboard-v2-stage3.js?map=1' -o /tmp/live.js
+          sha256sum /tmp/live.css /tmp/live.js
+          grep -n 'BALL46_WORKSPACE_SCOREBAR_20260926' /tmp/live.css || true
+          grep -n 'workspace-scorebar' /tmp/live.js | head -10 || true
