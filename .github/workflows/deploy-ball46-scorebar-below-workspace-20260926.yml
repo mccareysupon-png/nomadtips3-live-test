@@ -16,7 +16,7 @@ env:
   CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
 jobs:
-  deploy-scorebar:
+  deploy-scorebar-min10:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -27,14 +27,14 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Mirror exact Production and create rollback snapshot
+      - name: Mirror exact current Production and snapshot target
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p /tmp/prod /tmp/rollback
           fetch_required(){
             name="$1"; safe="${name//\//_}"
-            code=$(curl -sS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 -o "/tmp/prod/$safe" -w '%{http_code}' "$BALL46_WORKER/$name?scorebar-copy=${GITHUB_RUN_ID}") || true
+            code=$(curl -sS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 -o "/tmp/prod/$safe" -w '%{http_code}' "$BALL46_WORKER/$name?scorebar-min10-copy=${GITHUB_RUN_ID}") || true
             [ "$code" = 200 ] || { echo "PROD_ASSET_HTTP_${code}:$name"; exit 1; }
             test -s "/tmp/prod/$safe"
             mkdir -p "$(dirname "nomad-live-343/$name")"
@@ -48,51 +48,45 @@ jobs:
           found=set()
           for x in re.findall(r'''(?:src|href)=["']([^"']+)["']''',h,re.I):
               x=x.split('?',1)[0].split('#',1)[0].strip().lstrip('./').lstrip('/')
-              if x and '://' not in x and '/' not in x and re.search(r'\.(?:js|css|svg|json|png|webp|jpg|jpeg|ico)$',x,re.I): found.add(x)
+              if x and '://' not in x and re.search(r'\.(?:js|css|svg|json|png|webp|jpg|jpeg|ico)$',x,re.I): found.add(x)
           print('\n'.join(sorted(found)))
           PY
           while IFS= read -r f; do [ -z "$f" ] || fetch_required "$f"; done < /tmp/index-assets.txt
-          cp nomad-live-343/index.html /tmp/rollback/index.html
-          cp nomad-live-343/dashboard-v2-stage3.js /tmp/rollback/dashboard-v2-stage3.js
-          sha256sum nomad-live-343/index.html > /tmp/rollback/index.sha256
-          sha256sum nomad-live-343/dashboard-v2-stage3.js > /tmp/rollback/dashboard.sha256
-          grep -Fc 'fetch(' nomad-live-343/dashboard-v2-stage3.js > /tmp/fetch-before.count
+          fetch_required ball46-scorebar-below-workspace-20260926.js
+          grep -Fq 'BALL46_SCOREBAR_BELOW_WORKSPACE_20260926' nomad-live-343/index.html
+          grep -Fq 'BALL46_SCOREBAR_BELOW_WORKSPACE_20260926' nomad-live-343/ball46-scorebar-below-workspace-20260926.js
           grep -Fq 'BALL46_STABLE_CARD_REFRESH_20260926' nomad-live-343/dashboard-v2-stage3.js
           grep -Fq 'const COLLAPSED_LIMIT=10;' nomad-live-343/dashboard-v2-stage3.js
-          ! grep -Fq 'BALL46_SCOREBAR_BELOW_WORKSPACE_20260926' nomad-live-343/index.html
-          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/board?scorebar-before=${GITHUB_RUN_ID}" -o /tmp/board-before.json
-          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/signals?scorebar-before=${GITHUB_RUN_ID}" -o /tmp/signals-before.json
-          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/statistics?scorebar-before=${GITHUB_RUN_ID}" -o /tmp/stats-before.json
-          node -e "const fs=require('fs');const b=JSON.parse(fs.readFileSync('/tmp/board-before.json'));const s=JSON.parse(fs.readFileSync('/tmp/signals-before.json'));const t=JSON.parse(fs.readFileSync('/tmp/stats-before.json'));if(b?.ok!==true||!Array.isArray(b?.fixtures))throw Error('PRE_BOARD');if(!Array.isArray(s?.signals))throw Error('PRE_SIGNALS');if(t?.ok!==true||!Array.isArray(t?.rows))throw Error('PRE_STATS');console.log('PRECHECK_OK',b.fixtures.length,s.signals.length,t.rows.length)"
+          cp nomad-live-343/ball46-scorebar-below-workspace-20260926.js /tmp/rollback/ball46-scorebar-below-workspace-20260926.js
+          sha256sum nomad-live-343/index.html > /tmp/rollback/index.sha256
+          sha256sum nomad-live-343/dashboard-v2-stage3.js > /tmp/rollback/dashboard.sha256
+          sha256sum nomad-live-343/ball46-scorebar-below-workspace-20260926.js > /tmp/rollback/scorebar.sha256
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/board?scorebar-min10-before=${GITHUB_RUN_ID}" -o /tmp/board-before.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/signals?scorebar-min10-before=${GITHUB_RUN_ID}" -o /tmp/signals-before.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/statistics?scorebar-min10-before=${GITHUB_RUN_ID}" -o /tmp/stats-before.json
+          node -e "const fs=require('fs');const b=JSON.parse(fs.readFileSync('/tmp/board-before.json'));const s=JSON.parse(fs.readFileSync('/tmp/signals-before.json'));const t=JSON.parse(fs.readFileSync('/tmp/stats-before.json'));if(b?.ok!==true||!Array.isArray(b?.fixtures))throw Error('PRE_BOARD');if(!Array.isArray(s?.signals))throw Error('PRE_SIGNALS');if(t?.ok!==true||!Array.isArray(t?.rows))throw Error('PRE_STATS');console.log('PRECHECK_OK',{fixtures:b.fixtures.length,signals:s.signals.length,settled:t.rows.length})"
 
-      - name: Upload rollback snapshot
+      - name: Upload exact pre-change scorebar snapshot
         uses: actions/upload-artifact@v4
         with:
-          name: ball46-pre-scorebar-below-workspace-${{ github.run_id }}
+          name: ball46-pre-scorebar-match-status-min10-${{ github.run_id }}
           path: /tmp/rollback
           retention-days: 30
 
-      - name: Add isolated scorebar asset and one script reference
+      - name: Replace only isolated scorebar module
         shell: bash
         run: |
           set -euo pipefail
           cp ops/ball46-scorebar-below-workspace-20260926.js nomad-live-343/ball46-scorebar-below-workspace-20260926.js
           node --check nomad-live-343/ball46-scorebar-below-workspace-20260926.js
-          grep -Fq 'BALL46_SCOREBAR_BELOW_WORKSPACE_20260926' nomad-live-343/ball46-scorebar-below-workspace-20260926.js
+          grep -Fq 'BALL46_SCOREBAR_MATCH_STATUS_MIN10_20260926' nomad-live-343/ball46-scorebar-below-workspace-20260926.js
+          grep -Fq 'const MIN=10;' nomad-live-343/ball46-scorebar-below-workspace-20260926.js
+          grep -Fq 'rows.length<MIN' nomad-live-343/ball46-scorebar-below-workspace-20260926.js
+          grep -Fq 'rows.slice(0,MAX)' nomad-live-343/ball46-scorebar-below-workspace-20260926.js
           [ "$(grep -Fc 'fetch(' nomad-live-343/ball46-scorebar-below-workspace-20260926.js)" = 0 ]
-          python3 - <<'PY'
-          from pathlib import Path
-          p=Path('nomad-live-343/index.html')
-          s=p.read_text()
-          marker='<!-- BALL46_SCOREBAR_BELOW_WORKSPACE_20260926 --><script src="ball46-scorebar-below-workspace-20260926.js?v=1" defer></script>'
-          if marker in s: raise SystemExit('SCOREBAR_ALREADY_PRESENT')
-          if s.count('</body>')!=1: raise SystemExit('BODY_CLOSE_COUNT_'+str(s.count('</body>')))
-          p.write_text(s.replace('</body>',marker+'</body>',1))
-          PY
-          grep -Fq 'BALL46_SCOREBAR_BELOW_WORKSPACE_20260926' nomad-live-343/index.html
+          [ "$(sha256sum nomad-live-343/index.html|awk '{print $1}')" = "$(awk '{print $1}' /tmp/rollback/index.sha256)" ]
           [ "$(sha256sum nomad-live-343/dashboard-v2-stage3.js|awk '{print $1}')" = "$(awk '{print $1}' /tmp/rollback/dashboard.sha256)" ]
-          [ "$(cat /tmp/fetch-before.count)" = "$(grep -Fc 'fetch(' nomad-live-343/dashboard-v2-stage3.js)" ]
-          echo SCOREBAR_ISOLATION_GUARD_OK
+          echo SCOREBAR_MIN10_ISOLATION_GUARD_OK
 
       - name: Dry run exact package
         shell: bash
@@ -102,7 +96,19 @@ jobs:
           cd workers/nomadtips3-343-preview
           npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.ball46.jsonc
 
-      - name: Deploy isolated scorebar
+      - name: Recheck Production has not moved before deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/index.html?scorebar-min10-race=${GITHUB_RUN_ID}" -o /tmp/index-race.html
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/dashboard-v2-stage3.js?scorebar-min10-race=${GITHUB_RUN_ID}" -o /tmp/dashboard-race.js
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/ball46-scorebar-below-workspace-20260926.js?scorebar-min10-race=${GITHUB_RUN_ID}" -o /tmp/scorebar-race.js
+          [ "$(sha256sum /tmp/index-race.html|awk '{print $1}')" = "$(awk '{print $1}' /tmp/rollback/index.sha256)" ]
+          [ "$(sha256sum /tmp/dashboard-race.js|awk '{print $1}')" = "$(awk '{print $1}' /tmp/rollback/dashboard.sha256)" ]
+          [ "$(sha256sum /tmp/scorebar-race.js|awk '{print $1}')" = "$(awk '{print $1}' /tmp/rollback/scorebar.sha256)" ]
+          echo PRODUCTION_RACE_GUARD_OK
+
+      - name: Deploy scorebar min10 module
         working-directory: workers/nomadtips3-343-preview
         shell: bash
         run: |
@@ -110,38 +116,41 @@ jobs:
           npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
           touch /tmp/deployed
 
-      - name: Verify Production scorebar and core continuity
+      - name: Verify Production exact target and core continuity
         shell: bash
         run: |
           set -euo pipefail
           ok=0
           for n in $(seq 1 20); do
-            if curl -fsS -L --retry 2 --retry-all-errors --retry-delay 1 --max-time 20 "$BALL46_WORKER/index.html?scorebar-after=${GITHUB_RUN_ID}-${n}" -o /tmp/index-after.html && grep -Fq 'BALL46_SCOREBAR_BELOW_WORKSPACE_20260926' /tmp/index-after.html; then ok=1; break; fi
+            if curl -fsS -L --retry 2 --retry-all-errors --retry-delay 1 --max-time 20 "$BALL46_WORKER/ball46-scorebar-below-workspace-20260926.js?scorebar-min10-after=${GITHUB_RUN_ID}-${n}" -o /tmp/scorebar-after.js && grep -Fq 'BALL46_SCOREBAR_MATCH_STATUS_MIN10_20260926' /tmp/scorebar-after.js; then ok=1; break; fi
             sleep 3
           done
           [ "$ok" = 1 ]
-          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/ball46-scorebar-below-workspace-20260926.js?scorebar-js=${GITHUB_RUN_ID}" -o /tmp/scorebar-after.js
           node --check /tmp/scorebar-after.js
-          grep -Fq 'BALL46_SCOREBAR_BELOW_WORKSPACE_20260926' /tmp/scorebar-after.js
           [ "$(grep -Fc 'fetch(' /tmp/scorebar-after.js)" = 0 ]
-          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/dashboard-v2-stage3.js?scorebar-dashboard=${GITHUB_RUN_ID}" -o /tmp/dashboard-after.js
+          grep -Fq 'const MIN=10;' /tmp/scorebar-after.js
+          grep -Fq 'rows.length<MIN' /tmp/scorebar-after.js
+          grep -Fq 'rows.slice(0,MAX)' /tmp/scorebar-after.js
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/index.html?scorebar-min10-index=${GITHUB_RUN_ID}" -o /tmp/index-after.html
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/dashboard-v2-stage3.js?scorebar-min10-dashboard=${GITHUB_RUN_ID}" -o /tmp/dashboard-after.js
+          [ "$(sha256sum /tmp/index-after.html|awk '{print $1}')" = "$(awk '{print $1}' /tmp/rollback/index.sha256)" ]
           [ "$(sha256sum /tmp/dashboard-after.js|awk '{print $1}')" = "$(awk '{print $1}' /tmp/rollback/dashboard.sha256)" ]
-          [ "$(cat /tmp/fetch-before.count)" = "$(grep -Fc 'fetch(' /tmp/dashboard-after.js)" ]
           grep -Fq 'BALL46_STABLE_CARD_REFRESH_20260926' /tmp/dashboard-after.js
           grep -Fq 'const COLLAPSED_LIMIT=10;' /tmp/dashboard-after.js
-          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/board?scorebar-final=${GITHUB_RUN_ID}" -o /tmp/board-after.json
-          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/signals?scorebar-final=${GITHUB_RUN_ID}" -o /tmp/signals-after.json
-          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/statistics?scorebar-final=${GITHUB_RUN_ID}" -o /tmp/stats-after.json
-          node -e "const fs=require('fs');const b=JSON.parse(fs.readFileSync('/tmp/board-after.json'));const s=JSON.parse(fs.readFileSync('/tmp/signals-after.json'));const t=JSON.parse(fs.readFileSync('/tmp/stats-after.json'));if(b?.ok!==true||!Array.isArray(b?.fixtures))throw Error('POST_BOARD');if(!Array.isArray(s?.signals))throw Error('POST_SIGNALS');if(t?.ok!==true||!Array.isArray(t?.rows))throw Error('POST_STATS');console.log('BALL46_SCOREBAR_BELOW_WORKSPACE_PASS',{fixtures:b.fixtures.length,signals:s.signals.length,settled:t.rows.length})"
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/board?scorebar-min10-final=${GITHUB_RUN_ID}" -o /tmp/board-after.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/signals?scorebar-min10-final=${GITHUB_RUN_ID}" -o /tmp/signals-after.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/statistics?scorebar-min10-final=${GITHUB_RUN_ID}" -o /tmp/stats-after.json
+          node -e "const fs=require('fs');const b=JSON.parse(fs.readFileSync('/tmp/board-after.json'));const s=JSON.parse(fs.readFileSync('/tmp/signals-after.json'));const t=JSON.parse(fs.readFileSync('/tmp/stats-after.json'));if(b?.ok!==true||!Array.isArray(b?.fixtures))throw Error('POST_BOARD');if(!Array.isArray(s?.signals))throw Error('POST_SIGNALS');if(t?.ok!==true||!Array.isArray(t?.rows))throw Error('POST_STATS');console.log('BALL46_SCOREBAR_MATCH_STATUS_MIN10_PASS',{fixtures:b.fixtures.length,signals:s.signals.length,settled:t.rows.length})"
 
-      - name: Remove only scorebar reference if post-deploy verification fails
+      - name: Restore only immediate pre-change scorebar if verification fails
         if: failure()
         shell: bash
         run: |
           set -euo pipefail
-          [ -f /tmp/deployed ] || { echo 'No Production deploy occurred; rollback not needed'; exit 0; }
-          cp /tmp/rollback/index.html nomad-live-343/index.html
-          cp /tmp/rollback/dashboard-v2-stage3.js nomad-live-343/dashboard-v2-stage3.js
+          [ -f /tmp/deployed ] || { echo 'No Production deploy occurred; restore not needed'; exit 0; }
+          cp /tmp/rollback/ball46-scorebar-below-workspace-20260926.js nomad-live-343/ball46-scorebar-below-workspace-20260926.js
+          [ "$(sha256sum nomad-live-343/index.html|awk '{print $1}')" = "$(awk '{print $1}' /tmp/rollback/index.sha256)" ]
+          [ "$(sha256sum nomad-live-343/dashboard-v2-stage3.js|awk '{print $1}')" = "$(awk '{print $1}' /tmp/rollback/dashboard.sha256)" ]
           cd workers/nomadtips3-343-preview
           npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
-          echo SCOREBAR_REFERENCE_ROLLBACK_COMPLETED
+          echo SCOREBAR_ONLY_RESTORE_COMPLETED
