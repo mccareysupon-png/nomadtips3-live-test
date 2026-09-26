@@ -1,0 +1,53 @@
+(()=>{
+'use strict';
+const VERSION='343-dashboard-v2-ui-tune-v3-mobile-status-loop-safe';
+let autoStatusChosen=false;
+let userStatusChosen=false;
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function decorateRows(){
+  document.querySelectorAll('.match-row').forEach(row=>{
+    const score=row.querySelector('.score-cell');
+    const signal=row.querySelector('.signal-cell');
+    if(!score||!signal||signal.dataset.mobileTune==='1')return;
+    const clock=score.querySelector('small:not(.half-score)')?.textContent?.trim()||'—';
+    const status=row.querySelector('.teams-cell small')?.textContent?.trim()||clock;
+    const current=signal.textContent.trim()||'WATCH';
+    signal.dataset.mobileTune='1';
+    signal.dataset.originalSignal=current;
+    signal.innerHTML=`<span class="desktop-signal">${esc(current)}</span><span class="mobile-clock">${esc(clock)}</span><small class="mobile-signal">${esc(status)}</small>`;
+  });
+}
+function countOf(key){const el=document.querySelector(`[data-filter-count="${key}"]`);const n=Number(el?.textContent||0);return Number.isFinite(n)?n:0}
+function chooseCompactDefault(){
+  if(autoStatusChosen||userStatusChosen)return;
+  const active=document.querySelector('[data-status-filter].active');
+  if(active&&active.dataset.statusFilter!=='all'){autoStatusChosen=true;return}
+  let target='all';
+  if(countOf('live')>0)target='live';
+  else if(countOf('scheduled')>0)target='scheduled';
+  if(target==='all')return;
+  const btn=document.querySelector(`[data-status-filter="${target}"]`);
+  if(!btn)return;
+  autoStatusChosen=true;
+  btn.click();
+}
+function sync(){decorateRows();chooseCompactDefault()}
+function loadPrediction(){
+  if(document.body?.dataset?.page!=='live'||document.querySelector('script[data-live-prediction-343]'))return;
+  const s=document.createElement('script');
+  s.src='live-prediction-343.js?v=343-live-prediction-v1-read-only';
+  s.async=true;
+  s.dataset.livePrediction343='1';
+  document.head.appendChild(s);
+}
+function init(){
+  document.querySelectorAll('[data-status-filter]').forEach(btn=>btn.addEventListener('click',e=>{if(e.isTrusted){userStatusChosen=true;autoStatusChosen=true}}));
+  const root=document.querySelector('[data-board-sections]')||document.body;
+  const observer=new MutationObserver(()=>sync());
+  observer.observe(root,{childList:true,subtree:true});
+  sync();
+  loadPrediction();
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
+window.NOMAD343_DASHBOARD_TUNE={version:VERSION};
+})();

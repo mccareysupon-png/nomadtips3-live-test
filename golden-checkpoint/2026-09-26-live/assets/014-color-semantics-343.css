@@ -1,0 +1,111 @@
+/* BALL46_COLOR_SEMANTICS_20260922
+   Shared presentation owner for side-aware colour language.
+   HOME = green, AWAY = yellow/gold, LIVE clock = cyan, neutral = muted.
+   Presentation only: no odds/provider/engine behaviour lives here. */
+:root{
+  --b46-home:#137a50;
+  --b46-away:#8a6a00;
+  --b46-live:#087da6;
+  --b46-home-accent:#31b878;
+  --b46-away-accent:#e2c94c;
+  --b46-neutral:var(--muted);
+}
+
+.b46-home{color:var(--b46-home)!important}
+.b46-away{color:var(--b46-away)!important}
+.b46-neutral{color:var(--b46-neutral)!important}
+.b46-sep{color:var(--muted)!important;font-weight:inherit}
+.b46-live-time{
+  color:var(--b46-live)!important;
+  font-variant-numeric:tabular-nums;
+  font-feature-settings:'tnum' 1;
+  font-weight:900!important;
+}
+.b46-live-time.b46-live-clock{
+  display:inline-flex!important;
+  align-items:center;
+  gap:4px;
+}
+.b46-live-time.b46-live-clock::before{
+  content:'';
+  width:4px;
+  height:4px;
+  flex:0 0 4px;
+  border-radius:50%;
+  background:currentColor;
+  opacity:.9;
+  animation:b46-live-dot 1.8s ease-in-out infinite;
+}
+@keyframes b46-live-dot{0%,100%{opacity:.45}50%{opacity:1}}
+@media (prefers-reduced-motion:reduce){.b46-live-time.b46-live-clock::before{animation:none;opacity:.9}}
+
+/* Default/shared match cards. Signal reuses these same rows. */
+.match-row .teams-cell>b:nth-of-type(1),
+.match-row .score-cell>strong:nth-of-type(1){color:var(--b46-home)!important}
+.match-row .teams-cell>b:nth-of-type(2),
+.match-row .score-cell>strong:nth-of-type(2){color:var(--b46-away)!important}
+
+/* Structured default-card prices. 1X2 H/A and AH H/A are side-owned.
+   Draw and O/U remain neutral because they are not team sides. */
+.market-prices-1x2 .market-quote:nth-child(1) i,
+.market-prices-1x2 .market-quote:nth-child(1) strong{color:var(--b46-home)!important}
+.market-prices-1x2 .market-quote:nth-child(2) i,
+.market-prices-1x2 .market-quote:nth-child(2) strong{color:var(--b46-neutral)!important}
+.market-prices-1x2 .market-quote:nth-child(3) i,
+.market-prices-1x2 .market-quote:nth-child(3) strong{color:var(--b46-away)!important}
+.market-prices-ah .market-price-row:nth-child(1) i,
+.market-prices-ah .market-price-row:nth-child(1) em,
+.market-prices-ah .market-price-row:nth-child(1) strong{color:var(--b46-home)!important}
+.market-prices-ah .market-price-row:nth-child(2) i,
+.market-prices-ah .market-price-row:nth-child(2) em,
+.market-prices-ah .market-price-row:nth-child(2) strong{color:var(--b46-away)!important}
+.market-prices-ou .market-price-row i,
+.market-prices-ou .market-price-row em,
+.market-prices-ou .market-price-row strong{color:inherit}
+
+/* Featured/right-rail match context. */
+[data-featured-home]{color:var(--b46-home)!important}
+[data-featured-away]{color:var(--b46-away)!important}
+.feature-stats .stat-row>b:first-child{color:var(--b46-home)!important}
+.feature-stats .stat-row>b:last-child{color:var(--b46-away)!important}
+.feature-stats .stat-track.home i{background:var(--b46-home-accent)!important}
+.feature-stats .stat-track.away i{background:var(--b46-away-accent)!important}
+
+/* Existing live/stat evidence components. */
+.team-slot.home-slot .team-name,
+.team-axis>b:first-child,
+.fom-team-strip .home strong,
+.visual-team-key span:first-child{color:var(--b46-home)!important}
+.team-slot.away-slot .team-name,
+.team-axis>b:last-child,
+.fom-team-strip .away strong,
+.visual-team-key span:last-child{color:var(--b46-away)!important}
+
+/* Full-market tables: only fields that are unambiguously HOME/AWAY are coloured.
+   AH's shared LINE stays neutral; O/U stays neutral. */
+.fmb-market[data-market="1x2"] tbody tr>td:nth-child(2){color:var(--b46-home)!important;font-weight:800}
+.fmb-market[data-market="1x2"] tbody tr>td:nth-child(4){color:var(--b46-away)!important;font-weight:800}
+.fmb-market[data-market*="asian"] tbody tr>td:nth-child(3),
+.fmb-market[data-market*="handicap"] tbody tr>td:nth-child(3){color:var(--b46-home)!important;font-weight:800}
+.fmb-market[data-market*="asian"] tbody tr>td:nth-child(4),
+.fmb-market[data-market*="handicap"] tbody tr>td:nth-child(4){color:var(--b46-away)!important;font-weight:800}
+.fmb-market[data-market*="asian"] tbody tr>td:nth-child(2),
+.fmb-market[data-market*="handicap"] tbody tr>td:nth-child(2){color:var(--b46-neutral)!important}
+
+/* Event Flow keeps its canonical exact pair. */
+.expand-flow-legend .home,.nomad-flow-legend .home{color:#31b878!important}
+.expand-flow-legend .away,.nomad-flow-legend .away{color:#e2c94c!important}
+.expand-flow-line.home,.nomad-flow-line.home{stroke:#31b878!important}
+.expand-flow-line.away,.nomad-flow-line.away{stroke:#e2c94c!important}
+.expand-flow-end.home,.nomad-flow-end.home{fill:#31b878!important}
+.expand-flow-end.away,.nomad-flow-end.away{fill:#e2c94c!important}
+
+/* Legacy/stat support where side classes are injected by the semantic decorator. */
+.team-home-name{color:var(--b46-home)!important}
+.team-away-name{color:var(--b46-away)!important}
+.live-minute-343.b46-live-time{color:var(--b46-live)!important}
+
+@media(max-width:760px){
+  .b46-live-time.b46-live-clock{gap:3px}
+  .b46-live-time.b46-live-clock::before{width:3px;height:3px;flex-basis:3px}
+}
