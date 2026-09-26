@@ -1,0 +1,70 @@
+name: Find Ball46 Production Source 20260926
+
+on:
+  push:
+    branches:
+      - work/ball46-render-stability-prod-safe-20260926
+    paths:
+      - '.github/workflows/find-ball46-production-source-20260926.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  locate-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v4
+        with:
+          ref: work/ball46-render-stability-prod-safe-20260926
+          fetch-depth: 0
+
+      - name: Fetch all branches
+        run: git fetch --all --prune
+
+      - name: Match exact Production files in git history
+        shell: bash
+        env:
+          BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
+        run: |
+          set -euo pipefail
+          curl -fsS -L --retry 4 --retry-all-errors --max-time 25 "$BALL46_WORKER/dashboard-v2-stage3.js?find-source=${GITHUB_RUN_ID}" -o /tmp/prod.js
+          curl -fsS -L --retry 4 --retry-all-errors --max-time 25 "$BALL46_WORKER/index.html?find-source=${GITHUB_RUN_ID}" -o /tmp/prod-index.html
+          PROD_JS=$(sha256sum /tmp/prod.js | awk '{print $1}')
+          PROD_INDEX=$(sha256sum /tmp/prod-index.html | awk '{print $1}')
+          echo "PROD_JS=$PROD_JS"
+          echo "PROD_INDEX=$PROD_INDEX"
+
+          : > /tmp/js-matches.txt
+          : > /tmp/index-matches.txt
+
+          while read -r c; do
+            if git cat-file -e "$c:nomad-live-343/dashboard-v2-stage3.js" 2>/dev/null; then
+              git show "$c:nomad-live-343/dashboard-v2-stage3.js" > /tmp/candidate.js
+              H=$(sha256sum /tmp/candidate.js | awk '{print $1}')
+              if [ "$H" = "$PROD_JS" ]; then
+                printf '%s %s\n' "$c" "$(git show -s --format=%cI "$c")" | tee -a /tmp/js-matches.txt
+              fi
+            fi
+          done < <(git rev-list --all -- nomad-live-343/dashboard-v2-stage3.js)
+
+          while read -r c; do
+            if git cat-file -e "$c:nomad-live-343/index.html" 2>/dev/null; then
+              git show "$c:nomad-live-343/index.html" > /tmp/candidate-index.html
+              H=$(sha256sum /tmp/candidate-index.html | awk '{print $1}')
+              if [ "$H" = "$PROD_INDEX" ]; then
+                printf '%s %s\n' "$c" "$(git show -s --format=%cI "$c")" | tee -a /tmp/index-matches.txt
+              fi
+            fi
+          done < <(git rev-list --all -- nomad-live-343/index.html)
+
+          echo '--- JS MATCHES ---'
+          cat /tmp/js-matches.txt || true
+          echo '--- INDEX MATCHES ---'
+          cat /tmp/index-matches.txt || true
+
+          test -s /tmp/js-matches.txt || { echo 'NO_EXACT_JS_SOURCE_FOUND'; exit 2; }
+          test -s /tmp/index-matches.txt || { echo 'NO_EXACT_INDEX_SOURCE_FOUND'; exit 3; }
