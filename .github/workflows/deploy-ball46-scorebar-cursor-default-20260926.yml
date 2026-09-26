@@ -1,0 +1,177 @@
+name: Deploy Ball46 Scorebar Cursor Default 20260926
+
+on:
+  push:
+    branches: [work/ball46-scorebar-readonly-safe-20260926]
+    paths:
+      - '.github/workflows/deploy-ball46-scorebar-cursor-default-20260926.yml'
+
+permissions:
+  contents: read
+
+env:
+  BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  patch-cursor-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Mirror exact current Production and create rollback point
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/prod /tmp/rollback nomad-live-343
+          fetch_required(){
+            name="$1"; safe="${name//\//_}"
+            code=$(curl -sS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 -o "/tmp/prod/$safe" -w '%{http_code}' "$BALL46_WORKER/$name?cursor-only-mirror=${GITHUB_RUN_ID}") || true
+            [ "$code" = 200 ] || { echo "REQUIRED_PROD_ASSET_HTTP_${code}:$name"; exit 1; }
+            test -s "/tmp/prod/$safe" || { echo "REQUIRED_PROD_ASSET_EMPTY:$name"; exit 1; }
+            mkdir -p "$(dirname "nomad-live-343/$name")"
+            cp "/tmp/prod/$safe" "nomad-live-343/$name"
+          }
+          fetch_required index.html
+          python3 - <<'PY' > /tmp/index-assets.txt
+          from pathlib import Path
+          import re
+          h=Path('nomad-live-343/index.html').read_text(errors='ignore')
+          found=set()
+          for x in re.findall(r'''(?:src|href)=["']([^"']+)["']''',h,re.I):
+              x=x.split('?',1)[0].split('#',1)[0].strip().lstrip('./').lstrip('/')
+              if not x or '://' in x or '/' in x: continue
+              if re.search(r'\.(?:js|css|svg|json|png|webp|jpg|jpeg|ico)$',x,re.I): found.add(x)
+          for x in sorted(found): print(x)
+          PY
+          while IFS= read -r f; do [ -n "$f" ] && fetch_required "$f"; done < /tmp/index-assets.txt
+          fetch_required dashboard-v2-stage3.js
+          fetch_required singlepage-workspace-343.css
+          cp nomad-live-343/singlepage-workspace-343.css /tmp/rollback/singlepage-workspace-343.css
+          cp nomad-live-343/dashboard-v2-stage3.js /tmp/rollback/dashboard-v2-stage3.js
+          cp nomad-live-343/index.html /tmp/rollback/index.html
+          sha256sum nomad-live-343/singlepage-workspace-343.css | awk '{print $1}' > /tmp/css-before.sha
+          sha256sum nomad-live-343/dashboard-v2-stage3.js | awk '{print $1}' > /tmp/js-before.sha
+          sha256sum nomad-live-343/index.html | awk '{print $1}' > /tmp/index-before.sha
+          grep -Fq 'BALL46_SCOREBAR_READONLY_20260926' nomad-live-343/dashboard-v2-stage3.js
+          grep -Fq "slot.querySelectorAll('[data-workspace-score-id]').forEach(function(btn){btn.onclick=null});" nomad-live-343/dashboard-v2-stage3.js
+          [ "$(grep -Fo 'button.workspace-scorebar-cell{cursor:pointer}' nomad-live-343/singlepage-workspace-343.css | wc -l)" = 1 ] || { echo SCOREBAR_CURSOR_TARGET_COUNT_NOT_ONE; exit 1; }
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/board?cursor-only-before=${GITHUB_RUN_ID}" -o /tmp/board-before.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/signals?cursor-only-before=${GITHUB_RUN_ID}" -o /tmp/signals-before.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/statistics?cursor-only-before=${GITHUB_RUN_ID}" -o /tmp/stats-before.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const b=JSON.parse(fs.readFileSync('/tmp/board-before.json'));
+          const s=JSON.parse(fs.readFileSync('/tmp/signals-before.json'));
+          const t=JSON.parse(fs.readFileSync('/tmp/stats-before.json'));
+          if(b?.ok!==true||!Array.isArray(b?.fixtures))throw Error('PRE_BOARD_UNHEALTHY');
+          if(!Array.isArray(s?.signals))throw Error('PRE_SIGNALS_UNHEALTHY');
+          if(t?.ok!==true||!Array.isArray(t?.rows))throw Error('PRE_STATS_UNHEALTHY');
+          console.log('PRE_BACKEND_OK',{fixtures:b.fixtures.length,signals:s.signals.length,settled:t.rows.length});
+          NODE
+
+      - name: Upload immediate pre-change snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-pre-scorebar-cursor-default-${{ github.run_id }}
+          path: /tmp/rollback
+          retention-days: 30
+
+      - name: Change only scorebar cursor pointer to default
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('nomad-live-343/singlepage-workspace-343.css')
+          s=p.read_text()
+          old='button.workspace-scorebar-cell{cursor:pointer}'
+          new='button.workspace-scorebar-cell{cursor:default}'
+          if s.count(old)!=1:
+              raise SystemExit(f'CURSOR_TARGET_COUNT:{s.count(old)}')
+          s=s.replace(old,new,1)
+          p.write_text(s)
+          PY
+          grep -Fq 'button.workspace-scorebar-cell{cursor:default}' nomad-live-343/singlepage-workspace-343.css
+          ! grep -Fq 'button.workspace-scorebar-cell{cursor:pointer}' nomad-live-343/singlepage-workspace-343.css
+          [ "$(sha256sum nomad-live-343/dashboard-v2-stage3.js | awk '{print $1}')" = "$(cat /tmp/js-before.sha)" ] || { echo JS_CHANGED; exit 1; }
+          [ "$(sha256sum nomad-live-343/index.html | awk '{print $1}')" = "$(cat /tmp/index-before.sha)" ] || { echo INDEX_CHANGED; exit 1; }
+          sha256sum nomad-live-343/singlepage-workspace-343.css | awk '{print $1}' > /tmp/css-after.sha
+          [ "$(cat /tmp/css-after.sha)" != "$(cat /tmp/css-before.sha)" ] || { echo CSS_NOT_CHANGED; exit 1; }
+          echo SCOREBAR_CURSOR_ONLY_PATCH_READY
+
+      - name: Race guard exact Production assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/singlepage-workspace-343.css?cursor-race=${GITHUB_RUN_ID}" -o /tmp/race.css
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/dashboard-v2-stage3.js?cursor-race=${GITHUB_RUN_ID}" -o /tmp/race.js
+          [ "$(sha256sum /tmp/race.css | awk '{print $1}')" = "$(cat /tmp/css-before.sha)" ] || { echo PRODUCTION_CSS_CHANGED_DURING_PATCH; exit 1; }
+          [ "$(sha256sum /tmp/race.js | awk '{print $1}')" = "$(cat /tmp/js-before.sha)" ] || { echo PRODUCTION_JS_CHANGED_DURING_PATCH; exit 1; }
+
+      - name: Dry run exact current package
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"; test -n "$CLOUDFLARE_ACCOUNT_ID"
+          cd workers/nomadtips3-343-preview
+          npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.ball46.jsonc
+
+      - name: Deploy CSS-only cursor patch
+        id: deploy
+        working-directory: workers/nomadtips3-343-preview
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Verify CSS-only change and backend continuity
+        id: verify
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for n in $(seq 1 20); do
+            if curl -fsS -L --retry 2 --retry-all-errors --retry-delay 1 --max-time 20 "$BALL46_WORKER/singlepage-workspace-343.css?cursor-after=${GITHUB_RUN_ID}-${n}" -o /tmp/css.after; then
+              if [ "$(sha256sum /tmp/css.after | awk '{print $1}')" = "$(cat /tmp/css-after.sha)" ]; then ok=1; break; fi
+            fi
+            sleep 3
+          done
+          [ "$ok" = 1 ] || { echo CSS_PATCH_NOT_LIVE; exit 1; }
+          grep -Fq 'button.workspace-scorebar-cell{cursor:default}' /tmp/css.after
+          ! grep -Fq 'button.workspace-scorebar-cell{cursor:pointer}' /tmp/css.after
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/dashboard-v2-stage3.js?cursor-js-after=${GITHUB_RUN_ID}" -o /tmp/js.after
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/index.html?cursor-index-after=${GITHUB_RUN_ID}" -o /tmp/index.after
+          [ "$(sha256sum /tmp/js.after | awk '{print $1}')" = "$(cat /tmp/js-before.sha)" ] || { echo DEPLOYED_JS_CHANGED; exit 1; }
+          [ "$(sha256sum /tmp/index.after | awk '{print $1}')" = "$(cat /tmp/index-before.sha)" ] || { echo DEPLOYED_INDEX_CHANGED; exit 1; }
+          grep -Fq 'BALL46_SCOREBAR_READONLY_20260926' /tmp/js.after
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/board?cursor-final=${GITHUB_RUN_ID}" -o /tmp/board-after.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/signals?cursor-final=${GITHUB_RUN_ID}" -o /tmp/signals-after.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/statistics?cursor-final=${GITHUB_RUN_ID}" -o /tmp/stats-after.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const b=JSON.parse(fs.readFileSync('/tmp/board-after.json'));
+          const s=JSON.parse(fs.readFileSync('/tmp/signals-after.json'));
+          const t=JSON.parse(fs.readFileSync('/tmp/stats-after.json'));
+          if(b?.ok!==true||!Array.isArray(b?.fixtures))throw Error('POST_BOARD_UNHEALTHY');
+          if(!Array.isArray(s?.signals))throw Error('POST_SIGNALS_UNHEALTHY');
+          if(t?.ok!==true||!Array.isArray(t?.rows))throw Error('POST_STATS_UNHEALTHY');
+          console.log('SCOREBAR_CURSOR_DEFAULT_OK',{fixtures:b.fixtures.length,signals:s.signals.length,settled:t.rows.length});
+          NODE
+
+      - name: Restore only immediate pre-change CSS if verification fails
+        if: ${{ failure() && steps.deploy.outcome == 'success' && steps.verify.outcome == 'failure' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp /tmp/rollback/singlepage-workspace-343.css nomad-live-343/singlepage-workspace-343.css
+          cd workers/nomadtips3-343-preview
+          npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+          echo RESTORED_IMMEDIATE_PRE_CHANGE_CSS
