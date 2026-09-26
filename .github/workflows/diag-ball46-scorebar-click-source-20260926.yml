@@ -1,0 +1,49 @@
+name: Diagnose Ball46 Scorebar Click Source 20260926
+
+on:
+  push:
+    branches: [work/ball46-scorebar-readonly-safe-20260926]
+    paths:
+      - '.github/workflows/diag-ball46-scorebar-click-source-20260926.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect exact live Production assets only
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='https://ball46-production.mccarey-supon.workers.dev'
+          mkdir -p /tmp/live
+          curl -fsS -L --retry 4 --retry-all-errors --max-time 25 "$BASE/index.html?diag=${GITHUB_RUN_ID}" -o /tmp/live/index.html
+          python3 - <<'PY' > /tmp/scripts.txt
+          from pathlib import Path
+          import re
+          h=Path('/tmp/live/index.html').read_text(errors='ignore')
+          for x in re.findall(r'''<script[^>]+src=["']([^"']+)["']''',h,re.I):
+              x=x.split('?',1)[0].split('#',1)[0].strip()
+              if x.startswith('./'): x=x[2:]
+              if x.startswith('/'): x=x[1:]
+              if x and '://' not in x: print(x)
+          PY
+          sort -u /tmp/scripts.txt -o /tmp/scripts.txt
+          echo '=== LIVE SCRIPT SOURCES ==='
+          cat /tmp/scripts.txt
+          while IFS= read -r f; do
+            [ -n "$f" ] || continue
+            safe=${f//\//_}
+            code=$(curl -sS -L --retry 3 --retry-all-errors --max-time 25 -o "/tmp/live/$safe" -w '%{http_code}' "$BASE/$f?diag=${GITHUB_RUN_ID}") || true
+            echo "FETCH $code $f"
+          done < /tmp/scripts.txt
+          echo '=== SCOREBAR SOURCE MATCHES ==='
+          grep -RInE 'workspace-scorebar-(cell|slot|grid)|b46-sb-item|data-b46-sb-track|row\.click\(\)|renderFeatured\(\)' /tmp/live || true
+          echo '=== INDEX SCOREBAR MARKERS ==='
+          grep -nEi 'scorebar|workspace-stable-head' /tmp/live/index.html || true
+          echo '=== HASHES ==='
+          sha256sum /tmp/live/* | sort
