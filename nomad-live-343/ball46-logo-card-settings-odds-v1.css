@@ -1,0 +1,17 @@
+/* BALL46-LOGO-CARD-SETTINGS-ODDS START
+   Removal point: delete this file and the loader tags marked with the same name. */
+.b46-settings-card{padding:0!important;overflow:visible!important;background:#fff!important;border-color:var(--line,#dce5e0)!important}
+.b46-settings-details{position:relative}
+.b46-settings-details>summary{list-style:none;min-height:38px;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 10px;cursor:pointer;color:var(--text,#26352e);font:800 9px/1 Arial,Helvetica,sans-serif;letter-spacing:.03em;user-select:none}
+.b46-settings-details>summary::-webkit-details-marker{display:none}.b46-settings-details>summary::marker{content:''}
+.b46-settings-details>summary:hover,.b46-settings-details[open]>summary{background:#f4f7f5}
+.b46-settings-details>summary b{color:#0c6a42;font-size:8px;white-space:nowrap}
+.b46-settings-panel{border-top:1px solid var(--line,#dce5e0);padding:8px}
+.b46-settings-label{display:block;margin-bottom:6px;color:var(--muted,#77847e);font:900 7px/1 Arial,Helvetica,sans-serif;letter-spacing:.08em}
+.b46-settings-options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
+.b46-settings-options button{appearance:none;min-width:0;border:1px solid var(--line,#dce5e0);border-radius:6px;background:#fff;color:#41524a;padding:6px 2px;font:900 8px/1 Arial,Helvetica,sans-serif;cursor:pointer}
+.b46-settings-options button:hover{background:#f4f7f5}
+.b46-settings-options button[aria-pressed="true"]{border-color:#85b79f;background:#edf7f2;color:#08633d}
+.b46-settings-options small{display:block;margin-top:3px;color:#8b9791;font-size:5.5px;font-weight:800;overflow:hidden;text-overflow:ellipsis}
+@media(max-width:760px){.b46-settings-card{display:block}.b46-settings-details>summary{min-height:36px;padding:0 9px}.b46-settings-panel{padding:7px}}
+/* BALL46-LOGO-CARD-SETTINGS-ODDS END */
