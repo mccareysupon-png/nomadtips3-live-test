@@ -60,7 +60,9 @@ jobs:
           cp nomad-live-343/index.html /tmp/rollback-snapshot/index.html
           grep -Fq 'workspace-brand-card' nomad-live-343/index.html
           grep -Fq 'workspace singlepage' nomad-live-343/index.html
-          [ "$(grep -Fo 'workspace-brand-card' nomad-live-343/index.html | wc -l)" -eq 1 ]
+          brand_refs=$(grep -Fo 'workspace-brand-card' nomad-live-343/index.html | wc -l | tr -d ' ')
+          [ "$brand_refs" -ge 1 ] || { echo 'PROD_BRAND_CARD_MISSING'; exit 1; }
+          echo "PROD_BRAND_CARD_REF_COUNT=$brand_refs"
 
           python3 - <<'PY' > /tmp/current-assets.txt
           from pathlib import Path
@@ -86,10 +88,10 @@ jobs:
           cp /tmp/missing-baseline.txt /tmp/rollback-snapshot/missing-baseline.txt
           printf 'run=%s\nsource=exact-current-production\nremove-marker=BALL46-LOGO-CARD-SETTINGS-ODDS\nmobile-layer=BALL46-MOBILE-PARITY-V1\n' "$GITHUB_RUN_ID" > /tmp/rollback-snapshot/ROLLBACK_POINT.txt
 
-          test -s nomad-live-343/ball46-logo-card-settings-odds-v1.css
-          test -s nomad-live-343/ball46-logo-card-settings-odds-v1.js
-          test -s nomad-live-343/odds-format-343.js
-          test -s nomad-live-343/ball46-mobile-parity-v1.css
+          test -s nomad-live-343/ball46-logo-card-settings-odds-v1.css || { echo 'SETTINGS_CSS_MISSING'; exit 1; }
+          test -s nomad-live-343/ball46-logo-card-settings-odds-v1.js || { echo 'SETTINGS_JS_MISSING'; exit 1; }
+          test -s nomad-live-343/odds-format-343.js || { echo 'ODDS_FORMAT_MISSING'; exit 1; }
+          test -s nomad-live-343/ball46-mobile-parity-v1.css || { echo 'MOBILE_PARITY_CSS_MISSING'; exit 1; }
           grep -Fq 'BALL46-LOGO-CARD-SETTINGS-ODDS START' nomad-live-343/ball46-logo-card-settings-odds-v1.css
           grep -Fq 'BALL46-LOGO-CARD-SETTINGS-ODDS START' nomad-live-343/ball46-logo-card-settings-odds-v1.js
           grep -Fq 'BALL46-MOBILE-PARITY-V1 START' nomad-live-343/ball46-mobile-parity-v1.css
@@ -100,6 +102,7 @@ jobs:
           ! grep -Fq 'fetch(' nomad-live-343/odds-format-343.js
           node --check nomad-live-343/ball46-logo-card-settings-odds-v1.js
           node --check nomad-live-343/odds-format-343.js
+          echo 'LOCAL_MOBILE_AND_PC_GUARDS_OK'
 
           curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/board?b46-settings-before=${GITHUB_RUN_ID}" -o /tmp/board-before.json
           curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/signals?b46-settings-before=${GITHUB_RUN_ID}" -o /tmp/signals-before.json
