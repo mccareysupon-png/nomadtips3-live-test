@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="robots" content="index,follow">
+  <title>Contact Ball46</title>
+  <meta name="description" content="Contact Ball46 for website, live score, statistics, partnership, and general enquiries.">
+  <link rel="stylesheet" href="contact.css?v=1">
+</head>
+<body>
+  <header class="site-header">
+    <div class="shell header-inner">
+      <a class="brand" href="/" aria-label="Ball46 home">
+        <span class="brand-mark" aria-hidden="true">B46</span>
+        <span class="brand-copy"><strong>Ball46</strong><small>Live football data &amp; verified statistics</small></span>
+      </a>
+      <a class="back-link" href="/">Back to Ball46</a>
+    </div>
+  </header>
+
+  <main class="shell contact-layout">
+    <section class="intro" aria-labelledby="contact-title">
+      <p class="eyebrow">CONTACT</p>
+      <h1 id="contact-title">Contact Ball46</h1>
+      <p class="lede">Questions about the website, live data, statistics, partnerships, or a technical issue? Send us a message below.</p>
+      <div class="contact-card">
+        <span class="label">Email</span>
+        <a href="mailto:jay@ball46.com">jay@ball46.com</a>
+        <p>Messages submitted through this form are delivered to the Ball46 inbox.</p>
+      </div>
+      <p class="privacy-note">Please do not submit passwords, payment-card details, bookmaker account credentials, or other sensitive information.</p>
+    </section>
+
+    <section class="form-card" aria-label="Contact form">
+      <form id="ball46-contact-form" action="/api/contact" method="post" novalidate>
+        <div class="form-row two-col">
+          <div class="field">
+            <label for="name">Name <span aria-hidden="true">*</span></label>
+            <input id="name" name="name" type="text" autocomplete="name" maxlength="80" required>
+          </div>
+          <div class="field">
+            <label for="email">Email <span aria-hidden="true">*</span></label>
+            <input id="email" name="email" type="email" autocomplete="email" maxlength="160" required>
+          </div>
+        </div>
+
+        <div class="form-row two-col">
+          <div class="field">
+            <label for="topic">Topic <span aria-hidden="true">*</span></label>
+            <select id="topic" name="topic" required>
+              <option value="">Choose a topic</option>
+              <option value="general">General enquiry</option>
+              <option value="live-data">Live score / live data</option>
+              <option value="statistics">Statistics</option>
+              <option value="technical">Technical issue</option>
+              <option value="partnership">Partnership / business</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="subject">Subject <span aria-hidden="true">*</span></label>
+            <input id="subject" name="subject" type="text" maxlength="140" required>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="message">Message <span aria-hidden="true">*</span></label>
+          <textarea id="message" name="message" rows="8" minlength="10" maxlength="5000" required></textarea>
+          <div class="field-meta"><span>10–5,000 characters</span><span id="message-count">0 / 5000</span></div>
+        </div>
+
+        <div class="honeypot" aria-hidden="true">
+          <label for="company_website">Leave this field empty</label>
+          <input id="company_website" name="company_website" type="text" tabindex="-1" autocomplete="off">
+        </div>
+        <input id="started_at" name="started_at" type="hidden" value="">
+
+        <label class="consent" for="consent">
+          <input id="consent" name="consent" type="checkbox" required>
+          <span>I agree that Ball46 may use the information above to respond to this enquiry.</span>
+        </label>
+
+        <div id="form-status" class="form-status" role="status" aria-live="polite"></div>
+        <button id="submit-button" class="submit-button" type="submit">
+          <span class="button-label">Send message</span>
+          <span class="button-spinner" aria-hidden="true"></span>
+        </button>
+        <p class="form-footnote">This form is for support and business enquiries. It is not a betting service or payment channel.</p>
+      </form>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="shell footer-inner">
+      <span>© Ball46</span>
+      <span>For entertainment and informational purposes only.</span>
+    </div>
+  </footer>
+
+  <script src="contact.js?v=1" defer></script>
+</body>
+</html>
