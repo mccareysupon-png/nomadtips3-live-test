@@ -1,0 +1,69 @@
+name: Inspect Ball46 Signal Left Scrollbar 20260926
+
+on:
+  push:
+    branches:
+      - diag/ball46-signal-left-scrollbar-20260926
+    paths:
+      - .github/workflows/inspect-ball46-signal-left-scrollbar-20260926.yml
+
+permissions:
+  contents: write
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    env:
+      BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: diag/ball46-signal-left-scrollbar-20260926
+      - name: Capture current production shell and relevant selectors
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .diag /tmp/ball46-assets
+          curl -fsS -L --retry 5 --retry-all-errors --retry-delay 1 --max-time 30 "$BALL46_WORKER/index.html?diag=${GITHUB_RUN_ID}" -o /tmp/index.html
+          cp /tmp/index.html .diag/ball46-current-index.html
+          python3 - <<'PY' > .diag/ball46-local-assets.txt
+          from pathlib import Path
+          import re
+          h=Path('/tmp/index.html').read_text(errors='ignore')
+          found=[]
+          for x in re.findall(r'''(?:src|href)=["']([^"']+)["']''', h, re.I):
+              x=x.split('?',1)[0].split('#',1)[0].strip()
+              if not x or x.startswith(('http://','https://','//','data:','#','mailto:','tel:')):
+                  continue
+              x=x.lstrip('./').lstrip('/')
+              if re.search(r'\.(?:js|css)$', x, re.I):
+                  found.append(x)
+          print('\n'.join(dict.fromkeys(found)))
+          PY
+          : > .diag/ball46-left-scrollbar-report.txt
+          {
+            echo '=== INDEX MATCHES ==='
+            grep -niE 'sidebar|left[-_ ]?(rail|nav|panel|column)|overflow-y|scrollbar|status=live|view=signal|match status|leagues|statistics' /tmp/index.html | head -n 600 || true
+            echo
+            echo '=== ASSET MATCHES ==='
+          } >> .diag/ball46-left-scrollbar-report.txt
+          while IFS= read -r asset; do
+            [ -z "$asset" ] && continue
+            out="/tmp/ball46-assets/$(echo "$asset" | tr '/?' '__')"
+            code=$(curl -sS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 -o "$out" -w '%{http_code}' "$BALL46_WORKER/$asset?diag=${GITHUB_RUN_ID}")
+            [ "$code" = 200 ] || continue
+            {
+              echo
+              echo "--- $asset ---"
+              grep -niE 'sidebar|left[-_ ]?(rail|nav|panel|column)|overflow-y|overflow:|scrollbar|status=live|view=signal|match-status|match status|leagues|statistics' "$out" | head -n 800 || true
+            } >> .diag/ball46-left-scrollbar-report.txt
+          done < .diag/ball46-local-assets.txt
+      - name: Save read-only inspection
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add .diag/ball46-current-index.html .diag/ball46-local-assets.txt .diag/ball46-left-scrollbar-report.txt
+          git commit -m "diag(ball46): capture live left scrollbar structure" || exit 0
+          git push origin HEAD:diag/ball46-signal-left-scrollbar-20260926
