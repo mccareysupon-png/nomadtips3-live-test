@@ -1,6 +1,6 @@
 name: Diagnose Ball46 Cloudflare History 20260926
 
-# rerun 2026-09-27 exact history audit; read-only, no production deploy
+# Read-only exact-version inspection. Never deploys or rolls back production.
 on:
   push:
     branches:
@@ -22,11 +22,28 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Wrangler info
+      - name: Inspect candidate versions without deployment
         run: |
           set -u
-          npx --yes wrangler@4.92.0 --version
-          echo '=== deployments list ==='
-          npx --yes wrangler@4.92.0 deployments list --name ball46-production || true
-          echo '=== versions list ==='
-          npx --yes wrangler@4.92.0 versions list --name ball46-production || true
+          for v in \
+            6f62755e-6610-447e-b41b-7214041d0594 \
+            59dca686-a0b3-4419-b809-5c80fd8acae2 \
+            8e95c148-ea19-4ed1-88a1-2f14565c6888 \
+            9958e030-d54d-4bca-8ac5-e1cb5507a56b \
+            1c002b58-317e-408e-a64e-84c3db83b6d7; do
+            echo "=== VERSION $v ==="
+            npx --yes wrangler@4.92.0 versions view "$v" --name ball46-production --json || true
+          done
+          echo '=== VERSION URL PROBES ==='
+          for p in 6f62755e 59dca686 8e95c148 9958e030 1c002b58; do
+            u="https://${p}-ball46-production.mccarey-supon.workers.dev"
+            echo "--- $u ---"
+            curl -fsS -L --max-time 20 "$u/" -o "/tmp/${p}.html" || { echo 'ROOT_FETCH_FAILED'; continue; }
+            echo "ROOT_BYTES=$(wc -c < /tmp/${p}.html)"
+            echo "ROOT_SHA=$(sha256sum /tmp/${p}.html | awk '{print $1}')"
+            for marker in 'Dark' 'BULK · DEC' 'Fractional' 'American' 'Settings' 'scorebar' 'SCOREBAR' 'data-scorebar' 'odds-format-343'; do
+              if grep -Fqi "$marker" "/tmp/${p}.html"; then echo "MARKER_PRESENT=$marker"; else echo "MARKER_ABSENT=$marker"; fi
+            done
+            curl -fsS -L --max-time 20 "$u/signal.html" -o "/tmp/${p}-signal.html" && echo "SIGNAL_SHA=$(sha256sum /tmp/${p}-signal.html | awk '{print $1}') SIGNAL_BYTES=$(wc -c < /tmp/${p}-signal.html)" || echo 'SIGNAL_FETCH_FAILED'
+            curl -fsS -L --max-time 20 "$u/statistics.html" -o "/tmp/${p}-statistics.html" && echo "STAT_SHA=$(sha256sum /tmp/${p}-statistics.html | awk '{print $1}') STAT_BYTES=$(wc -c < /tmp/${p}-statistics.html)" || echo 'STAT_FETCH_FAILED'
+          done
