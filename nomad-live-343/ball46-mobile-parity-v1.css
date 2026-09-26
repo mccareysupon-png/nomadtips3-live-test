@@ -1,0 +1,114 @@
+/* BALL46-MOBILE-PARITY-V1 START
+   Mobile-only presentation parity layer.
+   Scope is intentionally limited to <=760px.
+   No desktop rules, API calls, odds logic, signal logic, routing, or data mapping. */
+
+@media (max-width:760px){
+  /* Keep the same live information available on mobile as on PC. */
+  .workspace.singlepage,
+  .workspace-stage,
+  .live-stage-grid,
+  .live-stage-grid>.main-board,
+  .live-stage-grid>.right-rail{
+    min-width:0!important;
+    max-width:100%!important;
+  }
+
+  /* Current mobile CSS hides the entire PC right rail. Restore it as a
+     stacked mobile section instead of creating a separate mobile version. */
+  .live-stage-grid>.right-rail{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    gap:10px!important;
+    width:100%!important;
+  }
+  .live-stage-grid>.right-rail>.side-card{
+    display:block!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:100%!important;
+  }
+
+  /* Preserve PC information that older mobile overrides remove. */
+  .market-cell small{
+    display:block!important;
+    margin-top:2px!important;
+    font-size:5.5px!important;
+    line-height:1.15!important;
+    white-space:nowrap!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+  }
+  .half-score{
+    display:inline!important;
+    opacity:.8!important;
+  }
+  .workspace-view-head p{
+    display:block!important;
+    margin-top:2px!important;
+    font-size:8px!important;
+    line-height:1.25!important;
+  }
+  .sp-kpi small{
+    display:block!important;
+    margin-top:3px!important;
+    font-size:6.5px!important;
+    white-space:nowrap!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+  }
+
+  /* Keep brand status/meta visible instead of serving a reduced mobile card. */
+  .workspace-brand-meta{
+    display:flex!important;
+    height:28px!important;
+    min-height:28px!important;
+    max-height:28px!important;
+  }
+  .workspace.singlepage>.left-rail .workspace-brand-card{
+    height:72px!important;
+    min-height:72px!important;
+    max-height:72px!important;
+  }
+  .workspace.singlepage>.left-rail .workspace-brand-row{
+    height:44px!important;
+    min-height:44px!important;
+    max-height:44px!important;
+  }
+
+  /* Statistics keeps the same labels/counts as PC, reflowed for touch width. */
+  .workspace-stats-card .workspace-nav-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:5px!important;
+    padding:6px!important;
+  }
+  .workspace-stats-card .workspace-nav-row{
+    justify-content:space-between!important;
+    padding:0 8px!important;
+    font-size:8px!important;
+  }
+  .workspace-stats-card .workspace-nav-row b{
+    display:flex!important;
+    min-width:20px!important;
+    height:16px!important;
+    padding:0 5px!important;
+    font-size:7px!important;
+  }
+  .workspace-stats-card .workspace-nav-mark{
+    display:inline-block!important;
+  }
+
+  /* Avoid old mobile clipping while keeping the PC component structure. */
+  .featured-card,
+  .prediction-card,
+  .overview-card,
+  .feature-facts,
+  .feature-signal,
+  .feature-stats,
+  .feature-events{
+    max-width:100%!important;
+    box-sizing:border-box!important;
+  }
+}
+
+/* BALL46-MOBILE-PARITY-V1 END */
