@@ -1,0 +1,49 @@
+name: Diagnose Ball46 Scorebar Cursor Production 20260926
+
+on:
+  push:
+    branches: [work/ball46-scorebar-readonly-safe-20260926]
+    paths:
+      - '.github/workflows/diag-ball46-scorebar-cursor-prod-20260926.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
+    steps:
+      - name: Mirror current public assets and locate scorebar cursor
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/prod
+          curl -fsSL --retry 4 "$BALL46_WORKER/index.html?cursor-diag=${GITHUB_RUN_ID}" -o /tmp/prod/index.html
+          python3 - <<'PY' > /tmp/assets.txt
+          from pathlib import Path
+          import re
+          h=Path('/tmp/prod/index.html').read_text(errors='ignore')
+          found=set()
+          for x in re.findall(r'''(?:src|href)=["']([^"']+)["']''',h,re.I):
+              x=x.split('?',1)[0].split('#',1)[0].strip().lstrip('./').lstrip('/')
+              if not x or '://' in x or '/' in x: continue
+              if re.search(r'\.(?:js|css)$',x,re.I): found.add(x)
+          found.add('dashboard-v2-stage3.js')
+          for x in sorted(found): print(x)
+          PY
+          while IFS= read -r f; do
+            [ -n "$f" ] || continue
+            code=$(curl -sSL --retry 4 -o "/tmp/prod/$f" -w '%{http_code}' "$BALL46_WORKER/$f?cursor-diag=${GITHUB_RUN_ID}") || true
+            [ "$code" = 200 ] || continue
+          done < /tmp/assets.txt
+          echo '=== SCOREBAR SELECTOR FILES ==='
+          grep -RIl --include='*.js' --include='*.css' 'workspace-scorebar-cell' /tmp/prod || true
+          echo '=== SCOREBAR LINES ==='
+          grep -RIn --include='*.js' --include='*.css' -E 'workspace-scorebar-cell|workspace-scorebar-slot|cursor:[[:space:]]*pointer' /tmp/prod || true
+          echo '=== DASHBOARD SHA ==='
+          sha256sum /tmp/prod/dashboard-v2-stage3.js
+          echo '=== INDEX SHA ==='
+          sha256sum /tmp/prod/index.html
