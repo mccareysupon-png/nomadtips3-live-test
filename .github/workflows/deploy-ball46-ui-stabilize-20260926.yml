@@ -6,6 +6,7 @@ on:
       - work/ball46-ui-stabilize-prod-safe-20260926
     paths:
       - .github/workflows/deploy-ball46-ui-stabilize-20260926.yml
+      - ops/stabilize-ball46-ui-20260926-v2.sh
   workflow_dispatch:
 
 permissions:
@@ -28,7 +29,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: {node-version: '22'}
 
-      - name: Prove backend source is exact restored-version baseline
+      - name: Lock exact restored backend source
         run: |
           set -euo pipefail
           git diff --exit-code "$BASELINE_COMMIT" -- workers/nomadtips3-343-preview/src/index.js
@@ -38,7 +39,7 @@ jobs:
       - name: Mirror protected current Production assets
         run: |
           set -euo pipefail
-          mkdir -p /tmp/protected
+          mkdir -p /tmp/protected /tmp/verify
           : > /tmp/protected.sha
           protected='dashboard-v2.css dashboard-v2-tune.js v2-shared.css v2-shared.js bulk-odds-compat-343.js expanded-match-343.js full-market-bookmaker-343.js live-summary-full-odds-343.js signal-next.js signal-shared-view-343.css ball46-next.css market-registry-343.js'
           for f in $protected; do
@@ -50,16 +51,17 @@ jobs:
           done
           echo PROTECTED_CURRENT_ASSETS_MIRRORED
 
-      - name: Build guarded presentation-only patch from current Production
+      - name: Build guarded UI-only patch from current Production
         run: |
-          chmod +x ops/stabilize-ball46-ui-20260926.sh
-          ops/stabilize-ball46-ui-20260926.sh
+          set -euo pipefail
+          chmod +x ops/stabilize-ball46-ui-20260926-v2.sh
+          ops/stabilize-ball46-ui-20260926-v2.sh
           while read -r expected f; do
             actual=$(sha256sum "nomad-live-343/$f"|awk '{print $1}')
             [ "$actual" = "$expected" ] || { echo "PROTECTED_LOCAL_CHANGED:$f"; exit 1; }
           done < /tmp/protected.sha
 
-      - name: Upload exact pre-change target snapshot
+      - name: Save exact pre-change UI targets
         uses: actions/upload-artifact@v4
         with:
           name: ball46-pre-ui-stable-${{ github.run_id }}
@@ -69,7 +71,7 @@ jobs:
             /tmp/index.before.sha
           retention-days: 30
 
-      - name: Dry run exact restored backend with current assets
+      - name: Dry run exact restored backend with UI patch
         working-directory: workers/nomadtips3-343-preview
         run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.ball46.jsonc
 
@@ -78,7 +80,7 @@ jobs:
         working-directory: workers/nomadtips3-343-preview
         run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
 
-      - name: Verify target files protected assets and APIs
+      - name: Verify files protected assets and APIs
         id: verify_static
         run: |
           set -euo pipefail
@@ -117,7 +119,7 @@ jobs:
           console.log('BALL46_BACKEND_CONTINUITY_OK',{fixtures:b.fixtures.length,signals:s.signals.length,settled:t.rows.length});
           NODE
 
-      - name: Browser-click every desktop view and prove geometry lock
+      - name: Browser click every desktop view and prove geometry lock
         id: verify_visual
         run: |
           set -euo pipefail
@@ -141,14 +143,18 @@ jobs:
               ['Total','[data-stat-market="all"]'],['1X2','[data-stat-market="1x2"]'],['AH','[data-stat-market="ah"]'],['O/U','[data-stat-market="ou"]'],['BTTS','[data-stat-market="btts"]'],['Corners','[data-stat-market="corners"]'],['Cards','[data-stat-market="cards"]'],['Other','[data-stat-market="other"]']
             ];
             const out=[];
-            for(const [name,sel] of targets){const el=page.locator(sel).first();if(!(await el.isVisible()))throw Error('NAV_NOT_VISIBLE:'+name);await el.click();await page.waitForTimeout(650);out.push(await snap(name));}
+            for(const [name,sel] of targets){
+              const el=page.locator(sel).first();
+              if(!(await el.isVisible()))throw Error('NAV_NOT_VISIBLE:'+name);
+              await el.click(); await page.waitForTimeout(650); out.push(await snap(name));
+            }
             const base=out[0],same=(a,b)=>Math.abs(a-b)<=0.6;
             if(!base.head||!base.score||!base.workspace||!base.rail)throw Error('BASE_GEOMETRY_MISSING');
             if(base.cells!==10)throw Error('SCOREBAR_CELL_COUNT_'+base.cells);
             for(const x of out){
               if(!x.head||!x.score||!x.workspace||!x.rail)throw Error('GEOMETRY_MISSING:'+x.label);
-              for(const k of ['x','y','w','h'])if(!same(x.head[k],base.head[k]))throw Error(`HEAD_SHIFT:${x.label}:${k}:${x.head[k]}!=${base.head[k]}`);
-              for(const k of ['x','y','w','h'])if(!same(x.score[k],base.score[k]))throw Error(`SCOREBAR_SHIFT:${x.label}:${k}:${x.score[k]}!=${base.score[k]}`);
+              for(const k of ['x','y','w','h'])if(!same(x.head[k],base.head[k]))throw Error(`HEAD_SHIFT:${x.label}:${k}`);
+              for(const k of ['x','y','w','h'])if(!same(x.score[k],base.score[k]))throw Error(`SCOREBAR_SHIFT:${x.label}:${k}`);
               for(const k of ['x','y','w'])if(!same(x.workspace[k],base.workspace[k]))throw Error(`WORKSPACE_SHIFT:${x.label}:${k}`);
               for(const k of ['x','y','w'])if(!same(x.rail[k],base.rail[k]))throw Error(`RAIL_SHIFT:${x.label}:${k}`);
               if(x.cells!==10)throw Error('SCOREBAR_CELL_COUNT:'+x.label+':'+x.cells);
@@ -160,7 +166,7 @@ jobs:
           NODE
           node /tmp/verify-layout.js
 
-      - name: Restore three target UI files if any post-deploy verification fails
+      - name: Restore only three UI targets if post-deploy verification fails
         if: ${{ failure() && steps.deploy.outcome == 'success' }}
         run: |
           set -euo pipefail
