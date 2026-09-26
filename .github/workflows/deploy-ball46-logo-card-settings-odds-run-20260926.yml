@@ -1,22 +1,167 @@
-name: RETIRED - Ball46 Mobile Parity Deploy
-
-# RETIRED 2026-09-27
-# This workflow previously checked out a historical source branch and ran
-# `wrangler deploy` for the entire ball46-production Worker. That made a
-# mobile-only asset change capable of replacing Worker runtime code.
-# It is intentionally inert. Keep only as an audit record.
+name: ONE SHOT - Ball46 Runtime Recovery Preserve Current Assets
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-ball46-logo-card-settings-odds-run-20260926.yml'
 
 permissions:
   contents: read
 
+env:
+  GOOD_COMMIT: 345645a8b9eae0db932cc012f1473cc8e5bdf87b
+  ASSET_NAME_SOURCE: work/ball46-logo-card-settings-odds-prod-safe-20260926
+  BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
 jobs:
-  retired:
+  recover-runtime-preserve-assets:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
-      - name: Deployment retired
+      - name: Checkout exact known-good runtime source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.GOOD_COMMIT }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Capture active version and mirror exact current static assets
+        id: baseline
+        shell: bash
         run: |
-          echo 'RETIRED: no checkout, no Wrangler, no Cloudflare deploy.'
-          echo 'Do not restore this workflow for production deployment.'
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GOOD_COMMIT"
+          git diff --quiet HEAD -- workers/nomadtips3-343-preview/src/index.js
+          grep -Fq 'const engineHubAgeMs = num(engineBoard?.hubAgeMs);' workers/nomadtips3-343-preview/src/index.js
+          grep -Fq 'engineHubAgeMs > 180_000' workers/nomadtips3-343-preview/src/index.js
+          grep -Fq '"name": "ball46-production"' workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+          grep -Fq '"service": "nomadtips3-engine-343"' workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+          grep -Fq '"service": "nomadtips3-5usd-hub-343"' workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+          grep -Fq '"service": "nomadtips3-full-market-343-ball46"' workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+
+          npx --yes wrangler@4.92.0 deployments list --name ball46-production | tee /tmp/deployments-before.txt
+          BASELINE_VERSION=$(awk '/Version\(s\):/{print $3; exit}' /tmp/deployments-before.txt)
+          echo "$BASELINE_VERSION" | grep -Eq '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+          echo "baseline_version=$BASELINE_VERSION" >> "$GITHUB_OUTPUT"
+          echo "BASELINE_VERSION=$BASELINE_VERSION"
+
+          mkdir -p /tmp/current-assets /tmp/rollback-current-assets
+          : > /tmp/candidates.txt
+          git ls-tree -r --name-only "$GOOD_COMMIT" nomad-live-343/ | sed 's#^nomad-live-343/##' >> /tmp/candidates.txt
+          git ls-tree -r --name-only "origin/$ASSET_NAME_SOURCE" nomad-live-343/ | sed 's#^nomad-live-343/##' >> /tmp/candidates.txt
+          sort -u /tmp/candidates.txt -o /tmp/candidates.txt
+
+          rm -rf nomad-live-343
+          mkdir -p nomad-live-343
+          : > /tmp/current-assets.sha
+          : > /tmp/current-assets.list
+          while IFS= read -r rel; do
+            [ -n "$rel" ] || continue
+            safe=$(printf '%s' "$rel" | tr '/ ' '__')
+            code=$(curl -sS -L --retry 3 --retry-all-errors --retry-delay 1 --max-time 25 \
+              -o "/tmp/current-assets/$safe" -w '%{http_code}' \
+              "$BALL46_WORKER/$rel?runtime-recovery-baseline=${GITHUB_RUN_ID}") || true
+            if [ "$code" = 200 ] && test -s "/tmp/current-assets/$safe"; then
+              mkdir -p "nomad-live-343/$(dirname "$rel")" "/tmp/rollback-current-assets/$(dirname "$rel")"
+              cp "/tmp/current-assets/$safe" "nomad-live-343/$rel"
+              cp "/tmp/current-assets/$safe" "/tmp/rollback-current-assets/$rel"
+              hash=$(sha256sum "nomad-live-343/$rel" | awk '{print $1}')
+              printf '%s  %s\n' "$hash" "$rel" >> /tmp/current-assets.sha
+              printf '%s\n' "$rel" >> /tmp/current-assets.list
+            fi
+          done < /tmp/candidates.txt
+
+          test -s nomad-live-343/index.html
+          test -s /tmp/current-assets.sha
+          asset_count=$(wc -l < /tmp/current-assets.list | tr -d ' ')
+          [ "$asset_count" -ge 20 ] || { echo "CURRENT_ASSET_COUNT_TOO_LOW:$asset_count"; exit 1; }
+          cp /tmp/current-assets.sha /tmp/rollback-current-assets/CURRENT_ASSET_HASHES.sha
+          cp /tmp/deployments-before.txt /tmp/rollback-current-assets/DEPLOYMENTS_BEFORE.txt
+          printf 'baseline_version=%s\ngood_runtime_commit=%s\nasset_count=%s\n' "$BASELINE_VERSION" "$GOOD_COMMIT" "$asset_count" > /tmp/rollback-current-assets/RECOVERY_BASELINE.txt
+          echo "CURRENT_STATIC_ASSETS_MIRRORED=$asset_count"
+
+          curl -fsS -L --retry 3 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/health?runtime-recovery-pre=${GITHUB_RUN_ID}" -o /tmp/health-before.json
+          curl -fsS -L --retry 3 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/board?runtime-recovery-pre=${GITHUB_RUN_ID}" -o /tmp/board-before.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const h=JSON.parse(fs.readFileSync('/tmp/health-before.json'));
+          const b=JSON.parse(fs.readFileSync('/tmp/board-before.json'));
+          if(h?.ok!==true) throw Error('PRE_HEALTH_BAD');
+          if(b?.ok!==true || !Array.isArray(b?.fixtures)) throw Error('PRE_BOARD_BAD');
+          console.log('PRE_RUNTIME_HEALTH_OK',{fixtures:b.fixtures.length});
+          NODE
+
+      - name: Save exact pre-recovery static snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-runtime-recovery-baseline-${{ github.run_id }}
+          path: /tmp/rollback-current-assets
+          retention-days: 30
+
+      - name: Reconfirm runtime-only source and static hashes before deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GOOD_COMMIT"
+          git diff --quiet "$GOOD_COMMIT" -- workers/nomadtips3-343-preview/src/index.js workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+          while read -r expected rel; do
+            actual=$(sha256sum "nomad-live-343/$rel" | awk '{print $1}')
+            [ "$actual" = "$expected" ] || { echo "LOCAL_STATIC_HASH_CHANGED:$rel"; exit 1; }
+          done < /tmp/current-assets.sha
+          echo 'KNOWN_GOOD_RUNTIME_AND_CURRENT_STATIC_HASHES_LOCKED'
+
+      - name: Dry run recovery package
+        working-directory: workers/nomadtips3-343-preview
+        shell: bash
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.ball46.jsonc
+
+      - name: Deploy known-good runtime with unchanged current assets
+        id: deploy
+        working-directory: workers/nomadtips3-343-preview
+        shell: bash
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Verify every current static asset hash and backend health
+        shell: bash
+        run: |
+          set -euo pipefail
+          while read -r expected rel; do
+            safe=$(printf '%s' "$rel" | tr '/ ' '__')
+            curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 \
+              "$BALL46_WORKER/$rel?runtime-recovery-after=${GITHUB_RUN_ID}" -o "/tmp/after-$safe"
+            actual=$(sha256sum "/tmp/after-$safe" | awk '{print $1}')
+            [ "$actual" = "$expected" ] || { echo "REMOTE_STATIC_HASH_CHANGED:$rel"; exit 1; }
+          done < /tmp/current-assets.sha
+          echo 'ALL_CURRENT_STATIC_ASSET_HASHES_UNCHANGED'
+
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/health?runtime-recovery-post=${GITHUB_RUN_ID}" -o /tmp/health-after.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/board?runtime-recovery-post=${GITHUB_RUN_ID}" -o /tmp/board-after.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/signals?runtime-recovery-post=${GITHUB_RUN_ID}" -o /tmp/signals-after.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/statistics?runtime-recovery-post=${GITHUB_RUN_ID}" -o /tmp/stats-after.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const h=JSON.parse(fs.readFileSync('/tmp/health-after.json'));
+          const b=JSON.parse(fs.readFileSync('/tmp/board-after.json'));
+          const s=JSON.parse(fs.readFileSync('/tmp/signals-after.json'));
+          const t=JSON.parse(fs.readFileSync('/tmp/stats-after.json'));
+          if(h?.ok!==true) throw Error('POST_HEALTH_BAD');
+          if(b?.ok!==true || !Array.isArray(b?.fixtures)) throw Error('POST_BOARD_BAD');
+          if(!Array.isArray(s?.signals)) throw Error('POST_SIGNALS_BAD');
+          if(t?.ok!==true || !Array.isArray(t?.rows)) throw Error('POST_STATS_BAD');
+          console.log('RUNTIME_RECOVERY_PASS',{fixtures:b.fixtures.length,signals:s.signals.length,settled:t.rows.length});
+          NODE
+
+      - name: Auto restore exact baseline version if any post-deploy verification fails
+        if: failure() && steps.deploy.outcome == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASELINE='${{ steps.baseline.outputs.baseline_version }}'
+          echo "AUTO_RESTORE_BASELINE_VERSION=$BASELINE"
+          npx --yes wrangler@4.92.0 rollback "$BASELINE" --name ball46-production --message "Auto restore exact baseline after guarded runtime recovery verification failure"
