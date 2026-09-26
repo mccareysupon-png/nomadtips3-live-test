@@ -1,0 +1,152 @@
+name: Deploy Ball46 SEO Phase 2 20260926
+
+on:
+  push:
+    branches:
+      - work/ball46-ui-stabilize-prod-safe-20260926
+    paths:
+      - .github/workflows/deploy-ball46-seo-phase2-20260926.yml
+      - ops/ball46-seo-phase2-prod-safe-20260926.sh
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
+  BALL46_PUBLIC: https://www.ball46.com
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  BASELINE_COMMIT: a4abdef5c3dc1003852effdaa73aeff6cdd0b7b9
+
+jobs:
+  deploy-seo2:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+
+      - name: Lock backend source and Cloudflare config
+        run: |
+          set -euo pipefail
+          git diff --exit-code "$BASELINE_COMMIT" -- workers/nomadtips3-343-preview/src/index.js
+          git diff --exit-code "$BASELINE_COMMIT" -- workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+          echo BALL46_BACKEND_BASELINE_LOCK_OK
+
+      - name: Mirror live Production and build head-only SEO patch
+        run: |
+          set -euo pipefail
+          chmod +x ops/ball46-seo-phase2-prod-safe-20260926.sh
+          ops/ball46-seo-phase2-prod-safe-20260926.sh
+
+      - name: Save exact pre-change SEO documents
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-pre-seo2-${{ github.run_id }}
+          path: |
+            /tmp/ball46-seo2/rollback
+            /tmp/ball46-seo2/protected.sha
+            /tmp/ball46-seo2/*.body.before.sha
+          retention-days: 30
+
+      - name: Abort if Production moved during preparation
+        run: |
+          set -euo pipefail
+          for f in index.html signal.html statistics.html robots.txt sitemap.xml; do
+            curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 \
+              "$BALL46_WORKER/$f?seo2-race=${GITHUB_RUN_ID}" -o "/tmp/ball46-seo2/verify/race-${f}"
+            cmp -s "/tmp/ball46-seo2/verify/race-${f}" "/tmp/ball46-seo2/rollback/$f" || { echo "PRODUCTION_MOVED_ABORT:$f"; exit 1; }
+          done
+          while read -r expected f; do
+            curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 \
+              "$BALL46_WORKER/$f?seo2-race-protected=${GITHUB_RUN_ID}" -o "/tmp/ball46-seo2/verify/race-${f//\//_}"
+            actual=$(sha256sum "/tmp/ball46-seo2/verify/race-${f//\//_}"|awk '{print $1}')
+            [ "$actual" = "$expected" ] || { echo "PROTECTED_MOVED_ABORT:$f"; exit 1; }
+          done < /tmp/ball46-seo2/protected.sha
+          echo BALL46_PRODUCTION_RACE_GUARD_OK
+
+      - name: Dry run exact backend with SEO-only assets
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.ball46.jsonc
+
+      - name: Deploy SEO Phase 2
+        id: deploy
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Verify SEO documents bodies protected assets and APIs
+        id: verify
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/ball46-seo2/verify/post
+          ok=0
+          for n in $(seq 1 20); do
+            if curl -fsS -L --retry 2 --retry-all-errors --retry-delay 1 --max-time 20 "$BALL46_WORKER/index.html?seo2-after=${GITHUB_RUN_ID}-${n}" -o /tmp/ball46-seo2/verify/post/index.html \
+              && grep -Fq 'BALL46 SEO PHASE 2 | 2026-09-26' /tmp/ball46-seo2/verify/post/index.html; then ok=1; break; fi
+            sleep 3
+          done
+          [ "$ok" = 1 ] || { echo SEO2_NOT_LIVE; exit 1; }
+
+          for f in signal.html statistics.html robots.txt sitemap.xml; do
+            curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 \
+              "$BALL46_WORKER/$f?seo2-after=${GITHUB_RUN_ID}" -o "/tmp/ball46-seo2/verify/post/$f"
+          done
+          grep -Fq 'BALL46 SEO PHASE 2 | 2026-09-26' /tmp/ball46-seo2/verify/post/signal.html
+          grep -Fq 'BALL46 SEO PHASE 2 | 2026-09-26' /tmp/ball46-seo2/verify/post/statistics.html
+          grep -Fq '<lastmod>2026-09-26</lastmod>' /tmp/ball46-seo2/verify/post/sitemap.xml
+          cmp -s /tmp/ball46-seo2/verify/post/robots.txt /tmp/ball46-seo2/rollback/robots.txt
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib
+          T=Path('/tmp/ball46-seo2')
+          P=T/'verify/post'
+          for page in ('index.html','signal.html','statistics.html'):
+              s=(P/page).read_text()
+              i=s.lower().index('</head>')+len('</head>')
+              got=hashlib.sha256(s[i:].encode()).hexdigest()
+              want=(T/f'{page}.body.before.sha').read_text().strip()
+              if got!=want: raise SystemExit('DEPLOYED_BODY_CHANGED:'+page)
+              if 'noindex' in s.lower(): raise SystemExit('DEPLOYED_NOINDEX:'+page)
+          print('BALL46_DEPLOYED_BODY_LOCK_OK')
+          PY
+
+          while read -r expected f; do
+            curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 \
+              "$BALL46_WORKER/$f?seo2-protected-after=${GITHUB_RUN_ID}" -o "/tmp/ball46-seo2/verify/post/protected-${f//\//_}"
+            actual=$(sha256sum "/tmp/ball46-seo2/verify/post/protected-${f//\//_}"|awk '{print $1}')
+            [ "$actual" = "$expected" ] || { echo "PROTECTED_DEPLOYED_CHANGED:$f"; exit 1; }
+          done < /tmp/ball46-seo2/protected.sha
+
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/board?seo2-final=${GITHUB_RUN_ID}" -o /tmp/ball46-seo2/verify/post/board.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/signals?seo2-final=${GITHUB_RUN_ID}" -o /tmp/ball46-seo2/verify/post/signals.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/statistics?seo2-final=${GITHUB_RUN_ID}" -o /tmp/ball46-seo2/verify/post/statistics.json
+          node - <<'NODE'
+          const fs=require('fs'),T='/tmp/ball46-seo2/verify/post';
+          const b=JSON.parse(fs.readFileSync(`${T}/board.json`));
+          const s=JSON.parse(fs.readFileSync(`${T}/signals.json`));
+          const t=JSON.parse(fs.readFileSync(`${T}/statistics.json`));
+          if(b?.ok!==true||!Array.isArray(b?.fixtures))throw Error('POST_BOARD_UNHEALTHY');
+          if(!Array.isArray(s?.signals))throw Error('POST_SIGNALS_UNHEALTHY');
+          if(t?.ok!==true||!Array.isArray(t?.rows))throw Error('POST_STATS_UNHEALTHY');
+          console.log('BALL46_SEO2_API_CONTINUITY_OK',{fixtures:b.fixtures.length,signals:s.signals.length,settled:t.rows.length});
+          NODE
+
+          # Public-domain check is useful but non-destructive; Worker verification above is authoritative for this deploy.
+          curl -fsS -L --retry 3 --retry-all-errors --retry-delay 1 --max-time 20 "$BALL46_PUBLIC/index.html?seo2-public=${GITHUB_RUN_ID}" -o /tmp/ball46-seo2/verify/public-index.html || true
+          if [ -s /tmp/ball46-seo2/verify/public-index.html ]; then grep -Fq 'BALL46 SEO PHASE 2 | 2026-09-26' /tmp/ball46-seo2/verify/public-index.html || true; fi
+          echo BALL46_SEO2_VERIFY_OK
+
+      - name: Restore exact pre-change documents if verification fails
+        if: ${{ failure() && steps.deploy.outcome == 'success' }}
+        run: |
+          set -euo pipefail
+          for f in index.html signal.html statistics.html robots.txt sitemap.xml; do
+            cp "/tmp/ball46-seo2/rollback/$f" "nomad-live-343/$f"
+          done
+          cd workers/nomadtips3-343-preview
+          npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+          echo BALL46_SEO2_ROLLBACK_COMPLETE
