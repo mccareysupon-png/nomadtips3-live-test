@@ -23,92 +23,54 @@ jobs:
           npm init -y >/dev/null 2>&1
           npm install playwright@1.55.0 >/dev/null 2>&1
           npx playwright install --with-deps chromium >/dev/null
-      - name: Click every main page and measure layout
+      - name: Click current Ball46 views and measure layout
         run: |
           cat > diag-ball46.js <<'NODE'
           const { chromium } = require('playwright');
           const fs = require('fs');
           (async()=>{
-            const browser = await chromium.launch({headless:true});
-            const page = await browser.newPage({viewport:{width:1440,height:1000}, deviceScaleFactor:1, ignoreHTTPSErrors:true});
+            const browser=await chromium.launch({headless:true});
+            const page=await browser.newPage({viewport:{width:1440,height:1000},deviceScaleFactor:1,ignoreHTTPSErrors:true});
             await page.addInitScript(()=>{
               window.__allLayoutShifts=[];
-              new PerformanceObserver(list=>{
-                for(const e of list.getEntries()) window.__allLayoutShifts.push({value:e.value,hadRecentInput:e.hadRecentInput,time:e.startTime});
-              }).observe({type:'layout-shift', buffered:true});
+              new PerformanceObserver(list=>{for(const e of list.getEntries())window.__allLayoutShifts.push({value:e.value,hadRecentInput:e.hadRecentInput,time:e.startTime});}).observe({type:'layout-shift',buffered:true});
             });
-            const url='https://www.ball46.com/index.html?layoutdiag='+Date.now();
-            const response = await page.goto(url,{waitUntil:'domcontentloaded',timeout:60000});
-            console.log('HTTP', response?.status(), page.url());
-            await page.waitForTimeout(5000);
+            const response=await page.goto('https://www.ball46.com/index.html?layoutdiag='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+            console.log('HTTP',response?.status(),page.url());
+            await page.waitForTimeout(4500);
+            fs.mkdirSync('/tmp/ball46-diag',{recursive:true});
 
-            const snapshot = async(label)=> page.evaluate((label)=>{
-              const firstVisible=(sels)=>{
-                for(const sel of sels){
-                  const els=[...document.querySelectorAll(sel)];
-                  for(const el of els){
-                    const r=el.getBoundingClientRect();
-                    const cs=getComputedStyle(el);
-                    if(r.width>1&&r.height>1&&cs.display!=='none'&&cs.visibility!=='hidden')
-                      return {selector:sel,x:+r.x.toFixed(1),y:+r.y.toFixed(1),w:+r.width.toFixed(1),h:+r.height.toFixed(1)};
-                  }
-                }
-                return null;
-              };
-              return {
-                label,
-                url:location.href,
-                title:document.title,
-                bodyView:document.body.getAttribute('data-workspace-view'),
-                innerWidth:innerWidth,
-                scrollWidth:document.documentElement.scrollWidth,
-                header:firstVisible(['header','.header','.app-header','.topbar','[class*="header"]']),
-                sidebar:firstVisible(['aside','.sidebar','.side-nav','.left-nav','[class*="sidebar"]']),
-                workspace:firstVisible(['.workspace','main','.main','.content','[class*="workspace"]']),
-                scorebar:firstVisible(['.ball46-scorebar10','.ball46-signal-scorebar','[data-ball46-scorebar]','[data-ball46-signal-scorebar]','[class*="scorebar"]']),
-                shifts:(window.__allLayoutShifts||[]).slice(-50)
-              };
+            const snap=async(label)=>page.evaluate(label=>{
+              const rectOf=sel=>{for(const el of document.querySelectorAll(sel)){const r=el.getBoundingClientRect(),c=getComputedStyle(el);if(r.width>1&&r.height>1&&c.display!=='none'&&c.visibility!=='hidden')return{x:+r.x.toFixed(1),y:+r.y.toFixed(1),w:+r.width.toFixed(1),h:+r.height.toFixed(1),sel};}return null};
+              const shift=(window.__allLayoutShifts||[]);
+              return {label,url:location.href,view:document.body.getAttribute('data-workspace-view'),
+                header:rectOf('header'),sidebar:rectOf('aside'),workspace:rectOf('.workspace'),main:rectOf('main'),
+                scorebar:rectOf('.ball46-scorebar10')||rectOf('.ball46-signal-scorebar')||rectOf('[class*="scorebar"]'),
+                scrollWidth:document.documentElement.scrollWidth,shiftCount:shift.length,shiftSum:+shift.reduce((a,b)=>a+(b.value||0),0).toFixed(5)};
             },label);
 
-            const targets=['Home','MATCH STATUS','Signal','AH SIGNAL','1X2 · O/U SIGNAL','STATISTICS','Statistics','Results','History','Leagues','Bookmakers','Settings'];
-            const report=[];
-            fs.mkdirSync('/tmp/ball46-diag',{recursive:true});
-            report.push(await snapshot('INITIAL'));
+            const targets=['All matches','Live','Signal','Upcoming','Waiting','Finished','Total','1X2','AH','O/U','BTTS','Corners','Cards','Other'];
+            const report=[await snap('INITIAL')];
             await page.screenshot({path:'/tmp/ball46-diag/00-initial.png',fullPage:true});
-
-            const clickTarget=async(name)=>{
-              const all=page.locator('a,button,[role="button"],nav *');
-              const n=await all.count();
-              for(let i=0;i<n;i++){
-                const el=all.nth(i);
-                try{
-                  if(!(await el.isVisible())) continue;
-                  const t=(await el.innerText().catch(()=>'' )).trim().replace(/\s+/g,' ');
-                  if(!t) continue;
-                  if(t.toLowerCase()!==name.toLowerCase()) continue;
-                  console.log('CLICK',name,'=>',JSON.stringify(t));
-                  await el.click({timeout:10000});
-                  await page.waitForTimeout(1800);
-                  return true;
-                }catch(e){}
-              }
-              return false;
-            };
-
             let idx=1;
             for(const name of targets){
-              const ok=await clickTarget(name);
-              if(!ok){ console.log('NOT_FOUND',name); continue; }
-              const s=await snapshot(name); report.push(s);
+              const loc=page.getByText(name,{exact:true});
+              let clicked=false;
+              for(let i=0;i<await loc.count();i++){
+                const el=loc.nth(i);
+                if(await el.isVisible().catch(()=>false)){
+                  try{await el.click({timeout:8000,force:true});clicked=true;break;}catch(e){}
+                }
+              }
+              if(!clicked){console.log('NOT_FOUND',name);continue;}
+              await page.waitForTimeout(900);
+              const s=await snap(name);report.push(s);
+              console.log('SNAP',JSON.stringify(s));
               await page.screenshot({path:`/tmp/ball46-diag/${String(idx++).padStart(2,'0')}-${name.replace(/[^a-z0-9]+/gi,'_')}.png`,fullPage:true});
             }
-
-            const norm=r=>r?`${r.x},${r.y},${r.w},${r.h}`:'null';
-            console.log('===LAYOUT_REPORT===');
-            for(const r of report){
-              console.log(JSON.stringify({page:r.label,view:r.bodyView,header:norm(r.header),sidebar:norm(r.sidebar),workspace:norm(r.workspace),scorebar:norm(r.scorebar),scrollWidth:r.scrollWidth,shiftCount:r.shifts.length,shiftSum:+r.shifts.reduce((a,b)=>a+(b.value||0),0).toFixed(5)}));
-            }
             fs.writeFileSync('/tmp/ball46-diag/report.json',JSON.stringify(report,null,2));
+            console.log('===LAYOUT_REPORT===');
+            report.forEach(x=>console.log(JSON.stringify(x)));
             await browser.close();
           })().catch(e=>{console.error(e);process.exit(1)});
           NODE
