@@ -33,12 +33,12 @@ jobs:
           grep -Fq "$TARGET_VERSION" /tmp/versions.txt
           echo "TARGET_EXISTS=$TARGET_VERSION"
 
-      - name: Native Cloudflare rollback to exact 0600 version
+      - name: Native Cloudflare rollback to exact pre-0500 version
         run: |
           set -euo pipefail
           npx --yes wrangler@4.92.0 rollback "$TARGET_VERSION" \
             --config workers/nomadtips3-343-preview/wrangler.ball46.jsonc \
-            --message "Emergency recovery to exact version active at 06:00 Asia/Bangkok 2026-09-26" \
+            --message "Emergency recovery to exact known-good version active before 05:00 Asia/Bangkok 2026-09-26" \
             --yes
 
       - name: Verify target is active and site continuity
