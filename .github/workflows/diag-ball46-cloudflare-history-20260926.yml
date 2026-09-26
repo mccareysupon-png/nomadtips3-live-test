@@ -19,31 +19,34 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - name: Inspect candidate versions without deployment
+      - name: Read exact Cloudflare version metadata and official version URLs
         run: |
-          set -u
-          for v in \
-            6f62755e-6610-447e-b41b-7214041d0594 \
-            59dca686-a0b3-4419-b809-5c80fd8acae2 \
-            8e95c148-ea19-4ed1-88a1-2f14565c6888 \
-            9958e030-d54d-4bca-8ac5-e1cb5507a56b \
-            1c002b58-317e-408e-a64e-84c3db83b6d7; do
-            echo "=== VERSION $v ==="
-            npx --yes wrangler@4.92.0 versions view "$v" --name ball46-production --json || true
-          done
-          echo '=== VERSION URL PROBES ==='
-          for p in 6f62755e 59dca686 8e95c148 9958e030 1c002b58; do
-            u="https://${p}-ball46-production.mccarey-supon.workers.dev"
-            echo "--- $u ---"
-            curl -fsS -L --max-time 20 "$u/" -o "/tmp/${p}.html" || { echo 'ROOT_FETCH_FAILED'; continue; }
-            echo "ROOT_BYTES=$(wc -c < /tmp/${p}.html)"
-            echo "ROOT_SHA=$(sha256sum /tmp/${p}.html | awk '{print $1}')"
-            for marker in 'Dark' 'BULK · DEC' 'Fractional' 'American' 'Settings' 'scorebar' 'SCOREBAR' 'data-scorebar' 'odds-format-343'; do
-              if grep -Fqi "$marker" "/tmp/${p}.html"; then echo "MARKER_PRESENT=$marker"; else echo "MARKER_ABSENT=$marker"; fi
-            done
-            curl -fsS -L --max-time 20 "$u/signal.html" -o "/tmp/${p}-signal.html" && echo "SIGNAL_SHA=$(sha256sum /tmp/${p}-signal.html | awk '{print $1}') SIGNAL_BYTES=$(wc -c < /tmp/${p}-signal.html)" || echo 'SIGNAL_FETCH_FAILED'
-            curl -fsS -L --max-time 20 "$u/statistics.html" -o "/tmp/${p}-statistics.html" && echo "STAT_SHA=$(sha256sum /tmp/${p}-statistics.html | awk '{print $1}') STAT_BYTES=$(wc -c < /tmp/${p}-statistics.html)" || echo 'STAT_FETCH_FAILED'
-          done
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os, urllib.request
+          account=os.environ['CLOUDFLARE_ACCOUNT_ID']
+          token=os.environ['CLOUDFLARE_API_TOKEN']
+          versions=[
+            '6f62755e-6610-447e-b41b-7214041d0594',
+            '59dca686-a0b3-4419-b809-5c80fd8acae2',
+            '8e95c148-ea19-4ed1-88a1-2f14565c6888',
+            '9958e030-d54d-4bca-8ac5-e1cb5507a56b',
+            '1c002b58-317e-408e-a64e-84c3db83b6d7',
+          ]
+          base=f'https://api.cloudflare.com/client/v4/accounts/{account}/workers/workers/ball46-production/versions/'
+          hdr={'Authorization':f'Bearer {token}','Accept':'application/json'}
+          for v in versions:
+              req=urllib.request.Request(base+v+'?include=modules',headers=hdr)
+              with urllib.request.urlopen(req, timeout=30) as r:
+                  payload=json.load(r)
+              result=payload.get('result') or {}
+              print('===',v,'===')
+              print('created_on=',result.get('created_on'))
+              print('number=',result.get('number'))
+              print('urls=',json.dumps(result.get('urls') or []))
+              print('annotations=',json.dumps(result.get('annotations') or {}))
+              assets=result.get('assets') or {}
+              print('assets_config=',json.dumps(assets.get('config') or {}))
+              modules=result.get('modules') or []
+              print('modules=',json.dumps([{'name':m.get('name'),'content_type':m.get('content_type'),'size':len(m.get('content','')) if isinstance(m.get('content'),str) else None} for m in modules]))
+          PY
