@@ -1,12 +1,15 @@
 /* BALL46_SCOREBAR_BELOW_WORKSPACE_20260926
+ * BALL46_SCOREBAR_MATCH_STATUS_MIN10_20260926
  * Isolated presentation-only scorebar.
- * Reads existing rendered LIVE cards. No fetch/API/provider access.
+ * Reads existing rendered cards from the active MATCH STATUS view. No fetch/API/provider access.
+ * Shows only when at least 10 match cards are actually rendered; always uses exactly 10 cards.
  * Removal path: remove the single script reference from Production index.html.
  */
 (()=>{
   'use strict';
   const ID='ball46-scorebar10-below-workspace';
   const STYLE_ID='ball46-scorebar10-below-workspace-style';
+  const MIN=10;
   const MAX=10;
   const MOBILE_MAX=760;
   let raf=0;
@@ -42,16 +45,26 @@
     installStyle();
     bar=document.createElement('section');
     bar.id=ID;
-    bar.setAttribute('aria-label','Live scorebar');
-    bar.innerHTML='<div class="b46-sb-head"><strong>LIVE SCOREBAR</strong><span data-b46-sb-count>0 LIVE</span></div><div class="b46-sb-track" data-b46-sb-track></div>';
+    bar.hidden=true;
+    bar.setAttribute('aria-label','Match scorebar');
+    bar.innerHTML='<div class="b46-sb-head"><strong>SCOREBAR</strong><span data-b46-sb-count>10 MATCHES</span></div><div class="b46-sb-track" data-b46-sb-track></div>';
     workspace.insertAdjacentElement('afterend',bar);
     return bar;
   }
 
-  function liveRows(){
-    const live=document.querySelector('[data-status-section="live"]');
-    if(!live) return [];
-    return [...live.querySelectorAll('[data-match-id]')].slice(0,MAX);
+  function activeRows(){
+    const panel=document.querySelector('[data-workspace-panel="live"]:not([hidden])');
+    if(!panel) return [];
+    const board=panel.querySelector('[data-board-sections]');
+    if(!board) return [];
+    return [...board.querySelectorAll('[data-match-id]')];
+  }
+
+  function activeLabel(){
+    if(document.body.dataset.workspaceView==='signal') return 'SIGNAL';
+    const btn=document.querySelector('[data-status-filter].active');
+    const raw=(btn?.textContent||'MATCH').replace(/\s+/g,' ').trim();
+    return raw.replace(/\d+\s*$/,'').trim().toUpperCase()||'MATCH';
   }
 
   function rowData(row){
@@ -63,7 +76,7 @@
       home:(teams[0]?.textContent||'—').trim(),
       away:(teams[1]?.textContent||'—').trim(),
       score:`${(scores[0]?.textContent||'—').trim()}–${(scores[1]?.textContent||'—').trim()}`,
-      time:(time?.textContent||'LIVE').trim(),
+      time:(time?.textContent||'—').trim(),
       row
     };
   }
@@ -94,11 +107,11 @@
     raf=0;
     const bar=ensureBar();
     if(!bar) return;
-    const visibleLivePanel=document.querySelector('[data-workspace-panel="live"]:not([hidden])');
-    const rows=visibleLivePanel?liveRows():[];
-    if(innerWidth<=MOBILE_MAX||!rows.length){bar.hidden=true;return;}
+    const rows=activeRows();
+    if(innerWidth<=MOBILE_MAX||rows.length<MIN){bar.hidden=true;return;}
+    const data=rows.slice(0,MAX).map(rowData);
+    if(data.length!==MAX){bar.hidden=true;return;}
     bar.hidden=false;
-    const data=rows.map(rowData);
     const track=bar.querySelector('[data-b46-sb-track]');
     const existing=new Map([...track.children].map(el=>[String(el.dataset.matchId||''),el]));
     const ordered=[];
@@ -111,7 +124,7 @@
     existing.forEach(el=>el.remove());
     ordered.forEach((el,i)=>{if(track.children[i]!==el) track.insertBefore(el,track.children[i]||null);});
     const count=bar.querySelector('[data-b46-sb-count]');
-    const label=`${data.length} LIVE`;
+    const label=`${activeLabel()} · ${MAX} MATCHES`;
     if(count.textContent!==label) count.textContent=label;
   }
 
@@ -126,6 +139,7 @@
     if(board) new MutationObserver(schedule).observe(board,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['class']});
     const livePanel=document.querySelector('[data-workspace-panel="live"]');
     if(livePanel) new MutationObserver(schedule).observe(livePanel,{attributes:true,attributeFilter:['hidden']});
+    document.querySelectorAll('[data-status-filter],[data-workspace-view]').forEach(btn=>btn.addEventListener('click',schedule));
     addEventListener('resize',schedule,{passive:true});
   }
 
