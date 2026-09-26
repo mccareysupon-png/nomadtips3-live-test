@@ -1,0 +1,111 @@
+#!/usr/bin/env bash
+set -euo pipefail
+BALL46_WORKER="https://ball46-production.mccarey-supon.workers.dev"
+mkdir -p /tmp/prod /tmp/rollback
+fetch_required(){
+  name="$1"; safe="${name//\//_}"
+  code=$(curl -sS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 -o "/tmp/prod/$safe" -w '%{http_code}' "$BALL46_WORKER/$name?signal-scorebar-copy=${GITHUB_RUN_ID}") || true
+  [ "$code" = 200 ] || { echo "PROD_ASSET_HTTP_${code}:$name"; exit 1; }
+  test -s "/tmp/prod/$safe"
+  mkdir -p "$(dirname "nomad-live-343/$name")"
+  cp "/tmp/prod/$safe" "nomad-live-343/$name"
+}
+fetch_required index.html
+python3 - <<'PY' > /tmp/index-assets.txt
+from pathlib import Path
+import re
+h=Path('nomad-live-343/index.html').read_text(errors='ignore')
+found=set()
+for x in re.findall(r'''(?:src|href)=["']([^"']+)["']''',h,re.I):
+    x=x.split('?',1)[0].split('#',1)[0].strip().lstrip('./').lstrip('/')
+    if not x or '://' in x or '/' in x: continue
+    if re.search(r'\.(?:js|css|svg|json|png|webp|jpg|jpeg|ico)$',x,re.I): found.add(x)
+for x in sorted(found): print(x)
+PY
+while IFS= read -r name; do [ -n "$name" ] && fetch_required "$name"; done < /tmp/index-assets.txt
+fetch_required dashboard-v2-stage3.js
+cp nomad-live-343/dashboard-v2-stage3.js /tmp/rollback/dashboard-v2-stage3.js
+sha256sum nomad-live-343/dashboard-v2-stage3.js | awk '{print $1}' > /tmp/target-before.sha
+sha256sum nomad-live-343/index.html | awk '{print $1}' > /tmp/index-before.sha
+grep -Fc 'fetch(' nomad-live-343/dashboard-v2-stage3.js > /tmp/fetch-before.count
+grep -Fq 'const COLLAPSED_LIMIT=10;' nomad-live-343/dashboard-v2-stage3.js
+grep -Fq 'function renderBoard(){' nomad-live-343/dashboard-v2-stage3.js
+curl -fsS -L --retry 4 --retry-all-errors --max-time 25 "$BALL46_WORKER/api/engine/board?before=${GITHUB_RUN_ID}" -o /tmp/board-before.json
+curl -fsS -L --retry 4 --retry-all-errors --max-time 25 "$BALL46_WORKER/api/engine/signals?before=${GITHUB_RUN_ID}" -o /tmp/signals-before.json
+node - <<'NODE'
+const fs=require('fs');
+const b=JSON.parse(fs.readFileSync('/tmp/board-before.json'));
+const s=JSON.parse(fs.readFileSync('/tmp/signals-before.json'));
+if(b?.ok!==true||!Array.isArray(b?.fixtures))throw Error('PRE_BOARD');
+if(!Array.isArray(s?.signals))throw Error('PRE_SIGNALS');
+NODE
+python3 - <<'PY'
+from pathlib import Path
+p=Path('nomad-live-343/dashboard-v2-stage3.js')
+s=p.read_text()
+old='BALL46_SCOREBAR10_20260925'
+if old in s:
+    a=s.index('/* BALL46_SCOREBAR10_20260925')
+    b=s.index('function renderBoard(){',a)
+    tail=s[b:].replace('function renderBoard(){renderScorebar10();','function renderBoard(){',1)
+    s=s[:a]+tail
+anchor='function renderBoard(){'
+if s.count(anchor)!=1: raise SystemExit('RENDER_BOARD_ANCHOR_BAD')
+code=r'''/* BALL46_SIGNAL_SCOREBAR_NEW_20260926 — UI only, zero extra requests */
+function renderSignalScorebar(){
+  const workspace=document.querySelector('.workspace');
+  if(!workspace)return;
+  let bar=document.querySelector('[data-ball46-signal-scorebar]');
+  if(!bar){
+    bar=document.createElement('section');
+    bar.dataset.ball46SignalScorebar='1';
+    bar.className='ball46-signal-scorebar';
+    workspace.parentNode.insertBefore(bar,workspace);
+    const st=document.createElement('style');
+    st.id='ball46-signal-scorebar-style';
+    st.textContent='.ball46-signal-scorebar{display:none;grid-template-columns:repeat(10,minmax(0,1fr));gap:1px;margin:0 0 10px;background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:var(--shadow);min-height:58px}body[data-workspace-view="signal"] .ball46-signal-scorebar{display:grid}.ball46-signal-scorebar button{min-width:0;border:0;border-right:1px solid var(--line);background:var(--panel);color:var(--text);padding:7px 8px;text-align:left;cursor:pointer}.ball46-signal-scorebar button:last-child{border-right:0}.ball46-signal-scorebar button:hover{background:var(--green-soft)}.ball46-signal-scorebar .t{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:8px;font-weight:800}.ball46-signal-scorebar .a{color:var(--yellow)}.ball46-signal-scorebar .m{display:flex;justify-content:space-between;gap:4px;margin-bottom:4px;font-size:7px;font-weight:900;color:var(--muted)}.ball46-signal-scorebar .s{font-size:12px;color:var(--green)}@media(max-width:1180px){.ball46-signal-scorebar{grid-template-columns:repeat(10,minmax(120px,1fr));overflow-x:auto}}@media(max-width:760px){.ball46-signal-scorebar{display:none!important}}';
+    document.head.appendChild(st);
+  }
+  const rows=visibleRows().filter(function(f){return classify(f)==='live'}).slice(0,10);
+  if(!rows.length){bar.innerHTML='<button type="button"><span class="t">No live matches</span></button>';return;}
+  bar.innerHTML=rows.map(function(f){const id=fixtureKey(f),p=scorePair(f),sc=(p.home===null||p.away===null)?'—':(show(p.home)+'–'+show(p.away)),h=f?.home?.name||'—',a=f?.away?.name||'—';return '<button type="button" data-signal-sb-id="'+esc(id)+'"><span class="m"><span>'+esc(detailedStatus(f))+'</span><b class="s">'+esc(sc)+'</b></span><span class="t">'+esc(h)+'</span><span class="t a">'+esc(a)+'</span></button>';}).join('');
+  bar.querySelectorAll('[data-signal-sb-id]').forEach(function(btn){btn.onclick=function(){selectedId=btn.dataset.signalSbId;renderBoard();renderFeatured();};});
+}
+'''
+s=s.replace(anchor,code+anchor.replace('{','{renderSignalScorebar();'),1)
+p.write_text(s)
+PY
+node --check nomad-live-343/dashboard-v2-stage3.js
+grep -Fq 'BALL46_SIGNAL_SCOREBAR_NEW_20260926' nomad-live-343/dashboard-v2-stage3.js
+grep -Fq 'body[data-workspace-view="signal"] .ball46-signal-scorebar{display:grid}' nomad-live-343/dashboard-v2-stage3.js
+[ "$(cat /tmp/fetch-before.count)" = "$(grep -Fc 'fetch(' nomad-live-343/dashboard-v2-stage3.js)" ]
+[ "$(cat /tmp/index-before.sha)" = "$(sha256sum nomad-live-343/index.html|awk '{print $1}')" ]
+curl -fsS -L --retry 4 --retry-all-errors --max-time 25 "$BALL46_WORKER/dashboard-v2-stage3.js?race=${GITHUB_RUN_ID}" -o /tmp/race.js
+[ "$(sha256sum /tmp/race.js|awk '{print $1}')" = "$(cat /tmp/target-before.sha)" ] || { echo PRODUCTION_MOVED_ABORT; exit 1; }
+cd workers/nomadtips3-343-preview
+npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.ball46.jsonc
+npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+cd ../..
+ok=0
+for n in $(seq 1 20); do
+  if curl -fsS -L --retry 2 --retry-all-errors --max-time 20 "$BALL46_WORKER/dashboard-v2-stage3.js?after=${GITHUB_RUN_ID}-${n}" -o /tmp/after.js && grep -Fq 'BALL46_SIGNAL_SCOREBAR_NEW_20260926' /tmp/after.js; then ok=1; break; fi
+  sleep 3
+done
+if [ "$ok" != 1 ]; then
+  cp /tmp/rollback/dashboard-v2-stage3.js nomad-live-343/dashboard-v2-stage3.js
+  cd workers/nomadtips3-343-preview
+  npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+  exit 1
+fi
+node --check /tmp/after.js
+[ "$(cat /tmp/fetch-before.count)" = "$(grep -Fc 'fetch(' /tmp/after.js)" ]
+curl -fsS -L --retry 4 --retry-all-errors --max-time 25 "$BALL46_WORKER/api/engine/board?final=${GITHUB_RUN_ID}" -o /tmp/board-after.json
+curl -fsS -L --retry 4 --retry-all-errors --max-time 25 "$BALL46_WORKER/api/engine/signals?final=${GITHUB_RUN_ID}" -o /tmp/signals-after.json
+node - <<'NODE'
+const fs=require('fs');
+const b=JSON.parse(fs.readFileSync('/tmp/board-after.json'));
+const s=JSON.parse(fs.readFileSync('/tmp/signals-after.json'));
+if(b?.ok!==true||!Array.isArray(b?.fixtures))throw Error('POST_BOARD');
+if(!Array.isArray(s?.signals))throw Error('POST_SIGNALS');
+console.log('BALL46_SIGNAL_SCOREBAR_NEW_PASS');
+NODE
