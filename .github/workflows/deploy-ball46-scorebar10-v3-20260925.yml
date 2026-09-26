@@ -1,4 +1,4 @@
-name: Deploy Ball46 Scorebar 10 V3 20260925
+name: Restore Ball46 exact known-good 20:06 20260925
 
 on:
   push:
@@ -9,31 +9,82 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 env:
   BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
-  BALL46_PUBLIC: https://www.ball46.com
   CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
   CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  KNOWN_GOOD_RUN: '36138906292'
+  KNOWN_GOOD_COMMIT: '82f7aa9aea5e7f8dcd2731f7308725c095a96f14'
+  KNOWN_GOOD_SHA256: '0550a8e5c77c9126ffa886cbfb712e3e2b73d3afdac51cc9969aaf8a8c2f60dc'
 
 jobs:
-  deploy-scorebar10:
+  restore-dashboard-only:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-        with: {fetch-depth: 0}
-      - uses: actions/setup-node@v4
-        with: {node-version: '22'}
+        with:
+          fetch-depth: 0
 
-      - name: Mirror exact current Production and create rollback point
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Download exact pre-change snapshot from successful 20:06 run
+        uses: actions/download-artifact@v4
+        with:
+          name: ball46-pre-scorebar10-v3-36138906292
+          path: /tmp/goodbase
+          github-token: ${{ github.token }}
+          repository: mccareysupon-png/nomadtips3-live-test
+          run-id: 36138906292
+
+      - name: Reconstruct exact post-change dashboard from original successful workflow
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p /tmp/prod /tmp/rollback-snapshot
+          test -s /tmp/goodbase/dashboard-v2-stage3.js
+          git show "$KNOWN_GOOD_COMMIT:.github/workflows/deploy-ball46-scorebar10-v3-20260925.yml" > /tmp/original-workflow.yml
+          python3 - <<'PY'
+          from pathlib import Path
+          wf=Path('/tmp/original-workflow.yml').read_text()
+          begin="          cat > /tmp/scorebar-snippet.js <<'JS'\n"
+          end="\n          JS\n"
+          a=wf.index(begin)+len(begin)
+          b=wf.index(end,a)
+          raw=wf[a:b]
+          lines=[]
+          for line in raw.splitlines():
+              lines.append(line[10:] if line.startswith('          ') else line)
+          snippet='\n'.join(lines)+'\n'
+          Path('/tmp/scorebar-snippet.js').write_text(snippet)
+          src=Path('/tmp/goodbase/dashboard-v2-stage3.js')
+          s=src.read_text()
+          anchor='function renderBoard(){'
+          if s.count(anchor)!=1:
+              raise SystemExit(f'RENDER_BOARD_ANCHOR_COUNT:{s.count(anchor)}')
+          s=s.replace(anchor,snippet+anchor.replace('{','{renderScorebar10();'),1)
+          Path('/tmp/known-good-dashboard.js').write_text(s)
+          PY
+          node --check /tmp/scorebar-snippet.js
+          node --check /tmp/known-good-dashboard.js
+          actual=$(sha256sum /tmp/known-good-dashboard.js | awk '{print $1}')
+          [ "$actual" = "$KNOWN_GOOD_SHA256" ] || { echo "KNOWN_GOOD_RECONSTRUCTION_HASH_MISMATCH:$actual"; exit 1; }
+          [ "$(grep -Fc 'fetch(' /tmp/goodbase/dashboard-v2-stage3.js)" = "$(grep -Fc 'fetch(' /tmp/known-good-dashboard.js)" ] || { echo FETCH_COUNT_CHANGED; exit 1; }
+          grep -Fq 'BALL46_SCOREBAR10_20260925' /tmp/known-good-dashboard.js
+          grep -Fq 'function renderBoard(){renderScorebar10();' /tmp/known-good-dashboard.js
+          echo "KNOWN_GOOD_2006_RECONSTRUCTED:$actual"
+
+      - name: Mirror current Production shell and create current rollback point
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/prod /tmp/current-rollback nomad-live-343
           fetch_required(){
             name="$1"; safe="${name//\//_}"
-            code=$(curl -sS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 -o "/tmp/prod/$safe" -w '%{http_code}' "$BALL46_WORKER/$name?scorebar10-v3-copy=${GITHUB_RUN_ID}") || true
+            code=$(curl -sS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 -o "/tmp/prod/$safe" -w '%{http_code}' "$BALL46_WORKER/$name?exact-2006-mirror=${GITHUB_RUN_ID}") || true
             [ "$code" = 200 ] || { echo "REQUIRED_PROD_ASSET_HTTP_${code}:$name"; exit 1; }
             test -s "/tmp/prod/$safe" || { echo "REQUIRED_PROD_ASSET_EMPTY:$name"; exit 1; }
             mkdir -p "$(dirname "nomad-live-343/$name")"
@@ -53,29 +104,21 @@ jobs:
           PY
           while IFS= read -r name; do [ -n "$name" ] && fetch_required "$name"; done < /tmp/index-assets.txt
           fetch_required dashboard-v2-stage3.js
-          cp nomad-live-343/dashboard-v2-stage3.js /tmp/prod/dashboard-v2-stage3.js
-          cp nomad-live-343/dashboard-v2-stage3.js /tmp/rollback-snapshot/dashboard-v2-stage3.js
-          cp nomad-live-343/index.html /tmp/rollback-snapshot/index.html
-          : > /tmp/protected.sha
+          cp nomad-live-343/dashboard-v2-stage3.js /tmp/current-rollback/dashboard-v2-stage3.js
+          cp nomad-live-343/index.html /tmp/current-rollback/index.html
+          sha256sum nomad-live-343/dashboard-v2-stage3.js | awk '{print $1}' > /tmp/current-target.sha
+          sha256sum nomad-live-343/index.html | awk '{print $1}' > /tmp/current-index.sha
+          grep -Fc 'fetch(' nomad-live-343/dashboard-v2-stage3.js > /tmp/current-fetch.count
           protected='dashboard-v2.css dashboard-v2-tune.js v2-shared.css v2-shared.js bulk-odds-compat-343.js expanded-match-343.js full-market-bookmaker-343.js live-summary-full-odds-343.js signal-next.js singlepage-workspace-343.js singlepage-workspace-343.css signal-shared-view-343.css ball46-next.css market-registry-343.js'
+          : > /tmp/protected.sha
           for f in $protected; do
             fetch_required "$f"
             printf '%s  %s\n' "$(sha256sum "nomad-live-343/$f" | awk '{print $1}')" "$f" >> /tmp/protected.sha
           done
-          cp /tmp/protected.sha /tmp/rollback-snapshot/protected.sha
-          sha256sum nomad-live-343/index.html | awk '{print $1}' > /tmp/index-before.sha
-          sha256sum nomad-live-343/dashboard-v2-stage3.js | awk '{print $1}' > /tmp/target-before.sha
-          grep -Fc 'fetch(' nomad-live-343/dashboard-v2-stage3.js > /tmp/fetch-before.count
-          cp /tmp/index-before.sha /tmp/rollback-snapshot/index-before.sha
-          cp /tmp/target-before.sha /tmp/rollback-snapshot/target-before.sha
-          cp /tmp/fetch-before.count /tmp/rollback-snapshot/fetch-before.count
-          grep -Fq 'const COLLAPSED_LIMIT=10;' nomad-live-343/dashboard-v2-stage3.js
-          grep -Fq 'function renderBoard(){' nomad-live-343/dashboard-v2-stage3.js
-          ! grep -Fq 'BALL46_SCOREBAR10_20260925' nomad-live-343/dashboard-v2-stage3.js
-          printf 'run=%s\nsource=exact-current-production\n' "$GITHUB_RUN_ID" > /tmp/rollback-snapshot/ROLLBACK_POINT.txt
-          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/board?scorebar10-v3-before=${GITHUB_RUN_ID}" -o /tmp/board-before.json
-          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/signals?scorebar10-v3-before=${GITHUB_RUN_ID}" -o /tmp/signals-before.json
-          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/statistics?scorebar10-v3-before=${GITHUB_RUN_ID}" -o /tmp/stats-before.json
+          cp /tmp/protected.sha /tmp/current-rollback/protected.sha
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/board?exact-2006-before=${GITHUB_RUN_ID}" -o /tmp/board-before.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/signals?exact-2006-before=${GITHUB_RUN_ID}" -o /tmp/signals-before.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/statistics?exact-2006-before=${GITHUB_RUN_ID}" -o /tmp/stats-before.json
           node - <<'NODE'
           const fs=require('fs');
           const b=JSON.parse(fs.readFileSync('/tmp/board-before.json'));
@@ -84,80 +127,40 @@ jobs:
           if(b?.ok!==true||!Array.isArray(b?.fixtures))throw Error('PRE_BOARD_UNHEALTHY');
           if(!Array.isArray(s?.signals))throw Error('PRE_SIGNALS_UNHEALTHY');
           if(t?.ok!==true||!Array.isArray(t?.rows))throw Error('PRE_STATS_UNHEALTHY');
-          console.log('SCOREBAR_V3_ROLLBACK_POINT_OK',{fixtures:b.fixtures.length,signals:s.signals.length,settled:t.rows.length});
+          console.log('PRE_BACKEND_OK',{fixtures:b.fixtures.length,signals:s.signals.length,settled:t.rows.length});
           NODE
 
-      - name: Upload pre-scorebar rollback snapshot
+      - name: Upload immediate pre-rollback target
         uses: actions/upload-artifact@v4
         with:
-          name: ball46-pre-scorebar10-v3-${{ github.run_id }}
-          path: /tmp/rollback-snapshot
+          name: ball46-before-exact-2006-restore-${{ github.run_id }}
+          path: /tmp/current-rollback
           retention-days: 30
 
-      - name: Add presentation-only 10-match scorebar
+      - name: Replace dashboard target only with exact 20:06 state
         shell: bash
         run: |
           set -euo pipefail
-          cat > /tmp/scorebar-snippet.js <<'JS'
-          /* BALL46_SCOREBAR10_20260925 — presentation only; reuses current fixtures, zero extra requests */
-          function renderScorebar10(){
-            let bar=document.querySelector('[data-ball46-scorebar10]');
-            const workspace=document.querySelector('.workspace');
-            if(!workspace)return;
-            if(!bar){
-              bar=document.createElement('section');
-              bar.className='ball46-scorebar10';
-              bar.dataset.ball46Scorebar10='1';
-              bar.setAttribute('aria-label','Live match scorebar');
-              workspace.parentNode.insertBefore(bar,workspace);
-              if(!document.getElementById('ball46-scorebar10-style')){
-                const st=document.createElement('style');
-                st.id='ball46-scorebar10-style';
-                st.textContent='.ball46-scorebar10{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:1px;margin:0 0 10px;background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:var(--shadow)}.ball46-scorebar10 .sb10-item{min-width:0;border:0;background:var(--panel);color:var(--text);padding:7px 8px;text-align:left;cursor:pointer}.ball46-scorebar10 .sb10-item:hover,.ball46-scorebar10 .sb10-item.active{background:var(--green-soft)}.ball46-scorebar10 .sb10-item.active{box-shadow:inset 0 -2px var(--green)}.ball46-scorebar10 .sb10-top{display:flex;align-items:center;justify-content:space-between;gap:5px;color:var(--muted);font-size:7px;font-weight:900}.ball46-scorebar10 .sb10-score{color:var(--green);font-size:13px}.ball46-scorebar10 .sb10-team{display:block;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:8px;font-weight:800}.ball46-scorebar10 .sb10-team.away{color:var(--yellow)}body[data-workspace-view="signal"] .ball46-scorebar10,body[data-workspace-view="statistics"] .ball46-scorebar10{display:none}@media(max-width:1180px){.ball46-scorebar10{grid-template-columns:repeat(10,minmax(120px,1fr));overflow-x:auto}}@media(max-width:760px){.ball46-scorebar10{display:none!important}}';
-                document.head.appendChild(st);
-              }
-            }
-            const rows=visibleRows().filter(function(f){return classify(f)==='live'}).slice(0,10);
-            if(!rows.length){bar.innerHTML='<div class="sb10-item"><span class="sb10-team">No live matches</span></div>';return;}
-            bar.innerHTML=rows.map(function(f){
-              const id=fixtureKey(f),p=scorePair(f);
-              const score=(p.home===null||p.away===null)?'—':(show(p.home)+'–'+show(p.away));
-              const active=id===selectedId?' active':'';
-              const home=f&&f.home&&f.home.name?f.home.name:'—';
-              const away=f&&f.away&&f.away.name?f.away.name:'—';
-              return '<button type="button" class="sb10-item'+active+'" data-scorebar10-id="'+esc(id)+'">'
-                +'<span class="sb10-top"><span>'+esc(detailedStatus(f))+'</span><strong class="sb10-score">'+esc(score)+'</strong></span>'
-                +'<span class="sb10-team">'+esc(home)+'</span>'
-                +'<span class="sb10-team away">'+esc(away)+'</span>'
-                +'</button>';
-            }).join('');
-            bar.querySelectorAll('[data-scorebar10-id]').forEach(function(btn){btn.addEventListener('click',function(){selectedId=btn.dataset.scorebar10Id;renderBoard();renderFeatured();});});
-          }
-          JS
-          node --check /tmp/scorebar-snippet.js
-          python3 - <<'PY'
-          from pathlib import Path
-          p=Path('nomad-live-343/dashboard-v2-stage3.js')
-          s=p.read_text(); anchor='function renderBoard(){'
-          if s.count(anchor)!=1: raise SystemExit(f'RENDER_BOARD_ANCHOR_COUNT:{s.count(anchor)}')
-          code=Path('/tmp/scorebar-snippet.js').read_text()
-          s=s.replace(anchor,code+anchor.replace('{','{renderScorebar10();'),1)
-          p.write_text(s)
-          PY
+          cp /tmp/known-good-dashboard.js nomad-live-343/dashboard-v2-stage3.js
           node --check nomad-live-343/dashboard-v2-stage3.js
-          grep -Fq 'BALL46_SCOREBAR10_20260925' nomad-live-343/dashboard-v2-stage3.js
-          grep -Fq "filter(function(f){return classify(f)==='live'}).slice(0,10)" nomad-live-343/dashboard-v2-stage3.js
-          grep -Fq 'function renderBoard(){renderScorebar10();' nomad-live-343/dashboard-v2-stage3.js
-          [ "$(cat /tmp/fetch-before.count)" = "$(grep -Fc 'fetch(' nomad-live-343/dashboard-v2-stage3.js)" ] || { echo 'FETCH_CALL_COUNT_CHANGED'; exit 1; }
-          [ "$(cat /tmp/index-before.sha)" = "$(sha256sum nomad-live-343/index.html | awk '{print $1}')" ] || { echo 'INDEX_CHANGED_UNEXPECTEDLY'; exit 1; }
+          actual=$(sha256sum nomad-live-343/dashboard-v2-stage3.js | awk '{print $1}')
+          [ "$actual" = "$KNOWN_GOOD_SHA256" ] || exit 1
+          [ "$(sha256sum nomad-live-343/index.html | awk '{print $1}')" = "$(cat /tmp/current-index.sha)" ] || { echo INDEX_CHANGED; exit 1; }
           while read -r expected f; do
             actual=$(sha256sum "nomad-live-343/$f" | awk '{print $1}')
             [ "$actual" = "$expected" ] || { echo "PROTECTED_LOCAL_CHANGED:$f"; exit 1; }
           done < /tmp/protected.sha
-          [ "$(cat /tmp/target-before.sha)" != "$(sha256sum nomad-live-343/dashboard-v2-stage3.js | awk '{print $1}')" ] || { echo 'TARGET_NOT_CHANGED'; exit 1; }
-          echo 'SCOREBAR10_V3_PRESENTATION_ONLY_PATCH_OK'
+          echo EXACT_2006_TARGET_READY
 
-      - name: Dry run exact Production package
+      - name: Race guard current Production target
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/dashboard-v2-stage3.js?exact-2006-race=${GITHUB_RUN_ID}" -o /tmp/race.js
+          race=$(sha256sum /tmp/race.js | awk '{print $1}')
+          [ "$race" = "$(cat /tmp/current-target.sha)" ] || { echo "PRODUCTION_TARGET_CHANGED_DURING_RESTORE:$race"; exit 1; }
+
+      - name: Dry run current shell plus exact dashboard target
         shell: bash
         run: |
           set -euo pipefail
@@ -165,36 +168,38 @@ jobs:
           cd workers/nomadtips3-343-preview
           npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.ball46.jsonc
 
-      - name: Deploy Scorebar 10
+      - name: Deploy exact 20:06 dashboard target
         id: deploy
         working-directory: workers/nomadtips3-343-preview
         shell: bash
         run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
 
-      - name: Verify scorebar and backend continuity
+      - name: Verify exact target and backend continuity
+        id: verify
         shell: bash
         run: |
           set -euo pipefail
           ok=0
           for n in $(seq 1 20); do
-            if curl -fsS -L --retry 2 --retry-all-errors --retry-delay 1 --max-time 20 "$BALL46_WORKER/dashboard-v2-stage3.js?scorebar10-v3-after=${GITHUB_RUN_ID}-${n}" -o /tmp/target.after.js \
-              && grep -Fq 'BALL46_SCOREBAR10_20260925' /tmp/target.after.js \
-              && grep -Fq "filter(function(f){return classify(f)==='live'}).slice(0,10)" /tmp/target.after.js; then ok=1; break; fi
+            if curl -fsS -L --retry 2 --retry-all-errors --retry-delay 1 --max-time 20 "$BALL46_WORKER/dashboard-v2-stage3.js?exact-2006-after=${GITHUB_RUN_ID}-${n}" -o /tmp/target.after.js; then
+              actual=$(sha256sum /tmp/target.after.js | awk '{print $1}')
+              if [ "$actual" = "$KNOWN_GOOD_SHA256" ]; then ok=1; break; fi
+            fi
             sleep 3
           done
-          [ "$ok" = 1 ] || { echo 'SCOREBAR10_NOT_LIVE'; exit 1; }
-          [ "$(sha256sum /tmp/target.after.js | awk '{print $1}')" = "$(sha256sum nomad-live-343/dashboard-v2-stage3.js | awk '{print $1}')" ] || { echo 'TARGET_DEPLOY_HASH_MISMATCH'; exit 1; }
-          [ "$(cat /tmp/fetch-before.count)" = "$(grep -Fc 'fetch(' /tmp/target.after.js)" ] || { echo 'DEPLOYED_FETCH_CALL_COUNT_CHANGED'; exit 1; }
-          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/index.html?scorebar10-v3-index=${GITHUB_RUN_ID}" -o /tmp/index.after.html
-          [ "$(sha256sum /tmp/index.after.html | awk '{print $1}')" = "$(cat /tmp/index-before.sha)" ] || { echo 'INDEX_CHANGED_UNEXPECTEDLY'; exit 1; }
+          [ "$ok" = 1 ] || { echo EXACT_2006_TARGET_NOT_LIVE; exit 1; }
+          grep -Fq 'BALL46_SCOREBAR10_20260925' /tmp/target.after.js
+          grep -Fq 'function renderBoard(){renderScorebar10();' /tmp/target.after.js
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/index.html?exact-2006-index=${GITHUB_RUN_ID}" -o /tmp/index.after.html
+          [ "$(sha256sum /tmp/index.after.html | awk '{print $1}')" = "$(cat /tmp/current-index.sha)" ] || { echo INDEX_CHANGED_UNEXPECTEDLY; exit 1; }
           while read -r expected f; do
-            curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/$f?scorebar10-v3-protected=${GITHUB_RUN_ID}" -o "/tmp/protected-${f//\//_}"
+            curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/$f?exact-2006-protected=${GITHUB_RUN_ID}" -o "/tmp/protected-${f//\//_}"
             actual=$(sha256sum "/tmp/protected-${f//\//_}" | awk '{print $1}')
             [ "$actual" = "$expected" ] || { echo "PROTECTED_DEPLOYED_CHANGED:$f"; exit 1; }
           done < /tmp/protected.sha
-          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/board?scorebar10-v3-final=${GITHUB_RUN_ID}" -o /tmp/board-after.json
-          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/signals?scorebar10-v3-final=${GITHUB_RUN_ID}" -o /tmp/signals-after.json
-          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/statistics?scorebar10-v3-final=${GITHUB_RUN_ID}" -o /tmp/stats-after.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/board?exact-2006-final=${GITHUB_RUN_ID}" -o /tmp/board-after.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/signals?exact-2006-final=${GITHUB_RUN_ID}" -o /tmp/signals-after.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/statistics?exact-2006-final=${GITHUB_RUN_ID}" -o /tmp/stats-after.json
           node - <<'NODE'
           const fs=require('fs');
           const b=JSON.parse(fs.readFileSync('/tmp/board-after.json'));
@@ -203,18 +208,15 @@ jobs:
           if(b?.ok!==true||!Array.isArray(b?.fixtures))throw Error('POST_BOARD_UNHEALTHY');
           if(!Array.isArray(s?.signals))throw Error('POST_SIGNALS_UNHEALTHY');
           if(t?.ok!==true||!Array.isArray(t?.rows))throw Error('POST_STATS_UNHEALTHY');
-          console.log('SCOREBAR10_V3_BACKEND_CONTINUITY_OK',{fixtures:b.fixtures.length,signals:s.signals.length,settled:t.rows.length});
+          console.log('EXACT_2006_RESTORE_OK',{fixtures:b.fixtures.length,signals:s.signals.length,settled:t.rows.length});
           NODE
-          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_PUBLIC/dashboard-v2-stage3.js?scorebar10-v3-public=${GITHUB_RUN_ID}" -o /tmp/public-target.js
-          grep -Fq 'BALL46_SCOREBAR10_20260925' /tmp/public-target.js
-          echo 'BALL46_SCOREBAR10_V3_PRODUCTION_PASS'
 
-      - name: Restore exact pre-scorebar Production if verification fails
-        if: ${{ failure() && steps.deploy.outcome == 'success' }}
+      - name: Restore only immediate pre-rollback target if post-deploy verification fails
+        if: ${{ failure() && steps.deploy.outcome == 'success' && steps.verify.outcome == 'failure' }}
         shell: bash
         run: |
           set -euo pipefail
-          cp /tmp/prod/dashboard-v2-stage3.js nomad-live-343/dashboard-v2-stage3.js
+          cp /tmp/current-rollback/dashboard-v2-stage3.js nomad-live-343/dashboard-v2-stage3.js
           cd workers/nomadtips3-343-preview
           npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
-          echo 'BALL46_SCOREBAR10_V3_ROLLBACK_COMPLETE'
+          echo RESTORED_IMMEDIATE_PRE_ROLLBACK_TARGET
