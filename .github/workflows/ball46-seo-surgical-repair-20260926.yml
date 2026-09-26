@@ -1,0 +1,115 @@
+name: Ball46 SEO Surgical Repair 20260926
+
+on:
+  push:
+    branches:
+      - ops/ball46-seo-deploy-20260926
+    paths:
+      - '.github/workflows/ball46-seo-surgical-repair-20260926.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  SEO_COMMIT: 345645a8b9eae0db932cc012f1473cc8e5bdf87b
+  PRE_SEO_VERSION: 8e95c148-ea19-4ed1-88a1-2f14565c6888
+  WORKER_URL: https://ball46-production.mccarey-supon.workers.dev
+  BALL46_URL: https://www.ball46.com
+
+jobs:
+  repair:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout exact approved SEO source
+        uses: actions/checkout@v4
+        with:
+          ref: 345645a8b9eae0db932cc012f1473cc8e5bdf87b
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Guard approved SEO source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SEO_COMMIT"
+          grep -Fq '<!-- BALL46 SEO START -->' nomad-live-343/index.html
+          grep -Fq 'Football Predictions Today | Verified Win Rate & Results | Ball46' nomad-live-343/index.html
+          grep -Fq '<h1>Football Predictions Today</h1>' nomad-live-343/index.html
+          git diff --quiet HEAD -- nomad-live-343
+          git diff --quiet HEAD -- workers/nomadtips3-343-preview
+          echo 'PASS: approved SEO source is clean.'
+
+      - name: Restore exact pre-SEO production version temporarily
+        working-directory: workers/nomadtips3-343-preview
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.92.0 rollback "$PRE_SEO_VERSION" --name ball46-production --message "Temporary capture of exact pre-SEO signal asset for surgical SEO repair 2026-09-26"
+          sleep 3
+
+      - name: Capture exact pre-SEO live signal asset
+        shell: bash
+        run: |
+          set -euo pipefail
+          q="capture_signal=${GITHUB_RUN_ID}"
+          curl -fsS -L --retry 4 --retry-all-errors --max-time 30 "$WORKER_URL/signal.html?$q" -o /tmp/preseo-signal.html
+          test -s /tmp/preseo-signal.html
+          grep -Fq '<html' /tmp/preseo-signal.html
+          OLD_SIGNAL_SHA=$(sha256sum /tmp/preseo-signal.html | awk '{print $1}')
+          OLD_SIGNAL_BYTES=$(wc -c < /tmp/preseo-signal.html)
+          echo "PRE_SEO_SIGNAL_SHA=$OLD_SIGNAL_SHA"
+          echo "PRE_SEO_SIGNAL_BYTES=$OLD_SIGNAL_BYTES"
+          cp /tmp/preseo-signal.html nomad-live-343/signal.html
+          CHANGED=$(git diff --name-only HEAD -- nomad-live-343)
+          test "$CHANGED" = "nomad-live-343/signal.html"
+          echo 'PASS: working package differs from approved source only by captured pre-SEO signal.html.'
+
+      - name: Dry-run corrected package
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.ball46.jsonc
+
+      - name: Deploy corrected package and require index-only asset upload
+        working-directory: workers/nomadtips3-343-preview
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc 2>&1 | tee /tmp/deploy.log
+          grep -Fq '+ /index.html' /tmp/deploy.log
+          if grep -Fq '+ /signal.html' /tmp/deploy.log; then
+            echo 'FAIL: signal.html would be modified; refusing to accept deployment.' >&2
+            exit 1
+          fi
+          echo 'PASS: Cloudflare asset upload did not modify signal.html.'
+
+      - name: Verify exact signal preservation, SEO, and engine health
+        shell: bash
+        run: |
+          set -euo pipefail
+          sleep 3
+          q="verify_repair=${GITHUB_RUN_ID}"
+          curl -fsS -L --retry 4 --retry-all-errors --max-time 30 "$WORKER_URL/signal.html?$q" -o /tmp/final-signal.html
+          FINAL_SIGNAL_SHA=$(sha256sum /tmp/final-signal.html | awk '{print $1}')
+          OLD_SIGNAL_SHA=$(sha256sum /tmp/preseo-signal.html | awk '{print $1}')
+          echo "FINAL_SIGNAL_SHA=$FINAL_SIGNAL_SHA"
+          test "$FINAL_SIGNAL_SHA" = "$OLD_SIGNAL_SHA"
+
+          curl -fsS -L --retry 4 --retry-all-errors --max-time 30 "$BALL46_URL/?$q" -o /tmp/home.html
+          grep -Fq '<!-- BALL46 SEO START -->' /tmp/home.html
+          grep -Fq 'Football Predictions Today | Verified Win Rate & Results | Ball46' /tmp/home.html
+          grep -Fq '<h1>Football Predictions Today</h1>' /tmp/home.html
+          grep -Fq 'verified win-rate statistics' /tmp/home.html
+
+          curl -fsS --retry 4 --retry-all-errors --max-time 30 "$BALL46_URL/api/engine/health?$q" -o /tmp/health.json
+          curl -fsS --retry 4 --retry-all-errors --max-time 30 "$BALL46_URL/api/engine/board?$q" -o /tmp/board.json
+          node -e 'const j=require("/tmp/health.json"); if(j?.ok!==true) throw Error("ENGINE_UNHEALTHY")'
+          node -e 'const j=require("/tmp/board.json"); if(j?.ok!==true || !Array.isArray(j?.fixtures)) throw Error("BOARD_UNHEALTHY")'
+          echo 'BALL46_SEO_SURGICAL_REPAIR_PASS'
