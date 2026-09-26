@@ -1,0 +1,97 @@
+name: Rollback Ball46 Pre Settings Odds 36205718418
+
+on:
+  push:
+    branches: [work/ball46-logo-card-settings-odds-prod-safe-20260926]
+    paths:
+      - '.github/workflows/rollback-ball46-pre-settings-odds-36205718418.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  EXPECTED_INDEX_SHA: b0f7e8433577675c29fdc5da44316c31325e59b900d990a73a1a9e53100833f6
+
+jobs:
+  rollback-exact-pre-odds:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Download exact pre-deploy snapshot
+        uses: actions/download-artifact@v4
+        with:
+          name: ball46-pre-settings-odds-36205718418
+          path: /tmp/rollback
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: 36205718418
+
+      - name: Restore only pre-Odds public shell
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s /tmp/rollback/index.html
+          actual=$(sha256sum /tmp/rollback/index.html | awk '{print $1}')
+          [ "$actual" = "$EXPECTED_INDEX_SHA" ]
+          ! grep -Fq 'BALL46-LOGO-CARD-SETTINGS-ODDS LOADER' /tmp/rollback/index.html
+          grep -Fq 'BALL46_SCOREBAR_BELOW_WORKSPACE_20260926' /tmp/rollback/index.html
+          cp /tmp/rollback/index.html nomad-live-343/index.html
+          rm -f nomad-live-343/ball46-logo-card-settings-odds-v1.css
+          rm -f nomad-live-343/ball46-logo-card-settings-odds-v1.js
+
+      - name: Record backend health before rollback
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS -L --retry 4 --retry-all-errors --max-time 25 "$BALL46_WORKER/api/engine/health?rollback-before=${GITHUB_RUN_ID}" -o /tmp/engine-before.json
+          curl -fsS -L --retry 4 --retry-all-errors --max-time 25 "$BALL46_WORKER/api/full-market/health?rollback-before=${GITHUB_RUN_ID}" -o /tmp/full-before.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const e=JSON.parse(fs.readFileSync('/tmp/engine-before.json','utf8'));
+          const f=JSON.parse(fs.readFileSync('/tmp/full-before.json','utf8'));
+          if(!e.version||!f.version) throw Error('HEALTH_VERSION_MISSING');
+          fs.writeFileSync('/tmp/engine-version',String(e.version));
+          fs.writeFileSync('/tmp/full-version',String(f.version));
+          NODE
+
+      - name: Deploy exact rollback shell
+        working-directory: workers/nomadtips3-343-preview
+        shell: bash
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Verify exact pre-Odds shell and backend continuity
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for n in $(seq 1 20); do
+            if curl -fsS -L --retry 2 --retry-all-errors --max-time 20 "$BALL46_WORKER/index.html?rollback=${GITHUB_RUN_ID}-${n}" -o /tmp/index.after.html; then
+              actual=$(sha256sum /tmp/index.after.html | awk '{print $1}')
+              if [ "$actual" = "$EXPECTED_INDEX_SHA" ] && ! grep -Fq 'BALL46-LOGO-CARD-SETTINGS-ODDS LOADER' /tmp/index.after.html && grep -Fq 'BALL46_SCOREBAR_BELOW_WORKSPACE_20260926' /tmp/index.after.html; then
+                ok=1
+                break
+              fi
+            fi
+            sleep 2
+          done
+          [ "$ok" = 1 ] || { echo 'ROLLBACK_INDEX_VERIFY_FAILED'; exit 1; }
+
+          curl -fsS -L --retry 4 --retry-all-errors --max-time 25 "$BALL46_WORKER/api/engine/health?rollback-after=${GITHUB_RUN_ID}" -o /tmp/engine-after.json
+          curl -fsS -L --retry 4 --retry-all-errors --max-time 25 "$BALL46_WORKER/api/full-market/health?rollback-after=${GITHUB_RUN_ID}" -o /tmp/full-after.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const e=JSON.parse(fs.readFileSync('/tmp/engine-after.json','utf8'));
+          const f=JSON.parse(fs.readFileSync('/tmp/full-after.json','utf8'));
+          if(String(e.version||'')!==fs.readFileSync('/tmp/engine-version','utf8')) throw Error('ENGINE_CHANGED');
+          if(String(f.version||'')!==fs.readFileSync('/tmp/full-version','utf8')) throw Error('FULL_MARKET_CHANGED');
+          console.log('BALL46_EXACT_PRE_ODDS_ROLLBACK_PASS',{engine:e.version,full:f.version});
+          NODE
