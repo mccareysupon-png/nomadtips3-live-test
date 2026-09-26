@@ -25,12 +25,12 @@ jobs:
           npx playwright install --with-deps chromium >/dev/null
       - name: Click every main page and measure layout
         run: |
-          cat > /tmp/diag.js <<'NODE'
+          cat > diag-ball46.js <<'NODE'
           const { chromium } = require('playwright');
           const fs = require('fs');
           (async()=>{
             const browser = await chromium.launch({headless:true});
-            const page = await browser.newPage({viewport:{width:1440,height:1000}, deviceScaleFactor:1});
+            const page = await browser.newPage({viewport:{width:1440,height:1000}, deviceScaleFactor:1, ignoreHTTPSErrors:true});
             await page.addInitScript(()=>{
               window.__allLayoutShifts=[];
               new PerformanceObserver(list=>{
@@ -55,7 +55,6 @@ jobs:
                 }
                 return null;
               };
-              const text=(document.body.innerText||'').replace(/\s+/g,' ').slice(0,300);
               return {
                 label,
                 url:location.href,
@@ -67,27 +66,26 @@ jobs:
                 sidebar:firstVisible(['aside','.sidebar','.side-nav','.left-nav','[class*="sidebar"]']),
                 workspace:firstVisible(['.workspace','main','.main','.content','[class*="workspace"]']),
                 scorebar:firstVisible(['.ball46-scorebar10','.ball46-signal-scorebar','[data-ball46-scorebar]','[data-ball46-signal-scorebar]','[class*="scorebar"]']),
-                shifts:(window.__allLayoutShifts||[]).slice(-20),
-                text
+                shifts:(window.__allLayoutShifts||[]).slice(-50)
               };
             },label);
 
             const targets=['Home','MATCH STATUS','Signal','AH SIGNAL','1X2 · O/U SIGNAL','STATISTICS','Statistics','Results','History','Leagues','Bookmakers','Settings'];
             const report=[];
-            const initial=await snapshot('INITIAL'); report.push(initial);
             fs.mkdirSync('/tmp/ball46-diag',{recursive:true});
+            report.push(await snapshot('INITIAL'));
             await page.screenshot({path:'/tmp/ball46-diag/00-initial.png',fullPage:true});
 
             const clickTarget=async(name)=>{
-              const candidates=page.locator('a,button,[role="button"],nav *').filter({hasText:name});
-              const n=await candidates.count();
+              const all=page.locator('a,button,[role="button"],nav *');
+              const n=await all.count();
               for(let i=0;i<n;i++){
-                const el=candidates.nth(i);
+                const el=all.nth(i);
                 try{
                   if(!(await el.isVisible())) continue;
                   const t=(await el.innerText().catch(()=>'' )).trim().replace(/\s+/g,' ');
                   if(!t) continue;
-                  if(t.toLowerCase()!==name.toLowerCase() && !t.toLowerCase().startsWith(name.toLowerCase())) continue;
+                  if(t.toLowerCase()!==name.toLowerCase()) continue;
                   console.log('CLICK',name,'=>',JSON.stringify(t));
                   await el.click({timeout:10000});
                   await page.waitForTimeout(1800);
@@ -108,13 +106,13 @@ jobs:
             const norm=r=>r?`${r.x},${r.y},${r.w},${r.h}`:'null';
             console.log('===LAYOUT_REPORT===');
             for(const r of report){
-              console.log(JSON.stringify({page:r.label,view:r.bodyView,header:norm(r.header),sidebar:norm(r.sidebar),workspace:norm(r.workspace),scorebar:norm(r.scorebar),scrollWidth:r.scrollWidth,shiftCount:r.shifts.length}));
+              console.log(JSON.stringify({page:r.label,view:r.bodyView,header:norm(r.header),sidebar:norm(r.sidebar),workspace:norm(r.workspace),scorebar:norm(r.scorebar),scrollWidth:r.scrollWidth,shiftCount:r.shifts.length,shiftSum:+r.shifts.reduce((a,b)=>a+(b.value||0),0).toFixed(5)}));
             }
             fs.writeFileSync('/tmp/ball46-diag/report.json',JSON.stringify(report,null,2));
             await browser.close();
           })().catch(e=>{console.error(e);process.exit(1)});
           NODE
-          node /tmp/diag.js
+          node diag-ball46.js
       - name: Upload diagnostic screenshots and report
         if: always()
         uses: actions/upload-artifact@v4
