@@ -27,10 +27,6 @@ jobs:
           set -u
           npx --yes wrangler@4.92.0 --version
           echo '=== deployments list ==='
-          npx --yes wrangler@4.92.0 deployments list --config workers/nomadtips3-343-preview/wrangler.ball46.jsonc || true
+          npx --yes wrangler@4.92.0 deployments list --name ball46-production || true
           echo '=== versions list ==='
-          npx --yes wrangler@4.92.0 versions list --config workers/nomadtips3-343-preview/wrangler.ball46.jsonc || true
-          echo '=== rollback help ==='
-          npx --yes wrangler@4.92.0 rollback --help || true
-          echo '=== versions deploy help ==='
-          npx --yes wrangler@4.92.0 versions deploy --help || true
+          npx --yes wrangler@4.92.0 versions list --name ball46-production || true
