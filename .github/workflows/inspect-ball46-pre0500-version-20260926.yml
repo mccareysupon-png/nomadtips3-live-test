@@ -1,0 +1,88 @@
+name: Inspect Ball46 Pre0500 Version 20260926
+
+on:
+  push:
+    branches:
+      - ops/ball46-find-pre0500-20260926
+    paths:
+      - .github/workflows/inspect-ball46-pre0500-version-20260926.yml
+
+permissions:
+  contents: write
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    env:
+      WORKER_NAME: ball46-production
+      CUTOFF_UTC: '2026-09-25T22:00:00Z'
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ops/ball46-find-pre0500-20260926
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Read Cloudflare deployment history only
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .ops
+          npx --yes wrangler@4.92.0 deployments list --name "$WORKER_NAME" --json > /tmp/deployments.json
+          python3 - <<'PY'
+          import json, os
+          from datetime import datetime, timezone
+          p='/tmp/deployments.json'
+          data=json.load(open(p))
+          cutoff=datetime.fromisoformat(os.environ['CUTOFF_UTC'].replace('Z','+00:00'))
+          rows=data if isinstance(data,list) else data.get('deployments',data.get('result',[]))
+          def parse_ts(v):
+              if not v: return None
+              try: return datetime.fromisoformat(str(v).replace('Z','+00:00'))
+              except: return None
+          norm=[]
+          for r in rows:
+              if not isinstance(r,dict): continue
+              ts=None
+              for k in ('created_on','created_at','created','timestamp','time'):
+                  ts=parse_ts(r.get(k))
+                  if ts: break
+              versions=r.get('versions') or []
+              version_ids=[]
+              if isinstance(versions,list):
+                  for x in versions:
+                      if isinstance(x,dict):
+                          vid=x.get('version_id') or x.get('id')
+                          pct=x.get('percentage')
+                          if vid: version_ids.append({'id':vid,'percentage':pct})
+              vid=r.get('version_id') or r.get('id')
+              if vid and not version_ids: version_ids=[{'id':vid,'percentage':100}]
+              norm.append({'timestamp': ts.isoformat() if ts else None, 'versions':version_ids, 'raw_id':r.get('id')})
+          with open('.ops/ball46-deployments-around-pre0500.json','w') as f:
+              json.dump(norm,f,indent=2)
+          eligible=[r for r in norm if r['timestamp'] and datetime.fromisoformat(r['timestamp']) < cutoff]
+          eligible.sort(key=lambda r: datetime.fromisoformat(r['timestamp']), reverse=True)
+          if not eligible:
+              raise SystemExit('NO_DEPLOYMENT_BEFORE_CUTOFF')
+          target=eligible[0]
+          vids=[v for v in target['versions'] if v.get('percentage') in (None,100,100.0)] or target['versions']
+          if not vids:
+              raise SystemExit('NO_VERSION_IN_TARGET_DEPLOYMENT')
+          version=vids[0]['id']
+          with open('.ops/ball46-pre0500-version.txt','w') as f:
+              f.write(f"cutoff_utc={os.environ['CUTOFF_UTC']}\n")
+              f.write(f"deployment_timestamp={target['timestamp']}\n")
+              f.write(f"version={version}\n")
+          print('PRE0500_TARGET',target['timestamp'],version)
+          PY
+      - name: Save read-only finding on isolated branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add .ops/ball46-pre0500-version.txt .ops/ball46-deployments-around-pre0500.json
+          git commit -m "ops(ball46): record exact pre-0500 Cloudflare version" || exit 0
+          git push origin HEAD:ops/ball46-find-pre0500-20260926
