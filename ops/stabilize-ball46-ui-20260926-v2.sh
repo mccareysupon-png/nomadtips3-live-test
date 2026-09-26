@@ -175,4 +175,8 @@ for f in dashboard-v2-stage3.js singlepage-workspace-343.js singlepage-workspace
   [ "$(sha256sum "/tmp/race-${f}"|awk '{print $1}')" = "$(cat "/tmp/${f}.before.sha")" ] || { echo "PRODUCTION_MOVED_ABORT:$f"; exit 1; }
 done
 
+# The workflow visual test runs from /tmp; expose the repo-local Playwright install to it.
+echo "NODE_PATH=${GITHUB_WORKSPACE}/node_modules" >> "$GITHUB_ENV"
+echo BALL46_VISUAL_HARNESS_NODE_PATH_READY
+
 echo BALL46_UI_STABLE_PATCH_READY
