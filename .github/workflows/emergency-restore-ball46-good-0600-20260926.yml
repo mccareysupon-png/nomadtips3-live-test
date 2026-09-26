@@ -1,0 +1,111 @@
+name: Emergency Restore Ball46 Good 0600 20260926
+
+on:
+  push:
+    branches:
+      - recovery/ball46-restore-good-0600-20260926
+    paths:
+      - .github/workflows/emergency-restore-ball46-good-0600-20260926.yml
+
+permissions:
+  contents: read
+
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      TARGET_VERSION: 6dd5723a-4a01-43e5-ab57-1dcde2ac0d7c
+      WORKER_NAME: ball46-production
+      BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Verify target version exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          npx --yes wrangler@4.92.0 versions view "$TARGET_VERSION" --name "$WORKER_NAME" --json > /tmp/target-version.json
+          grep -Fq "$TARGET_VERSION" /tmp/target-version.json
+          echo "TARGET_VERSION_CONFIRMED=$TARGET_VERSION"
+
+      - name: Record current deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.92.0 deployments list --name "$WORKER_NAME" --json > /tmp/deployments-before.json
+          echo 'CURRENT_DEPLOYMENT_RECORDED'
+
+      - name: Roll back exact deployed Worker version
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.92.0 rollback "$TARGET_VERSION" --name "$WORKER_NAME" --message "Emergency restore known-good Ball46 version active before 06:00 ICT 2026-09-26"
+          echo "ROLLBACK_COMMAND_COMPLETED=$TARGET_VERSION"
+
+      - name: Verify active deployment and complete restored static graph
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.92.0 deployments list --name "$WORKER_NAME" --json > /tmp/deployments-after.json
+          grep -Fq "$TARGET_VERSION" /tmp/deployments-after.json
+
+          curl -fsS -L --retry 6 --retry-all-errors --retry-delay 1 --max-time 30 "$BALL46_WORKER/index.html?restore=${GITHUB_RUN_ID}" -o /tmp/index.html
+          grep -Fq 'workspace-brand-card' /tmp/index.html
+          ! grep -Fq 'BALL46-LOGO-CARD-SETTINGS-ODDS' /tmp/index.html
+
+          python3 - <<'PY' > /tmp/restored-assets.txt
+          from pathlib import Path
+          import re
+          h=Path('/tmp/index.html').read_text(errors='ignore')
+          found=set()
+          for x in re.findall(r'''(?:src|href)=["']([^"']+)["']''', h, re.I):
+              x=x.split('?',1)[0].split('#',1)[0].strip()
+              if not x or x.startswith(('http://','https://','//','data:','mailto:','#')):
+                  continue
+              x=x.lstrip('./').lstrip('/')
+              if re.search(r'\.(?:js|css|svg|json|png|webp|jpg|jpeg|ico)$', x, re.I):
+                  found.add(x)
+          for x in sorted(found):
+              print(x)
+          PY
+
+          count=0
+          while IFS= read -r asset; do
+            [ -n "$asset" ] || continue
+            code=$(curl -sS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 -o /tmp/asset-check -w '%{http_code}' "$BALL46_WORKER/$asset?restore-asset=${GITHUB_RUN_ID}") || true
+            [ "$code" = 200 ] || { echo "RESTORED_ASSET_BAD_HTTP_${code}:$asset"; exit 1; }
+            count=$((count+1))
+          done < /tmp/restored-assets.txt
+          [ "$count" -gt 0 ]
+          echo "RESTORED_REFERENCED_ASSETS_OK=$count"
+
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/dashboard-v2-stage3.js?restore-dashboard=${GITHUB_RUN_ID}" -o /tmp/dashboard.js
+          node --check /tmp/dashboard.js
+          grep -Fq 'const COLLAPSED_LIMIT=10;' /tmp/dashboard.js
+
+      - name: Verify backend continuity
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/board?restore-final=${GITHUB_RUN_ID}" -o /tmp/board.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/signals?restore-final=${GITHUB_RUN_ID}" -o /tmp/signals.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/statistics?restore-final=${GITHUB_RUN_ID}" -o /tmp/stats.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const b=JSON.parse(fs.readFileSync('/tmp/board.json'));
+          const s=JSON.parse(fs.readFileSync('/tmp/signals.json'));
+          const t=JSON.parse(fs.readFileSync('/tmp/stats.json'));
+          if(b?.ok!==true || !Array.isArray(b?.fixtures)) throw Error('BOARD_UNHEALTHY');
+          if(!Array.isArray(s?.signals)) throw Error('SIGNALS_UNHEALTHY');
+          if(t?.ok!==true || !Array.isArray(t?.rows)) throw Error('STATISTICS_UNHEALTHY');
+          console.log('BALL46_RESTORE_BACKEND_OK',{fixtures:b.fixtures.length,signals:s.signals.length,settled:t.rows.length});
+          NODE
+          echo "BALL46_EMERGENCY_RESTORE_PASS=$TARGET_VERSION"
