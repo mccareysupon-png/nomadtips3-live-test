@@ -1,0 +1,172 @@
+name: Deploy Ball46 UI Stabilize 20260926
+
+on:
+  push:
+    branches:
+      - work/ball46-ui-stabilize-prod-safe-20260926
+    paths:
+      - .github/workflows/deploy-ball46-ui-stabilize-20260926.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
+  BALL46_PUBLIC: https://www.ball46.com
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  BASELINE_COMMIT: a4abdef5c3dc1003852effdaa73aeff6cdd0b7b9
+
+jobs:
+  deploy-ui-stable:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+
+      - name: Prove backend source is exact restored-version baseline
+        run: |
+          set -euo pipefail
+          git diff --exit-code "$BASELINE_COMMIT" -- workers/nomadtips3-343-preview/src/index.js
+          git diff --exit-code "$BASELINE_COMMIT" -- workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+          echo BACKEND_SOURCE_BASELINE_LOCK_OK
+
+      - name: Mirror protected current Production assets
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/protected
+          : > /tmp/protected.sha
+          protected='dashboard-v2.css dashboard-v2-tune.js v2-shared.css v2-shared.js bulk-odds-compat-343.js expanded-match-343.js full-market-bookmaker-343.js live-summary-full-odds-343.js signal-next.js signal-shared-view-343.css ball46-next.css market-registry-343.js'
+          for f in $protected; do
+            code=$(curl -sS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 -o "/tmp/protected/$f" -w '%{http_code}' "$BALL46_WORKER/$f?stable-protected=${GITHUB_RUN_ID}") || true
+            [ "$code" = 200 ] || { echo "PROTECTED_HTTP_${code}:$f"; exit 1; }
+            test -s "/tmp/protected/$f"
+            cp "/tmp/protected/$f" "nomad-live-343/$f"
+            printf '%s  %s\n' "$(sha256sum "nomad-live-343/$f"|awk '{print $1}')" "$f" >> /tmp/protected.sha
+          done
+          echo PROTECTED_CURRENT_ASSETS_MIRRORED
+
+      - name: Build guarded presentation-only patch from current Production
+        run: |
+          chmod +x ops/stabilize-ball46-ui-20260926.sh
+          ops/stabilize-ball46-ui-20260926.sh
+          while read -r expected f; do
+            actual=$(sha256sum "nomad-live-343/$f"|awk '{print $1}')
+            [ "$actual" = "$expected" ] || { echo "PROTECTED_LOCAL_CHANGED:$f"; exit 1; }
+          done < /tmp/protected.sha
+
+      - name: Upload exact pre-change target snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-pre-ui-stable-${{ github.run_id }}
+          path: |
+            /tmp/rollback
+            /tmp/protected.sha
+            /tmp/index.before.sha
+          retention-days: 30
+
+      - name: Dry run exact restored backend with current assets
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.ball46.jsonc
+
+      - name: Deploy UI stability patch
+        id: deploy
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Verify target files protected assets and APIs
+        id: verify_static
+        run: |
+          set -euo pipefail
+          ok=0
+          for n in $(seq 1 20); do
+            if curl -fsS -L --retry 2 --retry-all-errors --retry-delay 1 --max-time 20 "$BALL46_WORKER/dashboard-v2-stage3.js?stable-after=${GITHUB_RUN_ID}-${n}" -o /tmp/verify/dashboard.js \
+              && curl -fsS -L --retry 2 --retry-all-errors --retry-delay 1 --max-time 20 "$BALL46_WORKER/singlepage-workspace-343.js?stable-after=${GITHUB_RUN_ID}-${n}" -o /tmp/verify/singlepage.js \
+              && curl -fsS -L --retry 2 --retry-all-errors --retry-delay 1 --max-time 20 "$BALL46_WORKER/singlepage-workspace-343.css?stable-after=${GITHUB_RUN_ID}-${n}" -o /tmp/verify/singlepage.css \
+              && grep -Fq 'BALL46_WORKSPACE_SCOREBAR_20260926' /tmp/verify/dashboard.js \
+              && grep -Fq 'BALL46_UI_STABLE_CHROME_20260926' /tmp/verify/singlepage.js \
+              && grep -Fq 'BALL46_UI_STABLE_LAYOUT_20260926' /tmp/verify/singlepage.css; then ok=1; break; fi
+            sleep 3
+          done
+          [ "$ok" = 1 ] || { echo UI_TARGETS_NOT_LIVE; exit 1; }
+          [ "$(sha256sum /tmp/verify/dashboard.js|awk '{print $1}')" = "$(sha256sum nomad-live-343/dashboard-v2-stage3.js|awk '{print $1}')" ]
+          [ "$(sha256sum /tmp/verify/singlepage.js|awk '{print $1}')" = "$(sha256sum nomad-live-343/singlepage-workspace-343.js|awk '{print $1}')" ]
+          [ "$(sha256sum /tmp/verify/singlepage.css|awk '{print $1}')" = "$(sha256sum nomad-live-343/singlepage-workspace-343.css|awk '{print $1}')" ]
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/index.html?stable-index=${GITHUB_RUN_ID}" -o /tmp/verify/index.html
+          [ "$(sha256sum /tmp/verify/index.html|awk '{print $1}')" = "$(cat /tmp/index.before.sha)" ] || { echo INDEX_CHANGED_UNEXPECTEDLY; exit 1; }
+          while read -r expected f; do
+            curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/$f?stable-protected-after=${GITHUB_RUN_ID}" -o "/tmp/verify/protected-${f//\//_}"
+            actual=$(sha256sum "/tmp/verify/protected-${f//\//_}"|awk '{print $1}')
+            [ "$actual" = "$expected" ] || { echo "PROTECTED_DEPLOYED_CHANGED:$f"; exit 1; }
+          done < /tmp/protected.sha
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/board?stable-final=${GITHUB_RUN_ID}" -o /tmp/verify/board.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/signals?stable-final=${GITHUB_RUN_ID}" -o /tmp/verify/signals.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/statistics?stable-final=${GITHUB_RUN_ID}" -o /tmp/verify/statistics.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const b=JSON.parse(fs.readFileSync('/tmp/verify/board.json'));
+          const s=JSON.parse(fs.readFileSync('/tmp/verify/signals.json'));
+          const t=JSON.parse(fs.readFileSync('/tmp/verify/statistics.json'));
+          if(b?.ok!==true||!Array.isArray(b?.fixtures))throw Error('POST_BOARD_UNHEALTHY');
+          if(!Array.isArray(s?.signals))throw Error('POST_SIGNALS_UNHEALTHY');
+          if(t?.ok!==true||!Array.isArray(t?.rows))throw Error('POST_STATS_UNHEALTHY');
+          console.log('BALL46_BACKEND_CONTINUITY_OK',{fixtures:b.fixtures.length,signals:s.signals.length,settled:t.rows.length});
+          NODE
+
+      - name: Browser-click every desktop view and prove geometry lock
+        id: verify_visual
+        run: |
+          set -euo pipefail
+          npm init -y >/dev/null 2>&1
+          npm install playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install --with-deps chromium >/dev/null
+          cat > /tmp/verify-layout.js <<'NODE'
+          const { chromium }=require('playwright');
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const page=await browser.newPage({viewport:{width:1440,height:1000},deviceScaleFactor:1,ignoreHTTPSErrors:true});
+            const r=await page.goto('https://www.ball46.com/index.html?stable='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+            if(!r||r.status()!==200)throw Error('PUBLIC_HTTP_'+(r?.status()));
+            await page.waitForTimeout(5000);
+            const snap=async(label)=>page.evaluate(label=>{
+              const rect=sel=>{const e=document.querySelector(sel);if(!e)return null;const r=e.getBoundingClientRect(),c=getComputedStyle(e);if(c.display==='none'||c.visibility==='hidden')return null;return{x:+r.x.toFixed(1),y:+r.y.toFixed(1),w:+r.width.toFixed(1),h:+r.height.toFixed(1)}};
+              return {label,head:rect('[data-workspace-stable-head]'),score:rect('[data-workspace-scorebar-slot]'),workspace:rect('.workspace'),rail:rect('.left-rail'),cells:document.querySelectorAll('.workspace-scorebar-cell').length,scrollWidth:document.documentElement.scrollWidth};
+            },label);
+            const targets=[
+              ['All matches','[data-status-filter="all"]'],['Live','[data-status-filter="live"]'],['Signal','[data-workspace-view="signal"]'],['Upcoming','[data-status-filter="scheduled"]'],['Waiting','[data-status-filter="unknown"]'],['Finished','[data-status-filter="finished"]'],
+              ['Total','[data-stat-market="all"]'],['1X2','[data-stat-market="1x2"]'],['AH','[data-stat-market="ah"]'],['O/U','[data-stat-market="ou"]'],['BTTS','[data-stat-market="btts"]'],['Corners','[data-stat-market="corners"]'],['Cards','[data-stat-market="cards"]'],['Other','[data-stat-market="other"]']
+            ];
+            const out=[];
+            for(const [name,sel] of targets){const el=page.locator(sel).first();if(!(await el.isVisible()))throw Error('NAV_NOT_VISIBLE:'+name);await el.click();await page.waitForTimeout(650);out.push(await snap(name));}
+            const base=out[0],same=(a,b)=>Math.abs(a-b)<=0.6;
+            if(!base.head||!base.score||!base.workspace||!base.rail)throw Error('BASE_GEOMETRY_MISSING');
+            if(base.cells!==10)throw Error('SCOREBAR_CELL_COUNT_'+base.cells);
+            for(const x of out){
+              if(!x.head||!x.score||!x.workspace||!x.rail)throw Error('GEOMETRY_MISSING:'+x.label);
+              for(const k of ['x','y','w','h'])if(!same(x.head[k],base.head[k]))throw Error(`HEAD_SHIFT:${x.label}:${k}:${x.head[k]}!=${base.head[k]}`);
+              for(const k of ['x','y','w','h'])if(!same(x.score[k],base.score[k]))throw Error(`SCOREBAR_SHIFT:${x.label}:${k}:${x.score[k]}!=${base.score[k]}`);
+              for(const k of ['x','y','w'])if(!same(x.workspace[k],base.workspace[k]))throw Error(`WORKSPACE_SHIFT:${x.label}:${k}`);
+              for(const k of ['x','y','w'])if(!same(x.rail[k],base.rail[k]))throw Error(`RAIL_SHIFT:${x.label}:${k}`);
+              if(x.cells!==10)throw Error('SCOREBAR_CELL_COUNT:'+x.label+':'+x.cells);
+              if(x.scrollWidth>1440)throw Error('HORIZONTAL_OVERFLOW:'+x.label+':'+x.scrollWidth);
+            }
+            console.log('BALL46_DESKTOP_GEOMETRY_LOCK_PASS',JSON.stringify(out));
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+          node /tmp/verify-layout.js
+
+      - name: Restore three target UI files if any post-deploy verification fails
+        if: ${{ failure() && steps.deploy.outcome == 'success' }}
+        run: |
+          set -euo pipefail
+          cp /tmp/rollback/dashboard-v2-stage3.js nomad-live-343/dashboard-v2-stage3.js
+          cp /tmp/rollback/singlepage-workspace-343.js nomad-live-343/singlepage-workspace-343.js
+          cp /tmp/rollback/singlepage-workspace-343.css nomad-live-343/singlepage-workspace-343.css
+          cd workers/nomadtips3-343-preview
+          npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+          echo BALL46_UI_STABLE_ROLLBACK_COMPLETE
