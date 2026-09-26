@@ -1,4 +1,4 @@
-name: Diagnose Ball46 Layout Clicks 20260926
+name: Diagnose Ball46 Horizontal Cards 20260926
 
 on:
   push:
@@ -23,62 +23,41 @@ jobs:
           npm init -y >/dev/null 2>&1
           npm install playwright@1.55.0 >/dev/null 2>&1
           npx playwright install --with-deps chromium >/dev/null
-      - name: Click current Ball46 views and measure layout
+      - name: Inspect moving horizontal cards safely
         run: |
-          cat > diag-ball46.js <<'NODE'
+          cat > inspect.js <<'NODE'
           const { chromium } = require('playwright');
-          const fs = require('fs');
           (async()=>{
             const browser=await chromium.launch({headless:true});
             const page=await browser.newPage({viewport:{width:1440,height:1000},deviceScaleFactor:1,ignoreHTTPSErrors:true});
-            await page.addInitScript(()=>{
-              window.__allLayoutShifts=[];
-              new PerformanceObserver(list=>{for(const e of list.getEntries())window.__allLayoutShifts.push({value:e.value,hadRecentInput:e.hadRecentInput,time:e.startTime});}).observe({type:'layout-shift',buffered:true});
-            });
-            const response=await page.goto('https://www.ball46.com/index.html?layoutdiag='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
-            console.log('HTTP',response?.status(),page.url());
-            await page.waitForTimeout(4500);
-            fs.mkdirSync('/tmp/ball46-diag',{recursive:true});
-
-            const snap=async(label)=>page.evaluate(label=>{
-              const rectOf=sel=>{for(const el of document.querySelectorAll(sel)){const r=el.getBoundingClientRect(),c=getComputedStyle(el);if(r.width>1&&r.height>1&&c.display!=='none'&&c.visibility!=='hidden')return{x:+r.x.toFixed(1),y:+r.y.toFixed(1),w:+r.width.toFixed(1),h:+r.height.toFixed(1),sel};}return null};
-              const shift=(window.__allLayoutShifts||[]);
-              return {label,url:location.href,view:document.body.getAttribute('data-workspace-view'),
-                header:rectOf('header'),sidebar:rectOf('aside'),workspace:rectOf('.workspace'),main:rectOf('main'),
-                scorebar:rectOf('.ball46-scorebar10')||rectOf('.ball46-signal-scorebar')||rectOf('[class*="scorebar"]'),
-                scrollWidth:document.documentElement.scrollWidth,shiftCount:shift.length,shiftSum:+shift.reduce((a,b)=>a+(b.value||0),0).toFixed(5)};
-            },label);
-
-            const targets=['All matches','Live','Signal','Upcoming','Waiting','Finished','Total','1X2','AH','O/U','BTTS','Corners','Cards','Other'];
-            const report=[await snap('INITIAL')];
-            await page.screenshot({path:'/tmp/ball46-diag/00-initial.png',fullPage:true});
-            let idx=1;
-            for(const name of targets){
-              const loc=page.getByText(name,{exact:true});
-              let clicked=false;
-              for(let i=0;i<await loc.count();i++){
-                const el=loc.nth(i);
-                if(await el.isVisible().catch(()=>false)){
-                  try{await el.click({timeout:8000,force:true});clicked=true;break;}catch(e){}
-                }
-              }
-              if(!clicked){console.log('NOT_FOUND',name);continue;}
-              await page.waitForTimeout(900);
-              const s=await snap(name);report.push(s);
-              console.log('SNAP',JSON.stringify(s));
-              await page.screenshot({path:`/tmp/ball46-diag/${String(idx++).padStart(2,'0')}-${name.replace(/[^a-z0-9]+/gi,'_')}.png`,fullPage:true});
-            }
-            fs.writeFileSync('/tmp/ball46-diag/report.json',JSON.stringify(report,null,2));
-            console.log('===LAYOUT_REPORT===');
-            report.forEach(x=>console.log(JSON.stringify(x)));
+            const r=await page.goto('https://www.ball46.com/index.html?diagcards='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+            console.log('HTTP',r?.status(),page.url());
+            await page.waitForTimeout(5000);
+            const before=await page.evaluate(()=>[...document.querySelectorAll('*')].map((el,i)=>{
+              const r=el.getBoundingClientRect(), c=getComputedStyle(el);
+              return {i,tag:el.tagName,id:el.id||'',cls:typeof el.className==='string'?el.className:'',txt:(el.textContent||'').replace(/\s+/g,' ').trim().slice(0,160),x:+r.x.toFixed(1),y:+r.y.toFixed(1),w:+r.width.toFixed(1),h:+r.height.toFixed(1),display:c.display,visibility:c.visibility,overflowX:c.overflowX,whiteSpace:c.whiteSpace,position:c.position,transform:c.transform,animation:c.animationName};
+            }).filter(x=>x.y<180&&x.y+x.h>0&&x.w>120&&x.h>12&&x.display!=='none'&&x.visibility!=='hidden'));
+            console.log('===TOP_CANDIDATES===');
+            before.forEach(x=>console.log(JSON.stringify(x)));
+            await page.waitForTimeout(1200);
+            const moving=await page.evaluate((before)=>[...document.querySelectorAll('*')].map((el,i)=>{
+              const r=el.getBoundingClientRect(), c=getComputedStyle(el), b=before.find(x=>x.i===i);
+              if(!b)return null;
+              const dx=+(r.x-b.x).toFixed(1),dy=+(r.y-b.y).toFixed(1);
+              if(Math.abs(dx)<0.5&&Math.abs(dy)<0.5&&c.animationName==='none'&&c.transform==='none')return null;
+              return {i,tag:el.tagName,id:el.id||'',cls:typeof el.className==='string'?el.className:'',txt:(el.textContent||'').replace(/\s+/g,' ').trim().slice(0,160),x:+r.x.toFixed(1),y:+r.y.toFixed(1),w:+r.width.toFixed(1),h:+r.height.toFixed(1),dx,dy,transform:c.transform,animation:c.animationName};
+            }).filter(Boolean),before);
+            console.log('===MOVING_CANDIDATES===');
+            moving.forEach(x=>console.log(JSON.stringify(x)));
+            await page.screenshot({path:'/tmp/current.png',fullPage:true});
             await browser.close();
           })().catch(e=>{console.error(e);process.exit(1)});
           NODE
-          node diag-ball46.js
-      - name: Upload diagnostic screenshots and report
+          node inspect.js
+      - name: Upload screenshot
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ball46-layout-click-report-${{ github.run_id }}
-          path: /tmp/ball46-diag
-          retention-days: 7
+          name: ball46-horizontal-card-diag-${{ github.run_id }}
+          path: /tmp/current.png
+          retention-days: 3
