@@ -1,8 +1,9 @@
 /* BALL46_SCOREBAR_BELOW_WORKSPACE_20260926
  * BALL46_SCOREBAR_MATCH_STATUS_MIN10_20260926
  * Isolated presentation-only scorebar.
- * Reads existing rendered cards from the active MATCH STATUS view. No fetch/API/provider access.
- * Shows only when at least 10 match cards are actually rendered; always uses exactly 10 cards.
+ * Reads existing rendered cards from the MATCH STATUS board. No fetch/API/provider access.
+ * Shows on Live and Signal when at least 10 match cards are rendered; always uses exactly 10 cards.
+ * Statistics remains excluded. Mobile remains hidden.
  * Removal path: remove the single script reference from Production index.html.
  */
 (()=>{
@@ -53,7 +54,9 @@
   }
 
   function activeRows(){
-    const panel=document.querySelector('[data-workspace-panel="live"]:not([hidden])');
+    const view=document.body.dataset.workspaceView||'live';
+    if(view!=='live'&&view!=='signal') return [];
+    const panel=document.querySelector('[data-workspace-panel="live"]');
     if(!panel) return [];
     const board=panel.querySelector('[data-board-sections]');
     if(!board) return [];
@@ -137,8 +140,7 @@
     sync();
     const board=document.querySelector('[data-board-sections]');
     if(board) new MutationObserver(schedule).observe(board,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['class']});
-    const livePanel=document.querySelector('[data-workspace-panel="live"]');
-    if(livePanel) new MutationObserver(schedule).observe(livePanel,{attributes:true,attributeFilter:['hidden']});
+    document.addEventListener('ball46:workspace-view',schedule);
     document.querySelectorAll('[data-status-filter],[data-workspace-view]').forEach(btn=>btn.addEventListener('click',schedule));
     addEventListener('resize',schedule,{passive:true});
   }
