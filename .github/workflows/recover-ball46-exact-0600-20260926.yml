@@ -1,0 +1,98 @@
+name: Recover Ball46 Exact 0600 20260926
+
+on:
+  push:
+    branches:
+      - ops/ball46-recovery-history-fullbase-20260926
+    paths:
+      - .github/workflows/recover-ball46-exact-0600-20260926.yml
+
+permissions:
+  contents: read
+
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      TARGET_VERSION: 81831197-cfb3-4a71-b9b0-8e337be82ba4
+      BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
+      BALL46_PUBLIC: https://www.ball46.com
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Preflight exact target exists
+        run: |
+          set -euo pipefail
+          test -f workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+          npx --yes wrangler@4.92.0 versions list --config workers/nomadtips3-343-preview/wrangler.ball46.jsonc > /tmp/versions.txt
+          grep -Fq "$TARGET_VERSION" /tmp/versions.txt
+          echo "TARGET_EXISTS=$TARGET_VERSION"
+
+      - name: Native Cloudflare rollback to exact 0600 version
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.92.0 rollback "$TARGET_VERSION" \
+            --config workers/nomadtips3-343-preview/wrangler.ball46.jsonc \
+            --message "Emergency recovery to exact version active at 06:00 Asia/Bangkok 2026-09-26" \
+            --yes
+
+      - name: Verify target is active and site continuity
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.92.0 deployments list --config workers/nomadtips3-343-preview/wrangler.ball46.jsonc > /tmp/deployments.txt
+          cat /tmp/deployments.txt
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('/tmp/deployments.txt').read_text(errors='ignore')
+          target='81831197-cfb3-4a71-b9b0-8e337be82ba4'
+          chunks=[x for x in s.split('Created:') if target in x]
+          if not chunks:
+              raise SystemExit('TARGET_NOT_IN_DEPLOYMENTS')
+          if '(100%) '+target not in chunks[-1] and '(100%) '+target not in s:
+              raise SystemExit('TARGET_NOT_100_PERCENT')
+          print('TARGET_DEPLOYMENT_CONFIRMED', target)
+          PY
+          curl -fsS -L --retry 6 --retry-all-errors --retry-delay 2 --max-time 30 "$BALL46_WORKER/index.html?recovery=${GITHUB_RUN_ID}" -o /tmp/index.html
+          test -s /tmp/index.html
+          python3 - <<'PY' > /tmp/local-assets.txt
+          from pathlib import Path
+          import re
+          h=Path('/tmp/index.html').read_text(errors='ignore')
+          found=[]
+          for x in re.findall(r'''(?:src|href)=["']([^"']+)["']''',h,re.I):
+              x=x.split('?',1)[0].split('#',1)[0].strip()
+              if not x or x.startswith(('http://','https://','//','data:','#','mailto:','tel:')): continue
+              x=x.lstrip('./').lstrip('/')
+              if re.search(r'\.(?:js|css|svg|json|png|webp|jpg|jpeg|ico)$',x,re.I): found.append(x)
+          print('\n'.join(dict.fromkeys(found)))
+          PY
+          count=0
+          while IFS= read -r asset; do
+            [ -z "$asset" ] && continue
+            code=$(curl -sS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 -o /dev/null -w '%{http_code}' "$BALL46_WORKER/$asset?recovery=${GITHUB_RUN_ID}")
+            [ "$code" = 200 ] || { echo "BROKEN_INDEX_ASSET $code $asset"; exit 1; }
+            count=$((count+1))
+          done < /tmp/local-assets.txt
+          echo "INDEX_LOCAL_ASSETS_OK=$count"
+          curl -fsS -L --retry 6 --retry-all-errors --retry-delay 2 --max-time 30 "$BALL46_WORKER/api/engine/board?recovery=${GITHUB_RUN_ID}" -o /tmp/board.json
+          curl -fsS -L --retry 6 --retry-all-errors --retry-delay 2 --max-time 30 "$BALL46_WORKER/api/engine/signals?recovery=${GITHUB_RUN_ID}" -o /tmp/signals.json
+          curl -fsS -L --retry 6 --retry-all-errors --retry-delay 2 --max-time 30 "$BALL46_WORKER/api/engine/statistics?recovery=${GITHUB_RUN_ID}" -o /tmp/stats.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const b=JSON.parse(fs.readFileSync('/tmp/board.json'));
+          const s=JSON.parse(fs.readFileSync('/tmp/signals.json'));
+          const t=JSON.parse(fs.readFileSync('/tmp/stats.json'));
+          if(b?.ok!==true||!Array.isArray(b?.fixtures)) throw Error('BOARD_BAD');
+          if(!Array.isArray(s?.signals)) throw Error('SIGNALS_BAD');
+          if(t?.ok!==true||!Array.isArray(t?.rows)) throw Error('STATS_BAD');
+          console.log('BACKEND_OK',{fixtures:b.fixtures.length,signals:s.signals.length,settled:t.rows.length});
+          NODE
+          public_code=$(curl -sS -L --retry 6 --retry-all-errors --retry-delay 2 --max-time 30 -o /tmp/public.html -w '%{http_code}' "$BALL46_PUBLIC/?recovery=${GITHUB_RUN_ID}")
+          [ "$public_code" = 200 ]
+          test -s /tmp/public.html
+          echo "PUBLIC_OK=$public_code"
