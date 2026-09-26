@@ -34,6 +34,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p /tmp/prod /tmp/rollback-snapshot/current-assets
+          : > /tmp/missing-baseline.txt
           fetch_required(){
             name="$1"; safe="${name//\//_}"
             code=$(curl -sS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 -o "/tmp/prod/$safe" -w '%{http_code}' "$BALL46_WORKER/$name?b46-settings-copy=${GITHUB_RUN_ID}") || true
@@ -42,6 +43,19 @@ jobs:
             mkdir -p "$(dirname "nomad-live-343/$name")"
             cp "/tmp/prod/$safe" "nomad-live-343/$name"
           }
+          fetch_optional(){
+            name="$1"; safe="${name//\//_}"
+            code=$(curl -sS -L --retry 2 --retry-all-errors --retry-delay 1 --max-time 20 -o "/tmp/prod/$safe" -w '%{http_code}' "$BALL46_WORKER/$name?b46-settings-copy=${GITHUB_RUN_ID}") || true
+            if [ "$code" = 200 ] && test -s "/tmp/prod/$safe"; then
+              mkdir -p "$(dirname "nomad-live-343/$name")"
+              cp "/tmp/prod/$safe" "nomad-live-343/$name"
+              return 0
+            fi
+            printf '%s %s\n' "$code" "$name" >> /tmp/missing-baseline.txt
+            echo "PRE_EXISTING_MISSING_REF_HTTP_${code}:$name"
+            return 1
+          }
+
           fetch_required index.html
           cp nomad-live-343/index.html /tmp/rollback-snapshot/index.html
           grep -Fq 'workspace-brand-card' nomad-live-343/index.html
@@ -59,14 +73,17 @@ jobs:
               if re.search(r'\.(?:js|css|svg|json|png|webp|jpg|jpeg|ico)$',x,re.I): found.add(x)
           for x in sorted(found): print(x)
           PY
+
           : > /tmp/protected.sha
           while IFS= read -r name; do
             [ -n "$name" ] || continue
-            fetch_required "$name"
-            printf '%s  %s\n' "$(sha256sum "nomad-live-343/$name" | awk '{print $1}')" "$name" >> /tmp/protected.sha
-            cp "nomad-live-343/$name" "/tmp/rollback-snapshot/current-assets/${name//\//_}"
+            if fetch_optional "$name"; then
+              printf '%s  %s\n' "$(sha256sum "nomad-live-343/$name" | awk '{print $1}')" "$name" >> /tmp/protected.sha
+              cp "nomad-live-343/$name" "/tmp/rollback-snapshot/current-assets/${name//\//_}"
+            fi
           done < /tmp/current-assets.txt
           cp /tmp/protected.sha /tmp/rollback-snapshot/protected.sha
+          cp /tmp/missing-baseline.txt /tmp/rollback-snapshot/missing-baseline.txt
           printf 'run=%s\nsource=exact-current-production\nremove-marker=BALL46-LOGO-CARD-SETTINGS-ODDS\n' "$GITHUB_RUN_ID" > /tmp/rollback-snapshot/ROLLBACK_POINT.txt
 
           test -s nomad-live-343/ball46-logo-card-settings-odds-v1.css
