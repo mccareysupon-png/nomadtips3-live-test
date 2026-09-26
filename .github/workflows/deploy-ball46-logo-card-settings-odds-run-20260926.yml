@@ -1,205 +1,22 @@
-name: Deploy Ball46 Mobile Parity 20260927
+name: RETIRED - Ball46 Mobile Parity Deploy
+
+# RETIRED 2026-09-27
+# This workflow previously checked out a historical source branch and ran
+# `wrangler deploy` for the entire ball46-production Worker. That made a
+# mobile-only asset change capable of replacing Worker runtime code.
+# It is intentionally inert. Keep only as an audit record.
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/deploy-ball46-logo-card-settings-odds-run-20260926.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
 
-env:
-  SOURCE_BRANCH: work/ball46-logo-card-settings-odds-prod-safe-20260926
-  BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
-  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-
 jobs:
-  deploy-mobile-only:
+  retired:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
     steps:
-      - name: Checkout isolated source
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ env.SOURCE_BRANCH }}
-          fetch-depth: 1
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-
-      - name: Mirror exact current Production and lock PC assets
-        shell: bash
+      - name: Deployment retired
         run: |
-          set -euo pipefail
-          mkdir -p /tmp/prod /tmp/rollback/current-assets
-          : > /tmp/protected.sha
-          : > /tmp/missing.txt
-
-          fetch_required(){
-            name="$1"; safe="${name//\//_}"
-            code=$(curl -sS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 -o "/tmp/prod/$safe" -w '%{http_code}' "$BALL46_WORKER/$name?mobile-mirror=${GITHUB_RUN_ID}") || true
-            [ "$code" = 200 ] || { echo "PROD_HTTP_${code}:$name"; exit 1; }
-            test -s "/tmp/prod/$safe" || { echo "PROD_EMPTY:$name"; exit 1; }
-            mkdir -p "$(dirname "nomad-live-343/$name")"
-            cp "/tmp/prod/$safe" "nomad-live-343/$name"
-          }
-
-          fetch_optional(){
-            name="$1"; safe="${name//\//_}"
-            code=$(curl -sS -L --retry 2 --retry-all-errors --retry-delay 1 --max-time 20 -o "/tmp/prod/$safe" -w '%{http_code}' "$BALL46_WORKER/$name?mobile-mirror=${GITHUB_RUN_ID}") || true
-            if [ "$code" = 200 ] && test -s "/tmp/prod/$safe"; then
-              mkdir -p "$(dirname "nomad-live-343/$name")"
-              cp "/tmp/prod/$safe" "nomad-live-343/$name"
-              return 0
-            fi
-            printf '%s %s\n' "$code" "$name" >> /tmp/missing.txt
-            return 1
-          }
-
-          fetch_required index.html
-          cp nomad-live-343/index.html /tmp/rollback/index.html
-          echo "PROD_INDEX_BYTES=$(wc -c < nomad-live-343/index.html)"
-          echo "PROD_RIGHT_RAIL_REFS=$(grep -Fo 'right-rail' nomad-live-343/index.html | wc -l || true)"
-          echo "PROD_LIVE_GRID_REFS=$(grep -Fo 'live-stage-grid' nomad-live-343/index.html | wc -l || true)"
-
-          python3 - <<'PY' > /tmp/current-assets.txt
-          from pathlib import Path
-          import re
-          h=Path('nomad-live-343/index.html').read_text(errors='ignore')
-          found=set()
-          for x in re.findall(r'''(?:src|href)=["']([^"']+)["']''',h,re.I):
-              x=x.split('?',1)[0].split('#',1)[0].strip().lstrip('./').lstrip('/')
-              if not x or '://' in x or '/' in x:
-                  continue
-              if re.search(r'\.(?:js|css|svg|json|png|webp|jpg|jpeg|ico)$',x,re.I):
-                  found.add(x)
-          for x in sorted(found):
-              if x != 'ball46-mobile-parity-v1.css': print(x)
-          PY
-
-          while IFS= read -r name; do
-            [ -n "$name" ] || continue
-            if fetch_optional "$name"; then
-              hash=$(sha256sum "nomad-live-343/$name" | awk '{print $1}')
-              printf '%s  %s\n' "$hash" "$name" >> /tmp/protected.sha
-              cp "nomad-live-343/$name" "/tmp/rollback/current-assets/${name//\//_}"
-            fi
-          done < /tmp/current-assets.txt
-
-          cp /tmp/protected.sha /tmp/rollback/protected.sha
-          cp /tmp/missing.txt /tmp/rollback/missing.txt
-          test -s nomad-live-343/ball46-mobile-parity-v1.css || { echo 'MOBILE_CSS_MISSING'; exit 1; }
-          grep -Fq 'BALL46-MOBILE-PARITY-V1 START' nomad-live-343/ball46-mobile-parity-v1.css
-          grep -Fq '@media (max-width:760px)' nomad-live-343/ball46-mobile-parity-v1.css
-          ! grep -Fq '@media (min-width' nomad-live-343/ball46-mobile-parity-v1.css
-          ! grep -Fq 'fetch(' nomad-live-343/ball46-mobile-parity-v1.css
-          echo 'MOBILE_SOURCE_GUARD_OK'
-
-          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/board?mobile-pre=${GITHUB_RUN_ID}" -o /tmp/board-before.json
-          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/signals?mobile-pre=${GITHUB_RUN_ID}" -o /tmp/signals-before.json
-          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/statistics?mobile-pre=${GITHUB_RUN_ID}" -o /tmp/stats-before.json
-          node - <<'NODE'
-          const fs=require('fs');
-          const b=JSON.parse(fs.readFileSync('/tmp/board-before.json'));
-          const s=JSON.parse(fs.readFileSync('/tmp/signals-before.json'));
-          const t=JSON.parse(fs.readFileSync('/tmp/stats-before.json'));
-          if(b?.ok!==true||!Array.isArray(b?.fixtures)) throw Error('PRE_BOARD_UNHEALTHY');
-          if(!Array.isArray(s?.signals)) throw Error('PRE_SIGNALS_UNHEALTHY');
-          if(t?.ok!==true||!Array.isArray(t?.rows)) throw Error('PRE_STATS_UNHEALTHY');
-          console.log('PRE_BACKEND_OK',{fixtures:b.fixtures.length,signals:s.signals.length,settled:t.rows.length});
-          NODE
-
-      - name: Upload rollback snapshot
-        uses: actions/upload-artifact@v4
-        with:
-          name: ball46-pre-mobile-parity-${{ github.run_id }}
-          path: /tmp/rollback
-          retention-days: 30
-
-      - name: Add mobile-only loader to exact current Production index
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
-          p=Path('nomad-live-343/index.html')
-          s=p.read_text()
-          s=re.sub(r'\s*<!-- BALL46-MOBILE-PARITY LOADER START -->.*?<!-- BALL46-MOBILE-PARITY LOADER END -->\s*','\n',s,flags=re.S)
-          if s.count('</head>') != 1: raise SystemExit('HEAD_ANCHOR_BAD')
-          block='<!-- BALL46-MOBILE-PARITY LOADER START -->\n<link rel="stylesheet" media="(max-width:760px)" href="ball46-mobile-parity-v1.css?v=20260927b">\n<!-- BALL46-MOBILE-PARITY LOADER END -->'
-          s=s.replace('</head>',block+'\n</head>',1)
-          p.write_text(s)
-          PY
-          grep -Fq 'media="(max-width:760px)" href="ball46-mobile-parity-v1.css?v=20260927b"' nomad-live-343/index.html
-
-          while read -r expected f; do
-            actual=$(sha256sum "nomad-live-343/$f" | awk '{print $1}')
-            [ "$actual" = "$expected" ] || { echo "PC_ASSET_CHANGED_LOCAL:$f"; exit 1; }
-          done < /tmp/protected.sha
-          echo 'PC_ASSET_LOCAL_HASH_GUARD_OK'
-
-      - name: Dry run exact Production package
-        shell: bash
-        run: |
-          set -euo pipefail
-          cd workers/nomadtips3-343-preview
-          npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.ball46.jsonc
-
-      - name: Deploy mobile-only UI layer
-        id: deploy
-        working-directory: workers/nomadtips3-343-preview
-        shell: bash
-        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
-
-      - name: Verify mobile layer and PC/backend continuity
-        shell: bash
-        run: |
-          set -euo pipefail
-          ok=0
-          for n in $(seq 1 20); do
-            curl -fsS -L --retry 2 --retry-all-errors --retry-delay 1 --max-time 20 "$BALL46_WORKER/index.html?mobile-after=${GITHUB_RUN_ID}-${n}" -o /tmp/index-after.html || true
-            curl -fsS -L --retry 2 --retry-all-errors --retry-delay 1 --max-time 20 "$BALL46_WORKER/ball46-mobile-parity-v1.css?mobile-after=${GITHUB_RUN_ID}-${n}" -o /tmp/mobile-after.css || true
-            if grep -Fq 'media="(max-width:760px)" href="ball46-mobile-parity-v1.css?v=20260927b"' /tmp/index-after.html \
-              && grep -Fq 'BALL46-MOBILE-PARITY-V1 START' /tmp/mobile-after.css; then
-              ok=1; break
-            fi
-            sleep 3
-          done
-          [ "$ok" = 1 ] || { echo 'MOBILE_LAYER_NOT_LIVE'; exit 1; }
-          grep -Fq '@media (max-width:760px)' /tmp/mobile-after.css
-          ! grep -Fq '@media (min-width' /tmp/mobile-after.css
-
-          while read -r expected f; do
-            curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/$f?mobile-pc-guard=${GITHUB_RUN_ID}" -o "/tmp/protected-${f//\//_}"
-            actual=$(sha256sum "/tmp/protected-${f//\//_}" | awk '{print $1}')
-            [ "$actual" = "$expected" ] || { echo "PC_ASSET_CHANGED_DEPLOY:$f"; exit 1; }
-          done < /tmp/protected.sha
-          echo 'PC_ASSET_REMOTE_HASH_GUARD_OK'
-
-          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/board?mobile-post=${GITHUB_RUN_ID}" -o /tmp/board-after.json
-          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/signals?mobile-post=${GITHUB_RUN_ID}" -o /tmp/signals-after.json
-          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/statistics?mobile-post=${GITHUB_RUN_ID}" -o /tmp/stats-after.json
-          node - <<'NODE'
-          const fs=require('fs');
-          const b=JSON.parse(fs.readFileSync('/tmp/board-after.json'));
-          const s=JSON.parse(fs.readFileSync('/tmp/signals-after.json'));
-          const t=JSON.parse(fs.readFileSync('/tmp/stats-after.json'));
-          if(b?.ok!==true||!Array.isArray(b?.fixtures)) throw Error('POST_BOARD_UNHEALTHY');
-          if(!Array.isArray(s?.signals)) throw Error('POST_SIGNALS_UNHEALTHY');
-          if(t?.ok!==true||!Array.isArray(t?.rows)) throw Error('POST_STATS_UNHEALTHY');
-          console.log('BALL46_MOBILE_ONLY_PASS',{fixtures:b.fixtures.length,signals:s.signals.length,settled:t.rows.length});
-          NODE
-
-      - name: Auto rollback index if verification fails after deploy
-        if: failure() && steps.deploy.outcome == 'success'
-        shell: bash
-        run: |
-          set -euo pipefail
-          cp /tmp/rollback/index.html nomad-live-343/index.html
-          cd workers/nomadtips3-343-preview
-          npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+          echo 'RETIRED: no checkout, no Wrangler, no Cloudflare deploy.'
+          echo 'Do not restore this workflow for production deployment.'
