@@ -1,0 +1,75 @@
+name: Recover Ball46 Exact Pre0500 20260926
+
+on:
+  push:
+    branches:
+      - ops/ball46-recovery-history-fullbase-20260926
+    paths:
+      - .github/workflows/recover-ball46-exact-pre0500-20260926.yml
+
+permissions:
+  contents: read
+
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      TARGET_VERSION: 81831197-cfb3-4a71-b9b0-8e337be82ba4
+      BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
+      BALL46_PUBLIC: https://www.ball46.com
+      WORKER_NAME: ball46-production
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Capture current production safety snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/pre-restore
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/index.html?pre=${GITHUB_RUN_ID}" -o /tmp/pre-restore/index.html
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/dashboard-v2-stage3.js?pre=${GITHUB_RUN_ID}" -o /tmp/pre-restore/dashboard-v2-stage3.js
+          npx --yes wrangler@4.92.0 deployments list --name "$WORKER_NAME" --json > /tmp/pre-restore/deployments.json
+          sha256sum /tmp/pre-restore/index.html /tmp/pre-restore/dashboard-v2-stage3.js > /tmp/pre-restore/sha256.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ball46-pre-pre0500-restore-${{ github.run_id }}
+          path: /tmp/pre-restore
+          retention-days: 30
+      - name: Verify target version exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.92.0 versions view "$TARGET_VERSION" --name "$WORKER_NAME" --json > /tmp/target.json
+          grep -Fq "$TARGET_VERSION" /tmp/target.json
+      - name: Restore exact version active before 05:00 ICT
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.92.0 rollback "$TARGET_VERSION" --name "$WORKER_NAME" --message "Restore Ball46 exact known-good state active before 05:00 ICT 2026-09-26"
+      - name: Verify production after restore
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/verify
+          curl -fsS -L --retry 6 --retry-all-errors --retry-delay 2 --max-time 30 "$BALL46_WORKER/index.html?verify=${GITHUB_RUN_ID}" -o /tmp/verify/index.html
+          curl -fsS -L --retry 6 --retry-all-errors --retry-delay 2 --max-time 30 "$BALL46_WORKER/dashboard-v2-stage3.js?verify=${GITHUB_RUN_ID}" -o /tmp/verify/dashboard.js
+          grep -Fq 'const COLLAPSED_LIMIT=10;' /tmp/verify/dashboard.js
+          curl -fsS -L --retry 6 --retry-all-errors --retry-delay 2 --max-time 30 "$BALL46_WORKER/api/engine/board?verify=${GITHUB_RUN_ID}" -o /tmp/verify/board.json
+          curl -fsS -L --retry 6 --retry-all-errors --retry-delay 2 --max-time 30 "$BALL46_WORKER/api/engine/signals?verify=${GITHUB_RUN_ID}" -o /tmp/verify/signals.json
+          curl -fsS -L --retry 6 --retry-all-errors --retry-delay 2 --max-time 30 "$BALL46_WORKER/api/engine/statistics?verify=${GITHUB_RUN_ID}" -o /tmp/verify/statistics.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const b=JSON.parse(fs.readFileSync('/tmp/verify/board.json'));
+          const s=JSON.parse(fs.readFileSync('/tmp/verify/signals.json'));
+          const t=JSON.parse(fs.readFileSync('/tmp/verify/statistics.json'));
+          if(b?.ok!==true||!Array.isArray(b?.fixtures)) throw Error('BOARD_UNHEALTHY');
+          if(!Array.isArray(s?.signals)) throw Error('SIGNALS_UNHEALTHY');
+          if(t?.ok!==true||!Array.isArray(t?.rows)) throw Error('STATISTICS_UNHEALTHY');
+          NODE
+          curl -fsS -L --retry 6 --retry-all-errors --retry-delay 2 --max-time 30 "$BALL46_PUBLIC/index.html?verify=${GITHUB_RUN_ID}" -o /tmp/verify/public-index.html
+          npx --yes wrangler@4.92.0 deployments list --name "$WORKER_NAME" --json > /tmp/verify/deployments.json
+          grep -Fq "$TARGET_VERSION" /tmp/verify/deployments.json
+          echo "BALL46_PRE0500_RESTORE_PASS $TARGET_VERSION"
