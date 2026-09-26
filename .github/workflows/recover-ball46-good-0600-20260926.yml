@@ -16,12 +16,11 @@ jobs:
     env:
       BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
       BALL46_PUBLIC: https://www.ball46.com
+      WORKER_NAME: ball46-production
       TARGET_VERSION: 6dd5723a-4a01-43e5-ab57-1dcde2ac0d7c
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
-      - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -33,14 +32,9 @@ jobs:
           curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/index.html?pre-restore=${GITHUB_RUN_ID}" -o /tmp/ball46-pre-restore/index.html
           curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/dashboard-v2-stage3.js?pre-restore=${GITHUB_RUN_ID}" -o /tmp/ball46-pre-restore/dashboard-v2-stage3.js
           sha256sum /tmp/ball46-pre-restore/index.html /tmp/ball46-pre-restore/dashboard-v2-stage3.js > /tmp/ball46-pre-restore/sha256.txt
-          cd workers/nomadtips3-343-preview
-          npx --yes wrangler@4.92.0 deployments list --config wrangler.ball46.jsonc > /tmp/ball46-pre-restore/deployments-before.txt
-          npx --yes wrangler@4.92.0 versions list --config wrangler.ball46.jsonc > /tmp/ball46-pre-restore/versions-before.txt
-          grep -F "$TARGET_VERSION" /tmp/ball46-pre-restore/versions-before.txt >/dev/null || {
-            echo "TARGET_VERSION_NOT_FOUND:$TARGET_VERSION"
-            exit 1
-          }
-          echo "PRE_RESTORE_SNAPSHOT_OK target=$TARGET_VERSION"
+          npx --yes wrangler@4.92.0 deployments list --name "$WORKER_NAME" --json > /tmp/ball46-pre-restore/deployments-before.json
+          npx --yes wrangler@4.92.0 versions list --name "$WORKER_NAME" --json > /tmp/ball46-pre-restore/versions-before.json
+          echo "PRE_RESTORE_SNAPSHOT_OK"
 
       - name: Upload pre-restore safety snapshot
         uses: actions/upload-artifact@v4
@@ -49,11 +43,20 @@ jobs:
           path: /tmp/ball46-pre-restore
           retention-days: 30
 
+      - name: Verify exact target version exists
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.92.0 versions view "$TARGET_VERSION" --name "$WORKER_NAME" --json > /tmp/target-version.json
+          grep -F "$TARGET_VERSION" /tmp/target-version.json >/dev/null || {
+            echo "TARGET_VERSION_NOT_VERIFIED:$TARGET_VERSION"
+            exit 1
+          }
+          echo "TARGET_VERSION_VERIFIED:$TARGET_VERSION"
+
       - name: Restore exact known-good Cloudflare version
         run: |
           set -euo pipefail
-          cd workers/nomadtips3-343-preview
-          npx --yes wrangler@4.92.0 rollback "$TARGET_VERSION" --config wrangler.ball46.jsonc --message "Restore known-good Ball46 version used before 06:00 ICT on 2026-09-26"
+          npx --yes wrangler@4.92.0 rollback "$TARGET_VERSION" --name "$WORKER_NAME" --message "Restore known-good Ball46 version used before 06:00 ICT on 2026-09-26"
 
       - name: Verify restored Production
         run: |
@@ -90,5 +93,8 @@ jobs:
           curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_PUBLIC/index.html?restore-public=${GITHUB_RUN_ID}" -o /tmp/verify/public-index.html
           curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_PUBLIC/dashboard-v2-stage3.js?restore-public=${GITHUB_RUN_ID}" -o /tmp/verify/public-dashboard.js
           grep -Fq 'const COLLAPSED_LIMIT=10;' /tmp/verify/public-dashboard.js || { echo 'PUBLIC_KNOWN_GOOD_MARKER_MISSING'; exit 1; }
+
+          npx --yes wrangler@4.92.0 deployments list --name "$WORKER_NAME" --json > /tmp/verify/deployments-after.json
+          grep -F "$TARGET_VERSION" /tmp/verify/deployments-after.json >/dev/null || { echo 'TARGET_NOT_ACTIVE_AFTER_RESTORE'; exit 1; }
 
           echo "BALL46_RESTORE_GOOD0600_PASS target=$TARGET_VERSION"
