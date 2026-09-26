@@ -1,0 +1,16 @@
+# Preview/config template only. Do not deploy this file until the production route is reviewed.
+name = "ball46-contact-api"
+main = "contact-api-worker.js"
+compatibility_date = "2026-09-27"
+workers_dev = true
+
+[vars]
+CONTACT_TO = "jay@ball46.com"
+CONTACT_FROM = "Ball46 Contact <contact@nomadtips3.com>"
+CONTACT_ALLOWED_ORIGINS = "https://ball46.com,https://www.ball46.com"
+
+# Required secret (never commit its value):
+#   wrangler secret put RESEND_API_KEY
+#
+# After preview testing, a dedicated route can be reviewed separately, e.g.
+# routes = [{ pattern = "ball46.com/api/contact*", zone_name = "ball46.com" }]
