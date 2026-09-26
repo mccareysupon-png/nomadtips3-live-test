@@ -1,0 +1,101 @@
+name: Verify Ball46 Restored Good 0600 20260926
+
+on:
+  push:
+    branches:
+      - recovery/ball46-restore-good-0600-20260926
+    paths:
+      - .github/workflows/verify-ball46-restored-good-0600-20260926.yml
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      TARGET_VERSION: 6dd5723a-4a01-43e5-ab57-1dcde2ac0d7c
+      WORKER_NAME: ball46-production
+      BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Verify deployment target is active
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.92.0 deployments list --name "$WORKER_NAME" --json > /tmp/deployments.json
+          grep -Fq "$TARGET_VERSION" /tmp/deployments.json
+          echo "ACTIVE_TARGET_OK=$TARGET_VERSION"
+
+      - name: Verify restored index and all referenced local assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS -L --retry 8 --retry-all-errors --retry-delay 2 --max-time 30 "$BALL46_WORKER/index.html?verify2=${GITHUB_RUN_ID}" -o /tmp/index.html
+          grep -Fq 'workspace-brand-card' /tmp/index.html
+          ! grep -Fq 'BALL46-LOGO-CARD-SETTINGS-ODDS' /tmp/index.html
+          python3 - <<'PY' > /tmp/assets.txt
+          from pathlib import Path
+          import re
+          h=Path('/tmp/index.html').read_text(errors='ignore')
+          found=set()
+          for x in re.findall(r'''(?:src|href)=["']([^"']+)["']''', h, re.I):
+              x=x.split('?',1)[0].split('#',1)[0].strip()
+              if not x or x.startswith(('http://','https://','//','data:','mailto:','#')): continue
+              x=x.lstrip('./').lstrip('/')
+              if re.search(r'\.(?:js|css|svg|json|png|webp|jpg|jpeg|ico)$', x, re.I): found.add(x)
+          for x in sorted(found): print(x)
+          PY
+          : > /tmp/bad.txt
+          total=0
+          good=0
+          while IFS= read -r asset; do
+            [ -n "$asset" ] || continue
+            total=$((total+1))
+            code=000
+            for n in 1 2 3 4 5; do
+              code=$(curl -sS -L --retry 2 --retry-all-errors --retry-delay 1 --max-time 20 -o /tmp/asset-check -w '%{http_code}' "$BALL46_WORKER/$asset?verify2=${GITHUB_RUN_ID}-$n") || code=000
+              [ "$code" = 200 ] && break
+              sleep 2
+            done
+            if [ "$code" = 200 ]; then
+              good=$((good+1))
+            else
+              echo "$code $asset" | tee -a /tmp/bad.txt
+            fi
+          done < /tmp/assets.txt
+          echo "ASSET_GRAPH total=$total good=$good bad=$(wc -l < /tmp/bad.txt)"
+          if [ -s /tmp/bad.txt ]; then
+            echo 'BAD_ASSETS_BEGIN'
+            cat /tmp/bad.txt
+            echo 'BAD_ASSETS_END'
+            exit 1
+          fi
+
+      - name: Verify dashboard and backend
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS -L --retry 5 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/dashboard-v2-stage3.js?verify2-dashboard=${GITHUB_RUN_ID}" -o /tmp/dashboard.js
+          node --check /tmp/dashboard.js
+          grep -Fq 'const COLLAPSED_LIMIT=10;' /tmp/dashboard.js
+          curl -fsS -L --retry 5 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/board?verify2=${GITHUB_RUN_ID}" -o /tmp/board.json
+          curl -fsS -L --retry 5 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/signals?verify2=${GITHUB_RUN_ID}" -o /tmp/signals.json
+          curl -fsS -L --retry 5 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/statistics?verify2=${GITHUB_RUN_ID}" -o /tmp/stats.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const b=JSON.parse(fs.readFileSync('/tmp/board.json'));
+          const s=JSON.parse(fs.readFileSync('/tmp/signals.json'));
+          const t=JSON.parse(fs.readFileSync('/tmp/stats.json'));
+          if(b?.ok!==true||!Array.isArray(b?.fixtures)) throw Error('BOARD_UNHEALTHY');
+          if(!Array.isArray(s?.signals)) throw Error('SIGNALS_UNHEALTHY');
+          if(t?.ok!==true||!Array.isArray(t?.rows)) throw Error('STATS_UNHEALTHY');
+          console.log('RESTORE_VERIFY_BACKEND_OK',{fixtures:b.fixtures.length,signals:s.signals.length,settled:t.rows.length});
+          NODE
+          echo "BALL46_RESTORE_VERIFY_PASS=$TARGET_VERSION"
