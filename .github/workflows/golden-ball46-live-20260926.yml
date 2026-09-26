@@ -1,0 +1,93 @@
+name: Persist Ball46 Live Golden Checkpoint 20260926
+
+on:
+  push:
+    branches:
+      - diag/ball46-layout-click-20260926
+    paths:
+      - .github/workflows/golden-ball46-live-20260926.yml
+
+permissions:
+  contents: write
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Capture exact current public Ball46 snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT=/tmp/ball46-golden-live-20260926
+          mkdir -p "$ROOT/assets"
+          TS=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          printf 'BALL46 GOLDEN CHECKPOINT\ncaptured_at=%s\nsource=https://www.ball46.com/\n' "$TS" > "$ROOT/manifest.txt"
+          curl -fsS --retry 3 --max-time 30 "https://www.ball46.com/?golden=${GITHUB_RUN_ID}" -o "$ROOT/index.html"
+          sha256sum "$ROOT/index.html" >> "$ROOT/manifest.txt"
+          python - <<'PY'
+          import re, pathlib, urllib.parse, urllib.request, hashlib
+          root='https://www.ball46.com/'
+          base=pathlib.Path('/tmp/ball46-golden-live-20260926')
+          html=(base/'index.html').read_text(errors='ignore')
+          urls=[]
+          for u in re.findall(r'''(?:src|href)=["']([^"']+)["']''',html,re.I):
+              full=urllib.parse.urljoin(root,u)
+              p=urllib.parse.urlparse(full)
+              if p.netloc not in ('www.ball46.com','ball46.com'): continue
+              if not p.path.lower().endswith(('.js','.css')): continue
+              if full not in urls: urls.append(full)
+          with (base/'manifest.txt').open('a') as m:
+              m.write(f'asset_count={len(urls)}\n')
+              for i,u in enumerate(urls):
+                  req=urllib.request.Request(u,headers={'User-Agent':'Ball46GoldenCheckpoint/1.0','Cache-Control':'no-cache'})
+                  data=urllib.request.urlopen(req,timeout=25).read()
+                  name=f'{i:03d}-'+pathlib.Path(urllib.parse.urlparse(u).path).name
+                  (base/'assets'/name).write_bytes(data)
+                  m.write(f'{hashlib.sha256(data).hexdigest()} {len(data)} {u}\n')
+          PY
+          for ep in board signals statistics; do
+            curl -fsS --retry 3 --max-time 30 "https://www.ball46.com/api/engine/$ep?golden=${GITHUB_RUN_ID}" -o "$ROOT/$ep.json"
+            sha256sum "$ROOT/$ep.json" >> "$ROOT/manifest.txt"
+          done
+          cat > "$ROOT/README.md" <<'EOF'
+          # Ball46 Golden Checkpoint — 26 Sep 2026
+
+          This folder is a snapshot of the **actual public production website**, not an assumption based on an older source branch.
+
+          Safety rule: **do not roll back the whole repository to this branch.** Use this checkpoint to compare files and surgically restore only the exact broken asset. Old branches/workflows may contain regressions.
+
+          The snapshot contains the production index, every same-origin JS/CSS asset referenced by that index, and read-only board/signals/statistics API snapshots. `manifest.txt` records SHA-256 hashes.
+
+          Horizontal scorebar note: the current production scorebar is intentionally preserved in this checkpoint. Its cells are buttons; click handling rerenders the board/featured area. Any later cosmetic fix should preserve the slot/grid geometry and avoid touching API/odds/feed/engine logic.
+          EOF
+
+      - name: Persist snapshot on golden branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'Ball46 Golden Checkpoint Bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git fetch origin golden/ball46-stable-20260926
+          git worktree add /tmp/ball46-golden-branch origin/golden/ball46-stable-20260926
+          DEST=/tmp/ball46-golden-branch/golden-checkpoint/2026-09-26-live
+          rm -rf "$DEST"
+          mkdir -p "$DEST"
+          cp -a /tmp/ball46-golden-live-20260926/. "$DEST/"
+          git -C /tmp/ball46-golden-branch add golden-checkpoint/2026-09-26-live
+          git -C /tmp/ball46-golden-branch commit -m 'checkpoint(ball46): preserve stable live production 20260926'
+          git -C /tmp/ball46-golden-branch push origin HEAD:golden/ball46-stable-20260926
+
+      - name: Verify persisted checkpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin golden/ball46-stable-20260926
+          SHA=$(git rev-parse origin/golden/ball46-stable-20260926)
+          echo "GOLDEN_BRANCH=golden/ball46-stable-20260926"
+          echo "GOLDEN_SHA=$SHA"
+          git show "$SHA:golden-checkpoint/2026-09-26-live/manifest.txt" | head -40
