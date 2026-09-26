@@ -1,0 +1,175 @@
+name: Deploy Ball46 Logo Card Settings Odds 20260926
+
+on:
+  push:
+    branches: [work/ball46-logo-card-settings-odds-prod-safe-20260926]
+    paths:
+      - '.github/workflows/deploy-ball46-logo-card-settings-odds-20260926.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
+  BALL46_PUBLIC: https://www.ball46.com
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  deploy-settings-odds:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+
+      - name: Mirror exact current Production and create rollback point
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/prod /tmp/rollback-snapshot
+          fetch_required(){
+            name="$1"; safe="${name//\//_}"
+            code=$(curl -sS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 -o "/tmp/prod/$safe" -w '%{http_code}' "$BALL46_WORKER/$name?settings-odds-copy=${GITHUB_RUN_ID}") || true
+            [ "$code" = 200 ] || { echo "REQUIRED_PROD_ASSET_HTTP_${code}:$name"; exit 1; }
+            test -s "/tmp/prod/$safe" || { echo "REQUIRED_PROD_ASSET_EMPTY:$name"; exit 1; }
+            cp "/tmp/prod/$safe" "nomad-live-343/$name"
+          }
+          fetch_required index.html
+          cp nomad-live-343/index.html /tmp/rollback-snapshot/index.html
+          sha256sum nomad-live-343/index.html | awk '{print $1}' > /tmp/index-before.sha
+
+          grep -Fq 'workspace-brand-card' nomad-live-343/index.html
+          grep -Fq 'workspace singlepage' nomad-live-343/index.html
+          [ "$(grep -Fo 'workspace-brand-card' nomad-live-343/index.html | wc -l)" -eq 1 ]
+
+          protected='dashboard-v2-stage3.js dashboard-v2.css dashboard-v2-tune.js v2-shared.css v2-shared.js bulk-odds-compat-343.js expanded-match-343.js full-market-bookmaker-343.js live-summary-full-odds-343.js singlepage-workspace-343.js singlepage-workspace-343.css signal-next.js statistics-next.js'
+          : > /tmp/protected.sha
+          for f in $protected; do
+            fetch_required "$f"
+            printf '%s  %s\n' "$(sha256sum "nomad-live-343/$f" | awk '{print $1}')" "$f" >> /tmp/protected.sha
+          done
+          cp /tmp/protected.sha /tmp/rollback-snapshot/protected.sha
+
+          test -s nomad-live-343/ball46-logo-card-settings-odds-v1.css
+          test -s nomad-live-343/ball46-logo-card-settings-odds-v1.js
+          test -s nomad-live-343/odds-format-343.js
+          grep -Fq 'BALL46-LOGO-CARD-SETTINGS-ODDS START' nomad-live-343/ball46-logo-card-settings-odds-v1.css
+          grep -Fq 'BALL46-LOGO-CARD-SETTINGS-ODDS START' nomad-live-343/ball46-logo-card-settings-odds-v1.js
+          ! grep -Fq 'fetch(' nomad-live-343/ball46-logo-card-settings-odds-v1.js
+          ! grep -Fq '/api/' nomad-live-343/ball46-logo-card-settings-odds-v1.js
+          ! grep -Fq 'fetch(' nomad-live-343/odds-format-343.js
+          node --check nomad-live-343/ball46-logo-card-settings-odds-v1.js
+          node --check nomad-live-343/odds-format-343.js
+
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/health?settings-odds-before=${GITHUB_RUN_ID}" -o /tmp/engine-before.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/full-market/health?settings-odds-before=${GITHUB_RUN_ID}" -o /tmp/full-before.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const e=JSON.parse(fs.readFileSync('/tmp/engine-before.json','utf8'));
+          const f=JSON.parse(fs.readFileSync('/tmp/full-before.json','utf8'));
+          if(!e.version||!f.version) throw Error('PRE_HEALTH_VERSION_MISSING');
+          fs.writeFileSync('/tmp/engine-version',String(e.version));
+          fs.writeFileSync('/tmp/full-version',String(f.version));
+          console.log('PRE_HEALTH_OK',{engine:e.version,full:f.version});
+          NODE
+          printf 'run=%s\nsource=exact-current-production\nremoval=BALL46-LOGO-CARD-SETTINGS-ODDS\n' "$GITHUB_RUN_ID" > /tmp/rollback-snapshot/ROLLBACK_POINT.txt
+
+      - name: Upload rollback snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-pre-settings-odds-${{ github.run_id }}
+          path: /tmp/rollback-snapshot
+          retention-days: 30
+
+      - name: Add UI-only loader block
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('nomad-live-343/index.html')
+          s=p.read_text()
+          s=re.sub(r'\s*<!-- BALL46-LOGO-CARD-SETTINGS-ODDS LOADER START -->.*?<!-- BALL46-LOGO-CARD-SETTINGS-ODDS LOADER END -->\s*','\n',s,flags=re.S)
+          if s.count('</head>') != 1 or s.count('</body>') != 1:
+              raise SystemExit('HTML_ANCHOR_COUNT_BAD')
+          css='<!-- BALL46-LOGO-CARD-SETTINGS-ODDS LOADER START -->\n<link rel="stylesheet" href="ball46-logo-card-settings-odds-v1.css?v=20260926a">\n<!-- BALL46-LOGO-CARD-SETTINGS-ODDS LOADER END -->'
+          s=s.replace('</head>',css+'\n</head>',1)
+          scripts=[]
+          if not re.search(r'<script[^>]+src=["\'][^"\']*odds-format-343\.js',s,re.I):
+              scripts.append('<script src="odds-format-343.js?v=343-odds-format-v4-topbar-fixed&ui=20260926" defer></script>')
+          scripts.append('<script src="ball46-logo-card-settings-odds-v1.js?v=20260926a" defer></script>')
+          block='<!-- BALL46-LOGO-CARD-SETTINGS-ODDS LOADER START -->\n'+'\n'.join(scripts)+'\n<!-- BALL46-LOGO-CARD-SETTINGS-ODDS LOADER END -->'
+          s=s.replace('</body>',block+'\n</body>',1)
+          p.write_text(s)
+          PY
+          grep -Fq 'ball46-logo-card-settings-odds-v1.css?v=20260926a' nomad-live-343/index.html
+          grep -Fq 'ball46-logo-card-settings-odds-v1.js?v=20260926a' nomad-live-343/index.html
+          [ "$(grep -Fc 'BALL46-LOGO-CARD-SETTINGS-ODDS LOADER START' nomad-live-343/index.html)" -eq 2 ]
+          while read -r expected f; do
+            actual=$(sha256sum "nomad-live-343/$f" | awk '{print $1}')
+            [ "$actual" = "$expected" ] || { echo "PROTECTED_LOCAL_CHANGED:$f"; exit 1; }
+          done < /tmp/protected.sha
+
+      - name: Dry run exact Production package
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd workers/nomadtips3-343-preview
+          npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.ball46.jsonc
+
+      - name: Deploy UI-only package
+        id: deploy
+        working-directory: workers/nomadtips3-343-preview
+        shell: bash
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Verify UI loaders and backend continuity
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for n in $(seq 1 20); do
+            curl -fsS -L --retry 2 --retry-all-errors --retry-delay 1 --max-time 20 "$BALL46_WORKER/index.html?settings-odds-after=${GITHUB_RUN_ID}-${n}" -o /tmp/index.after.html || true
+            curl -fsS -L --retry 2 --retry-all-errors --retry-delay 1 --max-time 20 "$BALL46_WORKER/ball46-logo-card-settings-odds-v1.css?settings-odds-after=${GITHUB_RUN_ID}-${n}" -o /tmp/settings.after.css || true
+            curl -fsS -L --retry 2 --retry-all-errors --retry-delay 1 --max-time 20 "$BALL46_WORKER/ball46-logo-card-settings-odds-v1.js?settings-odds-after=${GITHUB_RUN_ID}-${n}" -o /tmp/settings.after.js || true
+            if grep -Fq 'ball46-logo-card-settings-odds-v1.css?v=20260926a' /tmp/index.after.html \
+              && grep -Fq 'ball46-logo-card-settings-odds-v1.js?v=20260926a' /tmp/index.after.html \
+              && grep -Fq 'BALL46-LOGO-CARD-SETTINGS-ODDS START' /tmp/settings.after.css \
+              && grep -Fq 'BALL46-LOGO-CARD-SETTINGS-ODDS START' /tmp/settings.after.js; then ok=1; break; fi
+            sleep 3
+          done
+          [ "$ok" = 1 ] || { echo 'SETTINGS_ODDS_NOT_LIVE'; exit 1; }
+          node --check /tmp/settings.after.js
+          ! grep -Fq 'fetch(' /tmp/settings.after.js
+          ! grep -Fq '/api/' /tmp/settings.after.js
+
+          while read -r expected f; do
+            curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/$f?settings-odds-protected=${GITHUB_RUN_ID}" -o "/tmp/${f//\//_}.after"
+            actual=$(sha256sum "/tmp/${f//\//_}.after" | awk '{print $1}')
+            [ "$actual" = "$expected" ] || { echo "PROTECTED_DEPLOY_CHANGED:$f"; exit 1; }
+          done < /tmp/protected.sha
+
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/health?settings-odds-after=${GITHUB_RUN_ID}" -o /tmp/engine-after.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/full-market/health?settings-odds-after=${GITHUB_RUN_ID}" -o /tmp/full-after.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const e=JSON.parse(fs.readFileSync('/tmp/engine-after.json','utf8'));
+          const f=JSON.parse(fs.readFileSync('/tmp/full-after.json','utf8'));
+          if(String(e.version||'')!==fs.readFileSync('/tmp/engine-version','utf8')) throw Error('ENGINE_VERSION_CHANGED');
+          if(String(f.version||'')!==fs.readFileSync('/tmp/full-version','utf8')) throw Error('FULL_MARKET_VERSION_CHANGED');
+          console.log('BALL46_SETTINGS_ODDS_PASS',{engine:e.version,full:f.version});
+          NODE
+
+      - name: Auto rollback index if post-deploy verification fails
+        if: failure() && steps.deploy.outcome == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp /tmp/rollback-snapshot/index.html nomad-live-343/index.html
+          cd workers/nomadtips3-343-preview
+          npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
