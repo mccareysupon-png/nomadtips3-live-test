@@ -1,0 +1,94 @@
+name: Recover Ball46 Good 0600 20260926
+
+on:
+  push:
+    branches:
+      - recovery/ball46-restore-good-0600-20260926
+    paths:
+      - .github/workflows/recover-ball46-good-0600-20260926.yml
+
+permissions:
+  contents: read
+
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    env:
+      BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
+      BALL46_PUBLIC: https://www.ball46.com
+      TARGET_VERSION: 6dd5723a-4a01-43e5-ab57-1dcde2ac0d7c
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Capture exact current state before restore
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/ball46-pre-restore
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/index.html?pre-restore=${GITHUB_RUN_ID}" -o /tmp/ball46-pre-restore/index.html
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/dashboard-v2-stage3.js?pre-restore=${GITHUB_RUN_ID}" -o /tmp/ball46-pre-restore/dashboard-v2-stage3.js
+          sha256sum /tmp/ball46-pre-restore/index.html /tmp/ball46-pre-restore/dashboard-v2-stage3.js > /tmp/ball46-pre-restore/sha256.txt
+          cd workers/nomadtips3-343-preview
+          npx --yes wrangler@4.92.0 deployments list --config wrangler.ball46.jsonc > /tmp/ball46-pre-restore/deployments-before.txt
+          npx --yes wrangler@4.92.0 versions list --config wrangler.ball46.jsonc > /tmp/ball46-pre-restore/versions-before.txt
+          grep -F "$TARGET_VERSION" /tmp/ball46-pre-restore/versions-before.txt >/dev/null || {
+            echo "TARGET_VERSION_NOT_FOUND:$TARGET_VERSION"
+            exit 1
+          }
+          echo "PRE_RESTORE_SNAPSHOT_OK target=$TARGET_VERSION"
+
+      - name: Upload pre-restore safety snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-pre-restore-good0600-${{ github.run_id }}
+          path: /tmp/ball46-pre-restore
+          retention-days: 30
+
+      - name: Restore exact known-good Cloudflare version
+        run: |
+          set -euo pipefail
+          cd workers/nomadtips3-343-preview
+          npx --yes wrangler@4.92.0 rollback "$TARGET_VERSION" --config wrangler.ball46.jsonc --message "Restore known-good Ball46 version used before 06:00 ICT on 2026-09-26"
+
+      - name: Verify restored Production
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/verify
+          ok=0
+          for n in $(seq 1 20); do
+            if curl -fsS -L --retry 2 --retry-all-errors --retry-delay 1 --max-time 20 "$BALL46_WORKER/index.html?restore-check=${GITHUB_RUN_ID}-${n}" -o /tmp/verify/index.html \
+              && curl -fsS -L --retry 2 --retry-all-errors --retry-delay 1 --max-time 20 "$BALL46_WORKER/dashboard-v2-stage3.js?restore-check=${GITHUB_RUN_ID}-${n}" -o /tmp/verify/dashboard-v2-stage3.js; then
+              ok=1
+              break
+            fi
+            sleep 3
+          done
+          [ "$ok" = 1 ] || { echo 'RESTORED_STATIC_ASSETS_UNAVAILABLE'; exit 1; }
+
+          grep -Fq 'const COLLAPSED_LIMIT=10;' /tmp/verify/dashboard-v2-stage3.js || { echo 'KNOWN_GOOD_HOME10_MARKER_MISSING'; exit 1; }
+
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/board?restore-final=${GITHUB_RUN_ID}" -o /tmp/verify/board.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/signals?restore-final=${GITHUB_RUN_ID}" -o /tmp/verify/signals.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/statistics?restore-final=${GITHUB_RUN_ID}" -o /tmp/verify/statistics.json
+
+          node - <<'NODE'
+          const fs=require('fs');
+          const b=JSON.parse(fs.readFileSync('/tmp/verify/board.json'));
+          const s=JSON.parse(fs.readFileSync('/tmp/verify/signals.json'));
+          const t=JSON.parse(fs.readFileSync('/tmp/verify/statistics.json'));
+          if(b?.ok!==true||!Array.isArray(b?.fixtures)) throw Error('BOARD_UNHEALTHY');
+          if(!Array.isArray(s?.signals)) throw Error('SIGNALS_UNHEALTHY');
+          if(t?.ok!==true||!Array.isArray(t?.rows)) throw Error('STATISTICS_UNHEALTHY');
+          console.log('BALL46_RESTORE_BACKEND_OK',{fixtures:b.fixtures.length,signals:s.signals.length,settled:t.rows.length});
+          NODE
+
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_PUBLIC/index.html?restore-public=${GITHUB_RUN_ID}" -o /tmp/verify/public-index.html
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_PUBLIC/dashboard-v2-stage3.js?restore-public=${GITHUB_RUN_ID}" -o /tmp/verify/public-dashboard.js
+          grep -Fq 'const COLLAPSED_LIMIT=10;' /tmp/verify/public-dashboard.js || { echo 'PUBLIC_KNOWN_GOOD_MARKER_MISSING'; exit 1; }
+
+          echo "BALL46_RESTORE_GOOD0600_PASS target=$TARGET_VERSION"
