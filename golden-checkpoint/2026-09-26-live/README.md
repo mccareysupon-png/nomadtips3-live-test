@@ -1,9 +1,9 @@
 # Ball46 Golden Checkpoint — 26 Sep 2026
 
-This folder is a snapshot of the **actual public production website**, not an assumption based on an older source branch.
+Snapshot of the actual public production website at capture time.
 
-Safety rule: **do not roll back the whole repository to this branch.** Use this checkpoint to compare files and surgically restore only the exact broken asset. Old branches/workflows may contain regressions.
+**Safety:** Never use this branch as a blind whole-repository rollback. Compare against this snapshot and surgically restore only the broken production asset. Old branches/workflows may contain regressions.
 
-The snapshot contains the production index, every same-origin JS/CSS asset referenced by that index, and read-only board/signals/statistics API snapshots. `manifest.txt` records SHA-256 hashes.
+Included: production index, every same-origin JS/CSS asset referenced by the index, and read-only board/signals/statistics snapshots. `manifest.txt` contains SHA-256 hashes.
 
-Horizontal scorebar note: the current production scorebar is intentionally preserved in this checkpoint. Its cells are buttons; click handling rerenders the board/featured area. Any later cosmetic fix should preserve the slot/grid geometry and avoid touching API/odds/feed/engine logic.
+Current horizontal scorebar is intentionally preserved. Its match cells are buttons and the click handler rerenders board/featured UI. Any future camouflage fix must preserve scorebar slot/grid geometry and must not touch API, odds, live feed, signal/referee logic, statistics, or routing.
