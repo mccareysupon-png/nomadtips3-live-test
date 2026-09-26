@@ -1,0 +1,65 @@
+name: Diagnose Ball46 Production Source Match 20260926
+
+on:
+  push:
+    branches:
+      - work/ball46-render-stability-prod-safe-20260926
+    paths:
+      - '.github/workflows/diagnose-ball46-production-source-match-20260926.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  find-exact-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/ball46-render-stability-prod-safe-20260926
+          fetch-depth: 1
+      - name: Compare candidate branches to current Production
+        shell: bash
+        env:
+          BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
+        run: |
+          set -euo pipefail
+          curl -fsS -L --retry 4 --retry-all-errors --max-time 25 "$BALL46_WORKER/dashboard-v2-stage3.js?source-match=${GITHUB_RUN_ID}" -o /tmp/prod.js
+          curl -fsS -L --retry 4 --retry-all-errors --max-time 25 "$BALL46_WORKER/index.html?source-match=${GITHUB_RUN_ID}" -o /tmp/prod-index.html
+          PROD_JS=$(sha256sum /tmp/prod.js | awk '{print $1}')
+          PROD_INDEX=$(sha256sum /tmp/prod-index.html | awk '{print $1}')
+          echo "PROD_JS=$PROD_JS"
+          echo "PROD_INDEX=$PROD_INDEX"
+          branches=(
+            work/ball46-scorebar-below-workspace-prod-safe-20260926
+            work/ball46-restore-signal-scorebar-20260926
+            work/ball46-remove-scorebar-surgical-20260926
+            work/ball46-scorebar-readonly-safe-20260926
+            work/ball46-scorebar10-prod-safe-20260925
+            work/ball46-logo-card-settings-odds-prod-safe-20260926
+          )
+          found=0
+          for b in "${branches[@]}"; do
+            echo "--- $b ---"
+            if ! git fetch --depth=1 origin "$b:refs/remotes/origin/$b"; then
+              echo "FETCH_BRANCH_FAILED:$b"
+              continue
+            fi
+            if git show "refs/remotes/origin/$b:nomad-live-343/dashboard-v2-stage3.js" > /tmp/candidate.js 2>/dev/null; then
+              H=$(sha256sum /tmp/candidate.js | awk '{print $1}')
+              echo "JS_SHA=$H"
+              if [ "$H" = "$PROD_JS" ]; then echo "EXACT_JS_MATCH:$b"; found=1; fi
+            else
+              echo "NO_DASHBOARD:$b"
+            fi
+            if git show "refs/remotes/origin/$b:nomad-live-343/index.html" > /tmp/candidate-index.html 2>/dev/null; then
+              H2=$(sha256sum /tmp/candidate-index.html | awk '{print $1}')
+              echo "INDEX_SHA=$H2"
+              if [ "$H2" = "$PROD_INDEX" ]; then echo "EXACT_INDEX_MATCH:$b"; fi
+            else
+              echo "NO_INDEX:$b"
+            fi
+          done
+          echo "FOUND_EXACT_JS=$found"
