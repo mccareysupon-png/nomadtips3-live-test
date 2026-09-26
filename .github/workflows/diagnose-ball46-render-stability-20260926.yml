@@ -1,0 +1,84 @@
+name: Diagnose Ball46 Render Stability 20260926
+
+on:
+  push:
+    branches:
+      - work/ball46-render-stability-prod-safe-20260926
+    paths:
+      - '.github/workflows/diagnose-ball46-render-stability-20260926.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect-production-readonly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout isolated diagnostic branch
+        uses: actions/checkout@v4
+        with:
+          ref: work/ball46-render-stability-prod-safe-20260926
+          fetch-depth: 1
+
+      - name: Read current Ball46 Production only
+        shell: bash
+        env:
+          BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
+          BALL46_PUBLIC: https://www.ball46.com
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/prod
+          fetch(){
+            url="$1"; out="$2"
+            code=$(curl -sS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 -o "$out" -w '%{http_code}' "$url?diag-render=${GITHUB_RUN_ID}") || true
+            echo "HTTP $code $url"
+            [ "$code" = 200 ] || { echo "READ_FAILED:$url"; exit 1; }
+            test -s "$out" || { echo "EMPTY:$url"; exit 1; }
+          }
+          fetch "$BALL46_WORKER/index.html" /tmp/prod/index.html
+          fetch "$BALL46_WORKER/dashboard-v2-stage3.js" /tmp/prod/dashboard-v2-stage3.js
+          fetch "$BALL46_WORKER/api/engine/board" /tmp/prod/board.json
+          fetch "$BALL46_WORKER/api/engine/signals" /tmp/prod/signals.json
+          fetch "$BALL46_WORKER/api/engine/statistics" /tmp/prod/statistics.json
+
+          echo '--- PRODUCTION HASHES ---'
+          sha256sum /tmp/prod/index.html /tmp/prod/dashboard-v2-stage3.js
+          echo '--- BRANCH HASHES ---'
+          sha256sum nomad-live-343/index.html nomad-live-343/dashboard-v2-stage3.js
+
+          echo '--- RENDER MARKERS ---'
+          grep -F 'const POLL_MS=' /tmp/prod/dashboard-v2-stage3.js || true
+          grep -F 'function scheduleRichRender' /tmp/prod/dashboard-v2-stage3.js || true
+          grep -F 'function renderBoard()' /tmp/prod/dashboard-v2-stage3.js || true
+          grep -F 'host.innerHTML=' /tmp/prod/dashboard-v2-stage3.js || true
+          grep -F 'renderBoard();renderFeatured()' /tmp/prod/dashboard-v2-stage3.js || true
+          grep -F 'BALL46_SCOREBAR10_20260925' /tmp/prod/dashboard-v2-stage3.js || true
+          grep -F 'function renderScorebar10' /tmp/prod/dashboard-v2-stage3.js || true
+
+          echo '--- COUNTS ---'
+          printf 'renderBoard calls: '; grep -Fo 'renderBoard()' /tmp/prod/dashboard-v2-stage3.js | wc -l
+          printf 'innerHTML assignments: '; grep -Fo '.innerHTML=' /tmp/prod/dashboard-v2-stage3.js | wc -l
+          printf 'fetch calls: '; grep -Fo 'fetch(' /tmp/prod/dashboard-v2-stage3.js | wc -l
+
+          node - <<'NODE'
+          const fs=require('fs');
+          const b=JSON.parse(fs.readFileSync('/tmp/prod/board.json','utf8'));
+          const s=JSON.parse(fs.readFileSync('/tmp/prod/signals.json','utf8'));
+          const t=JSON.parse(fs.readFileSync('/tmp/prod/statistics.json','utf8'));
+          if(b?.ok!==true||!Array.isArray(b?.fixtures)) throw Error('BOARD_BAD');
+          if(!Array.isArray(s?.signals)) throw Error('SIGNALS_BAD');
+          if(t?.ok!==true||!Array.isArray(t?.rows)) throw Error('STATS_BAD');
+          console.log('BACKEND_OK',JSON.stringify({fixtures:b.fixtures.length,signals:s.signals.length,settled:t.rows.length}));
+          NODE
+
+          cp /tmp/prod/index.html /tmp/prod/production-index.html
+          cp /tmp/prod/dashboard-v2-stage3.js /tmp/prod/production-dashboard-v2-stage3.js
+
+      - name: Upload read-only Production snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-render-diagnostic-${{ github.run_id }}
+          path: /tmp/prod
+          retention-days: 7
