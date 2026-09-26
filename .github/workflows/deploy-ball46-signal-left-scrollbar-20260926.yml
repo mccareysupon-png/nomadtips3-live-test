@@ -1,0 +1,189 @@
+name: Deploy Ball46 Signal Left Scrollbar 20260926
+
+on:
+  push:
+    branches: [work/ball46-signal-left-scrollbar-prod-safe-20260926]
+    paths:
+      - '.github/workflows/deploy-ball46-signal-left-scrollbar-20260926.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
+  BALL46_PUBLIC: https://www.ball46.com
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  deploy-signal-left-scrollbar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+
+      - name: Mirror exact current Production and lock every non-target asset
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/prod /tmp/rollback-snapshot
+          fetch_required(){
+            name="$1"; safe="${name//\//_}"
+            code=$(curl -sS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 -o "/tmp/prod/$safe" -w '%{http_code}' "$BALL46_WORKER/$name?signal-scroll-copy=${GITHUB_RUN_ID}") || true
+            [ "$code" = 200 ] || { echo "REQUIRED_PROD_ASSET_HTTP_${code}:$name"; exit 1; }
+            test -s "/tmp/prod/$safe" || { echo "REQUIRED_PROD_ASSET_EMPTY:$name"; exit 1; }
+            mkdir -p "$(dirname "nomad-live-343/$name")"
+            cp "/tmp/prod/$safe" "nomad-live-343/$name"
+          }
+
+          fetch_required index.html
+          cp nomad-live-343/index.html /tmp/rollback-snapshot/index.html
+          sha256sum nomad-live-343/index.html | awk '{print $1}' > /tmp/index-before.sha
+
+          python3 - <<'PY' > /tmp/index-assets.txt
+          from pathlib import Path
+          import re
+          h=Path('nomad-live-343/index.html').read_text(errors='ignore')
+          found=[]
+          for x in re.findall(r'''(?:src|href)=["']([^"']+)["']''',h,re.I):
+              x=x.split('?',1)[0].split('#',1)[0].strip().lstrip('./').lstrip('/')
+              if not x or '://' in x or '/' in x: continue
+              if re.search(r'\.(?:js|css|svg|json|png|webp|jpg|jpeg|ico)$',x,re.I): found.append(x)
+          print('\n'.join(dict.fromkeys(found)))
+          PY
+
+          : > /tmp/protected.sha
+          while IFS= read -r name; do
+            [ -n "$name" ] || continue
+            fetch_required "$name"
+            if [ "$name" != "dashboard-v2.css" ]; then
+              printf '%s  %s\n' "$(sha256sum "nomad-live-343/$name" | awk '{print $1}')" "$name" >> /tmp/protected.sha
+            fi
+          done < /tmp/index-assets.txt
+
+          fetch_required dashboard-v2.css
+          cp nomad-live-343/dashboard-v2.css /tmp/rollback-snapshot/dashboard-v2.css
+          sha256sum nomad-live-343/dashboard-v2.css | awk '{print $1}' > /tmp/target-before.sha
+          cp /tmp/protected.sha /tmp/rollback-snapshot/protected.sha
+
+          grep -Fq '.left-rail,.right-rail' nomad-live-343/dashboard-v2.css
+          grep -Fq 'overflow:auto' nomad-live-343/dashboard-v2.css
+          grep -Fq 'body[data-workspace-view="signal"]' nomad-live-343/singlepage-workspace-343.css
+
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/board?signal-scroll-before=${GITHUB_RUN_ID}" -o /tmp/board-before.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/signals?signal-scroll-before=${GITHUB_RUN_ID}" -o /tmp/signals-before.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/statistics?signal-scroll-before=${GITHUB_RUN_ID}" -o /tmp/stats-before.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const b=JSON.parse(fs.readFileSync('/tmp/board-before.json'));
+          const s=JSON.parse(fs.readFileSync('/tmp/signals-before.json'));
+          const t=JSON.parse(fs.readFileSync('/tmp/stats-before.json'));
+          if(b?.ok!==true||!Array.isArray(b?.fixtures))throw Error('PRE_BOARD_UNHEALTHY');
+          if(!Array.isArray(s?.signals))throw Error('PRE_SIGNALS_UNHEALTHY');
+          if(t?.ok!==true||!Array.isArray(t?.rows))throw Error('PRE_STATS_UNHEALTHY');
+          console.log('PRE_BACKEND_OK',{fixtures:b.fixtures.length,signals:s.signals.length,settled:t.rows.length});
+          NODE
+
+      - name: Upload exact pre-change rollback snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-pre-signal-left-scrollbar-${{ github.run_id }}
+          path: /tmp/rollback-snapshot
+          retention-days: 30
+
+      - name: Patch only Signal left rail scrollbar behavior
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('nomad-live-343/dashboard-v2.css')
+          s=p.read_text()
+          s=re.sub(r'\n?/\* BALL46-SIGNAL-LEFT-SCROLLBAR-20260926 START \*/.*?/\* BALL46-SIGNAL-LEFT-SCROLLBAR-20260926 END \*/\n?','\n',s,flags=re.S)
+          block='''\n/* BALL46-SIGNAL-LEFT-SCROLLBAR-20260926 START */\n@media (min-width:761px){\n  body[data-workspace-view="signal"] .workspace.singlepage>.left-rail{\n    overflow-y:scroll;\n    scrollbar-gutter:stable;\n  }\n}\n/* BALL46-SIGNAL-LEFT-SCROLLBAR-20260926 END */\n'''
+          p.write_text(s.rstrip()+block)
+          PY
+
+          grep -Fq 'BALL46-SIGNAL-LEFT-SCROLLBAR-20260926 START' nomad-live-343/dashboard-v2.css
+          grep -Fq 'body[data-workspace-view="signal"] .workspace.singlepage>.left-rail' nomad-live-343/dashboard-v2.css
+          grep -Fq 'overflow-y:scroll' nomad-live-343/dashboard-v2.css
+          grep -Fq 'scrollbar-gutter:stable' nomad-live-343/dashboard-v2.css
+
+          [ "$(cat /tmp/index-before.sha)" = "$(sha256sum nomad-live-343/index.html | awk '{print $1}')" ] || { echo 'INDEX_CHANGED_UNEXPECTEDLY'; exit 1; }
+          while read -r expected f; do
+            actual=$(sha256sum "nomad-live-343/$f" | awk '{print $1}')
+            [ "$actual" = "$expected" ] || { echo "NON_TARGET_CHANGED_LOCAL:$f"; exit 1; }
+          done < /tmp/protected.sha
+          [ "$(cat /tmp/target-before.sha)" != "$(sha256sum nomad-live-343/dashboard-v2.css | awk '{print $1}')" ] || { echo 'TARGET_NOT_CHANGED'; exit 1; }
+          echo 'SIGNAL_LEFT_SCROLLBAR_CSS_ONLY_PATCH_OK'
+
+      - name: Dry run exact Production package with one CSS change
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"; test -n "$CLOUDFLARE_ACCOUNT_ID"
+          cd workers/nomadtips3-343-preview
+          npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.ball46.jsonc
+
+      - name: Deploy Signal left scrollbar CSS only
+        id: deploy
+        working-directory: workers/nomadtips3-343-preview
+        shell: bash
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Verify Production target and untouched systems
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for n in $(seq 1 20); do
+            if curl -fsS -L --retry 2 --retry-all-errors --retry-delay 1 --max-time 20 "$BALL46_WORKER/dashboard-v2.css?signal-scroll-after=${GITHUB_RUN_ID}-${n}" -o /tmp/target.after.css \
+              && grep -Fq 'BALL46-SIGNAL-LEFT-SCROLLBAR-20260926 START' /tmp/target.after.css \
+              && grep -Fq 'body[data-workspace-view="signal"] .workspace.singlepage>.left-rail' /tmp/target.after.css \
+              && grep -Fq 'overflow-y:scroll' /tmp/target.after.css; then ok=1; break; fi
+            sleep 3
+          done
+          [ "$ok" = 1 ] || { echo 'SIGNAL_LEFT_SCROLLBAR_TARGET_NOT_LIVE'; exit 1; }
+          [ "$(sha256sum /tmp/target.after.css | awk '{print $1}')" = "$(sha256sum nomad-live-343/dashboard-v2.css | awk '{print $1}')" ] || { echo 'TARGET_DEPLOY_HASH_MISMATCH'; exit 1; }
+
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/index.html?signal-scroll-index=${GITHUB_RUN_ID}" -o /tmp/index.after.html
+          [ "$(sha256sum /tmp/index.after.html | awk '{print $1}')" = "$(cat /tmp/index-before.sha)" ] || { echo 'INDEX_CHANGED_UNEXPECTEDLY'; exit 1; }
+
+          while read -r expected f; do
+            curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/$f?signal-scroll-protected=${GITHUB_RUN_ID}" -o "/tmp/protected-${f//\//_}"
+            actual=$(sha256sum "/tmp/protected-${f//\//_}" | awk '{print $1}')
+            [ "$actual" = "$expected" ] || { echo "NON_TARGET_CHANGED_DEPLOYED:$f"; exit 1; }
+          done < /tmp/protected.sha
+
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/board?signal-scroll-final=${GITHUB_RUN_ID}" -o /tmp/board-after.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/signals?signal-scroll-final=${GITHUB_RUN_ID}" -o /tmp/signals-after.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/statistics?signal-scroll-final=${GITHUB_RUN_ID}" -o /tmp/stats-after.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const b=JSON.parse(fs.readFileSync('/tmp/board-after.json'));
+          const s=JSON.parse(fs.readFileSync('/tmp/signals-after.json'));
+          const t=JSON.parse(fs.readFileSync('/tmp/stats-after.json'));
+          if(b?.ok!==true||!Array.isArray(b?.fixtures))throw Error('POST_BOARD_UNHEALTHY');
+          if(!Array.isArray(s?.signals))throw Error('POST_SIGNALS_UNHEALTHY');
+          if(t?.ok!==true||!Array.isArray(t?.rows))throw Error('POST_STATS_UNHEALTHY');
+          console.log('SIGNAL_SCROLLBAR_BACKEND_CONTINUITY_OK',{fixtures:b.fixtures.length,signals:s.signals.length,settled:t.rows.length});
+          NODE
+
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_PUBLIC/dashboard-v2.css?signal-scroll-public=${GITHUB_RUN_ID}" -o /tmp/public-target.css
+          grep -Fq 'BALL46-SIGNAL-LEFT-SCROLLBAR-20260926 START' /tmp/public-target.css
+          echo 'BALL46_SIGNAL_LEFT_SCROLLBAR_PRODUCTION_PASS'
+
+      - name: Restore exact pre-change CSS if verification fails
+        if: ${{ failure() && steps.deploy.outcome == 'success' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp /tmp/rollback-snapshot/dashboard-v2.css nomad-live-343/dashboard-v2.css
+          cd workers/nomadtips3-343-preview
+          npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+          echo 'BALL46_SIGNAL_LEFT_SCROLLBAR_ROLLBACK_COMPLETE'
