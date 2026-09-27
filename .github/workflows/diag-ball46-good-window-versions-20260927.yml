@@ -17,7 +17,7 @@ jobs:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
-      - name: List Ball46 versions in exact user-good window
+      - name: List newest Ball46 versions around exact user-good window
         shell: bash
         run: |
           set -euo pipefail
@@ -25,5 +25,5 @@ jobs:
           node - <<'NODE'
           const fs=require('fs');const raw=JSON.parse(fs.readFileSync('/tmp/versions.json'));const a=Array.isArray(raw)?raw:(raw?.versions||raw?.result||[]);
           console.log('VERSION_COUNT',a.length);
-          for(const v of a.slice(0,40)) console.log(JSON.stringify(v));
+          for(const v of a.slice(-50)) console.log(JSON.stringify(v));
           NODE
