@@ -1,0 +1,30 @@
+name: DIAG Ball46 fixture 201711330 20260927
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/diag-ball46-fixture-201711330-20260927.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  diag:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
+    steps:
+      - name: Query exact provider fixture read-only
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${FIVEDOLLAR_API_KEY:-}" ]; then echo 'SECRET_MISSING'; exit 0; fi
+          BASE='https://api.5dollarfootballapi.com/v1'
+          for path in 'fixtures/201711330' 'fixtures/201711330?include=odds,events,stats' 'fixtures?fixture_id=201711330&include=odds,events,stats' 'fixtures?id=201711330&include=odds,events,stats'; do
+            safe=$(echo "$path" | tr '/?&=' '_')
+            code=$(curl -sS -L --retry 2 --max-time 25 -H "Authorization: Bearer $FIVEDOLLAR_API_KEY" -H 'Accept: application/json' -o "/tmp/$safe" -w '%{http_code}' "$BASE/$path" || true)
+            echo "PATH=$path HTTP=$code"
+            if [ -s "/tmp/$safe" ]; then node -e "const fs=require('fs');let s=fs.readFileSync('/tmp/$safe','utf8'); try{let j=JSON.parse(s); console.log(JSON.stringify(j).slice(0,12000));}catch{console.log(s.slice(0,2000))}"; fi
+          done
