@@ -11,6 +11,8 @@ permissions:
 
 env:
   BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
 jobs:
   inspect-live-render:
@@ -42,4 +44,51 @@ jobs:
                   if shown>=4: break
                   start=i+len(needle)
               if shown==0: print('NOT_FOUND')
+          PY
+      - name: Read active Cloudflare deployment and runtime module fingerprints
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib, json, os, urllib.request
+          account=os.environ['CLOUDFLARE_ACCOUNT_ID']; token=os.environ['CLOUDFLARE_API_TOKEN']
+          hdr={'Authorization':f'Bearer {token}','Accept':'application/json'}
+          bases=[
+            f'https://api.cloudflare.com/client/v4/accounts/{account}/workers/scripts/ball46-production/deployments',
+            f'https://api.cloudflare.com/client/v4/accounts/{account}/workers/workers/ball46-production/deployments',
+          ]
+          payload=None
+          for url in bases:
+              try:
+                  with urllib.request.urlopen(urllib.request.Request(url,headers=hdr),timeout=30) as r: p=json.load(r)
+                  if p.get('success'):
+                      payload=p; print('DEPLOYMENTS_ENDPOINT=',url); break
+              except Exception as e:
+                  print('ENDPOINT_FAIL=',url,type(e).__name__,str(e))
+          if not payload: raise SystemExit('NO_DEPLOYMENTS_ENDPOINT')
+          result=payload.get('result') or []
+          print('DEPLOYMENTS_RAW=',json.dumps(result)[:6000])
+          versions=[]
+          def walk(x):
+              if isinstance(x,dict):
+                  for k,v in x.items():
+                      if k in ('version_id','versionId') and isinstance(v,str): versions.append(v)
+                      walk(v)
+              elif isinstance(x,list):
+                  for v in x: walk(v)
+          walk(result)
+          if not versions: raise SystemExit('NO_VERSION_ID')
+          vid=versions[0]
+          print('ACTIVE_VERSION=',vid)
+          url=f'https://api.cloudflare.com/client/v4/accounts/{account}/workers/workers/ball46-production/versions/{vid}?include=modules'
+          with urllib.request.urlopen(urllib.request.Request(url,headers=hdr),timeout=30) as r: p=json.load(r)
+          r=p.get('result') or {}; mods=r.get('modules') or []
+          fps=[]
+          for m in mods:
+              c=m.get('content')
+              if isinstance(c,str): b=c.encode()
+              elif isinstance(c,(bytes,bytearray)): b=bytes(c)
+              else: b=json.dumps(c,sort_keys=True,separators=(',',':')).encode()
+              fps.append({'name':m.get('name'),'content_type':m.get('content_type'),'sha256':hashlib.sha256(b).hexdigest(),'bytes':len(b)})
+          print('RUNTIME_FINGERPRINTS=',json.dumps(fps,sort_keys=True))
           PY
