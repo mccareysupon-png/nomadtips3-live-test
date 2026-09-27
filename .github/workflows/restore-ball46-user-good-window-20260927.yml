@@ -1,4 +1,4 @@
-name: Restore Ball46 user-good window 20260927
+name: Restore Ball46 latest proven full-flow golden window 20260927
 
 on:
   push:
@@ -10,9 +10,15 @@ permissions:
   contents: read
 
 env:
-  TARGET_VERSION: 1c002b58-317e-408e-a64e-84c3db83b6d7
-  EXPECT_INDEX_SHA: 49082e5c2336bb83e7f2652a9f44c83966f54a024464544c8b690ddf135c5dd5
+  TARGET_VERSION: dae0283d-ce00-4730-8ba4-cf51745f926f
+  EXPECT_INDEX_SHA: 875811988aa09f590dc352fa7690d433fda15bfe23ce64476cd776a26d62fbd3
+  EXPECT_SIGNAL_SHA: dee06f5d7c6ad042dbb8c7722e8cfe1bee5503e98ec8072b6a5b8b20ea44dd3b
+  EXPECT_STATISTICS_SHA: 14aa5019e96bc9d16372edc387bf1d52ca8b10f880097a5519e4ca5347f9e288
   EXPECT_LOGO_SHA: ce33cd0c99f7d36e00d89bb108502afb308528fe801381a9c55cc7cb7b7fbb48
+  EXPECT_ENGINE_VERSION: nomad343-engine-v5-best19-referee
+  EXPECT_HUB_VERSION: nomad343-5usd-hub-v6-viewer-cache-only
+  EXPECT_FULL_MARKET_VERSION: nomad343-ball46-full-market-v6-server-prewarm-cache
+  EXPECT_SETTLEMENT_REVISION: bet365-rules-v2
   BALL46: https://ball46-production.mccarey-supon.workers.dev
   CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
   CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -20,9 +26,9 @@ env:
 jobs:
   restore:
     runs-on: ubuntu-24.04
-    timeout-minutes: 12
+    timeout-minutes: 15
     steps:
-      - name: Prove target is the exact version active through user-confirmed good window
+      - name: Prove exact golden Worker version still exists
         shell: bash
         run: |
           set -euo pipefail
@@ -32,41 +38,87 @@ jobs:
           const target=process.env.TARGET_VERSION;
           const raw=JSON.parse(fs.readFileSync('/tmp/versions.json'));
           const a=Array.isArray(raw)?raw:(raw?.versions||raw?.result||[]);
-          const i=a.findIndex(v=>(v.id||v.version_id||v.versionId)===target);
-          if(i<0) throw Error('TARGET_VERSION_NOT_FOUND');
-          const v=a[i], next=a[i+1];
-          const created=v?.metadata?.created_on;
-          const nextCreated=next?.metadata?.created_on;
-          if(created!=='2026-09-26T13:48:41.679415Z') throw Error('TARGET_TIMESTAMP_MISMATCH:'+created);
-          if(!next || nextCreated!=='2026-09-26T22:15:18.678247Z') throw Error('NEXT_VERSION_NOT_MOBILE_BOUNDARY:'+nextCreated);
-          console.log('GOOD_WINDOW_TARGET_PROVEN', {target,created,nextId:next.id,nextCreated});
-          NODE
-      - name: Restore exact whole Ball46 Worker version
-        shell: bash
-        run: |
-          set -euo pipefail
-          npx --yes wrangler@4.92.0 rollback "$TARGET_VERSION" --name ball46-production --message "Restore exact version active 20:48-05:15 ICT before mobile regression"
-      - name: Verify exact pre-mobile bytes, pages, favicon and backend routing
-        shell: bash
-        run: |
-          set -euo pipefail
-          pass=0
-          for n in 1 2 3 4 5 6 7 8; do
-            curl -fsS -L --retry 2 --max-time 25 "$BALL46/index.html?good=${GITHUB_RUN_ID}-${n}" -o /tmp/index.html || true
-            curl -fsS -L --retry 2 --max-time 25 "$BALL46/ball46-logo.svg?good=${GITHUB_RUN_ID}-${n}" -o /tmp/logo.svg || true
-            if [ "$(sha256sum /tmp/index.html 2>/dev/null | awk '{print $1}')" = "$EXPECT_INDEX_SHA" ] && [ "$(sha256sum /tmp/logo.svg 2>/dev/null | awk '{print $1}')" = "$EXPECT_LOGO_SHA" ]; then pass=1; break; fi
-            sleep 5
-          done
-          [ "$pass" = 1 ] || { echo 'EXACT_PRE_MOBILE_BYTES_NOT_LIVE'; exit 1; }
-          grep -Eq '<link[^>]+rel="icon"[^>]+href="/ball46-logo\.svg"|<link[^>]+href="/ball46-logo\.svg"[^>]+rel="icon"' /tmp/index.html
-          curl -fsS -L --retry 4 --max-time 25 "$BALL46/signal.html?good=${GITHUB_RUN_ID}" -o /tmp/signal.html
-          curl -fsS -L --retry 4 --max-time 25 "$BALL46/statistics.html?good=${GITHUB_RUN_ID}" -o /tmp/statistics.html
-          for ep in health board signals statistics; do curl -fsS -L --retry 4 --max-time 25 "$BALL46/api/engine/$ep?good=${GITHUB_RUN_ID}" -o "/tmp/$ep.json"; done
-          node - <<'NODE'
-          const fs=require('fs');
-          const h=JSON.parse(fs.readFileSync('/tmp/health.json'));const b=JSON.parse(fs.readFileSync('/tmp/board.json'));const s=JSON.parse(fs.readFileSync('/tmp/signals.json'));const t=JSON.parse(fs.readFileSync('/tmp/statistics.json'));
-          if(h?.ok!==true||b?.ok!==true||!Array.isArray(b?.fixtures)||!Array.isArray(s?.signals)||t?.ok!==true||!Array.isArray(t?.rows)) throw Error('BACKEND_ROUTE_FAIL');
-          console.log('BALL46_USER_GOOD_WINDOW_RESTORED',{indexSha:process.env.EXPECT_INDEX_SHA,fixtures:b.fixtures.length,pending:s.signals.length,settled:t.rows.length});
+          const v=a.find(x=>(x.id||x.version_id||x.versionId)===target);
+          if(!v) throw Error('GOLDEN_TARGET_VERSION_NOT_FOUND:'+target);
+          console.log('GOLDEN_TARGET_PROVEN',{target,created:v?.metadata?.created_on||null});
           NODE
 
-# retrigger requested restore 2026-09-27
+      - name: Restore exact whole Ball46 golden Worker version
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.92.0 rollback "$TARGET_VERSION" --name ball46-production --message "Restore exact latest proven full-flow Ball46 golden window 18:19-18:46 ICT"
+
+      - name: Verify exact golden frontend bytes and full backend flow
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/b46-golden
+          pass=0
+          for n in 1 2 3 4 5 6 7 8; do
+            nonce="${GITHUB_RUN_ID}-${n}-$(date +%s%N)"
+            curl -fsS -L --retry 2 --max-time 25 "$BALL46/index.html?golden=$nonce" -o /tmp/b46-golden/index.html || true
+            curl -fsS -L --retry 2 --max-time 25 "$BALL46/signal.html?golden=$nonce" -o /tmp/b46-golden/signal.html || true
+            curl -fsS -L --retry 2 --max-time 25 "$BALL46/statistics.html?golden=$nonce" -o /tmp/b46-golden/statistics.html || true
+            curl -fsS -L --retry 2 --max-time 25 "$BALL46/ball46-logo.svg?golden=$nonce" -o /tmp/b46-golden/logo.svg || true
+            index_sha="$(sha256sum /tmp/b46-golden/index.html 2>/dev/null | awk '{print $1}')"
+            signal_sha="$(sha256sum /tmp/b46-golden/signal.html 2>/dev/null | awk '{print $1}')"
+            statistics_sha="$(sha256sum /tmp/b46-golden/statistics.html 2>/dev/null | awk '{print $1}')"
+            logo_sha="$(sha256sum /tmp/b46-golden/logo.svg 2>/dev/null | awk '{print $1}')"
+            if [ "$index_sha" = "$EXPECT_INDEX_SHA" ] && [ "$signal_sha" = "$EXPECT_SIGNAL_SHA" ] && [ "$statistics_sha" = "$EXPECT_STATISTICS_SHA" ] && [ "$logo_sha" = "$EXPECT_LOGO_SHA" ]; then
+              pass=1
+              break
+            fi
+            sleep 5
+          done
+          [ "$pass" = 1 ] || { echo 'GOLDEN_FRONTEND_BYTES_NOT_LIVE'; exit 1; }
+          echo GOLDEN_FRONTEND_BYTES_VERIFIED
+
+          nonce="${GITHUB_RUN_ID}-flow1-$(date +%s%N)"
+          for ep in health board signals statistics; do
+            curl -fsS -L --retry 4 --max-time 25 "$BALL46/api/engine/$ep?golden=$nonce" -o "/tmp/b46-golden/${ep}1.json"
+          done
+
+          node - <<'NODE'
+          const fs=require('fs');
+          const h=JSON.parse(fs.readFileSync('/tmp/b46-golden/health1.json'));
+          const b=JSON.parse(fs.readFileSync('/tmp/b46-golden/board1.json'));
+          const s=JSON.parse(fs.readFileSync('/tmp/b46-golden/signals1.json'));
+          const t=JSON.parse(fs.readFileSync('/tmp/b46-golden/statistics1.json'));
+          if(h?.ok!==true || b?.ok!==true || s?.ok!==true || t?.ok!==true) throw Error('FLOW1_ROUTE_FAIL');
+          if(!Array.isArray(b.fixtures) || !Array.isArray(s.signals) || !Array.isArray(t.rows)) throw Error('FLOW1_SHAPE_FAIL');
+          if(b.version!==process.env.EXPECT_ENGINE_VERSION || s.version!==process.env.EXPECT_ENGINE_VERSION || t.version!==process.env.EXPECT_ENGINE_VERSION) throw Error('ENGINE_VERSION_MISMATCH');
+          if(b.hubVersion!==process.env.EXPECT_HUB_VERSION) throw Error('HUB_VERSION_MISMATCH:'+b.hubVersion);
+          if(b?.fullMarketCache?.version!==process.env.EXPECT_FULL_MARKET_VERSION) throw Error('FULL_MARKET_VERSION_MISMATCH:'+b?.fullMarketCache?.version);
+          if(t.settlementRevision!==process.env.EXPECT_SETTLEMENT_REVISION) throw Error('SETTLEMENT_REVISION_MISMATCH:'+t.settlementRevision);
+          if(b.stale===true) throw Error('FLOW1_HUB_STALE');
+          if(!Number.isFinite(Number(b.hubFetchedAt))) throw Error('FLOW1_HUB_TIMESTAMP_MISSING');
+          fs.writeFileSync('/tmp/b46-golden/flow1.txt',String(b.hubFetchedAt));
+          console.log('FLOW1_OK',{fixtures:b.fixtures.length,signals:s.signals.length,stats:t.rows.length,hubFetchedAt:b.hubFetchedAt,engine:b.version,hub:b.hubVersion,fullMarket:b?.fullMarketCache?.version});
+          NODE
+
+          # Golden production cron is every minute. Prove the upstream 5USD/HUB state advances across a fresh cycle.
+          sleep 70
+
+          nonce="${GITHUB_RUN_ID}-flow2-$(date +%s%N)"
+          for ep in health board signals statistics; do
+            curl -fsS -L --retry 4 --max-time 25 "$BALL46/api/engine/$ep?golden=$nonce" -o "/tmp/b46-golden/${ep}2.json"
+          done
+
+          node - <<'NODE'
+          const fs=require('fs');
+          const oldHub=Number(fs.readFileSync('/tmp/b46-golden/flow1.txt','utf8').trim());
+          const h=JSON.parse(fs.readFileSync('/tmp/b46-golden/health2.json'));
+          const b=JSON.parse(fs.readFileSync('/tmp/b46-golden/board2.json'));
+          const s=JSON.parse(fs.readFileSync('/tmp/b46-golden/signals2.json'));
+          const t=JSON.parse(fs.readFileSync('/tmp/b46-golden/statistics2.json'));
+          if(h?.ok!==true || b?.ok!==true || s?.ok!==true || t?.ok!==true) throw Error('FLOW2_ROUTE_FAIL');
+          if(!Array.isArray(b.fixtures) || !Array.isArray(s.signals) || !Array.isArray(t.rows)) throw Error('FLOW2_SHAPE_FAIL');
+          if(b.version!==process.env.EXPECT_ENGINE_VERSION || b.hubVersion!==process.env.EXPECT_HUB_VERSION) throw Error('FLOW2_VERSION_MISMATCH');
+          if(b?.fullMarketCache?.version!==process.env.EXPECT_FULL_MARKET_VERSION) throw Error('FLOW2_FULL_MARKET_MISMATCH');
+          if(t.settlementRevision!==process.env.EXPECT_SETTLEMENT_REVISION) throw Error('FLOW2_SETTLEMENT_MISMATCH');
+          if(b.stale===true) throw Error('FLOW2_HUB_STALE');
+          const newHub=Number(b.hubFetchedAt);
+          if(!Number.isFinite(newHub) || newHub<=oldHub) throw Error('HUB_DID_NOT_ADVANCE:'+oldHub+'->'+newHub);
+          console.log('BALL46_FULL_FLOW_GOLDEN_RESTORED',{target:process.env.TARGET_VERSION,fixtures:b.fixtures.length,signals:s.signals.length,stats:t.rows.length,hubFetchedAtBefore:oldHub,hubFetchedAtAfter:newHub,engine:b.version,hub:b.hubVersion,fullMarket:b?.fullMarketCache?.version,settlement:t.settlementRevision});
+          NODE
