@@ -1,0 +1,90 @@
+name: READ ONLY - Ball46 V2 current state 20260927
+
+on:
+  push:
+    branches: [work/ball46-row-balance-livebase-20260927]
+    paths:
+      - '.github/workflows/ball46-v2-current-state-check-20260927.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  verify-current:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
+      LIVEBASE_RUN_ID: 36291401917
+      LIVEBASE_NAME: ball46-livebase-v2-36291401917
+      CAND_INDEX: 17092c25cd52919a0db2160de14f4c80320a065a21e268b3042b021823ae7d7b
+      CAND_JS: 64db90d85497f10b583c4c078c3ef5cbadbdc39f607b4b2a4d97b193244b730a
+      CAND_CSS: 353643f031ba7aa5a3003f9d0fe229431257085f3a75f720068cd88ded4f75f6
+    steps:
+      - name: Download exact prework hash set
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.LIVEBASE_NAME }}
+          path: /tmp/livebase
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ env.LIVEBASE_RUN_ID }}
+
+      - name: Poll candidate key assets to stable three consecutive samples
+        shell: bash
+        run: |
+          set -euo pipefail
+          stable=0
+          for n in $(seq 1 20); do
+            for f in index.html dashboard-v2-stage3.js dashboard-v2-tune.css; do
+              curl -fsS -L --retry 3 --retry-all-errors --retry-delay 1 --max-time 25 -H 'Cache-Control: no-cache' \
+                "$BALL46_WORKER/$f?v2-state=${GITHUB_RUN_ID}-$n-$(date +%s%N)" -o "/tmp/state-$f"
+            done
+            a=$(sha256sum /tmp/state-index.html | awk '{print $1}')
+            b=$(sha256sum /tmp/state-dashboard-v2-stage3.js | awk '{print $1}')
+            c=$(sha256sum /tmp/state-dashboard-v2-tune.css | awk '{print $1}')
+            echo "STATE_SAMPLE $n index=$a js=$b css=$c"
+            if [ "$a" = "$CAND_INDEX" ] && [ "$b" = "$CAND_JS" ] && [ "$c" = "$CAND_CSS" ]; then stable=$((stable+1)); else stable=0; fi
+            if [ "$stable" -ge 3 ]; then echo CANDIDATE_STABLE_3X; exit 0; fi
+            sleep 3
+          done
+          echo CANDIDATE_NOT_STABLE
+          exit 1
+
+      - name: Verify 66 untouched assets still equal exact prework package
+        shell: bash
+        run: |
+          set -euo pipefail
+          bad=0
+          while read -r expected name; do
+            case "$name" in index.html|dashboard-v2-stage3.js|dashboard-v2-tune.css) continue;; esac
+            safe="${name//\//_}"
+            curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 30 -H 'Cache-Control: no-cache' \
+              "$BALL46_WORKER/$name?v2-untouched=${GITHUB_RUN_ID}-$(date +%s%N)" -o "/tmp/untouched-$safe"
+            actual=$(sha256sum "/tmp/untouched-$safe" | awk '{print $1}')
+            if [ "$actual" != "$expected" ]; then echo "UNTOUCHED_MISMATCH:$name expected=$expected actual=$actual"; bad=$((bad+1)); fi
+          done < /tmp/livebase/current-assets.sha256
+          test "$bad" = 0 || { echo "UNTOUCHED_MISMATCH_COUNT=$bad"; exit 1; }
+          echo UNTOUCHED_66_EXACT_PASS
+
+      - name: Verify UI markers and backend
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq 'layout=20260927-row-balance-livebase-v3' /tmp/state-index.html
+          grep -Fq 'class=\"match-meta-cell\"' /tmp/state-dashboard-v2-stage3.js
+          grep -Fq 'BALL46 LIVE ROW BALANCE LIVEBASE V3 20260927' /tmp/state-dashboard-v2-tune.css
+          for ep in health board signals statistics; do
+            curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 30 "$BALL46_WORKER/api/engine/$ep?v2-state-api=${GITHUB_RUN_ID}" -o "/tmp/state-$ep.json"
+          done
+          node - <<'NODE'
+          const fs=require('fs');
+          const h=JSON.parse(fs.readFileSync('/tmp/state-health.json'));
+          const b=JSON.parse(fs.readFileSync('/tmp/state-board.json'));
+          const s=JSON.parse(fs.readFileSync('/tmp/state-signals.json'));
+          const t=JSON.parse(fs.readFileSync('/tmp/state-statistics.json'));
+          if(h?.ok!==true||b?.ok!==true||!Array.isArray(b.fixtures)||!Array.isArray(s.signals)||t?.ok!==true||!Array.isArray(t.rows)) process.exit(1);
+          console.log('V2_CURRENT_STATE_BACKEND_PASS',{fixtures:b.fixtures.length,signals:s.signals.length,settled:t.rows.length});
+          NODE
+          echo BALL46_V2_CURRENT_STATE_VERIFIED
