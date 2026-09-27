@@ -16,12 +16,13 @@ env:
   SNAPSHOT_NAME: ball46-pre-mobile-parity-36275642150
   EXPECTED_INDEX_SHA256: 49082e5c2336bb83e7f2652a9f44c83966f54a024464544c8b690ddf135c5dd5
   EXPECTED_OLD_DASHBOARD_SHA256: 41b896a4dd07e2ff2cffde62247b2db1c407ee4a1b3f739a5c560bce56e90c0e
+  EXPECTED_NEW_DASHBOARD_SHA256: 679b472c504b6d2284a5faf4a64536a570994924abe1a543858a5d392a199262
   BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
   CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
   CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
 jobs:
-  signal-count-one-line-hotfix:
+  signal-count-live-payload-hotfix:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -44,7 +45,7 @@ jobs:
           repository: ${{ github.repository }}
           run-id: ${{ env.SNAPSHOT_RUN_ID }}
 
-      - name: Rebuild exact production snapshot and patch one line only
+      - name: Rebuild exact snapshot and patch signal count only
         shell: bash
         run: |
           set -euo pipefail
@@ -64,54 +65,52 @@ jobs:
           done < /tmp/pre-mobile/protected.sha
           rm -f nomad-live-343/ball46-mobile-parity-v1.css
 
-          test "$(sha256sum nomad-live-343/dashboard-v2-stage3.js | awk '{print $1}')" = "$EXPECTED_OLD_DASHBOARD_SHA256"
-          cp nomad-live-343/dashboard-v2-stage3.js /tmp/dashboard-before.js
+          target=nomad-live-343/dashboard-v2-stage3.js
+          test "$(sha256sum "$target" | awk '{print $1}')" = "$EXPECTED_OLD_DASHBOARD_SHA256"
 
           python3 - <<'PY'
           from pathlib import Path
-          p = Path('nomad-live-343/dashboard-v2-stage3.js')
-          s = p.read_text()
-          old = 'const activeSignals = numberOr(signalMirror?.activeSignals, signalMap.size);'
-          new = 'const activeSignals = signalRows.length;'
-          if s.count(old) != 1:
-              raise SystemExit(f'EXPECTED_EXACTLY_ONE_SIGNAL_COUNT_TARGET_FOUND:{s.count(old)}')
-          if new in s:
-              raise SystemExit('NEW_SIGNAL_COUNT_LINE_ALREADY_PRESENT_UNEXPECTEDLY')
-          p.write_text(s.replace(old, new, 1))
+          p=Path('nomad-live-343/dashboard-v2-stage3.js')
+          s=p.read_text()
+          replacements=[
+            ('let signalMap=new Map();','let signalMap=new Map(),signalCount=0;'),
+            ("async function loadSignals(){try{const j=await fetchJson(SIGNALS_API),rows=Array.isArray(j?.signals)?j.signals:[],next=new Map();rows.sort", "async function loadSignals(){try{const j=await fetchJson(SIGNALS_API),rows=Array.isArray(j?.signals)?j.signals:[],next=new Map();signalCount=rows.length;rows.sort"),
+            ('const activeSignals=num(signalMirror?.activeSignals)??signalMap.size,activeMatches=', 'const activeSignals=signalCount,activeMatches='),
+          ]
+          for old,new in replacements:
+              count=s.count(old)
+              if count != 1:
+                  raise SystemExit(f'COUNT_PATCH_TARGET_MISMATCH:{count}:{old[:80]}')
+              s=s.replace(old,new,1)
+          p.write_text(s)
           PY
 
-          diff_lines=$(git diff --no-index --unified=0 /tmp/dashboard-before.js nomad-live-343/dashboard-v2-stage3.js || true)
-          echo "$diff_lines"
-          removed=$(printf '%s\n' "$diff_lines" | grep -Fxc -- '-  const activeSignals = numberOr(signalMirror?.activeSignals, signalMap.size);' || true)
-          added=$(printf '%s\n' "$diff_lines" | grep -Fxc -- '+  const activeSignals = signalRows.length;' || true)
-          changes=$(printf '%s\n' "$diff_lines" | grep -E '^[+-][^+-]' | wc -l | tr -d ' ')
-          [ "$removed" = 1 ] && [ "$added" = 1 ] && [ "$changes" = 2 ] || { echo 'PATCH_NOT_EXACTLY_ONE_LINE'; exit 1; }
+          test "$(sha256sum "$target" | awk '{print $1}')" = "$EXPECTED_NEW_DASHBOARD_SHA256"
+          grep -Fq 'let signalMap=new Map(),signalCount=0;' "$target"
+          grep -Fq 'signalCount=rows.length;' "$target"
+          grep -Fq 'const activeSignals=signalCount,activeMatches=' "$target"
+          ! grep -Fq 'const activeSignals=num(signalMirror?.activeSignals)??signalMap.size,activeMatches=' "$target"
 
           test "$(sha256sum nomad-live-343/index.html | awk '{print $1}')" = "$EXPECTED_INDEX_SHA256"
           ! grep -Fq 'BALL46-MOBILE-PARITY' nomad-live-343/index.html
-
           while read -r expected name; do
             [ "$name" = 'dashboard-v2-stage3.js' ] && continue
             actual=$(sha256sum "nomad-live-343/$name" | awk '{print $1}')
             [ "$actual" = "$expected" ] || { echo "UNINTENDED_ASSET_CHANGE:$name"; exit 1; }
           done < /tmp/pre-mobile/protected.sha
-
-          newsha=$(sha256sum nomad-live-343/dashboard-v2-stage3.js | awk '{print $1}')
-          [ "$newsha" != "$EXPECTED_OLD_DASHBOARD_SHA256" ]
-          echo "NEW_DASHBOARD_SHA256=$newsha" >> "$GITHUB_ENV"
-          echo "SIGNAL_COUNT_PATCH_EXACT_ONE_LINE_PASS dashboard_sha=$newsha"
+          echo 'SIGNAL_COUNT_PATCH_LOCK_PASS'
 
       - name: Dry run exact package
         working-directory: workers/nomadtips3-343-preview
         shell: bash
         run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.ball46.jsonc
 
-      - name: Deploy one-line signal count hotfix
+      - name: Deploy signal count hotfix
         working-directory: workers/nomadtips3-343-preview
         shell: bash
         run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
 
-      - name: Verify production package and live signal source
+      - name: Verify production exactness and signal payload
         shell: bash
         run: |
           set -euo pipefail
@@ -128,9 +127,10 @@ jobs:
             curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/$name?signal-count-hotfix=${GITHUB_RUN_ID}" -o "/tmp/live-${name//\//_}"
             actual=$(sha256sum "/tmp/live-${name//\//_}" | awk '{print $1}')
             if [ "$name" = 'dashboard-v2-stage3.js' ]; then
-              [ "$actual" = "$NEW_DASHBOARD_SHA256" ] || { echo "REMOTE_PATCH_HASH_BAD:$name expected=$NEW_DASHBOARD_SHA256 actual=$actual"; exit 1; }
-              grep -Fq 'const activeSignals = signalRows.length;' "/tmp/live-${name//\//_}"
-              ! grep -Fq 'const activeSignals = numberOr(signalMirror?.activeSignals, signalMap.size);' "/tmp/live-${name//\//_}"
+              [ "$actual" = "$EXPECTED_NEW_DASHBOARD_SHA256" ] || { echo "REMOTE_PATCH_HASH_BAD:$name:$actual"; exit 1; }
+              grep -Fq 'signalCount=rows.length;' "/tmp/live-${name//\//_}"
+              grep -Fq 'const activeSignals=signalCount,activeMatches=' "/tmp/live-${name//\//_}"
+              ! grep -Fq 'const activeSignals=num(signalMirror?.activeSignals)??signalMap.size,activeMatches=' "/tmp/live-${name//\//_}"
             else
               [ "$actual" = "$expected" ] || { echo "REMOTE_UNINTENDED_ASSET_CHANGE:$name"; exit 1; }
             fi
@@ -156,5 +156,5 @@ jobs:
           if(b?.ok!==true || !Array.isArray(b?.fixtures)) throw Error('BOARD_BAD');
           if(!Array.isArray(s?.signals)) throw Error('SIGNALS_BAD');
           if(t?.ok!==true || !Array.isArray(t?.rows)) throw Error('STATS_BAD');
-          console.log('BALL46_SIGNAL_COUNT_HOTFIX_PASS',{fixtures:b.fixtures.length,signals:s.signals.length,settled:t.rows.length});
+          console.log('BALL46_SIGNAL_COUNT_HOTFIX_PASS',{fixtures:b.fixtures.length,signals:s.signals.length,settled:t.rows.length,menuSignalCountSource:'signals.length'});
           NODE
