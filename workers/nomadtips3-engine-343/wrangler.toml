@@ -1,10 +1,10 @@
 name = "nomadtips3-engine-343"
-main = "src/index-bulk.js"
+main = "src/index-bulk-recovery.js"
 compatibility_date = "2026-09-09"
 workers_dev = true
-# BULK-ONLY STANDARD: pricing is read from HUB snapshot providerOdds.
-# No per-fixture provider odds fetch is allowed from the engine.
-# Runtime verification: 2026-09-15 bulk-only cutover.
+# BULK-ONLY STANDARD: pricing stays on HUB/FULL_MARKET.
+# Direct provider access in the recovery wrapper is settlement-only and capped.
+# Runtime verification: 2026-09-27 missing-final settlement recovery.
 # Legacy deploy branches must not replace this entrypoint.
 
 [observability]
