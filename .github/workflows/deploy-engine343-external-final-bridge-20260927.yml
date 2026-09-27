@@ -1,0 +1,115 @@
+name: Deploy Engine343 external-final bridge 20260927
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-engine343-external-final-bridge-20260927.yml'
+
+permissions:
+  contents: read
+
+env:
+  WORK_BRANCH: work/ball46-settlement-missing-fixture-safe-20260927
+  ENGINE_URL: https://nomadtips3-engine-343.mccarey-supon.workers.dev
+  BALL46_URL: https://ball46-production.mccarey-supon.workers.dev
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - name: Checkout isolated repair branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.WORK_BRANCH }}
+          fetch-depth: 0
+      - name: Guard exact scope and syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check workers/nomadtips3-engine-343/src/index-bulk.js
+          node --check workers/nomadtips3-engine-343/src/index-bulk-recovery.js
+          node --check workers/nomadtips3-engine-343/src/market-core.js
+          git diff --exit-code 15ee059599d6dadd2a88669a3c239f588a5e1560 -- workers/nomadtips3-engine-343/src/index-bulk.js workers/nomadtips3-engine-343/src/market-core.js
+          changed=$(git diff --name-only 15ee059599d6dadd2a88669a3c239f588a5e1560 -- workers/nomadtips3-engine-343 | sort)
+          printf '%s\n' "$changed"
+          [ "$changed" = $'workers/nomadtips3-engine-343/src/index-bulk-recovery.js\nworkers/nomadtips3-engine-343/wrangler.toml' ]
+          grep -Fq 'external-final-bridge-v1' workers/nomadtips3-engine-343/src/index-bulk-recovery.js
+          grep -Fq "'/reconcile-final'" workers/nomadtips3-engine-343/src/index-bulk-recovery.js
+          grep -Fq 'main = "src/index-bulk-recovery.js"' workers/nomadtips3-engine-343/wrangler.toml
+      - name: Capture pre-change Ball46 front bytes and engine counts
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS -L --retry 3 --max-time 25 "$BALL46_URL/index.html?bridgepre=${GITHUB_RUN_ID}" -o /tmp/index.pre
+          curl -fsS -L --retry 3 --max-time 25 "$BALL46_URL/ball46-logo.svg?bridgepre=${GITHUB_RUN_ID}" -o /tmp/logo.pre
+          echo "INDEX_SHA=$(sha256sum /tmp/index.pre | awk '{print $1}')" >> "$GITHUB_ENV"
+          echo "LOGO_SHA=$(sha256sum /tmp/logo.pre | awk '{print $1}')" >> "$GITHUB_ENV"
+          curl -fsS -L --retry 3 --max-time 25 "$ENGINE_URL/statistics?bridgepre=${GITHUB_RUN_ID}" -o /tmp/stats.pre
+          node -e "const j=require('/tmp/stats.pre'); if(j.ok!==true||!Array.isArray(j.rows))process.exit(1); console.log('PRE_SETTLED',j.rows.length)"
+      - name: Dry run engine only
+        working-directory: workers/nomadtips3-engine-343
+        shell: bash
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.toml
+      - name: Deploy engine bridge only
+        working-directory: workers/nomadtips3-engine-343
+        shell: bash
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.toml
+      - name: Verify bridge without changing Ball46 front
+        shell: bash
+        run: |
+          set -euo pipefail
+          for n in 1 2 3 4 5 6; do
+            if curl -fsS -L --max-time 20 "$ENGINE_URL/bridge-health?bridge=${GITHUB_RUN_ID}-${n}" -o /tmp/bridge.json && grep -Fq 'external-final-bridge-v1' /tmp/bridge.json; then break; fi
+            sleep 5
+          done
+          grep -Fq 'external-final-bridge-v1' /tmp/bridge.json
+          curl -fsS -L --retry 3 --max-time 25 "$BALL46_URL/index.html?bridgepost=${GITHUB_RUN_ID}" -o /tmp/index.post
+          curl -fsS -L --retry 3 --max-time 25 "$BALL46_URL/ball46-logo.svg?bridgepost=${GITHUB_RUN_ID}" -o /tmp/logo.post
+          [ "$(sha256sum /tmp/index.post | awk '{print $1}')" = "$INDEX_SHA" ]
+          [ "$(sha256sum /tmp/logo.post | awk '{print $1}')" = "$LOGO_SHA" ]
+          for ep in health board signals statistics; do curl -fsS -L --retry 3 --max-time 25 "$BALL46_URL/api/engine/$ep?bridgepost=${GITHUB_RUN_ID}" -o "/tmp/$ep.json"; done
+          node - <<'NODE'
+          const fs=require('fs');const h=JSON.parse(fs.readFileSync('/tmp/health.json'));const b=JSON.parse(fs.readFileSync('/tmp/board.json'));const s=JSON.parse(fs.readFileSync('/tmp/signals.json'));const t=JSON.parse(fs.readFileSync('/tmp/statistics.json'));
+          if(h?.ok!==true||b?.ok!==true||!Array.isArray(b?.fixtures)||!Array.isArray(s?.signals)||t?.ok!==true||!Array.isArray(t?.rows)) throw Error('CONTINUITY_FAIL');
+          console.log('BRIDGE_CONTINUITY_OK',{fixtures:b.fixtures.length,pending:s.signals.length,settled:t.rows.length});
+          NODE
+      - name: Fetch exact Hong Kong Laos final from provider and reconcile
+        shell: bash
+        run: |
+          set -euo pipefail
+          [ -n "${FIVEDOLLAR_API_KEY:-}" ]
+          curl -fsS -L --retry 3 --retry-all-errors --retry-delay 2 --max-time 25 \
+            -H "Authorization: Bearer $FIVEDOLLAR_API_KEY" -H 'Accept: application/json' \
+            'https://api.5dollarfootballapi.com/v1/fixtures/201711330?include=events,stats' -o /tmp/hklaos.json
+          node -e "const j=require('/tmp/hklaos.json'); if(Number(j.success??1)!==1||String(j.data?.status)!=='finished'||Number(j.data?.goals?.home)!==4||Number(j.data?.goals?.away)!==0)process.exit(1)"
+          curl -fsS -L --retry 3 --max-time 25 -X POST "$ENGINE_URL/reconcile-final" \
+            -H 'content-type: application/json' -H "x-settlement-token: $FIVEDOLLAR_API_KEY" \
+            --data-binary @/tmp/hklaos.json -o /tmp/reconcile.json
+          cat /tmp/reconcile.json
+          node - <<'NODE'
+          const j=require('/tmp/reconcile.json');
+          if(j?.ok!==true||j?.fixtureId!=='201711330'||j?.settled<2)throw Error('HK_LAOS_RECONCILE_FAIL');
+          const by=new Map((j.rows||[]).map(x=>[x.id,x]));
+          if(by.get('201711330-ft_corner_over-mujkpwbn')?.result!=='LOSS')throw Error('CORNER_RESULT_BAD');
+          if(by.get('201711330-ft_under-mujk427u')?.result!=='HALF_WIN')throw Error('UNDER_RESULT_BAD');
+          NODE
+      - name: Verify Hong Kong Laos is now in Ball46 Statistics
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS -L --retry 4 --max-time 25 "$BALL46_URL/api/engine/statistics?hkverify=${GITHUB_RUN_ID}" -o /tmp/finalstats.json
+          curl -fsS -L --retry 4 --max-time 25 "$BALL46_URL/api/engine/signals?hkverify=${GITHUB_RUN_ID}" -o /tmp/finalsignals.json
+          node - <<'NODE'
+          const st=require('/tmp/finalstats.json'),sg=require('/tmp/finalsignals.json');
+          const rows=(st.rows||[]).filter(r=>String(r.fixtureId)==='201711330');
+          const pending=(sg.signals||[]).filter(r=>String(r.fixtureId)==='201711330');
+          if(rows.length!==2||pending.length!==0)throw Error('HK_LAOS_NOT_FULLY_SETTLED');
+          const results=Object.fromEntries(rows.map(r=>[r.id,r.result]));
+          if(results['201711330-ft_corner_over-mujkpwbn']!=='LOSS'||results['201711330-ft_under-mujk427u']!=='HALF_WIN')throw Error('HK_LAOS_RESULTS_MISMATCH');
+          console.log('HK_LAOS_BALL46_STATS_PASS',{settledTotal:st.rows.length,rows:rows.map(r=>({id:r.id,result:r.result,score:r.finalScore,corners:r.finalCorners,source:r.settlementSource}))});
+          NODE
