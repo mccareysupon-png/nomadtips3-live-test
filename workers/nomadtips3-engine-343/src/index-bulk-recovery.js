@@ -2,13 +2,15 @@ import baseWorker, { Nomad343Engine as BaseNomad343Engine } from './index-bulk.j
 import { MARKET_RULES, settleMarketSignal } from './market-core.js';
 
 const FINAL_API_BASE='https://api.5dollarfootballapi.com/v1';
-const RECOVERY_VERSION='missing-final-v1';
-const MAX_FINAL_LOOKUPS_PER_SCAN=6;
+const RECOVERY_VERSION='missing-final-v2';
+const MAX_FINAL_LOOKUPS_PER_SCAN=3;
+const LOOKUP_GAP_MS=2000;
 const MAX_SIGNALS=1600;
 
 const num=v=>v===null||v===undefined||v===''||typeof v==='boolean'||!Number.isFinite(Number(v))?null:Number(v);
 const clone=v=>v===undefined?null:JSON.parse(JSON.stringify(v));
 const now=()=>Date.now();
+const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 
 function isFinished(f){
   const s=String(f?.boardState??f?.status??f?.statusCode??'').toLowerCase();
@@ -71,17 +73,10 @@ function selectMissingFixtureGroups(signals,currentIds){
   for(const s of signals){
     if(s?.status!=='PENDING')continue;
     const id=String(s?.fixtureId??'');if(!id||currentIds.has(id))continue;
-    const g=groups.get(id)||{fixtureId:id,signals:[],latest:0,oldest:Number.MAX_SAFE_INTEGER};
-    const t=Number(s?.createdAt||0);g.signals.push(s);g.latest=Math.max(g.latest,t);g.oldest=Math.min(g.oldest,t||Number.MAX_SAFE_INTEGER);groups.set(id,g);
+    const g=groups.get(id)||{fixtureId:id,signals:[],latest:0,maxEntryMinute:-1};
+    const t=Number(s?.createdAt||0);g.signals.push(s);g.latest=Math.max(g.latest,t);g.maxEntryMinute=Math.max(g.maxEntryMinute,num(s?.entryMinute)??-1);groups.set(id,g);
   }
-  const rows=[...groups.values()];
-  const newest=[...rows].sort((a,b)=>b.latest-a.latest).slice(0,3);
-  const chosen=new Map(newest.map(x=>[x.fixtureId,x]));
-  for(const g of [...rows].sort((a,b)=>a.oldest-b.oldest)){
-    if(chosen.size>=MAX_FINAL_LOOKUPS_PER_SCAN)break;
-    chosen.set(g.fixtureId,g);
-  }
-  return [...chosen.values()];
+  return [...groups.values()].sort((a,b)=>b.maxEntryMinute-a.maxEntryMinute||b.latest-a.latest).slice(0,MAX_FINAL_LOOKUPS_PER_SCAN);
 }
 
 export class Nomad343Engine extends BaseNomad343Engine{
@@ -109,7 +104,9 @@ export class Nomad343Engine extends BaseNomad343Engine{
     let lookups=0,settled=0,unresolved=0,finishedFixtures=0;const errors=[];
     for(const g of groups){
       try{
-        const fixture=await fetchExactFixture(this.env,g.fixtureId);lookups++;
+        if(lookups>0)await sleep(LOOKUP_GAP_MS);
+        lookups++;
+        const fixture=await fetchExactFixture(this.env,g.fixtureId);
         if(!isFinished(fixture)&&!isHalfComplete(fixture))continue;
         if(isFinished(fixture))finishedFixtures++;
         for(const s of g.signals){
@@ -123,7 +120,7 @@ export class Nomad343Engine extends BaseNomad343Engine{
           }
           s.status='SETTLED';s.result=result;s.finalScore=clone(fixture.goals);s.finalCorners=clone(fixture.corners);s.finalCards=clone(fixture.cards);s.settledAt=now();s.settlementError=null;s.settlementSource='DIRECT_FINAL_FIXTURE';settled++;
         }
-      }catch(error){lookups++;errors.push({fixtureId:g.fixtureId,error:String(error?.message||error)})}
+      }catch(error){errors.push({fixtureId:g.fixtureId,error:String(error?.message||error)})}
     }
     if(settled||unresolved)await this.ctx.storage.put('signals',signals.slice(-MAX_SIGNALS));
     return {version:RECOVERY_VERSION,ok:true,candidates:groups.length,lookups,finishedFixtures,settled,unresolved,errors};
