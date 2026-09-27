@@ -50,7 +50,12 @@ jobs:
           echo "INDEX_SHA=$(sha256sum /tmp/index.pre | awk '{print $1}')" >> "$GITHUB_ENV"
           echo "LOGO_SHA=$(sha256sum /tmp/logo.pre | awk '{print $1}')" >> "$GITHUB_ENV"
           curl -fsS -L --retry 3 --max-time 25 "$ENGINE_URL/statistics?bridgepre=${GITHUB_RUN_ID}" -o /tmp/stats.pre
-          node -e "const j=require('/tmp/stats.pre'); if(j.ok!==true||!Array.isArray(j.rows))process.exit(1); console.log('PRE_SETTLED',j.rows.length)"
+          node - <<'NODE'
+          const fs=require('fs');
+          const j=JSON.parse(fs.readFileSync('/tmp/stats.pre','utf8'));
+          if(j.ok!==true||!Array.isArray(j.rows))process.exit(1);
+          console.log('PRE_SETTLED',j.rows.length);
+          NODE
       - name: Dry run engine only
         working-directory: workers/nomadtips3-engine-343
         shell: bash
@@ -86,13 +91,16 @@ jobs:
           curl -fsS -L --retry 3 --retry-all-errors --retry-delay 2 --max-time 25 \
             -H "Authorization: Bearer $FIVEDOLLAR_API_KEY" -H 'Accept: application/json' \
             'https://api.5dollarfootballapi.com/v1/fixtures/201711330?include=events,stats' -o /tmp/hklaos.json
-          node -e "const j=require('/tmp/hklaos.json'); if(Number(j.success??1)!==1||String(j.data?.status)!=='finished'||Number(j.data?.goals?.home)!==4||Number(j.data?.goals?.away)!==0)process.exit(1)"
+          node - <<'NODE'
+          const fs=require('fs'); const j=JSON.parse(fs.readFileSync('/tmp/hklaos.json','utf8'));
+          if(Number(j.success??1)!==1||String(j.data?.status)!=='finished'||Number(j.data?.goals?.home)!==4||Number(j.data?.goals?.away)!==0)process.exit(1);
+          NODE
           curl -fsS -L --retry 3 --max-time 25 -X POST "$ENGINE_URL/reconcile-final" \
             -H 'content-type: application/json' -H "x-settlement-token: $FIVEDOLLAR_API_KEY" \
             --data-binary @/tmp/hklaos.json -o /tmp/reconcile.json
           cat /tmp/reconcile.json
           node - <<'NODE'
-          const j=require('/tmp/reconcile.json');
+          const fs=require('fs'); const j=JSON.parse(fs.readFileSync('/tmp/reconcile.json','utf8'));
           if(j?.ok!==true||j?.fixtureId!=='201711330'||j?.settled<2)throw Error('HK_LAOS_RECONCILE_FAIL');
           const by=new Map((j.rows||[]).map(x=>[x.id,x]));
           if(by.get('201711330-ft_corner_over-mujkpwbn')?.result!=='LOSS')throw Error('CORNER_RESULT_BAD');
@@ -105,7 +113,9 @@ jobs:
           curl -fsS -L --retry 4 --max-time 25 "$BALL46_URL/api/engine/statistics?hkverify=${GITHUB_RUN_ID}" -o /tmp/finalstats.json
           curl -fsS -L --retry 4 --max-time 25 "$BALL46_URL/api/engine/signals?hkverify=${GITHUB_RUN_ID}" -o /tmp/finalsignals.json
           node - <<'NODE'
-          const st=require('/tmp/finalstats.json'),sg=require('/tmp/finalsignals.json');
+          const fs=require('fs');
+          const st=JSON.parse(fs.readFileSync('/tmp/finalstats.json','utf8'));
+          const sg=JSON.parse(fs.readFileSync('/tmp/finalsignals.json','utf8'));
           const rows=(st.rows||[]).filter(r=>String(r.fixtureId)==='201711330');
           const pending=(sg.signals||[]).filter(r=>String(r.fixtureId)==='201711330');
           if(rows.length!==2||pending.length!==0)throw Error('HK_LAOS_NOT_FULLY_SETTLED');
