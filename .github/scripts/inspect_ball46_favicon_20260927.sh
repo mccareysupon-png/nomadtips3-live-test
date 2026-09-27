@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 WWW="https://www.ball46.com"
+rm -rf /tmp/b46-favicon-diag
 mkdir -p /tmp/b46-favicon-diag
 python3 - <<'PY'
 import json,os,urllib.request,pathlib
@@ -20,21 +21,32 @@ import re,html
 s=Path('/tmp/b46-favicon-diag/index.html').read_text(errors='replace')
 icons=re.findall(r'<link\b[^>]*rel=["\'](?:shortcut icon|icon)["\'][^>]*>',s,re.I)
 print('ICON_TAG_COUNT='+str(len(icons)))
-for i,x in enumerate(icons,1):print(f'ICON_TAG_{i}='+x)
-m=re.search(r'<link\b[^>]*rel=["\'](?:shortcut icon|icon)["\'][^>]*href=["\']([^"\']+)["\']',s,re.I)
-if not m: raise SystemExit('NO_ICON_HREF')
-href=html.unescape(m.group(1));print('ICON_HREF='+href);Path('/tmp/b46-favicon-diag/href.txt').write_text(href)
+hrefs=[]
+for i,x in enumerate(icons,1):
+    print(f'ICON_TAG_{i}='+x)
+    m=re.search(r'href=["\']([^"\']+)["\']',x,re.I)
+    if m:
+        href=html.unescape(m.group(1));hrefs.append(href);print(f'ICON_HREF_{i}='+href)
+Path('/tmp/b46-favicon-diag/hrefs.txt').write_text('\n'.join(hrefs)+'\n')
+if not hrefs: raise SystemExit('NO_ICON_HREF')
 PY
-href=$(cat /tmp/b46-favicon-diag/href.txt)
-case "$href" in
-  http://*|https://*) icon_url="$href" ;;
-  /*) icon_url="$WWW$href" ;;
-  *) icon_url="$WWW/$href" ;;
-esac
-curl -fsS -L --retry 4 --retry-all-errors --max-time 30 -H 'Cache-Control: no-cache' "$icon_url?favicon-diag=$nonce" -o /tmp/b46-favicon-diag/current-icon
-file /tmp/b46-favicon-diag/current-icon || true
-sha256sum /tmp/b46-favicon-diag/current-icon
-python3 - <<'PY'
+n=0
+while IFS= read -r href; do
+  [ -n "$href" ] || continue
+  n=$((n+1))
+  case "$href" in
+    http://*|https://*) icon_url="$href" ;;
+    /*) icon_url="$WWW$href" ;;
+    *) icon_url="$WWW/$href" ;;
+  esac
+  sep='?'; [[ "$icon_url" == *\?* ]] && sep='&'
+  curl -fsS -L --retry 4 --retry-all-errors --max-time 30 -H 'Cache-Control: no-cache' "${icon_url}${sep}favicon-diag=$nonce" -o "/tmp/b46-favicon-diag/icon-$n"
+  echo "ICON_${n}_URL=$icon_url"
+  file "/tmp/b46-favicon-diag/icon-$n" || true
+  sha256sum "/tmp/b46-favicon-diag/icon-$n"
+  ICON_NO="$n" python3 - <<'PY'
 from pathlib import Path
-p=Path('/tmp/b46-favicon-diag/current-icon');b=p.read_bytes();print('ICON_BYTES='+str(len(b)));print('ICON_PREFIX='+repr(b[:160]))
+import os
+n=os.environ['ICON_NO'];p=Path(f'/tmp/b46-favicon-diag/icon-{n}');b=p.read_bytes();print(f'ICON_{n}_BYTES='+str(len(b)));print(f'ICON_{n}_PREFIX='+repr(b[:220]))
 PY
+done < /tmp/b46-favicon-diag/hrefs.txt
