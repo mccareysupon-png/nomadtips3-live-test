@@ -1,0 +1,122 @@
+name: VERIFY - Ball46 Exact Full Post 05:00 Restore
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/verify-ball46-full-post0500-20260927.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  BALL46_TARGET: 'd76614fc-f8e6-4721-a27c-bf2d8e81e029'
+  ENGINE_TARGET: '0ac712f8-6879-491c-8775-772e65e7ff30'
+  HUB_TARGET: '2b01dc85-a525-4283-959e-8f6db796c81e'
+  FULL_MARKET_TARGET: '4f372440-f064-40be-ac74-067f191624db'
+  BALL46_WORKER: 'https://ball46-production.mccarey-supon.workers.dev'
+  BALL46_DOMAIN: 'https://ball46.com'
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Download exact 05:28 asset anchor
+        uses: actions/download-artifact@v4
+        with:
+          name: ball46-runtime-recovery-baseline-36276397364
+          path: /tmp/anchor
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: '36276397364'
+
+      - name: Verify exact active Worker versions
+        shell: bash
+        run: |
+          set -euo pipefail
+          verify_active() {
+            svc="$1" expected="$2"
+            npx --yes wrangler@4.92.0 deployments list --name "$svc" > "/tmp/$svc.txt"
+            actual=$(awk '/Version\(s\):/{v=$3} END{print v}' "/tmp/$svc.txt")
+            echo "$svc ACTIVE=$actual EXPECTED=$expected"
+            [ "$actual" = "$expected" ] || { cat "/tmp/$svc.txt"; exit 1; }
+          }
+          verify_active ball46-production "$BALL46_TARGET"
+          verify_active nomadtips3-engine-343 "$ENGINE_TARGET"
+          verify_active nomadtips3-5usd-hub-343 "$HUB_TARGET"
+          verify_active nomadtips3-full-market-343-ball46 "$FULL_MARKET_TARGET"
+          echo EXACT_WORKER_STACK_ACTIVE
+
+      - name: Verify every captured static asset byte-for-byte
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s /tmp/anchor/CURRENT_ASSET_HASHES.sha
+          count=$(wc -l < /tmp/anchor/CURRENT_ASSET_HASHES.sha | tr -d ' ')
+          [ "$count" = 72 ]
+          while read -r expected rel; do
+            safe=$(printf '%s' "$rel" | tr '/ ' '__')
+            curl -fsS -L --retry 4 --retry-all-errors --max-time 30 "$BALL46_WORKER/$rel?v=${GITHUB_RUN_ID}" -o "/tmp/$safe"
+            actual=$(sha256sum "/tmp/$safe" | awk '{print $1}')
+            [ "$actual" = "$expected" ] || { echo "HASH_MISMATCH $rel"; exit 1; }
+          done < /tmp/anchor/CURRENT_ASSET_HASHES.sha
+          echo ALL_72_ASSETS_EXACT
+
+      - name: Verify public domain is serving the same restored pages
+        shell: bash
+        run: |
+          set -euo pipefail
+          for rel in index.html signal.html statistics.html; do
+            expected=$(awk -v r="$rel" '$2==r{print $1}' /tmp/anchor/CURRENT_ASSET_HASHES.sha)
+            [ -n "$expected" ]
+            curl -fsS -L --retry 4 --retry-all-errors --max-time 30 "$BALL46_DOMAIN/$rel?v=${GITHUB_RUN_ID}" -o "/tmp/domain-$rel"
+            actual=$(sha256sum "/tmp/domain-$rel" | awk '{print $1}')
+            [ "$actual" = "$expected" ] || { echo "DOMAIN_PAGE_MISMATCH $rel"; exit 1; }
+          done
+          echo PUBLIC_DOMAIN_EXACT
+
+      - name: Verify full production data flow
+        shell: bash
+        run: |
+          set -euo pipefail
+          for ep in health board signals statistics settings; do
+            code=$(curl -sS -L --retry 5 --retry-all-errors --max-time 30 -o "/tmp/$ep.json" -w '%{http_code}' "$BALL46_DOMAIN/api/engine/$ep?v=${GITHUB_RUN_ID}")
+            [ "$code" = 200 ] || { echo "$ep HTTP=$code"; cat "/tmp/$ep.json" || true; exit 1; }
+            node -e "JSON.parse(require('fs').readFileSync('/tmp/$ep.json','utf8'))"
+          done
+          code=$(curl -sS -L --retry 5 --retry-all-errors --max-time 30 -X POST -o /tmp/scan.json -w '%{http_code}' "$BALL46_DOMAIN/api/engine/scan?v=${GITHUB_RUN_ID}")
+          [ "$code" = 200 ]
+          node - <<'NODE'
+          const fs=require('fs');
+          const j=n=>JSON.parse(fs.readFileSync('/tmp/'+n+'.json','utf8'));
+          const h=j('health'), b=j('board'), s=j('signals'), t=j('statistics'), scan=j('scan');
+          if(h?.ok!==true) throw Error('health not ok');
+          if(b?.ok!==true || !Array.isArray(b?.fixtures) || b.fixtures.length<1) throw Error('board bad');
+          if(!Array.isArray(s?.signals)) throw Error('signals bad');
+          if(t?.ok!==true || !Array.isArray(t?.rows)) throw Error('statistics bad');
+          if(scan?.ok!==true) throw Error('scan bad');
+          console.log('FULL_PRODUCTION_FLOW_OK', {
+            version:h.version||null,
+            revision:h.revision||null,
+            fixtures:b.fixtures.length,
+            signals:s.signals.length,
+            statistics:t.rows.length,
+            scanSignalCount:scan.signalCount,
+            unresolvedCount:scan.unresolvedCount,
+            lastError:scan.lastError||null
+          });
+          NODE
+
+      - name: Final proof
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo BALL46_FULL_POST0500_RESTORE_VERIFIED_SUCCESS
