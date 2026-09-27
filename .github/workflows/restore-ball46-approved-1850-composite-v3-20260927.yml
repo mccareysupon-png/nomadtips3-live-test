@@ -1,0 +1,193 @@
+name: ONE SHOT - Restore Ball46 Approved 18:50 Composite V3
+
+on:
+  push:
+    branches: [recovery/ball46-approved-1850-composite-20260927]
+    paths:
+      - '.github/workflows/restore-ball46-approved-1850-composite-v3-20260927.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  TARGET_VERSION: 8e95c148-ea19-4ed1-88a1-2f14565c6888
+  BASE_RUN_ID: '36310352868'
+  BASE_ARTIFACT: ball46-approved-1850-exact81-36310352868
+  BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
+  BALL46_WWW: https://www.ball46.com
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  deploy-captured-approved-composite:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Confirm approved base remains active
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os, urllib.request
+          a=os.environ['CLOUDFLARE_ACCOUNT_ID']; t=os.environ['CLOUDFLARE_API_TOKEN']; want=os.environ['TARGET_VERSION']
+          h={'Authorization':f'Bearer {t}','Accept':'application/json'}
+          u=f'https://api.cloudflare.com/client/v4/accounts/{a}/workers/scripts/ball46-production/deployments'
+          with urllib.request.urlopen(urllib.request.Request(u,headers=h),timeout=30) as r: p=json.load(r)
+          cur=((p.get('result') or {}).get('deployments') or [])[0]['versions'][0]['version_id']
+          print('ACTIVE_VERSION='+cur)
+          if cur != want: raise SystemExit(f'BASE_CHANGED_BEFORE_V3:{cur}')
+          PY
+
+      - name: Download immutable captured 81-file approved package
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.BASE_ARTIFACT }}
+          path: approved-base
+          repository: ${{ github.repository }}
+          run-id: ${{ env.BASE_RUN_ID }}
+          github-token: ${{ github.token }}
+
+      - name: Verify captured package integrity and patch one asset only
+        shell: bash
+        run: |
+          set -euo pipefail
+          [ "$(wc -l < approved-base/asset-paths.txt | tr -d ' ')" = '81' ]
+          (cd approved-base/assets && sha256sum -c ../assets.sha256)
+          expected_runtime=$(awk '{print $1}' approved-base/runtime.sha256)
+          [ "$(sha256sum approved-base/index.js | awk '{print $1}')" = "$expected_runtime" ]
+
+          rm -rf recovery-work
+          mkdir -p recovery-work
+          cp -a approved-base/assets recovery-work/patched-assets
+          cp approved-base/index.js recovery-work/index.js
+          cp approved-base/asset-paths.txt recovery-work/asset-paths.txt
+
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('recovery-work/patched-assets/dashboard-v2-stage3.js')
+          s=p.read_text()
+          old='const activeSignals=num(signalMirror?.activeSignals)??signalMap.size,activeMatches='
+          new='const activeSignals=signalRows.length,activeMatches='
+          if s.count(old)!=1: raise SystemExit(f'SIGNAL_COUNT_TARGET_COUNT:{s.count(old)}')
+          s=s.replace(old,new,1)
+          p.write_text(s)
+          PY
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib
+          a=Path('approved-base/assets'); b=Path('recovery-work/patched-assets'); changed=[]
+          for rel in Path('recovery-work/asset-paths.txt').read_text().splitlines():
+              if hashlib.sha256((a/rel).read_bytes()).digest()!=hashlib.sha256((b/rel).read_bytes()).digest(): changed.append(rel)
+          print('CHANGED_ASSETS=',changed)
+          if changed != ['dashboard-v2-stage3.js']: raise SystemExit('PATCH_CHANGED_MORE_THAN_SIGNAL_JS')
+          PY
+
+          grep -Fq 'const activeSignals=signalRows.length,activeMatches=' recovery-work/patched-assets/dashboard-v2-stage3.js
+          grep -Fq 'button.workspace-scorebar-cell{cursor:default}' recovery-work/patched-assets/singlepage-workspace-343.css
+          ! grep -Fq 'BALL46-MOBILE-PARITY' recovery-work/patched-assets/index.html
+          echo CAPTURED_PACKAGE_AND_ONE_ASSET_PATCH_PASS
+
+      - name: Build safe workspace config and dry run
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > recovery-work/wrangler.jsonc <<'EOF'
+          {
+            "name": "ball46-production",
+            "main": "./index.js",
+            "compatibility_date": "2026-09-09",
+            "no_bundle": true,
+            "workers_dev": true,
+            "preview_urls": false,
+            "assets": {
+              "directory": "./patched-assets",
+              "binding": "ASSETS",
+              "run_worker_first": true,
+              "html_handling": "none"
+            },
+            "services": [
+              { "binding": "ENGINE", "service": "nomadtips3-engine-343" },
+              { "binding": "HUB", "service": "nomadtips3-5usd-hub-343" },
+              { "binding": "FULL_MARKET", "service": "nomadtips3-full-market-343-ball46" }
+            ],
+            "triggers": { "crons": ["* * * * *"] },
+            "observability": { "enabled": true }
+          }
+          EOF
+          cd recovery-work
+          npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.jsonc
+          echo SAFE_WORKSPACE_DRY_RUN_PASS
+
+      - name: Deploy exact approved package plus Signal count only
+        id: deploy
+        working-directory: recovery-work
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.92.0 deploy --config wrangler.jsonc | tee deploy.log
+          grep -Fq 'Uploaded ball46-production' deploy.log
+
+      - name: Verify all 81 assets, pages and current backend
+        id: verify
+        shell: bash
+        run: |
+          set -euo pipefail
+          sleep 4
+          rm -rf live-verify && mkdir -p live-verify
+          while IFS= read -r rel; do
+            mkdir -p "live-verify/$(dirname "$rel")"
+            curl -fsS -L --retry 5 --retry-all-errors --retry-delay 1 --max-time 30 -H 'Cache-Control: no-cache' "$BALL46_WORKER/$rel?v3=${GITHUB_RUN_ID}-$(date +%s%N)" -o "live-verify/$rel"
+          done < recovery-work/asset-paths.txt
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib
+          want=Path('recovery-work/patched-assets'); got=Path('live-verify'); bad=[]
+          for rel in Path('recovery-work/asset-paths.txt').read_text().splitlines():
+              if hashlib.sha256((want/rel).read_bytes()).digest()!=hashlib.sha256((got/rel).read_bytes()).digest(): bad.append(rel)
+          print('WORKER_ASSET_MISMATCH=',bad)
+          if bad: raise SystemExit(1)
+          PY
+
+          grep -Fq 'const activeSignals=signalRows.length,activeMatches=' live-verify/dashboard-v2-stage3.js
+          grep -Fq 'button.workspace-scorebar-cell{cursor:default}' live-verify/singlepage-workspace-343.css
+          ! grep -Fq 'BALL46-MOBILE-PARITY' live-verify/index.html
+          test -s live-verify/index.html
+          test -s live-verify/signal.html
+          test -s live-verify/statistics.html
+
+          for ep in health board signals statistics; do
+            curl -fsS -L --retry 5 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/$ep?v3-api=${GITHUB_RUN_ID}" -o "$ep.json"
+          done
+          node - <<'NODE'
+          const fs=require('fs');
+          const h=JSON.parse(fs.readFileSync('health.json'));
+          const b=JSON.parse(fs.readFileSync('board.json'));
+          const s=JSON.parse(fs.readFileSync('signals.json'));
+          const t=JSON.parse(fs.readFileSync('statistics.json'));
+          if(h?.ok!==true) throw Error('HEALTH_BAD');
+          if(b?.ok!==true || !Array.isArray(b?.fixtures)) throw Error('BOARD_BAD');
+          if(!Array.isArray(s?.signals)) throw Error('SIGNALS_BAD');
+          if(t?.ok!==true || !Array.isArray(t?.rows)) throw Error('STATISTICS_BAD');
+          console.log('CURRENT_BACKEND_OK',{fixtures:b.fixtures.length,signals:s.signals.length,settled:t.rows.length});
+          NODE
+
+          for rel in index.html signal.html statistics.html dashboard-v2-stage3.js; do
+            curl -fsS -L --retry 5 --retry-all-errors --retry-delay 1 --max-time 25 -H 'Cache-Control: no-cache' "$BALL46_WWW/$rel?v3-www=${GITHUB_RUN_ID}-$(date +%s%N)" -o "www-${rel//\//_}"
+            [ "$(sha256sum "www-${rel//\//_}" | awk '{print $1}')" = "$(sha256sum "recovery-work/patched-assets/$rel" | awk '{print $1}')" ] || { echo "WWW_HASH_MISMATCH:$rel"; exit 1; }
+          done
+          echo BALL46_APPROVED_FULL_RECOVERY_V3_PASS
+
+      - name: Fallback to exact approved 18:50 Worker on verification failure
+        if: ${{ failure() && steps.deploy.outcome == 'success' && steps.verify.outcome == 'failure' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.92.0 rollback "$TARGET_VERSION" --name ball46-production --message "Fallback exact approved 18:50 after V3 verify failure"
+          echo FALLBACK_TO_APPROVED_1850_DONE
