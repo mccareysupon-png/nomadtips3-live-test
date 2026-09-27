@@ -1,0 +1,37 @@
+name: ONE SHOT - Ball46 Favicon Cachefix 2 20260927
+
+on:
+  push:
+    branches:
+      - ops/ball46-favicon-cachefix2-20260927
+    paths:
+      - '.github/workflows/one-shot-ball46-favicon-cachefix2-20260927.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Mirror current live Production and patch only favicon cache URL
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL https://raw.githubusercontent.com/mccareysupon-png/nomadtips3-live-test/b82c8c87edfd7a209e42e816d54214e521d68ab7/.github/scripts/ball46_favicon_cachefix_20260927.sh -o /tmp/favicon-fix.sh
+          bash /tmp/favicon-fix.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-favicon-cachefix2-${{ github.run_id }}
+          path: /tmp/b46-favicon-fix
+          if-no-files-found: ignore
+          retention-days: 30
