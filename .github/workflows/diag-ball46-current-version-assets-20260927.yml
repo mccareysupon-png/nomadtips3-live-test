@@ -1,0 +1,44 @@
+name: DIAG - Ball46 current version assets 20260927
+
+on:
+  push:
+    branches:
+      - diag/ball46-current-version-assets-20260927
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: Inspect current production version metadata only
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os, urllib.request
+          a=os.environ['CLOUDFLARE_ACCOUNT_ID']; t=os.environ['CLOUDFLARE_API_TOKEN']
+          h={'Authorization':f'Bearer {t}','Accept':'application/json'}
+          u=f'https://api.cloudflare.com/client/v4/accounts/{a}/workers/scripts/ball46-production/deployments'
+          with urllib.request.urlopen(urllib.request.Request(u,headers=h),timeout=30) as r: p=json.load(r)
+          d=p['result']['deployments'][0]
+          vid=d['versions'][0]['version_id']
+          print('VERSION_ID='+vid)
+          print('DEPLOYMENT='+json.dumps(d,sort_keys=True))
+          u=f'https://api.cloudflare.com/client/v4/accounts/{a}/workers/workers/ball46-production/versions/{vid}?include=modules'
+          with urllib.request.urlopen(urllib.request.Request(u,headers=h),timeout=30) as r: q=json.load(r)
+          res=q.get('result') or {}
+          print('RESULT_KEYS='+','.join(sorted(res.keys())))
+          for k in ['main_module','compatibility_date','usage_model','assets','bindings','annotations','source']:
+              v=res.get(k)
+              try: print(k.upper()+'='+json.dumps(v,sort_keys=True)[:12000])
+              except: print(k.upper()+'='+repr(v)[:12000])
+          mods=res.get('modules') or []
+          print('MODULE_COUNT='+str(len(mods)))
+          for m in mods:
+              print('MODULE='+json.dumps({k:m.get(k) for k in m if k!='content_base64'},sort_keys=True)[:4000])
+          PY
