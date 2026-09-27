@@ -1,0 +1,40 @@
+name: diag-ball46-pending-finished-lite
+on:
+  push:
+    branches: [diag/ball46-stats-gap-run2-20260927]
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Count pending versus finished
+        run: |
+          set -euo pipefail
+          curl -fsSL 'https://www.ball46.com/api/engine/signals' -o /tmp/signals.json
+          curl -fsSL 'https://www.ball46.com/api/engine/statistics' -o /tmp/statistics.json
+          curl -fsSL 'https://www.ball46.com/api/engine/board' -o /tmp/board.json
+          python3 - <<'PY'
+          import json,collections
+          s=json.load(open('/tmp/signals.json')); t=json.load(open('/tmp/statistics.json')); b=json.load(open('/tmp/board.json'))
+          pending=s.get('signals') or []
+          rows=t.get('rows') or []
+          fixtures=b.get('fixtures') or []
+          fm={str(x.get('fixtureId')):x for x in fixtures}
+          counts=collections.Counter()
+          finished=[]; missing=[]
+          for x in pending:
+              fid=str(x.get('fixtureId')); f=fm.get(fid)
+              if not f:
+                  missing.append(fid); continue
+              state='|'.join(str(f.get(k) or '').lower() for k in ('status','boardState','statusCode'))
+              if any(w in state for w in ('finished','full','complete','ended')):
+                  finished.append((fid,x.get('id'),x.get('market'),f.get('status'),f.get('boardState'),f.get('statusCode')))
+              counts[(str(f.get('status')),str(f.get('boardState')),str(f.get('statusCode')))]+=1
+          print('PENDING',len(pending),'SETTLED',len(rows),'UNRESOLVED',t.get('unresolved'),'ALLCOUNT',s.get('allCount'))
+          print('PENDING_STATE_COUNTS',counts)
+          print('PENDING_ON_FINISHED_COUNT',len(finished))
+          print('PENDING_ON_FINISHED',finished[:100])
+          print('PENDING_MISSING_FIXTURE_COUNT',len(missing),'UNIQUE',len(set(missing)))
+          print('PENDING_MISSING_FIXTURES',sorted(set(missing))[:100])
+          PY
