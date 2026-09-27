@@ -1,0 +1,219 @@
+name: PREFLIGHT ONLY - Ball46 row balance livebase v2 20260927
+
+on:
+  push:
+    branches: [work/ball46-row-balance-livebase-20260927]
+    paths:
+      - '.github/workflows/ball46-row-balance-livebase-preflight-v2-20260927.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  preflight-row-balance:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      SOURCE_COMMIT: 6276320261cdc10a3835b27e81850c3d4f17f126
+      LIVEBASE_RUN_ID: 36291401917
+      LIVEBASE_NAME: ball46-livebase-v2-36291401917
+      BASE_INDEX_SHA: d6385dcc5d9c6123a8a16f6c574287804baca177b004cdca4315b7cb9dc2305a
+      BASE_JS_SHA: 2ef44e4c4bd1f0837525444d7b28ab8ab9aa77cf4e03fac33ea69e536b12cb85
+      BASE_CSS_SHA: 54ca6c53ad6f6f7836e61efd8180030c74ea2827a42c180153c0fc15005e431d
+    steps:
+      - name: Checkout exact current Worker source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_COMMIT }}
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Download exact current Production assets
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.LIVEBASE_NAME }}
+          path: /tmp/livebase
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ env.LIVEBASE_RUN_ID }}
+
+      - name: Verify and install exact live base locally
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -d /tmp/livebase/current-assets
+          test -s /tmp/livebase/current-assets.sha256
+          test -s /tmp/livebase/reference-files.txt
+          [ "$(wc -l < /tmp/livebase/reference-files.txt)" = 69 ]
+          [ "$(wc -l < /tmp/livebase/current-assets.sha256)" = 69 ]
+          (cd /tmp/livebase/current-assets && sha256sum -c /tmp/livebase/current-assets.sha256)
+          [ "$(sha256sum /tmp/livebase/current-assets/index.html | awk '{print $1}')" = "$BASE_INDEX_SHA" ]
+          [ "$(sha256sum /tmp/livebase/current-assets/dashboard-v2-stage3.js | awk '{print $1}')" = "$BASE_JS_SHA" ]
+          [ "$(sha256sum /tmp/livebase/current-assets/dashboard-v2-tune.css | awk '{print $1}')" = "$BASE_CSS_SHA" ]
+          rm -rf nomad-live-343
+          mkdir -p nomad-live-343
+          cp -a /tmp/livebase/current-assets/. nomad-live-343/
+          echo EXACT_LIVEBASE_INSTALLED
+
+      - name: Patch current JS row only
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('nomad-live-343/dashboard-v2-stage3.js')
+          s=p.read_text()
+          old="""function rowHtml(f){const id=fixtureKey(f),kind=classify(f),active=id===selectedId,sig=signalFor(f),m1=marketCompact(f,'1X2'),mah=marketCompact(f,'AH'),mou=marketCompact(f,'OU'),half=halfScoreLabel(f);return `<article class=\"match-row ${active?'active':''}\" data-match-id=\"${esc(id)}\" tabindex=\"0\" role=\"button\" aria-label=\"${esc(f?.home?.name||'Home')} versus ${esc(f?.away?.name||'Away')}\"><div class=\"teams-cell\"><b>${esc(f?.home?.name||'—')}</b><b>${esc(f?.away?.name||'—')}</b></div><div class=\"score-cell\">${scoreStack(f)}<small>${esc(kind==='live'?clockLabel(f):kind==='finished'?'FT':kickoffLabel(f))}</small>${half?`<small class=\"half-score\">${esc(half)}</small>`:''}</div>${marketCell('1X2',m1)}${marketCell('AH',mah)}${marketCell('O/U',mou)}${inlineSignalHtml(sig)}</article>`}"""
+          new="""function rowHtml(f){const id=fixtureKey(f),kind=classify(f),active=id===selectedId,sig=signalFor(f),m1=marketCompact(f,'1X2'),mah=marketCompact(f,'AH'),mou=marketCompact(f,'OU'),half=halfScoreLabel(f),status=kind==='live'?clockLabel(f):kind==='finished'?'FT':kickoffLabel(f);return `<article class=\"match-row ${active?'active':''}\" data-match-id=\"${esc(id)}\" tabindex=\"0\" role=\"button\" aria-label=\"${esc(f?.home?.name||'Home')} versus ${esc(f?.away?.name||'Away')}\"><div class=\"teams-cell\"><b>${esc(f?.home?.name||'—')}</b><b>${esc(f?.away?.name||'—')}</b></div><div class=\"score-cell\">${scoreStack(f)}<small class=\"row-status-mobile\">${esc(status)}</small>${half?`<small class=\"half-score row-half-mobile\">${esc(half)}</small>`:''}</div><div class=\"match-meta-cell\"><small class=\"match-clock ${kind==='live'?'live':''}\">${esc(status)}</small>${half?`<small class=\"half-score\">${esc(half)}</small>`:''}</div>${marketCell('1X2',m1)}${marketCell('AH',mah)}${marketCell('O/U',mou)}${inlineSignalHtml(sig)}</article>`}"""
+          n=s.count(old)
+          if n!=1: raise SystemExit(f'ROW_TARGET_COUNT:{n}')
+          s=s.replace(old,new,1)
+          p.write_text(s)
+          print('ROW_PATCH_PASS')
+          PY
+          node --check nomad-live-343/dashboard-v2-stage3.js
+
+      - name: Append desktop and tablet layout override; preserve mobile
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -Fq 'BALL46 LIVE ROW BALANCE LIVEBASE V2 20260927' nomad-live-343/dashboard-v2-tune.css
+          cat >> nomad-live-343/dashboard-v2-tune.css <<'CSS'
+
+          /* BALL46 LIVE ROW BALANCE LIVEBASE V2 20260927
+             Layout only. Desktop/tablet reclaim unused team-area width for match time + HT,
+             keep home/away score rows aligned with home/away names, and widen SIGNAL.
+             Mobile keeps the existing score/status behavior and grid. */
+          @media(min-width:901px){
+            .match-row{
+              grid-template-columns:minmax(220px,1fr) 48px 100px 118px 118px 118px minmax(132px,.45fr);
+              gap:8px;
+            }
+            .teams-cell,.score-cell{
+              display:grid;
+              grid-template-rows:repeat(2,1.5em);
+              align-content:center;
+              align-items:center;
+              min-width:0;
+            }
+            .score-cell>small{display:none!important}
+            .score-cell strong{align-self:center;justify-self:center;margin:0}
+            .match-meta-cell{
+              min-width:0;
+              display:flex;
+              align-items:center;
+              justify-content:center;
+              gap:10px;
+              white-space:nowrap;
+            }
+            .match-meta-cell small{margin:0;color:var(--muted);font-size:8px;line-height:1}
+            .match-meta-cell .match-clock.live{color:var(--green);font-weight:900}
+          }
+          @media(min-width:761px) and (max-width:900px){
+            .match-row{
+              grid-template-columns:minmax(180px,1fr) 44px 82px 102px 102px 102px minmax(108px,.4fr);
+              gap:4px;
+            }
+            .teams-cell,.score-cell{
+              display:grid;
+              grid-template-rows:repeat(2,1.5em);
+              align-content:center;
+              align-items:center;
+              min-width:0;
+            }
+            .score-cell>small{display:none!important}
+            .score-cell strong{align-self:center;justify-self:center;margin:0}
+            .match-meta-cell{min-width:0;display:flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap}
+            .match-meta-cell small{margin:0;color:var(--muted);font-size:8px;line-height:1}
+            .match-meta-cell .match-clock.live{color:var(--green);font-weight:900}
+          }
+          @media(max-width:760px){
+            .match-meta-cell{display:none!important}
+          }
+          CSS
+          grep -Fq 'BALL46 LIVE ROW BALANCE LIVEBASE V2 20260927' nomad-live-343/dashboard-v2-tune.css
+
+      - name: Cache-bust only the two changed assets in current index
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('nomad-live-343/index.html')
+          s=p.read_text()
+          tag='layout=20260927-row-balance-livebase-v2'
+          if tag in s: raise SystemExit('CACHE_TAG_ALREADY_PRESENT')
+          for name in ('dashboard-v2-tune.css','dashboard-v2-stage3.js'):
+              pat=re.compile(re.escape(name)+r'(?:\?[^\"\x27<> ]*)?')
+              ms=list(pat.finditer(s))
+              if len(ms)!=1: raise SystemExit(f'CACHE_REF_COUNT:{name}:{len(ms)}')
+              m=ms[0]
+              old=m.group(0)
+              new=old+('&' if '?' in old else '?')+tag
+              s=s[:m.start()]+new+s[m.end():]
+          p.write_text(s)
+          print('CACHE_BUST_PASS')
+          PY
+
+      - name: Exact three-file diff gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib
+          root=Path('nomad-live-343')
+          base=Path('/tmp/livebase/current-assets')
+          allowed={'index.html','dashboard-v2-stage3.js','dashboard-v2-tune.css'}
+          refs=[x.strip() for x in Path('/tmp/livebase/reference-files.txt').read_text().splitlines() if x.strip()]
+          changed=[]
+          for f in refs:
+              a=hashlib.sha256((base/f).read_bytes()).hexdigest()
+              b=hashlib.sha256((root/f).read_bytes()).hexdigest()
+              if a!=b: changed.append(f)
+          print('CHANGED_FILES',changed)
+          if set(changed)!=allowed: raise SystemExit(f'UNSAFE_DIFF:{changed}')
+          js=(root/'dashboard-v2-stage3.js').read_text()
+          css=(root/'dashboard-v2-tune.css').read_text()
+          idx=(root/'index.html').read_text()
+          checks={
+            'meta_cell_once':js.count('class="match-meta-cell"')==1,
+            'row_status_once':js.count('row-status-mobile')==1,
+            'row_half_once':js.count('row-half-mobile')==1,
+            'css_marker_once':css.count('BALL46 LIVE ROW BALANCE LIVEBASE V2 20260927')==1,
+            'desktop_grid':'grid-template-columns:minmax(220px,1fr) 48px 100px 118px 118px 118px minmax(132px,.45fr);' in css,
+            'tablet_grid':'grid-template-columns:minmax(180px,1fr) 44px 82px 102px 102px 102px minmax(108px,.4fr);' in css,
+            'mobile_hidden':'.match-meta-cell{display:none!important}' in css,
+            'cache_twice':idx.count('layout=20260927-row-balance-livebase-v2')==2,
+          }
+          print('SAFETY_CHECKS',checks)
+          if not all(checks.values()): raise SystemExit('TARGET_GATE_FAIL')
+          print('EXACT_THREE_FILE_DIFF_GATE_PASS')
+          PY
+          echo '--- JS DIFF ---'
+          diff -u /tmp/livebase/current-assets/dashboard-v2-stage3.js nomad-live-343/dashboard-v2-stage3.js || true
+          echo '--- CSS DIFF ---'
+          diff -u /tmp/livebase/current-assets/dashboard-v2-tune.css nomad-live-343/dashboard-v2-tune.css || true
+          echo '--- INDEX DIFF ---'
+          diff -u /tmp/livebase/current-assets/index.html nomad-live-343/index.html || true
+
+      - name: Wrangler dry-run only
+        working-directory: workers/nomadtips3-343-preview
+        shell: bash
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.ball46.jsonc
+
+      - name: Save candidate only; no Production deployment
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-row-balance-candidate-v2-${{ github.run_id }}
+          path: |
+            nomad-live-343
+            /tmp/livebase/current-assets.sha256
+            /tmp/livebase/reference-files.txt
+          retention-days: 7
+          if-no-files-found: error
