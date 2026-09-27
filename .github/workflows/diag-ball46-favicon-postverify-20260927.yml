@@ -1,0 +1,62 @@
+name: DIAG - Ball46 Favicon Post Verify 20260927
+
+on:
+  push:
+    branches:
+      - ops/ball46-favicon-cachefix3-20260927
+    paths:
+      - '.github/workflows/diag-ball46-favicon-postverify-20260927.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: Verify public favicon, current Worker version, runtime, and APIs read-only
+        shell: bash
+        run: |
+          set -euo pipefail
+          n="${GITHUB_RUN_ID}-$(date +%s%N)"
+          curl -fsS -L --retry 4 --retry-all-errors --max-time 30 -H 'Cache-Control: no-cache' "https://www.ball46.com/index.html?favicon-postverify=$n" -o /tmp/www.html
+          curl -fsS -L --retry 4 --retry-all-errors --max-time 30 -H 'Cache-Control: no-cache' "https://ball46-production.mccarey-supon.workers.dev/index.html?favicon-postverify=$n" -o /tmp/worker.html
+          curl -fsS -L --retry 4 --retry-all-errors --max-time 30 -H 'Cache-Control: no-cache' "https://www.ball46.com/ball46-logo.svg?favicon-postverify=$n" -o /tmp/logo.svg
+          curl -fsS -L --retry 3 --max-time 30 "https://www.ball46.com/api/engine/board?favicon-postverify=$n" -o /tmp/board.json
+          curl -fsS -L --retry 3 --max-time 30 "https://www.ball46.com/api/engine/signals?favicon-postverify=$n" -o /tmp/signals.json
+          curl -fsS -L --retry 3 --max-time 30 "https://www.ball46.com/api/engine/statistics?favicon-postverify=$n" -o /tmp/stats.json
+          python3 - <<'PY'
+          from pathlib import Path
+          import re,hashlib,json,os,urllib.request,base64
+          expected='<link rel="icon" href="/ball46-logo.svg?v=ball46-tab-logo-20260927c" type="image/svg+xml">'
+          for name in ['www','worker']:
+              s=Path('/tmp/'+name+'.html').read_text(errors='replace')
+              icons=re.findall(r'<link\b[^>]*\brel=["\'](?:shortcut\s+)?icon["\'][^>]*>',s,re.I)
+              print(name.upper()+'_ICON_COUNT='+str(len(icons)))
+              print(name.upper()+'_ICONS='+repr(icons))
+              if len(icons)!=1 or icons[0]!=expected: raise SystemExit(name.upper()+'_FAVICON_BAD')
+          logo=Path('/tmp/logo.svg').read_bytes(); sha=hashlib.sha256(logo).hexdigest(); print('LOGO_SHA256='+sha)
+          if sha!='ce33cd0c99f7d36e00d89bb108502afb308528fe801381a9c55cc7cb7b7fbb48': raise SystemExit('LOGO_BYTES_CHANGED')
+          b=json.loads(Path('/tmp/board.json').read_text());s=json.loads(Path('/tmp/signals.json').read_text());t=json.loads(Path('/tmp/stats.json').read_text())
+          if b.get('ok') is not True or not isinstance(b.get('fixtures'),list): raise SystemExit('BOARD_BAD')
+          if not isinstance(s.get('signals'),list): raise SystemExit('SIGNALS_BAD')
+          if t.get('ok') is not True or not isinstance(t.get('rows'),list): raise SystemExit('STATS_BAD')
+          print('API_HEALTH_OK='+repr({'fixtures':len(b['fixtures']),'signals':len(s['signals']),'stats':len(t['rows'])}))
+          a=os.environ['CLOUDFLARE_ACCOUNT_ID'];tok=os.environ['CLOUDFLARE_API_TOKEN'];h={'Authorization':f'Bearer {tok}','Accept':'application/json'}
+          baseurl=f'https://api.cloudflare.com/client/v4/accounts/{a}/workers/scripts/ball46-production'
+          with urllib.request.urlopen(urllib.request.Request(baseurl+'/deployments',headers=h),timeout=30) as r:p=json.load(r)
+          vid=p['result']['deployments'][0]['versions'][0]['version_id'];print('CURRENT_VERSION_ID='+vid)
+          with urllib.request.urlopen(urllib.request.Request(f'https://api.cloudflare.com/client/v4/accounts/{a}/workers/workers/ball46-production/versions/{vid}?include=modules',headers=h),timeout=30) as r:q=json.load(r)
+          res=q.get('result') or {};main=res.get('main_module') or 'index.js';m=next((x for x in res.get('modules') or [] if x.get('name')==main and x.get('content_base64')),None)
+          if not m:raise SystemExit('RUNTIME_MISSING')
+          rsha=hashlib.sha256(base64.b64decode(m['content_base64'])).hexdigest();print('RUNTIME_SHA256='+rsha)
+          if rsha!='f961c641bb726f042f3d2e4a53e23363f68aa8497092f8071900b398cfb076ed':raise SystemExit('RUNTIME_CHANGED')
+          with urllib.request.urlopen(urllib.request.Request(baseurl+'/schedules',headers=h),timeout=30) as r:z=json.load(r)
+          raw=z.get('result') or {}; schedules=raw.get('schedules',[]) if isinstance(raw,dict) else raw; crons=[x.get('cron') for x in schedules if isinstance(x,dict)]
+          print('CRONS='+repr(crons))
+          if '* * * * *' not in crons:raise SystemExit('CRON_MISSING')
+          print('BALL46_FAVICON_PUBLIC_POSTVERIFY_OK')
+          PY
