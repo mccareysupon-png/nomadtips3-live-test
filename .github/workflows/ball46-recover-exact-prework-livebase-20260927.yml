@@ -1,0 +1,168 @@
+name: RECOVERY - Ball46 exact prework livebase 20260927
+
+on:
+  push:
+    branches: [work/ball46-row-balance-livebase-20260927]
+    paths:
+      - '.github/workflows/ball46-recover-exact-prework-livebase-20260927.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  recover-exact-prework:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      SOURCE_COMMIT: 6276320261cdc10a3835b27e81850c3d4f17f126
+      LIVEBASE_RUN_ID: 36291401917
+      LIVEBASE_NAME: ball46-livebase-v2-36291401917
+      BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Checkout exact runtime source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_COMMIT }}
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Download exact Production snapshot captured before this work
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.LIVEBASE_NAME }}
+          path: /tmp/livebase
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ env.LIVEBASE_RUN_ID }}
+
+      - name: Verify exact snapshot integrity and backend
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s /tmp/livebase/current-assets.sha256
+          test -s /tmp/livebase/reference-files.txt
+          test "$(wc -l < /tmp/livebase/reference-files.txt)" = 69
+          test "$(wc -l < /tmp/livebase/current-assets.sha256)" = 69
+          (cd /tmp/livebase/current-assets && sha256sum -c /tmp/livebase/current-assets.sha256)
+          for ep in health board signals statistics; do
+            curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 30 "$BALL46_WORKER/api/engine/$ep?recover-precheck=${GITHUB_RUN_ID}" -o "/tmp/$ep.json"
+          done
+          node - <<'NODE'
+          const fs=require('fs');
+          const h=JSON.parse(fs.readFileSync('/tmp/health.json'));
+          const b=JSON.parse(fs.readFileSync('/tmp/board.json'));
+          const s=JSON.parse(fs.readFileSync('/tmp/signals.json'));
+          const t=JSON.parse(fs.readFileSync('/tmp/statistics.json'));
+          if(h?.ok!==true||b?.ok!==true||!Array.isArray(b.fixtures)||!Array.isArray(s.signals)||t?.ok!==true||!Array.isArray(t.rows)) process.exit(1);
+          console.log('RECOVERY_BACKEND_PRECHECK_PASS',{fixtures:b.fixtures.length,signals:s.signals.length,settled:t.rows.length});
+          NODE
+
+      - name: Compare current Production against exact prework snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/current-now
+          mkdir -p /tmp/current-now
+          : > /tmp/current-diff.txt
+          while read -r expected name; do
+            safe="${name//\//_}"
+            curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 30 -H 'Cache-Control: no-cache' \
+              "$BALL46_WORKER/$name?recover-diff=${GITHUB_RUN_ID}-$(date +%s%N)" -o "/tmp/current-now/$safe"
+            actual=$(sha256sum "/tmp/current-now/$safe" | awk '{print $1}')
+            if [ "$actual" != "$expected" ]; then echo "$name expected=$expected actual=$actual" | tee -a /tmp/current-diff.txt; fi
+          done < /tmp/livebase/current-assets.sha256
+          count=$(wc -l < /tmp/current-diff.txt | tr -d ' ')
+          echo "CURRENT_DIFFERENCE_COUNT=$count"
+          cat /tmp/current-diff.txt
+          test "$count" -le 3 || { echo TOO_MANY_CURRENT_DIFFERENCES_STOP; exit 1; }
+          grep -q '^dashboard-v2-stage3.js ' /tmp/current-diff.txt || { [ "$count" = 0 ] || { echo UNEXPECTED_DIFFERENCE_SET; exit 1; }; }
+
+      - name: Reconstruct exact 69-file prework package
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf nomad-live-343
+          mkdir -p nomad-live-343
+          cp -a /tmp/livebase/current-assets/. nomad-live-343/
+          cd nomad-live-343
+          while read -r expected name; do actual=$(sha256sum "$name" | awk '{print $1}'); test "$actual" = "$expected" || exit 1; done < /tmp/livebase/current-assets.sha256
+          cd - >/dev/null
+          node --check nomad-live-343/dashboard-v2-stage3.js
+          echo EXACT_PREWORK_PACKAGE_READY
+
+      - name: Dry run exact prework package
+        working-directory: workers/nomadtips3-343-preview
+        shell: bash
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.ball46.jsonc
+
+      - name: Deploy exact prework package
+        id: deploy
+        working-directory: workers/nomadtips3-343-preview
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc | tee /tmp/recover-deploy.log
+          grep -Fq 'Uploaded ball46-production' /tmp/recover-deploy.log
+
+      - name: Wait for exact three key assets to stabilize at prework hashes
+        shell: bash
+        run: |
+          set -euo pipefail
+          idx=$(grep -F '  index.html' /tmp/livebase/current-assets.sha256 | awk '{print $1}')
+          js=$(grep -F '  dashboard-v2-stage3.js' /tmp/livebase/current-assets.sha256 | awk '{print $1}')
+          css=$(grep -F '  dashboard-v2-tune.css' /tmp/livebase/current-assets.sha256 | awk '{print $1}')
+          stable=0
+          for n in $(seq 1 30); do
+            for f in index.html dashboard-v2-stage3.js dashboard-v2-tune.css; do
+              curl -fsS -L --retry 3 --retry-all-errors --retry-delay 1 --max-time 25 -H 'Cache-Control: no-cache' \
+                "$BALL46_WORKER/$f?recover-stable=${GITHUB_RUN_ID}-$n-$(date +%s%N)" -o "/tmp/stable-$f"
+            done
+            a=$(sha256sum /tmp/stable-index.html | awk '{print $1}')
+            b=$(sha256sum /tmp/stable-dashboard-v2-stage3.js | awk '{print $1}')
+            c=$(sha256sum /tmp/stable-dashboard-v2-tune.css | awk '{print $1}')
+            echo "RECOVERY_SAMPLE $n index=$a js=$b css=$c"
+            if [ "$a" = "$idx" ] && [ "$b" = "$js" ] && [ "$c" = "$css" ]; then stable=$((stable+1)); else stable=0; fi
+            if [ "$stable" -ge 3 ]; then echo PREWORK_KEY_ASSETS_STABLE_3X; exit 0; fi
+            sleep 3
+          done
+          echo PREWORK_KEY_ASSETS_NOT_STABLE
+          exit 1
+
+      - name: Verify all 69 assets exactly match prework snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          bad=0
+          while read -r expected name; do
+            safe="${name//\//_}"
+            curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 30 -H 'Cache-Control: no-cache' \
+              "$BALL46_WORKER/$name?recover-all=${GITHUB_RUN_ID}-$(date +%s%N)" -o "/tmp/recover-all-$safe"
+            actual=$(sha256sum "/tmp/recover-all-$safe" | awk '{print $1}')
+            if [ "$actual" != "$expected" ]; then echo "RECOVERY_MISMATCH:$name expected=$expected actual=$actual"; bad=$((bad+1)); fi
+          done < /tmp/livebase/current-assets.sha256
+          test "$bad" = 0 || { echo "RECOVERY_MISMATCH_COUNT=$bad"; exit 1; }
+          echo EXACT_PREWORK_69_ASSET_RECOVERY_PASS
+
+      - name: Verify backend after exact recovery
+        shell: bash
+        run: |
+          set -euo pipefail
+          for ep in health board signals statistics; do
+            curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 30 "$BALL46_WORKER/api/engine/$ep?recover-post=${GITHUB_RUN_ID}" -o "/tmp/post-$ep.json"
+          done
+          node - <<'NODE'
+          const fs=require('fs');
+          const h=JSON.parse(fs.readFileSync('/tmp/post-health.json'));
+          const b=JSON.parse(fs.readFileSync('/tmp/post-board.json'));
+          const s=JSON.parse(fs.readFileSync('/tmp/post-signals.json'));
+          const t=JSON.parse(fs.readFileSync('/tmp/post-statistics.json'));
+          if(h?.ok!==true||b?.ok!==true||!Array.isArray(b.fixtures)||!Array.isArray(s.signals)||t?.ok!==true||!Array.isArray(t.rows)) process.exit(1);
+          console.log('EXACT_PREWORK_RECOVERY_BACKEND_PASS',{fixtures:b.fixtures.length,signals:s.signals.length,settled:t.rows.length});
+          NODE
+          echo BALL46_EXACT_PREWORK_RECOVERY_VERIFIED
