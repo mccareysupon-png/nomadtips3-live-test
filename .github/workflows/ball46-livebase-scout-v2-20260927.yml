@@ -1,0 +1,133 @@
+name: SCOUT ONLY - Ball46 exact live base v2 20260927
+
+on:
+  push:
+    branches: [ops/ball46-livebase-scout-20260927]
+    paths:
+      - '.github/workflows/ball46-livebase-scout-v2-20260927.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  scout-exact-live-base:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
+      VERIFIED_SOURCE: 6276320261cdc10a3835b27e81850c3d4f17f126
+      VERIFIED_WORKER_VERSION: 8e95c148-ea19-4ed1-88a1-2f14565c6888
+    steps:
+      - name: Checkout verified source deployment commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.VERIFIED_SOURCE }}
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Mirror every asset from current Production using verified source file map
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/livebase
+          mkdir -p /tmp/livebase/current-assets
+          cd nomad-live-343
+          find . -type f -printf '%P\n' | LC_ALL=C sort > /tmp/livebase/reference-files.txt
+          cd - >/dev/null
+          echo "VERIFIED_SOURCE=$VERIFIED_SOURCE"
+          echo "VERIFIED_WORKER_VERSION=$VERIFIED_WORKER_VERSION"
+          echo "REFERENCE_FILE_COUNT=$(wc -l < /tmp/livebase/reference-files.txt)"
+
+          bad=0
+          while IFS= read -r name; do
+            mkdir -p "/tmp/livebase/current-assets/$(dirname "$name")"
+            code=$(curl -sS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 30 \
+              -H 'Cache-Control: no-cache' \
+              -o "/tmp/livebase/current-assets/$name" \
+              -w '%{http_code}' "$BALL46_WORKER/$name?livebase=${GITHUB_RUN_ID}") || code=000
+            if [ "$code" != 200 ] || [ ! -s "/tmp/livebase/current-assets/$name" ]; then
+              echo "BAD_ASSET $name http=$code"
+              bad=$((bad+1))
+            fi
+          done < /tmp/livebase/reference-files.txt
+          [ "$bad" = 0 ] || { echo "STOP_BAD_ASSETS=$bad"; exit 1; }
+
+          (cd /tmp/livebase/current-assets && while IFS= read -r f; do sha256sum "$f"; done < /tmp/livebase/reference-files.txt) > /tmp/livebase/current-assets.sha256
+          echo "CAPTURED_FILE_COUNT=$(wc -l < /tmp/livebase/current-assets.sha256)"
+          echo '---KEY_HASHES---'
+          sha256sum \
+            /tmp/livebase/current-assets/index.html \
+            /tmp/livebase/current-assets/dashboard-v2-stage3.js \
+            /tmp/livebase/current-assets/dashboard-v2-tune.css \
+            /tmp/livebase/current-assets/singlepage-workspace-343.css
+
+      - name: Inspect exact current row and desktop grid
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          root=Path('/tmp/livebase/current-assets')
+          idx=(root/'index.html').read_text(errors='replace')
+          js=(root/'dashboard-v2-stage3.js').read_text(errors='replace')
+          css=(root/'dashboard-v2-tune.css').read_text(errors='replace')
+          print('INDEX_MARKERS',{
+            'row_balance': '20260927-row-balance' in idx,
+            'mobile_parity': 'BALL46-MOBILE-PARITY' in idx,
+            'stage3': 'dashboard-v2-stage3.js' in idx,
+            'tune': 'dashboard-v2-tune.css' in idx,
+          })
+          p=js.find('function rowHtml')
+          if p<0: raise SystemExit('ROW_HTML_NOT_FOUND')
+          e=js.find('\nfunction ',p+20)
+          if e<0: e=min(len(js),p+3000)
+          print('---CURRENT_ROW_HTML---')
+          print(js[p:e])
+          print('---END_CURRENT_ROW_HTML---')
+          for needle in ('@media(min-width:901px)','@media(min-width:761px) and (max-width:900px)','@media(max-width:760px)'):
+            q=css.find(needle)
+            print('---CSS',needle,'AT',q,'---')
+            if q>=0: print(css[q:q+2600])
+          PY
+
+      - name: Prove mirror matches Production twice and backend is healthy
+        shell: bash
+        run: |
+          set -euo pipefail
+          for f in index.html dashboard-v2-stage3.js dashboard-v2-tune.css singlepage-workspace-343.css; do
+            curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 30 \
+              "$BALL46_WORKER/$f?race=${GITHUB_RUN_ID}-$(date +%s%N)" -o "/tmp/livebase/race-$f"
+            a=$(sha256sum "/tmp/livebase/current-assets/$f" | awk '{print $1}')
+            b=$(sha256sum "/tmp/livebase/race-$f" | awk '{print $1}')
+            [ "$a" = "$b" ] || { echo "PRODUCTION_CHANGED_DURING_SCOUT:$f"; exit 1; }
+          done
+          for ep in health board signals statistics; do
+            curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 30 \
+              "$BALL46_WORKER/api/engine/$ep?scout2=${GITHUB_RUN_ID}" -o "/tmp/livebase/$ep.json"
+          done
+          node - <<'NODE'
+          const fs=require('fs');
+          const h=JSON.parse(fs.readFileSync('/tmp/livebase/health.json'));
+          const b=JSON.parse(fs.readFileSync('/tmp/livebase/board.json'));
+          const s=JSON.parse(fs.readFileSync('/tmp/livebase/signals.json'));
+          const t=JSON.parse(fs.readFileSync('/tmp/livebase/statistics.json'));
+          if(h?.ok!==true) throw Error('HEALTH_BAD');
+          if(b?.ok!==true||!Array.isArray(b.fixtures)) throw Error('BOARD_BAD');
+          if(!Array.isArray(s.signals)) throw Error('SIGNALS_BAD');
+          if(t?.ok!==true||!Array.isArray(t.rows)) throw Error('STATS_BAD');
+          console.log('SCOUT_V2_PASS',{fixtures:b.fixtures.length,signals:s.signals.length,settled:t.rows.length});
+          NODE
+
+      - name: Save exact current live-base artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-livebase-v2-${{ github.run_id }}
+          path: |
+            /tmp/livebase/current-assets
+            /tmp/livebase/current-assets.sha256
+            /tmp/livebase/reference-files.txt
+          retention-days: 7
+          if-no-files-found: error
