@@ -1,0 +1,82 @@
+name: VERIFY - Ball46 Restored Production Flow 20260927
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/verify-ball46-restored-flow-20260927.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  verify-production-flow:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Verify public UI pages respond and are not 3.41 fallback
+        shell: bash
+        run: |
+          set -euo pipefail
+          for rel in index.html signal.html statistics.html; do
+            f="/tmp/${rel}"
+            curl -fsS -L --retry 5 --retry-all-errors --max-time 30 "https://ball46.com/${rel}?verify=${GITHUB_RUN_ID}" -o "$f"
+            test -s "$f"
+            grep -Eqi 'ball46|NOMAD|signal|statistics|football' "$f"
+            if grep -Eqi 'nomad-live-341|3\.41' "$f"; then
+              echo "UNEXPECTED_341_FALLBACK:${rel}"
+              exit 1
+            fi
+            echo "PAGE_OK:${rel}:$(wc -c < "$f") bytes"
+          done
+
+      - name: Verify engine read flow
+        shell: bash
+        run: |
+          set -euo pipefail
+          for ep in health board signals statistics settings; do
+            curl -fsS -L --retry 5 --retry-all-errors --max-time 30 "https://ball46.com/api/engine/${ep}?verify=${GITHUB_RUN_ID}" -o "/tmp/${ep}.json"
+            test -s "/tmp/${ep}.json"
+          done
+
+          node - <<'NODE'
+          const fs=require('fs');
+          const j=n=>JSON.parse(fs.readFileSync(`/tmp/${n}.json`,'utf8'));
+          const h=j('health');
+          const b=j('board');
+          const s=j('signals');
+          const t=j('statistics');
+          const cfg=j('settings');
+          if(h?.ok!==true) throw Error('HEALTH_FAIL');
+          if(b?.ok!==true || !Array.isArray(b?.fixtures)) throw Error('BOARD_FAIL');
+          if(!Array.isArray(s?.signals)) throw Error('SIGNALS_FAIL');
+          if(t?.ok!==true || !Array.isArray(t?.rows)) throw Error('STATISTICS_FAIL');
+          if(cfg?.ok!==true && !cfg?.settings) throw Error('SETTINGS_FAIL');
+          console.log('READ_FLOW_PASS', {
+            engineVersion:h.version||null,
+            engineRevision:h.revision||null,
+            fixtures:b.fixtures.length,
+            signals:s.signals.length,
+            statistics:t.rows.length
+          });
+          NODE
+
+      - name: Verify scan path
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS -L --retry 5 --retry-all-errors --max-time 30 -X POST "https://ball46.com/api/engine/scan?verify=${GITHUB_RUN_ID}" -o /tmp/scan.json
+          test -s /tmp/scan.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const scan=JSON.parse(fs.readFileSync('/tmp/scan.json','utf8'));
+          if(scan?.ok!==true) throw Error('SCAN_FAIL');
+          console.log('SCAN_FLOW_PASS', {
+            signalCount:scan.signalCount ?? null,
+            unresolvedCount:scan.unresolvedCount ?? null,
+            lastError:scan.lastError ?? null
+          });
+          NODE
+
+      - name: Final production flow verdict
+        run: echo 'BALL46_RESTORED_PRODUCTION_FLOW_PASS'
