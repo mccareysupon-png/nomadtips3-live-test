@@ -1,0 +1,193 @@
+name: ONE SHOT - Remove Obsolete Ball46 Favicon 20260927
+
+on:
+  push:
+    branches: [recovery/ball46-approved-1850-composite-20260927]
+    paths:
+      - '.github/workflows/remove-ball46-old-favicon-20260927.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  CURRENT_VERSION: c7448b3c-783d-4098-8b2a-64fecc20939d
+  BASE_RUN_ID: '36310352868'
+  BASE_ARTIFACT: ball46-approved-1850-exact81-36310352868
+  BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
+  BALL46_WWW: https://www.ball46.com
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  remove-obsolete-favicon-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Guard exact current Production before edit
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os, urllib.request
+          a=os.environ['CLOUDFLARE_ACCOUNT_ID']; t=os.environ['CLOUDFLARE_API_TOKEN']; want=os.environ['CURRENT_VERSION']
+          h={'Authorization':f'Bearer {t}','Accept':'application/json'}
+          u=f'https://api.cloudflare.com/client/v4/accounts/{a}/workers/scripts/ball46-production/deployments'
+          with urllib.request.urlopen(urllib.request.Request(u,headers=h),timeout=30) as r: p=json.load(r)
+          cur=((p.get('result') or {}).get('deployments') or [])[0]['versions'][0]['version_id']
+          print('CURRENT_ACTIVE_VERSION='+cur)
+          if cur != want: raise SystemExit(f'PRODUCTION_CHANGED_ABORT:{cur}')
+          PY
+
+      - name: Download immutable approved package
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.BASE_ARTIFACT }}
+          path: approved-base
+          repository: ${{ github.repository }}
+          run-id: ${{ env.BASE_RUN_ID }}
+          github-token: ${{ github.token }}
+
+      - name: Rebuild exact current package then delete old favicon only
+        shell: bash
+        run: |
+          set -euo pipefail
+          [ "$(wc -l < approved-base/asset-paths.txt | tr -d ' ')" = '81' ]
+          (cd approved-base/assets && sha256sum -c ../assets.sha256)
+          [ "$(sha256sum approved-base/index.js | awk '{print $1}')" = "$(awk '{print $1}' approved-base/runtime.sha256)" ]
+
+          rm -rf recovery-work
+          mkdir -p recovery-work
+          cp -a approved-base/assets recovery-work/assets
+          cp approved-base/index.js recovery-work/index.js
+
+          # Reapply the already-live Signal count fix so the package exactly matches current Production behavior.
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('recovery-work/assets/dashboard-v2-stage3.js')
+          s=p.read_text()
+          old='const activeSignals=num(signalMirror?.activeSignals)??signalMap.size,activeMatches='
+          new='const activeSignals=signalRows.length,activeMatches='
+          if s.count(old)!=1: raise SystemExit(f'SIGNAL_PATCH_BASE_MISMATCH:{s.count(old)}')
+          p.write_text(s.replace(old,new,1))
+          PY
+
+          # Remove the obsolete favicon asset completely.
+          test -f recovery-work/assets/ball46-favicon.svg
+          rm recovery-work/assets/ball46-favicon.svg
+
+          # Remove only the obsolete duplicate favicon declaration from Home.
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('recovery-work/assets/index.html')
+          s=p.read_text()
+          old='<link rel="icon" href="/ball46-favicon.svg?v=ball46-favicon-20260922a" type="image/svg+xml">'
+          if s.count(old)!=1: raise SystemExit(f'OLD_FAVICON_LINK_COUNT:{s.count(old)}')
+          s=s.replace(old,'',1)
+          p.write_text(s)
+          PY
+
+          test ! -e recovery-work/assets/ball46-favicon.svg
+          ! grep -R -Fq 'ball46-favicon.svg' recovery-work/assets
+          [ "$(grep -Fo '<link rel="icon" href="/ball46-logo.svg" type="image/svg+xml">' recovery-work/assets/index.html | wc -l | tr -d ' ')" = '1' ]
+          grep -Fq '<link rel="icon" href="/ball46-logo.svg" type="image/svg+xml">' recovery-work/assets/signal.html
+          grep -Fq '<link rel="icon" href="/ball46-logo.svg" type="image/svg+xml">' recovery-work/assets/statistics.html
+          grep -Fq 'const activeSignals=signalRows.length,activeMatches=' recovery-work/assets/dashboard-v2-stage3.js
+          [ "$(find recovery-work/assets -type f | wc -l | tr -d ' ')" = '80' ]
+          echo OLD_FAVICON_REMOVED_EXACTLY
+
+      - name: Dry run exact 80-file package
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > recovery-work/wrangler.jsonc <<'EOF'
+          {
+            "name": "ball46-production",
+            "main": "./index.js",
+            "compatibility_date": "2026-09-09",
+            "no_bundle": true,
+            "workers_dev": true,
+            "preview_urls": false,
+            "assets": {
+              "directory": "./assets",
+              "binding": "ASSETS",
+              "run_worker_first": true,
+              "html_handling": "none"
+            },
+            "services": [
+              { "binding": "ENGINE", "service": "nomadtips3-engine-343" },
+              { "binding": "HUB", "service": "nomadtips3-5usd-hub-343" },
+              { "binding": "FULL_MARKET", "service": "nomadtips3-full-market-343-ball46" }
+            ],
+            "triggers": { "crons": ["* * * * *"] },
+            "observability": { "enabled": true }
+          }
+          EOF
+          cd recovery-work
+          npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.jsonc
+
+      - name: Deploy favicon removal only
+        id: deploy
+        working-directory: recovery-work
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.92.0 deploy --config wrangler.jsonc | tee deploy.log
+          grep -Fq 'Uploaded ball46-production' deploy.log
+
+      - name: Verify old favicon is gone and everything else remains healthy
+        id: verify
+        shell: bash
+        run: |
+          set -euo pipefail
+          sleep 4
+
+          curl -fsS -L --retry 5 --retry-all-errors --retry-delay 1 --max-time 25 -H 'Cache-Control: no-cache' "$BALL46_WORKER/index.html?favicon-clean=${GITHUB_RUN_ID}-$(date +%s%N)" -o live-index.html
+          ! grep -Fq 'ball46-favicon.svg' live-index.html
+          [ "$(grep -Fo '<link rel="icon" href="/ball46-logo.svg" type="image/svg+xml">' live-index.html | wc -l | tr -d ' ')" = '1' ]
+
+          for rel in signal.html statistics.html; do
+            curl -fsS -L --retry 5 --retry-all-errors --retry-delay 1 --max-time 25 -H 'Cache-Control: no-cache' "$BALL46_WORKER/$rel?favicon-clean=${GITHUB_RUN_ID}-$(date +%s%N)" -o "live-$rel"
+            grep -Fq '<link rel="icon" href="/ball46-logo.svg" type="image/svg+xml">' "live-$rel"
+            ! grep -Fq 'ball46-favicon.svg' "live-$rel"
+          done
+
+          curl -fsS -L --retry 5 --retry-all-errors --retry-delay 1 --max-time 25 -H 'Cache-Control: no-cache' "$BALL46_WORKER/dashboard-v2-stage3.js?favicon-clean=${GITHUB_RUN_ID}" -o live-dashboard.js
+          grep -Fq 'const activeSignals=signalRows.length,activeMatches=' live-dashboard.js
+
+          old_code=$(curl -sS -L --retry 2 --retry-all-errors --retry-delay 1 --max-time 20 -H 'Cache-Control: no-cache' -o old-favicon-body -w '%{http_code}' "$BALL46_WORKER/ball46-favicon.svg?deleted=${GITHUB_RUN_ID}-$(date +%s%N)" || true)
+          echo "OLD_FAVICON_HTTP=$old_code"
+          [ "$old_code" != '200' ] || { echo OLD_FAVICON_STILL_SERVED; exit 1; }
+
+          for ep in health board signals statistics; do
+            curl -fsS -L --retry 5 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/$ep?favicon-api=${GITHUB_RUN_ID}" -o "$ep.json"
+          done
+          node - <<'NODE'
+          const fs=require('fs');
+          const h=JSON.parse(fs.readFileSync('health.json'));
+          const b=JSON.parse(fs.readFileSync('board.json'));
+          const s=JSON.parse(fs.readFileSync('signals.json'));
+          const t=JSON.parse(fs.readFileSync('statistics.json'));
+          if(h?.ok!==true) throw Error('HEALTH_BAD');
+          if(b?.ok!==true || !Array.isArray(b?.fixtures)) throw Error('BOARD_BAD');
+          if(!Array.isArray(s?.signals)) throw Error('SIGNALS_BAD');
+          if(t?.ok!==true || !Array.isArray(t?.rows)) throw Error('STATISTICS_BAD');
+          console.log('BACKEND_OK',{fixtures:b.fixtures.length,signals:s.signals.length,settled:t.rows.length});
+          NODE
+
+          curl -fsS -L --retry 5 --retry-all-errors --retry-delay 1 --max-time 25 -H 'Cache-Control: no-cache' "$BALL46_WWW/?favicon-www=${GITHUB_RUN_ID}-$(date +%s%N)" -o www-index.html
+          ! grep -Fq 'ball46-favicon.svg' www-index.html
+          [ "$(grep -Fo '<link rel="icon" href="/ball46-logo.svg" type="image/svg+xml">' www-index.html | wc -l | tr -d ' ')" = '1' ]
+          echo BALL46_OLD_FAVICON_DELETE_PASS
+
+      - name: Roll back if favicon-only verification fails
+        if: ${{ failure() && steps.deploy.outcome == 'success' && steps.verify.outcome == 'failure' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.92.0 rollback "$CURRENT_VERSION" --name ball46-production --message "Rollback favicon-only cleanup after verification failure"
+          echo FAVICON_CLEANUP_ROLLED_BACK
