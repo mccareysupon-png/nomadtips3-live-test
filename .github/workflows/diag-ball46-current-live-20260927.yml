@@ -1,0 +1,52 @@
+name: DIAG Ball46 current live 20260927
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/diag-ball46-current-live-20260927.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  diag:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Inspect current Ball46 production read-only
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='https://ball46-production.mccarey-supon.workers.dev'
+          curl -fsS -L --retry 4 --retry-all-errors --max-time 25 "$BASE/index.html?diag=${GITHUB_RUN_ID}" -o /tmp/index.html
+          curl -fsS -L --retry 4 --retry-all-errors --max-time 25 "$BASE/ball46-logo.svg?diag=${GITHUB_RUN_ID}" -o /tmp/logo.svg
+          curl -fsS -L --retry 4 --retry-all-errors --max-time 25 "$BASE/signal.html?diag=${GITHUB_RUN_ID}" -o /tmp/signal.html
+          curl -fsS -L --retry 4 --retry-all-errors --max-time 25 "$BASE/statistics.html?diag=${GITHUB_RUN_ID}" -o /tmp/statistics.html
+          curl -fsS -L --retry 4 --retry-all-errors --max-time 25 "$BASE/api/engine/health?diag=${GITHUB_RUN_ID}" -o /tmp/health.json
+          curl -fsS -L --retry 4 --retry-all-errors --max-time 25 "$BASE/api/engine/board?diag=${GITHUB_RUN_ID}" -o /tmp/board.json
+          curl -fsS -L --retry 4 --retry-all-errors --max-time 25 "$BASE/api/engine/signals?diag=${GITHUB_RUN_ID}" -o /tmp/signals.json
+          curl -fsS -L --retry 4 --retry-all-errors --max-time 25 "$BASE/api/engine/statistics?diag=${GITHUB_RUN_ID}" -o /tmp/stats.json
+          echo "INDEX_SHA=$(sha256sum /tmp/index.html | awk '{print $1}')"
+          echo "LOGO_SHA=$(sha256sum /tmp/logo.svg | awk '{print $1}')"
+          echo "INDEX_BYTES=$(wc -c < /tmp/index.html)"
+          echo "ICON_TAG=$(grep -oEi '<link[^>]+rel=[\"'\'' ]*(shortcut )?icon[^>]*>' /tmp/index.html | head -1 || true)"
+          echo "LOGO_VERSION=$(grep -o 'data-logo-version=\"[^\"]*\"' /tmp/logo.svg | head -1 || true)"
+          node - <<'NODE'
+          const fs=require('fs');
+          const h=JSON.parse(fs.readFileSync('/tmp/health.json','utf8'));
+          const b=JSON.parse(fs.readFileSync('/tmp/board.json','utf8'));
+          const s=JSON.parse(fs.readFileSync('/tmp/signals.json','utf8'));
+          const t=JSON.parse(fs.readFileSync('/tmp/stats.json','utf8'));
+          console.log('HEALTH', JSON.stringify(h));
+          console.log('COUNTS', {fixtures:Array.isArray(b?.fixtures)?b.fixtures.length:null,signals:Array.isArray(s?.signals)?s.signals.length:null,settled:Array.isArray(t?.rows)?t.rows.length:null});
+          const txt=x=>JSON.stringify(x||'').toLowerCase();
+          const hit=x=>{const q=txt(x); return q.includes('hong')||q.includes('laos')||q.includes('lao');};
+          const bf=(b?.fixtures||[]).filter(hit);
+          const ss=(s?.signals||[]).filter(hit);
+          const tr=(t?.rows||[]).filter(hit);
+          console.log('BOARD_HK_LAO', JSON.stringify(bf.slice(0,20)));
+          console.log('SIGNALS_HK_LAO', JSON.stringify(ss.slice(0,20)));
+          console.log('STATS_HK_LAO', JSON.stringify(tr.slice(0,20)));
+          console.log('LATEST_STATS', JSON.stringify((t?.rows||[]).slice(-12)));
+          NODE
