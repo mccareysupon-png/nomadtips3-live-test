@@ -1,0 +1,205 @@
+name: ONE SHOT - Ball46 Menu Count Repair Retry 20260927
+
+on:
+  push:
+    branches: [ops/ball46-menu-count-repair-20260927]
+
+permissions:
+  contents: read
+
+env:
+  WWW: https://www.ball46.com
+  CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  GH_TOKEN: ${{ github.token }}
+  PATH_SOURCE_SHA: 6276320261cdc10a3835b27e81850c3d4f17f126
+  JS_TOKEN: 343-menu-count-repair-20260927b
+
+jobs:
+  repair:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Lock exact current Production package
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/b46-assets /tmp/b46-before /tmp/b46-runtime /tmp/b46-after /tmp/b46-backup /tmp/screens
+          mkdir -p /tmp/b46-assets /tmp/b46-runtime /tmp/b46-backup /tmp/screens
+          python3 - <<'PY'
+          import base64,hashlib,json,os,pathlib,urllib.request
+          a=os.environ['CF_ACCOUNT']; t=os.environ['CF_TOKEN']; h={'Authorization':f'Bearer {t}','Accept':'application/json'}
+          u=f'https://api.cloudflare.com/client/v4/accounts/{a}/workers/scripts/ball46-production/deployments'
+          with urllib.request.urlopen(urllib.request.Request(u,headers=h),timeout=30) as r:p=json.load(r)
+          vid=p['result']['deployments'][0]['versions'][0]['version_id']; pathlib.Path('/tmp/pre-version.txt').write_text(vid); print('PRE_VERSION='+vid)
+          u=f'https://api.cloudflare.com/client/v4/accounts/{a}/workers/workers/ball46-production/versions/{vid}?include=modules'
+          with urllib.request.urlopen(urllib.request.Request(u,headers=h),timeout=30) as r:p=json.load(r)
+          res=p.get('result') or {}; mods=res.get('modules') or []
+          if len(mods)!=1 or mods[0].get('name')!='index.js': raise SystemExit('RUNTIME_UNEXPECTED')
+          runtime=base64.b64decode(mods[0]['content_base64']); pathlib.Path('/tmp/b46-runtime/index.js').write_bytes(runtime)
+          pathlib.Path('/tmp/runtime.sha').write_text(hashlib.sha256(runtime).hexdigest())
+          pathlib.Path('/tmp/runtime.meta').write_text(json.dumps({k:res.get(k) for k in ['main_module','compatibility_date','bindings','assets','usage_model']},sort_keys=True))
+          PY
+          python3 - <<'PY'
+          import json,os,pathlib,urllib.request
+          sha=os.environ['PATH_SOURCE_SHA']; h={'Authorization':f"Bearer {os.environ['GH_TOKEN']}",'Accept':'application/vnd.github+json'}
+          with urllib.request.urlopen(urllib.request.Request(f'https://api.github.com/repos/mccareysupon-png/nomadtips3-live-test/git/trees/{sha}?recursive=1',headers=h),timeout=30) as r:p=json.load(r)
+          pre='nomad-live-343/'; paths=sorted(x['path'][len(pre):] for x in p['tree'] if x.get('type')=='blob' and x.get('path','').startswith(pre))
+          if len(paths)!=69: raise SystemExit(f'PATH_COUNT_CHANGED:{len(paths)}')
+          pathlib.Path('/tmp/asset-paths.txt').write_text('\n'.join(paths)+'\n')
+          PY
+          nonce="${GITHUB_RUN_ID}-$(date +%s%N)"
+          while IFS= read -r rel; do
+            [ -n "$rel" ] || continue
+            mkdir -p "/tmp/b46-assets/$(dirname "$rel")"
+            code=$(curl -sS -L --retry 4 --retry-all-errors --max-time 30 -H 'Cache-Control: no-cache' -o "/tmp/b46-assets/$rel" -w '%{http_code}' "$WWW/$rel?base=$nonce-$(date +%s%N)") || true
+            [ "$code" = 200 ] || { echo "ASSET_FETCH_${code}:$rel"; exit 1; }
+          done < /tmp/asset-paths.txt
+          cp -a /tmp/b46-assets /tmp/b46-before
+          cp -a /tmp/b46-before /tmp/b46-backup/assets
+          cp /tmp/b46-runtime/index.js /tmp/pre-version.txt /tmp/runtime.sha /tmp/runtime.meta /tmp/asset-paths.txt /tmp/b46-backup/
+          grep -Fq 'data-stat-market="all"' /tmp/b46-assets/index.html
+          grep -Fq 'data-workspace-signal-count' /tmp/b46-assets/index.html
+          ! grep -Fq 'BALL46_MENU_COUNT_REPAIR_20260927' /tmp/b46-assets/dashboard-v2-stage3.js
+          echo CURRENT_PRODUCTION_LOCKED
+
+      - name: Patch counters only
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat >> /tmp/b46-assets/dashboard-v2-stage3.js <<'JS'
+
+          /* BALL46_MENU_COUNT_REPAIR_20260927 — presentation counters only */
+          ;(()=>{
+          'use strict';
+          const qsa=s=>[...document.querySelectorAll(s)], put=(el,v)=>{if(el)el.textContent=String(v)};
+          const statKey=r=>{const x=String(`${r?.market||''} ${r?.marketLabel||''}`).toLowerCase();if(/corner/.test(x))return'corners';if(/card/.test(x))return'cards';if(/btts|both\s*teams?\s*to\s*score/.test(x))return'btts';if(/1x2|match\s*result|moneyline|winner|3way|three\s*way/.test(x))return'1x2';if(/asian|handicap|(^|[^a-z])ah([^a-z]|$)|_ah\b/.test(x))return'ah';if(/goal|over|under|o\/u|total/.test(x))return'ou';return'other'};
+          const signalKey=s=>{const x=String(s?.marketLabel||s?.market||s?.providerMarket||'').toLowerCase();if(/corner/.test(x))return'corners';if(/card/.test(x))return'cards';if(/1x2|match\s*result|moneyline|winner|3way|three\s*way/.test(x))return'1x2';if(/asian|handicap|(^|[^a-z])ah([^a-z]|$)/.test(x))return'ah';if(/over|under|o\/u|goal[_ -]?line|total/.test(x))return'ou';return'other'};
+          function renderStats(rows){const c={all:rows.length,'1x2':0,ah:0,ou:0,btts:0,corners:0,cards:0,other:0};for(const r of rows)c[statKey(r)]++;qsa('[data-stat-market]').forEach(b=>put(b.querySelector('b'),c[b.dataset.statMarket]??0))}
+          function renderSignals(rows){const c={all:rows.length,'1x2':0,ah:0,ou:0,corners:0,cards:0,other:0};for(const r of rows)c[signalKey(r)]++;put(document.querySelector('[data-workspace-signal-count]'),rows.length);put(document.querySelector('[data-signal-count]'),rows.length);put(document.querySelector('[data-active-match-count]'),new Set(rows.map(r=>String(r?.fixtureId??'').trim()).filter(Boolean)).size);qsa('[data-signal-market-count]').forEach(el=>put(el,c[el.dataset.signalMarketCount]??0))}
+          async function grab(url){const r=await fetch(`${url}?menu_count=${Date.now()}`,{cache:'no-store'});if(!r.ok)throw Error(`HTTP_${r.status}`);return r.json()}
+          async function stats(){try{const j=await grab('/api/engine/statistics');renderStats(Array.isArray(j?.rows)?j.rows:[])}catch(e){console.warn('Stats menu count refresh failed',e)}}
+          async function signals(){try{const j=await grab('/api/engine/signals');renderSignals(Array.isArray(j?.signals)?j.signals:[])}catch(e){console.warn('Signal menu count refresh failed',e)}}
+          function start(){stats();signals();setInterval(stats,60000);setInterval(signals,30000)}
+          document.addEventListener('ball46:signals-snapshot',e=>renderSignals(Array.isArray(e?.detail?.signals)?e.detail.signals:[]));
+          if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
+          })();
+          JS
+          python3 - <<'PY'
+          import hashlib,os,pathlib,re
+          root=pathlib.Path('/tmp/b46-assets'); before=pathlib.Path('/tmp/b46-before'); p=root/'index.html'; s=p.read_text(); token=os.environ['JS_TOKEN']
+          pat=re.compile(r'dashboard-v2-stage3\.js(?:\?[^"\']*)?')
+          if len(pat.findall(s))!=1: raise SystemExit('DASHBOARD_SCRIPT_REF_BAD')
+          p.write_text(pat.sub('dashboard-v2-stage3.js?v='+token,s,1))
+          changed=[]
+          for rel in pathlib.Path('/tmp/asset-paths.txt').read_text().splitlines():
+              if hashlib.sha256((before/rel).read_bytes()).digest()!=hashlib.sha256((root/rel).read_bytes()).digest(): changed.append(rel)
+          print('CHANGED_ASSETS=',changed)
+          if changed!=['dashboard-v2-stage3.js','index.html']: raise SystemExit('DIFF_GATE_FAILED:'+repr(changed))
+          PY
+          node --check /tmp/b46-assets/dashboard-v2-stage3.js
+          grep -Fq 'BALL46_MENU_COUNT_REPAIR_20260927' /tmp/b46-assets/dashboard-v2-stage3.js
+          grep -Fq "dashboard-v2-stage3.js?v=$JS_TOKEN" /tmp/b46-assets/index.html
+          echo COUNTER_PATCH_LOCKED
+
+      - name: Dry run and race guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > /tmp/b46-runtime/wrangler.jsonc <<'EOF'
+          {"name":"ball46-production","main":"./index.js","compatibility_date":"2026-09-09","no_bundle":true,"services":[{"binding":"ENGINE","service":"nomadtips3-engine-343","environment":"production"},{"binding":"FULL_MARKET","service":"nomadtips3-full-market-343-ball46","environment":"production"},{"binding":"HUB","service":"nomadtips3-5usd-hub-343","environment":"production"}],"assets":{"directory":"/tmp/b46-assets","binding":"ASSETS","html_handling":"none","not_found_handling":"none","run_worker_first":true},"triggers":{"crons":["* * * * *"]}}
+          EOF
+          cd /tmp/b46-runtime
+          npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.jsonc
+          python3 - <<'PY'
+          import json,os,pathlib,urllib.request
+          h={'Authorization':f"Bearer {os.environ['CF_TOKEN']}",'Accept':'application/json'};a=os.environ['CF_ACCOUNT']
+          with urllib.request.urlopen(urllib.request.Request(f'https://api.cloudflare.com/client/v4/accounts/{a}/workers/scripts/ball46-production/deployments',headers=h),timeout=30) as r:p=json.load(r)
+          cur=p['result']['deployments'][0]['versions'][0]['version_id']; pre=pathlib.Path('/tmp/pre-version.txt').read_text().strip();print('RACE',cur,pre)
+          if cur!=pre: raise SystemExit('PRODUCTION_MOVED')
+          PY
+          for f in dashboard-v2-stage3.js index.html v2-shared.css; do
+            curl -fsS -L --retry 4 --retry-all-errors --max-time 30 -H 'Cache-Control: no-cache' "$WWW/$f?race=${GITHUB_RUN_ID}-$(date +%s%N)" -o "/tmp/race-$f"
+            [ "$(sha256sum "/tmp/race-$f" | awk '{print $1}')" = "$(sha256sum "/tmp/b46-before/$f" | awk '{print $1}')" ] || { echo "RACE_ASSET_MOVED:$f"; exit 1; }
+          done
+          echo RACE_GUARD_PASS
+
+      - name: Deploy exact package
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd /tmp/b46-runtime
+          npx --yes wrangler@4.92.0 deploy --config wrangler.jsonc | tee /tmp/deploy.log
+          grep -Eq 'Uploaded ball46-production|Current Version ID:' /tmp/deploy.log
+
+      - name: Verify www and rendered numbers
+        shell: bash
+        run: |
+          set -euo pipefail
+          sleep 5
+          ok=0
+          for pass in 1 2 3 4; do
+            rm -rf /tmp/b46-after && mkdir -p /tmp/b46-after
+            while IFS= read -r rel; do [ -n "$rel" ] || continue; mkdir -p "/tmp/b46-after/$(dirname "$rel")"; curl -fsS -L --retry 4 --retry-all-errors --max-time 30 -H 'Cache-Control: no-cache' "$WWW/$rel?verify=${GITHUB_RUN_ID}-${pass}-$(date +%s%N)" -o "/tmp/b46-after/$rel"; done < /tmp/asset-paths.txt
+            if python3 - <<'PY'
+          from pathlib import Path
+          import hashlib
+          w=Path('/tmp/b46-assets'); g=Path('/tmp/b46-after'); bad=[]
+          for rel in Path('/tmp/asset-paths.txt').read_text().splitlines():
+              if hashlib.sha256((w/rel).read_bytes()).digest()!=hashlib.sha256((g/rel).read_bytes()).digest(): bad.append(rel)
+          print('MISMATCH=',bad); raise SystemExit(0 if not bad else 1)
+          PY
+            then ok=1; break; fi
+            sleep 2
+          done
+          [ "$ok" = 1 ] || exit 1
+          grep -Fq 'BALL46_MENU_COUNT_REPAIR_20260927' /tmp/b46-after/dashboard-v2-stage3.js
+          grep -Fq "dashboard-v2-stage3.js?v=$JS_TOKEN" /tmp/b46-after/index.html
+          nonce="${GITHUB_RUN_ID}-$(date +%s%N)"
+          for ep in signals statistics; do curl -fsS -L --retry 4 --retry-all-errors --max-time 30 "$WWW/api/engine/$ep?verify=$nonce" -o "/tmp/$ep.json"; done
+          python3 - <<'PY'
+          import json,re
+          s=json.load(open('/tmp/signals.json')); t=json.load(open('/tmp/statistics.json')); rows=t.get('rows') or []; sig=s.get('signals') or []
+          def key(r):
+              x=(str(r.get('market') or '')+' '+str(r.get('marketLabel') or '')).lower()
+              if 'corner' in x:return'corners'
+              if 'card' in x:return'cards'
+              if re.search(r'btts|both\s*teams?\s*to\s*score',x):return'btts'
+              if re.search(r'1x2|match\s*result|moneyline|winner|3way|three\s*way',x):return'1x2'
+              if re.search(r'asian|handicap|(^|[^a-z])ah([^a-z]|$)|_ah\b',x):return'ah'
+              if re.search(r'goal|over|under|o/u|total',x):return'ou'
+              return'other'
+          c={k:0 for k in ['1x2','ah','ou','btts','corners','cards','other']}
+          for r in rows:c[key(r)]+=1
+          exp={'all':len(rows),**c,'signals':len(sig)};open('/tmp/expected.json','w').write(json.dumps(exp));print('EXPECTED',exp)
+          PY
+          chrome=$(command -v google-chrome || command -v chromium || command -v chromium-browser || true); [ -n "$chrome" ] || exit 1
+          "$chrome" --headless=new --no-sandbox --disable-gpu --hide-scrollbars --virtual-time-budget=12000 --dump-dom "$WWW/index.html?status=live&count-check=${GITHUB_RUN_ID}" >/tmp/dom.html 2>/tmp/chrome.log
+          python3 - <<'PY'
+          import json,re
+          d=open('/tmp/dom.html').read();e=json.load(open('/tmp/expected.json'))
+          got={k:int(v) for k,v in re.findall(r'data-stat-market="([^"]+)"[^>]*>.*?<b>(\d+)</b>',d,re.S)}
+          m=re.search(r'data-workspace-signal-count[^>]*>(\d+)</b>',d); sig=int(m.group(1)) if m else None
+          print('RENDERED_STATS',got);print('RENDERED_SIGNAL',sig)
+          for k in ['all','1x2','ah','ou','btts','corners','cards','other']:
+              if got.get(k)!=e[k]: raise SystemExit(f'BAD_{k}:{got.get(k)}!={e[k]}')
+          if sig!=e['signals']: raise SystemExit(f'BAD_SIGNAL:{sig}!={e["signals"]}')
+          print('MENU_COUNTS_RENDERED_OK')
+          PY
+          "$chrome" --headless=new --no-sandbox --disable-gpu --hide-scrollbars --window-size=1440,1200 --virtual-time-budget=10000 --screenshot=/tmp/screens/menu-counts.png "$WWW/index.html?status=live&screen=${GITHUB_RUN_ID}" >/tmp/shot.log 2>&1
+          test -s /tmp/screens/menu-counts.png
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ball46-menu-count-repair-${{ github.run_id }}
+          path: |
+            /tmp/b46-backup
+            /tmp/screens/menu-counts.png
+            /tmp/dom.html
+          retention-days: 30
