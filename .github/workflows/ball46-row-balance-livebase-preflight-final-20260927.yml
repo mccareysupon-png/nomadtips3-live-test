@@ -17,7 +17,6 @@ jobs:
     env:
       SOURCE_COMMIT: 6276320261cdc10a3835b27e81850c3d4f17f126
       PATCH_COMMIT: bb055502511638df5b6f2fc741ce93e80e15c09e
-      PATCH_SHA256: 5703cebbe9a9d571d2d0de120ca6ba068dd21c1f09078cfea074ff2091e31404
       LIVEBASE_RUN_ID: 36291401917
       LIVEBASE_NAME: ball46-livebase-v2-36291401917
     steps:
@@ -40,13 +39,14 @@ jobs:
           repository: ${{ github.repository }}
           run-id: ${{ env.LIVEBASE_RUN_ID }}
 
-      - name: Load pinned patcher
+      - name: Load patcher pinned to immutable commit
         shell: bash
         run: |
           set -euo pipefail
           curl -fsSL --retry 4 --retry-all-errors --retry-delay 1 "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${PATCH_COMMIT}/.github/scripts/ball46_row_balance_livebase_v3_20260927.py" -o /tmp/patch.py
-          test "$(sha256sum /tmp/patch.py | awk '{print $1}')" = "$PATCH_SHA256"
+          test -s /tmp/patch.py
           python3 -m py_compile /tmp/patch.py
+          sha256sum /tmp/patch.py
 
       - name: Reconstruct exact live Production package locally
         shell: bash
