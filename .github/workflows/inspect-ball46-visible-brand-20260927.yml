@@ -1,0 +1,34 @@
+name: Inspect Ball46 Visible Brand 20260927
+on:
+  push:
+    branches: [ops/ball46-favicon-cachefix3-20260927]
+    paths: ['.github/workflows/inspect-ball46-visible-brand-20260927.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Inspect visible brand markup and CSS read-only
+        shell: bash
+        run: |
+          set -euo pipefail
+          n="${GITHUB_RUN_ID}-$(date +%s%N)"
+          curl -fsSL -H 'Cache-Control: no-cache' "https://www.ball46.com/index.html?brand-inspect=$n" -o /tmp/index.html
+          python3 - <<'PY'
+          from pathlib import Path
+          import re, urllib.request
+          h=Path('/tmp/index.html').read_text(errors='replace')
+          pos=h.find('workspace-brand-card')
+          print('VISIBLE_BRAND_BLOCK='+re.sub(r'\s+',' ',h[max(0,pos-400):pos+1200]))
+          css=[]
+          for x in re.findall(r'<link[^>]+href=["\']([^"\']+\.css(?:\?[^"\']*)?)["\']',h,re.I):
+              if x.startswith('http'): u=x
+              else: u='https://www.ball46.com/'+x.lstrip('/')
+              try:
+                  s=urllib.request.urlopen(u,timeout=20).read().decode('utf-8','replace')
+              except Exception: continue
+              for m in re.finditer(r'[^{}]*\.workspace-brand[^{}]*\{[^{}]*\}',s,re.I):
+                  css.append(re.sub(r'\s+',' ',m.group(0)))
+          print('VISIBLE_BRAND_CSS='+repr(css[:20]))
+          PY
