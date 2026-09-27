@@ -1,0 +1,122 @@
+name: diag-ball46-signal-statistics-20260927
+on:
+  push:
+    branches: [diag/ball46-stats-gap-run2-20260927]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: Inspect live signal/statistics gap and current engine code
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, urllib.request, urllib.parse, os, base64, re, hashlib, collections, datetime
+          def get_json(url):
+              req=urllib.request.Request(url,headers={'Cache-Control':'no-cache','User-Agent':'ball46-diag'})
+              with urllib.request.urlopen(req,timeout=40) as r:return json.load(r)
+          nonce=str(__import__('time').time_ns())
+          sig=get_json('https://www.ball46.com/api/engine/signals?diag='+nonce)
+          sta=get_json('https://www.ball46.com/api/engine/statistics?diag='+nonce)
+          boa=get_json('https://www.ball46.com/api/engine/board?diag='+nonce)
+          signals=sig.get('signals') or []
+          rows=sta.get('rows') or []
+          fixtures=boa.get('fixtures') or []
+          print('COUNTS',{'signals':len(signals),'statistics':len(rows),'fixtures':len(fixtures)})
+          print('SIGNAL_KEYS',sorted(signals[0].keys()) if signals else [])
+          print('STAT_KEYS',sorted(rows[0].keys()) if rows else [])
+          print('FIXTURE_KEYS',sorted(fixtures[0].keys()) if fixtures else [])
+          def scalar_ids(x):
+              out=[]
+              for k,v in x.items():
+                  kl=k.lower()
+                  if v is None or isinstance(v,(dict,list)): continue
+                  if any(t in kl for t in ['fixture','match','signal']) and ('id' in kl or kl in ('fixture','match','signal')):
+                      out.append((k,str(v)))
+              return out
+          print('SIGNAL_SAMPLE',json.dumps(signals[:3],ensure_ascii=False)[:12000])
+          print('STAT_SAMPLE',json.dumps(rows[:3],ensure_ascii=False)[:12000])
+          print('FIXTURE_SAMPLE',json.dumps(fixtures[:2],ensure_ascii=False)[:8000])
+          # infer best common identifier field/value sets
+          sig_fields=collections.defaultdict(set); stat_fields=collections.defaultdict(set); fix_fields=collections.defaultdict(set)
+          for x in signals:
+              for k,v in scalar_ids(x): sig_fields[k].add(v)
+          for x in rows:
+              for k,v in scalar_ids(x): stat_fields[k].add(v)
+          for x in fixtures:
+              for k,v in scalar_ids(x): fix_fields[k].add(v)
+          print('SIGNAL_ID_FIELDS',{k:len(v) for k,v in sig_fields.items()})
+          print('STAT_ID_FIELDS',{k:len(v) for k,v in stat_fields.items()})
+          print('FIX_ID_FIELDS',{k:len(v) for k,v in fix_fields.items()})
+          candidates=[]
+          for sk,sv in sig_fields.items():
+              for tk,tv in stat_fields.items():
+                  inter=len(sv&tv)
+                  if inter:candidates.append((inter,sk,tk,len(sv),len(tv)))
+          print('COMMON_ID_CANDIDATES',sorted(candidates,reverse=True)[:20])
+          if candidates:
+              _,sk,tk,_,_=sorted(candidates,reverse=True)[0]
+              statvals=stat_fields[tk]
+              unmatched=[x for x in signals if str(x.get(sk)) not in statvals]
+              matched=[x for x in signals if str(x.get(sk)) in statvals]
+              print('BEST_ID_MAP',sk,'->',tk,'matched',len(matched),'unmatched',len(unmatched))
+              # fixture lookup by overlapping values
+              fix_lookup={}
+              bestfk=None; bestn=0
+              for fk,fv in fix_fields.items():
+                  n=len(sig_fields[sk]&fv)
+                  if n>bestn: bestn=n;bestfk=fk
+              if bestfk:
+                  fix_lookup={str(x.get(bestfk)):x for x in fixtures if x.get(bestfk) is not None}
+                  print('BEST_FIXTURE_ID_MAP',sk,'->',bestfk,'overlap',bestn)
+              # summarize unmatched statuses/markets and show up to 40
+              def pick(x,*names):
+                  for n in names:
+                      if n in x:return x.get(n)
+              status_count=collections.Counter(); market_count=collections.Counter()
+              details=[]
+              for x in unmatched:
+                  sid=str(x.get(sk)); f=fix_lookup.get(sid,{})
+                  status=pick(f,'status','state','match_status','short_status')
+                  market=pick(x,'market','market_key','type','signal_type','pick_market')
+                  status_count[str(status)]+=1; market_count[str(market)]+=1
+                  details.append({'id':sid,'market':market,'signal_status':pick(x,'status','state'),'fixture_status':status,'home':pick(x,'home','home_name','homeTeam','home_team'),'away':pick(x,'away','away_name','awayTeam','away_team'),'minute':pick(x,'minute','elapsed'),'created':pick(x,'created_at','createdAt','timestamp','time','detected_at')})
+              print('UNMATCHED_FIXTURE_STATUS',status_count)
+              print('UNMATCHED_MARKETS',market_count)
+              print('UNMATCHED_DETAILS',json.dumps(details[:40],ensure_ascii=False))
+          # Inspect current engine Worker deployment and relevant code contexts.
+          a=os.environ['CLOUDFLARE_ACCOUNT_ID']; t=os.environ['CLOUDFLARE_API_TOKEN']; h={'Authorization':'Bearer '+t,'Accept':'application/json'}
+          base=f'https://api.cloudflare.com/client/v4/accounts/{a}/workers/scripts/nomadtips3-engine-343'
+          with urllib.request.urlopen(urllib.request.Request(base+'/deployments',headers=h),timeout=40) as r:p=json.load(r)
+          vid=p['result']['deployments'][0]['versions'][0]['version_id']; print('ENGINE_VERSION',vid)
+          u=f'https://api.cloudflare.com/client/v4/accounts/{a}/workers/workers/nomadtips3-engine-343/versions/{vid}?include=modules'
+          with urllib.request.urlopen(urllib.request.Request(u,headers=h),timeout=40) as r:q=json.load(r)
+          res=q.get('result') or {}; mods=res.get('modules') or []; print('ENGINE_MODULES',[m.get('name') for m in mods])
+          texts=[]
+          for m in mods:
+              b64=m.get('content_base64')
+              if not b64: continue
+              try:s=base64.b64decode(b64).decode('utf-8','replace')
+              except: continue
+              texts.append((m.get('name'),s))
+              print('MODULE_SHA',m.get('name'),hashlib.sha256(s.encode()).hexdigest(),'SIZE',len(s))
+          terms=['statistics','settle','settlement','final','finished','signal','result','win','loss','push']
+          for name,s in texts:
+              low=s.lower()
+              for term in terms:
+                  poss=[m.start() for m in re.finditer(re.escape(term),low)]
+                  if poss: print('TERM_COUNT',name,term,len(poss))
+              # Print focused contexts around settlement/statistics only, de-duplicated and capped
+              seen=[]
+              for term in ['statistics','settle','settlement']:
+                  for m in list(re.finditer(term,low))[:20]:
+                      a0=max(0,m.start()-500); b0=min(len(s),m.end()+900); chunk=re.sub(r'\s+',' ',s[a0:b0])
+                      if chunk not in seen:
+                          seen.append(chunk); print('CODE_CONTEXT',name,term,chunk[:1800])
+          PY
