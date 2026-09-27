@@ -1,0 +1,31 @@
+name: Inspect Ball46 Live Logo 20260927
+on:
+  push:
+    branches: [ops/ball46-favicon-cachefix3-20260927]
+    paths: ['.github/workflows/inspect-ball46-live-logo-20260927.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Inspect live page logo refs read-only
+        shell: bash
+        run: |
+          set -euo pipefail
+          n="${GITHUB_RUN_ID}-$(date +%s%N)"
+          curl -fsSL -H 'Cache-Control: no-cache' "https://www.ball46.com/index.html?logo-inspect=$n" -o /tmp/index.html
+          curl -fsSL -H 'Cache-Control: no-cache' "https://www.ball46.com/ball46-logo.svg?logo-inspect=$n" -o /tmp/logo.svg
+          python3 - <<'PY'
+          from pathlib import Path
+          import re,hashlib
+          h=Path('/tmp/index.html').read_text(errors='replace')
+          print('LOGO_SHA256='+hashlib.sha256(Path('/tmp/logo.svg').read_bytes()).hexdigest())
+          print('FAVICON_TAGS=', re.findall(r'<link\b[^>]*rel=["\'](?:shortcut\s+)?icon["\'][^>]*>',h,re.I))
+          for m in re.finditer(r'.{0,220}ball46-logo\.svg.{0,220}',h,re.I|re.S):
+              print('LOGO_REF_CONTEXT='+re.sub(r'\s+',' ',m.group(0)))
+          for pat in [r'<img\b[^>]*>', r'<svg\b[^>]*>', r'class=["\'][^"\']*(?:brand|logo)[^"\']*["\']']:
+              vals=re.findall(pat,h,re.I)
+              for v in vals[:40]:
+                  if 'logo' in v.lower() or 'brand' in v.lower(): print('DOM='+re.sub(r'\s+',' ',v))
+          PY
