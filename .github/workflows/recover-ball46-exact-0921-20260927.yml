@@ -1,0 +1,50 @@
+name: RECOVERY - Ball46 exact 09:21 known-good
+
+on:
+  push:
+    branches:
+      - recovery/ball46-exact-0921-20260927
+    paths:
+      - .github/workflows/recover-ball46-exact-0921-20260927.yml
+
+permissions:
+  contents: read
+
+env:
+  TARGET_VERSION: 8e95c148-ea19-4ed1-88a1-2f14565c6888
+  BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  restore-exact-known-good:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Restore exact known-good Worker version only
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.92.0 rollback "$TARGET_VERSION" --name ball46-production --message "Emergency restore exact known-good Ball46 state visible at 09:21 ICT 2026-09-27"
+
+      - name: Verify Production pages and API
+        shell: bash
+        run: |
+          set -euo pipefail
+          sleep 6
+          for path in / /signal.html /statistics.html; do
+            curl -fsS -L --retry 5 --retry-all-errors --retry-delay 2 --max-time 25 "$BALL46_WORKER${path}?recovery-check=${GITHUB_RUN_ID}" -o "/tmp/$(echo "$path" | tr '/.' '__').html"
+          done
+          curl -fsS -L --retry 5 --retry-all-errors --retry-delay 2 --max-time 25 "$BALL46_WORKER/api/engine/health?recovery-check=${GITHUB_RUN_ID}" -o /tmp/health.json
+          node - <<'NODE'
+          const fs = require('fs');
+          const h = JSON.parse(fs.readFileSync('/tmp/health.json','utf8'));
+          if (h?.ok !== true) throw new Error('BALL46_HEALTH_NOT_OK');
+          const index = fs.readFileSync('/tmp/__.html','utf8');
+          if (!index || index.length < 1000) throw new Error('INDEX_TOO_SMALL');
+          console.log('BALL46_EXACT_0921_RECOVERY_PASS');
+          NODE
