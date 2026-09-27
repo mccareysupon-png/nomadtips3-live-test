@@ -1,0 +1,114 @@
+name: Restore Ball46 Yesterday Full Working Stack 20260927
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/restore-ball46-yesterday-full-20260927.yml'
+
+permissions:
+  contents: read
+
+env:
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  ENGINE_BRANCH: work/343-best-price-19book-20260918
+  ENGINE_URL: https://nomadtips3-engine-343.mccarey-supon.workers.dev
+  BALL46_URL: https://ball46-production.mccarey-supon.workers.dev
+  BALL46_GOOD_VERSION: 1c002b58-317e-408e-a64e-84c3db83b6d7
+
+jobs:
+  restore:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout yesterday production engine baseline
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.ENGINE_BRANCH }}
+          fetch-depth: 1
+
+      - name: Guard exact Engine343 baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check workers/nomadtips3-engine-343/src/index-bulk.js
+          grep -Fq 'nomad343-engine-v5-best19-referee' workers/nomadtips3-engine-343/src/index-bulk.js
+          grep -Fq 'main = "src/index-bulk.js"' workers/nomadtips3-engine-343/wrangler.toml
+          grep -Fq 'binding = "HUB"' workers/nomadtips3-engine-343/wrangler.toml
+          grep -Fq 'binding = "FULL_MARKET"' workers/nomadtips3-engine-343/wrangler.toml
+
+      - name: Dry-run Engine343 baseline only
+        working-directory: workers/nomadtips3-engine-343
+        shell: bash
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.toml
+
+      - name: Restore Engine343 baseline only
+        working-directory: workers/nomadtips3-engine-343
+        shell: bash
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.toml
+
+      - name: Verify Engine343 direct health before front restore
+        shell: bash
+        run: |
+          set -euo pipefail
+          for n in 1 2 3 4 5 6; do
+            if curl -fsS -L --max-time 20 "$ENGINE_URL/health?restore=${GITHUB_RUN_ID}-${n}" -o /tmp/engine-health.json; then
+              if node -e "const j=require('/tmp/engine-health.json'); if(j.ok!==true||!String(j.version||'').includes('v5-best19-referee')) process.exit(1)"; then break; fi
+            fi
+            sleep 4
+          done
+          node - <<'NODE'
+          const h=require('/tmp/engine-health.json');
+          if(h.ok!==true||!String(h.version||'').includes('v5-best19-referee')) throw Error('ENGINE_BASELINE_NOT_LIVE');
+          console.log('ENGINE343_BASELINE_PASS', {version:h.version,revision:h.revision});
+          NODE
+
+      - name: Restore exact Ball46 user-good version from yesterday
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.92.0 rollback "$BALL46_GOOD_VERSION" --name ball46-production --message "Restore Ball46 exact user-good version from 2026-09-26"
+
+      - name: Verify full Ball46 flow
+        shell: bash
+        run: |
+          set -euo pipefail
+          for n in 1 2 3 4 5 6 7 8; do
+            ok=1
+            for ep in health board signals statistics settings; do
+              curl -fsS -L --max-time 25 "$BALL46_URL/api/engine/$ep?restoreflow=${GITHUB_RUN_ID}-${n}" -o "/tmp/$ep.json" || ok=0
+            done
+            [ "$ok" = 1 ] && break
+            sleep 4
+          done
+          code=$(curl -sS -L --max-time 30 -o /tmp/scan.json -w '%{http_code}' -X POST "$BALL46_URL/api/engine/scan?restoreflow=${GITHUB_RUN_ID}")
+          test "$code" -ge 200 -a "$code" -lt 300
+          sleep 3
+          curl -fsS -L --max-time 25 "$BALL46_URL/api/engine/board?restoreflow=${GITHUB_RUN_ID}-post" -o /tmp/board-post.json
+          curl -fsS -L --max-time 25 "$BALL46_URL/api/engine/signals?restoreflow=${GITHUB_RUN_ID}-post" -o /tmp/signals-post.json
+          curl -fsS -L --max-time 25 "$BALL46_URL/api/engine/statistics?restoreflow=${GITHUB_RUN_ID}-post" -o /tmp/statistics-post.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const h=JSON.parse(fs.readFileSync('/tmp/health.json','utf8'));
+          const b=JSON.parse(fs.readFileSync('/tmp/board-post.json','utf8'));
+          const s=JSON.parse(fs.readFileSync('/tmp/signals-post.json','utf8'));
+          const t=JSON.parse(fs.readFileSync('/tmp/statistics-post.json','utf8'));
+          const cfg=JSON.parse(fs.readFileSync('/tmp/settings.json','utf8'));
+          const scan=JSON.parse(fs.readFileSync('/tmp/scan.json','utf8'));
+          if(h?.ok!==true) throw Error('HEALTH_FAIL');
+          if(!String(h.version||'').includes('v5-best19-referee')) throw Error('ENGINE_VERSION_FAIL:'+h.version);
+          if(b?.ok!==true||!Array.isArray(b.fixtures)) throw Error('BOARD_FAIL');
+          if(!Array.isArray(s?.signals)) throw Error('SIGNALS_FAIL');
+          if(t?.ok!==true||!Array.isArray(t.rows)) throw Error('STATISTICS_FAIL');
+          if(cfg?.ok!==true||!cfg.settings||!cfg.markets||!cfg.runState) throw Error('SETTINGS_FAIL');
+          if(scan?.ok===false) throw Error('SCAN_FAIL:'+JSON.stringify(scan));
+          console.log('BALL46_FLOW_PASS', {
+            version:h.version,
+            fixtures:b.fixtures.length,
+            signals:s.signals.length,
+            statistics:t.rows.length,
+            enabledMarkets:Object.entries(cfg.runState).filter(([,v])=>v).map(([k])=>k),
+            scan
+          });
+          NODE
