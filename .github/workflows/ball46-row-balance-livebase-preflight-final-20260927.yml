@@ -1,0 +1,91 @@
+name: PREFLIGHT - Ball46 row balance exact livebase 20260927
+
+on:
+  push:
+    branches: [work/ball46-row-balance-livebase-20260927]
+    paths:
+      - '.github/workflows/ball46-row-balance-livebase-preflight-final-20260927.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  preflight:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      SOURCE_COMMIT: 6276320261cdc10a3835b27e81850c3d4f17f126
+      PATCH_COMMIT: bb055502511638df5b6f2fc741ce93e80e15c09e
+      PATCH_SHA256: 5703cebbe9a9d571d2d0de120ca6ba068dd21c1f09078cfea074ff2091e31404
+      LIVEBASE_RUN_ID: 36291401917
+      LIVEBASE_NAME: ball46-livebase-v2-36291401917
+    steps:
+      - name: Checkout exact source that created current Worker runtime
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_COMMIT }}
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Download exact captured current Production assets
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.LIVEBASE_NAME }}
+          path: /tmp/livebase
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ env.LIVEBASE_RUN_ID }}
+
+      - name: Load pinned patcher
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL --retry 4 --retry-all-errors --retry-delay 1 "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${PATCH_COMMIT}/.github/scripts/ball46_row_balance_livebase_v3_20260927.py" -o /tmp/patch.py
+          test "$(sha256sum /tmp/patch.py | awk '{print $1}')" = "$PATCH_SHA256"
+          python3 -m py_compile /tmp/patch.py
+
+      - name: Reconstruct exact live Production package locally
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -d /tmp/livebase/current-assets
+          test -s /tmp/livebase/current-assets.sha256
+          test -s /tmp/livebase/reference-files.txt
+          test "$(wc -l < /tmp/livebase/reference-files.txt)" = 69
+          test "$(wc -l < /tmp/livebase/current-assets.sha256)" = 69
+          cd /tmp/livebase/current-assets
+          sha256sum -c /tmp/livebase/current-assets.sha256
+          cd - >/dev/null
+          rm -rf nomad-live-343
+          mkdir -p nomad-live-343
+          cp -a /tmp/livebase/current-assets/. nomad-live-343/
+          python3 /tmp/patch.py verify-base nomad-live-343
+
+      - name: Patch exactly three presentation files and gate diff
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 /tmp/patch.py patch nomad-live-343
+          node --check nomad-live-343/dashboard-v2-stage3.js
+          python3 /tmp/patch.py gate nomad-live-343 /tmp/livebase/current-assets /tmp/livebase/reference-files.txt
+          echo PREFLIGHT_EXACT_DIFF_PASS
+
+      - name: Wrangler dry-run only
+        working-directory: workers/nomadtips3-343-preview
+        shell: bash
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.ball46.jsonc
+
+      - name: Save verified candidate without deploying
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-row-balance-livebase-v3-candidate-${{ github.run_id }}
+          path: |
+            nomad-live-343
+            /tmp/livebase/current-assets.sha256
+            /tmp/livebase/reference-files.txt
+          retention-days: 7
+          if-no-files-found: error
