@@ -1,0 +1,44 @@
+name: DIAG Ball46 HUB settlement 20260927
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/diag-ball46-hub-settlement-20260927.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  diag:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Inspect HUB and engine read-only
+        shell: bash
+        run: |
+          set -euo pipefail
+          HUB='https://nomadtips3-5usd-hub-343.mccarey-supon.workers.dev'
+          ENG='https://nomadtips3-engine-343.mccarey-supon.workers.dev'
+          for p in health snapshot; do curl -sS -L --retry 3 --max-time 25 -w '\nHTTP=%{http_code}\n' "$HUB/$p?diag=${GITHUB_RUN_ID}" -o "/tmp/hub-$p.out" || true; done
+          for p in health statistics signals board; do curl -sS -L --retry 3 --max-time 25 "$ENG/$p?diag=${GITHUB_RUN_ID}" -o "/tmp/eng-$p.out" || true; done
+          echo '=== HUB HEALTH ==='; cat /tmp/hub-health.out; echo
+          echo '=== HUB SNAPSHOT SUMMARY ==='
+          node - <<'NODE'
+          const fs=require('fs');
+          let j;try{j=JSON.parse(fs.readFileSync('/tmp/hub-snapshot.out','utf8'))}catch(e){console.log('HUB_SNAPSHOT_PARSE_FAIL',fs.readFileSync('/tmp/hub-snapshot.out','utf8').slice(0,1000));process.exit(0)}
+          const f=Array.isArray(j?.fixtures)?j.fixtures:[];
+          const st={}; for(const x of f){const k=String(x?.boardState??x?.status??x?.statusCode??'unknown').toLowerCase();st[k]=(st[k]||0)+1}
+          console.log({ok:j?.ok,version:j?.version,fetchedAt:j?.fetchedAt,ageMs:j?.ageMs,counts:j?.counts,fixtures:f.length,statuses:st});
+          const terms=['hong kong','hongkong','laos','lao pdr','lao'];
+          const hit=x=>terms.some(t=>JSON.stringify(x||'').toLowerCase().includes(t));
+          console.log('HUB_ALIAS_HITS',JSON.stringify(f.filter(hit).map(x=>({fixtureId:x.fixtureId,league:x.league,home:x.home,away:x.away,status:x.status,statusCode:x.statusCode,boardState:x.boardState,minute:x.minute,goals:x.goals,kickoffUtc:x.kickoffUtc})).slice(0,100)));
+          const finished=f.filter(x=>String(x?.boardState??x?.status??'').toLowerCase().includes('finish')||/full.?time|ended|\bft\b/i.test(String(x?.status??x?.statusCode??'')));
+          console.log('HUB_FINISHED_COUNT',finished.length);
+          console.log('HUB_FINISHED_SAMPLE',JSON.stringify(finished.slice(0,30).map(x=>({fixtureId:x.fixtureId,home:x.home,away:x.away,status:x.status,statusCode:x.statusCode,boardState:x.boardState,goals:x.goals}))));
+          NODE
+          echo '=== ENGINE HEALTH ==='; cat /tmp/eng-health.out; echo
+          node - <<'NODE'
+          const fs=require('fs');
+          for(const n of ['statistics','signals','board']){try{const j=JSON.parse(fs.readFileSync('/tmp/eng-'+n+'.out'));console.log('ENG_'+n.toUpperCase(),{ok:j?.ok,total:j?.total,rows:j?.rows?.length,signals:j?.signals?.length,fixtures:j?.fixtures?.length,allCount:j?.allCount});}catch(e){console.log('ENG_'+n.toUpperCase()+'_PARSE_FAIL')}}
+          NODE
