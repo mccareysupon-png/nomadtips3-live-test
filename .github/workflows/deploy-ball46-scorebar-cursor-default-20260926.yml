@@ -1,4 +1,4 @@
-name: Diagnose Ball46 Signal Count Logic 20260927
+name: Deploy Ball46 Visible Signal Match Count 20260927
 
 on:
   push:
@@ -11,41 +11,165 @@ permissions:
 
 env:
   BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
 jobs:
-  inspect-signal-count:
+  patch-visible-signal-count:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
-      - name: Fetch exact live dashboard and signal API read-only
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Mirror exact current Production and create rollback point
         shell: bash
         run: |
           set -euo pipefail
-          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/dashboard-v2-stage3.js?signal-count-diag=${GITHUB_RUN_ID}" -o /tmp/dashboard.js
-          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/signals?signal-count-diag=${GITHUB_RUN_ID}" -o /tmp/signals.json
-          sha256sum /tmp/dashboard.js
+          mkdir -p /tmp/prod /tmp/rollback nomad-live-343
+          fetch_required(){
+            name="$1"; safe="${name//\//_}"
+            code=$(curl -sS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 -o "/tmp/prod/$safe" -w '%{http_code}' "$BALL46_WORKER/$name?visible-signal-count-mirror=${GITHUB_RUN_ID}") || true
+            [ "$code" = 200 ] || { echo "REQUIRED_PROD_ASSET_HTTP_${code}:$name"; exit 1; }
+            test -s "/tmp/prod/$safe" || { echo "REQUIRED_PROD_ASSET_EMPTY:$name"; exit 1; }
+            mkdir -p "$(dirname "nomad-live-343/$name")"
+            cp "/tmp/prod/$safe" "nomad-live-343/$name"
+          }
+          fetch_required index.html
+          python3 - <<'PY' > /tmp/index-assets.txt
+          from pathlib import Path
+          import re
+          h=Path('nomad-live-343/index.html').read_text(errors='ignore')
+          found=set()
+          for x in re.findall(r'''(?:src|href)=["']([^"']+)["']''',h,re.I):
+              x=x.split('?',1)[0].split('#',1)[0].strip().lstrip('./').lstrip('/')
+              if not x or '://' in x or '/' in x: continue
+              if re.search(r'\.(?:js|css|svg|json|png|webp|jpg|jpeg|ico)$',x,re.I): found.add(x)
+          for x in sorted(found): print(x)
+          PY
+          while IFS= read -r f; do [ -n "$f" ] && fetch_required "$f"; done < /tmp/index-assets.txt
+          fetch_required dashboard-v2-stage3.js
+          fetch_required singlepage-workspace-343.css
+          cp nomad-live-343/dashboard-v2-stage3.js /tmp/rollback/dashboard-v2-stage3.js
+          cp nomad-live-343/index.html /tmp/rollback/index.html
+          cp nomad-live-343/singlepage-workspace-343.css /tmp/rollback/singlepage-workspace-343.css
+          sha256sum nomad-live-343/dashboard-v2-stage3.js | awk '{print $1}' > /tmp/js-before.sha
+          sha256sum nomad-live-343/index.html | awk '{print $1}' > /tmp/index-before.sha
+          sha256sum nomad-live-343/singlepage-workspace-343.css | awk '{print $1}' > /tmp/css-before.sha
+          grep -Fq 'BALL46_SCOREBAR_READONLY_20260926' nomad-live-343/dashboard-v2-stage3.js
+          [ "$(grep -Fo 'const activeSignals=num(signalMirror?.activeSignals)??signalMap.size,activeMatches=' nomad-live-343/dashboard-v2-stage3.js | wc -l)" = 1 ] || { echo SIGNAL_COUNT_TARGET_NOT_EXACTLY_ONE; exit 1; }
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/board?visible-signal-count-before=${GITHUB_RUN_ID}" -o /tmp/board-before.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/signals?visible-signal-count-before=${GITHUB_RUN_ID}" -o /tmp/signals-before.json
           node - <<'NODE'
           const fs=require('fs');
-          const j=JSON.parse(fs.readFileSync('/tmp/signals.json','utf8'));
-          console.log('API_SIGNALS=',Array.isArray(j.signals)?j.signals.length:'BAD');
+          const b=JSON.parse(fs.readFileSync('/tmp/board-before.json','utf8'));
+          const s=JSON.parse(fs.readFileSync('/tmp/signals-before.json','utf8'));
+          if(b?.ok!==true||!Array.isArray(b?.fixtures))throw Error('PRE_BOARD_UNHEALTHY');
+          if(!Array.isArray(s?.signals))throw Error('PRE_SIGNALS_UNHEALTHY');
+          const sigIds=new Set(s.signals.map(x=>String(x?.fixtureId??'').trim()).filter(Boolean));
+          const fixtureKey=f=>String(f?.fixtureId??[f?.home?.name,f?.away?.name,f?.kickoffAt??f?.kickoffUtc].join('|'));
+          const visible=b.fixtures.filter(f=>sigIds.has(fixtureKey(f))).length;
+          console.log('PRE_SIGNAL_RECORDS='+s.signals.length,'EXPECTED_VISIBLE_SIGNAL_MATCHES='+visible);
           NODE
-      - name: Print exact count/filter contexts
+
+      - name: Upload immediate pre-change rollback snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-pre-visible-signal-count-${{ github.run_id }}
+          path: /tmp/rollback
+          retention-days: 30
+
+      - name: Patch only signal badge count expression
         shell: bash
         run: |
+          set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
-          s=Path('/tmp/dashboard.js').read_text(errors='ignore')
-          needles=['activeSignals','signalMap','renderCounts','signals.filter','filterSignal','data-signal-count','workspace-signal','signal-count','signalRows','visibleSignals']
-          for n in needles:
-              print('\n===',n,'===')
-              start=0
-              shown=0
-              while True:
-                  i=s.find(n,start)
-                  if i<0: break
-                  print(s[max(0,i-500):min(len(s),i+900)].replace('\n',' '))
-                  shown+=1
-                  if shown>=8: break
-                  start=i+len(n)
-              if shown==0: print('NOT_FOUND')
+          p=Path('nomad-live-343/dashboard-v2-stage3.js')
+          s=p.read_text()
+          old='const activeSignals=num(signalMirror?.activeSignals)??signalMap.size,activeMatches='
+          new='const activeSignals=fixtures.filter(f=>signalFor(f)).length,activeMatches='
+          if s.count(old)!=1:
+              raise SystemExit(f'SIGNAL_COUNT_TARGET_COUNT:{s.count(old)}')
+          s=s.replace(old,new,1)
+          p.write_text(s)
           PY
+          grep -Fq 'const activeSignals=fixtures.filter(f=>signalFor(f)).length,activeMatches=' nomad-live-343/dashboard-v2-stage3.js
+          ! grep -Fq 'const activeSignals=num(signalMirror?.activeSignals)??signalMap.size,activeMatches=' nomad-live-343/dashboard-v2-stage3.js
+          [ "$(sha256sum nomad-live-343/index.html | awk '{print $1}')" = "$(cat /tmp/index-before.sha)" ] || { echo INDEX_CHANGED; exit 1; }
+          [ "$(sha256sum nomad-live-343/singlepage-workspace-343.css | awk '{print $1}')" = "$(cat /tmp/css-before.sha)" ] || { echo CSS_CHANGED; exit 1; }
+          sha256sum nomad-live-343/dashboard-v2-stage3.js | awk '{print $1}' > /tmp/js-after.sha
+          [ "$(cat /tmp/js-after.sha)" != "$(cat /tmp/js-before.sha)" ] || { echo JS_NOT_CHANGED; exit 1; }
+          node --check nomad-live-343/dashboard-v2-stage3.js
+          echo VISIBLE_SIGNAL_COUNT_ONLY_PATCH_READY
+
+      - name: Race guard exact Production assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/dashboard-v2-stage3.js?visible-signal-count-race=${GITHUB_RUN_ID}" -o /tmp/race.js
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/index.html?visible-signal-count-race=${GITHUB_RUN_ID}" -o /tmp/race.index
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/singlepage-workspace-343.css?visible-signal-count-race=${GITHUB_RUN_ID}" -o /tmp/race.css
+          [ "$(sha256sum /tmp/race.js | awk '{print $1}')" = "$(cat /tmp/js-before.sha)" ] || { echo PRODUCTION_JS_CHANGED_DURING_PATCH; exit 1; }
+          [ "$(sha256sum /tmp/race.index | awk '{print $1}')" = "$(cat /tmp/index-before.sha)" ] || { echo PRODUCTION_INDEX_CHANGED_DURING_PATCH; exit 1; }
+          [ "$(sha256sum /tmp/race.css | awk '{print $1}')" = "$(cat /tmp/css-before.sha)" ] || { echo PRODUCTION_CSS_CHANGED_DURING_PATCH; exit 1; }
+
+      - name: Dry run exact current package
+        working-directory: workers/nomadtips3-343-preview
+        shell: bash
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.ball46.jsonc
+
+      - name: Deploy visible-signal-count-only patch
+        id: deploy
+        working-directory: workers/nomadtips3-343-preview
+        shell: bash
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Verify one JS change and backend continuity
+        id: verify
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for n in $(seq 1 20); do
+            if curl -fsS -L --retry 2 --retry-all-errors --retry-delay 1 --max-time 20 "$BALL46_WORKER/dashboard-v2-stage3.js?visible-signal-count-after=${GITHUB_RUN_ID}-${n}" -o /tmp/js.after; then
+              if [ "$(sha256sum /tmp/js.after | awk '{print $1}')" = "$(cat /tmp/js-after.sha)" ]; then ok=1; break; fi
+            fi
+            sleep 3
+          done
+          [ "$ok" = 1 ] || { echo JS_PATCH_NOT_LIVE; exit 1; }
+          grep -Fq 'const activeSignals=fixtures.filter(f=>signalFor(f)).length,activeMatches=' /tmp/js.after
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/index.html?visible-signal-count-index-after=${GITHUB_RUN_ID}" -o /tmp/index.after
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/singlepage-workspace-343.css?visible-signal-count-css-after=${GITHUB_RUN_ID}" -o /tmp/css.after
+          [ "$(sha256sum /tmp/index.after | awk '{print $1}')" = "$(cat /tmp/index-before.sha)" ] || { echo DEPLOYED_INDEX_CHANGED; exit 1; }
+          [ "$(sha256sum /tmp/css.after | awk '{print $1}')" = "$(cat /tmp/css-before.sha)" ] || { echo DEPLOYED_CSS_CHANGED; exit 1; }
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/board?visible-signal-count-final=${GITHUB_RUN_ID}" -o /tmp/board-after.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/signals?visible-signal-count-final=${GITHUB_RUN_ID}" -o /tmp/signals-after.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/statistics?visible-signal-count-final=${GITHUB_RUN_ID}" -o /tmp/stats-after.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const b=JSON.parse(fs.readFileSync('/tmp/board-after.json','utf8'));
+          const s=JSON.parse(fs.readFileSync('/tmp/signals-after.json','utf8'));
+          const t=JSON.parse(fs.readFileSync('/tmp/stats-after.json','utf8'));
+          if(b?.ok!==true||!Array.isArray(b?.fixtures))throw Error('POST_BOARD_UNHEALTHY');
+          if(!Array.isArray(s?.signals))throw Error('POST_SIGNALS_UNHEALTHY');
+          if(t?.ok!==true||!Array.isArray(t?.rows))throw Error('POST_STATS_UNHEALTHY');
+          const sigIds=new Set(s.signals.map(x=>String(x?.fixtureId??'').trim()).filter(Boolean));
+          const fixtureKey=f=>String(f?.fixtureId??[f?.home?.name,f?.away?.name,f?.kickoffAt??f?.kickoffUtc].join('|'));
+          const visible=b.fixtures.filter(f=>sigIds.has(fixtureKey(f))).length;
+          console.log('VISIBLE_SIGNAL_COUNT_PATCH_OK',{fixtures:b.fixtures.length,signalRecords:s.signals.length,visibleSignalMatches:visible,settled:t.rows.length});
+          NODE
+
+      - name: Restore immediate pre-change JS if verification fails
+        if: ${{ failure() && steps.deploy.outcome == 'success' && steps.verify.outcome == 'failure' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp /tmp/rollback/dashboard-v2-stage3.js nomad-live-343/dashboard-v2-stage3.js
+          cd workers/nomadtips3-343-preview
+          npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+          echo RESTORED_IMMEDIATE_PRE_CHANGE_JS
