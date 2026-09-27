@@ -35,60 +35,33 @@ jobs:
           s=Path('/tmp/dashboard.js').read_text(errors='ignore')
           for needle in ['function scheduleRichRender','function applyRichOdds','function renderBoard','host.innerHTML=','function renderFeatured','setInterval(load,POLL_MS)']:
               print('\n===',needle,'===')
-              start=0; shown=0
-              while True:
-                  i=s.find(needle,start)
-                  if i<0: break
-                  print(s[max(0,i-500):min(len(s),i+3500)].replace('\n',' '))
-                  shown+=1
-                  if shown>=4: break
-                  start=i+len(needle)
-              if shown==0: print('NOT_FOUND')
+              i=s.find(needle)
+              print('NOT_FOUND' if i<0 else s[max(0,i-500):min(len(s),i+3500)].replace('\n',' '))
           PY
-      - name: Read active Cloudflare deployment and runtime module fingerprints
+      - name: Read active Cloudflare deployment and runtime metadata
         shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PY'
-          import hashlib, json, os, urllib.request
+          import json, os, urllib.request
           account=os.environ['CLOUDFLARE_ACCOUNT_ID']; token=os.environ['CLOUDFLARE_API_TOKEN']
           hdr={'Authorization':f'Bearer {token}','Accept':'application/json'}
-          bases=[
-            f'https://api.cloudflare.com/client/v4/accounts/{account}/workers/scripts/ball46-production/deployments',
-            f'https://api.cloudflare.com/client/v4/accounts/{account}/workers/workers/ball46-production/deployments',
-          ]
-          payload=None
-          for url in bases:
-              try:
-                  with urllib.request.urlopen(urllib.request.Request(url,headers=hdr),timeout=30) as r: p=json.load(r)
-                  if p.get('success'):
-                      payload=p; print('DEPLOYMENTS_ENDPOINT=',url); break
-              except Exception as e:
-                  print('ENDPOINT_FAIL=',url,type(e).__name__,str(e))
-          if not payload: raise SystemExit('NO_DEPLOYMENTS_ENDPOINT')
-          result=payload.get('result') or []
-          print('DEPLOYMENTS_RAW=',json.dumps(result)[:6000])
-          versions=[]
-          def walk(x):
-              if isinstance(x,dict):
-                  for k,v in x.items():
-                      if k in ('version_id','versionId') and isinstance(v,str): versions.append(v)
-                      walk(v)
-              elif isinstance(x,list):
-                  for v in x: walk(v)
-          walk(result)
-          if not versions: raise SystemExit('NO_VERSION_ID')
-          vid=versions[0]
+          dep=f'https://api.cloudflare.com/client/v4/accounts/{account}/workers/scripts/ball46-production/deployments'
+          with urllib.request.urlopen(urllib.request.Request(dep,headers=hdr),timeout=30) as r: p=json.load(r)
+          ds=(p.get('result') or {}).get('deployments') or []
+          if not ds: raise SystemExit('NO_DEPLOYMENT')
+          versions=ds[0].get('versions') or []
+          if not versions: raise SystemExit('NO_VERSION')
+          vid=versions[0].get('version_id')
           print('ACTIVE_VERSION=',vid)
           url=f'https://api.cloudflare.com/client/v4/accounts/{account}/workers/workers/ball46-production/versions/{vid}?include=modules'
-          with urllib.request.urlopen(urllib.request.Request(url,headers=hdr),timeout=30) as r: p=json.load(r)
-          r=p.get('result') or {}; mods=r.get('modules') or []
-          fps=[]
-          for m in mods:
-              c=m.get('content')
-              if isinstance(c,str): b=c.encode()
-              elif isinstance(c,(bytes,bytearray)): b=bytes(c)
-              else: b=json.dumps(c,sort_keys=True,separators=(',',':')).encode()
-              fps.append({'name':m.get('name'),'content_type':m.get('content_type'),'sha256':hashlib.sha256(b).hexdigest(),'bytes':len(b)})
-          print('RUNTIME_FINGERPRINTS=',json.dumps(fps,sort_keys=True))
+          with urllib.request.urlopen(urllib.request.Request(url,headers=hdr),timeout=30) as r: vp=json.load(r)
+          result=vp.get('result') or {}
+          print('VERSION_KEYS=',sorted(result.keys()))
+          print('VERSION_ETAG=',result.get('etag'))
+          print('VERSION_ASSETS=',json.dumps(result.get('assets') or {},sort_keys=True))
+          clean=[]
+          for m in result.get('modules') or []:
+              clean.append({k:v for k,v in m.items() if k!='content'})
+          print('MODULE_META=',json.dumps(clean,sort_keys=True))
           PY
