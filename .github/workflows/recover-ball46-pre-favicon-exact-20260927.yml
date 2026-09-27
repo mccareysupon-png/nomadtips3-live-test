@@ -1,0 +1,82 @@
+name: RECOVER - Ball46 Pre-Favicon Exact 20260927
+
+on:
+  push:
+    branches:
+      - recovery/ball46-pre-favicon-exact-20260927
+    paths:
+      - '.github/workflows/recover-ball46-pre-favicon-exact-20260927.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  recover:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Mirror CURRENT production and restore only pre-favicon index bytes
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL https://raw.githubusercontent.com/mccareysupon-png/nomadtips3-live-test/3aec613148e618b36af7d39f33ed0bff9e021b40/.github/scripts/ball46_favicon_cachefix_v3_20260927.sh -o /tmp/recover.sh
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('/tmp/recover.sh'); s=p.read_text()
+          replacements=[
+            ("WWW=\"https://www.ball46.com\"\nWORKER=\"ball46-production\"", "WWW=\"https://www.ball46.com\"\nDIRECT=\"https://ball46-production.mccarey-supon.workers.dev\"\nWORKER=\"ball46-production\""),
+            ("    schedules=s.get('result') or []", "    raw_schedules=s.get('result') or []\n    schedules=raw_schedules.get('schedules',[]) if isinstance(raw_schedules,dict) else raw_schedules"),
+            ("paths=set(root.joinpath('live-paths.txt').read_text().splitlines()); nonce=os.environ.get('GITHUB_RUN_ID','run')+'-crawl-'+str(time.time_ns())", "paths=set(root.joinpath('live-paths.txt').read_text().splitlines()); known_missing=set(); nonce=os.environ.get('GITHUB_RUN_ID','run')+'-crawl-'+str(time.time_ns())"),
+            ("    new=sorted(refs-paths)", "    new=sorted(refs-paths-known_missing)"),
+            ("    paths|=added\n    # A referenced local file that does not exist in Production is a hard stop.\n    if failed: raise SystemExit('REFERENCED_LIVE_ASSET_MISSING:'+repr(failed))", "    paths|=added\n    known_missing|=set(failed)\n    root.joinpath('baseline-404-references.txt').write_text('\\n'.join(sorted(known_missing))+'\\n')"),
+            ("missing=sorted(refs-paths);print('FINAL_REFERENCED_MISSING=',missing)\nif missing:raise SystemExit('REFERENCE_CLOSURE_FAILED')", "missing=sorted(refs-paths); unexpected=sorted(set(missing)-known_missing); print('FINAL_BASELINE_404_REFERENCES=',missing); print('FINAL_UNEXPECTED_MISSING=',unexpected)\nif unexpected:raise SystemExit('REFERENCE_CLOSURE_FAILED')"),
+            ("ui-sync-fixes-343.js ui-sync-fixes-343.css", "ui-sync-fixes-343-v2.js ui-sync-fixes-343.css"),
+            ("new='<link rel=\"icon\" href=\"/ball46-logo.svg?v=ball46-tab-logo-20260927c\" type=\"image/svg+xml\">'", "new='<link rel=\"icon\" href=\"/ball46-logo.svg\" type=\"image/svg+xml\">'"),
+            ("grep -Fq '<link rel=\"icon\" href=\"/ball46-logo.svg?v=ball46-tab-logo-20260927c\" type=\"image/svg+xml\">' \"$AFTER/index.html\"", "grep -Fq '<link rel=\"icon\" href=\"/ball46-logo.svg\" type=\"image/svg+xml\">' \"$AFTER/index.html\"")
+          ]
+          for old,new in replacements:
+              n=s.count(old)
+              if n!=1: raise SystemExit('PATCH_TARGET_COUNT_'+str(n)+':'+old[:120])
+              s=s.replace(old,new,1)
+          old="base='https://www.ball46.com/'"
+          n=s.count(old)
+          if n!=2: raise SystemExit('DIRECT_BASE_TARGET_COUNT:'+str(n))
+          s=s.replace(old,"base='https://ball46-production.mccarey-supon.workers.dev/'")
+          old='"$WWW/$rel?favicon-race=${GITHUB_RUN_ID}-${RANDOM}"'
+          if s.count(old)!=1: raise SystemExit('RACE_URL_TARGET_BAD')
+          s=s.replace(old,'"$DIRECT/$rel?favicon-race=${GITHUB_RUN_ID}-${RANDOM}"',1)
+          old='"$WWW/$rel?favicon-verify=${GITHUB_RUN_ID}-${pass}-${RANDOM}"'
+          if s.count(old)!=1: raise SystemExit('VERIFY_URL_TARGET_BAD')
+          s=s.replace(old,'"$DIRECT/$rel?favicon-verify=${GITHUB_RUN_ID}-${pass}-${RANDOM}"',1)
+          p.write_text(s)
+          print('RECOVERY_PATCH_PREP_OK')
+          PY
+          bash -n /tmp/recover.sh
+          bash /tmp/recover.sh
+          nonce="${GITHUB_RUN_ID}-$(date +%s%N)"
+          curl -fsS -L --retry 4 --retry-all-errors --max-time 30 -H 'Cache-Control: no-cache' "https://www.ball46.com/index.html?recover-public=$nonce" -o /tmp/b46-favicon-v3/public-index.html
+          grep -Fq '<link rel="icon" href="/ball46-logo.svg" type="image/svg+xml">' /tmp/b46-favicon-v3/public-index.html
+          ! grep -Fq 'ball46-tab-logo-20260927c' /tmp/b46-favicon-v3/public-index.html
+          count=$(grep -Eio '<link[^>]+rel=["'"'](shortcut[[:space:]]+)?icon["'"'][^>]*>' /tmp/b46-favicon-v3/public-index.html | wc -l)
+          [ "$count" -eq 1 ] || { echo "PUBLIC_ICON_TAG_COUNT=$count"; exit 1; }
+          node - <<'NODE'
+          const https=require('https');
+          function get(path){return new Promise((resolve,reject)=>https.get('https://www.ball46.com'+path,res=>{let b='';res.on('data',d=>b+=d);res.on('end',()=>{try{resolve(JSON.parse(b))}catch(e){reject(e)}})}).on('error',reject))}
+          (async()=>{const [b,s,t]=await Promise.all([get('/api/engine/board?recover=1'),get('/api/engine/signals?recover=1'),get('/api/engine/statistics?recover=1')]);if(b?.ok!==true||!Array.isArray(b.fixtures))throw Error('BOARD_BAD');if(!Array.isArray(s.signals))throw Error('SIGNALS_BAD');if(t?.ok!==true||!Array.isArray(t.rows))throw Error('STATS_BAD');console.log('RECOVERY_API_OK',{fixtures:b.fixtures.length,signals:s.signals.length,statistics:t.rows.length});})().catch(e=>{console.error(e);process.exit(1)})
+          NODE
+          echo BALL46_PRE_FAVICON_EXACT_RESTORED
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-pre-favicon-recovery-${{ github.run_id }}
+          path: /tmp/b46-favicon-v3
+          if-no-files-found: ignore
+          retention-days: 30
