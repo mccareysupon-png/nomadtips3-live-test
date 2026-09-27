@@ -1,0 +1,13 @@
+Ball46 Production Anchor — REFERENCE ONLY
+
+Good production: 2026-09-26 18:50 ICT
+Cloudflare Worker Version: 8e95c148-ea19-4ed1-88a1-2f14565c6888
+Source deployment run: 36240058105
+Verified restore run: 36281241742
+Source workflow commit: 6276320261cdc10a3835b27e81850c3d4f17f126
+
+RULES
+- This file is reference only. It must never trigger a deployment.
+- Do not deploy an older or historical source branch to Ball46 Production.
+- UI/mobile changes must not redeploy the whole Worker from an old source tree.
+- Before any Production change, capture the exact currently-working Production state and verify the intended surface only.
