@@ -68,3 +68,5 @@ jobs:
           if(h?.ok!==true||b?.ok!==true||!Array.isArray(b?.fixtures)||!Array.isArray(s?.signals)||t?.ok!==true||!Array.isArray(t?.rows)) throw Error('BACKEND_ROUTE_FAIL');
           console.log('BALL46_USER_GOOD_WINDOW_RESTORED',{indexSha:process.env.EXPECT_INDEX_SHA,fixtures:b.fixtures.length,pending:s.signals.length,settled:t.rows.length});
           NODE
+
+# retrigger requested restore 2026-09-27
