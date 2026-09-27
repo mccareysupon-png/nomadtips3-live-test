@@ -1,0 +1,29 @@
+name: INSPECT - Ball46 Favicon 20260927
+
+on:
+  push:
+    branches:
+      - diag/ball46-favicon-current-20260927
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect current Ball46 production favicon only
+        shell: bash
+        run: bash .github/scripts/inspect_ball46_favicon_20260927.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-favicon-diag-${{ github.run_id }}
+          path: /tmp/b46-favicon-diag
+          if-no-files-found: ignore
+          retention-days: 7
