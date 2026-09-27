@@ -1,0 +1,45 @@
+name: Diagnose Ball46 LIVE Content Stability 20260927
+
+on:
+  push:
+    branches: [ops/ball46-live-content-stability-20260927]
+    paths:
+      - '.github/workflows/diag-ball46-live-content-stability-20260927.yml'
+
+permissions:
+  contents: read
+
+env:
+  BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
+
+jobs:
+  inspect-live-render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Fetch exact current Production JS read-only
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/dashboard-v2-stage3.js?live-stability-diag=${GITHUB_RUN_ID}" -o /tmp/dashboard.js
+          sha256sum /tmp/dashboard.js
+          node --check /tmp/dashboard.js
+      - name: Inspect only LIVE board redraw contexts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('/tmp/dashboard.js').read_text(errors='ignore')
+          for needle in ['function scheduleRichRender','function applyRichOdds','function renderBoard','host.innerHTML=','function renderFeatured','setInterval(load,POLL_MS)']:
+              print('\n===',needle,'===')
+              start=0; shown=0
+              while True:
+                  i=s.find(needle,start)
+                  if i<0: break
+                  print(s[max(0,i-500):min(len(s),i+3500)].replace('\n',' '))
+                  shown+=1
+                  if shown>=4: break
+                  start=i+len(needle)
+              if shown==0: print('NOT_FOUND')
+          PY
