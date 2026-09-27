@@ -1,4 +1,4 @@
-name: Diagnose Ball46 LIVE Content Stability 20260927
+name: Deploy Ball46 LIVE Content DOM Stability 20260927
 
 on:
   push:
@@ -13,20 +13,172 @@ env:
   BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
   CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
   CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  GH_TOKEN: ${{ github.token }}
 
 jobs:
-  inspect-live-render:
+  live-content-stability:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 25
     steps:
-      - name: Fetch exact current Production JS read-only
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Capture exact active Production package and runtime
         shell: bash
         run: |
           set -euo pipefail
-          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/dashboard-v2-stage3.js?live-stability-diag=${GITHUB_RUN_ID}" -o /tmp/dashboard.js
-          sha256sum /tmp/dashboard.js
-          node --check /tmp/dashboard.js
-      - name: Read exact active runtime metadata
+          rm -rf /tmp/ball46-assets /tmp/ball46-assets-before /tmp/ball46-runtime /tmp/ball46-backup
+          mkdir -p /tmp/ball46-assets /tmp/ball46-runtime /tmp/ball46-backup
+          python3 - <<'PY'
+          import base64, hashlib, json, os, pathlib, urllib.request
+          account=os.environ['CLOUDFLARE_ACCOUNT_ID']; token=os.environ['CLOUDFLARE_API_TOKEN']
+          hdr={'Authorization':f'Bearer {token}','Accept':'application/json'}
+          dep=f'https://api.cloudflare.com/client/v4/accounts/{account}/workers/scripts/ball46-production/deployments'
+          with urllib.request.urlopen(urllib.request.Request(dep,headers=hdr),timeout=30) as r: p=json.load(r)
+          ds=(p.get('result') or {}).get('deployments') or []
+          if not ds or not ds[0].get('versions'): raise SystemExit('NO_ACTIVE_DEPLOYMENT')
+          vid=ds[0]['versions'][0]['version_id']
+          pathlib.Path('/tmp/pre-version.txt').write_text(vid)
+          url=f'https://api.cloudflare.com/client/v4/accounts/{account}/workers/workers/ball46-production/versions/{vid}?include=modules'
+          with urllib.request.urlopen(urllib.request.Request(url,headers=hdr),timeout=30) as r: vp=json.load(r)
+          result=vp.get('result') or {}
+          mods=result.get('modules') or []
+          if len(mods)!=1 or mods[0].get('name')!='index.js' or not mods[0].get('content_base64'):
+              raise SystemExit('ACTIVE_RUNTIME_MODULE_UNEXPECTED')
+          runtime=base64.b64decode(mods[0]['content_base64'])
+          pathlib.Path('/tmp/ball46-runtime/index.js').write_bytes(runtime)
+          pathlib.Path('/tmp/runtime-before.sha').write_text(hashlib.sha256(runtime).hexdigest())
+          meta={k:result.get(k) for k in ['main_module','compatibility_date','bindings','assets','usage_model']}
+          pathlib.Path('/tmp/runtime-meta-before.json').write_text(json.dumps(meta,sort_keys=True))
+          if result.get('compatibility_date')!='2026-09-09': raise SystemExit('COMPATIBILITY_DATE_CHANGED')
+          expected={
+            ('ASSETS','assets','', ''),
+            ('ENGINE','service','nomadtips3-engine-343','production'),
+            ('FULL_MARKET','service','nomadtips3-full-market-343-ball46','production'),
+            ('HUB','service','nomadtips3-5usd-hub-343','production'),
+          }
+          got=set()
+          for b in result.get('bindings') or []:
+              got.add((str(b.get('name') or ''),str(b.get('type') or ''),str(b.get('service') or ''),str(b.get('environment') or '')))
+          if got!=expected: raise SystemExit('ACTIVE_BINDINGS_CHANGED:'+repr(got))
+          print('PRE_VERSION='+vid)
+          print('RUNTIME_SHA256='+hashlib.sha256(runtime).hexdigest())
+          PY
+          python3 - <<'PY'
+          import json, os, pathlib, urllib.request
+          sha='a0024d01700e99aad7847c66ff54cc8ce065cf37'
+          url=f'https://api.github.com/repos/mccareysupon-png/nomadtips3-live-test/git/trees/{sha}?recursive=1'
+          req=urllib.request.Request(url,headers={'Authorization':f"Bearer {os.environ['GH_TOKEN']}",'Accept':'application/vnd.github+json'})
+          with urllib.request.urlopen(req,timeout=30) as r: p=json.load(r)
+          prefix='nomad-live-343/'
+          paths=sorted(x['path'][len(prefix):] for x in p.get('tree',[]) if x.get('type')=='blob' and x.get('path','').startswith(prefix))
+          if len(paths)!=81: raise SystemExit(f'ASSET_PATH_COUNT_CHANGED:{len(paths)}')
+          pathlib.Path('/tmp/asset-paths.txt').write_text('\n'.join(paths)+'\n')
+          print('ASSET_PATHS='+str(len(paths)))
+          PY
+          while IFS= read -r rel; do
+            [ -n "$rel" ] || continue
+            mkdir -p "/tmp/ball46-assets/$(dirname "$rel")"
+            code=$(curl -sS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 30 -o "/tmp/ball46-assets/$rel" -w '%{http_code}' "$BALL46_WORKER/$rel?live-dom-mirror=${GITHUB_RUN_ID}") || true
+            [ "$code" = 200 ] || { echo "ASSET_FETCH_FAILED_${code}:$rel"; exit 1; }
+            test -s "/tmp/ball46-assets/$rel" || { echo "ASSET_EMPTY:$rel"; exit 1; }
+          done < /tmp/asset-paths.txt
+          cp -a /tmp/ball46-assets /tmp/ball46-assets-before
+          cp /tmp/ball46-runtime/index.js /tmp/ball46-backup/index.js
+          cp /tmp/pre-version.txt /tmp/runtime-before.sha /tmp/runtime-meta-before.json /tmp/asset-paths.txt /tmp/ball46-backup/
+          cp -a /tmp/ball46-assets-before /tmp/ball46-backup/assets
+          sha256sum /tmp/ball46-assets/dashboard-v2-stage3.js | awk '{print $1}' > /tmp/dashboard-before.sha
+          grep -Fq 'const activeSignals=fixtures.filter(f=>signalFor(f)).length,activeMatches=' /tmp/ball46-assets/dashboard-v2-stage3.js
+          grep -Fq 'BALL46_SCOREBAR_READONLY_20260926' /tmp/ball46-assets/dashboard-v2-stage3.js
+          [ "$(grep -Fo 'function renderBoard(){' /tmp/ball46-assets/dashboard-v2-stage3.js | wc -l)" = 1 ]
+          echo "DASHBOARD_BEFORE=$(cat /tmp/dashboard-before.sha)"
+
+      - name: Upload immediate exact rollback package
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-pre-live-dom-stability-${{ github.run_id }}
+          path: /tmp/ball46-backup
+          retention-days: 30
+
+      - name: Patch only LIVE board DOM replacement behavior
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('/tmp/ball46-assets/dashboard-v2-stage3.js')
+          s=p.read_text()
+          marker='BALL46_LIVE_STABLE_DOM_20260927'
+          if marker in s: raise SystemExit('PATCH_ALREADY_PRESENT')
+          start=s.find('function renderBoard(){')
+          end=s.find(' function setText(',start)
+          if start<0 or end<0: raise SystemExit('RENDER_BOARD_BOUNDARY_NOT_FOUND')
+          old=s[start:end]
+          if old.count('host.innerHTML=')!=1: raise SystemExit('RENDER_BOARD_INNERHTML_COUNT_'+str(old.count('host.innerHTML=')))
+          assign=old.find('host.innerHTML=')
+          listener=old.find(";$$('[data-match-id]').forEach",assign)
+          if assign<0 or listener<0: raise SystemExit('RENDER_BOARD_TAIL_NOT_FOUND')
+          expr=old[assign+len('host.innerHTML='):listener]
+          prefix=old[:assign]
+          helpers=r'''/* BALL46_LIVE_STABLE_DOM_20260927 — preserve LIVE board wrappers/rows when structure is unchanged */
+          const boardRowBindings=new WeakSet(),boardExpandBindings=new WeakSet();
+          function boardStructureSignature(root){const rows=[...root.querySelectorAll('[data-match-id]')];if(!rows.length)return'';const rowSig=rows.map(el=>{const sec=el.closest('[data-status-section]'),league=el.closest('.league-block')?.querySelector('.league-head strong');return`${sec?.dataset.statusSection||''}\u001f${league?.textContent||''}\u001f${el.dataset.matchId||''}`}).join('\u001e'),more=[...root.querySelectorAll('[data-expand-group]')].map(el=>el.dataset.expandGroup||'').join('\u001e');return`${rowSig}\u001d${more}`}
+          function syncBoardRow(current,next){const wanted=new Set([...next.attributes].map(a=>a.name));for(const a of [...current.attributes])if(!wanted.has(a.name))current.removeAttribute(a.name);for(const a of [...next.attributes])if(current.getAttribute(a.name)!==a.value)current.setAttribute(a.name,a.value);if(current.innerHTML!==next.innerHTML)current.innerHTML=next.innerHTML}
+          function patchStableBoard(host,nextHtml){const tpl=document.createElement('template');tpl.innerHTML=nextHtml;const nextRoot=tpl.content,currentRows=[...host.querySelectorAll('[data-match-id]')],nextRows=[...nextRoot.querySelectorAll('[data-match-id]')];if(!currentRows.length||currentRows.length!==nextRows.length)return false;if(boardStructureSignature(host)!==boardStructureSignature(nextRoot))return false;const currentStatus=[...host.querySelectorAll('.status-head>b')],nextStatus=[...nextRoot.querySelectorAll('.status-head>b')],currentLeague=[...host.querySelectorAll('.league-head>span')],nextLeague=[...nextRoot.querySelectorAll('.league-head>span')],currentMore=[...host.querySelectorAll('[data-expand-group]')],nextMore=[...nextRoot.querySelectorAll('[data-expand-group]')];if(currentStatus.length!==nextStatus.length||currentLeague.length!==nextLeague.length||currentMore.length!==nextMore.length)return false;for(let i=0;i<currentRows.length;i++)if(currentRows[i].outerHTML!==nextRows[i].outerHTML)syncBoardRow(currentRows[i],nextRows[i]);for(let i=0;i<currentStatus.length;i++)if(currentStatus[i].textContent!==nextStatus[i].textContent)currentStatus[i].textContent=nextStatus[i].textContent;for(let i=0;i<currentLeague.length;i++)if(currentLeague[i].textContent!==nextLeague[i].textContent)currentLeague[i].textContent=nextLeague[i].textContent;for(let i=0;i<currentMore.length;i++)if(currentMore[i].textContent!==nextMore[i].textContent)currentMore[i].textContent=nextMore[i].textContent;return true}
+          function bindBoardInteractions(host){host.querySelectorAll('[data-match-id]').forEach(el=>{if(boardRowBindings.has(el))return;boardRowBindings.add(el);const choose=()=>{selectedId=el.dataset.matchId;renderBoard();renderFeatured()};el.addEventListener('click',choose);el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();choose()}})});host.querySelectorAll('[data-expand-group]').forEach(btn=>{if(boardExpandBindings.has(btn))return;boardExpandBindings.add(btn);btn.addEventListener('click',()=>{const k=btn.dataset.expandGroup;expandedGroups.has(k)?expandedGroups.delete(k):expandedGroups.add(k);renderBoard()})})}
+          '''
+          new_render=prefix+'const nextHtml='+expr+';if(!patchStableBoard(host,nextHtml))host.innerHTML=nextHtml;bindBoardInteractions(host)}'
+          s=s[:start]+helpers+new_render+s[end:]
+          p.write_text(s)
+          print('OLD_RENDER_BYTES',len(old),'NEW_RENDER_BYTES',len(new_render),'TOTAL_BYTES',len(s))
+          PY
+          node --check /tmp/ball46-assets/dashboard-v2-stage3.js
+          grep -Fq 'BALL46_LIVE_STABLE_DOM_20260927' /tmp/ball46-assets/dashboard-v2-stage3.js
+          grep -Fq 'if(!patchStableBoard(host,nextHtml))host.innerHTML=nextHtml' /tmp/ball46-assets/dashboard-v2-stage3.js
+          grep -Fq 'const activeSignals=fixtures.filter(f=>signalFor(f)).length,activeMatches=' /tmp/ball46-assets/dashboard-v2-stage3.js
+          sha256sum /tmp/ball46-assets/dashboard-v2-stage3.js | awk '{print $1}' > /tmp/dashboard-after.sha
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib
+          before=Path('/tmp/ball46-assets-before'); after=Path('/tmp/ball46-assets')
+          changed=[]
+          for rel in Path('/tmp/asset-paths.txt').read_text().splitlines():
+              a=hashlib.sha256((before/rel).read_bytes()).hexdigest(); b=hashlib.sha256((after/rel).read_bytes()).hexdigest()
+              if a!=b: changed.append(rel)
+          print('CHANGED_ASSETS=',changed)
+          if changed!=['dashboard-v2-stage3.js']: raise SystemExit('PATCH_TOUCHED_UNEXPECTED_ASSETS:'+repr(changed))
+          PY
+
+      - name: Build deployment config from exact active runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > /tmp/ball46-runtime/wrangler.jsonc <<'EOF'
+          {
+            "name": "ball46-production",
+            "main": "./index.js",
+            "compatibility_date": "2026-09-09",
+            "no_bundle": true,
+            "services": [
+              {"binding":"ENGINE","service":"nomadtips3-engine-343","environment":"production"},
+              {"binding":"FULL_MARKET","service":"nomadtips3-full-market-343-ball46","environment":"production"},
+              {"binding":"HUB","service":"nomadtips3-5usd-hub-343","environment":"production"}
+            ],
+            "assets": {
+              "directory": "/tmp/ball46-assets",
+              "binding": "ASSETS",
+              "html_handling": "none",
+              "not_found_handling": "none",
+              "run_worker_first": true
+            },
+            "triggers": {"crons":["* * * * *"]}
+          }
+          EOF
+          cd /tmp/ball46-runtime
+          npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.jsonc
+
+      - name: Race guard exact active version before deploy
         shell: bash
         run: |
           set -euo pipefail
@@ -34,16 +186,89 @@ jobs:
           import json, os, urllib.request
           account=os.environ['CLOUDFLARE_ACCOUNT_ID']; token=os.environ['CLOUDFLARE_API_TOKEN']
           hdr={'Authorization':f'Bearer {token}','Accept':'application/json'}
+          url=f'https://api.cloudflare.com/client/v4/accounts/{account}/workers/scripts/ball46-production/deployments'
+          with urllib.request.urlopen(urllib.request.Request(url,headers=hdr),timeout=30) as r: p=json.load(r)
+          current=((p.get('result') or {}).get('deployments') or [])[0]['versions'][0]['version_id']
+          expected=open('/tmp/pre-version.txt').read().strip()
+          print('RACE_CURRENT='+current,'EXPECTED='+expected)
+          if current!=expected: raise SystemExit('PRODUCTION_VERSION_CHANGED_DURING_PREP')
+          PY
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/dashboard-v2-stage3.js?live-dom-race=${GITHUB_RUN_ID}" -o /tmp/dashboard-race.js
+          [ "$(sha256sum /tmp/dashboard-race.js | awk '{print $1}')" = "$(cat /tmp/dashboard-before.sha)" ] || { echo DASHBOARD_CHANGED_DURING_PREP; exit 1; }
+
+      - name: Deploy exact runtime plus one LIVE asset patch
+        id: deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd /tmp/ball46-runtime
+          npx --yes wrangler@4.92.0 deploy --config wrangler.jsonc
+
+      - name: Verify runtime identical and only dashboard asset changed
+        id: verify
+        shell: bash
+        run: |
+          set -euo pipefail
+          sleep 4
+          python3 - <<'PY'
+          import base64, hashlib, json, os, pathlib, urllib.request
+          account=os.environ['CLOUDFLARE_ACCOUNT_ID']; token=os.environ['CLOUDFLARE_API_TOKEN']
+          hdr={'Authorization':f'Bearer {token}','Accept':'application/json'}
           dep=f'https://api.cloudflare.com/client/v4/accounts/{account}/workers/scripts/ball46-production/deployments'
           with urllib.request.urlopen(urllib.request.Request(dep,headers=hdr),timeout=30) as r: p=json.load(r)
           ds=(p.get('result') or {}).get('deployments') or []
           vid=ds[0]['versions'][0]['version_id']
+          pathlib.Path('/tmp/post-version.txt').write_text(vid)
           url=f'https://api.cloudflare.com/client/v4/accounts/{account}/workers/workers/ball46-production/versions/{vid}?include=modules'
           with urllib.request.urlopen(urllib.request.Request(url,headers=hdr),timeout=30) as r: vp=json.load(r)
-          result=vp.get('result') or {}
-          print('ACTIVE_VERSION=',vid)
-          for k in ['main_module','compatibility_date','usage_model','bindings','assets','annotations','env']:
-              print(k.upper()+'=',json.dumps(result.get(k),sort_keys=True))
-          for m in result.get('modules') or []:
-              print('MODULE=',json.dumps({k:v for k,v in m.items() if k not in ('content','content_base64')},sort_keys=True))
+          result=vp.get('result') or {}; mods=result.get('modules') or []
+          if len(mods)!=1 or not mods[0].get('content_base64'): raise SystemExit('POST_RUNTIME_MODULE_UNEXPECTED')
+          runtime=base64.b64decode(mods[0]['content_base64']); postsha=hashlib.sha256(runtime).hexdigest(); presha=pathlib.Path('/tmp/runtime-before.sha').read_text().strip()
+          print('POST_VERSION='+vid,'PRE_RUNTIME_SHA='+presha,'POST_RUNTIME_SHA='+postsha)
+          if postsha!=presha: raise SystemExit('WORKER_RUNTIME_CHANGED')
+          before=json.loads(pathlib.Path('/tmp/runtime-meta-before.json').read_text())
+          after={k:result.get(k) for k in ['main_module','compatibility_date','bindings','assets','usage_model']}
+          if json.dumps(before,sort_keys=True)!=json.dumps(after,sort_keys=True):
+              print('BEFORE_META=',json.dumps(before,sort_keys=True)); print('AFTER_META=',json.dumps(after,sort_keys=True)); raise SystemExit('WORKER_RUNTIME_METADATA_CHANGED')
           PY
+          rm -rf /tmp/ball46-assets-after && mkdir -p /tmp/ball46-assets-after
+          while IFS= read -r rel; do
+            [ -n "$rel" ] || continue
+            mkdir -p "/tmp/ball46-assets-after/$(dirname "$rel")"
+            code=$(curl -sS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 30 -o "/tmp/ball46-assets-after/$rel" -w '%{http_code}' "$BALL46_WORKER/$rel?live-dom-after=${GITHUB_RUN_ID}") || true
+            [ "$code" = 200 ] || { echo "POST_ASSET_FETCH_FAILED_${code}:$rel"; exit 1; }
+          done < /tmp/asset-paths.txt
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib
+          pre=Path('/tmp/ball46-assets-before'); patched=Path('/tmp/ball46-assets'); live=Path('/tmp/ball46-assets-after')
+          bad=[]
+          for rel in Path('/tmp/asset-paths.txt').read_text().splitlines():
+              got=hashlib.sha256((live/rel).read_bytes()).hexdigest()
+              want=hashlib.sha256(((patched if rel=='dashboard-v2-stage3.js' else pre)/rel).read_bytes()).hexdigest()
+              if got!=want: bad.append(rel)
+          print('POST_ASSET_MISMATCHES=',bad)
+          if bad: raise SystemExit('POST_ASSET_MISMATCH:'+repr(bad))
+          PY
+          grep -Fq 'BALL46_LIVE_STABLE_DOM_20260927' /tmp/ball46-assets-after/dashboard-v2-stage3.js
+          node --check /tmp/ball46-assets-after/dashboard-v2-stage3.js
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/board?live-dom-verify=${GITHUB_RUN_ID}" -o /tmp/board.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/signals?live-dom-verify=${GITHUB_RUN_ID}" -o /tmp/signals.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/statistics?live-dom-verify=${GITHUB_RUN_ID}" -o /tmp/stats.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const b=JSON.parse(fs.readFileSync('/tmp/board.json','utf8')),s=JSON.parse(fs.readFileSync('/tmp/signals.json','utf8')),t=JSON.parse(fs.readFileSync('/tmp/stats.json','utf8'));
+          if(b?.ok!==true||!Array.isArray(b?.fixtures))throw Error('BOARD_UNHEALTHY');
+          if(!Array.isArray(s?.signals))throw Error('SIGNALS_UNHEALTHY');
+          if(t?.ok!==true||!Array.isArray(t?.rows))throw Error('STATS_UNHEALTHY');
+          console.log('LIVE_DOM_STABILITY_VERIFY_OK',{fixtures:b.fixtures.length,signals:s.signals.length,settled:t.rows.length});
+          NODE
+
+      - name: Restore exact pre-change version if verification fails
+        if: ${{ failure() && steps.deploy.outcome == 'success' && steps.verify.outcome == 'failure' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          pre=$(cat /tmp/pre-version.txt)
+          npx --yes wrangler@4.92.0 rollback "$pre" --name ball46-production --message "Auto restore exact pre LIVE DOM stability version"
+          echo "RESTORED_EXACT_PRE_VERSION=$pre"
