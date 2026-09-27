@@ -1,0 +1,29 @@
+name: DIAG Ball46 good-window versions 20260927
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/diag-ball46-good-window-versions-20260927.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  diag:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: List Ball46 versions in exact user-good window
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.92.0 versions list --name ball46-production --json > /tmp/versions.json
+          node - <<'NODE'
+          const fs=require('fs');const raw=JSON.parse(fs.readFileSync('/tmp/versions.json'));const a=Array.isArray(raw)?raw:(raw?.versions||raw?.result||[]);
+          console.log('VERSION_COUNT',a.length);
+          for(const v of a.slice(0,40)) console.log(JSON.stringify(v));
+          NODE
