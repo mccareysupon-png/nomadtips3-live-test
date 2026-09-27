@@ -14,39 +14,33 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - name: Inspect live engine and hub read-only
+      - name: Correlate pending signals with provider finals
         shell: bash
         run: |
           set -euo pipefail
           BASE='https://ball46-production.mccarey-supon.workers.dev/api/engine'
           HUB='https://nomadtips3-5usd-hub-343.mccarey-supon.workers.dev'
-          for ep in health board signals statistics; do
-            code=$(curl -sS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 30 -o "/tmp/$ep.json" -w '%{http_code}' "$BASE/$ep?diag=${GITHUB_RUN_ID}-$(date +%s%N)" || true)
-            echo "ENGINE_$ep HTTP=$code BYTES=$(wc -c </tmp/$ep.json 2>/dev/null || echo 0)"
+          for ep in health signals statistics; do
+            curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 30 "$BASE/$ep?diag=${GITHUB_RUN_ID}-$(date +%s%N)" -o "/tmp/$ep.json"
           done
-          for ep in health snapshot; do
-            code=$(curl -sS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 30 -o "/tmp/hub-$ep.json" -w '%{http_code}' "$HUB/$ep?diag=${GITHUB_RUN_ID}-$(date +%s%N)" || true)
-            echo "HUB_$ep HTTP=$code BYTES=$(wc -c </tmp/hub-$ep.json 2>/dev/null || echo 0)"
-          done
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 30 "$HUB/snapshot?diag=${GITHUB_RUN_ID}-$(date +%s%N)" -o /tmp/hub.json
           node <<'NODE'
-          const fs=require('fs');
-          const read=p=>{try{return JSON.parse(fs.readFileSync(p,'utf8'))}catch(e){return null}};
-          const st=read('/tmp/statistics.json');
-          const sg=read('/tmp/signals.json');
-          const bd=read('/tmp/board.json');
-          const eh=read('/tmp/health.json');
-          const hh=read('/tmp/hub-health.json');
-          const hs=read('/tmp/hub-snapshot.json');
-          const signals=Array.isArray(sg?.signals)?sg.signals:[];
-          const rows=Array.isArray(st?.rows)?st.rows:[];
-          const fixtures=Array.isArray(hs?.fixtures)?hs.fixtures:[];
-          const statuses={}; for(const s of signals){const k=String(s.status||''); statuses[k]=(statuses[k]||0)+1;}
-          const isFin=f=>{const x=String(f?.status?.long||f?.status?.short||f?.status||f?.state||f?.statusText||'').toLowerCase(); return ['finished','full time','ft','after extra time','after penalties','aet','pen'].some(k=>x===k||x.includes(k));};
-          const finished=fixtures.filter(isFin);
-          const targetSignals=signals.filter(s=>String(s.fixtureId||s.fixture_id||s.providerFixtureId||'')==='201711330' || /Hong Kong|Laos/i.test(JSON.stringify(s)));
-          const targetFixtures=fixtures.filter(f=>String(f.id||f.fixtureId||f.fixture_id||'')==='201711330' || /Hong Kong|Laos/i.test(JSON.stringify(f)));
-          console.log('DIAG_SUMMARY',JSON.stringify({engineHealth:eh, hubHealth:hh, boardFixtures:Array.isArray(bd?.fixtures)?bd.fixtures.length:null, signalCount:signals.length, signalStatuses:statuses, settledRows:rows.length, hubFixtures:fixtures.length, hubFinished:finished.length, hubKeys:hs?Object.keys(hs):null}));
-          console.log('TARGET_SIGNALS',JSON.stringify(targetSignals).slice(0,12000));
-          console.log('TARGET_HUB_FIXTURES',JSON.stringify(targetFixtures).slice(0,12000));
-          console.log('FINISHED_TAIL',JSON.stringify(finished.slice(-10).map(f=>({id:f.id||f.fixtureId||f.fixture_id,status:f.status,home:f.home||f.teams?.home,away:f.away||f.teams?.away,score:f.score||f.goals}))).slice(0,12000));
+          const fs=require('fs'); const j=p=>JSON.parse(fs.readFileSync(p,'utf8'));
+          const h=j('/tmp/health.json'), s=j('/tmp/signals.json'), t=j('/tmp/statistics.json'), hub=j('/tmp/hub.json');
+          const signals=Array.isArray(s.signals)?s.signals:[], rows=Array.isArray(t.rows)?t.rows:[], fixtures=Array.isArray(hub.fixtures)?hub.fixtures:[];
+          const fmap=new Map(fixtures.map(f=>[String(f.fixtureId??f.id??f.fixture_id),f]));
+          const fin=f=>{const x=String(f?.status?.long||f?.status?.short||f?.status||f?.state||f?.statusText||'').toLowerCase(); return x==='ft'||x==='finished'||x==='full time'||x.includes('finished')||x.includes('after extra')||x.includes('after penalties')||x==='aet'||x==='pen';};
+          const pending=signals.filter(x=>String(x.status)==='PENDING');
+          const correlated=pending.map(x=>{const f=fmap.get(String(x.fixtureId));return {id:x.id,fixtureId:x.fixtureId,market:x.market,selection:x.selection,line:x.line,createdAt:x.createdAt,home:x.home?.name,away:x.away?.name,hubFound:!!f,hubStatus:f?.status,hubMinute:f?.minute,hubScore:f?.goals,hubFinished:fin(f)};});
+          const pendingFinished=correlated.filter(x=>x.hubFinished);
+          const exactId='201711330';
+          const exactSignals=signals.filter(x=>String(x.fixtureId)===exactId);
+          const exactRows=rows.filter(x=>String(x.fixtureId)===exactId || String(x.fixture_id)===exactId);
+          const exactFixture=fmap.get(exactId)||null;
+          const latestRows=[...rows].sort((a,b)=>Number(b.settledAt||b.settled_at||b.createdAt||0)-Number(a.settledAt||a.settled_at||a.createdAt||0)).slice(0,12).map(r=>({fixtureId:r.fixtureId,home:r.home?.name||r.home,away:r.away?.name||r.away,market:r.market,result:r.result,status:r.status,createdAt:r.createdAt,settledAt:r.settledAt,finalScore:r.finalScore}));
+          console.log('CORE',JSON.stringify({engine:h,publicSignals:signals.length,pending:pending.length,settledRows:rows.length,hubFixtures:fixtures.length,pendingFinishedCount:pendingFinished.length}));
+          console.log('PENDING_CORRELATED',JSON.stringify(correlated));
+          console.log('PENDING_ALREADY_FINISHED',JSON.stringify(pendingFinished));
+          console.log('EXACT_201711330',JSON.stringify({signals:exactSignals,rows:exactRows,fixture:exactFixture}));
+          console.log('LATEST_SETTLED_ROWS',JSON.stringify(latestRows));
           NODE
