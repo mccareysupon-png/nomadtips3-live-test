@@ -117,3 +117,5 @@ jobs:
           if(t?.ok!==true || !Array.isArray(t?.rows)) throw Error('STATS_BAD');
           console.log('BALL46_EXACT_PRE_MOBILE_RESTORE_PASS',{fixtures:b.fixtures.length,signals:s.signals.length,settled:t.rows.length});
           NODE
+
+# retrigger 2026-09-27 restore exact 05:14 ICT pre-mobile production snapshot
