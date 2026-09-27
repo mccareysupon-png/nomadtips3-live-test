@@ -1,0 +1,45 @@
+name: DIAG - Ball46 Pending Settlement Map 20260927
+
+on:
+  push:
+    branches: [diag/ball46-engine-live-incident-20260927]
+    paths:
+      - '.github/workflows/diag-ball46-pending-settlement-map-20260927.yml'
+
+permissions:
+  contents: read
+
+env:
+  BALL46_URL: https://ball46-production.mccarey-supon.workers.dev
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Map pending signals to board
+        shell: bash
+        run: |
+          set -euo pipefail
+          for ep in board signals statistics; do
+            curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_URL/api/engine/$ep?map=${GITHUB_RUN_ID}-$(date +%s%N)" -o "/tmp/$ep.json"
+          done
+          node - <<'NODE'
+          const fs=require('fs');
+          const read=p=>JSON.parse(fs.readFileSync(p,'utf8'));
+          const b=read('/tmp/board.json'), s=read('/tmp/signals.json'), t=read('/tmp/statistics.json');
+          const fixtures=Array.isArray(b.fixtures)?b.fixtures:[];
+          const signals=Array.isArray(s.signals)?s.signals:[];
+          const byId=new Map(fixtures.map(f=>[String(f.fixtureId??f.id??''),f]));
+          const now=Date.now();
+          const groups={finished:[],in_play:[],unknown:[],missing:[]};
+          for(const x of signals){
+            const id=String(x.fixtureId??''); const f=byId.get(id);
+            let k='missing';
+            if(f){const raw=String(f.boardState??f.status??f.statusCode??'').toLowerCase(); k=/finished|full_time|full time|\bft\b|ended/.test(raw)?'finished':(/in_play|live|playing|\b1h\b|\b2h\b|half/.test(raw)?'in_play':'unknown');}
+            groups[k].push({id:x.id,fixtureId:id,market:x.market,createdAt:x.createdAt,ageMin:Math.round((now-Number(x.createdAt||0))/60000),status:f?.status??f?.boardState??null,minute:f?.minute??null});
+          }
+          for(const k of Object.keys(groups)) groups[k].sort((a,b)=>b.ageMin-a.ageMin);
+          const old={}; for(const [k,v] of Object.entries(groups)) old[k]=v.filter(x=>x.ageMin>=30).length;
+          console.log('PENDING_MAP='+JSON.stringify({total:signals.length,counts:Object.fromEntries(Object.entries(groups).map(([k,v])=>[k,v.length])),older30m:old,oldest:Object.fromEntries(Object.entries(groups).map(([k,v])=>[k,v.slice(0,8)])),settledTotal:(t.rows||[]).length}));
+          NODE
