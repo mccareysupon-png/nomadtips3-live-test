@@ -1,0 +1,41 @@
+name: DIAG Ball46 pending settlement correlation 20260927
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/diag-ball46-pending-settlement-correlation-20260927.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  diag:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Correlate engine pending signals with HUB fixture states read-only
+        shell: bash
+        run: |
+          set -euo pipefail
+          HUB='https://nomadtips3-5usd-hub-343.mccarey-supon.workers.dev'
+          ENG='https://nomadtips3-engine-343.mccarey-supon.workers.dev'
+          curl -fsS -L --retry 3 --max-time 25 "$HUB/snapshot?c=${GITHUB_RUN_ID}" -o /tmp/hub.json
+          curl -fsS -L --retry 3 --max-time 25 "$ENG/signals?c=${GITHUB_RUN_ID}" -o /tmp/signals.json
+          curl -fsS -L --retry 3 --max-time 25 "$ENG/statistics?c=${GITHUB_RUN_ID}" -o /tmp/stats.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const hub=JSON.parse(fs.readFileSync('/tmp/hub.json'));
+          const sj=JSON.parse(fs.readFileSync('/tmp/signals.json'));
+          const st=JSON.parse(fs.readFileSync('/tmp/stats.json'));
+          const fixtures=Array.isArray(hub.fixtures)?hub.fixtures:[];
+          const pending=Array.isArray(sj.signals)?sj.signals:[];
+          const fm=new Map(fixtures.map(f=>[String(f.fixtureId),f]));
+          const buckets={finished:[],live:[],unknown:[],missing:[]};
+          for(const s of pending){const f=fm.get(String(s.fixtureId)); let k='missing'; if(f){const bs=String(f.boardState||f.status||'').toLowerCase(); if(bs.includes('finish')||/full.?time|ended|\bft\b/i.test(String(f.status||f.statusCode||''))) k='finished'; else if(bs.includes('live')||/in.?play|playing|half/i.test(String(f.status||f.statusCode||''))) k='live'; else k='unknown';} buckets[k].push({id:s.id,fixtureId:s.fixtureId,home:s.home?.name,away:s.away?.name,market:s.market,selection:s.selection,createdAt:s.createdAt,status:s.status,fixtureStatus:f?.status,fixtureStatusCode:f?.statusCode,boardState:f?.boardState,minute:f?.minute,goals:f?.goals});}
+          console.log('PENDING_CORRELATION_COUNTS',Object.fromEntries(Object.entries(buckets).map(([k,v])=>[k,v.length])));
+          for(const k of ['finished','missing','unknown','live']) console.log('PENDING_'+k.toUpperCase()+'_SAMPLE',JSON.stringify(buckets[k].slice(0,80)));
+          const terms=['hong kong','hongkong','laos','lao pdr','lao']; const hit=x=>terms.some(t=>JSON.stringify(x||'').toLowerCase().includes(t));
+          console.log('PENDING_ALIAS',JSON.stringify(pending.filter(hit).map(s=>{const f=fm.get(String(s.fixtureId));return {id:s.id,fixtureId:s.fixtureId,home:s.home,away:s.away,league:s.league,market:s.market,selection:s.selection,createdAt:s.createdAt,fixtureStatus:f?.status,fixtureStatusCode:f?.statusCode,boardState:f?.boardState,minute:f?.minute,goals:f?.goals}})));
+          console.log('TOTALS',{hub:fixtures.length,pending:pending.length,allCount:sj.allCount,settled:st.rows?.length});
+          NODE
