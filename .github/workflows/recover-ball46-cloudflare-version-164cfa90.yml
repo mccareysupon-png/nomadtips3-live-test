@@ -1,0 +1,78 @@
+name: RECOVER - Ball46 Cloudflare Version 164cfa90
+
+on:
+  push:
+    branches:
+      - recovery/ball46-exact-artifact-10930183394-20260927
+    paths:
+      - '.github/workflows/recover-ball46-cloudflare-version-164cfa90.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  recover:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Deploy exact previously-known-good Worker version
+        shell: bash
+        run: |
+          set -euo pipefail
+          GOOD='164cfa90-5719-4f87-8028-ca62281e875a'
+          npx --yes wrangler@4 versions view "$GOOD" --name ball46-production --json > /tmp/good-version.json
+          grep -Fq "$GOOD" /tmp/good-version.json
+          npx --yes wrangler@4 versions deploy "$GOOD@100%" --name ball46-production -y --message 'Restore Ball46 exact known-good production captured before favicon work'
+
+          python3 - <<'PY'
+          import os,json,urllib.request
+          a=os.environ['CLOUDFLARE_ACCOUNT_ID']; t=os.environ['CLOUDFLARE_API_TOKEN']; h={'Authorization':'Bearer '+t,'Accept':'application/json'}
+          base=f'https://api.cloudflare.com/client/v4/accounts/{a}/workers/scripts/ball46-production'
+          with urllib.request.urlopen(urllib.request.Request(base+'/deployments',headers=h),timeout=30) as r:p=json.load(r)
+          versions=p['result']['deployments'][0]['versions']
+          print('CURRENT_DEPLOYMENT_VERSIONS',versions)
+          good='164cfa90-5719-4f87-8028-ca62281e875a'
+          if not any(v.get('version_id')==good and float(v.get('percentage',0))==100 for v in versions): raise SystemExit('GOOD_VERSION_NOT_100_PERCENT')
+          with urllib.request.urlopen(urllib.request.Request(base+'/schedules',headers=h),timeout=30) as r:s=json.load(r)
+          raw=s.get('result') or []; schedules=raw.get('schedules',[]) if isinstance(raw,dict) else raw
+          crons=[x.get('cron') for x in schedules if isinstance(x,dict)]
+          print('CRONS',crons)
+          if '* * * * *' not in crons: raise SystemExit('CRON_MISSING')
+          PY
+
+          python3 - <<'PY'
+          import urllib.request,hashlib,time,json
+          base='https://ball46-production.mccarey-supon.workers.dev/'
+          expected={
+            'index.html':'3bf461264b83428c496fb300e6e9be17f6bc0c1117341fcd303c1eff61c1feb9',
+            'ball46-logo.svg':'ce33cd0c99f7d36e00d89bb108502afb308528fe801381a9c55cc7cb7b7fbb48',
+            'statistics.js':'b271b11129789e62c078ece50dddd37e83a2bb37a3c7fbcb0793711409be7835',
+            'signal-next.js':'472c370ddbc83f8630b6f587099c4315ba02646a0504163165d4631a9fc346e9',
+            'singlepage-workspace-343.js':'caba0dc07cba428d5eb7b5a52d7597bb12aa3fea09f70460a58b88edea50133a',
+            'ui-sync-fixes-343-v2.js':'8b1ad2f177218f852a6166d8b9dd087550690a95881a0dd36af7161fe58554ab'
+          }
+          for rel,sha in expected.items():
+              req=urllib.request.Request(base+rel+'?rollback='+str(time.time_ns()),headers={'Cache-Control':'no-cache','User-Agent':'ball46-version-rollback-verify'})
+              with urllib.request.urlopen(req,timeout=30) as r:data=r.read()
+              got=hashlib.sha256(data).hexdigest(); print(rel,got)
+              if got!=sha: raise SystemExit('ASSET_MISMATCH:'+rel)
+          for rel in ['signal-event-flow-line-343.css','signal-event-flow-line-343.js','signal-shared-view-343.css','ui-sync-fixes-343.css','workspace-route-guard-343.js']:
+              req=urllib.request.Request(base+rel+'?rollback='+str(time.time_ns()),headers={'Cache-Control':'no-cache'})
+              with urllib.request.urlopen(req,timeout=30) as r:
+                  if r.status!=200 or not r.read(): raise SystemExit('MISSING_ASSET:'+rel)
+              print('RESTORED_ASSET',rel)
+          PY
+
+          node - <<'NODE'
+          const https=require('https');
+          function get(path){return new Promise((resolve,reject)=>https.get('https://www.ball46.com'+path,res=>{let b='';res.on('data',d=>b+=d);res.on('end',()=>{try{resolve(JSON.parse(b))}catch(e){reject(e)}})}).on('error',reject))}
+          (async()=>{const [b,s,t]=await Promise.all([get('/api/engine/board?rollback=1'),get('/api/engine/signals?rollback=1'),get('/api/engine/statistics?rollback=1')]);if(b?.ok!==true||!Array.isArray(b.fixtures))throw Error('BOARD_BAD');if(!Array.isArray(s.signals))throw Error('SIGNALS_BAD');if(t?.ok!==true||!Array.isArray(t.rows))throw Error('STATS_BAD');console.log('PUBLIC_API_OK',{fixtures:b.fixtures.length,signals:s.signals.length,statistics:t.rows.length});})().catch(e=>{console.error(e);process.exit(1)})
+          NODE
+
+          echo BALL46_KNOWN_GOOD_VERSION_RESTORED
