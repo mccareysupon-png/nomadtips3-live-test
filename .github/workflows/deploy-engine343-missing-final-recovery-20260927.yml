@@ -1,0 +1,110 @@
+name: Deploy Engine343 missing-final recovery 20260927
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-engine343-missing-final-recovery-20260927.yml'
+
+permissions:
+  contents: read
+
+env:
+  WORK_BRANCH: work/ball46-settlement-missing-fixture-safe-20260927
+  ENGINE_URL: https://nomadtips3-engine-343.mccarey-supon.workers.dev
+  BALL46_URL: https://ball46-production.mccarey-supon.workers.dev
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout isolated repair branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.WORK_BRANCH }}
+          fetch-depth: 0
+      - name: Capture exact pre-change engine and Ball46 state
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS -L --retry 4 --max-time 25 "$ENGINE_URL/health?pre=${GITHUB_RUN_ID}" -o /tmp/health.pre.json
+          curl -fsS -L --retry 4 --max-time 25 "$ENGINE_URL/statistics?pre=${GITHUB_RUN_ID}" -o /tmp/stats.pre.json
+          curl -fsS -L --retry 4 --max-time 25 "$BALL46_URL/index.html?pre=${GITHUB_RUN_ID}" -o /tmp/index.pre.html
+          curl -fsS -L --retry 4 --max-time 25 "$BALL46_URL/ball46-logo.svg?pre=${GITHUB_RUN_ID}" -o /tmp/logo.pre.svg
+          echo "PRE_INDEX_SHA=$(sha256sum /tmp/index.pre.html | awk '{print $1}')" >> "$GITHUB_ENV"
+          echo "PRE_LOGO_SHA=$(sha256sum /tmp/logo.pre.svg | awk '{print $1}')" >> "$GITHUB_ENV"
+          node - <<'NODE' >> "$GITHUB_ENV"
+          const fs=require('fs');const h=JSON.parse(fs.readFileSync('/tmp/health.pre.json'));const s=JSON.parse(fs.readFileSync('/tmp/stats.pre.json'));
+          if(h?.ok!==true||!Array.isArray(s?.rows))throw Error('PRE_ENGINE_UNHEALTHY');
+          console.log('PRE_SETTLED='+s.rows.length);
+          NODE
+          npx --yes wrangler@4.92.0 versions list --name nomadtips3-engine-343 --json > /tmp/versions.pre.json
+          node - <<'NODE' >> "$GITHUB_ENV"
+          const fs=require('fs');const raw=JSON.parse(fs.readFileSync('/tmp/versions.pre.json'));const a=Array.isArray(raw)?raw:(raw?.versions||raw?.result||[]);const x=a[0]||{};const id=x.id||x.version_id||x.versionId;if(!id)throw Error('PRE_VERSION_NOT_FOUND');console.log('PRE_VERSION='+id);
+          NODE
+          echo "Pre-change engine version locked"
+      - name: Validate isolated repair scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check workers/nomadtips3-engine-343/src/index-bulk-recovery.js
+          git diff --exit-code 15ee059599d6dadd2a88669a3c239f588a5e1560 -- workers/nomadtips3-engine-343/src/index-bulk.js workers/nomadtips3-engine-343/src/market-core.js
+          changed=$(git diff --name-only 15ee059599d6dadd2a88669a3c239f588a5e1560 -- workers/nomadtips3-engine-343 | sort)
+          printf '%s\n' "$changed"
+          [ "$changed" = $'workers/nomadtips3-engine-343/src/index-bulk-recovery.js\nworkers/nomadtips3-engine-343/wrangler.toml' ]
+      - name: Dry run production engine only
+        working-directory: workers/nomadtips3-engine-343
+        shell: bash
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.toml
+      - name: Deploy production engine only
+        id: deploy
+        working-directory: workers/nomadtips3-engine-343
+        shell: bash
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.toml
+      - name: Verify settlement recovery and exact Hong Kong Laos result
+        id: verify
+        shell: bash
+        run: |
+          set -euo pipefail
+          pass=0
+          for n in 1 2 3 4 5; do
+            curl -fsS -L --retry 3 --max-time 25 "$ENGINE_URL/health?post=${GITHUB_RUN_ID}-${n}" -o /tmp/health.post.json
+            curl -fsS -L --retry 3 --max-time 25 "$ENGINE_URL/statistics?post=${GITHUB_RUN_ID}-${n}" -o /tmp/stats.post.json
+            if node - <<'NODE'
+          const fs=require('fs');
+          const h=JSON.parse(fs.readFileSync('/tmp/health.post.json'));const s=JSON.parse(fs.readFileSync('/tmp/stats.post.json'));const rows=Array.isArray(s?.rows)?s.rows:[];
+          const hk=rows.filter(r=>String(r?.fixtureId)==='201711330');
+          if(h?.ok!==true)process.exit(2);
+          if(h?.missingFinalRecovery?.version!=='missing-final-v1')process.exit(3);
+          if(hk.length<2)process.exit(4);
+          if(hk.some(r=>r.status!=='SETTLED'||!r.result||!r.finalScore))process.exit(5);
+          console.log('HK_LAOS_SETTLED',JSON.stringify(hk.map(r=>({id:r.id,market:r.market,selection:r.selection,line:r.line,result:r.result,finalScore:r.finalScore,finalCorners:r.finalCorners,settledAt:r.settledAt,settlementSource:r.settlementSource}))));
+          console.log('SETTLED_TOTAL',rows.length);
+          NODE
+            then pass=1; break; fi
+            sleep 65
+          done
+          [ "$pass" = 1 ] || { echo 'HK_LAOS_RECOVERY_NOT_VERIFIED'; exit 1; }
+          curl -fsS -L --retry 4 --max-time 25 "$BALL46_URL/api/engine/health?post=${GITHUB_RUN_ID}" -o /tmp/b46.health.json
+          curl -fsS -L --retry 4 --max-time 25 "$BALL46_URL/api/engine/board?post=${GITHUB_RUN_ID}" -o /tmp/b46.board.json
+          curl -fsS -L --retry 4 --max-time 25 "$BALL46_URL/api/engine/signals?post=${GITHUB_RUN_ID}" -o /tmp/b46.signals.json
+          curl -fsS -L --retry 4 --max-time 25 "$BALL46_URL/api/engine/statistics?post=${GITHUB_RUN_ID}" -o /tmp/b46.stats.json
+          curl -fsS -L --retry 4 --max-time 25 "$BALL46_URL/index.html?post=${GITHUB_RUN_ID}" -o /tmp/index.post.html
+          curl -fsS -L --retry 4 --max-time 25 "$BALL46_URL/ball46-logo.svg?post=${GITHUB_RUN_ID}" -o /tmp/logo.post.svg
+          [ "$(sha256sum /tmp/index.post.html | awk '{print $1}')" = "$PRE_INDEX_SHA" ] || { echo 'BALL46_INDEX_CHANGED'; exit 1; }
+          [ "$(sha256sum /tmp/logo.post.svg | awk '{print $1}')" = "$PRE_LOGO_SHA" ] || { echo 'BALL46_LOGO_CHANGED'; exit 1; }
+          node - <<'NODE'
+          const fs=require('fs');const h=JSON.parse(fs.readFileSync('/tmp/b46.health.json'));const b=JSON.parse(fs.readFileSync('/tmp/b46.board.json'));const sg=JSON.parse(fs.readFileSync('/tmp/b46.signals.json'));const st=JSON.parse(fs.readFileSync('/tmp/b46.stats.json'));
+          if(h?.ok!==true||b?.ok!==true||!Array.isArray(b?.fixtures)||!Array.isArray(sg?.signals)||st?.ok!==true||!Array.isArray(st?.rows))throw Error('BALL46_BACKEND_CONTINUITY_FAIL');
+          const hk=st.rows.filter(r=>String(r?.fixtureId)==='201711330');if(hk.length<2)throw Error('BALL46_HK_LAOS_MISSING');
+          console.log('BALL46_SETTLEMENT_RECOVERY_PASS',{fixtures:b.fixtures.length,pending:sg.signals.length,settled:st.rows.length,hkLaos:hk.length});
+          NODE
+      - name: Roll back engine automatically if verification fails
+        if: failure() && steps.deploy.outcome == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.92.0 rollback "$PRE_VERSION" --name nomadtips3-engine-343 --message "Auto rollback failed missing-final recovery ${GITHUB_RUN_ID}"
