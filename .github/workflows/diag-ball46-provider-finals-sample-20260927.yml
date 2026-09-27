@@ -1,0 +1,35 @@
+name: DIAG - Ball46 Provider Finals Sample 20260927
+
+on:
+  push:
+    branches: [diag/ball46-engine-live-incident-20260927]
+    paths:
+      - '.github/workflows/diag-ball46-provider-finals-sample-20260927.yml'
+
+permissions:
+  contents: read
+
+env:
+  FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Check exact provider status for oldest stale pending fixtures
+        shell: bash
+        run: |
+          set -euo pipefail
+          [ -n "${FIVEDOLLAR_API_KEY:-}" ]
+          ids=(201309630 201821446 201816694 201812874 201880551 201816707 201706276)
+          for id in "${ids[@]}"; do
+            curl -fsS -L --retry 3 --retry-all-errors --retry-delay 2 --max-time 25 \
+              -H "Authorization: Bearer $FIVEDOLLAR_API_KEY" -H 'Accept: application/json' \
+              "https://api.5dollarfootballapi.com/v1/fixtures/$id?include=events,stats" -o "/tmp/$id.json"
+            node - "$id" <<'NODE'
+            const fs=require('fs'); const id=process.argv[2]; const j=JSON.parse(fs.readFileSync(`/tmp/${id}.json`,'utf8')); const d=j.data||j;
+            console.log('PROVIDER_FINAL_SAMPLE='+JSON.stringify({id,status:d.status??null,status_code:d.status_code??null,minute:d.minute??d.elapsed??null,goals:d.goals??null,corners:d.corners??null,success:j.success??null}));
+            NODE
+            sleep 1
+          done
