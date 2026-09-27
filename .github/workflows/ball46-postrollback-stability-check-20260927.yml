@@ -1,0 +1,100 @@
+name: READ ONLY - Ball46 postrollback stability 20260927
+
+on:
+  push:
+    branches: [work/ball46-row-balance-livebase-20260927]
+    paths:
+      - '.github/workflows/ball46-postrollback-stability-check-20260927.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  verify-stable:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
+      LIVEBASE_RUN_ID: 36291401917
+      LIVEBASE_NAME: ball46-livebase-v2-36291401917
+      BASE_INDEX: d6385dcc5d9c6123a8a16f6c574287804baca177b004cdca4315b7cb9dc2305a
+      BASE_JS: 2ef44e4c4bd1f0837525444d7b28ab8ab9aa77cf4e03fac33ea69e536b12cb85
+      BASE_CSS: 54ca6c53ad6f6f7836e61efd8180030c74ea2827a42c180153c0fc15005e431d
+      CAND_INDEX: 17092c25cd52919a0db2160de14f4c80320a065a21e268b3042b021823ae7d7b
+      CAND_JS: 64db90d85497f10b583c4c078c3ef5cbadbdc39f607b4b2a4d97b193244b730a
+      CAND_CSS: 353643f031ba7aa5a3003f9d0fe229431257085f3a75f720068cd88ded4f75f6
+    steps:
+      - name: Download exact pre-change production hash set
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.LIVEBASE_NAME }}
+          path: /tmp/livebase
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ env.LIVEBASE_RUN_ID }}
+
+      - name: Poll the three touched assets until one version is stable
+        shell: bash
+        run: |
+          set -euo pipefail
+          stable_base=0
+          stable_cand=0
+          for n in $(seq 1 20); do
+            declare -A got
+            for f in index.html dashboard-v2-stage3.js dashboard-v2-tune.css; do
+              curl -fsS -L --retry 3 --retry-all-errors --retry-delay 1 --max-time 25 -H 'Cache-Control: no-cache' \
+                "$BALL46_WORKER/$f?postrollback=${GITHUB_RUN_ID}-$n-$(date +%s%N)" -o "/tmp/$n-$f"
+              got[$f]=$(sha256sum "/tmp/$n-$f" | awk '{print $1}')
+            done
+            echo "SAMPLE $n index=${got[index.html]} js=${got[dashboard-v2-stage3.js]} css=${got[dashboard-v2-tune.css]}"
+            if [ "${got[index.html]}" = "$BASE_INDEX" ] && [ "${got[dashboard-v2-stage3.js]}" = "$BASE_JS" ] && [ "${got[dashboard-v2-tune.css]}" = "$BASE_CSS" ]; then
+              stable_base=$((stable_base+1)); stable_cand=0
+            elif [ "${got[index.html]}" = "$CAND_INDEX" ] && [ "${got[dashboard-v2-stage3.js]}" = "$CAND_JS" ] && [ "${got[dashboard-v2-tune.css]}" = "$CAND_CSS" ]; then
+              stable_cand=$((stable_cand+1)); stable_base=0
+            else
+              stable_base=0; stable_cand=0
+            fi
+            if [ "$stable_base" -ge 3 ]; then echo STABLE_STATE=BASELINE >> "$GITHUB_ENV"; echo STABLE_BASELINE_3_CONSECUTIVE; exit 0; fi
+            if [ "$stable_cand" -ge 3 ]; then echo STABLE_STATE=CANDIDATE >> "$GITHUB_ENV"; echo STABLE_CANDIDATE_3_CONSECUTIVE; exit 0; fi
+            sleep 3
+          done
+          echo STABLE_STATE=MIXED >> "$GITHUB_ENV"
+          echo NO_STABLE_STATE_AFTER_20_SAMPLES
+          exit 1
+
+      - name: If baseline is stable, verify all 69 assets match pre-change production
+        if: env.STABLE_STATE == 'BASELINE'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s /tmp/livebase/current-assets.sha256
+          bad=0
+          while read -r expected name; do
+            safe="${name//\//_}"
+            curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 30 -H 'Cache-Control: no-cache' \
+              "$BALL46_WORKER/$name?postrollback-all=${GITHUB_RUN_ID}-$(date +%s%N)" -o "/tmp/all-$safe"
+            actual=$(sha256sum "/tmp/all-$safe" | awk '{print $1}')
+            if [ "$actual" != "$expected" ]; then echo "MISMATCH $name expected=$expected actual=$actual"; bad=$((bad+1)); fi
+          done < /tmp/livebase/current-assets.sha256
+          test "$bad" = 0 || { echo "BASELINE_69_MISMATCH_COUNT=$bad"; exit 1; }
+          echo BASELINE_ALL_69_PASS
+
+      - name: Verify backend health read-only
+        shell: bash
+        run: |
+          set -euo pipefail
+          for ep in health board signals statistics; do
+            curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 30 \
+              "$BALL46_WORKER/api/engine/$ep?postrollback-health=${GITHUB_RUN_ID}" -o "/tmp/$ep.json"
+          done
+          node - <<'NODE'
+          const fs=require('fs');
+          const h=JSON.parse(fs.readFileSync('/tmp/health.json'));
+          const b=JSON.parse(fs.readFileSync('/tmp/board.json'));
+          const s=JSON.parse(fs.readFileSync('/tmp/signals.json'));
+          const t=JSON.parse(fs.readFileSync('/tmp/statistics.json'));
+          if(h?.ok!==true||b?.ok!==true||!Array.isArray(b.fixtures)||!Array.isArray(s.signals)||t?.ok!==true||!Array.isArray(t.rows)) process.exit(1);
+          console.log('BACKEND_STABLE_PASS',{fixtures:b.fixtures.length,signals:s.signals.length,settled:t.rows.length});
+          NODE
+          echo FINAL_STABLE_STATE=$STABLE_STATE
