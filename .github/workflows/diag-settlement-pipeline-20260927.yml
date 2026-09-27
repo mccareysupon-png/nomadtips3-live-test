@@ -1,0 +1,52 @@
+name: READ ONLY - Settlement Pipeline Diagnostic 20260927
+
+on:
+  push:
+    branches: [ops/settlement-diagnose-20260927]
+    paths:
+      - '.github/workflows/diag-settlement-pipeline-20260927.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  diag:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Inspect live engine and hub read-only
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='https://ball46-production.mccarey-supon.workers.dev/api/engine'
+          HUB='https://nomadtips3-5usd-hub-343.mccarey-supon.workers.dev'
+          for ep in health board signals statistics; do
+            code=$(curl -sS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 30 -o "/tmp/$ep.json" -w '%{http_code}' "$BASE/$ep?diag=${GITHUB_RUN_ID}-$(date +%s%N)" || true)
+            echo "ENGINE_$ep HTTP=$code BYTES=$(wc -c </tmp/$ep.json 2>/dev/null || echo 0)"
+          done
+          for ep in health snapshot; do
+            code=$(curl -sS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 30 -o "/tmp/hub-$ep.json" -w '%{http_code}' "$HUB/$ep?diag=${GITHUB_RUN_ID}-$(date +%s%N)" || true)
+            echo "HUB_$ep HTTP=$code BYTES=$(wc -c </tmp/hub-$ep.json 2>/dev/null || echo 0)"
+          done
+          node <<'NODE'
+          const fs=require('fs');
+          const read=p=>{try{return JSON.parse(fs.readFileSync(p,'utf8'))}catch(e){return null}};
+          const st=read('/tmp/statistics.json');
+          const sg=read('/tmp/signals.json');
+          const bd=read('/tmp/board.json');
+          const eh=read('/tmp/health.json');
+          const hh=read('/tmp/hub-health.json');
+          const hs=read('/tmp/hub-snapshot.json');
+          const signals=Array.isArray(sg?.signals)?sg.signals:[];
+          const rows=Array.isArray(st?.rows)?st.rows:[];
+          const fixtures=Array.isArray(hs?.fixtures)?hs.fixtures:[];
+          const statuses={}; for(const s of signals){const k=String(s.status||''); statuses[k]=(statuses[k]||0)+1;}
+          const isFin=f=>{const x=String(f?.status?.long||f?.status?.short||f?.status||f?.state||f?.statusText||'').toLowerCase(); return ['finished','full time','ft','after extra time','after penalties','aet','pen'].some(k=>x===k||x.includes(k));};
+          const finished=fixtures.filter(isFin);
+          const targetSignals=signals.filter(s=>String(s.fixtureId||s.fixture_id||s.providerFixtureId||'')==='201711330' || /Hong Kong|Laos/i.test(JSON.stringify(s)));
+          const targetFixtures=fixtures.filter(f=>String(f.id||f.fixtureId||f.fixture_id||'')==='201711330' || /Hong Kong|Laos/i.test(JSON.stringify(f)));
+          console.log('DIAG_SUMMARY',JSON.stringify({engineHealth:eh, hubHealth:hh, boardFixtures:Array.isArray(bd?.fixtures)?bd.fixtures.length:null, signalCount:signals.length, signalStatuses:statuses, settledRows:rows.length, hubFixtures:fixtures.length, hubFinished:finished.length, hubKeys:hs?Object.keys(hs):null}));
+          console.log('TARGET_SIGNALS',JSON.stringify(targetSignals).slice(0,12000));
+          console.log('TARGET_HUB_FIXTURES',JSON.stringify(targetFixtures).slice(0,12000));
+          console.log('FINISHED_TAIL',JSON.stringify(finished.slice(-10).map(f=>({id:f.id||f.fixtureId||f.fixture_id,status:f.status,home:f.home||f.teams?.home,away:f.away||f.teams?.away,score:f.score||f.goals}))).slice(0,12000));
+          NODE
