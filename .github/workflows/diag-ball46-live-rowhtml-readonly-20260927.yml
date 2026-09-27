@@ -1,0 +1,34 @@
+name: Diagnose Ball46 LIVE Row DOM Readonly 20260927
+
+on:
+  push:
+    branches: [ops/ball46-live-rowhtml-readonly-20260927]
+    paths:
+      - '.github/workflows/diag-ball46-live-rowhtml-readonly-20260927.yml'
+
+permissions:
+  contents: read
+
+env:
+  BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
+
+jobs:
+  inspect-rowhtml:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Inspect exact current LIVE row code read-only
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/dashboard-v2-stage3.js?rowhtml-diag=${GITHUB_RUN_ID}" -o /tmp/dashboard.js
+          sha256sum /tmp/dashboard.js
+          node --check /tmp/dashboard.js
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('/tmp/dashboard.js').read_text(errors='ignore')
+          for needle in ['function rowHtml','function marketCompact','function scheduleRichRender','function renderBoard']:
+              print('\n===',needle,'===')
+              i=s.find(needle)
+              print('NOT_FOUND' if i<0 else s[max(0,i-700):min(len(s),i+7000)].replace('\n',' '))
+          PY
