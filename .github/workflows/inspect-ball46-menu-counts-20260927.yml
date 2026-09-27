@@ -1,0 +1,64 @@
+name: INSPECT - Ball46 Menu Counts 20260927
+
+on:
+  push:
+    branches: [ops/ball46-menu-count-repair-20260927]
+
+permissions:
+  contents: read
+
+env:
+  WWW: https://www.ball46.com
+  CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Inspect exact current Production menu wiring
+        shell: bash
+        run: |
+          set -euo pipefail
+          hdr=(-H "Authorization: Bearer $CF_TOKEN" -H 'Accept: application/json')
+          dep=$(curl -fsS "${hdr[@]}" "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT/workers/scripts/ball46-production/deployments")
+          vid=$(printf '%s' "$dep" | python3 -c "import sys,json;p=json.load(sys.stdin);print(p['result']['deployments'][0]['versions'][0]['version_id'])")
+          echo "ACTIVE_VERSION=$vid"
+
+          nonce="${GITHUB_RUN_ID}-$(date +%s%N)"
+          curl -fsS -L --retry 4 --retry-all-errors --max-time 30 -H 'Cache-Control: no-cache' "$WWW/dashboard-v2-stage3.js?inspect=$nonce" -o /tmp/dashboard.js
+          curl -fsS -L --retry 4 --retry-all-errors --max-time 30 -H 'Cache-Control: no-cache' "$WWW/index.html?status=live&inspect=$nonce" -o /tmp/index.html
+          for ep in board signals statistics; do
+            curl -fsS -L --retry 4 --retry-all-errors --max-time 30 "$WWW/api/engine/$ep?inspect=$nonce" -o "/tmp/$ep.json"
+          done
+          echo "DASHBOARD_SHA=$(sha256sum /tmp/dashboard.js | awk '{print $1}')"
+          echo '=== JS TARGETS ==='
+          grep -nE 'signalMap|signalRows|signalMirror|loadSignals|renderSide|sidebar|statistics|STATISTICS|activeSignals|menu|count|data-count' /tmp/dashboard.js | head -220 || true
+          echo '=== INDEX LEFT NAV ==='
+          grep -nE 'LIVE WORKSPACE|BULK|DEC|STATISTICS|MATCH STATUS|data-|sidebar|side-|nav-|Total|1X2|AH|O/U|BTTS|Corners|Cards|Other' /tmp/index.html | head -260 || true
+          echo '=== API SHAPES ==='
+          python3 - <<'PY'
+          import json
+          b=json.load(open('/tmp/board.json')); s=json.load(open('/tmp/signals.json')); t=json.load(open('/tmp/statistics.json'))
+          print('BOARD keys',sorted(b.keys()))
+          print('BOARD fixtures',len(b.get('fixtures') or []),'meta',b.get('meta'))
+          print('SIGNALS keys',sorted(s.keys()),'count',len(s.get('signals') or []),'meta',s.get('meta'))
+          print('STATS keys',sorted(t.keys()),'rows',len(t.get('rows') or []),'meta',t.get('meta'))
+          rows=t.get('rows') or []
+          for i,r in enumerate(rows[:5]): print('STAT_ROW',i,{k:r.get(k) for k in ['market','marketLabel','category','submarket','result','selection']})
+          from collections import Counter
+          def label(r): return str(r.get('marketLabel') or r.get('market') or r.get('category') or '').strip()
+          print('STAT_MARKETS',Counter(label(r) for r in rows).most_common(30))
+          PY
+          echo '=== COMPLETE DASHBOARD RELEVANT FUNCTIONS ==='
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('/tmp/dashboard.js').read_text()
+          needles=['function renderSidebar','function renderSide','function loadSignals','function renderChrome','function renderShell','activeSignals','signalMirror','statistics']
+          for n in needles:
+              i=s.find(n)
+              if i>=0:
+                  print('\n---',n,'---')
+                  print(s[max(0,i-700):i+5000])
+          PY
