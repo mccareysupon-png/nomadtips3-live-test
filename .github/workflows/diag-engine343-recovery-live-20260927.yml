@@ -1,0 +1,32 @@
+name: DIAG Engine343 recovery live 20260927
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/diag-engine343-recovery-live-20260927.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  diag:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Inspect recovery state read-only
+        shell: bash
+        run: |
+          set -euo pipefail
+          E='https://nomadtips3-engine-343.mccarey-supon.workers.dev'
+          curl -fsS -L --retry 3 --max-time 25 "$E/health?diag=${GITHUB_RUN_ID}" -o /tmp/h.json
+          curl -fsS -L --retry 3 --max-time 25 "$E/statistics?diag=${GITHUB_RUN_ID}" -o /tmp/s.json
+          curl -fsS -L --retry 3 --max-time 25 "$E/signals?diag=${GITHUB_RUN_ID}" -o /tmp/p.json
+          node - <<'NODE'
+          const fs=require('fs');const h=JSON.parse(fs.readFileSync('/tmp/h.json'));const s=JSON.parse(fs.readFileSync('/tmp/s.json'));const p=JSON.parse(fs.readFileSync('/tmp/p.json'));
+          const hk=(s.rows||[]).filter(r=>String(r.fixtureId)==='201711330');const ph=(p.signals||[]).filter(r=>String(r.fixtureId)==='201711330');
+          console.log('RECOVERY',JSON.stringify(h.missingFinalRecovery||null));
+          console.log('COUNTS',{settled:s.rows?.length,pending:p.signals?.length,allCount:p.allCount});
+          console.log('HK_STATS',JSON.stringify(hk));
+          console.log('HK_PENDING',JSON.stringify(ph));
+          NODE
