@@ -1,0 +1,53 @@
+name: VERIFY - Ball46 Restored Live 20260927
+
+on:
+  push:
+    branches:
+      - recovery/ball46-exact-artifact-10930183394-20260927
+    paths:
+      - '.github/workflows/verify-ball46-restored-live-20260927.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: Verify restored live site and APIs
+        shell: bash
+        run: |
+          set -euo pipefail
+          GOOD='164cfa90-5719-4f87-8028-ca62281e875a'
+          python3 - <<'PY'
+          import os,json,urllib.request
+          a=os.environ['CLOUDFLARE_ACCOUNT_ID']; t=os.environ['CLOUDFLARE_API_TOKEN']; h={'Authorization':'Bearer '+t,'Accept':'application/json'}
+          base=f'https://api.cloudflare.com/client/v4/accounts/{a}/workers/scripts/ball46-production'
+          with urllib.request.urlopen(urllib.request.Request(base+'/deployments',headers=h),timeout=30) as r:p=json.load(r)
+          versions=p['result']['deployments'][0]['versions']; print('DEPLOYMENT',versions)
+          good='164cfa90-5719-4f87-8028-ca62281e875a'
+          if versions!=[{'version_id':good,'percentage':100}]: raise SystemExit('NOT_EXACT_GOOD_VERSION')
+          PY
+          curl -fsSL --retry 4 --retry-all-errors 'https://www.ball46.com/index.html' -o /tmp/index.html
+          grep -Fq '<link rel="icon" href="/ball46-logo.svg" type="image/svg+xml">' /tmp/index.html
+          grep -Fq 'workspace-brand' /tmp/index.html
+          curl -fsSL --retry 4 --retry-all-errors 'https://www.ball46.com/statistics.js' -o /tmp/statistics.js
+          curl -fsSL --retry 4 --retry-all-errors 'https://www.ball46.com/signal-next.js' -o /tmp/signal-next.js
+          echo '3bf461264b83428c496fb300e6e9be17f6bc0c1117341fcd303c1eff61c1feb9  /tmp/index.html' | sha256sum -c -
+          echo 'b271b11129789e62c078ece50dddd37e83a2bb37a3c7fbcb0793711409be7835  /tmp/statistics.js' | sha256sum -c -
+          echo '472c370ddbc83f8630b6f587099c4315ba02646a0504163165d4631a9fc346e9  /tmp/signal-next.js' | sha256sum -c -
+          python3 - <<'PY'
+          import json,urllib.request,time
+          def get(path):
+              req=urllib.request.Request('https://www.ball46.com'+path+'?verify='+str(time.time_ns()),headers={'Cache-Control':'no-cache','User-Agent':'ball46-final-verify'})
+              with urllib.request.urlopen(req,timeout=30) as r:return json.load(r)
+          b=get('/api/engine/board'); s=get('/api/engine/signals'); t=get('/api/engine/statistics')
+          if b.get('ok') is not True or not isinstance(b.get('fixtures'),list): raise SystemExit('BOARD_BAD')
+          if not isinstance(s.get('signals'),list): raise SystemExit('SIGNALS_BAD')
+          if t.get('ok') is not True or not isinstance(t.get('rows'),list): raise SystemExit('STATS_BAD')
+          print('LIVE_OK',{'fixtures':len(b['fixtures']),'signals':len(s['signals']),'statistics':len(t['rows']),'allCount':s.get('allCount'),'unresolved':t.get('unresolved')})
+          PY
+          echo BALL46_RESTORE_LIVE_VERIFIED
