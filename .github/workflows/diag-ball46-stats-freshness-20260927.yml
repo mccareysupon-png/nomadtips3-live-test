@@ -1,0 +1,62 @@
+name: DIAG Ball46 statistics freshness 20260927
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/diag-ball46-stats-freshness-20260927.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  diag:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Inspect statistics freshness and HK Lao paths read-only
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='https://ball46-production.mccarey-supon.workers.dev'
+          for ep in health board signals statistics; do
+            curl -fsS -L --retry 4 --retry-all-errors --max-time 25 "$BASE/api/engine/$ep?diagstats=${GITHUB_RUN_ID}" -o "/tmp/$ep.json"
+          done
+          node - <<'NODE'
+          const fs=require('fs');
+          const health=JSON.parse(fs.readFileSync('/tmp/health.json'));
+          const board=JSON.parse(fs.readFileSync('/tmp/board.json'));
+          const signals=JSON.parse(fs.readFileSync('/tmp/signals.json'));
+          const stats=JSON.parse(fs.readFileSync('/tmp/statistics.json'));
+          const rows=Array.isArray(stats?.rows)?stats.rows:[];
+          const sig=Array.isArray(signals?.signals)?signals.signals:[];
+          const fix=Array.isArray(board?.fixtures)?board.fixtures:[];
+          const tval=x=>{
+            for(const k of ['settledAt','settled_at','updatedAt','updated_at','finishedAt','finished_at','ts','timestamp']){
+              const v=x?.[k]; if(v==null) continue;
+              if(typeof v==='number') return v<1e12?v*1000:v;
+              const n=Number(v); if(Number.isFinite(n)) return n<1e12?n*1000:n;
+              const d=Date.parse(v); if(Number.isFinite(d)) return d;
+            }
+            return 0;
+          };
+          const name=(x)=>`${x?.home?.name||x?.homeName||x?.home||''} vs ${x?.away?.name||x?.awayName||x?.away||''}`;
+          const compact=x=>({fixtureId:x?.fixtureId||x?.fixture_id||x?.id,match:name(x),league:x?.league?.name||x?.leagueName||x?.league||'',market:x?.market||x?.marketKey,selection:x?.selection||x?.pick||x?.side,result:x?.result||x?.outcome,status:x?.status,score:x?.score||x?.finalScore||x?.scores,settledAt:x?.settledAt||x?.settled_at,updatedAt:x?.updatedAt||x?.updated_at});
+          const sorted=[...rows].sort((a,b)=>tval(b)-tval(a));
+          const max=tval(sorted[0]);
+          console.log('HEALTH',JSON.stringify(health));
+          console.log('COUNTS',{fixtures:fix.length,signals:sig.length,settled:rows.length});
+          console.log('MAX_SETTLED_AT_MS',max);
+          if(max){ console.log('MAX_SETTLED_AT_UTC',new Date(max).toISOString()); console.log('MAX_SETTLED_AGE_MIN',((Date.now()-max)/60000).toFixed(1)); }
+          console.log('LATEST_STATS_SORTED',JSON.stringify(sorted.slice(0,40).map(compact)));
+          const q=x=>JSON.stringify(x||'').toLowerCase();
+          const aliases=['hong kong','hongkong','hong-kong','香港','laos','lao ',' lao','lao pdr','ลาว','ฮ่องกง','ฮองกง'];
+          const hit=x=>aliases.some(a=>q(x).includes(a));
+          console.log('BOARD_ALIAS_HITS',JSON.stringify(fix.filter(hit).slice(0,80)));
+          console.log('SIGNAL_ALIAS_HITS',JSON.stringify(sig.filter(hit).slice(0,80)));
+          console.log('STATS_ALIAS_HITS',JSON.stringify(rows.filter(hit).sort((a,b)=>tval(b)-tval(a)).slice(0,80)));
+          const nat=x=>{const s=q(x);return (s.includes('hong kong')||s.includes('hongkong'))&&(s.includes('laos')||s.includes('lao'));};
+          console.log('BOARD_HK_V_LAO',JSON.stringify(fix.filter(nat)));
+          console.log('SIGNALS_HK_V_LAO',JSON.stringify(sig.filter(nat)));
+          console.log('STATS_HK_V_LAO',JSON.stringify(rows.filter(nat)));
+          NODE
