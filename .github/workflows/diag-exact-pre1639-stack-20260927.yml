@@ -1,0 +1,62 @@
+name: DIAG - Exact Ball46 stack before 16:39 regression
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/diag-exact-pre1639-stack-20260927.yml'
+
+permissions:
+  contents: read
+
+env:
+  CUTOFF_UTC: '2026-09-27T09:39:22Z'
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Identify exact deployment active immediately before 16:39 regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          for svc in ball46-production nomadtips3-engine-343 nomadtips3-5usd-hub-343 nomadtips3-full-market-343-ball46; do
+            echo "===== $svc ====="
+            npx --yes wrangler@4.92.0 deployments list --name "$svc" | tee "/tmp/$svc.txt"
+            node - "$svc" "$CUTOFF_UTC" "/tmp/$svc.txt" <<'NODE'
+          const fs=require('fs');
+          const [svc,cutoff,file]=process.argv.slice(2);
+          const lines=fs.readFileSync(file,'utf8').split(/\r?\n/);
+          const out=[]; let cur=null;
+          for(const line of lines){
+            const c=line.match(/^Created:\s+(.+)$/);
+            if(c){cur={deploymentCreated:c[1].trim(), version:null, versionCreated:null, message:null};out.push(cur);continue;}
+            if(!cur) continue;
+            const m=line.match(/^Message:\s+(.*)$/); if(m) cur.message=m[1].trim();
+            const v=line.match(/^Version\(s\):.*?([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\s*$/i); if(v&&!cur.version) cur.version=v[1];
+            const vc=line.match(/^\s+Created:\s+(.+)$/); if(vc&&cur.version&&!cur.versionCreated) cur.versionCreated=vc[1].trim();
+          }
+          const cut=Date.parse(cutoff);
+          const valid=out.filter(x=>x.version && Number.isFinite(Date.parse(x.deploymentCreated)) && Date.parse(x.deploymentCreated)<=cut).sort((a,b)=>Date.parse(a.deploymentCreated)-Date.parse(b.deploymentCreated));
+          if(!valid.length){console.error('NO_TARGET',svc);process.exit(1)}
+          const t=valid[valid.length-1];
+          console.log('PRE1639_TARGET_JSON '+JSON.stringify({service:svc,...t,cutoff}));
+          NODE
+          done
+      - name: Show version metadata for Engine target candidates
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.92.0 versions list --name nomadtips3-engine-343 --json > /tmp/engine-versions.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const raw=JSON.parse(fs.readFileSync('/tmp/engine-versions.json','utf8'));
+          const a=Array.isArray(raw)?raw:(raw.versions||raw.result||[]);
+          console.log('ENGINE_VERSION_TAIL_JSON '+JSON.stringify(a.slice(-12).map(v=>({id:v.id||v.version_id||v.versionId,created:v?.metadata?.created_on||v.created_on||v.created,tag:v?.metadata?.tag,message:v?.metadata?.message}))));
+          NODE
