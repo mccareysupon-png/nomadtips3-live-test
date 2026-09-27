@@ -1,0 +1,55 @@
+name: ONE SHOT - Ball46 Favicon Cachefix 4 20260927
+
+on:
+  push:
+    branches:
+      - ops/ball46-favicon-cachefix3-20260927
+    paths:
+      - '.github/workflows/one-shot-ball46-favicon-cachefix4-20260927.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Patch safety guards in runner and execute favicon-only deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL https://raw.githubusercontent.com/mccareysupon-png/nomadtips3-live-test/3aec613148e618b36af7d39f33ed0bff9e021b40/.github/scripts/ball46_favicon_cachefix_v3_20260927.sh -o /tmp/favicon-v4.sh
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('/tmp/favicon-v4.sh'); s=p.read_text()
+          replacements=[
+            ("    schedules=s.get('result') or []", "    raw_schedules=s.get('result') or []\n    schedules=raw_schedules.get('schedules',[]) if isinstance(raw_schedules,dict) else raw_schedules"),
+            ("paths=set(root.joinpath('live-paths.txt').read_text().splitlines()); nonce=os.environ.get('GITHUB_RUN_ID','run')+'-crawl-'+str(time.time_ns())", "paths=set(root.joinpath('live-paths.txt').read_text().splitlines()); known_missing=set(); nonce=os.environ.get('GITHUB_RUN_ID','run')+'-crawl-'+str(time.time_ns())"),
+            ("    new=sorted(refs-paths)", "    new=sorted(refs-paths-known_missing)"),
+            ("    paths|=added\n    # A referenced local file that does not exist in Production is a hard stop.\n    if failed: raise SystemExit('REFERENCED_LIVE_ASSET_MISSING:'+repr(failed))", "    paths|=added\n    # Preserve references that are already 404 on the locked Production baseline; never resurrect old files.\n    known_missing|=set(failed)\n    root.joinpath('baseline-404-references.txt').write_text('\\n'.join(sorted(known_missing))+'\\n')"),
+            ("missing=sorted(refs-paths);print('FINAL_REFERENCED_MISSING=',missing)\nif missing:raise SystemExit('REFERENCE_CLOSURE_FAILED')", "missing=sorted(refs-paths); unexpected=sorted(set(missing)-known_missing); print('FINAL_BASELINE_404_REFERENCES=',missing); print('FINAL_UNEXPECTED_MISSING=',unexpected)\nif unexpected:raise SystemExit('REFERENCE_CLOSURE_FAILED')")
+          ]
+          for old,new in replacements:
+              if s.count(old)!=1: raise SystemExit('PATCH_TARGET_COUNT_'+str(s.count(old))+':'+old[:80])
+              s=s.replace(old,new,1)
+          p.write_text(s)
+          print('RUNNER_SAFETY_PATCH_OK')
+          PY
+          bash -n /tmp/favicon-v4.sh
+          bash /tmp/favicon-v4.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-favicon-cachefix4-${{ github.run_id }}
+          path: /tmp/b46-favicon-v3
+          if-no-files-found: ignore
+          retention-days: 30
