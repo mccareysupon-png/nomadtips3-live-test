@@ -1,0 +1,60 @@
+name: INSPECT - Ball46 WWW 20260927
+
+on:
+  push:
+    branches: [ops/inspect-ball46-www-20260927]
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    env:
+      CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      WWW: https://www.ball46.com
+      WORKER: https://ball46-production.mccarey-supon.workers.dev
+    steps:
+      - name: Inspect Cloudflare routing and live assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          hdr=(-H "Authorization: Bearer $CF_TOKEN" -H 'Accept: application/json')
+
+          echo '=== ACTIVE WORKER DEPLOYMENT ==='
+          curl -fsS "${hdr[@]}" "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT/workers/scripts/ball46-production/deployments" | python3 -m json.tool | head -120
+
+          echo '=== ACCOUNT WORKER DOMAINS ==='
+          curl -fsS "${hdr[@]}" "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT/workers/domains" | python3 -m json.tool | head -200 || true
+
+          echo '=== ZONE LOOKUP ==='
+          zone_json=$(curl -fsS "${hdr[@]}" "https://api.cloudflare.com/client/v4/zones?name=ball46.com") || true
+          printf '%s\n' "$zone_json" | python3 -m json.tool | head -120 || true
+          zone_id=$(printf '%s' "$zone_json" | python3 -c "import sys,json; p=json.load(sys.stdin); r=p.get('result') or []; print(r[0].get('id','') if r else '')" 2>/dev/null || true)
+          if [ -n "$zone_id" ]; then
+            echo "ZONE_ID=$zone_id"
+            echo '=== WORKER ROUTES ==='
+            curl -fsS "${hdr[@]}" "https://api.cloudflare.com/client/v4/zones/$zone_id/workers/routes" | python3 -m json.tool | head -200 || true
+          fi
+
+          nonce="${GITHUB_RUN_ID}-$(date +%s%N)"
+          for base in "$WWW" "$WORKER"; do
+            tag=$(echo "$base" | sed 's#https://##;s#[^A-Za-z0-9]#_#g')
+            echo "=== FETCH $base ==="
+            for path in 'index.html?status=live' 'v2-shared.css'; do
+              sep='?'; [[ "$path" == *'?'* ]] && sep='&'
+              url="$base/$path${sep}inspect=$nonce"
+              out="/tmp/${tag}-$(echo "$path" | tr '/?&=' '____')"
+              code=$(curl -sS -L --retry 3 --retry-all-errors --max-time 30 -H 'Cache-Control: no-cache' -D "$out.headers" -o "$out" -w '%{http_code}' "$url" || true)
+              echo "$base/$path HTTP=$code SHA256=$(sha256sum "$out" 2>/dev/null | awk '{print $1}')"
+              echo '-- headers --'; sed -n '1,30p' "$out.headers" || true
+              echo '-- markers --'
+              grep -nF 'NOMAD LIVE 3.43 · WORKSPACE' "$out" | head -5 || true
+              grep -nF 'BALL46_HIDE_PAGE_INTRO_20260927' "$out" | head -5 || true
+              grep -nE 'dash-heading|next-page-head|v2-shared.css' "$out" | head -12 || true
+            done
+          done
+
+          echo '=== HASH COMPARE ==='
+          sha256sum /tmp/www_ball46_com-* /tmp/ball46_production_mccarey_supon_workers_dev-* 2>/dev/null || true
