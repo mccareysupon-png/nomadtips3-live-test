@@ -1,0 +1,49 @@
+name: DIAG - Ball46 Worker vs WWW 20260927
+
+on:
+  push:
+    branches:
+      - ops/ball46-favicon-cachefix3-20260927
+    paths:
+      - '.github/workflows/diag-ball46-worker-vs-www-20260927.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Compare direct Worker and custom domain HTML
+        shell: bash
+        run: |
+          set -euo pipefail
+          W='https://ball46-production.mccarey-supon.workers.dev'
+          P='https://www.ball46.com'
+          n="${GITHUB_RUN_ID}-$(date +%s%N)"
+          curl -fsS -L -H 'Cache-Control: no-cache' "$W/index.html?diag=$n" -o /tmp/worker.html
+          curl -fsS -L -H 'Cache-Control: no-cache' "$P/index.html?diag=$n" -o /tmp/www.html
+          echo WORKER_SHA=$(sha256sum /tmp/worker.html | awk '{print $1}')
+          echo WWW_SHA=$(sha256sum /tmp/www.html | awk '{print $1}')
+          echo WORKER_SIZE=$(wc -c </tmp/worker.html)
+          echo WWW_SIZE=$(wc -c </tmp/www.html)
+          echo 'WORKER_ICONS:'
+          grep -Eio '<link[^>]+rel=["'"'](shortcut[[:space:]]+)?icon["'"'][^>]*>' /tmp/worker.html || true
+          echo 'WWW_ICONS:'
+          grep -Eio '<link[^>]+rel=["'"'](shortcut[[:space:]]+)?icon["'"'][^>]*>' /tmp/www.html || true
+          python3 - <<'PY'
+          from pathlib import Path
+          import re,hashlib
+          a=Path('/tmp/worker.html').read_text(errors='replace');b=Path('/tmp/www.html').read_text(errors='replace')
+          pat=r'\s*<script\b[^>]*static\.cloudflareinsights\.com/beacon\.min\.js[^>]*>\s*</script>'
+          ca=re.sub(pat,'',a,flags=re.I);cb=re.sub(pat,'',b,flags=re.I)
+          print('WORKER_HAS_BEACON=',bool(re.search(pat,a,re.I)))
+          print('WWW_HAS_BEACON=',bool(re.search(pat,b,re.I)))
+          print('NORMALIZED_EQUAL=',ca==cb)
+          print('NORMALIZED_WORKER_SHA=',hashlib.sha256(ca.encode()).hexdigest())
+          print('NORMALIZED_WWW_SHA=',hashlib.sha256(cb.encode()).hexdigest())
+          if ca!=cb:
+              import difflib
+              print(''.join(list(difflib.unified_diff(ca.splitlines(True),cb.splitlines(True),fromfile='worker',tofile='www'))[:80]))
+              raise SystemExit('NORMALIZED_CONTENT_DIFF')
+          PY
