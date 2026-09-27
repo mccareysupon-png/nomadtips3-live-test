@@ -1,0 +1,39 @@
+name: TEST Ball46 settlement recovery 20260927
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/test-ball46-settlement-recovery-20260927.yml'
+
+permissions:
+  contents: read
+
+env:
+  WORK_BRANCH: work/ball46-settlement-missing-fixture-safe-20260927
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - name: Checkout isolated repair branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.WORK_BRANCH }}
+          fetch-depth: 1
+      - name: Syntax and scope guards
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check workers/nomadtips3-engine-343/src/index-bulk.js
+          node --check workers/nomadtips3-engine-343/src/index-bulk-recovery.js
+          node --check workers/nomadtips3-engine-343/src/market-core.js
+          grep -Fq "main = \"src/index-bulk-recovery.js\"" workers/nomadtips3-engine-343/wrangler.toml
+          grep -Fq "MAX_FINAL_LOOKUPS_PER_SCAN=6" workers/nomadtips3-engine-343/src/index-bulk-recovery.js
+          grep -Fq "fixtures/${encodeURIComponent(fixtureId)}" workers/nomadtips3-engine-343/src/index-bulk-recovery.js
+          git diff --exit-code 15ee059599d6dadd2a88669a3c239f588a5e1560 -- workers/nomadtips3-engine-343/src/index-bulk.js workers/nomadtips3-engine-343/src/market-core.js
+      - name: Wrangler dry run engine only
+        working-directory: workers/nomadtips3-engine-343
+        shell: bash
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.toml
