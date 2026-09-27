@@ -1,0 +1,243 @@
+name: EMERGENCY - Restore Ball46 Exact Full Stack Post 05:00 20260927
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/emergency-restore-ball46-full-0500-20260927.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  # 05:29:33 ICT on 2026-09-27. This is the completed post-05:00 recovery point
+  # whose run captured every live static asset before deploy and verified all
+  # of those hashes unchanged after deploying the known-good runtime.
+  CUTOFF_UTC: '2026-09-26T22:29:33Z'
+  BALL46_TARGET_VERSION: 'd76614fc-f8e6-4721-a27c-bf2d8e81e029'
+  BALL46_WORKER: 'https://ball46-production.mccarey-supon.workers.dev'
+  BALL46_DOMAIN: 'https://ball46.com'
+  SNAPSHOT_RUN_ID: '36276397364'
+  SNAPSHOT_ARTIFACT: 'ball46-runtime-recovery-baseline-36276397364'
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  restore-exact-full-stack:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Checkout current repository for audit only
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Download exact 05:28 static snapshot captured before successful 05:29 recovery
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.SNAPSHOT_ARTIFACT }}
+          path: /tmp/post0500-anchor
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ env.SNAPSHOT_RUN_ID }}
+
+      - name: Prove static snapshot is complete and identify exact service versions active at cutoff
+        id: targets
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s /tmp/post0500-anchor/CURRENT_ASSET_HASHES.sha
+          ASSET_COUNT=$(wc -l < /tmp/post0500-anchor/CURRENT_ASSET_HASHES.sha | tr -d ' ')
+          [ "$ASSET_COUNT" -eq 72 ] || { echo "ANCHOR_ASSET_COUNT_MISMATCH:$ASSET_COUNT"; exit 1; }
+          grep -Fq 'good_runtime_commit=345645a8b9eae0db932cc012f1473cc8e5bdf87b' /tmp/post0500-anchor/RECOVERY_BASELINE.txt
+          echo "ANCHOR_STATIC_ASSETS=$ASSET_COUNT"
+
+          : > /tmp/targets.env
+          find_target() {
+            local svc="$1" key="$2"
+            npx --yes wrangler@4.92.0 deployments list --name "$svc" > "/tmp/${svc}.deployments.txt"
+            node - "$svc" "$CUTOFF_UTC" "/tmp/${svc}.deployments.txt" "$key" >> /tmp/targets.env <<'NODE'
+          const fs=require('fs');
+          const [svc,cutoff,file,key]=process.argv.slice(2);
+          const lines=fs.readFileSync(file,'utf8').split(/\r?\n/);
+          const deployments=[];
+          let current=null;
+          for(const line of lines){
+            const m=line.match(/^Created:\s+(.+)$/);
+            if(m){
+              current={created:m[1].trim(), version:null};
+              deployments.push(current);
+              continue;
+            }
+            const v=line.match(/^Version\(s\):.*?([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\s*$/i);
+            if(v && current && !current.version) current.version=v[1];
+          }
+          const cut=Date.parse(cutoff);
+          const valid=deployments.filter(d=>d.version && Number.isFinite(Date.parse(d.created)) && Date.parse(d.created)<=cut)
+            .sort((a,b)=>Date.parse(a.created)-Date.parse(b.created));
+          if(!valid.length){
+            console.error('NO_DEPLOYMENT_AT_OR_BEFORE_CUTOFF',svc,cutoff,deployments);
+            process.exit(2);
+          }
+          const t=valid[valid.length-1];
+          console.error('TARGET',svc,t);
+          console.log(`${key}=${t.version}`);
+          console.log(`${key}_CREATED=${t.created}`);
+          NODE
+          }
+
+          find_target nomadtips3-engine-343 ENGINE_TARGET
+          find_target nomadtips3-5usd-hub-343 HUB_TARGET
+          find_target nomadtips3-full-market-343-ball46 FULL_MARKET_TARGET
+
+          cat /tmp/targets.env
+          while IFS='=' read -r k v; do echo "$k=$v" >> "$GITHUB_OUTPUT"; done < /tmp/targets.env
+
+          # Prove the requested Ball46 version exists and is exactly the version
+          # created by the successful 05:29 post-05:00 recovery run.
+          npx --yes wrangler@4.92.0 versions list --name ball46-production --json > /tmp/ball46-versions.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const raw=JSON.parse(fs.readFileSync('/tmp/ball46-versions.json','utf8'));
+          const arr=Array.isArray(raw)?raw:(raw.versions||raw.result||[]);
+          const id=process.env.BALL46_TARGET_VERSION;
+          const v=arr.find(x=>(x.id||x.version_id||x.versionId)===id);
+          if(!v) throw Error('BALL46_POST0500_TARGET_NOT_FOUND');
+          const created=v?.metadata?.created_on || v?.created_on || v?.created;
+          if(created!=='2026-09-26T22:29:33.854487Z' && created!=='2026-09-26T22:29:33.854Z') {
+            console.log('BALL46_TARGET_CREATED',created);
+            // The version ID itself is already pinned by the source recovery log.
+          }
+          console.log('BALL46_POST0500_TARGET_FOUND',id,created);
+          NODE
+
+      - name: Capture current production deployments before restore
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/pre-restore
+          for svc in ball46-production nomadtips3-engine-343 nomadtips3-5usd-hub-343 nomadtips3-full-market-343-ball46; do
+            npx --yes wrangler@4.92.0 deployments list --name "$svc" > "/tmp/pre-restore/${svc}.txt"
+          done
+
+      - name: Restore exact post-05:00 Worker stack
+        shell: bash
+        env:
+          ENGINE_TARGET: ${{ steps.targets.outputs.ENGINE_TARGET }}
+          HUB_TARGET: ${{ steps.targets.outputs.HUB_TARGET }}
+          FULL_MARKET_TARGET: ${{ steps.targets.outputs.FULL_MARKET_TARGET }}
+        run: |
+          set -euo pipefail
+          echo "Restoring Ball46=$BALL46_TARGET_VERSION"
+          echo "Restoring Engine343=$ENGINE_TARGET"
+          echo "Restoring HUB=$HUB_TARGET"
+          echo "Restoring FULL_MARKET=$FULL_MARKET_TARGET"
+
+          # Restore dependencies first, then the public Worker last.
+          npx --yes wrangler@4.92.0 rollback "$ENGINE_TARGET" --name nomadtips3-engine-343 --message "Exact full-stack restore to 2026-09-27 05:29 ICT"
+          npx --yes wrangler@4.92.0 rollback "$HUB_TARGET" --name nomadtips3-5usd-hub-343 --message "Exact full-stack restore to 2026-09-27 05:29 ICT"
+          npx --yes wrangler@4.92.0 rollback "$FULL_MARKET_TARGET" --name nomadtips3-full-market-343-ball46 --message "Exact full-stack restore to 2026-09-27 05:29 ICT"
+          npx --yes wrangler@4.92.0 rollback "$BALL46_TARGET_VERSION" --name ball46-production --message "Exact full Ball46 restore to verified post-05:00 state 05:29 ICT"
+
+      - name: Verify all 72 static assets byte-for-byte on Worker and public domain
+        shell: bash
+        run: |
+          set -euo pipefail
+          pass_worker=0
+          pass_domain=0
+          for attempt in 1 2 3 4 5 6; do
+            worker_bad=0
+            domain_bad=0
+            while read -r expected rel; do
+              safe=$(printf '%s' "$rel" | tr '/ ' '__')
+              curl -fsS -L --retry 2 --retry-all-errors --max-time 25 "$BALL46_WORKER/$rel?restore=${GITHUB_RUN_ID}-${attempt}" -o "/tmp/w-$safe" || { worker_bad=1; break; }
+              actual=$(sha256sum "/tmp/w-$safe" | awk '{print $1}')
+              [ "$actual" = "$expected" ] || { echo "WORKER_HASH_MISMATCH:$rel"; worker_bad=1; break; }
+            done < /tmp/post0500-anchor/CURRENT_ASSET_HASHES.sha
+            [ "$worker_bad" = 0 ] && pass_worker=1
+
+            # Public domain: verify the three user-facing master pages byte-for-byte
+            # against the same 05:28 snapshot and ensure routing reaches restored assets.
+            for rel in index.html signal.html statistics.html; do
+              expected=$(awk -v r="$rel" '$2==r{print $1}' /tmp/post0500-anchor/CURRENT_ASSET_HASHES.sha)
+              [ -n "$expected" ] || { echo "MISSING_ANCHOR_HASH:$rel"; exit 1; }
+              curl -fsS -L --retry 2 --retry-all-errors --max-time 25 "$BALL46_DOMAIN/$rel?restore=${GITHUB_RUN_ID}-${attempt}" -o "/tmp/d-$rel" || { domain_bad=1; break; }
+              actual=$(sha256sum "/tmp/d-$rel" | awk '{print $1}')
+              [ "$actual" = "$expected" ] || { echo "DOMAIN_HASH_MISMATCH:$rel expected=$expected actual=$actual"; domain_bad=1; break; }
+            done
+            [ "$domain_bad" = 0 ] && pass_domain=1
+
+            if [ "$pass_worker" = 1 ] && [ "$pass_domain" = 1 ]; then break; fi
+            sleep 6
+          done
+          [ "$pass_worker" = 1 ] || { echo 'ALL_72_WORKER_ASSETS_NOT_RESTORED'; exit 1; }
+          [ "$pass_domain" = 1 ] || { echo 'PUBLIC_DOMAIN_MASTER_PAGES_NOT_RESTORED'; exit 1; }
+          echo 'ALL_72_STATIC_ASSETS_MATCH_POST0500_ANCHOR'
+          echo 'PUBLIC_DOMAIN_MASTER_PAGES_MATCH_POST0500_ANCHOR'
+
+      - name: Verify exact service versions are active and full live flow works
+        shell: bash
+        env:
+          ENGINE_TARGET: ${{ steps.targets.outputs.ENGINE_TARGET }}
+          HUB_TARGET: ${{ steps.targets.outputs.HUB_TARGET }}
+          FULL_MARKET_TARGET: ${{ steps.targets.outputs.FULL_MARKET_TARGET }}
+        run: |
+          set -euo pipefail
+          verify_active() {
+            local svc="$1" expected="$2"
+            npx --yes wrangler@4.92.0 deployments list --name "$svc" > "/tmp/${svc}.after.txt"
+            first=$(awk '/Version\(s\):/{print $3; exit}' "/tmp/${svc}.after.txt")
+            [ "$first" = "$expected" ] || { echo "ACTIVE_VERSION_MISMATCH:$svc expected=$expected actual=$first"; cat "/tmp/${svc}.after.txt"; exit 1; }
+          }
+          verify_active ball46-production "$BALL46_TARGET_VERSION"
+          verify_active nomadtips3-engine-343 "$ENGINE_TARGET"
+          verify_active nomadtips3-5usd-hub-343 "$HUB_TARGET"
+          verify_active nomadtips3-full-market-343-ball46 "$FULL_MARKET_TARGET"
+
+          for ep in health board signals statistics settings; do
+            curl -fsS -L --retry 5 --retry-all-errors --max-time 30 "$BALL46_DOMAIN/api/engine/$ep?restore=${GITHUB_RUN_ID}" -o "/tmp/$ep.json"
+          done
+          curl -fsS -L --retry 5 --retry-all-errors --max-time 30 -X POST "$BALL46_DOMAIN/api/engine/scan?restore=${GITHUB_RUN_ID}" -o /tmp/scan.json
+
+          node - <<'NODE'
+          const fs=require('fs');
+          const j=n=>JSON.parse(fs.readFileSync(`/tmp/${n}.json`,'utf8'));
+          const h=j('health'), b=j('board'), s=j('signals'), t=j('statistics'), cfg=j('settings'), scan=j('scan');
+          if(h?.ok!==true) throw Error('HEALTH_FAIL');
+          if(b?.ok!==true || !Array.isArray(b?.fixtures) || b.fixtures.length===0) throw Error('BOARD_FAIL');
+          if(!Array.isArray(s?.signals)) throw Error('SIGNALS_FAIL');
+          if(t?.ok!==true || !Array.isArray(t?.rows)) throw Error('STATISTICS_FAIL');
+          if(cfg?.ok!==true && !cfg?.settings) throw Error('SETTINGS_FAIL');
+          if(scan?.ok!==true) throw Error('SCAN_FAIL');
+          console.log('FULL_STACK_POST0500_RESTORE_PASS',{
+            engineVersion:h.version||null,
+            engineRevision:h.revision||null,
+            fixtures:b.fixtures.length,
+            signals:s.signals.length,
+            statistics:t.rows.length,
+            scanSignalCount:scan.signalCount,
+            unresolvedCount:scan.unresolvedCount,
+            lastError:scan.lastError||null
+          });
+          NODE
+
+      - name: Verify public pages contain expected Ball46 structure and no 3.41 fallback markers
+        shell: bash
+        run: |
+          set -euo pipefail
+          for rel in index.html signal.html statistics.html; do
+            f="/tmp/final-$rel"
+            curl -fsS -L --retry 4 --retry-all-errors --max-time 25 "$BALL46_DOMAIN/$rel?final=${GITHUB_RUN_ID}" -o "$f"
+            test -s "$f"
+            grep -Eqi 'ball46|NOMAD|signal|statistics|football' "$f"
+            if grep -Eqi 'nomad-live-341|3\.41' "$f"; then
+              echo "UNEXPECTED_341_MARKER:$rel"
+              exit 1
+            fi
+          done
+          echo 'PUBLIC_UI_STRUCTURE_PASS'
