@@ -1,0 +1,57 @@
+name: READ ONLY - Ball46 V2 final verification 20260927
+
+on:
+  push:
+    branches: [work/ball46-row-balance-livebase-20260927]
+    paths:
+      - '.github/workflows/ball46-v2-final-backend-check-20260927.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
+      CAND_INDEX: 17092c25cd52919a0db2160de14f4c80320a065a21e268b3042b021823ae7d7b
+      CAND_JS: 64db90d85497f10b583c4c078c3ef5cbadbdc39f607b4b2a4d97b193244b730a
+      CAND_CSS: 353643f031ba7aa5a3003f9d0fe229431257085f3a75f720068cd88ded4f75f6
+    steps:
+      - name: Verify exact live candidate hashes and markers
+        shell: bash
+        run: |
+          set -euo pipefail
+          for f in index.html dashboard-v2-stage3.js dashboard-v2-tune.css; do
+            curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 30 -H 'Cache-Control: no-cache' \
+              "$BALL46_WORKER/$f?final=${GITHUB_RUN_ID}-$(date +%s%N)" -o "/tmp/final-$f"
+          done
+          test "$(sha256sum /tmp/final-index.html | awk '{print $1}')" = "$CAND_INDEX"
+          test "$(sha256sum /tmp/final-dashboard-v2-stage3.js | awk '{print $1}')" = "$CAND_JS"
+          test "$(sha256sum /tmp/final-dashboard-v2-tune.css | awk '{print $1}')" = "$CAND_CSS"
+          grep -Fq 'layout=20260927-row-balance-livebase-v3' /tmp/final-index.html
+          grep -Fq 'class="match-meta-cell"' /tmp/final-dashboard-v2-stage3.js
+          grep -Fq 'BALL46 LIVE ROW BALANCE LIVEBASE V3 20260927' /tmp/final-dashboard-v2-tune.css
+          echo FINAL_UI_HASH_AND_MARKER_PASS
+
+      - name: Verify production backend read-only
+        shell: bash
+        run: |
+          set -euo pipefail
+          for ep in health board signals statistics; do
+            curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 30 \
+              "$BALL46_WORKER/api/engine/$ep?final-api=${GITHUB_RUN_ID}" -o "/tmp/final-$ep.json"
+          done
+          node - <<'NODE'
+          const fs=require('fs');
+          const h=JSON.parse(fs.readFileSync('/tmp/final-health.json'));
+          const b=JSON.parse(fs.readFileSync('/tmp/final-board.json'));
+          const s=JSON.parse(fs.readFileSync('/tmp/final-signals.json'));
+          const t=JSON.parse(fs.readFileSync('/tmp/final-statistics.json'));
+          if(h?.ok!==true) throw Error('HEALTH_BAD');
+          if(b?.ok!==true||!Array.isArray(b.fixtures)) throw Error('BOARD_BAD');
+          if(!Array.isArray(s.signals)) throw Error('SIGNALS_BAD');
+          if(t?.ok!==true||!Array.isArray(t.rows)) throw Error('STATS_BAD');
+          console.log('BALL46_V2_FINAL_PASS',{fixtures:b.fixtures.length,signals:s.signals.length,settled:t.rows.length});
+          NODE
