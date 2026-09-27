@@ -1,0 +1,133 @@
+name: RECOVER - Ball46 Exact Known Good 10930183394
+
+on:
+  push:
+    branches:
+      - recovery/ball46-exact-artifact-10930183394-20260927
+    paths:
+      - '.github/workflows/recover-ball46-exact-artifact-10930183394.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  recover:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Restore exact snapshot captured from Production before favicon work
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT=/tmp/ball46-restore
+          rm -rf "$ROOT" && mkdir -p "$ROOT"
+          curl -fsSL --retry 4 --retry-all-errors \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            'https://api.github.com/repos/mccareysupon-png/nomadtips3-live-test/actions/artifacts/10930183394/zip' \
+            -o "$ROOT/snapshot.zip"
+          unzip -q "$ROOT/snapshot.zip" -d "$ROOT/snap"
+
+          test "$(find "$ROOT/snap/before" -type f | wc -l | tr -d ' ')" = '79'
+          echo '3bf461264b83428c496fb300e6e9be17f6bc0c1117341fcd303c1eff61c1feb9  '"$ROOT/snap/before/index.html" | sha256sum -c -
+          echo 'ce33cd0c99f7d36e00d89bb108502afb308528fe801381a9c55cc7cb7b7fbb48  '"$ROOT/snap/before/ball46-logo.svg" | sha256sum -c -
+          echo 'f961c641bb726f042f3d2e4a53e23363f68aa8497092f8071900b398cfb076ed  '"$ROOT/snap/runtime/index.js" | sha256sum -c -
+          echo 'b271b11129789e62c078ece50dddd37e83a2bb37a3c7fbcb0793711409be7835  '"$ROOT/snap/before/statistics.js" | sha256sum -c -
+          echo '472c370ddbc83f8630b6f587099c4315ba02646a0504163165d4631a9fc346e9  '"$ROOT/snap/before/signal-next.js" | sha256sum -c -
+          echo 'caba0dc07cba428d5eb7b5a52d7597bb12aa3fea09f70460a58b88edea50133a  '"$ROOT/snap/before/singlepage-workspace-343.js" | sha256sum -c -
+          echo '8b1ad2f177218f852a6166d8b9dd087550690a95881a0dd36af7161fe58554ab  '"$ROOT/snap/before/ui-sync-fixes-343-v2.js" | sha256sum -c -
+          grep -Fq '<link rel="icon" href="/ball46-logo.svg" type="image/svg+xml">' "$ROOT/snap/before/index.html"
+          ! grep -Fq 'ball46-tab-logo-20260927c' "$ROOT/snap/before/index.html"
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          root=Path('/tmp/ball46-restore/snap')
+          cfg=json.loads((root/'runtime/wrangler.json').read_text())
+          cfg['assets']['directory']=str((root/'before').resolve())
+          cfg['triggers']={'crons':['* * * * *']}
+          (root/'runtime/wrangler-restore.json').write_text(json.dumps(cfg,indent=2))
+          print('RESTORE_CONFIG',json.dumps(cfg,sort_keys=True))
+          PY
+
+          # Current runtime must still match the captured known-good runtime before restoring assets.
+          python3 - <<'PY'
+          import os,json,urllib.request,base64,hashlib
+          a=os.environ['CLOUDFLARE_ACCOUNT_ID']; t=os.environ['CLOUDFLARE_API_TOKEN']; h={'Authorization':'Bearer '+t,'Accept':'application/json'}
+          base=f'https://api.cloudflare.com/client/v4/accounts/{a}/workers/scripts/ball46-production'
+          with urllib.request.urlopen(urllib.request.Request(base+'/deployments',headers=h),timeout=30) as r:p=json.load(r)
+          vid=p['result']['deployments'][0]['versions'][0]['version_id']
+          u=f'https://api.cloudflare.com/client/v4/accounts/{a}/workers/workers/ball46-production/versions/{vid}?include=modules'
+          with urllib.request.urlopen(urllib.request.Request(u,headers=h),timeout=30) as r:q=json.load(r)
+          res=q.get('result') or {}; main=res.get('main_module') or 'index.js'; mod=next(x for x in (res.get('modules') or []) if x.get('name')==main and x.get('content_base64'))
+          sha=hashlib.sha256(base64.b64decode(mod['content_base64'])).hexdigest()
+          print('CURRENT_VERSION',vid,'CURRENT_RUNTIME_SHA',sha)
+          if sha!='f961c641bb726f042f3d2e4a53e23363f68aa8497092f8071900b398cfb076ed': raise SystemExit('RUNTIME_CHANGED_ABORT')
+          PY
+
+          cd "$ROOT/snap/runtime"
+          npx --yes wrangler@4 deploy --config wrangler-restore.json
+
+          # Verify every restored asset byte-for-byte against the captured Production snapshot.
+          cd "$ROOT"
+          python3 - <<'PY'
+          from pathlib import Path
+          import urllib.request,hashlib,time
+          base='https://ball46-production.mccarey-supon.workers.dev/'
+          root=Path('/tmp/ball46-restore/snap/before')
+          bad=[]; ok=0
+          for p in sorted(x for x in root.rglob('*') if x.is_file()):
+              rel=p.relative_to(root).as_posix(); url=base+rel+'?restore='+str(time.time_ns())
+              req=urllib.request.Request(url,headers={'Cache-Control':'no-cache','User-Agent':'ball46-exact-restore-verify'})
+              try:
+                  with urllib.request.urlopen(req,timeout=30) as r:data=r.read()
+              except Exception as e:
+                  bad.append((rel,'FETCH',repr(e))); continue
+              a=hashlib.sha256(p.read_bytes()).hexdigest(); b=hashlib.sha256(data).hexdigest()
+              if a!=b: bad.append((rel,a,b))
+              else: ok+=1
+          print('EXACT_ASSETS_OK',ok,'BAD',bad)
+          if bad or ok!=79: raise SystemExit('EXACT_ASSET_VERIFY_FAILED')
+          PY
+
+          python3 - <<'PY'
+          import os,json,urllib.request,base64,hashlib
+          a=os.environ['CLOUDFLARE_ACCOUNT_ID']; t=os.environ['CLOUDFLARE_API_TOKEN']; h={'Authorization':'Bearer '+t,'Accept':'application/json'}
+          base=f'https://api.cloudflare.com/client/v4/accounts/{a}/workers/scripts/ball46-production'
+          with urllib.request.urlopen(urllib.request.Request(base+'/deployments',headers=h),timeout=30) as r:p=json.load(r)
+          vid=p['result']['deployments'][0]['versions'][0]['version_id']
+          u=f'https://api.cloudflare.com/client/v4/accounts/{a}/workers/workers/ball46-production/versions/{vid}?include=modules'
+          with urllib.request.urlopen(urllib.request.Request(u,headers=h),timeout=30) as r:q=json.load(r)
+          res=q.get('result') or {}; main=res.get('main_module') or 'index.js'; mod=next(x for x in (res.get('modules') or []) if x.get('name')==main and x.get('content_base64'))
+          sha=hashlib.sha256(base64.b64decode(mod['content_base64'])).hexdigest(); print('POST_VERSION',vid,'POST_RUNTIME_SHA',sha)
+          if sha!='f961c641bb726f042f3d2e4a53e23363f68aa8497092f8071900b398cfb076ed': raise SystemExit('POST_RUNTIME_MISMATCH')
+          with urllib.request.urlopen(urllib.request.Request(base+'/schedules',headers=h),timeout=30) as r:s=json.load(r)
+          raw=s.get('result') or []; schedules=raw.get('schedules',[]) if isinstance(raw,dict) else raw
+          crons=[x.get('cron') for x in schedules if isinstance(x,dict)]
+          print('POST_CRONS',crons)
+          if '* * * * *' not in crons: raise SystemExit('CRON_MISSING')
+          PY
+
+          node - <<'NODE'
+          const https=require('https');
+          function get(path){return new Promise((resolve,reject)=>https.get('https://www.ball46.com'+path,res=>{let b='';res.on('data',d=>b+=d);res.on('end',()=>{try{resolve(JSON.parse(b))}catch(e){reject(e)}})}).on('error',reject))}
+          (async()=>{const [b,s,t]=await Promise.all([get('/api/engine/board?restore=1'),get('/api/engine/signals?restore=1'),get('/api/engine/statistics?restore=1')]);if(b?.ok!==true||!Array.isArray(b.fixtures))throw Error('BOARD_BAD');if(!Array.isArray(s.signals))throw Error('SIGNALS_BAD');if(t?.ok!==true||!Array.isArray(t.rows))throw Error('STATS_BAD');console.log('PUBLIC_API_OK',{fixtures:b.fixtures.length,signals:s.signals.length,statistics:t.rows.length});})().catch(e=>{console.error(e);process.exit(1)})
+          NODE
+
+          echo BALL46_EXACT_KNOWN_GOOD_RESTORED
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-exact-restore-${{ github.run_id }}
+          path: /tmp/ball46-restore
+          if-no-files-found: ignore
+          retention-days: 30
