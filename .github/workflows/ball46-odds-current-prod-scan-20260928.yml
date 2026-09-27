@@ -7,7 +7,6 @@ on:
       - ops/ball46-odds-surgical-20260928
     paths:
       - '.github/workflows/ball46-odds-current-prod-scan-20260928.yml'
-      - '.github/scripts/ball46_odds_surgical_20260928.py'
 
 permissions:
   contents: read
@@ -26,21 +25,32 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          rm -rf /tmp/b46-scan && mkdir -p /tmp/b46-scan
           python3 - <<'PY'
           import base64, hashlib, json, os, pathlib, urllib.request
           account=os.environ['CLOUDFLARE_ACCOUNT_ID']; token=os.environ['CLOUDFLARE_API_TOKEN']
           h={'Authorization':f'Bearer {token}','Accept':'application/json'}
-          base=f'https://api.cloudflare.com/client/v4/accounts/{account}/workers/scripts/ball46-production'
-          with urllib.request.urlopen(urllib.request.Request(base+'/deployments',headers=h),timeout=30) as r:
-              dep=json.load(r)['result']['deployments'][0]
+          api=f'https://api.cloudflare.com/client/v4/accounts/{account}'
+          script='ball46-production'
+          def get(url):
+              with urllib.request.urlopen(urllib.request.Request(url,headers=h),timeout=30) as r:
+                  return json.load(r)
+          deps=get(f'{api}/workers/scripts/{script}/deployments')['result']['deployments']
+          dep=deps[0]
           versions=dep.get('versions') or []
           if len(versions)!=1 or float(versions[0].get('percentage',100))!=100:
               raise SystemExit('UNEXPECTED_DEPLOYMENT_SHAPE')
           vid=versions[0]['version_id']
           print('CURRENT_VERSION='+vid)
-          u=f'https://api.cloudflare.com/client/v4/accounts/{account}/workers/workers/ball46-production/versions/{vid}?include=modules'
-          with urllib.request.urlopen(urllib.request.Request(u,headers=h),timeout=30) as r:
-              v=json.load(r)['result']
+          print('DEPLOYMENT='+json.dumps({k:dep.get(k) for k in ('id','created_on','source','strategy','author_email','annotations','versions')},sort_keys=True))
+          v=get(f'{api}/workers/workers/{script}/versions/{vid}?include=modules')['result']
+          safe={k:v.get(k) for k in ('id','number','created_on','compatibility_date','compatibility_flags','bindings','assets','limits','placement','usage_model','main_module','annotations','source','tag','message')}
+          # Never persist an asset JWT/token if the API includes one.
+          if isinstance(safe.get('assets'),dict): safe['assets']=dict(safe['assets']); safe['assets'].pop('jwt',None)
+          print('VERSION_NUMBER='+str(v.get('number')))
+          print('VERSION_CREATED_ON='+str(v.get('created_on')))
+          print('VERSION_ANNOTATIONS='+json.dumps(v.get('annotations') or {},sort_keys=True))
+          print('VERSION_SOURCE='+json.dumps(v.get('source'),sort_keys=True))
           print('COMPATIBILITY_DATE='+str(v.get('compatibility_date')))
           print('COMPATIBILITY_FLAGS='+json.dumps(v.get('compatibility_flags') or []))
           print('ASSETS_CONFIG='+json.dumps((v.get('assets') or {}).get('config') or {},sort_keys=True))
@@ -50,44 +60,29 @@ jobs:
           for m in mods:
               raw=base64.b64decode(m.get('content_base64') or '')
               print('MODULE',m.get('name'),hashlib.sha256(raw).hexdigest(),len(raw))
-          pathlib.Path('/tmp/current-version.json').write_text(json.dumps({k:v.get(k) for k in ('id','number','compatibility_date','compatibility_flags','bindings','assets','limits','placement','usage_model','main_module')},indent=2,sort_keys=True))
-          PY
-
-          python3 - <<'PY'
-          import hashlib, os, pathlib, urllib.request
-          root=pathlib.Path('nomad-live-343')
-          if not root.is_dir(): raise SystemExit('NO_NOMAD_LIVE_343_IN_CURRENT_BRANCH')
-          www=os.environ['WWW'].rstrip('/')
+          sched=get(f'{api}/workers/scripts/{script}/schedules')['result'].get('schedules') or []
+          print('SCHEDULES='+json.dumps([{k:x.get(k) for k in ('cron','created_on','modified_on')} for x in sched],sort_keys=True))
+          latest=get(f'{api}/workers/scripts/{script}/versions?per_page=10')['result']
+          items=latest.get('items') if isinstance(latest,dict) else latest
+          if items is None and isinstance(latest,dict): items=latest.get('versions') or []
           rows=[]
-          for p in sorted(x for x in root.rglob('*') if x.is_file()):
-              rel=p.relative_to(root).as_posix()
-              req=urllib.request.Request(f'{www}/{rel}?scan=20260928-{os.environ.get("GITHUB_RUN_ID","")}',headers={'Cache-Control':'no-cache','User-Agent':'ball46-prod-scan'})
-              try:
-                  with urllib.request.urlopen(req,timeout=25) as r:
-                      live=r.read(); code=r.status
-              except Exception as e:
-                  rows.append((rel,'FETCH_FAIL',str(e))); continue
-              local=p.read_bytes()
-              rows.append((rel,'MATCH' if hashlib.sha256(local).digest()==hashlib.sha256(live).digest() else 'DIFF',str(code)))
-          out='\n'.join('\t'.join(x) for x in rows)+'\n'
-          pathlib.Path('/tmp/repo-vs-prod.tsv').write_text(out)
-          match=sum(1 for x in rows if x[1]=='MATCH'); diff=sum(1 for x in rows if x[1]=='DIFF'); fail=sum(1 for x in rows if x[1]=='FETCH_FAIL')
-          print(f'REPO_VS_PROD total={len(rows)} match={match} diff={diff} fail={fail}')
-          print('DIFF_FILES='+','.join(x[0] for x in rows if x[1]!='MATCH'))
+          for x in (items or [])[:10]:
+              rows.append({k:x.get(k) for k in ('id','number','created_on','annotations')})
+          print('LATEST_VERSIONS='+json.dumps(rows,sort_keys=True))
+          pathlib.Path('/tmp/b46-scan/current-version.json').write_text(json.dumps(safe,indent=2,sort_keys=True))
+          pathlib.Path('/tmp/b46-scan/current-deployment.json').write_text(json.dumps(dep,indent=2,sort_keys=True))
+          pathlib.Path('/tmp/b46-scan/schedules.json').write_text(json.dumps(sched,indent=2,sort_keys=True))
+          pathlib.Path('/tmp/b46-scan/latest-versions.json').write_text(json.dumps(rows,indent=2,sort_keys=True))
           PY
 
-          curl -fsSL -H 'Cache-Control: no-cache' "$WWW/index.html?scan=${GITHUB_RUN_ID}" -o /tmp/current-index.html
-          curl -fsSL -H 'Cache-Control: no-cache' "$WWW/odds-format-343.js?scan=${GITHUB_RUN_ID}" -o /tmp/current-odds-format-343.js
-          sha256sum /tmp/current-index.html /tmp/current-odds-format-343.js
+          curl -fsSL -H 'Cache-Control: no-cache' "$WWW/index.html?scan=${GITHUB_RUN_ID}" -o /tmp/b46-scan/current-index.html
+          curl -fsSL -H 'Cache-Control: no-cache' "$WWW/odds-format-343.js?scan=${GITHUB_RUN_ID}" -o /tmp/b46-scan/current-odds-format-343.js
+          sha256sum /tmp/b46-scan/current-index.html /tmp/b46-scan/current-odds-format-343.js
 
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: ball46-current-prod-scan-${{ github.run_id }}
-          path: |
-            /tmp/current-version.json
-            /tmp/repo-vs-prod.tsv
-            /tmp/current-index.html
-            /tmp/current-odds-format-343.js
+          path: /tmp/b46-scan
           if-no-files-found: error
           retention-days: 14
