@@ -1,0 +1,60 @@
+ const recent=settledSignalRows.filter(x=>String(x?.status||'').toUpperCase()==='SETTLED'&&['WIN','HALF_WIN','LOSS','HALF_LOSS','PUSH','DRAW'].includes(String(x?.result||'').toUpperCase())).slice().sort((a,b)=>Number(b?.settledAt||b?.createdAt||0)-Number(a?.settledAt||a?.createdAt||0)).slice(0,6);
+ const nearFt=fixtures.filter(f=>classify(f)==='live').slice().sort((a,b)=>(num(b?.minute)??-1)-(num(a?.minute)??-1)||kickoffMs(b)-kickoffMs(a)||String(fixtureKey(b)).localeCompare(String(fixtureKey(a)))).slice(0,4);
+ const makeSettled=x=>{const r=resultMeta(x?.result),score=scoreText(x?.finalScore),odds=num(x?.odds),league=String(x?.league?.name||'').trim();return '<div class="workspace-scorebar-cell workspace-scorebar-signal-result outcome-'+esc(r.cls)+'" data-scorebar-signal-result="'+esc(r.label)+'" title="'+esc([league,marketText(x),pickText(x)].filter(Boolean).join(' · '))+'"><span class="workspace-scorebar-meta"><i>'+esc(r.label)+'</i><b>'+esc(score)+'</b></span><span class="workspace-scorebar-match">'+esc(matchText(x))+'</span><span class="workspace-scorebar-pick"><strong>'+esc(marketText(x))+'</strong><em>'+esc(pickText(x))+(odds===null?'':' @ '+esc(odds.toFixed(2)))+'</em></span></div>'};
+ const makeLive=f=>{const id=fixtureKey(f),p=scorePair(f),score=p.home===null||p.away===null?'—':show(p.home)+'–'+show(p.away),minute=num(f?.minute),clock=minute===null?detailedStatus(f):'LIVE · '+Math.max(0,Math.round(minute))+"'";return '<div class="workspace-scorebar-cell workspace-scorebar-live" data-workspace-score-id="'+esc(id)+'"><span class="workspace-scorebar-meta"><i>'+esc(clock)+'</i><b>'+esc(score)+'</b></span><span class="workspace-scorebar-team live"><span class="workspace-scorebar-name">'+esc(f?.home?.name||'—')+'</span></span><span class="workspace-scorebar-team live"><span class="workspace-scorebar-name">'+esc(f?.away?.name||'—')+'</span></span></div>'};
+ const a=recent.map(makeSettled),b=nearFt.map(makeLive);while(a.length<6)a.push('<div class="workspace-scorebar-cell placeholder"><span>'+(a.length===0?'No settled signals':'—')+'</span><span class="away">—</span></div>');while(b.length<4)b.push('<div class="workspace-scorebar-cell placeholder"><span>'+(b.length===0?'No late live matches':'—')+'</span><span class="away">—</span></div>');slot.innerHTML='<div class="workspace-scorebar-grid">'+a.concat(b).join('')+'</div>';
+}
+document.addEventListener('ball46:stable-chrome-ready',renderWorkspaceScorebar);'''
+s=s[:start]+new+s[end:]
+insert=s.index('async function load(){',s.index('async function loadSignals(){'))
+loader="async function loadScorebarSettlements(){if(document.visibilityState==='hidden')return;try{const j=await fetchJson(STATISTICS_API),rows=Array.isArray(j?.rows)?j.rows:[];settledSignalRows=rows.filter(x=>String(x?.status||'').toUpperCase()==='SETTLED').slice().sort((a,b)=>Number(b?.settledAt||b?.createdAt||0)-Number(a?.settledAt||a?.createdAt||0));renderWorkspaceScorebar()}catch(err){console.warn('Scorebar settlements refresh failed; keeping last-good settlement state',err)}}\n"
+s=s[:insert]+loader+s[insert:]
+old="const beginSignals=startSignalLoopAfterBoard();const first=load();Promise.resolve(first).finally(()=>{window.dispatchEvent(new CustomEvent('ball46:board-first-paint'));beginSignals()});setInterval(load,POLL_MS);"
+newstart="const beginSignals=startSignalLoopAfterBoard();const first=load();Promise.resolve(first).finally(()=>{window.dispatchEvent(new CustomEvent('ball46:board-first-paint'));beginSignals();setTimeout(()=>{loadScorebarSettlements();setInterval(loadScorebarSettlements,SCOREBAR_STATS_POLL_MS)},SCOREBAR_STATS_AFTER_BOARD_MS)});setInterval(load,POLL_MS);"
+if old not in s: raise SystemExit('START_PATTERN_MISSING')
+s=s.replace(old,newstart,1); js.write_text(s)
+css=root/'candidate/singlepage-workspace-343.css'; c=css.read_text(); mark='/* BALL46_SCOREBAR_RESULT_VISUALS_20260928 */'; i=c.index(mark)
+c=c[:i]+r'''/* BALL46_SCOREBAR_RESULT_VISUALS_20260928 */
+/* BALL46_SCOREBAR_SIGNAL_SETTLEMENT_VISUALS_20260928 */
+.workspace-scorebar-cell.workspace-scorebar-signal-result,.workspace-scorebar-cell.workspace-scorebar-live{padding:5px 6px;background-repeat:no-repeat;background-size:cover;background-position:center;color:#fff!important}
+.workspace-scorebar-cell.workspace-scorebar-signal-result.outcome-win{background-color:#103A24;background-image:linear-gradient(135deg,rgba(16,58,36,.98),rgba(22,101,52,.78)),url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 58'%3E%3Cg fill='none' stroke='%23ffffff' stroke-opacity='.10' stroke-width='.8'%3E%3Crect x='2' y='2' width='116' height='54' rx='3'/%3E%3Cpath d='M60 2v54M44 18h32v22H44z'/%3E%3Ccircle cx='60' cy='29' r='8'/%3E%3C/g%3E%3C/svg%3E")}
+.workspace-scorebar-cell.workspace-scorebar-signal-result.outcome-loss{background-color:#3B1212;background-image:linear-gradient(135deg,rgba(59,18,18,.98),rgba(127,29,29,.80)),url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 58'%3E%3Cg fill='none' stroke='%23ffffff' stroke-opacity='.10' stroke-width='.8'%3E%3Crect x='2' y='2' width='116' height='54' rx='3'/%3E%3Cpath d='M60 2v54M44 18h32v22H44z'/%3E%3Ccircle cx='60' cy='29' r='8'/%3E%3C/g%3E%3C/svg%3E")}
+.workspace-scorebar-cell.workspace-scorebar-signal-result.outcome-draw{background-color:#2F343C;background-image:linear-gradient(135deg,rgba(47,52,60,.98),rgba(75,85,99,.82)),url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 58'%3E%3Cg fill='none' stroke='%23ffffff' stroke-opacity='.10' stroke-width='.8'%3E%3Crect x='2' y='2' width='116' height='54' rx='3'/%3E%3Cpath d='M60 2v54M44 18h32v22H44z'/%3E%3Ccircle cx='60' cy='29' r='8'/%3E%3C/g%3E%3C/svg%3E")}
+.workspace-scorebar-cell.workspace-scorebar-signal-result .workspace-scorebar-meta{margin-bottom:2px;color:#E2E8F0}.workspace-scorebar-cell.workspace-scorebar-signal-result .workspace-scorebar-meta i{display:inline-flex;align-items:center;justify-content:center;min-width:32px;height:14px;padding:0 5px;border-radius:999px;color:#fff;font-size:6px;font-weight:950;letter-spacing:.25px;background:#6B7280}.workspace-scorebar-cell.workspace-scorebar-signal-result.outcome-win .workspace-scorebar-meta i{background:#16A34A}.workspace-scorebar-cell.workspace-scorebar-signal-result.outcome-loss .workspace-scorebar-meta i{background:#DC2626}.workspace-scorebar-cell.workspace-scorebar-signal-result.outcome-draw .workspace-scorebar-meta i{background:#6B7280}.workspace-scorebar-cell.workspace-scorebar-signal-result .workspace-scorebar-meta b{color:#fff;font-size:9px}
+.workspace-scorebar-match{display:block!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:7px!important;font-weight:900!important;line-height:1.25!important;color:#fff!important;text-shadow:0 1px 1px rgba(0,0,0,.35)}.workspace-scorebar-pick{display:block!important;margin-top:2px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:6.2px!important;line-height:1.25!important;color:#E2E8F0!important}.workspace-scorebar-pick strong{display:block;font-weight:850;color:#F8FAFC;overflow:hidden;text-overflow:ellipsis}.workspace-scorebar-pick em{display:block;font-style:normal;font-weight:900;color:#DDE7F0;overflow:hidden;text-overflow:ellipsis}
+.workspace-scorebar-cell .workspace-scorebar-team{display:flex!important;align-items:center;justify-content:space-between;gap:4px;min-width:0;height:16px;margin-top:2px;padding:1px 4px;border-radius:5px;overflow:hidden;color:#fff!important;background-repeat:no-repeat;background-size:cover;background-position:center}.workspace-scorebar-cell .workspace-scorebar-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:7.2px;font-weight:900;line-height:1.2;text-shadow:0 1px 1px rgba(0,0,0,.35)}
+.workspace-scorebar-cell.workspace-scorebar-live{background-color:#132A46;background-image:linear-gradient(135deg,rgba(19,42,70,.98),rgba(14,165,233,.16)),url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 58'%3E%3Cg fill='none' stroke='%2338BDF8' stroke-opacity='.16' stroke-width='.9'%3E%3Crect x='2' y='2' width='116' height='54' rx='3'/%3E%3Cpath d='M60 2v54M44 18h32v22H44z'/%3E%3Ccircle cx='60' cy='29' r='8'/%3E%3C/g%3E%3C/svg%3E")}.workspace-scorebar-cell.workspace-scorebar-live .workspace-scorebar-meta i{color:#7DD3FC}.workspace-scorebar-cell.workspace-scorebar-live .workspace-scorebar-meta b{color:#E0F2FE}.workspace-scorebar-cell.workspace-scorebar-live .workspace-scorebar-team.live{background:rgba(19,42,70,.62);box-shadow:0 0 0 1px rgba(56,189,248,.18) inset}
+'''; css.write_text(c)
+idx=root/'candidate/index.html'; h=idx.read_text(); h=h.replace('singlepage-workspace-343.css?v=343-scorebar-result-20260928a','singlepage-workspace-343.css?v=343-signal-settlement-20260928a',1); h=h.replace('dashboard-v2-stage3.js?v=343-scorebar-result-20260928a','dashboard-v2-stage3.js?v=343-signal-settlement-20260928a',1); idx.write_text(h)
+PYPATCH
+node --check "$CAND/dashboard-v2-stage3.js"
+python3 - <<'PYDIFF'
+from pathlib import Path
+import hashlib
+r=Path('/tmp/b46-signal-settlement-pre'); paths=[x.strip() for x in (r/'paths.txt').read_text().splitlines() if x.strip()]; changed=[]
+for p in paths:
+ a=(r/'base'/p).read_bytes(); b=(r/'candidate'/p).read_bytes()
+ if a!=b: changed.append(p)
+print('CHANGED_ASSETS',changed)
+if changed!=['dashboard-v2-stage3.js','index.html','singlepage-workspace-343.css']: raise SystemExit('DIFF_GATE_FAIL')
+want={'dashboard-v2-stage3.js':'616b00cf275bdc062f9dda317401dbfc4d551939fff677e973efed62fc3f2740','index.html':'cec789ea440f0e9bf3ce7cf0db69d5d407649829ca142a0c16c7dc1fceb481b3','singlepage-workspace-343.css':'a66d4d98e47902f85ce741b4f495a895a01d551411b7b46e79d030d6af5c9e32'}
+for p,h in want.items():
+ got=hashlib.sha256((r/'candidate'/p).read_bytes()).hexdigest(); print('CAND_SHA',p,got)
+ if got!=h: raise SystemExit('CAND_HASH_FAIL:'+p)
+print('THREE_FILE_DIFF_GATE_PASS')
+PYDIFF
+curl -fsS "$DIRECT/api/engine/statistics?pre=$nonce" -o "$VERIFY/statistics.json"
+curl -fsS "$DIRECT/api/engine/board?pre=$nonce" -o "$VERIFY/board.json"
+curl -fsS "$DIRECT/api/engine/signals?pre=$nonce" -o "$VERIFY/signals.json"
+python3 - <<'PYDATA'
+import json,pathlib
+r=pathlib.Path('/tmp/b46-signal-settlement-pre/verify'); st=json.load(open(r/'statistics.json')); bo=json.load(open(r/'board.json')); si=json.load(open(r/'signals.json'))
+rows=[x for x in st.get('rows',[]) if str(x.get('status','')).upper()=='SETTLED' and str(x.get('result','')).upper() in {'WIN','HALF_WIN','LOSS','HALF_LOSS','PUSH','DRAW'}]; rows.sort(key=lambda x:x.get('settledAt') or x.get('createdAt') or 0,reverse=True)
+if len(rows)<6: raise SystemExit('NOT_ENOUGH_SETTLED_SIGNALS')
+live=[x for x in bo.get('fixtures',[]) if str(x.get('boardState','')).lower()=='live']; live.sort(key=lambda x:(x.get('minute') if isinstance(x.get('minute'),(int,float)) else -1),reverse=True)
+summary=[{'result':x.get('result'),'match':f"{x.get('home',{}).get('name')} v {x.get('away',{}).get('name')}",'market':x.get('market'),'selection':x.get('selection'),'line':x.get('line'),'odds':x.get('odds'),'finalScore':x.get('finalScore')} for x in rows[:6]]
+(r/'expected-latest-six.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2)); print('DATA_TRUTH_PASS settled',len(rows),'live',len(live),'activeSignals',len(si.get('signals',[]))); print(json.dumps(summary,ensure_ascii=False))
+PYDATA
+cat > "$VERIFY/proxy.py" <<'PYPROXY'
+import os,urllib.request
+from http.server import ThreadingHTTPServer,SimpleHTTPRequestHandler
