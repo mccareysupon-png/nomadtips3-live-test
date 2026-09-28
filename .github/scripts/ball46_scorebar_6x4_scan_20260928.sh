@@ -39,13 +39,15 @@ root.joinpath('runtime-sha.txt').write_text(sha)
 print('STEP1_CURRENT_PRODUCTION_LOCK_OK',vid,sha)
 PY
 
+find "$ART/after" -type f -printf '%P\n' | LC_ALL=C sort > "$VERIFY/live-paths.txt"
+[ "$(wc -l < "$VERIFY/live-paths.txt" | tr -d ' ')" = 79 ] || { echo GENERATED_PATH_COUNT_BAD; exit 1; }
 nonce="${GITHUB_RUN_ID}-scan-$(date +%s%N)"
 while IFS= read -r rel; do
   [ -n "$rel" ] || continue
   mkdir -p "$VERIFY/live/$(dirname "$rel")"
   curl -fsS -L --retry 4 --retry-all-errors --max-time 30 -H 'Cache-Control: no-cache' "$DIRECT/$rel?$nonce-${RANDOM}" -o "$VERIFY/live/$rel"
   cmp -s "$ART/after/$rel" "$VERIFY/live/$rel" || { echo STEP1_CURRENT_ASSET_MISMATCH:$rel; exit 1; }
-done < "$ART/live-paths.txt"
+done < "$VERIFY/live-paths.txt"
 echo STEP1_ALL_79_ASSETS_MATCH_CURRENT_PRODUCTION
 
 cmp -s "$ART/after/dashboard-v2-stage3.js" "$VERIFY/live/dashboard-v2-stage3.js" || { echo STEP1_DASHBOARD_NOT_CURRENT; exit 1; }
