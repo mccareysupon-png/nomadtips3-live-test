@@ -24,14 +24,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Download exact verified Ball46 asset package
+      - name: Download fresh v226 read-only Production snapshot
         uses: actions/download-artifact@v4
         with:
-          name: ball46-odds-visible-36361291283
+          name: ball46-card-step5-predeploy-36366606766
           path: /tmp/b46-step5-source
           github-token: ${{ github.token }}
           repository: ${{ github.repository }}
-          run-id: 36361291283
+          run-id: 36366606766
       - name: Verify current Production and build one-file candidate without deploy
         shell: bash
         run: bash .github/scripts/ball46_card_step5_predeploy_verify_20260928.sh
