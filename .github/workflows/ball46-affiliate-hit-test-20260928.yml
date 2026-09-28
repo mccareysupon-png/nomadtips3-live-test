@@ -1,0 +1,70 @@
+name: READ ONLY - Ball46 Affiliate Hit Test 20260928
+on:
+  push:
+    branches: [ops/ball46-affiliate-standard-20260928]
+    paths: ['.github/workflows/ball46-affiliate-hit-test-20260928.yml']
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Hit test and click final affiliate odds
+        shell: bash
+        run: |
+          set -euo pipefail
+          CHROME=$(command -v google-chrome-stable || command -v google-chrome || true)
+          test -n "$CHROME"
+          mkdir -p /tmp/b46-hit && cd /tmp/b46-hit
+          npm init -y >/dev/null 2>&1
+          npm install puppeteer-core@24.16.0 --no-audit --no-fund >/dev/null 2>&1
+          cat > hit.mjs <<'NODE'
+          import puppeteer from 'puppeteer-core';
+          const browser=await puppeteer.launch({executablePath:process.env.CHROME,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
+          const page=await browser.newPage();
+          await page.setViewport({width:1440,height:1000});
+          await page.goto('https://www.ball46.com/?affhit='+Date.now(),{waitUntil:'networkidle2',timeout:90000});
+          await page.waitForSelector('.match-row[data-match-id]',{timeout:60000});
+          const ids=await page.$$eval('.match-row[data-match-id]',els=>els.map(x=>x.dataset.matchId).filter(Boolean).slice(0,35));
+          let out=null;
+          for(const id of ids){
+            await page.evaluate(id=>window.NOMAD343_EXPANDED_MATCH?.open?.(id),id);
+            try{await page.waitForSelector(`.match-expanded[data-expanded-match="${id}"] [data-fmb-book="1xbet"].has-data`,{timeout:4500});}catch{continue}
+            const both=await page.evaluate(id=>{const r=document.querySelector(`.match-expanded[data-expanded-match="${CSS.escape(id)}"]`);return !!(r?.querySelector('[data-fmb-book="1xbet"].has-data')&&r?.querySelector('[data-fmb-book="williamhill"].has-data'));},id);
+            if(!both)continue;
+            const books={};
+            for(const slug of ['1xbet','williamhill']){
+              await page.click(`.match-expanded[data-expanded-match="${id}"] [data-fmb-book="${slug}"]`);
+              await new Promise(r=>setTimeout(r,5000));
+              const sel=`.match-expanded[data-expanded-match="${id}"] a[data-b46-affiliate-odds="${slug}"]`;
+              await page.waitForSelector(sel,{timeout:5000});
+              const meta=await page.$eval(sel,el=>{
+                const r=el.getBoundingClientRect(),cs=getComputedStyle(el),x=r.left+r.width/2,y=r.top+r.height/2,hit=document.elementFromPoint(x,y);
+                return {text:el.textContent.trim(),href:el.href,cursor:cs.cursor,pointerEvents:cs.pointerEvents,display:cs.display,visibility:cs.visibility,opacity:cs.opacity,rect:{x:r.x,y:r.y,w:r.width,h:r.height},hitTag:hit?.tagName||null,hitClass:hit?.className||null,hitIsSelf:hit===el,owner:el.closest('.match-expanded')?.dataset.oddsRenderOwner||null};
+              });
+              const popupP=new Promise(resolve=>{const t=setTimeout(()=>resolve(null),5000);browser.once('targetcreated',async target=>{try{if(target.type()==='page'){clearTimeout(t);resolve(target);}}catch{}})});
+              await page.hover(sel);
+              await page.click(sel,{delay:60});
+              const target=await popupP;
+              let popupUrl=null;
+              if(target){try{const p=await target.page();await p?.waitForNavigation({waitUntil:'domcontentloaded',timeout:8000}).catch(()=>{});popupUrl=p?.url()||target.url();await p?.close().catch(()=>{});}catch{popupUrl=target.url();}}
+              books[slug]={meta,popupUrl};
+            }
+            out={id,books};break;
+          }
+          console.log('HIT_RESULT',JSON.stringify(out));
+          if(!out)throw new Error('NO_FIXTURE_WITH_BOTH_BOOKS');
+          for(const slug of ['1xbet','williamhill']){
+            const x=out.books[slug];
+            if(!x?.meta?.hitIsSelf)throw new Error(slug+'_HIT_TARGET_BLOCKED');
+            if(x.meta.pointerEvents==='none')throw new Error(slug+'_POINTER_EVENTS_NONE');
+            if(x.meta.cursor!=='pointer')throw new Error(slug+'_CURSOR_NOT_POINTER');
+            if(!x.popupUrl)throw new Error(slug+'_CLICK_NO_POPUP');
+          }
+          console.log('FINAL_AFFILIATE_HIT_CLICK_OK');
+          await browser.close();
+          NODE
+          CHROME="$CHROME" node hit.mjs
