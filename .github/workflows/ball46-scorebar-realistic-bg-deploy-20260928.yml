@@ -1,11 +1,11 @@
-name: DEPLOY - Ball46 Scorebar Realistic BG 20260928
+name: DEPLOY - Ball46 Scorebar Player Right 20260928
 on:
   push:
     branches:
-      - work/ball46-scorebar-realistic-bg-20260928
+      - work/ball46-scorebar-player-right-20260928
     paths:
       - '.github/workflows/ball46-scorebar-realistic-bg-deploy-20260928.yml'
-      - '.github/scripts/ball46_scorebar_realistic_bg_deploy_20260928.sh'
+      - '.github/scripts/ball46_scorebar_player_right_deploy_20260928.sh'
 permissions:
   contents: read
   actions: read
@@ -17,20 +17,22 @@ jobs:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
     steps:
       - uses: actions/checkout@v4
+      - name: Install image verifier
+        run: python3 -m pip install --quiet pillow
       - uses: actions/download-artifact@v4
         with:
-          name: ball46-realistic-scorebar-bg-predeploy-36426569656
-          path: /tmp/b46-realistic-bg-deploy-source
+          name: ball46-player-right-predeploy-36429889342
+          path: /tmp/b46-player-right-deploy-source
           github-token: ${{ github.token }}
-          run-id: 36426569656
+          run-id: 36429889342
           repository: mccareysupon-png/nomadtips3-live-test
-      - name: Deploy exact verified candidate with race guards
-        run: bash .github/scripts/ball46_scorebar_realistic_bg_deploy_20260928.sh
+      - name: Deploy exact verified player-right candidate with race guards
+        run: bash .github/scripts/ball46_scorebar_player_right_deploy_20260928.sh
       - name: Upload deploy proof
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ball46-realistic-scorebar-bg-deploy-${{ github.run_id }}
-          path: /tmp/b46-realistic-bg-deploy
+          name: ball46-player-right-deploy-${{ github.run_id }}
+          path: /tmp/b46-player-right-deploy
           if-no-files-found: ignore
           retention-days: 30
