@@ -1,0 +1,60 @@
+name: READ ONLY - Ball46 Affiliate Owner Audit 20260928
+
+on:
+  push:
+    branches:
+      - ops/ball46-affiliate-standard-20260928
+    paths:
+      - '.github/workflows/ball46-affiliate-owner-audit-20260928.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Inspect current Production price ownership
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT=/tmp/b46-aff-owner
+          DIRECT='https://ball46-production.mccarey-supon.workers.dev'
+          WWW='https://www.ball46.com'
+          rm -rf "$ROOT" && mkdir -p "$ROOT"
+          nonce="${GITHUB_RUN_ID}-$(date +%s%N)"
+          files='index.html full-market-bookmaker-343.js full-market-bookmaker-343.css odds-format-343.js dashboard-v2-stage3.js rich-odds-on-demand-343.js bulk-odds-compat-343.js live-summary-full-odds-343.js'
+          for f in $files; do
+            code=$(curl -sS -L --retry 4 --retry-all-errors --max-time 30 -H 'Cache-Control: no-cache' -o "$ROOT/$f" -w '%{http_code}' "$DIRECT/$f?affowner=$nonce-${RANDOM}") || true
+            echo "FETCH $f HTTP=$code SIZE=$(wc -c < "$ROOT/$f" 2>/dev/null || echo 0)"
+            [ "$code" = 200 ] || exit 1
+          done
+          echo '--- INDEX SCRIPT ORDER ---'
+          grep -oE '<script[^>]+src="[^"]+"' "$ROOT/index.html" || true
+          echo '--- CURRENT AFFILIATE MARKERS ---'
+          grep -nE 'AFFILIATE|affiliate|1xbet|williamhill|fmb-affiliate-odds|data-b46-affiliate-odds' "$ROOT/full-market-bookmaker-343.js" | head -180 || true
+          grep -nE 'AFFILIATE|affiliate|fmb-affiliate-odds' "$ROOT/full-market-bookmaker-343.css" | head -80 || true
+          echo '--- FULL MARKET RENDER PATHS ---'
+          grep -nE 'function .*Html|innerHTML|replaceChildren|market|price|odds|line|book|slug' "$ROOT/full-market-bookmaker-343.js" | head -320 || true
+          echo '--- OTHER PRICE WRITERS ---'
+          for f in odds-format-343.js dashboard-v2-stage3.js rich-odds-on-demand-343.js bulk-odds-compat-343.js live-summary-full-odds-343.js; do
+            echo "### $f"
+            grep -nE 'innerHTML|textContent|replaceChildren|odds|price|market|full-market|fmb-' "$ROOT/$f" | head -240 || true
+          done
+          echo '--- API BOOKMAKER SNAPSHOT ---'
+          curl -fsS -L --retry 4 --max-time 30 "$WWW/api/engine/board?affowner=$nonce" -o "$ROOT/board.json"
+          node - <<'NODE'
+          const fs=require('fs');const j=JSON.parse(fs.readFileSync('/tmp/b46-aff-owner/board.json','utf8'));const fsx=Array.isArray(j?.fixtures)?j.fixtures:[];console.log('FIXTURES',fsx.length);
+          const norm=x=>String(x??'').toLowerCase().replace(/[^a-z0-9]/g,'');
+          let hits=[];
+          for(const f of fsx){const p=f?.providerOdds;if(!p||typeof p!=='object')continue;const roots=[p?.data?.data?.bookmakers,p?.data?.bookmakers,p?.bookmakers,p?.data?.data,p?.data,p].filter(Boolean);for(const r of roots){if(Array.isArray(r)){for(const b of r){const key=norm(b?.slug??b?.bookmaker?.slug??b?.name??b?.bookmaker?.name);if(key.includes('1xbet')||key.includes('williamhill'))hits.push({fixture:f?.id??f?.fixtureId,book:key,keys:Object.keys(b||{}).slice(0,12)});}}else if(r&&typeof r==='object'){for(const k of Object.keys(r)){const key=norm(k);if(key.includes('1xbet')||key.includes('williamhill'))hits.push({fixture:f?.id??f?.fixtureId,book:key,keys:Object.keys(r[k]||{}).slice(0,12)});}}}}
+          console.log('BOOK_HITS',hits.slice(0,20));
+          NODE
+          cp "$ROOT/full-market-bookmaker-343.js" "$ROOT/full-market-current.js"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-affiliate-owner-audit-${{ github.run_id }}
+          path: /tmp/b46-aff-owner
+          retention-days: 7
