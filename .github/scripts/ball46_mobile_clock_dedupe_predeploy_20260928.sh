@@ -188,8 +188,10 @@ cat > "$ROOT/cand-test.html" <<'HTML'
 <script>setTimeout(()=>{const a=document.querySelector('#r1 .mobile-clock')?.textContent||'',b=document.querySelector('#r1 .mobile-signal')?.textContent||'',c=document.querySelector('#r2 .mobile-signal')?.textContent||'';document.documentElement.dataset.result=(a==="LIVE · 67'"&&b===""&&c==="2H")?'PASS':'FAIL';},100);</script>
 </body></html>
 HTML
-(cd "$ROOT" && python3 -m http.server 8776 --bind 127.0.0.1 >"$VERIFY/unit-server.log" 2>&1 &) 
+pushd "$ROOT" >/dev/null
+python3 -m http.server 8776 --bind 127.0.0.1 >"$VERIFY/unit-server.log" 2>&1 &
 SPID=$!
+popd >/dev/null
 trap 'kill $SPID 2>/dev/null || true' EXIT
 sleep .5
 chrome=$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)
