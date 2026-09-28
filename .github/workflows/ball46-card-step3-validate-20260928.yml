@@ -1,0 +1,62 @@
+name: VALIDATE ONLY - Ball46 Card Rebuild Step3 20260928
+
+on:
+  push:
+    branches:
+      - work/ball46-card-rebuild-step3-20260928
+    paths:
+      - '.github/workflows/ball46-card-step3-validate-20260928.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download step3 browser evidence
+        uses: actions/download-artifact@v4
+        with:
+          name: ball46-card-step3-preview-36363073114
+          path: /tmp/b46-step3-evidence
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36363073114
+      - name: Validate geometry, rerender stability and untouched mobile
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT=/tmp/b46-step3-evidence
+          test "$(cat "$ROOT/changed-assets.txt")" = "dashboard-v2-tune.css"
+          for f in desktop-before desktop-prototype laptop-before laptop-prototype mobile-before mobile-prototype; do
+            test -s "$ROOT/$f.png"
+            test -s "$ROOT/$f.dom.html"
+            grep -q 'data-rerender-stable="true"' "$ROOT/$f.dom.html"
+            grep -q 'data-row-overflow="false"' "$ROOT/$f.dom.html"
+            grep -q 'data-clock-inside-score="true"' "$ROOT/$f.dom.html"
+          done
+          python3 - <<'PY'
+          from pathlib import Path
+          import re, hashlib
+          r=Path('/tmp/b46-step3-evidence')
+          def a(name):
+              s=(r/f'{name}.dom.html').read_text(errors='ignore')
+              out={}
+              for k in ('signal-width','score-width','team-width'):
+                  m=re.search(rf'data-{k}="([0-9]+)"',s)
+                  if not m: raise SystemExit(f'MISSING:{name}:{k}')
+                  out[k]=int(m.group(1))
+              return out
+          db,dp,lb,lp=a('desktop-before'),a('desktop-prototype'),a('laptop-before'),a('laptop-prototype')
+          print('DESKTOP_BEFORE',db); print('DESKTOP_PROTO',dp)
+          print('LAPTOP_BEFORE',lb); print('LAPTOP_PROTO',lp)
+          if not (dp['signal-width']>db['signal-width'] and dp['score-width']>db['score-width']): raise SystemExit('DESKTOP_GEOMETRY_NOT_IMPROVED')
+          if not (lp['signal-width']>lb['signal-width'] and lp['score-width']>lb['score-width']): raise SystemExit('LAPTOP_GEOMETRY_NOT_IMPROVED')
+          mb=(r/'mobile-before.png').read_bytes(); mp=(r/'mobile-prototype.png').read_bytes()
+          if mb!=mp: raise SystemExit('MOBILE_PIXELS_CHANGED')
+          print('MOBILE_IDENTICAL_SHA256',hashlib.sha256(mb).hexdigest())
+          PY
+          echo BALL46_CARD_STEP3_VALIDATED
