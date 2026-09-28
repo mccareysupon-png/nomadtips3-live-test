@@ -1,0 +1,70 @@
+sitemap.xml
+statistics-next.html
+statistics-next.js
+statistics-page-343.css
+statistics-v2-clean-343.css
+statistics.html
+statistics.js
+team-kits-343.js
+team-sides-343.css
+team-sides-343.js
+theme-341-343.css
+theme-light-343.css
+ui-sync-fixes-343-v2.js
+ui-sync-fixes-343.css
+v2-header.css
+v2-shared.css
+v2-shared.js
+workspace-route-guard-343.js
+EOF
+[ "$(wc -l < "$ROOT/paths.txt" | tr -d ' ')" = 79 ] || { echo PATHS_NOT_79; exit 1; }
+python3 - <<'PYLOCK'
+import base64,hashlib,json,os,pathlib,urllib.request
+r=pathlib.Path('/tmp/b46-signal-settlement-pre'); a=os.environ['CLOUDFLARE_ACCOUNT_ID']; t=os.environ['CLOUDFLARE_API_TOKEN']; h={'Authorization':f'Bearer {t}','Accept':'application/json'}; api=f'https://api.cloudflare.com/client/v4/accounts/{a}'; s='ball46-production'
+def get(u):
+ with urllib.request.urlopen(urllib.request.Request(u,headers=h),timeout=30) as x:return json.load(x)
+d=get(f'{api}/workers/scripts/{s}/deployments')['result']['deployments'][0]; vs=d.get('versions') or []
+if len(vs)!=1 or float(vs[0].get('percentage',0))!=100: raise SystemExit('MIXED_DEPLOYMENT')
+vid=vs[0]['version_id']
+if vid!='8d386fb0-1646-4cc5-a15e-da38dc68974f': raise SystemExit('PRODUCTION_VERSION_MOVED:'+vid)
+v=get(f'{api}/workers/workers/{s}/versions/{vid}?include=modules')['result']; mods=v.get('modules') or []
+if len(mods)!=1 or mods[0].get('name')!='index.js' or not mods[0].get('content_base64'): raise SystemExit('MODULE_SHAPE_BAD')
+runtime=base64.b64decode(mods[0]['content_base64']); sha=hashlib.sha256(runtime).hexdigest()
+if sha!='f961c641bb726f042f3d2e4a53e23363f68aa8497092f8071900b398cfb076ed': raise SystemExit('RUNTIME_SHA_MOVED:'+sha)
+exp=sorted([('ASSETS','assets',None,None),('ENGINE','service','nomadtips3-engine-343','production'),('FULL_MARKET','service','nomadtips3-full-market-343-ball46','production'),('HUB','service','nomadtips3-5usd-hub-343','production')])
+got=sorted((b.get('name'),b.get('type'),b.get('service'),b.get('environment')) for b in (v.get('bindings') or []))
+if got!=exp: raise SystemExit('BINDINGS_CHANGED:'+repr(got))
+ss=get(f'{api}/workers/scripts/{s}/schedules')['result']; ss=ss.get('schedules',[]) if isinstance(ss,dict) else (ss or []); cr=[x.get('cron') for x in ss if isinstance(x,dict) and x.get('cron')]
+if cr!=['* * * * *']: raise SystemExit('CRON_CHANGED:'+repr(cr))
+(r/'runtime/index.js').write_bytes(runtime); (r/'production-version.txt').write_text(vid)
+print('PRODUCTION_LOCK_PASS',vid,sha)
+PYLOCK
+nonce="${GITHUB_RUN_ID:-manual}-$(date +%s%N)"
+while IFS= read -r rel; do mkdir -p "$BASE/$(dirname "$rel")"; code=$(curl -sS -L --retry 4 --retry-all-errors --max-time 30 -H 'Cache-Control: no-cache' -o "$BASE/$rel" -w '%{http_code}' "$DIRECT/$rel?signalsfix=$nonce-$RANDOM") || true; [ "$code" = 200 ] || { echo "FETCH_FAIL:$rel:$code"; exit 1; }; done < "$ROOT/paths.txt"
+[ "$(find "$BASE" -type f | wc -l | tr -d ' ')" = 79 ] || { echo BASE_NOT_79; exit 1; }
+printf '%s  %s\n' \
+'b68cb92b52055c9a28bbe9cc826960c70b6d2a19381ba65412ad960acad7af72' dashboard-v2-stage3.js \
+'e63b972535404dd516e5b3d2d80bbf47e4113ece3ebc19b6c4e959a2201519ec' singlepage-workspace-343.css \
+'3e43d18d3b41be82c1a2afaf03d0b2c59160bdc1f2507ed5b826b515cea2e7cb' index.html | (cd "$BASE" && sha256sum -c -)
+grep -Fq 'BALL46_SCOREBAR_RESULT_DETAIL_20260928' "$BASE/dashboard-v2-stage3.js" || { echo CURRENT_RESULT_MARKER_MISSING; exit 1; }
+grep -Fq 'dashboard-v2-stage3.js?v=343-scorebar-result-20260928a' "$BASE/index.html" || { echo CURRENT_JS_REF_MOVED; exit 1; }
+grep -Fq 'singlepage-workspace-343.css?v=343-scorebar-result-20260928a' "$BASE/index.html" || { echo CURRENT_CSS_REF_MOVED; exit 1; }
+cp -a "$BASE/." "$CAND/"
+python3 - <<'PYPATCH'
+from pathlib import Path
+root=Path('/tmp/b46-signal-settlement-pre'); js=root/'candidate/dashboard-v2-stage3.js'; s=js.read_text()
+s=s.replace("const SIGNALS_API='/api/engine/signals';", "const SIGNALS_API='/api/engine/signals';\nconst STATISTICS_API='/api/engine/statistics';",1)
+s=s.replace("const SIGNAL_AFTER_BOARD_MS=1000;", "const SIGNAL_AFTER_BOARD_MS=1000;\nconst SCOREBAR_STATS_POLL_MS=60_000;\nconst SCOREBAR_STATS_AFTER_BOARD_MS=1800;",1)
+s=s.replace("let signalRows=[];", "let signalRows=[];\nlet settledSignalRows=[];",1)
+start=s.index('/* BALL46_WORKSPACE_SCOREBAR_20260926 — UI only, zero extra requests */'); end=s.index("document.addEventListener('ball46:stable-chrome-ready',renderWorkspaceScorebar);",start)+len("document.addEventListener('ball46:stable-chrome-ready',renderWorkspaceScorebar);")
+new=r'''/* BALL46_WORKSPACE_SCOREBAR_20260926 — presentation rail */
+/* BALL46_SCOREBAR_SIGNAL_SETTLEMENT_20260928 — first 6 = latest settled Ball46 predictions; last 4 = same near-FT live matches */
+function renderWorkspaceScorebar(){
+ const slot=document.querySelector('[data-workspace-scorebar-slot]');if(!slot)return;
+ const kickoffMs=f=>dateMs(f?.kickoffAt??f?.kickoffUtc)??0;
+ const resultMeta=raw=>{const r=String(raw||'').trim().toUpperCase();if(r==='WIN')return{cls:'win',label:'WIN'};if(r==='HALF_WIN')return{cls:'win',label:'WIN ½'};if(r==='LOSS')return{cls:'loss',label:'LOSS'};if(r==='HALF_LOSS')return{cls:'loss',label:'LOSS ½'};if(r==='PUSH'||r==='DRAW')return{cls:'draw',label:'DRAW'};return{cls:'draw',label:r||'DRAW'}};
+ const scoreText=v=>{const p=pair(v);return p.home===null||p.away===null?'—':show(p.home)+'–'+show(p.away)};
+ const lineText=x=>{const n=num(x?.line??x?.selectionLine);if(n===null)return'';const m=String(x?.market||x?.marketLabel||'').toLowerCase();return(/ah|handicap/.test(m)&&n>0?'+':'')+show(n,2)};
+ const pickText=x=>[String(x?.selection||'').trim().toUpperCase(),lineText(x)].filter(Boolean).join(' ')||'SIGNAL';
+ const marketText=x=>String(x?.marketLabel||x?.market||'SIGNAL').replaceAll('_',' ').replace(/\s+/g,' ').trim();
+ const matchText=x=>[x?.home?.name,x?.away?.name].filter(Boolean).join(' · ')||'—';
