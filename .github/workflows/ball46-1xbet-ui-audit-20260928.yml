@@ -1,0 +1,88 @@
+name: READ ONLY - Ball46 1xBet UI Audit 20260928
+
+on:
+  push:
+    branches:
+      - ops/ball46-1xbet-ui-stable-20260928
+    paths:
+      - '.github/workflows/ball46-1xbet-ui-audit-20260928.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch current Production UI assets only
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT=/tmp/b46-1xbet-ui-audit
+          DIRECT='https://ball46-production.mccarey-supon.workers.dev'
+          rm -rf "$ROOT" && mkdir -p "$ROOT"
+          python3 - <<'PY'
+          import json,os,urllib.request,pathlib
+          a=os.environ['CLOUDFLARE_ACCOUNT_ID']; t=os.environ['CLOUDFLARE_API_TOKEN']
+          h={'Authorization':f'Bearer {t}','Accept':'application/json'}
+          u=f'https://api.cloudflare.com/client/v4/accounts/{a}/workers/scripts/ball46-production/deployments'
+          with urllib.request.urlopen(urllib.request.Request(u,headers=h),timeout=30) as r:j=json.load(r)
+          d=j['result']['deployments'][0]; v=d['versions'][0]
+          pathlib.Path('/tmp/b46-1xbet-ui-audit/version.txt').write_text(v['version_id'])
+          print('PRODUCTION_VERSION',v['version_id'],'PERCENT',v.get('percentage'))
+          PY
+          for f in odds-format-343.js full-market-bookmaker-343.js full-market-bookmaker-343.css dashboard-v2-stage3.js expanded-match-343.js expanded-match-343.css live-summary-full-odds-343.js rich-odds-on-demand-343.js bulk-odds-compat-343.js index.html; do
+            code=$(curl -sS -L --retry 4 --retry-all-errors --max-time 30 -H 'Cache-Control: no-cache' -o "$ROOT/$f" -w '%{http_code}' "$DIRECT/$f?audit=${GITHUB_RUN_ID}-${RANDOM}") || true
+            echo "FETCH $f HTTP=$code SIZE=$(wc -c < "$ROOT/$f" 2>/dev/null || echo 0)"
+            [ "$code" = 200 ] || exit 1
+          done
+      - name: Map 1xBet render paths and CSS
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT=/tmp/b46-1xbet-ui-audit
+          python3 - <<'PY'
+          from pathlib import Path
+          root=Path('/tmp/b46-1xbet-ui-audit')
+          keys=['1xbet','1xBet','data-fmb-book','data-fmb-panel','fmb-book','bookmaker','B46_1XBET','b46-1xbet-brand']
+          for p in sorted(root.iterdir()):
+              if not p.is_file() or p.suffix not in {'.js','.css','.html'}: continue
+              try: lines=p.read_text(errors='replace').splitlines()
+              except: continue
+              hits=[]
+              for i,line in enumerate(lines):
+                  if any(k in line for k in keys): hits.append(i)
+              if not hits: continue
+              print('\n===== FILE',p.name,'HITS',len(hits),'=====')
+              shown=set()
+              for i in hits:
+                  for j in range(max(0,i-4),min(len(lines),i+5)):
+                      if j in shown: continue
+                      shown.add(j); print(f'{j+1:05d}: {lines[j][:700]}')
+                  print('-----')
+          PY
+      - name: Audit current 1xBet layer invariants
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT=/tmp/b46-1xbet-ui-audit
+          echo '--- markers ---'
+          grep -n 'B46_1XBET' "$ROOT/odds-format-343.js" || true
+          echo '--- logo CSS ---'
+          grep -oE '\.b46-1xbet-brand[^}]*\}|\.b46-1xbet-brand img[^}]*\}' "$ROOT/odds-format-343.js" || true
+          echo '--- observers/listeners in affiliate block ---'
+          sed -n '/B46_1XBET_AFFILIATE_V2_20260928/,$p' "$ROOT/odds-format-343.js" | grep -nE 'MutationObserver|addEventListener|setTimeout|querySelectorAll|DOMContentLoaded' || true
+          echo '--- exact 1xBet direct-render occurrences outside odds-format ---'
+          grep -niE '1xbet|1xBet|data-fmb-book' "$ROOT/full-market-bookmaker-343.js" "$ROOT/dashboard-v2-stage3.js" "$ROOT/expanded-match-343.js" "$ROOT/live-summary-full-odds-343.js" "$ROOT/rich-odds-on-demand-343.js" "$ROOT/bulk-odds-compat-343.js" || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-1xbet-ui-audit-${{ github.run_id }}
+          path: /tmp/b46-1xbet-ui-audit
+          if-no-files-found: error
+          retention-days: 7
