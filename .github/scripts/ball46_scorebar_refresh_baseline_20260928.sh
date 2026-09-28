@@ -37,8 +37,9 @@ for rel in index.html dashboard-v2-stage3.js dashboard-v2-tune.css singlepage-wo
 done
 grep -Fq 'BALL46_SCOREBAR_6X4_20260928' "$OUT/dashboard-v2-stage3.js" || { echo SCOREBAR_6X4_MARKER_MISSING; exit 1; }
 grep -Fq 'B46_ODDS_VISIBILITY_20260928' "$OUT/odds-format-343.js" || { echo ODDS_MARKER_MISSING; exit 1; }
-grep -Fq '343-card-step6-20260928a' "$OUT/index.html" || { echo STEP6_INDEX_CACHEBUSTER_MISSING; exit 1; }
-grep -Fq 'BALL46_CARD_STEP6_20260928' "$OUT/dashboard-v2-tune.css" || { echo STEP6_CSS_MARKER_MISSING; exit 1; }
+grep -Fq 'data-ball46-favicon="20260928"' "$OUT/index.html" || { echo FAVICON_MARKER_MISSING; exit 1; }
+grep -Fq 'dashboard-v2-tune.css?v=343-card-step6-20260928a' "$OUT/index.html" || { echo STEP6_INDEX_CACHEBUSTER_MISSING; exit 1; }
+grep -Fq 'BALL46 CARD REBUILD STEP6 MOCKUP MATCH 20260928' "$OUT/dashboard-v2-tune.css" || { echo STEP6_ACTUAL_CSS_MARKER_MISSING; exit 1; }
 echo REFRESH_KEY_MARKERS_OK
 for ep in board signals statistics; do curl -fsS -L --retry 3 --retry-all-errors --max-time 30 "$WWW/api/engine/$ep?baseline=$nonce" -o "$OUT/$ep.json"; done
 python3 - <<'PY'
@@ -54,5 +55,34 @@ const fs=require('fs');
 const {execSync}=require('child_process');
 try{require.resolve('playwright')}catch(e){execSync('npm -s install --no-save playwright@1.55.0',{stdio:'inherit'})}
 const {chromium}=require('playwright');
-(async()=>{const b=await chromium.launch({headless:true});const p=await b.newPage({viewport:{width:1440,height:1000}});await p.goto('https://www.ball46.com/?baseline_refresh='+Date.now(),{waitUntil:'networkidle',timeout:60000});await p.waitForTimeout(2500);const x=await p.evaluate(()=>{const cards=[...document.querySelectorAll('[data-ball46-workspace-scorebar] .scorebar-mini,[data-ball46-workspace-scorebar] [data-scorebar-fixture-id]')];const root=document.querySelector('[data-ball46-workspace-scorebar]');return {count:root?root.children.length:cards.length,text:root?root.innerText:'',odds:!!window.NOMAD343_ODDS,favicon:!!document.querySelector('link[data-ball46-favicon="20260928"]'),step6:[...document.styleSheets].some(s=>(s.href||'').includes('343-card-step6-20260928a'))};});console.log('REFRESH_BROWSER',x);if(x.count!==10)throw new Error('SCOREBAR_COUNT_'+x.count);if(!x.odds||!x.favicon||!x.step6)throw new Error('REGRESSION_MARKER');fs.writeFileSync('/tmp/b46-scorebar-refresh/browser.json',JSON.stringify(x,null,2));await b.close();console.log('REFRESH_BASELINE_SUCCESS_NO_DEPLOY');})().catch(e=>{console.error(e);process.exit(1)});
+(async()=>{
+  const b=await chromium.launch({headless:true});
+  const p=await b.newPage({viewport:{width:1440,height:1000}});
+  await p.goto('https://www.ball46.com/?baseline_refresh='+Date.now(),{waitUntil:'networkidle',timeout:60000});
+  await p.waitForTimeout(2500);
+  const x=await p.evaluate(()=>{
+    const grid=document.querySelector('[data-workspace-scorebar-slot] .workspace-scorebar-grid');
+    const cells=grid?[...grid.children]:[];
+    const ids=cells.map(c=>c.getAttribute('data-workspace-score-id')).filter(Boolean);
+    const statuses=cells.map(c=>c.querySelector('.workspace-scorebar-meta i')?.textContent?.trim()||'PLACEHOLDER');
+    const first6=statuses.slice(0,6);
+    const last4=statuses.slice(6,10);
+    const liveMinutes=last4.map(s=>{const m=String(s).match(/(\d+)/);return m?Number(m[1]):null}).filter(v=>v!==null);
+    const minuteSorted=liveMinutes.every((v,i,a)=>i===0||a[i-1]>=v);
+    const sheet=[...document.styleSheets].find(s=>(s.href||'').includes('343-card-step6-20260928a'));
+    const row=document.querySelector('[data-match-id]');
+    const overflow=row ? row.scrollWidth<=row.clientWidth+1 : true;
+    return {count:cells.length,ids,statuses,first6,last4,minuteSorted,odds:!!window.NOMAD343_ODDS,favicon:!!document.querySelector('link[data-ball46-favicon="20260928"]'),step6:!!sheet,overflow};
+  });
+  console.log('REFRESH_BROWSER',x);
+  if(x.count!==10)throw new Error('SCOREBAR_COUNT_'+x.count);
+  if(!x.first6.every(s=>s==='FT'))throw new Error('RECENT6_NOT_ALL_FT:'+JSON.stringify(x.first6));
+  if(!x.minuteSorted)throw new Error('NEARFT4_NOT_DESC:'+JSON.stringify(x.last4));
+  if(new Set(x.ids).size!==x.ids.length)throw new Error('DUPLICATE_SCOREBAR_IDS');
+  if(!x.odds||!x.favicon||!x.step6||!x.overflow)throw new Error('REGRESSION_MARKER_OR_LAYOUT:'+JSON.stringify(x));
+  fs.writeFileSync('/tmp/b46-scorebar-refresh/browser.json',JSON.stringify(x,null,2));
+  await b.close();
+  console.log('REFRESH_SCOREBAR_6X4_BROWSER_OK');
+  console.log('REFRESH_BASELINE_SUCCESS_NO_DEPLOY');
+})().catch(e=>{console.error(e);process.exit(1)});
 NODE
