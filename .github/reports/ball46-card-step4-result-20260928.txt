@@ -1,0 +1,67 @@
+Ball46 Card Rebuild — Step 4 behavior verification
+Date: 2026-09-28
+Branch: work/ball46-card-rebuild-step4-20260928
+Workflow run: 36363843436
+Mode: PREVIEW ONLY / NO DEPLOY
+
+Production base lock:
+- index.html matched after normalizing favicon-only drift
+- dashboard-v2-stage3.js exact
+- dashboard-v2-tune.css exact
+- dashboard-v2-tune.js exact
+- expanded-match-343.js exact
+- live-summary-full-odds-343.js exact
+- singlepage-workspace-343.js exact
+- color-semantics-343.js exact
+
+Pre-flow:
+- fixtures: 200
+- signals: 15
+- statistics rows: 1026
+
+Card geometry with Step 3 CSS injected in browser memory only:
+- before: signal 72px, score 64px
+- after: signal 128px, score 92px
+- horizontal overflow: false
+
+Status filters:
+- Live: count 16; rendered section live only; no overflow
+- Scheduled: count 32; rendered section scheduled only; no overflow
+- Finished: count 149; rendered section finished only; no overflow
+
+Search:
+- tested with real team name CS Desamparados
+- one matching row returned; filter correct
+
+Expanded card:
+- inserted directly after source row
+- survived real dashboard reload/re-render
+- mutation count during reload: 6
+- no overflow
+
+Rich odds:
+- fixture 201916682 received rich odds
+- bookmaker count: 19
+- source: 5DollarFootballAPI_FULL_MARKET
+- source row remained present
+
+Signal workspace:
+- workspace switched to signal
+- 8 rows rendered at test time
+- no overflow
+
+Real 30-second auto refresh:
+- board mutations detected: 2
+- CSS prototype remained active
+- no overflow
+
+Post-flow:
+- fixtures: 200
+- signals: 15
+- statistics rows: 1026
+
+Final guard:
+- protected Production files were byte-identical before and after test
+- no Cloudflare deploy / no Wrangler deploy / no Production write
+
+RESULT: BALL46_CARD_STEP4_BEHAVIOR_VERIFIED / PASS
