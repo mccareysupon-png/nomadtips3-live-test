@@ -1,0 +1,70 @@
+name: READ ONLY - Ball46 Affiliate Browser Audit 20260928
+
+on:
+  push:
+    branches:
+      - ops/ball46-affiliate-standard-20260928
+    paths:
+      - '.github/workflows/ball46-affiliate-browser-audit-20260928.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify rendered affiliate odds in real browser
+        shell: bash
+        run: |
+          set -euo pipefail
+          CHROME=$(command -v google-chrome-stable || command -v google-chrome || true)
+          test -n "$CHROME"
+          echo "CHROME=$CHROME"
+          mkdir -p /tmp/b46-browser && cd /tmp/b46-browser
+          npm init -y >/dev/null 2>&1
+          npm install puppeteer-core@24.16.0 --no-audit --no-fund >/dev/null 2>&1
+          cat > audit.mjs <<'NODE'
+          import puppeteer from 'puppeteer-core';
+          const browser=await puppeteer.launch({executablePath:process.env.CHROME,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
+          const page=await browser.newPage();
+          await page.setViewport({width:1440,height:1000});
+          await page.goto('https://www.ball46.com/?affbrowser='+Date.now(),{waitUntil:'networkidle2',timeout:90000});
+          await page.waitForSelector('.match-row[data-match-id]',{timeout:60000});
+          const ids=await page.$$eval('.match-row[data-match-id]',els=>els.map(x=>x.dataset.matchId).filter(Boolean).slice(0,35));
+          console.log('VISIBLE_ROWS',ids.length);
+          let result=null;
+          for(const id of ids){
+            await page.evaluate(id=>window.NOMAD343_EXPANDED_MATCH?.open?.(id),id);
+            try{await page.waitForSelector(`.match-expanded[data-expanded-match="${id}"] [data-fmb-book="1xbet"]`,{timeout:5000});}catch{continue}
+            await new Promise(r=>setTimeout(r,900));
+            const available=await page.evaluate(id=>{
+              const root=document.querySelector(`.match-expanded[data-expanded-match="${CSS.escape(id)}"]`);if(!root)return null;
+              const a=root.querySelector('[data-fmb-book="1xbet"]'),w=root.querySelector('[data-fmb-book="williamhill"]');
+              return {one:a?.classList.contains('has-data'),will:w?.classList.contains('has-data')};
+            },id);
+            if(!available?.one||!available?.will)continue;
+            const books={};
+            for(const slug of ['1xbet','williamhill']){
+              await page.click(`.match-expanded[data-expanded-match="${id}"] [data-fmb-book="${slug}"]`);
+              await new Promise(r=>setTimeout(r,250));
+              books[slug]=await page.evaluate(({id,slug})=>{
+                const root=document.querySelector(`.match-expanded[data-expanded-match="${CSS.escape(id)}"]`);
+                const links=[...root.querySelectorAll(`a[data-b46-affiliate-odds="${slug}"]`)];
+                return {count:links.length,first:links[0]?{text:links[0].textContent.trim(),href:links[0].href,target:links[0].target,rel:links[0].rel}:null};
+              },{id,slug});
+            }
+            result={id,books};break;
+          }
+          console.log('RESULT',JSON.stringify(result));
+          if(!result)throw new Error('NO_VISIBLE_FIXTURE_WITH_BOTH_BOOKS');
+          if(result.books['1xbet'].count<1||!result.books['1xbet'].first?.href.includes('reffpa.com'))throw new Error('1XBET_LINK_NOT_RENDERED');
+          if(result.books['williamhill'].count<1||!result.books['williamhill'].first?.href.includes('campaigns.williamhill.com'))throw new Error('WILLIAMHILL_LINK_NOT_RENDERED');
+          console.log('BROWSER_AFFILIATE_RENDER_OK');
+          await browser.close();
+          NODE
+          CHROME="$CHROME" node audit.mjs
