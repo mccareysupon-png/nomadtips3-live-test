@@ -33,8 +33,10 @@ jobs:
           done < "$ROOT/live-paths.txt"
           echo '=== 1XBET EXACT OCCURRENCES ==='
           grep -RniE -C 3 '1x[[:space:]_-]*bet|1xbet' "$ROOT/current" --include='*.js' --include='*.html' --include='*.css' || true
-          echo '=== BOOKMAKER RENDER CANDIDATES ==='
-          grep -RniE -C 2 'bookmaker|bookmakers' "$ROOT/current" --include='*.js' --include='*.html' | head -n 1200 || true
+          echo '=== FULL MARKET RENDERER 1-90 ==='
+          nl -ba "$ROOT/current/full-market-bookmaker-343.js" | sed -n '1,90p'
+          echo '=== DASHBOARD MARKET RENDERER 50-95 ==='
+          nl -ba "$ROOT/current/dashboard-v2-stage3.js" | sed -n '50,95p'
       - name: Upload read-only scan snapshot
         uses: actions/upload-artifact@v4
         if: always()
