@@ -24,7 +24,7 @@ jobs:
           mkdir -p "$ROOT"
           curl -fsS -L -H 'Cache-Control: no-cache' "https://ball46-production.mccarey-supon.workers.dev/odds-format-343.js?verify=${GITHUB_RUN_ID}" -o "$ROOT/odds-format-343.js"
           grep -Fq 'B46_1XBET_AFFILIATE_V2_20260928' "$ROOT/odds-format-343.js"
-          tail -n 120 "$ROOT/odds-format-343.js" | grep -Fq 'MutationObserver' && { echo UNEXPECTED_MUTATION_OBSERVER; exit 1; } || true
+          sed -n '/B46_1XBET_AFFILIATE_V2_20260928/,$p' "$ROOT/odds-format-343.js" | grep -Fq 'MutationObserver' && { echo V2_UNEXPECTED_MUTATION_OBSERVER; exit 1; } || true
           chrome=$(command -v google-chrome || command -v chromium)
           "$chrome" --headless=new --no-sandbox --disable-gpu --remote-debugging-port=9230 --user-data-dir="$ROOT/chrome" "https://www.ball46.com/index.html?status=live&verify=${GITHUB_RUN_ID}" >"$ROOT/chrome.log" 2>&1 & CPID=$!
           trap 'kill $CPID 2>/dev/null || true' EXIT
