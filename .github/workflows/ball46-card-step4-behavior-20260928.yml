@@ -6,6 +6,7 @@ on:
       - work/ball46-card-rebuild-step4-20260928
     paths:
       - '.github/workflows/ball46-card-step4-behavior-20260928.yml'
+      - '.github/scripts/ball46_card_step4_behavior_wrapper_20260928.sh'
 
 permissions:
   contents: read
@@ -30,7 +31,7 @@ jobs:
           run-id: 36363073114
       - name: Test prototype against live Production behavior without deploy
         shell: bash
-        run: bash .github/scripts/ball46_card_step4_behavior_20260928.sh
+        run: bash .github/scripts/ball46_card_step4_behavior_wrapper_20260928.sh
       - name: Upload Step4 evidence
         if: always()
         uses: actions/upload-artifact@v4
