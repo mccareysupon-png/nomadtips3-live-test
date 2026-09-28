@@ -1,0 +1,41 @@
+name: PREVIEW ONLY - Ball46 Card Rebuild Step4 20260928
+
+on:
+  push:
+    branches:
+      - work/ball46-card-rebuild-step4-20260928
+    paths:
+      - '.github/workflows/ball46-card-step4-behavior-20260928.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  behavior:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Download validated Step3 prototype evidence
+        uses: actions/download-artifact@v4
+        with:
+          name: ball46-card-step3-preview-36363073114
+          path: /tmp/b46-step4-source
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36363073114
+      - name: Test prototype against live Production behavior without deploy
+        shell: bash
+        run: bash .github/scripts/ball46_card_step4_behavior_20260928.sh
+      - name: Upload Step4 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-card-step4-behavior-${{ github.run_id }}
+          path: /tmp/b46-step4-output
+          if-no-files-found: ignore
+          retention-days: 30
