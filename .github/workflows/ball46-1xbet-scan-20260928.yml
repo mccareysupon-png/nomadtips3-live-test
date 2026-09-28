@@ -1,0 +1,45 @@
+name: Ball46 1xBet Production Scan 20260928
+
+on:
+  push:
+    branches:
+      - ops/ball46-1xbet-affiliate-20260928
+    paths:
+      - '.github/workflows/ball46-1xbet-scan-20260928.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Mirror current live Ball46 assets read-only
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT=/tmp/b46-1xbet-scan
+          DIRECT=https://ball46-production.mccarey-supon.workers.dev
+          mkdir -p "$ROOT/current"
+          cp .github/scripts/ball46_current217_live_paths_20260928.txt "$ROOT/live-paths.txt"
+          nonce="${GITHUB_RUN_ID}-$(date +%s%N)"
+          while IFS= read -r rel; do
+            [ -n "$rel" ] || continue
+            mkdir -p "$ROOT/current/$(dirname "$rel")"
+            code=$(curl -sS -L --retry 3 --retry-all-errors --max-time 30 -H 'Cache-Control: no-cache' -o "$ROOT/current/$rel" -w '%{http_code}' "$DIRECT/$rel?b46-1xbet-scan=$nonce-${RANDOM}") || true
+            [ "$code" = 200 ] || { echo "FETCH_FAILED:$code:$rel"; exit 1; }
+          done < "$ROOT/live-paths.txt"
+          echo '=== 1XBET EXACT OCCURRENCES ==='
+          grep -RniE -C 3 '1x[[:space:]_-]*bet|1xbet' "$ROOT/current" --include='*.js' --include='*.html' --include='*.css' || true
+          echo '=== BOOKMAKER RENDER CANDIDATES ==='
+          grep -RniE -C 2 'bookmaker|bookmakers' "$ROOT/current" --include='*.js' --include='*.html' | head -n 1200 || true
+      - name: Upload read-only scan snapshot
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-1xbet-scan-${{ github.run_id }}
+          path: /tmp/b46-1xbet-scan
+          if-no-files-found: error
+          retention-days: 7
