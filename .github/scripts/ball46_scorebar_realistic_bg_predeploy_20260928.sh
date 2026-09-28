@@ -132,23 +132,32 @@ cp -a "$BASE/." "$CAND/"
 
 python3 - <<'PY'
 from pathlib import Path
-import re,hashlib,base64
+import re,hashlib
 r=Path('/tmp/b46-realistic-bg-predeploy'); cssp=r/'candidate'/'singlepage-workspace-343.css'; idxp=r/'candidate'/'index.html'
 css=cssp.read_text(); idx=idxp.read_text()
 targets=[
 ('.workspace-scorebar-cell.workspace-scorebar-signal-result.outcome-win','win'),
 ('.workspace-scorebar-cell.workspace-scorebar-signal-result.outcome-loss','loss'),
 ('.workspace-scorebar-cell.workspace-scorebar-pending','pending')]
+
+def clean_selector(s):
+  s=re.sub(r'/\*.*?\*/',' ',s,flags=re.S)
+  return ' '.join(s.split())
+
+def find_image_rule(s,sel,name):
+  hits=[]
+  for m in re.finditer(r'([^{}]+)\{([^{}]*)\}',s,re.S):
+    if clean_selector(m.group(1))!=sel: continue
+    imgs=re.findall(r'data:image/webp;base64,[A-Za-z0-9+/=]+',m.group(2))
+    if len(imgs)==1: hits.append((m,imgs[0]))
+  if len(hits)!=1: raise SystemExit(f'IMAGE_RULE_COUNT_BAD:{name}:{len(hits)}')
+  return hits[0]
+
 for sel,name in targets:
-  pat=re.compile(r'('+re.escape(sel)+r'\s*\{)(.*?)(\})',re.S)
-  matches=list(pat.finditer(css))
-  if len(matches)!=1: raise SystemExit(f'SELECTOR_COUNT_BAD:{name}:{len(matches)}')
-  m=matches[0]; body=m.group(2)
-  imgs=re.findall(r'data:image/webp;base64,[A-Za-z0-9+/=]+',body)
-  if len(imgs)!=1: raise SystemExit(f'IMAGE_URI_COUNT_BAD:{name}:{len(imgs)}')
+  m,oldimg=find_image_rule(css,sel,name)
   payload=(Path('.github/assets')/f'ball46_scorebar_{name}_234x116.webp.b64').read_text().strip()
-  newbody=body.replace(imgs[0],'data:image/webp;base64,'+payload,1)
-  css=css[:m.start(2)]+newbody+css[m.end(2):]
+  body=m.group(2).replace(oldimg,'data:image/webp;base64,'+payload,1)
+  css=css[:m.start(2)]+body+css[m.end(2):]
 cssp.write_text(css)
 refs=re.findall(r'singlepage-workspace-343\.css\?v=[^"\'<> ]+',idx)
 if len(refs)!=1: raise SystemExit('CSS_CACHE_REF_COUNT_'+str(len(refs)))
@@ -158,18 +167,17 @@ paths=[x for x in (r/'paths.txt').read_text().splitlines() if x]
 changed=[p for p in paths if hashlib.sha256((r/'base'/p).read_bytes()).digest()!=hashlib.sha256((r/'candidate'/p).read_bytes()).digest()]
 if sorted(changed)!=['index.html','singlepage-workspace-343.css']: raise SystemExit('DIFF_GATE_BAD:'+repr(changed))
 print('EXACT_TWO_FILE_DIFF_PASS',changed)
-# Structural proof: CSS identical after replacing all three target webp payloads with marker.
+
 def norm_css(s):
-  for sel,_ in targets:
-    pat=re.compile(r'('+re.escape(sel)+r'\s*\{)(.*?)(\})',re.S); m=pat.search(s)
-    if not m: raise SystemExit('NORM_SELECTOR_MISSING:'+sel)
-    b=re.sub(r'data:image/webp;base64,[A-Za-z0-9+/=]+','data:image/webp;base64,__IMAGE__',m.group(2),count=1)
-    s=s[:m.start(2)]+b+s[m.end(2):]
+  for sel,name in targets:
+    m,img=find_image_rule(s,sel,name)
+    body=m.group(2).replace(img,'data:image/webp;base64,__IMAGE__',1)
+    s=s[:m.start(2)]+body+s[m.end(2):]
   return s
 if norm_css((r/'base'/'singlepage-workspace-343.css').read_text())!=norm_css(css): raise SystemExit('CSS_STRUCTURE_CHANGED')
 basei=(r/'base'/'index.html').read_text(); candi=idx
-norm=lambda s: re.sub(r'singlepage-workspace-343\.css\?v=[^"\'<> ]+','singlepage-workspace-343.css?v=__CACHE__',s,count=1)
-if norm(basei)!=norm(candi): raise SystemExit('INDEX_STRUCTURE_CHANGED')
+norm_idx=lambda s: re.sub(r'singlepage-workspace-343\.css\?v=[^"\'<> ]+','singlepage-workspace-343.css?v=__CACHE__',s,count=1)
+if norm_idx(basei)!=norm_idx(candi): raise SystemExit('INDEX_STRUCTURE_CHANGED')
 print('STRUCTURE_ONLY_IMAGE_AND_CACHE_PASS')
 print('BASE_CSS_SHA',hashlib.sha256((r/'base'/'singlepage-workspace-343.css').read_bytes()).hexdigest())
 print('CAND_CSS_SHA',hashlib.sha256(cssp.read_bytes()).hexdigest())
