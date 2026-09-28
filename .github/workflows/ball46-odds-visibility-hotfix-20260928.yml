@@ -6,10 +6,10 @@ on:
       - ops/ball46-odds-surgical-20260928
     paths:
       - '.github/workflows/ball46-odds-visibility-hotfix-20260928.yml'
-      - '.github/scripts/ball46_odds_visibility_hotfix_20260928.sh'
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   deploy:
@@ -23,13 +23,21 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Reveal Odds control under logo without touching wiring
+      - name: Download exact current Odds deploy artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ball46-odds-visible-36361291283
+          path: /tmp/b46-repair-artifact
+          repository: mccareysupon-png/nomadtips3-live-test
+          run-id: 36361291283
+          github-token: ${{ github.token }}
+      - name: Repair Worker module shape without changing current assets
         shell: bash
-        run: bash .github/scripts/ball46_odds_visibility_hotfix_20260928.sh
+        run: bash .github/scripts/ball46_repair_runtime_shape_current_20260928.sh
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: ball46-odds-visible-${{ github.run_id }}
-          path: /tmp/b46-odds-visible
+          name: ball46-odds-runtime-repair-${{ github.run_id }}
+          path: /tmp/b46-repair-verify
           if-no-files-found: ignore
           retention-days: 30
