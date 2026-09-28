@@ -1,0 +1,40 @@
+name: READ ONLY - Ball46 Scorebar Background Pending Predeploy 20260928
+on:
+  push:
+    branches:
+      - work/ball46-scorebar-background-pending-20260928
+    paths:
+      - '.github/workflows/ball46-scorebar-bg-pending-predeploy-20260928.yml'
+      - '.github/scripts/ball46_scorebar_bg_pending_predeploy_20260928.sh'
+      - '.github/fixtures/scorebar-win-20260928.b64'
+      - '.github/fixtures/scorebar-loss-20260928.b64'
+      - '.github/fixtures/scorebar-draw-20260928.b64'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download exact deployed V5 baseline artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ball46-signal-settlement-predeploy-v5-36379588125
+          path: /tmp/b46-v5
+          github-token: ${{ github.token }}
+          run-id: 36379588125
+          repository: mccareysupon-png/nomadtips3-live-test
+      - name: Verify generated backgrounds and PENDING Signal cards without deploy
+        run: bash .github/scripts/ball46_scorebar_bg_pending_predeploy_20260928.sh
+      - name: Upload proof artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-scorebar-bg-pending-predeploy-${{ github.run_id }}
+          path: /tmp/b46-bg-pending
+          if-no-files-found: ignore
+          retention-days: 30
