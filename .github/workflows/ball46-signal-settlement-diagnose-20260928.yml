@@ -1,0 +1,31 @@
+name: READ ONLY - Ball46 Signal Settlement Browser Diagnose 20260928
+on:
+  push:
+    branches:
+      - work/ball46-scorebar-signal-settlement-20260928
+    paths:
+      - '.github/workflows/ball46-signal-settlement-diagnose-20260928.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: ball46-signal-settlement-predeploy-v4-36379307764
+          path: /tmp/pre
+          github-token: ${{ github.token }}
+          run-id: 36379307764
+      - name: Diagnose candidate browser/API state without deploy
+        run: bash .github/scripts/ball46_signal_settlement_diagnose.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-signal-settlement-diagnose-${{ github.run_id }}
+          path: /tmp/b46-signal-diagnose
+          if-no-files-found: ignore
+          retention-days: 7
