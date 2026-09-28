@@ -1,0 +1,31 @@
+name: READ ONLY - Ball46 Card Step6 Actual Browser 20260928
+on:
+  push:
+    branches:
+      - work/ball46-card-rebuild-step5-20260928
+    paths:
+      - '.github/scripts/ball46_card_step6_actual_browser_verify_20260928.sh'
+      - '.github/workflows/ball46-card-step6-actual-browser-verify-20260928.yml'
+permissions:
+  contents: read
+jobs:
+  verify-browser:
+    runs-on: ubuntu-24.04
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify actual www Step6 rendering without injection or deploy
+        run: bash .github/scripts/ball46_card_step6_actual_browser_verify_20260928.sh
+      - name: Upload browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-card-step6-actual-browser-${{ github.run_id }}
+          path: /tmp/b46-step6-browser-actual
+          if-no-files-found: ignore
+          retention-days: 30
