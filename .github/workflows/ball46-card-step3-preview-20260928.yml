@@ -1,0 +1,39 @@
+name: PREVIEW ONLY - Ball46 Card Rebuild Step3 20260928
+
+on:
+  push:
+    branches:
+      - work/ball46-card-rebuild-step3-20260928
+    paths:
+      - '.github/workflows/ball46-card-step3-preview-20260928.yml'
+      - '.github/scripts/ball46_card_step3_preview_20260928.sh'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  preview:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download exact current-production asset snapshot
+        uses: actions/download-artifact@v4
+        with:
+          name: ball46-odds-visible-36361291283
+          path: /tmp/b46-step3-source
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36361291283
+      - name: Build and verify CSS-only card prototype
+        shell: bash
+        run: bash .github/scripts/ball46_card_step3_preview_20260928.sh
+      - name: Upload preview evidence
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-card-step3-preview-${{ github.run_id }}
+          path: /tmp/b46-step3-output
+          if-no-files-found: error
+          retention-days: 30
