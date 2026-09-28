@@ -1,0 +1,59 @@
+name: READ ONLY - Ball46 Affiliate Price Only Audit 20260928
+
+on:
+  push:
+    branches:
+      - ops/ball46-affiliate-price-only-20260928
+    paths:
+      - '.github/workflows/ball46-affiliate-price-only-audit-20260928.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect current Production affiliate renderer state
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT=/tmp/b46-affiliate-price-audit
+          DIRECT='https://ball46-production.mccarey-supon.workers.dev'
+          rm -rf "$ROOT" && mkdir -p "$ROOT"
+          python3 - <<'PY'
+          import json,os,urllib.request,pathlib
+          a=os.environ['CLOUDFLARE_ACCOUNT_ID'];t=os.environ['CLOUDFLARE_API_TOKEN']
+          h={'Authorization':f'Bearer {t}','Accept':'application/json'}
+          u=f'https://api.cloudflare.com/client/v4/accounts/{a}/workers/scripts/ball46-production/deployments'
+          with urllib.request.urlopen(urllib.request.Request(u,headers=h),timeout=30) as r:j=json.load(r)
+          d=j['result']['deployments'][0];v=d['versions'][0]
+          pathlib.Path('/tmp/b46-affiliate-price-audit/version.txt').write_text(v['version_id'])
+          print('PRODUCTION_VERSION',v['version_id'],'PERCENT',v.get('percentage'))
+          PY
+          for f in full-market-bookmaker-343.js full-market-bookmaker-343.css odds-format-343.js index.html; do
+            code=$(curl -sS -L --retry 4 --retry-all-errors --max-time 30 -H 'Cache-Control: no-cache' -o "$ROOT/$f" -w '%{http_code}' "$DIRECT/$f?audit=${GITHUB_RUN_ID}-${RANDOM}") || true
+            echo "FETCH $f HTTP=$code SIZE=$(wc -c < "$ROOT/$f" 2>/dev/null || echo 0)"
+            [ "$code" = 200 ] || exit 1
+          done
+          echo '--- renderer affiliate markers ---'
+          grep -nE 'ONE_XBET|WILLIAM|affiliate|Affiliate|bookLabelHtml|oneXBetPriceHtml|fmb-1xbet|fmb-book-logo|marketTable\(|shellHtml\(' "$ROOT/full-market-bookmaker-343.js" || true
+          echo '--- css affiliate markers ---'
+          grep -nE '1xbet|affiliate|book-logo' "$ROOT/full-market-bookmaker-343.css" || true
+          echo '--- odds-format markers ---'
+          grep -nE '1XBET|1xbet|AFFILIATE|affiliate' "$ROOT/odds-format-343.js" || true
+          echo '--- current book names ---'
+          grep -n "\['1xbet','1xBet'\]" "$ROOT/full-market-bookmaker-343.js" || true
+          grep -n "williamhill" "$ROOT/full-market-bookmaker-343.js" | head -10 || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-affiliate-price-audit-${{ github.run_id }}
+          path: /tmp/b46-affiliate-price-audit
+          if-no-files-found: ignore
+          retention-days: 7
