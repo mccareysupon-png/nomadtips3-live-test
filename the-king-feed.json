@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-28T15:36:46Z",
+  "updated_at": "2026-09-28T22:08:03Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -284,8 +284,8 @@
       "edge": 42.1,
       "ev": 0.6442,
       "required_confidence": 0.6,
-      "result": "PENDING",
-      "ft": null,
+      "result": "WIN",
+      "ft": "2-2",
       "locked_at": "2026-09-28T02:01:51Z",
       "source_url": "https://www.goaloo.com/football/africa-cup-of-nations-tunisia-vs-botswana/h2h-3001091",
       "summary_url": "https://www.goaloo.com/football/africa-cup-of-nations-tunisia-vs-botswana/summary-3001091",
@@ -345,7 +345,12 @@
         "away_recent": 10,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": 1.0,
+      "profit": 75.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-28T22:08:03Z"
     },
     {
       "id": "92c64d345aea98b2-AH-HOME-0p75",
@@ -1134,8 +1139,8 @@
       "edge": 18.4,
       "ev": 0.2691,
       "required_confidence": 0.6,
-      "result": "PENDING",
-      "ft": null,
+      "result": "HALF_WIN",
+      "ft": "0-0",
       "locked_at": "2026-09-28T02:01:54Z",
       "source_url": "https://www.goaloo.com/football/primera-division-de-paraguay-sportivo-san-lorenzo-vs-deportivo-recoleta/h2h-3074190",
       "summary_url": "https://www.goaloo.com/football/primera-division-de-paraguay-sportivo-san-lorenzo-vs-deportivo-recoleta/summary-3074190",
@@ -1195,7 +1200,12 @@
         "away_recent": 10,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": 0.5,
+      "profit": 37.5,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-28T22:08:03Z"
     },
     {
       "id": "c62a40eca71aedd1-AH-AWAY-0p25",
@@ -2414,8 +2424,8 @@
       "edge": 21.4,
       "ev": 0.3645,
       "required_confidence": 0.56,
-      "result": "PENDING",
-      "ft": null,
+      "result": "WIN",
+      "ft": "2-1",
       "locked_at": "2026-09-28T02:01:55Z",
       "source_url": "https://www.goaloo.com/football/paraguayan-division-2-atletico-tembetary-vs-paraguari-ac/h2h-3094115",
       "summary_url": "https://www.goaloo.com/football/paraguayan-division-2-atletico-tembetary-vs-paraguari-ac/summary-3094115",
@@ -2475,7 +2485,12 @@
         "away_recent": 8,
         "h2h_n": 3,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": 1.0,
+      "profit": 129.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-28T22:08:03Z"
     },
     {
       "id": "00d21f620423fff7-AH-HOME-m0p0",
@@ -160398,6 +160413,276 @@
       "settlement_source": "goaloo-bf_us-direct-index",
       "goaloo_terminal_state": -1,
       "settled_at": "2026-09-28T15:36:46Z"
+    },
+    {
+      "id": "3c308d6d605e916a-AH-AWAY-1p75",
+      "goaloo_id": "3001091",
+      "date": "2026-09-28",
+      "kickoff": "2026-09-28 19:00:00",
+      "league": "Africa Cup of Nations",
+      "home": "Tunisia",
+      "away": "Botswana",
+      "market": "AH",
+      "selection": "AWAY",
+      "line": 1.75,
+      "pick": "Botswana +1.75",
+      "side": "away",
+      "odds": 1.75,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.9375,
+      "model_probability": 0.9375,
+      "market_fair_probability": 0.5166,
+      "market_edge": 0.4209,
+      "edge": 42.1,
+      "ev": 0.6442,
+      "required_confidence": 0.6,
+      "result": "WIN",
+      "ft": "2-2",
+      "locked_at": "2026-09-28T02:01:51Z",
+      "source_url": "https://www.goaloo.com/football/africa-cup-of-nations-tunisia-vs-botswana/h2h-3001091",
+      "summary_url": "https://www.goaloo.com/football/africa-cup-of-nations-tunisia-vs-botswana/summary-3001091",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 0.882,
+        "lambda_away": 1.427,
+        "home_win": 0.2084,
+        "draw": 0.2898,
+        "away_win": 0.5018,
+        "h2h_adjustment": 0.005,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": -0.1919,
+          "gd_edge": -0.4978,
+          "clean_sheet_edge": -0.322,
+          "failed_to_score_edge": 0.3902,
+          "bounded_adjustment": -0.0192,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": 1.0,
+      "profit": 75.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-28T22:08:03Z"
+    },
+    {
+      "id": "a5e18ff7cdd05a82-AH-HOME-0p25",
+      "goaloo_id": "3074190",
+      "date": "2026-09-28",
+      "kickoff": "2026-09-28 19:30:00",
+      "league": "Primera Division de Paraguay",
+      "home": "Sportivo San Lorenzo",
+      "away": "Deportivo Recoleta",
+      "market": "AH",
+      "selection": "HOME",
+      "line": 0.25,
+      "pick": "Sportivo San Lorenzo +0.25",
+      "side": "home",
+      "odds": 1.75,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.7172,
+      "model_probability": 0.7172,
+      "market_fair_probability": 0.5333,
+      "market_edge": 0.1838,
+      "edge": 18.4,
+      "ev": 0.2691,
+      "required_confidence": 0.6,
+      "result": "HALF_WIN",
+      "ft": "0-0",
+      "locked_at": "2026-09-28T02:01:54Z",
+      "source_url": "https://www.goaloo.com/football/primera-division-de-paraguay-sportivo-san-lorenzo-vs-deportivo-recoleta/h2h-3074190",
+      "summary_url": "https://www.goaloo.com/football/primera-division-de-paraguay-sportivo-san-lorenzo-vs-deportivo-recoleta/summary-3074190",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 2.083,
+        "lambda_away": 1.292,
+        "home_win": 0.5674,
+        "draw": 0.2254,
+        "away_win": 0.2072,
+        "h2h_adjustment": -0.01,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.3545,
+          "gd_edge": 0.5419,
+          "clean_sheet_edge": 0.5561,
+          "failed_to_score_edge": -0.2098,
+          "bounded_adjustment": 0.0293,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": 0.5,
+      "profit": 37.5,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-28T22:08:03Z"
+    },
+    {
+      "id": "53ac95f510d2f774-AH-HOME-m0p0",
+      "goaloo_id": "3094115",
+      "date": "2026-09-28",
+      "kickoff": "2026-09-28 19:30:00",
+      "league": "Paraguayan Division 2",
+      "home": "Atletico Tembetary",
+      "away": "Paraguari AC",
+      "market": "AH",
+      "selection": "HOME",
+      "line": -0.0,
+      "pick": "Atletico Tembetary -0",
+      "side": "home",
+      "odds": 2.29,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.6125,
+      "model_probability": 0.6125,
+      "market_fair_probability": 0.399,
+      "market_edge": 0.2135,
+      "edge": 21.4,
+      "ev": 0.3645,
+      "required_confidence": 0.56,
+      "result": "WIN",
+      "ft": "2-1",
+      "locked_at": "2026-09-28T02:01:55Z",
+      "source_url": "https://www.goaloo.com/football/paraguayan-division-2-atletico-tembetary-vs-paraguari-ac/h2h-3094115",
+      "summary_url": "https://www.goaloo.com/football/paraguayan-division-2-atletico-tembetary-vs-paraguari-ac/summary-3094115",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 1.654,
+        "lambda_away": 1.152,
+        "home_win": 0.5033,
+        "draw": 0.2622,
+        "away_win": 0.2345,
+        "h2h_adjustment": 0.0,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.4065,
+          "gd_edge": 0.3236,
+          "clean_sheet_edge": 0.1561,
+          "failed_to_score_edge": -0.0976,
+          "bounded_adjustment": 0.022,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 9,
+        "away_recent": 8,
+        "h2h_n": 3,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": 1.0,
+      "profit": 129.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-28T22:08:03Z"
     }
   ],
   "note": "Automated Full-Time Winner First feed. Supplemental markets remain unpublished.",
