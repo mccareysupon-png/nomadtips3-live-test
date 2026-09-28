@@ -1,0 +1,74 @@
+name: READ ONLY - Ball46 Affiliate Logo Postverify 20260928
+
+on:
+  push:
+    branches:
+      - ops/ball46-affiliate-standard-20260928
+    paths:
+      - '.github/workflows/ball46-affiliate-logo-postverify-20260928.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify logos and affiliate price hit targets on Production
+        shell: bash
+        run: |
+          set -euo pipefail
+          CHROME=$(command -v google-chrome-stable || command -v google-chrome || true)
+          test -n "$CHROME"
+          mkdir -p /tmp/b46-aff-post && cd /tmp/b46-aff-post
+          npm init -y >/dev/null 2>&1
+          npm install puppeteer-core@24.16.0 --no-audit --no-fund >/dev/null 2>&1
+          cat > verify.mjs <<'NODE'
+          import puppeteer from 'puppeteer-core';
+          const browser=await puppeteer.launch({executablePath:process.env.CHROME,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
+          const page=await browser.newPage();
+          await page.setViewport({width:1440,height:1000});
+          await page.goto('https://www.ball46.com/?affpost='+Date.now(),{waitUntil:'networkidle2',timeout:90000});
+          await page.waitForSelector('.match-row[data-match-id]',{timeout:60000});
+          const scripts=await page.evaluate(()=>performance.getEntriesByType('resource').map(x=>x.name).filter(x=>x.includes('full-market-bookmaker-343')));
+          console.log('FULL_MARKET_RESOURCES',scripts);
+          if(!scripts.some(x=>x.includes('343-affiliate-logo-click-20260928a')))throw new Error('CACHE_BUST_NOT_LOADED');
+          const ids=await page.$$eval('.match-row[data-match-id]',els=>els.map(x=>x.dataset.matchId).filter(Boolean).slice(0,35));
+          let out=null;
+          for(const id of ids){
+            await page.evaluate(id=>window.NOMAD343_EXPANDED_MATCH?.open?.(id),id);
+            try{await page.waitForSelector(`.match-expanded[data-expanded-match="${id}"] [data-fmb-book="1xbet"].has-data`,{timeout:4500});}catch{continue}
+            const both=await page.evaluate(id=>{const r=document.querySelector(`.match-expanded[data-expanded-match="${CSS.escape(id)}"]`);return !!(r?.querySelector('[data-fmb-book="1xbet"].has-data')&&r?.querySelector('[data-fmb-book="williamhill"].has-data'));},id);
+            if(!both)continue;
+            const books={};
+            for(const slug of ['1xbet','williamhill']){
+              const tab=`.match-expanded[data-expanded-match="${id}"] [data-fmb-book="${slug}"]`;
+              await page.click(tab); await new Promise(r=>setTimeout(r,1200));
+              const logo=await page.$eval(tab,el=>{const img=el.querySelector('[data-b46-book-logo] img');if(!img)return null;const r=img.getBoundingClientRect();return{src:img.currentSrc||img.src,naturalWidth:img.naturalWidth,naturalHeight:img.naturalHeight,w:r.width,h:r.height,parentTag:img.closest('a')?.tagName||null};});
+              const sel=`.match-expanded[data-expanded-match="${id}"] a[data-b46-affiliate-odds="${slug}"]`;
+              await page.waitForSelector(sel,{timeout:5000});
+              const before=await page.$eval(sel,el=>{const r=el.getBoundingClientRect(),cs=getComputedStyle(el),hit=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2);return{text:el.textContent.trim(),href:el.href,cursor:cs.cursor,filter:cs.filter,hitIsSelf:hit===el,pointerEvents:cs.pointerEvents};});
+              await page.hover(sel); await new Promise(r=>setTimeout(r,120));
+              const hover=await page.$eval(sel,el=>({filter:getComputedStyle(el).filter,textShadow:getComputedStyle(el).textShadow,cursor:getComputedStyle(el).cursor}));
+              books[slug]={logo,before,hover};
+            }
+            out={id,books}; break;
+          }
+          console.log('POSTVERIFY',JSON.stringify(out));
+          if(!out)throw new Error('NO_FIXTURE_WITH_BOTH_BOOKS');
+          for(const slug of ['1xbet','williamhill']){
+            const x=out.books[slug];
+            if(!x.logo||x.logo.naturalWidth<1||x.logo.naturalHeight<1)throw new Error(slug+'_LOGO_NOT_LOADED');
+            if(x.logo.w>50.5||x.logo.h>12.5)throw new Error(slug+'_LOGO_TOO_LARGE');
+            if(x.logo.parentTag)throw new Error(slug+'_LOGO_MUST_NOT_LINK');
+            if(x.before.cursor!=='pointer'||x.before.pointerEvents==='none'||!x.before.hitIsSelf)throw new Error(slug+'_PRICE_NOT_CLICKABLE');
+            if(x.hover.cursor!=='pointer')throw new Error(slug+'_HOVER_CURSOR_BAD');
+          }
+          console.log('BALL46_AFFILIATE_LOGO_POSTVERIFY_OK');
+          await browser.close();
+          NODE
+          CHROME="$CHROME" node verify.mjs
