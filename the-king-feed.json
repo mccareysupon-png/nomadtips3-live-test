@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-28T07:02:36Z",
+  "updated_at": "2026-09-28T15:36:46Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -24,8 +24,8 @@
       "edge": 47.5,
       "ev": 0.7939,
       "required_confidence": 0.6,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "0-2",
       "locked_at": "2026-09-28T02:00:51Z",
       "source_url": "https://www.goaloo.com/football/kenya-league-women-zetech-sparks-fc-w-vs-kenya-police-bullets-w/h2h-3096159",
       "summary_url": "https://www.goaloo.com/football/kenya-league-women-zetech-sparks-fc-w-vs-kenya-police-bullets-w/summary-3096159",
@@ -85,7 +85,12 @@
         "away_recent": 8,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-28T15:36:46Z"
     },
     {
       "id": "686b77aa3611f612-AH-HOME-1p75",
@@ -1554,8 +1559,8 @@
       "edge": 20.3,
       "ev": 0.3162,
       "required_confidence": 0.56,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "2-1",
       "locked_at": "2026-09-28T02:00:57Z",
       "source_url": "https://www.goaloo.com/football/greece-national-b-marko-vs-panthrakikos/h2h-3077260",
       "summary_url": "https://www.goaloo.com/football/greece-national-b-marko-vs-panthrakikos/summary-3077260",
@@ -1615,7 +1620,12 @@
         "away_recent": 10,
         "h2h_n": 0,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-28T15:36:46Z"
     },
     {
       "id": "b964d29c41165af1-AH-AWAY-0p25",
@@ -160208,6 +160218,186 @@
       "settlement_source": "goaloo-bf_us-direct-index",
       "goaloo_terminal_state": -1,
       "settled_at": "2026-09-28T00:55:26Z"
+    },
+    {
+      "id": "321f00faa69198f1-AH-HOME-1p5",
+      "goaloo_id": "3096159",
+      "date": "2026-09-28",
+      "kickoff": "2026-09-28 11:00:00",
+      "league": "Kenya League Women",
+      "home": "Zetech Sparks FC (W)",
+      "away": "Kenya Police Bullets (W)",
+      "market": "AH",
+      "selection": "HOME",
+      "line": 1.5,
+      "pick": "Zetech Sparks FC (W) +1.5",
+      "side": "home",
+      "odds": 1.82,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.9857,
+      "model_probability": 0.9857,
+      "market_fair_probability": 0.5108,
+      "market_edge": 0.4749,
+      "edge": 47.5,
+      "ev": 0.7939,
+      "required_confidence": 0.6,
+      "result": "LOSS",
+      "ft": "0-2",
+      "locked_at": "2026-09-28T02:00:51Z",
+      "source_url": "https://www.goaloo.com/football/kenya-league-women-zetech-sparks-fc-w-vs-kenya-police-bullets-w/h2h-3096159",
+      "summary_url": "https://www.goaloo.com/football/kenya-league-women-zetech-sparks-fc-w-vs-kenya-police-bullets-w/summary-3096159",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 2.549,
+        "lambda_away": 0.584,
+        "home_win": 0.8229,
+        "draw": 0.1481,
+        "away_win": 0.029,
+        "h2h_adjustment": -0.0125,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.4016,
+          "gd_edge": 0.9137,
+          "clean_sheet_edge": 0.2244,
+          "failed_to_score_edge": 0.5073,
+          "bounded_adjustment": 0.0426,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 8,
+        "away_recent": 8,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-28T15:36:46Z"
+    },
+    {
+      "id": "dc335744628d31ab-OU-UNDER-2p25",
+      "goaloo_id": "3077260",
+      "date": "2026-09-28",
+      "kickoff": "2026-09-28 13:00:00",
+      "league": "Greece National B",
+      "home": "Marko",
+      "away": "Panthrakikos",
+      "market": "OU",
+      "selection": "UNDER",
+      "line": 2.25,
+      "pick": "Under 2.25",
+      "side": null,
+      "odds": 1.94,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.6763,
+      "model_probability": 0.6763,
+      "market_fair_probability": 0.4728,
+      "market_edge": 0.2035,
+      "edge": 20.3,
+      "ev": 0.3162,
+      "required_confidence": 0.56,
+      "result": "LOSS",
+      "ft": "2-1",
+      "locked_at": "2026-09-28T02:00:57Z",
+      "source_url": "https://www.goaloo.com/football/greece-national-b-marko-vs-panthrakikos/h2h-3077260",
+      "summary_url": "https://www.goaloo.com/football/greece-national-b-marko-vs-panthrakikos/summary-3077260",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 1.207,
+        "lambda_away": 0.539,
+        "home_win": 0.5379,
+        "draw": 0.3261,
+        "away_win": 0.1361,
+        "h2h_adjustment": 0.0,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.1577,
+          "gd_edge": 0.4112,
+          "clean_sheet_edge": -0.0293,
+          "failed_to_score_edge": 0.6439,
+          "bounded_adjustment": 0.0203,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 8,
+        "away_recent": 10,
+        "h2h_n": 0,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-28T15:36:46Z"
     }
   ],
   "note": "Automated Full-Time Winner First feed. Supplemental markets remain unpublished.",
