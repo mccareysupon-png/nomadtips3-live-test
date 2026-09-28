@@ -1,0 +1,34 @@
+name: READ ONLY - Ball46 Signal Settlement Scorebar Predeploy V4 20260928
+on:
+  push:
+    branches:
+      - work/ball46-scorebar-signal-settlement-20260928
+    paths:
+      - '.github/workflows/ball46-signal-settlement-predeploy-v4-20260928.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assemble exact guarded predeploy script with visible-page CDP proof
+        run: |
+          cat .github/scripts/ball46_signal_settlement_predeploy.part1 .github/scripts/ball46_signal_settlement_predeploy.part2 .github/scripts/ball46_signal_settlement_predeploy.part3 .github/scripts/ball46_signal_settlement_predeploy.part4v2 > /tmp/predeploy.sh
+          sed -i 's/616b00cf275bdc062f9dda317401dbfc4d551939fff677e973efed62fc3f2740/aaa977a6a7b7e031426964f24834fd60ad4519a9821d244f797719b2f4355c4e/g' /tmp/predeploy.sh
+          sed -i 's/a66d4d98e47902f85ce741b4f495a895a01d551411b7b46e79d030d6af5c9e32/deb16cdb601f5898f88aa0f84bfc7d989af9576a6b94ae33521fd67b7d60ac90/g' /tmp/predeploy.sh
+          sed -i "s/await call('Page.enable');await wait/await call('Page.enable');await call('Page.bringToFront');await wait/" /tmp/predeploy.sh
+          bash -n /tmp/predeploy.sh
+      - name: Verify signal settlement scorebar candidate without deploy
+        run: bash /tmp/predeploy.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-signal-settlement-predeploy-v4-${{ github.run_id }}
+          path: /tmp/b46-signal-settlement-pre
+          if-no-files-found: ignore
+          retention-days: 30
