@@ -1,0 +1,46 @@
+ROOT='/tmp/b46-signal-settlement-pre/candidate'; UP='https://ball46-production.mccarey-supon.workers.dev'
+os.chdir(ROOT)
+class H(SimpleHTTPRequestHandler):
+ def log_message(self,*a): pass
+ def do_GET(self):
+  if self.path.startswith('/api/engine/'):
+   try:
+    with urllib.request.urlopen(UP+self.path,timeout=30) as q:
+     b=q.read(); self.send_response(q.status); self.send_header('Content-Type',q.headers.get('Content-Type','application/json')); self.send_header('Cache-Control','no-store'); self.end_headers(); self.wfile.write(b)
+   except Exception as e: self.send_error(502,str(e))
+  else: super().do_GET()
+ThreadingHTTPServer(('127.0.0.1',8765),H).serve_forever()
+PYPROXY
+python3 "$VERIFY/proxy.py" >"$VERIFY/proxy.log" 2>&1 & PROXY_PID=$!; trap 'kill $PROXY_PID ${CPID:-} 2>/dev/null || true' EXIT
+for i in $(seq 1 40); do curl -fsS http://127.0.0.1:8765/ >/dev/null 2>&1 && break; sleep .25; done
+CHROME=$(command -v google-chrome || command -v chromium || command -v chromium-browser || true); [ -n "$CHROME" ] || { echo CHROME_NOT_FOUND; exit 1; }
+"$CHROME" --headless=new --no-sandbox --disable-gpu --hide-scrollbars --window-size=1440,1050 --remote-debugging-port=9337 --user-data-dir="$VERIFY/chrome" "http://127.0.0.1:8765/?pre=$nonce" >"$VERIFY/chrome.log" 2>&1 & CPID=$!
+rm -f "$VERIFY/pages.json" "$VERIFY/pages.tmp"
+for i in $(seq 1 60); do
+ if curl -fsS http://127.0.0.1:9337/json > "$VERIFY/pages.tmp" 2>/dev/null && python3 -c "import json,sys;x=json.load(open(sys.argv[1]));assert any(p.get('type')=='page' and p.get('webSocketDebuggerUrl') for p in x)" "$VERIFY/pages.tmp" 2>/dev/null; then mv "$VERIFY/pages.tmp" "$VERIFY/pages.json"; break; fi
+ sleep .5
+done
+[ -s "$VERIFY/pages.json" ] || { echo CHROME_DEVTOOLS_NOT_READY; exit 1; }
+cat > "$VERIFY/check.js" <<'NODE'
+const fs=require('fs');
+const pages=JSON.parse(fs.readFileSync('/tmp/b46-signal-settlement-pre/verify/pages.json'));
+const p=pages.find(x=>x.type==='page'&&x.webSocketDebuggerUrl);if(!p)throw Error('NO_PAGE');
+const expected=JSON.parse(fs.readFileSync('/tmp/b46-signal-settlement-pre/verify/expected-latest-six.json'));
+const mapResult=r=>r==='WIN'?'WIN':r==='HALF_WIN'?'WIN ½':r==='LOSS'?'LOSS':r==='HALF_LOSS'?'LOSS ½':(r==='PUSH'||r==='DRAW')?'DRAW':r;
+const ws=new WebSocket(p.webSocketDebuggerUrl);let id=0,q=new Map();
+ws.onmessage=e=>{const m=JSON.parse(e.data);if(m.id&&q.has(m.id)){const x=q.get(m.id);q.delete(m.id);m.error?x.j(Error(JSON.stringify(m.error))):x.r(m.result)}};
+const call=(method,params={})=>new Promise((r,j)=>{const n=++id;q.set(n,{r,j});ws.send(JSON.stringify({id:n,method,params}))});
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+async function ev(x){const z=await call('Runtime.evaluate',{expression:x,returnByValue:true,awaitPromise:true});if(z.exceptionDetails)throw Error(JSON.stringify(z.exceptionDetails));return z.result.value}
+async function wait(x,t=35000){const s=Date.now();while(Date.now()-s<t){try{if(await ev(x))return}catch{}await sleep(250)}throw Error('WAIT:'+x)}
+async function read(){return ev(`(()=>{const grid=document.querySelector('[data-workspace-scorebar-slot] .workspace-scorebar-grid'),cards=grid?[...grid.children]:[],left=cards.slice(0,6).map(c=>({result:c.getAttribute('data-scorebar-signal-result')||'',cls:c.className,text:c.innerText.trim(),score:c.querySelector('.workspace-scorebar-meta b')?.textContent.trim()||'',market:c.querySelector('.workspace-scorebar-pick strong')?.textContent.trim()||'',pick:c.querySelector('.workspace-scorebar-pick em')?.textContent.trim()||'',bg:getComputedStyle(c).backgroundColor,img:getComputedStyle(c).backgroundImage})),right=cards.slice(6).map(c=>({live:c.classList.contains('workspace-scorebar-live'),placeholder:c.classList.contains('placeholder'),status:c.querySelector('.workspace-scorebar-meta i')?.textContent.trim()||'',score:c.querySelector('.workspace-scorebar-meta b')?.textContent.trim()||''})),mins=cards.slice(6).map(c=>{const s=c.querySelector('.workspace-scorebar-meta i')?.textContent||'',m=s.match(/(\d{1,3})'/);return m?+m[1]:-1}).filter(x=>x>=0),slot=document.querySelector('[data-workspace-scorebar-slot]'),css=[...document.querySelectorAll('link[rel="stylesheet"]')].find(x=>(x.getAttribute('href')||'').includes('singlepage-workspace-343.css'))?.getAttribute('href')||'',js=[...document.scripts].find(x=>(x.getAttribute('src')||'').includes('dashboard-v2-stage3.js'))?.getAttribute('src')||'',main=document.querySelector('.dashboard-shell')||document.body;return{count:cards.length,left,right,minuteSorted:mins.every((v,i,a)=>i===0||a[i-1]>=v),slotDisplay:slot?getComputedStyle(slot).display:'none',odds:!!window.NOMAD343_ODDS,favicon:!!document.querySelector('link[data-ball46-favicon="20260928"]'),css,js,overflow:main.scrollWidth>main.clientWidth+2}})()`)}
+(async()=>{await new Promise((r,j)=>{ws.onopen=r;ws.onerror=j});await call('Runtime.enable');await call('Page.enable');await wait(`document.readyState==='complete'`);await wait(`document.querySelectorAll('[data-workspace-scorebar-slot] .workspace-scorebar-grid > *').length===10`);await wait(`document.querySelectorAll('[data-scorebar-signal-result]').length===6`,35000);await sleep(800);const d=await read();if(d.count!==10)throw Error('COUNT_BAD');const want=expected.map(x=>mapResult(String(x.result||'').toUpperCase()));const got=d.left.map(x=>x.result);if(JSON.stringify(got)!==JSON.stringify(want))throw Error('RESULT_ORDER_BAD '+JSON.stringify({got,want}));if(d.left.some(x=>!x.market||!x.pick||!x.score))throw Error('DETAIL_MISSING '+JSON.stringify(d.left));if(d.left.some(x=>x.cls.includes('workspace-scorebar-team')))throw Error('OLD_TEAM_RESULT_SEMANTICS');if(d.right.some(x=>!x.live&&!x.placeholder)||!d.minuteSorted)throw Error('RIGHT4_BAD '+JSON.stringify(d.right));if(!d.odds||!d.favicon||d.overflow)throw Error('REGRESSION_DESKTOP '+JSON.stringify(d));if(!d.css.includes('343-signal-settlement-20260928a')||!d.js.includes('343-signal-settlement-20260928a'))throw Error('BUSTER_BAD');await call('Emulation.setDeviceMetricsOverride',{width:390,height:850,deviceScaleFactor:1,mobile:false});await call('Page.reload',{ignoreCache:true});await wait(`document.readyState==='complete'`);await sleep(2500);const m=await read();if(m.slotDisplay!=='none'||!m.odds||!m.favicon||m.overflow)throw Error('MOBILE_BAD '+JSON.stringify(m));const out={desktop:d,mobile:m,expected};fs.writeFileSync('/tmp/b46-signal-settlement-pre/verify/browser.json',JSON.stringify(out,null,2));console.log('CANDIDATE_BROWSER_PASS',JSON.stringify({results:got,right:d.right,mobileSlot:m.slotDisplay}));ws.close();process.exit(0)})().catch(e=>{console.error(e);try{ws.close()}catch{}process.exit(1)});
+NODE
+node "$VERIFY/check.js"
+kill "$CPID" "$PROXY_PID" 2>/dev/null || true; trap - EXIT
+cat > "$RUNTIME/wrangler.jsonc" <<'EOF'
+{"name":"ball46-production","main":"index.js","compatibility_date":"2026-09-09","assets":{"directory":"../candidate","binding":"ASSETS"},"services":[{"binding":"ENGINE","service":"nomadtips3-engine-343","environment":"production"},{"binding":"FULL_MARKET","service":"nomadtips3-full-market-343-ball46","environment":"production"},{"binding":"HUB","service":"nomadtips3-5usd-hub-343","environment":"production"}],"triggers":{"crons":["* * * * *"]}}
+EOF
+(cd "$RUNTIME" && npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.jsonc > "$VERIFY/dry-run.log" 2>&1)
+grep -Fq 'Read 79 files' "$VERIFY/dry-run.log"; ! grep -Fq 'Attaching additional modules' "$VERIFY/dry-run.log" || { echo DRY_EXTRA_MODULES; exit 1; }
+echo 'SIGNAL_SETTLEMENT_PREDEPLOY_SUCCESS_NO_DEPLOY'
