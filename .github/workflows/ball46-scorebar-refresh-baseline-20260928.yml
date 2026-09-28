@@ -22,7 +22,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Refresh current Production baseline read-only (actual Step6 proof)
+      - name: Refresh current Production baseline read-only (system Chrome proof)
         shell: bash
         run: bash .github/scripts/ball46_scorebar_refresh_baseline_20260928.sh
       - uses: actions/upload-artifact@v4
