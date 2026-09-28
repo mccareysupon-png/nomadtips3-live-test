@@ -1,0 +1,36 @@
+ROOT='/tmp/b46-signal-settlement-pre/candidate'; UP='https://ball46-production.mccarey-supon.workers.dev'
+os.chdir(ROOT)
+class H(SimpleHTTPRequestHandler):
+ def log_message(self,*a): pass
+ def do_GET(self):
+  if self.path.startswith('/api/engine/'):
+   try:
+    with urllib.request.urlopen(UP+self.path,timeout=30) as q:
+     b=q.read(); self.send_response(q.status); self.send_header('Content-Type',q.headers.get('Content-Type','application/json')); self.send_header('Cache-Control','no-store'); self.end_headers(); self.wfile.write(b)
+   except Exception as e: self.send_error(502,str(e))
+  else: super().do_GET()
+ThreadingHTTPServer(('127.0.0.1',8765),H).serve_forever()
+PYPROXY
+python3 "$VERIFY/proxy.py" >"$VERIFY/proxy.log" 2>&1 & PROXY_PID=$!; trap 'kill $PROXY_PID 2>/dev/null || true' EXIT
+for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8765/ >/dev/null 2>&1 && break; sleep .2; done
+CHROME=$(command -v google-chrome || command -v chromium || command -v chromium-browser || true); [ -n "$CHROME" ] || { echo CHROME_NOT_FOUND; exit 1; }
+"$CHROME" --headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage --user-data-dir="$VERIFY/chrome" --virtual-time-budget=9000 --dump-dom "http://127.0.0.1:8765/?pre=$nonce" > "$VERIFY/dom.html" 2> "$VERIFY/chrome.log"
+python3 - <<'PYDOM'
+from pathlib import Path
+import re
+h=Path('/tmp/b46-signal-settlement-pre/verify/dom.html').read_text(errors='ignore')
+labels=re.findall(r'data-scorebar-signal-result="([^"]+)"',h)
+if len(labels)!=6: raise SystemExit('BROWSER_NOT_6_SETTLED:'+repr(labels))
+if not all(x in {'WIN','WIN ½','LOSS','LOSS ½','DRAW'} for x in labels): raise SystemExit('BAD_RESULT_LABELS:'+repr(labels))
+if 'workspace-scorebar-team outcome-win' in h or 'workspace-scorebar-team outcome-loss' in h: raise SystemExit('OLD_TEAM_RESULT_SEMANTICS_PRESENT')
+if '343-signal-settlement-20260928a' not in h: raise SystemExit('CACHE_BUSTER_NOT_ACTIVE')
+if 'data-ball46-favicon="20260928"' not in h: raise SystemExit('FAVICON_MARKER_MISSING')
+print('CANDIDATE_BROWSER_PASS',labels)
+PYDOM
+rm -rf "$VERIFY/chrome"; kill $PROXY_PID 2>/dev/null || true; trap - EXIT
+cat > "$RUNTIME/wrangler.jsonc" <<'EOF'
+{"name":"ball46-production","main":"index.js","compatibility_date":"2026-09-09","assets":{"directory":"../candidate","binding":"ASSETS"},"services":[{"binding":"ENGINE","service":"nomadtips3-engine-343","environment":"production"},{"binding":"FULL_MARKET","service":"nomadtips3-full-market-343-ball46","environment":"production"},{"binding":"HUB","service":"nomadtips3-5usd-hub-343","environment":"production"}],"triggers":{"crons":["* * * * *"]}}
+EOF
+(cd "$RUNTIME" && npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.jsonc > "$VERIFY/dry-run.log" 2>&1)
+grep -Fq 'Read 79 files' "$VERIFY/dry-run.log"; ! grep -Fq 'Attaching additional modules' "$VERIFY/dry-run.log" || { echo DRY_EXTRA_MODULES; exit 1; }
+echo 'SIGNAL_SETTLEMENT_PREDEPLOY_SUCCESS_NO_DEPLOY'
