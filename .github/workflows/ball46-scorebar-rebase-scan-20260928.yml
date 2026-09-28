@@ -1,0 +1,36 @@
+name: READ ONLY - Ball46 Scorebar Rebase Scan 20260928
+on:
+  push:
+    branches:
+      - work/ball46-scorebar-background-pending-20260928
+    paths:
+      - '.github/workflows/ball46-scorebar-rebase-scan-20260928.yml'
+      - '.github/scripts/ball46_scorebar_rebase_scan_20260928.sh'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  scan:
+    runs-on: ubuntu-24.04
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: ball46-signal-settlement-predeploy-v5-36379588125
+          path: /tmp/b46-v5
+          github-token: ${{ github.token }}
+          run-id: 36379588125
+          repository: mccareysupon-png/nomadtips3-live-test
+      - name: Read latest Production and compare with V5 baseline
+        run: bash .github/scripts/ball46_scorebar_rebase_scan_20260928.sh
+      - name: Upload rebase proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-scorebar-rebase-${{ github.run_id }}
+          path: /tmp/b46-scorebar-rebase
+          if-no-files-found: ignore
+          retention-days: 30
