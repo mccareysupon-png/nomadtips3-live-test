@@ -50,39 +50,38 @@ for n in ['board','signals','statistics']:
  if j.get('ok') is not True: raise SystemExit('FLOW_BAD:'+n)
 print('REFRESH_FLOW_OK',len(json.load(open(r/'board.json')).get('fixtures') or []),len(json.load(open(r/'signals.json')).get('signals') or []),len(json.load(open(r/'statistics.json')).get('statistics') or []))
 PY
-node - <<'NODE'
+chrome=$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)
+[ -n "$chrome" ] || { echo CHROME_NOT_FOUND; exit 1; }
+"$chrome" --headless=new --no-sandbox --disable-gpu --hide-scrollbars --window-size=1440,1050 --remote-debugging-port=9222 --user-data-dir="$OUT/chrome" "$WWW/index.html?baseline_refresh=${GITHUB_RUN_ID:-manual}" >"$OUT/chrome.log" 2>&1 &
+CPID=$!; trap 'kill $CPID 2>/dev/null || true' EXIT
+for i in $(seq 1 40); do curl -fsS http://127.0.0.1:9222/json > "$OUT/pages.json" 2>/dev/null && break; sleep 1; done
+test -s "$OUT/pages.json"
+cat > "$OUT/check.js" <<'NODE'
 const fs=require('fs');
-const {execSync}=require('child_process');
-try{require.resolve('playwright')}catch(e){execSync('npm -s install --no-save playwright@1.55.0',{stdio:'inherit'})}
-const {chromium}=require('playwright');
+const pages=JSON.parse(fs.readFileSync('/tmp/b46-scorebar-refresh/pages.json'));
+const p=pages.find(x=>x.type==='page'); if(!p)throw Error('NO_PAGE');
+const ws=new WebSocket(p.webSocketDebuggerUrl); let id=0; const q=new Map();
+ws.onmessage=e=>{const m=JSON.parse(e.data);if(m.id&&q.has(m.id)){const x=q.get(m.id);q.delete(m.id);m.error?x.j(Error(JSON.stringify(m.error))):x.r(m.result)}};
+const call=(method,params={})=>new Promise((r,j)=>{const n=++id;q.set(n,{r,j});ws.send(JSON.stringify({id:n,method,params}))});
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+async function ev(expression){const z=await call('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true});if(z.exceptionDetails)throw Error(JSON.stringify(z.exceptionDetails));return z.result.value}
+async function wait(x,t=30000){const s=Date.now();while(Date.now()-s<t){try{if(await ev(x))return}catch{}await sleep(250)}throw Error('WAIT:'+x)}
 (async()=>{
-  const b=await chromium.launch({headless:true});
-  const p=await b.newPage({viewport:{width:1440,height:1000}});
-  await p.goto('https://www.ball46.com/?baseline_refresh='+Date.now(),{waitUntil:'networkidle',timeout:60000});
-  await p.waitForTimeout(2500);
-  const x=await p.evaluate(()=>{
-    const grid=document.querySelector('[data-workspace-scorebar-slot] .workspace-scorebar-grid');
-    const cells=grid?[...grid.children]:[];
-    const ids=cells.map(c=>c.getAttribute('data-workspace-score-id')).filter(Boolean);
-    const statuses=cells.map(c=>c.querySelector('.workspace-scorebar-meta i')?.textContent?.trim()||'PLACEHOLDER');
-    const first6=statuses.slice(0,6);
-    const last4=statuses.slice(6,10);
-    const liveMinutes=last4.map(s=>{const m=String(s).match(/(\d+)/);return m?Number(m[1]):null}).filter(v=>v!==null);
-    const minuteSorted=liveMinutes.every((v,i,a)=>i===0||a[i-1]>=v);
-    const sheet=[...document.styleSheets].find(s=>(s.href||'').includes('343-card-step6-20260928a'));
-    const row=document.querySelector('[data-match-id]');
-    const overflow=row ? row.scrollWidth<=row.clientWidth+1 : true;
-    return {count:cells.length,ids,statuses,first6,last4,minuteSorted,odds:!!window.NOMAD343_ODDS,favicon:!!document.querySelector('link[data-ball46-favicon="20260928"]'),step6:!!sheet,overflow};
-  });
-  console.log('REFRESH_BROWSER',x);
-  if(x.count!==10)throw new Error('SCOREBAR_COUNT_'+x.count);
-  if(!x.first6.every(s=>s==='FT'))throw new Error('RECENT6_NOT_ALL_FT:'+JSON.stringify(x.first6));
-  if(!x.minuteSorted)throw new Error('NEARFT4_NOT_DESC:'+JSON.stringify(x.last4));
-  if(new Set(x.ids).size!==x.ids.length)throw new Error('DUPLICATE_SCOREBAR_IDS');
-  if(!x.odds||!x.favicon||!x.step6||!x.overflow)throw new Error('REGRESSION_MARKER_OR_LAYOUT:'+JSON.stringify(x));
-  fs.writeFileSync('/tmp/b46-scorebar-refresh/browser.json',JSON.stringify(x,null,2));
-  await b.close();
-  console.log('REFRESH_SCOREBAR_6X4_BROWSER_OK');
-  console.log('REFRESH_BASELINE_SUCCESS_NO_DEPLOY');
-})().catch(e=>{console.error(e);process.exit(1)});
+ await new Promise((r,j)=>{ws.onopen=r;ws.onerror=j}); await call('Runtime.enable');
+ await wait(`document.readyState==='complete'`);
+ await wait(`document.querySelectorAll('[data-workspace-scorebar-slot] .workspace-scorebar-grid > *').length===10`);
+ await wait(`document.querySelectorAll('.match-row[data-match-id]').length>0`);
+ await sleep(2500);
+ const x=await ev(`(()=>{const grid=document.querySelector('[data-workspace-scorebar-slot] .workspace-scorebar-grid');const cells=grid?[...grid.children]:[];const ids=cells.map(c=>c.getAttribute('data-workspace-score-id')).filter(Boolean);const statuses=cells.map(c=>c.querySelector('.workspace-scorebar-meta i')?.textContent?.trim()||'PLACEHOLDER');const first6=statuses.slice(0,6),last4=statuses.slice(6,10);const mins=last4.map(s=>{const m=String(s).match(/(\\d+)/);return m?Number(m[1]):null}).filter(v=>v!==null);const minuteSorted=mins.every((v,i,a)=>i===0||a[i-1]>=v);const sheet=[...document.styleSheets].find(s=>(s.href||'').includes('343-card-step6-20260928a'));const row=document.querySelector('.match-row[data-match-id]');return {count:cells.length,ids,statuses,first6,last4,minuteSorted,odds:!!window.NOMAD343_ODDS,favicon:!!document.querySelector('link[data-ball46-favicon="20260928"]'),step6:!!sheet,overflow:row?row.scrollWidth>row.clientWidth+1:false};})()`);
+ console.log('REFRESH_BROWSER',JSON.stringify(x));
+ if(x.count!==10)throw Error('SCOREBAR_COUNT_'+x.count);
+ if(!x.first6.every(s=>s==='FT'))throw Error('RECENT6_NOT_ALL_FT:'+JSON.stringify(x.first6));
+ if(!x.minuteSorted)throw Error('NEARFT4_NOT_DESC:'+JSON.stringify(x.last4));
+ if(new Set(x.ids).size!==x.ids.length)throw Error('DUPLICATE_SCOREBAR_IDS');
+ if(!x.odds||!x.favicon||!x.step6||x.overflow)throw Error('REGRESSION_MARKER_OR_LAYOUT:'+JSON.stringify(x));
+ fs.writeFileSync('/tmp/b46-scorebar-refresh/browser.json',JSON.stringify(x,null,2));
+ ws.close(); console.log('REFRESH_SCOREBAR_6X4_BROWSER_OK'); console.log('REFRESH_BASELINE_SUCCESS_NO_DEPLOY'); process.exit(0);
+})().catch(e=>{console.error(e);try{ws.close()}catch{}process.exit(1)});
 NODE
+node "$OUT/check.js"
+kill "$CPID" 2>/dev/null || true; trap - EXIT
