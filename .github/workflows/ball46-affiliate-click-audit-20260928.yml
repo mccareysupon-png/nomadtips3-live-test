@@ -1,0 +1,39 @@
+name: READ ONLY - Ball46 Affiliate Click Audit 20260928
+
+on:
+  push:
+    branches:
+      - ops/ball46-affiliate-standard-20260928
+    paths:
+      - '.github/workflows/ball46-affiliate-click-audit-20260928.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - name: Inspect click interception around full market prices
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT=/tmp/b46-aff-click
+          DIRECT='https://ball46-production.mccarey-supon.workers.dev'
+          rm -rf "$ROOT" && mkdir -p "$ROOT"
+          nonce="${GITHUB_RUN_ID}-$(date +%s%N)"
+          for f in expanded-match-343.js expanded-match-343.css dashboard-v2-stage3.js dashboard-v2-tune.js dashboard-v2.css full-market-bookmaker-343.js full-market-bookmaker-343.css; do
+            curl -fsS -L --retry 4 --max-time 30 -H 'Cache-Control: no-cache' "$DIRECT/$f?affclick=$nonce-${RANDOM}" -o "$ROOT/$f"
+            echo "FETCH $f SIZE=$(wc -c < "$ROOT/$f")"
+          done
+          echo '--- CLICK / PREVENTDEFAULT / STOPPROP ---'
+          grep -nE 'addEventListener\(.click|preventDefault|stopPropagation|closest\(|match-row|match-expanded|data-full-market-card|data-fmb-book|pointer-events' "$ROOT"/*.js | head -420 || true
+          echo '--- POINTER / STACK CSS ---'
+          grep -nE 'pointer-events|z-index|position:|match-expanded|full-market|fmb-' "$ROOT"/*.css | head -420 || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-affiliate-click-audit-${{ github.run_id }}
+          path: /tmp/b46-aff-click
+          retention-days: 7
