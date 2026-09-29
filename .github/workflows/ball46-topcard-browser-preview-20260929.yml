@@ -8,7 +8,8 @@ on:
       - '.github/workflows/ball46-topcard-browser-preview-20260929.yml'
       - '.github/scripts/ball46_topcard_browser_preview_20260929.js'
       - 'ball46-topcard-candidate-20260929/dashboard-v2-stage3.js'
-      - 'ball46-topcard-candidate-20260929/singlepage-workspace-343.css'
+      - 'ball46-topcard-candidate-20260929/dashboard-v2-tune.css'
+      - 'ball46-topcard-candidate-20260929/index.html'
 
 permissions:
   contents: write
@@ -25,7 +26,7 @@ jobs:
         run: |
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps chromium
-      - name: Preview candidate by intercepting only JS/CSS on live Ball46
+      - name: Preview candidate by intercepting only JS/tune CSS on live Ball46
         run: |
           mkdir -p ball46-topcard-preview-20260929
           set +e
