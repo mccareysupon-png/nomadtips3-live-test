@@ -13,7 +13,7 @@ async function preparePage(browser, viewport, name){
   await page.route('**/dashboard-v2-stage3.js*',r=>r.fulfill({status:200,contentType:'application/javascript; charset=utf-8',body:candidateJs}));
   await page.route('**/dashboard-v2-tune.css*',r=>r.fulfill({status:200,contentType:'text/css; charset=utf-8',body:candidateCss}));
   await page.goto('https://www.ball46.com/?preview_topcard=20260929',{waitUntil:'domcontentloaded',timeout:60000});
-  await page.waitForSelector('[data-workspace-scorebar-slot]',{timeout:30000});
+  await page.waitForSelector('[data-workspace-scorebar-slot]',{state:'attached',timeout:30000});
   if(viewport.width>760){
     await page.waitForFunction(()=>document.querySelectorAll('[data-scorebar-details="1"]').length>0,null,{timeout:30000});
   }
@@ -55,7 +55,7 @@ async function preparePage(browser, viewport, name){
 
 (async()=>{
  const browser=await chromium.launch({headless:true});
- const report={generatedAt:new Date().toISOString(),productionMutated:false,assetMode:'live Ball46 with candidate JS/CSS intercepted in browser only',views:{}};
+ const report={generatedAt:new Date().toISOString(),productionMutated:false,assetMode:'live Ball46 with candidate JS/tune CSS intercepted in browser only',views:{}};
  try{
    const desktop=await preparePage(browser,{width:1440,height:900},'desktop-1440'); report.views.desktop=desktop.state;
    // Prove the shared top card survives switching to Statistics without changing the card structure.
