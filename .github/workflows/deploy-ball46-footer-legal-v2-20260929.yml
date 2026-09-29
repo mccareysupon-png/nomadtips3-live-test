@@ -1,0 +1,213 @@
+name: Deploy Ball46 Footer Legal V2 20260929
+
+on:
+  push:
+    branches:
+      - ops/ball46-footer-legal-20260929
+    paths:
+      - '.github/workflows/deploy-ball46-footer-legal-v2-20260929.yml'
+
+permissions:
+  contents: read
+
+env:
+  ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  SCRIPT_NAME: ball46-production
+  BALL46_URL: https://ball46.com
+
+jobs:
+  surgical-footer-legal:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ops/ball46-footer-legal-20260929
+          fetch-depth: 1
+
+      - name: Rebuild approved payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/b46legal /tmp/b46legal-final
+          cat deploy/ball46-footer-legal-20260929/payload.b64.part{1,2,3,4} | base64 -d > /tmp/b46legal.zip
+          unzip -q /tmp/b46legal.zip -d /tmp/b46legal
+          ROOT=$(find /tmp/b46legal -type f -name footer-snippet.html -printf '%h\n' | head -1)
+          test -n "$ROOT"
+          cp -a "$ROOT"/. /tmp/b46legal-final/
+          test -s /tmp/b46legal-final/footer-snippet.html
+          test -s /tmp/b46legal-final/ball46-footer.css
+          test -s /tmp/b46legal-final/information.html
+          grep -Rqi 'jay@ball46.com' /tmp/b46legal-final
+          grep -Rqi 'ball46.com' /tmp/b46legal-final
+          ! grep -RqiE 'nomadtips3|manualprototype|preview|standalone|owner review' /tmp/b46legal-final
+
+      - name: Lock exact current production
+        shell: bash
+        run: |
+          set -euo pipefail
+          AUTH="Authorization: Bearer $API_TOKEN"
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=5" -H "$AUTH" -o /tmp/deployments-before.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const j=JSON.parse(fs.readFileSync('/tmp/deployments-before.json','utf8'));
+          if(j.success!==true) throw Error('DEPLOYMENT_LIST_FAILED');
+          const d=j.result?.deployments?.[0];
+          if(!d || !Array.isArray(d.versions) || d.versions.length!==1 || Number(d.versions[0].percentage)!==100) throw Error('PRODUCTION_NOT_SINGLE_VERSION');
+          fs.writeFileSync('/tmp/rb-version',String(d.versions[0].version_id));
+          fs.writeFileSync('/tmp/rb-deployment',String(d.id));
+          console.log('RB0_LOCKED',{deployment:d.id,version:d.versions[0].version_id,created:d.created_on});
+          NODE
+
+          nonce="${GITHUB_RUN_ID}-rb0-$(date +%s%N)"
+          curl -fsS -L --max-time 25 "$BALL46_URL/index.html?$nonce" -o /tmp/index-before.html
+          curl -fsS -L --max-time 25 "$BALL46_URL/signal.html?$nonce" -o /tmp/signal-before.html
+          curl -fsS -L --max-time 25 "$BALL46_URL/statistics.html?$nonce" -o /tmp/statistics-before.html
+          for f in index signal statistics; do
+            grep -qi '<html' "/tmp/$f-before.html"
+            ! grep -Fq 'b46-site-footer-v1' "/tmp/$f-before.html"
+          done
+
+          curl -fsS --max-time 25 "$BALL46_URL/api/engine/health?rb0=$nonce" -o /tmp/engine-before.json
+          curl -fsS --max-time 25 "$BALL46_URL/api/full-market/health?rb0=$nonce" -o /tmp/full-before.json
+          curl -fsS --max-time 25 "$BALL46_URL/api/engine/statistics?rb0=$nonce" -o /tmp/stats-before.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const e=JSON.parse(fs.readFileSync('/tmp/engine-before.json','utf8'));
+          const f=JSON.parse(fs.readFileSync('/tmp/full-before.json','utf8'));
+          const s=JSON.parse(fs.readFileSync('/tmp/stats-before.json','utf8'));
+          if(e.ok!==true||f.ok!==true||s.ok!==true) throw Error('PRE_DEPLOY_HEALTH_FAILED');
+          fs.writeFileSync('/tmp/engine-version',String(e.version||''));
+          fs.writeFileSync('/tmp/full-version',String(f.version||''));
+          fs.writeFileSync('/tmp/stat-revision',String(s.settlementRevision||''));
+          console.log('BACKEND_LOCKED',{engine:e.version,fullMarket:f.version,settlement:s.settlementRevision});
+          NODE
+
+      - name: Clone exact active Worker modules and patch only fetch presentation
+        shell: bash
+        run: |
+          set -euo pipefail
+          AUTH="Authorization: Bearer $API_TOKEN"
+          RB_VERSION=$(cat /tmp/rb-version)
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/workers/$SCRIPT_NAME/versions/$RB_VERSION?include=modules" -H "$AUTH" -o /tmp/version-before.json
+          node - <<'NODE'
+          const fs=require('fs'),path=require('path');
+          const v=JSON.parse(fs.readFileSync('/tmp/version-before.json','utf8'));
+          if(v.success!==true) throw Error('VERSION_FETCH_FAILED:'+JSON.stringify(v.errors||[]));
+          const r=v.result;
+          if(!r?.main_module||!Array.isArray(r.modules)||!r.modules.length) throw Error('VERSION_MODULES_MISSING');
+          if(!r.assets?.jwt) throw Error('ACTIVE_ASSET_BINDING_MISSING');
+          fs.mkdirSync('/tmp/modules',{recursive:true});
+          for(const m of r.modules){
+            if(!m?.name||!m?.content_base64||!m?.content_type) throw Error('BAD_MODULE_RECORD');
+            const p=path.join('/tmp/modules',m.name);fs.mkdirSync(path.dirname(p),{recursive:true});fs.writeFileSync(p,Buffer.from(m.content_base64,'base64'));
+          }
+          const mainPath=path.join('/tmp/modules',r.main_module);
+          let src=fs.readFileSync(mainPath,'utf8');
+          if(src.includes('__B46_FOOTER_LEGAL_20260929__')) throw Error('PATCH_ALREADY_PRESENT');
+
+          let baseExpr=null;
+          const direct=/export\s+default\s*\{/;
+          if(direct.test(src)){
+            src=src.replace(direct,'const __B46_BASE_WORKER__ = {');
+            baseExpr='__B46_BASE_WORKER__';
+          } else {
+            const bundled=/export\s*\{\s*([A-Za-z_$][\w$]*)\s+as\s+default\s*\};?\s*$/m;
+            const m=src.match(bundled);
+            if(!m) throw Error('DEFAULT_EXPORT_ANCHOR_MISSING');
+            const sym=m[1];
+            src=src.replace(bundled,'');
+            src+=`\nconst __B46_BASE_WORKER__=${sym};\n`;
+            baseExpr='__B46_BASE_WORKER__';
+          }
+
+          const root='/tmp/b46legal-final';
+          const names=['information.html','about.html','user-guide.html','methodology.html','privacy.html','terms.html','disclaimer.html','affiliate-disclosure.html','responsible-gambling.html','cookies.html','contact.html'];
+          const pages={};for(const f of names) pages['/'+f]=fs.readFileSync(path.join(root,f),'utf8');
+          const footer=fs.readFileSync(path.join(root,'footer-snippet.html'),'utf8');
+          const css=fs.readFileSync(path.join(root,'ball46-footer.css'),'utf8');
+          const addon=`\n/* __B46_FOOTER_LEGAL_20260929__ */\nconst __B46_LEGAL_PAGES__=${JSON.stringify(pages)};\nconst __B46_FOOTER_HTML__=${JSON.stringify(footer)};\nconst __B46_FOOTER_CSS__=${JSON.stringify(css)};\nfunction __b46Text(body,type){return new Response(body,{status:200,headers:{'content-type':type,'cache-control':'no-store'}});}\nasync function __b46InjectFooter(response){if(!response||response.status!==200)return response;const ct=String(response.headers.get('content-type')||'').toLowerCase();if(!ct.includes('text/html'))return response;let html=await response.text();if(html.includes('b46-site-footer-v1'))return new Response(html,{status:response.status,statusText:response.statusText,headers:response.headers});if(!html.includes('ball46-footer.css'))html=html.replace(/<\\/head>/i,'<link rel=\\"stylesheet\\" href=\\"/ball46-footer.css?v=20260929\\">\\n</head>');if(/<\\/body>/i.test(html))html=html.replace(/<\\/body>/i,__B46_FOOTER_HTML__+'\\n</body>');else html+=__B46_FOOTER_HTML__;const h=new Headers(response.headers);h.set('cache-control','no-store, no-cache, must-revalidate, max-age=0');h.set('x-ball46-footer-revision','footer-legal-20260929');h.delete('content-length');return new Response(html,{status:response.status,statusText:response.statusText,headers:h});}\nexport default {...${baseExpr},async fetch(request,env,ctx){const url=new URL(request.url);if(request.method==='GET'){if(url.pathname==='/ball46-footer.css')return __b46Text(__B46_FOOTER_CSS__,'text/css; charset=utf-8');if(Object.prototype.hasOwnProperty.call(__B46_LEGAL_PAGES__,url.pathname))return __b46Text(__B46_LEGAL_PAGES__[url.pathname],'text/html; charset=utf-8');}const response=await ${baseExpr}.fetch(request,env,ctx);if(request.method==='GET'&&(url.pathname==='/'||url.pathname==='/index.html'||url.pathname==='/signal.html'||url.pathname==='/statistics.html'))return __b46InjectFooter(response);return response;}};\n`;
+          src+=addon;
+          fs.writeFileSync(mainPath,src);
+          fs.writeFileSync('/tmp/main-module-name',r.main_module);
+          fs.writeFileSync('/tmp/module-meta.json',JSON.stringify(r.modules.map(m=>({name:m.name,content_type:m.content_type}))));
+          console.log('PATCH_READY',{main:r.main_module,modules:r.modules.length,legalPages:Object.keys(pages).length});
+          NODE
+
+      - name: Replace Worker script content only
+        shell: bash
+        run: |
+          set -euo pipefail
+          AUTH="Authorization: Bearer $API_TOKEN"
+          node - <<'NODE'
+          const fs=require('fs');const main=fs.readFileSync('/tmp/main-module-name','utf8').trim();fs.writeFileSync('/tmp/upload-metadata.json',JSON.stringify({main_module:main}));
+          NODE
+          mapfile -t args < <(node - <<'NODE'
+          const fs=require('fs');const a=JSON.parse(fs.readFileSync('/tmp/module-meta.json','utf8'));for(const m of a) console.log(`-F\n${m.name}=@/tmp/modules/${m.name};type=${m.content_type}`);
+          NODE
+          )
+          CURL_ARGS=();i=0
+          while [ $i -lt ${#args[@]} ]; do CURL_ARGS+=("${args[$i]}" "${args[$((i+1))]}");i=$((i+2));done
+          curl -fsS -X PUT "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/content" -H "$AUTH" -F 'metadata=</tmp/upload-metadata.json;type=application/json' "${CURL_ARGS[@]}" -o /tmp/content-update.json
+          node - <<'NODE'
+          const fs=require('fs');const j=JSON.parse(fs.readFileSync('/tmp/content-update.json','utf8'));if(j.success!==true)throw Error('CONTENT_UPDATE_FAILED:'+JSON.stringify(j.errors||[]));console.log('SCRIPT_CONTENT_UPDATED');
+          NODE
+
+      - name: Verify exact delta or rollback
+        shell: bash
+        run: |
+          set -euo pipefail
+          AUTH="Authorization: Bearer $API_TOKEN"
+          rollback(){
+            RB_VERSION=$(cat /tmp/rb-version)
+            node -e "require('fs').writeFileSync('/tmp/rollback.json',JSON.stringify({strategy:'percentage',versions:[{version_id:process.argv[1],percentage:100}],annotations:{'workers/message':'Automatic rollback: Ball46 Footer Legal V2 verification failed'}}))" "$RB_VERSION"
+            curl -fsS -X POST "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments" -H "$AUTH" -H 'content-type: application/json' --data-binary @/tmp/rollback.json -o /tmp/rollback-response.json || true
+            cat /tmp/rollback-response.json || true
+          }
+          trap 'rollback' ERR
+
+          pass=0
+          for n in $(seq 1 12); do
+            nonce="${GITHUB_RUN_ID}-${n}-$(date +%s%N)"
+            curl -fsS -L --max-time 25 "$BALL46_URL/index.html?footer=$nonce" -o /tmp/index-after.html || true
+            curl -fsS -L --max-time 25 "$BALL46_URL/signal.html?footer=$nonce" -o /tmp/signal-after.html || true
+            curl -fsS -L --max-time 25 "$BALL46_URL/statistics.html?footer=$nonce" -o /tmp/statistics-after.html || true
+            curl -fsS -L --max-time 25 "$BALL46_URL/information.html?footer=$nonce" -o /tmp/information-after.html || true
+            if grep -Fq 'b46-site-footer-v1' /tmp/index-after.html && grep -Fq 'b46-site-footer-v1' /tmp/signal-after.html && grep -Fq 'b46-site-footer-v1' /tmp/statistics-after.html && grep -Fq 'jay@ball46.com' /tmp/information-after.html; then pass=1;break;fi
+            sleep 3
+          done
+          [ "$pass" = 1 ]
+
+          node - <<'NODE'
+          const fs=require('fs');
+          const footer=fs.readFileSync('/tmp/b46legal-final/footer-snippet.html','utf8');
+          function norm(s){return s.replace(/<link\s+rel=["']stylesheet["']\s+href=["']\/ball46-footer\.css\?v=20260929["']>\s*/i,'').replace(footer,'').trim();}
+          for(const n of ['index','signal','statistics']){
+            const a=norm(fs.readFileSync(`/tmp/${n}-before.html`,'utf8'));
+            const b=norm(fs.readFileSync(`/tmp/${n}-after.html`,'utf8'));
+            if(a!==b) throw Error('BASE_HTML_CHANGED:'+n);
+          }
+          console.log('BASE_HTML_IDENTITY_PASS');
+          NODE
+
+          for p in information about user-guide methodology privacy terms disclaimer affiliate-disclosure responsible-gambling cookies contact; do
+            curl -fsS -L --max-time 25 "$BALL46_URL/$p.html?footer=${GITHUB_RUN_ID}" -o "/tmp/$p.html"
+            grep -Fq 'ball46.com' "/tmp/$p.html"
+            ! grep -qiE 'nomadtips3|manualprototype|preview|standalone|owner review' "/tmp/$p.html"
+          done
+          curl -fsS -L --max-time 25 "$BALL46_URL/ball46-footer.css?footer=${GITHUB_RUN_ID}" -o /tmp/footer.css
+          grep -Fq '#b46-site-footer-v1' /tmp/footer.css
+
+          curl -fsS --max-time 25 "$BALL46_URL/api/engine/health?footer-after=${GITHUB_RUN_ID}" -o /tmp/engine-after.json
+          curl -fsS --max-time 25 "$BALL46_URL/api/full-market/health?footer-after=${GITHUB_RUN_ID}" -o /tmp/full-after.json
+          curl -fsS --max-time 25 "$BALL46_URL/api/engine/statistics?footer-after=${GITHUB_RUN_ID}" -o /tmp/stats-after.json
+          node - <<'NODE'
+          const fs=require('fs');const e=JSON.parse(fs.readFileSync('/tmp/engine-after.json','utf8'));const f=JSON.parse(fs.readFileSync('/tmp/full-after.json','utf8'));const s=JSON.parse(fs.readFileSync('/tmp/stats-after.json','utf8'));
+          if(e.ok!==true||f.ok!==true||s.ok!==true)throw Error('POST_HEALTH_FAILED');
+          if(String(e.version||'')!==fs.readFileSync('/tmp/engine-version','utf8'))throw Error('ENGINE_VERSION_CHANGED');
+          if(String(f.version||'')!==fs.readFileSync('/tmp/full-version','utf8'))throw Error('FULL_MARKET_VERSION_CHANGED');
+          if(String(s.settlementRevision||'')!==fs.readFileSync('/tmp/stat-revision','utf8'))throw Error('STAT_SETTLEMENT_CHANGED');
+          console.log('BALL46_FOOTER_LEGAL_DEPLOY_PASS',{engine:e.version,fullMarket:f.version,settlement:s.settlementRevision});
+          NODE
+          trap - ERR
