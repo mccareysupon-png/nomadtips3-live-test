@@ -1,0 +1,79 @@
+name: PREDEPLOY Ball46 Refresh State Fix V3 20260929
+on:
+  push:
+    branches: [work/ball46-refresh-state-fix-20260929]
+    paths: ['.github/workflows/predeploy-ball46-refresh-state-fix-v3-20260929.yml']
+permissions:
+  contents: read
+  actions: read
+env:
+  ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  SCRIPT_NAME: ball46-production
+  DIRECT: https://ball46-production.mccarey-supon.workers.dev
+  EXPECT_VERSION: d54d0bae-0bd7-4a36-beed-052aa69a3a5e
+  EXPECT_RUNTIME_SHA: 0c2cd4b167f23e581acd69946a4b56740832d5c0f9388d6aa007c25d9ff31980
+jobs:
+  predeploy-v3:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: ball46-scorebar-divider-predeploy-36554072800
+          path: /tmp/b46snapshot
+          github-token: ${{ github.token }}
+          run-id: 36554072800
+          repository: mccareysupon-png/nomadtips3-live-test
+      - name: Lock and race-check exact current Production
+        shell: bash
+        run: |
+          set -euo pipefail
+          R=/tmp/b46fix3; rm -rf "$R";mkdir -p "$R/base" "$R/candidate" "$R/live" "$R/runtime" "$R/verify"
+          SRC=$(find /tmp/b46snapshot -type d -name candidate | while read -r d;do [ "$(find "$d" -type f|wc -l|tr -d ' ')" = 83 ]&&[ -s "$d/index.html" ]&&echo "$d";done|head -1);test -n "$SRC";cp -a "$SRC/." "$R/base/"
+          AUTH="Authorization: Bearer $API_TOKEN";curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=5" -H "$AUTH" -o "$R/verify/d.json";curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/workers/$SCRIPT_NAME/versions/$EXPECT_VERSION?include=modules" -H "$AUTH" -o "$R/verify/v.json"
+          node - <<'NODE'
+          const fs=require('fs'),crypto=require('crypto'),R='/tmp/b46fix3';let d=JSON.parse(fs.readFileSync(R+'/verify/d.json')),x=d.result?.deployments?.[0],vs=x?.versions||[];if(d.success!==true||vs.length!==1||Number(vs[0].percentage)!==100)throw Error('MIXED');if(vs[0].version_id!==process.env.EXPECT_VERSION)throw Error('PRODUCTION_MOVED:'+vs[0].version_id);let v=JSON.parse(fs.readFileSync(R+'/verify/v.json')).result,m=(v.modules||[]).find(z=>z.name===v.main_module&&z.content_base64);if(!m)throw Error('MAIN');let b=Buffer.from(m.content_base64,'base64'),sha=crypto.createHash('sha256').update(b).digest('hex');if(sha!==process.env.EXPECT_RUNTIME_SHA)throw Error('RUNTIME_MOVED:'+sha);if(!b.toString().includes('__B46_FOOTER_LEGAL_20260929__'))throw Error('FOOTER_MISSING');let got=(v.bindings||[]).map(z=>[z.name,z.type,z.service||null,z.environment||null]).sort(),want=[['ASSETS','assets',null,null],['ENGINE','service','nomadtips3-engine-343','production'],['FULL_MARKET','service','nomadtips3-full-market-343-ball46','production'],['HUB','service','nomadtips3-5usd-hub-343','production']].sort();if(JSON.stringify(got)!==JSON.stringify(want))throw Error('BINDINGS_MOVED');fs.writeFileSync(R+'/runtime/index.js',b);console.log('V3_LOCK_PASS',vs[0].version_id,sha);
+          NODE
+          find "$R/base" -type f -printf '%P\n'|LC_ALL=C sort >"$R/verify/paths.txt";[ "$(wc -l <"$R/verify/paths.txt"|tr -d ' ')" = 83 ];nonce="${GITHUB_RUN_ID}-$(date +%s%N)";while IFS= read -r rel;do mkdir -p "$R/live/$(dirname "$rel")";c=$(curl -sS -L --retry 4 --retry-all-errors --max-time 30 -H 'Cache-Control: no-cache' -o "$R/live/$rel" -w '%{http_code}' "$DIRECT/$rel?v3=$nonce-$RANDOM")||true;[ "$c" = 200 ]||exit 1;done<"$R/verify/paths.txt"
+          node - <<'NODE'
+          const fs=require('fs'),R='/tmp/b46fix3',rt=fs.readFileSync(R+'/runtime/index.js','utf8'),m=rt.match(/const __B46_FOOTER_HTML__=(.*?);\nconst __B46_FOOTER_CSS__/s);if(!m)throw Error('FOOTER_CONST');const foot=JSON.parse(m[1]),link='<link rel="stylesheet" href="/ball46-footer.css?v=20260929">',hs=new Set(['index.html','signal.html','statistics.html']),ps=fs.readFileSync(R+'/verify/paths.txt','utf8').trim().split('\n'),bad=[];for(const p of ps){let a=fs.readFileSync(R+'/base/'+p),b=fs.readFileSync(R+'/live/'+p);if(hs.has(p))b=Buffer.from(b.toString().replace(link,'').replace(foot,''));if(!a.equals(b))bad.push(p)}console.log('V3_RACE_MISMATCH',bad);if(bad.length)throw Error('ASSETS_MOVED:'+bad);console.log('V3_RACE_83_PASS');
+          NODE
+      - name: Build only index plus route guard
+        shell: bash
+        run: |
+          set -euo pipefail;R=/tmp/b46fix3;cp -a "$R/base/." "$R/candidate/"
+          python3 - <<'PY'
+          from pathlib import Path
+          import re,hashlib
+          R=Path('/tmp/b46fix3');B=R/'base';C=R/'candidate';p=C/'index.html';s=p.read_text();a='<section class="workspace-stage">';assert s.count(a)==1 and 'data-workspace-scorebar-slot' not in s;s=s.replace(a,a+'<section class="workspace-scorebar-slot" data-workspace-scorebar-slot></section>',1);pat=r'workspace-route-guard-343\.js(?:\?[^"\']*)?';assert len(re.findall(pat,s))==1;s=re.sub(pat,'workspace-route-guard-343.js?v=343-refresh-state-20260929a',s,count=1);p.write_text(s)
+          p=C/'workspace-route-guard-343.js';g=p.read_text();marker='function cleanLiveRoute(){';assert g.count(marker)==1 and 'BALL46_REFRESH_ROUTE_GUARD_20260929' not in g;g=g.replace(marker,"/* BALL46_REFRESH_ROUTE_GUARD_20260929 */\nfunction hasExplicitNonLiveRoute(){const v=new URLSearchParams(location.search).get('view');return v==='statistics'||v==='signal'}\n"+marker,1);g,n=re.subn(r"if\s*\(\s*navType\(\)\s*===\s*'reload'\s*&&\s*last\s*===\s*'live'\s*\)\s*cleanLiveRoute\(\)\s*;","if(navType()==='reload'&&last==='live'&&!hasExplicitNonLiveRoute())cleanLiveRoute();",g,count=1);assert n==1;g,n=re.subn(r"if\s*\(\s*view\s*===\s*'live'\s*\)\s*cleanLiveRoute\(\)\s*;","if(view==='live'&&!hasExplicitNonLiveRoute())cleanLiveRoute();",g,count=1);assert n==1;p.write_text(g)
+          def h(x):return hashlib.sha256(x.read_bytes()).hexdigest()
+          ch=[str(x.relative_to(B)) for x in sorted(B.rglob('*')) if x.is_file() and h(x)!=h(C/x.relative_to(B))];ex=[str(x.relative_to(C)) for x in C.rglob('*') if x.is_file() and not(B/x.relative_to(C)).exists()];print('V3_CHANGED',ch,'EXTRA',ex);assert ch==['index.html','workspace-route-guard-343.js'] and not ex
+          PY
+          node --check "$R/candidate/workspace-route-guard-343.js"
+      - name: Browser proof across real reload lifecycle
+        shell: bash
+        run: |
+          set -euo pipefail;R=/tmp/b46fix3
+          cat >"$R/server.js" <<'NODE'
+          const http=require('http'),fs=require('fs'),path=require('path'),base='/tmp/b46fix3/candidate',ct={'.html':'text/html; charset=utf-8','.js':'application/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.json':'application/json'};http.createServer(async(q,s)=>{try{let u=new URL(q.url,'http://127.0.0.1');if(u.pathname.startsWith('/api/')){await new Promise(r=>setTimeout(r,700));let x=await fetch('https://ball46.com'+u.pathname+u.search,{headers:{'cache-control':'no-cache'}});s.writeHead(x.status,{'content-type':x.headers.get('content-type')||'application/json','cache-control':'no-store'});s.end(Buffer.from(await x.arrayBuffer()));return}let rel=decodeURIComponent(u.pathname.slice(1))||'index.html',f=path.join(base,rel);if(!f.startsWith(base)||!fs.existsSync(f)){s.writeHead(404);s.end();return}s.writeHead(200,{'content-type':ct[path.extname(f)]||'application/octet-stream','cache-control':'no-store'});s.end(fs.readFileSync(f))}catch(e){s.writeHead(500);s.end(String(e.stack||e))}}).listen(8765,'127.0.0.1');
+          NODE
+          node "$R/server.js" >"$R/verify/server.log" 2>&1&SPID=$!;trap 'kill $SPID 2>/dev/null||true' EXIT;for i in $(seq 1 40);do curl -fsS http://127.0.0.1:8765/index.html >/dev/null&&break;sleep .1;done
+          chrome=$(command -v google-chrome||command -v chromium||command -v chromium-browser);"$chrome" --headless=new --no-sandbox --disable-gpu --hide-scrollbars --window-size=1440,1000 --remote-debugging-port=9666 --user-data-dir="$R/chrome" about:blank >"$R/verify/chrome.log" 2>&1&CPID=$!;trap 'kill $CPID $SPID 2>/dev/null||true' EXIT;for i in $(seq 1 80);do curl -fsS http://127.0.0.1:9666/json >"$R/pages.json" 2>/dev/null&&break;sleep .1;done
+          cat >"$R/check.js" <<'NODE'
+          const fs=require('fs'),pg=JSON.parse(fs.readFileSync('/tmp/b46fix3/pages.json')).find(x=>x.type==='page');if(!pg)throw Error('NO_PAGE');const ws=new WebSocket(pg.webSocketDebuggerUrl);let id=0,M=new Map();ws.onmessage=e=>{let m=JSON.parse(e.data);if(m.id&&M.has(m.id)){let z=M.get(m.id);M.delete(m.id);m.error?z.j(Error(JSON.stringify(m.error))):z.r(m.result)}};const call=(m,p={})=>new Promise((r,j)=>{let n=++id;M.set(n,{r,j});ws.send(JSON.stringify({id:n,method:m,params:p}))}),sl=x=>new Promise(r=>setTimeout(r,x));async function ev(x){let z=await call('Runtime.evaluate',{expression:x,returnByValue:true,awaitPromise:true});if(z.exceptionDetails)throw Error('EVAL');return z.result.value}async function wait(x,t=30000){let s=Date.now();while(Date.now()-s<t){try{if(await ev(x))return}catch{}await sl(50)}throw Error('WAIT:'+x)}const A=(x,m)=>{if(!x)throw Error(m)};(async()=>{await new Promise((r,j)=>{ws.onopen=r;ws.onerror=j});await call('Runtime.enable');await call('Page.enable');const sampler=`(()=>{window.__b46Samples=[];const tick=()=>{const st=document.querySelector('.workspace-stage'),sl=document.querySelector('[data-workspace-scorebar-slot]');if(st)window.__b46Samples.push({t:performance.now(),stage:true,slot:!!sl,h:sl?sl.getBoundingClientRect().height:0,view:document.body?.dataset?.workspaceView||'',url:location.href})};setInterval(tick,5);try{new MutationObserver(tick).observe(document.documentElement,{childList:true,subtree:true})}catch(_){}})()`;await call('Page.addScriptToEvaluateOnNewDocument',{source:sampler});async function nav(url,view){await call('Page.navigate',{url});await sl(100);await wait(`document.body&&document.body.dataset.workspaceView==='${view}'`);await sl(1200);return await ev(`(()=>({url:location.href,view:document.body.dataset.workspaceView,samples:window.__b46Samples||[],slots:document.querySelectorAll('[data-workspace-scorebar-slot]').length,h:document.querySelector('[data-workspace-scorebar-slot]')?.getBoundingClientRect().height||0,total:document.querySelector('[data-stat-market="all"]')?.classList.contains('active')||false,ah:document.querySelector('[data-stat-market="ah"]')?.classList.contains('active')||false}))()`)}let x=await nav('http://127.0.0.1:8765/index.html?view=statistics','statistics');A(x.total&&new URL(x.url).searchParams.get('view')==='statistics','TOTAL_INITIAL:'+JSON.stringify(x));A(x.slots===1&&x.h>0,'TOTAL_SHELL_INITIAL');A(x.samples.some(s=>s.stage)&&x.samples.filter(s=>s.stage).every(s=>s.slot),'STAGE_WITHOUT_SHELL_INITIAL:'+JSON.stringify(x.samples.slice(0,30)));let old=await ev('performance.timeOrigin');await call('Page.reload',{ignoreCache:true});await sl(100);await wait(`performance.timeOrigin!==${old}`);await wait(`document.body&&document.body.dataset.workspaceView==='statistics'`);await sl(1200);let y=await ev(`(()=>({url:location.href,view:document.body.dataset.workspaceView,samples:window.__b46Samples||[],slots:document.querySelectorAll('[data-workspace-scorebar-slot]').length,h:document.querySelector('[data-workspace-scorebar-slot]')?.getBoundingClientRect().height||0,total:document.querySelector('[data-stat-market="all"]')?.classList.contains('active')||false}))()`);A(y.total&&new URL(y.url).searchParams.get('view')==='statistics','TOTAL_RELOAD:'+JSON.stringify(y));A(y.slots===1&&Math.abs(y.h-x.h)<=1,'TOTAL_GEOMETRY:'+JSON.stringify({x:x.h,y:y.h}));A(y.samples.some(s=>s.stage)&&y.samples.filter(s=>s.stage).every(s=>s.slot),'STAGE_WITHOUT_SHELL_RELOAD:'+JSON.stringify(y.samples.slice(0,30)));let ah=await nav('http://127.0.0.1:8765/index.html?view=statistics&market=ah','statistics');A(ah.ah&&new URL(ah.url).searchParams.get('market')==='ah','AH_INITIAL');old=await ev('performance.timeOrigin');await call('Page.reload',{ignoreCache:true});await sl(100);await wait(`performance.timeOrigin!==${old}`);await wait(`document.body&&document.body.dataset.workspaceView==='statistics'`);await sl(400);ah=await ev(`(()=>({url:location.href,a:document.querySelector('[data-stat-market="ah"]')?.classList.contains('active')}))()`);A(ah.a&&new URL(ah.url).searchParams.get('market')==='ah','AH_RELOAD:'+JSON.stringify(ah));let sig=await nav('http://127.0.0.1:8765/index.html?view=signal','signal');old=await ev('performance.timeOrigin');await call('Page.reload',{ignoreCache:true});await sl(100);await wait(`performance.timeOrigin!==${old}`);await wait(`document.body&&document.body.dataset.workspaceView==='signal'`);let sig2=await ev(`(()=>({url:location.href,v:document.body.dataset.workspaceView}))()`);A(sig2.v==='signal'&&new URL(sig2.url).searchParams.get('view')==='signal','SIGNAL_RELOAD:'+JSON.stringify(sig2));console.log('V3_BROWSER_PASS',JSON.stringify({total:x,totalReload:y,ah,sig:sig2}));ws.close();process.exit(0)})().catch(e=>{console.error('V3_BROWSER_FAIL',e);try{ws.close()}catch{}process.exit(1)});
+          NODE
+          node "$R/check.js";kill $CPID $SPID 2>/dev/null||true;trap - EXIT
+      - name: Dry-run exact current Footer runtime with full candidate
+        shell: bash
+        run: |
+          set -euo pipefail;R=/tmp/b46fix3;cat >"$R/runtime/wrangler.jsonc" <<EOF
+          {"name":"ball46-production","main":"./index.js","compatibility_date":"2026-09-09","no_bundle":true,"services":[{"binding":"ENGINE","service":"nomadtips3-engine-343","environment":"production"},{"binding":"FULL_MARKET","service":"nomadtips3-full-market-343-ball46","environment":"production"},{"binding":"HUB","service":"nomadtips3-5usd-hub-343","environment":"production"}],"assets":{"directory":"$R/candidate","binding":"ASSETS","html_handling":"none","not_found_handling":"none","run_worker_first":true},"triggers":{"crons":["* * * * *"]}}
+          EOF
+          cd "$R/runtime";npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.jsonc 2>&1|tee "$R/verify/dry.log";grep -Fq 'Read 83 files from the assets directory' "$R/verify/dry.log";! grep -Fq 'Attaching additional modules:' "$R/verify/dry.log";echo V3_PREDEPLOY_PASS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ball46-refresh-state-fix-v3-${{ github.run_id }}
+          path: /tmp/b46fix3
+          retention-days: 30
