@@ -1,0 +1,32 @@
+name: REPAIR ONLY - Ball46 LOSS Image Base64 20260929
+
+on:
+  push:
+    branches:
+      - work/ball46-scorebar-bg-20260929
+    paths:
+      - '.github/workflows/ball46-repair-loss-b64-20260929.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/ball46-scorebar-bg-20260929
+          fetch-depth: 0
+      - name: Repair exactly one missing LOSS base64 character by source SHA
+        run: python3 .github/scripts/ball46_repair_loss_b64_20260929.py
+      - name: Commit repaired LOSS staging asset only
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add ops/ball46-scorebar-bg-20260929/loss.webp.b64
+          git diff --cached --quiet && exit 0
+          git commit -m 'fix(ball46): restore exact LOSS scorebar image bytes'
+          git pull --rebase origin work/ball46-scorebar-bg-20260929
+          git push origin HEAD:work/ball46-scorebar-bg-20260929
