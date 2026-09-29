@@ -1,0 +1,41 @@
+===== FUNCTION renderWorkspaceScorebar =====
+function renderWorkspaceScorebar(){
+ const slot=document.querySelector('[data-workspace-scorebar-slot]');if(!slot)return;
+ const resultMeta=raw=>{const r=String(raw||'').trim().toUpperCase();if(r==='WIN')return{cls:'win',label:'WIN'};if(r==='HALF_WIN')return{cls:'win',label:'WIN ½'};if(r==='LOSS')return{cls:'loss',label:'LOSS'};if(r==='HALF_LOSS')return{cls:'loss',label:'LOSS ½'};if(r==='PUSH'||r==='DRAW')return{cls:'draw',label:'DRAW'};return{cls:'draw',label:r||'DRAW'}};
+ const scoreText=v=>{const p=pair(v);return p.home===null||p.away===null?'—':show(p.home)+'–'+show(p.away)};
+ const liveScoreText=x=>scoreText(x?.mirrorScore??x?.scoreAt??x?.entryScore);
+ const lineText=x=>{const n=num(x?.line??x?.selectionLine);if(n===null)return'';const m=String(x?.market||x?.marketLabel||'').toLowerCase();return(/ah|handicap/.test(m)&&n>0?'+':'')+show(n,2)};
+ const pickText=x=>[String(x?.selection||'').trim().toUpperCase(),lineText(x)].filter(Boolean).join(' ')||'SIGNAL';
+ const marketText=x=>String(x?.marketLabel||x?.market||'SIGNAL').replaceAll('_',' ').replace(/\s+/g,' ').trim();
+ const matchText=x=>[x?.home?.name,x?.away?.name].filter(Boolean).join(' · ')||'—';
+ const recent=settledSignalRows.filter(x=>String(x?.status||'').toUpperCase()==='SETTLED'&&['WIN','HALF_WIN','LOSS','HALF_LOSS','PUSH','DRAW'].includes(String(x?.result||'').toUpperCase())).slice().sort((a,b)=>Number(b?.settledAt||b?.createdAt||0)-Number(a?.settledAt||a?.createdAt||0)).slice(0,6);
+ const pending=signalRows.filter(x=>String(x?.status||'').toUpperCase()==='PENDING').slice().sort((a,b)=>(num(b?.mirrorMinute??b?.minute??b?.entryMinute)??-1)-(num(a?.mirrorMinute??a?.minute??a?.entryMinute)??-1)||Number(b?.createdAt||0)-Number(a?.createdAt||0)).slice(0,4);
+ const makeSettled=x=>{const r=resultMeta(x?.result),score=scoreText(x?.finalScore),odds=num(x?.odds),league=String(x?.league?.name||'').trim();return '<div class="workspace-scorebar-cell workspace-scorebar-signal-result outcome-'+esc(r.cls)+'" data-scorebar-signal-result="'+esc(r.label)+'" title="'+esc([league,marketText(x),pickText(x)].filter(Boolean).join(' · '))+'"><span class="workspace-scorebar-meta"><i>'+esc(r.label)+'</i><b>'+esc(score)+'</b></span><span class="workspace-scorebar-match">'+esc(matchText(x))+'</span><span class="workspace-scorebar-pick"><strong>'+esc(marketText(x))+'</strong><em>'+esc(pickText(x))+(odds===null?'':' @ '+esc(odds.toFixed(2)))+'</em></span></div>'};
+ const makePending=x=>{const id=String(x?.id||x?.fixtureId||''),minute=num(x?.mirrorMinute??x?.minute??x?.entryMinute),clock='PENDING'+(minute===null?'':' · '+Math.max(0,Math.round(minute))+"'"),score=liveScoreText(x),odds=num(x?.odds),league=String(x?.league?.name||'').trim();return '<div class="workspace-scorebar-cell workspace-scorebar-pending" data-scorebar-pending-signal="'+esc(id)+'" title="'+esc([league,marketText(x),pickText(x)].filter(Boolean).join(' · '))+'"><span class="workspace-scorebar-meta"><i>'+esc(clock)+'</i><b>'+esc(score)+'</b></span><span class="workspace-scorebar-match">'+esc(matchText(x))+'</span><span class="workspace-scorebar-pick"><strong>'+esc(marketText(x))+'</strong><em>'+esc(pickText(x))+(odds===null?'':' @ '+esc(odds.toFixed(2)))+'</em></span></div>'};
+ const a=recent.map(makeSettled),b=pending.map(makePending);while(a.length<6)a.push('<div class="workspace-scorebar-cell placeholder"><span>'+(a.length===0?'No settled signals':'—')+'</span><span class="away">—</span></div>');while(b.length<4)b.push('<div class="workspace-scorebar-cell placeholder"><span>'+(b.length===0?'No pending signals':'—')+'</span><span class="away">—</span></div>');slot.innerHTML='<div class="workspace-scorebar-grid">'+a.concat(b).join('')+'</div>';
+}
+
+===== FUNCTION signalDetailsHtml =====
+function signalDetailsHtml(s){if(!s)return'No active signal';const selection=String(s?.selection||'—').toUpperCase(),market=String(s?.marketLabel||s?.market||'SIGNAL'),line=num(s?.line??s?.selectionLine),odds=num(s?.odds),book=String(s?.bookmaker||'—'),entryMin=num(s?.entryMinute??s?.minute),liveMin=num(s?.mirrorMinute),entry=pair(s?.entryScore??s?.scoreAt),live=pair(s?.mirrorScore),lineText=line===null?'—':`${line>0?'+':''}${show(line,2)}`,entryScore=entry.home===null||entry.away===null?'—':`${show(entry.home)}–${show(entry.away)}`,liveScore=live.home===null||live.away===null?'—':`${show(live.home)}–${show(live.away)}`;return `<div class="feature-signal-main"><b>${esc(selection)}</b><span>${esc(market)}</span></div><div class="feature-signal-meta"><span>Line ${esc(lineText)}</span><span>Odds ${esc(odds===null?'—':odds.toFixed(2))}</span><span>${esc(book)}</span></div><div class="feature-signal-meta"><span>Signal ${esc(entryMin===null?'—':`${Math.round(entryMin)}'`)}</span><span>Entry ${esc(entryScore)}</span><span>Live ${esc(liveMin===null?'—':`${Math.round(liveMin)}'`)} · ${esc(liveScore)}</span></div>`}
+
+===== FUNCTION inlineSignalHtml =====
+function inlineSignalHtml(s){
+  if(!s)return '<div class="signal-cell prediction-live no-pick"><span class="pred-main">WATCH</span><span class="pred-sub">NO LIVE PICK</span></div>';
+  const market=String(s?.marketLabel||s?.market||'SIGNAL').replace(/^FT_/i,'').replaceAll('_',' ').trim().toUpperCase()||'SIGNAL';
+  const selection=String(s?.selection||'—').trim().toUpperCase()||'—';
+  const line=num(s?.line??s?.selectionLine),odds=num(s?.odds);
+  const lineText=line===null?'':`${line>0?'+':''}${show(line,2)}`;
+  const pick=[selection,lineText].filter(Boolean).join(' ');
+  return `<div class="signal-cell locked prediction-live"><span class="pred-main">${esc(market)} · ${esc(pick)}</span><span class="pred-sub">${odds===null?'LIVE':`@ ${odds.toFixed(2)}`}</span></div>`;
+}
+
+===== FUNCTION scorebarSignalMeta =====
+NOT_FOUND
+
+===== FUNCTION scorebarSignalText =====
+NOT_FOUND
+
+===== WORKSPACE SCOREBAR CSS =====
+
+
+===== SCOREBAR DATA ATTR CSS =====
