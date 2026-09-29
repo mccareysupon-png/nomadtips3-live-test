@@ -1,0 +1,100 @@
+name: READ ONLY - Ball46 Scorebar Divider Audit 20260929
+
+on:
+  push:
+    branches:
+      - work/ball46-scorebar-images-20260929
+    paths:
+      - '.github/workflows/ball46-scorebar-divider-audit-20260929.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/ball46-scorebar-images-20260929
+      - name: Capture current Production lock and live CSS
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT=/tmp/b46-divider-audit
+          mkdir -p "$OUT"
+          python3 - <<'PY'
+          import json,os,urllib.request
+          A=os.environ['CLOUDFLARE_ACCOUNT_ID'];T=os.environ['CLOUDFLARE_API_TOKEN']
+          h={'Authorization':f'Bearer {T}','Accept':'application/json'}
+          api=f'https://api.cloudflare.com/client/v4/accounts/{A}'
+          u=f'{api}/workers/scripts/ball46-production/deployments'
+          with urllib.request.urlopen(urllib.request.Request(u,headers=h),timeout=30) as r:j=json.load(r)
+          vs=j['result']['deployments'][0].get('versions') or []
+          if len(vs)!=1 or float(vs[0].get('percentage',0))!=100: raise SystemExit('MIXED_DEPLOYMENT')
+          vid=vs[0]['version_id']
+          open('/tmp/b46-divider-audit/version.txt','w').write(vid+'\n')
+          print('CURRENT_VERSION',vid)
+          PY
+          N=$(date +%s%N)
+          curl -fsSL --retry 3 --max-time 30 "https://ball46-production.mccarey-supon.workers.dev/dashboard-v2-tune.css?divideraudit=$N" -o "$OUT/dashboard-v2-tune.css"
+          curl -fsSL --retry 3 --max-time 30 "https://ball46-production.mccarey-supon.workers.dev/index.html?divideraudit=$N" -o "$OUT/index-worker.html"
+          curl -fsSL --retry 3 --max-time 30 "https://www.ball46.com/?divideraudit=$N" -o "$OUT/index-www.html"
+          grep -n -E 'workspace-scorebar-(cell|grid|signal-result|pending)|outcome-(win|loss|draw)|border(-left|-right|-color)?|box-shadow|::before|::after' "$OUT/dashboard-v2-tune.css" > "$OUT/relevant-lines.txt" || true
+          echo LIVE_CSS_CAPTURE_PASS
+      - name: Install browser verifier
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Inspect computed divider geometry read only
+        shell: bash
+        run: |
+          cat > /tmp/b46-divider-audit/audit.js <<'JS'
+          const fs=require('fs');
+          const {chromium}=require('playwright');
+          (async()=>{
+            const b=await chromium.launch({headless:true});
+            const report={};
+            try{
+              for(const [name,width,height] of [['desktop1920',1920,900],['desktop1440',1440,900],['tablet1000',1000,850],['mobile390',390,844]]){
+                const ctx=await b.newContext({viewport:{width,height},serviceWorkers:'block'});
+                const p=await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(String(e)));
+                await p.goto('https://www.ball46.com/?divideraudit='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+                await p.waitForSelector('[data-workspace-scorebar-slot]',{state:'attached',timeout:30000});
+                await p.waitForTimeout(800);
+                const x=await p.evaluate(()=>{
+                  const slot=document.querySelector('[data-workspace-scorebar-slot]');
+                  const grid=slot?.querySelector('.workspace-scorebar-grid');
+                  const cards=[...(slot?.querySelectorAll('.workspace-scorebar-cell')||[])];
+                  const pick=(el)=>{if(!el)return null;const cs=getComputedStyle(el),r=el.getBoundingClientRect(),bef=getComputedStyle(el,'::before'),aft=getComputedStyle(el,'::after');return{
+                    cls:el.className,width:r.width,height:r.height,boxSizing:cs.boxSizing,
+                    borderTop:cs.borderTop,borderRight:cs.borderRight,borderBottom:cs.borderBottom,borderLeft:cs.borderLeft,
+                    borderRadius:cs.borderRadius,boxShadow:cs.boxShadow,backgroundColor:cs.backgroundColor,
+                    before:{content:bef.content,display:bef.display,width:bef.width,height:bef.height,borderRight:bef.borderRight,borderLeft:bef.borderLeft,background:bef.backgroundColor,boxShadow:bef.boxShadow},
+                    after:{content:aft.content,display:aft.display,width:aft.width,height:aft.height,borderRight:aft.borderRight,borderLeft:aft.borderLeft,background:aft.backgroundColor,boxShadow:aft.boxShadow}
+                  }};
+                  const gcs=grid?getComputedStyle(grid):null;
+                  return {slotDisplay:slot?getComputedStyle(slot).display:null,grid:gcs?{gap:gcs.gap,columnGap:gcs.columnGap,rowGap:gcs.rowGap,border:gcs.border,boxShadow:gcs.boxShadow}:null,count:cards.length,cards:cards.slice(0,10).map(pick)};
+                });
+                report[name]={...x,errors:errs};
+                await p.screenshot({path:'/tmp/b46-divider-audit/'+name+'.png',fullPage:false});
+                await ctx.close();
+              }
+              fs.writeFileSync('/tmp/b46-divider-audit/report.json',JSON.stringify(report,null,2));
+              console.log('DIVIDER_AUDIT_PASS');
+              console.log(JSON.stringify(report,null,2));
+            } finally {await b.close();}
+          })().catch(e=>{console.error(e.stack||e);process.exit(1)});
+          JS
+          node /tmp/b46-divider-audit/audit.js
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-scorebar-divider-audit-${{ github.run_id }}
+          path: /tmp/b46-divider-audit
+          if-no-files-found: error
+          retention-days: 30
