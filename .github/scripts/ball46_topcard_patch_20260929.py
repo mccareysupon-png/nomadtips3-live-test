@@ -4,7 +4,7 @@ import re, sys
 
 ROOT=Path('ball46-topcard-candidate-20260929')
 JS=ROOT/'dashboard-v2-stage3.js'
-CSS=ROOT/'singlepage-workspace-343.css'
+CSS=ROOT/'dashboard-v2-tune.css'
 IDX=ROOT/'index.html'
 
 for p in (JS,CSS,IDX):
@@ -78,9 +78,9 @@ new=r'''function renderWorkspaceScorebar(){
 js2=js[:s]+new+js[e:]
 
 css_marker='''\n/* BALL46_SCOREBAR_DETAILS_20260929 — add detail row without moving existing score/time row. */
-.workspace-scorebar-slot{height:80px;min-height:80px;max-height:80px}
-.workspace-scorebar-grid{height:78px}
-.workspace-scorebar-cell{height:78px}
+.workspace-scorebar-slot{height:120px;min-height:120px;max-height:120px}
+.workspace-scorebar-grid{height:118px}
+.workspace-scorebar-cell{height:118px}
 .workspace-scorebar-details{display:grid;grid-template-columns:minmax(0,1fr) 26px minmax(0,1fr);align-items:center;gap:3px;margin-top:3px;padding-top:3px;border-top:1px solid rgba(255,255,255,.22);font-size:8px;line-height:1.05;white-space:nowrap;min-width:0}
 .workspace-scorebar-details>span{min-width:0;overflow:hidden;text-overflow:ellipsis}
 .workspace-scorebar-detail-entry,.workspace-scorebar-detail-current{display:flex;flex-direction:column;gap:1px}
@@ -92,11 +92,11 @@ css_marker='''\n/* BALL46_SCOREBAR_DETAILS_20260929 — add detail row without m
 css2=css.rstrip()+css_marker+'\n'
 
 old_js_ref='dashboard-v2-stage3.js?v=343-scorebar-bg-pending-20260928a'
-old_css_ref='singlepage-workspace-343.css?v=343-scorebar-player-right-20260928a'
+old_css_ref='dashboard-v2-tune.css?v=343-horizontal-card-20260928a'
 if idx.count(old_js_ref)!=1: raise SystemExit(f'STOP: JS cache-buster drift: found {idx.count(old_js_ref)} exact refs')
 if idx.count(old_css_ref)!=1: raise SystemExit(f'STOP: workspace CSS cache-buster drift: found {idx.count(old_css_ref)} exact refs')
 idx2=idx.replace(old_js_ref,'dashboard-v2-stage3.js?v=343-scorebar-details-20260929a')
-idx2=idx2.replace(old_css_ref,'singlepage-workspace-343.css?v=343-scorebar-details-20260929a')
+idx2=idx2.replace(old_css_ref,'dashboard-v2-tune.css?v=343-scorebar-details-20260929a')
 
 # Safety: no production plumbing strings are introduced/removed by this patch.
 for token in ['/api/engine/','ENGINE','FULL_MARKET','HUB','workers.dev']:

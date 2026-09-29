@@ -3,7 +3,7 @@ const path=require('path');
 const {chromium}=require('playwright');
 const ROOT='ball46-topcard-candidate-20260929';
 const candidateJs=fs.readFileSync(path.join(ROOT,'dashboard-v2-stage3.js'),'utf8');
-const candidateCss=fs.readFileSync(path.join(ROOT,'singlepage-workspace-343.css'),'utf8');
+const candidateCss=fs.readFileSync(path.join(ROOT,'dashboard-v2-tune.css'),'utf8');
 const OUT='ball46-topcard-preview-20260929'; fs.mkdirSync(OUT,{recursive:true});
 
 async function preparePage(browser, viewport, name){
@@ -11,7 +11,7 @@ async function preparePage(browser, viewport, name){
   const page=await context.newPage();
   const pageErrors=[]; page.on('pageerror',e=>pageErrors.push(String(e)));
   await page.route('**/dashboard-v2-stage3.js*',r=>r.fulfill({status:200,contentType:'application/javascript; charset=utf-8',body:candidateJs}));
-  await page.route('**/singlepage-workspace-343.css*',r=>r.fulfill({status:200,contentType:'text/css; charset=utf-8',body:candidateCss}));
+  await page.route('**/dashboard-v2-tune.css*',r=>r.fulfill({status:200,contentType:'text/css; charset=utf-8',body:candidateCss}));
   await page.goto('https://www.ball46.com/?preview_topcard=20260929',{waitUntil:'domcontentloaded',timeout:60000});
   await page.waitForSelector('[data-workspace-scorebar-slot]',{timeout:30000});
   if(viewport.width>760){
@@ -40,10 +40,10 @@ async function preparePage(browser, viewport, name){
   if(viewport.width>760){
     if(state.cardCount!==10)throw new Error(name+': expected 10 scorebar cells, got '+state.cardCount);
     if(state.detailsCount<1)throw new Error(name+': no detail rows rendered');
-    if(Math.abs(state.slotHeight-80)>1.5)throw new Error(name+': slot height '+state.slotHeight+' != 80');
-    if(Math.abs(state.gridHeight-78)>1.5)throw new Error(name+': grid height '+state.gridHeight+' != 78');
+    if(Math.abs(state.slotHeight-120)>1.5)throw new Error(name+': slot height '+state.slotHeight+' != 120');
+    if(Math.abs(state.gridHeight-118)>1.5)throw new Error(name+': grid height '+state.gridHeight+' != 118');
     for(const c of state.cards){
-      if(Math.abs(c.height-78)>1.5)throw new Error(name+': card height '+c.height+' != 78');
+      if(Math.abs(c.height-118)>1.5)throw new Error(name+': card height '+c.height+' != 118');
       if(c.detailBottom!==null && c.detailBottom>c.cardBottom+0.75)throw new Error(name+': detail clipped vertically '+JSON.stringify(c));
       if(c.scrollHeight>c.height+1.5)throw new Error(name+': vertical overflow '+JSON.stringify(c));
       const topOffset=c.metaTop-c.cardTop; if(topOffset<3||topOffset>9)throw new Error(name+': existing score/time row moved unexpectedly offset='+topOffset);

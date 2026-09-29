@@ -119,3 +119,17 @@
   .match-row .teams-cell{grid-template-columns:minmax(0,1fr) 26px;column-gap:6px}.match-row .teams-cell>.desktop-team-score{font-size:15px}
   .match-row .score-cell{padding-left:4px}.match-row .score-cell>small:not(.half-score){font-size:8px}.match-row .score-cell>.half-score{font-size:7px}.match-row .signal-cell.prediction-live{padding-left:6px}
 }
+/* BALL46_SCOREBAR_DETAILS_20260929 — presentation only; keep existing score/time row in place. */
+@media(min-width:761px){
+  .workspace-scorebar-slot{height:120px!important;min-height:120px!important;max-height:120px!important}
+  .workspace-scorebar-grid{height:118px!important}
+  .workspace-scorebar-cell{height:118px!important}
+  .workspace-scorebar-details{display:grid;grid-template-columns:minmax(0,1fr) 26px minmax(0,1fr);align-items:center;gap:3px;margin-top:3px;padding-top:3px;border-top:1px solid rgba(255,255,255,.22);font-size:8px;line-height:1.05;white-space:nowrap;min-width:0}
+  .workspace-scorebar-details>span{min-width:0;overflow:hidden;text-overflow:ellipsis}
+  .workspace-scorebar-detail-entry,.workspace-scorebar-detail-current{display:flex;flex-direction:column;gap:1px}
+  .workspace-scorebar-detail-current{text-align:right;align-items:flex-end}
+  .workspace-scorebar-details i{font-style:normal;font-size:7px;font-weight:800;letter-spacing:.35px;opacity:.78}
+  .workspace-scorebar-details b{font-size:8px;font-weight:900;color:#fff;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+  .workspace-scorebar-detail-minute{text-align:center;font-weight:900;font-size:8px;color:#fff}
+}
+
