@@ -31,7 +31,8 @@ async function runView(browser,width,height,name){
      const slot=document.querySelector('[data-workspace-scorebar-slot]');
      const host=document.createElement('div');
      host.id='scorebar-image-preview-grid';
-     host.style.cssText='display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:2px;width:100%;margin:8px 0 0;height:118px;';
+     // Mirror the real scorebar geometry: 10 equal slots, not four oversized demo cards.
+     host.style.cssText='display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:0;width:100%;margin:8px 0 0;height:118px;';
      const cards=[
        ['workspace-scorebar-cell workspace-scorebar-signal-result outcome-win','WIN','2–1','HOME TEAM · AWAY TEAM','OVER 2.50 @ 1.80','ENTRY','1–0','62\'','FT','2–1'],
        ['workspace-scorebar-cell workspace-scorebar-signal-result outcome-loss','LOSS','0–2','HOME TEAM · AWAY TEAM','HOME -0.50 @ 1.91','ENTRY','0–0','55\'','FT','0–2'],
@@ -43,6 +44,12 @@ async function runView(browser,width,height,name){
        d.innerHTML='<span class="workspace-scorebar-meta"><i>'+c[1]+'</i><b>'+c[2]+'</b></span><span class="workspace-scorebar-match">'+c[3]+'</span><span class="workspace-scorebar-pick"><strong>TEST MARKET</strong><em>'+c[4]+'</em></span><span class="workspace-scorebar-details" data-scorebar-details="1"><span class="workspace-scorebar-detail-entry"><i>'+c[5]+'</i><b>'+c[6]+'</b></span><span class="workspace-scorebar-detail-minute">'+c[7]+'</span><span class="workspace-scorebar-detail-current"><i>'+c[8]+'</i><b>'+c[9]+'</b></span></span>';
        host.appendChild(d);
      }
+     for(let i=0;i<6;i++){
+       const p=document.createElement('div');
+       p.className='workspace-scorebar-cell placeholder';
+       p.innerHTML='<span>—</span><span class="away">—</span>';
+       host.appendChild(p);
+     }
      slot.after(host);
    });
    await page.waitForTimeout(300);
@@ -50,10 +57,12 @@ async function runView(browser,width,height,name){
  const state=await page.evaluate((mobile)=>{
    const slot=document.querySelector('[data-workspace-scorebar-slot]');
    const host=document.querySelector('#scorebar-image-preview-grid');
-   const cards=host?[...host.children]:[];
+   const all=host?[...host.children]:[];
+   const cards=all.filter(c=>!c.classList.contains('placeholder'));
    return {
      slotDisplay:getComputedStyle(slot).display,
      mobile,
+     syntheticSlotCount:all.length,
      previewCards:cards.map(c=>({
        cls:c.className,
        rect:{width:c.getBoundingClientRect().width,height:c.getBoundingClientRect().height},
@@ -69,7 +78,8 @@ async function runView(browser,width,height,name){
  if(mobile){
    if(state.slotDisplay!=='none')throw new Error(name+': mobile scorebar visibility changed');
  }else{
-   if(state.previewCards.length!==4)throw new Error(name+': expected four synthetic status cards');
+   if(state.syntheticSlotCount!==10)throw new Error(name+': expected ten synthetic slots');
+   if(state.previewCards.length!==4)throw new Error(name+': expected four populated synthetic status cards');
    const expected=['scorebar-win-20260929a.webp','scorebar-loss-20260929a.webp','scorebar-draw-20260929a.webp','scorebar-pending-20260929a.webp'];
    state.previewCards.forEach((c,i)=>{
      if(!c.backgroundImage.includes(expected[i]))throw new Error(name+': wrong image mapping '+JSON.stringify(c));
