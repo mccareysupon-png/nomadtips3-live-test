@@ -1,0 +1,31 @@
+name: READ ONLY - Ball46 Scorebar Measure 20260929
+
+on:
+  push:
+    branches:
+      - work/ball46-topcard-details-20260929
+    paths:
+      - '.github/workflows/ball46-scorebar-measure-20260929.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  measure:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/ball46-topcard-details-20260929
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: node .github/scripts/ball46_scorebar_measure_20260929.js
+      - name: Commit measurement report only
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add ball46-scorebar-measure-20260929.json
+          git diff --cached --quiet || git commit -m 'report(ball46): live scorebar card geometry 20260929'
+          git push origin HEAD:work/ball46-topcard-details-20260929
