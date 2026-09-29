@@ -46,6 +46,8 @@ jobs:
           curl -fsSL --retry 3 --max-time 30 "https://www.ball46.com/?divideraudit=$N" -o "$OUT/index-www.html"
           grep -n -E 'workspace-scorebar-(cell|grid|signal-result|pending)|outcome-(win|loss|draw)|border(-left|-right|-color)?|box-shadow|::before|::after' "$OUT/dashboard-v2-tune.css" > "$OUT/relevant-lines.txt" || true
           echo LIVE_CSS_CAPTURE_PASS
+          echo '--- RELEVANT LIVE CSS ---'
+          cat "$OUT/relevant-lines.txt"
       - name: Install browser verifier
         run: |
           npm install --no-save playwright@1.55.0
@@ -53,7 +55,7 @@ jobs:
       - name: Inspect computed divider geometry read only
         shell: bash
         run: |
-          cat > /tmp/b46-divider-audit/audit.js <<'JS'
+          cat > .divider-audit.js <<'JS'
           const fs=require('fs');
           const {chromium}=require('playwright');
           (async()=>{
@@ -90,7 +92,8 @@ jobs:
             } finally {await b.close();}
           })().catch(e=>{console.error(e.stack||e);process.exit(1)});
           JS
-          node /tmp/b46-divider-audit/audit.js
+          node .divider-audit.js
+          rm -f .divider-audit.js
       - uses: actions/upload-artifact@v4
         if: always()
         with:
