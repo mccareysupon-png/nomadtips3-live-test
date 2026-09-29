@@ -26,12 +26,22 @@ jobs:
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps chromium
       - name: Preview candidate by intercepting only JS/CSS on live Ball46
-        run: node .github/scripts/ball46_topcard_browser_preview_20260929.js
-      - name: Commit preview report and screenshots to work branch only
+        run: |
+          mkdir -p ball46-topcard-preview-20260929
+          set +e
+          node .github/scripts/ball46_topcard_browser_preview_20260929.js > ball46-topcard-preview-20260929/preview.log 2>&1
+          code=$?
+          echo "$code" > ball46-topcard-preview-20260929/exit-code.txt
+          cat ball46-topcard-preview-20260929/preview.log
+          exit 0
+      - name: Commit preview evidence to work branch even when geometry gate fails
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add ball46-topcard-preview-20260929
-          git diff --cached --quiet && exit 0
-          git commit -m 'report(ball46): browser preview top-card details 20260929'
+          git diff --cached --quiet || git commit -m 'report(ball46): browser preview evidence top-card 20260929'
           git push origin HEAD:work/ball46-topcard-details-20260929
+      - name: Enforce preview gate after evidence is saved
+        run: |
+          code=$(cat ball46-topcard-preview-20260929/exit-code.txt)
+          test "$code" = "0"
