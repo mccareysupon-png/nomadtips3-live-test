@@ -1,0 +1,102 @@
+name: SCAN Ball46 Refresh State 20260929
+on:
+  push:
+    branches: [work/ball46-refresh-state-fix-20260929-scan]
+    paths: ['.github/workflows/scan-ball46-refresh-state-20260929.yml']
+permissions:
+  contents: read
+env:
+  ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  SCRIPT_NAME: ball46-production
+  BALL46_URL: https://ball46.com
+jobs:
+  scan-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - name: Lock current production and fetch exact live targets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/b46scan
+          AUTH="Authorization: Bearer $API_TOKEN"
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=5" -H "$AUTH" -o /tmp/b46scan/deployments.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const j=JSON.parse(fs.readFileSync('/tmp/b46scan/deployments.json','utf8'));
+          if(j.success!==true) throw Error('DEPLOYMENTS_FAILED');
+          const d=j.result?.deployments?.[0];
+          if(!d||!Array.isArray(d.versions)||d.versions.length!==1||Number(d.versions[0].percentage)!==100) throw Error('PRODUCTION_NOT_SINGLE_VERSION');
+          fs.writeFileSync('/tmp/b46scan/version.txt',String(d.versions[0].version_id));
+          console.log('SCAN_ACTIVE_DEPLOYMENT',JSON.stringify({id:d.id,created_on:d.created_on,version:d.versions[0].version_id}));
+          NODE
+          VID=$(cat /tmp/b46scan/version.txt)
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/workers/$SCRIPT_NAME/versions/$VID?include=modules" -H "$AUTH" -o /tmp/b46scan/version.json
+          node - <<'NODE'
+          const fs=require('fs'),crypto=require('crypto');
+          const j=JSON.parse(fs.readFileSync('/tmp/b46scan/version.json','utf8')); if(j.success!==true) throw Error('VERSION_FETCH_FAILED');
+          const r=j.result, mods=r.modules||[]; const main=mods.find(x=>x.name===r.main_module);
+          if(!main?.content_base64) throw Error('MAIN_MODULE_MISSING');
+          const body=Buffer.from(main.content_base64,'base64');
+          const sha=crypto.createHash('sha256').update(body).digest('hex');
+          const bindings=(r.bindings||[]).map(b=>({name:b.name,type:b.type,service:b.service||null,environment:b.environment||null}));
+          console.log('SCAN_RUNTIME',JSON.stringify({main:r.main_module,sha256:sha,bindings,compatibility_date:r.compatibility_date,assets:r.assets?.config||null,module_count:mods.length}));
+          console.log('SCAN_FOOTER_WRAPPER',body.toString('utf8').includes('__B46_FOOTER_LEGAL_20260929__'));
+          NODE
+          nonce="${GITHUB_RUN_ID}-$(date +%s%N)"
+          for f in index.html dashboard-v2-stage3.js singlepage-workspace-343.js singlepage-workspace-343.css workspace-route-guard-343.js dashboard-v2-tune.css; do
+            code=$(curl -sS -L --max-time 25 -H 'Cache-Control: no-cache' -o "/tmp/b46scan/$f" -w '%{http_code}' "$BALL46_URL/$f?scan=$nonce-$RANDOM") || true
+            echo "SCAN_FETCH:$f:$code:$(test -s /tmp/b46scan/$f && wc -c </tmp/b46scan/$f || echo 0)"
+            if [ "$code" = 200 ]; then sha256sum "/tmp/b46scan/$f"; fi
+          done
+          test -s /tmp/b46scan/dashboard-v2-stage3.js
+          test -s /tmp/b46scan/singlepage-workspace-343.js
+          test -s /tmp/b46scan/singlepage-workspace-343.css
+          echo '--- SCOREBAR MARKERS ---'
+          grep -nE 'WORKSPACE_SCOREBAR|SCOREBAR_6X4|workspace-scorebar-slot|renderWorkspaceScorebar' /tmp/b46scan/dashboard-v2-stage3.js | head -30 || true
+          grep -nE 'workspace-scorebar|SCOREBAR' /tmp/b46scan/singlepage-workspace-343.css | head -40 || true
+          echo '--- ROUTE MARKERS ---'
+          grep -nE 'const state=|parseRoute|writeRoute|setView|bindNavigation|function init|workspaceView|history\.' /tmp/b46scan/singlepage-workspace-343.js | head -80 || true
+          echo '--- ROUTE GUARD ---'
+          grep -nE 'replaceState|pushState|location|view|statistics|live' /tmp/b46scan/workspace-route-guard-343.js | head -80 || true
+      - name: Reproduce Total refresh and measure layout shift
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT=/tmp/b46browser; rm -rf "$OUT"; mkdir -p "$OUT/chrome"
+          chrome=$(command -v google-chrome || command -v chromium || command -v chromium-browser)
+          "$chrome" --headless=new --no-sandbox --disable-gpu --hide-scrollbars --window-size=1440,1000 --remote-debugging-port=9333 --user-data-dir="$OUT/chrome" "$BALL46_URL/index.html?scan=${GITHUB_RUN_ID}" >"$OUT/chrome.log" 2>&1 &
+          CPID=$!; trap 'kill $CPID 2>/dev/null || true' EXIT
+          for i in $(seq 1 60); do curl -fsS http://127.0.0.1:9333/json > "$OUT/pages.json" 2>/dev/null && break; sleep .25; done
+          test -s "$OUT/pages.json"
+          cat > "$OUT/check.js" <<'NODE'
+          const fs=require('fs');
+          const pages=JSON.parse(fs.readFileSync('/tmp/b46browser/pages.json'));
+          const p=pages.find(x=>x.type==='page'); if(!p) throw Error('NO_PAGE');
+          const ws=new WebSocket(p.webSocketDebuggerUrl); let id=0; const q=new Map();
+          ws.onmessage=e=>{const m=JSON.parse(e.data); if(m.id&&q.has(m.id)){const z=q.get(m.id);q.delete(m.id);m.error?z.j(Error(JSON.stringify(m.error))):z.r(m.result)}};
+          const call=(method,params={})=>new Promise((r,j)=>{const n=++id;q.set(n,{r,j});ws.send(JSON.stringify({id:n,method,params}))});
+          const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+          async function ev(expression){const z=await call('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true});if(z.exceptionDetails)throw Error(JSON.stringify(z.exceptionDetails));return z.result.value}
+          async function wait(expr,t=30000){const s=Date.now();while(Date.now()-s<t){try{if(await ev(expr))return}catch{}await sleep(100)}throw Error('WAIT:'+expr)}
+          (async()=>{
+            await new Promise((r,j)=>{ws.onopen=r;ws.onerror=j}); await call('Runtime.enable'); await call('Page.enable');
+            await wait(`document.readyState==='complete'`); await wait(`document.querySelector('[data-stat-market="all"]')`); await sleep(1000);
+            const initial=await ev(`(()=>({url:location.href,view:document.body.dataset.workspaceView||'',visible:[...document.querySelectorAll('[data-workspace-panel]')].filter(x=>!x.hidden).map(x=>x.dataset.workspacePanel),scoreH:document.querySelector('[data-workspace-scorebar-slot]')?.getBoundingClientRect().height??null}))()`);
+            await ev(`document.querySelector('[data-stat-market="all"]').click(); true`); await sleep(800);
+            const before=await ev(`(()=>({url:location.href,view:document.body.dataset.workspaceView||'',activeTotal:document.querySelector('[data-stat-market="all"]')?.classList.contains('active')||false,visible:[...document.querySelectorAll('[data-workspace-panel]')].filter(x=>!x.hidden).map(x=>x.dataset.workspacePanel),scoreH:document.querySelector('[data-workspace-scorebar-slot]')?.getBoundingClientRect().height??null,left:document.querySelector('.left-rail')?.getBoundingClientRect()||null}))()`);
+            await call('Page.addScriptToEvaluateOnNewDocument',{source:`(()=>{window.__B46_REFRESH_SCAN__={samples:[],shifts:[]};try{new PerformanceObserver(l=>{for(const e of l.getEntries())if(!e.hadRecentInput)window.__B46_REFRESH_SCAN__.shifts.push({v:e.value,t:e.startTime})}).observe({type:'layout-shift',buffered:true})}catch(_){};let n=0;const t=setInterval(()=>{const s=document.querySelector('[data-workspace-scorebar-slot]'),l=document.querySelector('.left-rail');window.__B46_REFRESH_SCAN__.samples.push({t:performance.now(),ready:document.readyState,view:document.body?.dataset?.workspaceView||'',score:s?s.getBoundingClientRect().height:null,leftY:l?l.getBoundingClientRect().y:null,visible:[...document.querySelectorAll('[data-workspace-panel]')].filter(x=>!x.hidden).map(x=>x.dataset.workspacePanel)});if(++n>120)clearInterval(t)},25)})()`});
+            await call('Page.reload',{ignoreCache:true}); await sleep(200); await wait(`document.readyState==='complete'`); await sleep(1800);
+            const after=await ev(`(()=>({url:location.href,view:document.body.dataset.workspaceView||'',activeTotal:document.querySelector('[data-stat-market="all"]')?.classList.contains('active')||false,visible:[...document.querySelectorAll('[data-workspace-panel]')].filter(x=>!x.hidden).map(x=>x.dataset.workspacePanel),scoreH:document.querySelector('[data-workspace-scorebar-slot]')?.getBoundingClientRect().height??null,left:document.querySelector('.left-rail')?.getBoundingClientRect()||null,scan:window.__B46_REFRESH_SCAN__}))()`);
+            const samples=after.scan?.samples||[]; const hs=samples.map(x=>x.score).filter(x=>typeof x==='number'); const ys=samples.map(x=>x.leftY).filter(x=>typeof x==='number');
+            const report={initial,before,after:{...after,scan:undefined},sampleCount:samples.length,scoreHeights:[...new Set(hs)],leftYRange:ys.length?[Math.min(...ys),Math.max(...ys)]:null,viewSequence:[...new Set(samples.map(x=>x.view))],visibleSequence:[...new Set(samples.map(x=>JSON.stringify(x.visible)))],cls:(after.scan?.shifts||[]).reduce((a,b)=>a+b.v,0),firstSamples:samples.slice(0,25)};
+            console.log('REFRESH_SCAN_REPORT',JSON.stringify(report));
+            if(before.view!=='statistics'||!before.activeTotal) throw Error('TOTAL_NOT_ACTIVE_BEFORE_REFRESH');
+            if(after.view!=='statistics'||!after.activeTotal) console.log('BUG_STATE_RESET_CONFIRMED'); else console.log('STATE_PERSISTED_AFTER_REFRESH');
+            if(hs.includes(0)||hs.includes(null)||new Set(hs).size>1) console.log('BUG_SCOREBAR_GEOMETRY_SHIFT_CONFIRMED',JSON.stringify([...new Set(hs)]));
+            ws.close(); process.exit(0);
+          })().catch(e=>{console.error('SCAN_ERROR',e);try{ws.close()}catch{}process.exit(1)});
+          NODE
+          node "$OUT/check.js"
+          kill "$CPID" 2>/dev/null || true; trap - EXIT
