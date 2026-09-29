@@ -28,6 +28,19 @@ jobs:
           path: /tmp/b46-seed
           github-token: ${{ secrets.GITHUB_TOKEN }}
           run-id: 36374800695
+      - name: Remove Cloudflare edge-injected analytics beacon from captured candidate index
+        shell: python
+        run: |
+          from pathlib import Path
+          p=Path('ball46-topcard-candidate-20260929/index.html')
+          s=p.read_text(encoding='utf-8')
+          lines=s.splitlines(True)
+          hits=[i for i,x in enumerate(lines) if 'static.cloudflareinsights.com/beacon.min.js' in x]
+          if len(hits)!=1:
+              raise SystemExit(f'EDGE_BEACON_COUNT_BAD:{len(hits)}')
+          del lines[hits[0]]
+          p.write_text(''.join(lines),encoding='utf-8')
+          print('EDGE_BEACON_REMOVED_FROM_RUNNER_COPY_ONLY')
       - name: Verify current Production and build exact fresh 79-asset candidate
         shell: bash
         run: bash .github/scripts/ball46_topcard_predeploy_20260929.sh
