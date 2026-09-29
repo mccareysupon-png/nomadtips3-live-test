@@ -1,0 +1,67 @@
+name: READ ONLY - Ball46 Scorebar Images Current Production 20260929
+
+on:
+  push:
+    branches:
+      - work/ball46-scorebar-images-20260929
+    paths:
+      - '.github/workflows/ball46-scorebar-images-current-verify-20260929.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/ball46-scorebar-images-20260929
+      - name: Read current Worker version only
+        run: |
+          python3 - <<'PY'
+          import json,os,urllib.request
+          A=os.environ['CLOUDFLARE_ACCOUNT_ID'];T=os.environ['CLOUDFLARE_API_TOKEN'];h={'Authorization':f'Bearer {T}','Accept':'application/json'}
+          u=f'https://api.cloudflare.com/client/v4/accounts/{A}/workers/scripts/ball46-production/deployments'
+          with urllib.request.urlopen(urllib.request.Request(u,headers=h),timeout=30) as r:j=json.load(r)
+          vs=j['result']['deployments'][0].get('versions') or []
+          print('CURRENT_WORKER_VERSIONS',vs)
+          if len(vs)!=1 or float(vs[0].get('percentage',0))!=100: raise SystemExit('CURRENT_DEPLOYMENT_MIXED')
+          open('/tmp/current-version.txt','w').write(vs[0]['version_id'])
+          PY
+      - name: Check public API health and new image assets
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/b46-current-verify
+          for ep in board signals statistics; do curl -fsSL --retry 3 --max-time 30 "https://www.ball46.com/api/engine/$ep?currentverify=$(date +%s%N)" -o "/tmp/b46-current-verify/$ep.json"; done
+          python3 - <<'PY'
+          import json
+          for n in ['board','signals','statistics']:
+            j=json.load(open('/tmp/b46-current-verify/'+n+'.json'))
+            if j.get('ok') is not True: raise SystemExit('API_BAD:'+n)
+          print('CURRENT_API_HEALTH_PASS')
+          PY
+          curl -fsSL --retry 3 --max-time 30 "https://www.ball46.com/?currentverify=$(date +%s%N)" -o /tmp/b46-current-verify/index.html
+          grep -Fq 'dashboard-v2-tune.css?v=343-scorebar-images-20260929a' /tmp/b46-current-verify/index.html
+          for f in scorebar-win-20260929a.webp scorebar-loss-20260929a.webp scorebar-draw-20260929a.webp scorebar-pending-20260929a.webp; do curl -fsSL --retry 3 --max-time 20 "https://www.ball46.com/$f?currentverify=$(date +%s%N)" -o "/tmp/b46-current-verify/$f"; done
+          echo CURRENT_PUBLIC_IMAGE_MARKERS_PASS
+      - name: Install browser verifier
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Verify current Production visually and geometrically
+        run: node .github/scripts/ball46_scorebar_images_post_browser_20260929.js
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-scorebar-images-current-verify-${{ github.run_id }}
+          path: |
+            /tmp/current-version.txt
+            /tmp/b46-current-verify
+            /tmp/b46-scorebar-images-post-browser
+          if-no-files-found: ignore
+          retention-days: 30
