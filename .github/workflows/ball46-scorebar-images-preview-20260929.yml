@@ -1,0 +1,47 @@
+name: PREVIEW ONLY - Ball46 Scorebar Images 20260929
+
+on:
+  push:
+    branches:
+      - work/ball46-scorebar-images-20260929
+    paths:
+      - '.github/workflows/ball46-scorebar-images-preview-20260929.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  preview:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/ball46-scorebar-images-20260929
+      - name: Build candidate from current live Production CSS and HTML
+        run: python3 .github/scripts/ball46_scorebar_images_build_20260929.py
+      - name: Guard scope and asset presence
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f scorebar-win-20260929a.webp
+          test -f scorebar-loss-20260929a.webp
+          test -f scorebar-draw-20260929a.webp
+          test -f scorebar-pending-20260929a.webp
+          grep -q 'BALL46_SCOREBAR_IMAGES_20260929' ball46-scorebar-images-candidate-20260929/dashboard-v2-tune.css
+          grep -q '343-scorebar-images-20260929a' ball46-scorebar-images-candidate-20260929/index.html
+      - name: Install browser verifier
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Preview four status images against live Ball46 without Production mutation
+        run: node .github/scripts/ball46_scorebar_images_preview_20260929.js
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-scorebar-images-preview-${{ github.run_id }}
+          path: |
+            /tmp/ball46-scorebar-images-preview
+            ball46-scorebar-images-candidate-20260929
+          if-no-files-found: error
+          retention-days: 30
