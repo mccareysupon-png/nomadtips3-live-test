@@ -1,0 +1,216 @@
+name: PREDEPLOY Ball46 Refresh State Fix 20260929
+on:
+  push:
+    branches: [work/ball46-refresh-state-fix-20260929]
+    paths: ['.github/workflows/predeploy-ball46-refresh-state-fix-20260929.yml']
+permissions:
+  contents: read
+  actions: read
+env:
+  ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  SCRIPT_NAME: ball46-production
+  WWW: https://ball46.com
+  DIRECT: https://ball46-production.mccarey-supon.workers.dev
+  EXPECT_VERSION: d54d0bae-0bd7-4a36-beed-052aa69a3a5e
+  EXPECT_RUNTIME_SHA: 0c2cd4b167f23e581acd69946a4b56740832d5c0f9388d6aa007c25d9ff31980
+  LAST_83_VERSION: 844c3980-8bab-4b36-9f9f-564466b3b3de
+jobs:
+  predeploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Download exact 83-asset snapshot from latest proven static deploy
+        uses: actions/download-artifact@v4
+        with:
+          name: ball46-scorebar-divider-predeploy-36554072800
+          path: /tmp/b46snapshot
+          github-token: ${{ github.token }}
+          run-id: 36554072800
+          repository: mccareysupon-png/nomadtips3-live-test
+      - name: Lock current Production and prove asset lineage
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT=/tmp/b46fix; rm -rf "$ROOT"; mkdir -p "$ROOT/base" "$ROOT/candidate" "$ROOT/verify" "$ROOT/runtime"
+          SRC=$(find /tmp/b46snapshot -type d -name candidate | while read -r d; do if [ "$(find "$d" -type f | wc -l | tr -d ' ')" = 83 ] && [ -s "$d/index.html" ]; then echo "$d"; fi; done | head -1)
+          test -n "$SRC" || { echo SNAPSHOT_CANDIDATE_83_NOT_FOUND; find /tmp/b46snapshot -maxdepth 4 -type d -print; exit 1; }
+          cp -a "$SRC/." "$ROOT/base/"
+          [ "$(find "$ROOT/base" -type f | wc -l | tr -d ' ')" = 83 ] || { echo BASE_NOT_83; exit 1; }
+          AUTH="Authorization: Bearer $API_TOKEN"
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=10" -H "$AUTH" -o "$ROOT/verify/deployments.json"
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/workers/$SCRIPT_NAME/versions/$EXPECT_VERSION?include=modules" -H "$AUTH" -o "$ROOT/verify/current-version.json"
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/workers/$SCRIPT_NAME/versions/$LAST_83_VERSION?include=modules" -H "$AUTH" -o "$ROOT/verify/last83-version.json"
+          node - <<'NODE'
+          const fs=require('fs'),crypto=require('crypto'),path=require('path');
+          const root='/tmp/b46fix/verify';
+          const d=JSON.parse(fs.readFileSync(root+'/deployments.json'));
+          if(d.success!==true) throw Error('DEPLOYMENTS_FAILED');
+          const live=d.result?.deployments?.[0], vs=live?.versions||[];
+          if(vs.length!==1||Number(vs[0].percentage)!==100) throw Error('MIXED_PRODUCTION');
+          const vid=String(vs[0].version_id);
+          if(vid!==process.env.EXPECT_VERSION) throw Error('PRODUCTION_MOVED:'+vid);
+          const cur=JSON.parse(fs.readFileSync(root+'/current-version.json')).result;
+          const old=JSON.parse(fs.readFileSync(root+'/last83-version.json')).result;
+          const main=(cur.modules||[]).find(m=>m.name===cur.main_module&&m.content_base64);
+          if(!main) throw Error('CURRENT_MAIN_MISSING');
+          const bytes=Buffer.from(main.content_base64,'base64');
+          const sha=crypto.createHash('sha256').update(bytes).digest('hex');
+          if(sha!==process.env.EXPECT_RUNTIME_SHA) throw Error('RUNTIME_MOVED:'+sha);
+          if(!bytes.toString('utf8').includes('__B46_FOOTER_LEGAL_20260929__')) throw Error('FOOTER_WRAPPER_MISSING');
+          const norm=x=>JSON.stringify(x,Object.keys(x||{}).sort());
+          if(norm(cur.assets?.config||{})!==norm(old.assets?.config||{})) throw Error('ASSET_CONFIG_LINEAGE_MISMATCH');
+          const cb=(cur.bindings||[]).map(b=>[b.name,b.type,b.service||null,b.environment||null]).sort();
+          const expect=[['ASSETS','assets',null,null],['ENGINE','service','nomadtips3-engine-343','production'],['FULL_MARKET','service','nomadtips3-full-market-343-ball46','production'],['HUB','service','nomadtips3-5usd-hub-343','production']].sort();
+          if(JSON.stringify(cb)!==JSON.stringify(expect)) throw Error('BINDINGS_MOVED:'+JSON.stringify(cb));
+          fs.writeFileSync('/tmp/b46fix/runtime/index.js',bytes);
+          console.log('PREDEPLOY_CURRENT_LOCK_PASS',JSON.stringify({deployment:live.id,version:vid,runtime_sha256:sha,created_on:live.created_on,asset_config:cur.assets?.config||{}}));
+          NODE
+      - name: Prove all 83 static assets still match current Production
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT=/tmp/b46fix; LIVE="$ROOT/live"; mkdir -p "$LIVE"
+          nonce="${GITHUB_RUN_ID}-race-$(date +%s%N)"
+          find "$ROOT/base" -type f -printf '%P\n' | LC_ALL=C sort > "$ROOT/verify/paths.txt"
+          [ "$(wc -l < "$ROOT/verify/paths.txt" | tr -d ' ')" = 83 ] || exit 1
+          while IFS= read -r rel; do
+            mkdir -p "$LIVE/$(dirname "$rel")"
+            code=$(curl -sS -L --retry 4 --retry-all-errors --max-time 30 -H 'Cache-Control: no-cache' -o "$LIVE/$rel" -w '%{http_code}' "$DIRECT/$rel?race=$nonce-$RANDOM") || true
+            [ "$code" = 200 ] || { echo "RACE_FETCH_FAILED:$code:$rel"; exit 1; }
+          done < "$ROOT/verify/paths.txt"
+          node - <<'NODE'
+          const fs=require('fs'),path=require('path');
+          const root='/tmp/b46fix', runtime=fs.readFileSync(root+'/runtime/index.js','utf8');
+          const m=runtime.match(/const __B46_FOOTER_HTML__=(.*?);\nconst __B46_FOOTER_CSS__/s);
+          if(!m) throw Error('FOOTER_CONST_NOT_FOUND');
+          const footer=JSON.parse(m[1]);
+          const cssLink='<link rel="stylesheet" href="/ball46-footer.css?v=20260929">';
+          const htmlSet=new Set(['index.html','signal.html','statistics.html']);
+          const paths=fs.readFileSync(root+'/verify/paths.txt','utf8').trim().split(/\n/);
+          const bad=[];
+          for(const rel of paths){
+            let a=fs.readFileSync(root+'/base/'+rel), b=fs.readFileSync(root+'/live/'+rel);
+            if(htmlSet.has(rel)){
+              let s=b.toString('utf8');
+              s=s.replace(cssLink,'').replace(footer,'');
+              b=Buffer.from(s);
+            }
+            if(!a.equals(b)) bad.push(rel);
+          }
+          console.log('RACE_83_MISMATCHES',bad);
+          if(bad.length) throw Error('CURRENT_ASSETS_MOVED:'+bad.join(','));
+          console.log('RACE_83_CURRENT_ASSETS_PASS');
+          NODE
+      - name: Build surgical two-asset candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT=/tmp/b46fix; cp -a "$ROOT/base/." "$ROOT/candidate/"
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          root=Path('/tmp/b46fix/candidate')
+          idx=root/'index.html'; s=idx.read_text()
+          anchor='<section class="workspace-stage">'
+          if s.count(anchor)!=1: raise SystemExit(f'INDEX_STAGE_ANCHOR_COUNT:{s.count(anchor)}')
+          if 'data-workspace-scorebar-slot' in s: raise SystemExit('INDEX_SCOREBAR_SLOT_ALREADY_STATIC')
+          shell='<section class="workspace-scorebar-slot" data-workspace-scorebar-slot></section>'
+          s=s.replace(anchor,anchor+shell,1)
+          pat=r'workspace-route-guard-343\.js(?:\?[^"\']*)?'
+          hits=re.findall(pat,s)
+          if len(hits)!=1: raise SystemExit(f'ROUTE_GUARD_REF_COUNT:{len(hits)}')
+          s=re.sub(pat,'workspace-route-guard-343.js?v=343-refresh-state-20260929a',s,count=1)
+          idx.write_text(s)
+          guard=root/'workspace-route-guard-343.js'; g=guard.read_text()
+          if 'BALL46_REFRESH_ROUTE_GUARD_20260929' in g: raise SystemExit('GUARD_ALREADY_PATCHED')
+          marker="const cleanLiveRoute=()=>{"
+          if g.count(marker)!=1: raise SystemExit(f'CLEAN_ROUTE_ANCHOR_COUNT:{g.count(marker)}')
+          helper="/* BALL46_REFRESH_ROUTE_GUARD_20260929 */\nconst hasExplicitNonLiveRoute=()=>{const v=new URLSearchParams(location.search).get('view');return v==='statistics'||v==='signal';};\n"
+          g=g.replace(marker,helper+marker,1)
+          p1=re.compile(r"if\s*\(\s*navType\(\)\s*===\s*'reload'\s*&&\s*last\s*===\s*'live'\s*\)\s*cleanLiveRoute\(\)\s*;")
+          g,n=p1.subn("if(navType()==='reload'&&last==='live'&&!hasExplicitNonLiveRoute())cleanLiveRoute();",g,count=1)
+          if n!=1: raise SystemExit(f'RELOAD_GUARD_PATCH_COUNT:{n}')
+          p2=re.compile(r"if\s*\(\s*view\s*===\s*'live'\s*\)\s*cleanLiveRoute\(\)\s*;")
+          g,n=p2.subn("if(view==='live'&&!hasExplicitNonLiveRoute())cleanLiveRoute();",g,count=1)
+          if n!=1: raise SystemExit(f'VIEW_GUARD_PATCH_COUNT:{n}')
+          guard.write_text(g)
+          print('SURGICAL_PATCH_BUILT')
+          PY
+          node --check "$ROOT/candidate/workspace-route-guard-343.js"
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib
+          root=Path('/tmp/b46fix'); base=root/'base'; cand=root/'candidate'
+          def h(p): return hashlib.sha256(p.read_bytes()).hexdigest()
+          changed=[]
+          for p in sorted(base.rglob('*')):
+            if p.is_file():
+              rel=p.relative_to(base); q=cand/rel
+              if not q.is_file() or h(p)!=h(q): changed.append(str(rel))
+          extras=[str(p.relative_to(cand)) for p in cand.rglob('*') if p.is_file() and not (base/p.relative_to(cand)).exists()]
+          print('PREDEPLOY_CHANGED_ASSETS',changed,'EXTRA',extras)
+          if changed!=['index.html','workspace-route-guard-343.js'] or extras: raise SystemExit('TWO_ASSET_DIFF_GATE_FAILED')
+          (root/'verify/changed-assets.txt').write_text('\n'.join(changed)+'\n')
+          PY
+      - name: Browser-test candidate locally with delayed real APIs
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT=/tmp/b46fix
+          cat > "$ROOT/server.js" <<'NODE'
+          const http=require('http'),fs=require('fs'),path=require('path');
+          const base='/tmp/b46fix/candidate', upstream='https://ball46.com';
+          const types={'.html':'text/html; charset=utf-8','.js':'application/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.json':'application/json'};
+          http.createServer(async(req,res)=>{try{const u=new URL(req.url,'http://127.0.0.1');if(u.pathname.startsWith('/api/')){await new Promise(r=>setTimeout(r,650));const r=await fetch(upstream+u.pathname+u.search,{headers:{'cache-control':'no-cache'}});res.writeHead(r.status,{'content-type':r.headers.get('content-type')||'application/json','cache-control':'no-store'});res.end(Buffer.from(await r.arrayBuffer()));return;}let rel=decodeURIComponent(u.pathname.replace(/^\//,''))||'index.html';const f=path.join(base,rel);if(!f.startsWith(base)||!fs.existsSync(f)||!fs.statSync(f).isFile()){res.writeHead(404);res.end('not found');return;}res.writeHead(200,{'content-type':types[path.extname(f)]||'application/octet-stream','cache-control':'no-store'});res.end(fs.readFileSync(f));}catch(e){res.writeHead(500);res.end(String(e.stack||e));}}).listen(8765,'127.0.0.1');
+          NODE
+          node "$ROOT/server.js" >"$ROOT/verify/server.log" 2>&1 & SPID=$!; trap 'kill $SPID 2>/dev/null || true' EXIT
+          for i in $(seq 1 40); do curl -fsS http://127.0.0.1:8765/index.html >/dev/null && break; sleep .1; done
+          cat > "$ROOT/test.js" <<'NODE'
+          const {chromium}=require('playwright');
+          const assert=(x,m)=>{if(!x)throw Error(m)};
+          (async()=>{const browser=await chromium.launch({headless:true});
+            const ctx=await browser.newContext({viewport:{width:1440,height:1000}}); const p=await ctx.newPage();
+            await p.addInitScript(()=>{window.__shifts=[];try{new PerformanceObserver(l=>{for(const e of l.getEntries())if(!e.hadRecentInput)window.__shifts.push(e.value)}).observe({type:'layout-shift',buffered:true})}catch{}});
+            await p.goto('http://127.0.0.1:8765/index.html?view=statistics',{waitUntil:'domcontentloaded'});
+            const first=await p.evaluate(()=>({view:document.body.dataset.workspaceView||'',slotCount:document.querySelectorAll('[data-workspace-scorebar-slot]').length,h:document.querySelector('[data-workspace-scorebar-slot]')?.getBoundingClientRect().height??0,visible:[...document.querySelectorAll('[data-workspace-panel]')].filter(x=>!x.hidden).map(x=>x.dataset.workspacePanel)}));
+            assert(first.slotCount===1,'FIRST_SLOT_COUNT:'+JSON.stringify(first)); assert(first.h>0,'FIRST_SLOT_ZERO:'+JSON.stringify(first));
+            await p.waitForFunction(()=>document.body.dataset.workspaceView==='statistics'); await p.waitForTimeout(1300);
+            let st=await p.evaluate(()=>({url:location.href,view:document.body.dataset.workspaceView,active:document.querySelector('[data-stat-market="all"]')?.classList.contains('active'),slots:document.querySelectorAll('[data-workspace-scorebar-slot]').length,h:document.querySelector('[data-workspace-scorebar-slot]')?.getBoundingClientRect().height,grid:document.querySelectorAll('[data-workspace-scorebar-slot] .workspace-scorebar-grid>*').length}));
+            assert(st.view==='statistics'&&st.active&&new URL(st.url).searchParams.get('view')==='statistics','TOTAL_INITIAL_BAD:'+JSON.stringify(st)); assert(st.slots===1,'DUP_SLOT_INITIAL'); const h0=st.h;
+            await p.reload({waitUntil:'domcontentloaded'}); const reloadFirst=await p.evaluate(()=>({slotCount:document.querySelectorAll('[data-workspace-scorebar-slot]').length,h:document.querySelector('[data-workspace-scorebar-slot]')?.getBoundingClientRect().height??0,url:location.href})); assert(reloadFirst.slotCount===1&&reloadFirst.h>0,'RELOAD_FIRST_SHELL_BAD:'+JSON.stringify(reloadFirst));
+            await p.waitForFunction(()=>document.body.dataset.workspaceView==='statistics'); await p.waitForTimeout(1300);
+            st=await p.evaluate(()=>({url:location.href,view:document.body.dataset.workspaceView,active:document.querySelector('[data-stat-market="all"]')?.classList.contains('active'),slots:document.querySelectorAll('[data-workspace-scorebar-slot]').length,h:document.querySelector('[data-workspace-scorebar-slot]')?.getBoundingClientRect().height,cls:(window.__shifts||[]).reduce((a,b)=>a+b,0)}));
+            assert(st.view==='statistics'&&st.active&&new URL(st.url).searchParams.get('view')==='statistics','TOTAL_REFRESH_RESET:'+JSON.stringify(st)); assert(st.slots===1,'DUP_SLOT_AFTER'); assert(Math.abs(st.h-h0)<=1,'SCOREBAR_HEIGHT_SHIFT:'+JSON.stringify({h0,now:st.h}));
+            await p.goto('http://127.0.0.1:8765/index.html?view=statistics&market=ah',{waitUntil:'domcontentloaded'}); await p.waitForFunction(()=>document.body.dataset.workspaceView==='statistics'); await p.waitForTimeout(300); await p.reload({waitUntil:'domcontentloaded'}); await p.waitForFunction(()=>document.body.dataset.workspaceView==='statistics'); const ah=await p.evaluate(()=>({url:location.href,active:document.querySelector('[data-stat-market="ah"]')?.classList.contains('active')})); assert(new URL(ah.url).searchParams.get('market')==='ah'&&ah.active,'AH_REFRESH_BAD:'+JSON.stringify(ah));
+            await p.goto('http://127.0.0.1:8765/index.html?view=signal',{waitUntil:'domcontentloaded'}); await p.waitForFunction(()=>document.body.dataset.workspaceView==='signal'); await p.reload({waitUntil:'domcontentloaded'}); await p.waitForFunction(()=>document.body.dataset.workspaceView==='signal'); const sig=await p.evaluate(()=>({url:location.href,view:document.body.dataset.workspaceView})); assert(new URL(sig.url).searchParams.get('view')==='signal'&&sig.view==='signal','SIGNAL_REFRESH_BAD:'+JSON.stringify(sig));
+            await p.goto('http://127.0.0.1:8765/index.html?status=live',{waitUntil:'domcontentloaded'}); await p.waitForFunction(()=>document.body.dataset.workspaceView==='live'); const live=await p.evaluate(()=>({url:location.href,view:document.body.dataset.workspaceView,slots:document.querySelectorAll('[data-workspace-scorebar-slot]').length})); assert(live.view==='live'&&live.slots===1,'LIVE_BAD:'+JSON.stringify(live));
+            const sizes=[[1280,850],[1024,768],[768,900],[430,900],[390,844]];
+            for(const [w,h] of sizes){await p.setViewportSize({width:w,height:h});await p.goto('http://127.0.0.1:8765/index.html?view=statistics',{waitUntil:'domcontentloaded'});await p.waitForFunction(()=>document.body.dataset.workspaceView==='statistics');await p.waitForTimeout(300);const x=await p.evaluate(()=>({w:innerWidth,scroll:document.documentElement.scrollWidth,view:document.body.dataset.workspaceView,slots:document.querySelectorAll('[data-workspace-scorebar-slot]').length}));assert(x.view==='statistics'&&x.slots===1,'RESPONSIVE_STATE_BAD:'+JSON.stringify(x));assert(x.scroll<=x.w+2,'HORIZONTAL_OVERFLOW:'+JSON.stringify(x));}
+            console.log('CANDIDATE_BROWSER_PASS',JSON.stringify({totalRefresh:st,ah,signal:sig,live,first,reloadFirst})); await browser.close();
+          })().catch(e=>{console.error('CANDIDATE_BROWSER_FAIL',e);process.exit(1)});
+          NODE
+          npm install --no-save playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install --with-deps chromium >/dev/null 2>&1
+          node "$ROOT/test.js"
+          kill $SPID 2>/dev/null || true; trap - EXIT
+      - name: Dry-run exact current runtime plus full 83-asset candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT=/tmp/b46fix
+          cat > "$ROOT/runtime/wrangler.jsonc" <<EOF
+          {"name":"ball46-production","main":"./index.js","compatibility_date":"2026-09-09","no_bundle":true,"services":[{"binding":"ENGINE","service":"nomadtips3-engine-343","environment":"production"},{"binding":"FULL_MARKET","service":"nomadtips3-full-market-343-ball46","environment":"production"},{"binding":"HUB","service":"nomadtips3-5usd-hub-343","environment":"production"}],"assets":{"directory":"$ROOT/candidate","binding":"ASSETS","html_handling":"none","not_found_handling":"none","run_worker_first":true},"triggers":{"crons":["* * * * *"]}}
+          EOF
+          cd "$ROOT/runtime"
+          npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.jsonc 2>&1 | tee "$ROOT/verify/dry-run.log"
+          grep -Fq 'Read 83 files from the assets directory' "$ROOT/verify/dry-run.log" || { echo DRY_NOT_83; exit 1; }
+          ! grep -Fq 'Attaching additional modules:' "$ROOT/verify/dry-run.log" || { echo DRY_EXTRA_MODULES; exit 1; }
+          echo PREDEPLOY_REFRESH_STATE_FIX_PASS
+      - name: Upload proven candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-refresh-state-fix-predeploy-${{ github.run_id }}
+          path: /tmp/b46fix
+          if-no-files-found: error
+          retention-days: 30
