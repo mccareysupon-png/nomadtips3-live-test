@@ -14,7 +14,6 @@ let signalRows=[],settledSignalRows=[];
 const slot={innerHTML:''};
 const document={querySelector:s=>s==='[data-workspace-scorebar-slot]'?slot:null};
 eval(extractFunction(src,'renderWorkspaceScorebar'));
-function h(name,away='Away'){return{name},a={name:away};}
 function team(home,away){return{home:{name:home},away:{name:away}}}
 settledSignalRows=[
  {...team('Corner Home','Corner Away'),status:'SETTLED',result:'WIN',providerMarket:'corner',market:'ft_corner_over',marketLabel:'Corners OVER · Full Time',selection:'OVER',line:9.5,odds:1.575,entryMinute:88,entryScore:{home:0,away:1},entryCorners:{home:3,away:6},finalScore:{home:0,away:1},finalCorners:{home:3,away:7},createdAt:4},
@@ -31,14 +30,14 @@ signalRows=[
 renderWorkspaceScorebar();
 const out=slot.innerHTML;
 const must=[
- 'ENTRY</i><b>C 9 (3–6)</b>',"title=\"Entry minute\">88'</span>",'<i>FT</i><b>C 10 (3–7)</b>',
- 'ENTRY</i><b>0–1</b>',"title=\"Entry minute\">75'</span>",'<i>FT</i><b>0–1</b>',
- 'ENTRY</i><b>C 13 (7–6)</b>',"title=\"Entry minute\">84'</span>",'<i>NOW</i><b>C 14 (7–7)</b>',
- 'ENTRY</i><b>2–0</b>',"title=\"Entry minute\">80'</span>",'<i>NOW</i><b>2–1</b>',
+ 'ENTRY</i><b>C 9 (3–6)</b>','title="Entry minute">88&#39;</span>','<i>FT</i><b>C 10 (3–7)</b>',
+ 'ENTRY</i><b>0–1</b>','title="Entry minute">75&#39;</span>','<i>FT</i><b>0–1</b>',
+ 'ENTRY</i><b>C 13 (7–6)</b>','title="Entry minute">84&#39;</span>','<i>NOW</i><b>C 14 (7–7)</b>',
+ 'ENTRY</i><b>2–0</b>','title="Entry minute">80&#39;</span>','<i>NOW</i><b>2–1</b>',
  'PENDING · 86&#39;','0–5'
 ];
 for(const x of must){if(!out.includes(x)){console.error('MISSING',x);console.error(out);process.exit(1)}}
-const details=(out.match(/data-scorebar-details=\"1\"/g)||[]).length;
+const details=(out.match(/data-scorebar-details="1"/g)||[]).length;
 if(details!==8)throw new Error('expected 8 populated detail rows, got '+details);
 if(!out.includes('workspace-scorebar-grid'))throw new Error('grid missing');
 console.log('RENDER_TEST_OK details='+details);
