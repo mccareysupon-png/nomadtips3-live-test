@@ -1,0 +1,22 @@
+name: TEST ONLY - Ball46 Top Card Render 20260929
+
+on:
+  push:
+    branches:
+      - work/ball46-topcard-details-20260929
+    paths:
+      - '.github/workflows/ball46-topcard-render-test-20260929.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/ball46-topcard-details-20260929
+      - name: Verify Corner AH Goals and 1X2 detail values
+        run: node .github/scripts/ball46_topcard_render_test_20260929.js
