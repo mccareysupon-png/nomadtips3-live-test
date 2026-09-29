@@ -18,6 +18,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: work/ball46-topcard-details-20260929
+          fetch-depth: 0
       - name: Increase only scorebar slot/grid/card height after clipping evidence
         run: python3 .github/scripts/ball46_topcard_height_adjust_20260929.py
       - name: Recheck JavaScript syntax
@@ -32,4 +33,5 @@ jobs:
                   .github/workflows/ball46-topcard-build-20260929.yml
           git diff --cached --quiet && exit 0
           git commit -m 'fix(ball46): expand top scorebar height after browser clipping proof'
+          git pull --rebase origin work/ball46-topcard-details-20260929
           git push origin HEAD:work/ball46-topcard-details-20260929
