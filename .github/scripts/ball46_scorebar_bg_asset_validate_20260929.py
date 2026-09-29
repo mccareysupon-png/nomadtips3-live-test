@@ -8,25 +8,26 @@ expected={
 'draw':('77d2d91d1c65788c4a260ecff7c5bb91dded3246654169a586947cf98ddd2bbe',6618),
 'pending':('2e6bc2f20d0122005cc9350f35c8f80e3fc20861e1b0ab0527b78d064745303c',8042),
 }
+def staged_text(name):
+    if name=='loss':
+        parts=sorted((root/'loss-parts').glob('*.b64'))
+        if [p.name for p in parts] != [f'{i:02d}.b64' for i in range(1,10)]:
+            raise SystemExit('STOP: LOSS chunk set incomplete')
+        return ''.join(p.read_text().strip() for p in parts)
+    return (root/f'{name}.webp.b64').read_text().strip()
 out=[]; all_ok=True
+Path('ball46-scorebar-bg-validated').mkdir(exist_ok=True)
 for name,(sha,size) in expected.items():
-    txt=(root/f'{name}.webp.b64').read_text().strip()
+    txt=staged_text(name)
     strict='OK'; raw=b''
-    try:
-        raw=base64.b64decode(txt,validate=True)
-    except binascii.Error as e:
-        strict=f'FAIL:{e}'
-        padded=txt + '='*((4-len(txt)%4)%4)
-        try: raw=base64.b64decode(padded,validate=False)
-        except Exception: raw=b''
+    try: raw=base64.b64decode(txt,validate=True)
+    except binascii.Error as e: strict=f'FAIL:{e}'
     got=hashlib.sha256(raw).hexdigest() if raw else '-'
     webp=(len(raw)>=12 and raw[:4]==b'RIFF' and raw[8:12]==b'WEBP')
     ok=(strict=='OK' and got==sha and len(raw)==size and webp)
     all_ok &= ok
     out.append(f'{name}: b64chars={len(txt)} mod4={len(txt)%4} strict={strict} bytes={len(raw)} sha256={got} webp={webp} expected={ok}')
-    if raw:
-        p=Path('ball46-scorebar-bg-validated')/f'{name}.webp'; p.parent.mkdir(exist_ok=True); p.write_bytes(raw)
-Path('ball46-scorebar-bg-validated').mkdir(exist_ok=True)
+    if raw: (Path('ball46-scorebar-bg-validated')/f'{name}.webp').write_bytes(raw)
 Path('ball46-scorebar-bg-validated/report.txt').write_text('\n'.join(out)+'\n')
 print('\n'.join(out))
 if not all_ok: raise SystemExit('STOP: one or more staged assets do not exactly match source bytes')
