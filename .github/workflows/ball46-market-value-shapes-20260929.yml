@@ -1,0 +1,29 @@
+name: READ ONLY - Ball46 Market Value Shapes 20260929
+
+on:
+  push:
+    branches:
+      - work/ball46-topcard-details-20260929
+    paths:
+      - '.github/workflows/ball46-market-value-shapes-20260929.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/ball46-topcard-details-20260929
+      - run: python3 .github/scripts/ball46_market_value_shapes_20260929.py
+      - name: Commit report to work branch only
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add ball46-market-value-shapes-20260929.txt
+          git diff --cached --quiet && exit 0
+          git commit -m 'report(ball46): live market value shapes 20260929'
+          git push origin HEAD:work/ball46-topcard-details-20260929
