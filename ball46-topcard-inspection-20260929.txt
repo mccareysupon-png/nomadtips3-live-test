@@ -1,0 +1,412 @@
+BALL46 TOP CARD INSPECTION 2026-09-29
+UTC 2026-09-29T00:44:37.571914Z
+NO DEPLOY / NO MUTATION OF PRODUCTION
+
+ASSET SIZES
+- dashboard-v2-stage3.js: 35222 bytes
+- dashboard-v2-tune.css: 6668 bytes
+- index.html: 18310 bytes
+
+INDEX REFERENCES
+- dashboard-v2-stage3.js: dashboard-v2-stage3.js?v=343-scorebar-bg-pending-20260928a
+- dashboard-v2-tune.css: dashboard-v2-tune.css?v=343-horizontal-card-20260928a
+
+JS TOKEN COUNTS
+- renderBoard: 9
+- renderFeatured: 5
+- match-row: 1
+- teams-cell: 1
+- score-cell: 1
+- market-cell: 2
+- signal-cell: 2
+- workspace-scorebar: 14
+- desktop-team-score: 2
+- entry: 16
+- ENTRY: 0
+- minute: 10
+- score: 39
+- odds: 44
+- market: 73
+- selection: 14
+- corner: 7
+- corners: 6
+- result: 7
+- status: 30
+- half-score: 1
+
+KEY JS SNIPPETS
+[renderBoard] ;if((!f?.providerOdds||!Object.keys(f.providerOdds||{}).length)&&prev?.providerOddsUpdatedAt)merged.providerOddsUpdatedAt=prev.providerOddsUpdatedAt;if((!f?.providerOdds||!Object.keys(f.providerOdds||{}).length)&&prev?.providerOddsFreshAt)merged.providerOddsFreshAt=prev.providerOddsFreshAt;return merged})} let richRenderFrame=0; function scheduleRichRender(){if(richRenderFrame)return;const run=()=>{richRenderFrame=0;renderBoard();renderFeatured()};if(typeof requestAnimationFrame==='function')richRenderFrame=requestAnimationFrame(run);else{richRenderFrame=1;setTimeout(run,0)}} function applyRichOdds(fixtureId,fullOdds,fetchedAt){const id=String(fixtureId??'').trim();if(!id||!fullOdds||typeof fullOdds!=='object')return false;const idx=fixtures.findIndex(f=>fixtureKey(f)===id);if(idx<0)return false;const prev=fixtures[idx];fixtures[idx]={...p
+[renderFeatured] derOdds||!Object.keys(f.providerOdds||{}).length)&&prev?.providerOddsUpdatedAt)merged.providerOddsUpdatedAt=prev.providerOddsUpdatedAt;if((!f?.providerOdds||!Object.keys(f.providerOdds||{}).length)&&prev?.providerOddsFreshAt)merged.providerOddsFreshAt=prev.providerOddsFreshAt;return merged})} let richRenderFrame=0; function scheduleRichRender(){if(richRenderFrame)return;const run=()=>{richRenderFrame=0;renderBoard();renderFeatured()};if(typeof requestAnimationFrame==='function')richRenderFrame=requestAnimationFrame(run);else{richRenderFrame=1;setTimeout(run,0)}} function applyRichOdds(fixtureId,fullOdds,fetchedAt){const id=String(fixtureId??'').trim();if(!id||!fullOdds||typeof fullOdds!=='object')return false;const idx=fixtures.findIndex(f=>fixtureKey(f)===id);if(idx<0)return false;const prev=fixtures[idx];fixtures[idx]={...prev,providerOdds:
+[match-row] classify(f),active=id===selectedId,sig=signalFor(f),m1=marketCompact(f,'1X2'),mah=marketCompact(f,'AH'),mou=marketCompact(f,'OU'),half=halfScoreLabel(f),pair=scorePair(f),homeScore=kind==='scheduled'?'—':pair.home===null?'—':show(pair.home),awayScore=kind==='scheduled'?'—':pair.away===null?'—':show(pair.away),clock=kind==='live'?`LIVE · ${clockLabel(f)}`:kind==='finished'?'FT':kickoffLabel(f);return `<article class="match-row ${active?'active':''}" data-match-id="${esc(id)}" tabindex="0" role="button" aria-label="${esc(f?.home?.name||'Home')} versus ${esc(f?.away?.name||'Away')}"><div class="teams-cell"><b>${esc(f?.home?.name||'—')}</b><strong class="desktop-team-score" aria-hidden="true">${esc(homeScore)}</strong><b>${esc(f?.away?.name||'—')}</b><strong class="desktop-team-score" aria-hidden="true">${esc(awayScore)}</strong></div><div c
+[teams-cell] e=kind==='scheduled'?'—':pair.home===null?'—':show(pair.home),awayScore=kind==='scheduled'?'—':pair.away===null?'—':show(pair.away),clock=kind==='live'?`LIVE · ${clockLabel(f)}`:kind==='finished'?'FT':kickoffLabel(f);return `<article class="match-row ${active?'active':''}" data-match-id="${esc(id)}" tabindex="0" role="button" aria-label="${esc(f?.home?.name||'Home')} versus ${esc(f?.away?.name||'Away')}"><div class="teams-cell"><b>${esc(f?.home?.name||'—')}</b><strong class="desktop-team-score" aria-hidden="true">${esc(homeScore)}</strong><b>${esc(f?.away?.name||'—')}</b><strong class="desktop-team-score" aria-hidden="true">${esc(awayScore)}</strong></div><div class="score-cell">${scoreStack(f)}<small>${esc(clock)}</small>${half?`<small class="half-score">${esc(half)}</small>`:''}</div>${marketCell('1X2',m1)}${marketCell('AH',mah)}${marke
+[score-cell] ive?'active':''}" data-match-id="${esc(id)}" tabindex="0" role="button" aria-label="${esc(f?.home?.name||'Home')} versus ${esc(f?.away?.name||'Away')}"><div class="teams-cell"><b>${esc(f?.home?.name||'—')}</b><strong class="desktop-team-score" aria-hidden="true">${esc(homeScore)}</strong><b>${esc(f?.away?.name||'—')}</b><strong class="desktop-team-score" aria-hidden="true">${esc(awayScore)}</strong></div><div class="score-cell">${scoreStack(f)}<small>${esc(clock)}</small>${half?`<small class="half-score">${esc(half)}</small>`:''}</div>${marketCell('1X2',m1)}${marketCell('AH',mah)}${marketCell('O/U',mou)}${inlineSignalHtml(sig)}</article>`} /* BALL46_WORKSPACE_SCOREBAR_20260926 — presentation rail */ /* BALL46_SCOREBAR_SIGNAL_FLOW_20260928 — first 6 = latest settled Ball46 predictions; last 4 = active PENDING Ball46 signals only */ functio
+[market-cell]    const line=plainLine(d.line);     body=`<div class="market-prices market-prices-ou"><div class="market-price-row"><i>O</i><em>${esc(line)}</em><strong>${esc(price(d.over))}</strong></div><div class="market-price-row"><i>U</i><em>${esc(line)}</em><strong>${esc(price(d.under))}</strong></div></div>`;   }   const kindClass=d?.kind?String(d.kind).toLowerCase().replace(/[^a-z0-9]+/g,'-'):'empty';   return `<div class="market-cell market-cell-${kindClass}"${title?` title="${esc(title)}"`:''}><span class="market-head">${esc(label)}${data.stage?` · ${esc(data.stage)}`:''}</span>${body}${data.book?`<small>${esc(data.book)}</small>`:''}</div>`; } function inlineSignalHtml(s){   if(!s)return '<div class="signal-cell prediction-live no-pick"><span class="pred-main">WATCH</span><span class="pred-sub">NO LIVE PICK</span></div>';   const market=String
+[signal-cell] g></div></div>`;   }   const kindClass=d?.kind?String(d.kind).toLowerCase().replace(/[^a-z0-9]+/g,'-'):'empty';   return `<div class="market-cell market-cell-${kindClass}"${title?` title="${esc(title)}"`:''}><span class="market-head">${esc(label)}${data.stage?` · ${esc(data.stage)}`:''}</span>${body}${data.book?`<small>${esc(data.book)}</small>`:''}</div>`; } function inlineSignalHtml(s){   if(!s)return '<div class="signal-cell prediction-live no-pick"><span class="pred-main">WATCH</span><span class="pred-sub">NO LIVE PICK</span></div>';   const market=String(s?.marketLabel||s?.market||'SIGNAL').replace(/^FT_/i,'').replaceAll('_',' ').trim().toUpperCase()||'SIGNAL';   const selection=String(s?.selection||'—').trim().toUpperCase()||'—';   const line=num(s?.line??s?.selectionLine),odds=num(s?.odds);   const lineText=line===null?'':`${line>0?
+[workspace-scorebar] f-score">${esc(half)}</small>`:''}</div>${marketCell('1X2',m1)}${marketCell('AH',mah)}${marketCell('O/U',mou)}${inlineSignalHtml(sig)}</article>`} /* BALL46_WORKSPACE_SCOREBAR_20260926 — presentation rail */ /* BALL46_SCOREBAR_SIGNAL_FLOW_20260928 — first 6 = latest settled Ball46 predictions; last 4 = active PENDING Ball46 signals only */ function renderWorkspaceScorebar(){  const slot=document.querySelector('[data-workspace-scorebar-slot]');if(!slot)return;  const resultMeta=raw=>{const r=String(raw||'').trim().toUpperCase();if(r==='WIN')return{cls:'win',label:'WIN'};if(r==='HALF_WIN')return{cls:'win',label:'WIN ½'};if(r==='LOSS')return{cls:'loss',label:'LOSS'};if(r==='HALF_LOSS')return{cls:'loss',label:'LOSS ½'};if(r==='PUSH'||r==='DRAW')return{cls:'draw',label:'DRAW'};return{cls:'draw',label:r||'DRAW'}};  const scoreText=v=>{const p=pair(v);r
+[desktop-team-score] ),awayScore=kind==='scheduled'?'—':pair.away===null?'—':show(pair.away),clock=kind==='live'?`LIVE · ${clockLabel(f)}`:kind==='finished'?'FT':kickoffLabel(f);return `<article class="match-row ${active?'active':''}" data-match-id="${esc(id)}" tabindex="0" role="button" aria-label="${esc(f?.home?.name||'Home')} versus ${esc(f?.away?.name||'Away')}"><div class="teams-cell"><b>${esc(f?.home?.name||'—')}</b><strong class="desktop-team-score" aria-hidden="true">${esc(homeScore)}</strong><b>${esc(f?.away?.name||'—')}</b><strong class="desktop-team-score" aria-hidden="true">${esc(awayScore)}</strong></div><div class="score-cell">${scoreStack(f)}<small>${esc(clock)}</small>${half?`<small class="half-score">${esc(half)}</small>`:''}</div>${marketCell('1X2',m1)}${marketCell('AH',mah)}${marketCell('O/U',mou)}${inlineSignalHtml(sig)}</article>`} /* BALL46_WORK
+[corner] )return'<strong>—</strong><strong>—</strong>';return `<strong>${esc(p.home===null?'—':show(p.home))}</strong><strong>${esc(p.away===null?'—':show(p.away))}</strong>`} function halfScoreLabel(f){const h=num(f?.goals?.halfHome),a=num(f?.goals?.halfAway);return h===null||a===null?'':`HT ${show(h)}–${show(a)}`} function signalMarketKey(s){const x=String(s?.marketLabel||s?.market||s?.providerMarket||'').toLowerCase();if(/corner/.test(x))return'corners';if(/card/.test(x))return'cards';if(/1x2|match result|moneyline|winner|3way|three way/.test(x))return'1x2';if(/asian|handicap|(^|[^a-z])ah([^a-z]|$)/.test(x))return'ah';if(/over|under|o\/u|goal[_ -]?line|total/.test(x))return'ou';return'other'} function signalsFor(f){const id=fixtureKey(f);return signalRows.filter(s=>String(s?.fixtureId??'').trim()===id)} function signalFor(f){const id=fixtur
+[corners] ng><strong>—</strong>';return `<strong>${esc(p.home===null?'—':show(p.home))}</strong><strong>${esc(p.away===null?'—':show(p.away))}</strong>`} function halfScoreLabel(f){const h=num(f?.goals?.halfHome),a=num(f?.goals?.halfAway);return h===null||a===null?'':`HT ${show(h)}–${show(a)}`} function signalMarketKey(s){const x=String(s?.marketLabel||s?.market||s?.providerMarket||'').toLowerCase();if(/corner/.test(x))return'corners';if(/card/.test(x))return'cards';if(/1x2|match result|moneyline|winner|3way|three way/.test(x))return'1x2';if(/asian|handicap|(^|[^a-z])ah([^a-z]|$)/.test(x))return'ah';if(/over|under|o\/u|goal[_ -]?line|total/.test(x))return'ou';return'other'} function signalsFor(f){const id=fixtureKey(f);return signalRows.filter(s=>String(s?.fixtureId??'').trim()===id)} function signalFor(f){const id=fixtureKey(f),rows=signalsFor(
+[ENTRY] NOT_FOUND
+[entry] 0?'+':''}${show(line,2)}`);if(odds!==null)detail.push(`Odds ${odds.toFixed(2)}`);if(book)detail.push(book);return[top,detail.join(' · ')].filter(Boolean).join(' | ')} function signalDetailsHtml(s){if(!s)return'No active signal';const selection=String(s?.selection||'—').toUpperCase(),market=String(s?.marketLabel||s?.market||'SIGNAL'),line=num(s?.line??s?.selectionLine),odds=num(s?.odds),book=String(s?.bookmaker||'—'),entryMin=num(s?.entryMinute??s?.minute),liveMin=num(s?.mirrorMinute),entry=pair(s?.entryScore??s?.scoreAt),live=pair(s?.mirrorScore),lineText=line===null?'—':`${line>0?'+':''}${show(line,2)}`,entryScore=entry.home===null||entry.away===null?'—':`${show(entry.home)}–${show(entry.away)}`,liveScore=live.home===null||live.away===null?'—':`${show(live.home)}–${show(live.away)}`;return `<div class="feature-signal-main"><b>${esc(
+
+CSS SNIPPETS
+[match-row] ignal-cell.locked .mobile-signal{color:var(--green)}    /* Mobile stays natural page-scroll: no nested vertical scroller. */   .main-board{height:auto;min-height:0;display:block;overflow:visible}   .main-board>.board-sections{height:auto;max-height:none;overflow:visible;padding-right:0;scrollbar-gutter:auto;align-content:normal;grid-auto-rows:auto} }  /* Ball46 summary market-card containment.    Layout only: preserve odds values, formatter, bindings, APIs and JS renderers unchanged. */ @media(min-width:901px){   .match-row{     grid-template-columns:minmax(0,1fr) 64px 118px 118px 118px 72px;   }   .market-cell{min-width:0} }  @media(min-width:761px) and (max-width:900px){   .match-row{     grid-template-columns:minmax(0,1fr) 58px 118px 118px 118px 64px;     gap:4px;   }   .market-cell{min-width:0} }  /* Ball46 master content rails.    Presentation only: align Page 1 content to the Page 1 header/logo on both left and right. */ .dash-shell{   padding-left:clamp(10px,1.6vw,24px);   padding-right:clamp(10px,1.6vw,24px); } @media(max-wid
+[teams-cell] ontent to the Page 1 header/logo on both left and right. */ .dash-shell{   padding-left:clamp(10px,1.6vw,24px);   padding-right:clamp(10px,1.6vw,24px); } @media(max-width:760px){   .dash-shell{     padding-left:8px;     padding-right:8px;   } }  /* BALL46 HORIZONTAL CARD BALANCE 20260928 */ .desktop-team-score{display:none} @media (min-width:761px){   .match-row{grid-template-columns:minmax(0,29fr) minmax(0,14fr) minmax(0,14fr) minmax(0,14fr) minmax(0,13fr) minmax(0,16fr)!important;gap:6px!important}   .match-row .teams-cell{min-width:0;height:42px;display:grid;grid-template-columns:minmax(0,1fr) 30px;grid-template-rows:repeat(2,minmax(0,1fr));column-gap:8px;align-items:center}   .match-row .teams-cell>b{min-width:0;margin:0;line-height:1.15;align-self:center}   .match-row .teams-cell>.desktop-team-score{display:block;min-width:0;margin:0;text-align:center;font-size:16px;font-weight:900;line-height:1;align-self:center}   .match-row .teams-cell>b:nth-of-type(1){grid-column:1;grid-row:1}.match-row .teams-cell>.desktop-team-score:nth-of-
+[score-cell] >.board-sections::-webkit-scrollbar-thumb:hover{background:#737e78}    html[data-theme="dark"] .main-board>.board-sections{     scrollbar-color:#3d4541 #111613;   }   html[data-theme="dark"] .main-board>.board-sections::-webkit-scrollbar-track{background:#111613}   html[data-theme="dark"] .main-board>.board-sections::-webkit-scrollbar-thumb{background:#3d4541;border-color:#111613}   html[data-theme="dark"] .main-board>.board-sections::-webkit-scrollbar-thumb:hover{background:#535d57} }  @media(max-width:760px){   .score-cell>small:not(.half-score){display:none!important}   .signal-cell:before{content:none!important;display:none!important}   .signal-cell{display:flex!important;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:var(--text);min-width:0}   .desktop-signal{display:none!important}   .mobile-clock{display:block;font-size:11.5px;font-weight:600;line-height:1.15;color:var(--text);white-space:nowrap}   .mobile-signal{display:block;font-size:9.5px;font-weight:600;line-height:1.15;color:var(--muted);whi
+[market-cell] roll: no nested vertical scroller. */   .main-board{height:auto;min-height:0;display:block;overflow:visible}   .main-board>.board-sections{height:auto;max-height:none;overflow:visible;padding-right:0;scrollbar-gutter:auto;align-content:normal;grid-auto-rows:auto} }  /* Ball46 summary market-card containment.    Layout only: preserve odds values, formatter, bindings, APIs and JS renderers unchanged. */ @media(min-width:901px){   .match-row{     grid-template-columns:minmax(0,1fr) 64px 118px 118px 118px 72px;   }   .market-cell{min-width:0} }  @media(min-width:761px) and (max-width:900px){   .match-row{     grid-template-columns:minmax(0,1fr) 58px 118px 118px 118px 64px;     gap:4px;   }   .market-cell{min-width:0} }  /* Ball46 master content rails.    Presentation only: align Page 1 content to the Page 1 header/logo on both left and right. */ .dash-shell{   padding-left:clamp(10px,1.6vw,24px);   padding-right:clamp(10px,1.6vw,24px); } @media(max-width:760px){   .dash-shell{     padding-left:8px;     padding-right:8px;   } }  /* BALL46 H
+[signal-cell] 37e78}    html[data-theme="dark"] .main-board>.board-sections{     scrollbar-color:#3d4541 #111613;   }   html[data-theme="dark"] .main-board>.board-sections::-webkit-scrollbar-track{background:#111613}   html[data-theme="dark"] .main-board>.board-sections::-webkit-scrollbar-thumb{background:#3d4541;border-color:#111613}   html[data-theme="dark"] .main-board>.board-sections::-webkit-scrollbar-thumb:hover{background:#535d57} }  @media(max-width:760px){   .score-cell>small:not(.half-score){display:none!important}   .signal-cell:before{content:none!important;display:none!important}   .signal-cell{display:flex!important;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:var(--text);min-width:0}   .desktop-signal{display:none!important}   .mobile-clock{display:block;font-size:11.5px;font-weight:600;line-height:1.15;color:var(--text);white-space:nowrap}   .mobile-signal{display:block;font-size:9.5px;font-weight:600;line-height:1.15;color:var(--muted);white-space:nowrap}   .signal-cell.locked .mobile-signal{color:va
+[workspace-scorebar] NOT_FOUND
+[desktop-team-score] 1px) and (max-width:900px){   .match-row{     grid-template-columns:minmax(0,1fr) 58px 118px 118px 118px 64px;     gap:4px;   }   .market-cell{min-width:0} }  /* Ball46 master content rails.    Presentation only: align Page 1 content to the Page 1 header/logo on both left and right. */ .dash-shell{   padding-left:clamp(10px,1.6vw,24px);   padding-right:clamp(10px,1.6vw,24px); } @media(max-width:760px){   .dash-shell{     padding-left:8px;     padding-right:8px;   } }  /* BALL46 HORIZONTAL CARD BALANCE 20260928 */ .desktop-team-score{display:none} @media (min-width:761px){   .match-row{grid-template-columns:minmax(0,29fr) minmax(0,14fr) minmax(0,14fr) minmax(0,14fr) minmax(0,13fr) minmax(0,16fr)!important;gap:6px!important}   .match-row .teams-cell{min-width:0;height:42px;display:grid;grid-template-columns:minmax(0,1fr) 30px;grid-template-rows:repeat(2,minmax(0,1fr));column-gap:8px;align-items:center}   .match-row .teams-cell>b{min-width:0;margin:0;line-height:1.15;align-self:center}   .match-row .teams-cell>.desktop-team-score{display:block;m
+
+BOARD TOP LEVEL: ['ok', 'version', 'revision', 'dataMode', 'hubVersion', 'hubFetchedAt', 'hubAgeMs', 'stale', 'counts', 'fixtures', 'runState', 'referee', 'fullMarketCache']
+BOARD SHAPE: {"ok": "bool", "version": "str", "revision": "str", "dataMode": "str", "hubVersion": "str", "hubFetchedAt": "int", "hubAgeMs": "int", "stale": "bool", "counts": {"scheduled": "int", "live": "int", "finished": "int", "unknown": "int"}, "fixtures": [{"fixtureId": "str", "league": {"id": "str", "name": "str", "country": "NoneType"}, "home": {"id": "str", "name": "str"}, "away": {"id": "str", "name": "str"}, "kickoffUtc": "str", "kickoffAt": "int", "status": "str", "statusReason": "NoneType", "statusCode": "str", "boardState": "str", "minute": "NoneType", "goals": {"home": "int", "away": "int", "halfHome": "int", "halfAway": "int"}, "corners": {"home": "int", "away": "int", "halfHome": "int", "halfAway": "int"}, "cards": {"home": "dict", "away": "dict"}, "statistics": {"attacks": "dict", "dangerousAttacks": "dict", "shotsOnTarget": "dict", "shotsOffTarget": "dict", "possession": "dict", "half": "dict"}, "events": ["dict"], "providerOdds": {"odds": "dict"}, "providerOddsUpdatedAt": "int", "providerOddsFreshAt": "int", "providerOddsHeld": "bool", "providerOddsHeldSince": "int", "analysis": {}, "fullOdds": {"1x2": "dict", "asian_handicap": "dict", "goal_line": "dict", "corner_line": "dict", "corner_asian": "dict", "asian_handicap_half": "dict", "goal_line_half": "dict", "corner_line_half": "dict", "card_line": "dict", "card_asian": "dict"}, "fullOddsFetchedAt": "int", "fullOddsSource": "str"}], "runState": {"ft_1x2": "bool", "ft_ah": "bool", "ft_over": "bool", "ft_under": "bool", "ht_1x2": "bool", "ht_ah": "bool", "ht_over": "bool", "ht_under": "bool", "ft_corner_over": "bool", "ft_corner_under": "bool", "ht_corner_over": "bool", "ht_corner_under": "bool", "ft_corner_ah": "bool", "ft_cards_over": "bool", "ft_cards_under": "bool", "ft_cards_ah": "bool", "ft_btts_yes": "bool", "ft_btts_no": "bool"}, "referee": {"mode": "str", "externalRequestsAdded": "int", "requests": "int", "queued": "int", "errors": []}, "fullMarketCache": {"mode": "str", "requested": "int", "hits": "int", "staleHits": "int", "externalRequestsAdded": "int", "version": "str"}}
+BOARD FIRST ITEM TYPE: dict
+  home = '<dict>'
+  away = '<dict>'
+  status = 'finished'
+  statusReason = None
+  statusCode = 'full'
+  minute = None
+  goals.home = 3
+  goals.away = 1
+  goals.halfHome = 2
+  goals.halfAway = 0
+  corners = '<dict>'
+  corners.home = 4
+  corners.away = 6
+  corners.halfHome = 3
+  corners.halfAway = 1
+  cards.home = '<dict>'
+  cards.away = '<dict>'
+  statistics.attacks.home = 136
+  statistics.attacks.away = 136
+  statistics.dangerousAttacks.home = 82
+  statistics.dangerousAttacks.away = 72
+  statistics.shotsOnTarget.home = 9
+  statistics.shotsOnTarget.away = 4
+  statistics.shotsOffTarget = '<dict>'
+  statistics.shotsOffTarget.home = 5
+  statistics.shotsOffTarget.away = 4
+  statistics.possession.home = 52
+  statistics.possession.away = 48
+  statistics.half.attacks.home = 73
+  statistics.half.attacks.away = 68
+  statistics.half.dangerousAttacks.home = 49
+  statistics.half.dangerousAttacks.away = 25
+  statistics.half.shotsOnTarget.home = 8
+  statistics.half.shotsOnTarget.away = 1
+  statistics.half.shotsOffTarget = '<dict>'
+  statistics.half.shotsOffTarget.home = 4
+  statistics.half.shotsOffTarget.away = 0
+  statistics.half.possession.home = 60
+  statistics.half.possession.away = 40
+  events[0].minute = 15
+  events[1].minute = 19
+  providerOdds = '<dict>'
+  providerOdds.odds = '<dict>'
+  providerOdds.odds.1x2.opening.home = 1.5
+  providerOdds.odds.1x2.opening.away = 5
+  providerOdds.odds.1x2.closing.home = 1.615
+  providerOdds.odds.1x2.closing.away = 4.333
+  providerOdds.odds.1x2.inplay.home = 1.002
+  providerOdds.odds.1x2.inplay.away = 81
+  providerOdds.odds.goal_line = '<dict>'
+  providerOdds.odds.corner_line = '<dict>'
+  providerOdds.odds.corner_asian = '<dict>'
+  providerOdds.odds.goal_line_half = '<dict>'
+  providerOdds.odds.corner_line_half = '<dict>'
+  providerOdds.odds.card_line = '<dict>'
+  providerOddsUpdatedAt = 1790642526155
+  providerOddsFreshAt = 1790642526155
+  providerOddsHeld = True
+  providerOddsHeldSince = 1790617508002
+  fullOdds = '<dict>'
+  fullOdds.1x2.opening.home = 1.5
+  fullOdds.1x2.opening.away = 5
+  fullOdds.1x2.closing.home = 1.615
+  fullOdds.1x2.closing.away = 4.333
+  fullOdds.1x2.inplay.home = 1.002
+  fullOdds.1x2.inplay.away = 81
+  fullOdds.goal_line = '<dict>'
+  fullOdds.corner_line = '<dict>'
+  fullOdds.corner_asian = '<dict>'
+  fullOdds.goal_line_half = '<dict>'
+  fullOdds.corner_line_half = '<dict>'
+  fullOdds.card_line = '<dict>'
+  fullOddsFetchedAt = 1790642526155
+  fullOddsSource = 'BULK_SNAPSHOT'
+
+SIGNALS TOP LEVEL: ['ok', 'version', 'signals', 'allCount', 'mirror']
+SIGNALS SHAPE: {"ok": "bool", "version": "str", "signals": [{"id": "str", "fixtureId": "str", "league": {"id": "str", "name": "str", "country": "NoneType"}, "home": {"id": "str", "name": "str"}, "away": {"id": "str", "name": "str"}, "market": "str", "marketLabel": "str", "providerMarket": "str", "period": "str", "selection": "str", "line": "float", "selectionLine": "float", "providerLine": "float", "providerLineSide": "NoneType", "odds": "float", "bookmaker": "str", "bookmakerSlug": "str", "priceStage": "str", "priceSource": "str", "priceReference": "str", "referenceProviderLine": "float", "refereeBookCount": "int", "refereeOfferCount": "int", "refereeConsensusBooks": "int", "refereeConsensusSlugs": ["str"], "openingPrice": {"line": "int", "over": "float", "under": "float"}, "closingPrice": {"line": "int", "over": "float", "under": "float"}, "inplayPrice": {"line": "float", "over": "float", "under": "float"}, "createdAt": "int", "entryMinute": "int", "minute": "int", "entryScore": {"home": "int", "away": "int", "halfHome": "int", "halfAway": "int"}, "scoreAt": {"home": "int", "away": "int", "halfHome": "int", "halfAway": "int"}, "entryCorners": {"home": "int", "away": "int", "halfHome": "int", "halfAway": "int"}, "entryCards": {"home": "dict", "away": "dict"}, "entryStats": {"attacks": "dict", "dangerousAttacks": "dict", "shotsOnTarget": "dict", "shotsOffTarget": "dict", "possession": "dict", "half": "dict"}, "statisticsAtEntry": {"attacks": "dict", "dangerousAttacks": "dict", "shotsOnTarget": "dict", "shotsOffTarget": "dict", "possession": "dict", "half": "dict"}, "eventHistory": ["dict"], "bookmakerHistory": ["dict"], "evidence": {"pass": "bool", "count": "int", "required": "int", "side": "str", "mode": "str", "items": "list", "strength": "float"}, "rolling": {"fromAt": "int", "toAt": "int", "fromMinute": "int", "toMinute": "int", "shotsOnTarget": "dict", "shotsOffTarget": "dict", "corners": "dict", "attacks": "dict", "dangerousAttacks": "dict", "possession": "dict"}, "status": "str", "result": "NoneType", "finalScore": "NoneType", "finalCorners": "NoneType", "finalCards": "NoneType", "settlementBasis": "str", "settlementRevision": "str", "lineGap": "float", "mirrorMinute": "int", "mirrorScore": {"home": "int", "away": "int", "halfHome": "int", "halfAway": "int"}, "mirrorState": "str", "mirrorSource": "str", "liveStatistics": {"attacks": "dict", "dangerousAttacks": "dict", "shotsOnTarget": "dict", "shotsOffTarget": "dict", "possession": "dict", "half": "dict"}, "liveCorners": {"home": "int", "away": "int", "halfHome": "int", "halfAway": "int"}, "liveCards": {"home": "dict", "away": "dict"}, "liveEvents": ["dict"], "liveStatus": "str", "liveStatusCode": "str", "liveUpdatedAt": "int", "liveAgeMs": "int"}], "allCount": "int", "mirror": {"source": "str", "externalRequestsAdded": "int", "boardFixtures": "int", "liveFixtures": "int", "activeMatches": "int", "activeSignals": "int", "hiddenPendingSignals": "int", "hubFetchedAt": "int", "hubAgeMs": "int", "stale": "bool"}}
+SIGNALS FIRST ITEM TYPE: dict
+  home = '<dict>'
+  away = '<dict>'
+  market = 'ft_corner_over'
+  marketLabel = 'Corners OVER · Full Time'
+  providerMarket = 'corner'
+  selection = 'OVER'
+  line = 6.5
+  selectionLine = 6.5
+  providerLine = 6.5
+  providerLineSide = None
+  odds = 1.6
+  referenceProviderLine = 6.5
+  openingPrice.line = 9
+  closingPrice.line = 9
+  inplayPrice.line = 6.5
+  entryMinute = 86
+  minute = 86
+  entryScore = '<dict>'
+  entryScore.home = 2
+  entryScore.away = 1
+  entryScore.halfHome = 2
+  entryScore.halfAway = 0
+  scoreAt = '<dict>'
+  scoreAt.home = 2
+  scoreAt.away = 1
+  scoreAt.halfHome = 2
+  scoreAt.halfAway = 0
+  entryCorners = '<dict>'
+  entryCorners.home = 2
+  entryCorners.away = 4
+  entryCorners.halfHome = 2
+  entryCorners.halfAway = 2
+  entryCards = '<dict>'
+  entryCards.home = '<dict>'
+  entryCards.away = '<dict>'
+  entryStats = '<dict>'
+  entryStats.attacks.home = 79
+  entryStats.attacks.away = 75
+  entryStats.dangerousAttacks.home = 58
+  entryStats.dangerousAttacks.away = 47
+  entryStats.shotsOnTarget.home = 4
+  entryStats.shotsOnTarget.away = 1
+  entryStats.shotsOffTarget = '<dict>'
+  entryStats.shotsOffTarget.home = 3
+  entryStats.shotsOffTarget.away = 1
+  entryStats.possession.home = 50
+  entryStats.possession.away = 50
+  entryStats.half.attacks.home = 50
+  entryStats.half.attacks.away = 30
+  entryStats.half.dangerousAttacks.home = 38
+  entryStats.half.dangerousAttacks.away = 19
+  entryStats.half.shotsOnTarget.home = 2
+  entryStats.half.shotsOnTarget.away = 0
+  entryStats.half.shotsOffTarget = '<dict>'
+  entryStats.half.shotsOffTarget.home = 2
+  entryStats.half.shotsOffTarget.away = 0
+  entryStats.half.possession.home = 56
+  entryStats.half.possession.away = 44
+  statisticsAtEntry = '<dict>'
+  statisticsAtEntry.attacks.home = 79
+  statisticsAtEntry.attacks.away = 75
+  statisticsAtEntry.dangerousAttacks.home = 58
+  statisticsAtEntry.dangerousAttacks.away = 47
+  statisticsAtEntry.shotsOnTarget.home = 4
+  statisticsAtEntry.shotsOnTarget.away = 1
+  statisticsAtEntry.shotsOffTarget = '<dict>'
+  statisticsAtEntry.shotsOffTarget.home = 3
+  statisticsAtEntry.shotsOffTarget.away = 1
+  statisticsAtEntry.possession.home = 50
+  statisticsAtEntry.possession.away = 50
+  statisticsAtEntry.half.attacks.home = 50
+  statisticsAtEntry.half.attacks.away = 30
+  statisticsAtEntry.half.dangerousAttacks.home = 38
+  statisticsAtEntry.half.dangerousAttacks.away = 19
+  statisticsAtEntry.half.shotsOnTarget.home = 2
+  statisticsAtEntry.half.shotsOnTarget.away = 0
+  statisticsAtEntry.half.shotsOffTarget = '<dict>'
+  statisticsAtEntry.half.shotsOffTarget.home = 2
+  statisticsAtEntry.half.shotsOffTarget.away = 0
+  statisticsAtEntry.half.possession.home = 56
+  statisticsAtEntry.half.possession.away = 44
+  eventHistory[0].minute = 9
+  eventHistory[1].minute = 15
+  bookmakerHistory[0].minute = 86
+  bookmakerHistory[0].odds = 1.6
+  bookmakerHistory[0].line = 6.5
+  bookmakerHistory[0].providerLine = 6.5
+  rolling.fromMinute = 75
+  rolling.toMinute = 86
+  rolling.shotsOnTarget.home = 1
+  rolling.shotsOnTarget.away = 1
+  rolling.shotsOffTarget = '<dict>'
+  rolling.shotsOffTarget.home = 0
+  rolling.shotsOffTarget.away = 1
+  rolling.corners = '<dict>'
+  rolling.corners.home = 0
+  rolling.corners.away = 1
+  rolling.attacks.home = 7
+  rolling.attacks.away = 8
+  rolling.dangerousAttacks.home = 5
+  rolling.dangerousAttacks.away = 7
+  rolling.possession.home = 50
+  rolling.possession.away = 50
+  status = 'PENDING'
+  result = None
+  finalScore = None
+  finalCorners = None
+  lineGap = 0.5
+  mirrorMinute = 86
+  mirrorScore = '<dict>'
+  mirrorScore.home = 2
+  mirrorScore.away = 1
+  mirrorScore.halfHome = 2
+  mirrorScore.halfAway = 0
+  liveStatistics.attacks.home = 79
+  liveStatistics.attacks.away = 75
+  liveStatistics.dangerousAttacks.home = 58
+  liveStatistics.dangerousAttacks.away = 48
+  liveStatistics.shotsOnTarget.home = 4
+  liveStatistics.shotsOnTarget.away = 1
+  liveStatistics.shotsOffTarget = '<dict>'
+  liveStatistics.shotsOffTarget.home = 3
+  liveStatistics.shotsOffTarget.away = 1
+  liveStatistics.possession.home = 49
+  liveStatistics.possession.away = 51
+  liveStatistics.half.attacks.home = 50
+  liveStatistics.half.attacks.away = 30
+  liveStatistics.half.dangerousAttacks.home = 38
+  liveStatistics.half.dangerousAttacks.away = 19
+  liveStatistics.half.shotsOnTarget.home = 2
+  liveStatistics.half.shotsOnTarget.away = 0
+  liveStatistics.half.shotsOffTarget = '<dict>'
+  liveStatistics.half.shotsOffTarget.home = 2
+  liveStatistics.half.shotsOffTarget.away = 0
+  liveStatistics.half.possession.home = 56
+  liveStatistics.half.possession.away = 44
+  liveCorners = '<dict>'
+  liveCorners.home = 2
+  liveCorners.away = 4
+  liveCorners.halfHome = 2
+  liveCorners.halfAway = 2
+  liveCards.home = '<dict>'
+  liveCards.away = '<dict>'
+  liveEvents[0].minute = 9
+  liveEvents[1].minute = 15
+  liveStatus = 'in_play'
+  liveStatusCode = '86'
+
+STATISTICS TOP LEVEL: ['ok', 'version', 'settlementRevision', 'markets', 'total', 'win', 'loss', 'push', 'halfWin', 'halfLoss', 'unresolved', 'winRate', 'byMarket', 'byProviderMarket', 'rows']
+STATISTICS SHAPE: {"ok": "bool", "version": "str", "settlementRevision": "str", "markets": {"ft_1x2": {"label": "str", "group": "str", "provider": "str", "aliases": ["str"], "kind": "str", "period": "str", "sideMode": "bool"}, "ft_ah": {"label": "str", "group": "str", "provider": "str", "aliases": ["str"], "kind": "str", "period": "str", "sideMode": "bool"}, "ft_over": {"label": "str", "group": "str", "provider": "str", "aliases": ["str"], "kind": "str", "period": "str", "selection": "str", "basis": "str", "gap": "bool"}, "ft_under": {"label": "str", "group": "str", "provider": "str", "aliases": ["str"], "kind": "str", "period": "str", "selection": "str", "basis": "str"}, "ht_1x2": {"label": "str", "group": "str", "provider": "str", "aliases": ["str"], "kind": "str", "period": "str", "sideMode": "bool"}, "ht_ah": {"label": "str", "group": "str", "provider": "str", "aliases": ["str"], "kind": "str", "period": "str", "sideMode": "bool"}, "ht_over": {"label": "str", "group": "str", "provider": "str", "aliases": ["str"], "kind": "str", "period": "str", "selection": "str", "basis": "str", "gap": "bool"}, "ht_under": {"label": "str", "group": "str", "provider": "str", "aliases": ["str"], "kind": "str", "period": "str", "selection": "str", "basis": "str"}, "ft_corner_over": {"label": "str", "group": "str", "provider": "str", "aliases": ["str"], "kind": "str", "period": "str", "selection": "str", "basis": "str", "gap": "bool"}, "ft_corner_under": {"label": "str", "group": "str", "provider": "str", "aliases": ["str"], "kind": "str", "period": "str", "selection": "str", "basis": "str"}, "ht_corner_over": {"label": "str", "group": "str", "provider": "str", "aliases": ["str"], "kind": "str", "period": "str", "selection": "str", "basis": "str", "gap": "bool"}, "ht_corner_under": {"label": "str", "group": "str", "provider": "str", "aliases": ["str"], "kind": "str", "period": "str", "selection": "str", "basis": "str"}, "ft_corner_ah": {"label": "str", "group": "str", "provider": "str", "aliases": ["str"], "kind": "str", "period": "str", "sideMode": "bool", "basis": "str"}, "ft_cards_over": {"label": "str", "group": "str", "provider": "str", "aliases": ["str"], "kind": "str", "period": "str", "selection": "str", "basis": "str", "gap": "bool"}, "ft_cards_under": {"label": "str", "group": "str", "provider": "str", "aliases": ["str"], "kind": "str", "period": "str", "selection": "str", "basis": "str"}, "ft_cards_ah": {"label": "str", "group": "str", "provider": "str", "aliases": ["str"], "kind": "str", "period": "str", "sideMode": "bool", "basis": "str"}, "ft_btts_yes": {"label": "str", "group": "str", "provider": "str", "aliases": ["str"], "kind": "str", "period": "str", "selection": "str"}, "ft_btts_no": {"label": "str", "group": "str", "provider": "str", "aliases": ["str"], "kind": "str", "period": "str", "selection": "str"}}, "total": "int", "win": "int", "loss": "int", "push": "int", "halfWin": "int", "halfLoss": "int", "unresolved": "int", "winRate": "float", "byMarket": {"ft_1x2": "int", "ft_ah": "int", "ft_over": "int", "ft_under": "int", "ht_1x2": "int", "ht_ah": "int", "ht_over": "int", "ht_under": "int", "ft_corner_over": "int", "ft_corner_under": "int", "ht_corner_over": "int", "ht_corner_under": "int", "ft_corner_ah": "int", "ft_cards_over": "int", "ft_cards_under": "int", "ft_cards_ah": "int", "ft_btts_yes": "int", "ft_btts_no": "int"}, "byProviderMarket": {"asian": "int", "corner": "int", "goalline": "int", "asian_half": "int", "1x2": "int"}, "rows": [{"id": "str", "fixtureId": "str", "league": {"id": "str", "name": "str", "country": "NoneType"}, "home": {"id": "str", "name": "str"}, "away": {"id": "str", "name": "str"}, "market": "str", "marketLabel": "str", "providerMarket": "str", "period": "str", "selection": "str", "line": "float", "selectionLine": "float", "providerLine": "float", "providerLineSide": "NoneType", "odds": "float", "bookmaker": "str", "bookmakerSlug": "str", "priceStage": "str", "priceSource": "str", "priceReference": "str", "referenceProviderLine": "float", "refereeBookCount": "int", "refereeOfferCount": "int", "refereeConsensusBooks": "int", "refereeConsensusSlugs": ["str"], "openingPrice": {"line": "float", "over": "float", "under": "int"}, "closingPrice": {"line": "float", "over": "float", "under": "int"}, "inplayPrice": {"line": "float", "over": "float", "under": "float"}, "createdAt": "int", "entryMinute": "int", "minute": "int", "entryScore": {"home": "int", "away": "int", "halfHome": "int", "halfAway": "int"}, "scoreAt": {"home": "int", "away": "int", "halfHome": "int", "halfAway": "int"}, "entryCorners": {"home": "int", "away": "int", "halfHome": "int", "halfAway": "int"}, "entryCards": {"home": "dict", "away": "dict"}, "entryStats": {"attacks": "dict", "dangerousAttacks": "dict", "shotsOnTarget": "dict", "shotsOffTarget": "dict", "possession": "dict", "half": "dict"}, "statisticsAtEntry": {"attacks": "dict", "dangerousAttacks": "dict", "shotsOnTarget": "dict", "shotsOffTarget": "dict", "possession": "dict", "half": "dict"}, "eventHistory": ["dict"], "bookmakerHistory": ["dict"], "evidence": {"pass": "bool", "count": "int", "required": "int", "side": "str", "mode": "str", "items": "list", "strength": "float"}, "rolling": {"fromAt": "int", "toAt": "int", "fromMinute": "int", "toMinute": "int", "shotsOnTarget": "dict", "shotsOffTarget": "dict", "corners": "dict", "attacks": "dict", "dangerousAttacks": "dict", "possession": "dict"}, "status": "str", "result": "str", "finalScore": {"home": "int", "away": "int", "halfHome": "int", "halfAway": "int"}, "finalCorners": {"home": "int", "away": "int", "halfHome": "int", "halfAway": "int"}, "finalCards": {"home": "dict", "away": "dict"}, "settlementBasis": "str", "settlementRevision": "str", "lineGap": "float", "settledAt": "int", "settlementError": "NoneType"}]}
+STATISTICS FIRST ITEM TYPE: dict
+  home = '<dict>'
+  away = '<dict>'
+  market = 'ft_corner_over'
+  marketLabel = 'Corners OVER · Full Time'
+  providerMarket = 'corner'
+  selection = 'OVER'
+  line = 9.5
+  selectionLine = 9.5
+  providerLine = 9.5
+  providerLineSide = None
+  odds = 1.575
+  referenceProviderLine = 9.5
+  openingPrice.line = 9.5
+  closingPrice.line = 9.5
+  inplayPrice.line = 9.5
+  entryMinute = 88
+  minute = 88
+  entryScore = '<dict>'
+  entryScore.home = 0
+  entryScore.away = 1
+  entryScore.halfHome = 0
+  entryScore.halfAway = 0
+  scoreAt = '<dict>'
+  scoreAt.home = 0
+  scoreAt.away = 1
+  scoreAt.halfHome = 0
+  scoreAt.halfAway = 0
+  entryCorners = '<dict>'
+  entryCorners.home = 3
+  entryCorners.away = 6
+  entryCorners.halfHome = 1
+  entryCorners.halfAway = 4
+  entryCards = '<dict>'
+  entryCards.home = '<dict>'
+  entryCards.away = '<dict>'
+  entryStats = '<dict>'
+  entryStats.attacks.home = 78
+  entryStats.attacks.away = 94
+  entryStats.dangerousAttacks.home = 26
+  entryStats.dangerousAttacks.away = 37
+  entryStats.shotsOnTarget.home = 4
+  entryStats.shotsOnTarget.away = 3
+  entryStats.shotsOffTarget = '<dict>'
+  entryStats.shotsOffTarget.home = 9
+  entryStats.shotsOffTarget.away = 12
+  entryStats.possession.home = 42
+  entryStats.possession.away = 58
+  entryStats.half.attacks.home = 44
+  entryStats.half.attacks.away = 49
+  entryStats.half.dangerousAttacks.home = 15
+  entryStats.half.dangerousAttacks.away = 18
+  entryStats.half.shotsOnTarget.home = 1
+  entryStats.half.shotsOnTarget.away = 2
+  entryStats.half.shotsOffTarget = '<dict>'
+  entryStats.half.shotsOffTarget.home = 4
+  entryStats.half.shotsOffTarget.away = 6
+  entryStats.half.possession.home = 42
+  entryStats.half.possession.away = 58
+  statisticsAtEntry = '<dict>'
+  statisticsAtEntry.attacks.home = 78
+  statisticsAtEntry.attacks.away = 94
+  statisticsAtEntry.dangerousAttacks.home = 26
+  statisticsAtEntry.dangerousAttacks.away = 37
+  statisticsAtEntry.shotsOnTarget.home = 4
+  statisticsAtEntry.shotsOnTarget.away = 3
+  statisticsAtEntry.shotsOffTarget = '<dict>'
+  statisticsAtEntry.shotsOffTarget.home = 9
+  statisticsAtEntry.shotsOffTarget.away = 12
+  statisticsAtEntry.possession.home = 42
+  statisticsAtEntry.possession.away = 58
+  statisticsAtEntry.half.attacks.home = 44
+  statisticsAtEntry.half.attacks.away = 49
+  statisticsAtEntry.half.dangerousAttacks.home = 15
+  statisticsAtEntry.half.dangerousAttacks.away = 18
+  statisticsAtEntry.half.shotsOnTarget.home = 1
+  statisticsAtEntry.half.shotsOnTarget.away = 2
+  statisticsAtEntry.half.shotsOffTarget = '<dict>'
+  statisticsAtEntry.half.shotsOffTarget.home = 4
+  statisticsAtEntry.half.shotsOffTarget.away = 6
+  statisticsAtEntry.half.possession.home = 42
+  statisticsAtEntry.half.possession.away = 58
+  eventHistory[0].minute = 18
+  eventHistory[1].minute = 29
+  bookmakerHistory[0].minute = 88
+  bookmakerHistory[0].odds = 1.575
+  bookmakerHistory[0].line = 9.5
+  bookmakerHistory[0].providerLine = 9.5
+  rolling.fromMinute = 77
+  rolling.toMinute = 88
+  rolling.shotsOnTarget.home = 0
+  rolling.shotsOnTarget.away = 0
+  rolling.shotsOffTarget = '<dict>'
+  rolling.shotsOffTarget.home = 1
+  rolling.shotsOffTarget.away = 1
+  rolling.corners = '<dict>'
+  rolling.corners.home = 2
+  rolling.corners.away = 2
+  rolling.attacks.home = 8
+  rolling.attacks.away = 10
+  rolling.dangerousAttacks.home = 7
+  rolling.dangerousAttacks.away = 6
+  rolling.possession.home = 42
+  rolling.possession.away = 58
+  status = 'SETTLED'
+  result = 'WIN'
+  finalScore = '<dict>'
+  finalScore.home = 0
+  finalScore.away = 1
+  finalScore.halfHome = 0
+  finalScore.halfAway = 0
+  finalCorners = '<dict>'
+  finalCorners.home = 3
+  finalCorners.away = 7
+  finalCorners.halfHome = 1
+  finalCorners.halfAway = 4
+  finalCards.home = '<dict>'
+  finalCards.away = '<dict>'
+  lineGap = 0.5
+
+GATE=PASS: shared card markers present in current Production JS
