@@ -1,0 +1,37 @@
+name: BUILD ONLY - Ball46 Top Card Tune Route 20260929
+
+on:
+  push:
+    branches:
+      - work/ball46-topcard-details-20260929
+    paths:
+      - '.github/workflows/ball46-topcard-migrate-tune-20260929.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/ball46-topcard-details-20260929
+          fetch-depth: 0
+      - name: Move top-card CSS override to presentation-only tune file
+        run: python3 .github/scripts/ball46_topcard_migrate_tune_20260929.py
+      - name: JavaScript syntax check
+        run: node --check ball46-topcard-candidate-20260929/dashboard-v2-stage3.js
+      - name: Commit only candidate assets and helper scripts
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add ball46-topcard-candidate-20260929/dashboard-v2-tune.css \
+                  ball46-topcard-candidate-20260929/singlepage-workspace-343.css \
+                  ball46-topcard-candidate-20260929/index.html \
+                  .github/scripts/ball46_topcard_browser_preview_20260929.js \
+                  .github/scripts/ball46_topcard_patch_20260929.py
+          git diff --cached --quiet && exit 0
+          git commit -m 'fix(ball46): move top-card details to three-asset tune route'
+          git push origin HEAD:work/ball46-topcard-details-20260929
