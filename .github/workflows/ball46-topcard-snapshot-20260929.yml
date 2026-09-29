@@ -1,0 +1,30 @@
+name: READ ONLY - Ball46 Top Card Snapshot 20260929
+
+on:
+  push:
+    branches:
+      - work/ball46-topcard-details-20260929
+    paths:
+      - '.github/workflows/ball46-topcard-snapshot-20260929.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/ball46-topcard-details-20260929
+      - name: Snapshot exact current Production three assets only
+        run: python3 .github/scripts/ball46_topcard_snapshot_20260929.py
+      - name: Commit snapshot to work branch only
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add ball46-topcard-candidate-20260929
+          git diff --cached --quiet && exit 0
+          git commit -m 'snapshot(ball46): exact current top-card assets 20260929'
+          git push origin HEAD:work/ball46-topcard-details-20260929
