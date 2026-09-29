@@ -3,7 +3,11 @@ const https=require('https');
 const {chromium}=require('playwright');
 const branchRoot='ops/ball46-scorebar-bg-20260929';
 const b64={};
-for(const k of ['win','loss','draw','pending']) b64[k]=fs.readFileSync(`${branchRoot}/${k}.webp.b64`,'utf8').trim();
+b64.win=fs.readFileSync(`${branchRoot}/win.webp.b64`,'utf8').trim();
+b64.draw=fs.readFileSync(`${branchRoot}/draw.webp.b64`,'utf8').trim();
+b64.pending=fs.readFileSync(`${branchRoot}/pending.webp.b64`,'utf8').trim();
+b64.loss=fs.readdirSync(`${branchRoot}/loss-parts`).filter(x=>x.endsWith('.b64')).sort().map(x=>fs.readFileSync(`${branchRoot}/loss-parts/${x}`,'utf8').trim()).join('');
+if(b64.loss.length!==12904)throw new Error('STOP: reconstructed LOSS base64 length '+b64.loss.length+' != 12904');
 function get(url){return new Promise((resolve,reject)=>https.get(url,{headers:{'User-Agent':'Ball46-Scorebar-BG-Preview/20260929','Cache-Control':'no-cache'}},r=>{let d='';r.setEncoding('utf8');r.on('data',c=>d+=c);r.on('end',()=>r.statusCode>=200&&r.statusCode<300?resolve(d):reject(new Error(url+' '+r.statusCode)));}).on('error',reject));}
 function override(){return `\n/* BALL46_SCOREBAR_BG_REPLACEMENT_20260929 — presentation only; gradients/status logic unchanged. */\n@media(min-width:761px){\n.workspace-scorebar-cell.workspace-scorebar-signal-result,.workspace-scorebar-cell.workspace-scorebar-pending{background-repeat:no-repeat!important;background-size:cover!important;background-position:right center!important}\n.workspace-scorebar-cell.workspace-scorebar-signal-result.outcome-win{background-color:#103A24!important;background-image:linear-gradient(90deg,rgba(6,24,14,.62),rgba(6,24,14,.36)),url("data:image/webp;base64,${b64.win}")!important}\n.workspace-scorebar-cell.workspace-scorebar-signal-result.outcome-loss{background-color:#3B1212!important;background-image:linear-gradient(90deg,rgba(25,5,5,.54),rgba(25,5,5,.28)),url("data:image/webp;base64,${b64.loss}")!important}\n.workspace-scorebar-cell.workspace-scorebar-signal-result.outcome-draw{background-color:#2F343C!important;background-image:linear-gradient(90deg,rgba(16,20,25,.60),rgba(16,20,25,.34)),url("data:image/webp;base64,${b64.draw}")!important}\n.workspace-scorebar-cell.workspace-scorebar-pending{background-color:#132A46!important;background-image:linear-gradient(90deg,rgba(5,18,38,.54),rgba(5,18,38,.24)),url("data:image/webp;base64,${b64.pending}")!important}\n}\n`;}
 (async()=>{
