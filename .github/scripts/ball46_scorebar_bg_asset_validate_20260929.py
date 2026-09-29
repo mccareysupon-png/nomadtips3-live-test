@@ -13,6 +13,8 @@ def staged_text(name):
         parts=sorted((root/'loss-parts').glob('*.b64'))
         if [p.name for p in parts] != [f'{i:02d}.b64' for i in range(1,10)]:
             raise SystemExit('STOP: LOSS chunk set incomplete')
+        sizes=[len(p.read_text().strip()) for p in parts]
+        print('LOSS_CHUNK_LENGTHS',','.join(f'{p.name}:{n}' for p,n in zip(parts,sizes)))
         return ''.join(p.read_text().strip() for p in parts)
     return (root/f'{name}.webp.b64').read_text().strip()
 out=[]; all_ok=True
