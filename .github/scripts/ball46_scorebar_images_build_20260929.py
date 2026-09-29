@@ -2,7 +2,8 @@
 from pathlib import Path
 import urllib.request,re,hashlib,json
 
-BASE='https://www.ball46.com'
+# Build from the Worker asset origin itself, not the public www edge, so injected analytics/edge mutations can never enter source.
+BASE='https://ball46-production.mccarey-supon.workers.dev'
 OUT=Path('ball46-scorebar-images-candidate-20260929')
 OUT.mkdir(exist_ok=True)
 
@@ -11,7 +12,7 @@ def fetch(name):
     with urllib.request.urlopen(req,timeout=40) as r:return r.read().decode('utf-8','replace')
 
 def strip_edge_beacon(s):
-    # Cloudflare may inject analytics into public HTML. Never bake that edge mutation into Worker source.
+    # Defensive only. Direct Worker assets should not contain this.
     s=re.sub(r'<script[^>]*cloudflareinsights[^>]*>.*?</script>','',s,flags=re.I|re.S)
     s=re.sub(r'<script[^>]*static\.cloudflareinsights\.com[^>]*>.*?</script>','',s,flags=re.I|re.S)
     return s
@@ -52,10 +53,10 @@ matches=list(re.finditer(pat,idx))
 if len(matches)!=1: raise SystemExit(f'STOP: expected exactly one dashboard-v2-tune.css cache-buster, found {len(matches)}')
 idx2=re.sub(pat,r'\g<1>343-scorebar-images-20260929a',idx,count=1)
 
-# Guard: no JS, endpoint, worker, or runtime wiring is part of this candidate.
 (OUT/'dashboard-v2-tune.css').write_text(tune2,encoding='utf-8')
 (OUT/'index.html').write_text(idx2,encoding='utf-8')
 manifest={
+ 'source_origin':BASE,
  'source_tune_sha256':hashlib.sha256(tune.encode()).hexdigest(),
  'candidate_tune_sha256':hashlib.sha256(tune2.encode()).hexdigest(),
  'source_index_sha256':hashlib.sha256(idx.encode()).hexdigest(),
@@ -66,4 +67,4 @@ manifest={
 }
 (OUT/'manifest.json').write_text(json.dumps(manifest,indent=2),encoding='utf-8')
 print(json.dumps(manifest,indent=2))
-print('BUILD_OK presentation-only tune CSS + index cache-buster')
+print('BUILD_OK direct-worker presentation-only tune CSS + index cache-buster')
