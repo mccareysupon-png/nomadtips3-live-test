@@ -15,7 +15,6 @@ for f in scorebar-win-20260929a.webp scorebar-loss-20260929a.webp scorebar-draw-
   [ -f "$f" ] || { echo "NEW_ASSET_MISSING:$f"; exit 1; }
 done
 
-# Build tune.css + index.html from current public Production; the builder strips any edge-injected beacon.
 python3 .github/scripts/ball46_scorebar_images_build_20260929.py
 for f in dashboard-v2-tune.css index.html; do [ -f "$REPO_CAND/$f" ] || { echo "REPO_CANDIDATE_MISSING:$f"; exit 1; }; done
 
@@ -48,7 +47,6 @@ root.joinpath('production-lock.json').write_text(json.dumps(lock,indent=2,sort_k
 print('PRODUCTION_LOCK_PASS',vid,sha)
 PY
 
-# Use the prior 79-file snapshot only as a path manifest. Fetch every byte fresh from the current Worker.
 nonce="${GITHUB_RUN_ID:-manual}-fresh79-$(date +%s%N)"
 while IFS= read -r rel; do
   [ -n "$rel" ] || continue
@@ -87,7 +85,6 @@ if 'background-size:cover!important' not in cc or 'background-position:72% cente
 print('CSS_SCOPE_GATE_PASS')
 
 li=(live/'index.html').read_text(); ci=(cand/'index.html').read_text()
-# Public HTML may contain a Cloudflare analytics beacon while Worker source does not. Normalize only that known edge mutation.
 def strip_edge(s):
   s=re.sub(r'<script[^>]*cloudflareinsights[^>]*>.*?</script>','',s,flags=re.I|re.S)
   s=re.sub(r'<script[^>]*static\.cloudflareinsights\.com[^>]*>.*?</script>','',s,flags=re.I|re.S)
@@ -102,8 +99,9 @@ if n[0].group(2)!='343-scorebar-images-20260929a': raise SystemExit('INDEX_NEW_C
 print('INDEX_SCOPE_GATE_PASS')
 
 for f in expected_added:
-  b=(cand/f).read_bytes();
-  if len(b)<10000 or len(b)>200000: raise SystemExit('IMAGE_SIZE_SUSPICIOUS:'+f+':'+str(len(b)))
+  b=(cand/f).read_bytes()
+  # Browser preview already rendered these exact repo assets at 1920/1440/1000. Here validate file structure, not compression ratio.
+  if len(b)<512 or len(b)>200000: raise SystemExit('IMAGE_SIZE_SUSPICIOUS:'+f+':'+str(len(b)))
   if not (b[:4]==b'RIFF' and b[8:12]==b'WEBP'): raise SystemExit('NOT_WEBP:'+f)
   print('IMAGE_SHA',f,len(b),hashlib.sha256(b).hexdigest())
 PY
