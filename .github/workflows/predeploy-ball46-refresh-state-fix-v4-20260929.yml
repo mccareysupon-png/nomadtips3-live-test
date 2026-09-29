@@ -1,0 +1,36 @@
+name: PREDEPLOY Ball46 Refresh State Fix V4 20260929
+on:
+  push:
+    branches: [work/ball46-refresh-state-fix-20260929]
+    paths:
+      - '.github/scripts/ball46_refresh_state_fix_v4_20260929.sh'
+      - '.github/workflows/predeploy-ball46-refresh-state-fix-v4-20260929.yml'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  predeploy-v4:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: ball46-scorebar-divider-predeploy-36554072800
+          path: /tmp/b46snapshot
+          github-token: ${{ github.token }}
+          run-id: 36554072800
+          repository: mccareysupon-png/nomadtips3-live-test
+      - name: Prove exact candidate without Production mutation
+        shell: bash
+        run: bash .github/scripts/ball46_refresh_state_fix_v4_20260929.sh
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: ball46-refresh-state-fix-v4-${{ github.run_id }}
+          path: /tmp/b46fix4
+          if-no-files-found: error
+          retention-days: 30
