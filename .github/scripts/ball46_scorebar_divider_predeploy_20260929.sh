@@ -53,7 +53,6 @@ echo FRESH_83_FETCH_PASS
 cp -a "$LIVE/." "$CAND/"
 python3 - <<'PY'
 from pathlib import Path
-import re
 root=Path('/tmp/b46-divider-predeploy'); cand=root/'candidate'
 css=cand/'dashboard-v2-tune.css'; idx=cand/'index.html'
 s=css.read_text()
@@ -88,8 +87,10 @@ pos=cc.index(marker)
 if cc[:pos].rstrip()!=lc.rstrip(): raise SystemExit('CSS_NOT_LIVE_PLUS_APPEND')
 tail=cc[pos:]
 if 'border-right-color:transparent!important' not in tail: raise SystemExit('TRANSPARENT_BORDER_RULE_MISSING')
-for forbidden in ['border-right:none','border-right:0','gap:','display:','width:','height:']:
-  if forbidden in tail: raise SystemExit('GEOMETRY_MUTATION_FORBIDDEN:'+forbidden)
+# Keep media-query min-width allowed; reject only geometry-changing declarations inside the appended patch.
+forbidden_decl=re.compile(r'(?m)^\s*(?:border-right(?:-width|-style)?|gap|column-gap|row-gap|display|width|height)\s*:')
+m=forbidden_decl.search(tail)
+if m: raise SystemExit('GEOMETRY_MUTATION_FORBIDDEN:'+m.group(0).strip())
 print('CSS_SCOPE_GATE_PASS')
 
 li=(live/'index.html').read_text(); ci=(cand/'index.html').read_text()
@@ -98,7 +99,6 @@ if li.count(old)!=1 or ci.count(new)!=1: raise SystemExit('INDEX_CACHE_MARKER_BA
 if ci.replace(new,old,1)!=li: raise SystemExit('INDEX_DIFF_NOT_CACHE_BUSTER_ONLY')
 print('INDEX_SCOPE_GATE_PASS')
 
-# Prove the four new status images remain byte-identical.
 for f in ['scorebar-win-20260929a.webp','scorebar-loss-20260929a.webp','scorebar-draw-20260929a.webp','scorebar-pending-20260929a.webp']:
   if hashlib.sha256((live/f).read_bytes()).digest()!=hashlib.sha256((cand/f).read_bytes()).digest(): raise SystemExit('IMAGE_CHANGED:'+f)
 print('STATUS_IMAGES_UNCHANGED_PASS')
