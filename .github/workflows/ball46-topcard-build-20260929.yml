@@ -1,0 +1,52 @@
+name: BUILD ONLY - Ball46 Top Card Details 20260929
+
+on:
+  push:
+    branches:
+      - work/ball46-topcard-details-20260929
+    paths:
+      - '.github/workflows/ball46-topcard-build-20260929.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/ball46-topcard-details-20260929
+      - name: Apply guarded UI-only patch to exact Production snapshot
+        run: python3 .github/scripts/ball46_topcard_patch_20260929.py
+      - name: JavaScript syntax check
+        run: node --check ball46-topcard-candidate-20260929/dashboard-v2-stage3.js
+      - name: Wiring and scope audit
+        shell: python
+        run: |
+          from pathlib import Path
+          import hashlib
+          root=Path('ball46-topcard-candidate-20260929')
+          js=(root/'dashboard-v2-stage3.js').read_text()
+          css=(root/'singlepage-workspace-343.css').read_text()
+          idx=(root/'index.html').read_text()
+          assert js.count('BALL46_SCOREBAR_DETAILS_20260929')==1
+          assert css.count('BALL46_SCOREBAR_DETAILS_20260929')==1
+          assert 'dashboard-v2-stage3.js?v=343-scorebar-details-20260929a' in idx
+          assert 'singlepage-workspace-343.css?v=343-scorebar-details-20260929a' in idx
+          assert 'data-scorebar-details="1"' in js
+          assert '.workspace-scorebar-slot{height:80px;min-height:80px;max-height:80px}' in css
+          print('SCOPE_AUDIT_OK')
+          for p in [root/'dashboard-v2-stage3.js',root/'singlepage-workspace-343.css',root/'index.html']:
+              print(p.name, len(p.read_bytes()), hashlib.sha256(p.read_bytes()).hexdigest())
+      - name: Commit candidate only to work branch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add ball46-topcard-candidate-20260929/dashboard-v2-stage3.js \
+                  ball46-topcard-candidate-20260929/singlepage-workspace-343.css \
+                  ball46-topcard-candidate-20260929/index.html
+          git diff --cached --quiet && exit 0
+          git commit -m 'ui(ball46): add entry current final details to top scorebar candidate'
+          git push origin HEAD:work/ball46-topcard-details-20260929
