@@ -1,0 +1,29 @@
+name: READ ONLY - Ball46 Workspace Scorebar CSS Snapshot 20260929
+
+on:
+  push:
+    branches:
+      - work/ball46-topcard-details-20260929
+    paths:
+      - '.github/workflows/ball46-topcard-workspace-css-snapshot-20260929.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/ball46-topcard-details-20260929
+      - run: python3 .github/scripts/ball46_topcard_workspace_css_snapshot_20260929.py
+      - name: Commit CSS snapshot to work branch only
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add ball46-topcard-candidate-20260929/singlepage-workspace-343.css
+          git diff --cached --quiet && exit 0
+          git commit -m 'snapshot(ball46): exact current workspace scorebar CSS 20260929'
+          git push origin HEAD:work/ball46-topcard-details-20260929
