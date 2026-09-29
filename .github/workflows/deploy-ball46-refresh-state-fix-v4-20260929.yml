@@ -1,0 +1,36 @@
+name: DEPLOY Ball46 Refresh State Fix V4 20260929
+on:
+  push:
+    branches: [work/ball46-refresh-state-fix-20260929]
+    paths:
+      - '.github/scripts/deploy_ball46_refresh_state_fix_v4_20260929.sh'
+      - '.github/workflows/deploy-ball46-refresh-state-fix-v4-20260929.yml'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: ball46-refresh-state-fix-v4-36583041752
+          path: /tmp/b46artifact
+          github-token: ${{ github.token }}
+          run-id: 36583041752
+          repository: mccareysupon-png/nomadtips3-live-test
+      - name: Final race guard, deploy exact two assets, and prove Production
+        shell: bash
+        run: bash .github/scripts/deploy_ball46_refresh_state_fix_v4_20260929.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-refresh-state-release-${{ github.run_id }}
+          path: /tmp/b46release/verify
+          if-no-files-found: ignore
+          retention-days: 30
