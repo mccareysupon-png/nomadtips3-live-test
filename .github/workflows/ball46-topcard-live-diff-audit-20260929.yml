@@ -1,0 +1,31 @@
+name: AUDIT ONLY - Ball46 Top Card Live Diff 20260929
+
+on:
+  push:
+    branches:
+      - work/ball46-topcard-details-20260929
+    paths:
+      - '.github/workflows/ball46-topcard-live-diff-audit-20260929.yml'
+      - '.github/scripts/ball46_topcard_live_diff_audit_20260929.py'
+
+permissions:
+  contents: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/ball46-topcard-details-20260929
+      - name: Compare candidate with fresh current Production assets
+        run: python3 .github/scripts/ball46_topcard_live_diff_audit_20260929.py
+      - name: Commit audit report to work branch only
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add ball46-topcard-live-diff-audit-20260929.txt
+          git diff --cached --quiet && exit 0
+          git commit -m 'report(ball46): live diff audit top-card candidate 20260929'
+          git push origin HEAD:work/ball46-topcard-details-20260929
