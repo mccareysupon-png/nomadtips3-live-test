@@ -1,0 +1,28 @@
+name: VALIDATE ONLY - Ball46 Scorebar Background Assets 20260929
+
+on:
+  push:
+    branches:
+      - work/ball46-scorebar-bg-20260929
+    paths:
+      - '.github/workflows/ball46-scorebar-bg-asset-validate-20260929.yml'
+      - '.github/scripts/ball46_scorebar_bg_asset_validate_20260929.py'
+      - 'ops/ball46-scorebar-bg-20260929/**'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/ball46-scorebar-bg-20260929
+      - run: python3 .github/scripts/ball46_scorebar_bg_asset_validate_20260929.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ball46-scorebar-bg-validated-${{ github.run_id }}
+          path: ball46-scorebar-bg-validated
+          retention-days: 7
