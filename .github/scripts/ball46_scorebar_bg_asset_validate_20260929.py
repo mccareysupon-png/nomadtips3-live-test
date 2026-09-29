@@ -17,6 +17,7 @@ def staged_text(name):
         print('LOSS_CHUNK_LENGTHS',','.join(f'{p.name}:{n}' for p,n in zip(parts,sizes)))
         return ''.join(p.read_text().strip() for p in parts)
     return (root/f'{name}.webp.b64').read_text().strip()
+print('FINAL_BRANCH_VALIDATION_20260929')
 out=[]; all_ok=True
 Path('ball46-scorebar-bg-validated').mkdir(exist_ok=True)
 for name,(sha,size) in expected.items():
