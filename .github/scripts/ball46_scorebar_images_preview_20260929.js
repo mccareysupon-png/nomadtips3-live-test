@@ -73,7 +73,8 @@ async function runView(browser,width,height,name){
    const expected=['scorebar-win-20260929a.webp','scorebar-loss-20260929a.webp','scorebar-draw-20260929a.webp','scorebar-pending-20260929a.webp'];
    state.previewCards.forEach((c,i)=>{
      if(!c.backgroundImage.includes(expected[i]))throw new Error(name+': wrong image mapping '+JSON.stringify(c));
-     if(c.backgroundSize!=='cover')throw new Error(name+': background-size not cover');
+     const sizes=c.backgroundSize.split(',').map(x=>x.trim());
+     if(!sizes.length||!sizes.every(x=>x==='cover'))throw new Error(name+': background-size not cover on every layer: '+c.backgroundSize);
      if(c.rect.height<117||c.rect.height>119)throw new Error(name+': card height drift '+c.rect.height);
      if(c.scrollHeight>c.rect.height+1.5)throw new Error(name+': card content overflow '+JSON.stringify(c));
    });
