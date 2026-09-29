@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-28T22:08:03Z",
+  "updated_at": "2026-09-29T02:03:25Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -114,8 +114,8 @@
       "edge": 50.6,
       "ev": 0.889,
       "required_confidence": 0.56,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "0-5",
       "locked_at": "2026-09-28T02:02:08Z",
       "source_url": "https://www.goaloo.com/football/mexico-liga-mx-femenil-leon-w-vs-club-america-w/h2h-3046042",
       "summary_url": "https://www.goaloo.com/football/mexico-liga-mx-femenil-leon-w-vs-club-america-w/summary-3046042",
@@ -175,7 +175,12 @@
         "away_recent": 10,
         "h2h_n": 0,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-29T02:03:25Z"
     },
     {
       "id": "d4867f1dfc8a7e85-AH-HOME-1p25",
@@ -884,8 +889,8 @@
       "edge": 36.2,
       "ev": 0.7192,
       "required_confidence": 0.56,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "1-0",
       "locked_at": "2026-09-28T02:02:07Z",
       "source_url": "https://www.goaloo.com/football/colombia-primera-b-deportes-quindio-vs-bogota-fc/h2h-3012205",
       "summary_url": "https://www.goaloo.com/football/colombia-primera-b-deportes-quindio-vs-bogota-fc/summary-3012205",
@@ -945,7 +950,12 @@
         "away_recent": 10,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-29T02:03:25Z"
     },
     {
       "id": "dd0ba2e1f0829cb2-AH-HOME-0p25",
@@ -2254,8 +2264,8 @@
       "edge": 11.8,
       "ev": 0.1451,
       "required_confidence": 0.6,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "2-1",
       "locked_at": "2026-09-28T02:02:06Z",
       "source_url": "https://www.goaloo.com/football/liga-auf-uruguaya-wanderers-fc-vs-albion-fc/h2h-3094913",
       "summary_url": "https://www.goaloo.com/football/liga-auf-uruguaya-wanderers-fc-vs-albion-fc/summary-3094913",
@@ -2315,7 +2325,12 @@
         "away_recent": 10,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-29T02:03:25Z"
     },
     {
       "id": "0709a7f11a9c4dfe-OU-OVER-2p25",
@@ -160683,6 +160698,276 @@
       "settlement_source": "goaloo-bf_us-direct-index",
       "goaloo_terminal_state": -1,
       "settled_at": "2026-09-28T22:08:03Z"
+    },
+    {
+      "id": "686b77aa3611f612-AH-HOME-1p75",
+      "goaloo_id": "3046042",
+      "date": "2026-09-28",
+      "kickoff": "2026-09-28 23:00:00",
+      "league": "Mexico Liga MX Femenil",
+      "home": "Leon (W)",
+      "away": "Club America (W)",
+      "market": "AH",
+      "selection": "HOME",
+      "line": 1.75,
+      "pick": "Leon (W) +1.75",
+      "side": "home",
+      "odds": 1.94,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.9735,
+      "model_probability": 0.9735,
+      "market_fair_probability": 0.467,
+      "market_edge": 0.5065,
+      "edge": 50.6,
+      "ev": 0.889,
+      "required_confidence": 0.56,
+      "result": "LOSS",
+      "ft": "0-5",
+      "locked_at": "2026-09-28T02:02:08Z",
+      "source_url": "https://www.goaloo.com/football/mexico-liga-mx-femenil-leon-w-vs-club-america-w/h2h-3046042",
+      "summary_url": "https://www.goaloo.com/football/mexico-liga-mx-femenil-leon-w-vs-club-america-w/summary-3046042",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 2.843,
+        "lambda_away": 0.974,
+        "home_win": 0.8042,
+        "draw": 0.1516,
+        "away_win": 0.0442,
+        "h2h_adjustment": 0.0,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.6927,
+          "gd_edge": 0.8941,
+          "clean_sheet_edge": 0.4537,
+          "failed_to_score_edge": 0.3561,
+          "bounded_adjustment": 0.0524,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 0,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-29T02:03:25Z"
+    },
+    {
+      "id": "e8ff5addda68076b-AH-AWAY-0p25",
+      "goaloo_id": "3012205",
+      "date": "2026-09-28",
+      "kickoff": "2026-09-28 23:00:00",
+      "league": "Colombia Primera B",
+      "home": "Deportes Quindio",
+      "away": "Bogota FC",
+      "market": "AH",
+      "selection": "AWAY",
+      "line": 0.25,
+      "pick": "Bogota FC +0.25",
+      "side": "away",
+      "odds": 2.3,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.755,
+      "model_probability": 0.755,
+      "market_fair_probability": 0.3931,
+      "market_edge": 0.3618,
+      "edge": 36.2,
+      "ev": 0.7192,
+      "required_confidence": 0.56,
+      "result": "LOSS",
+      "ft": "1-0",
+      "locked_at": "2026-09-28T02:02:07Z",
+      "source_url": "https://www.goaloo.com/football/colombia-primera-b-deportes-quindio-vs-bogota-fc/h2h-3012205",
+      "summary_url": "https://www.goaloo.com/football/colombia-primera-b-deportes-quindio-vs-bogota-fc/summary-3012205",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 1.056,
+        "lambda_away": 1.993,
+        "home_win": 0.159,
+        "draw": 0.2299,
+        "away_win": 0.6111,
+        "h2h_adjustment": 0.0075,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": -0.4049,
+          "gd_edge": -0.7005,
+          "clean_sheet_edge": -0.3902,
+          "failed_to_score_edge": -0.1512,
+          "bounded_adjustment": -0.0361,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-29T02:03:25Z"
+    },
+    {
+      "id": "b1b6f9099dfdab1f-AH-AWAY-0p25",
+      "goaloo_id": "3094913",
+      "date": "2026-09-28",
+      "kickoff": "2026-09-28 23:00:00",
+      "league": "Liga AUF Uruguaya",
+      "home": "Wanderers FC",
+      "away": "Albion FC",
+      "market": "AH",
+      "selection": "AWAY",
+      "line": 0.25,
+      "pick": "Albion FC +0.25",
+      "side": "away",
+      "odds": 1.83,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.6184,
+      "model_probability": 0.6184,
+      "market_fair_probability": 0.5,
+      "market_edge": 0.1184,
+      "edge": 11.8,
+      "ev": 0.1451,
+      "required_confidence": 0.6,
+      "result": "LOSS",
+      "ft": "2-1",
+      "locked_at": "2026-09-28T02:02:06Z",
+      "source_url": "https://www.goaloo.com/football/liga-auf-uruguaya-wanderers-fc-vs-albion-fc/h2h-3094913",
+      "summary_url": "https://www.goaloo.com/football/liga-auf-uruguaya-wanderers-fc-vs-albion-fc/summary-3094913",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 0.984,
+        "lambda_away": 1.136,
+        "home_win": 0.2916,
+        "draw": 0.3182,
+        "away_win": 0.3901,
+        "h2h_adjustment": 0.0,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": -0.0829,
+          "gd_edge": -0.2207,
+          "clean_sheet_edge": -0.2244,
+          "failed_to_score_edge": 0.0195,
+          "bounded_adjustment": -0.0105,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 8,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-29T02:03:25Z"
     }
   ],
   "note": "Automated Full-Time Winner First feed. Supplemental markets remain unpublished.",
