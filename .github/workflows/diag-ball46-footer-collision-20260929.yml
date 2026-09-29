@@ -1,0 +1,55 @@
+name: DIAG Ball46 Footer Collision 20260929
+
+on:
+  push:
+    branches: [ops/ball46-footer-legal-20260929]
+    paths: ['.github/workflows/diag-ball46-footer-collision-20260929.yml']
+
+permissions:
+  contents: read
+
+env:
+  ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  SCRIPT_NAME: ball46-production
+  BALL46_URL: https://ball46.com
+
+jobs:
+  diagnose-read-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Inspect current deployments and stable page bytes
+        shell: bash
+        run: |
+          set -euo pipefail
+          AUTH="Authorization: Bearer $API_TOKEN"
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=10" -H "$AUTH" -o /tmp/deployments.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const j=JSON.parse(fs.readFileSync('/tmp/deployments.json','utf8'));
+          if(j.success!==true) throw Error('DEPLOYMENTS_FAILED');
+          const ds=j.result?.deployments||[];
+          console.log('DEPLOYMENT_HISTORY',JSON.stringify(ds.slice(0,10).map(d=>({id:d.id,created_on:d.created_on,source:d.source,versions:(d.versions||[]).map(v=>({id:v.version_id,pct:v.percentage}))}))));
+          NODE
+          for round in 1 2; do
+            nonce="${GITHUB_RUN_ID}-${round}-$(date +%s%N)"
+            for f in index signal statistics; do
+              curl -fsS -L --max-time 25 "$BALL46_URL/$f.html?diag=$nonce" -o "/tmp/$f-$round.html"
+              echo "PAGE_SHA round=$round page=$f sha=$(sha256sum /tmp/$f-$round.html | awk '{print $1}') bytes=$(wc -c </tmp/$f-$round.html) footer=$(grep -Fc 'b46-site-footer-v1' /tmp/$f-$round.html || true)"
+            done
+            curl -fsS --max-time 25 "$BALL46_URL/api/engine/health?diag=$nonce" -o "/tmp/engine-$round.json"
+            curl -fsS --max-time 25 "$BALL46_URL/api/full-market/health?diag=$nonce" -o "/tmp/full-$round.json"
+            sleep 4
+          done
+          for f in index signal statistics; do
+            if cmp -s "/tmp/$f-1.html" "/tmp/$f-2.html"; then echo "PAGE_STABLE $f YES"; else echo "PAGE_STABLE $f NO"; diff -u "/tmp/$f-1.html" "/tmp/$f-2.html" | head -80 || true; fi
+          done
+          node - <<'NODE'
+          const fs=require('fs');
+          for(const r of [1,2]){
+            const e=JSON.parse(fs.readFileSync(`/tmp/engine-${r}.json`,'utf8'));
+            const f=JSON.parse(fs.readFileSync(`/tmp/full-${r}.json`,'utf8'));
+            console.log('BACKEND',r,JSON.stringify({engineOk:e.ok,engine:e.version,fullOk:f.ok,full:f.version}));
+          }
+          NODE
