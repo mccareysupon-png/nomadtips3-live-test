@@ -1,0 +1,42 @@
+name: INSPECT Ball46 multi-signal layout hook 20261002
+
+on:
+  push:
+    branches: [ops/ball46-footer-links-20261001]
+    paths:
+      - '.github/workflows/inspect-ball46-multisignal-layout-hook-20261002.yml'
+
+permissions:
+  contents: read
+
+env:
+  ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  SCRIPT_NAME: ball46-production
+  BALL46_URL: https://ball46.com
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Inspect exact current production layout and Worker hook
+        shell: bash
+        run: |
+          set -euo pipefail
+          AUTH="Authorization: Bearer $API_TOKEN"
+          Q="${GITHUB_RUN_ID}-$(date +%s%N)"
+          curl -fsS -L -H 'Cache-Control: no-cache' "$BALL46_URL/dashboard-v2-stage3.js?v=343-scorebar-details-20260929a&diag=$Q" -o /tmp/stage3.js
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=3" -H "$AUTH" -o /tmp/deploy.json
+          BASE=$(node -e "const j=require('/tmp/deploy.json');const d=j.result?.deployments?.[0];if(!d||d.versions?.length!==1||Number(d.versions[0].percentage)!==100)process.exit(2);process.stdout.write(String(d.versions[0].version_id||''))")
+          echo "PRODUCTION_VERSION=$BASE"
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/workers/$SCRIPT_NAME/versions/$BASE?include=modules" -H "$AUTH" -o /tmp/version.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const t=fs.readFileSync('/tmp/stage3.js','utf8');
+          for(const n of ['.signal-inline','.match-row','grid-template-columns','data-featured-signal','signalDetailsHtml']){
+            console.log('\n===== STAGE3 '+n+' =====');let p=0,c=0;while(c<12){const i=t.indexOf(n,p);if(i<0)break;console.log('\n@'+i+'\n'+t.slice(Math.max(0,i-1200),Math.min(t.length,i+2400)));p=i+n.length;c++;}
+          }
+          const j=require('/tmp/version.json');if(j.success!==true)throw Error('VERSION_FETCH_FAILED');const r=j.result;
+          for(const m of r.modules||[]){const txt=Buffer.from(m.content_base64,'base64').toString('utf8');const i=txt.indexOf('async function noStoreUiAsset');if(i>=0){console.log('\n===== WORKER '+m.name+' noStoreUiAsset =====\n'+txt.slice(Math.max(0,i-1800),Math.min(txt.length,i+7000)));const routes=['dashboard-v2-stage3.js','noStoreUiAsset(request,env)','env.ASSETS.fetch(request)'];for(const n of routes){let p=0,c=0;while(c<10){const x=txt.indexOf(n,p);if(x<0)break;console.log('\nROUTE '+n+' @'+x+'\n'+txt.slice(Math.max(0,x-900),Math.min(txt.length,x+1600)));p=x+n.length;c++;}}}}
+          NODE
