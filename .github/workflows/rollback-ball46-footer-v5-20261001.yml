@@ -1,4 +1,4 @@
-name: INSPECT Ball46 source for safe Footer patch 20261001
+name: DEPLOY Ball46 Footer links source-only 20261001
 
 on:
   push:
@@ -6,31 +6,112 @@ on:
     paths: ['.github/workflows/rollback-ball46-footer-v5-20261001.yml']
 
 permissions:
-  contents: read
+  contents: write
 
 env:
   ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
   API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
   SCRIPT_NAME: ball46-production
-  EXPECTED_VERSION: d54d0bae-0bd7-4a36-beed-052aa69a3a5e
+  BALL46_URL: https://ball46.com
+  EXPECTED_BASE: d54d0bae-0bd7-4a36-beed-052aa69a3a5e
 
 jobs:
-  inspect-source:
+  source-only-footer-links:
     runs-on: ubuntu-24.04
-    timeout-minutes: 6
+    timeout-minutes: 12
     steps:
-      - name: Inspect exact active Worker source anchors only
+      - uses: actions/checkout@v4
+        with:
+          ref: ops/ball46-footer-links-20261001
+          fetch-depth: 1
+
+      - name: Lock exact Production and capture before state
         shell: bash
         run: |
           set -euo pipefail
           AUTH="Authorization: Bearer $API_TOKEN"
-          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=2" -H "$AUTH" -o /tmp/d.json
-          CUR=$(node -e "const j=require('/tmp/d.json');process.stdout.write(String(j.result?.deployments?.[0]?.versions?.[0]?.version_id||''))")
-          [ "$CUR" = "$EXPECTED_VERSION" ] || { echo "PRODUCTION_MOVED:$CUR"; exit 2; }
-          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/workers/$SCRIPT_NAME/versions/$EXPECTED_VERSION?include=modules" -H "$AUTH" -o /tmp/v.json
+          mkdir -p /tmp/before /tmp/after /tmp/modules audit
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=3" -H "$AUTH" -o /tmp/deploy-before.json
+          CUR=$(node -e "const j=require('/tmp/deploy-before.json');const d=j.result?.deployments?.[0];if(!d||d.versions?.length!==1||Number(d.versions[0].percentage)!==100)process.exit(2);process.stdout.write(String(d.versions[0].version_id||''))")
+          [ "$CUR" = "$EXPECTED_BASE" ] || { echo "ABORT_PRODUCTION_MOVED current=$CUR expected=$EXPECTED_BASE"; exit 3; }
+          echo -n "$CUR" >/tmp/base-version
+          pages='information about user-guide methodology privacy terms disclaimer affiliate-disclosure responsible-gambling cookies contact'
+          for p in $pages;do curl -fsS -L -H 'Cache-Control: no-cache' "$BALL46_URL/$p.html?before=${GITHUB_RUN_ID}-$p" -o "/tmp/before/$p.html";done
+          curl -fsS -L -H 'Cache-Control: no-cache' "$BALL46_URL/index.html?before=${GITHUB_RUN_ID}" -o /tmp/before/index.html
+          curl -fsS -L -H 'Cache-Control: no-cache' "$BALL46_URL/legal.css?before=${GITHUB_RUN_ID}" -o /tmp/before/legal.css
+          curl -fsS -L -H 'Cache-Control: no-cache' "$BALL46_URL/ball46-footer.css?before=${GITHUB_RUN_ID}" -o /tmp/before/footer.css
+          curl -fsS "$BALL46_URL/api/engine/health?before=${GITHUB_RUN_ID}" -o /tmp/before/e.json
+          curl -fsS "$BALL46_URL/api/full-market/health?before=${GITHUB_RUN_ID}" -o /tmp/before/f.json
+          curl -fsS "$BALL46_URL/api/engine/statistics?before=${GITHUB_RUN_ID}" -o /tmp/before/s.json
           node - <<'NODE'
-          const fs=require('fs');const j=require('/tmp/v.json');const main=j.result.main_module;const m=j.result.modules.find(x=>x.name===main);const s=Buffer.from(m.content_base64,'base64').toString('utf8');
-          const needles=['Information & Legal Center','legal.css','/signal.html','/statistics.html','b46-site-footer-v1'];
-          console.log('MAIN',main,'BYTES',Buffer.byteLength(s));
-          for(const n of needles){let pos=-1,count=0;while((pos=s.indexOf(n,pos+1))>=0){count++;const a=Math.max(0,pos-2200),b=Math.min(s.length,pos+4200);console.log('\n===ANCHOR',JSON.stringify(n),'#'+count,'AT',pos,'===\n'+s.slice(a,b)+'\n===END===');if(count>=4)break}console.log('COUNT_SHOWN',n,count)}
+          const fs=require('fs'),crypto=require('crypto');
+          const e=require('/tmp/before/e.json'),f=require('/tmp/before/f.json'),s=require('/tmp/before/s.json');if(e.ok!==true||f.ok!==true||s.ok!==true)throw Error('BACKEND_NOT_OK_BEFORE');
+          fs.writeFileSync('/tmp/backend-before.json',JSON.stringify({engine:e.version,fullMarket:f.version,settlementRevision:s.settlementRevision}));
+          const h=fs.readFileSync('/tmp/before/index.html','utf8');const m=h.match(/<footer\b[^>]*id=["']b46-site-footer-v1["'][\s\S]*?<\/footer>/i);if(!m)throw Error('GLOBAL_FOOTER_MISSING_BEFORE');
+          if(!m[0].includes('/signal.html')||!m[0].includes('/statistics.html'))throw Error('EXPECTED_OLD_LINKS_NOT_FOUND');
+          const pages='information about user-guide methodology privacy terms disclaimer affiliate-disclosure responsible-gambling cookies contact'.split(' ');const hashes={};for(const p of pages){hashes[p]=crypto.createHash('sha256').update(fs.readFileSync('/tmp/before/'+p+'.html')).digest('hex')}hashes.legalCss=crypto.createHash('sha256').update(fs.readFileSync('/tmp/before/legal.css')).digest('hex');hashes.footerCss=crypto.createHash('sha256').update(fs.readFileSync('/tmp/before/footer.css')).digest('hex');fs.writeFileSync('/tmp/before-hashes.json',JSON.stringify(hashes));
+          console.log('BEFORE_LOCKED_AND_CAPTURED');
           NODE
+
+      - name: Clone exact active Worker and patch only two Footer hrefs in existing constant
+        shell: bash
+        run: |
+          set -euo pipefail
+          AUTH="Authorization: Bearer $API_TOKEN"; BASE=$(cat /tmp/base-version)
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/workers/$SCRIPT_NAME/versions/$BASE?include=modules" -H "$AUTH" -o /tmp/version.json
+          node - <<'NODE'
+          const fs=require('fs'),path=require('path'),crypto=require('crypto');const j=require('/tmp/version.json');if(j.success!==true)throw Error('VERSION_FETCH_FAILED');const r=j.result;if(!r?.main_module||!r.modules?.length)throw Error('MODULES_MISSING');const meta=[];
+          for(const m of r.modules){const b=Buffer.from(m.content_base64,'base64');const p=path.join('/tmp/modules',m.name);fs.mkdirSync(path.dirname(p),{recursive:true});fs.writeFileSync(p,b);meta.push({name:m.name,content_type:m.content_type,beforeSha:crypto.createHash('sha256').update(b).digest('hex')})}
+          const main=r.main_module,p=path.join('/tmp/modules',main),orig=fs.readFileSync(p,'utf8');const start=orig.indexOf('const __B46_FOOTER_HTML__=');const end=orig.indexOf('const __B46_FOOTER_CSS__=',start);if(start<0||end<0)throw Error('FOOTER_CONSTANT_ANCHORS_MISSING');let slice=orig.slice(start,end);const old=Buffer.byteLength(slice);let s=0,t=0;slice=slice.replace('/signal.html',()=>{s++;return '/index.html?view=signal'});slice=slice.replace('/statistics.html',()=>{t++;return '/index.html?view=statistics'});if(s!==1||t!==1)throw Error(`FOOTER_REPLACE_COUNT signal=${s} statistics=${t}`);if(slice.includes('/signal.html')||slice.includes('/statistics.html'))throw Error('OLD_LINK_REMAINS_INSIDE_FOOTER_CONSTANT');const patched=orig.slice(0,start)+slice+orig.slice(end);if(orig.slice(0,start)!==patched.slice(0,start))throw Error('PREFIX_CHANGED');const tailOrig=orig.slice(end),tailPatched=patched.slice(end+(Buffer.byteLength(slice)-old));if(tailOrig!==tailPatched)throw Error('SUFFIX_CHANGED');fs.writeFileSync(p,patched);const mainBefore=crypto.createHash('sha256').update(Buffer.from(orig)).digest('hex'),mainAfter=crypto.createHash('sha256').update(Buffer.from(patched)).digest('hex');fs.writeFileSync('/tmp/main',main);fs.writeFileSync('/tmp/meta.json',JSON.stringify(meta));fs.writeFileSync('/tmp/main-after.sha',mainAfter);fs.writeFileSync('/tmp/source-report.json',JSON.stringify({main,start,end,mainBefore,mainAfter,replacements:{signals:1,statistics:1},outsideFooterConstantUnchanged:true,addedWrapper:false},null,2));console.log('SOURCE_PATCH_READY',JSON.parse(fs.readFileSync('/tmp/source-report.json','utf8')));
+          NODE
+
+      - name: Abort if Production changed during preparation
+        shell: bash
+        run: |
+          set -euo pipefail
+          AUTH="Authorization: Bearer $API_TOKEN"; BASE=$(cat /tmp/base-version)
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=2" -H "$AUTH" -o /tmp/recheck.json
+          CUR=$(node -e "const j=require('/tmp/recheck.json');process.stdout.write(String(j.result?.deployments?.[0]?.versions?.[0]?.version_id||''))")
+          [ "$CUR" = "$BASE" ] || { echo "ABORT_CONCURRENT_DEPLOY current=$CUR base=$BASE";exit 4; }
+
+      - name: Upload exact modules with source-only Footer link patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          AUTH="Authorization: Bearer $API_TOKEN"
+          node -e "const fs=require('fs');fs.writeFileSync('/tmp/upload-meta.json',JSON.stringify({main_module:fs.readFileSync('/tmp/main','utf8').trim()}))"
+          mapfile -t args < <(node - <<'NODE'
+          const fs=require('fs');for(const m of JSON.parse(fs.readFileSync('/tmp/meta.json','utf8')))console.log(`-F\n${m.name}=@/tmp/modules/${m.name};type=${m.content_type}`);
+          NODE
+          )
+          CURL_ARGS=();i=0;while [ $i -lt ${#args[@]} ];do CURL_ARGS+=("${args[$i]}" "${args[$((i+1))]}");i=$((i+2));done
+          curl -fsS -X PUT "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/content" -H "$AUTH" -F 'metadata=</tmp/upload-meta.json;type=application/json' "${CURL_ARGS[@]}" -o /tmp/update.json
+          node -e "const j=require('/tmp/update.json');if(j.success!==true)throw Error(JSON.stringify(j.errors||[]));console.log('UPLOAD_ACCEPTED')"
+
+      - name: Verify source, pages, CSS and backend; rollback on any failure
+        shell: bash
+        run: |
+          set -euo pipefail
+          AUTH="Authorization: Bearer $API_TOKEN"; BASE=$(cat /tmp/base-version)
+          rollback(){ set +e; [ -s /tmp/our-version ]||return; OUR=$(cat /tmp/our-version);curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=2" -H "$AUTH" -o /tmp/current.json||return;CUR=$(node -e "const j=require('/tmp/current.json');process.stdout.write(String(j.result?.deployments?.[0]?.versions?.[0]?.version_id||''))");[ "$CUR" = "$OUR" ]||return;node -e "require('fs').writeFileSync('/tmp/rb.json',JSON.stringify({strategy:'percentage',versions:[{version_id:process.argv[1],percentage:100}],annotations:{'workers/message':'Rollback source-only Footer links verification failure'}}))" "$BASE";curl -fsS -X POST "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments" -H "$AUTH" -H 'content-type: application/json' --data-binary @/tmp/rb.json -o /tmp/rb-resp.json||true;echo "ROLLBACK_TO:$BASE"; }
+          trap 'rc=$?;rollback;exit $rc' ERR
+          CAND='';for n in $(seq 1 15);do curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=2" -H "$AUTH" -o /tmp/d.json;CAND=$(node -e "const j=require('/tmp/d.json');process.stdout.write(String(j.result?.deployments?.[0]?.versions?.[0]?.version_id||''))");[ -n "$CAND" ]&&[ "$CAND" != "$BASE" ]&&break;sleep 2;done;[ -n "$CAND" ]&&[ "$CAND" != "$BASE" ];echo -n "$CAND" >/tmp/our-version
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/workers/$SCRIPT_NAME/versions/$CAND?include=modules" -H "$AUTH" -o /tmp/candidate.json
+          node - <<'NODE'
+          const fs=require('fs'),crypto=require('crypto'),j=require('/tmp/candidate.json'),meta=require('/tmp/meta.json'),main=fs.readFileSync('/tmp/main','utf8').trim(),want=fs.readFileSync('/tmp/main-after.sha','utf8').trim();if(j.success!==true)throw Error('CANDIDATE_FETCH_FAILED');const a=new Map(j.result.modules.map(m=>[m.name,crypto.createHash('sha256').update(Buffer.from(m.content_base64,'base64')).digest('hex')]));for(const m of meta){const expected=m.name===main?want:m.beforeSha;if(a.get(m.name)!==expected)throw Error('MODULE_CHANGED:'+m.name)}if(a.size!==meta.length)throw Error('MODULE_COUNT_CHANGED');console.log('DEPLOYED_SOURCE_IDENTITY_PASS');
+          NODE
+          visible=0;for n in $(seq 1 25);do K="${GITHUB_RUN_ID}-$n-$(date +%s%N)";curl -fsS -L -H 'Cache-Control: no-cache' "$BALL46_URL/index.html?after=$K" -o /tmp/after/index.html;if grep -Fq 'href="/index.html?view=signal"' /tmp/after/index.html && grep -Fq 'href="/index.html?view=statistics"' /tmp/after/index.html;then visible=1;break;fi;sleep 2;done;[ "$visible" = 1 ]||{ echo NEW_LINKS_NOT_VISIBLE;false; }
+          pages='information about user-guide methodology privacy terms disclaimer affiliate-disclosure responsible-gambling cookies contact';for p in $pages;do curl -fsS -L -H 'Cache-Control: no-cache' "$BALL46_URL/$p.html?after=${GITHUB_RUN_ID}-$p-$(date +%s%N)" -o "/tmp/after/$p.html";done
+          curl -fsS -L -H 'Cache-Control: no-cache' "$BALL46_URL/legal.css?after=${GITHUB_RUN_ID}" -o /tmp/after/legal.css
+          curl -fsS -L -H 'Cache-Control: no-cache' "$BALL46_URL/ball46-footer.css?after=${GITHUB_RUN_ID}" -o /tmp/after/footer.css
+          curl -fsS "$BALL46_URL/api/engine/health?after=${GITHUB_RUN_ID}" -o /tmp/after/e.json;curl -fsS "$BALL46_URL/api/full-market/health?after=${GITHUB_RUN_ID}" -o /tmp/after/f.json;curl -fsS "$BALL46_URL/api/engine/statistics?after=${GITHUB_RUN_ID}" -o /tmp/after/s.json
+          node - <<'NODE'
+          const fs=require('fs'),crypto=require('crypto'),before=require('/tmp/before-hashes.json');const pages='information about user-guide methodology privacy terms disclaimer affiliate-disclosure responsible-gambling cookies contact'.split(' ');for(const p of pages){const h=crypto.createHash('sha256').update(fs.readFileSync('/tmp/after/'+p+'.html')).digest('hex');if(h!==before[p])throw Error('LEGAL_PAGE_CHANGED:'+p)}const lc=crypto.createHash('sha256').update(fs.readFileSync('/tmp/after/legal.css')).digest('hex'),fc=crypto.createHash('sha256').update(fs.readFileSync('/tmp/after/footer.css')).digest('hex');if(lc!==before.legalCss)throw Error('LEGAL_CSS_CHANGED');if(fc!==before.footerCss)throw Error('FOOTER_CSS_CHANGED');const b=require('/tmp/backend-before.json'),e=require('/tmp/after/e.json'),f=require('/tmp/after/f.json'),s=require('/tmp/after/s.json'),a={engine:e.version,fullMarket:f.version,settlementRevision:s.settlementRevision};if(JSON.stringify(a)!==JSON.stringify(b))throw Error('BACKEND_CHANGED');const idx=fs.readFileSync('/tmp/after/index.html','utf8'),m=idx.match(/<footer\b[^>]*id=["']b46-site-footer-v1["'][\s\S]*?<\/footer>/i);if(!m)throw Error('FOOTER_MISSING_AFTER');if(!m[0].includes('/index.html?view=signal')||!m[0].includes('/index.html?view=statistics'))throw Error('NEW_LINKS_MISSING_AFTER');if(m[0].includes('href="/signal.html"')||m[0].includes('href="/statistics.html"'))throw Error('OLD_LINKS_STILL_IN_FOOTER');const report={completedAt:new Date().toISOString(),baseVersion:fs.readFileSync('/tmp/base-version','utf8'),deployedVersion:fs.readFileSync('/tmp/our-version','utf8'),scope:'source-only two href replacements inside existing __B46_FOOTER_HTML__; legal pages/CSS untouched',links:{live:'/index.html',signals:'/index.html?view=signal',statistics:'/index.html?view=statistics'},source:require('/tmp/source-report.json'),legalPagesByteIdentical:true,legalCssByteIdentical:true,footerCssByteIdentical:true,backendUnchanged:true,backend:a};fs.writeFileSync('audit/ball46-footer-source-only-20261001.json',JSON.stringify(report,null,2)+'\n');console.log('VERIFY_PASS',report);
+          NODE
+          OUR=$(cat /tmp/our-version);curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=2" -H "$AUTH" -o /tmp/final.json;FINAL=$(node -e "const j=require('/tmp/final.json');process.stdout.write(String(j.result?.deployments?.[0]?.versions?.[0]?.version_id||''))");[ "$FINAL" = "$OUR" ]||{ echo "PRODUCTION_MOVED_AFTER_VERIFY:$FINAL";false; };trap - ERR
+
+      - name: Save verified report
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]';git config user.email '41898282+github-actions[bot]@users.noreply.github.com';git pull --rebase origin ops/ball46-footer-links-20261001;git add audit/ball46-footer-source-only-20261001.json;git commit -m 'verify(ball46): source-only Footer links passed';git push origin HEAD:ops/ball46-footer-links-20261001
