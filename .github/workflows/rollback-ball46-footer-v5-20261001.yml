@@ -1,4 +1,4 @@
-name: VERIFY Ball46 restored after Footer V5 20261001
+name: INSPECT Ball46 source for safe Footer patch 20261001
 
 on:
   push:
@@ -12,45 +12,25 @@ env:
   ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
   API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
   SCRIPT_NAME: ball46-production
-  RESTORE_VERSION: d54d0bae-0bd7-4a36-beed-052aa69a3a5e
-  BALL46_URL: https://ball46.com
+  EXPECTED_VERSION: d54d0bae-0bd7-4a36-beed-052aa69a3a5e
 
 jobs:
-  verify-restored:
+  inspect-source:
     runs-on: ubuntu-24.04
-    timeout-minutes: 8
+    timeout-minutes: 6
     steps:
-      - name: Verify restored version, edge, information page styles and backend
+      - name: Inspect exact active Worker source anchors only
         shell: bash
         run: |
           set -euo pipefail
           AUTH="Authorization: Bearer $API_TOKEN"
-          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=2" -H "$AUTH" -o /tmp/deploy.json
-          CURRENT=$(node -e "const j=require('/tmp/deploy.json');process.stdout.write(String(j.result?.deployments?.[0]?.versions?.[0]?.version_id||''))")
-          [ "$CURRENT" = "$RESTORE_VERSION" ] || { echo "PRODUCTION_MOVED:$CURRENT"; exit 2; }
-          echo "RESTORED_VERSION_ACTIVE:$CURRENT"
-          edge=0
-          for n in $(seq 1 30); do
-            K="${GITHUB_RUN_ID}-$n-$(date +%s%N)"
-            curl -fsS -L -D /tmp/info.headers -H 'Cache-Control: no-cache' "$BALL46_URL/information.html?verifyrestore=$K" -o /tmp/info.html
-            curl -fsS -L -D /tmp/index.headers -H 'Cache-Control: no-cache' "$BALL46_URL/index.html?verifyrestore=$K" -o /tmp/index.html
-            if ! grep -qi '^x-ball46-footer-revision: footer-links-v5-20261001' /tmp/info.headers && ! grep -qi '^x-ball46-footer-revision: footer-links-v5-20261001' /tmp/index.headers; then edge=1; break; fi
-            sleep 2
-          done
-          [ "$edge" = 1 ] || { echo EDGE_NOT_RESTORED; exit 3; }
-          echo EDGE_RESTORED
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=2" -H "$AUTH" -o /tmp/d.json
+          CUR=$(node -e "const j=require('/tmp/d.json');process.stdout.write(String(j.result?.deployments?.[0]?.versions?.[0]?.version_id||''))")
+          [ "$CUR" = "$EXPECTED_VERSION" ] || { echo "PRODUCTION_MOVED:$CUR"; exit 2; }
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/workers/$SCRIPT_NAME/versions/$EXPECTED_VERSION?include=modules" -H "$AUTH" -o /tmp/v.json
           node - <<'NODE'
-          const fs=require('fs');const h=fs.readFileSync('/tmp/info.html','utf8');
-          const links=[...h.matchAll(/<link\b[^>]*href=["']([^"']+)["'][^>]*>/gi)].map(m=>m[1]);
-          console.log('INFO_BYTES',Buffer.byteLength(h));
-          console.log('INFO_LINKS',JSON.stringify(links));
-          console.log('INFO_HAS_INLINE_STYLE',/<style\b/i.test(h));
-          console.log('INFO_HAS_FOOTER',/b46-site-footer-v1/i.test(h));
-          console.log('INFO_HEAD',h.slice(0,4500).replace(/\n/g,' '));
-          NODE
-          curl -fsS "$BALL46_URL/api/engine/health?verifyrestore=${GITHUB_RUN_ID}" -o /tmp/e.json
-          curl -fsS "$BALL46_URL/api/full-market/health?verifyrestore=${GITHUB_RUN_ID}" -o /tmp/f.json
-          curl -fsS "$BALL46_URL/api/engine/statistics?verifyrestore=${GITHUB_RUN_ID}" -o /tmp/s.json
-          node - <<'NODE'
-          const e=require('/tmp/e.json'),f=require('/tmp/f.json'),s=require('/tmp/s.json');if(e.ok!==true||f.ok!==true||s.ok!==true)throw Error('BACKEND_NOT_OK');console.log('BACKEND_OK',e.version,f.version,s.settlementRevision);
+          const fs=require('fs');const j=require('/tmp/v.json');const main=j.result.main_module;const m=j.result.modules.find(x=>x.name===main);const s=Buffer.from(m.content_base64,'base64').toString('utf8');
+          const needles=['Information & Legal Center','legal.css','/signal.html','/statistics.html','b46-site-footer-v1'];
+          console.log('MAIN',main,'BYTES',Buffer.byteLength(s));
+          for(const n of needles){let pos=-1,count=0;while((pos=s.indexOf(n,pos+1))>=0){count++;const a=Math.max(0,pos-2200),b=Math.min(s.length,pos+4200);console.log('\n===ANCHOR',JSON.stringify(n),'#'+count,'AT',pos,'===\n'+s.slice(a,b)+'\n===END===');if(count>=4)break}console.log('COUNT_SHOWN',n,count)}
           NODE
