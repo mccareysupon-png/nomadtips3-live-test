@@ -1,0 +1,20 @@
+name: INSPECT Ball46 visibleRows exact 20261002
+on:
+  push:
+    branches: [ops/ball46-footer-links-20261001]
+    paths: ['.github/workflows/inspect-ball46-visible-rows-exact-20261002.yml']
+permissions:
+  contents: read
+env:
+  BALL46_URL: https://ball46.com
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    steps:
+      - shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS -L -H 'Cache-Control: no-cache' "$BALL46_URL/dashboard-v2-stage3.js?diag=${GITHUB_RUN_ID}-$(date +%s%N)" -o /tmp/s.js
+          node - <<'NODE'
+          const fs=require('fs'),t=fs.readFileSync('/tmp/s.js','utf8');for(const n of ['function visibleRows','function renderLeagueFilters','function rowHtml','function renderBoard']){const i=t.indexOf(n);console.log('\n===== '+n+' @'+i+' =====\n'+(i>=0?t.slice(i,i+7000):'MISSING'));}
+          NODE
