@@ -1,0 +1,41 @@
+name: INSPECT Ball46 active card renderer assets 20261002
+
+on:
+  push:
+    branches: [ops/ball46-footer-links-20261001]
+    paths:
+      - '.github/workflows/inspect-ball46-card-render-assets-20261002.yml'
+
+permissions:
+  contents: read
+
+env:
+  BALL46_URL: https://ball46.com
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Inspect current Production card renderer assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          Q="${GITHUB_RUN_ID}-$(date +%s%N)"
+          curl -fsS -L -H 'Cache-Control: no-cache' "$BALL46_URL/dashboard-v2-stage3.js?v=343-scorebar-details-20260929a&diag=$Q" -o /tmp/stage3.js
+          curl -fsS -L -H 'Cache-Control: no-cache' "$BALL46_URL/singlepage-workspace-343.js?v=343-singlepage-20260922-signal-shared&diag=$Q" -o /tmp/workspace.js
+          curl -fsS -L -H 'Cache-Control: no-cache' "$BALL46_URL/expanded-match-343.js?v=343-expand-v4-stable-lifecycle&diag=$Q" -o /tmp/expanded.js
+          curl -fsS -L -H 'Cache-Control: no-cache' "$BALL46_URL/signal-event-flow-line-343.js?v=343-signal-flow-line-20260922b&diag=$Q" -o /tmp/flow.js
+          echo "BYTES stage3=$(wc -c </tmp/stage3.js) workspace=$(wc -c </tmp/workspace.js) expanded=$(wc -c </tmp/expanded.js) flow=$(wc -c </tmp/flow.js)"
+          node - <<'NODE'
+          const fs=require('fs');
+          const files=[['stage3','/tmp/stage3.js'],['workspace','/tmp/workspace.js'],['expanded','/tmp/expanded.js'],['flow','/tmp/flow.js']];
+          const needles=['signalCount','activeSignals','signals[0]','signal[0]','markets[0]','market[0]','.find(','renderCard','renderMatch','match-card','matchCard','signal-card','signalCard','market-chip','signal-chip','signal-badge','signalBadge','data-signal','data-market','featured-signal','signals','markets','market','signal'];
+          for(const [name,path] of files){
+            const t=fs.readFileSync(path,'utf8');console.log('\n===== '+name+' size='+t.length+' =====');
+            const seen=[];
+            for(const needle of needles){let p=0,c=0;while(c<15){const i=t.indexOf(needle,p);if(i<0)break;if(!seen.some(x=>Math.abs(x.i-i)<240))seen.push({i,needle});p=i+needle.length;c++;}}
+            seen.sort((a,b)=>a.i-b.i);console.log('MATCH_COUNT='+seen.length);
+            for(const x of seen.slice(0,100)){const s=Math.max(0,x.i-900),e=Math.min(t.length,x.i+1800);console.log('\n--- '+x.needle+' @'+x.i+' ---\n'+t.slice(s,e).replace(/\n/g,' '));}
+          }
+          NODE
