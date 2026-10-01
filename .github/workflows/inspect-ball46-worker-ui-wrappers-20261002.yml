@@ -1,0 +1,30 @@
+name: INSPECT Ball46 Worker UI wrapper chain 20261002
+on:
+  push:
+    branches: [ops/ball46-footer-links-20261001]
+    paths: ['.github/workflows/inspect-ball46-worker-ui-wrappers-20261002.yml']
+permissions:
+  contents: read
+env:
+  ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  SCRIPT_NAME: ball46-production
+  BALL46_URL: https://ball46.com
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - shell: bash
+        run: |
+          set -euo pipefail
+          AUTH="Authorization: Bearer $API_TOKEN"
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=3" -H "$AUTH" -o /tmp/d.json
+          BASE=$(node -e "const j=require('/tmp/d.json');process.stdout.write(String(j.result?.deployments?.[0]?.versions?.[0]?.version_id||''))")
+          echo "BASE=$BASE"
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/workers/$SCRIPT_NAME/versions/$BASE?include=modules" -H "$AUTH" -o /tmp/v.json
+          curl -fsS -L -H 'Cache-Control:no-cache' "$BALL46_URL/dashboard-v2-stage3.js?diag=${GITHUB_RUN_ID}-$(date +%s%N)" -o /tmp/s.js
+          node - <<'NODE'
+          const fs=require('fs');const s=fs.readFileSync('/tmp/s.js','utf8');console.log('STAGE3_BYTES='+s.length+' CONST_DOLLAR_COUNT='+(s.match(/const \$=/g)||[]).length+' IIFE_COUNT='+(s.match(/\(\(\)=>\{/g)||[]).length);console.log('STAGE3_HEAD='+JSON.stringify(s.slice(0,1200)));
+          const j=require('/tmp/v.json');const r=j.result;for(const m of r.modules||[]){const t=Buffer.from(m.content_base64,'base64').toString('utf8');if(m.name!==r.main_module)continue;console.log('MAIN='+m.name+' BYTES='+t.length);const needles=['async function noStoreUiAsset','dashboard-v2-stage3.js','const __B46_BASE_WORKER__','const __B46_FOOTER_BASE_WORKER__','const __B46_LEGAL_BASE_WORKER__','export default','fetch(request','__B46_BASE_WORKER__.fetch','env.ASSETS.fetch'];for(const n of needles){let p=0,c=0;while(c<20){const i=t.indexOf(n,p);if(i<0)break;console.log('\n### '+n+' @'+i+'\n'+t.slice(Math.max(0,i-1800),Math.min(t.length,i+4200)));p=i+n.length;c++;}}}
+          NODE
