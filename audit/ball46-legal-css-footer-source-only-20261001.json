@@ -1,0 +1,32 @@
+{
+  "completedAt": "2026-10-01T13:51:24.352Z",
+  "baseVersion": "d54d0bae-0bd7-4a36-beed-052aa69a3a5e",
+  "deployedVersion": "d4835dc3-5b87-4075-9ed3-d8bc7f80cb14",
+  "scope": "source-only: add /legal.css asset route and change two existing Footer Product hrefs",
+  "links": {
+    "live": "/index.html",
+    "signals": "/index.html?view=signal",
+    "statistics": "/index.html?view=statistics"
+  },
+  "legalHtmlByteIdentical": true,
+  "legalCssNowServed": true,
+  "backendUnchanged": true,
+  "source": {
+    "main": "index.js",
+    "beforeSha": "0c2cd4b167f23e581acd69946a4b56740832d5c0f9388d6aa007c25d9ff31980",
+    "afterSha": "3bc09f16bc10cab89bf3af026ac034567e6ae97ae8c78d97b6b9289a436665dc",
+    "plannedChanges": [
+      "serve /legal.css from scoped constant",
+      "Signals href -> /index.html?view=signal",
+      "Statistics href -> /index.html?view=statistics"
+    ],
+    "legalHtmlTemplatesChanged": false,
+    "backendCodeChanged": false,
+    "apiCodeChanged": false
+  },
+  "backend": {
+    "engine": "nomad343-engine-v5-best19-referee",
+    "fullMarket": "nomad343-ball46-full-market-v6-server-prewarm-cache",
+    "settlementRevision": "bet365-rules-v2"
+  }
+}
