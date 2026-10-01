@@ -1,0 +1,93 @@
+name: DEPLOY Ball46 11 Footer real images 20261001
+
+on:
+  push:
+    branches: [ops/ball46-footer-links-20261001]
+    paths:
+      - '.github/workflows/deploy-ball46-footer-real-image-20261001.yml'
+
+permissions:
+  contents: read
+
+env:
+  ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  SCRIPT_NAME: ball46-production
+  BALL46_URL: https://ball46.com
+
+jobs:
+  deploy-real-footer-images:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ops/ball46-footer-links-20261001
+          fetch-depth: 1
+
+      - name: Lock current Production and capture baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          AUTH="Authorization: Bearer $API_TOKEN"
+          mkdir -p /tmp/before /tmp/after /tmp/modules
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=3" -H "$AUTH" -o /tmp/deploy-before.json
+          CUR=$(node -e "const j=require('/tmp/deploy-before.json');const d=j.result?.deployments?.[0];if(!d||d.versions?.length!==1||Number(d.versions[0].percentage)!==100)process.exit(2);process.stdout.write(String(d.versions[0].version_id||''))")
+          [ -n "$CUR" ] || exit 2
+          echo -n "$CUR" >/tmp/base-version
+          K="${GITHUB_RUN_ID}-$(date +%s%N)"
+          pages='information about user-guide methodology privacy terms disclaimer affiliate-disclosure responsible-gambling cookies contact'
+          for p in $pages; do curl -fsS -L -H 'Cache-Control: no-cache' "$BALL46_URL/$p.html?before=$K-$p" -o "/tmp/before/$p.html"; done
+          curl -fsS -L -H 'Cache-Control: no-cache' "$BALL46_URL/legal.css?before=$K" -o /tmp/before/legal.css
+          curl -fsS "$BALL46_URL/api/engine/health?before=$K" -o /tmp/before/e.json
+          curl -fsS "$BALL46_URL/api/full-market/health?before=$K" -o /tmp/before/f.json
+          curl -fsS "$BALL46_URL/api/engine/statistics?before=$K" -o /tmp/before/s.json
+          node - <<'NODE'
+          const fs=require('fs');const e=require('/tmp/before/e.json'),f=require('/tmp/before/f.json'),s=require('/tmp/before/s.json');if(e.ok!==true||f.ok!==true||s.ok!==true)throw Error('BACKEND_NOT_OK');fs.writeFileSync('/tmp/backend-before.json',JSON.stringify({engine:e.version,fullMarket:f.version,settlementRevision:s.settlementRevision}));
+          const pages='information about user-guide methodology privacy terms disclaimer affiliate-disclosure responsible-gambling cookies contact'.split(' ');for(const p of pages){const h=fs.readFileSync('/tmp/before/'+p+'.html','utf8');if(!h.includes('footer-title'))throw Error('FOOTER_TITLE_MISSING:'+p)}
+          console.log('BASE_LOCKED',fs.readFileSync('/tmp/base-version','utf8'));
+          NODE
+
+      - name: Build exact source patch for 11 Footer image slots only
+        shell: bash
+        run: |
+          set -euo pipefail
+          AUTH="Authorization: Bearer $API_TOKEN";BASE=$(cat /tmp/base-version)
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/workers/$SCRIPT_NAME/versions/$BASE?include=modules" -H "$AUTH" -o /tmp/version.json
+          node - <<'NODE'
+          const fs=require('fs'),path=require('path'),crypto=require('crypto');const j=require('/tmp/version.json');if(j.success!==true)throw Error('VERSION_FETCH_FAILED');const r=j.result;if(!r?.main_module||!r.modules?.length)throw Error('MODULES_MISSING');const meta=[];for(const m of r.modules){const b=Buffer.from(m.content_base64,'base64'),p=path.join('/tmp/modules',m.name);fs.mkdirSync(path.dirname(p),{recursive:true});fs.writeFileSync(p,b);meta.push({name:m.name,content_type:m.content_type,beforeSha:crypto.createHash('sha256').update(b).digest('hex')});}
+          const main=r.main_module,p=path.join('/tmp/modules',main),orig=fs.readFileSync(p,'utf8');const legalStart=orig.indexOf('const __B46_LEGAL_PAGES__='),legalCssStart=orig.indexOf('const __B46_LEGAL_CSS_20261001__=',legalStart),footerHtmlStart=orig.indexOf('const __B46_FOOTER_HTML__=',legalCssStart);if([legalStart,legalCssStart,footerHtmlStart].some(x=>x<0))throw Error('ANCHORS_MISSING');
+          let legalPages=orig.slice(legalStart,legalCssStart);const variants=['>ball<span>46</span></div>','>BALL46</div>'];let total=0;for(const v of variants)total+=legalPages.split(v).length-1;if(total!==11)throw Error('LEGAL_LOGO_SLOT_COUNT:'+total);const img='<div class=\\"footer-title footer-brand-image\\" role=\\"img\\" aria-label=\\"ball46\\"></div>';for(const v of variants)legalPages=legalPages.split(v).join('>'+img.slice(1));
+          const cssSeg=orig.slice(legalCssStart,footerHtmlStart),marker='const __B46_LEGAL_CSS_20261001__=',raw=cssSeg.slice(marker.length).trim().replace(/;$/,'');let css=JSON.parse(raw);if(css.includes('B46_REAL_FOOTER_IMAGE_20261001'))throw Error('REAL_IMAGE_ALREADY_PRESENT');const word=fs.readFileSync('assets/ball46-footer-wordmark.webp').toString('base64'),icon=fs.readFileSync('assets/ball46-footer-icon.webp').toString('base64');const add='/* B46_REAL_FOOTER_IMAGE_20261001 */.footer-brand-image{display:block!important;width:197px!important;height:74px!important;max-width:100%!important;background-image:url("data:image/webp;base64,'+word+'")!important;background-size:contain!important;background-repeat:no-repeat!important;background-position:left center!important;font-size:0!important;line-height:0!important;color:transparent!important;overflow:hidden!important}@media(max-width:640px){.footer-brand-image{width:76px!important;height:76px!important;border-radius:19px!important;background-image:url("data:image/webp;base64,'+icon+'")!important;background-position:center!important}}';css+=add;const legalCss=marker+JSON.stringify(css)+';\n';const patched=orig.slice(0,legalStart)+legalPages+legalCss+orig.slice(footerHtmlStart);fs.writeFileSync(p,patched);const beforeSha=crypto.createHash('sha256').update(Buffer.from(orig)).digest('hex'),afterSha=crypto.createHash('sha256').update(Buffer.from(patched)).digest('hex');fs.writeFileSync('/tmp/main',main);fs.writeFileSync('/tmp/meta.json',JSON.stringify(meta));fs.writeFileSync('/tmp/main-after.sha',afterSha);console.log('PATCH_READY',{beforeSha,afterSha,slots:11,wordBytes:Buffer.byteLength(word,'base64'),iconBytes:Buffer.byteLength(icon,'base64')});
+          NODE
+
+      - name: Abort if Production changed before upload
+        shell: bash
+        run: |
+          set -euo pipefail
+          AUTH="Authorization: Bearer $API_TOKEN";BASE=$(cat /tmp/base-version);curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=2" -H "$AUTH" -o /tmp/recheck.json;CUR=$(node -e "const j=require('/tmp/recheck.json');process.stdout.write(String(j.result?.deployments?.[0]?.versions?.[0]?.version_id||''))");[ "$CUR" = "$BASE" ]||{ echo "ABORT_CONCURRENT_DEPLOY:$CUR";exit 4; }
+
+      - name: Upload exact current modules with 11-Footer-image patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          AUTH="Authorization: Bearer $API_TOKEN";node -e "const fs=require('fs');fs.writeFileSync('/tmp/upload-meta.json',JSON.stringify({main_module:fs.readFileSync('/tmp/main','utf8').trim()}))";mapfile -t args < <(node - <<'NODE'
+          const fs=require('fs');for(const m of JSON.parse(fs.readFileSync('/tmp/meta.json','utf8')))console.log(`-F\n${m.name}=@/tmp/modules/${m.name};type=${m.content_type}`);
+          NODE
+          );CURL_ARGS=();i=0;while [ $i -lt ${#args[@]} ];do CURL_ARGS+=("${args[$i]}" "${args[$((i+1))]}");i=$((i+2));done;curl -fsS -X PUT "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/content" -H "$AUTH" -F 'metadata=</tmp/upload-meta.json;type=application/json' "${CURL_ARGS[@]}" -o /tmp/update.json;node -e "const j=require('/tmp/update.json');if(j.success!==true)throw Error(JSON.stringify(j.errors||[]));console.log('UPLOAD_ACCEPTED')"
+
+      - name: Verify all 11 pages use real images and rollback on failure
+        shell: bash
+        run: |
+          set -euo pipefail
+          AUTH="Authorization: Bearer $API_TOKEN";BASE=$(cat /tmp/base-version)
+          rollback(){ set +e;[ -s /tmp/our-version ]||return;OUR=$(cat /tmp/our-version);curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=2" -H "$AUTH" -o /tmp/current.json||return;CUR=$(node -e "const j=require('/tmp/current.json');process.stdout.write(String(j.result?.deployments?.[0]?.versions?.[0]?.version_id||''))");[ "$CUR" = "$OUR" ]||return;node -e "require('fs').writeFileSync('/tmp/rb.json',JSON.stringify({strategy:'percentage',versions:[{version_id:process.argv[1],percentage:100}],annotations:{'workers/message':'Rollback 11 Footer real-image verification failure'}}))" "$BASE";curl -fsS -X POST "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments" -H "$AUTH" -H 'content-type: application/json' --data-binary @/tmp/rb.json >/tmp/rb-resp.json||true;echo ROLLBACK_TO:$BASE; }
+          trap 'rc=$?;rollback;exit $rc' ERR
+          CAND='';for n in $(seq 1 15);do curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=2" -H "$AUTH" -o /tmp/d.json;CAND=$(node -e "const j=require('/tmp/d.json');process.stdout.write(String(j.result?.deployments?.[0]?.versions?.[0]?.version_id||''))");[ -n "$CAND" ]&&[ "$CAND" != "$BASE" ]&&break;sleep 2;done;[ -n "$CAND" ]&&[ "$CAND" != "$BASE" ];echo -n "$CAND" >/tmp/our-version
+          pages='information about user-guide methodology privacy terms disclaimer affiliate-disclosure responsible-gambling cookies contact';visible=0;for n in $(seq 1 25);do K="${GITHUB_RUN_ID}-$n-$(date +%s%N)";curl -fsS -L -H 'Cache-Control: no-cache' "$BALL46_URL/information.html?after=$K" -o /tmp/after/information.html;curl -fsS -L -H 'Cache-Control: no-cache' "$BALL46_URL/legal.css?after=$K" -o /tmp/after/legal.css;if grep -Fq 'footer-brand-image' /tmp/after/information.html && grep -Fq 'B46_REAL_FOOTER_IMAGE_20261001' /tmp/after/legal.css && grep -Fq 'data:image/webp;base64,' /tmp/after/legal.css;then visible=1;break;fi;sleep 2;done;[ "$visible" = 1 ]||false
+          for p in $pages;do curl -fsS -L -H 'Cache-Control: no-cache' "$BALL46_URL/$p.html?after=${GITHUB_RUN_ID}-$p-$(date +%s%N)" -o "/tmp/after/$p.html";grep -Fq 'footer-brand-image' "/tmp/after/$p.html" || { echo MISSING_REAL_LOGO:$p;false; };done
+          curl -fsS "$BALL46_URL/api/engine/health?after=${GITHUB_RUN_ID}" -o /tmp/after/e.json;curl -fsS "$BALL46_URL/api/full-market/health?after=${GITHUB_RUN_ID}" -o /tmp/after/f.json;curl -fsS "$BALL46_URL/api/engine/statistics?after=${GITHUB_RUN_ID}" -o /tmp/after/s.json
+          node - <<'NODE'
+          const fs=require('fs');const b=require('/tmp/backend-before.json'),e=require('/tmp/after/e.json'),f=require('/tmp/after/f.json'),s=require('/tmp/after/s.json'),a={engine:e.version,fullMarket:f.version,settlementRevision:s.settlementRevision};if(JSON.stringify(a)!==JSON.stringify(b))throw Error('BACKEND_CHANGED');const css=fs.readFileSync('/tmp/after/legal.css','utf8');if(!css.includes('B46_REAL_FOOTER_IMAGE_20261001')||!css.includes('data:image/webp;base64,'))throw Error('REAL_IMAGE_CSS_MISSING');console.log('VERIFY_11_REAL_IMAGES_PASS',{base:fs.readFileSync('/tmp/base-version','utf8'),deployed:fs.readFileSync('/tmp/our-version','utf8'),backend:a});
+          NODE
+          OUR=$(cat /tmp/our-version);curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=2" -H "$AUTH" -o /tmp/final.json;FINAL=$(node -e "const j=require('/tmp/final.json');process.stdout.write(String(j.result?.deployments?.[0]?.versions?.[0]?.version_id||''))");[ "$FINAL" = "$OUR" ]||false;trap - ERR
