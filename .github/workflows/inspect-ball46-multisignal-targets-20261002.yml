@@ -1,0 +1,36 @@
+name: INSPECT Ball46 multi-signal render targets 20261002
+
+on:
+  push:
+    branches: [ops/ball46-footer-links-20261001]
+    paths:
+      - '.github/workflows/inspect-ball46-multisignal-targets-20261002.yml'
+
+permissions:
+  contents: read
+
+env:
+  BALL46_URL: https://ball46.com
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Inspect exact target functions and live example
+        shell: bash
+        run: |
+          set -euo pipefail
+          Q="${GITHUB_RUN_ID}-$(date +%s%N)"
+          curl -fsS -L -H 'Cache-Control: no-cache' "$BALL46_URL/dashboard-v2-stage3.js?v=343-scorebar-details-20260929a&diag=$Q" -o /tmp/stage3.js
+          curl -fsS -L -H 'Cache-Control: no-cache' "$BALL46_URL/api/engine/signals?diag=$Q" -o /tmp/signals.json
+          node - <<'NODE'
+          const fs=require('fs');const t=fs.readFileSync('/tmp/stage3.js','utf8');
+          const names=['function inlineSignalHtml','function visibleRows','function rowHtml','function renderFeatured','function signalFor','function signalsFor'];
+          for(const n of names){const i=t.indexOf(n);console.log('\n===== '+n+' @'+i+' =====');if(i>=0)console.log(t.slice(i,Math.min(t.length,i+6500)));}
+          const j=JSON.parse(fs.readFileSync('/tmp/signals.json','utf8'));const rows=Array.isArray(j?.signals)?j.signals:[];
+          const hit=rows.filter(s=>/belford|roxo\s*santa|roxosanta/i.test([s?.home?.name,s?.away?.name,s?.homeName,s?.awayName].filter(Boolean).join(' ')));
+          console.log('\n===== BELFORD_ROXO_SIGNALS count='+hit.length+' =====');
+          for(const s of hit)console.log(JSON.stringify({fixtureId:s.fixtureId,home:s?.home?.name||s.homeName,away:s?.away?.name||s.awayName,market:s.market,marketLabel:s.marketLabel,providerMarket:s.providerMarket,selection:s.selection,line:s.line??s.selectionLine,odds:s.odds,createdAt:s.createdAt}));
+          console.log('API_ACTIVE_SIGNALS='+(j?.mirror?.activeSignals??rows.length)+' ACTIVE_MATCHES='+(j?.mirror?.activeMatches??'n/a'));
+          NODE
