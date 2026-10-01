@@ -1,0 +1,53 @@
+name: INSPECT Ball46 current live asset refs 20261002
+
+on:
+  push:
+    branches: [ops/ball46-footer-links-20261001]
+    paths:
+      - '.github/workflows/inspect-ball46-live-asset-refs-20261002.yml'
+
+permissions:
+  contents: read
+
+env:
+  BALL46_URL: https://ball46.com
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Inspect current index and referenced scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          Q="${GITHUB_RUN_ID}-$(date +%s%N)"
+          curl -fsS -L -H 'Cache-Control: no-cache' "$BALL46_URL/index.html?diag=$Q" -o /tmp/index.html
+          echo "INDEX_BYTES=$(wc -c </tmp/index.html)"
+          node - <<'NODE'
+          const fs=require('fs');const t=fs.readFileSync('/tmp/index.html','utf8');
+          const scripts=[...t.matchAll(/<script[^>]+src=["']([^"']+)["']/gi)].map(m=>m[1]);
+          const links=[...t.matchAll(/<link[^>]+href=["']([^"']+)["']/gi)].map(m=>m[1]);
+          console.log('SCRIPT_REFS='+JSON.stringify(scripts));
+          console.log('LINK_REFS='+JSON.stringify(links));
+          for(const needle of ['signal','market','match','card','script','data-']){let p=0,c=0;while(c<12){const i=t.indexOf(needle,p);if(i<0)break;console.log('\nINDEX '+needle+' @'+i+'\n'+t.slice(Math.max(0,i-450),Math.min(t.length,i+900)).replace(/\n/g,' '));p=i+needle.length;c++;}}
+          NODE
+          node - <<'NODE' >/tmp/scripts.txt
+          const fs=require('fs');const t=fs.readFileSync('/tmp/index.html','utf8');for(const m of t.matchAll(/<script[^>]+src=["']([^"']+)["']/gi))console.log(m[1]);
+          NODE
+          while IFS= read -r src; do
+            [ -n "$src" ] || continue
+            case "$src" in http*) url="$src" ;; /*) url="$BALL46_URL$src" ;; *) url="$BALL46_URL/$src" ;; esac
+            name=$(echo "$src" | tr '/?&=' '____' | tail -c 120)
+            code=$(curl -sS -L -H 'Cache-Control: no-cache' -o "/tmp/$name" -w '%{http_code}' "$url${url#*\?}" 2>/dev/null || true)
+            echo "ASSET src=$src http=$code bytes=$(wc -c <"/tmp/$name" 2>/dev/null || echo 0)"
+            if [ "$code" = 200 ]; then
+              node - "$name" <<'NODE'
+              const fs=require('fs');const name=process.argv[2],t=fs.readFileSync('/tmp/'+name,'utf8');
+              const needles=['signalCount','activeSignals','signals[0]','signal[0]','markets[0]','market[0]','renderCard','matchCard','signalCard','signal-badge','data-signal','data-market','.find(','signals','markets','market','signal'];const seen=[];
+              for(const needle of needles){let p=0,c=0;while(c<8){const i=t.indexOf(needle,p);if(i<0)break;if(!seen.some(x=>Math.abs(x.i-i)<300))seen.push({i,needle});p=i+needle.length;c++;}}
+              seen.sort((a,b)=>a.i-b.i);console.log('JS_MATCHES='+seen.length);
+              for(const x of seen.slice(0,50))console.log('\nJS '+x.needle+' @'+x.i+'\n'+t.slice(Math.max(0,x.i-700),Math.min(t.length,x.i+1300)).replace(/\n/g,' '));
+              NODE
+            fi
+          done </tmp/scripts.txt
