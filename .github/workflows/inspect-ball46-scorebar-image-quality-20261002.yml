@@ -1,0 +1,19 @@
+name: INSPECT Ball46 scorebar image quality 20261002
+on:
+  push:
+    branches: [work/ball46-scorebar-bg-currentprod-20261002]
+    paths: [.github/workflows/inspect-ball46-scorebar-image-quality-20261002.yml]
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Inspect public scorebar image dimensions and bytes
+        shell: bash
+        run: |
+          set -euo pipefail
+          for n in win loss draw pending; do
+            curl -fsS -L -H 'Cache-Control: no-cache' "https://ball46.com/scorebar-$n-20260929a.webp?q=${GITHUB_RUN_ID}-$n" -o "/tmp/$n.webp"
+            BYTES=$(wc -c < "/tmp/$n.webp")
+            DIMS=$(identify -format '%wx%h' "/tmp/$n.webp")
+            echo "$n bytes=$BYTES dims=$DIMS"
+          done
