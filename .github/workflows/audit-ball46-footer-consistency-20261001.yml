@@ -1,0 +1,57 @@
+name: AUDIT Ball46 Footer Consistency 20261001
+
+on:
+  push:
+    branches: [ops/ball46-footer-links-20261001]
+    paths: ['.github/workflows/audit-ball46-footer-consistency-20261001.yml']
+
+permissions:
+  contents: write
+
+env:
+  BALL46_URL: https://ball46.com
+
+jobs:
+  audit-footer-consistency:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ops/ball46-footer-links-20261001
+          fetch-depth: 1
+      - name: Fetch public pages and compare footer structure
+        shell: bash
+        run: |
+          set -euo pipefail
+          nonce="${GITHUB_RUN_ID}-$(date +%s%N)"
+          pages='index signal statistics information about user-guide methodology privacy terms disclaimer affiliate-disclosure responsible-gambling cookies contact'
+          mkdir -p /tmp/b46pages audit
+          for p in $pages; do curl -fsS -L --max-time 25 "$BALL46_URL/$p.html?audit=$nonce" -o "/tmp/b46pages/$p.html"; done
+          curl -fsS -L --max-time 25 "$BALL46_URL/ball46-footer.css?audit=$nonce" -o /tmp/footer.css
+          node - <<'NODE'
+          const fs=require('fs'),crypto=require('crypto');
+          const names='index signal statistics information about user-guide methodology privacy terms disclaimer affiliate-disclosure responsible-gambling cookies contact'.split(' ');
+          const sha=s=>crypto.createHash('sha256').update(s).digest('hex');
+          const rows=[];let baseline=null;
+          for(const n of names){
+            const html=fs.readFileSync('/tmp/b46pages/'+n+'.html','utf8');
+            const footer=html.match(/<footer\b[^>]*id=["']b46-site-footer-v1["'][\s\S]*?<\/footer>/i)?.[0]||'';
+            const cssRefs=[...html.matchAll(/<link\b[^>]*href=["']([^"']*ball46-footer\.css[^"']*)["'][^>]*>/gi)].map(m=>m[1]);
+            const normalized=footer.replace(/\s+/g,' ').trim();
+            if(!baseline&&normalized)baseline=normalized;
+            rows.push({page:n,hasFooter:!!footer,footerSha256:footer?sha(normalized):null,sameAsBaseline:!!footer&&normalized===baseline,cssRefs});
+          }
+          const css=fs.readFileSync('/tmp/footer.css','utf8');
+          const report={capturedAt:new Date().toISOString(),baselinePage:rows.find(r=>r.hasFooter)?.page||null,allHaveFooter:rows.every(r=>r.hasFooter),allSameFooter:rows.every(r=>r.sameAsBaseline),footerCssSha256:sha(css),cssScopedToFooter:/#b46-site-footer-v1/.test(css),pages:rows};
+          fs.writeFileSync('audit/ball46-footer-consistency-20261001.json',JSON.stringify(report,null,2)+'\n');
+          NODE
+      - name: Save read-only audit result
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add audit/ball46-footer-consistency-20261001.json
+          git commit -m 'audit(ball46): record footer consistency' || exit 0
+          git push origin HEAD:ops/ball46-footer-links-20261001
