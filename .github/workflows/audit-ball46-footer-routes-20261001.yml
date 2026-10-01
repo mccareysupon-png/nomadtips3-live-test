@@ -1,0 +1,77 @@
+name: AUDIT Ball46 Footer Routes 20261001
+
+on:
+  push:
+    branches: [ops/ball46-footer-links-20261001]
+    paths: ['.github/workflows/audit-ball46-footer-routes-20261001.yml']
+
+permissions:
+  contents: write
+
+env:
+  ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  SCRIPT_NAME: ball46-production
+  BALL46_URL: https://ball46.com
+
+jobs:
+  audit-read-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ops/ball46-footer-links-20261001
+          fetch-depth: 1
+
+      - name: Capture live deployment and public navigation only
+        shell: bash
+        run: |
+          set -euo pipefail
+          AUTH="Authorization: Bearer $API_TOKEN"
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=3" -H "$AUTH" -o /tmp/deployments.json
+          nonce="${GITHUB_RUN_ID}-$(date +%s%N)"
+          for f in index signal statistics; do
+            curl -fsS -L --max-time 25 "$BALL46_URL/$f.html?audit=$nonce" -o "/tmp/$f.html"
+          done
+          curl -fsS --max-time 25 "$BALL46_URL/api/engine/health?audit=$nonce" -o /tmp/engine.json
+          curl -fsS --max-time 25 "$BALL46_URL/api/full-market/health?audit=$nonce" -o /tmp/full.json
+          curl -fsS --max-time 25 "$BALL46_URL/api/engine/statistics?audit=$nonce" -o /tmp/stats.json
+          node - <<'NODE'
+          const fs=require('fs'),crypto=require('crypto');
+          function anchors(file){
+            const html=fs.readFileSync(file,'utf8');
+            const out=[];
+            const re=/<a\b([^>]*?)href\s*=\s*["']([^"']+)["']([^>]*)>([\s\S]*?)<\/a>/gi;
+            let m;
+            while((m=re.exec(html))){
+              const text=m[4].replace(/<[^>]+>/g,' ').replace(/&nbsp;/gi,' ').replace(/\s+/g,' ').trim();
+              if(/live|signal|statistic|all\s*match|history|result/i.test(text)) out.push({text,href:m[2]});
+            }
+            const footer=html.match(/<footer\b[\s\S]*?<\/footer>/i)?.[0]||'';
+            const footerLinks=[];
+            let fm;re.lastIndex=0;
+            while((fm=re.exec(footer))){
+              footerLinks.push({text:fm[4].replace(/<[^>]+>/g,' ').replace(/&nbsp;/gi,' ').replace(/\s+/g,' ').trim(),href:fm[2]});
+            }
+            return {sha256:crypto.createHash('sha256').update(html).digest('hex'),anchors:out,footerLinks,hasFooter:html.includes('b46-site-footer-v1')};
+          }
+          const dj=JSON.parse(fs.readFileSync('/tmp/deployments.json','utf8'));
+          const dep=dj.result?.deployments?.[0]||null;
+          const e=JSON.parse(fs.readFileSync('/tmp/engine.json','utf8'));
+          const f=JSON.parse(fs.readFileSync('/tmp/full.json','utf8'));
+          const s=JSON.parse(fs.readFileSync('/tmp/stats.json','utf8'));
+          const report={capturedAt:new Date().toISOString(),activeDeployment:dep?{id:dep.id,created_on:dep.created_on,source:dep.source,versions:dep.versions}:null,backend:{engine:e.version,fullMarket:f.version,settlementRevision:s.settlementRevision},pages:{index:anchors('/tmp/index.html'),signal:anchors('/tmp/signal.html'),statistics:anchors('/tmp/statistics.html')}};
+          fs.mkdirSync('audit',{recursive:true});
+          fs.writeFileSync('audit/ball46-footer-routes-20261001.json',JSON.stringify(report,null,2)+'\n');
+          NODE
+
+      - name: Save audit report to this isolated branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add audit/ball46-footer-routes-20261001.json
+          git commit -m 'audit(ball46): record current live footer routes' || exit 0
+          git push origin HEAD:ops/ball46-footer-links-20261001
