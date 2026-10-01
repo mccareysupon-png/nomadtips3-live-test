@@ -1,0 +1,36 @@
+name: INSPECT Ball46 current scorebar CSS 20261002
+on:
+  push:
+    branches: [work/ball46-scorebar-bg-currentprod-20261002]
+    paths: [.github/workflows/inspect-ball46-scorebar-css-currentprod-20261002.yml]
+  workflow_dispatch:
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Inspect public current Production assets only
+        shell: bash
+        run: |
+          set -euo pipefail
+          base='https://ball46.com'
+          q="${GITHUB_RUN_ID}-$(date +%s%N)"
+          curl -fsS -L -H 'Cache-Control: no-cache' "$base/index.html?audit=$q" -o /tmp/index.html
+          echo '=== CSS HREFS ==='
+          grep -Eo 'href="[^"]+\.css[^\"]*"' /tmp/index.html || true
+          python - <<'PY'
+          import re, subprocess, pathlib
+          html=pathlib.Path('/tmp/index.html').read_text(errors='ignore')
+          hrefs=[]
+          for h in re.findall(r'href=["\']([^"\']+\.css[^"\']*)',html,re.I):
+              if h.startswith('http'): url=h
+              elif h.startswith('/'): url='https://ball46.com'+h
+              else: url='https://ball46.com/'+h
+              if url not in hrefs: hrefs.append(url)
+          for i,url in enumerate(hrefs):
+              p=f'/tmp/css{i}.css'
+              subprocess.run(['curl','-fsS','-L','-H','Cache-Control: no-cache',url+('&' if '?' in url else '?')+'audit=1','-o',p],check=True)
+              t=pathlib.Path(p).read_text(errors='ignore')
+              if 'workspace-scorebar' in t:
+                  print('\n=== SCOREBAR CSS',url,'===')
+                  for m in re.finditer(r'.{0,500}workspace-scorebar.{0,1800}',t,re.S): print(m.group(0)[:2400])
+          PY
