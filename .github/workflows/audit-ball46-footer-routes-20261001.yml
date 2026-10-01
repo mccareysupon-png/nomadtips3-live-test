@@ -24,65 +24,57 @@ jobs:
           ref: ops/ball46-footer-links-20261001
           fetch-depth: 1
 
-      - name: Capture live deployment and public navigation only
+      - name: Capture live deployment and workspace routing only
         shell: bash
         run: |
           set -euo pipefail
           AUTH="Authorization: Bearer $API_TOKEN"
           curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=3" -H "$AUTH" -o /tmp/deployments.json
           nonce="${GITHUB_RUN_ID}-$(date +%s%N)"
-          for f in index signal statistics; do
-            curl -fsS -L --max-time 25 "$BALL46_URL/$f.html?audit=$nonce" -o "/tmp/$f.html"
-          done
+          curl -fsS -L --max-time 25 "$BALL46_URL/index.html?audit=$nonce" -o /tmp/index.html
           curl -fsS --max-time 25 "$BALL46_URL/api/engine/health?audit=$nonce" -o /tmp/engine.json
           curl -fsS --max-time 25 "$BALL46_URL/api/full-market/health?audit=$nonce" -o /tmp/full.json
           curl -fsS --max-time 25 "$BALL46_URL/api/engine/statistics?audit=$nonce" -o /tmp/stats.json
           node - <<'NODE'
           const fs=require('fs'),crypto=require('crypto');
-          function clean(s){return String(s||'').replace(/<[^>]+>/g,' ').replace(/&nbsp;/gi,' ').replace(/\s+/g,' ').trim();}
-          function page(file){
-            const html=fs.readFileSync(file,'utf8');
-            const anchors=[];
-            let m;
-            const ar=/<a\b([^>]*?)href\s*=\s*["']([^"']+)["']([^>]*)>([\s\S]*?)<\/a>/gi;
-            while((m=ar.exec(html))) anchors.push({text:clean(m[4]),href:m[2],attrs:clean(m[1]+' '+m[3])});
-            const controls=[];
-            const cr=/<(button|a)\b([^>]*)>([\s\S]*?)<\/\1>/gi;
-            while((m=cr.exec(html))){
-              const text=clean(m[3]),attrs=clean(m[2]);
-              if(/signal|statistic|all\s*match|live|history|result/i.test(text+' '+attrs)) controls.push({tag:m[1].toLowerCase(),text,attrs});
-            }
-            const keywordContexts=[];
-            const low=html.toLowerCase();
-            for(const kw of ['statisticsv2','allmatch','all match','signal','statistics']){
-              let pos=0,count=0;
-              while((pos=low.indexOf(kw,pos))>=0 && count<20){
-                keywordContexts.push({keyword:kw,context:clean(html.slice(Math.max(0,pos-220),Math.min(html.length,pos+kw.length+260)))});
-                pos+=kw.length;count++;
-              }
-            }
-            const scripts=[...html.matchAll(/<script\b[^>]*src=["']([^"']+)["'][^>]*>/gi)].map(x=>x[1]);
-            const footer=html.match(/<footer\b[\s\S]*?<\/footer>/i)?.[0]||'';
-            const footerLinks=[];ar.lastIndex=0;
-            while((m=ar.exec(footer))) footerLinks.push({text:clean(m[4]),href:m[2]});
-            return {sha256:crypto.createHash('sha256').update(html).digest('hex'),anchors,controls,keywordContexts,scripts,footerLinks,hasFooter:html.includes('b46-site-footer-v1')};
+          const html=fs.readFileSync('/tmp/index.html','utf8');
+          function clean(s){return String(s||'').replace(/\s+/g,' ').trim();}
+          function contexts(src,patterns,limit=80){const out=[];const low=src.toLowerCase();for(const p of patterns){const q=p.toLowerCase();let i=0,n=0;while((i=low.indexOf(q,i))>=0&&n<limit){out.push({pattern:p,context:clean(src.slice(Math.max(0,i-420),Math.min(src.length,i+q.length+520)))});i+=q.length;n++;}}return out;}
+          const controls=[];
+          for(const m of html.matchAll(/<(button|a)\b([^>]*)>([\s\S]*?)<\/\1>/gi)){
+            const text=m[3].replace(/<[^>]+>/g,' ').replace(/&nbsp;/gi,' ').replace(/\s+/g,' ').trim();
+            const attrs=clean(m[2]);
+            if(/workspace|signal|statistic|all\s*match|history|result/i.test(text+' '+attrs)) controls.push({tag:m[1].toLowerCase(),text,attrs});
           }
-          const dj=JSON.parse(fs.readFileSync('/tmp/deployments.json','utf8'));
-          const dep=dj.result?.deployments?.[0]||null;
-          const e=JSON.parse(fs.readFileSync('/tmp/engine.json','utf8'));
-          const f=JSON.parse(fs.readFileSync('/tmp/full.json','utf8'));
-          const s=JSON.parse(fs.readFileSync('/tmp/stats.json','utf8'));
-          const report={capturedAt:new Date().toISOString(),activeDeployment:dep?{id:dep.id,created_on:dep.created_on,source:dep.source,versions:dep.versions}:null,backend:{engine:e.version,fullMarket:f.version,settlementRevision:s.settlementRevision},pages:{index:page('/tmp/index.html'),signal:page('/tmp/signal.html'),statistics:page('/tmp/statistics.html')}};
-          fs.mkdirSync('audit',{recursive:true});
-          fs.writeFileSync('audit/ball46-footer-routes-20261001.json',JSON.stringify(report,null,2)+'\n');
+          const scriptSrc=[...html.matchAll(/<script\b[^>]*src=["']([^"']+)["'][^>]*>/gi)].map(x=>x[1]);
+          const inlineContexts=contexts(html,['data-workspace-view','workspace-view','workspaceView','setWorkspace','statisticsv2','statistics v2','allmatch','all match','location.hash','URLSearchParams','history.pushState','history.replaceState','?view=','#signal','#statistics']);
+          const dj=JSON.parse(fs.readFileSync('/tmp/deployments.json','utf8'));const dep=dj.result?.deployments?.[0]||null;
+          const e=JSON.parse(fs.readFileSync('/tmp/engine.json','utf8')),f=JSON.parse(fs.readFileSync('/tmp/full.json','utf8')),s=JSON.parse(fs.readFileSync('/tmp/stats.json','utf8'));
+          const report={capturedAt:new Date().toISOString(),activeDeployment:dep?{id:dep.id,created_on:dep.created_on,versions:dep.versions}:null,backend:{engine:e.version,fullMarket:f.version,settlementRevision:s.settlementRevision},indexSha256:crypto.createHash('sha256').update(html).digest('hex'),controls,scriptSrc,inlineContexts};
+          fs.mkdirSync('audit',{recursive:true});fs.writeFileSync('audit/ball46-workspace-router-20261001.json',JSON.stringify(report,null,2)+'\n');
+          fs.writeFileSync('/tmp/scripts.json',JSON.stringify(scriptSrc));
           NODE
 
-      - name: Save audit report to this isolated branch
+          node - <<'NODE'
+          const fs=require('fs');const arr=JSON.parse(fs.readFileSync('/tmp/scripts.json','utf8'));
+          fs.writeFileSync('/tmp/fetch-scripts.sh',arr.map((u,i)=>{const full=/^https?:\/\//i.test(u)?u:(u.startsWith('/')?'https://ball46.com'+u:'https://ball46.com/'+u);return `curl -fsS -L --max-time 25 ${JSON.stringify(full+'?audit='+Date.now())} -o /tmp/script-${i}.js || true`;}).join('\n'));
+          NODE
+          bash /tmp/fetch-scripts.sh
+          node - <<'NODE'
+          const fs=require('fs');
+          function clean(s){return String(s||'').replace(/\s+/g,' ').trim();}
+          const patterns=['data-workspace-view','workspace-view','workspaceView','setWorkspace','statisticsv2','statistics v2','allmatch','all match','location.hash','URLSearchParams','history.pushState','history.replaceState','?view=','#signal','#statistics'];
+          const results=[];
+          for(const f of fs.readdirSync('/tmp').filter(x=>/^script-\d+\.js$/.test(x))){const src=fs.readFileSync('/tmp/'+f,'utf8');const low=src.toLowerCase();for(const p of patterns){const q=p.toLowerCase();let i=0,n=0;while((i=low.indexOf(q,i))>=0&&n<30){results.push({file:f,pattern:p,context:clean(src.slice(Math.max(0,i-420),Math.min(src.length,i+q.length+620)))});i+=q.length;n++;}}}
+          fs.writeFileSync('audit/ball46-workspace-script-contexts-20261001.json',JSON.stringify(results,null,2)+'\n');
+          NODE
+
+      - name: Save audit reports to this isolated branch
         shell: bash
         run: |
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add audit/ball46-footer-routes-20261001.json
-          git commit -m 'audit(ball46): record current live footer route map' || exit 0
+          git add audit/ball46-workspace-router-20261001.json audit/ball46-workspace-script-contexts-20261001.json
+          git commit -m 'audit(ball46): record current workspace routing' || exit 0
           git push origin HEAD:ops/ball46-footer-links-20261001
