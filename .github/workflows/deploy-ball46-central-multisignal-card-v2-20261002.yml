@@ -1,0 +1,137 @@
+name: DEPLOY Ball46 central multi-signal card V2 20261002
+
+on:
+  push:
+    branches: [ops/ball46-footer-links-20261001]
+    paths:
+      - '.github/workflows/deploy-ball46-central-multisignal-card-v2-20261002.yml'
+
+permissions:
+  contents: read
+
+env:
+  ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  SCRIPT_NAME: ball46-production
+  BALL46_URL: https://ball46.com
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - name: Patch central match signal rendering only
+        shell: bash
+        run: |
+          set -euo pipefail
+          AUTH="Authorization: Bearer $API_TOKEN"
+          mkdir -p /tmp/modules /tmp/before /tmp/after
+
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=3" -H "$AUTH" -o /tmp/deploy-before.json
+          BASE=$(node -e "const j=require('/tmp/deploy-before.json');const d=j.result?.deployments?.[0];if(!d||d.versions?.length!==1||Number(d.versions[0].percentage)!==100)process.exit(2);process.stdout.write(String(d.versions[0].version_id||''))")
+          [ -n "$BASE" ] || exit 2
+          echo -n "$BASE" >/tmp/base-version
+          echo "BASE_PRODUCTION=$BASE"
+
+          K="${GITHUB_RUN_ID}-$(date +%s%N)"
+          curl -fsS "$BALL46_URL/api/engine/health?before=$K" -o /tmp/before/e.json
+          curl -fsS "$BALL46_URL/api/full-market/health?before=$K" -o /tmp/before/f.json
+          curl -fsS "$BALL46_URL/api/engine/statistics?before=$K" -o /tmp/before/s.json
+          node - <<'NODE'
+          const fs=require('fs'),e=require('/tmp/before/e.json'),f=require('/tmp/before/f.json'),s=require('/tmp/before/s.json');
+          if(e.ok!==true||f.ok!==true||s.ok!==true)throw Error('BACKEND_NOT_OK_BEFORE');
+          fs.writeFileSync('/tmp/backend-before.json',JSON.stringify({engine:e.version,fullMarket:f.version,settlementRevision:s.settlementRevision}));
+          NODE
+
+          curl -fsS -L -H 'Cache-Control: no-cache' "$BALL46_URL/dashboard-v2-stage3.js?v=343-scorebar-details-20260929a&before=$K" -o /tmp/stage3-before.js
+          node --check /tmp/stage3-before.js
+
+          node - <<'NODE'
+          const fs=require('fs'),crypto=require('crypto');let js=fs.readFileSync('/tmp/stage3-before.js','utf8');
+          if(!js.includes("const VERSION='343-dashboard-v2-stage3-v5-default-rich-bridge'"))throw Error('UNEXPECTED_STAGE3_VERSION');
+          if(js.includes('B46_MULTI_SIGNAL_CARD_20261002'))throw Error('MULTISIGNAL_ALREADY_PRESENT');
+          const count=h=>js.split(h).length-1;
+          const once=(oldv,newv,label)=>{const n=count(oldv);if(n!==1)throw Error(label+'_COUNT_'+n);js=js.replace(oldv,newv)};
+
+          once(
+            "function signalFor(f){const id=fixtureKey(f),rows=signalsFor(f),signalView=document.body.dataset.workspaceView==='signal',market=document.body.dataset.signalMarket||'all';if(signalView&&market!=='all')return rows.find(s=>signalMarketKey(s)===market)||null;return rows[0]||signalMap.get(id)||null}",
+            "function visibleSignalsFor(f){const rows=signalsFor(f),signalView=document.body.dataset.workspaceView==='signal',market=document.body.dataset.signalMarket||'all';return signalView&&market!=='all'?rows.filter(s=>signalMarketKey(s)===market):rows}\nfunction signalFor(f){const id=fixtureKey(f),rows=visibleSignalsFor(f),signalView=document.body.dataset.workspaceView==='signal',market=document.body.dataset.signalMarket||'all';if(signalView&&market!=='all')return rows[0]||null;return rows[0]||signalMap.get(id)||null}",
+            'SIGNAL_FOR'
+          );
+
+          const inlineMarker='function inlineSignalHtml(s){';if(count(inlineMarker)!==1)throw Error('INLINE_MARKER_COUNT_'+count(inlineMarker));
+          js=js.replace(inlineMarker,"function inlineSignalsHtml(rows){if(!Array.isArray(rows)||!rows.length)return '';return `<div class=\"signal-inline-stack\" data-signal-count=\"${rows.length}\" style=\"min-width:0;display:grid;gap:6px\">${rows.map(inlineSignalHtml).join('')}</div>`}\n"+inlineMarker);
+
+          once("if(signalView&&!signalFor(f))return false;","if(signalView&&!visibleSignalsFor(f).length)return false;",'VISIBLE_ROWS_FILTER');
+          once("fixtures.filter(f=>signalFor(f))","fixtures.filter(f=>visibleSignalsFor(f).length)",'LEAGUE_FILTER');
+          once(',sig=signalFor(f),',',sigs=visibleSignalsFor(f),','ROW_SIGNAL_VAR');
+          once('${inlineSignalHtml(sig)}','${inlineSignalsHtml(sigs)}','ROW_SIGNAL_RENDER');
+
+          const oldFeatured=`const signal=$('[data-featured-signal]'),s=signalFor(f);if(signal){signal.innerHTML=signalDetailsHtml(s);signal.classList.toggle('locked',Boolean(s));signal.title=s?signalSummary(s):''}const prediction=$('[data-prediction-content]');if(prediction){prediction.innerHTML=s?signalDetailsHtml(s):'<div class="feature-empty">WATCH · NO LIVE PICK</div>';prediction.classList.toggle('locked',Boolean(s));prediction.title=s?signalSummary(s):'No active live prediction'}`;
+          const newFeatured="const signal=$('[data-featured-signal]'),sigs=visibleSignalsFor(f),hasSignals=sigs.length>0,signalHtml=sigs.map((s,i)=>(i?'<div class=\"feature-signal-divider\" aria-hidden=\"true\" style=\"height:1px;background:var(--line);margin:8px 0\"></div>':'')+signalDetailsHtml(s)).join(''),signalTitle=sigs.map(signalSummary).join(' • ');if(signal){signal.innerHTML=hasSignals?signalHtml:'No active signal';signal.classList.toggle('locked',hasSignals);signal.title=hasSignals?signalTitle:''}const prediction=$('[data-prediction-content]');if(prediction){prediction.innerHTML=hasSignals?signalHtml:'<div class=\"feature-empty\">WATCH · NO LIVE PICK</div>';prediction.classList.toggle('locked',hasSignals);prediction.title=hasSignals?signalTitle:'No active live prediction'}";
+          once(oldFeatured,newFeatured,'FEATURED_SIGNAL_RENDER');
+
+          js='/* B46_MULTI_SIGNAL_CARD_20261002 central renderer: every active signal per fixture */\n'+js;
+          if(js.includes("rows.find(s=>signalMarketKey(s)===market)"))throw Error('FIRST_ONLY_MARKET_FILTER_REMAINS');
+          for(const must of ['function visibleSignalsFor(f)','visibleSignalsFor(f).length','${inlineSignalsHtml(sigs)}','sigs.map(signalSummary)'])if(!js.includes(must))throw Error('PATCH_ASSERT_MISSING:'+must);
+          fs.writeFileSync('/tmp/stage3-after.js',js);fs.writeFileSync('/tmp/stage3-after.sha',crypto.createHash('sha256').update(js).digest('hex'));
+          console.log('STAGE3_PATCH_OK sha='+fs.readFileSync('/tmp/stage3-after.sha','utf8'));
+          NODE
+          node --check /tmp/stage3-after.js
+
+          node - <<'NODE'
+          const rows=[{fixtureId:'473499',market:'OU:UNDER:11.5'},{fixtureId:'473499',market:'OU:OVER:11.5'},{fixtureId:'473499',market:'AH:HOME:-0.5'}];
+          const key=s=>String(s.market).toLowerCase().startsWith('ah:')?'ah':String(s.market).toLowerCase().startsWith('ou:')?'ou':'other';
+          const pick=m=>m==='all'?rows:rows.filter(s=>key(s)===m);
+          if(pick('all').length!==3||pick('ou').length!==2||pick('ah').length!==1)throw Error('MULTISIGNAL_LOGIC_REGRESSION');
+          console.log('SYNTHETIC_MULTI_SIGNAL_PASS all=3 ou=2 ah=1');
+          NODE
+
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/workers/$SCRIPT_NAME/versions/$BASE?include=modules" -H "$AUTH" -o /tmp/version.json
+          node - <<'NODE'
+          const fs=require('fs'),path=require('path'),crypto=require('crypto');const j=require('/tmp/version.json');if(j.success!==true)throw Error('VERSION_FETCH_FAILED');const r=j.result;if(!r?.main_module||!r.modules?.length)throw Error('MODULES_MISSING');
+          const meta=[];for(const m of r.modules){const b=Buffer.from(m.content_base64,'base64'),p=path.join('/tmp/modules',m.name);fs.mkdirSync(path.dirname(p),{recursive:true});fs.writeFileSync(p,b);meta.push({name:m.name,content_type:m.content_type,beforeSha:crypto.createHash('sha256').update(b).digest('hex')});}
+          const main=r.main_module,p=path.join('/tmp/modules',main),orig=fs.readFileSync(p,'utf8'),stage3=fs.readFileSync('/tmp/stage3-after.js','utf8');if(orig.includes('__B46_MULTI_SIGNAL_STAGE3_JS__'))throw Error('WORKER_OVERRIDE_ALREADY_PRESENT');
+          const occ=(t,h)=>t.split(h).length-1,once=(t,o,n,l)=>{const c=occ(t,o);if(c!==1)throw Error(l+'_COUNT_'+c);return t.replace(o,n)};let patched=orig;
+          const baseMarker='const __B46_BASE_WORKER__=index_default;';if(occ(patched,baseMarker)!==1)throw Error('BASE_MARKER_BAD');patched=patched.replace(baseMarker,'const __B46_MULTI_SIGNAL_STAGE3_JS__='+JSON.stringify(stage3)+';\n'+baseMarker);
+          const oldHook='async function noStoreUiAsset(request, env) {\n  const response = await env.ASSETS.fetch(request);\n  const headers = new Headers(response.headers);\n  const path = new URL(request.url).pathname;';
+          const newHook='async function noStoreUiAsset(request, env) {\n  const path = new URL(request.url).pathname;\n  if (path === "/dashboard-v2-stage3.js" && typeof __B46_MULTI_SIGNAL_STAGE3_JS__ === "string") {\n    const headers = new Headers({"content-type":"application/javascript; charset=utf-8","cache-control":"no-store, no-cache, must-revalidate, max-age=0","pragma":"no-cache","expires":"0","x-ball46-ui-revision":"multi-signal-card-20261002"});\n    return new Response(__B46_MULTI_SIGNAL_STAGE3_JS__, { status: 200, headers });\n  }\n  const response = await env.ASSETS.fetch(request);\n  const headers = new Headers(response.headers);';
+          patched=once(patched,oldHook,newHook,'NO_STORE_HOOK');
+          patched=once(patched,'if (request.method === "GET" && (url.pathname === "/index.html" || url.pathname === "/live.js"','if (request.method === "GET" && (url.pathname === "/dashboard-v2-stage3.js" || url.pathname === "/index.html" || url.pathname === "/live.js"','UI_ROUTE');
+          fs.writeFileSync(p,patched);fs.writeFileSync('/tmp/main',main);fs.writeFileSync('/tmp/meta.json',JSON.stringify(meta));console.log('WORKER_PATCH_READY main='+main+' delta='+(patched.length-orig.length));
+          NODE
+
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=2" -H "$AUTH" -o /tmp/recheck.json
+          CUR=$(node -e "const j=require('/tmp/recheck.json');process.stdout.write(String(j.result?.deployments?.[0]?.versions?.[0]?.version_id||''))");[ "$CUR" = "$BASE" ] || { echo "ABORT_CONCURRENT_DEPLOY:$CUR";exit 4; }
+
+          node -e "const fs=require('fs');fs.writeFileSync('/tmp/upload-meta.json',JSON.stringify({main_module:fs.readFileSync('/tmp/main','utf8').trim()}))"
+          mapfile -t args < <(node - <<'NODE'
+          const fs=require('fs');for(const m of JSON.parse(fs.readFileSync('/tmp/meta.json','utf8')))console.log(`-F\n${m.name}=@/tmp/modules/${m.name};type=${m.content_type}`);
+          NODE
+          )
+          CURL_ARGS=();i=0;while [ $i -lt ${#args[@]} ];do CURL_ARGS+=("${args[$i]}" "${args[$((i+1))]}");i=$((i+2));done
+          curl -fsS -X PUT "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/content" -H "$AUTH" -F 'metadata=</tmp/upload-meta.json;type=application/json' "${CURL_ARGS[@]}" -o /tmp/update.json
+          node -e "const j=require('/tmp/update.json');if(j.success!==true)throw Error(JSON.stringify(j.errors||[]));console.log('UPLOAD_ACCEPTED')"
+
+          rollback(){ set +e;[ -s /tmp/our-version ]||return;OUR=$(cat /tmp/our-version);curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=2" -H "$AUTH" -o /tmp/current.json||return;NOW=$(node -e "const j=require('/tmp/current.json');process.stdout.write(String(j.result?.deployments?.[0]?.versions?.[0]?.version_id||''))");[ "$NOW" = "$OUR" ]||return;node -e "require('fs').writeFileSync('/tmp/rb.json',JSON.stringify({strategy:'percentage',versions:[{version_id:process.argv[1],percentage:100}],annotations:{'workers/message':'Rollback multi-signal card V2 verification failure'}}))" "$BASE";curl -fsS -X POST "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments" -H "$AUTH" -H 'content-type: application/json' --data-binary @/tmp/rb.json >/tmp/rb-resp.json||true;echo ROLLBACK_TO:$BASE; }
+          trap 'rc=$?;rollback;exit $rc' ERR
+
+          CAND='';for n in $(seq 1 25);do curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=2" -H "$AUTH" -o /tmp/d.json;CAND=$(node -e "const j=require('/tmp/d.json');process.stdout.write(String(j.result?.deployments?.[0]?.versions?.[0]?.version_id||''))");[ -n "$CAND" ]&&[ "$CAND" != "$BASE" ]&&break;sleep 2;done;[ -n "$CAND" ]&&[ "$CAND" != "$BASE" ];echo -n "$CAND" >/tmp/our-version;echo "CANDIDATE=$CAND"
+
+          ok=0;for n in $(seq 1 30);do Q="${GITHUB_RUN_ID}-verify-$n-$(date +%s%N)";curl -fsS -L -D /tmp/after/stage3.h -H 'Cache-Control: no-cache' "$BALL46_URL/dashboard-v2-stage3.js?v=343-scorebar-details-20260929a&after=$Q" -o /tmp/after/stage3.js;if grep -Fq 'B46_MULTI_SIGNAL_CARD_20261002' /tmp/after/stage3.js&&grep -Fiq 'x-ball46-ui-revision: multi-signal-card-20261002' /tmp/after/stage3.h;then ok=1;break;fi;sleep 2;done;[ "$ok" = 1 ]||{ echo STAGE3_EDGE_TIMEOUT;false; }
+          node --check /tmp/after/stage3.js
+          REMOTE_SHA=$(sha256sum /tmp/after/stage3.js|awk '{print $1}');EXPECTED_SHA=$(cat /tmp/stage3-after.sha);[ "$REMOTE_SHA" = "$EXPECTED_SHA" ]||{ echo "STAGE3_SHA_MISMATCH remote=$REMOTE_SHA expected=$EXPECTED_SHA";false; }
+          grep -Fq 'function visibleSignalsFor(f)' /tmp/after/stage3.js;grep -Fq '${inlineSignalsHtml(sigs)}' /tmp/after/stage3.js;grep -Fq 'sigs.map(signalSummary)' /tmp/after/stage3.js;! grep -Fq "rows.find(s=>signalMarketKey(s)===market)" /tmp/after/stage3.js
+          echo "PRODUCTION_STAGE3_MULTI_SIGNAL_PASS sha=$REMOTE_SHA"
+
+          curl -fsS "$BALL46_URL/api/engine/signals?after=${GITHUB_RUN_ID}-$(date +%s%N)" -o /tmp/after/signals.json
+          node - <<'NODE'
+          const j=require('/tmp/after/signals.json'),rows=Array.isArray(j?.signals)?j.signals:[],hit=rows.filter(s=>/belford|roxo\s*santa|roxosanta/i.test([s?.home?.name,s?.away?.name,s?.homeName,s?.awayName].filter(Boolean).join(' ')));
+          console.log('REAL_BELFORD_ROXO_ACTIVE_SIGNALS='+hit.length);for(const s of hit)console.log('REAL_SIGNAL '+JSON.stringify({fixtureId:s.fixtureId,market:s.market,marketLabel:s.marketLabel,selection:s.selection,odds:s.odds}));if(hit.length>0&&hit.length<2)throw Error('REAL_EXAMPLE_LOST_SIGNALS');
+          NODE
+
+          curl -fsS "$BALL46_URL/api/engine/health?after=${GITHUB_RUN_ID}" -o /tmp/after/e.json;curl -fsS "$BALL46_URL/api/full-market/health?after=${GITHUB_RUN_ID}" -o /tmp/after/f.json;curl -fsS "$BALL46_URL/api/engine/statistics?after=${GITHUB_RUN_ID}" -o /tmp/after/s.json
+          node - <<'NODE'
+          const b=require('/tmp/backend-before.json'),e=require('/tmp/after/e.json'),f=require('/tmp/after/f.json'),s=require('/tmp/after/s.json'),a={engine:e.version,fullMarket:f.version,settlementRevision:s.settlementRevision};if(JSON.stringify(a)!==JSON.stringify(b))throw Error('BACKEND_CHANGED');console.log('BACKEND_UNCHANGED_PASS',a);
+          NODE
+          OUR=$(cat /tmp/our-version);curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=2" -H "$AUTH" -o /tmp/final.json;FINAL=$(node -e "const j=require('/tmp/final.json');process.stdout.write(String(j.result?.deployments?.[0]?.versions?.[0]?.version_id||''))");[ "$FINAL" = "$OUR" ]||false;echo "FINAL_PRODUCTION=$FINAL";trap - ERR
