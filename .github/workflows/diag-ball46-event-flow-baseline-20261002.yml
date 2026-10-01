@@ -1,0 +1,82 @@
+name: DIAG Ball46 Event Flow Baseline 20261002
+
+on:
+  push:
+    branches:
+      - diag/ball46-event-flow-baseline-20261002
+    paths:
+      - '.github/workflows/diag-ball46-event-flow-baseline-20261002.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  diag:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: Read Cloudflare production baseline
+        shell: bash
+        run: |
+          set -uo pipefail
+          echo '=== WRANGLER VERSIONS ==='
+          npx --yes wrangler@4.92.0 versions list --name ball46-production --json | tee /tmp/versions.json
+          echo '=== WRANGLER DEPLOYMENT STATUS ==='
+          npx --yes wrangler@4.92.0 deployments status --name ball46-production --json | tee /tmp/deployment-status.json
+          echo '=== WRANGLER DEPLOYMENTS LIST ==='
+          npx --yes wrangler@4.92.0 deployments list --name ball46-production --json | tee /tmp/deployments.json
+
+      - name: Read live Event Flow assets
+        shell: bash
+        run: |
+          set -uo pipefail
+          BASE='https://ball46-production.mccarey-supon.workers.dev'
+          DOMAIN='https://ball46.com'
+          for origin in "$BASE" "$DOMAIN"; do
+            echo "=== ORIGIN $origin ==="
+            for path in index.html event-flow-bars-343.css event-flow-bars-343.js; do
+              out="/tmp/$(echo "$origin" | sed 's#https://##; s#[./]#_#g')_$(echo "$path" | tr '/' '_')"
+              code=$(curl -sS -L --retry 3 --retry-all-errors --max-time 25 -o "$out" -w '%{http_code}' "$origin/$path?diag=${GITHUB_RUN_ID}" || true)
+              echo "HTTP $code $origin/$path"
+              if [ "$code" = '200' ]; then
+                echo "SHA256 $(sha256sum "$out" | awk '{print $1}') $path"
+                echo "BYTES $(wc -c < "$out") $path"
+              fi
+            done
+          done
+
+          IDX='/tmp/ball46-production_mccarey-supon_workers_dev_index.html'
+          CSS='/tmp/ball46-production_mccarey-supon_workers_dev_event-flow-bars-343_css'
+          JS='/tmp/ball46-production_mccarey-supon_workers_dev_event-flow-bars-343_js'
+          if [ -f "$IDX" ]; then
+            echo '=== INDEX EVENT FLOW REFS ==='
+            grep -nEi 'event-flow|momentum|event flow' "$IDX" | head -80 || true
+          fi
+          if [ -f "$CSS" ]; then
+            echo '=== EVENT FLOW CSS ==='
+            cat "$CSS"
+          fi
+          if [ -f "$JS" ]; then
+            echo '=== EVENT FLOW JS KEY LINES ==='
+            grep -nEi 'event-flow|momentum|fixture|match|svg|height|class|style|random|hash' "$JS" | head -160 || true
+          fi
+
+      - name: Read live backend continuity
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='https://ball46-production.mccarey-supon.workers.dev'
+          for ep in health board signals statistics; do
+            curl -fsS -L --retry 3 --retry-all-errors --max-time 25 "$BASE/api/engine/$ep?diag=${GITHUB_RUN_ID}" -o "/tmp/$ep.json"
+            echo "API_OK $ep $(wc -c < "/tmp/$ep.json") bytes"
+          done
+          node - <<'NODE'
+          const fs=require('fs');
+          const b=JSON.parse(fs.readFileSync('/tmp/board.json','utf8'));
+          const s=JSON.parse(fs.readFileSync('/tmp/signals.json','utf8'));
+          const t=JSON.parse(fs.readFileSync('/tmp/statistics.json','utf8'));
+          console.log('LIVE_COUNTS', JSON.stringify({fixtures:Array.isArray(b?.fixtures)?b.fixtures.length:null,signals:Array.isArray(s?.signals)?s.signals.length:null,stats:Array.isArray(t?.rows)?t.rows.length:null}));
+          NODE
