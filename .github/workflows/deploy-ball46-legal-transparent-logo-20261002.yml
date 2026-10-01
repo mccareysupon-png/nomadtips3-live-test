@@ -1,0 +1,110 @@
+name: DEPLOY Ball46 legal transparent logo 20261002
+
+on:
+  push:
+    branches: [ops/ball46-footer-links-20261001]
+    paths:
+      - '.github/workflows/deploy-ball46-legal-transparent-logo-20261002.yml'
+
+permissions:
+  contents: read
+
+env:
+  ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  SCRIPT_NAME: ball46-production
+  BALL46_URL: https://ball46.com
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ops/ball46-footer-links-20261001
+          fetch-depth: 1
+
+      - name: Remove black logo backgrounds on all 11 legal pages only
+        shell: bash
+        run: |
+          set -euo pipefail
+          AUTH="Authorization: Bearer $API_TOKEN"
+          mkdir -p /tmp/modules /tmp/before /tmp/after
+
+          if command -v magick >/dev/null 2>&1; then IMG=magick; elif command -v convert >/dev/null 2>&1; then IMG=convert; else echo IMAGE_TOOL_MISSING; exit 3; fi
+          $IMG assets/ball46-footer-wordmark.webp -alpha on -fuzz 12% -transparent black /tmp/word-transparent.webp
+          $IMG assets/ball46-footer-icon.webp -alpha on -fuzz 12% -transparent black /tmp/icon-transparent.webp
+          [ "$($IMG /tmp/word-transparent.webp -format '%[pixel:p{0,0}]' info:)" = 'srgba(0,0,0,0)' ] || { echo WORD_BG_NOT_TRANSPARENT; exit 3; }
+          [ "$($IMG /tmp/icon-transparent.webp -format '%[pixel:p{0,0}]' info:)" = 'srgba(0,0,0,0)' ] || { echo ICON_BG_NOT_TRANSPARENT; exit 3; }
+
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=3" -H "$AUTH" -o /tmp/deploy-before.json
+          BASE=$(node -e "const j=require('/tmp/deploy-before.json');const d=j.result?.deployments?.[0];if(!d||d.versions?.length!==1||Number(d.versions[0].percentage)!==100)process.exit(2);process.stdout.write(String(d.versions[0].version_id||''))")
+          [ -n "$BASE" ] || exit 2
+          echo -n "$BASE" >/tmp/base-version
+
+          K="${GITHUB_RUN_ID}-$(date +%s%N)"
+          curl -fsS "$BALL46_URL/api/engine/health?before=$K" -o /tmp/before/e.json
+          curl -fsS "$BALL46_URL/api/full-market/health?before=$K" -o /tmp/before/f.json
+          curl -fsS "$BALL46_URL/api/engine/statistics?before=$K" -o /tmp/before/s.json
+          node - <<'NODE'
+          const fs=require('fs');const e=require('/tmp/before/e.json'),f=require('/tmp/before/f.json'),s=require('/tmp/before/s.json');if(e.ok!==true||f.ok!==true||s.ok!==true)throw Error('BACKEND_NOT_OK_BEFORE');fs.writeFileSync('/tmp/backend-before.json',JSON.stringify({engine:e.version,fullMarket:f.version,settlementRevision:s.settlementRevision}));
+          NODE
+
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/workers/$SCRIPT_NAME/versions/$BASE?include=modules" -H "$AUTH" -o /tmp/version.json
+          node - <<'NODE'
+          const fs=require('fs'),path=require('path'),crypto=require('crypto');
+          const j=require('/tmp/version.json');if(j.success!==true)throw Error('VERSION_FETCH_FAILED');const r=j.result;if(!r?.main_module||!r.modules?.length)throw Error('MODULES_MISSING');
+          const meta=[];for(const m of r.modules){const b=Buffer.from(m.content_base64,'base64'),p=path.join('/tmp/modules',m.name);fs.mkdirSync(path.dirname(p),{recursive:true});fs.writeFileSync(p,b);meta.push({name:m.name,content_type:m.content_type,beforeSha:crypto.createHash('sha256').update(b).digest('hex')});}
+          const main=r.main_module,p=path.join('/tmp/modules',main),orig=fs.readFileSync(p,'utf8');
+          const legalStart=orig.indexOf('const __B46_LEGAL_PAGES__='),legalCssStart=orig.indexOf('const __B46_LEGAL_CSS_20261001__=',legalStart),footerHtmlStart=orig.indexOf('const __B46_FOOTER_HTML__=',legalCssStart);if([legalStart,legalCssStart,footerHtmlStart].some(x=>x<0))throw Error('ANCHORS_MISSING');
+          const cssSeg=orig.slice(legalCssStart,footerHtmlStart),marker='const __B46_LEGAL_CSS_20261001__=',raw=cssSeg.slice(marker.length).trim().replace(/;$/,'');let css=JSON.parse(raw);
+          if(!css.includes('B46_REAL_FOOTER_IMAGE_V3_20261001')||!css.includes('B46_APPROVED_HEADER_LOGO_20261001'))throw Error('APPROVED_LOGO_BASE_MISSING');
+          if(css.includes('B46_TRANSPARENT_LOGO_20261002'))throw Error('TRANSPARENT_PATCH_ALREADY_PRESENT');
+          const word=fs.readFileSync('/tmp/word-transparent.webp').toString('base64'),icon=fs.readFileSync('/tmp/icon-transparent.webp').toString('base64');
+          const add='/* B46_TRANSPARENT_LOGO_20261002 */.footer-brand-image,.b46-header-logo-image{background-color:transparent!important;border:0!important;box-shadow:none!important;filter:drop-shadow(0 1px 1px rgba(13,18,16,.26))!important}.footer-brand-image,.b46-header-logo-image{background-image:url("data:image/webp;base64,'+word+'")!important;background-repeat:no-repeat!important;background-size:contain!important}.footer-brand-image{background-position:left center!important;border-radius:0!important}.b46-header-logo-image{background-position:left center!important;border-radius:0!important}@media(max-width:640px){.footer-brand-image,.b46-header-logo-image{background-image:url("data:image/webp;base64,'+icon+'")!important;background-color:transparent!important;border:0!important;box-shadow:none!important;border-radius:0!important;background-position:center!important}}';
+          css+=add;const legalCss=marker+JSON.stringify(css)+';\n';const patched=orig.slice(0,legalCssStart)+legalCss+orig.slice(footerHtmlStart);
+          if(patched.slice(0,legalCssStart)!==orig.slice(0,legalCssStart)||patched.slice(patched.indexOf('const __B46_FOOTER_HTML__='))!==orig.slice(footerHtmlStart))throw Error('OUTSIDE_LEGAL_CSS_CHANGED');
+          fs.writeFileSync(p,patched);fs.writeFileSync('/tmp/main',main);fs.writeFileSync('/tmp/meta.json',JSON.stringify(meta));console.log('PATCH_READY transparent logos only');
+          NODE
+
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=2" -H "$AUTH" -o /tmp/recheck.json
+          CUR=$(node -e "const j=require('/tmp/recheck.json');process.stdout.write(String(j.result?.deployments?.[0]?.versions?.[0]?.version_id||''))")
+          [ "$CUR" = "$BASE" ] || { echo "ABORT_CONCURRENT_DEPLOY:$CUR";exit 4; }
+
+          node -e "const fs=require('fs');fs.writeFileSync('/tmp/upload-meta.json',JSON.stringify({main_module:fs.readFileSync('/tmp/main','utf8').trim()}))"
+          mapfile -t args < <(node - <<'NODE'
+          const fs=require('fs');for(const m of JSON.parse(fs.readFileSync('/tmp/meta.json','utf8')))console.log(`-F\n${m.name}=@/tmp/modules/${m.name};type=${m.content_type}`);
+          NODE
+          )
+          CURL_ARGS=();i=0;while [ $i -lt ${#args[@]} ];do CURL_ARGS+=("${args[$i]}" "${args[$((i+1))]}");i=$((i+2));done
+          curl -fsS -X PUT "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/content" -H "$AUTH" -F 'metadata=</tmp/upload-meta.json;type=application/json' "${CURL_ARGS[@]}" -o /tmp/update.json
+          node -e "const j=require('/tmp/update.json');if(j.success!==true)throw Error(JSON.stringify(j.errors||[]));console.log('UPLOAD_ACCEPTED')"
+
+          rollback(){ set +e;[ -s /tmp/our-version ]||return;OUR=$(cat /tmp/our-version);curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=2" -H "$AUTH" -o /tmp/current.json||return;NOW=$(node -e "const j=require('/tmp/current.json');process.stdout.write(String(j.result?.deployments?.[0]?.versions?.[0]?.version_id||''))");[ "$NOW" = "$OUR" ]||return;node -e "require('fs').writeFileSync('/tmp/rb.json',JSON.stringify({strategy:'percentage',versions:[{version_id:process.argv[1],percentage:100}],annotations:{'workers/message':'Rollback transparent legal logo verification failure'}}))" "$BASE";curl -fsS -X POST "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments" -H "$AUTH" -H 'content-type: application/json' --data-binary @/tmp/rb.json >/tmp/rb-resp.json||true;echo ROLLBACK_TO:$BASE; }
+          trap 'rc=$?;rollback;exit $rc' ERR
+
+          CAND='';for n in $(seq 1 20);do curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=2" -H "$AUTH" -o /tmp/d.json;CAND=$(node -e "const j=require('/tmp/d.json');process.stdout.write(String(j.result?.deployments?.[0]?.versions?.[0]?.version_id||''))");[ -n "$CAND" ]&&[ "$CAND" != "$BASE" ]&&break;sleep 2;done;[ -n "$CAND" ]&&[ "$CAND" != "$BASE" ];echo -n "$CAND" >/tmp/our-version
+
+          pages='information about user-guide methodology privacy terms disclaimer affiliate-disclosure responsible-gambling cookies contact'
+          for p in $pages; do
+            ok=0
+            for n in $(seq 1 30); do
+              Q="${GITHUB_RUN_ID}-$p-$n-$(date +%s%N)"
+              curl -fsS -L -H 'Cache-Control: no-cache' "$BALL46_URL/$p.html?after=$Q" -o "/tmp/after/$p.html"
+              curl -fsS -L -H 'Cache-Control: no-cache' "$BALL46_URL/legal.css?after=$Q" -o "/tmp/after/legal-$p.css"
+              if grep -Fq 'class="b46-header-logo-image" role="img" aria-label="ball46"' "/tmp/after/$p.html" && grep -Fq 'class="footer-title footer-brand-image" role="img" aria-label="ball46"' "/tmp/after/$p.html" && grep -Fq 'B46_TRANSPARENT_LOGO_20261002' "/tmp/after/legal-$p.css" && grep -Fq 'background-color:transparent!important' "/tmp/after/legal-$p.css"; then ok=1;break; fi
+              sleep 2
+            done
+            [ "$ok" = 1 ] || { echo "EDGE_TIMEOUT:$p";false; }
+            echo "TRANSPARENT_PAGE_PASS:$p"
+          done
+
+          curl -fsS "$BALL46_URL/api/engine/health?after=${GITHUB_RUN_ID}" -o /tmp/after/e.json
+          curl -fsS "$BALL46_URL/api/full-market/health?after=${GITHUB_RUN_ID}" -o /tmp/after/f.json
+          curl -fsS "$BALL46_URL/api/engine/statistics?after=${GITHUB_RUN_ID}" -o /tmp/after/s.json
+          node - <<'NODE'
+          const b=require('/tmp/backend-before.json'),e=require('/tmp/after/e.json'),f=require('/tmp/after/f.json'),s=require('/tmp/after/s.json'),a={engine:e.version,fullMarket:f.version,settlementRevision:s.settlementRevision};if(JSON.stringify(a)!==JSON.stringify(b))throw Error('BACKEND_CHANGED');console.log('VERIFY_11_TRANSPARENT_LOGOS_PASS',a);
+          NODE
+          OUR=$(cat /tmp/our-version);curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=2" -H "$AUTH" -o /tmp/final.json;FINAL=$(node -e "const j=require('/tmp/final.json');process.stdout.write(String(j.result?.deployments?.[0]?.versions?.[0]?.version_id||''))");[ "$FINAL" = "$OUR" ]||false
+          trap - ERR
