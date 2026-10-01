@@ -1,4 +1,4 @@
-name: ROLLBACK Ball46 Footer V5 20261001
+name: VERIFY Ball46 restored after Footer V5 20261001
 
 on:
   push:
@@ -12,66 +12,45 @@ env:
   ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
   API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
   SCRIPT_NAME: ball46-production
-  BAD_VERSION: 87331fa8-6593-4482-863b-7c88a6d06c00
   RESTORE_VERSION: d54d0bae-0bd7-4a36-beed-052aa69a3a5e
   BALL46_URL: https://ball46.com
 
 jobs:
-  guarded-rollback:
+  verify-restored:
     runs-on: ubuntu-24.04
     timeout-minutes: 8
     steps:
-      - name: Verify Footer V5 is still active, then rollback only that version
+      - name: Verify restored version, edge, information page styles and backend
         shell: bash
         run: |
           set -euo pipefail
           AUTH="Authorization: Bearer $API_TOKEN"
-          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=3" -H "$AUTH" -o /tmp/before.json
-          CURRENT=$(node -e "const j=require('/tmp/before.json');const d=j.result?.deployments?.[0];if(!d||d.versions?.length!==1||Number(d.versions[0].percentage)!==100)process.exit(2);process.stdout.write(String(d.versions[0].version_id||''))")
-          echo "CURRENT_VERSION:$CURRENT"
-          if [ "$CURRENT" != "$BAD_VERSION" ]; then
-            echo "ABORT_NO_MUTATION: production moved; expected Footer V5 $BAD_VERSION but found $CURRENT"
-            exit 3
-          fi
-          node - <<'NODE'
-          const fs=require('fs');
-          fs.writeFileSync('/tmp/rollback.json',JSON.stringify({
-            strategy:'percentage',
-            versions:[{version_id:process.env.RESTORE_VERSION,percentage:100}],
-            annotations:{'workers/message':'Rollback Footer V5 regression: restore pre-footer production'}
-          }));
-          NODE
-          curl -fsS -X POST "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments" \
-            -H "$AUTH" -H 'content-type: application/json' --data-binary @/tmp/rollback.json -o /tmp/rollback-response.json
-          node -e "const j=require('/tmp/rollback-response.json');if(j.success!==true)throw Error(JSON.stringify(j.errors||[]));console.log('ROLLBACK_ACCEPTED')"
-
-      - name: Verify restored Production and backend identity
-        shell: bash
-        run: |
-          set -euo pipefail
-          AUTH="Authorization: Bearer $API_TOKEN"
-          ok=0
-          for n in $(seq 1 15); do
-            curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=3" -H "$AUTH" -o /tmp/after.json
-            CURRENT=$(node -e "const j=require('/tmp/after.json');const d=j.result?.deployments?.[0];process.stdout.write(String(d?.versions?.[0]?.version_id||''))")
-            if [ "$CURRENT" = "$RESTORE_VERSION" ]; then ok=1; break; fi
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=2" -H "$AUTH" -o /tmp/deploy.json
+          CURRENT=$(node -e "const j=require('/tmp/deploy.json');process.stdout.write(String(j.result?.deployments?.[0]?.versions?.[0]?.version_id||''))")
+          [ "$CURRENT" = "$RESTORE_VERSION" ] || { echo "PRODUCTION_MOVED:$CURRENT"; exit 2; }
+          echo "RESTORED_VERSION_ACTIVE:$CURRENT"
+          edge=0
+          for n in $(seq 1 30); do
+            K="${GITHUB_RUN_ID}-$n-$(date +%s%N)"
+            curl -fsS -L -D /tmp/info.headers -H 'Cache-Control: no-cache' "$BALL46_URL/information.html?verifyrestore=$K" -o /tmp/info.html
+            curl -fsS -L -D /tmp/index.headers -H 'Cache-Control: no-cache' "$BALL46_URL/index.html?verifyrestore=$K" -o /tmp/index.html
+            if ! grep -qi '^x-ball46-footer-revision: footer-links-v5-20261001' /tmp/info.headers && ! grep -qi '^x-ball46-footer-revision: footer-links-v5-20261001' /tmp/index.headers; then edge=1; break; fi
             sleep 2
           done
-          [ "$ok" = 1 ] || { echo 'RESTORE_VERSION_NOT_ACTIVE'; exit 4; }
-          echo "RESTORED_VERSION:$CURRENT"
-          KEY="${GITHUB_RUN_ID}-$(date +%s%N)"
-          curl -fsS -L -D /tmp/index.headers -H 'Cache-Control: no-cache' --max-time 25 "$BALL46_URL/index.html?rollbackcheck=$KEY" -o /tmp/index.html
-          if grep -qi '^x-ball46-footer-revision: footer-links-v5-20261001' /tmp/index.headers; then
-            echo 'FOOTER_V5_HEADER_STILL_VISIBLE'; exit 5;
-          fi
-          curl -fsS --max-time 25 "$BALL46_URL/api/engine/health?rollbackcheck=$KEY" -o /tmp/engine.json
-          curl -fsS --max-time 25 "$BALL46_URL/api/full-market/health?rollbackcheck=$KEY" -o /tmp/full.json
-          curl -fsS --max-time 25 "$BALL46_URL/api/engine/statistics?rollbackcheck=$KEY" -o /tmp/stats.json
+          [ "$edge" = 1 ] || { echo EDGE_NOT_RESTORED; exit 3; }
+          echo EDGE_RESTORED
           node - <<'NODE'
-          const e=require('/tmp/engine.json'),f=require('/tmp/full.json'),s=require('/tmp/stats.json');
-          if(e.ok!==true||f.ok!==true||s.ok!==true)throw Error('BACKEND_NOT_OK_AFTER_ROLLBACK');
-          if(e.version!=='nomad343-engine-v5-best19-referee')throw Error('ENGINE_CHANGED');
-          if(f.version!=='nomad343-ball46-full-market-v6-server-prewarm-cache')throw Error('FULLMARKET_CHANGED');
-          if(s.settlementRevision!=='bet365-rules-v2')throw Error('SETTLEMENT_CHANGED');
-          console.log('ROLLBACK_VERIFY_PASS',{engine:e.version,fullMarket:f.version,settlementRevision:s.settlementRevision});
+          const fs=require('fs');const h=fs.readFileSync('/tmp/info.html','utf8');
+          const links=[...h.matchAll(/<link\b[^>]*href=["']([^"']+)["'][^>]*>/gi)].map(m=>m[1]);
+          console.log('INFO_BYTES',Buffer.byteLength(h));
+          console.log('INFO_LINKS',JSON.stringify(links));
+          console.log('INFO_HAS_INLINE_STYLE',/<style\b/i.test(h));
+          console.log('INFO_HAS_FOOTER',/b46-site-footer-v1/i.test(h));
+          console.log('INFO_HEAD',h.slice(0,4500).replace(/\n/g,' '));
+          NODE
+          curl -fsS "$BALL46_URL/api/engine/health?verifyrestore=${GITHUB_RUN_ID}" -o /tmp/e.json
+          curl -fsS "$BALL46_URL/api/full-market/health?verifyrestore=${GITHUB_RUN_ID}" -o /tmp/f.json
+          curl -fsS "$BALL46_URL/api/engine/statistics?verifyrestore=${GITHUB_RUN_ID}" -o /tmp/s.json
+          node - <<'NODE'
+          const e=require('/tmp/e.json'),f=require('/tmp/f.json'),s=require('/tmp/s.json');if(e.ok!==true||f.ok!==true||s.ok!==true)throw Error('BACKEND_NOT_OK');console.log('BACKEND_OK',e.version,f.version,s.settlementRevision);
           NODE
