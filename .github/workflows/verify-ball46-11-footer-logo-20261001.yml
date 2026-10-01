@@ -1,0 +1,42 @@
+name: VERIFY Ball46 11 Footer logos 20261001
+
+on:
+  push:
+    branches: [ops/ball46-footer-links-20261001]
+    paths: ['.github/workflows/verify-ball46-11-footer-logo-20261001.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  verify-11-footer-logos:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Verify all 11 current Production pages individually
+        shell: bash
+        run: |
+          set -euo pipefail
+          base='https://ball46.com'
+          pages='information about user-guide methodology privacy terms disclaimer affiliate-disclosure responsible-gambling cookies contact'
+          mkdir -p /tmp/pages
+          fail=0
+          for p in $pages; do
+            k="${GITHUB_RUN_ID}-${p}-$(date +%s%N)"
+            status=$(curl -sS -L -H 'Cache-Control: no-cache' -o "/tmp/pages/$p.html" -w '%{http_code}' "$base/$p.html?footercheck=$k")
+            html=$(cat "/tmp/pages/$p.html")
+            logo=NO; routeSig=NO; routeStats=NO
+            printf '%s' "$html" | grep -Fq 'footer-title">ball<span>46</span></div>' && logo=YES || true
+            printf '%s' "$html" | grep -Fq '/index.html?view=signal' && routeSig=YES || true
+            printf '%s' "$html" | grep -Fq '/index.html?view=statistics' && routeStats=YES || true
+            printf '%-24s HTTP=%s LOGO=%s SIGNAL=%s STAT=%s\n' "$p" "$status" "$logo" "$routeSig" "$routeStats"
+            [ "$status" = 200 ] && [ "$logo" = YES ] || fail=1
+          done
+          cssStatus=$(curl -sS -L -H 'Cache-Control: no-cache' -o /tmp/legal.css -w '%{http_code}' "$base/legal.css?footercheck=${GITHUB_RUN_ID}-css")
+          grep -Fq 'B46_FOOTER_BRAND_LOGO_20261001' /tmp/legal.css || fail=1
+          grep -Fq '.footer-title span{color:var(--green2)}' /tmp/legal.css || fail=1
+          echo "LEGAL_CSS_HTTP=$cssStatus"
+          echo 'EXPECTED: desktop ball white / 46 green; mobile scoped rounded black logo from legal.css media rule'
+          [ "$cssStatus" = 200 ] || fail=1
+          [ "$fail" = 0 ] || { echo 'VERIFY_11_FOOTER_LOGOS_FAILED'; exit 1; }
+          echo 'VERIFY_11_FOOTER_LOGOS_PASS'
