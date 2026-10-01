@@ -1,0 +1,169 @@
+{
+  "capturedAt": "2026-10-01T13:14:50.885Z",
+  "activeDeployment": {
+    "id": "40ff5e2e-2180-469f-bc14-75bb60312684",
+    "created_on": "2026-09-29T14:37:24.386118Z",
+    "versions": [
+      {
+        "version_id": "d54d0bae-0bd7-4a36-beed-052aa69a3a5e",
+        "percentage": 100
+      }
+    ]
+  },
+  "backend": {
+    "engine": "nomad343-engine-v5-best19-referee",
+    "fullMarket": "nomad343-ball46-full-market-v6-server-prewarm-cache",
+    "settlementRevision": "bet365-rules-v2"
+  },
+  "indexSha256": "8f8ca763e76a8d8a37b8f720f40973f7c0cf5567d281c030b1017214ce3c5d39",
+  "controls": [
+    {
+      "tag": "button",
+      "text": "☾ Dark",
+      "attrs": "type=\"button\" class=\"workspace-theme-btn\" data-theme-toggle aria-label=\"Switch theme\""
+    },
+    {
+      "tag": "button",
+      "text": "All matches 0",
+      "attrs": "class=\"filter active\" data-status-filter=\"all\""
+    },
+    {
+      "tag": "button",
+      "text": "Signal 0",
+      "attrs": "class=\"workspace-nav-row\" data-workspace-view=\"signal\""
+    },
+    {
+      "tag": "button",
+      "text": "Total 0",
+      "attrs": "class=\"workspace-nav-row\" data-stat-market=\"all\""
+    },
+    {
+      "tag": "button",
+      "text": "1X2 0",
+      "attrs": "class=\"workspace-nav-row\" data-stat-market=\"1x2\""
+    },
+    {
+      "tag": "button",
+      "text": "AH 0",
+      "attrs": "class=\"workspace-nav-row\" data-stat-market=\"ah\""
+    },
+    {
+      "tag": "button",
+      "text": "O/U 0",
+      "attrs": "class=\"workspace-nav-row\" data-stat-market=\"ou\""
+    },
+    {
+      "tag": "button",
+      "text": "BTTS 0",
+      "attrs": "class=\"workspace-nav-row\" data-stat-market=\"btts\""
+    },
+    {
+      "tag": "button",
+      "text": "Corners 0",
+      "attrs": "class=\"workspace-nav-row\" data-stat-market=\"corners\""
+    },
+    {
+      "tag": "button",
+      "text": "Cards 0",
+      "attrs": "class=\"workspace-nav-row\" data-stat-market=\"cards\""
+    },
+    {
+      "tag": "button",
+      "text": "Other 0",
+      "attrs": "class=\"workspace-nav-row\" data-stat-market=\"other\""
+    },
+    {
+      "tag": "button",
+      "text": "ALL 0",
+      "attrs": "type=\"button\" class=\"signal-market-chip active\" data-signal-market=\"all\""
+    },
+    {
+      "tag": "button",
+      "text": "1X2 0",
+      "attrs": "type=\"button\" class=\"signal-market-chip\" data-signal-market=\"1x2\""
+    },
+    {
+      "tag": "button",
+      "text": "AH 0",
+      "attrs": "type=\"button\" class=\"signal-market-chip\" data-signal-market=\"ah\""
+    },
+    {
+      "tag": "button",
+      "text": "O/U 0",
+      "attrs": "type=\"button\" class=\"signal-market-chip\" data-signal-market=\"ou\""
+    },
+    {
+      "tag": "button",
+      "text": "CORNERS 0",
+      "attrs": "type=\"button\" class=\"signal-market-chip\" data-signal-market=\"corners\""
+    },
+    {
+      "tag": "button",
+      "text": "CARDS 0",
+      "attrs": "type=\"button\" class=\"signal-market-chip\" data-signal-market=\"cards\""
+    },
+    {
+      "tag": "button",
+      "text": "OTHER 0",
+      "attrs": "type=\"button\" class=\"signal-market-chip\" data-signal-market=\"other\""
+    },
+    {
+      "tag": "button",
+      "text": "All results",
+      "attrs": "class=\"sp-filter-chip active\""
+    },
+    {
+      "tag": "a",
+      "text": "Signals",
+      "attrs": "href=\"/signal.html\""
+    },
+    {
+      "tag": "a",
+      "text": "Statistics",
+      "attrs": "href=\"/statistics.html\""
+    }
+  ],
+  "scriptSrc": [
+    "workspace-route-guard-343.js?v=343-route-guard-20260922b",
+    "bulk-odds-compat-343.js?v=343-bulk-odds-compat-v3-market-alias-safe&order=20260918-1",
+    "dashboard-v2-stage3.js?v=343-scorebar-details-20260929a",
+    "odds-format-343.js?v=343-odds-under-logo-surgical-20260928a",
+    "dashboard-v2-tune.js?v=343-dashboard-v2-ui-tune-v4-scroll-safe&order=20260918-1",
+    "expanded-match-343.js?v=343-expand-v4-stable-lifecycle&order=20260918-1",
+    "full-market-bookmaker-343.js?v=343-affiliate-logo-click-20260928a",
+    "live-summary-full-odds-343.js?v=343-live-summary-john-gated-v7-default-visible-rich&order=20260919-2",
+    "market-registry-343.js?v=343-market-registry-v1",
+    "singlepage-workspace-343.js?v=343-singlepage-20260922-signal-shared",
+    "mobile-menu-classic-343.js?v=343-mobile-classic-20260922b",
+    "ui-sync-fixes-343-v2.js?v=343-event-icons-line-20260922b",
+    "/longterm-performance-343.js?v=20260922a",
+    "signal-event-flow-line-343.js?v=343-signal-flow-line-20260922b",
+    "color-semantics-343.js?v=343-color-semantics-20260922a"
+  ],
+  "inlineContexts": [
+    {
+      "pattern": "data-workspace-view",
+      "context": "space-odds-slot aria-label=\"Odds display format\"></div></div> <div class=\"rail-card\"><div class=\"rail-title\">MATCH STATUS</div><button class=\"filter active\" data-status-filter=\"all\"><span>All matches</span><b data-filter-count=\"all\">0</b></button><button class=\"filter\" data-status-filter=\"live\"><span><i class=\"status-dot live\"></i>Live</span><b data-filter-count=\"live\">0</b></button><button class=\"workspace-nav-row\" data-workspace-view=\"signal\"><span><i class=\"workspace-nav-mark signal\"></i>Signal</span><b data-workspace-signal-count>0</b></button><button class=\"filter\" data-status-filter=\"scheduled\"><span><i class=\"status-dot upcoming\"></i>Upcoming</span><b data-filter-count=\"scheduled\">0</b></button><button class=\"filter\" data-status-filter=\"unknown\"><span><i class=\"status-dot waiting\"></i>Waiting</span><b data-filter-count=\"unknown\">0</b></button><button class=\"filter\" data-status-filter=\"finished\"><span><i class=\"status-dot finished\"></i>Fin"
+    },
+    {
+      "pattern": "workspace-view",
+      "context": "-odds-slot aria-label=\"Odds display format\"></div></div> <div class=\"rail-card\"><div class=\"rail-title\">MATCH STATUS</div><button class=\"filter active\" data-status-filter=\"all\"><span>All matches</span><b data-filter-count=\"all\">0</b></button><button class=\"filter\" data-status-filter=\"live\"><span><i class=\"status-dot live\"></i>Live</span><b data-filter-count=\"live\">0</b></button><button class=\"workspace-nav-row\" data-workspace-view=\"signal\"><span><i class=\"workspace-nav-mark signal\"></i>Signal</span><b data-workspace-signal-count>0</b></button><button class=\"filter\" data-status-filter=\"scheduled\"><span><i class=\"status-dot upcoming\"></i>Upcoming</span><b data-filter-count=\"scheduled\">0</b></button><button class=\"filter\" data-status-filter=\"unknown\"><span><i class=\"status-dot waiting\"></i>Waiting</span><b data-filter-count=\"unknown\">0</b></button><button class=\"filter\" data-status-filter=\"finished\"><span><i class=\"status-dot finished\"></i>Fin"
+    },
+    {
+      "pattern": "workspace-view",
+      "context": "d\">0</b><span>Finished</span></div></div><div class=\"overview-foot\"><span>Active matches</span><b data-active-match-count>0</b></div><div class=\"overview-foot\"><span>Active signals</span><b data-signal-count>0</b></div><div class=\"overview-foot\"><span>Bulk data age</span><b data-bulk-age>—</b></div></section></aside> </div></div> <div class=\"workspace-panel\" data-workspace-panel=\"statistics\" hidden> <section class=\"workspace-view-head\"><div class=\"copy\"><span class=\"kicker\">STATISTICS V2</span><h2>Performance & Results</h2><p>Trend first, compact numbers second, transparent settled history below.</p></div><div class=\"workspace-view-state\" data-sp-feed-state>Connecting to statistics</div></section> <div class=\"sp-stats-content\"> <section class=\"sp-stat-hero\"><div><span class=\"kicker\">CURRENT VIEW</span><h3 data-sp-market-title>Total · All Markets</h3><p data-sp-market-desc>All settled Ball46 signals across every tracked market.</p></div><di"
+    },
+    {
+      "pattern": "workspace-view",
+      "context": "t>0</b></div><div class=\"overview-foot\"><span>Bulk data age</span><b data-bulk-age>—</b></div></section></aside> </div></div> <div class=\"workspace-panel\" data-workspace-panel=\"statistics\" hidden> <section class=\"workspace-view-head\"><div class=\"copy\"><span class=\"kicker\">STATISTICS V2</span><h2>Performance & Results</h2><p>Trend first, compact numbers second, transparent settled history below.</p></div><div class=\"workspace-view-state\" data-sp-feed-state>Connecting to statistics</div></section> <div class=\"sp-stats-content\"> <section class=\"sp-stat-hero\"><div><span class=\"kicker\">CURRENT VIEW</span><h3 data-sp-market-title>Total · All Markets</h3><p data-sp-market-desc>All settled Ball46 signals across every tracked market.</p></div><div class=\"meta\"><span>FILTER</span><b data-sp-filter-label>All results</b></div></section> <section class=\"sp-kpis\"><article class=\"sp-kpi\"><span>SETTLED</span><strong data-sp-kpi=\"total\">—</strong><small>Cu"
+    },
+    {
+      "pattern": "statistics v2",
+      "context": "w-foot\"><span>Active matches</span><b data-active-match-count>0</b></div><div class=\"overview-foot\"><span>Active signals</span><b data-signal-count>0</b></div><div class=\"overview-foot\"><span>Bulk data age</span><b data-bulk-age>—</b></div></section></aside> </div></div> <div class=\"workspace-panel\" data-workspace-panel=\"statistics\" hidden> <section class=\"workspace-view-head\"><div class=\"copy\"><span class=\"kicker\">STATISTICS V2</span><h2>Performance & Results</h2><p>Trend first, compact numbers second, transparent settled history below.</p></div><div class=\"workspace-view-state\" data-sp-feed-state>Connecting to statistics</div></section> <div class=\"sp-stats-content\"> <section class=\"sp-stat-hero\"><div><span class=\"kicker\">CURRENT VIEW</span><h3 data-sp-market-title>Total · All Markets</h3><p data-sp-market-desc>All settled Ball46 signals across every tracked market.</p></div><div class=\"meta\"><span>FILTER</span><b data-sp-filter-label>A"
+    },
+    {
+      "pattern": "all match",
+      "context": "ass=\"workspace-brand\" aria-label=\"Ball46\"><span>ball</span><b>46</b></div><button type=\"button\" class=\"workspace-theme-btn\" data-theme-toggle aria-label=\"Switch theme\">☾ Dark</button></div><div class=\"workspace-brand-meta\" data-workspace-odds-slot aria-label=\"Odds display format\"></div></div> <div class=\"rail-card\"><div class=\"rail-title\">MATCH STATUS</div><button class=\"filter active\" data-status-filter=\"all\"><span>All matches</span><b data-filter-count=\"all\">0</b></button><button class=\"filter\" data-status-filter=\"live\"><span><i class=\"status-dot live\"></i>Live</span><b data-filter-count=\"live\">0</b></button><button class=\"workspace-nav-row\" data-workspace-view=\"signal\"><span><i class=\"workspace-nav-mark signal\"></i>Signal</span><b data-workspace-signal-count>0</b></button><button class=\"filter\" data-status-filter=\"scheduled\"><span><i class=\"status-dot upcoming\"></i>Upcoming</span><b data-filter-count=\"scheduled\">0</b></button><butto"
+    }
+  ]
+}
