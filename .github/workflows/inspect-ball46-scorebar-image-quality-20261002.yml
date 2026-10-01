@@ -14,6 +14,6 @@ jobs:
           for n in win loss draw pending; do
             curl -fsS -L -H 'Cache-Control: no-cache' "https://ball46.com/scorebar-$n-20260929a.webp?q=${GITHUB_RUN_ID}-$n" -o "/tmp/$n.webp"
             BYTES=$(wc -c < "/tmp/$n.webp")
-            DIMS=$(identify -format '%wx%h' "/tmp/$n.webp")
-            echo "$n bytes=$BYTES dims=$DIMS"
+            INFO=$(file "/tmp/$n.webp")
+            echo "$n bytes=$BYTES $INFO"
           done
