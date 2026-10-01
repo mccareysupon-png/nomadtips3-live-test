@@ -39,29 +39,40 @@ jobs:
           curl -fsS --max-time 25 "$BALL46_URL/api/engine/statistics?audit=$nonce" -o /tmp/stats.json
           node - <<'NODE'
           const fs=require('fs'),crypto=require('crypto');
-          function anchors(file){
+          function clean(s){return String(s||'').replace(/<[^>]+>/g,' ').replace(/&nbsp;/gi,' ').replace(/\s+/g,' ').trim();}
+          function page(file){
             const html=fs.readFileSync(file,'utf8');
-            const out=[];
-            const re=/<a\b([^>]*?)href\s*=\s*["']([^"']+)["']([^>]*)>([\s\S]*?)<\/a>/gi;
+            const anchors=[];
             let m;
-            while((m=re.exec(html))){
-              const text=m[4].replace(/<[^>]+>/g,' ').replace(/&nbsp;/gi,' ').replace(/\s+/g,' ').trim();
-              if(/live|signal|statistic|all\s*match|history|result/i.test(text)) out.push({text,href:m[2]});
+            const ar=/<a\b([^>]*?)href\s*=\s*["']([^"']+)["']([^>]*)>([\s\S]*?)<\/a>/gi;
+            while((m=ar.exec(html))) anchors.push({text:clean(m[4]),href:m[2],attrs:clean(m[1]+' '+m[3])});
+            const controls=[];
+            const cr=/<(button|a)\b([^>]*)>([\s\S]*?)<\/\1>/gi;
+            while((m=cr.exec(html))){
+              const text=clean(m[3]),attrs=clean(m[2]);
+              if(/signal|statistic|all\s*match|live|history|result/i.test(text+' '+attrs)) controls.push({tag:m[1].toLowerCase(),text,attrs});
             }
+            const keywordContexts=[];
+            const low=html.toLowerCase();
+            for(const kw of ['statisticsv2','allmatch','all match','signal','statistics']){
+              let pos=0,count=0;
+              while((pos=low.indexOf(kw,pos))>=0 && count<20){
+                keywordContexts.push({keyword:kw,context:clean(html.slice(Math.max(0,pos-220),Math.min(html.length,pos+kw.length+260)))});
+                pos+=kw.length;count++;
+              }
+            }
+            const scripts=[...html.matchAll(/<script\b[^>]*src=["']([^"']+)["'][^>]*>/gi)].map(x=>x[1]);
             const footer=html.match(/<footer\b[\s\S]*?<\/footer>/i)?.[0]||'';
-            const footerLinks=[];
-            let fm;re.lastIndex=0;
-            while((fm=re.exec(footer))){
-              footerLinks.push({text:fm[4].replace(/<[^>]+>/g,' ').replace(/&nbsp;/gi,' ').replace(/\s+/g,' ').trim(),href:fm[2]});
-            }
-            return {sha256:crypto.createHash('sha256').update(html).digest('hex'),anchors:out,footerLinks,hasFooter:html.includes('b46-site-footer-v1')};
+            const footerLinks=[];ar.lastIndex=0;
+            while((m=ar.exec(footer))) footerLinks.push({text:clean(m[4]),href:m[2]});
+            return {sha256:crypto.createHash('sha256').update(html).digest('hex'),anchors,controls,keywordContexts,scripts,footerLinks,hasFooter:html.includes('b46-site-footer-v1')};
           }
           const dj=JSON.parse(fs.readFileSync('/tmp/deployments.json','utf8'));
           const dep=dj.result?.deployments?.[0]||null;
           const e=JSON.parse(fs.readFileSync('/tmp/engine.json','utf8'));
           const f=JSON.parse(fs.readFileSync('/tmp/full.json','utf8'));
           const s=JSON.parse(fs.readFileSync('/tmp/stats.json','utf8'));
-          const report={capturedAt:new Date().toISOString(),activeDeployment:dep?{id:dep.id,created_on:dep.created_on,source:dep.source,versions:dep.versions}:null,backend:{engine:e.version,fullMarket:f.version,settlementRevision:s.settlementRevision},pages:{index:anchors('/tmp/index.html'),signal:anchors('/tmp/signal.html'),statistics:anchors('/tmp/statistics.html')}};
+          const report={capturedAt:new Date().toISOString(),activeDeployment:dep?{id:dep.id,created_on:dep.created_on,source:dep.source,versions:dep.versions}:null,backend:{engine:e.version,fullMarket:f.version,settlementRevision:s.settlementRevision},pages:{index:page('/tmp/index.html'),signal:page('/tmp/signal.html'),statistics:page('/tmp/statistics.html')}};
           fs.mkdirSync('audit',{recursive:true});
           fs.writeFileSync('audit/ball46-footer-routes-20261001.json',JSON.stringify(report,null,2)+'\n');
           NODE
@@ -73,5 +84,5 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add audit/ball46-footer-routes-20261001.json
-          git commit -m 'audit(ball46): record current live footer routes' || exit 0
+          git commit -m 'audit(ball46): record current live footer route map' || exit 0
           git push origin HEAD:ops/ball46-footer-links-20261001
