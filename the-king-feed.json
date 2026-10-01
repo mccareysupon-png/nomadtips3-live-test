@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-10-01T06:07:50Z",
+  "updated_at": "2026-10-01T13:30:15Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -534,8 +534,8 @@
       "edge": 47.6,
       "ev": 0.7887,
       "required_confidence": 0.6,
-      "result": "PENDING",
-      "ft": null,
+      "result": "HALF_WIN",
+      "ft": "1-2",
       "locked_at": "2026-10-01T02:29:11Z",
       "source_url": "https://www.goaloo.com/football/ukraine-cup-women-shakhtar-donetsk-w-vs-seasters-odessa-w/h2h-3096899",
       "summary_url": "https://www.goaloo.com/football/ukraine-cup-women-shakhtar-donetsk-w-vs-seasters-odessa-w/summary-3096899",
@@ -595,7 +595,12 @@
         "away_recent": 8,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": 0.5,
+      "profit": 41.5,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-01T13:30:15Z"
     },
     {
       "id": "e97d996a90b35cf7-AH-HOME-4p5",
@@ -170693,6 +170698,96 @@
       "settlement_source": "goaloo-bf_us-direct-index",
       "goaloo_terminal_state": -1,
       "settled_at": "2026-09-30T23:56:34Z"
+    },
+    {
+      "id": "c37b0e1e7ec480f6-AH-HOME-1p25",
+      "goaloo_id": "3096899",
+      "date": "2026-10-01",
+      "kickoff": "2026-10-01 09:00:00",
+      "league": "Ukraine Cup Women",
+      "home": "Shakhtar Donetsk (W)",
+      "away": "SeaSters Odessa (W)",
+      "market": "AH",
+      "selection": "HOME",
+      "line": 1.25,
+      "pick": "Shakhtar Donetsk (W) +1.25",
+      "side": "home",
+      "odds": 1.83,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.9763,
+      "model_probability": 0.9763,
+      "market_fair_probability": 0.5,
+      "market_edge": 0.4763,
+      "edge": 47.6,
+      "ev": 0.7887,
+      "required_confidence": 0.6,
+      "result": "HALF_WIN",
+      "ft": "1-2",
+      "locked_at": "2026-10-01T02:29:11Z",
+      "source_url": "https://www.goaloo.com/football/ukraine-cup-women-shakhtar-donetsk-w-vs-seasters-odessa-w/h2h-3096899",
+      "summary_url": "https://www.goaloo.com/football/ukraine-cup-women-shakhtar-donetsk-w-vs-seasters-odessa-w/summary-3096899",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 2.169,
+        "lambda_away": 0.456,
+        "home_win": 0.7985,
+        "draw": 0.1756,
+        "away_win": 0.0259,
+        "h2h_adjustment": -0.015,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.5659,
+          "gd_edge": 0.8586,
+          "clean_sheet_edge": 0.2878,
+          "failed_to_score_edge": 0.6,
+          "bounded_adjustment": 0.0477,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 8,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": 0.5,
+      "profit": 41.5,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-01T13:30:15Z"
     }
   ],
   "note": "Automated Full-Time Winner First feed. Supplemental markets remain unpublished.",
