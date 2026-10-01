@@ -1,0 +1,255 @@
+name: DEPLOY Ball46 Footer Links V2 20261001
+
+on:
+  push:
+    branches: [ops/ball46-footer-links-20261001]
+    paths: ['.github/workflows/deploy-ball46-footer-links-v2-20261001.yml']
+
+permissions:
+  contents: write
+
+env:
+  ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  SCRIPT_NAME: ball46-production
+  BALL46_URL: https://ball46.com
+
+jobs:
+  surgical-footer-v2:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ops/ball46-footer-links-20261001
+          fetch-depth: 1
+
+      - name: Lock current Production and capture stable before-state
+        shell: bash
+        run: |
+          set -euo pipefail
+          AUTH="Authorization: Bearer $API_TOKEN"
+          mkdir -p /tmp/b46-before /tmp/b46-after audit
+          echo "${GITHUB_RUN_ID}-stable" > /tmp/audit-key
+          AUDIT_KEY=$(cat /tmp/audit-key)
+
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=5" -H "$AUTH" -o /tmp/deployments-before.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const j=JSON.parse(fs.readFileSync('/tmp/deployments-before.json','utf8'));
+          if(j.success!==true) throw Error('DEPLOYMENT_LIST_FAILED');
+          const d=j.result?.deployments?.[0];
+          if(!d || !Array.isArray(d.versions) || d.versions.length!==1 || Number(d.versions[0].percentage)!==100) throw Error('PRODUCTION_NOT_SINGLE_VERSION');
+          fs.writeFileSync('/tmp/rb-version',String(d.versions[0].version_id));
+          fs.writeFileSync('/tmp/rb-deployment',String(d.id));
+          console.log('LOCKED_ACTIVE',{deployment:d.id,version:d.versions[0].version_id,created:d.created_on});
+          NODE
+
+          pages='index signal statistics information about user-guide methodology privacy terms disclaimer affiliate-disclosure responsible-gambling cookies contact'
+          for p in $pages; do
+            curl -fsS -L -H 'Cache-Control: no-cache' --max-time 25 "$BALL46_URL/$p.html?b46footer=$AUDIT_KEY" -o "/tmp/b46-before/$p.html"
+          done
+          curl -fsS -L -H 'Cache-Control: no-cache' --max-time 25 "$BALL46_URL/ball46-footer.css?b46footer=$AUDIT_KEY" -o /tmp/b46-before/footer.css
+          curl -fsS -H 'Cache-Control: no-cache' --max-time 25 "$BALL46_URL/api/engine/health?b46footer=$AUDIT_KEY" -o /tmp/b46-before/engine.json
+          curl -fsS -H 'Cache-Control: no-cache' --max-time 25 "$BALL46_URL/api/full-market/health?b46footer=$AUDIT_KEY" -o /tmp/b46-before/full.json
+          curl -fsS -H 'Cache-Control: no-cache' --max-time 25 "$BALL46_URL/api/engine/statistics?b46footer=$AUDIT_KEY" -o /tmp/b46-before/stats.json
+
+          node - <<'NODE'
+          const fs=require('fs'),crypto=require('crypto');
+          const html=fs.readFileSync('/tmp/b46-before/index.html','utf8');
+          const m=html.match(/<footer\b[^>]*id=["']b46-site-footer-v1["'][\s\S]*?<\/footer>/i);
+          if(!m) throw Error('CURRENT_FOOTER_MISSING');
+          let footer=m[0],s=0,t=0;
+          footer=footer.replace(/href=["']\/signal\.html["']/g,()=>{s++;return 'href="/index.html?view=signal"'});
+          footer=footer.replace(/href=["']\/statistics\.html["']/g,()=>{t++;return 'href="/index.html?view=statistics"'});
+          if(s!==1 || t!==1) throw Error(`FOOTER_PRODUCT_LINK_COUNT signal=${s} statistics=${t}`);
+          fs.writeFileSync('/tmp/footer-new.html',footer);
+          fs.writeFileSync('/tmp/footer-before.sha256',crypto.createHash('sha256').update(m[0].replace(/\s+/g,' ').trim()).digest('hex'));
+          const css=fs.readFileSync('/tmp/b46-before/footer.css','utf8');
+          if(!/#b46-site-footer-v1/.test(css)) throw Error('FOOTER_CSS_NOT_SCOPED');
+          const e=JSON.parse(fs.readFileSync('/tmp/b46-before/engine.json','utf8'));
+          const f=JSON.parse(fs.readFileSync('/tmp/b46-before/full.json','utf8'));
+          const st=JSON.parse(fs.readFileSync('/tmp/b46-before/stats.json','utf8'));
+          if(e.ok!==true || f.ok!==true || st.ok!==true) throw Error('BACKEND_NOT_OK_BEFORE');
+          fs.writeFileSync('/tmp/backend-before.json',JSON.stringify({engine:e.version,fullMarket:f.version,settlementRevision:st.settlementRevision}));
+          console.log('FOOTER_PATCH_READY',{live:'/index.html',signal:'/index.html?view=signal',statistics:'/index.html?view=statistics'});
+          NODE
+
+      - name: Clone exact active Worker modules and construct deterministic footer wrapper
+        shell: bash
+        run: |
+          set -euo pipefail
+          AUTH="Authorization: Bearer $API_TOKEN"
+          RB_VERSION=$(cat /tmp/rb-version)
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/workers/$SCRIPT_NAME/versions/$RB_VERSION?include=modules" -H "$AUTH" -o /tmp/version-before.json
+
+          node - <<'NODE'
+          const fs=require('fs'),path=require('path'),crypto=require('crypto');
+          const v=JSON.parse(fs.readFileSync('/tmp/version-before.json','utf8'));
+          if(v.success!==true) throw Error('VERSION_FETCH_FAILED:'+JSON.stringify(v.errors||[]));
+          const r=v.result;
+          if(!r?.main_module || !Array.isArray(r.modules) || !r.modules.length) throw Error('VERSION_MODULES_MISSING');
+          fs.mkdirSync('/tmp/modules-before',{recursive:true});
+          fs.mkdirSync('/tmp/modules-patched',{recursive:true});
+          const meta=[];
+          for(const m of r.modules){
+            if(!m?.name || !m?.content_base64 || !m?.content_type) throw Error('BAD_MODULE_RECORD');
+            const buf=Buffer.from(m.content_base64,'base64');
+            const p=path.join('/tmp/modules-before',m.name);fs.mkdirSync(path.dirname(p),{recursive:true});fs.writeFileSync(p,buf);
+            const q=path.join('/tmp/modules-patched',m.name);fs.mkdirSync(path.dirname(q),{recursive:true});fs.writeFileSync(q,buf);
+            meta.push({name:m.name,content_type:m.content_type,beforeSha256:crypto.createHash('sha256').update(buf).digest('hex')});
+          }
+          const main=r.main_module;
+          const mainPath=path.join('/tmp/modules-patched',main);
+          const original=fs.readFileSync(mainPath,'utf8');
+          if(original.includes('__B46_FOOTER_LINKS_V2_20261001__')) throw Error('PATCH_ALREADY_PRESENT');
+          let src=original,mode='';
+          const direct=/export\s+default\s*\{/;
+          if(direct.test(src)){src=src.replace(direct,'const __B46_FOOTER_BASE_V2_20261001__ = {');mode='direct';}
+          else {
+            const bundled=/export\s*\{\s*([A-Za-z_$][\w$]*)\s+as\s+default\s*\};?\s*$/m;
+            const m=src.match(bundled);if(!m) throw Error('DEFAULT_EXPORT_ANCHOR_MISSING');
+            src=src.replace(bundled,'')+`\nconst __B46_FOOTER_BASE_V2_20261001__=${m[1]};\n`;mode='bundled';
+          }
+          const footer=fs.readFileSync('/tmp/footer-new.html','utf8');
+          const wrapper=`\n/* __B46_FOOTER_LINKS_V2_20261001__ */\nconst __B46_FOOTER_NEW_V2_20261001__=${JSON.stringify(footer)};\nconst __B46_FOOTER_LEGAL_V2_20261001__=new Set(['/information.html','/about.html','/user-guide.html','/methodology.html','/privacy.html','/terms.html','/disclaimer.html','/affiliate-disclosure.html','/responsible-gambling.html','/cookies.html','/contact.html']);\nconst __B46_FOOTER_TARGET_V2_20261001__=new Set(['/','/index.html','/signal.html','/statistics.html',...__B46_FOOTER_LEGAL_V2_20261001__]);\nasync function __b46FooterOnlyV2_20261001(response,pathname){if(!response||response.status!==200)return response;const ct=String(response.headers.get('content-type')||'').toLowerCase();if(!ct.includes('text/html'))return response;let html=await response.text();const re=/<footer\\b[^>]*id=[\\"']b46-site-footer-v1[\\"'][\\s\\S]*?<\\/footer>/i;let changed=false;if(re.test(html)){html=html.replace(re,__B46_FOOTER_NEW_V2_20261001__);changed=true}else if(__B46_FOOTER_LEGAL_V2_20261001__.has(pathname)){if(!/ball46-footer\\.css/i.test(html)){const link='<link rel=\\"stylesheet\\" href=\\"/ball46-footer.css?v=20260929\\">';html=/<\\/head>/i.test(html)?html.replace(/<\\/head>/i,link+'</head>'):link+html;}html=/<\\/body>/i.test(html)?html.replace(/<\\/body>/i,__B46_FOOTER_NEW_V2_20261001__+'</body>'):html+__B46_FOOTER_NEW_V2_20261001__;changed=true}if(!changed)return new Response(html,{status:response.status,statusText:response.statusText,headers:response.headers});const h=new Headers(response.headers);h.delete('content-length');h.set('cache-control','no-store, no-cache, must-revalidate, max-age=0');h.set('x-ball46-footer-revision','footer-links-v2-20261001');return new Response(html,{status:response.status,statusText:response.statusText,headers:h});}\nexport default {...__B46_FOOTER_BASE_V2_20261001__,async fetch(request,env,ctx){const response=await __B46_FOOTER_BASE_V2_20261001__.fetch(request,env,ctx);if(request.method!=='GET')return response;const pathname=new URL(request.url).pathname;if(!__B46_FOOTER_TARGET_V2_20261001__.has(pathname))return response;return __b46FooterOnlyV2_20261001(response,pathname);}};\n`;
+          src+=wrapper;
+          fs.writeFileSync(mainPath,src);
+          const patchedMainSha=crypto.createHash('sha256').update(Buffer.from(src)).digest('hex');
+          fs.writeFileSync('/tmp/main-module-name',main);
+          fs.writeFileSync('/tmp/module-meta.json',JSON.stringify(meta));
+          fs.writeFileSync('/tmp/patched-main.sha256',patchedMainSha);
+          fs.writeFileSync('/tmp/source-integrity.json',JSON.stringify({main,mode,originalMainSha256:meta.find(x=>x.name===main).beforeSha256,patchedMainSha256:patchedMainSha,nonMainModules:meta.filter(x=>x.name!==main)},null,2));
+          console.log('PATCH_SOURCE_READY',{main,mode,modules:meta.length,patchedMainSha});
+          NODE
+
+      - name: Abort if Production moved while patch was prepared
+        shell: bash
+        run: |
+          set -euo pipefail
+          AUTH="Authorization: Bearer $API_TOKEN"
+          LOCKED=$(cat /tmp/rb-version)
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=3" -H "$AUTH" -o /tmp/deployments-recheck.json
+          node - <<'NODE'
+          const fs=require('fs');const j=JSON.parse(fs.readFileSync('/tmp/deployments-recheck.json','utf8'));const d=j.result?.deployments?.[0];const locked=fs.readFileSync('/tmp/rb-version','utf8').trim();const now=String(d?.versions?.[0]?.version_id||'');if(!d||d.versions?.length!==1||Number(d.versions[0].percentage)!==100||now!==locked)throw Error(`PRODUCTION_CHANGED_DURING_PREP locked=${locked} now=${now}`);console.log('PRODUCTION_STILL_LOCKED',now);
+          NODE
+
+      - name: Upload exact active modules with only deterministic Footer wrapper
+        shell: bash
+        run: |
+          set -euo pipefail
+          AUTH="Authorization: Bearer $API_TOKEN"
+          node - <<'NODE'
+          const fs=require('fs');const main=fs.readFileSync('/tmp/main-module-name','utf8').trim();fs.writeFileSync('/tmp/upload-metadata.json',JSON.stringify({main_module:main}));
+          NODE
+          mapfile -t args < <(node - <<'NODE'
+          const fs=require('fs');for(const m of JSON.parse(fs.readFileSync('/tmp/module-meta.json','utf8')))console.log(`-F\n${m.name}=@/tmp/modules-patched/${m.name};type=${m.content_type}`);
+          NODE
+          )
+          CURL_ARGS=();i=0
+          while [ $i -lt ${#args[@]} ]; do CURL_ARGS+=("${args[$i]}" "${args[$((i+1))]}");i=$((i+2));done
+          curl -fsS -X PUT "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/content" -H "$AUTH" -F 'metadata=</tmp/upload-metadata.json;type=application/json' "${CURL_ARGS[@]}" -o /tmp/content-update.json
+          node - <<'NODE'
+          const fs=require('fs');const j=JSON.parse(fs.readFileSync('/tmp/content-update.json','utf8'));if(j.success!==true)throw Error('CONTENT_UPDATE_FAILED:'+JSON.stringify(j.errors||[]));console.log('CONTENT_UPDATE_ACCEPTED');
+          NODE
+
+      - name: Verify deployed version source and live responses; rollback only our version on failure
+        shell: bash
+        run: |
+          set -euo pipefail
+          AUTH="Authorization: Bearer $API_TOKEN"
+          RB_VERSION=$(cat /tmp/rb-version)
+
+          rollback_if_ours(){
+            set +e
+            [ -s /tmp/our-version ] || { echo 'ROLLBACK_SKIP:no_verified_our_version';return; }
+            OUR_VERSION=$(cat /tmp/our-version)
+            curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=2" -H "$AUTH" -o /tmp/current-on-error.json || return
+            CURRENT=$(node -e "const j=require('/tmp/current-on-error.json');process.stdout.write(String(j.result?.deployments?.[0]?.versions?.[0]?.version_id||''))")
+            if [ "$CURRENT" != "$OUR_VERSION" ]; then echo "ROLLBACK_SKIP:production_moved current=$CURRENT ours=$OUR_VERSION";return;fi
+            node -e "require('fs').writeFileSync('/tmp/rollback.json',JSON.stringify({strategy:'percentage',versions:[{version_id:process.argv[1],percentage:100}],annotations:{'workers/message':'Automatic rollback: Ball46 footer V2 verification failed'}}))" "$RB_VERSION"
+            curl -fsS -X POST "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments" -H "$AUTH" -H 'content-type: application/json' --data-binary @/tmp/rollback.json -o /tmp/rollback-response.json || true
+            echo "ROLLBACK_TO:$RB_VERSION"
+          }
+          trap 'rollback_if_ours' ERR
+
+          candidate=''
+          for n in $(seq 1 12); do
+            curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=3" -H "$AUTH" -o /tmp/deployments-after-upload.json
+            candidate=$(node -e "const j=require('/tmp/deployments-after-upload.json');const d=j.result?.deployments?.[0];process.stdout.write(String(d?.versions?.[0]?.version_id||''))")
+            if [ -n "$candidate" ] && [ "$candidate" != "$RB_VERSION" ]; then break;fi
+            sleep 2
+          done
+          [ -n "$candidate" ] && [ "$candidate" != "$RB_VERSION" ]
+          echo "CANDIDATE_VERSION:$candidate"
+
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/workers/$SCRIPT_NAME/versions/$candidate?include=modules" -H "$AUTH" -o /tmp/version-candidate.json
+          CANDIDATE_VERSION="$candidate" node - <<'NODE'
+          const fs=require('fs'),crypto=require('crypto');
+          const j=JSON.parse(fs.readFileSync('/tmp/version-candidate.json','utf8'));if(j.success!==true)throw Error('CANDIDATE_FETCH_FAILED');
+          const expected=JSON.parse(fs.readFileSync('/tmp/module-meta.json','utf8'));const main=fs.readFileSync('/tmp/main-module-name','utf8').trim();const patchedMain=fs.readFileSync('/tmp/patched-main.sha256','utf8').trim();
+          const actual=new Map(j.result.modules.map(m=>[m.name,crypto.createHash('sha256').update(Buffer.from(m.content_base64,'base64')).digest('hex')]));
+          for(const m of expected){const want=m.name===main?patchedMain:m.beforeSha256;const got=actual.get(m.name);if(got!==want)throw Error(`DEPLOYED_MODULE_MISMATCH:${m.name} want=${want} got=${got}`);}
+          if(actual.size!==expected.length)throw Error('DEPLOYED_MODULE_COUNT_CHANGED');
+          const mainMod=j.result.modules.find(m=>m.name===main);const mainSrc=Buffer.from(mainMod.content_base64,'base64').toString('utf8');if(!mainSrc.includes('__B46_FOOTER_LINKS_V2_20261001__'))throw Error('CANDIDATE_NOT_OURS');
+          fs.writeFileSync('/tmp/our-version',process.env.CANDIDATE_VERSION);
+          console.log('DEPLOYED_SOURCE_IDENTITY_PASS',{version:process.env.CANDIDATE_VERSION,modules:actual.size});
+          NODE
+
+          AUDIT_KEY=$(cat /tmp/audit-key)
+          pages='index signal statistics information about user-guide methodology privacy terms disclaimer affiliate-disclosure responsible-gambling cookies contact'
+          for p in $pages; do
+            curl -fsS -L -H 'Cache-Control: no-cache' --max-time 25 "$BALL46_URL/$p.html?b46footer=$AUDIT_KEY" -o "/tmp/b46-after/$p.html"
+          done
+          curl -fsS -L -H 'Cache-Control: no-cache' --max-time 25 "$BALL46_URL/ball46-footer.css?b46footer=$AUDIT_KEY" -o /tmp/b46-after/footer.css
+          curl -fsS -H 'Cache-Control: no-cache' --max-time 25 "$BALL46_URL/api/engine/health?b46footer=$AUDIT_KEY" -o /tmp/b46-after/engine.json
+          curl -fsS -H 'Cache-Control: no-cache' --max-time 25 "$BALL46_URL/api/full-market/health?b46footer=$AUDIT_KEY" -o /tmp/b46-after/full.json
+          curl -fsS -H 'Cache-Control: no-cache' --max-time 25 "$BALL46_URL/api/engine/statistics?b46footer=$AUDIT_KEY" -o /tmp/b46-after/stats.json
+
+          node - <<'NODE'
+          const fs=require('fs'),crypto=require('crypto');
+          const names='index signal statistics information about user-guide methodology privacy terms disclaimer affiliate-disclosure responsible-gambling cookies contact'.split(' ');
+          const footerRe=/<footer\b[^>]*id=["']b46-site-footer-v1["'][\s\S]*?<\/footer>/i;
+          const cssRe=/<link\b[^>]*href=["'][^"']*ball46-footer\.css[^"']*["'][^>]*>/gi;
+          function normBase(html){return html.replace(footerRe,'').replace(cssRe,'');}
+          const rows=[];let baseline=null;
+          for(const n of names){
+            const before=fs.readFileSync('/tmp/b46-before/'+n+'.html','utf8');
+            const after=fs.readFileSync('/tmp/b46-after/'+n+'.html','utf8');
+            const fm=after.match(footerRe);if(!fm)throw Error('FOOTER_MISSING_AFTER:'+n);
+            const footer=fm[0].replace(/\s+/g,' ').trim();if(!baseline)baseline=footer;if(footer!==baseline)throw Error('FOOTER_NOT_IDENTICAL:'+n);
+            if(!footer.includes('href="/index.html?view=signal"'))throw Error('SIGNAL_LINK_BAD:'+n);
+            if(!footer.includes('href="/index.html?view=statistics"'))throw Error('STAT_LINK_BAD:'+n);
+            if(footer.includes('href="/signal.html"')||footer.includes('href="/statistics.html"'))throw Error('OLD_PRODUCT_LINK_REMAINS:'+n);
+            if(normBase(before)!==normBase(after))throw Error('NON_FOOTER_HTML_CHANGED:'+n);
+            rows.push({page:n,footer:true,baseHtmlUnchanged:true});
+          }
+          const cssBefore=fs.readFileSync('/tmp/b46-before/footer.css','utf8');const cssAfter=fs.readFileSync('/tmp/b46-after/footer.css','utf8');if(cssBefore!==cssAfter)throw Error('FOOTER_CSS_CHANGED');
+          const b=JSON.parse(fs.readFileSync('/tmp/backend-before.json','utf8'));const e=JSON.parse(fs.readFileSync('/tmp/b46-after/engine.json','utf8')),f=JSON.parse(fs.readFileSync('/tmp/b46-after/full.json','utf8')),s=JSON.parse(fs.readFileSync('/tmp/b46-after/stats.json','utf8'));const a={engine:e.version,fullMarket:f.version,settlementRevision:s.settlementRevision};if(JSON.stringify(a)!==JSON.stringify(b))throw Error('BACKEND_IDENTITY_CHANGED');
+          const source=JSON.parse(fs.readFileSync('/tmp/source-integrity.json','utf8'));
+          const report={completedAt:new Date().toISOString(),deploymentBefore:fs.readFileSync('/tmp/rb-deployment','utf8').trim(),rollbackVersion:fs.readFileSync('/tmp/rb-version','utf8').trim(),deployedVersion:fs.readFileSync('/tmp/our-version','utf8').trim(),links:{live:'/index.html',signals:'/index.html?view=signal',statistics:'/index.html?view=statistics'},footerIdenticalAcrossAllPages:true,footerCssUnchanged:true,nonFooterHtmlUnchanged:true,backendUnchanged:true,deployedSourceIdentityVerified:true,source,backend:a,pages:rows,footerSha256:crypto.createHash('sha256').update(baseline).digest('hex')};
+          fs.writeFileSync('audit/ball46-footer-deploy-v2-20261001.json',JSON.stringify(report,null,2)+'\n');console.log('LIVE_VERIFY_PASS',report);
+          NODE
+
+          curl -fsS -L -H 'Cache-Control: no-cache' --max-time 25 "$BALL46_URL/index.html?view=signal&b46footer=$AUDIT_KEY" -o /tmp/route-signal.html
+          curl -fsS -L -H 'Cache-Control: no-cache' --max-time 25 "$BALL46_URL/index.html?view=statistics&b46footer=$AUDIT_KEY" -o /tmp/route-statistics.html
+          grep -Fq 'data-workspace-view="signal"' /tmp/route-signal.html
+          grep -Fq 'data-workspace-panel="statistics"' /tmp/route-statistics.html
+
+          OUR_VERSION=$(cat /tmp/our-version)
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=2" -H "$AUTH" -o /tmp/final-deployment.json
+          FINAL=$(node -e "const j=require('/tmp/final-deployment.json');process.stdout.write(String(j.result?.deployments?.[0]?.versions?.[0]?.version_id||''))")
+          [ "$FINAL" = "$OUR_VERSION" ] || { echo "PRODUCTION_MOVED_AFTER_VERIFY final=$FINAL ours=$OUR_VERSION"; false; }
+          echo "FINAL_PRODUCTION_VERSION:$FINAL"
+          trap - ERR
+
+      - name: Save successful deployment report
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git pull --rebase origin ops/ball46-footer-links-20261001
+          git add audit/ball46-footer-deploy-v2-20261001.json
+          git commit -m 'verify(ball46): footer-only V2 production patch passed'
+          git push origin HEAD:ops/ball46-footer-links-20261001
