@@ -1,0 +1,76 @@
+name: POSTCHECK Ball46 Footer V5 20261001
+
+on:
+  push:
+    branches: [ops/ball46-footer-links-20261001]
+    paths: ['.github/workflows/postcheck-ball46-footer-v5-20261001.yml']
+
+permissions:
+  contents: write
+
+env:
+  ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  SCRIPT_NAME: ball46-production
+  BALL46_URL: https://ball46.com
+  EXPECTED_VERSION: 87331fa8-6593-4482-863b-7c88a6d06c00
+
+jobs:
+  read-only-postcheck:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ops/ball46-footer-links-20261001
+          fetch-depth: 1
+      - name: Verify current Production and public Footer without mutation
+        shell: bash
+        run: |
+          set -euo pipefail
+          AUTH="Authorization: Bearer $API_TOKEN"
+          mkdir -p audit /tmp/post
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=3" -H "$AUTH" -o /tmp/deployments.json
+          KEY="${GITHUB_RUN_ID}-post-$(date +%s%N)"
+          pages='index information about user-guide methodology privacy terms disclaimer affiliate-disclosure responsible-gambling cookies contact'
+          for p in $pages; do
+            curl -fsS -L -H 'Cache-Control: no-cache' -D "/tmp/post/$p.headers" --max-time 25 "$BALL46_URL/$p.html?post=$KEY-$p" -o "/tmp/post/$p.html"
+          done
+          curl -fsS -H 'Cache-Control: no-cache' --max-time 25 "$BALL46_URL/api/engine/health?post=$KEY" -o /tmp/post/engine.json
+          curl -fsS -H 'Cache-Control: no-cache' --max-time 25 "$BALL46_URL/api/full-market/health?post=$KEY" -o /tmp/post/full.json
+          curl -fsS -H 'Cache-Control: no-cache' --max-time 25 "$BALL46_URL/api/engine/statistics?post=$KEY" -o /tmp/post/stats.json
+          curl -fsS -L -H 'Cache-Control: no-cache' --max-time 25 "$BALL46_URL/index.html?view=signal&post=$KEY-signal" -o /tmp/post/route-signal.html
+          curl -fsS -L -H 'Cache-Control: no-cache' --max-time 25 "$BALL46_URL/index.html?view=statistics&post=$KEY-statistics" -o /tmp/post/route-statistics.html
+          node - <<'NODE'
+          const fs=require('fs');
+          const j=JSON.parse(fs.readFileSync('/tmp/deployments.json','utf8')),d=j.result?.deployments?.[0];
+          const active=String(d?.versions?.[0]?.version_id||'');
+          const expected=process.env.EXPECTED_VERSION;
+          const names='index information about user-guide methodology privacy terms disclaimer affiliate-disclosure responsible-gambling cookies contact'.split(' ');
+          const footerRe=/<footer\b[^>]*id=["']b46-site-footer-v1["'][\s\S]*?<\/footer>/i;
+          const rows=[];let baseline=null;
+          for(const n of names){
+            const html=fs.readFileSync('/tmp/post/'+n+'.html','utf8');
+            const footer=html.match(footerRe)?.[0]||'';
+            const hdr=fs.readFileSync('/tmp/post/'+n+'.headers','utf8');
+            const norm=footer.replace(/\s+/g,' ').trim();if(!baseline&&norm)baseline=norm;
+            rows.push({page:n,hasFooter:!!footer,sameFooter:!!footer&&norm===baseline,revision:/^x-ball46-footer-revision:\s*footer-links-v5-20261001/im.test(hdr),live:footer.includes('href="/index.html"'),signals:footer.includes('href="/index.html?view=signal"'),statistics:footer.includes('href="/index.html?view=statistics"'),oldSignal:footer.includes('href="/signal.html"'),oldStatistics:footer.includes('href="/statistics.html"')});
+          }
+          const e=JSON.parse(fs.readFileSync('/tmp/post/engine.json','utf8')),f=JSON.parse(fs.readFileSync('/tmp/post/full.json','utf8')),s=JSON.parse(fs.readFileSync('/tmp/post/stats.json','utf8'));
+          const report={capturedAt:new Date().toISOString(),expectedVersion:expected,activeDeployment:d?{id:d.id,created_on:d.created_on,versions:d.versions}:null,activeVersionMatchesExpected:active===expected,allPagesPass:rows.every(r=>r.hasFooter&&r.sameFooter&&r.revision&&r.live&&r.signals&&r.statistics&&!r.oldSignal&&!r.oldStatistics),signalRouteCurrent:fs.readFileSync('/tmp/post/route-signal.html','utf8').includes('data-workspace-view="signal"'),statisticsRouteCurrent:fs.readFileSync('/tmp/post/route-statistics.html','utf8').includes('data-workspace-panel="statistics"'),backend:{engine:e.version,fullMarket:f.version,settlementRevision:s.settlementRevision},pages:rows};
+          fs.writeFileSync('audit/ball46-footer-postcheck-v5-20261001.json',JSON.stringify(report,null,2)+'\n');
+          if(!report.activeVersionMatchesExpected)throw Error('ACTIVE_VERSION_CHANGED:'+active);
+          if(!report.allPagesPass)throw Error('PUBLIC_FOOTER_POSTCHECK_FAILED');
+          if(!report.signalRouteCurrent||!report.statisticsRouteCurrent)throw Error('CURRENT_WORKSPACE_ROUTE_FAILED');
+          if(report.backend.engine!=='nomad343-engine-v5-best19-referee'||report.backend.fullMarket!=='nomad343-ball46-full-market-v6-server-prewarm-cache'||report.backend.settlementRevision!=='bet365-rules-v2')throw Error('BACKEND_IDENTITY_CHANGED');
+          console.log('POSTCHECK_PASS',report);
+          NODE
+      - name: Save read-only postcheck report
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add audit/ball46-footer-postcheck-v5-20261001.json
+          git commit -m 'verify(ball46): Footer V5 independent postcheck passed'
+          git push origin HEAD:ops/ball46-footer-links-20261001
