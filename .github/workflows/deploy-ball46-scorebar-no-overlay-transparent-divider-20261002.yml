@@ -1,0 +1,121 @@
+name: DEPLOY Ball46 scorebar no overlay transparent divider 20261002
+
+on:
+  push:
+    branches: [work/ball46-scorebar-bg-currentprod-20261002]
+    paths:
+      - '.github/workflows/deploy-ball46-scorebar-no-overlay-transparent-divider-20261002.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  SCRIPT_NAME: ball46-production
+  BALL46_URL: https://ball46.com
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - name: Patch current Production CSS only
+        shell: bash
+        run: |
+          set -euo pipefail
+          AUTH="Authorization: Bearer $API_TOKEN"
+          mkdir -p /tmp/modules /tmp/before /tmp/after
+
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=3" -H "$AUTH" -o /tmp/deploy-before.json
+          BASE=$(node -e "const j=require('/tmp/deploy-before.json');const d=j.result?.deployments?.[0];if(!d||d.versions?.length!==1||Number(d.versions[0].percentage)!==100)process.exit(2);process.stdout.write(String(d.versions[0].version_id||''))")
+          [ -n "$BASE" ] || exit 2
+          printf '%s' "$BASE" >/tmp/base-version
+          echo "BASE_PRODUCTION=$BASE"
+
+          K="${GITHUB_RUN_ID}-$(date +%s%N)"
+          curl -fsS "$BALL46_URL/api/engine/health?before=$K" -o /tmp/before/e.json
+          curl -fsS "$BALL46_URL/api/full-market/health?before=$K" -o /tmp/before/f.json
+          curl -fsS "$BALL46_URL/api/engine/statistics?before=$K" -o /tmp/before/s.json
+          node - <<'NODE'
+          const fs=require('fs'),e=require('/tmp/before/e.json'),f=require('/tmp/before/f.json'),s=require('/tmp/before/s.json');
+          if(e.ok!==true||f.ok!==true||s.ok!==true)throw Error('BACKEND_NOT_OK_BEFORE');
+          fs.writeFileSync('/tmp/backend-before.json',JSON.stringify({engine:e.version,fullMarket:f.version,settlementRevision:s.settlementRevision}));
+          NODE
+
+          curl -fsS -L -H 'Cache-Control: no-cache' "$BALL46_URL/dashboard-v2-tune.css?v=343-scorebar-divider-camo-20260929a&before=$K" -o /tmp/before/tune.css
+          curl -fsS -L -H 'Cache-Control: no-cache' "$BALL46_URL/dashboard-v2-stage3.js?v=343-scorebar-details-20260929a&before=$K" -o /tmp/before/stage3.js
+          sha256sum /tmp/before/stage3.js | awk '{print $1}' >/tmp/stage3-before.sha
+          node --check /tmp/before/stage3.js
+
+          node - <<'NODE'
+          const fs=require('fs'),crypto=require('crypto');
+          const css=fs.readFileSync('/tmp/before/tune.css','utf8');
+          if(css.includes('B46_SCOREBAR_NO_OVERLAY_20261002'))throw Error('CSS_OVERRIDE_ALREADY_PRESENT');
+          for(const n of ['win','loss','draw','pending'])if(!css.includes(`scorebar-${n}-20260929a.webp`))throw Error('EXPECTED_IMAGE_MAPPING_MISSING:'+n);
+          const override=`\n/* B46_SCOREBAR_NO_OVERLAY_20261002 — image only, no gradient/overlay; dividers 100% transparent */\n@media(min-width:761px){\n  .workspace-scorebar-cell.workspace-scorebar-signal-result.outcome-win{background-image:url("scorebar-win-20260929a.webp")!important;background-size:cover!important;background-position:72% center!important;background-repeat:no-repeat!important}\n  .workspace-scorebar-cell.workspace-scorebar-signal-result.outcome-loss{background-image:url("scorebar-loss-20260929a.webp")!important;background-size:cover!important;background-position:72% center!important;background-repeat:no-repeat!important}\n  .workspace-scorebar-cell.workspace-scorebar-signal-result.outcome-draw{background-image:url("scorebar-draw-20260929a.webp")!important;background-size:cover!important;background-position:72% center!important;background-repeat:no-repeat!important}\n  .workspace-scorebar-cell.workspace-scorebar-pending{background-image:url("scorebar-pending-20260929a.webp")!important;background-size:cover!important;background-position:72% center!important;background-repeat:no-repeat!important}\n  .workspace-scorebar-details{border-top-color:transparent!important}\n  .workspace-scorebar-grid>.workspace-scorebar-cell:not(:last-child){border-right-color:transparent!important}\n}\n`;
+          const out=css+override;
+          fs.writeFileSync('/tmp/after/tune.css',out);
+          fs.writeFileSync('/tmp/tune-after.sha',crypto.createHash('sha256').update(out).digest('hex'));
+          console.log('CSS_OVERRIDE_READY before='+css.length+' after='+out.length);
+          NODE
+
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/workers/$SCRIPT_NAME/versions/$BASE?include=modules" -H "$AUTH" -o /tmp/version.json
+          node - <<'NODE'
+          const fs=require('fs'),path=require('path'),crypto=require('crypto');const j=require('/tmp/version.json');if(j.success!==true)throw Error('VERSION_FETCH_FAILED');const r=j.result;if(!r?.main_module||!r.modules?.length)throw Error('MODULES_MISSING');
+          const meta=[];for(const m of r.modules){const b=Buffer.from(m.content_base64,'base64'),p=path.join('/tmp/modules',m.name);fs.mkdirSync(path.dirname(p),{recursive:true});fs.writeFileSync(p,b);meta.push({name:m.name,content_type:m.content_type,beforeSha:crypto.createHash('sha256').update(b).digest('hex')});}
+          fs.writeFileSync('/tmp/main',r.main_module);fs.writeFileSync('/tmp/meta.json',JSON.stringify(meta));
+          NODE
+
+          node - <<'NODE'
+          const fs=require('fs'),path=require('path');const main=fs.readFileSync('/tmp/main','utf8').trim(),p=path.join('/tmp/modules',main);const orig=fs.readFileSync(p,'utf8');let s=orig;
+          if(s.includes('B46_SCOREBAR_TUNE_CSS_20261002'))throw Error('CSS_ROUTE_ALREADY_PRESENT');
+          const css=fs.readFileSync('/tmp/after/tune.css','utf8');
+          const marker='function __b46Text(body,type)';const cnt=h=>s.split(h).length-1;if(cnt(marker)!==1)throw Error('HELPER_MARKER_COUNT_'+cnt(marker));
+          const helper=`/* B46_SCOREBAR_TUNE_CSS_20261002 */\nconst __B46_SCOREBAR_TUNE_CSS__=${JSON.stringify(css)};\n`;
+          s=s.replace(marker,()=>helper+marker);
+          const oldGet="if(request.method==='GET'){const __b46ScorebarBg=__b46ScorebarBgResponse(url.pathname);if(__b46ScorebarBg)return __b46ScorebarBg;if(url.pathname==='/legal.css')";
+          const newGet="if(request.method==='GET'){const __b46ScorebarBg=__b46ScorebarBgResponse(url.pathname);if(__b46ScorebarBg)return __b46ScorebarBg;if(url.pathname==='/dashboard-v2-tune.css')return __b46Text(__B46_SCOREBAR_TUNE_CSS__,'text/css; charset=utf-8');if(url.pathname==='/legal.css')";
+          if(cnt(oldGet)!==1)throw Error('GET_MARKER_COUNT_'+cnt(oldGet));s=s.replace(oldGet,()=>newGet);
+          fs.writeFileSync(p,s);console.log('WORKER_PATCH_READY delta='+(s.length-orig.length));
+          NODE
+
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=2" -H "$AUTH" -o /tmp/recheck.json
+          CUR=$(node -e "const j=require('/tmp/recheck.json');process.stdout.write(String(j.result?.deployments?.[0]?.versions?.[0]?.version_id||''))")
+          [ "$CUR" = "$BASE" ] || { echo "ABORT_CONCURRENT_DEPLOY:$CUR";exit 4; }
+
+          node -e "const fs=require('fs');fs.writeFileSync('/tmp/upload-meta.json',JSON.stringify({main_module:fs.readFileSync('/tmp/main','utf8').trim()}))"
+          mapfile -t args < <(node - <<'NODE'
+          const fs=require('fs');for(const m of JSON.parse(fs.readFileSync('/tmp/meta.json','utf8')))console.log(`-F\n${m.name}=@/tmp/modules/${m.name};type=${m.content_type}`);
+          NODE
+          )
+          CURL_ARGS=();i=0;while [ $i -lt ${#args[@]} ];do CURL_ARGS+=("${args[$i]}" "${args[$((i+1))]}");i=$((i+2));done
+          curl -fsS -X PUT "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/content" -H "$AUTH" -F 'metadata=</tmp/upload-meta.json;type=application/json' "${CURL_ARGS[@]}" -o /tmp/update.json
+          node -e "const j=require('/tmp/update.json');if(j.success!==true)throw Error(JSON.stringify(j.errors||[]));console.log('UPLOAD_ACCEPTED')"
+
+          rollback(){ set +e;[ -s /tmp/our-version ]||return;OUR=$(cat /tmp/our-version);curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=2" -H "$AUTH" -o /tmp/current.json||return;NOW=$(node -e "const j=require('/tmp/current.json');process.stdout.write(String(j.result?.deployments?.[0]?.versions?.[0]?.version_id||''))");[ "$NOW" = "$OUR" ]||return;node -e "require('fs').writeFileSync('/tmp/rb.json',JSON.stringify({strategy:'percentage',versions:[{version_id:process.argv[1],percentage:100}],annotations:{'workers/message':'Rollback scorebar no-overlay verification failure'}}))" "$BASE";curl -fsS -X POST "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments" -H "$AUTH" -H 'content-type: application/json' --data-binary @/tmp/rb.json >/tmp/rb-resp.json||true;echo ROLLBACK_TO:$BASE; }
+          trap 'rc=$?;rollback;exit $rc' ERR
+
+          CAND='';for n in $(seq 1 25);do curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=2" -H "$AUTH" -o /tmp/d.json;CAND=$(node -e "const j=require('/tmp/d.json');process.stdout.write(String(j.result?.deployments?.[0]?.versions?.[0]?.version_id||''))");[ -n "$CAND" ]&&[ "$CAND" != "$BASE" ]&&break;sleep 2;done;[ -n "$CAND" ]&&[ "$CAND" != "$BASE" ];printf '%s' "$CAND" >/tmp/our-version;echo "CANDIDATE=$CAND"
+
+          ok=0;for n in $(seq 1 25);do Q="${GITHUB_RUN_ID}-css-$n-$(date +%s%N)";curl -fsS -L -H 'Cache-Control: no-cache' "$BALL46_URL/dashboard-v2-tune.css?v=343-scorebar-divider-camo-20260929a&verify=$Q" -o /tmp/after/public.css;if grep -Fq 'B46_SCOREBAR_NO_OVERLAY_20261002' /tmp/after/public.css;then ok=1;break;fi;sleep 2;done;[ "$ok" = 1 ]||{ echo CSS_EDGE_TIMEOUT;false; }
+          [ "$(sha256sum /tmp/after/public.css|awk '{print $1}')" = "$(cat /tmp/tune-after.sha)" ] || { echo CSS_SHA_MISMATCH;false; }
+          grep -Fq 'background-image:url("scorebar-win-20260929a.webp")!important' /tmp/after/public.css
+          grep -Fq 'background-image:url("scorebar-loss-20260929a.webp")!important' /tmp/after/public.css
+          grep -Fq 'background-image:url("scorebar-draw-20260929a.webp")!important' /tmp/after/public.css
+          grep -Fq 'background-image:url("scorebar-pending-20260929a.webp")!important' /tmp/after/public.css
+          grep -Fq '.workspace-scorebar-details{border-top-color:transparent!important}' /tmp/after/public.css
+          grep -Fq '.workspace-scorebar-grid>.workspace-scorebar-cell:not(:last-child){border-right-color:transparent!important}' /tmp/after/public.css
+          echo 'NO_OVERLAY_AND_TRANSPARENT_DIVIDERS_PASS'
+
+          Q="${GITHUB_RUN_ID}-stage3-$(date +%s%N)";curl -fsS -L -H 'Cache-Control: no-cache' "$BALL46_URL/dashboard-v2-stage3.js?v=343-scorebar-details-20260929a&verify=$Q" -o /tmp/after/stage3.js
+          [ "$(sha256sum /tmp/after/stage3.js|awk '{print $1}')" = "$(cat /tmp/stage3-before.sha)" ] || { echo STAGE3_CHANGED;false; }
+          node --check /tmp/after/stage3.js
+          echo 'SIGNAL_RENDERER_BYTE_IDENTICAL_PASS'
+
+          curl -fsS "$BALL46_URL/api/engine/health?after=${GITHUB_RUN_ID}" -o /tmp/after/e.json;curl -fsS "$BALL46_URL/api/full-market/health?after=${GITHUB_RUN_ID}" -o /tmp/after/f.json;curl -fsS "$BALL46_URL/api/engine/statistics?after=${GITHUB_RUN_ID}" -o /tmp/after/s.json
+          node - <<'NODE'
+          const b=require('/tmp/backend-before.json'),e=require('/tmp/after/e.json'),f=require('/tmp/after/f.json'),s=require('/tmp/after/s.json'),a={engine:e.version,fullMarket:f.version,settlementRevision:s.settlementRevision};if(JSON.stringify(a)!==JSON.stringify(b))throw Error('BACKEND_CHANGED');console.log('BACKEND_UNCHANGED_PASS',a);
+          NODE
+          OUR=$(cat /tmp/our-version);curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=2" -H "$AUTH" -o /tmp/final.json;FINAL=$(node -e "const j=require('/tmp/final.json');process.stdout.write(String(j.result?.deployments?.[0]?.versions?.[0]?.version_id||''))");[ "$FINAL" = "$OUR" ]||false;echo "FINAL_PRODUCTION=$FINAL";trap - ERR
