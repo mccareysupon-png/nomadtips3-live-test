@@ -1,0 +1,42 @@
+name: INSPECT Ball46 live.js signal card 20261002
+
+on:
+  push:
+    branches: [ops/ball46-footer-links-20261001]
+    paths:
+      - '.github/workflows/inspect-ball46-live-js-signal-card-20261002.yml'
+
+permissions:
+  contents: read
+
+env:
+  BALL46_URL: https://ball46.com
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Inspect current Production live assets only
+        shell: bash
+        run: |
+          set -euo pipefail
+          Q="${GITHUB_RUN_ID}-$(date +%s%N)"
+          curl -fsS -L -H 'Cache-Control: no-cache' "$BALL46_URL/index.html?diag=$Q" -o /tmp/index.html
+          curl -fsS -L -H 'Cache-Control: no-cache' "$BALL46_URL/live.js?diag=$Q" -o /tmp/live.js
+          echo "INDEX_BYTES=$(wc -c </tmp/index.html) LIVEJS_BYTES=$(wc -c </tmp/live.js)"
+          node - <<'NODE'
+          const fs=require('fs');
+          for(const [name,path] of [['index','/tmp/index.html'],['live','/tmp/live.js']]){
+            const text=fs.readFileSync(path,'utf8');
+            console.log('\n===== '+name+' size='+text.length+' =====');
+            const needles=['Belford','RoxoSanta','Roxo Santa','signalCount','activeSignals','signals[0]','signal[0]','markets[0]','market[0]','.find(','renderCard','match-card','matchCard','signal-card','signalCard','market-chip','signal-chip','data-market','data-signal','signal-badge','signalBadge','signals','markets','market','signal'];
+            const seen=[];
+            for(const needle of needles){let p=0,c=0;while(c<12){const i=text.indexOf(needle,p);if(i<0)break;if(!seen.some(x=>Math.abs(x.i-i)<260))seen.push({i,needle});p=i+needle.length;c++;}}
+            seen.sort((a,b)=>a.i-b.i);
+            for(const x of seen.slice(0,100)){
+              const s=Math.max(0,x.i-700),e=Math.min(text.length,x.i+1300);
+              console.log('\n--- '+x.needle+' @'+x.i+' ---\n'+text.slice(s,e).replace(/\n/g,' '));
+            }
+          }
+          NODE
