@@ -21,48 +21,67 @@ jobs:
       - name: Read Cloudflare production baseline
         shell: bash
         run: |
-          set -uo pipefail
-          echo '=== WRANGLER VERSIONS ==='
-          npx --yes wrangler@4.92.0 versions list --name ball46-production --json | tee /tmp/versions.json
-          echo '=== WRANGLER DEPLOYMENT STATUS ==='
-          npx --yes wrangler@4.92.0 deployments status --name ball46-production --json | tee /tmp/deployment-status.json
-          echo '=== WRANGLER DEPLOYMENTS LIST ==='
-          npx --yes wrangler@4.92.0 deployments list --name ball46-production --json | tee /tmp/deployments.json
+          set -euo pipefail
+          echo '=== DEPLOYMENT STATUS ==='
+          npx --yes wrangler@4.92.0 deployments status --name ball46-production --json
+          echo '=== RECENT VERSIONS ==='
+          npx --yes wrangler@4.92.0 versions list --name ball46-production --json | tail -220
 
-      - name: Read live Event Flow assets
+      - name: Identify live Event Flow implementation
         shell: bash
         run: |
-          set -uo pipefail
+          set -euo pipefail
           BASE='https://ball46-production.mccarey-supon.workers.dev'
-          DOMAIN='https://ball46.com'
-          for origin in "$BASE" "$DOMAIN"; do
-            echo "=== ORIGIN $origin ==="
-            for path in index.html event-flow-bars-343.css event-flow-bars-343.js; do
-              out="/tmp/$(echo "$origin" | sed 's#https://##; s#[./]#_#g')_$(echo "$path" | tr '/' '_')"
-              code=$(curl -sS -L --retry 3 --retry-all-errors --max-time 25 -o "$out" -w '%{http_code}' "$origin/$path?diag=${GITHUB_RUN_ID}" || true)
-              echo "HTTP $code $origin/$path"
-              if [ "$code" = '200' ]; then
-                echo "SHA256 $(sha256sum "$out" | awk '{print $1}') $path"
-                echo "BYTES $(wc -c < "$out") $path"
-              fi
-            done
+          curl -fsS -L --retry 3 --retry-all-errors --max-time 25 "$BASE/index.html?diag=${GITHUB_RUN_ID}" -o /tmp/index.html
+          echo "INDEX_SHA=$(sha256sum /tmp/index.html | awk '{print $1}')"
+          echo '=== INDEX LOCAL JS/CSS REFS ==='
+          python3 - <<'PY' > /tmp/refs.txt
+          from pathlib import Path
+          import re
+          h=Path('/tmp/index.html').read_text(errors='ignore')
+          refs=[]
+          for x in re.findall(r'''(?:src|href)=["']([^"']+)["']''',h,re.I):
+              x=x.split('#',1)[0].split('?',1)[0].strip().lstrip('./').lstrip('/')
+              if not x or '://' in x: continue
+              if re.search(r'\.(?:js|css)$',x,re.I) and x not in refs: refs.append(x)
+          print('\n'.join(refs))
+          PY
+          cat /tmp/refs.txt
+
+          echo '=== REFERENCED ASSET EVENT-FLOW HITS ==='
+          mkdir -p /tmp/assets
+          while IFS= read -r name; do
+            [ -n "$name" ] || continue
+            safe=$(echo "$name" | sed 's#[/.]#_#g')
+            code=$(curl -sS -L --retry 3 --retry-all-errors --max-time 25 -o "/tmp/assets/$safe" -w '%{http_code}' "$BASE/$name?diag=${GITHUB_RUN_ID}" || true)
+            echo "ASSET_HTTP=$code $name"
+            [ "$code" = 200 ] || continue
+            echo "ASSET_SHA=$(sha256sum "/tmp/assets/$safe" | awk '{print $1}') $name"
+            hits=$(grep -nEi 'event[- _]?flow|momentum|b46-flow|flow-bars|flowline|flow-line' "/tmp/assets/$safe" | head -60 || true)
+            if [ -n "$hits" ]; then
+              echo "--- HITS $name ---"
+              printf '%s\n' "$hits"
+            fi
+          done < /tmp/refs.txt
+
+          echo '=== KNOWN EVENT FLOW SIDECARS ==='
+          for name in event-flow-bars-343.css event-flow-bars-343.js signal-event-flow-line-343.css signal-event-flow-line-343.js momentum.js live.css live-app.js; do
+            safe=$(echo "$name" | sed 's#[/.]#_#g')
+            code=$(curl -sS -L --retry 3 --retry-all-errors --max-time 25 -o "/tmp/assets/known_$safe" -w '%{http_code}' "$BASE/$name?diag=${GITHUB_RUN_ID}" || true)
+            echo "KNOWN_HTTP=$code $name"
+            [ "$code" = 200 ] || continue
+            echo "KNOWN_SHA=$(sha256sum "/tmp/assets/known_$safe" | awk '{print $1}') BYTES=$(wc -c < "/tmp/assets/known_$safe") $name"
+            grep -nEi 'event[- _]?flow|momentum|b46-flow|flow-bars|flowline|flow-line|height:|min-height|max-height|svg|canvas|background' "/tmp/assets/known_$safe" | head -120 || true
           done
 
-          IDX='/tmp/ball46-production_mccarey-supon_workers_dev_index.html'
-          CSS='/tmp/ball46-production_mccarey-supon_workers_dev_event-flow-bars-343_css'
-          JS='/tmp/ball46-production_mccarey-supon_workers_dev_event-flow-bars-343_js'
-          if [ -f "$IDX" ]; then
-            echo '=== INDEX EVENT FLOW REFS ==='
-            grep -nEi 'event-flow|momentum|event flow' "$IDX" | head -80 || true
-          fi
-          if [ -f "$CSS" ]; then
-            echo '=== EVENT FLOW CSS ==='
-            cat "$CSS"
-          fi
-          if [ -f "$JS" ]; then
-            echo '=== EVENT FLOW JS KEY LINES ==='
-            grep -nEi 'event-flow|momentum|fixture|match|svg|height|class|style|random|hash' "$JS" | head -160 || true
-          fi
+          echo '=== BALL46.COM PARITY ==='
+          for name in index.html signal-event-flow-line-343.css signal-event-flow-line-343.js event-flow-bars-343.css event-flow-bars-343.js; do
+            a="/tmp/parity_worker_$(echo "$name"|sed 's#[/.]#_#g')"
+            b="/tmp/parity_domain_$(echo "$name"|sed 's#[/.]#_#g')"
+            curl -fsS -L --retry 3 --retry-all-errors --max-time 25 "$BASE/$name?diag=${GITHUB_RUN_ID}" -o "$a"
+            curl -fsS -L --retry 3 --retry-all-errors --max-time 25 "https://ball46.com/$name?diag=${GITHUB_RUN_ID}" -o "$b"
+            echo "PARITY $(sha256sum "$a"|awk '{print $1}') $(sha256sum "$b"|awk '{print $1}') $name"
+          done
 
       - name: Read live backend continuity
         shell: bash
