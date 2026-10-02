@@ -88,7 +88,7 @@ const pages = [
   ['settings', '/settings.html'],
   ['about', '/about.html'],
 ];
-const geometrySelectors = '.workspace-scorebar-slot,.workspace-scorebar-grid,.workspace-scorebar-cell,.event-flow,.event-flow-line,.pitch,.timeline,.match-row.active,input,select,button';
+const geometrySelectors = '.workspace-scorebar-slot,.workspace-scorebar-grid,.workspace-scorebar-cell,.event-flow,.event-flow-line,.pitch,.timeline,.match-row.active,svg,path,line,canvas,input,select,button';
 
 async function uiCheck(changes, phase) {
   const browser = await chromium.launch();
@@ -153,7 +153,7 @@ async function uiCheck(changes, phase) {
           assert.equal(canonical(after.geometry), canonical(before.geometry), `PROTECTED_GEOMETRY_CHANGED:${key}`);
           assert(after.scrollWidth <= before.scrollWidth + 1, `NEW_HORIZONTAL_OVERFLOW:${key}`);
           await page.screenshot({ path: `${audit}/screenshots/${key}-after.png` });
-          const frames = await page.locator('.rail-card:not(.workspace-scorebar-slot),.side-card:not(.workspace-scorebar-slot),.status-section,.workspace-stable-head').evaluateAll(es => es.filter(e => e.getBoundingClientRect().width > 0).map(e => ({ cls: e.className, border: getComputedStyle(e).borderTopColor })));
+          const frames = await page.locator('.rail-card:not(.workspace-scorebar-slot),.side-card:not(.workspace-scorebar-slot),.status-section,.workspace-stable-head,.sp-stat-hero,.sp-kpis,.sp-trend,.sp-filters,.sp-results,.hero-card,.article,.card').evaluateAll(es => es.filter(e => e.getBoundingClientRect().width > 0).map(e => ({ cls: e.className, border: getComputedStyle(e).borderTopColor })));
           if (name !== 'settings') {
             for (const frame of frames) assert.equal(frame.border, 'rgba(0, 0, 0, 0)', `FRAME_NOT_TRANSPARENT:${key}:${frame.cls}`);
           }
@@ -304,4 +304,3 @@ try {
   console.error(error.stack);
   process.exitCode = 1;
 }
-

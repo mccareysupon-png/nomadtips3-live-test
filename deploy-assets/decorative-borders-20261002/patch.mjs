@@ -18,6 +18,10 @@ export const targets = [
 .sp-view-card,
 .sp-stat-panel,
 .sp-stat-hero,
+.sp-kpis,
+.sp-trend,
+.sp-filters,
+.sp-results,
 .sp-toolbar,
 .sp-kpi { border-color: transparent !important; }
 .status-head,
@@ -95,6 +99,7 @@ export function patch(source) {
     postcss.parse(entry.value);
     const appendix = postcss.parse(t.css);
     appendix.walkDecls(d => assert(/^border(?:-(?:top|right|bottom|left))?-color$/.test(d.prop), `NON_BORDER_PROPERTY:${d.prop}`));
+    if (entry.value.includes(marker)) assert(entry.value.endsWith(t.css), `EXISTING_PATCH_DIFFERS:${t.name}`);
     const after = entry.value.includes(marker) ? entry.value : entry.value + t.css;
     assert(after === entry.value || after === entry.value + t.css, 'NON_ADDITIVE_CSS');
     return { ...t, before: entry.value, after, beforeSha: sha(entry.value), afterSha: sha(after), ...entry };
