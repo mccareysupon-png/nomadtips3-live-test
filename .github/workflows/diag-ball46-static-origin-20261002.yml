@@ -1,0 +1,63 @@
+name: DIAG - Identify Ball46 static origin 20261002
+
+on:
+  push:
+    branches: [work/eventflow-signal-20261002]
+    paths: ['.github/workflows/diag-ball46-static-origin-20261002.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  SCRIPT_NAME: ball46-production
+  BALL46_URL: https://ball46.com
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Fetch active Worker source and response headers
+        shell: bash
+        run: |
+          set -euo pipefail
+          AUTH="Authorization: Bearer $API_TOKEN"
+          mkdir -p /tmp/out
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=2" -H "$AUTH" -o /tmp/deploy.json
+          V=$(node -e "const j=require('/tmp/deploy.json'); const d=j.result.deployments[0]; if(d.versions.length!==1)process.exit(2); process.stdout.write(d.versions[0].version_id)")
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/workers/$SCRIPT_NAME/versions/$V?include=modules" -H "$AUTH" -o /tmp/ver.json
+          node <<'NODE'
+          const fs=require('fs');const v=JSON.parse(fs.readFileSync('/tmp/ver.json','utf8')).result;
+          const m=v.modules.find(x=>x.name===v.main_module);if(!m)throw Error('MAIN_MISSING');
+          fs.writeFileSync('/tmp/index.js',Buffer.from(m.content_base64,'base64'));
+          fs.writeFileSync('/tmp/out/active-version.txt',v.id+'\n');
+          NODE
+          nonce="${GITHUB_RUN_ID}-$(date +%s%N)"
+          curl -fsSIL "$BALL46_URL/expanded-match-343.js?diag=$nonce" > /tmp/out/expanded-js-headers.txt
+          curl -fsSIL "$BALL46_URL/expanded-match-343.css?diag=$nonce" > /tmp/out/expanded-css-headers.txt
+
+      - name: Extract routing and origin clues
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs=require('fs');const s=fs.readFileSync('/tmp/index.js','utf8');
+          const urls=[...new Set([...s.matchAll(/https?:\/\/[^'"`\s)]+/g)].map(m=>m[0]))];
+          const words=['github','pages','raw.githubusercontent','fetch(','pathname','assets','static','origin','upstream','R2','KV','expanded-match','dashboard-v2-stage3','signal-event-flow-line','legal.css'];
+          const hits={};
+          for(const w of words){let at=0,a=[];while((at=s.indexOf(w,at))>=0&&a.length<12){a.push({index:at,snippet:s.slice(Math.max(0,at-260),Math.min(s.length,at+700))});at+=w.length;}if(a.length)hits[w]=a;}
+          fs.writeFileSync('/tmp/out/origin-clues.json',JSON.stringify({urls,hits},null,2));
+          console.log('urls',urls);
+          console.log('keys',Object.keys(hits));
+          NODE
+
+      - name: Upload clues
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-static-origin-${{ github.run_id }}
+          path: /tmp/out
+          if-no-files-found: error
+          retention-days: 7
