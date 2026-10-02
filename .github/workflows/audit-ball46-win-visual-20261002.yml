@@ -1,0 +1,55 @@
+name: AUDIT Ball46 WIN visual 20261002
+on:
+  push:
+    branches: [work/ball46-scorebar-bg-currentprod-20261002]
+    paths: [.github/workflows/audit-ball46-win-visual-20261002.yml]
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/win-audit
+          cd /tmp/win-audit
+          npm init -y >/dev/null 2>&1
+          npm install puppeteer-core@24 >/dev/null 2>&1
+          CHROME=$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser)
+          echo CHROME=$CHROME
+          cat > audit.mjs <<'JS'
+          import puppeteer from 'puppeteer-core';
+          import fs from 'node:fs';
+          const chrome=process.env.CHROME;
+          const browser=await puppeteer.launch({executablePath:chrome,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
+          const page=await browser.newPage();
+          await page.setViewport({width:1440,height:900,deviceScaleFactor:1});
+          const req=[];
+          page.on('response',async r=>{const u=r.url(); if(u.includes('scorebar-win')) req.push({url:u,status:r.status(),ct:r.headers()['content-type']||''});});
+          await page.goto('https://ball46.com/?visualaudit='+Date.now(),{waitUntil:'networkidle2',timeout:90000});
+          await new Promise(r=>setTimeout(r,8000));
+          const data=await page.evaluate(()=>{
+            const all=[...document.querySelectorAll('.workspace-scorebar-cell.workspace-scorebar-signal-result')];
+            const wins=all.filter(el=>el.classList.contains('outcome-win'));
+            return {count:all.length,winCount:wins.length,wins:wins.map((el,i)=>{const cs=getComputedStyle(el),r=el.getBoundingClientRect();return {i,text:el.innerText.slice(0,240),cls:el.className,bg:cs.backgroundImage,bgColor:cs.backgroundColor,display:cs.display,visibility:cs.visibility,opacity:cs.opacity,w:r.width,h:r.height,x:r.x,y:r.y};})};
+          });
+          console.log('AUDIT_JSON='+JSON.stringify(data));
+          console.log('WIN_RESPONSES='+JSON.stringify(req));
+          await page.screenshot({path:'/tmp/win-audit/full.png',fullPage:true});
+          const win=await page.$('.workspace-scorebar-cell.workspace-scorebar-signal-result.outcome-win');
+          if(win) await win.screenshot({path:'/tmp/win-audit/win.png'});
+          fs.writeFileSync('/tmp/win-audit/result.json',JSON.stringify({data,req},null,2));
+          if(data.winCount<1) throw new Error('NO_WIN_CARD_ON_LIVE_PAGE');
+          if(!data.wins.every(x=>x.bg && x.bg!=='none')) throw new Error('WIN_BACKGROUND_NONE');
+          await browser.close();
+          JS
+          CHROME="$CHROME" node audit.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-win-visual-audit
+          path: |
+            /tmp/win-audit/full.png
+            /tmp/win-audit/win.png
+            /tmp/win-audit/result.json
