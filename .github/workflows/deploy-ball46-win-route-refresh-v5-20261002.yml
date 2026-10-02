@@ -1,0 +1,67 @@
+name: DEPLOY Ball46 WIN route refresh V5 20261002
+on:
+  push:
+    branches: [work/ball46-scorebar-bg-currentprod-20261002]
+    paths: [.github/workflows/deploy-ball46-win-route-refresh-v5-20261002.yml]
+permissions: {contents: read}
+env:
+  ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  SCRIPT_NAME: ball46-production
+  SITE: https://ball46.com
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - shell: bash
+        run: |
+          set -euo pipefail
+          H="Authorization: Bearer $API_TOKEN"
+          mkdir -p /tmp/m /tmp/b /tmp/a
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=2" -H "$H" -o /tmp/d.json
+          B=$(node -e "const j=require('/tmp/d.json'),d=j.result?.deployments?.[0];if(!d||d.versions?.length!==1||Number(d.versions[0].percentage)!==100)process.exit(2);process.stdout.write(d.versions[0].version_id)")
+          echo BASE=$B
+          K="${GITHUB_RUN_ID}-$(date +%s%N)"
+          curl -fsS -L -H 'Cache-Control: no-cache' "$SITE/scorebar-win-20260929a.webp?b=$K" -o /tmp/b/win.webp
+          file /tmp/b/win.webp | grep -F 'Web/P image'
+          WIN_SHA=$(sha256sum /tmp/b/win.webp|cut -d' ' -f1)
+          for n in loss draw pending;do curl -fsS -L -H 'Cache-Control: no-cache' "$SITE/scorebar-$n-20260929a.webp?b=$K" -o /tmp/b/$n.webp;sha256sum /tmp/b/$n.webp|cut -d' ' -f1 >/tmp/b/$n.sha;done
+          curl -fsS -L -H 'Cache-Control: no-cache' "$SITE/dashboard-v2-stage3.js?b=$K" -o /tmp/b/stage3.js
+          sha256sum /tmp/b/stage3.js|cut -d' ' -f1 >/tmp/b/stage3.sha
+          node --check /tmp/b/stage3.js
+          for x in engine/health full-market/health engine/statistics;do curl -fsS "$SITE/api/$x?b=$K" -o "/tmp/b/$(echo $x|tr / _).json";done
+          node - <<'NODE'
+          const fs=require('fs'),e=require('/tmp/b/engine_health.json'),f=require('/tmp/b/full-market_health.json'),s=require('/tmp/b/engine_statistics.json');if(e.ok!==true||f.ok!==true||s.ok!==true)throw Error('backend');fs.writeFileSync('/tmp/back.json',JSON.stringify([e.version,f.version,s.settlementRevision]));
+          NODE
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/workers/$SCRIPT_NAME/versions/$B?include=modules" -H "$H" -o /tmp/v.json
+          node - <<'NODE'
+          const fs=require('fs'),p=require('path'),c=require('crypto'),j=require('/tmp/v.json').result;if(!j?.main_module||!j.modules?.length)throw Error('modules');const a=[];for(const m of j.modules){const b=Buffer.from(m.content_base64,'base64'),q=p.join('/tmp/m',m.name);fs.mkdirSync(p.dirname(q),{recursive:true});fs.writeFileSync(q,b);a.push({name:m.name,type:m.content_type,sha:c.createHash('sha256').update(b).digest('hex')})}fs.writeFileSync('/tmp/main',j.main_module);fs.writeFileSync('/tmp/meta.json',JSON.stringify(a));
+          NODE
+          node - <<'NODE'
+          const fs=require('fs'),p=require('path'),m=fs.readFileSync('/tmp/main','utf8').trim(),q=p.join('/tmp/m',m);let s=fs.readFileSync(q,'utf8');
+          if(!s.includes('B46_SCOREBAR_APPROVED_BG_20261002')||!s.includes('B46_SCOREBAR_TUNE_CSS_20261002'))throw Error('scorebar wrapper missing');
+          if(s.includes('B46_WIN_ROUTE_REFRESH_20261002'))throw Error('already refreshed');
+          const r=/const __B46_SCOREBAR_BG_B64__=(\{[^;]+\});/,x=s.match(r);if(!x)throw Error('bg map');const o=JSON.parse(x[1]);
+          const old='/scorebar-win-20260929a.webp',fresh='/scorebar-win-20261002c.webp';if(!o[old])throw Error('old win missing');o[fresh]=o[old];s=s.replace(r,()=>`const __B46_SCOREBAR_BG_B64__=${JSON.stringify(o)};`);
+          const cr=/const __B46_SCOREBAR_TUNE_CSS__=("(?:\\.|[^"\\])*");/,cm=s.match(cr);if(!cm)throw Error('css const');let css=JSON.parse(cm[1]);if(!css.includes('B46_SCOREBAR_NO_OVERLAY_20261002'))throw Error('no-overlay marker missing');
+          const n=(css.match(/scorebar-win-20260929a\.webp/g)||[]).length;if(n<1)throw Error('win css ref missing');css=css.replaceAll('scorebar-win-20260929a.webp','scorebar-win-20261002c.webp');css+='\n/* B46_WIN_ROUTE_REFRESH_20261002 — fresh WIN asset URL only */\n';s=s.replace(cr,()=>`const __B46_SCOREBAR_TUNE_CSS__=${JSON.stringify(css)};`);s='/* B46_WIN_ROUTE_REFRESH_20261002 */\n'+s;fs.writeFileSync(q,s);
+          NODE
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=2" -H "$H" -o /tmp/r.json
+          C=$(node -e "process.stdout.write(require('/tmp/r.json').result?.deployments?.[0]?.versions?.[0]?.version_id||'')");[ "$C" = "$B" ] || { echo CONCURRENT:$C;exit 4; }
+          node -e "const fs=require('fs');fs.writeFileSync('/tmp/u.json',JSON.stringify({main_module:fs.readFileSync('/tmp/main','utf8').trim()}))"
+          mapfile -t z < <(node -e "for(const m of JSON.parse(require('fs').readFileSync('/tmp/meta.json','utf8')))console.log('-F\\n'+m.name+'=@/tmp/m/'+m.name+';type='+m.type)"); A=();i=0;while [ $i -lt ${#z[@]} ];do A+=("${z[$i]}" "${z[$((i+1))]}");i=$((i+2));done
+          curl -fsS -X PUT "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/content" -H "$H" -F 'metadata=</tmp/u.json;type=application/json' "${A[@]}" -o /tmp/up.json
+          node -e "if(require('/tmp/up.json').success!==true)process.exit(2)"
+          rb(){ set +e;[ -s /tmp/our ]||return;O=$(cat /tmp/our);curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=2" -H "$H" -o /tmp/c.json;N=$(node -e "process.stdout.write(require('/tmp/c.json').result?.deployments?.[0]?.versions?.[0]?.version_id||'')");[ "$N" = "$O" ]||return;node -e "require('fs').writeFileSync('/tmp/rb.json',JSON.stringify({strategy:'percentage',versions:[{version_id:process.argv[1],percentage:100}]}))" "$B";curl -fsS -X POST "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments" -H "$H" -H 'content-type: application/json' --data-binary @/tmp/rb.json >/dev/null;echo ROLLBACK:$B; }
+          trap 'q=$?;rb;exit $q' ERR
+          O='';for i in $(seq 1 25);do curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=2" -H "$H" -o /tmp/c.json;O=$(node -e "process.stdout.write(require('/tmp/c.json').result?.deployments?.[0]?.versions?.[0]?.version_id||'')");[ -n "$O" ]&&[ "$O" != "$B" ]&&break;sleep 2;done;[ -n "$O" ]&&[ "$O" != "$B" ];echo -n "$O">/tmp/our
+          ok=0;for i in $(seq 1 25);do curl -fsS -L -H 'Cache-Control: no-cache' "$SITE/scorebar-win-20261002c.webp?v=$K-$i" -o /tmp/a/win.webp;if [ "$(sha256sum /tmp/a/win.webp|cut -d' ' -f1)" = "$WIN_SHA" ];then ok=1;break;fi;sleep 2;done;[ $ok = 1 ];file /tmp/a/win.webp|grep -F 'Web/P image';echo WIN_FRESH_ROUTE_PASS
+          ok=0;for i in $(seq 1 25);do curl -fsS -L -H 'Cache-Control: no-cache' "$SITE/dashboard-v2-tune.css?v=343-scorebar-divider-camo-20260929a&fix=$K-$i" -o /tmp/a/css;if grep -Fq 'scorebar-win-20261002c.webp' /tmp/a/css;then ok=1;break;fi;sleep 2;done;[ $ok = 1 ];grep -Fq 'B46_SCOREBAR_NO_OVERLAY_20261002' /tmp/a/css;grep -Fq 'B46_SCOREBAR_TEXT_SHADOW_ALL_20261002' /tmp/a/css;grep -Fq 'border-top-color:transparent!important' /tmp/a/css;grep -Fq 'border-right-color:transparent!important' /tmp/a/css;echo WIN_CSS_ROUTE_PASS
+          for n in loss draw pending;do curl -fsS -L -H 'Cache-Control: no-cache' "$SITE/scorebar-$n-20260929a.webp?a=$K" -o /tmp/a/$n.webp;[ "$(sha256sum /tmp/a/$n.webp|cut -d' ' -f1)" = "$(cat /tmp/b/$n.sha)" ];done;echo OTHER_IMAGES_UNCHANGED_PASS
+          curl -fsS -L -H 'Cache-Control: no-cache' "$SITE/dashboard-v2-stage3.js?a=$K" -o /tmp/a/stage3.js;[ "$(sha256sum /tmp/a/stage3.js|cut -d' ' -f1)" = "$(cat /tmp/b/stage3.sha)" ];node --check /tmp/a/stage3.js;echo SIGNAL_RENDERER_UNCHANGED_PASS
+          for x in engine/health full-market/health engine/statistics;do curl -fsS "$SITE/api/$x?a=$K" -o "/tmp/a/$(echo $x|tr / _).json";done
+          node - <<'NODE'
+          const b=require('/tmp/back.json'),e=require('/tmp/a/engine_health.json'),f=require('/tmp/a/full-market_health.json'),s=require('/tmp/a/engine_statistics.json');if(JSON.stringify([e.version,f.version,s.settlementRevision])!==JSON.stringify(b))throw Error('backend changed');console.log('BACKEND_UNCHANGED_PASS');
+          NODE
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=2" -H "$H" -o /tmp/f.json;F=$(node -e "process.stdout.write(require('/tmp/f.json').result?.deployments?.[0]?.versions?.[0]?.version_id||'')");[ "$F" = "$O" ];echo FINAL_PRODUCTION=$F;echo VERIFY_WIN_CARD_PASS;trap - ERR
