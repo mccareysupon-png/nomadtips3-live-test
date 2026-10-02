@@ -1,0 +1,208 @@
+name: Deploy Ball46 Event Flow Signal Entry 20261002
+
+on:
+  push:
+    branches: [work/eventflow-signal-20261002]
+    paths:
+      - '.github/workflows/deploy-ball46-eventflow-signal-entry-20261002.yml'
+      - 'ops/ball46-eventflow/patch-expanded-match-signal-20261002.js'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  SCRIPT_NAME: ball46-production
+  BALL46_URL: https://ball46.com
+  EXPECTED_EXPANDED_SHA256: 2c5302480b7ea4c7f504e0aab1d3b8ed388e0e69204346c98209483f46f9575f
+
+jobs:
+  surgical-eventflow-signal-entry:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/eventflow-signal-20261002
+          fetch-depth: 1
+
+      - name: Lock current production and baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          AUTH="Authorization: Bearer $API_TOKEN"
+          mkdir -p /tmp/b46ef/modules /tmp/b46ef/report
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=5" -H "$AUTH" -o /tmp/b46ef/deployments-before.json
+          node <<'NODE'
+          const fs=require('fs');
+          const j=JSON.parse(fs.readFileSync('/tmp/b46ef/deployments-before.json','utf8'));
+          if(j.success!==true)throw Error('DEPLOYMENT_LIST_FAILED');
+          const d=j.result?.deployments?.[0];
+          if(!d||!Array.isArray(d.versions)||d.versions.length!==1||Number(d.versions[0].percentage)!==100)throw Error('PRODUCTION_NOT_SINGLE_VERSION');
+          const v=String(d.versions[0].version_id);
+          fs.writeFileSync('/tmp/b46ef/rollback-version',v);
+          fs.writeFileSync('/tmp/b46ef/report/checkpoint.json',JSON.stringify({deploymentId:d.id,versionId:v,createdOn:d.created_on},null,2));
+          console.log('PRODUCTION_LOCKED',v);
+          NODE
+          nonce="${GITHUB_RUN_ID}-pre-$(date +%s%N)"
+          curl -fsSL --max-time 30 "$BALL46_URL/expanded-match-343.js?$nonce" -o /tmp/b46ef/expanded-before.js
+          actual=$(sha256sum /tmp/b46ef/expanded-before.js | awk '{print $1}')
+          echo "$actual" > /tmp/b46ef/report/expanded-before-sha256.txt
+          [ "$actual" = "$EXPECTED_EXPANDED_SHA256" ] || { echo "CURRENT_EXPANDED_ASSET_CHANGED_ABORT:$actual"; exit 21; }
+          grep -Fq "343-expanded-match-v4-stable-lifecycle" /tmp/b46ef/expanded-before.js
+          ! grep -Fq "B46_EVENTFLOW_SIGNAL_ENTRY_20261002" /tmp/b46ef/expanded-before.js
+          curl -fsS --max-time 25 "$BALL46_URL/api/engine/health?eventflow-pre=$nonce" -o /tmp/b46ef/engine-before.json
+          curl -fsS --max-time 25 "$BALL46_URL/api/full-market/health?eventflow-pre=$nonce" -o /tmp/b46ef/full-before.json
+          curl -fsS --max-time 25 "$BALL46_URL/api/engine/statistics?eventflow-pre=$nonce" -o /tmp/b46ef/stats-before.json
+          curl -fsS --max-time 25 "$BALL46_URL/api/engine/signals?eventflow-pre=$nonce" -o /tmp/b46ef/signals-before.json
+          node <<'NODE'
+          const fs=require('fs');
+          const e=JSON.parse(fs.readFileSync('/tmp/b46ef/engine-before.json','utf8'));
+          const f=JSON.parse(fs.readFileSync('/tmp/b46ef/full-before.json','utf8'));
+          const st=JSON.parse(fs.readFileSync('/tmp/b46ef/stats-before.json','utf8'));
+          const s=JSON.parse(fs.readFileSync('/tmp/b46ef/signals-before.json','utf8'));
+          if(e.ok!==true||f.ok!==true||st.ok!==true||s.ok!==true)throw Error('PRE_HEALTH_FAILED');
+          const rows=Array.isArray(s.signals)?s.signals:[];
+          if(rows.length){const keys=Object.keys(rows[0]);for(const k of ['fixtureId','entryMinute','market','selection','odds','bookmaker'])if(!keys.includes(k))throw Error('SIGNAL_SHAPE_MISSING_'+k)}
+          fs.writeFileSync('/tmp/b46ef/report/backend-before.json',JSON.stringify({engine:e.version||null,fullMarket:f.version||null,settlementRevision:st.settlementRevision||null,signalCount:rows.length},null,2));
+          NODE
+
+      - name: Build patched Event Flow from exact live asset
+        shell: bash
+        run: |
+          set -euo pipefail
+          node ops/ball46-eventflow/patch-expanded-match-signal-20261002.js /tmp/b46ef/expanded-before.js /tmp/b46ef/expanded-after.js | tee /tmp/b46ef/report/patch-result.json
+          node --check /tmp/b46ef/expanded-after.js
+          before_fetch=$(grep -o 'fetch(' /tmp/b46ef/expanded-before.js | wc -l)
+          after_fetch=$(grep -o 'fetch(' /tmp/b46ef/expanded-after.js | wc -l)
+          [ "$before_fetch" = "$after_fetch" ]
+          grep -Fq 'B46_EVENTFLOW_SIGNAL_ENTRY_20261002' /tmp/b46ef/expanded-after.js
+          grep -Fq 'ball46:signals-snapshot' /tmp/b46ef/expanded-after.js
+          sha256sum /tmp/b46ef/expanded-after.js > /tmp/b46ef/report/expanded-after-sha256.txt
+
+      - name: Clone exact active Worker and inject one UI route only
+        shell: bash
+        run: |
+          set -euo pipefail
+          AUTH="Authorization: Bearer $API_TOKEN"
+          RB_VERSION=$(cat /tmp/b46ef/rollback-version)
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/workers/$SCRIPT_NAME/versions/$RB_VERSION?include=modules" -H "$AUTH" -o /tmp/b46ef/version-before.json
+          node <<'NODE'
+          const fs=require('fs'),path=require('path');
+          const v=JSON.parse(fs.readFileSync('/tmp/b46ef/version-before.json','utf8'));
+          if(v.success!==true)throw Error('VERSION_FETCH_FAILED:'+JSON.stringify(v.errors||[]));
+          const r=v.result;if(!r?.main_module||!Array.isArray(r.modules)||!r.modules.length)throw Error('VERSION_MODULES_MISSING');
+          fs.mkdirSync('/tmp/b46ef/modules',{recursive:true});
+          for(const m of r.modules){
+            if(!m?.name||!m?.content_base64||!m?.content_type)throw Error('BAD_MODULE_RECORD');
+            const p=path.join('/tmp/b46ef/modules',m.name);fs.mkdirSync(path.dirname(p),{recursive:true});fs.writeFileSync(p,Buffer.from(m.content_base64,'base64'));
+          }
+          const mainPath=path.join('/tmp/b46ef/modules',r.main_module);
+          let src=fs.readFileSync(mainPath,'utf8');
+          if(src.includes('__B46_EVENTFLOW_SIGNAL_JS_20261002__'))throw Error('WORKER_ALREADY_PATCHED');
+          if(!src.includes('async function noStoreUiAsset(request, env)'))throw Error('UI_ROUTER_ANCHOR_MISSING');
+          if(!src.includes('const path = new URL(request.url).pathname;'))throw Error('UI_PATH_ANCHOR_MISSING');
+          const asset=fs.readFileSync('/tmp/b46ef/expanded-after.js','utf8');
+          const constant='const __B46_EVENTFLOW_SIGNAL_JS_20261002__='+JSON.stringify(asset)+';\n';
+          src=src.replace('async function noStoreUiAsset(request, env) {',constant+'async function noStoreUiAsset(request, env) {');
+          const pathAnchor='  const path = new URL(request.url).pathname;';
+          const route=pathAnchor+'\n  if (path === "/expanded-match-343.js") {\n    const headers = new Headers({"content-type":"application/javascript; charset=utf-8","cache-control":"no-store, no-cache, must-revalidate, max-age=0","pragma":"no-cache","expires":"0","x-ball46-ui-revision":"eventflow-signal-entry-20261002"});\n    return new Response(__B46_EVENTFLOW_SIGNAL_JS_20261002__, { status: 200, headers });\n  }';
+          src=src.replace(pathAnchor,route);
+          if((src.match(/__B46_EVENTFLOW_SIGNAL_JS_20261002__/g)||[]).length!==2)throw Error('EVENTFLOW_ROUTE_PATCH_COUNT_BAD');
+          fs.writeFileSync(mainPath,src);
+          fs.writeFileSync('/tmp/b46ef/main-module-name',r.main_module);
+          fs.writeFileSync('/tmp/b46ef/module-meta.json',JSON.stringify(r.modules.map(m=>({name:m.name,content_type:m.content_type}))));
+          NODE
+
+      - name: Abort on concurrent production change
+        shell: bash
+        run: |
+          set -euo pipefail
+          AUTH="Authorization: Bearer $API_TOKEN"
+          RB_VERSION=$(cat /tmp/b46ef/rollback-version)
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=2" -H "$AUTH" -o /tmp/b46ef/deployments-recheck.json
+          CURRENT=$(node -e "const j=require('/tmp/b46ef/deployments-recheck.json'); const d=j.result?.deployments?.[0]; if(!d||d.versions?.length!==1)process.exit(2); process.stdout.write(String(d.versions[0].version_id))")
+          [ "$CURRENT" = "$RB_VERSION" ] || { echo "CONCURRENT_PRODUCTION_CHANGE_ABORT:$RB_VERSION->$CURRENT"; exit 22; }
+
+      - name: Replace Worker content only
+        shell: bash
+        run: |
+          set -euo pipefail
+          AUTH="Authorization: Bearer $API_TOKEN"
+          node <<'NODE'
+          const fs=require('fs');const main=fs.readFileSync('/tmp/b46ef/main-module-name','utf8').trim();fs.writeFileSync('/tmp/b46ef/upload-metadata.json',JSON.stringify({main_module:main}));
+          NODE
+          mapfile -t args < <(node <<'NODE'
+          const fs=require('fs');const a=JSON.parse(fs.readFileSync('/tmp/b46ef/module-meta.json','utf8'));for(const m of a)console.log(`-F\n${m.name}=@/tmp/b46ef/modules/${m.name};type=${m.content_type}`);
+          NODE
+          )
+          CURL_ARGS=(); i=0
+          while [ $i -lt ${#args[@]} ]; do CURL_ARGS+=("${args[$i]}" "${args[$((i+1))]}"); i=$((i+2)); done
+          curl -fsS -X PUT "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/content" -H "$AUTH" -F 'metadata=</tmp/b46ef/upload-metadata.json;type=application/json' "${CURL_ARGS[@]}" -o /tmp/b46ef/content-update.json
+          node -e "const j=require('/tmp/b46ef/content-update.json'); if(j.success!==true)throw Error(JSON.stringify(j.errors||[])); console.log('SCRIPT_CONTENT_UPDATED')"
+
+      - name: Verify production or rollback automatically
+        shell: bash
+        run: |
+          set -euo pipefail
+          AUTH="Authorization: Bearer $API_TOKEN"
+          rollback(){
+            RB_VERSION=$(cat /tmp/b46ef/rollback-version)
+            echo "ROLLBACK_TO:$RB_VERSION"
+            node -e "require('fs').writeFileSync('/tmp/b46ef/rollback.json',JSON.stringify({strategy:'percentage',versions:[{version_id:process.argv[1],percentage:100}],annotations:{'workers/message':'Automatic rollback: Event Flow Signal Entry verification failed'}}))" "$RB_VERSION"
+            curl -fsS -X POST "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments" -H "$AUTH" -H 'content-type: application/json' --data-binary @/tmp/b46ef/rollback.json -o /tmp/b46ef/rollback-response.json || true
+          }
+          trap 'rollback' ERR
+          ok=0
+          for n in $(seq 1 18); do
+            nonce="${GITHUB_RUN_ID}-post-$n-$(date +%s%N)"
+            code=$(curl -sS -L --max-time 25 -D /tmp/b46ef/expanded-after.headers -o /tmp/b46ef/expanded-live.js -w '%{http_code}' "$BALL46_URL/expanded-match-343.js?$nonce" || true)
+            if [ "$code" = 200 ] && grep -Fq 'B46_EVENTFLOW_SIGNAL_ENTRY_20261002' /tmp/b46ef/expanded-live.js && grep -Fiq 'x-ball46-ui-revision: eventflow-signal-entry-20261002' /tmp/b46ef/expanded-after.headers; then ok=1; break; fi
+            sleep 2
+          done
+          [ "$ok" = 1 ]
+          node --check /tmp/b46ef/expanded-live.js
+          grep -Fq 'ball46:signals-snapshot' /tmp/b46ef/expanded-live.js
+          ! grep -Fq '/api/engine/signals' /tmp/b46ef/expanded-live.js
+          nonce="${GITHUB_RUN_ID}-health-$(date +%s%N)"
+          curl -fsSL --max-time 25 "$BALL46_URL/index.html?$nonce" -o /tmp/b46ef/index-after.html
+          grep -qi '<html' /tmp/b46ef/index-after.html
+          curl -fsS --max-time 25 "$BALL46_URL/api/engine/health?eventflow-post=$nonce" -o /tmp/b46ef/engine-after.json
+          curl -fsS --max-time 25 "$BALL46_URL/api/full-market/health?eventflow-post=$nonce" -o /tmp/b46ef/full-after.json
+          curl -fsS --max-time 25 "$BALL46_URL/api/engine/statistics?eventflow-post=$nonce" -o /tmp/b46ef/stats-after.json
+          curl -fsS --max-time 25 "$BALL46_URL/api/engine/signals?eventflow-post=$nonce" -o /tmp/b46ef/signals-after.json
+          node <<'NODE'
+          const fs=require('fs');
+          const before=JSON.parse(fs.readFileSync('/tmp/b46ef/report/backend-before.json','utf8'));
+          const e=JSON.parse(fs.readFileSync('/tmp/b46ef/engine-after.json','utf8'));
+          const f=JSON.parse(fs.readFileSync('/tmp/b46ef/full-after.json','utf8'));
+          const st=JSON.parse(fs.readFileSync('/tmp/b46ef/stats-after.json','utf8'));
+          const s=JSON.parse(fs.readFileSync('/tmp/b46ef/signals-after.json','utf8'));
+          if(e.ok!==true||f.ok!==true||st.ok!==true||s.ok!==true)throw Error('POST_HEALTH_FAILED');
+          if(String(e.version||'')!==String(before.engine||''))throw Error('ENGINE_VERSION_CHANGED');
+          if(String(f.version||'')!==String(before.fullMarket||''))throw Error('FULL_MARKET_VERSION_CHANGED');
+          if(String(st.settlementRevision||'')!==String(before.settlementRevision||''))throw Error('STAT_REVISION_CHANGED');
+          fs.writeFileSync('/tmp/b46ef/report/verification.json',JSON.stringify({ok:true,engine:e.version||null,fullMarket:f.version||null,settlementRevision:st.settlementRevision||null,signalCount:Array.isArray(s.signals)?s.signals.length:0,marker:'B46_EVENTFLOW_SIGNAL_ENTRY_20261002'},null,2));
+          NODE
+          trap - ERR
+
+      - name: Capture new active version
+        shell: bash
+        run: |
+          set -euo pipefail
+          AUTH="Authorization: Bearer $API_TOKEN"
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=2" -H "$AUTH" -o /tmp/b46ef/deployments-after.json
+          node <<'NODE'
+          const fs=require('fs');const j=JSON.parse(fs.readFileSync('/tmp/b46ef/deployments-after.json','utf8'));const d=j.result?.deployments?.[0];if(!d||d.versions?.length!==1)throw Error('POST_DEPLOYMENT_BAD');fs.writeFileSync('/tmp/b46ef/report/deployment-after.json',JSON.stringify({deploymentId:d.id,versionId:d.versions[0].version_id,createdOn:d.created_on},null,2));console.log('ACTIVE_VERSION',d.versions[0].version_id);
+          NODE
+
+      - name: Upload deployment evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-eventflow-signal-entry-${{ github.run_id }}
+          path: /tmp/b46ef/report
+          if-no-files-found: warn
+          retention-days: 14
