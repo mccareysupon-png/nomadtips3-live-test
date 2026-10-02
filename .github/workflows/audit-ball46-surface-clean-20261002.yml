@@ -1,0 +1,147 @@
+name: READ ONLY - Ball46 surface cleanup scout 20261002
+
+on:
+  push:
+    branches: [ops/ball46-surface-clean-20261002]
+    paths:
+      - '.github/workflows/audit-ball46-surface-clean-20261002.yml'
+
+permissions:
+  contents: write
+
+env:
+  ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  SCRIPT_NAME: ball46-production
+  BALL46_URL: https://ball46.com
+
+jobs:
+  scout:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ops/ball46-surface-clean-20261002
+
+      - name: Read exact live UI surface
+        shell: bash
+        run: |
+          set -euo pipefail
+          AUTH="Authorization: Bearer $API_TOKEN"
+          mkdir -p /tmp/b46/html /tmp/b46/css audit
+
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=3" -H "$AUTH" -o /tmp/b46/deployments.json
+          CUR=$(node -e "const j=require('/tmp/b46/deployments.json');const d=j.result?.deployments?.[0];if(!d||d.versions?.length!==1||Number(d.versions[0].percentage)!==100)process.exit(2);process.stdout.write(String(d.versions[0].version_id||''))")
+          [ -n "$CUR" ]
+
+          K="${GITHUB_RUN_ID}-$(date +%s%N)"
+          for api in engine/health full-market/health engine/statistics; do
+            safe=$(echo "$api"|tr '/' '_')
+            curl -fsS "$BALL46_URL/api/$api?scout=$K" -o "/tmp/b46/$safe.json"
+          done
+          node - <<'NODE'
+          const e=require('/tmp/b46/engine_health.json'),f=require('/tmp/b46/full-market_health.json'),s=require('/tmp/b46/engine_statistics.json');
+          if(e.ok!==true||f.ok!==true||s.ok!==true)throw Error('BACKEND_NOT_OK');
+          NODE
+
+          pages=(index.html signal.html statistics.html settings.html about.html)
+          for p in "${pages[@]}"; do
+            code=$(curl -sS -L -H 'Cache-Control: no-cache' -o "/tmp/b46/html/$p" -w '%{http_code}' "$BALL46_URL/$p?scout=$K")
+            [ "$code" = 200 ] || { echo "PAGE_FAIL $p $code"; exit 5; }
+          done
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import re, urllib.parse, subprocess, os, json, hashlib
+          root=Path('/tmp/b46')
+          refs=[]
+          page_refs={}
+          for p in sorted((root/'html').glob('*.html')):
+              text=p.read_text(errors='ignore')
+              got=[]
+              for href in re.findall(r'<link[^>]+href=["\']([^"\']+\.css(?:\?[^"\']*)?)["\']', text, re.I):
+                  clean=href.split('#',1)[0].split('?',1)[0].strip()
+                  if clean.startswith('http'):
+                      u=urllib.parse.urlparse(clean)
+                      if u.netloc not in ('ball46.com','www.ball46.com'): continue
+                      clean=u.path
+                  clean=clean.lstrip('./').lstrip('/')
+                  if clean and clean not in got: got.append(clean)
+                  if clean and clean not in refs: refs.append(clean)
+              page_refs[p.name]=got
+          # include known shared UI sheets if live, even when dynamically linked
+          for x in ['app.css','ball46-next.css','brand-clean-header-343.css','color-semantics-343.css','content-rails-343.css','dashboard-v2-tune.css','dashboard-v2.css','expanded-match-343.css','mobile-menu-classic-343.css','settings.css','signal-bettor-343.css','signal-compact-343.css','signal-event-flow-line-343.css','signal-shared-view-343.css','signal-v2-clean-343.css','singlepage-workspace-343.css','statistics-page-343.css','statistics-v2-clean-343.css','team-sides-343.css','theme-341-343.css','theme-light-343.css','ui-sync-fixes-343.css','v2-header.css','v2-shared.css']:
+              if x not in refs: refs.append(x)
+          (root/'page-refs.json').write_text(json.dumps(page_refs,indent=2),encoding='utf-8')
+          (root/'refs.txt').write_text('\n'.join(refs)+'\n',encoding='utf-8')
+          PY
+
+          while IFS= read -r css; do
+            [ -n "$css" ] || continue
+            safe=$(echo "$css"|sed 's#[/]#_#g')
+            code=$(curl -sS -L -H 'Cache-Control: no-cache' -o "/tmp/b46/css/$safe" -w '%{http_code}' "$BALL46_URL/$css?scout=$K")
+            if [ "$code" != 200 ]; then rm -f "/tmp/b46/css/$safe"; fi
+          done < /tmp/b46/refs.txt
+
+          python3 - <<'PY' > audit/ball46-ui-surface-20261002.txt
+          from pathlib import Path
+          import re,json,hashlib,os
+          root=Path('/tmp/b46')
+          dep=json.loads((root/'deployments.json').read_text())
+          d=dep['result']['deployments'][0]
+          cur=d['versions'][0]['version_id']
+          print('BALL46 UI SURFACE SCOUT 2026-10-02')
+          print('PRODUCTION_VERSION='+cur)
+          print('BACKEND_GUARD=PASS')
+          print('\n[PAGE STYLESHEETS]')
+          refs=json.loads((root/'page-refs.json').read_text())
+          for page,items in refs.items(): print(page+': '+(', '.join(items) if items else '(none)'))
+          print('\n[CSS INVENTORY]')
+          files=sorted((root/'css').glob('*'))
+          for p in files:
+              t=p.read_text(errors='ignore')
+              sha=hashlib.sha256(t.encode()).hexdigest()
+              border=len(re.findall(r'(?<!-)\bborder(?:-(?:top|right|bottom|left))?\s*:',t,re.I))
+              shadow=len(re.findall(r'\bbox-shadow\s*:',t,re.I))
+              grad=len(re.findall(r'(?:linear|radial)-gradient\s*\(',t,re.I))
+              theme=len(re.findall(r'(?:data-theme|theme-light|theme-dark|prefers-color-scheme)',t,re.I))
+              print(f'{p.name}\tbytes={len(t.encode())}\tsha={sha}\tborder={border}\tshadow={shadow}\tgradient={grad}\tthemeMarkers={theme}')
+          print('\n[THEME MARKERS]')
+          for p in files:
+              t=p.read_text(errors='ignore')
+              hits=[]
+              for m in re.finditer(r'[^{}]{0,140}(?:data-theme|theme-light|theme-dark|prefers-color-scheme)[^{}]{0,140}\{',t,re.I|re.S):
+                  s=' '.join(m.group(0).split())
+                  if s not in hits: hits.append(s)
+                  if len(hits)>=12: break
+              if hits:
+                  print('\n-- '+p.name)
+                  for h in hits: print(h[:280])
+          print('\n[UI BORDER RULE EXCERPTS]')
+          focus=re.compile(r'(card|panel|workspace|match|score|signal|stat|nav|header|footer|section|filter|toolbar|menu|rail|row|cell|summary|setting|tab|button)',re.I)
+          for p in files:
+              t=p.read_text(errors='ignore')
+              out=[]
+              for m in re.finditer(r'([^{}]+)\{([^{}]*)\}',t,re.S):
+                  sel=' '.join(m.group(1).split())
+                  body=' '.join(m.group(2).split())
+                  if focus.search(sel) and re.search(r'\bborder(?:-(?:top|right|bottom|left))?\s*:',body,re.I):
+                      out.append((sel+' { '+body+' }')[:700])
+                  if len(out)>=60: break
+              if out:
+                  print('\n-- '+p.name)
+                  for x in out: print(x)
+          print('\n[KEY HTML BODY/ROOT MARKERS]')
+          for p in sorted((root/'html').glob('*.html')):
+              t=p.read_text(errors='ignore')
+              body=re.search(r'<body\b[^>]*>',t,re.I)
+              html=re.search(r'<html\b[^>]*>',t,re.I)
+              print(p.name+': '+(html.group(0) if html else '')+' '+(body.group(0) if body else ''))
+          PY
+
+          git config user.name 'ball46-ui-scout'
+          git config user.email 'actions@users.noreply.github.com'
+          git add audit/ball46-ui-surface-20261002.txt
+          git commit -m 'audit(ball46): capture exact production UI surface 20261002'
+          git push origin HEAD:ops/ball46-surface-clean-20261002
