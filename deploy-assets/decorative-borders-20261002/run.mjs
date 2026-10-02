@@ -112,7 +112,8 @@ async function uiCheck(changes, phase) {
           assert(response?.ok(), `UI_HTTP:${name}`);
           if (['live', 'signal', 'statistics'].includes(name)) {
             await page.waitForSelector('.workspace-stable-head', { timeout: 20000 });
-            await page.waitForFunction(() => document.querySelectorAll('.match-row,.sp-kpi,.workspace-scorebar-cell').length > 0, { timeout: 25000 });
+            await page.waitForFunction(() => document.querySelectorAll('.match-row').length > 0, null, { timeout: 30000 });
+            await page.waitForFunction(() => [...document.querySelectorAll('.workspace-scorebar-cell')].some(e => getComputedStyle(e).backgroundImage.includes('scorebar-')), null, { timeout: 30000 });
             const currentTheme = await page.evaluate(() => document.documentElement.dataset.theme);
             if (currentTheme !== theme) {
               await page.locator('[data-theme-toggle]').click();
@@ -122,6 +123,16 @@ async function uiCheck(changes, phase) {
             await page.waitForSelector('.settings-card', { timeout: 25000 });
           }
           await page.evaluate(() => document.fonts.ready);
+          const backgrounds = await page.evaluate(async () => {
+            const urls = [...new Set([...document.querySelectorAll('.workspace-scorebar-cell')].flatMap(e => [...getComputedStyle(e).backgroundImage.matchAll(/url\(["']?([^"')]+)["']?\)/g)].map(m => m[1])))];
+            return Promise.all(urls.map(src => new Promise(resolve => {
+              const image = new Image();
+              image.onload = () => resolve({ src, loaded: image.naturalWidth > 0 });
+              image.onerror = () => resolve({ src, loaded: false });
+              image.src = src;
+            })));
+          });
+          assert(backgrounds.every(b => b.loaded), `SCOREBAR_BACKGROUND_NOT_LOADED:${name}:${size}:${theme}`);
           const sample = () => page.evaluate(selector => ({
             text: document.querySelector('.workspace-scorebar-slot')?.textContent || '',
             geometry: [...document.querySelectorAll(selector)].slice(0, 100).map(e => {
@@ -152,7 +163,7 @@ async function uiCheck(changes, phase) {
             await footer.scrollIntoViewIfNeeded();
             await page.screenshot({ path: `${audit}/screenshots/${key}-footer.png` });
           }
-          rows.push({ name, size, theme, effectiveTheme: await page.evaluate(() => document.documentElement.dataset.theme || 'fixed-theme'), geometryUnchanged: true, frames, images, pageErrors: errors });
+          rows.push({ name, size, theme, effectiveTheme: await page.evaluate(() => document.documentElement.dataset.theme || 'fixed-theme'), geometryUnchanged: true, matchRows: await page.locator('.match-row').count(), frames, images, backgrounds, pageErrors: errors });
           page.off('pageerror', listener);
         }
         await context.close();
@@ -293,3 +304,4 @@ try {
   console.error(error.stack);
   process.exitCode = 1;
 }
+
