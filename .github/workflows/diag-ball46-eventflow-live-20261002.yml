@@ -1,0 +1,95 @@
+name: DIAG - Capture current Ball46 Event Flow 20261002
+
+on:
+  push:
+    branches:
+      - work/eventflow-signal-20261002
+    paths:
+      - '.github/workflows/diag-ball46-eventflow-live-20261002.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DOMAIN: 'https://ball46.com'
+  WORKER: 'https://ball46-production.mccarey-supon.workers.dev'
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  capture-current:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Capture current public pages and referenced local assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/ball46-live
+          curl -fsSL --retry 4 --retry-all-errors --max-time 30 "$DOMAIN/index.html?diag=${GITHUB_RUN_ID}" -o /tmp/ball46-live/index.html
+          curl -fsSL --retry 4 --retry-all-errors --max-time 30 "$DOMAIN/signal.html?diag=${GITHUB_RUN_ID}" -o /tmp/ball46-live/signal.html
+          curl -fsSL --retry 4 --retry-all-errors --max-time 30 "$DOMAIN/statistics.html?diag=${GITHUB_RUN_ID}" -o /tmp/ball46-live/statistics.html
+          node <<'NODE'
+          const fs=require('fs');
+          const html=fs.readFileSync('/tmp/ball46-live/index.html','utf8');
+          const refs=[...html.matchAll(/(?:src|href)=["']([^"']+\.(?:js|css))(?:\?[^"']*)?["']/g)].map(m=>m[1]);
+          const local=[...new Set(refs.filter(x=>!/^https?:/i.test(x)).map(x=>x.replace(/^\.\//,'').replace(/^\//,'')))];
+          fs.writeFileSync('/tmp/ball46-live/index-local-assets.txt',local.join('\n')+'\n');
+          console.log(local.join('\n'));
+          NODE
+          while IFS= read -r rel; do
+            [ -n "$rel" ] || continue
+            mkdir -p "/tmp/ball46-live/$(dirname "$rel")"
+            curl -fsSL --retry 4 --retry-all-errors --max-time 30 "$DOMAIN/$rel?diag=${GITHUB_RUN_ID}" -o "/tmp/ball46-live/$rel"
+          done < /tmp/ball46-live/index-local-assets.txt
+
+          for rel in event-flow-bars-343.js event-flow-bars-343.css expanded-match-343.js expanded-match-343.css dashboard-v2-stage3.js dashboard-v2-tune.js singlepage-workspace-343.js; do
+            code=$(curl -sSL --retry 3 --retry-all-errors --max-time 30 -o "/tmp/ball46-live/$rel" -w '%{http_code}' "$DOMAIN/$rel?diag=${GITHUB_RUN_ID}")
+            echo "$rel HTTP=$code"
+            [ "$code" = 200 ] || rm -f "/tmp/ball46-live/$rel"
+          done
+
+      - name: Capture current Ball46 signal/board/history shapes
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL --retry 4 --retry-all-errors --max-time 30 "$DOMAIN/api/engine/signals?diag=${GITHUB_RUN_ID}" -o /tmp/ball46-live/signals.json
+          curl -fsSL --retry 4 --retry-all-errors --max-time 30 "$DOMAIN/api/engine/board?diag=${GITHUB_RUN_ID}" -o /tmp/ball46-live/board.json
+          node <<'NODE'
+          const fs=require('fs');
+          const s=JSON.parse(fs.readFileSync('/tmp/ball46-live/signals.json','utf8'));
+          const b=JSON.parse(fs.readFileSync('/tmp/ball46-live/board.json','utf8'));
+          const signals=Array.isArray(s?.signals)?s.signals:[];
+          const fixtures=Array.isArray(b?.fixtures)?b.fixtures:[];
+          const chosen=signals.find(x=>x?.fixtureId)||fixtures.find(x=>x?.fixtureId||x?.id);
+          const id=String(chosen?.fixtureId??chosen?.id??'');
+          fs.writeFileSync('/tmp/ball46-live/shape-summary.json',JSON.stringify({signalCount:signals.length,fixtureCount:fixtures.length,signalKeys:signals[0]?Object.keys(signals[0]).sort():[],fixtureKeys:fixtures[0]?Object.keys(fixtures[0]).sort():[],chosenFixtureId:id},null,2));
+          fs.writeFileSync('/tmp/ball46-live/chosen-fixture-id.txt',id+'\n');
+          NODE
+          id=$(tr -d '\r\n ' < /tmp/ball46-live/chosen-fixture-id.txt)
+          if [ -n "$id" ]; then
+            code=$(curl -sSL --retry 4 --retry-all-errors --max-time 30 -o /tmp/ball46-live/history.json -w '%{http_code}' "$DOMAIN/api/engine/history?fixtureId=${id}&window=10&diag=${GITHUB_RUN_ID}")
+            echo "history fixture=$id HTTP=$code"
+            [ "$code" = 200 ] || rm -f /tmp/ball46-live/history.json
+          fi
+
+      - name: Capture active Worker version and manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.92.0 deployments list --name ball46-production > /tmp/ball46-live/ball46-deployments.txt
+          npx --yes wrangler@4.92.0 versions list --name ball46-production --json > /tmp/ball46-live/ball46-versions.json
+          (cd /tmp/ball46-live && find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt)
+
+      - name: Upload current live capture
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-eventflow-live-${{ github.run_id }}
+          path: /tmp/ball46-live
+          if-no-files-found: error
+          retention-days: 7
