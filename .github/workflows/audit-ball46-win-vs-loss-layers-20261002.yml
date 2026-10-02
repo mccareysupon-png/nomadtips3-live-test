@@ -1,0 +1,29 @@
+name: AUDIT Ball46 WIN vs LOSS layers 20261002
+on:
+  push:
+    branches: [work/ball46-scorebar-bg-currentprod-20261002]
+    paths: [.github/workflows/audit-ball46-win-vs-loss-layers-20261002.yml]
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/audit && cd /tmp/audit
+          npm init -y >/dev/null 2>&1; npm install puppeteer-core@24 >/dev/null 2>&1
+          CHROME=$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser)
+          cat > audit.mjs <<'JS'
+          import puppeteer from 'puppeteer-core';
+          const b=await puppeteer.launch({executablePath:process.env.CHROME,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
+          const p=await b.newPage();await p.setViewport({width:1440,height:900,deviceScaleFactor:1});
+          await p.goto('https://ball46.com/?layeraudit='+Date.now(),{waitUntil:'networkidle2',timeout:90000});await new Promise(r=>setTimeout(r,7000));
+          const out=await p.evaluate(()=>{
+            function snap(root){if(!root)return null;const rr=root.getBoundingClientRect();const nodes=[root,...root.querySelectorAll('*')];return nodes.map((e,i)=>{const r=e.getBoundingClientRect(),c=getComputedStyle(e),bef=getComputedStyle(e,'::before'),aft=getComputedStyle(e,'::after');return {i,tag:e.tagName,cls:e.className||'',txt:(e.textContent||'').trim().slice(0,80),rect:[r.x,r.y,r.width,r.height],rootCover:r.width>=rr.width*.9&&r.height>=rr.height*.9,bg:c.background,bgi:c.backgroundImage,bgc:c.backgroundColor,pos:c.position,z:c.zIndex,op:c.opacity,vis:c.visibility,disp:c.display,befBg:bef.background,befCont:bef.content,aftBg:aft.background,aftCont:aft.content};}).filter(x=>x.rootCover||x.bgi!=='none'||x.bgc!=='rgba(0, 0, 0, 0)'||x.befCont!=='none'||x.aftCont!=='none');}
+            return {win:snap(document.querySelector('.workspace-scorebar-cell.workspace-scorebar-signal-result.outcome-win')),loss:snap(document.querySelector('.workspace-scorebar-cell.workspace-scorebar-signal-result.outcome-loss'))};
+          });
+          console.log(JSON.stringify(out,null,2));await b.close();
+          JS
+          CHROME="$CHROME" node audit.mjs
