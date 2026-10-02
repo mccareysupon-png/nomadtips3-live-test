@@ -1,0 +1,159 @@
+name: DEPLOY - Ball46 clean surfaces both themes 20261002
+
+on:
+  push:
+    branches: [ops/ball46-surface-clean-20261002]
+    paths:
+      - '.github/workflows/deploy-ball46-surface-clean-20261002.yml'
+
+permissions:
+  contents: read
+
+env:
+  ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  SCRIPT_NAME: ball46-production
+  BALL46_URL: https://ball46.com
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - name: Patch presentation layer only and deploy guarded
+        shell: bash
+        run: |
+          set -euo pipefail
+          AUTH="Authorization: Bearer $API_TOKEN"
+          mkdir -p /tmp/b46/{before,after,modules,css}
+
+          # 1) Lock exact current production and backend state.
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=3" -H "$AUTH" -o /tmp/b46/deploy-before.json
+          BASE=$(node -e "const j=require('/tmp/b46/deploy-before.json');const d=j.result?.deployments?.[0];if(!d||d.versions?.length!==1||Number(d.versions[0].percentage)!==100)process.exit(2);process.stdout.write(String(d.versions[0].version_id||''))")
+          [ -n "$BASE" ] || exit 2
+          echo -n "$BASE" >/tmp/b46/base-version
+          echo "BASE_PRODUCTION=$BASE"
+
+          K="${GITHUB_RUN_ID}-$(date +%s%N)"
+          curl -fsS "$BALL46_URL/api/engine/health?before=$K" -o /tmp/b46/before/e.json
+          curl -fsS "$BALL46_URL/api/full-market/health?before=$K" -o /tmp/b46/before/f.json
+          curl -fsS "$BALL46_URL/api/engine/statistics?before=$K" -o /tmp/b46/before/s.json
+          node - <<'NODE'
+          const fs=require('fs'),e=require('/tmp/b46/before/e.json'),f=require('/tmp/b46/before/f.json'),s=require('/tmp/b46/before/s.json');
+          if(e.ok!==true||f.ok!==true||s.ok!==true)throw Error('BACKEND_NOT_OK_BEFORE');
+          fs.writeFileSync('/tmp/b46/backend-before.json',JSON.stringify({engine:e.version,fullMarket:f.version,settlementRevision:s.settlementRevision}));
+          NODE
+
+          # 2) Fetch only live CSS surfaces that cover current Ball46 routes.
+          targets=(dashboard-v2-tune.css v2-shared.css app.css legal.css ball46-footer.css)
+          for css in "${targets[@]}"; do
+            code=$(curl -sS -L -H 'Cache-Control: no-cache' -o "/tmp/b46/css/$css" -w '%{http_code}' "$BALL46_URL/$css?surface-clean=$K")
+            [ "$code" = 200 ] || { echo "CSS_FETCH_FAIL $css $code"; exit 5; }
+          done
+
+          cd /tmp/b46
+          npm init -y >/dev/null 2>&1
+          npm i postcss@8.5.6 >/dev/null 2>&1
+
+          # 3) Generate surgical CSS overrides from selectors that already own decorative borders.
+          # Data visualization selectors are explicitly excluded.
+          node - <<'NODE'
+          const fs=require('fs'),postcss=require('postcss'),crypto=require('crypto');
+          const files=['dashboard-v2-tune.css','v2-shared.css','app.css','legal.css','ball46-footer.css'];
+          const include=/(card|panel|section|workspace|board|nav|footer|rail|toolbar|chip|filter|table|row|cell|group|head|header|summary|badge|status|contact|menu|tile|box|item|legal|article|surface)/i;
+          const exclude=/(event|flow|chart|momentum|pitch|progress|meter|spark|graph|axis|timeline|scorebar|outcome|canvas|svg)/i;
+          const marker='B46_SURFACE_CLEAN_20261002';
+          const common=`\n/* ${marker} — presentation only; preserve layout widths and data visuals */\nhtml{--b46-surface-clean:1}\nhtml[data-theme="dark"],html[data-theme="dark"] body{background-image:radial-gradient(circle at 18% -8%,rgba(30,171,103,.055),transparent 34%),linear-gradient(180deg,rgba(255,255,255,.008),rgba(0,0,0,.018));background-attachment:fixed}\nhtml[data-theme="light"],html[data-theme="light"] body{background-image:radial-gradient(circle at 18% -8%,rgba(30,171,103,.045),transparent 35%),linear-gradient(180deg,rgba(255,255,255,.94),rgba(244,247,245,.76));background-attachment:fixed}\nhtml[data-theme="dark"] :is(.panel,.next-panel,.next-signal-card,.next-detail-card,.score-group,.odds-panel,.visual-card,.main-board,.board-sections){box-shadow:0 10px 30px rgba(0,0,0,.12)!important}\nhtml[data-theme="light"] :is(.panel,.next-panel,.next-signal-card,.next-detail-card,.score-group,.odds-panel,.visual-card,.main-board,.board-sections){box-shadow:0 8px 26px rgba(17,43,29,.055)!important}\nhtml[data-theme="dark"] #b46-site-footer-v1{background-image:linear-gradient(180deg,rgba(255,255,255,.018),rgba(0,0,0,.10))!important}\nhtml[data-theme="light"] #b46-site-footer-v1{background-image:linear-gradient(180deg,rgba(255,255,255,.96),rgba(241,245,242,.86))!important}\n`;
+          for(const file of files){
+            const p='/tmp/b46/css/'+file,src=fs.readFileSync(p,'utf8');
+            if(src.includes(marker))throw Error('ALREADY_PATCHED:'+file);
+            const root=postcss.parse(src,{from:file}); const sels=new Set();
+            root.walkRules(rule=>{
+              let hasBorder=false; rule.walkDecls(d=>{if(/^border(?:-(?:top|right|bottom|left))?(?:-(?:color|style|width))?$/i.test(d.prop))hasBorder=true});
+              if(!hasBorder)return;
+              for(const sel of rule.selectors||[]){const s=sel.trim();if(!s||s.includes('::')||!include.test(s)||exclude.test(s))continue;sels.add(s)}
+            });
+            const selected=[...sels];
+            const clean=selected.length?`\n/* decorative border suppression: ${selected.length} selectors */\n${selected.join(',\n')}{border-color:transparent!important;outline-color:transparent!important}\n`:'';
+            const out=src+common+clean;
+            postcss.parse(out,{from:file});
+            fs.writeFileSync('/tmp/b46/css/'+file+'.patched',out);
+            fs.writeFileSync('/tmp/b46/css/'+file+'.sha',crypto.createHash('sha256').update(out).digest('hex'));
+            console.log(`PATCHED ${file} selectors=${selected.length} sha=${fs.readFileSync('/tmp/b46/css/'+file+'.sha','utf8')}`);
+          }
+          NODE
+
+          # 4) Fetch exact Worker modules for BASE; only main module will be modified.
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/workers/$SCRIPT_NAME/versions/$BASE?include=modules" -H "$AUTH" -o /tmp/b46/version.json
+          node - <<'NODE'
+          const fs=require('fs'),path=require('path'),crypto=require('crypto');const j=require('/tmp/b46/version.json');if(j.success!==true)throw Error('VERSION_FETCH_FAILED');const r=j.result;if(!r?.main_module||!r.modules?.length)throw Error('MODULES_MISSING');
+          const meta=[];for(const m of r.modules){const b=Buffer.from(m.content_base64,'base64'),p=path.join('/tmp/b46/modules',m.name);fs.mkdirSync(path.dirname(p),{recursive:true});fs.writeFileSync(p,b);meta.push({name:m.name,content_type:m.content_type,beforeSha:crypto.createHash('sha256').update(b).digest('hex')});}
+          fs.writeFileSync('/tmp/b46/main',r.main_module);fs.writeFileSync('/tmp/b46/meta.json',JSON.stringify(meta));
+          NODE
+
+          node - <<'NODE'
+          const fs=require('fs'),path=require('path');const mainName=fs.readFileSync('/tmp/b46/main','utf8').trim(),p=path.join('/tmp/b46/modules',mainName);let src=fs.readFileSync(p,'utf8');
+          if(src.includes('B46_SURFACE_CLEAN_20261002'))throw Error('WORKER_SURFACE_CLEAN_ALREADY_PRESENT');
+          const files=['dashboard-v2-tune.css','v2-shared.css','app.css','legal.css','ball46-footer.css'];const map={};for(const f of files)map['/'+f]=fs.readFileSync('/tmp/b46/css/'+f+'.patched','utf8');
+          const baseMarker='const __B46_BASE_WORKER__=index_default;';if((src.split(baseMarker).length-1)!==1)throw Error('BASE_MARKER_COUNT_BAD');
+          const embed='/* B46_SURFACE_CLEAN_20261002 */\nconst __B46_SURFACE_CLEAN_CSS__='+JSON.stringify(map)+';\n';src=src.replace(baseMarker,()=>embed+baseMarker);
+          const modern='async function noStoreUiAsset(request, env) {\n  const path = new URL(request.url).pathname;';
+          const legacy='async function noStoreUiAsset(request, env) {\n  const response = await env.ASSETS.fetch(request);\n  const headers = new Headers(response.headers);\n  const path = new URL(request.url).pathname;';
+          const hook='async function noStoreUiAsset(request, env) {\n  const path = new URL(request.url).pathname;\n  if (__B46_SURFACE_CLEAN_CSS__ && Object.prototype.hasOwnProperty.call(__B46_SURFACE_CLEAN_CSS__, path)) {\n    const headers = new Headers({"content-type":"text/css; charset=utf-8","cache-control":"no-store, no-cache, must-revalidate, max-age=0","pragma":"no-cache","expires":"0","x-ball46-ui-revision":"surface-clean-20261002"});\n    return new Response(__B46_SURFACE_CLEAN_CSS__[path], {status:200,headers});\n  }';
+          const mc=src.split(modern).length-1,lc=src.split(legacy).length-1;
+          if(mc===1)src=src.replace(modern,()=>hook);else if(lc===1)src=src.replace(legacy,()=>hook+'\n  const response = await env.ASSETS.fetch(request);\n  const headers = new Headers(response.headers);');else throw Error('NO_STORE_HOOK_UNEXPECTED modern='+mc+' legacy='+lc);
+          const idx='url.pathname === "/index.html"';if((src.split(idx).length-1)!==1)throw Error('INDEX_ROUTE_COUNT_BAD');
+          const prefix='(url.pathname === "/dashboard-v2-tune.css" || url.pathname === "/v2-shared.css" || url.pathname === "/app.css" || url.pathname === "/legal.css" || url.pathname === "/ball46-footer.css" || url.pathname === "/index.html")';src=src.replace(idx,()=>prefix);
+          for(const f of files)if(!src.includes('"/'+f+'"'))throw Error('ROUTE_OR_EMBED_MISSING:'+f);
+          fs.writeFileSync(p,src);console.log('WORKER_PATCH_READY main='+mainName+' delta='+src.length);
+          NODE
+
+          # 5) Abort if anyone changed production after our lock.
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=2" -H "$AUTH" -o /tmp/b46/recheck.json
+          CUR=$(node -e "const j=require('/tmp/b46/recheck.json');process.stdout.write(String(j.result?.deployments?.[0]?.versions?.[0]?.version_id||''))")
+          [ "$CUR" = "$BASE" ] || { echo "ABORT_CONCURRENT_DEPLOY:$CUR"; exit 4; }
+
+          node -e "const fs=require('fs');fs.writeFileSync('/tmp/b46/upload-meta.json',JSON.stringify({main_module:fs.readFileSync('/tmp/b46/main','utf8').trim()}))"
+          mapfile -t args < <(node - <<'NODE'
+          const fs=require('fs');for(const m of JSON.parse(fs.readFileSync('/tmp/b46/meta.json','utf8')))console.log(`-F\n${m.name}=@/tmp/b46/modules/${m.name};type=${m.content_type}`);
+          NODE
+          )
+          CURL_ARGS=();i=0;while [ $i -lt ${#args[@]} ];do CURL_ARGS+=("${args[$i]}" "${args[$((i+1))]}");i=$((i+2));done
+          curl -fsS -X PUT "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/content" -H "$AUTH" -F 'metadata=</tmp/b46/upload-meta.json;type=application/json' "${CURL_ARGS[@]}" -o /tmp/b46/update.json
+          node -e "const j=require('/tmp/b46/update.json');if(j.success!==true)throw Error(JSON.stringify(j.errors||[]));console.log('UPLOAD_ACCEPTED')"
+
+          rollback(){ set +e;[ -s /tmp/b46/our-version ]||return;OUR=$(cat /tmp/b46/our-version);curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=2" -H "$AUTH" -o /tmp/b46/current.json||return;NOW=$(node -e "const j=require('/tmp/b46/current.json');process.stdout.write(String(j.result?.deployments?.[0]?.versions?.[0]?.version_id||''))");[ "$NOW" = "$OUR" ]||return;node -e "require('fs').writeFileSync('/tmp/b46/rb.json',JSON.stringify({strategy:'percentage',versions:[{version_id:process.argv[1],percentage:100}],annotations:{'workers/message':'Rollback Ball46 surface cleanup verification failure'}}))" "$BASE";curl -fsS -X POST "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments" -H "$AUTH" -H 'content-type: application/json' --data-binary @/tmp/b46/rb.json >/tmp/b46/rb-resp.json||true;echo ROLLBACK_TO:$BASE; }
+          trap 'rc=$?;rollback;exit $rc' ERR
+
+          CAND='';for n in $(seq 1 25);do curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=2" -H "$AUTH" -o /tmp/b46/d.json;CAND=$(node -e "const j=require('/tmp/b46/d.json');process.stdout.write(String(j.result?.deployments?.[0]?.versions?.[0]?.version_id||''))");[ -n "$CAND" ]&&[ "$CAND" != "$BASE" ]&&break;sleep 2;done;[ -n "$CAND" ]&&[ "$CAND" != "$BASE" ];echo -n "$CAND" >/tmp/b46/our-version;echo "CANDIDATE=$CAND"
+
+          # 6) Verify exact patched CSS at public edge.
+          for css in "${targets[@]}"; do
+            ok=0;for n in $(seq 1 25);do Q="${GITHUB_RUN_ID}-$css-$n-$(date +%s%N)";curl -fsS -L -D /tmp/b46/after/h -H 'Cache-Control: no-cache' "$BALL46_URL/$css?verify=$Q" -o "/tmp/b46/after/$css";if grep -Fq 'B46_SURFACE_CLEAN_20261002' "/tmp/b46/after/$css"&&grep -Fiq 'x-ball46-ui-revision: surface-clean-20261002' /tmp/b46/after/h;then ok=1;break;fi;sleep 2;done;[ "$ok" = 1 ] || { echo "EDGE_TIMEOUT $css"; false; }
+            REMOTE=$(sha256sum "/tmp/b46/after/$css"|awk '{print $1}'); EXPECTED=$(cat "/tmp/b46/css/$css.sha");[ "$REMOTE" = "$EXPECTED" ] || { echo "SHA_MISMATCH $css remote=$REMOTE expected=$EXPECTED";false; }
+          done
+
+          # 7) Cross-device/theme smoke test on real pages.
+          npm i playwright@1.57.0 >/dev/null 2>&1
+          npx playwright install --with-deps chromium >/dev/null 2>&1
+          cat >/tmp/b46/verify.cjs <<'NODE'
+          const {chromium}=require('playwright');
+          (async()=>{const b=await chromium.launch({headless:true});const pages=['index.html','signal.html','statistics.html','settings.html','about.html'];const views=[['desktop',1440,900],['tablet',1024,900],['mobile',390,844]];let checks=0;
+          for(const pg of pages)for(const [view,w,h] of views)for(const theme of ['dark','light']){const p=await b.newPage({viewport:{width:w,height:h}}),errs=[];p.on('pageerror',e=>errs.push(String(e)));await p.goto(`${process.env.BALL46_URL}/${pg}?surface-verify=${Date.now()}`,{waitUntil:'domcontentloaded',timeout:45000});await p.waitForTimeout(1200);await p.evaluate(t=>document.documentElement.setAttribute('data-theme',t),theme);await p.waitForTimeout(250);const r=await p.evaluate(()=>({marker:getComputedStyle(document.documentElement).getPropertyValue('--b46-surface-clean').trim(),text:(document.body.innerText||'').trim().length,w:document.documentElement.clientWidth,sw:document.documentElement.scrollWidth,theme:document.documentElement.getAttribute('data-theme')}));if(r.marker!=='1')throw Error(`STYLE_MARKER_MISSING ${pg} ${view} ${theme}`);if(r.text<20)throw Error(`PAGE_EMPTY ${pg} ${view} ${theme}`);if(r.sw>r.w+4)throw Error(`HORIZONTAL_OVERFLOW ${pg} ${view} ${theme} ${r.sw}>${r.w}`);console.log(`PASS ${pg} ${view} ${theme} errors=${errs.length}`);checks++;await p.close();}await b.close();if(checks!==30)throw Error('CHECK_COUNT_'+checks);console.log('UI_SMOKE_PASS checks='+checks);})().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+          BALL46_URL="$BALL46_URL" node /tmp/b46/verify.cjs
+
+          # 8) Backend continuity and final 100% deployment state.
+          Q="${GITHUB_RUN_ID}-after-$(date +%s%N)"
+          curl -fsS "$BALL46_URL/api/engine/health?after=$Q" -o /tmp/b46/after/e.json
+          curl -fsS "$BALL46_URL/api/full-market/health?after=$Q" -o /tmp/b46/after/f.json
+          curl -fsS "$BALL46_URL/api/engine/statistics?after=$Q" -o /tmp/b46/after/s.json
+          node - <<'NODE'
+          const fs=require('fs'),e=require('/tmp/b46/after/e.json'),f=require('/tmp/b46/after/f.json'),s=require('/tmp/b46/after/s.json');if(e.ok!==true||f.ok!==true||s.ok!==true)throw Error('BACKEND_NOT_OK_AFTER');const after={engine:e.version,fullMarket:f.version,settlementRevision:s.settlementRevision},before=JSON.parse(fs.readFileSync('/tmp/b46/backend-before.json','utf8'));if(JSON.stringify(after)!==JSON.stringify(before))throw Error('BACKEND_IDENTITY_CHANGED before='+JSON.stringify(before)+' after='+JSON.stringify(after));console.log('BACKEND_CONTINUITY_PASS '+JSON.stringify(after));
+          NODE
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=2" -H "$AUTH" -o /tmp/b46/final.json
+          node - "$CAND" <<'NODE'
+          const fs=require('fs'),cand=process.argv[2],j=require('/tmp/b46/final.json'),d=j.result?.deployments?.[0],v=d?.versions||[];if(v.length!==1||String(v[0].version_id)!==cand||Number(v[0].percentage)!==100)throw Error('FINAL_NOT_100_PERCENT:'+JSON.stringify(v));console.log('FINAL_100_PERCENT='+cand);
+          NODE
+          trap - ERR
+          echo "DEPLOY_OK base=$BASE candidate=$CAND"
