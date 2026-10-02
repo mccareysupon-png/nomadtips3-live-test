@@ -20,8 +20,8 @@ env:
   CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
   SCRIPT_NAME: ball46-production
   BALL46_URL: https://ball46.com
-  DEPLOY_ENABLED: 'false'
-  EXPECTED_BASE_VERSION: ''
+  DEPLOY_ENABLED: 'true'
+  EXPECTED_BASE_VERSION: '3ffe7cae-a480-4ba6-9184-3da11d3e698b'
 
 jobs:
   guarded-css:
