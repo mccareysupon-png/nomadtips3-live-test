@@ -1,0 +1,33 @@
+name: AUDIT Ball46 WIN card current 20261002
+on:
+  push:
+    branches: [work/ball46-scorebar-bg-currentprod-20261002]
+    paths: [.github/workflows/audit-ball46-win-card-current-20261002.yml]
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - shell: bash
+        run: |
+          set -euo pipefail
+          K="${GITHUB_RUN_ID}-$(date +%s%N)"
+          curl -fsS -L -H 'Cache-Control: no-cache' "https://ball46.com/dashboard-v2-tune.css?audit=$K" -o /tmp/tune.css
+          curl -fsS -L -H 'Cache-Control: no-cache' "https://ball46.com/dashboard-v2-stage3.js?audit=$K" -o /tmp/stage3.js
+          curl -fsS -L -H 'Cache-Control: no-cache' "https://ball46.com/index.html?audit=$K" -o /tmp/index.html
+          python - <<'PY'
+          from pathlib import Path
+          for fn,terms in [('/tmp/tune.css',['scorebar-win','workspace-scorebar-signal-result','B46_SCOREBAR_NO_OVERLAY_20261002','B46_SCOREBAR_TEXT_SHADOW_ALL_20261002']),('/tmp/stage3.js',['workspace-scorebar-signal-result','WIN','result-win','status-win','scorebar-win'])]:
+              t=Path(fn).read_text(errors='ignore')
+              print('\nFILE',fn,'LEN',len(t))
+              for term in terms:
+                  print('\nTERM',term,'COUNT',t.count(term))
+                  start=0
+                  for i in range(min(8,t.count(term))):
+                      p=t.find(term,start)
+                      if p<0: break
+                      print(t[max(0,p-500):p+900])
+                      start=p+len(term)
+          PY
+          echo 'WIN ROUTE:'
+          curl -fsSI -L "https://ball46.com/scorebar-win-20260929a.webp?audit=$K" | sed -n '1,20p'
