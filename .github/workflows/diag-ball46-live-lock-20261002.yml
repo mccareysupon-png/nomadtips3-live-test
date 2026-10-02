@@ -1,0 +1,90 @@
+name: DIAG Ball46 live lock 20261002
+
+on:
+  push:
+    branches: [diag/ball46-live-lock-20261002]
+    paths:
+      - '.github/workflows/diag-ball46-live-lock-20261002.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  SCRIPT_NAME: ball46-production
+  BALL46_URL: https://ball46.com
+
+jobs:
+  diag:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Read current Ball46 production lock only
+        shell: bash
+        run: |
+          set -euo pipefail
+          AUTH="Authorization: Bearer $API_TOKEN"
+          mkdir -p /tmp/b46diag
+
+          # READ ONLY: current deployment / traffic.
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=5" -H "$AUTH" -o /tmp/b46diag/deployments.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const j=JSON.parse(fs.readFileSync('/tmp/b46diag/deployments.json','utf8'));
+          if(j.success!==true) throw Error('DEPLOYMENTS_READ_FAILED');
+          const ds=j.result?.deployments||[];
+          if(!ds.length) throw Error('NO_DEPLOYMENT');
+          const d=ds[0], vs=d.versions||[];
+          console.log('LATEST_DEPLOYMENT_ID='+String(d.id||''));
+          console.log('LATEST_DEPLOYMENT_CREATED='+String(d.created_on||d.created_at||''));
+          console.log('LATEST_DEPLOYMENT_SOURCE='+String(d.source||''));
+          console.log('TRAFFIC_VERSIONS='+vs.map(v=>`${v.version_id}:${v.percentage}`).join(','));
+          if(vs.length!==1 || Number(vs[0].percentage)!==100) throw Error('NOT_SINGLE_100_TRAFFIC');
+          console.log('CURRENT_PRODUCTION_VERSION='+vs[0].version_id);
+          fs.writeFileSync('/tmp/b46diag/current-version',String(vs[0].version_id));
+          console.log('RECENT_DEPLOYMENTS='+ds.slice(0,5).map(x=>({id:x.id,created:x.created_on||x.created_at,versions:(x.versions||[]).map(v=>({id:v.version_id,pct:v.percentage}))})).map(JSON.stringify).join('|'));
+          NODE
+
+          V=$(cat /tmp/b46diag/current-version)
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/workers/$SCRIPT_NAME/versions/$V?include=modules" -H "$AUTH" -o /tmp/b46diag/version.json
+          node - <<'NODE'
+          const fs=require('fs'),crypto=require('crypto');
+          const j=JSON.parse(fs.readFileSync('/tmp/b46diag/version.json','utf8'));
+          if(j.success!==true) throw Error('VERSION_READ_FAILED');
+          const r=j.result||{}, mods=r.modules||[];
+          console.log('MAIN_MODULE='+String(r.main_module||''));
+          console.log('MODULE_COUNT='+mods.length);
+          const hits=[];
+          for(const m of mods){
+            const b=Buffer.from(m.content_base64||'','base64');
+            const sha=crypto.createHash('sha256').update(b).digest('hex');
+            console.log(`MODULE_SHA=${m.name}:${sha}:${b.length}`);
+            const s=b.toString('utf8');
+            if(/event\s*flow|momentum|event-flow|event_flow/i.test(s)){
+              const terms=[];
+              for(const re of [/event\s*flow/ig,/momentum/ig,/event-flow/ig,/event_flow/ig]) if(re.test(s)) terms.push(re.source);
+              hits.push({name:m.name,terms:[...new Set(terms)]});
+            }
+          }
+          console.log('EVENT_FLOW_MODULE_HITS='+JSON.stringify(hits));
+          NODE
+
+          # READ ONLY: public live fingerprints and target markers.
+          K="${GITHUB_RUN_ID}-$(date +%s%N)"
+          for p in index.html dashboard-v2-tune.css dashboard-v2-stage3.js; do
+            curl -fsS -L -H 'Cache-Control: no-cache' "$BALL46_URL/$p?diag=$K" -o "/tmp/b46diag/${p//\//_}"
+            echo "PUBLIC_SHA=$p:$(sha256sum "/tmp/b46diag/${p//\//_}" | awk '{print $1}'):$(wc -c < "/tmp/b46diag/${p//\//_}" | tr -d ' ')"
+          done
+          node --check /tmp/b46diag/dashboard-v2-stage3.js
+          grep -Ein -m 25 'event[[:space:]_-]*flow|momentum' /tmp/b46diag/index.html /tmp/b46diag/dashboard-v2-tune.css /tmp/b46diag/dashboard-v2-stage3.js || true
+
+          curl -fsS "$BALL46_URL/api/engine/health?diag=$K" -o /tmp/b46diag/engine.json
+          curl -fsS "$BALL46_URL/api/full-market/health?diag=$K" -o /tmp/b46diag/full.json
+          node - <<'NODE'
+          const e=require('/tmp/b46diag/engine.json'),f=require('/tmp/b46diag/full.json');
+          if(e.ok!==true||f.ok!==true) throw Error('LIVE_BACKEND_NOT_OK');
+          console.log('LIVE_BACKEND_OK='+JSON.stringify({engine:e.version,fullMarket:f.version}));
+          console.log('DIAG_READ_ONLY_PASS');
+          NODE
