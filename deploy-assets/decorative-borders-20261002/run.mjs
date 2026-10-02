@@ -119,6 +119,13 @@ async function uiCheck(changes, phase) {
               await page.locator('[data-theme-toggle]').click();
               assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), theme, 'THEME_SWITCH_FAILED');
             }
+            const mobileNav = page.locator(`[data-b46-mobile-view="${name}"]`);
+            if (await mobileNav.isVisible()) await mobileNav.click();
+            else if (name === 'signal') await page.locator('button[data-workspace-view="signal"]').click();
+            else if (name === 'statistics') await page.locator('[data-stat-market="all"]').click();
+            else await page.locator('[data-status-filter="live"]').click();
+            await page.waitForFunction(view => document.body.dataset.workspaceView === view, name, { timeout: 15000 });
+            if (name === 'statistics') await page.locator('.sp-stat-hero').waitFor({ state: 'visible' });
           } else if (name === 'settings') {
             await page.waitForSelector('.settings-card', { timeout: 25000 });
           }
@@ -163,7 +170,7 @@ async function uiCheck(changes, phase) {
             await footer.scrollIntoViewIfNeeded();
             await page.screenshot({ path: `${audit}/screenshots/${key}-footer.png` });
           }
-          rows.push({ name, size, theme, effectiveTheme: await page.evaluate(() => document.documentElement.dataset.theme || 'fixed-theme'), geometryUnchanged: true, matchRows: await page.locator('.match-row').count(), frames, images, backgrounds, pageErrors: errors });
+          rows.push({ name, size, theme, actualView: await page.evaluate(() => document.body.dataset.workspaceView || document.body.dataset.page || 'information'), effectiveTheme: await page.evaluate(() => document.documentElement.dataset.theme || 'fixed-theme'), geometryUnchanged: true, matchRows: await page.locator('.match-row').count(), frames, images, backgrounds, pageErrors: errors });
           page.off('pageerror', listener);
         }
         await context.close();
