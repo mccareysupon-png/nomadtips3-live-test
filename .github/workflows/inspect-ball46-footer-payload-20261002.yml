@@ -1,0 +1,40 @@
+name: Inspect Ball46 Footer Payload 20261002
+
+on:
+  push:
+    branches: [ops/ball46-footer-legal-20260929]
+    paths: ['.github/workflows/inspect-ball46-footer-payload-20261002.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  inspect-footer-payload:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ops/ball46-footer-legal-20260929
+          fetch-depth: 1
+      - name: Inspect approved footer payload only
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/b46legal /tmp/b46legal.zip
+          mkdir -p /tmp/b46legal
+          cat deploy/ball46-footer-legal-20260929/payload.b64.part{1,2,3,4} | base64 -d > /tmp/b46legal.zip
+          unzip -q /tmp/b46legal.zip -d /tmp/b46legal
+          ROOT=$(find /tmp/b46legal -type f -name footer-snippet.html -printf '%h\n' | head -1)
+          test -n "$ROOT"
+          echo '===FOOTER_SNIPPET_BEGIN==='
+          cat "$ROOT/footer-snippet.html"
+          echo '===FOOTER_SNIPPET_END==='
+          echo '===FOOTER_CSS_BEGIN==='
+          cat "$ROOT/ball46-footer.css"
+          echo '===FOOTER_CSS_END==='
+          echo '===LEGAL_FOOTER_MATCHES_BEGIN==='
+          for p in about user-guide methodology privacy terms disclaimer affiliate-disclosure responsible-gambling cookies contact information; do
+            echo "--- $p.html ---"
+            grep -n -E 'b46-site-footer-v1|ball46\.com|footer' "$ROOT/$p.html" | tail -30 || true
+          done
+          echo '===LEGAL_FOOTER_MATCHES_END==='
