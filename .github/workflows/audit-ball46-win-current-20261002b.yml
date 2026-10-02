@@ -1,0 +1,85 @@
+name: AUDIT Ball46 WIN current presentation 20261002b
+
+on:
+  push:
+    branches: [work/ball46-scorebar-bg-currentprod-20261002]
+    paths:
+      - '.github/workflows/audit-ball46-win-current-20261002b.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  SCRIPT_NAME: ball46-production
+  BALL46_URL: https://ball46.com
+
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Audit active WIN route and presentation layers only
+        shell: bash
+        run: |
+          set -euo pipefail
+          AUTH="Authorization: Bearer $API_TOKEN"
+          mkdir -p /tmp/modules /tmp/audit
+
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=3" -H "$AUTH" -o /tmp/deploy.json
+          BASE=$(node -e "const j=require('/tmp/deploy.json');const d=j.result?.deployments?.[0];if(!d||d.versions?.length!==1||Number(d.versions[0].percentage)!==100)process.exit(2);process.stdout.write(String(d.versions[0].version_id||''))")
+          echo "ACTIVE_PRODUCTION=$BASE" | tee /tmp/audit/summary.txt
+
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/workers/$SCRIPT_NAME/versions/$BASE?include=modules" -H "$AUTH" -o /tmp/version.json
+          node - <<'NODE'
+          const fs=require('fs'),path=require('path'),crypto=require('crypto');
+          const j=require('/tmp/version.json'); if(j.success!==true) throw Error('VERSION_FETCH_FAILED');
+          const r=j.result; if(!r?.main_module||!r.modules?.length) throw Error('MODULES_MISSING');
+          for(const m of r.modules){const b=Buffer.from(m.content_base64,'base64');const p=path.join('/tmp/modules',m.name);fs.mkdirSync(path.dirname(p),{recursive:true});fs.writeFileSync(p,b)}
+          const main=path.join('/tmp/modules',r.main_module), s=fs.readFileSync(main,'utf8');
+          const bgm=s.match(/const __B46_SCOREBAR_BG_B64__=(\{[^;]+\});/);
+          if(!bgm) throw Error('BG_MAP_NOT_FOUND');
+          const bg=JSON.parse(bgm[1]), keys=Object.keys(bg).filter(k=>/scorebar-(?:win|loss|draw|pending).*\.webp$/.test(k));
+          const rows=keys.map(k=>{const b=Buffer.from(bg[k],'base64');return `${k}\tbytes=${b.length}\tsha256=${crypto.createHash('sha256').update(b).digest('hex')}`});
+          fs.writeFileSync('/tmp/audit/bg-routes.txt',rows.join('\n')+'\n');
+          const cm=s.match(/const __B46_SCOREBAR_TUNE_CSS__=("(?:\\.|[^"\\])*");/);
+          if(!cm) throw Error('CSS_CONST_NOT_FOUND');
+          const css=JSON.parse(cm[1]);
+          fs.writeFileSync('/tmp/audit/tune-full.css',css);
+          const interesting=css.split(/\n/).filter(x=>/scorebar|background|overlay|opacity|z-index|::before|::after/i.test(x));
+          fs.writeFileSync('/tmp/audit/tune-scorebar.txt',interesting.join('\n')+'\n');
+          const jsLines=s.split(/\n/).filter(x=>/scorebar-win|workspace-scorebar|is-win|signal-result|pending/i.test(x) && x.length<1200);
+          fs.writeFileSync('/tmp/audit/worker-scorebar-snippets.txt',jsLines.slice(0,500).join('\n')+'\n');
+          console.log('WORKER_MARKERS',{
+            approved:s.includes('B46_SCOREBAR_APPROVED_BG_20261002'),
+            noOverlay:s.includes('B46_SCOREBAR_NO_OVERLAY_20261002'),
+            winHQ:s.includes('B46_SCOREBAR_WIN_HQ_SHADOW_20261002'),
+            currentRefresh:s.includes('B46_SCOREBAR_WIN_CURRENT_ROUTE_REFRESH_20261002A')
+          });
+          console.log(rows.join('\n'));
+          console.log('--- SCOREBAR CSS ---');
+          console.log(interesting.join('\n'));
+          NODE
+
+          K="${GITHUB_RUN_ID}-$(date +%s%N)"
+          for r in scorebar-win-20260929a.webp scorebar-win-20261002c.webp; do
+            code=$(curl -sS -L -o "/tmp/audit/public-$r" -w '%{http_code}' -H 'Cache-Control: no-cache' "$BALL46_URL/$r?audit=$K-$r" || true)
+            if [ "$code" = 200 ]; then echo "PUBLIC $r http=$code bytes=$(wc -c < /tmp/audit/public-$r) sha256=$(sha256sum /tmp/audit/public-$r|awk '{print $1}')" | tee -a /tmp/audit/summary.txt; else echo "PUBLIC $r http=$code" | tee -a /tmp/audit/summary.txt; fi
+          done
+          curl -fsS -L -H 'Cache-Control: no-cache' "$BALL46_URL/dashboard-v2-tune.css?v=343-scorebar-divider-camo-20260929a&audit=$K" -o /tmp/audit/public-tune.css
+          curl -fsS -L -H 'Cache-Control: no-cache' "$BALL46_URL/dashboard-v2-stage3.js?v=343-scorebar-details-20260929a&audit=$K" -o /tmp/audit/public-stage3.js
+          echo "PUBLIC_CSS sha256=$(sha256sum /tmp/audit/public-tune.css|awk '{print $1}') bytes=$(wc -c < /tmp/audit/public-tune.css)" | tee -a /tmp/audit/summary.txt
+          echo "PUBLIC_STAGE3 sha256=$(sha256sum /tmp/audit/public-stage3.js|awk '{print $1}') bytes=$(wc -c < /tmp/audit/public-stage3.js)" | tee -a /tmp/audit/summary.txt
+          grep -nEi 'scorebar|background|overlay|opacity|z-index|::before|::after' /tmp/audit/public-tune.css | head -n 400 > /tmp/audit/public-tune-scorebar.txt || true
+          grep -nEi 'scorebar-win|workspace-scorebar|is-win|signal-result|pending' /tmp/audit/public-stage3.js | head -n 400 > /tmp/audit/public-stage3-scorebar.txt || true
+          echo 'AUDIT_WIN_PRESENTATION_PASS'
+
+      - name: Upload audit evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-win-presentation-audit-${{ github.run_id }}
+          path: /tmp/audit
+          retention-days: 3
