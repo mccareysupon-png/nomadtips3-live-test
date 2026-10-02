@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-10-02T18:30:59Z",
+  "updated_at": "2026-10-02T23:03:10Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -5789,8 +5789,8 @@
       "edge": 18.6,
       "ev": 0.2825,
       "required_confidence": 0.6,
-      "result": "PENDING",
-      "ft": null,
+      "result": "WIN",
+      "ft": "3-3",
       "locked_at": "2026-10-02T02:41:12Z",
       "source_url": "https://www.goaloo.com/football/concacaf-nations-league-saint-kitts-and-nevis-vs-cuba/h2h-3092476",
       "summary_url": "https://www.goaloo.com/football/concacaf-nations-league-saint-kitts-and-nevis-vs-cuba/summary-3092476",
@@ -5850,7 +5850,12 @@
         "away_recent": 8,
         "h2h_n": 0,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": 1.0,
+      "profit": 88.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-02T23:03:10Z"
     },
     {
       "id": "5149604140e583f9-AH-HOME-m0p0",
@@ -180673,6 +180678,96 @@
       "settlement_source": "goaloo-bf_us-direct-index",
       "goaloo_terminal_state": -1,
       "settled_at": "2026-10-02T18:30:59Z"
+    },
+    {
+      "id": "9d40c27206b585f1-OU-OVER-2p5",
+      "goaloo_id": "3092476",
+      "date": "2026-10-02",
+      "kickoff": "2026-10-02 21:00:00",
+      "league": "CONCACAF Nations League",
+      "home": "Saint Kitts and Nevis",
+      "away": "Cuba",
+      "market": "OU",
+      "selection": "OVER",
+      "line": 2.5,
+      "pick": "Over 2.5",
+      "side": null,
+      "odds": 1.88,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.6822,
+      "model_probability": 0.6822,
+      "market_fair_probability": 0.496,
+      "market_edge": 0.1862,
+      "edge": 18.6,
+      "ev": 0.2825,
+      "required_confidence": 0.6,
+      "result": "WIN",
+      "ft": "3-3",
+      "locked_at": "2026-10-02T02:41:12Z",
+      "source_url": "https://www.goaloo.com/football/concacaf-nations-league-saint-kitts-and-nevis-vs-cuba/h2h-3092476",
+      "summary_url": "https://www.goaloo.com/football/concacaf-nations-league-saint-kitts-and-nevis-vs-cuba/summary-3092476",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 2.053,
+        "lambda_away": 1.466,
+        "home_win": 0.5134,
+        "draw": 0.2277,
+        "away_win": 0.2589,
+        "h2h_adjustment": 0.0,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": -0.1154,
+          "gd_edge": 0.3495,
+          "clean_sheet_edge": 0.122,
+          "failed_to_score_edge": 0.2976,
+          "bounded_adjustment": 0.0091,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 8,
+        "h2h_n": 0,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": 1.0,
+      "profit": 88.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-02T23:03:10Z"
     }
   ],
   "note": "Automated Full-Time Winner First feed. Supplemental markets remain unpublished.",
