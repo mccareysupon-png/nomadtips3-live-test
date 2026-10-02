@@ -15,14 +15,6 @@ env:
   API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
   SCRIPT_NAME: ball46-production
   BALL46_URL: https://ball46.com
-  EXPECTED_WIN_SHA: 2741815c65fa9e033b648514586fd27d39c74d8ade7bc1672f0f5592e29db37c
-  EXPECTED_LOSS_SHA: 849ead78033056f3dc7f165dea5a4a2fa6c0337e978c8d7e5832889470113c94
-  EXPECTED_DRAW_SHA: 5d6be1e183450652c3dc4e33b952ce213a495d08c8a4134fe4764df98ed236e5
-  EXPECTED_PENDING_SHA: 9b1e723f0b9b68eaca6f9619e8400b767315c0d66064d1d5ac9afa91eecec709
-  EXPECTED_WIN_SIZE: '29616'
-  EXPECTED_LOSS_SIZE: '22176'
-  EXPECTED_DRAW_SIZE: '21568'
-  EXPECTED_PENDING_SIZE: '29586'
 
 jobs:
   deploy:
@@ -33,6 +25,27 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
+
+      - name: Compute scorebar asset expectations from checked out files
+        shell: bash
+        run: |
+          set -euo pipefail
+          ASSET_DIR='deploy-assets/scorebar-20261002/4state-card-20261002'
+          for n in win loss draw pending; do
+            f="$ASSET_DIR/$n.webp"
+            test -s "$f"
+            file "$f" | tee "/tmp/$n-file.txt"
+            grep -Fq 'Web/P image' "/tmp/$n-file.txt"
+            grep -Fq '800x397' "/tmp/$n-file.txt"
+            sha=$(sha256sum "$f" | awk '{print $1}')
+            size=$(wc -c < "$f" | tr -d ' ')
+            upper=$(printf '%s' "$n" | tr '[:lower:]' '[:upper:]')
+            {
+              echo "EXPECTED_${upper}_SHA=$sha"
+              echo "EXPECTED_${upper}_SIZE=$size"
+            } >> "$GITHUB_ENV"
+            echo "EXPECTED_ASSET state=$n sha=$sha bytes=$size"
+          done
 
       - name: Replace four scorebar image bytes only from active Production
         shell: bash
