@@ -1,0 +1,21 @@
+name: AUDIT Ball46 WIN route image 20261002
+on:
+  push:
+    branches: [work/ball46-scorebar-bg-currentprod-20261002]
+    paths: [.github/workflows/audit-ball46-win-route-image-20261002.yml]
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/winroute
+          curl -fsSL -H 'Cache-Control: no-cache' "https://ball46.com/scorebar-win-20261002c.webp?routeaudit=${GITHUB_RUN_ID}-$(date +%s%N)" -o /tmp/winroute/prod-win.webp
+          file /tmp/winroute/prod-win.webp
+          sha256sum /tmp/winroute/prod-win.webp
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ball46-live-win-route
+          path: /tmp/winroute/prod-win.webp
