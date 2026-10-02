@@ -1,0 +1,61 @@
+name: READ ONLY - Ball46 visible border scout 20261002
+
+on:
+  push:
+    branches: [ops/ball46-surface-clean-20261002]
+    paths:
+      - '.github/workflows/audit-ball46-visible-borders-20261002.yml'
+
+permissions:
+  contents: write
+
+env:
+  BALL46_URL: https://ball46.com
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ops/ball46-surface-clean-20261002
+      - name: Inspect computed borders on real pages
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm init -y >/dev/null 2>&1
+          npm i playwright@1.57.0 >/dev/null 2>&1
+          npx playwright install --with-deps chromium >/dev/null 2>&1
+          cat >/tmp/inspect.cjs <<'NODE'
+          const {chromium}=require('playwright'); const fs=require('fs');
+          (async()=>{const browser=await chromium.launch({headless:true}); const rows=[];
+          const pages=['index.html','signal.html','statistics.html','settings.html','about.html'];
+          const views=[['desktop',1440,900],['mobile',390,844]];
+          for(const pageName of pages) for(const [view,w,h] of views) for(const theme of ['dark','light']){
+            const p=await browser.newPage({viewport:{width:w,height:h}}); const errors=[]; p.on('pageerror',e=>errors.push(String(e)));
+            await p.goto(`${process.env.BALL46_URL}/${pageName}?border-scout=${Date.now()}`,{waitUntil:'domcontentloaded',timeout:45000});
+            await p.waitForTimeout(2500);
+            await p.evaluate(t=>{document.documentElement.setAttribute('data-theme',t)},theme); await p.waitForTimeout(250);
+            const data=await p.evaluate(()=>{
+              const all=[...document.querySelectorAll('body *')]; const out=[];
+              for(const e of all){const r=e.getBoundingClientRect(); if(r.width<8||r.height<8||r.bottom<0||r.top>innerHeight*2||r.right<0||r.left>innerWidth)continue;
+                const c=getComputedStyle(e); const widths=['Top','Right','Bottom','Left'].map(s=>parseFloat(c['border'+s+'Width'])||0); if(!widths.some(x=>x>0))continue;
+                const styles=['Top','Right','Bottom','Left'].map(s=>c['border'+s+'Style']); if(styles.every(x=>x==='none'))continue;
+                let key=e.tagName.toLowerCase(); if(e.id)key+='#'+e.id; if(e.classList.length)key+='.'+[...e.classList].slice(0,5).join('.');
+                out.push({key,area:Math.round(r.width*r.height),w:Math.round(r.width),h:Math.round(r.height),bw:widths.join('/'),bg:c.backgroundColor,bgi:c.backgroundImage,shadow:c.boxShadow});
+              }
+              out.sort((a,b)=>b.area-a.area); return {url:location.href,theme:document.documentElement.getAttribute('data-theme'),count:out.length,top:out.slice(0,70),overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth};
+            });
+            rows.push({page:pageName,view,requestedTheme:theme,errors, ...data}); await p.close();
+          }
+          await browser.close(); fs.mkdirSync('audit',{recursive:true});
+          let txt='BALL46 VISIBLE BORDER SCOUT 2026-10-02\n'; for(const r of rows){txt+=`\n=== ${r.page} ${r.view} theme=${r.theme} count=${r.count} overflow=${r.overflow} errors=${r.errors.length} ===\n`; for(const x of r.top)txt+=`${x.key}\t${x.w}x${x.h}\tbw=${x.bw}\tbg=${x.bg}\tbgi=${x.bgi}\tshadow=${x.shadow}\n`;}
+          fs.writeFileSync('audit/ball46-visible-borders-20261002.txt',txt); })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+          BALL46_URL="$BALL46_URL" node /tmp/inspect.cjs
+          git config user.name 'ball46-ui-scout'
+          git config user.email 'actions@users.noreply.github.com'
+          git add audit/ball46-visible-borders-20261002.txt
+          git commit -m 'audit(ball46): map visible production borders 20261002'
+          git push origin HEAD:ops/ball46-surface-clean-20261002
