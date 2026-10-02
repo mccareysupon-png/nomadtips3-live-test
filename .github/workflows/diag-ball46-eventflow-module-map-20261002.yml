@@ -68,29 +68,22 @@ jobs:
           const root='/tmp/b46-map/modules';
           const js=fs.readFileSync('/tmp/b46-map/current-expanded-match-343.js');
           const css=fs.readFileSync('/tmp/b46-map/current-expanded-match-343.css');
-          const needles=[
-            '343-expanded-match-v4-stable-lifecycle',
-            'expanded-match-343.js',
-            'expanded-match-343.css',
-            'EVENT FLOW',
-            'expand-flow-chart'
-          ];
-          const files=[];
-          function walk(d){for(const n of fs.readdirSync(d)){const p=path.join(d,n),st=fs.statSync(p);if(st.isDirectory())walk(p);else files.push(p)}}walk(root);
+          const needles=['343-expanded-match-v4-stable-lifecycle','expanded-match-343.js','expanded-match-343.css','EVENT FLOW','expand-flow-chart'];
+          const files=[];function walk(d){for(const n of fs.readdirSync(d)){const p=path.join(d,n),st=fs.statSync(p);if(st.isDirectory())walk(p);else files.push(p)}}walk(root);
           const result=[];
           for(const p of files){
-            const b=fs.readFileSync(p);const text=b.toString('utf8');
-            const hits={};for(const n of needles){const i=text.indexOf(n);if(i>=0)hits[n]={index:i,snippet:text.slice(Math.max(0,i-180),Math.min(text.length,i+420))}}
-            const exactJs=text.includes(js.toString('utf8'));
-            const exactCss=text.includes(css.toString('utf8'));
+            const b=fs.readFileSync(p);const text=b.toString('utf8');const hits={};
+            for(const n of needles){const i=text.indexOf(n);if(i>=0)hits[n]={index:i,snippet:text.slice(Math.max(0,i-220),Math.min(text.length,i+520))}}
+            const exactJs=text.includes(js.toString('utf8')),exactCss=text.includes(css.toString('utf8'));
             if(Object.keys(hits).length||exactJs||exactCss)result.push({module:path.relative(root,p),size:b.length,sha256:crypto.createHash('sha256').update(b).digest('hex'),exactJs,exactCss,hits});
           }
           fs.writeFileSync('/tmp/b46-map/out/module-map.json',JSON.stringify(result,null,2));
+          fs.writeFileSync('/tmp/b46-map/out/mapping-conclusion.txt',result.length?'FOUND_MODULE_ANCHORS\n':'NO_MODULE_ANCHORS_ASSETS_EXTERNAL_TO_VERSION_MODULE_TEXT\n');
           console.log(JSON.stringify(result.map(x=>({module:x.module,exactJs:x.exactJs,exactCss:x.exactCss,keys:Object.keys(x.hits)})),null,2));
-          if(!result.some(x=>x.hits['343-expanded-match-v4-stable-lifecycle']||x.exactJs))throw Error('EXPANDED_JS_NOT_MAPPED');
           NODE
 
       - name: Upload map
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: ball46-eventflow-module-map-${{ github.run_id }}
