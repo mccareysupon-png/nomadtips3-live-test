@@ -35,9 +35,7 @@ async function getText(path) {
   assert(response.ok, `PUBLIC_HTTP:${path}:${response.status}`);
   return await response.text();
 }
-function safeName(path) {
-  return path.replace(/^\//, '').replace(/[^a-zA-Z0-9._-]+/g, '_') || 'index';
-}
+function safeName(path) { return path.replace(/^\//, '').replace(/[^a-zA-Z0-9._-]+/g, '_') || 'index'; }
 function scriptRefs(html) {
   const refs = new Set();
   for (const m of html.matchAll(/<script\b[^>]*\bsrc=["']([^"']+)["'][^>]*>/gi)) {
@@ -47,69 +45,43 @@ function scriptRefs(html) {
   return [...refs];
 }
 function excerpts(text, terms) {
-  const rows = text.split(/\r?\n/);
-  const out = [];
-  for (let i = 0; i < rows.length; i++) {
-    if (terms.some(re => re.test(rows[i]))) out.push({ line: i + 1, text: rows[i].slice(0, 1600) });
-  }
+  const rows = text.split(/\r?\n/), out = [];
+  for (let i = 0; i < rows.length; i++) if (terms.some(re => re.test(rows[i]))) out.push({ line: i + 1, text: rows[i].slice(0, 1600) });
   return out.slice(0, 500);
 }
 
 const versionId = await activeVersion();
 const version = await cf(`/workers/${script}/versions/${versionId}?include=modules`);
 assert(version?.main_module && Array.isArray(version.modules), 'ACTIVE_MODULES_MISSING');
-const mainModule = version.modules.find(m => m.name === version.main_module);
-assert(mainModule?.content_base64, 'MAIN_MODULE_CONTENT_MISSING');
-const mainSource = Buffer.from(mainModule.content_base64, 'base64').toString('utf8');
 const sourceMarker = "343-odds-format-v4-topbar-fixed";
-const markerAt = mainSource.indexOf(sourceMarker);
-assert(markerAt >= 0, 'ODDS_FORMAT_SOURCE_MARKER_MISSING');
-const sourceContext = mainSource.slice(Math.max(0, markerAt - 5000), Math.min(mainSource.length, markerAt + 22000));
-writeFileSync(`${auditDir}/odds-format-worker-context.txt`, sourceContext);
-
-const requested = [
-  '/settings.html',
-  '/index.html?view=statistics',
-  '/settings.js?v=343-allmarkets-v1',
-  '/statistics-next.js?v=343-next-production-v1',
-];
-const texts = new Map();
-for (const path of requested) {
-  const text = await getText(path);
-  texts.set(path, text);
-  writeFileSync(`${auditDir}/assets/${safeName(path)}.txt`, text);
-}
-for (const htmlPath of ['/settings.html', '/index.html?view=statistics']) {
-  for (const ref of scriptRefs(texts.get(htmlPath))) {
-    if (!texts.has(ref)) {
-      const text = await getText(ref);
-      texts.set(ref, text);
-      writeFileSync(`${auditDir}/assets/${safeName(ref)}.txt`, text);
-    }
+let oddsModule = null, oddsSource = '', markerAt = -1;
+for (const module of version.modules) {
+  const source = Buffer.from(module.content_base64 || '', 'base64').toString('utf8');
+  const at = source.indexOf(sourceMarker);
+  if (at >= 0) {
+    assert(!oddsModule, 'ODDS_FORMAT_SOURCE_DUPLICATED_ACROSS_MODULES');
+    oddsModule = module; oddsSource = source; markerAt = at;
   }
 }
+assert(oddsModule && markerAt >= 0, 'ODDS_FORMAT_SOURCE_MARKER_MISSING_IN_ALL_MODULES');
+writeFileSync(`${auditDir}/odds-format-worker-context.txt`, oddsSource.slice(Math.max(0, markerAt - 5000), Math.min(oddsSource.length, markerAt + 22000)));
 
-const terms = [
-  /localStorage/i, /sessionStorage/i, /odds/i, /bookmaker/i, /provider/i,
-  /settings/i, /statistics/i, /storage/i, /CustomEvent/i, /dispatchEvent/i,
-  /addEventListener/i, /filter/i, /market/i, /source/i, /refresh/i, /render/i,
-];
-const files = [];
-for (const [path, text] of texts) files.push({ path, bytes: Buffer.byteLength(text), excerpts: excerpts(text, terms) });
+const requested = ['/settings.html','/index.html?view=statistics','/settings.js?v=343-allmarkets-v1','/statistics-next.js?v=343-next-production-v1'];
+const texts = new Map();
+for (const path of requested) { const text = await getText(path); texts.set(path, text); writeFileSync(`${auditDir}/assets/${safeName(path)}.txt`, text); }
+for (const htmlPath of ['/settings.html', '/index.html?view=statistics']) {
+  for (const ref of scriptRefs(texts.get(htmlPath))) if (!texts.has(ref)) { const text = await getText(ref); texts.set(ref, text); writeFileSync(`${auditDir}/assets/${safeName(ref)}.txt`, text); }
+}
+const terms = [/localStorage/i,/sessionStorage/i,/odds/i,/bookmaker/i,/provider/i,/settings/i,/statistics/i,/storage/i,/CustomEvent/i,/dispatchEvent/i,/addEventListener/i,/filter/i,/market/i,/source/i,/refresh/i,/render/i];
+const files = [...texts].map(([path,text]) => ({ path, bytes: Buffer.byteLength(text), excerpts: excerpts(text, terms) }));
 const report = {
-  generatedAt: new Date().toISOString(),
-  scope: 'READ-ONLY audit of current Ball46 Production Odds Settings -> Statistics wiring. No mutation and no deploy.',
-  worker: script,
-  activeProductionVersion: versionId,
-  mainModule: version.main_module,
-  mainModuleBytes: Buffer.byteLength(mainSource),
-  sourceMarker,
-  sourceMarkerOffset: markerAt,
-  requested,
-  files,
+  generatedAt: new Date().toISOString(), scope: 'READ-ONLY audit of current Ball46 Production Odds Settings -> Statistics wiring. No mutation and no deploy.',
+  worker: script, activeProductionVersion: versionId, mainModule: version.main_module,
+  oddsSourceModule: oddsModule.name, oddsSourceContentType: oddsModule.content_type, oddsSourceBytes: Buffer.byteLength(oddsSource),
+  sourceMarker, sourceMarkerOffset: markerAt, requested, files,
 };
 writeFileSync(`${auditDir}/report.json`, JSON.stringify(report, null, 2));
 console.log(`ACTIVE_PRODUCTION_VERSION=${versionId}`);
-console.log(`MAIN_MODULE=${version.main_module} markerOffset=${markerAt}`);
+console.log(`ODDS_SOURCE_MODULE=${oddsModule.name} markerOffset=${markerAt}`);
 console.log(`AUDITED_FILES=${files.length}`);
 for (const file of files) console.log(`${file.path} bytes=${file.bytes} hits=${file.excerpts.length}`);
