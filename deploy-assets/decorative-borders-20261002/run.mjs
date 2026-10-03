@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync, appendFileSync } from 'node:fs';
 import { parse as parseHtml } from 'parse5';
 import { chromium } from 'playwright';
-import { patch, constants, targets, sha, borderChecks } from './patch.mjs';
+import { patch, constants, targets, sha, borderChecks, clockRoute } from './live-clock.mjs';
 
 const env = process.env;
 const origin = env.BALL46_URL || 'https://ball46.com';
@@ -16,7 +16,7 @@ const runTag = `${env.GITHUB_RUN_ID || 'local'}-${env.GITHUB_SHA || 'local'}`;
 const audit = 'audit';
 mkdirSync(`${audit}/screenshots`, { recursive: true });
 mkdirSync(`${audit}/css`, { recursive: true });
-const report = { runTag, startedAt: new Date().toISOString(), publish: env.DEPLOY_ENABLED === 'true', scope: 'Three existing CSS literals only; no routes, renderer, settings, assets binding or image changes' };
+const report = { runTag, startedAt: new Date().toISOString(), publish: env.DEPLOY_ENABLED === 'true', scope: 'Match-card LIVE/minute text colors via existing color painter and tune CSS only; renderer, API logic, configuration and images protected' };
 const save = () => writeFileSync(`${audit}/report.json`, JSON.stringify(report, null, 2));
 const delay = ms => new Promise(r => setTimeout(r, ms));
 const canonical = value => JSON.stringify(value, (_, v) => v && typeof v === 'object' && !Array.isArray(v) ? Object.fromEntries(Object.entries(v).sort(([a], [b]) => a.localeCompare(b))) : v);
@@ -99,6 +99,10 @@ async function uiCheck(changes, phase) {
         const context = await browser.newContext({ viewport: { width, height }, colorScheme: theme, timezoneId: 'Asia/Bangkok' });
         await context.addInitScript(theme => { localStorage.setItem('nomad343_dashboard_theme_v1', theme); }, theme);
         const page = await context.newPage();
+        if (phase === 'preview') {
+          const scriptChange = changes.find(c => c.route === clockRoute);
+          await page.route(`**${clockRoute}*`, route => route.fulfill({ status: 200, contentType: 'application/javascript; charset=utf-8', body: scriptChange.after }));
+        }
         // Owner Settings is observed only: never allow a write request during QA.
         await page.route('**/api/**', async route => {
           if (!['GET', 'HEAD'].includes(route.request().method())) return route.abort('blockedbyclient');
@@ -151,7 +155,7 @@ async function uiCheck(changes, phase) {
           });
           assert(backgrounds.every(b => b.loaded), `SCOREBAR_BACKGROUND_NOT_LOADED:${name}:${size}:${theme}`);
           const routes = await page.locator('link[rel="stylesheet"]').evaluateAll(es => es.map(e => new URL(e.href).pathname));
-          const applicable = changes.filter(c => routes.includes(c.route));
+          const applicable = changes.filter(c => c.type === 'css' && routes.includes(c.route));
           const decorativeChecks = applicable.flatMap(c => borderChecks(c.css));
           const mutableLeftBorders = decorativeChecks.filter(c => c.properties.includes('borderLeftColor')).map(c => c.selector);
           const sample = () => page.evaluate(({ selector, mutableLeftBorders }) => ({
@@ -192,6 +196,16 @@ async function uiCheck(changes, phase) {
           }
           assert.equal(canonical(after.geometry), canonical(before.geometry), `PROTECTED_GEOMETRY_CHANGED:${key}`);
           assert(after.scrollWidth <= before.scrollWidth + 1, `NEW_HORIZONTAL_OVERFLOW:${key}`);
+          let clocks = [];
+          if (['live', 'signal'].includes(name)) {
+            await page.waitForFunction(() => [...document.querySelectorAll('.match-row .score-cell>small:not(.half-score),.match-row .mobile-clock,.match-row .mobile-signal')].filter(e => /^LIVE\s*\u00b7/.test(e.textContent)).every(e => e.querySelector('.b46-clock-live-label')), null, { timeout: 10000 });
+            clocks = await page.locator('.match-row .b46-clock-live-label,.match-row .b46-clock-minute').evaluateAll(es => es.map(e => ({ text: e.textContent, cls: e.className, color: getComputedStyle(e).color, visible: e.getBoundingClientRect().width > 0 && e.getBoundingClientRect().height > 0 })));
+            const labelColor = theme === 'dark' ? 'rgb(255, 99, 116)' : 'rgb(204, 32, 53)';
+            const minuteColor = theme === 'dark' ? 'rgb(67, 199, 125)' : 'rgb(8, 125, 66)';
+            for (const clock of clocks) assert.equal(clock.color, clock.cls === 'b46-clock-live-label' ? labelColor : minuteColor, `CLOCK_COLOR_WRONG:${key}:${clock.text}`);
+            if (name === 'live') assert(clocks.some(c => c.visible && c.text === 'LIVE'), `VISIBLE_LIVE_LABEL_MISSING:${key}`);
+            if (name === 'live') assert(clocks.some(c => c.visible && c.cls === 'b46-clock-minute'), `VISIBLE_MATCH_MINUTE_MISSING:${key}`);
+          }
           await page.screenshot({ path: `${audit}/screenshots/${key}-after.png` });
           const frames = await page.locator('.rail-card:not(.workspace-scorebar-slot),.side-card:not(.workspace-scorebar-slot),.status-section,.workspace-stable-head,.sp-stat-hero,.sp-kpis,.sp-trend,.sp-filters,.sp-results,.hero-card,.article,.card').evaluateAll(es => es.filter(e => e.getBoundingClientRect().width > 0).map(e => ({ cls: e.className, border: getComputedStyle(e).borderTopColor })));
           if (name !== 'settings') {
@@ -231,7 +245,7 @@ async function uiCheck(changes, phase) {
             await page.screenshot({ path: `${audit}/screenshots/${key}-footer.png` });
           }
           assert.equal(errors.length, 0, `UI_PAGE_ERRORS:${key}:${errors.join(';')}`);
-          rows.push({ name, size, theme, actualView: await page.evaluate(() => document.body.dataset.workspaceView || document.body.dataset.page || 'information'), effectiveTheme: await page.evaluate(() => document.documentElement.dataset.theme || 'fixed-theme'), geometryUnchanged: true, decorativeLinesRemoved: true, matchRows: await page.locator('.match-row').count(), frames, decoration, images, backgrounds, pageErrors: errors });
+          rows.push({ name, size, theme, actualView: await page.evaluate(() => document.body.dataset.workspaceView || document.body.dataset.page || 'information'), effectiveTheme: await page.evaluate(() => document.documentElement.dataset.theme || 'fixed-theme'), geometryUnchanged: true, decorativeLinesRemoved: true, clocks, matchRows: await page.locator('.match-row').count(), frames, decoration, images, backgrounds, pageErrors: errors });
           page.off('pageerror', listener);
         }
         await context.close();
@@ -276,7 +290,8 @@ try {
   const main = original.modules.find(m => m.name === original.main_module);
   assert(main, 'MAIN_MODULE_NOT_FOUND');
   const source = Buffer.from(main.content_base64, 'base64').toString('utf8');
-  const result = patch(source);
+  const clockScript = (await publicFile(clockRoute, 'javascript')).toString('utf8');
+  const result = patch(source, { clockScript });
   const bg = constants(source).get('__B46_SCOREBAR_BG_B64__')?.value;
   assert(bg && Object.keys(bg).length, 'SCOREBAR_IMAGES_MISSING');
   const states = ['win', 'loss', 'draw', 'pending'];
@@ -296,12 +311,12 @@ try {
     protectedFiles.set(path, want);
   }
   for (const change of result.changes) {
-    assert.equal(sha(await publicFile(change.route, 'css')), change.beforeSha, `CSS_SOURCE_NOT_PUBLIC:${change.route}`);
+    assert.equal(sha(await publicFile(change.route, change.type)), change.beforeSha, `SOURCE_NOT_PUBLIC:${change.route}`);
     const stem = change.route.slice(1);
     writeFileSync(`${audit}/css/before-${stem}`, change.before);
     writeFileSync(`${audit}/css/after-${stem}`, change.after);
   }
-  report.css = result.changes.map(({ route, beforeSha, afterSha }) => ({ route, beforeSha, afterSha }));
+  report.presentation = result.changes.map(({ route, beforeSha, afterSha }) => ({ route, beforeSha, afterSha }));
   report.nonCssCodeSha = result.codeSha;
   report.protectedFiles = Object.fromEntries(protectedFiles);
   expectedModules = {
@@ -338,10 +353,10 @@ try {
       for (const change of result.changes) {
         let ok = false;
         for (let n = 0; n < 20; n++) {
-          if (sha(await publicFile(change.route, 'css')) === change.afterSha) { ok = true; break; }
+          if (sha(await publicFile(change.route, change.type)) === change.afterSha) { ok = true; break; }
           await delay(2000);
         }
-        assert(ok, `PUBLIC_CSS_MISMATCH:${change.route}`);
+        assert(ok, `PUBLIC_PRESENTATION_MISMATCH:${change.route}`);
       }
       for (const [path, want] of protectedFiles) assert.equal(sha(await publicFile(path)), want, `PROTECTED_ASSET_CHANGED:${path}`);
       report.backendAfter = await backend();
@@ -363,7 +378,7 @@ try {
   }
   report.completedAt = new Date().toISOString();
   save();
-  if (env.GITHUB_STEP_SUMMARY) appendFileSync(env.GITHUB_STEP_SUMMARY, `## Ball46 decorative CSS\n\nResult: ${report.result}\n\nBase: ${base}\n\nFinal: ${report.finalVersion}\n\nScope: three existing CSS string literals; all other modules, routes, images, HTML and referenced assets protected.\n`);
+  if (env.GITHUB_STEP_SUMMARY) appendFileSync(env.GITHUB_STEP_SUMMARY, `## Ball46 match-card clock colors\n\nResult: ${report.result}\n\nBase: ${base}\n\nFinal: ${report.finalVersion}\n\nScope: LIVE red, minute green. Existing color painter and tune CSS only; match renderer, backend logic, images and configuration protected.\n`);
   console.log(report.result);
 } catch (error) {
   report.result = 'FAIL';
