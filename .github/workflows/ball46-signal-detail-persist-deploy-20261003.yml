@@ -16,7 +16,7 @@ concurrency:
 env:
   CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
   CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-  DEPLOY_ENABLED: 'true'
+  DEPLOY_ENABLED: 'false'
 
 jobs:
   surgical-fix:
@@ -29,9 +29,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Guarded current-Production surgical deploy
+      - name: Guarded current-Production preview v2
         working-directory: deploy-assets/signal-detail-fix-20261003
-        run: node run.mjs
+        run: node run-v2.mjs
       - name: Browser regression proof after deploy
         if: env.DEPLOY_ENABLED == 'true'
         working-directory: deploy-assets/signal-detail-fix-20261003
