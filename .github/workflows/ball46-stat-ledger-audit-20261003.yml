@@ -51,13 +51,13 @@ jobs:
               return j
           deps=getj(f'{api}/workers/scripts/{worker}/deployments')['result']['deployments']
           if not deps: raise SystemExit('NO_ENGINE_DEPLOYMENT')
+          versions=deps[0].get('versions') or []
           active=[]
-          for d in deps:
-              for v in d.get('versions') or []:
-                  try: pct=float(v.get('percentage',0))
-                  except: pct=0
-                  if pct>=99.999: active.append(v.get('version_id'))
-          active=[x for x in dict.fromkeys(active) if x]
+          for v in versions:
+              try: pct=float(v.get('percentage',0))
+              except: pct=0
+              if pct>=99.999 and v.get('version_id'): active.append(v.get('version_id'))
+          active=list(dict.fromkeys(active))
           if len(active)!=1: raise SystemExit('ACTIVE_ENGINE_VERSION_AMBIGUOUS:'+repr(active))
           vid=active[0]
           ver=getj(f'{api}/workers/workers/{worker}/versions/{vid}?include=modules')['result']
@@ -101,11 +101,13 @@ jobs:
           NODE
 
       - name: Commit audit snapshot to isolated branch
+        if: always()
         shell: bash
         run: |
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          [ -d .audit/ball46-stat-ledger-20261003 ] || exit 0
           git add .audit/ball46-stat-ledger-20261003
           git diff --cached --quiet && exit 0
           git commit -m "audit: snapshot live engine statistics ${GITHUB_RUN_ID}"
