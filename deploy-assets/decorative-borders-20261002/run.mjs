@@ -220,8 +220,10 @@ async function uiCheck(changes, phase) {
           if (['live', 'signal', 'statistics'].includes(name)) {
             const pseudoLines = await page.locator('.match-row .market-cell,.match-row .signal-cell').evaluateAll(es => es.filter(e => e.getBoundingClientRect().width > 0).map(e => getComputedStyle(e, e.matches('.market-cell') ? '::before' : '::after').backgroundColor));
             assert(pseudoLines.every(c => c === 'rgba(0, 0, 0, 0)'), `ORNAMENTAL_COLUMN_DIVIDER_REMAINS:${key}`);
-            const signalDividers = await page.locator('.feature-signal-divider').evaluateAll(es => es.map(e => getComputedStyle(e).backgroundColor));
-            assert(signalDividers.every(c => c === 'rgba(0, 0, 0, 0)'), `ORNAMENTAL_SIGNAL_DIVIDER_REMAINS:${key}`);
+            // Query and sample in one DOM turn: live refreshes can detach locator handles.
+            const signalDividers = await page.evaluate(() => [...document.querySelectorAll('.feature-signal-divider')].map(e => ({ color: getComputedStyle(e).backgroundColor, connected: e.isConnected, scoped: Boolean(e.closest('.workspace.singlepage')), html: e.outerHTML, parentClass: e.parentElement?.className })));
+            if (!signalDividers.every(e => e.color === 'rgba(0, 0, 0, 0)')) writeFileSync(`${audit}/${key}-signal-divider-failure.json`, JSON.stringify(signalDividers, null, 2));
+            assert(signalDividers.every(e => e.color === 'rgba(0, 0, 0, 0)'), `ORNAMENTAL_SIGNAL_DIVIDER_REMAINS:${key}`);
             const surface = await page.locator('.workspace-stable-head').evaluate(e => getComputedStyle(e).backgroundImage);
             assert(surface.includes('linear-gradient'), `HEADER_SURFACE_MISSING:${key}`);
             // Compare keyboard focus with and without the preview stylesheet in one page state.
