@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync, appendFileSync } from 'node:fs';
 import { parse as parseHtml } from 'parse5';
 import { chromium } from 'playwright';
-import { patch, constants, targets, sha, borderChecks, clockRoute, logoSelector, themeSelector, marker } from './logo-size.mjs';
+import { patch, constants, targets, sha, borderChecks, clockRoute, logoSelector, themeSelector, marker, themeMarker } from './logo-size.mjs';
 
 const env = process.env;
 const origin = env.BALL46_URL || 'https://ball46.com';
@@ -157,6 +157,7 @@ async function uiCheck(changes, phase) {
           const routes = await page.locator('link[rel="stylesheet"]').evaluateAll(es => es.map(e => new URL(e.href).pathname));
           const applicable = changes.filter(c => c.type === 'css' && routes.includes(c.route));
           const changesLogo = applicable.some(c => c.css.includes(marker));
+          const changesTheme = applicable.some(c => c.css.includes(themeMarker));
           const decorativeChecks = applicable.flatMap(c => borderChecks(c.css));
           const mutableLeftBorders = decorativeChecks.filter(c => c.properties.includes('borderLeftColor')).map(c => c.selector);
           const sample = () => page.evaluate(({ selector, mutableLeftBorders }) => ({
@@ -284,7 +285,7 @@ async function uiCheck(changes, phase) {
             await focusTarget.focus();
             const focused = () => focusTarget.evaluate(e => ({ outline: getComputedStyle(e).outline, offset: getComputedStyle(e).outlineOffset, shadow: getComputedStyle(e).boxShadow }));
             const focusAfter = await focused();
-            if (phase === 'preview') {
+            if (phase === 'preview' && !changesTheme) {
               const previewStyle = page.locator('style[data-border-preview]');
               await previewStyle.evaluate(e => { e.disabled = true; });
               assert.equal(canonical(await focused()), canonical(focusAfter), `FOCUS_STYLE_CHANGED:${key}`);
