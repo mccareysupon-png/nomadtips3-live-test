@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync, appendFileSync } from 'node:fs';
 import { parse as parseHtml } from 'parse5';
 import { chromium } from 'playwright';
-import { patch, constants, targets, sha, borderChecks, clockRoute, logoSelector, themeSelector } from './logo-size.mjs';
+import { patch, constants, targets, sha, borderChecks, clockRoute, logoSelector, themeSelector, marker } from './logo-size.mjs';
 
 const env = process.env;
 const origin = env.BALL46_URL || 'https://ball46.com';
@@ -156,6 +156,7 @@ async function uiCheck(changes, phase) {
           assert(backgrounds.every(b => b.loaded), `SCOREBAR_BACKGROUND_NOT_LOADED:${name}:${size}:${theme}`);
           const routes = await page.locator('link[rel="stylesheet"]').evaluateAll(es => es.map(e => new URL(e.href).pathname));
           const applicable = changes.filter(c => c.type === 'css' && routes.includes(c.route));
+          const changesLogo = applicable.some(c => c.css.includes(marker));
           const decorativeChecks = applicable.flatMap(c => borderChecks(c.css));
           const mutableLeftBorders = decorativeChecks.filter(c => c.properties.includes('borderLeftColor')).map(c => c.selector);
           const sample = () => page.evaluate(({ selector, mutableLeftBorders }) => ({
@@ -182,9 +183,7 @@ async function uiCheck(changes, phase) {
             window.__borderQaObserver.observe(document.body, { childList: true, subtree: true, attributes: true, characterData: true });
           });
           let before, after, previewStyle;
-          // Preview the complete post-patch stylesheet: the live source already contains the logo rule,
-          // while this run appends only the existing theme button rule to that source.
-          const css = applicable.map(c => c.after).join('\n');
+          const css = applicable.map(c => c.css).join('\n');
           // Retry only a witnessed live DOM refresh, never a static CSS mismatch.
           for (let attempt = 0; attempt < 3; attempt++) {
             before = await sample();
@@ -210,9 +209,12 @@ async function uiCheck(changes, phase) {
             assert(logoBefore && logoAfter, `HEADER_LOGO_MISSING:${key}`);
             assert.equal(logoAfter.text, 'ball46', `HEADER_LOGO_TEXT_CHANGED:${key}`);
             assert.equal(Number(logoAfter.zoom), 1.3, `HEADER_LOGO_NOT_130_PERCENT:${key}`);
-            if (phase === 'preview') {
+            if (phase === 'preview' && changesLogo) {
               assert(Math.abs(logoAfter.rect.width - logoBefore.rect.width * 1.3) < 0.6, `LOGO_WIDTH_NOT_PLUS_30_PERCENT:${key}`);
               assert(Math.abs(logoAfter.rect.height - logoBefore.rect.height * 1.3) < 0.6, `LOGO_HEIGHT_NOT_PLUS_30_PERCENT:${key}`);
+            } else {
+              assert(Math.abs(logoAfter.rect.width - logoBefore.rect.width) < 0.6, `LOGO_WIDTH_CHANGED:${key}`);
+              assert(Math.abs(logoAfter.rect.height - logoBefore.rect.height) < 0.6, `LOGO_HEIGHT_CHANGED:${key}`);
             }
             const r = logoAfter.rect, c = logoAfter.card;
             assert(r.left >= c.left && r.top >= c.top && r.right <= c.right && r.bottom <= c.bottom, `LOGO_CLIPPED:${key}`);
