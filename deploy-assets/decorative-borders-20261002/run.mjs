@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync, appendFileSync } from 'node:fs';
 import { parse as parseHtml } from 'parse5';
 import { chromium } from 'playwright';
-import { patch, constants, targets, sha, borderChecks, clockRoute, logoSelector } from './logo-size.mjs';
+import { patch, constants, targets, sha, borderChecks, clockRoute, logoSelector, themeSelector } from './logo-size.mjs';
 
 const env = process.env;
 const origin = env.BALL46_URL || 'https://ball46.com';
@@ -88,7 +88,7 @@ const pages = [
   ['settings', '/settings.html'],
   ['about', '/about.html'],
 ];
-const geometrySelectors = '.workspace-scorebar-slot,.workspace-scorebar-grid,.workspace-scorebar-cell,.event-flow,.event-flow-line,.b46-signal-flow-line,.b46-signal-flow-line-chart,.b46-signal-flow-live-copy,.pitch,.timeline,.match-row.active,svg,path,line,canvas,input,select,button';
+const geometrySelectors = '.workspace-scorebar-slot,.workspace-scorebar-grid,.workspace-scorebar-cell,.event-flow,.event-flow-line,.b46-signal-flow-line,.b46-signal-flow-line-chart,.b46-signal-flow-live-copy,.pitch,.timeline,.match-row.active,svg,path,line,canvas,input,select,button:not([data-theme-toggle])';
 
 async function uiCheck(changes, phase) {
   const browser = await chromium.launch();
@@ -218,6 +218,22 @@ async function uiCheck(changes, phase) {
               const b = control.rect;
               assert(r.right <= b.left || b.right <= r.left || r.bottom <= b.top || b.bottom <= r.top, `LOGO_OVERLAPS_CONTROL:${key}:${control.label}`);
             }
+          }
+          if (['live', 'signal', 'statistics'].includes(name)) {
+            const themeButton = await page.evaluate(selector => {
+              const e = document.querySelector(selector);
+              if (!e) return null;
+              const r = e.getBoundingClientRect(), c = getComputedStyle(e);
+              return { text: e.textContent, aria: e.getAttribute('aria-label'), width: r.width, height: r.height, borderRadius: c.borderRadius, background: c.backgroundColor, outline: c.outline, cursor: c.cursor };
+            }, themeSelector);
+            assert(themeButton, `THEME_BUTTON_MISSING:${key}`);
+            assert(themeButton.width >= 71 && themeButton.height >= 39, `THEME_BUTTON_TOO_SMALL:${key}`);
+            assert.equal(themeButton.borderRadius, '999px', `THEME_BUTTON_NOT_PILL:${key}`);
+            assert.equal(themeButton.aria, 'Switch theme', `THEME_BUTTON_ARIA_CHANGED:${key}`);
+            assert(themeButton.text.includes('Light') || themeButton.text.includes('Dark'), `THEME_BUTTON_LABEL_MISSING:${key}`);
+            await page.locator('[data-theme-toggle]').focus();
+            const focus = await page.evaluate(selector => { const e = document.querySelector(selector), c = getComputedStyle(e); return { outline: c.outline, offset: c.outlineOffset }; }, themeSelector);
+            assert(!focus.outline.includes('none') && !focus.outline.includes('0px'), `THEME_BUTTON_FOCUS_MISSING:${key}`);
           }
           let clocks = [];
           if (['live', 'signal'].includes(name)) {

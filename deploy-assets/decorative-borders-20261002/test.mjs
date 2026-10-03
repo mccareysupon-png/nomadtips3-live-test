@@ -2,10 +2,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import YAML from 'yaml';
-import { patch, normalize, targets, marker, validateAppendix, borderChecks } from './patch.mjs';
+import { patch, normalize, targets, marker, validateAppendix, borderChecks, constants } from './patch.mjs';
 import { runInNewContext } from 'node:vm';
 import { patch as patchClock, normalize as normalizeClock, patchClockScript, originalClockScript, painter, clockCss, borderChecks as clockChecks } from './live-clock.mjs';
-import { patch as patchLogo, logoCss, marker as logoMarker, borderChecks as logoChecks } from './logo-size.mjs';
+import { patch as patchLogo, logoCss, themeCss, marker as logoMarker, themeMarker, logoSelector, themeSelector, borderChecks as logoChecks } from './logo-size.mjs';
 
 const fixture = targets.map(t => `const ${t.name}=${JSON.stringify('.fixture{border:1px solid #333}')};`).join('\n') + '\nconst __B46_SCOREBAR_BG_B64__={"/scorebar-win-test.webp":"aW1hZ2U="};\nexport default {fetch(){return new Response("unchanged");}};';
 
@@ -107,14 +107,28 @@ test('clock spans preserve exact text, stoppage time and half-time, without repe
 });
 
 test('logo patch adds exactly 130 percent CSS while keeping clock colors and every JS byte', () => {
-  const current = patchClock(clockFixture, { clockScript }).after;
+  const clockPatched = patchClock(clockFixture, { clockScript }).after;
+  const cssEntry = constants(clockPatched).get('__B46_SCOREBAR_TUNE_CSS__');
+  const current = clockPatched.slice(0, cssEntry.start) + JSON.stringify(cssEntry.value + logoCss) + clockPatched.slice(cssEntry.end);
   const result = patchLogo(current);
   assert.equal(normalize(result.after), normalize(current));
-  assert.equal(result.changes[0].after, result.changes[0].before + logoCss);
+  assert.equal(result.changes[0].after, result.changes[0].before + themeCss);
+  assert(result.changes[0].after.includes(logoCss));
   assert(result.changes[0].after.includes(clockCss));
   assert.equal(patchLogo(result.after).after, result.after);
   assert.throws(() => patchLogo(result.after.replace(logoMarker, logoMarker + '_changed')), /EXISTING_LOGO_PATCH_DIFFERS/);
   assert.throws(() => logoChecks(logoCss.replace('1.3', '1.4')), /EXACT_130_PERCENT/);
   assert.throws(() => logoChecks(logoCss.replace('zoom:', 'transform:')), /EXACT_130_PERCENT/);
   assert.throws(() => logoChecks(logoCss.replace('.workspace-brand[', '.other[')), /SCOPE_CHANGED/);
+});
+
+test('theme control uses a recognizable one-click pill with a generous touch target', () => {
+  logoChecks(logoCss + themeCss);
+  assert(themeCss.includes(themeMarker));
+  assert(themeCss.includes(themeSelector));
+  assert(themeCss.includes('width: 72px !important'));
+  assert(themeCss.includes('height: 40px !important'));
+  assert(themeCss.includes('border-radius: 999px !important'));
+  assert(logoSelector.includes('.workspace-brand'));
+  assert.throws(() => logoChecks((logoCss + themeCss).replace('height: 40px', 'height: 28px')), /THEME_HEIGHT_NOT_STANDARD/);
 });
