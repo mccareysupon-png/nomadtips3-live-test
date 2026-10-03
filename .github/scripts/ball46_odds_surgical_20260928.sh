@@ -8,6 +8,5 @@ export PLAYWRIGHT_EXECUTABLE_PATH
 PLAYWRIGHT_EXECUTABLE_PATH=$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)
 test -n "$PLAYWRIGHT_EXECUTABLE_PATH" || { echo CURRENT_RAIL_CHROME_MISSING; exit 1; }
 npm ci --ignore-scripts --no-audit --no-fund
-node scout.mjs
-node --test test.mjs statistics-test.mjs
-node statistics-run.mjs
+node --test league-flags-test.mjs
+node league-flags-run.mjs
