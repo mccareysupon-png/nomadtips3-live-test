@@ -3,6 +3,9 @@ import { readFileSync } from 'node:fs';
 
 export const TOKEN='343-league-flags-menu-143-20261004b';
 export const assetSource=readFileSync(new URL('./league-flags-343.asset.js', import.meta.url),'utf8');
+const WORLD_EXACT=new Set(['international','world','worldwide','uefa','fifa','europe','global','international clubs','club international']);
+const WORLD_MARKERS=['international','world','worldwide','uefa','fifa','europe','global','concacaf','conmebol','afc','caf','ofc','gulf cup','africa cup'];
+const clean=value=>String(value||'').trim().toLowerCase().replace(/\s+/g,' ');
 
 export function registry(source=assetSource){
   const codesBlock=source.match(/const CODES=\{([\s\S]*?)\n\};/);
@@ -13,6 +16,17 @@ export function registry(source=assetSource){
   assert(iconBlock,'ICON_CODES_BLOCK_MISSING');
   const declared=JSON.parse(iconBlock[1]);
   return { map, aliases:pairs.length, icons:new Set(pairs.map(([,code])=>code)).size, declaredIcons:declared.length, declared };
+}
+
+export function resolveLeagueLabel(value,source=assetSource){
+  const key=clean(String(value||'').split(' · ')[0]);
+  if(!key||key==='—')return null;
+  const {map}=registry(source);
+  if(WORLD_EXACT.has(key))return 'WORLD';
+  if(map[key])return map[key];
+  if(WORLD_MARKERS.some(marker=>key===marker||key.startsWith(`${marker} `)||key.includes(` ${marker} `)||key.endsWith(` ${marker}`)))return 'WORLD';
+  for(const alias of Object.keys(map).sort((a,b)=>b.length-a.length)) if(key.startsWith(`${alias} `))return map[alias];
+  return null;
 }
 
 export function validateAsset(source=assetSource){
