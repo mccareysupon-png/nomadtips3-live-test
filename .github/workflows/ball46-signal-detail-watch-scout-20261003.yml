@@ -28,11 +28,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Inspect exact current Signal Detail and Worker asset route (read only)
+      - name: Inspect exact current Signal Detail, Worker route and sanitized settings (read only)
         working-directory: deploy-assets/signal-detail-watch-20261003
         run: |
           node scout.mjs
           node route-scout.mjs
+          node settings-scout.mjs
       - name: Retain scout evidence
         if: always()
         uses: actions/upload-artifact@v4
