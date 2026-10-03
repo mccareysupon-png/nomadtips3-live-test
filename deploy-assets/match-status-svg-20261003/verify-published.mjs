@@ -46,7 +46,11 @@ try {
   report.backendAfter = await backend();
   assert.equal(canonical(report.backendAfter), canonical(published.backendBefore), 'PUBLISHED_BACKEND_REVISION_CHANGED_STOP');
   report.configBeforeSha = published.configBeforeSha;
-  report.configAfterSha = sha(canonical(await api(`/scripts/${script}/settings`)));
+  const currentSettings = await api(`/scripts/${script}/settings`);
+  const safeMetadata = value => Object.fromEntries(['compatibility_date', 'compatibility_flags', 'placement', 'limits', 'logpush', 'observability', 'tail_consumers', 'tags', 'assets', 'main_module'].filter(key => key in value).map(key => [key, key === 'assets' ? value.assets?.config : value[key]]));
+  report.configDiagnostic = { settingsKeys: Object.keys(currentSettings).sort(), settings: safeMetadata(currentSettings), originalVersionKeys: Object.keys(original).sort(), originalVersion: safeMetadata(original), currentVersion: safeMetadata(current.version), settingsBindings: currentSettings.bindings?.map(({ name, type, service, environment }) => ({ name, type, service, environment })), originalBindings: original.bindings?.map(({ name, type, service, environment }) => ({ name, type, service, environment })), currentBindings: current.version.bindings?.map(({ name, type, service, environment }) => ({ name, type, service, environment })) };
+  console.log('CONFIG_DIAGNOSTIC=' + JSON.stringify(report.configDiagnostic));
+  report.configAfterSha = sha(canonical(currentSettings));
   assert.equal(report.configAfterSha, published.configBeforeSha, 'PUBLISHED_CONFIG_CHANGED_STOP');
   report.cronsAfter = await schedules();
   assert.equal(canonical(report.cronsAfter), canonical(published.cronsBefore), 'PUBLISHED_CRON_CHANGED_STOP');
