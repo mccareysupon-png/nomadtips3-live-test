@@ -5,7 +5,7 @@ import YAML from 'yaml';
 import { patch, normalize, targets, marker, validateAppendix, borderChecks, constants } from './patch.mjs';
 import { runInNewContext } from 'node:vm';
 import { patch as patchClock, normalize as normalizeClock, patchClockScript, originalClockScript, painter, clockCss, borderChecks as clockChecks } from './live-clock.mjs';
-import { patch as patchLogo, normalize as normalizeTheme, originalThemeScript, logoCss, themeCss, marker as logoMarker, themeMarker, logoSelector, themeSelector, borderChecks as logoChecks } from './logo-size.mjs';
+import { patch as patchLogo, normalize as normalizeTheme, originalThemeScript, themeLabels, logoCss, themeCss, marker as logoMarker, themeMarker, logoSelector, themeSelector, oddsButtonSelector, borderChecks as logoChecks } from './logo-size.mjs';
 
 const fixture = targets.map(t => `const ${t.name}=${JSON.stringify('.fixture{border:1px solid #333}')};`).join('\n') + '\nconst __B46_SCOREBAR_BG_B64__={"/scorebar-win-test.webp":"aW1hZ2U="};\nexport default {fetch(){return new Response("unchanged");}};';
 
@@ -128,10 +128,31 @@ test('theme control uses the existing label in a compact one-click toolbar contr
   logoChecks(logoCss + themeCss);
   assert(themeCss.includes(themeMarker));
   assert(themeCss.includes(themeSelector));
+  assert(themeCss.includes(oddsButtonSelector));
+  assert.equal(themeCss.split('font-size: 11px !important').length - 1, 2);
+  assert.equal(themeCss.split('font-weight: 800 !important').length - 1, 2);
   assert(themeCss.includes('width: 48px !important'));
   assert(themeCss.includes('flex: 0 0 48px !important'));
   assert(themeCss.includes('height: 28px !important'));
   assert(themeCss.includes('border-radius: 5px !important'));
   assert(logoSelector.includes('.workspace-brand'));
-  assert.throws(() => logoChecks((logoCss + themeCss).replace('height: 28px', 'height: 40px')), /THEME_HEIGHT_NOT_COMPACT/);
+  assert.throws(() => logoChecks((logoCss + themeCss).replaceAll('height: 28px', 'height: 40px')), /THEME_HEIGHT_NOT_COMPACT/);
+});
+
+test('existing theme button moves after ODDS without duplicating controls or replacing its handler', () => {
+  let update, moves = 0;
+  const originalClick = () => {};
+  const button = { textContent: '\u2600 Light', onclick: originalClick };
+  const slot = { lastElementChild: {}, append(e) { assert.equal(e, button); this.lastElementChild = e; moves++; } };
+  const document = { readyState: 'complete', body: {}, documentElement: { dataset: { theme: 'dark' } }, querySelector: selector => selector === '[data-theme-toggle]' ? button : slot };
+  runInNewContext(themeLabels, { document, MutationObserver: class { constructor(callback) { update = callback; } observe() {} } });
+  assert.equal(moves, 1);
+  assert.equal(button.textContent, 'Light');
+  assert.equal(button.onclick, originalClick);
+  update();
+  assert.equal(moves, 1);
+  document.documentElement.dataset.theme = 'light';
+  update();
+  assert.equal(button.textContent, 'Dark');
+  assert.equal(moves, 1);
 });

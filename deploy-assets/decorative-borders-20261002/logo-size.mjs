@@ -9,12 +9,54 @@ export const marker = 'B46_HEADER_LOGO_130_PERCENT_20261003';
 export const themeMarker = 'B46_THEME_TOGGLE_STANDARD_20261003';
 export const logoSelector = 'body .workspace.singlepage > .left-rail .workspace-brand[aria-label="Ball46"]';
 export const themeSelector = 'body .workspace.singlepage > .left-rail .workspace-theme-btn[data-theme-toggle]';
+export const brandCardSelector = 'body .workspace.singlepage > .left-rail .workspace-brand-card';
+export const oddsRowSelector = `${brandCardSelector} > .workspace-brand-meta[data-workspace-odds-slot]`;
+export const oddsControlSelector = `${oddsRowSelector} .odds-format-control`;
+export const oddsButtonSelector = `${oddsRowSelector} .odds-format-button[data-odds-format-button]`;
 export const logoCss = `
 /* ${marker}: scale only the existing header wordmark; reserve its full layout size */
 ${logoSelector} { zoom: 1.3 !important; }
 `;
 export const themeCss = `
-/* ${themeMarker}: compact one-click theme control for the workspace toolbar */
+/* ${themeMarker}: aligned transparent controls in the existing odds row below the logo */
+${brandCardSelector} {
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+}
+${oddsRowSelector} {
+  height: 28px !important;
+  min-height: 28px !important;
+  max-height: 28px !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
+  background-color: transparent !important;
+}
+${oddsControlSelector} {
+  flex: 0 1 auto !important;
+  width: auto !important;
+  min-width: 0 !important;
+  height: 28px !important;
+  min-height: 28px !important;
+}
+${oddsButtonSelector} {
+  width: auto !important;
+  height: 28px !important;
+  min-height: 28px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  color: var(--text) !important;
+  font-family: Arial, sans-serif !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  line-height: 1 !important;
+  letter-spacing: 0 !important;
+  white-space: nowrap !important;
+}
 ${themeSelector} {
   width: 48px !important;
   flex: 0 0 48px !important;
@@ -25,16 +67,19 @@ ${themeSelector} {
   background-color: transparent !important;
   background-image: none !important;
   color: var(--text) !important;
+  font-family: Arial, sans-serif !important;
   font-size: 11px !important;
   font-weight: 800 !important;
   line-height: 1 !important;
+  letter-spacing: 0 !important;
   white-space: nowrap !important;
   box-shadow: none !important;
 }
 ${themeSelector}:hover {
   color: var(--green) !important;
+  background-color: transparent !important;
 }
-${themeSelector}:focus-visible {
+${themeSelector}:focus-visible, ${oddsButtonSelector}:focus-visible {
   outline: 2px solid var(--green) !important;
   outline-offset: 2px !important;
 }
@@ -63,7 +108,7 @@ ${themeSelector}:focus-visible {
   outline-offset: 2px !important;
 }
 `;
-// The logo rule is already active in Production; this run adds only the existing theme button's styling.
+// Preserve both existing click handlers; only their toolbar presentation changes.
 export const themeScriptName = '__B46_THEME_TOOLBAR_JS__';
 export const themeScriptRoute = '/dashboard-v2-tune.js';
 const labelMarker = 'B46_COMPACT_THEME_LABEL_20261003';
@@ -74,12 +119,15 @@ export const themeLabels = `
     const button=document.querySelector('[data-theme-toggle]');
     if(!button)return;
     function update(){
+      const slot=document.querySelector('.workspace-brand-meta[data-workspace-odds-slot]');
+      if(slot&&slot.lastElementChild!==button)slot.append(button);
       const label=document.documentElement.dataset.theme==='dark'?'Light':'Dark';
       if(button.textContent!==label)button.textContent=label;
       button.title='Switch to '+label.toLowerCase()+' mode';
     }
     const observer=new MutationObserver(update);
     observer.observe(button,{childList:true});
+    observer.observe(document.body,{childList:true,subtree:true});
     observer.observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
     update();
   }
@@ -135,20 +183,28 @@ export function borderChecks(css) {
   const hasTheme = css.includes(themeMarker);
   assert(hasLogo || hasTheme, 'PRESENTATION_CSS_MARKER_MISSING');
   root.walkAtRules(() => assert.fail('LOGO_CSS_AT_RULE'));
-  const selectors = new Set([logoSelector, themeSelector, `${themeSelector}:hover`, `${themeSelector}:focus-visible`]);
+  const focusSelector = `${themeSelector}:focus-visible, ${oddsButtonSelector}:focus-visible`;
+  const layoutProperties = new Map([
+    [brandCardSelector, ['height','min-height','max-height']],
+    [oddsRowSelector, ['height','min-height','max-height','align-items','justify-content','gap','background-color']],
+    [oddsControlSelector, ['flex','width','min-width','height','min-height']],
+    [oddsButtonSelector, ['width','height','min-height','padding','border','background-color','background-image','box-shadow','color','font-family','font-size','font-weight','line-height','letter-spacing','white-space']],
+  ]);
+  const selectors = new Set([logoSelector, themeSelector, `${themeSelector}:hover`, focusSelector, ...layoutProperties.keys()]);
   root.walkRules(r => assert(selectors.has(r.selector), 'PRESENTATION_CSS_SCOPE_CHANGED'));
   root.walkRules(r => {
     r.walkDecls(d => {
       assert(d.important, 'PRESENTATION_CSS_IMPORTANT_REQUIRED');
       if (r.selector === logoSelector) assert(d.prop === 'zoom' && d.value === '1.3', 'LOGO_CSS_NOT_EXACT_130_PERCENT');
       else if (r.selector === themeSelector) {
-        assert(['width','flex','height','padding','border','border-radius','background-color','background-image','color','font-size','font-weight','line-height','white-space','box-shadow'].includes(d.prop), `THEME_CSS_PROPERTY_NOT_ALLOWED:${d.prop}`);
+        assert(['width','flex','height','padding','border','border-radius','background-color','background-image','color','font-family','font-size','font-weight','line-height','letter-spacing','white-space','box-shadow'].includes(d.prop), `THEME_CSS_PROPERTY_NOT_ALLOWED:${d.prop}`);
         if (d.prop === 'width') assert.equal(d.value, '48px', 'THEME_WIDTH_NOT_COMPACT');
         if (d.prop === 'flex') assert.equal(d.value, '0 0 48px', 'THEME_FLEX_BASIS_NOT_COMPACT');
         if (d.prop === 'height') assert.equal(d.value, '28px', 'THEME_HEIGHT_NOT_COMPACT');
         if (d.prop === 'border-radius') assert.equal(d.value, '5px', 'THEME_SHAPE_NOT_COMPACT');
       }
-      else if (r.selector === `${themeSelector}:hover`) assert(d.prop === 'color', 'THEME_HOVER_NOT_TEXT_ONLY');
+      else if (layoutProperties.has(r.selector)) assert(layoutProperties.get(r.selector).includes(d.prop), `TOOLBAR_CSS_PROPERTY_NOT_ALLOWED:${d.prop}`);
+      else if (r.selector === `${themeSelector}:hover`) assert(['color','background-color'].includes(d.prop), 'THEME_HOVER_NOT_TRANSPARENT');
       else assert(['outline','outline-offset'].includes(d.prop), `THEME_FOCUS_PROPERTY_NOT_ALLOWED:${d.prop}`);
     });
   });
@@ -186,6 +242,9 @@ export function patch(source, { themeScript }) {
   if (!existingScript) {
     after = replaceOnce(after, 'function __b46Text(body,type)', `const ${themeScriptName}=${JSON.stringify(scriptAfter)};\nfunction __b46Text(body,type)`);
     after = replaceOnce(after, cssRoute, cssRoute + scriptOverride);
+  } else {
+    const scriptEntry = constants(after).get(themeScriptName);
+    after = after.slice(0, scriptEntry.start) + JSON.stringify(scriptAfter) + after.slice(scriptEntry.end);
   }
   assert.equal(normalize(after), normalize(source), 'CODE_CHANGED_OUTSIDE_LOGO_CSS');
   assert.equal(JSON.stringify(constants(after).get('__B46_SCOREBAR_BG_B64__')?.value), JSON.stringify(c.get('__B46_SCOREBAR_BG_B64__')?.value), 'SCOREBAR_IMAGES_CHANGED');

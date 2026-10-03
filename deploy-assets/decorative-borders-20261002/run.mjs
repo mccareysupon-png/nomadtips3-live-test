@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync, appendFileSync } from 'node:fs';
 import { parse as parseHtml } from 'parse5';
 import { chromium } from 'playwright';
-import { patch, constants, targets, sha, borderChecks, logoSelector, themeSelector, marker, themeMarker, themeScriptRoute } from './logo-size.mjs';
+import { patch, constants, targets, sha, borderChecks, logoSelector, themeSelector, oddsButtonSelector, marker, themeMarker, themeScriptRoute } from './logo-size.mjs';
 
 const env = process.env;
 const origin = env.BALL46_URL || 'https://ball46.com';
@@ -16,7 +16,7 @@ const runTag = `${env.GITHUB_RUN_ID || 'local'}-${env.GITHUB_SHA || 'local'}`;
 const audit = 'audit';
 mkdirSync(`${audit}/screenshots`, { recursive: true });
 mkdirSync(`${audit}/css`, { recursive: true });
-const report = { runTag, startedAt: new Date().toISOString(), publish: env.DEPLOY_ENABLED === 'true', scope: 'Compact transparent Light/Dark control with plain text; existing theme handler and main renderer protected' };
+const report = { runTag, startedAt: new Date().toISOString(), publish: env.DEPLOY_ENABLED === 'true', scope: 'ODDS and plain-text Light/Dark aligned below the logo; transparent controls with matching typography; existing handlers and main renderer protected' };
 const save = () => writeFileSync(`${audit}/report.json`, JSON.stringify(report, null, 2));
 const delay = ms => new Promise(r => setTimeout(r, ms));
 const canonical = value => JSON.stringify(value, (_, v) => v && typeof v === 'object' && !Array.isArray(v) ? Object.fromEntries(Object.entries(v).sort(([a], [b]) => a.localeCompare(b))) : v);
@@ -88,7 +88,7 @@ const pages = [
   ['settings', '/settings.html'],
   ['about', '/about.html'],
 ];
-const geometrySelectors = '.workspace-scorebar-slot,.workspace-scorebar-grid,.workspace-scorebar-cell,.event-flow,.event-flow-line,.b46-signal-flow-line,.b46-signal-flow-line-chart,.b46-signal-flow-live-copy,.pitch,.timeline,.match-row.active,svg,path,line,canvas,input,select,button:not([data-theme-toggle])';
+const geometrySelectors = '.workspace-scorebar-slot,.workspace-scorebar-grid,.workspace-scorebar-cell,.event-flow,.event-flow-line,.b46-signal-flow-line,.b46-signal-flow-line-chart,.b46-signal-flow-live-copy,.pitch,.timeline,.match-row.active,svg,path,line,canvas,input,select,button:not([data-theme-toggle]):not([data-odds-format-button])';
 
 async function uiCheck(changes, phase) {
   const browser = await chromium.launch();
@@ -230,7 +230,7 @@ async function uiCheck(changes, phase) {
               const e = document.querySelector(selector);
               if (!e) return null;
               const r = e.getBoundingClientRect(), c = getComputedStyle(e);
-              return { text: e.textContent, aria: e.getAttribute('aria-label'), width: r.width, height: r.height, borderRadius: c.borderRadius, background: c.backgroundColor, shadow: c.boxShadow, outline: c.outline, cursor: c.cursor };
+              return { text: e.textContent, aria: e.getAttribute('aria-label'), width: r.width, height: r.height, x: r.x, y: r.y, font: c.font, letterSpacing: c.letterSpacing, color: c.color, borderRadius: c.borderRadius, background: c.backgroundColor, shadow: c.boxShadow, outline: c.outline, cursor: c.cursor };
             }, themeSelector);
             assert(themeButton, `THEME_BUTTON_MISSING:${key}`);
             assert(Math.abs(themeButton.width - 48) < 1 && Math.abs(themeButton.height - 28) < 1, `THEME_BUTTON_NOT_COMPACT_SIZE:${key}`);
@@ -239,9 +239,33 @@ async function uiCheck(changes, phase) {
             assert.equal(themeButton.text, theme === 'dark' ? 'Light' : 'Dark', `THEME_BUTTON_ICON_OR_WRONG_LABEL:${key}`);
             assert.equal(themeButton.background, 'rgba(0, 0, 0, 0)', `THEME_BUTTON_NOT_TRANSPARENT:${key}`);
             assert.equal(themeButton.shadow, 'none', `THEME_BUTTON_SHADOW_REMAINS:${key}`);
+            const oddsButton = await page.evaluate(selector => {
+              const e = document.querySelector(selector);
+              if (!e) return null;
+              const r = e.getBoundingClientRect(), c = getComputedStyle(e);
+              return { text: e.textContent, x: r.x, y: r.y, width: r.width, height: r.height, font: c.font, letterSpacing: c.letterSpacing, color: c.color, background: c.backgroundColor };
+            }, oddsButtonSelector);
+            assert(oddsButton, `ODDS_BUTTON_MISSING:${key}`);
+            assert(Math.abs(oddsButton.y - themeButton.y) < 1 && Math.abs(oddsButton.height - themeButton.height) < 1, `TOOLBAR_NOT_ALIGNED:${key}`);
+            assert.equal(oddsButton.font, themeButton.font, `TOOLBAR_FONT_MISMATCH:${key}`);
+            assert(['normal', '0px'].includes(oddsButton.letterSpacing), `ODDS_LETTER_SPACING_NOT_ZERO:${key}`);
+            assert.equal(oddsButton.letterSpacing, themeButton.letterSpacing, `TOOLBAR_LETTER_SPACING_MISMATCH:${key}`);
+            assert.equal(oddsButton.background, 'rgba(0, 0, 0, 0)', `ODDS_BUTTON_NOT_TRANSPARENT:${key}`);
+            assert(oddsButton.y >= logoAfter.rect.bottom, `TOOLBAR_NOT_BELOW_LOGO:${key}`);
+            assert(oddsButton.x + oddsButton.width <= themeButton.x, `TOOLBAR_CONTROLS_OVERLAP:${key}`);
+            assert(themeButton.x + themeButton.width <= logoAfter.card.right, `TOOLBAR_CLIPPED:${key}`);
             report.themeControlChecks ||= [];
-            report.themeControlChecks.push({ key, ...themeButton });
+            report.themeControlChecks.push({ key, ...themeButton, odds: oddsButton });
             assert.equal(await page.locator('[data-theme-toggle]').count(), 1, `DUPLICATE_THEME_BUTTON:${key}`);
+            assert.equal(await page.locator('[data-odds-format-button]').count(), 1, `DUPLICATE_ODDS_BUTTON:${key}`);
+            await page.locator('[data-odds-format-button]').click();
+            assert.equal(await page.locator('[data-odds-format-button]').getAttribute('aria-expanded'), 'true', `ODDS_MENU_NOT_OPEN:${key}`);
+            assert.equal(await page.locator('[data-odds-format-option]:visible').count(), 3, `ODDS_MENU_OPTIONS_MISSING:${key}`);
+            await page.locator('[data-odds-format-option="fractional"]').click();
+            assert.equal(await page.locator('[data-odds-format-button]').textContent(), 'ODDS \u00b7 FRA \u25be', `ODDS_FORMAT_SWITCH_FAILED:${key}`);
+            await page.locator('[data-odds-format-button]').click();
+            await page.locator('[data-odds-format-option="decimal"]').click();
+            assert.equal(await page.locator('[data-odds-format-button]').textContent(), 'ODDS \u00b7 DEC \u25be', `ODDS_FORMAT_RESTORE_FAILED:${key}`);
             await page.locator('[data-theme-toggle]').hover();
             assert.equal(await page.locator('[data-theme-toggle]').evaluate(e => getComputedStyle(e).backgroundColor), 'rgba(0, 0, 0, 0)', `THEME_HOVER_NOT_TRANSPARENT:${key}`);
             for (const nextTheme of [theme === 'dark' ? 'light' : 'dark', theme]) {
