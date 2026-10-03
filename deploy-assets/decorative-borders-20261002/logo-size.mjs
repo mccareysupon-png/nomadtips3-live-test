@@ -74,10 +74,13 @@ export function patch(source) {
   assert(entry?.value.includes('B46_MATCH_CLOCK_COLORS_20261003'), 'CURRENT_CLOCK_COLORS_REQUIRED');
   assert(entry.value.includes('B46_CLEAN_MENU_SURFACES_20261003'), 'CURRENT_CLEAN_MENUS_REQUIRED');
   assert(entry.value.includes(marker), 'CURRENT_LOGO_PATCH_REQUIRED');
-  const beforeTheme = entry.value.includes(themeMarker) ? entry.value.slice(0, -themeCss.length) : entry.value;
+  const themeStart = entry.value.indexOf(`/* ${themeMarker}`);
+  const beforeTheme = themeStart >= 0
+    ? entry.value.slice(0, themeStart).replace(/\s$/, '')
+    : entry.value;
   assert(beforeTheme.endsWith(logoCss), 'EXISTING_LOGO_PATCH_DIFFERS');
-  if (entry.value.includes(themeMarker)) assert(entry.value.endsWith(themeCss), 'EXISTING_THEME_PATCH_DIFFERS');
-  const cssAfter = entry.value.includes(themeMarker) ? entry.value : entry.value + themeCss;
+  if (themeStart >= 0) borderChecks(entry.value.slice(themeStart - 1));
+  const cssAfter = beforeTheme + themeCss;
   const after = source.slice(0, entry.start) + JSON.stringify(cssAfter) + source.slice(entry.end);
   assert.equal(normalize(after), normalize(source), 'CODE_CHANGED_OUTSIDE_LOGO_CSS');
   assert.equal(JSON.stringify(constants(after).get('__B46_SCOREBAR_BG_B64__')?.value), JSON.stringify(c.get('__B46_SCOREBAR_BG_B64__')?.value), 'SCOREBAR_IMAGES_CHANGED');
