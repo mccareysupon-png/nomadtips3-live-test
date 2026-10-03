@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync, appendFileSync } from 'node:fs';
 import { parse as parseHtml } from 'parse5';
 import { chromium } from 'playwright';
-import { patch, constants, targets, sha } from './patch.mjs';
+import { patch, constants, targets, sha, borderChecks } from './patch.mjs';
 
 const env = process.env;
 const origin = env.BALL46_URL || 'https://ball46.com';
@@ -88,7 +88,7 @@ const pages = [
   ['settings', '/settings.html'],
   ['about', '/about.html'],
 ];
-const geometrySelectors = '.workspace-scorebar-slot,.workspace-scorebar-grid,.workspace-scorebar-cell,.event-flow,.event-flow-line,.pitch,.timeline,.match-row.active,svg,path,line,canvas,input,select,button';
+const geometrySelectors = '.workspace-scorebar-slot,.workspace-scorebar-grid,.workspace-scorebar-cell,.event-flow,.event-flow-line,.b46-signal-flow-line,.b46-signal-flow-line-chart,.b46-signal-flow-live-copy,.pitch,.timeline,.match-row.active,svg,path,line,canvas,input,select,button';
 
 async function uiCheck(changes, phase) {
   const browser = await chromium.launch();
@@ -125,7 +125,10 @@ async function uiCheck(changes, phase) {
             else if (name === 'statistics') await page.locator('[data-stat-market="all"]').click();
             else await page.locator('[data-status-filter="live"]').click();
             await page.waitForFunction(view => document.body.dataset.workspaceView === view, name, { timeout: 15000 });
-            if (name === 'statistics') await page.locator('.sp-stat-hero').waitFor({ state: 'visible' });
+            if (name === 'statistics') {
+              await page.locator('.sp-stat-hero').waitFor({ state: 'visible' });
+              await page.waitForFunction(() => [...document.querySelectorAll('.sp-kpi strong')].some(e => /\d/.test(e.textContent)), null, { timeout: 30000 });
+            }
           } else if (name === 'settings') {
             await page.waitForSelector('.settings-card', { timeout: 25000 });
           }
@@ -140,21 +143,27 @@ async function uiCheck(changes, phase) {
             })));
           });
           assert(backgrounds.every(b => b.loaded), `SCOREBAR_BACKGROUND_NOT_LOADED:${name}:${size}:${theme}`);
-          const sample = () => page.evaluate(selector => ({
+          const routes = await page.locator('link[rel="stylesheet"]').evaluateAll(es => es.map(e => new URL(e.href).pathname));
+          const applicable = changes.filter(c => routes.includes(c.route));
+          const decorativeChecks = applicable.flatMap(c => borderChecks(c.css));
+          const mutableLeftBorders = decorativeChecks.filter(c => c.properties.includes('borderLeftColor')).map(c => c.selector);
+          const sample = () => page.evaluate(({ selector, mutableLeftBorders }) => ({
             text: document.querySelector('.workspace-scorebar-slot')?.textContent || '',
-            geometry: [...document.querySelectorAll(selector)].slice(0, 100).map(e => {
+            geometry: [...document.querySelectorAll(selector)].map(e => {
               const r = e.getBoundingClientRect(), c = getComputedStyle(e);
-              return { cls: e.className, width: r.width, height: r.height, image: c.backgroundImage, outline: c.outline, leftBorder: c.borderLeftColor, borderWidths: [c.borderTopWidth, c.borderRightWidth, c.borderBottomWidth, c.borderLeftWidth] };
+              return { cls: e.className, width: r.width, height: r.height, image: c.backgroundImage, surface: c.backgroundColor, color: c.color, shadow: c.boxShadow, outline: c.outline, outlineOffset: c.outlineOffset, stroke: c.stroke, strokeWidth: c.strokeWidth, fill: c.fill, leftBorder: mutableLeftBorders.some(s => e.matches(s)) ? 'approved-decoration' : c.borderLeftColor, borderWidths: [c.borderTopWidth, c.borderRightWidth, c.borderBottomWidth, c.borderLeftWidth] };
             }),
             scrollWidth: document.documentElement.scrollWidth,
-          }), geometrySelectors);
+          }), { selector: geometrySelectors, mutableLeftBorders });
           const before = await sample();
           const key = `${phase}-${name}-${size}-${theme}`;
           await page.screenshot({ path: `${audit}/screenshots/${key}-before.png` });
           if (phase === 'preview') {
-            const routes = await page.locator('link[rel="stylesheet"]').evaluateAll(es => es.map(e => new URL(e.href).pathname));
-            const css = changes.filter(c => routes.includes(c.route)).map(c => c.css).join('\n');
-            if (css) await page.addStyleTag({ content: css });
+            const css = applicable.map(c => c.css).join('\n');
+            if (css) {
+              const style = await page.addStyleTag({ content: css });
+              await style.evaluate(e => { e.dataset.borderPreview = 'true'; });
+            }
           }
           const after = await sample();
           assert.equal(canonical(after.geometry), canonical(before.geometry), `PROTECTED_GEOMETRY_CHANGED:${key}`);
@@ -164,13 +173,39 @@ async function uiCheck(changes, phase) {
           if (name !== 'settings') {
             for (const frame of frames) assert.equal(frame.border, 'rgba(0, 0, 0, 0)', `FRAME_NOT_TRANSPARENT:${key}:${frame.cls}`);
           }
+          const decoration = [];
+          for (const check of decorativeChecks) {
+            const items = await page.locator(check.selector).evaluateAll((es, properties) => es.filter(e => e.getBoundingClientRect().width > 0).map(e => ({ cls: e.className, colors: Object.fromEntries(properties.map(p => [p, getComputedStyle(e)[p]])) })), check.properties);
+            for (const item of items) for (const color of Object.values(item.colors)) assert.equal(color, 'rgba(0, 0, 0, 0)', `DECORATIVE_LINE_REMAINS:${key}:${item.cls}`);
+            decoration.push({ selector: check.selector, count: items.length });
+          }
+          if (['live', 'signal', 'statistics'].includes(name)) {
+            const pseudoLines = await page.locator('.match-row .market-cell,.match-row .signal-cell').evaluateAll(es => es.filter(e => e.getBoundingClientRect().width > 0).map(e => getComputedStyle(e, e.matches('.market-cell') ? '::before' : '::after').backgroundColor));
+            assert(pseudoLines.every(c => c === 'rgba(0, 0, 0, 0)'), `ORNAMENTAL_COLUMN_DIVIDER_REMAINS:${key}`);
+            const surface = await page.locator('.workspace-stable-head').evaluate(e => getComputedStyle(e).backgroundImage);
+            assert(surface.includes('linear-gradient'), `HEADER_SURFACE_MISSING:${key}`);
+            // Compare keyboard focus with and without the preview stylesheet in one page state.
+            const focusTarget = page.locator('[data-theme-toggle]');
+            await page.keyboard.press('Tab');
+            await focusTarget.focus();
+            const focused = () => focusTarget.evaluate(e => ({ outline: getComputedStyle(e).outline, offset: getComputedStyle(e).outlineOffset, shadow: getComputedStyle(e).boxShadow }));
+            const focusAfter = await focused();
+            if (phase === 'preview') {
+              const previewStyle = page.locator('style[data-border-preview]');
+              await previewStyle.evaluate(e => { e.disabled = true; });
+              assert.equal(canonical(await focused()), canonical(focusAfter), `FOCUS_STYLE_CHANGED:${key}`);
+              await previewStyle.evaluate(e => { e.disabled = false; });
+            }
+            assert(!focusAfter.outline.includes('0px') && !focusAfter.outline.includes('none'), `KEYBOARD_FOCUS_NOT_VISIBLE:${key}`);
+          }
           const images = await page.locator('img').evaluateAll(es => es.filter(e => e.getBoundingClientRect().width > 0).map(e => ({ src: e.src, loaded: e.complete && e.naturalWidth > 0 })));
           const footer = page.locator('#b46-site-footer-v1,.site-footer').first();
           if (await footer.count()) {
             await footer.scrollIntoViewIfNeeded();
             await page.screenshot({ path: `${audit}/screenshots/${key}-footer.png` });
           }
-          rows.push({ name, size, theme, actualView: await page.evaluate(() => document.body.dataset.workspaceView || document.body.dataset.page || 'information'), effectiveTheme: await page.evaluate(() => document.documentElement.dataset.theme || 'fixed-theme'), geometryUnchanged: true, matchRows: await page.locator('.match-row').count(), frames, images, backgrounds, pageErrors: errors });
+          assert.equal(errors.length, 0, `UI_PAGE_ERRORS:${key}:${errors.join(';')}`);
+          rows.push({ name, size, theme, actualView: await page.evaluate(() => document.body.dataset.workspaceView || document.body.dataset.page || 'information'), effectiveTheme: await page.evaluate(() => document.documentElement.dataset.theme || 'fixed-theme'), geometryUnchanged: true, decorativeLinesRemoved: true, matchRows: await page.locator('.match-row').count(), frames, decoration, images, backgrounds, pageErrors: errors });
           page.off('pageerror', listener);
         }
         await context.close();
