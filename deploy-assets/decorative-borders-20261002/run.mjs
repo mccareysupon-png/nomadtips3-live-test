@@ -155,6 +155,7 @@ async function uiCheck(changes, phase) {
           const decorativeChecks = applicable.flatMap(c => borderChecks(c.css));
           const mutableLeftBorders = decorativeChecks.filter(c => c.properties.includes('borderLeftColor')).map(c => c.selector);
           const sample = () => page.evaluate(({ selector, mutableLeftBorders }) => ({
+            domRevision: window.__borderQaRevision || 0,
             text: document.querySelector('.workspace-scorebar-slot')?.textContent || '',
             geometry: [...document.querySelectorAll(selector)].map(e => {
               const r = e.getBoundingClientRect(), c = getComputedStyle(e);
@@ -162,17 +163,33 @@ async function uiCheck(changes, phase) {
             }),
             scrollWidth: document.documentElement.scrollWidth,
           }), { selector: geometrySelectors, mutableLeftBorders });
-          const before = await sample();
           const key = `${phase}-${name}-${size}-${theme}`;
           await page.screenshot({ path: `${audit}/screenshots/${key}-before.png` });
-          if (phase === 'preview') {
-            const css = applicable.map(c => c.css).join('\n');
-            if (css) {
-              const style = await page.addStyleTag({ content: css });
-              await style.evaluate(e => { e.dataset.borderPreview = 'true'; });
+          await page.evaluate(() => {
+            window.__borderQaRevision = 0;
+            window.__borderQaObserver = new MutationObserver(() => { window.__borderQaRevision++; });
+            window.__borderQaObserver.observe(document.body, { childList: true, subtree: true, attributes: true, characterData: true });
+          });
+          let before, after, previewStyle;
+          const css = applicable.map(c => c.css).join('\n');
+          // Retry only a witnessed live DOM refresh, never a static CSS mismatch.
+          for (let attempt = 0; attempt < 3; attempt++) {
+            before = await sample();
+            if (phase === 'preview' && css) {
+              if (!previewStyle) {
+                previewStyle = await page.addStyleTag({ content: css });
+                await previewStyle.evaluate(e => { e.dataset.borderPreview = 'true'; });
+              } else await previewStyle.evaluate(e => { e.disabled = false; });
             }
+            after = await sample();
+            if (canonical(after.geometry) === canonical(before.geometry) || after.domRevision === before.domRevision || attempt === 2) break;
+            console.log(`LIVE_DOM_REFRESH_RETRY:${key}:attempt=${attempt + 1}`);
+            if (previewStyle) await previewStyle.evaluate(e => { e.disabled = true; });
           }
-          const after = await sample();
+          await page.evaluate(() => window.__borderQaObserver.disconnect());
+          if (canonical(after.geometry) !== canonical(before.geometry)) {
+            writeFileSync(`${audit}/${key}-geometry-failure.json`, JSON.stringify({ before, after }, null, 2));
+          }
           assert.equal(canonical(after.geometry), canonical(before.geometry), `PROTECTED_GEOMETRY_CHANGED:${key}`);
           assert(after.scrollWidth <= before.scrollWidth + 1, `NEW_HORIZONTAL_OVERFLOW:${key}`);
           await page.screenshot({ path: `${audit}/screenshots/${key}-after.png` });
