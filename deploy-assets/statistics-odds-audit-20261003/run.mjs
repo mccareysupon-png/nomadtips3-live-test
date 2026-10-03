@@ -44,10 +44,19 @@ function excerpts(text) {
   const terms = [/nomad343_odds_format_v1/i,/odds[_ -]?format/i,/decimal/i,/fraction/i,/american/i,/statistics/i,/localStorage/i,/MutationObserver/i,/querySelector/i,/td\b/i,/render/i];
   return text.split(/\r?\n/).map((text,i)=>({line:i+1,text})).filter(r=>terms.some(re=>re.test(r.text))).slice(0,1000);
 }
+function sanitizeVersion(v) {
+  const out = {};
+  for (const [k,val] of Object.entries(v || {})) {
+    if (k === 'modules') continue;
+    out[k] = val;
+  }
+  return out;
+}
 
 const versionId = await activeVersion();
 const version = await cf(`/workers/${script}/versions/${versionId}?include=modules`);
 const moduleInventory = (version.modules || []).map(m => ({ name:m.name, contentType:m.content_type, bytes:Buffer.from(m.content_base64 || '', 'base64').length }));
+const settings = await cf(`/scripts/${script}/settings`);
 
 const initial = ['/settings.html','/index.html?view=statistics','/settings.js?v=343-allmarkets-v1','/statistics-next.js?v=343-next-production-v1','/odds-format-343.js'];
 const texts = new Map();
@@ -63,8 +72,10 @@ for (const htmlPath of ['/settings.html','/index.html?view=statistics']) {
   }
 }
 const files = [...texts].map(([path,text]) => ({ path, bytes:Buffer.byteLength(text), excerpts:excerpts(text) }));
-const report = { generatedAt:new Date().toISOString(), scope:'READ-ONLY current Production public asset audit', worker:script, activeProductionVersion:versionId, mainModule:version.main_module, moduleInventory, files };
+const report = { generatedAt:new Date().toISOString(), scope:'READ-ONLY current Production public asset audit', worker:script, activeProductionVersion:versionId, mainModule:version.main_module, moduleInventory, versionMetadata:sanitizeVersion(version), settings, files };
 writeFileSync(`${auditDir}/report.json`,JSON.stringify(report,null,2));
 console.log(`ACTIVE_PRODUCTION_VERSION=${versionId}`);
 console.log(`MAIN_MODULE=${version.main_module}`);
+console.log(`VERSION_KEYS=${Object.keys(version).join(',')}`);
+console.log(`VERSION_METADATA=${JSON.stringify(sanitizeVersion(version))}`);
 for (const f of files) console.log(`${f.path} bytes=${f.bytes} hits=${f.excerpts.length}`);
