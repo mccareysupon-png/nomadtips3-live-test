@@ -45,7 +45,10 @@ export async function uiCheck({ beforeCss, afterCss, phase }) {
         const page = await context.newPage();
         const errors = [], failed = [], iconRequests = [];
         const pendingRequests = new Set(), controlledTransitions = new WeakSet();
-        const prepareTransition = () => pendingRequests.forEach(request => controlledTransitions.add(request));
+        const prepareTransition = async () => {
+          await page.waitForLoadState('networkidle', { timeout: 45000 });
+          pendingRequests.forEach(request => controlledTransitions.add(request));
+        };
         let currentPass = 'baseline';
         page.on('pageerror', error => errors.push(error.message));
         page.on('requestfinished', request => pendingRequests.delete(request));
@@ -69,10 +72,10 @@ export async function uiCheck({ beforeCss, afterCss, phase }) {
         for (const pass of ['baseline','icons']) {
           currentPass = pass;
           patched = pass === 'icons';
-          prepareTransition();
+          await prepareTransition();
           await page.goto(`${origin}/index.html`, { waitUntil: 'domcontentloaded', timeout: 45000 });
           await page.waitForFunction(() => Number(document.querySelector('[data-filter-count="all"]')?.textContent) > 0 && window.__statusQaSignals, null, { timeout: 30000 });
-          prepareTransition();
+          await prepareTransition();
           await page.evaluate(() => window.NOMAD343_DASHBOARD_V2.reload());
           await page.evaluate(() => document.fonts.ready);
           const actualTheme = await page.evaluate(() => document.documentElement.dataset.theme);
@@ -165,16 +168,16 @@ export async function uiCheck({ beforeCss, afterCss, phase }) {
             await page.waitForTimeout(160);
             const stableBefore = await page.locator(control).evaluateAll(nodes => nodes.map(node => ({ height: node.getBoundingClientRect().height, mask: getComputedStyle(node.querySelector('span'), '::before').maskImage })));
             await page.evaluate(() => { window.__statusQaShifts = []; });
-            prepareTransition();
+            await prepareTransition();
             await page.evaluate(() => window.NOMAD343_DASHBOARD_V2.reload());
             await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
             const stableAfter = await page.locator(control).evaluateAll(nodes => nodes.map(node => ({ height: node.getBoundingClientRect().height, mask: getComputedStyle(node.querySelector('span'), '::before').maskImage })));
             assert.equal(canonical(stableAfter), canonical(stableBefore), 'ICONS_JUMP_DURING_NATIVE_REFRESH');
             assert.equal(await page.evaluate(() => window.__statusQaShifts.reduce((sum, value) => sum + value, 0)), 0, 'MATCH_STATUS_LAYOUT_SHIFT_DURING_REFRESH');
-            prepareTransition();
+            await prepareTransition();
             await page.reload({ waitUntil: 'domcontentloaded' });
             await page.waitForFunction(() => window.__statusQaSignals && Number(document.querySelector('[data-filter-count="all"]')?.textContent) > 0);
-            prepareTransition();
+            await prepareTransition();
             await page.evaluate(() => window.NOMAD343_DASHBOARD_V2.reload());
             await page.locator('[data-status-filter="live"]').click();
             assert.equal(canonical(await page.evaluate(snapshots)), canonical(reference.get('live')), 'REFRESH_FILTER_OR_COUNTS_CHANGED');
