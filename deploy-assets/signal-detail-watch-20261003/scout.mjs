@@ -38,7 +38,7 @@ async function fetchText(path) {
   return await response.text();
 }
 
-function snippets(source, needle, radius = 420) {
+function snippets(source, needle, radius = 620) {
   const out = [];
   let at = 0;
   const lower = source.toLowerCase();
@@ -59,17 +59,20 @@ const files = [
   '/live-prediction-343.js',
   '/ui-sync-fixes-343-v2.js',
   '/odds-format-343.js',
-  '/signal.js',
-  '/feature-strip-343.js',
-  '/feature-strip-343.css'
+  '/signal.js'
 ];
 const needles = [
   'feature-signal-meta',
+  'data-signal-count',
+  'data-workspace-signal-count',
+  'syncSignalCount',
+  'signalSummary(',
+  'signalDetail(',
+  'signalsFor(',
+  'signalFor(',
   'signalcount',
   'signal_count',
   'signals.length',
-  'signal detail',
-  'signal-detail',
   'dataset.signal',
   'textcontent',
   'innerhtml'
@@ -78,25 +81,27 @@ const needles = [
 const before = await activeVersion();
 const report = { activeVersion: before, checkedAt: new Date().toISOString(), files: {} };
 for (const path of files) {
-  try {
-    const source = await fetchText(path);
-    const hits = {};
-    for (const needle of needles) {
-      const found = snippets(source, needle);
-      if (found.length) hits[needle] = found;
-    }
-    report.files[path] = { bytes: Buffer.byteLength(source), hits };
-    console.log(`FILE_OK ${path} bytes=${Buffer.byteLength(source)} featureMeta=${hits['feature-signal-meta']?.length || 0}`);
-  } catch (error) {
-    report.files[path] = { error: String(error?.message || error) };
-    console.log(`FILE_SKIP ${path} ${String(error?.message || error)}`);
+  const source = await fetchText(path);
+  const hits = {};
+  for (const needle of needles) {
+    const found = snippets(source, needle);
+    if (found.length) hits[needle] = found;
   }
+  report.files[path] = { bytes: Buffer.byteLength(source), hits };
+  console.log(`FILE_OK ${path} bytes=${Buffer.byteLength(source)} featureMeta=${hits['feature-signal-meta']?.length || 0} dataSignalCount=${hits['data-signal-count']?.length || 0}`);
 }
 
 const index = await fetchText('/index.html');
 report.indexScripts = [...index.matchAll(/<script\b[^>]*\bsrc=["']([^"']+)["'][^>]*>/gi)].map(m => m[1]);
 report.indexStyles = [...index.matchAll(/<link\b[^>]*\bhref=["']([^"']+)["'][^>]*>/gi)].map(m => m[1]);
 writeFileSync(`${auditDir}/signal-render-scout.json`, JSON.stringify(report, null, 2));
+
+for (const path of ['/dashboard-v2-stage3.js','/ui-sync-fixes-343-v2.js']) {
+  const hits = report.files[path]?.hits || {};
+  for (const key of ['data-signal-count','data-workspace-signal-count','syncSignalCount','signalSummary(','signalDetail(','signalsFor(','signalFor(']) {
+    for (const hit of hits[key] || []) console.log(`PINPOINT ${path} ${key} @${hit.at}\n${hit.text}\n---END_PINPOINT---`);
+  }
+}
 
 const after = await activeVersion();
 assert.equal(after, before, `PRODUCTION_CHANGED_DURING_SCOUT:${before}->${after}`);
