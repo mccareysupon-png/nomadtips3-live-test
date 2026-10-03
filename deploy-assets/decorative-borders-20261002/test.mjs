@@ -144,13 +144,17 @@ test('existing theme button moves after ODDS without duplicating controls or rep
   const originalClick = () => {};
   const button = { textContent: '\u2600 Light', onclick: originalClick };
   const slot = { lastElementChild: {}, append(e) { assert.equal(e, button); this.lastElementChild = e; moves++; } };
-  const document = { readyState: 'complete', body: {}, documentElement: { dataset: { theme: 'dark' } }, querySelector: selector => selector === '[data-theme-toggle]' ? button : slot };
+  const styles = [];
+  const document = { readyState: 'complete', body: {}, head: { append: style => styles.push(style) }, createElement: tag => { assert.equal(tag, 'style'); return {}; }, getElementById: id => styles.find(s => s.id === id), documentElement: { dataset: { theme: 'dark' } }, querySelector: selector => selector === '[data-theme-toggle]' ? button : slot };
   runInNewContext(themeLabels, { document, MutationObserver: class { constructor(callback) { update = callback; } observe() {} } });
   assert.equal(moves, 1);
   assert.equal(button.textContent, 'Light');
   assert.equal(button.onclick, originalClick);
+  assert.equal(styles.length, 1);
+  assert.equal(styles[0].textContent, themeCss);
   update();
   assert.equal(moves, 1);
+  assert.equal(styles.length, 1);
   document.documentElement.dataset.theme = 'light';
   update();
   assert.equal(button.textContent, 'Dark');

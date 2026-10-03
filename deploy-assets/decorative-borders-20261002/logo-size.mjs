@@ -119,6 +119,12 @@ export const themeLabels = `
   function mount(){
     const button=document.querySelector('[data-theme-toggle]');
     if(!button)return;
+    if(!document.getElementById('b46-compact-toolbar-style')){
+      const style=document.createElement('style');
+      style.id='b46-compact-toolbar-style';
+      style.textContent=${JSON.stringify(themeCss)};
+      document.head.append(style);
+    }
     function update(){
       const slot=document.querySelector('.workspace-brand-meta[data-workspace-odds-slot]');
       if(slot&&slot.lastElementChild!==button)slot.append(button);
