@@ -16,6 +16,7 @@ export const themeCss = `
 /* ${themeMarker}: global-standard, one-click theme control with a generous touch target */
 ${themeSelector} {
   width: 72px !important;
+  flex: 0 0 72px !important;
   height: 40px !important;
   padding: 0 12px !important;
   border: 0 !important;
@@ -52,8 +53,9 @@ export function borderChecks(css) {
       assert(d.important, 'PRESENTATION_CSS_IMPORTANT_REQUIRED');
       if (r.selector === logoSelector) assert(d.prop === 'zoom' && d.value === '1.3', 'LOGO_CSS_NOT_EXACT_130_PERCENT');
       else if (r.selector === themeSelector) {
-        assert(['width','height','padding','border','border-radius','background-color','color','font-size','font-weight','line-height','white-space','box-shadow'].includes(d.prop), `THEME_CSS_PROPERTY_NOT_ALLOWED:${d.prop}`);
+        assert(['width','flex','height','padding','border','border-radius','background-color','color','font-size','font-weight','line-height','white-space','box-shadow'].includes(d.prop), `THEME_CSS_PROPERTY_NOT_ALLOWED:${d.prop}`);
         if (d.prop === 'width') assert.equal(d.value, '72px', 'THEME_WIDTH_NOT_STANDARD');
+        if (d.prop === 'flex') assert.equal(d.value, '0 0 72px', 'THEME_FLEX_BASIS_NOT_STANDARD');
         if (d.prop === 'height') assert.equal(d.value, '40px', 'THEME_HEIGHT_NOT_STANDARD');
         if (d.prop === 'border-radius') assert.equal(d.value, '999px', 'THEME_SHAPE_NOT_PILL');
       }
