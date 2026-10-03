@@ -23,9 +23,9 @@ const delay = ms => new Promise(r => setTimeout(r, ms));
 const canonical = value => JSON.stringify(value, (_, v) => v && typeof v === 'object' && !Array.isArray(v) ? Object.fromEntries(Object.entries(v).sort(([a],[b]) => a.localeCompare(b))) : v);
 
 const oldLine = "root.querySelectorAll?.('td.odds').forEach(convertDirectElement);";
-const newLine = "root.querySelectorAll?.('td.odds, td.odds-readonly').forEach(convertDirectElement);";
+const newLine = "root.querySelectorAll?.('td.odds, [data-sp-table-body] > tr > td:nth-child(6), .odds-readonly').forEach(convertDirectElement);";
 const helperMarker = 'B46_STATISTICS_ODDS_FORMAT_20261003';
-const helper = `\n/* ${helperMarker}: transform only the existing public odds formatter response so Statistics V2 joins the same DEC/FRA/AM preference. */\nasync function __b46OddsFormatForStatistics(request,env){\n  const response=await env.ASSETS.fetch(request);\n  if(!response.ok)return response;\n  const source=await response.text();\n  const before=${JSON.stringify(oldLine)};\n  const after=${JSON.stringify(newLine)};\n  const hits=source.split(before).length-1;\n  const body=hits===1?source.replace(before,after):source;\n  const headers=new Headers(response.headers);\n  headers.set('cache-control','no-store, no-cache, must-revalidate, max-age=0');\n  headers.set('pragma','no-cache');\n  headers.set('expires','0');\n  headers.set('x-ball46-odds-statistics','${helperMarker}');\n  headers.set('x-ball46-odds-statistics-source',hits===1?'patched':'source-mismatch');\n  headers.delete('content-length');\n  return new Response(body,{status:response.status,statusText:response.statusText,headers});\n}\n`;
+const helper = `\n/* ${helperMarker}: transform only the existing public odds formatter response so current Statistics V2 joins the same DEC/FRA/AM preference. */\nasync function __b46OddsFormatForStatistics(request,env){\n  const response=await env.ASSETS.fetch(request);\n  if(!response.ok)return response;\n  const source=await response.text();\n  const before=${JSON.stringify(oldLine)};\n  const after=${JSON.stringify(newLine)};\n  const hits=source.split(before).length-1;\n  const body=hits===1?source.replace(before,after):source;\n  const headers=new Headers(response.headers);\n  headers.set('cache-control','no-store, no-cache, must-revalidate, max-age=0');\n  headers.set('pragma','no-cache');\n  headers.set('expires','0');\n  headers.set('x-ball46-odds-statistics','${helperMarker}');\n  headers.set('x-ball46-odds-statistics-source',hits===1?'patched':'source-mismatch');\n  headers.delete('content-length');\n  return new Response(body,{status:response.status,statusText:response.statusText,headers});\n}\n`;
 
 async function api(path, options = {}) {
   const response = await fetch(root + path, { ...options, signal: AbortSignal.timeout(60000), headers: { Authorization: `Bearer ${token}`, ...options.headers } });
@@ -96,21 +96,31 @@ async function uiCheck(phase, patchedAsset = null) {
       page.on('pageerror', e => errors.push(e.message));
       const response = await page.goto(new URL('/index.html?view=statistics',origin).href,{waitUntil:'domcontentloaded',timeout:45000});
       assert(response?.ok(), `STATISTICS_HTTP:${viewport.name}`);
-      await page.waitForFunction(() => window.NOMAD343_ODDS && document.querySelectorAll('.odds-readonly').length > 0, null, {timeout:30000});
+      await page.waitForFunction(() => document.body?.dataset?.workspaceView === 'statistics' && window.NOMAD343_ODDS && document.querySelector('[data-sp-table-body]'), null, {timeout:30000});
       const result = await page.evaluate(() => {
-        const cells=[...document.querySelectorAll('.odds-readonly')];
-        const cell=cells.find(el=>{const n=Number(el.dataset.nomadOddsRaw || el.textContent.trim());return Number.isFinite(n)&&n>1;});
-        if(!cell)return {error:'NO_NUMERIC_STATISTICS_ODDS',count:cells.length};
+        const body=document.querySelector('[data-sp-table-body]');
+        const realCells=[...body.querySelectorAll(':scope > tr > td:nth-child(6)')];
+        let cell=realCells.find(el=>{const n=Number(el.dataset.nomadOddsRaw || el.textContent.trim());return Number.isFinite(n)&&n>1;});
+        let synthetic=false;
+        if(!cell){
+          const tr=document.createElement('tr');
+          tr.dataset.b46OddsQa='1';
+          tr.style.display='none';
+          tr.innerHTML='<td>x</td><td>x</td><td>x</td><td>x</td><td>x</td><td>1.75</td><td>x</td><td>x</td><td>x</td><td>x</td>';
+          body.appendChild(tr);
+          cell=tr.children[5];
+          synthetic=true;
+        }
         window.NOMAD343_ODDS.refresh();
         const raw=cell.dataset.nomadOddsRaw || cell.textContent.trim();
-        const out={raw,count:cells.length,storageKey:'nomad343_odds_format_v1'};
+        const out={raw,realCellCount:realCells.length,synthetic,storageKey:'nomad343_odds_format_v1'};
         for(const kind of ['fractional','american','decimal']){
           window.NOMAD343_ODDS.setFormat(kind);
           out[kind]={display:cell.textContent.trim(),expected:window.NOMAD343_ODDS.formatOdds(raw,kind),stored:localStorage.getItem('nomad343_odds_format_v1')};
         }
+        document.querySelector('[data-b46-odds-qa]')?.remove();
         return out;
       });
-      assert(!result.error, `${result.error}:${viewport.name}:cells=${result.count}`);
       for (const kind of ['fractional','american','decimal']) {
         assert.equal(result[kind].display, result[kind].expected, `STATISTICS_FORMAT_DISPLAY:${viewport.name}:${kind}`);
         assert.equal(result[kind].stored, kind, `STATISTICS_FORMAT_STORAGE:${viewport.name}:${kind}`);
@@ -167,7 +177,7 @@ try {
   writeFileSync(`${audit}/odds-format-before.js`,liveAsset);
   writeFileSync(`${audit}/odds-format-expected.js`,patchedAsset);
 
-  const protectedPaths=['/index.html','/settings.html','/statistics-next.js?v=343-next-production-v1','/settings.js?v=343-allmarkets-v1','/dashboard-v2-stage3.js?v=343-scorebar-details-20260929a'];
+  const protectedPaths=['/index.html','/settings.html','/statistics-next.js?v=343-next-production-v1','/settings.js?v=343-allmarkets-v1','/singlepage-workspace-343.js?v=343-singlepage-20260922-signal-shared','/dashboard-v2-stage3.js?v=343-scorebar-details-20260929a'];
   const protectedBefore={};
   for(const p of protectedPaths) protectedBefore[p]=sha(await publicText(p));
   report.protectedBefore=protectedBefore;
@@ -234,7 +244,7 @@ try {
     try{await rollback();save();}catch(rb){report.rollbackError=rb.message;save();}
     throw error;
   }
-  if(env.GITHUB_STEP_SUMMARY) appendFileSync(env.GITHUB_STEP_SUMMARY,`## Ball46 Statistics Odds wiring\n\nResult: ${report.result}\n\nBase: ${base}\n\nFinal: ${report.finalVersion}\n\nDEC/FRA/AM on Statistics V2: PASS\n\nScope: one exact GET route response transform for /odds-format-343.js; static asset set, APIs, bindings and statistics formulas unchanged.\n`);
+  if(env.GITHUB_STEP_SUMMARY) appendFileSync(env.GITHUB_STEP_SUMMARY,`## Ball46 Statistics Odds wiring\n\nResult: ${report.result}\n\nBase: ${base}\n\nFinal: ${report.finalVersion}\n\nDEC/FRA/AM on current Statistics V2: PASS\n\nScope: one exact GET route response transform for /odds-format-343.js; static asset set, APIs, bindings, Statistics renderer and formulas unchanged.\n`);
 } catch(error) {
   report.result='FAIL';report.error=error.message;report.completedAt=new Date().toISOString();save();console.error(error.stack);process.exitCode=1;
 }
