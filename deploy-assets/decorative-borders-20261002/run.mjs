@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync, appendFileSync } from 'node:fs';
 import { parse as parseHtml } from 'parse5';
 import { chromium } from 'playwright';
-import { patch, constants, targets, sha, borderChecks, logoSelector, themeSelector, oddsButtonSelector, marker, themeMarker, themeScriptRoute } from './logo-size.mjs';
+import { patch, constants, targets, sha, borderChecks, cardSelectors } from './square-cards.mjs';
+import { logoSelector, themeSelector, oddsButtonSelector, marker, themeMarker } from './logo-size.mjs';
 
 const env = process.env;
 const origin = env.BALL46_URL || 'https://ball46.com';
@@ -16,7 +17,7 @@ const runTag = `${env.GITHUB_RUN_ID || 'local'}-${env.GITHUB_SHA || 'local'}`;
 const audit = 'audit';
 mkdirSync(`${audit}/screenshots`, { recursive: true });
 mkdirSync(`${audit}/css`, { recursive: true });
-const report = { runTag, startedAt: new Date().toISOString(), publish: env.DEPLOY_ENABLED === 'true', scope: env.MOBILE_CLOCK_DEDUP_QA === 'true' ? 'Remove only identical mobile clock copies; CSS, fonts, renderer and data logic unchanged' : 'ODDS and plain-text Light/Dark aligned below the logo; transparent controls with matching typography; existing handlers and main renderer protected' };
+const report = { runTag, startedAt: new Date().toISOString(), publish: env.DEPLOY_ENABLED === 'true', scope: 'Square main card corners only; dimensions, fonts, colors, controls, images, JavaScript and data logic unchanged' };
 const save = () => writeFileSync(`${audit}/report.json`, JSON.stringify(report, null, 2));
 const delay = ms => new Promise(r => setTimeout(r, ms));
 const canonical = value => JSON.stringify(value, (_, v) => v && typeof v === 'object' && !Array.isArray(v) ? Object.fromEntries(Object.entries(v).sort(([a], [b]) => a.localeCompare(b))) : v);
@@ -89,7 +90,7 @@ const pages = [
   ['about', '/about.html'],
 ];
 const auditPages = env.HEADER_ONLY_QA === 'true' ? pages.filter(([name]) => name === 'live') : pages;
-const geometrySelectors = '.workspace-scorebar-slot,.workspace-scorebar-grid,.workspace-scorebar-cell,.event-flow,.event-flow-line,.b46-signal-flow-line,.b46-signal-flow-line-chart,.b46-signal-flow-live-copy,.pitch,.timeline,.match-row.active,svg,path,line,canvas,input,select,button:not([data-theme-toggle]):not([data-odds-format-button])';
+const geometrySelectors = cardSelectors + ',.workspace-scorebar-slot,.workspace-scorebar-grid,.workspace-scorebar-cell,.event-flow,.event-flow-line,.b46-signal-flow-line,.b46-signal-flow-line-chart,.b46-signal-flow-live-copy,.pitch,.timeline,.match-row.active,svg,path,line,canvas,input,select,button:not([data-theme-toggle]):not([data-odds-format-button])';
 
 async function uiCheck(changes, phase) {
   const browser = await chromium.launch();
@@ -167,7 +168,7 @@ async function uiCheck(changes, phase) {
             text: document.querySelector('.workspace-scorebar-slot')?.textContent || '',
             geometry: [...document.querySelectorAll(selector)].map(e => {
               const r = e.getBoundingClientRect(), c = getComputedStyle(e);
-              return { cls: e.className, width: r.width, height: r.height, image: c.backgroundImage, surface: c.backgroundColor, color: c.color, shadow: c.boxShadow, outline: c.outline, outlineOffset: c.outlineOffset, stroke: c.stroke, strokeWidth: c.strokeWidth, fill: c.fill, leftBorder: mutableLeftBorders.some(s => e.matches(s)) ? 'approved-decoration' : c.borderLeftColor, borderWidths: [c.borderTopWidth, c.borderRightWidth, c.borderBottomWidth, c.borderLeftWidth] };
+              return { cls: e.className, width: r.width, height: r.height, image: c.backgroundImage, surface: c.backgroundColor, color: c.color, shadow: c.boxShadow, outline: c.outline, outlineOffset: c.outlineOffset, stroke: c.stroke, strokeWidth: c.strokeWidth, fill: c.fill, font: [c.fontFamily,c.fontSize,c.fontWeight,c.lineHeight,c.letterSpacing], leftBorder: mutableLeftBorders.some(s => e.matches(s)) ? 'approved-decoration' : c.borderLeftColor, borderWidths: [c.borderTopWidth, c.borderRightWidth, c.borderBottomWidth, c.borderLeftWidth] };
             }),
             scrollWidth: document.documentElement.scrollWidth,
           }), { selector: geometrySelectors, mutableLeftBorders });
@@ -208,6 +209,12 @@ async function uiCheck(changes, phase) {
           assert.equal(canonical(after.geometry), canonical(before.geometry), `PROTECTED_GEOMETRY_CHANGED:${key}`);
           assert(after.scrollWidth <= before.scrollWidth + 1, `NEW_HORIZONTAL_OVERFLOW:${key}`);
           const logoAfter = await sampleLogo();
+          const cardCorners = await page.locator(cardSelectors).evaluateAll(es => es.filter(e => e.getBoundingClientRect().width > 0 && e.getBoundingClientRect().height > 0).map(e => {
+            const css = getComputedStyle(e);
+            return { cls: e.className, corners: [css.borderTopLeftRadius,css.borderTopRightRadius,css.borderBottomRightRadius,css.borderBottomLeftRadius] };
+          }));
+          assert(cardCorners.length > 0, `NO_MAIN_CARDS_TO_VERIFY:${key}`);
+          assert(cardCorners.every(card => card.corners.every(radius => radius === '0px')), `MAIN_CARD_CORNER_NOT_SQUARE:${key}`);
           await page.screenshot({ path: `${audit}/screenshots/${key}-after.png` });
           if (['live', 'signal', 'statistics'].includes(name)) {
             assert(logoBefore && logoAfter, `HEADER_LOGO_MISSING:${key}`);
@@ -304,7 +311,7 @@ async function uiCheck(changes, phase) {
                 const copies = [...row.querySelectorAll('.score-cell>small:not(.half-score),.mobile-clock,.mobile-signal')].filter(e => e.getBoundingClientRect().width > 0 && e.getBoundingClientRect().height > 0 && e.textContent.trim() === clock).length;
                 return { clock, copies };
               }).filter(row => /^LIVE\s*\u00b7/.test(row.clock || '')));
-              assert(mobileClockChecks.length > 0, `NO_MOBILE_LIVE_CLOCK_TO_VERIFY:${key}`);
+              if (name === 'live') assert(mobileClockChecks.length > 0, `NO_MOBILE_LIVE_CLOCK_TO_VERIFY:${key}`);
               assert(mobileClockChecks.every(row => row.copies === 1), `DUPLICATE_VISIBLE_MOBILE_CLOCK:${key}`);
             }
           }
@@ -351,7 +358,7 @@ async function uiCheck(changes, phase) {
             await page.screenshot({ path: `${audit}/screenshots/${key}-footer.png` });
           }
           assert.equal(errors.length, 0, `UI_PAGE_ERRORS:${key}:${errors.join(';')}`);
-          rows.push({ name, size, theme, actualView: await page.evaluate(() => document.body.dataset.workspaceView || document.body.dataset.page || 'information'), effectiveTheme: await page.evaluate(() => document.documentElement.dataset.theme || 'fixed-theme'), geometryUnchanged: true, decorativeLinesRemoved: true, logoBefore, logoAfter, clocks, mobileClockChecks, matchRows: await page.locator('.match-row').count(), frames, decoration, images, backgrounds, pageErrors: errors });
+          rows.push({ name, size, theme, actualView: await page.evaluate(() => document.body.dataset.workspaceView || document.body.dataset.page || 'information'), effectiveTheme: await page.evaluate(() => document.documentElement.dataset.theme || 'fixed-theme'), geometryUnchanged: true, decorativeLinesRemoved: true, cardCorners, logoBefore, logoAfter, clocks, mobileClockChecks, matchRows: await page.locator('.match-row').count(), frames, decoration, images, backgrounds, pageErrors: errors });
           page.off('pageerror', listener);
         }
         await context.close();
@@ -396,9 +403,8 @@ try {
   const main = original.modules.find(m => m.name === original.main_module);
   assert(main, 'MAIN_MODULE_NOT_FOUND');
   const source = Buffer.from(main.content_base64, 'base64').toString('utf8');
-  const themeScript = (await publicFile(themeScriptRoute, 'javascript')).toString('utf8');
-  const result = patch(source, { themeScript });
-  if (env.MOBILE_CLOCK_DEDUP_QA === 'true') assert(result.changes.filter(change => change.type === 'css').every(change => change.beforeSha === change.afterSha), 'CSS_CHANGED_DURING_MOBILE_CLOCK_FIX');
+  const result = patch(source);
+  assert(result.changes.every(change => change.type === 'css' && (change.after === change.before || change.after === change.before + change.css)), 'NON_ADDITIVE_CARD_CSS_CHANGE');
   const bg = constants(source).get('__B46_SCOREBAR_BG_B64__')?.value;
   assert(bg && Object.keys(bg).length, 'SCOREBAR_IMAGES_MISSING');
   const states = ['win', 'loss', 'draw', 'pending'];
@@ -485,7 +491,7 @@ try {
   }
   report.completedAt = new Date().toISOString();
   save();
-  if (env.GITHUB_STEP_SUMMARY) appendFileSync(env.GITHUB_STEP_SUMMARY, `## Ball46 compact transparent theme control\n\nResult: ${report.result}\n\nBase: ${base}\n\nFinal: ${report.finalVersion}\n\nScope: ${report.scope}.\n`);
+  if (env.GITHUB_STEP_SUMMARY) appendFileSync(env.GITHUB_STEP_SUMMARY, `## Ball46 square main cards\n\nResult: ${report.result}\n\nBase: ${base}\n\nFinal: ${report.finalVersion}\n\nScope: ${report.scope}.\n`);
   console.log(report.result);
 } catch (error) {
   report.result = 'FAIL';

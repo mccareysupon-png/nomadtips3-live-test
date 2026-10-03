@@ -6,8 +6,36 @@ import { patch, normalize, targets, marker, validateAppendix, borderChecks, cons
 import { runInNewContext } from 'node:vm';
 import { patch as patchClock, normalize as normalizeClock, patchClockScript, originalClockScript, painter, clockCss, borderChecks as clockChecks } from './live-clock.mjs';
 import { patch as patchLogo, normalize as normalizeTheme, originalThemeScript, themeLabels, dedupeMobileClocks, mobileClockDedupe, logoCss, themeCss, marker as logoMarker, themeMarker, logoSelector, themeSelector, oddsButtonSelector, borderChecks as logoChecks } from './logo-size.mjs';
+import { patch as patchSquare, targets as squareTargets, borderChecks as squareChecks, marker as squareMarker } from './square-cards.mjs';
 
 const fixture = targets.map(t => `const ${t.name}=${JSON.stringify('.fixture{border:1px solid #333}')};`).join('\n') + '\nconst __B46_SCOREBAR_BG_B64__={"/scorebar-win-test.webp":"aW1hZ2U="};\nexport default {fetch(){return new Response("unchanged");}};';
+
+test('square cards append only zero-radius CSS while preserving scripts, images and backend code', () => {
+  const current = patch(fixture).after + '\nconst __B46_THEME_TOOLBAR_JS__="existing theme and mobile clock script";';
+  const result = patchSquare(current);
+  assert.equal(normalize(result.after), normalize(current));
+  assert.equal(result.changes.length, 2);
+  for (const change of result.changes) {
+    assert.equal(change.after, change.before + change.css);
+    assert(change.css.includes(squareMarker));
+  }
+  assert.equal(patchSquare(result.after).after, result.after);
+  assert(result.after.includes('existing theme and mobile clock script'));
+  assert(result.after.includes('aW1hZ2U='));
+});
+
+test('square cards cannot change fonts, layout, controls, graphics or other CSS', () => {
+  for (const target of squareTargets) {
+    squareChecks(target.css);
+    for (const property of ['font-size','padding','width','background','border-width','stroke','outline']) {
+      assert.throws(() => squareChecks(target.css.replace('border-radius', property)), /NON_RADIUS_PROPERTY/);
+    }
+    assert.throws(() => squareChecks(target.css.replace('0 !important', '8px !important')), /NOT_ZERO/);
+    assert.throws(() => squareChecks(target.css.replace(' !important', '')), /IMPORTANT_REQUIRED/);
+    assert.throws(() => squareChecks(target.css.replace(target.selector, 'button,input,svg')), /SELECTOR_CHANGED/);
+  }
+  assert.throws(() => patchSquare(patchSquare(fixture).after.replace(squareMarker, squareMarker + '_changed')), /EXISTING_SQUARE_CARD_PATCH_DIFFERS/);
+});
 
 test('patch is additive and leaves every non-CSS byte unchanged', () => {
   const result = patch(fixture);

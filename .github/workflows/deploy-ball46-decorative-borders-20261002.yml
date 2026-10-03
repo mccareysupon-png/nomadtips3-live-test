@@ -21,9 +21,10 @@ env:
   SCRIPT_NAME: ball46-production
   BALL46_URL: https://ball46.com
   DEPLOY_ENABLED: 'true'
-  HEADER_ONLY_QA: 'true'
+  HEADER_ONLY_QA: 'false'
   MOBILE_CLOCK_DEDUP_QA: 'true'
-  EXPECTED_BASE_VERSION: '5173cb28-c3fa-43fd-b3b8-d03f99e5e6d9'
+  SQUARE_CARDS_QA: 'true'
+  EXPECTED_BASE_VERSION: '4af693fb-77ce-4894-95f1-806f034e71c9'
 
 jobs:
   guarded-css:
@@ -45,7 +46,7 @@ jobs:
       - name: Install Chromium for responsive verification
         working-directory: deploy-assets/decorative-borders-20261002
         run: npx playwright install --with-deps chromium
-      - name: Exact Active Production theme-control preview and guarded publish
+      - name: Exact Active Production square-card preview and guarded publish
         working-directory: deploy-assets/decorative-borders-20261002
         run: node run.mjs
       - name: Retain verification evidence
