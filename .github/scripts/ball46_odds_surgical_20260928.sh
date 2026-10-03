@@ -10,4 +10,8 @@ test -n "$PLAYWRIGHT_EXECUTABLE_PATH" || { echo CURRENT_RAIL_CHROME_MISSING; exi
 npm ci --ignore-scripts --no-audit --no-fund
 node scout.mjs
 npm test
-node run.mjs
+if test -f verify-published.json; then
+  node verify-published.mjs
+else
+  node run.mjs
+fi
