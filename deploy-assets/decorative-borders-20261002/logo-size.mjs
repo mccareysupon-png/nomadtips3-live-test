@@ -176,6 +176,28 @@ export const themeLabels = `
   else mount();
 })();
 `;
+const dedupeMarker = 'B46_MOBILE_CLOCK_DEDUP_20261003';
+export function dedupeMobileClocks(root) {
+  root.querySelectorAll('.workspace.singlepage .match-row .mobile-signal').forEach(status => {
+    const clock = status.parentElement?.querySelector('.mobile-clock');
+    const text = clock?.textContent.trim();
+    if (text && status.textContent.trim() === text) status.remove();
+  });
+}
+export const mobileClockDedupe = `
+/* ${dedupeMarker}: remove only the redundant mobile copy of the same clock */
+(function(){
+  ${dedupeMobileClocks.toString()}
+  function mount(){
+    const sync=()=>dedupeMobileClocks(document);
+    const observer=new MutationObserver(sync);
+    observer.observe(document.body,{childList:true,subtree:true,characterData:true});
+    sync();
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount,{once:true});
+  else mount();
+})();
+`;
 export const targets = [
   { name: '__B46_SCOREBAR_TUNE_CSS__', route: '/dashboard-v2-tune.css', css: themeCss, type: 'css' },
   { name: themeScriptName, route: themeScriptRoute, type: 'javascript' },
@@ -204,6 +226,10 @@ export function constants(source) {
 }
 
 export function originalThemeScript(script) {
+  if (script.includes(dedupeMarker)) {
+    assert(script.endsWith(mobileClockDedupe), 'EXISTING_MOBILE_CLOCK_DEDUPE_DIFFERS');
+    script = script.slice(0, -mobileClockDedupe.length);
+  }
   if (!script.includes(labelMarker)) return script;
   const previousAsyncLabels = themeLabels.replace(JSON.stringify(themeCss), JSON.stringify(enlargedThemeCss));
   const suffix = [themeLabels, legacyThemeLabels, previousAsyncLabels].find(value => script.endsWith(value));
@@ -277,7 +303,7 @@ export function patch(source, { themeScript }) {
   const cssAfter = beforeTheme + themeCss;
   const originalScript = originalThemeScript(themeScript);
   parse(originalScript, { ecmaVersion: 'latest' });
-  const scriptAfter = originalScript + themeLabels;
+  const scriptAfter = originalScript + themeLabels + mobileClockDedupe;
   parse(scriptAfter, { ecmaVersion: 'latest' });
   assert.equal(originalThemeScript(scriptAfter), originalScript, 'THEME_SCRIPT_PREFIX_CHANGED');
   const existingScript = c.get(themeScriptName);

@@ -16,7 +16,7 @@ const runTag = `${env.GITHUB_RUN_ID || 'local'}-${env.GITHUB_SHA || 'local'}`;
 const audit = 'audit';
 mkdirSync(`${audit}/screenshots`, { recursive: true });
 mkdirSync(`${audit}/css`, { recursive: true });
-const report = { runTag, startedAt: new Date().toISOString(), publish: env.DEPLOY_ENABLED === 'true', scope: 'ODDS and plain-text Light/Dark aligned below the logo; transparent controls with matching typography; existing handlers and main renderer protected' };
+const report = { runTag, startedAt: new Date().toISOString(), publish: env.DEPLOY_ENABLED === 'true', scope: env.MOBILE_CLOCK_DEDUP_QA === 'true' ? 'Remove only identical mobile clock copies; CSS, fonts, renderer and data logic unchanged' : 'ODDS and plain-text Light/Dark aligned below the logo; transparent controls with matching typography; existing handlers and main renderer protected' };
 const save = () => writeFileSync(`${audit}/report.json`, JSON.stringify(report, null, 2));
 const delay = ms => new Promise(r => setTimeout(r, ms));
 const canonical = value => JSON.stringify(value, (_, v) => v && typeof v === 'object' && !Array.isArray(v) ? Object.fromEntries(Object.entries(v).sort(([a], [b]) => a.localeCompare(b))) : v);
@@ -289,6 +289,7 @@ async function uiCheck(changes, phase) {
             assert(!focus.outline.includes('none') && !focus.outline.includes('0px'), `THEME_BUTTON_FOCUS_MISSING:${key}`);
           }
           let clocks = [];
+          let mobileClockChecks = [];
           if (['live', 'signal'].includes(name)) {
             await page.waitForFunction(() => [...document.querySelectorAll('.match-row .score-cell>small:not(.half-score),.match-row .mobile-clock,.match-row .mobile-signal')].filter(e => /^LIVE\s*\u00b7/.test(e.textContent)).every(e => e.querySelector('.b46-clock-live-label')), null, { timeout: 10000 });
             clocks = await page.locator('.match-row .b46-clock-live-label,.match-row .b46-clock-minute').evaluateAll(es => es.map(e => ({ text: e.textContent, cls: e.className, color: getComputedStyle(e).color, visible: e.getBoundingClientRect().width > 0 && e.getBoundingClientRect().height > 0 })));
@@ -297,6 +298,15 @@ async function uiCheck(changes, phase) {
             for (const clock of clocks) assert.equal(clock.color, clock.cls === 'b46-clock-live-label' ? labelColor : minuteColor, `CLOCK_COLOR_WRONG:${key}:${clock.text}`);
             if (name === 'live') assert(clocks.some(c => c.visible && c.text === 'LIVE'), `VISIBLE_LIVE_LABEL_MISSING:${key}`);
             if (name === 'live') assert(clocks.some(c => c.visible && c.cls === 'b46-clock-minute'), `VISIBLE_MATCH_MINUTE_MISSING:${key}`);
+            if (env.MOBILE_CLOCK_DEDUP_QA === 'true' && width <= 760) {
+              mobileClockChecks = await page.evaluate(() => [...document.querySelectorAll('.match-row')].filter(row => row.getBoundingClientRect().width > 0).map(row => {
+                const clock = row.querySelector('.mobile-clock')?.textContent.trim();
+                const copies = [...row.querySelectorAll('.score-cell>small:not(.half-score),.mobile-clock,.mobile-signal')].filter(e => e.getBoundingClientRect().width > 0 && e.getBoundingClientRect().height > 0 && e.textContent.trim() === clock).length;
+                return { clock, copies };
+              }).filter(row => /^LIVE\s*\u00b7/.test(row.clock || '')));
+              assert(mobileClockChecks.length > 0, `NO_MOBILE_LIVE_CLOCK_TO_VERIFY:${key}`);
+              assert(mobileClockChecks.every(row => row.copies === 1), `DUPLICATE_VISIBLE_MOBILE_CLOCK:${key}`);
+            }
           }
           const frames = await page.locator('.rail-card:not(.workspace-scorebar-slot),.side-card:not(.workspace-scorebar-slot),.status-section,.workspace-stable-head,.sp-stat-hero,.sp-kpis,.sp-trend,.sp-filters,.sp-results,.hero-card,.article,.card').evaluateAll(es => es.filter(e => e.getBoundingClientRect().width > 0).map(e => ({ cls: e.className, border: getComputedStyle(e).borderTopColor })));
           if (name !== 'settings') {
@@ -341,7 +351,7 @@ async function uiCheck(changes, phase) {
             await page.screenshot({ path: `${audit}/screenshots/${key}-footer.png` });
           }
           assert.equal(errors.length, 0, `UI_PAGE_ERRORS:${key}:${errors.join(';')}`);
-          rows.push({ name, size, theme, actualView: await page.evaluate(() => document.body.dataset.workspaceView || document.body.dataset.page || 'information'), effectiveTheme: await page.evaluate(() => document.documentElement.dataset.theme || 'fixed-theme'), geometryUnchanged: true, decorativeLinesRemoved: true, logoBefore, logoAfter, clocks, matchRows: await page.locator('.match-row').count(), frames, decoration, images, backgrounds, pageErrors: errors });
+          rows.push({ name, size, theme, actualView: await page.evaluate(() => document.body.dataset.workspaceView || document.body.dataset.page || 'information'), effectiveTheme: await page.evaluate(() => document.documentElement.dataset.theme || 'fixed-theme'), geometryUnchanged: true, decorativeLinesRemoved: true, logoBefore, logoAfter, clocks, mobileClockChecks, matchRows: await page.locator('.match-row').count(), frames, decoration, images, backgrounds, pageErrors: errors });
           page.off('pageerror', listener);
         }
         await context.close();
@@ -388,6 +398,7 @@ try {
   const source = Buffer.from(main.content_base64, 'base64').toString('utf8');
   const themeScript = (await publicFile(themeScriptRoute, 'javascript')).toString('utf8');
   const result = patch(source, { themeScript });
+  if (env.MOBILE_CLOCK_DEDUP_QA === 'true') assert(result.changes.filter(change => change.type === 'css').every(change => change.beforeSha === change.afterSha), 'CSS_CHANGED_DURING_MOBILE_CLOCK_FIX');
   const bg = constants(source).get('__B46_SCOREBAR_BG_B64__')?.value;
   assert(bg && Object.keys(bg).length, 'SCOREBAR_IMAGES_MISSING');
   const states = ['win', 'loss', 'draw', 'pending'];

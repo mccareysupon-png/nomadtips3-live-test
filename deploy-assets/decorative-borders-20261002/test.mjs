@@ -5,7 +5,7 @@ import YAML from 'yaml';
 import { patch, normalize, targets, marker, validateAppendix, borderChecks, constants } from './patch.mjs';
 import { runInNewContext } from 'node:vm';
 import { patch as patchClock, normalize as normalizeClock, patchClockScript, originalClockScript, painter, clockCss, borderChecks as clockChecks } from './live-clock.mjs';
-import { patch as patchLogo, normalize as normalizeTheme, originalThemeScript, themeLabels, logoCss, themeCss, marker as logoMarker, themeMarker, logoSelector, themeSelector, oddsButtonSelector, borderChecks as logoChecks } from './logo-size.mjs';
+import { patch as patchLogo, normalize as normalizeTheme, originalThemeScript, themeLabels, dedupeMobileClocks, mobileClockDedupe, logoCss, themeCss, marker as logoMarker, themeMarker, logoSelector, themeSelector, oddsButtonSelector, borderChecks as logoChecks } from './logo-size.mjs';
 
 const fixture = targets.map(t => `const ${t.name}=${JSON.stringify('.fixture{border:1px solid #333}')};`).join('\n') + '\nconst __B46_SCOREBAR_BG_B64__={"/scorebar-win-test.webp":"aW1hZ2U="};\nexport default {fetch(){return new Response("unchanged");}};';
 
@@ -180,4 +180,37 @@ test('toolbar handles a late-created or replaced header button', () => {
   assert.equal(moves, 2);
   update();
   assert.equal(moves, 2);
+});
+
+test('mobile clock cleanup removes only an identical time and preserves distinct signal text', () => {
+  for (const [clock, status, duplicate] of [
+    ["LIVE \u00b7 78'", "LIVE \u00b7 78'", true],
+    ["LIVE \u00b7 90+4'", " LIVE \u00b7 90+4' ", true],
+    ['LIVE \u00b7 HT', 'LIVE \u00b7 HT', true],
+    ['19:00', '19:00', true],
+    ["LIVE \u00b7 78'", 'OVER 2.5 @ 1.90', false],
+    ["LIVE \u00b7 78'", 'WATCH', false],
+    ['', '', false],
+  ]) {
+    let removed = 0;
+    const node = { textContent: status, parentElement: { querySelector: () => ({ textContent: clock }) }, remove() { removed++; } };
+    const root = { querySelectorAll(selector) { assert.equal(selector, '.workspace.singlepage .match-row .mobile-signal'); return removed ? [] : [node]; } };
+    dedupeMobileClocks(root);
+    dedupeMobileClocks(root);
+    assert.equal(removed, duplicate ? 1 : 0);
+  }
+});
+
+test('mobile clock cleanup handles rows added after initialization and each live refresh', () => {
+  let nodes = [], sync, removed = 0;
+  const document = { readyState: 'complete', body: {}, querySelectorAll: () => nodes };
+  runInNewContext(mobileClockDedupe, { document, MutationObserver: class { constructor(callback) { sync = callback; } observe(options, config) { assert.equal(config.characterData, true); } } });
+  for (const minute of [78, 79]) {
+    const text = `LIVE \u00b7 ${minute}'`;
+    const node = { textContent: text, parentElement: { querySelector: () => ({ textContent: text }) }, remove() { nodes = []; removed++; } };
+    nodes = [node];
+    sync();
+    sync();
+    assert.equal(removed, minute - 77);
+  }
 });
