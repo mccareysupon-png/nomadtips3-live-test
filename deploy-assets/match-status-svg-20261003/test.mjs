@@ -6,7 +6,8 @@ import YAML from 'yaml';
 import { icons, iconUri } from './icons.mjs';
 import { patch, normalize, statusCss, validateCss, marker, obsoleteImport, removeObsoleteImport } from './patch.mjs';
 import { isTelemetryCancellation, isControlledCancellation, isSnapshotCancellation } from './qa.mjs';
-import { rail, configFromCurrent } from './rail.mjs';
+import { rail, configFromCurrent, verifyPublishedModules } from './rail.mjs';
+import { sha } from './production.mjs';
 
 test('six authored sports SVGs share one viewBox and stroke weight, with no raster, scripts or external references', () => {
   assert.deepEqual(Object.keys(icons), ['all','live','signal','scheduled','unknown','finished']);
@@ -92,6 +93,20 @@ test('the confirmed Wrangler rail derives its config from current metadata, neve
   assert.equal(config.assets.directory, '/current/assets');
   assert.equal(config.assets.run_worker_first, true);
   assert.throws(() => configFromCurrent({ ...version, bindings: [...version.bindings, { name: 'OTHER', type: 'kv_namespace' }] }, {}, [], '/assets'), /UNSUPPORTED_CURRENT_BINDING/);
+});
+
+test('Wrangler may attach only byte-identical original HTML text; changed code or unapproved modules still fail', () => {
+  const module = (name, content, content_type) => ({ name, content_base64: Buffer.from(content).toString('base64'), content_type });
+  const original = { main_module: 'index.js', modules: [module('index.js', 'original CSS', 'application/javascript+module')] };
+  const main = module('index.js', 'approved CSS', 'application/javascript+module');
+  const text = module('assets/index.html', '<html>original</html>', 'text/plain');
+  const current = { main_module: 'index.js', modules: [main, text] };
+  const protectedFiles = { '/index.html': sha('<html>original</html>') };
+  assert.equal(verifyPublishedModules(current, original, 'approved CSS', protectedFiles).length, 1);
+  assert.throws(() => verifyPublishedModules({ ...current, modules: [module('index.js', 'changed logic', main.content_type), text] }, original, 'approved CSS', protectedFiles), /ORIGINAL_MODULE_DIFFERENT/);
+  assert.throws(() => verifyPublishedModules({ ...current, modules: [main, { ...text, content_type: main.content_type }] }, original, 'approved CSS', protectedFiles), /ADDITIONAL_EXECUTABLE_MODULE/);
+  assert.throws(() => verifyPublishedModules({ ...current, modules: [main, module('assets/index.html', 'changed HTML', 'text/plain')] }, original, 'approved CSS', protectedFiles), /TEXT_MODULE_BYTES_CHANGED/);
+  assert.throws(() => verifyPublishedModules({ ...current, modules: [main, { ...text, name: 'assets/new.html' }] }, original, 'approved CSS', protectedFiles), /NOT_IN_ORIGINAL_PRODUCTION/);
 });
 
 test('QA tolerates only canceled same-origin Cloudflare RUM, not API or asset failures', () => {

@@ -6,7 +6,7 @@ import { inspect, activeVersion, getVersion, api, script, origin, sha, canonical
 import { patch, route as cssRoute, obsoleteRoutes } from './patch.mjs';
 import { icons } from './icons.mjs';
 import { uiCheck } from './qa.mjs';
-import { rail, schedules, stageCurrentRail, verifyRailBase, wrangler } from './rail.mjs';
+import { rail, schedules, stageCurrentRail, verifyRailBase, wrangler, verifyPublishedModules } from './rail.mjs';
 
 const reviewed = JSON.parse(readFileSync('base.json', 'utf8'));
 const deploy = process.env.DEPLOY_ENABLED === 'true';
@@ -65,10 +65,13 @@ function scorebarImages(source) {
   return images;
 }
 
-let base, expectedManifest, mainModule;
+let base, expectedManifest, mainModule, originalVersion, expectedSource, originalProtectedFiles;
 async function owned(version) {
   const candidate = await getVersion(version);
-  return candidate.main_module === mainModule && canonical(manifest(candidate)) === canonical(expectedManifest);
+  try {
+    verifyPublishedModules(candidate, originalVersion, expectedSource, originalProtectedFiles);
+    return true;
+  } catch { return false; }
 }
 
 async function rollback() {
@@ -133,6 +136,9 @@ try {
   report.protectedFiles = Object.fromEntries(protectedFiles);
   report.currentRailAssets = staged.hashes;
   report.cronsBefore = cronsBefore;
+  originalVersion = version;
+  expectedSource = result.after;
+  originalProtectedFiles = Object.fromEntries(protectedFiles);
   wrangler(staged, true);
   save();
   await uiCheck({ ...result, phase: 'preview' });

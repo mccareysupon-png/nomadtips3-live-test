@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { api, script, directOrigin, publicFile, sha, canonical } from './production.mjs';
+import { api, script, directOrigin, publicFile, sha, canonical, manifest } from './production.mjs';
 
 export const rail = {
   proofRun: 36360390676,
@@ -10,6 +10,22 @@ export const rail = {
   branch: 'ops/ball46-odds-surgical-20260928',
   wrangler: '4.92.0',
 };
+
+export function verifyPublishedModules(current, original, patchedSource, protectedFiles) {
+  assert.equal(current.main_module, original.main_module, 'PUBLISHED_MAIN_MODULE_CHANGED');
+  const expected = new Map(manifest(original).map(module => [module.name, { ...module, ...(module.name === original.main_module ? { sha: sha(patchedSource) } : {}) }]));
+  const actual = manifest(current);
+  for (const [name, module] of expected) assert.equal(canonical(actual.find(entry => entry.name === name)), canonical(module), `PUBLISHED_ORIGINAL_MODULE_DIFFERENT:${name}`);
+  const attached = actual.filter(module => !expected.has(module.name));
+  for (const module of attached) {
+    assert.equal(module.type, 'text/plain', `UNAPPROVED_ADDITIONAL_EXECUTABLE_MODULE:${module.name}`);
+    assert(/^assets\/(?:[a-zA-Z0-9_-]+\.html|robots\.txt)$/.test(module.name), `UNAPPROVED_ADDITIONAL_MODULE_PATH:${module.name}`);
+    const path = '/' + module.name.slice('assets/'.length);
+    assert(protectedFiles[path], `ADDITIONAL_MODULE_NOT_IN_ORIGINAL_PRODUCTION:${path}`);
+    assert.equal(module.sha, protectedFiles[path], `ADDITIONAL_TEXT_MODULE_BYTES_CHANGED:${path}`);
+  }
+  return attached;
+}
 
 export async function schedules() {
   const result = await api(`/scripts/${script}/schedules`);

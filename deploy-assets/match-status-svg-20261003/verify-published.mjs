@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, writeFileSync, mkdirSync, appendFileSync } from 'node:fs';
 import { inspect, activeVersion, getVersion, api, script, sha, canonical, manifest, publicFile, backend } from './production.mjs';
 import { patch, normalize, route, obsoleteImport } from './patch.mjs';
-import { rail, schedules } from './rail.mjs';
+import { rail, schedules, verifyPublishedModules } from './rail.mjs';
 import { uiCheck } from './qa.mjs';
 import { icons } from './icons.mjs';
 
@@ -35,7 +35,7 @@ try {
   console.log('PUBLISHED_MODULE_COMPARISON=' + JSON.stringify({ expectedMainModule: report.expectedMainModule, actualMainModule: report.actualMainModule, modules: report.actualModules, expectedSha: report.expectedMainModuleSha, ...report.sourceComparison }));
   save();
   assert.equal(current.version.main_module, original.main_module, 'PUBLISHED_MAIN_MODULE_NAME_CHANGED_STOP');
-  assert.equal(current.version.modules.length, original.modules.length, 'PUBLISHED_MODULE_COUNT_CHANGED_STOP');
+  report.attachedOriginalTextModules = verifyPublishedModules(current.version, original, result.after, published.protectedFiles);
   assert.equal(current.source, result.after, 'PUBLISHED_MODULE_BYTES_DIFFER_STOP');
   assert.equal(normalize(current.source), normalize(originalSource), 'PUBLISHED_NON_CSS_WORKER_BYTES_DIFFER_STOP');
   assert.equal(sha(await publicFile(route, 'css')), published.css.afterSha, 'PUBLISHED_CSS_BYTES_DIFFER_STOP');
