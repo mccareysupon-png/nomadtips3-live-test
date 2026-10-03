@@ -50,14 +50,23 @@ function excerpts(text, terms) {
   const rows = text.split(/\r?\n/);
   const out = [];
   for (let i = 0; i < rows.length; i++) {
-    if (terms.some(re => re.test(rows[i]))) {
-      out.push({ line: i + 1, text: rows[i].slice(0, 1600) });
-    }
+    if (terms.some(re => re.test(rows[i]))) out.push({ line: i + 1, text: rows[i].slice(0, 1600) });
   }
   return out.slice(0, 500);
 }
 
 const versionId = await activeVersion();
+const version = await cf(`/workers/${script}/versions/${versionId}?include=modules`);
+assert(version?.main_module && Array.isArray(version.modules), 'ACTIVE_MODULES_MISSING');
+const mainModule = version.modules.find(m => m.name === version.main_module);
+assert(mainModule?.content_base64, 'MAIN_MODULE_CONTENT_MISSING');
+const mainSource = Buffer.from(mainModule.content_base64, 'base64').toString('utf8');
+const sourceMarker = "343-odds-format-v4-topbar-fixed";
+const markerAt = mainSource.indexOf(sourceMarker);
+assert(markerAt >= 0, 'ODDS_FORMAT_SOURCE_MARKER_MISSING');
+const sourceContext = mainSource.slice(Math.max(0, markerAt - 5000), Math.min(mainSource.length, markerAt + 22000));
+writeFileSync(`${auditDir}/odds-format-worker-context.txt`, sourceContext);
+
 const requested = [
   '/settings.html',
   '/index.html?view=statistics',
@@ -86,18 +95,21 @@ const terms = [
   /addEventListener/i, /filter/i, /market/i, /source/i, /refresh/i, /render/i,
 ];
 const files = [];
-for (const [path, text] of texts) {
-  files.push({ path, bytes: Buffer.byteLength(text), excerpts: excerpts(text, terms) });
-}
+for (const [path, text] of texts) files.push({ path, bytes: Buffer.byteLength(text), excerpts: excerpts(text, terms) });
 const report = {
   generatedAt: new Date().toISOString(),
   scope: 'READ-ONLY audit of current Ball46 Production Odds Settings -> Statistics wiring. No mutation and no deploy.',
   worker: script,
   activeProductionVersion: versionId,
+  mainModule: version.main_module,
+  mainModuleBytes: Buffer.byteLength(mainSource),
+  sourceMarker,
+  sourceMarkerOffset: markerAt,
   requested,
   files,
 };
 writeFileSync(`${auditDir}/report.json`, JSON.stringify(report, null, 2));
 console.log(`ACTIVE_PRODUCTION_VERSION=${versionId}`);
+console.log(`MAIN_MODULE=${version.main_module} markerOffset=${markerAt}`);
 console.log(`AUDITED_FILES=${files.length}`);
 for (const file of files) console.log(`${file.path} bytes=${file.bytes} hits=${file.excerpts.length}`);
