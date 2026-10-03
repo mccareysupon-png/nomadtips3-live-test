@@ -207,6 +207,7 @@ async function uiCheck(changes, phase) {
           assert.equal(canonical(after.geometry), canonical(before.geometry), `PROTECTED_GEOMETRY_CHANGED:${key}`);
           assert(after.scrollWidth <= before.scrollWidth + 1, `NEW_HORIZONTAL_OVERFLOW:${key}`);
           const logoAfter = await sampleLogo();
+          await page.screenshot({ path: `${audit}/screenshots/${key}-after.png` });
           if (['live', 'signal', 'statistics'].includes(name)) {
             assert(logoBefore && logoAfter, `HEADER_LOGO_MISSING:${key}`);
             assert.equal(logoAfter.text, 'ball46', `HEADER_LOGO_TEXT_CHANGED:${key}`);
@@ -230,7 +231,7 @@ async function uiCheck(changes, phase) {
               const e = document.querySelector(selector);
               if (!e) return null;
               const r = e.getBoundingClientRect(), c = getComputedStyle(e);
-              return { text: e.textContent, aria: e.getAttribute('aria-label'), width: r.width, height: r.height, x: r.x, y: r.y, font: c.font, letterSpacing: c.letterSpacing, color: c.color, borderRadius: c.borderRadius, background: c.backgroundColor, shadow: c.boxShadow, outline: c.outline, cursor: c.cursor };
+              return { text: e.textContent, aria: e.getAttribute('aria-label'), width: r.width, height: r.height, x: r.x, y: r.y, typography: { family: c.fontFamily, size: c.fontSize, weight: c.fontWeight, style: c.fontStyle, lineHeight: c.lineHeight }, letterSpacing: c.letterSpacing, color: c.color, borderRadius: c.borderRadius, background: c.backgroundColor, shadow: c.boxShadow, outline: c.outline, cursor: c.cursor };
             }, themeSelector);
             assert(themeButton, `THEME_BUTTON_MISSING:${key}`);
             assert(Math.abs(themeButton.width - 48) < 1 && Math.abs(themeButton.height - 28) < 1, `THEME_BUTTON_NOT_COMPACT_SIZE:${key}`);
@@ -243,11 +244,11 @@ async function uiCheck(changes, phase) {
               const e = document.querySelector(selector);
               if (!e) return null;
               const r = e.getBoundingClientRect(), c = getComputedStyle(e);
-              return { text: e.textContent, x: r.x, y: r.y, width: r.width, height: r.height, font: c.font, letterSpacing: c.letterSpacing, color: c.color, background: c.backgroundColor };
+              return { text: e.textContent, x: r.x, y: r.y, width: r.width, height: r.height, typography: { family: c.fontFamily, size: c.fontSize, weight: c.fontWeight, style: c.fontStyle, lineHeight: c.lineHeight }, letterSpacing: c.letterSpacing, color: c.color, background: c.backgroundColor };
             }, oddsButtonSelector);
             assert(oddsButton, `ODDS_BUTTON_MISSING:${key}`);
             assert(Math.abs(oddsButton.y - themeButton.y) < 1 && Math.abs(oddsButton.height - themeButton.height) < 1, `TOOLBAR_NOT_ALIGNED:${key}`);
-            assert.equal(oddsButton.font, themeButton.font, `TOOLBAR_FONT_MISMATCH:${key}`);
+            assert.equal(canonical(oddsButton.typography), canonical(themeButton.typography), `TOOLBAR_FONT_MISMATCH:${key}`);
             assert(['normal', '0px'].includes(oddsButton.letterSpacing), `ODDS_LETTER_SPACING_NOT_ZERO:${key}`);
             assert.equal(oddsButton.letterSpacing, themeButton.letterSpacing, `TOOLBAR_LETTER_SPACING_MISMATCH:${key}`);
             assert.equal(oddsButton.background, 'rgba(0, 0, 0, 0)', `ODDS_BUTTON_NOT_TRANSPARENT:${key}`);
