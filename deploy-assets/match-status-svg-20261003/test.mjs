@@ -5,6 +5,7 @@ import { parseFragment } from 'parse5';
 import YAML from 'yaml';
 import { icons, iconUri } from './icons.mjs';
 import { patch, normalize, statusCss, validateCss, marker, obsoleteImport, removeObsoleteImport } from './patch.mjs';
+import { isTelemetryCancellation } from './qa.mjs';
 
 test('six authored sports SVGs share one viewBox and stroke weight, with no raster, scripts or external references', () => {
   assert.deepEqual(Object.keys(icons), ['all','live','signal','scheduled','unknown','finished']);
@@ -68,4 +69,12 @@ test('workflow uses the new task branch and triggering commit with serialized de
   assert.deepEqual(config.on.push.branches, ['work/ball46-match-status-svg-currentprod-20261003']);
   assert.equal(config.concurrency['cancel-in-progress'], false);
   assert.equal(config.jobs['status-icons'].steps[0].with.ref, undefined);
+});
+
+test('QA tolerates only canceled same-origin Cloudflare RUM, not API or asset failures', () => {
+  assert.equal(isTelemetryCancellation({ url: 'https://ball46.com/cdn-cgi/rum?', failure: 'net::ERR_ABORTED' }), true);
+  for (const url of ['https://ball46.com/api/engine/board', 'https://ball46.com/dashboard-v2-stage3.js', 'https://ball46.com/cdn-cgi/rum-extra', 'https://another.example/cdn-cgi/rum']) {
+    assert.equal(isTelemetryCancellation({ url, failure: 'net::ERR_ABORTED' }), false);
+  }
+  assert.equal(isTelemetryCancellation({ url: 'https://ball46.com/cdn-cgi/rum', failure: 'net::ERR_FAILED' }), false);
 });

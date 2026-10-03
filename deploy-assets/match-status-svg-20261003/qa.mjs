@@ -16,6 +16,11 @@ const snapshots = () => ({
 });
 const selector = (key, width) => key === 'signal' ? width <= 760 ? mobileSignal : `${control}[data-workspace-view="signal"]` : `${control}[data-status-filter="${key}"]`;
 
+export function isTelemetryCancellation(request) {
+  const url = new URL(request.url);
+  return request.failure === 'net::ERR_ABORTED' && url.origin === origin && url.pathname === '/cdn-cgi/rum';
+}
+
 export async function uiCheck({ beforeCss, afterCss, phase }) {
   mkdirSync('audit/screenshots', { recursive: true });
   const browser = await chromium.launch(process.env.PLAYWRIGHT_EXECUTABLE_PATH ? { executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH } : {});
@@ -165,7 +170,7 @@ export async function uiCheck({ beforeCss, afterCss, phase }) {
         assert.equal(errors.length, 0, `NEW_CONSOLE_ERROR:${name}:${theme}:${errors.join(';')}`);
         assert.equal(iconRequests.length, 0, 'EXTERNAL_ICON_REQUEST');
         const existingCancellations = new Set(failed.filter(request => request.pass === 'baseline' && request.failure === 'net::ERR_ABORTED').map(request => new URL(request.url).pathname));
-        const unexpectedFailures = failed.filter(request => !(request.failure === 'net::ERR_ABORTED' && existingCancellations.has(new URL(request.url).pathname)));
+        const unexpectedFailures = failed.filter(request => !isTelemetryCancellation(request) && !(request.failure === 'net::ERR_ABORTED' && existingCancellations.has(new URL(request.url).pathname)));
         assert.equal(unexpectedFailures.length, 0, `NEW_FAILED_UI_REQUEST:${JSON.stringify(unexpectedFailures)}`);
         evidence.push({ name, width, height, deviceScaleFactor: scale, theme, defaultHoverActive: true, tapFeedback: true, refreshPassed: true, nativeCountsAndFilterUnchanged: true, evidence: passEvidence, errors, failed, iconRequests });
         writeFileSync(`audit/ui-${phase}.json`, JSON.stringify(evidence, null, 2));
