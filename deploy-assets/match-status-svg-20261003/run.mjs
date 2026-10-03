@@ -3,17 +3,31 @@ import { readFileSync, writeFileSync, mkdirSync, appendFileSync } from 'node:fs'
 import { parse } from 'acorn';
 import { parse as parseHtml } from 'parse5';
 import { inspect, activeVersion, getVersion, api, script, origin, sha, canonical, manifest, publicFile, backend } from './production.mjs';
-import { patch, route as cssRoute } from './patch.mjs';
+import { patch, route as cssRoute, obsoleteRoutes } from './patch.mjs';
 import { icons } from './icons.mjs';
 import { uiCheck } from './qa.mjs';
 
 const reviewed = JSON.parse(readFileSync('base.json', 'utf8'));
 const deploy = process.env.DEPLOY_ENABLED === 'true';
-const report = { startedAt: new Date().toISOString(), commit: process.env.GITHUB_SHA || 'local', run: process.env.GITHUB_RUN_ID || 'local', deploy, scope: 'MATCH STATUS SVG and scoped CSS only; all HTML, JavaScript, worker logic, data engines and image assets byte-identical' };
+const report = { startedAt: new Date().toISOString(), commit: process.env.GITHUB_SHA || 'local', run: process.env.GITHUB_RUN_ID || 'local', deploy, scope: 'MATCH STATUS SVG, scoped CSS and one verified empty-404 import removal only; all HTML, JavaScript, worker logic, data engines and image assets byte-identical' };
 mkdirSync('audit/css', { recursive: true });
 mkdirSync('audit/svg', { recursive: true });
 const save = () => writeFileSync('audit/report.json', JSON.stringify(report, null, 2));
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+async function verifyObsoleteAsset() {
+  const checks = [];
+  for (const path of obsoleteRoutes) {
+    const url = new URL(path, origin);
+    url.searchParams.set('statusAudit', `${report.run}-${Date.now()}`);
+    const response = await fetch(url, { headers: { 'Cache-Control': 'no-cache' }, signal: AbortSignal.timeout(45000) });
+    const bytes = (await response.arrayBuffer()).byteLength;
+    assert.equal(response.status, 404, `OBSOLETE_ASSET_NO_LONGER_404_STOP:${path}`);
+    assert.equal(bytes, 0, `OBSOLETE_ASSET_NOT_EMPTY_STOP:${path}`);
+    checks.push({ path, status: response.status, bytes });
+  }
+  return checks;
+}
 
 function references(html) {
   const urls = new Set();
@@ -78,8 +92,8 @@ try {
   const result = patch(source);
   assert.equal(result.beforeSha, reviewed.presentationCssSha);
   const protectedFiles = new Map();
-  assert(result.beforeCss.includes("@import url('v2-typography.css?v=343-v2-type-v1');"), 'CURRENT_TYPOGRAPHY_IMPORT_CHANGED_STOP');
-  protectedFiles.set('/v2-typography.css?v=343-v2-type-v1', sha(await publicFile('/v2-typography.css?v=343-v2-type-v1', 'css')));
+  assert(result.obsoleteImportRemoved, 'OBSOLETE_IMPORT_NOT_REMOVED_STOP');
+  report.obsoleteAssetBefore = await verifyObsoleteAsset();
   for (const path of ['/index.html','/signal.html','/statistics.html','/settings.html','/about.html', ...'information user-guide methodology privacy terms disclaimer affiliate-disclosure responsible-gambling cookies contact'.split(' ').map(page => `/${page}.html`)]) {
     const bytes = await publicFile(path, 'html');
     protectedFiles.set(path, sha(bytes));
@@ -103,6 +117,7 @@ try {
   report.css = { route: cssRoute, beforeSha: result.beforeSha, afterSha: result.afterSha, addedBytes: Buffer.byteLength(result.afterCss) - Buffer.byteLength(result.beforeCss) };
   report.nonCssWorkerSha = result.nonCssSha;
   report.nonCssWorkerBytesUnchanged = true;
+  report.obsoleteImportRemoved = result.obsoleteImportRemoved;
   report.protectedFiles = Object.fromEntries(protectedFiles);
   report.backendBefore = restore.backend;
   report.configBeforeSha = restore.settingsSha;
@@ -141,6 +156,7 @@ try {
       }
       assert(cssPublic, 'PUBLIC_STATUS_CSS_NOT_DEPLOYED');
       for (const [path, expected] of protectedFiles) assert.equal(sha(await publicFile(path)), expected, `UNRELATED_ASSET_CHANGED_STOP:${path}`);
+      report.obsoleteAssetAfter = await verifyObsoleteAsset();
       report.backendAfter = await backend();
       assert.equal(canonical(report.backendAfter), canonical(report.backendBefore), 'BACKEND_LOGIC_REVISION_CHANGED_STOP');
       report.configAfterSha = sha(canonical(await api(`/scripts/${script}/settings`)));

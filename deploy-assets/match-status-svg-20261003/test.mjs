@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { parseFragment } from 'parse5';
 import YAML from 'yaml';
 import { icons, iconUri } from './icons.mjs';
-import { patch, normalize, statusCss, validateCss, marker } from './patch.mjs';
+import { patch, normalize, statusCss, validateCss, marker, obsoleteImport, removeObsoleteImport } from './patch.mjs';
 
 test('six authored sports SVGs share one viewBox and stroke weight, with no raster, scripts or external references', () => {
   assert.deepEqual(Object.keys(icons), ['all','live','signal','scheduled','unknown','finished']);
@@ -28,15 +28,26 @@ test('six authored sports SVGs share one viewBox and stroke weight, with no rast
 });
 
 test('only one current CSS literal changes; HTML, JS, worker logic, routing and image bytes are untouched', () => {
-  const css = '.original{color:red}/* B46_MAIN_CARDS_SQUARE_20261003 */';
+  const remainingCss = "\n@import url('existing-font.css');\n.original{color:red;font-size:11px;font-family:Arial}/* B46_MAIN_CARDS_SQUARE_20261003 */";
+  const css = obsoleteImport + remainingCss;
   const source = `const __B46_SCOREBAR_TUNE_CSS__=${JSON.stringify(css)};const __B46_THEME_TOOLBAR_JS__="native counts/filter handlers";const imageBytes="unchanged";export default {fetch(){return new Response("API unchanged")}};`;
   const result = patch(source);
-  assert.equal(result.afterCss, css + statusCss);
+  assert.equal(result.afterCss, remainingCss + statusCss);
+  assert.equal(result.obsoleteImportRemoved, true);
   assert.equal(normalize(result.after), normalize(source));
   assert(result.after.includes('native counts/filter handlers'));
   assert.equal(patch(result.after).after, result.after);
   assert.throws(() => patch(result.after.replace(marker, marker + '_changed')), /EXISTING_STATUS_PATCH_DIFFERS/);
   assert.throws(() => patch(source.replace('B46_MAIN_CARDS_SQUARE_20261003', 'old')), /LATEST_PRODUCTION/);
+});
+
+test('only the exact obsolete import is removed; other CSS bytes remain intact and drift fails closed', () => {
+  const prefix = '/* existing imports */\n';
+  const suffix = "\n@import url('real-font.css');\nbody{font-family:Arial;font-size:11px}";
+  assert.equal(removeObsoleteImport(prefix + obsoleteImport + suffix), prefix + suffix);
+  assert.throws(() => removeObsoleteImport(suffix), /MISSING_OR_DUPLICATED/);
+  assert.throws(() => removeObsoleteImport(obsoleteImport + obsoleteImport), /MISSING_OR_DUPLICATED/);
+  assert.throws(() => removeObsoleteImport(obsoleteImport.replace('@import ', '@import  ')), /FORMAT_CHANGED/);
 });
 
 test('UI scope cannot grow into typography, APIs, other menus, assets or heavy filters', () => {
