@@ -7,6 +7,7 @@ on:
     paths:
       - '.github/workflows/ball46-league-flags-readonly-audit-20261004.yml'
       - 'deploy-assets/match-status-svg-20261003/league-flags-readonly-audit.mjs'
+      - 'deploy-assets/match-status-svg-20261003/league-flags-health-readonly.mjs'
 
 permissions:
   contents: read
@@ -24,7 +25,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Read-only Ball46 league flag audit
+      - name: Read-only Ball46 league flag and health audit
         shell: bash
         run: |
           cd deploy-assets/match-status-svg-20261003
@@ -32,6 +33,7 @@ jobs:
           PLAYWRIGHT_EXECUTABLE_PATH=$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)
           test -n "$PLAYWRIGHT_EXECUTABLE_PATH" || { echo READ_ONLY_CHROME_MISSING; exit 1; }
           npm ci --ignore-scripts --no-audit --no-fund
+          node league-flags-health-readonly.mjs
           node league-flags-readonly-audit.mjs
       - uses: actions/upload-artifact@v4
         if: always()
