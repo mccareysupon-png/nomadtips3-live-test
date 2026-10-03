@@ -28,7 +28,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Inspect exact current Signal Detail render path (read only)
+      - name: Inspect exact current Signal Detail render path (read only, pinpoint count writer)
         working-directory: deploy-assets/signal-detail-watch-20261003
         run: node scout.mjs
       - name: Retain scout evidence
