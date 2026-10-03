@@ -1,0 +1,112 @@
+name: Ball46 Statistics Ledger Audit 20261003
+
+on:
+  push:
+    branches: ['ops/ball46-stat-ledger-20261003']
+    paths:
+      - '.github/workflows/ball46-stat-ledger-audit-20261003.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ball46-stat-ledger-audit-20261003
+  cancel-in-progress: false
+
+env:
+  ENGINE_NAME: nomadtips3-engine-343
+  ENGINE_URL: https://nomadtips3-engine-343.mccarey-supon.workers.dev
+  PUBLIC_URL: https://www.ball46.com
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  audit-live-engine:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ops/ball46-stat-ledger-20261003
+          fetch-depth: 1
+
+      - name: Capture current live Engine source and statistics semantics read-only
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .audit/ball46-stat-ledger-20261003
+          mkdir -p .audit/ball46-stat-ledger-20261003/live-modules
+          python3 - <<'PY'
+          import base64, hashlib, json, os, pathlib, re, urllib.request
+          root=pathlib.Path('.audit/ball46-stat-ledger-20261003')
+          account=os.environ['CLOUDFLARE_ACCOUNT_ID']; token=os.environ['CLOUDFLARE_API_TOKEN']; worker=os.environ['ENGINE_NAME']
+          if not account or not token: raise SystemExit('MISSING_CLOUDFLARE_CREDENTIALS')
+          headers={'Authorization':f'Bearer {token}','Accept':'application/json'}
+          api=f'https://api.cloudflare.com/client/v4/accounts/{account}'
+          def getj(url):
+              req=urllib.request.Request(url,headers=headers)
+              with urllib.request.urlopen(req,timeout=30) as r:
+                  j=json.load(r)
+              if isinstance(j,dict) and j.get('success') is False: raise SystemExit('CF_API_FAIL:'+json.dumps(j)[:800])
+              return j
+          deps=getj(f'{api}/workers/scripts/{worker}/deployments')['result']['deployments']
+          if not deps: raise SystemExit('NO_ENGINE_DEPLOYMENT')
+          active=[]
+          for d in deps:
+              for v in d.get('versions') or []:
+                  try: pct=float(v.get('percentage',0))
+                  except: pct=0
+                  if pct>=99.999: active.append(v.get('version_id'))
+          active=[x for x in dict.fromkeys(active) if x]
+          if len(active)!=1: raise SystemExit('ACTIVE_ENGINE_VERSION_AMBIGUOUS:'+repr(active))
+          vid=active[0]
+          ver=getj(f'{api}/workers/workers/{worker}/versions/{vid}?include=modules')['result']
+          mods=[]
+          for i,m in enumerate(ver.get('modules') or []):
+              name=str(m.get('name') or f'module-{i}')
+              safe=re.sub(r'[^A-Za-z0-9._/-]','_',name).lstrip('/').replace('..','__')
+              if not safe: safe=f'module-{i}'
+              raw=base64.b64decode(m.get('content_base64') or '')
+              p=root/'live-modules'/safe
+              p.parent.mkdir(parents=True,exist_ok=True); p.write_bytes(raw)
+              mods.append({'name':name,'sha256':hashlib.sha256(raw).hexdigest(),'bytes':len(raw),'content_type':m.get('content_type')})
+          binds=[]
+          for b in ver.get('bindings') or []:
+              binds.append({k:b.get(k) for k in ('name','type','service','environment','namespace_id','class_name') if b.get(k) is not None})
+          meta={'worker':worker,'active_version':vid,'main_module':ver.get('main_module'),'compatibility_date':ver.get('compatibility_date'),'compatibility_flags':ver.get('compatibility_flags') or [],'bindings':binds,'modules':mods}
+          (root/'live-meta.json').write_text(json.dumps(meta,indent=2,sort_keys=True))
+          print('ACTIVE_ENGINE_VERSION',vid)
+          print('MAIN_MODULE',ver.get('main_module'))
+          print('MODULES',[(x['name'],x['bytes'],x['sha256']) for x in mods])
+          PY
+
+          nonce="${GITHUB_RUN_ID}-$(date +%s%N)"
+          curl -fsS -L --retry 4 --retry-all-errors --max-time 30 "$ENGINE_URL/health?audit=$nonce" -o /tmp/health.json
+          curl -fsS -L --retry 4 --retry-all-errors --max-time 30 "$ENGINE_URL/signals?audit=$nonce" -o /tmp/signals.json
+          curl -fsS -L --retry 4 --retry-all-errors --max-time 30 "$ENGINE_URL/statistics?audit=$nonce" -o /tmp/statistics.json
+          curl -fsS -L --retry 4 --retry-all-errors --max-time 30 "$PUBLIC_URL/api/engine/statistics?audit=$nonce" -o /tmp/public-statistics.json
+          node - <<'NODE'
+          const fs=require('fs'),path='.audit/ball46-stat-ledger-20261003/';
+          const h=JSON.parse(fs.readFileSync('/tmp/health.json'));
+          const s=JSON.parse(fs.readFileSync('/tmp/signals.json'));
+          const t=JSON.parse(fs.readFileSync('/tmp/statistics.json'));
+          const p=JSON.parse(fs.readFileSync('/tmp/public-statistics.json'));
+          const rows=Array.isArray(t.rows)?t.rows:[], pending=Array.isArray(s.signals)?s.signals:[];
+          const brief=x=>({id:x?.id,fixtureId:x?.fixtureId,status:x?.status,result:x?.result,market:x?.market,createdAt:x?.createdAt,settledAt:x?.settledAt,entryMinute:x?.entryMinute,minute:x?.minute,entryScore:x?.entryScore,scoreAt:x?.scoreAt,finalScore:x?.finalScore});
+          const summary={capturedAt:new Date().toISOString(),health:{ok:h?.ok,version:h?.version,revision:h?.revision},engineStatistics:{ok:t?.ok,version:t?.version,totalField:t?.total,rowCount:rows.length,win:t?.win,loss:t?.loss,push:t?.push,unresolved:t?.unresolved},publicStatistics:{ok:p?.ok,version:p?.version,totalField:p?.total,rowCount:Array.isArray(p?.rows)?p.rows.length:null},signals:{pendingReturned:pending.length,allCount:s?.allCount},oldestRows:[...rows].sort((a,b)=>(a?.createdAt||0)-(b?.createdAt||0)).slice(0,5).map(brief),newestRows:[...rows].sort((a,b)=>(b?.createdAt||0)-(a?.createdAt||0)).slice(0,5).map(brief)};
+          fs.writeFileSync(path+'runtime-summary.json',JSON.stringify(summary,null,2));
+          console.log(JSON.stringify(summary,null,2));
+          if(t?.ok!==true||!Array.isArray(t?.rows)) throw Error('ENGINE_STATISTICS_BAD');
+          if(p?.ok!==true||!Array.isArray(p?.rows)) throw Error('PUBLIC_STATISTICS_BAD');
+          NODE
+
+      - name: Commit audit snapshot to isolated branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .audit/ball46-stat-ledger-20261003
+          git diff --cached --quiet && exit 0
+          git commit -m "audit: snapshot live engine statistics ${GITHUB_RUN_ID}"
+          git push origin HEAD:ops/ball46-stat-ledger-20261003
