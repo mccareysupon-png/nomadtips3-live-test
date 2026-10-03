@@ -17,6 +17,8 @@ body .workspace.singlepage > .left-rail .workspace-brand-meta[data-workspace-odd
 body .workspace.singlepage .workspace-theme-btn:not(:focus-visible),
 body .workspace.singlepage .search-box:not(:focus-within),
 body .workspace.singlepage .local-time,
+body .workspace.singlepage .board-loading,
+body .workspace.singlepage .board-empty,
 body .workspace.singlepage .status-head,
 body .workspace.singlepage .status-head > b,
 body .workspace.singlepage .workspace-view-head,

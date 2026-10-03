@@ -96,7 +96,7 @@ async function uiCheck(changes, phase) {
   try {
     for (const [size, width, height] of [['desktop', 1440, 1000], ['tablet', 820, 1100], ['mobile', 390, 844]]) {
       for (const theme of ['light', 'dark']) {
-        const context = await browser.newContext({ viewport: { width, height }, colorScheme: theme });
+        const context = await browser.newContext({ viewport: { width, height }, colorScheme: theme, timezoneId: 'Asia/Bangkok' });
         await context.addInitScript(theme => { localStorage.setItem('nomad343_dashboard_theme_v1', theme); }, theme);
         const page = await context.newPage();
         // Owner Settings is observed only: never allow a write request during QA.
@@ -125,6 +125,13 @@ async function uiCheck(changes, phase) {
             else if (name === 'statistics') await page.locator('[data-stat-market="all"]').click();
             else await page.locator('[data-status-filter="live"]').click();
             await page.waitForFunction(view => document.body.dataset.workspaceView === view, name, { timeout: 15000 });
+            if (name === 'signal') {
+              await page.waitForFunction(() => {
+                const visibleRows = [...document.querySelectorAll('.match-row')].filter(e => e.getBoundingClientRect().width > 0);
+                const count = Number(document.querySelector('button[data-workspace-view="signal"] b')?.textContent || 0);
+                return visibleRows.length > 0 || count === 0 && [...document.querySelectorAll('.board-empty')].some(e => e.getBoundingClientRect().width > 0);
+              }, null, { timeout: 30000 });
+            }
             if (name === 'statistics') {
               await page.locator('.sp-stat-hero').waitFor({ state: 'visible' });
               await page.waitForFunction(() => [...document.querySelectorAll('.sp-kpi strong')].some(e => /\d/.test(e.textContent)), null, { timeout: 30000 });
@@ -182,6 +189,8 @@ async function uiCheck(changes, phase) {
           if (['live', 'signal', 'statistics'].includes(name)) {
             const pseudoLines = await page.locator('.match-row .market-cell,.match-row .signal-cell').evaluateAll(es => es.filter(e => e.getBoundingClientRect().width > 0).map(e => getComputedStyle(e, e.matches('.market-cell') ? '::before' : '::after').backgroundColor));
             assert(pseudoLines.every(c => c === 'rgba(0, 0, 0, 0)'), `ORNAMENTAL_COLUMN_DIVIDER_REMAINS:${key}`);
+            const signalDividers = await page.locator('.feature-signal-divider').evaluateAll(es => es.map(e => getComputedStyle(e).backgroundColor));
+            assert(signalDividers.every(c => c === 'rgba(0, 0, 0, 0)'), `ORNAMENTAL_SIGNAL_DIVIDER_REMAINS:${key}`);
             const surface = await page.locator('.workspace-stable-head').evaluate(e => getComputedStyle(e).backgroundImage);
             assert(surface.includes('linear-gradient'), `HEADER_SURFACE_MISSING:${key}`);
             // Compare keyboard focus with and without the preview stylesheet in one page state.
