@@ -17,6 +17,7 @@ concurrency:
 env:
   CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
   CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  DEPLOY_ENABLED: 'true'
 
 jobs:
   status-icons:
@@ -35,6 +36,15 @@ jobs:
       - name: Confirm Exact Active Production and restore point (read only)
         working-directory: deploy-assets/match-status-svg-20261003
         run: node scout.mjs
+      - name: Test SVGs, CSS-only patch and workflow scope
+        working-directory: deploy-assets/match-status-svg-20261003
+        run: npm test
+      - name: Install Chromium for pointer, touch, themes and scaling verification
+        working-directory: deploy-assets/match-status-svg-20261003
+        run: npx playwright install --with-deps chromium
+      - name: QA Exact Active Production, guarded CSS publish and public verification
+        working-directory: deploy-assets/match-status-svg-20261003
+        run: node run.mjs
       - name: Retain verification evidence
         if: always()
         uses: actions/upload-artifact@v4
