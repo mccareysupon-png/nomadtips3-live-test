@@ -36,10 +36,14 @@ ${themeSelector}:focus-visible {
   outline-offset: 2px !important;
 }
 `;
-export const targets = [{ name: '__B46_SCOREBAR_TUNE_CSS__', route: '/dashboard-v2-tune.css', css: logoCss, type: 'css' }];
+// The logo rule is already active in Production; this run adds only the existing theme button's styling.
+export const targets = [{ name: '__B46_SCOREBAR_TUNE_CSS__', route: '/dashboard-v2-tune.css', css: themeCss, type: 'css' }];
 
 export function borderChecks(css) {
   const root = postcss.parse(css);
+  const hasLogo = css.includes(marker);
+  const hasTheme = css.includes(themeMarker);
+  assert(hasLogo || hasTheme, 'PRESENTATION_CSS_MARKER_MISSING');
   root.walkAtRules(() => assert.fail('LOGO_CSS_AT_RULE'));
   const selectors = new Set([logoSelector, themeSelector, `${themeSelector}:hover`, `${themeSelector}:focus-visible`]);
   root.walkRules(r => assert(selectors.has(r.selector), 'PRESENTATION_CSS_SCOPE_CHANGED'));
@@ -57,8 +61,8 @@ export function borderChecks(css) {
       else assert(['outline','outline-offset'].includes(d.prop), `THEME_FOCUS_PROPERTY_NOT_ALLOWED:${d.prop}`);
     });
   });
-  assert.equal(root.nodes.filter(n => n.type === 'rule' && n.selector === logoSelector).length, 1, 'LOGO_CSS_DECLARATION_COUNT');
-  assert.equal(root.nodes.filter(n => n.type === 'rule' && n.selector === themeSelector).length, 1, 'THEME_CSS_DECLARATION_COUNT');
+  if (hasLogo) assert.equal(root.nodes.filter(n => n.type === 'rule' && n.selector === logoSelector).length, 1, 'LOGO_CSS_DECLARATION_COUNT');
+  if (hasTheme) assert.equal(root.nodes.filter(n => n.type === 'rule' && n.selector === themeSelector).length, 1, 'THEME_CSS_DECLARATION_COUNT');
   return [];
 }
 
@@ -81,3 +85,4 @@ export function patch(source) {
     codeSha: sha(normalize(source)),
   };
 }
+
