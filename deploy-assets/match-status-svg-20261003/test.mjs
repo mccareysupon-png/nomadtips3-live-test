@@ -84,7 +84,7 @@ test('canceled replayed snapshots cannot suppress real network failures or write
 });
 
 test('the confirmed Wrangler rail derives its config from current metadata, never a historical source', () => {
-  const version = { main_module: 'index.js', modules: [{}], compatibility_date: '2026-09-09', compatibility_flags: [], bindings: [{ name: 'ASSETS', type: 'assets' }, { name: 'ENGINE', type: 'service', service: 'current-engine', environment: 'production' }], assets: { config: { base_path: '/', html_handling: 'none', not_found_handling: 'none', run_worker_first: true } } };
+  const version = { main_module: 'index.js', modules: [{ name: 'index.js', content_type: 'application/javascript+module' }], compatibility_date: '2026-09-09', compatibility_flags: [], bindings: [{ name: 'ASSETS', type: 'assets' }, { name: 'ENGINE', type: 'service', service: 'current-engine', environment: 'production' }], assets: { config: { base_path: '/', html_handling: 'none', not_found_handling: 'none', run_worker_first: true } } };
   const config = configFromCurrent(version, { logpush: false }, ['* * * * *'], '/current/assets');
   assert.equal(config.name, 'ball46-production');
   assert.equal(config.no_bundle, true);
@@ -93,6 +93,8 @@ test('the confirmed Wrangler rail derives its config from current metadata, neve
   assert.equal(config.assets.directory, '/current/assets');
   assert.equal(config.assets.run_worker_first, true);
   assert.throws(() => configFromCurrent({ ...version, bindings: [...version.bindings, { name: 'OTHER', type: 'kv_namespace' }] }, {}, [], '/assets'), /UNSUPPORTED_CURRENT_BINDING/);
+  assert.equal(configFromCurrent({ ...version, modules: [...version.modules, { name: 'assets/index.html', content_type: 'text/plain' }] }, {}, [], '/assets').main, './index.js');
+  assert.throws(() => configFromCurrent({ ...version, modules: [...version.modules, { name: 'other.js', content_type: 'application/javascript+module' }] }, {}, [], '/assets'), /MODULE_SHAPE_CHANGED/);
 });
 
 test('Wrangler may attach only byte-identical original HTML text; changed code or unapproved modules still fail', () => {

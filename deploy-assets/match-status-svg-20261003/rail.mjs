@@ -36,7 +36,7 @@ export async function schedules() {
 
 export function configFromCurrent(version, settings, crons, assetsDirectory) {
   assert.equal(version.main_module, 'index.js', 'CURRENT_RAIL_MAIN_MODULE_CHANGED');
-  assert.equal(version.modules.length, 1, 'CURRENT_RAIL_MODULE_SHAPE_CHANGED');
+  assert(version.modules.every(module => module.name === version.main_module || (module.content_type === 'text/plain' && /^assets\/(?:[a-zA-Z0-9_-]+\.html|robots\.txt)$/.test(module.name))), 'CURRENT_RAIL_MODULE_SHAPE_CHANGED');
   assert(version.compatibility_date, 'CURRENT_COMPATIBILITY_DATE_MISSING');
   assert(Array.isArray(version.bindings), 'CURRENT_BINDINGS_MISSING');
   const assetBindings = version.bindings.filter(binding => binding.type === 'assets');
@@ -84,6 +84,9 @@ export async function stageCurrentRail(version, settings, crons, patchedSource) 
     mkdirSync(dirname(target), { recursive: true });
     writeFileSync(target, bytes);
     hashes[path] = sha(bytes);
+  }
+  for (const module of version.modules.filter(module => module.name !== version.main_module)) {
+    assert.equal(sha(Buffer.from(module.content_base64, 'base64')), hashes[module.name.slice('assets/'.length)], `CURRENT_TEXT_MODULE_NOT_IDENTICAL_TO_PUBLIC_ASSET:${module.name}`);
   }
   writeFileSync(resolve(runtime, 'index.js'), patchedSource);
   writeFileSync(resolve(runtime, 'wrangler.jsonc'), JSON.stringify(configFromCurrent(version, settings, crons, assets), null, 2));
