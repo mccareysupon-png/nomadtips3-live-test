@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync, appendFileSync } from 'node:fs';
 import { parse as parseHtml } from 'parse5';
 import { chromium } from 'playwright';
-import { patch, constants, targets, sha, borderChecks, clockRoute, logoSelector, themeSelector, marker, themeMarker } from './logo-size.mjs';
+import { patch, constants, targets, sha, borderChecks, logoSelector, themeSelector, marker, themeMarker, themeScriptRoute } from './logo-size.mjs';
 
 const env = process.env;
 const origin = env.BALL46_URL || 'https://ball46.com';
@@ -16,7 +16,7 @@ const runTag = `${env.GITHUB_RUN_ID || 'local'}-${env.GITHUB_SHA || 'local'}`;
 const audit = 'audit';
 mkdirSync(`${audit}/screenshots`, { recursive: true });
 mkdirSync(`${audit}/css`, { recursive: true });
-const report = { runTag, startedAt: new Date().toISOString(), publish: env.DEPLOY_ENABLED === 'true', scope: 'Existing header wordmark at 130 percent using one CSS declaration only; all JavaScript, images, API logic and configuration protected' };
+const report = { runTag, startedAt: new Date().toISOString(), publish: env.DEPLOY_ENABLED === 'true', scope: 'Compact transparent Light/Dark control with plain text; existing theme handler and main renderer protected' };
 const save = () => writeFileSync(`${audit}/report.json`, JSON.stringify(report, null, 2));
 const delay = ms => new Promise(r => setTimeout(r, ms));
 const canonical = value => JSON.stringify(value, (_, v) => v && typeof v === 'object' && !Array.isArray(v) ? Object.fromEntries(Object.entries(v).sort(([a], [b]) => a.localeCompare(b))) : v);
@@ -100,8 +100,9 @@ async function uiCheck(changes, phase) {
         await context.addInitScript(theme => { localStorage.setItem('nomad343_dashboard_theme_v1', theme); }, theme);
         const page = await context.newPage();
         if (phase === 'preview') {
-          const scriptChange = changes.find(c => c.route === clockRoute);
-          if (scriptChange) await page.route(`**${clockRoute}*`, route => route.fulfill({ status: 200, contentType: 'application/javascript; charset=utf-8', body: scriptChange.after }));
+          for (const scriptChange of changes.filter(c => c.type === 'javascript')) {
+            await page.route(`**${scriptChange.route}*`, route => route.fulfill({ status: 200, contentType: 'application/javascript; charset=utf-8', body: scriptChange.after }));
+          }
         }
         // Owner Settings is observed only: never allow a write request during QA.
         await page.route('**/api/**', async route => {
@@ -229,13 +230,24 @@ async function uiCheck(changes, phase) {
               const e = document.querySelector(selector);
               if (!e) return null;
               const r = e.getBoundingClientRect(), c = getComputedStyle(e);
-              return { text: e.textContent, aria: e.getAttribute('aria-label'), width: r.width, height: r.height, borderRadius: c.borderRadius, background: c.backgroundColor, outline: c.outline, cursor: c.cursor };
+              return { text: e.textContent, aria: e.getAttribute('aria-label'), width: r.width, height: r.height, borderRadius: c.borderRadius, background: c.backgroundColor, shadow: c.boxShadow, outline: c.outline, cursor: c.cursor };
             }, themeSelector);
             assert(themeButton, `THEME_BUTTON_MISSING:${key}`);
-            assert(themeButton.width >= 71 && themeButton.height >= 39, `THEME_BUTTON_TOO_SMALL:${key}`);
-            assert.equal(themeButton.borderRadius, '999px', `THEME_BUTTON_NOT_PILL:${key}`);
+            assert(Math.abs(themeButton.width - 48) < 1 && Math.abs(themeButton.height - 28) < 1, `THEME_BUTTON_NOT_COMPACT_SIZE:${key}`);
+            assert.equal(themeButton.borderRadius, '5px', `THEME_BUTTON_NOT_COMPACT:${key}`);
             assert.equal(themeButton.aria, 'Switch theme', `THEME_BUTTON_ARIA_CHANGED:${key}`);
-            assert(themeButton.text.includes('Light') || themeButton.text.includes('Dark'), `THEME_BUTTON_LABEL_MISSING:${key}`);
+            assert.equal(themeButton.text, theme === 'dark' ? 'Light' : 'Dark', `THEME_BUTTON_ICON_OR_WRONG_LABEL:${key}`);
+            assert.equal(themeButton.background, 'rgba(0, 0, 0, 0)', `THEME_BUTTON_NOT_TRANSPARENT:${key}`);
+            assert.equal(themeButton.shadow, 'none', `THEME_BUTTON_SHADOW_REMAINS:${key}`);
+            report.themeControlChecks ||= [];
+            report.themeControlChecks.push({ key, ...themeButton });
+            assert.equal(await page.locator('[data-theme-toggle]').count(), 1, `DUPLICATE_THEME_BUTTON:${key}`);
+            await page.locator('[data-theme-toggle]').hover();
+            assert.equal(await page.locator('[data-theme-toggle]').evaluate(e => getComputedStyle(e).backgroundColor), 'rgba(0, 0, 0, 0)', `THEME_HOVER_NOT_TRANSPARENT:${key}`);
+            for (const nextTheme of [theme === 'dark' ? 'light' : 'dark', theme]) {
+              await page.locator('[data-theme-toggle]').click();
+              await page.waitForFunction(({ nextTheme, selector }) => document.documentElement.dataset.theme === nextTheme && document.querySelector(selector)?.textContent === (nextTheme === 'dark' ? 'Light' : 'Dark'), { nextTheme, selector: themeSelector });
+            }
             await page.evaluate(() => { document.body.setAttribute('tabindex', '-1'); document.body.focus(); });
             let keyboardFocused = false;
             for (let n = 0; n < 80; n++) {
@@ -345,7 +357,8 @@ try {
   const main = original.modules.find(m => m.name === original.main_module);
   assert(main, 'MAIN_MODULE_NOT_FOUND');
   const source = Buffer.from(main.content_base64, 'base64').toString('utf8');
-  const result = patch(source);
+  const themeScript = (await publicFile(themeScriptRoute, 'javascript')).toString('utf8');
+  const result = patch(source, { themeScript });
   const bg = constants(source).get('__B46_SCOREBAR_BG_B64__')?.value;
   assert(bg && Object.keys(bg).length, 'SCOREBAR_IMAGES_MISSING');
   const states = ['win', 'loss', 'draw', 'pending'];
@@ -432,7 +445,7 @@ try {
   }
   report.completedAt = new Date().toISOString();
   save();
-  if (env.GITHUB_STEP_SUMMARY) appendFileSync(env.GITHUB_STEP_SUMMARY, `## Ball46 header logo plus 30 percent\n\nResult: ${report.result}\n\nBase: ${base}\n\nFinal: ${report.finalVersion}\n\nScope: one CSS declaration on the existing header wordmark; all JavaScript, images, backend logic and configuration protected.\n`);
+  if (env.GITHUB_STEP_SUMMARY) appendFileSync(env.GITHUB_STEP_SUMMARY, `## Ball46 compact transparent theme control\n\nResult: ${report.result}\n\nBase: ${base}\n\nFinal: ${report.finalVersion}\n\nScope: ${report.scope}.\n`);
   console.log(report.result);
 } catch (error) {
   report.result = 'FAIL';
@@ -441,4 +454,3 @@ try {
   console.error(error.stack);
   process.exitCode = 1;
 }
-
