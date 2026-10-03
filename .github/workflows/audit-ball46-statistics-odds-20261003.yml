@@ -1,0 +1,45 @@
+name: AUDIT Ball46 Statistics Odds wiring 20261003
+
+on:
+  push:
+    branches: [audit/ball46-stat-odds-20261003]
+    paths:
+      - '.github/workflows/audit-ball46-statistics-odds-20261003.yml'
+      - 'deploy-assets/statistics-odds-audit-20261003/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ball46-statistics-odds-audit
+  cancel-in-progress: true
+
+env:
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  SCRIPT_NAME: ball46-production
+  BALL46_URL: https://ball46.com
+
+jobs:
+  read-only-audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Inspect active Production settings/statistics wiring without mutation
+        working-directory: deploy-assets/statistics-odds-audit-20261003
+        run: node run.mjs
+      - name: Retain audit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-statistics-odds-audit-${{ github.run_id }}
+          path: deploy-assets/statistics-odds-audit-20261003/audit/
+          if-no-files-found: error
+          retention-days: 14
