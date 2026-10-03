@@ -182,7 +182,9 @@ async function uiCheck(changes, phase) {
             window.__borderQaObserver.observe(document.body, { childList: true, subtree: true, attributes: true, characterData: true });
           });
           let before, after, previewStyle;
-          const css = applicable.map(c => c.css).join('\n');
+          // Preview the complete post-patch stylesheet: the live source already contains the logo rule,
+          // while this run appends only the existing theme button rule to that source.
+          const css = applicable.map(c => c.after).join('\n');
           // Retry only a witnessed live DOM refresh, never a static CSS mismatch.
           for (let attempt = 0; attempt < 3; attempt++) {
             before = await sample();
@@ -427,3 +429,4 @@ try {
   console.error(error.stack);
   process.exitCode = 1;
 }
+
