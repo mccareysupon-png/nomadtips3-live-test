@@ -1,0 +1,39 @@
+{
+  "active_version": "657edb33-4475-40be-9ae1-ae0409a519d0",
+  "bindings": [
+    {
+      "class_name": "Nomad343Engine",
+      "name": "ENGINE",
+      "namespace_id": "7404dc5f593a4fbeaebae44cad6ae7da",
+      "type": "durable_object_namespace"
+    },
+    {
+      "name": "FIVEDOLLAR_API_KEY",
+      "type": "secret_text"
+    },
+    {
+      "environment": "production",
+      "name": "FULL_MARKET",
+      "service": "nomadtips3-full-market-343-ball46",
+      "type": "service"
+    },
+    {
+      "environment": "production",
+      "name": "HUB",
+      "service": "nomadtips3-5usd-hub-343",
+      "type": "service"
+    }
+  ],
+  "compatibility_date": "2026-09-09",
+  "compatibility_flags": [],
+  "main_module": "index-bulk-recovery.js",
+  "modules": [
+    {
+      "bytes": 57697,
+      "content_type": "application/javascript+module",
+      "name": "index-bulk-recovery.js",
+      "sha256": "531e87cbefb93749bd028014efa77f5b1b506eeb107e6f34cdf814e7f56adaf8"
+    }
+  ],
+  "worker": "nomadtips3-engine-343"
+}
