@@ -160,3 +160,23 @@ test('existing theme button moves after ODDS without duplicating controls or rep
   assert.equal(button.textContent, 'Dark');
   assert.equal(moves, 1);
 });
+
+test('toolbar handles a late-created or replaced header button', () => {
+  let button = null, update, moves = 0;
+  const styles = [];
+  const slot = { lastElementChild: {}, append(e) { assert.equal(e, button); this.lastElementChild = e; moves++; } };
+  const document = { readyState: 'complete', body: {}, head: { append: style => styles.push(style) }, createElement: () => ({}), getElementById: id => styles.find(s => s.id === id), documentElement: { dataset: { theme: 'dark' } }, querySelector: selector => selector === '[data-theme-toggle]' ? button : slot };
+  runInNewContext(themeLabels, { document, MutationObserver: class { constructor(callback) { update = callback; } observe() {} } });
+  assert.equal(styles.length, 1);
+  assert.equal(moves, 0);
+  button = { textContent: '\u2600 Light' };
+  update();
+  assert.equal(button.textContent, 'Light');
+  assert.equal(moves, 1);
+  button = { textContent: '\u2600 Light' };
+  update();
+  assert.equal(button.textContent, 'Light');
+  assert.equal(moves, 2);
+  update();
+  assert.equal(moves, 2);
+});

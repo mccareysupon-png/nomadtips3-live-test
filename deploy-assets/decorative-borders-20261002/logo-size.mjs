@@ -113,7 +113,7 @@ ${themeSelector}:focus-visible {
 export const themeScriptName = '__B46_THEME_TOOLBAR_JS__';
 export const themeScriptRoute = '/dashboard-v2-tune.js';
 const labelMarker = 'B46_COMPACT_THEME_LABEL_20261003';
-export const themeLabels = `
+const legacyThemeLabels = `
 /* ${labelMarker}: presentation only; the existing click handler still switches themes */
 (function(){
   function mount(){
@@ -134,6 +134,34 @@ export const themeLabels = `
     }
     const observer=new MutationObserver(update);
     observer.observe(button,{childList:true});
+    observer.observe(document.body,{childList:true,subtree:true});
+    observer.observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+    update();
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount,{once:true});
+  else mount();
+})();
+`;
+export const themeLabels = `
+/* ${labelMarker}: presentation only; the existing click handler still switches themes */
+(function(){
+  function mount(){
+    if(!document.getElementById('b46-compact-toolbar-style')){
+      const style=document.createElement('style');
+      style.id='b46-compact-toolbar-style';
+      style.textContent=${JSON.stringify(themeCss)};
+      document.head.append(style);
+    }
+    function update(){
+      const button=document.querySelector('[data-theme-toggle]');
+      if(!button)return;
+      const slot=document.querySelector('.workspace-brand-meta[data-workspace-odds-slot]');
+      if(slot&&slot.lastElementChild!==button)slot.append(button);
+      const label=document.documentElement.dataset.theme==='dark'?'Light':'Dark';
+      if(button.textContent!==label)button.textContent=label;
+      button.title='Switch to '+label.toLowerCase()+' mode';
+    }
+    const observer=new MutationObserver(update);
     observer.observe(document.body,{childList:true,subtree:true});
     observer.observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
     update();
@@ -171,8 +199,9 @@ export function constants(source) {
 
 export function originalThemeScript(script) {
   if (!script.includes(labelMarker)) return script;
-  assert(script.endsWith(themeLabels), 'EXISTING_THEME_LABEL_SCRIPT_DIFFERS');
-  return script.slice(0, -themeLabels.length);
+  const suffix = [themeLabels, legacyThemeLabels].find(value => script.endsWith(value));
+  assert(suffix, 'EXISTING_THEME_LABEL_SCRIPT_DIFFERS');
+  return script.slice(0, -suffix.length);
 }
 
 export function normalize(source) {
