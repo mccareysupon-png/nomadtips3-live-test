@@ -20,6 +20,7 @@ ${logoSelector} { zoom: 1.3 !important; }
 export const themeCss = `
 /* ${themeMarker}: aligned transparent controls in the existing odds row below the logo */
 ${brandCardSelector} {
+  display: block !important;
   height: auto !important;
   min-height: 0 !important;
   max-height: none !important;
@@ -185,7 +186,7 @@ export function borderChecks(css) {
   root.walkAtRules(() => assert.fail('LOGO_CSS_AT_RULE'));
   const focusSelector = `${themeSelector}:focus-visible, ${oddsButtonSelector}:focus-visible`;
   const layoutProperties = new Map([
-    [brandCardSelector, ['height','min-height','max-height']],
+    [brandCardSelector, ['display','height','min-height','max-height']],
     [oddsRowSelector, ['height','min-height','max-height','align-items','justify-content','gap','background-color']],
     [oddsControlSelector, ['flex','width','min-width','height','min-height']],
     [oddsButtonSelector, ['width','height','min-height','padding','border','background-color','background-image','box-shadow','color','font-family','font-size','font-weight','line-height','letter-spacing','white-space']],
