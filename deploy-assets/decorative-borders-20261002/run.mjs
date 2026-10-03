@@ -235,7 +235,16 @@ async function uiCheck(changes, phase) {
             assert.equal(themeButton.borderRadius, '999px', `THEME_BUTTON_NOT_PILL:${key}`);
             assert.equal(themeButton.aria, 'Switch theme', `THEME_BUTTON_ARIA_CHANGED:${key}`);
             assert(themeButton.text.includes('Light') || themeButton.text.includes('Dark'), `THEME_BUTTON_LABEL_MISSING:${key}`);
-            await page.locator('[data-theme-toggle]').focus();
+            await page.evaluate(() => { document.body.setAttribute('tabindex', '-1'); document.body.focus(); });
+            let keyboardFocused = false;
+            for (let n = 0; n < 80; n++) {
+              await page.keyboard.press('Tab');
+              if (await page.evaluate(selector => document.activeElement?.matches(selector), themeSelector)) {
+                keyboardFocused = true;
+                break;
+              }
+            }
+            assert(keyboardFocused, `THEME_BUTTON_NOT_TAB_REACHABLE:${key}`);
             const focus = await page.evaluate(selector => { const e = document.querySelector(selector), c = getComputedStyle(e); return { outline: c.outline, offset: c.outlineOffset }; }, themeSelector);
             assert(!focus.outline.includes('none') && !focus.outline.includes('0px'), `THEME_BUTTON_FOCUS_MISSING:${key}`);
           }
