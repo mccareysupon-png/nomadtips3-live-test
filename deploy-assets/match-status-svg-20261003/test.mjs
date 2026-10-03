@@ -5,7 +5,7 @@ import { parseFragment } from 'parse5';
 import YAML from 'yaml';
 import { icons, iconUri } from './icons.mjs';
 import { patch, normalize, statusCss, validateCss, marker, obsoleteImport, removeObsoleteImport } from './patch.mjs';
-import { isTelemetryCancellation } from './qa.mjs';
+import { isTelemetryCancellation, isControlledCancellation } from './qa.mjs';
 
 test('six authored sports SVGs share one viewBox and stroke weight, with no raster, scripts or external references', () => {
   assert.deepEqual(Object.keys(icons), ['all','live','signal','scheduled','unknown','finished']);
@@ -77,4 +77,13 @@ test('QA tolerates only canceled same-origin Cloudflare RUM, not API or asset fa
     assert.equal(isTelemetryCancellation({ url, failure: 'net::ERR_ABORTED' }), false);
   }
   assert.equal(isTelemetryCancellation({ url: 'https://ball46.com/cdn-cgi/rum', failure: 'net::ERR_FAILED' }), false);
+});
+
+test('only in-flight read requests marked before a controlled navigation or refresh can be canceled', () => {
+  const request = { method: 'GET', failure: 'net::ERR_ABORTED', controlledTransition: true };
+  assert.equal(isControlledCancellation(request), true);
+  assert.equal(isControlledCancellation({ ...request, controlledTransition: false }), false);
+  assert.equal(isControlledCancellation({ ...request, failure: 'net::ERR_FAILED' }), false);
+  assert.equal(isControlledCancellation({ ...request, failure: 'net::ERR_TIMED_OUT' }), false);
+  assert.equal(isControlledCancellation({ ...request, method: 'POST' }), false);
 });

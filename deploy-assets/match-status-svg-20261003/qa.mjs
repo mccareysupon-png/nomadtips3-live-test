@@ -21,6 +21,10 @@ export function isTelemetryCancellation(request) {
   return request.failure === 'net::ERR_ABORTED' && url.origin === origin && url.pathname === '/cdn-cgi/rum';
 }
 
+export function isControlledCancellation(request) {
+  return request.controlledTransition === true && ['GET', 'HEAD'].includes(request.method) && request.failure === 'net::ERR_ABORTED';
+}
+
 export async function uiCheck({ beforeCss, afterCss, phase }) {
   mkdirSync('audit/screenshots', { recursive: true });
   const browser = await chromium.launch(process.env.PLAYWRIGHT_EXECUTABLE_PATH ? { executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH } : {});
@@ -40,10 +44,16 @@ export async function uiCheck({ beforeCss, afterCss, phase }) {
         }, theme);
         const page = await context.newPage();
         const errors = [], failed = [], iconRequests = [];
+        const pendingRequests = new Set(), controlledTransitions = new WeakSet();
+        const prepareTransition = () => pendingRequests.forEach(request => controlledTransitions.add(request));
         let currentPass = 'baseline';
         page.on('pageerror', error => errors.push(error.message));
-        page.on('requestfailed', request => { if (!request.url().includes('cloudflareinsights.com')) failed.push({ pass: currentPass, url: request.url(), failure: request.failure()?.errorText }); });
-        page.on('request', request => { if (/match-status|status-icon/.test(request.url()) && new URL(request.url()).pathname !== cssRoute) iconRequests.push(request.url()); });
+        page.on('requestfinished', request => pendingRequests.delete(request));
+        page.on('requestfailed', request => {
+          pendingRequests.delete(request);
+          if (!request.url().includes('cloudflareinsights.com')) failed.push({ pass: currentPass, url: request.url(), method: request.method(), failure: request.failure()?.errorText, controlledTransition: controlledTransitions.has(request) });
+        });
+        page.on('request', request => { pendingRequests.add(request); if (/match-status|status-icon/.test(request.url()) && new URL(request.url()).pathname !== cssRoute) iconRequests.push(request.url()); });
         // Replay the same real API snapshots on both passes; never fabricate counts or write data.
         const apiCache = new Map();
         for (const path of ['/api/engine/board','/api/engine/signals','/api/engine/statistics']) apiCache.set(path, { status: 200, contentType: 'application/json', body: await publicFile(path, 'json') });
@@ -59,8 +69,10 @@ export async function uiCheck({ beforeCss, afterCss, phase }) {
         for (const pass of ['baseline','icons']) {
           currentPass = pass;
           patched = pass === 'icons';
+          prepareTransition();
           await page.goto(`${origin}/index.html`, { waitUntil: 'domcontentloaded', timeout: 45000 });
           await page.waitForFunction(() => Number(document.querySelector('[data-filter-count="all"]')?.textContent) > 0 && window.__statusQaSignals, null, { timeout: 30000 });
+          prepareTransition();
           await page.evaluate(() => window.NOMAD343_DASHBOARD_V2.reload());
           await page.evaluate(() => document.fonts.ready);
           const actualTheme = await page.evaluate(() => document.documentElement.dataset.theme);
@@ -153,13 +165,16 @@ export async function uiCheck({ beforeCss, afterCss, phase }) {
             await page.waitForTimeout(160);
             const stableBefore = await page.locator(control).evaluateAll(nodes => nodes.map(node => ({ height: node.getBoundingClientRect().height, mask: getComputedStyle(node.querySelector('span'), '::before').maskImage })));
             await page.evaluate(() => { window.__statusQaShifts = []; });
+            prepareTransition();
             await page.evaluate(() => window.NOMAD343_DASHBOARD_V2.reload());
             await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
             const stableAfter = await page.locator(control).evaluateAll(nodes => nodes.map(node => ({ height: node.getBoundingClientRect().height, mask: getComputedStyle(node.querySelector('span'), '::before').maskImage })));
             assert.equal(canonical(stableAfter), canonical(stableBefore), 'ICONS_JUMP_DURING_NATIVE_REFRESH');
             assert.equal(await page.evaluate(() => window.__statusQaShifts.reduce((sum, value) => sum + value, 0)), 0, 'MATCH_STATUS_LAYOUT_SHIFT_DURING_REFRESH');
+            prepareTransition();
             await page.reload({ waitUntil: 'domcontentloaded' });
             await page.waitForFunction(() => window.__statusQaSignals && Number(document.querySelector('[data-filter-count="all"]')?.textContent) > 0);
+            prepareTransition();
             await page.evaluate(() => window.NOMAD343_DASHBOARD_V2.reload());
             await page.locator('[data-status-filter="live"]').click();
             assert.equal(canonical(await page.evaluate(snapshots)), canonical(reference.get('live')), 'REFRESH_FILTER_OR_COUNTS_CHANGED');
@@ -170,7 +185,7 @@ export async function uiCheck({ beforeCss, afterCss, phase }) {
         assert.equal(errors.length, 0, `NEW_CONSOLE_ERROR:${name}:${theme}:${errors.join(';')}`);
         assert.equal(iconRequests.length, 0, 'EXTERNAL_ICON_REQUEST');
         const existingCancellations = new Set(failed.filter(request => request.pass === 'baseline' && request.failure === 'net::ERR_ABORTED').map(request => new URL(request.url).pathname));
-        const unexpectedFailures = failed.filter(request => !isTelemetryCancellation(request) && !(request.failure === 'net::ERR_ABORTED' && existingCancellations.has(new URL(request.url).pathname)));
+        const unexpectedFailures = failed.filter(request => !isTelemetryCancellation(request) && !isControlledCancellation(request) && !(request.failure === 'net::ERR_ABORTED' && existingCancellations.has(new URL(request.url).pathname)));
         assert.equal(unexpectedFailures.length, 0, `NEW_FAILED_UI_REQUEST:${JSON.stringify(unexpectedFailures)}`);
         evidence.push({ name, width, height, deviceScaleFactor: scale, theme, defaultHoverActive: true, tapFeedback: true, refreshPassed: true, nativeCountsAndFilterUnchanged: true, evidence: passEvidence, errors, failed, iconRequests });
         writeFileSync(`audit/ui-${phase}.json`, JSON.stringify(evidence, null, 2));
