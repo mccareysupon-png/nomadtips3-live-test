@@ -56,6 +56,10 @@ function sanitizeVersion(v) {
 const versionId = await activeVersion();
 const version = await cf(`/workers/${script}/versions/${versionId}?include=modules`);
 const moduleInventory = (version.modules || []).map(m => ({ name:m.name, contentType:m.content_type, bytes:Buffer.from(m.content_base64 || '', 'base64').length }));
+const main = (version.modules || []).find(m => m.name === version.main_module);
+assert(main?.content_base64, 'MAIN_MODULE_SOURCE_MISSING');
+const mainSource = Buffer.from(main.content_base64, 'base64').toString('utf8');
+writeFileSync(`${auditDir}/worker-main.js`, mainSource);
 const settings = await cf(`/scripts/${script}/settings`);
 
 const initial = ['/settings.html','/index.html?view=statistics','/settings.js?v=343-allmarkets-v1','/statistics-next.js?v=343-next-production-v1','/odds-format-343.js'];
@@ -76,6 +80,6 @@ const report = { generatedAt:new Date().toISOString(), scope:'READ-ONLY current 
 writeFileSync(`${auditDir}/report.json`,JSON.stringify(report,null,2));
 console.log(`ACTIVE_PRODUCTION_VERSION=${versionId}`);
 console.log(`MAIN_MODULE=${version.main_module}`);
+console.log(`MAIN_MODULE_BYTES=${Buffer.byteLength(mainSource)}`);
 console.log(`VERSION_KEYS=${Object.keys(version).join(',')}`);
-console.log(`VERSION_METADATA=${JSON.stringify(sanitizeVersion(version))}`);
 for (const f of files) console.log(`${f.path} bytes=${f.bytes} hits=${f.excerpts.length}`);
