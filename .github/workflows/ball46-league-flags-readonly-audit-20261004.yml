@@ -1,0 +1,42 @@
+name: READ ONLY - Ball46 League Flags 143 Audit 20261004
+
+on:
+  push:
+    branches:
+      - audit/ball46-league-flags-readonly-20261004
+    paths:
+      - '.github/workflows/ball46-league-flags-readonly-audit-20261004.yml'
+      - 'deploy-assets/match-status-svg-20261003/league-flags-readonly-audit.mjs'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ball46-league-flags-readonly-audit
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Read-only Ball46 league flag audit
+        shell: bash
+        run: |
+          cd deploy-assets/match-status-svg-20261003
+          export PLAYWRIGHT_EXECUTABLE_PATH
+          PLAYWRIGHT_EXECUTABLE_PATH=$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)
+          test -n "$PLAYWRIGHT_EXECUTABLE_PATH" || { echo READ_ONLY_CHROME_MISSING; exit 1; }
+          npm ci --ignore-scripts --no-audit --no-fund
+          node league-flags-readonly-audit.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-league-flags-readonly-${{ github.run_id }}
+          path: deploy-assets/match-status-svg-20261003/audit/league-flags-readonly/
+          if-no-files-found: error
+          retention-days: 30
