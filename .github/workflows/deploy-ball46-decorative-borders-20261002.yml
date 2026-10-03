@@ -20,7 +20,7 @@ env:
   CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
   SCRIPT_NAME: ball46-production
   BALL46_URL: https://ball46.com
-  DEPLOY_ENABLED: 'false'
+  DEPLOY_ENABLED: 'true'
   EXPECTED_BASE_VERSION: '745422ad-3899-4f11-9375-1aa10dbe23ca'
 
 jobs:
@@ -37,13 +37,13 @@ jobs:
       - name: Install pinned audit dependencies
         working-directory: deploy-assets/decorative-borders-20261002
         run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Test CSS-only patch and workflow syntax
+      - name: Test presentation-only patch and workflow syntax
         working-directory: deploy-assets/decorative-borders-20261002
         run: npm test
       - name: Install Chromium for responsive verification
         working-directory: deploy-assets/decorative-borders-20261002
         run: npx playwright install --with-deps chromium
-      - name: Exact Active Production CSS-only patch, preview, and guarded publish
+      - name: Exact Active Production match-clock preview and guarded publish
         working-directory: deploy-assets/decorative-borders-20261002
         run: node run.mjs
       - name: Retain verification evidence
