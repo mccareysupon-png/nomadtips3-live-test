@@ -17,7 +17,7 @@ export const logoCss = `
 /* ${marker}: scale only the existing header wordmark; reserve its full layout size */
 ${logoSelector} { zoom: 1.3 !important; }
 `;
-export const themeCss = `
+const enlargedThemeCss = `
 /* ${themeMarker}: aligned transparent controls in the existing odds row below the logo */
 ${brandCardSelector} {
   display: block !important;
@@ -85,6 +85,12 @@ ${themeSelector}:focus-visible, ${oddsButtonSelector}:focus-visible {
   outline-offset: 2px !important;
 }
 `;
+const compactFontSelector = `${themeSelector}, ${oddsButtonSelector}`;
+export const themeCss = enlargedThemeCss.replaceAll('font-size: 11px !important', 'font-size: 7px !important') + `
+@media (max-width: 760px) {
+  ${compactFontSelector} { font-size: 6.5px !important; }
+}
+`;
 const legacyThemeCss = `
 /* ${themeMarker}: global-standard, one-click theme control with a generous touch target */
 ${themeSelector} {
@@ -122,7 +128,7 @@ const legacyThemeLabels = `
     if(!document.getElementById('b46-compact-toolbar-style')){
       const style=document.createElement('style');
       style.id='b46-compact-toolbar-style';
-      style.textContent=${JSON.stringify(themeCss)};
+      style.textContent=${JSON.stringify(enlargedThemeCss)};
       document.head.append(style);
     }
     function update(){
@@ -199,7 +205,8 @@ export function constants(source) {
 
 export function originalThemeScript(script) {
   if (!script.includes(labelMarker)) return script;
-  const suffix = [themeLabels, legacyThemeLabels].find(value => script.endsWith(value));
+  const previousAsyncLabels = themeLabels.replace(JSON.stringify(themeCss), JSON.stringify(enlargedThemeCss));
+  const suffix = [themeLabels, legacyThemeLabels, previousAsyncLabels].find(value => script.endsWith(value));
   assert(suffix, 'EXISTING_THEME_LABEL_SCRIPT_DIFFERS');
   return script.slice(0, -suffix.length);
 }
@@ -218,7 +225,7 @@ export function borderChecks(css) {
   const hasLogo = css.includes(marker);
   const hasTheme = css.includes(themeMarker);
   assert(hasLogo || hasTheme, 'PRESENTATION_CSS_MARKER_MISSING');
-  root.walkAtRules(() => assert.fail('LOGO_CSS_AT_RULE'));
+  root.walkAtRules(r => assert(r.name === 'media' && r.params === '(max-width: 760px)', 'LOGO_CSS_AT_RULE'));
   const focusSelector = `${themeSelector}:focus-visible, ${oddsButtonSelector}:focus-visible`;
   const layoutProperties = new Map([
     [brandCardSelector, ['display','height','min-height','max-height']],
@@ -226,7 +233,7 @@ export function borderChecks(css) {
     [oddsControlSelector, ['flex','width','min-width','height','min-height']],
     [oddsButtonSelector, ['width','height','min-height','padding','border','background-color','background-image','box-shadow','color','font-family','font-size','font-weight','line-height','letter-spacing','white-space']],
   ]);
-  const selectors = new Set([logoSelector, themeSelector, `${themeSelector}:hover`, focusSelector, ...layoutProperties.keys()]);
+  const selectors = new Set([logoSelector, themeSelector, `${themeSelector}:hover`, focusSelector, compactFontSelector, ...layoutProperties.keys()]);
   root.walkRules(r => assert(selectors.has(r.selector), 'PRESENTATION_CSS_SCOPE_CHANGED'));
   root.walkRules(r => {
     r.walkDecls(d => {
@@ -239,6 +246,7 @@ export function borderChecks(css) {
         if (d.prop === 'height') assert.equal(d.value, '28px', 'THEME_HEIGHT_NOT_COMPACT');
         if (d.prop === 'border-radius') assert.equal(d.value, '5px', 'THEME_SHAPE_NOT_COMPACT');
       }
+      else if (r.selector === compactFontSelector) assert(d.prop === 'font-size' && d.value === '6.5px', 'MOBILE_FONT_NOT_ORIGINAL_SIZE');
       else if (layoutProperties.has(r.selector)) assert(layoutProperties.get(r.selector).includes(d.prop), `TOOLBAR_CSS_PROPERTY_NOT_ALLOWED:${d.prop}`);
       else if (r.selector === `${themeSelector}:hover`) assert(['color','background-color'].includes(d.prop), 'THEME_HOVER_NOT_TRANSPARENT');
       else assert(['outline','outline-offset'].includes(d.prop), `THEME_FOCUS_PROPERTY_NOT_ALLOWED:${d.prop}`);
@@ -264,7 +272,7 @@ export function patch(source, { themeScript }) {
   if (themeStart >= 0) {
     const existingTheme = entry.value.slice(themeStart - 1);
     const legacyFixedWidth = legacyThemeCss.replace('  width: 72px !important;\n', '  width: 72px !important;\n  flex: 0 0 72px !important;\n');
-    assert([themeCss, legacyThemeCss, legacyFixedWidth].includes(existingTheme), 'EXISTING_THEME_PATCH_DIFFERS');
+    assert([themeCss, enlargedThemeCss, legacyThemeCss, legacyFixedWidth].includes(existingTheme), 'EXISTING_THEME_PATCH_DIFFERS');
   }
   const cssAfter = beforeTheme + themeCss;
   const originalScript = originalThemeScript(themeScript);

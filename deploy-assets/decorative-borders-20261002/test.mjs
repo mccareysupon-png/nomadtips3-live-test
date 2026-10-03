@@ -129,7 +129,8 @@ test('theme control uses the existing label in a compact one-click toolbar contr
   assert(themeCss.includes(themeMarker));
   assert(themeCss.includes(themeSelector));
   assert(themeCss.includes(oddsButtonSelector));
-  assert.equal(themeCss.split('font-size: 11px !important').length - 1, 2);
+  assert.equal(themeCss.split('font-size: 7px !important').length - 1, 2);
+  assert(themeCss.includes('font-size: 6.5px !important'));
   assert.equal(themeCss.split('font-weight: 800 !important').length - 1, 2);
   assert(themeCss.includes('width: 48px !important'));
   assert(themeCss.includes('flex: 0 0 48px !important'));

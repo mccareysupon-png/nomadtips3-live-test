@@ -88,6 +88,7 @@ const pages = [
   ['settings', '/settings.html'],
   ['about', '/about.html'],
 ];
+const auditPages = env.HEADER_ONLY_QA === 'true' ? pages.filter(([name]) => name === 'live') : pages;
 const geometrySelectors = '.workspace-scorebar-slot,.workspace-scorebar-grid,.workspace-scorebar-cell,.event-flow,.event-flow-line,.b46-signal-flow-line,.b46-signal-flow-line-chart,.b46-signal-flow-live-copy,.pitch,.timeline,.match-row.active,svg,path,line,canvas,input,select,button:not([data-theme-toggle]):not([data-odds-format-button])';
 
 async function uiCheck(changes, phase) {
@@ -109,7 +110,7 @@ async function uiCheck(changes, phase) {
           if (!['GET', 'HEAD'].includes(route.request().method())) return route.abort('blockedbyclient');
           return route.continue();
         });
-        for (const [name, path] of pages) {
+        for (const [name, path] of auditPages) {
           const errors = [];
           const listener = e => errors.push(e.message);
           page.on('pageerror', listener);
@@ -249,6 +250,7 @@ async function uiCheck(changes, phase) {
             assert(oddsButton, `ODDS_BUTTON_MISSING:${key}`);
             assert(Math.abs(oddsButton.y - themeButton.y) < 1 && Math.abs(oddsButton.height - themeButton.height) < 1, `TOOLBAR_NOT_ALIGNED:${key}`);
             assert.equal(canonical(oddsButton.typography), canonical(themeButton.typography), `TOOLBAR_FONT_MISMATCH:${key}`);
+            assert.equal(oddsButton.typography.size, width <= 760 ? '6.5px' : '7px', `ODDS_ORIGINAL_FONT_SIZE_CHANGED:${key}`);
             assert(['normal', '0px'].includes(oddsButton.letterSpacing), `ODDS_LETTER_SPACING_NOT_ZERO:${key}`);
             assert.equal(oddsButton.letterSpacing, themeButton.letterSpacing, `TOOLBAR_LETTER_SPACING_MISMATCH:${key}`);
             assert.equal(oddsButton.background, 'rgba(0, 0, 0, 0)', `ODDS_BUTTON_NOT_TRANSPARENT:${key}`);
@@ -347,7 +349,7 @@ async function uiCheck(changes, phase) {
     }
   } finally { await browser.close(); }
   writeFileSync(`${audit}/ui-${phase}.json`, JSON.stringify(rows, null, 2));
-  assert.equal(rows.length, 40, 'UI_MATRIX_INCOMPLETE');
+  assert.equal(rows.length, 8 * auditPages.length, 'UI_MATRIX_INCOMPLETE');
   console.log(`UI_${phase.toUpperCase()}_PASS cases=${rows.length}`);
   return rows;
 }
