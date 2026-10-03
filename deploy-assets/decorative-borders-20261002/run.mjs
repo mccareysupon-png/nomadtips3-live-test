@@ -296,7 +296,6 @@ async function uiCheck(changes, phase) {
             if (name === 'live') assert(clocks.some(c => c.visible && c.text === 'LIVE'), `VISIBLE_LIVE_LABEL_MISSING:${key}`);
             if (name === 'live') assert(clocks.some(c => c.visible && c.cls === 'b46-clock-minute'), `VISIBLE_MATCH_MINUTE_MISSING:${key}`);
           }
-          await page.screenshot({ path: `${audit}/screenshots/${key}-after.png` });
           const frames = await page.locator('.rail-card:not(.workspace-scorebar-slot),.side-card:not(.workspace-scorebar-slot),.status-section,.workspace-stable-head,.sp-stat-hero,.sp-kpis,.sp-trend,.sp-filters,.sp-results,.hero-card,.article,.card').evaluateAll(es => es.filter(e => e.getBoundingClientRect().width > 0).map(e => ({ cls: e.className, border: getComputedStyle(e).borderTopColor })));
           if (name !== 'settings') {
             for (const frame of frames) assert.equal(frame.border, 'rgba(0, 0, 0, 0)', `FRAME_NOT_TRANSPARENT:${key}:${frame.cls}`);
@@ -331,6 +330,9 @@ async function uiCheck(changes, phase) {
             assert(!focusAfter.outline.includes('0px') && !focusAfter.outline.includes('none'), `KEYBOARD_FOCUS_NOT_VISIBLE:${key}`);
           }
           const images = await page.locator('img').evaluateAll(es => es.filter(e => e.getBoundingClientRect().width > 0).map(e => ({ src: e.src, loaded: e.complete && e.naturalWidth > 0 })));
+          await page.evaluate(() => document.activeElement?.blur());
+          await page.mouse.move(width - 5, height - 5);
+          await page.screenshot({ path: `${audit}/screenshots/${key}-after.png` });
           const footer = page.locator('#b46-site-footer-v1,.site-footer').first();
           if (await footer.count()) {
             await footer.scrollIntoViewIfNeeded();
