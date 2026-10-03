@@ -20,8 +20,8 @@ env:
   CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
   SCRIPT_NAME: ball46-production
   BALL46_URL: https://ball46.com
-  DEPLOY_ENABLED: 'true'
-  EXPECTED_BASE_VERSION: '745422ad-3899-4f11-9375-1aa10dbe23ca'
+  DEPLOY_ENABLED: 'false'
+  EXPECTED_BASE_VERSION: '8d0a089b-6acb-404d-bbe2-c16a84a73622'
 
 jobs:
   guarded-css:
@@ -43,7 +43,7 @@ jobs:
       - name: Install Chromium for responsive verification
         working-directory: deploy-assets/decorative-borders-20261002
         run: npx playwright install --with-deps chromium
-      - name: Exact Active Production match-clock preview and guarded publish
+      - name: Exact Active Production header-logo preview and guarded publish
         working-directory: deploy-assets/decorative-borders-20261002
         run: node run.mjs
       - name: Retain verification evidence

@@ -5,6 +5,7 @@ import YAML from 'yaml';
 import { patch, normalize, targets, marker, validateAppendix, borderChecks } from './patch.mjs';
 import { runInNewContext } from 'node:vm';
 import { patch as patchClock, normalize as normalizeClock, patchClockScript, originalClockScript, painter, clockCss, borderChecks as clockChecks } from './live-clock.mjs';
+import { patch as patchLogo, logoCss, marker as logoMarker, borderChecks as logoChecks } from './logo-size.mjs';
 
 const fixture = targets.map(t => `const ${t.name}=${JSON.stringify('.fixture{border:1px solid #333}')};`).join('\n') + '\nconst __B46_SCOREBAR_BG_B64__={"/scorebar-win-test.webp":"aW1hZ2U="};\nexport default {fetch(){return new Response("unchanged");}};';
 
@@ -103,4 +104,17 @@ test('clock spans preserve exact text, stoppage time and half-time, without repe
     assert.equal(el.textContent, value);
     assert.equal(el.writes, 0);
   }
+});
+
+test('logo patch adds exactly 130 percent CSS while keeping clock colors and every JS byte', () => {
+  const current = patchClock(clockFixture, { clockScript }).after;
+  const result = patchLogo(current);
+  assert.equal(normalize(result.after), normalize(current));
+  assert.equal(result.changes[0].after, result.changes[0].before + logoCss);
+  assert(result.changes[0].after.includes(clockCss));
+  assert.equal(patchLogo(result.after).after, result.after);
+  assert.throws(() => patchLogo(result.after.replace(logoMarker, logoMarker + '_changed')), /EXISTING_LOGO_PATCH_DIFFERS/);
+  assert.throws(() => logoChecks(logoCss.replace('1.3', '1.4')), /EXACT_130_PERCENT/);
+  assert.throws(() => logoChecks(logoCss.replace('zoom:', 'transform:')), /EXACT_130_PERCENT/);
+  assert.throws(() => logoChecks(logoCss.replace('.workspace-brand[', '.other[')), /SCOPE_CHANGED/);
 });

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync, appendFileSync } from 'node:fs';
 import { parse as parseHtml } from 'parse5';
 import { chromium } from 'playwright';
-import { patch, constants, targets, sha, borderChecks, clockRoute } from './live-clock.mjs';
+import { patch, constants, targets, sha, borderChecks, clockRoute, logoSelector } from './logo-size.mjs';
 
 const env = process.env;
 const origin = env.BALL46_URL || 'https://ball46.com';
@@ -16,7 +16,7 @@ const runTag = `${env.GITHUB_RUN_ID || 'local'}-${env.GITHUB_SHA || 'local'}`;
 const audit = 'audit';
 mkdirSync(`${audit}/screenshots`, { recursive: true });
 mkdirSync(`${audit}/css`, { recursive: true });
-const report = { runTag, startedAt: new Date().toISOString(), publish: env.DEPLOY_ENABLED === 'true', scope: 'Match-card LIVE/minute text colors via existing color painter and tune CSS only; renderer, API logic, configuration and images protected' };
+const report = { runTag, startedAt: new Date().toISOString(), publish: env.DEPLOY_ENABLED === 'true', scope: 'Existing header wordmark at 130 percent using one CSS declaration only; all JavaScript, images, API logic and configuration protected' };
 const save = () => writeFileSync(`${audit}/report.json`, JSON.stringify(report, null, 2));
 const delay = ms => new Promise(r => setTimeout(r, ms));
 const canonical = value => JSON.stringify(value, (_, v) => v && typeof v === 'object' && !Array.isArray(v) ? Object.fromEntries(Object.entries(v).sort(([a], [b]) => a.localeCompare(b))) : v);
@@ -94,14 +94,14 @@ async function uiCheck(changes, phase) {
   const browser = await chromium.launch();
   const rows = [];
   try {
-    for (const [size, width, height] of [['desktop', 1440, 1000], ['tablet', 820, 1100], ['mobile', 390, 844]]) {
+    for (const [size, width, height] of [['desktop', 1440, 1000], ['tablet', 820, 1100], ['mobile', 390, 844], ['small-mobile', 320, 740]]) {
       for (const theme of ['light', 'dark']) {
         const context = await browser.newContext({ viewport: { width, height }, colorScheme: theme, timezoneId: 'Asia/Bangkok' });
         await context.addInitScript(theme => { localStorage.setItem('nomad343_dashboard_theme_v1', theme); }, theme);
         const page = await context.newPage();
         if (phase === 'preview') {
           const scriptChange = changes.find(c => c.route === clockRoute);
-          await page.route(`**${clockRoute}*`, route => route.fulfill({ status: 200, contentType: 'application/javascript; charset=utf-8', body: scriptChange.after }));
+          if (scriptChange) await page.route(`**${clockRoute}*`, route => route.fulfill({ status: 200, contentType: 'application/javascript; charset=utf-8', body: scriptChange.after }));
         }
         // Owner Settings is observed only: never allow a write request during QA.
         await page.route('**/api/**', async route => {
@@ -168,6 +168,13 @@ async function uiCheck(changes, phase) {
             scrollWidth: document.documentElement.scrollWidth,
           }), { selector: geometrySelectors, mutableLeftBorders });
           const key = `${phase}-${name}-${size}-${theme}`;
+          const sampleLogo = () => page.evaluate(selector => {
+            const e = document.querySelector(selector);
+            if (!e) return null;
+            const rect = n => { const r = n.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height, left: r.left, right: r.right, top: r.top, bottom: r.bottom }; };
+            return { text: e.textContent, rect: rect(e), zoom: getComputedStyle(e).zoom, card: rect(e.closest('.workspace-brand-card')), controls: [...e.closest('.workspace-brand-card').querySelectorAll('button:not([hidden])')].filter(n => n.getBoundingClientRect().width > 0 && n.getBoundingClientRect().height > 0).map(n => ({ label: n.getAttribute('aria-label') || n.textContent, rect: rect(n) })) };
+          }, logoSelector);
+          const logoBefore = await sampleLogo();
           await page.screenshot({ path: `${audit}/screenshots/${key}-before.png` });
           await page.evaluate(() => {
             window.__borderQaRevision = 0;
@@ -196,6 +203,22 @@ async function uiCheck(changes, phase) {
           }
           assert.equal(canonical(after.geometry), canonical(before.geometry), `PROTECTED_GEOMETRY_CHANGED:${key}`);
           assert(after.scrollWidth <= before.scrollWidth + 1, `NEW_HORIZONTAL_OVERFLOW:${key}`);
+          const logoAfter = await sampleLogo();
+          if (['live', 'signal', 'statistics'].includes(name)) {
+            assert(logoBefore && logoAfter, `HEADER_LOGO_MISSING:${key}`);
+            assert.equal(logoAfter.text, 'ball46', `HEADER_LOGO_TEXT_CHANGED:${key}`);
+            assert.equal(Number(logoAfter.zoom), 1.3, `HEADER_LOGO_NOT_130_PERCENT:${key}`);
+            if (phase === 'preview') {
+              assert(Math.abs(logoAfter.rect.width - logoBefore.rect.width * 1.3) < 0.6, `LOGO_WIDTH_NOT_PLUS_30_PERCENT:${key}`);
+              assert(Math.abs(logoAfter.rect.height - logoBefore.rect.height * 1.3) < 0.6, `LOGO_HEIGHT_NOT_PLUS_30_PERCENT:${key}`);
+            }
+            const r = logoAfter.rect, c = logoAfter.card;
+            assert(r.left >= c.left && r.top >= c.top && r.right <= c.right && r.bottom <= c.bottom, `LOGO_CLIPPED:${key}`);
+            for (const control of logoAfter.controls) {
+              const b = control.rect;
+              assert(r.right <= b.left || b.right <= r.left || r.bottom <= b.top || b.bottom <= r.top, `LOGO_OVERLAPS_CONTROL:${key}:${control.label}`);
+            }
+          }
           let clocks = [];
           if (['live', 'signal'].includes(name)) {
             await page.waitForFunction(() => [...document.querySelectorAll('.match-row .score-cell>small:not(.half-score),.match-row .mobile-clock,.match-row .mobile-signal')].filter(e => /^LIVE\s*\u00b7/.test(e.textContent)).every(e => e.querySelector('.b46-clock-live-label')), null, { timeout: 10000 });
@@ -247,7 +270,7 @@ async function uiCheck(changes, phase) {
             await page.screenshot({ path: `${audit}/screenshots/${key}-footer.png` });
           }
           assert.equal(errors.length, 0, `UI_PAGE_ERRORS:${key}:${errors.join(';')}`);
-          rows.push({ name, size, theme, actualView: await page.evaluate(() => document.body.dataset.workspaceView || document.body.dataset.page || 'information'), effectiveTheme: await page.evaluate(() => document.documentElement.dataset.theme || 'fixed-theme'), geometryUnchanged: true, decorativeLinesRemoved: true, clocks, matchRows: await page.locator('.match-row').count(), frames, decoration, images, backgrounds, pageErrors: errors });
+          rows.push({ name, size, theme, actualView: await page.evaluate(() => document.body.dataset.workspaceView || document.body.dataset.page || 'information'), effectiveTheme: await page.evaluate(() => document.documentElement.dataset.theme || 'fixed-theme'), geometryUnchanged: true, decorativeLinesRemoved: true, logoBefore, logoAfter, clocks, matchRows: await page.locator('.match-row').count(), frames, decoration, images, backgrounds, pageErrors: errors });
           page.off('pageerror', listener);
         }
         await context.close();
@@ -255,7 +278,7 @@ async function uiCheck(changes, phase) {
     }
   } finally { await browser.close(); }
   writeFileSync(`${audit}/ui-${phase}.json`, JSON.stringify(rows, null, 2));
-  assert.equal(rows.length, 30, 'UI_MATRIX_INCOMPLETE');
+  assert.equal(rows.length, 40, 'UI_MATRIX_INCOMPLETE');
   console.log(`UI_${phase.toUpperCase()}_PASS cases=${rows.length}`);
   return rows;
 }
@@ -292,8 +315,7 @@ try {
   const main = original.modules.find(m => m.name === original.main_module);
   assert(main, 'MAIN_MODULE_NOT_FOUND');
   const source = Buffer.from(main.content_base64, 'base64').toString('utf8');
-  const clockScript = (await publicFile(clockRoute, 'javascript')).toString('utf8');
-  const result = patch(source, { clockScript });
+  const result = patch(source);
   const bg = constants(source).get('__B46_SCOREBAR_BG_B64__')?.value;
   assert(bg && Object.keys(bg).length, 'SCOREBAR_IMAGES_MISSING');
   const states = ['win', 'loss', 'draw', 'pending'];
@@ -380,7 +402,7 @@ try {
   }
   report.completedAt = new Date().toISOString();
   save();
-  if (env.GITHUB_STEP_SUMMARY) appendFileSync(env.GITHUB_STEP_SUMMARY, `## Ball46 match-card clock colors\n\nResult: ${report.result}\n\nBase: ${base}\n\nFinal: ${report.finalVersion}\n\nScope: LIVE red, minute green. Existing color painter and tune CSS only; match renderer, backend logic, images and configuration protected.\n`);
+  if (env.GITHUB_STEP_SUMMARY) appendFileSync(env.GITHUB_STEP_SUMMARY, `## Ball46 header logo plus 30 percent\n\nResult: ${report.result}\n\nBase: ${base}\n\nFinal: ${report.finalVersion}\n\nScope: one CSS declaration on the existing header wordmark; all JavaScript, images, backend logic and configuration protected.\n`);
   console.log(report.result);
 } catch (error) {
   report.result = 'FAIL';
