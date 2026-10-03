@@ -6,9 +6,15 @@ on:
       - ops/ball46-odds-surgical-20260928
     paths:
       - '.github/workflows/ball46-odds-surgical-deploy-20260928.yml'
+      - '.github/scripts/ball46_odds_surgical_20260928.sh'
+      - 'deploy-assets/match-status-svg-20261003/**'
 
 permissions:
   contents: read
+
+concurrency:
+  group: ball46-production-surgical
+  cancel-in-progress: false
 
 jobs:
   deploy:
@@ -22,13 +28,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Surgical Odds deploy from current Production only
+      - name: Surgical MATCH STATUS SVG deploy from current Production only
         shell: bash
         run: bash .github/scripts/ball46_odds_surgical_20260928.sh
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: ball46-odds-surgical-${{ github.run_id }}
-          path: /tmp/b46-odds-surgical
-          if-no-files-found: ignore
+          path: deploy-assets/match-status-svg-20261003/audit/
+          if-no-files-found: error
           retention-days: 30

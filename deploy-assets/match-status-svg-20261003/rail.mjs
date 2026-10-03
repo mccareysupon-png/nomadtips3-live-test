@@ -1,0 +1,86 @@
+import assert from 'node:assert/strict';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { api, script, directOrigin, publicFile, sha, canonical } from './production.mjs';
+
+export const rail = {
+  proofRun: 36360390676,
+  workflow: '.github/workflows/ball46-odds-surgical-deploy-20260928.yml',
+  branch: 'ops/ball46-odds-surgical-20260928',
+  wrangler: '4.92.0',
+};
+
+export async function schedules() {
+  const result = await api(`/scripts/${script}/schedules`);
+  const entries = Array.isArray(result) ? result : result.schedules;
+  assert(Array.isArray(entries), 'CURRENT_SCHEDULES_MISSING');
+  return entries.map(entry => entry.cron).sort();
+}
+
+export function configFromCurrent(version, settings, crons, assetsDirectory) {
+  assert.equal(version.main_module, 'index.js', 'CURRENT_RAIL_MAIN_MODULE_CHANGED');
+  assert.equal(version.modules.length, 1, 'CURRENT_RAIL_MODULE_SHAPE_CHANGED');
+  assert(version.compatibility_date, 'CURRENT_COMPATIBILITY_DATE_MISSING');
+  assert(Array.isArray(version.bindings), 'CURRENT_BINDINGS_MISSING');
+  const assetBindings = version.bindings.filter(binding => binding.type === 'assets');
+  assert.equal(assetBindings.length, 1, 'CURRENT_ASSET_BINDING_SHAPE_CHANGED');
+  const services = version.bindings.filter(binding => binding.type === 'service').map(binding => {
+    assert(binding.name && binding.service, 'CURRENT_SERVICE_BINDING_INCOMPLETE');
+    return { binding: binding.name, service: binding.service, ...(binding.environment ? { environment: binding.environment } : {}) };
+  });
+  assert(version.bindings.every(binding => ['assets', 'service'].includes(binding.type)), 'UNSUPPORTED_CURRENT_BINDING_STOP');
+  const assets = version.assets?.config;
+  assert(assets && assets.base_path === '/', 'CURRENT_ASSET_CONFIG_MISSING');
+  const config = {
+    name: script,
+    main: './index.js',
+    compatibility_date: version.compatibility_date,
+    compatibility_flags: version.compatibility_flags || [],
+    no_bundle: true,
+    services,
+    assets: {
+      directory: assetsDirectory,
+      binding: assetBindings[0].name,
+      html_handling: assets.html_handling,
+      not_found_handling: assets.not_found_handling,
+      run_worker_first: assets.run_worker_first,
+    },
+    triggers: { crons },
+  };
+  for (const key of ['logpush', 'limits', 'observability']) if (settings[key] !== undefined && settings[key] !== null) config[key] = settings[key];
+  if (settings.placement?.mode === 'smart') config.placement = settings.placement;
+  return config;
+}
+
+export async function stageCurrentRail(version, settings, crons, patchedSource) {
+  const runtime = resolve('runtime');
+  const assets = resolve(runtime, 'assets');
+  const paths = readFileSync('../../.github/scripts/ball46_current217_live_paths_20260928.txt', 'utf8').split(/\r?\n/).filter(Boolean);
+  assert.equal(paths.length, 79, 'CONFIRMED_RAIL_PATH_COUNT_CHANGED');
+  assert.equal(new Set(paths).size, paths.length, 'CONFIRMED_RAIL_DUPLICATE_PATH');
+  const hashes = {};
+  for (const path of paths) {
+    assert(/^[a-zA-Z0-9][a-zA-Z0-9./_-]*$/.test(path) && !path.split('/').includes('..'), 'UNSAFE_CURRENT_ASSET_PATH');
+    const bytes = await publicFile('/' + path, undefined, directOrigin);
+    assert.equal(sha(await publicFile('/' + path)), sha(bytes), `CURRENT_PRODUCTION_HOSTS_DIFFER:${path}`);
+    const target = resolve(assets, path);
+    mkdirSync(dirname(target), { recursive: true });
+    writeFileSync(target, bytes);
+    hashes[path] = sha(bytes);
+  }
+  writeFileSync(resolve(runtime, 'index.js'), patchedSource);
+  writeFileSync(resolve(runtime, 'wrangler.jsonc'), JSON.stringify(configFromCurrent(version, settings, crons, assets), null, 2));
+  return { runtime, hashes, crons };
+}
+
+export async function verifyRailBase(staged) {
+  assert.equal(canonical(await schedules()), canonical(staged.crons), 'CURRENT_CRON_CHANGED_STOP');
+  for (const [path, expected] of Object.entries(staged.hashes)) assert.equal(sha(await publicFile('/' + path, undefined, directOrigin)), expected, `CURRENT_RAIL_ASSET_MOVED_STOP:${path}`);
+}
+
+export function wrangler(staged, dryRun = false) {
+  const args = ['--yes', `wrangler@${rail.wrangler}`, 'deploy', '--config', 'wrangler.jsonc', ...(dryRun ? ['--dry-run'] : [])];
+  const result = spawnSync('npx', args, { cwd: staged.runtime, stdio: 'inherit', env: process.env });
+  assert(!result.error && result.status === 0, `CONFIRMED_RAIL_WRANGLER_FAILED:${dryRun ? 'dry-run' : 'deploy'}:${result.error?.message || result.status}`);
+}
