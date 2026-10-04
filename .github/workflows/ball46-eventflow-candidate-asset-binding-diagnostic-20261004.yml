@@ -1,0 +1,75 @@
+name: Ball46 Event Flow Candidate Asset Binding Diagnostic 20261004
+
+on:
+  push:
+    branches: [work/eventflow-signal-annotation-20261004]
+    paths:
+      - '.github/workflows/ball46-eventflow-candidate-asset-binding-diagnostic-20261004.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnostic:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      SCRIPT_NAME: ball46-production
+      BASE_VERSION: 63d5661f-8094-4635-b5ef-a076033a513f
+      CANDIDATE_VERSION: 2ea9fae4-1cb6-47a7-9cab-7aefc25e2e46
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Compare rolled-back candidate with base without exposing binding values
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/candidate-diag
+          AUTH="Authorization: Bearer $API_TOKEN"
+          for id in "$BASE_VERSION" "$CANDIDATE_VERSION"; do
+            curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/workers/$SCRIPT_NAME/versions/$id?include=modules" -H "$AUTH" -o "/tmp/candidate-diag/$id.json"
+          done
+          node - <<'NODE'
+          const fs=require('fs'),crypto=require('crypto');
+          const ids=[process.env.BASE_VERSION,process.env.CANDIDATE_VERSION];
+          const sha=v=>crypto.createHash('sha256').update(Buffer.isBuffer(v)?v:String(v)).digest('hex');
+          const canonical=v=>JSON.stringify(v,(_,x)=>x&&typeof x==='object'&&!Array.isArray(x)?Object.fromEntries(Object.entries(x).sort(([a],[b])=>a.localeCompare(b))):x);
+          const summarize=(id)=>{
+            const raw=JSON.parse(fs.readFileSync(`/tmp/candidate-diag/${id}.json`));
+            if(raw.success!==true)throw Error(`VERSION_FETCH_FAILED_${id}`);
+            const v=raw.result;
+            const modules=(v.modules||[]).map(m=>({name:m.name,type:m.content_type,sha:sha(Buffer.from(m.content_base64,'base64'))})).sort((a,b)=>a.name.localeCompare(b.name));
+            const bindings=(v.bindings||[]).map(b=>({name:b.name,type:b.type,keys:Object.keys(b).sort(),fullHash:sha(canonical(b))})).sort((a,b)=>String(a.name).localeCompare(String(b.name)));
+            const assets={present:Object.prototype.hasOwnProperty.call(v,'assets'),keys:v.assets&&typeof v.assets==='object'?Object.keys(v.assets).sort():[],hash:sha(canonical(v.assets??null))};
+            return {id,main_module:v.main_module,compatibility_date:v.compatibility_date??null,compatibility_flags:v.compatibility_flags??[],usage_model:v.usage_model??null,placementHash:sha(canonical(v.placement??{})),assets,bindings,modules};
+          };
+          const base=summarize(ids[0]),candidate=summarize(ids[1]);
+          const map=a=>Object.fromEntries(a.map(x=>[x.name,x]));
+          const bm=map(base.modules),cm=map(candidate.modules);
+          const moduleDiff=[...new Set([...Object.keys(bm),...Object.keys(cm)])].filter(k=>canonical(bm[k])!==canonical(cm[k]));
+          const bb=map(base.bindings),cb=map(candidate.bindings);
+          const bindingDiff=[...new Set([...Object.keys(bb),...Object.keys(cb)])].filter(k=>canonical(bb[k])!==canonical(cb[k]));
+          const report={base,candidate,moduleDiff,bindingDiff,assetsEqual:canonical(base.assets)===canonical(candidate.assets),topConfigEqual:base.main_module===candidate.main_module&&base.compatibility_date===candidate.compatibility_date&&canonical(base.compatibility_flags)===canonical(candidate.compatibility_flags)&&base.usage_model===candidate.usage_model&&base.placementHash===candidate.placementHash};
+          fs.writeFileSync('/tmp/candidate-diag/report.json',JSON.stringify(report,null,2));
+          console.log('MODULE_DIFF='+JSON.stringify(moduleDiff));
+          console.log('BINDING_DIFF='+JSON.stringify(bindingDiff));
+          console.log('ASSETS_EQUAL='+report.assetsEqual+' BASE='+JSON.stringify(base.assets)+' CANDIDATE='+JSON.stringify(candidate.assets));
+          console.log('TOP_CONFIG_EQUAL='+report.topConfigEqual);
+          for(const b of base.bindings)console.log(`BASE_BINDING name=${b.name} type=${b.type} keys=${b.keys.join(',')} hash=${b.fullHash}`);
+          for(const b of candidate.bindings)console.log(`CANDIDATE_BINDING name=${b.name} type=${b.type} keys=${b.keys.join(',')} hash=${b.fullHash}`);
+          if(moduleDiff.length!==1||moduleDiff[0]!==base.main_module)throw Error('CANDIDATE_MODULE_SCOPE_UNEXPECTED');
+          NODE
+          echo "CANDIDATE_ASSET_BINDING_DIAGNOSTIC_PASS"
+      - name: Retain evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-eventflow-candidate-binding-diagnostic-${{ github.run_id }}
+          path: /tmp/candidate-diag/report.json
+          if-no-files-found: warn
+          retention-days: 14
