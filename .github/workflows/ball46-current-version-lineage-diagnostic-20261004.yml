@@ -1,0 +1,65 @@
+name: Ball46 Current Version Lineage Diagnostic 20261004
+
+on:
+  push:
+    branches: [work/eventflow-signal-annotation-20261004]
+    paths:
+      - '.github/workflows/ball46-current-version-lineage-diagnostic-20261004.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lineage:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      SCRIPT_NAME: ball46-production
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read exact current Worker deployment/version lineage metadata only
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/b46-lineage
+          AUTH="Authorization: Bearer $API_TOKEN"
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=10" -H "$AUTH" -o /tmp/b46-lineage/deployments.json
+          CURRENT=$(node - <<'NODE'
+          const j=require('/tmp/b46-lineage/deployments.json');const ds=j.result?.deployments||j.result||[];
+          if(j.success!==true||!ds.length)throw Error('NO_DEPLOYMENTS');const d=ds[0];
+          if(d.versions?.length!==1||Number(d.versions[0].percentage)!==100)throw Error('NOT_SINGLE_100');
+          console.log(JSON.stringify({id:d.id,created_on:d.created_on,source:d.source,annotations:d.annotations,versions:d.versions},null,2));
+          process.stderr.write(String(d.versions[0].version_id));
+          NODE
+          ) 2>/tmp/b46-lineage/current-version.txt
+          cat /tmp/b46-lineage/current-version.txt
+          VID=$(cat /tmp/b46-lineage/current-version.txt)
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/workers/$SCRIPT_NAME/versions/$VID?include=modules" -H "$AUTH" -o /tmp/b46-lineage/version.json
+          node - <<'NODE'
+          const fs=require('fs'),crypto=require('crypto');
+          const d=JSON.parse(fs.readFileSync('/tmp/b46-lineage/deployments.json'));
+          const v=JSON.parse(fs.readFileSync('/tmp/b46-lineage/version.json'));
+          if(v.success!==true)throw Error('VERSION_FAILED');
+          const vr=v.result;
+          const cleanVersion={id:vr.id,created_on:vr.created_on,number:vr.number,annotations:vr.annotations,main_module:vr.main_module,compatibility_date:vr.compatibility_date,compatibility_flags:vr.compatibility_flags,usage_model:vr.usage_model,placement:vr.placement,assets:vr.assets,bindings:(vr.bindings||[]).map(b=>({name:b.name,type:b.type,service:b.service??null,environment:b.environment??null})),modules:(vr.modules||[]).map(m=>({name:m.name,type:m.content_type,sha256:crypto.createHash('sha256').update(Buffer.from(m.content_base64,'base64')).digest('hex')}))};
+          fs.writeFileSync('/tmp/b46-lineage/clean-version.json',JSON.stringify(cleanVersion,null,2));
+          const ds=d.result?.deployments||d.result||[];
+          const cleanDeps=ds.map(x=>({id:x.id,created_on:x.created_on,source:x.source,annotations:x.annotations,versions:x.versions}));
+          fs.writeFileSync('/tmp/b46-lineage/clean-deployments.json',JSON.stringify(cleanDeps,null,2));
+          console.log('CURRENT_VERSION_METADATA='+JSON.stringify(cleanVersion));
+          console.log('RECENT_DEPLOYMENTS_METADATA='+JSON.stringify(cleanDeps));
+          console.log('LINEAGE_DIAGNOSTIC_PASS');
+          NODE
+      - name: Retain lineage evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-current-version-lineage-${{ github.run_id }}
+          path: |
+            /tmp/b46-lineage/clean-version.json
+            /tmp/b46-lineage/clean-deployments.json
+          if-no-files-found: error
+          retention-days: 14
