@@ -1,0 +1,29 @@
+name: READ ONLY - Ball46 Direct Final Probe 20261004
+
+on:
+  push:
+    branches: ['ops/ball46-stat-final-flow-20261004']
+    paths:
+      - '.github/workflows/ball46-final-fallback-probe-20261004.yml'
+
+permissions:
+  contents: read
+
+env:
+  FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
+
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Probe known stuck fixture IDs without mutation
+        shell: bash
+        run: |
+          set -euo pipefail
+          for id in 201976968 202092070 201979297; do
+            code=$(curl -sS -L --max-time 25 -H "Authorization: Bearer $FIVEDOLLAR_API_KEY" -H 'Accept: application/json' -o "/tmp/$id.json" -w '%{http_code}' "https://api.5dollarfootballapi.com/v1/fixtures/$id?include=events,stats" || true)
+            ID="$id" CODE="$code" node - <<'NODE'
+          const fs=require('fs');const id=process.env.ID,code=process.env.CODE;let raw='';try{raw=fs.readFileSync(`/tmp/${id}.json`,'utf8')}catch{}let j=null;try{j=JSON.parse(raw)}catch{};const d=j?.data??j;const summarize=x=>x&&typeof x==='object'?{id:x.id??x.fixture_id??null,status:x.status??x.status_code??null,status_code:x.status_code??x.statusCode??null,minute:x.minute??x.elapsed??null,goals:x.goals??x.score??null,corners:x.corners??null,topKeys:Object.keys(x).slice(0,25)}:null;console.log('FINAL_PROBE',JSON.stringify({id,http:Number(code||0),success:j?.success??null,error:j?.error??j?.message??null,dataType:Array.isArray(d)?'array':typeof d,dataSummary:Array.isArray(d)?d.slice(0,1).map(summarize):summarize(d),rootKeys:j&&typeof j==='object'?Object.keys(j).slice(0,25):[]}));
+          NODE
+          done
