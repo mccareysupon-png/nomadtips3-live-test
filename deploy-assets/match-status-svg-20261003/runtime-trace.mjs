@@ -11,12 +11,12 @@ export async function traceRuntime({directory='audit/runtime',watchMs=10000,expe
     await cdp.send('Network.enable');await cdp.send('Network.setCacheDisabled',{cacheDisabled:true});await cdp.send('Debugger.enable');await cdp.send('DOM.enable');
     const scripts=new Map(),responses=new Map(),pending=[];
     cdp.on('Debugger.scriptParsed',s=>scripts.set(s.scriptId,s.url));
-    cdp.on('Network.responseReceived',e=>{if(e.response.url.includes('singlepage-workspace-343.js'))responses.set(e.requestId,e.response)});
-    cdp.on('Network.loadingFinished',e=>{if(responses.has(e.requestId))pending.push((async()=>{const r=responses.get(e.requestId),body=await cdp.send('Network.getResponseBody',{requestId:e.requestId});const bytes=Buffer.from(body.body,body.base64Encoded?'base64':'utf8');report.loaded.push({url:r.url,status:r.status,headers:r.headers,fromDiskCache:r.fromDiskCache||false,fromServiceWorker:r.fromServiceWorker||false,sha256:createHash('sha256').update(bytes).digest('hex'),newTotalCode:bytes.toString().includes('state.statisticsTotal=j.total'),sidebarRowCountCode:bytes.toString().includes('out.all=state.rows.length')});writeFileSync(directory+'/loaded-spa.js',bytes)})());});
+    cdp.on('Network.responseReceived',e=>{if(/singlepage-workspace-343\.js|ui-sync-fixes-343-v2\.js/.test(e.response.url))responses.set(e.requestId,e.response)});
+    cdp.on('Network.loadingFinished',e=>{if(responses.has(e.requestId))pending.push((async()=>{const r=responses.get(e.requestId),body=await cdp.send('Network.getResponseBody',{requestId:e.requestId});const bytes=Buffer.from(body.body,body.base64Encoded?'base64':'utf8');report.loaded.push({url:r.url,status:r.status,headers:r.headers,fromDiskCache:r.fromDiskCache||false,fromServiceWorker:r.fromServiceWorker||false,sha256:createHash('sha256').update(bytes).digest('hex'),newTotalCode:bytes.toString().includes('state.statisticsTotal=j.total'),sidebarRowCountCode:bytes.toString().includes('out.all=state.rows.length')});writeFileSync(directory+'/'+new URL(r.url).pathname.split('/').pop(),bytes)})());});
     cdp.on('Debugger.paused',e=>{pending.push((async()=>{
       const pause={reason:e.reason,data:e.data,frames:e.callFrames.map(f=>({function:f.functionName,url:f.url||scripts.get(f.location.scriptId),line:f.location.lineNumber+1,column:f.location.columnNumber+1})),values:[]};
-      for(const f of e.callFrames.filter(f=>/renderStatNav|marketCounts|renderKpis|loadStatistics/.test(f.functionName))){
-        for(const expression of ['typeof c!=="undefined"?c.all:null','typeof id!=="undefined"?id:null','typeof state!=="undefined"?state.rows.length:null','typeof state!=="undefined"?state.statisticsTotal:null']){
+      for(const f of e.callFrames.filter(f=>/renderStatNav|marketCounts|renderKpis|loadStatistics|paintStatCounts|loadStatCountsOnce/.test(f.functionName))){
+        for(const expression of ['typeof counts!=="undefined"?counts.all:null','typeof c!=="undefined"?c.all:null','typeof id!=="undefined"?id:null','typeof state!=="undefined"?state.rows.length:null','typeof state!=="undefined"?state.statisticsTotal:null']){
           const r=await cdp.send('Debugger.evaluateOnCallFrame',{callFrameId:f.callFrameId,expression,returnByValue:true,silent:true});pause.values.push({function:f.functionName,expression,value:r.result.value});
         }
       }
@@ -37,11 +37,11 @@ export async function traceRuntime({directory='audit/runtime',watchMs=10000,expe
     release();
     await page.waitForTimeout(6000);
     async function snapshot(label){const value=await page.evaluate(()=>({url:location.href,sidebar:document.querySelector('[data-stat-market="all"] b')?.textContent,kpi:document.querySelector('[data-sp-kpi="total"]')?.textContent}));report.snapshots.push({label,at:Date.now(),...value});if(expectFixed)assert.equal(value.sidebar,value.kpi,'SIDEBAR_TOTAL_DIFFERS_FROM_KPI');}
-    await snapshot('initial');
+    await page.locator('[data-stat-market="all"]').click();await page.waitForTimeout(1000);await snapshot('initial');
     // Disable cache + hard reload, reinstall DOM breakpoints by repeating request gating.
     await cdp.send('Debugger.disable');
     await cdp.send('Page.enable');await cdp.send('Page.reload',{ignoreCache:true});
-    await page.waitForTimeout(6000);await snapshot('hard-reload');
+    await page.waitForTimeout(6000);await page.locator('[data-stat-market="all"]').click();await page.waitForTimeout(2000);await snapshot('hard-reload');
     report.serviceWorkers=await page.evaluate(async()=>({controller:navigator.serviceWorker.controller?.scriptURL||null,registrations:(await navigator.serviceWorker.getRegistrations()).map(r=>({scope:r.scope,active:r.active?.scriptURL}))}));
     report.cacheStorage=await page.evaluate(async()=>{const out=[];for(const name of await caches.keys()){const cache=await caches.open(name);out.push({name,urls:(await cache.keys()).map(r=>r.url)})}return out});
     for(let i=1;i<=2;i++){await page.waitForTimeout(watchMs);await snapshot('polling-cycle-'+i)}
