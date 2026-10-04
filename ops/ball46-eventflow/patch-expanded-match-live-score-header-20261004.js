@@ -1,0 +1,16 @@
+const fs=require('fs');
+const input=process.argv[2],output=process.argv[3]||input;if(!input)throw Error('INPUT_REQUIRED');
+let s=fs.readFileSync(input,'utf8');
+const MARK='B46_EVENTFLOW_LIVE_SCORE_HEADER_20261004';
+if(s.includes(MARK))throw Error('ALREADY_PATCHED');
+if(!s.includes('B46_EVENTFLOW_EXPAND_MODE_20261004'))throw Error('EXPANDED_MODE_BASE_MISSING');
+const count=(h,n)=>h.split(n).length-1;const once=(a,b,l)=>{const n=count(s,a);if(n!==1)throw Error(`${l}_ANCHOR_${n}`);s=s.replace(a,b)};
+const beforeFetch=(s.match(/\bfetch\(/g)||[]).length;
+once('const B46_EVENTFLOW_EXPAND_MODE_20261004=true;','const B46_EVENTFLOW_EXPAND_MODE_20261004=true;\nconst B46_EVENTFLOW_LIVE_SCORE_HEADER_20261004=true;','MARKER');
+once("  const current=currentMinute(f,history),points=flowPoints(history,current),home=esc(f?.home?.name||'HOME'),away=esc(f?.away?.name||'AWAY');","  const current=currentMinute(f,history),points=flowPoints(history,current),home=esc(f?.home?.name||'HOME'),away=esc(f?.away?.name||'AWAY'),gh=num(f?.goals?.home),ga=num(f?.goals?.away),scoreText=gh===null||ga===null?'':` · ${Math.max(0,Math.trunc(gh))}–${Math.max(0,Math.trunc(ga))}`;",'RENDER_SCORE_FIELDS');
+const oldHeader="<b>0' → ${current}'</b>";
+const newHeader="<b>0' → ${current}'${scoreText}</b>";
+const hc=count(s,oldHeader);if(hc!==2)throw Error(`HEADER_ANCHOR_${hc}`);s=s.split(oldHeader).join(newHeader);
+const afterFetch=(s.match(/\bfetch\(/g)||[]).length;if(beforeFetch!==afterFetch)throw Error(`FETCH_COUNT_CHANGED_${beforeFetch}_${afterFetch}`);
+for(const x of [MARK,'f?.goals?.home','f?.goals?.away','${scoreText}'])if(!s.includes(x))throw Error('VERIFY_MISSING_'+x);
+fs.writeFileSync(output,s);console.log(JSON.stringify({ok:true,beforeFetch,afterFetch,marker:MARK,inputBytes:fs.statSync(input).size,outputBytes:Buffer.byteLength(s)}));
