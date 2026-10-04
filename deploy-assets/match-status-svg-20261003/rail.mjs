@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { api, script, directOrigin, publicFile, sha, canonical, manifest } from './production.mjs';
@@ -105,8 +105,21 @@ export async function verifyRailBase(staged) {
 }
 
 export function wrangler(staged, dryRun = false) {
-  const args = ['--yes', `wrangler@${rail.wrangler}`, 'deploy', '--config', 'wrangler.jsonc', ...(dryRun ? ['--dry-run', '--outdir', 'dryrun'] : [])];
+  const args = ['--yes', `wrangler@${rail.wrangler}`, 'deploy', '--config', 'wrangler.jsonc', ...(dryRun ? ['--dry-run', '--outdir', '../dryrun'] : [])];
   const result = spawnSync('npx', args, { cwd: staged.runtime, stdio: 'inherit', env: process.env });
   assert(!result.error && result.status === 0, `CONFIRMED_RAIL_WRANGLER_FAILED:${dryRun ? 'dry-run' : 'deploy'}:${result.error?.message || result.status}`);
-  if (dryRun) for (const module of staged.modules) assert.equal(sha(readFileSync(resolve(staged.runtime, 'dryrun', module.name))), module.sha, `DRY_RUN_CURRENT_MODULE_NOT_PRESERVED:${module.name}`);
+  if (dryRun) {
+    const directory = resolve(staged.runtime, '..', 'dryrun');
+    for (const name of readdirSync(directory, { recursive: true })) {
+      const normalized = name.replaceAll('\\\\', '/');
+      if (!/\.(?:html|txt|js)$/.test(normalized)) continue;
+      const known = staged.modules.find(module => module.name === normalized);
+      if (known) assert.equal(sha(readFileSync(resolve(directory, name))), known.sha, `DRY_RUN_MODULE_CHANGED:${normalized}`);
+      else {
+        assert(/^assets\/(?:[a-zA-Z0-9_-]+\.html|robots\.txt)$/.test(normalized), `DRY_RUN_EXTRA_MODULE_STOP:${normalized}`);
+        assert.equal(sha(readFileSync(resolve(directory, name))), staged.hashes[normalized.slice(7)], `DRY_RUN_EXTRA_BYTES_STOP:${normalized}`);
+      }
+    }
+  }
+  if (dryRun) for (const module of staged.modules) assert.equal(sha(readFileSync(resolve(staged.runtime, '..', 'dryrun', module.name))), module.sha, `DRY_RUN_CURRENT_MODULE_NOT_PRESERVED:${module.name}`);
 }
