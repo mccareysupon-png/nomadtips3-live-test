@@ -55,7 +55,7 @@ export function configFromCurrent(version, settings, crons, assetsDirectory) {
     compatibility_flags: version.compatibility_flags || [],
     no_bundle: true,
     find_additional_modules: true,
-    rules: [{ type: 'Text', globs: version.modules.filter(module => module.name !== version.main_module).map(module => module.name), fallthrough: false }],
+    rules: [{ type: 'Text', globs: version.modules.filter(module => module.name !== version.main_module).map(module => module.name), fallthrough: true }],
     services,
     assets: {
       directory: assetsDirectory,
