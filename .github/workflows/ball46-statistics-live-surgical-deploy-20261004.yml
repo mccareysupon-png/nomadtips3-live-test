@@ -1,0 +1,127 @@
+name: Ball46 Statistics LIVE Surgical Deploy 20261004
+on:
+  push:
+    branches: ['safe/ball46-statistics-live-deploy-20261004']
+    paths: ['.github/workflows/ball46-statistics-live-surgical-deploy-20261004.yml']
+permissions:
+  contents: read
+concurrency:
+  group: ball46-statistics-live-surgical-deploy
+  cancel-in-progress: false
+jobs:
+  surgical:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Guard active source, upload exact surgical module, activate and verify
+        run: |
+          python3 - <<'PY'
+          import os,json,urllib.request,urllib.error,base64,hashlib,pathlib,time,subprocess,uuid,difflib,re
+          root=pathlib.Path('surgical-statistics-result');root.mkdir()
+          api='https://api.cloudflare.com/client/v4/accounts/'+os.environ['CLOUDFLARE_ACCOUNT_ID']
+          worker='nomadtips3-engine-343'; prefix=api+'/workers/scripts/'+worker
+          auth={'Authorization':'Bearer '+os.environ['CLOUDFLARE_API_TOKEN'],'Accept':'application/json'}
+          def req(url,method='GET',data=None,ctype=None,public=False):
+           h={'User-Agent':'Mozilla/5.0'} if public else dict(auth)
+           if ctype:h['Content-Type']=ctype
+           try:
+            with urllib.request.urlopen(urllib.request.Request(url,headers=h,method=method,data=data),timeout=40) as r:j=json.load(r)
+           except urllib.error.HTTPError as e:
+            raise RuntimeError('HTTP '+str(e.code)+' '+e.read().decode()[:800])
+           if not public and j.get('success') is False:raise RuntimeError('CF_API_FAIL '+json.dumps(j.get('errors'))[:800])
+           return j
+          def active():
+           d=req(prefix+'/deployments')['result']['deployments']
+           a=[x['version_id'] for x in d[0]['versions'] if float(x.get('percentage',0))>=99.999]
+           assert len(a)==1,'STOP active ambiguous'
+           return a[0]
+          def version(vid):return req(api+'/workers/workers/'+worker+'/versions/'+vid+'?include=modules')['result']
+          def source(v):
+           mods=v.get('modules') or []
+           assert len(mods)==1 and mods[0].get('name')=='index-bulk-recovery.js','STOP module shape changed'
+           return base64.b64decode(mods[0]['content_base64'])
+          def save(name,obj): (root/name).write_text(json.dumps(obj,indent=2))
+          def public(endpoint):return req('https://www.ball46.com/api/engine/'+endpoint+('&' if '?' in endpoint else '?')+'safe_patch='+str(time.time_ns()),public=True)
+          def bindings(v):return sorted(v.get('bindings') or [],key=lambda x:x['name'])
+          def metrics(s):return {k:s.get(k) for k in ['total','win','loss','push','halfWin','halfLoss','winRate']}
+          def fresh_live(board):
+           age=time.time()*1000-float(board.get('hubFetchedAt') or 0)
+           if board.get('ok') is not True or board.get('stale') is not False or not 0<=age<=120000:return set()
+           unavailable=r'finished|full[_ -]?time|\bft\b|ended|\bfull\b|cancel|postpon|suspend|abandon|scheduled|not[_ -]?started|unknown'
+           return {str(f.get('fixtureId')) for f in board.get('fixtures',[]) if f.get('boardState')=='live' and f.get('fixtureId') is not None and not re.search(unavailable,(str(f.get('status') or '')+' '+str(f.get('statusCode') or '')).lower())}
+          old_id=active();v=version(old_id);raw=source(v);s=raw.decode()
+          assert hashlib.sha256(raw).hexdigest()=='fcbb2f2e1c751cca132c6aa768a2d885613c8d1a75e45a58dcfe5006060351b0','STOP full active source changed'
+          a=s.index('  async statisticsLedgerResponse(');b=s.index('  async scan() {',a);old_method=s[a:b]
+          assert hashlib.sha256(old_method.encode()).hexdigest()=='19d8211872df9ba3daccdc9cfd1aca4304e2179fc20f47b78940940d550a3b84','STOP anchor mismatch'
+          new_method=base64.b64decode('ICBhc3luYyBzdGF0aXN0aWNzTGVkZ2VyUmVzcG9uc2UobGltaXQgPSBTVEFUX0xFREdFUl9ERUZBVUxUX0xJTUlUKSB7CiAgICBjb25zdCBtZXRhID0gbm9ybWFsaXplTGVkZ2VyTWV0YShhd2FpdCB0aGlzLmN0eC5zdG9yYWdlLmdldChTVEFUX0xFREdFUl9NRVRBX0tFWSkpOwogICAgY29uc3QgcmF3ID0gYXdhaXQgdGhpcy5sYXRlc3RMZWRnZXJSb3dzKGxpbWl0KTsKICAgIC8vIFByZXNlbnRhdGlvbiBvbmx5OiBmYWlsIGNsb3NlZCB1bmxlc3MgdGhlIGN1cnJlbnQgYm9hcmQgY29uZmlybXMgbGl2ZSBwbGF5LgogICAgY29uc3QgYm9hcmQgPSBhd2FpdCB0aGlzLmN0eC5zdG9yYWdlLmdldCgiYm9hcmQiKS5jYXRjaCgoKSA9PiBudWxsKTsKICAgIGNvbnN0IGZldGNoZWRBdCA9IE51bWJlcihib2FyZD8uaHViRmV0Y2hlZEF0KTsKICAgIGNvbnN0IGFnZU1zID0gRGF0ZS5ub3coKSAtIGZldGNoZWRBdDsKICAgIGNvbnN0IGZyZXNoID0gYm9hcmQ/Lm9rID09PSB0cnVlICYmIGJvYXJkPy5zdGFsZSA9PT0gZmFsc2UgJiYKICAgICAgTnVtYmVyLmlzRmluaXRlKGZldGNoZWRBdCkgJiYgZmV0Y2hlZEF0ID4gMCAmJiBhZ2VNcyA+PSAwICYmIGFnZU1zIDw9IDEyMDAwMDsKICAgIGNvbnN0IGxpdmVGaXh0dXJlSWRzID0gbmV3IFNldCgpOwogICAgaWYgKGZyZXNoICYmIEFycmF5LmlzQXJyYXkoYm9hcmQuZml4dHVyZXMpKSB7CiAgICAgIGZvciAoY29uc3QgZml4dHVyZSBvZiBib2FyZC5maXh0dXJlcykgewogICAgICAgIGNvbnN0IHN0YXR1cyA9IGAke2ZpeHR1cmU/LnN0YXR1cyA/PyAiIn0gJHtmaXh0dXJlPy5zdGF0dXNDb2RlID8/ICIifWAudG9Mb3dlckNhc2UoKTsKICAgICAgICBjb25zdCB1bmF2YWlsYWJsZSA9IC9maW5pc2hlZHxmdWxsW18gLV0/dGltZXxcYmZ0XGJ8ZW5kZWR8XGJmdWxsXGJ8Y2FuY2VsfHBvc3Rwb258c3VzcGVuZHxhYmFuZG9ufHNjaGVkdWxlZHxub3RbXyAtXT9zdGFydGVkfHVua25vd24vLnRlc3Qoc3RhdHVzKTsKICAgICAgICBpZiAoZml4dHVyZT8uYm9hcmRTdGF0ZSA9PT0gImxpdmUiICYmICF1bmF2YWlsYWJsZSAmJiBmaXh0dXJlLmZpeHR1cmVJZCAhPSBudWxsKSB7CiAgICAgICAgICBsaXZlRml4dHVyZUlkcy5hZGQoU3RyaW5nKGZpeHR1cmUuZml4dHVyZUlkKSk7CiAgICAgICAgfQogICAgICB9CiAgICB9CiAgICBjb25zdCByb3dzID0gcmF3Lm1hcCgoc3JjKSA9PiB7CiAgICAgIGNvbnN0IHIgPSBjbG9uZTIoc3JjKTsKICAgICAgZGVsZXRlIHIuX2xlZGdlck1hcmtlcjsKICAgICAgaWYgKFN0cmluZyhyLnN0YXR1cyB8fCAiIikudG9VcHBlckNhc2UoKSA9PT0gIlBFTkRJTkciKSB7CiAgICAgICAgci5zaWduYWxFbnRyeU1pbnV0ZSA9IHIuZW50cnlNaW51dGUgPz8gci5taW51dGUgPz8gbnVsbDsKICAgICAgICByLmVudHJ5TWludXRlID0gci5taXJyb3JNaW51dGUgPz8gci5lbnRyeU1pbnV0ZSA/PyByLm1pbnV0ZSA/PyBudWxsOwogICAgICAgIHIuZmluYWxTY29yZSA9IGNsb25lMihyLm1pcnJvclNjb3JlID8/IHIuZW50cnlTY29yZSA/PyByLnNjb3JlQXQpOwogICAgICAgIGNvbnN0IGRpc3BsYXlTdGF0dXMgPSBsaXZlRml4dHVyZUlkcy5oYXMoU3RyaW5nKHIuZml4dHVyZUlkKSkgPyAiTElWRSIgOiAiUEVORElORyI7CiAgICAgICAgci5yZXN1bHQgPSBkaXNwbGF5U3RhdHVzOwogICAgICAgIHIuZGlzcGxheVN0YXR1cyA9IGRpc3BsYXlTdGF0dXM7CiAgICAgIH0KICAgICAgcmV0dXJuIHI7CiAgICB9KTsKICAgIGNvbnN0IGRlbm9tID0gbWV0YS53aW4gKyBtZXRhLmxvc3MgKyBtZXRhLmhhbGZXaW4gKyBtZXRhLmhhbGZMb3NzOwogICAgcmV0dXJuIHsgb2s6IHRydWUsIHZlcnNpb246IFZFUlNJT04sIHNldHRsZW1lbnRSZXZpc2lvbjogU0VUVExFTUVOVF9SRVZJU0lPTiwgc3RhdGlzdGljc0xlZGdlclZlcnNpb246IFNUQVRfTEVER0VSX1ZFUlNJT04sIHN0YXRpc3RpY3NTb3VyY2U6ICJMRURHRVJfVjJfT05MWSIsIHdvcmtpbmdTdG9yZVZlcnNpb246IFdPUktfU1RPUkVfVkVSU0lPTiwgZmluYWxSZWNvbmNpbGVWZXJzaW9uOiBGSU5BTF9SRUNPTkNJTEVfVkVSU0lPTiwgcmV0ZW50aW9uOiAiTE9OR19URVJNX05PX0FQUExJQ0FUSU9OX0VYUElSWSIsIG1hcmtldHM6IE1BUktFVF9SVUxFUywgdG90YWw6IG1ldGEuc2V0dGxlZFRvdGFsLCBsZWRnZXJUb3RhbDogbWV0YS5sZWRnZXJUb3RhbCwgcGVuZGluZzogbWV0YS5wZW5kaW5nLCB1bnJlc29sdmVkOiBtZXRhLnVucmVzb2x2ZWQsIHdpbjogbWV0YS53aW4sIGxvc3M6IG1ldGEubG9zcywgcHVzaDogbWV0YS5wdXNoLCBoYWxmV2luOiBtZXRhLmhhbGZXaW4sIGhhbGZMb3NzOiBtZXRhLmhhbGZMb3NzLCB3aW5SYXRlOiBkZW5vbSA/IE1hdGgucm91bmQoKG1ldGEud2luICsgMC41ICogbWV0YS5oYWxmV2luKSAvIGRlbm9tICogMWUzKSAvIDEwIDogbnVsbCwgYnlNYXJrZXQ6IG1ldGEuYnlNYXJrZXQsIHJvd3MsIHJldHVybmVkOiByb3dzLmxlbmd0aCB9OwogIH0K').decode()
+          patched=s[:a]+new_method+s[b:]
+          assert patched.replace(new_method,'',1)==s.replace(old_method,'',1),'STOP out-of-scope change'
+          (root/'before.js').write_bytes(raw);(root/'index-bulk-recovery.js').write_bytes(patched.encode())
+          (root/'change.diff').write_text(''.join(difflib.unified_diff(s.splitlines(True),patched.splitlines(True),fromfile='active',tofile='candidate')))
+          subprocess.run(['node','--check',str(root/'index-bulk-recovery.js')],check=True)
+          before=public('statistics?limit=5000');board=public('board')
+          assert before.get('ok') is True and isinstance(before.get('rows'),list),'STOP statistics unavailable'
+          live_ids=fresh_live(board)
+          live_pending=[r for r in before['rows'] if r.get('status')=='PENDING' and str(r.get('fixtureId')) in live_ids]
+          assert live_pending,'STOP no current live pending fixture to verify'
+          save('before-statistics.json',before);save('before-board.json',board)
+          # Upload an inactive version only. Preserve bindings, namespace IDs and secrets.
+          assert {x['type'] for x in bindings(v)}=={'service','durable_object_namespace','secret_text'},'STOP unfamiliar bindings'
+          metadata={'main_module':'index-bulk-recovery.js','compatibility_date':v['compatibility_date'],'compatibility_flags':v.get('compatibility_flags') or [],'keep_bindings':['secret_text'],'bindings':[x for x in bindings(v) if x['type']!='secret_text'],'annotations':{'workers/message':'Statistics PENDING/LIVE evidence only; candidate 3e22c860bdd1f5b4c8b62a116e2b4c8c7e7c40d9'}}
+          boundary='b46-'+uuid.uuid4().hex
+          def part(name,data,ctype,filename=None):
+           disposition='form-data; name="'+name+'"'+('; filename="'+filename+'"' if filename else '')
+           return ('--'+boundary+'\r\nContent-Disposition: '+disposition+'\r\nContent-Type: '+ctype+'\r\n\r\n').encode()+data+b'\r\n'
+          body=part('metadata',json.dumps(metadata).encode(),'application/json')+part('index-bulk-recovery.js',patched.encode(),'application/javascript+module','index-bulk-recovery.js')+('--'+boundary+'--\r\n').encode()
+          assert active()==old_id and source(version(old_id))==raw,'STOP production moved before upload'
+          upload=req(prefix+'/versions','POST',body,'multipart/form-data; boundary='+boundary)['result'];new_id=upload['id']
+          save('upload.json',{'version':new_id,'previousVersion':old_id})
+          newv=version(new_id)
+          assert source(newv)==patched.encode(),'STOP uploaded source differs'
+          assert bindings(newv)==bindings(v),'STOP bindings changed'
+          for k in ['compatibility_date','compatibility_flags']:
+           assert newv.get(k)==v.get(k),'STOP compatibility changed'
+          assert active()==old_id,'STOP production moved before activation'
+          # Re-snapshot metrics immediately before activation; no write/scan endpoints called.
+          before=public('statistics?limit=5000');save('immediate-before-statistics.json',before)
+          assert before.get('ok') is True,'STOP pre-activation statistics unavailable'
+          activated=False
+          try:
+           assert active()==old_id,'STOP concurrent deployment'
+           deployment={'strategy':'percentage','versions':[{'version_id':new_id,'percentage':100}],'annotations':{'workers/message':'Surgical Statistics PENDING/LIVE evidence only'}}
+           req(prefix+'/deployments','POST',json.dumps(deployment).encode(),'application/json');activated=True
+           assert active()==new_id,'deployment not active'
+           after=public('statistics?limit=5000');after_board=public('board')
+           save('after-statistics.json',after);save('after-board.json',after_board)
+           assert after.get('ok') is True and isinstance(after.get('rows'),list),'statistics schema failed'
+           assert set(after)==set(before),'statistics response keys changed'
+           assert metrics(after)==metrics(before),'summary metrics changed'
+           old_rows=[r for r in after['rows'] if str(r.get('fixtureId'))=='202093411']
+           assert old_rows,'202093411 record absent'
+           if '202093411' not in {str(f.get('fixtureId')) for f in after_board.get('fixtures',[])}:
+            assert all(r.get('result')!='LIVE' and r.get('displayStatus')!='LIVE' for r in old_rows),'old fixture still LIVE'
+           live_ids=fresh_live(after_board)
+           live_rows=[r for r in after['rows'] if r.get('status')=='PENDING' and str(r.get('fixtureId')) in live_ids]
+           assert live_rows and all(r.get('result')=='LIVE' and r.get('displayStatus')=='LIVE' for r in live_rows),'live fixture test failed'
+           pre_settled={str(r['id']):r for r in before['rows'] if r.get('status')=='SETTLED'}
+           post_rows={str(r['id']):r for r in after['rows']}
+           assert all(post_rows.get(k)==r for k,r in pre_settled.items()),'settled records changed'
+           assert source(version(new_id))==patched.encode(),'postdeploy source changed'
+           report={'status':'DEPLOYED','version':new_id,'previousVersion':old_id,'fixture202093411':[{'status':r.get('status'),'result':r.get('result'),'displayStatus':r.get('displayStatus')} for r in old_rows],'liveFixtureTest':'PASS','liveFixtureIds':sorted({str(r['fixtureId']) for r in live_rows}),'totalUnchanged':True,'beforeMetrics':metrics(before),'afterMetrics':metrics(after),'scopeOnlyStatisticsLedgerResponse':True,'bindingsUnchanged':True}
+           save('report.json',report);print(json.dumps(report))
+          except Exception as e:
+           if activated and active()==new_id:
+            req(prefix+'/deployments','POST',json.dumps({'strategy':'percentage','versions':[{'version_id':old_id,'percentage':100}]}).encode(),'application/json')
+           report={'status':'STOPPED','version':active(),'error':str(e),'candidateVersion':new_id,'rolledBack':activated}
+           save('report.json',report);print(json.dumps(report));raise
+          
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-statistics-live-surgical-${{ github.run_id }}
+          path: surgical-statistics-result/
+          retention-days: 7
