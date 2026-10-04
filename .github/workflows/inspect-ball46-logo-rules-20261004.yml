@@ -1,0 +1,51 @@
+name: Inspect Ball46 Exact Logo Rules 20261004
+
+on:
+  push:
+    branches: [work/ball46-main-logo-footer-style-20261004]
+    paths:
+      - '.github/workflows/inspect-ball46-logo-rules-20261004.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  SCRIPT_NAME: ball46-production
+
+jobs:
+  inspect-rules:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract current production footer and header logo CSS rules
+        shell: bash
+        run: |
+          set -euo pipefail
+          AUTH="Authorization: Bearer $API_TOKEN"
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=5" -H "$AUTH" -o /tmp/deployments.json
+          node - <<'NODE'
+          const fs=require('fs');const j=JSON.parse(fs.readFileSync('/tmp/deployments.json','utf8'));
+          const d=j.result?.deployments?.[0];if(j.success!==true||!d||d.versions?.length!==1||Number(d.versions[0].percentage)!==100)throw Error('PROD_LOCK_FAIL');
+          fs.writeFileSync('/tmp/version',String(d.versions[0].version_id));console.log('PRODUCTION_VERSION',d.versions[0].version_id);
+          NODE
+          V=$(cat /tmp/version)
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/workers/$SCRIPT_NAME/versions/$V?include=modules" -H "$AUTH" -o /tmp/version.json
+          node - <<'NODE'
+          const fs=require('fs'),crypto=require('crypto');
+          const v=JSON.parse(fs.readFileSync('/tmp/version.json','utf8'));if(v.success!==true)throw Error('VERSION_FETCH_FAILED');
+          let css=null;
+          for(const m of v.result.modules||[]){if(!m.content_base64)continue;const s=Buffer.from(m.content_base64,'base64').toString('utf8');const a='const __B46_LEGAL_CSS_20261001__=';const p=s.indexOf(a);if(p<0)continue;const start=p+a.length;if(s[start]!=='"')throw Error('CSS_LITERAL_START');let end=-1,esc=false;for(let i=start+1;i<s.length;i++){const ch=s[i];if(esc){esc=false;continue}if(ch==='\\'){esc=true;continue}if(ch==='"'){end=i;break}}if(end<0)throw Error('CSS_LITERAL_END');css=JSON.parse(s.slice(start,end+1));break}
+          if(!css)throw Error('LEGAL_CSS_NOT_FOUND');
+          const rules=[];const re=/([^{}]+)\{([^{}]*)\}/g;let m;
+          while((m=re.exec(css))){const sel=m[1].trim();if(!sel.includes('footer-brand-image')&&!sel.includes('b46-header-logo-image'))continue;let body=m[2].trim();body=body.replace(/url\(["']?(data:image\/[^;,)]+[;,][^)"']+)["']?\)/g,(all,u)=>{const h=crypto.createHash('sha256').update(u).digest('hex');return `url(DATA_URI len=${u.length} sha256=${h})`});rules.push({pos:m.index,selector:sel,body});}
+          if(!rules.length)throw Error('NO_LOGO_RULES');
+          for(const r of rules){const pre=css.slice(Math.max(0,r.pos-300),r.pos);const markers=[...pre.matchAll(/\/\*\s*([^*]*B46_[^*]*)\*\//g)].map(x=>x[1].trim());console.log('RULE',JSON.stringify({pos:r.pos,marker:markers.at(-1)||'',selector:r.selector,body:r.body}));}
+          const footer=rules.filter(r=>r.selector.split(',').map(x=>x.trim()).includes('.footer-brand-image'));
+          const header=rules.filter(r=>r.selector.split(',').map(x=>x.trim()).includes('.b46-header-logo-image'));
+          console.log('RULE_COUNTS',JSON.stringify({footer:footer.length,header:header.length,total:rules.length}));
+          NODE
+          echo INSPECT_RULES_ONLY_NO_MUTATION
