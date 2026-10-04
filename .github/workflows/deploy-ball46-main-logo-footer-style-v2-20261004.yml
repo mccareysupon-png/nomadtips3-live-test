@@ -1,0 +1,118 @@
+name: Deploy Ball46 Main Logo Footer Style V2 20261004
+
+on:
+  push:
+    branches: [work/ball46-main-logo-footer-style-20261004]
+    paths: ['.github/workflows/deploy-ball46-main-logo-footer-style-v2-20261004.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  SCRIPT_NAME: ball46-production
+  BALL46_URL: https://ball46.com
+
+jobs:
+  main-logo-footer-style:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/ball46-main-logo-footer-style-20261004
+          fetch-depth: 1
+
+      - name: Lock Production and preflight exact target
+        shell: bash
+        run: |
+          set -euo pipefail
+          AUTH="Authorization: Bearer $API_TOKEN"
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=5" -H "$AUTH" -o /tmp/d-before.json
+          node <<'NODE'
+          const fs=require('fs'),j=JSON.parse(fs.readFileSync('/tmp/d-before.json','utf8')),d=j.result?.deployments?.[0];
+          if(j.success!==true||!d||d.versions?.length!==1||Number(d.versions[0].percentage)!==100)throw Error('PRODUCTION_LOCK_FAILED');
+          fs.writeFileSync('/tmp/rb-version',String(d.versions[0].version_id));console.log('PRODUCTION_LOCKED',d.id,d.versions[0].version_id,d.created_on);
+          NODE
+          nonce="${GITHUB_RUN_ID}-pre-$(date +%s%N)"
+          curl -fsS -L --max-time 25 "$BALL46_URL/?main-logo-pre=$nonce" -o /tmp/home-before.html
+          curl -fsS -L --max-time 25 "$BALL46_URL/dashboard-v2-tune.css?v=343-scorebar-divider-camo-20260929a&main-logo-pre=$nonce" -o /tmp/tune-before.css
+          curl -fsS -L --max-time 25 "$BALL46_URL/ball46-footer.css?v=20260929&main-logo-pre=$nonce" -o /tmp/footer-before.css
+          curl -fsS --max-time 25 "$BALL46_URL/api/engine/health?main-logo-pre=$nonce" -o /tmp/engine-before.json
+          curl -fsS --max-time 25 "$BALL46_URL/api/full-market/health?main-logo-pre=$nonce" -o /tmp/full-before.json
+          curl -fsS --max-time 25 "$BALL46_URL/api/engine/statistics?main-logo-pre=$nonce" -o /tmp/stats-before.json
+          node <<'NODE'
+          const fs=require('fs');const h=fs.readFileSync('/tmp/home-before.html','utf8'),t=fs.readFileSync('/tmp/tune-before.css','utf8'),f=fs.readFileSync('/tmp/footer-before.css','utf8');
+          if(!h.includes('<div class="workspace-brand" aria-label="Ball46"><span>ball</span><b>46</b></div>'))throw Error('HOME_LOGO_TARGET_MISSING');
+          if(!t.includes('B46_HEADER_LOGO_130_PERCENT_20261003')||!t.includes('zoom: 1.3 !important'))throw Error('CURRENT_LOGO_BASE_MISSING');
+          if(t.includes('B46_MAIN_LOGO_FOOTER_STYLE_20261004'))throw Error('STYLE_ALREADY_LIVE');
+          if(!f.includes('B46_FOOTER_BRAND_LOGO_20261001')||!f.includes('font-family:"Arial Black",Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif')||!f.includes('font-weight:900')||!f.includes('letter-spacing:-.055em'))throw Error('FOOTER_STYLE_BASE_MISMATCH');
+          const e=JSON.parse(fs.readFileSync('/tmp/engine-before.json')),m=JSON.parse(fs.readFileSync('/tmp/full-before.json')),s=JSON.parse(fs.readFileSync('/tmp/stats-before.json'));if(e.ok!==true||m.ok!==true||s.ok!==true)throw Error('PRE_BACKEND_UNHEALTHY');
+          console.log('PRECHECK_OK',JSON.stringify({engine:e.version,fullMarket:m.version,settlement:s.settlementRevision}));
+          NODE
+
+      - name: Clone Worker and prepare typography-only patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          AUTH="Authorization: Bearer $API_TOKEN";V=$(cat /tmp/rb-version)
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/workers/$SCRIPT_NAME/versions/$V?include=modules" -H "$AUTH" -o /tmp/v-before.json
+          node <<'NODE'
+          const fs=require('fs'),path=require('path'),crypto=require('crypto'),v=JSON.parse(fs.readFileSync('/tmp/v-before.json','utf8'));if(v.success!==true)throw Error('VERSION_FETCH_FAILED');const r=v.result;if(r.main_module!=='index.js'||!Array.isArray(r.modules)||!r.modules.length)throw Error('WORKER_LAYOUT_CHANGED');
+          fs.mkdirSync('/tmp/modules',{recursive:true});const hashes={};
+          for(const m of r.modules){if(!m.name||!m.content_base64||!m.content_type)throw Error('BAD_MODULE:'+m.name);const b=Buffer.from(m.content_base64,'base64'),p=path.join('/tmp/modules',m.name);fs.mkdirSync(path.dirname(p),{recursive:true});fs.writeFileSync(p,b);hashes[m.name]=crypto.createHash('sha256').update(b).digest('hex');}
+          fs.writeFileSync('/tmp/meta.json',JSON.stringify(r.modules.map(m=>({name:m.name,content_type:m.content_type}))));fs.writeFileSync('/tmp/hashes-before.json',JSON.stringify(hashes));
+          const file='/tmp/modules/index.js';let src=fs.readFileSync(file,'utf8');const marker='B46_MAIN_LOGO_FOOTER_STYLE_20261004',anchor='B46_HEADER_LOGO_130_PERCENT_20261003',next='/* B46_THEME_TOGGLE_STANDARD_20261003';if(src.includes(marker))throw Error('PATCH_ALREADY_PRESENT');const p=src.indexOf(anchor);if(p<0||src.indexOf(anchor,p+1)>=0)throw Error('ANCHOR_NOT_UNIQUE');const q=src.indexOf(next,p);if(q<0)throw Error('NEXT_MARKER_AFTER_ANCHOR_MISSING');if(!src.slice(p,q).includes('zoom: 1.3 !important'))throw Error('ZOOM_BASE_MISSING');
+          const css=`/* ${marker}: footer wordmark typography on main logo only; size, zoom, colors and geometry unchanged */\nbody .workspace.singlepage > .left-rail .workspace-brand[aria-label="Ball46"] {\n  font-family: "Arial Black", Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;\n  font-weight: 900 !important;\n  letter-spacing: -.055em !important;\n  text-transform: none !important;\n}\n\n`;
+          src=src.slice(0,q)+JSON.stringify(css).slice(1,-1)+src.slice(q);if((src.split(marker).length-1)!==1)throw Error('PATCH_COUNT_BAD');fs.writeFileSync(file,src);console.log('PATCH_READY',JSON.stringify({anchor:p,insert:q,modules:r.modules.length,mainBefore:hashes['index.js'],mainAfter:crypto.createHash('sha256').update(Buffer.from(src)).digest('hex')}));
+          NODE
+          node --check /tmp/modules/index.js
+
+      - name: Deploy and verify exact scope with rollback
+        shell: bash
+        run: |
+          set -euo pipefail
+          AUTH="Authorization: Bearer $API_TOKEN"
+          rollback(){ V=$(cat /tmp/rb-version);echo "ROLLBACK_TO:$V";node -e "require('fs').writeFileSync('/tmp/rb.json',JSON.stringify({strategy:'percentage',versions:[{version_id:process.argv[1],percentage:100}],annotations:{'workers/message':'Automatic rollback: main logo footer style verification failed'}}))" "$V";curl -fsS -X POST "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments" -H "$AUTH" -H 'content-type: application/json' --data-binary @/tmp/rb.json -o /tmp/rb-response.json || true;cat /tmp/rb-response.json 2>/dev/null||true; }
+          trap 'rollback' ERR
+
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=5" -H "$AUTH" -o /tmp/d-race.json
+          node <<'NODE'
+          const fs=require('fs'),j=JSON.parse(fs.readFileSync('/tmp/d-race.json')),d=j.result?.deployments?.[0],v=fs.readFileSync('/tmp/rb-version','utf8').trim();if(j.success!==true||!d||d.versions?.length!==1||Number(d.versions[0].percentage)!==100||String(d.versions[0].version_id)!==v)throw Error('PRODUCTION_MOVED_ABORT');console.log('RACE_GUARD_PASS',v);
+          NODE
+
+          echo '{"main_module":"index.js"}' > /tmp/upload-meta.json
+          mapfile -t args < <(node <<'NODE'
+          const a=JSON.parse(require('fs').readFileSync('/tmp/meta.json','utf8'));for(const m of a)console.log(`-F\n${m.name}=@/tmp/modules/${m.name};type=${m.content_type}`);
+          NODE
+          )
+          CURL_ARGS=();i=0;while [ $i -lt ${#args[@]} ];do CURL_ARGS+=("${args[$i]}" "${args[$((i+1))]}");i=$((i+2));done
+          curl -fsS -X PUT "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/content" -H "$AUTH" -F 'metadata=</tmp/upload-meta.json;type=application/json' "${CURL_ARGS[@]}" -o /tmp/update.json
+          node -e "const j=require('/tmp/update.json');if(j.success!==true)throw Error('CONTENT_UPDATE_FAILED:'+JSON.stringify(j.errors||[]));console.log('CONTENT_UPDATE_OK')"
+
+          live=0
+          for n in $(seq 1 12);do nonce="${GITHUB_RUN_ID}-$n-$(date +%s%N)";code=$(curl -sS -L --max-time 25 -o /tmp/tune-after.css -w '%{http_code}' "$BALL46_URL/dashboard-v2-tune.css?v=343-scorebar-divider-camo-20260929a&main-logo-post=$nonce"||true);if [ "$code" = 200 ]&&grep -Fq 'B46_MAIN_LOGO_FOOTER_STYLE_20261004' /tmp/tune-after.css;then live=1;break;fi;sleep 2;done
+          [ "$live" = 1 ]||{ echo STYLE_NOT_VISIBLE;false; }
+
+          nonce="${GITHUB_RUN_ID}-post-$(date +%s%N)"
+          curl -fsS -L --max-time 25 "$BALL46_URL/?main-logo-post=$nonce" -o /tmp/home-after.html
+          curl -fsS -L --max-time 25 "$BALL46_URL/ball46-footer.css?v=20260929&main-logo-post=$nonce" -o /tmp/footer-after.css
+          curl -fsS --max-time 25 "$BALL46_URL/api/engine/health?main-logo-post=$nonce" -o /tmp/engine-after.json
+          curl -fsS --max-time 25 "$BALL46_URL/api/full-market/health?main-logo-post=$nonce" -o /tmp/full-after.json
+          curl -fsS --max-time 25 "$BALL46_URL/api/engine/statistics?main-logo-post=$nonce" -o /tmp/stats-after.json
+
+          node <<'NODE'
+          const fs=require('fs');const before=fs.readFileSync('/tmp/tune-before.css','utf8'),after=fs.readFileSync('/tmp/tune-after.css','utf8'),marker='/* B46_MAIN_LOGO_FOOTER_STYLE_20261004',next='/* B46_THEME_TOGGLE_STANDARD_20261003';const a=after.indexOf(marker),b=after.indexOf(next,a);if(a<0||b<0)throw Error('STYLE_BLOCK_MISSING');const block=after.slice(a,b);for(const x of ['font-family: "Arial Black", Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;','font-weight: 900 !important;','letter-spacing: -.055em !important;','text-transform: none !important;'])if(!block.includes(x))throw Error('STYLE_VALUE_MISSING:'+x);if(!after.includes('zoom: 1.3 !important'))throw Error('ZOOM_LOST');if(after.slice(0,a)+after.slice(b)!==before)throw Error('TUNE_CHANGED_OUTSIDE_PATCH');if(!fs.readFileSync('/tmp/home-before.html').equals(fs.readFileSync('/tmp/home-after.html')))throw Error('HOME_HTML_CHANGED');if(!fs.readFileSync('/tmp/footer-before.css').equals(fs.readFileSync('/tmp/footer-after.css')))throw Error('FOOTER_CSS_CHANGED');
+          const e0=JSON.parse(fs.readFileSync('/tmp/engine-before.json')),e1=JSON.parse(fs.readFileSync('/tmp/engine-after.json')),f0=JSON.parse(fs.readFileSync('/tmp/full-before.json')),f1=JSON.parse(fs.readFileSync('/tmp/full-after.json')),s0=JSON.parse(fs.readFileSync('/tmp/stats-before.json')),s1=JSON.parse(fs.readFileSync('/tmp/stats-after.json'));if(e1.ok!==true||f1.ok!==true||s1.ok!==true)throw Error('POST_BACKEND_UNHEALTHY');if(String(e0.version)!==String(e1.version)||String(f0.version)!==String(f1.version)||String(s0.settlementRevision)!==String(s1.settlementRevision))throw Error('BACKEND_IDENTITY_CHANGED');console.log('LIVE_SCOPE_PASS',JSON.stringify({home:'unchanged',footer:'unchanged',zoom:'1.3 preserved',engine:e1.version,fullMarket:f1.version,settlement:s1.settlementRevision}));
+          NODE
+
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=5" -H "$AUTH" -o /tmp/d-after.json
+          NEW=$(node -e "const j=require('/tmp/d-after.json'),d=j.result?.deployments?.[0];if(j.success!==true||!d||d.versions?.length!==1||Number(d.versions[0].percentage)!==100)process.exit(2);process.stdout.write(String(d.versions[0].version_id))")
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/workers/$SCRIPT_NAME/versions/$NEW?include=modules" -H "$AUTH" -o /tmp/v-after.json
+          node <<'NODE'
+          const fs=require('fs'),crypto=require('crypto'),v=JSON.parse(fs.readFileSync('/tmp/v-after.json')),old=JSON.parse(fs.readFileSync('/tmp/hashes-before.json'));if(v.success!==true)throw Error('POST_VERSION_FETCH_FAILED');const changed=[];for(const m of v.result.modules||[]){const h=crypto.createHash('sha256').update(Buffer.from(m.content_base64,'base64')).digest('hex');if(old[m.name]!==h)changed.push(m.name);}changed.sort();if(changed.length!==1||changed[0]!=='index.js')throw Error('MODULE_SCOPE_BAD:'+changed.join(','));console.log('MODULE_SCOPE_PASS',JSON.stringify({changed,newVersion:v.result.id||''}));
+          NODE
+          trap - ERR
+          echo DEPLOY_MAIN_LOGO_FOOTER_STYLE_SUCCESS
