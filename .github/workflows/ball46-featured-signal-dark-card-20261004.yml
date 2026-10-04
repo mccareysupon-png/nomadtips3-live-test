@@ -1,12 +1,10 @@
-name: Ball46 Featured Signal Dark Card Surgical 20261004
+name: Ball46 Featured Signal Dark Card Exact-Current Deploy 20261004
 
 on:
   push:
     branches: [work/featured-signal-dark-card-20261004]
     paths:
       - '.github/workflows/ball46-featured-signal-dark-card-20261004.yml'
-      - 'deploy-assets/match-status-svg-20261003/featured-signal-dark-card-run.mjs'
-      - 'ops/ball46-card-stability/patch-featured-signal-dark-card-20261004.js'
   workflow_dispatch:
 
 permissions:
@@ -17,14 +15,15 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-  DEPLOY_ENABLED: 'true'
+  ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  SCRIPT_NAME: ball46-production
+  BALL46_URL: https://ball46.com
 
 jobs:
-  surgical-deploy:
+  exact-current-deploy:
     runs-on: ubuntu-24.04
-    timeout-minutes: 24
+    timeout-minutes: 18
     steps:
       - uses: actions/checkout@v4
         with:
@@ -32,17 +31,113 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Install exact proven-rail dependencies
+      - name: Install parser dependency
         working-directory: deploy-assets/match-status-svg-20261003
         run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Surgical deploy Featured Signal dark card
-        working-directory: deploy-assets/match-status-svg-20261003
-        run: node featured-signal-dark-card-run.mjs
-      - name: Retain surgical evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ball46-featured-signal-dark-card-${{ github.run_id }}
-          path: deploy-assets/match-status-svg-20261003/audit/
-          if-no-files-found: error
-          retention-days: 30
+
+      - name: Lock current Production and capture baselines
+        shell: bash
+        run: |
+          set -euo pipefail
+          AUTH="Authorization: Bearer $API_TOKEN"
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=5" -H "$AUTH" -o /tmp/d-before.json
+          node <<'NODE'
+          const fs=require('fs'),j=JSON.parse(fs.readFileSync('/tmp/d-before.json','utf8')),d=j.result?.deployments?.[0];
+          if(j.success!==true||!d||d.versions?.length!==1||Number(d.versions[0].percentage)!==100)throw Error('PRODUCTION_LOCK_FAILED');
+          const v=String(d.versions[0].version_id);fs.writeFileSync('/tmp/rb-version',v);console.log('PRODUCTION_LOCKED='+v);
+          NODE
+          nonce="${GITHUB_RUN_ID}-pre-$(date +%s%N)"
+          curl -fsS -L --max-time 25 "$BALL46_URL/dashboard-v2-tune.css?featured-signal-pre=$nonce" -o /tmp/tune-before.css
+          curl -fsS -L --max-time 25 "$BALL46_URL/dashboard-v2-stage3.js?featured-signal-pre=$nonce" -o /tmp/dashboard-before.js
+          curl -fsS -L --max-time 25 "$BALL46_URL/expanded-match-343.js?featured-signal-pre=$nonce" -o /tmp/event-before.js
+          curl -fsS --max-time 25 "$BALL46_URL/api/engine/health?featured-signal-pre=$nonce" -o /tmp/engine-before.json
+          curl -fsS --max-time 25 "$BALL46_URL/api/full-market/health?featured-signal-pre=$nonce" -o /tmp/full-before.json
+          node <<'NODE'
+          const fs=require('fs'),css=fs.readFileSync('/tmp/tune-before.css','utf8');
+          for(const x of ['B46_EXPANDED_UNIFIED_GREEN_FRAME_20261004','B46_MATCH_CARD_THEME_CONTRAST_20261004'])if(!css.includes(x))throw Error('CURRENT_CSS_BASE_MISSING:'+x);
+          if(css.includes('B46_FEATURED_SIGNAL_DARK_CARD_20261004'))throw Error('FEATURED_SIGNAL_STYLE_ALREADY_LIVE');
+          const e=JSON.parse(fs.readFileSync('/tmp/engine-before.json')),f=JSON.parse(fs.readFileSync('/tmp/full-before.json'));if(e.ok!==true||f.ok!==true)throw Error('PRE_BACKEND_UNHEALTHY');
+          fs.writeFileSync('/tmp/backend-before.json',JSON.stringify({engine:e.version,full:f.version}));
+          console.log('PRECHECK_OK');
+          NODE
+
+      - name: Clone exact current Worker and patch one CSS owner
+        shell: bash
+        run: |
+          set -euo pipefail
+          AUTH="Authorization: Bearer $API_TOKEN";V=$(cat /tmp/rb-version)
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/workers/$SCRIPT_NAME/versions/$V?include=modules" -H "$AUTH" -o /tmp/v-before.json
+          node <<'NODE'
+          const fs=require('fs'),path=require('path'),v=JSON.parse(fs.readFileSync('/tmp/v-before.json','utf8'));if(v.success!==true)throw Error('VERSION_FETCH_FAILED');const r=v.result;
+          if(r.main_module!=='index.js'||!Array.isArray(r.modules)||!r.modules.length)throw Error('WORKER_LAYOUT_CHANGED');
+          fs.mkdirSync('/tmp/modules',{recursive:true});
+          for(const m of r.modules){if(!m.name||!m.content_base64||!m.content_type)throw Error('BAD_MODULE:'+m.name);const p=path.join('/tmp/modules',m.name);fs.mkdirSync(path.dirname(p),{recursive:true});fs.writeFileSync(p,Buffer.from(m.content_base64,'base64'));}
+          fs.writeFileSync('/tmp/meta.json',JSON.stringify(r.modules.map(m=>({name:m.name,content_type:m.content_type}))));
+          console.log('EXACT_CURRENT_MODULES='+r.modules.length);
+          NODE
+          node ops/ball46-card-stability/patch-featured-signal-dark-card-20261004.js /tmp/tune-before.css /tmp/tune-after.css
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';import {literals,sha} from './deploy-assets/match-status-svg-20261003/production.mjs';
+          const file='/tmp/modules/index.js',src=fs.readFileSync(file,'utf8'),before=fs.readFileSync('/tmp/tune-before.css','utf8'),after=fs.readFileSync('/tmp/tune-after.css','utf8'),all=literals(src);
+          const owner=all.get('__B46_SCOREBAR_TUNE_CSS__'),dash=all.get('__B46_MULTI_SIGNAL_STAGE3_JS__'),event=all.get('__B46_EVENTFLOW_SIGNAL_JS_20261002__');
+          if(!owner||!dash||!event)throw Error('REQUIRED_OWNER_MISSING');if(sha(Buffer.from(owner.value))!==sha(Buffer.from(before)))throw Error('CSS_OWNER_NOT_CURRENT_PUBLIC_SOURCE');
+          if(sha(Buffer.from(dash.value))!==sha(fs.readFileSync('/tmp/dashboard-before.js')))throw Error('DASHBOARD_OWNER_NOT_PUBLIC_SOURCE');
+          if(sha(Buffer.from(event.value))!==sha(fs.readFileSync('/tmp/event-before.js')))throw Error('EVENT_OWNER_NOT_PUBLIC_SOURCE');
+          const dashSha=sha(Buffer.from(dash.value)),eventSha=sha(Buffer.from(event.value));let patched=src.slice(0,owner.start)+JSON.stringify(after)+src.slice(owner.end);const pa=literals(patched);
+          if(sha(Buffer.from(pa.get('__B46_SCOREBAR_TUNE_CSS__').value))!==sha(Buffer.from(after)))throw Error('PATCHED_CSS_OWNER_BAD');
+          if(sha(Buffer.from(pa.get('__B46_MULTI_SIGNAL_STAGE3_JS__').value))!==dashSha)throw Error('DASHBOARD_CHANGED_STOP');
+          if(sha(Buffer.from(pa.get('__B46_EVENTFLOW_SIGNAL_JS_20261002__').value))!==eventSha)throw Error('EVENTFLOW_CHANGED_STOP');
+          fs.writeFileSync(file,patched);fs.writeFileSync('/tmp/after-sha',sha(Buffer.from(after)));console.log('PATCH_READY_SHA='+sha(Buffer.from(after)));
+          NODE
+          node --check /tmp/modules/index.js
+
+      - name: Deploy exact-current clone and verify
+        shell: bash
+        run: |
+          set -euo pipefail
+          AUTH="Authorization: Bearer $API_TOKEN"
+          rollback(){ V=$(cat /tmp/rb-version); echo "ROLLBACK_TO:$V"; node -e "require('fs').writeFileSync('/tmp/rb.json',JSON.stringify({strategy:'percentage',versions:[{version_id:process.argv[1],percentage:100}],annotations:{'workers/message':'Automatic rollback: Featured Signal dark card verification failed'}}))" "$V"; curl -fsS -X POST "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments" -H "$AUTH" -H 'content-type: application/json' --data-binary @/tmp/rb.json -o /tmp/rb-response.json || true; }
+          trap 'rollback' ERR
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=5" -H "$AUTH" -o /tmp/d-race.json
+          node <<'NODE'
+          const fs=require('fs'),j=JSON.parse(fs.readFileSync('/tmp/d-race.json')),d=j.result?.deployments?.[0],v=fs.readFileSync('/tmp/rb-version','utf8').trim();
+          if(j.success!==true||!d||d.versions?.length!==1||Number(d.versions[0].percentage)!==100||String(d.versions[0].version_id)!==v)throw Error('PRODUCTION_MOVED_ABORT');console.log('RACE_GUARD_PASS='+v);
+          NODE
+          echo '{"main_module":"index.js"}' >/tmp/upload-meta.json
+          mapfile -t args < <(node <<'NODE'
+          const a=JSON.parse(require('fs').readFileSync('/tmp/meta.json','utf8'));for(const m of a)console.log(`-F\n${m.name}=@/tmp/modules/${m.name};type=${m.content_type}`);
+          NODE
+          )
+          CURL_ARGS=();i=0;while [ $i -lt ${#args[@]} ];do CURL_ARGS+=("${args[$i]}" "${args[$((i+1))]}");i=$((i+2));done
+          curl -fsS -X PUT "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/content" -H "$AUTH" -F 'metadata=</tmp/upload-meta.json;type=application/json' "${CURL_ARGS[@]}" -o /tmp/update.json
+          node -e "const j=require('/tmp/update.json');if(j.success!==true)throw Error('CONTENT_UPDATE_FAILED:'+JSON.stringify(j.errors||[]));console.log('CONTENT_UPDATE_OK')"
+
+          live=0
+          for n in $(seq 1 15); do
+            nonce="${GITHUB_RUN_ID}-$n-$(date +%s%N)"
+            code=$(curl -sS -L --max-time 25 -o /tmp/tune-after-live.css -w '%{http_code}' "$BALL46_URL/dashboard-v2-tune.css?featured-signal-post=$nonce" || true)
+            if [ "$code" = 200 ] && grep -Fq 'B46_FEATURED_SIGNAL_DARK_CARD_20261004' /tmp/tune-after-live.css; then live=1; break; fi
+            sleep 2
+          done
+          [ "$live" = 1 ] || { echo FEATURED_SIGNAL_STYLE_NOT_VISIBLE; false; }
+          cmp -s /tmp/tune-after.css /tmp/tune-after-live.css || { echo LIVE_TARGET_BYTES_MISMATCH; false; }
+          nonce="${GITHUB_RUN_ID}-post-$(date +%s%N)"
+          curl -fsS -L --max-time 25 "$BALL46_URL/dashboard-v2-stage3.js?featured-signal-post=$nonce" -o /tmp/dashboard-after.js
+          curl -fsS -L --max-time 25 "$BALL46_URL/expanded-match-343.js?featured-signal-post=$nonce" -o /tmp/event-after.js
+          cmp -s /tmp/dashboard-before.js /tmp/dashboard-after.js || { echo DASHBOARD_CHANGED; false; }
+          cmp -s /tmp/event-before.js /tmp/event-after.js || { echo EVENTFLOW_CHANGED; false; }
+          curl -fsS --max-time 25 "$BALL46_URL/api/engine/health?featured-signal-post=$nonce" -o /tmp/engine-after.json
+          curl -fsS --max-time 25 "$BALL46_URL/api/full-market/health?featured-signal-post=$nonce" -o /tmp/full-after.json
+          node <<'NODE'
+          const fs=require('fs'),b=JSON.parse(fs.readFileSync('/tmp/backend-before.json')),e=JSON.parse(fs.readFileSync('/tmp/engine-after.json')),f=JSON.parse(fs.readFileSync('/tmp/full-after.json'));
+          if(e.ok!==true||f.ok!==true)throw Error('POST_BACKEND_UNHEALTHY');if(String(e.version)!==String(b.engine)||String(f.version)!==String(b.full))throw Error('BACKEND_IDENTITY_CHANGED');
+          const css=fs.readFileSync('/tmp/tune-after-live.css','utf8');for(const x of ['B46_FEATURED_SIGNAL_DARK_CARD_20261004','background: #111514 !important','border-color: #2ACF83 !important','inset 0 0 0 1px #2ACF83'])if(!css.includes(x))throw Error('LIVE_STYLE_VERIFY_MISSING:'+x);console.log('LIVE_SCOPE_PASS');
+          NODE
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=5" -H "$AUTH" -o /tmp/d-after.json
+          node <<'NODE'
+          const fs=require('fs'),j=JSON.parse(fs.readFileSync('/tmp/d-after.json')),d=j.result?.deployments?.[0],old=fs.readFileSync('/tmp/rb-version','utf8').trim();
+          if(j.success!==true||!d||d.versions?.length!==1||Number(d.versions[0].percentage)!==100)throw Error('POST_DEPLOYMENT_NOT_SINGLE_VERSION');const now=String(d.versions[0].version_id);if(!now||now===old)throw Error('NEW_VERSION_NOT_ACTIVE');console.log('FINAL_PRODUCTION='+now);console.log('PREVIOUS_PRODUCTION='+old);
+          NODE
+          trap - ERR
+          echo FEATURED_SIGNAL_CSS_SHA=$(cat /tmp/after-sha)
+          echo BALL46_FEATURED_SIGNAL_DARK_CARD_SUCCESS
