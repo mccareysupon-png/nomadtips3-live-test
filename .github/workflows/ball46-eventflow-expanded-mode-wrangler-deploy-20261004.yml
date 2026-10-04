@@ -5,6 +5,9 @@ on:
     branches: [work/eventflow-expanded-mode-20261004]
     paths:
       - '.github/workflows/ball46-eventflow-expanded-mode-wrangler-deploy-20261004.yml'
+      - 'deploy-assets/match-status-svg-20261003/eventflow-expanded-mode-run.mjs'
+      - 'ops/ball46-eventflow/patch-expanded-match-focus-20261004.js'
+      - 'ops/ball46-eventflow/patch-worker-eventflow-focus-route-20261004.js'
   workflow_dispatch:
 
 permissions:
