@@ -3,7 +3,7 @@ import { chromium } from 'playwright';
 const executablePath=process.env.PLAYWRIGHT_EXECUTABLE_PATH;
 if(!executablePath)throw new Error('PLAYWRIGHT_EXECUTABLE_PATH_MISSING');
 mkdirSync('audit',{recursive:true});
-const browser=await chromium.launch({headless:true,executablePath,args:['no-sandbox']});
+const browser=await chromium.launch({headless:true,executablePath,args:['--no-sandbox']});
 try{
   const page=await browser.newPage({viewport:{width:1440,height:1000}});
   await page.goto(`https://ball46.com/index.html?topcardsPostDeploy=${Date.now()}`,{waitUntil:'domcontentloaded',timeout:60000});
