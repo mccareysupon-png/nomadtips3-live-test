@@ -1,0 +1,18 @@
+const fs=require('fs');
+const input=process.argv[2],output=process.argv[3]||input;
+if(!input)throw Error('INPUT_REQUIRED');
+let s=fs.readFileSync(input,'utf8');
+const BASE='B46_EVENTFLOW_LIVE_SCORE_HEADER_20261004',MARK='B46_EVENTFLOW_DARK_SURFACE_20261004';
+if(!s.includes(BASE))throw Error('LIVE_SCORE_HEADER_BASE_MISSING');
+if(s.includes(MARK))throw Error('EVENTFLOW_DARK_SURFACE_ALREADY_PRESENT_STOP');
+const count=(h,n)=>h.split(n).length-1;
+const once=(a,b,l)=>{const n=count(s,a);if(n!==1)throw Error(`${l}_ANCHOR_${n}`);s=s.replace(a,b)};
+const beforeFetch=(s.match(/\bfetch\(/g)||[]).length;
+once(`const ${BASE}=true;`,`const ${BASE}=true;\nconst ${MARK}=true;`,'MARKER');
+const helper=`function ensureEventFlowDarkSurfaceStyle(){\n  if(document.getElementById('b46-eventflow-dark-surface-20261004'))return;\n  const style=document.createElement('style');style.id='b46-eventflow-dark-surface-20261004';\n  style.textContent='html[data-theme="dark"] body .workspace.singlepage .expand-flow-card{background:#030605!important}html[data-theme="dark"] body .workspace.singlepage .expand-flow-chart{background:#030605!important}html[data-theme="dark"] body .workspace.singlepage .expand-flow-card.b46-eventflow-viewport-expanded{background:#030605!important}';\n  document.head.appendChild(style)\n}\n`;
+once('function init(){',helper+'function init(){\n  ensureEventFlowDarkSurfaceStyle();','INIT');
+const afterFetch=(s.match(/\bfetch\(/g)||[]).length;
+if(afterFetch!==beforeFetch)throw Error(`FETCH_COUNT_CHANGED_${beforeFetch}_${afterFetch}`);
+for(const x of [MARK,'ensureEventFlowDarkSurfaceStyle','b46-eventflow-dark-surface-20261004','background:#030605!important','.expand-flow-card.b46-eventflow-viewport-expanded'])if(!s.includes(x))throw Error('VERIFY_MISSING_'+x);
+fs.writeFileSync(output,s);
+console.log(JSON.stringify({ok:true,beforeFetch,afterFetch,bytes:Buffer.byteLength(s),marker:MARK}));
