@@ -1,0 +1,43 @@
+name: Inspect Ball46 Logo Patch Anchor 20261004
+
+on:
+  push:
+    branches: [work/ball46-main-logo-footer-style-20261004]
+    paths:
+      - '.github/workflows/inspect-ball46-logo-patch-anchor-20261004.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  SCRIPT_NAME: ball46-production
+
+jobs:
+  inspect-anchor:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Print exact source construct around current logo zoom rule
+        shell: bash
+        run: |
+          set -euo pipefail
+          AUTH="Authorization: Bearer $API_TOKEN"
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=5" -H "$AUTH" -o /tmp/d.json
+          V=$(node -e "const j=require('/tmp/d.json');const d=j.result?.deployments?.[0];if(j.success!==true||!d||d.versions?.length!==1||Number(d.versions[0].percentage)!==100)process.exit(2);process.stdout.write(String(d.versions[0].version_id))")
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/workers/$SCRIPT_NAME/versions/$V?include=modules" -H "$AUTH" -o /tmp/v.json
+          node <<'NODE'
+          const v=require('/tmp/v.json');if(v.success!==true)throw Error('FETCH_FAIL');
+          const m=v.result.modules.find(x=>x.name===v.result.main_module);if(!m?.content_base64)throw Error('MAIN_MISSING');
+          const s=Buffer.from(m.content_base64,'base64').toString('utf8');
+          const token='B46_HEADER_LOGO_130_PERCENT_20261003';const p=s.indexOf(token);if(p<0)throw Error('ANCHOR_MISSING');
+          if(s.indexOf(token,p+1)>=0)throw Error('ANCHOR_NOT_UNIQUE');
+          const a=Math.max(0,p-3000),b=Math.min(s.length,p+2500);
+          console.log('ANCHOR_CONTEXT_START');
+          console.log(s.slice(a,b).replace(/\\/g,'\\\\').replace(/\r/g,'\\r').replace(/\n/g,'\\n\n'));
+          console.log('ANCHOR_CONTEXT_END');
+          NODE
+          echo INSPECT_ONLY_NO_MUTATION
