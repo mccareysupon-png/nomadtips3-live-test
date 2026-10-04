@@ -1,0 +1,74 @@
+name: Inspect Ball46 Main vs Footer Logo Style 20261004
+
+on:
+  push:
+    branches: [work/ball46-main-logo-footer-style-20261004]
+    paths:
+      - '.github/workflows/inspect-ball46-main-footer-logo-style-20261004.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  SCRIPT_NAME: ball46-production
+  BALL46_URL: https://ball46.com
+
+jobs:
+  inspect-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect exact active production branding without mutation
+        shell: bash
+        run: |
+          set -euo pipefail
+          AUTH="Authorization: Bearer $API_TOKEN"
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=5" -H "$AUTH" -o /tmp/deployments.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const j=JSON.parse(fs.readFileSync('/tmp/deployments.json','utf8'));
+          if(j.success!==true) throw Error('DEPLOYMENT_LIST_FAILED');
+          const d=j.result?.deployments?.[0];
+          if(!d || !Array.isArray(d.versions) || d.versions.length!==1 || Number(d.versions[0].percentage)!==100) throw Error('PRODUCTION_NOT_SINGLE_VERSION');
+          const v=String(d.versions[0].version_id||'');
+          if(!v) throw Error('ACTIVE_VERSION_MISSING');
+          fs.writeFileSync('/tmp/version',v);
+          console.log('PRODUCTION_LOCKED',JSON.stringify({deployment:d.id,version:v,created:d.created_on}));
+          NODE
+          V=$(cat /tmp/version)
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/workers/$SCRIPT_NAME/versions/$V?include=modules" -H "$AUTH" -o /tmp/version.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const v=JSON.parse(fs.readFileSync('/tmp/version.json','utf8'));
+          if(v.success!==true) throw Error('VERSION_FETCH_FAILED');
+          let found=false;
+          for(const m of v.result?.modules||[]){
+            if(!m.content_base64) continue;
+            const s=Buffer.from(m.content_base64,'base64').toString('utf8');
+            if(!s.includes('B46_REAL_FOOTER_IMAGE_V3_20261001') && !s.includes('footer-brand-image') && !s.includes('b46-header-logo-image')) continue;
+            found=true;
+            console.log('MODULE',m.name);
+            for(const token of ['B46_REAL_FOOTER_IMAGE_V3_20261001','B46_LIGHT_LOGO_20261002','footer-brand-image','b46-header-logo-image']){
+              let pos=0,n=0;
+              while((pos=s.indexOf(token,pos))>=0 && n<8){
+                const a=Math.max(0,pos-700),b=Math.min(s.length,pos+1800);
+                console.log('---',token,'MATCH',n+1,'---');
+                console.log(s.slice(a,b).replace(/\n/g,'\\n'));
+                pos+=token.length;n++;
+              }
+            }
+          }
+          if(!found) throw Error('BRANDING_SOURCE_NOT_FOUND');
+          NODE
+          nonce="${GITHUB_RUN_ID}-$(date +%s%N)"
+          curl -fsS -L --max-time 25 "$BALL46_URL/?logo-inspect=$nonce" -o /tmp/home.html
+          curl -fsS -L --max-time 25 "$BALL46_URL/legal.css?logo-inspect=$nonce" -o /tmp/legal.css
+          echo "HOME_SHA256=$(sha256sum /tmp/home.html | awk '{print $1}')"
+          echo "LEGAL_CSS_SHA256=$(sha256sum /tmp/legal.css | awk '{print $1}')"
+          grep -o 'b46-header-logo-image' /tmp/home.html | head -n 3 || true
+          grep -n -o 'B46_REAL_FOOTER_IMAGE_V3_20261001\|B46_LIGHT_LOGO_20261002\|footer-brand-image\|b46-header-logo-image' /tmp/legal.css | head -n 30 || true
+          echo INSPECT_ONLY_NO_MUTATION
