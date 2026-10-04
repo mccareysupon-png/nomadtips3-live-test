@@ -1,4 +1,4 @@
-name: Ball46 Featured Horizontal Card Target Scout 20261004
+name: Ball46 Featured Horizontal Card DOM Scout 20261004
 
 on:
   push:
@@ -21,29 +21,23 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - name: Read exact current Production and print Featured DOM owner
+      - name: Read exact current Production HTML around Featured Match
         shell: bash
         run: |
           set -euo pipefail
           AUTH="Authorization: Bearer $API_TOKEN"
           curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=5" -H "$AUTH" -o /tmp/d.json
           node <<'NODE'
-          const fs=require('fs'),j=JSON.parse(fs.readFileSync('/tmp/d.json','utf8')),d=j.result?.deployments?.[0];
-          if(j.success!==true||!d||d.versions?.length!==1||Number(d.versions[0].percentage)!==100)throw Error('PRODUCTION_LOCK_FAILED');console.log('EXACT_ACTIVE_VERSION='+d.versions[0].version_id);
+          const fs=require('fs'),j=JSON.parse(fs.readFileSync('/tmp/d.json','utf8')),d=j.result?.deployments?.[0];if(j.success!==true||!d||d.versions?.length!==1||Number(d.versions[0].percentage)!==100)throw Error('PRODUCTION_LOCK_FAILED');console.log('EXACT_ACTIVE_VERSION='+d.versions[0].version_id);
           NODE
           nonce="${GITHUB_RUN_ID}-$(date +%s%N)"
-          curl -fsS -L --max-time 25 "$BALL46_URL/dashboard-v2-stage3.js?featured-target-scout=$nonce" -o /tmp/dashboard.js
-          curl -fsS -L --max-time 25 "$BALL46_URL/dashboard-v2-tune.css?featured-target-scout=$nonce" -o /tmp/tune.css
+          curl -fsS -L --max-time 25 "$BALL46_URL/?featured-dom-scout=$nonce" -o /tmp/home.html
+          curl -fsS -L --max-time 25 "$BALL46_URL/signal.html?featured-dom-scout=$nonce" -o /tmp/signal.html
           node <<'NODE'
-          const fs=require('fs'),s=fs.readFileSync('/tmp/dashboard.js','utf8'),css=fs.readFileSync('/tmp/tune.css','utf8');
-          const i=s.indexOf('function renderFeatured()');if(i<0)throw Error('RENDER_FEATURED_NOT_FOUND');
-          let end=s.indexOf('\nfunction ',i+30);if(end<0)end=Math.min(s.length,i+9000);const block=s.slice(i,Math.min(end,i+9000));
-          console.log('===RENDER_FEATURED_BLOCK_START===');console.log(block);console.log('===RENDER_FEATURED_BLOCK_END===');
-          const ids=[...block.matchAll(/getElementById\(['"]([^'"]+)['"]\)/g)].map(m=>m[1]);
-          const qs=[...block.matchAll(/querySelector\(['"]([^'"]+)['"]\)/g)].map(m=>m[1]);
-          const qcalls=[...block.matchAll(/\bq\(['"]([^'"]+)['"]\)/g)].map(m=>m[1]);
-          const datas=[...new Set([...block.matchAll(/data-[a-z0-9-]+/g)].map(m=>m[0]))];
-          console.log('FEATURED_IDS='+JSON.stringify(ids));console.log('FEATURED_QUERY_SELECTORS='+JSON.stringify(qs));console.log('FEATURED_Q_CALLS='+JSON.stringify(qcalls));console.log('FEATURED_DATA_ATTRS='+JSON.stringify(datas));
-          const old='B46_FEATURED_SIGNAL_DARK_CARD_20261004';if(!css.includes(old))throw Error('CURRENT_WRONG_STYLE_MARKER_MISSING');
-          const hits=css.split('\n').filter(x=>/featured|FEATURED/i.test(x));console.log('===FEATURED_CSS_LINES===');console.log(hits.join('\n'));console.log('TARGET_SCOUT_SUCCESS');
+          const fs=require('fs');
+          for(const name of ['home','signal']){
+            const s=fs.readFileSync('/tmp/'+name+'.html','utf8');const needles=['data-featured-home','data-featured-league','data-featured-signal'];
+            for(const n of needles){const i=s.indexOf(n);if(i<0)continue;console.log(`===${name.toUpperCase()} ${n} CONTEXT===`);console.log(s.slice(Math.max(0,i-1800),Math.min(s.length,i+2600)));}
+          }
+          console.log('FEATURED_DOM_SCOUT_SUCCESS');
           NODE
