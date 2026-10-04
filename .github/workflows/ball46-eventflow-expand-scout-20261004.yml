@@ -1,0 +1,64 @@
+name: Ball46 Event Flow Expand Scout 20261004
+
+on:
+  push:
+    branches: [ops/ball46-odds-surgical-20260928]
+    paths:
+      - '.github/workflows/ball46-eventflow-expand-scout-20261004.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scout:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Stage exact current Production and inspect Event Flow read only
+        working-directory: deploy-assets/match-status-svg-20261003
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p audit/eventflow-expand-scout
+          node --input-type=module <<'NODE'
+          import { readFileSync, writeFileSync } from 'node:fs';
+          import { resolve } from 'node:path';
+          import { inspect, activeVersion, sha } from './production.mjs';
+          import { schedules, stageCurrentRail } from './rail.mjs';
+          const before=await activeVersion();
+          const {restore,version,source}=await inspect();
+          if(before!==restore.version)throw new Error(`LOCK_MISMATCH:${before}:${restore.version}`);
+          const settings=await (await import('./production.mjs')).api(`/scripts/${(await import('./production.mjs')).script}/settings`);
+          const crons=await schedules();
+          const staged=await stageCurrentRail(version,settings,crons,source);
+          const file=resolve(staged.runtime,'assets/expanded-match-343.js');
+          const text=readFileSync(file,'utf8');
+          writeFileSync('audit/eventflow-expand-scout/expanded-match-343.js',text);
+          const lines=text.split(/\r?\n/);
+          const hits=[];
+          for(let i=0;i<lines.length;i++)if(/event.?flow|signalMarkers|signalTitle|svg|expanded|chart|flow-wrap|timeline/i.test(lines[i]))hits.push({line:i+1,text:lines[i].slice(0,1200)});
+          writeFileSync('audit/eventflow-expand-scout/anchors.json',JSON.stringify({version:before,sha:sha(text),bytes:text.length,hits},null,2));
+          console.log(`PRODUCTION_LOCK_OK=${before}`);
+          console.log(`EVENTFLOW_SHA=${sha(text)} BYTES=${text.length}`);
+          for(const h of hits.slice(0,120))console.log(`L${h.line}:${h.text}`);
+          const after=await activeVersion();
+          if(after!==before)throw new Error(`RACE_GUARD_ABORT:${before}->${after}`);
+          console.log(`RACE_GUARD_PASS=${after}`);
+          console.log('EVENTFLOW_EXPAND_SCOUT_PASS');
+          NODE
+      - name: Retain exact current Event Flow source
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-eventflow-expand-scout-${{ github.run_id }}
+          path: deploy-assets/match-status-svg-20261003/audit/eventflow-expand-scout/
+          if-no-files-found: error
+          retention-days: 14
