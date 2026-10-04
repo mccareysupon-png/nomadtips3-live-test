@@ -2,6 +2,7 @@
 set -euo pipefail
 cd "${GITHUB_WORKSPACE}/deploy-assets/match-status-svg-20261003"
 mkdir -p audit/vintage-kits-images
+npm ci --ignore-scripts --no-audit --no-fund
 node --input-type=module <<'NODE'
 import { writeFileSync } from 'node:fs';
 import { activeVersion, getVersion, publicFile, sha, directOrigin, origin } from './production.mjs';
