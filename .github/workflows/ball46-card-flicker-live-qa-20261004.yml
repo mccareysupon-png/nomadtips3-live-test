@@ -1,0 +1,32 @@
+name: Ball46 Card Flicker Live QA 20261004
+
+on:
+  push:
+    branches: [work/card-flicker-scout-20261004]
+    paths:
+      - '.github/workflows/ball46-card-flicker-live-qa-20261004.yml'
+      - 'deploy-assets/match-status-svg-20261003/card-flicker-live-qa.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  live-qa:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install QA dependencies
+        working-directory: deploy-assets/match-status-svg-20261003
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Verify stable card DOM across real refresh
+        working-directory: deploy-assets/match-status-svg-20261003
+        shell: bash
+        run: |
+          export PLAYWRIGHT_EXECUTABLE_PATH="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
+          test -n "$PLAYWRIGHT_EXECUTABLE_PATH" || { echo PLAYWRIGHT_EXECUTABLE_PATH_MISSING; exit 1; }
+          node card-flicker-live-qa.mjs
