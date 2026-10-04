@@ -22,23 +22,28 @@ jobs:
       - name: Capture current Production card behavior read only
         shell: bash
         run: |
-          set -euo pipefail
+          set -u
           OUT=/tmp/ball46-card-flicker-scout
-          mkdir -p "$OUT/assets" "$OUT/board"
+          mkdir -p "$OUT/assets" "$OUT/probes"
           AUTH="Authorization: Bearer $CLOUDFLARE_API_TOKEN"
           curl -fsS "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/ball46-production/deployments?per_page=3" -H "$AUTH" -o "$OUT/deployments.json"
           node -e "const fs=require('fs'),j=JSON.parse(fs.readFileSync(process.argv[1],'utf8')),d=j.result.deployments[0],a=d.versions.find(v=>Number(v.percentage)===100)?.version_id||d.versions[0].version_id; if(!a)process.exit(2); fs.writeFileSync(process.argv[2],a); console.log('ACTIVE='+a)" "$OUT/deployments.json" "$OUT/active.txt"
           paths=(index.html dashboard-v2-stage3.js dashboard-v2-tune.js ui-sync-fixes-343-v2.js singlepage-workspace-343.js live-summary-full-odds-343.js bulk-odds-compat-343.js market-registry-343.js signal-focus-343.js v2-shared.js)
           for p in "${paths[@]}"; do
-            curl -fsSL -H 'Cache-Control: no-cache' "https://ball46.com/$p?flickerScout=${GITHUB_RUN_ID}-$(date +%s%N)" -o "$OUT/assets/$p"
-            sha256sum "$OUT/assets/$p"
+            curl -fsSL -H 'Cache-Control: no-cache' "https://ball46.com/$p?flickerScout=${GITHUB_RUN_ID}-$(date +%s%N)" -o "$OUT/assets/$p" || true
+            [ -s "$OUT/assets/$p" ] && sha256sum "$OUT/assets/$p" || true
           done
-          for i in 1 2 3 4 5 6; do
-            curl -fsSL -H 'Cache-Control: no-cache' "https://ball46.com/api/full-market/board?flickerScout=${GITHUB_RUN_ID}-${i}-$(date +%s%N)" -o "$OUT/board/board-$i.json"
-            sleep 2
+          grep -RhoE "fetch\([^\n;]+|/api/[A-Za-z0-9_./?=&:-]+" "$OUT/assets" | sort -u > "$OUT/source-endpoints.txt" || true
+          endpoints=(/api/full-market/board /api/full-market /api/engine/live /api/engine/snapshot /api/engine/board /api/engine/status /api/engine/matches /api/live)
+          for ep in "${endpoints[@]}"; do
+            name=$(echo "$ep" | tr '/?' '__')
+            code=$(curl -sS -L -H 'Cache-Control: no-cache' -o "$OUT/probes/${name}.body" -w '%{http_code}' "https://ball46.com${ep}?flickerScout=${GITHUB_RUN_ID}-$(date +%s%N)" || true)
+            echo "$ep $code" | tee -a "$OUT/probe-status.txt"
           done
-          echo 'READ_ONLY_CARD_FLICKER_SCOUT_SUCCESS'
-      - uses: actions/upload-artifact@v4
+          echo 'READ_ONLY_CARD_FLICKER_SCOUT_CAPTURED'
+      - name: Retain scout evidence
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
           name: ball46-card-flicker-scout-${{ github.run_id }}
           path: /tmp/ball46-card-flicker-scout/
