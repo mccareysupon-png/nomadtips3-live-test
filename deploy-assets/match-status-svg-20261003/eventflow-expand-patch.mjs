@@ -59,7 +59,12 @@ function setEventFlowViewportExpanded(next){
   if(fixture&&history)rerenderSignalEntries();else if(expandedId)scheduleRefresh(false);
   if(!target&&eventFlowSavedScrollY!==null){const top=eventFlowSavedScrollY;eventFlowSavedScrollY=null;requestAnimationFrame(()=>window.scrollTo({top,left:window.scrollX,behavior:'auto'}))}
 }
-function setHtmlIfChanged(node,html){if(node&&node.innerHTML!==html)node.innerHTML=html;if(node?.classList?.contains('expand-flow-card'))applyEventFlowViewportState()}`;
+function setHtmlIfChanged(node,html){
+  if(!node)return;
+  const flow=Boolean(node.classList?.contains('expand-flow-card')),previous=flow?node._b46EventFlowRenderHtml:node.innerHTML;
+  if(previous!==html){node.innerHTML=html;if(flow)node._b46EventFlowRenderHtml=html}
+  if(flow)applyEventFlowViewportState()
+}`;
   source=source.replace(htmlAnchor,helpers);
 
   const placementAnchor="  if(lastAnchorTop!==null&&Number.isFinite(top)){const delta=top-lastAnchorTop;if(Math.abs(delta)>1&&document.visibilityState==='visible')window.scrollBy(0,delta)}";
