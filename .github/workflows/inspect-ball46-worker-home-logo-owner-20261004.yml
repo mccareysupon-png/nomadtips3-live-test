@@ -1,0 +1,40 @@
+name: Inspect Ball46 Worker Home Logo Owner 20261004
+
+on:
+  push:
+    branches: [work/ball46-main-logo-footer-style-20261004]
+    paths:
+      - '.github/workflows/inspect-ball46-worker-home-logo-owner-20261004.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  SCRIPT_NAME: ball46-production
+
+jobs:
+  inspect-owner:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Locate exact Worker module owning homepage logo CSS
+        shell: bash
+        run: |
+          set -euo pipefail
+          AUTH="Authorization: Bearer $API_TOKEN"
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=5" -H "$AUTH" -o /tmp/deployments.json
+          node - <<'NODE'
+          const fs=require('fs');const j=JSON.parse(fs.readFileSync('/tmp/deployments.json','utf8'));const d=j.result?.deployments?.[0];if(j.success!==true||!d||d.versions?.length!==1||Number(d.versions[0].percentage)!==100)throw Error('PROD_LOCK_FAIL');fs.writeFileSync('/tmp/version',String(d.versions[0].version_id));console.log('LOCK',d.id,d.versions[0].version_id,d.created_on);
+          NODE
+          V=$(cat /tmp/version)
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/workers/$SCRIPT_NAME/versions/$V?include=modules" -H "$AUTH" -o /tmp/version.json
+          node - <<'NODE'
+          const fs=require('fs');const v=JSON.parse(fs.readFileSync('/tmp/version.json','utf8'));if(v.success!==true)throw Error('FETCH_FAIL');
+          const tokens=['B46_HEADER_LOGO_130_PERCENT_20261003','workspace-brand','singlepage-workspace-343.css','brand-clean-header-343.css','ball46-footer.css','B46_FOOTER_BRAND_LOGO_20261001'];
+          for(const m of v.result.modules||[]){console.log('MODULE_META',JSON.stringify({name:m.name,type:m.content_type,bytes:m.content_base64?Buffer.from(m.content_base64,'base64').length:0}));if(!m.content_base64)continue;const s=Buffer.from(m.content_base64,'base64').toString('utf8');for(const t of tokens){let p=s.indexOf(t);if(p<0)continue;console.log('OWNER',JSON.stringify({module:m.name,type:m.content_type,token:t,pos:p,context:s.slice(Math.max(0,p-500),Math.min(s.length,p+1600)).replace(/\n/g,'\\n')}));}}
+          NODE
+          echo INSPECT_OWNER_ONLY_NO_MUTATION
