@@ -1,4 +1,4 @@
-name: Ball46 Original Right Rail Exact Restore 20261004
+name: Ball46 Under-Search Card Exact Scout 20261005
 
 on:
   push:
@@ -10,125 +10,49 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: ball46-production-original-right-rail-exact-restore
-  cancel-in-progress: false
-
-env:
-  ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-  API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-  SCRIPT_NAME: ball46-production
-  BALL46_URL: https://ball46.com
-  CURRENT_VERSION: da8365c7-aa23-475e-8d3b-e6354dda3128
-  RESTORE_VERSION: e0a999a4-4216-47e7-98ca-b6ff4c67ee31
-
 jobs:
-  restore:
+  scout:
     runs-on: ubuntu-24.04
-    timeout-minutes: 12
+    timeout-minutes: 8
+    env:
+      ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      SCRIPT_NAME: ball46-production
     steps:
-      - name: Guard exact current Production
+      - name: Read current Production and locate the card immediately below search
         shell: bash
         run: |
           set -euo pipefail
           AUTH="Authorization: Bearer $API_TOKEN"
-          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=5" -H "$AUTH" -o /tmp/current.json
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=5" -H "$AUTH" -o /tmp/d.json
+          V=$(node -e "const j=require('/tmp/d.json'),d=j.result?.deployments?.[0];if(j.success!==true||!d||d.versions?.length!==1||Number(d.versions[0].percentage)!==100)process.exit(2);process.stdout.write(String(d.versions[0].version_id))")
+          echo CURRENT_PRODUCTION=$V
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/workers/$SCRIPT_NAME/versions/$V?include=modules" -H "$AUTH" -o /tmp/v.json
           node <<'NODE'
-          const fs=require('fs'),j=JSON.parse(fs.readFileSync('/tmp/current.json','utf8')),d=j.result?.deployments?.[0];
-          const active=String(d?.versions?.[0]?.version_id||'');
-          if(j.success!==true||!d||d.versions?.length!==1||Number(d.versions[0].percentage)!==100)throw Error('PRODUCTION_LOCK_FAILED');
-          if(active!==process.env.CURRENT_VERSION)throw Error('PRODUCTION_MOVED_ABORT active='+active);
-          console.log('CURRENT_PRODUCTION='+active);
-          NODE
-
-      - name: Fetch and prove original right-rail version
-        shell: bash
-        run: |
-          set -euo pipefail
-          AUTH="Authorization: Bearer $API_TOKEN"
-          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/workers/$SCRIPT_NAME/versions/$RESTORE_VERSION?include=modules" -H "$AUTH" -o /tmp/restore.json
-          node <<'NODE'
-          const fs=require('fs'),path=require('path'),v=JSON.parse(fs.readFileSync('/tmp/restore.json','utf8'));
-          if(v.success!==true)throw Error('VERSION_FETCH_FAILED');const r=v.result;
-          if(r.main_module!=='index.js'||!Array.isArray(r.modules)||!r.modules.length)throw Error('WORKER_LAYOUT_CHANGED');
-          fs.mkdirSync('/tmp/modules',{recursive:true});
-          const texts=new Map();
-          for(const m of r.modules){
-            if(!m.name||!m.content_base64||!m.content_type)throw Error('BAD_MODULE:'+m.name);
-            const buf=Buffer.from(m.content_base64,'base64');
-            const p=path.join('/tmp/modules',m.name);fs.mkdirSync(path.dirname(p),{recursive:true});fs.writeFileSync(p,buf);
-            texts.set(m.name,buf.toString('utf8'));
-          }
-          fs.writeFileSync('/tmp/meta.json',JSON.stringify(r.modules.map(m=>({name:m.name,content_type:m.content_type}))));
+          const fs=require('fs');
+          const v=JSON.parse(fs.readFileSync('/tmp/v.json','utf8'));
+          if(v.success!==true)throw Error('VERSION_FETCH_FAILED');
+          const mods=v.result?.modules||[];
+          const texts=new Map(mods.map(m=>[m.name,Buffer.from(m.content_base64||'','base64').toString('utf8')]));
           const html=texts.get('assets/index.html')||'';
           const js=texts.get('index.js')||'';
-          if(!html.includes('<aside class="right-rail">'))throw Error('ORIGINAL_RIGHT_RAIL_MISSING');
-          if(!html.includes('<section class="side-card featured-card" data-featured>'))throw Error('ORIGINAL_FEATURED_CARD_MISSING');
-          if(!html.includes('LIVE PREDICTION')||!html.includes('LIVE OVERVIEW'))throw Error('ORIGINAL_RIGHT_RAIL_STACK_INCOMPLETE');
-          if(!js.includes('renderFeatured'))throw Error('ORIGINAL_FEATURED_RENDERER_MISSING');
-          const forbidden=['B46_FEATURED_SIGNAL_DARK_CARD_20261004','B46_FEATURED_HORIZONTAL_CARD_DARK_FRAME_20261004','B46_FEATURED_MATCH_COMPACT_40_20261004','B46_FEATURED_MATCH_CAMOUFLAGE_20261004'];
-          for(const [name,s] of texts) for(const x of forbidden) if(s.includes(x))throw Error('POST_ORIGINAL_OVERRIDE_FOUND '+name+' '+x);
-          console.log('ORIGINAL_RIGHT_RAIL_PROVEN='+process.env.RESTORE_VERSION);
-          console.log('MODULES='+r.modules.length);
+          console.log('MODULES='+mods.length);
+          const needles=['Search','search','data-search','match-search','search-input','placeholder='];
+          const hits=[];
+          for(const n of needles){let p=0;while((p=html.indexOf(n,p))>=0){hits.push({n,p});p+=n.length}}
+          hits.sort((a,b)=>a.p-b.p);
+          const uniq=[];for(const h of hits){if(!uniq.length||h.p-uniq[uniq.length-1].p>120)uniq.push(h)}
+          for(const h of uniq.slice(0,20)){
+            console.log('\n=== SEARCH_HIT '+h.n+' @'+h.p+' ===');
+            console.log(html.slice(Math.max(0,h.p-1800),Math.min(html.length,h.p+5000)).replace(/>\s+</g,'><'));
+          }
+          const terms=['WIN','LOSS','PENDING','LATEST','RECENT','settled','result-card','history-card','signal-card','status-card','result-strip','recent-signal','recent-result','data-result','data-history','data-recent'];
+          for(const t of terms){
+            const p=html.indexOf(t);
+            if(p>=0){console.log('\n=== HTML_TERM '+t+' @'+p+' ===');console.log(html.slice(Math.max(0,p-1200),Math.min(html.length,p+3200)).replace(/>\s+</g,'><'));}
+          }
+          for(const t of terms.concat(['renderRecent','renderHistory','renderSettled','renderResult','PENDING','WIN','LOSS'])){
+            const p=js.indexOf(t);
+            if(p>=0){console.log('\n=== JS_TERM '+t+' @'+p+' ===');console.log(js.slice(Math.max(0,p-1400),Math.min(js.length,p+3800)));}
+          }
           NODE
-          node --check /tmp/modules/index.js
-
-      - name: Republish exact original version bytes
-        shell: bash
-        run: |
-          set -euo pipefail
-          AUTH="Authorization: Bearer $API_TOKEN"
-          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=5" -H "$AUTH" -o /tmp/race.json
-          node <<'NODE'
-          const fs=require('fs'),j=JSON.parse(fs.readFileSync('/tmp/race.json','utf8')),d=j.result?.deployments?.[0],active=String(d?.versions?.[0]?.version_id||'');
-          if(j.success!==true||!d||d.versions?.length!==1||Number(d.versions[0].percentage)!==100||active!==process.env.CURRENT_VERSION)throw Error('PRODUCTION_MOVED_ABORT active='+active);
-          console.log('RACE_GUARD_PASS='+active);
-          NODE
-          echo '{"main_module":"index.js"}' >/tmp/upload-meta.json
-          mapfile -t args < <(node <<'NODE'
-          const a=JSON.parse(require('fs').readFileSync('/tmp/meta.json','utf8'));for(const m of a)console.log(`-F\n${m.name}=@/tmp/modules/${m.name};type=${m.content_type}`);
-          NODE
-          )
-          CURL_ARGS=();i=0;while [ $i -lt ${#args[@]} ];do CURL_ARGS+=("${args[$i]}" "${args[$((i+1))]}");i=$((i+2));done
-          curl -fsS -X PUT "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/content" -H "$AUTH" -F 'metadata=</tmp/upload-meta.json;type=application/json' "${CURL_ARGS[@]}" -o /tmp/update.json
-          node -e "const j=require('/tmp/update.json');if(j.success!==true)throw Error('CONTENT_UPDATE_FAILED:'+JSON.stringify(j.errors||[]));console.log('CONTENT_UPDATE_OK')"
-          candidate=''
-          for n in $(seq 1 15); do
-            curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=5" -H "$AUTH" -o /tmp/candidate.json
-            candidate=$(node -e "const j=require('/tmp/candidate.json'),old=process.env.CURRENT_VERSION,v=String(j.result?.deployments?.[0]?.versions?.[0]?.version_id||'');if(v&&v!==old)process.stdout.write(v)")
-            [ -n "$candidate" ] && break
-            sleep 1
-          done
-          [ -n "$candidate" ] || { echo NO_NEW_PRODUCTION_VERSION; false; }
-          echo "$candidate" >/tmp/candidate-version
-
-      - name: Verify original right rail on live Production
-        shell: bash
-        run: |
-          set -euo pipefail
-          AUTH="Authorization: Bearer $API_TOKEN"
-          candidate=$(cat /tmp/candidate-version)
-          live=0
-          for n in $(seq 1 24); do
-            curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=5" -H "$AUTH" -o /tmp/live.json
-            active=$(node -e "const j=require('/tmp/live.json');process.stdout.write(String(j.result?.deployments?.[0]?.versions?.[0]?.version_id||''))")
-            [ "$active" = "$candidate" ] || { echo PRODUCTION_MOVED_DURING_VERIFY=$active; false; }
-            nonce="${GITHUB_RUN_ID}-$n-$(date +%s%N)"
-            curl -fsS -L --max-time 25 -H 'Cache-Control: no-cache' -H 'Pragma: no-cache' "$BALL46_URL/?right-rail-restore=$nonce" -o /tmp/home.html
-            curl -fsS -L --max-time 25 -H 'Cache-Control: no-cache' -H 'Pragma: no-cache' "$BALL46_URL/dashboard-v2-tune.css?right-rail-restore=$nonce" -o /tmp/css.css
-            curl -fsS -L --max-time 25 -H 'Cache-Control: no-cache' -H 'Pragma: no-cache' "$BALL46_URL/dashboard-v2-stage3.js?right-rail-restore=$nonce" -o /tmp/js.js
-            if grep -Fq '<aside class="right-rail">' /tmp/home.html && grep -Fq '<section class="side-card featured-card" data-featured>' /tmp/home.html && grep -Fq 'renderFeatured' /tmp/js.js; then live=1; break; fi
-            sleep 2
-          done
-          [ "$live" = 1 ] || { echo ORIGINAL_RIGHT_RAIL_NOT_LIVE; false; }
-          node <<'NODE'
-          const fs=require('fs'),css=fs.readFileSync('/tmp/css.css','utf8');
-          for(const x of ['B46_FEATURED_SIGNAL_DARK_CARD_20261004','B46_FEATURED_HORIZONTAL_CARD_DARK_FRAME_20261004','B46_FEATURED_MATCH_COMPACT_40_20261004','B46_FEATURED_MATCH_CAMOUFLAGE_20261004']) if(css.includes(x)) throw Error('LATER_FEATURED_OVERRIDE_STILL_LIVE:'+x);
-          console.log('ORIGINAL_RIGHT_RAIL_LIVE_OK');
-          NODE
-          nonce="${GITHUB_RUN_ID}-health-$(date +%s%N)"
-          curl -fsS --max-time 25 "$BALL46_URL/api/engine/health?right-rail-restore=$nonce" -o /tmp/engine.json
-          curl -fsS --max-time 25 "$BALL46_URL/api/full-market/health?right-rail-restore=$nonce" -o /tmp/full.json
-          node -e "const e=require('/tmp/engine.json'),f=require('/tmp/full.json');if(e.ok!==true||f.ok!==true)throw Error('BACKEND_UNHEALTHY_AFTER_RESTORE')"
-          echo FINAL_PRODUCTION=$candidate
-          echo ORIGINAL_RIGHT_RAIL_EXACT_RESTORE_SUCCESS
