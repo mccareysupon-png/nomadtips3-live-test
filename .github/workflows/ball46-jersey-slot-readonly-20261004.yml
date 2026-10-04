@@ -1,0 +1,29 @@
+name: READ ONLY - Ball46 Jersey Slot Audit 20261004
+
+on:
+  push:
+    branches:
+      - audit/ball46-jersey-slot-readonly-20261004
+    paths:
+      - '.github/workflows/ball46-jersey-slot-readonly-20261004.yml'
+      - '.github/scripts/ball46_jersey_slot_readonly_20261004.sh'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read current Ball46 Production card code only
+        shell: bash
+        run: bash .github/scripts/ball46_jersey_slot_readonly_20261004.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-jersey-slot-readonly-${{ github.run_id }}
+          path: audit/ball46-jersey-slot-readonly-20261004/
+          if-no-files-found: error
+          retention-days: 14
