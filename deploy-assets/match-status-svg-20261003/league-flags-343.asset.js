@@ -1,10 +1,11 @@
 (()=>{
 'use strict';
-const VERSION='343-league-flags-menu-143-20261003a';
+const VERSION='343-league-flags-menu-143-20261004b';
 const STYLE_ID='nomad343-league-flags-style';
 const FLAG_BASE='https://cdn.jsdelivr.net/npm/flag-icons@7.5.0/flags/4x3/';
 const FLAG_FALLBACK='https://flagcdn.com/';
 const WORLD=new Set(['international','world','worldwide','uefa','fifa','europe','global','international clubs','club international']);
+const WORLD_MARKERS=['international','world','worldwide','uefa','fifa','europe','global','concacaf','conmebol','afc','caf','ofc','gulf cup','africa cup'];
 const CODES={
   "afghanistan":"af",  "albania":"al",  "algeria":"dz",  "andorra":"ad",  "angola":"ao",  "argentina":"ar",
   "armenia":"am",  "australia":"au",  "austria":"at",  "azerbaijan":"az",  "bahrain":"bh",  "bangladesh":"bd",
@@ -35,14 +36,15 @@ const CODES={
   "united states":"us",  "united states of america":"us",  "usa":"us",  "uruguay":"uy",  "uzbekistan":"uz",  "venezuela":"ve",
   "vietnam":"vn",  "viet nam":"vn",  "wales":"gb-wls",  "zambia":"zm",  "zimbabwe":"zw"
 };
-const ICON_CODES=Object.freeze(["ad","ae","af","al","am","ao","ar","at","au","az","ba","bd","be","bf","bg","bh","bi","bo","br","bw","by","ca","cd","cg","ch","ci","cl","cm","cn","co","cr","cu","cv","cy","cz","de","dk","do","dz","ec","ee","eg","es","et","fi","fo","fr","gb-eng","gb-nir","gb-sct","gb-wls","ge","gh","gi","gn","gr","gt","hk","hn","hr","hu","id","ie","il","in","iq","ir","is","it","jm","jo","jp","ke","kg","kh","kp","kr","kw","kz","lb","li","lt","lu","lv","ly","ma","md","me","mk","ml","mm","mo","mt","mx","my","mz","ng","ni","nl","no","nz","om","pa","pe","ph","pk","pl","pr","ps","pt","py","qa","ro","rs","ru","rw","sa","sd","se","sg","si","sk","sv","sy","th","tj","tm","tn","tr","tw","tz","ua","ug","us","uy","uz","ve","vn","xk","za","zm","zw"]);
+const ICON_CODES=Object.freeze(["ad","ae","af","al","am","ao","ar","at","au","az","ba","bd","be","bf","bg","bh","bi","bo","br","bw","by","ca","cd","cg","ch","ci","cl","cm","cn","co","cr","cu","cv","cy","cz","de","dk","do","dz","ec","ee","eg","es","et","fi","fo","fr","gb-eng","gb-nir","gb-sct","gb-wls","ge","gh","gi","gn","gr","gt","hk","hn","hr","hu","id","ie","il","in","iq","ir","is","it","jm","jo","jp","ke","kg","kh","kp","kr","kw","kz","lb","li","lt","lu","lv","ly","ma","md","me","mk","ml","mm","mo","mt","mx","my","mz","ng","ni","nl","no","nz","om","pa","pe","ph","pk","pl","pr","ps","pt","py","qa","ro","rs","ru","rw","sa","sd","se","sg","si","sk","sn","sv","sy","th","tj","tm","tn","tr","tw","tz","ua","ug","us","uy","uz","ve","vn","xk","za","zm","zw"]);
 const clean=value=>String(value||'').trim().toLowerCase().replace(/\s+/g,' ');
+const COUNTRY_ALIASES=Object.freeze(Object.keys(CODES).sort((a,b)=>b.length-a.length));
 const uniqueCodes=()=>[...new Set(Object.values(CODES))].sort();
 const iconUrl=code=>`${FLAG_BASE}${code}.svg`;
 function verifyRegistry(){
   const actual=uniqueCodes();
   if(Object.keys(CODES).length!==167||actual.length!==143||actual.join('|')!==ICON_CODES.join('|')){
-    console.error('BALL46_LEAGUE_FLAG_REGISTRY_MISMATCH',{aliases:Object.keys(CODES).length,icons:actual.length});
+    console.error('BALL46_LEAGUE_FLAG_REGISTRY_MISMATCH',{aliases:Object.keys(CODES).length,icons:actual.length,declared:ICON_CODES.length});
     return false;
   }
   return true;
@@ -80,6 +82,17 @@ function codeFor(country){
   if(WORLD.has(key))return 'WORLD';
   return CODES[key]||null;
 }
+function codeForLeagueLabel(value){
+  const key=clean(String(value||'').split(' · ')[0]);
+  if(!key||key==='—')return null;
+  const exact=codeFor(key);
+  if(exact)return exact;
+  if(WORLD_MARKERS.some(marker=>key===marker||key.startsWith(`${marker} `)||key.includes(` ${marker} `)||key.endsWith(` ${marker}`)))return 'WORLD';
+  for(const alias of COUNTRY_ALIASES){
+    if(key.startsWith(`${alias} `))return CODES[alias];
+  }
+  return null;
+}
 function flag(code){
   if(code==='WORLD'||!code)return globe();
   const placeholder=globe();
@@ -105,14 +118,14 @@ function decorateLine(line){
   if(line.classList.contains('league-flag-ready')&&line.querySelector(':scope > .league-label'))return;
   const raw=line.textContent.trim();
   if(!raw)return;
-  const country=raw.split(' · ')[0].trim();
-  const code=codeFor(country);
+  const countryOrLeague=raw.split(' · ')[0].trim();
+  const code=codeForLeagueLabel(raw);
   const label=document.createElement('span');
   label.className='league-label';
   label.textContent=raw;
   line.textContent='';
   line.classList.add('league-flag-ready');
-  line.dataset.leagueCountry=country;
+  line.dataset.leagueCountry=countryOrLeague;
   line.dataset.leagueFlagCode=code||'unknown';
   line.append(flag(code),label);
 }
@@ -144,6 +157,7 @@ function boot(){
     iconCodes:ICON_CODES,
     iconUrl,
     codeFor,
+    codeForLeagueLabel,
     refresh:()=>decorate(root)
   };
 }
