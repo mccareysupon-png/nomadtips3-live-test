@@ -22,6 +22,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Install exact rail dependencies
+        working-directory: deploy-assets/match-status-svg-20261003
+        run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Stage exact current Production and inspect Event Flow read only
         working-directory: deploy-assets/match-status-svg-20261003
         shell: bash
@@ -31,12 +34,12 @@ jobs:
           node --input-type=module <<'NODE'
           import { readFileSync, writeFileSync } from 'node:fs';
           import { resolve } from 'node:path';
-          import { inspect, activeVersion, sha } from './production.mjs';
+          import { inspect, activeVersion, sha, api, script } from './production.mjs';
           import { schedules, stageCurrentRail } from './rail.mjs';
           const before=await activeVersion();
           const {restore,version,source}=await inspect();
           if(before!==restore.version)throw new Error(`LOCK_MISMATCH:${before}:${restore.version}`);
-          const settings=await (await import('./production.mjs')).api(`/scripts/${(await import('./production.mjs')).script}/settings`);
+          const settings=await api(`/scripts/${script}/settings`);
           const crons=await schedules();
           const staged=await stageCurrentRail(version,settings,crons,source);
           const file=resolve(staged.runtime,'assets/expanded-match-343.js');
