@@ -21,12 +21,12 @@ jobs:
         run: |
           npm ci --ignore-scripts --no-audit --no-fund
           npx playwright install --with-deps chromium
-      - name: Verify current Production source, test responsive cards, deploy through existing Production rail
+      - name: Read-only current Production module and asset verification
         working-directory: deploy-assets/match-status-svg-20261003
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: node scorebar-responsive-run.mjs
+        run: node scorebar-rail-scout.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
