@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import { inspect, activeVersion, publicFile, sha, literals } from './production.mjs';
+const TARGET='dashboard-v2-stage3.js';
+const OWNER='__B46_MULTI_SIGNAL_STAGE3_JS__';
+const current=await inspect();
+const version=current.restore.version;
+assert.equal(await activeVersion(),version,'PRODUCTION_MOVED_DURING_SCOUT_STOP');
+const asset=await publicFile('/'+TARGET,'javascript');
+const text=asset.toString('utf8');
+const owner=literals(current.source).get(OWNER);
+assert(owner,'DASHBOARD_OWNER_LITERAL_MISSING');
+assert.equal(sha(Buffer.from(owner.value)),sha(asset),'WORKER_OWNER_NOT_PUBLIC_ASSET');
+assert.equal(await activeVersion(),version,'PRODUCTION_MOVED_AFTER_SCOUT_STOP');
+console.log(JSON.stringify({ok:true,version,assetSha:sha(asset),stableDom:text.includes('B46_STABLE_MATCH_CARD_DOM_20261004'),countCollisionFix:text.includes('B46_CARD_SIGNAL_COUNT_COLLISION_FIX_20261004'),compactMore:text.includes('B46_CARD_SIGNAL_MORE_COMPACT_20261004'),oldInlineAllSignals:text.includes('rows.map(inlineSignalHtml).join'),firstSignalPlusMore:text.includes('inlineSignalHtml(rows[0],rows.length>1)'),featuredFullList:text.includes('signalHtml=sigs.map')},null,2));
+console.log('BALL46_CARD_SIGNAL_MORE_CURRENT_SCOUT_PASS');
