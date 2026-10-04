@@ -1,0 +1,59 @@
+name: Inspect Ball46 Home Logo CSS V2 20261004
+
+on:
+  push:
+    branches: [work/ball46-main-logo-footer-style-20261004]
+    paths:
+      - '.github/workflows/inspect-ball46-home-logo-css-v2-20261004.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BALL46_URL: https://ball46.com
+
+jobs:
+  inspect-home-css:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch exact live homepage CSS and report logo rules
+        shell: bash
+        run: |
+          set -euo pipefail
+          nonce="${GITHUB_RUN_ID}-$(date +%s%N)"
+          urls=(
+            'singlepage-workspace-343.css?v=343-scorebar-player-right-20260928a'
+            'ui-sync-fixes-343.css?v=343-ui-sync-20260922b'
+            'brand-clean-header-343.css?v=343-brand-clean-20260922b'
+            'dashboard-v2.css?v=343-market-clean-20260922a'
+            'dashboard-v2-tune.css?v=343-scorebar-divider-camo-20260929a'
+            'v2-shared.css?v=343-v2-shared-v1'
+            'ball46-next.css?v=343-signal-compact-20260922a'
+            'ball46-footer.css?v=20260929'
+          )
+          : > /tmp/files.txt
+          i=0
+          for rel in "${urls[@]}"; do
+            i=$((i+1)); sep='&'; url="$BALL46_URL/$rel${sep}inspect=$nonce"
+            code=$(curl -sS -L --max-time 25 -o "/tmp/css-$i" -w '%{http_code}' "$url" || true)
+            echo "FETCH $i $code $rel"
+            [ "$code" = 200 ] || exit 10
+            printf '%s\t%s\n' "$i" "$rel" >> /tmp/files.txt
+          done
+          curl -fsS -L --max-time 25 "$BALL46_URL/ball46-logo.svg?inspect=$nonce" -o /tmp/ball46-logo.svg
+          echo "SVG_SHA256=$(sha256sum /tmp/ball46-logo.svg | awk '{print $1}') SVG_BYTES=$(wc -c < /tmp/ball46-logo.svg)"
+          node <<'NODE'
+          const fs=require('fs'),crypto=require('crypto');
+          const rows=fs.readFileSync('/tmp/files.txt','utf8').trim().split(/\n/).filter(Boolean);
+          for(const row of rows){
+            const [idx,...rest]=row.split('\t');const name=rest.join('\t');const s=fs.readFileSync('/tmp/css-'+idx,'utf8');
+            const re=/([^{}]+)\{([^{}]*)\}/g;let m,n=0;
+            while((m=re.exec(s))){const sel=m[1].trim();if(!/(workspace-brand|footer|logo)/i.test(sel))continue;if(!/(workspace-brand|footer-brand|ball46|logo)/i.test(sel))continue;let body=m[2].trim();body=body.replace(/url\(["']?(data:image\/[^)"']+)["']?\)/g,(a,u)=>`url(DATA len=${u.length} sha256=${crypto.createHash('sha256').update(u).digest('hex')})`);console.log('RULE',JSON.stringify({file:name,pos:m.index,selector:sel,body}));n++;}
+            console.log('FILE_RULES',name,n);
+          }
+          const svg=fs.readFileSync('/tmp/ball46-logo.svg','utf8');console.log('SVG_HEAD',svg.slice(0,1200).replace(/\n/g,'\\n'));
+          NODE
+          echo INSPECT_HOME_CSS_ONLY_NO_MUTATION
