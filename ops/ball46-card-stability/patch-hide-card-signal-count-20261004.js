@@ -9,7 +9,7 @@ if(s.includes(MARK)) throw new Error('CARD_SIGNAL_COUNT_FIX_ALREADY_PRESENT_STOP
 if(!s.includes('B46_STABLE_MATCH_CARD_DOM_20261004')) throw new Error('STABLE_CARD_DOM_BASE_MISSING_STOP');
 if((s.split(OLD).length-1)!==1) throw new Error('CARD_SIGNAL_COUNT_ANCHOR_NOT_EXACTLY_ONE');
 if(!s.includes("setText('[data-signal-count]',activeSignals)")) throw new Error('GLOBAL_SIGNAL_COUNTER_ANCHOR_MISSING');
-s=s.replace('function inlineSignalsHtml(rows){',`/* ${MARK}: card-local count metadata is isolated from the global [data-signal-count] counter selector. */\nfunction inlineSignalsHtml(rows){`);
+s=s.replace('function inlineSignalsHtml(rows){',`/* ${MARK}: card-local count metadata is isolated from the global counter selector. */\nfunction inlineSignalsHtml(rows){`);
 s=s.replace(OLD,NEW);
 if(!s.includes(MARK)||!s.includes(NEW)) throw new Error('CARD_SIGNAL_COUNT_FIX_NOT_APPLIED');
 if(s.includes(OLD)) throw new Error('CARD_SIGNAL_COUNT_COLLISION_STILL_PRESENT');
