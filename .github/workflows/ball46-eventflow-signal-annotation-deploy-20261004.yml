@@ -30,9 +30,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Deploy edge-aware Event Flow Signal annotation from exact current Production
+      - name: Deploy edge-aware Event Flow Signal annotation from exact current Production with convergence guard
         working-directory: deploy-assets/eventflow-signal-annotation-20261004
-        run: node run.mjs
+        run: node run-convergent.mjs
       - name: Retain surgical evidence
         if: always()
         uses: actions/upload-artifact@v4
