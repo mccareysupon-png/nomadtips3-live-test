@@ -27,7 +27,7 @@ jobs:
           mkdir -p "$OUT/assets" "$OUT/board"
           AUTH="Authorization: Bearer $CLOUDFLARE_API_TOKEN"
           curl -fsS "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/ball46-production/deployments?per_page=3" -H "$AUTH" -o "$OUT/deployments.json"
-          node - <<'NODE' "$OUT/deployments.json" "$OUT/active.txt"
+          node - "$OUT/deployments.json" "$OUT/active.txt" <<'NODE'
           const fs=require('fs');
           const j=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
           const d=j.result.deployments[0];
@@ -54,7 +54,7 @@ jobs:
           done
           for i in 1 2 3 4 5 6; do
             curl -fsSL -H 'Cache-Control: no-cache' "https://ball46.com/api/full-market/board?flickerScout=${GITHUB_RUN_ID}-${i}-$(date +%s%N)" -o "$OUT/board/board-$i.json"
-            node - <<'NODE' "$OUT/board/board-$i.json" "$OUT/board/order-$i.txt"
+            node - "$OUT/board/board-$i.json" "$OUT/board/order-$i.txt" <<'NODE'
             const fs=require('fs');
             const j=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
             const arr=Array.isArray(j)?j:(j.matches||j.data||j.rows||j.items||[]);
@@ -68,7 +68,7 @@ jobs:
             NODE
             sleep 2
           done
-          node - <<'NODE' "$OUT/assets" "$OUT/pattern-report.txt"
+          node - "$OUT/assets" "$OUT/pattern-report.txt" <<'NODE'
           const fs=require('fs'),path=require('path');
           const dir=process.argv[2], out=[];
           const patterns=['innerHTML','replaceChildren','outerHTML','insertAdjacentHTML','appendChild','prepend','removeChild','cloneNode','.sort(','requestAnimationFrame','setInterval','setTimeout','MutationObserver','transition','animation','opacity','display'];
