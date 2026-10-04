@@ -2,7 +2,11 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 export const TOKEN='343-league-flags-menu-143-20261004b';
-export const assetSource=readFileSync(new URL('./league-flags-343.asset.js', import.meta.url),'utf8');
+const rawAssetSource=readFileSync(new URL('./league-flags-343.asset.js', import.meta.url),'utf8');
+assert.equal((rawAssetSource.match(/img\.loading='lazy';/g)||[]).length,1,'FLAG_LAZY_SOURCE_COUNT_BAD');
+export const assetSource=rawAssetSource.replace("img.loading='lazy';","img.loading='eager';");
+assert(!assetSource.includes("img.loading='lazy';"),'FLAG_LAZY_STILL_IN_DEPLOY_ASSET');
+assert(assetSource.includes("img.loading='eager';"),'FLAG_EAGER_DEPLOY_ASSET_MISSING');
 const WORLD_EXACT=new Set(['international','world','worldwide','uefa','fifa','europe','global','international clubs','club international']);
 const WORLD_MARKERS=['international','world','worldwide','uefa','fifa','europe','global','concacaf','conmebol','afc','caf','ofc','gulf cup','africa cup'];
 const clean=value=>String(value||'').trim().toLowerCase().replace(/\s+/g,' ');
@@ -43,6 +47,8 @@ export function validateAsset(source=assetSource){
   assert.equal(info.map['senegal'],'sn','SENEGAL_FLAG_WRONG');
   assert.equal(info.map['thailand'],'th','THAILAND_FLAG_WRONG');
   assert(source.includes('flag-icons@7.5.0/flags/4x3/'),'FLAG_ICON_LIBRARY_CHANGED');
+  assert(source.includes("img.loading='eager';"),'FLAG_EAGER_LOADING_MISSING');
+  assert(!source.includes("img.loading='lazy';"),'FLAG_LAZY_LOADING_PRESENT');
   assert(source.includes('function codeForLeagueLabel(value)'),'LEAGUE_PREFIX_RESOLVER_MISSING');
   for(const selector of ["'[data-league-filter] > span'","'.league-block .league-head > strong'","'.match-card .league-scoreboard'","'[data-featured-league]'"]) assert(source.includes(selector),`FLAG_TARGET_MISSING:${selector}`);
   return info;

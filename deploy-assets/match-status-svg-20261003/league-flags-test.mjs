@@ -1,9 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
-import { patchIndex, validateAsset, TOKEN } from './league-flags-patch.mjs';
+import { assetSource, patchIndex, validateAsset, TOKEN } from './league-flags-patch.mjs';
 
 test('flag registry is exactly tuned',()=>{
   const info=validateAsset();
@@ -11,14 +10,15 @@ test('flag registry is exactly tuned',()=>{
   assert.equal(info.icons,143);
   assert.equal(info.declaredIcons,143);
   assert(info.declared.includes('sn'));
+  assert(assetSource.includes("img.loading='eager';"));
+  assert(!assetSource.includes("img.loading='lazy';"));
 });
 
-test('flag asset is valid browser JavaScript',()=>{
-  execFileSync(process.execPath,['--check','league-flags-343.asset.js'],{stdio:'pipe'});
+test('deploy flag asset is valid browser JavaScript',()=>{
+  execFileSync(process.execPath,['--check','--input-type=module'],{input:assetSource,stdio:['pipe','pipe','pipe']});
 });
 
 test('country-prefixed league names resolve without league.country',()=>{
-  const source=readFileSync('league-flags-343.asset.js','utf8');
   const context={
     console,
     window:{},
@@ -27,7 +27,7 @@ test('country-prefixed league names resolve without league.country',()=>{
     requestAnimationFrame:fn=>fn()
   };
   vm.createContext(context);
-  vm.runInContext(source,context);
+  vm.runInContext(assetSource,context);
   const api=context.window.NOMAD_LEAGUE_FLAGS_343;
   assert(api);
   assert.equal(api.iconCount,143);
@@ -67,6 +67,5 @@ test('index patch upgrades existing script without duplication',()=>{
 });
 
 test('menu and match surfaces are all targeted',()=>{
-  const source=readFileSync('league-flags-343.asset.js','utf8');
-  for(const needle of ['[data-league-filter] > span','.league-block .league-head > strong','.match-card .league-scoreboard','[data-featured-league]']) assert(source.includes(needle),needle);
+  for(const needle of ['[data-league-filter] > span','.league-block .league-head > strong','.match-card .league-scoreboard','[data-featured-league]']) assert(assetSource.includes(needle),needle);
 });
