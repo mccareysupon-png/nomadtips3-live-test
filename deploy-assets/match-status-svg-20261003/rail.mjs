@@ -11,6 +11,12 @@ export const rail = {
   wrangler: '4.92.0',
 };
 
+const textAssetName = name => /^(?:assets\/)?(?:[a-zA-Z0-9_-]+\.html|robots\.txt)$/.test(name);
+const moduleAssetPath = name => {
+  assert(textAssetName(name), `UNSUPPORTED_CURRENT_TEXT_MODULE_NAME:${name}`);
+  return name.startsWith('assets/') ? name.slice('assets/'.length) : name;
+};
+
 export function verifyPublishedModules(current, original, patchedSource, protectedFiles) {
   assert.equal(current.main_module, original.main_module, 'PUBLISHED_MAIN_MODULE_CHANGED');
   const expected = new Map(manifest(original).map(module => [module.name, { ...module, ...(module.name === original.main_module ? { sha: sha(patchedSource) } : {}) }]));
@@ -19,8 +25,8 @@ export function verifyPublishedModules(current, original, patchedSource, protect
   const attached = actual.filter(module => !expected.has(module.name));
   for (const module of attached) {
     assert.equal(module.type, 'text/plain', `UNAPPROVED_ADDITIONAL_EXECUTABLE_MODULE:${module.name}`);
-    assert(/^assets\/(?:[a-zA-Z0-9_-]+\.html|robots\.txt)$/.test(module.name), `UNAPPROVED_ADDITIONAL_MODULE_PATH:${module.name}`);
-    const path = '/' + module.name.slice('assets/'.length);
+    assert(textAssetName(module.name), `UNAPPROVED_ADDITIONAL_MODULE_PATH:${module.name}`);
+    const path = '/' + moduleAssetPath(module.name);
     assert(protectedFiles[path], `ADDITIONAL_MODULE_NOT_IN_ORIGINAL_PRODUCTION:${path}`);
     assert.equal(module.sha, protectedFiles[path], `ADDITIONAL_TEXT_MODULE_BYTES_CHANGED:${path}`);
   }
@@ -36,7 +42,7 @@ export async function schedules() {
 
 export function configFromCurrent(version, settings, crons, assetsDirectory) {
   assert.equal(version.main_module, 'index.js', 'CURRENT_RAIL_MAIN_MODULE_CHANGED');
-  assert(version.modules.every(module => module.name === version.main_module || (module.content_type === 'text/plain' && /^assets\/(?:[a-zA-Z0-9_-]+\.html|robots\.txt)$/.test(module.name))), 'CURRENT_RAIL_MODULE_SHAPE_CHANGED');
+  assert(version.modules.every(module => module.name === version.main_module || (module.content_type === 'text/plain' && textAssetName(module.name))), 'CURRENT_RAIL_MODULE_SHAPE_CHANGED');
   assert(version.compatibility_date, 'CURRENT_COMPATIBILITY_DATE_MISSING');
   assert(Array.isArray(version.bindings), 'CURRENT_BINDINGS_MISSING');
   const assetBindings = version.bindings.filter(binding => binding.type === 'assets');
@@ -86,7 +92,9 @@ export async function stageCurrentRail(version, settings, crons, patchedSource) 
     hashes[path] = sha(bytes);
   }
   for (const module of version.modules.filter(module => module.name !== version.main_module)) {
-    assert.equal(sha(Buffer.from(module.content_base64, 'base64')), hashes[module.name.slice('assets/'.length)], `CURRENT_TEXT_MODULE_NOT_IDENTICAL_TO_PUBLIC_ASSET:${module.name}`);
+    const path = moduleAssetPath(module.name);
+    assert(hashes[path], `CURRENT_TEXT_MODULE_PUBLIC_ASSET_NOT_IN_RAIL:${module.name}`);
+    assert.equal(sha(Buffer.from(module.content_base64, 'base64')), hashes[path], `CURRENT_TEXT_MODULE_NOT_IDENTICAL_TO_PUBLIC_ASSET:${module.name}`);
   }
   writeFileSync(resolve(runtime, 'index.js'), patchedSource);
   writeFileSync(resolve(runtime, 'wrangler.jsonc'), JSON.stringify(configFromCurrent(version, settings, crons, assets), null, 2));
