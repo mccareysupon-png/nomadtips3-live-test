@@ -8,7 +8,7 @@ import {patch,beforeHash} from './patch-scorebar.mjs';
 import {verify} from './verify-scorebar.mjs';
 import {unit} from './scorebar-unit.mjs';
 const name='dashboard-v2-stage3.js';
-const report={scope:'Only renderWorkspaceScorebar presentation and its local scoped style/resize helper; existing component, data fetchers, navigation and Production rail retained',commit:process.env.GITHUB_SHA,run:process.env.GITHUB_RUN_ID};
+const report={scope:'Only the existing scorebar scoped CSS literal: smaller typography and tighter vertical spacing; rendering, selection, data fetchers, navigation and Production rail retained',commit:process.env.GITHUB_SHA,run:process.env.GITHUB_RUN_ID};
 let base=null,candidate=null;
 const save=()=>writeFileSync('audit/scorebar-responsive-report.json',JSON.stringify(report,null,2));
 const delay=ms=>new Promise(r=>setTimeout(r,ms));
