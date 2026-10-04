@@ -1,0 +1,54 @@
+name: Inspect Ball46 Home Main Logo 20261004
+
+on:
+  push:
+    branches: [work/ball46-main-logo-footer-style-20261004]
+    paths:
+      - '.github/workflows/inspect-ball46-home-main-logo-20261004.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BALL46_URL: https://ball46.com
+
+jobs:
+  inspect-home:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect live homepage main logo and loaded CSS only
+        shell: bash
+        run: |
+          set -euo pipefail
+          nonce="${GITHUB_RUN_ID}-$(date +%s%N)"
+          curl -fsS -L --max-time 25 "$BALL46_URL/?home-logo=$nonce" -o /tmp/home.html
+          node - <<'NODE'
+          const fs=require('fs');const h=fs.readFileSync('/tmp/home.html','utf8');
+          console.log('HOME_BYTES',h.length);
+          for(const token of ['workspace-brand','b46-header-logo-image','footer-brand-image','ball46-logo','Ball46','ball46']){
+            let p=0,n=0;while((p=h.indexOf(token,p))>=0&&n<8){console.log('HTML_MATCH',token,n+1,h.slice(Math.max(0,p-500),Math.min(h.length,p+900)).replace(/\n/g,'\\n'));p+=token.length;n++;}
+          }
+          const links=[...h.matchAll(/<link[^>]+rel=["']stylesheet["'][^>]+href=["']([^"']+)["']/gi)].map(m=>m[1]);
+          console.log('STYLESHEETS',JSON.stringify(links));fs.writeFileSync('/tmp/css-list',links.join('\n'));
+          NODE
+          i=0
+          while IFS= read -r href; do
+            [ -n "$href" ] || continue
+            i=$((i+1)); case "$href" in http*) url="$href";; /*) url="$BALL46_URL$href";; *) url="$BALL46_URL/$href";; esac
+            code=$(curl -sS -L --max-time 25 -o "/tmp/css-$i" -w '%{http_code}' "$url${url#*\?}" || true)
+            # Retry safely with a simple cachebuster separator if the first URL composition failed.
+            if [ "$code" != 200 ]; then
+              sep='?'; [[ "$url" == *\?* ]] && sep='&'
+              code=$(curl -sS -L --max-time 25 -o "/tmp/css-$i" -w '%{http_code}' "${url}${sep}home-logo=$nonce" || true)
+            fi
+            echo "CSS_FETCH $i $code $href"
+            [ "$code" = 200 ] || continue
+            node - "$i" "$href" <<'NODE'
+            const fs=require('fs');const i=process.argv[2],href=process.argv[3],s=fs.readFileSync('/tmp/css-'+i,'utf8');
+            for(const token of ['workspace-brand','b46-header-logo-image','footer-brand-image','ball46-logo']){let p=0,n=0;while((p=s.indexOf(token,p))>=0&&n<12){console.log('CSS_MATCH',href,token,n+1,s.slice(Math.max(0,p-350),Math.min(s.length,p+950)).replace(/\n/g,'\\n'));p+=token.length;n++;}}
+            NODE
+          done < /tmp/css-list
+          echo INSPECT_HOME_ONLY_NO_MUTATION
