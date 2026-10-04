@@ -1,0 +1,46 @@
+name: Ball46 Event Flow Signal Annotation Wrangler Surgical 20261004
+
+on:
+  push:
+    branches: [work/eventflow-signal-annotation-surgical-20261004]
+    paths:
+      - '.github/workflows/ball46-eventflow-signal-annotation-wrangler-deploy-20261004.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ball46-production-eventflow-signal-annotation-wrangler
+  cancel-in-progress: false
+
+env:
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  DEPLOY_ENABLED: 'true'
+
+jobs:
+  surgical-deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 24
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install exact proven-rail dependencies
+        working-directory: deploy-assets/match-status-svg-20261003
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Surgical deploy Event Flow Signal annotation on exact current Wrangler Production rail
+        working-directory: deploy-assets/match-status-svg-20261003
+        run: node eventflow-signal-annotation-run.mjs
+      - name: Retain surgical evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-eventflow-signal-annotation-wrangler-${{ github.run_id }}
+          path: deploy-assets/match-status-svg-20261003/audit/
+          if-no-files-found: error
+          retention-days: 30
