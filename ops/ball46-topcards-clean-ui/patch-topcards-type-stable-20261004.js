@@ -1,0 +1,11 @@
+const fs=require('fs');
+const [,,srcPath,outPath]=process.argv;
+if(!srcPath||!outPath)throw new Error('USAGE');
+let s=fs.readFileSync(srcPath,'utf8');
+const BASE='B46_TOPCARDS_CLEAN_UI_20261004';
+const MARK='B46_TOPCARDS_TYPE_STABLE_20261004';
+if(!s.includes(BASE))throw new Error('BASE_TOPCARDS_UI_MISSING');
+if(s.includes(MARK))throw new Error('TYPE_STABLE_ALREADY_PRESENT');
+s+=`\n\n/* ${MARK}: outrank later legacy 7px workspace rule for populated cards only. */\n.workspace-scorebar-cell.workspace-scorebar-signal-result .workspace-scorebar-match,\n.workspace-scorebar-cell.workspace-scorebar-pending .workspace-scorebar-match{\n  font-size:9.5px!important;\n  font-weight:750!important;\n  line-height:1.2!important;\n  color:#f1f5f9!important;\n  text-shadow:none!important;\n}\n`;
+fs.writeFileSync(outPath,s);
+console.log(JSON.stringify({ok:true,marker:MARK,inputBytes:fs.statSync(srcPath).size,outputBytes:Buffer.byteLength(s)}));
