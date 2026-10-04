@@ -1,0 +1,58 @@
+name: Ball46 Statistics LIVE Active Audit 20261004
+on:
+  push:
+    branches: ['safe/ball46-statistics-live-deploy-20261004']
+    paths: ['.github/workflows/ball46-statistics-live-active-audit-20261004.yml']
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Capture active module and require exact candidate baseline anchor
+        run: |
+          python3 - <<'PY'
+          import os,json,urllib.request,base64,hashlib,pathlib,time
+          root=pathlib.Path('active-statistics-audit'); root.mkdir()
+          api='https://api.cloudflare.com/client/v4/accounts/'+os.environ['CLOUDFLARE_ACCOUNT_ID']
+          worker='nomadtips3-engine-343'
+          headers={'Authorization':'Bearer '+os.environ['CLOUDFLARE_API_TOKEN'],'Accept':'application/json'}
+          def get(url, authenticated=True):
+           req=urllib.request.Request(url,headers=headers if authenticated else {'User-Agent':'Mozilla/5.0'})
+           with urllib.request.urlopen(req,timeout=30) as r: j=json.load(r)
+           if authenticated and j.get('success') is False: raise RuntimeError('CF API failed')
+           return j
+          deps=get(api+'/workers/scripts/'+worker+'/deployments')['result']['deployments']
+          active=[v['version_id'] for v in deps[0]['versions'] if float(v.get('percentage',0))>=99.999]
+          assert len(active)==1,'STOP: active version ambiguous'
+          vid=active[0]
+          v=get(api+'/workers/workers/'+worker+'/versions/'+vid+'?include=modules')['result']
+          mods=v.get('modules') or []
+          target=[m for m in mods if m.get('name')=='index-bulk-recovery.js' and m.get('content_base64')]
+          assert len(mods)==1 and len(target)==1,'STOP: module shape changed'
+          raw=base64.b64decode(target[0]['content_base64']); s=raw.decode()
+          (root/'active-index.js').write_bytes(raw)
+          a=s.index('  async statisticsLedgerResponse('); b=s.index('  async scan() {',a)
+          anchor=hashlib.sha256(s[a:b].encode()).hexdigest()
+          stats=get('https://www.ball46.com/api/engine/statistics?limit=5000&audit='+str(time.time_ns()),False)
+          board=get('https://www.ball46.com/api/engine/board?audit='+str(time.time_ns()),False)
+          (root/'statistics.json').write_text(json.dumps(stats))
+          (root/'board.json').write_text(json.dumps(board))
+          meta={'version':vid,'sourceSHA256':hashlib.sha256(raw).hexdigest(),'anchorSHA256':anchor,'anchorMatches':anchor=='19d8211872df9ba3daccdc9cfd1aca4304e2179fc20f47b78940940d550a3b84'}
+          (root/'meta.json').write_text(json.dumps(meta,indent=2))
+          print(json.dumps(meta))
+          old=[r for r in stats.get('rows',[]) if str(r.get('fixtureId'))=='202093411']
+          print('OLD_FIXTURE',json.dumps([{'status':r.get('status'),'result':r.get('result')} for r in old]))
+          assert meta['anchorMatches'],'STOP: active anchor differs from candidate baseline'
+          
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-statistics-live-active-audit-${{ github.run_id }}
+          path: active-statistics-audit/
+          retention-days: 7
