@@ -7,7 +7,6 @@ test -n "$PLAYWRIGHT_EXECUTABLE_PATH" || { echo CHROME_MISSING; exit 1; }
 npm ci --ignore-scripts --no-audit --no-fund
 mkdir -p audit/vintage-kits-live-verify
 node --input-type=module <<'NODE'
-import assert from 'node:assert/strict';
 import { writeFileSync } from 'node:fs';
 import { chromium } from 'playwright';
 import { activeVersion, publicFile, origin } from './production.mjs';
@@ -21,16 +20,15 @@ report.ui=[];
 try{
   for(const vp of [{name:'desktop',width:1440,height:900},{name:'mobile',width:390,height:844}]){
     const page=await browser.newPage({viewport:{width:vp.width,height:vp.height}});
-    await page.goto(`${origin}/index.html?vintageDomExact=${Date.now()}-${vp.name}`,{waitUntil:'domcontentloaded',timeout:60000});
+    await page.goto(`${origin}/index.html?vintageLayoutAudit=${Date.now()}-${vp.name}`,{waitUntil:'domcontentloaded',timeout:60000});
     await page.waitForFunction(v=>window.NOMAD_TEAM_KITS_343?.version===v,VERSION,{timeout:45000});
     await page.waitForTimeout(8000);
     const data=await page.evaluate(()=>{
-      const rows=[...document.querySelectorAll('article.match-row')];
-      const cells=rows.slice(0,8).map((row,i)=>{
-        const cell=row.querySelector('.teams-cell');
-        return {i,rowClass:row.className,rowData:{...row.dataset},html:cell?.outerHTML||null,children:cell?[...cell.children].map((el,j)=>({j,tag:el.tagName,cls:typeof el.className==='string'?el.className:'',text:(el.textContent||'').trim(),html:el.outerHTML.slice(0,1200)})):[]};
-      });
-      return {rowCount:rows.length,cells};
+      const row=document.querySelector('article.match-row');
+      const cell=row?.querySelector('.teams-cell');
+      const childData=cell?[...cell.children].map(el=>{const s=getComputedStyle(el),r=el.getBoundingClientRect();return {tag:el.tagName,cls:el.className,text:(el.textContent||'').trim(),display:s.display,position:s.position,gridColumn:s.gridColumn,gridRow:s.gridRow,width:r.width,height:r.height,x:r.x,y:r.y,margin:s.margin,padding:s.padding,fontSize:s.fontSize,lineHeight:s.lineHeight}}):[];
+      const s=cell?getComputedStyle(cell):null,r=cell?.getBoundingClientRect();
+      return {rowCount:document.querySelectorAll('article.match-row').length,cell:cell?{html:cell.outerHTML,display:s.display,gridTemplateColumns:s.gridTemplateColumns,gridTemplateRows:s.gridTemplateRows,gap:s.gap,columnGap:s.columnGap,rowGap:s.rowGap,alignItems:s.alignItems,width:r.width,height:r.height,children:childData}:null};
     });
     report.ui.push({viewport:vp.name,...data});
     await page.screenshot({path:`${out}/${vp.name}.png`,fullPage:true});
