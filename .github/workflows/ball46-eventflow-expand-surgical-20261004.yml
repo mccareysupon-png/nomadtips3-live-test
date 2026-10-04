@@ -30,20 +30,20 @@ jobs:
       - name: Install confirmed rail dependencies
         working-directory: deploy-assets/match-status-svg-20261003
         run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Preview Event Flow expanded mode against exact current Production
+      - name: Preview atomic Event Flow expanded mode against exact current Production
         working-directory: deploy-assets/match-status-svg-20261003
         shell: bash
         run: |
           set -euo pipefail
           export PLAYWRIGHT_EXECUTABLE_PATH="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
           test -n "$PLAYWRIGHT_EXECUTABLE_PATH"
-          node eventflow-expand-run.mjs
+          node eventflow-expand-atomic-run.mjs
       - name: Retain preview evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ball46-eventflow-expand-preview-${{ github.run_id }}
-          path: deploy-assets/match-status-svg-20261003/audit/eventflow-expand/
+          name: ball46-eventflow-expand-atomic-preview-${{ github.run_id }}
+          path: deploy-assets/match-status-svg-20261003/audit/eventflow-expand-atomic/
           if-no-files-found: error
           retention-days: 30
 
@@ -63,19 +63,19 @@ jobs:
       - name: Install confirmed rail dependencies
         working-directory: deploy-assets/match-status-svg-20261003
         run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Surgical deploy Event Flow expanded mode from exact current Production
+      - name: Surgical deploy atomic Event Flow expanded mode from exact current Production
         working-directory: deploy-assets/match-status-svg-20261003
         shell: bash
         run: |
           set -euo pipefail
           export PLAYWRIGHT_EXECUTABLE_PATH="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
           test -n "$PLAYWRIGHT_EXECUTABLE_PATH"
-          node eventflow-expand-run.mjs
+          node eventflow-expand-atomic-run.mjs
       - name: Retain deploy evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ball46-eventflow-expand-deploy-${{ github.run_id }}
-          path: deploy-assets/match-status-svg-20261003/audit/eventflow-expand/
+          name: ball46-eventflow-expand-atomic-deploy-${{ github.run_id }}
+          path: deploy-assets/match-status-svg-20261003/audit/eventflow-expand-atomic/
           if-no-files-found: error
           retention-days: 30
