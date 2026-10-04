@@ -27,14 +27,14 @@ jobs:
         with:
           ref: ops/ball46-stat-final-flow-20261004
           fetch-depth: 1
-      - name: Lock current Production, repair missing-final flow, deploy and verify
+      - name: Lock current Production, recover oversized working state, repair missing-final flow, deploy and verify
         shell: bash
-        run: bash .github/scripts/ball46_stat_final_flow_deploy_20261004.sh
+        run: bash .github/scripts/ball46_stat_final_flow_deploy_v2_20261004.sh
       - name: Upload verification evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ball46-stat-final-flow-${{ github.run_id }}
-          path: /tmp/b46-stat-final-flow/
+          name: ball46-stat-final-flow-v2-${{ github.run_id }}
+          path: /tmp/b46-stat-final-flow-v2/
           if-no-files-found: warn
           retention-days: 30
