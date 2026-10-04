@@ -1,0 +1,13 @@
+const fs=require('fs');
+const [,,srcPath,outPath]=process.argv;
+if(!srcPath||!outPath) throw new Error('USAGE: node patch-featured-signal-dark-card-20261004.js <src> <out>');
+let s=fs.readFileSync(srcPath,'utf8');
+const MARK='B46_FEATURED_SIGNAL_DARK_CARD_20261004';
+for(const x of ['B46_EXPANDED_UNIFIED_GREEN_FRAME_20261004','B46_MATCH_CARD_THEME_CONTRAST_20261004']) if(!s.includes(x)) throw new Error(`BASE_MARKER_MISSING:${x}`);
+if(s.includes(MARK)) throw new Error('FEATURED_SIGNAL_DARK_CARD_ALREADY_PRESENT_STOP');
+const patch=`\n\n/* ${MARK}: Featured Match active Signal card = near-black charcoal surface with one green 1px visual frame and subtle green glow; presentation only. */\nbody .workspace.singlepage .featured-card [data-featured-signal].locked {\n  background: #111514 !important;\n  border-color: #2ACF83 !important;\n  box-shadow: inset 0 0 0 1px #2ACF83, 0 0 12px rgba(42,207,131,.13) !important;\n}\n`;
+s+=patch;
+for(const x of [MARK,'.featured-card [data-featured-signal].locked','background: #111514 !important','border-color: #2ACF83 !important','inset 0 0 0 1px #2ACF83']) if(!s.includes(x)) throw new Error(`PATCH_VERIFY_MISSING:${x}`);
+if(/(?:padding|margin|width|height|border-width|border-style|transform|display|position)\s*:/i.test(patch)) throw new Error('GEOMETRY_OR_LAYOUT_CHANGE_STOP');
+fs.writeFileSync(outPath,s);
+console.log(JSON.stringify({ok:true,marker:MARK,inputBytes:Buffer.byteLength(fs.readFileSync(srcPath)),outputBytes:Buffer.byteLength(s)}));
