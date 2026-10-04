@@ -1,0 +1,81 @@
+name: Ball46 Event Flow Expanded Mode Surgical 20261004
+
+on:
+  push:
+    branches: [ops/ball46-odds-surgical-20260928]
+    paths:
+      - '.github/workflows/ball46-eventflow-expand-surgical-20261004.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ball46-production-eventflow-expanded-mode
+  cancel-in-progress: false
+
+jobs:
+  preview:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      DEPLOY_ENABLED: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install confirmed rail dependencies
+        working-directory: deploy-assets/match-status-svg-20261003
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Preview Event Flow expanded mode against exact current Production
+        working-directory: deploy-assets/match-status-svg-20261003
+        shell: bash
+        run: |
+          set -euo pipefail
+          export PLAYWRIGHT_EXECUTABLE_PATH="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
+          test -n "$PLAYWRIGHT_EXECUTABLE_PATH"
+          node eventflow-expand-run.mjs
+      - name: Retain preview evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-eventflow-expand-preview-${{ github.run_id }}
+          path: deploy-assets/match-status-svg-20261003/audit/eventflow-expand/
+          if-no-files-found: error
+          retention-days: 30
+
+  deploy:
+    needs: preview
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      DEPLOY_ENABLED: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install confirmed rail dependencies
+        working-directory: deploy-assets/match-status-svg-20261003
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Surgical deploy Event Flow expanded mode from exact current Production
+        working-directory: deploy-assets/match-status-svg-20261003
+        shell: bash
+        run: |
+          set -euo pipefail
+          export PLAYWRIGHT_EXECUTABLE_PATH="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
+          test -n "$PLAYWRIGHT_EXECUTABLE_PATH"
+          node eventflow-expand-run.mjs
+      - name: Retain deploy evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-eventflow-expand-deploy-${{ github.run_id }}
+          path: deploy-assets/match-status-svg-20261003/audit/eventflow-expand/
+          if-no-files-found: error
+          retention-days: 30
