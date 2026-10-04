@@ -1,0 +1,15 @@
+const fs=require('fs');
+const [,,srcPath,outPath]=process.argv;
+if(!srcPath||!outPath) throw new Error('USAGE: node patch-expanded-unified-green-frame-20261004.js <src> <out>');
+let s=fs.readFileSync(srcPath,'utf8');
+const PREV_ACTIVE='B46_MATCH_CARD_ACTIVE_DARK_GLOW_20261004';
+const PREV_EXPANDED='B46_MATCH_EXPANDED_OUTLINE_20261004';
+const MARK='B46_EXPANDED_UNIFIED_GREEN_FRAME_20261004';
+for(const x of [PREV_ACTIVE,PREV_EXPANDED,'B46_MATCH_CARD_THEME_CONTRAST_20261004']) if(!s.includes(x)) throw new Error(`BASE_MARKER_MISSING:${x}`);
+if(s.includes(MARK)) throw new Error('EXPANDED_UNIFIED_GREEN_FRAME_ALREADY_PRESENT_STOP');
+const patch=`\n\n/* ${MARK}: green means expanded only; one continuous 1px #2ACF83 frame around row + expanded content. */\nhtml[data-theme="dark"] body .workspace.singlepage .match-row.active:not([aria-expanded="true"]) {\n  background: #030605 !important;\n  border-top-color: #17221D !important;\n  border-bottom-color: #17221D !important;\n  box-shadow: none !important;\n}\nhtml[data-theme="dark"] body .workspace.singlepage .match-row[aria-expanded="true"] {\n  background: #030605 !important;\n  border-top-color: #2ACF83 !important;\n  border-bottom-color: transparent !important;\n  box-shadow: inset 1px 0 0 #2ACF83, inset -1px 0 0 #2ACF83, inset 0 1px 0 #2ACF83, 0 0 14px rgba(42,207,131,.14) !important;\n}\nhtml[data-theme="dark"] body .workspace.singlepage .match-row[aria-expanded="true"] + .match-expanded {\n  box-shadow: inset 1px 0 0 #2ACF83, inset -1px 0 0 #2ACF83, inset 0 -1px 0 #2ACF83, 0 8px 14px rgba(42,207,131,.10) !important;\n}\n`;
+s+=patch;
+for(const x of [MARK,'.match-row.active:not([aria-expanded="true"])','.match-row[aria-expanded="true"] + .match-expanded','border-bottom-color: transparent !important','#2ACF83','box-shadow: none !important']) if(!s.includes(x)) throw new Error(`PATCH_VERIFY_MISSING:${x}`);
+if(/(?:padding|margin|width|height|border-width|border-style|transform)\s*:/i.test(patch)) throw new Error('GEOMETRY_CHANGE_STOP');
+fs.writeFileSync(outPath,s);
+console.log(JSON.stringify({ok:true,marker:MARK,inputBytes:Buffer.byteLength(fs.readFileSync(srcPath)),outputBytes:Buffer.byteLength(s)}));
