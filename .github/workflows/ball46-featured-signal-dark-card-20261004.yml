@@ -1,4 +1,4 @@
-name: Ball46 Under-Search Scorebar Position Scout 20261005
+name: Ball46 Under-Search Scorebar Anchor Scout 20261005
 
 on:
   push:
@@ -19,7 +19,7 @@ jobs:
       API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       SCRIPT_NAME: ball46-production
     steps:
-      - name: Prove exact DOM slot and owner for the card row below search
+      - name: Trace scorebar slot injection and anchor
         shell: bash
         run: |
           set -euo pipefail
@@ -29,21 +29,12 @@ jobs:
           echo CURRENT_PRODUCTION=$V
           curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/workers/$SCRIPT_NAME/versions/$V?include=modules" -H "$AUTH" -o /tmp/v.json
           node <<'NODE'
-          const fs=require('fs');
-          const v=JSON.parse(fs.readFileSync('/tmp/v.json','utf8'));if(v.success!==true)throw Error('VERSION_FETCH_FAILED');
-          const texts=new Map((v.result?.modules||[]).map(m=>[m.name,Buffer.from(m.content_base64||'','base64').toString('utf8')]));
-          const html=texts.get('assets/index.html')||'';
-          const js=texts.get('index.js')||'';
-          const slot='data-workspace-scorebar-slot';
-          const p=html.indexOf(slot);
-          if(p<0)throw Error('SCOREBAR_SLOT_NOT_FOUND');
-          console.log('SCOREBAR_SLOT_HTML_INDEX='+p);
-          console.log('=== SLOT_CONTEXT ===');
-          console.log(html.slice(Math.max(0,p-5000),Math.min(html.length,p+4000)).replace(/>\s+</g,'><'));
-          const patterns=['data-search','search-box','search-input','type="search"','placeholder="Search','placeholder="Find','data-query','workspace-search'];
-          for(const t of patterns){let q=html.indexOf(t);if(q>=0){console.log('\n=== SEARCH_CONTEXT '+t+' @'+q+' ===');console.log(html.slice(Math.max(0,q-1800),Math.min(html.length,q+2600)).replace(/>\s+</g,'><'));}}
-          const r=js.indexOf('function renderWorkspaceScorebar');
-          if(r<0)throw Error('RENDER_OWNER_NOT_FOUND');
-          console.log('\n=== RENDER_OWNER ===');
-          console.log(js.slice(r,r+9000));
+          const fs=require('fs');const v=JSON.parse(fs.readFileSync('/tmp/v.json','utf8'));if(v.success!==true)throw Error('VERSION_FETCH_FAILED');
+          const mods=v.result?.modules||[];
+          for(const m of mods){
+            const s=Buffer.from(m.content_base64||'','base64').toString('utf8');
+            for(const term of ['data-workspace-scorebar-slot','workspace-scorebar-slot','workspace-scorebar','BALL46_WORKSPACE_SCOREBAR_20260926']){
+              let p=0,n=0;while((p=s.indexOf(term,p))>=0){n++;console.log(`\n=== ${m.name} :: ${term} #${n} @${p} ===`);console.log(s.slice(Math.max(0,p-3000),Math.min(s.length,p+5000)));p+=term.length;}
+            }
+          }
           NODE
