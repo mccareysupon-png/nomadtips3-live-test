@@ -1,4 +1,4 @@
-name: Ball46 Featured Match Compact 40 Exact-Current Deploy 20261004
+name: Ball46 Featured Match Camouflage Exact-Current Deploy 20261004
 
 on:
   push:
@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: ball46-production-featured-match-compact-40
+  group: ball46-production-featured-match-camouflage
   cancel-in-progress: false
 
 env:
@@ -47,23 +47,23 @@ jobs:
           const v=String(d.versions[0].version_id);fs.writeFileSync('/tmp/base-version',v);console.log('PRODUCTION_LOCKED='+v);
           NODE
           nonce="${GITHUB_RUN_ID}-pre-$(date +%s%N)"
-          curl -fsS -L --max-time 25 "$BALL46_URL/?featured-compact-pre=$nonce" -o /tmp/home-before.html
-          curl -fsS -L --max-time 25 "$BALL46_URL/dashboard-v2-tune.css?featured-compact-pre=$nonce" -o /tmp/tune-before.css
-          curl -fsS -L --max-time 25 "$BALL46_URL/dashboard-v2-stage3.js?featured-compact-pre=$nonce" -o /tmp/dashboard-before.js
-          curl -fsS -L --max-time 25 "$BALL46_URL/expanded-match-343.js?featured-compact-pre=$nonce" -o /tmp/event-before.js
-          curl -fsS --max-time 25 "$BALL46_URL/api/engine/health?featured-compact-pre=$nonce" -o /tmp/engine-before.json
-          curl -fsS --max-time 25 "$BALL46_URL/api/full-market/health?featured-compact-pre=$nonce" -o /tmp/full-before.json
+          curl -fsS -L --max-time 25 "$BALL46_URL/?featured-camo-pre=$nonce" -o /tmp/home-before.html
+          curl -fsS -L --max-time 25 "$BALL46_URL/dashboard-v2-tune.css?featured-camo-pre=$nonce" -o /tmp/tune-before.css
+          curl -fsS -L --max-time 25 "$BALL46_URL/dashboard-v2-stage3.js?featured-camo-pre=$nonce" -o /tmp/dashboard-before.js
+          curl -fsS -L --max-time 25 "$BALL46_URL/expanded-match-343.js?featured-camo-pre=$nonce" -o /tmp/event-before.js
+          curl -fsS --max-time 25 "$BALL46_URL/api/engine/health?featured-camo-pre=$nonce" -o /tmp/engine-before.json
+          curl -fsS --max-time 25 "$BALL46_URL/api/full-market/health?featured-camo-pre=$nonce" -o /tmp/full-before.json
           node <<'NODE'
           const fs=require('fs'),h=fs.readFileSync('/tmp/home-before.html','utf8'),css=fs.readFileSync('/tmp/tune-before.css','utf8');
           if(!h.includes('<section class="side-card featured-card" data-featured>'))throw Error('FEATURED_CARD_DOM_NOT_PROVEN');
-          if(!css.includes('B46_FEATURED_HORIZONTAL_CARD_DARK_FRAME_20261004'))throw Error('FEATURED_CARD_CURRENT_STYLE_MISSING');
-          if(css.includes('B46_FEATURED_MATCH_COMPACT_40_20261004'))throw Error('COMPACT_40_ALREADY_LIVE');
-          const e=JSON.parse(fs.readFileSync('/tmp/engine-before.json')),f=JSON.parse(fs.readFileSync('/tmp/full-before.json'));if(e.ok!==true||f.ok!==true)throw Error('PRE_BACKEND_UNHEALTHY');
+          if(css.includes('B46_FEATURED_MATCH_CAMOUFLAGE_20261004'))throw Error('CAMOUFLAGE_ALREADY_LIVE');
+          const e=JSON.parse(fs.readFileSync('/tmp/engine-before.json')),f=JSON.parse(fs.readFileSync('/tmp/full-before.json'));
+          if(e.ok!==true||f.ok!==true)throw Error('PRE_BACKEND_UNHEALTHY');
           fs.writeFileSync('/tmp/backend-before.json',JSON.stringify({engine:e.version,full:f.version}));
           console.log('TARGET_PROVEN=.side-card.featured-card[data-featured]');
           NODE
 
-      - name: Clone exact current Worker and compact Featured Match only
+      - name: Clone exact current Worker and hide Featured Match only
         shell: bash
         run: |
           set -euo pipefail
@@ -72,21 +72,24 @@ jobs:
           node <<'NODE'
           const fs=require('fs'),path=require('path'),v=JSON.parse(fs.readFileSync('/tmp/v-before.json','utf8'));if(v.success!==true)throw Error('VERSION_FETCH_FAILED');const r=v.result;
           if(r.main_module!=='index.js'||!Array.isArray(r.modules)||!r.modules.length)throw Error('WORKER_LAYOUT_CHANGED');
-          fs.mkdirSync('/tmp/modules',{recursive:true});for(const m of r.modules){if(!m.name||!m.content_base64||!m.content_type)throw Error('BAD_MODULE:'+m.name);const p=path.join('/tmp/modules',m.name);fs.mkdirSync(path.dirname(p),{recursive:true});fs.writeFileSync(p,Buffer.from(m.content_base64,'base64'));}
+          fs.mkdirSync('/tmp/modules',{recursive:true});
+          for(const m of r.modules){if(!m.name||!m.content_base64||!m.content_type)throw Error('BAD_MODULE:'+m.name);const p=path.join('/tmp/modules',m.name);fs.mkdirSync(path.dirname(p),{recursive:true});fs.writeFileSync(p,Buffer.from(m.content_base64,'base64'));}
           fs.writeFileSync('/tmp/meta.json',JSON.stringify(r.modules.map(m=>({name:m.name,content_type:m.content_type}))));console.log('EXACT_CURRENT_MODULES='+r.modules.length);
           NODE
           node --input-type=module <<'NODE'
           import fs from 'node:fs';import {literals,sha} from './deploy-assets/match-status-svg-20261003/production.mjs';
           const file='/tmp/modules/index.js',src=fs.readFileSync(file,'utf8'),before=fs.readFileSync('/tmp/tune-before.css','utf8'),all=literals(src);
           const owner=all.get('__B46_SCOREBAR_TUNE_CSS__'),dash=all.get('__B46_MULTI_SIGNAL_STAGE3_JS__'),event=all.get('__B46_EVENTFLOW_SIGNAL_JS_20261002__');
-          if(!owner||!dash||!event)throw Error('REQUIRED_OWNER_MISSING');if(sha(Buffer.from(owner.value))!==sha(Buffer.from(before)))throw Error('CSS_OWNER_NOT_CURRENT_PUBLIC_SOURCE');
-          if(sha(Buffer.from(dash.value))!==sha(fs.readFileSync('/tmp/dashboard-before.js')))throw Error('DASHBOARD_OWNER_NOT_PUBLIC_SOURCE');if(sha(Buffer.from(event.value))!==sha(fs.readFileSync('/tmp/event-before.js')))throw Error('EVENT_OWNER_NOT_PUBLIC_SOURCE');
-          const block=`\n\n/* B46_FEATURED_MATCH_COMPACT_40_20261004: compact visible Featured Match card by ~40% vertically; typography/spacing only, no data or visibility changes. */\nbody .workspace.singlepage .side-card.featured-card[data-featured] {\n  min-height: 0 !important;\n}\nbody .workspace.singlepage .side-card.featured-card[data-featured] > .card-title {\n  padding: 8px 10px !important;\n  gap: 6px !important;\n}\nbody .workspace.singlepage .side-card.featured-card[data-featured] > .card-title h2 {\n  margin-top: 2px !important;\n  font-size: 10px !important;\n  line-height: 1.12 !important;\n}\nbody .workspace.singlepage .side-card.featured-card[data-featured] > .card-title .kicker {\n  font-size: 7px !important;\n  line-height: 1.1 !important;\n}\nbody .workspace.singlepage .side-card.featured-card[data-featured] [data-featured-status] {\n  font-size: 8px !important;\n  line-height: 1.1 !important;\n}\nbody .workspace.singlepage .side-card.featured-card[data-featured] > .feature-score {\n  padding: 7px 10px !important;\n  gap: 6px !important;\n}\nbody .workspace.singlepage .side-card.featured-card[data-featured] > .feature-score > strong {\n  font-size: 16px !important;\n  line-height: 1 !important;\n}\nbody .workspace.singlepage .side-card.featured-card[data-featured] > .feature-score > div b {\n  margin-top: 2px !important;\n  font-size: 8.5px !important;\n  line-height: 1.15 !important;\n}\nbody .workspace.singlepage .side-card.featured-card[data-featured] > .feature-score > div span {\n  font-size: 6px !important;\n  line-height: 1 !important;\n}\nbody .workspace.singlepage .side-card.featured-card[data-featured] > .feature-facts {\n  padding-block: 6px !important;\n  line-height: 1.1 !important;\n}\nbody .workspace.singlepage .side-card.featured-card[data-featured] > .feature-facts span {\n  font-size: 6.5px !important;\n}\nbody .workspace.singlepage .side-card.featured-card[data-featured] > .feature-facts b {\n  font-size: 8.5px !important;\n}\nbody .workspace.singlepage .side-card.featured-card[data-featured] > .feature-signal {\n  margin: 0 10px 7px !important;\n  padding: 5px 8px !important;\n  font-size: 7.5px !important;\n  line-height: 1.15 !important;\n}\nbody .workspace.singlepage .side-card.featured-card[data-featured] > .feature-stats {\n  padding: 0 10px 6px !important;\n  font-size: 8px !important;\n  line-height: 1.12 !important;\n}\nbody .workspace.singlepage .side-card.featured-card[data-featured] .feature-stats .stat-row {\n  margin-block: 3px !important;\n  gap: 4px !important;\n}\nbody .workspace.singlepage .side-card.featured-card[data-featured] > .feature-events {\n  padding: 6px 10px !important;\n  font-size: 8px !important;\n  line-height: 1.15 !important;\n}\nbody .workspace.singlepage .side-card.featured-card[data-featured] .feature-events .event-item {\n  padding-block: 4px !important;\n}\n`;
-          if(before.includes('B46_FEATURED_MATCH_COMPACT_40_20261004'))throw Error('MARKER_ALREADY_PRESENT');
+          if(!owner||!dash||!event)throw Error('REQUIRED_OWNER_MISSING');
+          if(sha(Buffer.from(owner.value))!==sha(Buffer.from(before)))throw Error('CSS_OWNER_NOT_CURRENT_PUBLIC_SOURCE');
+          if(sha(Buffer.from(dash.value))!==sha(fs.readFileSync('/tmp/dashboard-before.js')))throw Error('DASHBOARD_OWNER_NOT_PUBLIC_SOURCE');
+          if(sha(Buffer.from(event.value))!==sha(fs.readFileSync('/tmp/event-before.js')))throw Error('EVENT_OWNER_NOT_PUBLIC_SOURCE');
+          const block=`\n\n/* B46_FEATURED_MATCH_CAMOUFLAGE_20261004: hide the whole Featured Match card on all devices; layout space collapses; data/logic untouched. */\nbody .workspace.singlepage .side-card.featured-card[data-featured] {\n  display: none !important;\n}\n`;
           const after=before+block;fs.writeFileSync('/tmp/tune-after.css',after);fs.writeFileSync('/tmp/after-sha',sha(Buffer.from(after)));
-          for(const x of ['B46_FEATURED_MATCH_COMPACT_40_20261004','font-size: 16px !important','padding: 8px 10px !important','padding: 7px 10px !important'])if(!after.includes(x))throw Error('COMPACT_PATCH_VERIFY_MISSING:'+x);
           const dashSha=sha(Buffer.from(dash.value)),eventSha=sha(Buffer.from(event.value)),patched=src.slice(0,owner.start)+JSON.stringify(after)+src.slice(owner.end),pa=literals(patched);
-          if(sha(Buffer.from(pa.get('__B46_SCOREBAR_TUNE_CSS__').value))!==sha(Buffer.from(after)))throw Error('PATCHED_CSS_OWNER_BAD');if(sha(Buffer.from(pa.get('__B46_MULTI_SIGNAL_STAGE3_JS__').value))!==dashSha)throw Error('DASHBOARD_CHANGED_STOP');if(sha(Buffer.from(pa.get('__B46_EVENTFLOW_SIGNAL_JS_20261002__').value))!==eventSha)throw Error('EVENTFLOW_CHANGED_STOP');
+          if(sha(Buffer.from(pa.get('__B46_SCOREBAR_TUNE_CSS__').value))!==sha(Buffer.from(after)))throw Error('PATCHED_CSS_OWNER_BAD');
+          if(sha(Buffer.from(pa.get('__B46_MULTI_SIGNAL_STAGE3_JS__').value))!==dashSha)throw Error('DASHBOARD_CHANGED_STOP');
+          if(sha(Buffer.from(pa.get('__B46_EVENTFLOW_SIGNAL_JS_20261002__').value))!==eventSha)throw Error('EVENTFLOW_CHANGED_STOP');
           fs.writeFileSync(file,patched);console.log('PATCH_READY_SHA='+sha(Buffer.from(after)));
           NODE
           node --check /tmp/modules/index.js
@@ -96,7 +99,7 @@ jobs:
         run: |
           set -euo pipefail
           AUTH="Authorization: Bearer $API_TOKEN"
-          rollback(){ [ -f /tmp/candidate-version ]||return 0; base=$(cat /tmp/base-version);candidate=$(cat /tmp/candidate-version);curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=5" -H "$AUTH" -o /tmp/d-rb.json||return 0;active=$(node -e "const j=require('/tmp/d-rb.json');process.stdout.write(String(j.result?.deployments?.[0]?.versions?.[0]?.version_id||''))");[ "$active" = "$candidate" ]||{ echo ROLLBACK_SKIPPED_FOREIGN_ACTIVE=$active;return 0;};node -e "require('fs').writeFileSync('/tmp/rb.json',JSON.stringify({strategy:'percentage',versions:[{version_id:process.argv[1],percentage:100}],annotations:{'workers/message':'Rollback Featured Match compact-40'}}))" "$base";curl -fsS -X POST "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments" -H "$AUTH" -H 'content-type: application/json' --data-binary @/tmp/rb.json -o /tmp/rb-response.json||true; }
+          rollback(){ [ -f /tmp/candidate-version ]||return 0; base=$(cat /tmp/base-version);candidate=$(cat /tmp/candidate-version);curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=5" -H "$AUTH" -o /tmp/d-rb.json||return 0;active=$(node -e "const j=require('/tmp/d-rb.json');process.stdout.write(String(j.result?.deployments?.[0]?.versions?.[0]?.version_id||''))");[ "$active" = "$candidate" ]||{ echo ROLLBACK_SKIPPED_FOREIGN_ACTIVE=$active;return 0;};node -e "require('fs').writeFileSync('/tmp/rb.json',JSON.stringify({strategy:'percentage',versions:[{version_id:process.argv[1],percentage:100}],annotations:{'workers/message':'Rollback Featured Match camouflage'}}))" "$base";curl -fsS -X POST "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments" -H "$AUTH" -H 'content-type: application/json' --data-binary @/tmp/rb.json -o /tmp/rb-response.json||true; }
           trap 'rollback' ERR
           curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=5" -H "$AUTH" -o /tmp/d-race.json
           node <<'NODE'
@@ -112,16 +115,15 @@ jobs:
           node -e "const j=require('/tmp/update.json');if(j.success!==true)throw Error('CONTENT_UPDATE_FAILED:'+JSON.stringify(j.errors||[]));console.log('CONTENT_UPDATE_OK')"
           for n in $(seq 1 12);do curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=5" -H "$AUTH" -o /tmp/d-candidate.json;candidate=$(node -e "const j=require('/tmp/d-candidate.json'),old=require('fs').readFileSync('/tmp/base-version','utf8').trim(),v=String(j.result?.deployments?.[0]?.versions?.[0]?.version_id||'');if(v&&v!==old)process.stdout.write(v)");if [ -n "$candidate" ];then echo "$candidate" >/tmp/candidate-version;break;fi;sleep 1;done
           [ -f /tmp/candidate-version ]||{ echo NO_NEW_PRODUCTION_VERSION;false; };candidate=$(cat /tmp/candidate-version)
-          live=0;for n in $(seq 1 18);do curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=5" -H "$AUTH" -o /tmp/d-live.json;active=$(node -e "const j=require('/tmp/d-live.json');process.stdout.write(String(j.result?.deployments?.[0]?.versions?.[0]?.version_id||''))");[ "$active" = "$candidate" ]||{ echo PRODUCTION_MOVED_DURING_VERIFY=$active;false;};nonce="${GITHUB_RUN_ID}-$n-$(date +%s%N)";code=$(curl -sS -L --max-time 25 -o /tmp/tune-live.css -w '%{http_code}' "$BALL46_URL/dashboard-v2-tune.css?featured-compact-post=$nonce"||true);if [ "$code" = 200 ]&&grep -Fq 'B46_FEATURED_MATCH_COMPACT_40_20261004' /tmp/tune-live.css;then live=1;break;fi;sleep 2;done
-          [ "$live" = 1 ]||{ echo COMPACT_40_NOT_VISIBLE;false; };cmp -s /tmp/tune-after.css /tmp/tune-live.css||{ echo LIVE_TARGET_BYTES_MISMATCH;false; }
-          nonce="${GITHUB_RUN_ID}-post-$(date +%s%N)";curl -fsS -L --max-time 25 "$BALL46_URL/?featured-compact-post=$nonce" -o /tmp/home-after.html;curl -fsS -L --max-time 25 "$BALL46_URL/dashboard-v2-stage3.js?featured-compact-post=$nonce" -o /tmp/dashboard-after.js;curl -fsS -L --max-time 25 "$BALL46_URL/expanded-match-343.js?featured-compact-post=$nonce" -o /tmp/event-after.js
+          live=0;for n in $(seq 1 18);do curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=5" -H "$AUTH" -o /tmp/d-live.json;active=$(node -e "const j=require('/tmp/d-live.json');process.stdout.write(String(j.result?.deployments?.[0]?.versions?.[0]?.version_id||''))");[ "$active" = "$candidate" ]||{ echo PRODUCTION_MOVED_DURING_VERIFY=$active;false;};nonce="${GITHUB_RUN_ID}-$n-$(date +%s%N)";code=$(curl -sS -L --max-time 25 -o /tmp/tune-live.css -w '%{http_code}' "$BALL46_URL/dashboard-v2-tune.css?featured-camo-post=$nonce"||true);if [ "$code" = 200 ]&&grep -Fq 'B46_FEATURED_MATCH_CAMOUFLAGE_20261004' /tmp/tune-live.css;then live=1;break;fi;sleep 2;done
+          [ "$live" = 1 ]||{ echo CAMOUFLAGE_NOT_VISIBLE;false; };cmp -s /tmp/tune-after.css /tmp/tune-live.css||{ echo LIVE_TARGET_BYTES_MISMATCH;false; }
+          nonce="${GITHUB_RUN_ID}-post-$(date +%s%N)";curl -fsS -L --max-time 25 "$BALL46_URL/?featured-camo-post=$nonce" -o /tmp/home-after.html;curl -fsS -L --max-time 25 "$BALL46_URL/dashboard-v2-stage3.js?featured-camo-post=$nonce" -o /tmp/dashboard-after.js;curl -fsS -L --max-time 25 "$BALL46_URL/expanded-match-343.js?featured-camo-post=$nonce" -o /tmp/event-after.js
           cmp -s /tmp/home-before.html /tmp/home-after.html||{ echo HOME_HTML_CHANGED;false; };cmp -s /tmp/dashboard-before.js /tmp/dashboard-after.js||{ echo DASHBOARD_CHANGED;false; };cmp -s /tmp/event-before.js /tmp/event-after.js||{ echo EVENTFLOW_CHANGED;false; }
-          curl -fsS --max-time 25 "$BALL46_URL/api/engine/health?featured-compact-post=$nonce" -o /tmp/engine-after.json;curl -fsS --max-time 25 "$BALL46_URL/api/full-market/health?featured-compact-post=$nonce" -o /tmp/full-after.json
+          curl -fsS --max-time 25 "$BALL46_URL/api/engine/health?featured-camo-post=$nonce" -o /tmp/engine-after.json;curl -fsS --max-time 25 "$BALL46_URL/api/full-market/health?featured-camo-post=$nonce" -o /tmp/full-after.json
           node <<'NODE'
-          const fs=require('fs'),b=JSON.parse(fs.readFileSync('/tmp/backend-before.json')),e=JSON.parse(fs.readFileSync('/tmp/engine-after.json')),f=JSON.parse(fs.readFileSync('/tmp/full-after.json')),css=fs.readFileSync('/tmp/tune-live.css','utf8');
-          if(e.ok!==true||f.ok!==true)throw Error('POST_BACKEND_UNHEALTHY');if(String(e.version)!==String(b.engine)||String(f.version)!==String(b.full))throw Error('BACKEND_IDENTITY_CHANGED');for(const x of ['B46_FEATURED_MATCH_COMPACT_40_20261004','font-size: 16px !important','padding: 8px 10px !important'])if(!css.includes(x))throw Error('LIVE_VERIFY_MISSING:'+x);console.log('LIVE_SCOPE_PASS=featured-match-compact-40-presentation-only');
+          const fs=require('fs'),b=JSON.parse(fs.readFileSync('/tmp/backend-before.json')),e=JSON.parse(fs.readFileSync('/tmp/engine-after.json')),f=JSON.parse(fs.readFileSync('/tmp/full-after.json')),css=fs.readFileSync('/tmp/tune-live.css','utf8');if(e.ok!==true||f.ok!==true)throw Error('POST_BACKEND_UNHEALTHY');if(String(e.version)!==String(b.engine)||String(f.version)!==String(b.full))throw Error('BACKEND_IDENTITY_CHANGED');for(const x of ['B46_FEATURED_MATCH_CAMOUFLAGE_20261004','.side-card.featured-card[data-featured]','display: none !important'])if(!css.includes(x))throw Error('LIVE_VERIFY_MISSING:'+x);console.log('LIVE_SCOPE_PASS=featured-match-hidden-all-devices');
           NODE
           trap - ERR
           echo FINAL_PRODUCTION=$candidate
-          echo FEATURED_COMPACT_CSS_SHA=$(cat /tmp/after-sha)
-          echo BALL46_FEATURED_MATCH_COMPACT_40_SUCCESS
+          echo FEATURED_CAMOUFLAGE_CSS_SHA=$(cat /tmp/after-sha)
+          echo BALL46_FEATURED_MATCH_CAMOUFLAGE_SUCCESS
