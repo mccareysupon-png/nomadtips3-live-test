@@ -1,4 +1,4 @@
-name: Ball46 Under-Search Card Exact Scout 20261005
+name: Ball46 Under-Search Scorebar Position Scout 20261005
 
 on:
   push:
@@ -19,7 +19,7 @@ jobs:
       API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       SCRIPT_NAME: ball46-production
     steps:
-      - name: Read current Production and locate the card immediately below search
+      - name: Prove exact DOM slot and owner for the card row below search
         shell: bash
         run: |
           set -euo pipefail
@@ -30,29 +30,20 @@ jobs:
           curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/workers/$SCRIPT_NAME/versions/$V?include=modules" -H "$AUTH" -o /tmp/v.json
           node <<'NODE'
           const fs=require('fs');
-          const v=JSON.parse(fs.readFileSync('/tmp/v.json','utf8'));
-          if(v.success!==true)throw Error('VERSION_FETCH_FAILED');
-          const mods=v.result?.modules||[];
-          const texts=new Map(mods.map(m=>[m.name,Buffer.from(m.content_base64||'','base64').toString('utf8')]));
+          const v=JSON.parse(fs.readFileSync('/tmp/v.json','utf8'));if(v.success!==true)throw Error('VERSION_FETCH_FAILED');
+          const texts=new Map((v.result?.modules||[]).map(m=>[m.name,Buffer.from(m.content_base64||'','base64').toString('utf8')]));
           const html=texts.get('assets/index.html')||'';
           const js=texts.get('index.js')||'';
-          console.log('MODULES='+mods.length);
-          const needles=['Search','search','data-search','match-search','search-input','placeholder='];
-          const hits=[];
-          for(const n of needles){let p=0;while((p=html.indexOf(n,p))>=0){hits.push({n,p});p+=n.length}}
-          hits.sort((a,b)=>a.p-b.p);
-          const uniq=[];for(const h of hits){if(!uniq.length||h.p-uniq[uniq.length-1].p>120)uniq.push(h)}
-          for(const h of uniq.slice(0,20)){
-            console.log('\n=== SEARCH_HIT '+h.n+' @'+h.p+' ===');
-            console.log(html.slice(Math.max(0,h.p-1800),Math.min(html.length,h.p+5000)).replace(/>\s+</g,'><'));
-          }
-          const terms=['WIN','LOSS','PENDING','LATEST','RECENT','settled','result-card','history-card','signal-card','status-card','result-strip','recent-signal','recent-result','data-result','data-history','data-recent'];
-          for(const t of terms){
-            const p=html.indexOf(t);
-            if(p>=0){console.log('\n=== HTML_TERM '+t+' @'+p+' ===');console.log(html.slice(Math.max(0,p-1200),Math.min(html.length,p+3200)).replace(/>\s+</g,'><'));}
-          }
-          for(const t of terms.concat(['renderRecent','renderHistory','renderSettled','renderResult','PENDING','WIN','LOSS'])){
-            const p=js.indexOf(t);
-            if(p>=0){console.log('\n=== JS_TERM '+t+' @'+p+' ===');console.log(js.slice(Math.max(0,p-1400),Math.min(js.length,p+3800)));}
-          }
+          const slot='data-workspace-scorebar-slot';
+          const p=html.indexOf(slot);
+          if(p<0)throw Error('SCOREBAR_SLOT_NOT_FOUND');
+          console.log('SCOREBAR_SLOT_HTML_INDEX='+p);
+          console.log('=== SLOT_CONTEXT ===');
+          console.log(html.slice(Math.max(0,p-5000),Math.min(html.length,p+4000)).replace(/>\s+</g,'><'));
+          const patterns=['data-search','search-box','search-input','type="search"','placeholder="Search','placeholder="Find','data-query','workspace-search'];
+          for(const t of patterns){let q=html.indexOf(t);if(q>=0){console.log('\n=== SEARCH_CONTEXT '+t+' @'+q+' ===');console.log(html.slice(Math.max(0,q-1800),Math.min(html.length,q+2600)).replace(/>\s+</g,'><'));}}
+          const r=js.indexOf('function renderWorkspaceScorebar');
+          if(r<0)throw Error('RENDER_OWNER_NOT_FOUND');
+          console.log('\n=== RENDER_OWNER ===');
+          console.log(js.slice(r,r+9000));
           NODE
