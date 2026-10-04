@@ -1,0 +1,40 @@
+name: Inspect Ball46 Footer Wordmark Exact 20261004
+
+on:
+  push:
+    branches: [work/ball46-main-logo-footer-style-20261004]
+    paths:
+      - '.github/workflows/inspect-ball46-footer-wordmark-exact-20261004.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BALL46_URL: https://ball46.com
+
+jobs:
+  inspect-footer-wordmark:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read exact live footer wordmark HTML and CSS
+        shell: bash
+        run: |
+          set -euo pipefail
+          nonce="${GITHUB_RUN_ID}-$(date +%s%N)"
+          curl -fsS -L --max-time 25 "$BALL46_URL/?footer-wordmark=$nonce" -o /tmp/home.html
+          curl -fsS -L --max-time 25 "$BALL46_URL/ball46-footer.css?v=20260929&footer-wordmark=$nonce" -o /tmp/footer.css
+          node <<'NODE'
+          const fs=require('fs');
+          const html=fs.readFileSync('/tmp/home.html','utf8');
+          const css=fs.readFileSync('/tmp/footer.css','utf8');
+          const hm=html.match(/<[^>]+class=["'][^"']*b46f-brand[^"']*["'][^>]*>[\s\S]{0,500}?<\/[^>]+>/i);
+          console.log('FOOTER_HTML',hm?hm[0].replace(/\n/g,'\\n'):'NOT_FOUND');
+          const re=/([^{}]+)\{([^{}]*)\}/g;let m,count=0;
+          while((m=re.exec(css))){const sel=m[1].trim();if(!sel.includes('b46f-brand'))continue;console.log('FOOTER_RULE',JSON.stringify({selector:sel,body:m[2].trim()}));count++;}
+          if(!hm||count===0)throw Error('FOOTER_WORDMARK_NOT_RESOLVED');
+          console.log('FOOTER_RULE_COUNT',count);
+          NODE
+          echo INSPECT_ONLY_NO_MUTATION
