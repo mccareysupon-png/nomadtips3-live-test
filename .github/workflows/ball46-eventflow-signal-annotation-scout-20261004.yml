@@ -13,10 +13,14 @@ permissions:
 jobs:
   scout:
     runs-on: ubuntu-24.04
-    timeout-minutes: 8
+    timeout-minutes: 10
     env:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      SCRIPT_NAME: ball46-production
+      BALL46_URL: https://ball46.com
     steps:
       - uses: actions/checkout@v4
         with:
@@ -29,11 +33,53 @@ jobs:
         run: |
           node scout.mjs
           node route-scout.mjs
+      - name: Preview exact Event Flow annotation patch against locked Production
+        shell: bash
+        run: |
+          set -euo pipefail
+          AUTH="Authorization: Bearer $API_TOKEN"
+          mkdir -p /tmp/b46-preview/modules /tmp/b46-preview/report
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=3" -H "$AUTH" -o /tmp/b46-preview/deployments-before.json
+          LOCK=$(node -e "const j=require('/tmp/b46-preview/deployments-before.json'),d=j.result?.deployments?.[0]||j.result?.[0];if(j.success!==true||!d||d.versions?.length!==1||Number(d.versions[0].percentage)!==100)throw Error('PRODUCTION_NOT_SINGLE_VERSION');process.stdout.write(String(d.versions[0].version_id))")
+          echo "PRODUCTION_LOCK_OK=$LOCK"
+          nonce="${GITHUB_RUN_ID}-preview-$(date +%s%N)"
+          curl -fsSL --retry 4 --retry-all-errors "$BALL46_URL/expanded-match-343.js?$nonce" -o /tmp/b46-preview/expanded-before.js
+          grep -Fq 'B46_EVENTFLOW_SIGNAL_ENTRY_20261002' /tmp/b46-preview/expanded-before.js
+          ! grep -Fq 'B46_EVENTFLOW_SIGNAL_ANNOTATION_20261004' /tmp/b46-preview/expanded-before.js
+          echo "CURRENT_EVENTFLOW_SHA=$(sha256sum /tmp/b46-preview/expanded-before.js | awk '{print $1}')"
+          node ops/ball46-eventflow/patch-expanded-match-signal-annotation-20261004.js /tmp/b46-preview/expanded-before.js /tmp/b46-preview/expanded-patched.js | tee /tmp/b46-preview/report/asset-patch.json
+          node --check /tmp/b46-preview/expanded-patched.js
+          grep -Fq 'B46_EVENTFLOW_SIGNAL_ANNOTATION_20261004' /tmp/b46-preview/expanded-patched.js
+          grep -Fq 'data-annotation-side' /tmp/b46-preview/expanded-patched.js
+          grep -Fq 'b46-eventflow-signal-annotation' /tmp/b46-preview/expanded-patched.js
+          echo "PATCHED_EVENTFLOW_SHA=$(sha256sum /tmp/b46-preview/expanded-patched.js | awk '{print $1}')"
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/workers/$SCRIPT_NAME/versions/$LOCK?include=modules" -H "$AUTH" -o /tmp/b46-preview/version.json
+          node - <<'NODE'
+          const fs=require('fs'),path=require('path'),v=require('/tmp/b46-preview/version.json');
+          if(v.success!==true)throw Error('VERSION_FETCH_FAILED:'+JSON.stringify(v.errors||[]));
+          const r=v.result;if(!r?.main_module||!Array.isArray(r.modules)||!r.modules.length)throw Error('MODULES_MISSING');
+          for(const m of r.modules){const p=path.join('/tmp/b46-preview/modules',m.name);fs.mkdirSync(path.dirname(p),{recursive:true});fs.writeFileSync(p,Buffer.from(m.content_base64,'base64'))}
+          fs.writeFileSync('/tmp/b46-preview/main-module',r.main_module);
+          fs.writeFileSync('/tmp/b46-preview/report/module-meta.json',JSON.stringify(r.modules.map(m=>({name:m.name,content_type:m.content_type})),null,2));
+          console.log('MAIN_MODULE='+r.main_module+' MODULE_COUNT='+r.modules.length);
+          NODE
+          MAIN="/tmp/b46-preview/modules/$(cat /tmp/b46-preview/main-module)"
+          node ops/ball46-eventflow/patch-worker-eventflow-annotation-route-20261004.js "$MAIN" /tmp/b46-preview/expanded-patched.js | tee /tmp/b46-preview/report/worker-patch.json
+          node --check "$MAIN"
+          grep -Fq 'B46_EVENTFLOW_SIGNAL_ANNOTATION_20261004' "$MAIN"
+          grep -Fq 'eventflow-signal-annotation-20261004' "$MAIN"
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=3" -H "$AUTH" -o /tmp/b46-preview/deployments-after.json
+          AFTER=$(node -e "const j=require('/tmp/b46-preview/deployments-after.json'),d=j.result?.deployments?.[0]||j.result?.[0];if(!d||d.versions?.length!==1||Number(d.versions[0].percentage)!==100)throw Error('PRODUCTION_NOT_SINGLE_VERSION_AFTER');process.stdout.write(String(d.versions[0].version_id))")
+          [ "$AFTER" = "$LOCK" ] || { echo "RACE_GUARD_ABORT:$LOCK->$AFTER"; exit 22; }
+          echo "RACE_GUARD_PASS=$AFTER"
+          echo "EVENTFLOW_SIGNAL_ANNOTATION_PREVIEW_PASS"
       - name: Retain evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: ball46-eventflow-signal-annotation-scout-${{ github.run_id }}
-          path: deploy-assets/signal-detail-watch-20261003/audit/
-          if-no-files-found: error
+          path: |
+            deploy-assets/signal-detail-watch-20261003/audit/
+            /tmp/b46-preview/report/
+          if-no-files-found: warn
           retention-days: 14
