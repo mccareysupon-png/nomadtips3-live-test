@@ -23,6 +23,7 @@ try{
  assert(index.includes('dashboard-v2-stage3.js?v=343-scorebar-details-20260929a'),'ACTIVE_ASSET_REFERENCE_CHANGED_STOP');
  assert(index.includes('data-workspace-scorebar-slot'),'ACTIVE_COMPONENT_CHANGED_STOP');
  const after=patch(before);new Function(after);
+ assert.equal(after,readFileSync('dashboard-v2-stage3.js','utf8'),'REVIEWED_PATCH_BYTES_DIFFER_STOP');
  // If the active Worker embeds this exact presentation asset, update only that literal.
  const embedded=[...literals(current.source)].filter(([,entry])=>entry.value===before);
  assert(embedded.length<=1,'AMBIGUOUS_EMBEDDED_PRESENTATION_ASSET_STOP');
