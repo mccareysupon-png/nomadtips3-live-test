@@ -1,0 +1,12 @@
+const fs=require('fs');
+const mainPath=process.argv[2],assetPath=process.argv[3];if(!mainPath||!assetPath)throw Error('USAGE');
+let src=fs.readFileSync(mainPath,'utf8');const asset=fs.readFileSync(assetPath,'utf8');
+const CONST='__B46_EVENTFLOW_SIGNAL_JS_20261002__',OLD='eventflow-signal-annotation-20261004',NEW='eventflow-expanded-mode-20261004',MARK='B46_EVENTFLOW_EXPANDED_MODE_20261004';
+if(!asset.includes(MARK))throw Error('ASSET_MARKER_MISSING');if(src.includes(NEW)||src.includes(MARK))throw Error('ALREADY_PATCHED');
+const start=`const ${CONST}=`,finish=';\nasync function noStoreUiAsset(request, env) {';
+const sc=src.split(start).length-1,fc=src.split(finish).length-1;if(sc!==1||fc!==1)throw Error(`CONST_ANCHOR_${sc}_${fc}`);
+const a=src.indexOf(start),b=src.indexOf(finish,a+start.length);if(a<0||b<=a)throw Error('CONST_RANGE');
+const before=(src.match(/\bfetch\(/g)||[]).length;src=src.slice(0,a)+start+JSON.stringify(asset)+src.slice(b);
+const rc=src.split(OLD).length-1;if(rc!==1)throw Error(`REV_ANCHOR_${rc}`);src=src.replace(OLD,NEW);
+const after=(src.match(/\bfetch\(/g)||[]).length;if(before!==after)throw Error(`FETCH_COUNT_${before}_${after}`);
+if(!src.includes(MARK)||!src.includes(NEW))throw Error('VERIFY_FAIL');fs.writeFileSync(mainPath,src);console.log(JSON.stringify({ok:true,beforeFetch:before,afterFetch:after,revision:NEW,assetBytes:asset.length}));
