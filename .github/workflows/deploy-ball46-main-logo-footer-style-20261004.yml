@@ -1,0 +1,226 @@
+name: Deploy Ball46 Main Logo Footer Style 20261004
+
+on:
+  push:
+    branches: [work/ball46-main-logo-footer-style-20261004]
+    paths:
+      - '.github/workflows/deploy-ball46-main-logo-footer-style-20261004.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  SCRIPT_NAME: ball46-production
+  BALL46_URL: https://ball46.com
+
+jobs:
+  surgical-main-logo-style:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/ball46-main-logo-footer-style-20261004
+          fetch-depth: 1
+
+      - name: Preflight lock exact Production and baseline identities
+        shell: bash
+        run: |
+          set -euo pipefail
+          AUTH="Authorization: Bearer $API_TOKEN"
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=5" -H "$AUTH" -o /tmp/deployments-before.json
+          node <<'NODE'
+          const fs=require('fs');
+          const j=JSON.parse(fs.readFileSync('/tmp/deployments-before.json','utf8'));
+          if(j.success!==true) throw Error('DEPLOYMENT_LIST_FAILED');
+          const d=j.result?.deployments?.[0];
+          if(!d || !Array.isArray(d.versions) || d.versions.length!==1 || Number(d.versions[0].percentage)!==100) throw Error('PRODUCTION_NOT_SINGLE_VERSION');
+          const v=String(d.versions[0].version_id||''); if(!v) throw Error('PRODUCTION_VERSION_MISSING');
+          fs.writeFileSync('/tmp/rb-version',v);
+          fs.writeFileSync('/tmp/rb-deployment',String(d.id||''));
+          console.log('PRODUCTION_LOCKED',JSON.stringify({deployment:d.id,version:v,created:d.created_on}));
+          NODE
+
+          nonce="${GITHUB_RUN_ID}-pre-$(date +%s%N)"
+          curl -fsS -L --max-time 25 "$BALL46_URL/?logo-style-pre=$nonce" -o /tmp/home-before.html
+          curl -fsS -L --max-time 25 "$BALL46_URL/dashboard-v2-tune.css?v=343-scorebar-divider-camo-20260929a&logo-style-pre=$nonce" -o /tmp/tune-before.css
+          curl -fsS -L --max-time 25 "$BALL46_URL/ball46-footer.css?v=20260929&logo-style-pre=$nonce" -o /tmp/footer-before.css
+          curl -fsS --max-time 25 "$BALL46_URL/api/engine/health?logo-style-pre=$nonce" -o /tmp/engine-before.json
+          curl -fsS --max-time 25 "$BALL46_URL/api/full-market/health?logo-style-pre=$nonce" -o /tmp/full-before.json
+          curl -fsS --max-time 25 "$BALL46_URL/api/engine/statistics?logo-style-pre=$nonce" -o /tmp/stats-before.json
+
+          node <<'NODE'
+          const fs=require('fs');
+          const h=fs.readFileSync('/tmp/home-before.html','utf8');
+          const tune=fs.readFileSync('/tmp/tune-before.css','utf8');
+          const footer=fs.readFileSync('/tmp/footer-before.css','utf8');
+          const e=JSON.parse(fs.readFileSync('/tmp/engine-before.json','utf8'));
+          const f=JSON.parse(fs.readFileSync('/tmp/full-before.json','utf8'));
+          const s=JSON.parse(fs.readFileSync('/tmp/stats-before.json','utf8'));
+          if(!h.includes('<div class="workspace-brand" aria-label="Ball46"><span>ball</span><b>46</b></div>')) throw Error('MAIN_LOGO_HTML_ANCHOR_MISSING');
+          if(!tune.includes('B46_HEADER_LOGO_130_PERCENT_20261003') || !tune.includes('zoom: 1.3 !important')) throw Error('CURRENT_MAIN_LOGO_BASE_MISSING');
+          if(tune.includes('B46_MAIN_LOGO_FOOTER_STYLE_20261004')) throw Error('TARGET_STYLE_ALREADY_PRESENT');
+          if(!footer.includes('B46_FOOTER_BRAND_LOGO_20261001')) throw Error('FOOTER_STYLE_MARKER_MISSING');
+          if(!footer.includes('font-family:"Arial Black",Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif')) throw Error('FOOTER_FONT_BASE_MISMATCH');
+          if(!footer.includes('font-weight:900') || !footer.includes('letter-spacing:-.055em')) throw Error('FOOTER_WEIGHT_SPACING_MISMATCH');
+          if(e.ok!==true || f.ok!==true || s.ok!==true) throw Error('PRE_BACKEND_HEALTH_FAILED');
+          fs.writeFileSync('/tmp/engine-version',String(e.version||''));
+          fs.writeFileSync('/tmp/full-version',String(f.version||''));
+          fs.writeFileSync('/tmp/stat-revision',String(s.settlementRevision||''));
+          console.log('PRECHECK_OK',JSON.stringify({engine:e.version,fullMarket:f.version,settlement:s.settlementRevision,footerBytes:Buffer.byteLength(footer),tuneBytes:Buffer.byteLength(tune)}));
+          NODE
+          sha256sum /tmp/home-before.html | awk '{print $1}' > /tmp/home-before.sha
+          sha256sum /tmp/footer-before.css | awk '{print $1}' > /tmp/footer-before.sha
+          echo "HOME_BEFORE_SHA=$(cat /tmp/home-before.sha)"
+          echo "FOOTER_BEFORE_SHA=$(cat /tmp/footer-before.sha)"
+
+      - name: Clone active Worker and prepare one-rule typography patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          AUTH="Authorization: Bearer $API_TOKEN"
+          RB_VERSION=$(cat /tmp/rb-version)
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/workers/$SCRIPT_NAME/versions/$RB_VERSION?include=modules" -H "$AUTH" -o /tmp/version-before.json
+          node <<'NODE'
+          const fs=require('fs'),path=require('path'),crypto=require('crypto');
+          const v=JSON.parse(fs.readFileSync('/tmp/version-before.json','utf8'));
+          if(v.success!==true) throw Error('VERSION_FETCH_FAILED:'+JSON.stringify(v.errors||[]));
+          const r=v.result;
+          if(r?.main_module!=='index.js' || !Array.isArray(r.modules) || !r.modules.length) throw Error('UNEXPECTED_WORKER_MODULE_LAYOUT');
+          fs.mkdirSync('/tmp/modules',{recursive:true});
+          const before={};
+          for(const m of r.modules){
+            if(!m?.name || !m?.content_base64 || !m?.content_type) throw Error('BAD_MODULE_RECORD');
+            const b=Buffer.from(m.content_base64,'base64');
+            const p=path.join('/tmp/modules',m.name); fs.mkdirSync(path.dirname(p),{recursive:true}); fs.writeFileSync(p,b);
+            before[m.name]=crypto.createHash('sha256').update(b).digest('hex');
+          }
+          fs.writeFileSync('/tmp/module-hashes-before.json',JSON.stringify(before));
+          fs.writeFileSync('/tmp/module-meta.json',JSON.stringify(r.modules.map(m=>({name:m.name,content_type:m.content_type}))));
+          fs.writeFileSync('/tmp/main-module-name',r.main_module);
+
+          const mainPath='/tmp/modules/index.js';
+          let src=fs.readFileSync(mainPath,'utf8');
+          const marker='B46_MAIN_LOGO_FOOTER_STYLE_20261004';
+          if(src.includes(marker)) throw Error('PATCH_MARKER_ALREADY_PRESENT');
+          const anchor='B46_HEADER_LOGO_130_PERCENT_20261003';
+          const next='/* B46_THEME_TOGGLE_STANDARD_20261003';
+          const p=src.indexOf(anchor); if(p<0 || src.indexOf(anchor,p+1)>=0) throw Error('HEADER_LOGO_ANCHOR_NOT_UNIQUE');
+          const q=src.indexOf(next,p); if(q<0 || src.indexOf(next,q+1)>=0) throw Error('NEXT_MARKER_NOT_UNIQUE');
+          const between=src.slice(p,q);
+          if(!between.includes('zoom: 1.3 !important')) throw Error('ZOOM_BASE_MISSING');
+          const css=`/* ${marker}: adopt homepage footer wordmark typography only; preserve size, zoom, theme colors and geometry */\nbody .workspace.singlepage > .left-rail .workspace-brand[aria-label="Ball46"] {\n  font-family: "Arial Black", Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;\n  font-weight: 900 !important;\n  letter-spacing: -.055em !important;\n  text-transform: none !important;\n}\n\n`;
+          const encoded=JSON.stringify(css).slice(1,-1);
+          src=src.slice(0,q)+encoded+src.slice(q);
+          if((src.split(marker).length-1)!==1) throw Error('PATCH_MARKER_COUNT_BAD');
+          if(!src.includes(anchor) || !src.includes('zoom: 1.3 !important')) throw Error('ZOOM_RULE_CHANGED');
+          fs.writeFileSync(mainPath,src);
+          const after=crypto.createHash('sha256').update(fs.readFileSync(mainPath)).digest('hex');
+          console.log('PATCH_READY',JSON.stringify({main:r.main_module,insertAt:q,marker,mainBefore:before[r.main_module],mainAfter:after,modules:r.modules.length}));
+          NODE
+          node --check /tmp/modules/index.js
+
+      - name: Deploy exact clone with typography-only patch and verify or rollback
+        shell: bash
+        run: |
+          set -euo pipefail
+          AUTH="Authorization: Bearer $API_TOKEN"
+          rollback(){
+            RB_VERSION=$(cat /tmp/rb-version)
+            echo "ROLLBACK_TO:$RB_VERSION"
+            node -e "require('fs').writeFileSync('/tmp/rollback.json',JSON.stringify({strategy:'percentage',versions:[{version_id:process.argv[1],percentage:100}],annotations:{'workers/message':'Automatic rollback: Ball46 main-logo footer-style verification failed'}}))" "$RB_VERSION"
+            curl -fsS -X POST "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments" -H "$AUTH" -H 'content-type: application/json' --data-binary @/tmp/rollback.json -o /tmp/rollback-response.json || true
+            cat /tmp/rollback-response.json 2>/dev/null || true
+          }
+          trap 'rollback' ERR
+
+          # Race guard: do not mutate if Production moved after preflight.
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=5" -H "$AUTH" -o /tmp/deployments-race.json
+          node <<'NODE'
+          const fs=require('fs');const j=JSON.parse(fs.readFileSync('/tmp/deployments-race.json','utf8'));const d=j.result?.deployments?.[0];const locked=fs.readFileSync('/tmp/rb-version','utf8').trim();
+          if(j.success!==true || !d || d.versions?.length!==1 || Number(d.versions[0].percentage)!==100 || String(d.versions[0].version_id)!==locked) throw Error('PRODUCTION_MOVED_ABORT_BEFORE_MUTATION');
+          console.log('RACE_GUARD_PASS',locked);
+          NODE
+
+          node <<'NODE'
+          const fs=require('fs');const main=fs.readFileSync('/tmp/main-module-name','utf8').trim();fs.writeFileSync('/tmp/upload-metadata.json',JSON.stringify({main_module:main}));
+          NODE
+          mapfile -t args < <(node <<'NODE'
+          const fs=require('fs');const a=JSON.parse(fs.readFileSync('/tmp/module-meta.json','utf8'));for(const m of a) console.log(`-F\n${m.name}=@/tmp/modules/${m.name};type=${m.content_type}`);
+          NODE
+          )
+          CURL_ARGS=();i=0
+          while [ $i -lt ${#args[@]} ]; do CURL_ARGS+=("${args[$i]}" "${args[$((i+1))]}");i=$((i+2));done
+          curl -fsS -X PUT "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/content" -H "$AUTH" -F 'metadata=</tmp/upload-metadata.json;type=application/json' "${CURL_ARGS[@]}" -o /tmp/content-update.json
+          node <<'NODE'
+          const fs=require('fs');const j=JSON.parse(fs.readFileSync('/tmp/content-update.json','utf8'));if(j.success!==true)throw Error('CONTENT_UPDATE_FAILED:'+JSON.stringify(j.errors||[]));console.log('SCRIPT_CONTENT_UPDATED');
+          NODE
+
+          ok=0
+          for n in $(seq 1 12); do
+            nonce="${GITHUB_RUN_ID}-verify-$n-$(date +%s%N)"
+            code=$(curl -sS -L --max-time 25 -o /tmp/tune-after.css -w '%{http_code}' "$BALL46_URL/dashboard-v2-tune.css?v=343-scorebar-divider-camo-20260929a&logo-style-post=$nonce" || true)
+            if [ "$code" = 200 ] && grep -Fq 'B46_MAIN_LOGO_FOOTER_STYLE_20261004' /tmp/tune-after.css; then ok=1;break;fi
+            sleep 2
+          done
+          [ "$ok" = 1 ] || { echo MAIN_LOGO_STYLE_NOT_LIVE; false; }
+
+          nonce="${GITHUB_RUN_ID}-post-$(date +%s%N)"
+          curl -fsS -L --max-time 25 "$BALL46_URL/?logo-style-post=$nonce" -o /tmp/home-after.html
+          curl -fsS -L --max-time 25 "$BALL46_URL/ball46-footer.css?v=20260929&logo-style-post=$nonce" -o /tmp/footer-after.css
+          curl -fsS --max-time 25 "$BALL46_URL/api/engine/health?logo-style-post=$nonce" -o /tmp/engine-after.json
+          curl -fsS --max-time 25 "$BALL46_URL/api/full-market/health?logo-style-post=$nonce" -o /tmp/full-after.json
+          curl -fsS --max-time 25 "$BALL46_URL/api/engine/statistics?logo-style-post=$nonce" -o /tmp/stats-after.json
+
+          node <<'NODE'
+          const fs=require('fs');
+          const before=fs.readFileSync('/tmp/tune-before.css','utf8');
+          const after=fs.readFileSync('/tmp/tune-after.css','utf8');
+          const marker='/* B46_MAIN_LOGO_FOOTER_STYLE_20261004';
+          const next='/* B46_THEME_TOGGLE_STANDARD_20261003';
+          const a=after.indexOf(marker),b=after.indexOf(next,a);
+          if(a<0||b<0) throw Error('POST_STYLE_MARKERS_MISSING');
+          const block=after.slice(a,b);
+          for(const x of [
+            'font-family: "Arial Black", Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;',
+            'font-weight: 900 !important;',
+            'letter-spacing: -.055em !important;',
+            'text-transform: none !important;'
+          ]) if(!block.includes(x)) throw Error('POST_STYLE_DECLARATION_MISSING:'+x);
+          if(!after.includes('B46_HEADER_LOGO_130_PERCENT_20261003')||!after.includes('zoom: 1.3 !important')) throw Error('ZOOM_RULE_LOST');
+          const stripped=after.slice(0,a)+after.slice(b);
+          if(stripped!==before) throw Error('TUNE_CSS_CHANGED_OUTSIDE_TARGET_BLOCK');
+
+          const homeBefore=fs.readFileSync('/tmp/home-before.html');const homeAfter=fs.readFileSync('/tmp/home-after.html');
+          if(!homeBefore.equals(homeAfter)) throw Error('HOMEPAGE_HTML_CHANGED');
+          const footBefore=fs.readFileSync('/tmp/footer-before.css');const footAfter=fs.readFileSync('/tmp/footer-after.css');
+          if(!footBefore.equals(footAfter)) throw Error('FOOTER_CSS_CHANGED');
+
+          const e0=JSON.parse(fs.readFileSync('/tmp/engine-before.json','utf8')),e1=JSON.parse(fs.readFileSync('/tmp/engine-after.json','utf8'));
+          const f0=JSON.parse(fs.readFileSync('/tmp/full-before.json','utf8')),f1=JSON.parse(fs.readFileSync('/tmp/full-after.json','utf8'));
+          const s0=JSON.parse(fs.readFileSync('/tmp/stats-before.json','utf8')),s1=JSON.parse(fs.readFileSync('/tmp/stats-after.json','utf8'));
+          if(e1.ok!==true||f1.ok!==true||s1.ok!==true) throw Error('POST_BACKEND_UNHEALTHY');
+          if(String(e0.version||'')!==String(e1.version||'')) throw Error('ENGINE_VERSION_CHANGED');
+          if(String(f0.version||'')!==String(f1.version||'')) throw Error('FULL_MARKET_VERSION_CHANGED');
+          if(String(s0.settlementRevision||'')!==String(s1.settlementRevision||'')) throw Error('SETTLEMENT_REVISION_CHANGED');
+          console.log('LIVE_SCOPE_PASS',JSON.stringify({engine:e1.version,fullMarket:f1.version,settlement:s1.settlementRevision,homeHtml:'byte-identical',footerCss:'byte-identical',zoom:'preserved'}));
+          NODE
+
+          # Confirm the resulting active Worker is single-version and only index.js module bytes changed.
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=5" -H "$AUTH" -o /tmp/deployments-after.json
+          NEW_VERSION=$(node -e "const j=require('/tmp/deployments-after.json');const d=j.result?.deployments?.[0];if(j.success!==true||!d||d.versions?.length!==1||Number(d.versions[0].percentage)!==100)process.exit(2);process.stdout.write(String(d.versions[0].version_id))")
+          echo "ACTIVE_VERSION_AFTER=$NEW_VERSION"
+          curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/workers/$SCRIPT_NAME/versions/$NEW_VERSION?include=modules" -H "$AUTH" -o /tmp/version-after.json
+          node <<'NODE'
+          const fs=require('fs'),crypto=require('crypto');const v=JSON.parse(fs.readFileSync('/tmp/version-after.json','utf8'));if(v.success!==true)throw Error('POST_VERSION_FETCH_FAILED');
+          const before=JSON.parse(fs.readFileSync('/tmp/module-hashes-before.json','utf8'));let changed=[];
+          for(const m of v.result.modules||[]){if(!m.content_base64)throw Error('POST_MODULE_CONTENT_MISSING:'+m.name);const h=crypto.createHash('sha256').update(Buffer.from(m.content_base64,'base64')).digest('hex');if(before[m.name]!==h)changed.push(m.name);}
+          changed.sort();if(changed.length!==1||changed[0]!=='index.js')throw Error('UNEXPECTED_MODULE_CHANGES:'+changed.join(','));
+          console.log('MODULE_SCOPE_PASS',JSON.stringify({changed}));
+          NODE
+
+          trap - ERR
+          echo DEPLOY_MAIN_LOGO_FOOTER_STYLE_SUCCESS
