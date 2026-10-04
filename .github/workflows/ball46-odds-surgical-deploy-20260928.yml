@@ -28,7 +28,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Surgical STATISTICS V2 SVG deploy from current Production only
+      - name: Surgical scorebar state frames from current Production only
         shell: bash
         run: bash .github/scripts/ball46_odds_surgical_20260928.sh
       - uses: actions/upload-artifact@v4
