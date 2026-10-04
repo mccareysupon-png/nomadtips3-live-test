@@ -1,0 +1,41 @@
+name: READ ONLY - Ball46 Engine SQLITE_TOOBIG Audit 20261004
+
+on:
+  push:
+    branches:
+      - audit/ball46-league-flags-readonly-20261004
+    paths:
+      - '.github/workflows/engine-sqlite-readonly-audit-20261004.yml'
+      - 'deploy-assets/match-status-svg-20261003/engine-sqlite-readonly.mjs'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ball46-engine-sqlite-readonly-audit
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Inspect current engine source and health read-only
+        shell: bash
+        run: |
+          cd deploy-assets/match-status-svg-20261003
+          node engine-sqlite-readonly.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-engine-sqlite-readonly-${{ github.run_id }}
+          path: deploy-assets/match-status-svg-20261003/audit/engine-sqlite-readonly/
+          if-no-files-found: error
+          retention-days: 30
