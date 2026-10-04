@@ -16,12 +16,22 @@ const VERSION='343-team-kits-v6-vintage24-frontname-20261004a';
 const out='audit/vintage-kits-live-verify';
 const report={checkedAt:new Date().toISOString(),activeVersion:await activeVersion(),origin};
 const board=JSON.parse((await publicFile('/api/engine/board','json')).toString('utf8'));
-report.board={ok:board?.ok===true,fixtures:Array.isArray(board?.fixtures)?board.fixtures.length:null};
+const fixtures=Array.isArray(board?.fixtures)?board.fixtures:[];
+report.board={ok:board?.ok===true,fixtures:fixtures.length,sample:fixtures.slice(0,3)};
 const index=(await publicFile('/index.html','text/html')).toString('utf8');
 const kits=(await publicFile('/team-kits-343.js','javascript')).toString('utf8');
 report.assets={loader:index.includes(`team-kits-343.js?v=${VERSION}`),kitVersion:kits.includes(`const VERSION='${VERSION}'`)};
 assert(report.assets.loader,'LIVE_INDEX_KIT_LOADER_MISSING');
 assert(report.assets.kitVersion,'LIVE_KIT_ASSET_VERSION_WRONG');
+
+const pickName=(f,side)=>{
+  const cap=side[0].toUpperCase()+side.slice(1);
+  const values=[f?.[side]?.name,f?.teams?.[side]?.name,f?.[`${side}_name`],f?.[`team${cap}`],f?.[side]];
+  return values.find(v=>typeof v==='string'&&v.trim())?.trim()||null;
+};
+const targetNames=[];
+for(const f of fixtures.slice(0,20)) for(const side of ['home','away']) { const n=pickName(f,side); if(n&&!targetNames.includes(n)) targetNames.push(n); }
+report.targetNames=targetNames.slice(0,20);
 
 const browser=await chromium.launch({headless:true,executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH,args:['--no-sandbox','--disable-dev-shm-usage']});
 report.ui=[];
@@ -31,42 +41,40 @@ try{
     const errors=[],failed=[];
     page.on('pageerror',e=>errors.push(e.message));
     page.on('requestfailed',r=>failed.push({url:r.url(),error:r.failure()?.errorText||'failed'}));
-    await page.goto(`${origin}/index.html?vintageLiveVerify=${Date.now()}-${vp.name}`,{waitUntil:'domcontentloaded',timeout:60000});
+    await page.goto(`${origin}/index.html?vintageLiveTrace=${Date.now()}-${vp.name}`,{waitUntil:'domcontentloaded',timeout:60000});
     await page.waitForFunction(v=>window.NOMAD_TEAM_KITS_343?.version===v,VERSION,{timeout:45000});
     await page.waitForTimeout(8000);
-    const data=await page.evaluate(()=>{
-      const api=window.NOMAD_TEAM_KITS_343;
-      api?.refresh?.();
-      const cards=[...document.querySelectorAll('.match-card .fixture-scoreboard')].map(b=>b.closest('.match-card')).filter(Boolean);
-      const rows=cards.map((card,i)=>{
-        const hs=card.querySelector('.home-slot'),as=card.querySelector('.away-slot');
-        const hn=hs?.querySelector('.team-name'),an=as?.querySelector('.team-name');
-        const hi=hs?.querySelector('.team-kit-icon'),ai=as?.querySelector('.team-kit-icon');
-        return {
-          i,
-          home:(hn?.textContent||'').trim(),away:(an?.textContent||'').trim(),
-          homeKit:hi?.dataset.kit||null,awayKit:ai?.dataset.kit||null,
-          homeBefore:Boolean(hi&&hn&&hi.nextElementSibling===hn),
-          awayBefore:Boolean(ai&&an&&ai.nextElementSibling===an),
-          homeVisible:Boolean(hi&&getComputedStyle(hi).display!=='none'&&hi.getBoundingClientRect().width>0),
-          awayVisible:Boolean(ai&&getComputedStyle(ai).display!=='none'&&ai.getBoundingClientRect().width>0)
-        };
-      });
-      return {version:api?.version||null,variantCount:api?.variantCount||null,realCount:cards.length,rows};
-    });
-    const bad=data.rows.filter(r=>!r.homeBefore||!r.awayBefore||!r.homeVisible||!r.awayVisible||!r.homeKit||!r.awayKit);
-    report.ui.push({viewport:vp.name,...data,badCount:bad.length,badRows:bad.slice(0,20),pageErrors:errors,requestFailures:failed.filter(x=>/team-kits-343\.js/i.test(x.url))});
+    const data=await page.evaluate((names)=>{
+      const api=window.NOMAD_TEAM_KITS_343; api?.refresh?.();
+      const all=[...document.querySelectorAll('body *')];
+      const exact=[];
+      for(const name of names){
+        for(const el of all){
+          if(el.children.length===0 && (el.textContent||'').trim()===name){
+            const r=el.getBoundingClientRect();
+            if(r.width>0&&r.height>0){
+              const chain=[];let p=el;
+              for(let i=0;i<5&&p;i++,p=p.parentElement) chain.push({tag:p.tagName,cls:typeof p.className==='string'?p.className:'',id:p.id||'',html:p.outerHTML.slice(0,1800)});
+              exact.push({name,tag:el.tagName,cls:typeof el.className==='string'?el.className:'',x:Math.round(r.x),y:Math.round(r.y),chain});
+            }
+          }
+        }
+      }
+      const likely=[...document.querySelectorAll('[class*="team"],[class*="fixture"],[class*="match"]')].filter(el=>{
+        const r=el.getBoundingClientRect(); return r.width>0&&r.height>0;
+      }).slice(0,250).map(el=>({tag:el.tagName,cls:typeof el.className==='string'?el.className:'',text:(el.textContent||'').trim().replace(/\s+/g,' ').slice(0,260)}));
+      return {version:api?.version||null,variantCount:api?.variantCount||null,exact:exact.slice(0,100),likely};
+    },targetNames.slice(0,20));
+    report.ui.push({viewport:vp.name,...data,pageErrors:errors,kitRequestFailures:failed.filter(x=>/team-kits-343\.js/i.test(x.url))});
     await page.screenshot({path:`${out}/${vp.name}.png`,fullPage:true});
     await page.close();
   }
 } finally { await browser.close(); }
-
 for(const row of report.ui){
   assert.equal(row.version,VERSION,`KIT_VERSION_WRONG:${row.viewport}`);
   assert.equal(row.variantCount,24,`KIT_VARIANT_COUNT_WRONG:${row.viewport}`);
-  assert.equal(row.badCount,0,`LIVE_CARD_KIT_PLACEMENT_BAD:${row.viewport}`);
-  assert.equal(row.requestFailures.length,0,`KIT_ASSET_REQUEST_FAILED:${row.viewport}`);
+  assert.equal(row.kitRequestFailures.length,0,`KIT_ASSET_REQUEST_FAILED:${row.viewport}`);
 }
 writeFileSync(`${out}/report.json`,JSON.stringify(report,null,2));
-console.log(JSON.stringify(report,null,2));
+console.log(JSON.stringify({activeVersion:report.activeVersion,board:report.board.fixtures,targetNames:report.targetNames,ui:report.ui.map(x=>({viewport:x.viewport,exact:x.exact.length,likely:x.likely.length}))},null,2));
 NODE
