@@ -1,0 +1,76 @@
+name: Ball46 Event Flow Protected HTML Diagnostic 20261004
+
+on:
+  push:
+    branches: [work/eventflow-signal-annotation-20261004]
+    paths:
+      - '.github/workflows/ball46-eventflow-protected-html-diagnostic-20261004.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnostic:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      SCRIPT_NAME: ball46-production
+      BALL46_URL: https://ball46.com
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Prove active version and HTML hash stability read only
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/html-diag
+          AUTH="Authorization: Bearer $API_TOKEN"
+          active(){ curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/deployments?per_page=3" -H "$AUTH" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const j=JSON.parse(s),d=j.result?.deployments?.[0]||j.result?.[0];if(j.success!==true||!d||d.versions?.length!==1||Number(d.versions[0].percentage)!==100)process.exit(2);process.stdout.write(String(d.versions[0].version_id))})"; }
+          LOCK=$(active)
+          echo "DIAG_LOCK=$LOCK"
+          for path in index.html signal.html statistics.html about.html privacy.html terms.html dashboard-v2-stage3.js expanded-match-343.js; do
+            echo "=== $path fixed-query ==="
+            for n in 1 2 3 4 5; do
+              [ "$(active)" = "$LOCK" ] || { echo "ACTIVE_VERSION_MOVED_DURING_DIAG"; exit 22; }
+              curl -fsSL -D "/tmp/html-diag/${path//\//_}.fixed.$n.headers" "$BALL46_URL/$path?diag=fixed" -o "/tmp/html-diag/${path//\//_}.fixed.$n.body"
+              echo "FIXED $path $n $(sha256sum "/tmp/html-diag/${path//\//_}.fixed.$n.body" | awk '{print $1}') $(wc -c < "/tmp/html-diag/${path//\//_}.fixed.$n.body")"
+            done
+            echo "=== $path changing-query ==="
+            for n in 1 2 3 4 5; do
+              [ "$(active)" = "$LOCK" ] || { echo "ACTIVE_VERSION_MOVED_DURING_DIAG"; exit 23; }
+              curl -fsSL -D "/tmp/html-diag/${path//\//_}.nonce.$n.headers" "$BALL46_URL/$path?diag=$GITHUB_RUN_ID-$n-$(date +%s%N)" -o "/tmp/html-diag/${path//\//_}.nonce.$n.body"
+              echo "NONCE $path $n $(sha256sum "/tmp/html-diag/${path//\//_}.nonce.$n.body" | awk '{print $1}') $(wc -c < "/tmp/html-diag/${path//\//_}.nonce.$n.body")"
+            done
+          done
+          [ "$(active)" = "$LOCK" ] || { echo "ACTIVE_VERSION_MOVED_AT_END"; exit 24; }
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib, json
+          root=Path('/tmp/html-diag')
+          out={}
+          for p in sorted(root.glob('*.body')):
+              stem=p.name.split('.')[0]
+              typ=p.name.split('.')[1]
+              data=p.read_bytes()
+              out.setdefault(stem,{}).setdefault(typ,[]).append(hashlib.sha256(data).hexdigest())
+          report={}
+          for k,v in out.items():
+              report[k]={t:{'unique':len(set(vals)),'hashes':vals} for t,vals in v.items()}
+              print('STABILITY',k,json.dumps(report[k],sort_keys=True))
+          Path('/tmp/html-diag/stability.json').write_text(json.dumps(report,indent=2))
+          PY
+          echo "DIAG_FINAL=$(active)"
+          echo "PROTECTED_HTML_STABILITY_DIAGNOSTIC_PASS"
+      - name: Retain evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-eventflow-html-diagnostic-${{ github.run_id }}
+          path: /tmp/html-diag/
+          if-no-files-found: warn
+          retention-days: 14
