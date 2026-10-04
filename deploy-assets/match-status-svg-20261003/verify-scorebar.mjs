@@ -37,7 +37,7 @@ export async function verify({patched,directory='audit/ui',watchMs=0}={}){
     assert.equal(cell.border,colors[cell.status.split(' ')[0]],'STATUS_BORDER');assert.equal(cell.image,'none');assert.equal(cell.before,'none');assert.equal(cell.after,'none');assert(cell.shadow.includes('3px'),'BORDER_GLOW');
     const children=cell.children;for(const c of children){assert(c.bottom<=cell.bottom-8,'TEXT_OUTSIDE_CARD:'+label+':'+c.class);assert(c.top>=cell.top,'TEXT_OUTSIDE_TOP')}
     for(let i=1;i<children.length;i++)assert(children[i].top>=children[i-1].bottom-1,'TEXT_OVERLAP:'+label);
-    const name=children.find(c=>c.class.includes('scorebar-match'));assert.equal(name.font,'14px');assert(name.scrollHeight<=name.height+1,'NAME_CLIPPED');
+    const name=children.find(c=>c.class.includes('scorebar-match'));assert.equal(name.font,'12px');assert(name.scrollHeight<=name.height+1,'NAME_CLIPPED');
    }
    if(result.ratio==='PASS')assert.equal(result.settled,Math.round(result.cells.length*.6));
    await page.screenshot({path:directory+'/'+label+'.png'});report.viewports.push(result);
@@ -49,12 +49,13 @@ export async function verify({patched,directory='audit/ui',watchMs=0}={}){
   const search=page.locator('[data-search]');await search.fill('zz-no-fixture-test');assert.equal(await page.locator('[data-match-id]').count(),0);await search.fill('');assert(await page.locator('[data-match-id]').count()>0);
   report.navigation='PASS';
   // Stable content rerenders keep the same card nodes and the wrapper geometry.
-  const before=await read();await page.evaluate(()=>{const grid=document.querySelector('.workspace-scorebar-grid');window.__scorebarGrid=grid;window.__scorebarCells=[...grid.children];window.__scorebarShifts=[];window.__scorebarObserver=new PerformanceObserver(list=>{for(const e of list.getEntries())if(!e.hadRecentInput)window.__scorebarShifts.push(e.value)});window.__scorebarObserver.observe({type:'layout-shift',buffered:false})});
+  const before=await read();await page.evaluate(()=>{const grid=document.querySelector('.workspace-scorebar-grid');window.__scorebarGrid=grid;window.__scorebarCells=[...grid.children];window.__scorebarShifts=[];window.__scorebarObserver=new PerformanceObserver(list=>{for(const e of list.getEntries())if(!e.hadRecentInput)window.__scorebarShifts.push({value:e.value,sources:(e.sources||[]).map(s=>({class:s.node?.className,tag:s.node?.tagName,inRail:!!s.node?.closest?.('[data-workspace-scorebar-slot]'),previous:s.previousRect.toJSON(),current:s.currentRect.toJSON()}))})});window.__scorebarObserver.observe({type:'layout-shift',buffered:false})});
   await search.fill('zz-no-fixture-test');await search.fill('');
   assert(await page.evaluate(()=>window.__scorebarGrid===document.querySelector('.workspace-scorebar-grid')&&window.__scorebarCells.every((c,i)=>c===window.__scorebarGrid.children[i])),'UNCHANGED_CARDS_REPLACED');
   if(watchMs)await page.waitForTimeout(watchMs);
   const after=await read();assert.equal(after.slotHeight,before.slotHeight,'POLLING_HEIGHT_SHIFT');
   report.stability={wrapperHeight:after.slotHeight,unchangedNodeReuse:'PASS',shifts:await page.evaluate(()=>window.__scorebarShifts)};
+  assert(report.stability.shifts.every(s=>s.sources.every(n=>!n.inRail)),'COMPONENT_LAYOUT_SHIFT');
   assert.equal(report.errors.length,0,'PAGE_ERRORS');
   writeFileSync(directory+'/report.json',JSON.stringify(report,null,2));return report;
  }finally{await browser.close()}
