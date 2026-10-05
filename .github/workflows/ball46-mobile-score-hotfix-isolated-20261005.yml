@@ -1,0 +1,99 @@
+name: Ball46 mobile score hotfix isolated 2026-10-05
+on:
+  push:
+    branches:
+      - hotfix/ball46-mobile-score-live-20261005
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    env:
+      CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy isolated mobile score fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os,json,base64,urllib.request,subprocess,time,pathlib,hashlib
+          A=os.environ['CF_ACCOUNT'];T=os.environ['CF_TOKEN'];S='ball46-production';API=f'https://api.cloudflare.com/client/v4/accounts/{A}'
+          D='https://ball46-production.mccarey-supon.workers.dev';P='https://www.ball46.com';H={'Authorization':f'Bearer {T}','Accept':'application/json'}
+          patch=pathlib.Path('mobile-v3-score-layout-hotfix-20261005.css').read_text();mark='B46_MOBILE_SCORE_LAYOUT_FIX_20261005';root=pathlib.Path('/tmp/b46-score-iso');root.mkdir(exist_ok=True)
+          def get(u):
+            with urllib.request.urlopen(urllib.request.Request(u,headers=H),timeout=30) as r:return json.load(r)
+          def fetch(u):
+            with urllib.request.urlopen(urllib.request.Request(u,headers={'Cache-Control':'no-cache','User-Agent':'B46-Mobile-Score-Isolated'}),timeout=35) as r:return r.status,dict(r.headers),r.read()
+          def rollback(v):
+            env=os.environ.copy();env['CLOUDFLARE_ACCOUNT_ID']=A;env['CLOUDFLARE_API_TOKEN']=T
+            subprocess.run(['npx','--yes','wrangler@4.92.0','versions','deploy',f'{v}@100%','--name',S,'-y','--message','Auto rollback isolated Ball46 mobile score fix'],env=env,check=False)
+          d=get(f'{API}/workers/scripts/{S}/deployments')['result']['deployments'][0];a=[x for x in d.get('versions',[]) if float(x.get('percentage',0))>=99.999]
+          if len(a)!=1:raise SystemExit('ACTIVE_VERSION_AMBIGUOUS')
+          pre=str(a[0]['version_id']);pathlib.Path('/tmp/b46-score-pre').write_text(pre)
+          v=get(f'{API}/workers/workers/{S}/versions/{pre}?include=modules')['result'];mods=v.get('modules') or [];m=[x for x in mods if x.get('name')=='index.js' and x.get('content_base64')]
+          if len(m)!=1:raise SystemExit('INDEX_MODULE_MISSING')
+          if [x.get('name') for x in mods if x.get('name')!='index.js' and not str(x.get('name') or '').startswith('assets/')]:raise SystemExit('UNKNOWN_CODE_MODULES')
+          src=base64.b64decode(m[0]['content_base64']).decode();bindings=v.get('bindings') or [];by={b.get('name'):b for b in bindings}
+          exp={'ASSETS':('assets',None),'ENGINE':('service','nomadtips3-engine-343'),'FULL_MARKET':('service','nomadtips3-full-market-343-ball46'),'HUB':('service','nomadtips3-5usd-hub-343')}
+          for n,(t,svc) in exp.items():
+            b=by.get(n) or {}
+            if b.get('type')!=t or (svc and b.get('service')!=svc):raise SystemExit('BINDING_MOVED '+n)
+          ac=(v.get('assets') or {}).get('config') or {};want={'base_path':'/','html_handling':'none','not_found_handling':'none','run_worker_first':True}
+          if {k:ac.get(k) for k in want}!=want or v.get('compatibility_date')!='2026-09-09' or (v.get('compatibility_flags') or []):raise SystemExit('PRODUCTION_CONFIG_MOVED')
+          if 'b46-mobile-v3-style' not in src or 'b46-mobile-v3-script' not in src:raise SystemExit('MOBILE_V3_WRAPPER_MISSING')
+          if mark not in src:
+            anchor='</style><script id=\\"b46-mobile-v3-script\\">'
+            if anchor not in src:raise SystemExit('STYLE_SCRIPT_ANCHOR_MISSING')
+            src=src.replace(anchor,json.dumps(patch)[1:-1]+anchor,1)
+          (root/'index.js').write_text(src);subprocess.run(['node','--check',str(root/'index.js')],check=True)
+          meta={'main_module':'index.js','keep_assets':True,'compatibility_date':v.get('compatibility_date'),'bindings':bindings}
+          for k in ('observability','placement','limits','tail_consumers','logpush'):
+            if v.get(k) is not None:meta[k]=v[k]
+          (root/'metadata.json').write_text(json.dumps(meta,separators=(',',':')))
+          print('PREDEPLOY_LOCK_OK',pre,'patch_sha',hashlib.sha256(patch.encode()).hexdigest())
+          deployed=False
+          try:
+            raw=subprocess.check_output(['curl','-fsS','-X','PUT',f'{API}/workers/scripts/{S}','-H',f'Authorization: Bearer {T}','-F',f'metadata=@{root}/metadata.json;type=application/json','-F',f'index.js=@{root}/index.js;type=application/javascript+module']);j=json.loads(raw)
+            if j.get('success') is not True:raise RuntimeError('UPLOAD_FAIL')
+            deployed=True;print('UPLOAD_OK')
+            for base,label in ((D,'DIRECT'),(P,'PUBLIC')):
+              ok=False
+              for n in range(12):
+                time.sleep(2)
+                try:
+                  _,_,b=fetch(base+'/index.html?scoreiso='+str(time.time_ns()))
+                  if mark in b.decode(errors='replace'):print(label+'_VERIFY_PASS',n+1);ok=True;break
+                except Exception as e:print(label+'_RETRY',n+1,type(e).__name__)
+              if not ok:raise RuntimeError(label+'_VERIFY_FAILED')
+            for ep in ('board','signals','statistics'):
+              _,_,b=fetch(P+f'/api/engine/{ep}?scoreiso={time.time_ns()}');q=json.loads(b)
+              if q.get('ok') is not True:raise RuntimeError(ep+'_NOT_OK')
+            nd=get(f'{API}/workers/scripts/{S}/deployments')['result']['deployments'][0];av=[x for x in nd.get('versions',[]) if float(x.get('percentage',0))>=99.999]
+            if len(av)!=1:raise RuntimeError('POST_ACTIVE_AMBIGUOUS')
+            print('SCORE_ISOLATED_PRODUCTION_VERIFY_PASS',av[0]['version_id'])
+          except Exception:
+            if deployed:rollback(pre)
+            raise
+          PY
+      - name: Mobile visual QA
+        shell: bash
+        run: |
+          set -euo pipefail
+          CHROME="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)";test -n "$CHROME"
+          npm install --no-save --silent playwright-core@latest
+          CHROME_BIN="$CHROME" node <<'JS'
+          const {chromium}=require('playwright-core');
+          (async()=>{const b=await chromium.launch({executablePath:process.env.CHROME_BIN,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});const p=await b.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});await p.goto('https://www.ball46.com/index.html?scoreisoqa='+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});await p.waitForTimeout(5000);
+          const q=await p.evaluate(()=>{const vis=e=>!!e&&getComputedStyle(e).display!=='none'&&e.getBoundingClientRect().width>0&&e.getBoundingClientRect().height>0;const rows=[...document.querySelectorAll('.match-row')].slice(0,5).map(r=>{const t=r.querySelector('.teams-cell'),s=[...t.querySelectorAll('.desktop-team-score')],h=t.querySelector('b.b46-home'),a=t.querySelector('b.b46-away'),sc=r.querySelector('.score-cell'),rb=e=>e?.getBoundingClientRect();return {scores:s.map(vis),old:[...sc.querySelectorAll(':scope>strong')].map(vis),live:vis(sc.querySelector('.b46-live-time')),dup:[...r.querySelectorAll('.signal-cell .mobile-clock,.signal-inline-stack .mobile-clock')].filter(vis).length,clocks:[...r.querySelectorAll('.b46-live-clock,.mobile-clock')].filter(vis).length,signal:[...r.querySelectorAll('.signal-cell .desktop-signal,.signal-inline-stack .desktop-signal')].filter(vis).length,hy:rb(h)?.y,hsy:rb(s[0])?.y,ay:rb(a)?.y,asy:rb(s[1])?.y}});const perf=document.querySelector('.sp-trend.b46-perf-card,.b46-perf-card,.b46-perf-shell');return {rows,perf:perf?getComputedStyle(perf).display:'missing',sw:document.documentElement.scrollWidth,iw:innerWidth}});console.log('MOBILE_SCORE_QA',JSON.stringify(q));if(q.perf!=='none'&&q.perf!=='missing')throw Error('PERFORMANCE_VISIBLE');if(q.sw>q.iw+3)throw Error('HORIZONTAL_OVERFLOW');for(const r of q.rows){if(r.scores.length!==2||!r.scores.every(Boolean))throw Error('TEAM_SCORE_NOT_VISIBLE');if(r.old.some(Boolean))throw Error('OLD_SCORE_VISIBLE');if(!r.live)throw Error('LIVE_TIME_NOT_VISIBLE');if(r.dup!==0)throw Error('DUP_CLOCK');if(r.clocks!==1)throw Error('CLOCK_COUNT_'+r.clocks);if(Math.abs(r.hy-r.hsy)>8||Math.abs(r.ay-r.asy)>8)throw Error('SCORE_MISALIGN')}
+          await p.setViewportSize({width:1440,height:1000});await p.goto('https://www.ball46.com/index.html?scoreisodesk='+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});await p.waitForTimeout(2500);const d=await p.evaluate(()=>({a:document.documentElement.getAttribute('data-b46-mobile-v3'),v:getComputedStyle(document.documentElement).getPropertyValue('--b46m-bg').trim()}));console.log('DESKTOP_QA',JSON.stringify(d));if(d.a!==null||d.v!=='')throw Error('MOBILE_LEAK_TO_DESKTOP');await b.close();console.log('MOBILE_SCORE_QA_PASS')})().catch(e=>{console.error(e);process.exit(1)});
+          JS
+      - name: Rollback on QA failure
+        if: failure()
+        shell: bash
+        run: |
+          set +e
+          test -f /tmp/b46-score-pre || exit 0
+          PRE="$(cat /tmp/b46-score-pre)";export CLOUDFLARE_ACCOUNT_ID="$CF_ACCOUNT" CLOUDFLARE_API_TOKEN="$CF_TOKEN"
+          npx --yes wrangler@4.92.0 versions deploy "$PRE@100%" --name ball46-production -y --message "Auto rollback isolated Ball46 mobile score QA"
