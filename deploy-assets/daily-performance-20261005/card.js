@@ -1,5 +1,7 @@
 /* B46_DAILY_PERFORMANCE_20261005
- * Presentation-only Daily Performance card. Old scorebar and engine stay untouched.
+ * Presentation-only Daily Performance card.
+ * Daily buckets are based on pick createdAt only.
+ * Statistics only: never reads /api/engine/signals and never changes engine/API state.
  */
 (()=>{'use strict';
 const ID='ball46-daily-performance',TZ='Europe/London',CUT=6,REFRESH=300000;
@@ -10,21 +12,21 @@ function parts(ms){const o={};for(const p of new Intl.DateTimeFormat('en-GB',{ti
 function prev(k){const [y,m,d]=k.split('-').map(Number);return new Date(Date.UTC(y,m-1,d)-86400000).toISOString().slice(0,10)}
 function sportDay(ms){const p=parts(ms);let k=`${p.year}-${p.month}-${p.day}`;if(Number(p.hour)<CUT)k=prev(k);return k}
 function ms(v){if(v==null||v==='')return null;if(typeof v==='number'||/^\d+(?:\.\d+)?$/.test(String(v))){const n=Number(v);return Number.isFinite(n)?(n>1e12?n:n>1e9?n*1000:null):null}const n=Date.parse(String(v));return Number.isFinite(n)?n:null}
-function stamp(r){for(const k of ['settledAt','settled_at','resolvedAt','resolved_at','updatedAt','updated_at','createdAt','created_at','timestamp','time','detectedAt','lockedAt','entryAt']){const n=ms(r?.[k]);if(n!==null)return n}return null}
-function outcome(r){const x=String(r?.result??r?.settlement??r?.outcome??r?.status??'').trim().toLowerCase();if(/\bwin(?:ner|ning)?\b/.test(x))return'win';if(/\b(?:loss|lose|lost)\b/.test(x))return'loss';if(/\b(?:push|draw|refund|void|neutral|cancel(?:led)?)\b/.test(x))return'push';return null}
-function market(r){const x=String(r?.marketLabel??r?.market??r?.marketType??'').toLowerCase().replace(/[_-]+/g,' ');if(/asian|handicap|\bah\b/.test(x))return'AH';if(/over\s*\/?\s*under|o\s*\/?\s*u|goal line|total/.test(x))return'O/U';if(/1x2|match result|moneyline/.test(x))return'1X2';return null}
-function rowId(r){const fallback=[r?.fixtureId,r?.market,r?.selection].filter(Boolean).join('|');return String(r?.signalId??r?.id??fallback??'')}
+function createdStamp(r){for(const k of ['createdAt','created_at']){const n=ms(r?.[k]);if(n!==null)return n}return null}
+function outcome(r){const x=String(r?.result??r?.settlement??r?.outcome??'').trim().toLowerCase();if(/\bwin(?:ner|ning)?\b/.test(x))return'win';if(/\b(?:loss|lose|lost)\b/.test(x))return'loss';if(/\b(?:push|draw|refund|void|neutral|cancel(?:led)?)\b/.test(x))return'push';return null}
+function market(r){const x=String(r?.marketLabel??r?.market??r?.marketType??'').toLowerCase().replace(/[_-]+/g,' ');if(/asian|handicap|\bah\b/.test(x))return'AH';if(/over\s*\/?\s*under|\bover\b|\bunder\b|o\s*\/?\s*u|goal line|total|corner/.test(x))return'O/U';if(/1x2|match result|moneyline/.test(x))return'1X2';return null}
+function rowId(r){return String(r?.id??r?.signalId??[r?.fixtureId,r?.market,r?.selection,r?.createdAt].filter(v=>v!==undefined&&v!==null&&v!=='').join('|'))}
 function bucket(){return{win:0,loss:0,push:0,pending:0,markets:{AH:{win:0,loss:0,push:0},'O/U':{win:0,loss:0,push:0},'1X2':{win:0,loss:0,push:0}}}}
-function add(b,r){const o=outcome(r);if(!o)return false;b[o]++;const m=market(r);if(m)b.markets[m][o]++;return true}
-function final(r){return Boolean(outcome(r))||/settled|finished|final|closed|resolved/i.test(String(r?.status??''))}
-function aggregate(stats,signals){const tk=sportDay(Date.now()),yk=prev(tk),today=bucket(),yesterday=bucket(),settled=new Set();for(const r of stats){const t=stamp(r);if(t===null)continue;const k=sportDay(t);if(k!==tk&&k!==yk)continue;if(add(k===tk?today:yesterday,r)){const id=rowId(r);if(id)settled.add(id)}}const seen=new Set();for(const s of signals){const id=rowId(s);if(id&&(settled.has(id)||seen.has(id)))continue;if(id)seen.add(id);if(final(s))continue;const t=stamp(s);if(t!==null&&sportDay(t)!==tk)continue;today.pending++}return{today,yesterday,tk,yk}}
+function addSettled(b,r,o){b[o]++;const m=market(r);if(m)b.markets[m][o]++}
+function isPending(r){if(outcome(r))return false;return !/settled|finished|final|closed|resolved/i.test(String(r?.status??''))}
+function aggregate(rows){const tk=sportDay(Date.now()),yk=prev(tk),today=bucket(),yesterday=bucket(),seen=new Set();for(const r of rows){const id=rowId(r);if(id&&seen.has(id))continue;if(id)seen.add(id);const t=createdStamp(r);if(t===null)continue;const k=sportDay(t);if(k!==tk&&k!==yk)continue;const o=outcome(r);if(k===tk){if(o)addSettled(today,r,o);else if(isPending(r))today.pending++}else if(o)addSettled(yesterday,r,o)}return{today,yesterday,tk,yk}}
 function rate(b){const n=b.win+b.loss;return n?`${(b.win/n*100).toFixed(1).replace(/\.0$/,'')}%`:'—'}
 function dateLabel(k){const [y,m,d]=k.split('-').map(Number);return new Intl.DateTimeFormat('en-GB',{timeZone:'UTC',day:'2-digit',month:'short'}).format(new Date(Date.UTC(y,m-1,d))).toUpperCase()}
 function marketHtml(b){return['AH','O/U','1X2'].map(m=>`<span class="b46-market"><b>${m}</b><span>W ${b.markets[m].win} · L ${b.markets[m].loss} · P ${b.markets[m].push}</span></span>`).join('')}
 function text(r,s,v){const e=$(s,r);if(e&&e.textContent!==String(v))e.textContent=String(v)}
 function render(d){const r=ensure();if(!r)return;for(const [day,b] of [['today',d.today],['yesterday',d.yesterday]]){for(const o of ['win','loss','push'])text(r,`[data-b46-stat="${day}-${o}"]`,b[o]);if(day==='today')text(r,'[data-b46-stat="today-pending"]',b.pending);text(r,`[data-b46-rate="${day}"]`,rate(b));text(r,`[data-b46-total="${day}"]`,b.win+b.loss+b.push+(day==='today'?b.pending:0));const box=$(`[data-b46-markets="${day}"]`,r),h=marketHtml(b);if(box&&box.innerHTML!==h)box.innerHTML=h}text(r,'[data-b46-label="today"]',`Live Summary · ${dateLabel(d.tk)}`);text(r,'[data-b46-label="yesterday"]',`Final Summary · ${dateLabel(d.yk)}`)}
 async function json(url){const r=await fetch(url,{cache:'no-store',headers:{Accept:'application/json'}});if(!r.ok)throw Error(`${url}:${r.status}`);return r.json()}
-async function refresh(){if(busy)return;busy=true;try{const [st,sg]=await Promise.all([json('/api/engine/statistics'),json('/api/engine/signals')]);if(st?.ok!==true||!Array.isArray(st?.rows))throw Error('STATISTICS_SHAPE');if(!Array.isArray(sg?.signals))throw Error('SIGNALS_SHAPE');lastGood=aggregate(st.rows,sg.signals);render(lastGood)}catch(e){if(lastGood)render(lastGood);console.warn('B46 Daily Performance refresh skipped:',e?.message||e)}finally{busy=false}}
+async function refresh(){if(busy)return;busy=true;try{const st=await json('/api/engine/statistics');if(st?.ok!==true||!Array.isArray(st?.rows))throw Error('STATISTICS_SHAPE');lastGood=aggregate(st.rows);render(lastGood)}catch(e){if(lastGood)render(lastGood);console.warn('B46 Daily Performance refresh skipped:',e?.message||e)}finally{busy=false}}
 function boot(){ensure();refresh();setInterval(refresh,REFRESH);document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh()})}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();
