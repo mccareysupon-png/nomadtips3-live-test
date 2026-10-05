@@ -66,3 +66,5 @@ jobs:
       - name: Deploy only after preflight and rollback on any verification failure
         shell: bash
         run: /tmp/ball46-stat-realtime-pending-deploy.sh
+
+# retry 2: live-source anchor matcher hardened after fail-closed preflight
