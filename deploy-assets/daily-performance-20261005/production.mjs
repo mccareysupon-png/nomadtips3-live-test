@@ -3,7 +3,9 @@ import { createHash } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { parse } from 'acorn';
 export const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
-export const canonical=value=>JSON.stringify(value,(_,entry)=>entry&&typeof entry==='object'&&!Array.isArray(entry)?Object.fromEntries(Object.entries(entry).sort(([a],[b])=>a.localeCompare(b))):entry);
+// Cloudflare mutates workers/triggered_by between upload/version_upload even when effective Worker settings are unchanged.
+// Exclude deployment provenance metadata from equality guards; all functional settings remain compared.
+export const canonical=value=>JSON.stringify(value,(key,entry)=>key==='annotations'?undefined:(entry&&typeof entry==='object'&&!Array.isArray(entry)?Object.fromEntries(Object.entries(entry).sort(([a],[b])=>a.localeCompare(b))):entry));
 export const origin='https://ball46.com',directOrigin='https://ball46-production.mccarey-supon.workers.dev',script='ball46-production';
 const account=process.env.CLOUDFLARE_ACCOUNT_ID,token=process.env.CLOUDFLARE_API_TOKEN,root=`https://api.cloudflare.com/client/v4/accounts/${account}/workers`;
 export async function api(path,options={}){assert(account&&token,'CLOUDFLARE_AUTH_MISSING');const response=await fetch(root+path,{...options,signal:AbortSignal.timeout(60000),headers:{Authorization:`Bearer ${token}`,...options.headers}}),json=await response.json();assert(response.ok&&json.success===true,`CLOUDFLARE_ERROR:${response.status}:${JSON.stringify(json.errors||[])}`);return json.result}
