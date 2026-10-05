@@ -1,38 +1,21 @@
-name: Ball46 Betsson preflight
+name: Ball46 Betsson production deploy
 on:
   push:
     branches:
       - ops/ball46-betsson-affiliate-20261005
 jobs:
-  preflight:
+  deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     env:
       CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
     steps:
-      - name: Lock current Ball46 production
+      - uses: actions/checkout@v4
+      - name: Deploy Betsson affiliate surgically
         shell: bash
         run: |
           set -euo pipefail
           test -n "$CF_ACCOUNT"
           test -n "$CF_TOKEN"
-          python3 - <<'PY'
-          import os,json,base64,urllib.request
-          a=os.environ['CF_ACCOUNT'];t=os.environ['CF_TOKEN'];api=f'https://api.cloudflare.com/client/v4/accounts/{a}';h={'Authorization':f'Bearer {t}','Accept':'application/json'}
-          def get(u):
-            with urllib.request.urlopen(urllib.request.Request(u,headers=h),timeout=30) as r:return json.load(r)
-          d=get(f'{api}/workers/scripts/ball46-production/deployments')['result']['deployments'][0]
-          vs=d.get('versions') or []; active=[v for v in vs if float(v.get('percentage',0))>=99.999]
-          assert len(active)==1,active
-          vid=active[0]['version_id'];v=get(f'{api}/workers/workers/ball46-production/versions/{vid}?include=modules')['result']
-          mods=v.get('modules') or []; print('LOCK_OK',vid);print('MODULES',[m.get('name') for m in mods]);print('BINDINGS',[(b.get('name'),b.get('type'),b.get('service'),b.get('environment')) for b in (v.get('bindings') or [])]);print('ASSET_CONFIG',(v.get('assets') or {}).get('config'));print('COMPAT',v.get('compatibility_date'),v.get('compatibility_flags'))
-          main=[m for m in mods if m.get('name')=='index.js' and m.get('content_base64')]; assert len(main)==1
-          src=base64.b64decode(main[0]['content_base64']).decode(); assert 'export default' in src
-          PY
-          curl -fsS -L --retry 3 --max-time 30 "https://ball46-production.mccarey-supon.workers.dev/full-market-bookmaker-343.js?preflight=$GITHUB_RUN_ID" -o /tmp/live.js
-          grep -Fq 'AFFILIATE_URLS' /tmp/live.js
-          grep -Fq 'BOOK_LOGO_URLS' /tmp/live.js
-          grep -Fq "['1xbet','1xBet']" /tmp/live.js
-          ! grep -Fq "['betsson','Betsson']" /tmp/live.js
-          echo BETSSON_PREFLIGHT_PASS
+          python3 .github/scripts/ball46_betsson_affiliate_20261005.py
