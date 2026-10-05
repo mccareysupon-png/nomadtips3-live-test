@@ -1,27 +1,42 @@
-name: Ball46 Betsson production deploy final
+name: Ball46 Betsson route inspect
 on:
   push:
     branches:
       - ops/ball46-betsson-affiliate-20261005
 jobs:
-  deploy:
+  inspect:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 5
     env:
       CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
     steps:
-      - uses: actions/checkout@v4
-      - name: Add Betsson affiliate URL and logo to current production
+      - name: Read current production routing only
         shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PY'
-          p='.github/scripts/ball46_betsson_affiliate_20261005.py'
-          s=open(p).read()
-          old='if "[\'betsson\',\'Betsson\']" in text or \'B46_BETSSON_AFFILIATE_20261005\' in text:'
-          new='if AFF in text and LOGO in text and \'B46_BETSSON_AFFILIATE_20261005\' in text:'
-          if old not in s: raise SystemExit('LOCAL_GUARD_ANCHOR_MISSING')
-          open(p,'w').write(s.replace(old,new,1))
+          import os,json,base64,urllib.request
+          a=os.environ['CF_ACCOUNT'];t=os.environ['CF_TOKEN'];api=f'https://api.cloudflare.com/client/v4/accounts/{a}';h={'Authorization':f'Bearer {t}','Accept':'application/json'}
+          def get(u):
+            with urllib.request.urlopen(urllib.request.Request(u,headers=h),timeout=30) as r:return json.load(r)
+          d=get(f'{api}/workers/scripts/ball46-production/deployments')['result']['deployments'][0]
+          active=[v for v in (d.get('versions') or []) if float(v.get('percentage',0))>=99.999]
+          assert len(active)==1,active
+          vid=active[0]['version_id'];v=get(f'{api}/workers/workers/ball46-production/versions/{vid}?include=modules')['result']
+          m=[x for x in (v.get('modules') or []) if x.get('name')=='index.js' and x.get('content_base64')];assert len(m)==1
+          s=base64.b64decode(m[0]['content_base64']).decode()
+          print('ACTIVE_VERSION',vid)
+          for needle in ['full-market-bookmaker-343.js','FULL_MARKET','ASSETS.fetch','env.ASSETS','pathname']:
+              print('COUNT',needle,s.count(needle))
+              start=0
+              for n in range(min(s.count(needle),8)):
+                  i=s.find(needle,start)
+                  if i<0:break
+                  print('SNIP',needle,n,repr(s[max(0,i-450):i+900]))
+                  start=i+len(needle)
           PY
-          python3 .github/scripts/ball46_betsson_affiliate_20261005.py
+          curl -fsS -L --retry 3 --max-time 30 "https://ball46-production.mccarey-supon.workers.dev/full-market-bookmaker-343.js?routeinspect=$GITHUB_RUN_ID" -o /tmp/fmb.js
+          python3 - <<'PY'
+          s=open('/tmp/fmb.js').read();print('LIVE_JS_LEN',len(s));print('HAS_AFFILIATE_URLS','AFFILIATE_URLS' in s);print('HAS_BOOK_LOGO_URLS','BOOK_LOGO_URLS' in s)
+          PY
