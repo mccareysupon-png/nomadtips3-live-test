@@ -1,0 +1,386 @@
+/* Ball46 Mobile Presentation Layer V1 — 2026-10-05
+   Scope: mobile presentation only (<=760px).
+   Source of truth: current Ball46 Production data/logic.
+   Explicitly does NOT change Desktop, Engine, API, Odds, Signals, Statistics logic, HUB or polling. */
+
+@media (max-width:760px){
+  :root{
+    --b46m-bg:#050807;
+    --b46m-surface:#0b110e;
+    --b46m-surface-2:#111915;
+    --b46m-line:#1d2a24;
+    --b46m-text:#f4f7f5;
+    --b46m-muted:#91a099;
+    --b46m-green:#22e178;
+    --b46m-red:#ff4d5d;
+    --b46m-amber:#ffc83d;
+    --b46m-blue:#55a7ff;
+    --b46m-radius:12px;
+    --b46m-gap:8px;
+  }
+
+  html,
+  html[data-theme="light"],
+  html[data-theme="dark"]{
+    color-scheme:dark!important;
+    background:var(--b46m-bg)!important;
+  }
+  html body{
+    margin:0!important;
+    background:var(--b46m-bg)!important;
+    color:var(--b46m-text)!important;
+    overflow-x:hidden!important;
+    padding-bottom:calc(76px + env(safe-area-inset-bottom,0px))!important;
+  }
+
+  /* Dark-only mobile: remove theme switching UI without changing desktop theme state. */
+  .workspace-theme-btn,
+  [data-theme-toggle],
+  .theme-toggle,
+  .next-theme{
+    display:none!important;
+  }
+
+  /* Compact mobile shell. */
+  .dash-shell,
+  .shell,
+  .owner-shell{
+    width:100%!important;
+    max-width:100%!important;
+    box-sizing:border-box!important;
+    padding-left:8px!important;
+    padding-right:8px!important;
+  }
+  .workspace.singlepage{
+    display:block!important;
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    margin:0!important;
+    gap:0!important;
+  }
+
+  /* The PC horizontal result strip is intentionally not reused on mobile. */
+  [data-workspace-scorebar-slot],
+  .workspace-scorebar-slot,
+  .workspace-scorebar-grid{
+    display:none!important;
+  }
+
+  /* PC long-term performance card is intentionally not reused on mobile V1. */
+  .sp-trend.b46-perf-card,
+  .b46-perf-card,
+  .b46-perf-shell{
+    display:none!important;
+  }
+
+  /* Simplify legacy rail on mobile. Keep only compact brand and active submenu controls. */
+  .workspace.singlepage>.left-rail{
+    position:static!important;
+    width:100%!important;
+    max-width:100%!important;
+    max-height:none!important;
+    overflow:visible!important;
+    display:block!important;
+    margin:0 0 8px!important;
+  }
+  .workspace.singlepage>.left-rail>.leagues-card,
+  .workspace.singlepage>.left-rail [data-league-card]{
+    display:none!important;
+  }
+  .workspace.singlepage>.left-rail>.rail-card{
+    width:100%!important;
+    max-width:100%!important;
+    margin:0 0 6px!important;
+    box-shadow:none!important;
+  }
+
+  .workspace-brand-card{
+    height:50px!important;
+    min-height:50px!important;
+    max-height:50px!important;
+    border:0!important;
+    border-bottom:1px solid var(--b46m-line)!important;
+    border-radius:0!important;
+    background:var(--b46m-bg)!important;
+    overflow:hidden!important;
+  }
+  .workspace-brand-row{
+    height:50px!important;
+    min-height:50px!important;
+    max-height:50px!important;
+    padding:0 4px!important;
+  }
+  .workspace-brand{
+    color:var(--b46m-text)!important;
+    font-size:22px!important;
+    letter-spacing:-1px!important;
+  }
+  .workspace-brand b{color:var(--b46m-green)!important;font-size:23px!important}
+  .workspace-brand-meta{display:none!important}
+
+  /* Search is the first working control below the compact brand. */
+  .workspace-stable-head{
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    margin:0 0 8px!important;
+    padding:0!important;
+    display:block!important;
+    background:transparent!important;
+    border:0!important;
+  }
+  .workspace-stable-copy{display:none!important}
+  .workspace-stable-toolbar-host,
+  .workspace-stable-toolbar-host .board-toolbar{
+    width:100%!important;
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    margin:0!important;
+  }
+  .workspace-stable-toolbar-host .search-box{
+    width:100%!important;
+    min-width:0!important;
+    height:42px!important;
+    border:1px solid var(--b46m-line)!important;
+    border-radius:12px!important;
+    background:var(--b46m-surface)!important;
+    box-shadow:none!important;
+  }
+  .workspace-stable-toolbar-host .search-box input{
+    width:100%!important;
+    height:40px!important;
+    min-width:0!important;
+    background:transparent!important;
+    color:var(--b46m-text)!important;
+    font-size:14px!important;
+  }
+
+  /* Main content is one clean column. */
+  .main-board,
+  .board-sections,
+  .live-stage-grid,
+  .workspace-panel,
+  .workspace-view,
+  .sp-live,
+  .sp-signal,
+  .sp-statistics{
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    height:auto!important;
+    max-height:none!important;
+    overflow:visible!important;
+  }
+  .live-stage-grid{display:block!important}
+  .live-stage-grid>.right-rail{display:none!important}
+
+  /* Shared card language: dark, restrained, data-first. */
+  .match-row,
+  .match-expanded,
+  .sp-stat-hero,
+  .sp-trend,
+  .fmb-market,
+  .rail-card,
+  .side-card,
+  .status-section{
+    border-color:var(--b46m-line)!important;
+    background:var(--b46m-surface)!important;
+    box-shadow:none!important;
+  }
+
+  /* Match rows: remove PC table feeling; readable stacked mobile card. */
+  .match-row{
+    box-sizing:border-box!important;
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) auto!important;
+    grid-auto-rows:auto!important;
+    gap:7px 10px!important;
+    width:100%!important;
+    min-width:0!important;
+    min-height:0!important;
+    margin:0 0 7px!important;
+    padding:10px!important;
+    border:1px solid var(--b46m-line)!important;
+    border-radius:var(--b46m-radius)!important;
+    background:var(--b46m-surface)!important;
+    overflow:hidden!important;
+  }
+  .match-row.active{
+    border-color:color-mix(in srgb,var(--b46m-green) 60%,var(--b46m-line))!important;
+    box-shadow:0 0 0 1px color-mix(in srgb,var(--b46m-green) 16%,transparent)!important;
+  }
+  .match-row .teams-cell{
+    grid-column:1!important;
+    grid-row:1!important;
+    min-width:0!important;
+    width:auto!important;
+    height:auto!important;
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    gap:4px!important;
+    padding:0!important;
+  }
+  .match-row .teams-cell>b{
+    min-width:0!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    white-space:nowrap!important;
+    color:var(--b46m-text)!important;
+    font-size:13px!important;
+    line-height:1.25!important;
+  }
+  .match-row .score-cell{
+    grid-column:2!important;
+    grid-row:1!important;
+    min-width:54px!important;
+    width:auto!important;
+    padding:0!important;
+    align-self:center!important;
+    text-align:right!important;
+  }
+  .match-row .score-cell>strong{font-size:19px!important;line-height:1!important;color:var(--b46m-text)!important}
+  .match-row .score-cell>small:not(.half-score){display:none!important}
+  .match-row .half-score{font-size:8px!important;color:var(--b46m-muted)!important}
+
+  /* Markets become compact chips/rows instead of desktop columns. */
+  .match-row .market-cell,
+  .match-row .signal-cell{
+    grid-row:auto!important;
+    min-width:0!important;
+    width:auto!important;
+    min-height:42px!important;
+    padding:7px 8px!important;
+    border:1px solid var(--b46m-line)!important;
+    border-radius:9px!important;
+    background:var(--b46m-surface-2)!important;
+    overflow:hidden!important;
+    text-align:center!important;
+  }
+  .match-row .market-cell{
+    grid-column:auto!important;
+    font-size:10px!important;
+  }
+  .match-row .signal-cell{
+    grid-column:1 / -1!important;
+    min-height:36px!important;
+  }
+  .match-row .market-cell::before,
+  .match-row .market-cell::after,
+  .match-row .signal-cell::before,
+  .match-row .signal-cell::after{display:none!important;content:none!important}
+
+  /* Expanded/event detail stays inside viewport. */
+  .match-expanded,
+  .fmb-panel,
+  .fmb-group,
+  .fmb-table-wrap,
+  .expand-flow-chart,
+  .b46-signal-flow-line-chart{
+    max-width:100%!important;
+    min-width:0!important;
+  }
+  .match-expanded{padding:8px!important;border-radius:var(--b46m-radius)!important}
+  .expand-flow-chart svg,
+  .b46-signal-flow-line-chart svg{max-width:100%!important;height:150px!important}
+
+  /* Full-market detail may swipe horizontally only inside its own table. */
+  .fmb-tabs,
+  .fmb-table-wrap,
+  .expand-book-tabs,
+  .expand-odds-table-wrap{
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    overscroll-behavior-x:contain!important;
+    -webkit-overflow-scrolling:touch!important;
+    scrollbar-width:none!important;
+  }
+  .fmb-tabs::-webkit-scrollbar,
+  .fmb-table-wrap::-webkit-scrollbar,
+  .expand-book-tabs::-webkit-scrollbar,
+  .expand-odds-table-wrap::-webkit-scrollbar{display:none!important}
+  .fmb-market table{min-width:330px!important}
+
+  /* Statistics: mobile card first; keep data itself untouched. */
+  .sp-kpis{
+    display:grid!important;
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:7px!important;
+  }
+  .sp-kpi{
+    min-width:0!important;
+    min-height:58px!important;
+    padding:9px!important;
+    border:1px solid var(--b46m-line)!important;
+    border-radius:10px!important;
+    background:var(--b46m-surface)!important;
+  }
+  .sp-kpi strong{font-size:16px!important;color:var(--b46m-text)!important}
+  .sp-kpi small{color:var(--b46m-muted)!important}
+  .sp-table-wrap,
+  .table-wrap{overflow-x:auto!important;-webkit-overflow-scrolling:touch!important}
+
+  /* Bottom nav is the only permanent mobile navigation. */
+  .mobile-nav,
+  .next-mobile-nav{display:none!important}
+  .b46-mobile-workspace-nav{
+    position:fixed!important;
+    left:0!important;
+    right:0!important;
+    bottom:0!important;
+    z-index:999!important;
+    display:grid!important;
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+    gap:0!important;
+    min-height:62px!important;
+    padding:5px 8px calc(5px + env(safe-area-inset-bottom,0px))!important;
+    border:0!important;
+    border-top:1px solid var(--b46m-line)!important;
+    border-radius:0!important;
+    background:rgba(5,8,7,.96)!important;
+    box-shadow:0 -8px 24px rgba(0,0,0,.30)!important;
+    backdrop-filter:blur(14px)!important;
+  }
+  .b46-mobile-workspace-nav button{
+    min-width:0!important;
+    min-height:50px!important;
+    padding:4px 4px!important;
+    border:0!important;
+    border-radius:10px!important;
+    background:transparent!important;
+    color:var(--b46m-muted)!important;
+    font-size:10px!important;
+    font-weight:800!important;
+    line-height:1.1!important;
+  }
+  .b46-mobile-workspace-nav button.active{
+    background:color-mix(in srgb,var(--b46m-green) 10%,transparent)!important;
+    color:var(--b46m-green)!important;
+  }
+  .b46-mobile-workspace-nav button .b46-mobile-nav-icon{
+    width:19px!important;
+    height:19px!important;
+    flex:0 0 19px!important;
+    opacity:.72!important;
+  }
+  .b46-mobile-workspace-nav button.active .b46-mobile-nav-icon{opacity:1!important}
+
+  /* Never let the page itself become wider than the viewport. */
+  body *{max-width:100%}
+  img,svg,canvas,video{height:auto}
+}
+
+@media (max-width:430px){
+  .dash-shell,.shell,.owner-shell{padding-left:7px!important;padding-right:7px!important}
+  .match-row{padding:9px!important;gap:6px 8px!important}
+  .match-row .teams-cell>b{font-size:12px!important}
+  .match-row .score-cell>strong{font-size:18px!important}
+}
+
+@media (max-width:360px){
+  .dash-shell,.shell,.owner-shell{padding-left:5px!important;padding-right:5px!important}
+  .match-row{padding:8px!important}
+  .match-row .market-cell{padding:6px!important;font-size:9px!important}
+  .b46-mobile-workspace-nav{padding-left:5px!important;padding-right:5px!important}
+}
