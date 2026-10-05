@@ -1,23 +1,27 @@
-name: Ball46 Betsson mapping inspect
+name: Ball46 Betsson production deploy final
 on:
   push:
     branches:
       - ops/ball46-betsson-affiliate-20261005
 jobs:
-  inspect:
+  deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
+    env:
+      CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
     steps:
-      - name: Inspect live renderer mapping
+      - uses: actions/checkout@v4
+      - name: Add Betsson affiliate URL and logo to current production
         shell: bash
         run: |
           set -euo pipefail
-          curl -fsS -L --retry 4 --max-time 30 "https://ball46-production.mccarey-supon.workers.dev/full-market-bookmaker-343.js?inspect=$GITHUB_RUN_ID" -o /tmp/fmb.js
           python3 - <<'PY'
-          s=open('/tmp/fmb.js').read()
-          for key in ['AFFILIATE_URLS','BOOK_LOGO_URLS','betsson','Betsson','record.betsson.com','raw.githubusercontent.com']:
-              print('FLAG',key,key in s)
-          for needle in ['AFFILIATE_URLS','BOOK_LOGO_URLS','betsson']:
-              i=s.lower().find(needle.lower())
-              if i>=0: print('SNIP',needle,repr(s[max(0,i-250):i+700]))
+          p='.github/scripts/ball46_betsson_affiliate_20261005.py'
+          s=open(p).read()
+          old='if "[\'betsson\',\'Betsson\']" in text or \'B46_BETSSON_AFFILIATE_20261005\' in text:'
+          new='if AFF in text and LOGO in text and \'B46_BETSSON_AFFILIATE_20261005\' in text:'
+          if old not in s: raise SystemExit('LOCAL_GUARD_ANCHOR_MISSING')
+          open(p,'w').write(s.replace(old,new,1))
           PY
+          python3 .github/scripts/ball46_betsson_affiliate_20261005.py
