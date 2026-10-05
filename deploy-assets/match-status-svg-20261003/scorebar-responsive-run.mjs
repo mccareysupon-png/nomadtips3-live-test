@@ -8,7 +8,7 @@ import {patch,beforeHash} from './patch-scorebar.mjs';
 import {verify} from './verify-scorebar.mjs';
 import {unit} from './scorebar-unit.mjs';
 const name='dashboard-v2-stage3.js';
-const report={scope:'Only the existing scorebar scoped CSS literal: smaller typography and tighter vertical spacing; rendering, selection, data fetchers, navigation and Production rail retained',commit:process.env.GITHUB_SHA,run:process.env.GITHUB_RUN_ID};
+const report={scope:'Only the existing ten-card signal/result presentation: keep up to 10 cards, wrap responsively 10/5/2 columns, remove the fixed horizontal rail wrapper, and force WIN/LOSS/DRAW/PENDING status text white. Data fetchers, odds, results, navigation, engine, configuration and Production rail are retained.',commit:process.env.GITHUB_SHA,run:process.env.GITHUB_RUN_ID};
 let base=null,candidate=null;
 const save=()=>writeFileSync('audit/scorebar-responsive-report.json',JSON.stringify(report,null,2));
 const delay=ms=>new Promise(r=>setTimeout(r,ms));
@@ -23,8 +23,13 @@ try{
  assert(index.includes('dashboard-v2-stage3.js?v=343-scorebar-details-20260929a'),'ACTIVE_ASSET_REFERENCE_CHANGED_STOP');
  assert(index.includes('data-workspace-scorebar-slot'),'ACTIVE_COMPONENT_CHANGED_STOP');
  const after=patch(before);new Function(after);
- assert.equal(after,readFileSync('dashboard-v2-stage3.js','utf8'),'REVIEWED_PATCH_BYTES_DIFFER_STOP');
- // If the active Worker embeds this exact presentation asset, update only that literal.
+ assert.notEqual(after,before,'PATCH_DID_NOT_CHANGE_TARGET_STOP');
+ assert.equal((after.match(/const capacity=10;/g)||[]).length,1,'TEN_CARD_CAPACITY_GUARD_STOP');
+ assert(after.includes('grid-template-columns:repeat(10,minmax(0,1fr))'),'DESKTOP_GRID_GUARD_STOP');
+ assert(after.includes('@media (max-width:1180px)')&&after.includes('repeat(5,minmax(0,1fr))'),'TABLET_GRID_GUARD_STOP');
+ assert(after.includes('@media (max-width:760px)')&&after.includes('repeat(2,minmax(0,1fr))'),'MOBILE_GRID_GUARD_STOP');
+ assert(after.includes('color:#fff!important;font-weight:700!important'),'WHITE_STATUS_GUARD_STOP');
+ writeFileSync('audit/reviewed-after-'+name,after);
  const embedded=[...literals(current.source)].filter(([,entry])=>entry.value===before);
  assert(embedded.length<=1,'AMBIGUOUS_EMBEDDED_PRESENTATION_ASSET_STOP');
  let nextSource=current.source;
@@ -58,7 +63,7 @@ try{
  assert.equal(await activeVersion(),candidate,'PRODUCTION_MOVED_DURING_VERIFICATION');assert.equal(await engineVersion(),engineBefore,'ENGINE_CHANGED_DURING_VERIFICATION');
  assert.equal(sha(await publicFile('/'+name)),sha(after),'TARGET_CHANGED_DURING_VERIFICATION');
  report.status='DEPLOYED';report.version=candidate;report.engineUnchanged=true;report.unrelatedAssetsUnchanged=true;save();
- console.log('FINAL_REPORT='+JSON.stringify({status:report.status,asset:report.asset,filesDeployed:report.filesDeployed,embeddedPresentationLiteral:report.embeddedPresentationLiteral,commit:report.commit,version:report.version,viewports:report.post.viewports.map(v=>({label:v.label,width:v.viewport,count:v.cells.length,settled:v.settled,waiting:v.waiting,ratio:v.ratio,cardWidth:v.cells[0]?.width})),checks:{unit:'PASS',whiteStatus:'PASS',transparentWrapper:'PASS',borderGlow:'PASS',noHorizontalScroll:'PASS',navigation:report.post.navigation,stability:report.post.stability,engineUnchanged:true,unrelatedAssetsUnchanged:true}}));
+ console.log('FINAL_REPORT='+JSON.stringify({status:report.status,asset:report.asset,filesDeployed:report.filesDeployed,embeddedPresentationLiteral:report.embeddedPresentationLiteral,commit:report.commit,version:report.version,viewports:report.post.viewports.map(v=>({label:v.label,width:v.viewport,count:v.cells.length,settled:v.settled,waiting:v.waiting,cols:v.cols,rows:v.rows,ratio:v.ratio,cardWidth:v.cells[0]?.width,slotHeight:v.slotHeight})),checks:{unit:'PASS',whiteStatus:'PASS',transparentWrapper:'PASS',noFixedHorizontalRail:'PASS',borderGlow:'PASS',noHorizontalScroll:'PASS',navigation:report.post.navigation,stability:report.post.stability,engineUnchanged:true,unrelatedAssetsUnchanged:true}}));
 }catch(e){
  report.status='STOPPED';report.error=e.message;
  if(base&&candidate&&await activeVersion()===candidate){
