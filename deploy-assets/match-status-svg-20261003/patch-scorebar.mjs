@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-export const beforeHash='dc92feebce8b4c4a55bfeab7f36c9b39eee29dd708ecec83a635a6c6dce91d55';
+export const beforeHash='c22c9c5899210fef66b194964bdc62799cb25c25028493747366099320b68d97';
 export function patch(source){
  const anchor="const style=document.createElement('style');style.id='b46-scorebar-responsive-style';style.textContent=";
  const start=source.indexOf(anchor)+anchor.length,end=source.indexOf(".replaceAll('[data-workspace-scorebar-slot]'",start);
