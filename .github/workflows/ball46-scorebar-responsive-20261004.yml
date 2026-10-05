@@ -21,6 +21,12 @@ jobs:
         run: |
           npm ci --ignore-scripts --no-audit --no-fund
           npx playwright install --with-deps chromium
+      - name: Capture exact current Production scorebar CSS
+        working-directory: deploy-assets/match-status-svg-20261003
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: node current-scorebar-css-scout.mjs
       - name: Verify current Production source, test responsive cards, deploy through existing Production rail
         working-directory: deploy-assets/match-status-svg-20261003
         env:
@@ -33,4 +39,3 @@ jobs:
           name: ball46-scorebar-responsive-${{ github.run_id }}
           path: deploy-assets/match-status-svg-20261003/audit/
           retention-days: 7
-# current-production source scout retry
