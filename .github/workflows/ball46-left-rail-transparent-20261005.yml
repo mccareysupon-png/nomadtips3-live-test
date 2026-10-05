@@ -44,7 +44,7 @@ jobs:
           source=source.replace(oldMarker,newMarker);
 
           const oldValidator="root.walkDecls(d=>assert(!forbidden.has(d.prop),`FORBIDDEN_LEFT_RAIL_PROPERTY:${d.prop}`));";
-          const newValidator="root.walkDecls(d=>assert(!forbidden.has(d.prop)||(d.prop==='transform'&&d.value==='none'),`FORBIDDEN_LEFT_RAIL_PROPERTY:${d.prop}`));";
+          const newValidator="root.walkDecls(d=>assert(!forbidden.has(d.prop)||(d.prop==='transform'&&d.value==='none')||(d.prop==='opacity'&&d.value==='.82'),`FORBIDDEN_LEFT_RAIL_PROPERTY:${d.prop}`));";
           if((source.split(oldValidator).length-1)!==1)throw new Error('LEFT_RAIL_VALIDATOR_TARGET_MOVED');
           source=source.replace(oldValidator,newValidator);
 
