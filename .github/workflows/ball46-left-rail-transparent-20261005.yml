@@ -46,7 +46,7 @@ jobs:
           const patchClose='\n`;\n\nfunction validatePatch(){';
           const extraCss=[
             '',
-            '/* B46_LEFT_RAIL_BADGES_TRANSPARENT_20261005: remove remaining numeric badge and active-row surfaces; keep icon masks intact */',
+            '/* B46_LEFT_RAIL_BADGES_TRANSPARENT_20261005: remove remaining numeric badge and active-row surfaces; keep icons intact */',
             'body .workspace.singlepage > .left-rail > :not(.workspace-brand-card),',
             'body .workspace.singlepage > .left-rail :is(.rail-card,.workspace-stats-card,.workspace-nav-grid,.filter,.league-filter,.workspace-nav-row) {',
             '  background-color: transparent !important;',
