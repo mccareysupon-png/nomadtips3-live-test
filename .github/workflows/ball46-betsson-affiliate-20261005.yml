@@ -1,42 +1,73 @@
-name: Ball46 Betsson route inspect
+name: Ball46 Betsson exact-route deploy
 on:
   push:
     branches:
       - ops/ball46-betsson-affiliate-20261005
 jobs:
-  inspect:
+  deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     env:
       CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
     steps:
-      - name: Read current production routing only
+      - name: Patch current production exact route and verify
         shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PY'
-          import os,json,base64,urllib.request
-          a=os.environ['CF_ACCOUNT'];t=os.environ['CF_TOKEN'];api=f'https://api.cloudflare.com/client/v4/accounts/{a}';h={'Authorization':f'Bearer {t}','Accept':'application/json'}
+          import os,json,base64,urllib.request,subprocess,time,pathlib,hashlib
+          A=os.environ['CF_ACCOUNT'];T=os.environ['CF_TOKEN'];SCRIPT='ball46-production';API=f'https://api.cloudflare.com/client/v4/accounts/{A}';H={'Authorization':f'Bearer {T}','Accept':'application/json'}
+          AFF='https://www.betsson.mx/apuestas-deportivas/futbol/copa-libertadores/copa-libertadores?from=m-W7IdPQSGxx3x_byoiPYGNd7ZgqdRLk-AV3462274676&affcode=AV3462274676&utm_medium=Affiliates&utm_source=10685357&tab=liveAndUpcoming'
+          LOGO='https://raw.githubusercontent.com/mccareysupon-png/nomadtips3-live-test/ops/ball46-betsson-affiliate-20261005/assets/affiliate/betsson-logo.png'
+          R=pathlib.Path('/tmp/b46-betsson-exact');R.mkdir(exist_ok=True)
           def get(u):
-            with urllib.request.urlopen(urllib.request.Request(u,headers=h),timeout=30) as r:return json.load(r)
-          d=get(f'{api}/workers/scripts/ball46-production/deployments')['result']['deployments'][0]
-          active=[v for v in (d.get('versions') or []) if float(v.get('percentage',0))>=99.999]
-          assert len(active)==1,active
-          vid=active[0]['version_id'];v=get(f'{api}/workers/workers/ball46-production/versions/{vid}?include=modules')['result']
-          m=[x for x in (v.get('modules') or []) if x.get('name')=='index.js' and x.get('content_base64')];assert len(m)==1
-          s=base64.b64decode(m[0]['content_base64']).decode()
-          print('ACTIVE_VERSION',vid)
-          for needle in ['full-market-bookmaker-343.js','FULL_MARKET','ASSETS.fetch','env.ASSETS','pathname']:
-              print('COUNT',needle,s.count(needle))
-              start=0
-              for n in range(min(s.count(needle),8)):
-                  i=s.find(needle,start)
-                  if i<0:break
-                  print('SNIP',needle,n,repr(s[max(0,i-450):i+900]))
-                  start=i+len(needle)
-          PY
-          curl -fsS -L --retry 3 --max-time 30 "https://ball46-production.mccarey-supon.workers.dev/full-market-bookmaker-343.js?routeinspect=$GITHUB_RUN_ID" -o /tmp/fmb.js
-          python3 - <<'PY'
-          s=open('/tmp/fmb.js').read();print('LIVE_JS_LEN',len(s));print('HAS_AFFILIATE_URLS','AFFILIATE_URLS' in s);print('HAS_BOOK_LOGO_URLS','BOOK_LOGO_URLS' in s)
+            with urllib.request.urlopen(urllib.request.Request(u,headers=H),timeout=30) as r:return json.load(r)
+          def fetch(u):
+            with urllib.request.urlopen(urllib.request.Request(u,headers={'Cache-Control':'no-cache','User-Agent':'Ball46-Deploy-Guard'}),timeout=35) as r:return r.read()
+          d=get(f'{API}/workers/scripts/{SCRIPT}/deployments')['result']['deployments'][0]; active=[v for v in (d.get('versions') or []) if float(v.get('percentage',0))>=99.999]
+          if len(active)!=1: raise SystemExit('ACTIVE_VERSION_AMBIGUOUS')
+          pre=str(active[0]['version_id']);v=get(f'{API}/workers/workers/{SCRIPT}/versions/{pre}?include=modules')['result'];mods=v.get('modules') or [];m=[x for x in mods if x.get('name')=='index.js' and x.get('content_base64')]
+          if len(m)!=1: raise SystemExit('INDEX_MODULE_MISSING')
+          src=base64.b64decode(m[0]['content_base64']).decode(); live=fetch('https://ball46-production.mccarey-supon.workers.dev/full-market-bookmaker-343.js?pre='+str(time.time_ns())).decode()
+          for mark in ('AFFILIATE_URLS','BOOK_LOGO_URLS',"['betsson','Betsson']",'function affiliatePriceHtml(v,slug)','function bookLabelHtml(b)'):
+            if mark not in live: raise SystemExit('LIVE_MARKER_MISSING:'+mark)
+          if AFF in live and LOGO in live:
+            print('BETSSON_ALREADY_LIVE'); raise SystemExit(0)
+          helper='''\n/* B46_BETSSON_AFFILIATE_20261005 */\nconst __B46_BETSSON_AFF__='''+json.dumps(AFF)+''';\nconst __B46_BETSSON_LOGO__='''+json.dumps(LOGO)+''';\nasync function __b46BetssonBookmakerAsset(request,env){\n  const response=await env.ASSETS.fetch(request);\n  if(!response.ok)return response;\n  let source=await response.text();\n  function addMap(name,value){\n    const re=new RegExp('(const '+name+'=Object\\\\.freeze\\\\(\\\\{)([\\\\s\\\\S]*?)(\\\\}\\\\);)');\n    const m=source.match(re); if(!m)throw new Error(name+'_MAP_MISSING');\n    if(m[2].includes("'betsson'"))return;\n    let body=m[2]; if(body.trim()&&!body.trim().endsWith(','))body+=','; body+="\\n  'betsson':"+JSON.stringify(value)+"\\n";\n    source=source.replace(re,m[1]+body+m[3]);\n  }\n  addMap('AFFILIATE_URLS',__B46_BETSSON_AFF__);\n  addMap('BOOK_LOGO_URLS',__B46_BETSSON_LOGO__);\n  const h=new Headers(response.headers); h.set('cache-control','no-store, no-cache, must-revalidate, max-age=0'); h.delete('content-length'); h.set('x-ball46-betsson','20261005');\n  return new Response(source,{status:response.status,statusText:response.statusText,headers:h});\n}\n'''
+          anchor='var index_default = {'
+          if anchor not in src: raise SystemExit('INDEX_DEFAULT_ANCHOR_MISSING')
+          route='    if (request.method === "GET" && (url.pathname === "/expanded-match-343.js"'
+          if route not in src: raise SystemExit('ASSET_ROUTE_ANCHOR_MISSING')
+          if 'B46_BETSSON_AFFILIATE_20261005' in src: raise SystemExit('CURRENT_SOURCE_ALREADY_PATCHED_UNEXPECTED')
+          patched=src.replace(anchor,helper+'\n'+anchor,1)
+          patched=patched.replace(route,'    if (request.method === "GET" && url.pathname === "/full-market-bookmaker-343.js") return __b46BetssonBookmakerAsset(request, env);\n'+route,1)
+          (R/'index.js').write_text(patched)
+          meta={'main_module':'index.js','keep_assets':True,'compatibility_date':v.get('compatibility_date'),'bindings':v.get('bindings') or []}
+          for k in ('observability','placement','limits','tail_consumers','logpush'):
+            if v.get(k) is not None:meta[k]=v[k]
+          (R/'metadata.json').write_text(json.dumps(meta,separators=(',',':')))
+          subprocess.run(['node','--check',str(R/'index.js')],check=True)
+          print('PREDEPLOY_LOCK_OK',pre,'src_sha',hashlib.sha256(src.encode()).hexdigest())
+          env=os.environ.copy();env['CLOUDFLARE_ACCOUNT_ID']=A;env['CLOUDFLARE_API_TOKEN']=T
+          deployed=False
+          try:
+            raw=subprocess.check_output(['curl','-fsS','-X','PUT',f'{API}/workers/scripts/{SCRIPT}','-H',f'Authorization: Bearer {T}','-F',f'metadata=@{R}/metadata.json;type=application/json','-F',f'index.js=@{R}/index.js;type=application/javascript+module'],env=env)
+            j=json.loads(raw)
+            if j.get('success') is not True: raise RuntimeError('UPLOAD_FAIL '+json.dumps(j)[:800])
+            deployed=True; print('UPLOAD_OK');time.sleep(5)
+            out=fetch('https://ball46-production.mccarey-supon.workers.dev/full-market-bookmaker-343.js?post='+str(time.time_ns())).decode()
+            for mark in (AFF,LOGO,"['betsson','Betsson']",'AFFILIATE_URLS','BOOK_LOGO_URLS'):
+              if mark not in out: raise RuntimeError('POST_VERIFY_MISSING:'+mark[:80])
+            png=fetch(LOGO)
+            if not png.startswith(b'\x89PNG\r\n\x1a\n'): raise RuntimeError('LOGO_NOT_PNG')
+            for ep in ('board','signals','statistics'):
+              data=json.loads(fetch(f'https://www.ball46.com/api/engine/{ep}?verify={time.time_ns()}'))
+              if data.get('ok') is not True: raise RuntimeError(ep+'_NOT_OK')
+            print('BETSSON_PRODUCTION_VERIFY_PASS')
+          except Exception:
+            if deployed:
+              print('ROLLBACK_TO',pre)
+              subprocess.run(['npx','--yes','wrangler@4.92.0','versions','deploy',f'{pre}@100%','--name',SCRIPT,'-y','--message','Auto rollback Betsson exact-route'],env=env,check=False)
+            raise
           PY
