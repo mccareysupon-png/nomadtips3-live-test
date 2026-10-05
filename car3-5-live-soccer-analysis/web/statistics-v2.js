@@ -1,7 +1,8 @@
 const $=id=>document.getElementById(id);
 const DEFAULT_WORKER='https://nomadtips3-car31-goaloo.mccarey-supon.workers.dev';
 let runtime={liveUrl:`${DEFAULT_WORKER}/live`,healthUrl:`${DEFAULT_WORKER}/health`,refreshSeconds:15};
-let historyPage=1,historyPages=1,historyRange='ALL',trend=[],historyRefreshing=false;
+const HISTORY_CACHE_PREFIX='ball46:last-good-history:v1:';
+let historyPage=1,historyPages=1,historyRange='ALL',trend=[],historyRefreshing=false,emptyHistoryStreak=0;
 
 const esc=v=>String(v??'—').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const num=(v,f=0)=>Number.isFinite(Number(v))?Number(v):f;
@@ -218,6 +219,17 @@ function renderHistory(data){
   setFeed(true,'Online');
 }
 
+function historyCacheKey(){return `${HISTORY_CACHE_PREFIX}${historyRange}:${historyPage}`;}
+function hydrateLastGoodHistory(){
+  try{
+    const cached=JSON.parse(localStorage.getItem(historyCacheKey())||'null');
+    if(!cached?.data)return false;
+    renderHistory(cached.data);
+    if($('historyMeta'))$('historyMeta').textContent+=` · cached ${new Date(cached.savedAt||0).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}`;
+    return true;
+  }catch{return false;}
+}
+
 async function refreshHistory(){
   if(historyRefreshing)return;
   historyRefreshing=true;
@@ -225,10 +237,18 @@ async function refreshHistory(){
     const url=`${workerBase()}/history?page=${historyPage}&limit=25&range=${encodeURIComponent(historyRange)}&t=${Date.now()}`;
     const data=await json(url);
     if(data.ok===false)throw new Error(data.error||'History unavailable');
+    const total=num(data.total),records=Array.isArray(data.records)?data.records:[];
+    if(total===0&&records.length===0&&$('historyBody')?.querySelector('tr')&&!/Loading statistics/i.test($('historyBody').textContent||'')&&emptyHistoryStreak<1){
+      emptyHistoryStreak++;
+      setFeed(false,'Rechecking');
+      return;
+    }
+    emptyHistoryStreak=0;
     renderHistory(data);
+    try{localStorage.setItem(historyCacheKey(),JSON.stringify({savedAt:Date.now(),data}));}catch{}
   }catch(error){
     setFeed(false,'Reconnecting');
-    $('historyBody').innerHTML='<tr><td colspan="12">Statistics are temporarily unavailable. Automatic retry is active.</td></tr>';
+    if(!hydrateLastGoodHistory()&&$('historyMeta'))$('historyMeta').textContent=`${historyRange} · retrying live statistics`;
     console.warn('Statistics refresh failed',error);
   }finally{historyRefreshing=false;}
 }
@@ -242,6 +262,7 @@ async function init(){
     document.querySelectorAll('#historyRanges [data-range]').forEach(item=>item.classList.toggle('active',item===button));
     refreshHistory();
   }));
+  hydrateLastGoodHistory();
   await refreshHistory();
   setInterval(refreshHistory,30000);
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshHistory();});
