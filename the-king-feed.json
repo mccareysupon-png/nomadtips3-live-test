@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-10-05T07:10:50Z",
+  "updated_at": "2026-10-05T16:09:43Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -1724,8 +1724,8 @@
       "edge": 32.9,
       "ev": 0.6877,
       "required_confidence": 0.58,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "0-1",
       "locked_at": "2026-10-05T02:26:29Z",
       "source_url": "https://www.goaloo.com/football/azadegan-league-havadar-sc-vs-pars-jonoubi-jam/h2h-3089248",
       "summary_url": "https://www.goaloo.com/football/azadegan-league-havadar-sc-vs-pars-jonoubi-jam/summary-3089248",
@@ -1785,7 +1785,12 @@
         "away_recent": 8,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-05T16:09:43Z"
     },
     {
       "id": "0bfd3cdce46de015-AH-HOME-m0p0",
@@ -2064,8 +2069,8 @@
       "edge": 11.1,
       "ev": 0.1182,
       "required_confidence": 0.6,
-      "result": "PENDING",
-      "ft": null,
+      "result": "WIN",
+      "ft": "2-1",
       "locked_at": "2026-10-05T02:26:25Z",
       "source_url": "https://www.goaloo.com/football/paraguayan-division-3-silvio-pettirossi-vs-cristobal-colon-jas/h2h-3099075",
       "summary_url": "https://www.goaloo.com/football/paraguayan-division-3-silvio-pettirossi-vs-cristobal-colon-jas/summary-3099075",
@@ -2125,7 +2130,12 @@
         "away_recent": 10,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": 1.0,
+      "profit": 70.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-05T16:09:43Z"
     },
     {
       "id": "bd707464413be167-AH-HOME-m0p0",
@@ -2574,8 +2584,8 @@
       "edge": 8.7,
       "ev": 0.1096,
       "required_confidence": 0.6,
-      "result": "PENDING",
-      "ft": null,
+      "result": "WIN",
+      "ft": "1-0",
       "locked_at": "2026-10-05T02:26:22Z",
       "source_url": "https://www.goaloo.com/football/serbia-prva-liga-semendrija-1924-vs-fk-vozdovac-beograd/h2h-3050281",
       "summary_url": "https://www.goaloo.com/football/serbia-prva-liga-semendrija-1924-vs-fk-vozdovac-beograd/summary-3050281",
@@ -2635,7 +2645,12 @@
         "away_recent": 10,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": 1.0,
+      "profit": 82.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-05T16:09:43Z"
     },
     {
       "id": "22f56ed0c40450b8-OU-OVER-2p25",
@@ -195018,6 +195033,276 @@
       "settlement_source": "goaloo-bf_us-direct-index",
       "goaloo_terminal_state": -1,
       "settled_at": "2026-10-05T01:01:56Z"
+    },
+    {
+      "id": "3da1266923c5d5a4-AH-HOME-m0p0",
+      "goaloo_id": "3089248",
+      "date": "2026-10-05",
+      "kickoff": "2026-10-05 13:30:00",
+      "league": "Azadegan League",
+      "home": "Havadar SC",
+      "away": "Pars Jonoubi Jam",
+      "market": "AH",
+      "selection": "HOME",
+      "line": -0.0,
+      "pick": "Havadar SC -0",
+      "side": "home",
+      "odds": 2.55,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.6886,
+      "model_probability": 0.6886,
+      "market_fair_probability": 0.3593,
+      "market_edge": 0.3293,
+      "edge": 32.9,
+      "ev": 0.6877,
+      "required_confidence": 0.58,
+      "result": "LOSS",
+      "ft": "0-1",
+      "locked_at": "2026-10-05T02:26:29Z",
+      "source_url": "https://www.goaloo.com/football/azadegan-league-havadar-sc-vs-pars-jonoubi-jam/h2h-3089248",
+      "summary_url": "https://www.goaloo.com/football/azadegan-league-havadar-sc-vs-pars-jonoubi-jam/summary-3089248",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 1.789,
+        "lambda_away": 0.941,
+        "home_win": 0.5948,
+        "draw": 0.2485,
+        "away_win": 0.1567,
+        "h2h_adjustment": -0.0025,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.387,
+          "gd_edge": 0.5109,
+          "clean_sheet_edge": 0.1756,
+          "failed_to_score_edge": 0.722,
+          "bounded_adjustment": 0.0328,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 9,
+        "away_recent": 8,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-05T16:09:43Z"
+    },
+    {
+      "id": "d13fa8777bb85321-AH-HOME-m0p25",
+      "goaloo_id": "3099075",
+      "date": "2026-10-05",
+      "kickoff": "2026-10-05 13:00:00",
+      "league": "Paraguayan Division 3",
+      "home": "Silvio Pettirossi",
+      "away": "Cristobal Colon JAS",
+      "market": "AH",
+      "selection": "HOME",
+      "line": -0.25,
+      "pick": "Silvio Pettirossi -0.25",
+      "side": "home",
+      "odds": 1.7,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.6481,
+      "model_probability": 0.6481,
+      "market_fair_probability": 0.5368,
+      "market_edge": 0.1113,
+      "edge": 11.1,
+      "ev": 0.1182,
+      "required_confidence": 0.6,
+      "result": "WIN",
+      "ft": "2-1",
+      "locked_at": "2026-10-05T02:26:25Z",
+      "source_url": "https://www.goaloo.com/football/paraguayan-division-3-silvio-pettirossi-vs-cristobal-colon-jas/h2h-3099075",
+      "summary_url": "https://www.goaloo.com/football/paraguayan-division-3-silvio-pettirossi-vs-cristobal-colon-jas/summary-3099075",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 2.109,
+        "lambda_away": 1.117,
+        "home_win": 0.6141,
+        "draw": 0.2205,
+        "away_win": 0.1654,
+        "h2h_adjustment": -0.0125,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.4618,
+          "gd_edge": 0.6265,
+          "clean_sheet_edge": 0.2341,
+          "failed_to_score_edge": 0.0732,
+          "bounded_adjustment": 0.0337,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 9,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": 1.0,
+      "profit": 70.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-05T16:09:43Z"
+    },
+    {
+      "id": "8c896a3200322778-OU-UNDER-2p5",
+      "goaloo_id": "3050281",
+      "date": "2026-10-05",
+      "kickoff": "2026-10-05 13:00:00",
+      "league": "Serbia Prva Liga",
+      "home": "Semendrija 1924",
+      "away": "FK Vozdovac Beograd",
+      "market": "OU",
+      "selection": "UNDER",
+      "line": 2.5,
+      "pick": "Under 2.5",
+      "side": null,
+      "odds": 1.82,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.6097,
+      "model_probability": 0.6097,
+      "market_fair_probability": 0.5223,
+      "market_edge": 0.0874,
+      "edge": 8.7,
+      "ev": 0.1096,
+      "required_confidence": 0.6,
+      "result": "WIN",
+      "ft": "1-0",
+      "locked_at": "2026-10-05T02:26:22Z",
+      "source_url": "https://www.goaloo.com/football/serbia-prva-liga-semendrija-1924-vs-fk-vozdovac-beograd/h2h-3050281",
+      "summary_url": "https://www.goaloo.com/football/serbia-prva-liga-semendrija-1924-vs-fk-vozdovac-beograd/summary-3050281",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 1.455,
+        "lambda_away": 0.794,
+        "home_win": 0.537,
+        "draw": 0.287,
+        "away_win": 0.176,
+        "h2h_adjustment": 0.0,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.1447,
+          "gd_edge": 0.4209,
+          "clean_sheet_edge": 0.1024,
+          "failed_to_score_edge": 0.3024,
+          "bounded_adjustment": 0.0189,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": 1.0,
+      "profit": 82.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-05T16:09:43Z"
     }
   ],
   "note": "Automated Full-Time Winner First feed. Supplemental markets remain unpublished.",
