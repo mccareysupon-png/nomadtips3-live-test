@@ -12,6 +12,11 @@ export function patch(css){
 
 /* ${marker}: presentation only. Keep all 10 existing signal/result cards, distribute them across the available viewport, remove the horizontal scrolling rail, and keep status labels readable. */
 html body [data-workspace-scorebar-slot]{
+  display:block!important;
+  visibility:visible!important;
+  opacity:1!important;
+  width:100%!important;
+  max-width:100%!important;
   height:auto!important;
   min-height:0!important;
   max-height:none!important;
@@ -58,7 +63,8 @@ html body [data-workspace-scorebar-slot] .workspace-scorebar-cell .workspace-sco
   html body [data-workspace-scorebar-slot] .workspace-scorebar-grid{display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;grid-auto-flow:row!important}
 }
 @media(max-width:760px){
-  html body [data-workspace-scorebar-slot] .workspace-scorebar-grid{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;grid-auto-flow:row!important;gap:7px!important}
+  html body [data-workspace-scorebar-slot]{display:block!important;width:100%!important;max-width:100%!important;height:auto!important;min-height:0!important;max-height:none!important;overflow:visible!important}
+  html body [data-workspace-scorebar-slot] .workspace-scorebar-grid{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;grid-auto-flow:row!important;gap:7px!important;width:100%!important;max-width:100%!important;overflow:visible!important}
 }
 `;
  const out=css+override;
