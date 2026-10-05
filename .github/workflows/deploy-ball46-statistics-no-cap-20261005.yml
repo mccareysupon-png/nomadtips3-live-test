@@ -1,0 +1,42 @@
+name: Deploy Ball46 Statistics No Total Cap 20261005
+on:
+  push:
+    branches: [work/ball46-daily-performance-20261005]
+    paths:
+      - .github/workflows/deploy-ball46-statistics-no-cap-20261005.yml
+      - deploy-assets/statistics-no-cap-20261005/**
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ball46-production-daily-performance
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    concurrency:
+      group: ball46-engine-production
+      cancel-in-progress: false
+    defaults:
+      run:
+        working-directory: deploy-assets/statistics-no-cap-20261005
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-save --package-lock=false acorn@8
+      - name: Deploy Exact Current Engine and Frontend Only
+        run: node deploy.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-statistics-no-cap-audit
+          path: |
+            deploy-assets/statistics-no-cap-20261005/audit-statistics
+            deploy-assets/statistics-no-cap-20261005/audit
+          retention-days: 30
