@@ -2,9 +2,6 @@ name: Deploy Ball46 Daily Performance 20261005
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - work/ball46-daily-performance-20261005
 
 permissions:
   contents: read
@@ -34,10 +31,6 @@ jobs:
 
       - name: Install parser dependency only
         run: npm install --no-save --ignore-scripts acorn@8
-
-      - name: Probe Statistics odds shape
-        working-directory: deploy-assets/daily-performance-20261005
-        run: node probe-stats-shape.mjs
 
       - name: Guarded current-Production deploy
         working-directory: deploy-assets/daily-performance-20261005
