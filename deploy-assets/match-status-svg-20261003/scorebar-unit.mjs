@@ -13,27 +13,27 @@ export async function unit(source){
  const invalid=[row('UNKNOWN',null,200),row('LIVE','WIN',201),row('PENDING','DRAW',202),row('',null,203),{...row('PENDING',null,204),settledAt:1}];
  const report=[];
  try{
-  for(const [label,width,available,done,pending,expected] of [
-   ['desktop-full',2400,2200,settled,waiting,[6,4]],
-   ['tablet-full',1100,1000,settled,waiting,[3,2]],
-   ['mobile-full',740,600,settled,waiting,[2,1]],
-   ['narrow-mobile',390,374,settled,waiting,[1,1]],
-   ['short-waiting',2400,2200,settled,waiting.slice(0,1),[2,1]],
-   ['only-settled',2400,2200,settled,[],[10,0]],
-   ['only-live',740,600,[],waiting,[0,3]],
-   ['empty',740,600,[],[],[0,0]],
-   ['ambiguous-excluded',2400,2200,[row('SETTLED','UNKNOWN',205)],[...invalid],[0,0]]
+  for(const [label,width,available,done,pending,expected,expectedRows] of [
+   ['desktop-full',2400,2200,settled,waiting,[6,4],1],
+   ['tablet-full',1100,1000,settled,waiting,[6,4],2],
+   ['mobile-full',740,600,settled,waiting,[6,4],5],
+   ['narrow-mobile',390,374,settled,waiting,[6,4],5],
+   ['short-waiting',2400,2200,settled,waiting.slice(0,1),[2,1],1],
+   ['only-settled',2400,2200,settled,[],[10,0],1],
+   ['only-live',740,600,[],waiting,[0,8],4],
+   ['empty',740,600,[],[],[0,0],0],
+   ['ambiguous-excluded',2400,2200,[row('SETTLED','UNKNOWN',205)],[...invalid],[0,0],0]
   ]){
    const page=await browser.newPage();
    await page.setViewportSize({width,height:700});
    await page.setContent('<section data-workspace-scorebar-slot style="width:'+available+'px"></section>');
    await page.addStyleTag({content:'body{margin:0;width:'+available+'px}'});
    await page.addScriptTag({content:`const settledSignalRows=${JSON.stringify(done)},signalRows=${JSON.stringify(pending)};const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));const num=v=>v===null||v===undefined||v===''||!Number.isFinite(Number(v))?null:Number(v);const pair=v=>v&&typeof v==='object'?{home:num(v.home),away:num(v.away)}:{home:null,away:null};const show=(v,d=0)=>Number(v).toFixed(d).replace(/\\.0+$/,'');${source.slice(start,end)}\nrenderWorkspaceScorebar();`});
-   const observed=await page.evaluate(()=>{const slot=document.querySelector('[data-workspace-scorebar-slot]');return[Number(slot.dataset.scorebarSettled),Number(slot.dataset.scorebarWaiting)]});
-   assert.deepEqual(observed,expected,label);assert.equal(await page.locator('.placeholder').count(),0);report.push({label,observed,status:'PASS'});
+   const observed=await page.evaluate(()=>{const slot=document.querySelector('[data-workspace-scorebar-slot]'),cells=[...slot.querySelectorAll('.workspace-scorebar-cell')],tops=[...new Set(cells.map(c=>Math.round(c.getBoundingClientRect().top)))];return{counts:[Number(slot.dataset.scorebarSettled),Number(slot.dataset.scorebarWaiting)],rows:tops.length,slotHeight:slot.getBoundingClientRect().height,scrollOk:slot.scrollWidth<=slot.clientWidth+1}});
+   assert.deepEqual(observed.counts,expected,label);assert.equal(observed.rows,expectedRows,label+':rows');assert.equal(observed.scrollOk,true,label+':overflow');assert.equal(await page.locator('.placeholder').count(),0);report.push({label,observed,status:'PASS'});
    if(label==='desktop-full'){
-    const colors=await page.locator('.workspace-scorebar-cell').evaluateAll(c=>c.map(e=>({status:e.querySelector('i').textContent,border:getComputedStyle(e).borderColor,white:getComputedStyle(e.querySelector('i')).color})));
-    assert(colors.every(c=>c.white==='rgb(255, 255, 255)'));assert(colors.some(c=>c.status==='PUSH'));assert(colors.some(c=>c.status==='DRAW'));assert(colors.some(c=>c.status.startsWith('LIVE')));
+    const colors=await page.locator('.workspace-scorebar-cell').evaluateAll(c=>c.map(e=>({status:e.querySelector('i').textContent,border:getComputedStyle(e).borderColor,white:getComputedStyle(e.querySelector('i')).color,weight:getComputedStyle(e.querySelector('i')).fontWeight})));
+    assert(colors.every(c=>c.white==='rgb(255, 255, 255)'&&Number(c.weight)>=700));assert(colors.some(c=>c.status==='PUSH'));assert(colors.some(c=>c.status==='DRAW'));assert(colors.some(c=>c.status.startsWith('LIVE')));
    }
    await page.close();
   }
