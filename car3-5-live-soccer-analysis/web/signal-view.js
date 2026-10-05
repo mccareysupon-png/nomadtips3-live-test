@@ -173,7 +173,7 @@ function apply(){
 function queueApply(){
   if(applyQueued)return;
   applyQueued=true;
-  setTimeout(apply,0);
+  queueMicrotask(apply);
 }
 
 function buildLockedMap(payload){
