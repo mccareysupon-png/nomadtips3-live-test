@@ -5,7 +5,9 @@ on:
     branches: [work/ball46-daily-performance-20261005]
     paths:
       - .github/workflows/deploy-ball46-daily-performance-20261005.yml
-      - deploy-assets/daily-performance-20261005/probe-settings.mjs
+      - deploy-assets/daily-performance-20261005/card.css
+      - deploy-assets/daily-performance-20261005/ball46-daily-performance-bg-20261005.webp.b64
+      - deploy-assets/daily-performance-20261005/production.mjs
   workflow_dispatch:
 
 permissions:
@@ -37,11 +39,11 @@ jobs:
       - name: Install parser dependency only
         run: npm install --no-save --ignore-scripts acorn@8
 
-      - name: Read-only production settings probe
+      - name: Guarded current-Production deploy
         working-directory: deploy-assets/daily-performance-20261005
-        run: node probe-settings.mjs
+        run: node run.mjs
 
-      - name: Upload audit proof
+      - name: Upload audit and rollback proof
         if: always()
         uses: actions/upload-artifact@v4
         with:
