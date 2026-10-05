@@ -16,7 +16,7 @@ async function stats(params={}){const q=new URLSearchParams({...params,_:String(
 function verifyStats(j){const counts={WIN:0,LOSS:0,PUSH:0,HALF_WIN:0,HALF_LOSS:0},ids=new Set();for(const r of j.rows){assert(r.id&&!ids.has(r.id),'DUPLICATE_LEDGER_ID');ids.add(r.id);if(r.status==='SETTLED'){assert(r.result in counts,'UNKNOWN_SETTLED_RESULT');counts[r.result]++}}assert.equal(j.rows.length,j.ledgerTotal,'LEDGER_INCOMPLETE');assert.equal(Object.values(counts).reduce((a,b)=>a+b,0),j.total,'SETTLED_INCOMPLETE');for(const [result,key]of Object.entries({WIN:'win',LOSS:'loss',PUSH:'push',HALF_WIN:'halfWin',HALF_LOSS:'halfLoss'}))assert.equal(counts[result],j[key],key);assert.equal(j.rows.filter(r=>r.status==='PENDING').length,j.pending,'PENDING_MISMATCH');return ids}
 async function fullPaged(){for(let attempt=0;attempt<3;attempt++){let first=await stats({paged:'1'}),page=first,rows=[],seen=new Set(),changed=false;assert.equal(first.statisticsPagination,'CURSOR_NO_TOTAL_CAP_V1');const signature=j=>canonical([j.ledgerTotal,j.total,j.pending,j.unresolved,j.win,j.loss,j.push,j.halfWin,j.halfLoss,j.ledgerUpdatedAt]);while(true){if(signature(first)!==signature(page)){changed=true;break}rows.push(...page.rows);if(!page.nextCursor)break;assert(!seen.has(page.nextCursor),'CURSOR_CYCLE');seen.add(page.nextCursor);page=await stats({paged:'1',cursor:page.nextCursor})}if(changed)continue;const result={...first,rows,returned:rows.length,nextCursor:null,hasMore:false};verifyStats(result);return result}throw Error('LEDGER_CHANGED_DURING_ALL_RETRIES')}
 
-let engineBefore,frontBefore,engineCandidate,frontCandidate;
+let engineBefore,frontBefore,engineCandidate,frontCandidate,expectedFrontSource;
 try{
   const front=await inspect();frontBefore=front.restore.version;
   engineBefore=await engineActive();
@@ -40,13 +40,16 @@ try{
   const lit=literals(front.source).get('__B46_MULTI_SIGNAL_STAGE3_JS__');assert(lit,'DASHBOARD_LITERAL_MISSING');
   assert.equal(sha(lit.value),staged.hashes['dashboard-v2-stage3.js'],'DASHBOARD_LITERAL_DIFFERS_FROM_PUBLIC');
   const frontPatched=front.source.slice(0,lit.start)+JSON.stringify(expected['dashboard-v2-stage3.js'])+front.source.slice(lit.end);nodes(frontPatched);
+  expectedFrontSource=frontPatched;
   save('frontend-after.js',frontPatched);
   writeFileSync(resolve(staged.runtime,'index.js'),frontPatched);
   for(const [name,source]of Object.entries(expected)){writeFileSync(resolve(staged.runtime,'assets',name),source);save(name,source)}
   wrangler(staged,true);
   await verifyRailBase(staged);
   assert.equal(await engineActive(),engineBefore,'ENGINE_CHANGED_DURING_STAGE');assert.equal(await activeVersion(),frontBefore,'FRONTEND_CHANGED_DURING_STAGE');
-  const metadata={main_module:engine.main_module,compatibility_date:engine.compatibility_date,compatibility_flags:engineSettings.compatibility_flags||[],bindings:engine.bindings.map(b=>({name:b.name,type:'inherit',version_id:engineBefore})),annotations:{'workers/message':'Statistics complete cursor ledger; no total cap; preserve settlement and durable namespace','workers/commit_sha':process.env.GITHUB_SHA}};
+  // This account's upload API only accepts "latest" for secret inheritance.
+  // Pin every non-secret resource explicitly, then verify the uploaded namespace.
+  const metadata={main_module:engine.main_module,compatibility_date:engine.compatibility_date,compatibility_flags:engineSettings.compatibility_flags||[],bindings:engine.bindings.map(b=>b.type==='secret_text'?{name:b.name,type:'inherit',version_id:'latest'}:{...b}),annotations:{'workers/message':'Statistics complete cursor ledger; no total cap; preserve settlement and durable namespace','workers/commit_sha':process.env.GITHUB_SHA}};
   for(const key of ['logpush','observability','limits','placement','tail_consumers'])if(engineSettings[key]!=null)metadata[key]=engineSettings[key];
   const form=new FormData();form.set('metadata',new Blob([JSON.stringify(metadata)],{type:'application/json'}));
   for(const m of engine.modules){const bytes=m.name===engine.main_module?Buffer.from(enginePatched):Buffer.from(m.content_base64,'base64');form.set(m.name,new Blob([bytes],{type:m.content_type}),m.name)}
@@ -74,7 +77,9 @@ try{
   console.log('STATISTICS_NO_TOTAL_CAP_DEPLOY_SUCCESS',JSON.stringify({engineCandidate,frontCandidate,total:final.total,ledgerTotal:final.ledgerTotal,pending:final.pending}));
 }catch(error){
   save('failure.txt',error.stack||String(error));console.error(error);
+  if(!frontCandidate&&frontBefore&&expectedFrontSource){const id=await activeVersion();if(id!==frontBefore){const v=await getVersion(id),m=v.modules.find(m=>m.name===v.main_module);if(m&&sha(Buffer.from(m.content_base64,'base64'))===sha(expectedFrontSource))frontCandidate=id}}
   if(frontCandidate&&await activeVersion()===frontCandidate){await activate(script,frontBefore,'Rollback failed statistics no-cap verification');console.log('FRONTEND_ROLLED_BACK',frontBefore)}
   if(engineCandidate&&await engineActive()===engineCandidate){await activate(engineName,engineBefore,'Rollback failed statistics no-cap verification');console.log('ENGINE_ROLLED_BACK',engineBefore)}
   throw error;
 }
+
