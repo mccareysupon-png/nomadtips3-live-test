@@ -1,0 +1,82 @@
+/* B46_MOBILE_SCORE_LAYOUT_FIX_20261005 */
+@media (max-width:760px){
+  /* Two team rows, each with its own score. Reuse the existing PC score values already in DOM. */
+  html[data-b46-mobile-v3="1"] body .match-row .teams-cell{
+    grid-column:1 / -1!important;
+    grid-row:1!important;
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) 30px!important;
+    grid-template-rows:auto auto!important;
+    column-gap:8px!important;
+    row-gap:5px!important;
+    width:100%!important;
+    min-width:0!important;
+    align-items:center!important;
+  }
+  html[data-b46-mobile-v3="1"] body .match-row .teams-cell>b.b46-home{grid-column:1!important;grid-row:1!important}
+  html[data-b46-mobile-v3="1"] body .match-row .teams-cell>b.b46-away{grid-column:1!important;grid-row:2!important}
+  html[data-b46-mobile-v3="1"] body .match-row .teams-cell>.desktop-team-score{
+    display:block!important;
+    width:30px!important;
+    min-width:30px!important;
+    text-align:center!important;
+    color:var(--b46m-text)!important;
+    font-size:18px!important;
+    font-weight:900!important;
+    line-height:1!important;
+    font-variant-numeric:tabular-nums!important;
+  }
+  html[data-b46-mobile-v3="1"] body .match-row .teams-cell>b.b46-home + .desktop-team-score{grid-column:2!important;grid-row:1!important}
+  html[data-b46-mobile-v3="1"] body .match-row .teams-cell>b.b46-away + .desktop-team-score{grid-column:2!important;grid-row:2!important}
+
+  /* The old separate score column must not duplicate 0 / 0 anymore. It becomes the single live-time row. */
+  html[data-b46-mobile-v3="1"] body .match-row .score-cell{
+    grid-column:1 / -1!important;
+    grid-row:2!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:flex-start!important;
+    width:100%!important;
+    min-width:0!important;
+    min-height:22px!important;
+    padding:0!important;
+    margin:0!important;
+    text-align:left!important;
+  }
+  html[data-b46-mobile-v3="1"] body .match-row .score-cell>strong{display:none!important}
+  html[data-b46-mobile-v3="1"] body .match-row .score-cell>.half-score{display:none!important}
+  html[data-b46-mobile-v3="1"] body .match-row .score-cell>.b46-live-time.b46-live-clock{
+    display:inline-flex!important;
+    align-items:center!important;
+    gap:4px!important;
+    width:auto!important;
+    min-width:0!important;
+    margin:0!important;
+    padding:3px 7px!important;
+    border:1px solid color-mix(in srgb,var(--b46m-green) 38%,var(--b46m-line))!important;
+    border-radius:999px!important;
+    background:color-mix(in srgb,var(--b46m-green) 9%,transparent)!important;
+    color:var(--b46m-green)!important;
+    font-size:10px!important;
+    font-weight:900!important;
+    line-height:1!important;
+    white-space:nowrap!important;
+  }
+
+  /* Legacy mobile duplicated the same LIVE minute inside the signal cell. Remove only that duplicate. */
+  html[data-b46-mobile-v3="1"] body .match-row .signal-inline-stack .mobile-clock,
+  html[data-b46-mobile-v3="1"] body .match-row .signal-cell .mobile-clock{display:none!important}
+  html[data-b46-mobile-v3="1"] body .match-row .signal-inline-stack .desktop-signal,
+  html[data-b46-mobile-v3="1"] body .match-row .signal-cell .desktop-signal{
+    display:block!important;
+    max-width:100%!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    white-space:nowrap!important;
+  }
+
+  /* Performance remains explicitly excluded from Mobile. */
+  html[data-b46-mobile-v3="1"] body .sp-trend.b46-perf-card,
+  html[data-b46-mobile-v3="1"] body .b46-perf-card,
+  html[data-b46-mobile-v3="1"] body .b46-perf-shell{display:none!important}
+}
