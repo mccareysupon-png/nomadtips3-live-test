@@ -99,7 +99,8 @@ function normalize(row){
   };
 }
 
-let matches=[],selectedId=null,liveRefreshing=false,liveTimer=null;
+const LIVE_CACHE_KEY='ball46:last-good-live:v1';
+let matches=[],selectedId=null,liveRefreshing=false,liveTimer=null,emptyLiveStreak=0;
 function setFeed(ok,text){
   const el=document.querySelector('.feed-state');
   if(el)el.classList.toggle('offline',!ok);
@@ -184,6 +185,20 @@ function selectMatch(id,openMobile=false){
   if(openMobile&&window.matchMedia('(max-width:1023px)').matches)$('liveLayout')?.classList.add('match-open');
 }
 
+function hydrateLastGoodLive(){
+  try{
+    const cached=JSON.parse(localStorage.getItem(LIVE_CACHE_KEY)||'null');
+    const rows=Array.isArray(cached?.rows)?cached.rows:[];
+    if(!rows.length)return false;
+    matches=rows.map(normalize);
+    if(!selectedId&&matches.length)selectedId=matches.find(m=>m.state==='SIGNAL')?.id||matches[0].id;
+    renderSignalList();
+    if(selectedId)renderMatch(matches.find(m=>m.id===selectedId)||matches[0]);
+    if($('lastUpdated'))$('lastUpdated').textContent='Showing last confirmed live snapshot';
+    return true;
+  }catch{return false;}
+}
+
 async function refreshLive(){
   if(liveRefreshing)return;
   liveRefreshing=true;
@@ -195,7 +210,19 @@ async function refreshLive(){
     ]);
     snapshots=Array.isArray(snap?.snapshots)?snap.snapshots:[];
     const rows=unwrapMatches(live).filter(row=>{const s=String(row?.status||'').toUpperCase();return s!=='FT'&&!s.includes('FINISH')&&s!=='NS'&&s!=='SCHEDULED';});
-    matches=rows.map(normalize);
+    if(rows.length){
+      emptyLiveStreak=0;
+      try{localStorage.setItem(LIVE_CACHE_KEY,JSON.stringify({savedAt:Date.now(),rows}));}catch{}
+      matches=rows.map(normalize);
+    }else if(matches.length&&emptyLiveStreak<2){
+      emptyLiveStreak++;
+      setFeed(false,'Rechecking');
+      if($('lastUpdated'))$('lastUpdated').textContent='Holding last confirmed snapshot while feed is rechecked';
+      return;
+    }else{
+      emptyLiveStreak++;
+      matches=[];
+    }
     if(selectedId&&!matches.some(m=>m.id===selectedId))selectedId=null;
     if(!selectedId&&matches.length)selectedId=matches.find(m=>m.state==='SIGNAL')?.id||matches[0].id;
     renderSignalList();if(selectedId)renderMatch(matches.find(m=>m.id===selectedId));
@@ -214,6 +241,7 @@ function scheduleLive(){
 async function initLive(){
   await loadRuntime();
   $('mobileBack').onclick=()=>$('liveLayout').classList.remove('match-open');
+  hydrateLastGoodLive();
   await refreshLive();scheduleLive();
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshLive();});
   window.addEventListener('online',()=>refreshLive());
