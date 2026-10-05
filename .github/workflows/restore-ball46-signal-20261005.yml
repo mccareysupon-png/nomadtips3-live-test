@@ -32,6 +32,9 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Install rollback dependency
+        run: npm install --no-save --ignore-scripts acorn@8
+
       - name: Restore previous production version
         working-directory: deploy-assets/daily-performance-20261005
         run: node restore-signal.mjs
