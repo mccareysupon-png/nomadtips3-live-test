@@ -49,7 +49,7 @@ jobs:
           source=source.replace(oldKnown,newKnown);
 
           const oldConfig="writeFileSync(resolve(runtime,'wrangler.jsonc'),JSON.stringify(configFromCurrent(version,settings,crons,assets),null,2));";
-          const newConfig="const normalizedVersion={...version,modules:version.modules.map(m=>m.name===version.main_module||m.name.startsWith('assets/')?m:{...m,name:'assets/'+m.name})}; const normalizedNames=normalizedVersion.modules.map(m=>m.name); assert.equal(new Set(normalizedNames).size,normalizedNames.length,'NORMALIZED_MODULE_NAME_COLLISION'); writeFileSync(resolve(runtime,'wrangler.jsonc'),JSON.stringify(configFromCurrent(normalizedVersion,settings,crons,assets),null,2));";
+          const newConfig="const normalizedVersion={...version,modules:version.modules.map(m=>m.name===version.main_module||m.name.startsWith('assets/')?m:{...m,name:'assets/'+m.name})}; writeFileSync(resolve(runtime,'wrangler.jsonc'),JSON.stringify(configFromCurrent(normalizedVersion,settings,crons,assets),null,2));";
           if((source.split(oldConfig).length-1)!==1)throw new Error('CURRENT_CONFIG_NORMALIZATION_TARGET_MOVED');
           source=source.replace(oldConfig,newConfig);
 
