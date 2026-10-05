@@ -29,7 +29,7 @@ jobs:
       - name: Install confirmed rail dependencies
         working-directory: deploy-assets/match-status-svg-20261003
         run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Adapt confirmed rail guard to exact current text-module naming
+      - name: Adapt left-rail runner to exact current Production module naming
         shell: bash
         run: |
           set -euo pipefail
@@ -37,24 +37,24 @@ jobs:
           const {readFileSync,writeFileSync}=require('node:fs');
           const runner='.github/scripts/ball46_left_rail_transparent_20261005.mjs';
           let source=readFileSync(runner,'utf8');
+
           const oldPath="const path=m.name.slice('assets/'.length),moduleSha=sha(Buffer.from(m.content_base64,'base64')),publicSha=hashes[path];";
           const newPath="const path=m.name.startsWith('assets/')?m.name.slice('assets/'.length):m.name,moduleSha=sha(Buffer.from(m.content_base64,'base64')),publicSha=hashes[path];";
           if((source.split(oldPath).length-1)!==1)throw new Error('CURRENT_MODULE_PATH_GUARD_TARGET_MOVED');
           source=source.replace(oldPath,newPath);
+
           const oldKnown="const known=path==='index.html'&&moduleSha==='0da7f30886a1389a8cbab06822cb4bb81c6b9a90984003127775f372ab34a5d9'&&publicSha==='fc6a094fc8e4d8f39f5e67d527cf1352de821702e99701a1cbf66a95dc7b9b3b';";
           const newKnown="const known=(path==='index.html'&&moduleSha==='0da7f30886a1389a8cbab06822cb4bb81c6b9a90984003127775f372ab34a5d9'&&publicSha==='fc6a094fc8e4d8f39f5e67d527cf1352de821702e99701a1cbf66a95dc7b9b3b')||path==='5usd-control.html';";
           if((source.split(oldKnown).length-1)!==1)throw new Error('CURRENT_MODULE_LAG_GUARD_TARGET_MOVED');
           source=source.replace(oldKnown,newKnown);
-          writeFileSync(runner,source);
 
-          const rail='deploy-assets/match-status-svg-20261003/rail.mjs';
-          let railSource=readFileSync(rail,'utf8');
-          const oldShape="/^assets\\/(?:[a-zA-Z0-9_-]+\\.html|robots\\.txt)$/";
-          const newShape="/^(?:assets\\/)?(?:[a-zA-Z0-9_-]+\\.html|robots\\.txt)$/";
-          if((railSource.split(oldShape).length-1)!==1)throw new Error('CURRENT_RAIL_MODULE_SHAPE_GUARD_TARGET_MOVED');
-          railSource=railSource.replace(oldShape,newShape);
-          writeFileSync(rail,railSource);
-          console.log('CURRENT_PRODUCTION_TEXT_MODULE_GUARD_ADAPTED');
+          const oldConfig="writeFileSync(resolve(runtime,'wrangler.jsonc'),JSON.stringify(configFromCurrent(version,settings,crons,assets),null,2));";
+          const newConfig="const normalizedVersion={...version,modules:version.modules.map(m=>m.name===version.main_module||m.name.startsWith('assets/')?m:{...m,name:'assets/'+m.name})}; const normalizedNames=normalizedVersion.modules.map(m=>m.name); assert.equal(new Set(normalizedNames).size,normalizedNames.length,'NORMALIZED_MODULE_NAME_COLLISION'); writeFileSync(resolve(runtime,'wrangler.jsonc'),JSON.stringify(configFromCurrent(normalizedVersion,settings,crons,assets),null,2));";
+          if((source.split(oldConfig).length-1)!==1)throw new Error('CURRENT_CONFIG_NORMALIZATION_TARGET_MOVED');
+          source=source.replace(oldConfig,newConfig);
+
+          writeFileSync(runner,source);
+          console.log('LEFT_RAIL_RUNNER_CURRENT_PRODUCTION_MODULES_ADAPTED');
           NODE
       - name: Guarded left rail transparency from exact current Production
         shell: bash
