@@ -1,4 +1,4 @@
-name: Ball46 Event Flow Live Score Header Surgical 20261004
+name: Ball46 Right Signal Stability Surgical 20261005
 
 on:
   push:
@@ -33,14 +33,14 @@ jobs:
       - name: Install exact proven-rail dependencies
         working-directory: deploy-assets/match-status-svg-20261003
         run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Surgical deploy Event Flow live score header
+      - name: Surgical deploy right signal DOM stability
         working-directory: deploy-assets/match-status-svg-20261003
-        run: node eventflow-live-score-header-run.mjs
+        run: node right-signal-stability-run.mjs
       - name: Retain surgical evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ball46-eventflow-live-score-header-${{ github.run_id }}
+          name: ball46-right-signal-stability-${{ github.run_id }}
           path: deploy-assets/match-status-svg-20261003/audit/
           if-no-files-found: error
           retention-days: 30
