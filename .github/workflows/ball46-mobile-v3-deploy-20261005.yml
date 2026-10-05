@@ -13,31 +13,45 @@ jobs:
       CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
     steps:
       - uses: actions/checkout@v4
+
       - name: Guarded mobile-only deploy
         shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PY'
           import os,json,base64,urllib.request,subprocess,time,pathlib,hashlib
-          A=os.environ['CF_ACCOUNT'];T=os.environ['CF_TOKEN'];SCRIPT='ball46-production';API=f'https://api.cloudflare.com/client/v4/accounts/{A}';DIRECT='https://ball46-production.mccarey-supon.workers.dev';PUBLIC='https://www.ball46.com'
-          H={'Authorization':f'Bearer {T}','Accept':'application/json'}; ROOT=pathlib.Path('/tmp/b46-mobile-v3');ROOT.mkdir(exist_ok=True)
-          CSS=pathlib.Path('mobile-v3-20261005.css').read_text(); JS=pathlib.Path('mobile-v3-20261005.js').read_text(); MARK='B46_MOBILE_V3_20261005'
-          LINK='<link rel="stylesheet" href="/mobile-v3-20261005.css?v=20261005a" data-b46-mobile-v3="1">'; SCRIPT_TAG='<script src="/mobile-v3-20261005.js?v=20261005a" data-b46-mobile-v3="1"></script>'
+          A=os.environ['CF_ACCOUNT']; T=os.environ['CF_TOKEN']; SCRIPT='ball46-production'
+          API=f'https://api.cloudflare.com/client/v4/accounts/{A}'
+          DIRECT='https://ball46-production.mccarey-supon.workers.dev'; PUBLIC='https://www.ball46.com'
+          H={'Authorization':f'Bearer {T}','Accept':'application/json'}
+          ROOT=pathlib.Path('/tmp/b46-mobile-v3'); ROOT.mkdir(exist_ok=True)
+          CSS=pathlib.Path('mobile-v3-20261005.css').read_text()
+          JS=pathlib.Path('mobile-v3-20261005.js').read_text()
+          MARK='B46_MOBILE_V3_20261005'
+          STYLE_ID='b46-mobile-v3-style'; SCRIPT_ID='b46-mobile-v3-script'
+
           def get(u):
               with urllib.request.urlopen(urllib.request.Request(u,headers=H),timeout=30) as r:return json.load(r)
           def fetch(u):
-              with urllib.request.urlopen(urllib.request.Request(u,headers={'Cache-Control':'no-cache','User-Agent':'Ball46-Mobile-Deploy-Guard'}),timeout=35) as r:return r.status,dict(r.headers),r.read()
+              req=urllib.request.Request(u,headers={'Cache-Control':'no-cache','User-Agent':'Ball46-Mobile-Deploy-Guard'})
+              with urllib.request.urlopen(req,timeout=35) as r:return r.status,dict(r.headers),r.read()
           def rollback(version):
-              env=os.environ.copy();env['CLOUDFLARE_ACCOUNT_ID']=A;env['CLOUDFLARE_API_TOKEN']=T;print('ROLLBACK_TO',version)
+              env=os.environ.copy(); env['CLOUDFLARE_ACCOUNT_ID']=A; env['CLOUDFLARE_API_TOKEN']=T
+              print('ROLLBACK_TO',version)
               subprocess.run(['npx','--yes','wrangler@4.92.0','versions','deploy',f'{version}@100%','--name',SCRIPT,'-y','--message','Auto rollback Ball46 mobile v3'],env=env,check=False)
-          d=get(f'{API}/workers/scripts/{SCRIPT}/deployments')['result']['deployments'][0]; active=[x for x in (d.get('versions') or []) if float(x.get('percentage',0))>=99.999]
+
+          d=get(f'{API}/workers/scripts/{SCRIPT}/deployments')['result']['deployments'][0]
+          active=[x for x in (d.get('versions') or []) if float(x.get('percentage',0))>=99.999]
           if len(active)!=1: raise SystemExit('ACTIVE_VERSION_AMBIGUOUS '+repr(active))
-          pre=str(active[0]['version_id']); v=get(f'{API}/workers/workers/{SCRIPT}/versions/{pre}?include=modules')['result']; mods=v.get('modules') or []
+          pre=str(active[0]['version_id'])
+          v=get(f'{API}/workers/workers/{SCRIPT}/versions/{pre}?include=modules')['result']
+          mods=v.get('modules') or []
           main=[m for m in mods if m.get('name')=='index.js' and m.get('content_base64')]
           if len(main)!=1: raise SystemExit('INDEX_MODULE_MISSING '+repr([m.get('name') for m in mods]))
           unknown=[m.get('name') for m in mods if m.get('name')!='index.js' and not str(m.get('name') or '').startswith('assets/')]
           if unknown: raise SystemExit('UNKNOWN_CODE_MODULES '+repr(unknown))
-          src=base64.b64decode(main[0]['content_base64']).decode(); bindings=v.get('bindings') or []; by={b.get('name'):b for b in bindings}
+          src=base64.b64decode(main[0]['content_base64']).decode()
+          bindings=v.get('bindings') or []; by={b.get('name'):b for b in bindings}
           expected={'ASSETS':('assets',None),'ENGINE':('service','nomadtips3-engine-343'),'FULL_MARKET':('service','nomadtips3-full-market-343-ball46'),'HUB':('service','nomadtips3-5usd-hub-343')}
           for n,(typ,svc) in expected.items():
               b=by.get(n) or {}
@@ -45,52 +59,108 @@ jobs:
           if v.get('compatibility_date')!='2026-09-09' or (v.get('compatibility_flags') or []): raise SystemExit('COMPAT_MOVED')
           ac=(v.get('assets') or {}).get('config') or {}; want={'base_path':'/','html_handling':'none','not_found_handling':'none','run_worker_first':True}
           if {k:ac.get(k) for k in want}!=want: raise SystemExit('ASSET_CONFIG_MOVED '+repr(ac))
-          _,_,preidx=fetch(PUBLIC+'/index.html?mobile-v3-pre='+str(time.time_ns())); pretext=preidx.decode(errors='replace')
-          if MARK in src and LINK in pretext: print('MOBILE_V3_ALREADY_LIVE'); raise SystemExit(0)
-          index_anchor='var index_default = {'; fetch_anchor='    const url = new URL(request.url);'
-          if index_anchor not in src: raise SystemExit('INDEX_DEFAULT_ANCHOR_MISSING')
-          before,after=src.split(index_anchor,1); tail=index_anchor+after
-          if fetch_anchor not in tail: raise SystemExit('INDEX_FETCH_ANCHOR_MISSING')
-          helper='''\n/* B46_MOBILE_V3_20261005 */\nconst __B46_MOBILE_V3_CSS__=%s;\nconst __B46_MOBILE_V3_JS__=%s;\nasync function __b46MobileV3Index(request,env){const u=new URL(request.url);u.pathname='/index.html';const res=await noStoreUiAsset(new Request(u,request),env);if(!res.ok)return res;let html=await res.text();const link=%s;const script=%s;if(!html.includes('data-b46-mobile-v3="1"')){if(!html.includes('</head>'))throw new Error('MOBILE_HEAD_ANCHOR_MISSING');html=html.replace('</head>',link+script+'</head>')}const h=new Headers(res.headers);h.set('cache-control','no-store, no-cache, must-revalidate, max-age=0');h.delete('content-length');h.set('x-ball46-mobile-v3','20261005');return new Response(html,{status:res.status,statusText:res.statusText,headers:h});}\n'''%(json.dumps(CSS),json.dumps(JS),json.dumps(LINK),json.dumps(SCRIPT_TAG))
-          route='''    if (url.pathname === "/mobile-v3-20261005.css") return new Response(__B46_MOBILE_V3_CSS__, {status:200,headers:{"content-type":"text/css; charset=utf-8","cache-control":"no-store, no-cache, must-revalidate, max-age=0","x-ball46-mobile-v3":"20261005"}});\n    if (url.pathname === "/mobile-v3-20261005.js") return new Response(__B46_MOBILE_V3_JS__, {status:200,headers:{"content-type":"application/javascript; charset=utf-8","cache-control":"no-store, no-cache, must-revalidate, max-age=0","x-ball46-mobile-v3":"20261005"}});\n    if (url.pathname === "/" || url.pathname === "/index.html") return __b46MobileV3Index(request, env);\n'''
-          tail=tail.replace(fetch_anchor,fetch_anchor+'\n'+route,1); patched=before+helper+'\n'+tail
-          if route not in patched or MARK not in patched: raise SystemExit('LOCAL_PATCH_VERIFY_FAILED')
-          (ROOT/'index.js').write_text(patched); subprocess.run(['node','--check',str(ROOT/'index.js')],check=True)
+
+          _,_,live=fetch(PUBLIC+'/index.html?mobile-v3-pre='+str(time.time_ns()))
+          if MARK in src and STYLE_ID in live.decode(errors='replace'):
+              print('MOBILE_V3_ALREADY_LIVE',pre); raise SystemExit(0)
+
+          anchor='var index_default = {'
+          if anchor not in src: raise SystemExit('INDEX_DEFAULT_ANCHOR_MISSING')
+          if 'async function noStoreUiAsset(request, env)' not in src: raise SystemExit('NOSTORE_FUNCTION_MISSING')
+
+          payload='<style id="'+STYLE_ID+'">'+CSS+'</style><script id="'+SCRIPT_ID+'">'+JS+'</script>'
+          wrapper='''\n/* B46_MOBILE_V3_20261005 */\nconst __B46_MOBILE_V3_ORIGINAL_NOSTORE__=noStoreUiAsset;\nnoStoreUiAsset=async function(request,env){\n  const res=await __B46_MOBILE_V3_ORIGINAL_NOSTORE__(request,env);\n  const path=new URL(request.url).pathname;\n  if(path!==\"/index.html\"||!res.ok)return res;\n  let html=await res.text();\n  const payload=%s;\n  if(!html.includes(%s)){\n    if(!html.includes(\"</head>\"))throw new Error(\"MOBILE_HEAD_ANCHOR_MISSING\");\n    html=html.replace(\"</head>\",payload+\"</head>\");\n  }\n  const h=new Headers(res.headers);\n  h.set(\"cache-control\",\"no-store, no-cache, must-revalidate, max-age=0\");\n  h.set(\"x-ball46-mobile-v3\",\"20261005\");\n  h.delete(\"content-length\");\n  return new Response(html,{status:res.status,statusText:res.statusText,headers:h});\n};\n'''%(json.dumps(payload),json.dumps(STYLE_ID))
+          patched=src.replace(anchor,wrapper+'\n'+anchor,1)
+          if MARK not in patched or STYLE_ID not in patched: raise SystemExit('LOCAL_PATCH_VERIFY_FAILED')
+          (ROOT/'index.js').write_text(patched)
+          subprocess.run(['node','--check',str(ROOT/'index.js')],check=True)
           meta={'main_module':'index.js','keep_assets':True,'compatibility_date':v.get('compatibility_date'),'bindings':bindings}
           for k in ('observability','placement','limits','tail_consumers','logpush'):
               if v.get(k) is not None:meta[k]=v[k]
           (ROOT/'metadata.json').write_text(json.dumps(meta,separators=(',',':')))
-          print('PREDEPLOY_LOCK_OK',pre,'src_sha',hashlib.sha256(src.encode()).hexdigest())
+          print('PREDEPLOY_LOCK_OK',pre,'src_sha',hashlib.sha256(src.encode()).hexdigest(),'css_sha',hashlib.sha256(CSS.encode()).hexdigest(),'js_sha',hashlib.sha256(JS.encode()).hexdigest())
+
           deployed=False
           try:
-              raw=subprocess.check_output(['curl','-fsS','-X','PUT',f'{API}/workers/scripts/{SCRIPT}','-H',f'Authorization: Bearer {T}','-F',f'metadata=@{ROOT}/metadata.json;type=application/json','-F',f'index.js=@{ROOT}/index.js;type=application/javascript+module']); j=json.loads(raw)
+              raw=subprocess.check_output(['curl','-fsS','-X','PUT',f'{API}/workers/scripts/{SCRIPT}','-H',f'Authorization: Bearer {T}','-F',f'metadata=@{ROOT}/metadata.json;type=application/json','-F',f'index.js=@{ROOT}/index.js;type=application/javascript+module'])
+              j=json.loads(raw)
               if j.get('success') is not True: raise RuntimeError('UPLOAD_FAIL '+json.dumps(j)[:1000])
-              deployed=True;print('UPLOAD_OK')
-              ok=False
-              for n in range(8):
-                  time.sleep(3)
-                  try:
-                      _,_,idx=fetch(DIRECT+'/index.html?mobile-v3-direct='+str(time.time_ns())); text=idx.decode(errors='replace')
-                      _,hc,css=fetch(DIRECT+'/mobile-v3-20261005.css?verify='+str(time.time_ns())); _,hj,js=fetch(DIRECT+'/mobile-v3-20261005.js?verify='+str(time.time_ns()))
-                      if LINK in text and SCRIPT_TAG in text and b'@media (max-width:760px)' in css and b'B46 Mobile V3' in js and '20261005' in hc.get('x-ball46-mobile-v3','') and '20261005' in hj.get('x-ball46-mobile-v3',''):
-                          print('DIRECT_WORKER_VERIFY_PASS',n+1);ok=True;break
-                  except Exception as e: print('DIRECT_RETRY',n+1,type(e).__name__)
-              if not ok: raise RuntimeError('DIRECT_WORKER_VERIFY_FAILED')
-              pub=False
+              deployed=True; print('UPLOAD_OK')
+
+              direct=False
               for n in range(10):
+                  time.sleep(2)
                   try:
-                      _,_,idx=fetch(PUBLIC+'/index.html?mobile-v3-public='+str(time.time_ns())); text=idx.decode(errors='replace')
-                      if LINK in text and SCRIPT_TAG in text: print('PUBLIC_INDEX_VERIFY_PASS',n+1);pub=True;break
-                  except Exception as e: print('PUBLIC_RETRY',n+1,type(e).__name__)
-                  time.sleep(3)
-              if not pub: raise RuntimeError('PUBLIC_PROPAGATION_VERIFY_FAILED')
+                      _,h,b=fetch(DIRECT+'/index.html?mobile-v3-direct='+str(time.time_ns()))
+                      t=b.decode(errors='replace')
+                      if STYLE_ID in t and SCRIPT_ID in t and h.get('x-ball46-mobile-v3')=='20261005':
+                          print('DIRECT_INDEX_VERIFY_PASS',n+1); direct=True; break
+                  except urllib.error.HTTPError as e:
+                      print('DIRECT_HTTP',n+1,e.code,e.read(300).decode(errors='replace'))
+                  except Exception as e: print('DIRECT_RETRY',n+1,type(e).__name__,str(e)[:120])
+              if not direct: raise RuntimeError('DIRECT_INDEX_VERIFY_FAILED')
+
+              public=False
+              for n in range(12):
+                  try:
+                      _,h,b=fetch(PUBLIC+'/index.html?mobile-v3-public='+str(time.time_ns()))
+                      t=b.decode(errors='replace')
+                      if STYLE_ID in t and SCRIPT_ID in t:
+                          print('PUBLIC_INDEX_VERIFY_PASS',n+1); public=True; break
+                  except Exception as e: print('PUBLIC_RETRY',n+1,type(e).__name__,str(e)[:120])
+                  time.sleep(2)
+              if not public: raise RuntimeError('PUBLIC_INDEX_VERIFY_FAILED')
+
               for ep in ('board','signals','statistics'):
                   _,_,b=fetch(PUBLIC+f'/api/engine/{ep}?mobile-v3-health={time.time_ns()}'); q=json.loads(b)
                   if q.get('ok') is not True: raise RuntimeError(ep+'_NOT_OK '+str(q)[:300])
-              nd=get(f'{API}/workers/scripts/{SCRIPT}/deployments')['result']['deployments'][0]; av=[x for x in (nd.get('versions') or []) if float(x.get('percentage',0))>=99.999]
+              nd=get(f'{API}/workers/scripts/{SCRIPT}/deployments')['result']['deployments'][0]
+              av=[x for x in (nd.get('versions') or []) if float(x.get('percentage',0))>=99.999]
               if len(av)!=1: raise RuntimeError('POST_ACTIVE_AMBIGUOUS')
               print('MOBILE_V3_PRODUCTION_VERIFY_PASS',av[0]['version_id'])
           except Exception:
               if deployed: rollback(pre)
               raise
           PY
+
+      - name: Mobile and desktop viewport QA
+        shell: bash
+        run: |
+          set -euo pipefail
+          CHROME="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
+          test -n "$CHROME" || { echo CHROME_NOT_FOUND; exit 1; }
+          npm install --no-save --silent playwright-core@latest
+          CHROME_BIN="$CHROME" node <<'JS'
+          const {chromium}=require('playwright-core');
+          (async()=>{
+            const browser=await chromium.launch({executablePath:process.env.CHROME_BIN,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
+            const page=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
+            await page.goto('https://www.ball46.com/index.html?mobile-v3-qa='+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});
+            await page.waitForTimeout(5000);
+            const mobile=await page.evaluate(()=>{
+              const cs=e=>e?getComputedStyle(e):null;
+              const nav=document.querySelector('.b46-mobile-workspace-nav');
+              const navr=nav?.getBoundingClientRect();
+              const score=document.querySelector('[data-workspace-scorebar-slot],.workspace-scorebar-slot');
+              const perf=document.querySelector('.sp-trend.b46-perf-card,.b46-perf-card,.b46-perf-shell');
+              const rows=[...document.querySelectorAll('.match-row')].slice(0,5).map(e=>{const r=e.getBoundingClientRect();return {left:r.left,right:r.right,width:r.width}});
+              return {iw:innerWidth,sw:document.documentElement.scrollWidth,theme:document.documentElement.getAttribute('data-theme'),mobileAttr:document.documentElement.getAttribute('data-b46-mobile-v3'),navDisplay:cs(nav)?.display,navBottom:navr?Math.abs(innerHeight-navr.bottom):999,scoreDisplay:cs(score)?.display||'missing',perfDisplay:cs(perf)?.display||'missing',rows};
+            });
+            console.log('MOBILE_QA',JSON.stringify(mobile));
+            if(mobile.theme!=='dark'||mobile.mobileAttr!=='1') throw new Error('MOBILE_DARK_NOT_LOCKED');
+            if(mobile.navDisplay==='none'||mobile.navBottom>4) throw new Error('MOBILE_BOTTOM_NAV_BAD');
+            if(mobile.scoreDisplay!=='none') throw new Error('PC_SCOREBAR_VISIBLE_ON_MOBILE');
+            if(mobile.perfDisplay!=='none'&&mobile.perfDisplay!=='missing') throw new Error('PC_PERFORMANCE_VISIBLE_ON_MOBILE');
+            if(mobile.sw>mobile.iw+3) throw new Error('MOBILE_PAGE_HORIZONTAL_OVERFLOW');
+            for(const r of mobile.rows){if(r.left<-2||r.right>mobile.iw+2)throw new Error('MATCH_CARD_OUTSIDE_VIEWPORT')}
+
+            await page.setViewportSize({width:1440,height:1000});
+            await page.goto('https://www.ball46.com/index.html?desktop-v3-qa='+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});
+            await page.waitForTimeout(2500);
+            const desktop=await page.evaluate(()=>({iw:innerWidth,sw:document.documentElement.scrollWidth,mobileAttr:document.documentElement.getAttribute('data-b46-mobile-v3'),mobileVar:getComputedStyle(document.documentElement).getPropertyValue('--b46m-bg').trim()}));
+            console.log('DESKTOP_QA',JSON.stringify(desktop));
+            if(desktop.mobileAttr!==null||desktop.mobileVar!=='') throw new Error('MOBILE_LAYER_LEAKED_TO_DESKTOP');
+            await browser.close();
+            console.log('VIEWPORT_QA_PASS');
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
