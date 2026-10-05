@@ -47,12 +47,15 @@ jobs:
           if {k:ac.get(k) for k in want}!=want: raise SystemExit('ASSET_CONFIG_MOVED '+repr(ac))
           _,_,preidx=fetch(PUBLIC+'/index.html?mobile-v3-pre='+str(time.time_ns())); pretext=preidx.decode(errors='replace')
           if MARK in src and LINK in pretext: print('MOBILE_V3_ALREADY_LIVE'); raise SystemExit(0)
-          anchor='    const url = new URL(request.url);'
-          if 'var index_default = {' not in src or anchor not in src: raise SystemExit('ROUTE_ANCHOR_MISSING')
+          index_anchor='var index_default = {'; fetch_anchor='    const url = new URL(request.url);'
+          if index_anchor not in src: raise SystemExit('INDEX_DEFAULT_ANCHOR_MISSING')
+          before,after=src.split(index_anchor,1); tail=index_anchor+after
+          if fetch_anchor not in tail: raise SystemExit('INDEX_FETCH_ANCHOR_MISSING')
           helper='''\n/* B46_MOBILE_V3_20261005 */\nconst __B46_MOBILE_V3_CSS__=%s;\nconst __B46_MOBILE_V3_JS__=%s;\nasync function __b46MobileV3Index(request,env){const u=new URL(request.url);u.pathname='/index.html';const res=await noStoreUiAsset(new Request(u,request),env);if(!res.ok)return res;let html=await res.text();const link=%s;const script=%s;if(!html.includes('data-b46-mobile-v3="1"')){if(!html.includes('</head>'))throw new Error('MOBILE_HEAD_ANCHOR_MISSING');html=html.replace('</head>',link+script+'</head>')}const h=new Headers(res.headers);h.set('cache-control','no-store, no-cache, must-revalidate, max-age=0');h.delete('content-length');h.set('x-ball46-mobile-v3','20261005');return new Response(html,{status:res.status,statusText:res.statusText,headers:h});}\n'''%(json.dumps(CSS),json.dumps(JS),json.dumps(LINK),json.dumps(SCRIPT_TAG))
-          patched=src.replace('var index_default = {',helper+'\nvar index_default = {',1)
           route='''    if (url.pathname === "/mobile-v3-20261005.css") return new Response(__B46_MOBILE_V3_CSS__, {status:200,headers:{"content-type":"text/css; charset=utf-8","cache-control":"no-store, no-cache, must-revalidate, max-age=0","x-ball46-mobile-v3":"20261005"}});\n    if (url.pathname === "/mobile-v3-20261005.js") return new Response(__B46_MOBILE_V3_JS__, {status:200,headers:{"content-type":"application/javascript; charset=utf-8","cache-control":"no-store, no-cache, must-revalidate, max-age=0","x-ball46-mobile-v3":"20261005"}});\n    if (url.pathname === "/" || url.pathname === "/index.html") return __b46MobileV3Index(request, env);\n'''
-          patched=patched.replace(anchor,anchor+'\n'+route,1); (ROOT/'index.js').write_text(patched); subprocess.run(['node','--check',str(ROOT/'index.js')],check=True)
+          tail=tail.replace(fetch_anchor,fetch_anchor+'\n'+route,1); patched=before+helper+'\n'+tail
+          if route not in patched or MARK not in patched: raise SystemExit('LOCAL_PATCH_VERIFY_FAILED')
+          (ROOT/'index.js').write_text(patched); subprocess.run(['node','--check',str(ROOT/'index.js')],check=True)
           meta={'main_module':'index.js','keep_assets':True,'compatibility_date':v.get('compatibility_date'),'bindings':bindings}
           for k in ('observability','placement','limits','tail_consumers','logpush'):
               if v.get(k) is not None:meta[k]=v[k]
