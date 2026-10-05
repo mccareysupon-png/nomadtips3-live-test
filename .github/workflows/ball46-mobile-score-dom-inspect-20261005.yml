@@ -1,0 +1,36 @@
+name: Ball46 mobile score DOM inspect 2026-10-05
+on:
+  push:
+    branches:
+      - work/ball46-mobile-rebuild-20261005
+  workflow_dispatch:
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Inspect mobile match score and live time DOM
+        shell: bash
+        run: |
+          set -euo pipefail
+          CHROME="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
+          test -n "$CHROME"
+          npm install --no-save --silent playwright-core@latest
+          CHROME_BIN="$CHROME" node <<'JS'
+          const {chromium}=require('playwright-core');
+          (async()=>{
+            const browser=await chromium.launch({executablePath:process.env.CHROME_BIN,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
+            const page=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
+            await page.goto('https://www.ball46.com/index.html?score-dom='+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});
+            await page.waitForTimeout(5000);
+            const out=await page.evaluate(()=>{
+              const rows=[...document.querySelectorAll('.match-row')].slice(0,3);
+              const box=e=>{if(!e)return null;const r=e.getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height,text:(e.innerText||e.textContent||'').trim(),cls:e.className,tag:e.tagName,html:e.outerHTML.slice(0,3000)}};
+              return rows.map((row,i)=>({i,row:box(row),children:[...row.children].map(box)}));
+            });
+            console.log('MATCH_DOM_BEGIN');
+            console.log(JSON.stringify(out,null,2));
+            console.log('MATCH_DOM_END');
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
