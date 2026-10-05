@@ -30,53 +30,53 @@ if VERSION in s:
     print('PATCH_ALREADY_PRESENT')
     raise SystemExit(0)
 
-# 1) Preserve PENDING as the statistics lifecycle state. LIVE belongs only to
-# match mirror metadata; it must never be synthesized as a statistics result.
-pending_block = re.compile(
-    r'(if\s*\(String\(r\.status\s*\|\|\s*""\)\.toUpperCase\(\)\s*===\s*"PENDING"\)\s*\{.*?)(r\.result\s*=\s*"LIVE"\s*;\s*)(r\.displayStatus\s*=\s*"LIVE"\s*;)(.*?\})',
-    re.S,
-)
-matches = list(pending_block.finditer(s))
-if len(matches) != 1:
-    raise SystemExit('PENDING_RESPONSE_BLOCK_COUNT:' + str(len(matches)))
-s = pending_block.sub(
-    lambda m: m.group(1) + 'if(String(r.result||"").toUpperCase()==="LIVE")delete r.result;\n        r.displayStatus="PENDING";' + m.group(4),
-    s,
-    count=1,
-)
+# 1) Statistics lifecycle must stay PENDING. LIVE is match mirror metadata only.
+# The existing live worker has exactly one synthesized LIVE result/display pair;
+# fail closed unless both assignments are uniquely identifiable.
+result_live = re.compile(r'r\.result\s*=\s*["\']LIVE["\']\s*;')
+display_live = re.compile(r'r\.displayStatus\s*=\s*["\']LIVE["\']\s*;')
+if len(result_live.findall(s)) != 1:
+    raise SystemExit('LIVE_RESULT_ASSIGNMENT_COUNT:' + str(len(result_live.findall(s))))
+if len(display_live.findall(s)) != 1:
+    raise SystemExit('LIVE_DISPLAY_ASSIGNMENT_COUNT:' + str(len(display_live.findall(s))))
+s = result_live.sub('if(String(r.result||"").toUpperCase()==="LIVE")delete r.result;', s, count=1)
+s = display_live.sub('r.displayStatus="PENDING";', s, count=1)
 
-# 2) Write current PENDING signals into the durable statistics ledger at the
-# exact working-store commit point. The later scan-level sync remains as a
-# reconciliation safety net. upsertLedgerRows is idempotent by ledger key.
-anchor = 'await writeWorkingSignals(this.ctx, capped);'
-if s.count(anchor) != 1:
-    raise SystemExit('SIGNAL_COMMIT_ANCHOR_COUNT:' + str(s.count(anchor)))
+# 2) Persist PENDING rows at the same commit point where working signals are
+# stored. The scan-level sync remains intact as reconciliation/fail-safe.
+commit_re = re.compile(r'await\s+writeWorkingSignals\(this\.ctx,\s*capped\s*\)\s*;')
+commit_hits = list(commit_re.finditer(s))
+if len(commit_hits) != 1:
+    raise SystemExit('SIGNAL_COMMIT_ANCHOR_COUNT:' + str(len(commit_hits)))
 hook = '''await writeWorkingSignals(this.ctx, capped);
-      // realtime-pending-ledger-v1: persist every signalled match to Statistics immediately.
+      // realtime-pending-ledger-v1: commit all active PENDING signals to Statistics now.
       if (typeof this.upsertLedgerRows === "function") {
         const realtimePendingRows = capped.filter((x) => String(x?.status || "").toUpperCase() === "PENDING");
         if (realtimePendingRows.length) await this.upsertLedgerRows(realtimePendingRows);
       }'''
-s = s.replace(anchor, hook, 1)
+s = commit_re.sub(hook, s, count=1)
 
-# 3) Publish an explicit runtime contract marker so post-deploy verification can
-# prove the active worker is the realtime-PENDING build.
-const_anchor = 'var FINAL_RECONCILE_VERSION = "missing-final-direct-v1";'
-if s.count(const_anchor) != 1:
-    raise SystemExit('FINAL_RECONCILE_CONST_COUNT:' + str(s.count(const_anchor)))
-s = s.replace(const_anchor, const_anchor + '\nvar REALTIME_PENDING_LEDGER_VERSION = "' + VERSION + '";', 1)
+# 3) Runtime marker proves the deployed worker has this contract.
+const_re = re.compile(r'var\s+FINAL_RECONCILE_VERSION\s*=\s*["\']missing-final-direct-v1["\']\s*;')
+const_hits = list(const_re.finditer(s))
+if len(const_hits) != 1:
+    raise SystemExit('FINAL_RECONCILE_CONST_COUNT:' + str(len(const_hits)))
+matched = const_hits[0].group(0)
+s = const_re.sub(matched + '\nvar REALTIME_PENDING_LEDGER_VERSION = "' + VERSION + '";', s, count=1)
 
-source_marker = 'statisticsSource: "LEDGER_V2_ONLY",'
-count = s.count(source_marker)
-if count < 2:
-    raise SystemExit('STATISTICS_SOURCE_MARKER_COUNT:' + str(count))
-s = s.replace(source_marker, source_marker + ' realtimePendingLedgerVersion: REALTIME_PENDING_LEDGER_VERSION,')
+source_re = re.compile(r'statisticsSource\s*:\s*["\']LEDGER_V2_ONLY["\']\s*,')
+source_hits = len(source_re.findall(s))
+if source_hits < 2:
+    raise SystemExit('STATISTICS_SOURCE_MARKER_COUNT:' + str(source_hits))
+s = source_re.sub(lambda m: m.group(0) + ' realtimePendingLedgerVersion: REALTIME_PENDING_LEDGER_VERSION,', s)
 
-# Guardrails: no settlement algorithm or card/frontend code is introduced here.
-if 'r.result="LIVE"' in s or 'r.displayStatus="LIVE"' in s:
+# Guardrails.
+if result_live.search(s) or display_live.search(s):
     raise SystemExit('PENDING_LIVE_OVERRIDE_REMAINS')
 if s.count('realtime-pending-ledger-v1') < 2:
     raise SystemExit('REALTIME_MARKER_NOT_WIRED')
+if 'settleMarketSignal' not in s or 'reconcileExternalFinal' not in s:
+    raise SystemExit('SETTLEMENT_CONTRACT_MOVED')
 
 out.parent.mkdir(parents=True, exist_ok=True)
 out.write_text(s)
