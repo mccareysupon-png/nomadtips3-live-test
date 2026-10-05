@@ -29,7 +29,7 @@ jobs:
       - name: Install confirmed rail dependencies
         working-directory: deploy-assets/match-status-svg-20261003
         run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Adapt left-rail runner to exact current Production module naming
+      - name: Adapt left-rail runner to exact current Production module naming and full transparency
         shell: bash
         run: |
           set -euo pipefail
@@ -37,6 +37,52 @@ jobs:
           const {readFileSync,writeFileSync}=require('node:fs');
           const runner='.github/scripts/ball46_left_rail_transparent_20261005.mjs';
           let source=readFileSync(runner,'utf8');
+
+          const oldMarker="const MARKER = 'B46_LEFT_RAIL_TRANSPARENT_20261005';";
+          const newMarker="const MARKER = 'B46_LEFT_RAIL_FULL_TRANSPARENT_20261005';";
+          if((source.split(oldMarker).length-1)!==1)throw new Error('LEFT_RAIL_MARKER_TARGET_MOVED');
+          source=source.replace(oldMarker,newMarker);
+
+          const patchClose='\n`;\n\nfunction validatePatch(){';
+          const extraCss=[
+            '',
+            '/* B46_LEFT_RAIL_FULL_TRANSPARENT_20261005: remove remaining group/menu surfaces; short section dividers only */',
+            'body .workspace.singlepage > .left-rail > :not(.workspace-brand-card),',
+            'body .workspace.singlepage > .left-rail :is(.rail-card,.workspace-stats-card,.workspace-nav-grid,.filter,.league-filter,.workspace-nav-row) {',
+            '  background-color: transparent !important;',
+            '  background-image: none !important;',
+            '  border-color: transparent !important;',
+            '  box-shadow: none !important;',
+            '}',
+            'body .workspace.singlepage > .left-rail .rail-card > :is(button,a,[role="button"]),',
+            'body .workspace.singlepage > .left-rail :is(.filter,.league-filter,.workspace-nav-row),',
+            'body .workspace.singlepage > .left-rail .workspace-nav-grid > button {',
+            '  background-color: transparent !important;',
+            '  background-image: none !important;',
+            '  border-color: transparent !important;',
+            '  box-shadow: none !important;',
+            '}',
+            'body .workspace.singlepage > .left-rail .rail-card > :is(button,a,[role="button"]):is(:hover,.active),',
+            'body .workspace.singlepage > .left-rail :is(.filter,.league-filter,.workspace-nav-row):is(:hover,.active),',
+            'body .workspace.singlepage > .left-rail .workspace-nav-grid > button:is(:hover,.active) {',
+            '  background-color: transparent !important;',
+            '  background-image: none !important;',
+            '  border-color: transparent !important;',
+            '  box-shadow: none !important;',
+            '}',
+            'body .workspace.singlepage > .left-rail :is(.rail-title,.league-head) {',
+            '  background-color: transparent !important;',
+            '  background-image: linear-gradient(90deg, color-mix(in srgb, var(--text) 20%, transparent), color-mix(in srgb, var(--text) 20%, transparent)) !important;',
+            '  background-repeat: no-repeat !important;',
+            '  background-position: 14px 100% !important;',
+            '  background-size: 48px 1px !important;',
+            '  border-color: transparent !important;',
+            '  box-shadow: none !important;',
+            '}',
+            ''
+          ].join('\n');
+          if((source.split(patchClose).length-1)!==1)throw new Error('LEFT_RAIL_PATCH_BLOCK_TARGET_MOVED');
+          source=source.replace(patchClose,extraCss+patchClose);
 
           const oldPath="const path=m.name.slice('assets/'.length),moduleSha=sha(Buffer.from(m.content_base64,'base64')),publicSha=hashes[path];";
           const newPath="const path=m.name.startsWith('assets/')?m.name.slice('assets/'.length):m.name,moduleSha=sha(Buffer.from(m.content_base64,'base64')),publicSha=hashes[path];";
@@ -54,7 +100,7 @@ jobs:
           source=source.replace(oldConfig,newConfig);
 
           writeFileSync(runner,source);
-          console.log('LEFT_RAIL_RUNNER_CURRENT_PRODUCTION_MODULES_ADAPTED');
+          console.log('LEFT_RAIL_FULL_TRANSPARENCY_RUNNER_ADAPTED');
           NODE
       - name: Guarded left rail transparency from exact current Production
         shell: bash
