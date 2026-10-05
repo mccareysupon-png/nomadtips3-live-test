@@ -1,48 +1,52 @@
 /* B46_DAILY_PERFORMANCE_20261005
-   VISUAL_FIX_20261005: approved mockup-derived background, centered/fitted image,
-   light-mode contrast hardening, and ~40% larger/heavier market breakdown.
+   VISUAL_FIX_20261005: approved stadium background, transparent large panels,
+   lightly transparent result tiles, light-mode white-block reset,
+   and ~40% larger/heavier market breakdown.
    New card only. Old scorebar stays visible and untouched. */
-#ball46-daily-performance{position:relative;margin:10px 0 12px;overflow:hidden;border:0;border-radius:14px;background-color:#061827;background-image:url("__B46_PERFORMANCE_BG_DATA__");background-repeat:no-repeat;background-position:center center;background-size:100% 100%;box-shadow:0 10px 26px rgba(8,18,24,.14);color:#f8fafc;isolation:isolate;min-width:0}
-#ball46-daily-performance::before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(3,16,26,.04) 0%,rgba(3,16,26,.10) 7%,rgba(3,16,26,.34) 12%,rgba(3,16,26,.22) 50%,rgba(3,16,26,.30) 100%);pointer-events:none;z-index:0}
+#ball46-daily-performance{position:relative;margin:10px 0 12px;overflow:hidden;border:0!important;border-radius:14px;background-color:transparent!important;background-image:url("__B46_PERFORMANCE_BG_DATA__")!important;background-repeat:no-repeat!important;background-position:center center!important;background-size:100% 100%!important;box-shadow:none!important;color:#f8fafc;isolation:isolate;min-width:0}
+#ball46-daily-performance::before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(3,16,26,.03) 0%,rgba(3,16,26,.08) 8%,rgba(3,16,26,.25) 15%,rgba(3,16,26,.14) 50%,rgba(3,16,26,.22) 100%);pointer-events:none;z-index:0}
 #ball46-daily-performance *{box-sizing:border-box;text-shadow:none}
+#ball46-daily-performance .b46-perf-grid,#ball46-daily-performance .b46-perf-side,#ball46-daily-performance .b46-perf-head,#ball46-daily-performance .b46-perf-title,#ball46-daily-performance .b46-perf-foot,#ball46-daily-performance .b46-market-row{background:transparent!important;border:0!important;box-shadow:none!important;outline:0!important}
 #ball46-daily-performance .b46-perf-grid{position:relative;z-index:1;display:grid;grid-template-columns:1fr 1fr;min-width:0}
-#ball46-daily-performance .b46-perf-side{position:relative;min-width:0;padding:11px 14px 10px}
+#ball46-daily-performance .b46-perf-side{position:relative;display:block;min-width:0;padding:11px 14px 10px;backdrop-filter:none!important}
 #ball46-daily-performance .b46-perf-side.today{padding-left:clamp(68px,7.2vw,108px)}
-#ball46-daily-performance .b46-perf-side+ .b46-perf-side::before{content:"";position:absolute;left:0;top:14px;bottom:14px;width:1px;background:linear-gradient(180deg,transparent,rgba(255,255,255,.16) 30%,rgba(255,255,255,.16) 70%,transparent)}
+#ball46-daily-performance .b46-perf-side+ .b46-perf-side::before{content:"";position:absolute;left:0;top:14px;bottom:14px;width:1px;background:linear-gradient(180deg,transparent,rgba(255,255,255,.12) 30%,rgba(255,255,255,.12) 70%,transparent)}
 #ball46-daily-performance .b46-perf-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:8px;min-width:0}
 #ball46-daily-performance .b46-perf-title{min-width:0}
-#ball46-daily-performance .b46-perf-kicker{display:block;margin:0 0 1px;font-size:8px;font-weight:900;letter-spacing:.105em;color:#e8f7ff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#ball46-daily-performance .b46-perf-sub{display:block;font-size:6.5px;font-weight:780;letter-spacing:.035em;color:#cbdde7;white-space:nowrap}
-#ball46-daily-performance .b46-perf-rate{text-align:right;flex:0 0 auto}
-#ball46-daily-performance .b46-perf-rate span{display:block;font-size:6px;font-weight:900;letter-spacing:.08em;color:#d4e4ec}
-#ball46-daily-performance .b46-perf-rate strong{display:block;margin-top:1px;font-size:19px;line-height:1;font-weight:950;color:#facc15;letter-spacing:-.035em}
-#ball46-daily-performance .b46-perf-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;min-width:0}
+#ball46-daily-performance .b46-perf-kicker{display:block;margin:0 0 1px;font-size:8px;font-weight:900;letter-spacing:.105em;color:#f8fafc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:transparent!important}
+#ball46-daily-performance .b46-perf-sub{display:block;font-size:6.5px;font-weight:780;letter-spacing:.035em;color:#dce8ee;white-space:nowrap;background:transparent!important}
+#ball46-daily-performance .b46-perf-rate{text-align:right;flex:0 0 auto;background:transparent!important;border:0!important;box-shadow:none!important}
+#ball46-daily-performance .b46-perf-rate span{display:block;font-size:6px;font-weight:900;letter-spacing:.08em;color:#dce8ee;background:transparent!important}
+#ball46-daily-performance .b46-perf-rate strong{display:block;margin-top:1px;font-size:19px;line-height:1;font-weight:950;color:#facc15;letter-spacing:-.035em;background:transparent!important}
+#ball46-daily-performance .b46-perf-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;min-width:0;background:transparent!important;border:0!important;box-shadow:none!important}
 #ball46-daily-performance .b46-perf-side.yesterday .b46-perf-stats{grid-template-columns:repeat(3,minmax(0,1fr))}
-#ball46-daily-performance .b46-perf-stat{min-width:0;padding:5px 7px 4px;border:0;border-radius:8px;background:linear-gradient(180deg,rgba(3,13,21,.72),rgba(4,17,25,.52));backdrop-filter:blur(2px)}
-#ball46-daily-performance .b46-perf-stat span{display:block;font-size:6px;font-weight:900;letter-spacing:.075em;color:#d6e1e7}
-#ball46-daily-performance .b46-perf-stat strong{display:block;margin-top:1px;font-size:14px;line-height:1.08;font-weight:950;color:#fff}
+#ball46-daily-performance .b46-perf-stat{min-width:0;padding:5px 7px 4px;border:0!important;border-radius:8px;background:linear-gradient(180deg,rgba(3,13,21,.34),rgba(4,17,25,.22))!important;box-shadow:none!important;backdrop-filter:blur(1.5px)}
+#ball46-daily-performance .b46-perf-stat span{display:block;font-size:6px;font-weight:900;letter-spacing:.075em;color:#e2e8f0;background:transparent!important}
+#ball46-daily-performance .b46-perf-stat strong{display:block;margin-top:1px;font-size:14px;line-height:1.08;font-weight:950;color:#fff;background:transparent!important}
 #ball46-daily-performance .b46-perf-stat.win strong{color:#4ade80}
 #ball46-daily-performance .b46-perf-stat.loss strong{color:#fb7185}
 #ball46-daily-performance .b46-perf-stat.push strong{color:#fff}
 #ball46-daily-performance .b46-perf-stat.pending strong{color:#cbd5e1}
 #ball46-daily-performance .b46-perf-foot{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:10px;margin-top:7px;min-width:0}
-#ball46-daily-performance .b46-perf-total{white-space:nowrap;font-size:6.5px;font-weight:850;color:#d6e1e7}
-#ball46-daily-performance .b46-perf-total b{margin-left:3px;font-size:9px;font-weight:950;color:#f8fafc}
+#ball46-daily-performance .b46-perf-total{white-space:nowrap;font-size:6.5px;font-weight:850;color:#e2e8f0;background:transparent!important}
+#ball46-daily-performance .b46-perf-total b{margin-left:3px;font-size:9px;font-weight:950;color:#f8fafc;background:transparent!important}
 #ball46-daily-performance .b46-market-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;min-width:0}
-#ball46-daily-performance .b46-market{min-width:0;display:flex;align-items:center;justify-content:flex-end;gap:5px;white-space:nowrap;font-size:8.4px;line-height:1.1;font-weight:850;color:#f1f5f9}
-#ball46-daily-performance .b46-market b{font-size:9.1px;line-height:1.1;font-weight:950;color:#38bdf8;letter-spacing:.015em}
-#ball46-daily-performance .b46-market>span{font-weight:850;color:#f8fafc}
-#ball46-daily-performance .b46-perf-state{position:absolute;right:8px;bottom:4px;font-size:5px;line-height:1;font-weight:700;color:rgba(223,235,241,.58);letter-spacing:.04em}
+#ball46-daily-performance .b46-market{min-width:0;display:flex;align-items:center;justify-content:flex-end;gap:5px;white-space:nowrap;font-size:8.4px;line-height:1.1;font-weight:850;color:#f1f5f9;background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important}
+#ball46-daily-performance .b46-market b{font-size:9.1px;line-height:1.1;font-weight:950;color:#38bdf8;letter-spacing:.015em;background:transparent!important}
+#ball46-daily-performance .b46-market>span{font-weight:850;color:#f8fafc;background:transparent!important}
+#ball46-daily-performance .b46-perf-state{position:absolute;right:8px;bottom:4px;font-size:5px;line-height:1;font-weight:700;color:rgba(231,240,244,.68);letter-spacing:.04em;background:transparent!important}
+html[data-theme="light"] #ball46-daily-performance,html[data-theme="light"] #ball46-daily-performance .b46-perf-grid,html[data-theme="light"] #ball46-daily-performance .b46-perf-side,html[data-theme="light"] #ball46-daily-performance .b46-perf-head,html[data-theme="light"] #ball46-daily-performance .b46-perf-title,html[data-theme="light"] #ball46-daily-performance .b46-perf-foot,html[data-theme="light"] #ball46-daily-performance .b46-market-row{background-color:transparent!important;border:0!important;box-shadow:none!important}
 html[data-theme="light"] #ball46-daily-performance{color:#f8fafc!important}
-html[data-theme="light"] #ball46-daily-performance .b46-perf-kicker{color:#f8fafc!important}
-html[data-theme="light"] #ball46-daily-performance .b46-perf-sub,html[data-theme="light"] #ball46-daily-performance .b46-perf-rate span,html[data-theme="light"] #ball46-daily-performance .b46-perf-stat span,html[data-theme="light"] #ball46-daily-performance .b46-perf-total,html[data-theme="light"] #ball46-daily-performance .b46-perf-state{color:#d9e5eb!important}
+html[data-theme="light"] #ball46-daily-performance .b46-perf-kicker{color:#f8fafc!important;background:transparent!important}
+html[data-theme="light"] #ball46-daily-performance .b46-perf-sub,html[data-theme="light"] #ball46-daily-performance .b46-perf-rate span,html[data-theme="light"] #ball46-daily-performance .b46-perf-stat span,html[data-theme="light"] #ball46-daily-performance .b46-perf-total,html[data-theme="light"] #ball46-daily-performance .b46-perf-state{color:#e6eef2!important;background:transparent!important}
+html[data-theme="light"] #ball46-daily-performance .b46-perf-rate,html[data-theme="light"] #ball46-daily-performance .b46-perf-rate span,html[data-theme="light"] #ball46-daily-performance .b46-perf-rate strong{background:transparent!important;border:0!important;box-shadow:none!important}
 html[data-theme="light"] #ball46-daily-performance .b46-perf-rate strong{color:#facc15!important}
-html[data-theme="light"] #ball46-daily-performance .b46-perf-stat{background:linear-gradient(180deg,rgba(3,13,21,.78),rgba(4,17,25,.60))!important}
+html[data-theme="light"] #ball46-daily-performance .b46-perf-stat{background:linear-gradient(180deg,rgba(3,13,21,.38),rgba(4,17,25,.24))!important;border:0!important;box-shadow:none!important}
 html[data-theme="light"] #ball46-daily-performance .b46-perf-stat.win strong{color:#4ade80!important}
 html[data-theme="light"] #ball46-daily-performance .b46-perf-stat.loss strong{color:#fb7185!important}
 html[data-theme="light"] #ball46-daily-performance .b46-perf-stat.push strong{color:#fff!important}
 html[data-theme="light"] #ball46-daily-performance .b46-perf-stat.pending strong{color:#cbd5e1!important}
-html[data-theme="light"] #ball46-daily-performance .b46-perf-total b,html[data-theme="light"] #ball46-daily-performance .b46-market,html[data-theme="light"] #ball46-daily-performance .b46-market>span{color:#f8fafc!important}
-html[data-theme="light"] #ball46-daily-performance .b46-market b{color:#38bdf8!important}
+html[data-theme="light"] #ball46-daily-performance .b46-perf-total b,html[data-theme="light"] #ball46-daily-performance .b46-market,html[data-theme="light"] #ball46-daily-performance .b46-market>span{color:#f8fafc!important;background:transparent!important}
+html[data-theme="light"] #ball46-daily-performance .b46-market b{color:#38bdf8!important;background:transparent!important}
 @media(max-width:1080px){#ball46-daily-performance .b46-perf-side{padding:10px 10px 9px}#ball46-daily-performance .b46-perf-side.today{padding-left:clamp(58px,7vw,82px)}#ball46-daily-performance .b46-perf-stat{padding:5px 5px 4px}#ball46-daily-performance .b46-market{gap:4px;font-size:8px}#ball46-daily-performance .b46-market b{font-size:8.7px}}
-@media(max-width:760px){#ball46-daily-performance{margin:8px 0 10px;border-radius:12px;background-size:auto 116px;background-position:left 6px top 8px;background-color:#061827}#ball46-daily-performance::before{background:linear-gradient(180deg,rgba(3,16,26,.16),rgba(3,16,26,.58) 45%,rgba(3,16,26,.62))}#ball46-daily-performance .b46-perf-grid{grid-template-columns:1fr}#ball46-daily-performance .b46-perf-side,#ball46-daily-performance .b46-perf-side.today{padding:10px 11px}#ball46-daily-performance .b46-perf-side.today{padding-left:74px}#ball46-daily-performance .b46-perf-side+ .b46-perf-side::before{left:11px;right:11px;top:0;bottom:auto;width:auto;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.14) 20%,rgba(255,255,255,.14) 80%,transparent)}#ball46-daily-performance .b46-perf-kicker{font-size:7.5px}#ball46-daily-performance .b46-perf-rate strong{font-size:18px}#ball46-daily-performance .b46-perf-foot{gap:7px}#ball46-daily-performance .b46-market{justify-content:flex-start;font-size:7.7px;font-weight:850}#ball46-daily-performance .b46-market b{font-size:8.4px;font-weight:950}}
+@media(max-width:760px){#ball46-daily-performance{margin:8px 0 10px;border-radius:12px;background-size:auto 116px!important;background-position:left 6px top 8px!important;background-color:transparent!important}#ball46-daily-performance::before{background:linear-gradient(180deg,rgba(3,16,26,.10),rgba(3,16,26,.40) 45%,rgba(3,16,26,.46))}#ball46-daily-performance .b46-perf-grid{grid-template-columns:1fr}#ball46-daily-performance .b46-perf-side,#ball46-daily-performance .b46-perf-side.today{padding:10px 11px}#ball46-daily-performance .b46-perf-side.today{padding-left:74px}#ball46-daily-performance .b46-perf-side+ .b46-perf-side::before{left:11px;right:11px;top:0;bottom:auto;width:auto;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.12) 20%,rgba(255,255,255,.12) 80%,transparent)}#ball46-daily-performance .b46-perf-kicker{font-size:7.5px}#ball46-daily-performance .b46-perf-rate strong{font-size:18px}#ball46-daily-performance .b46-perf-foot{gap:7px}#ball46-daily-performance .b46-market{justify-content:flex-start;font-size:7.7px;font-weight:850}#ball46-daily-performance .b46-market b{font-size:8.4px;font-weight:950}}
