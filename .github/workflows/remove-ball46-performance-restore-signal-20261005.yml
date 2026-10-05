@@ -1,0 +1,49 @@
+name: Remove Ball46 Performance Restore Signal 20261005
+
+on:
+  push:
+    branches: [work/ball46-daily-performance-20261005]
+    paths:
+      - '.github/workflows/remove-ball46-performance-restore-signal-20261005.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ball46-production-performance-remove-signal-restore
+  cancel-in-progress: false
+
+jobs:
+  restore-signal-ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Checkout exact work branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install parser dependency
+        run: npm install --no-save --ignore-scripts acorn@8
+
+      - name: Remove Performance injection from current Production only
+        working-directory: deploy-assets/daily-performance-20261005
+        run: node remove-performance.mjs
+
+      - name: Upload restore audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-remove-performance-signal-restore-${{ github.run_id }}
+          path: deploy-assets/daily-performance-20261005/audit-remove-performance
+          if-no-files-found: warn
+          retention-days: 30
