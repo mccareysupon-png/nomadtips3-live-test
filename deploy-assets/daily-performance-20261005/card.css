@@ -3,9 +3,10 @@
    BACKGROUND_VISIBILITY_FIX_20261005: clean stadium crop + lighter glass content,
    MAIN_BOARD_WIDTH_LOCK_20261005: card stays inside the same main-board column as LIVE MATCHES,
    REALISTIC_STADIUM_BG_20261005: photorealistic night stadium image, centered on pitch and preserved sharp with cover fit,
-   TRANSPARENT_GLASS_FIX_20261005: large card has no opaque fill; stat tiles stay thin glass,
+   TRANSPARENT_GLASS_FIX_20261005: large card has no opaque fill; stat tiles stay glass,
    ROOT_IMAGE_RENDER_FIX_20261005: render WebP directly on the card root so light/mobile overrides cannot hide it,
-   light-mode white-block reset, and ~40% larger/heavier market breakdown.
+   INNER_CARD_READABILITY_20261005: mini result cards use stronger glass for readable text over the stadium,
+   AVG_ODDS_20261005: Today has five mini metrics and Yesterday has four, including AVG ODDS.
    New card only. Old scorebar stays visible and untouched. */
 #ball46-daily-performance{position:relative;width:100%;max-width:100%;min-width:0;justify-self:stretch;margin:10px 0 12px;overflow:hidden;border:0!important;border-radius:14px;background-color:transparent!important;background-image:url("__B46_PERFORMANCE_BG_DATA__")!important;background-repeat:no-repeat!important;background-position:center 58%!important;background-size:cover!important;box-shadow:none!important;color:#f8fafc;isolation:isolate}
 #ball46-daily-performance::before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(3,16,26,.16) 0%,rgba(3,16,26,.11) 20%,rgba(3,16,26,.09) 52%,rgba(3,16,26,.15) 100%);pointer-events:none;z-index:0}
@@ -22,15 +23,16 @@
 #ball46-daily-performance .b46-perf-rate{text-align:right;flex:0 0 auto;background:transparent!important;border:0!important;box-shadow:none!important}
 #ball46-daily-performance .b46-perf-rate span{display:block;font-size:6px;font-weight:900;letter-spacing:.08em;color:#dce8ee;background:transparent!important}
 #ball46-daily-performance .b46-perf-rate strong{display:block;margin-top:1px;font-size:19px;line-height:1;font-weight:950;color:#facc15;letter-spacing:-.035em;background:transparent!important}
-#ball46-daily-performance .b46-perf-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;min-width:0;background:transparent!important;border:0!important;box-shadow:none!important}
-#ball46-daily-performance .b46-perf-side.yesterday .b46-perf-stats{grid-template-columns:repeat(3,minmax(0,1fr))}
-#ball46-daily-performance .b46-perf-stat{min-width:0;padding:5px 7px 4px;border:0!important;border-radius:8px;background:rgba(3,13,21,.18)!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
-#ball46-daily-performance .b46-perf-stat span{display:block;font-size:6px;font-weight:900;letter-spacing:.075em;color:#e2e8f0;background:transparent!important}
+#ball46-daily-performance .b46-perf-stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px;min-width:0;background:transparent!important;border:0!important;box-shadow:none!important}
+#ball46-daily-performance .b46-perf-side.yesterday .b46-perf-stats{grid-template-columns:repeat(4,minmax(0,1fr))}
+#ball46-daily-performance .b46-perf-stat{min-width:0;padding:5px 7px 4px;border:0!important;border-radius:8px;background:rgba(3,13,21,.42)!important;box-shadow:none!important;backdrop-filter:blur(1.5px)!important;-webkit-backdrop-filter:blur(1.5px)!important}
+#ball46-daily-performance .b46-perf-stat span{display:block;font-size:6.2px;font-weight:900;letter-spacing:.075em;color:#f1f5f9;background:transparent!important}
 #ball46-daily-performance .b46-perf-stat strong{display:block;margin-top:1px;font-size:14px;line-height:1.08;font-weight:950;color:#fff;background:transparent!important}
 #ball46-daily-performance .b46-perf-stat.win strong{color:#4ade80}
 #ball46-daily-performance .b46-perf-stat.loss strong{color:#fb7185}
 #ball46-daily-performance .b46-perf-stat.push strong{color:#fff}
 #ball46-daily-performance .b46-perf-stat.pending strong{color:#cbd5e1}
+#ball46-daily-performance .b46-perf-stat.avg-odds strong{color:#7dd3fc}
 #ball46-daily-performance .b46-perf-foot{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:10px;margin-top:7px;min-width:0}
 #ball46-daily-performance .b46-perf-total{white-space:nowrap;font-size:6.5px;font-weight:850;color:#e2e8f0;background:transparent!important}
 #ball46-daily-performance .b46-perf-total b{margin-left:3px;font-size:9px;font-weight:950;color:#f8fafc;background:transparent!important}
@@ -42,14 +44,15 @@
 html[data-theme="light"] #ball46-daily-performance,html[data-theme="light"] #ball46-daily-performance .b46-perf-grid,html[data-theme="light"] #ball46-daily-performance .b46-perf-side,html[data-theme="light"] #ball46-daily-performance .b46-perf-head,html[data-theme="light"] #ball46-daily-performance .b46-perf-title,html[data-theme="light"] #ball46-daily-performance .b46-perf-foot,html[data-theme="light"] #ball46-daily-performance .b46-market-row{border:0!important;box-shadow:none!important}
 html[data-theme="light"] #ball46-daily-performance{color:#f8fafc!important;background-color:transparent!important}
 html[data-theme="light"] #ball46-daily-performance .b46-perf-kicker{color:#f8fafc!important;background:transparent!important}
-html[data-theme="light"] #ball46-daily-performance .b46-perf-sub,html[data-theme="light"] #ball46-daily-performance .b46-perf-rate span,html[data-theme="light"] #ball46-daily-performance .b46-perf-stat span,html[data-theme="light"] #ball46-daily-performance .b46-perf-total,html[data-theme="light"] #ball46-daily-performance .b46-perf-state{color:#e6eef2!important;background:transparent!important}
+html[data-theme="light"] #ball46-daily-performance .b46-perf-sub,html[data-theme="light"] #ball46-daily-performance .b46-perf-rate span,html[data-theme="light"] #ball46-daily-performance .b46-perf-stat span,html[data-theme="light"] #ball46-daily-performance .b46-perf-total,html[data-theme="light"] #ball46-daily-performance .b46-perf-state{color:#f1f5f9!important;background:transparent!important}
 html[data-theme="light"] #ball46-daily-performance .b46-perf-rate,html[data-theme="light"] #ball46-daily-performance .b46-perf-rate span,html[data-theme="light"] #ball46-daily-performance .b46-perf-rate strong{background:transparent!important;border:0!important;box-shadow:none!important}
 html[data-theme="light"] #ball46-daily-performance .b46-perf-rate strong{color:#facc15!important}
-html[data-theme="light"] #ball46-daily-performance .b46-perf-stat{background:rgba(3,13,21,.16)!important;border:0!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+html[data-theme="light"] #ball46-daily-performance .b46-perf-stat{background:rgba(3,13,21,.38)!important;border:0!important;box-shadow:none!important;backdrop-filter:blur(1.5px)!important;-webkit-backdrop-filter:blur(1.5px)!important}
 html[data-theme="light"] #ball46-daily-performance .b46-perf-stat.win strong{color:#4ade80!important}
 html[data-theme="light"] #ball46-daily-performance .b46-perf-stat.loss strong{color:#fb7185!important}
 html[data-theme="light"] #ball46-daily-performance .b46-perf-stat.push strong{color:#fff!important}
 html[data-theme="light"] #ball46-daily-performance .b46-perf-stat.pending strong{color:#cbd5e1!important}
+html[data-theme="light"] #ball46-daily-performance .b46-perf-stat.avg-odds strong{color:#7dd3fc!important}
 html[data-theme="light"] #ball46-daily-performance .b46-perf-total b,html[data-theme="light"] #ball46-daily-performance .b46-market,html[data-theme="light"] #ball46-daily-performance .b46-market>span{color:#f8fafc!important;background:transparent!important}
 html[data-theme="light"] #ball46-daily-performance .b46-market b{color:#38bdf8!important;background:transparent!important}
 @media(max-width:1080px){#ball46-daily-performance .b46-perf-side{padding:10px 10px 9px}#ball46-daily-performance .b46-perf-side.today{padding-left:clamp(58px,7vw,82px)}#ball46-daily-performance .b46-perf-stat{padding:5px 5px 4px}#ball46-daily-performance .b46-market{gap:4px;font-size:8px}#ball46-daily-performance .b46-market b{font-size:8.7px}}
