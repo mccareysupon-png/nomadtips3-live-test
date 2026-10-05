@@ -1,0 +1,13 @@
+const base='https://ball46-production.mccarey-supon.workers.dev';
+const j=async p=>{const r=await fetch(base+p,{headers:{Accept:'application/json','Cache-Control':'no-cache'}});if(!r.ok)throw new Error(`${p}:${r.status}`);return r.json()};
+const [st,sg]=await Promise.all([j('/api/engine/statistics'),j('/api/engine/signals')]);
+const rows=Array.isArray(st?.rows)?st.rows:[];
+const signals=Array.isArray(sg?.signals)?sg.signals:[];
+const dateKeys=['settledAt','settled_at','resolvedAt','resolved_at','updatedAt','updated_at','createdAt','created_at','timestamp','time','detectedAt','lockedAt','entryAt','date','matchDate','match_date','kickoff','kickoffAt','kickoff_at','startTime','start_time','fixtureDate','fixture_date'];
+const pick=(r)=>Object.fromEntries(Object.entries(r||{}).filter(([k])=>dateKeys.includes(k)||['id','signalId','fixtureId','market','marketLabel','marketType','selection','result','settlement','outcome','status','home','away','homeTeam','awayTeam'].includes(k)));
+console.log('STATS_COUNT='+rows.length);
+console.log('SIGNALS_COUNT='+signals.length);
+console.log('STATS_KEYS='+JSON.stringify([...new Set(rows.slice(0,50).flatMap(r=>Object.keys(r||{})))].sort()));
+console.log('SIGNALS_KEYS='+JSON.stringify([...new Set(signals.slice(0,50).flatMap(r=>Object.keys(r||{})))].sort()));
+for(let i=0;i<Math.min(5,rows.length);i++)console.log('STATS_SAMPLE_'+i+'='+JSON.stringify(pick(rows[i])));
+for(let i=0;i<Math.min(3,signals.length);i++)console.log('SIGNALS_SAMPLE_'+i+'='+JSON.stringify(pick(signals[i])));
