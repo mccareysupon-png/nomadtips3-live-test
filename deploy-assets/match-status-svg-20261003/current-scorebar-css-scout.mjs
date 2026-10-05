@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import {mkdirSync,writeFileSync} from 'node:fs';
+import {inspect,literals,sha} from './production.mjs';
+mkdirSync('audit',{recursive:true});
+const current=await inspect();
+const rows=[...literals(current.source)];
+const hit=rows.find(([name])=>name==='__B46_SCOREBAR_TUNE_CSS__');
+assert(hit,'CURRENT_SCOREBAR_CSS_LITERAL_MISSING_STOP');
+const [name,entry]=hit;
+writeFileSync('audit/current-scorebar-tune.css',entry.value);
+writeFileSync('audit/current-scorebar-tune.json',JSON.stringify({name,size:entry.value.length,sha:sha(entry.value),version:current.restore.version},null,2));
+console.log('CURRENT_SCOREBAR_CSS='+JSON.stringify({name,size:entry.value.length,sha:sha(entry.value),version:current.restore.version}));
