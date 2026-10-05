@@ -1,0 +1,45 @@
+name: Probe Ball46 Statistics 20261005
+
+on:
+  push:
+    branches: [work/ball46-daily-performance-20261005]
+    paths:
+      - '.github/workflows/probe-ball46-statistics-20261005.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Probe production statistics read-only
+        run: |
+          node <<'NODE'
+          import { writeFileSync } from 'node:fs';
+          const url='https://ball46.com/api/engine/statistics?probe='+Date.now();
+          const r=await fetch(url,{headers:{'Cache-Control':'no-cache','Accept':'application/json'}});
+          if(!r.ok) throw new Error('HTTP_'+r.status);
+          const j=await r.json();
+          const rows=Array.isArray(j.rows)?j.rows:[];
+          const keys={};
+          for(const row of rows.slice(0,2000)) for(const k of Object.keys(row||{})) keys[k]=(keys[k]||0)+1;
+          const sample=rows.slice(0,20);
+          const compact=sample.map((x,i)=>({i,...Object.fromEntries(Object.entries(x).filter(([k])=>/id|time|date|created|settled|resolved|updated|result|settlement|outcome|status|market|selection|fixture|league|home|away/i.test(k)))}));
+          const report={ok:j.ok,settlementRevision:j.settlementRevision,rowCount:rows.length,topLevelKeys:Object.keys(j),rowKeys:Object.entries(keys).sort((a,b)=>b[1]-a[1]),sample:compact};
+          writeFileSync('statistics-probe.json',JSON.stringify(report,null,2));
+          console.log('STATISTICS_OK='+j.ok);
+          console.log('SETTLEMENT_REVISION='+j.settlementRevision);
+          console.log('ROW_COUNT='+rows.length);
+          console.log('ROW_KEYS='+Object.keys(keys).sort().join(','));
+          console.log('SAMPLE='+JSON.stringify(compact.slice(0,5)));
+          NODE
+
+      - name: Upload probe
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-statistics-probe-${{ github.run_id }}
+          path: statistics-probe.json
+          retention-days: 7
