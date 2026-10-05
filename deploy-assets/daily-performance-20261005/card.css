@@ -1,0 +1,33 @@
+/* B46_DAILY_PERFORMANCE_20261005
+   New card only. Old scorebar stays visible and untouched. */
+#ball46-daily-performance{position:relative;margin:10px 0 12px;overflow:hidden;border:0;border-radius:14px;background:radial-gradient(circle at 12% 0%,rgba(255,255,255,.28),transparent 24%),linear-gradient(180deg,rgba(91,176,222,.94) 0%,rgba(139,199,219,.78) 23%,rgba(54,119,78,.76) 24%,rgba(17,48,39,.96) 48%,rgba(12,22,28,.99) 100%);box-shadow:0 10px 26px rgba(8,18,24,.14);color:#f8fafc;isolation:isolate;min-width:0}
+#ball46-daily-performance::before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(4,13,19,.26),rgba(4,13,19,.60) 35%,rgba(4,13,19,.68) 50%,rgba(4,13,19,.58) 66%,rgba(4,13,19,.30)),radial-gradient(ellipse at 50% 118%,rgba(72,154,99,.28),transparent 48%);pointer-events:none;z-index:0}
+#ball46-daily-performance *{box-sizing:border-box;text-shadow:none}
+#ball46-daily-performance .b46-perf-grid{position:relative;z-index:1;display:grid;grid-template-columns:1fr 1fr;min-width:0}
+#ball46-daily-performance .b46-perf-side{position:relative;min-width:0;padding:11px 14px 10px}
+#ball46-daily-performance .b46-perf-side+ .b46-perf-side::before{content:"";position:absolute;left:0;top:14px;bottom:14px;width:1px;background:linear-gradient(180deg,transparent,rgba(255,255,255,.18) 28%,rgba(255,255,255,.18) 72%,transparent)}
+#ball46-daily-performance .b46-perf-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:8px;min-width:0}
+#ball46-daily-performance .b46-perf-title{min-width:0}
+#ball46-daily-performance .b46-perf-kicker{display:block;margin:0 0 1px;font-size:8px;font-weight:900;letter-spacing:.105em;color:#dff3ff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#ball46-daily-performance .b46-perf-sub{display:block;font-size:6.5px;font-weight:750;letter-spacing:.035em;color:rgba(235,244,248,.70);white-space:nowrap}
+#ball46-daily-performance .b46-perf-rate{text-align:right;flex:0 0 auto}
+#ball46-daily-performance .b46-perf-rate span{display:block;font-size:6px;font-weight:850;letter-spacing:.08em;color:rgba(235,244,248,.66)}
+#ball46-daily-performance .b46-perf-rate strong{display:block;margin-top:1px;font-size:19px;line-height:1;font-weight:950;color:#facc15;letter-spacing:-.035em}
+#ball46-daily-performance .b46-perf-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;min-width:0}
+#ball46-daily-performance .b46-perf-side.yesterday .b46-perf-stats{grid-template-columns:repeat(3,minmax(0,1fr))}
+#ball46-daily-performance .b46-perf-stat{min-width:0;padding:5px 7px 4px;border:0;border-radius:8px;background:linear-gradient(180deg,rgba(4,12,17,.45),rgba(6,16,20,.25));backdrop-filter:blur(2px)}
+#ball46-daily-performance .b46-perf-stat span{display:block;font-size:6px;font-weight:900;letter-spacing:.075em;color:rgba(226,235,240,.68)}
+#ball46-daily-performance .b46-perf-stat strong{display:block;margin-top:1px;font-size:14px;line-height:1.08;font-weight:950;color:#fff}
+#ball46-daily-performance .b46-perf-stat.win strong{color:#4ade80}
+#ball46-daily-performance .b46-perf-stat.loss strong{color:#fb7185}
+#ball46-daily-performance .b46-perf-stat.push strong{color:#fff}
+#ball46-daily-performance .b46-perf-stat.pending strong{color:#cbd5e1}
+#ball46-daily-performance .b46-perf-foot{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:10px;margin-top:7px;min-width:0}
+#ball46-daily-performance .b46-perf-total{white-space:nowrap;font-size:6.5px;font-weight:800;color:rgba(226,235,240,.72)}
+#ball46-daily-performance .b46-perf-total b{margin-left:3px;font-size:9px;color:#f8fafc}
+#ball46-daily-performance .b46-market-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;min-width:0}
+#ball46-daily-performance .b46-market{min-width:0;display:flex;align-items:center;justify-content:flex-end;gap:4px;white-space:nowrap;font-size:6px;color:rgba(226,235,240,.70)}
+#ball46-daily-performance .b46-market b{font-size:6.5px;color:#eaf4f8;letter-spacing:.02em}
+#ball46-daily-performance .b46-perf-state{position:absolute;right:8px;bottom:5px;font-size:5px;line-height:1;color:rgba(223,235,241,.38);letter-spacing:.04em}
+@media(max-width:1080px){#ball46-daily-performance .b46-perf-side{padding:10px 10px 9px}#ball46-daily-performance .b46-perf-stat{padding:5px 5px 4px}#ball46-daily-performance .b46-market{gap:3px}}
+@media(max-width:760px){#ball46-daily-performance{margin:8px 0 10px;border-radius:12px}#ball46-daily-performance .b46-perf-grid{grid-template-columns:1fr}#ball46-daily-performance .b46-perf-side{padding:10px 11px}#ball46-daily-performance .b46-perf-side+ .b46-perf-side::before{left:11px;right:11px;top:0;bottom:auto;width:auto;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.16) 20%,rgba(255,255,255,.16) 80%,transparent)}#ball46-daily-performance .b46-perf-kicker{font-size:7.5px}#ball46-daily-performance .b46-perf-rate strong{font-size:18px}#ball46-daily-performance .b46-perf-foot{gap:7px}#ball46-daily-performance .b46-market{justify-content:flex-start;font-size:5.5px}#ball46-daily-performance .b46-market b{font-size:6px}}
