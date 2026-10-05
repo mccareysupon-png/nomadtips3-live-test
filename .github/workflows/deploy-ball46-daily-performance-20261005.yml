@@ -38,6 +38,10 @@ jobs:
       - name: Install parser dependency only
         run: npm install --no-save --ignore-scripts acorn@8
 
+      - name: Read-only Performance statistics audit
+        working-directory: deploy-assets/daily-performance-20261005
+        run: node audit-stats.mjs
+
       - name: Guarded current-Production deploy
         working-directory: deploy-assets/daily-performance-20261005
         run: node run.mjs
