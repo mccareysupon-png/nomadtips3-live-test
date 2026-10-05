@@ -23,7 +23,7 @@ jobs:
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      DEPLOY_ENABLED: 'false'
+      DEPLOY_ENABLED: 'true'
     steps:
       - name: Checkout exact work branch
         uses: actions/checkout@v4
@@ -50,5 +50,3 @@ jobs:
           path: deploy-assets/daily-performance-20261005/audit
           if-no-files-found: warn
           retention-days: 30
-
-# preview trigger after main registration and push-event registration
