@@ -1,0 +1,65 @@
+name: Ball46 mobile inventory 2026-10-05
+on:
+  push:
+    branches:
+      - work/ball46-mobile-inventory-20261005
+  workflow_dispatch:
+
+jobs:
+  inspect-mobile:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Read current production mobile shell only
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="https://www.ball46.com"
+          curl -fsSL --retry 3 --max-time 30 "$BASE/index.html?mobile-inventory=$GITHUB_RUN_ID" -o /tmp/index.html
+          echo "=== INDEX META ==="
+          python3 - <<'PY'
+          import re
+          s=open('/tmp/index.html',encoding='utf-8',errors='replace').read()
+          print('INDEX_LEN',len(s))
+          for needle in ['mobile-nav','bottom','viewport','theme','dark','dashboard-v2','full-market-bookmaker-343.js','expanded-match-343.js']:
+              print('COUNT',needle,s.lower().count(needle.lower()))
+          css=re.findall(r'<link[^>]+href=["\']([^"\']+\.css(?:\?[^"\']*)?)["\']',s,re.I)
+          js=re.findall(r'<script[^>]+src=["\']([^"\']+\.js(?:\?[^"\']*)?)["\']',s,re.I)
+          print('CSS_REFS')
+          for x in css: print(x)
+          print('JS_REFS')
+          for x in js: print(x)
+          print('MOBILE_HTML_SNIPS')
+          for pat in ['mobile-nav','bottom-nav','Live','Signal','Statistics']:
+              i=s.lower().find(pat.lower())
+              if i>=0: print(pat,repr(s[max(0,i-500):i+1200]))
+          PY
+          python3 - <<'PY'
+          import re, urllib.parse, pathlib, subprocess
+          base='https://www.ball46.com'
+          s=open('/tmp/index.html',encoding='utf-8',errors='replace').read()
+          css=[]
+          for x in re.findall(r'<link[^>]+href=["\']([^"\']+\.css(?:\?[^"\']*)?)["\']',s,re.I):
+              u=urllib.parse.urljoin(base+'/',x)
+              if u not in css: css.append(u)
+          print('=== CSS MOBILE INVENTORY ===')
+          for n,u in enumerate(css):
+              p=f'/tmp/css{n}.css'
+              try:
+                  subprocess.run(['curl','-fsSL','--retry','2','--max-time','20',u,'-o',p],check=True)
+              except Exception as e:
+                  print('CSS_FETCH_FAIL',u,e); continue
+              t=open(p,encoding='utf-8',errors='replace').read()
+              hits=[]
+              for needle in ['@media','mobile-nav','bottom-nav','safe-area','max-width','min-width','overflow-x','position:fixed','position: fixed']:
+                  if needle.lower() in t.lower(): hits.append(needle)
+              print('CSS',u,'LEN',len(t),'HITS',','.join(hits))
+              for m in re.finditer(r'@media[^\{]*\{',t,re.I):
+                  start=m.start(); print('MEDIA',repr(t[start:start+500]))
+              for needle in ['mobile-nav','bottom-nav','safe-area-inset-bottom','overflow-x']:
+                  pos=0; count=0
+                  while count<8:
+                      i=t.lower().find(needle.lower(),pos)
+                      if i<0: break
+                      print('SNIP',needle,repr(t[max(0,i-350):i+900]))
+                      pos=i+len(needle); count+=1
+          PY
