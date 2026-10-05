@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-10-05T16:09:43Z",
+  "updated_at": "2026-10-05T22:44:51Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -1469,8 +1469,8 @@
       "edge": 30.3,
       "ev": 0.6068,
       "required_confidence": 0.56,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "3-2",
       "locked_at": "2026-10-05T02:27:46Z",
       "source_url": "https://www.goaloo.com/football/primera-division-de-paraguay-sportivo-trinidense-vs-sportivo-luqueno/h2h-3074198",
       "summary_url": "https://www.goaloo.com/football/primera-division-de-paraguay-sportivo-trinidense-vs-sportivo-luqueno/summary-3074198",
@@ -1530,7 +1530,12 @@
         "away_recent": 10,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-05T22:44:51Z"
     },
     {
       "id": "ba63ec11940dde09-OU-OVER-2p5",
@@ -2844,8 +2849,8 @@
       "edge": 18.3,
       "ev": 0.3471,
       "required_confidence": 0.56,
-      "result": "PENDING",
-      "ft": null,
+      "result": "HALF_WIN",
+      "ft": "1-1",
       "locked_at": "2026-10-05T02:27:45Z",
       "source_url": "https://www.goaloo.com/football/argentine-division-1-deportivo-riestra-vs-central-cordoba-sde/h2h-2962658",
       "summary_url": "https://www.goaloo.com/football/argentine-division-1-deportivo-riestra-vs-central-cordoba-sde/summary-2962658",
@@ -2905,7 +2910,12 @@
         "away_recent": 9,
         "h2h_n": 5,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": 0.5,
+      "profit": 64.5,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-05T22:44:51Z"
     },
     {
       "id": "b6e11797d64a0ab9-AH-AWAY-0p25",
@@ -195303,6 +195313,186 @@
       "settlement_source": "goaloo-bf_us-direct-index",
       "goaloo_terminal_state": -1,
       "settled_at": "2026-10-05T16:09:43Z"
+    },
+    {
+      "id": "1d07914093acf49d-AH-AWAY-0p25",
+      "goaloo_id": "3074198",
+      "date": "2026-10-05",
+      "kickoff": "2026-10-05 20:00:00",
+      "league": "Primera Division de Paraguay",
+      "home": "Sportivo Trinidense",
+      "away": "Sportivo Luqueno",
+      "market": "AH",
+      "selection": "AWAY",
+      "line": 0.25,
+      "pick": "Sportivo Luqueno +0.25",
+      "side": "away",
+      "odds": 2.28,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.712,
+      "model_probability": 0.712,
+      "market_fair_probability": 0.4093,
+      "market_edge": 0.3027,
+      "edge": 30.3,
+      "ev": 0.6068,
+      "required_confidence": 0.56,
+      "result": "LOSS",
+      "ft": "3-2",
+      "locked_at": "2026-10-05T02:27:46Z",
+      "source_url": "https://www.goaloo.com/football/primera-division-de-paraguay-sportivo-trinidense-vs-sportivo-luqueno/h2h-3074198",
+      "summary_url": "https://www.goaloo.com/football/primera-division-de-paraguay-sportivo-trinidense-vs-sportivo-luqueno/summary-3074198",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 1.21,
+        "lambda_away": 1.935,
+        "home_win": 0.2037,
+        "draw": 0.2371,
+        "away_win": 0.5592,
+        "h2h_adjustment": -0.0025,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": -0.2325,
+          "gd_edge": -0.5501,
+          "clean_sheet_edge": 0.0,
+          "failed_to_score_edge": -0.1073,
+          "bounded_adjustment": -0.0224,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-05T22:44:51Z"
+    },
+    {
+      "id": "42e78ae8729036db-AH-AWAY-0p25",
+      "goaloo_id": "2962658",
+      "date": "2026-10-05",
+      "kickoff": "2026-10-05 19:45:00",
+      "league": "Argentine Division 1",
+      "home": "Deportivo Riestra",
+      "away": "Central Cordoba SDE",
+      "market": "AH",
+      "selection": "AWAY",
+      "line": 0.25,
+      "pick": "Central Cordoba SDE +0.25",
+      "side": "away",
+      "odds": 2.29,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.5991,
+      "model_probability": 0.5991,
+      "market_fair_probability": 0.4158,
+      "market_edge": 0.1833,
+      "edge": 18.3,
+      "ev": 0.3471,
+      "required_confidence": 0.56,
+      "result": "HALF_WIN",
+      "ft": "1-1",
+      "locked_at": "2026-10-05T02:27:45Z",
+      "source_url": "https://www.goaloo.com/football/argentine-division-1-deportivo-riestra-vs-central-cordoba-sde/h2h-2962658",
+      "summary_url": "https://www.goaloo.com/football/argentine-division-1-deportivo-riestra-vs-central-cordoba-sde/summary-2962658",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 0.906,
+        "lambda_away": 0.955,
+        "home_win": 0.3052,
+        "draw": 0.3437,
+        "away_win": 0.3511,
+        "h2h_adjustment": 0.0,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": -0.1317,
+          "gd_edge": -0.1262,
+          "clean_sheet_edge": -0.2,
+          "failed_to_score_edge": 0.0,
+          "bounded_adjustment": -0.0095,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 9,
+        "away_recent": 9,
+        "h2h_n": 5,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": 0.5,
+      "profit": 64.5,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-05T22:44:51Z"
     }
   ],
   "note": "Automated Full-Time Winner First feed. Supplemental markets remain unpublished.",
