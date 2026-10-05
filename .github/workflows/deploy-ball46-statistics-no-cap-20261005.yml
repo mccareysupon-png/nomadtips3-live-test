@@ -29,7 +29,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npm install --no-save --package-lock=false acorn@8
+      - run: npm install --no-save --ignore-scripts --package-lock=false acorn@8
+        working-directory: .
       - name: Deploy Exact Current Engine and Frontend Only
         run: node deploy.mjs
       - uses: actions/upload-artifact@v4
@@ -40,3 +41,4 @@ jobs:
             deploy-assets/statistics-no-cap-20261005/audit-statistics
             deploy-assets/statistics-no-cap-20261005/audit
           retention-days: 30
+
