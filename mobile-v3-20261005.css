@@ -33,15 +33,11 @@
     padding-bottom:calc(76px + env(safe-area-inset-bottom,0px))!important;
   }
 
-  /* Dark-only mobile: remove theme switching UI without changing desktop theme state. */
   .workspace-theme-btn,
   [data-theme-toggle],
   .theme-toggle,
-  .next-theme{
-    display:none!important;
-  }
+  .next-theme{display:none!important}
 
-  /* Compact mobile shell. */
   .dash-shell,
   .shell,
   .owner-shell{
@@ -60,21 +56,14 @@
     gap:0!important;
   }
 
-  /* The PC horizontal result strip is intentionally not reused on mobile. */
   [data-workspace-scorebar-slot],
   .workspace-scorebar-slot,
-  .workspace-scorebar-grid{
-    display:none!important;
-  }
+  .workspace-scorebar-grid{display:none!important}
 
-  /* PC long-term performance card is intentionally not reused on mobile V1. */
   .sp-trend.b46-perf-card,
   .b46-perf-card,
-  .b46-perf-shell{
-    display:none!important;
-  }
+  .b46-perf-shell{display:none!important}
 
-  /* Simplify legacy rail on mobile. Keep only compact brand and active submenu controls. */
   .workspace.singlepage>.left-rail{
     position:static!important;
     width:100%!important;
@@ -85,9 +74,7 @@
     margin:0 0 8px!important;
   }
   .workspace.singlepage>.left-rail>.leagues-card,
-  .workspace.singlepage>.left-rail [data-league-card]{
-    display:none!important;
-  }
+  .workspace.singlepage>.left-rail [data-league-card]{display:none!important}
   .workspace.singlepage>.left-rail>.rail-card{
     width:100%!important;
     max-width:100%!important;
@@ -119,7 +106,6 @@
   .workspace-brand b{color:var(--b46m-green)!important;font-size:23px!important}
   .workspace-brand-meta{display:none!important}
 
-  /* Search is the first working control below the compact brand. */
   .workspace-stable-head{
     height:auto!important;
     min-height:0!important;
@@ -157,7 +143,6 @@
     font-size:14px!important;
   }
 
-  /* Main content is one clean column. */
   .main-board,
   .board-sections,
   .live-stage-grid,
@@ -176,7 +161,6 @@
   .live-stage-grid{display:block!important}
   .live-stage-grid>.right-rail{display:none!important}
 
-  /* Shared card language: dark, restrained, data-first. */
   .match-row,
   .match-expanded,
   .sp-stat-hero,
@@ -190,7 +174,6 @@
     box-shadow:none!important;
   }
 
-  /* Match rows: remove PC table feeling; readable stacked mobile card. */
   .match-row{
     box-sizing:border-box!important;
     display:grid!important;
@@ -198,6 +181,7 @@
     grid-auto-rows:auto!important;
     gap:7px 10px!important;
     width:100%!important;
+    max-width:100%!important;
     min-width:0!important;
     min-height:0!important;
     margin:0 0 7px!important;
@@ -244,7 +228,6 @@
   .match-row .score-cell>small:not(.half-score){display:none!important}
   .match-row .half-score{font-size:8px!important;color:var(--b46m-muted)!important}
 
-  /* Markets become compact chips/rows instead of desktop columns. */
   .match-row .market-cell,
   .match-row .signal-cell{
     grid-row:auto!important;
@@ -258,24 +241,16 @@
     overflow:hidden!important;
     text-align:center!important;
   }
-  .match-row .market-cell{
-    grid-column:auto!important;
-    font-size:10px!important;
-  }
-  .match-row .signal-cell{
-    grid-column:1 / -1!important;
-    min-height:36px!important;
-  }
+  .match-row .market-cell{grid-column:auto!important;font-size:10px!important}
+  .match-row .signal-cell{grid-column:1 / -1!important;min-height:36px!important}
   .match-row .market-cell::before,
   .match-row .market-cell::after,
   .match-row .signal-cell::before,
   .match-row .signal-cell::after{display:none!important;content:none!important}
 
-  /* Expanded/event detail stays inside viewport. */
   .match-expanded,
   .fmb-panel,
   .fmb-group,
-  .fmb-table-wrap,
   .expand-flow-chart,
   .b46-signal-flow-line-chart{
     max-width:100%!important;
@@ -285,11 +260,13 @@
   .expand-flow-chart svg,
   .b46-signal-flow-line-chart svg{max-width:100%!important;height:150px!important}
 
-  /* Full-market detail may swipe horizontally only inside its own table. */
   .fmb-tabs,
   .fmb-table-wrap,
   .expand-book-tabs,
-  .expand-odds-table-wrap{
+  .expand-odds-table-wrap,
+  .sp-table-wrap,
+  .table-wrap{
+    max-width:100%!important;
     overflow-x:auto!important;
     overflow-y:hidden!important;
     overscroll-behavior-x:contain!important;
@@ -299,10 +276,11 @@
   .fmb-tabs::-webkit-scrollbar,
   .fmb-table-wrap::-webkit-scrollbar,
   .expand-book-tabs::-webkit-scrollbar,
-  .expand-odds-table-wrap::-webkit-scrollbar{display:none!important}
+  .expand-odds-table-wrap::-webkit-scrollbar,
+  .sp-table-wrap::-webkit-scrollbar,
+  .table-wrap::-webkit-scrollbar{display:none!important}
   .fmb-market table{min-width:330px!important}
 
-  /* Statistics: mobile card first; keep data itself untouched. */
   .sp-kpis{
     display:grid!important;
     grid-template-columns:repeat(2,minmax(0,1fr))!important;
@@ -318,10 +296,7 @@
   }
   .sp-kpi strong{font-size:16px!important;color:var(--b46m-text)!important}
   .sp-kpi small{color:var(--b46m-muted)!important}
-  .sp-table-wrap,
-  .table-wrap{overflow-x:auto!important;-webkit-overflow-scrolling:touch!important}
 
-  /* Bottom nav is the only permanent mobile navigation. */
   .mobile-nav,
   .next-mobile-nav{display:none!important}
   .b46-mobile-workspace-nav{
@@ -345,7 +320,7 @@
   .b46-mobile-workspace-nav button{
     min-width:0!important;
     min-height:50px!important;
-    padding:4px 4px!important;
+    padding:4px!important;
     border:0!important;
     border-radius:10px!important;
     background:transparent!important;
@@ -366,9 +341,7 @@
   }
   .b46-mobile-workspace-nav button.active .b46-mobile-nav-icon{opacity:1!important}
 
-  /* Never let the page itself become wider than the viewport. */
-  body *{max-width:100%}
-  img,svg,canvas,video{height:auto}
+  img,svg,canvas,video{max-width:100%;height:auto}
 }
 
 @media (max-width:430px){
