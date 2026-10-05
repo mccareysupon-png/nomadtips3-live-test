@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
-import { inspect, activeVersion, getVersion, api, script, sha, canonical, publicFile, backend } from './production.mjs';
+import { inspect, activeVersion, getVersion, api, script, sha, canonical, publicFile, backend, literals } from './production.mjs';
 import { schedules, stageCurrentRail, verifyRailBase, wrangler, verifyPublishedModules } from './rail.mjs';
 import { verifyConfiguration, verifyVersionConfiguration } from './statistics-config.mjs';
 
@@ -16,26 +16,45 @@ try{
   assert.equal(process.env.GITHUB_REF_NAME,BRANCH,'UNCONFIRMED_BRANCH_STOP');
   current=await inspect();const base=current.restore.version;report.baseVersion=base;report.backendBefore=current.restore.backend;
   const settingsBefore=await api(`/scripts/${script}/settings`),settingsSha=sha(canonical(settingsBefore)),cronsBefore=await schedules();
-  const staged=await stageCurrentRail(current.version,settingsBefore,cronsBefore,current.source);await verifyRailBase(staged);
-  const dashPath=`${staged.runtime}/assets/dashboard-v2-stage3.js`,indexPath=`${staged.runtime}/assets/index.html`;
-  let dash=readFileSync(dashPath,'utf8'),index=readFileSync(indexPath,'utf8');
-  const dashBefore=sha(dash),indexBefore=sha(index);
+
+  const lit=literals(current.source).get('__B46_MULTI_SIGNAL_STAGE3_JS__');
+  assert(lit,'MULTI_SIGNAL_LITERAL_MISSING_STOP');
+  const publicDash=(await publicFile('/dashboard-v2-stage3.js','javascript')).toString('utf8');
+  assert.equal(sha(publicDash),sha(lit.value),'WORKER_DASHBOARD_LITERAL_NOT_PUBLIC_STOP');
+  let dash=lit.value;
+  const dashBefore=sha(dash);
   assert.equal((dash.match(/if\(!s\)return['\"]No active signal['\"]/g)||[]).length>=1,true,'DASHBOARD_FALLBACK_ANCHOR_MISSING_STOP');
-  assert(index.includes('data-featured-signal>No active signal</div>')||index.includes('data-featured-signal>\nNo active signal</div>'),'INDEX_FALLBACK_ANCHOR_MISSING_STOP');
   dash=dash.replace(/if\(!s\)return['\"]No active signal['\"]/g,"if(!s)return''");
-  if(!dash.includes(MARK)) dash=`/* ${MARK} */\n`+dash;
+  if(!dash.includes(MARK))dash=`/* ${MARK} */\n`+dash;
+  const patchedSource=current.source.slice(0,lit.start)+JSON.stringify(dash)+current.source.slice(lit.end);
+
+  const staged=await stageCurrentRail(current.version,settingsBefore,cronsBefore,patchedSource);await verifyRailBase(staged);
+  const dashPath=`${staged.runtime}/assets/dashboard-v2-stage3.js`,indexPath=`${staged.runtime}/assets/index.html`;
+  let index=readFileSync(indexPath,'utf8');
+  const indexBefore=sha(index);
+  assert.equal(sha(readFileSync(dashPath)),dashBefore,'STAGED_DASHBOARD_NOT_CURRENT_PRODUCTION');
+  assert(index.includes('data-featured-signal>No active signal</div>')||index.includes('data-featured-signal>\nNo active signal</div>'),'INDEX_FALLBACK_ANCHOR_MISSING_STOP');
   index=index.replace(/(<div class="feature-signal" data-featured-signal>)No active signal(<\/div>)/,'$1$2');
   writeFileSync(dashPath,dash);writeFileSync(indexPath,index);
   const check=spawnSync(process.execPath,['--check',dashPath],{encoding:'utf8'});assert.equal(check.status,0,`DASHBOARD_JS_SYNTAX_FAIL:${check.stderr}`);
+  const workerCheck=spawnSync(process.execPath,['--check',`${staged.runtime}/index.js`],{encoding:'utf8'});assert.equal(workerCheck.status,0,`WORKER_JS_SYNTAX_FAIL:${workerCheck.stderr}`);
   const dashAfter=sha(dash),indexAfter=sha(index);assert.notEqual(dashAfter,dashBefore,'DASHBOARD_NOT_CHANGED');assert.notEqual(indexAfter,indexBefore,'INDEX_NOT_CHANGED');
   const protectedAssets={...staged.hashes};delete protectedAssets['dashboard-v2-stage3.js'];delete protectedAssets['index.html'];
-  report.changed={dashboard:{before:dashBefore,after:dashAfter},index:{before:indexBefore,after:indexAfter}};report.protectedAssetCount=Object.keys(protectedAssets).length;save();
+  report.changed={dashboard:{before:dashBefore,after:dashAfter,literal:'__B46_MULTI_SIGNAL_STAGE3_JS__'},index:{before:indexBefore,after:indexAfter}};report.protectedAssetCount=Object.keys(protectedAssets).length;save();
+
   wrangler(staged,true);assert.equal(await activeVersion(),base,'PRODUCTION_MOVED_AFTER_DRY_RUN_STOP');assert.equal(sha(canonical(await api(`/scripts/${script}/settings`))),settingsSha,'SETTINGS_MOVED_BEFORE_DEPLOY_STOP');assert.equal(canonical(await backend()),canonical(report.backendBefore),'BACKEND_MOVED_BEFORE_DEPLOY_STOP');
   try{
     wrangler(staged);for(let i=0;i<30;i++){const a=await activeVersion();if(a!==base){candidate=a;break}await delay(1200)}assert(candidate,'NO_NEW_PRODUCTION_VERSION');report.candidateVersion=candidate;save();
     let ok=false;for(let i=0;i<36;i++){assert.equal(await activeVersion(),candidate,'PRODUCTION_MOVED_DURING_VERIFY_STOP');try{const d=await publicFile('/dashboard-v2-stage3.js','javascript'),h=await publicFile('/index.html','html');const dt=d.toString('utf8'),ht=h.toString('utf8');if(sha(d)===dashAfter&&sha(h)===indexAfter&&dt.includes(MARK)&&!ht.includes('data-featured-signal>No active signal</div>')){ok=true;break}}catch{}await delay(1250)}assert(ok,'FEATURED_FALLBACK_HIDE_NOT_PUBLIC_STOP');
     for(const [p,h] of Object.entries(protectedAssets))assert.equal(sha(await publicFile('/'+p)),h,`UNRELATED_ASSET_CHANGED:${p}`);
-    assert.equal(canonical(await backend()),canonical(report.backendBefore),'BACKEND_CHANGED_STOP');const settingsAfter=await api(`/scripts/${script}/settings`);report.configuration=verifyConfiguration(settingsBefore,settingsAfter);assert.equal(canonical(await schedules()),canonical(cronsBefore),'CRONS_CHANGED_STOP');const cv=await getVersion(candidate);report.versionConfiguration=verifyVersionConfiguration(current.version,cv);report.publishedModules=verifyPublishedModules(cv,current.version,current.source,Object.fromEntries(Object.entries(staged.hashes).map(([p,h])=>['/'+p,p==='dashboard-v2-stage3.js'?dashAfter:p==='index.html'?indexAfter:h]))).map(x=>x.name);assert.equal(await activeVersion(),candidate,'FINAL_PRODUCTION_MOVED_STOP');
+    assert.equal(canonical(await backend()),canonical(report.backendBefore),'BACKEND_CHANGED_STOP');
+    const settingsAfter=await api(`/scripts/${script}/settings`);report.configuration=verifyConfiguration(settingsBefore,settingsAfter);assert.equal(canonical(await schedules()),canonical(cronsBefore),'CRONS_CHANGED_STOP');
+    const cv=await getVersion(candidate);report.versionConfiguration=verifyVersionConfiguration(current.version,cv);
+    const publicHashes=Object.fromEntries(Object.entries(staged.hashes).map(([p,h])=>['/'+p,p==='dashboard-v2-stage3.js'?dashAfter:p==='index.html'?indexAfter:h]));
+    report.publishedModules=verifyPublishedModules(cv,current.version,patchedSource,publicHashes).map(x=>x.name);
+    assert.equal(await activeVersion(),candidate,'FINAL_PRODUCTION_MOVED_STOP');
+    const finalWorker=Buffer.from(cv.modules.find(m=>m.name===cv.main_module).content_base64,'base64').toString('utf8');
+    const finalLit=literals(finalWorker).get('__B46_MULTI_SIGNAL_STAGE3_JS__');assert(finalLit&&sha(finalLit.value)===dashAfter,'FINAL_WORKER_LITERAL_MISMATCH');
     report.finalVersion=candidate;report.result='SUCCESS';report.backendUntouched=true;report.signalLogicChanged=false;report.statisticsUntouched=true;report.completedAt=new Date().toISOString();save();console.log(`FINAL_PRODUCTION=${candidate}`);console.log('BALL46_FEATURED_NO_ACTIVE_SIGNAL_HIDDEN_SUCCESS');
   }catch(e){report.error=e.message;try{await rollback()}catch(rb){report.rollbackError=rb.message;save()}throw e}
 }catch(e){report.result='FAIL_STOPPED';report.error=e.message;report.completedAt=new Date().toISOString();save();console.error(e.stack);process.exitCode=1}
