@@ -1,6 +1,6 @@
 /* B46_DAILY_PERFORMANCE_20261005
    VISUAL_FIX_20261005: approved stadium background, transparent large panels,
-   fully transparent result tiles, light-mode white-block reset,
+   light glass result tiles, light-mode white-block reset,
    and ~40% larger/heavier market breakdown.
    New card only. Old scorebar stays visible and untouched. */
 #ball46-daily-performance{position:relative;margin:10px 0 12px;overflow:hidden;border:0!important;border-radius:14px;background-color:transparent!important;background-image:url("__B46_PERFORMANCE_BG_DATA__")!important;background-repeat:no-repeat!important;background-position:center center!important;background-size:100% 100%!important;box-shadow:none!important;color:#f8fafc;isolation:isolate;min-width:0}
@@ -20,7 +20,7 @@
 #ball46-daily-performance .b46-perf-rate strong{display:block;margin-top:1px;font-size:19px;line-height:1;font-weight:950;color:#facc15;letter-spacing:-.035em;background:transparent!important}
 #ball46-daily-performance .b46-perf-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;min-width:0;background:transparent!important;border:0!important;box-shadow:none!important}
 #ball46-daily-performance .b46-perf-side.yesterday .b46-perf-stats{grid-template-columns:repeat(3,minmax(0,1fr))}
-#ball46-daily-performance .b46-perf-stat{min-width:0;padding:5px 7px 4px;border:0!important;border-radius:0;background:transparent!important;box-shadow:none!important;backdrop-filter:none!important}
+#ball46-daily-performance .b46-perf-stat{min-width:0;padding:5px 7px 4px;border:0!important;border-radius:8px;background:rgba(3,13,21,.22)!important;box-shadow:none!important;backdrop-filter:blur(2px) saturate(105%);-webkit-backdrop-filter:blur(2px) saturate(105%)}
 #ball46-daily-performance .b46-perf-stat span{display:block;font-size:6px;font-weight:900;letter-spacing:.075em;color:#e2e8f0;background:transparent!important}
 #ball46-daily-performance .b46-perf-stat strong{display:block;margin-top:1px;font-size:14px;line-height:1.08;font-weight:950;color:#fff;background:transparent!important}
 #ball46-daily-performance .b46-perf-stat.win strong{color:#4ade80}
@@ -41,7 +41,7 @@ html[data-theme="light"] #ball46-daily-performance .b46-perf-kicker{color:#f8faf
 html[data-theme="light"] #ball46-daily-performance .b46-perf-sub,html[data-theme="light"] #ball46-daily-performance .b46-perf-rate span,html[data-theme="light"] #ball46-daily-performance .b46-perf-stat span,html[data-theme="light"] #ball46-daily-performance .b46-perf-total,html[data-theme="light"] #ball46-daily-performance .b46-perf-state{color:#e6eef2!important;background:transparent!important}
 html[data-theme="light"] #ball46-daily-performance .b46-perf-rate,html[data-theme="light"] #ball46-daily-performance .b46-perf-rate span,html[data-theme="light"] #ball46-daily-performance .b46-perf-rate strong{background:transparent!important;border:0!important;box-shadow:none!important}
 html[data-theme="light"] #ball46-daily-performance .b46-perf-rate strong{color:#facc15!important}
-html[data-theme="light"] #ball46-daily-performance .b46-perf-stat{background:transparent!important;border:0!important;box-shadow:none!important;backdrop-filter:none!important}
+html[data-theme="light"] #ball46-daily-performance .b46-perf-stat{background:rgba(3,13,21,.18)!important;border:0!important;box-shadow:none!important;backdrop-filter:blur(2px) saturate(105%);-webkit-backdrop-filter:blur(2px) saturate(105%)}
 html[data-theme="light"] #ball46-daily-performance .b46-perf-stat.win strong{color:#4ade80!important}
 html[data-theme="light"] #ball46-daily-performance .b46-perf-stat.loss strong{color:#fb7185!important}
 html[data-theme="light"] #ball46-daily-performance .b46-perf-stat.push strong{color:#fff!important}
