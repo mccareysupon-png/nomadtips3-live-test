@@ -18,6 +18,8 @@ try{
  const current=await inspect();base=current.restore.version;report.baseVersion=base;
  const settings=await api(`/scripts/${script}/settings`),crons=await schedules(),engineBefore=await engineVersion();
  const before=(await publicFile('/'+name,'javascript')).toString('utf8');
+ writeFileSync('audit/current-'+name,before);
+ report.currentAssetHash=sha(before);save();
  assert.equal(sha(before),beforeHash,'ACTIVE_TARGET_SOURCE_MOVED_STOP');
  const index=(await publicFile('/index.html','html')).toString();
  assert(index.includes('dashboard-v2-stage3.js?v=343-scorebar-details-20260929a'),'ACTIVE_ASSET_REFERENCE_CHANGED_STOP');
