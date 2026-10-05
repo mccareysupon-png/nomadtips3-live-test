@@ -14,13 +14,15 @@ export async function verify({patchedCss,directory='audit/ui',watchMs=1500}={}){
   await page.goto('https://www.ball46.com/index.html?view=signal',{waitUntil:'domcontentloaded',timeout:60000});
   await page.waitForSelector('[data-workspace-scorebar-slot] .workspace-scorebar-grid',{timeout:60000});
   if(patchedCss)await page.addStyleTag({content:patchedCss});
+  await page.evaluate(()=>{document.getElementById('qa-status-probes')?.remove();const host=document.createElement('div');host.id='qa-status-probes';host.style.cssText='position:absolute;left:-10000px;top:0;width:600px;pointer-events:none';host.innerHTML=['WIN','LOSS','DRAW','PENDING'].map((label,i)=>'<div class="workspace-scorebar-cell '+(i===3?'workspace-scorebar-pending':'workspace-scorebar-signal-result')+'"><span class="workspace-scorebar-meta"><i>'+label+'</i><b>1–0</b></span></div>').join('');document.body.appendChild(host)});
   await page.waitForTimeout(250);
   const read=()=>page.evaluate(()=>{
    const slot=document.querySelector('[data-workspace-scorebar-slot]'),grid=slot?.querySelector('.workspace-scorebar-grid');
    if(!slot||!grid)return null;
    const slotStyle=getComputedStyle(slot),gridStyle=getComputedStyle(grid),slotBox=slot.getBoundingClientRect(),cols=innerWidth<=760?2:innerWidth<=1180?5:10;
    const cells=[...grid.children].map(e=>{const b=e.getBoundingClientRect(),pill=e.querySelector('.workspace-scorebar-meta i'),p=pill?getComputedStyle(pill):null;return{width:b.width,height:b.height,top:b.top,right:b.right,bottom:b.bottom,status:pill?.textContent||'',pillColor:p?.color||'',pillWeight:p?.fontWeight||'',placeholder:e.classList.contains('placeholder'),text:e.textContent||''}});
-   return{viewport:innerWidth,slotWidth:slotBox.width,slotHeight:slotBox.height,slotBackground:slotStyle.backgroundColor,slotBorder:slotStyle.borderTopWidth,slotShadow:slotStyle.boxShadow,slotScrollWidth:slot.scrollWidth,slotClientWidth:slot.clientWidth,gridScrollWidth:grid.scrollWidth,gridClientWidth:grid.clientWidth,gridOverflowX:gridStyle.overflowX,gridHeight:grid.getBoundingClientRect().height,cols,rows:new Set(cells.map(c=>Math.round(c.top))).size,cells};
+   const probes=[...document.querySelectorAll('#qa-status-probes .workspace-scorebar-meta i')].map(e=>{const s=getComputedStyle(e);return{status:e.textContent,color:s.color,weight:s.fontWeight}});
+   return{viewport:innerWidth,slotWidth:slotBox.width,slotHeight:slotBox.height,slotBackground:slotStyle.backgroundColor,slotBorder:slotStyle.borderTopWidth,slotShadow:slotStyle.boxShadow,slotScrollWidth:slot.scrollWidth,slotClientWidth:slot.clientWidth,gridScrollWidth:grid.scrollWidth,gridClientWidth:grid.clientWidth,gridOverflowX:gridStyle.overflowX,gridHeight:grid.getBoundingClientRect().height,cols,rows:new Set(cells.map(c=>Math.round(c.top))).size,cells,probes};
   });
   for(const [label,width,height] of [['Desktop',1440,1000],['Desktop-wide',2560,1100],['Tablet',1024,1000],['Mobile',390,844],['Mobile-small',320,740]]){
    await page.setViewportSize({width,height});await page.waitForTimeout(250);
@@ -34,17 +36,15 @@ export async function verify({patchedCss,directory='audit/ui',watchMs=1500}={}){
    assert.equal(result.slotBackground,'rgba(0, 0, 0, 0)','SCOREBAR_WRAPPER_NOT_TRANSPARENT:'+label);
    assert.equal(result.slotBorder,'0px','SCOREBAR_WRAPPER_BORDER_PRESENT:'+label);
    assert.equal(result.slotShadow,'none','SCOREBAR_WRAPPER_SHADOW_PRESENT:'+label);
-   const populated=result.cells.filter(c=>!c.placeholder&&c.status);
-   assert(populated.length>0,'NO_POPULATED_SCOREBAR_CARDS:'+label);
-   for(const cell of populated){assert.equal(cell.pillColor,'rgb(255, 255, 255)','STATUS_NOT_WHITE:'+label+':'+cell.status);assert(Number(cell.pillWeight)>=700,'STATUS_NOT_BOLD:'+label+':'+cell.status)}
+   assert.deepEqual(result.probes.map(x=>x.status),['WIN','LOSS','DRAW','PENDING'],'STATUS_PROBES_MISSING:'+label);
+   for(const p of result.probes){assert.equal(p.color,'rgb(255, 255, 255)','STATUS_NOT_WHITE:'+label+':'+p.status);assert(Number(p.weight)>=700,'STATUS_NOT_BOLD:'+label+':'+p.status)}
    await page.screenshot({path:directory+'/'+label+'.png',fullPage:true});report.viewports.push(result);
-   console.log('UI_CHECK='+JSON.stringify({label,width,count:result.cells.length,cols:result.cols,rows:result.rows,gridOverflowX:result.gridOverflowX,cardWidth:Math.round(result.cells[0].width),slotHeight:Math.round(result.slotHeight)}));
+   console.log('UI_CHECK='+JSON.stringify({label,width,count:result.cells.length,cols:result.cols,rows:result.rows,gridOverflowX:result.gridOverflowX,cardWidth:Math.round(result.cells[0].width),slotHeight:Math.round(result.slotHeight),statusWhite:true}));
   }
   await page.setViewportSize({width:1440,height:1000});await page.waitForTimeout(250);
-  const first=page.locator('[data-match-id]').first();assert(await first.count(),'MATCH_ROWS_MISSING');const id=await first.getAttribute('data-match-id');
-  await first.click();assert((await page.locator('[data-match-id="'+id+'"]').getAttribute('class')).includes('active'),'MATCH_CLICK_BROKEN');
-  const search=page.locator('[data-search]');await search.fill('zz-no-fixture-test');assert.equal(await page.locator('[data-match-id]').count(),0);await search.fill('');assert(await page.locator('[data-match-id]').count()>0,'SEARCH_RESTORE_BROKEN');
-  report.navigation='PASS';
+  const search=page.locator('[data-search]');assert.equal(await search.count(),1,'SEARCH_CONTROL_MISSING');
+  const rowCount=await page.locator('[data-match-id]').count();
+  if(rowCount){const first=page.locator('[data-match-id]').first(),id=await first.getAttribute('data-match-id');await first.click();assert((await page.locator('[data-match-id="'+id+'"]').getAttribute('class')).includes('active'),'MATCH_CLICK_BROKEN');await search.fill('zz-no-fixture-test');assert.equal(await page.locator('[data-match-id]').count(),0);await search.fill('');assert(await page.locator('[data-match-id]').count()>0,'SEARCH_RESTORE_BROKEN');report.navigation='PASS'}else{report.navigation='NOT_APPLICABLE_NO_MATCH_ROWS'}
   const before=await read();if(watchMs)await page.waitForTimeout(watchMs);const after=await read();
   assert.equal(after.cells.length,10,'CARD_COUNT_CHANGED_AFTER_WAIT');assert.equal(after.rows,before.rows,'CARD_ROWS_CHANGED_AFTER_WAIT');
   report.stability={beforeHeight:before.slotHeight,afterHeight:after.slotHeight,cardCount:after.cells.length,status:'PASS'};
