@@ -1,12 +1,6 @@
 name: Deploy Ball46 Daily Performance 20261005
 
 on:
-  push:
-    branches: [work/ball46-daily-performance-20261005]
-    paths:
-      - '.github/workflows/deploy-ball46-daily-performance-20261005.yml'
-      - 'deploy-assets/daily-performance-20261005/**'
-      - '.github/scripts/ball46_current217_live_paths_20260928.txt'
   workflow_dispatch:
 
 permissions:
