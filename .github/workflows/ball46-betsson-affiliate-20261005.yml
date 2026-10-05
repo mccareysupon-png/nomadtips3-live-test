@@ -1,21 +1,30 @@
-name: Ball46 Betsson production deploy
+name: Ball46 Betsson live verify
 on:
   push:
     branches:
       - ops/ball46-betsson-affiliate-20261005
 jobs:
-  deploy:
+  verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-    env:
-      CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
-      - name: Deploy Betsson affiliate surgically
+      - name: Verify live Betsson placement
         shell: bash
         run: |
           set -euo pipefail
-          test -n "$CF_ACCOUNT"
-          test -n "$CF_TOKEN"
-          python3 .github/scripts/ball46_betsson_affiliate_20261005.py
+          nonce="$GITHUB_RUN_ID-$(date +%s%N)"
+          curl -fsS -L --retry 4 --max-time 30 "https://ball46-production.mccarey-supon.workers.dev/full-market-bookmaker-343.js?verify=$nonce" -o /tmp/fmb.js
+          grep -Fq "['betsson','Betsson']" /tmp/fmb.js
+          grep -Fq "'betsson':'https://record.betsson.com/_o1mNd-AGmETmaNxVyOS5PWNd7ZgqdRLk/1/'" /tmp/fmb.js
+          grep -Fq "'betsson':'https://raw.githubusercontent.com/mccareysupon-png/nomadtips3-live-test/ops/ball46-betsson-affiliate-20261005/assets/affiliate/betsson-logo.png'" /tmp/fmb.js
+          grep -Fq 'function affiliatePriceHtml(v,slug)' /tmp/fmb.js
+          grep -Fq 'function bookLabelHtml(b)' /tmp/fmb.js
+          curl -fsSI -L --retry 3 --max-time 30 'https://raw.githubusercontent.com/mccareysupon-png/nomadtips3-live-test/ops/ball46-betsson-affiliate-20261005/assets/affiliate/betsson-logo.png' >/dev/null
+          for ep in board signals statistics; do
+            curl -fsS -L --retry 4 --max-time 30 "https://www.ball46.com/api/engine/$ep?verify=$nonce" -o "/tmp/$ep.json"
+          done
+          node - <<'NODE'
+          const fs=require('fs');
+          for(const n of ['board','signals','statistics']){const j=JSON.parse(fs.readFileSync('/tmp/'+n+'.json'));if(j?.ok!==true)throw Error(n+'_NOT_OK')}
+          console.log('BETSSON_LIVE_VERIFY_PASS')
+          NODE
