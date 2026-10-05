@@ -59,6 +59,10 @@ jobs:
           grep_anchor="grep -Fq 'signal-ledger-v2-longterm' \"$ROOT/worker/index-bulk-recovery.js\""
           if s.count(grep_anchor)!=1: raise SystemExit('STATIC_GREP_ANCHOR_MOVED')
           s=s.replace(grep_anchor,grep_anchor+"; grep -Fq 'realtime-pending-ledger-v1' \"$ROOT/worker/index-bulk-recovery.js\"",1)
+          old_route_guard="if route not in post:raise SystemExit('LEDGER_ONLY_STATISTICS_ROUTE_MISSING')"
+          new_route_guard="if 'statisticsLedgerResponse' not in post or '/statistics' not in post:raise SystemExit('LEDGER_ONLY_STATISTICS_ROUTE_MISSING')"
+          if s.count(old_route_guard)!=1: raise SystemExit('STAT_ROUTE_GUARD_ANCHOR_MOVED')
+          s=s.replace(old_route_guard,new_route_guard,1)
           p.write_text(s)
           PY
           chmod +x /tmp/ball46-stat-realtime-pending-deploy.sh
@@ -67,4 +71,4 @@ jobs:
         shell: bash
         run: /tmp/ball46-stat-realtime-pending-deploy.sh
 
-# retry 2: live-source anchor matcher hardened after fail-closed preflight
+# retry 3: retain route safety check while accepting the current production route shape
