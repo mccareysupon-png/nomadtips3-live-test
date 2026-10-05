@@ -34,6 +34,9 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Install parser dependency only
+        run: npm install --no-save --ignore-scripts acorn@8
+
       - name: Read-only production settings probe
         working-directory: deploy-assets/daily-performance-20261005
         run: node probe-settings.mjs
