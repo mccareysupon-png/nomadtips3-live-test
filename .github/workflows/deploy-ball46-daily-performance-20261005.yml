@@ -1,6 +1,11 @@
 name: Deploy Ball46 Daily Performance 20261005
 
 on:
+  push:
+    branches: [work/ball46-daily-performance-20261005]
+    paths:
+      - .github/workflows/deploy-ball46-daily-performance-20261005.yml
+      - deploy-assets/daily-performance-20261005/probe-settings.mjs
   workflow_dispatch:
 
 permissions:
@@ -29,14 +34,11 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Install parser dependency only
-        run: npm install --no-save --ignore-scripts acorn@8
-
-      - name: Guarded current-Production deploy
+      - name: Read-only production settings probe
         working-directory: deploy-assets/daily-performance-20261005
-        run: node run.mjs
+        run: node probe-settings.mjs
 
-      - name: Upload audit and rollback proof
+      - name: Upload audit proof
         if: always()
         uses: actions/upload-artifact@v4
         with:
