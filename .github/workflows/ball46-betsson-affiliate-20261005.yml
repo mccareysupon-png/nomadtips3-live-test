@@ -1,30 +1,23 @@
-name: Ball46 Betsson live verify
+name: Ball46 Betsson mapping inspect
 on:
   push:
     branches:
       - ops/ball46-betsson-affiliate-20261005
 jobs:
-  verify:
+  inspect:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Verify live Betsson placement
+      - name: Inspect live renderer mapping
         shell: bash
         run: |
           set -euo pipefail
-          nonce="$GITHUB_RUN_ID-$(date +%s%N)"
-          curl -fsS -L --retry 4 --max-time 30 "https://ball46-production.mccarey-supon.workers.dev/full-market-bookmaker-343.js?verify=$nonce" -o /tmp/fmb.js
-          grep -Fq "['betsson','Betsson']" /tmp/fmb.js
-          grep -Fq "'betsson':'https://record.betsson.com/_o1mNd-AGmETmaNxVyOS5PWNd7ZgqdRLk/1/'" /tmp/fmb.js
-          grep -Fq "'betsson':'https://raw.githubusercontent.com/mccareysupon-png/nomadtips3-live-test/ops/ball46-betsson-affiliate-20261005/assets/affiliate/betsson-logo.png'" /tmp/fmb.js
-          grep -Fq 'function affiliatePriceHtml(v,slug)' /tmp/fmb.js
-          grep -Fq 'function bookLabelHtml(b)' /tmp/fmb.js
-          curl -fsSI -L --retry 3 --max-time 30 'https://raw.githubusercontent.com/mccareysupon-png/nomadtips3-live-test/ops/ball46-betsson-affiliate-20261005/assets/affiliate/betsson-logo.png' >/dev/null
-          for ep in board signals statistics; do
-            curl -fsS -L --retry 4 --max-time 30 "https://www.ball46.com/api/engine/$ep?verify=$nonce" -o "/tmp/$ep.json"
-          done
-          node - <<'NODE'
-          const fs=require('fs');
-          for(const n of ['board','signals','statistics']){const j=JSON.parse(fs.readFileSync('/tmp/'+n+'.json'));if(j?.ok!==true)throw Error(n+'_NOT_OK')}
-          console.log('BETSSON_LIVE_VERIFY_PASS')
-          NODE
+          curl -fsS -L --retry 4 --max-time 30 "https://ball46-production.mccarey-supon.workers.dev/full-market-bookmaker-343.js?inspect=$GITHUB_RUN_ID" -o /tmp/fmb.js
+          python3 - <<'PY'
+          s=open('/tmp/fmb.js').read()
+          for key in ['AFFILIATE_URLS','BOOK_LOGO_URLS','betsson','Betsson','record.betsson.com','raw.githubusercontent.com']:
+              print('FLAG',key,key in s)
+          for needle in ['AFFILIATE_URLS','BOOK_LOGO_URLS','betsson']:
+              i=s.lower().find(needle.lower())
+              if i>=0: print('SNIP',needle,repr(s[max(0,i-250):i+700]))
+          PY
