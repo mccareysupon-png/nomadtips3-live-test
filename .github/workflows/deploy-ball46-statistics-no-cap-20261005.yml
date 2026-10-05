@@ -1,10 +1,5 @@
 name: Deploy Ball46 Statistics No Total Cap 20261005
 on:
-  push:
-    branches: [work/ball46-daily-performance-20261005]
-    paths:
-      - .github/workflows/deploy-ball46-statistics-no-cap-20261005.yml
-      - deploy-assets/statistics-no-cap-20261005/**
   workflow_dispatch:
 permissions:
   contents: read
@@ -41,4 +36,3 @@ jobs:
             deploy-assets/statistics-no-cap-20261005/audit-statistics
             deploy-assets/statistics-no-cap-20261005/audit
           retention-days: 30
-
