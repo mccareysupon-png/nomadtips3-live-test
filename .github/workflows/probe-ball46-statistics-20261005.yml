@@ -10,26 +10,34 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ball46-statistics-readonly-probe
+  cancel-in-progress: true
+
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 3
     steps:
       - name: Probe production statistics read-only
         run: |
           node <<'NODE'
           import { writeFileSync } from 'node:fs';
-          const url='https://ball46.com/api/engine/statistics?probe='+Date.now();
-          const r=await fetch(url,{headers:{'Cache-Control':'no-cache','Accept':'application/json'}});
-          if(!r.ok) throw new Error('HTTP_'+r.status);
-          const j=await r.json();
+          async function load(base){
+            const url=base+'/api/engine/statistics?probe='+Date.now();
+            const r=await fetch(url,{headers:{'Cache-Control':'no-cache','Accept':'application/json'},signal:AbortSignal.timeout(45000)});
+            if(!r.ok) throw new Error(base+':HTTP_'+r.status);
+            return r.json();
+          }
+          let source='https://ball46.com',j;
+          try{j=await load(source)}catch(e){source='https://ball46-production.mccarey-supon.workers.dev';j=await load(source)}
           const rows=Array.isArray(j.rows)?j.rows:[];
           const keys={};
           for(const row of rows.slice(0,2000)) for(const k of Object.keys(row||{})) keys[k]=(keys[k]||0)+1;
-          const sample=rows.slice(0,20);
-          const compact=sample.map((x,i)=>({i,...Object.fromEntries(Object.entries(x).filter(([k])=>/id|time|date|created|settled|resolved|updated|result|settlement|outcome|status|market|selection|fixture|league|home|away/i.test(k)))}));
-          const report={ok:j.ok,settlementRevision:j.settlementRevision,rowCount:rows.length,topLevelKeys:Object.keys(j),rowKeys:Object.entries(keys).sort((a,b)=>b[1]-a[1]),sample:compact};
+          const compact=rows.slice(0,30).map((x,i)=>({i,...Object.fromEntries(Object.entries(x).filter(([k])=>/id|time|date|created|settled|resolved|updated|result|settlement|outcome|status|market|selection|fixture|league|home|away/i.test(k)))}));
+          const report={source,ok:j.ok,settlementRevision:j.settlementRevision,rowCount:rows.length,topLevelKeys:Object.keys(j),rowKeys:Object.entries(keys).sort((a,b)=>b[1]-a[1]),sample:compact};
           writeFileSync('statistics-probe.json',JSON.stringify(report,null,2));
+          console.log('SOURCE='+source);
           console.log('STATISTICS_OK='+j.ok);
           console.log('SETTLEMENT_REVISION='+j.settlementRevision);
           console.log('ROW_COUNT='+rows.length);
