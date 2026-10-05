@@ -56,13 +56,23 @@
     gap:0!important;
   }
 
-  [data-workspace-scorebar-slot],
-  .workspace-scorebar-slot,
-  .workspace-scorebar-grid{display:none!important}
+  /* Mobile V3 owns this decision. Specificity intentionally exceeds legacy html body rules. */
+  html[data-b46-mobile-v3="1"] body [data-workspace-scorebar-slot],
+  html[data-b46-mobile-v3="1"] body .workspace-scorebar-slot,
+  html[data-b46-mobile-v3="1"] body .workspace-scorebar-grid,
+  html[data-b46-mobile-v3="1"] body [data-workspace-scorebar-slot] .workspace-scorebar-grid{
+    display:none!important;
+    height:0!important;
+    min-height:0!important;
+    max-height:0!important;
+    margin:0!important;
+    padding:0!important;
+    overflow:hidden!important;
+  }
 
-  .sp-trend.b46-perf-card,
-  .b46-perf-card,
-  .b46-perf-shell{display:none!important}
+  html[data-b46-mobile-v3="1"] body .sp-trend.b46-perf-card,
+  html[data-b46-mobile-v3="1"] body .b46-perf-card,
+  html[data-b46-mobile-v3="1"] body .b46-perf-shell{display:none!important}
 
   .workspace.singlepage>.left-rail{
     position:static!important;
