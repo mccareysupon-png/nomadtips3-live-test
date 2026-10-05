@@ -11,7 +11,7 @@ export function patch(css){
  const override=`
 
 /* ${marker}: presentation only. Keep all 10 existing signal/result cards, distribute them across the available viewport, remove the horizontal scrolling rail, and keep status labels readable. */
-.workspace-scorebar-slot{
+html body [data-workspace-scorebar-slot]{
   height:auto!important;
   min-height:0!important;
   max-height:none!important;
@@ -21,7 +21,7 @@ export function patch(css){
   border:0!important;
   box-shadow:none!important;
 }
-.workspace-scorebar-grid{
+html body [data-workspace-scorebar-slot] .workspace-scorebar-grid{
   display:grid!important;
   grid-template-columns:repeat(10,minmax(0,1fr))!important;
   grid-auto-flow:row!important;
@@ -40,8 +40,8 @@ export function patch(css){
   padding:3px 2px 7px!important;
   scrollbar-width:none!important;
 }
-.workspace-scorebar-grid::-webkit-scrollbar{display:none!important;width:0!important;height:0!important}
-.workspace-scorebar-cell{
+html body [data-workspace-scorebar-slot] .workspace-scorebar-grid::-webkit-scrollbar{display:none!important;width:0!important;height:0!important}
+html body [data-workspace-scorebar-slot] .workspace-scorebar-cell{
   box-sizing:border-box!important;
   width:auto!important;
   min-width:0!important;
@@ -49,16 +49,16 @@ export function patch(css){
   min-height:90px!important;
   max-height:90px!important;
 }
-.workspace-scorebar-cell .workspace-scorebar-meta i{
+html body [data-workspace-scorebar-slot] .workspace-scorebar-cell .workspace-scorebar-meta i{
   color:#fff!important;
   font-weight:900!important;
   opacity:1!important;
 }
 @media(max-width:1180px){
-  .workspace-scorebar-grid{grid-template-columns:repeat(5,minmax(0,1fr))!important}
+  html body [data-workspace-scorebar-slot] .workspace-scorebar-grid{display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;grid-auto-flow:row!important}
 }
 @media(max-width:760px){
-  .workspace-scorebar-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:7px!important}
+  html body [data-workspace-scorebar-slot] .workspace-scorebar-grid{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;grid-auto-flow:row!important;gap:7px!important}
 }
 `;
  const out=css+override;
