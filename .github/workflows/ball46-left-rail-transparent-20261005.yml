@@ -29,7 +29,7 @@ jobs:
       - name: Install confirmed rail dependencies
         working-directory: deploy-assets/match-status-svg-20261003
         run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Adapt left-rail runner for badge and active cleanup
+      - name: Adapt left-rail runner for text-only hover and active
         shell: bash
         run: |
           set -euo pipefail
@@ -39,16 +39,22 @@ jobs:
           let source=readFileSync(runner,'utf8');
 
           const oldMarker="const MARKER = 'B46_LEFT_RAIL_TRANSPARENT_20261005';";
-          const newMarker="const MARKER = 'B46_LEFT_RAIL_BADGES_TRANSPARENT_20261005';";
+          const newMarker="const MARKER = 'B46_LEFT_RAIL_TEXT_STATE_20261005';";
           if((source.split(oldMarker).length-1)!==1)throw new Error('LEFT_RAIL_MARKER_TARGET_MOVED');
           source=source.replace(oldMarker,newMarker);
+
+          const oldValidator="root.walkDecls(d=>assert(!forbidden.has(d.prop),`FORBIDDEN_LEFT_RAIL_PROPERTY:${d.prop}`));";
+          const newValidator="root.walkDecls(d=>assert(!forbidden.has(d.prop)||(d.prop==='transform'&&d.value==='none'),`FORBIDDEN_LEFT_RAIL_PROPERTY:${d.prop}`));";
+          if((source.split(oldValidator).length-1)!==1)throw new Error('LEFT_RAIL_VALIDATOR_TARGET_MOVED');
+          source=source.replace(oldValidator,newValidator);
 
           const patchClose='\n`;\n\nfunction validatePatch(){';
           const extraCss=[
             '',
-            '/* B46_LEFT_RAIL_BADGES_TRANSPARENT_20261005: remove remaining numeric badge and active-row surfaces; keep icons intact */',
+            '/* B46_LEFT_RAIL_TEXT_STATE_20261005: hover = green text only; active = green only; no card hover surface */',
             'body .workspace.singlepage > .left-rail > :not(.workspace-brand-card),',
-            'body .workspace.singlepage > .left-rail :is(.rail-card,.workspace-stats-card,.workspace-nav-grid,.filter,.league-filter,.workspace-nav-row) {',
+            'body .workspace.singlepage > .left-rail :is(.rail-card,.workspace-stats-card,.workspace-nav-grid,.filter,.league-filter,.workspace-nav-row),',
+            'body .workspace.singlepage > .left-rail :is(.rail-card,.workspace-stats-card,.workspace-nav-grid):hover {',
             '  background-color: transparent !important;',
             '  background-image: none !important;',
             '  border-color: transparent !important;',
@@ -73,14 +79,49 @@ jobs:
             '  border-color: transparent !important;',
             '  box-shadow: none !important;',
             '}',
-            'body .workspace.singlepage > .left-rail .rail-card > :is(button,a,[role="button"])::before,',
-            'body .workspace.singlepage > .left-rail .rail-card > :is(button,a,[role="button"])::after,',
-            'body .workspace.singlepage > .left-rail :is(.filter,.league-filter,.workspace-nav-row)::before,',
-            'body .workspace.singlepage > .left-rail :is(.filter,.league-filter,.workspace-nav-row)::after {',
-            '  background: transparent !important;',
+            '@media (hover: hover) and (pointer: fine) {',
+            '  body .workspace.singlepage > .left-rail .rail-card > :is(button,a,[role="button"]):hover,',
+            '  body .workspace.singlepage > .left-rail :is(.filter,.league-filter,.workspace-nav-row):hover,',
+            '  body .workspace.singlepage > .left-rail .workspace-nav-grid > button:hover {',
+            '    color: var(--green) !important;',
+            '    background-color: transparent !important;',
+            '    background-image: none !important;',
+            '    border-color: transparent !important;',
+            '    box-shadow: none !important;',
+            '  }',
+            '  body .workspace.singlepage > .left-rail .rail-card > :is(button,a,[role="button"]):hover > :is(span,b,strong,small),',
+            '  body .workspace.singlepage > .left-rail :is(.filter,.league-filter,.workspace-nav-row):hover > :is(span,b,strong,small),',
+            '  body .workspace.singlepage > .left-rail .workspace-nav-grid > button:hover > :is(span,b,strong,small) {',
+            '    color: var(--green) !important;',
+            '  }',
+            '}',
+            'body .workspace.singlepage > .left-rail .rail-card > :is(button,a,[role="button"]).active,',
+            'body .workspace.singlepage > .left-rail :is(.filter,.league-filter,.workspace-nav-row).active,',
+            'body .workspace.singlepage > .left-rail .workspace-nav-grid > button.active {',
+            '  color: var(--green) !important;',
+            '  background-color: transparent !important;',
             '  background-image: none !important;',
             '  border-color: transparent !important;',
             '  box-shadow: none !important;',
+            '}',
+            'body .workspace.singlepage > .left-rail .rail-card > :is(button,a,[role="button"]).active > :is(span,b,strong,small),',
+            'body .workspace.singlepage > .left-rail :is(.filter,.league-filter,.workspace-nav-row).active > :is(span,b,strong,small),',
+            'body .workspace.singlepage > .left-rail .workspace-nav-grid > button.active > :is(span,b,strong,small) {',
+            '  color: var(--green) !important;',
+            '}',
+            'body .workspace.singlepage > .left-rail .rail-card > :is(button[data-status-filter],button[data-workspace-view="signal"]).active {',
+            '  --b46-status-tone: var(--green) !important;',
+            '}',
+            '@media (hover: hover) and (pointer: fine) {',
+            '  body .workspace.singlepage > .left-rail .rail-card > :is(button[data-status-filter],button[data-workspace-view="signal"]):hover > span::before,',
+            '  body .workspace.singlepage > .left-rail .workspace-stats-card .workspace-nav-grid > button[data-stat-market]:hover > span::before {',
+            '    transform: none !important;',
+            '    opacity: .82 !important;',
+            '  }',
+            '}',
+            'body .workspace.singlepage > .left-rail .rail-card > :is(button[data-status-filter],button[data-workspace-view="signal"]):active > span::before,',
+            'body .workspace.singlepage > .left-rail .workspace-stats-card .workspace-nav-grid > button[data-stat-market]:active > span::before {',
+            '  transform: none !important;',
             '}',
             'body .workspace.singlepage > .left-rail :is(.rail-title,.league-head) {',
             '  background-color: transparent !important;',
@@ -112,7 +153,7 @@ jobs:
           source=source.replace(oldConfig,newConfig);
 
           writeFileSync(runner,source);
-          console.log('LEFT_RAIL_BADGE_CLEANUP_RUNNER_ADAPTED');
+          console.log('LEFT_RAIL_TEXT_STATE_RUNNER_ADAPTED');
           NODE
       - name: Guarded left rail transparency from exact current Production
         shell: bash
