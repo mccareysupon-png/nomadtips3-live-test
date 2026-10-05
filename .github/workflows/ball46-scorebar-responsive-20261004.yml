@@ -1,4 +1,4 @@
-name: Ball46 Card UI STOPPED
+name: Ball46 Existing Scorebar Responsive Surgical Deploy
 on:
   push:
     branches: ['safe/ball46-scorebar-responsive-20261004']
@@ -7,9 +7,29 @@ permissions:
   contents: read
 concurrency:
   group: ball46-production-spa-statistics-total
-  cancel-in-progress: true
+  cancel-in-progress: false
 jobs:
-  stopped:
+  presentation:
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
     steps:
-      - run: echo 'STOPPED by user. No deploy permitted until explicit resume.'
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - working-directory: deploy-assets/match-status-svg-20261003
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          npx playwright install --with-deps chromium
+      - name: Verify current Production source, test responsive cards, deploy through existing Production rail
+        working-directory: deploy-assets/match-status-svg-20261003
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: node scorebar-responsive-run.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-scorebar-responsive-${{ github.run_id }}
+          path: deploy-assets/match-status-svg-20261003/audit/
+          retention-days: 7
