@@ -14,10 +14,10 @@ export async function verify({patchedCss,directory='audit/ui',watchMs=1500}={}){
   await page.goto('https://www.ball46.com/index.html?view=signal',{waitUntil:'domcontentloaded',timeout:60000});
   await page.waitForSelector('[data-workspace-scorebar-slot] .workspace-scorebar-grid',{timeout:60000});
   if(patchedCss)await page.addStyleTag({content:patchedCss});
-  await page.evaluate(()=>{document.getElementById('qa-status-probes')?.remove();const host=document.createElement('div');host.id='qa-status-probes';host.style.cssText='position:absolute;left:-10000px;top:0;width:600px;pointer-events:none';host.innerHTML=['WIN','LOSS','DRAW','PENDING'].map((label,i)=>'<div class="workspace-scorebar-cell '+(i===3?'workspace-scorebar-pending':'workspace-scorebar-signal-result')+'"><span class="workspace-scorebar-meta"><i>'+label+'</i><b>1–0</b></span></div>').join('');document.querySelector('[data-workspace-scorebar-slot]').appendChild(host)});
+  await page.evaluate(()=>{document.getElementById('qa-status-probes')?.remove();const host=document.createElement('div');host.id='qa-status-probes';host.setAttribute('data-workspace-scorebar-slot','qa');host.style.cssText='position:absolute;left:-10000px;top:0;width:600px;pointer-events:none';host.innerHTML=['WIN','LOSS','DRAW','PENDING'].map((label,i)=>'<div class="workspace-scorebar-cell '+(i===3?'workspace-scorebar-pending':'workspace-scorebar-signal-result')+'"><span class="workspace-scorebar-meta"><i>'+label+'</i><b>1–0</b></span></div>').join('');document.body.appendChild(host)});
   await page.waitForTimeout(250);
   const read=()=>page.evaluate(()=>{
-   const slot=document.querySelector('[data-workspace-scorebar-slot]'),grid=slot?.querySelector('.workspace-scorebar-grid');
+   const slot=[...document.querySelectorAll('[data-workspace-scorebar-slot]')].find(e=>e.id!=='qa-status-probes'&&e.querySelector('.workspace-scorebar-grid')),grid=slot?.querySelector('.workspace-scorebar-grid');
    if(!slot||!grid)return null;
    const slotStyle=getComputedStyle(slot),gridStyle=getComputedStyle(grid),slotBox=slot.getBoundingClientRect(),cols=innerWidth<=760?2:innerWidth<=1180?5:10;
    const cells=[...grid.children].map(e=>{const b=e.getBoundingClientRect(),pill=e.querySelector('.workspace-scorebar-meta i'),p=pill?getComputedStyle(pill):null;return{width:b.width,height:b.height,top:b.top,right:b.right,bottom:b.bottom,status:pill?.textContent||'',pillColor:p?.color||'',pillWeight:p?.fontWeight||'',placeholder:e.classList.contains('placeholder'),text:e.textContent||''}});
