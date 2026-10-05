@@ -1,4 +1,4 @@
-name: Ball46 Right Signal Production Probe 20261005
+name: Ball46 Right Signal Stability Surgical 20261005
 
 on:
   push:
@@ -17,7 +17,7 @@ concurrency:
 env:
   CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
   CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-  DEPLOY_ENABLED: 'false'
+  DEPLOY_ENABLED: 'true'
 
 jobs:
   surgical-deploy:
@@ -33,14 +33,14 @@ jobs:
       - name: Install exact proven-rail dependencies
         working-directory: deploy-assets/match-status-svg-20261003
         run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Capture current right signal production source
+      - name: Surgical deploy current right signal DOM stability
         working-directory: deploy-assets/match-status-svg-20261003
-        run: node right-signal-probe.mjs
+        run: node right-signal-stability-current-run.mjs
       - name: Retain surgical evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ball46-right-signal-probe-${{ github.run_id }}
+          name: ball46-right-signal-stability-${{ github.run_id }}
           path: deploy-assets/match-status-svg-20261003/audit/
           if-no-files-found: error
           retention-days: 30
