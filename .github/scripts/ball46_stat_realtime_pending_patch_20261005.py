@@ -30,20 +30,25 @@ if VERSION in s:
     print('PATCH_ALREADY_PRESENT')
     raise SystemExit(0)
 
-# 1) Statistics lifecycle must stay PENDING. LIVE is match mirror metadata only.
-# The existing live worker has exactly one synthesized LIVE result/display pair;
-# fail closed unless both assignments are uniquely identifiable.
-result_live = re.compile(r'r\.result\s*=\s*["\']LIVE["\']\s*;')
-display_live = re.compile(r'r\.displayStatus\s*=\s*["\']LIVE["\']\s*;')
-if len(result_live.findall(s)) != 1:
-    raise SystemExit('LIVE_RESULT_ASSIGNMENT_COUNT:' + str(len(result_live.findall(s))))
-if len(display_live.findall(s)) != 1:
-    raise SystemExit('LIVE_DISPLAY_ASSIGNMENT_COUNT:' + str(len(display_live.findall(s))))
-s = result_live.sub('if(String(r.result||"").toUpperCase()==="LIVE")delete r.result;', s, count=1)
-s = display_live.sub('r.displayStatus="PENDING";', s, count=1)
+# 1) Normalize the final Statistics response after all mirror decoration.
+# This is intentionally downstream of any legacy LIVE decoration so PENDING
+# always wins as the statistics lifecycle state.
+denom_re = re.compile(r'const\s+denom\s*=\s*meta\.win\s*\+\s*meta\.loss\s*\+\s*meta\.halfWin\s*\+\s*meta\.halfLoss\s*;')
+denom_hits = list(denom_re.finditer(s))
+if len(denom_hits) != 1:
+    raise SystemExit('STAT_DENOM_ANCHOR_COUNT:' + str(len(denom_hits)))
+normalizer = '''for (const r of rows) {
+      if (String(r?.status || "").toUpperCase() === "PENDING") {
+        if (String(r?.result || "").toUpperCase() === "LIVE") delete r.result;
+        r.displayStatus = "PENDING";
+      }
+    }
+    ''' + denom_hits[0].group(0)
+s = denom_re.sub(normalizer, s, count=1)
 
-# 2) Persist PENDING rows at the same commit point where working signals are
-# stored. The scan-level sync remains intact as reconciliation/fail-safe.
+# 2) Persist PENDING rows at the exact working-signal commit point. This runs
+# before the outer scan reconciliation and therefore makes the ledger update
+# part of the same signal-generation transaction path.
 commit_re = re.compile(r'await\s+writeWorkingSignals\(this\.ctx,\s*capped\s*\)\s*;')
 commit_hits = list(commit_re.finditer(s))
 if len(commit_hits) != 1:
@@ -70,9 +75,7 @@ if source_hits < 2:
     raise SystemExit('STATISTICS_SOURCE_MARKER_COUNT:' + str(source_hits))
 s = source_re.sub(lambda m: m.group(0) + ' realtimePendingLedgerVersion: REALTIME_PENDING_LEDGER_VERSION,', s)
 
-# Guardrails.
-if result_live.search(s) or display_live.search(s):
-    raise SystemExit('PENDING_LIVE_OVERRIDE_REMAINS')
+# Guardrails: settlement remains untouched and the patch must expose its marker.
 if s.count('realtime-pending-ledger-v1') < 2:
     raise SystemExit('REALTIME_MARKER_NOT_WIRED')
 if 'settleMarketSignal' not in s or 'reconcileExternalFinal' not in s:
