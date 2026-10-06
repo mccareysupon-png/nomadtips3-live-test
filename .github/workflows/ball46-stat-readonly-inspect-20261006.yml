@@ -1,0 +1,64 @@
+name: Ball46 statistics read-only inspect 20261006
+
+on:
+  push:
+    branches:
+      - ops/ball46-stat-realtime-pending-20261005b
+    paths:
+      - '.github/workflows/ball46-stat-readonly-inspect-20261006.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Inspect live worker source without deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64,json,os,re,urllib.request
+          account=os.environ['CLOUDFLARE_ACCOUNT_ID']; token=os.environ['CLOUDFLARE_API_TOKEN']
+          api=f'https://api.cloudflare.com/client/v4/accounts/{account}'; worker='nomadtips3-engine-343'
+          h={'Authorization':f'Bearer {token}','Accept':'application/json'}
+          def getj(u):
+            with urllib.request.urlopen(urllib.request.Request(u,headers=h),timeout=30) as r: j=json.load(r)
+            if isinstance(j,dict) and j.get('success') is False: raise SystemExit('CF_API_FAIL')
+            return j
+          deps=getj(f'{api}/workers/scripts/{worker}/deployments')['result']['deployments']
+          vs=deps[0].get('versions') or []
+          active=[str(v['version_id']) for v in vs if v.get('version_id') and float(v.get('percentage',0))>=99.999]
+          if len(active)!=1: raise SystemExit('ACTIVE_VERSION_AMBIGUOUS:'+repr(active))
+          vid=active[0]
+          ver=getj(f'{api}/workers/workers/{worker}/versions/{vid}?include=modules')['result']
+          mods=ver.get('modules') or []
+          target=[m for m in mods if m.get('name')=='index-bulk-recovery.js' and m.get('content_base64')]
+          if len(target)!=1: raise SystemExit('SOURCE_MODULE_MISSING')
+          s=base64.b64decode(target[0]['content_base64']).decode()
+          print('ACTIVE_VERSION',vid,'SOURCE_LEN',len(s))
+          needles=[
+            'async upsertLedgerRows',
+            'async syncStatisticsLedger',
+            'async statisticsLedgerResponse',
+            'writeWorkingSignals(this.ctx, capped)',
+            'u.pathname === "/statistics"',
+            'async latestLedgerRows',
+            'STAT_LEDGER_DEFAULT_LIMIT',
+            'STAT_LEDGER_PREFIX'
+          ]
+          lines=s.splitlines()
+          for n in needles:
+            hits=[i for i,x in enumerate(lines) if n in x]
+            print('\n===',n,'HITS',len(hits),'===')
+            for i in hits[:4]:
+              a=max(0,i-18); b=min(len(lines),i+80)
+              print('\n'.join(f'{j+1}: {lines[j]}' for j in range(a,b)))
+              print('---END CONTEXT---')
+          PY
