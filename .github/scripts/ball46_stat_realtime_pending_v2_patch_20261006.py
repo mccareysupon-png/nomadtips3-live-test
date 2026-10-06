@@ -39,17 +39,19 @@ if s.count('signals.push(sig);') != 1:
 if s.count('await writeWorkingSignals(this.ctx, capped);') != 1:
     raise SystemExit("WORKING_COMMIT_ANCHOR_COUNT:" + str(s.count('await writeWorkingSignals(this.ctx, capped);')))
 
-# Declare a scan-local buffer beside the existing signal collection.
-anchor = 'const signals = await readWorkingSignals(this.ctx);'
-hits = s.count(anchor)
-if hits < 1:
-    raise SystemExit("SIGNALS_READ_ANCHOR_MISSING")
-# Patch only the first occurrence in the core scan path, which occurs before signal creation.
-pos = s.find(anchor)
+# Declare a scan-local buffer at the beginning of the core scan() method.
+# There are multiple scan() methods in the bundled worker; the first is the core
+# signal-generation scan, while the later one is the ledger wrapper scan.
+scan_anchor = '  async scan() {'
+scan_hits = [m.start() for m in re.finditer(re.escape(scan_anchor), s)]
+if len(scan_hits) < 2:
+    raise SystemExit("SCAN_ANCHOR_COUNT:" + str(len(scan_hits)))
+core_scan_pos = scan_hits[0]
 push_pos = s.find('signals.push(sig);')
-if pos < 0 or pos > push_pos:
-    raise SystemExit("SIGNALS_READ_NOT_BEFORE_CREATION")
-s = s[:pos] + anchor + '\n      const realtimePendingNewRows = []; // realtime-pending-v2-new-only' + s[pos+len(anchor):]
+if core_scan_pos < 0 or core_scan_pos > push_pos:
+    raise SystemExit("CORE_SCAN_NOT_BEFORE_SIGNAL_CREATION")
+insert_at = core_scan_pos + len(scan_anchor)
+s = s[:insert_at] + '\n    const realtimePendingNewRows = []; // realtime-pending-v2-new-only' + s[insert_at:]
 
 # Capture only newly-created Signal objects. No historical PENDING scan.
 s = s.replace(
