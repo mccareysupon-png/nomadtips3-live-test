@@ -1,0 +1,76 @@
+name: Recover Ball46 Statistics V2 20261006
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/recover-ball46-statistics-v2-20261006.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ball46-statistics-v2-recovery
+  cancel-in-progress: false
+
+jobs:
+  recover:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      PATCH_SOURCE_BRANCH: work/ball46-statistics-recover-cachebust-20261006
+      DEPLOY_ENABLED: 'true'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/ball46-statistics-recover-cachebust-20261006
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Recover Statistics V2 on exact current Production rail
+        working-directory: deploy-assets/statistics-recover-cachebust-20261006
+        run: node run.mjs
+
+      - name: Browser QA Statistics V2 menu and page
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p browser-audit
+          google-chrome --headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage \
+            --virtual-time-budget=25000 --dump-dom \
+            'https://ball46.com/?view=statistics&market=all&qa=stats-recovery-20261006-1634' \
+            > browser-audit/dom.html 2> browser-audit/chrome.log || true
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          s=Path('browser-audit/dom.html').read_text(errors='ignore')
+          expected=['all','1x2','ah','ou','btts','corners','cards','other']
+          pairs=re.findall(r'data-stat-market="([^"]+)"[^>]*>.*?<b[^>]*>([^<]*)</b>',s,re.S)
+          got={k:v.strip() for k,v in pairs if k in expected}
+          print('STAT_NAV_COUNTS',got)
+          assert set(expected) <= set(got), f'MISSING_STAT_NAV:{set(expected)-set(got)}'
+          assert all(v not in {'','—'} for v in got.values()), f'STAT_NAV_NOT_RENDERED:{got}'
+          kpis=dict(re.findall(r'data-sp-kpi="([^"]+)"[^>]*>([^<]*)<',s,re.S))
+          print('STAT_KPIS',kpis)
+          for k in ['total','win','loss','push','rate','odds']:
+              assert k in kpis, f'MISSING_KPI:{k}'
+              assert kpis[k].strip() not in {'','—'}, f'KPI_NOT_RENDERED:{k}:{kpis[k]}'
+          state=re.findall(r'data-sp-feed-state[^>]*>([^<]*)<',s,re.S)
+          print('STAT_FEED_STATE',state[:3])
+          assert state and 'Updated' in state[0], f'FEED_NOT_UPDATED:{state}'
+          print('BALL46_STATISTICS_V2_FULL_BROWSER_PASS')
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-statistics-v2-recovery-${{ github.run_id }}
+          path: |
+            deploy-assets/statistics-recover-cachebust-20261006/audit
+            browser-audit
+          retention-days: 30
