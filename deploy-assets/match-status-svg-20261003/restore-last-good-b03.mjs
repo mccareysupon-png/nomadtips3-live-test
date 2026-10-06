@@ -8,12 +8,19 @@ console.log('TARGET_MAIN='+target.main_module);console.log('TARGET_MODULES='+tar
 await api(`/scripts/${script}/deployments`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({strategy:'percentage',versions:[{version_id:TARGET,percentage:100}],annotations:{'workers/message':'Restore last confirmed Ball46 Production after unintended old-site deployment'}})});
 assert.equal(await activeVersion(),TARGET,'RESTORE_NOT_ACTIVE');
 try{
- const idx=await publicFile('/index.html','html'),dash=await publicFile('/dashboard-v2-stage3.js','javascript');
- const it=idx.toString('utf8'),dt=dash.toString('utf8');
- console.log('INDEX_BYTES='+idx.length);console.log('INDEX_SHA='+sha(idx));console.log('DASH_SHA='+sha(dash));
- assert(idx.length>100000,'RESTORED_INDEX_TOO_SMALL');
- assert(!/data-featured-signal>No active signal<\/div>/.test(it),'RESTORED_INDEX_FALLBACK_VISIBLE');
- assert(!dt.includes("return'No active signal'")&&!dt.includes('return"No active signal"'),'RESTORED_DASH_FALLBACK_VISIBLE');
+ let idx=null,dash=null,ok=false,last='';
+ for(let i=0;i<45;i++){
+   assert.equal(await activeVersion(),TARGET,'TARGET_MOVED_DURING_VERIFY');
+   try{
+     idx=await publicFile('/index.html','html');dash=await publicFile('/dashboard-v2-stage3.js','javascript');
+     const it=idx.toString('utf8'),dt=dash.toString('utf8');
+     last=JSON.stringify({attempt:i+1,indexBytes:idx.length,indexSha:sha(idx),dashSha:sha(dash),indexFallback:/data-featured-signal>No active signal<\\/div>/.test(it),dashFallback:dt.includes("return'No active signal'")||dt.includes('return"No active signal"')});
+     console.log('VERIFY='+last);
+     if(idx.length>100000&&!/data-featured-signal>No active signal<\\/div>/.test(it)&&!dt.includes("return'No active signal'")&&!dt.includes('return"No active signal"')){ok=true;break}
+   }catch(e){last=String(e)}
+   await new Promise(r=>setTimeout(r,1500));
+ }
+ assert(ok,'RESTORED_ASSETS_NOT_PROPAGATED:'+last);
  const [board,signals,stats]=await Promise.all(['/api/engine/board','/api/engine/signals','/api/engine/statistics'].map(async p=>JSON.parse(await publicFile(p,'json'))));
  assert(board?.ok===true&&Array.isArray(board.fixtures),'BOARD_UNHEALTHY');assert(Array.isArray(signals?.signals),'SIGNALS_UNHEALTHY');assert(stats?.ok===true&&Array.isArray(stats.rows),'STATS_UNHEALTHY');
  console.log('API_COUNTS='+JSON.stringify({fixtures:board.fixtures.length,signals:signals.signals.length,settled:stats.rows.length}));
