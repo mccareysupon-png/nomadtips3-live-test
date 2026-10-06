@@ -67,7 +67,7 @@ jobs:
           test -s production/nomad-live-343/detection-test.html
           test -s production/nomad-live-343/ball46-logo.svg
           test -s production/nomad-live-343/v2-header.css
-          grep -Fq 'nomad343-ball46-full-market-v3-control' production/workers/nomadtips3-full-market-343-ball46/src/index.js
+          grep -Fq 'nomad343-ball46-full-market-v6-server-prewarm-cache' production/workers/nomadtips3-full-market-343-ball46/src/index.js
           grep -Fq "/api/full-market/settings" production/nomad-live-343/5usd-control.html
           grep -Fq "url.pathname === '/api/full-market/settings'" production/workers/nomadtips3-343-preview/src/index.js
           grep -Fq '5USD CONTROL' production/nomad-live-343/5usd-control.html
@@ -175,7 +175,7 @@ jobs:
           const h=require('/tmp/health.json');
           if(h.ok!==true||h.component!=='BALL46_FULL_MARKET_GATE') throw Error(JSON.stringify(h));
           if(Number(h.bookmakerCount)!==19) throw Error(`bookmakerCount=${h.bookmakerCount}`);
-          const presets={eco:[30000,15],normal:[20000,25],fast:[12000,30]};
+          const presets={eco:[90000,5],normal:[60000,8],fast:[45000,10]};
           if(!presets[h.mode]) throw Error(`mode=${h.mode}`);
           const [cache,guard]=presets[h.mode];
           if(Number(h.cacheMs)!==cache) throw Error(`cacheMs=${h.cacheMs}`);
@@ -259,6 +259,13 @@ jobs:
           curl -fsS --max-time 25 "$BALL46_URL/v2-header.css?_=${GITHUB_RUN_ID}" -o /tmp/v2-header.css
           grep -Fq '343-premium-logo-v1' /tmp/v2-header.css
           echo 'PREMIUM_LOGO_PASS'
+          curl -fsS --max-time 25 "$BALL46_URL/?_=${GITHUB_RUN_ID}" -o /tmp/ball46-index.html
+          grep -Fq 'dashboard-v2-stage3-v6-last-good-20261006' /tmp/ball46-index.html
+          curl -fsS --max-time 25 "$BALL46_URL/signal.html?_=${GITHUB_RUN_ID}" -o /tmp/ball46-signal.html
+          grep -Fq 'signal-next-production-v2-last-good-20261006' /tmp/ball46-signal.html
+          curl -fsS --max-time 25 "$BALL46_URL/statistics.html?_=${GITHUB_RUN_ID}" -o /tmp/ball46-statistics.html
+          grep -Fq 'statistics-next-production-v2-last-good-20261006' /tmp/ball46-statistics.html
+          echo 'LOAD_STABILITY_ASSETS_PASS'
           echo 'BALL46_CONTROLS_END_TO_END_PASS'
 
       - name: Roll back Ball46 wrapper on verification failure
