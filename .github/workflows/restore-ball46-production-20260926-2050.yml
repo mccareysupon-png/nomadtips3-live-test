@@ -1,59 +1,13 @@
-name: ONE SHOT - Restore Ball46 Production 2026-09-26 20:50 ICT
-
-# Exact Cloudflare Worker rollback to the production version verified green
-# before the 2026-09-27 mobile-parity deployment incident.
+name: RETIRED - restore-ball46-production-20260926-2050
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/restore-ball46-production-20260926-2050.yml'
+  workflow_dispatch:
 
 permissions:
   contents: read
 
-env:
-  TARGET_VERSION: 1c002b58-317e-408e-a64e-84c3db83b6d7
-  BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
-  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-
 jobs:
-  restore-exact-production-version:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
+  retired:
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-
-      - name: Record current deployment history
-        shell: bash
-        run: |
-          set -euo pipefail
-          npx --yes wrangler@4.92.0 deployments list --name ball46-production | tee /tmp/before.txt
-
-      - name: Roll back to exact verified production version
-        shell: bash
-        run: |
-          set -euo pipefail
-          npx --yes wrangler@4.92.0 rollback "$TARGET_VERSION" --name ball46-production --message "Restore exact Ball46 production verified green 2026-09-26 20:50 ICT before mobile parity incident"
-
-      - name: Verify restored production
-        shell: bash
-        run: |
-          set -euo pipefail
-          sleep 5
-          curl -fsS -L --retry 5 --retry-all-errors --retry-delay 2 --max-time 25 "$BALL46_WORKER/?restore-check=${GITHUB_RUN_ID}" -o /tmp/index.html
-          test -s /tmp/index.html
-          curl -fsS -L --retry 5 --retry-all-errors --retry-delay 2 --max-time 25 "$BALL46_WORKER/api/engine/health?restore-check=${GITHUB_RUN_ID}" -o /tmp/health.json
-          curl -fsS -L --retry 5 --retry-all-errors --retry-delay 2 --max-time 25 "$BALL46_WORKER/api/engine/board?restore-check=${GITHUB_RUN_ID}" -o /tmp/board.json
-          node - <<'NODE'
-          const fs=require('fs');
-          const h=JSON.parse(fs.readFileSync('/tmp/health.json','utf8'));
-          const b=JSON.parse(fs.readFileSync('/tmp/board.json','utf8'));
-          if(h?.ok!==true) throw Error('HEALTH_NOT_OK');
-          if(b?.ok!==true || !Array.isArray(b?.fixtures)) throw Error('BOARD_NOT_OK');
-          console.log('BALL46_EXACT_RESTORE_PASS',{fixtures:b.fixtures.length});
-          NODE
-          npx --yes wrangler@4.92.0 deployments list --name ball46-production | tee /tmp/after.txt
+      - run: echo "RETIRED legacy Ball46 workflow. Historical nomad-live-343 must never deploy to ball46-production."
