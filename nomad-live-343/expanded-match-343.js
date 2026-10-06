@@ -1,6 +1,6 @@
 (()=>{
 'use strict';
-const VERSION='343-expanded-match-v4-stable-lifecycle';
+const VERSION='343-expanded-match-v5-signal-marker';
 const ODDS_RENDER_OWNER='full-market-bookmaker-only';
 const BOARD_API='/api/engine/board';
 const HISTORY_API='/api/engine/history';
@@ -68,17 +68,24 @@ function areaLine(points,key,w,h,pad,current){
 }
 function xFor(minute,w,pad,current){return pad.left+(clamp(minute,0,current)/Math.max(1,current))*(w-pad.left-pad.right)}
 function yFor(value,h,pad){const v=clamp(value,1,100);return pad.top+((100-v)/99)*(h-pad.top-pad.bottom)}
+function signalForFixture(id){try{return window.NOMAD343_DASHBOARD_V2?.getSignal?.(String(id))||null}catch{return null}}
+function signalMarker(signal,w,h,pad,current){
+  const minute=num(signal?.entryMinute??signal?.minute);
+  if(minute===null||minute<0||minute>current+3)return'';
+  const x=xFor(minute,w,pad,current),labelX=clamp(x,pad.left+38,w-pad.right-38),label=`SIGNAL ${Math.round(minute)}'`;
+  return `<g class="expand-flow-signal-marker"><line x1="${x.toFixed(1)}" y1="${pad.top}" x2="${x.toFixed(1)}" y2="${h-pad.bottom}" style="stroke:var(--green);stroke-width:2;stroke-dasharray:5 4;opacity:.95"/><circle cx="${x.toFixed(1)}" cy="${pad.top+10}" r="4" style="fill:var(--green)"/><text x="${labelX.toFixed(1)}" y="${pad.top+12}" text-anchor="middle" style="fill:var(--green);font-size:11px;font-weight:900">${esc(label)}</text></g>`;
+}
 function flowGrid(w,h,pad,current){
   const ys=[100,75,50,25,1].map(v=>{const y=yFor(v,h,pad);return `<line x1="${pad.left}" y1="${y}" x2="${w-pad.right}" y2="${y}" class="expand-flow-grid${v===50?' mid':''}"/><text x="${pad.left-7}" y="${y+3}" text-anchor="end" class="expand-flow-axis">${v}%</text>`}).join('');
   const step=current<=30?5:current<=60?10:15,marks=[0];for(let m=step;m<current;m+=step)marks.push(m);if(!marks.includes(current))marks.push(current);
   const xs=marks.map(m=>{const x=xFor(m,w,pad,current);return `<line x1="${x}" y1="${pad.top}" x2="${x}" y2="${h-pad.bottom}" class="expand-flow-grid v"/><text x="${x}" y="${h-7}" text-anchor="middle" class="expand-flow-axis">${m}'</text>`}).join('');
   return ys+xs;
 }
-function renderFlow(f,history){
+function renderFlow(f,history,signal){
   const current=currentMinute(f,history),points=flowPoints(history,current),home=esc(f?.home?.name||'HOME'),away=esc(f?.away?.name||'AWAY');
   if(!points.length)return `<div class="expand-card-head"><div><span>EVENT FLOW</span><b>0' → ${current}'</b></div><small>1–100% · Engine history</small></div><div class="expand-empty">กำลังสะสม Event Flow ของคู่นี้</div>`;
   const w=1000,h=232,pad={left:42,right:18,top:14,bottom:30},last=points[points.length-1],hx=xFor(last.minute,w,pad,current),hy=yFor(last.home,h,pad),ay=yFor(last.away,h,pad),safe=norm(fixtureId(f))||'flow';
-  return `<div class="expand-card-head"><div><span>EVENT FLOW</span><b>0' → ${current}'</b></div><small>Attack pressure · 1–100%</small></div><div class="expand-flow-legend"><span class="home"><i></i>${home} <b>${Math.round(last.home)}%</b></span><span class="away"><i></i>${away} <b>${Math.round(last.away)}%</b></span><small>${points.length} points · missing early history stays blank</small></div><div class="expand-flow-chart"><svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" role="img" aria-label="Event flow from minute zero to current minute"><defs><linearGradient id="eh-${safe}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#31b878" stop-opacity=".22"/><stop offset="100%" stop-color="#31b878" stop-opacity="0"/></linearGradient><linearGradient id="ea-${safe}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#e2c94c" stop-opacity=".20"/><stop offset="100%" stop-color="#e2c94c" stop-opacity="0"/></linearGradient></defs>${flowGrid(w,h,pad,current)}<path d="${areaLine(points,'home',w,h,pad,current)}" fill="url(#eh-${safe})" class="expand-flow-area"/><path d="${areaLine(points,'away',w,h,pad,current)}" fill="url(#ea-${safe})" class="expand-flow-area"/><path d="${pathLine(points,'home',w,h,pad,current)}" class="expand-flow-line home"/><path d="${pathLine(points,'away',w,h,pad,current)}" class="expand-flow-line away"/><circle cx="${hx}" cy="${hy}" r="2.4" class="expand-flow-end home"/><circle cx="${hx}" cy="${ay}" r="2.4" class="expand-flow-end away"/></svg></div>`;
+  return `<div class="expand-card-head"><div><span>EVENT FLOW</span><b>0' → ${current}'</b></div><small>Attack pressure · 1–100%</small></div><div class="expand-flow-legend"><span class="home"><i></i>${home} <b>${Math.round(last.home)}%</b></span><span class="away"><i></i>${away} <b>${Math.round(last.away)}%</b></span><small>${points.length} points · missing early history stays blank</small></div><div class="expand-flow-chart"><svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" role="img" aria-label="Event flow from minute zero to current minute"><defs><linearGradient id="eh-${safe}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#31b878" stop-opacity=".22"/><stop offset="100%" stop-color="#31b878" stop-opacity="0"/></linearGradient><linearGradient id="ea-${safe}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#e2c94c" stop-opacity=".20"/><stop offset="100%" stop-color="#e2c94c" stop-opacity="0"/></linearGradient></defs>${flowGrid(w,h,pad,current)}<path d="${areaLine(points,'home',w,h,pad,current)}" fill="url(#eh-${safe})" class="expand-flow-area"/><path d="${areaLine(points,'away',w,h,pad,current)}" fill="url(#ea-${safe})" class="expand-flow-area"/><path d="${pathLine(points,'home',w,h,pad,current)}" class="expand-flow-line home"/><path d="${pathLine(points,'away',w,h,pad,current)}" class="expand-flow-line away"/>${signalMarker(signal,w,h,pad,current)}<circle cx="${hx}" cy="${hy}" r="2.4" class="expand-flow-end home"/><circle cx="${hx}" cy="${ay}" r="2.4" class="expand-flow-end away"/></svg></div>`;
 }
 function shell(id){
   const el=document.createElement('section');el.className='match-expanded';el.dataset.expandedMatch=id;el.dataset.oddsRenderOwner=ODDS_RENDER_OWNER;
@@ -108,7 +115,7 @@ async function refreshExpanded(force=false){
   try{
     const [boardRes,histRes]=await Promise.allSettled([getBoard(force),getHistory(id,force)]);if(seq!==refreshSeq||expandedId!==id||expandedEl!==el)return;
     const board=boardRes.status==='fulfilled'?boardRes.value:null,fixture=board?findFixture(board,id):null,flow=el.querySelector('.expand-flow-card'),full=el.querySelector('[data-full-market-card]');
-    if(fixture&&histRes.status==='fulfilled')setHtmlIfChanged(flow,renderFlow(fixture,histRes.value));
+    if(fixture&&histRes.status==='fulfilled')setHtmlIfChanged(flow,renderFlow(fixture,histRes.value,signalForFixture(id)));
     else if(flow)setHtmlIfChanged(flow,`<div class="expand-card-head"><div><span>EVENT FLOW</span><b>Unavailable</b></div></div><div class="expand-empty">${esc(histRes.status==='rejected'?histRes.reason?.message:'Fixture not found')}</div>`);
     if(fixture)publishFixture(el,fixture);else if(full&&!full.querySelector('.fmb-head'))setHtmlIfChanged(full,`<div class="expand-card-head"><div><span>FULL MARKET</span><b>Unavailable</b></div></div><div class="expand-empty">${esc(boardRes.status==='rejected'?boardRes.reason?.message:'Fixture not found')}</div>`);
   }catch(err){console.warn('Expanded refresh failed',err)}
