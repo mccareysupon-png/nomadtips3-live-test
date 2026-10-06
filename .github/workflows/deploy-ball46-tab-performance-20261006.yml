@@ -1,0 +1,52 @@
+name: Deploy Ball46 Tab Performance 20261006
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-ball46-tab-performance-20261006.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ball46-production-tab-performance
+  cancel-in-progress: false
+
+jobs:
+  guarded-deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      DEPLOY_ENABLED: 'true'
+      PATCH_SOURCE_BRANCH: work/ball46-tab-performance-20261006
+    steps:
+      - name: Checkout isolated new-card branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.PATCH_SOURCE_BRANCH }}
+          fetch-depth: 1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install parser dependency only
+        run: npm install --no-save --ignore-scripts acorn@8
+
+      - name: Patch current Production tab from repaired Daily Performance only
+        working-directory: deploy-assets/performance-reconnect-20261006
+        run: node run.mjs
+
+      - name: Upload audit and rollback proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-tab-performance-${{ github.run_id }}
+          path: deploy-assets/performance-reconnect-20261006/audit
+          if-no-files-found: warn
+          retention-days: 30
