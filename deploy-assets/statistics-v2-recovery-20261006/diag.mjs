@@ -36,4 +36,8 @@ for(const [name,url] of urls){
   }
  }
 }
+const w=await get('https://ball46.com/singlepage-workspace-343.js?v=statistics-no-total-cap-20261005');
+for(const needle of ['BALL46_STATISTICS_DATA','function sameSnapshot','async function page','async function loadStatistics','function counts']){
+ const i=w.text.indexOf(needle); if(i>=0) console.log('WORKSPACE_DETAIL',needle,JSON.stringify(w.text.slice(Math.max(0,i-1800),i+7000)));
+}
 console.log('STATISTICS_V2_RECOVERY_DIAG_DONE');
