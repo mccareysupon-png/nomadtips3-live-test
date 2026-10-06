@@ -1,0 +1,36 @@
+name: Deploy Ball46 12BET Logo Light Safe 20261006
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-ball46-12bet-logo-light-safe-20261006.yml'
+permissions:
+  contents: read
+concurrency:
+  group: ball46-production-deploy
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ops/ball46-12bet-logo-light-safe-20261006
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --ignore-scripts acorn@8
+      - name: Swap only 12BET logo asset on exact current Production rail
+        working-directory: deploy-assets/ball46-12bet-logo-light-safe-20261006
+        run: node deploy.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-12bet-logo-light-safe-${{ github.run_id }}
+          path: deploy-assets/ball46-12bet-logo-light-safe-20261006/audit
+          retention-days: 30
