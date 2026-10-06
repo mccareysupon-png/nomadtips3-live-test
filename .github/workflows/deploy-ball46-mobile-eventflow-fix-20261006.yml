@@ -21,7 +21,7 @@ jobs:
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      DEPLOY_ENABLED: 'false'
+      DEPLOY_ENABLED: 'true'
       PATCH_SOURCE_BRANCH: work/ball46-mobile-eventflow-fix-20261006
     steps:
       - name: Checkout exact patch source
@@ -51,4 +51,4 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
 
-# preview-actual-worker-literal-patch-20261006
+# deploy-actual-worker-literal-patch-20261006
