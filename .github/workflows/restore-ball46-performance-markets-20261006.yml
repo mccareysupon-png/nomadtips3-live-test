@@ -1,0 +1,38 @@
+name: Restore Ball46 Performance Markets 20261006
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/restore-ball46-performance-markets-20261006.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ball46-restore-performance-markets
+  cancel-in-progress: false
+
+jobs:
+  restore:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Checkout exact restore branch
+        uses: actions/checkout@v4
+        with:
+          ref: ops/ball46-restore-performance-markets-20261006
+          fetch-depth: 1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Restore Performance Card and Statistics markets
+        working-directory: deploy-assets/restore-performance-markets-20261006
+        run: node run.mjs
