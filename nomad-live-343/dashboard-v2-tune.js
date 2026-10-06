@@ -1,6 +1,6 @@
 (()=>{
 'use strict';
-const VERSION='343-dashboard-v2-ui-tune-v3-mobile-status-loop-safe';
+const VERSION='343-dashboard-v2-ui-tune-v4-mobile-single-clock-signal';
 let autoStatusChosen=false;
 let userStatusChosen=false;
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -10,11 +10,12 @@ function decorateRows(){
     const signal=row.querySelector('.signal-cell');
     if(!score||!signal||signal.dataset.mobileTune==='1')return;
     const clock=score.querySelector('small:not(.half-score)')?.textContent?.trim()||'—';
-    const status=row.querySelector('.teams-cell small')?.textContent?.trim()||clock;
-    const current=signal.textContent.trim()||'WATCH';
+    const main=signal.querySelector('.pred-main')?.textContent?.trim()||'WATCH';
+    const sub=signal.querySelector('.pred-sub')?.textContent?.trim()||'';
+    const current=[main,sub].filter(Boolean).join(' · ');
     signal.dataset.mobileTune='1';
     signal.dataset.originalSignal=current;
-    signal.innerHTML=`<span class="desktop-signal">${esc(current)}</span><span class="mobile-clock">${esc(clock)}</span><small class="mobile-signal">${esc(status)}</small>`;
+    signal.innerHTML=`<span class="desktop-signal">${esc(current)}</span><span class="mobile-clock">${esc(clock)}</span><small class="mobile-signal">${esc(current)}</small>`;
   });
 }
 function countOf(key){const el=document.querySelector(`[data-filter-count="${key}"]`);const n=Number(el?.textContent||0);return Number.isFinite(n)?n:0}
