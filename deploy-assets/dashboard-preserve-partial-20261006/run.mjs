@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';
 import {resolve} from 'node:path';
-import {inspect,activeVersion,getVersion,api,script,sha,canonical,publicFile,directOrigin} from '../daily-performance-20261005/production.mjs';
-import {schedules,stageCurrentRail,verifyRailBase,wrangler} from '../daily-performance-20261005/rail.mjs';
+import {inspect,activeVersion,getVersion,api,script,sha,canonical,publicFile,directOrigin} from './production.mjs';
+import {schedules,stageCurrentRail,verifyRailBase,wrangler} from './rail.mjs';
 
 const TARGET='dashboard-v2-stage3.js';
 const candidateBytes=readFileSync(TARGET);
