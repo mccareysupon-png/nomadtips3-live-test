@@ -38,9 +38,10 @@ try{
   await verifyRailBase(staged);
   assert.equal(await activeVersion(),base,'STOP_PRODUCTION_MOVED_AFTER_STAGE');
 
-  const logoFile=resolve(staged.runtime,'assets',LOGO_PATH);
-  const before=readFileSync(logoFile);
+  const before=await publicFile('/'+LOGO_PATH,'image');
   assert.equal(sha(before),OLD_LOGO_SHA,'STOP_12BET_LOGO_NOT_EXPECTED_CURRENT_ASSET');
+  const logoFile=resolve(staged.runtime,'assets',LOGO_PATH);
+  mkdirSync(dirname(logoFile),{recursive:true});
 
   const jsPath=resolve(staged.runtime,'assets','full-market-bookmaker-343.js');
   const cssPath=resolve(staged.runtime,'assets','full-market-bookmaker-343.css');
