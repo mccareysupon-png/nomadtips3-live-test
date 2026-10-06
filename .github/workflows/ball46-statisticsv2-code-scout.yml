@@ -1,0 +1,24 @@
+name: Ball46 StatisticsV2 Code Scout
+on:
+  push:
+    branches: [work/ball46-current-production-fallback-fix-20261006]
+    paths:
+      - '.github/workflows/ball46-statisticsv2-code-scout.yml'
+      - 'deploy-assets/match-status-svg-20261003/statisticsv2-code-scout.mjs'
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  scout:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - working-directory: deploy-assets/match-status-svg-20261003
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - working-directory: deploy-assets/match-status-svg-20261003
+        run: node statisticsv2-code-scout.mjs
