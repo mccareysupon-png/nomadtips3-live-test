@@ -55,6 +55,11 @@ jobs:
           test -s production/workers/nomadtips3-343-preview/wrangler.ball46.jsonc
           test -s production/nomad-live-343/full-odds-main-343.js
           test -s production/nomad-live-343/index.html
+          test -s production/nomad-live-343/dashboard-v2-stage3.js
+          test -s production/nomad-live-343/signal-next.js
+          test -s production/nomad-live-343/statistics-next.js
+          test -s production/nomad-live-343/signal.html
+          test -s production/nomad-live-343/statistics.html
           test -s production/nomad-live-343/live-summary-full-odds-343.js
           test -s production/nomad-live-343/rich-odds-on-demand-343.js
           test -s production/nomad-live-343/bulk-odds-compat-343.js
@@ -77,11 +82,19 @@ jobs:
           node --check production/workers/nomadtips3-full-market-343-ball46/src/index.js
           node --check production/workers/nomadtips3-343-preview/src/index.js
           node --check production/nomad-live-343/full-odds-main-343.js
+          node --check production/nomad-live-343/dashboard-v2-stage3.js
+          node --check production/nomad-live-343/signal-next.js
+          node --check production/nomad-live-343/statistics-next.js
           node --check production/nomad-live-343/live-summary-full-odds-343.js
           node --check production/nomad-live-343/rich-odds-on-demand-343.js
           node --check production/nomad-live-343/bulk-odds-compat-343.js
           cp production/nomad-live-343/full-odds-main-343.js /tmp/full-odds-main-343.js
           cp production/nomad-live-343/index.html /tmp/index.html
+          cp production/nomad-live-343/dashboard-v2-stage3.js /tmp/dashboard-v2-stage3.js
+          cp production/nomad-live-343/signal-next.js /tmp/signal-next.js
+          cp production/nomad-live-343/statistics-next.js /tmp/statistics-next.js
+          cp production/nomad-live-343/signal.html /tmp/signal.html
+          cp production/nomad-live-343/statistics.html /tmp/statistics.html
           cp production/nomad-live-343/live-summary-full-odds-343.js /tmp/live-summary-full-odds-343.js
           cp production/nomad-live-343/rich-odds-on-demand-343.js /tmp/rich-odds-on-demand-343.js
           cp production/nomad-live-343/bulk-odds-compat-343.js /tmp/bulk-odds-compat-343.js
@@ -93,6 +106,11 @@ jobs:
           cp -a candidate-ui/nomad-live-343 production/nomad-live-343
           cp /tmp/full-odds-main-343.js production/nomad-live-343/full-odds-main-343.js
           cp /tmp/index.html production/nomad-live-343/index.html
+          cp /tmp/dashboard-v2-stage3.js production/nomad-live-343/dashboard-v2-stage3.js
+          cp /tmp/signal-next.js production/nomad-live-343/signal-next.js
+          cp /tmp/statistics-next.js production/nomad-live-343/statistics-next.js
+          cp /tmp/signal.html production/nomad-live-343/signal.html
+          cp /tmp/statistics.html production/nomad-live-343/statistics.html
           cp /tmp/live-summary-full-odds-343.js production/nomad-live-343/live-summary-full-odds-343.js
           cp /tmp/rich-odds-on-demand-343.js production/nomad-live-343/rich-odds-on-demand-343.js
           cp /tmp/bulk-odds-compat-343.js production/nomad-live-343/bulk-odds-compat-343.js
@@ -102,6 +120,7 @@ jobs:
           cp /tmp/v2-header.css production/nomad-live-343/v2-header.css
           echo "FULL_MARKET_SOURCE=$(git -C production rev-parse HEAD)"
           echo "BASE_UI_SOURCE=$KNOWN_GOOD_UI"
+          echo 'LOAD_STABILITY_SOURCE=FULL_MARKET_BRANCH'
           echo 'BULK_ODDS_COMPAT_SOURCE=FULL_MARKET_BRANCH'
           echo '5USD_CONTROL_SOURCE=FULL_MARKET_BRANCH'
           echo 'DETECTION_TEST_SOURCE=FULL_MARKET_BRANCH'
