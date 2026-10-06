@@ -26,4 +26,6 @@ jobs:
           node-version: '22'
       - name: Probe current public Performance Card dependencies
         working-directory: deploy-assets/diag-performance-card-20261006
-        run: node run.mjs
+        run: |
+          node run.mjs
+          node page-order.mjs
