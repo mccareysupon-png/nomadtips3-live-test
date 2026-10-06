@@ -109,9 +109,9 @@ try{
   for(let attempt=1;attempt<=5&&!stable;attempt++){
     const referenceBefore=await legacy(publicBase);
     const referencePage=await legacy(publicBase,{paged:1});
-    summaryPublic=await json(publicBase+'/statistics/summary');
-    summaryDirect=await json(directBase+'/statistics/summary');
-    rows100=await json(publicBase+'/statistics/rows?limit=100');
+    summaryPublic=await json(publicBase+'/statistics?view=summary');
+    summaryDirect=await json(directBase+'/statistics?view=summary');
+    rows100=await json(publicBase+'/statistics?view=rows&limit=100');
     legacyAfter=await legacy(publicBase);
 
     try{
@@ -134,7 +134,7 @@ try{
   assert(stable,'STABLE_STATISTICS_QA_NOT_OBTAINED');
 
   if(rows100.nextCursor){
-    const page2=await json(publicBase+'/statistics/rows?limit=100&cursor='+encodeURIComponent(rows100.nextCursor));
+    const page2=await json(publicBase+'/statistics?view=rows&limit=100&cursor='+encodeURIComponent(rows100.nextCursor));
     const ids=new Set(rows100.rows.map(r=>String(r.id)));
     for(const row of page2.rows)assert(!ids.has(String(row.id)),'CURSOR_DUPLICATE_ID');
   }
