@@ -4,7 +4,7 @@ import {resolve} from 'node:path';
 import {inspect,activeVersion,getVersion,api,script,sha,canonical,publicFile,directOrigin} from './production.mjs';
 import {schedules,stageCurrentRail,verifyRailBase,wrangler} from './rail.mjs';
 
-const TARGET='dashboard-v2-stage3.js';
+const TARGET='dashboard-v2-stage3.js'; // confirmed production single-asset target
 const candidateBytes=readFileSync(TARGET);
 assert(candidateBytes.length>0,'CANDIDATE_EMPTY');
 assert(candidateBytes.includes(Buffer.from('preserveMissingFixtures')),'PATCH_MARKER_MISSING');
