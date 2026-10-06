@@ -19,27 +19,56 @@ jobs:
       SCRIPT: ball46-production
       RESTORE_VERSION: 1a69d811-b1f7-4752-b3f3-9e540377e209
     steps:
-      - name: Restore exact pre-incident production version
+      - name: Restore exact full pre-incident production version
         shell: bash
         run: |
           set -euo pipefail
-          test -n "$CF_API_TOKEN"
-          test -n "$CF_ACCOUNT_ID"
-          response="$(curl -fsS -X POST             -H "Authorization: Bearer $CF_API_TOKEN"             -H "Content-Type: application/json"             --data "{"strategy":"percentage","versions":[{"version_id":"$RESTORE_VERSION","percentage":100}],"annotations":{"workers/message":"Restore exact Ball46 pre-incident production version"}}"             "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/workers/scripts/$SCRIPT/deployments")"
-          node -e 'const j=JSON.parse(process.argv[1]); if(j.success!==true) throw Error(JSON.stringify(j.errors||j));' "$response"
+          python3 - <<'PY'
+          import json, os, urllib.request
+          account=os.environ['CF_ACCOUNT_ID']
+          token=os.environ['CF_API_TOKEN']
+          script=os.environ['SCRIPT']
+          version=os.environ['RESTORE_VERSION']
+          url=f'https://api.cloudflare.com/client/v4/accounts/{account}/workers/scripts/{script}/deployments'
+          body={
+            'strategy':'percentage',
+            'versions':[{'version_id':version,'percentage':100}],
+            'annotations':{'workers/message':'Restore exact full Ball46 pre-incident production version'}
+          }
+          req=urllib.request.Request(
+            url,
+            data=json.dumps(body).encode(),
+            headers={'Authorization':f'Bearer {token}','Content-Type':'application/json'},
+            method='POST'
+          )
+          with urllib.request.urlopen(req,timeout=60) as r:
+            j=json.load(r)
+          if j.get('success') is not True:
+            raise SystemExit('RESTORE_API_FAILED:'+json.dumps(j.get('errors') or j))
+          print('RESTORE_REQUEST_ACCEPTED='+version)
+          PY
 
       - name: Verify exact active version
         shell: bash
         run: |
           set -euo pipefail
-          for n in $(seq 1 20); do
-            json="$(curl -fsS               -H "Authorization: Bearer $CF_API_TOKEN"               "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/workers/scripts/$SCRIPT/deployments?per_page=3")"
-            active="$(node -e 'const j=JSON.parse(process.argv[1]); const v=j?.result?.deployments?.[0]?.versions?.[0]; if(v&&Number(v.percentage)===100) process.stdout.write(String(v.version_id||""));' "$json")"
-            if [ "$active" = "$RESTORE_VERSION" ]; then
-              echo "RESTORE_CONFIRMED=$active"
-              exit 0
-            fi
-            sleep 2
-          done
-          echo "RESTORE_NOT_CONFIRMED" >&2
-          exit 1
+          python3 - <<'PY'
+          import json, os, time, urllib.request
+          account=os.environ['CF_ACCOUNT_ID']
+          token=os.environ['CF_API_TOKEN']
+          script=os.environ['SCRIPT']
+          target=os.environ['RESTORE_VERSION']
+          url=f'https://api.cloudflare.com/client/v4/accounts/{account}/workers/scripts/{script}/deployments?per_page=3'
+          headers={'Authorization':f'Bearer {token}','Accept':'application/json'}
+          for _ in range(20):
+            with urllib.request.urlopen(urllib.request.Request(url,headers=headers),timeout=30) as r:
+              j=json.load(r)
+            deps=(j.get('result') or {}).get('deployments') or []
+            versions=(deps[0].get('versions') if deps else []) or []
+            active=[str(v.get('version_id')) for v in versions if v.get('version_id') and float(v.get('percentage',0))>=99.999]
+            if active==[target]:
+              print('RESTORE_CONFIRMED='+target)
+              raise SystemExit(0)
+            time.sleep(2)
+          raise SystemExit('RESTORE_NOT_CONFIRMED')
+          PY
