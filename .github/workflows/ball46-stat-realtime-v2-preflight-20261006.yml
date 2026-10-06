@@ -1,0 +1,71 @@
+name: Ball46 Statistics Realtime V2 Preflight 20261006
+
+on:
+  push:
+    branches:
+      - ops/ball46-stat-realtime-pending-v2-20261006
+    paths:
+      - '.github/workflows/ball46-stat-realtime-v2-preflight-20261006.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect-production:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Lock current Ball46 Statistics engine and inspect contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64,hashlib,json,os,urllib.request
+          account=os.environ['CLOUDFLARE_ACCOUNT_ID']; token=os.environ['CLOUDFLARE_API_TOKEN']
+          api=f'https://api.cloudflare.com/client/v4/accounts/{account}'; worker='nomadtips3-engine-343'
+          h={'Authorization':f'Bearer {token}','Accept':'application/json'}
+          def getj(u):
+            with urllib.request.urlopen(urllib.request.Request(u,headers=h),timeout=30) as r: j=json.load(r)
+            if isinstance(j,dict) and j.get('success') is False: raise SystemExit('CF_API_FAIL:'+json.dumps(j)[:400])
+            return j
+          deps=getj(f'{api}/workers/scripts/{worker}/deployments')['result']['deployments']
+          vs=deps[0].get('versions') or []
+          active=[str(v['version_id']) for v in vs if v.get('version_id') and float(v.get('percentage',0))>=99.999]
+          if len(active)!=1: raise SystemExit('ACTIVE_VERSION_AMBIGUOUS:'+repr(active))
+          vid=active[0]
+          ver=getj(f'{api}/workers/workers/{worker}/versions/{vid}?include=modules')['result']
+          mods=ver.get('modules') or []
+          target=[m for m in mods if m.get('name')=='index-bulk-recovery.js' and m.get('content_base64')]
+          if len(target)!=1: raise SystemExit('SOURCE_MODULE_MISSING')
+          raw=base64.b64decode(target[0]['content_base64']); s=raw.decode(); sha=hashlib.sha256(raw).hexdigest()
+          required=[
+            'signal-ledger-v2-longterm',
+            'STAT_LEDGER_PREFIX = "stat:v2:row:"',
+            'async upsertLedgerRows',
+            'async syncStatisticsLedger',
+            'async statisticsLedgerResponse',
+            'writeWorkingSignals(this.ctx, capped)',
+            'status: "PENDING"',
+            'mirrorMinute',
+            'mirrorScore',
+            'reconcileExternalFinal',
+            'statisticsSource: "LEDGER_V2_ONLY"'
+          ]
+          missing=[x for x in required if x not in s]
+          if missing: raise SystemExit('PRODUCTION_CONTRACT_MISSING:'+repr(missing))
+          print('ACTIVE_VERSION',vid)
+          print('SOURCE_SHA256',sha)
+          print('SOURCE_LEN',len(s))
+          print('HAS_OLD_BAD_PATCH', 'realtime-pending-ledger-v1' in s)
+          print('KNOWN_STABLE_MATCH', vid=='c4174e9b-50ab-4e15-a7f5-6ef637fb6599')
+          for needle in ['status: "PENDING"','signals.push(sig)','writeWorkingSignals(this.ctx, capped)','async upsertLedgerRows','async statisticsLedgerResponse','u.pathname === "/statistics"']:
+            lines=s.splitlines(); hits=[i for i,x in enumerate(lines) if needle in x]
+            print('\n===',needle,'HITS',len(hits),'===')
+            for i in hits[:3]:
+              a=max(0,i-8); b=min(len(lines),i+18)
+              print('\n'.join(f'{j+1}: {lines[j]}' for j in range(a,b)))
+          PY
