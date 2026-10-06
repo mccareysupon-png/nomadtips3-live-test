@@ -22,7 +22,7 @@ jobs:
           command -v google-chrome
           mkdir -p audit
           google-chrome --headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage \
-            --virtual-time-budget=20000 --dump-dom 'https://ball46.com/?qa=statsv2-browser' \
+            --virtual-time-budget=20000 --dump-dom 'https://ball46.com/?view=statistics&qa=statsv2-browser' \
             > audit/dom.html 2> audit/chrome.log || true
           python3 - <<'PY'
           import re
@@ -41,7 +41,11 @@ jobs:
           assert expected <= set(got), f'MISSING_NAV:{expected-set(got)}'
           assert got['all'] not in {'','0','—'}, f'TOTAL_NOT_RENDERED:{got}'
           assert all(v not in {'','—'} for v in got.values()), f'MARKET_NOT_RENDERED:{got}'
-          print('BALL46_STATISTICS_V2_BROWSER_PASS',got)
+          kgot={k:v.strip() for k,v in kpis}
+          for k in ['total','win','loss','push','rate','odds']:
+            assert kgot.get(k) not in {None,'','—'}, f'KPI_NOT_RENDERED:{k}:{kgot}'
+          assert state and state[0].startswith('Updated'), f'FEED_NOT_UPDATED:{state}'
+          print('BALL46_STATISTICS_V2_BROWSER_PASS',got,kgot,state[0])
           PY
       - uses: actions/upload-artifact@v4
         if: always()
