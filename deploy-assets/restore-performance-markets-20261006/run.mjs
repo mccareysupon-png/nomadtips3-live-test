@@ -4,7 +4,7 @@ const account=process.env.CLOUDFLARE_ACCOUNT_ID;
 const token=process.env.CLOUDFLARE_API_TOKEN;
 const script='ball46-production';
 const target='4f9b7e60-5dd8-4818-80f3-c8739b84de47';
-const expectedCurrent='2998bed7-7d95-4e31-b87e-1dda192f5841';
+const expectedCurrent='58569c5a-57f9-47f7-aad5-df81789897da';
 const root=`https://api.cloudflare.com/client/v4/accounts/${account}/workers`;
 
 async function api(path,options={}){
