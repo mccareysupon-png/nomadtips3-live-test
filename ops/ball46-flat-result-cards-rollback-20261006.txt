@@ -1,0 +1,12 @@
+Ball46 Flat Result Cards — rollback point
+Date: 2026-10-06
+Deploy run: 37476081043
+Work branch: work/ball46-flat-result-cards-20261006
+Pre-change Production version (rollback target): 5b88e3c2-eb96-4299-b774-2d7bba105dc5
+Deployed Production version: 9230eaee-4c2f-49db-80d7-e20f9d3c0517
+Index SHA after deploy: 9a3d6bd02ef03733327b48974c4c98f5bcdb8f597b09a4e5c166d364281fcdda
+Rollback workflow: .github/workflows/rollback-ball46-flat-result-cards-20261006.yml
+
+Guard:
+- Rollback is allowed only if current Production is still the deployed version above.
+- If Production has moved to another version, rollback must stop to avoid overwriting newer work.
