@@ -40,7 +40,7 @@ try{
     for(let i=0;i<30;i++){const a=await activeVersion();if(a!==base){candidate=a;break}await new Promise(r=>setTimeout(r,1200))}
     assert(candidate,'NO_NEW_VERSION');
     let ok=false;
-    for(let i=0;i<36;i++){
+    for(let i=0;i<120;i++){
       assert.equal(await activeVersion(),candidate,'PRODUCTION_MOVED_DURING_VERIFY');
       try{
         const b=await publicFile('/'+TARGET,undefined,directOrigin);
