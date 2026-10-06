@@ -1,0 +1,24 @@
+name: DIAG Ball46 Signal Statistics Path 20261006
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/diag-ball46-signal-statistics-path-20261006.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  diag:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout diagnostic branch
+        uses: actions/checkout@v4
+        with:
+          ref: work/ball46-performance-reconnect-20261006
+          fetch-depth: 1
+      - name: Trace Production endpoints
+        working-directory: deploy-assets/performance-reconnect-20261006
+        run: node diag.mjs
