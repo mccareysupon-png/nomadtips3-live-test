@@ -1,0 +1,52 @@
+name: Deploy Ball46 Statistics Resilience 20261006
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - work/ball46-statistics-resilience-20261006
+    paths:
+      - '.github/workflows/deploy-ball46-statistics-resilience-20261006.yml'
+      - 'deploy-assets/statistics-resilience-20261006/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ball46-production-statistics-resilience
+  cancel-in-progress: false
+
+jobs:
+  guarded-deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      DEPLOY_ENABLED: 'false'
+    steps:
+      - name: Checkout exact work branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install parser dependency only
+        run: npm install --no-save --ignore-scripts acorn@8
+
+      - name: Guarded Statistics resilience deploy
+        working-directory: deploy-assets/statistics-resilience-20261006
+        run: node run.mjs
+
+      - name: Upload audit and rollback proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-statistics-resilience-${{ github.run_id }}
+          path: deploy-assets/statistics-resilience-20261006/audit
+          if-no-files-found: warn
+          retention-days: 30
