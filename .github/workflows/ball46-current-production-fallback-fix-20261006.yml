@@ -1,0 +1,43 @@
+name: Ball46 Current Production Fallback Fix 20261006
+
+on:
+  push:
+    branches: [work/ball46-current-production-fallback-fix-20261006]
+    paths:
+      - '.github/workflows/ball46-current-production-fallback-fix-20261006.yml'
+      - 'deploy-assets/match-status-svg-20261003/current-production-fallback-fix-run.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ball46-current-production-fallback-fix
+  cancel-in-progress: false
+
+env:
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
+jobs:
+  fix:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install production rail dependencies
+        working-directory: deploy-assets/match-status-svg-20261003
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Fix current Production only
+        working-directory: deploy-assets/match-status-svg-20261003
+        run: node current-production-fallback-fix-run.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-current-production-fallback-fix-${{ github.run_id }}
+          path: deploy-assets/match-status-svg-20261003/audit/
+          if-no-files-found: error
+          retention-days: 30
