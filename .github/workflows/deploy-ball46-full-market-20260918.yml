@@ -259,12 +259,18 @@ jobs:
           curl -fsS --max-time 25 "$BALL46_URL/v2-header.css?_=${GITHUB_RUN_ID}" -o /tmp/v2-header.css
           grep -Fq '343-premium-logo-v1' /tmp/v2-header.css
           echo 'PREMIUM_LOGO_PASS'
-          curl -fsS --max-time 25 "$BALL46_URL/?_=${GITHUB_RUN_ID}" -o /tmp/ball46-index.html
-          grep -Fq 'dashboard-v2-stage3-v6-last-good-20261006' /tmp/ball46-index.html
-          curl -fsS --max-time 25 "$BALL46_URL/signal.html?_=${GITHUB_RUN_ID}" -o /tmp/ball46-signal.html
-          grep -Fq 'signal-next-production-v2-last-good-20261006' /tmp/ball46-signal.html
-          curl -fsS --max-time 25 "$BALL46_URL/statistics.html?_=${GITHUB_RUN_ID}" -o /tmp/ball46-statistics.html
-          grep -Fq 'statistics-next-production-v2-last-good-20261006' /tmp/ball46-statistics.html
+          assets_ready=false
+          for n in $(seq 1 15); do
+            curl -fsS --max-time 25 "$BALL46_URL/?_=${GITHUB_RUN_ID}-asset-$n" -o /tmp/ball46-index.html || true
+            curl -fsS --max-time 25 "$BALL46_URL/signal.html?_=${GITHUB_RUN_ID}-asset-$n" -o /tmp/ball46-signal.html || true
+            curl -fsS --max-time 25 "$BALL46_URL/statistics.html?_=${GITHUB_RUN_ID}-asset-$n" -o /tmp/ball46-statistics.html || true
+            if grep -Fq 'dashboard-v2-stage3-v6-last-good-20261006' /tmp/ball46-index.html               && grep -Fq 'signal-next-production-v2-last-good-20261006' /tmp/ball46-signal.html               && grep -Fq 'statistics-next-production-v2-last-good-20261006' /tmp/ball46-statistics.html; then
+              assets_ready=true
+              break
+            fi
+            sleep 2
+          done
+          test "$assets_ready" = true
           echo 'LOAD_STABILITY_ASSETS_PASS'
           echo 'BALL46_CONTROLS_END_TO_END_PASS'
 
