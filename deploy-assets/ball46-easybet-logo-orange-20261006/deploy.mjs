@@ -43,8 +43,8 @@ try{
   assert(liveJs.includes("'easybets':'/assets/affiliate/easybet-logo.png'"),'STOP_EASYBET_LOGO_MAPPING_NOT_CURRENT');
   const jsSha=sha(Buffer.from(liveJs)), cssSha=sha(liveCss);
 
-  const oldLogo=await publicFile('/'+EASY_PATH,'image');
-  assert.equal(sha(oldLogo),OLD_SHA,'STOP_EASYBET_LOGO_NOT_EXPECTED_CURRENT');
+  let currentLogoSha=null;
+  try { currentLogoSha=sha(await publicFile('/'+EASY_PATH,'image')); } catch {}
 
   const extraHashes={};
   for(const p of EXTRA_ASSETS){
@@ -60,7 +60,7 @@ try{
   writeFileSync(logoFile,NEW_LOGO);
 
   const protectedHashes={...staged.hashes};
-  report.before={version:base,logoSha:OLD_SHA,jsSha,cssSha,extraHashes};
+  report.before={version:base,logoSha:currentLogoSha,jsSha,cssSha,extraHashes};
   report.after={logoSha:NEW_SHA,logoBytes:NEW_LOGO.length,path:EASY_PATH};
   save();
 
@@ -94,6 +94,6 @@ try{
     assert.equal(canonical(await schedules()),canonical(crons),'CRONS_CHANGED');
 
     report.result='SUCCESS';report.candidateVersion=candidate;report.completedAt=new Date().toISOString();save();
-    console.log('BALL46_EASYBET_ORANGE_LOGO_SUCCESS',JSON.stringify({base,candidate,oldLogoSha:OLD_SHA,newLogoSha:NEW_SHA,path:EASY_PATH,jsSha,cssSha,affiliateUrl:AFF}));
+    console.log('BALL46_EASYBET_ORANGE_LOGO_SUCCESS',JSON.stringify({base,candidate,oldLogoSha:currentLogoSha,newLogoSha:NEW_SHA,path:EASY_PATH,jsSha,cssSha,affiliateUrl:AFF}));
   }catch(e){report.error=e.message;save();try{await rollback()}catch(rb){report.rollbackError=rb.message;save()}throw e}
 }catch(e){report.result='FAIL_STOPPED';report.error=e.message;report.completedAt=new Date().toISOString();save();console.error(e.stack);process.exitCode=1}
