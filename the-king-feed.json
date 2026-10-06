@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-10-06T10:30:35Z",
+  "updated_at": "2026-10-06T17:16:29Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -1474,8 +1474,8 @@
       "edge": 38.4,
       "ev": 0.7614,
       "required_confidence": 0.56,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "1-5",
       "locked_at": "2026-10-06T03:22:44Z",
       "source_url": "https://www.goaloo.com/football/norway-nm-cupen-raufoss-vs-start-kristiansand/h2h-3097338",
       "summary_url": "https://www.goaloo.com/football/norway-nm-cupen-raufoss-vs-start-kristiansand/summary-3097338",
@@ -1535,7 +1535,12 @@
         "away_recent": 10,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-06T17:16:29Z"
     },
     {
       "id": "609f1146b15c5698-AH-AWAY-1p25",
@@ -3519,8 +3524,8 @@
       "edge": 16.5,
       "ev": 0.2123,
       "required_confidence": 0.6,
-      "result": "PENDING",
-      "ft": null,
+      "result": "WIN",
+      "ft": "1-0",
       "locked_at": "2026-10-06T03:22:45Z",
       "source_url": "https://www.goaloo.com/football/sweden-cupen-fc-trollhattan-vs-mjallby-aif/h2h-3004370",
       "summary_url": "https://www.goaloo.com/football/sweden-cupen-fc-trollhattan-vs-mjallby-aif/summary-3004370",
@@ -3580,7 +3585,12 @@
         "away_recent": 10,
         "h2h_n": 4,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": 1.0,
+      "profit": 80.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-06T17:16:29Z"
     },
     {
       "id": "b0dfecd3dd054fef-AH-HOME-0p25",
@@ -4454,8 +4464,8 @@
       "edge": 15.6,
       "ev": 0.2296,
       "required_confidence": 0.56,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "1-1",
       "locked_at": "2026-10-06T03:22:48Z",
       "source_url": "https://www.goaloo.com/football/mexico-copa-promesas-mx-boston-cancun-fc-vs-deportiva-venados/h2h-3099864",
       "summary_url": "https://www.goaloo.com/football/mexico-copa-promesas-mx-boston-cancun-fc-vs-deportiva-venados/summary-3099864",
@@ -4515,7 +4525,12 @@
         "away_recent": 9,
         "h2h_n": 2,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-06T17:16:29Z"
     },
     {
       "id": "549249c58a7b279e-AH-HOME-0p25",
@@ -198633,6 +198648,276 @@
       "settlement_source": "goaloo-bf_us-direct-index",
       "goaloo_terminal_state": -1,
       "settled_at": "2026-10-06T10:30:35Z"
+    },
+    {
+      "id": "2800b5c6f4fef49b-AH-HOME-0p75",
+      "goaloo_id": "3097338",
+      "date": "2026-10-06",
+      "kickoff": "2026-10-06 15:00:00",
+      "league": "Norway NM Cupen",
+      "home": "Raufoss",
+      "away": "Start Kristiansand",
+      "market": "AH",
+      "selection": "HOME",
+      "line": 0.75,
+      "pick": "Raufoss +0.75",
+      "side": "home",
+      "odds": 2.18,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.8108,
+      "model_probability": 0.8108,
+      "market_fair_probability": 0.4263,
+      "market_edge": 0.3844,
+      "edge": 38.4,
+      "ev": 0.7614,
+      "required_confidence": 0.56,
+      "result": "LOSS",
+      "ft": "1-5",
+      "locked_at": "2026-10-06T03:22:44Z",
+      "source_url": "https://www.goaloo.com/football/norway-nm-cupen-raufoss-vs-start-kristiansand/h2h-3097338",
+      "summary_url": "https://www.goaloo.com/football/norway-nm-cupen-raufoss-vs-start-kristiansand/summary-3097338",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 1.849,
+        "lambda_away": 1.131,
+        "home_win": 0.5624,
+        "draw": 0.2445,
+        "away_win": 0.1931,
+        "h2h_adjustment": 0.0075,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.1528,
+          "gd_edge": 0.4859,
+          "clean_sheet_edge": 0.4683,
+          "failed_to_score_edge": 0.0,
+          "bounded_adjustment": 0.0223,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-06T17:16:29Z"
+    },
+    {
+      "id": "5316554f47fa4e15-AH-HOME-1p5",
+      "goaloo_id": "3004370",
+      "date": "2026-10-06",
+      "kickoff": "2026-10-06 15:00:00",
+      "league": "Sweden Cupen",
+      "home": "FC Trollhattan",
+      "away": "Mjallby AIF",
+      "market": "AH",
+      "selection": "HOME",
+      "line": 1.5,
+      "pick": "FC Trollhattan +1.5",
+      "side": "home",
+      "odds": 1.8,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.6735,
+      "model_probability": 0.6735,
+      "market_fair_probability": 0.5082,
+      "market_edge": 0.1653,
+      "edge": 16.5,
+      "ev": 0.2123,
+      "required_confidence": 0.6,
+      "result": "WIN",
+      "ft": "1-0",
+      "locked_at": "2026-10-06T03:22:45Z",
+      "source_url": "https://www.goaloo.com/football/sweden-cupen-fc-trollhattan-vs-mjallby-aif/h2h-3004370",
+      "summary_url": "https://www.goaloo.com/football/sweden-cupen-fc-trollhattan-vs-mjallby-aif/summary-3004370",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 1.14,
+        "lambda_away": 1.935,
+        "home_win": 0.1821,
+        "draw": 0.2366,
+        "away_win": 0.5813,
+        "h2h_adjustment": -0.0075,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": -0.2341,
+          "gd_edge": -0.6133,
+          "clean_sheet_edge": -0.0878,
+          "failed_to_score_edge": 0.0634,
+          "bounded_adjustment": -0.0237,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 8,
+        "away_recent": 10,
+        "h2h_n": 4,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": 1.0,
+      "profit": 80.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-06T17:16:29Z"
+    },
+    {
+      "id": "b960f4000ceaf7c4-OU-OVER-2p5",
+      "goaloo_id": "3099864",
+      "date": "2026-10-06",
+      "kickoff": "2026-10-06 15:00:00",
+      "league": "Mexico-Copa Promesas MX",
+      "home": "Boston Cancun FC",
+      "away": "Deportiva Venados",
+      "market": "OU",
+      "selection": "OVER",
+      "line": 2.5,
+      "pick": "Over 2.5",
+      "side": null,
+      "odds": 1.95,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.6306,
+      "model_probability": 0.6306,
+      "market_fair_probability": 0.4744,
+      "market_edge": 0.1562,
+      "edge": 15.6,
+      "ev": 0.2296,
+      "required_confidence": 0.56,
+      "result": "LOSS",
+      "ft": "1-1",
+      "locked_at": "2026-10-06T03:22:48Z",
+      "source_url": "https://www.goaloo.com/football/mexico-copa-promesas-mx-boston-cancun-fc-vs-deportiva-venados/h2h-3099864",
+      "summary_url": "https://www.goaloo.com/football/mexico-copa-promesas-mx-boston-cancun-fc-vs-deportiva-venados/summary-3099864",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 1.807,
+        "lambda_away": 1.445,
+        "home_win": 0.4565,
+        "draw": 0.2446,
+        "away_win": 0.2989,
+        "h2h_adjustment": -0.015,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.2878,
+          "gd_edge": 0.1852,
+          "clean_sheet_edge": 0.2098,
+          "failed_to_score_edge": 0.2146,
+          "bounded_adjustment": 0.0176,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 8,
+        "away_recent": 9,
+        "h2h_n": 2,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-06T17:16:29Z"
     }
   ],
   "note": "Automated Full-Time Winner First feed. Supplemental markets remain unpublished.",
