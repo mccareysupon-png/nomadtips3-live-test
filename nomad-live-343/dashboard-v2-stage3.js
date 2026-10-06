@@ -1,6 +1,6 @@
 (()=>{
 'use strict';
-const VERSION='343-dashboard-v2-stage3-v5-default-rich-bridge';
+const VERSION='343-dashboard-v2-stage3-v6-signal-readonly-bridge';
 const API='/api/engine/board';
 const SIGNALS_API='/api/engine/signals';
 const POLL_MS=30_000;
@@ -119,6 +119,6 @@ async function loadSignals(){try{const j=await fetchJson(SIGNALS_API),rows=Array
 async function load(){if(loading||(hasLoaded&&document.visibilityState==='hidden'))return;loading=true;try{const signalTask=loadSignals();const board=await fetchJson(API);await signalTask;if(board?.ok!==true)throw new Error(board?.error||'BOARD_NOT_READY');const rows=Array.isArray(board?.fixtures)?board.fixtures:[];if(rows.length){emptyBoardStreak=0;boardMeta=board;const completeRows=preserveMissingFixtures(rows);fixtures=holdLastGoodOdds(completeRows).slice().sort((a,b)=>(dateMs(a?.kickoffAt??a?.kickoffUtc)??0)-(dateMs(b?.kickoffAt??b?.kickoffUtc)??0));saveCache(BOARD_CACHE_KEY,{fixtures,meta:boardMeta})}else if(fixtures.length){emptyBoardStreak++;setState(false,null);return}else{emptyBoardStreak++;boardMeta=board;fixtures=[]}if(selectedId&&!fixtures.some(f=>fixtureKey(f)===selectedId))selectedId=null;renderCounts();renderLeagueFilters();renderBoard();renderFeatured();setState(true,board)}catch(err){console.warn('Dashboard V2 refresh failed',err);setState(false,null)}finally{loading=false;hasLoaded=true}}
 function setTheme(theme){const next=theme==='dark'?'dark':'light';document.documentElement.dataset.theme=next;const btn=$('[data-theme-toggle]');if(btn)btn.textContent=next==='light'?'☾ Dark':'☀ Light';try{localStorage.setItem(THEME_KEY,next)}catch{}}
 function initControls(){const tz=$('[data-timezone]');if(tz)tz.textContent=timeZone;const stored=(()=>{try{return localStorage.getItem(THEME_KEY)}catch{return null}})();setTheme(stored==='dark'?'dark':'light');$('[data-theme-toggle]')?.addEventListener('click',()=>setTheme(document.documentElement.dataset.theme==='dark'?'light':'dark'));$$('[data-status-filter]').forEach(btn=>btn.addEventListener('click',()=>{statusFilter=btn.dataset.statusFilter;$$('[data-status-filter]').forEach(x=>x.classList.toggle('active',x===btn));renderBoard()}));$('[data-search]')?.addEventListener('input',e=>{query=String(e.target.value||'').trim().toLowerCase();renderBoard()});document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')load()})}
-function start(){initControls();hydrateLastGood();load();setInterval(load,POLL_MS);window.NOMAD343_DASHBOARD_V2={version:VERSION,reload:load,mode:'BULK_PLUS_CENTRAL_RICH_VISIBLE',applyRichOdds,getFixture:id=>fixtures.find(f=>fixtureKey(f)===String(id))||null}}
+function start(){initControls();hydrateLastGood();load();setInterval(load,POLL_MS);window.NOMAD343_DASHBOARD_V2={version:VERSION,reload:load,mode:'BULK_PLUS_CENTRAL_RICH_VISIBLE',applyRichOdds,getFixture:id=>fixtures.find(f=>fixtureKey(f)===String(id))||null,getSignal:id=>signalMap.get(String(id))||null}}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 })();
