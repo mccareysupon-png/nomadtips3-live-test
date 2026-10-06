@@ -58,6 +58,20 @@ try{
   assert(targetBytes['expanded-match-343.js'].toString().includes('signalMarker(signal,w,h,pad,current)'),'EVENTFLOW_MARKER_RENDER_MISSING');
 
   current=await inspect();
+  const targetNames=new Set([INDEX,...Object.keys(TARGETS)]);
+  const activeTargetModules=current.version.modules.filter(m=>targetNames.has(String(m.name||'').replace(/^assets\//,''))).map(m=>({name:m.name,type:m.content_type,size:Buffer.from(m.content_base64,'base64').length,sha:sha(Buffer.from(m.content_base64,'base64'))}));
+  console.log('ACTIVE_TARGET_MODULES='+JSON.stringify(activeTargetModules));
+  const sourceRefs={};
+  for(const name of targetNames){const at=current.source.indexOf(name);sourceRefs[name]=at<0?null:current.source.slice(Math.max(0,at-180),Math.min(current.source.length,at+420))}
+  console.log('ACTIVE_SOURCE_TARGET_REFS='+JSON.stringify(sourceRefs));
+  console.log('ACTIVE_SOURCE_OLD_MARKERS='+JSON.stringify({
+    tuneOld:current.source.includes('343-dashboard-v2-ui-tune-v3-mobile-status-loop-safe'),
+    tuneNew:current.source.includes('343-dashboard-v2-ui-tune-v4-mobile-single-clock-signal'),
+    stageOld:current.source.includes('343-dashboard-v2-stage3-v5-default-rich-bridge'),
+    stageNew:current.source.includes('343-dashboard-v2-stage3-v6-signal-readonly-bridge'),
+    expandedOld:current.source.includes('343-expanded-match-v4-stable-lifecycle'),
+    expandedNew:current.source.includes('343-expanded-match-v5-signal-marker')
+  }));
   const base=current.restore.version;
   report.baseVersion=base;
   report.backendBefore=current.restore.backend;
