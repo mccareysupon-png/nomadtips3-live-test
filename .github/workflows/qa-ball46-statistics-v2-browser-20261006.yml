@@ -1,0 +1,50 @@
+name: QA Ball46 Statistics V2 Browser 20261006
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/qa-ball46-statistics-v2-browser-20261006.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  qa:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Headless browser render Statistics V2
+        shell: bash
+        run: |
+          set -euo pipefail
+          command -v google-chrome
+          mkdir -p audit
+          google-chrome --headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage \
+            --virtual-time-budget=20000 --dump-dom 'https://ball46.com/?qa=statsv2-browser' \
+            > audit/dom.html 2> audit/chrome.log || true
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          s=Path('audit/dom.html').read_text(errors='ignore')
+          pairs=re.findall(r'data-stat-market="([^"]+)"[^>]*>.*?<b[^>]*>([^<]*)</b>',s,re.S)
+          print('STAT_NAV_COUNTS',pairs)
+          state=re.findall(r'data-sp-feed-state[^>]*>([^<]*)<',s,re.S)
+          print('STAT_FEED_STATE',state[:3])
+          kpis=re.findall(r'data-sp-kpi="([^"]+)"[^>]*>([^<]*)<',s,re.S)
+          print('STAT_KPIS',kpis)
+          bad=[x for x in Path('audit/chrome.log').read_text(errors='ignore').splitlines() if 'ERROR' in x or 'Failed' in x or 'Uncaught' in x]
+          print('CHROME_ERRORS',bad[-30:])
+          expected={'all','1x2','ah','ou','btts','corners','cards','other'}
+          got={k:v.strip() for k,v in pairs if k in expected}
+          assert expected <= set(got), f'MISSING_NAV:{expected-set(got)}'
+          assert got['all'] not in {'','0','—'}, f'TOTAL_NOT_RENDERED:{got}'
+          assert all(v not in {'','—'} for v in got.values()), f'MARKET_NOT_RENDERED:{got}'
+          print('BALL46_STATISTICS_V2_BROWSER_PASS',got)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-statistics-v2-browser-${{ github.run_id }}
+          path: audit
+          retention-days: 7
