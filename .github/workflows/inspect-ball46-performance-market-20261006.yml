@@ -1,0 +1,33 @@
+name: Inspect Ball46 Performance Market Wiring 20261006
+
+on:
+  push:
+    branches:
+      - work/ball46-performance-hide-market-20261006
+    paths:
+      - '.github/workflows/inspect-ball46-performance-market-20261006.yml'
+      - 'deploy-assets/performance-hide-market-20261006/inspect.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/ball46-performance-hide-market-20261006
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --ignore-scripts acorn@8
+      - name: Inspect current Production Performance Card
+        working-directory: deploy-assets/performance-hide-market-20261006
+        run: node inspect.mjs
