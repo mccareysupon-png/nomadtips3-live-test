@@ -1,0 +1,49 @@
+name: Restore Ball46 Before Mobile EventFlow Patch 20261006
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/restore-ball46-pre-mobile-eventflow-20261006.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      SCRIPT: ball46-production
+      RESTORE_VERSION: 58569c5a-57f9-47f7-aad5-df81789897da
+    steps:
+      - name: Restore exact pre-mobile-patch Production
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CF_API_TOKEN"
+          test -n "$CF_ACCOUNT_ID"
+          response="$(curl -fsS -X POST             -H "Authorization: Bearer $CF_API_TOKEN"             -H "Content-Type: application/json"             --data "{\"strategy\":\"percentage\",\"versions\":[{\"version_id\":\"$RESTORE_VERSION\",\"percentage\":100}],\"annotations\":{\"workers/message\":\"Restore Ball46 before mobile EventFlow patch\"}}"             "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/workers/scripts/$SCRIPT/deployments")"
+          node -e 'const j=JSON.parse(process.argv[1]); if(j.success!==true) throw Error(JSON.stringify(j.errors||j));' "$response"
+
+      - name: Verify active version and live endpoints
+        shell: bash
+        run: |
+          set -euo pipefail
+          for n in $(seq 1 20); do
+            json="$(curl -fsS -H "Authorization: Bearer $CF_API_TOKEN"               "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/workers/scripts/$SCRIPT/deployments?per_page=3")"
+            active="$(node -e 'const j=JSON.parse(process.argv[1]); const v=j?.result?.deployments?.[0]?.versions?.[0]; if(v&&Number(v.percentage)===100) process.stdout.write(String(v.version_id||""));' "$json")"
+            [ "$active" = "$RESTORE_VERSION" ] && break
+            sleep 2
+          done
+          test "$active" = "$RESTORE_VERSION"
+          curl -fsS --max-time 30 "https://ball46.com/api/engine/board?_=$GITHUB_RUN_ID" -o /tmp/board.json
+          curl -fsS --max-time 30 "https://ball46.com/api/engine/signals?_=$GITHUB_RUN_ID" -o /tmp/signals.json
+          node - <<'NODE'
+          const b=require('/tmp/board.json'), s=require('/tmp/signals.json');
+          if(b?.ok!==true||!Array.isArray(b.fixtures)) throw Error('BOARD_BAD');
+          if(!Array.isArray(s?.signals)) throw Error('SIGNALS_BAD');
+          console.log('RESTORE_CONFIRMED', b.fixtures.length, s.signals.length);
+          NODE
