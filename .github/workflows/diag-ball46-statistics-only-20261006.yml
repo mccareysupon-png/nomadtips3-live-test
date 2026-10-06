@@ -18,6 +18,23 @@ jobs:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
+      - name: Capture current public Statistics assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/ball46-statistics-current
+          curl -fsS -L --max-time 30 'https://ball46.com/statistics-next.js?capture='${GITHUB_RUN_ID} -o /tmp/ball46-statistics-current/statistics-next.js
+          curl -fsS -L --max-time 30 'https://ball46.com/statistics.html?capture='${GITHUB_RUN_ID} -o /tmp/ball46-statistics-current/statistics.html
+          sha256sum /tmp/ball46-statistics-current/statistics-next.js /tmp/ball46-statistics-current/statistics.html
+
+      - name: Upload current Statistics assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-statistics-current-${{ github.run_id }}
+          path: /tmp/ball46-statistics-current
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Inspect Statistics only read-only
         shell: bash
         run: |
