@@ -47,7 +47,7 @@ async function rollback(){
 }
 
 try{
-  assert.equal(process.env.GITHUB_REF_NAME,BRANCH,'UNCONFIRMED_BRANCH_STOP');
+  assert.equal(process.env.PATCH_SOURCE_BRANCH,BRANCH,'UNCONFIRMED_BRANCH_STOP');
   const targetBytes={};
   for(const [name,file] of Object.entries(TARGETS)){
     const bytes=readFileSync(file); targetBytes[name]=bytes; nodeCheck(file);
