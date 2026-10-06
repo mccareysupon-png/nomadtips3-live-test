@@ -1,0 +1,46 @@
+name: Deploy Ball46 Remove Flat Scanner 20261006
+
+on:
+  push:
+    branches:
+      - fix/ball46-remove-flat-scan-20261006
+    paths:
+      - '.github/workflows/deploy-ball46-remove-flat-scan-20261006.yml'
+      - 'deploy-assets/remove-flat-scan-20261006/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ball46-production-remove-flat-scan-20261006
+  cancel-in-progress: false
+
+jobs:
+  guarded-deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      DEPLOY_ENABLED: 'true'
+      PATCH_SOURCE_BRANCH: fix/ball46-remove-flat-scan-20261006
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.PATCH_SOURCE_BRANCH }}
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Guarded current-Production removal of flat-card DOM scanner
+        working-directory: deploy-assets/remove-flat-scan-20261006
+        run: node run.mjs
+      - name: Upload audit and rollback proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-remove-flat-scan-${{ github.run_id }}
+          path: deploy-assets/remove-flat-scan-20261006/audit
+          if-no-files-found: warn
+          retention-days: 30
