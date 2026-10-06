@@ -1,0 +1,51 @@
+name: Deploy Ball46 Statistics Scale Backend 20261006
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-ball46-statistics-scale-backend-20261006.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ball46-statistics-scale-backend
+  cancel-in-progress: false
+
+jobs:
+  guarded-engine-deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      PATCH_SOURCE_BRANCH: work/ball46-statistics-scale-backend-20261006
+    steps:
+      - name: Checkout backend-only patch branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.PATCH_SOURCE_BRANCH }}
+          fetch-depth: 1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install parser dependency only
+        run: npm install --no-save --ignore-scripts acorn@8
+
+      - name: Deploy guarded Statistics backend only
+        working-directory: deploy-assets/statistics-scale-backend-20261006
+        run: node run.mjs
+
+      - name: Upload audit and rollback proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-statistics-scale-backend-${{ github.run_id }}
+          path: deploy-assets/statistics-scale-backend-20261006/audit
+          if-no-files-found: warn
+          retention-days: 30
