@@ -103,3 +103,78 @@ html[data-theme="light"] .b46-flat-result-card{color:#fff!important}
   .b46-flat-result-card{border-radius:10px!important}
   .b46-flat-result-card .b46-flat-status-icon{width:14px!important;height:14px!important;min-width:14px!important;flex-basis:14px!important}
 }
+
+
+/* B46_FLAT_RESULT_CARDS_PC_NATIVE_OVERRIDE_20261007
+   Production still contains older scorebar image rules with 3-class !important selectors.
+   Beat those rules directly on desktop only. Do not change Mobile V3 visibility/layout. */
+@media (min-width:761px){
+  .main-board .workspace-scorebar-cell.workspace-scorebar-signal-result.outcome-win,
+  .main-board .workspace-scorebar-cell.workspace-scorebar-signal-result[data-scorebar-signal-result^="WIN" i],
+  .main-board .workspace-scorebar-cell.workspace-scorebar-signal-result[data-scorebar-signal-result*="HALF_WIN" i],
+  .main-board .workspace-scorebar-cell.workspace-scorebar-signal-result[data-scorebar-signal-result*="HALF WIN" i]{
+    --b46-card-bg:#0f8f4f;
+    background:#0f8f4f!important;
+    background-color:#0f8f4f!important;
+    background-image:none!important;
+    border:0!important;
+    outline:0!important;
+    box-shadow:none!important;
+    filter:none!important;
+    text-shadow:none!important;
+  }
+  .main-board .workspace-scorebar-cell.workspace-scorebar-signal-result.outcome-loss,
+  .main-board .workspace-scorebar-cell.workspace-scorebar-signal-result[data-scorebar-signal-result^="LOSS" i],
+  .main-board .workspace-scorebar-cell.workspace-scorebar-signal-result[data-scorebar-signal-result*="HALF_LOSS" i],
+  .main-board .workspace-scorebar-cell.workspace-scorebar-signal-result[data-scorebar-signal-result*="HALF LOSS" i]{
+    --b46-card-bg:#c8323e;
+    background:#c8323e!important;
+    background-color:#c8323e!important;
+    background-image:none!important;
+    border:0!important;
+    outline:0!important;
+    box-shadow:none!important;
+    filter:none!important;
+    text-shadow:none!important;
+  }
+  .main-board .workspace-scorebar-cell.workspace-scorebar-signal-result.outcome-draw,
+  .main-board .workspace-scorebar-cell.workspace-scorebar-signal-result.outcome-push,
+  .main-board .workspace-scorebar-cell.workspace-scorebar-signal-result[data-scorebar-signal-result^="DRAW" i],
+  .main-board .workspace-scorebar-cell.workspace-scorebar-signal-result[data-scorebar-signal-result^="PUSH" i]{
+    --b46-card-bg:#5a6a7b;
+    background:#5a6a7b!important;
+    background-color:#5a6a7b!important;
+    background-image:none!important;
+    border:0!important;
+    outline:0!important;
+    box-shadow:none!important;
+    filter:none!important;
+    text-shadow:none!important;
+  }
+  .main-board .workspace-scorebar-cell.workspace-scorebar-pending{
+    --b46-card-bg:#d97706;
+    background:#d97706!important;
+    background-color:#d97706!important;
+    background-image:none!important;
+    border:0!important;
+    outline:0!important;
+    box-shadow:none!important;
+    filter:none!important;
+    text-shadow:none!important;
+  }
+
+  .main-board .workspace-scorebar-cell.workspace-scorebar-signal-result.outcome-win::before,
+  .main-board .workspace-scorebar-cell.workspace-scorebar-signal-result.outcome-win::after,
+  .main-board .workspace-scorebar-cell.workspace-scorebar-signal-result.outcome-loss::before,
+  .main-board .workspace-scorebar-cell.workspace-scorebar-signal-result.outcome-loss::after,
+  .main-board .workspace-scorebar-cell.workspace-scorebar-signal-result.outcome-draw::before,
+  .main-board .workspace-scorebar-cell.workspace-scorebar-signal-result.outcome-draw::after,
+  .main-board .workspace-scorebar-cell.workspace-scorebar-pending::before,
+  .main-board .workspace-scorebar-cell.workspace-scorebar-pending::after{
+    background:none!important;
+    background-image:none!important;
+    border:0!important;
+    box-shadow:none!important;
+    filter:none!important;
+  }
+}
