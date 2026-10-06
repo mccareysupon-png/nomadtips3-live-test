@@ -97,7 +97,8 @@ try{
     assert(liveIndex.includes('343-dashboard-v2-ui-tune-v5-mobile-single-status-20261006'),'LIVE_INDEX_TUNE_REF_MISSING');
     assert(liveIndex.includes('343-expand-v5-signal-marker-20261006'),'LIVE_INDEX_EVENTFLOW_REF_MISSING');
 
-    for(const [p,h] of Object.entries(staged.hashes))assert.equal(sha(await publicFile('/'+p)),h,`STATIC_ASSET_CHANGED:${p}`);
+    const interceptedPaths=new Set(Object.values(TARGETS).map(t=>t.path));
+    for(const [p,h] of Object.entries(staged.hashes)){if(interceptedPaths.has(p))continue;assert.equal(sha(await publicFile('/'+p)),h,`STATIC_ASSET_CHANGED:${p}`)}
     const [boardJson,signalsJson,statsJson]=await Promise.all(['/api/engine/board','/api/engine/signals','/api/engine/statistics'].map(async p=>JSON.parse(await publicFile(p,'json'))));
     assert(boardJson?.ok===true&&Array.isArray(boardJson.fixtures),'BOARD_API_UNHEALTHY');
     assert(Array.isArray(signalsJson?.signals),'SIGNALS_API_UNHEALTHY');
