@@ -73,29 +73,36 @@ export function patchEngine(source){
 
 `;
 
-  const routes=`if (u.pathname === "/statistics/summary" && request.method === "GET") {
-      await this.scanIfDue();
-      await this.syncStatisticsLedger();
-      return Response.json(await this.statisticsSummaryResponse());
-    }
-    if (u.pathname === "/statistics/rows" && request.method === "GET") {
+  const enhancedRoute=`if (u.pathname === "/statistics" && request.method === "GET") {
+      const view = u.searchParams.get("view");
       const cursor = u.searchParams.get("cursor");
       if (cursor !== null && (!cursor.startsWith(STAT_LEDGER_PREFIX) || cursor.length > 1024))
         return Response.json({ ok: false, error: "INVALID_STATISTICS_CURSOR" }, { status: 400 });
-      const rawLimit = u.searchParams.get("limit");
-      const limit = rawLimit === null ? 100 : Number(rawLimit);
-      if (!Number.isInteger(limit) || limit < 1 || limit > 200)
-        return Response.json({ ok: false, error: "INVALID_STATISTICS_LIMIT" }, { status: 400 });
-      if (!cursor) {
+
+      if (view === "summary") {
         await this.scanIfDue();
         await this.syncStatisticsLedger();
+        return Response.json(await this.statisticsSummaryResponse());
       }
-      return Response.json(await this.statisticsRowsResponse(cursor, limit));
-    }
-    `;
+
+      if (view === "rows") {
+        const rawLimit = u.searchParams.get("limit");
+        const limit = rawLimit === null ? 100 : Number(rawLimit);
+        if (!Number.isInteger(limit) || limit < 1 || limit > 200)
+          return Response.json({ ok: false, error: "INVALID_STATISTICS_LIMIT" }, { status: 400 });
+        if (!cursor) {
+          await this.scanIfDue();
+          await this.syncStatisticsLedger();
+        }
+        return Response.json(await this.statisticsRowsResponse(cursor, limit));
+      }
+
+      if (!cursor) { await this.scanIfDue(); await this.syncStatisticsLedger(); }
+      return Response.json(await this.statisticsLedgerResponse(cursor, u.searchParams.get("paged") === "1" || cursor !== null));
+    }`;
 
   return apply(source,[
     {start:response.start,end:response.start,text:methods},
-    {start:route.start,end:route.start,text:routes}
+    {start:route.start,end:route.end,text:enhancedRoute}
   ]);
 }
