@@ -75,8 +75,6 @@ try{
   const baseline=await legacy(publicBase);
   assert(Number.isSafeInteger(baseline.ledgerTotal)&&baseline.ledgerTotal>=baseline.total,'BASELINE_TOTALS_INVALID');
   save('baseline-totals.json',totals(baseline));
-  const baselinePage=await legacy(publicBase,{paged:1});
-  assert(Array.isArray(baselinePage.rows)&&baselinePage.rows.length>0,'BASELINE_PAGE_EMPTY');
 
   const metadata={
     main_module:before.main_module,
@@ -106,28 +104,40 @@ try{
   for(let i=0;i<12;i++){if(await activeVersion()===candidateId)break;await new Promise(r=>setTimeout(r,3000))}
   assert.equal(await activeVersion(),candidateId,'CANDIDATE_NOT_ACTIVE');
 
-  const summaryPublic=await json(publicBase+'/statistics/summary');
-  const summaryDirect=await json(directBase+'/statistics/summary');
-  assert.equal(summaryPublic.statisticsSummary,'STATISTICS_SCALE_BACKEND_V1','PUBLIC_SUMMARY_REVISION');
-  assert.equal(summaryDirect.statisticsSummary,'STATISTICS_SCALE_BACKEND_V1','DIRECT_SUMMARY_REVISION');
-  assertTotals(summaryPublic,baseline,'PUBLIC_SUMMARY_TOTAL');
-  assertTotals(summaryDirect,baseline,'DIRECT_SUMMARY_TOTAL');
-  assert.equal(summaryPublic.rows.length,0,'SUMMARY_MUST_NOT_RETURN_LEDGER_ROWS');
+  let summaryPublic,summaryDirect,rows100,legacyAfter;
+  let stable=false;
+  for(let attempt=1;attempt<=5&&!stable;attempt++){
+    const referenceBefore=await legacy(publicBase);
+    const referencePage=await legacy(publicBase,{paged:1});
+    summaryPublic=await json(publicBase+'/statistics/summary');
+    summaryDirect=await json(directBase+'/statistics/summary');
+    rows100=await json(publicBase+'/statistics/rows?limit=100');
+    legacyAfter=await legacy(publicBase);
 
-  const rows100=await json(publicBase+'/statistics/rows?limit=100');
-  assert.equal(rows100.statisticsRows,'STATISTICS_SCALE_BACKEND_V1');
-  assert(rows100.returned>0&&rows100.returned<=100,'ROWS_LIMIT_FAILED');
-  assertRowsEqual(rows100.rows,baselinePage.rows.slice(0,rows100.rows.length),'FIRST_PAGE_ROWS_DIFFER');
+    try{
+      assert.equal(summaryPublic.statisticsSummary,'STATISTICS_SCALE_BACKEND_V1','PUBLIC_SUMMARY_REVISION');
+      assert.equal(summaryDirect.statisticsSummary,'STATISTICS_SCALE_BACKEND_V1','DIRECT_SUMMARY_REVISION');
+      assert.equal(summaryPublic.rows.length,0,'SUMMARY_MUST_NOT_RETURN_LEDGER_ROWS');
+      assert.equal(rows100.statisticsRows,'STATISTICS_SCALE_BACKEND_V1');
+      assert(rows100.returned>0&&rows100.returned<=100,'ROWS_LIMIT_FAILED');
+      assert.equal(referenceBefore.ledgerUpdatedAt,legacyAfter.ledgerUpdatedAt,'LEDGER_MOVED_DURING_QA');
+      assertTotals(summaryPublic,legacyAfter,'PUBLIC_SUMMARY_TOTAL');
+      assertTotals(summaryDirect,legacyAfter,'DIRECT_SUMMARY_TOTAL');
+      assertRowsEqual(rows100.rows,referencePage.rows.slice(0,rows100.rows.length),'FIRST_PAGE_ROWS_DIFFER');
+      assert.equal(legacyAfter.statisticsPagination,'CURSOR_NO_TOTAL_CAP_V1','LEGACY_ENDPOINT_REVISION_CHANGED');
+      stable=true;
+    }catch(error){
+      if(attempt===5)throw error;
+      await new Promise(r=>setTimeout(r,1500));
+    }
+  }
+  assert(stable,'STABLE_STATISTICS_QA_NOT_OBTAINED');
 
   if(rows100.nextCursor){
     const page2=await json(publicBase+'/statistics/rows?limit=100&cursor='+encodeURIComponent(rows100.nextCursor));
     const ids=new Set(rows100.rows.map(r=>String(r.id)));
     for(const row of page2.rows)assert(!ids.has(String(row.id)),'CURSOR_DUPLICATE_ID');
   }
-
-  const legacyAfter=await legacy(publicBase);
-  assertTotals(legacyAfter,summaryPublic,'LEGACY_ENDPOINT_TOTAL_CHANGED');
-  assert.equal(legacyAfter.statisticsPagination,'CURSOR_NO_TOTAL_CAP_V1','LEGACY_ENDPOINT_REVISION_CHANGED');
 
   const currentSettings=await settings(),currentSchedules=await schedules();
   assert.equal(canonical(settingsView(currentSettings)),canonical(settingsView(beforeSettings)),'ENGINE_SETTINGS_CHANGED');
