@@ -1,0 +1,48 @@
+name: Deploy Ball46 Statistics V2 Fast Summary 20261006
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-ball46-statistics-v2-fast-summary-20261006.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ball46-statistics-v2-fast-summary
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      PATCH_SOURCE_BRANCH: work/ball46-statistics-v2-fast-summary-20261006
+      DEPLOY_ENABLED: 'true'
+    steps:
+      - name: Checkout isolated Statistics V2 recovery
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.PATCH_SOURCE_BRANCH }}
+          fetch-depth: 1
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install parser dependency only
+        run: npm install --no-save --ignore-scripts acorn@8
+      - name: Deploy guarded Statistics V2 recovery
+        working-directory: deploy-assets/statistics-v2-fast-summary-20261006
+        run: node run.mjs
+      - name: Upload audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-statistics-v2-fast-summary-${{ github.run_id }}
+          path: deploy-assets/statistics-v2-fast-summary-20261006/audit
+          if-no-files-found: warn
+          retention-days: 30
