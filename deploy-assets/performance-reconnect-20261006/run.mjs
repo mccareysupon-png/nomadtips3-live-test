@@ -11,7 +11,7 @@ const BRANCH='work/ball46-performance-reconnect-20261006';
 const deploy=process.env.DEPLOY_ENABLED==='true';
 mkdirSync('audit',{recursive:true});
 const report={run:process.env.GITHUB_RUN_ID,commit:process.env.GITHUB_SHA,branch:process.env.PATCH_SOURCE_BRANCH,startedAt:new Date().toISOString(),
-scope:'Reconnect current Production Statistics ledger to Daily Performance card only. Preserve engine, signal detection, settlement, Worker source, bindings, schedules and every unrelated public asset.'};
+scope:'Use current Production Daily Performance reconnect runtime only. Preserve its new paged Statistics ledger logic and mirror computed TODAY win rate + W/L into document.title. Preserve engine, signal detection, settlement, Worker source, bindings, schedules and every unrelated public asset.'};
 const save=()=>writeFileSync('audit/report.json',JSON.stringify(report,null,2));
 const delay=ms=>new Promise(r=>setTimeout(r,ms));
 
@@ -31,10 +31,12 @@ function patchCard(html){
   js=replaceFn(js,'outcome',`function outcome(r){const x=String(r?.result??r?.settlement??r?.outcome??'').trim().toUpperCase();if(x==='WIN'||x==='HALF_WIN')return'win';if(x==='LOSS'||x==='HALF_LOSS')return'loss';if(x==='PUSH'||x==='VOID')return'push';return null}`);
   js=replaceFn(js,'isPending',`function isPending(r){return String(r?.status||'').toUpperCase()==='PENDING'}`);
   js=replaceFn(js,'refresh',`async function refresh(){if(busy)return;busy=true;try{let st=await json('/api/engine/statistics?paged=1&_='+Date.now());if(st?.ok!==true||!Array.isArray(st?.rows))throw Error('STATISTICS_SHAPE');const sig=JSON.stringify([st.ledgerTotal,st.total,st.pending,st.unresolved,st.win,st.loss,st.push,st.halfWin,st.halfLoss,st.ledgerUpdatedAt]);let rows=[...st.rows],cursor=st.nextCursor,seen=new Set();while(cursor){if(seen.has(cursor))throw Error('STATISTICS_CURSOR_CYCLE');seen.add(cursor);const page=await json('/api/engine/statistics?paged=1&cursor='+encodeURIComponent(cursor)+'&_='+Date.now());if(page?.ok!==true||!Array.isArray(page?.rows))throw Error('STATISTICS_PAGE_SHAPE');const pageSig=JSON.stringify([page.ledgerTotal,page.total,page.pending,page.unresolved,page.win,page.loss,page.push,page.halfWin,page.halfLoss,page.ledgerUpdatedAt]);if(pageSig!==sig)throw Error('STATISTICS_CHANGED_DURING_READ');rows.push(...page.rows);cursor=page.nextCursor||null}if(Number.isFinite(Number(st.ledgerTotal))&&rows.length!==Number(st.ledgerTotal))throw Error('STATISTICS_LEDGER_INCOMPLETE:'+rows.length+'/'+st.ledgerTotal);lastGood=aggregate(rows);render(lastGood)}catch(e){if(lastGood)render(lastGood);console.warn('B46 Daily Performance refresh skipped:',e?.message||e)}finally{busy=false}}`);
+  js=replaceFn(js,'render',`function render(d){const b=d?.today;if(b){const wr=rate(b);document.title=\`TODAY \${wr} · \${b.win}W–\${b.loss}L | BALL46\`}const r=ensure();if(!r)return;paint(r,d)}`);
   parse(js,{ecmaVersion:'latest',sourceType:'script'});
   assert(js.includes("x==='LOSS'||x==='HALF_LOSS'"),'HALF_LOSS_MAPPING_MISSING');
   assert(js.includes("status||'').toUpperCase()==='PENDING'"),'PENDING_MAPPING_MISSING');
   assert(js.includes('STATISTICS_LEDGER_INCOMPLETE'),'LEDGER_GUARD_MISSING');
+  assert(js.includes('document.title'),'TAB_TITLE_PATCH_MISSING');
   return html.slice(0,bodyStart)+js+html.slice(end);
 }
 function classify(row){
