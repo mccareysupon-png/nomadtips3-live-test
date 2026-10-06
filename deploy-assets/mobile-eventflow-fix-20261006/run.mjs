@@ -87,6 +87,8 @@ try{
   report.before={index:sha(indexBefore),targets:Object.fromEntries(Object.keys(TARGETS).map(n=>[n,staged.hashes[n]]))};
   report.after={index:sha(indexAfter),targets:Object.fromEntries(Object.entries(targetBytes).map(([n,b])=>[n,sha(b)]))};
   report.protectedAssetCount=Object.keys(protectedAssets).length;save();
+  console.log('PATCH_HASHES_BEFORE='+JSON.stringify(report.before));
+  console.log('PATCH_HASHES_AFTER='+JSON.stringify(report.after));
 
   wrangler(staged,true);
   assert.equal(await activeVersion(),base,'PRODUCTION_MOVED_AFTER_DRY_RUN');
