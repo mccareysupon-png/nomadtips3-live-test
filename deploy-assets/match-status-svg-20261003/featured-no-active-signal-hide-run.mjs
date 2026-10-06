@@ -5,7 +5,7 @@ import { inspect, activeVersion, getVersion, api, script, sha, canonical, public
 import { schedules, stageCurrentRail, verifyRailBase, wrangler } from './rail.mjs';
 import { verifyConfiguration, verifyVersionConfiguration } from './statistics-config.mjs';
 
-const BRANCH='work/ball46-hide-no-active-signal-20261006';
+const BRANCH='work/ball46-current-production-fallback-fix-20261006';
 const MARK='B46_HIDE_NO_ACTIVE_SIGNAL_20261006';
 const report={run:process.env.GITHUB_RUN_ID,commit:process.env.GITHUB_SHA,branch:process.env.GITHUB_REF_NAME,startedAt:new Date().toISOString(),scope:'Featured Match presentation only: hide visible No active signal fallback; preserve signal logic, statistics, APIs, backend, and all unrelated assets.'};
 const save=()=>writeFileSync('audit/featured-no-active-signal-hide-report.json',JSON.stringify(report,null,2));
@@ -38,8 +38,8 @@ try{
   writeFileSync(dashPath,dash);writeFileSync(indexPath,index);
   const check=spawnSync(process.execPath,['--check',dashPath],{encoding:'utf8'});assert.equal(check.status,0,`DASHBOARD_JS_SYNTAX_FAIL:${check.stderr}`);
   const workerCheck=spawnSync(process.execPath,['--check',`${staged.runtime}/index.js`],{encoding:'utf8'});assert.equal(workerCheck.status,0,`WORKER_JS_SYNTAX_FAIL:${workerCheck.stderr}`);
-  const dashAfter=sha(dash),indexAfter=sha(index);assert.notEqual(dashAfter,dashBefore,'DASHBOARD_NOT_CHANGED');assert.notEqual(indexAfter,indexBefore,'INDEX_NOT_CHANGED');
-  const protectedAssets={...staged.hashes};delete protectedAssets['dashboard-v2-stage3.js'];delete protectedAssets['index.html'];
+  const dashAfter=sha(dash),indexAfter=sha(index);assert.notEqual(dashAfter,dashBefore,'DASHBOARD_NOT_CHANGED');if(indexHasFallback)assert.notEqual(indexAfter,indexBefore,'INDEX_NOT_CHANGED');
+  const protectedAssets={...staged.hashes};delete protectedAssets['dashboard-v2-stage3.js'];if(indexHasFallback)delete protectedAssets['index.html'];
   report.changed={dashboard:{before:dashBefore,after:dashAfter,literal:'__B46_MULTI_SIGNAL_STAGE3_JS__'},index:{before:indexBefore,after:indexAfter}};report.protectedAssetCount=Object.keys(protectedAssets).length;save();
 
   wrangler(staged,true);assert.equal(await activeVersion(),base,'PRODUCTION_MOVED_AFTER_DRY_RUN_STOP');assert.equal(sha(canonical(await api(`/scripts/${script}/settings`))),settingsSha,'SETTINGS_MOVED_BEFORE_DEPLOY_STOP');assert.equal(canonical(await backend()),canonical(report.backendBefore),'BACKEND_MOVED_BEFORE_DEPLOY_STOP');
@@ -51,7 +51,7 @@ try{
     const settingsAfter=await api(`/scripts/${script}/settings`);report.configuration=verifyConfiguration(settingsBefore,settingsAfter);assert.equal(canonical(await schedules()),canonical(cronsBefore),'CRONS_CHANGED_STOP');
     const cv=await getVersion(candidate);report.versionConfiguration=verifyVersionConfiguration(current.version,cv);
     const beforeModules=new Map(manifest(current.version).map(x=>[x.name,x])),afterModules=manifest(cv);assert.equal(afterModules.length,beforeModules.size,'MODULE_COUNT_CHANGED_STOP');
-    for(const m of afterModules){const prev=beforeModules.get(m.name);assert(prev,`UNEXPECTED_MODULE:${m.name}`);const expected=m.name===cv.main_module?sha(patchedSource):m.name==='assets/index.html'?indexAfter:prev.sha;assert.equal(m.sha,expected,`MODULE_CHANGED:${m.name}`);assert.equal(m.type,prev.type,`MODULE_TYPE_CHANGED:${m.name}`)}
+    for(const m of afterModules){const prev=beforeModules.get(m.name);assert(prev,`UNEXPECTED_MODULE:${m.name}`);const expected=m.name===cv.main_module?sha(patchedSource):m.name==='assets/index.html'&&indexHasFallback?indexAfter:prev.sha;assert.equal(m.sha,expected,`MODULE_CHANGED:${m.name}`);assert.equal(m.type,prev.type,`MODULE_TYPE_CHANGED:${m.name}`)}
     report.publishedModules=afterModules.map(x=>x.name);
     assert.equal(await activeVersion(),candidate,'FINAL_PRODUCTION_MOVED_STOP');
     const finalWorker=Buffer.from(cv.modules.find(m=>m.name===cv.main_module).content_base64,'base64').toString('utf8');
