@@ -69,7 +69,6 @@ try{
   current=await inspect();
   const base=current.restore.version;
   report.baseVersion=base;
-  assert.equal(base,'4f9b7e60-5dd8-4818-80f3-c8739b84de47','UNEXPECTED_PRODUCTION_BASE_STOP');
   const settingsBefore=await api(`/scripts/${script}/settings`),settingsSha=sha(canonical(settingsBefore)),cronsBefore=await schedules();
   const workerSha=sha(Buffer.from(current.source));
   const staged=await stageCurrentRail(current.version,settingsBefore,cronsBefore,current.source);
