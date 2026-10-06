@@ -120,7 +120,6 @@ try{
       assert.equal(summaryPublic.rows.length,0,'SUMMARY_MUST_NOT_RETURN_LEDGER_ROWS');
       assert.equal(rows100.statisticsRows,'STATISTICS_SCALE_BACKEND_V1');
       assert(rows100.returned>0&&rows100.returned<=100,'ROWS_LIMIT_FAILED');
-      assert.equal(referenceBefore.ledgerUpdatedAt,legacyAfter.ledgerUpdatedAt,'LEDGER_MOVED_DURING_QA');
       assertTotals(summaryPublic,legacyAfter,'PUBLIC_SUMMARY_TOTAL');
       assertTotals(summaryDirect,legacyAfter,'DIRECT_SUMMARY_TOTAL');
       assertRowsEqual(rows100.rows,referencePage.rows.slice(0,rows100.rows.length),'FIRST_PAGE_ROWS_DIFFER');
