@@ -1,0 +1,20 @@
+import assert from 'node:assert/strict';
+import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';
+import {resolve} from 'node:path';
+import {inspect,api,script,activeVersion,sha,canonical} from '../daily-performance-20261005/production.mjs';
+import {schedules,stageCurrentRail,verifyRailBase} from '../daily-performance-20261005/rail.mjs';
+const cur=await inspect();
+const settings=await api(`/scripts/${script}/settings`);
+const crons=await schedules();
+const staged=await stageCurrentRail(cur.version,settings,crons,cur.source);
+await verifyRailBase(staged);
+assert.equal(await activeVersion(),cur.restore.version,'PRODUCTION_MOVED');
+const index=readFileSync(resolve(staged.runtime,'assets','index.html'),'utf8');
+const css=readFileSync(resolve(staged.runtime,'assets','full-market-bookmaker-343.css'),'utf8');
+const js=readFileSync(resolve(staged.runtime,'assets','full-market-bookmaker-343.js'),'utf8');
+const pats=['data-theme','theme-light','theme-dark','light','dark','document.documentElement','localStorage'];
+const hits={};
+for(const p of pats){let i=index.toLowerCase().indexOf(p.toLowerCase());hits[p]=i<0?null:index.slice(Math.max(0,i-900),Math.min(index.length,i+1800))}
+mkdirSync('audit',{recursive:true});
+writeFileSync('audit/preflight.json',JSON.stringify({version:cur.restore.version,indexSha:sha(Buffer.from(index)),cssSha:sha(Buffer.from(css)),jsSha:sha(Buffer.from(js)),hits},null,2));
+console.log('BALL46_12BET_THEME_PREFLIGHT_OK',JSON.stringify({version:cur.restore.version,indexSha:sha(Buffer.from(index)),cssSha:sha(Buffer.from(css)),jsSha:sha(Buffer.from(js)),found:Object.fromEntries(Object.entries(hits).map(([k,v])=>[k,!!v]))}));
