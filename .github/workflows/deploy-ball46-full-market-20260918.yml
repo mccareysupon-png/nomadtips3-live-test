@@ -16,7 +16,6 @@ env:
   FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
   BALL46_URL: https://ball46.com
   FULL_MARKET_BRANCH: work/ball46-full-market-20260918
-  KNOWN_GOOD_UI: 2e92b012f5046a10b7c5124b9984b5fd8fb0f722
   OLD_WRAPPER_REF: 686ac60bf0127443f9a392f5b9a91378a16274a7
 
 jobs:
@@ -30,11 +29,6 @@ jobs:
           ref: ${{ env.FULL_MARKET_BRANCH }}
           path: production
 
-      - name: Checkout known-good 3.43 UI
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ env.KNOWN_GOOD_UI }}
-          path: candidate-ui
 
       - name: Checkout rollback wrapper
         uses: actions/checkout@v4
@@ -42,7 +36,7 @@ jobs:
           ref: ${{ env.OLD_WRAPPER_REF }}
           path: rollback
 
-      - name: Validate scope and overlay known-good UI
+      - name: Validate production source
         shell: bash
         run: |
           set -euo pipefail
@@ -88,38 +82,7 @@ jobs:
           node --check production/nomad-live-343/live-summary-full-odds-343.js
           node --check production/nomad-live-343/rich-odds-on-demand-343.js
           node --check production/nomad-live-343/bulk-odds-compat-343.js
-          cp production/nomad-live-343/full-odds-main-343.js /tmp/full-odds-main-343.js
-          cp production/nomad-live-343/index.html /tmp/index.html
-          cp production/nomad-live-343/dashboard-v2-stage3.js /tmp/dashboard-v2-stage3.js
-          cp production/nomad-live-343/signal-next.js /tmp/signal-next.js
-          cp production/nomad-live-343/statistics-next.js /tmp/statistics-next.js
-          cp production/nomad-live-343/signal.html /tmp/signal.html
-          cp production/nomad-live-343/statistics.html /tmp/statistics.html
-          cp production/nomad-live-343/live-summary-full-odds-343.js /tmp/live-summary-full-odds-343.js
-          cp production/nomad-live-343/rich-odds-on-demand-343.js /tmp/rich-odds-on-demand-343.js
-          cp production/nomad-live-343/bulk-odds-compat-343.js /tmp/bulk-odds-compat-343.js
-          cp production/nomad-live-343/5usd-control.html /tmp/5usd-control.html
-          cp production/nomad-live-343/detection-test.html /tmp/detection-test.html
-          cp production/nomad-live-343/ball46-logo.svg /tmp/ball46-logo.svg
-          cp production/nomad-live-343/v2-header.css /tmp/v2-header.css
-          rm -rf production/nomad-live-343
-          cp -a candidate-ui/nomad-live-343 production/nomad-live-343
-          cp /tmp/full-odds-main-343.js production/nomad-live-343/full-odds-main-343.js
-          cp /tmp/index.html production/nomad-live-343/index.html
-          cp /tmp/dashboard-v2-stage3.js production/nomad-live-343/dashboard-v2-stage3.js
-          cp /tmp/signal-next.js production/nomad-live-343/signal-next.js
-          cp /tmp/statistics-next.js production/nomad-live-343/statistics-next.js
-          cp /tmp/signal.html production/nomad-live-343/signal.html
-          cp /tmp/statistics.html production/nomad-live-343/statistics.html
-          cp /tmp/live-summary-full-odds-343.js production/nomad-live-343/live-summary-full-odds-343.js
-          cp /tmp/rich-odds-on-demand-343.js production/nomad-live-343/rich-odds-on-demand-343.js
-          cp /tmp/bulk-odds-compat-343.js production/nomad-live-343/bulk-odds-compat-343.js
-          cp /tmp/5usd-control.html production/nomad-live-343/5usd-control.html
-          cp /tmp/detection-test.html production/nomad-live-343/detection-test.html
-          cp /tmp/ball46-logo.svg production/nomad-live-343/ball46-logo.svg
-          cp /tmp/v2-header.css production/nomad-live-343/v2-header.css
           echo "FULL_MARKET_SOURCE=$(git -C production rev-parse HEAD)"
-          echo "BASE_UI_SOURCE=$KNOWN_GOOD_UI"
           echo 'LOAD_STABILITY_SOURCE=FULL_MARKET_BRANCH'
           echo 'BULK_ODDS_COMPAT_SOURCE=FULL_MARKET_BRANCH'
           echo '5USD_CONTROL_SOURCE=FULL_MARKET_BRANCH'
@@ -283,7 +246,6 @@ jobs:
         run: |
           set -euo pipefail
           rm -rf rollback/nomad-live-343
-          cp -a candidate-ui/nomad-live-343 rollback/nomad-live-343
           cd rollback/workers/nomadtips3-343-preview
           npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
           echo 'BALL46_WRAPPER_ROLLBACK_DEPLOYED'
