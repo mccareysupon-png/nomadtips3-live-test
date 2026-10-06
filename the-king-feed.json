@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-10-06T03:24:53Z",
+  "updated_at": "2026-10-06T10:30:35Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -194,8 +194,8 @@
       "edge": 50.8,
       "ev": 0.878,
       "required_confidence": 0.56,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "4-0",
       "locked_at": "2026-10-06T03:21:52Z",
       "source_url": "https://www.goaloo.com/football/india-bangalore-super-division-fc-bengaluru-united-vs-rebels-fc/h2h-3099924",
       "summary_url": "https://www.goaloo.com/football/india-bangalore-super-division-fc-bengaluru-united-vs-rebels-fc/summary-3099924",
@@ -255,7 +255,12 @@
         "away_recent": 10,
         "h2h_n": 5,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-06T10:30:35Z"
     },
     {
       "id": "c578d2438a33a94b-AH-AWAY-2p5",
@@ -1639,8 +1644,8 @@
       "edge": 31.8,
       "ev": 0.5429,
       "required_confidence": 0.56,
-      "result": "PENDING",
-      "ft": null,
+      "result": "WIN",
+      "ft": "2-1",
       "locked_at": "2026-10-06T03:21:50Z",
       "source_url": "https://www.goaloo.com/football/fiji-national-league-labasa-fc-vs-suva-fc/h2h-3099888",
       "summary_url": "https://www.goaloo.com/football/fiji-national-league-labasa-fc-vs-suva-fc/summary-3099888",
@@ -1700,7 +1705,12 @@
         "away_recent": 10,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": 1.0,
+      "profit": 95.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-06T10:30:35Z"
     },
     {
       "id": "41bf2a3bc86fa91d-AH-HOME-0p75",
@@ -198443,6 +198453,186 @@
       "settlement_source": "goaloo-bf_us-direct-index",
       "goaloo_terminal_state": -1,
       "settled_at": "2026-10-05T22:44:51Z"
+    },
+    {
+      "id": "53bf0952df27a2c5-AH-AWAY-2p5",
+      "goaloo_id": "3099924",
+      "date": "2026-10-06",
+      "kickoff": "2026-10-06 08:00:00",
+      "league": "India Bangalore Super Division",
+      "home": "FC Bengaluru United",
+      "away": "Rebels FC",
+      "market": "AH",
+      "selection": "AWAY",
+      "line": 2.5,
+      "pick": "Rebels FC +2.5",
+      "side": "away",
+      "odds": 1.9,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.9884,
+      "model_probability": 0.9884,
+      "market_fair_probability": 0.4809,
+      "market_edge": 0.5075,
+      "edge": 50.8,
+      "ev": 0.878,
+      "required_confidence": 0.56,
+      "result": "LOSS",
+      "ft": "4-0",
+      "locked_at": "2026-10-06T03:21:52Z",
+      "source_url": "https://www.goaloo.com/football/india-bangalore-super-division-fc-bengaluru-united-vs-rebels-fc/h2h-3099924",
+      "summary_url": "https://www.goaloo.com/football/india-bangalore-super-division-fc-bengaluru-united-vs-rebels-fc/summary-3099924",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 1.127,
+        "lambda_away": 2.945,
+        "home_win": 0.0716,
+        "draw": 0.1527,
+        "away_win": 0.7757,
+        "h2h_adjustment": 0.015,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": -0.9024,
+          "gd_edge": -0.9045,
+          "clean_sheet_edge": -0.1463,
+          "failed_to_score_edge": -0.2439,
+          "bounded_adjustment": -0.0551,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 5,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-06T10:30:35Z"
+    },
+    {
+      "id": "d772a0088313117c-OU-UNDER-3p5",
+      "goaloo_id": "3099888",
+      "date": "2026-10-06",
+      "kickoff": "2026-10-06 08:00:00",
+      "league": "Fiji National League",
+      "home": "Labasa FC",
+      "away": "Suva FC",
+      "market": "OU",
+      "selection": "UNDER",
+      "line": 3.5,
+      "pick": "Under 3.5",
+      "side": null,
+      "odds": 1.95,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.7913,
+      "model_probability": 0.7913,
+      "market_fair_probability": 0.473,
+      "market_edge": 0.3183,
+      "edge": 31.8,
+      "ev": 0.5429,
+      "required_confidence": 0.56,
+      "result": "WIN",
+      "ft": "2-1",
+      "locked_at": "2026-10-06T03:21:50Z",
+      "source_url": "https://www.goaloo.com/football/fiji-national-league-labasa-fc-vs-suva-fc/h2h-3099888",
+      "summary_url": "https://www.goaloo.com/football/fiji-national-league-labasa-fc-vs-suva-fc/summary-3099888",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 1.388,
+        "lambda_away": 0.952,
+        "home_win": 0.4604,
+        "draw": 0.2928,
+        "away_win": 0.2468,
+        "h2h_adjustment": -0.005,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.0081,
+          "gd_edge": 0.2281,
+          "clean_sheet_edge": -0.2488,
+          "failed_to_score_edge": 0.2878,
+          "bounded_adjustment": 0.0058,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": 1.0,
+      "profit": 95.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-06T10:30:35Z"
     }
   ],
   "note": "Automated Full-Time Winner First feed. Supplemental markets remain unpublished.",
