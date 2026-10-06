@@ -1,0 +1,33 @@
+name: Preflight Ball46 EasyBet 20261006
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/preflight-ball46-easybet-20261006.yml'
+permissions:
+  contents: read
+jobs:
+  preflight:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ops/ball46-easybet-affiliate-20261006
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --ignore-scripts acorn@8
+      - name: Inspect exact current EasyBet Production rail
+        working-directory: deploy-assets/ball46-easybet-20261006
+        run: node preflight.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-easybet-preflight-${{ github.run_id }}
+          path: deploy-assets/ball46-easybet-20261006/audit
+          retention-days: 7
