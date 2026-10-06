@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { inspect, activeVersion, getVersion, api, script, sha, canonical, publicFile, backend, literals, manifest } from './production.mjs';
 import { schedules, stageCurrentRail, verifyRailBase, wrangler } from './rail.mjs';
@@ -8,7 +8,7 @@ import { verifyConfiguration, verifyVersionConfiguration } from './statistics-co
 const BRANCH='work/ball46-current-production-fallback-fix-20261006';
 const MARK='B46_HIDE_NO_ACTIVE_SIGNAL_20261006';
 const report={run:process.env.GITHUB_RUN_ID,commit:process.env.GITHUB_SHA,branch:process.env.GITHUB_REF_NAME,startedAt:new Date().toISOString(),scope:'CURRENT PRODUCTION ONLY: verify and hide visible No active signal fallback without using repository presentation assets as source.'};
-const save=()=>writeFileSync('audit/featured-no-active-signal-hide-report.json',JSON.stringify(report,null,2));
+const save=()=>{mkdirSync('audit',{recursive:true});writeFileSync('audit/featured-no-active-signal-hide-report.json',JSON.stringify(report,null,2))};
 const delay=ms=>new Promise(r=>setTimeout(r,ms));
 let current=null,candidate=null;
 async function rollback(){if(!current)return;const a=await activeVersion();if(a===current.restore.version){report.rollback={status:'base-still-active',version:a};save();return}if(candidate&&a!==candidate){report.rollback={status:'skipped-foreign-active',version:a};save();return}await api(`/scripts/${script}/deployments`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({strategy:'percentage',versions:[{version_id:current.restore.version,percentage:100}],annotations:{'workers/message':`Rollback Featured fallback hide ${report.run}`}})});assert.equal(await activeVersion(),current.restore.version,'ROLLBACK_NOT_CONFIRMED');report.rollback={status:'confirmed',version:current.restore.version};save()}
