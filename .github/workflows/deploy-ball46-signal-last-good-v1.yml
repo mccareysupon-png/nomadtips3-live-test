@@ -1,83 +1,13 @@
-name: Deploy Ball46 Default Rich Odds Stable Rail
+name: RETIRED - deploy-ball46-signal-last-good-v1
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/deploy-ball46-signal-last-good-v1.yml'
   workflow_dispatch:
 
 permissions:
-  contents: write
-
-env:
-  CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-  CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-  SOURCE_BRANCH: work/ball46-full-market-20260918
-  BALL46_URL: https://ball46.com
+  contents: read
 
 jobs:
-  patch-and-deploy:
+  retired:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
     steps:
-      - name: Checkout Ball46 source
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ env.SOURCE_BRANCH }}
-          fetch-depth: 0
-
-      - name: Apply default rich odds patch
-        shell: bash
-        run: |
-          set -euo pipefail
-          python scripts/ball46_default_rich_odds_patch_20260919.py
-          node --check nomad-live-343/dashboard-v2-stage3.js
-          node --check nomad-live-343/live-summary-full-odds-343.js
-          grep -Fq '343-dashboard-v2-stage3-v5-default-rich-bridge' nomad-live-343/index.html
-          grep -Fq '343-live-summary-john-gated-v7-default-visible-rich' nomad-live-343/index.html
-          grep -Fq 'applyRichOdds' nomad-live-343/dashboard-v2-stage3.js
-          grep -Fq 'DEFAULT_MAX_PER_MINUTE=6' nomad-live-343/live-summary-full-odds-343.js
-          if grep -Fq 'MutationObserver' nomad-live-343/live-summary-full-odds-343.js; then echo 'MUTATION_OBSERVER_FORBIDDEN'; exit 31; fi
-
-      - name: Commit source patch
-        shell: bash
-        run: |
-          set -euo pipefail
-          if ! git diff --quiet -- nomad-live-343/dashboard-v2-stage3.js nomad-live-343/live-summary-full-odds-343.js nomad-live-343/index.html; then
-            git config user.name 'Ball46 Runtime Bot'
-            git config user.email 'actions@users.noreply.github.com'
-            git add nomad-live-343/dashboard-v2-stage3.js nomad-live-343/live-summary-full-odds-343.js nomad-live-343/index.html
-            git commit -m 'fix(ball46): enrich default cards with central rich odds'
-            git push origin HEAD:${SOURCE_BRANCH}
-          fi
-
-      - name: Deploy Ball46 wrapper and assets only
-        working-directory: workers/nomadtips3-343-preview
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ env.CF_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ env.CF_ACCOUNT_ID }}
-        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
-
-      - name: Verify production bridge
-        shell: bash
-        run: |
-          set -euo pipefail
-          for n in $(seq 1 15); do
-            curl -fsS --max-time 25 "$BALL46_URL/?verify=${GITHUB_RUN_ID}-${n}" -o /tmp/index.html || true
-            curl -fsS --max-time 25 "$BALL46_URL/dashboard-v2-stage3.js?verify=${GITHUB_RUN_ID}-${n}" -o /tmp/dash.js || true
-            curl -fsS --max-time 25 "$BALL46_URL/live-summary-full-odds-343.js?verify=${GITHUB_RUN_ID}-${n}" -o /tmp/rich.js || true
-            if grep -Fq '343-dashboard-v2-stage3-v5-default-rich-bridge' /tmp/index.html && grep -Fq '343-live-summary-john-gated-v7-default-visible-rich' /tmp/index.html && grep -Fq 'applyRichOdds' /tmp/dash.js && grep -Fq 'DEFAULT_MAX_PER_MINUTE=6' /tmp/rich.js; then break; fi
-            sleep 2
-          done
-          grep -Fq '343-dashboard-v2-stage3-v5-default-rich-bridge' /tmp/index.html
-          grep -Fq '343-live-summary-john-gated-v7-default-visible-rich' /tmp/index.html
-          grep -Fq 'applyRichOdds' /tmp/dash.js
-          grep -Fq 'DEFAULT_MAX_PER_MINUTE=6' /tmp/rich.js
-          if grep -Fq 'MutationObserver' /tmp/rich.js; then echo 'PROD_MUTATION_OBSERVER_FORBIDDEN'; exit 32; fi
-          curl -fsS --max-time 30 "$BALL46_URL/api/engine/board?verify=${GITHUB_RUN_ID}" -o /tmp/board.json
-          node - <<'NODE'
-          const b=require('/tmp/board.json');
-          if(b.ok!==true||!Array.isArray(b.fixtures))throw Error('BOARD_FAIL');
-          console.log('DEFAULT_RICH_BRIDGE_PROD_PASS',JSON.stringify({fixtures:b.fixtures.length,version:b.version,hubVersion:b.hubVersion}));
-          NODE
+      - run: echo "RETIRED legacy Ball46 workflow. Historical nomad-live-343 must never deploy to ball46-production."
