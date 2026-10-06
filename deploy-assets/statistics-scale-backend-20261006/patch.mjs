@@ -70,7 +70,7 @@ export function patchEngine(source){
     const liveFixtureIds = new Set();
     if (fresh && Array.isArray(board.fixtures)) {
       for (const fixture of board.fixtures) {
-        const status = `${fixture?.status ?? ""} ${fixture?.statusCode ?? ""}`.toLowerCase();
+        const status = (String(fixture?.status ?? "") + " " + String(fixture?.statusCode ?? "")).toLowerCase();
         const unavailable = /finished|full[_ -]?time|\\bft\\b|ended|\\bfull\\b|cancel|postpon|suspend|abandon|scheduled|not[_ -]?started|unknown/.test(status);
         if (fixture?.boardState === "live" && !unavailable && fixture.fixtureId != null) {
           liveFixtureIds.add(String(fixture.fixtureId));
