@@ -31,7 +31,7 @@ async function activeVersion(){
 const version=id=>api(`/workers/${engineName}/versions/${id}?include=modules`);
 const settings=()=>api(`/scripts/${engineName}/settings`);
 const schedules=()=>api(`/scripts/${engineName}/schedules`);
-const activate=id=>api(`/scripts/${engineName}/deployments`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({strategy:'percentage',versions:[{version_id:id,percentage:100}],annotations:{'workers/message':'Add bounded Statistics summary and cursor rows API; no UI changes','workers/commit_sha':process.env.GITHUB_SHA}})});
+const activate=id=>api(`/scripts/${engineName}/deployments`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({strategy:'percentage',versions:[{version_id:id,percentage:100}],annotations:{'workers/message':'Add bounded Statistics summary and cursor rows API; no UI changes'}})});
 const bindingView=v=>canonical(v.bindings.map(b=>({...b})).sort((a,b)=>a.name.localeCompare(b.name)));
 const settingsView=s=>Object.fromEntries(Object.entries(s).filter(([k])=>k!=='annotations'));
 
