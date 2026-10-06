@@ -19,7 +19,7 @@ function patchWorkspace(src){
   const marker="async function readAll() {\n  let first = await page();";
   assert(src.includes(marker),'WORKSPACE_READALL_MARKER_MISSING');
   const direct=`async function directAll() {
-  const response = await fetch(\`${API}?_=${Date.now()}\`, {
+  const response = await fetch(API+'?_='+Date.now(), {
     credentials:'same-origin', cache:'no-store', signal:AbortSignal.timeout(30000)
   });
   const data = await response.json();
