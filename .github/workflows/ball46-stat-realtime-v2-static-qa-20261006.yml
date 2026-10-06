@@ -83,7 +83,7 @@ jobs:
           guards=[
             ('REFEREE','if (u.pathname === "/referee" && request.method === "GET") {','if (u.pathname === "/fixture-odds" && request.method === "GET") {'),
             ('STAT_RESPONSE','async statisticsLedgerResponse(cursor = null, paged = false) {','async scan() {'),
-            ('EXTERNAL_FINAL','async reconcileExternalFinal(request) {','async bridgeHealth() {')
+            ('EXTERNAL_FINAL','async reconcileExternalFinal(request) {','  async fetch(request) {')
           ]
           for name,start,end in guards:
             def block(s):
