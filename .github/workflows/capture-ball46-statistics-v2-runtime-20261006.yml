@@ -1,0 +1,31 @@
+name: Capture Ball46 Statistics V2 Runtime 20261006
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/capture-ball46-statistics-v2-runtime-20261006.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Capture current public statistics runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p audit
+          curl -fsSL --retry 3 -H 'Cache-Control: no-cache' 'https://ball46.com/singlepage-workspace-343.js?v=statistics-no-total-cap-20261005&capture=1' -o audit/singlepage-workspace-343.js
+          curl -fsSL --retry 3 -H 'Cache-Control: no-cache' 'https://ball46.com/ui-sync-fixes-343-v2.js?v=statistics-no-total-cap-20261005&capture=1' -o audit/ui-sync-fixes-343-v2.js
+          curl -fsSL --retry 3 -H 'Cache-Control: no-cache' 'https://ball46.com/longterm-performance-343.js?v=statistics-no-total-cap-20261005&capture=1' -o audit/longterm-performance-343.js
+          curl -fsSL --retry 3 -H 'Cache-Control: no-cache' 'https://ball46.com/api/engine/statistics?capture=1' -o audit/statistics.json
+          wc -c audit/*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ball46-statistics-v2-runtime-${{ github.run_id }}
+          path: audit
+          retention-days: 7
