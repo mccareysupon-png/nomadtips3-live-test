@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
-import { inspect, activeVersion, getVersion, api, script, sha, canonical, publicFile, backend, literals } from './production.mjs';
-import { schedules, stageCurrentRail, verifyRailBase, wrangler, verifyPublishedModules } from './rail.mjs';
+import { inspect, activeVersion, getVersion, api, script, sha, canonical, publicFile, backend, literals, manifest } from './production.mjs';
+import { schedules, stageCurrentRail, verifyRailBase, wrangler } from './rail.mjs';
 import { verifyConfiguration, verifyVersionConfiguration } from './statistics-config.mjs';
 
 const BRANCH='work/ball46-hide-no-active-signal-20261006';
@@ -50,8 +50,9 @@ try{
     assert.equal(canonical(await backend()),canonical(report.backendBefore),'BACKEND_CHANGED_STOP');
     const settingsAfter=await api(`/scripts/${script}/settings`);report.configuration=verifyConfiguration(settingsBefore,settingsAfter);assert.equal(canonical(await schedules()),canonical(cronsBefore),'CRONS_CHANGED_STOP');
     const cv=await getVersion(candidate);report.versionConfiguration=verifyVersionConfiguration(current.version,cv);
-    const publicHashes=Object.fromEntries(Object.entries(staged.hashes).map(([p,h])=>['/'+p,p==='dashboard-v2-stage3.js'?dashAfter:p==='index.html'?indexAfter:h]));
-    report.publishedModules=verifyPublishedModules(cv,current.version,patchedSource,publicHashes).map(x=>x.name);
+    const beforeModules=new Map(manifest(current.version).map(x=>[x.name,x])),afterModules=manifest(cv);assert.equal(afterModules.length,beforeModules.size,'MODULE_COUNT_CHANGED_STOP');
+    for(const m of afterModules){const prev=beforeModules.get(m.name);assert(prev,`UNEXPECTED_MODULE:${m.name}`);const expected=m.name===cv.main_module?sha(patchedSource):m.name==='assets/index.html'?indexAfter:prev.sha;assert.equal(m.sha,expected,`MODULE_CHANGED:${m.name}`);assert.equal(m.type,prev.type,`MODULE_TYPE_CHANGED:${m.name}`)}
+    report.publishedModules=afterModules.map(x=>x.name);
     assert.equal(await activeVersion(),candidate,'FINAL_PRODUCTION_MOVED_STOP');
     const finalWorker=Buffer.from(cv.modules.find(m=>m.name===cv.main_module).content_base64,'base64').toString('utf8');
     const finalLit=literals(finalWorker).get('__B46_MULTI_SIGNAL_STAGE3_JS__');assert(finalLit&&sha(finalLit.value)===dashAfter,'FINAL_WORKER_LITERAL_MISMATCH');
