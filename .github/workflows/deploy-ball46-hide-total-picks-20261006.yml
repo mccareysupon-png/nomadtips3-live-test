@@ -1,0 +1,47 @@
+name: Deploy Ball46 Hide TOTAL PICKS 20261006
+
+on:
+  push:
+    branches:
+      - work/ball46-hide-total-picks-20261006
+    paths:
+      - '.github/workflows/deploy-ball46-hide-total-picks-20261006.yml'
+      - 'deploy-assets/hide-total-picks-20261006/run.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ball46-production-hide-total-picks-20261006
+  cancel-in-progress: false
+
+jobs:
+  guarded-deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      DEPLOY_ENABLED: 'true'
+      PATCH_SOURCE_BRANCH: work/ball46-hide-total-picks-20261006
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.PATCH_SOURCE_BRANCH }}
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --ignore-scripts acorn@8
+      - name: Hide the two TOTAL PICKS remnants
+        working-directory: deploy-assets/hide-total-picks-20261006
+        run: node run.mjs
+      - name: Upload audit and rollback proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-hide-total-picks-${{ github.run_id }}
+          path: deploy-assets/hide-total-picks-20261006/audit
+          if-no-files-found: warn
+          retention-days: 30
