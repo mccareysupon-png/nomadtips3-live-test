@@ -40,6 +40,17 @@ async function getJson(url){
   return j;
 }
 
+function group(row){
+  const x=String(row?.marketLabel??row?.market??row?.providerMarket??'').toLowerCase().replace(/[_-]+/g,' ');
+  if(/btts|both teams/.test(x)) return 'btts';
+  if(/corner/.test(x)) return 'corners';
+  if(/card/.test(x)) return 'cards';
+  if(/1x2|match result|moneyline/.test(x)) return '1x2';
+  if(/asian|handicap|\bah\b/.test(x)) return 'ah';
+  if(/over\s*\/?\s*under|\bover\b|\bunder\b|o\s*\/?\s*u|goal line|total/.test(x)) return 'ou';
+  return 'other';
+}
+
 const before=await active();
 console.log('RESTORE_PREFLIGHT',JSON.stringify({before,target}));
 assert(allowedBefore.has(before),'STOP_FOREIGN_ACTIVE_VERSION');
@@ -63,49 +74,33 @@ if(before!==target){
 }
 assert.equal(await active(),target,'RESTORE_NOT_ACTIVE');
 
-let index='',statsPage='',statsJs='',stats=null,labels=[];
-for(let i=0;i<20;i++){
-  try{
-    index=await getText('https://ball46.com/index.html');
-    statsPage=await getText('https://ball46.com/statistics.html');
-    statsJs=await getText('https://ball46.com/statistics-next.js');
-    stats=await getJson('https://ball46.com/api/engine/statistics');
-    labels=Object.entries(stats?.markets||{}).map(([k,v])=>String(v?.label||k));
-    if(
-      index.includes('b46-daily-performance-runtime') &&
-      index.includes('STATISTICS_LEDGER_INCOMPLETE') &&
-      statsPage.includes('data-next-stat-markets') &&
-      statsJs.includes('renderMarkets') &&
-      statsJs.includes('renderStats') &&
-      labels.length>=7
-    ) break;
-  }catch{}
-  await new Promise(r=>setTimeout(r,1500));
-}
+const index=await getText('https://ball46.com/index.html');
+const statsPage=await getText('https://ball46.com/statistics.html');
+const statsJs=await getText('https://ball46.com/statistics-next.js');
+const stats=await getJson('https://ball46.com/api/engine/statistics');
 
 assert(index.includes('b46-daily-performance-runtime'),'PERFORMANCE_CARD_RUNTIME_MISSING');
 assert(index.includes('STATISTICS_LEDGER_INCOMPLETE'),'PERFORMANCE_CARD_RECONNECT_MISSING');
+for(const [key,label] of [
+  ['all','Total'],['1x2','1X2'],['ah','AH'],['ou','O/U'],
+  ['btts','BTTS'],['corners','Corners'],['cards','Cards'],['other','Other']
+]){
+  assert(index.includes(`data-stat-market="${key}"`),`STATISTICS_NAV_MISSING:${key}`);
+  assert(index.includes(`<span>${label}</span>`)||index.includes(`>${label}</span>`),`STATISTICS_LABEL_MISSING:${label}`);
+}
 assert(statsPage.includes('data-next-stat-markets'),'STATISTICS_MARKET_STRIP_MISSING');
 assert(statsJs.includes('renderMarkets'),'STATISTICS_MARKET_RENDERER_MISSING');
 assert(statsJs.includes('renderStats'),'STATISTICS_RENDERER_MISSING');
 
-const norm=s=>String(s).toUpperCase().replace(/\s+/g,'');
-const normalized=labels.map(norm);
-const wants=[
-  ['1X2',['1X2']],
-  ['AH',['AH','ASIANHANDICAP']],
-  ['O/U',['O/U','OU','OVER/UNDER']],
-  ['BTTS',['BTTS','BOTHTEAMSTOSCORE']],
-  ['Corners',['CORNERS','CORNER']],
-  ['Cards',['CARDS','CARD']],
-  ['Other',['OTHER']]
-];
-for(const [name,aliases] of wants){
-  assert(normalized.some(x=>aliases.some(a=>x===norm(a)||x.includes(norm(a)))),`STATISTICS_MARKET_LABEL_MISSING:${name}:${labels.join('|')}`);
-}
-
 assert(Number.isSafeInteger(stats?.total),'STATISTICS_TOTAL_MISSING');
 assert(Number.isSafeInteger(stats?.ledgerTotal),'STATISTICS_LEDGER_TOTAL_MISSING');
+assert(Array.isArray(stats?.rows)&&stats.rows.length>0,'STATISTICS_ROWS_MISSING');
+
+const counts={total:stats.rows.length,'1x2':0,ah:0,ou:0,btts:0,corners:0,cards:0,other:0};
+for(const row of stats.rows) counts[group(row)]++;
+for(const k of ['1x2','ah','ou','btts','corners','cards']){
+  assert(counts[k]>0,`STATISTICS_GROUP_EMPTY:${k}`);
+}
 
 console.log('BALL46_RESTORE_PERFORMANCE_MARKETS_OK',JSON.stringify({
   before,
@@ -113,5 +108,5 @@ console.log('BALL46_RESTORE_PERFORMANCE_MARKETS_OK',JSON.stringify({
   total:stats.total,
   ledgerTotal:stats.ledgerTotal,
   pending:stats.pending,
-  markets:labels
+  counts
 }));
