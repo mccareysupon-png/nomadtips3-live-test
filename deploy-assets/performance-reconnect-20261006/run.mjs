@@ -67,7 +67,7 @@ try{
   const workerSha=sha(Buffer.from(current.source));
   const settingsBefore=await api(`/scripts/${script}/settings`),settingsSha=sha(canonical(settingsBefore)),cronsBefore=await schedules();
   const beforeStats=await statsSnapshot();report.statisticsBefore={ledgerTotal:beforeStats.ledgerTotal,total:beforeStats.total,pending:beforeStats.pending,rows:beforeStats.rows.length};
-  const target=beforeStats.rows.filter(r=>/nasinu/i.test(String(r?.home||''))&&/rewa/i.test(String(r?.away||'')));
+  const target=beforeStats.rows.filter(r=>/nasinu/i.test(String(r?.home?.name??r?.homeName??r?.home??''))&&/rewa/i.test(String(r?.away?.name??r?.awayName??r?.away??'')));
   report.nasinuRewa=target.map(r=>({id:r.id,status:r.status,result:r.result,createdAt:r.createdAt,settledAt:r.settledAt,market:r.market,selection:r.selection,line:r.line,odds:r.odds,classify:classify(r)}));
   assert(target.length>0,'NASINU_REWA_NOT_IN_STATISTICS');
   assert(target.some(r=>String(r?.result||'').toUpperCase()==='HALF_LOSS'),'NASINU_REWA_HALF_LOSS_NOT_FOUND');
@@ -98,7 +98,7 @@ try{
     for(let i=0;i<40;i++){assert.equal(await activeVersion(),candidate,'PRODUCTION_MOVED_DURING_PUBLIC_VERIFY');try{const b=await publicFile('/index.html','html'),t=b.toString('utf8');if(sha(b)===afterSha&&t.includes('STATISTICS_LEDGER_INCOMPLETE')&&t.includes("HALF_LOSS")){publicOk=true;break}}catch{}await delay(1200)}
     assert(publicOk,'RECONNECT_NOT_PUBLIC');
     for(const [p,h] of Object.entries(protectedAssets))assert.equal(sha(await publicFile('/'+p)),h,'UNRELATED_ASSET_CHANGED:'+p);
-    const finalStats=await statsSnapshot();assert(finalStats.rows.some(r=>/nasinu/i.test(String(r?.home||''))&&/rewa/i.test(String(r?.away||''))),'NASINU_REWA_LOST_AFTER_DEPLOY');
+    const finalStats=await statsSnapshot();assert(finalStats.rows.some(r=>/nasinu/i.test(String(r?.home?.name??r?.homeName??r?.home??''))&&/rewa/i.test(String(r?.away?.name??r?.awayName??r?.away??''))),'NASINU_REWA_LOST_AFTER_DEPLOY');
     const cv=await getVersion(candidate),cm=cv.modules.find(m=>m.name===cv.main_module);assert(cm,'FINAL_MAIN_MISSING');
     const finalSource=Buffer.from(cm.content_base64,'base64').toString('utf8');assert.equal(sha(Buffer.from(finalSource)),workerSha,'WORKER_SOURCE_CHANGED');
     assert.equal(sha(canonical(await api(`/scripts/${script}/settings`))),settingsSha,'SETTINGS_CHANGED');
