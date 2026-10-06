@@ -60,10 +60,40 @@ export function patchEngine(source){
     const entries = [...found.entries()];
     const more = entries.length > safeLimit;
     const included = more ? entries.slice(0, safeLimit) : entries;
+
+    // Preserve the exact presentation normalization used by /statistics.
+    const board = await this.ctx.storage.get("board").catch(() => null);
+    const fetchedAt = Number(board?.hubFetchedAt);
+    const ageMs = Date.now() - fetchedAt;
+    const fresh = board?.ok === true && board?.stale === false &&
+      Number.isFinite(fetchedAt) && fetchedAt > 0 && ageMs >= 0 && ageMs <= 120000;
+    const liveFixtureIds = new Set();
+    if (fresh && Array.isArray(board.fixtures)) {
+      for (const fixture of board.fixtures) {
+        const status = `${fixture?.status ?? ""} ${fixture?.statusCode ?? ""}`.toLowerCase();
+        const unavailable = /finished|full[_ -]?time|\\bft\\b|ended|\\bfull\\b|cancel|postpon|suspend|abandon|scheduled|not[_ -]?started|unknown/.test(status);
+        if (fixture?.boardState === "live" && !unavailable && fixture.fixtureId != null) {
+          liveFixtureIds.add(String(fixture.fixtureId));
+        }
+      }
+    }
+    const rows = included.map(([, src]) => {
+      const r = clone2(src);
+      delete r._ledgerMarker;
+      if (String(r.status || "").toUpperCase() === "PENDING") {
+        r.signalEntryMinute = r.entryMinute ?? r.minute ?? null;
+        r.entryMinute = r.mirrorMinute ?? r.entryMinute ?? r.minute ?? null;
+        r.finalScore = clone2(r.mirrorScore ?? r.entryScore ?? r.scoreAt);
+        const displayStatus = liveFixtureIds.has(String(r.fixtureId)) ? "LIVE" : "PENDING";
+        r.result = displayStatus;
+        r.displayStatus = displayStatus;
+      }
+      return r;
+    });
     return {
       ok: true,
-      rows: included.map(([, value]) => value),
-      returned: included.length,
+      rows,
+      returned: rows.length,
       limit: safeLimit,
       nextCursor: more ? included[included.length - 1][0] : null,
       hasMore: more,
