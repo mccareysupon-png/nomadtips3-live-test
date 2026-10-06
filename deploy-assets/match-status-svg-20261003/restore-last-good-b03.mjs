@@ -14,9 +14,9 @@ try{
    try{
      idx=await publicFile('/index.html','html');dash=await publicFile('/dashboard-v2-stage3.js','javascript');
      const it=idx.toString('utf8'),dt=dash.toString('utf8');
-     last=JSON.stringify({attempt:i+1,indexBytes:idx.length,indexSha:sha(idx),dashSha:sha(dash),indexFallback:/data-featured-signal>No active signal<\\/div>/.test(it),dashFallback:dt.includes("return'No active signal'")||dt.includes('return"No active signal"')});
+     last=JSON.stringify({attempt:i+1,indexBytes:idx.length,indexSha:sha(idx),dashSha:sha(dash),indexFallback:it.includes('data-featured-signal>No active signal</div>'),dashFallback:dt.includes("return'No active signal'")||dt.includes('return"No active signal"')});
      console.log('VERIFY='+last);
-     if(idx.length>100000&&!/data-featured-signal>No active signal<\\/div>/.test(it)&&!dt.includes("return'No active signal'")&&!dt.includes('return"No active signal"')){ok=true;break}
+     if(idx.length>100000&&!it.includes('data-featured-signal>No active signal</div>')&&!dt.includes("return'No active signal'")&&!dt.includes('return"No active signal"')){ok=true;break}
    }catch(e){last=String(e)}
    await new Promise(r=>setTimeout(r,1500));
  }
