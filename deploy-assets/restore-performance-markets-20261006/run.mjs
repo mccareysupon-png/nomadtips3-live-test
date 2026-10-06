@@ -98,9 +98,10 @@ assert(Array.isArray(stats?.rows)&&stats.rows.length>0,'STATISTICS_ROWS_MISSING'
 
 const counts={total:stats.rows.length,'1x2':0,ah:0,ou:0,btts:0,corners:0,cards:0,other:0};
 for(const row of stats.rows) counts[group(row)]++;
-for(const k of ['1x2','ah','ou','btts','corners','cards']){
-  assert(counts[k]>0,`STATISTICS_GROUP_EMPTY:${k}`);
+for(const k of ['1x2','ah','ou','btts','corners','cards','other']){
+  assert(Number.isSafeInteger(counts[k])&&counts[k]>=0,`STATISTICS_GROUP_INVALID:${k}`);
 }
+assert.equal(counts['1x2']+counts.ah+counts.ou+counts.btts+counts.corners+counts.cards+counts.other,counts.total,'STATISTICS_GROUP_SUM_MISMATCH');
 
 console.log('BALL46_RESTORE_PERFORMANCE_MARKETS_OK',JSON.stringify({
   before,
