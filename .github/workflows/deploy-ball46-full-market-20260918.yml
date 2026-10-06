@@ -1,4 +1,4 @@
-name: RETIRED - Deploy Ball46 Full Market 20260918
+name: BLOCKED - Legacy Ball46 Production Rail
 
 on:
   workflow_dispatch:
@@ -7,10 +7,13 @@ permissions:
   contents: read
 
 jobs:
-  retired:
+  production-firewall:
     runs-on: ubuntu-24.04
     steps:
-      - name: Old Ball46 deploy rail permanently retired
+      - name: Block retired production rail
+        shell: bash
         run: |
-          echo "RETIRED: historical nomad-live-343 deploy/rollback is disabled."
-          echo "Production ball46.com must deploy only from the current confirmed production rail."
+          echo "BALL46_PRODUCTION_FIREWALL_BLOCK"
+          echo "Legacy Ball46/Engine deployment is retired."
+          echo "Historical UI snapshots, old wrapper refs, and old engine bundles cannot touch current Production."
+          exit 1

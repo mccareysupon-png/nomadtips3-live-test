@@ -1,25 +1,19 @@
-name: Deploy Engine343 Best19 Production D
+name: BLOCKED - Legacy Ball46 Production Rail
+
 on:
-  push:
-    branches: [main]
-    paths: ['.github/workflows/deploy-engine343-best19-production-20260925d.yml']
+  workflow_dispatch:
+
 permissions:
   contents: read
-env:
-  CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-  CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-  WORK_BRANCH: work/343-best-price-19book-20260918
-  PROD_URL: https://nomadtips3-engine-343.mccarey-supon.workers.dev
+
 jobs:
-  deploy-production:
+  production-firewall:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ env.WORK_BRANCH }}
-      - working-directory: workers/nomadtips3-engine-343
-        run: npx --yes wrangler@4.92.0 deploy --config wrangler.toml
-      - run: |
-          sleep 4
-          curl -fsS "$PROD_URL/health?_=$RANDOM" | tee /tmp/h.json
-          grep -Fq 'v5-best19-referee' /tmp/h.json
+      - name: Block retired production rail
+        shell: bash
+        run: |
+          echo "BALL46_PRODUCTION_FIREWALL_BLOCK"
+          echo "Legacy Ball46/Engine deployment is retired."
+          echo "Historical UI snapshots, old wrapper refs, and old engine bundles cannot touch current Production."
+          exit 1
