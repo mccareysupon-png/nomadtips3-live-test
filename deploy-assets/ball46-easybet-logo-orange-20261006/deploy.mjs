@@ -48,11 +48,13 @@ try{
 
   const extraHashes={};
   for(const p of EXTRA_ASSETS){
-    const bytes=await publicFile('/'+p,'image');
-    extraHashes[p]=sha(bytes);
-    const target=resolve(staged.runtime,'assets',p);
-    mkdirSync(dirname(target),{recursive:true});
-    writeFileSync(target,bytes);
+    try{
+      const bytes=await publicFile('/'+p,'image');
+      extraHashes[p]=sha(bytes);
+      const target=resolve(staged.runtime,'assets',p);
+      mkdirSync(dirname(target),{recursive:true});
+      writeFileSync(target,bytes);
+    }catch{}
   }
 
   const logoFile=resolve(staged.runtime,'assets',EASY_PATH);
