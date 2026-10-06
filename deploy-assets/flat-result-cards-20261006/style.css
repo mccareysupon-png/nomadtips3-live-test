@@ -1,0 +1,105 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito+Sans:opsz,wght@6..12,400;6..12,500;6..12,600;6..12,700;6..12,800&display=swap');
+/* B46_FLAT_RESULT_CARDS_20261006
+   Presentation-only refresh for detailed WIN / LOSS / DRAW(PUSH) / PENDING cards.
+   Outer card size/layout is inherited from current Production.
+   No borders, no glow, no neon, no shadows. */
+.b46-flat-result-card{
+  --b46-card-bg:#5a6a7b;
+  --b46-card-label:#f8fafc;
+  background:var(--b46-card-bg)!important;
+  background-image:none!important;
+  border:0!important;
+  outline:0!important;
+  box-shadow:none!important;
+  filter:none!important;
+  text-shadow:none!important;
+  color:#fff!important;
+  font-family:"Nunito Sans","Segoe UI",Arial,sans-serif!important;
+  border-radius:12px!important;
+  position:relative!important;
+  isolation:isolate;
+}
+.b46-flat-result-card.b46-flat-win{--b46-card-bg:#0f8f4f;--b46-card-label:#dcfce7}
+.b46-flat-result-card.b46-flat-loss{--b46-card-bg:#c8323e;--b46-card-label:#ffe4e6}
+.b46-flat-result-card.b46-flat-draw{--b46-card-bg:#5a6a7b;--b46-card-label:#f1f5f9}
+.b46-flat-result-card.b46-flat-pending{--b46-card-bg:#d97706;--b46-card-label:#fff1d6}
+.b46-flat-result-card,
+.b46-flat-result-card *{
+  box-shadow:none!important;
+  text-shadow:none!important;
+  filter:none!important;
+  border:0!important;
+  outline:0!important;
+  background-image:none!important;
+  font-family:"Nunito Sans","Segoe UI",Arial,sans-serif!important;
+}
+.b46-flat-result-card::before,
+.b46-flat-result-card::after,
+.b46-flat-result-card *::before,
+.b46-flat-result-card *::after{
+  box-shadow:none!important;
+  text-shadow:none!important;
+  filter:none!important;
+  border:0!important;
+}
+.b46-flat-result-card .b46-flat-status-label{
+  color:var(--b46-card-label)!important;
+  font-weight:800!important;
+  letter-spacing:.035em!important;
+  text-transform:uppercase!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  gap:5px!important;
+  line-height:1.1!important;
+}
+.b46-flat-result-card .b46-flat-status-icon{
+  width:16px!important;
+  height:16px!important;
+  min-width:16px!important;
+  flex:0 0 16px!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  color:currentColor!important;
+  opacity:.98;
+}
+.b46-flat-result-card .b46-flat-status-icon svg{
+  width:100%!important;
+  height:100%!important;
+  display:block!important;
+  fill:none!important;
+  stroke:currentColor!important;
+  stroke-width:1.9!important;
+  stroke-linecap:round!important;
+  stroke-linejoin:round!important;
+}
+.b46-flat-result-card .b46-flat-score{
+  color:#fff!important;
+  font-weight:800!important;
+  letter-spacing:-.025em!important;
+  line-height:1.04!important;
+}
+.b46-flat-result-card .b46-flat-team{
+  color:rgba(255,255,255,.96)!important;
+  font-weight:600!important;
+  line-height:1.24!important;
+}
+.b46-flat-result-card .b46-flat-market{
+  color:rgba(255,255,255,.94)!important;
+  font-weight:600!important;
+}
+.b46-flat-result-card .b46-flat-odds{
+  color:#fff!important;
+  font-weight:800!important;
+}
+.b46-flat-result-card .b46-flat-meta{
+  color:rgba(255,255,255,.90)!important;
+  font-weight:600!important;
+}
+.b46-flat-result-card a,
+.b46-flat-result-card button{color:inherit!important}
+html[data-theme="light"] .b46-flat-result-card{color:#fff!important}
+@media (max-width:760px){
+  .b46-flat-result-card{border-radius:10px!important}
+  .b46-flat-result-card .b46-flat-status-icon{width:14px!important;height:14px!important;min-width:14px!important;flex-basis:14px!important}
+}
