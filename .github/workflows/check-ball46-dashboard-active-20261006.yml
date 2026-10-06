@@ -1,0 +1,35 @@
+name: Check Ball46 Dashboard Active 20261006
+on:
+  push:
+    branches: [deploy/ball46-dashboard-preserve-partial-20261006]
+    paths:
+      - '.github/workflows/check-ball46-dashboard-active-20261006.yml'
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: deploy/ball46-dashboard-preserve-partial-20261006
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --ignore-scripts acorn@8
+      - name: Read current active version and asset
+        working-directory: deploy-assets/dashboard-preserve-partial-20261006
+        run: |
+          node - <<'NODE'
+          import {activeVersion,publicFile,directOrigin,sha} from './production.mjs';
+          const id=await activeVersion();
+          const b=await publicFile('/dashboard-v2-stage3.js',undefined,directOrigin);
+          console.log('ACTIVE_VERSION='+id);
+          console.log('DASHBOARD_SHA='+sha(b));
+          console.log('PATCH_PRESENT='+b.toString('utf8').includes('preserveMissingFixtures'));
+          NODE
