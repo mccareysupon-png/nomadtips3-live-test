@@ -32,6 +32,9 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Install deploy parser dependency
+        run: npm install --no-save acorn
+
       - name: Recover Statistics V2 on exact current Production rail
         working-directory: deploy-assets/statistics-recover-cachebust-20261006
         run: node run.mjs
