@@ -1,81 +1,13 @@
-name: Trigger Ball46 Viewer-Safe Deploy 20260918
+name: RETIRED - trigger-ball46-viewer-safe-20260918
 
-# retrigger: John-safe on-demand 19-book restore 20260918
 on:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/trigger-ball46-viewer-safe-20260918.yml'
   workflow_dispatch:
 
 permissions:
-  actions: write
-  contents: write
+  contents: read
 
 jobs:
-  dispatch:
+  retired:
     runs-on: ubuntu-24.04
     steps:
-      - name: Checkout Ball46 source branch
-        uses: actions/checkout@v4
-        with:
-          ref: work/ball46-full-market-20260918
-          fetch-depth: 1
-
-      - name: Force John-safe odds assets on Live Scores only
-        shell: bash
-        run: |
-          set -euo pipefail
-          python - <<'PY'
-          from pathlib import Path
-          p=Path('nomad-live-343/index.html')
-          s=p.read_text()
-          variants={
-            'bulk-odds-compat-343.js?v=343-bulk-odds-compat-v1-scalar-object':'bulk-odds-compat-343.js?v=343-bulk-odds-compat-v3-market-alias-safe&restore=allbooks-20260918-1',
-            'live-summary-full-odds-343.js?v=343-live-summary-full-odds-v1&fix=343-live-summary-full-odds-v2-no-dom-loop':'live-summary-full-odds-343.js?v=343-live-summary-john-gated-v4&restore=allbooks-20260918-2',
-            'live-summary-full-odds-343.js?v=343-live-summary-bulk-only-v3-viewer-safe&restore=allbooks-20260918-1':'live-summary-full-odds-343.js?v=343-live-summary-john-gated-v4&restore=allbooks-20260918-2',
-            'full-market-bookmaker-343.js?v=343-fmb-v3-bulk-snapshot-zero-click':'full-market-bookmaker-343.js?v=343-fmb-v3-bulk-snapshot-zero-click&restore=allbooks-20260918-1',
-            'rich-odds-on-demand-343.js?v=343-expanded-full-market-v3-gate':'rich-odds-on-demand-343.js?v=343-expanded-full-market-bulk-only-v6-market-alias-safe&restore=allbooks-20260918-1',
-            'full-market-bookmaker-343.css?v=343-fmb-v2-rich-yellow':'full-market-bookmaker-343.css?v=343-fmb-v2-rich-yellow&restore=allbooks-20260918-1',
-          }
-          changed=False
-          for old,new in variants.items():
-            if old in s:
-              s=s.replace(old,new)
-              changed=True
-          p.write_text(s)
-          print('JOHN_SAFE_ODDS_ASSET_REFS_READY', 'changed='+str(changed).lower())
-          PY
-          grep -Fq '343-bulk-odds-compat-v3-market-alias-safe&restore=allbooks-20260918-1' nomad-live-343/index.html
-          grep -Fq '343-live-summary-john-gated-v4&restore=allbooks-20260918-2' nomad-live-343/index.html
-          grep -Fq '343-expanded-full-market-bulk-only-v6-market-alias-safe&restore=allbooks-20260918-1' nomad-live-343/index.html
-          grep -Fq '343-live-summary-john-gated-v4' nomad-live-343/live-summary-full-odds-343.js
-          grep -Fq "automaticPolling:false" nomad-live-343/live-summary-full-odds-343.js
-          grep -Fq "fanout:false" nomad-live-343/live-summary-full-odds-343.js
-          grep -Fq "/api/full-market/fixture-odds" nomad-live-343/live-summary-full-odds-343.js
-          grep -Fq "['bet365','Bet365']" nomad-live-343/full-market-bookmaker-343.js
-          grep -Fq "['crown','Crown']" nomad-live-343/full-market-bookmaker-343.js
-          grep -Fq 'engineBoardFallback' workers/nomadtips3-343-preview/src/index.js
-          grep -Fq 'ENGINE_BOARD_ODDS_EMPTY' workers/nomadtips3-343-preview/src/index.js
-          grep -Fq '/snapshot' workers/nomadtips3-343-preview/src/index.js
-          node --check nomad-live-343/live-summary-full-odds-343.js
-
-      - name: Commit Live Scores odds asset refs if changed
-        shell: bash
-        run: |
-          set -euo pipefail
-          if git diff --quiet -- nomad-live-343/index.html; then
-            echo 'NO_SOURCE_CHANGE_NEEDED'
-            exit 0
-          fi
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add nomad-live-343/index.html
-          git commit -m 'fix(ball46): load John-safe 19-book odds restore'
-          git push origin HEAD:work/ball46-full-market-20260918
-
-      - name: Dispatch protected Ball46 deploy workflow
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-        run: gh workflow run deploy-ball46-full-market-20260918.yml --ref main
+      - run: echo "RETIRED legacy Ball46 workflow. Historical nomad-live-343 must never deploy to ball46-production."
