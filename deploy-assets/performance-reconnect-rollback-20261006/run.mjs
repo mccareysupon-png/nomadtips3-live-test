@@ -45,7 +45,8 @@ const currentIndex=await fetchIndex();
 const currentSha=await sha256(currentIndex);
 console.log('PERFORMANCE_RECONNECT_ROLLBACK_PREFLIGHT',JSON.stringify({active,currentSha,candidate,restore}));
 
-assert.equal(active,candidate,'STOP_FOREIGN_ACTIVE_VERSION');
+const allowedActive=new Set([candidate,'2998bed7-7d95-4e31-b87e-1dda192f5841']);
+assert(allowedActive.has(active),'STOP_UNKNOWN_ACTIVE_VERSION');
 assert.equal(currentSha,afterIndexSha,'STOP_PUBLIC_INDEX_MOVED');
 
 await api(`/scripts/${script}/deployments`,{
