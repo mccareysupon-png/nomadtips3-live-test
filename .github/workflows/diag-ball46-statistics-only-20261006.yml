@@ -52,7 +52,8 @@ jobs:
             ['PUBLIC_STATS','https://ball46.com/api/engine/statistics'],
             ['DIRECT_STATS','https://nomadtips3-engine-343.mccarey-supon.workers.dev/statistics'],
             ['PUBLIC_SUMMARY','https://ball46.com/api/engine/statistics?view=summary'],
-            ['PUBLIC_STATS_PAGE','https://ball46.com/statistics.html']
+            ['PUBLIC_STATS_PAGE','https://ball46.com/statistics.html'],
+            ['PUBLIC_STATS_JS','https://ball46.com/statistics-next.js']
           ];
           for(const [name,url] of urls){
             const x=await get(url);
