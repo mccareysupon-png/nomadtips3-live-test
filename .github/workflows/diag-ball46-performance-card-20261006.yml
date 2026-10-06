@@ -1,0 +1,29 @@
+name: Diagnose Ball46 Performance Card 20261006
+
+on:
+  push:
+    branches:
+      - work/ball46-flat-result-cards-20261006
+    paths:
+      - '.github/workflows/diag-ball46-performance-card-20261006.yml'
+      - 'deploy-assets/diag-performance-card-20261006/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/ball46-flat-result-cards-20261006
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Probe current public Performance Card dependencies
+        working-directory: deploy-assets/diag-performance-card-20261006
+        run: node run.mjs
