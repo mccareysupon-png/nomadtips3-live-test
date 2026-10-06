@@ -7,7 +7,7 @@
 const MARK='b46-flat-result-card';
 const ROOT='.main-board';
 const EXCLUDE='#ball46-daily-performance';
-const CARD_SEL='.workspace-scorebar-cell.workspace-scorebar-signal-result,.workspace-scorebar-cell.workspace-scorebar-pending';
+const CARD_SEL='.workspace-scorebar-cell.workspace-scorebar-signal-result,.workspace-scorebar-cell.workspace-scorebar-pending,.workspace-scorebar-cell[data-scorebar-signal-result]';
 const icons={
  win:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3h8v4a4 4 0 0 1-8 0V3Z"/><path d="M6 5H3v2a4 4 0 0 0 4 4M18 5h3v2a4 4 0 0 1-4 4M12 11v6M8 21h8M9 17h6"/></svg>',
  loss:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m9 9 6 6M15 9l-6 6"/></svg>',
@@ -19,8 +19,10 @@ function keyFor(card){
   if(card.classList.contains('workspace-scorebar-pending'))return'pending';
   if(card.classList.contains('outcome-win'))return'win';
   if(card.classList.contains('outcome-loss'))return'loss';
-  if(card.classList.contains('outcome-draw'))return'draw';
+  if(card.classList.contains('outcome-draw')||card.classList.contains('outcome-push'))return'draw';
   const raw=norm(card.getAttribute('data-scorebar-signal-result')).toUpperCase();
+  if(raw.includes('HALF_WIN')||raw.includes('HALF WIN'))return'win';
+  if(raw.includes('HALF_LOSS')||raw.includes('HALF LOSS'))return'loss';
   if(raw.startsWith('WIN'))return'win';
   if(raw.startsWith('LOSS'))return'loss';
   if(raw==='PUSH'||raw==='DRAW'||raw.startsWith('DRAW'))return'draw';
