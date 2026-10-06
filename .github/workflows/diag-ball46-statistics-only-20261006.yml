@@ -85,5 +85,15 @@ jobs:
               }
             }
           }
+          const page=await get('https://ball46.com/statistics.html');
+          const js=await get('https://ball46.com/statistics-next.js');
+          const crypto=await import('node:crypto');
+          const digest=s=>crypto.createHash('sha256').update(s).digest('hex');
+          console.log('PUBLIC_STATS_ASSET_SHA',JSON.stringify({html:digest(page.text),js:digest(js.text),htmlBytes:page.text.length,jsBytes:js.text.length}));
+          const selectors=['data-next-total','data-next-win','data-next-loss','data-next-win-rate','data-next-avg-odds','data-next-stat-markets','data-next-stat-body','data-next-stat-state'];
+          console.log('STATS_HTML_SELECTORS',JSON.stringify(Object.fromEntries(selectors.map(s=>[s,page.text.includes(s)]))));
+          const patterns=['view=summary','view=rows','paged=1','STAT_CACHE_KEY','lastStatsPayload','fetch(\`\${STAT_API}?_=',"const SIGNAL_API='/api/engine/signals'",'renderStats(sj)','Statistics feed unavailable'];
+          console.log('STATS_JS_PATTERNS2',JSON.stringify(Object.fromEntries(patterns.map(s=>[s,js.text.includes(s)]))));
+          try{new Function(js.text);console.log('STATS_JS_SYNTAX','PASS')}catch(e){console.log('STATS_JS_SYNTAX','FAIL',String(e))}
           console.log('STATISTICS_ONLY_DIAG_DONE');
           NODE
