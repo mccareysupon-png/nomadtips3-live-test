@@ -1,0 +1,28 @@
+name: Ball46 Restore Last Confirmed Production
+on:
+  push:
+    branches: [work/ball46-current-production-fallback-fix-20261006]
+    paths:
+      - '.github/workflows/ball46-restore-last-good-b03.yml'
+      - 'deploy-assets/match-status-svg-20261003/restore-last-good-b03.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ball46-production-emergency-restore
+  cancel-in-progress: false
+jobs:
+  restore:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - working-directory: deploy-assets/match-status-svg-20261003
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - working-directory: deploy-assets/match-status-svg-20261003
+        run: node restore-last-good-b03.mjs
