@@ -17,7 +17,7 @@ trap rollback ERR
 # Exact-current-source lock. This keeps overnight repairs and rejects stale branch code.
 python3 - <<'PY'
 import base64,hashlib,json,os,pathlib,urllib.request
-root=pathlib.Path('/tmp/b46-stat-final-flow-v2');account=os.environ['CLOUDFLARE_ACCOUNT_ID'];token=os.environ['CLOUDFLARE_API_TOKEN'];worker='nomadtips3-engine-343';api=f'https://api.cloudflare.com/client/v4/accounts/{account}';h={'Authorization':f'Bearer {token}','Accept':'application/json'}
+root=pathlib.Path('/tmp/b46-stat-realtime-current-20261006');account=os.environ['CLOUDFLARE_ACCOUNT_ID'];token=os.environ['CLOUDFLARE_API_TOKEN'];worker='nomadtips3-engine-343';api=f'https://api.cloudflare.com/client/v4/accounts/{account}';h={'Authorization':f'Bearer {token}','Accept':'application/json'}
 def getj(u):
   with urllib.request.urlopen(urllib.request.Request(u,headers=h),timeout=30) as r:j=json.load(r)
   if isinstance(j,dict) and j.get('success') is False:raise SystemExit('CF_API_FAIL:'+json.dumps(j)[:600])
@@ -60,7 +60,7 @@ for p in index.html signal.html statistics.html statistics-next.js ball46-logo.s
 for p in index.html signal.html statistics.html statistics-next.js ball46-logo.svg; do echo "$(sha256sum "$ROOT/before/${p//\//_}"|awk '{print $1}') $p"; done > "$ROOT/before/frontend-sha.txt"
 
 node - <<'NODE'
-const fs=require('fs'),crypto=require('crypto'),b='/tmp/b46-stat-final-flow-v2/before/',load=n=>JSON.parse(fs.readFileSync(b+n));const h=load('health.json'),reg=load('registry.json'),set=load('settings.json'),board=load('board.json'),sig=load('signals.json'),st=load('statistics.json'),pub=load('public-statistics.json'),lh=load('ledger-health.json'),bh=load('bridge-health.json');
+const fs=require('fs'),crypto=require('crypto'),b='/tmp/b46-stat-realtime-current-20261006/before/',load=n=>JSON.parse(fs.readFileSync(b+n));const h=load('health.json'),reg=load('registry.json'),set=load('settings.json'),board=load('board.json'),sig=load('signals.json'),st=load('statistics.json'),pub=load('public-statistics.json'),lh=load('ledger-health.json'),bh=load('bridge-health.json');
 for(const [n,j] of Object.entries({registry:reg,settings:set,board,signals:sig,statistics:st,ledgerHealth:lh,bridgeHealth:bh}))if(j?.ok!==true)throw Error('PRE_'+n.toUpperCase()+'_NOT_OK');
 if(h?.ok!==true&&!String(h?.lastError||'').includes('SQLITE_TOOBIG'))throw Error('PRE_HEALTH_UNEXPECTED:'+JSON.stringify(h));
 if(st.statisticsLedgerVersion!=='signal-ledger-v2-longterm'||st.retention!=='LONG_TERM_NO_APPLICATION_EXPIRY'||pub.statisticsLedgerVersion!=='signal-ledger-v2-longterm')throw Error('PRE_LEDGER_CONTRACT_BAD');
@@ -75,12 +75,12 @@ grep -Fq 'chunked-working-store-v1' "$ROOT/worker/index-bulk-recovery.js"; grep 
 python3 - <<'PY'
 from pathlib import Path
 import hashlib
-pre=Path('/tmp/b46-stat-final-flow-v2/before/live-index.js').read_text();post=Path('/tmp/b46-stat-final-flow-v2/worker/index-bulk-recovery.js').read_text();a='if (u.pathname === "/referee" && request.method === "GET") {';b='    if (u.pathname === "/fixture-odds" && request.method === "GET") {'
+pre=Path('/tmp/b46-stat-realtime-current-20261006/before/live-index.js').read_text();post=Path('/tmp/b46-stat-realtime-current-20261006/worker/index-bulk-recovery.js').read_text();a='if (u.pathname === "/referee" && request.method === "GET") {';b='    if (u.pathname === "/fixture-odds" && request.method === "GET") {'
 def block(s):
  i=s.find(a);j=s.find(b,i)
  if i<0 or j<0:raise SystemExit('REFEREE_BLOCK_MISSING_POST_PATCH')
  return s[i:j]
-expected=Path('/tmp/b46-stat-final-flow-v2/before/referee-block-sha.txt').read_text().strip();got=hashlib.sha256(block(post).encode()).hexdigest()
+expected=Path('/tmp/b46-stat-realtime-current-20261006/before/referee-block-sha.txt').read_text().strip();got=hashlib.sha256(block(post).encode()).hexdigest()
 if got!=expected or block(pre)!=block(post):raise SystemExit('REFEREE_LOGIC_CHANGED')
 if 'this.ctx.storage.get("signals")' in post or 'this.ctx.storage.put("signals"' in post or 'this.ctx.storage.get("histories")' in post or 'this.ctx.storage.put("histories"' in post:raise SystemExit('LEGACY_SINGLE_VALUE_WORKING_STORE_REMAINS')
 route='if (u.pathname === "/statistics" && request.method === "GET") {\n      await this.scanIfDue();\n      await this.syncStatisticsLedger();\n      return Response.json(await this.statisticsLedgerResponse(u.searchParams.get("limit")));\n    }'
@@ -134,7 +134,7 @@ curlj "$ENGINE_URL/health?probe=$nonce" "$ROOT/after/health.json"; curlj "$ENGIN
 REF_POST_CODE=$(curl -sS -L --max-time 25 -o "$ROOT/after/referee.json" -w '%{http_code}' "$ENGINE_URL/referee?fixtureId=__flow_probe__&market=ft_ah&probe=$nonce" || true); echo "$REF_POST_CODE" > "$ROOT/after/referee-code.txt"; [ -n "$REF_POST_CODE" ] && [ "$REF_POST_CODE" -lt 500 ]
 
 node - <<'NODE'
-const fs=require('fs'),crypto=require('crypto'),r='/tmp/b46-stat-final-flow-v2/',load=(side,n)=>JSON.parse(fs.readFileSync(r+side+'/'+n)),c=load('before','contract.json'),scan=load('after','scan.json'),h=load('after','health.json'),reg=load('after','registry.json'),set=load('after','settings.json'),board=load('after','board.json'),sig=load('after','signals.json'),st=load('after','statistics.json'),pub=load('after','public-statistics.json'),lh=load('after','ledger-health.json'),bh=load('after','bridge-health.json');
+const fs=require('fs'),crypto=require('crypto'),r='/tmp/b46-stat-realtime-current-20261006/',load=(side,n)=>JSON.parse(fs.readFileSync(r+side+'/'+n)),c=load('before','contract.json'),scan=load('after','scan.json'),h=load('after','health.json'),reg=load('after','registry.json'),set=load('after','settings.json'),board=load('after','board.json'),sig=load('after','signals.json'),st=load('after','statistics.json'),pub=load('after','public-statistics.json'),lh=load('after','ledger-health.json'),bh=load('after','bridge-health.json');
 for(const [n,j] of Object.entries({scan,health:h,registry:reg,settings:set,board,signals:sig,statistics:st,ledgerHealth:lh,bridgeHealth:bh}))if(j?.ok!==true)throw Error('POST_'+n.toUpperCase()+'_NOT_OK:'+JSON.stringify(j).slice(0,300));
 if(st.statisticsLedgerVersion!=='signal-ledger-v2-longterm'||st.statisticsSource!=='LEDGER_V2_ONLY'||st.realtimePendingLedgerVersion!=='realtime-pending-ledger-v1'||st.workingStoreVersion!=='chunked-working-store-v1'||st.finalReconcileVersion!=='missing-final-direct-v1'||st.retention!=='LONG_TERM_NO_APPLICATION_EXPIRY')throw Error('POST_STATISTICS_CONTRACT_BAD');
 if(bh.statisticsSource!=='LEDGER_V2_ONLY'||bh.realtimePendingLedgerVersion!=='realtime-pending-ledger-v1'||bh.workingStoreVersion!=='chunked-working-store-v1'||bh.finalReconcileVersion!=='missing-final-direct-v1')throw Error('POST_BRIDGE_CONTRACT_BAD');
@@ -148,6 +148,6 @@ nonce="${GITHUB_RUN_ID:-manual}-front-$(date +%s%N)"; while read -r sha p; do cu
 
 npx --yes wrangler@4.92.0 deployments status --name "$ENGINE_NAME" --json > "$ROOT/after/deployment.json"
 node - <<'NODE'
-const fs=require('fs'),j=JSON.parse(fs.readFileSync('/tmp/b46-stat-final-flow-v2/after/deployment.json')),hits=[];function w(x){if(!x||typeof x!=='object')return;if(Array.isArray(x)){x.forEach(w);return}const id=x.version_id??x.versionId,p=Number(x.percentage??x.percent??x.traffic_percent??x.traffic);if(id&&Number.isFinite(p)&&p>=99.999)hits.push(String(id));Object.values(x).forEach(w)}w(j);const ids=[...new Set(hits)];if(ids.length!==1)throw Error('POST_VERSION_AMBIGUOUS:'+JSON.stringify(ids));console.log('PRODUCTION_ENGINE_VERSION',ids[0]);
+const fs=require('fs'),j=JSON.parse(fs.readFileSync('/tmp/b46-stat-realtime-current-20261006/after/deployment.json')),hits=[];function w(x){if(!x||typeof x!=='object')return;if(Array.isArray(x)){x.forEach(w);return}const id=x.version_id??x.versionId,p=Number(x.percentage??x.percent??x.traffic_percent??x.traffic);if(id&&Number.isFinite(p)&&p>=99.999)hits.push(String(id));Object.values(x).forEach(w)}w(j);const ids=[...new Set(hits)];if(ids.length!==1)throw Error('POST_VERSION_AMBIGUOUS:'+JSON.stringify(ids));console.log('PRODUCTION_ENGINE_VERSION',ids[0]);
 NODE
 DEPLOYED=0; trap - ERR; echo BALL46_STAT_FINAL_FLOW_V2_PRODUCTION_SUCCESS
