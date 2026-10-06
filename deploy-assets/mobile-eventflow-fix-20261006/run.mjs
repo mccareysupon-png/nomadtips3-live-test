@@ -108,7 +108,7 @@ try{
     for(const origin of [directOrigin,'https://ball46.com']){
       for(const [name,want] of Object.entries(expected)){
         let ok=false,last='';
-        for(let i=0;i<36;i++){
+        for(let i=0;i<120;i++){
           assert.equal(await activeVersion(),candidate,'PRODUCTION_MOVED_DURING_VERIFY');
           try{const got=await publicFile('/'+name,undefined,origin);last=sha(got);if(last===want){ok=true;break}}catch{}
           await delay(1250);
