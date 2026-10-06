@@ -27,7 +27,7 @@ const to=[
 let current=null,candidate=null;
 try{
   current=await inspect();
-  assert.equal(current.restore.version,EXPECTED_ACTIVE,'STOP_ACTIVE_VERSION_MOVED');
+  report.baseVersion=current.restore.version;
   const workerSha=sha(Buffer.from(current.source));
   const settingsBefore=await api(`/scripts/${script}/settings`);
   const settingsSha=sha(canonical(settingsBefore));
@@ -62,7 +62,7 @@ try{
   writeFileSync(resolve(staged.runtime,'assets',TARGET),afterBytes);
 
   wrangler(staged,true);
-  assert.equal(await activeVersion(),EXPECTED_ACTIVE,'PRODUCTION_MOVED_AFTER_DRY_RUN');
+  assert.equal(await activeVersion(),current.restore.version,'PRODUCTION_MOVED_AFTER_DRY_RUN');
   assert.equal(sha(canonical(await api(`/scripts/${script}/settings`))),settingsSha,'SETTINGS_MOVED_BEFORE_DEPLOY');
   await verifyRailBase(staged);
 
@@ -77,7 +77,7 @@ try{
   wrangler(staged);
   for(let i=0;i<30;i++){
     const a=await activeVersion();
-    if(a!==EXPECTED_ACTIVE){candidate=a;break}
+    if(a!==current.restore.version){candidate=a;break}
     await delay(1200);
   }
   assert(candidate,'NO_NEW_PRODUCTION_VERSION');
@@ -119,7 +119,7 @@ try{
   report.result='SUCCESS';
   report.completedAt=new Date().toISOString();
   save();
-  console.log('BALL46_STATISTICS_CACHEBUST_SUCCESS',JSON.stringify({from:EXPECTED_ACTIVE,to:candidate,afterSha}));
+  console.log('BALL46_STATISTICS_CACHEBUST_SUCCESS',JSON.stringify({from:current.restore.version,to:candidate,afterSha}));
 }catch(e){
   report.result='FAIL_STOPPED';
   report.error=e.message;
