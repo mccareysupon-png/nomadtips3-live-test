@@ -1,0 +1,45 @@
+name: Restore Ball46 Pre-Incident 20261006
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/restore-ball46-preincident-20261006.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  restore:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      SCRIPT: ball46-production
+      RESTORE_VERSION: 1a69d811-b1f7-4752-b3f3-9e540377e209
+    steps:
+      - name: Restore exact pre-incident production version
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CF_API_TOKEN"
+          test -n "$CF_ACCOUNT_ID"
+          response="$(curl -fsS -X POST             -H "Authorization: Bearer $CF_API_TOKEN"             -H "Content-Type: application/json"             --data "{"strategy":"percentage","versions":[{"version_id":"$RESTORE_VERSION","percentage":100}],"annotations":{"workers/message":"Restore exact Ball46 pre-incident production version"}}"             "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/workers/scripts/$SCRIPT/deployments")"
+          node -e 'const j=JSON.parse(process.argv[1]); if(j.success!==true) throw Error(JSON.stringify(j.errors||j));' "$response"
+
+      - name: Verify exact active version
+        shell: bash
+        run: |
+          set -euo pipefail
+          for n in $(seq 1 20); do
+            json="$(curl -fsS               -H "Authorization: Bearer $CF_API_TOKEN"               "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/workers/scripts/$SCRIPT/deployments?per_page=3")"
+            active="$(node -e 'const j=JSON.parse(process.argv[1]); const v=j?.result?.deployments?.[0]?.versions?.[0]; if(v&&Number(v.percentage)===100) process.stdout.write(String(v.version_id||""));' "$json")"
+            if [ "$active" = "$RESTORE_VERSION" ]; then
+              echo "RESTORE_CONFIRMED=$active"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "RESTORE_NOT_CONFIRMED" >&2
+          exit 1
