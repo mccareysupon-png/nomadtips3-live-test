@@ -1,0 +1,24 @@
+Ball46 Performance Card fast-window fix
+Date: 2026-10-06
+Deploy run: 37478192539
+Work branch: work/ball46-performance-fast-window-20261006
+Pre-change Production version (rollback target): 2c9c6823-c365-4764-b9e9-0f17f4418e82
+Deployed Production version: cc4486a8-9758-48a1-8c2b-7d3288a85d3c
+Index SHA after deploy: 5244ef85b582e5a34e57606736cccdccd4a7dee9057e415b6750b7ee73f08013
+Rollback workflow: .github/workflows/rollback-ball46-performance-fast-window-20261006.yml
+
+Observed data at preflight:
+- ledgerTotal: 3715
+- first page: 500 rows
+- first page ordering: descending by createdAt
+- today: 98 rows
+- yesterday: 259 rows
+- older: 143 rows
+- therefore one page already covers the complete Today+Yesterday window at the time of verification.
+
+Runtime behavior after fix:
+- Read first page.
+- Verify descending createdAt ordering and known timestamps.
+- Stop as soon as rows older than yesterday are reached.
+- If ordering/timestamps do not permit a safe early stop, continue paging until the full Today+Yesterday window is proven covered.
+- Preserve snapshot consistency guard across any additional pages.
