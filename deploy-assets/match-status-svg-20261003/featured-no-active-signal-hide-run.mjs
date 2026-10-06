@@ -23,8 +23,9 @@ try{
   assert.equal(sha(publicDash),sha(lit.value),'WORKER_DASHBOARD_LITERAL_NOT_PUBLIC_STOP');
   let dash=lit.value;
   const dashBefore=sha(dash);
-  assert.equal((dash.match(/if\(!s\)return['\"]No active signal['\"]/g)||[]).length>=1,true,'DASHBOARD_FALLBACK_ANCHOR_MISSING_STOP');
-  dash=dash.replace(/if\(!s\)return['\"]No active signal['\"]/g,"if(!s)return''");
+  const EXACT="patchFeatureSignalHost(signal,sigs,'No active signal')";
+  assert.equal(dash.split(EXACT).length-1,1,'DASHBOARD_EXACT_FALLBACK_ANCHOR_COUNT_BAD');
+  dash=dash.replace(EXACT,"patchFeatureSignalHost(signal,sigs,'')");
   if(!dash.includes(MARK))dash=`/* ${MARK} */\n`+dash;
   const patchedSource=current.source.slice(0,lit.start)+JSON.stringify(dash)+current.source.slice(lit.end);
 
@@ -33,9 +34,9 @@ try{
   let index=readFileSync(indexPath,'utf8');
   const indexBefore=sha(index);
   assert.equal(sha(readFileSync(dashPath)),dashBefore,'STAGED_DASHBOARD_NOT_CURRENT_PRODUCTION');
-  assert(index.includes('data-featured-signal>No active signal</div>')||index.includes('data-featured-signal>\nNo active signal</div>'),'INDEX_FALLBACK_ANCHOR_MISSING_STOP');
-  index=index.replace(/(<div class="feature-signal" data-featured-signal>)No active signal(<\/div>)/,'$1$2');
-  writeFileSync(dashPath,dash);writeFileSync(indexPath,index);
+  const indexHasFallback=index.includes('data-featured-signal>No active signal</div>')||index.includes('data-featured-signal>\nNo active signal</div>');
+  if(indexHasFallback)index=index.replace(/(<div class="feature-signal" data-featured-signal>)No active signal(<\/div>)/,'$1$2');
+  writeFileSync(dashPath,dash);if(indexHasFallback)writeFileSync(indexPath,index);
   const check=spawnSync(process.execPath,['--check',dashPath],{encoding:'utf8'});assert.equal(check.status,0,`DASHBOARD_JS_SYNTAX_FAIL:${check.stderr}`);
   const workerCheck=spawnSync(process.execPath,['--check',`${staged.runtime}/index.js`],{encoding:'utf8'});assert.equal(workerCheck.status,0,`WORKER_JS_SYNTAX_FAIL:${workerCheck.stderr}`);
   const dashAfter=sha(dash),indexAfter=sha(index);assert.notEqual(dashAfter,dashBefore,'DASHBOARD_NOT_CHANGED');if(indexHasFallback)assert.notEqual(indexAfter,indexBefore,'INDEX_NOT_CHANGED');
@@ -45,7 +46,7 @@ try{
   wrangler(staged,true);assert.equal(await activeVersion(),base,'PRODUCTION_MOVED_AFTER_DRY_RUN_STOP');assert.equal(sha(canonical(await api(`/scripts/${script}/settings`))),settingsSha,'SETTINGS_MOVED_BEFORE_DEPLOY_STOP');assert.equal(canonical(await backend()),canonical(report.backendBefore),'BACKEND_MOVED_BEFORE_DEPLOY_STOP');
   try{
     wrangler(staged);for(let i=0;i<30;i++){const a=await activeVersion();if(a!==base){candidate=a;break}await delay(1200)}assert(candidate,'NO_NEW_PRODUCTION_VERSION');report.candidateVersion=candidate;save();
-    let ok=false;for(let i=0;i<36;i++){assert.equal(await activeVersion(),candidate,'PRODUCTION_MOVED_DURING_VERIFY_STOP');try{const d=await publicFile('/dashboard-v2-stage3.js','javascript'),h=await publicFile('/index.html','html');const dt=d.toString('utf8'),ht=h.toString('utf8');if(sha(d)===dashAfter&&sha(h)===indexAfter&&dt.includes(MARK)&&!ht.includes('data-featured-signal>No active signal</div>')){ok=true;break}}catch{}await delay(1250)}assert(ok,'FEATURED_FALLBACK_HIDE_NOT_PUBLIC_STOP');
+    let ok=false;for(let i=0;i<36;i++){assert.equal(await activeVersion(),candidate,'PRODUCTION_MOVED_DURING_VERIFY_STOP');try{const d=await publicFile('/dashboard-v2-stage3.js','javascript'),h=await publicFile('/index.html','html');const dt=d.toString('utf8'),ht=h.toString('utf8');if(sha(d)===dashAfter&&(!indexHasFallback||sha(h)===indexAfter)&&dt.includes(MARK)&&!dt.includes(EXACT)&&!ht.includes('data-featured-signal>No active signal</div>')){ok=true;break}}catch{}await delay(1250)}assert(ok,'FEATURED_FALLBACK_HIDE_NOT_PUBLIC_STOP');
     for(const [p,h] of Object.entries(protectedAssets))assert.equal(sha(await publicFile('/'+p)),h,`UNRELATED_ASSET_CHANGED:${p}`);
     assert.equal(canonical(await backend()),canonical(report.backendBefore),'BACKEND_CHANGED_STOP');
     const settingsAfter=await api(`/scripts/${script}/settings`);report.configuration=verifyConfiguration(settingsBefore,settingsAfter);assert.equal(canonical(await schedules()),canonical(cronsBefore),'CRONS_CHANGED_STOP');
