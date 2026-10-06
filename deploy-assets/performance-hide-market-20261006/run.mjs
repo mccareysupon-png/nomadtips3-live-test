@@ -27,7 +27,7 @@ function patch(html){
   const oldAdd="function addSettled(b,r,o){b[o]++;addOdds(b,r);const m=market(r);if(m)b.markets[m][o]++}";
   const newAdd="function addSettled(b,r,o){b[o]++;addOdds(b,r)}";
   const marketHtml=/function marketHtml\(b\)\{return\['AH','O\/U','1X2'\]\.map\(m=>`<span class="b46-market"><b>\$\{m\}<\/b><span>W \$\{b\.markets\[m\]\.win\} · L \$\{b\.markets\[m\]\.loss\} · P \$\{b\.markets\[m\]\.push\}<\/span><\/span>`\)\.join\(''\)\}/;
-  const oldPaint="const box=$(`[data-b46-markets="${day}"]`,r),h=marketHtml(b);if(box&&box.innerHTML!==h)box.innerHTML=h";
+  const oldPaint='const box=$(`[data-b46-markets="${day}"]`,r),h=marketHtml(b);if(box&&box.innerHTML!==h)box.innerHTML=h';
 
   assert(js.includes(marketFn),'MARKET_FUNCTION_SHAPE_CHANGED');
   assert(js.includes(oldBucket),'BUCKET_SHAPE_CHANGED');
