@@ -1,0 +1,32 @@
+name: Diagnose Ball46 Activity Candidate 20261007
+
+on:
+  push:
+    branches:
+      - work/ball46-signal-activity-strip-20261007
+    paths:
+      - '.github/workflows/diag-ball46-activity-candidate-20261007.yml'
+      - 'deploy-assets/diag-signal-activity-20261007/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/ball46-signal-activity-strip-20261007
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Inspect candidate and current direct assets
+        working-directory: deploy-assets/diag-signal-activity-20261007
+        run: node check-candidate.mjs
