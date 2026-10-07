@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync,writeFileSync,mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { parse } from 'acorn';
-import { inspect,activeVersion,getVersion,api,script,sha,canonical,publicFile,backend,directOrigin } from '../daily-performance-20261005/production.mjs';
+import { inspect,activeVersion,getVersion,api,script,sha,canonical,publicFile,backend,directOrigin,literals } from '../daily-performance-20261005/production.mjs';
 import { schedules,stageCurrentRail,verifyRailBase,wrangler } from '../daily-performance-20261005/rail.mjs';
 
 const BRANCH='work/ball46-signal-activity-strip-20261007';
@@ -19,7 +19,7 @@ const report={
   commit:process.env.GITHUB_SHA,
   branch:process.env.PATCH_SOURCE_BRANCH,
   startedAt:new Date().toISOString(),
-  scope:'Replace the current desktop 6+4 scorebar presentation with a source-level mini activity strip: 4 latest settled results plus every current pending signal. Remove the previous injected flat-card patch from index.html. Patch only current Production index.html, dashboard-v2-stage3.js and dashboard-v2-tune.css. Mobile V3, APIs, Worker source, bindings, schedules, statistics logic and every unrelated asset remain untouched.'
+  scope:'Replace the current desktop 6+4 scorebar presentation with a source-level mini activity strip: 4 latest settled results plus every current pending signal. Remove the previous injected flat-card patch from index.html. Patch current Production index.html plus the dashboard-v2-stage3.js and dashboard-v2-tune.css static assets AND only their matching Worker literals (__B46_MULTI_SIGNAL_STAGE3_JS__, __B46_SCOREBAR_TUNE_CSS__). Mobile V3, APIs, other Worker literals, bindings, schedules, statistics logic and every unrelated asset remain untouched.'
 };
 const save=()=>writeFileSync('audit/report.json',JSON.stringify(report,null,2));
 const delay=ms=>new Promise(r=>setTimeout(r,ms));
@@ -101,6 +101,28 @@ function patchCss(before,newBlock){
   return after;
 }
 
+function patchWorkerSource(source,replacements){
+  const before=literals(source);
+  const targets=Object.keys(replacements);
+  for(const name of targets)assert(before.has(name),'WORKER_LITERAL_MISSING:'+name);
+  const edits=targets.map(name=>({name,...before.get(name),value:replacements[name]})).sort((a,b)=>b.start-a.start);
+  let afterSource=source;
+  for(const e of edits)afterSource=afterSource.slice(0,e.start)+JSON.stringify(e.value)+afterSource.slice(e.end);
+  parse(afterSource,{ecmaVersion:'latest',sourceType:'module'});
+  const after=literals(afterSource);
+  assert.deepEqual([...after.keys()].sort(),[...before.keys()].sort(),'WORKER_LITERAL_SET_CHANGED');
+  const changed=[];
+  for(const [name,entry] of before){
+    const next=after.get(name);
+    assert(next,'WORKER_LITERAL_LOST:'+name);
+    if(entry.value!==next.value)changed.push(name);
+    if(!targets.includes(name))assert.equal(next.value,entry.value,'UNRELATED_WORKER_LITERAL_CHANGED:'+name);
+  }
+  assert.deepEqual(changed.sort(),targets.sort(),'WORKER_CHANGED_LITERAL_SET_BAD');
+  for(const name of targets)assert.equal(after.get(name).value,replacements[name],'WORKER_LITERAL_PATCH_BAD:'+name);
+  return {source:afterSource,before,after,changed};
+}
+
 let current=null,candidate=null;
 async function rollback(){
   if(!current)return;
@@ -159,6 +181,21 @@ try{
   const jsPatched=patchRenderer(before[JS].text);
   const cssPatched=patchCss(before[CSS].text,styleBlock);
 
+  const sourceBeforeLiterals=literals(current.source);
+  assert(sourceBeforeLiterals.has('__B46_MULTI_SIGNAL_STAGE3_JS__'),'CURRENT_WORKER_STAGE3_LITERAL_MISSING');
+  assert(sourceBeforeLiterals.has('__B46_SCOREBAR_TUNE_CSS__'),'CURRENT_WORKER_SCOREBAR_CSS_LITERAL_MISSING');
+  assert.equal(sha(Buffer.from(sourceBeforeLiterals.get('__B46_MULTI_SIGNAL_STAGE3_JS__').value)),before[JS].sha,'CURRENT_WORKER_STAGE3_NOT_PUBLIC');
+  assert.equal(sha(Buffer.from(sourceBeforeLiterals.get('__B46_SCOREBAR_TUNE_CSS__').value)),before[CSS].sha,'CURRENT_WORKER_SCOREBAR_CSS_NOT_PUBLIC');
+
+  const workerPatch=patchWorkerSource(current.source,{
+    '__B46_MULTI_SIGNAL_STAGE3_JS__':jsPatched,
+    '__B46_SCOREBAR_TUNE_CSS__':cssPatched
+  });
+  const patchedSource=workerPatch.source;
+  report.workerBeforeSha=workerBeforeSha;
+  report.workerAfterSha=sha(Buffer.from(patchedSource));
+  report.changedWorkerLiterals=workerPatch.changed;
+
   const patched={
     [INDEX]:Buffer.from(indexPatched.after),
     [JS]:Buffer.from(jsPatched),
@@ -171,7 +208,7 @@ try{
     writeFileSync('audit/'+p.replaceAll('/','__')+'.after',bytes);
   }
 
-  const staged=await stageCurrentRail(current.version,settingsBefore,cronsBefore,current.source);
+  const staged=await stageCurrentRail(current.version,settingsBefore,cronsBefore,patchedSource);
   await verifyRailBase(staged);
   for(const p of [INDEX,JS,CSS])assert.equal(staged.hashes[p],before[p].sha,'STAGED_NOT_CURRENT:'+p);
 
@@ -212,18 +249,18 @@ try{
     report.candidateVersion=candidate;save();
 
     let directOk=false;
-    for(let i=0;i<36;i++){
+    for(let i=0;i<80;i++){
       assert.equal(await activeVersion(),candidate,'PRODUCTION_MOVED_DURING_DIRECT_VERIFY');
       try{
         const checks=await Promise.all([INDEX,JS,CSS].map(async p=>sha(await publicFile('/'+p,undefined,directOrigin))===sha(patched[p])));
         if(checks.every(Boolean)){directOk=true;break}
       }catch{}
-      await delay(1100);
+      await delay(1500);
     }
     assert(directOk,'PATCHED_ASSETS_NOT_DIRECT_PRODUCTION');
 
     let publicOk=false;
-    for(let i=0;i<36;i++){
+    for(let i=0;i<80;i++){
       assert.equal(await activeVersion(),candidate,'PRODUCTION_MOVED_DURING_PUBLIC_VERIFY');
       try{
         const got={};
@@ -236,7 +273,7 @@ try{
           publicOk=true;break;
         }
       }catch{}
-      await delay(1300);
+      await delay(1500);
     }
     assert(publicOk,'PATCHED_ASSETS_NOT_PUBLIC');
 
@@ -263,11 +300,18 @@ try{
     const cm=cv.modules.find(m=>m.name===cv.main_module);
     assert(cm,'FINAL_MAIN_MISSING');
     const finalSource=Buffer.from(cm.content_base64,'base64').toString('utf8');
-    assert.equal(sha(Buffer.from(finalSource)),workerBeforeSha,'WORKER_SOURCE_CHANGED');
+    assert.equal(sha(Buffer.from(finalSource)),sha(Buffer.from(patchedSource)),'FINAL_WORKER_SOURCE_NOT_PATCHED_SOURCE');
+    const finalLiterals=literals(finalSource);
+    assert.equal(finalLiterals.get('__B46_MULTI_SIGNAL_STAGE3_JS__')?.value,jsPatched,'FINAL_STAGE3_LITERAL_BAD');
+    assert.equal(finalLiterals.get('__B46_SCOREBAR_TUNE_CSS__')?.value,cssPatched,'FINAL_SCOREBAR_CSS_LITERAL_BAD');
+    for(const [name,entry] of sourceBeforeLiterals){
+      if(name==='__B46_MULTI_SIGNAL_STAGE3_JS__'||name==='__B46_SCOREBAR_TUNE_CSS__')continue;
+      assert.equal(finalLiterals.get(name)?.value,entry.value,'FINAL_UNRELATED_WORKER_LITERAL_CHANGED:'+name);
+    }
     assert.equal(await activeVersion(),candidate,'FINAL_PRODUCTION_MOVED');
 
     report.finalVersion=candidate;
-    report.workerSourceUntouched=true;
+    report.workerSourceChangedOnlyLiterals=['__B46_MULTI_SIGNAL_STAGE3_JS__','__B46_SCOREBAR_TUNE_CSS__'];
     report.backendUntouched=true;
     report.unrelatedStaticAssetsUntouched=true;
     report.changedAssets=[INDEX,JS,CSS];
