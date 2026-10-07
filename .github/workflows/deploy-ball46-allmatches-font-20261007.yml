@@ -1,0 +1,39 @@
+name: Deploy Ball46 All Matches Font 20261007
+on:
+  push:
+    branches:
+      - work/ball46-match-status-allmatches-20261007
+    paths:
+      - '.github/workflows/deploy-ball46-allmatches-font-20261007.yml'
+permissions:
+  contents: read
+concurrency:
+  group: ball46-production-deploy
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      PATCH_SOURCE_BRANCH: work/ball46-match-status-allmatches-20261007
+      DEPLOY_ENABLED: 'true'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/ball46-match-status-allmatches-20261007
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --ignore-scripts acorn@8
+      - name: Deploy guarded All matches typography
+        working-directory: deploy-assets/match-status-allmatches-20261007
+        run: node deploy.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-allmatches-font-deploy-${{ github.run_id }}
+          path: deploy-assets/match-status-allmatches-20261007/audit
+          retention-days: 30
