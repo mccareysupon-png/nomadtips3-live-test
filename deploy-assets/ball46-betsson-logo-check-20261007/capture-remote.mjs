@@ -1,0 +1,13 @@
+import {writeFileSync,mkdirSync} from 'node:fs';
+import crypto from 'node:crypto';
+const url='https://raw.githubusercontent.com/mccareysupon-png/nomadtips3-live-test/ops/ball46-betsson-affiliate-20261005/assets/affiliate/betsson-logo.png';
+mkdirSync('audit',{recursive:true});
+const r=await fetch(url,{cache:'no-store'});
+if(!r.ok) throw new Error('REMOTE_HTTP:'+r.status);
+const buf=Buffer.from(await r.arrayBuffer());
+writeFileSync('audit/betsson-remote-original.png',buf);
+const head=buf.subarray(0,32).toString('hex');
+const tail=buf.subarray(Math.max(0,buf.length-64)).toString('hex');
+const report={url,http:r.status,contentType:r.headers.get('content-type'),bytes:buf.length,sha256:crypto.createHash('sha256').update(buf).digest('hex'),head,tail};
+writeFileSync('audit/capture.json',JSON.stringify(report,null,2));
+console.log('BALL46_BETSSON_REMOTE_CAPTURE',JSON.stringify(report));
