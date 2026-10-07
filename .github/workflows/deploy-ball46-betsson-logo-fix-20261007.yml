@@ -1,4 +1,5 @@
 name: Deploy Ball46 Betsson Logo Fix 20261007
+# retry with lossless PNG recovery
 on:
   push:
     branches: [main]
@@ -25,6 +26,7 @@ jobs:
         with:
           node-version: '22'
       - run: npm install --no-save --ignore-scripts acorn@8
+      - run: python3 -m pip install pillow
       - name: Replace corrupted Betsson remote logo with clean local asset
         working-directory: deploy-assets/ball46-betsson-logo-fix-20261007
         run: node deploy.mjs
