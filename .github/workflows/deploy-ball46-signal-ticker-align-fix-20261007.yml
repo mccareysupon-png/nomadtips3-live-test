@@ -1,0 +1,54 @@
+name: Deploy Ball46 Signal Ticker Align Fix 20261007
+
+on:
+  push:
+    branches:
+      - work/ball46-signal-ticker-align-fix-20261007
+    paths:
+      - '.github/workflows/deploy-ball46-signal-ticker-align-fix-20261007.yml'
+      - 'deploy-assets/signal-ticker-align-fix-20261007/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ball46-production-signal-ticker-align-fix-20261007
+  cancel-in-progress: false
+
+jobs:
+  guarded-deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      DEPLOY_ENABLED: 'true'
+      PATCH_SOURCE_BRANCH: work/ball46-signal-ticker-align-fix-20261007
+    steps:
+      - name: Checkout exact ticker fix branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.PATCH_SOURCE_BRANCH }}
+          fetch-depth: 1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install parser dependency only
+        run: npm install --no-save --ignore-scripts acorn@8
+
+      - name: Guarded current-Production ticker align deploy
+        working-directory: deploy-assets/signal-ticker-align-fix-20261007
+        run: node run.mjs
+
+      - name: Upload audit and rollback proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-signal-ticker-align-fix-${{ github.run_id }}
+          path: deploy-assets/signal-ticker-align-fix-20261007/audit
+          if-no-files-found: warn
+          retention-days: 30
