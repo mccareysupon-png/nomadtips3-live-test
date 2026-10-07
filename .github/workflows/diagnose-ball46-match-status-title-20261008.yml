@@ -1,0 +1,28 @@
+name: Diagnose Ball46 MATCH STATUS Title 20261008
+on:
+  push:
+    branches:
+      - work/ball46-match-status-title-110-20261008
+    paths:
+      - '.github/workflows/diagnose-ball46-match-status-title-20261008.yml'
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/ball46-match-status-title-110-20261008
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --ignore-scripts acorn@8
+      - name: Inspect current MATCH STATUS title
+        working-directory: deploy-assets/match-status-title-110-20261008
+        run: node diagnose.mjs
