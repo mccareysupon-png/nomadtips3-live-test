@@ -1,35 +1,32 @@
-import { inspect, publicFile, activeVersion } from '../daily-performance-20261005/production.mjs';
+import { inspect, publicFile, activeVersion, literals, sha } from '../daily-performance-20261005/production.mjs';
 
-const base = await inspect();
-console.log('ACTIVE='+base.restore.version);
-const files = new Set(['index.html']);
-const html = (await publicFile('/index.html')).toString('utf8');
-for (const m of html.matchAll(/<script[^>]+src=["']([^"']+)["']/gi)) {
-  const s=m[1].split('?')[0];
-  if (s.startsWith('/') || !s.includes('://')) files.add(s.replace(/^\.\//,'').replace(/^\//,''));
+const current=await inspect();
+const expected='4996cd2c-988a-449f-8791-60a385e1b1b1';
+if(current.restore.version!==expected) throw new Error('PRODUCTION_MOVED:'+current.restore.version);
+
+const files=['singlepage-workspace-343.js','mobile-menu-classic-343.js','workspace-route-guard-343.js'];
+const cache=new Map();
+for(const file of files) cache.set(file,(await publicFile('/'+file)).toString('utf8'));
+const needles=['ball46:workspace-view','data-status-filter','data-stat-market','data-workspace-view','pushState','replaceState','popstate','function set','function apply','workspaceView','scrollTo','scrollTop','scrollY'];
+
+for(const file of files){
+ const source=cache.get(file);
+ console.log('\n=== '+file+' SHA='+sha(source)+' BYTES='+Buffer.byteLength(source)+' ===');
+ for(const needle of needles){
+   let start=0,n=0;
+   while(n<20){
+     const i=source.toLowerCase().indexOf(needle.toLowerCase(),start);
+     if(i<0)break;
+     console.log('\n@@ '+needle+' @'+i+' @@\n'+source.slice(Math.max(0,i-900),Math.min(source.length,i+needle.length+1500)).replace(/\n/g,' '));
+     start=i+needle.length;n++;
+   }
+ }
 }
-console.log('LOCAL_SCRIPTS='+JSON.stringify([...files]));
-
-const needles = [
-  'MATCH STATUS','STATISTICS','STATISTIC','scrollTo','scrollY','scrollTop',
-  'pushState','replaceState','popstate','hashchange','data-view','data-page',
-  'match-status','statistics'
-];
-
-for (const f of files) {
-  let text;
-  try { text = f==='index.html' ? html : (await publicFile('/'+f)).toString('utf8'); }
-  catch(e){ console.log('FETCH_FAIL '+f+' '+e.message); continue; }
-  console.log('\n===FILE '+f+' bytes='+Buffer.byteLength(text)+'===');
-  for (const needle of needles) {
-    let from=0,count=0;
-    while (count<12) {
-      const idx=text.toLowerCase().indexOf(needle.toLowerCase(),from);
-      if(idx<0) break;
-      const a=Math.max(0,idx-420), b=Math.min(text.length,idx+needle.length+700);
-      console.log('\n--- '+needle+' @'+idx+' ---\n'+text.slice(a,b).replace(/\n/g,' '));
-      from=idx+needle.length; count++;
-    }
-  }
+const lit=literals(current.source);
+for(const [name,e] of lit){
+ const h=sha(e.value);
+ for(const file of files){
+   if(h===sha(cache.get(file))) console.log('WORKER_LITERAL_MATCH '+file+' '+name+' '+h);
+ }
 }
 console.log('ACTIVE_END='+await activeVersion());
