@@ -2,26 +2,17 @@ import { inspect, publicFile, activeVersion, sha } from '../daily-performance-20
 
 const current=await inspect();
 console.log('ACTIVE='+current.restore.version);
-const files=['index.html','singlepage-workspace-343.js','dashboard-v2-stage3.js','dashboard-v2-tune.css','dashboard-v2-tune.js'];
-const needles=['search-box','workspace-stable-toolbar-host','board-toolbar','data-search','placeholder=','Search','search'];
-for(const file of files){
-  let source;
-  try{source=(await publicFile('/'+file)).toString('utf8')}catch(e){console.log('FETCH_FAIL '+file+' '+e.message);continue}
-  console.log('\n===FILE '+file+' SHA='+sha(source)+' BYTES='+Buffer.byteLength(source)+'===');
-  const seen=new Set();
-  for(const needle of needles){
-    let pos=0,count=0;
-    while(count<12){
-      const i=source.toLowerCase().indexOf(needle.toLowerCase(),pos);
-      if(i<0)break;
-      const key=Math.floor(i/120);
-      if(!seen.has(key)){
-        seen.add(key);
-        console.log('\n@@ '+needle+' @'+i+' @@\n'+source.slice(Math.max(0,i-900),Math.min(source.length,i+needle.length+1700)).replace(/\n/g,' '));
-      }
-      pos=i+needle.length;
-      count++;
+for(const file of ['index.html','dashboard-v2-tune.css']){
+  const source=(await publicFile('/'+file)).toString('utf8');
+  console.log('FILE='+file+' SHA='+sha(source)+' BYTES='+Buffer.byteLength(source));
+  for(const needle of ['Inter','Nunito Sans','fonts.googleapis','fonts.gstatic','font-family','search-box']){
+    const indexes=[]; let from=0;
+    while(indexes.length<30){
+      const i=source.toLowerCase().indexOf(needle.toLowerCase(),from);
+      if(i<0)break; indexes.push(i); from=i+needle.length;
     }
+    console.log('NEEDLE='+needle+' INDEXES='+JSON.stringify(indexes));
+    for(const i of indexes.slice(0,8)) console.log(source.slice(Math.max(0,i-350),Math.min(source.length,i+650)).replace(/\n/g,' '));
   }
 }
 console.log('ACTIVE_END='+await activeVersion());
