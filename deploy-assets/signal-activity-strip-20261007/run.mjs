@@ -30,6 +30,13 @@ function replaceOnce(text,from,to,label){
   assert.equal(text.indexOf(from,first+1),-1,label+'_DUPLICATE');
   return text.slice(0,first)+to+text.slice(first+from.length);
 }
+function replaceRegexOnce(text,re,to,label){
+  const flags=re.flags.includes('g')?re.flags:re.flags+'g';
+  const global=new RegExp(re.source,flags);
+  const matches=[...text.matchAll(global)];
+  assert.equal(matches.length,1,label+'_COUNT_'+matches.length);
+  return text.replace(new RegExp(re.source,re.flags.replace('g','')),to);
+}
 
 function cleanIndex(before){
   const styleRe=new RegExp('\\n?<!-- '+OLD_MARK+' STYLE START -->[\\s\\S]*?<!-- '+OLD_MARK+' STYLE END -->\\n?','g');
@@ -46,31 +53,32 @@ function cleanIndex(before){
 function patchRenderer(before){
   assert(before.includes('function renderWorkspaceScorebar(){'),'SCOREBAR_RENDERER_MISSING');
   let after=before;
-  after=replaceOnce(
+  after=replaceRegexOnce(
     after,
-    '.slice(0,6); const pending=signalRows.filter',
-    '.slice(0,4); const pending=signalRows.filter',
+    /\.slice\(0,6\);\s*const pending=signalRows\.filter/,
+    '.slice(0,4);\n const pending=signalRows.filter',
     'RECENT_RESULT_CAP'
   );
-  after=replaceOnce(
+  after=replaceRegexOnce(
     after,
-    ').slice(0,4); const makeSettled=x=>',
-    '); const makeSettled=x=>',
+    /\)\.slice\(0,4\);\s*const makeSettled=x=>/,
+    ');\n const makeSettled=x=>',
     'PENDING_CAP'
   );
 
   const startNeedle='const a=recent.map(makeSettled),b=pending.map(makePending);';
-  const endNeedle="} document.addEventListener('ball46:stable-chrome-ready',renderWorkspaceScorebar);";
+  const eventNeedle="document.addEventListener('ball46:stable-chrome-ready',renderWorkspaceScorebar);";
   const start=after.indexOf(startNeedle);
-  const end=after.indexOf(endNeedle,start);
-  assert(start>=0&&end>start,'SCOREBAR_TAIL_NOT_FOUND');
+  const eventIndex=after.indexOf(eventNeedle,start);
+  const end=after.lastIndexOf('}',eventIndex);
+  assert(start>=0&&eventIndex>start&&end>start,'SCOREBAR_TAIL_NOT_FOUND');
   assert.equal(after.indexOf(startNeedle,start+1),-1,'SCOREBAR_TAIL_DUPLICATE');
 
   const replacement=`const a=recent.map(makeSettled),b=pending.map(makePending),items=a.concat(b);const empty='<div class="workspace-scorebar-cell workspace-scorebar-empty"><span>MONITORING SIGNALS</span></div>',itemHtml=(items.length?items:[empty]).join(''),group='<div class="workspace-scorebar-group">'+itemHtml+'</div>',markup='<div class="workspace-scorebar-grid b46-activity-strip"><div class="workspace-scorebar-track">'+group+'</div></div>';if(slot.__b46ScorebarMarkup===markup)return;slot.__b46ScorebarMarkup=markup;slot.innerHTML=markup;requestAnimationFrame(()=>{const viewport=slot.querySelector('.b46-activity-strip'),track=slot.querySelector('.workspace-scorebar-track'),first=slot.querySelector('.workspace-scorebar-group');if(!viewport||!track||!first)return;const shift=first.scrollWidth+6;if(shift>viewport.clientWidth+12){const clone=first.cloneNode(true);clone.classList.add('b46-scorebar-clone');clone.setAttribute('aria-hidden','true');track.appendChild(clone);track.style.setProperty('--b46-strip-shift','-'+shift+'px');track.style.setProperty('--b46-strip-duration',Math.max(20,Math.min(70,shift/28)).toFixed(1)+'s');track.classList.add('is-flowing')}}); `;
   after=after.slice(0,start)+replacement+after.slice(end);
 
-  assert(after.includes('.slice(0,4); const pending=signalRows.filter'),'RECENT_4_NOT_SET');
-  assert(!after.includes(').slice(0,4); const makeSettled=x=>'),'PENDING_STILL_CAPPED');
+  assert(/\.slice\(0,4\);\s*const pending=signalRows\.filter/.test(after),'RECENT_4_NOT_SET');
+  assert(!/\)\.slice\(0,4\);\s*const makeSettled=x=>/.test(after),'PENDING_STILL_CAPPED');
   assert(after.includes('b46-activity-strip')&&after.includes('workspace-scorebar-group')&&after.includes('is-flowing'),'ACTIVITY_RENDERER_INCOMPLETE');
   assert(!after.includes('while(a.length<6)'),'OLD_RESULT_PLACEHOLDERS_PRESENT');
   assert(!after.includes('while(b.length<4)'),'OLD_PENDING_PLACEHOLDERS_PRESENT');
@@ -223,7 +231,7 @@ try{
         if([INDEX,JS,CSS].every(p=>sha(got[p])===sha(patched[p]))){
           const indexText=got[INDEX].toString('utf8'),jsText=got[JS].toString('utf8'),cssText=got[CSS].toString('utf8');
           assert(!indexText.includes(OLD_MARK),'OLD_INDEX_PATCH_PUBLIC');
-          assert(jsText.includes('b46-activity-strip')&&jsText.includes('.slice(0,4); const pending=signalRows.filter'),'NEW_RENDERER_NOT_PUBLIC');
+          assert(jsText.includes('b46-activity-strip')&&/\.slice\(0,4\);\s*const pending=signalRows\.filter/.test(jsText),'NEW_RENDERER_NOT_PUBLIC');
           assert(cssText.includes(NEW_MARK)&&cssText.includes('background:#fff!important'),'NEW_STYLE_NOT_PUBLIC');
           publicOk=true;break;
         }
