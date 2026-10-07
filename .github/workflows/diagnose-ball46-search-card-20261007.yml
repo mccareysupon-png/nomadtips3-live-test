@@ -1,10 +1,11 @@
-name: Diagnose Ball46 Top Search Card 20261007
+name: Diagnose Ball46 Search Card Font 20261007
 on:
   push:
     branches:
-      - work/ball46-scroll-top-current-20261007
+      - work/ball46-search-card-style-20261007
     paths:
       - '.github/workflows/diagnose-ball46-search-card-20261007.yml'
+      - 'deploy-assets/search-card-locate-20261007/diagnose.mjs'
 permissions:
   contents: read
 jobs:
@@ -17,12 +18,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: work/ball46-scroll-top-current-20261007
+          ref: work/ball46-search-card-style-20261007
           fetch-depth: 1
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
       - run: npm install --no-save --ignore-scripts acorn@8
-      - name: Locate top search card in current Production
+      - name: Inspect current Production search-card fonts
         working-directory: deploy-assets/search-card-locate-20261007
         run: node diagnose.mjs
