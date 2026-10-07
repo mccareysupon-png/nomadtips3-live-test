@@ -1,0 +1,30 @@
+name: Preflight Ball46 Betsson Remote Analysis 20261007
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/preflight-ball46-betsson-remote-analysis-20261007.yml'
+permissions:
+  contents: read
+jobs:
+  analyze:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ops/ball46-betsson-logo-check-20261007
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --ignore-scripts pngjs@7
+      - name: Analyze exact remote Betsson asset
+        working-directory: deploy-assets/ball46-betsson-logo-check-20261007
+        run: node analyze-remote.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-betsson-remote-analysis-${{ github.run_id }}
+          path: deploy-assets/ball46-betsson-logo-check-20261007/audit
+          retention-days: 7
