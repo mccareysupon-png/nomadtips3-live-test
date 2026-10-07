@@ -27,6 +27,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Install rollback dependency
+        run: npm install --no-save --ignore-scripts acorn@8
       - name: Restore last good Ball46 production
         working-directory: deploy-assets/signal-ticker-waapi-20261007
         run: node rollback.mjs
