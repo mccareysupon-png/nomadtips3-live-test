@@ -71,3 +71,19 @@ try{
   out.fullPaging={pages,rows,ledgerTotal,error:e.message};
 }
 console.log(JSON.stringify(out,null,2));
+
+
+/* ROOT_VS_INDEX_20261007 */
+{
+  const crypto=await import('node:crypto');
+  const h=s=>crypto.createHash('sha256').update(s).digest('hex');
+  const q=Date.now();
+  const urls=['https://www.ball46.com/?_='+q,'https://www.ball46.com/index.html?_='+q];
+  const rows=[];
+  for(const u of urls){
+    const r=await fetch(u,{cache:'no-store',headers:{'Cache-Control':'no-cache'},redirect:'manual',signal:AbortSignal.timeout(60000)});
+    const t=await r.text();
+    rows.push({url:u,status:r.status,location:r.headers.get('location'),bytes:Buffer.byteLength(t),sha256:h(t),hasFlat:t.includes('b46-flat-result-cards-style'),hasRuntime:t.includes('b46-flat-result-cards-runtime'),hasPcOverride:t.includes('B46_FLAT_RESULT_CARDS_PC_NATIVE_OVERRIDE_20261007')});
+  }
+  console.log(JSON.stringify({ROOT_VS_INDEX_20261007:rows},null,2));
+}
