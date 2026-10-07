@@ -1,0 +1,28 @@
+name: Diagnose Ball46 Top Search Card 20261007
+on:
+  push:
+    branches:
+      - work/ball46-scroll-top-current-20261007
+    paths:
+      - '.github/workflows/diagnose-ball46-search-card-20261007.yml'
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/ball46-scroll-top-current-20261007
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --ignore-scripts acorn@8
+      - name: Locate top search card in current Production
+        working-directory: deploy-assets/search-card-locate-20261007
+        run: node diagnose.mjs
