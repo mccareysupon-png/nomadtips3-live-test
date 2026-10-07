@@ -1,0 +1,231 @@
+/* B46_SIGNAL_ACTIVITY_STRIP_20261007
+   Desktop-only source-level scorebar redesign.
+   4 latest settled results + all current pending signals.
+   Mini cards stay still when they fit; overflow becomes a slow continuous strip. */
+@keyframes b46SignalActivityFlow{
+  from{transform:translate3d(0,0,0)}
+  to{transform:translate3d(var(--b46-strip-shift),0,0)}
+}
+
+@media (min-width:761px){
+  .workspace-scorebar-slot,
+  [data-workspace-scorebar-slot]{
+    height:64px!important;
+    min-height:64px!important;
+    max-height:64px!important;
+    overflow:hidden!important;
+    margin:0!important;
+  }
+
+  .workspace-scorebar-grid.b46-activity-strip{
+    display:block!important;
+    position:relative!important;
+    width:100%!important;
+    height:62px!important;
+    min-height:62px!important;
+    max-height:62px!important;
+    overflow:hidden!important;
+    padding:2px 0!important;
+    margin:0!important;
+    border:0!important;
+    box-shadow:none!important;
+    background:transparent!important;
+  }
+
+  .b46-activity-strip .workspace-scorebar-track{
+    display:flex!important;
+    align-items:stretch!important;
+    width:max-content!important;
+    min-width:100%!important;
+    height:58px!important;
+    gap:0!important;
+    will-change:transform;
+  }
+
+  .b46-activity-strip .workspace-scorebar-track.is-flowing{
+    animation:b46SignalActivityFlow var(--b46-strip-duration,28s) linear infinite;
+  }
+
+  .b46-activity-strip:hover .workspace-scorebar-track.is-flowing,
+  .b46-activity-strip:focus-within .workspace-scorebar-track.is-flowing{
+    animation-play-state:paused;
+  }
+
+  .b46-activity-strip .workspace-scorebar-group{
+    display:flex!important;
+    align-items:stretch!important;
+    flex:0 0 auto!important;
+    width:max-content!important;
+    height:58px!important;
+    gap:6px!important;
+    padding-right:6px!important;
+  }
+
+  .b46-activity-strip .workspace-scorebar-cell{
+    flex:0 0 clamp(205px,22vw,268px)!important;
+    width:clamp(205px,22vw,268px)!important;
+    min-width:205px!important;
+    max-width:268px!important;
+    height:58px!important;
+    min-height:58px!important;
+    max-height:58px!important;
+    box-sizing:border-box!important;
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) auto!important;
+    grid-template-rows:16px 16px 14px!important;
+    column-gap:8px!important;
+    row-gap:1px!important;
+    align-content:center!important;
+    padding:5px 9px!important;
+    margin:0!important;
+    border:0!important;
+    outline:0!important;
+    border-radius:8px!important;
+    box-shadow:none!important;
+    filter:none!important;
+    text-shadow:none!important;
+    overflow:hidden!important;
+    background-image:none!important;
+    color:#fff!important;
+  }
+
+  .b46-activity-strip .workspace-scorebar-cell.workspace-scorebar-signal-result.outcome-win{
+    background:#149447!important;
+    background-color:#149447!important;
+    background-image:none!important;
+  }
+
+  .b46-activity-strip .workspace-scorebar-cell.workspace-scorebar-signal-result.outcome-loss{
+    background:#d43d4f!important;
+    background-color:#d43d4f!important;
+    background-image:none!important;
+  }
+
+  .b46-activity-strip .workspace-scorebar-cell.workspace-scorebar-signal-result.outcome-draw{
+    background:#667085!important;
+    background-color:#667085!important;
+    background-image:none!important;
+  }
+
+  .b46-activity-strip .workspace-scorebar-cell.workspace-scorebar-pending{
+    background:#fff!important;
+    background-color:#fff!important;
+    background-image:none!important;
+    color:#111820!important;
+  }
+
+  .b46-activity-strip .workspace-scorebar-cell.workspace-scorebar-empty{
+    background:#f4f5f7!important;
+    background-color:#f4f5f7!important;
+    color:#475467!important;
+  }
+
+  .b46-activity-strip .workspace-scorebar-cell::before,
+  .b46-activity-strip .workspace-scorebar-cell::after,
+  .b46-activity-strip .workspace-scorebar-cell *::before,
+  .b46-activity-strip .workspace-scorebar-cell *::after{
+    background-image:none!important;
+    box-shadow:none!important;
+    text-shadow:none!important;
+    filter:none!important;
+  }
+
+  .b46-activity-strip .workspace-scorebar-meta{
+    grid-column:1 / -1!important;
+    grid-row:1!important;
+    min-width:0!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:space-between!important;
+    gap:8px!important;
+    margin:0!important;
+    padding:0!important;
+    line-height:16px!important;
+  }
+
+  .b46-activity-strip .workspace-scorebar-meta>i,
+  .b46-activity-strip .workspace-scorebar-meta>b{
+    margin:0!important;
+    padding:0!important;
+    color:inherit!important;
+    font-size:10px!important;
+    line-height:16px!important;
+    font-style:normal!important;
+    font-weight:900!important;
+    letter-spacing:.02em!important;
+    white-space:nowrap!important;
+  }
+
+  .b46-activity-strip .workspace-scorebar-match{
+    grid-column:1 / -1!important;
+    grid-row:2!important;
+    min-width:0!important;
+    display:block!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    white-space:nowrap!important;
+    color:inherit!important;
+    font-size:11px!important;
+    line-height:16px!important;
+    font-weight:800!important;
+  }
+
+  .b46-activity-strip .workspace-scorebar-pick{
+    grid-column:1 / -1!important;
+    grid-row:3!important;
+    min-width:0!important;
+    display:flex!important;
+    align-items:center!important;
+    gap:5px!important;
+    overflow:hidden!important;
+    color:inherit!important;
+    font-size:9px!important;
+    line-height:14px!important;
+    opacity:.92!important;
+  }
+
+  .b46-activity-strip .workspace-scorebar-pick>strong,
+  .b46-activity-strip .workspace-scorebar-pick>em{
+    min-width:0!important;
+    margin:0!important;
+    padding:0!important;
+    color:inherit!important;
+    font-size:9px!important;
+    line-height:14px!important;
+    font-style:normal!important;
+    font-weight:800!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    white-space:nowrap!important;
+  }
+
+  .b46-activity-strip .workspace-scorebar-pick>em{
+    flex:1 1 auto!important;
+  }
+
+  .b46-activity-strip .workspace-scorebar-details{
+    display:none!important;
+  }
+
+  .b46-activity-strip .workspace-scorebar-pending .workspace-scorebar-meta,
+  .b46-activity-strip .workspace-scorebar-pending .workspace-scorebar-match,
+  .b46-activity-strip .workspace-scorebar-pending .workspace-scorebar-pick,
+  .b46-activity-strip .workspace-scorebar-pending .workspace-scorebar-meta>i,
+  .b46-activity-strip .workspace-scorebar-pending .workspace-scorebar-meta>b,
+  .b46-activity-strip .workspace-scorebar-pending .workspace-scorebar-pick>strong,
+  .b46-activity-strip .workspace-scorebar-pending .workspace-scorebar-pick>em{
+    color:#111820!important;
+  }
+}
+
+@media (prefers-reduced-motion:reduce) and (min-width:761px){
+  .b46-activity-strip .workspace-scorebar-track.is-flowing{
+    animation:none!important;
+    transform:none!important;
+  }
+  .workspace-scorebar-grid.b46-activity-strip{
+    overflow-x:auto!important;
+    scrollbar-width:none!important;
+  }
+  .workspace-scorebar-grid.b46-activity-strip::-webkit-scrollbar{display:none!important}
+}
