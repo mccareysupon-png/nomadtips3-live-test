@@ -27,6 +27,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Install parser dependency only
+        run: npm install --no-save --ignore-scripts acorn@8
       - name: Inspect candidate and current direct assets
         working-directory: deploy-assets/diag-signal-activity-20261007
         run: node check-candidate.mjs
