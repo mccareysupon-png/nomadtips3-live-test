@@ -449,3 +449,86 @@ button,input{font:inherit}
 .featured-h-score .score-center small{
   color:#7fd8ff;
 }
+
+/* Daily Performance semantic colors */
+.summary .summary-stat{
+  position:relative;
+  overflow:hidden;
+  border-color:rgba(160,196,225,.12);
+  background:rgba(255,255,255,.018);
+}
+.summary .summary-stat span{
+  color:#8fa4b7;
+}
+.summary .summary-stat b{
+  color:#eaf2f8;
+  font-weight:950;
+}
+.summary .summary-stat.signals{
+  background:rgba(57,168,255,.045);
+  border-color:rgba(57,168,255,.13);
+}
+.summary .summary-stat.signals b{color:#9edfff}
+
+.summary .summary-stat.win{
+  background:rgba(50,209,139,.055);
+  border-color:rgba(50,209,139,.15);
+}
+.summary .summary-stat.win span,
+.summary .summary-stat.win b{color:#79e9ae}
+
+.summary .summary-stat.loss{
+  background:rgba(255,102,119,.055);
+  border-color:rgba(255,102,119,.15);
+}
+.summary .summary-stat.loss span,
+.summary .summary-stat.loss b{color:#ff8b99}
+
+.summary .summary-stat.push{
+  background:rgba(160,196,225,.035);
+  border-color:rgba(160,196,225,.12);
+}
+.summary .summary-stat.push b{color:#cbd6df}
+
+.summary .summary-stat.half-win{
+  background:rgba(50,209,139,.032);
+  border-color:rgba(50,209,139,.10);
+}
+.summary .summary-stat.half-win span{color:#8fb9a8}
+.summary .summary-stat.half-win b{color:#9ed8bd}
+
+.summary .summary-stat.half-loss{
+  background:rgba(255,102,119,.032);
+  border-color:rgba(255,102,119,.10);
+}
+.summary .summary-stat.half-loss span{color:#b9949a}
+.summary .summary-stat.half-loss b{color:#dda7ae}
+
+.summary .summary-stat.pending{
+  background:rgba(244,196,92,.055);
+  border-color:rgba(244,196,92,.15);
+}
+.summary .summary-stat.pending span,
+.summary .summary-stat.pending b{color:#ffd987}
+
+.summary .summary-stat.rate-good{
+  background:rgba(50,209,139,.055);
+  border-color:rgba(50,209,139,.15);
+}
+.summary .summary-stat.rate-good b{color:#79e9ae}
+
+.summary .summary-stat.rate-mid{
+  background:rgba(244,196,92,.05);
+  border-color:rgba(244,196,92,.14);
+}
+.summary .summary-stat.rate-mid b{color:#f6cf78}
+
+.summary .summary-stat.rate-bad{
+  background:rgba(255,102,119,.05);
+  border-color:rgba(255,102,119,.14);
+}
+.summary .summary-stat.rate-bad b{color:#ff8b99}
+
+.summary .summary-stat.pnl-card.pos b{color:var(--green)}
+.summary .summary-stat.pnl-card.neg b{color:var(--red)}
+.summary .summary-stat.pnl-card.neutral b{color:#9eb0bf}

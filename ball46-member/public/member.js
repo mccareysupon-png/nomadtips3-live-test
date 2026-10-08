@@ -134,24 +134,27 @@ function renderTabs(){
 
 function renderSummary(){
   const s=currentStats();
+  const rate=Number(s.winRate);
+  const rateClass=!Number.isFinite(rate)?'neutral':rate>=55?'rate-good':rate<45?'rate-bad':'rate-mid';
   const items=[
-    ['SIGNALS',s.signals],
-    ['WIN',s.win],
-    ['LOSS',s.loss],
-    ['PUSH',s.push],
-    ['HALF WIN',s.halfWin],
-    ['HALF LOSS',s.halfLoss],
-    ['PENDING',s.pending],
-    ['WIN RATE',fmtPct(s.winRate)]
+    ['SIGNALS',s.signals,'signals'],
+    ['WIN',s.win,'win'],
+    ['LOSS',s.loss,'loss'],
+    ['PUSH',s.push,'push'],
+    ['HALF WIN',s.halfWin,'half-win'],
+    ['HALF LOSS',s.halfLoss,'half-loss'],
+    ['PENDING',s.pending,'pending'],
+    ['WIN RATE',fmtPct(s.winRate),rateClass]
   ];
   summary.replaceChildren();
-  for(const [label,value] of items){
-    const box=node('div','stat');
+  for(const [label,value,kind] of items){
+    const box=node('div','stat summary-stat '+kind);
     box.append(node('span','',label),node('b','',String(value)));
     summary.append(box);
   }
-  const pnlBox=node('div','stat');
-  pnlBox.append(node('span','','P/L TODAY'),node('b','pnl '+(s.pnl>=0?'pos':'neg'),fmtPnl(s.pnl)));
+  const pnlKind=s.pnl>0?'pos':s.pnl<0?'neg':'neutral';
+  const pnlBox=node('div','stat summary-stat pnl-card '+pnlKind);
+  pnlBox.append(node('span','','P/L TODAY'),node('b','pnl '+pnlKind,fmtPnl(s.pnl)));
   summary.append(pnlBox);
 }
 
