@@ -77,6 +77,12 @@ jobs:
             eventHistory,status,result,finalScore,finalCorners,finalCards,settledAt
           }' /tmp/statistics.json
 
+          echo "=== EVENT FLOW HISTORY LIVE ==="
+          LATEST_FIXTURE="$(jq -r '.rows[0].fixtureId // empty' /tmp/statistics.json)"
+          if [ -n "$LATEST_FIXTURE" ]; then
+            curl -fsS --max-time 30 -G -H 'Cache-Control: no-cache'               --data-urlencode "fixtureId=$LATEST_FIXTURE"               --data-urlencode 'window=10'               --data-urlencode "member_probe=${GITHUB_RUN_ID}"               "$BASE/api/engine/history" -o /tmp/history.json
+            jq -c '{ok,version,fixtureId,retainedMinutes,maxRows,pressureWindowMinutes,rowCount:(.rows|length),pressureCount:(.pressure|length),rowKeys:(.rows[0] // {} | keys),pressureKeys:(.pressure[0] // {} | keys)}' /tmp/history.json
+          fi
           echo "=== BOARD TOP LEVEL ==="
           jq -c 'keys' /tmp/board.json
           echo "=== BOARD COUNT ==="
