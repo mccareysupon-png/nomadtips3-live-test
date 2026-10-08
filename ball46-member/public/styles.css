@@ -1522,3 +1522,118 @@ body.page-member:before{
     background-position:center top;
   }
 }
+
+/* Stable competition table geometry across market switches */
+.signal-table{
+  table-layout:fixed;
+  width:100%;
+  min-width:1040px;
+}
+.signal-table col.col-detected{width:7%}
+.signal-table col.col-match{width:21%}
+.signal-table col.col-live-score{width:13%}
+.signal-table col.col-market{width:7%}
+.signal-table col.col-selection{width:12%}
+.signal-table col.col-odds{width:7%}
+.signal-table col.col-entry{width:12%}
+.signal-table col.col-bookmaker{width:9%}
+.signal-table col.col-result{width:7%}
+.signal-table col.col-pnl{width:5%}
+
+.signal-table th,
+.signal-row>td{
+  box-sizing:border-box;
+  min-width:0;
+}
+.signal-table th{
+  height:38px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.signal-row>td{
+  height:78px;
+  overflow:hidden;
+}
+.signal-row>td:nth-child(1),
+.signal-row>td:nth-child(4),
+.signal-row>td:nth-child(5),
+.signal-row>td:nth-child(6),
+.signal-row>td:nth-child(8),
+.signal-row>td:nth-child(9),
+.signal-row>td:nth-child(10){
+  white-space:nowrap;
+  text-overflow:ellipsis;
+}
+.signal-table .match{
+  overflow:hidden;
+}
+.signal-table .match strong,
+.signal-table .match small{
+  width:100%;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.signal-table .match strong{
+  line-height:1.2;
+}
+.live-score-cell{
+  min-width:0;
+  overflow:hidden;
+}
+.live-score-cell .badge,
+.live-score-cell .live-score-value{
+  max-width:100%;
+}
+.market-evidence{
+  width:100%;
+  min-height:10px;
+  overflow:hidden;
+  white-space:nowrap;
+  text-overflow:ellipsis;
+}
+.entry-cell{
+  min-width:0;
+  overflow:hidden;
+}
+.entry-cell>strong{
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.entry-cell>small{
+  min-height:21px;
+  max-height:21px;
+  overflow:hidden;
+  display:-webkit-box;
+  -webkit-box-orient:vertical;
+  -webkit-line-clamp:2;
+  line-clamp:2;
+}
+.result-cell .badge{
+  max-width:100%;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.signal-row .pnl{
+  white-space:nowrap;
+}
+
+/* The expanded row must span the fixed grid without participating in sizing. */
+.signal-detail-row>td{
+  width:auto;
+  max-width:none;
+}
+.signal-detail-row .match-insight{
+  width:100%;
+  min-width:0;
+  max-width:100%;
+}
+
+@media(max-width:680px){
+  .signal-table{
+    min-width:1040px;
+  }
+}
