@@ -220,49 +220,210 @@ function signalChips(fixtureId){
   return wrap;
 }
 
-function flowChart(pressure){
-  const wrap=node('div','event-flow');
-  const rows=Array.isArray(pressure)?pressure.slice(-48):[];
-  if(!rows.length){
+function clamp(v,min,max){return Math.max(min,Math.min(max,v))}
+function svgNode(tag,attrs={}){
+  const el=document.createElementNS('http://www.w3.org/2000/svg',tag);
+  for(const [k,v] of Object.entries(attrs)) el.setAttribute(k,String(v));
+  return el;
+}
+function pressurePoints(pressure,current){
+  const out=[];
+  for(const p of Array.isArray(pressure)?pressure:[]){
+    const minute=Number(p?.minute),home=Number(p?.home),away=Number(p?.away);
+    if(!Number.isFinite(minute)||!Number.isFinite(home)||!Number.isFinite(away)||minute<0||minute>current+3) continue;
+    const row={minute,home:clamp(home,1,100),away:clamp(away,1,100)};
+    const last=out[out.length-1];
+    if(last&&Math.abs(last.minute-minute)<.001) out[out.length-1]=row;
+    else out.push(row);
+  }
+  return out.sort((a,b)=>a.minute-b.minute);
+}
+function pressureAt(points,minute){
+  if(!points.length) return {home:50,away:50};
+  let a=points[0],b=points[points.length-1];
+  for(let i=0;i<points.length;i++){
+    if(points[i].minute<=minute) a=points[i];
+    if(points[i].minute>=minute){b=points[i];break}
+  }
+  if(a===b||Math.abs(b.minute-a.minute)<.001) return {home:a.home,away:a.away};
+  const t=clamp((minute-a.minute)/(b.minute-a.minute),0,1);
+  return {home:a.home+(b.home-a.home)*t,away:a.away+(b.away-a.away)*t};
+}
+function eventShortType(type){
+  const x=String(type||'').toLowerCase();
+  if(x.includes('goal')) return 'G';
+  if(x.includes('red')) return 'R';
+  if(x.includes('yellow')) return 'Y';
+  if(x.includes('corner')) return 'C';
+  if(x.includes('penalty')) return 'P';
+  if(x.includes('sub')) return 'S';
+  return '•';
+}
+function eventSide(e,featured){
+  const team=String(e?.team||'').trim().toLowerCase();
+  if(team&&team===String(featured?.home||'').trim().toLowerCase()) return 'home';
+  if(team&&team===String(featured?.away||'').trim().toLowerCase()) return 'away';
+  return null;
+}
+function eventFlowChart(detail,fixtureId){
+  const wrap=node('div','member-flow');
+  const pressure=detail?.eventFlow?.pressure||[];
+  const featured=detail?.featured||null;
+  const signals=state.payload.signals.filter(s=>s.fixtureId===fixtureId);
+  const maxPressureMinute=pressure.reduce((m,p)=>Math.max(m,Number(p?.minute)||0),0);
+  const maxSignalMinute=signals.reduce((m,s)=>Math.max(m,Number(s?.signalMinute)||0),0);
+  const maxEventMinute=(featured?.events||[]).reduce((m,e)=>Math.max(m,Number(e?.minute)||0),0);
+  const current=Math.max(1,Math.round(Math.max(Number(featured?.minute)||0,maxPressureMinute,maxSignalMinute,maxEventMinute)));
+  const points=pressurePoints(pressure,current);
+
+  const head=node('div','expand-card-head member-flow-head');
+  const left=node('div','');
+  left.append(node('span','','EVENT FLOW'),node('b','',`0' → ${current}' · ${scoreText(featured?.score)}`));
+  head.append(left,node('small','','Attack pressure · 1–100% · Mirrored'));
+  wrap.append(head);
+
+  if(!points.length){
     wrap.append(node('div','insight-empty','Event Flow is not available for this match.'));
     return wrap;
   }
-  const max=Math.max(1,...rows.flatMap(p=>[Number(p.home)||0,Number(p.away)||0]));
-  const bars=node('div','flow-bars');
-  for(const p of rows){
-    const point=node('div','flow-point');
-    point.title=`${p.minute??'—'}' · HOME ${p.home??'—'} · AWAY ${p.away??'—'}`;
-    const h=node('i','flow-home');
-    const a=node('i','flow-away');
-    h.style.height=Math.max(3,Math.round(((Number(p.home)||0)/max)*42))+'px';
-    a.style.height=Math.max(3,Math.round(((Number(p.away)||0)/max)*42))+'px';
-    point.append(h,a);
-    bars.append(point);
-  }
-  wrap.append(bars);
-  const legend=node('div','flow-legend');
-  legend.append(node('span','home','HOME PRESSURE'),node('span','away','AWAY PRESSURE'));
+
+  const last=points[points.length-1];
+  const legend=node('div','expand-flow-legend');
+  const homeLeg=node('span','home'); homeLeg.append(node('i',''),document.createTextNode((featured?.home||'HOME')+' '),node('b','',Math.round(last.home)+'%'));
+  const awayLeg=node('span','away'); awayLeg.append(node('i',''),document.createTextNode((featured?.away||'AWAY')+' '),node('b','',Math.round(last.away)+'%'));
+  legend.append(homeLeg,awayLeg,node('small','',points.length+' points · Ball46 mirror'));
   wrap.append(legend);
+
+  const chart=node('div','expand-flow-chart member-flow-chart');
+  const w=1000,h=232,pad={left:42,right:18,top:14,bottom:30};
+  const xFor=minute=>pad.left+(clamp(minute,0,current)/Math.max(1,current))*(w-pad.left-pad.right);
+  const yFor=value=>pad.top+((100-clamp(value,1,100))/99)*(h-pad.top-pad.bottom);
+  const svg=svgNode('svg',{viewBox:`0 0 ${w} ${h}`,preserveAspectRatio:'none',role:'img','aria-label':'Ball46 mirrored Event Flow'});
+
+  const defs=svgNode('defs');
+  const gh=svgNode('linearGradient',{id:'member-home-'+fixtureId,x1:'0',y1:'0',x2:'0',y2:'1'});
+  gh.append(svgNode('stop',{offset:'0%','stop-color':'#31b878','stop-opacity':'.22'}),svgNode('stop',{offset:'100%','stop-color':'#31b878','stop-opacity':'0'}));
+  const ga=svgNode('linearGradient',{id:'member-away-'+fixtureId,x1:'0',y1:'0',x2:'0',y2:'1'});
+  ga.append(svgNode('stop',{offset:'0%','stop-color':'#e2c94c','stop-opacity':'.20'}),svgNode('stop',{offset:'100%','stop-color':'#e2c94c','stop-opacity':'0'}));
+  defs.append(gh,ga); svg.append(defs);
+
+  for(const v of [100,75,50,25,1]){
+    const y=yFor(v);
+    svg.append(svgNode('line',{x1:pad.left,y1:y,x2:w-pad.right,y2:y,class:'expand-flow-grid'+(v===50?' mid':'')}));
+    const t=svgNode('text',{x:pad.left-7,y:y+3,'text-anchor':'end',class:'expand-flow-axis'});t.textContent=v+'%';svg.append(t);
+  }
+  const step=current<=30?5:current<=60?10:15;
+  const marks=[0];for(let m=step;m<current;m+=step)marks.push(m);if(!marks.includes(current))marks.push(current);
+  for(const m of marks){
+    const x=xFor(m);
+    svg.append(svgNode('line',{x1:x,y1:pad.top,x2:x,y2:h-pad.bottom,class:'expand-flow-grid v'}));
+    const t=svgNode('text',{x,y:h-7,'text-anchor':'middle',class:'expand-flow-axis'});t.textContent=m+"'";svg.append(t);
+  }
+
+  const path=(key)=>points.map((p,i)=>(i?'L':'M')+' '+xFor(p.minute).toFixed(1)+' '+yFor(p[key]).toFixed(1)).join(' ');
+  const area=(key)=>{
+    const base=yFor(1),first=xFor(points[0].minute),lastX=xFor(points[points.length-1].minute);
+    return 'M '+first.toFixed(1)+' '+base.toFixed(1)+' '+points.map(p=>'L '+xFor(p.minute).toFixed(1)+' '+yFor(p[key]).toFixed(1)).join(' ')+' L '+lastX.toFixed(1)+' '+base.toFixed(1)+' Z';
+  };
+  svg.append(
+    svgNode('path',{d:area('home'),fill:'url(#member-home-'+fixtureId+')',class:'expand-flow-area'}),
+    svgNode('path',{d:area('away'),fill:'url(#member-away-'+fixtureId+')',class:'expand-flow-area'}),
+    svgNode('path',{d:path('home'),class:'expand-flow-line home'}),
+    svgNode('path',{d:path('away'),class:'expand-flow-line away'})
+  );
+
+  svg.append(
+    svgNode('circle',{cx:xFor(last.minute),cy:yFor(last.home),r:'2.4',class:'expand-flow-end home'}),
+    svgNode('circle',{cx:xFor(last.minute),cy:yFor(last.away),r:'2.4',class:'expand-flow-end away'})
+  );
+
+  for(const s of signals){
+    const minute=Number(s.signalMinute);
+    if(!Number.isFinite(minute)||minute<0||minute>current+.75) continue;
+    const p=pressureAt(points,minute);
+    const pick=String(s.selection||'').toLowerCase();
+    const side=pick.includes('home')?'home':pick.includes('away')?'away':null;
+    const y=yFor(side?p[side]:(p.home+p.away)/2),x=xFor(minute);
+    const title=[minute+"'",s.market,s.selection,fmtLine(s),fmtOdds(s.odds),s.bookmaker].filter(Boolean).join(' · ');
+    const g=svgNode('g',{class:'member-flow-signal'});
+    const tt=svgNode('title');tt.textContent=title;g.append(tt);
+    g.append(svgNode('line',{x1:x,y1:pad.top,x2:x,y2:h-pad.bottom,class:'member-flow-signal-line'}));
+    g.append(svgNode('circle',{cx:x,cy:y,r:'5.4',class:'member-flow-signal-dot'}));
+    const label=svgNode('text',{x:clamp(x+8,pad.left+5,w-pad.right-150),y:clamp(y-8,pad.top+12,h-pad.bottom-10),class:'member-flow-signal-label'});label.textContent='SIGNAL '+minute+"'";g.append(label);
+    svg.append(g);
+  }
+
+  for(const e of featured?.events||[]){
+    const minute=Number(e?.minute);
+    if(!Number.isFinite(minute)||minute<0||minute>current+.75) continue;
+    const p=pressureAt(points,minute),side=eventSide(e,featured);
+    const y=yFor(side?p[side]:(p.home+p.away)/2),x=xFor(minute);
+    const g=svgNode('g',{class:'member-flow-event '+(side||'neutral')});
+    const tt=svgNode('title');tt.textContent=[minute+"'",e.type,e.team].filter(Boolean).join(' · ');g.append(tt);
+    g.append(svgNode('circle',{cx:x,cy:y,r:'3.6',class:'member-flow-event-dot'}));
+    const t=svgNode('text',{x:x,y:y-7,'text-anchor':'middle',class:'member-flow-event-label'});t.textContent=eventShortType(e.type);g.append(t);
+    svg.append(g);
+  }
+
+  chart.append(svg);wrap.append(chart);
+
+  const key=node('div','member-flow-key');
+  key.append(node('span','signal','● SIGNAL'),node('span','event','● G goal · Y/R card · C corner'));
+  wrap.append(key);
   return wrap;
 }
 
-function recentEvents(events){
-  const wrap=node('div','recent-events');
-  const list=Array.isArray(events)?events.slice(0,8):[];
-  if(!list.length){
-    wrap.append(node('div','insight-empty','No recent match events in the current Ball46 snapshot.'));
-    return wrap;
+function halfScoreText(score){
+  if(!score||typeof score!=='object'||score.halfHome==null||score.halfAway==null) return '—';
+  return String(score.halfHome)+'-'+String(score.halfAway);
+}
+function cardsText(cards){
+  if(!cards?.home||!cards?.away) return '—';
+  return `${cards.home.yellow??0}Y/${cards.home.red??0}R · ${cards.away.yellow??0}Y/${cards.away.red??0}R`;
+}
+function featuredHorizontal(detail,selected){
+  const f=detail?.featured;
+  const card=node('section','featured-horizontal');
+
+  const meta=node('div','featured-h-meta');
+  meta.append(node('span','eyebrow','FEATURED MATCH'),node('strong','',f?.league||selected.league));
+  meta.append(node('span','badge '+statusClass(f?'LIVE':selected.state),f?.status||selected.state));
+
+  const score=node('div','featured-h-score');
+  const home=node('div','team home');home.append(node('span','','HOME'),node('b','',f?.home||selected.home));
+  const center=node('div','score-center');
+  center.append(node('strong','',scoreText(f?.score??selected.mirrorScore??selected.entryScore)),node('small','',f?.minute==null?(selected.signalMinute==null?'—':selected.signalMinute+"'"):f.minute+"'"));
+  const away=node('div','team away');away.append(node('span','','AWAY'),node('b','',f?.away||selected.away));
+  score.append(home,center,away);
+
+  const facts=node('div','featured-h-facts');
+  const factData=[
+    ['HALF-TIME',halfScoreText(f?.score??selected.entryScore)],
+    ['CORNERS',metricValue(f?.corners??selected.entryCorners)],
+    ['CARDS H · A',cardsText(f?.cards??selected.entryCards)]
+  ];
+  for(const [label,value] of factData){const x=node('div','');x.append(node('span','',label),node('b','',value));facts.append(x)}
+
+  const signal=node('div','featured-h-signal');
+  signal.append(
+    node('span','','SIGNAL'),
+    node('b','',`${selected.signalMinute??'—'}' · ${selected.market} · ${selected.selection}${fmtLine(selected)?' '+fmtLine(selected):''} · ${fmtOdds(selected.odds)} · ${selected.bookmaker}`)
+  );
+
+  const stats=f?.statistics||selected.entryStats;
+  const statRow=node('div','featured-h-stats');
+  for(const [label,value] of [
+    ['SOT',stats?.shotsOnTarget],
+    ['SHOT OFF',stats?.shotsOffTarget],
+    ['ATTACKS',stats?.attacks],
+    ['DANGEROUS',stats?.dangerousAttacks],
+    ['POSSESSION',stats?.possession]
+  ]){
+    const x=node('div','');x.append(node('span','',label),node('b','',metricValue(value)));statRow.append(x);
   }
-  for(const e of list){
-    const item=node('div','recent-event');
-    item.append(
-      node('time','',e.minute==null?'—':e.minute+"'"),
-      node('strong','',e.type||'Match event'),
-      node('span','',e.team||'')
-    );
-    wrap.append(item);
-  }
-  return wrap;
+
+  card.append(meta,score,facts,signal,statRow);
+  return card;
 }
 
 function renderInsight(host,fixtureId){
@@ -272,51 +433,20 @@ function renderInsight(host,fixtureId){
   if(!selected) return;
 
   const detail=state.detailCache.get(fixtureId);
-  const head=node('div','insight-head');
-  const title=node('div','');
-  title.append(node('span','eyebrow','FEATURED MATCH'),node('h3','',selected.home+' - '+selected.away));
-  const status=node('span','badge '+statusClass(detail?.featured?.status?'LIVE':selected.state),detail?.featured?.status||selected.state);
-  head.append(title,status);
-  host.append(head,signalChips(fixtureId));
-
-  const snapshot=node('section','insight-panel');
-  const snapshotHead=node('div','insight-panel-head');
-  snapshotHead.append(
-    node('div','insight-label','SIGNAL SNAPSHOT'),
-    node('strong','',`${selected.signalMinute??'—'}' · ${scoreText(selected.entryScore)} · ${selected.market} ${selected.selection}${fmtLine(selected)?' '+fmtLine(selected):''} ${fmtOdds(selected.odds)}`)
-  );
-  snapshot.append(snapshotHead,statGrid(selected.entryStats,selected.entryCorners,selected.entryCards));
-  host.append(snapshot);
+  host.append(signalChips(fixtureId));
 
   if(!detail){
-    host.append(node('div','insight-loading','Loading Featured Match and Event Flow from Ball46…'));
+    host.append(featuredHorizontal(null,selected));
+    host.append(node('div','insight-loading','Loading Featured Match and Event Flow from Ball46 Mirror…'));
     return;
   }
 
-  if(detail.featured){
-    const f=detail.featured;
-    const live=node('section','insight-panel live-context');
-    const h=node('div','insight-panel-head');
-    const minute=f.minute==null?'—':f.minute+"'";
-    h.append(node('div','insight-label','LIVE / CURRENT MATCH'),node('strong','',`${minute} · ${scoreText(f.score)} · ${f.status||'—'}`));
-    live.append(h,statGrid(f.statistics,f.corners,f.cards));
-    host.append(live);
-  }else{
-    const note=node('div','insight-note','Current Featured Match is no longer on the live board. Signal-time snapshot remains available above.');
-    host.append(note);
+  host.append(featuredHorizontal(detail,selected));
+  host.append(eventFlowChart(detail,fixtureId));
+
+  if(!detail.featured){
+    host.append(node('div','insight-note','Match is no longer on the current live board. Featured Match falls back to the recorded Signal snapshot; Event Flow remains mirrored from Ball46 history when available.'));
   }
-
-  const flowPanel=node('section','insight-panel');
-  const flowHead=node('div','insight-panel-head');
-  flowHead.append(node('div','insight-label','EVENT FLOW'),node('strong','',detail.eventFlow?.pressureWindowMinutes?`Pressure · ${detail.eventFlow.pressureWindowMinutes} min window`:'Ball46 history'));
-  flowPanel.append(flowHead,flowChart(detail.eventFlow?.pressure||[]));
-  host.append(flowPanel);
-
-  const eventsPanel=node('section','insight-panel');
-  const eventsHead=node('div','insight-panel-head');
-  eventsHead.append(node('div','insight-label','RECENT EVENTS'),node('strong','',detail.featured?'Current match snapshot':'No live-board snapshot'));
-  eventsPanel.append(eventsHead,recentEvents(detail.featured?.events||[]));
-  host.append(eventsPanel);
 }
 
 async function ensureDetail(fixtureId){
