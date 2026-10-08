@@ -23,6 +23,7 @@ jobs:
           BASE="https://www.ball46.com"
           curl -fsS --max-time 30 -H 'Cache-Control: no-cache' "$BASE/api/engine/signals?member_probe=${GITHUB_RUN_ID}" -o /tmp/signals.json
           curl -fsS --max-time 30 -H 'Cache-Control: no-cache' "$BASE/api/engine/board?member_probe=${GITHUB_RUN_ID}" -o /tmp/board.json
+          curl -fsS --max-time 30 -H 'Cache-Control: no-cache' "$BASE/api/engine/statistics?member_probe=${GITHUB_RUN_ID}" -o /tmp/statistics.json
 
           echo "=== SIGNAL TOP LEVEL ==="
           jq -c 'keys' /tmp/signals.json
@@ -37,6 +38,20 @@ jobs:
             selection,line,odds,price,bookmaker,home,away,league,
             liveStatistics,liveCorners,result,status
           }' /tmp/signals.json
+
+          echo "=== STATISTICS TOP LEVEL ==="
+          jq -c 'keys' /tmp/statistics.json
+          echo "=== STATISTICS COUNTS ==="
+          jq -c '{ok,total,win,loss,push,halfWin,halfLoss,unresolved,winRate,rowCount:(.rows|length)}' /tmp/statistics.json
+          echo "=== STATISTICS LATEST ROW KEYS ==="
+          jq -c '.rows[0] // {} | keys' /tmp/statistics.json
+          echo "=== STATISTICS LATEST ROW SANITIZED ==="
+          jq -c '.rows[0] // {} | {
+            id,fixtureId,createdAt,entryMinute,minute,entryScore,scoreAt,
+            market,providerMarket,marketLabel,selection,line,odds,bookmaker,
+            home,away,league,entryCorners,entryCards,entryStats,statisticsAtEntry,
+            eventHistory,status,result,finalScore,finalCorners,finalCards,settledAt
+          }' /tmp/statistics.json
 
           echo "=== BOARD TOP LEVEL ==="
           jq -c 'keys' /tmp/board.json
