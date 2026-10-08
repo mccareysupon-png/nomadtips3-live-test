@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <title>Ball46 Member Signal Center</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="shell topbar-inner">
+    <a class="brand" href="/pricing">ball<span>46</span></a>
+    <nav class="nav" aria-label="Member navigation">
+      <a href="/pricing">Membership</a>
+      <a href="/member">Signal Center</a>
+    </nav>
+    <div class="member-chip" aria-label="Current member">
+      <div class="member-avatar" id="memberAvatar">J</div>
+      <div class="member-copy"><strong id="memberName">JAY</strong><span id="memberStatus">MEMBER · ACTIVE</span></div>
+    </div>
+  </div>
+</header>
+
+<main class="shell page member-layout">
+  <section class="card card-pad">
+    <div class="member-head">
+      <div>
+        <div class="eyebrow">Ball46 Member</div>
+        <h1>Daily Signal Center</h1>
+        <p>Today's Ball46 signal board · newest signal first · resets at the daily cutoff</p>
+      </div>
+      <div class="live-pill">TODAY · LIVE DATA</div>
+    </div>
+  </section>
+
+  <section class="card card-pad">
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <div class="market-tabs" id="marketTabs" aria-label="Markets"></div>
+      </div>
+      <div class="toolbar-right">
+        <input class="input search" id="searchInput" type="search" placeholder="Search team or league">
+        <select class="status-select" id="statusFilter" aria-label="Signal status">
+          <option value="ALL">All status</option>
+          <option value="LIVE">Live</option>
+          <option value="WAITING">Waiting</option>
+          <option value="FINISHED">Finished</option>
+        </select>
+      </div>
+    </div>
+  </section>
+
+  <section class="summary" id="dailySummary" aria-label="Daily performance"></section>
+
+  <section class="card table-wrap">
+    <table class="signal-table">
+      <thead>
+        <tr>
+          <th>TIME</th>
+          <th>MATCH</th>
+          <th>STATUS</th>
+          <th>MARKET</th>
+          <th>SELECTION</th>
+          <th>ODDS</th>
+          <th>SIGNAL</th>
+          <th>BOOKMAKER</th>
+          <th>RESULT</th>
+          <th>P/L</th>
+        </tr>
+      </thead>
+      <tbody id="signalRows"></tbody>
+    </table>
+    <div id="emptyState" class="empty" hidden>No signals match this view.</div>
+  </section>
+</main>
+<footer class="footer shell">Ball46 Member · Daily board only · historical statistics remain on the main Ball46 site</footer>
+<script src="/member.js" defer></script>
+</body>
+</html>
