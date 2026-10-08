@@ -128,7 +128,7 @@ function signalState(row) {
 function normalizeSignal(row) {
   const createdAt = num(row?.createdAt) ?? 0;
   const result = String(row?.result||'PENDING').toUpperCase();
-  const entryMinute = num(row?.entryMinute??row?.minute);
+  const entryMinute = num(row?.minute??row?.entryMinute);
   const category = marketCategory(row);
   return {
     id:String(row?.id||''),
