@@ -115,7 +115,9 @@ function resultPnl(result,odds) {
 }
 
 function signalState(row) {
-  if (String(row?.status||'').toUpperCase() === 'SETTLED' || row?.result) return 'FINISHED';
+  const result = String(row?.result||'').toUpperCase();
+  const terminal = ['WIN','LOSS','PUSH','HALF_WIN','HALF_LOSS','VOID'].includes(result);
+  if (String(row?.status||'').toUpperCase() === 'SETTLED' || terminal) return 'FINISHED';
   const s = String(row?.mirrorStatus||'').toLowerCase();
   if (/(finished|ended|full.?time|\bft\b|after.?pen|\baet\b)/.test(s)) return 'FINISHED';
   if (/(live|in.?play|1h|2h|half.?time|\bht\b|break|paused|extra.?time|penalt)/.test(s)) return 'LIVE';
@@ -247,10 +249,39 @@ async function loadDailyMirror(force=false) {
 
   if (hasMore && pagesRead >= MAX_DAILY_PAGES) throw new Error('DAILY_MIRROR_PAGE_LIMIT');
 
-  const signals = [...unique.values()]
+  let signals = [...unique.values()]
     .map(normalizeSignal)
     .filter(r=>r.id && r.fixtureId)
     .sort((a,b)=>b.createdAt-a.createdAt);
+
+  // Current Ball46 board is authoritative for matches that are still live.
+  // This prevents stale ledger/mirror status from labeling an active match as FINISHED.
+  try {
+    const board = await sourceJson('/api/engine/board');
+    const byFixture = new Map((Array.isArray(board?.fixtures)?board.fixtures:[]).map(f=>[String(f?.fixtureId||''),f]));
+    signals = signals.map(s=>{
+      const f = byFixture.get(String(s.fixtureId));
+      if (!f) return s;
+      const rawStatus = String(f.status??f.statusCode??f.boardState??'');
+      const probe = {
+        status:'PENDING',
+        result:'PENDING',
+        mirrorStatus:rawStatus,
+        mirrorMinute:num(f.minute)
+      };
+      const currentState = signalState(probe);
+      return {
+        ...s,
+        state:currentState,
+        matchMinute:num(f.minute)??s.matchMinute,
+        mirrorMinute:num(f.minute)??s.mirrorMinute,
+        mirrorStatus:rawStatus||s.mirrorStatus,
+        mirrorScore:cleanScore(f?.goals??f?.score)??s.mirrorScore
+      };
+    });
+  } catch {
+    // Keep ledger-derived state if current board is temporarily unavailable.
+  }
 
   const payload = {
     ok:true,
