@@ -197,7 +197,7 @@ function makeSignalRow(row){
   tr.className='signal-row'+(state.expandedSignalId===row.id?' expanded':'');
   tr.tabIndex=0;
   tr.setAttribute('role','button');
-  tr.setAttribute('aria-expanded',state.expandedFixtureId===row.fixtureId?'true':'false');
+  tr.setAttribute('aria-expanded',state.expandedSignalId===row.id?'true':'false');
   tr.title='Open Featured Match and Event Flow';
 
   const time=td(row.signalTime,'signal-time');
@@ -611,7 +611,7 @@ function renderRows(){
 
   for(const row of rows){
     rowsEl.append(makeSignalRow(row));
-    if(!detailInserted && state.expandedFixtureId===row.fixtureId){
+    if(!detailInserted && state.expandedSignalId===row.id){
       detailInserted=true;
       const detailTr=document.createElement('tr');
       detailTr.className='signal-detail-row';
