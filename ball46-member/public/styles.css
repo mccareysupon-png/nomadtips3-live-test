@@ -1180,3 +1180,156 @@ html{
   .signal-row td:first-child::before{transition:none}
   .signal-row:hover td{transform:none}
 }
+
+/* Premium global member header */
+.topbar{
+  background:
+    linear-gradient(180deg,rgba(8,18,29,.91),rgba(5,13,21,.84));
+  border-bottom:1px solid rgba(142,180,210,.12);
+  box-shadow:
+    0 8px 28px rgba(0,0,0,.12),
+    inset 0 -1px 0 rgba(255,255,255,.012);
+}
+.topbar::after{
+  content:"";
+  position:absolute;
+  left:0;right:0;bottom:-1px;height:1px;
+  pointer-events:none;
+  background:linear-gradient(90deg,transparent,rgba(89,199,255,.16),rgba(167,139,250,.10),transparent);
+}
+.nav a{
+  position:relative;
+  overflow:hidden;
+  min-height:36px;
+  padding:9px 13px;
+  border:1px solid rgba(142,180,210,.08);
+  border-radius:10px;
+  color:#8196A7;
+  background:
+    linear-gradient(180deg,rgba(255,255,255,.014),rgba(255,255,255,.004));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.012);
+  transition:
+    color .16s ease,
+    border-color .16s ease,
+    background .16s ease,
+    box-shadow .16s ease,
+    transform .16s ease;
+}
+.nav a::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  background:linear-gradient(115deg,transparent 0 38%,rgba(255,255,255,.05) 50%,transparent 62%);
+  transform:translateX(-125%);
+  transition:transform .34s ease;
+}
+.nav a:hover{
+  color:#EEF8FF;
+  border-color:rgba(107,196,255,.26);
+  background:
+    linear-gradient(180deg,rgba(57,168,255,.075),rgba(255,255,255,.008)),
+    rgba(10,24,37,.72);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.035),
+    0 7px 18px rgba(0,0,0,.12);
+  transform:translateY(-1px);
+}
+.nav a:hover::before{
+  transform:translateX(125%);
+}
+.nav a[aria-current="page"]{
+  color:#F5FAFE;
+  border-color:rgba(107,196,255,.38);
+  background:
+    linear-gradient(180deg,rgba(57,168,255,.15),rgba(57,168,255,.055)),
+    rgba(8,24,38,.90);
+  box-shadow:
+    inset 0 -2px 0 rgba(89,199,255,.48),
+    inset 0 1px 0 rgba(194,232,255,.055),
+    0 7px 20px rgba(19,85,127,.10);
+}
+.nav a[aria-current="page"]::after{
+  content:"";
+  position:absolute;
+  left:12px;right:12px;bottom:4px;height:1px;
+  border-radius:999px;
+  background:linear-gradient(90deg,transparent,#59C7FF,transparent);
+  opacity:.72;
+}
+
+/* Premium authenticated member identity */
+.member-chip{
+  position:relative;
+  overflow:hidden;
+  gap:10px;
+  padding:7px 10px;
+  border:1px solid rgba(107,196,255,.24);
+  border-radius:12px;
+  background:
+    linear-gradient(135deg,rgba(57,168,255,.11),rgba(167,139,250,.055)),
+    rgba(7,20,31,.84);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.035),
+    0 8px 22px rgba(0,0,0,.12);
+}
+.member-chip::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  background:linear-gradient(115deg,transparent 0 42%,rgba(255,255,255,.04) 51%,transparent 60%);
+  transform:translateX(-135%);
+  transition:transform .38s ease;
+}
+.member-chip:hover{
+  border-color:rgba(107,196,255,.38);
+  background:
+    linear-gradient(135deg,rgba(57,168,255,.15),rgba(167,139,250,.075)),
+    rgba(8,23,35,.92);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.045),
+    0 9px 24px rgba(0,0,0,.15);
+}
+.member-chip:hover::before{
+  transform:translateX(135%);
+}
+.member-avatar{
+  width:31px;
+  height:31px;
+  flex:0 0 31px;
+  color:#F7FBFE;
+  font-weight:950;
+  background:
+    radial-gradient(circle at 32% 25%,rgba(255,255,255,.15),transparent 32%),
+    linear-gradient(145deg,#174D73,#0A263B);
+  border:1px solid rgba(125,211,255,.42);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.08),
+    0 0 0 2px rgba(89,199,255,.035);
+}
+.member-copy strong{
+  color:#F1F7FB;
+  font-size:11px;
+  font-weight:950;
+  letter-spacing:.09em;
+}
+.member-copy span{
+  color:#72E3B0;
+  font-size:8.5px;
+  font-weight:900;
+  letter-spacing:.045em;
+  margin-top:4px;
+}
+.topbar-account-slot{
+  overflow:visible;
+}
+
+@media(hover:none){
+  .nav a:hover{transform:none}
+  .nav a::before,.member-chip::before{display:none}
+}
+@media(prefers-reduced-motion:reduce){
+  .nav a,.nav a::before,.member-chip::before{transition:none}
+  .nav a:hover{transform:none}
+}
