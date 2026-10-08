@@ -2,7 +2,6 @@ const MARKET_ORDER = ['ALL','AH','1X2','O/U','CORNERS','BTTS','CARDS','OTHER'];
 const LIVE_REFRESH_MS = 15000;
 const state = {
   market:'ALL',
-  status:'ALL',
   payload:null,
   expandedFixtureId:null,
   expandedSignalId:null,
@@ -161,7 +160,6 @@ function renderSummary(){
 function filteredRows(){
   return state.payload.signals.filter(row=>{
     if(state.market!=='ALL' && row.market!==state.market) return false;
-    if(state.status!=='ALL' && row.state!==state.status) return false;
     return true;
   });
 }
@@ -673,13 +671,6 @@ async function boot(){
     if(!document.hidden) refreshLiveMirror();
   });
 }
-
-qs('#statusFilter')?.addEventListener('change',e=>{
-  state.status=e.target.value;
-  state.expandedFixtureId=null;
-  state.expandedSignalId=null;
-  renderRows();
-});
 
 boot().catch(()=>{
   rowsEl.replaceChildren();
