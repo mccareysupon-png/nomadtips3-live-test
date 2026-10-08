@@ -516,6 +516,46 @@ function cardsText(cards){
   if(!cards?.home||!cards?.away) return '—';
   return `${cards.home.yellow??0}Y/${cards.home.red??0}R · ${cards.away.yellow??0}Y/${cards.away.red??0}R`;
 }
+
+// Self-contained SVG match icons; no asset requests or new API connections.
+function premiumFactIcon(kind){
+  const svg=svgNode('svg',{viewBox:'0 0 64 64',width:42,height:42,'aria-hidden':'true',class:'premium-fact-icon'});
+  const add=(tag,attrs,parent=svg)=>{const el=svgNode(tag,attrs);parent.append(el);return el;};
+  if(kind==='clock'){
+    add('circle',{cx:32,cy:34,r:25,fill:'#132B44',stroke:'#59C7FF','stroke-width':3});
+    add('circle',{cx:32,cy:34,r:20,fill:'#0B1A2A',stroke:'#93B7CF','stroke-width':1});
+    for(let i=0;i<12;i++){const a=i*Math.PI/6;add('line',{x1:32+16*Math.sin(a),y1:34-16*Math.cos(a),x2:32+19*Math.sin(a),y2:34-19*Math.cos(a),stroke:'#D9ECF6','stroke-width':i%3===0?2:1});}
+    add('path',{d:'M32 19V34L43 40',fill:'none',stroke:'#59C7FF','stroke-width':3,'stroke-linecap':'round'});
+    add('circle',{cx:32,cy:34,r:2.5,fill:'#fff'});
+    add('rect',{x:26,y:4,width:12,height:5,rx:2,fill:'#D9ECF6'});
+  }else if(kind==='corner'){
+    add('path',{d:'M9 54H56M9 54V7',fill:'none',stroke:'#DFEAF2','stroke-width':2.8,'stroke-linecap':'round'});
+    add('path',{d:'M12 10L48 17L12 31Z',fill:'#FF5265',stroke:'#FFA2A9','stroke-width':1});
+    add('path',{d:'M9 40Q23 40 23 54',fill:'none',stroke:'#F2F7FA','stroke-width':2});
+    add('path',{d:'M23 54H56',stroke:'#6AAB78','stroke-width':3});
+  }else if(kind==='cards'){
+    add('rect',{x:8,y:13,width:30,height:42,rx:3,fill:'#FFD735',stroke:'#FFF3A0','stroke-width':1.5,transform:'rotate(-9 23 34)'});
+    add('rect',{x:29,y:9,width:27,height:42,rx:3,fill:'#F04455',stroke:'#FF9BA6','stroke-width':1.5,transform:'rotate(9 43 30)'});
+  }else if(kind==='goal'){
+    add('path',{d:'M7 53V12L13 8H57V53Z',fill:'none',stroke:'#E5F3F8','stroke-width':3,'stroke-linejoin':'round'});
+    for(let p=20;p<57;p+=9)add('line',{x1:p,y1:12,x2:p,y2:52,stroke:'#819AAE','stroke-width':.9});
+    for(let p=20;p<53;p+=9)add('line',{x1:8,y1:p,x2:57,y2:p,stroke:'#819AAE','stroke-width':.9});
+    add('circle',{cx:32,cy:45,r:9,fill:'#F7FAFC',stroke:'#9CB1C4','stroke-width':1});
+    add('path',{d:'M32 39L37 43L35 49H29L27 43Z',fill:'#182432'});
+  }else if(kind==='ball'){
+    add('circle',{cx:32,cy:32,r:27,fill:'#F6FAFC',stroke:'#A3B8C9','stroke-width':2});
+    add('path',{d:'M32 18L45 27L40 42H24L19 27Z',fill:'#172536',stroke:'#172536','stroke-linejoin':'round'});
+    add('path',{d:'M32 18L28 6L38 6L45 14L45 27M19 27L9 22L6 35L17 45L24 42M40 42L47 50L57 39L54 25L45 27M24 42L19 55L32 59L45 54L40 42',fill:'none',stroke:'#26384A','stroke-width':2,'stroke-linejoin':'round'});
+    add('path',{d:'M28 6L19 11L9 22M38 6L45 14L54 25M19 55L32 59L45 54',fill:'none',stroke:'#26384A','stroke-width':2});
+  }else{
+    add('rect',{x:6,y:14,width:52,height:39,rx:5,fill:'#1B533C',stroke:'#D5E8DF','stroke-width':2});
+    add('path',{d:'M32 14V53M6 33.5H58M6 25H18V42H6M58 25H46V42H58',stroke:'#DCEFE5','stroke-width':1.4,fill:'none'});
+    add('circle',{cx:32,cy:33.5,r:9,stroke:'#DCEFE5','stroke-width':1.4,fill:'none'});
+    add('circle',{cx:53,cy:11,r:6,fill:'#FF4A64',stroke:'#FF9AA9','stroke-width':1.2});
+  }
+  return svg;
+}
+
 function featuredHorizontal(detail,selected){
   const f=detail?.featured;
   const card=node('section','featured-horizontal');
@@ -592,15 +632,24 @@ function featuredHorizontal(detail,selected){
   }
 
   const sideFacts=node('div','premium-side-facts-panel');
-  const factData=[
-    ['HALF-TIME',halfScoreText(shownScore)],
-    [finished?'FULL-TIME CORNERS':'CORNERS',metricValue(shownCorners)],
-    [finished?'FULL-TIME CARDS HOME · AWAY':'CARDS HOME · AWAY',cardsText(shownCards)],
-    ['MARKET',marketEvidence(selected)||'—']
+  sideFacts.setAttribute('aria-label','Match facts');
+  const scored=shownScore&&typeof shownScore==='object'&&shownScore.home!=null&&shownScore.away!=null
+    ? Number(shownScore.home)+Number(shownScore.away):null;
+  const goals=Number.isFinite(scored)?String(scored):'—';
+  const matchState=finished?'FINISHED':selected.state==='LIVE'?shownMinute:matchClockLabel(selected);
+  const factsData=[
+    ['HALF-TIME',halfScoreText(shownScore),'clock','First-half result'],
+    ['CORNERS',metricValue(shownCorners),'corner','Corner kicks'],
+    ['CARDS',cardsText(shownCards),'cards','Home · Away'],
+    ['MARKET',marketEvidence(selected)||'—','goal','Signal market'],
+    ['TOTAL GOALS',goals,'ball','Goals scored'],
+    ['MATCH STATUS',matchState,'stadium',finished?'Full time':'Match status']
   ];
-  for(const [label,value] of factData){
-    const item=node('div','premium-side-fact');
-    item.append(node('span','premium-side-fact-label',label),node('b','premium-side-fact-value',value));
+  for(const [label,value,kind,sub] of factsData){
+    const item=node('div','premium-side-fact premium-fact-'+kind);
+    const top=node('div','premium-fact-top');
+    top.append(node('span','premium-side-fact-label',label),premiumFactIcon(kind));
+    item.append(top,node('b','premium-side-fact-value',value),node('small','premium-fact-sub',sub));
     sideFacts.append(item);
   }
   const lower=node('div','featured-h-lower');
