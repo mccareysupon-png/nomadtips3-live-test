@@ -260,10 +260,35 @@ function eventShortType(type){
   return '•';
 }
 function eventSide(e,featured){
+  if(e?.side==='home'||e?.side==='away') return e.side;
   const team=String(e?.team||'').trim().toLowerCase();
   if(team&&team===String(featured?.home||'').trim().toLowerCase()) return 'home';
   if(team&&team===String(featured?.away||'').trim().toLowerCase()) return 'away';
   return null;
+}
+function historyDerivedEvents(rows){
+  const src=(Array.isArray(rows)?rows:[]).slice().sort((a,b)=>(Number(a?.minute)||0)-(Number(b?.minute)||0)||(Number(a?.at)||0)-(Number(b?.at)||0));
+  const out=[];
+  let prev=null;
+  const val=(o,k)=>Number(o?.[k])||0;
+  const card=(o,side,k)=>Number(o?.[side]?.[k])||0;
+  for(const row of src){
+    if(!prev){prev=row;continue}
+    const minute=Number(row?.minute);
+    if(!Number.isFinite(minute)){prev=row;continue}
+    for(const side of ['home','away']){
+      const goalDiff=val(row?.goals,side)-val(prev?.goals,side);
+      const cornerDiff=val(row?.corners,side)-val(prev?.corners,side);
+      const yellowDiff=card(row?.cards,side,'yellow')-card(prev?.cards,side,'yellow');
+      const redDiff=card(row?.cards,side,'red')-card(prev?.cards,side,'red');
+      for(let i=0;i<Math.max(0,goalDiff);i++) out.push({minute,type:'Goal',side});
+      for(let i=0;i<Math.max(0,cornerDiff);i++) out.push({minute,type:'Corner',side});
+      for(let i=0;i<Math.max(0,yellowDiff);i++) out.push({minute,type:'Yellow card',side});
+      for(let i=0;i<Math.max(0,redDiff);i++) out.push({minute,type:'Red card',side});
+    }
+    prev=row;
+  }
+  return out;
 }
 function eventFlowChart(detail,fixtureId){
   const wrap=node('div','member-flow');
@@ -272,7 +297,17 @@ function eventFlowChart(detail,fixtureId){
   const signals=state.payload.signals.filter(s=>s.fixtureId===fixtureId);
   const maxPressureMinute=pressure.reduce((m,p)=>Math.max(m,Number(p?.minute)||0),0);
   const maxSignalMinute=signals.reduce((m,s)=>Math.max(m,Number(s?.signalMinute)||0),0);
-  const maxEventMinute=(featured?.events||[]).reduce((m,e)=>Math.max(m,Number(e?.minute)||0),0);
+  const historyEvents=historyDerivedEvents(detail?.eventFlow?.rows||[]);
+  const liveEvents=Array.isArray(featured?.events)?featured.events:[];
+  const eventMap=new Map();
+  for(const e of [...historyEvents,...liveEvents]){
+    const side=eventSide(e,featured),minute=Number(e?.minute),type=String(e?.type||'Match event');
+    if(!Number.isFinite(minute)) continue;
+    const key=[Math.round(minute*10)/10,type.toLowerCase(),side||String(e?.team||'').toLowerCase()].join('|');
+    if(!eventMap.has(key)) eventMap.set(key,{...e,side});
+  }
+  const events=[...eventMap.values()];
+  const maxEventMinute=events.reduce((m,e)=>Math.max(m,Number(e?.minute)||0),0);
   const current=Math.max(1,Math.round(Math.max(Number(featured?.minute)||0,maxPressureMinute,maxSignalMinute,maxEventMinute)));
   const points=pressurePoints(pressure,current);
 
@@ -353,7 +388,7 @@ function eventFlowChart(detail,fixtureId){
     svg.append(g);
   }
 
-  for(const e of featured?.events||[]){
+  for(const e of events){
     const minute=Number(e?.minute);
     if(!Number.isFinite(minute)||minute<0||minute>current+.75) continue;
     const p=pressureAt(points,minute),side=eventSide(e,featured);
@@ -368,7 +403,7 @@ function eventFlowChart(detail,fixtureId){
   chart.append(svg);wrap.append(chart);
 
   const key=node('div','member-flow-key');
-  key.append(node('span','signal','● SIGNAL'),node('span','event','● G goal · Y/R card · C corner'));
+  key.append(node('span','signal','● SIGNAL'),node('span','event','● G goal · Y/R card · C corner · mirrored history'));
   wrap.append(key);
   return wrap;
 }
