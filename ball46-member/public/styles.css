@@ -360,3 +360,16 @@ button,input{font:inherit}
   .member-flow-key{flex-wrap:wrap;gap:8px;padding:0 9px 8px}
 }
 @media(prefers-reduced-motion:reduce){.expand-flow-end{animation:none}}
+
+/* Complete default signal row */
+.live-score-cell{min-width:122px;white-space:nowrap}
+.live-score-cell .badge{display:inline-flex;margin-bottom:5px}
+.live-score-value{display:block;font-size:14px;line-height:1.1;color:var(--text)}
+.market-evidence{display:block;margin-top:4px;color:var(--muted);font-size:8px;font-weight:850;letter-spacing:.025em}
+.entry-cell{min-width:118px}
+.entry-cell>strong{display:block;font-size:12px;color:#bfead2}
+.entry-cell>small{display:block;margin-top:4px;color:var(--muted);font-size:8px;line-height:1.35;white-space:normal}
+.featured-h-facts{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media(max-width:680px){
+  .featured-h-facts{grid-template-columns:repeat(2,1fr)}
+}

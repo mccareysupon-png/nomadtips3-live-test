@@ -160,7 +160,11 @@ function normalizeSignal(row) {
     finalScore:cleanScore(row?.finalScore),
     entryStats:cleanStats(row?.entryStats??row?.statisticsAtEntry),
     entryCorners:cleanCorners(row?.entryCorners),
+    mirrorCorners:cleanCorners(row?.mirrorCorners),
+    finalCorners:cleanCorners(row?.finalCorners),
     entryCards:cleanCards(row?.entryCards),
+    mirrorCards:cleanCards(row?.mirrorCards),
+    finalCards:cleanCards(row?.finalCards),
     mirrorMinute:num(row?.mirrorMinute),
     mirrorStatus:row?.mirrorStatus??null,
     state:signalState(row),
@@ -277,7 +281,9 @@ async function loadDailyMirror(force=false) {
         matchMinute:num(f.minute)??s.matchMinute,
         mirrorMinute:num(f.minute)??s.mirrorMinute,
         mirrorStatus:rawStatus||s.mirrorStatus,
-        mirrorScore:cleanScore(f?.goals??f?.score)??s.mirrorScore
+        mirrorScore:cleanScore(f?.goals??f?.score)??s.mirrorScore,
+        mirrorCorners:cleanCorners(f?.corners)??s.mirrorCorners,
+        mirrorCards:cleanCards(f?.cards)??s.mirrorCards
       };
     });
   } catch {

@@ -45,6 +45,58 @@ function scoreText(v){
   if(h===null||h===undefined||a===null||a===undefined) return '—';
   return String(h)+'-'+String(a);
 }
+
+function pairTotal(v){
+  const h=Number(v?.home),a=Number(v?.away);
+  return Number.isFinite(h)&&Number.isFinite(a)?h+a:null;
+}
+function cardsTotal(cards){
+  if(!cards?.home||!cards?.away) return null;
+  const vals=[cards.home.yellow,cards.home.red,cards.away.yellow,cards.away.red].map(Number);
+  return vals.every(Number.isFinite)?vals.reduce((a,b)=>a+b,0):null;
+}
+function matchClockLabel(row){
+  if(row.state==='FINISHED') return 'FT';
+  if(row.state==='LIVE') return row.matchMinute==null?'LIVE':`LIVE ${row.matchMinute}'`;
+  return row.state==='WAITING'?'WAITING':String(row.state||'—');
+}
+function displayScore(row){
+  if(row.state==='FINISHED') return row.finalScore??row.mirrorScore??row.entryScore;
+  return row.mirrorScore??row.entryScore;
+}
+function marketEvidence(row){
+  const finished=row.state==='FINISHED';
+  const prefix=finished?'FT':'LIVE';
+  if(row.market==='CORNERS'){
+    const c=(finished?row.finalCorners:null)??row.mirrorCorners??row.entryCorners;
+    if(c?.home!=null&&c?.away!=null) return `${prefix} CORNERS ${c.home}-${c.away} = ${pairTotal(c)}`;
+  }
+  if(row.market==='CARDS'){
+    const c=(finished?row.finalCards:null)??row.mirrorCards??row.entryCards;
+    if(c?.home&&c?.away) return `${prefix} CARDS ${cardsText(c)}`;
+  }
+  if(row.market==='O/U'){
+    const s=displayScore(row);
+    const t=pairTotal(s);
+    if(t!=null) return `${prefix} GOALS ${t}`;
+  }
+  if(row.market==='BTTS' && finished){
+    const s=displayScore(row);
+    if(s?.home!=null&&s?.away!=null) return `FT BTTS ${s.home>0&&s.away>0?'YES':'NO'}`;
+  }
+  return '';
+}
+function entryEvidence(row){
+  const parts=[];
+  const sc=scoreText(row.entryScore);
+  if(sc!=='—') parts.push('Score '+sc);
+  if(row.market==='CORNERS'&&row.entryCorners?.home!=null&&row.entryCorners?.away!=null){
+    parts.push(`Corners ${row.entryCorners.home}-${row.entryCorners.away}=${pairTotal(row.entryCorners)}`);
+  }else if(row.market==='CARDS'&&row.entryCards?.home&&row.entryCards?.away){
+    parts.push('Cards '+cardsText(row.entryCards));
+  }
+  return parts.join(' · ');
+}
 function resultClass(result){
   if(result==='WIN'||result==='HALF_WIN') return 'win';
   if(result==='LOSS'||result==='HALF_LOSS') return 'loss';
@@ -148,14 +200,25 @@ function makeSignalRow(row){
   );
   tr.append(match);
 
-  const st=document.createElement('td');
-  st.append(node('span','badge '+statusClass(row.state),row.state+(row.state==='LIVE'&&row.matchMinute!=null?' '+row.matchMinute+"'":'')));
-  tr.append(st);
+  const live=document.createElement('td');
+  live.className='live-score-cell';
+  live.append(node('span','badge '+statusClass(row.state),matchClockLabel(row)));
+  live.append(node('strong','live-score-value',scoreText(displayScore(row))));
+  const evidence=marketEvidence(row);
+  if(evidence) live.append(node('small','market-evidence',evidence));
+  tr.append(live);
 
   tr.append(td(row.market));
   tr.append(td((row.selection||'')+(fmtLine(row)?' '+fmtLine(row):'')));
   tr.append(td(fmtOdds(row.odds),'odds-readonly'));
-  tr.append(td(row.signalMinute==null?'—':row.signalMinute+"'"));
+
+  const entry=document.createElement('td');
+  entry.className='entry-cell';
+  entry.append(node('strong','',row.signalMinute==null?'—':row.signalMinute+"'"));
+  const entryInfo=entryEvidence(row);
+  if(entryInfo) entry.append(node('small','',entryInfo));
+  tr.append(entry);
+
   tr.append(td(row.bookmaker));
 
   const result=document.createElement('td');
@@ -420,30 +483,44 @@ function cardsText(cards){
 function featuredHorizontal(detail,selected){
   const f=detail?.featured;
   const card=node('section','featured-horizontal');
+  const finished=selected.state==='FINISHED';
+  const shownScore=finished
+    ? (selected.finalScore??selected.mirrorScore??selected.entryScore)
+    : (f?.score??selected.mirrorScore??selected.entryScore);
+  const shownMinute=finished
+    ? 'FT'
+    : (f?.minute!=null?`LIVE ${f.minute}'`:matchClockLabel(selected));
+  const shownCorners=finished
+    ? (selected.finalCorners??selected.mirrorCorners??selected.entryCorners)
+    : (f?.corners??selected.mirrorCorners??selected.entryCorners);
+  const shownCards=finished
+    ? (selected.finalCards??selected.mirrorCards??selected.entryCards)
+    : (f?.cards??selected.mirrorCards??selected.entryCards);
 
   const meta=node('div','featured-h-meta');
   meta.append(node('span','eyebrow','FEATURED MATCH'),node('strong','',f?.league||selected.league));
-  meta.append(node('span','badge '+statusClass(f?'LIVE':selected.state),f?.status||selected.state));
+  meta.append(node('span','badge '+statusClass(selected.state),shownMinute));
 
   const score=node('div','featured-h-score');
   const home=node('div','team home');home.append(node('span','','HOME'),node('b','',f?.home||selected.home));
   const center=node('div','score-center');
-  center.append(node('strong','',scoreText(f?.score??selected.mirrorScore??selected.entryScore)),node('small','',f?.minute==null?(selected.signalMinute==null?'—':selected.signalMinute+"'"):f.minute+"'"));
+  center.append(node('strong','',scoreText(shownScore)),node('small','',shownMinute));
   const away=node('div','team away');away.append(node('span','','AWAY'),node('b','',f?.away||selected.away));
   score.append(home,center,away);
 
   const facts=node('div','featured-h-facts');
   const factData=[
-    ['HALF-TIME',halfScoreText(f?.score??selected.entryScore)],
-    ['CORNERS',metricValue(f?.corners??selected.entryCorners)],
-    ['CARDS H · A',cardsText(f?.cards??selected.entryCards)]
+    ['HALF-TIME',halfScoreText(shownScore)],
+    [finished?'FT CORNERS':'CORNERS',metricValue(shownCorners)],
+    [finished?'FT CARDS H · A':'CARDS H · A',cardsText(shownCards)],
+    ['MARKET',marketEvidence(selected)||'—']
   ];
   for(const [label,value] of factData){const x=node('div','');x.append(node('span','',label),node('b','',value));facts.append(x)}
 
   const signal=node('div','featured-h-signal');
   signal.append(
     node('span','','ENTRY'),
-    node('b','',`${selected.signalMinute??'—'}' · ${selected.market} · ${selected.selection}${fmtLine(selected)?' '+fmtLine(selected):''} · ${fmtOdds(selected.odds)} · ${selected.bookmaker}`)
+    node('b','',`${selected.signalMinute??'—'}' · ${selected.market} · ${selected.selection}${fmtLine(selected)?' '+fmtLine(selected):''} · ${fmtOdds(selected.odds)} · ${selected.bookmaker} · Entry score ${scoreText(selected.entryScore)}`)
   );
 
   const stats=f?.statistics||selected.entryStats;
