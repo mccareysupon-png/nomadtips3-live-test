@@ -1679,3 +1679,15 @@ body.page-member:before{
 @media(max-width:900px){.featured-horizontal{grid-template-areas:"meta score" "signal signal" "lower lower"}}
 @media(max-width:680px){.featured-horizontal{grid-template-areas:"meta" "score" "signal" "lower"}.featured-h-lower{grid-template-columns:minmax(0,1fr)}.premium-side-facts-panel{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:9px}.premium-side-fact{min-height:70px;padding:9px}.premium-side-fact-value{font-size:12px}}
 @media(max-width:380px){.premium-side-facts-panel{grid-template-columns:1fr 1fr}.premium-side-fact-label{font-size:9px}}
+
+/* Premium Match Facts V3: six football pictogram cards, member-only. */
+.premium-side-facts-panel{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(3,minmax(0,1fr));gap:7px;padding:9px}
+.premium-side-fact{min-height:0;padding:9px 10px;display:flex;align-items:stretch;justify-content:center;background:linear-gradient(125deg,#14283B,#0B1929);border-color:#28445D;gap:3px;overflow:hidden}
+.premium-fact-top{display:flex;justify-content:space-between;align-items:flex-start;gap:4px;min-width:0}
+.premium-side-fact-label{font-size:9px;letter-spacing:.06em;color:#B8CADD}
+.premium-fact-icon{flex:none;width:35px;height:35px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.28))}
+.premium-side-fact-value{font-size:clamp(12px,1.1vw,16px);margin-top:0;white-space:normal;overflow-wrap:anywhere;line-height:1.25;color:#F3F8FF}
+.premium-side-fact:nth-child(4) .premium-side-fact-value{color:#F3F8FF}
+.premium-fact-sub{color:#8FA7BE;font-size:9px;line-height:1.2}
+.premium-fact-stadium .premium-side-fact-value{color:#61E7AA}
+@media(max-width:680px){.premium-side-facts-panel{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:auto}.premium-side-fact{min-height:84px;padding:8px}.premium-fact-icon{width:32px;height:32px}}
