@@ -1,4 +1,5 @@
 const MARKET_ORDER = ['ALL','AH','1X2','O/U','CORNERS','BTTS','CARDS','OTHER'];
+const LIVE_REFRESH_MS = 15000;
 const state = {
   market:'ALL',
   status:'ALL',
@@ -539,6 +540,33 @@ function renderRows(){
 
 function render(){renderTabs();renderSummary();renderRows();}
 
+async function refreshExpandedDetail(){
+  const fixtureId=state.expandedFixtureId;
+  if(!fixtureId || document.hidden) return;
+  try{
+    const r=await fetch('/api/member/match?fixtureId='+encodeURIComponent(fixtureId)+'&live=1',{cache:'no-store'});
+    const data=await r.json();
+    if(!r.ok||data?.ok!==true) return;
+    state.detailCache.set(fixtureId,data);
+    const host=document.querySelector('[data-insight-fixture="'+CSS.escape(fixtureId)+'"]');
+    if(host) renderInsight(host,fixtureId);
+  }catch{}
+}
+
+async function refreshLiveMirror(){
+  if(document.hidden || !state.payload) return;
+  try{
+    const r=await fetch('/api/member/daily?live=1',{cache:'no-store'});
+    const daily=await r.json();
+    if(!r.ok||daily?.ok!==true) return;
+    state.payload=daily;
+    const livePill=qs('.live-pill');
+    if(livePill) livePill.textContent='TODAY · '+daily.signalCount+' SIGNALS';
+    render();
+    await refreshExpandedDetail();
+  }catch{}
+}
+
 async function boot(){
   const [sessionRes,dailyRes]=await Promise.all([
     fetch('/api/member/session',{cache:'no-store'}),
@@ -559,6 +587,10 @@ async function boot(){
   if(livePill) livePill.textContent='TODAY · '+daily.signalCount+' SIGNALS';
   state.payload=daily;
   render();
+  setInterval(refreshLiveMirror,LIVE_REFRESH_MS);
+  document.addEventListener('visibilitychange',()=>{
+    if(!document.hidden) refreshLiveMirror();
+  });
 }
 
 qs('#statusFilter')?.addEventListener('change',e=>{
