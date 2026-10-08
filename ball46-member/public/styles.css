@@ -801,3 +801,197 @@ html{
 @media(max-width:680px){
   .match-insight{padding:10px}
 }
+
+/* Premium competition card system */
+.signal-table{
+  --row-surface:rgba(10,23,35,.72);
+  --row-surface-hover:rgba(14,31,46,.92);
+  --row-line:rgba(160,196,225,.10);
+  --row-line-hover:rgba(107,196,255,.22);
+}
+.signal-row td{
+  position:relative;
+  background:
+    linear-gradient(180deg,rgba(255,255,255,.018),rgba(255,255,255,.004)),
+    var(--row-surface);
+  border-top:1px solid transparent;
+  border-bottom:1px solid var(--row-line);
+  transition:
+    background .16s ease,
+    border-color .16s ease,
+    box-shadow .16s ease,
+    color .16s ease;
+}
+.signal-row td:first-child{
+  box-shadow:inset 2px 0 0 rgba(160,196,225,.08);
+}
+.signal-row:hover td{
+  background:
+    linear-gradient(180deg,rgba(107,196,255,.055),rgba(255,255,255,.008)),
+    var(--row-surface-hover);
+  border-top-color:rgba(107,196,255,.10);
+  border-bottom-color:var(--row-line-hover);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.022),
+    0 5px 18px rgba(0,0,0,.10);
+}
+.signal-row:hover td:first-child{
+  box-shadow:
+    inset 2px 0 0 rgba(107,196,255,.34),
+    inset 0 1px 0 rgba(255,255,255,.022);
+}
+.signal-row:hover .match>strong,
+.signal-row:hover .live-score-value{
+  color:#ffffff;
+}
+.signal-row:hover .expand-glyph{
+  color:#9ee0ff;
+  transform:translateY(-1px);
+}
+.expand-glyph{
+  min-width:12px;
+  text-align:center;
+  transition:color .16s ease,transform .16s ease;
+}
+
+/* Selected / expanded row */
+.signal-row.expanded td{
+  background:
+    linear-gradient(180deg,rgba(57,168,255,.095),rgba(57,168,255,.035)),
+    rgba(9,26,40,.96);
+  border-top-color:rgba(107,196,255,.24);
+  border-bottom-color:rgba(107,196,255,.18);
+  box-shadow:
+    inset 0 1px 0 rgba(170,224,255,.055),
+    0 7px 22px rgba(0,0,0,.12);
+}
+.signal-row.expanded td:first-child{
+  box-shadow:
+    inset 3px 0 0 rgba(57,168,255,.58),
+    inset 0 1px 0 rgba(170,224,255,.055);
+}
+.signal-row.expanded .match>strong{
+  color:#f7fbff;
+}
+.signal-row.expanded .detail-hint{
+  color:#8fd6ff!important;
+}
+.signal-row.expanded .expand-glyph{
+  color:#8fd6ff;
+}
+
+/* Make the meaning hierarchy feel deliberate */
+.signal-row .match>strong{
+  font-weight:900;
+  letter-spacing:-.01em;
+  transition:color .16s ease;
+}
+.signal-row .match>small:first-of-type{
+  color:#8197a9;
+}
+.signal-row .odds-readonly{
+  font-weight:950;
+}
+.signal-row .result-cell{
+  text-align:left;
+}
+.signal-row .result-cell .badge{
+  min-width:58px;
+}
+.signal-row .entry-cell>strong,
+.signal-row .live-score-value{
+  transition:color .16s ease;
+}
+
+/* Expanded layer: visually connected, but never changes table width */
+.signal-detail-row>td{
+  background:
+    linear-gradient(180deg,rgba(9,25,39,.92),rgba(5,15,24,.94))!important;
+  border-top:0!important;
+  border-bottom:1px solid rgba(107,196,255,.14)!important;
+  box-shadow:
+    inset 3px 0 0 rgba(57,168,255,.34),
+    inset 0 1px 0 rgba(107,196,255,.05);
+}
+.match-insight{
+  background:
+    radial-gradient(circle at 50% 0%,rgba(57,168,255,.055),transparent 32%),
+    transparent;
+  border-top:0;
+  border-bottom:0;
+}
+
+/* Signal switcher inside expanded card */
+.signal-chip{
+  position:relative;
+  color:#91a6b7;
+  border-color:rgba(160,196,225,.11);
+  background:
+    linear-gradient(180deg,rgba(255,255,255,.025),rgba(255,255,255,.008)),
+    rgba(8,20,31,.72);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.018);
+  transition:
+    color .15s ease,
+    border-color .15s ease,
+    background .15s ease,
+    box-shadow .15s ease;
+}
+.signal-chip:hover{
+  color:#e7f5ff;
+  border-color:rgba(107,196,255,.30);
+  background:rgba(57,168,255,.07);
+}
+.signal-chip.active{
+  color:#f4f9fd;
+  border-color:rgba(107,196,255,.48);
+  background:
+    linear-gradient(180deg,rgba(57,168,255,.15),rgba(57,168,255,.07)),
+    rgba(8,24,38,.92);
+  box-shadow:
+    inset 0 -2px 0 rgba(57,168,255,.42),
+    inset 0 1px 0 rgba(170,224,255,.055);
+}
+
+/* Featured card inside expanded state */
+.featured-horizontal{
+  border-color:rgba(160,196,225,.13);
+  background:
+    linear-gradient(180deg,rgba(255,255,255,.022),rgba(255,255,255,.006)),
+    rgba(7,19,30,.82);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.02),
+    0 8px 24px rgba(0,0,0,.10);
+}
+.featured-h-facts>div{
+  border-color:rgba(160,196,225,.10);
+  background:rgba(255,255,255,.022);
+}
+.featured-h-facts>div:hover{
+  border-color:rgba(107,196,255,.18);
+  background:rgba(57,168,255,.035);
+}
+.member-flow{
+  border-color:rgba(160,196,225,.13);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.018),
+    0 8px 24px rgba(0,0,0,.08);
+}
+
+@media(hover:none){
+  .signal-row:hover td{
+    background:
+      linear-gradient(180deg,rgba(255,255,255,.018),rgba(255,255,255,.004)),
+      var(--row-surface);
+    border-top-color:transparent;
+    border-bottom-color:var(--row-line);
+    box-shadow:none;
+  }
+  .signal-row.expanded td{
+    background:
+      linear-gradient(180deg,rgba(57,168,255,.095),rgba(57,168,255,.035)),
+      rgba(9,26,40,.96);
+  }
+}
+@media(prefers-reduced-motion:reduce){
+  .signal-row td,.expand-glyph,.signal-chip{transition:none}
+}

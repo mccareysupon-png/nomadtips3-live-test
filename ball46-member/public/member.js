@@ -201,7 +201,7 @@ function makeSignalRow(row){
   tr.title='Open Featured Match and Event Flow';
 
   const time=td(row.signalTime,'signal-time');
-  time.append(node('span','expand-glyph',state.expandedFixtureId===row.fixtureId?'⌃':'⌄'));
+  time.append(node('span','expand-glyph',state.expandedSignalId===row.id?'⌃':'⌄'));
   tr.append(time);
 
   const match=node('td','match');
@@ -234,6 +234,7 @@ function makeSignalRow(row){
   tr.append(td(row.bookmaker));
 
   const result=document.createElement('td');
+  result.className='result-cell';
   result.append(node('span','badge '+resultClass(row.result),String(row.result||'PENDING').replaceAll('_',' ')));
   tr.append(result);
 
