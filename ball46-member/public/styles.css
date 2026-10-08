@@ -1478,3 +1478,47 @@ html{
   font-weight:800;
   letter-spacing:.08em;
 }
+
+/* Premium generated background imagery · Member pages only */
+body.page-pricing,
+body.page-login,
+body.page-member{
+  background-color:#050b11;
+  background-repeat:no-repeat;
+  background-size:cover;
+  background-position:center center;
+  background-attachment:fixed;
+}
+body.page-pricing{
+  background-image:
+    linear-gradient(180deg,rgba(5,13,21,.76) 0%,rgba(5,13,21,.84) 48%,rgba(3,8,13,.92) 100%),
+    radial-gradient(circle at 18% 12%,rgba(89,199,255,.09),transparent 34%),
+    url("/assets/member-bg-pricing.webp");
+}
+body.page-login{
+  background-image:
+    linear-gradient(180deg,rgba(5,13,21,.78) 0%,rgba(5,13,21,.86) 52%,rgba(3,8,13,.93) 100%),
+    radial-gradient(circle at 78% 18%,rgba(242,199,110,.055),transparent 31%),
+    url("/assets/member-bg-login.webp");
+}
+body.page-member{
+  background-image:
+    linear-gradient(180deg,rgba(5,13,21,.80) 0%,rgba(5,13,21,.87) 50%,rgba(3,8,13,.94) 100%),
+    radial-gradient(circle at 82% 15%,rgba(167,139,250,.06),transparent 34%),
+    radial-gradient(circle at 14% 20%,rgba(89,199,255,.07),transparent 31%),
+    url("/assets/member-bg-signal-center.webp");
+}
+/* Keep the existing theme geometry layer, but make it more restrained over imagery. */
+body.page-pricing:before,
+body.page-login:before,
+body.page-member:before{
+  opacity:.48;
+}
+@media(max-width:680px){
+  body.page-pricing,
+  body.page-login,
+  body.page-member{
+    background-attachment:scroll;
+    background-position:center top;
+  }
+}
