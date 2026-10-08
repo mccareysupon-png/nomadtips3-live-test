@@ -117,10 +117,21 @@ function renderTabs(){
   tabs.replaceChildren();
   for(const market of MARKET_ORDER){
     const s=state.payload.summary[market];
+    const rate=Number(s.winRate);
+    const rateTone=!Number.isFinite(rate)?'neutral':rate>=55?'good':rate<45?'bad':'mid';
+    const pnl=Number(s.pnl||0);
+    const pnlTone=pnl>0?'profit':pnl<0?'loss':'neutral';
     const btn=node('button','market-tab'+(state.market===market?' active':''));
     btn.type='button';
-    btn.append(document.createTextNode(market+' '+fmtPct(s.winRate)+' '));
-    btn.append(node('span',s.pnl>=0?'profit':'loss',fmtPnl(s.pnl)));
+    btn.setAttribute('aria-pressed',state.market===market?'true':'false');
+
+    const top=node('span','market-tab-top');
+    top.append(node('strong','market-tab-name',market),node('span','market-tab-rate '+rateTone,fmtPct(s.winRate)));
+
+    const bottom=node('span','market-tab-bottom');
+    bottom.append(node('span','market-tab-pnl-label','P/L'),node('b','market-tab-pnl '+pnlTone,fmtPnl(s.pnl)));
+
+    btn.append(top,bottom);
     btn.addEventListener('click',()=>{
       state.market=market;
       state.expandedFixtureId=null;
