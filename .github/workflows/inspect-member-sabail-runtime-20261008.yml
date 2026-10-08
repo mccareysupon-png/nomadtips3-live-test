@@ -1,0 +1,31 @@
+name: Inspect Ball46 Member Sabail Runtime 20261008
+on:
+  push:
+    branches:
+      - member/ball46-member-v1-20261008
+    paths:
+      - '.github/workflows/inspect-member-sabail-runtime-20261008.yml'
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Compare Member vs Production runtime fields
+        shell: bash
+        run: |
+          set -euo pipefail
+          member="https://ball46-member-production.mccarey-supon.workers.dev"
+          prod="https://www.ball46.com"
+          curl -fsS --max-time 45 "$member/api/member/daily?refresh=1&inspect=${GITHUB_RUN_ID}" -o /tmp/member.json
+          curl -fsS --max-time 45 "$prod/api/engine/statistics?paged=1&inspect=${GITHUB_RUN_ID}" -o /tmp/stats.json
+          curl -fsS --max-time 45 "$prod/api/engine/board?inspect=${GITHUB_RUN_ID}" -o /tmp/board.json
+
+          echo "=== MEMBER SABAIL ==="
+          jq -c '.signals[] | select((.home|ascii_downcase|contains("sabail")) or (.away|ascii_downcase|contains("karvan"))) | {id,fixtureId,home,away,signalTime,signalMinute,matchMinute,mirrorMinute,mirrorStatus,state,status,result,entryScore,mirrorScore,odds,line,market,selection,bookmaker}' /tmp/member.json || true
+
+          echo "=== PRODUCTION STATS SABAIL ==="
+          jq -c '.rows[] | select((((.home.name // .home // "")|tostring|ascii_downcase|contains("sabail"))) or (((.away.name // .away // "")|tostring|ascii_downcase|contains("karvan")))) | {id,fixtureId,createdAt,entryMinute,minute,mirrorMinute,mirrorStatus,status,result,entryScore,mirrorScore,finalScore,market,selection,line,odds,bookmaker,home,away}' /tmp/stats.json || true
+
+          echo "=== PRODUCTION BOARD SABAIL ==="
+          jq -c '.. | objects | select((((.home.name // .home // "")|tostring|ascii_downcase|contains("sabail"))) or (((.away.name // .away // "")|tostring|ascii_downcase|contains("karvan")))) | {fixtureId,id,minute,status,statusCode,boardState,score,goals,home,away}' /tmp/board.json | head -20 || true
