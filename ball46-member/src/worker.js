@@ -127,7 +127,8 @@ function signalState(row) {
 
 function normalizeSignal(row) {
   const createdAt = num(row?.createdAt) ?? 0;
-  const result = String(row?.result||'PENDING').toUpperCase();
+  const rawResult = String(row?.result||'PENDING').toUpperCase();
+  const result = ['WIN','LOSS','PUSH','HALF_WIN','HALF_LOSS','VOID'].includes(rawResult) ? rawResult : 'PENDING';
   const entryMinute = num(row?.minute??row?.entryMinute);
   const category = marketCategory(row);
   return {
