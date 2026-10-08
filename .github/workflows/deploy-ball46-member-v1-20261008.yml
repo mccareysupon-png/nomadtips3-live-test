@@ -1,0 +1,74 @@
+name: Deploy Ball46 Member V1
+
+on:
+  push:
+    branches:
+      - member/ball46-member-v1-20261008
+    paths:
+      - 'ball46-member/**'
+      - '.github/workflows/deploy-ball46-member-v1-20261008.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ball46-member-production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy-member:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: member/ball46-member-v1-20261008
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate isolated member package
+        working-directory: ball46-member
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f wrangler.jsonc
+          test -f src/worker.js
+          test -f public/pricing.html
+          test -f public/member.html
+          grep -Fq '"name": "ball46-member-production"' wrangler.jsonc
+          ! grep -R -Fq '"name": "ball46-production"' .
+          node --check src/worker.js
+          node --check public/pricing.js
+          node --check public/member.js
+          echo "BALL46_MEMBER_PACKAGE_VALID"
+
+      - name: Dry run isolated Member worker
+        working-directory: ball46-member
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.jsonc
+
+      - name: Deploy isolated Member worker
+        working-directory: ball46-member
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.jsonc
+
+      - name: Verify Member worker only
+        shell: bash
+        run: |
+          set -euo pipefail
+          url="https://ball46-member-production.mccarey-supon.workers.dev/api/health"
+          for n in {1..20}; do
+            if body="$(curl -fsS --max-time 15 "$url?run=${GITHUB_RUN_ID}" 2>/dev/null)"; then
+              echo "$body" | grep -Fq '"service":"ball46-member-production"'
+              echo "BALL46_MEMBER_DEPLOY_SUCCESS $url"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "BALL46_MEMBER_VERIFY_FAILED"
+          exit 1
