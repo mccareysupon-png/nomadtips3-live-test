@@ -995,3 +995,124 @@ html{
 @media(prefers-reduced-motion:reduce){
   .signal-row td,.expand-glyph,.signal-chip{transition:none}
 }
+
+/* Premium Event Flow palette · Member only
+   HOME  = Electric Cyan
+   AWAY  = Premium Violet
+   SIGNAL = Champagne Gold
+*/
+.member-flow{
+  background:
+    radial-gradient(circle at 12% 0%,rgba(89,199,255,.055),transparent 28%),
+    radial-gradient(circle at 88% 0%,rgba(167,139,250,.055),transparent 28%),
+    rgba(5,12,20,.90);
+  border-color:rgba(148,180,208,.14);
+}
+.expand-card-head{
+  background:
+    linear-gradient(180deg,rgba(17,30,44,.98),rgba(10,21,32,.96));
+  border-bottom-color:rgba(148,180,208,.13);
+}
+.expand-card-head span{
+  color:#F2C76E;
+}
+.expand-flow-chart{
+  background:
+    linear-gradient(180deg,rgba(7,14,23,.98),rgba(3,8,14,.99));
+  box-shadow:
+    inset 0 0 0 1px rgba(148,180,208,.10),
+    inset 0 18px 50px rgba(89,199,255,.018),
+    0 10px 28px rgba(0,0,0,.15);
+}
+
+/* Legend */
+.expand-flow-legend .home{color:#8CDBFF}
+.expand-flow-legend .away{color:#C1AEFF}
+.expand-flow-legend .home i{
+  background:#59C7FF;
+  box-shadow:0 0 10px rgba(89,199,255,.34);
+}
+.expand-flow-legend .away i{
+  background:#A78BFA;
+  box-shadow:0 0 10px rgba(167,139,250,.34);
+}
+
+/* Grid / axis */
+.expand-flow-grid{
+  stroke:rgba(136,163,187,.12);
+}
+.expand-flow-grid.mid{
+  stroke:rgba(136,163,187,.22);
+}
+.expand-flow-grid.v{
+  stroke:rgba(136,163,187,.075);
+}
+.expand-flow-axis{
+  fill:#71879A;
+}
+
+/* Team pressure lines */
+.expand-flow-line{
+  stroke-width:.95;
+}
+.expand-flow-line.home{
+  stroke:#59C7FF;
+  filter:drop-shadow(0 1px 1.8px rgba(89,199,255,.34));
+}
+.expand-flow-line.away{
+  stroke:#A78BFA;
+  filter:drop-shadow(0 1px 1.8px rgba(167,139,250,.32));
+}
+.expand-flow-end.home{
+  fill:#59C7FF;
+  stroke:#D8F3FF;
+  stroke-width:.8;
+}
+.expand-flow-end.away{
+  fill:#A78BFA;
+  stroke:#E7E0FF;
+  stroke-width:.8;
+}
+
+/* Signal is intentionally independent from HOME/AWAY */
+.member-flow-signal-line{
+  stroke:#D9A83E;
+  stroke-width:1;
+  stroke-dasharray:4 5;
+  opacity:.34;
+}
+.member-flow-signal-dot{
+  fill:#F2C76E;
+  stroke:#FFF5D7;
+  stroke-width:2.2;
+  filter:drop-shadow(0 0 2.5px rgba(242,199,110,.42));
+}
+.member-flow-signal-label{
+  fill:#F7D98F;
+  stroke:#050C14;
+  stroke-width:3px;
+}
+
+/* Mirrored match events inherit team identity */
+.member-flow-event.home .member-flow-event-dot{fill:#59C7FF}
+.member-flow-event.away .member-flow-event-dot{fill:#A78BFA}
+.member-flow-event.neutral .member-flow-event-dot{fill:#D6E1EA}
+.member-flow-event-dot{
+  stroke:#07111B;
+  stroke-width:1.5;
+}
+.member-flow-event-label{
+  fill:#EFF5FA;
+  stroke:#050C14;
+}
+
+/* Key */
+.member-flow-key{
+  color:#71879A;
+}
+.member-flow-key .signal{
+  color:#F2C76E;
+}
+.member-flow-key .event{
+  color:#D6E1EA;
+}

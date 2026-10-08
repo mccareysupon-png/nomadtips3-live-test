@@ -415,9 +415,9 @@ function eventFlowChart(detail,fixtureId){
 
   const defs=svgNode('defs');
   const gh=svgNode('linearGradient',{id:'member-home-'+fixtureId,x1:'0',y1:'0',x2:'0',y2:'1'});
-  gh.append(svgNode('stop',{offset:'0%','stop-color':'#31b878','stop-opacity':'.22'}),svgNode('stop',{offset:'100%','stop-color':'#31b878','stop-opacity':'0'}));
+  gh.append(svgNode('stop',{offset:'0%','stop-color':'#59C7FF','stop-opacity':'.22'}),svgNode('stop',{offset:'100%','stop-color':'#59C7FF','stop-opacity':'0'}));
   const ga=svgNode('linearGradient',{id:'member-away-'+fixtureId,x1:'0',y1:'0',x2:'0',y2:'1'});
-  ga.append(svgNode('stop',{offset:'0%','stop-color':'#e2c94c','stop-opacity':'.20'}),svgNode('stop',{offset:'100%','stop-color':'#e2c94c','stop-opacity':'0'}));
+  ga.append(svgNode('stop',{offset:'0%','stop-color':'#A78BFA','stop-opacity':'.20'}),svgNode('stop',{offset:'100%','stop-color':'#A78BFA','stop-opacity':'0'}));
   defs.append(gh,ga); svg.append(defs);
 
   for(const v of [100,75,50,25,1]){
