@@ -28,6 +28,12 @@ jobs:
           curl -fsS --max-time 30 -H 'Cache-Control: no-cache' "$BASE/api/engine/statistics?view=summary&member_probe=${GITHUB_RUN_ID}" -o /tmp/stat-summary.json
           curl -fsS --max-time 30 -H 'Cache-Control: no-cache' "$BASE/api/engine/statistics?view=rows&limit=100&member_probe=${GITHUB_RUN_ID}" -o /tmp/stat-rows.json
           curl -fsS --max-time 30 -H 'Cache-Control: no-cache' "$BASE/api/engine/statistics?paged=1&limit=100&member_probe=${GITHUB_RUN_ID}" -o /tmp/stat-paged.json
+          CURSOR="$(jq -r '.nextCursor // empty' /tmp/stat-paged.json)"
+          if [ -n "$CURSOR" ]; then
+            curl -fsS --max-time 30 -G -H 'Cache-Control: no-cache'               --data-urlencode 'paged=1'               --data-urlencode "cursor=$CURSOR"               --data-urlencode "member_probe=${GITHUB_RUN_ID}"               "$BASE/api/engine/statistics" -o /tmp/stat-paged2.json
+          else
+            echo '{"rows":[]}' > /tmp/stat-paged2.json
+          fi
 
           echo "=== SIGNAL TOP LEVEL ==="
           jq -c 'keys' /tmp/signals.json
@@ -57,6 +63,8 @@ jobs:
           jq -c '{keys:keys,rowCount:(.rows|length? // null),returned,hasMore,nextCursor,total,pending,statisticsSource,statisticsPagination,firstCreatedAt:(.rows[0].createdAt // null),lastCreatedAt:(.rows[-1].createdAt // null)}' /tmp/stat-rows.json
           echo "=== STATISTICS PAGED ==="
           jq -c '{keys:keys,rowCount:(.rows|length? // null),returned,hasMore,nextCursor,total,pending,statisticsSource,statisticsPagination,firstCreatedAt:(.rows[0].createdAt // null),lastCreatedAt:(.rows[-1].createdAt // null)}' /tmp/stat-paged.json
+          echo "=== STATISTICS CURSOR PAGE 2 ==="
+          jq -c '{returned,rowCount:(.rows|length? // null),hasMore,nextCursor,firstCreatedAt:(.rows[0].createdAt // null),lastCreatedAt:(.rows[-1].createdAt // null)}' /tmp/stat-paged2.json
           echo "=== STATISTICS STATUS COUNTS ==="
           jq -c '[.rows[].status] | group_by(.) | map({status:.[0],count:length})' /tmp/statistics.json
           echo "=== STATISTICS LATEST ROW KEYS ==="
