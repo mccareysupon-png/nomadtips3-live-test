@@ -461,8 +461,30 @@ function eventFlowChart(detail,fixtureId){
     const g=svgNode('g',{class:'member-flow-signal'});
     const tt=svgNode('title');tt.textContent=title;g.append(tt);
     g.append(svgNode('line',{x1:x,y1:pad.top,x2:x,y2:h-pad.bottom,class:'member-flow-signal-line'}));
-    g.append(svgNode('circle',{cx:x,cy:y,r:'5.4',class:'member-flow-signal-dot'}));
-    const label=svgNode('text',{x:clamp(x+8,pad.left+5,w-pad.right-150),y:clamp(y-8,pad.top+12,h-pad.bottom-10),class:'member-flow-signal-label'});label.textContent='SIGNAL '+minute+"'";g.append(label);
+    g.append(svgNode('circle',{cx:x,cy:y,r:'6.1',class:'member-flow-signal-ring'}));
+    g.append(svgNode('circle',{cx:x,cy:y,r:'3.1',class:'member-flow-signal-dot'}));
+
+    const tagW=92,tagH=19,cut=6;
+    const tagX=clamp(x+9,pad.left+5,w-pad.right-tagW-2);
+    const tagY=clamp(y-22,pad.top+2,h-pad.bottom-tagH-2);
+    const tag=svgNode('g',{class:'member-flow-signal-tag'});
+    const plate=svgNode('path',{
+      d:[
+        'M',tagX+cut,tagY,
+        'H',tagX+tagW,
+        'V',tagY+tagH-cut,
+        'L',tagX+tagW-cut,tagY+tagH,
+        'H',tagX,
+        'V',tagY+cut,
+        'Z'
+      ].join(' '),
+      class:'member-flow-signal-plate'
+    });
+    const accent=svgNode('rect',{x:tagX+5,y:tagY+5,width:'2.4',height:tagH-10,rx:'1.2',class:'member-flow-signal-accent'});
+    const label=svgNode('text',{x:tagX+12,y:tagY+12.6,class:'member-flow-signal-label'});
+    label.textContent='SIGNAL // '+minute+"'";
+    tag.append(plate,accent,label);
+    g.append(tag);
     svg.append(g);
   }
 
