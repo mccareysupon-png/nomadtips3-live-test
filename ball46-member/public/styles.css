@@ -172,3 +172,66 @@ button,input{font:inherit}
   .member-head{flex-direction:column}
   .toolbar{align-items:stretch;flex-direction:column}.toolbar-right{width:100%}.search{width:100%;max-width:none}.status-select{flex:1}
 }
+
+/* Member Match Insight */
+.signal-row{cursor:pointer}
+.signal-row td{transition:background .16s ease}
+.signal-row.expanded td{background:rgba(57,168,255,.035)}
+.signal-time{white-space:nowrap}
+.expand-glyph{display:inline-block;margin-left:6px;color:var(--blue2);font-size:11px;font-weight:950}
+.detail-hint{color:#5f91b5!important;font-size:8px!important;font-weight:900;letter-spacing:.05em;text-transform:uppercase}
+.signal-detail-row>td{padding:0!important;background:rgba(4,12,19,.56)!important}
+.match-insight{padding:18px;border-top:1px solid rgba(57,168,255,.18);border-bottom:1px solid rgba(57,168,255,.1)}
+.insight-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:12px}
+.insight-head h3{margin:5px 0 0;font-size:18px;letter-spacing:-.025em}
+.signal-chips{display:flex;gap:7px;overflow:auto;padding:0 0 10px;scrollbar-width:none}
+.signal-chips::-webkit-scrollbar{display:none}
+.signal-chip{
+  flex:0 0 auto;border:1px solid var(--line);background:rgba(255,255,255,.025);color:var(--muted);
+  border-radius:9px;padding:8px 10px;font-size:10px;font-weight:850;cursor:pointer
+}
+.signal-chip.active{color:var(--text);border-color:rgba(57,168,255,.42);background:rgba(57,168,255,.11)}
+.insight-panel{
+  margin-top:10px;border:1px solid rgba(160,196,225,.11);border-radius:12px;
+  background:rgba(8,20,31,.66);padding:14px
+}
+.insight-panel.live-context{background:rgba(11,28,40,.72)}
+.insight-panel-head{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:12px}
+.insight-panel-head strong{font-size:11px}
+.insight-label{color:var(--blue2);font-size:9px;font-weight:950;letter-spacing:.1em}
+.insight-stats{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:7px}
+.insight-stat{border:1px solid rgba(160,196,225,.09);background:rgba(255,255,255,.02);border-radius:9px;padding:9px}
+.insight-stat span{display:block;color:var(--muted);font-size:8px;font-weight:900;letter-spacing:.05em}
+.insight-stat b{display:block;margin-top:5px;font-size:11px;white-space:nowrap}
+.insight-loading,.insight-note,.insight-empty{
+  margin-top:10px;border:1px solid rgba(160,196,225,.1);border-radius:10px;padding:12px;
+  color:var(--muted);font-size:10px;line-height:1.6
+}
+.event-flow{min-height:70px}
+.flow-bars{height:92px;display:flex;align-items:center;gap:2px;padding:5px 0 7px;border-bottom:1px solid rgba(160,196,225,.08)}
+.flow-point{flex:1;min-width:3px;height:86px;display:flex;align-items:center;justify-content:center;gap:1px}
+.flow-point i{display:block;width:45%;min-width:1px;border-radius:2px 2px 0 0}
+.flow-home{background:rgba(57,168,255,.78)}
+.flow-away{background:rgba(143,164,183,.62)}
+.flow-legend{display:flex;justify-content:space-between;gap:12px;padding-top:7px;font-size:8px;font-weight:900;letter-spacing:.06em}
+.flow-legend .home{color:var(--blue2)}.flow-legend .away{color:var(--muted)}
+.recent-events{display:grid;gap:5px}
+.recent-event{display:grid;grid-template-columns:42px minmax(120px,1fr) minmax(80px,.7fr);gap:10px;padding:7px 0;border-bottom:1px solid rgba(160,196,225,.07);font-size:10px}
+.recent-event:last-child{border-bottom:0}
+.recent-event time{color:var(--blue2);font-weight:900}
+.recent-event strong{font-size:10px}
+.recent-event span{color:var(--muted);text-align:right}
+.odds-readonly{font-weight:900;color:#dcecf8}
+.badge.push{color:#cad5de;background:rgba(160,196,225,.1)}
+
+@media(max-width:900px){
+  .insight-stats{grid-template-columns:repeat(4,minmax(0,1fr))}
+}
+@media(max-width:680px){
+  .match-insight{padding:12px}
+  .insight-head,.insight-panel-head{align-items:flex-start;flex-direction:column}
+  .insight-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .flow-bars{gap:1px}
+  .recent-event{grid-template-columns:36px 1fr}
+  .recent-event span{grid-column:2;text-align:left;margin-top:-5px}
+}
