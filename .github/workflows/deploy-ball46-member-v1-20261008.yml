@@ -87,7 +87,7 @@ jobs:
           if [ -n "$first_id" ]; then
             curl -fsS --max-time 45 "$prod/api/engine/statistics?paged=1&member_qa=${GITHUB_RUN_ID}" -o /tmp/prod-stats.json
             jq -e --arg id "$first_id" '.rows | any(.id==$id)' /tmp/prod-stats.json >/dev/null
-            jq --arg id "$first_id" '.rows[] | select(.id==$id)' /tmp/prod-stats.json | head -n 1 > /tmp/source-row.json
+            jq --arg id "$first_id" 'first(.rows[] | select(.id==$id))' /tmp/prod-stats.json > /tmp/source-row.json
 
             jq -e --slurpfile src /tmp/source-row.json '
               .signals[0] as $m | $src[0] as $s |
