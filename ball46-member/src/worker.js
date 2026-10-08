@@ -1,25 +1,171 @@
 const MARKET_ORDER = ['ALL','AH','1X2','O/U','CORNERS','BTTS','CARDS','OTHER'];
+const SOURCE_BASE = 'https://www.ball46.com';
+const BANGKOK_OFFSET_MS = 7 * 60 * 60 * 1000;
+const DAY_MS = 24 * 60 * 60 * 1000;
+const MIRROR_TTL_MS = 15_000;
+const MAX_DAILY_PAGES = 30;
 
-const DEMO_SIGNALS = [
-  {id:'b46-0012',signalTime:'14:32:18',league:'Premier League',home:'Arsenal',away:'Chelsea',matchMinute:78,market:'AH',selection:'HOME',line:'-0.5',odds:1.86,bookmaker:'Bet365',signalMinute:76,state:'LIVE',result:'PENDING',pnl:0},
-  {id:'b46-0011',signalTime:'14:28:04',league:'Serie A',home:'Milan',away:'Roma',matchMinute:74,market:'AH',selection:'AWAY',line:'+0.25',odds:1.91,bookmaker:'Crown',signalMinute:72,state:'FINISHED',result:'WIN',pnl:0.91},
-  {id:'b46-0010',signalTime:'14:21:37',league:'La Liga',home:'Barcelona',away:'Atletico Madrid',matchMinute:81,market:'O/U',selection:'OVER',line:'2.5',odds:1.88,bookmaker:'12BET',signalMinute:79,state:'LIVE',result:'PENDING',pnl:0},
-  {id:'b46-0009',signalTime:'14:17:09',league:'Bundesliga',home:'Dortmund',away:'Leipzig',matchMinute:86,market:'CORNERS',selection:'OVER',line:'9.5',odds:1.83,bookmaker:'EasyBet',signalMinute:83,state:'FINISHED',result:'LOSS',pnl:-1},
-  {id:'b46-0008',signalTime:'14:11:45',league:'Ligue 1',home:'Lyon',away:'Monaco',matchMinute:69,market:'1X2',selection:'HOME',line:'—',odds:2.15,bookmaker:'Betsson',signalMinute:66,state:'FINISHED',result:'WIN',pnl:1.15},
-  {id:'b46-0007',signalTime:'14:05:31',league:'Premier League',home:'Liverpool',away:'Everton',matchMinute:64,market:'BTTS',selection:'YES',line:'—',odds:1.79,bookmaker:'Bet365',signalMinute:62,state:'FINISHED',result:'PUSH',pnl:0},
-  {id:'b46-0006',signalTime:'13:58:26',league:'Serie A',home:'Napoli',away:'Inter',matchMinute:73,market:'CARDS',selection:'OVER',line:'4.5',odds:1.94,bookmaker:'12BET',signalMinute:70,state:'FINISHED',result:'HALF_WIN',pnl:0.47},
-  {id:'b46-0005',signalTime:'13:52:03',league:'La Liga',home:'Sevilla',away:'Villarreal',matchMinute:59,market:'AH',selection:'HOME',line:'0',odds:1.82,bookmaker:'Crown',signalMinute:56,state:'FINISHED',result:'HALF_LOSS',pnl:-0.5},
-  {id:'b46-0004',signalTime:'13:45:17',league:'Eredivisie',home:'Ajax',away:'PSV',matchMinute:51,market:'O/U',selection:'UNDER',line:'3.5',odds:1.85,bookmaker:'EasyBet',signalMinute:48,state:'FINISHED',result:'WIN',pnl:0.85},
-  {id:'b46-0003',signalTime:'13:39:50',league:'Champions League',home:'Real Madrid',away:'Bayern',matchMinute:44,market:'1X2',selection:'DRAW',line:'—',odds:3.05,bookmaker:'Betsson',signalMinute:42,state:'FINISHED',result:'LOSS',pnl:-1},
-  {id:'b46-0002',signalTime:'13:31:12',league:'Premier League',home:'Newcastle',away:'Tottenham',matchMinute:37,market:'CORNERS',selection:'OVER',line:'8.5',odds:1.76,bookmaker:'Bet365',signalMinute:35,state:'FINISHED',result:'WIN',pnl:0.76},
-  {id:'b46-0001',signalTime:'13:22:41',league:'La Liga',home:'Valencia',away:'Betis',matchMinute:28,market:'OTHER',selection:'HOME TEAM TOTAL OVER',line:'0.5',odds:1.81,bookmaker:'12BET',signalMinute:25,state:'FINISHED',result:'WIN',pnl:0.81}
-];
+let mirrorCache = null;
 
 function json(data,status=200,headers={}) {
   return new Response(JSON.stringify(data),{
     status,
     headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store',...headers}
   });
+}
+
+function num(v) {
+  if (v === null || v === undefined || v === '' || typeof v === 'boolean') return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+function cutoffWindow(nowMs=Date.now()) {
+  const local = new Date(nowMs + BANGKOK_OFFSET_MS);
+  let start = Date.UTC(local.getUTCFullYear(),local.getUTCMonth(),local.getUTCDate(),12,0,0,0) - BANGKOK_OFFSET_MS;
+  if (nowMs < start) start -= DAY_MS;
+  return {start,end:start+DAY_MS};
+}
+
+function bangkokTime(ms) {
+  try {
+    return new Intl.DateTimeFormat('en-GB',{
+      timeZone:'Asia/Bangkok',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false
+    }).format(new Date(ms));
+  } catch {
+    return new Date(ms+BANGKOK_OFFSET_MS).toISOString().slice(11,19);
+  }
+}
+
+function bangkokDate(ms) {
+  try {
+    return new Intl.DateTimeFormat('en-CA',{
+      timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit'
+    }).format(new Date(ms));
+  } catch {
+    return new Date(ms+BANGKOK_OFFSET_MS).toISOString().slice(0,10);
+  }
+}
+
+function pair(v) {
+  if (!v || typeof v !== 'object') return {home:null,away:null};
+  return {home:num(v.home??v.h??v[0]),away:num(v.away??v.a??v[1])};
+}
+
+function cleanStats(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const out = {
+    attacks:pair(raw.attacks??raw.attack),
+    dangerousAttacks:pair(raw.dangerousAttacks??raw.dangerous_attacks??raw.dangerousAttack??raw.dangerous),
+    shotsOnTarget:pair(raw.shotsOnTarget??raw.shots_on_target??raw.shotOnTarget??raw.sot),
+    shotsOffTarget:pair(raw.shotsOffTarget??raw.shots_off_target??raw.shotOff??raw.off),
+    possession:pair(raw.possession??raw.possessionPct??raw.possession_percent)
+  };
+  if (raw.half && typeof raw.half === 'object') out.half = cleanStats(raw.half);
+  return out;
+}
+
+function cleanCorners(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  return {
+    home:num(raw.home),away:num(raw.away),
+    halfHome:num(raw.halfHome),halfAway:num(raw.halfAway)
+  };
+}
+
+function cleanCards(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const side=v=>({
+    yellow:num(v?.yellow)??0,
+    red:num(v?.red)??0
+  });
+  return {home:side(raw.home),away:side(raw.away)};
+}
+
+function cleanScore(raw) {
+  if (typeof raw === 'string') return raw;
+  if (!raw || typeof raw !== 'object') return null;
+  return {
+    home:num(raw.home??raw.h),
+    away:num(raw.away??raw.a),
+    halfHome:num(raw.halfHome),
+    halfAway:num(raw.halfAway)
+  };
+}
+
+function marketCategory(row) {
+  const key = String(row?.market??row?.providerMarket??'').toLowerCase();
+  if (key.includes('corner')) return 'CORNERS';
+  if (key.includes('card')) return 'CARDS';
+  if (key.includes('btts')) return 'BTTS';
+  if (key.includes('1x2')) return '1X2';
+  if (/(^|_)(ah|asian)(_|$)/.test(key) || key.includes('handicap')) return 'AH';
+  if (key.includes('over') || key.includes('under') || key.includes('goalline') || key.includes('goal_line') || key.includes('total')) return 'O/U';
+  return 'OTHER';
+}
+
+function resultPnl(result,odds) {
+  const o = num(odds);
+  const r = String(result||'').toUpperCase();
+  if (r === 'WIN') return o===null ? 0 : o-1;
+  if (r === 'LOSS') return -1;
+  if (r === 'HALF_WIN') return o===null ? 0 : (o-1)/2;
+  if (r === 'HALF_LOSS') return -0.5;
+  return 0;
+}
+
+function signalState(row) {
+  if (String(row?.status||'').toUpperCase() === 'SETTLED' || row?.result) return 'FINISHED';
+  const s = String(row?.mirrorStatus||'').toLowerCase();
+  if (/(finished|ended|full.?time|\bft\b|after.?pen|\baet\b)/.test(s)) return 'FINISHED';
+  if (/(live|in.?play|1h|2h|half.?time|\bht\b|break|paused|extra.?time|penalt)/.test(s)) return 'LIVE';
+  if (num(row?.mirrorMinute)!==null && num(row?.mirrorMinute)>0) return 'LIVE';
+  return 'WAITING';
+}
+
+function normalizeSignal(row) {
+  const createdAt = num(row?.createdAt) ?? 0;
+  const result = String(row?.result||'PENDING').toUpperCase();
+  const entryMinute = num(row?.entryMinute??row?.minute);
+  const category = marketCategory(row);
+  return {
+    id:String(row?.id||''),
+    fixtureId:String(row?.fixtureId||''),
+    createdAt,
+    signalTime:bangkokTime(createdAt),
+    league:[row?.league?.country,row?.league?.name].filter(Boolean).join(' · ') || '—',
+    leagueData:row?.league && typeof row.league==='object' ? {
+      id:row.league.id??null,name:row.league.name??null,country:row.league.country??null
+    } : null,
+    home:String(row?.home?.name||'HOME'),
+    away:String(row?.away?.name||'AWAY'),
+    homeId:row?.home?.id??null,
+    awayId:row?.away?.id??null,
+    market:category,
+    sourceMarket:String(row?.market||''),
+    marketLabel:String(row?.marketLabel||row?.market||category),
+    providerMarket:String(row?.providerMarket||''),
+    period:String(row?.period||''),
+    selection:String(row?.selection||'—').toUpperCase(),
+    line:num(row?.line),
+    odds:num(row?.odds),
+    bookmaker:String(row?.bookmaker||'—'),
+    signalMinute:entryMinute,
+    matchMinute:num(row?.mirrorMinute)??entryMinute,
+    entryScore:cleanScore(row?.entryScore??row?.scoreAt),
+    mirrorScore:cleanScore(row?.mirrorScore),
+    finalScore:cleanScore(row?.finalScore),
+    entryStats:cleanStats(row?.entryStats??row?.statisticsAtEntry),
+    entryCorners:cleanCorners(row?.entryCorners),
+    entryCards:cleanCards(row?.entryCards),
+    mirrorMinute:num(row?.mirrorMinute),
+    mirrorStatus:row?.mirrorStatus??null,
+    state:signalState(row),
+    status:String(row?.status||'PENDING').toUpperCase(),
+    result,
+    settledAt:num(row?.settledAt),
+    pnl:Number(resultPnl(result,row?.odds).toFixed(3))
+  };
 }
 
 function dailySummary(rows) {
@@ -42,10 +188,173 @@ function dailySummary(rows) {
     out[market] = {
       ...counts,
       winRate: decided ? Number((winPoints / decided * 100).toFixed(1)) : null,
-      pnl: Number(pnl.toFixed(2))
+      pnl:Number(pnl.toFixed(2))
     };
   }
   return out;
+}
+
+async function sourceJson(path,params={}) {
+  const url = new URL(path,SOURCE_BASE);
+  for (const [k,v] of Object.entries(params)) if (v!==null && v!==undefined && v!=='') url.searchParams.set(k,String(v));
+  url.searchParams.set('_member_mirror',String(Date.now()));
+  const r = await fetch(url.toString(),{
+    cache:'no-store',
+    headers:{accept:'application/json','cache-control':'no-cache'}
+  });
+  const j = await r.json().catch(()=>null);
+  if (!r.ok || !j || j.ok===false) throw new Error(j?.error||('SOURCE_HTTP_'+r.status));
+  return j;
+}
+
+async function loadDailyMirror(force=false) {
+  const nowMs = Date.now();
+  const cycle = cutoffWindow(nowMs);
+  if (!force && mirrorCache && mirrorCache.cycleStart===cycle.start && mirrorCache.expiresAt>nowMs) {
+    return mirrorCache.payload;
+  }
+
+  const unique = new Map();
+  let cursor = null;
+  let pagesRead = 0;
+  let lastMeta = null;
+  let hasMore = true;
+
+  while (hasMore && pagesRead < MAX_DAILY_PAGES) {
+    const page = await sourceJson('/api/engine/statistics',{
+      paged:1,
+      cursor:cursor||undefined
+    });
+    pagesRead++;
+    lastMeta = page;
+    const rows = Array.isArray(page.rows) ? page.rows : [];
+    let oldest = Infinity;
+
+    for (const row of rows) {
+      const createdAt = num(row?.createdAt);
+      if (createdAt===null) continue;
+      oldest = Math.min(oldest,createdAt);
+      if (createdAt >= cycle.start && createdAt < cycle.end && row?.id) {
+        const id=String(row.id);
+        if (!unique.has(id)) unique.set(id,row);
+      }
+    }
+
+    hasMore = page.hasMore===true && Boolean(page.nextCursor);
+    cursor = page.nextCursor || null;
+    if (!rows.length || oldest < cycle.start) break;
+  }
+
+  if (hasMore && pagesRead >= MAX_DAILY_PAGES) throw new Error('DAILY_MIRROR_PAGE_LIMIT');
+
+  const signals = [...unique.values()]
+    .map(normalizeSignal)
+    .filter(r=>r.id && r.fixtureId)
+    .sort((a,b)=>b.createdAt-a.createdAt);
+
+  const payload = {
+    ok:true,
+    prototype:false,
+    source:'BALL46_PRODUCTION_LEDGER_V2',
+    sourceEndpoint:'/api/engine/statistics?paged=1',
+    sourceStatistics:lastMeta?.statisticsSource||null,
+    day:bangkokDate(cycle.start),
+    timezone:'Asia/Bangkok',
+    cutoffLocal:'12:00',
+    cycleStart:cycle.start,
+    cycleEnd:cycle.end,
+    generatedAt:nowMs,
+    pagesRead,
+    signalCount:signals.length,
+    summary:dailySummary(signals),
+    signals
+  };
+
+  mirrorCache={cycleStart:cycle.start,expiresAt:nowMs+MIRROR_TTL_MS,payload};
+  return payload;
+}
+
+function cleanEvents(events) {
+  if (!Array.isArray(events)) return [];
+  return events.slice().sort((a,b)=>{
+    const am=num(a?.minute??a?.elapsed??a?.time?.elapsed)??0;
+    const bm=num(b?.minute??b?.elapsed??b?.time?.elapsed)??0;
+    return bm-am;
+  }).slice(0,20).map(e=>{
+    const team=e?.team??e?.team_name;
+    return {
+      minute:num(e?.minute??e?.elapsed??e?.time?.elapsed),
+      type:String(e?.type??e?.event??e?.name??e?.detail??'Match event'),
+      team:typeof team==='object' ? String(team?.name||'') : String(team||'')
+    };
+  });
+}
+
+function cleanHistoryRow(row) {
+  return {
+    at:num(row?.at),
+    minute:num(row?.minute),
+    attacks:pair(row?.attacks),
+    dangerousAttacks:pair(row?.dangerousAttacks),
+    shotsOnTarget:pair(row?.shotsOnTarget),
+    shotsOffTarget:pair(row?.shotsOffTarget),
+    corners:pair(row?.corners),
+    possession:pair(row?.possession),
+    goals:cleanScore(row?.goals),
+    cards:cleanCards(row?.cards)
+  };
+}
+
+async function loadMatchDetail(fixtureId) {
+  const [boardResult,historyResult] = await Promise.allSettled([
+    sourceJson('/api/engine/board'),
+    sourceJson('/api/engine/history',{fixtureId,window:10})
+  ]);
+
+  let featured = null;
+  if (boardResult.status==='fulfilled') {
+    const board=boardResult.value;
+    const f=(Array.isArray(board?.fixtures)?board.fixtures:[]).find(x=>String(x?.fixtureId??'')===String(fixtureId));
+    if (f) {
+      featured={
+        fixtureId:String(f.fixtureId),
+        minute:num(f.minute),
+        status:String(f.status??f.statusCode??f.boardState??''),
+        home:String(f?.home?.name||'HOME'),
+        away:String(f?.away?.name||'AWAY'),
+        league:[f?.league?.country,f?.league?.name].filter(Boolean).join(' · ')||'—',
+        score:cleanScore(f?.goals??f?.score),
+        statistics:cleanStats(f?.statistics),
+        corners:cleanCorners(f?.corners),
+        cards:cleanCards(f?.cards),
+        events:cleanEvents(f?.events)
+      };
+    }
+  }
+
+  let eventFlow = null;
+  if (historyResult.status==='fulfilled' && historyResult.value?.ok===true) {
+    const h=historyResult.value;
+    eventFlow={
+      version:h.version||null,
+      retainedMinutes:num(h.retainedMinutes),
+      pressureWindowMinutes:num(h.pressureWindowMinutes),
+      rows:(Array.isArray(h.rows)?h.rows:[]).map(cleanHistoryRow),
+      pressure:(Array.isArray(h.pressure)?h.pressure:[]).map(p=>({
+        at:num(p?.at),minute:num(p?.minute),home:num(p?.home),away:num(p?.away),windowMinutes:num(p?.windowMinutes)
+      }))
+    };
+  }
+
+  return {
+    ok:true,
+    source:'BALL46_PRODUCTION_MIRROR',
+    fixtureId:String(fixtureId),
+    featured,
+    eventFlow,
+    available:Boolean(featured||eventFlow),
+    generatedAt:Date.now()
+  };
 }
 
 function withSecurityHeaders(response) {
@@ -114,15 +423,22 @@ export default {
     }
 
     if (url.pathname === '/api/member/daily') {
-      const rows = [...DEMO_SIGNALS].sort((a,b)=>b.signalTime.localeCompare(a.signalTime));
-      return json({
-        ok:true,
-        day:'TODAY',
-        timezone:'Ball46 cutoff timezone',
-        prototype:true,
-        summary:dailySummary(rows),
-        signals:rows
-      });
+      try {
+        return json(await loadDailyMirror(url.searchParams.get('refresh')==='1'));
+      } catch (e) {
+        if (mirrorCache?.payload) return json({...mirrorCache.payload,stale:true,mirrorError:String(e?.message||e)});
+        return json({ok:false,error:'DAILY_MIRROR_UNAVAILABLE',detail:String(e?.message||e)},502);
+      }
+    }
+
+    if (url.pathname === '/api/member/match') {
+      const fixtureId=String(url.searchParams.get('fixtureId')||'').trim();
+      if (!fixtureId) return json({ok:false,error:'FIXTURE_ID_REQUIRED'},400);
+      try {
+        return json(await loadMatchDetail(fixtureId));
+      } catch (e) {
+        return json({ok:false,error:'MATCH_MIRROR_UNAVAILABLE',detail:String(e?.message||e)},502);
+      }
     }
 
     if (url.pathname === '/api/stripe/checkout' && request.method === 'POST') {
