@@ -743,3 +743,61 @@ html{
     display:none;
   }
 }
+
+/* Prevent expanded signal detail from changing table intrinsic width */
+.signal-detail-row>td{
+  width:100%;
+  max-width:0;
+  overflow:hidden;
+  padding:0!important;
+}
+.match-insight{
+  box-sizing:border-box;
+  width:100%;
+  max-width:100%;
+  min-width:0;
+  overflow:hidden;
+  padding:12px 10px 16px;
+}
+.match-insight>*,
+.featured-horizontal,
+.member-flow,
+.signal-chips{
+  min-width:0;
+  max-width:100%;
+}
+.signal-chips{
+  width:100%;
+  overflow-x:auto;
+  overflow-y:hidden;
+  overscroll-behavior-x:contain;
+}
+.featured-horizontal,
+.member-flow{
+  box-sizing:border-box;
+  width:100%;
+}
+.featured-h-meta,
+.featured-h-score,
+.featured-h-facts,
+.featured-h-signal,
+.featured-h-stats,
+.featured-h-facts>div,
+.featured-h-stats>div,
+.expand-card-head,
+.expand-flow-legend{
+  min-width:0;
+}
+.featured-h-facts b,
+.featured-h-stats b,
+.expand-card-head b,
+.expand-card-head small{
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.featured-h-facts b{
+  white-space:nowrap;
+}
+@media(max-width:680px){
+  .match-insight{padding:10px}
+}
