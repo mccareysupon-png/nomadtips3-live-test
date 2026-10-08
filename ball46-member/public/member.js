@@ -554,9 +554,15 @@ function featuredHorizontal(detail,selected){
   for(const [label,value] of factData){const x=node('div','');x.append(node('span','',label),node('b','',value));facts.append(x)}
 
   const signal=node('div','featured-h-signal');
+  const entryContext=[`Entry score ${scoreText(selected.entryScore)}`];
+  if(selected.market==='CORNERS'&&selected.entryCorners?.home!=null&&selected.entryCorners?.away!=null){
+    entryContext.push(`Entry corners ${selected.entryCorners.home}-${selected.entryCorners.away}`);
+    const total=pairTotal(selected.entryCorners);
+    if(total!=null) entryContext.push(`Total ${total}`);
+  }
   signal.append(
     node('span','','ENTRY'),
-    node('b','',`${selected.signalMinute??'—'}' · ${selected.market} · ${selected.selection}${fmtLine(selected)?' '+fmtLine(selected):''} · ${fmtOdds(selected.odds)} · ${selected.bookmaker} · Entry score ${scoreText(selected.entryScore)}`)
+    node('b','',`${selected.signalMinute??'—'}' · ${selected.market} · ${selected.selection}${fmtLine(selected)?' '+fmtLine(selected):''} · ${fmtOdds(selected.odds)} · ${selected.bookmaker} · ${entryContext.join(' · ')}`)
   );
 
   const stats=f?.statistics||selected.entryStats;
