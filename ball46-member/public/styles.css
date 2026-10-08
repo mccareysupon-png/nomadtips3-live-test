@@ -1116,3 +1116,67 @@ html{
 .member-flow-key .event{
   color:#D6E1EA;
 }
+
+/* Market-tab style hover for default competition rows */
+.signal-row{
+  position:relative;
+  isolation:isolate;
+}
+.signal-row td{
+  overflow:hidden;
+}
+.signal-row td:first-child::before{
+  content:"";
+  position:absolute;
+  z-index:2;
+  inset:0;
+  pointer-events:none;
+  background:linear-gradient(
+    115deg,
+    transparent 0 38%,
+    rgba(255,255,255,.045) 50%,
+    transparent 62%
+  );
+  transform:translateX(-135%);
+  transition:transform .34s ease;
+}
+.signal-row:hover td:first-child::before{
+  transform:translateX(1100%);
+}
+.signal-row:hover{
+  filter:drop-shadow(0 8px 18px rgba(0,0,0,.16));
+}
+.signal-row:hover td{
+  transform:translateY(-2px);
+  background:
+    linear-gradient(180deg,rgba(57,168,255,.075),rgba(255,255,255,.010)),
+    rgba(9,22,34,.94);
+  border-top-color:rgba(107,196,255,.18);
+  border-bottom-color:rgba(107,196,255,.30);
+}
+.signal-row:hover td:first-child{
+  box-shadow:
+    inset 2px 0 0 rgba(107,196,255,.42),
+    inset 0 1px 0 rgba(255,255,255,.045);
+}
+.signal-row:hover .match>strong,
+.signal-row:hover .live-score-value,
+.signal-row:hover .odds-readonly{
+  color:#fff;
+}
+.signal-row.expanded:hover td{
+  transform:none;
+}
+.signal-row.expanded:hover{
+  filter:none;
+}
+@media(hover:none){
+  .signal-row:hover{filter:none}
+  .signal-row:hover td{transform:none}
+  .signal-row td:first-child::before{display:none}
+}
+@media(prefers-reduced-motion:reduce){
+  .signal-row td,
+  .signal-row td:first-child::before{transition:none}
+  .signal-row:hover td{transform:none}
+}
