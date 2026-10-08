@@ -24,6 +24,7 @@ jobs:
           curl -fsS --max-time 30 -H 'Cache-Control: no-cache' "$BASE/api/engine/signals?member_probe=${GITHUB_RUN_ID}" -o /tmp/signals.json
           curl -fsS --max-time 30 -H 'Cache-Control: no-cache' "$BASE/api/engine/board?member_probe=${GITHUB_RUN_ID}" -o /tmp/board.json
           curl -fsS --max-time 30 -H 'Cache-Control: no-cache' "$BASE/api/engine/statistics?member_probe=${GITHUB_RUN_ID}" -o /tmp/statistics.json
+          curl -fsS --max-time 30 -H 'Cache-Control: no-cache' "$BASE/api/engine/statistics?limit=100&member_probe=${GITHUB_RUN_ID}" -o /tmp/statistics100.json
 
           echo "=== SIGNAL TOP LEVEL ==="
           jq -c 'keys' /tmp/signals.json
@@ -43,6 +44,12 @@ jobs:
           jq -c 'keys' /tmp/statistics.json
           echo "=== STATISTICS COUNTS ==="
           jq -c '{ok,total,win,loss,push,halfWin,halfLoss,unresolved,winRate,rowCount:(.rows|length)}' /tmp/statistics.json
+          echo "=== STATISTICS PAGINATION DEFAULT ==="
+          jq -c '{returned,hasMore,nextCursor,statisticsPagination,retention,statisticsSource,ledgerTotal,ledgerUpdatedAt}' /tmp/statistics.json
+          echo "=== STATISTICS LIMIT 100 ==="
+          jq -c '{returned,rowCount:(.rows|length),hasMore,nextCursor,statisticsPagination,statisticsSource,firstCreatedAt:(.rows[0].createdAt // null),lastCreatedAt:(.rows[-1].createdAt // null)}' /tmp/statistics100.json
+          echo "=== STATISTICS STATUS COUNTS ==="
+          jq -c '[.rows[].status] | group_by(.) | map({status:.[0],count:length})' /tmp/statistics.json
           echo "=== STATISTICS LATEST ROW KEYS ==="
           jq -c '.rows[0] // {} | keys' /tmp/statistics.json
           echo "=== STATISTICS LATEST ROW SANITIZED ==="
