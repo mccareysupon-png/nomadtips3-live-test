@@ -57,24 +57,55 @@ jobs:
         working-directory: ball46-member
         run: npx --yes wrangler@4.92.0 deploy --config wrangler.jsonc
 
-      - name: Verify Member worker only
+      - name: Verify Member mirror against live Ball46
         shell: bash
         run: |
           set -euo pipefail
-          url="https://ball46-member-production.mccarey-supon.workers.dev/api/health"
+          base="https://ball46-member-production.mccarey-supon.workers.dev"
+          prod="https://www.ball46.com"
+
           for n in {1..20}; do
-            if body="$(curl -fsS --max-time 15 "$url?run=${GITHUB_RUN_ID}" 2>/dev/null)"; then
-              echo "$body" | grep -Fq '"service":"ball46-member-production"'
-              pricing="https://ball46-member-production.mccarey-supon.workers.dev/pricing"
-              member="https://ball46-member-production.mccarey-supon.workers.dev/member"
-              daily="https://ball46-member-production.mccarey-supon.workers.dev/api/member/daily"
-              curl -fsS --max-time 15 "$pricing?run=${GITHUB_RUN_ID}" | grep -Fq 'Daily signals. One screen.'
-              curl -fsS --max-time 15 "$member?run=${GITHUB_RUN_ID}" | grep -Fq 'Daily Signal Center'
-              curl -fsS --max-time 15 "$daily?run=${GITHUB_RUN_ID}" | grep -Fq '"ok":true'
-              echo "BALL46_MEMBER_DEPLOY_SUCCESS $url"
-              exit 0
+            if curl -fsS --max-time 20 "$base/api/health?run=${GITHUB_RUN_ID}" -o /tmp/health.json 2>/dev/null; then
+              if jq -e '.ok==true and .service=="ball46-member-production"' /tmp/health.json >/dev/null; then
+                break
+              fi
             fi
             sleep 2
           done
-          echo "BALL46_MEMBER_VERIFY_FAILED"
-          exit 1
+          jq -e '.ok==true and .service=="ball46-member-production"' /tmp/health.json >/dev/null
+
+          curl -fsS --max-time 20 "$base/pricing?run=${GITHUB_RUN_ID}" -o /tmp/pricing.html
+          grep -Fq 'Daily signals. One screen.' /tmp/pricing.html
+          curl -fsS --max-time 20 "$base/member?run=${GITHUB_RUN_ID}" -o /tmp/member.html
+          grep -Fq 'Daily Signal Center' /tmp/member.html
+
+          curl -fsS --max-time 45 "$base/api/member/daily?refresh=1&run=${GITHUB_RUN_ID}" -o /tmp/member-daily.json
+          jq -e '.ok==true and .prototype==false and .source=="BALL46_PRODUCTION_LEDGER_V2" and .timezone=="Asia/Bangkok" and .cutoffLocal=="12:00"' /tmp/member-daily.json >/dev/null
+          jq -e '.signals | (type=="array")' /tmp/member-daily.json >/dev/null
+
+          first_id="$(jq -r '.signals[0].id // empty' /tmp/member-daily.json)"
+          if [ -n "$first_id" ]; then
+            curl -fsS --max-time 45 "$prod/api/engine/statistics?paged=1&member_qa=${GITHUB_RUN_ID}" -o /tmp/prod-stats.json
+            jq -e --arg id "$first_id" '.rows | any(.id==$id)' /tmp/prod-stats.json >/dev/null
+            jq --arg id "$first_id" '.rows[] | select(.id==$id)' /tmp/prod-stats.json | head -n 1 > /tmp/source-row.json
+
+            jq -e --slurpfile src /tmp/source-row.json '
+              .signals[0] as $m | $src[0] as $s |
+              ($m.id == ($s.id|tostring)) and
+              ($m.fixtureId == ($s.fixtureId|tostring)) and
+              ($m.signalMinute == ($s.entryMinute // $s.minute)) and
+              ($m.sourceMarket == ($s.market // "")) and
+              ($m.selection == (($s.selection // "—")|ascii_upcase)) and
+              ($m.line == $s.line) and
+              ($m.odds == $s.odds) and
+              ($m.bookmaker == ($s.bookmaker // "—")) and
+              ($m.entryScore.home == ($s.entryScore.home // $s.scoreAt.home // null)) and
+              ($m.entryScore.away == ($s.entryScore.away // $s.scoreAt.away // null))
+            ' /tmp/member-daily.json >/dev/null
+
+            fixture="$(jq -r '.signals[0].fixtureId' /tmp/member-daily.json)"
+            curl -fsS --max-time 45 "$base/api/member/match?fixtureId=$fixture&run=${GITHUB_RUN_ID}" -o /tmp/member-match.json
+            jq -e '.ok==true and .source=="BALL46_PRODUCTION_MIRROR"' /tmp/member-match.json >/dev/null
+          fi
+
+          echo "BALL46_MEMBER_DEPLOY_SUCCESS signals=$(jq -r '.signalCount' /tmp/member-daily.json) pages=$(jq -r '.pagesRead' /tmp/member-daily.json)"
