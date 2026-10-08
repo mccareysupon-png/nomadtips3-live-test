@@ -1,0 +1,56 @@
+name: Inspect Ball46 Member Source
+
+on:
+  push:
+    branches:
+      - member/ball46-member-v1-20261008
+    paths:
+      - '.github/workflows/inspect-ball46-member-source-20261008.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect-source:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Read live Production APIs
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="https://www.ball46.com"
+          curl -fsS --max-time 30 -H 'Cache-Control: no-cache' "$BASE/api/engine/signals?member_probe=${GITHUB_RUN_ID}" -o /tmp/signals.json
+          curl -fsS --max-time 30 -H 'Cache-Control: no-cache' "$BASE/api/engine/board?member_probe=${GITHUB_RUN_ID}" -o /tmp/board.json
+
+          echo "=== SIGNAL TOP LEVEL ==="
+          jq -c 'keys' /tmp/signals.json
+          echo "=== SIGNAL COUNT ==="
+          jq -c '{ok, count:(.signals|length), mirror}' /tmp/signals.json
+          echo "=== SIGNAL SAMPLE KEYS ==="
+          jq -c '.signals[0] // {} | keys' /tmp/signals.json
+          echo "=== SIGNAL SAMPLE SANITIZED ==="
+          jq -c '.signals[0] // {} | {
+            fixtureId,id,createdAt,entryMinute,minute,entryScore,scoreAt,
+            mirrorMinute,mirrorScore,market,providerMarket,marketLabel,
+            selection,line,odds,price,bookmaker,home,away,league,
+            liveStatistics,liveCorners,result,status
+          }' /tmp/signals.json
+
+          echo "=== BOARD TOP LEVEL ==="
+          jq -c 'keys' /tmp/board.json
+          echo "=== BOARD COUNT ==="
+          jq -c '{ok, count:(.fixtures|length), hubAgeMs, version, hubVersion}' /tmp/board.json
+          echo "=== BOARD FIXTURE SAMPLE KEYS ==="
+          jq -c '.fixtures[0] // {} | keys' /tmp/board.json
+          echo "=== BOARD MATCHED SIGNAL FIXTURE SAMPLE ==="
+          FIXTURE="$(jq -r '.signals[0].fixtureId // empty' /tmp/signals.json)"
+          if [ -n "$FIXTURE" ]; then
+            jq -c --arg id "$FIXTURE" '.fixtures[] | select((.fixtureId|tostring)==$id) | {
+              fixtureId,minute,status,home,away,score,corners,cards,statistics,events,
+              providerOddsUpdatedAt
+            }' /tmp/board.json | head -n 1
+          fi
+
+          echo "BALL46_MEMBER_SOURCE_INSPECTION_COMPLETE"
