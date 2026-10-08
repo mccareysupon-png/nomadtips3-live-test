@@ -27,5 +27,7 @@ jobs:
           echo "=== PRODUCTION STATS SABAIL ==="
           jq -c '.rows[] | select((((.home.name // .home // "")|tostring|ascii_downcase|contains("sabail"))) or (((.away.name // .away // "")|tostring|ascii_downcase|contains("karvan")))) | {id,fixtureId,createdAt,entryMinute,minute,mirrorMinute,mirrorStatus,status,result,entryScore,mirrorScore,finalScore,market,selection,line,odds,bookmaker,home,away}' /tmp/stats.json || true
 
-          echo "=== PRODUCTION BOARD SABAIL ==="
-          jq -c '.. | objects | select((((.home.name // .home // "")|tostring|ascii_downcase|contains("sabail"))) or (((.away.name // .away // "")|tostring|ascii_downcase|contains("karvan")))) | {fixtureId,id,minute,status,statusCode,boardState,score,goals,home,away}' /tmp/board.json | head -20 || true
+          echo "=== PRODUCTION BOARD FIXTURE 202424670 ==="
+          jq -c '.fixtures[]? | select((.fixtureId|tostring)=="202424670") | {fixtureId,id,minute,status,statusCode,boardState,score,goals,home,away}' /tmp/board.json || true
+          echo "=== BOARD TOP KEYS ==="
+          jq -c '{keys:(keys),fixturesCount:(.fixtures|length?)}' /tmp/board.json || true
