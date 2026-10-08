@@ -38,4 +38,19 @@ jobs:
               grep -Ein 'FEATURED MATCH|renderFeatured|renderFlow|pressure|EVENT FLOW|expand-flow|feature-card|metricRows' /tmp/asset | head -n 120 || true
             fi
           done
+          echo "=== CURRENT INDEX FEATURED MATCH BLOCK ==="
+          grep -n -A90 -B20 'data-featured-league' /tmp/index.html | head -n 180 || true
+
+          curl -fsS --max-time 30 -H 'Cache-Control: no-cache' "$BASE/expanded-match-343.js?ui_probe=${GITHUB_RUN_ID}" -o /tmp/expanded.js
+          echo "=== CURRENT EXPANDED EVENT FLOW CORE ==="
+          sed -n '45,145p' /tmp/expanded.js
+
+          curl -fsS --max-time 30 -H 'Cache-Control: no-cache' "$BASE/dashboard-v2-stage3.js?ui_probe=${GITHUB_RUN_ID}" -o /tmp/dashboard.js
+          echo "=== CURRENT FEATURED MATCH CORE ==="
+          sed -n '88,218p' /tmp/dashboard.js
+
+          curl -fsS --max-time 30 -H 'Cache-Control: no-cache' "$BASE/expanded-match-343.css?ui_probe=${GITHUB_RUN_ID}" -o /tmp/expanded.css
+          echo "=== CURRENT EVENT FLOW CSS ==="
+          sed -n '1,42p' /tmp/expanded.css
+
           echo "CURRENT_UI_INSPECTION_COMPLETE"
