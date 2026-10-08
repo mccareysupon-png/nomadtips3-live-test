@@ -442,7 +442,7 @@ function featuredHorizontal(detail,selected){
 
   const signal=node('div','featured-h-signal');
   signal.append(
-    node('span','','SIGNAL'),
+    node('span','','ENTRY'),
     node('b','',`${selected.signalMinute??'—'}' · ${selected.market} · ${selected.selection}${fmtLine(selected)?' '+fmtLine(selected):''} · ${fmtOdds(selected.odds)} · ${selected.bookmaker}`)
   );
 
