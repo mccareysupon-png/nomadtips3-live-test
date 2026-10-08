@@ -373,3 +373,82 @@ button,input{font:inherit}
 @media(max-width:680px){
   .featured-h-facts{grid-template-columns:repeat(2,1fr)}
 }
+
+/* Member semantic color hierarchy */
+.badge.live{
+  color:#8cddff;
+  background:rgba(57,168,255,.14);
+  border:1px solid rgba(107,196,255,.34);
+  box-shadow:0 0 0 1px rgba(57,168,255,.025),0 0 14px rgba(57,168,255,.08);
+}
+.badge.finished{
+  color:#e0e7ed;
+  background:rgba(160,196,225,.075);
+  border:1px solid rgba(160,196,225,.17);
+}
+.badge.pending{
+  color:#ffd987;
+  background:rgba(244,196,92,.105);
+  border:1px solid rgba(244,196,92,.20);
+}
+.badge.win{
+  color:#79e9ae;
+  background:rgba(50,209,139,.115);
+  border:1px solid rgba(50,209,139,.20);
+}
+.badge.loss{
+  color:#ff8b99;
+  background:rgba(255,102,119,.115);
+  border:1px solid rgba(255,102,119,.20);
+}
+.badge.push{
+  color:#cbd6df;
+  background:rgba(160,196,225,.08);
+  border:1px solid rgba(160,196,225,.15);
+}
+
+.signal-time{
+  color:#8095a7;
+}
+.live-score-cell{
+  position:relative;
+}
+.live-score-cell .live-score-value{
+  color:#f4f9fc;
+  font-weight:950;
+}
+.market-evidence.live-evidence{
+  color:#79d5ff;
+}
+.market-evidence.ft-evidence{
+  color:#aebdca;
+}
+.entry-cell{
+  border-left:2px solid rgba(50,209,139,.34);
+}
+.entry-cell>strong{
+  color:#72e3b0;
+  font-weight:950;
+}
+.entry-cell>small{
+  color:#91b6a8;
+}
+.odds-readonly{
+  color:#f2f7fb;
+}
+.pnl.neutral{
+  color:#9eb0bf;
+}
+.result-cell{
+  font-weight:900;
+}
+.featured-h-signal{
+  border-color:rgba(50,209,139,.23);
+  background:rgba(50,209,139,.065);
+}
+.featured-h-signal span{
+  color:#72e3b0;
+}
+.featured-h-score .score-center small{
+  color:#7fd8ff;
+}

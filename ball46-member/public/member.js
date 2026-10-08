@@ -105,7 +105,7 @@ function resultClass(result){
 }
 function statusClass(status){
   if(status==='LIVE') return 'live';
-  if(status==='FINISHED') return 'win';
+  if(status==='FINISHED') return 'finished';
   return 'pending';
 }
 function currentStats(){
@@ -205,7 +205,7 @@ function makeSignalRow(row){
   live.append(node('span','badge '+statusClass(row.state),matchClockLabel(row)));
   live.append(node('strong','live-score-value',scoreText(displayScore(row))));
   const evidence=marketEvidence(row);
-  if(evidence) live.append(node('small','market-evidence',evidence));
+  if(evidence) live.append(node('small','market-evidence '+(row.state==='LIVE'?'live-evidence':row.state==='FINISHED'?'ft-evidence':''),evidence));
   tr.append(live);
 
   tr.append(td(row.market));
@@ -226,7 +226,8 @@ function makeSignalRow(row){
   tr.append(result);
 
   const p=Number(row.pnl||0);
-  tr.append(td(fmtPnl(p),'pnl '+(p>=0?'pos':'neg')));
+  const pnlState=row.result==='PENDING'||row.result==='PUSH'||row.result==='VOID'?'neutral':(p>0?'pos':p<0?'neg':'neutral');
+  tr.append(td(fmtPnl(p),'pnl '+pnlState));
 
   tr.addEventListener('click',()=>toggleDetail(row));
   tr.addEventListener('keydown',e=>{
