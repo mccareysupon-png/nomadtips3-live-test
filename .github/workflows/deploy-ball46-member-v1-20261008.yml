@@ -65,6 +65,12 @@ jobs:
           for n in {1..20}; do
             if body="$(curl -fsS --max-time 15 "$url?run=${GITHUB_RUN_ID}" 2>/dev/null)"; then
               echo "$body" | grep -Fq '"service":"ball46-member-production"'
+              pricing="https://ball46-member-production.mccarey-supon.workers.dev/pricing"
+              member="https://ball46-member-production.mccarey-supon.workers.dev/member"
+              daily="https://ball46-member-production.mccarey-supon.workers.dev/api/member/daily"
+              curl -fsS --max-time 15 "$pricing?run=${GITHUB_RUN_ID}" | grep -Fq 'Daily signals. One screen.'
+              curl -fsS --max-time 15 "$member?run=${GITHUB_RUN_ID}" | grep -Fq 'Daily Signal Center'
+              curl -fsS --max-time 15 "$daily?run=${GITHUB_RUN_ID}" | grep -Fq '"ok":true'
               echo "BALL46_MEMBER_DEPLOY_SUCCESS $url"
               exit 0
             fi
