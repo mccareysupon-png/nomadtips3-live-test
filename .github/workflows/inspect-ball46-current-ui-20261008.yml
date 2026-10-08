@@ -1,0 +1,41 @@
+name: Inspect Current Ball46 UI
+
+on:
+  push:
+    branches:
+      - member/ball46-member-v1-20261008
+    paths:
+      - '.github/workflows/inspect-ball46-current-ui-20261008.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Inspect live Ball46 assets read-only
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="https://www.ball46.com"
+          curl -fsS --max-time 30 -H 'Cache-Control: no-cache' "$BASE/index.html?ui_probe=${GITHUB_RUN_ID}" -o /tmp/index.html
+          echo "=== INDEX HASH ==="
+          sha256sum /tmp/index.html
+          echo "=== RELEVANT ASSET REFS ==="
+          grep -oE '(src|href)="[^"]+"' /tmp/index.html | grep -Ei 'expand|dashboard|event|flow|css|js' | tail -n 80 || true
+
+          for p in             "/expanded-match-343.js"             "/expanded-match-343.css"             "/dashboard-v2-stage3.js"             "/dashboard-v2.css"             "/event-flow-343.js"             "/event-flow-343.css"             "/nomad-live-343/expanded-match-343.js"             "/nomad-live-343/expanded-match-343.css"             "/nomad-live-343/dashboard-v2-stage3.js"             "/nomad-live-343/dashboard-v2.css"
+          do
+            code="$(curl -sS -o /tmp/asset -w '%{http_code}' --max-time 25 -H 'Cache-Control: no-cache' "$BASE$p?ui_probe=${GITHUB_RUN_ID}" || true)"
+            if [ "$code" = "200" ]; then
+              echo "=== LIVE ASSET $p ==="
+              sha256sum /tmp/asset
+              wc -c /tmp/asset
+              echo "--- TOKENS ---"
+              grep -Ein 'FEATURED MATCH|renderFeatured|renderFlow|pressure|EVENT FLOW|expand-flow|feature-card|metricRows' /tmp/asset | head -n 120 || true
+            fi
+          done
+          echo "CURRENT_UI_INSPECTION_COMPLETE"
