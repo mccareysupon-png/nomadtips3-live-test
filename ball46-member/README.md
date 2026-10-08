@@ -72,3 +72,8 @@ Stripe endpoint scaffolding is present but intentionally refuses live checkout u
 4. Deploy the isolated Member worker.
 5. QA desktop/mobile.
 6. Only then add the single Ball46 Member entry card/link to the main Ball46 production.
+
+
+## Deployment lane
+
+The member application deploys through its own GitHub Actions workflow and its own Cloudflare Worker name. The workflow uses the concurrency group `ball46-member-production-deploy` and never deploys `ball46-production`. The first target is workers.dev only; no Ball46 public-domain route is created by this prototype.
