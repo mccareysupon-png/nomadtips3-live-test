@@ -1637,3 +1637,26 @@ body.page-member:before{
     min-width:1040px;
   }
 }
+
+
+/* Member premium match comparison — colors match the final Event Flow HOME/AWAY lines. */
+.featured-h-stats.premium-match-stats{display:grid;grid-template-columns:1fr;gap:0;padding:12px 14px;border:1px solid rgba(148,180,208,.13);border-radius:12px;background:linear-gradient(145deg,rgba(13,27,43,.94),rgba(6,15,27,.96));min-width:0}
+.featured-h-stats.premium-match-stats>div{grid-column:1/-1;padding:0;text-align:initial;border:0;min-width:0}
+.premium-stats-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
+.premium-stats-heading strong{font-size:11px;letter-spacing:.08em;color:#edf5ff}
+.premium-stats-legend{display:flex;gap:12px;font-size:9px;font-weight:800;letter-spacing:.06em}
+.premium-stats-legend .home{color:#59C7FF}
+.premium-stats-legend .away{color:#A78BFA}
+.premium-stat-row{padding:7px 0!important;border-top:1px solid rgba(148,180,208,.09)!important}
+.premium-stat-title{display:block!important;text-align:center;color:#CAD7E5!important;font-size:11px!important;font-weight:700!important;letter-spacing:0!important;margin-bottom:5px}
+.premium-stat-comparison{display:grid;grid-template-columns:minmax(35px,auto) minmax(0,1fr) minmax(35px,auto);align-items:center;gap:10px}
+.featured-h-stats .premium-stat-value{font-size:12px;white-space:nowrap;margin:0;overflow:visible;text-overflow:clip;font-variant-numeric:tabular-nums}
+.premium-stat-value.home{text-align:left;color:#8CDBFF}
+.premium-stat-value.away{text-align:right;color:#C1AEFF}
+.premium-stat-tracks{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:4px;min-width:0}
+.premium-stat-track{height:9px;display:flex;align-items:stretch;border-radius:4px;background:rgba(148,180,208,.12);overflow:hidden}
+.premium-stat-track.home{justify-content:flex-end}
+.premium-stat-track .premium-stat-bar{display:block;height:100%;border-radius:4px}
+.premium-stat-track.home .premium-stat-bar{background:#59C7FF}
+.premium-stat-track.away .premium-stat-bar{background:#A78BFA}
+@media(max-width:680px){.featured-h-stats.premium-match-stats{grid-template-columns:1fr;padding:10px}.featured-h-stats.premium-match-stats>div:last-child{grid-column:1/-1}.premium-stat-comparison{gap:6px}.premium-stat-title{font-size:10px!important}}
