@@ -544,15 +544,6 @@ function featuredHorizontal(detail,selected){
   const away=node('div','team away');away.append(node('span','','AWAY'),node('b','',f?.away||selected.away));
   score.append(home,center,away);
 
-  const facts=node('div','featured-h-facts');
-  const factData=[
-    ['HALF-TIME',halfScoreText(shownScore)],
-    [finished?'FT CORNERS':'CORNERS',metricValue(shownCorners)],
-    [finished?'FT CARDS H · A':'CARDS H · A',cardsText(shownCards)],
-    ['MARKET',marketEvidence(selected)||'—']
-  ];
-  for(const [label,value] of factData){const x=node('div','');x.append(node('span','',label),node('b','',value));facts.append(x)}
-
   const signal=node('div','featured-h-signal');
   const entryContext=[`Entry score ${scoreText(selected.entryScore)}`];
   if(selected.market==='CORNERS'&&selected.entryCorners?.home!=null&&selected.entryCorners?.away!=null){
@@ -600,7 +591,21 @@ function featuredHorizontal(detail,selected){
     comparison.append(left,tracks,right);row.append(comparison);statRow.append(row);
   }
 
-  card.append(meta,score,facts,signal,statRow);
+  const sideFacts=node('div','premium-side-facts-panel');
+  const factData=[
+    ['HALF-TIME',halfScoreText(shownScore)],
+    [finished?'FULL-TIME CORNERS':'CORNERS',metricValue(shownCorners)],
+    [finished?'FULL-TIME CARDS HOME · AWAY':'CARDS HOME · AWAY',cardsText(shownCards)],
+    ['MARKET',marketEvidence(selected)||'—']
+  ];
+  for(const [label,value] of factData){
+    const item=node('div','premium-side-fact');
+    item.append(node('span','premium-side-fact-label',label),node('b','premium-side-fact-value',value));
+    sideFacts.append(item);
+  }
+  const lower=node('div','featured-h-lower');
+  lower.append(statRow,sideFacts);
+  card.append(meta,score,signal,lower);
   return card;
 }
 
