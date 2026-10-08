@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-10-08T16:36:41Z",
+  "updated_at": "2026-10-08T22:11:04Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -544,8 +544,8 @@
       "edge": 45.0,
       "ev": 0.7188,
       "required_confidence": 0.6,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "3-1",
       "locked_at": "2026-10-08T03:03:40Z",
       "source_url": "https://www.goaloo.com/football/ireland-premier-division-shamrock-rovers-vs-drogheda-united/h2h-2914415",
       "summary_url": "https://www.goaloo.com/football/ireland-premier-division-shamrock-rovers-vs-drogheda-united/summary-2914415",
@@ -605,7 +605,12 @@
         "away_recent": 10,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-08T22:11:04Z"
     },
     {
       "id": "d38aee97ce3648cf-AH-HOME-1p5",
@@ -2429,8 +2434,8 @@
       "edge": 23.4,
       "ev": 0.365,
       "required_confidence": 0.6,
-      "result": "PENDING",
-      "ft": null,
+      "result": "PUSH",
+      "ft": "0-0",
       "locked_at": "2026-10-08T03:03:46Z",
       "source_url": "https://www.goaloo.com/football/botola-pro-1-maghreb-fez-vs-raja-club-athletic/h2h-3076985",
       "summary_url": "https://www.goaloo.com/football/botola-pro-1-maghreb-fez-vs-raja-club-athletic/summary-3076985",
@@ -2490,7 +2495,12 @@
         "away_recent": 10,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": 0.0,
+      "profit": 0.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-08T22:11:04Z"
     },
     {
       "id": "15f3116c40eef7d3-OU-OVER-2p75",
@@ -4134,8 +4144,8 @@
       "edge": 11.0,
       "ev": 0.1228,
       "required_confidence": 0.6,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "0-0",
       "locked_at": "2026-10-08T03:03:41Z",
       "source_url": "https://www.goaloo.com/football/algerian-ligue-professionnelle-1-mc-oran-vs-es-setif/h2h-3056763",
       "summary_url": "https://www.goaloo.com/football/algerian-ligue-professionnelle-1-mc-oran-vs-es-setif/summary-3056763",
@@ -4195,7 +4205,12 @@
         "away_recent": 10,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-08T22:11:04Z"
     },
     {
       "id": "00ebf0ca15b515e3-OU-OVER-3p25",
@@ -204353,6 +204368,276 @@
       "settlement_source": "goaloo-bf_us-direct-index",
       "goaloo_terminal_state": -1,
       "settled_at": "2026-10-08T16:36:41Z"
+    },
+    {
+      "id": "ad093f51be50d11e-AH-AWAY-1p25",
+      "goaloo_id": "2914415",
+      "date": "2026-10-08",
+      "kickoff": "2026-10-08 19:00:00",
+      "league": "Ireland Premier Division",
+      "home": "Shamrock Rovers",
+      "away": "Drogheda United",
+      "market": "AH",
+      "selection": "AWAY",
+      "line": 1.25,
+      "pick": "Drogheda United +1.25",
+      "side": "away",
+      "odds": 1.8,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.9528,
+      "model_probability": 0.9528,
+      "market_fair_probability": 0.5028,
+      "market_edge": 0.45,
+      "edge": 45.0,
+      "ev": 0.7188,
+      "required_confidence": 0.6,
+      "result": "LOSS",
+      "ft": "3-1",
+      "locked_at": "2026-10-08T03:03:40Z",
+      "source_url": "https://www.goaloo.com/football/ireland-premier-division-shamrock-rovers-vs-drogheda-united/h2h-2914415",
+      "summary_url": "https://www.goaloo.com/football/ireland-premier-division-shamrock-rovers-vs-drogheda-united/summary-2914415",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 0.648,
+        "lambda_away": 1.98,
+        "home_win": 0.0658,
+        "draw": 0.2142,
+        "away_win": 0.72,
+        "h2h_adjustment": 0.0075,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": -0.5805,
+          "gd_edge": -0.8378,
+          "clean_sheet_edge": -0.5122,
+          "failed_to_score_edge": -0.1561,
+          "bounded_adjustment": -0.0464,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-08T22:11:04Z"
+    },
+    {
+      "id": "7dd9486c8ea6a5ce-AH-HOME-m0p0",
+      "goaloo_id": "3076985",
+      "date": "2026-10-08",
+      "kickoff": "2026-10-08 20:00:00",
+      "league": "Botola Pro 1",
+      "home": "Maghreb Fez",
+      "away": "Raja Club Athletic",
+      "market": "AH",
+      "selection": "HOME",
+      "line": -0.0,
+      "pick": "Maghreb Fez -0",
+      "side": "home",
+      "odds": 1.83,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.7327,
+      "model_probability": 0.7327,
+      "market_fair_probability": 0.4986,
+      "market_edge": 0.2341,
+      "edge": 23.4,
+      "ev": 0.365,
+      "required_confidence": 0.6,
+      "result": "PUSH",
+      "ft": "0-0",
+      "locked_at": "2026-10-08T03:03:46Z",
+      "source_url": "https://www.goaloo.com/football/botola-pro-1-maghreb-fez-vs-raja-club-athletic/h2h-3076985",
+      "summary_url": "https://www.goaloo.com/football/botola-pro-1-maghreb-fez-vs-raja-club-athletic/summary-3076985",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 1.446,
+        "lambda_away": 0.525,
+        "home_win": 0.6199,
+        "draw": 0.2839,
+        "away_win": 0.0962,
+        "h2h_adjustment": -0.005,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.4049,
+          "gd_edge": 0.5622,
+          "clean_sheet_edge": 0.3463,
+          "failed_to_score_edge": 0.4244,
+          "bounded_adjustment": 0.0342,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": 0.0,
+      "profit": 0.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-08T22:11:04Z"
+    },
+    {
+      "id": "591f2f4887086c4e-OU-OVER-1p75",
+      "goaloo_id": "3056763",
+      "date": "2026-10-08",
+      "kickoff": "2026-10-08 19:00:00",
+      "league": "Algerian Ligue Professionnelle 1",
+      "home": "MC Oran",
+      "away": "ES Setif",
+      "market": "OU",
+      "selection": "OVER",
+      "line": 1.75,
+      "pick": "Over 1.75",
+      "side": null,
+      "odds": 1.71,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.6452,
+      "model_probability": 0.6452,
+      "market_fair_probability": 0.5353,
+      "market_edge": 0.1099,
+      "edge": 11.0,
+      "ev": 0.1228,
+      "required_confidence": 0.6,
+      "result": "LOSS",
+      "ft": "0-0",
+      "locked_at": "2026-10-08T03:03:41Z",
+      "source_url": "https://www.goaloo.com/football/algerian-ligue-professionnelle-1-mc-oran-vs-es-setif/h2h-3056763",
+      "summary_url": "https://www.goaloo.com/football/algerian-ligue-professionnelle-1-mc-oran-vs-es-setif/summary-3056763",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 1.357,
+        "lambda_away": 1.093,
+        "home_win": 0.4182,
+        "draw": 0.2908,
+        "away_win": 0.2909,
+        "h2h_adjustment": -0.0025,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": -0.065,
+          "gd_edge": 0.1377,
+          "clean_sheet_edge": 0.0976,
+          "failed_to_score_edge": 0.0537,
+          "bounded_adjustment": 0.003,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-08T22:11:04Z"
     }
   ],
   "note": "Automated Full-Time Winner First feed. Supplemental markets remain unpublished.",
