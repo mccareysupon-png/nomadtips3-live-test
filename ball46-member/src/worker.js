@@ -60,7 +60,7 @@ function withSecurityHeaders(response) {
 async function staticResponse(request,env,path) {
   const url = new URL(request.url);
   url.pathname = path;
-  const assetReq = new Request(url.toString(),request);
+  const assetReq = new Request(url.toString(),{method:request.method,headers:request.headers});
   return withSecurityHeaders(await env.ASSETS.fetch(assetReq));
 }
 
