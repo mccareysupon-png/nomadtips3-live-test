@@ -93,7 +93,7 @@ jobs:
               .signals[0] as $m | $src[0] as $s |
               ($m.id == ($s.id|tostring)) and
               ($m.fixtureId == ($s.fixtureId|tostring)) and
-              ($m.signalMinute == ($s.entryMinute // $s.minute)) and
+              ($m.signalMinute == ($s.minute // $s.entryMinute)) and
               ($m.sourceMarket == ($s.market // "")) and
               ($m.selection == (($s.selection // "—")|ascii_upcase)) and
               ($m.line == $s.line) and
