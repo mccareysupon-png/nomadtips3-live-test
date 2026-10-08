@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <title>Ball46 Member</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="shell topbar-inner">
+    <a class="brand" href="/pricing">ball<span>46</span></a>
+    <nav class="nav" aria-label="Member navigation">
+      <a href="/pricing">Membership</a>
+      <a href="/login">Login</a>
+      <a href="/member">Signal Center</a>
+    </nav>
+  </div>
+</header>
+
+<main class="shell page">
+  <section class="hero">
+    <div class="eyebrow">Ball46 Member</div>
+    <h1>Daily signals. One screen.</h1>
+    <p>Follow Ball46 signals for the current day without opening match after match. Filter by market, see today's performance, and keep the newest signal at the top.</p>
+    <p class="hero-note">Daily board only. At the Ball46 cutoff, the board resets and starts a new day.</p>
+  </section>
+
+  <section class="grid pricing-layout">
+    <div class="card preview-card">
+      <div class="card-pad">
+        <div class="preview-head">
+          <div><div class="eyebrow">Member preview</div><h2>Today's Signal Center</h2></div>
+          <small>Preview data</small>
+        </div>
+        <div class="market-tabs" aria-label="Signal markets">
+          <button class="market-tab active">ALL <span class="profit">+3.45u</span></button>
+          <button class="market-tab">AH <span class="profit">62.5%</span></button>
+          <button class="market-tab">1X2 <span class="loss">50.0%</span></button>
+          <button class="market-tab">O/U <span class="profit">100%</span></button>
+          <button class="market-tab">CORNERS <span class="loss">50.0%</span></button>
+          <button class="market-tab">BTTS</button>
+          <button class="market-tab">CARDS</button>
+          <button class="market-tab">OTHER</button>
+        </div>
+        <div class="mini-stats">
+          <div class="stat"><span>SIGNALS</span><b>12</b></div>
+          <div class="stat"><span>WIN RATE</span><b>68.8%</b></div>
+          <div class="stat"><span>P/L TODAY</span><b class="pnl pos">+3.45u</b></div>
+          <div class="stat"><span>PENDING</span><b>2</b></div>
+        </div>
+        <div class="feed">
+          <div class="feed-row head"><span>TIME</span><span>MATCH</span><span>MARKET</span><span>SELECTION</span><span>ODDS</span><span>RESULT</span></div>
+          <div class="feed-row"><span>14:32</span><span><strong>Arsenal - Chelsea</strong><small>LIVE 78'</small></span><span>AH</span><span>HOME -0.5</span><span>@1.86</span><span><i class="badge pending">PENDING</i></span></div>
+          <div class="feed-row"><span>14:28</span><span><strong>Milan - Roma</strong><small>FINISHED</small></span><span>AH</span><span>AWAY +0.25</span><span>@1.91</span><span><i class="badge win">WIN</i></span></div>
+          <div class="feed-row"><span>14:21</span><span><strong>Barcelona - Atletico</strong><small>LIVE 81'</small></span><span>O/U</span><span>OVER 2.5</span><span>@1.88</span><span><i class="badge pending">PENDING</i></span></div>
+          <div class="feed-row"><span>14:17</span><span><strong>Dortmund - Leipzig</strong><small>FINISHED</small></span><span>CORNERS</span><span>OVER 9.5</span><span>@1.83</span><span><i class="badge loss">LOSS</i></span></div>
+        </div>
+      </div>
+    </div>
+
+    <aside class="card price-card">
+      <div class="price-top">
+        <div class="eyebrow">One simple plan</div>
+        <h2>BALL46 MEMBER</h2>
+        <p>Access the Daily Signal Center on desktop and mobile.</p>
+        <div class="price"><strong id="memberPrice">—</strong><span>/ billing period</span></div>
+      </div>
+      <div class="features">
+        <div class="feature"><span class="check">✓</span><span>All Ball46 signals for the current day</span></div>
+        <div class="feature"><span class="check">✓</span><span>Separate tabs for AH, 1X2, O/U, Corners, BTTS, Cards and Other</span></div>
+        <div class="feature"><span class="check">✓</span><span>Today's Win Rate and Profit/Loss by market</span></div>
+        <div class="feature"><span class="check">✓</span><span>Newest signal always shown first</span></div>
+        <div class="feature"><span class="check">✓</span><span>Live, Waiting and Finished signal filtering</span></div>
+        <div class="feature"><span class="check">✓</span><span>Daily reset at the Ball46 cutoff</span></div>
+        <div id="checkoutNotice" class="notice" hidden></div>
+        <button id="subscribeButton" class="primary" type="button">Subscribe with Stripe</button>
+        <a class="secondary" href="/login">Already a member? Login</a>
+        <p class="fine">Payments are handled by Stripe. Ball46 does not store card details.</p>
+      </div>
+    </aside>
+  </section>
+</main>
+<footer class="footer shell">Ball46 Member · isolated prototype · not linked from public production</footer>
+<script src="/pricing.js" defer></script>
+</body>
+</html>
