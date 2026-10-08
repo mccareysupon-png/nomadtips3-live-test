@@ -1249,14 +1249,6 @@ html{
     inset 0 1px 0 rgba(194,232,255,.055),
     0 7px 20px rgba(19,85,127,.10);
 }
-.nav a[aria-current="page"]::after{
-  content:"";
-  position:absolute;
-  left:12px;right:12px;bottom:4px;height:1px;
-  border-radius:999px;
-  background:linear-gradient(90deg,transparent,#59C7FF,transparent);
-  opacity:.72;
-}
 
 /* Premium authenticated member identity */
 .member-chip{
