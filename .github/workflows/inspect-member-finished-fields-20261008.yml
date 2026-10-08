@@ -1,0 +1,34 @@
+name: Inspect Ball46 Finished Member Fields 20261008
+on:
+  push:
+    branches:
+      - member/ball46-member-v1-20261008
+    paths:
+      - '.github/workflows/inspect-member-finished-fields-20261008.yml'
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Inspect finished source fields
+        shell: bash
+        run: |
+          set -euo pipefail
+          member="https://ball46-member-production.mccarey-supon.workers.dev"
+          prod="https://www.ball46.com"
+          curl -fsS --max-time 45 "$member/api/member/daily?refresh=1&inspect=${GITHUB_RUN_ID}" -o /tmp/member.json
+          curl -fsS --max-time 45 "$prod/api/engine/statistics?paged=1&inspect=${GITHUB_RUN_ID}" -o /tmp/stats.json
+
+          echo "=== FINISHED MEMBER SAMPLE ==="
+          jq -c '[.signals[] | select(.state=="FINISHED")][0:8] | .[] | {id,fixtureId,home,away,market,selection,line,signalMinute,entryScore,finalScore,result,pnl,entryCorners,entryCards}' /tmp/member.json || true
+
+          echo "=== FINISHED SOURCE SAMPLE ==="
+          ids=$(jq -r '[.signals[] | select(.state=="FINISHED")][0:8] | .[].id' /tmp/member.json)
+          while read -r id; do
+            [ -z "$id" ] && continue
+            jq -c --arg id "$id" 'first(.rows[] | select((.id|tostring)==$id)) | {id,fixtureId,market,selection,line,minute,entryMinute,entryScore,mirrorScore,finalScore,entryCorners,mirrorCorners,finalCorners,corners,entryCards,mirrorCards,finalCards,cards,result,status,settledAt}' /tmp/stats.json || true
+          done <<< "$ids"
+
+          echo "=== CORNER/CARD FINISHED SOURCE ==="
+          jq -c '[.rows[] | select((.result|tostring|ascii_upcase) as $r | ($r=="WIN" or $r=="LOSS" or $r=="PUSH" or $r=="HALF_WIN" or $r=="HALF_LOSS")) | select(((.market//"")|tostring|ascii_downcase|contains("corner")) or ((.market//"")|tostring|ascii_downcase|contains("card")))][0:10] | .[] | {id,fixtureId,market,selection,line,minute,entryMinute,entryScore,finalScore,entryCorners,mirrorCorners,finalCorners,corners,entryCards,mirrorCards,finalCards,cards,result,status}' /tmp/stats.json || true
