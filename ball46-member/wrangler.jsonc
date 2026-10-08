@@ -1,0 +1,15 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ball46-member-production",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-10-08",
+  "workers_dev": true,
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS"
+  },
+  "vars": {
+    "APP_STAGE": "prototype",
+    "DEMO_MEMBER_NAME": "JAY"
+  }
+}
