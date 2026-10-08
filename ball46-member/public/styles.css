@@ -1325,3 +1325,22 @@ html{
   .nav a,.nav a::before,.member-chip::before{transition:none}
   .nav a:hover{transform:none}
 }
+
+/* Membership access / renewal label */
+.member-copy{
+  min-width:0;
+}
+.member-copy span{
+  max-width:116px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-size:7.7px;
+  letter-spacing:.025em;
+}
+@media(max-width:900px){
+  .member-copy span{
+    max-width:96px;
+    font-size:7.2px;
+  }
+}

@@ -455,6 +455,11 @@ export default {
           displayName:env.DEMO_MEMBER_NAME||'JAY',
           status:'ACTIVE',
           plan:'BALL46 MEMBER',
+          role:'OWNER',
+          accessType:'LIFETIME',
+          currentPeriodEnd:null,
+          expiresAt:null,
+          cancelAtPeriodEnd:false,
           prototype:true
         } : null
       });

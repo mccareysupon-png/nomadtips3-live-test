@@ -658,6 +658,37 @@ async function refreshLiveMirror(){
   }catch{}
 }
 
+function formatAccessDate(value){
+  if(value===null||value===undefined||value==='') return '';
+  let d;
+  if(typeof value==='number'){
+    d=new Date(value<1e12?value*1000:value);
+  }else if(/^\d+$/.test(String(value))){
+    const n=Number(value); d=new Date(n<1e12?n*1000:n);
+  }else{
+    d=new Date(value);
+  }
+  if(Number.isNaN(d.getTime())) return '';
+  return new Intl.DateTimeFormat('en-GB',{day:'2-digit',month:'short',year:'numeric'})
+    .format(d).replace(/ /g,' ').toUpperCase();
+}
+
+function memberAccessLabel(member){
+  const status=String(member?.status||'').toUpperCase();
+  const role=String(member?.role||'').toUpperCase();
+  const accessType=String(member?.accessType||'').toUpperCase();
+  const periodEnd=member?.currentPeriodEnd??member?.expiresAt??member?.expiryAt??null;
+  const date=formatAccessDate(periodEnd);
+
+  if(role==='OWNER' && accessType==='LIFETIME') return 'OWNER · LIFETIME';
+  if(accessType==='LIFETIME') return (status||'ACTIVE')+' · LIFETIME';
+  if(['PAST_DUE','UNPAID','PAYMENT_DUE'].includes(status)) return 'PAYMENT DUE';
+  if(['CANCELED','CANCELLED','EXPIRED'].includes(status)) return date?'EXPIRED · '+date:'EXPIRED';
+  if(status==='ACTIVE' && member?.cancelAtPeriodEnd===true) return date?'ACTIVE · EXPIRES '+date:'ACTIVE · EXPIRES';
+  if(status==='ACTIVE' && date) return 'ACTIVE · RENEWS '+date;
+  return 'MEMBER · '+(status||'ACTIVE');
+}
+
 async function boot(){
   const [sessionRes,dailyRes]=await Promise.all([
     fetch('/api/member/session',{cache:'no-store'}),
@@ -673,7 +704,7 @@ async function boot(){
 
   qs('#memberName').textContent=session.member.displayName;
   qs('#memberAvatar').textContent=session.member.displayName.slice(0,1).toUpperCase();
-  qs('#memberStatus').textContent='MEMBER · '+session.member.status;
+  qs('#memberStatus').textContent=memberAccessLabel(session.member);
   const livePill=qs('.live-pill');
   if(livePill) livePill.textContent='TODAY · '+daily.signalCount+' SIGNALS';
   state.payload=daily;
