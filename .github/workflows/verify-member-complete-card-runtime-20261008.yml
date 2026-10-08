@@ -1,0 +1,29 @@
+name: Verify Member Complete Card Runtime 20261008
+on:
+  push:
+    branches:
+      - member/ball46-member-v1-20261008
+    paths:
+      - '.github/workflows/verify-member-complete-card-runtime-20261008.yml'
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Verify live and finished card fields
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://ball46-member-production.mccarey-supon.workers.dev"
+          curl -fsS --max-time 45 "$base/member?verify=${GITHUB_RUN_ID}" -o /tmp/member.html
+          curl -fsS --max-time 45 "$base/api/member/daily?refresh=1&verify=${GITHUB_RUN_ID}" -o /tmp/member.json
+
+          echo "=== HEADERS ==="
+          grep -o '<th>[^<]*</th>' /tmp/member.html | tr '\n' ' '; echo
+
+          echo "=== LIVE SAMPLE ==="
+          jq -c 'first(.signals[] | select(.state=="LIVE")) | {home,away,state,matchMinute,mirrorScore,signalMinute,entryScore,market,selection,line,odds,bookmaker,result,pnl,mirrorCorners,mirrorCards}' /tmp/member.json
+
+          echo "=== FINISHED SAMPLE ==="
+          jq -c 'first(.signals[] | select(.state=="FINISHED")) | {home,away,state,finalScore,signalMinute,entryScore,market,selection,line,odds,bookmaker,result,pnl,finalCorners,finalCards}' /tmp/member.json
