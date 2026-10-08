@@ -566,15 +566,38 @@ function featuredHorizontal(detail,selected){
   );
 
   const stats=f?.statistics||selected.entryStats;
-  const statRow=node('div','featured-h-stats');
-  for(const [label,value] of [
-    ['SOT',stats?.shotsOnTarget],
-    ['SHOT OFF',stats?.shotsOffTarget],
-    ['ATTACKS',stats?.attacks],
-    ['DANGEROUS',stats?.dangerousAttacks],
-    ['POSSESSION',stats?.possession]
+  const statRow=node('div','featured-h-stats premium-match-stats');
+  statRow.setAttribute('aria-label','Live match statistics: Home versus Away');
+  const heading=node('div','premium-stats-heading');
+  heading.append(node('strong','','LIVE MATCH STATISTICS'));
+  const legend=node('div','premium-stats-legend');
+  legend.append(node('span','home','HOME'),node('span','away','AWAY'));
+  heading.append(legend);statRow.append(heading);
+  for(const [label,value,percent] of [
+    ['Shots on Target',stats?.shotsOnTarget,false],
+    ['Shots off Target',stats?.shotsOffTarget,false],
+    ['Total Attacks',stats?.attacks,false],
+    ['Dangerous Attacks',stats?.dangerousAttacks,false],
+    ['Ball Possession',stats?.possession,true]
   ]){
-    const x=node('div','');x.append(node('span','',label),node('b','',metricValue(value)));statRow.append(x);
+    const home=Number(value?.home),away=Number(value?.away);
+    const valid=value?.home!=null&&value?.away!=null&&Number.isFinite(home)&&Number.isFinite(away)&&home>=0&&away>=0;
+    const total=valid?home+away:0;
+    const homeWidth=valid?(total?home/total*100:50):0;
+    const awayWidth=valid?(total?away/total*100:50):0;
+    const row=node('div','premium-stat-row');
+    row.append(node('span','premium-stat-title',label));
+    const comparison=node('div','premium-stat-comparison');
+    const left=node('b','premium-stat-value home',valid?String(home)+(percent?'%':''):'—');
+    const right=node('b','premium-stat-value away',valid?String(away)+(percent?'%':''):'—');
+    const tracks=node('div','premium-stat-tracks');
+    const homeTrack=node('div','premium-stat-track home');
+    const awayTrack=node('div','premium-stat-track away');
+    const homeBar=node('i','premium-stat-bar');
+    const awayBar=node('i','premium-stat-bar');
+    homeBar.style.width=homeWidth+'%';awayBar.style.width=awayWidth+'%';
+    homeTrack.append(homeBar);awayTrack.append(awayBar);tracks.append(homeTrack,awayTrack);
+    comparison.append(left,tracks,right);row.append(comparison);statRow.append(row);
   }
 
   card.append(meta,score,facts,signal,statRow);
