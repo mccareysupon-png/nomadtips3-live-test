@@ -45,6 +45,8 @@ jobs:
           grep -Fq '"name": "ball46-member-production"' wrangler.jsonc
           ! grep -R -Fq '"name": "ball46-production"' .
           node --check src/worker.js
+          node --check src/access-auth.js
+          node --test tests/access-auth.test.mjs
           node --check public/pricing.js
           node --check public/member.js
           echo "BALL46_MEMBER_PACKAGE_VALID"
