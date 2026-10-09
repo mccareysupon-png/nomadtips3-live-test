@@ -1,0 +1,69 @@
+name: Attach Ball46 Member Subdomain Only
+on:
+  push:
+    branches: [member/ball46-member-v1-20261008]
+    paths: ['.github/workflows/attach-ball46-member-domain-20261009.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ball46-member-custom-domain
+  cancel-in-progress: false
+jobs:
+  attach:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Attach only member.ball46.com, stop on foreign DNS or worker
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          const account=process.env.CLOUDFLARE_ACCOUNT_ID;
+          const token=process.env.CLOUDFLARE_API_TOKEN;
+          if(!account||!token)throw Error('CLOUDFLARE_CREDENTIALS_MISSING');
+          const root='https://api.cloudflare.com/client/v4';
+          async function cf(path,method='GET',body){
+            const response=await fetch(root+path,{method,headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});
+            const data=await response.json();
+            if(!response.ok||!data.success)throw Error('CF_'+method+'_'+path+':'+response.status+':'+JSON.stringify(data.errors||[]));
+            return data.result;
+          }
+          const hostname='member.ball46.com';
+          const service='ball46-member-production';
+          const zones=await cf('/zones?name=ball46.com&status=active');
+          if(!Array.isArray(zones)||zones.length!==1||zones[0].name!=='ball46.com')throw Error('BALL46_ZONE_NOT_UNIQUE_OR_NOT_ACTIVE');
+          const zone=zones[0];
+          const existing=await cf('/accounts/'+account+'/workers/domains?hostname='+hostname);
+          const match=Array.isArray(existing)?existing.filter(d=>d.hostname===hostname):[];
+          if(match.length>1)throw Error('MEMBER_DOMAIN_AMBIGUOUS');
+          if(match.length===1){
+            if(match[0].service!==service||match[0].zone_id!==zone.id)throw Error('FOREIGN_MEMBER_DOMAIN_BINDING_STOP');
+            console.log('MEMBER_DOMAIN_ALREADY_ATTACHED',hostname);
+            process.exit(0);
+          }
+          const dns=await cf('/zones/'+zone.id+'/dns_records?name='+hostname+'&per_page=100');
+          if(!Array.isArray(dns))throw Error('DNS_LOOKUP_UNAVAILABLE');
+          if(dns.length)throw Error('EXISTING_MEMBER_DNS_RECORDS_STOP_NO_OVERWRITE');
+          const res=await cf('/accounts/'+account+'/workers/domains','PUT',{hostname,service,zone_id:zone.id,zone_name:'ball46.com'});
+          if(res.hostname!==hostname||res.service!==service)throw Error('ATTACH_RETURN_UNEXPECTED');
+          const after=await cf('/accounts/'+account+'/workers/domains?hostname='+hostname);
+          if(!after.some(d=>d.hostname===hostname&&d.service===service))throw Error('ATTACH_NOT_VERIFIED');
+          console.log('BALL46_MEMBER_CUSTOM_DOMAIN_ATTACHED',hostname,'service='+service);
+          NODE
+      - name: Verify member domain response without changing apex
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 16); do
+            if curl -fsS --max-time 12 https://member.ball46.com/api/health -o /tmp/member_health.json 2>/dev/null; then
+              if jq -e '.ok==true and .service=="ball46-member-production"' /tmp/member_health.json >/dev/null; then
+                echo "BALL46_MEMBER_DOMAIN_HEALTH_SUCCESS"
+                exit 0
+              fi
+            fi
+            sleep 8
+          done
+          echo "::warning::Domain attached; TLS or DNS propagation may not be ready yet"
