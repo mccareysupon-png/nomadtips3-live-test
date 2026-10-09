@@ -543,11 +543,11 @@ function premiumFactIcon(kind){
     add('circle',{cx:32,cy:45,r:9,fill:'#F7FAFC',stroke:'#9CB1C4','stroke-width':1});
     add('path',{d:'M32 39L37 43L35 49H29L27 43Z',fill:'#182432'});
   }else if(kind==='ball'){
-    // Simple, high-contrast football pictogram at compact icon sizes.
-    add('circle',{cx:32,cy:32,r:24,fill:'#F7FAFC',stroke:'#AFC2D0','stroke-width':1.8});
-    add('path',{d:'M32 22L39 27L36.5 35L27.5 35L25 27Z',fill:'#1B2734',stroke:'#1B2734','stroke-width':1,'stroke-linejoin':'round'});
-    add('path',{d:'M32 22L28 15M32 22L36 15M25 27L17 25M39 27L47 25M27.5 35L22 43M36.5 35L42 43',fill:'none',stroke:'#5E7386','stroke-width':1.6,'stroke-linecap':'round'});
-    add('path',{d:'M22 18C19 20 17 23 16.5 27',fill:'none',stroke:'#FFFFFF','stroke-width':2,'stroke-linecap':'round',opacity:.75});
+    // Compact orange football icon, preserving the original layout and size.
+    add('circle',{cx:32,cy:32,r:24,fill:'#FF9F2E',stroke:'#E07A00','stroke-width':1.8});
+    add('path',{d:'M32 22L39 27L36.5 35L27.5 35L25 27Z',fill:'#FFF4E6',stroke:'#FFF4E6','stroke-width':1,'stroke-linejoin':'round'});
+    add('path',{d:'M32 22L28 15M32 22L36 15M25 27L17 25M39 27L47 25M27.5 35L22 43M36.5 35L42 43',fill:'none',stroke:'#FFF4E6','stroke-width':1.6,'stroke-linecap':'round'});
+    add('path',{d:'M22 18C19 20 17 23 16.5 27',fill:'none',stroke:'#FFD7A3','stroke-width':2,'stroke-linecap':'round',opacity:.8});
   }else{
     add('rect',{x:6,y:14,width:52,height:39,rx:5,fill:'#1B533C',stroke:'#D5E8DF','stroke-width':2});
     add('path',{d:'M32 14V53M6 33.5H58M6 25H18V42H6M58 25H46V42H58',stroke:'#DCEFE5','stroke-width':1.4,fill:'none'});
