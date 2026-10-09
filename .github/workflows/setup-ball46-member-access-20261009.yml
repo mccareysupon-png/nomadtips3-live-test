@@ -1,0 +1,147 @@
+name: Configure Ball46 Member Owner Email Access
+on:
+  push:
+    branches: [member/ball46-member-v1-20261008]
+    paths: ['.github/workflows/setup-ball46-member-access-20261009.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ball46-member-production-deploy
+  cancel-in-progress: false
+jobs:
+  configure-access:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Configure only Member Access and validate owner-only policy
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          const account=process.env.CLOUDFLARE_ACCOUNT_ID,token=process.env.CLOUDFLARE_API_TOKEN;
+          assert(account&&token,'CF_AUTH_MISSING');
+          const worker='ball46-member-production',owner='jay@ball46.com';
+          const destinations=['member.ball46.com/member','member.ball46.com/member.html','member.ball46.com/api/member/*'];
+          const report={verifiedAt:new Date().toISOString(),ownerEmail:owner,worker,steps:[],checkoutEnabled:false};
+          async function api(label,path,method='GET',body){
+            const response=await fetch('https://api.cloudflare.com/client/v4/accounts/'+account+path,{
+              method,headers:{Authorization:'Bearer '+token,...(body?{'Content-Type':'application/json'}:{})},
+              ...(body?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(20000)
+            });
+            const data=await response.json();
+            const summary={step:label,method,status:response.status,success:data.success===true,errorCodes:(data.errors||[]).map(x=>x.code)};
+            report.steps.push(summary);
+            console.log('ACCESS_SETUP_STEP '+JSON.stringify(summary));
+            if(!response.ok||!data.success)throw Error(label+'_HTTP_'+response.status);
+            return data.result;
+          }
+          async function responseStatus(path){
+            const response=await fetch('https://member.ball46.com'+path,{redirect:'manual',signal:AbortSignal.timeout(20000)});
+            const status=response.status;await response.body?.cancel();return status;
+          }
+          try{
+            const before=await api('MEMBER_DEPLOYMENT_BEFORE','/workers/scripts/'+worker+'/deployments?per_page=1');
+            const beforeVersions=before.deployments?.[0]?.versions;
+            assert(beforeVersions?.length===1&&beforeVersions[0].percentage===100,'MEMBER_DEPLOYMENT_NOT_SINGLE_ACTIVE_VERSION');
+            report.memberVersionBefore=beforeVersions[0].version_id;
+            assert.equal(await responseStatus('/pricing'),200,'PRICING_NOT_PUBLIC_BEFORE_SETUP');
+            const apps=await api('LIST_ACCESS_APPS','/access/apps?per_page=100');
+            assert(Array.isArray(apps),'INVALID_APPS_RESPONSE');
+            const relevant=apps.filter(app=>JSON.stringify(app).includes('member.ball46.com'));
+            assert(relevant.length<=1,'MULTIPLE_MEMBER_ACCESS_APPS_REQUIRE_RECONCILIATION');
+            const providers=await api('LIST_IDENTITY_PROVIDERS','/access/identity_providers?per_page=100');
+            assert(Array.isArray(providers),'INVALID_IDENTITY_PROVIDER_RESPONSE');
+            const otpProviders=providers.filter(provider=>provider.type==='onetimepin');
+            assert(otpProviders.length<=1,'MULTIPLE_EMAIL_OTP_PROVIDERS_REQUIRE_RECONCILIATION');
+            const otp=otpProviders[0]||await api('CREATE_EMAIL_OTP','/access/identity_providers','POST',{type:'onetimepin',name:'Ball46 Email One-time PIN',config:{}});
+            assert(otp.id&&otp.type==='onetimepin','EMAIL_OTP_PROVIDER_NOT_CONFIRMED');
+            report.emailOtpProvider={id:otp.id,type:otp.type,created:otpProviders.length===0};
+            let app=relevant[0];
+            if(!app){
+              app=await api('CREATE_MEMBER_APP','/access/apps','POST',{
+                type:'self_hosted',name:'Ball46 Member',domain:destinations[0],
+                destinations:destinations.map(uri=>({type:'public',uri})),
+                allowed_idps:[otp.id],auto_redirect_to_identity:false,
+                session_duration:'1h',app_launcher_visible:false,
+                policies:[{name:'Ball46 Owner Pilot',decision:'allow',precedence:1,session_duration:'1h',
+                  include:[{email:{email:owner}}],exclude:[],require:[]}]
+              });
+              report.appCreated=true;
+            }else report.appCreated=false;
+            assert(app.id,'ACCESS_APP_ID_MISSING');
+            app=await api('READ_MEMBER_APP','/access/apps/'+app.id);
+            assert.equal(app.name,'Ball46 Member','UNEXPECTED_MEMBER_APP_NAME');
+            assert.equal(app.type,'self_hosted','UNEXPECTED_MEMBER_APP_TYPE');
+            const actualDestinations=(app.destinations||[]).map(d=>d.uri).sort();
+            assert.deepEqual(actualDestinations,[...destinations].sort(),'UNEXPECTED_PROTECTED_PATHS');
+            assert.deepEqual(app.allowed_idps,[otp.id],'UNEXPECTED_ALLOWED_IDENTITY_PROVIDERS');
+            const policies=await api('READ_MEMBER_POLICIES','/access/apps/'+app.id+'/policies');
+            assert(Array.isArray(policies)&&policies.length===1,'OWNER_ONLY_POLICY_NOT_CONFIRMED');
+            const policy=policies[0];
+            assert.equal(policy.decision,'allow','OWNER_POLICY_NOT_ALLOW');
+            assert.deepEqual(policy.include,[{email:{email:owner}}],'OWNER_EMAIL_RULE_NOT_EXACT');
+            assert(!(policy.exclude||[]).length&&!(policy.require||[]).length,'UNEXPECTED_OWNER_POLICY_RULES');
+            assert(typeof app.aud==='string'&&app.aud.length,'ACCESS_AUDIENCE_MISSING');
+            report.app={id:app.id,name:app.name,protectedPaths:actualDestinations,policyId:policy.id,ownerOnlyPolicyVerified:true,audiencePresent:true};
+            let team=null;
+            let next='https://member.ball46.com/member';
+            for(let attempt=0;attempt<8;attempt++){
+              const response=await fetch(next,{redirect:'manual',signal:AbortSignal.timeout(15000)});
+              const location=response.headers.get('location');
+              await response.body?.cancel();
+              if(location){
+                const target=new URL(location,next);
+                if(/^[-a-zA-Z0-9]+\.cloudflareaccess\.com$/.test(target.hostname)){team=target.hostname;break;}
+                assert(target.origin==='https://member.ball46.com','UNEXPECTED_LOGIN_REDIRECT');
+                next=target.href;
+              }
+              if(attempt<7)await new Promise(resolve=>setTimeout(resolve,1500));
+            }
+            assert(team,'TEAM_DOMAIN_NOT_DISCOVERED_FROM_ACCESS_LOGIN');
+            const certs=await fetch('https://'+team+'/cdn-cgi/access/certs',{signal:AbortSignal.timeout(15000)});
+            assert(certs.ok&&(await certs.json()).keys?.length,'TEAM_PUBLIC_KEYS_UNAVAILABLE');
+            report.teamDomain=team;
+            const settings=await api('READ_MEMBER_BINDINGS','/workers/scripts/'+worker+'/settings');
+            const secretNames=await api('READ_MEMBER_SECRET_NAMES','/workers/scripts/'+worker+'/secrets');
+            for(const [name,text] of [['CF_ACCESS_TEAM_DOMAIN',team],['CF_ACCESS_AUD',app.aud]]){
+              const existing=(settings.bindings||[]).find(binding=>binding.name===name);
+              if(existing){
+                assert(existing.type==='plain_text'&&existing.text===text,'EXISTING_ACCESS_BINDING_REQUIRES_RECONCILIATION_'+name);
+                report.steps.push({step:'KEEP_MATCHING_'+name,success:true});
+              }else{
+                assert(!secretNames.some(binding=>binding.name===name),'EXISTING_ACCESS_SECRET_REQUIRES_RECONCILIATION_'+name);
+                await api('SET_'+name,'/workers/scripts/'+worker+'/secrets','PUT',{name,type:'secret_text',text});
+              }
+            }
+            const finalNames=await api('VERIFY_ACCESS_BINDING_NAMES','/workers/scripts/'+worker+'/secrets');
+            report.accessBindingsPresent=['CF_ACCESS_TEAM_DOMAIN','CF_ACCESS_AUD'].every(name=>finalNames.some(binding=>binding.name===name)||(settings.bindings||[]).some(binding=>binding.name===name));
+            assert(report.accessBindingsPresent,'ACCESS_WORKER_BINDINGS_NOT_PRESENT');
+            report.stripeKeyPresent=finalNames.some(binding=>binding.name==='STRIPE_SECRET_KEY');
+            for(const path of ['/pricing','/member','/member.html','/api/member/daily','/api/member/session']){
+              const status=await responseStatus(path);report.steps.push({step:'PUBLIC_GATE',path,status});
+              if(path==='/pricing')assert.equal(status,200,'PRICING_WAS_LOCKED');
+              else assert([302,303,307,308,401,403].includes(status),'MEMBER_ACCESS_GATE_NOT_ACTIVE');
+            }
+            const checkout=await fetch('https://member.ball46.com/api/stripe/checkout',{method:'POST',redirect:'manual',signal:AbortSignal.timeout(15000)});
+            const checkoutBody=await checkout.json();
+            assert.equal(checkout.status,503,'CHECKOUT_WAS_ENABLED');
+            assert.equal(checkoutBody.error,'CHECKOUT_DISABLED_UNTIL_VERIFIED_ENTITLEMENTS','CHECKOUT_GATE_CHANGED');
+            report.checkoutDisabledVerified=true;
+            const after=await api('MEMBER_DEPLOYMENT_AFTER','/workers/scripts/'+worker+'/deployments?per_page=1');
+            report.memberVersionAfter=after.deployments?.[0]?.versions?.[0]?.version_id;
+            report.accessSetupVerified=true;
+            console.log('BALL46_MEMBER_ACCESS_SETUP_VERIFIED '+JSON.stringify(report));
+          }catch(error){
+            report.complete=false;report.blocker=String(error.message);
+            console.log('BALL46_MEMBER_ACCESS_SETUP_INCOMPLETE '+JSON.stringify(report));
+            process.exitCode=1;
+          }
+          
+          NODE
