@@ -31,6 +31,16 @@ async function verifyAccessIdentity(request,env){
     return {id:claims.sub,email:String(claims.email).trim().toLowerCase()};
   }catch{return null}
 }
+// Stripe API 2025-03-31+ stores the current billing period on subscription items.
+// Require the period on the item for *our* configured price, not another plan.
+export function entitledPeriodEnd(subscription,priceId,now=Math.floor(Date.now()/1000)){
+  if(!subscription || !['active','trialing'].includes(subscription.status) || !priceId)return null;
+  const matching=(subscription.items?.data||[]).filter(item=>item?.price?.id===priceId);
+  const future=matching.map(item=>Number(item.current_period_end ?? subscription.current_period_end))
+    .filter(t=>Number.isSafeInteger(t)&&t>now);
+  return future.length ? Math.min(...future) : null;
+}
+
 async function paidEntitlement(identity,env){
   if(!identity||!env.STRIPE_SECRET_KEY||!env.STRIPE_PRICE_ID)return null;
   try{
@@ -45,12 +55,11 @@ async function paidEntitlement(identity,env){
       if(!r.ok)return null;
       const subscriptions=await r.json();
       for(const sub of subscriptions.data||[]){
-        if(!['active','trialing'].includes(sub.status))continue;
-        if(!Number.isFinite(sub.current_period_end)||sub.current_period_end<=now)continue;
-        if(env.STRIPE_PRICE_ID&&!sub.items?.data?.some(i=>i.price?.id===env.STRIPE_PRICE_ID))continue;
+        const periodEnd=entitledPeriodEnd(sub,env.STRIPE_PRICE_ID,now);
+        if(periodEnd===null)continue;
         return {displayName:identity.email.split('@')[0],status:'ACTIVE',plan:'BALL46 MEMBER',
-          role:'MEMBER',accessType:'SUBSCRIPTION',expiresAt:sub.current_period_end*1000,
-          currentPeriodEnd:sub.current_period_end*1000,cancelAtPeriodEnd:Boolean(sub.cancel_at_period_end)};
+          role:'MEMBER',accessType:'SUBSCRIPTION',expiresAt:periodEnd*1000,
+          currentPeriodEnd:periodEnd*1000,cancelAtPeriodEnd:Boolean(sub.cancel_at_period_end)};
       }
     }
   }catch{return null}
