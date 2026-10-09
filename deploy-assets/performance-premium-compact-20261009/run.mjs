@@ -48,7 +48,7 @@ function premiumBlock(css){
 }
 function patchCurrent(before,css){
   assert(before.includes(OLD_MARK),'DAILY_PERFORMANCE_BASE_MISSING');
-  assert(before.includes('id="ball46-daily-performance-runtime"'),'DAILY_PERFORMANCE_RUNTIME_MISSING');
+  assert(before.includes('id="b46-daily-performance-runtime"'),'DAILY_PERFORMANCE_RUNTIME_MISSING');
   assert(before.includes('@media(max-width:760px){#ball46-daily-performance{display:none!important'),'MOBILE_HIDE_GUARD_MISSING');
   assert(before.includes('b46-performance-summary-only-20261006'),'SUMMARY_ONLY_GUARD_MISSING');
   assert(before.includes('b46-hide-total-picks-20261006'),'TOTAL_PICKS_HIDE_GUARD_MISSING');
