@@ -1,7 +1,12 @@
 name: Deploy Ball46 Performance Premium Compact 20261009
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - work/ball46-performance-premium-compact-20261009
+    paths:
+      - '.github/workflows/deploy-ball46-performance-premium-compact-20261009.yml'
+      - 'deploy-assets/performance-premium-compact-20261009/**'
 
 permissions:
   contents: read
