@@ -1,4 +1,5 @@
-import {memberAccess} from './access-auth.js';
+import {memberAccess,verifyAccessIdentity} from './access-auth.js';
+import {createPilotCheckout} from './checkout.js';
 const MARKET_ORDER = ['ALL','AH','1X2','O/U','CORNERS','BTTS','CARDS','OTHER'];
 const SOURCE_BASE = 'https://www.ball46.com';
 const BANGKOK_OFFSET_MS = 7 * 60 * 60 * 1000;
@@ -412,32 +413,6 @@ async function staticResponse(request,env,path) {
   return withSecurityHeaders(await env.ASSETS.fetch(assetReq));
 }
 
-async function createStripeCheckout(request,env) {
-  if (!env.STRIPE_SECRET_KEY || !env.STRIPE_PRICE_ID) {
-    return json({ok:false,error:'STRIPE_NOT_CONFIGURED'},503);
-  }
-  const origin = new URL(request.url).origin;
-  const form = new URLSearchParams();
-  form.set('mode','subscription');
-  form.set('line_items[0][price]',env.STRIPE_PRICE_ID);
-  form.set('line_items[0][quantity]','1');
-  form.set('success_url',origin + '/success?session_id={CHECKOUT_SESSION_ID}');
-  form.set('cancel_url',origin + '/pricing?canceled=1');
-  form.set('allow_promotion_codes','true');
-  const stripe = await fetch('https://api.stripe.com/v1/checkout/sessions',{
-    method:'POST',
-    headers:{
-      authorization:'Bearer ' + env.STRIPE_SECRET_KEY,
-      'content-type':'application/x-www-form-urlencoded'
-    },
-    body:form.toString()
-  });
-  const payload = await stripe.json();
-  if (!stripe.ok || !payload?.url) {
-    return json({ok:false,error:'STRIPE_CHECKOUT_FAILED',detail:payload?.error?.message||null},502);
-  }
-  return json({ok:true,url:payload.url});
-}
 
 export default {
   async fetch(request,env) {
@@ -451,17 +426,30 @@ export default {
     // currently active subscription matching our exact Stripe Price ID.
     // A missing key, Stripe timeout or JWT error fails closed.
     if (url.pathname === '/api/member/session') {
-      const member=await memberAccess(request,env);
-      return json({ok:true,authenticated:Boolean(member),member:member||null,loginReady:Boolean(env.CF_ACCESS_TEAM_DOMAIN&&env.CF_ACCESS_AUD&&env.STRIPE_SECRET_KEY&&env.STRIPE_PRICE_ID)});
+      const identity=await verifyAccessIdentity(request,env);
+      const member=identity?await memberAccess(request,env):null;
+      return json({ok:true,authenticated:Boolean(member),identityVerified:Boolean(identity),member:member||null,
+        loginReady:Boolean(env.CF_ACCESS_TEAM_DOMAIN&&env.CF_ACCESS_AUD&&env.STRIPE_SECRET_KEY&&env.STRIPE_PRICE_ID)});
     }
-    if (url.pathname === '/api/member/daily' ||
-        url.pathname === '/api/member/match' ||
-        url.pathname === '/member' ||
-        url.pathname === '/member.html') {
+    // Pilot checkout is behind Cloudflare Access and a second signed-JWT check.
+    // Stripe Checkout does not itself grant premium content.
+    if (url.pathname === '/api/member/checkout' && request.method === 'GET') {
+      const identity=await verifyAccessIdentity(request,env);
+      if(!identity)return json({ok:false,error:'IDENTITY_AUTH_REQUIRED'},401);
+      if(await memberAccess(request,env))
+        return Response.redirect('https://member.ball46.com/member',303);
+      const checkout=await createPilotCheckout(identity,env,url.origin);
+      if(checkout.url)return Response.redirect(checkout.url,303);
+      return json(checkout.body,checkout.status);
+    }
+    if(url.pathname==='/member'||url.pathname==='/member.html') {
+      const member=await memberAccess(request,env);
+      if(!member)return Response.redirect(url.origin+'/pricing?membership=required',303);
+      return staticResponse(request,env,'/member.html');
+    }
+    if(url.pathname==='/api/member/daily'||url.pathname==='/api/member/match') {
       const member=await memberAccess(request,env);
       if(!member)return json({ok:false,error:'MEMBERSHIP_AUTH_REQUIRED'},401);
-      if(url.pathname === '/member'||url.pathname === '/member.html')
-        return staticResponse(request,env,'/member.html');
     }
 
     if (url.pathname === '/api/member/daily') {
