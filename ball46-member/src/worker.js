@@ -421,6 +421,9 @@ export default {
     if (url.pathname === '/api/health') {
       return json({ok:true,service:'ball46-member-production',stage:env.APP_STAGE||'unknown'});
     }
+    if (url.pathname === '/api/enrollment-status') {
+      return json({ok:true,ownerPilotAvailable:env.OWNER_CHECKOUT_ENABLED==='true'});
+    }
 
     // Every premium request needs an independently verified Access JWT and a
     // currently active subscription matching our exact Stripe Price ID.
