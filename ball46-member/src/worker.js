@@ -434,6 +434,30 @@ export default {
       return json({ok:true,authenticated:Boolean(member),identityVerified:Boolean(identity),member:member||null,
         loginReady:Boolean(env.CF_ACCESS_TEAM_DOMAIN&&env.CF_ACCESS_AUD&&env.STRIPE_SECRET_KEY&&env.STRIPE_PRICE_ID)});
     }
+    // Owner-only non-mutating Stripe credential check; never return secret values.
+    // This route is also covered by the Cloudflare Access /api/member/* policy.
+    if (url.pathname === '/api/member/stripe-readiness' && request.method === 'GET') {
+      const identity=await verifyAccessIdentity(request,env);
+      if(!identity || identity.email!==String(env.OWNER_CHECKOUT_EMAIL||'').toLowerCase())
+        return json({ok:false,error:'OWNER_AUTH_REQUIRED'},401);
+      if(!env.STRIPE_SECRET_KEY||!env.STRIPE_PRICE_ID)
+        return json({ok:false,error:'STRIPE_CONFIG_MISSING'},503);
+      try{
+        const headers={authorization:'Bearer '+env.STRIPE_SECRET_KEY};
+        const calls=[
+          'https://api.stripe.com/v1/customers?email='+encodeURIComponent(identity.email)+'&limit=1',
+          'https://api.stripe.com/v1/subscriptions?status=all&limit=1'
+        ];
+        const responses=await Promise.all(calls.map(target=>fetch(target,{headers,signal:AbortSignal.timeout(10000)})));
+        const readsOk=responses.every(response=>response.ok);
+        return json({ok:readsOk,identityVerified:true,customerRead:responses[0].ok,
+          subscriptionRead:responses[1].ok,checkoutPilotEnabled:env.OWNER_CHECKOUT_ENABLED==='true'},
+          readsOk?200:503);
+      }catch{
+        return json({ok:false,error:'STRIPE_READINESS_UNAVAILABLE'},503);
+      }
+    }
+
     // Pilot checkout is behind Cloudflare Access and a second signed-JWT check.
     // Stripe Checkout does not itself grant premium content.
     if (url.pathname === '/api/member/checkout' && request.method === 'GET') {
