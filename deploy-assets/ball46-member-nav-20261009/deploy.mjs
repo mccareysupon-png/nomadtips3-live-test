@@ -7,7 +7,7 @@ import {schedules,stageCurrentRail,verifyRailBase,wrangler} from '../daily-perfo
 const MEMBER='https://ball46-member-production.mccarey-supon.workers.dev';
 const URL=MEMBER+'/pricing';
 const PAGES=['index.html'];
-const report={scope:'Navigation only: match Member first-row vertical geometry with other MATCH STATUS filter rows',startedAt:new Date().toISOString()};
+const report={scope:'Navigation only: place Member in a standalone left rail card above MATCH STATUS',startedAt:new Date().toISOString()};
 mkdirSync('audit',{recursive:true});
 const save=()=>writeFileSync('audit/report.json',JSON.stringify(report,null,2));
 const delay=ms=>new Promise(r=>setTimeout(r,ms));
@@ -25,20 +25,16 @@ function insertMember(html,page){
   const rail=/<a\b(?=[^>]*data-b46-member-entry="rail")[^>]*>[\s\S]*?<\/a>/g;
   const matches=[...html.matchAll(rail)];
   assert.equal(matches.length,1,'EXACT_ONE_MEMBER_LINK');
-  const previous=matches[0][0];
-  assert(previous.includes('target="_blank"')&&previous.includes('rel="noopener noreferrer"'),'KEEP_NEW_TAB');
-  assert(previous.includes('class="workspace-nav-row"'),'EXPECTED_PREVIOUS_MEMBER_CLASS');
-  // Use the same filter control styling as All matches, Live and Upcoming.
-  // Explicitly match native buttons' box model and vertical spacing.
-  const updated=previous.replace('class="workspace-nav-row"','class="filter"')
-    .replace('display:flex;align-items:center;justify-content:space-between;text-decoration:none;color:inherit;font-family:inherit;font-size:inherit;font-weight:inherit;line-height:inherit','display:flex;align-items:center;justify-content:space-between;text-decoration:none;color:inherit;font-family:inherit;font-size:inherit;font-weight:inherit;line-height:inherit;box-sizing:border-box;width:100%');
-  assert.notEqual(updated,previous,'MEMBER_STYLE_UNCHANGED');
-  const first='<button class="filter active" data-status-filter="all">';
-  const changed=html.replace(previous,updated);
-  const title='<div class="rail-title">MATCH STATUS</div>';
-  assert(changed.indexOf(title)<changed.indexOf('data-b46-member-entry="rail"')&&changed.indexOf('data-b46-member-entry="rail"')<changed.indexOf(first),'MEMBER_ORDER_CHANGED');
+  const member=matches[0][0];
+  assert(member.includes('target="_blank"')&&member.includes('rel="noopener noreferrer"'),'KEEP_NEW_TAB');
+  const section='<div class="rail-card"><div class="rail-title">MATCH STATUS</div>';
+  assert.equal(html.split(section).length-1,1,'MATCH_STATUS_SECTION_CHANGED');
+  const without=html.replace(member,'');
+  const separate='<div class="rail-card" data-b46-member-independent="1" style="padding:0;overflow:hidden">'+member+'</div>';
+  const changed=without.replace(section,separate+'\n'+section);
+  assert(changed.indexOf('data-b46-member-independent="1"')<changed.indexOf(section),'MEMBER_NOT_ABOVE_STATUS_SECTION');
   assert.equal((changed.match(/data-b46-member-entry="rail"/g)||[]).length,1,'MEMBER_DUPLICATED');
-  assert.equal((changed.match(/data-b46-member-entry="brand"/g)||[]).length,1,'BRAND_CHANGED');
+  assert.equal((changed.match(/data-b46-member-entry="brand"/g)||[]).length,1,'HIDDEN_BRAND_CHANGED');
   assert.equal((changed.match(/data-b46-member-entry="footer"/g)||[]).length,1,'FOOTER_CHANGED');
   return changed;
 }
@@ -100,7 +96,7 @@ try{
     assert.equal(sha(canonical(await api('/scripts/'+script+'/settings'))),settingsSha,'SETTINGS_CHANGED');
     assert.equal(canonical(await schedules()),canonical(crons),'CRONS_CHANGED');
     report.result='SUCCESS';report.deployedVersion=candidate;report.completedAt=new Date().toISOString();save();
-    console.log('BALL46_MEMBER_ROW_SPACING_SUCCESS',JSON.stringify({previous:original,newVersion:candidate,link:URL,pages:PAGES}));
+    console.log('BALL46_MEMBER_STANDALONE_SUCCESS',JSON.stringify({previous:original,newVersion:candidate,link:URL,pages:PAGES}));
   }catch(e){
     report.error=String(e?.message||e);save();
     try{await rollback();report.rolledBack=true;save()}catch(rb){report.rollbackError=String(rb?.message||rb);save()}
