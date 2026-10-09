@@ -1,10 +1,10 @@
-// Owner-only pilot checkout. No entitlement is granted by a redirect or payment URL.
+// Customer checkout: verified email identity is required. Checkout never grants entitlement.
 // The protected app requires verified Cloudflare Access identity and a live Stripe subscription.
-export async function createPilotCheckout(identity, env, origin, fetcher=fetch){
-  if(env.OWNER_CHECKOUT_ENABLED!=='true') return {status:503,body:{ok:false,error:'CHECKOUT_PILOT_DISABLED'}};
-  const owner=String(env.OWNER_CHECKOUT_EMAIL||'').trim().toLowerCase();
-  if(!owner || !identity?.email || identity.email!==owner)
-    return {status:403,body:{ok:false,error:'OWNER_PILOT_ONLY'}};
+export async function createMemberCheckout(identity, env, origin, fetcher=fetch){
+  if(env.MEMBER_CHECKOUT_ENABLED!=='true') return {status:503,body:{ok:false,error:'MEMBER_CHECKOUT_DISABLED'}};
+  const email=String(identity?.email||'').trim().toLowerCase();
+  if(!identity?.id || !email || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email))
+    return {status:401,body:{ok:false,error:'VERIFIED_IDENTITY_REQUIRED'}};
   if(!env.STRIPE_SECRET_KEY || !env.STRIPE_PRICE_ID)
     return {status:503,body:{ok:false,error:'STRIPE_NOT_CONFIGURED'}};
   const base=new URL(origin);
@@ -14,8 +14,8 @@ export async function createPilotCheckout(identity, env, origin, fetcher=fetch){
   params.set('mode','subscription');
   params.set('line_items[0][price]',env.STRIPE_PRICE_ID);
   params.set('line_items[0][quantity]','1');
-  params.set('customer_email',owner);
-  params.set('client_reference_id',identity.id||owner);
+  params.set('customer_email',email);
+  params.set('client_reference_id',identity.id);
   params.set('success_url','https://member.ball46.com/success?session_id={CHECKOUT_SESSION_ID}');
   params.set('cancel_url','https://member.ball46.com/pricing?canceled=1');
   params.set('allow_promotion_codes','true');
