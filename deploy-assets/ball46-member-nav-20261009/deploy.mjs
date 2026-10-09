@@ -7,7 +7,7 @@ import {schedules,stageCurrentRail,verifyRailBase,wrangler} from '../daily-perfo
 const MEMBER='https://ball46-member-production.mccarey-supon.workers.dev';
 const URL=MEMBER+'/pricing';
 const PAGES=['index.html'];
-const report={scope:'Navigation only: move existing Member sidebar link above All matches, preserving icons, typography and new-tab behavior',startedAt:new Date().toISOString()};
+const report={scope:'Navigation only: match Member first-row vertical geometry with other MATCH STATUS filter rows',startedAt:new Date().toISOString()};
 mkdirSync('audit',{recursive:true});
 const save=()=>writeFileSync('audit/report.json',JSON.stringify(report,null,2));
 const delay=ms=>new Promise(r=>setTimeout(r,ms));
@@ -23,22 +23,22 @@ async function rollback(){
 function insertMember(html,page){
   assert.equal(page,'index.html','ONLY_CURRENT_SINGLE_PAGE_ALLOWED');
   const rail=/<a\b(?=[^>]*data-b46-member-entry="rail")[^>]*>[\s\S]*?<\/a>/g;
-  const hits=[...html.matchAll(rail)];
-  assert.equal(hits.length,1,'EXACT_ONE_MEMBER_LINK_REQUIRED');
-  const member=hits[0][0];
-  assert(member.includes('target="_blank"')&&member.includes('rel="noopener noreferrer"'),'MEMBER_NEW_TAB_MUST_STAY');
+  const matches=[...html.matchAll(rail)];
+  assert.equal(matches.length,1,'EXACT_ONE_MEMBER_LINK');
+  const previous=matches[0][0];
+  assert(previous.includes('target="_blank"')&&previous.includes('rel="noopener noreferrer"'),'KEEP_NEW_TAB');
+  assert(previous.includes('class="workspace-nav-row"'),'EXPECTED_PREVIOUS_MEMBER_CLASS');
+  // Use the same filter control styling as All matches, Live and Upcoming.
+  // Explicitly match native buttons' box model and vertical spacing.
+  const updated=previous.replace('class="workspace-nav-row"','class="filter"')
+    .replace('display:flex;align-items:center;justify-content:space-between;text-decoration:none;color:inherit;font-family:inherit;font-size:inherit;font-weight:inherit;line-height:inherit','display:flex;align-items:center;justify-content:space-between;text-decoration:none;color:inherit;font-family:inherit;font-size:inherit;font-weight:inherit;line-height:inherit;box-sizing:border-box;width:100%');
+  assert.notEqual(updated,previous,'MEMBER_STYLE_UNCHANGED');
   const first='<button class="filter active" data-status-filter="all">';
-  assert.equal(html.split(first).length-1,1,'ALL_MATCHES_ANCHOR_CHANGED');
-  const status='<div class="rail-title">MATCH STATUS</div>';
-  assert.equal(html.split(status).length-1,1,'STATUS_SECTION_ANCHOR_CHANGED');
-  const without=html.replace(member,'');
-  const changed=without.replace(first,member+first);
-  const statusIndex=changed.indexOf(status);
-  const memberIndex=changed.indexOf('data-b46-member-entry="rail"');
-  const allIndex=changed.indexOf(first);
-  assert(statusIndex>=0&&statusIndex<memberIndex&&memberIndex<allIndex,'MEMBER_NOT_FIRST_IN_STATUS_LIST');
+  const changed=html.replace(previous,updated);
+  const title='<div class="rail-title">MATCH STATUS</div>';
+  assert(changed.indexOf(title)<changed.indexOf('data-b46-member-entry="rail"')&&changed.indexOf('data-b46-member-entry="rail"')<changed.indexOf(first),'MEMBER_ORDER_CHANGED');
   assert.equal((changed.match(/data-b46-member-entry="rail"/g)||[]).length,1,'MEMBER_DUPLICATED');
-  assert.equal((changed.match(/data-b46-member-entry="brand"/g)||[]).length,1,'HIDDEN_BRAND_CHANGED');
+  assert.equal((changed.match(/data-b46-member-entry="brand"/g)||[]).length,1,'BRAND_CHANGED');
   assert.equal((changed.match(/data-b46-member-entry="footer"/g)||[]).length,1,'FOOTER_CHANGED');
   return changed;
 }
@@ -100,7 +100,7 @@ try{
     assert.equal(sha(canonical(await api('/scripts/'+script+'/settings'))),settingsSha,'SETTINGS_CHANGED');
     assert.equal(canonical(await schedules()),canonical(crons),'CRONS_CHANGED');
     report.result='SUCCESS';report.deployedVersion=candidate;report.completedAt=new Date().toISOString();save();
-    console.log('BALL46_MEMBER_FIRST_MENU_SUCCESS',JSON.stringify({previous:original,newVersion:candidate,link:URL,pages:PAGES}));
+    console.log('BALL46_MEMBER_ROW_SPACING_SUCCESS',JSON.stringify({previous:original,newVersion:candidate,link:URL,pages:PAGES}));
   }catch(e){
     report.error=String(e?.message||e);save();
     try{await rollback();report.rolledBack=true;save()}catch(rb){report.rollbackError=String(rb?.message||rb);save()}
