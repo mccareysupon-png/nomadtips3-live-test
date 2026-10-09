@@ -24,6 +24,15 @@
 </header>
 
 <main class="shell page">
+  <section class="card card-pad" id="membershipFlowNotice" role="status" aria-live="polite" style="margin-bottom:20px;border-color:rgba(88,174,255,.32)">
+    <div class="eyebrow" id="membershipFlowLabel">HOW MEMBERSHIP WORKS</div>
+    <h2 id="membershipFlowTitle" style="font-size:19px;margin:9px 0">New member? Subscribe first</h2>
+    <p id="membershipFlowMessage" style="color:var(--muted);margin:0;line-height:1.7">
+      Your one-time email code confirms that the email belongs to you. It does not activate a paid membership.
+      Choose Subscribe below, verify your email, and complete the $5/month Stripe payment to unlock Signal Center.
+      Already paid? Use Member Login with the same email.
+    </p>
+  </section>
   <section class="hero">
     <div class="eyebrow">Ball46 Member</div>
     <h1>Daily signals. One screen.</h1>
@@ -83,7 +92,7 @@
         <div class="feature"><span class="check">✓</span><span>Use one email consistently for payment and member access</span></div>
         <div id="checkoutNotice" class="notice" hidden></div>
         <button id="subscribeButton" class="primary" type="button">Subscribe · $5/month</button>
-        <a class="secondary" href="/login">Already a member? Login</a>
+        <a class="secondary" href="/login">Already paid? Member Login</a>
         <p class="fine">Payments are handled by Stripe. Ball46 does not store card details. Subscription renews monthly until canceled.</p>
       </div>
     </aside>

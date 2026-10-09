@@ -1,6 +1,19 @@
 const button=document.querySelector('#subscribeButton');
 const notice=document.querySelector('#checkoutNotice');
 const params=new URLSearchParams(window.location.search);
+// Display enrollment state BEFORE the paid plan, where users cannot miss it.
+const flowLabel=document.querySelector('#membershipFlowLabel');
+const flowTitle=document.querySelector('#membershipFlowTitle');
+const flowMessage=document.querySelector('#membershipFlowMessage');
+if(params.has('membership')){
+  if(flowLabel)flowLabel.textContent='SUBSCRIPTION REQUIRED';
+  if(flowTitle)flowTitle.textContent='Email code accepted? Payment is still required.';
+  if(flowMessage)flowMessage.textContent='Cloudflare email verification confirms identity only; it does not activate a membership. There is no active Ball46 Member access for this sign-in. Choose Subscribe · $5/month below, then complete Stripe Checkout. If you already paid with this email, do not pay a second time.';
+}else if(params.has('canceled')){
+  if(flowLabel)flowLabel.textContent='PAYMENT NOT COMPLETED';
+  if(flowTitle)flowTitle.textContent='Checkout was canceled';
+  if(flowMessage)flowMessage.textContent='Your email code may have worked, but no new membership was activated by the canceled checkout. Choose Subscribe to return to payment, or use Member Login if you already have an active subscription.';
+}
 function showNotice(message){
   if(notice){notice.hidden=false;notice.textContent=message;}
 }
@@ -20,7 +33,7 @@ if(button){
     }
     if(button){
       button.disabled=false;
-      button.textContent='Continue to secure checkout · $5/month';
+      button.textContent='Subscribe · $5/month (verify email, then pay)';
       button.addEventListener('click',()=>{
         button.disabled=true;
         button.textContent='Opening secure member sign-in…';
