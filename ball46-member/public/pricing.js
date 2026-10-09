@@ -27,7 +27,7 @@ if(button){
         window.location.assign('/api/member/checkout');
       });
     }
-    if(params.has('membership'))showNotice('Login succeeded, but no active Ball46 Member subscription was found. Continue below to subscribe using the same verified email.');
+    if(params.has('membership'))showNotice('Member access is not active yet. Complete secure sign-in and subscription using the same email. If you already paid, do not pay again; contact support.');
     else if(params.has('canceled'))showNotice('Checkout was canceled. No new subscription has been activated.');
   }catch{
     if(button){button.disabled=true;button.textContent='Membership enrollment temporarily unavailable';}
