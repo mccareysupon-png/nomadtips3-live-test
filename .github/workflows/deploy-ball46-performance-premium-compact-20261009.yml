@@ -1,0 +1,46 @@
+name: Deploy Ball46 Performance Premium Compact 20261009
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ball46-production-performance-premium-compact
+  cancel-in-progress: false
+
+jobs:
+  guarded-deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      DEPLOY_ENABLED: 'false'
+    steps:
+      - name: Checkout exact work branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install parser dependency only
+        run: npm install --no-save --ignore-scripts acorn@8
+
+      - name: Guarded Premium Compact Performance deploy
+        working-directory: deploy-assets/performance-premium-compact-20261009
+        run: node run.mjs
+
+      - name: Upload audit and rollback proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-performance-premium-compact-${{ github.run_id }}
+          path: deploy-assets/performance-premium-compact-20261009/audit
+          if-no-files-found: warn
+          retention-days: 30
