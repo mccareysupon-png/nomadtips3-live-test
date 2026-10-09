@@ -1735,3 +1735,14 @@ body.page-member:before{
   width:100%;
   text-align:center;
 }
+
+/* Member hero refinement: hide redundant live count, compact title and top gap. */
+.member-layout{padding-top:28px}
+.member-hero-card{padding-top:19px;padding-bottom:19px}
+.member-head h1{font-size:18px;line-height:1.2;margin:6px 0 8px}
+.member-head .live-pill{display:none!important}
+@media(max-width:680px){
+  .member-layout{padding-top:20px}
+  .member-hero-card{padding-top:16px;padding-bottom:16px}
+  .member-head h1{font-size:15.6px}
+}
