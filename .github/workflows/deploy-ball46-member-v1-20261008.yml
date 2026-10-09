@@ -100,7 +100,7 @@ jobs:
           test "$status" = 401
           jq -e '.error=="IDENTITY_AUTH_REQUIRED"' /tmp/identity.json >/dev/null
           curl -fsS --max-time 20 "$base/api/enrollment-status" -o /tmp/enrollment.json
-          jq -e '.ok==true and .ownerPilotAvailable==false' /tmp/enrollment.json >/dev/null
+          jq -e '.ok==true and .enrollmentAvailable==false' /tmp/enrollment.json >/dev/null
           curl -fsS --max-time 20 "$base/api/member/session" -o /tmp/session.json
           jq -e '.ok==true and .authenticated==false and .member==null' /tmp/session.json >/dev/null
           checkout_status="$(curl -sS --max-time 20 -X POST -o /tmp/checkout.json -w '%{http_code}' "$base/api/stripe/checkout")"
