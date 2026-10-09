@@ -16,7 +16,7 @@ const report={
   commit:process.env.GITHUB_SHA,
   branch:process.env.GITHUB_REF_NAME,
   startedAt:new Date().toISOString(),
-  scope:'Daily Performance presentation only: approved Premium Compact / Clean Sci-Fi design on PC, remove embedded stadium image payload, reduce visual height, preserve card runtime/data logic, mobile hide, engine, APIs, Statistics and Signal.'
+  scope:'Daily Performance presentation only: Premium Compact V2 on PC, add subtle premium polish and reduce current card height about another 20%, preserve card runtime/data logic, mobile hide, engine, APIs, Statistics and Signal.'
 };
 const save=()=>writeFileSync('audit/performance-premium-compact-report.json',JSON.stringify(report,null,2));
 const delay=ms=>new Promise(r=>setTimeout(r,ms));
@@ -58,12 +58,18 @@ function patchCurrent(before,css){
 
   const imgRe=/background-image:url\("data:image\/webp;base64,[A-Za-z0-9+/=]+"\)!important;/g;
   const matches=before.match(imgRe)||[];
-  assert.equal(matches.length,1,'EMBEDDED_STADIUM_IMAGE_COUNT_BAD');
+  assert(matches.length<=1,'EMBEDDED_STADIUM_IMAGE_COUNT_BAD');
+  // Redeploy-safe: v1 Production already has the stadium payload removed.
+  // A fresh base may still contain exactly one embedded image; both states are valid.
 
   const premiumRe=new RegExp('\\n?<!-- '+MARK+' START -->[\\s\\S]*?<!-- '+MARK+' END -->\\n?','g');
   const withoutOldPremium=before.replace(premiumRe,'\n');
   const imageRemoved=withoutOldPremium.replace(imgRe,'background-image:none!important;');
-  assert.notEqual(imageRemoved,withoutOldPremium,'STADIUM_IMAGE_NOT_REMOVED');
+  if(matches.length===1){
+    assert.notEqual(imageRemoved,withoutOldPremium,'STADIUM_IMAGE_NOT_REMOVED');
+  }else{
+    assert(baseStyleBlock(imageRemoved).includes('background-image:none!important;'),'ALREADY_COMPACT_BASE_MISSING_STADIUM_DISABLE');
+  }
   assert(!imageRemoved.includes('data:image/webp;base64,'),'EMBEDDED_STADIUM_PAYLOAD_STILL_PRESENT');
 
   const block=premiumBlock(css);
@@ -83,7 +89,7 @@ function patchCurrent(before,css){
     runtimeSha:sha(Buffer.from(runtimeBefore)),
     baseStyleBeforeSha:sha(Buffer.from(styleBefore)),
     baseStyleAfterSha:sha(Buffer.from(styleAfter)),
-    imagePayloadBytesRemoved:Buffer.byteLength(before)-Buffer.byteLength(imageRemoved)
+    imagePayloadBytesRemoved:Math.max(0,Buffer.byteLength(withoutOldPremium)-Buffer.byteLength(imageRemoved))
   };
 }
 
