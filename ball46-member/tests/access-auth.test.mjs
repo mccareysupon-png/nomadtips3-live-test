@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {entitledPeriodEnd} from '../src/access-auth.js';
+import {entitledPeriodEnd, ownerEntitlement, memberAccess} from '../src/access-auth.js';
 
 const now=1791540000, price='price_ball46';
 const sub=(status,items,rootEnd)=>({
@@ -30,4 +30,30 @@ test('missing price and missing item period deny access',()=>{
 });
 test('matching item with earliest end bounds multi-item entitlement',()=>{
   assert.equal(entitledPeriodEnd(sub('active',[[price,now+500],[price,now+1000]]),price,now),now+500);
+});
+
+test('verified owner gets lifetime access without a Stripe subscription',()=>{
+  const owner=ownerEntitlement({email:'mccarey.supon@gmail.com'},{
+    OWNER_CHECKOUT_EMAIL:'mccarey.supon@gmail.com'
+  });
+  assert.equal(owner?.role,'OWNER');
+  assert.equal(owner?.accessType,'LIFETIME');
+  assert.equal(owner?.status,'ACTIVE');
+  assert.equal(owner?.currentPeriodEnd,null);
+});
+test('email mismatch and missing owner configuration never grant admin entitlement',()=>{
+  const env={OWNER_CHECKOUT_EMAIL:'mccarey.supon@gmail.com'};
+  for(const identity of [null,{}, {email:'mccarey.supon+evil@gmail.com'},{email:'other@example.com'}]){
+    assert.equal(ownerEntitlement(identity,env),null);
+  }
+  assert.equal(ownerEntitlement({email:env.OWNER_CHECKOUT_EMAIL},{}),null);
+});
+test('unverified identity and spoofed request headers are never accepted as owner',async()=>{
+  const env={OWNER_CHECKOUT_EMAIL:'mccarey.supon@gmail.com',CF_ACCESS_TEAM_DOMAIN:'test.cloudflareaccess.com',CF_ACCESS_AUD:'sample'};
+  const request=new Request('https://member.ball46.com/member',{headers:{
+    'x-email':env.OWNER_CHECKOUT_EMAIL,
+    'cf-access-authenticated-user-email':env.OWNER_CHECKOUT_EMAIL,
+    'cf-access-jwt-assertion':'not.a.valid.jwt'
+  }});
+  assert.equal(await memberAccess(request,env),null);
 });
