@@ -1,0 +1,13 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "m88-private-monitor",
+  "main": "src/index.js",
+  "compatibility_date": "2026-08-18",
+  "assets": {
+    "directory": "./web",
+    "binding": "ASSETS"
+  },
+  "vars": {
+    "M88_PUBLIC_APP_URL": "https://msports.m88.com/app/v2/"
+  }
+}

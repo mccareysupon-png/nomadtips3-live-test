@@ -1,0 +1,13 @@
+{
+  "name": "m88-private-monitor-local",
+  "private": true,
+  "version": "1.6.0",
+  "type": "module",
+  "scripts": {
+    "start": "node local-server-v8.mjs",
+    "check": "node --check local-server-v8.mjs && node --check local-server-v7.mjs && node --check local-server-v6.mjs && node --check local-server-v5.mjs && node --check rich-utils.mjs && node --check rich-normalizer.mjs && node --check rich-dom.mjs && node --check web/m88-decision-contract.js && node --check web/detection-rich-ui.js && node --check web/app.js"
+  },
+  "dependencies": {
+    "playwright": "^1.55.0"
+  }
+}
