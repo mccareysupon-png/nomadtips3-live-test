@@ -1,0 +1,35 @@
+name: Audit Ball46 Member Stripe Key Source
+on:
+  push:
+    branches: [member/ball46-member-v1-20261008]
+    paths: ['.github/workflows/audit-ball46-member-stripe-key-source-20261009.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  read-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    env:
+      KEY_STANDARD: ${{ secrets.STRIPE_SECRET_KEY }}
+      KEY_LIVE: ${{ secrets.STRIPE_LIVE_SECRET_KEY }}
+      KEY_API: ${{ secrets.STRIPE_API_KEY }}
+    steps:
+      - name: Check secret availability and matching Stripe account without showing keys
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          const candidates=[['STRIPE_SECRET_KEY',process.env.KEY_STANDARD],['STRIPE_LIVE_SECRET_KEY',process.env.KEY_LIVE],['STRIPE_API_KEY',process.env.KEY_API]];
+          for(const [name,value] of candidates) {
+            const present=Boolean(value);
+            const live=present&&value.startsWith('sk_live_');
+            let accountMatch=false,authenticated=false;
+            if(live){
+              try{
+                const response=await fetch('https://api.stripe.com/v1/account',{headers:{authorization:'Bearer '+value},signal:AbortSignal.timeout(10000)});
+                if(response.ok){authenticated=true;const data=await response.json();accountMatch=(data.id==='acct_1L4eJXFXmKSSVxQd');}
+              }catch{}
+            }
+            console.log('BALL46_STRIPE_SECRET_AUDIT',JSON.stringify({name,present,live,authenticated,accountMatch}));
+          }
+          NODE
