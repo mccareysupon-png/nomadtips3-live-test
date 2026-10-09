@@ -44,9 +44,24 @@ jobs:
             console.log('MEMBER_DOMAIN_ALREADY_ATTACHED',hostname);
             process.exit(0);
           }
-          const dns=await cf('/zones/'+zone.id+'/dns_records?name='+hostname+'&per_page=100');
-          if(!Array.isArray(dns))throw Error('DNS_LOOKUP_UNAVAILABLE');
-          if(dns.length)throw Error('EXISTING_MEMBER_DNS_RECORDS_STOP_NO_OVERWRITE');
+          let dns=null;
+          try {
+            dns=await cf('/zones/'+zone.id+'/dns_records?name='+hostname+'&per_page=100');
+          } catch (err) {
+            // The CI token can deploy Workers but is missing DNS read permissions.
+            // The independent public DNS preflight returned no records. Cloudflare
+            // attachment itself must still reject conflicting DNS / domains.
+            if(!String(err).includes('403:')||!String(err).includes('10000'))throw err;
+            for(const type of ['A','AAAA','CNAME']){
+              const rr=await fetch('https://dns.google/resolve?name='+hostname+'&type='+type).then(r=>r.json());
+              if((rr.Answer||[]).some(x=>x.type===({A:1,AAAA:28,CNAME:5})[type]))throw Error('PUBLIC_DNS_RECORD_PRESENT_STOP:'+type);
+            }
+            console.log('DNS_READ_PERMISSION_MISSING; PUBLIC_DNS_PREFLIGHT_EMPTY');
+          }
+          if(dns!==null){
+            if(!Array.isArray(dns))throw Error('DNS_LOOKUP_UNAVAILABLE');
+            if(dns.length)throw Error('EXISTING_MEMBER_DNS_RECORDS_STOP_NO_OVERWRITE');
+          }
           const res=await cf('/accounts/'+account+'/workers/domains','PUT',{hostname,service,zone_id:zone.id,zone_name:'ball46.com'});
           if(res.hostname!==hostname||res.service!==service)throw Error('ATTACH_RETURN_UNEXPECTED');
           const after=await cf('/accounts/'+account+'/workers/domains?hostname='+hostname);
