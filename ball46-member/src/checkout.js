@@ -3,7 +3,7 @@
 export async function createMemberCheckout(identity, env, origin, fetcher=fetch){
   if(env.MEMBER_CHECKOUT_ENABLED!=='true') return {status:503,body:{ok:false,error:'MEMBER_CHECKOUT_DISABLED'}};
   const email=String(identity?.email||'').trim().toLowerCase();
-  if(!identity?.id || !email || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email))
+  if(!identity?.id || !email || !/^[^@ ]+@[^@ ]+[.][^@ ]+$/.test(email))
     return {status:401,body:{ok:false,error:'VERIFIED_IDENTITY_REQUIRED'}};
   if(!env.STRIPE_SECRET_KEY || !env.STRIPE_PRICE_ID)
     return {status:503,body:{ok:false,error:'STRIPE_NOT_CONFIGURED'}};
