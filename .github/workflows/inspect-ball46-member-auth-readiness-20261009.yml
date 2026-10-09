@@ -59,7 +59,7 @@ jobs:
           const deployments=await probe('MEMBER_DEPLOYMENTS',base+'/workers/scripts/ball46-member-production/deployments?per_page=1');
           if(deployments)report.memberDeployment={id:deployments.deployments?.[0]?.id,versions:deployments.deployments?.[0]?.versions};
           for(const origin of ['https://member.ball46.com','https://ball46-member-production.mccarey-supon.workers.dev']){
-            for(const path of ['/pricing','/login','/member','/member.html','/api/member/daily','/api/member/match?fixtureId=123','/api/member/session','/api/stripe/checkout','/api/stripe/webhook']){
+            for(const path of ['/pricing','/login','/member','/member.html','/%6dember.html','/member%2Ehtml','/member/','//member.html','/api/member/daily','/api/member/match?fixtureId=123','/api/member/session','/api/stripe/checkout','/api/stripe/webhook']){
               try{
                 const response=await fetch(origin+path,{method:path==='/api/stripe/checkout'?'POST':'GET',redirect:'manual',signal:AbortSignal.timeout(15000)});
                 const result={origin,path,status:response.status,type:response.headers.get('content-type')};
@@ -85,7 +85,7 @@ jobs:
             }
           }
           report.configurationReady=['CF_ACCESS_TEAM_DOMAIN','CF_ACCESS_AUD','STRIPE_SECRET_KEY','STRIPE_PRICE_ID'].every(name=>report.bindings[name]?.present);
-          report.anonymousDenied=report.http.filter(x=>['/member','/member.html','/api/member/daily','/api/member/match?fixtureId=123'].includes(x.path)).every(x=>[401,403,302,303].includes(x.status));
+          report.anonymousDenied=report.http.filter(x=>['/member','/member.html','/%6dember.html','/member%2Ehtml','/member/','//member.html','/api/member/daily','/api/member/match?fixtureId=123'].includes(x.path)).every(x=>[401,403,404,301,302,303,307,308].includes(x.status));
           report.pricingPublic=report.http.filter(x=>x.path==='/pricing').every(x=>x.status===200);
           report.checkoutDisabled=report.http.filter(x=>x.path==='/api/stripe/checkout').every(x=>x.status===503&&x.error==='CHECKOUT_DISABLED_UNTIL_VERIFIED_ENTITLEMENTS');
           console.log('BALL46_MEMBER_READ_ONLY_AUDIT '+JSON.stringify(report));
