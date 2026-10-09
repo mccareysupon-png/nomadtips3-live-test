@@ -446,23 +446,18 @@ export default {
       return json({ok:true,service:'ball46-member-production',stage:env.APP_STAGE||'unknown'});
     }
 
+    // Live membership is fail-closed: never issue a prototype or owner identity.
     if (url.pathname === '/api/member/session') {
-      const prototype = (env.APP_STAGE||'prototype') === 'prototype';
-      return json({
-        ok:true,
-        authenticated:prototype,
-        member:prototype ? {
-          displayName:env.DEMO_MEMBER_NAME||'JAY',
-          status:'ACTIVE',
-          plan:'BALL46 MEMBER',
-          role:'OWNER',
-          accessType:'LIFETIME',
-          currentPeriodEnd:null,
-          expiresAt:null,
-          cancelAtPeriodEnd:false,
-          prototype:true
-        } : null
-      });
+      return json({ok:true,authenticated:false,member:null,loginReady:false});
+    }
+
+    // No authenticated entitlement provider is configured yet.
+    // Block both direct API access and browser access to premium HTML.
+    if (url.pathname === '/api/member/daily' ||
+        url.pathname === '/api/member/match' ||
+        url.pathname === '/member' ||
+        url.pathname === '/member.html') {
+      return json({ok:false,error:'MEMBERSHIP_AUTH_REQUIRED'},401);
     }
 
     if (url.pathname === '/api/member/daily') {
@@ -485,11 +480,11 @@ export default {
     }
 
     if (url.pathname === '/api/stripe/checkout' && request.method === 'POST') {
-      return createStripeCheckout(request,env);
+      return json({ok:false,error:'CHECKOUT_DISABLED_UNTIL_VERIFIED_ENTITLEMENTS'},503);
     }
 
     if (url.pathname === '/api/stripe/webhook') {
-      return json({ok:false,error:'WEBHOOK_NOT_ENABLED_IN_PROTOTYPE'},501);
+      return json({ok:false,error:'WEBHOOK_NOT_CONFIGURED'},503);
     }
 
     if (request.method !== 'GET' && request.method !== 'HEAD') {
@@ -497,7 +492,7 @@ export default {
     }
 
     if (url.pathname === '/' || url.pathname === '/pricing') return staticResponse(request,env,'/pricing.html');
-    if (url.pathname === '/member') return staticResponse(request,env,'/member.html');
+    // Member HTML is protected by the early authorization gate.
     if (url.pathname === '/login') return staticResponse(request,env,'/login.html');
     if (url.pathname === '/success') return staticResponse(request,env,'/success.html');
 
