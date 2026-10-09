@@ -1,5 +1,5 @@
 import {memberAccess,verifyAccessIdentity} from './access-auth.js';
-import {createPilotCheckout} from './checkout.js';
+import {createMemberCheckout} from './checkout.js';
 const MARKET_ORDER = ['ALL','AH','1X2','O/U','CORNERS','BTTS','CARDS','OTHER'];
 const SOURCE_BASE = 'https://www.ball46.com';
 const BANGKOK_OFFSET_MS = 7 * 60 * 60 * 1000;
@@ -422,7 +422,7 @@ export default {
       return json({ok:true,service:'ball46-member-production',stage:env.APP_STAGE||'unknown'});
     }
     if (url.pathname === '/api/enrollment-status') {
-      return json({ok:true,ownerPilotAvailable:env.OWNER_CHECKOUT_ENABLED==='true'});
+      return json({ok:true,enrollmentAvailable:env.MEMBER_CHECKOUT_ENABLED==='true'});
     }
 
     // Every premium request needs an independently verified Access JWT and a
@@ -451,21 +451,21 @@ export default {
         const responses=await Promise.all(calls.map(target=>fetch(target,{headers,signal:AbortSignal.timeout(10000)})));
         const readsOk=responses.every(response=>response.ok);
         return json({ok:readsOk,identityVerified:true,customerRead:responses[0].ok,
-          subscriptionRead:responses[1].ok,checkoutPilotEnabled:env.OWNER_CHECKOUT_ENABLED==='true'},
+          subscriptionRead:responses[1].ok,checkoutEnabled:env.MEMBER_CHECKOUT_ENABLED==='true'},
           readsOk?200:503);
       }catch{
         return json({ok:false,error:'STRIPE_READINESS_UNAVAILABLE'},503);
       }
     }
 
-    // Pilot checkout is behind Cloudflare Access and a second signed-JWT check.
+    // Customer checkout is behind Cloudflare Access and a second signed-JWT check.
     // Stripe Checkout does not itself grant premium content.
     if (url.pathname === '/api/member/checkout' && request.method === 'GET') {
       const identity=await verifyAccessIdentity(request,env);
       if(!identity)return json({ok:false,error:'IDENTITY_AUTH_REQUIRED'},401);
       if(await memberAccess(request,env))
         return Response.redirect('https://member.ball46.com/member',303);
-      const checkout=await createPilotCheckout(identity,env,url.origin);
+      const checkout=await createMemberCheckout(identity,env,url.origin);
       if(checkout.url)return Response.redirect(checkout.url,303);
       return json(checkout.body,checkout.status);
     }
