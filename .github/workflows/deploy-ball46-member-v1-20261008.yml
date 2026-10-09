@@ -76,36 +76,17 @@ jobs:
 
           curl -fsS --max-time 20 "$base/pricing?run=${GITHUB_RUN_ID}" -o /tmp/pricing.html
           grep -Fq 'Daily signals. One screen.' /tmp/pricing.html
-          curl -fsS --max-time 20 "$base/member?run=${GITHUB_RUN_ID}" -o /tmp/member.html
-          grep -Fq 'Daily Signal Center' /tmp/member.html
 
-          curl -fsS --max-time 45 "$base/api/member/daily?refresh=1&run=${GITHUB_RUN_ID}" -o /tmp/member-daily.json
-          jq -e '.ok==true and .prototype==false and .source=="BALL46_PRODUCTION_LEDGER_V2" and .timezone=="Asia/Bangkok" and .cutoffLocal=="12:00"' /tmp/member-daily.json >/dev/null
-          jq -e '.signals | (type=="array")' /tmp/member-daily.json >/dev/null
-
-          first_id="$(jq -r '.signals[0].id // empty' /tmp/member-daily.json)"
-          if [ -n "$first_id" ]; then
-            curl -fsS --max-time 45 "$prod/api/engine/statistics?paged=1&member_qa=${GITHUB_RUN_ID}" -o /tmp/prod-stats.json
-            jq -e --arg id "$first_id" '.rows | any(.id==$id)' /tmp/prod-stats.json >/dev/null
-            jq --arg id "$first_id" 'first(.rows[] | select(.id==$id))' /tmp/prod-stats.json > /tmp/source-row.json
-
-            jq -e --slurpfile src /tmp/source-row.json '
-              .signals[0] as $m | $src[0] as $s |
-              ($m.id == ($s.id|tostring)) and
-              ($m.fixtureId == ($s.fixtureId|tostring)) and
-              ($m.signalMinute == ($s.minute // $s.entryMinute)) and
-              ($m.sourceMarket == ($s.market // "")) and
-              ($m.selection == (($s.selection // "—")|ascii_upcase)) and
-              ($m.line == $s.line) and
-              ($m.odds == $s.odds) and
-              ($m.bookmaker == ($s.bookmaker // "—")) and
-              ($m.entryScore.home == ($s.entryScore.home // $s.scoreAt.home // null)) and
-              ($m.entryScore.away == ($s.entryScore.away // $s.scoreAt.away // null))
-            ' /tmp/member-daily.json >/dev/null
-
-            fixture="$(jq -r '.signals[0].fixtureId' /tmp/member-daily.json)"
-            curl -fsS --max-time 45 "$base/api/member/match?fixtureId=$fixture&run=${GITHUB_RUN_ID}" -o /tmp/member-match.json
-            jq -e '.ok==true and .source=="BALL46_PRODUCTION_MIRROR"' /tmp/member-match.json >/dev/null
-          fi
-
-          echo "BALL46_MEMBER_DEPLOY_SUCCESS signals=$(jq -r '.signalCount' /tmp/member-daily.json) pages=$(jq -r '.pagesRead' /tmp/member-daily.json)"
+          # Production security gate: unauthenticated users must not see member data.
+          for endpoint in "/api/member/daily" "/api/member/match?fixtureId=123" "/member" "/member.html"; do
+            status="$(curl -sS --max-time 20 -o /tmp/blocked.json -w '%{http_code}' "$base$endpoint")"
+            test "$status" = 401
+            jq -e '.ok==false and .error=="MEMBERSHIP_AUTH_REQUIRED"' /tmp/blocked.json >/dev/null
+          done
+          curl -fsS --max-time 20 "$base/api/member/session" -o /tmp/session.json
+          jq -e '.ok==true and .authenticated==false and .member==null' /tmp/session.json >/dev/null
+          checkout_status="$(curl -sS --max-time 20 -X POST -o /tmp/checkout.json -w '%{http_code}' "$base/api/stripe/checkout")"
+          test "$checkout_status" = 503
+          jq -e '.error=="CHECKOUT_DISABLED_UNTIL_VERIFIED_ENTITLEMENTS"' /tmp/checkout.json >/dev/null
+          echo "BALL46_MEMBER_FAIL_CLOSED_VERIFIED"
+          echo "BALL46_MEMBER_PRODUCTION_SECURITY_DEPLOY_SUCCESS"
