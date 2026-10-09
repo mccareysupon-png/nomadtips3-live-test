@@ -80,12 +80,14 @@ jobs:
           # Production security gate: unauthenticated users must not see member data.
           for endpoint in "/api/member/daily" "/api/member/match?fixtureId=123" "/member" "/member.html"; do
             status="$(curl -sS --max-time 20 -o /tmp/blocked.json -w '%{http_code}' "$base$endpoint")"
+            echo "SECURITY_GATE endpoint=$endpoint http=$status body=$(cat /tmp/blocked.json | head -c 150)"
             test "$status" = 401
             jq -e '.ok==false and .error=="MEMBERSHIP_AUTH_REQUIRED"' /tmp/blocked.json >/dev/null
           done
           curl -fsS --max-time 20 "$base/api/member/session" -o /tmp/session.json
           jq -e '.ok==true and .authenticated==false and .member==null' /tmp/session.json >/dev/null
           checkout_status="$(curl -sS --max-time 20 -X POST -o /tmp/checkout.json -w '%{http_code}' "$base/api/stripe/checkout")"
+          echo "CHECKOUT_GATE http=$checkout_status body=$(cat /tmp/checkout.json | head -c 150)"
           test "$checkout_status" = 503
           jq -e '.error=="CHECKOUT_DISABLED_UNTIL_VERIFIED_ENTITLEMENTS"' /tmp/checkout.json >/dev/null
           echo "BALL46_MEMBER_FAIL_CLOSED_VERIFIED"
