@@ -4,7 +4,7 @@ function decodeJson64(value){
   const binary=atob(value.replace(/-/g,'+').replace(/_/g,'/'));
   return JSON.parse(new TextDecoder().decode(Uint8Array.from(binary,c=>c.charCodeAt(0))));
 }
-async function verifyAccessIdentity(request,env){
+export async function verifyAccessIdentity(request,env){
   const team=String(env.CF_ACCESS_TEAM_DOMAIN||'').replace(/^https?:\/\//,'').replace(/\/$/,'');
   const aud=String(env.CF_ACCESS_AUD||'');
   if(!team||!aud||!/^[-a-zA-Z0-9.]+\.cloudflareaccess\.com$/.test(team))return null;
