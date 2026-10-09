@@ -1761,3 +1761,27 @@ body.page-member:before{
 @media(max-width:680px){
   .member-hero-card{padding:0}
 }
+
+/* Sub-brand lockup: retain the original ball46 lettering, add a quiet Member subtitle. */
+.topbar .brand{
+  display:inline-flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:2px;
+  line-height:1;
+  text-decoration:none;
+}
+.topbar .brand-logo{display:block;white-space:nowrap;font:inherit;letter-spacing:inherit;line-height:1}
+.topbar .brand-member{
+  display:block;
+  font-family:"Manrope",Inter,ui-sans-serif,system-ui,sans-serif;
+  font-size:11px;
+  line-height:1;
+  font-weight:700;
+  letter-spacing:.16em;
+  color:#16af73;
+}
+@media(max-width:680px){
+  .topbar .brand-member{font-size:10px;letter-spacing:.16em}
+}
