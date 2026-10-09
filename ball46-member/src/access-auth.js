@@ -56,7 +56,7 @@ async function paidEntitlement(identity,env){
   }catch{return null}
   return null;
 }
-async function memberAccess(request,env){
+export async function memberAccess(request,env){
   const identity=await verifyAccessIdentity(request,env);
   if(!identity)return null;
   return paidEntitlement(identity,env);
