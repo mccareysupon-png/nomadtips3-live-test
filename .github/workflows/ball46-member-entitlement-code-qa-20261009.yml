@@ -1,0 +1,27 @@
+name: Ball46 Member Entitlement Code QA
+on:
+  push:
+    branches: [agent/ball46-member-entitlement-qa-20261009]
+    paths:
+      - 'ball46-member/src/**'
+      - 'ball46-member/tests/**'
+      - '.github/workflows/ball46-member-entitlement-code-qa-20261009.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  entitlement-unit-qa:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate isolated Member source syntax
+        run: |
+          node --check ball46-member/src/access-auth.js
+          node --check ball46-member/src/worker.js
+          node --check ball46-member/tests/access-auth.test.mjs
+      - name: Verify subscription authorization using signed test identities and mocked Stripe responses
+        run: node --test ball46-member/tests/access-auth.test.mjs
