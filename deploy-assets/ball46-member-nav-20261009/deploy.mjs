@@ -22,7 +22,7 @@ async function rollback(){
 }
 function insertMember(html,page){
   assert.equal(page,'index.html','ONLY_CURRENT_SINGLE_PAGE_ALLOWED');
-  const tag=/<a\\b(?=[^>]*data-b46-member-entry="brand")[^>]*>/g;
+  const tag=/<a\b(?=[^>]*data-b46-member-entry="brand")[^>]*>/g;
   const hits=[...html.matchAll(tag)];
   assert.equal(hits.length,1,'EXPECTED_ONE_BRAND_MEMBER_LINK');
   const original=hits[0][0];
