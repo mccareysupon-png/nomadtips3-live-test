@@ -1,3 +1,4 @@
+import {memberAccess} from './access-auth.js';
 const MARKET_ORDER = ['ALL','AH','1X2','O/U','CORNERS','BTTS','CARDS','OTHER'];
 const SOURCE_BASE = 'https://www.ball46.com';
 const BANGKOK_OFFSET_MS = 7 * 60 * 60 * 1000;
@@ -446,18 +447,21 @@ export default {
       return json({ok:true,service:'ball46-member-production',stage:env.APP_STAGE||'unknown'});
     }
 
-    // Live membership is fail-closed: never issue a prototype or owner identity.
+    // Every premium request needs an independently verified Access JWT and a
+    // currently active subscription matching our exact Stripe Price ID.
+    // A missing key, Stripe timeout or JWT error fails closed.
     if (url.pathname === '/api/member/session') {
-      return json({ok:true,authenticated:false,member:null,loginReady:false});
+      const member=await memberAccess(request,env);
+      return json({ok:true,authenticated:Boolean(member),member:member||null,loginReady:Boolean(env.CF_ACCESS_TEAM_DOMAIN&&env.CF_ACCESS_AUD&&env.STRIPE_SECRET_KEY&&env.STRIPE_PRICE_ID)});
     }
-
-    // No authenticated entitlement provider is configured yet.
-    // Block both direct API access and browser access to premium HTML.
     if (url.pathname === '/api/member/daily' ||
         url.pathname === '/api/member/match' ||
         url.pathname === '/member' ||
         url.pathname === '/member.html') {
-      return json({ok:false,error:'MEMBERSHIP_AUTH_REQUIRED'},401);
+      const member=await memberAccess(request,env);
+      if(!member)return json({ok:false,error:'MEMBERSHIP_AUTH_REQUIRED'},401);
+      if(url.pathname === '/member'||url.pathname === '/member.html')
+        return staticResponse(request,env,'/member.html');
     }
 
     if (url.pathname === '/api/member/daily') {
