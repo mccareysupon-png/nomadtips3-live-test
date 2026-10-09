@@ -7,7 +7,7 @@ import {schedules,stageCurrentRail,verifyRailBase,wrangler} from '../daily-perfo
 const MEMBER='https://ball46-member-production.mccarey-supon.workers.dev';
 const URL=MEMBER+'/pricing';
 const PAGES=['index.html'];
-const report={scope:'Navigation only: add MEMBER link to latest active Ball46 production HTML without replacing Engine, Statistics, EventFlow, JS, CSS or other assets',startedAt:new Date().toISOString()};
+const report={scope:'Navigation only: hide MEMBER link beside Ball46 logo; preserve rail and footer Member links, other HTML and all production systems',startedAt:new Date().toISOString()};
 mkdirSync('audit',{recursive:true});
 const save=()=>writeFileSync('audit/report.json',JSON.stringify(report,null,2));
 const delay=ms=>new Promise(r=>setTimeout(r,ms));
@@ -22,20 +22,18 @@ async function rollback(){
 }
 function insertMember(html,page){
   assert.equal(page,'index.html','ONLY_CURRENT_SINGLE_PAGE_ALLOWED');
-  if(html.includes('data-b46-member-entry'))throw Error('MEMBER_LINK_ALREADY_PRESENT');
-  const brandButton='<button type="button" class="workspace-theme-btn"';
-  const signalButton='<button class="workspace-nav-row" data-workspace-view="signal"><span><i class="workspace-nav-mark signal"></i>Signal</span><b data-workspace-signal-count>0</b></button>';
-  const productLink='<a href="/index.html?view=statistics">Statistics</a>';
-  for(const needle of [brandButton,signalButton,productLink]){
-    assert.equal(html.split(needle).length-1,1,'CURRENT_MENU_ANCHOR_CHANGED:'+needle);
-  }
-  const brandLink='<a data-b46-member-entry="brand" href="'+URL+'" style="display:inline-flex;align-items:center;margin-left:auto;padding:6px 9px;border:1px solid #168958;border-radius:8px;color:#16af73;text-decoration:none;font-size:11px;font-weight:800;letter-spacing:.05em">MEMBER</a>';
-  const railLink='<a class="workspace-nav-row" data-b46-member-entry="rail" href="'+URL+'" style="display:flex;align-items:center;justify-content:space-between;text-decoration:none;color:inherit"><span><i class="workspace-nav-mark signal"></i>Member</span><b aria-hidden="true">↗</b></a>';
-  const footerLink='<a data-b46-member-entry="footer" href="'+URL+'">Member</a>';
-  const changed=html.replace(brandButton,brandLink+brandButton)
-    .replace(signalButton,signalButton+railLink)
-    .replace(productLink,productLink+footerLink);
-  assert.equal(changed.split('data-b46-member-entry=').length-1,3,'EXPECTED_THREE_MEMBER_ENTRY_LINKS');
+  const tag=/<a\\b(?=[^>]*data-b46-member-entry="brand")[^>]*>/g;
+  const hits=[...html.matchAll(tag)];
+  assert.equal(hits.length,1,'EXPECTED_ONE_BRAND_MEMBER_LINK');
+  const original=hits[0][0];
+  assert(original.includes('display:inline-flex'),'BRAND_LINK_ALREADY_MODIFIED');
+  const hidden=original.replace('display:inline-flex','display:none!important');
+  assert(hidden.includes('data-b46-member-entry="brand"'),'BRAND_IDENTITY_LOST');
+  const changed=html.replace(original,hidden);
+  assert.equal((changed.match(/data-b46-member-entry="rail"/g)||[]).length,1,'RAIL_LINK_MUST_STAY');
+  assert.equal((changed.match(/data-b46-member-entry="footer"/g)||[]).length,1,'FOOTER_LINK_MUST_STAY');
+  assert.equal((changed.match(/data-b46-member-entry="brand"/g)||[]).length,1,'BRAND_LINK_MUST_REMAIN_HIDDEN');
+  assert(changed.includes('display:none!important'),'HIDE_STYLE_MISSING');
   return changed;
 }
 try{
@@ -96,7 +94,7 @@ try{
     assert.equal(sha(canonical(await api('/scripts/'+script+'/settings'))),settingsSha,'SETTINGS_CHANGED');
     assert.equal(canonical(await schedules()),canonical(crons),'CRONS_CHANGED');
     report.result='SUCCESS';report.deployedVersion=candidate;report.completedAt=new Date().toISOString();save();
-    console.log('BALL46_MEMBER_NAV_SUCCESS',JSON.stringify({previous:original,newVersion:candidate,link:URL,pages:PAGES}));
+    console.log('BALL46_MEMBER_BRAND_HIDDEN_SUCCESS',JSON.stringify({previous:original,newVersion:candidate,link:URL,pages:PAGES}));
   }catch(e){
     report.error=String(e?.message||e);save();
     try{await rollback();report.rolledBack=true;save()}catch(rb){report.rollbackError=String(rb?.message||rb);save()}
