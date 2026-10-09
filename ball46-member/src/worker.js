@@ -325,6 +325,9 @@ function cleanEvents(events) {
     return {
       minute:num(e?.minute??e?.elapsed??e?.time?.elapsed),
       type:String(e?.type??e?.event??e?.name??e?.detail??'Match event'),
+      // Keep the original subtype; "Card" alone cannot distinguish red/yellow.
+      detail:String(e?.detail??e?.description??'').slice(0,140),
+      side:e?.side==='home'||e?.side==='away'?e.side:null,
       team:typeof team==='object' ? String(team?.name||'') : String(team||'')
     };
   });

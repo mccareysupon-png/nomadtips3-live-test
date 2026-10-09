@@ -377,14 +377,10 @@ function eventFlowChart(detail,fixtureId){
   const maxSignalMinute=signals.reduce((m,s)=>Math.max(m,Number(s?.signalMinute)||0),0);
   const historyEvents=historyDerivedEvents(detail?.eventFlow?.rows||[]);
   const liveEvents=Array.isArray(featured?.events)?featured.events:[];
-  const eventMap=new Map();
-  for(const e of [...historyEvents,...liveEvents]){
-    const side=eventSide(e,featured),minute=Number(e?.minute),type=String(e?.type||'Match event');
-    if(!Number.isFinite(minute)) continue;
-    const key=[Math.round(minute*10)/10,type.toLowerCase(),side||String(e?.team||'').toLowerCase()].join('|');
-    if(!eventMap.has(key)) eventMap.set(key,{...e,side});
-  }
-  const events=[...eventMap.values()];
+  const iconLib=globalThis.Ball46EventIcons;
+  const events=iconLib
+    ? iconLib.merge(historyEvents,liveEvents,e=>eventSide(e,featured))
+    : [...historyEvents,...liveEvents].filter(e=>Number.isFinite(Number(e?.minute)));
   const maxEventMinute=events.reduce((m,e)=>Math.max(m,Number(e?.minute)||0),0);
   const current=Math.max(1,Math.round(Math.max(Number(featured?.minute)||0,maxPressureMinute,maxSignalMinute,maxEventMinute)));
   const points=pressurePoints(pressure,current);
@@ -396,7 +392,17 @@ function eventFlowChart(detail,fixtureId){
   wrap.append(head);
 
   if(!points.length){
-    wrap.append(node('div','insight-empty','Event Flow is not available for this match.'));
+    wrap.append(node('div','insight-empty',
+      events.length?'Attack pressure is unavailable. Available match events are listed below.':'Event Flow is not available for this match.'));
+    if(events.length&&iconLib){
+      const timeline=node('div','member-flow-fallback-events');
+      for(const e of events.slice(0,30)){
+        const label=iconLib.label(e,featured?.home||'HOME',featured?.away||'AWAY');
+        const item=node('span','member-flow-fallback-event',iconLib.icon(iconLib.kind(e))+' '+label);
+        item.title=label;timeline.append(item);
+      }
+      wrap.append(timeline);
+    }
     return wrap;
   }
 
@@ -488,22 +494,67 @@ function eventFlowChart(detail,fixtureId){
     svg.append(g);
   }
 
-  for(const e of events){
-    const minute=Number(e?.minute);
-    if(!Number.isFinite(minute)||minute<0||minute>current+.75) continue;
-    const p=pressureAt(points,minute),side=eventSide(e,featured);
-    const y=yFor(side?p[side]:(p.home+p.away)/2),x=xFor(minute);
-    const g=svgNode('g',{class:'member-flow-event '+(side||'neutral')});
-    const tt=svgNode('title');tt.textContent=[minute+"'",e.type,e.team].filter(Boolean).join(' · ');g.append(tt);
-    g.append(svgNode('circle',{cx:x,cy:y,r:'3.6',class:'member-flow-event-dot'}));
-    const t=svgNode('text',{x:x,y:y-7,'text-anchor':'middle',class:'member-flow-event-label'});t.textContent=eventShortType(e.type);g.append(t);
-    svg.append(g);
+  // HTML overlay keeps icons circular and tap targets usable on mobile:
+  // unlike SVG markers, its glyphs do not stretch with preserveAspectRatio=none.
+  const plot=node('div','member-flow-plot');
+  plot.append(svg);
+  const readout=node('div','member-flow-event-readout','Select an event icon for minute, team and details.');
+  if(iconLib){
+    const mobile=globalThis.matchMedia?.('(max-width:680px)')?.matches||false;
+    const markers=iconLib.group(events,current,mobile);
+    for(const marker of markers){
+      const e=marker.primary,minute=Number(e.minute),side=marker.side;
+      const p=pressureAt(points,minute);
+      const y=yFor(side==='home'?p.home:side==='away'?p.away:(p.home+p.away)/2);
+      const x=xFor(minute);
+      const yOffset=side==='home'?-15:side==='away'?15:-14;
+      const pin=node('button','member-flow-pin '+marker.kind+' '+side);
+      pin.type='button';
+      pin.style.left=clamp(x/w*100,4.4,97)+'%';
+      pin.style.top=clamp((y+yOffset)/h*100,7,88)+'%';
+      const descriptions=marker.events.map(item=>iconLib.label(item,featured?.home||'HOME',featured?.away||'AWAY'));
+      const description=descriptions.join(' | ');
+      pin.setAttribute('aria-label',description);
+      pin.title=description;
+      pin.dataset.tooltip=iconLib.label(e,featured?.home||'HOME',featured?.away||'AWAY')+
+        (marker.events.length>1?' · +'+(marker.events.length-1)+' more':'');
+      const glyph=node('span','member-flow-pin-glyph');
+      if(marker.kind==='yellow'||marker.kind==='red'){
+        glyph.append(node('span','member-flow-card-icon '+marker.kind));
+      }else glyph.textContent=iconLib.icon(marker.kind);
+      pin.append(glyph);
+      if(marker.events.length>1)pin.append(node('span','member-flow-pin-count','+'+(marker.events.length-1)));
+      pin.addEventListener('click',()=>{
+        plot.querySelectorAll('.member-flow-pin.selected').forEach(n=>n.classList.remove('selected'));
+        pin.classList.add('selected');
+        readout.textContent=description;
+        readout.classList.add('visible');
+      });
+      plot.append(pin);
+    }
+  }else{
+    // If the optional icon asset fails to load, preserve the original letter markers.
+    for(const e of events){
+      const minute=Number(e?.minute);
+      if(!Number.isFinite(minute)||minute<0||minute>current+.75)continue;
+      const p=pressureAt(points,minute),side=eventSide(e,featured);
+      const x=xFor(minute),y=yFor(side?p[side]:(p.home+p.away)/2);
+      const label=svgNode('text',{x,y:y-7,'text-anchor':'middle',class:'member-flow-event-label'});
+      label.textContent=eventShortType(e.type);svg.append(label);
+    }
   }
 
-  chart.append(svg);wrap.append(chart);
+  chart.append(plot);wrap.append(chart);
+  if(iconLib&&events.length)wrap.append(readout);
 
   const key=node('div','member-flow-key');
-  key.append(node('span','signal','● SIGNAL'),node('span','event','● G goal · Y/R card · C corner · mirrored history'));
+  key.append(node('span','signal','● SIGNAL'),
+    node('span','event','⚽ Goal'),
+    node('span','event','🚩 Corner'),
+    node('span','event','🟨 Yellow'),
+    node('span','event','🟥 Red'),
+    node('span','event','◎ Penalty'));
+  if(events.some(e=>e.approximate))key.append(node('span','history','* Snapshot events have approximate minutes'));
   wrap.append(key);
   return wrap;
 }

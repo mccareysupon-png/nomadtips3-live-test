@@ -1785,3 +1785,61 @@ body.page-member:before{
 @media(max-width:680px){
   .topbar .brand-member{font-size:10px;letter-spacing:.16em}
 }
+
+/* Member Signal Center: fixed-size event pictograms over time-accurate pressure positions.
+   No edits to pressure series or signal calculations. */
+.member-flow{overflow:visible}
+.member-flow-chart{overflow:visible}
+.member-flow-plot{position:relative;isolation:isolate;width:100%}
+.member-flow-plot>svg{display:block;width:100%}
+.member-flow-pin{
+  position:absolute;z-index:2;transform:translate(-50%,-50%);
+  width:27px;height:27px;padding:0;display:flex;align-items:center;justify-content:center;
+  border-radius:50%;background:#091721;border:1.5px solid #8ba9bc;
+  color:#f3f7fa;cursor:pointer;line-height:1;box-shadow:0 1px 4px rgba(0,0,0,.75);
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation
+}
+.member-flow-pin.home{border-color:#31b878}
+.member-flow-pin.away{border-color:#e2c94c}
+.member-flow-pin.neutral{border-color:#9cabb9}
+.member-flow-pin.goal,.member-flow-pin.red{z-index:4}
+.member-flow-pin:hover,.member-flow-pin.selected{z-index:9;background:#19334a;box-shadow:0 0 0 2px rgba(255,255,255,.28)}
+.member-flow-pin:focus-visible{outline:2px solid #fff;outline-offset:2px;z-index:10}
+.member-flow-pin-glyph{display:grid;place-items:center;font-size:16px;min-width:18px;min-height:18px;pointer-events:none}
+.member-flow-pin.corner .member-flow-pin-glyph{font-size:15px}
+.member-flow-pin.var .member-flow-pin-glyph{font:800 9px Inter,system-ui,sans-serif}
+.member-flow-pin.penalty .member-flow-pin-glyph{font-size:21px}
+.member-flow-card-icon{width:10px;height:15px;display:block;border-radius:2px;
+  border:1px solid rgba(255,255,255,.75);box-shadow:0 1px 2px rgba(0,0,0,.35)}
+.member-flow-card-icon.yellow{background:#ffdd40}
+.member-flow-card-icon.red{background:#f45955}
+.member-flow-pin-count{
+  position:absolute;top:-8px;right:-9px;min-width:17px;height:15px;
+  background:#dbe7f0;border:1px solid #091721;border-radius:10px;
+  color:#07111b;font-size:9px;font-weight:900;line-height:14px;text-align:center;padding:0 2px;
+  pointer-events:none
+}
+@media (hover:hover){
+  .member-flow-pin::after{
+    content:attr(data-tooltip);display:none;position:absolute;left:50%;bottom:calc(100% + 7px);
+    transform:translateX(-50%);width:max-content;max-width:220px;white-space:normal;
+    text-align:left;padding:6px 8px;color:#f5fbff;background:#0a1d2b;border:1px solid #395369;
+    border-radius:6px;font:600 10px/1.45 Inter,system-ui,sans-serif;
+    box-shadow:0 4px 15px rgba(0,0,0,.55);pointer-events:none
+  }
+  .member-flow-pin:hover::after,.member-flow-pin:focus-visible::after{display:block}
+}
+.member-flow-event-readout{display:none;margin:0 9px 8px;padding:8px 10px;border:1px solid rgba(137,171,193,.28);
+  background:rgba(14,33,47,.85);border-radius:7px;color:#dae9f2;font:600 10px/1.6 Inter,system-ui,sans-serif}
+.member-flow-event-readout.visible{display:block}
+.member-flow-key{flex-wrap:wrap;gap:8px 13px;line-height:1.6}
+.member-flow-key .history{color:#b3a7a0;font-weight:500}
+.member-flow-fallback-events{display:flex;flex-wrap:wrap;gap:6px;padding:9px}
+.member-flow-fallback-event{border:1px solid rgba(160,196,225,.18);border-radius:6px;padding:4px 7px;
+  background:rgba(12,32,44,.75);font-size:10px;color:#d8e9f3}
+@media(max-width:680px){
+  .member-flow-pin{width:29px;height:29px}
+  .member-flow-pin-glyph{font-size:17px}
+  .member-flow-key{gap:5px 11px}
+  .member-flow-event-readout{font-size:10px}
+}

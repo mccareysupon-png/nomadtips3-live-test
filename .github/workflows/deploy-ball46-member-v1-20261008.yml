@@ -49,6 +49,8 @@ jobs:
           node --check src/checkout.js
           node --test tests/*.test.mjs
           node --check public/pricing.js
+          node --check public/event-flow-icons.js
+          grep -Fq '/event-flow-icons.js' public/member.html
           node --check public/member.js
           echo "BALL46_MEMBER_PACKAGE_VALID"
 
