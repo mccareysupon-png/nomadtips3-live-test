@@ -1,0 +1,42 @@
+name: Inspect Ball46 Member Auth Readiness
+on:
+  push:
+    branches: [member/ball46-member-v1-20261008]
+    paths: ['.github/workflows/inspect-ball46-member-auth-readiness-20261009.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Read only inspect of Zero Trust and Worker secret names
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          const token=process.env.CLOUDFLARE_API_TOKEN,account=process.env.CLOUDFLARE_ACCOUNT_ID;
+          if(!token||!account)throw Error('CF_AUTH_MISSING');
+          const head={Authorization:'Bearer '+token};
+          async function probe(name,path){
+            try{
+              const res=await fetch('https://api.cloudflare.com/client/v4'+path,{headers:head});
+              const data=await res.json();
+              console.log(name,'HTTP',res.status,'success',Boolean(data.success),'errors',(data.errors||[]).map(x=>x.code));
+              return data.success?data.result:null;
+            }catch(e){console.log(name,'ERROR',String(e.message));return null}
+          }
+          const apps=await probe('ACCESS_APPS','/accounts/'+account+'/access/apps?per_page=100');
+          if(Array.isArray(apps)){
+            console.log('ACCESS_RELEVANT_APPS',apps.filter(x=>JSON.stringify(x).includes('member.ball46.com')).map(x=>({name:x.name,type:x.type,domain:x.domain,audPresent:Boolean(x.aud)})));
+          }
+          const secrets=await probe('MEMBER_SECRET_BINDING_NAMES','/accounts/'+account+'/workers/scripts/ball46-member-production/secrets');
+          if(Array.isArray(secrets)){
+            for(const name of ['CF_ACCESS_TEAM_DOMAIN','CF_ACCESS_AUD','STRIPE_SECRET_KEY','STRIPE_PRICE_ID'])
+              console.log('BINDING_PRESENT',name,secrets.some(x=>x.name===name));
+          }
+          await probe('ACCESS_TEAMS','/accounts/'+account+'/access/organizations');
+          NODE
