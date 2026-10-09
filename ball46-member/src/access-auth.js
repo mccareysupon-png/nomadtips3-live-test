@@ -32,7 +32,7 @@ async function verifyAccessIdentity(request,env){
   }catch{return null}
 }
 async function paidEntitlement(identity,env){
-  if(!identity||!env.STRIPE_SECRET_KEY)return null;
+  if(!identity||!env.STRIPE_SECRET_KEY||!env.STRIPE_PRICE_ID)return null;
   try{
     const headers={authorization:'Bearer '+env.STRIPE_SECRET_KEY};
     const c=await fetch('https://api.stripe.com/v1/customers?email='+encodeURIComponent(identity.email)+'&limit=100',{headers,signal:AbortSignal.timeout(8000)});
