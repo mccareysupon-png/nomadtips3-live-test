@@ -93,6 +93,9 @@ jobs:
             test "$status" = 303
             grep -Eiq '^location: https://ball46-member-production\.mccarey-supon\.workers\.dev/pricing\?membership=required' /tmp/member-headers.txt
           done
+          status="$(curl -sS --max-time 20 -o /tmp/stripe-readiness.json -w '%{http_code}' "$base/api/member/stripe-readiness")"
+          test "$status" = 401
+          jq -e '.error=="OWNER_AUTH_REQUIRED"' /tmp/stripe-readiness.json >/dev/null
           status="$(curl -sS --max-time 20 -o /tmp/identity.json -w '%{http_code}' "$base/api/member/checkout")"
           test "$status" = 401
           jq -e '.error=="IDENTITY_AUTH_REQUIRED"' /tmp/identity.json >/dev/null
