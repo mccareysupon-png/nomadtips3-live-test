@@ -27,7 +27,7 @@ function insertMember(html,page){
     count++;
     return start+inner+'<a data-nav="member" href="'+URL+'" rel="noopener">Member</a>'+end;
   });
-  if(count!==2) console.log('CURRENT_LIVE_NAV_DIAGNOSTIC',page,JSON.stringify({navTags:[...html.matchAll(/<nav[^>]*>/gi)].map(m=>m[0]).slice(0,10),navAround:html.slice(Math.max(0,html.indexOf('Live Scores')-700),html.indexOf('Live Scores')+2400),headerTags:[...html.matchAll(/<header[^>]*>/gi)].map(m=>m[0])}));
+  if(count!==2) console.log('CURRENT_LIVE_NAV_DIAGNOSTIC',page,JSON.stringify({navTags:[...html.matchAll(/<nav[^>]*>/gi)].map(m=>m[0]).slice(0,10),navAround:html.slice(3000,13000),headerTags:[...html.matchAll(/<header[^>]*>/gi)].map(m=>m[0])}));
   assert.equal(count,2,'EXPECTED_DESKTOP_AND_MOBILE_NAV:'+page+':'+count);
   assert.equal((changed.match(/data-nav="member"/g)||[]).length,2,'MEMBER_NAV_COUNT:'+page);
   return changed;
