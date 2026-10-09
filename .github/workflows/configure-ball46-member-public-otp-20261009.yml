@@ -1,0 +1,88 @@
+name: Configure Ball46 Member Public Verified OTP
+on:
+  push:
+    branches: [member/ball46-member-v1-20261008]
+    paths: ['.github/workflows/configure-ball46-member-public-otp-20261009.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  configure-verified-customers:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Allow verified OTP identities, keep owner and paid gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          const token=process.env.CLOUDFLARE_API_TOKEN;
+          const account=process.env.CLOUDFLARE_ACCOUNT_ID;
+          assert(token&&account,'CF_CREDENTIALS_MISSING');
+          const root='https://api.cloudflare.com/client/v4/accounts/'+account;
+          const auth={authorization:'Bearer '+token};
+          async function cf(method,path,body){
+            const r=await fetch(root+path,{
+              method,headers:{...auth,...(body?{'content-type':'application/json'}:{})},
+              body:body?JSON.stringify(body):undefined,
+              signal:AbortSignal.timeout(20000)
+            });
+            const value=await r.json();
+            if(!r.ok||value.success!==true){
+              const codes=(value.errors||[]).map(e=>e.code||e.message).join(',');
+              throw new Error('CLOUDFLARE_API_'+r.status+'_'+codes);
+            }
+            return value.result;
+          }
+          const apps=await cf('GET','/access/apps?per_page=100');
+          const app=apps.find(a=>a.name==='Ball46 Member'&&a.domain==='member.ball46.com/member');
+          assert(app,'BALL46_ACCESS_APP_MISSING');
+          const paths=app.self_hosted_domains||[];
+          for(const path of [
+            'member.ball46.com/member',
+            'member.ball46.com/member.html',
+            'member.ball46.com/api/member/*'
+          ])assert(paths.includes(path),'EXPECTED_ACCESS_ROUTE_MISSING');
+          const idps=await cf('GET','/access/identity_providers');
+          const otp=idps.find(p=>p.type==='onetimepin' && app.allowed_idps?.includes(p.id));
+          assert(otp,'APP_OTP_IDENTITY_PROVIDER_NOT_ENABLED');
+          let policies=await cf('GET','/access/apps/'+app.id+'/policies?per_page=100');
+          const owner=policies.find(p=>p.name==='Ball46 Owner Pilot'&&p.decision==='allow');
+          assert(owner&&(owner.include||[]).some(i=>!!i.email),'OWNER_POLICY_MISSING');
+          assert(!policies.some(p=>p.decision==='bypass'),'UNSAFE_ACCESS_BYPASS');
+          const name='Ball46 Verified Email Members';
+          let customer=policies.find(p=>p.name===name);
+          if(!customer){
+            customer=await cf('POST','/access/apps/'+app.id+'/policies',{
+              name,decision:'allow',precedence:2,
+              include:[{login_method:{id:otp.id}}],
+              require:[],exclude:[]
+            });
+            console.log('VERIFIED_OTP_POLICY_CREATED');
+          }else console.log('VERIFIED_OTP_POLICY_ALREADY_PRESENT');
+          policies=await cf('GET','/access/apps/'+app.id+'/policies?per_page=100');
+          customer=policies.find(p=>p.name===name);
+          assert(customer&&customer.decision==='allow','CUSTOMER_ALLOW_POLICY_MISSING');
+          assert((customer.include||[]).some(i=>i.login_method?.id===otp.id),
+            'CUSTOMER_POLICY_NOT_LIMITED_TO_VERIFIED_OTP');
+          assert(!(customer.include||[]).some(i=>i.everyone),
+            'UNSAFE_UNAUTHENTICATED_EVERYONE_RULE');
+          assert(policies.some(p=>p.id===owner.id),'OWNER_POLICY_REMOVED');
+          console.log('ACCESS_VERIFIED_EMAIL_MEMBERS_READY');
+          console.log('OWNER_POLICY_PRESERVED');
+          const rootUrl='https://member.ball46.com';
+          const pricing=await fetch(rootUrl+'/pricing',{redirect:'manual',signal:AbortSignal.timeout(15000)});
+          assert.equal(pricing.status,200,'PUBLIC_PRICING_BROKEN');
+          await pricing.body?.cancel();
+          const member=await fetch(rootUrl+'/member',{redirect:'manual',signal:AbortSignal.timeout(15000)});
+          assert([302,303,307,308,401,403].includes(member.status),'ANONYMOUS_MEMBER_EXPOSED');
+          await member.body?.cancel();
+          const daily=await fetch(rootUrl+'/api/member/daily',{redirect:'manual',signal:AbortSignal.timeout(15000)});
+          assert([302,303,307,308,401,403].includes(daily.status),'ANONYMOUS_MEMBER_DATA_EXPOSED');
+          await daily.body?.cancel();
+          console.log('ANONYMOUS_MEMBER_PREMIUM_GATE_REMAINS_CLOSED');
+          NODE
