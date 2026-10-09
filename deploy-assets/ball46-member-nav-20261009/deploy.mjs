@@ -4,10 +4,10 @@ import {resolve} from 'node:path';
 import {inspect,api,script,activeVersion,getVersion,publicFile,sha,canonical} from '../daily-performance-20261005/production.mjs';
 import {schedules,stageCurrentRail,verifyRailBase,wrangler} from '../daily-performance-20261005/rail.mjs';
 
-const MEMBER='https://ball46-member-production.mccarey-supon.workers.dev';
+const MEMBER='https://member.ball46.com';
 const URL=MEMBER+'/pricing';
 const PAGES=['index.html'];
-const report={scope:'Navigation only: use same filter typography and sizing as MATCH STATUS controls on standalone Member link',startedAt:new Date().toISOString()};
+const report={scope:'Navigation only: update 3 existing Member link targets to member.ball46.com on current Production without changing layout or systems',startedAt:new Date().toISOString()};
 mkdirSync('audit',{recursive:true});
 const save=()=>writeFileSync('audit/report.json',JSON.stringify(report,null,2));
 const delay=ms=>new Promise(r=>setTimeout(r,ms));
@@ -22,22 +22,25 @@ async function rollback(){
 }
 function insertMember(html,page){
   assert.equal(page,'index.html','ONLY_CURRENT_SINGLE_PAGE_ALLOWED');
-  const rail=/<a\b(?=[^>]*data-b46-member-entry="rail")[^>]*>[\s\S]*?<\/a>/g;
-  const hits=[...html.matchAll(rail)];
-  assert.equal(hits.length,1,'EXACT_ONE_MEMBER_LINK');
-  const before=hits[0][0];
-  assert(before.includes('target="_blank"')&&before.includes('rel="noopener noreferrer"'),'KEEP_NEW_TAB');
-  assert(before.includes('class="workspace-nav-row"'),'UNEXPECTED_MEMBER_BASE_CLASS');
-  const updated=before.replace('class="workspace-nav-row"','class="filter"')
-    .replace(/;font-family:inherit;font-size:inherit;font-weight:inherit;line-height:inherit/,'')
-    .replace('style="display:flex;align-items:center;justify-content:space-between;text-decoration:none;color:inherit','style="display:flex;align-items:center;justify-content:space-between;text-decoration:none;color:inherit;box-sizing:border-box;width:100%');
-  assert.notEqual(updated,before,'NO_STYLE_CHANGE');
-  const changed=html.replace(before,updated);
-  assert.equal((changed.match(/data-b46-member-independent="1"/g)||[]).length,1,'STANDALONE_CARD_MISSING');
-  assert(changed.indexOf('data-b46-member-independent="1"')<changed.indexOf('<div class="rail-title">MATCH STATUS</div>'),'MEMBER_POSITION_CHANGED');
-  assert.equal((changed.match(/data-b46-member-entry="rail"/g)||[]).length,1,'MEMBER_DUPLICATED');
-  assert.equal((changed.match(/data-b46-member-entry="brand"/g)||[]).length,1,'BRAND_LINK_CHANGED');
-  assert.equal((changed.match(/data-b46-member-entry="footer"/g)||[]).length,1,'FOOTER_LINK_CHANGED');
+  const oldUrl='https://ball46-member-production.mccarey-supon.workers.dev/pricing';
+  const newUrl='https://member.ball46.com/pricing';
+  assert.equal((html.match(/data-b46-member-entry="rail"/g)||[]).length,1,'RAIL_MUST_EXIST');
+  assert.equal((html.match(/data-b46-member-entry="footer"/g)||[]).length,1,'FOOTER_MUST_EXIST');
+  assert.equal((html.match(/data-b46-member-entry="brand"/g)||[]).length,1,'HIDDEN_BRAND_MUST_EXIST');
+  assert.equal((html.match(/data-b46-member-independent="1"/g)||[]).length,1,'STANDALONE_MEMBER_MUST_EXIST');
+  const anchor=/<a\b(?=[^>]*data-b46-member-entry="(?:brand|rail|footer)")[^>]*>/g;
+  const anchors=[...html.matchAll(anchor)];
+  assert.equal(anchors.length,3,'EXACTLY_THREE_EXISTING_MEMBER_ANCHORS');
+  let changed=html;
+  for(const match of anchors){
+    assert(match[0].includes('href="'+oldUrl+'"'),'MEMBER_LINK_ALREADY_CHANGED_OR_FOREIGN');
+    const next=match[0].replace('href="'+oldUrl+'"','href="'+newUrl+'"');
+    changed=changed.replace(match[0],next);
+  }
+  assert.equal((changed.match(/href="https:\/\/member\.ball46\.com\/pricing"/g)||[]).length,3,'NEW_LINK_COUNT_WRONG');
+  const rail=changed.match(/<a\b(?=[^>]*data-b46-member-entry="rail")[^>]*>/)?.[0];
+  assert(rail?.includes('target="_blank"')&&rail.includes('rel="noopener noreferrer"'),'KEEP_NEW_TAB');
+  assert(changed.includes('display:none!important'),'KEEP_HIDDEN_BRAND');
   return changed;
 }
 try{
@@ -98,7 +101,7 @@ try{
     assert.equal(sha(canonical(await api('/scripts/'+script+'/settings'))),settingsSha,'SETTINGS_CHANGED');
     assert.equal(canonical(await schedules()),canonical(crons),'CRONS_CHANGED');
     report.result='SUCCESS';report.deployedVersion=candidate;report.completedAt=new Date().toISOString();save();
-    console.log('BALL46_MEMBER_FONT_PARITY_SUCCESS',JSON.stringify({previous:original,newVersion:candidate,link:URL,pages:PAGES}));
+    console.log('BALL46_MEMBER_CUSTOM_DOMAIN_LINKS_SUCCESS',JSON.stringify({previous:original,newVersion:candidate,link:URL,pages:PAGES}));
   }catch(e){
     report.error=String(e?.message||e);save();
     try{await rollback();report.rolledBack=true;save()}catch(rb){report.rollbackError=String(rb?.message||rb);save()}
