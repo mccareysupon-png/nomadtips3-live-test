@@ -1,0 +1,76 @@
+name: DIAG Ball46 Performance Card Current 20261009
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/diag-ball46-performance-card-current-20261009.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Inspect latest Production Performance card read-only
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const crypto=require('crypto');
+          const account=process.env.CLOUDFLARE_ACCOUNT_ID;
+          const token=process.env.CLOUDFLARE_API_TOKEN;
+          const script='ball46-production';
+          const root=`https://api.cloudflare.com/client/v4/accounts/${account}/workers`;
+          const sha=b=>crypto.createHash('sha256').update(b).digest('hex');
+
+          async function cf(path){
+            const r=await fetch(root+path,{headers:{Authorization:`Bearer ${token}`},signal:AbortSignal.timeout(30000)});
+            const j=await r.json();
+            if(!r.ok||j.success!==true)throw new Error('CF_'+r.status+':'+JSON.stringify(j.errors||[]));
+            return j.result;
+          }
+          async function get(url){
+            const u=new URL(url);u.searchParams.set('_perfdiag',Date.now());
+            const r=await fetch(u,{cache:'no-store',headers:{'Cache-Control':'no-cache'},signal:AbortSignal.timeout(30000)});
+            const text=await r.text();
+            if(!r.ok)throw new Error('HTTP_'+r.status+':'+u.pathname);
+            return {text,bytes:Buffer.byteLength(text),sha:sha(text)};
+          }
+
+          const deployments=await cf('/scripts/'+script+'/deployments?per_page=3');
+          const versions=deployments.deployments?.[0]?.versions||[];
+          console.log('ACTIVE_VERSIONS',JSON.stringify(versions));
+
+          const direct=await get('https://ball46-production.mccarey-supon.workers.dev/index.html');
+          const pub=await get('https://ball46.com/index.html');
+          console.log('DIRECT_INDEX',JSON.stringify({sha:direct.sha,bytes:direct.bytes}));
+          console.log('PUBLIC_INDEX',JSON.stringify({sha:pub.sha,bytes:pub.bytes}));
+          console.log('INDEX_MATCH',direct.sha===pub.sha);
+
+          const t=pub.text;
+          const checks={
+            marker:t.includes('B46_DAILY_PERFORMANCE_20261005'),
+            card:t.includes('ball46-daily-performance'),
+            mobileHidden:t.includes('@media(max-width:760px){#ball46-daily-performance{display:none!important'),
+            todayTitleGreen:t.includes('.b46-perf-kicker{font-size:11.2px!important;line-height:1.05;color:#4ade80!important}'),
+            todaySummaryWhite:t.includes('.b46-perf-side.today .b46-perf-sub'),
+            yesterdayTitleWhite:t.includes('.b46-perf-side.yesterday .b46-perf-kicker{color:#fff!important}'),
+            yesterdaySummaryWhite:t.includes('.b46-perf-side.yesterday .b46-perf-sub{color:#fff!important}'),
+            avgOddsYellow:t.includes('.b46-perf-stat.avg-odds strong{color:#facc15}'),
+            overlay:t.includes('background:rgba(3,13,21,.48)!important'),
+            backgroundShaMarker:t.includes('REALISTIC_STADIUM_BG_20261005')
+          };
+          console.log('PERFORMANCE_CHECKS',JSON.stringify(checks));
+
+          const i=t.indexOf('PC_HEADER_VISIBILITY_20261006');
+          if(i>=0)console.log('PERFORMANCE_CSS_CONTEXT',JSON.stringify(t.slice(Math.max(0,i-1200),Math.min(t.length,i+5500))));
+          const j=t.indexOf('B46_DAILY_PERFORMANCE_20261005 SCRIPT START');
+          if(j>=0)console.log('PERFORMANCE_JS_CONTEXT',JSON.stringify(t.slice(j,Math.min(t.length,j+3000))));
+          console.log('PERFORMANCE_CARD_CURRENT_DIAG_DONE');
+          NODE
