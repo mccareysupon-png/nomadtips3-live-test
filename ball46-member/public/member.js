@@ -304,48 +304,6 @@ function svgNode(tag,attrs={}){
   for(const [k,v] of Object.entries(attrs)) el.setAttribute(k,String(v));
   return el;
 }
-// Vector-only tactical HUD symbols; no external icon fonts or image downloads.
-function eventHudGlyph(kind){
-  const svg=svgNode('svg',{viewBox:'0 0 24 24',class:'member-flow-hud-svg',
-    'aria-hidden':'true',focusable:'false'});
-  const stroke={'fill':'none','stroke':'currentColor','stroke-width':'1.55',
-    'stroke-linecap':'round','stroke-linejoin':'round'};
-  const add=(tag,attrs)=>{const el=svgNode(tag,attrs);svg.append(el);return el;};
-  if(kind==='goal'){
-    add('circle',{cx:12,cy:12,r:9,...stroke});
-    add('polygon',{points:'12,7.2 16.5,10.1 14.8,15.4 9.2,15.4 7.5,10.1',...stroke});
-    for(const d of ['M12 7.2V3.1','M16.5 10.1L20.5 8.9',
-      'M14.8 15.4L17.3 19','M9.2 15.4L6.7 19','M7.5 10.1L3.5 8.9']){
-      add('path',{d,...stroke});
-    }
-  }else if(kind==='corner'){
-    add('path',{d:'M7 20V3.5M4.5 20H19',...stroke});
-    add('path',{d:'M7.8 4.5L18.6 7.1 7.8 12.8Z',
-      fill:'currentColor','fill-opacity':'.22',stroke:'currentColor','stroke-width':'1.6','stroke-linejoin':'round'});
-    add('circle',{cx:7,cy:20,r:1.2,fill:'currentColor'});
-  }else if(kind==='yellow'||kind==='red'||kind==='card'){
-    add('rect',{x:6.7,y:3,width:10.6,height:18,rx:1.65,
-      fill:'currentColor','fill-opacity':'.9',stroke:'currentColor','stroke-width':'1.3'});
-    add('path',{d:'M9.3 6.1H14.7',stroke:'#ffffff','stroke-opacity':'.55','stroke-width':'1.1'});
-  }else if(kind==='penalty'){
-    add('circle',{cx:12,cy:12,r:7.3,...stroke});
-    add('circle',{cx:12,cy:12,r:2.1,fill:'currentColor'});
-    for(const d of ['M12 1.7V6.2','M12 17.8V22.3',
-      'M1.7 12H6.2','M17.8 12H22.3'])add('path',{d,...stroke});
-  }else if(kind==='var'){
-    add('rect',{x:2.2,y:4.3,width:19.6,height:15.4,rx:2.2,...stroke});
-    const label=add('text',{x:12,y:14.5,'text-anchor':'middle',
-      'font-size':'7.2','font-weight':'900','letter-spacing':'.25',fill:'currentColor'});
-    label.textContent='VAR';
-  }else if(kind==='sub'){
-    add('path',{d:'M4.1 8H19L15.2 4.5M19 8L15.2 11.5',...stroke});
-    add('path',{d:'M19.9 16H5L8.8 12.5M5 16L8.8 19.5',...stroke});
-  }else{
-    add('circle',{cx:12,cy:12,r:7.4,...stroke});
-    add('path',{d:'M12 8V12L15 14',...stroke});
-  }
-  return svg;
-}
 function pressurePoints(pressure,current){
   const out=[];
   for(const p of Array.isArray(pressure)?pressure:[]){
@@ -440,8 +398,7 @@ function eventFlowChart(detail,fixtureId){
       const timeline=node('div','member-flow-fallback-events');
       for(const e of events.slice(0,30)){
         const label=iconLib.label(e,featured?.home||'HOME',featured?.away||'AWAY');
-        const item=node('span','member-flow-fallback-event');
-        item.append(eventHudGlyph(iconLib.kind(e)),document.createTextNode(' '+label));
+        const item=node('span','member-flow-fallback-event',iconLib.icon(iconLib.kind(e))+' '+label);
         item.title=label;timeline.append(item);
       }
       wrap.append(timeline);
@@ -562,7 +519,9 @@ function eventFlowChart(detail,fixtureId){
       pin.dataset.tooltip=iconLib.label(e,featured?.home||'HOME',featured?.away||'AWAY')+
         (marker.events.length>1?' · +'+(marker.events.length-1)+' more':'');
       const glyph=node('span','member-flow-pin-glyph');
-      glyph.append(eventHudGlyph(marker.kind));
+      if(marker.kind==='yellow'||marker.kind==='red'){
+        glyph.append(node('span','member-flow-card-icon '+marker.kind));
+      }else glyph.textContent=iconLib.icon(marker.kind);
       pin.append(glyph);
       if(marker.events.length>1)pin.append(node('span','member-flow-pin-count','+'+(marker.events.length-1)));
       pin.addEventListener('click',()=>{
@@ -589,13 +548,12 @@ function eventFlowChart(detail,fixtureId){
   if(iconLib&&events.length)wrap.append(readout);
 
   const key=node('div','member-flow-key');
-  key.append(node('span','signal','● SIGNAL'));
-  for(const [kind,label] of [['goal','Goal'],['corner','Corner'],
-    ['yellow','Yellow'],['red','Red'],['penalty','Penalty']]){
-    const chip=node('span','event member-flow-key-chip '+kind);
-    chip.append(eventHudGlyph(kind),document.createTextNode(label));
-    key.append(chip);
-  }
+  key.append(node('span','signal','● SIGNAL'),
+    node('span','event','⚽ Goal'),
+    node('span','event','🚩 Corner'),
+    node('span','event','🟨 Yellow'),
+    node('span','event','🟥 Red'),
+    node('span','event','◎ Penalty'));
   if(events.some(e=>e.approximate))key.append(node('span','history','* Snapshot events have approximate minutes'));
   wrap.append(key);
   return wrap;
