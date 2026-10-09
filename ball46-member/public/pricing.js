@@ -13,7 +13,7 @@ if(button){
     const response=await fetch('/api/enrollment-status',{cache:'no-store'});
     const state=await response.json();
     if(!response.ok||!state?.ok)throw new Error('Enrollment status unavailable');
-    if(!state.ownerPilotAvailable){
+    if(!state.enrollmentAvailable){
       if(button){button.disabled=true;button.textContent='Membership enrollment coming soon';}
       showNotice('Payments are temporarily closed while secure member activation is verified. No payment is being collected here.');
       return;
