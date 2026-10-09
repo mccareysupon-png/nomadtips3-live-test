@@ -6,6 +6,9 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: ball46-member-auth-audit
+  cancel-in-progress: false
 jobs:
   audit:
     runs-on: ubuntu-24.04
@@ -14,29 +17,81 @@ jobs:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
-      - name: Read only inspect of Zero Trust and Worker secret names
+      - name: Inspect Member configuration and unauthenticated access without mutations
         shell: bash
         run: |
           node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
           const token=process.env.CLOUDFLARE_API_TOKEN,account=process.env.CLOUDFLARE_ACCOUNT_ID;
-          if(!token||!account)throw Error('CF_AUTH_MISSING');
-          const head={Authorization:'Bearer '+token};
+          assert(token&&account,'CF_AUTH_MISSING');
+          const report={verifiedAt:new Date().toISOString(),sourceCommit:process.env.GITHUB_SHA,worker:'ball46-member-production',mode:'READ_ONLY',probes:{},access:{},bindings:{},http:[]};
           async function probe(name,path){
             try{
-              const res=await fetch('https://api.cloudflare.com/client/v4'+path,{headers:head});
-              const data=await res.json();
-              console.log(name,'HTTP',res.status,'success',Boolean(data.success),'errors',(data.errors||[]).map(x=>x.code));
+              const response=await fetch('https://api.cloudflare.com/client/v4'+path,{headers:{Authorization:'Bearer '+token},signal:AbortSignal.timeout(15000)});
+              const data=await response.json();
+              report.probes[name]={status:response.status,success:data.success===true,errorCodes:(data.errors||[]).map(x=>x.code)};
               return data.success?data.result:null;
-            }catch(e){console.log(name,'ERROR',String(e.message));return null}
+            }catch{
+              report.probes[name]={success:false,error:'REQUEST_FAILED'};
+              return null;
+            }
           }
-          const apps=await probe('ACCESS_APPS','/accounts/'+account+'/access/apps?per_page=100');
-          if(Array.isArray(apps)){
-            console.log('ACCESS_RELEVANT_APPS',apps.filter(x=>JSON.stringify(x).includes('member.ball46.com')).map(x=>({name:x.name,type:x.type,domain:x.domain,audPresent:Boolean(x.aud)})));
+          const base='/accounts/'+account;
+          const apps=await probe('ACCESS_APPS',base+'/access/apps?per_page=100');
+          if(Array.isArray(apps))report.access.apps=apps.filter(x=>JSON.stringify(x).includes('member.ball46.com')).map(x=>({
+            id:x.id,name:x.name,type:x.type,domain:x.domain,audPresent:Boolean(x.aud),
+            destinations:(x.destinations||[]).map(d=>({type:d.type,uri:d.uri})),
+            selfHostedDomains:x.self_hosted_domains||[]
+          }));
+          const org=await probe('ACCESS_ORGANIZATION',base+'/access/organizations');
+          if(org)report.access.teamDomain=org.auth_domain||null;
+          const providers=await probe('ACCESS_IDENTITY_PROVIDERS',base+'/access/identity_providers?per_page=100');
+          if(Array.isArray(providers))report.access.emailOtpProviders=providers.filter(x=>x.type==='onetimepin').map(x=>({id:x.id,type:x.type,name:x.name}));
+          const settings=await probe('MEMBER_SETTINGS',base+'/workers/scripts/ball46-member-production/settings');
+          if(settings){
+            for(const binding of settings.bindings||[]){
+              report.bindings[binding.name]={type:binding.type,present:true};
+              if(binding.type==='plain_text'&&['CF_ACCESS_TEAM_DOMAIN','CF_ACCESS_AUD','STRIPE_PRICE_ID','APP_STAGE'].includes(binding.name))report.bindings[binding.name].value=binding.text;
+            }
           }
-          const secrets=await probe('MEMBER_SECRET_BINDING_NAMES','/accounts/'+account+'/workers/scripts/ball46-member-production/secrets');
-          if(Array.isArray(secrets)){
-            for(const name of ['CF_ACCESS_TEAM_DOMAIN','CF_ACCESS_AUD','STRIPE_SECRET_KEY','STRIPE_PRICE_ID'])
-              console.log('BINDING_PRESENT',name,secrets.some(x=>x.name===name));
+          const secrets=await probe('MEMBER_SECRET_NAMES',base+'/workers/scripts/ball46-member-production/secrets');
+          if(Array.isArray(secrets))for(const binding of secrets)report.bindings[binding.name]={type:binding.type||'secret_text',present:true};
+          const deployments=await probe('MEMBER_DEPLOYMENTS',base+'/workers/scripts/ball46-member-production/deployments?per_page=1');
+          if(deployments)report.memberDeployment={id:deployments.deployments?.[0]?.id,versions:deployments.deployments?.[0]?.versions};
+          for(const origin of ['https://member.ball46.com','https://ball46-member-production.mccarey-supon.workers.dev']){
+            for(const path of ['/pricing','/login','/member','/member.html','/api/member/daily','/api/member/match?fixtureId=123','/api/member/session','/api/stripe/checkout','/api/stripe/webhook']){
+              try{
+                const response=await fetch(origin+path,{method:path==='/api/stripe/checkout'?'POST':'GET',redirect:'manual',signal:AbortSignal.timeout(15000)});
+                const result={origin,path,status:response.status,type:response.headers.get('content-type')};
+                const location=response.headers.get('location');
+                if(location)try{const target=new URL(location,origin);result.redirectHost=target.hostname;result.redirectPath=target.pathname;}catch{}
+                if((result.type||'').includes('application/json')){
+                  const body=await response.json();
+                  result.ok=body.ok;result.error=body.error;result.authenticated=body.authenticated;result.loginReady=body.loginReady;
+                  result.memberPresent=body.member!=null;
+                }else await response.body?.cancel();
+                report.http.push(result);
+              }catch{report.http.push({origin,path,error:'REQUEST_FAILED'});}
+            }
+            for(const [label,headers] of [
+              ['SPOOFED_EMAIL',{'Cf-Access-Authenticated-User-Email':'unpaid-test@example.invalid'}],
+              ['FORGED_JWT',{'Cf-Access-Jwt-Assertion':'eyJhbGciOiJSUzI1NiIsImtpZCI6ImZvcmdlZCJ9.eyJlbWFpbCI6InVucGFpZEBleGFtcGxlLmludmFsaWQifQ.Zm9yZ2Vk'}]
+            ]){
+              try{
+                const response=await fetch(origin+'/api/member/daily',{headers,redirect:'manual',signal:AbortSignal.timeout(15000)});
+                report.http.push({origin,path:'/api/member/daily',test:label,status:response.status});
+                await response.body?.cancel();
+              }catch{report.http.push({origin,test:label,error:'REQUEST_FAILED'});}
+            }
           }
-          await probe('ACCESS_TEAMS','/accounts/'+account+'/access/organizations');
+          report.configurationReady=['CF_ACCESS_TEAM_DOMAIN','CF_ACCESS_AUD','STRIPE_SECRET_KEY','STRIPE_PRICE_ID'].every(name=>report.bindings[name]?.present);
+          report.anonymousDenied=report.http.filter(x=>['/member','/member.html','/api/member/daily','/api/member/match?fixtureId=123'].includes(x.path)).every(x=>[401,403,302,303].includes(x.status));
+          report.pricingPublic=report.http.filter(x=>x.path==='/pricing').every(x=>x.status===200);
+          report.checkoutDisabled=report.http.filter(x=>x.path==='/api/stripe/checkout').every(x=>x.status===503&&x.error==='CHECKOUT_DISABLED_UNTIL_VERIFIED_ENTITLEMENTS');
+          console.log('BALL46_MEMBER_READ_ONLY_AUDIT '+JSON.stringify(report));
+          assert(report.anonymousDenied,'ANONYMOUS_ACCESS_NOT_DENIED');
+          assert(report.pricingPublic,'PRICING_NOT_PUBLIC');
+          assert(report.checkoutDisabled,'CHECKOUT_GATE_NOT_CONFIRMED');
+          console.log('BALL46_MEMBER_NEGATIVE_QA_PASS');
+          console.log('BALL46_MEMBER_END_TO_END_QA_PENDING');
           NODE
