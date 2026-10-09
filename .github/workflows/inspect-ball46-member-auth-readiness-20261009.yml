@@ -43,6 +43,11 @@ jobs:
             destinations:(x.destinations||[]).map(d=>({type:d.type,uri:d.uri})),
             selfHostedDomains:x.self_hosted_domains||[]
           }));
+          const tokenState=await probe('CURRENT_TOKEN_VERIFY','/user/tokens/verify');
+          if(tokenState?.id){
+            const tokenDetail=await probe('CURRENT_TOKEN_PERMISSIONS','/user/tokens/'+tokenState.id);
+            if(tokenDetail)report.currentTokenPermissionNames=[...new Set((tokenDetail.policies||[]).flatMap(policy=>(policy.permission_groups||[]).map(group=>group.name).filter(Boolean)))];
+          }
           const org=await probe('ACCESS_ORGANIZATION',base+'/access/organizations');
           if(org)report.access.teamDomain=org.auth_domain||null;
           const providers=await probe('ACCESS_IDENTITY_PROVIDERS',base+'/access/identity_providers?per_page=100');
