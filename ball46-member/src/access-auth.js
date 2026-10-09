@@ -65,8 +65,18 @@ async function paidEntitlement(identity,env){
   }catch{return null}
   return null;
 }
+// Verified owner access is independent of billing. NEVER read an untrusted
+// email query parameter or request header for this decision: the identity is
+// exclusively supplied by verifyAccessIdentity's signed JWT validation.
+export function ownerEntitlement(identity,env){
+  const owner=String(env.OWNER_CHECKOUT_EMAIL||'').trim().toLowerCase();
+  if(!owner||!identity?.email||identity.email!==owner)return null;
+  return {displayName:identity.email.split('@')[0],status:'ACTIVE',plan:'BALL46 MEMBER',
+    role:'OWNER',accessType:'LIFETIME',expiresAt:null,currentPeriodEnd:null,
+    cancelAtPeriodEnd:false};
+}
 export async function memberAccess(request,env){
   const identity=await verifyAccessIdentity(request,env);
   if(!identity)return null;
-  return paidEntitlement(identity,env);
+  return ownerEntitlement(identity,env) || paidEntitlement(identity,env);
 }
