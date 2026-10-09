@@ -1,0 +1,278 @@
+/* B46_PERFORMANCE_PREMIUM_COMPACT_20261009
+   Approved concept: Ball46 Premium Compact / Clean Sci-Fi.
+   PC only. Existing Daily Performance data/runtime stays untouched.
+   Visible stadium image is replaced by clean CSS gradients.
+   Target: materially reduce vertical footprint while preserving readability. */
+@media(min-width:761px){
+  #ball46-daily-performance{
+    min-height:0!important;
+    margin:7px 0 9px!important;
+    border:1px solid rgba(120,185,210,.12)!important;
+    border-radius:16px!important;
+    background-color:#071017!important;
+    background-image:
+      radial-gradient(680px 210px at 50% 125%,rgba(28,124,82,.12),transparent 70%),
+      radial-gradient(720px 230px at 50% -170px,rgba(36,126,166,.10),transparent 72%),
+      linear-gradient(180deg,#0b1821 0%,#071017 58%,#050c11 100%)!important;
+    background-repeat:no-repeat!important;
+    background-position:center!important;
+    background-size:auto!important;
+    box-shadow:0 14px 38px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.025)!important;
+    overflow:hidden!important;
+  }
+  #ball46-daily-performance::before{
+    content:""!important;
+    position:absolute!important;
+    inset:0!important;
+    pointer-events:none!important;
+    z-index:0!important;
+    background:
+      linear-gradient(90deg,transparent 0 6%,rgba(90,180,215,.03) 6.05% 6.15%,transparent 6.2% 93.8%,rgba(90,180,215,.03) 93.85% 93.95%,transparent 94%),
+      linear-gradient(180deg,transparent 0 54%,rgba(75,150,110,.035) 54.2% 54.45%,transparent 54.7%)!important;
+  }
+  #ball46-daily-performance::after{
+    content:""!important;
+    position:absolute!important;
+    left:22px!important;
+    right:22px!important;
+    top:0!important;
+    height:1px!important;
+    pointer-events:none!important;
+    z-index:3!important;
+    background:linear-gradient(90deg,transparent,rgba(88,215,170,.34),rgba(90,185,230,.24),transparent)!important;
+  }
+
+  #ball46-daily-performance .b46-perf-grid{
+    position:relative!important;
+    z-index:1!important;
+    display:grid!important;
+    grid-template-columns:1fr 1fr!important;
+    min-width:0!important;
+  }
+  #ball46-daily-performance .b46-perf-grid::before{
+    content:"●  BALL46 PERFORMANCE"!important;
+    grid-column:1 / -1!important;
+    display:flex!important;
+    align-items:center!important;
+    height:22px!important;
+    padding:0 15px!important;
+    border-bottom:1px solid rgba(255,255,255,.035)!important;
+    color:#dfe8ed!important;
+    background:rgba(255,255,255,.008)!important;
+    font-size:7.5px!important;
+    line-height:1!important;
+    font-weight:900!important;
+    letter-spacing:.17em!important;
+    white-space:nowrap!important;
+  }
+  #ball46-daily-performance .b46-perf-grid::after{
+    content:"LONDON DAY · 06:00"!important;
+    position:absolute!important;
+    top:7px!important;
+    right:15px!important;
+    color:#718692!important;
+    font-size:6.7px!important;
+    line-height:1!important;
+    font-weight:800!important;
+    letter-spacing:.11em!important;
+    white-space:nowrap!important;
+    pointer-events:none!important;
+  }
+
+  #ball46-daily-performance .b46-perf-side{
+    min-width:0!important;
+    padding:7px 14px 7px!important;
+    background:transparent!important;
+    border:0!important;
+    box-shadow:none!important;
+    backdrop-filter:none!important;
+    -webkit-backdrop-filter:none!important;
+  }
+  #ball46-daily-performance .b46-perf-side.today{
+    padding-left:14px!important;
+  }
+  #ball46-daily-performance .b46-perf-side + .b46-perf-side::before{
+    content:""!important;
+    position:absolute!important;
+    left:0!important;
+    top:7px!important;
+    bottom:7px!important;
+    width:1px!important;
+    background:linear-gradient(180deg,transparent,rgba(255,255,255,.08) 22%,rgba(255,255,255,.08) 78%,transparent)!important;
+  }
+
+  #ball46-daily-performance .b46-perf-head{
+    display:flex!important;
+    align-items:flex-start!important;
+    justify-content:space-between!important;
+    gap:11px!important;
+    margin-bottom:5px!important;
+    min-width:0!important;
+    background:transparent!important;
+  }
+  #ball46-daily-performance .b46-perf-title{
+    min-width:0!important;
+    padding:0!important;
+    border-radius:0!important;
+    background:transparent!important;
+    box-shadow:none!important;
+    backdrop-filter:none!important;
+    -webkit-backdrop-filter:none!important;
+  }
+  #ball46-daily-performance .b46-perf-kicker{
+    display:block!important;
+    margin:0 0 1px!important;
+    font-size:10.2px!important;
+    line-height:1.04!important;
+    font-weight:900!important;
+    letter-spacing:.12em!important;
+    background:transparent!important;
+    white-space:nowrap!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+  }
+  #ball46-daily-performance .b46-perf-side.today .b46-perf-kicker{
+    color:#5ee695!important;
+  }
+  #ball46-daily-performance .b46-perf-side.yesterday .b46-perf-kicker{
+    color:#fff!important;
+  }
+  #ball46-daily-performance .b46-perf-sub{
+    display:block!important;
+    margin-top:2px!important;
+    font-size:8.2px!important;
+    line-height:1.05!important;
+    font-weight:780!important;
+    letter-spacing:.04em!important;
+    color:#fff!important;
+    background:transparent!important;
+    white-space:nowrap!important;
+  }
+
+  #ball46-daily-performance .b46-perf-rate{
+    min-width:64px!important;
+    flex:0 0 auto!important;
+    text-align:right!important;
+    background:transparent!important;
+    border:0!important;
+    box-shadow:none!important;
+  }
+  #ball46-daily-performance .b46-perf-rate span{
+    display:block!important;
+    font-size:6.2px!important;
+    line-height:1!important;
+    font-weight:850!important;
+    letter-spacing:.11em!important;
+    color:#7f929d!important;
+    background:transparent!important;
+  }
+  #ball46-daily-performance .b46-perf-rate strong{
+    display:block!important;
+    margin-top:1px!important;
+    font-size:21px!important;
+    line-height:.9!important;
+    font-weight:950!important;
+    letter-spacing:-.045em!important;
+    color:#ffd35c!important;
+    background:transparent!important;
+  }
+
+  #ball46-daily-performance .b46-perf-stats{
+    display:grid!important;
+    grid-template-columns:repeat(5,minmax(0,1fr))!important;
+    gap:5px!important;
+    min-width:0!important;
+    background:transparent!important;
+  }
+  #ball46-daily-performance .b46-perf-side.yesterday .b46-perf-stats{
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  }
+  #ball46-daily-performance .b46-perf-stat{
+    position:relative!important;
+    min-width:0!important;
+    overflow:hidden!important;
+    padding:4px 6px 4px!important;
+    border:1px solid rgba(255,255,255,.045)!important;
+    border-radius:8px!important;
+    background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,.012))!important;
+    box-shadow:none!important;
+    backdrop-filter:none!important;
+    -webkit-backdrop-filter:none!important;
+  }
+  #ball46-daily-performance .b46-perf-stat::before{
+    content:""!important;
+    position:absolute!important;
+    left:0!important;
+    top:0!important;
+    bottom:0!important;
+    width:2px!important;
+    background:rgba(150,180,195,.22)!important;
+  }
+  #ball46-daily-performance .b46-perf-stat.win::before{background:rgba(94,230,149,.58)!important}
+  #ball46-daily-performance .b46-perf-stat.loss::before{background:rgba(255,107,122,.58)!important}
+  #ball46-daily-performance .b46-perf-stat.push::before{background:rgba(220,230,235,.38)!important}
+  #ball46-daily-performance .b46-perf-stat.pending::before{background:rgba(155,168,178,.38)!important}
+  #ball46-daily-performance .b46-perf-stat.avg-odds::before{background:rgba(255,211,92,.70)!important}
+
+  #ball46-daily-performance .b46-perf-stat span{
+    display:block!important;
+    font-size:5.6px!important;
+    line-height:1!important;
+    font-weight:900!important;
+    letter-spacing:.10em!important;
+    color:#8ea1ad!important;
+    background:transparent!important;
+    white-space:nowrap!important;
+  }
+  #ball46-daily-performance .b46-perf-stat strong{
+    display:block!important;
+    margin-top:2px!important;
+    font-size:14.5px!important;
+    line-height:1!important;
+    font-weight:950!important;
+    letter-spacing:-.025em!important;
+    color:#f5f7f9!important;
+    background:transparent!important;
+  }
+  #ball46-daily-performance .b46-perf-stat.win strong{color:#5ee695!important}
+  #ball46-daily-performance .b46-perf-stat.loss strong{color:#ff6b7a!important}
+  #ball46-daily-performance .b46-perf-stat.push strong{color:#f3f6f8!important}
+  #ball46-daily-performance .b46-perf-stat.pending strong{color:#c4d0d7!important}
+  #ball46-daily-performance .b46-perf-stat.avg-odds strong{color:#ffd35c!important}
+
+  #ball46-daily-performance .b46-perf-foot{
+    display:none!important;
+    margin:0!important;
+  }
+  #ball46-daily-performance .b46-perf-state{
+    display:none!important;
+  }
+
+  html[data-theme="light"] #ball46-daily-performance{
+    background-color:#071017!important;
+    background-image:
+      radial-gradient(680px 210px at 50% 125%,rgba(28,124,82,.12),transparent 70%),
+      radial-gradient(720px 230px at 50% -170px,rgba(36,126,166,.10),transparent 72%),
+      linear-gradient(180deg,#0b1821 0%,#071017 58%,#050c11 100%)!important;
+    border-color:rgba(120,185,210,.12)!important;
+    color:#f5f7f9!important;
+  }
+  html[data-theme="light"] #ball46-daily-performance .b46-perf-title{
+    background:transparent!important;
+  }
+  html[data-theme="light"] #ball46-daily-performance .b46-perf-side.today .b46-perf-kicker{color:#5ee695!important}
+  html[data-theme="light"] #ball46-daily-performance .b46-perf-side.yesterday .b46-perf-kicker{color:#fff!important}
+  html[data-theme="light"] #ball46-daily-performance .b46-perf-sub{color:#fff!important}
+  html[data-theme="light"] #ball46-daily-performance .b46-perf-rate span{color:#7f929d!important}
+  html[data-theme="light"] #ball46-daily-performance .b46-perf-rate strong{color:#ffd35c!important}
+  html[data-theme="light"] #ball46-daily-performance .b46-perf-stat{
+    background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,.012))!important;
+    border-color:rgba(255,255,255,.045)!important;
+  }
+  html[data-theme="light"] #ball46-daily-performance .b46-perf-stat span{color:#8ea1ad!important}
+  html[data-theme="light"] #ball46-daily-performance .b46-perf-stat.win strong{color:#5ee695!important}
+  html[data-theme="light"] #ball46-daily-performance .b46-perf-stat.loss strong{color:#ff6b7a!important}
+  html[data-theme="light"] #ball46-daily-performance .b46-perf-stat.push strong{color:#f3f6f8!important}
+  html[data-theme="light"] #ball46-daily-performance .b46-perf-stat.pending strong{color:#c4d0d7!important}
+  html[data-theme="light"] #ball46-daily-performance .b46-perf-stat.avg-odds strong{color:#ffd35c!important}
+}
