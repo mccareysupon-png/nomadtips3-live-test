@@ -1,20 +1,12 @@
 const button = document.querySelector('#subscribeButton');
 const notice = document.querySelector('#checkoutNotice');
-
-const STRIPE_PAYMENT_LINK = 'https://buy.stripe.com/fZu4gz0z03Ydeu8cnR8AE04';
-
-function startCheckout(){
-  notice.hidden = true;
+// Paid checkout stays closed until verified login and subscription entitlement are enabled.
+if(button){
   button.disabled = true;
-  button.textContent = 'Opening secure checkout…';
-  try{
-    window.location.assign(STRIPE_PAYMENT_LINK);
-  }catch{
-    notice.textContent = 'Unable to open Stripe Checkout. Please try again.';
-    notice.hidden = false;
-    button.disabled = false;
-    button.textContent = 'Subscribe · $5/month';
-  }
+  button.textContent = 'Membership enrollment coming soon';
+  button.setAttribute('aria-disabled','true');
 }
-
-button?.addEventListener('click',startCheckout);
+if(notice){
+  notice.hidden = false;
+  notice.textContent = 'Member registration is temporarily closed while secure login and subscription verification are finalized. No payment is being collected here.';
+}
