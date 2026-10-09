@@ -27,7 +27,7 @@ jobs:
           import assert from 'node:assert/strict';
           const account=process.env.CLOUDFLARE_ACCOUNT_ID,token=process.env.CLOUDFLARE_API_TOKEN;
           assert(account&&token,'CF_AUTH_MISSING');
-          const worker='ball46-member-production',owner='jay@ball46.com';
+          const worker='ball46-member-production',owner='mccarey.supon@gmail.com';
           const destinations=['member.ball46.com/member','member.ball46.com/member.html','member.ball46.com/api/member/*'];
           const report={verifiedAt:new Date().toISOString(),ownerEmail:owner,worker,steps:[],checkoutEnabled:false};
           async function api(label,path,method='GET',body){
