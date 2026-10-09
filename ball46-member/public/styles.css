@@ -1746,3 +1746,18 @@ body.page-member:before{
   .member-hero-card{padding-top:16px;padding-bottom:16px}
   .member-head h1{font-size:15.6px}
 }
+
+/* Member hero correction: unbox the large panel, keep the compact heading and live badge. */
+.member-hero-card{
+  background:none;
+  border:0;
+  box-shadow:none;
+  border-radius:0;
+  padding:0;
+  overflow:visible;
+}
+.member-hero-card::before{display:none}
+.member-head .live-pill{display:inline-flex!important}
+@media(max-width:680px){
+  .member-hero-card{padding:0}
+}
