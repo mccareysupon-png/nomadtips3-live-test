@@ -1,0 +1,45 @@
+name: Deploy Ball46 Member Navigation Only 20261009
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-ball46-member-nav-20261009.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ball46-production-deploy
+  cancel-in-progress: false
+jobs:
+  member-navigation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ops/ball46-easybet-crossdevice-fix-20261007
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate live-rail Member link installer
+        run: |
+          node --check deploy-assets/ball46-member-nav-20261009/deploy.mjs
+          test -s deploy-assets/daily-performance-20261005/production.mjs
+          test -s deploy-assets/daily-performance-20261005/rail.mjs
+          test -s .github/scripts/ball46_current217_live_paths_20260928.txt
+      - name: Install parser dependency
+        run: npm install --no-save --ignore-scripts acorn@8
+      - name: Preserve current Production and add Member navigation safely
+        working-directory: deploy-assets/ball46-member-nav-20261009
+        run: node deploy.mjs
+      - name: Publish deployment audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-member-nav-20261009-${{ github.run_id }}
+          path: deploy-assets/ball46-member-nav-20261009/audit
+          retention-days: 30
