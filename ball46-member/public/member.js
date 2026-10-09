@@ -543,10 +543,12 @@ function premiumFactIcon(kind){
     add('circle',{cx:32,cy:45,r:9,fill:'#F7FAFC',stroke:'#9CB1C4','stroke-width':1});
     add('path',{d:'M32 39L37 43L35 49H29L27 43Z',fill:'#182432'});
   }else if(kind==='ball'){
-    add('circle',{cx:32,cy:32,r:27,fill:'#F6FAFC',stroke:'#A3B8C9','stroke-width':2});
-    add('path',{d:'M32 18L45 27L40 42H24L19 27Z',fill:'#172536',stroke:'#172536','stroke-linejoin':'round'});
-    add('path',{d:'M32 18L28 6L38 6L45 14L45 27M19 27L9 22L6 35L17 45L24 42M40 42L47 50L57 39L54 25L45 27M24 42L19 55L32 59L45 54L40 42',fill:'none',stroke:'#26384A','stroke-width':2,'stroke-linejoin':'round'});
-    add('path',{d:'M28 6L19 11L9 22M38 6L45 14L54 25M19 55L32 59L45 54',fill:'none',stroke:'#26384A','stroke-width':2});
+    // Classic stitched football: symmetric pentagon with surrounding panels.
+    add('circle',{cx:32,cy:32,r:26,fill:'#F6F9FC',stroke:'#AFC2D0','stroke-width':1.8});
+    add('path',{d:'M32 19L43 27L39 40H25L21 27Z',fill:'#142537',stroke:'#142537','stroke-width':1,'stroke-linejoin':'round'});
+    add('path',{d:'M32 19L26 8L16 14L21 27M32 19L39 8L49 15L43 27M43 27L57 26L56 38L45 48L39 40M39 40L42 55L32 58L22 54L25 40M25 40L18 48L8 39L7 27L21 27',fill:'none',stroke:'#233748','stroke-width':2,'stroke-linejoin':'round'});
+    add('path',{d:'M26 8L39 8M16 14L7 27M49 15L57 26M45 48L42 55M18 48L22 54',fill:'none',stroke:'#667D90','stroke-width':1.2});
+    add('path',{d:'M17 17Q11 22 11 30',fill:'none',stroke:'#FFFFFF','stroke-width':2,'stroke-linecap':'round',opacity:.85});
   }else{
     add('rect',{x:6,y:14,width:52,height:39,rx:5,fill:'#1B533C',stroke:'#D5E8DF','stroke-width':2});
     add('path',{d:'M32 14V53M6 33.5H58M6 25H18V42H6M58 25H46V42H58',stroke:'#DCEFE5','stroke-width':1.4,fill:'none'});
