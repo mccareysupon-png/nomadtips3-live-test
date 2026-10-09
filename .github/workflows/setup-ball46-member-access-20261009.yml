@@ -36,7 +36,7 @@ jobs:
               ...(body?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(20000)
             });
             const data=await response.json();
-            const summary={step:label,method,status:response.status,success:data.success===true,errorCodes:(data.errors||[]).map(x=>x.code)};
+            const summary={step:label,method,status:response.status,success:data.success===true,errorCodes:(data.errors||[]).map(x=>x.code),errorMessages:(data.errors||[]).map(x=>String(x.message||'').replaceAll(token,'[redacted]').replaceAll(account,'[redacted]').slice(0,300))};
             report.steps.push(summary);
             console.log('ACCESS_SETUP_STEP '+JSON.stringify(summary));
             if(!response.ok||!data.success)throw Error(label+'_HTTP_'+response.status);
