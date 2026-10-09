@@ -46,7 +46,8 @@ jobs:
           ! grep -R -Fq '"name": "ball46-production"' .
           node --check src/worker.js
           node --check src/access-auth.js
-          node --test tests/access-auth.test.mjs
+          node --check src/checkout.js
+          node --test tests/*.test.mjs
           node --check public/pricing.js
           node --check public/member.js
           echo "BALL46_MEMBER_PACKAGE_VALID"
@@ -80,12 +81,23 @@ jobs:
           grep -Fq 'Daily signals. One screen.' /tmp/pricing.html
 
           # Production security gate: unauthenticated users must not see member data.
-          for endpoint in "/api/member/daily" "/api/member/match?fixtureId=123" "/member" "/member.html"; do
+          for endpoint in "/api/member/daily" "/api/member/match?fixtureId=123"; do
             status="$(curl -sS --max-time 20 -o /tmp/blocked.json -w '%{http_code}' "$base$endpoint")"
             echo "SECURITY_GATE endpoint=$endpoint http=$status body=$(cat /tmp/blocked.json | head -c 150)"
             test "$status" = 401
             jq -e '.ok==false and .error=="MEMBERSHIP_AUTH_REQUIRED"' /tmp/blocked.json >/dev/null
           done
+          for endpoint in "/member" "/member.html"; do
+            status="$(curl -sS --max-time 20 -o /dev/null -D /tmp/member-headers.txt -w '%{http_code}' "$base$endpoint")"
+            echo "MEMBER_REDIRECT_GATE endpoint=$endpoint status=$status"
+            test "$status" = 303
+            grep -Eiq '^location: https://ball46-member-production\.mccarey-supon\.workers\.dev/pricing\?membership=required' /tmp/member-headers.txt
+          done
+          status="$(curl -sS --max-time 20 -o /tmp/identity.json -w '%{http_code}' "$base/api/member/checkout")"
+          test "$status" = 401
+          jq -e '.error=="IDENTITY_AUTH_REQUIRED"' /tmp/identity.json >/dev/null
+          curl -fsS --max-time 20 "$base/api/enrollment-status" -o /tmp/enrollment.json
+          jq -e '.ok==true and .ownerPilotAvailable==false' /tmp/enrollment.json >/dev/null
           curl -fsS --max-time 20 "$base/api/member/session" -o /tmp/session.json
           jq -e '.ok==true and .authenticated==false and .member==null' /tmp/session.json >/dev/null
           checkout_status="$(curl -sS --max-time 20 -X POST -o /tmp/checkout.json -w '%{http_code}' "$base/api/stripe/checkout")"
