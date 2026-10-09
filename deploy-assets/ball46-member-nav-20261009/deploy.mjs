@@ -7,7 +7,7 @@ import {schedules,stageCurrentRail,verifyRailBase,wrangler} from '../daily-perfo
 const MEMBER='https://ball46-member-production.mccarey-supon.workers.dev';
 const URL=MEMBER+'/pricing';
 const PAGES=['index.html'];
-const report={scope:'Navigation only: place Member in a standalone left rail card above MATCH STATUS',startedAt:new Date().toISOString()};
+const report={scope:'Navigation only: use same filter typography and sizing as MATCH STATUS controls on standalone Member link',startedAt:new Date().toISOString()};
 mkdirSync('audit',{recursive:true});
 const save=()=>writeFileSync('audit/report.json',JSON.stringify(report,null,2));
 const delay=ms=>new Promise(r=>setTimeout(r,ms));
@@ -23,19 +23,21 @@ async function rollback(){
 function insertMember(html,page){
   assert.equal(page,'index.html','ONLY_CURRENT_SINGLE_PAGE_ALLOWED');
   const rail=/<a\b(?=[^>]*data-b46-member-entry="rail")[^>]*>[\s\S]*?<\/a>/g;
-  const matches=[...html.matchAll(rail)];
-  assert.equal(matches.length,1,'EXACT_ONE_MEMBER_LINK');
-  const member=matches[0][0];
-  assert(member.includes('target="_blank"')&&member.includes('rel="noopener noreferrer"'),'KEEP_NEW_TAB');
-  const section='<div class="rail-card"><div class="rail-title">MATCH STATUS</div>';
-  assert.equal(html.split(section).length-1,1,'MATCH_STATUS_SECTION_CHANGED');
-  const without=html.replace(member,'');
-  const separate='<div class="rail-card" data-b46-member-independent="1" style="padding:0;overflow:hidden">'+member+'</div>';
-  const changed=without.replace(section,separate+'\n'+section);
-  assert(changed.indexOf('data-b46-member-independent="1"')<changed.indexOf(section),'MEMBER_NOT_ABOVE_STATUS_SECTION');
+  const hits=[...html.matchAll(rail)];
+  assert.equal(hits.length,1,'EXACT_ONE_MEMBER_LINK');
+  const before=hits[0][0];
+  assert(before.includes('target="_blank"')&&before.includes('rel="noopener noreferrer"'),'KEEP_NEW_TAB');
+  assert(before.includes('class="workspace-nav-row"'),'UNEXPECTED_MEMBER_BASE_CLASS');
+  const updated=before.replace('class="workspace-nav-row"','class="filter"')
+    .replace(/;font-family:inherit;font-size:inherit;font-weight:inherit;line-height:inherit/,'')
+    .replace('style="display:flex;align-items:center;justify-content:space-between;text-decoration:none;color:inherit','style="display:flex;align-items:center;justify-content:space-between;text-decoration:none;color:inherit;box-sizing:border-box;width:100%');
+  assert.notEqual(updated,before,'NO_STYLE_CHANGE');
+  const changed=html.replace(before,updated);
+  assert.equal((changed.match(/data-b46-member-independent="1"/g)||[]).length,1,'STANDALONE_CARD_MISSING');
+  assert(changed.indexOf('data-b46-member-independent="1"')<changed.indexOf('<div class="rail-title">MATCH STATUS</div>'),'MEMBER_POSITION_CHANGED');
   assert.equal((changed.match(/data-b46-member-entry="rail"/g)||[]).length,1,'MEMBER_DUPLICATED');
-  assert.equal((changed.match(/data-b46-member-entry="brand"/g)||[]).length,1,'HIDDEN_BRAND_CHANGED');
-  assert.equal((changed.match(/data-b46-member-entry="footer"/g)||[]).length,1,'FOOTER_CHANGED');
+  assert.equal((changed.match(/data-b46-member-entry="brand"/g)||[]).length,1,'BRAND_LINK_CHANGED');
+  assert.equal((changed.match(/data-b46-member-entry="footer"/g)||[]).length,1,'FOOTER_LINK_CHANGED');
   return changed;
 }
 try{
@@ -96,7 +98,7 @@ try{
     assert.equal(sha(canonical(await api('/scripts/'+script+'/settings'))),settingsSha,'SETTINGS_CHANGED');
     assert.equal(canonical(await schedules()),canonical(crons),'CRONS_CHANGED');
     report.result='SUCCESS';report.deployedVersion=candidate;report.completedAt=new Date().toISOString();save();
-    console.log('BALL46_MEMBER_STANDALONE_SUCCESS',JSON.stringify({previous:original,newVersion:candidate,link:URL,pages:PAGES}));
+    console.log('BALL46_MEMBER_FONT_PARITY_SUCCESS',JSON.stringify({previous:original,newVersion:candidate,link:URL,pages:PAGES}));
   }catch(e){
     report.error=String(e?.message||e);save();
     try{await rollback();report.rolledBack=true;save()}catch(rb){report.rollbackError=String(rb?.message||rb);save()}
