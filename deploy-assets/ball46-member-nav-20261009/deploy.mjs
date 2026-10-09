@@ -7,7 +7,7 @@ import {schedules,stageCurrentRail,verifyRailBase,wrangler} from '../daily-perfo
 const MEMBER='https://ball46-member-production.mccarey-supon.workers.dev';
 const URL=MEMBER+'/pricing';
 const PAGES=['index.html'];
-const report={scope:'Navigation only: hide MEMBER link beside Ball46 logo; preserve rail and footer Member links, other HTML and all production systems',startedAt:new Date().toISOString()};
+const report={scope:'Navigation only: align left-rail Member icon and typography with existing menu group; preserve everything else',startedAt:new Date().toISOString()};
 mkdirSync('audit',{recursive:true});
 const save=()=>writeFileSync('audit/report.json',JSON.stringify(report,null,2));
 const delay=ms=>new Promise(r=>setTimeout(r,ms));
@@ -22,18 +22,19 @@ async function rollback(){
 }
 function insertMember(html,page){
   assert.equal(page,'index.html','ONLY_CURRENT_SINGLE_PAGE_ALLOWED');
-  const tag=/<a\b(?=[^>]*data-b46-member-entry="brand")[^>]*>/g;
-  const hits=[...html.matchAll(tag)];
-  assert.equal(hits.length,1,'EXPECTED_ONE_BRAND_MEMBER_LINK');
-  const original=hits[0][0];
-  assert(original.includes('display:inline-flex'),'BRAND_LINK_ALREADY_MODIFIED');
-  const hidden=original.replace('display:inline-flex','display:none!important');
-  assert(hidden.includes('data-b46-member-entry="brand"'),'BRAND_IDENTITY_LOST');
-  const changed=html.replace(original,hidden);
-  assert.equal((changed.match(/data-b46-member-entry="rail"/g)||[]).length,1,'RAIL_LINK_MUST_STAY');
-  assert.equal((changed.match(/data-b46-member-entry="footer"/g)||[]).length,1,'FOOTER_LINK_MUST_STAY');
-  assert.equal((changed.match(/data-b46-member-entry="brand"/g)||[]).length,1,'BRAND_LINK_MUST_REMAIN_HIDDEN');
-  assert(changed.includes('display:none!important'),'HIDE_STYLE_MISSING');
+  const link=/<a\b(?=[^>]*data-b46-member-entry="rail")[^>]*>[\s\S]*?<\/a>/g;
+  const matches=[...html.matchAll(link)];
+  assert.equal(matches.length,1,'EXPECTED_ONE_MEMBER_RAIL_LINK');
+  const previous=matches[0][0];
+  assert(previous.includes('class="workspace-nav-row"'),'RAIL_NAV_CLASS_MISSING');
+  const memberIcon='<svg aria-hidden="true" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;flex:none;vertical-align:middle"><circle cx="12" cy="8" r="3.5"/><path d="M5.5 20v-2a6.5 6.5 0 0 1 13 0v2"/></svg>';
+  const updated='<a class="workspace-nav-row" data-b46-member-entry="rail" href="'+URL+'" style="display:flex;align-items:center;justify-content:space-between;text-decoration:none;color:inherit;font-family:inherit;font-size:inherit;font-weight:inherit;line-height:inherit"><span style="display:inline-flex;align-items:center;gap:7px">'+memberIcon+'Member</span><b aria-hidden="true">↗</b></a>';
+  const changed=html.replace(previous,updated);
+  assert.equal((changed.match(/data-b46-member-entry="brand"/g)||[]).length,1,'HIDDEN_BRAND_MUST_STAY');
+  assert(changed.includes('display:none!important'),'HIDDEN_BRAND_STYLE_MUST_STAY');
+  assert.equal((changed.match(/data-b46-member-entry="footer"/g)||[]).length,1,'FOOTER_MUST_STAY');
+  assert.equal((changed.match(/data-b46-member-entry="rail"/g)||[]).length,1,'MEMBER_RAIL_COUNT');
+  assert(changed.includes('width="15" height="15"'),'ICON_MISSING');
   return changed;
 }
 try{
@@ -94,7 +95,7 @@ try{
     assert.equal(sha(canonical(await api('/scripts/'+script+'/settings'))),settingsSha,'SETTINGS_CHANGED');
     assert.equal(canonical(await schedules()),canonical(crons),'CRONS_CHANGED');
     report.result='SUCCESS';report.deployedVersion=candidate;report.completedAt=new Date().toISOString();save();
-    console.log('BALL46_MEMBER_BRAND_HIDDEN_SUCCESS',JSON.stringify({previous:original,newVersion:candidate,link:URL,pages:PAGES}));
+    console.log('BALL46_MEMBER_RAIL_STYLE_SUCCESS',JSON.stringify({previous:original,newVersion:candidate,link:URL,pages:PAGES}));
   }catch(e){
     report.error=String(e?.message||e);save();
     try{await rollback();report.rolledBack=true;save()}catch(rb){report.rollbackError=String(rb?.message||rb);save()}
