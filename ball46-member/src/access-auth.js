@@ -41,16 +41,27 @@ async function paidEntitlement(identity,env){
     const now=Math.floor(Date.now()/1000);
     for(const customer of customers.data||[]){
       if(customer.deleted||String(customer.email||'').trim().toLowerCase()!==identity.email)continue;
-      const r=await fetch('https://api.stripe.com/v1/subscriptions?customer='+encodeURIComponent(customer.id)+'&status=all&limit=100',{headers,signal:AbortSignal.timeout(8000)});
+      const r=await fetch('https://api.stripe.com/v1/subscriptions?customer='+encodeURIComponent(customer.id)+'&status=all&limit=100&expand%5B%5D=data.latest_invoice',{headers,signal:AbortSignal.timeout(8000)});
       if(!r.ok)return null;
       const subscriptions=await r.json();
       for(const sub of subscriptions.data||[]){
-        if(!['active','trialing'].includes(sub.status))continue;
-        if(!Number.isFinite(sub.current_period_end)||sub.current_period_end<=now)continue;
-        if(env.STRIPE_PRICE_ID&&!sub.items?.data?.some(i=>i.price?.id===env.STRIPE_PRICE_ID))continue;
+        if(sub.status!=='active'||sub.latest_invoice?.status!=='paid')continue;
+        if(sub.ended_at!=null&&(!Number.isFinite(sub.ended_at)||sub.ended_at<=now))continue;
+        const matchingItems=(sub.items?.data||[]).filter(i=>i.price?.id===env.STRIPE_PRICE_ID);
+        let periodEnd=null;
+        for(const item of matchingItems){
+          // Basil and later put the period on the item; older API versions put it on the subscription.
+          let end=Object.hasOwn(item,'current_period_end')?item.current_period_end:sub.current_period_end;
+          if(sub.cancel_at!=null){
+            if(!Number.isFinite(sub.cancel_at)){end=null}
+            else if(Number.isFinite(end)){end=Math.min(end,sub.cancel_at)}
+          }
+          if(Number.isFinite(end)&&end>now)periodEnd=Math.max(periodEnd||0,end);
+        }
+        if(periodEnd===null)continue;
         return {displayName:identity.email.split('@')[0],status:'ACTIVE',plan:'BALL46 MEMBER',
-          role:'MEMBER',accessType:'SUBSCRIPTION',expiresAt:sub.current_period_end*1000,
-          currentPeriodEnd:sub.current_period_end*1000,cancelAtPeriodEnd:Boolean(sub.cancel_at_period_end)};
+          role:'MEMBER',accessType:'SUBSCRIPTION',expiresAt:periodEnd*1000,
+          currentPeriodEnd:periodEnd*1000,cancelAtPeriodEnd:Boolean(sub.cancel_at_period_end)};
       }
     }
   }catch{return null}
