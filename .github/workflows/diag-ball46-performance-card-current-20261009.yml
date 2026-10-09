@@ -1,5 +1,5 @@
 name: DIAG Ball46 Performance Card Current 20261009
-# approved-premium-compact-scout-20261009-1791520215185
+# approved-premium-compact-scout-20261009-height20
 
 on:
   push:
@@ -65,12 +65,16 @@ jobs:
             yesterdaySummaryWhite:t.includes('.b46-perf-side.yesterday .b46-perf-sub{color:#fff!important}'),
             avgOddsYellow:t.includes('.b46-perf-stat.avg-odds strong{color:#facc15}'),
             overlay:t.includes('background:rgba(3,13,21,.48)!important'),
-            backgroundShaMarker:t.includes('REALISTIC_STADIUM_BG_20261005')
+            backgroundShaMarker:t.includes('REALISTIC_STADIUM_BG_20261005'),
+            premiumCompact:t.includes('B46_PERFORMANCE_PREMIUM_COMPACT_20261009'),
+            premiumTopbar:t.includes('BALL46 PERFORMANCE')
           };
           console.log('PERFORMANCE_CHECKS',JSON.stringify(checks));
 
           const i=t.indexOf('PC_HEADER_VISIBILITY_20261006');
           if(i>=0)console.log('PERFORMANCE_CSS_CONTEXT',JSON.stringify(t.slice(Math.max(0,i-1200),Math.min(t.length,i+5500))));
+          const p=t.indexOf('B46_PERFORMANCE_PREMIUM_COMPACT_20261009');
+          if(p>=0)console.log('PREMIUM_COMPACT_CONTEXT',JSON.stringify(t.slice(Math.max(0,p-500),Math.min(t.length,p+12000))));
           const j=t.indexOf('B46_DAILY_PERFORMANCE_20261005 SCRIPT START');
           if(j>=0)console.log('PERFORMANCE_JS_CONTEXT',JSON.stringify(t.slice(j,Math.min(t.length,j+3000))));
           console.log('PERFORMANCE_CARD_CURRENT_DIAG_DONE');
