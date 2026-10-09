@@ -23,7 +23,7 @@ async function rollback(){
 function insertMember(html,page){
   if(html.includes('ball46-member-production.mccarey-supon.workers.dev'))throw Error('MEMBER_LINK_ALREADY_PRESENT:'+page);
   let count=0;
-  const changed=html.replace(/(<nav\\b[^>]*class=["'][^"']*(?:v2-mainnav|mobile-nav)[^"']*["'][^>]*>)([\\s\\S]*?)(<\\/nav>)/gi,(full,start,inner,end)=>{
+  const changed=html.replace(/(<nav\b[^>]*class=["'][^"']*(?:v2-mainnav|mobile-nav)[^"']*["'][^>]*>)([\s\S]*?)(<\/nav>)/gi,(full,start,inner,end)=>{
     count++;
     return start+inner+'<a data-nav="member" href="'+URL+'" rel="noopener">Member</a>'+end;
   });
