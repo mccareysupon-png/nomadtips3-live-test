@@ -1,0 +1,17 @@
+{
+  "name": "nomadtips3-marathon-engine",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node app.mjs",
+    "core": "node engine.mjs",
+    "test": "node --test test/core.test.mjs"
+  },
+  "dependencies": {
+    "playwright": "^1.55.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
