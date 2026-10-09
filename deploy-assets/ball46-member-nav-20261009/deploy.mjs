@@ -6,7 +6,7 @@ import {schedules,stageCurrentRail,verifyRailBase,wrangler} from '../daily-perfo
 
 const MEMBER='https://ball46-member-production.mccarey-supon.workers.dev';
 const URL=MEMBER+'/pricing';
-const PAGES=['index.html','signal.html','statistics.html'];
+const PAGES=['index.html'];
 const report={scope:'Navigation only: add MEMBER link to latest active Ball46 production HTML without replacing Engine, Statistics, EventFlow, JS, CSS or other assets',startedAt:new Date().toISOString()};
 mkdirSync('audit',{recursive:true});
 const save=()=>writeFileSync('audit/report.json',JSON.stringify(report,null,2));
@@ -21,15 +21,21 @@ async function rollback(){
   assert.equal(await activeVersion(),original,'ROLLBACK_NOT_CONFIRMED');
 }
 function insertMember(html,page){
-  if(html.includes('ball46-member-production.mccarey-supon.workers.dev'))throw Error('MEMBER_LINK_ALREADY_PRESENT:'+page);
-  let count=0;
-  const changed=html.replace(/(<nav\b[^>]*class=["'][^"']*(?:v2-mainnav|mobile-nav)[^"']*["'][^>]*>)([\s\S]*?)(<\/nav>)/gi,(full,start,inner,end)=>{
-    count++;
-    return start+inner+'<a data-nav="member" href="'+URL+'" rel="noopener">Member</a>'+end;
-  });
-  if(count!==2) console.log('CURRENT_LIVE_NAV_DIAGNOSTIC',page,JSON.stringify({navTags:[...html.matchAll(/<nav[^>]*>/gi)].map(m=>m[0]).slice(0,10),navAround:html.slice(html.indexOf('<body'),html.indexOf('<body')+12500),headerTags:[...html.matchAll(/<header[^>]*>/gi)].map(m=>m[0])}));
-  assert.equal(count,2,'EXPECTED_DESKTOP_AND_MOBILE_NAV:'+page+':'+count);
-  assert.equal((changed.match(/data-nav="member"/g)||[]).length,2,'MEMBER_NAV_COUNT:'+page);
+  assert.equal(page,'index.html','ONLY_CURRENT_SINGLE_PAGE_ALLOWED');
+  if(html.includes('data-b46-member-entry'))throw Error('MEMBER_LINK_ALREADY_PRESENT');
+  const brandButton='<button type="button" class="workspace-theme-btn"';
+  const signalButton='<button class="workspace-nav-row" data-workspace-view="signal"><span><i class="workspace-nav-mark signal"></i>Signal</span><b data-workspace-signal-count>0</b></button>';
+  const productLink='<a href="/index.html?view=statistics">Statistics</a>';
+  for(const needle of [brandButton,signalButton,productLink]){
+    assert.equal(html.split(needle).length-1,1,'CURRENT_MENU_ANCHOR_CHANGED:'+needle);
+  }
+  const brandLink='<a data-b46-member-entry="brand" href="'+URL+'" style="display:inline-flex;align-items:center;margin-left:auto;padding:6px 9px;border:1px solid #168958;border-radius:8px;color:#16af73;text-decoration:none;font-size:11px;font-weight:800;letter-spacing:.05em">MEMBER</a>';
+  const railLink='<a class="workspace-nav-row" data-b46-member-entry="rail" href="'+URL+'" style="display:flex;align-items:center;justify-content:space-between;text-decoration:none;color:inherit"><span><i class="workspace-nav-mark signal"></i>Member</span><b aria-hidden="true">↗</b></a>';
+  const footerLink='<a data-b46-member-entry="footer" href="'+URL+'">Member</a>';
+  const changed=html.replace(brandButton,brandLink+brandButton)
+    .replace(signalButton,signalButton+railLink)
+    .replace(productLink,productLink+footerLink);
+  assert.equal(changed.split('data-b46-member-entry=').length-1,3,'EXPECTED_THREE_MEMBER_ENTRY_LINKS');
   return changed;
 }
 try{
