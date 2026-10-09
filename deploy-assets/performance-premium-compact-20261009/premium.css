@@ -3,6 +3,7 @@
    PC only. Existing Daily Performance data/runtime stays untouched.
    Visible stadium image is replaced by clean CSS gradients.
    V2: premium polish + reduce the already-compact desktop card height by about another 20%.
+   V3: center each metric/header value inside its own visual area for cleaner premium balance.
    Preserve readability and all existing runtime/data behavior. */
 @media(min-width:761px){
   #ball46-daily-performance{
@@ -115,6 +116,8 @@
   }
   #ball46-daily-performance .b46-perf-title{
     min-width:0!important;
+    flex:1 1 auto!important;
+    text-align:center!important;
     padding:0!important;
     border-radius:0!important;
     background:transparent!important;
@@ -155,7 +158,7 @@
   #ball46-daily-performance .b46-perf-rate{
     min-width:58px!important;
     flex:0 0 auto!important;
-    text-align:right!important;
+    text-align:center!important;
     background:transparent!important;
     border:0!important;
     box-shadow:none!important;
@@ -194,6 +197,11 @@
     position:relative!important;
     min-width:0!important;
     overflow:hidden!important;
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:center!important;
+    justify-content:center!important;
+    text-align:center!important;
     padding:2px 6px 2px!important;
     border:1px solid rgba(255,255,255,.055)!important;
     border-radius:7px!important;
@@ -226,6 +234,8 @@
     color:#8ea1ad!important;
     background:transparent!important;
     white-space:nowrap!important;
+    width:100%!important;
+    text-align:center!important;
   }
   #ball46-daily-performance .b46-perf-stat strong{
     display:block!important;
@@ -236,6 +246,8 @@
     letter-spacing:-.025em!important;
     color:#f5f7f9!important;
     background:transparent!important;
+    width:100%!important;
+    text-align:center!important;
   }
   #ball46-daily-performance .b46-perf-stat.win strong{color:#5ee695!important}
   #ball46-daily-performance .b46-perf-stat.loss strong{color:#ff6b7a!important}
