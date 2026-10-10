@@ -1,0 +1,147 @@
+name: Extend Ball46 Member OTP Sessions to Seven Days
+on:
+  push:
+    branches: [member/ball46-member-v1-20261008]
+    paths: ['.github/workflows/extend-ball46-member-access-sessions-20261010.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ball46-member-production-deploy
+  cancel-in-progress: false
+jobs:
+  extend-member-sessions:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Update only Member Access session durations and verify protection
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          const account=process.env.CLOUDFLARE_ACCOUNT_ID;
+          const token=process.env.CLOUDFLARE_API_TOKEN;
+          assert(account&&token,'CREDENTIALS_REQUIRED');
+          const root='https://api.cloudflare.com/client/v4/accounts/'+account;
+          const TARGET='168h';
+          const memberDestinations=[
+            'member.ball46.com/member',
+            'member.ball46.com/member.html',
+            'member.ball46.com/api/member/*'
+          ];
+          const safeError=e=>String(e?.message||e).replaceAll(token,'[redacted]').replaceAll(account,'[redacted]');
+          async function cf(method,path,body){
+            const r=await fetch(root+path,{
+              method,
+              headers:{Authorization:'Bearer '+token,...(body?{'content-type':'application/json'}:{})},
+              ...(body?{body:JSON.stringify(body)}:{}),
+              signal:AbortSignal.timeout(25000)
+            });
+            let obj={};try{obj=await r.json()}catch{}
+            if(!r.ok||obj.success!==true){
+              const errors=(obj.errors||[]).map(x=>String(x.code||'')).join(',');
+              throw Error('CLOUDFLARE_'+method+'_'+path.replace(/\/[0-9a-f-]{20,}/gi,'/[id]')+'_HTTP_'+r.status+'_ERR_'+errors);
+            }
+            return obj.result;
+          }
+          const apps=await cf('GET','/access/apps?per_page=100');
+          const matches=apps.filter(a=>a.name==='Ball46 Member'&&a.domain==='member.ball46.com/member');
+          assert.equal(matches.length,1,'MEMBER_APP_NOT_UNIQUE');
+          let app=await cf('GET','/access/apps/'+matches[0].id);
+          assert.equal(app.type,'self_hosted','MEMBER_APP_TYPE_WRONG');
+          assert.deepEqual((app.destinations||[]).map(x=>x.uri).sort(),memberDestinations.sort(),'MEMBER_SCOPE_CHANGED');
+          assert.equal(app.allowed_idps?.length,1,'MEMBER_OTP_PROVIDER_NOT_UNIQUE');
+          assert(app.aud,'MEMBER_AUDIENCE_MISSING');
+          const policies=await cf('GET','/access/apps/'+app.id+'/policies?per_page=100');
+          assert.equal(policies.length,2,'UNEXPECTED_MEMBER_POLICY_COUNT');
+          const owner=policies.find(p=>p.name==='Ball46 Owner Pilot');
+          const customer=policies.find(p=>p.name==='Ball46 Verified Email Members');
+          assert(owner&&customer,'MEMBER_POLICIES_MISSING');
+          assert.equal(owner.decision,'allow','OWNER_POLICY_CHANGED');
+          assert.equal(customer.decision,'allow','CUSTOMER_POLICY_CHANGED');
+          assert.equal(owner.precedence,1,'OWNER_PRECEDENCE_CHANGED');
+          assert.equal(customer.precedence,2,'CUSTOMER_PRECEDENCE_CHANGED');
+          assert.equal(owner.include?.length,1,'OWNER_INCLUDE_CHANGED');
+          assert.equal(customer.include?.length,1,'CUSTOMER_INCLUDE_CHANGED');
+          assert(typeof owner.include[0].email?.email==='string'&&owner.include[0].email.email.includes('@'),'OWNER_EMAIL_MISSING');
+          assert.equal(customer.include[0].login_method?.id,app.allowed_idps[0],'CUSTOMER_OTP_METHOD_CHANGED');
+          for(const p of policies){
+            assert(!(p.require||[]).length && !(p.exclude||[]).length,'UNEXPECTED_MEMBER_POLICY_RULES');
+          }
+          const oldAppDuration=app.session_duration;
+          const originalPolicyDurations=new Map(policies.map(p=>[p.name,p.session_duration]));
+          const appBody={
+            name:app.name,type:app.type,domain:app.domain,
+            destinations:app.destinations,
+            allowed_idps:app.allowed_idps,
+            auto_redirect_to_identity:app.auto_redirect_to_identity,
+            app_launcher_visible:app.app_launcher_visible,
+            session_duration:TARGET
+          };
+          const policyBody=(p,duration)=>({
+            name:p.name,decision:p.decision,precedence:p.precedence,
+            include:p.include,exclude:p.exclude||[],require:p.require||[],
+            ...(duration?{session_duration:duration}:{})
+          });
+          const policyPath=p=>'/access/apps/'+app.id+'/policies/'+p.id;
+          console.log('PRECHECK_OK '+JSON.stringify({
+            scope:'Ball46 Member only',
+            applicationPrevious:oldAppDuration,
+            ownerPrevious:owner.session_duration||'inherited',
+            customerPrevious:customer.session_duration||'inherited',
+            newDuration:TARGET,
+            preservesVerifiedOwnerAndPaidGate:true,
+            globalOrganizationSessionUnchanged:true
+          }));
+          let appChanged=false;const changed=[];
+          try{
+            await cf('PUT','/access/apps/'+app.id,appBody);
+            appChanged=true;
+            console.log('MEMBER_APP_DURATION_UPDATED');
+            for(const policy of [owner,customer]){
+              await cf('PUT',policyPath(policy),policyBody(policy,TARGET));
+              changed.push(policy);
+              console.log('MEMBER_POLICY_DURATION_UPDATED '+policy.name);
+            }
+            const afterApp=await cf('GET','/access/apps/'+app.id);
+            const afterPolicies=await cf('GET','/access/apps/'+app.id+'/policies?per_page=100');
+            assert.equal(afterApp.session_duration,TARGET,'APP_DURATION_VERIFICATION_FAILED');
+            assert.equal(afterApp.aud,app.aud,'AUDIENCE_CHANGED');
+            assert.deepEqual(afterApp.allowed_idps,app.allowed_idps,'OTP_PROVIDER_CHANGED');
+            assert.deepEqual((afterApp.destinations||[]).map(x=>x.uri).sort(),memberDestinations.sort(),'PROTECTED_PATHS_CHANGED');
+            assert.equal(afterPolicies.length,2,'POLICY_COUNT_CHANGED');
+            for(const oldPolicy of [owner,customer]){
+              const newPolicy=afterPolicies.find(p=>p.id===oldPolicy.id);
+              assert(newPolicy,'ORIGINAL_POLICY_MISSING');
+              assert.equal(newPolicy.session_duration,TARGET,'POLICY_DURATION_VERIFY_FAILED_'+oldPolicy.name);
+              assert.equal(newPolicy.decision,oldPolicy.decision,'POLICY_DECISION_CHANGED');
+              assert.deepEqual(newPolicy.include,oldPolicy.include,'POLICY_INCLUDE_CHANGED');
+              assert.deepEqual(newPolicy.require||[],oldPolicy.require||[],'POLICY_REQUIRE_CHANGED');
+              assert.deepEqual(newPolicy.exclude||[],oldPolicy.exclude||[],'POLICY_EXCLUDE_CHANGED');
+            }
+            const res=await fetch('https://member.ball46.com/member',{redirect:'manual',signal:AbortSignal.timeout(15000)});
+            await res.body?.cancel();
+            assert([302,303,307,308,401,403].includes(res.status),'ANONYMOUS_MEMBER_NOT_BLOCKED_'+res.status);
+            console.log('BALL46_MEMBER_SEVEN_DAY_ACCESS_VERIFIED '+JSON.stringify({
+              memberApplication:afterApp.session_duration,
+              ownerPolicy:afterPolicies.find(p=>p.id===owner.id).session_duration,
+              customerPolicy:afterPolicies.find(p=>p.id===customer.id).session_duration,
+              anonymousMemberDenied:true,globalUnchanged:true
+            }));
+          }catch(e){
+            console.log('SESSION_CHANGE_FAILED '+safeError(e));
+            for(const policy of changed.reverse()){
+              try{await cf('PUT',policyPath(policy),policyBody(policy,originalPolicyDurations.get(policy.name)));console.log('ROLLBACK_POLICY_OK '+policy.name)}
+              catch(err){console.log('ROLLBACK_POLICY_FAILED '+policy.name+' '+safeError(err))}
+            }
+            if(appChanged){
+              try{await cf('PUT','/access/apps/'+app.id,{...appBody,session_duration:oldAppDuration});console.log('ROLLBACK_MEMBER_APP_OK')}
+              catch(err){console.log('ROLLBACK_MEMBER_APP_FAILED '+safeError(err))}
+            }
+            throw e;
+          }
+          NODE
