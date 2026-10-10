@@ -37,6 +37,22 @@ function fmtLine(row){
   const v=Number.isInteger(n)?String(n):String(Math.round(n*1000)/1000);
   return row.market==='AH'&&n>0?'+'+v:v;
 }
+function signalPeriod(row){
+  // The signal's market period is not the current match half/minute.
+  const declared=String(row?.period??'').trim().toUpperCase().replace(/[\s-]+/g,'_');
+  const direct=declared==='FT'||declared==='FULL_TIME'?'FULL TIME':
+    declared==='HT'||declared==='1H'||declared==='FIRST_HALF'||declared==='1ST_HALF'?'FIRST HALF':
+    declared==='2H'||declared==='SECOND_HALF'?'SECOND HALF':null;
+  const source=String(row?.sourceMarket??'').trim().toLowerCase();
+  const keyPeriod=/^ft_/.test(source)?'FULL TIME':/^ht_/.test(source)?'FIRST HALF':/^2h_/.test(source)?'SECOND HALF':null;
+  const label=String(row?.marketLabel??'').toUpperCase();
+  const labelPeriod=/FIRST[\s-]*HALF|1ST[\s-]*HALF/.test(label)?'FIRST HALF':
+    /SECOND[\s-]*HALF|2ND[\s-]*HALF/.test(label)?'SECOND HALF':
+    /FULL[\s-]*TIME|90[\s-]*MIN/.test(label)?'FULL TIME':null;
+  const known=[direct,keyPeriod,labelPeriod].filter(Boolean);
+  return known.length&&known.some(x=>x!==known[0])?'PERIOD MISMATCH':
+    known[0]||'PERIOD UNKNOWN';
+}
 function scoreText(v){
   if(typeof v==='string') return v||'—';
   if(!v||typeof v!=='object') return '—';
@@ -221,7 +237,12 @@ function makeSignalRow(row){
   tr.append(live);
 
   tr.append(td(row.market));
-  tr.append(td((row.selection||'')+(fmtLine(row)?' '+fmtLine(row):'')));
+  const choice=td(undefined,'signal-pick');
+  const lineText=fmtLine(row);
+  choice.append(node('strong','signal-choice',String(row.selection||'—')+(lineText?' '+lineText:'')));
+  const marketPeriod=signalPeriod(row);
+  choice.append(node('small','signal-market-period'+(marketPeriod.startsWith('PERIOD ')?' period-warning':''),marketPeriod));
+  tr.append(choice);
   tr.append(td(fmtOdds(row.odds),'odds-readonly'));
 
   const entry=document.createElement('td');
@@ -287,7 +308,7 @@ function signalChips(fixtureId){
   for(const s of signals){
     const chip=node('button','signal-chip'+(s.id===state.expandedSignalId?' active':''));
     chip.type='button';
-    chip.textContent=`${s.signalMinute??'—'}' · ${s.market} · ${s.selection}${fmtLine(s)?' '+fmtLine(s):''} ${fmtOdds(s.odds)}`;
+    chip.textContent=`${s.signalMinute??'—'}' · ${s.market} · ${signalPeriod(s)} · ${s.selection}${fmtLine(s)?' '+fmtLine(s):''} ${fmtOdds(s.odds)}`;
     chip.addEventListener('click',e=>{
       e.stopPropagation();
       state.expandedSignalId=s.id;
@@ -463,7 +484,7 @@ function eventFlowChart(detail,fixtureId){
     const pick=String(s.selection||'').toLowerCase();
     const side=pick.includes('home')?'home':pick.includes('away')?'away':null;
     const y=yFor(side?p[side]:(p.home+p.away)/2),x=xFor(minute);
-    const title=[minute+"'",s.market,s.selection,fmtLine(s),fmtOdds(s.odds),s.bookmaker].filter(Boolean).join(' · ');
+    const title=[minute+"'",s.market,signalPeriod(s),s.selection,fmtLine(s),fmtOdds(s.odds),s.bookmaker].filter(Boolean).join(' · ');
     const g=svgNode('g',{class:'member-flow-signal'});
     const tt=svgNode('title');tt.textContent=title;g.append(tt);
     g.append(svgNode('line',{x1:x,y1:pad.top,x2:x,y2:h-pad.bottom,class:'member-flow-signal-line'}));
@@ -645,7 +666,7 @@ function featuredHorizontal(detail,selected){
   }
   signal.append(
     node('span','','ENTRY'),
-    node('b','',`${selected.signalMinute??'—'}' · ${selected.market} · ${selected.selection}${fmtLine(selected)?' '+fmtLine(selected):''} · ${fmtOdds(selected.odds)} · ${selected.bookmaker} · ${entryContext.join(' · ')}`)
+    node('b','',`${selected.signalMinute??'—'}' · ${selected.market} · ${signalPeriod(selected)} · ${selected.selection}${fmtLine(selected)?' '+fmtLine(selected):''} · ${fmtOdds(selected.odds)} · ${selected.bookmaker} · ${entryContext.join(' · ')}`)
   );
 
   const stats=f?.statistics||selected.entryStats;

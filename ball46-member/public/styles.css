@@ -1843,3 +1843,8 @@ body.page-member:before{
   .member-flow-key{gap:5px 11px}
   .member-flow-event-readout{font-size:10px}
 }
+
+/* Signal market period: read the actual FT/HT field, never infer from entry minute. */
+.signal-row .signal-pick .signal-choice{display:block;font-weight:900;color:#edf7ff;white-space:nowrap}
+.signal-row .signal-pick .signal-market-period{display:block;margin-top:4px;font-size:9px;font-weight:900;line-height:1.4;letter-spacing:.04em;color:#8cbcff;white-space:nowrap}
+.signal-row .signal-pick .signal-market-period.period-warning{color:#f2bc71}
