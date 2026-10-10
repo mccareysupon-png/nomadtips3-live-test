@@ -67,5 +67,54 @@ jobs:
             const exists=Object.keys(j.runState||{});
             console.log('LIVE_CORNER_RUNSTATE',JSON.stringify({checkedAt:new Date().toISOString(),version:j.version,runKeysPresent:keys.filter(k=>Object.hasOwn(j.runState||{},k)),missingKeys:keys.filter(k=>!Object.hasOwn(j.runState||{},k)),corners:Object.fromEntries(keys.map(k=>[k,Object.hasOwn(j.runState||{},k)?j.runState[k]:null])),otherEnabled:Object.entries(j.runState||{}).filter(([k,v])=>!keys.includes(k)&&v===true).map(([k])=>k)}));
           }catch(e){console.log('LIVE_CORNER_RUNSTATE_ERROR',String(e?.message||e))}
+          // Read-only daily reconciliation: do not print match names or player data.
+          try{
+            const now=Date.now(), offset=7*3600000,local=new Date(now+offset);
+            let cycleStart=Date.UTC(local.getUTCFullYear(),local.getUTCMonth(),local.getUTCDate(),12)-offset;
+            if(now<cycleStart)cycleStart-=86400000;
+            const cycleEnd=cycleStart+86400000, ids=new Map();
+            let cursor=null,hasMore=true,pages=0,totalFetched=0,lastMeta=null;
+            while(hasMore&&pages<30){
+              const u=new URL('https://www.ball46.com/api/engine/statistics');
+              u.searchParams.set('paged','1');if(cursor)u.searchParams.set('cursor',cursor);
+              const response=await fetch(u,{cache:'no-store',signal:AbortSignal.timeout(20000)});
+              const j=await response.json();
+              if(!response.ok||j?.ok===false)throw Error('STATISTICS_FAILED '+response.status);
+              pages++;lastMeta={hasMore:j.hasMore,nextCursor:!!j.nextCursor,source:j.statisticsSource,
+               count:Array.isArray(j.rows)?j.rows.length:-1};const rows=Array.isArray(j.rows)?j.rows:[];
+              totalFetched+=rows.length;let oldest=Infinity;
+              for(const row of rows){
+                const created=Number(row.createdAt);if(!Number.isFinite(created))continue;
+                oldest=Math.min(oldest,created);
+                if(created>=cycleStart&&created<cycleEnd&&row.id&&!ids.has(String(row.id)))ids.set(String(row.id),row);
+              }
+              hasMore=j.hasMore===true&&Boolean(j.nextCursor);
+              cursor=j.nextCursor||null;
+              if(!rows.length||oldest<cycleStart)break;
+            }
+            const counts={},status={},category={},examples={};let pendingCalc=0,strictPending=0,unresolved=0,voids=0;
+            for(const row of ids.values()){
+              const result=String(row.result||'PENDING').toUpperCase();
+              const st=String(row.status||'PENDING').toUpperCase();
+              counts[result]=(counts[result]||0)+1;status[st]=(status[st]||0)+1;
+              const key=String(row.market||row.providerMarket||'').toLowerCase();
+              const cat=key.includes('corner')?'CORNERS':key.includes('card')?'CARDS':key.includes('btts')?'BTTS':key.includes('1x2')?'1X2':/(^|_)(ah|asian)(_|$)/.test(key)||key.includes('handicap')?'AH':/(over|under|goalline|goal_line|total)/.test(key)?'O/U':'OTHER';
+              const box=category[cat]||(category[cat]={total:0,pending:0,strictPending:0});
+              box.total++;
+              const terminal=['WIN','LOSS','PUSH','HALF_WIN','HALF_LOSS'];
+              const memberPending=!terminal.includes(result);
+              if(memberPending){pendingCalc++;box.pending++}
+              if(st==='PENDING'&&result==='PENDING'){strictPending++;box.strictPending++}
+              if(st==='UNRESOLVED')unresolved++;
+              if(result==='VOID')voids++;
+            }
+            console.log('LIVE_DAILY_PENDING_AUDIT',JSON.stringify({
+              now:new Date(now).toISOString(),cycleStart:new Date(cycleStart).toISOString(),
+              cycleEnd:new Date(cycleEnd).toISOString(),total:ids.size,totalFetched,pages,lastMeta,
+              byResult:counts,byStatus:status,byCategory:category,
+              currentMemberPendingCalc:pendingCalc,strictPending,unresolved,voids,scanComplete:!hasMore
+            }));
+          }catch(e){console.log('LIVE_DAILY_PENDING_AUDIT_ERROR',String(e?.message||e))}
+
           console.log('READ_ONLY_DONE_NO_UPLOAD_NO_DEPLOY');
           NODE
