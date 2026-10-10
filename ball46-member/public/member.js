@@ -17,6 +17,7 @@ const summary = qs('#dailySummary');
 const rowsEl = qs('#signalRows');
 const pagerEl = qs('#signalPagination');
 const empty = qs('#emptyState');
+const cornerAuditEl = qs('#cornerMarketAudit');
 
 function node(tag,cls,text){
   const el=document.createElement(tag);
@@ -358,7 +359,15 @@ function makeSignalRow(row){
   if(evidence) live.append(node('small','market-evidence '+(row.state==='LIVE'?'live-evidence':row.state==='FINISHED'?'ft-evidence':''),evidence));
   tr.append(live);
 
-  tr.append(td(row.market));
+  if(row.market==='CORNERS'){
+    const cell=td(undefined,'corner-market-cell');
+    const detail=row.cornerMarket||{type:'UNVERIFIED',label:'UNVERIFIED',reason:'No source label available'};
+    cell.append(node('strong','','CORNERS'));
+    const tag=node('small','corner-market-type '+String(detail.type||'UNVERIFIED').toLowerCase(),detail.label||'UNVERIFIED');
+    tag.title=[detail.reason,detail.source?'Source: '+detail.source:''].filter(Boolean).join(' · ');
+    cell.title=tag.title;
+    cell.append(tag);tr.append(cell);
+  }else tr.append(td(row.market));
   const choice=td(undefined,'signal-pick');
   const lineText=fmtLine(row);
   choice.append(node('strong','signal-choice',String(row.selection||'—')+(lineText?' '+lineText:'')));
@@ -798,7 +807,7 @@ function featuredHorizontal(detail,selected){
   }
   signal.append(
     node('span','','ENTRY'),
-    node('b','',`${selected.signalMinute??'—'}' · ${selected.market} · ${signalPeriod(selected)} · ${selected.selection}${fmtLine(selected)?' '+fmtLine(selected):''} · ${fmtOdds(selected.odds)} · ${selected.bookmaker} · ${entryContext.join(' · ')}`)
+    node('b','',`${selected.signalMinute??'—'}' · ${selected.market==='CORNERS'?selected.market+' / '+(selected.cornerMarket?.label||'UNVERIFIED'):selected.market} · ${signalPeriod(selected)} · ${selected.selection}${fmtLine(selected)?' '+fmtLine(selected):''} · ${fmtOdds(selected.odds)} · ${selected.bookmaker} · ${entryContext.join(' · ')}`)
   );
 
   const stats=f?.statistics||selected.entryStats;
@@ -946,7 +955,27 @@ function renderRows(){
   if(detailInserted && state.expandedFixtureId) ensureDetail(state.expandedFixtureId);
 }
 
-function render(){renderTabs();renderSummary();renderRows();renderPagination();}
+function renderCornerAudit(){
+  if(!cornerAuditEl)return;
+  cornerAuditEl.hidden=state.market!=='CORNERS';
+  if(cornerAuditEl.hidden)return;
+  cornerAuditEl.replaceChildren();
+  cornerAuditEl.append(node('strong','','CORNER MARKETS · SOURCE CHECK'));
+  const counts={ASIAN_TOTAL:0,STANDARD_TOTAL:0,TOTAL_OU:0,CORNER_HANDICAP:0,
+    TEAM_CORNERS:0,CONFLICT:0,UNVERIFIED:0};
+  for(const s of state.payload?.signals||[]){
+    if(s.market!=='CORNERS')continue;
+    const type=s.cornerMarket?.type||'UNVERIFIED';
+    counts[Object.hasOwn(counts,type)?type:'UNVERIFIED']++;
+  }
+  for(const [k,label] of [['ASIAN_TOTAL','ASIAN TOTAL'],['STANDARD_TOTAL','STANDARD'],
+    ['TOTAL_OU','TOTAL O/U'],['CORNER_HANDICAP','HANDICAP'],
+    ['TEAM_CORNERS','TEAM'],['CONFLICT','CONFLICT'],['UNVERIFIED','UNVERIFIED']]){
+    if(counts[k])cornerAuditEl.append(node('span','corner-count '+k.toLowerCase(),label+' '+counts[k]));
+  }
+  cornerAuditEl.append(node('small','','Source-based · never infer Asian from decimal lines'));
+}
+function render(){renderTabs();renderSummary();renderCornerAudit();renderRows();renderPagination();}
 
 async function refreshExpandedDetail(){
   const fixtureId=state.expandedFixtureId;

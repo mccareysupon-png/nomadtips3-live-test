@@ -2031,3 +2031,20 @@ body.page-member:before{
       inset 0 -2px 0 rgba(100,246,165,.8);
   }
 }
+
+/* Source-provenance labels for Corners; no change to referee or prices. */
+.corner-market-audit[hidden]{display:none!important}
+.corner-market-audit{display:flex;align-items:center;flex-wrap:wrap;gap:7px 11px;
+  padding:10px 13px;background:rgba(9,26,35,.94);border-bottom:1px solid rgba(140,184,210,.17)}
+.corner-market-audit strong{font:850 10px Manrope,Inter,system-ui,sans-serif;color:#d7eafb}
+.corner-market-audit small{font-size:9px;color:#95a9b9}
+.corner-count{font:800 10px Manrope,Inter,system-ui,sans-serif}
+.corner-count.asian_total,.signal-row .corner-market-type.asian_total{color:#71f4aa}
+.corner-count.standard_total,.signal-row .corner-market-type.standard_total{color:#8acfff}
+.corner-count.total_ou,.signal-row .corner-market-type.total_ou{color:#bdd9eb}
+.corner-count.unverified,.corner-count.conflict,.signal-row .corner-market-type.unverified,.signal-row .corner-market-type.conflict{color:#f1c077}
+.corner-count.corner_handicap,.corner-count.team_corners,.signal-row .corner-market-type.corner_handicap,.signal-row .corner-market-type.team_corners{color:#eeb1af}
+.signal-row .corner-market-cell strong{display:block;font-size:10px}
+.signal-row .corner-market-cell .corner-market-type{display:block;margin-top:5px;max-width:100%;
+ font:800 8px/1.4 Manrope,Inter,system-ui,sans-serif;letter-spacing:-.018em;
+ overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
