@@ -1,0 +1,42 @@
+name: Recover Ball46 finished fixture pilot
+
+on:
+  push:
+    branches: [audit/ball46-live-engine-corners-ou-20261010]
+    paths: ['.github/workflows/recover-ball46-finals-pilot-20261010.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  settlement-pilot:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
+    steps:
+      - name: Confirm real final and settle one pending signal via existing bridge
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          const key=process.env.FIVEDOLLAR_API_KEY;
+          if(!key||key.length<16)throw Error('RECOVERY_SECRET_UNAVAILABLE');
+          const fixtureId='202465949';
+          const from=await fetch('https://api.5dollarfootballapi.com/v1/fixtures/'+fixtureId+'?include=events,stats',{headers:{Authorization:'Bearer '+key,Accept:'application/json'},cache:'no-store',signal:AbortSignal.timeout(20000)});
+          const payload=await from.json();
+          const d=payload?.data;
+          if(!from.ok||!d||String(d.id)!==fixtureId||String(d.status).toLowerCase()!=='finished')throw Error('PROVIDER_FINAL_NOT_VERIFIED:'+from.status);
+          const h=Number(d.goals?.home),a=Number(d.goals?.away);
+          if(!Number.isInteger(h)||!Number.isInteger(a)||h<0||a<0)throw Error('FINAL_SCORE_MISSING');
+          if(h+a<=1)throw Error('UNDER_LOSS_PROOF_FAILED');
+          console.log('RECOVERY_PILOT_PROVIDER_VERIFIED',JSON.stringify({fixtureId,status:d.status,goals:[h,a],corners:d.corners??null}));
+          const res=await fetch('https://www.ball46.com/api/engine/reconcile-final',{method:'POST',headers:{Accept:'application/json','Content-Type':'application/json','x-settlement-token':key},body:JSON.stringify(payload),signal:AbortSignal.timeout(35000)});
+          const result=await res.json().catch(()=>({}));
+          console.log('RECOVERY_PILOT_BRIDGE',JSON.stringify({http:res.status,ok:result.ok,error:result.error??null,fixtureId:result.fixtureId??null,finished:result.finished??null,settled:result.settled??null,rows:(result.rows||[]).map(x=>({id:x.id,market:x.market,selection:x.selection,line:x.line,result:x.result,finalScore:x.finalScore})).slice(0,6)}));
+          if(!res.ok||result.ok!==true)throw Error('BRIDGE_AUTH_OR_SETTLEMENT_FAILED_'+res.status);
+          if((result.rows||[]).some(x=>x.market==='ft_under' && Number(x.line)===1.25 && x.result!=='LOSS'))throw Error('PILOT_UNDER_SETTLEMENT_MISMATCH');
+          if(Number(result.settled)<1)throw Error('PILOT_NO_SIGNALS_SETTLED');
+          console.log('RECOVERY_PILOT_PASS');
+          NODE
