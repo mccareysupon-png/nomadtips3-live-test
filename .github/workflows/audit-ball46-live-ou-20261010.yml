@@ -123,7 +123,7 @@ jobs:
             for(const name of ['pricePass','priceFor','pickBestPriced']){
               const idx=functionLines.findIndex(v=>new RegExp('function\\s+'+name+'\\s*\\(').test(v));
               console.log('ACTIVE_OU_GUARD_FUNCTION_'+name,JSON.stringify({
-                found:idx>=0,line:idx+1,source:idx>=0?functionLines.slice(idx,idx+14).join('\n').slice(0,4700):''
+                found:idx>=0,line:idx+1,source:idx>=0?functionLines.slice(idx,idx+(name==='pricePass'?30:14)).join('\n').slice(0,6900):''
               }));
             }
             const spot=functionLines.findIndex(x=>/ft_under\s*:\s*\{/.test(x));
