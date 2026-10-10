@@ -1,0 +1,83 @@
+name: Stage Member Snapshot KV
+
+on:
+  push:
+    branches: [member/snapshot-readonly-20261011]
+    paths:
+      - '.github/workflows/stage-ball46-member-snapshot-20261011.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stage-ball46-member-snapshot
+  cancel-in-progress: false
+
+jobs:
+  stage:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify code before any Cloudflare change
+        run: |
+          set -euo pipefail
+          node --check ball46-member/src/worker.js
+          node --check ball46-member/src/member-snapshot.js
+          node --test ball46-member/tests/*.test.mjs
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+      - name: Create dedicated staging-only Cloudflare KV namespace
+        id: namespace
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/storage/kv/namespaces"
+          curl --fail-with-body -sS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base?per_page=100" >/tmp/kvs.json
+          jq -e '.success == true' /tmp/kvs.json >/dev/null
+          id="$(jq -r '.result[] | select(.title == "BALL46_MEMBER_DAILY_SNAPSHOT_STAGING") | .id' /tmp/kvs.json | head -n1)"
+          if [ -z "$id" ]; then
+            curl --fail-with-body -sS -X POST -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'Content-Type: application/json' --data '{"title":"BALL46_MEMBER_DAILY_SNAPSHOT_STAGING"}' "$base" >/tmp/newkv.json
+            jq -e '.success == true' /tmp/newkv.json >/dev/null
+            id="$(jq -r '.result.id' /tmp/newkv.json)"
+          fi
+          test -n "$id" && test "$id" != null
+          echo "kv_id=$id" >> "$GITHUB_OUTPUT"
+          echo "Staging KV namespace ready"
+      - name: Prepare uniquely named staging worker and scheduled publisher
+        env:
+          SNAPSHOT_KV_ID: ${{ steps.namespace.outputs.kv_id }}
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const path='ball46-member/wrangler.jsonc';
+          const config=JSON.parse(fs.readFileSync(path,'utf8'));
+          config.name='ball46-member-snapshot-staging';
+          config.vars={...config.vars,APP_STAGE:'staging',MEMBER_CHECKOUT_ENABLED:'false'};
+          config.kv_namespaces=[{binding:'MEMBER_DAILY_SNAPSHOTS',id:process.env.SNAPSHOT_KV_ID}];
+          config.triggers={crons:['*/10 * * * *']};
+          fs.writeFileSync(path,JSON.stringify(config,null,2)+'\n');
+          NODE
+      - name: Dry-run staging deploy
+        working-directory: ball46-member
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.jsonc
+      - name: Deploy staging worker only, never Ball46 Main or Member Production
+        working-directory: ball46-member
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.jsonc
+      - name: Confirm staging endpoints are gated
+        run: |
+          set -euo pipefail
+          base="https://ball46-member-snapshot-staging.mccarey-supon.workers.dev"
+          curl -fsS --max-time 20 "$base/api/health" | jq -e '.ok == true and .stage == "staging"'
+          for path in '/api/member/daily' '/api/member/match?fixtureId=123'; do
+            code="$(curl -sS --max-time 20 -o /tmp/membergate.json -w '%{http_code}' "$base$path")"
+            test "$code" = 401
+            jq -e '.error == "MEMBERSHIP_AUTH_REQUIRED"' /tmp/membergate.json
+          done
