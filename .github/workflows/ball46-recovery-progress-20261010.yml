@@ -1,0 +1,42 @@
+name: Ball46 Recovery Progress Verification
+on:
+  push:
+    branches: [audit/ball46-live-engine-corners-ou-20261010]
+    paths: ['.github/workflows/ball46-recovery-progress-20261010.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - name: Verify ledger settlement totals (READ ONLY)
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          const base='https://www.ball46.com/api/engine';
+          const get=async p=>{
+            const response=await fetch(base+p,{cache:'no-store',signal:AbortSignal.timeout(25000)});
+            if(!response.ok)throw Error('HTTP_'+response.status+'_'+p);
+            return response.json();
+          };
+          const [ledger,stats,engine]=await Promise.all([
+            get('/ledger-health?_='+Date.now()),
+            get('/statistics?paged=1&_='+Date.now()),
+            get('/health?_='+Date.now())
+          ]);
+          const t=Date.now(),tz=7*3600e3,local=new Date(t+tz);
+          let start=Date.UTC(local.getUTCFullYear(),local.getUTCMonth(),local.getUTCDate(),12)-tz;
+          if(t<start)start-=86400000;
+          const rows=(stats.rows||[]).filter(x=>Number(x.createdAt)>=start);
+          const byStatus={};
+          const byResult={};
+          for(const x of rows){
+            const st=String(x.status||'UNKNOWN').toUpperCase(),rs=String(x.result||'UNKNOWN').toUpperCase();
+            byStatus[st]=(byStatus[st]||0)+1;
+            byResult[rs]=(byResult[rs]||0)+1;
+          }
+          console.log('RECOVERY_PROGRESS',JSON.stringify({time:new Date().toISOString(),ledgerTotal:ledger.ledgerTotal,pendingGlobal:ledger.pending,settledGlobal:ledger.settledTotal,daySampleCount:rows.length,dayByStatus:byStatus,dayByResult:byResult,engineOk:engine.ok,engineLastScan:new Date(engine.finishedAt).toISOString(),enginePending:engine.signalCount}));
+          NODE
