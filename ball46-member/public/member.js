@@ -26,6 +26,48 @@ function fmtPnl(v){
   const n=Number(v||0);
   return (n>0?'+':'')+n.toFixed(2)+'u';
 }
+// The 60-second alert is based on the immutable Engine signal timestamp,
+// never the API refresh time or the moment the member page was opened.
+const NEW_SIGNAL_WINDOW_MS = 60_000;
+function freshSignalRemainingSeconds(createdAt,nowMs=Date.now()){
+  const issued=Number(createdAt);
+  if(!Number.isFinite(issued)||issued<1e12||!Number.isFinite(nowMs))return 0;
+  const remaining=issued+NEW_SIGNAL_WINDOW_MS-nowMs;
+  return remaining>0?Math.ceil(remaining/1000):0;
+}
+function newestSignalId(){
+  const list=state.payload?.signals;
+  if(!Array.isArray(list)||!list.length)return null;
+  const newest=list.reduce((best,row)=>Number(row?.createdAt)>Number(best?.createdAt)?row:best);
+  return String(newest?.id??'');
+}
+function freshNewestSignal(row){
+  return row&&String(row.id)===newestSignalId()&&freshSignalRemainingSeconds(row.createdAt)>0;
+}
+function freshClockText(seconds){
+  const s=Math.max(0,Math.min(60,Math.floor(Number(seconds)||0)));
+  return '00:'+String(s).padStart(2,'0').replace(/^00:60$/,'01:00');
+}
+function makeFreshSignalTag(row){
+  const tag=node('div','member-new-signal');
+  tag.setAttribute('aria-label','New signal, remaining notice time');
+  tag.append(node('strong','member-new-label','NEW SIGNAL'),node('span','member-new-clock',freshClockText(freshSignalRemainingSeconds(row.createdAt))));
+  return tag;
+}
+function refreshFreshSignalClock(){
+  const id=newestSignalId();
+  const newest=(state.payload?.signals||[]).find(row=>String(row?.id)===id);
+  const remaining=freshSignalRemainingSeconds(newest?.createdAt);
+  document.querySelectorAll('.signal-row.is-fresh-signal').forEach(tr=>{
+    if(!remaining||tr.dataset.signalId!==id){
+      tr.classList.remove('is-fresh-signal');
+      tr.querySelector('.member-new-signal')?.remove();
+      return;
+    }
+    const clock=tr.querySelector('.member-new-clock');
+    if(clock)clock.textContent=freshClockText(remaining);
+  });
+}
 function fmtOdds(v){
   const n=Number(v);
   return Number.isFinite(n)?'@'+n.toFixed(2):'—';
@@ -215,9 +257,14 @@ function makeSignalRow(row){
   tr.setAttribute('role','button');
   tr.setAttribute('aria-expanded',state.expandedSignalId===row.id?'true':'false');
   tr.title='Open Featured Match and Event Flow';
+  if(freshNewestSignal(row)){
+    tr.classList.add('is-fresh-signal');
+    tr.dataset.signalId=String(row.id);
+  }
 
   const time=td(row.signalTime,'signal-time');
   time.append(node('span','expand-glyph',state.expandedSignalId===row.id?'⌃':'⌄'));
+  if(tr.classList.contains('is-fresh-signal'))time.append(makeFreshSignalTag(row));
   tr.append(time);
 
   const match=node('td','match');
@@ -887,6 +934,7 @@ async function boot(){
   if(livePill) livePill.textContent='TODAY · '+daily.signalCount+' SIGNALS';
   state.payload=daily;
   render();
+  setInterval(refreshFreshSignalClock,1000);
   setInterval(refreshLiveMirror,LIVE_REFRESH_MS);
   document.addEventListener('visibilitychange',()=>{
     if(!document.hidden) refreshLiveMirror();
