@@ -1,7 +1,9 @@
 const MARKET_ORDER = ['ALL','AH','1X2','O/U','CORNERS','BTTS','CARDS','OTHER'];
 const LIVE_REFRESH_MS = 15000;
+const SIGNALS_PER_PAGE = 20;
 const state = {
   market:'ALL',
+  page:1,
   payload:null,
   expandedFixtureId:null,
   expandedSignalId:null,
@@ -13,6 +15,7 @@ const qs = s => document.querySelector(s);
 const tabs = qs('#marketTabs');
 const summary = qs('#dailySummary');
 const rowsEl = qs('#signalRows');
+const pagerEl = qs('#signalPagination');
 const empty = qs('#emptyState');
 
 function node(tag,cls,text){
@@ -205,6 +208,7 @@ function renderTabs(){
     btn.append(top,bottom);
     btn.addEventListener('click',()=>{
       state.market=market;
+      state.page=1;
       state.expandedFixtureId=null;
       state.expandedSignalId=null;
       render();
@@ -246,6 +250,63 @@ function filteredRows(){
   });
 }
 
+// Show twenty signal cards at a time, without changing the complete daily feed.
+function paginateSignals(rows,page,size=SIGNALS_PER_PAGE){
+  const total=Array.isArray(rows)?rows.length:0;
+  const pageCount=Math.max(1,Math.ceil(total/size));
+  const safePage=Math.min(pageCount,Math.max(1,Math.floor(Number(page)||1)));
+  const start=(safePage-1)*size;
+  return {page:safePage,pageCount,total,from:total?start+1:0,to:Math.min(total,start+size),
+    items:total?rows.slice(start,start+size):[]};
+}
+function pageNumbers(current,total){
+  if(total<=5)return Array.from({length:total},(_,i)=>i+1);
+  const choices=[...new Set([1,total,current,current-1,current+1])].filter(n=>n>=1&&n<=total).sort((a,b)=>a-b);
+  const slots=[];
+  for(const n of choices){
+    if(slots.length&&n-slots[slots.length-1]>1)slots.push('…');
+    slots.push(n);
+  }
+  return slots;
+}
+function changeSignalPage(next){
+  const old=paginateSignals(filteredRows(),state.page);
+  const desired=paginateSignals(filteredRows(),next);
+  if(old.page===desired.page)return;
+  state.page=desired.page;
+  state.expandedFixtureId=null;
+  state.expandedSignalId=null;
+  renderRows();
+  renderPagination();
+  qs('#signalBoard')?.scrollIntoView({behavior:'smooth',block:'start'});
+}
+function renderPagination(){
+  if(!pagerEl)return;
+  const data=paginateSignals(filteredRows(),state.page);
+  state.page=data.page;
+  pagerEl.replaceChildren();
+  pagerEl.hidden=data.total<=SIGNALS_PER_PAGE;
+  if(pagerEl.hidden)return;
+  const meta=node('div','member-pagination-meta');
+  meta.append(node('strong','','SHOWING '+data.from+'–'+data.to+' OF '+data.total));
+  meta.append(node('span','','20 SIGNALS PER PAGE · NEWEST FIRST'));
+  const actions=node('div','member-pagination-actions');
+  function button(label,target,disabled=false,active=false){
+    const b=node('button','member-page-button'+(active?' active':''),label);
+    b.type='button';b.disabled=disabled;
+    if(active)b.setAttribute('aria-current','page');
+    b.setAttribute('aria-label',label==='PREV'?'Previous signal page':label==='NEXT'?'Next signal page':'Signal page '+label);
+    b.addEventListener('click',()=>changeSignalPage(target));
+    return b;
+  }
+  actions.append(button('PREV',data.page-1,data.page===1));
+  for(const n of pageNumbers(data.page,data.pageCount)){
+    if(n==='…')actions.append(node('span','member-page-ellipsis','…'));
+    else actions.append(button(String(n),n,false,n===data.page));
+  }
+  actions.append(button('NEXT',data.page+1,data.page===data.pageCount));
+  pagerEl.append(meta,actions);
+}
 function td(text,cls){
   const cell=node('td',cls||'');
   cell.textContent=text??'—';
@@ -844,9 +905,16 @@ async function ensureDetail(fixtureId){
 }
 
 function renderRows(){
-  const rows=filteredRows();
+  const data=paginateSignals(filteredRows(),state.page);
+  state.page=data.page;
+  const rows=data.items;
+  // An update can move the previously expanded row to another page.
+  if(state.expandedSignalId&&!rows.some(row=>row.id===state.expandedSignalId)){
+    state.expandedFixtureId=null;
+    state.expandedSignalId=null;
+  }
   rowsEl.replaceChildren();
-  empty.hidden=rows.length>0;
+  empty.hidden=data.total>0;
   let detailInserted=false;
 
   for(const row of rows){
@@ -868,7 +936,7 @@ function renderRows(){
   if(detailInserted && state.expandedFixtureId) ensureDetail(state.expandedFixtureId);
 }
 
-function render(){renderTabs();renderSummary();renderRows();}
+function render(){renderTabs();renderSummary();renderRows();renderPagination();}
 
 async function refreshExpandedDetail(){
   const fixtureId=state.expandedFixtureId;

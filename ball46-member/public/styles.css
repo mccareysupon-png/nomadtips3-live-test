@@ -1913,3 +1913,33 @@ body.page-member:before{
   .signal-row.is-fresh-signal td:first-child::before,
   .signal-row.is-fresh-signal td:last-child::after{animation:none;border-top-color:#4af39a;border-bottom-color:#4af39a}
 }
+
+/* Compact client-side pagination beneath the Daily Signal Center. */
+.member-pagination[hidden]{display:none!important}
+.member-pagination{
+  display:flex;align-items:center;justify-content:space-between;gap:14px;
+  margin-top:12px;padding:12px 14px;min-width:0;
+  border:1px solid rgba(121,175,209,.16);border-radius:12px;
+  background:rgba(9,24,37,.93);
+}
+.member-pagination-meta{display:flex;flex-direction:column;gap:4px;white-space:nowrap}
+.member-pagination-meta strong{color:#e4f4ff;font-size:11px;letter-spacing:.03em}
+.member-pagination-meta span{color:#7994a8;font-size:9px;letter-spacing:.05em}
+.member-pagination-actions{display:flex;align-items:center;gap:5px;flex-wrap:wrap;justify-content:flex-end}
+.member-page-button{
+  min-height:33px;min-width:33px;padding:5px 9px;border-radius:7px;
+  border:1px solid rgba(133,180,214,.2);background:rgba(19,45,63,.68);
+  color:#b8d3e4;font:800 11px/1 Manrope,Inter,system-ui,sans-serif;
+  cursor:pointer;font-variant-numeric:tabular-nums;
+}
+.member-page-button:hover:not(:disabled){border-color:#49adf5;color:#fff;background:rgba(46,122,178,.18)}
+.member-page-button.active{border-color:rgba(57,168,255,.55);background:rgba(57,168,255,.21);color:#e6f8ff}
+.member-page-button:disabled{opacity:.36;cursor:default}
+.member-page-button:focus-visible{outline:2px solid #66c6ff;outline-offset:2px}
+.member-page-ellipsis{padding:0 2px;color:#8aa6b7}
+@media(max-width:680px){
+  .member-pagination{flex-direction:column;align-items:stretch;padding:11px;gap:10px}
+  .member-pagination-meta{text-align:center}
+  .member-pagination-actions{justify-content:center;gap:4px}
+  .member-page-button{min-height:36px;min-width:36px;padding:6px 9px}
+}

@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css?v=20261010-member-alert2">
+  <link rel="stylesheet" href="/styles.css?v=20261010-member-pagination1">
 </head>
 <body class="page-member">
 <header class="topbar">
@@ -48,7 +48,7 @@
 
   <section class="summary" id="dailySummary" aria-label="Daily performance"></section>
 
-  <section class="card table-wrap">
+  <section class="card table-wrap" id="signalBoard">
     <table class="signal-table">
       <colgroup>
         <col class="col-detected">
@@ -81,9 +81,10 @@
     <div id="emptyState" class="empty" hidden>No signals match this view.</div>
     <p class="signal-price-note"><strong>PRICE NOTICE</strong> · Odds shown are those recorded when the signal was detected. Live odds may change or become unavailable at any time. The displayed odds are not guaranteed. Please verify the current odds with the bookmaker before making any decision. <span>The 60-second NEW SIGNAL countdown is an alert only and does not guarantee price availability.</span></p>
   </section>
+  <nav id="signalPagination" class="card member-pagination" aria-label="Signal pages" hidden></nav>
 </main>
 <footer class="footer shell">Ball46 Member · Daily board only · historical statistics remain on the main Ball46 site</footer>
 <script src="/event-flow-icons.js" defer></script>
-<script src="/member.js?v=20261010-member-alert2" defer></script>
+<script src="/member.js?v=20261010-member-pagination1" defer></script>
 </body>
 </html>
