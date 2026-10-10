@@ -2048,3 +2048,34 @@ body.page-member:before{
 .signal-row .corner-market-cell .corner-market-type{display:block;margin-top:5px;max-width:100%;
  font:800 8px/1.4 Manrope,Inter,system-ui,sans-serif;letter-spacing:-.018em;
  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* Entry condition provenance on the expanded Member match card. */
+.corner-conditions-card{margin:12px 0 0;padding:12px;border:1px solid rgba(125,190,215,.20);
+ border-radius:10px;background:rgba(4,18,28,.78);color:#eaf6fc;min-width:0;width:100%}
+.corner-conditions-card.is-handicap{border-color:rgba(166,158,246,.25);background:rgba(16,15,35,.53)}
+.corner-conditions-header{display:flex;flex-wrap:wrap;gap:7px 12px;align-items:center;
+ justify-content:space-between;margin-bottom:10px}
+.corner-conditions-header strong{font:850 10px Manrope,Inter,system-ui,sans-serif;
+ letter-spacing:.05em;color:#b4dfd6}
+.corner-contract-label{color:#75efb0;font-size:10px;font-weight:900}
+.corner-conditions-card.is-handicap .corner-contract-label{color:#c5afff}
+.corner-conditions-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.corner-conditions-item{min-width:0;background:rgba(255,255,255,.025);
+ border:1px solid rgba(178,212,231,.07);border-radius:7px;padding:8px 9px}
+.corner-conditions-item small{display:block;margin-bottom:4px;font-size:9px;
+ color:#8ba7b9;font-weight:800;letter-spacing:.02em}
+.corner-conditions-item b{display:block;overflow-wrap:anywhere;color:#edf6ff;
+ font:850 11px/1.3 Manrope,Inter,system-ui,sans-serif}
+.corner-conditions-notice,.corner-conditions-source-note,.corner-conditions-snapshot-note{
+ margin:8px 0 0;font-size:10px;line-height:1.5;color:#9dbdcc}
+.corner-conditions-notice{color:#ecc58c}
+.corner-conditions-snapshot-note{font-size:9px;color:#8a9fae}
+.signal-row .corner-market-cell strong{overflow-wrap:anywhere}
+@media(max-width:700px){
+ .corner-conditions-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .corner-conditions-card{padding:9px}
+}
+@media(max-width:420px){
+ .corner-conditions-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .corner-conditions-item{padding:7px}
+}

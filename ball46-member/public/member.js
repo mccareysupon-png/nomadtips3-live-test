@@ -96,6 +96,67 @@ function fmtLine(row){
   const v=Number.isInteger(n)?String(n):String(Math.round(n*1000)/1000);
   return row.market==='AH'&&n>0?'+'+v:v;
 }
+function cornerRuleName(row){
+  if(row?.market!=='CORNERS')return String(row?.market||'—');
+  const rule=row.cornerRule;
+  if(rule?.family==='CORNER_HANDICAP')return 'CORNER AH';
+  if(rule?.family==='TOTAL_OU')return 'CORNER TOTAL';
+  return 'CORNERS / UNVERIFIED';
+}
+function cornerRuleCard(row){
+  const rule=row.cornerRule||{key:row.sourceMarket,family:'UNVERIFIED',title:'CORNERS · RULE UNVERIFIED',scope:'Missing source rule metadata'};
+  const market=row.cornerMarket||{type:'UNVERIFIED',label:'UNVERIFIED',reason:'Provider market category was not recorded'};
+  const isTotal=rule.family==='TOTAL_OU';
+  const isHandicap=rule.family==='CORNER_HANDICAP';
+  const section=node('section','corner-conditions-card '+(isHandicap?'is-handicap':isTotal?'is-total':'is-unknown'));
+  const header=node('header','corner-conditions-header');
+  header.append(node('strong','','CORNER MARKET · SIGNAL CONDITIONS'));
+  header.append(node('span','corner-contract-label',rule.title||'CORNERS · UNVERIFIED'));
+  section.append(header);
+  const selection=String(row.selection||'—').toUpperCase();
+  const line=fmtLine(row)||'—';
+  const betSide=isHandicap?(selection==='HOME'?row.home:selection==='AWAY'?row.away:'SIDE UNVERIFIED'):'HOME + AWAY';
+  const entry=row.entryCorners;
+  const hasEntry=entry?.home!=null&&entry?.away!=null;
+  const cornersAtEntry=hasEntry?entry.home+' - '+entry.away:'—';
+  const cornerTotal=hasEntry?pairTotal(entry):null;
+  const period=signalPeriod(row);
+  const data=[
+    ['ENGINE RULE',rule.key||'UNRECORDED'],
+    ['BET CATEGORY',market.label||'UNVERIFIED'],
+    ['PERIOD',period],
+    ['CONDITION',rule.scope||'UNVERIFIED'],
+    [isHandicap?'TEAM / PICK':'PICK',isHandicap?betSide+' · '+selection:selection],
+    ['ENTRY LINE',line],
+    ['ENTRY ODDS',fmtOdds(row.odds)],
+    ['BOOKMAKER',row.bookmaker||'—'],
+    ['PROVIDER MARKET',row.providerMarket||'UNRECORDED'],
+    ['CONFIGURED ROUTE',rule.marketRoute||'UNVERIFIED'],
+    ['PRICE STAGE',row.priceStage||'UNRECORDED'],
+    ['PRICE ORIGIN',row.priceSource||'UNRECORDED'],
+    ['SIGNAL MINUTE',row.signalMinute==null?'—':row.signalMinute+"'"],
+    ['CORNERS AT ENTRY',cornersAtEntry],
+    ['COMBINED AT ENTRY',cornerTotal==null?'—':String(cornerTotal)]
+  ];
+  if(isTotal&&row.lineGap!=null)data.push(['RECORDED LINE GAP',String(row.lineGap)]);
+  const grid=node('div','corner-conditions-grid');
+  for(const [label,value] of data){
+    const item=node('div','corner-conditions-item');
+    item.append(node('small','',label),node('b','',String(value)));
+    grid.append(item);
+  }
+  section.append(grid);
+  const notice=isHandicap
+    ? 'CORNER AH = team versus team corner difference. Never compare this price with Asian TOTAL Corners.'
+    : isTotal
+      ? 'TOTAL CORNERS = both teams combined. Provider market/route do NOT prove the Bet365 menu is Asian Total or Standard Total.'
+      : 'Source market rule cannot be confirmed. Do not infer market category from .5 or .75 lines.';
+  section.append(node('p','corner-conditions-notice',notice));
+  if(market.reason)section.append(node('p','corner-conditions-source-note',market.reason));
+  section.append(node('p','corner-conditions-snapshot-note','These are recorded signal-entry conditions, not a live bookmaker quote. Configured route is a rule alias list, not proof of the exact upstream field used.'));
+  return section;
+}
+
 function signalPeriod(row){
   // The signal's market period is not the current match half/minute.
   const declared=String(row?.period??'').trim().toUpperCase().replace(/[\s-]+/g,'_');
@@ -362,10 +423,11 @@ function makeSignalRow(row){
   if(row.market==='CORNERS'){
     const cell=td(undefined,'corner-market-cell');
     const detail=row.cornerMarket||{type:'UNVERIFIED',label:'UNVERIFIED',reason:'No source label available'};
-    cell.append(node('strong','','CORNERS'));
+    cell.append(node('strong','',cornerRuleName(row)));
+    cell.title='Rule: '+String(row.cornerRule?.key||row.sourceMarket||'UNVERIFIED');
     const tag=node('small','corner-market-type '+String(detail.type||'UNVERIFIED').toLowerCase(),detail.label||'UNVERIFIED');
     tag.title=[detail.reason,detail.source?'Source: '+detail.source:''].filter(Boolean).join(' · ');
-    cell.title=tag.title;
+    cell.title=[cell.title,tag.title].filter(Boolean).join(' · ');
     cell.append(tag);tr.append(cell);
   }else tr.append(td(row.market));
   const choice=td(undefined,'signal-pick');
@@ -439,7 +501,7 @@ function signalChips(fixtureId){
   for(const s of signals){
     const chip=node('button','signal-chip'+(s.id===state.expandedSignalId?' active':''));
     chip.type='button';
-    chip.textContent=`${s.signalMinute??'—'}' · ${s.market} · ${signalPeriod(s)} · ${s.selection}${fmtLine(s)?' '+fmtLine(s):''} ${fmtOdds(s.odds)}`;
+    chip.textContent=`${s.signalMinute??'—'}' · ${cornerRuleName(s)} · ${signalPeriod(s)} · ${s.selection}${fmtLine(s)?' '+fmtLine(s):''} ${fmtOdds(s.odds)}`;
     chip.addEventListener('click',e=>{
       e.stopPropagation();
       state.expandedSignalId=s.id;
@@ -625,7 +687,7 @@ function eventFlowChart(detail,fixtureId){
     const pick=String(s.selection||'').toLowerCase();
     const side=pick.includes('home')?'home':pick.includes('away')?'away':null;
     const y=yFor(side?p[side]:(p.home+p.away)/2),x=xFor(minute);
-    const title=[minute+"'",s.market,signalPeriod(s),s.selection,fmtLine(s),fmtOdds(s.odds),s.bookmaker].filter(Boolean).join(' · ');
+    const title=[minute+"'",cornerRuleName(s),signalPeriod(s),s.selection,fmtLine(s),fmtOdds(s.odds),s.bookmaker].filter(Boolean).join(' · ');
     const g=svgNode('g',{class:'member-flow-signal'});
     const tt=svgNode('title');tt.textContent=title;g.append(tt);
     g.append(svgNode('line',{x1:x,y1:pad.top,x2:x,y2:h-pad.bottom,class:'member-flow-signal-line'}));
@@ -807,8 +869,10 @@ function featuredHorizontal(detail,selected){
   }
   signal.append(
     node('span','','ENTRY'),
-    node('b','',`${selected.signalMinute??'—'}' · ${selected.market==='CORNERS'?selected.market+' / '+(selected.cornerMarket?.label||'UNVERIFIED'):selected.market} · ${signalPeriod(selected)} · ${selected.selection}${fmtLine(selected)?' '+fmtLine(selected):''} · ${fmtOdds(selected.odds)} · ${selected.bookmaker} · ${entryContext.join(' · ')}`)
+    node('b','',`${selected.signalMinute??'—'}' · ${cornerRuleName(selected)} · ${signalPeriod(selected)} · ${selected.selection}${fmtLine(selected)?' '+fmtLine(selected):''} · ${fmtOdds(selected.odds)} · ${selected.bookmaker} · ${entryContext.join(' · ')}`)
   );
+
+  if(selected.market==='CORNERS')signal.append(cornerRuleCard(selected));
 
   const stats=f?.statistics||selected.entryStats;
   const statRow=node('div','featured-h-stats premium-match-stats');

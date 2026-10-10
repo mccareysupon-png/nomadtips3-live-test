@@ -1,6 +1,7 @@
 import {memberAccess,verifyAccessIdentity} from './access-auth.js';
 import {createMemberCheckout} from './checkout.js';
 import {classifyCornerMarket} from './corner-market.js';
+import {cornerRuleForSignal} from './corner-conditions.js';
 const MARKET_ORDER = ['ALL','AH','1X2','O/U','CORNERS','BTTS','CARDS','OTHER'];
 const SOURCE_BASE = 'https://www.ball46.com';
 const BANGKOK_OFFSET_MS = 7 * 60 * 60 * 1000;
@@ -152,10 +153,15 @@ function normalizeSignal(row) {
     marketLabel:String(row?.marketLabel||row?.market||category),
     providerMarket:String(row?.providerMarket||''),
     cornerMarket:category==='CORNERS'?classifyCornerMarket(row):null,
+    cornerRule:category==='CORNERS'?cornerRuleForSignal(row):null,
     period:String(row?.period||''),
     selection:String(row?.selection||'—').toUpperCase(),
     line:num(row?.line),
     odds:num(row?.odds),
+    lineGap:num(row?.lineGap),
+    providerLine:num(row?.providerLine),
+    priceStage:String(row?.priceStage||'').slice(0,32),
+    priceSource:String(row?.priceSource||'').slice(0,96),
     bookmaker:String(row?.bookmaker||'—'),
     signalMinute:entryMinute,
     matchMinute:num(row?.mirrorMinute)??entryMinute,
