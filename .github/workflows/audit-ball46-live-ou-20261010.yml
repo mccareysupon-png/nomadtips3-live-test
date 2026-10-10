@@ -295,5 +295,13 @@ jobs:
               console.log('INCIDENT_FINALIZATION_PATH',JSON.stringify({pattern,hits:hits.slice(0,10).map(i=>({line:i+1,source:lines.slice(Math.max(0,i-4),Math.min(i+65,lines.length)).join('\n').slice(0,12500)}))}));
             }
           }catch(e){console.log('INCIDENT_FINALIZATION_PATH_ERROR',String(e).slice(0,600))}
+
+          try{
+            const lines=s.split('\n');
+            const keys=['FINAL_RECHECK_MIN_SIGNAL_AGE_MS','FINAL_RECHECK_INTERVAL_MS','FINAL_RECHECK_MAX_PER_SCAN','FINAL_RECHECK_TIMEOUT_MS','FINAL_RECONCILE_VERSION'];
+            const list=lines.map((line,index)=>({line,index:index+1})).filter(x=>keys.some(k=>x.line.includes(k))).slice(0,35).map(x=>({line:x.index,code:x.line.slice(0,350)}));
+            const ix=lines.findIndex(l=>l.includes('async autoReconcileMissingFinals()'));
+            console.log('INCIDENT_FALLBACK_SETTINGS',JSON.stringify({definitions:list,source:ix>=0?lines.slice(ix+58,ix+102).join('\n').slice(0,6000):''}));
+          }catch(e){console.log('INCIDENT_FALLBACK_SETTINGS_ERROR',String(e).slice(0,400))}
           console.log('READ_ONLY_DONE_NO_UPLOAD_NO_DEPLOY');
           NODE
