@@ -246,5 +246,46 @@ jobs:
             }
             console.log('PENDING_INCIDENT_LEDGER',JSON.stringify({at:new Date(started).toISOString(),bangkokHour:new Date(started+offset).toISOString().slice(11,16),cycleStart:new Date(cycleStart).toISOString(),since14:new Date(since14).toISOString(),pages,hasMore,last,...group}));
           } catch(err){console.log('PENDING_INCIDENT_ERROR',String(err?.stack||err).slice(0,1700))}
+
+          // Inspect actual runtime Engine code and its last Cloudflare deployments.
+          try{
+            const readRoot='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+'/workers';
+            const deployRes=await fetch(readRoot+'/scripts/nomadtips3-engine-343/deployments',{headers:{Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN},signal:AbortSignal.timeout(18000)});
+            const deployJson=await deployRes.json();
+            console.log('INCIDENT_DEPLOYMENTS',JSON.stringify({http:deployRes.status,success:deployJson.success,deployments:(deployJson.result?.deployments||[]).slice(0,8).map(v=>({id:v.id,created_on:v.created_on,versions:v.versions,author:v.author,message:v.message,source:v.source}))}));
+            const lines=s.split('\n');
+            const regexes=[/function periodCompleteForSignal\(/,/function isFinished\(/,/function isLive\(/,/const fixtureMap\s*=/,/function settleMarketSignal\(/,/let reconciled = 0/,/for \(const sig of signals\)/,/for \(const s of signals\)/,/function scanIfDue\(/];
+            const found=[];
+            for(const re of regexes){
+              const ix=lines.findIndex(l=>re.test(l));
+              if(ix<0)continue;
+              found.push({pattern:String(re),line:ix+1,source:lines.slice(Math.max(0,ix-4),Math.min(lines.length,ix+38)).join('\n').slice(0,6500)});
+            }
+            console.log('INCIDENT_ACTIVE_SETTLEMENT_CODE',JSON.stringify(found));
+            const base='https://www.ball46.com/api/engine';
+            const now=Date.now(),offset=7*3600000,local=new Date(now+offset);
+            let cycle=Date.UTC(local.getUTCFullYear(),local.getUTCMonth(),local.getUTCDate(),12)-offset;if(now<cycle)cycle-=86400000;
+            const [boardResp,ledgerResp]=await Promise.all([
+              fetch(base+'/board?incident='+now,{cache:'no-store',signal:AbortSignal.timeout(24000)}),
+              fetch(base+'/statistics?paged=1&incident='+now,{cache:'no-store',signal:AbortSignal.timeout(24000)})
+            ]);
+            const board=await boardResp.json(),ledger=await ledgerResp.json();
+            const byId=new Map((board.fixtures||[]).map(f=>[String(f.fixtureId),f]));
+            const group={total:0,notYetSettled:0,pendingOnBoardFinished:0,pendingOnBoardLive:0,pendingOnBoardUnknown:0,pendingMissingFromBoard:0,finishedExamples:[],missingExamples:[],liveExamples:[]};
+            for(const row of ledger.rows||[]){
+              if(Number(row.createdAt)<cycle)continue;
+              group.total++;
+              if(row.status==='SETTLED')continue;
+              group.notYetSettled++;
+              const match=byId.get(String(row.fixtureId));
+              const mstatus=String(match?.status||match?.statusCode||match?.boardState||'UNKNOWN');
+              const mini={fixtureId:row.fixtureId,signalId:String(row.id||'').slice(0,65),status:row.status,result:row.result,market:row.market,matchState:mstatus,matchMinute:match?.minute,entryMinute:row.entryMinute,entryScore:row.entryScore};
+              if(!match){group.pendingMissingFromBoard++;if(group.missingExamples.length<8)group.missingExamples.push(mini)}
+              else if(/finish|full|ended/i.test(mstatus)){group.pendingOnBoardFinished++;if(group.finishedExamples.length<8)group.finishedExamples.push(mini)}
+              else if(/in_play|live|progress/i.test(mstatus)){group.pendingOnBoardLive++;if(group.liveExamples.length<5)group.liveExamples.push(mini)}
+              else group.pendingOnBoardUnknown++;
+            }
+            console.log('INCIDENT_MATCH_SETTLEMENT_CROSSCHECK',JSON.stringify(group));
+          }catch(e){console.log('INCIDENT_DEEP_DIAG_ERROR',String(e?.stack||e).slice(0,1400))}
           console.log('READ_ONLY_DONE_NO_UPLOAD_NO_DEPLOY');
           NODE
