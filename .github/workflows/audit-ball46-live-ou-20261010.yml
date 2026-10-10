@@ -287,5 +287,13 @@ jobs:
             }
             console.log('INCIDENT_MATCH_SETTLEMENT_CROSSCHECK',JSON.stringify(group));
           }catch(e){console.log('INCIDENT_DEEP_DIAG_ERROR',String(e?.stack||e).slice(0,1400))}
+
+          try {
+            const lines=s.split('\n');
+            for(const pattern of ['async autoReconcileMissingFinals(', 'autoReconcileMissingFinals(', 'async upsertLedgerRows(', 'async readWorkingSignals(', 'scanIfDue()', 'async scheduled(']){
+              const hits=[];for(let i=0;i<lines.length;i++)if(lines[i].includes(pattern))hits.push(i);
+              console.log('INCIDENT_FINALIZATION_PATH',JSON.stringify({pattern,hits:hits.slice(0,10).map(i=>({line:i+1,source:lines.slice(Math.max(0,i-4),Math.min(i+65,lines.length)).join('\n').slice(0,12500)}))}));
+            }
+          }catch(e){console.log('INCIDENT_FINALIZATION_PATH_ERROR',String(e).slice(0,600))}
           console.log('READ_ONLY_DONE_NO_UPLOAD_NO_DEPLOY');
           NODE
