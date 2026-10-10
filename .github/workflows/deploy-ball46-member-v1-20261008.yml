@@ -1,11 +1,10 @@
-name: Deploy Ball46 Member V1
+name: Rollback Ball46 Member V1 to pre-14:52
 
 on:
   push:
     branches:
       - member/ball46-member-v1-20261008
     paths:
-      - 'ball46-member/**'
       - '.github/workflows/deploy-ball46-member-v1-20261008.yml'
   workflow_dispatch:
 
@@ -26,7 +25,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: member/ball46-member-v1-20261008
+          ref: edae9882b122
           fetch-depth: 1
 
       - uses: actions/setup-node@v4
