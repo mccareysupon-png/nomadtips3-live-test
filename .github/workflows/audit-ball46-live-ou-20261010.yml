@@ -169,5 +169,82 @@ jobs:
             }
           }catch(e){console.log('SEVILLA_TOMARES_AUDIT_ERROR',String(e?.stack||e).slice(0,700))}
           console.log('TARGET_FIXTURE_202465949_RECHECK');
+
+          // Cross-site diagnosis at the time of inspection: public Engine remains read-only.
+          try {
+            const base='https://www.ball46.com/api/engine',started=Date.now();
+            const read=async name=>{
+              const r=await fetch(base+'/'+name+'?_incident='+started,{cache:'no-store',signal:AbortSignal.timeout(25000)});
+              const v=await r.json();return {status:r.status,...v};
+            };
+            const [health,board,settings]=await Promise.all([read('health'),read('board'),read('settings')]);
+            const bh=board?.fixtures||[];
+            const zones={};
+            for(const f of bh){
+              const st=String(f.status||f.statusCode||f.boardState||'UNKNOWN');
+              zones[st]=(zones[st]||0)+1;
+            }
+            console.log('PENDING_INCIDENT_ENGINE_HEALTH',JSON.stringify({at:new Date().toISOString(),...health}));
+            console.log('PENDING_INCIDENT_BOARD',JSON.stringify({at:new Date().toISOString(),http:board.status,ok:board.ok,version:board.version,hubFetchedAt:board.hubFetchedAt,hubAgeMs:board.hubAgeMs,stale:board.stale,staleGuard:board.staleGuard,counts:board.counts,fixtureCount:bh.length,states:zones}));
+            console.log('PENDING_INCIDENT_RUNSTATE',JSON.stringify({at:new Date().toISOString(),http:settings.status,version:settings.version,enabledMarkets:Object.entries(settings.runState||{}).filter(([,v])=>v===true).map(([k])=>k)}));
+            // Fetch recent ledger pages in newest-first order and compare by result vs status.
+            const all=[],ids=new Set(),offset=7*3600000,local=new Date(started+offset);
+            let cycleStart=Date.UTC(local.getUTCFullYear(),local.getUTCMonth(),local.getUTCDate(),12)-offset;
+            if(started<cycleStart)cycleStart-=86400000;
+            const since14=Date.UTC(local.getUTCFullYear(),local.getUTCMonth(),local.getUTCDate(),14)-offset;
+            let cursor=null,hasMore=true,pages=0,last=null;
+            while(hasMore&&pages<30){
+              const url=new URL(base+'/statistics');
+              url.searchParams.set('paged','1');
+              if(cursor)url.searchParams.set('cursor',cursor);
+              url.searchParams.set('_incident',String(started));
+              const r=await fetch(url,{cache:'no-store',signal:AbortSignal.timeout(30000)});
+              const j=await r.json();
+              if(!r.ok||j.ok===false)throw Error('LEDGER_FETCH_'+r.status+'_'+(j.error||''));
+              last={hasMore:j.hasMore,cursor:!!j.nextCursor,statisticsSource:j.statisticsSource};
+              pages++;const rows=Array.isArray(j.rows)?j.rows:[];
+              let oldest=Infinity;
+              for(const row of rows){
+                const created=Number(row?.createdAt);
+                if(Number.isFinite(created))oldest=Math.min(oldest,created);
+                if(!row?.id||ids.has(String(row.id)))continue;
+                ids.add(String(row.id));
+                if(Number.isFinite(created)&&created>=cycleStart)all.push(row);
+              }
+              hasMore=j.hasMore===true&&!!j.nextCursor;cursor=j.nextCursor||null;
+              if(!rows.length||oldest<cycleStart)break;
+            }
+            const group={total:all.length,byStatus:{},byResult:{},byHour:{},oldPending:{over60m:0,over120m:0,over180m:0,over240m:0},since14:{count:0,pending:0,live:0,settled:0},oldPendingExamples:[],finishedButPending:[],unresolved:0,latestCreated:null,oldestCreated:null};
+            const byId=new Map(bh.map(f=>[String(f.fixtureId),f]));
+            for(const r of all){
+              const result=String(r.result||'PENDING').toUpperCase(),status=String(r.status||'PENDING').toUpperCase(),created=Number(r.createdAt),mins=(started-created)/60000;
+              const hour=new Date(created+offset).toISOString().slice(11,13)+':00';
+              group.byStatus[status]=(group.byStatus[status]||0)+1;group.byResult[result]=(group.byResult[result]||0)+1;
+              const p=group.byHour[hour]||(group.byHour[hour]={count:0,pending:0,live:0,settled:0});
+              p.count++;
+              const pending=(status==='PENDING'||status==='UNRESOLVED'),terminal=['WIN','LOSS','PUSH','HALF_WIN','HALF_LOSS','VOID'].includes(result);
+              if(pending)p.pending++;
+              if(result==='LIVE')p.live++;
+              if(terminal)p.settled++;
+              if(created>=since14){
+                group.since14.count++;if(pending)group.since14.pending++;if(result==='LIVE')group.since14.live++;if(terminal)group.since14.settled++;
+              }
+              if(pending){
+                if(mins>60)group.oldPending.over60m++;
+                if(mins>120)group.oldPending.over120m++;
+                if(mins>180)group.oldPending.over180m++;
+                if(mins>240)group.oldPending.over240m++;
+                if(mins>120&&group.oldPendingExamples.length<15)group.oldPendingExamples.push({id:String(r.id).slice(0,75),fixtureId:r.fixtureId,created:new Date(created).toISOString(),status,result,market:r.market,boardStatus:byId.get(String(r.fixtureId))?.status||null,boardMinute:byId.get(String(r.fixtureId))?.minute??null});
+                const f=byId.get(String(r.fixtureId));
+                if(f&&/finish|ended|ft|full.?time|after|90|match.?end/i.test(String(f.status||f.statusCode||f.boardState||''))&&group.finishedButPending.length<20){
+                  group.finishedButPending.push({id:String(r.id).slice(0,70),fixtureId:r.fixtureId,boardStatus:f.status,status,result});
+                }
+              }
+              if(status==='UNRESOLVED')group.unresolved++;
+              group.latestCreated=Math.max(group.latestCreated||0,created);
+              group.oldestCreated=Math.min(group.oldestCreated||Infinity,created);
+            }
+            console.log('PENDING_INCIDENT_LEDGER',JSON.stringify({at:new Date(started).toISOString(),bangkokHour:new Date(started+offset).toISOString().slice(11,16),cycleStart:new Date(cycleStart).toISOString(),since14:new Date(since14).toISOString(),pages,hasMore,last,...group}));
+          } catch(err){console.log('PENDING_INCIDENT_ERROR',String(err?.stack||err).slice(0,1700))}
           console.log('READ_ONLY_DONE_NO_UPLOAD_NO_DEPLOY');
           NODE
