@@ -38,7 +38,10 @@ function freshSignalRemainingSeconds(createdAt,nowMs=Date.now()){
 function newestSignalId(){
   const list=state.payload?.signals;
   if(!Array.isArray(list)||!list.length)return null;
-  const newest=list.reduce((best,row)=>Number(row?.createdAt)>Number(best?.createdAt)?row:best);
+  // Show the newest signal in the currently selected market tab.
+  const visible=list.filter(row=>state.market==='ALL'||row.market===state.market);
+  if(!visible.length)return null;
+  const newest=visible.reduce((best,row)=>Number(row?.createdAt)>Number(best?.createdAt)?row:best);
   return String(newest?.id??'');
 }
 function freshNewestSignal(row){
@@ -49,22 +52,32 @@ function freshClockText(seconds){
   return '00:'+String(s).padStart(2,'0').replace(/^00:60$/,'01:00');
 }
 function makeFreshSignalTag(row){
-  const tag=node('div','member-new-signal');
-  tag.setAttribute('aria-label','New signal, remaining notice time');
-  tag.append(node('strong','member-new-label','NEW SIGNAL'),node('span','member-new-clock',freshClockText(freshSignalRemainingSeconds(row.createdAt))));
+  const remaining=freshSignalRemainingSeconds(row.createdAt);
+  const tag=node('div','member-new-signal'+(remaining?'':' is-expired'));
+  tag.setAttribute('aria-label',remaining?'New signal countdown':'Latest signal; 60-second alert ended');
+  tag.title=remaining?'Signal alert only. Bookmaker odds may change.':'The 60-second signal alert has ended. Verify current bookmaker odds.';
+  tag.append(node('strong','member-new-label',remaining?'NEW SIGNAL':'LATEST SIGNAL'),node('span','member-new-clock',freshClockText(remaining)));
   return tag;
 }
 function refreshFreshSignalClock(){
   const id=newestSignalId();
   const newest=(state.payload?.signals||[]).find(row=>String(row?.id)===id);
   const remaining=freshSignalRemainingSeconds(newest?.createdAt);
-  document.querySelectorAll('.signal-row.is-fresh-signal').forEach(tr=>{
-    if(!remaining||tr.dataset.signalId!==id){
+  document.querySelectorAll('.signal-row[data-signal-id]').forEach(tr=>{
+    if(tr.dataset.signalId!==id){
       tr.classList.remove('is-fresh-signal');
       tr.querySelector('.member-new-signal')?.remove();
       return;
     }
-    const clock=tr.querySelector('.member-new-clock');
+    const active=remaining>0;
+    tr.classList.toggle('is-fresh-signal',active);
+    const tag=tr.querySelector('.member-new-signal');
+    if(!tag)return;
+    tag.classList.toggle('is-expired',!active);
+    tag.setAttribute('aria-label',active?'New signal countdown':'Latest signal; 60-second alert ended');
+    const label=tag.querySelector('.member-new-label');
+    if(label)label.textContent=active?'NEW SIGNAL':'LATEST SIGNAL';
+    const clock=tag.querySelector('.member-new-clock');
     if(clock)clock.textContent=freshClockText(remaining);
   });
 }
@@ -257,14 +270,15 @@ function makeSignalRow(row){
   tr.setAttribute('role','button');
   tr.setAttribute('aria-expanded',state.expandedSignalId===row.id?'true':'false');
   tr.title='Open Featured Match and Event Flow';
-  if(freshNewestSignal(row)){
-    tr.classList.add('is-fresh-signal');
+  const isLatest=String(row.id)===newestSignalId();
+  if(isLatest){
     tr.dataset.signalId=String(row.id);
+    if(freshNewestSignal(row))tr.classList.add('is-fresh-signal');
   }
 
   const time=td(row.signalTime,'signal-time');
   time.append(node('span','expand-glyph',state.expandedSignalId===row.id?'⌃':'⌄'));
-  if(tr.classList.contains('is-fresh-signal'))time.append(makeFreshSignalTag(row));
+  if(isLatest)time.append(makeFreshSignalTag(row));
   tr.append(time);
 
   const match=node('td','match');

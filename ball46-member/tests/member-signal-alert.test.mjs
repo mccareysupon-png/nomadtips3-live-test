@@ -23,6 +23,9 @@ test('New Signal runs precisely 60 seconds from creation, never refresh time',()
 });
 test('Only newest signal is highlighted, timer updates without rerender',()=>{
   assert.match(js,/String\(row\.id\)===newestSignalId\(\)/);
+  assert.match(js,/if\(isLatest\)time\.append\(makeFreshSignalTag\(row\)\)/);
+  assert.match(js,/LATEST SIGNAL/);
+  assert.match(js,/state\.market==='ALL'\|\|row\.market===state\.market/);
   assert.match(js,/tr\.classList\.add\('is-fresh-signal'\)/);
   assert.match(js,/setInterval\(refreshFreshSignalClock,1000\)/);
   assert.match(js,/tr\.classList\.remove\('is-fresh-signal'\)/);
@@ -36,5 +39,8 @@ test('Price notice explicitly disclaims quote availability and alerts do not gua
 test('Border pulse stops with class removal and respects reduced-motion preference',()=>{
   assert.match(css,/\.signal-row\.is-fresh-signal/);
   assert.match(css,/@keyframes member-fresh-border/);
+  assert.match(css,/@keyframes member-fresh-cell-border/);
+  assert.match(css,/\.signal-row\.is-fresh-signal td/);
+  assert.match(html,/member-alert2/);
   assert.match(css,/prefers-reduced-motion:reduce/);
 });
