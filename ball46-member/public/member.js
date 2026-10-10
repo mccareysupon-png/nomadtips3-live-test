@@ -1,5 +1,5 @@
 const MARKET_ORDER = ['ALL','AH','1X2','O/U','CORNERS','BTTS','CARDS','OTHER'];
-const LIVE_REFRESH_MS = 15000;
+const LIVE_REFRESH_MS = 60000;
 const SIGNALS_PER_PAGE = 20;
 const state = {
   market:'ALL',

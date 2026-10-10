@@ -6,10 +6,11 @@ const MARKET_ORDER = ['ALL','AH','1X2','O/U','CORNERS','BTTS','CARDS','OTHER'];
 const SOURCE_BASE = 'https://www.ball46.com';
 const BANGKOK_OFFSET_MS = 7 * 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
-const MIRROR_TTL_MS = 15_000;
+const MIRROR_TTL_MS = 60_000;
 const MAX_DAILY_PAGES = 30;
 
 let mirrorCache = null;
+let mirrorInFlight = null;
 
 function json(data,status=200,headers={}) {
   return new Response(JSON.stringify(data),{
@@ -225,6 +226,14 @@ async function sourceJson(path,params={}) {
 }
 
 async function loadDailyMirror(force=false) {
+  if (mirrorInFlight) return mirrorInFlight;
+  const job = buildDailyMirror(force);
+  mirrorInFlight = job;
+  try { return await job; }
+  finally { if (mirrorInFlight === job) mirrorInFlight = null; }
+}
+
+async function buildDailyMirror(force=false) {
   const nowMs = Date.now();
   const cycle = cutoffWindow(nowMs);
   if (!force && mirrorCache && mirrorCache.cycleStart===cycle.start && mirrorCache.expiresAt>nowMs) {
