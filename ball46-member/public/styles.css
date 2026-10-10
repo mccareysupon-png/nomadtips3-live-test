@@ -1728,12 +1728,12 @@ body.page-member:before{
   .premium-side-fact-value{font-size:12px}
 }
 
-/* Member daily summary: nine metrics, a single compact row on desktop. */
+/* Desktop/laptop summary: fit ten daily KPI cards in a single row; mobile unchanged. */
 @media (min-width:901px){
-  .summary{grid-template-columns:repeat(9,minmax(0,1fr));gap:6px}
-  .summary .summary-stat{min-width:0;padding:10px 7px}
-  .summary .summary-stat span{font-size:clamp(7px,.7vw,9px);letter-spacing:.035em;white-space:nowrap}
-  .summary .summary-stat b{font-size:clamp(13px,1.15vw,16px);line-height:1.2;white-space:nowrap;font-variant-numeric:tabular-nums}
+  .summary{grid-template-columns:repeat(10,minmax(0,1fr));gap:5px}
+  .summary .summary-stat{min-width:0;padding:8px 4px}
+  .summary .summary-stat span{font-size:clamp(7px,.62vw,9px);letter-spacing:0;white-space:nowrap}
+  .summary .summary-stat b{font-size:clamp(11px,1.02vw,15px);line-height:1.2;white-space:nowrap;font-variant-numeric:tabular-nums}
 }
 @media (min-width:681px) and (max-width:900px){
   .summary{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
