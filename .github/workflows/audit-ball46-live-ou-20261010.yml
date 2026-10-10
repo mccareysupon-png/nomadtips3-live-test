@@ -364,5 +364,24 @@ jobs:
               console.log('INCIDENT_'+p.toUpperCase(),JSON.stringify({http:response.status,meta:body}).slice(0,1800));
             }
           }catch(e){console.log('INCIDENT_BRIDGE_DIAG_ERROR',String(e).slice(0,800))}
+
+          try{
+            const w='nomadtips3-5usd-hub-343',root='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+'/workers',headers={Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN};
+            const get=async suffix=>{
+              const r=await fetch(root+suffix,{headers,signal:AbortSignal.timeout(30000)});
+              const j=await r.json();if(!r.ok||!j.success)throw Error('HUB_INSPECT_FAILED_'+r.status);
+              return j.result;
+            };
+            const deploy=await get('/scripts/'+w+'/deployments');
+            const active=deploy.deployments?.[0]?.versions?.find(v=>Number(v.percentage)===100);
+            const v=await get('/workers/'+w+'/versions/'+active.version_id+'?include=modules');
+            const mod=v.modules?.find(m=>m.name===v.main_module);
+            const code=Buffer.from(mod.content_base64,'base64').toString('utf8');
+            const keys=['TODAY_MAX_PAGES','TODAY_PAGE_SIZE','LIVE_PAGE_SIZE','fetchTodayAndLive','status=live','status=all'];
+            const lines=code.split('\n');
+            const probes=keys.map(key=>({key,lines:lines.map((line,i)=>({line:i+1,content:line.slice(0,450)})).filter(x=>x.content.includes(key)).slice(0,4)}));
+            const snap=await (await fetch('https://www.ball46.com/api/hub/snapshot?hubcap='+Date.now(),{cache:'no-store',signal:AbortSignal.timeout(25000)})).json();
+            console.log('HUB_COVERAGE_ROOT_CAUSE',JSON.stringify({versionId:active.version_id,createdAt:deploy.deployments[0]?.created_on,module:v.main_module,sourceLines:lines.length,probes,guardHit:snap.guardHit,todayRequests:snap.todayRequests,liveRequests:snap.liveRequests,fixtureCount:snap.fixtureCount,counts:snap.counts,window:snap.todayWindow}));
+          }catch(e){console.log('HUB_COVERAGE_ROOT_CAUSE_ERROR',String(e?.stack||e).slice(0,1200))}
           console.log('READ_ONLY_DONE_NO_UPLOAD_NO_DEPLOY');
           NODE
