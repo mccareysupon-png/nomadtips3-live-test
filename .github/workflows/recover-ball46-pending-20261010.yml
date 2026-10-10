@@ -1,0 +1,34 @@
+name: Recover Ball46 Pending from verified 5Dollar finals
+on:
+  push:
+    branches: [audit/ball46-live-engine-corners-ou-20261010]
+    paths: ['.github/workflows/recover-ball46-pending-20261010.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  reconcile:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    env:
+      FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: audit/ball46-live-engine-corners-ou-20261010
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate recovery script
+        run: node --check .github/scripts/recover_ball46_pending_20261010.mjs
+      - name: Restore PENDING via verified provider finals and existing Engine settlement
+        run: node .github/scripts/recover_ball46_pending_20261010.mjs
+      - name: Preserve recovery evidence and before state
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-final-recovery-${{ github.run_id }}
+          path: |
+            recovery-baseline.json
+            recovery-report.json
+          if-no-files-found: warn
