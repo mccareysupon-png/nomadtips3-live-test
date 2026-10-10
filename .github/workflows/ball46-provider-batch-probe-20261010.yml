@@ -1,0 +1,31 @@
+name: Ball46 Provider Batch Final Probe
+on:
+  push:
+    branches: [audit/ball46-live-engine-corners-ou-20261010]
+    paths: ['.github/workflows/ball46-provider-batch-probe-20261010.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    env:
+      FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
+    steps:
+      - name: Probe single bulk finished fixture page and provider quota
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          const key=process.env.FIVEDOLLAR_API_KEY;
+          if(!key||key.length<16)throw Error('MISSING_PROVIDER_KEY');
+          const start=Math.floor(Date.parse('2026-10-09T17:00:00.000Z')/1000);
+          const end=Math.floor(Date.parse('2026-10-10T17:00:00.000Z')/1000);
+          const u=new URL('https://api.5dollarfootballapi.com/v1/fixtures');
+          for(const [k,v] of Object.entries({start_time:start,end_time:end,status:'finished',per_page:100,page:1}))u.searchParams.set(k,String(v));
+          const res=await fetch(u,{headers:{Authorization:'Bearer '+key,Accept:'application/json'},signal:AbortSignal.timeout(26000)});
+          const j=await res.json().catch(()=>({}));
+          const d=Array.isArray(j.data)?j.data:Array.isArray(j.data?.data)?j.data.data:Array.isArray(j.fixtures)?j.fixtures:[];
+          console.log('FINISHED_BATCH_PROBE',JSON.stringify({http:res.status,success:j.success,error:j.error??null,pagination:j.pagination??j.meta?.pagination??null,rows:d.length,sample:d.slice(0,2).map(x=>({id:x.id,status:x.status,goals:x.goals,corners:x.corners,cards:x.cards})),quota:{limit:res.headers.get('x-ratelimit-limit'),remaining:res.headers.get('x-ratelimit-remaining'),reset:res.headers.get('x-ratelimit-reset'),retryAfter:res.headers.get('retry-after')}}).slice(0,2200));
+          NODE
