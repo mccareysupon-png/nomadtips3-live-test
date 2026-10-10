@@ -75,7 +75,17 @@ jobs:
         run: |
           set -euo pipefail
           base="https://ball46-member-snapshot-staging.mccarey-supon.workers.dev"
-          curl -fsS --max-time 20 "$base/api/health" | jq -e '.ok == true and .stage == "staging"'
+          ready=0
+          for attempt in $(seq 1 20); do
+            code="$(curl -sS --max-time 15 -o /tmp/stagehealth.json -w '%{http_code}' "$base/api/health" || true)"
+            if [ "$code" = 200 ] && jq -e '.ok == true and .stage == "staging"' /tmp/stagehealth.json >/dev/null; then
+              ready=1
+              break
+            fi
+            echo "Staging health unavailable: HTTP $code (attempt $attempt)"
+            sleep 3
+          done
+          test "$ready" = 1
           for path in '/api/member/daily' '/api/member/match?fixtureId=123'; do
             code="$(curl -sS --max-time 20 -o /tmp/membergate.json -w '%{http_code}' "$base$path")"
             test "$code" = 401
