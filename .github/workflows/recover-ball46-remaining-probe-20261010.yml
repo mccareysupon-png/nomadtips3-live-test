@@ -1,0 +1,58 @@
+name: Ball46 remaining pending source verification
+on:
+  push:
+    branches: [audit/ball46-live-engine-corners-ou-20261010]
+    paths: ['.github/workflows/recover-ball46-remaining-probe-20261010.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
+    steps:
+      - name: Recheck remaining missing-board signals with direct final authority
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          const key=process.env.FIVEDOLLAR_API_KEY,base='https://www.ball46.com/api/engine',now=Date.now();
+          if(!key||key.length<16)throw Error('KEY_UNAVAILABLE');
+          const get=async(url,options={})=>{
+            const r=await fetch(url,{cache:'no-store',signal:AbortSignal.timeout(22000),...options});
+            const j=await r.json().catch(()=>null);
+            return {r,j};
+          };
+          const [board]=await Promise.all([get(base+'/board?_='+now)]);
+          const onBoard=new Set((board.j?.fixtures||[]).map(x=>String(x.fixtureId)));
+          const found=new Map();let cursor=null;
+          for(let n=0;n<30;n++){
+            const u=new URL(base+'/statistics');u.searchParams.set('paged','1');if(cursor)u.searchParams.set('cursor',cursor);
+            const {r,j}=await get(u.toString());if(!r.ok)break;
+            for(const x of j.rows||[])if(x?.id&&!found.has(String(x.id)))found.set(String(x.id),x);
+            cursor=j.hasMore===true&&j.nextCursor?j.nextCursor:null;if(!cursor)break;
+          }
+          const candidates=new Map();
+          for(const x of found.values()){
+            if(String(x.status)!=='PENDING'||!x.fixtureId||onBoard.has(String(x.fixtureId))||now-Number(x.createdAt)<10*60000)continue;
+            const id=String(x.fixtureId);if(!candidates.has(id))candidates.set(id,[]);
+            candidates.get(id).push(x);
+          }
+          const sorted=[...candidates.entries()].sort((a,b)=>Math.min(...a[1].map(x=>x.createdAt))-Math.min(...b[1].map(x=>x.createdAt)));
+          const selected=[...sorted.slice(0,6),...sorted.slice(-6)].filter((x,i,arr)=>arr.findIndex(y=>y[0]===x[0])===i);
+          const output=[];
+          for(const [fid,signals] of selected){
+            const {r,j}=await get('https://api.5dollarfootballapi.com/v1/fixtures/'+fid+'?include=events,stats',{headers:{Authorization:'Bearer '+key,Accept:'application/json'}});
+            const d=j?.data??{};
+            const result={id:fid,http:r.status,status:d.status??null,statusCode:d.status_code??null,createdISO:new Date(Math.min(...signals.map(s=>s.createdAt))).toISOString(),signals:signals.length};
+            if(r.ok&&j.success===1&&String(d.id)==fid&&d.status==='finished'&&/^(full|ft|finished|full_time)$/.test(String(d.status_code||'').toLowerCase())&&Number.isInteger(Number(d.goals?.home))&&Number.isInteger(Number(d.goals?.away))){
+              const b=await get(base+'/reconcile-final',{method:'POST',headers:{'x-settlement-token':key,'content-type':'application/json'},body:JSON.stringify(j),signal:AbortSignal.timeout(35000)});
+              result.bridgeHTTP=b.r.status;result.settled=b.j?.settled??0;result.results=(b.j?.rows||[]).map(x=>({market:x.market,result:x.result}));
+            }
+            output.push(result);
+            await new Promise(resolve=>setTimeout(resolve,3000));
+          }
+          console.log('REMAINING_PENDING_DIRECT_PROBE',JSON.stringify({at:new Date(now).toISOString(),remainingMissingFixtureIds:candidates.size,checked:selected.length,results:output}).slice(0,7000));
+          NODE
