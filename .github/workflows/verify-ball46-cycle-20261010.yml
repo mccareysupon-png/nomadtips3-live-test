@@ -1,0 +1,74 @@
+name: Verify Ball46 runtime cycle safely
+
+on:
+  push:
+    branches: [audit/ball46-live-engine-corners-ou-20261010]
+    paths: ['.github/workflows/verify-ball46-cycle-20261010.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Read runtime health and verify scan cycle (no writes)
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          const base='https://www.ball46.com/api/engine/';
+          const load=async path=>{
+            const r=await fetch(base+path+'?cycleaudit='+Date.now(),{cache:'no-store',signal:AbortSignal.timeout(24000)});
+            const j=await r.json();return {http:r.status,j};
+          };
+          const inspect=async label=>{
+            const [h,b,l,hub]=await Promise.all([
+              load('health'),load('board'),load('ledger-health'),
+              fetch('https://www.ball46.com/api/hub/health?cycleaudit='+Date.now(),{cache:'no-store',signal:AbortSignal.timeout(24000)}).then(async r=>({http:r.status,j:await r.json()}))
+            ]);
+            const health=h.j,board=b.j,ledger=l.j,hs=hub.j;
+            console.log('CYCLE_AUDIT_'+label,JSON.stringify({
+              at:new Date().toISOString(),
+              engine:{http:h.http,ok:health.ok,version:health.version,startedAt:health.startedAt,finishedAt:health.finishedAt,
+                lastScanAgeSeconds:health.finishedAt?Math.round((Date.now()-Number(health.finishedAt))/1000):null,
+                liveCount:health.liveCount,fixtureCount:health.fixtureCount,signalCount:health.signalCount,
+                reconciled:health.reconciled,finalReconcile:health.finalReconcile||null,
+                ledgerInserted:health.ledgerInserted??null,ledgerUpdated:health.ledgerUpdated??null,
+                lastError:health.lastError??null,refereeErrorsCount:health.refereeErrors?.length??0,
+                refereeRequests:health.refereeRequests??null},
+              board:{http:b.http,ok:board.ok,hubFetchedAt:board.hubFetchedAt,hubAgeMs:board.hubAgeMs,stale:board.stale,
+                fixtureCount:board.fixtures?.length,counts:board.counts},
+              ledger:{http:l.http,pending:ledger.pending,settledTotal:ledger.settledTotal,ledgerTotal:ledger.ledgerTotal,updatedAt:ledger.updatedAt},
+              hub:{http:hub.http,ok:hs.ok,version:hs.version,fetchedAt:hs.fetchedAt,ageMs:hs.ageMs,stale:hs.stale,lastError:hs.lastError,
+                nextAlarmAt:hs.nextAlarmAt,refreshMs:hs.refreshMs,control:hs.control,
+                providerRequestCount:hs.providerRequestCount,estimatedBulkRequestsPerMinute:hs.estimatedBulkRequestsPerMinute,
+                accountLimitPerMinute:hs.accountLimitPerMinute,lastRateLimitAt:hs.lastRateLimitAt}
+            }));
+            return {health,board,ledger};
+          };
+          const a=await inspect('FIRST');
+          await new Promise(r=>setTimeout(r,67_000));
+          const b=await inspect('SECOND');
+          const scanAdvanced=Number(b.health?.finishedAt)>Number(a.health?.finishedAt);
+          const hubAdvanced=Number(b.board?.hubFetchedAt)>Number(a.board?.hubFetchedAt);
+          console.log('CYCLE_AUDIT_VERDICT',JSON.stringify({
+            at:new Date().toISOString(),scanAdvanced,hubAdvanced,
+            engineScans:scanAdvanced,
+            allHealthy:scanAdvanced&&b.health?.ok===true&&b.board?.ok===true&&!b.board?.stale,
+            settlementAdvanced:Number(b.ledger?.settledTotal)>Number(a.ledger?.settledTotal),
+            pendingChange:Number(b.ledger?.pending)-Number(a.ledger?.pending),
+            settledChange:Number(b.ledger?.settledTotal)-Number(a.ledger?.settledTotal),
+            currentFinalReconcile:b.health?.finalReconcile||null
+          }));
+          const account=process.env.CLOUDFLARE_ACCOUNT_ID, token=process.env.CLOUDFLARE_API_TOKEN;
+          if(account&&token){
+            const r=await fetch(`https://api.cloudflare.com/client/v4/accounts/${account}/workers/scripts/nomadtips3-engine-343/schedules`,{headers:{Authorization:'Bearer '+token},signal:AbortSignal.timeout(20000)});
+            const j=await r.json();
+            console.log('CYCLE_CRON',JSON.stringify({http:r.status,success:j.success,schedules:j.result}));
+          }
+          NODE
