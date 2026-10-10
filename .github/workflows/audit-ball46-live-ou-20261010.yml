@@ -116,5 +116,57 @@ jobs:
             }));
           }catch(e){console.log('LIVE_DAILY_PENDING_AUDIT_ERROR',String(e?.message||e))}
 
+          // Investigate one user-reported already-lost O/U selection.
+          // Keep this read-only; do not emit secret environment variables.
+          try{
+            const functionLines=s.split('\n');
+            for(const name of ['pricePass','priceFor','pickBestPriced']){
+              const idx=functionLines.findIndex(v=>new RegExp('function\\s+'+name+'\\s*\\(').test(v));
+              console.log('ACTIVE_OU_GUARD_FUNCTION_'+name,JSON.stringify({
+                found:idx>=0,line:idx+1,source:idx>=0?functionLines.slice(idx,idx+14).join('\n').slice(0,4700):''
+              }));
+            }
+            const spot=functionLines.findIndex(x=>/ft_under\s*:\s*\{/.test(x));
+            if(spot>=0)console.log('ACTIVE_FT_UNDER_CONFIG',functionLines.slice(Math.max(0,spot-2),spot+3).join('\n').slice(0,1300));
+            let cur=null,pages=0,found=[],seen=new Set(),scanned=0,more=true;
+            while(more&&pages<8&&found.length<5){
+              const u=new URL('https://www.ball46.com/api/engine/statistics');
+              u.searchParams.set('paged','1');
+              if(cur)u.searchParams.set('cursor',cur);
+              const res=await fetch(u,{cache:'no-store',signal:AbortSignal.timeout(30000)});
+              const j=await res.json();
+              if(!res.ok||j.ok===false)throw Error('STATISTICS_FAIL_'+res.status);
+              pages++;
+              for(const row of Array.isArray(j.rows)?j.rows:[]){
+                scanned++;
+                const a=String(row?.home?.name||row?.home||'').toLowerCase();
+                const b=String(row?.away?.name||row?.away||'').toLowerCase();
+                if(!((a.includes('sevilla')||b.includes('sevilla'))&&(a.includes('tomares')||b.includes('tomares'))))continue;
+                if(seen.has(String(row.id)))continue;seen.add(String(row.id));
+                found.push({
+                  id:String(row.id||'').slice(0,85),
+                  fixtureId:String(row.fixtureId||''),
+                  market:row.market,marketLabel:row.marketLabel,selection:row.selection,
+                  period:row.period,line:row.line,odds:row.odds,bookmaker:row.bookmaker,
+                  providerMarket:row.providerMarket,priceSource:row.priceSource,priceStage:row.priceStage,
+                  entryMinute:row.minute??row.entryMinute,
+                  createdAt:row.createdAt,createdISO:Number.isFinite(Number(row.createdAt))?new Date(Number(row.createdAt)).toISOString():null,
+                  entryScore:row.entryScore??row.scoreAt,
+                  mirrorScore:row.mirrorScore,finalScore:row.finalScore,
+                  result:row.result,status:row.status,settledAt:row.settledAt
+                });
+              }
+              more=j.hasMore===true&&Boolean(j.nextCursor);cur=j.nextCursor||null;
+            }
+            console.log('SEVILLA_TOMARES_SIGNAL_AUDIT',JSON.stringify({pages,scanned,more,found}));
+            for(const row of found){
+              if(!row.fixtureId)continue;
+              const boardResponse=await fetch('https://www.ball46.com/api/engine/board?audit_fixture='+encodeURIComponent(row.fixtureId),{cache:'no-store',signal:AbortSignal.timeout(20000)});
+              const board=await boardResponse.json();
+              const f=Array.isArray(board.fixtures)?board.fixtures.find(x=>String(x.fixtureId)===String(row.fixtureId)):null;
+              console.log('SEVILLA_TOMARES_BOARD',JSON.stringify({id:row.fixtureId,status:f?.status,statusCode:f?.statusCode,minute:f?.minute,goals:f?.goals,score:f?.score,fullOddsSource:f?.fullOddsSource,found:!!f}));
+              break;
+            }
+          }catch(e){console.log('SEVILLA_TOMARES_AUDIT_ERROR',String(e?.stack||e).slice(0,700))}
           console.log('READ_ONLY_DONE_NO_UPLOAD_NO_DEPLOY');
           NODE
