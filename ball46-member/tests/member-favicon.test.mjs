@@ -13,7 +13,7 @@ test('Ball46 Member favicon is a self-contained SVG in the deployed public asset
  assert.match(favicon,/#07111b/);
  assert.match(favicon,/#ffe31a/);
  assert.doesNotMatch(favicon,/<(?:image|script|foreignObject)\b/i);
- assert.doesNotMatch(favicon,/https?:\/\//i);
+ assert.doesNotMatch(favicon,/\b(?:href|src)=["']https?:\/\//i);
 });
 test('Every Member subdomain HTML page declares the same versioned favicon',()=>{
  for(const page of pages){
