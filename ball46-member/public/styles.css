@@ -1943,3 +1943,69 @@ body.page-member:before{
   .member-pagination-actions{justify-content:center;gap:4px}
   .member-page-button{min-height:36px;min-width:36px;padding:6px 9px}
 }
+
+/* Latest Signal: premium green luminous pulse for the first 60 seconds only.
+   JS applies .is-fresh-signal from the actual Engine timestamp; old signals
+   and every other row never receive this effect. Text and odds remain still. */
+.signal-row.is-fresh-signal td{
+  background:
+    linear-gradient(180deg,rgba(48,207,123,.10),rgba(26,94,58,.035)),
+    rgba(9,29,29,.92);
+  border-top-color:rgba(80,251,149,.92);
+  border-bottom-color:rgba(80,251,149,.92);
+  animation:member-signal-green-glow 1.6s ease-in-out infinite;
+}
+@keyframes member-signal-green-glow{
+  0%,100%{
+    background:
+      linear-gradient(180deg,rgba(48,207,123,.035),rgba(26,94,58,.018)),
+      rgba(9,29,29,.92);
+    border-top-color:rgba(79,211,130,.38);
+    border-bottom-color:rgba(79,211,130,.38);
+    box-shadow:inset 0 1px 0 rgba(65,222,136,.32),
+      inset 0 -1px 0 rgba(65,222,136,.32),
+      0 0 3px rgba(58,236,128,.08);
+  }
+  50%{
+    background:
+      linear-gradient(180deg,rgba(50,237,139,.155),rgba(22,103,62,.08)),
+      rgba(9,29,29,.92);
+    border-top-color:rgba(95,255,165,1);
+    border-bottom-color:rgba(95,255,165,1);
+    box-shadow:inset 0 2px 0 rgba(95,255,165,1),
+      inset 0 -2px 0 rgba(95,255,165,.94),
+      inset 0 0 22px rgba(51,227,128,.16),
+      0 0 14px rgba(40,252,128,.36);
+  }
+}
+.signal-row.is-fresh-signal td:first-child::before,
+.signal-row.is-fresh-signal td:last-child::after{
+  width:3px;
+  background:#68ffab;
+  box-shadow:0 0 9px 2px rgba(45,248,129,.52);
+  animation:member-signal-side-glow 1.6s ease-in-out infinite;
+}
+@keyframes member-signal-side-glow{
+  0%,100%{opacity:.3;box-shadow:0 0 4px rgba(45,248,129,.22)}
+  50%{opacity:1;box-shadow:0 0 13px 3px rgba(45,248,129,.72)}
+}
+/* Only the badge surface pulses; never blink odds, match names or labels. */
+.signal-row.is-fresh-signal .member-new-signal{
+  animation:member-new-badge-glow 1.6s ease-in-out infinite;
+}
+@keyframes member-new-badge-glow{
+  0%,100%{border-color:rgba(65,231,141,.42);box-shadow:0 0 2px rgba(44,215,116,.08)}
+  50%{border-color:#74ffb3;box-shadow:0 0 11px rgba(44,255,131,.52)}
+}
+@media(prefers-reduced-motion:reduce){
+  .signal-row.is-fresh-signal td,
+  .signal-row.is-fresh-signal td:first-child::before,
+  .signal-row.is-fresh-signal td:last-child::after,
+  .signal-row.is-fresh-signal .member-new-signal{animation:none}
+  .signal-row.is-fresh-signal td{
+    border-top-color:#65f6a4;
+    border-bottom-color:#65f6a4;
+    box-shadow:inset 0 2px 0 rgba(100,246,165,.8),
+      inset 0 -2px 0 rgba(100,246,165,.8);
+  }
+}
