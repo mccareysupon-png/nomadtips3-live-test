@@ -383,5 +383,6 @@ jobs:
             const snap=await (await fetch('https://www.ball46.com/api/hub/snapshot?hubcap='+Date.now(),{cache:'no-store',signal:AbortSignal.timeout(25000)})).json();
             console.log('HUB_COVERAGE_ROOT_CAUSE',JSON.stringify({versionId:active.version_id,createdAt:deploy.deployments[0]?.created_on,module:v.main_module,sourceLines:lines.length,probes,guardHit:snap.guardHit,todayRequests:snap.todayRequests,liveRequests:snap.liveRequests,fixtureCount:snap.fixtureCount,counts:snap.counts,window:snap.todayWindow}));
           }catch(e){console.log('HUB_COVERAGE_ROOT_CAUSE_ERROR',String(e?.stack||e).slice(0,1200))}
+          console.log('INCIDENT_POST_RECOVERY_VALIDATION_20261010');
           console.log('READ_ONLY_DONE_NO_UPLOAD_NO_DEPLOY');
           NODE
