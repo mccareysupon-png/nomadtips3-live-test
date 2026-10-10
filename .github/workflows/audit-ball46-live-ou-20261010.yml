@@ -338,5 +338,31 @@ jobs:
               }));
             }
           }catch(e){console.log('PROVIDER_MISSING_FIXTURE_ERROR',String(e?.stack||e).slice(0,1000))}
+
+          // User-authorized incident diagnosis: one normal Engine scan, no code/config/data rewrites.
+          try{
+            const healthUrl='https://www.ball46.com/api/engine/health?incident_scan_pre='+Date.now();
+            const h=await (await fetch(healthUrl,{cache:'no-store',signal:AbortSignal.timeout(25000)})).json();
+            console.log('INCIDENT_SCAN_PRE',JSON.stringify({finishedAt:h.finishedAt,signals:h.signalCount,ok:h.ok,version:h.version,startedAt:h.startedAt}));
+            const ctrl=AbortSignal.timeout(90000);
+            const res=await fetch('https://www.ball46.com/api/engine/scan?incident='+Date.now(),{method:'POST',signal:ctrl,headers:{accept:'application/json'}});
+            const result=await res.json().catch(()=>({}));
+            console.log('INCIDENT_ONE_NORMAL_SCAN',JSON.stringify({http:res.status,ok:result.ok,finishedAt:result.finishedAt,version:result.version,
+             fixtureCount:result.fixtureCount,signalCount:result.signalCount,reconciled:result.reconciled,
+             finalReconcile:result.finalReconcile||null,ledgerInserted:result.ledgerInserted??null,ledgerUpdated:result.ledgerUpdated??null,
+             workingStore:result.workingStore||null,error:result.lastError||result.error||null}).slice(0,7500));
+          }catch(e){console.log('INCIDENT_SCAN_ERROR',String(e?.stack||e).slice(0,850))}
+          try{
+            const lines=s.split('\n');
+            for(const key of ['function secureTokenOk(', 'function normalizeFinalFixture(', 'function fixtureStatus(']){
+              const idx=lines.findIndex(x=>x.includes(key));
+              console.log('INCIDENT_BRIDGE_SECURITY_SOURCE',JSON.stringify({pattern:key,found:idx>=0,lines:idx>=0?lines.slice(idx,idx+40).join('\n').slice(0,6000):''}));
+            }
+            for(const p of ['bridge-health','ledger-health']){
+              const response=await fetch('https://www.ball46.com/api/engine/'+p+'?incident='+Date.now(),{cache:'no-store',signal:AbortSignal.timeout(20000)});
+              const body=await response.json().catch(()=>({}));
+              console.log('INCIDENT_'+p.toUpperCase(),JSON.stringify({http:response.status,meta:body}).slice(0,1800));
+            }
+          }catch(e){console.log('INCIDENT_BRIDGE_DIAG_ERROR',String(e).slice(0,800))}
           console.log('READ_ONLY_DONE_NO_UPLOAD_NO_DEPLOY');
           NODE
