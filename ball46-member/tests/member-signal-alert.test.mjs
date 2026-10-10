@@ -29,8 +29,9 @@ test('Only newest signal is highlighted, timer updates without rerender',()=>{
 });
 test('Price notice explicitly disclaims quote availability and alerts do not guarantee prices',()=>{
   assert.match(html,/PRICE NOTICE/);
-  assert.match(html,/ไม่รับประกันว่าจะได้รับราคาเดิม/);
-  assert.match(html,/60 วินาทีเป็นเพียงการแจ้งเตือน/);
+  assert.match(html,/The displayed odds are not guaranteed/);
+  assert.match(html,/The 60-second NEW SIGNAL countdown is an alert only/);
+  assert.doesNotMatch(html,/[\u0E00-\u0E7F]/);
 });
 test('Border pulse stops with class removal and respects reduced-motion preference',()=>{
   assert.match(css,/\.signal-row\.is-fresh-signal/);
