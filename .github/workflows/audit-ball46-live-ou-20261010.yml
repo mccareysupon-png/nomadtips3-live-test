@@ -428,5 +428,37 @@ jobs:
             const idDupes=[...sameId].filter(([,n])=>n>1);
             console.log('INCIDENT_DUPLICATE_ANALYSIS',JSON.stringify({pageRows:j.rows.length,sameIdCount:idDupes.length,duplicatedFixtureMarketPairs:sameMarket.length,examples:sameMarket.slice(0,15),sameFixtureDifferentMarkets:[...new Set(j.rows.map(x=>String(x.fixtureId)))].length}));
           }catch(e){console.log('INCIDENT_DUPLICATE_ANALYSIS_ERROR',String(e?.message||e).slice(0,400))}
+
+          // Read-only smoke test: existing Event Flow must remain connected.
+          try {
+            const fetchText=async u=>{
+              const r=await fetch(u,{cache:'no-store',signal:AbortSignal.timeout(22000)});
+              const t=await r.text();
+              return {http:r.status,body:t};
+            };
+            const [index,script,style,memberJS,memberIcons]=await Promise.all([
+              fetchText('https://www.ball46.com/index.html?_flow='+Date.now()),
+              fetchText('https://www.ball46.com/event-flow-343.js?_flow='+Date.now()),
+              fetchText('https://www.ball46.com/event-flow-343.css?_flow='+Date.now()),
+              fetchText('https://member.ball46.com/member.js?_flow='+Date.now()),
+              fetchText('https://member.ball46.com/event-flow-icons.js?_flow='+Date.now())
+            ]);
+            console.log('PRODUCTION_EVENT_FLOW_ASSETS',JSON.stringify({
+              checkedAt:new Date().toISOString(),
+              mainPage:{http:index.http,isHtml:index.body.includes('<html'),flowMarkup:index.body.includes('data-event-flow-fixture'),flowScriptTag:index.body.includes('event-flow-343.js')},
+              mainScript:{http:script.http,bytes:script.body.length,hasEventFlow:script.body.includes('NOMAD_EVENT_FLOW_343'),hasHistoryFetch:script.body.includes('fetchHistory'),hasRender:script.body.includes('function render(')},
+              mainStyle:{http:style.http,bytes:style.body.length,hasFlowStyles:style.body.includes('.nomad-event-flow-card')},
+              memberScript:{http:memberJS.http,bytes:memberJS.body.length,hasEventFlow:memberJS.body.includes('function eventFlowChart('),hasHistoryFetch:memberJS.body.includes('eventFlow?.pressure'),hasIcons:memberJS.body.includes('Ball46EventIcons')},
+              memberIcons:{http:memberIcons.http,bytes:memberIcons.body.length,hasFactory:memberIcons.body.includes('Ball46EventIcons')}
+            }));
+            const resp=await fetch('https://www.ball46.com/api/engine/board?flowaudit='+Date.now(),{cache:'no-store',signal:AbortSignal.timeout(25000)});
+            const b=await resp.json();
+            const example=(b.fixtures||[]).find(f=>String(f.status||f.boardState).toLowerCase().includes('play'))||(b.fixtures||[]).find(f=>String(f.status||f.boardState).toLowerCase().includes('live'));
+            if(example?.fixtureId){
+              const r=await fetch('https://www.ball46.com/api/engine/history?fixtureId='+encodeURIComponent(example.fixtureId)+'&window=10&_flow='+Date.now(),{cache:'no-store',signal:AbortSignal.timeout(25000)});
+              const h=await r.json().catch(()=>({}));
+              console.log('PRODUCTION_EVENT_FLOW_HISTORY',JSON.stringify({http:r.status,ok:h.ok,fixtureId:String(example.fixtureId),rows:Array.isArray(h.rows)?h.rows.length:null,pressure:Array.isArray(h.pressure)?h.pressure.length:null,version:h.version,error:h.error??null}));
+            } else console.log('PRODUCTION_EVENT_FLOW_HISTORY',JSON.stringify({error:'NO_LIVE_FIXTURE_TO_TEST'}));
+          }catch(e){console.log('PRODUCTION_EVENT_FLOW_AUDIT_ERROR',String(e?.message||e))}
           console.log('READ_ONLY_DONE_NO_UPLOAD_NO_DEPLOY');
           NODE
