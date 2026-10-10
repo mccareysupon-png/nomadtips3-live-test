@@ -1,0 +1,70 @@
+name: Recover Ball46 finished fixtures in batches
+on:
+  push:
+    branches: [audit/ball46-live-engine-corners-ou-20261010]
+    paths: ['.github/workflows/recover-ball46-bulk-finals-20261010.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  recover:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
+    steps:
+      - name: Backfill only authoritative finished fixtures into existing Engine bridge
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          const token=process.env.FIVEDOLLAR_API_KEY;
+          if(!token||token.length<16)throw Error('API_KEY_MISSING');
+          const base='https://www.ball46.com/api/engine',sleep=ms=>new Promise(r=>setTimeout(r,ms));
+          const req=async(url,opts={})=>{const r=await fetch(url,{cache:'no-store',signal:AbortSignal.timeout(25000),...opts});return {http:r.status,ok:r.ok,v:await r.json().catch(()=>null)}};
+          const t=Date.now(),shift=7*3600000,d=new Date(t+shift),start=Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate())-shift,end=start+86400000;
+          const missing=new Map(),idSet=new Set();let cursor=null,pages=0;
+          while(pages<30){
+            const u=new URL(base+'/statistics');u.searchParams.set('paged','1');if(cursor)u.searchParams.set('cursor',cursor);
+            const r=await req(u);
+            if(!r.ok||!Array.isArray(r.v?.rows))throw Error('LEDGER_UNAVAILABLE');
+            for(const row of r.v.rows){
+              if(!row?.id||idSet.has(String(row.id)))continue;
+              idSet.add(String(row.id));
+              if(row.status==='PENDING'&&Number(row.createdAt)>=start&&row.fixtureId)missing.set(String(row.fixtureId),1);
+            }
+            pages++;cursor=r.v.nextCursor||null;
+            if(!r.v.hasMore||!cursor)break;
+          }
+          const board=await req(base+'/board');
+          if(!board.ok||!Array.isArray(board.v?.fixtures))throw Error('BOARD_UNAVAILABLE');
+          for(const row of board.v.fixtures)missing.delete(String(row.fixtureId));
+          const metrics={pendingFixtureIds:missing.size,providerPages:0,providerMatches:0,finishedMatched:0,recoveredFixtures:0,recoveredSignals:0,errors:0,throttled:false};
+          console.log('BULK_START',JSON.stringify(metrics));
+          for(let page=1;page<=24&&missing.size;page++){
+            if(page>1)await sleep(6000);
+            const u=new URL('https://api.5dollarfootballapi.com/v1/fixtures');
+            for(const [k,v] of Object.entries({status:'finished',start_time:Math.floor(start/1000),end_time:Math.floor(end/1000),per_page:100,page}))u.searchParams.set(k,v);
+            const r=await req(u,{headers:{authorization:'Bearer '+token,accept:'application/json'}});
+            if(r.http===429){metrics.throttled=true;console.log('BULK_RATE_LIMIT');break}
+            if(!r.ok||r.v?.success!==1||!Array.isArray(r.v.data)){metrics.errors++;console.log('BULK_PROVIDER_ERROR',r.http);break}
+            metrics.providerPages++;metrics.providerMatches+=r.v.data.length;
+            for(const fixture of r.v.data){
+              const id=String(fixture.id??fixture.fixture_id??'');
+              if(!missing.has(id))continue;
+              if(fixture.status!=='finished'||fixture.status_code!=='full')continue;
+              const home=Number(fixture.goals?.home),away=Number(fixture.goals?.away);
+              if(!Number.isInteger(home)||!Number.isInteger(away)||home<0||away<0)continue;
+              metrics.finishedMatched++;
+              const bridge=await req(base+'/reconcile-final',{method:'POST',headers:{'x-settlement-token':token,'content-type':'application/json'},body:JSON.stringify({success:1,data:fixture})});
+              if(!bridge.ok||bridge.v?.ok!==true){metrics.errors++;console.log('BULK_BRIDGE_ERROR',id,bridge.http);if(bridge.http===401)throw Error('SETTLEMENT_AUTH_FAILED');continue}
+              const settled=Number(bridge.v.settled||0);
+              if(settled){metrics.recoveredFixtures++;metrics.recoveredSignals+=settled}
+              missing.delete(id);
+              console.log('BULK_MATCH',JSON.stringify({id,settled,score:[home,away]}));
+            }
+            console.log('BULK_PAGE',JSON.stringify({page,remaining:missing.size,recovered:metrics.recoveredSignals}));
+            if(r.v.pagination?.has_more!==true)break;
+          }
+          console.log('BULK_REPORT',JSON.stringify({...metrics,stillMissing:missing.size}));
+          NODE
