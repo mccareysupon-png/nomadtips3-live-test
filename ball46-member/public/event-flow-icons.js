@@ -30,19 +30,79 @@
     if(e?.approximate)words.push('approximate minute from history snapshots');
     return words.filter(Boolean).join(' · ');
   }
-  function merge(history,live,sideOf){
-    const map=new Map();
-    // Snapshot-derived times are observations, not exact event timestamps.
-    for(const [source,approximate] of [[history,true],[live,false]]){
-      for(const item of (Array.isArray(source)?source:[])){
-        const minute=Number(item?.minute);
-        if(!Number.isFinite(minute)||minute<0||minute>135)continue;
-        const e={...item,minute,side:sideOf(item)||null,approximate};
-        const id=[Math.round(minute*10)/10,kind(e),e.side||String(e.team||'').toLowerCase()].join('|');
-        if(!map.has(id)||!approximate)map.set(id,e);
+  // Reconcile independently observed match events. Engine Signal timestamps
+  // are deliberately never used as a source of goals/cards/corners.
+  function merge(history,live,sideOf,score=null){
+    const valid=item=>{
+      const minute=item?.minute==null?NaN:Number(item.minute);
+      return Number.isFinite(minute)&&minute>=0&&minute<=135;
+    };
+    const normalize=(item,approximate)=>({...item,minute:Number(item.minute),
+      side:sideOf(item)||null,approximate});
+    const actual=[];
+    const seenLive=new Set();
+    for(const item of (Array.isArray(live)?live:[])){
+      if(!valid(item))continue;
+      const e=normalize(item,false),category=kind(e);
+      // An upstream event repeated verbatim should not create a second icon.
+      // Different event IDs/details are retained, including two real goals
+      // scored by the same team at the same minute.
+      const id=e.eventId??e.id??null;
+      const key=id!=null?'id:'+String(id):
+        [Math.round(e.minute*10)/10,category,e.side||String(e.team||'').trim().toLowerCase(),
+          String(e.detail||'').trim().toLowerCase()].join('|');
+      if(seenLive.has(key))continue;
+      seenLive.add(key);
+      actual.push(e);
+    }
+
+    const historyRows=(Array.isArray(history)?history:[]).filter(valid)
+      .map(e=>normalize(e,true)).sort((a,b)=>a.minute-b.minute);
+    const liveMatches=new Set();
+    const fallback=[];
+    const MAX_SNAPSHOT_DELAY_MINUTES=6;
+    for(const snap of historyRows){
+      const category=kind(snap);
+      let bestIndex=-1,bestGap=Infinity;
+      for(let i=0;i<actual.length;i++){
+        const event=actual[i];
+        if(liveMatches.has(i)||kind(event)!==category)continue;
+        // One unidentified team may match a known side, never two known
+        // opposing sides. A snapshot can be timestamped later than the goal.
+        if(event.side&&snap.side&&event.side!==snap.side)continue;
+        const gap=Math.abs(event.minute-snap.minute);
+        if(gap<=MAX_SNAPSHOT_DELAY_MINUTES&&gap<bestGap){
+          bestGap=gap;bestIndex=i;
+        }
+      }
+      if(bestIndex!==-1){
+        liveMatches.add(bestIndex);
+        if(!actual[bestIndex].side&&snap.side)actual[bestIndex].side=snap.side;
+      }else fallback.push(snap);
+    }
+
+    // Scoreboard is a safety net for delayed snapshots. It limits only
+    // reconstructed GOAL icons, never confirmed real feed events. Example:
+    // FT 1-0 with a real 21' goal must not show an extra snapshot goal at 28'.
+    const allowedBySide={};
+    for(const side of ['home','away']){
+      const value=score?.[side];
+      const goals=value==null?NaN:Number(value);
+      if(Number.isInteger(goals)&&goals>=0){
+        const exact=actual.filter(e=>kind(e)==='goal'&&e.side===side).length;
+        allowedBySide[side]=Math.max(0,goals-exact);
       }
     }
-    return [...map.values()].sort((a,b)=>a.minute-b.minute);
+    const result=[...actual];
+    for(const e of fallback){
+      if(kind(e)==='goal'&&Object.hasOwn(allowedBySide,e.side)){
+        if(!allowedBySide[e.side])continue;
+        allowedBySide[e.side]--;
+      }
+      result.push(e);
+    }
+    return result.sort((a,b)=>a.minute-b.minute||
+      Number(a.approximate)-Number(b.approximate));
   }
   function group(events,current,mobile=false){
     const minutes=Number(current);
@@ -53,10 +113,13 @@
     const clusters=[];
     for(const e of sorted){
       const side=e.side||'neutral';
-      const prev=[...clusters].reverse().find(g=>g.side===side&&
+      const category=kind(e);
+      // Separate GOAL from CORNER/CARD/VAR even at the same minute.
+      // Only repeated instances of the *same* event category may cluster.
+      const prev=[...clusters].reverse().find(g=>g.side===side&&g.category===category&&
         Math.abs(Number(e.minute)-Number(g.events[0].minute))<=gap);
       if(prev)prev.events.push(e);
-      else clusters.push({side,events:[e]});
+      else clusters.push({side,category,events:[e]});
     }
     return clusters.map(g=>{
       const sortedByImportance=g.events.slice().sort((a,b)=>

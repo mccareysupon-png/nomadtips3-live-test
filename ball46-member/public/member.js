@@ -488,26 +488,36 @@ function eventSide(e,featured){
   return null;
 }
 function historyDerivedEvents(rows){
-  const src=(Array.isArray(rows)?rows:[]).slice().sort((a,b)=>(Number(a?.minute)||0)-(Number(b?.minute)||0)||(Number(a?.at)||0)-(Number(b?.at)||0));
+  const src=(Array.isArray(rows)?rows:[]).slice().sort((a,b)=>
+    (Number(a?.minute)||0)-(Number(b?.minute)||0)||
+    (Number(a?.at)||0)-(Number(b?.at)||0));
   const out=[];
-  let prev=null;
-  const val=(o,k)=>Number(o?.[k])||0;
-  const card=(o,side,k)=>Number(o?.[side]?.[k])||0;
+  // Running highest cumulative counters prevent a missing snapshot (null)
+  // or a delayed correction from manufacturing the same goal a second time.
+  const high=new Map();
+  const fields=[
+    ['goals','Goal','goal'],
+    ['corners','Corner','corner'],
+    ['cards','Yellow card','yellow'],
+    ['cards','Red card','red']
+  ];
   for(const row of src){
-    if(!prev){prev=row;continue}
-    const minute=Number(row?.minute);
-    if(!Number.isFinite(minute)){prev=row;continue}
+    const minute=row?.minute==null?NaN:Number(row.minute);
+    if(!Number.isFinite(minute)||minute<0||minute>135)continue;
     for(const side of ['home','away']){
-      const goalDiff=val(row?.goals,side)-val(prev?.goals,side);
-      const cornerDiff=val(row?.corners,side)-val(prev?.corners,side);
-      const yellowDiff=card(row?.cards,side,'yellow')-card(prev?.cards,side,'yellow');
-      const redDiff=card(row?.cards,side,'red')-card(prev?.cards,side,'red');
-      for(let i=0;i<Math.max(0,goalDiff);i++) out.push({minute,type:'Goal',side});
-      for(let i=0;i<Math.max(0,cornerDiff);i++) out.push({minute,type:'Corner',side});
-      for(let i=0;i<Math.max(0,yellowDiff);i++) out.push({minute,type:'Yellow card',side});
-      for(let i=0;i<Math.max(0,redDiff);i++) out.push({minute,type:'Red card',side});
+      for(const [field,type,subtype] of fields){
+        const raw=field==='cards'?row?.cards?.[side]?.[subtype]:row?.[field]?.[side];
+        if(raw==null||raw==='')continue;
+        const value=Number(raw);
+        if(!Number.isInteger(value)||value<0)continue;
+        const key=side+'|'+type;
+        const earlier=high.get(key);
+        if(earlier!==undefined&&value>earlier){
+          for(let i=earlier;i<value;i++)out.push({minute,type,side});
+        }
+        high.set(key,Math.max(earlier??value,value));
+      }
     }
-    prev=row;
   }
   return out;
 }
@@ -522,8 +532,8 @@ function eventFlowChart(detail,fixtureId){
   const liveEvents=Array.isArray(featured?.events)?featured.events:[];
   const iconLib=globalThis.Ball46EventIcons;
   const events=iconLib
-    ? iconLib.merge(historyEvents,liveEvents,e=>eventSide(e,featured))
-    : [...historyEvents,...liveEvents].filter(e=>Number.isFinite(Number(e?.minute)));
+    ? iconLib.merge(historyEvents,liveEvents,e=>eventSide(e,featured),featured?.score)
+    : liveEvents.length?liveEvents:historyEvents;
   const maxEventMinute=events.reduce((m,e)=>Math.max(m,Number(e?.minute)||0),0);
   const current=Math.max(1,Math.round(Math.max(Number(featured?.minute)||0,maxPressureMinute,maxSignalMinute,maxEventMinute)));
   const points=pressurePoints(pressure,current);

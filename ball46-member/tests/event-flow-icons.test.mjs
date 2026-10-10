@@ -34,11 +34,10 @@ test('mobile compacts close events without silently discarding them',()=>{
   const arr=[{minute:26,type:'Corner',side:'home'},{minute:27,type:'Goal',side:'home'},
     {minute:27,type:'Yellow Card',side:'away'}];
   const markers=group(arr,90,true);
-  assert.equal(markers.length,2);
-  const home=markers.find(x=>x.side==='home');
-  assert.equal(home.events.length,2);
-  assert.equal(home.primary.minute,27);
-  assert.equal(home.kind,'goal');
+  assert.equal(markers.length,3,'different kinds never share a pin');
+  assert.equal(markers.filter(x=>x.side==='home').length,2);
+  assert.equal(markers.find(x=>x.kind==='goal').primary.minute,27);
+  assert.equal(markers.find(x=>x.kind==='corner').primary.minute,26);
 });
 test('discard impossible event minutes and empty source safely',()=>{
   assert.equal(merge([{minute:-1,type:'Goal'}, {minute:999,type:'Goal'}],[],()=>null).length,0);
@@ -46,4 +45,69 @@ test('discard impossible event minutes and empty source safely',()=>{
 });
 test('event descriptions include minute, side, and true details',()=>{
   assert.match(label({minute:78,type:'Yellow card',side:'away'},'HOME FC','AWAY FC'),/78'.*Yellow card.*AWAY FC/);
+});
+
+test('Single goal at 21 minutes is not doubled by a delayed 22-minute snapshot',()=>{
+  const history=[{minute:22,type:'Goal',side:'home'}];
+  const live=[{minute:21,type:'Goal',side:'home',detail:'Normal Goal'}];
+  const events=merge(history,live,e=>e.side,{home:1,away:0});
+  assert.equal(events.length,1);
+  assert.equal(events[0].minute,21);
+  assert.equal(events[0].approximate,false);
+  assert.equal(group(events,90,false).filter(x=>x.kind==='goal').length,1);
+});
+test('Unidentified real-feed side matches a confirmed snapshot team',()=>{
+  const events=merge(
+    [{minute:30,type:'Goal',side:'home'}],
+    [{minute:29,type:'Goal'}],
+    e=>e.side,
+    {home:1,away:0});
+  assert.equal(events.length,1);
+  assert.equal(events[0].minute,29);
+  assert.equal(events[0].side,'home');
+});
+test('Real goals for opposing teams or different event types remain separate',()=>{
+  const events=merge(
+    [{minute:22,type:'Goal',side:'away'},{minute:22,type:'Corner',side:'home'}],
+    [{minute:21,type:'Goal',side:'home'}],
+    e=>e.side,
+    {home:1,away:1});
+  assert.equal(events.filter(e=>kind(e)==='goal').length,2);
+  assert.equal(events.filter(e=>kind(e)==='corner').length,1);
+  assert.equal(group(events,90,true).length,3);
+});
+test('Two actual same-minute goals with different IDs remain distinct',()=>{
+  const events=merge(
+    [{minute:30,type:'Goal',side:'home'},{minute:30,type:'Goal',side:'home'}],
+    [{minute:30,type:'Goal',side:'home',eventId:'goal-a'},
+      {minute:30,type:'Goal',side:'home',eventId:'goal-b'}],
+    e=>e.side,{home:2,away:0});
+  assert.equal(events.length,2);
+  assert.ok(events.every(e=>!e.approximate));
+});
+test('Identical provider goal rows do not produce two football icons',()=>{
+  const events=merge([],[
+    {minute:44,type:'Goal',side:'home',detail:'Normal Goal'},
+    {minute:44,type:'Goal',side:'home',detail:'Normal Goal'}
+  ],e=>e.side,{home:1,away:0});
+  assert.equal(events.length,1);
+});
+test('Stale reconstructed goal cannot exceed latest real score',()=>{
+  const events=merge(
+    [{minute:31,type:'Goal',side:'home'}],
+    [{minute:21,type:'Goal',side:'home'}],
+    e=>e.side,{home:1,away:0});
+  assert.equal(events.filter(e=>kind(e)==='goal').length,1);
+  assert.equal(events[0].minute,21);
+});
+test('Historical events supplement only events absent from the live feed',()=>{
+  const events=merge(
+    [{minute:9,type:'Goal',side:'home'},{minute:41,type:'Goal',side:'home'}],
+    [{minute:40,type:'Goal',side:'home'}],
+    e=>e.side,{home:2,away:0});
+  assert.deepEqual(Array.from(events.map(e=>e.minute)),[9,40]);
+});
+test('Event markers remain separate from Signal detections',()=>{
+  assert.match(fs.readFileSync(new URL('../public/member.js',import.meta.url),'utf8'),
+    /const events=iconLib[\s\S]*?iconLib\.merge\(historyEvents,liveEvents,e=>eventSide\(e,featured\),featured\?\.score\)/);
 });
