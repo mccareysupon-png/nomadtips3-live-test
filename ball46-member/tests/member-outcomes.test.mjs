@@ -47,5 +47,5 @@ test('Member UI renders distinct LIVE and PENDING cards and result badges',()=>{
  assert.match(member,/\['PENDING',s\.pending,'pending'\]/);
  assert.match(member,/\['LIVE',s\.live\|\|0,'live'\]/);
  assert.match(member,/if\(result==='LIVE'\) return 'live'/);
- assert.match(html,/member-pending-live1/);
+ assert.match(html,/20261010-canonical-signal1/);
 });

@@ -3,6 +3,7 @@ import {createMemberCheckout} from './checkout.js';
 import {classifyCornerMarket} from './corner-market.js';
 import {cornerRuleForSignal} from './corner-conditions.js';
 import {normalizeMemberOutcome,countMemberOutcomes} from './member-outcomes.js';
+import {canonicalMemberSignals} from './signal-identity.js';
 const MARKET_ORDER = ['ALL','AH','1X2','O/U','CORNERS','BTTS','CARDS','OTHER'];
 const SOURCE_BASE = 'https://www.ball46.com';
 const BANGKOK_OFFSET_MS = 7 * 60 * 60 * 1000;
@@ -256,10 +257,11 @@ async function loadDailyMirror(force=false) {
 
   if (hasMore && pagesRead >= MAX_DAILY_PAGES) throw new Error('DAILY_MIRROR_PAGE_LIMIT');
 
-  let signals = [...unique.values()]
+  const normalized = [...unique.values()]
     .map(normalizeSignal)
-    .filter(r=>r.id && r.fixtureId)
-    .sort((a,b)=>b.createdAt-a.createdAt);
+    .filter(r=>r.id && r.fixtureId);
+  const {canonical,duplicateSignalIds} = canonicalMemberSignals(normalized);
+  let signals = canonical;
 
   // Current Ball46 board is authoritative for matches that are still live.
   // This prevents stale ledger/mirror status from labeling an active match as FINISHED.
@@ -306,6 +308,8 @@ async function loadDailyMirror(force=false) {
     generatedAt:nowMs,
     pagesRead,
     signalCount:signals.length,
+    suppressedDuplicateCount:duplicateSignalIds.length,
+    duplicateSignalIds,
     summary:dailySummary(signals),
     signals
   };

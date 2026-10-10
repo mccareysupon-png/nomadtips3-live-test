@@ -503,7 +503,7 @@ function statGrid(stats,corners,cards){
 
 function signalChips(fixtureId){
   const wrap=node('div','signal-chips');
-  const signals=state.payload.signals.filter(s=>s.fixtureId===fixtureId).sort((a,b)=>b.createdAt-a.createdAt);
+  const signals=state.payload.signals.filter(s=>s.fixtureId===fixtureId && s.id!==state.expandedSignalId).sort((a,b)=>b.createdAt-a.createdAt);
   for(const s of signals){
     const chip=node('button','signal-chip'+(s.id===state.expandedSignalId?' active':''));
     chip.type='button';
@@ -949,7 +949,8 @@ function renderInsight(host,fixtureId){
   if(!selected) return;
 
   const detail=state.detailCache.get(fixtureId);
-  host.append(signalChips(fixtureId));
+  const alternatives=signalChips(fixtureId);
+  if(alternatives.children.length) host.append(alternatives);
 
   if(!detail){
     host.append(featuredHorizontal(null,selected));
