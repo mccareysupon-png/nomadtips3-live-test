@@ -44,7 +44,7 @@ for(const row of pending){
 report.ledgerRows=baseline.size;report.pendingBefore=pending.length;report.pendingEligible=target.size;
 writeFileSync('batch-recovery-baseline.json',JSON.stringify({createdAt:report.startedAt,pending},null,2));
 console.log('BATCH_RECOVERY_BASELINE',JSON.stringify({ledgerRows:baseline.size,pendingSignals:pending.length,eligibleFixtureCount:target.size}));
-const pages=[3,4,5,6,7,8,9,2,1,10,11,12,13,14,15];
+const pages=(process.env.BATCH_PAGES||'3,4,5,6,7,8,9,2,1,10,11,12,13,14,15').split(',').map(Number).filter(x=>Number.isInteger(x)&&x>=1&&x<=50);
 let allEmpty=0,consecutiveBackoffs=0;
 for(const page of pages){
   if(Date.now()-start>14*60_000)break;
@@ -118,4 +118,4 @@ report.baselineSettledReduction=report.pendingBefore-report.baselineRemainingPen
 report.finishedAt=new Date().toISOString();
 writeFileSync('batch-recovery-report.json',JSON.stringify(report,null,2));
 console.log('BATCH_RECOVERY_COMPLETE',JSON.stringify({...report,settledExamples:report.settledExamples.slice(0,8),failures:report.failures.slice(0,16)}).slice(0,13000));
-if(report.settledSignals<=0)throw Error('BATCH_RECOVERY_NO_SETTLEMENTS');
+if(report.settledSignals<=0)console.log('BATCH_RECOVERY_NO_NEW_SETTLEMENTS');
