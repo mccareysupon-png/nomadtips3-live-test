@@ -1,0 +1,34 @@
+name: Diagnose Member Snapshot KV
+on:
+  push:
+    branches: [member/snapshot-readonly-20261011]
+    paths: ['.github/workflows/diagnose-member-snapshot-kv.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Probe KV, scheduled worker and source HTTP without mutations
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/storage/kv/namespaces"
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base?per_page=100" > /tmp/namespaces.json
+          id="$(jq -r '.result[] | select(.title=="BALL46_MEMBER_DAILY_SNAPSHOT_STAGING") | .id' /tmp/namespaces.json | head -n1)"
+          test -n "$id"
+          echo "KV_PRESENT=YES"
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/$id/keys?prefix=member%3Adaily%3Av1%3A" >/tmp/keys.json
+          echo "KV_KEY_COUNT=$(jq '.result|length' /tmp/keys.json)"
+          jq -r '.result[]?.name' /tmp/keys.json | head -n 10 | sed 's/^/KV_KEY=/'
+          curl -sS -o /tmp/health -w 'STAGE_HEALTH_HTTP=%{http_code}\n' "https://ball46-member-snapshot-staging.mccarey-supon.workers.dev/api/health"
+          for path in '/api/engine/statistics?paged=1' '/api/engine/board'; do
+            code="$(curl -sS --max-time 20 -o /tmp/upstream -w '%{http_code}' "https://www.ball46.com$path" || true)"
+            echo "UPSTREAM $path HTTP=$code"
+            head -c 180 /tmp/upstream | tr '\n' ' '
+            echo
+          done
