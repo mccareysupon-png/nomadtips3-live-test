@@ -384,5 +384,23 @@ jobs:
             console.log('HUB_COVERAGE_ROOT_CAUSE',JSON.stringify({versionId:active.version_id,createdAt:deploy.deployments[0]?.created_on,module:v.main_module,sourceLines:lines.length,probes,guardHit:snap.guardHit,todayRequests:snap.todayRequests,liveRequests:snap.liveRequests,fixtureCount:snap.fixtureCount,counts:snap.counts,window:snap.todayWindow}));
           }catch(e){console.log('HUB_COVERAGE_ROOT_CAUSE_ERROR',String(e?.stack||e).slice(0,1200))}
           console.log('INCIDENT_POST_RECOVERY_VALIDATION_20261010');
+
+          // Diagnose recovery provenance, read-only.
+          try{
+            const stat=await fetch('https://www.ball46.com/api/engine/statistics?paged=1&source_probe='+Date.now(),{cache:'no-store',signal:AbortSignal.timeout(25000)});
+            const j=await stat.json(), sources={}, minutes={}, examples=[];
+            for(const row of j.rows||[]){
+              if(row.status!=='SETTLED')continue;
+              const source=String(row.settlementSource||'SOURCE_NOT_RECORDED');
+              sources[source]=(sources[source]||0)+1;
+              const x=Number(row.settledAt||0);
+              if(x>=Date.parse('2026-10-10T10:00:00Z')){
+                const key=new Date(x).toISOString().slice(0,16)+'Z';
+                minutes[key]=(minutes[key]||0)+1;
+                if(examples.length<8)examples.push({fixtureId:row.fixtureId,market:row.market,settledAt:key,settlementSource:source});
+              }
+            }
+            console.log('INCIDENT_SETTLEMENT_PROVENANCE',JSON.stringify({sourceCounts:sources,recentSettledMinutes:Object.entries(minutes).sort((a,b)=>a[0].localeCompare(b[0])).slice(-25),examples}));
+          }catch(e){console.log('INCIDENT_SETTLEMENT_PROVENANCE_ERROR',String(e).slice(0,500))}
           console.log('READ_ONLY_DONE_NO_UPLOAD_NO_DEPLOY');
           NODE
