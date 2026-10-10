@@ -1,0 +1,42 @@
+name: Ball46 Safety Pause Incorrect FT UNDER
+on:
+  push:
+    branches: [audit/ball46-live-engine-corners-ou-20261010]
+    paths: ['.github/workflows/ball46-ft-under-safety-pause-20261010.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  pause-bad-market:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - name: Disable only unverified FT UNDER using existing Engine settings
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          const url='https://www.ball46.com/api/engine/settings';
+          const get=async()=>{
+            const r=await fetch(url+'?_pause='+Date.now(),{headers:{Accept:'application/json'},cache:'no-store',signal:AbortSignal.timeout(20000)});
+            const j=await r.json();
+            if(!r.ok||j.ok!==true||!j.runState)throw Error('ENGINE_SETTINGS_UNAVAILABLE');
+            return j;
+          };
+          const current=await get();
+          if(current.version!=='nomad343-engine-v5-best19-referee')throw Error('ENGINE_VERSION_CHANGED_ABORT');
+          const before={...current.runState};
+          console.log('BEFORE',JSON.stringify({version:current.version,ft_under:before.ft_under,otherEnabled:Object.entries(before).filter(([k,v])=>k!=='ft_under'&&v===true).map(([k])=>k)}));
+          if(before.ft_under===false){console.log('FT_UNDER_ALREADY_STOPPED');process.exit(0)}
+          if(before.ft_under!==true)throw Error('FT_UNDER_RUNSTATE_UNEXPECTED');
+          const response=await fetch(url,{method:'PUT',headers:{'content-type':'application/json',Accept:'application/json'},body:JSON.stringify({runState:{ft_under:false}}),signal:AbortSignal.timeout(20000)});
+          const responseBody=await response.json();
+          if(!response.ok||responseBody.ok!==true||responseBody.runState?.ft_under!==false)throw Error('FT_UNDER_PAUSE_FAILED_'+response.status);
+          const after=(await get()).runState;
+          if(after.ft_under!==false)throw Error('FT_UNDER_NOT_PERSISTED');
+          for(const [k,value] of Object.entries(before)){
+            if(k==='ft_under')continue;
+            if(after[k]!==value)throw Error('OTHER_MARKET_RUNSTATE_CHANGED_'+k);
+          }
+          console.log('SAFETY_PAUSE_VERIFIED',JSON.stringify({ft_under:false,allOtherMarketRunStatesUnchanged:true}));
+          NODE
