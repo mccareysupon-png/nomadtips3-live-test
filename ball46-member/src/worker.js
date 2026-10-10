@@ -1,4 +1,5 @@
 import {memberAccess,verifyAccessIdentity} from './access-auth.js';
+import {readSnapshot,publishSnapshot} from './member-snapshot.js';
 import {createMemberCheckout} from './checkout.js';
 import {classifyCornerMarket} from './corner-market.js';
 import {cornerRuleForSignal} from './corner-conditions.js';
@@ -492,10 +493,10 @@ export default {
 
     if (url.pathname === '/api/member/daily') {
       try {
-        return json(await loadDailyMirror(url.searchParams.get('refresh')==='1'));
+        const snapshot = await readSnapshot(env);
+        return json({...snapshot.daily,snapshotGeneratedAt:snapshot.generatedAt});
       } catch (e) {
-        if (mirrorCache?.payload) return json({...mirrorCache.payload,stale:true,mirrorError:String(e?.message||e)});
-        return json({ok:false,error:'DAILY_MIRROR_UNAVAILABLE',detail:String(e?.message||e)},502);
+        return json({ok:false,error:'DAILY_SNAPSHOT_UNAVAILABLE',detail:String(e?.message||e)},503);
       }
     }
 
@@ -503,9 +504,25 @@ export default {
       const fixtureId=String(url.searchParams.get('fixtureId')||'').trim();
       if (!fixtureId) return json({ok:false,error:'FIXTURE_ID_REQUIRED'},400);
       try {
-        return json(await loadMatchDetail(fixtureId));
+        const snapshot = await readSnapshot(env);
+        const f = snapshot.fixtures.find(row=>String(row?.fixtureId??'')===fixtureId);
+        const featured = f ? {
+          fixtureId,
+          minute:num(f.minute),
+          status:String(f.status??f.statusCode??f.boardState??''),
+          home:String(f?.home?.name||'HOME'),
+          away:String(f?.away?.name||'AWAY'),
+          league:[f?.league?.country,f?.league?.name].filter(Boolean).join(' · ')||'—',
+          score:cleanScore(f?.goals??f?.score),
+          statistics:cleanStats(f?.statistics),
+          corners:cleanCorners(f?.corners),
+          cards:cleanCards(f?.cards),
+          events:cleanEvents(f?.events)
+        } : null;
+        return json({ok:true,source:'BALL46_DAILY_SNAPSHOT',fixtureId,featured,
+          eventFlow:null,available:Boolean(featured),generatedAt:snapshot.generatedAt});
       } catch (e) {
-        return json({ok:false,error:'MATCH_MIRROR_UNAVAILABLE',detail:String(e?.message||e)},502);
+        return json({ok:false,error:'MATCH_SNAPSHOT_UNAVAILABLE',detail:String(e?.message||e)},503);
       }
     }
 
@@ -527,5 +544,11 @@ export default {
     if (url.pathname === '/success') return staticResponse(request,env,'/success.html');
 
     return withSecurityHeaders(await env.ASSETS.fetch(request));
+  },
+  async scheduled(event,env,ctx) {
+    ctx.waitUntil(publishSnapshot(env,
+      ()=>loadDailyMirror(true),
+      ()=>sourceJson('/api/engine/board')
+    ));
   }
 };
