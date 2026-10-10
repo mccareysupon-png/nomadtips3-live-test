@@ -402,5 +402,31 @@ jobs:
             }
             console.log('INCIDENT_SETTLEMENT_PROVENANCE',JSON.stringify({sourceCounts:sources,recentSettledMinutes:Object.entries(minutes).sort((a,b)=>a[0].localeCompare(b[0])).slice(-25),examples}));
           }catch(e){console.log('INCIDENT_SETTLEMENT_PROVENANCE_ERROR',String(e).slice(0,500))}
+
+          // Read-only: investigate settlement binding presence and duplicate signal identities.
+          try {
+            const deployed=await get('/scripts/'+worker+'/deployments');
+            const versionId=deployed.deployments?.[0]?.versions?.find(x=>Number(x.percentage)===100)?.version_id;
+            const activeV=await get('/workers/'+worker+'/versions/'+versionId+'?include=modules');
+            const bs=(activeV.bindings||[]).map(b=>({name:b.name,type:b.type}));
+            const want=['FIVEDOLLAR_API_KEY','HUB','FULL_MARKET','ENGINE'];
+            console.log('INCIDENT_BINDING_AUDIT',JSON.stringify({versionId,have:want.map(name=>({name,present:bs.some(b=>b.name===name),type:bs.find(b=>b.name===name)?.type||null})),bindingTypes:bs.map(x=>x.type)}));
+          } catch(e){console.log('INCIDENT_BINDING_AUDIT_ERROR',String(e.message||e).slice(0,900))}
+          try{
+            const url=new URL('https://www.ball46.com/api/engine/statistics');
+            url.searchParams.set('paged','1'); url.searchParams.set('snapshot','dupes');
+            const r=await fetch(url,{cache:'no-store',signal:AbortSignal.timeout(30000)});
+            const j=await r.json(); if(!r.ok||!Array.isArray(j.rows))throw Error('LEDGER_UNAVAILABLE');
+            const sameId=new Map(),perMarket=new Map();
+            for(const row of j.rows){
+              const id=String(row.id||''),key=String(row.fixtureId)+'|'+String(row.market);
+              if(!id)continue;
+              sameId.set(id,(sameId.get(id)||0)+1);
+              const arr=perMarket.get(key)||[];arr.push({id,market:row.market,fixtureId:row.fixtureId,minute:row.entryMinute||row.minute,selection:row.selection,line:row.line,odds:row.odds,createdAt:row.createdAt,status:row.status});perMarket.set(key,arr);
+            }
+            const sameMarket=[...perMarket].filter(([,rows])=>rows.length>1).map(([k,rows])=>({k,count:rows.length,rows:rows.slice(0,5)}));
+            const idDupes=[...sameId].filter(([,n])=>n>1);
+            console.log('INCIDENT_DUPLICATE_ANALYSIS',JSON.stringify({pageRows:j.rows.length,sameIdCount:idDupes.length,duplicatedFixtureMarketPairs:sameMarket.length,examples:sameMarket.slice(0,15),sameFixtureDifferentMarkets:[...new Set(j.rows.map(x=>String(x.fixtureId)))].length}));
+          }catch(e){console.log('INCIDENT_DUPLICATE_ANALYSIS_ERROR',String(e?.message||e).slice(0,400))}
           console.log('READ_ONLY_DONE_NO_UPLOAD_NO_DEPLOY');
           NODE
