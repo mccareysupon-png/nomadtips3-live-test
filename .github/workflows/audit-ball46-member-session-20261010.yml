@@ -1,0 +1,46 @@
+name: Audit Member Access Session Duration 20261010
+on:
+  push:
+    branches: [member/ball46-member-v1-20261008]
+    paths: ['.github/workflows/audit-ball46-member-session-20261010.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Read-only audit of Member application policies and global sessions
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          const token=process.env.CLOUDFLARE_API_TOKEN;
+          const account=process.env.CLOUDFLARE_ACCOUNT_ID;
+          if(!token||!account)throw Error('CREDENTIALS_UNAVAILABLE');
+          const base='https://api.cloudflare.com/client/v4/accounts/'+account;
+          async function read(path){
+            const r=await fetch(base+path,{headers:{Authorization:'Bearer '+token},signal:AbortSignal.timeout(20000)});
+            const data=await r.json();
+            if(!r.ok||!data.success)throw Error('CF_READ_'+r.status+'_'+path.split('?')[0]);
+            return data.result;
+          }
+          const apps=await read('/access/apps?per_page=100');
+          const match=apps.filter(a=>a.name==='Ball46 Member' && String(a.domain||'').startsWith('member.ball46.com/'));
+          if(match.length!==1)throw Error('UNEXPECTED_MEMBER_APPLICATION_COUNT_'+match.length);
+          const app=await read('/access/apps/'+match[0].id);
+          const policies=await read('/access/apps/'+app.id+'/policies?per_page=100');
+          const organization=await read('/access/organizations');
+          console.log('MEMBER_SESSION_AUDIT '+JSON.stringify({
+            app:{name:app.name,type:app.type,domain:app.domain,sessionDuration:app.session_duration,destinations:(app.destinations||[]).map(x=>x.uri),allowedIdpCount:(app.allowed_idps||[]).length},
+            policies:policies.map(p=>({name:p.name,decision:p.decision,precedence:p.precedence,sessionDuration:p.session_duration,includeTypes:(p.include||[]).flatMap(i=>Object.keys(i)),hasRequire:!!p.require?.length,hasExclude:!!p.exclude?.length})),
+            globalSessionDuration:organization.session_duration,
+            appCount:apps.length,
+            appNames:apps.map(a=>a.name),
+            auditMode:'READ_ONLY'
+          }));
+          NODE
