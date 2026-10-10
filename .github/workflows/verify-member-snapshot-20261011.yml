@@ -1,0 +1,28 @@
+name: Verify Member Snapshot (no deploy)
+
+on:
+  push:
+    branches:
+      - member/snapshot-readonly-20261011
+    paths:
+      - 'ball46-member/**'
+      - '.github/workflows/verify-member-snapshot-20261011.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify isolated member source syntax
+        run: |
+          node --check ball46-member/src/member-snapshot.js
+          node --check ball46-member/src/worker.js
+          node --check ball46-member/public/member.js
+      - name: Unit test member snapshot + existing member suite
+        run: node --test ball46-member/tests/*.test.mjs
