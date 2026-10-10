@@ -1,0 +1,34 @@
+name: Recover Ball46 Pending using 5Dollar bulk finals
+on:
+  push:
+    branches: [audit/ball46-live-engine-corners-ou-20261010]
+    paths: ['.github/workflows/recover-ball46-pending-batch-20261010.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  backfill:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    env:
+      FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: audit/ball46-live-engine-corners-ou-20261010
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate recovery code
+        run: node --check .github/scripts/recover_ball46_pending_batch_20261010.mjs
+      - name: Restore finished signal results from bulk verified official fixture rows
+        run: node .github/scripts/recover_ball46_pending_batch_20261010.mjs
+      - name: Preserve recovery baseline and verification report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-recovery-batch-${{ github.run_id }}
+          path: |
+            batch-recovery-baseline.json
+            batch-recovery-report.json
+          if-no-files-found: warn
