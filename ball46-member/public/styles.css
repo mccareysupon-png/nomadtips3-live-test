@@ -999,7 +999,7 @@ html{
 /* Premium Event Flow palette · Member only
    HOME  = Electric Cyan
    AWAY  = Premium Violet
-   SIGNAL = Champagne Gold
+   SIGNAL = Premium Emerald Glow
 */
 .member-flow{
   background:
@@ -1076,19 +1076,19 @@ html{
 
 /* Signal is intentionally independent from HOME/AWAY */
 .member-flow-signal-line{
-  stroke:#D9A83E;
+  stroke:#4aec9a;
   stroke-width:1;
   stroke-dasharray:4 5;
-  opacity:.34;
+  opacity:.43;
 }
 .member-flow-signal-dot{
-  fill:#F2C76E;
-  stroke:#FFF5D7;
+  fill:#dfffee;
+  stroke:#39f29b;
   stroke-width:2.2;
-  filter:drop-shadow(0 0 2.5px rgba(242,199,110,.42));
+  filter:drop-shadow(0 0 3.5px rgba(49,244,142,.55));
 }
 .member-flow-signal-label{
-  fill:#F7D98F;
+  fill:#edfff4;
   stroke:#050C14;
   stroke-width:3px;
 }
@@ -1111,7 +1111,7 @@ html{
   color:#71879A;
 }
 .member-flow-key .signal{
-  color:#F2C76E;
+  color:#5cf6a5;
 }
 .member-flow-key .event{
   color:#D6E1EA;
@@ -1437,16 +1437,18 @@ html{
   }
 }
 
-/* Sci-fi HUD treatment for Event Flow signal marker */
+/* Event Flow SIGNAL // minute badge: premium emerald sci-fi HUD.
+   Keep SVG text and team pressure/event colors steady and legible. */
 .member-flow-signal-ring{
-  fill:rgba(242,199,110,.07);
-  stroke:#F2C76E;
+  fill:rgba(38,229,134,.11);
+  stroke:#65ffa9;
   stroke-width:1;
   vector-effect:non-scaling-stroke;
+  filter:drop-shadow(0 0 3px rgba(57,241,145,.48));
 }
 .member-flow-signal-dot{
-  fill:#FFF2C5;
-  stroke:#D9A83E;
+  fill:#dffff0;
+  stroke:#2bea91;
   stroke-width:1.3;
   vector-effect:non-scaling-stroke;
 }
@@ -1454,17 +1456,30 @@ html{
   pointer-events:none;
 }
 .member-flow-signal-plate{
-  fill:rgba(5,12,20,.94);
-  stroke:rgba(242,199,110,.62);
-  stroke-width:.75;
+  fill:rgba(7,37,26,.96);
+  stroke:rgba(103,255,174,.82);
+  stroke-width:1;
   vector-effect:non-scaling-stroke;
+  filter:drop-shadow(0 0 4px rgba(44,238,130,.36));
+  animation:member-event-signal-emerald-glow 2.3s ease-in-out infinite;
+}
+@keyframes member-event-signal-emerald-glow{
+  0%,100%{
+    stroke:rgba(103,255,174,.52);
+    filter:drop-shadow(0 0 2px rgba(44,238,130,.23));
+  }
+  50%{
+    stroke:rgba(130,255,188,.98);
+    filter:drop-shadow(0 0 8px rgba(44,238,130,.61));
+  }
 }
 .member-flow-signal-accent{
-  fill:#59C7FF;
-  opacity:.88;
+  fill:#6dffb0;
+  opacity:1;
+  filter:drop-shadow(0 0 3px rgba(65,242,145,.65));
 }
 .member-flow-signal-label{
-  fill:#F7DA92;
+  fill:#effff5;
   stroke:none;
   paint-order:normal;
   font-family:"Manrope",Inter,ui-sans-serif,system-ui,sans-serif;
@@ -1473,10 +1488,17 @@ html{
   letter-spacing:.075em;
 }
 .member-flow-key .signal{
-  color:#F2C76E;
+  color:#5cf6a5;
   font-family:"Manrope",Inter,ui-sans-serif,system-ui,sans-serif;
   font-weight:800;
   letter-spacing:.08em;
+}
+@media(prefers-reduced-motion:reduce){
+  .member-flow-signal-plate{
+    animation:none;
+    stroke:#7fffc0;
+    filter:drop-shadow(0 0 4px rgba(44,238,130,.36));
+  }
 }
 
 /* Premium generated background imagery · Member pages only */

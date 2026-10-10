@@ -41,10 +41,25 @@ test('Border pulse stops with class removal and respects reduced-motion preferen
   assert.match(css,/@keyframes member-fresh-border/);
   assert.match(css,/@keyframes member-fresh-cell-border/);
   assert.match(css,/\.signal-row\.is-fresh-signal td/);
-  assert.match(html,/member-glow1/);
+  assert.match(html,/flow-emerald1/);
   assert.match(css,/@keyframes member-signal-green-glow/);
   assert.match(css,/@keyframes member-signal-side-glow/);
   assert.match(css,/@keyframes member-new-badge-glow/);
   assert.match(css,/\.signal-row\.is-fresh-signal \.member-new-signal/);
   assert.match(css,/prefers-reduced-motion:reduce/);
+});
+
+test('Event Flow SIGNAL minute tag is emerald, animated softly, and stays separate from team events',()=>{
+  assert.match(js,/class:'member-flow-signal-plate'/);
+  assert.match(js,/class:'member-flow-signal-accent'/);
+  assert.match(js,/class:'member-flow-signal-label'/);
+  assert.match(js,/label.textContent='SIGNAL \/\/ '/);
+  assert.match(css,/SIGNAL = Premium Emerald Glow/);
+  assert.match(css,/\.member-flow-signal-plate\{[\s\S]*?fill:rgba\(7,37,26,\.96\)/);
+  assert.match(css,/@keyframes member-event-signal-emerald-glow/);
+  assert.match(css,/\.member-flow-signal-label\{[\s\S]*?fill:#effff5/);
+  assert.match(css,/\.member-flow-signal-accent\{[\s\S]*?fill:#6dffb0/);
+  assert.match(css,/\.expand-flow-line\.home\{[\s\S]*?stroke:#59C7FF/);
+  assert.match(css,/\.expand-flow-line\.away\{[\s\S]*?stroke:#A78BFA/);
+  assert.match(css,/@media\(prefers-reduced-motion:reduce\)\{\s*\.member-flow-signal-plate\{\s*animation:none/);
 });
