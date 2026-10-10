@@ -1,5 +1,6 @@
 import { DurableObject } from 'cloudflare:workers';
 import { MARKET_RULES, MARKET_KEYS, cardPointsPair, gapPass, lineGap, settleMarketSignal } from './market-core.js';
+import { isGuardedOuMarket, strictOuQuote, mainOuTotalPass, verifiedBet365Odds } from './ou-market-integrity.js';
 
 const VERSION='nomad343-engine-v9-signal-chunks';
 const API_BASE='https://api.5dollarfootballapi.com/v1';
@@ -183,6 +184,9 @@ function findMarket(root,def){if(!root||typeof root!=='object')return null;for(c
 function stageValue(market,stage){if(!market||typeof market!=='object')return null;return market[stage]??(stage==='inplay'?market.in_play??market.live:null)??null}
 function stageSnapshot(root,def,stage){const v=stageValue(findMarket(root,def),stage);return v&&typeof v==='object'?clone(v):v??null}
 function priceFor(root,key,selection){
+  // Only goal/corner totals use strict canonical in-play pricing.
+  // AH, 1X2 and all other markets retain their previous path.
+  if(isGuardedOuMarket(key))return strictOuQuote(root,key,selection);
   const def=MARKET_RULES[key],stage=stageValue(findMarket(root,def),'inplay');if(!stage||typeof stage!=='object')return null;
   const sel=String(selection).toUpperCase();
   if(def.kind==='1X2'){const odds=num(stage[sel.toLowerCase()]);return odds===null?null:{line:null,providerLine:null,odds}}
@@ -196,6 +200,8 @@ function priceFor(root,key,selection){
 }
 function pricePass(key,cfg,price,f){
   const def=MARKET_RULES[key];if(!price||price.odds<Number(cfg.oddsMin)||price.odds>Number(cfg.oddsMax))return false;
+  // Main total quote must sit above the *already accumulated* count.
+  if(isGuardedOuMarket(key)&&!mainOuTotalPass(price,currentBasisTotal(f,def.basis)))return false;
   if(def.kind==='AH'){if(price.line===null)return false;if(num(cfg.lineMin)!==null&&price.line<Number(cfg.lineMin))return false;if(num(cfg.lineMax)!==null&&price.line>Number(cfg.lineMax))return false}
   if(def.kind==='OU'){
     if(price.line===null)return false;if(num(cfg.lineMin)!==null&&price.line<Number(cfg.lineMin))return false;
@@ -207,7 +213,11 @@ function pricePass(key,cfg,price,f){
 async function fetchFullOdds(fixtureId,env){
   if(!env.FIVEDOLLAR_API_KEY)throw new Error('FIVEDOLLAR_API_KEY_MISSING');
   const r=await fetch(`${API_BASE}/fixtures/${encodeURIComponent(fixtureId)}/odds?bookmakers=bet365`,{cache:'no-store',headers:{accept:'application/json',authorization:`Bearer ${env.FIVEDOLLAR_API_KEY}`}});const raw=await r.text();let j=null;try{j=JSON.parse(raw)}catch{}
-  if(!r.ok){const e=new Error(`5USD_ODDS_HTTP_${r.status}`);e.status=r.status;e.retryAfter=num(r.headers.get('retry-after'));throw e}const root=oddsRoot(j);if(!root)throw new Error('5USD_ODDS_SHAPE');return root;
+  if(!r.ok){const e=new Error(`5USD_ODDS_HTTP_${r.status}`);e.status=r.status;e.retryAfter=num(r.headers.get('retry-after'));throw e}const root=oddsRoot(j);if(!root)throw new Error('5USD_ODDS_SHAPE');
+  // Non-enumerable marker is used only for the strict OU selection gate.
+  // Preserve existing response handling for unrelated markets.
+  Object.defineProperty(root,'__verifiedBet365',{value:verifiedBet365Odds(j,root),enumerable:false});
+  return root;
 }
 function pickBestPriced(candidates,root,f,settings){
   const passed=[];for(const c of candidates){const price=priceFor(root,c.market,c.selection),cfg=settings[c.market];if(!pricePass(c.market,cfg,price,f))continue;passed.push({...c,price})}
