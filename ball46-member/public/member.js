@@ -860,7 +860,7 @@ function featuredHorizontal(detail,selected){
   const away=node('div','team away');away.append(node('span','','AWAY'),node('b','',f?.away||selected.away));
   score.append(home,center,away);
 
-  const signal=node('div','featured-h-signal');
+  const signal=node('div','featured-h-signal'+(selected.market==='CORNERS'?' has-corner-conditions':''));
   const entryContext=[`Entry score ${scoreText(selected.entryScore)}`];
   if(selected.market==='CORNERS'&&selected.entryCorners?.home!=null&&selected.entryCorners?.away!=null){
     entryContext.push(`Entry corners ${selected.entryCorners.home}-${selected.entryCorners.away}`);

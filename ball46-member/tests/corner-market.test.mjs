@@ -61,3 +61,10 @@ test('Member card connects recorded rule, odds, provider, price source and entry
  assert.match(member,/Provider market\/route do NOT prove the Bet365 menu is Asian Total or Standard Total/);
  assert.match(member,/cornerRuleName\(s\)/);
 });
+
+test('Expanded Corners entry uses vertical responsive card rather than row flex',()=>{
+ const css=readFileSync(new URL('../public/styles.css',import.meta.url),'utf8');
+ assert.match(member,/has-corner-conditions/);
+ assert.match(css,/\.featured-h-signal\.has-corner-conditions\{\s*display:flex;flex-direction:column/);
+ assert.match(css,/\.featured-h-signal \.corner-conditions-item b\{/);
+});
