@@ -499,6 +499,15 @@ export default {
       if(!member)return json({ok:false,error:'MEMBERSHIP_AUTH_REQUIRED'},401);
     }
 
+    // Protect Ball46 Main: member data is temporarily offline until the
+    // independently cached KV snapshot pipeline passes staging verification.
+    // No viewer request is allowed to fetch Engine statistics/board/history.
+    if (url.pathname === '/api/member/daily' || url.pathname === '/api/member/match') {
+      return json({ok:false,error:'MEMBER_SNAPSHOT_PENDING',
+        detail:'Member data is temporarily unavailable while Ball46 Main is protected.'},503,
+        {'retry-after':'300'});
+    }
+
     if (url.pathname === '/api/member/daily') {
       try {
         return json(await loadDailyMirror(url.searchParams.get('refresh')==='1'));
