@@ -38,5 +38,5 @@ jobs:
             byStatus[st]=(byStatus[st]||0)+1;
             byResult[rs]=(byResult[rs]||0)+1;
           }
-          console.log('RECOVERY_PROGRESS',JSON.stringify({time:new Date().toISOString(),ledgerTotal:ledger.ledgerTotal,pendingGlobal:ledger.pending,settledGlobal:ledger.settledTotal,daySampleCount:rows.length,dayByStatus:byStatus,dayByResult:byResult,engineOk:engine.ok,engineLastScan:new Date(engine.finishedAt).toISOString(),enginePending:engine.signalCount}));
+          console.log('RECOVERY_AFTER_FULL_RESTORE',JSON.stringify({time:new Date().toISOString(),ledgerTotal:ledger.ledgerTotal,pendingGlobal:ledger.pending,settledGlobal:ledger.settledTotal,daySampleCount:rows.length,dayByStatus:byStatus,dayByResult:byResult,engineOk:engine.ok,engineLastScan:new Date(engine.finishedAt).toISOString(),enginePending:engine.signalCount}));
           NODE
