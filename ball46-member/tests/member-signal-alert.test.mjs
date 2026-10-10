@@ -41,6 +41,6 @@ test('Border pulse stops with class removal and respects reduced-motion preferen
   assert.match(css,/@keyframes member-fresh-border/);
   assert.match(css,/@keyframes member-fresh-cell-border/);
   assert.match(css,/\.signal-row\.is-fresh-signal td/);
-  assert.match(html,/member-alert2/);
+  assert.match(html,/member-pagination1/);
   assert.match(css,/prefers-reduced-motion:reduce/);
 });
