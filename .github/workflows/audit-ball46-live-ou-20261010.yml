@@ -1,0 +1,62 @@
+name: Read-only Ball46 Live OU Engine Inspection
+on:
+  push:
+    branches:
+      - audit/ball46-live-engine-corners-ou-20261010
+    paths:
+      - .github/workflows/audit-ball46-live-ou-20261010.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Inspect current active Worker and OU market functions (NO CHANGES)
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import {createHash} from 'node:crypto';
+          const account=process.env.CLOUDFLARE_ACCOUNT_ID, token=process.env.CLOUDFLARE_API_TOKEN;
+          if(!account||!token)throw Error('CLOUDFLARE_AUTH_UNAVAILABLE');
+          const worker='nomadtips3-engine-343';
+          const root=`https://api.cloudflare.com/client/v4/accounts/${account}/workers`;
+          const get=async p=>{
+            const r=await fetch(root+p,{headers:{Authorization:`Bearer ${token}`},signal:AbortSignal.timeout(35000)});
+            const j=await r.json();
+            if(!r.ok||!j.success)throw Error(`CLOUDFLARE_READ_FAILED:${r.status}:${p}`);
+            return j.result;
+          };
+          const deployments=await get(`/scripts/${worker}/deployments`);
+          const deployed=deployments.deployments?.[0];
+          const active=deployed?.versions?.find(x=>Number(x.percentage)===100);
+          if(!active)throw Error('ACTIVE_100_PERCENT_VERSION_NOT_FOUND');
+          const v=await get(`/workers/${worker}/versions/${active.version_id}?include=modules`);
+          const main=v.modules?.find(x=>x.name===v.main_module);
+          if(!main?.content_base64)throw Error('ACTIVE_MAIN_MODULE_UNAVAILABLE');
+          const s=Buffer.from(main.content_base64,'base64').toString('utf8');
+          const sha=createHash('sha256').update(s).digest('hex');
+          const versionTags=[...s.matchAll(/nomad343-engine-v[^'"`\s;]{1,90}/ig)].slice(0,6).map(m=>m[0]);
+          console.log('ACTIVE_ENGINE',{worker,versionId:active.version_id,sha256:sha,bytes:s.length,main:v.main_module,moduleCount:v.modules?.length,created:deployed.created_on,tags:versionTags});
+          const pats=[/function\s+priceFor\s*\(/g,/function\s+pricePass\s*\(/g,/function\s+findMarket\s*\(/g,/function\s+oddsRoot\s*\(/g,/function\s+pickBestPriced\s*\(/g,/function\s+fetchFullOdds\s*\(/g,/corner_line/g,/goal_line/g,/lineGapMax/g,/priceAge/g];
+          const rows=s.split('\n');
+          for(const pat of pats){
+            let hits=[];
+            for(let i=0;i<rows.length;i++)if(pat.test(rows[i])){hits.push(i);pat.lastIndex=0;if(hits.length>=3)break;}
+            console.log('SOURCE_MATCH',String(pat),hits.map(i=>({line:i+1,snippet:rows.slice(Math.max(0,i-1),Math.min(rows.length,i+4)).map(x=>x.slice(0,550)).join(' ')})));
+          }
+          const publicBase='https://www.ball46.com/api/engine';
+          for(const part of ['health','registry','settings']){
+            try{
+              const r=await fetch(publicBase+'/'+part+'?_='+Date.now(),{signal:AbortSignal.timeout(20000),cache:'no-store'});
+              const j=await r.json().catch(()=>({}));
+              console.log('PUBLIC_'+part.toUpperCase(),JSON.stringify({http:r.status,ok:j.ok,version:j.version,settlementRevision:j.settlementRevision,markets:part==='registry'?Object.fromEntries(Object.entries(j.markets||{}).filter(([k])=>/^(?:ft|ht)_(?:corner_)?(?:over|under)$/.test(k))):undefined,settings:part==='settings'?Object.fromEntries(Object.entries(j.settings||{}).filter(([k])=>/^(?:ft|ht)_(?:corner_)?(?:over|under)$/.test(k)).map(([k,v])=>[k,{lineGapMax:v.lineGapMax,oddsMin:v.oddsMin,oddsMax:v.oddsMax,minuteFrom:v.minuteFrom,minuteTo:v.minuteTo}])):undefined}).slice(0,11500));
+            }catch(e){console.log('PUBLIC_'+part.toUpperCase()+'_ERROR',String(e?.message||e))}
+          }
+          console.log('READ_ONLY_DONE_NO_UPLOAD_NO_DEPLOY');
+          NODE
