@@ -15,6 +15,7 @@ jobs:
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
     steps:
       - name: Inspect current active Worker and OU market functions (NO CHANGES)
         shell: bash
@@ -303,5 +304,39 @@ jobs:
             const ix=lines.findIndex(l=>l.includes('async autoReconcileMissingFinals()'));
             console.log('INCIDENT_FALLBACK_SETTINGS',JSON.stringify({definitions:list,source:ix>=0?lines.slice(ix+58,ix+102).join('\n').slice(0,6000):''}));
           }catch(e){console.log('INCIDENT_FALLBACK_SETTINGS_ERROR',String(e).slice(0,400))}
+
+          // Critical: verify upstream final match data for missing board fixtures, WITHOUT settling or mutating.
+          try {
+            const key=process.env.FIVEDOLLAR_API_KEY;
+            if(!key)throw Error('FIVEDOLLAR_API_KEY_GITHUB_SECRET_NOT_SET');
+            for(const fixtureId of ['202465949','202563101','202522856','202465308','201864783']){
+              const url='https://api.5dollarfootballapi.com/v1/fixtures/'+fixtureId+'?include=events,stats';
+              const res=await fetch(url,{headers:{Authorization:'Bearer '+key,Accept:'application/json'},signal:AbortSignal.timeout(16000),cache:'no-store'});
+              let payload=await res.json().catch(()=>({}));
+              const d=payload?.data||payload?.fixture||{};
+              console.log('PROVIDER_MISSING_FIXTURE_PROBE',JSON.stringify({
+                 at:new Date().toISOString(),fixtureId,http:res.status,success:payload.success??null,
+                 error:payload.error?.code||payload.error?.message||typeof payload.error==='string'&&payload.error||null,
+                 dataKeys:Object.keys(d).slice(0,26),
+                 id:d.id??d.fixture_id??d.fixtureId??null,
+                 status:d.status??null, statusCode:d.status_code??d.statusCode??null,
+                 score:d.score??d.goals??d.scores??null,
+                 corners:d.corners??null,cards:d.cards??null,
+                 eventsCount:Array.isArray(d.events)?d.events.length:null,
+                 providerMeta:payload.meta?.message||null
+              }));
+            }
+            for(const path of ['health','snapshot']){
+              const res=await fetch('https://www.ball46.com/api/hub/'+path+'?inc='+Date.now(),{cache:'no-store',signal:AbortSignal.timeout(20000)});
+              const j=await res.json().catch(()=>({}));
+              const sample=['202465949','202563101','202522856','202465308','201864783'];
+              console.log('PROVIDER_HUB_'+path.toUpperCase(),JSON.stringify({
+                http:res.status,ok:j.ok,version:j.version,fixtureCount:j.fixtureCount??j.fixtures?.length??null,
+                statusCounts:j.counts??j.statusCounts??null,hasMoreAfterGuard:j.hasMoreAfterGuard??null,
+                stale:j.stale,hubFetchedAt:j.fetchedAt??null,ageMs:j.ageMs??null,
+                samplePresence:Object.fromEntries(sample.map(id=>[id,(j.fixtures||[]).some(x=>String(x.fixtureId)===id)]))
+              }));
+            }
+          }catch(e){console.log('PROVIDER_MISSING_FIXTURE_ERROR',String(e?.stack||e).slice(0,1000))}
           console.log('READ_ONLY_DONE_NO_UPLOAD_NO_DEPLOY');
           NODE
