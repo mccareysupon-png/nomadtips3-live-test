@@ -33,19 +33,19 @@ jobs:
             echo
           done
           python3 - <<'PY'
-import requests
-base='https://www.ball46.com/api/engine/statistics'
-cursor=None
-for page in range(1,33):
-    params={'paged':'1'}
-    if cursor: params['cursor']=cursor
-    try:
-        r=requests.get(base,params=params,timeout=15)
-        j=r.json()
-    except Exception as e:
-        print('PAGINATION_ERROR',page,str(e)[:120]);break
-    rows=j.get('rows',[])
-    print('PAGE',page,'http',r.status_code,'rows',len(rows),'hasMore',j.get('hasMore'),'nextCursor',bool(j.get('nextCursor')),'error',j.get('error'))
-    if r.status_code!=200 or not j.get('hasMore') or not j.get('nextCursor'):break
-    cursor=j['nextCursor']
-PY
+          import requests
+          base='https://www.ball46.com/api/engine/statistics'
+          cursor=None
+          for page in range(1,33):
+              params={'paged':'1'}
+              if cursor: params['cursor']=cursor
+              try:
+                  r=requests.get(base,params=params,timeout=15)
+                  j=r.json()
+              except Exception as e:
+                  print('PAGINATION_ERROR',page,str(e)[:120]);break
+              rows=j.get('rows',[])
+              print('PAGE',page,'http',r.status_code,'rows',len(rows),'hasMore',j.get('hasMore'),'nextCursor',bool(j.get('nextCursor')),'error',j.get('error'))
+              if r.status_code!=200 or not j.get('hasMore') or not j.get('nextCursor'):break
+              cursor=j['nextCursor']
+          PY
