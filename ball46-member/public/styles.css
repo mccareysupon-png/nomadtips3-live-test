@@ -2096,3 +2096,12 @@ body.page-member:before{
  color:#75efb0;font-size:10px;letter-spacing:0
 }
 .featured-h-signal .corner-conditions-card.is-handicap .corner-contract-label{color:#c5afff}
+
+/* Member result separation: LIVE is not PENDING. */
+.summary .summary-stat.live{background:rgba(57,168,255,.06);border-color:rgba(57,168,255,.2)}
+.summary .summary-stat.live b{color:#7ed6ff}
+.summary .summary-stat.unresolved{border-color:rgba(244,196,92,.17)}
+.summary .summary-stat.unresolved b{color:#f0c477}
+.summary .summary-stat.void b{color:#b4c5d3}
+.result-cell .badge.void{color:#b4c5d3;background:rgba(160,196,225,.08);border-color:rgba(160,196,225,.17)}
+.result-cell .badge.unresolved{color:#f0c477;background:rgba(244,196,92,.08);border-color:rgba(244,196,92,.2)}

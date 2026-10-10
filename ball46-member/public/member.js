@@ -236,6 +236,9 @@ function resultClass(result){
   if(result==='WIN'||result==='HALF_WIN') return 'win';
   if(result==='LOSS'||result==='HALF_LOSS') return 'loss';
   if(result==='PUSH') return 'push';
+  if(result==='LIVE') return 'live';
+  if(result==='VOID') return 'void';
+  if(result==='UNRESOLVED') return 'unresolved';
   return 'pending';
 }
 function statusClass(status){
@@ -245,7 +248,7 @@ function statusClass(status){
 }
 function currentStats(){
   return state.payload?.summary?.[state.market]||{
-    signals:0,win:0,loss:0,push:0,halfWin:0,halfLoss:0,pending:0,winRate:null,pnl:0
+    signals:0,win:0,loss:0,push:0,halfWin:0,halfLoss:0,pending:0,live:0,void:0,unresolved:0,winRate:null,pnl:0
   };
 }
 
@@ -291,6 +294,9 @@ function renderSummary(){
     ['HALF WIN',s.halfWin,'half-win'],
     ['HALF LOSS',s.halfLoss,'half-loss'],
     ['PENDING',s.pending,'pending'],
+    ['LIVE',s.live||0,'live'],
+    ...(s.unresolved?[['UNRESOLVED',s.unresolved,'unresolved']]:[]),
+    ...(s.void?[['VOID',s.void,'void']]:[]),
     ['WIN RATE',fmtPct(s.winRate),rateClass]
   ];
   summary.replaceChildren();
@@ -453,7 +459,7 @@ function makeSignalRow(row){
   tr.append(result);
 
   const p=Number(row.pnl||0);
-  const pnlState=row.result==='PENDING'||row.result==='PUSH'||row.result==='VOID'?'neutral':(p>0?'pos':p<0?'neg':'neutral');
+  const pnlState=['PENDING','LIVE','UNRESOLVED','PUSH','VOID'].includes(row.result)?'neutral':(p>0?'pos':p<0?'neg':'neutral');
   tr.append(td(fmtPnl(p),'pnl '+pnlState));
 
   tr.addEventListener('click',()=>toggleDetail(row));

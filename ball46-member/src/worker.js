@@ -2,6 +2,7 @@ import {memberAccess,verifyAccessIdentity} from './access-auth.js';
 import {createMemberCheckout} from './checkout.js';
 import {classifyCornerMarket} from './corner-market.js';
 import {cornerRuleForSignal} from './corner-conditions.js';
+import {normalizeMemberOutcome,countMemberOutcomes} from './member-outcomes.js';
 const MARKET_ORDER = ['ALL','AH','1X2','O/U','CORNERS','BTTS','CARDS','OTHER'];
 const SOURCE_BASE = 'https://www.ball46.com';
 const BANGKOK_OFFSET_MS = 7 * 60 * 60 * 1000;
@@ -131,8 +132,7 @@ function signalState(row) {
 
 function normalizeSignal(row) {
   const createdAt = num(row?.createdAt) ?? 0;
-  const rawResult = String(row?.result||'PENDING').toUpperCase();
-  const result = ['WIN','LOSS','PUSH','HALF_WIN','HALF_LOSS','VOID'].includes(rawResult) ? rawResult : 'PENDING';
+  const result = normalizeMemberOutcome(row?.result,row?.status);
   const entryMinute = num(row?.minute??row?.entryMinute);
   const category = marketCategory(row);
   return {
@@ -189,17 +189,9 @@ function dailySummary(rows) {
   const out = {};
   for (const market of MARKET_ORDER) {
     const scoped = market === 'ALL' ? rows : rows.filter(r=>r.market===market);
-    const counts = {signals:scoped.length,win:0,loss:0,push:0,halfWin:0,halfLoss:0,pending:0};
+    const counts = countMemberOutcomes(scoped);
     let pnl = 0;
-    for (const row of scoped) {
-      pnl += Number(row.pnl||0);
-      if (row.result === 'WIN') counts.win++;
-      else if (row.result === 'LOSS') counts.loss++;
-      else if (row.result === 'PUSH') counts.push++;
-      else if (row.result === 'HALF_WIN') counts.halfWin++;
-      else if (row.result === 'HALF_LOSS') counts.halfLoss++;
-      else counts.pending++;
-    }
+    for (const row of scoped) pnl += Number(row.pnl||0);
     const decided = counts.win + counts.loss + counts.halfWin + counts.halfLoss;
     const winPoints = counts.win + counts.halfWin * 0.5;
     out[market] = {
