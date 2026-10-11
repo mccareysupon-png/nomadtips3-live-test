@@ -39,3 +39,5 @@ jobs:
             jq -e '.daily.signalCount==(.daily.signals|length) and .daily.summary.ALL.signals==.daily.signalCount and (.daily.summary.ALL.pending+.daily.summary.ALL.win+.daily.summary.ALL.loss+.daily.summary.ALL.push+.daily.summary.ALL.halfWin+.daily.summary.ALL.halfLoss)==.daily.signalCount' /tmp/current.json
             echo "SNAPSHOT_COUNTERS_MATCH=YES"
           fi
+
+# Recheck status after scheduled tick
