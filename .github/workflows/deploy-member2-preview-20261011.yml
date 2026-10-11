@@ -14,7 +14,7 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
       - uses: actions/checkout@v4
-        with: {ref: '490daba1fce48c13c84d61de5eac8574d38508df'}
+        with: {ref: '6873750f493e87e9d1aae0da60fbbd0d9dac491b'}
       - uses: actions/setup-node@v4
         with: {node-version: '22'}
       - name: Assert separate worker with non-billing demo preview
