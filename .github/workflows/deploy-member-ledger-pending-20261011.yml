@@ -19,7 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 441b2fea0a91912e1dd8ebd936f05839edb8705c
+          ref: 3e1331551ffe3458f6d633e9366f561c9d10b42d
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -60,9 +60,15 @@ jobs:
           jq -e '.ok==true and .service=="ball46-member-production"' /tmp/health.json
           for path in '/api/member/daily' '/api/member/match?fixtureId=123'; do
             code="$(curl -sS --max-time 12 -o /tmp/deny.json -w '%{http_code}' "$base$path")"
-            test "$code" = 401
-            jq -e '.error=="MEMBERSHIP_AUTH_REQUIRED"' /tmp/deny.json >/dev/null
+            test "$code" = 503
+            jq -e '.error=="MEMBER_SERVICE_SUSPENDED"' /tmp/deny.json >/dev/null
           done
           curl -fSs --max-time 12 "$base/member.js" >/tmp/member.js
           grep -q "INVALID_MEMBER_DAILY_PAYLOAD" /tmp/member.js
-          echo "MEMBER_PROD_LEDGER_UI_DEPLOYED_AUTH_GUARDED"
+          code="$(curl -sS --max-time 12 -o /tmp/suspended.html -w '%{http_code}' "$base/member")"
+          test "$code" = 503
+          grep -q 'ระงับการให้บริการ' /tmp/suspended.html
+          code="$(curl -sS --max-time 12 -o /tmp/enrollment.json -w '%{http_code}' "$base/api/enrollment-status")"
+          test "$code" = 200
+          jq -e '.enrollmentAvailable==false' /tmp/enrollment.json >/dev/null
+          echo "MEMBER_PRODUCTION_SUSPENSION_VERIFIED"
