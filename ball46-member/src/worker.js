@@ -546,9 +546,22 @@ export default {
     return withSecurityHeaders(await env.ASSETS.fetch(request));
   },
   async scheduled(event,env,ctx) {
-    ctx.waitUntil(publishSnapshot(env,
-      ()=>loadDailyMirror(true),
-      ()=>sourceJson('/api/engine/board')
-    ));
+    ctx.waitUntil((async()=>{
+      try {
+        const result=await publishSnapshot(env,
+          ()=>loadDailyMirror(true),
+          ()=>sourceJson('/api/engine/board')
+        );
+        await env.MEMBER_DAILY_SNAPSHOTS.put('member:publisher:status',
+          JSON.stringify({ok:true,...result,at:Date.now()}));
+      } catch(e) {
+        console.error('MEMBER_SNAPSHOT_PUBLISH_FAILED',String(e?.stack||e));
+        if(env.MEMBER_DAILY_SNAPSHOTS){
+          await env.MEMBER_DAILY_SNAPSHOTS.put('member:publisher:status',
+            JSON.stringify({ok:false,error:String(e?.message||e),at:Date.now()}));
+        }
+        throw e;
+      }
+    })());
   }
 };
