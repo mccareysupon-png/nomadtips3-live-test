@@ -1,0 +1,45 @@
+name: INCIDENT Ball46 Backoff Runtime and Producer Budget 20261011
+on:
+  push:
+    branches: [incident/ball46-signal-silent-20261011]
+    paths: [.github/workflows/incident-ball46-backoff-runtime-20261011.yml]
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: Inspect full market runtime configuration and engine call rate without mutations
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          const acc=process.env.CLOUDFLARE_ACCOUNT_ID,tok=process.env.CLOUDFLARE_API_TOKEN,b='https://api.cloudflare.com/client/v4/accounts/'+acc+'/workers';
+          const get=async p=>{const r=await fetch(b+p,{headers:{Authorization:'Bearer '+tok},signal:AbortSignal.timeout(25000)}),j=await r.json().catch(()=>({}));if(!r.ok||!j.success)throw Error('CF_'+r.status+'_'+p);return j.result};
+          for(const name of ['nomadtips3-full-market-343-ball46','nomadtips3-engine-343']){
+            const ds=await get('/scripts/'+name+'/deployments'),id=ds.deployments[0].versions[0].version_id;
+            const v=await get('/workers/'+name+'/versions/'+id+'?include=modules'),src=Buffer.from(v.modules.find(m=>m.name===v.main_module).content_base64,'base64').toString('utf8'),lines=src.split('\n');
+            const settings=await get('/scripts/'+name+'/settings');
+            let crons=null;try{crons=(await get('/scripts/'+name+'/schedules')).schedules||null}catch{}
+            console.log('RUNTIME_WORKER',JSON.stringify({name,id,crons,bindings:(settings.bindings||[]).map(x=>({name:x.name,type:x.type,service:x.service})),observability:settings.observability}));
+            if(name.includes('full-market')){
+              for(const [start,end] of [[20,84],[235,324],[326,385],[389,418],[454,467]]){
+                console.log('RUNTIME_SOURCE',JSON.stringify({name,start,end,code:lines.slice(start-1,end).map((l,i)=>String(start+i)+': '+l).join('\n').slice(0,11000)}));
+              }
+            }else{
+              for(const [start,end] of [[1000,1020],[1035,1115]]){
+                console.log('RUNTIME_SOURCE',JSON.stringify({name,start,end,code:lines.slice(start-1,end).map((l,i)=>String(start+i)+': '+l).join('\n').slice(0,12000)}));
+              }
+              const opts=['MIN_SCAN_GAP_MS','refereeQueued','let full = null','this.env.FULL_MARKET.fetch','MAX_REFEREE','sort('];
+              for(const k of opts){const ix=lines.flatMap((l,i)=>l.includes(k)?[{line:i+1,code:l.trim().slice(0,600)}]:[]).slice(0,12);console.log('RUNTIME_CODE_MATCH',JSON.stringify({name,k,found:ix}))}
+            }
+          }
+          for(const p of ['/api/full-market/health','/api/full-market/settings','/api/engine/fixture-odds?fixtureId=202642795']){
+            try{const r=await fetch('https://www.ball46.com'+p,{cache:'no-store',signal:AbortSignal.timeout(12000)}),body=await r.text();let j={};try{j=JSON.parse(body)}catch{}console.log('RUNTIME_PUBLIC',JSON.stringify({path:p,http:r.status,bytes:body.length,ok:j.ok,config:j.config,blockedUntil:j.blockedUntil,remainingLocalBudget:j.remainingLocalBudget,retryAfterSec:j.retryAfterSec,providerMeta:j.providerMeta,version:j.version,error:j.error}))}
+            catch(e){console.log('RUNTIME_PUBLIC_ERROR',JSON.stringify({path:p,error:String(e?.message||e)}))}
+          }
+          NODE
