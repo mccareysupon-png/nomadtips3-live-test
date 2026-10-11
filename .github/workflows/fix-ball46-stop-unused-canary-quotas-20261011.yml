@@ -1,0 +1,41 @@
+name: Fix Ball46 5Dollar Shared Account Canary Cron Quota
+on:
+  push:
+    branches: [fix/ball46-stop-unused-canary-quotas-20261011]
+    paths:
+      - '.github/workflows/fix-ball46-stop-unused-canary-quotas-20261011.yml'
+permissions:
+  contents: read
+concurrency:
+  group: ball46-5usd-shared-quota-canary-cron-20261011
+  cancel-in-progress: false
+jobs:
+  stop-nonproduction-pollers-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 14
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax check
+        run: node --check deploy-assets/ball46-quota-canary-cron-20261011/disable.mjs
+      - name: Check 3 canaries and production Worker versions with NO mutations
+        env:
+          CANARY_QUOTA_DRY_RUN: '1'
+        run: node deploy-assets/ball46-quota-canary-cron-20261011/disable.mjs
+      - name: Stop only 3 nonproduction canary crons with rollback
+        env:
+          CANARY_QUOTA_DRY_RUN: '0'
+        run: node deploy-assets/ball46-quota-canary-cron-20261011/disable.mjs
+      - name: Save exact before/after state and rollback checkpoint
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-quota-canary-restore-${{ github.run_id }}
+          path: audit-canary/
+          if-no-files-found: warn
+          retention-days: 30
