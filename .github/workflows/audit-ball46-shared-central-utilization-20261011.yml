@@ -1,0 +1,43 @@
+name: Audit Ball46 Central 5Dollar Utilization 20261011
+on:
+  push:
+    branches: [incident/ball46-signal-silent-20261011]
+    paths: [.github/workflows/audit-ball46-shared-central-utilization-20261011.yml]
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: Check current central odds producer and actual Ball46 signal flow without mutating
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          const u=[
+            'https://nomadtips3-343-central-cache.mccarey-supon.workers.dev/health',
+            'https://nomadtips3-343-central-cache-canary.mccarey-supon.workers.dev/health',
+            'https://www.ball46.com/api/full-market/health',
+            'https://www.ball46.com/api/engine/health',
+            'https://www.ball46.com/api/engine/ledger-health',
+            'https://www.ball46.com/api/engine/signals'
+          ];
+          for(const url of u){
+            try{
+              const response=await fetch(url+'?read_only='+Date.now(),{cache:'no-store',signal:AbortSignal.timeout(18000)});
+              const json=await response.json().catch(()=>({}));
+              if(url.includes('central-cache'))console.log('CENTRAL_QUOTA_HEALTH',JSON.stringify({url,http:response.status,ok:json.ok,providerCalls60s:json.providerCalls60s,maxProviderCalls60s:json.maxProviderCalls60s,lastTick:json.lastTick?{providerCalls:json.lastTick.providerCalls,usedBeforeTick:json.lastTick.usedBeforeTick,maxCalls:json.lastTick.maxProviderCallsPer60s,at:json.lastTick.finishedAt,failed:json.lastTick.results?.filter(x=>!x.ok).slice(0,3)}:null}));
+              if(url.includes('full-market'))console.log('FULL_QUOTA_HEALTH',JSON.stringify({http:response.status,provider:json.providerMeta,backoff:json.retryAfterSec,calls:json.callsLast60s,prewarm:json.prewarmMeta}));
+              if(url.includes('engine/health')){const err={};for(const e of json.refereeErrors||[])err[e.error]=(err[e.error]||0)+1;console.log('ENGINE_QUOTA_HEALTH',JSON.stringify({http:response.status,scanFinished:json.finishedAt,live:json.liveCount,refereeQueued:json.refereeQueued,refereeRequests:json.refereeRequests,errors:err,lastError:json.lastError}))}
+              if(url.includes('ledger-health'))console.log('LEDGER_CURRENT',JSON.stringify({total:json.ledgerTotal,settled:json.settledTotal,pending:json.pending}));
+              if(url.endsWith('/signals'))console.log('SIGNAL_CURRENT',JSON.stringify({total:json.signals?.length,last:json.signals?.slice(-6).map(x=>({market:x.market,at:x.createdAt,priceSource:x.priceSource}))}));
+            }catch(e){console.log('SHARED_QUOTA_FETCH_ERROR',JSON.stringify({url,error:String(e?.message||e)}))}
+          }
+          const b='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+'/workers';
+          const auth={Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN};
+          const j=await fetch(b+'/scripts/nomadtips3-engine-343/deployments',{headers:auth}).then(x=>x.json());
+          console.log('CURRENT_ENGINE_DEPLOYMENT',JSON.stringify({id:j.result?.deployments?.[0]?.versions?.find(v=>v.percentage===100)?.version_id}));
+          NODE
