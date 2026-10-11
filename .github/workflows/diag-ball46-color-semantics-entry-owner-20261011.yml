@@ -1,0 +1,36 @@
+name: DIAG Ball46 Color Semantics Entry Owner 20261011
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/diag-ball46-color-semantics-entry-owner-20261011.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Inspect live color semantics score painter
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL --max-time 30 "https://ball46.com/color-semantics-343.js?v=343-color-semantics-20260922a" -o /tmp/color.js
+          python3 - <<'PY'
+          t=open('/tmp/color.js',encoding='utf-8',errors='replace').read()
+          print('BYTES',len(t))
+          for needle in ['function paintScore','paintScore(','MutationObserver','querySelectorAll','data-sp-table-body','td:nth-child','sp-table']:
+              print('\n===',needle,'===')
+              start=0
+              n=0
+              while True:
+                  p=t.find(needle,start)
+                  if p<0 or n>=12: break
+                  print(t[max(0,p-1000):p+2600].replace('\n',' '))
+                  print('\n---')
+                  start=p+len(needle); n+=1
+          PY
