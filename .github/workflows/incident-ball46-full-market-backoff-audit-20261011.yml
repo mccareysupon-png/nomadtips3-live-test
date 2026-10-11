@@ -1,0 +1,58 @@
+name: INCIDENT Ball46 Full Market Backoff Source Audit 20261011
+on:
+  push:
+    branches: [incident/ball46-signal-silent-20261011]
+    paths: [.github/workflows/incident-ball46-full-market-backoff-audit-20261011.yml]
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
+    steps:
+      - name: Trace current FULL_MARKET service binding and backoff code, provider limits (no writes)
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import {createHash} from 'node:crypto';
+          const acc=process.env.CLOUDFLARE_ACCOUNT_ID,tok=process.env.CLOUDFLARE_API_TOKEN,b='https://api.cloudflare.com/client/v4/accounts/'+acc+'/workers';
+          const get=async p=>{const r=await fetch(b+p,{headers:{Authorization:'Bearer '+tok},signal:AbortSignal.timeout(25000)}),j=await r.json().catch(()=>({}));if(!r.ok||!j.success)throw Error('CF_'+r.status+'_'+p);return j.result};
+          const engine=await get('/scripts/nomadtips3-engine-343/settings');
+          const bindings=(engine.bindings||[]).filter(x=>/FULL_MARKET|HUB|FIVEDOLLAR/i.test(x.name||'')).map(x=>({name:x.name,type:x.type,service:x.service,environment:x.environment,script_name:x.script_name}));
+          console.log('BACKOFF_BINDINGS',JSON.stringify(bindings));
+          const svc=bindings.find(x=>x.name==='FULL_MARKET');
+          const candidates=[svc?.service,svc?.script_name,'nomadtips3-full-market-343','nomadtips3-market-engine'].filter(Boolean);
+          for(const name of [...new Set(candidates)]){
+            try{
+              const ds=await get('/scripts/'+name+'/deployments');
+              const id=ds.deployments?.[0]?.versions?.find(x=>Number(x.percentage)===100)?.version_id;
+              if(!id)continue;
+              const v=await get('/workers/'+name+'/versions/'+id+'?include=modules');
+              const source=v.modules?.find(x=>x.name===v.main_module)?.content_base64;
+              if(!source){console.log('BACKOFF_SERVICE_META',JSON.stringify({name,id,sourceUnavailable:true}));continue}
+              const s=Buffer.from(source,'base64').toString('utf8'),lines=s.split('\n');
+              console.log('BACKOFF_SERVICE_META',JSON.stringify({name,id,created:ds.deployments[0].created_on,sha:createHash('sha256').update(s).digest('hex'),bytes:s.length}));
+              const regex=/BACKOFF|backoff|429|quota|rate.limit|RATE_LIMIT|PROVIDER_|THROTTLE|retry.after|retryAfter|cooldown|CACHE|TTL|fixture-odds/;
+              const hits=lines.flatMap((l,i)=>regex.test(l)?[{line:i+1,code:l.slice(0,700)}]:[]).slice(0,100);
+              console.log('BACKOFF_SOURCE_HITS',JSON.stringify({name,total:hits.length,hits}));
+              for(const term of ['FULL_MARKET_PROVIDER_BACKOFF','async function fetch','async fetch(request','fixture-odds','rateLimitedUntil','providerBackoffUntil']){
+                const idx=lines.findIndex(l=>l.includes(term));
+                if(idx>=0)console.log('BACKOFF_SOURCE_CONTEXT',JSON.stringify({name,term,start:idx+1,code:lines.slice(Math.max(0,idx-8),Math.min(lines.length,idx+40)).map((x,j)=>String(Math.max(0,idx-8)+j+1)+':'+x).join('\n').slice(0,7000)}));
+              }
+            }catch(error){console.log('BACKOFF_SERVICE_READ_ERROR',JSON.stringify({name,error:String(error?.message||error)}))}
+          }
+          const k=process.env.FIVEDOLLAR_API_KEY;
+          if(k){
+            try {
+              const fixture='202642795';
+              const r=await fetch('https://api.5dollarfootballapi.com/v1/fixtures/'+fixture+'/odds/history?market=goalline&bookmaker=bet365&per_page=500',{headers:{Authorization:'Bearer '+k},signal:AbortSignal.timeout(22000)});
+              const j=await r.json().catch(()=>({}));
+              console.log('BACKOFF_PROVIDER_PROBE',JSON.stringify({http:r.status,error:j.error?.code||null,rateLimit:r.headers.get('x-ratelimit-limit'),remaining:r.headers.get('x-ratelimit-remaining'),retryAfter:r.headers.get('retry-after'),ticks:j.data?.ticks?.length||null}));
+            }catch(e){console.log('BACKOFF_PROVIDER_PROBE_ERROR',String(e?.message||e))}
+          }
+          NODE
