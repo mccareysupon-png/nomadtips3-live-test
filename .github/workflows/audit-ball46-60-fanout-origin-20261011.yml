@@ -17,7 +17,7 @@ jobs:
       - name: Compare original pre-Corners, post-Corners and Goals Worker referee call loops without writes
         run: |
           node --input-type=module <<'NODE'
-          const base='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+'/workers/nomadtips3-engine-343/versions/';
+          const base='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+'/workers/workers/nomadtips3-engine-343/versions/';
           const hdr={Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN};
           const ids=[
             ['BEFORE_CORNER_REPAIR','e8f4f122-f27c-4d96-984b-56f028891cfe'],
