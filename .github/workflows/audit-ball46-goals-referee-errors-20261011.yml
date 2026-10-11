@@ -1,0 +1,26 @@
+name: Audit Ball46 Goal Referee Error Types Readonly
+on:
+  push:
+    branches: [audit/ball46-goal-live-referee-20261011]
+    paths: [.github/workflows/audit-ball46-goals-referee-errors-20261011.yml]
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - name: Classify current public referee errors no write
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          for(const p of ['health','board']){
+            const r=await fetch('https://www.ball46.com/api/engine/'+p+'?classify_ou='+Date.now(),{cache:'no-store',signal:AbortSignal.timeout(24000)}),j=await r.json();
+            const errors=(p==='health'?j.refereeErrors:j.referee?.errors)||[];
+            const counts={};for(const e of errors){
+              const err=String(e.error||e.message||'unknown').replace(/\d{7,}/g,'N');
+              counts[err]=(counts[err]||0)+1;
+            }
+            console.log('REFEREE_ERROR_TYPES',JSON.stringify({path:p,http:r.status,ok:j.ok,errors:errors.length,types:counts,lastError:j.lastError||null,refereeStats:j.referee?{requests:j.referee.requests,errors:j.referee.errors?.length}:null}));
+          }
+          NODE
