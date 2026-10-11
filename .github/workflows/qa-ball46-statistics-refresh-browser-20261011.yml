@@ -1,0 +1,91 @@
+name: QA Ball46 Statistics Refresh Browser 20261011
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/qa-ball46-statistics-refresh-browser-20261011.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  qa-readonly:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ops/ball46-easybet-crossdevice-fix-20261007
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install headless browser
+        run: |
+          npm install --no-save --ignore-scripts playwright@1.56.1
+          npx playwright install chromium
+      - name: Browser QA on desktop and mobile - no writes
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import {chromium} from 'playwright';
+          const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
+          const urls=[
+           {route:'/index.html?view=statistics&market=corners',view:'statistics',market:'corners',refresh:true},
+           {route:'/index.html?view=statistics&market=ah',view:'statistics',market:'ah',refresh:true},
+           {route:'/index.html?view=statistics&market=1x2',view:'statistics',market:'1x2',refresh:false},
+           {route:'/index.html?view=signal&signalMarket=corners',view:'signal',refresh:true},
+           {route:'/index.html',view:'live',refresh:false}
+          ];
+          async function snapshot(page){
+           return page.evaluate(()=>({
+            url:location.href,view:document.body?.dataset?.workspaceView,
+            statPanelHidden:document.querySelector('[data-workspace-panel="statistics"]')?.hidden,
+            signalMarket:document.body?.dataset?.signalMarket,
+            market:[...document.querySelectorAll('[data-stat-market].active')].map(x=>x.dataset.statMarket),
+            status:[...document.querySelectorAll('[data-status-filter].active')].map(x=>x.dataset.statusFilter)
+           }));
+          }
+          for(const viewport of [{width:1440,height:900},{width:390,height:844}]){
+           const context=await browser.newContext({viewport,isMobile:viewport.width<600});
+           const page=await context.newPage(), device=viewport.width<600?'mobile':'desktop';
+           const errors=[];
+           page.on('pageerror',e=>errors.push(e.message.slice(0,140)));
+           for(const test of urls){
+            const r=await page.goto('https://ball46.com'+test.route,{waitUntil:'domcontentloaded',timeout:40000});
+            assert.equal(r.status(),200,'PAGE_NOT_200:'+device+test.route);
+            await page.waitForTimeout(3100);
+            let state=await snapshot(page);
+            console.log('QA_OPEN',device,test.route,JSON.stringify(state),'errors',JSON.stringify(errors.slice(-2)));
+            assert.equal(state.view,test.view,'WRONG_VIEW_OPEN:'+device+test.route);
+            if(test.view==='statistics'){
+             assert.equal(state.statPanelHidden,false,'STATS_PANEL_HIDDEN:'+device+test.route);
+             assert(state.url.includes('view=statistics'),'STATS_URL_REPLACED:'+device+test.route);
+             assert(state.market.includes(test.market),'STATS_MARKET_NOT_ACTIVE:'+device+test.route);
+            }
+            if(test.view==='signal')assert(state.url.includes('view=signal'),'SIGNAL_URL_REPLACED:'+device+test.route);
+            if(test.refresh){
+             await page.reload({waitUntil:'domcontentloaded',timeout:40000});
+             await page.waitForTimeout(3500);
+             state=await snapshot(page);
+             console.log('QA_REFRESH',device,test.route,JSON.stringify(state),'errors',JSON.stringify(errors.slice(-2)));
+             assert.equal(state.view,test.view,'REFRESH_LOST_VIEW:'+device+test.route);
+             if(test.market)assert(state.market.includes(test.market),'REFRESH_LOST_MARKET:'+device+test.route);
+             if(test.view==='statistics')assert(state.statPanelHidden===false&&state.url.includes('view=statistics'),'REFRESH_STATISTICS_NOT_VISIBLE:'+device+test.route);
+             if(test.view==='signal')assert(state.url.includes('view=signal'),'REFRESH_SIGNAL_NOT_VISIBLE:'+device+test.route);
+            }
+           }
+           // An actual manual status-filter click must still be allowed to navigate back to Live.
+           await page.goto('https://ball46.com/index.html?view=statistics&market=corners',{waitUntil:'domcontentloaded',timeout:40000});
+           await page.waitForTimeout(900);
+           const clicked=await page.evaluate(()=>{const x=document.querySelector('[data-status-filter="live"]');if(!x)return false;x.click();return true});
+           assert(clicked,'MANUAL_LIVE_BUTTON_MISSING:'+device);
+           await page.waitForTimeout(600);
+           const afterClick=await snapshot(page);
+           console.log('QA_MANUAL_LIVE',device,JSON.stringify(afterClick));
+           assert(afterClick.view==='live','MANUAL_LIVE_BUTTON_BROKEN:'+device);
+           await context.close();
+           console.log('QA_DEVICE_PASS',device);
+          }
+          await browser.close();
+          console.log('BALL46_STATISTICS_REFRESH_BROWSER_QA_SUCCESS');
+          
+          NODE
