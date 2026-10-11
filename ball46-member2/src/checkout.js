@@ -8,7 +8,7 @@ export async function createMemberCheckout(identity, env, origin, fetcher=fetch)
   if(!env.STRIPE_SECRET_KEY || !env.STRIPE_PRICE_ID)
     return {status:503,body:{ok:false,error:'STRIPE_NOT_CONFIGURED'}};
   const base=new URL(origin);
-  if(base.protocol!=='https:' || !['member.ball46.com','ball46-member-production.mccarey-supon.workers.dev'].includes(base.hostname))
+  if(base.protocol!=='https:' || !['member2.ball46.com'].includes(base.hostname))
     return {status:400,body:{ok:false,error:'INVALID_CHECKOUT_ORIGIN'}};
   const params=new URLSearchParams();
   params.set('mode','subscription');
@@ -16,8 +16,8 @@ export async function createMemberCheckout(identity, env, origin, fetcher=fetch)
   params.set('line_items[0][quantity]','1');
   params.set('customer_email',email);
   params.set('client_reference_id',identity.id);
-  params.set('success_url','https://member.ball46.com/success?session_id={CHECKOUT_SESSION_ID}');
-  params.set('cancel_url','https://member.ball46.com/pricing?canceled=1');
+  params.set('success_url','https://member2.ball46.com/success?session_id={CHECKOUT_SESSION_ID}');
+  params.set('cancel_url','https://member2.ball46.com/pricing?canceled=1');
   params.set('allow_promotion_codes','true');
   try{
     const response=await fetcher('https://api.stripe.com/v1/checkout/sessions',{
