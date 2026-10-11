@@ -13,5 +13,12 @@ for(const name of names){
   }}
   const cron=await cf(`/scripts/${name}/schedules`).catch(e=>({error:String(e)}));
   console.log("AUDIT_REQUEST_PRODUCER",JSON.stringify({name,id:active.version_id,bytes:source.length,crons:cron?.schedules||cron,patterns:results.slice(0,95)}));
+  let windows=name==="nomadtips3-engine-343"?[[1053,1117],[1125,1173],[1247,1264],[1826,1848]]:
+    name==="nomadtips3-full-market-343-ball46"?[[18,45],[138,166],[428,453]]:
+    name==="nomadtips3-5usd-hub-343"?[[182,245],[486,510],[628,673],[715,741],[825,841]]:[[530,550]];
+  for(const [start,end] of windows){
+    const code=lines.slice(start-1,end).map((line,k)=>String(start+k)+":"+line.replace(/authorization:[^,)]*/gi,"authorization:[REDACTED]")).join("\n");
+    console.log("PRODUCER_WINDOW",JSON.stringify({name,start,end,code:code.slice(0,7500)}));
+  }
  }catch(e){console.log("AUDIT_REQUEST_PRODUCER_ERROR",JSON.stringify({name,error:String(e)}))}
 }
