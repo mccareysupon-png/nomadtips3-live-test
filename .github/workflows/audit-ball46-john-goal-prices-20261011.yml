@@ -1,0 +1,19 @@
+name: Audit Ball46 John Goals Prices and Evidence
+on:
+  push:
+    branches: [audit/ball46-john-goal-price-validation-20261011]
+    paths:
+      - '.github/workflows/audit-ball46-john-goal-prices-20261011.yml'
+permissions:
+  contents: read
+jobs:
+  readonly:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate John price provenance without provider calls
+        run: node deploy-assets/john-goal-price-audit-20261011/check-prices.mjs
