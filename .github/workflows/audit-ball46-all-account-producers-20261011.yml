@@ -1,0 +1,44 @@
+name: Audit All Shared 5Dollar Cloudflare Cron Producers
+on:
+  push:
+    branches: [incident/ball46-signal-silent-20261011]
+    paths: [.github/workflows/audit-ball46-all-account-producers-20261011.yml]
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: Inventory all account 5Dollar secret binding consumers and cron schedules (read only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          const b='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+'/workers',auth={Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN};
+          async function get(p){
+            const r=await fetch(b+p,{headers:auth,signal:AbortSignal.timeout(20000)}),j=await r.json();
+            if(!r.ok||j.success!==true)throw Error('CLOUDFLARE_'+r.status+'_'+p);return j.result;
+          }
+          let page=1,names=[];
+          while(page<=8){
+            const r=await get('/scripts?page='+page+'&per_page=100');
+            const scripts=Array.isArray(r)?r:(r?.scripts||[]);
+            names.push(...scripts.map(x=>x.id||x.name).filter(Boolean));
+            if(scripts.length<100)break;
+            page++;
+          }
+          console.log('ACCOUNT_SCRIPT_TOTAL',JSON.stringify({count:names.length}));
+          for(const name of names){
+            try{
+              const s=await get('/scripts/'+encodeURIComponent(name)+'/settings');
+              const uses=(s.bindings||[]).filter(x=>/FIVEDOLLAR|5DOLLAR|ODDS|HUB|FULL_MARKET/i.test(String(x.name||'')));
+              if(!uses.length)continue;
+              const sch=await get('/scripts/'+encodeURIComponent(name)+'/schedules').catch(()=>({schedules:[]}));
+              console.log('SHARED_ACCOUNT_CONSUMER',JSON.stringify({name,bindings:uses.map(x=>({name:x.name,type:x.type,service:x.service||null})),crons:(sch.schedules||[]).map(x=>x.cron)}));
+            }catch(error){console.log('ACCOUNT_SCRIPT_READ_ERROR',JSON.stringify({name,error:String(error?.message||error)}))}
+          }
+          NODE
