@@ -18,7 +18,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for f in public/member.html public/member.js public/member.css public/pricing.html public/pricing.js public/login.html public/success.html src/access-auth.js src/checkout.js src/worker.js; do
+          for f in public/member.html public/member.js public/styles.css public/pricing.html public/pricing.js public/login.html public/success.html src/access-auth.js src/checkout.js src/worker.js; do
             test -s "ball46-member2/$f" || { echo "MISSING $f"; exit 1; }
           done
           grep -q '"name": "ball46-member2-staging"' ball46-member2/wrangler.jsonc
