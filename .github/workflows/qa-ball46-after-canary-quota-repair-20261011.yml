@@ -1,0 +1,41 @@
+name: QA Ball46 Price Quota After Canary Cron Stopped
+on:
+  push:
+    branches: [fix/ball46-stop-unused-canary-quotas-20261011]
+    paths: [.github/workflows/qa-ball46-after-canary-quota-repair-20261011.yml]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - name: Read signal flow provider quota and statistics in consecutive windows without any writes
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          const origin='https://www.ball46.com/api/';
+          const fetchJ=async path=>{const r=await fetch(origin+path,{cache:'no-store',signal:AbortSignal.timeout(23000)});return {status:r.status,body:await r.json()}}
+          const begin=Date.parse('2026-10-11T12:47:25Z');
+          for(let n=0;n<3;n++){
+            const [health,ledger,market,stats,signal,board]=await Promise.all([
+              fetchJ('engine/health'),fetchJ('engine/ledger-health'),fetchJ('full-market/health'),
+              fetchJ('engine/statistics?paged=1'),fetchJ('engine/signals'),fetchJ('engine/board')]);
+            const h=health.body,m=market.body,l=ledger.body,st=stats.body,s=signal.body,b=board.body;
+            const err={};for(const x of h.refereeErrors||[])err[x.error||'unknown']=(err[x.error||'unknown']||0)+1;
+            const rows=(st.rows||[]),newer=rows.filter(x=>Number(x.createdAt)>begin);
+            const byMarket={};for(const x of newer)byMarket[x.market]=(byMarket[x.market]||0)+1;
+            const pass={};for(const f of b.fixtures||[])for(const [k,x] of Object.entries(f.analysis||{}))if(x.state==='PASS')pass[k]=(pass[k]||0)+1;
+            console.log('QUOTA_RECOVERY',JSON.stringify({time:new Date().toISOString(),round:n,
+              engineOk:h.ok,lastError:h.lastError,scanStarted:h.startedAt,scanFinished:h.finishedAt,
+              live:h.liveCount,refereeRequests:h.refereeRequests,refereeQueued:h.refereeQueued,externalOddsRequests:h.externalOddsRequests,
+              errors:err,pendingFeed:(s.signals||[]).length,boardStale:b.stale,boardPass:pass,
+              newSignalsSinceQuotaFix:newer.length,newByMarket:byMarket,newLast:rows.slice(0,4).map(x=>({market:x.market,at:x.createdAt,source:x.priceSource})),
+              ledgerTotal:l.ledgerTotal,settled:l.settledTotal,marketCronsUnaffected:true,
+              fullMarketProvider:m.providerMeta,backoffSec:m.retryAfterSec,fullMarketLast60:m.callsLast60s,
+              fullMarketPrewarm:m.prewarmMeta}));
+            if(!h.ok||!l.ok||l.ledgerTotal<6478||!st.ok)throw Error('DATA_REGRESSION');
+            if(n<2)await new Promise(done=>setTimeout(done,29000));
+          }
+          NODE
