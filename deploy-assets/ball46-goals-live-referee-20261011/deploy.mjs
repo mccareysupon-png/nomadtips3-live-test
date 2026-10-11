@@ -144,6 +144,12 @@ async function publicBridge() {
     finalReconcileVersion: j.finalReconcileVersion
   };
 }
+async function publicLedgerHealth(){
+  const res=await fetch('https://www.ball46.com/api/engine/ledger-health?ou_guard='+Date.now(),{cache:'no-store',signal:AbortSignal.timeout(20000)});
+  const j=await res.json().catch(()=>null);
+  assert(res.ok&&j?.ok===true&&Number(j?.ledgerTotal)>0&&Number(j?.settledTotal)>0,'LEDGER_NOT_HEALTHY_'+res.status);
+  return {version:j.version,ledgerTotal:Number(j.ledgerTotal),settledTotal:Number(j.settledTotal)};
+}
 async function activate(id, message) {
   return api('/scripts/' + worker + '/deployments', {
     method:'POST',
@@ -173,12 +179,13 @@ try {
   const [before, beforeSettings, beforeSchedules, beforeBridge] = await Promise.all([
     version(priorId), settings(), schedules(), publicBridge()
   ]);
+  const beforeLedger = await publicLedgerHealth();
   const main = before.modules?.find(m => m.name === before.main_module);
   assert(main?.content_base64, 'ACTIVE_MAIN_MODULE_UNAVAILABLE');
   const source = Buffer.from(main.content_base64, 'base64').toString('utf8');
   assert(source.includes("function isVerifiedCornerMarket(key){"),"CORNERS_GUARD_MISSING");
   const nextSource = patch(source);
-  const tempFile="/tmp/ball46-corner-verified-"+process.pid+".mjs";
+  const tempFile="/tmp/ball46-goals-verified-"+process.pid+".mjs";
   (await import("node:fs")).writeFileSync(tempFile,nextSource);
   (await import("node:child_process")).execFileSync(process.execPath,["--check",tempFile]);
   const beforeHash = hash(source), afterHash = hash(nextSource);
@@ -239,9 +246,11 @@ try {
   assert.equal(canonical(await schedules()),canonical(beforeSchedules),'SCHEDULES_CHANGED');
   const afterBridge = await publicBridge();
   assert.equal(canonical(afterBridge),canonical(beforeBridge),'PUBLIC_BRIDGE_VERSION_CHANGED');
+  const afterLedger = await publicLedgerHealth();
+  assert(afterLedger.ledgerTotal>=beforeLedger.ledgerTotal && afterLedger.settledTotal>=beforeLedger.settledTotal,'LEDGER_RECORDS_LOST_AFTER_DEPLOY');
   const success = { worker, previousVersionId:priorId, deployedVersionId:candidateId,
     priorSourceHash:beforeHash, newSourceHash:afterHash,
-    exactPatch:"verified recent Goal-Line O-U tick only, preserve Corners, conditions and settlement", beforeBridge, afterBridge,
+    exactPatch:"verified recent Goal-Line O-U tick only, preserve Corners, conditions and settlement", beforeBridge, afterBridge, beforeLedger, afterLedger,
     settingsUnchanged:true, schedulesUnchanged:true, bindingsUnchanged:true };
   save('success.json',success);
   log('GOALS_REFEREE_DEPLOY_SUCCESS',success);
@@ -252,7 +261,7 @@ try {
   if(activated && priorId && candidateId){
     try {
       if(await activeId() === candidateId){
-        await activate(priorId, 'Rollback Ball46 Signal age only after postdeploy QA failure');
+        await activate(priorId, 'Rollback Ball46 Goals O-U price referee after postdeploy QA failure');
         await waitForActive(priorId);
         log('GOALS_REFEREE_ROLLBACK_SUCCESS',{ restoredVersionId:priorId });
       }
