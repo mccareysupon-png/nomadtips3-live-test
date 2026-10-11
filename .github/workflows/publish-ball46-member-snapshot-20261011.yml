@@ -1,0 +1,49 @@
+name: Publish Ball46 Member Daily Snapshot
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/publish-ball46-member-snapshot-20261011.yml']
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: publish-ball46-member-daily-snapshot
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: member/snapshot-readonly-20261011
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Build and independently validate daily Snapshot
+        run: node ball46-member/scripts/publish-member-snapshot.mjs
+      - name: Publish to dedicated production KV and verify readback
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/storage/kv/namespaces"
+          curl --fail-with-body -sS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base?per_page=100" >/tmp/namespaces.json
+          id="$(jq -r '.result[] | select(.title=="BALL46_MEMBER_DAILY_SNAPSHOT_PRODUCTION") | .id' /tmp/namespaces.json | head -n1)"
+          if [ -z "$id" ]; then
+            curl --fail-with-body -sS -X POST -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'Content-Type: application/json' --data '{"title":"BALL46_MEMBER_DAILY_SNAPSHOT_PRODUCTION"}' "$base" >/tmp/new.json
+            jq -e '.success==true' /tmp/new.json >/dev/null
+            id="$(jq -r '.result.id' /tmp/new.json)"
+          fi
+          test -n "$id" && test "$id" != null
+          key="$(cat /tmp/member-snapshot-key)"
+          encoded="$(node -p 'encodeURIComponent(process.argv[1])' "$key")"
+          curl --fail-with-body -sS -X PUT -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'Content-Type: application/json' --data-binary @/tmp/member-snapshot-payload.json "$base/$id/values/$encoded?expiration_ttl=172800" >/tmp/write.json
+          jq -e '.success==true' /tmp/write.json
+          curl --fail-with-body -sS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/$id/values/$encoded" >/tmp/readback.json
+          jq -e '.version==1 and .daily.ok==true and .daily.signalCount==(.daily.signals|length) and .daily.summary.ALL.signals==.daily.signalCount' /tmp/readback.json
+          echo "BALL46_MEMBER_PRODUCTION_SNAPSHOT_READY"
