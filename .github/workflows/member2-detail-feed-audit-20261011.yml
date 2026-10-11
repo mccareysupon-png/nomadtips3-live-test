@@ -1,0 +1,28 @@
+name: Member2 Detail Feed Live Contract Audit
+on:
+  push:
+    branches: [member2/isolated-ui-and-registration-20261011]
+    paths: ['.github/workflows/member2-detail-feed-audit-20261011.yml']
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  detail:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Probe live fixture detail from main board and history
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          const root='https://www.ball46.com';
+          const b=await(await fetch(root+'/api/engine/board')).json();
+          const fixtures=Array.isArray(b.fixtures)?b.fixtures:[];
+          console.log('BOARD',JSON.stringify({ok:b.ok,fixtures:fixtures.length,example:fixtures.slice(0,2).map(f=>({fixtureId:f.fixtureId,minute:f.minute,status:f.status,events:f.events?.length,statsKeys:Object.keys(f.statistics||{}),score:f.goals}))}));
+          for(const f of fixtures.slice(0,8)){
+            const id=String(f.fixtureId||'');if(!id)continue;
+            const u=new URL('/api/engine/history',root);u.searchParams.set('fixtureId',id);u.searchParams.set('window','10');
+            try{const r=await fetch(u);const h=await r.json();console.log('HISTORY',JSON.stringify({http:r.status,id,ok:h.ok,error:h.error,version:h.version,rows:h.rows?.length,pressure:h.pressure?.length,exampleRow:h.rows?.[0]?{keys:Object.keys(h.rows[0]),minute:h.rows[0].minute}:null,examplePressure:h.pressure?.[0]?Object.keys(h.pressure[0]):null}));if(h.rows?.length||h.pressure?.length)break;}catch(e){console.log('HISTORY_ERROR',id,e.message)}
+          }
+          NODE
