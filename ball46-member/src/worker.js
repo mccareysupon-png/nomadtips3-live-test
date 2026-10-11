@@ -446,12 +446,22 @@ export default {
   async fetch(request,env) {
     const url = new URL(request.url);
 
+    // 2026-10-11: User-authorized safety suspension: the Member UI could not be
+    // verified end-to-end after repeated repairs. Keep main Ball46 untouched.
+    // No new checkout and no stale or misleading signal board during suspension.
+    if (url.pathname === '/member' || url.pathname === '/member.html') {
+      return new Response('<!doctype html><html lang="th"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Ball46 Member</title><body style="font-family:system-ui;background:#081425;color:#fff;max-width:700px;margin:12vh auto;padding:25px"><h1>Ball46 Member</h1><p>ขณะนี้ระงับการให้บริการหน้าสมาชิกชั่วคราว เนื่องจากระบบแสดงข้อมูลยังไม่ผ่านการตรวจสอบความถูกต้อง</p><p>ไม่มีการแสดงสัญญาณหรือเปิดรับสมัครใหม่ระหว่างนี้</p></body></html>',{status:503,headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store'}});
+    }
+    if (url.pathname.startsWith('/api/member/') && url.pathname !== '/api/member/stripe-readiness') {
+      return json({ok:false,error:'MEMBER_SERVICE_SUSPENDED',message:'Member Signal Center is temporarily unavailable pending end-to-end data verification.'},503);
+    }
+    if (url.pathname === '/api/enrollment-status') {
+      return json({ok:true,enrollmentAvailable:false,reason:'MEMBER_SERVICE_SUSPENDED'});
+    }
     if (url.pathname === '/api/health') {
       return json({ok:true,service:'ball46-member-production',stage:env.APP_STAGE||'unknown'});
     }
-    if (url.pathname === '/api/enrollment-status') {
-      return json({ok:true,enrollmentAvailable:env.MEMBER_CHECKOUT_ENABLED==='true'});
-    }
+
 
     // Every premium request needs an independently verified Access JWT and a
     // currently active subscription matching our exact Stripe Price ID.
