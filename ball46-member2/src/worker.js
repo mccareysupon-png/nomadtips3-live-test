@@ -341,11 +341,11 @@ async function buildDailyMirror(force=false) {
 
 function cleanEvents(events) {
   if (!Array.isArray(events)) return [];
-  return events.slice().sort((a,b)=>{
+  return events.slice(0,250).sort((a,b)=>{
     const am=num(a?.minute??a?.elapsed??a?.time?.elapsed)??0;
     const bm=num(b?.minute??b?.elapsed??b?.time?.elapsed)??0;
     return bm-am;
-  }).slice(0,20).map(e=>{
+  }).map(e=>{
     const team=e?.team??e?.team_name;
     return {
       minute:num(e?.minute??e?.elapsed??e?.time?.elapsed),
