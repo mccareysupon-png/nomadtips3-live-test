@@ -1,0 +1,134 @@
+name: Ball46 Statistics ENTRY Minute Corners Only 20261011
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-ball46-statistics-entry-minute-corners-20261011.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ball46-production-deploy
+  cancel-in-progress: false
+jobs:
+  stats-entry-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ops/ball46-easybet-crossdevice-fix-20261007
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install parser dependency
+        run: npm install --no-save --ignore-scripts acorn@8
+      - name: Patch only Statistics ENTRY cell on live Production
+        working-directory: deploy-assets/ball46-member-nav-20261009
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import {writeFileSync,mkdirSync} from 'node:fs';
+          import {resolve} from 'node:path';
+          import {parse} from 'acorn';
+          import {runInNewContext} from 'node:vm';
+          import {inspect,api,script,activeVersion,getVersion,publicFile,sha,canonical,directOrigin} from '../daily-performance-20261005/production.mjs';
+          import {schedules,stageCurrentRail,verifyRailBase,wrangler} from '../daily-performance-20261005/rail.mjs';
+          const target='singlepage-workspace-343.js';
+          const report={scope:'Only Statistics ENTRY display: signal entry minute and saved entryCorners for Corners markets. No Engine, settlement, PENDING, totals or other assets.',startedAt:new Date().toISOString()};
+          mkdirSync('audit-stat-entry',{recursive:true});
+          const save=()=>writeFileSync('audit-stat-entry/report.json',JSON.stringify(report,null,2));
+          const delay=ms=>new Promise(r=>setTimeout(r,ms));
+          let original=null,candidate=null;
+          const helper="function b46StatEntryContext20261011(r){\n const minuteRaw=r?.signalEntryMinute??r?.entryMinute;\n const minute=Number(minuteRaw);\n const minuteOK=minuteRaw!==null&&minuteRaw!==undefined&&minuteRaw!==''&&Number.isFinite(minute)&&minute>=0&&minute<=200;\n const m=minuteOK?'<small style=\"display:block;font-size:10px;line-height:1.45;white-space:nowrap\">ENTRY '+esc(Math.round(minute))+'&#39;</small>':'<small style=\"display:block;font-size:10px;line-height:1.45\">ENTRY —</small>';\n const isCorner=/corner/i.test(String(r?.market??'')+' '+String(r?.providerMarket??'')+' '+String(r?.marketLabel??''));\n if(!isCorner)return m;\n const hRaw=r?.entryCorners?.home,aRaw=r?.entryCorners?.away;\n const h=Number(hRaw),a=Number(aRaw);\n const known=hRaw!==null&&hRaw!==undefined&&hRaw!==''&&aRaw!==null&&aRaw!==undefined&&aRaw!==''&&Number.isInteger(h)&&Number.isInteger(a)&&h>=0&&a>=0;\n const c=known?'Corners '+esc(h)+'–'+esc(a)+' ('+esc(h+a)+')':'Corners —';\n return m+'<small style=\"display:block;font-size:10px;line-height:1.45;white-space:nowrap\">'+c+'</small>';\n}\n";
+          const cellOld='<td>\${esc(score(r?.entryScore??r?.scoreAt))}</td>';
+          const cellNew='<td>\${esc(score(r?.entryScore??r?.scoreAt))}\${b46StatEntryContext20261011(r)}</td>';
+          function patch(source){
+           assert(!source.includes('function b46StatEntryContext20261011('),'ALREADY_DEPLOYED_STOP');
+           assert.equal(source.split(cellOld).length-1,1,'CURRENT_ENTRY_CELL_CHANGED');
+           assert.equal(source.split('function renderTable(rows){').length-1,1,'RENDER_TABLE_CHANGED');
+           assert(source.includes('window.BALL46_STATISTICS_DATA.isSettled'),'STAT_RENDER_CHANGED');
+           const next=source.replace('function renderTable(rows){',helper+'function renderTable(rows){').replace(cellOld,cellNew);
+           parse(next,{ecmaVersion:'latest',sourceType:'script'});
+           assert.equal(next.split(cellNew).length-1,1,'NEW_ENTRY_CELL_MISSING');
+           assert.equal(next.length-source.length,helper.length+cellNew.length-cellOld.length,'UNRELATED_CODE_MODIFICATION');
+           return next;
+          }
+          const unit=runInNewContext(helper+';b46StatEntryContext20261011',{esc:x=>String(x)});
+          const corner=unit({market:'ft_corner_over',signalEntryMinute:35,entryMinute:42,mirrorMinute:65,entryCorners:{home:7,away:3},mirrorCorners:{home:11,away:8}});
+          assert(corner.includes('ENTRY 35')&&corner.includes('Corners 7–3 (10)'),'ENTRY_SNAPSHOT_BAD');
+          assert(!corner.includes('42')&&!corner.includes('65')&&!corner.includes('11–8'),'LIVE_VALUES_LEAK');
+          assert(!unit({market:'ft_over',signalEntryMinute:35,entryCorners:{home:7,away:3}}).includes('Corners'),'CORNERS_LEAK_TO_OTHER_MARKET');
+          assert(unit({market:'ft_corner_over',signalEntryMinute:0,entryCorners:{home:0,away:0}}).includes('Corners 0–0 (0)'),'ZERO_CORNERS_BROKEN');
+          assert(unit({market:'ft_corner_over',entryCorners:null}).includes('Corners —'),'UNKNOWN_CORNERS_BROKEN');
+          async function rollback(){
+           if(!original)return;
+           const active=await activeVersion();
+           if(active===original)return;
+           if(!candidate||active!==candidate)throw Error('FOREIGN_VERSION_NO_ROLLBACK');
+           await api('/scripts/'+script+'/deployments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({strategy:'percentage',versions:[{version_id:original,percentage:100}],annotations:{'workers/message':'Rollback Statistics ENTRY display only'}})});
+           assert.equal(await activeVersion(),original,'ROLLBACK_UNCONFIRMED');
+          }
+          try{
+           const current=await inspect();original=current.restore.version;
+           const settings=await api('/scripts/'+script+'/settings'),crons=await schedules();
+           const settingsSha=sha(canonical(settings)),workerSha=sha(Buffer.from(current.source));
+           const jsBefore=await publicFile('/'+target,undefined,directOrigin),source=jsBefore.toString('utf8');
+           assert.equal(sha(jsBefore),sha(await publicFile('/'+target)),'PRODUCTION_JS_HOSTS_DIFFER');
+           const updated=patch(source),afterSha=sha(Buffer.from(updated));
+           const json=JSON.parse(await publicFile('/api/engine/statistics?paged=1','json'));
+           assert(json.ok===true&&Array.isArray(json.rows),'STAT_API_UNAVAILABLE');
+           assert(json.rows.some(r=>r?.signalEntryMinute!==null&&r?.signalEntryMinute!==undefined&&Number.isFinite(Number(r.signalEntryMinute))),'NO_SIGNAL_ENTRY_MINUTE');
+           assert(json.rows.some(r=>/corner/i.test(String(r?.market??''))&&r?.entryCorners&&Number.isFinite(Number(r.entryCorners.home))&&Number.isFinite(Number(r.entryCorners.away))),'NO_ENTRY_CORNERS');
+           const staged=await stageCurrentRail(current.version,settings,crons,current.source);
+           await verifyRailBase(staged);
+           assert.equal(staged.hashes[target],sha(jsBefore),'STAGED_JS_DIFFERENT');
+           assert.equal(await activeVersion(),original,'PRODUCTION_MOVED_DURING_STAGE');
+           writeFileSync(resolve(staged.runtime,'assets',target),updated);
+           report.beforeVersion=original;report.onlyChangedAsset=target;report.beforeSha=sha(jsBefore);report.afterSha=afterSha;save();
+           wrangler(staged,true);
+           assert.equal(await activeVersion(),original,'PRODUCTION_MOVED_BEFORE_DEPLOY');
+           await verifyRailBase(staged);
+           wrangler(staged,false);
+           for(let i=0;i<30;i++){const v=await activeVersion();if(v!==original){candidate=v;break}await delay(1200)}
+           assert(candidate,'NEW_VERSION_NOT_OBSERVED');
+           let directOk=false,publicOk=false;
+           for(let i=0;i<35;i++){
+            assert.equal(await activeVersion(),candidate,'PRODUCTION_MOVED_DURING_VERIFY');
+            try{
+             directOk=sha(await publicFile('/'+target,undefined,directOrigin))===afterSha;
+             publicOk=sha(await publicFile('/'+target))===afterSha;
+             if(directOk&&publicOk)break;
+            }catch{}
+            await delay(1200);
+           }
+           assert(directOk&&publicOk,'LIVE_JS_NOT_VERIFIED');
+           for(const [file,hash] of Object.entries(staged.hashes)){
+            if(file===target)continue;
+            assert.equal(sha(await publicFile('/'+file)),hash,'UNRELATED_ASSET_CHANGED:'+file);
+           }
+           const ver=await getVersion(candidate),main=ver.modules.find(m=>m.name===ver.main_module);
+           assert(main,'MAIN_MODULE_MISSING');
+           assert.equal(sha(Buffer.from(main.content_base64,'base64')),workerSha,'WORKER_ENGINE_CHANGED');
+           assert.equal(sha(canonical(await api('/scripts/'+script+'/settings'))),settingsSha,'WORKER_SETTINGS_CHANGED');
+           assert.equal(canonical(await schedules()),canonical(crons),'CRONS_CHANGED');
+           report.result='SUCCESS';report.deployedVersion=candidate;report.completedAt=new Date().toISOString();save();
+           console.log('BALL46_STAT_ENTRY_MINUTE_CORNERS_SUCCESS',JSON.stringify({before:original,deployed:candidate,changed:target,unchangedAssets:Object.keys(staged.hashes).length-1}));
+          }catch(e){
+           report.result='FAIL_STOPPED';report.error=String(e.message||e);save();
+           try{await rollback();report.rolledBack=true;save()}catch(rb){report.rollbackError=String(rb.message||rb);save()}
+           console.error(e.stack);process.exitCode=1;
+          }
+          
+          NODE
+      - name: Upload deployment audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-statistics-entry-${{ github.run_id }}
+          path: deploy-assets/ball46-member-nav-20261009/audit-stat-entry
+          retention-days: 30
