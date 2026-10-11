@@ -1,0 +1,41 @@
+name: Restore Ball46 Goals O-U John Referee Only 20261011
+on:
+  push:
+    branches: [fix/ball46-goals-john-referee-restore-20261011]
+    paths:
+      - '.github/workflows/restore-ball46-goals-john-referee-20261011.yml'
+permissions:
+  contents: read
+concurrency:
+  group: ball46-engine343-john-goals-referee-restore-20261011
+  cancel-in-progress: false
+jobs:
+  guarded:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate production patch syntax
+        run: |
+          node --check deploy-assets/ball46-goals-john-referee/patch.mjs
+          node --check deploy-assets/ball46-goals-john-referee/deploy.mjs
+      - name: Dry run against exact active Production Worker, no writes
+        env:
+          RECOVERY_DRY_RUN: '1'
+        run: node deploy-assets/ball46-goals-john-referee/deploy.mjs
+      - name: Deploy only Goals O-U John price source from current Worker, auto rollback on QA failure
+        run: node deploy-assets/ball46-goals-john-referee/deploy.mjs
+      - name: Save production checkpoint and QA
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-goals-john-referee-${{ github.run_id }}
+          path: audit/
+          if-no-files-found: warn
+          retention-days: 30
