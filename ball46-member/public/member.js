@@ -449,7 +449,16 @@ function makeSignalRow(row){
 
   const result=document.createElement('td');
   result.className='result-cell';
-  result.append(node('span','badge '+resultClass(row.result),String(row.result||'PENDING').replaceAll('_',' ')));
+  // RESULT shows the current match clock while the Ledger signal is unsettled.
+  // Settlement status in the Ledger is not changed by this presentation rule.
+  const unresolved=!['WIN','LOSS','PUSH','HALF_WIN','HALF_LOSS','VOID'].includes(String(row.result||'').toUpperCase());
+  const clockStatus=String(row.mirrorStatus||'').toLowerCase();
+  const ended=/(finished|ended|full.?time|\\bft\\b|after.?pen|\\baet\\b)/.test(clockStatus);
+  const matchMinute=Number(row.matchMinute);
+  const resultText=unresolved
+    ? (ended?'FT · WAITING':Number.isFinite(matchMinute)&&matchMinute>0?Math.floor(matchMinute)+"'":'WAITING')
+    : String(row.result).replaceAll('_',' ');
+  result.append(node('span','badge '+(unresolved?'neutral':resultClass(row.result)),resultText));
   tr.append(result);
 
   const p=Number(row.pnl||0);
