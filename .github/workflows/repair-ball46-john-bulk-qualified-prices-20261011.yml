@@ -27,6 +27,10 @@ jobs:
         env:
           JOHN_DRY_RUN: '1'
         run: node deploy-assets/ball46-john-bulk-qualified-prices-20261011/deploy.mjs
+      - name: Deploy exact active John qualified cache-only price scan and rollback on failed QA
+        env:
+          JOHN_DRY_RUN: '0'
+        run: node deploy-assets/ball46-john-bulk-qualified-prices-20261011/deploy.mjs
       - name: Save rollback candidate checkpoint
         if: always()
         uses: actions/upload-artifact@v4
