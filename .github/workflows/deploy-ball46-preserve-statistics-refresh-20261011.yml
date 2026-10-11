@@ -1,0 +1,133 @@
+name: Ball46 Preserve Statistics Refresh Route 20261011
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-ball46-preserve-statistics-refresh-20261011.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ball46-production-deploy
+  cancel-in-progress: false
+jobs:
+  route-fix-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ops/ball46-easybet-crossdevice-fix-20261007
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install AST parser dependency
+        run: npm install --no-save --ignore-scripts acorn@8
+      - name: Guard only current Production auto-Live redirect
+        working-directory: deploy-assets/ball46-member-nav-20261009
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import {writeFileSync,mkdirSync} from 'node:fs';
+          import {resolve} from 'node:path';
+          import {parse} from 'acorn';
+          import {inspect,api,script,activeVersion,getVersion,publicFile,sha,canonical,directOrigin} from '../daily-performance-20261005/production.mjs';
+          import {schedules,stageCurrentRail,verifyRailBase,wrangler} from '../daily-performance-20261005/rail.mjs';
+          const target='dashboard-v2-tune.js';
+          const marker='B46_STATS_REFRESH_PRESERVE_NONLIVE_20261011';
+          const oldAnchor='function chooseCompactDefault(){\n  if(autoStatusChosen||userStatusChosen)return;';
+          const guard=[
+          'function chooseCompactDefault(){',
+          '  // B46_STATS_REFRESH_PRESERVE_NONLIVE_20261011: compact Live default must not redirect an explicit Statistics/Signal view.',
+          "  const requestedView=new URLSearchParams(location.search).get('view');",
+          '  const currentView=document.body?.dataset?.workspaceView;',
+          "  if(requestedView==='statistics'||requestedView==='signal'||currentView==='statistics'||currentView==='signal')return;",
+          '  if(autoStatusChosen||userStatusChosen)return;'
+          ].join('\n');
+          const report={scope:'Only stop automatic Live filter selection when Statistics/Signal is selected in route or rendered workspace view. Manual Live clicks and default Live unchanged; Engine, Statistics JS/CSS, Member, other assets untouched.',startedAt:new Date().toISOString()};
+          mkdirSync('audit-stats-refresh',{recursive:true});
+          const save=()=>writeFileSync('audit-stats-refresh/report.json',JSON.stringify(report,null,2));
+          const delay=ms=>new Promise(r=>setTimeout(r,ms));
+          let original=null,candidate=null;
+          function patch(source){
+           assert(!source.includes(marker),'PATCH_ALREADY_PRESENT_STOP');
+           assert.equal(source.split(oldAnchor).length-1,1,'COMPACT_DEFAULT_SHAPE_CHANGED_STOP');
+           assert(source.includes("const VERSION='343-dashboard-v2-ui-tune-v3-mobile-status-loop-safe'"),'TUNE_VERSION_CHANGED_STOP');
+           assert(source.includes('function sync(){decorateRows();chooseCompactDefault()}'),'COMPACT_SYNC_CHANGED_STOP');
+           const next=source.replace(oldAnchor,guard);
+           assert.equal(next.split(marker).length-1,1,'GUARD_NOT_EXACTLY_ONCE');
+           assert.equal(next.length-source.length,guard.length-oldAnchor.length,'OUT_OF_SCOPE_PATCH');
+           assert.equal(next.replace(guard,oldAnchor),source,'UNRELATED_JS_CHANGED');
+           parse(next,{ecmaVersion:'latest',sourceType:'script'});
+           return next;
+          }
+          async function rollback(){
+           if(!original)return;
+           const active=await activeVersion();
+           if(active===original)return;
+           if(!candidate||active!==candidate)throw Error('FOREIGN_PRODUCTION_VERSION_STOP_NO_ROLLBACK');
+           await api('/scripts/'+script+'/deployments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({strategy:'percentage',versions:[{version_id:original,percentage:100}],annotations:{'workers/message':'Rollback isolated Statistics refresh route guard'}})});
+           assert.equal(await activeVersion(),original,'ROLLBACK_NOT_CONFIRMED');
+          }
+          try {
+           const current=await inspect();original=current.restore.version;
+           const settings=await api('/scripts/'+script+'/settings'),crons=await schedules();
+           const settingsSha=sha(canonical(settings)),workerSha=sha(Buffer.from(current.source));
+           const beforeBytes=await publicFile('/'+target,undefined,directOrigin),before=beforeBytes.toString('utf8');
+           assert.equal(sha(beforeBytes),sha(await publicFile('/'+target)),'CURRENT_JS_HOSTS_DIFFER');
+           const after=patch(before),afterSha=sha(Buffer.from(after));
+           const workspace=await publicFile('/singlepage-workspace-343.js');
+           assert(workspace.toString('utf8').includes('function parseRoute()'),'WORKSPACE_ROUTER_MISSING');
+           assert(workspace.toString('utf8').includes("state.view=['live','signal','statistics'].includes(view)?view:'live'"),'WORKSPACE_ROUTE_PARSE_CHANGED');
+           const staged=await stageCurrentRail(current.version,settings,crons,current.source);
+           await verifyRailBase(staged);
+           assert.equal(staged.hashes[target],sha(beforeBytes),'STAGED_TUNE_MISMATCH');
+           assert.equal(await activeVersion(),original,'PRODUCTION_MOVED_DURING_STAGING');
+           writeFileSync(resolve(staged.runtime,'assets',target),after);
+           report.beforeVersion=original;report.onlyChangedAsset=target;report.beforeSha=sha(beforeBytes);report.afterSha=afterSha;save();
+           wrangler(staged,true);
+           assert.equal(await activeVersion(),original,'PRODUCTION_MOVED_BEFORE_DEPLOY');
+           await verifyRailBase(staged);
+           wrangler(staged,false);
+           for(let i=0;i<30;i++){const v=await activeVersion();if(v!==original){candidate=v;break}await delay(1200)}
+           assert(candidate,'NEW_VERSION_NOT_OBSERVED');
+           let directOk=false,publicOk=false;
+           for(let i=0;i<35;i++){
+            assert.equal(await activeVersion(),candidate,'PRODUCTION_MOVED_DURING_VERIFY');
+            try{
+             directOk=sha(await publicFile('/'+target,undefined,directOrigin))===afterSha;
+             publicOk=sha(await publicFile('/'+target))===afterSha;
+             if(directOk&&publicOk)break;
+            }catch{}
+            await delay(1200);
+           }
+           assert(directOk&&publicOk,'TUNE_ASSET_NOT_VERIFIED');
+           for(const [file,hash] of Object.entries(staged.hashes)){
+            if(file===target)continue;
+            assert.equal(sha(await publicFile('/'+file)),hash,'UNRELATED_ASSET_CHANGED:'+file);
+           }
+           const v=await getVersion(candidate),main=v.modules.find(m=>m.name===v.main_module);
+           assert(main,'MAIN_MODULE_MISSING');
+           assert.equal(sha(Buffer.from(main.content_base64,'base64')),workerSha,'WORKER_ENGINE_CHANGED');
+           assert.equal(sha(canonical(await api('/scripts/'+script+'/settings'))),settingsSha,'WORKER_SETTINGS_CHANGED');
+           assert.equal(canonical(await schedules()),canonical(crons),'WORKER_CRONS_CHANGED');
+           report.result='SUCCESS';report.deployedVersion=candidate;report.completedAt=new Date().toISOString();save();
+           console.log('BALL46_STATISTICS_REFRESH_ROUTE_GUARD_SUCCESS',JSON.stringify({before:original,deployed:candidate,changedFile:target,unchangedAssets:Object.keys(staged.hashes).length-1}));
+          } catch(e){
+           report.result='FAIL_STOPPED';report.error=String(e.message||e);save();
+           try{await rollback();report.rolledBack=true;save()}catch(rb){report.rollbackError=String(rb.message||rb);save()}
+           console.error(e.stack);process.exitCode=1;
+          }
+          
+          NODE
+      - name: Save audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-preserve-refresh-${{ github.run_id }}
+          path: deploy-assets/ball46-member-nav-20261009/audit-stats-refresh
+          retention-days: 30
