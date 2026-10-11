@@ -1,0 +1,39 @@
+name: Audit Ball46 Other Producer Fanout and Current Signal State
+on:
+  push:
+    branches: [incident/ball46-signal-silent-20261011]
+    paths: [.github/workflows/audit-ball46-other-producer-count-20261011.yml]
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: Read legacy auto-engine direct-per-fixture budget and latest Ball46 signals read only
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          const b='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+'/workers',h={Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN};
+          const get=async p=>{const r=await fetch(b+p,{headers:h,signal:AbortSignal.timeout(22000)}),j=await r.json();if(!r.ok||!j.success)throw Error('CF '+r.status);return j.result};
+          const n='nomadtips3-343-auto-engine',ds=await get('/scripts/'+n+'/deployments'),v=ds.deployments[0].versions.find(x=>Number(x.percentage)===100)?.version_id;
+          const version=await get('/workers/'+n+'/versions/'+v+'?include=modules'),l=Buffer.from(version.modules.find(x=>x.name===version.main_module).content_base64,'base64').toString('utf8').split('\n');
+          for(const [from,to] of [[153,182],[300,405],[408,463],[530,550],[600,625]])console.log('AUTO_PRODUCER_RANGE',JSON.stringify({from,to,source:l.slice(from-1,to).map((x,i)=>String(from+i)+':'+x).join('\n').slice(0,10500)}));
+          const types=['health','ledger-health','statistics?paged=1','signals','board'];
+          const a={};
+          for(const type of types){
+            const rr=await fetch('https://www.ball46.com/api/engine/'+type,{cache:'no-store',signal:AbortSignal.timeout(25000)});
+            a[type.split('?')[0]]=await rr.json();
+          }
+          const health=a.health,stats=a.statistics,ledger=a['ledger-health'],signals=a.signals,board=a.board;
+          const rows=Array.isArray(stats.rows)?stats.rows:[];
+          const after=Date.parse('2026-10-11T12:35:30Z');
+          const recent=rows.filter(x=>Number(x.createdAt)>after);
+          const markets={};for(const x of recent)markets[x.market]=(markets[x.market]||0)+1;
+          const e={};for(const x of health.refereeErrors||[])e[x.error]=(e[x.error]||0)+1;
+          const h=await fetch('https://www.ball46.com/api/full-market/health',{cache:'no-store'}).then(x=>x.json());
+          console.log('LATEST_BALL46',JSON.stringify({ts:new Date().toISOString(),scanFinished:new Date(health.finishedAt).toISOString(),live:health.liveCount,signalCount:health.signalCount,refereeRequests:health.refereeRequests,externalRequests:health.externalOddsRequests,refereeQueued:health.refereeQueued,errorTypes:e,ledger:ledger.ledgerTotal,settled:ledger.settledTotal,newSignalsSinceFix:recent.length,byMarket:markets,latest:rows.slice(0,5).map(x=>({market:x.market,created:new Date(Number(x.createdAt)).toISOString(),book:x.bookmakerSlug,source:x.priceSource})),boardStale:board.stale,prewarm:h.prewarmMeta,providerMeta:h.providerMeta,blockedUntil:h.blockedUntil}));
+          NODE
