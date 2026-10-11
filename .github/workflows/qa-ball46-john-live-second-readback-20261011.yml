@@ -1,0 +1,26 @@
+name: QA Ball46 Second Readback Signals and Central Price Gate
+on:
+  push:
+    branches: [fix/ball46-john-bulk-qualified-prices-20261011]
+    paths: [.github/workflows/qa-ball46-john-live-second-readback-20261011.yml]
+permissions:
+  contents: read
+jobs:
+  read:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - name: Check consecutive scan result no writes
+        run: |
+          node --input-type=module <<'NODE'
+          const base='https://www.ball46.com/api/';
+          for(let n=0;n<2;n++){
+           for(const type of ['engine/health','engine/ledger-health','full-market/health']){
+             const r=await fetch(base+type+'?john_two_stage_qa='+Date.now(),{cache:'no-store',signal:AbortSignal.timeout(23000)}),j=await r.json();
+             if(type==='engine/health'){const types={};for(const e of j.refereeErrors||[])types[e.error]=(types[e.error]||0)+1;console.log('JOHN_SECOND_HEALTH',JSON.stringify({now:Date.now(),scanFinished:j.finishedAt,scanStarted:j.startedAt,refereeRequests:j.refereeRequests,refereeQueued:j.refereeQueued,errorTypes:types,live:j.liveCount,pending:j.signalCount,ok:j.ok,lastError:j.lastError}));}
+             if(type==='engine/ledger-health')console.log('JOHN_SECOND_LEDGER',JSON.stringify({total:j.ledgerTotal,settled:j.settledTotal}));
+             if(type==='full-market/health')console.log('JOHN_SECOND_PROVIDER',JSON.stringify({last60:j.callsLast60s,remaining:j.remainingLocalBudget,retry:j.retryAfterSec,provider:j.providerMeta,prewarm:j.prewarmMeta}));
+           }
+           if(!n)await new Promise(r=>setTimeout(r,12000));
+          }
+          NODE
