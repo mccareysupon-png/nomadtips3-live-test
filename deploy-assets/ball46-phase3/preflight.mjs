@@ -1,0 +1,14 @@
+import { createHash } from "node:crypto";
+import { writeFileSync } from "node:fs";
+const acc=process.env.CLOUDFLARE_ACCOUNT_ID,tok=process.env.CLOUDFLARE_API_TOKEN;
+if(!acc||!tok)throw Error("CLOUDFLARE_AUTH_UNAVAILABLE");
+const worker="nomadtips3-engine-343",root=`https://api.cloudflare.com/client/v4/accounts/${acc}/workers`;
+const get=async(path)=>{const res=await fetch(root+path,{headers:{Authorization:`Bearer ${tok}`},signal:AbortSignal.timeout(40000)});const data=await res.json();if(!res.ok||!data.success)throw Error("CLOUDFLARE_"+res.status);return data.result;};
+const d=await get(`/scripts/${worker}/deployments`),active=d.deployments?.[0]?.versions||[];
+if(active.length!==1||Number(active[0].percentage)!==100)throw Error("ACTIVE_NOT_UNIQUE");
+const v=await get(`/workers/${worker}/versions/${active[0].version_id}?include=modules`);
+const m=v.modules?.find(m=>m.name===v.main_module);if(!m?.content_base64)throw Error("MAIN_UNAVAILABLE");
+const s=Buffer.from(m.content_base64,"base64").toString("utf8"),path="/tmp/ball46-phase3-current.js";
+writeFileSync(path,s);process.env.B46_ACTIVE_SOURCE=path;
+console.log("PHASE3_ACTIVE_PREFLIGHT",JSON.stringify({activeVersion:active[0].version_id,bytes:s.length,sha256:createHash("sha256").update(s).digest("hex")}));
+await import("./test.mjs");
