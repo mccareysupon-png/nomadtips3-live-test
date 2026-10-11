@@ -1,0 +1,51 @@
+name: Rollback Cloudflare Member to 09:59 Thai 20261011
+on:
+  push:
+    branches: [member/ledger-pending-repair-20261011]
+    paths: ['.github/workflows/rollback-member-cloudflare-0959-20261011.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ball46-member-production-deploy
+  cancel-in-progress: false
+jobs:
+  rollback:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Verify exact 09:59 production version and rollback without source upload
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/ball46-member-production"
+          target="fbd26833-6038-40b2-ba95-ca64347a116f"
+          curl -fsS --max-time 20 -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/deployments?per_page=100" -o /tmp/before.json
+          jq -e '.success==true and ([.result.deployments[] | select(.created_on | startswith("2026-10-11T02:59:36.")) | .versions[] | select(.version_id=="fbd26833-6038-40b2-ba95-ca64347a116f" and .percentage==100)] | length)==1' /tmp/before.json
+          echo "OLD_ACTIVE_VERSION $(jq -r '.result.deployments[0].versions[0].version_id' /tmp/before.json)"
+          cat > /tmp/rollback.json <<'JSON'
+          {"strategy":"percentage","versions":[{"percentage":100,"version_id":"fbd26833-6038-40b2-ba95-ca64347a116f"}],"annotations":{"workers/message":"Restore actual production deployment from 2026-10-11 09:59 Asia/Bangkok"}}
+          JSON
+          code=$(curl -sS --max-time 30 -w '%{http_code}' -o /tmp/rollback-response.json -X POST -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json" --data-binary @/tmp/rollback.json "$base/deployments")
+          if ! jq -e '.success==true' /tmp/rollback-response.json >/dev/null; then
+            echo "ROLLBACK_FAILED http=$code"; jq '{success,errors,messages}' /tmp/rollback-response.json; exit 1
+          fi
+          echo "CLOUDFLARE_ROLLBACK_RESULT $(jq -c '{id,created_on,versions}' /tmp/rollback-response.json | head -c 800)"
+          curl -fsS --max-time 20 -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/deployments?per_page=3" -o /tmp/after.json
+          jq -e '.success==true and .result.deployments[0].versions[0].version_id=="fbd26833-6038-40b2-ba95-ca64347a116f" and .result.deployments[0].versions[0].percentage==100' /tmp/after.json
+          echo "CLOUDFLARE_MEMBER_ROLLBACK_VERIFIED version=$target"
+      - name: Verify endpoint health after Cloudflare rollback
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://ball46-member-production.mccarey-supon.workers.dev"
+          for n in $(seq 1 8); do
+            code="$(curl -sS --max-time 12 -o /tmp/health.json -w '%{http_code}' "$base/api/health" || true)"
+            if [ "$code" = 200 ] && jq -e '.ok==true and .service=="ball46-member-production"' /tmp/health.json >/dev/null; then break; fi
+            sleep 2
+          done
+          jq -e '.ok==true and .service=="ball46-member-production"' /tmp/health.json
+          echo MEMBER_HEALTH_OK
