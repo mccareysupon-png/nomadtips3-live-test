@@ -1,0 +1,74 @@
+name: Audit Ball46 SETTLED After New Decision Time Readonly
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/audit-ball46-settled-new-timing-20261011.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ops/ball46-easybet-crossdevice-fix-20261007
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Audit live SETTLED stats and Worker deployment IDs, no changes
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          const base='https://ball46.com';
+          const now=new Date().toISOString();
+          console.log('AUDIT_TIME_UTC',now);
+          const urls=['/api/engine/statistics?paged=1&limit=1','/api/engine/statistics?paged=1','/api/engine/bridge-health','/api/engine/health'];
+          for(const path of urls){
+           try{
+            const r=await fetch(base+path,{headers:{'Cache-Control':'no-cache'},signal:AbortSignal.timeout(25000)});
+            console.log('FETCH',path,r.status,r.headers.get('content-type'));
+            if(!r.ok){console.log('FETCH_ERROR_BODY',path,(await r.text()).slice(0,270));continue;}
+            const data=await r.json();
+            console.log('META',path,JSON.stringify(Object.fromEntries(Object.entries(data).filter(([k,v])=>!Array.isArray(v)&&v!==null&&typeof v!=='object'))).slice(0,5500));
+            console.log('JSON_KEYS',path,JSON.stringify(Object.keys(data)));
+            if(data.markets)console.log('MARKETS',path,JSON.stringify(data.markets).slice(0,1800));
+            if(data.byMarket)console.log('BY_MARKET',path,JSON.stringify(data.byMarket).slice(0,2800));
+            if(data.rows) {
+             const s=data.rows;
+             const states={};const markets={};
+             for(const row of s){const st=String(row.status||'NULL');states[st]=(states[st]||0)+1;const k=String(row.market||'');markets[k]=(markets[k]||0)+1;}
+             console.log('ROW_SUMMARY',path,JSON.stringify({length:s.length,statuses:states,markets:Object.entries(markets).sort((a,b)=>b[1]-a[1]).slice(0,15)}));
+             console.log('ROW_SAMPLES',path,JSON.stringify(s.slice(0,3).map(r=>({id:r.id,status:r.status,result:r.result,market:r.market,settledAt:r.settledAt,createdAt:r.createdAt,signalEntryMinute:r.signalEntryMinute}))));
+            }
+           }catch(e){console.log('READ_ERROR',path,String(e).slice(0,400))}
+          }
+          for(const path of ['/index.html','/singlepage-workspace-343.js']){
+           const r=await fetch(base+path,{signal:AbortSignal.timeout(25000)});
+           console.log('UI_FILE',path,r.status);if(!r.ok)continue;
+           const s=await r.text();
+           console.log('UI_SIZE',path,s.length);
+           for(const term of ['Current sample','data-sp-kpi="total"','function renderKpis(rows)','function renderStats(){','function marketCounts()','statisticsTotal','SETTLED','const total=']) {
+            let at=0,n=0;while((at=s.indexOf(term,at))!==-1 && n++<7){
+             console.log('UI_HIT',path,term,at,s.slice(Math.max(0,at-420),Math.min(s.length,at+1020)).replaceAll('\n',' '));
+             at+=term.length;
+            }
+           }
+          }
+          const idFromDeploy=async(worker)=>{
+           const account=process.env.CLOUDFLARE_ACCOUNT_ID,token=process.env.CLOUDFLARE_API_TOKEN;
+           if(!account||!token)return console.log('DEPLOY_SKIP_NO_CREDENTIALS');
+           const url='https://api.cloudflare.com/client/v4/accounts/'+account+'/workers/scripts/'+worker+'/deployments';
+           const r=await fetch(url,{headers:{Authorization:'Bearer '+token},signal:AbortSignal.timeout(15000)});
+           const data=await r.json();
+           console.log('WORKER_ACTIVE',worker,JSON.stringify({ok:data.success,current:data.result?.deployments?.[0]?.versions,created:data.result?.deployments?.[0]?.created_on,err:data.errors}).slice(0,1600));
+          };
+          await idFromDeploy('nomadtips3-engine-343');
+          await idFromDeploy('ball46-production');
+          
+          NODE
