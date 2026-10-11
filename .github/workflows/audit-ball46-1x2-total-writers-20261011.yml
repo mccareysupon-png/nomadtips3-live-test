@@ -1,0 +1,54 @@
+name: Audit Ball46 1X2 Competing Menu Writers Readonly
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/audit-ball46-1x2-total-writers-20261011.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 13
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ops/ball46-easybet-crossdevice-fix-20261007
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Chromium
+        run: |
+          npm install --no-save --ignore-scripts playwright@1.56.1
+          npx playwright install chromium
+      - name: Inspect 1X2 menu count writers and runtime without writes
+        run: |
+          node --input-type=module <<'NODE'
+          import {chromium} from 'playwright';
+          const b=await chromium.launch({headless:true,args:['--no-sandbox']});
+          const root='https://ball46.com';
+          for(const path of ['/ui-sync-fixes-343-v2.js','/singlepage-workspace-343.js']){
+           const r=await fetch(root+path,{signal:AbortSignal.timeout(25000)});const s=await r.text();console.log('SOURCE',path,r.status,s.length);
+           for(const term of ['function paintStatCounts(rows,total)','function paintStatSummary(j)','ball46:statistics-snapshot','function marketCounts()','function renderStatNav()']){
+            const idx=s.indexOf(term);if(idx>=0)console.log('CODE',path,term,s.slice(idx,idx+1350).replaceAll('\n',' '));
+           }
+          }
+          const a=await(await fetch(root+'/api/engine/statistics?paged=1&limit=1&x='+Date.now(),{signal:AbortSignal.timeout(25000)})).json();
+          console.log('API_SUMMARY',JSON.stringify({ledgerTotal:a.ledgerTotal,total:a.total,pending:a.pending,unresolved:a.unresolved,byMarket:a.byMarket}));
+          for(const viewport of [{width:1440,height:900},{width:390,height:844}]){
+           const context=await b.newContext({viewport,isMobile:viewport.width<600});const page=await context.newPage();const kind=viewport.width<600?'mobile':'desktop';
+           page.on('console',m=>{if(m.text().startsWith('ONE_X_TWO_WRITE'))console.log('TRACE',kind,m.text().slice(0,1250))});
+           await page.addInitScript(()=>{
+            const desc=Object.getOwnPropertyDescriptor(Node.prototype,'textContent');
+            Object.defineProperty(Node.prototype,'textContent',{configurable:true,enumerable:desc.enumerable,get(){return desc.get.call(this)},set(v){if(this.nodeType===1&&this.matches?.('[data-stat-market="1x2"] b'))console.info('ONE_X_TWO_WRITE '+String(v)+' STACK '+new Error().stack?.split('\n').slice(1,5).join(' ~ '));return desc.set.call(this,v)}});
+           });
+           await page.goto(root+'/index.html?view=statistics&market=1x2',{waitUntil:'domcontentloaded',timeout:40000});
+           for(const ms of [1000,3500,6500]){
+            await page.waitForTimeout(ms);
+            console.log('SNAP',kind,ms,JSON.stringify(await page.evaluate(async()=>({oneXtwo:document.querySelector('[data-stat-market="1x2"] b')?.textContent,settled:document.querySelector('[data-sp-kpi="total"]')?.textContent,unsettled:document.querySelector('[data-sp-kpi="unsettled"]')?.textContent,view:document.body.dataset.workspaceView,market:location.search}))));
+           }
+           await context.close();
+          }
+          await b.close();console.log('AUDIT_1X2_DONE');
+          NODE
