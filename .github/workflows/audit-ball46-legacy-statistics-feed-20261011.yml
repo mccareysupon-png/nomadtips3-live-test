@@ -1,0 +1,30 @@
+name: Audit Ball46 Legacy Statistics Feed 20261011
+on:
+  push:
+    branches: [audit/ball46-corner-live-price-20261011]
+    paths: [.github/workflows/audit-ball46-legacy-statistics-feed-20261011.yml]
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Inspect active legacy javascript API calls and responses (read only)
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          const p='https://www.ball46.com/statistics-next.js?inc='+Date.now();
+          const res=await fetch(p,{cache:'no-store',signal:AbortSignal.timeout(20000)});
+          const js=await res.text(),lines=js.split('\n');
+          console.log('LEGACY_JS',JSON.stringify({http:res.status,bytes:js.length,lines:lines.length}));
+          for(const term of ['fetch(', 'api/', 'statistics', 'unavailable', 'getElementById','querySelector','await ', 'setInterval','/api/engine/','/api/full-market/']){
+            const matches=lines.map((x,i)=>({n:i+1,s:x.trim()})).filter(x=>x.s.includes(term));
+            console.log('LEGACY_JS_MATCH',JSON.stringify({term,hits:matches.slice(0,45)}));
+          }
+          for(const u of ['/api/engine/statistics','/api/engine/statistics?paged=1','/api/engine/health','/api/statistics','/api/engine/signals']){
+            try{const r=await fetch('https://www.ball46.com'+u,{cache:'no-store',signal:AbortSignal.timeout(20000)});const text=await r.text();let data={};try{data=JSON.parse(text)}catch{}
+            console.log('LEGACY_DEPENDENCY',JSON.stringify({path:u,http:r.status,contentType:r.headers.get('content-type'),bytes:text.length,ok:data.ok??null,rows:data.rows?.length??null,keys:Object.keys(data).slice(0,15)}))}
+            catch(e){console.log('LEGACY_DEPENDENCY_ERROR',JSON.stringify({path:u,error:String(e?.message||e)}))}
+          }
+          NODE
