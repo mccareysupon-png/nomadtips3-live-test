@@ -16,6 +16,14 @@ jobs:
         run: |
           node --input-type=module <<'NODE'
           const base='https://ball46.com';
+          const sjs=await(await fetch(base+'/singlepage-workspace-343.js',{signal:AbortSignal.timeout(20000)})).text();
+          console.log('MIRROR_FUNCTION_BLOCK',sjs.slice(15550,17520).replaceAll('\n',' '));
+          console.log('STAT_NAV_BLOCK',sjs.slice(17000,17600).replaceAll('\n',' '));
+          const sh=await(await fetch(base+'/index.html',{signal:AbortSignal.timeout(20000)})).text();
+          for(const i of [sh.indexOf('data-stat-market="all"'),sh.indexOf('data-stat-market="all"',60000)])console.log('HTML_LOCAL',i,sh.slice(Math.max(0,i-180),i+350));
+          const ascripts=[...sh.matchAll(/<script\b[^>]*>[\s\S]*?<\/script>/gi)];
+          console.log('INLINE_SCRIPT_COUNT',ascripts.length);
+          for(let i=0;i<ascripts.length;i++){const source=ascripts[i][0];if(/data-stat-market|workspace-nav-row|sp-kpi|ledgerTotal/.test(source))console.log('SCRIPT_CONTEXT',i,source.length,source.slice(0,330),source.slice(-300));}
           const paths=['/index.html','/singlepage-workspace-343.js','/mobile-menu-classic-343.js','/dashboard-v2-tune.js','/workspace-route-guard-343.js','/statistics-page-343.js','/statistics-v2-343.js'];
           for(const path of paths){
            try{
