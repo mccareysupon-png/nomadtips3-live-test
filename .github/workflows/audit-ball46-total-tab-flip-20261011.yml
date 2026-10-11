@@ -1,0 +1,34 @@
+name: Audit Ball46 Total Tab Count Sources Readonly
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/audit-ball46-total-tab-flip-20261011.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    steps:
+      - name: Inspect Production Total tab count writers, no mutation
+        run: |
+          node --input-type=module <<'NODE'
+          const base='https://ball46.com';
+          const paths=['/index.html','/singlepage-workspace-343.js','/mobile-menu-classic-343.js','/dashboard-v2-tune.js','/workspace-route-guard-343.js','/statistics-page-343.js','/statistics-v2-343.js'];
+          for(const path of paths){
+           try{
+            const r=await fetch(base+path,{headers:{'Cache-Control':'no-cache'},signal:AbortSignal.timeout(20000)});console.log('FILE',path,r.status);if(!r.ok)continue;
+            const s=await r.text();console.log('LENGTH',path,s.length);
+            const tokens=['data-stat-market','marketCounts','statisticsTotal','ledgerTotal','data-sp-market','data-statistics-total','data-workspace-nav','[data-stat-market]','statistics-snapshot','stat-market','textContent=','MutationObserver','SETTLED'];
+            for(const term of tokens){let at=0,n=0;while((at=s.indexOf(term,at))>=0&&n++<24){
+             const p=s.slice(Math.max(0,at-150),Math.min(s.length,at+380)).replaceAll('\n',' ');
+             if(path!='/index.html'||/data-stat-market|statisticsTotal|ledgerTotal|data-sp-market/.test(term))console.log('HIT',path,term,at,p);
+             at+=term.length;
+            }}
+           }catch(e){console.log('ERROR',path,String(e).slice(0,300))}
+          }
+          const d=await(await fetch(base+'/api/engine/statistics?paged=1',{headers:{'Cache-Control':'no-cache'},signal:AbortSignal.timeout(20000)})).json();
+          console.log('TOTALS',JSON.stringify({total:d.total,ledgerTotal:d.ledgerTotal,pending:d.pending,unresolved:d.unresolved,rows:d.rows?.length}));
+          NODE
