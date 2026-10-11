@@ -1,0 +1,21 @@
+name: Audit Ball46 Bookmaker Cache Merge for Goals
+on:
+  push:
+    branches: [audit/ball46-john-goal-price-validation-20261011]
+    paths:
+      - '.github/workflows/audit-ball46-goal-odds-cache-merge.yml'
+permissions:
+  contents: read
+jobs:
+  source:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node deploy-assets/john-goal-price-audit-20261011/audit-odds-merge.mjs
