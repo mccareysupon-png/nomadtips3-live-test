@@ -1,0 +1,57 @@
+name: DIAG Ball46 Statistics Frontend Live 20261011
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/diag-ball46-statistics-frontend-live-20261011.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Inspect live Ball46 frontend statistics code
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT=/tmp/b46-live-front
+          mkdir -p "$ROOT"
+          for u in "https://ball46.com/" "https://www.ball46.com/" "https://ball46.com/index.html" "https://www.ball46.com/index.html"; do
+            code=$(curl -L -sS -o "$ROOT/page.html" -w '%{http_code}' --max-time 30 "$u" || true)
+            echo "URL $u HTTP $code"
+            if [ "$code" = "200" ]; then
+              echo "$u" > "$ROOT/base.txt"
+              break
+            fi
+          done
+          test -s "$ROOT/page.html"
+          echo "HTML_BYTES $(wc -c < "$ROOT/page.html")"
+          echo "=== SCRIPT SRCS ==="
+          python3 - <<'PY'
+          from pathlib import Path
+          import re,urllib.parse,subprocess
+          root=Path('/tmp/b46-live-front')
+          html=root.joinpath('page.html').read_text(errors='replace')
+          base=root.joinpath('base.txt').read_text().strip()
+          srcs=re.findall(r'<script[^>]+src=["\']([^"\']+)["\']',html,re.I)
+          print('BASE',base)
+          print('SCRIPTS',len(srcs))
+          for i,src in enumerate(srcs):
+            url=urllib.parse.urljoin(base,src)
+            out=root/f'script-{i}.js'
+            p=subprocess.run(['curl','-L','-fsS','--max-time','30',url,'-o',str(out)])
+            print('SCRIPT',i,url,'OK',p.returncode==0,'BYTES',out.stat().st_size if out.exists() else 0)
+          PY
+          echo "=== HTML STAT LINES ==="
+          grep -Ein "statistics|PENDING|ledger|api/engine|signal" "$ROOT/page.html" | head -n 160 || true
+          echo "=== JS STAT LINES ==="
+          for f in "$ROOT"/script-*.js; do
+            [ -f "$f" ] || continue
+            echo "--- $f ---"
+            grep -Ein "statistics|PENDING|ledger|api/engine|nextCursor|records|rows|settlement" "$f" | head -n 240 || true
+          done
