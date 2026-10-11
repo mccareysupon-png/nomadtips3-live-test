@@ -1,0 +1,26 @@
+name: Audit NOMAD Shared Central Cache 5Dollar Rate Budget 20261011
+on:
+  push:
+    branches: [incident/ball46-signal-silent-20261011]
+    paths: [.github/workflows/audit-ball46-central-cache-rate-limit-20261011.yml]
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: Inspect central cache per-minute odds budget only - no provider calls or writes
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          const b='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+'/workers';
+          const g=async p=>{const r=await fetch(b+p,{headers:{Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN},signal:AbortSignal.timeout(25000)}),j=await r.json();if(!r.ok||!j.success)throw Error('CLOUDFLARE_'+r.status);return j.result};
+          const n='nomadtips3-343-central-cache',ds=await g('/scripts/'+n+'/deployments'),id=ds.deployments[0].versions.find(x=>x.percentage===100).version_id;
+          const v=await g('/workers/'+n+'/versions/'+id+'?include=modules'),lines=Buffer.from(v.modules.find(x=>x.name===v.main_module).content_base64,'base64').toString('utf8').split('\n');
+          for(const [from,to] of [[1,45],[48,115],[118,207],[208,260]])
+            console.log('CACHE_SOURCE',JSON.stringify({from,to,source:lines.slice(from-1,to).map((x,i)=>String(from+i)+':'+x).join('\n').slice(0,12000)}));
+          NODE
