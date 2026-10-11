@@ -51,6 +51,8 @@ jobs:
            assert.equal(result.unsettled,result.apiPending+result.apiUnresolved,'UNSETTLED_NOT_PENDING_PLUS_UNRESOLVED');
            assert.equal(result.settled,result.apiSettled,'SETTLED_CARD_CHANGED');
            assert(!result.overlap,'KPI_CARDS_OVERLAPPING');
+          const rowsOnScreen=new Set(result.rects.map(r=>Math.round(r.y))).size;
+          assert(name!=='mobile'||rowsOnScreen<=2,'MOBILE_GRID_STILL_STACKED:'+rowsOnScreen);
            assert.equal(errors.length,0,'PAGE_SCRIPT_ERRORS');
            await context.close();
           }
