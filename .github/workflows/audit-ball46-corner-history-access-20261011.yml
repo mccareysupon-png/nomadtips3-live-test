@@ -1,0 +1,48 @@
+name: Audit Ball46 Corner Price Tick Access 20261011
+on:
+  push:
+    branches: [audit/ball46-corner-live-price-20261011]
+    paths: [.github/workflows/audit-ball46-corner-history-access-20261011.yml]
+permissions:
+  contents: read
+jobs:
+  audit-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
+    steps:
+      - name: Inspect exact active price path and single history price tick
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          const a=process.env.CLOUDFLARE_ACCOUNT_ID,t=process.env.CLOUDFLARE_API_TOKEN,key=process.env.FIVEDOLLAR_API_KEY;
+          const root='https://api.cloudflare.com/client/v4/accounts/'+a+'/workers';
+          const get=async p=>{
+            const res=await fetch(root+p,{headers:{Authorization:'Bearer '+t},signal:AbortSignal.timeout(25000)}),j=await res.json();
+            if(!res.ok||!j.success)throw Error('CLOUDFLARE_READ_'+res.status);
+            return j.result;
+          };
+          const d=(await get('/scripts/nomadtips3-engine-343/deployments')).deployments[0];
+          const id=d.versions.find(x=>Number(x.percentage)===100)?.version_id;
+          const v=await get('/workers/nomadtips3-engine-343/versions/'+id+'?include=modules');
+          const src=Buffer.from(v.modules.find(x=>x.name===v.main_module).content_base64,'base64').toString('utf8');
+          const lines=src.split('\n');
+          for(const [from,to] of [[870,982],[1015,1045]]){
+            console.log('ACTUAL_CORNER_PATH',JSON.stringify({from,to,code:lines.slice(from-1,to).map((x,i)=>String(from+i)+':'+x).join('\n')}));
+          }
+          const board=await fetch('https://www.ball46.com/api/engine/board?dry_corner_access='+Date.now(),{cache:'no-store',signal:AbortSignal.timeout(20000)}).then(r=>r.json());
+          const live=(board.fixtures||[]).filter(x=>/live|in_play/i.test(String(x.boardState||x.status||'')));
+          const f=live.find(x=>x.analysis?.ft_corner_over)||live[0];
+          const fixtureId=String(f?.fixtureId||'');
+          if(!fixtureId||!key){console.log('HISTORY_ACCESS',{error:!key?'KEY_MISSING':'LIVE_FIXTURE_MISSING'});process.exit(0)}
+          const url='https://api.5dollarfootballapi.com/v1/fixtures/'+encodeURIComponent(fixtureId)+'/odds/history?bookmaker=bet365&market=corner&per_page=500';
+          const res=await fetch(url,{headers:{Authorization:'Bearer '+key},signal:AbortSignal.timeout(25000)});
+          const j=await res.json().catch(()=>({}));
+          const ticks=Array.isArray(j?.data?.ticks)?j.data.ticks:[];
+          const newest=ticks.at(-1)||{};
+          console.log('HISTORY_ACCESS',JSON.stringify({fixtureId,http:res.status,errorCode:j?.error?.code||null,rate:{limit:res.headers.get('x-ratelimit-limit'),remaining:res.headers.get('x-ratelimit-remaining'),retryAfter:res.headers.get('retry-after')},hasMore:j.pagination?.has_more??null,count:ticks.length,bookmaker:j.data?.bookmaker?.slug||null,market:j.data?.market||null,last:{minute:newest.minute??null,line:newest.line??null,over:newest.over??null,under:newest.under??null,recorded_at:newest.recorded_at??null,suspended:newest.suspended??null,half_time:newest.half_time??null}}));
+          NODE
