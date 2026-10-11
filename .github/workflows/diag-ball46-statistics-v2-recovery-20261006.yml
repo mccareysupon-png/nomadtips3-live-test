@@ -259,7 +259,7 @@ jobs:
           ver=getj(f'{api}/workers/workers/{worker}/versions/{active[0]}?include=modules')['result'];mods=ver.get('modules') or [];m=[x for x in mods if x.get('name')=='index-bulk-recovery.js' and x.get('content_base64')]
           if len(m)!=1: raise SystemExit('POST_SOURCE_MISSING')
           text=base64.b64decode(m[0]['content_base64']).decode()
-          if text.count('realtime-pending-v2-new-only')<2: raise SystemExit('V2_MARKER_MISSING_POST_DEPLOY')
+          if 'realtimePendingNewRows' not in text or 'upsertLedgerRows(realtimePendingNewRows' not in text: raise SystemExit('V2_HOOK_MISSING_POST_DEPLOY')
           def bh(text,a,b):
             i=text.find(a);j=text.find(b,i)
             if i<0 or j<0: raise SystemExit('POST_BLOCK_MISSING')
