@@ -1,0 +1,25 @@
+name: Inspect Member Cloudflare Deployments 20261011
+on:
+  push:
+    branches: [member/ledger-pending-repair-20261011]
+    paths: ['.github/workflows/inspect-member-cloudflare-history-20261011.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Read exact production deployment timeline (no writes)
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/ball46-member-production"
+          curl -fsS --max-time 20 -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/deployments?per_page=100&page=1" -o /tmp/deployments.json
+          jq -e '.success==true' /tmp/deployments.json >/dev/null
+          jq -r '[.result.deployments[] | {id, created_on, source, versions, annotations}] | .[] | @json' /tmp/deployments.json | head -80
+          echo "DEPLOY_COUNT $(jq '.result.deployments|length' /tmp/deployments.json)"
