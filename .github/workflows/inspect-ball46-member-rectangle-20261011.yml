@@ -1,0 +1,45 @@
+name: Inspect Ball46 MEMBER Rectangle Readonly 20261011
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/inspect-ball46-member-rectangle-20261011.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect-member-readonly:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ops/ball46-easybet-crossdevice-fix-20261007
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install parser dependency
+        run: npm install --no-save --ignore-scripts acorn@8
+      - name: Inspect MEMBER HTML and inline CSS only - no writes
+        run: |
+          node --input-type=module <<'NODE'
+          import {publicFile} from './deploy-assets/daily-performance-20261005/production.mjs';
+          const html=(await publicFile('/index.html','html')).toString('utf8');
+          for(const [name,regex] of [
+           ['NAV_ANCHOR',/<a\b(?=[^>]*data-b46-member-entry="rail")[^>]*>[\s\S]*?<\/a>/g],
+           ['PREMIUM_STYLE',/<style id="b46-member-gold-1011">[\s\S]*?<\/style>/g],
+           ['MEMBER_NAV_CSS',/<style[^>]*>[\s\S]{0,18000}?(?:b46-member-entry|b46-premium)[\s\S]{0,18000}?<\/style>/gi]
+          ]){
+           const all=[...html.matchAll(regex)];console.log('INSPECT',name,'COUNT',all.length);
+           for(const m of all.slice(0,name==='MEMBER_NAV_CSS'?2:4)){
+            console.log('MATCH',name,'INDEX',m.index,'TEXT',m[0].slice(0,name==='MEMBER_NAV_CSS'?7000:10000));
+           }
+          }
+          const anchor=html.search(/<a\b(?=[^>]*data-b46-member-entry="rail")/);
+          console.log('AROUND_RAIL',html.slice(Math.max(0,anchor-1400),Math.min(html.length,anchor+1600)));
+          console.log('CSS_LINKS', [...html.matchAll(/<link\b[^>]*rel="stylesheet"[^>]*>/g)].map(x=>x[0]).slice(0,30));
+          
+          NODE
