@@ -35,3 +35,7 @@ jobs:
           code="$(curl -sS -o /tmp/current.json -w '%{http_code}' -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/$id/values/$encoded")"
           echo "SNAPSHOT_HTTP=$code"
           if [ "$code" = 200 ]; then jq -c '{cycleStart,generatedAt,signalCount:.daily.signalCount,summary:.daily.summary.ALL,pages:.daily.pagesRead}' /tmp/current.json; fi
+          if [ "$code" = 200 ]; then
+            jq -e '.daily.signalCount==(.daily.signals|length) and .daily.summary.ALL.signals==.daily.signalCount and (.daily.summary.ALL.pending+.daily.summary.ALL.win+.daily.summary.ALL.loss+.daily.summary.ALL.push+.daily.summary.ALL.halfWin+.daily.summary.ALL.halfLoss)==.daily.signalCount' /tmp/current.json
+            echo "SNAPSHOT_COUNTERS_MATCH=YES"
+          fi
