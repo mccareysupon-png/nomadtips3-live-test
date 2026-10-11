@@ -56,6 +56,6 @@ jobs:
           code=$(curl -sS --max-time 12 -o /tmp/unauthed -w '%{http_code}' "$base/member")
           test "$code" = 303
           code=$(curl -sS --max-time 15 -o /tmp/public -w '%{http_code}' 'https://member2.ball46.com/')
-          test "$code" = 200 || test "$code" = 302
-          grep -Eiq 'cloudflare|Ball46|pricing' /tmp/public
+          test "$code" = 302
+          grep -Eiq 'cloudflare|access/login' /tmp/public
           echo 'MEMBER2_DOMAIN_DEPLOYED_AND_GUARDED'
