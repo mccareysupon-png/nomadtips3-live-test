@@ -1,0 +1,118 @@
+name: Ball46 UNSETTLED Mobile Grid Only 20261011
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-ball46-statistics-unsettled-mobile-grid-20261011.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ball46-production-deploy
+  cancel-in-progress: false
+jobs:
+  kpi-mobile-grid-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ops/ball46-easybet-crossdevice-fix-20261007
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install parser
+        run: npm install --no-save --ignore-scripts acorn@8
+      - name: Fix only mobile KPI seven-card layout from active Production
+        working-directory: deploy-assets/ball46-member-nav-20261009
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import {writeFileSync,mkdirSync} from 'node:fs';
+          import {resolve} from 'node:path';
+          import {inspect,api,script,activeVersion,getVersion,publicFile,sha,canonical,directOrigin} from '../daily-performance-20261005/production.mjs';
+          import {schedules,stageCurrentRail,verifyRailBase,wrangler} from '../daily-performance-20261005/rail.mjs';
+          const target='singlepage-workspace-343.css';
+          const pairs=[[".workspace.singlepage .sp-kpis{grid-template-columns:repeat(12,minmax(0,1fr))}",".workspace.singlepage .sp-kpis{grid-template-columns:repeat(12,minmax(0,1fr))!important}"],[".workspace.singlepage .sp-kpis>.sp-kpi{grid-column:span 3;border-right:1px solid var(--line);border-bottom:1px solid var(--line)}",".workspace.singlepage .sp-kpis>.sp-kpi{grid-column:span 3!important;border-right:1px solid var(--line);border-bottom:1px solid var(--line)}"],[".workspace.singlepage .sp-kpis>.sp-kpi:nth-child(n+5){grid-column:span 4;border-bottom:0}",".workspace.singlepage .sp-kpis>.sp-kpi:nth-child(n+5){grid-column:span 4!important;border-bottom:0}"]];
+          const report={scope:'Only override other mobile stylesheet grid defaults so seven Statistics KPI cards stay in 4+3 columns instead of 7 stacked full-width rows. No HTML, KPI data, settlement, engine or other CSS changes.',startedAt:new Date().toISOString()};
+          mkdirSync('audit-stat-unsettled-mobile',{recursive:true});
+          const save=()=>writeFileSync('audit-stat-unsettled-mobile/report.json',JSON.stringify(report,null,2));
+          const pause=ms=>new Promise(r=>setTimeout(r,ms));
+          let original=null,candidate=null;
+          function patch(s){
+           assert(s.includes('B46_STAT_UNSETTLED_KPI_GRID_20261011'),'UNSETTLED_GRID_MISSING');
+           let changed=s;
+           for(const [before,after] of pairs){
+            assert.equal(changed.split(before).length-1,1,'EXPECTED_GRID_CSS_CHANGED');
+            changed=changed.replace(before,after);
+           }
+           assert.notEqual(changed,s,'NO_CHANGE');
+           let back=changed;
+           for(const [before,after] of pairs)back=back.replace(after,before);
+           assert.equal(back,s,'OTHER_CSS_CHANGED');
+           return changed;
+          }
+          async function rollback(){
+           if(!original)return;const v=await activeVersion();if(v===original)return;
+           if(!candidate||v!==candidate)throw Error('FOREIGN_VERSION_NO_ROLLBACK');
+           await api('/scripts/'+script+'/deployments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({strategy:'percentage',versions:[{version_id:original,percentage:100}],annotations:{'workers/message':'Rollback isolated Statistics 7 KPI mobile geometry'}})});
+           assert.equal(await activeVersion(),original,'ROLLBACK_NOT_CONFIRMED');
+          }
+          try{
+           const current=await inspect();original=current.restore.version;
+           const settings=await api('/scripts/'+script+'/settings'),crons=await schedules();
+           const settingsSha=sha(canonical(settings)),engineSha=sha(Buffer.from(current.source));
+           const prior=await publicFile('/'+target,undefined,directOrigin),s=prior.toString('utf8');
+           assert.equal(sha(prior),sha(await publicFile('/'+target)),'CSS_ORIGINS_DIFFER');
+           const next=patch(s),nextSha=sha(Buffer.from(next));
+           const html=(await publicFile('/index.html','html')).toString('utf8');
+           const js=(await publicFile('/singlepage-workspace-343.js')).toString('utf8');
+           assert(html.includes('data-sp-kpi="unsettled"')&&js.includes('const unsettled=rows.filter('),'UNSETTLED_DATA_NOT_PRESENT');
+           const staged=await stageCurrentRail(current.version,settings,crons,current.source);
+           await verifyRailBase(staged);
+           assert.equal(staged.hashes[target],sha(prior),'STAGED_CSS_NOT_CURRENT');
+           assert.equal(await activeVersion(),original,'PRODUCTION_CHANGED_DURING_STAGE');
+           writeFileSync(resolve(staged.runtime,'assets',target),next);
+           report.beforeVersion=original;report.changedFile=target;report.newSha=nextSha;save();
+           wrangler(staged,true);
+           assert.equal(await activeVersion(),original,'PRODUCTION_CHANGED_BEFORE_DEPLOY');
+           await verifyRailBase(staged);
+           wrangler(staged,false);
+           for(let i=0;i<30;i++){const v=await activeVersion();if(v!==original){candidate=v;break}await pause(1200)}
+           assert(candidate,'NEW_VERSION_NOT_OBSERVED');
+           let ok=false;
+           for(let i=0;i<30;i++){
+            assert.equal(await activeVersion(),candidate,'PRODUCTION_CHANGED_DURING_VERIFY');
+            try{ok=sha(await publicFile('/'+target,undefined,directOrigin))===nextSha&&sha(await publicFile('/'+target))===nextSha;if(ok)break}catch{}
+            await pause(1200);
+           }
+           assert(ok,'MOBILE_GRID_CSS_NOT_LIVE');
+           for(const [name,hash] of Object.entries(staged.hashes)){
+            if(name===target)continue;
+            assert.equal(sha(await publicFile('/'+name)),hash,'OTHER_ASSET_CHANGED:'+name);
+           }
+           const v=await getVersion(candidate),main=v.modules.find(m=>m.name===v.main_module);
+           assert(main,'MAIN_MISSING');
+           assert.equal(sha(Buffer.from(main.content_base64,'base64')),engineSha,'WORKER_ENGINE_CHANGED');
+           assert.equal(sha(canonical(await api('/scripts/'+script+'/settings'))),settingsSha,'SETTINGS_CHANGED');
+           assert.equal(canonical(await schedules()),canonical(crons),'CRONS_CHANGED');
+           report.result='SUCCESS';report.deployedVersion=candidate;save();
+           console.log('BALL46_UNSETTLED_MOBILE_GRID_SUCCESS',JSON.stringify({before:original,deployed:candidate,changedFile:target,unchangedAssets:Object.keys(staged.hashes).length-1}));
+          }catch(e){
+           report.result='FAIL_STOPPED';report.error=String(e.message||e);save();
+           try{await rollback();report.rolledBack=true;save()}catch(rb){report.rollbackError=String(rb.message||rb);save()}
+           console.error(e.stack);process.exitCode=1;
+          }
+          
+          NODE
+      - name: Save audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-stat-mobile-grid-${{ github.run_id }}
+          path: deploy-assets/ball46-member-nav-20261009/audit-stat-unsettled-mobile
+          retention-days: 30
