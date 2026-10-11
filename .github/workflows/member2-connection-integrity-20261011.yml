@@ -1,0 +1,33 @@
+name: Member2 Production Data Connection Integrity
+on:
+  push:
+    branches: [member2/isolated-ui-and-registration-20261011]
+    paths: ['.github/workflows/member2-connection-integrity-20261011.yml']
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify live Worker and asset pairing without modifying anything
+        run: |
+          node --input-type=module <<'NODE'
+          const urls=[
+            'https://ball46-member2-production.mccarey-supon.workers.dev/api/health',
+            'https://ball46-member2-production.mccarey-supon.workers.dev/member.js',
+            'https://ball46-member2-production.mccarey-supon.workers.dev/member.html',
+            'https://www.ball46.com/api/engine/statistics?paged=1',
+            'https://www.ball46.com/api/engine/board'
+          ];
+          for(const u of urls){
+            try{
+              const r=await fetch(u,{redirect:'manual',headers:{'cache-control':'no-cache'},signal:AbortSignal.timeout(25000)});
+              const t=await r.text();
+              const report={url:u,status:r.status,contentType:r.headers.get('content-type'),bytes:t.length};
+              if(u.endsWith('member.js'))report.jsChecks={liveRefreshPath:t.match(/fetch\('([^']*api\/member\/daily[^']*)'/g)?.slice(-4),bootPresent:t.includes('boot().catch'),parseLikely:t.includes('async function boot')};
+              if(u.endsWith('member.html'))report.scripts=[...t.matchAll(/<script[^>]*src="([^"]+)"/g)].map(x=>x[1]);
+              if(u.includes('statistics')){const x=JSON.parse(t);report.signalRows=x.rows?.length;report.lastId=x.rows?.[0]?.id;}
+              if(u.endsWith('board')){const x=JSON.parse(t);report.live=x.counts?.live;report.stale=x.stale;}
+              console.log('LIVE_CONNECTION',JSON.stringify(report));
+            }catch(e){console.log('LIVE_CONNECTION_FAILED',u,String(e))}
+          }
+          NODE
