@@ -14,7 +14,7 @@ const stripe=async(url,opts)=>{
   assert.equal(p.get('line_items[0][price]'),'price_ball46');
   assert.equal(p.get('customer_email'),customer.email);
   assert.equal(p.get('client_reference_id'),customer.id);
-  assert.match(p.get('success_url'),/^https:\/\/member\.ball46\.com\/success/);
+  assert.match(p.get('success_url'),/^https:\/\/member2\.ball46\.com\/success/);
   return {ok:true,json:async()=>({url:'https://checkout.stripe.com/c/pay/cs_mock'})};
 };
 test('any verified non-owner can open secure hosted Stripe Checkout',async()=>{
