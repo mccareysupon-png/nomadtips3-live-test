@@ -2,9 +2,11 @@ name: DIAG Ball46 Statistics V2 Recovery 20261006
 
 on:
   push:
-    branches: [main]
+    branches:
+      - ops/ball46-stat-realtime-production-20261011
     paths:
       - '.github/workflows/diag-ball46-statistics-v2-recovery-20261006.yml'
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -13,13 +15,42 @@ jobs:
   diagnose:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: work/ball46-statistics-v2-recovery-20261006
-          fetch-depth: 1
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-      - run: node deploy-assets/statistics-v2-recovery-20261006/diag.mjs
-\n# rerun loader detail\n
+      - name: Read exact production engine and bindings only
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64,hashlib,json,os,urllib.request
+          account=os.environ['CLOUDFLARE_ACCOUNT_ID']; token=os.environ['CLOUDFLARE_API_TOKEN']
+          api=f'https://api.cloudflare.com/client/v4/accounts/{account}'; worker='nomadtips3-engine-343'
+          h={'Authorization':f'Bearer {token}','Accept':'application/json'}
+          def getj(u):
+            with urllib.request.urlopen(urllib.request.Request(u,headers=h),timeout=30) as r: return json.load(r)
+          deps=getj(f'{api}/workers/scripts/{worker}/deployments')['result']['deployments']
+          versions=deps[0].get('versions') or []
+          active=[str(v['version_id']) for v in versions if v.get('version_id') and float(v.get('percentage',0))>=99.999]
+          if len(active)!=1: raise SystemExit('ACTIVE_VERSION_AMBIGUOUS:'+repr(active))
+          vid=active[0]
+          ver=getj(f'{api}/workers/workers/{worker}/versions/{vid}?include=modules')['result']
+          mods=ver.get('modules') or []
+          target=[m for m in mods if m.get('name')=='index-bulk-recovery.js' and m.get('content_base64')]
+          if len(target)!=1: raise SystemExit('SOURCE_MODULE_MISSING:'+repr([m.get('name') for m in mods]))
+          raw=base64.b64decode(target[0]['content_base64']); s=raw.decode()
+          settings=getj(f'{api}/workers/scripts/{worker}/settings')['result']
+          print('ACTIVE_VERSION',vid)
+          print('SOURCE_SHA256',hashlib.sha256(raw).hexdigest())
+          print('SOURCE_LEN',len(s))
+          print('BINDINGS',json.dumps(settings.get('bindings') or [],sort_keys=True))
+          required=['signal-ledger-v2-longterm','async upsertLedgerRows','async syncStatisticsLedger','async statisticsLedgerResponse','signals.push(sig);','writeWorkingSignals(this.ctx, capped)','reconcileExternalFinal']
+          missing=[x for x in required if x not in s]
+          print('MISSING_REQUIRED',missing)
+          print('HAS_V1_BAD_PATCH','realtime-pending-ledger-v1' in s)
+          print('HAS_V2_PATCH','realtime-pending-v2-new-only' in s)
+          if missing: raise SystemExit('PRODUCTION_CONTRACT_CHANGED')
+          if s.count('signals.push(sig);')!=1: raise SystemExit('SIGNAL_PUSH_COUNT_CHANGED')
+          if s.count('await writeWorkingSignals(this.ctx, capped);')!=1: raise SystemExit('WORKING_COMMIT_COUNT_CHANGED')
+          PY
