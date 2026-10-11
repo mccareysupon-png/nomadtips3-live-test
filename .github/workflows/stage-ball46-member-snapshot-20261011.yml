@@ -5,6 +5,8 @@ on:
     branches: [member/snapshot-readonly-20261011]
     paths:
       - '.github/workflows/stage-ball46-member-snapshot-20261011.yml'
+      - 'ball46-member/src/worker.js'
+      - 'ball46-member/src/member-snapshot.js'
   workflow_dispatch:
 
 permissions:
