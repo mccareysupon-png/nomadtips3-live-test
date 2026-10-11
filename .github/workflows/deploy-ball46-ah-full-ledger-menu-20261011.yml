@@ -1,0 +1,130 @@
+name: Ball46 AH Total Ledger Menu Only 20261011
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-ball46-ah-full-ledger-menu-20261011.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ball46-production-deploy
+  cancel-in-progress: false
+jobs:
+  ah-menu-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ops/ball46-easybet-crossdevice-fix-20261007
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install parser
+        run: npm install --no-save --ignore-scripts acorn@8
+      - name: Patch exactly two alternate AH writers on active Production
+        working-directory: deploy-assets/ball46-member-nav-20261009
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import {writeFileSync,mkdirSync} from 'node:fs';
+          import {resolve} from 'node:path';
+          import {parse} from 'acorn';
+          import {inspect,api,script,activeVersion,getVersion,publicFile,sha,canonical,directOrigin} from '../daily-performance-20261005/production.mjs';
+          import {schedules,stageCurrentRail,verifyRailBase,wrangler} from '../daily-performance-20261005/rail.mjs';
+          const name='ui-sync-fixes-343-v2.js';
+          const oldWrite="if(b&&k in counts&&k!=='1x2')b.textContent=String(counts[k])";
+          const newWrite="if(b&&k in counts&&k!=='1x2'&&k!=='ah')b.textContent=String(counts[k])";
+          const report={scope:'AH menu number ONLY: stop alternate summary/settled-only writer from overwriting the full ledger AH value. Statistics primary ledger writer remains sole owner. No other market counts, Engine, settlement or other assets changed.',createdAt:new Date().toISOString()};
+          mkdirSync('audit-ah-ledger-menu',{recursive:true});
+          const save=()=>writeFileSync('audit-ah-ledger-menu/report.json',JSON.stringify(report,null,2));
+          const pause=ms=>new Promise(r=>setTimeout(r,ms));
+          let original=null,candidate=null;
+          function patch(s){
+           assert(s.includes('function paintStatCounts(rows,total)'),'COUNT_WRITER_MISSING');
+           assert(s.includes('function paintStatSummary(j)'),'SUMMARY_WRITER_MISSING');
+           assert(s.includes("paintStatCounts(e.detail.rows,e.detail.ledgerTotal)"),'OTHER_TOTAL_FIX_MISSING');
+           assert.equal(s.split(oldWrite).length-1,2,'EXPECTED_TWO_WRITERS_NOT_FOUND');
+           assert(!s.includes(newWrite),'ALREADY_APPLIED_STOP');
+           const next=s.replaceAll(oldWrite,newWrite);
+           assert.equal(next.split(newWrite).length-1,2,'PATCH_COUNT_WRONG');
+           assert.equal(next.replaceAll(newWrite,oldWrite),s,'UNRELATED_SOURCE_CHANGED');
+           parse(next,{ecmaVersion:'latest',sourceType:'script'});
+           return next;
+          }
+          async function rollback(){
+           if(!original)return;
+           const active=await activeVersion();
+           if(active===original)return;
+           if(!candidate||active!==candidate)throw Error('FOREIGN_PRODUCTION_VERSION_NO_ROLLBACK');
+           await api('/scripts/'+script+'/deployments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({strategy:'percentage',versions:[{version_id:original,percentage:100}],annotations:{'workers/message':'Rollback isolated AH full ledger menu UI fix'}})});
+           assert.equal(await activeVersion(),original,'ROLLBACK_NOT_CONFIRMED');
+          }
+          try{
+           const current=await inspect();original=current.restore.version;
+           const settings=await api('/scripts/'+script+'/settings'),crons=await schedules();
+           const settingsSha=sha(canonical(settings)),workerSha=sha(Buffer.from(current.source));
+           const beforeBytes=await publicFile('/'+name,undefined,directOrigin);
+           assert.equal(sha(beforeBytes),sha(await publicFile('/'+name)),'PUBLIC_UI_SYNC_ORIGINS_DIFFER');
+           const after=patch(beforeBytes.toString('utf8')),afterSha=sha(Buffer.from(after));
+           const primary=(await publicFile('/singlepage-workspace-343.js')).toString('utf8');
+           assert(primary.includes('function marketCounts(){'),'LEDGER_MARKET_COUNTER_MISSING');
+           assert(primary.includes('state.rows.forEach(r=>{const k=marketKey(r);if(k in out)out[k]++})'),'LEDGER_MARKET_COUNTER_CHANGED');
+           assert(primary.includes('state.rows=Array.isArray(j.ledgerRows)?j.ledgerRows:j.rows'),'LEDGER_ROWS_NOT_USED');
+           const stats=JSON.parse(await publicFile('/api/engine/statistics?paged=1','json'));
+           assert(stats.ok===true&&stats.statisticsSource==='LEDGER_V2_ONLY','STATISTICS_SOURCE_NOT_CONFIRMED');
+           assert(Number.isSafeInteger(stats?.byMarket?.ft_ah),'AH_SETTLED_COUNT_NOT_AVAILABLE');
+           assert(Number.isSafeInteger(stats.ledgerTotal)&&Number.isSafeInteger(stats.total)&&stats.ledgerTotal>=stats.total,'LEDGER_TOTAL_INVALID');
+           const staged=await stageCurrentRail(current.version,settings,crons,current.source);
+           await verifyRailBase(staged);
+           assert.equal(staged.hashes[name],sha(beforeBytes),'STAGED_ASSET_NOT_CURRENT');
+           assert.equal(await activeVersion(),original,'PRODUCTION_CHANGED_DURING_STAGING');
+           writeFileSync(resolve(staged.runtime,'assets',name),after);
+           report.beforeVersion=original;report.beforeHash=sha(beforeBytes);report.afterHash=afterSha;report.settledAhAtStart=stats.byMarket.ft_ah;save();
+           wrangler(staged,true);
+           assert.equal(await activeVersion(),original,'PRODUCTION_CHANGED_BEFORE_DEPLOY');
+           await verifyRailBase(staged);
+           wrangler(staged,false);
+           for(let i=0;i<30;i++){const v=await activeVersion();if(v!==original){candidate=v;break}await pause(1200)}
+           assert(candidate,'DEPLOYED_VERSION_NOT_OBSERVED');report.candidate=candidate;save();
+           let directOk=false,publicOk=false;
+           for(let i=0;i<35;i++){
+            assert.equal(await activeVersion(),candidate,'PRODUCTION_CHANGED_DURING_VERIFY');
+            try{
+             directOk=sha(await publicFile('/'+name,undefined,directOrigin))===afterSha;
+             publicOk=sha(await publicFile('/'+name))===afterSha;
+             if(directOk&&publicOk)break;
+            }catch{}
+            await pause(1200);
+           }
+           assert(directOk&&publicOk,'PATCH_NOT_VISIBLE_ON_BOTH_ORIGINS');
+           for(const [file,hash] of Object.entries(staged.hashes)){
+            if(file===name)continue;
+            assert.equal(sha(await publicFile('/'+file)),hash,'UNRELATED_ASSET_CHANGED:'+file);
+           }
+           const version=await getVersion(candidate),main=version.modules.find(m=>m.name===version.main_module);
+           assert(main,'WORKER_MAIN_NOT_FOUND');
+           assert.equal(sha(Buffer.from(main.content_base64,'base64')),workerSha,'WORKER_ENGINE_CHANGED');
+           assert.equal(sha(canonical(await api('/scripts/'+script+'/settings'))),settingsSha,'WORKER_SETTINGS_CHANGED');
+           assert.equal(canonical(await schedules()),canonical(crons),'WORKER_CRONS_CHANGED');
+           report.result='SUCCESS';report.deployedVersion=candidate;report.finishedAt=new Date().toISOString();save();
+           console.log('BALL46_AH_LEDGER_MENU_SUCCESS',JSON.stringify({previous:original,deployed:candidate,changedAsset:name,otherAssetsUnchanged:Object.keys(staged.hashes).length-1,settledAhAtStart:stats.byMarket.ft_ah}));
+          }catch(e){
+           report.result='FAIL_STOPPED';report.error=String(e?.message||e);save();
+           try{await rollback();report.rolledBack=true;save()}catch(rollback){report.rollbackError=String(rollback?.message||rollback);save()}
+           console.error(e.stack);process.exitCode=1;
+          }
+          
+          NODE
+      - name: Save isolated deploy audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-ah-ledger-${{ github.run_id }}
+          path: deploy-assets/ball46-member-nav-20261009/audit-ah-ledger-menu
+          retention-days: 30
