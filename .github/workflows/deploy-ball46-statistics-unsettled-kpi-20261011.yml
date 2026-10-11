@@ -66,8 +66,7 @@ jobs:
           function patchCss(s){
            assert(!s.includes('B46_STAT_UNSETTLED_KPI_GRID_20261011'),'GRID_ALREADY_PATCHED');
            assert(s.includes('.sp-kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr))'),'ORIGINAL_KPI_GRID_CHANGED');
-           return s+'
-          '+cssAppend;
+           return s+String.fromCharCode(10)+cssAppend;
           }
           const sample=[{status:'SETTLED'},{status:'PENDING'},{status:'UNRESOLVED'},{status:'settled'},{status:'LIVE'}];
           assert.equal(sample.filter(r=>['PENDING','UNRESOLVED'].includes(String(r?.status||'').trim().toUpperCase())).length,2,'UNSETTLED_STATUS_COUNT_BAD');
