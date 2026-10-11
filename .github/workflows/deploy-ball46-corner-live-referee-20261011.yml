@@ -1,0 +1,43 @@
+name: Deploy Ball46 Verified LIVE Corners Referee ONLY
+on:
+  push:
+    branches: [work/ball46-corner-live-referee-20261011]
+    paths:
+      - '.github/workflows/deploy-ball46-corner-live-referee-20261011.yml'
+permissions:
+  contents: read
+concurrency:
+  group: ball46-engine343-corner-referee-verified-20261011
+  cancel-in-progress: false
+jobs:
+  guarded-production-deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: Checkout approved isolated branch
+        uses: actions/checkout@v4
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Static syntax check
+        run: node --check deploy-assets/ball46-corner-live-referee-20261011/deploy.mjs
+      - name: Run guard tests and inspect exact active Worker without writing
+        env:
+          CORNER_DRY_RUN: '1'
+        run: node deploy-assets/ball46-corner-live-referee-20261011/deploy.mjs
+      - name: Deploy only Corners price referee from exact active Worker
+        env:
+          CORNER_DRY_RUN: '0'
+        run: node deploy-assets/ball46-corner-live-referee-20261011/deploy.mjs
+      - name: Store exact previous and deployed version IDs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-corner-live-referee-${{ github.run_id }}
+          path: audit/
+          if-no-files-found: warn
+          retention-days: 30
