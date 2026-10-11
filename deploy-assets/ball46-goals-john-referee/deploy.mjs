@@ -9,8 +9,8 @@ const token = process.env.CLOUDFLARE_API_TOKEN;
 const root = 'https://api.cloudflare.com/client/v4/accounts/' + account + '/workers';
 const target = 'https://www.ball46.com/api/engine/bridge-health';
 const RECOVERY_DRY_RUN=process.env.RECOVERY_DRY_RUN==="1";
-const EXPECTED_ACTIVE_VERSION="d5e2cfba-0ec8-4098-ae4c-41cda0a18689";
-const EXPECTED_ACTIVE_SHA="0f805be374ca93395b5984b7576a193a2d73424adbc60ac49729a2c21e5a964f";
+const EXPECTED_ACTIVE_VERSION="e8baed42-7eea-4247-81af-780d5c77d28e";
+const EXPECTED_ACTIVE_SHA="4f5ea2dbcb821d9ca29a3fea7f842428167ea17af4d79b957598f36b80e2a6ef";
 const hash = s => createHash('sha256').update(s).digest('hex');
 const delay = ms => new Promise(done => setTimeout(done, ms));
 const canonical = v => JSON.stringify(v, (k, e) => k === 'annotations' ? undefined :
@@ -119,7 +119,7 @@ try {
   const beforeHash = hash(source), afterHash = hash(nextSource);
   save('checkpoint.json', { worker, priorId, beforeHash, afterHash,
     mainModule: before.main_module, compatibilityDate: before.compatibility_date,
-    moduleCount: before.modules.length, note:'Restore Goals O-U through existing John qualified live-price referee; remove direct goal history; preserve Corners, settlement, statistics' });
+    moduleCount: before.modules.length, note:'Goals O-U only: strict market.inplay, no fallback. Preserve other markets, John rates, settlement, statistics' });
   log('JOHN_GOALS_PREFLIGHT_PASS', { worker, priorId, beforeHash, afterHash,
     fullMarketMaxPerScan:4, directGoalHistoryRequests:0, sourceBytes:Buffer.byteLength(source),
     otherSourceChanged:false, beforeBridge });
@@ -133,7 +133,7 @@ try {
     bindings:(before.bindings || []).map(b =>
       b.type === 'secret_text' ? { name:b.name, type:'inherit', version_id:'latest' } : { ...b }),
     annotations:{
-      'workers/message':'Ball46 Goals O-U: restore John qualified live-price referee, remove extra 5USD history calls',
+      'workers/message':'Ball46 Goals O-U: use market.inplay only; preserve John central cache, others unchanged',
       'workers/commit_sha':process.env.GITHUB_SHA || ''
     }
   };
@@ -162,7 +162,7 @@ try {
   assert.equal(candidate.compatibility_date,before.compatibility_date,'COMPAT_DATE_CHANGED');
   assert.equal(await activeId(),priorId,'ANOTHER_DEPLOY_INTERVENED_ABORT');
 
-  await activate(candidateId, 'Ball46 Goals O-U restore John referee only');
+  await activate(candidateId, 'Ball46 Goals O-U inplay only');
   activated = true;
   await waitForActive(candidateId);
   const current = await version(candidateId);
@@ -178,7 +178,7 @@ try {
   assert(afterLedger.ledgerTotal>=beforeLedger.ledgerTotal && afterLedger.settledTotal>=beforeLedger.settledTotal,'LEDGER_RECORDS_LOST_AFTER_DEPLOY');
   const success = { worker, previousVersionId:priorId, deployedVersionId:candidateId,
     priorSourceHash:beforeHash, newSourceHash:afterHash,
-    exactPatch:"restore Goals O-U John qualified live-price cache & best-19 pricing; remove direct Goal history API, Corners & settlement unchanged", beforeBridge, afterBridge, beforeLedger, afterLedger,
+    exactPatch:"Goals O-U only: read strictly market.inplay, no aliases or fallback; all other markets, John API routing and settlement unchanged", beforeBridge, afterBridge, beforeLedger, afterLedger,
     settingsUnchanged:true, schedulesUnchanged:true, bindingsUnchanged:true };
   save('success.json',success);
   log('JOHN_GOALS_DEPLOY_SUCCESS',success);
@@ -189,7 +189,7 @@ try {
   if(activated && priorId && candidateId){
     try {
       if(await activeId() === candidateId){
-        await activate(priorId, 'Rollback Ball46 John Goals referee repair after postdeploy QA failure');
+        await activate(priorId, 'Rollback Ball46 Goals O-U inplay-only patch after QA failure');
         await waitForActive(priorId);
         log('JOHN_GOALS_ROLLBACK_SUCCESS',{ restoredVersionId:priorId });
       }
