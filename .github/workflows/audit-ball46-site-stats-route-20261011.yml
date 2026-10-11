@@ -1,0 +1,21 @@
+name: Audit Ball46 Production Web Statistics Route Readonly
+on:
+  push:
+    branches: [work/ball46-phase3-missing-hub-final-20261011]
+    paths:
+      - '.github/workflows/audit-ball46-site-stats-route-20261011.yml'
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node deploy-assets/ball46-phase3/audit-site-worker.mjs
