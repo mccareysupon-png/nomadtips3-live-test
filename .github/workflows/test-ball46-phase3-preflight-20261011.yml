@@ -1,0 +1,23 @@
+name: Ball46 Phase3 Real Worker Fallback Preflight
+on:
+  push:
+    branches: [work/ball46-phase3-missing-hub-final-20261011]
+    paths:
+      - '.github/workflows/test-ball46-phase3-preflight-20261011.yml'
+permissions:
+  contents: read
+jobs:
+  preflight:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --ignore-scripts acorn@8
+      - name: Read-only current active source and run actual FT fallback tests
+        run: node deploy-assets/ball46-phase3/preflight.mjs
