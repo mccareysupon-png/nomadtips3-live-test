@@ -1,0 +1,25 @@
+name: Diagnose Member2 Missing Rows Production
+on:
+  push:
+    branches: [member2/isolated-ui-and-registration-20261011]
+    paths: ['.github/workflows/member2-missing-rows-diagnostic.yml']
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Verify current production binding and Access certificates
+        shell: bash
+        run: |
+          set -euo pipefail
+          api="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID"
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$api/workers/scripts/ball46-member2-production/settings" | jq -c '{success,bindings:[.result.bindings[]?|{name,type}]}'
+          curl -fsS 'https://rapid-glade-f6b9.cloudflareaccess.com/cdn-cgi/access/certs' | jq -c '{keys:[.keys[]?|{kid,kty,use,alg}]}'
+          for u in 'https://www.ball46.com/api/engine/statistics?paged=1' 'https://www.ball46.com/api/engine/board' 'https://member2.ball46.com/member.js' 'https://member2.ball46.com/api/member/daily' 'https://ball46-member2-production.mccarey-supon.workers.dev/member.js'; do
+            code=$(curl -sS --max-time 15 -D /tmp/h -o /tmp/b -w '%{http_code}' "$u" || true)
+            echo "CHECK $u HTTP=$code MIME=$(grep -i '^content-type:' /tmp/h | head -1 | tr -d '\r') BYTES=$(wc -c < /tmp/b)"
+            if [[ "$u" == *'statistics?paged=1' ]]; then jq -c '{ok,rows:(.rows|length),hasMore}' /tmp/b; fi
+          done
