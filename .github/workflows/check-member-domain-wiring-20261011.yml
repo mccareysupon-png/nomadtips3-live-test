@@ -26,3 +26,7 @@ jobs:
           base="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/domains"
           curl -sS --max-time 20 -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base" -o /tmp/domains.json
           jq -r '[.result[]? | select(.hostname|contains("member.ball46.com")) | {hostname,service,environment,zone_id}]|.[]|@json' /tmp/domains.json
+
+          curl -sS --max-time 20 -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/access/apps?per_page=100" -o /tmp/access-apps.json
+          echo "ACCESS_APPS_RESULT $(jq -c '{success,errors}' /tmp/access-apps.json)"
+          jq -r '.result[]? | select((.domain//""|contains("member.ball46.com")) or ((.self_hosted_domains//[])|tostring|contains("member.ball46.com"))) | {name,domain,self_hosted_domains,aud,app_launcher_visible,type,allowed_idps} | @json' /tmp/access-apps.json
