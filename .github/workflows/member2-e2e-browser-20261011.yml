@@ -37,7 +37,7 @@ jobs:
           const env={CF_ACCESS_TEAM_DOMAIN:'test.cloudflareaccess.com',CF_ACCESS_AUD:'test',OWNER_CHECKOUT_EMAIL:'owner@test.invalid'};
           const html=fs.readFileSync('ball46-member2/public/member.html','utf8');
           const dom=new JSDOM(html,{url:'https://staging.example/member',runScripts:'outside-only',pretendToBeVisual:true});
-          const win=dom.window;win.setInterval=()=>0;win.CSS.escape??=(s=>String(s).replace(/[^a-zA-Z0-9_-]/g,'_'));
+          const win=dom.window;win.setInterval=()=>0;win.CSS??={};win.CSS.escape??=(s=>String(s).replace(/[^a-zA-Z0-9_-]/g,'_'));
           const errors=[];win.console.error=(...a)=>errors.push(a.map(String).join(' '));
           let detailCount=0;
           win.fetch=async(input)=>{
