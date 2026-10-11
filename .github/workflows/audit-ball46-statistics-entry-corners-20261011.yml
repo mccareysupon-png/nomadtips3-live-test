@@ -1,0 +1,59 @@
+name: Audit Ball46 Statistics ENTRY and Corners Readonly
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/audit-ball46-statistics-entry-corners-20261011.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ops/ball46-easybet-crossdevice-fix-20261007
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install acorn
+        run: npm install --no-save --ignore-scripts acorn@8
+      - name: Inspect live statistics render and source fields with no mutation
+        working-directory: deploy-assets/ball46-member-nav-20261009
+        run: |
+          node --input-type=module <<'NODE'
+          import { publicFile } from '../daily-performance-20261005/production.mjs';
+          import { parse } from 'acorn';
+          const filename='singlepage-workspace-343.js';
+          const source=(await publicFile('/'+filename)).toString('utf8');
+          console.log('JS_BYTES',source.length);
+          const ast=parse(source,{ecmaVersion:'latest',sourceType:'script'});
+          const fns=[];
+          function walk(n){if(!n||typeof n!=='object')return;if(n.type==='FunctionDeclaration'&&n.id?.name&&/renderTable|entry|corner|score/i.test(n.id.name))fns.push({name:n.id.name,source:source.slice(n.start,n.end)});for(const [k,v]of Object.entries(n)){if(['start','end'].includes(k))continue;if(Array.isArray(v))v.forEach(walk);else if(v&&typeof v==='object')walk(v)}}
+          walk(ast);
+          for(const f of fns.filter(x=>x.name==='renderTable'))console.log('FUNC_RENDER_TABLE',f.source.slice(0,17000));
+          console.log('FUNC_NAMES',fns.map(f=>f.name).join(','));
+          for(const term of ['entryMinute','entryTime','entryCorners','cornerAt','cornersAt','entryScore','scoreAt','minuteAt','renderTable','entryLabel']) {
+           let from=0,count=0;
+           while((from=source.indexOf(term,from))!==-1 && count<9){console.log('JS_OCCURRENCE',term,'AT',from,source.slice(Math.max(0,from-220),Math.min(source.length,from+320)).replace(/\n/g,' '));count++;from+=term.length}
+           console.log('TERM_COUNT_INSPECTED',term,count);
+          }
+          const calls=['/api/engine/statistics?paged=1','/api/engine/statistics'];
+          for(const url of calls){
+           try{
+            const j=JSON.parse((await publicFile(url,'json')).toString('utf8'));
+            console.log('API_META',url,JSON.stringify({ok:j.ok,keys:Object.keys(j),rows:j.rows?.length,ledgerRows:j.ledgerRows?.length,total:j.total,ledgerTotal:j.ledgerTotal}));
+            for(const group of ['rows','ledgerRows']){
+             const rows=j[group]||[];
+             console.log('ROW_SHAPES',group,JSON.stringify(rows.slice(0,5).map(r=>({fields:Object.keys(r),status:r.status,market:r.market,entryMinute:r.entryMinute,entryTime:r.entryTime,entry:r.entry,corners:r.corners,cornerAtEntry:r.cornerAtEntry,statsKeys:r.stats&&Object.keys(r.stats),entryKeys:r.entry&&typeof r.entry==='object'?Object.keys(r.entry):null}))));
+             console.log('CORNERS_SAMPLE',group,JSON.stringify(rows.filter(r=>/corn|corner/i.test(JSON.stringify([r.market,r.marketType,r.betType,r.selection,r.pick]))).slice(0,3)).slice(0,6000));
+            }
+           }catch(e){console.log('API_INSPECT_ERR',url,String(e.message||e).slice(0,500))}
+          }
+          
+          NODE
