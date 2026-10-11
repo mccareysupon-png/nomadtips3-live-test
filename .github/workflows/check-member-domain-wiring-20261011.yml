@@ -30,3 +30,13 @@ jobs:
           curl -sS --max-time 20 -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/access/apps?per_page=100" -o /tmp/access-apps.json
           echo "ACCESS_APPS_RESULT $(jq -c '{success,errors}' /tmp/access-apps.json)"
           jq -r '.result[]? | select((.domain//""|contains("member.ball46.com")) or ((.self_hosted_domains//[])|tostring|contains("member.ball46.com"))) | {name,domain,self_hosted_domains,aud,app_launcher_visible,type,allowed_idps} | @json' /tmp/access-apps.json
+
+          echo "=== LIVE MEMBER PAGE + JS SIGNATURE ==="
+          for url in 'https://member.ball46.com/member.js?v=20261011-shared-board-restore1' 'https://ball46-member-production.mccarey-supon.workers.dev/member.js' 'https://www.ball46.com/member.js'; do
+            code="$(curl -sS -L --max-time 20 -o /tmp/live-js -w '%{http_code}' "$url" || true)"
+            echo "URL $url code=$code bytes=$(wc -c </tmp/live-js) patched=$(grep -c 'INVALID_MEMBER_DAILY_PAYLOAD' /tmp/live-js || true)"
+          done
+          for url in 'https://ball46-member-production.mccarey-supon.workers.dev/member.html' 'https://www.ball46.com/member'; do
+            code="$(curl -sS -L --max-time 20 -o /tmp/live-html -w '%{http_code}' "$url" || true)"
+            echo "HTML_URL $url code=$code bytes=$(wc -c </tmp/live-html) patched=$(grep -c '20261011-shared-board-restore1' /tmp/live-html || true)"
+          done
