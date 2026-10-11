@@ -1069,7 +1069,14 @@ async function refreshLiveMirror(){
   try{
     const r=await fetch('/api/member/daily?live=1',{cache:'no-store'});
     const daily=await r.json();
-    if(!r.ok||daily?.ok!==true) return;
+    if(!r.ok||daily?.ok!==true){
+      qs('.live-pill').textContent='SIGNAL CONNECTION ERROR · '+String(daily?.error||r.status);
+      return;
+    }
+    if(!Array.isArray(daily.signals)||!daily.summary?.ALL){
+      qs('.live-pill').textContent='SIGNAL DATA FORMAT ERROR';
+      return;
+    }
     state.payload=daily;
     const livePill=qs('.live-pill');
     if(livePill) livePill.textContent='TODAY · '+daily.signalCount+' SIGNALS';
@@ -1110,30 +1117,33 @@ function memberAccessLabel(member){
 }
 
 async function boot(){
-  const [sessionRes,dailyRes]=await Promise.all([
-    fetch('/api/member/session',{cache:'no-store'}),
-    fetch('/api/member/daily',{cache:'no-store'})
-  ]);
-  const session=await sessionRes.json();
-  if(!sessionRes.ok || !session?.authenticated || session?.member?.status!=='ACTIVE'){
-    location.replace('/pricing');
-    return;
-  }
+  // Daily API is itself entitlement-gated in the Worker. A separate profile
+  // failure must never suppress a successfully authorized shared board.
+  const dailyRes=await fetch('/api/member/daily',{cache:'no-store',credentials:'same-origin'});
   const daily=await dailyRes.json().catch(()=>null);
-  if(!dailyRes.ok || daily?.ok!==true) throw new Error('DAILY_FEED_UNAVAILABLE_'+String(daily?.error||dailyRes.status));
-
-  qs('#memberName').textContent=session.member.displayName;
-  qs('#memberAvatar').textContent=session.member.displayName.slice(0,1).toUpperCase();
-  qs('#memberStatus').textContent=memberAccessLabel(session.member);
-  const livePill=qs('.live-pill');
-  if(livePill) livePill.textContent='TODAY · '+daily.signalCount+' SIGNALS';
+  if(!dailyRes.ok || daily?.ok!==true){
+    throw new Error('DAILY_FEED_'+String(daily?.error||dailyRes.status)+
+      (daily?.detail?' · '+String(daily.detail).slice(0,150):''));
+  }
+  if(!Array.isArray(daily.signals) || !daily.summary?.ALL)
+    throw new Error('INVALID_MEMBER_DAILY_PAYLOAD');
   state.payload=daily;
+  qs('.live-pill').textContent='TODAY · '+daily.signalCount+' SIGNALS';
   render();
+  // Identity affects only the member's name. It cannot hold back signal rows.
+  try{
+    const sessionRes=await fetch('/api/member/session',{cache:'no-store',credentials:'same-origin'});
+    const session=await sessionRes.json();
+    if(sessionRes.ok && session?.authenticated && session.member){
+      const member=session.member;
+      qs('#memberName').textContent=member.displayName||'MEMBER';
+      qs('#memberAvatar').textContent=String(member.displayName||'M').slice(0,1).toUpperCase();
+      qs('#memberStatus').textContent=memberAccessLabel(member);
+    }
+  }catch(error){ console.warn('Member name lookup unavailable; signal board remains loaded',error); }
   setInterval(refreshFreshSignalClock,1000);
   setInterval(refreshLiveMirror,LIVE_REFRESH_MS);
-  document.addEventListener('visibilitychange',()=>{
-    if(!document.hidden) refreshLiveMirror();
-  });
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshLiveMirror();});
 }
 
 boot().catch(error=>{
