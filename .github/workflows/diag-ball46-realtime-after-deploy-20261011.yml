@@ -1,0 +1,59 @@
+name: DIAG Ball46 Realtime After Deploy 20261011
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/diag-ball46-realtime-after-deploy-20261011.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Compare post-deploy Signals with Statistics ledger
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT=/tmp/b46-after-realtime
+          mkdir -p "$ROOT"
+          ENGINE=https://nomadtips3-engine-343.mccarey-supon.workers.dev
+          curl -fsS -L --retry 4 --retry-all-errors --max-time 60 "$ENGINE/signals?diag=${GITHUB_RUN_ID}" -o "$ROOT/signals.json"
+          python3 - <<'PY'
+          import json,pathlib,subprocess,urllib.parse,datetime
+          root=pathlib.Path('/tmp/b46-after-realtime')
+          sig=json.loads(root.joinpath('signals.json').read_text())
+          if sig.get('ok') is not True: raise SystemExit('SIGNALS_NOT_OK')
+          base='https://nomadtips3-engine-343.mccarey-supon.workers.dev/statistics'
+          rows=[]; cursor=None; pages=0
+          while True:
+            q={'paged':'1'}
+            if cursor:q['cursor']=cursor
+            url=base+'?'+urllib.parse.urlencode(q)
+            raw=subprocess.check_output(['curl','-fsS','-L','--retry','4','--retry-all-errors','--max-time','60',url],text=True)
+            page=json.loads(raw)
+            if page.get('ok') is not True: raise SystemExit('STAT_NOT_OK')
+            rows.extend(page.get('rows') or [])
+            cursor=page.get('nextCursor'); pages+=1
+            if not cursor: break
+            if pages>200: raise SystemExit('CURSOR_LOOP')
+          deploy_ms=int(datetime.datetime(2026,10,11,2,3,36,tzinfo=datetime.timezone.utc).timestamp()*1000)
+          allsig=sig.get('signals') or []
+          post=[x for x in allsig if int(x.get('createdAt') or 0)>=deploy_ms]
+          byid={str(x.get('id')):x for x in rows}
+          missing=[x for x in post if str(x.get('id')) not in byid]
+          print('STAT_PAGES',pages)
+          print('STAT_ROWS',len(rows))
+          print('WORKING_SIGNALS',len(allsig))
+          print('POST_DEPLOY_SIGNALS',len(post))
+          print('POST_DEPLOY_MISSING',len(missing))
+          for x in sorted(post,key=lambda z:int(z.get('createdAt') or 0)):
+            sid=str(x.get('id'))
+            print('POST_SIGNAL',sid,'fixture',x.get('fixtureId'),'market',x.get('market'),'status',x.get('status'),'createdAt',x.get('createdAt'),'IN_STATS',sid in byid)
+          for x in missing:
+            print('MISSING_SIGNAL',x.get('id'),'fixture',x.get('fixtureId'),'market',x.get('market'),'status',x.get('status'),'createdAt',x.get('createdAt'))
+          PY
