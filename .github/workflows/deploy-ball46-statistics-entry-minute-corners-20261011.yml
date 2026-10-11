@@ -44,18 +44,23 @@ jobs:
           const save=()=>writeFileSync('audit-stat-entry/report.json',JSON.stringify(report,null,2));
           const delay=ms=>new Promise(r=>setTimeout(r,ms));
           let original=null,candidate=null;
-          const helper="function b46StatEntryContext20261011(r){\n const minuteRaw=r?.signalEntryMinute??r?.entryMinute;\n const minute=Number(minuteRaw);\n const minuteOK=minuteRaw!==null&&minuteRaw!==undefined&&minuteRaw!==''&&Number.isFinite(minute)&&minute>=0&&minute<=200;\n const m=minuteOK?'<small style=\"display:block;font-size:10px;line-height:1.45;white-space:nowrap\">ENTRY '+esc(Math.round(minute))+'&#39;</small>':'<small style=\"display:block;font-size:10px;line-height:1.45\">ENTRY —</small>';\n const isCorner=/corner/i.test(String(r?.market??'')+' '+String(r?.providerMarket??'')+' '+String(r?.marketLabel??''));\n if(!isCorner)return m;\n const hRaw=r?.entryCorners?.home,aRaw=r?.entryCorners?.away;\n const h=Number(hRaw),a=Number(aRaw);\n const known=hRaw!==null&&hRaw!==undefined&&hRaw!==''&&aRaw!==null&&aRaw!==undefined&&aRaw!==''&&Number.isInteger(h)&&Number.isInteger(a)&&h>=0&&a>=0;\n const c=known?'Corners '+esc(h)+'–'+esc(a)+' ('+esc(h+a)+')':'Corners —';\n return m+'<small style=\"display:block;font-size:10px;line-height:1.45;white-space:nowrap\">'+c+'</small>';\n}\n";
-          const cellOld='<td>\${esc(score(r?.entryScore??r?.scoreAt))}</td>';
-          const cellNew='<td>\${esc(score(r?.entryScore??r?.scoreAt))}\${b46StatEntryContext20261011(r)}</td>';
+          const helper="function b46StatEntryContext20261011(r){\n const minuteRaw=r?.signalEntryMinute??r?.entryMinute;\n const minute=Number(minuteRaw);\n const minuteOK=minuteRaw!==null&&minuteRaw!==undefined&&minuteRaw!==''&&Number.isFinite(minute)&&minute>=0&&minute<=200;\n const m=minuteOK?'<small style=\"display:block;margin:0;color:#f3c969;font-size:10px;font-weight:900;line-height:1.25;white-space:nowrap\">ENTRY '+esc(Math.round(minute))+'&#39;</small>':'<small style=\"display:block;margin:0;color:#f3c969;font-size:10px;font-weight:900;line-height:1.25\">ENTRY —</small>';\n const isCorner=/corner/i.test(String(r?.market??'')+' '+String(r?.providerMarket??'')+' '+String(r?.marketLabel??''));\n if(!isCorner)return m;\n const hRaw=r?.entryCorners?.home,aRaw=r?.entryCorners?.away;\n const h=Number(hRaw),a=Number(aRaw);\n const known=hRaw!==null&&hRaw!==undefined&&hRaw!==''&&aRaw!==null&&aRaw!==undefined&&aRaw!==''&&Number.isInteger(h)&&Number.isInteger(a)&&h>=0&&a>=0;\n const c=known?'Corners '+esc(h)+'–'+esc(a)+' ('+esc(h+a)+')':'Corners —';\n return m+'<small style=\"display:block;margin:0;color:#67d7d0;font-size:10px;font-weight:850;line-height:1.25;white-space:nowrap\">'+c+'</small>';\n}\n";
+          const cellNew='<td style="height:72px;overflow:visible;white-space:normal"><div style="display:grid;grid-auto-flow:row;row-gap:8px;align-content:center;justify-items:start;min-height:56px;padding:7px 0"><span style="display:block;color:#f5f7fb;font-size:11px;font-weight:950;line-height:1.15;white-space:nowrap">\${esc(score(r?.entryScore??r?.scoreAt))}</span>\${b46StatEntryContext20261011(r)}</div></td>';
           function patch(source){
-           assert(!source.includes('function b46StatEntryContext20261011('),'ALREADY_DEPLOYED_STOP');
-           assert.equal(source.split(cellOld).length-1,1,'CURRENT_ENTRY_CELL_CHANGED');
+           assert.equal(source.split('function b46StatEntryContext20261011(').length-1,1,'ENTRY_HELPER_COUNT_CHANGED');
            assert.equal(source.split('function renderTable(rows){').length-1,1,'RENDER_TABLE_CHANGED');
            assert(source.includes('window.BALL46_STATISTICS_DATA.isSettled'),'STAT_RENDER_CHANGED');
-           const next=source.replace('function renderTable(rows){',helper+'function renderTable(rows){').replace(cellOld,cellNew);
+           const helperStart=source.indexOf('function b46StatEntryContext20261011(');
+           const helperEnd=source.indexOf('function b46StatFinalCornersTotal20261011',helperStart);
+           assert(helperStart>=0&&helperEnd>helperStart,'ENTRY_HELPER_RANGE_MISSING');
+           let next=source.slice(0,helperStart)+helper+source.slice(helperEnd);
+           const cellRe=/<td(?: style="[^"]*")?><(?:div style="[^"]*">)?(?:<span style="[^"]*">)?\$\{esc\(score\(r\?\.entryScore\?\?r\?\.scoreAt\)\)\}(?:<\/span>)?\$\{b46StatEntryContext20261011\(r\)\}(?:<\/div>)?<\/td>/;
+           assert(cellRe.test(next),'CURRENT_ENTRY_CELL_CHANGED');
+           next=next.replace(cellRe,cellNew);
            parse(next,{ecmaVersion:'latest',sourceType:'script'});
-           assert.equal(next.split(cellNew).length-1,1,'NEW_ENTRY_CELL_MISSING');
-           assert.equal(next.length-source.length,helper.length+cellNew.length-cellOld.length,'UNRELATED_CODE_MODIFICATION');
+           assert(next.includes('row-gap:8px'),'ENTRY_GAP_MISSING');
+           assert(next.includes('color:#f3c969'),'ENTRY_GOLD_MISSING');
+           assert(next.includes('color:#67d7d0'),'CORNERS_CYAN_MISSING');
            return next;
           }
           const unit=runInNewContext(helper+';b46StatEntryContext20261011',{esc:x=>String(x)});
