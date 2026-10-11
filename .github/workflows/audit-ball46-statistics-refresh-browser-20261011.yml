@@ -37,14 +37,14 @@ jobs:
            const page=await context.newPage();
            const errors=[];
            page.on('pageerror',e=>errors.push(e.message.slice(0,180)));
-           const snapshot=async(label)=>{console.log('SNAPSHOT',test.name,label,JSON.stringify(await page.evaluate(()=>({
+           const snapshot=async(label)=>{const result=await page.evaluate(()=>({
             url:location.href,
             view:document.body?.dataset.workspaceView,
             statPanelHidden:document.querySelector('[data-workspace-panel="statistics"]')?.hidden,
             statisticsNav:[...document.querySelectorAll('[data-workspace-view="statistics"]')].map(x=>({tag:x.tagName,text:x.textContent?.trim().slice(0,38),active:x.classList.contains('active')})).slice(0,5),
             selectedMarket:[...document.querySelectorAll('[data-stat-market].active')].map(x=>x.getAttribute('data-stat-market')),
             scriptStatus:document.querySelector('[data-sp-feed-state]')?.textContent?.trim().slice(0,100),
-           })),null,0).catch(e=>({error:e.message})), 'ERRORS',JSON.stringify(errors.slice(-3)))};
+           }))).catch(e=>({error:e.message}));console.log('SNAPSHOT',test.name,label,JSON.stringify(result), 'ERRORS',JSON.stringify(errors.slice(-3)))};
            for(const path of ['/index.html?view=statistics&market=corners','/index.html']){
             try{await page.goto('https://ball46.com'+path,{waitUntil:'domcontentloaded',timeout:40000});await sleep(1800);await snapshot('direct '+path);await page.reload({waitUntil:'domcontentloaded',timeout:40000});await sleep(1800);await snapshot('reloaded '+path);}catch(e){console.log('BROWSER_ERR',test.name,path,String(e.message).slice(0,350))}
            }
