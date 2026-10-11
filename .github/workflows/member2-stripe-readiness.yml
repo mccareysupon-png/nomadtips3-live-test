@@ -1,0 +1,22 @@
+name: Member2 Stripe And Access Readiness
+on:
+  push:
+    branches: [member2/isolated-ui-and-registration-20261011]
+    paths: ['.github/workflows/member2-stripe-readiness.yml']
+permissions: {contents: read}
+jobs:
+  read:
+    runs-on: ubuntu-24.04
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+    steps:
+      - name: Inspect binding names only and Member2 Access routes and policies
+        run: |
+          set -euo pipefail
+          [ -n "$STRIPE_SECRET_KEY" ] && echo "GITHUB_STRIPE_SECRET_AVAILABLE=true" || echo "GITHUB_STRIPE_SECRET_AVAILABLE=false"
+          api="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID"
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$api/workers/scripts/ball46-member-production/settings" | jq -c '{success,bindings:[.result.bindings[]?|{name,type}]}'
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$api/workers/scripts/ball46-member2-production/settings" | jq -c '{success,bindings:[.result.bindings[]?|{name,type}]}'
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$api/access/apps" | jq -c '[.result[]? | select(.domain=="member2.ball46.com" or .domain=="member.ball46.com/member")|{id,name,domain,aud,policies, self_hosted_domains}]'
