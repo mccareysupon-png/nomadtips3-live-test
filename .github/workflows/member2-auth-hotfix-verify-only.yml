@@ -1,0 +1,33 @@
+name: Verify Member2 Auth Hotfix Production Only
+on:
+  push:
+    branches: [hotfix/member2-access-data-restore-20261011]
+    paths: ['.github/workflows/member2-auth-hotfix-verify-only.yml']
+permissions: {contents: read}
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check live Worker, current board source and Cloudflare Access without deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+          base='https://ball46-member2-production.mccarey-supon.workers.dev'
+          for route in /api/health /api/member/daily /member.js; do
+            code=$(curl -sS --max-time 20 -o /tmp/result -w '%{http_code}' "$base$route")
+            echo "MEMBER2_ROUTE $route HTTP=$code BYTES=$(wc -c </tmp/result)"
+            if [ "$route" = /api/member/daily ]; then
+              test "$code" = 401
+              jq -e '.error=="MEMBERSHIP_AUTH_REQUIRED"' /tmp/result
+            else
+              test "$code" = 200
+            fi
+            if [ "$route" = /member.js ]; then grep -q 'async function boot()' /tmp/result; fi
+          done
+          code=$(curl -sS --max-time 20 -o /tmp/protected -w '%{http_code}' 'https://member2.ball46.com/member')
+          echo "ACCESS_GATE_HTTP=$code"
+          test "$code" = 302
+          code=$(curl -sS --max-time 20 -o /tmp/ledger -w '%{http_code}' 'https://www.ball46.com/api/engine/statistics?paged=1')
+          test "$code" = 200
+          jq -e '.ok==true and (.rows|length)>0' /tmp/ledger
+          echo "MEMBER2_AUTH_HOTFIX_HTTP_VERIFIED"
