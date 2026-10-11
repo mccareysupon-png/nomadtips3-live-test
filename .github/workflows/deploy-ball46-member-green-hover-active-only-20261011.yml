@@ -1,0 +1,128 @@
+name: Ball46 MEMBER Green Hover Active Only 20261011
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-ball46-member-green-hover-active-only-20261011.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ball46-production-deploy
+  cancel-in-progress: false
+jobs:
+  member-state-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ops/ball46-easybet-crossdevice-fix-20261007
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install parser
+        run: npm install --no-save --ignore-scripts acorn@8
+      - name: Restore green MEMBER hover active text only on current Production
+        working-directory: deploy-assets/ball46-member-nav-20261009
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';
+          import {resolve} from 'node:path';
+          import {inspect,api,script,activeVersion,getVersion,publicFile,sha,canonical} from '../daily-performance-20261005/production.mjs';
+          import {schedules,stageCurrentRail,verifyRailBase,wrangler} from '../daily-performance-20261005/rail.mjs';
+          const report={scope:'ONLY restore MEMBER word green in hover and active; normal yellow, transparent outer card, no card hover; 1011 and everything else unchanged',startedAt:new Date().toISOString()};
+          mkdirSync('audit-member-green-state',{recursive:true});
+          const save=()=>writeFileSync('audit-member-green-state/report.json',JSON.stringify(report,null,2));
+          const delay=ms=>new Promise(r=>setTimeout(r,ms));
+          let original=null,candidate=null;
+          const patchText=String.raw`
+          /* B46 MEMBER text states only. Yellow at rest; green on hover and active. */
+          body .workspace.singlepage > .left-rail > div.rail-card[data-b46-member-independent="1"] > a[data-b46-member-entry="rail"]:hover .b46-premium-name > span:last-child,
+          body .workspace.singlepage > .left-rail > div.rail-card[data-b46-member-independent="1"] > a[data-b46-member-entry="rail"]:active .b46-premium-name > span:last-child,
+          body .workspace.singlepage > .left-rail > div.rail-card[data-b46-member-independent="1"] > a[data-b46-member-entry="rail"].active .b46-premium-name > span:last-child{
+          color:#16af73!important;
+          }
+          `;
+          function patch(html){
+           const originalStyle=[...html.matchAll(/<style id="b46-member-gold-1011">[\s\S]*?<\/style>/g)];
+           assert.equal(originalStyle.length,1,'MEMBER_STYLE_COUNT_CHANGED');
+           assert(originalStyle[0][0].includes('B46 MEMBER outer rail-card only: no square background and no hover'),'OUTER_TRANSPARENT_STYLE_MISSING');
+           assert(originalStyle[0][0].includes('background:transparent!important'),'TRANSPARENT_CARD_NOT_CONFIRMED');
+           assert(originalStyle[0][0].includes('color:#ffe57c!important'),'NORMAL_YELLOW_NOT_CONFIRMED');
+           assert(!html.includes('B46 MEMBER text states only.'),'ALREADY_DEPLOYED_STOP');
+           const anchors=[...html.matchAll(/<a\b(?=[^>]*data-b46-member-entry="rail")[^>]*>[\s\S]*?<\/a>/g)];
+           assert.equal(anchors.length,1,'MEMBER_ANCHOR_CHANGED');
+           assert(anchors[0][0].includes('<span>MEMBER</span>'),'MEMBER_WORD_NOT_FOUND');
+           assert(anchors[0][0].includes('>1,011</strong>'),'1011_CHANGED');
+           assert(anchors[0][0].includes('https://member.ball46.com/pricing'),'MEMBER_LINK_CHANGED');
+           const style=originalStyle[0][0],nextStyle=style.replace('</style>',patchText+'</style>');
+           assert.notEqual(nextStyle,style,'NO_CHANGE');
+           const next=html.replace(style,nextStyle);
+           assert.equal(next.length-html.length,patchText.length,'UNRELATED_HTML_MODIFICATION');
+           assert(next.includes(anchors[0][0]),'MEMBER_ANCHOR_MODIFIED');
+           return next;
+          }
+          async function rollback(){
+           if(!original)return;
+           const active=await activeVersion();
+           if(active===original)return;
+           if(!candidate||active!==candidate)throw Error('FOREIGN_PRODUCTION_VERSION_STOP_NO_ROLLBACK');
+           await api('/scripts/'+script+'/deployments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({strategy:'percentage',versions:[{version_id:original,percentage:100}],annotations:{'workers/message':'Rollback MEMBER text states only'}})});
+           assert.equal(await activeVersion(),original,'ROLLBACK_NOT_CONFIRMED');
+          }
+          try{
+           const current=await inspect();original=current.restore.version;
+           const settings=await api('/scripts/'+script+'/settings'),crons=await schedules();
+           const settingsSha=sha(canonical(settings)),workerSha=sha(Buffer.from(current.source));
+           const staged=await stageCurrentRail(current.version,settings,crons,current.source);
+           await verifyRailBase(staged);
+           assert.equal(await activeVersion(),original,'PRODUCTION_MOVED_DURING_STAGE');
+           const file=resolve(staged.runtime,'assets/index.html');
+           const before=readFileSync(file,'utf8');
+           assert.equal(sha(Buffer.from(before)),staged.hashes['index.html'],'CURRENT_HTML_MISMATCH');
+           const after=patch(before),newHash=sha(Buffer.from(after));
+           writeFileSync(file,after);
+           report.beforeVersion=original;report.onlyChangedAsset='index.html';report.oldHash=staged.hashes['index.html'];report.newHash=newHash;save();
+           wrangler(staged,true);
+           assert.equal(await activeVersion(),original,'PRODUCTION_CHANGED_BEFORE_DEPLOY');
+           wrangler(staged,false);
+           for(let i=0;i<25;i++){const v=await activeVersion();if(v!==original){candidate=v;break}await delay(1200)}
+           assert(candidate,'DEPLOYED_VERSION_NOT_OBSERVED');
+           let liveOk=false;
+           for(let i=0;i<25;i++){
+            assert.equal(await activeVersion(),candidate,'PRODUCTION_CHANGED_DURING_VERIFY');
+            try{liveOk=sha(await publicFile('/index.html','html'))===newHash;if(liveOk)break}catch{}
+            await delay(1200);
+           }
+           assert(liveOk,'PUBLIC_HTML_NOT_VERIFIED');
+           for(const [name,hash] of Object.entries(staged.hashes)){
+            if(name==='index.html')continue;
+            assert.equal(sha(await publicFile('/'+name)),hash,'UNRELATED_ASSET_CHANGED:'+name);
+           }
+           const deployed=await getVersion(candidate),main=deployed.modules.find(x=>x.name===deployed.main_module);
+           assert(main,'MAIN_MODULE_MISSING');
+           assert.equal(sha(Buffer.from(Buffer.from(main.content_base64,'base64').toString('utf8'))),workerSha,'WORKER_ENGINE_CHANGED');
+           assert.equal(sha(canonical(await api('/scripts/'+script+'/settings'))),settingsSha,'WORKER_SETTINGS_CHANGED');
+           assert.equal(canonical(await schedules()),canonical(crons),'WORKER_CRONS_CHANGED');
+           report.result='SUCCESS';report.deployedVersion=candidate;report.completedAt=new Date().toISOString();save();
+           console.log('BALL46_MEMBER_GREEN_HOVER_ACTIVE_SUCCESS',JSON.stringify({previous:original,deployed:candidate,unchangedAssets:Object.keys(staged.hashes).length-1}));
+          }catch(e){
+           report.result='FAIL_STOPPED';report.error=String(e?.message||e);save();
+           try{await rollback();report.rolledBack=true;save()}catch(rb){report.rollbackError=String(rb?.message||rb);save()}
+           console.error(e.stack);process.exitCode=1;
+          }
+          
+          NODE
+      - name: Audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-member-green-state-${{ github.run_id }}
+          path: deploy-assets/ball46-member-nav-20261009/audit-member-green-state
+          retention-days: 30
