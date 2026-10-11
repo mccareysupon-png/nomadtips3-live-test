@@ -1067,7 +1067,7 @@ async function refreshExpandedDetail(){
 async function refreshLiveMirror(){
   if(document.hidden || !state.payload) return;
   try{
-    const r=await fetch('/api/member/daily?live=1',{cache:'no-store'});
+    const r=await fetch('/api/member/daily?refresh=1',{cache:'no-store',credentials:'same-origin'});
     const daily=await r.json();
     if(!r.ok||daily?.ok!==true){
       qs('.live-pill').textContent='SIGNAL CONNECTION ERROR · '+String(daily?.error||r.status);
@@ -1082,7 +1082,10 @@ async function refreshLiveMirror(){
     if(livePill) livePill.textContent='TODAY · '+daily.signalCount+' SIGNALS';
     render();
     await refreshExpandedDetail();
-  }catch{}
+  }catch{
+    const livePill=qs('.live-pill');
+    if(livePill) livePill.textContent='SIGNAL CONNECTION ERROR · REFRESH FAILED';
+  }
 }
 
 function formatAccessDate(value){
