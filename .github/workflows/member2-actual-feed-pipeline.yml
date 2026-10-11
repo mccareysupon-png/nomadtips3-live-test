@@ -1,0 +1,28 @@
+name: Member2 Actual Feed Pipeline No-Deploy Test
+on:
+  push:
+    branches: [member2/isolated-ui-and-registration-20261011]
+    paths: ['.github/workflows/member2-actual-feed-pipeline.yml']
+permissions: {contents: read}
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 268c4d9bb
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Execute actual Worker daily mirror using live Ball46 API without bypassing production auth
+        run: |
+          set -euo pipefail
+          echo 'export {loadDailyMirror};' >> ball46-member2/src/worker.js
+          node --input-type=module <<'NODE'
+          const m=await import('./ball46-member2/src/worker.js');
+          const started=Date.now();
+          try {
+            const d=await m.loadDailyMirror(true);
+            console.log('REAL_DAILY_PIPELINE',JSON.stringify({ok:d.ok,signalCount:d.signalCount,generatedAt:d.generatedAt,pagesRead:d.pagesRead,marketSummaryKeys:Object.keys(d.summary||{}),elapsedMs:Date.now()-started,signalFirstId:d.signals?.[0]?.id}));
+            if(!d.ok||!Array.isArray(d.signals)||!d.summary?.ALL)process.exitCode=1;
+          }catch(e){console.error('REAL_DAILY_PIPELINE_FAILURE',String(e),e.stack);process.exitCode=1;}
+          NODE
