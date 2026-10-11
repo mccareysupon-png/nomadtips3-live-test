@@ -1,0 +1,20 @@
+name: CI Ball46 John Bulk Gate Contract (Staging Only)
+on:
+  push:
+    branches: [staging/ball46-john-bulk-gate-rewrite-20261011]
+    paths:
+      - 'staging/ball46-john-bulk-gate/**'
+      - '.github/workflows/ci-ball46-john-bulk-gate-20261011.yml'
+permissions:
+  contents: read
+jobs:
+  test-no-production:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test John canonical burst/quota/recorded tick requirements
+        run: node staging/ball46-john-bulk-gate/john-price-gate.test.mjs
