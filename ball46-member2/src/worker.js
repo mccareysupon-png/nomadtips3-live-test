@@ -448,7 +448,7 @@ export default {
 
     // Isolated visual preview. Only staging, never unlock premium production APIs.
     if (env.APP_STAGE === 'staging' && url.pathname === '/preview') {
-      return staticResponse(request,env,'/member.html');
+      return staticResponse(request,env,'/preview.html');
     }
     if (url.pathname === '/api/health') {
       return json({ok:true,service:'ball46-member-production',stage:env.APP_STAGE||'unknown'});
