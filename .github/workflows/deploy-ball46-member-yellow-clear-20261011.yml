@@ -45,7 +45,7 @@ jobs:
           const scope='a[data-b46-member-entry="rail"]';
           const guard=(x,s,why)=>{assert(x.includes(s),why);assert.equal(x.split(s).length-1,1,'NOT_EXACTLY_ONE:'+why);return x};
           function changeOnlyMemberCSS(html) {
-            assert.equal((html.match(/data-b46-member-entry="rail"/g)||[]).length,1,'RAIL_MEMBER_ANCHOR_NOT_ONE');
+            assert.equal((html.match(/<a\b(?=[^>]*data-b46-member-entry="rail")[^>]*>/g)||[]).length,1,'RAIL_MEMBER_ANCHOR_NOT_ONE');
             assert.equal((html.match(/class="b46-premium-detail"/g)||[]).length,1,'MEMBER_DETAIL_CHANGED');
             assert.equal((html.match(/>1,011<\/strong>/g)||[]).length,1,'MOCK_COUNT_CHANGED');
             const styles=[...html.matchAll(/<style id="b46-member-gold-1011">[\s\S]*?<\/style>/g)];
@@ -93,7 +93,7 @@ jobs:
             assert.notEqual(after,before,'NO_CHANGE');
             const output=html.replace(before,after);
             assert.equal(output.length-html.length,after.length-before.length,'UNRELATED_HTML_LENGTH_CHANGE');
-            assert.equal((output.match(/data-b46-member-entry="rail"/g)||[]).length,1,'NAV_CHANGED');
+            assert.equal((output.match(/<a\b(?=[^>]*data-b46-member-entry="rail")[^>]*>/g)||[]).length,1,'NAV_CHANGED');
             assert.equal((output.match(/>1,011<\/strong>/g)||[]).length,1,'COUNT_CHANGED');
             return output;
           }
