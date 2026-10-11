@@ -1,0 +1,38 @@
+name: Audit Ball46 Statistics Route Active Worker 20261011
+on:
+  push:
+    branches: [audit/ball46-corner-live-price-20261011]
+    paths: [.github/workflows/audit-ball46-statistics-route-20261011.yml]
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: Inspect exact current Worker and legacy statistics path (no changes)
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import {createHash} from 'node:crypto';
+          const b='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+'/workers',headers={Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN};
+          const get=async p=>{const r=await fetch(b+p,{headers,signal:AbortSignal.timeout(25000)}),j=await r.json();if(!r.ok||!j.success)throw Error('CF_READ_'+r.status);return j.result};
+          const ds=await get('/scripts/nomadtips3-engine-343/deployments');
+          const id=ds.deployments?.[0]?.versions?.find(x=>Number(x.percentage)===100)?.version_id;
+          const v=await get('/workers/nomadtips3-engine-343/versions/'+id+'?include=modules'),mod=v.modules?.find(x=>x.name===v.main_module);
+          const src=Buffer.from(mod.content_base64,'base64').toString('utf8'),lines=src.split('\n');
+          console.log('ROUTE_ACTIVE',JSON.stringify({id,created:ds.deployments?.[0]?.created_on,sha:createHash('sha256').update(src).digest('hex'),main:v.main_module,bytes:src.length,lines:lines.length}));
+          for(const term of ['statistics.html','async fetch(','fetch(request, env','fetch(request,env','router','/statistics','/api/engine/statistics','index.html','assets']){
+            const hits=lines.flatMap((x,i)=>x.includes(term)?[i]:[]).slice(-8);
+            console.log('ROUTE_MATCH',JSON.stringify({term,count:hits.length,source:hits.map(i=>({line:i+1,text:lines.slice(Math.max(0,i-3),Math.min(lines.length,i+7)).join('\n').slice(0,2100)}))}));
+          }
+          console.log('ROUTE_TAIL',JSON.stringify(lines.slice(-65).map((x,i)=>(lines.length-64+i)+':'+x).join('\n').slice(0,7500)));
+          for(const u of ['https://ball46.com/index.html?view=statistics','https://ball46.com/statistics.html','https://ball46.com/api/engine/statistics?paged=1']){
+            try{const r=await fetch(u,{cache:'no-store',signal:AbortSignal.timeout(20000)}),txt=await r.text();console.log('ROUTE_HTTP',JSON.stringify({url:u,status:r.status,contentType:r.headers.get('content-type'),location:r.headers.get('location'),bytes:txt.length,title:txt.match(/<title>(.*?)<\/title>/i)?.[1]??null,hasFeedUnavailable:txt.includes('Statistics feed unavailable')}))}
+            catch(e){console.log('ROUTE_HTTP_ERROR',u,String(e))}
+          }
+          NODE
