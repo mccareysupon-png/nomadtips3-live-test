@@ -2118,3 +2118,46 @@ body.page-member:before{
  color:#75efb0;font-size:10px;letter-spacing:0
 }
 .featured-h-signal .corner-conditions-card.is-handicap .corner-contract-label{color:#c5afff}
+
+
+/* Member2 Corners: compact content-sized premium condition chips.
+   CSS-only: Signal meaning, labels, provenance, and other markets unchanged. */
+.corner-conditions-card{
+  padding:10px 11px;
+  border-color:rgba(174,190,227,.25);
+  background:linear-gradient(145deg,rgba(14,25,43,.96),rgba(8,18,31,.94));
+  box-shadow:inset 0 1px 0 rgba(222,230,255,.07);
+}
+.corner-conditions-card.is-handicap{
+  background:linear-gradient(145deg,rgba(26,21,48,.95),rgba(12,18,36,.95));
+  border-color:rgba(171,151,225,.3);
+}
+.corner-conditions-header{justify-content:flex-start;gap:5px 14px;margin-bottom:8px}
+.corner-conditions-header strong{color:#c4cfe8}
+.corner-contract-label{color:#a8e9d1}
+.corner-conditions-grid{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:stretch;
+  gap:5px;
+}
+.corner-conditions-item{
+  flex:0 1 auto;
+  width:max-content;
+  max-width:100%;
+  padding:6px 9px;
+  border-radius:7px;
+  background:linear-gradient(150deg,rgba(93,115,157,.13),rgba(50,70,102,.085));
+  border:1px solid rgba(160,187,220,.16);
+}
+.corner-conditions-item small{margin-bottom:2px;font-size:8px;line-height:1.2;color:#a9b9d5}
+.corner-conditions-item b{font-size:10px;line-height:1.25;color:#f2f5ff;overflow-wrap:anywhere}
+.corner-conditions-notice,.corner-conditions-source-note,.corner-conditions-snapshot-note{margin-top:6px}
+@media(max-width:700px){
+  .corner-conditions-grid{display:flex;flex-wrap:wrap;gap:5px}
+  .corner-conditions-item{flex:0 1 auto;width:max-content;max-width:100%;padding:6px 8px}
+}
+@media(max-width:420px){
+  .corner-conditions-grid{display:flex;flex-wrap:wrap}
+  .corner-conditions-item{padding:5px 7px}
+}
