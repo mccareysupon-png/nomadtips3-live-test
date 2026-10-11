@@ -1,0 +1,28 @@
+name: Check Member Custom Domain Wiring 20261011
+on:
+  push:
+    branches: [member/ledger-pending-repair-20261011]
+    paths: ['.github/workflows/check-member-domain-wiring-20261011.yml']
+permissions: {contents: read}
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Compare production custom domain and workers.dev responses without authentication
+        shell: bash
+        run: |
+          set -euo pipefail
+          for host in member.ball46.com ball46-member-production.mccarey-supon.workers.dev; do
+            echo "DOMAIN_CHECK $host"
+            for p in /api/health /api/member/daily /member.js /member.html; do
+              code="$(curl -sSL --max-time 15 -o /tmp/body -w '%{http_code}' "https://$host$p" || true)"
+              hash="$(sha256sum /tmp/body | cut -d' ' -f1)"
+              echo "RESOURCE $p http=$code sha256=$hash bytes=$(wc -c </tmp/body) head=$(head -c 100 /tmp/body | tr '\n' ' ')"
+            done
+          done
+          base="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/domains"
+          curl -sS --max-time 20 -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base" -o /tmp/domains.json
+          jq -r '[.result[]? | select(.hostname|contains("member.ball46.com")) | {hostname,service,environment,zone_id}]|.[]|@json' /tmp/domains.json
