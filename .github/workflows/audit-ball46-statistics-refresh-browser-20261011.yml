@@ -24,8 +24,8 @@ jobs:
           npx playwright install chromium
       - name: Diagnose refresh in actual browser (no writes)
         run: |
-          node <<'NODE'
-          const {chromium}=require('playwright');
+          node --input-type=module <<'NODE'
+          import {chromium} from 'playwright';
           const tests=[
            {name:'desktop',viewport:{width:1440,height:900},isMobile:false},
            {name:'mobile',viewport:{width:390,height:844},isMobile:true}
