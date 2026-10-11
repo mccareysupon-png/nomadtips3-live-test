@@ -1,0 +1,36 @@
+name: Diagnose Member Signal Feed 20261011
+on:
+  push:
+    branches: [member/ledger-pending-repair-20261011]
+    paths: ['.github/workflows/diagnose-member-signal-feed-20261011.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check source signal-to-member contract (read only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL --max-time 30 -H 'accept: application/json' 'https://www.ball46.com/api/engine/statistics?paged=1' -o /tmp/stat.json
+          curl -fsSL --max-time 30 -H 'accept: application/json' 'https://www.ball46.com/api/engine/board' -o /tmp/board.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const j=JSON.parse(fs.readFileSync('/tmp/stat.json','utf8'));
+          const b=JSON.parse(fs.readFileSync('/tmp/board.json','utf8'));
+          const rows=Array.isArray(j.rows)?j.rows:[];
+          const status={};
+          for(const r of rows){const k=String(r.result||r.status||'NONE');status[k]=(status[k]||0)+1}
+          const now=Date.now(),offset=7*3600000,local=new Date(now+offset);
+          let start=Date.UTC(local.getUTCFullYear(),local.getUTCMonth(),local.getUTCDate(),12)-offset;
+          if(now<start) start-=86400000;
+          const within=rows.filter(r=>Number(r.createdAt)>=start&&Number(r.createdAt)<start+86400000);
+          const missingId=rows.filter(r=>!r.id).length,missingFixture=rows.filter(r=>!r.fixtureId).length;
+          const missingCreatedAt=rows.filter(r=>!Number.isFinite(Number(r.createdAt))).length;
+          const createdValues=rows.map(r=>Number(r.createdAt)).filter(Number.isFinite);
+          const fixtures=Array.isArray(b.fixtures)?b.fixtures:[];
+          const recent=rows.slice(0,5).map(r=>({createdAt:r.createdAt,hasId:!!r.id,hasFixtureId:!!r.fixtureId,status:r.status,result:r.result,market:r.market}));
+          console.log('DIAG',JSON.stringify({timestamp:new Date().toISOString(),statisticsOk:j.ok,rows:rows.length,hasMore:j.hasMore,nextCursor:!!j.nextCursor,statisticsSource:j.statisticsSource,keys:Object.keys(j),boardOk:b.ok,boardFixtures:fixtures.length,boardKeys:Object.keys(b),ledgerStatuses:status,missingId,missingFixture,missingCreatedAt,createdMin:Math.min(...createdValues),createdMax:Math.max(...createdValues),cycleStart:new Date(start).toISOString(),cycleRowsInFirstPage:within.length,recent},null,2));
+          NODE
