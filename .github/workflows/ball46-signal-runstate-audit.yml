@@ -1,0 +1,24 @@
+name: Ball46 Signal Source And RunState Readonly
+on:
+  push:
+    branches: [member2/isolated-ui-and-registration-20261011]
+    paths: ['.github/workflows/ball46-signal-runstate-audit.yml']
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Read current main board run-state
+        run: |
+          node --input-type=module <<'NODE'
+          const base='https://www.ball46.com';
+          for(const path of ['/api/engine/board','/api/engine/statistics?paged=1']){
+            const r=await fetch(base+path,{headers:{'cache-control':'no-cache'},signal:AbortSignal.timeout(12000)});const d=await r.json();
+            if(path.includes('board')){
+              console.log('BOARD_HEALTH',JSON.stringify({hubFetchedAt:d.hubFetchedAt,hubAgeMs:d.hubAgeMs,stale:d.stale,runState:d.runState,counts:d.counts,referee:d.referee,fullMarketCache:d.fullMarketCache},(k,v)=>typeof v==='string'&&v.length>250?v.slice(0,250):v).slice(0,14000));
+              console.log('INPLAY_SAMPLE',JSON.stringify((d.fixtures||[]).filter(x=>(x.status||x.statusCode)==='in_play').slice(0,4).map(x=>({fixtureId:x.fixtureId,minute:x.minute,status:x.status,keys:Object.keys(x).slice(0,25)}))));
+            }else{
+              console.log('LEDGER_META',JSON.stringify({ledgerUpdatedAt:d.ledgerUpdatedAt,total:d.total,pending:d.pending,unresolved:d.unresolved,settlementRevision:d.settlementRevision,statisticsSource:d.statisticsSource,workingStoreVersion:d.workingStoreVersion,finalReconcileVersion:d.finalReconcileVersion,markets:d.markets},(k,v)=>typeof v==='string'&&v.length>250?v.slice(0,250):v).slice(0,10000));
+            }
+          }
+          NODE
