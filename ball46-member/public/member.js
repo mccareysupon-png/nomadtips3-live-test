@@ -414,7 +414,7 @@ function makeSignalRow(row){
 
   const live=document.createElement('td');
   live.className='live-score-cell';
-  live.append(node('span','badge '+statusClass(row.state),matchClockLabel(row)));
+  // Match minute already appears in RESULT; do not duplicate the clock in MATCH SCORE.
   live.append(node('strong','live-score-value',scoreText(displayScore(row))));
   const evidence=marketEvidence(row);
   if(evidence) live.append(node('small','market-evidence '+(row.state==='LIVE'?'live-evidence':row.state==='FINISHED'?'ft-evidence':''),evidence));
