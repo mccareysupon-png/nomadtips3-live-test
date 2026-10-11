@@ -1,0 +1,50 @@
+name: Verify Snapshot Publisher End-to-End
+on:
+  push:
+    branches: [member/snapshot-readonly-20261011]
+    paths: ['.github/workflows/diagnose-member-cron-publisher-20261011.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Execute exact scheduled handler and publish to staging KV
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import worker from './ball46-member/src/worker.js';
+          let captured;
+          const env={MEMBER_DAILY_SNAPSHOTS:{put:async(k,v)=>{captured={key:k,value:v};}}};
+          let task;
+          await worker.scheduled({},env,{waitUntil:p=>{task=p;}});
+          await task;
+          if (!captured) throw Error('SNAPSHOT_PUBLISH_MISSING');
+          const data=JSON.parse(captured.value);
+          const s=data.daily.summary?.ALL||data.daily.summary;
+          console.log(JSON.stringify({event:'PUBLISHER_OK',cycleStart:data.cycleStart,signals:data.daily.signalCount,pages:data.daily.pagesRead,summary:s,bytes:Buffer.byteLength(captured.value)}));
+          fs.writeFileSync('/tmp/snapshot_payload.json',captured.value);
+          fs.writeFileSync('/tmp/snapshot_key.txt',captured.key);
+          NODE
+          base="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/storage/kv/namespaces"
+          curl --fail-with-body -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base?per_page=100" >/tmp/namespaces.json
+          id="$(jq -r '.result[] | select(.title=="BALL46_MEMBER_DAILY_SNAPSHOT_STAGING") | .id' /tmp/namespaces.json | head -n1)"
+          test -n "$id"
+          key="$(cat /tmp/snapshot_key.txt)"
+          encoded="$(node -p 'encodeURIComponent(process.argv[1])' "$key")"
+          curl --fail-with-body -fsS -X PUT -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'Content-Type: application/json' --data-binary @/tmp/snapshot_payload.json "$base/$id/values/$encoded?expiration_ttl=172800" >/tmp/write.json
+          jq -e '.success==true' /tmp/write.json
+          curl --fail-with-body -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/$id/values/$encoded" >/tmp/readback.json
+          jq -e --arg key "$key" '.version==1 and .daily.ok==true and (.daily.signalCount==(.daily.signals|length))' /tmp/readback.json
+          echo "STAGING_KV_READBACK_OK"
