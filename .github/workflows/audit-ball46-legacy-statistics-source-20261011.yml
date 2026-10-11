@@ -1,0 +1,49 @@
+name: Audit Ball46 Legacy Statistics Route Source Readonly
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/audit-ball46-legacy-statistics-source-20261011.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ops/ball46-easybet-crossdevice-fix-20261007
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Inspect old Statistics path without changes
+        working-directory: deploy-assets/ball46-member-nav-20261009
+        run: |
+          node --input-type=module <<'NODE'
+          import {publicFile,inspect,sha,directOrigin} from '../daily-performance-20261005/production.mjs';
+          const active=await inspect();console.log('ACTIVE_MAIN_VERSION',active.restore.version);
+          for(const path of ['/statistics.html','/index.html','/singlepage-workspace-343.js']){
+           try{
+            const content=(await publicFile(path,undefined,directOrigin)).toString('utf8');
+            console.log('ASSET',path,'BYTES',content.length,'SHA',sha(Buffer.from(content)));
+            if(path==='/statistics.html')console.log('LEGACY_FULL',content.slice(0,17000));
+            if(path==='/index.html'){
+             let i=0,count=0;while((i=content.indexOf('statistics.html',i))>=0&&count++<16){console.log('INDEX_OLD_LINK',i,content.slice(Math.max(0,i-240),i+300));i+=15}
+             console.log('INDEX_STATS_NAV',content.slice(content.indexOf('data-stat-market="all"')-140,content.indexOf('data-stat-market="all"')+600));
+            }
+           }catch(e){console.log('ERROR',path,String(e).slice(0,650))}
+          }
+          for(const host of ['https://ball46.com','https://www.ball46.com']){
+           for(const suffix of ['/statistics.html','/index.html?view=statistics']){
+            try{
+             const r=await fetch(host+suffix,{redirect:'manual',signal:AbortSignal.timeout(15000)});
+             console.log('HOST_ROUTE',host+suffix,'STATUS',r.status,'LOCATION',r.headers.get('location'),'CONTENT_TYPE',r.headers.get('content-type'));
+            }catch(e){console.log('HOST_ERROR',host+suffix,String(e).slice(0,200))}
+           }
+          }
+          NODE
