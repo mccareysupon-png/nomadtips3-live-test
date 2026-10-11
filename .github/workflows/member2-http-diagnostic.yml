@@ -1,0 +1,20 @@
+name: Member2 Production HTTP Diagnostic
+on:
+  push:
+    branches: [member2/isolated-ui-and-registration-20261011]
+    paths: ['.github/workflows/member2-http-diagnostic.yml']
+permissions: {contents: read}
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Inspect real domain and worker without authentication
+        run: |
+          set -euo pipefail
+          for base in 'https://ball46-member2-production.mccarey-supon.workers.dev' 'https://member2.ball46.com'; do
+            for route in /api/health / /member /api/member/daily /api/member/session; do
+              url="$base$route"
+              code=$(curl -sS --max-time 15 -o /tmp/result -D /tmp/headers -w '%{http_code}' "$url" || true)
+              echo "$url http=$code type=$(grep -i '^content-type:' /tmp/headers | head -1 | tr -d '\r') redirect=$(grep -i '^location:' /tmp/headers | head -1 | tr -d '\r') body=$(head -c 120 /tmp/result | tr '\n' ' ')"
+            done
+          done
