@@ -1,0 +1,64 @@
+name: Member2 Live Detail And Access Readiness
+on:
+  push:
+    branches: [member2/isolated-ui-and-registration-20261011]
+    paths: ['.github/workflows/member2-live-detail-20261011.yml']
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Execute authenticated Member2 signal and expanded Event Flow endpoints
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import worker from './ball46-member2/src/worker.js';
+          import {webcrypto as crypto} from 'node:crypto';
+          const kp=await crypto.subtle.generateKey({name:'RSASSA-PKCS1-v1_5',modulusLength:2048,publicExponent:new Uint8Array([1,0,1]),hash:'SHA-256'},true,['sign','verify']);
+          const jwk=await crypto.subtle.exportKey('jwk',kp.publicKey);jwk.kid='member2-test';jwk.use='sig';
+          const p64=o=>Buffer.from(JSON.stringify(o)).toString('base64url');
+          const now=Math.floor(Date.now()/1000);
+          const head=p64({alg:'RS256',kid:'member2-test'});
+          const payload=p64({sub:'qa',email:'owner@qa.invalid',iss:'https://qa.cloudflareaccess.com',aud:['qa-aud'],iat:now-5,exp:now+600});
+          const source=head+'.'+payload;
+          const sign=Buffer.from(await crypto.subtle.sign('RSASSA-PKCS1-v1_5',kp.privateKey,new TextEncoder().encode(source))).toString('base64url');
+          const oldFetch=globalThis.fetch;globalThis.fetch=(u,o)=>String(u).includes('qa.cloudflareaccess.com/cdn-cgi/access/certs')?Promise.resolve(new Response(JSON.stringify({keys:[jwk]}))):oldFetch(u,o);
+          const env={CF_ACCESS_TEAM_DOMAIN:'qa.cloudflareaccess.com',CF_ACCESS_AUD:'qa-aud',OWNER_CHECKOUT_EMAIL:'owner@qa.invalid'};
+          const request=(path)=>new Request('https://member2.ball46.com'+path,{headers:{'Cf-Access-Jwt-Assertion':source+'.'+sign}});
+          const r=await worker.fetch(request('/api/member/daily'),env,{});const d=await r.json();
+          console.log('DAILY',JSON.stringify({http:r.status,signalCount:d.signalCount,pagesRead:d.pagesRead,markets:Object.keys(d.summary||{}),fixture:d.signals?.[0]?.fixtureId,error:d.error}));
+          if(!r.ok||!d.signals?.length)process.exitCode=1;
+          const board=await(await oldFetch('https://www.ball46.com/api/engine/board')).json();
+          const ids=[...new Set([...(d.signals||[]).map(s=>s.fixtureId),...(board.fixtures||[]).filter(f=>Array.isArray(f.events)&&f.events.length).map(f=>f.fixtureId)])].slice(0,25);
+          let seen=0,events=0,historical=0;
+          for(const id of ids){
+            const resp=await worker.fetch(request('/api/member/match?fixtureId='+encodeURIComponent(id)),env,{});
+            const obj=await resp.json();
+            if(!resp.ok||obj.fixtureId!==String(id)||obj.ok!==true){console.log('DETAIL_FAIL',id,resp.status,obj.error);process.exitCode=1;continue;}
+            seen++; events+=obj.featured?.events?.length||0;historical+=obj.eventFlow?.rows?.length||0;
+            if(obj.featured?.events?.length||obj.eventFlow?.rows?.length){
+              console.log('DETAIL_OK',JSON.stringify({fixtureId:id,events:obj.featured?.events?.length,historyRows:obj.eventFlow?.rows?.length,pressure:obj.eventFlow?.pressure?.length,featuredFields:Object.keys(obj.featured||{}),eventFields:Object.keys(obj.featured?.events?.[0]||{})}));break;
+            }
+          }
+          console.log('MEMBER2_EXPANDED_QA',JSON.stringify({detailsRead:seen,events,historical}));
+          if(seen<1||events+historical<1)process.exitCode=1;
+          NODE
+      - name: Cloudflare Access and custom-domain readiness read-only
+        shell: bash
+        run: |
+          set -euo pipefail
+          api="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID"
+          for path in access/organizations access/apps workers/domains; do
+            code=$(curl -sS --max-time 15 -o /tmp/part.json -w '%{http_code}' -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$api/$path")
+            echo "ACCESS_INSPECT $path status=$code success=$(jq -r '.success//false' /tmp/part.json)"
+            if [ "$path" = access/organizations ]; then jq -c '{team_domain:.result.auth_domain,organization_name:.result.name}' /tmp/part.json; fi
+            if [ "$path" = access/apps ]; then jq -c '[.result[]? | select(.domain=="member.ball46.com/member") | {name,aud,domain}]' /tmp/part.json; fi
+            if [ "$path" = workers/domains ]; then jq -c '[.result[]? | select(.hostname=="member2.ball46.com") | {hostname,service}]' /tmp/part.json; fi
+          done
