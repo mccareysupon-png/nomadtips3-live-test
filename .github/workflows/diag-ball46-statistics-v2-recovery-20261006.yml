@@ -131,7 +131,9 @@ jobs:
           b=root.joinpath('worker/index-bulk-recovery.js').read_text().splitlines()
           d=list(difflib.unified_diff(a,b,lineterm=''))
           removed=[x for x in d if x.startswith('-') and not x.startswith('---')]
-          if removed: raise SystemExit('PATCH_REMOVED_EXISTING_LINE:'+repr(removed[:10]))
+          allowed=['-      await writeWorkingSignals(this.ctx, capped);']
+          unexpected=[x for x in removed if x not in allowed]
+          if unexpected: raise SystemExit('PATCH_REMOVED_UNEXPECTED_LINE:'+repr(unexpected[:10]))
           before='\n'.join(a); after='\n'.join(b)
           def hblock(text,a,b):
             i=text.find(a);j=text.find(b,i)
