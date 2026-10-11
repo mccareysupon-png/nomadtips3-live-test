@@ -1,0 +1,40 @@
+name: Audit Ball46 Compact Default Source Readonly 20261011
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/audit-ball46-compact-default-source-20261011.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ops/ball46-easybet-crossdevice-fix-20261007
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install parser
+        run: npm install --no-save --ignore-scripts acorn@8
+      - name: Inspect only exact Production chooser source
+        working-directory: deploy-assets/ball46-member-nav-20261009
+        run: |
+          node --input-type=module <<'NODE'
+          import {publicFile} from '../daily-performance-20261005/production.mjs';
+          const target='dashboard-v2-tune.js',source=(await publicFile('/'+target)).toString('utf8');
+          console.log('PRODUCTION_FILENAME',target,'BYTES',source.length);
+          console.log('START',source.slice(0,11000));
+          const tokens=['chooseCompactDefault','function sync','MutationObserver','data-status-filter','isCompact','data-workspace-view'];
+          for(const t of tokens) {
+           let at=0,n=0;
+           while((at=source.indexOf(t,at))>=0&&n++<10) {console.log('TOKEN',t,'OFFSET',at,source.slice(Math.max(0,at-200),at+400));at+=t.length;}
+          }
+          
+          NODE
