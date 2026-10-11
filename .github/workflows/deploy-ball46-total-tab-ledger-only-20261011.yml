@@ -1,0 +1,128 @@
+name: Ball46 Total Tab Ledger Only 20261011
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-ball46-total-tab-ledger-only-20261011.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ball46-production-deploy
+  cancel-in-progress: false
+jobs:
+  total-menu-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ops/ball46-easybet-crossdevice-fix-20261007
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install parser
+        run: npm install --no-save --ignore-scripts acorn@8
+      - name: Change only alternate Total tab writer on live Production
+        working-directory: deploy-assets/ball46-member-nav-20261009
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import {writeFileSync,mkdirSync} from 'node:fs';
+          import {resolve} from 'node:path';
+          import {parse} from 'acorn';
+          import {inspect,api,script,activeVersion,getVersion,publicFile,sha,canonical,directOrigin} from '../daily-performance-20261005/production.mjs';
+          import {schedules,stageCurrentRail,verifyRailBase,wrangler} from '../daily-performance-20261005/rail.mjs';
+          const target='ui-sync-fixes-343-v2.js';
+          const replacements=[
+            ['const counts={all:total??0,', 'const counts={all:total??0,'],
+            ['const counts={all:Number(j?.total)||0,','const counts={all:Number(j?.ledgerTotal)||0,'],
+            ["paintStatCounts(e.detail.rows,e.detail.total)","paintStatCounts(e.detail.rows,e.detail.ledgerTotal)"]
+          ].slice(1);
+          const report={scope:'Fix only Total tab count in alternate ui-sync-fixes writer: ledgerTotal for preload and snapshot. Keep market subcounts, KPI settled totals, all other UI, Engine and settlement unchanged.',startedAt:new Date().toISOString()};
+          mkdirSync('audit-total-ledger',{recursive:true});
+          const save=()=>writeFileSync('audit-total-ledger/report.json',JSON.stringify(report,null,2));
+          const pause=ms=>new Promise(r=>setTimeout(r,ms));
+          let original=null,candidate=null;
+          function patch(s){
+           assert(s.includes("function paintStatCounts(rows,total)"),'STAT_COUNT_WRITER_CHANGED');
+           assert(s.includes("function paintStatSummary(j)"),'STAT_SUMMARY_WRITER_CHANGED');
+           assert(s.includes("const counts={all:total??0,"),'OTHER_MARKET_COUNT_SHAPE_CHANGED');
+           let next=s;
+           for(const [before,after] of replacements){
+            assert.equal(next.split(before).length-1,1,'EXPECTED_WRITER_NOT_EXACTLY_ONCE:'+before);
+            assert(!next.includes(after),'TARGET_ALREADY_PATCHED:'+before);
+            next=next.replace(before,after);
+           }
+           assert(next!==s,'NO_CHANGE');
+           let reconstructed=next;
+           for(const [before,after] of replacements)reconstructed=reconstructed.replace(after,before);
+           assert.equal(reconstructed,s,'UNRELATED_JS_CONTENT_CHANGED');
+           parse(next,{ecmaVersion:'latest',sourceType:'script'});
+           return next;
+          }
+          async function rollback(){
+           if(!original)return;const v=await activeVersion();if(v===original)return;
+           if(!candidate||v!==candidate)throw Error('FOREIGN_PRODUCTION_VERSION_STOP_NO_ROLLBACK');
+           await api('/scripts/'+script+'/deployments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({strategy:'percentage',versions:[{version_id:original,percentage:100}],annotations:{'workers/message':'Rollback isolated Statistics Total menu ledger fix'}})});
+           assert.equal(await activeVersion(),original,'ROLLBACK_NOT_CONFIRMED');
+          }
+          try{
+           const current=await inspect();original=current.restore.version;
+           const settings=await api('/scripts/'+script+'/settings'),crons=await schedules();
+           const settingsSha=sha(canonical(settings)),engineSha=sha(Buffer.from(current.source));
+           const prior=await publicFile('/'+target,undefined,directOrigin);
+           assert.equal(sha(prior),sha(await publicFile('/'+target)),'CURRENT_UI_SYNC_HOSTS_DIFFER');
+           const next=patch(prior.toString('utf8')),nextSha=sha(Buffer.from(next));
+           const stats=JSON.parse(await publicFile('/api/engine/statistics?paged=1','json'));
+           assert(stats.ok===true,'STATISTICS_API_NOT_OK');
+           for(const key of ['total','ledgerTotal','pending','unresolved'])assert(Number.isSafeInteger(stats[key])&&stats[key]>=0,'STATISTICS_FIELD_MISSING:'+key);
+           assert.equal(stats.ledgerTotal,stats.total+stats.pending+stats.unresolved,'LEDGER_SUM_MISMATCH');
+           const staged=await stageCurrentRail(current.version,settings,crons,current.source);
+           await verifyRailBase(staged);
+           assert.equal(staged.hashes[target],sha(prior),'STAGED_UI_SYNC_NOT_LIVE');
+           assert.equal(await activeVersion(),original,'PRODUCTION_MOVED_DURING_STAGE');
+           writeFileSync(resolve(staged.runtime,'assets',target),next);
+           report.beforeVersion=original;report.changedFile=target;report.beforeSha=sha(prior);report.afterSha=nextSha;report.apiTotals={total:stats.total,ledgerTotal:stats.ledgerTotal,pending:stats.pending,unresolved:stats.unresolved};save();
+           wrangler(staged,true);
+           assert.equal(await activeVersion(),original,'PRODUCTION_CHANGED_BEFORE_DEPLOY');
+           await verifyRailBase(staged);
+           wrangler(staged,false);
+           for(let i=0;i<30;i++){const v=await activeVersion();if(v!==original){candidate=v;break}await pause(1200)}
+           assert(candidate,'NEW_VERSION_NOT_OBSERVED');report.candidate=candidate;save();
+           let valid=false;
+           for(let i=0;i<35;i++){
+            assert.equal(await activeVersion(),candidate,'PRODUCTION_CHANGED_DURING_VERIFY');
+            try{valid=sha(await publicFile('/'+target,undefined,directOrigin))===nextSha&&sha(await publicFile('/'+target))===nextSha;if(valid)break}catch{}
+            await pause(1200);
+           }
+           assert(valid,'UI_SYNC_JS_NOT_LIVE');
+           for(const [name,hash] of Object.entries(staged.hashes)){
+            if(name===target)continue;
+            assert.equal(sha(await publicFile('/'+name)),hash,'OTHER_ASSET_CHANGED:'+name);
+           }
+           const v=await getVersion(candidate),main=v.modules.find(m=>m.name===v.main_module);
+           assert(main,'MAIN_MODULE_MISSING');
+           assert.equal(sha(Buffer.from(main.content_base64,'base64')),engineSha,'WORKER_ENGINE_CHANGED');
+           assert.equal(sha(canonical(await api('/scripts/'+script+'/settings'))),settingsSha,'SETTINGS_CHANGED');
+           assert.equal(canonical(await schedules()),canonical(crons),'CRONS_CHANGED');
+           report.result='SUCCESS';report.deployedVersion=candidate;report.completedAt=new Date().toISOString();save();
+           console.log('BALL46_TOTAL_LEDGER_ONLY_SUCCESS',JSON.stringify({before:original,deployed:candidate,changedFile:target,unchangedAssets:Object.keys(staged.hashes).length-1,apiTotals:report.apiTotals}));
+          }catch(e){
+           report.result='FAIL_STOPPED';report.error=String(e.message||e);save();
+           try{await rollback();report.rolledBack=true;save()}catch(rb){report.rollbackError=String(rb.message||rb);save()}
+           console.error(e.stack);process.exitCode=1;
+          }
+          
+          NODE
+      - name: Save audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-total-ledger-${{ github.run_id }}
+          path: deploy-assets/ball46-member-nav-20261009/audit-total-ledger
+          retention-days: 30
