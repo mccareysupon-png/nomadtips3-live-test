@@ -439,6 +439,28 @@ button,input{font:inherit}
 .result-cell{
   font-weight:900;
 }
+/* Minute-only RESULT badge. No changes to settled-result badges or API logic. */
+.result-cell .result-minute-card{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:44px;
+  min-height:30px;
+  padding:4px 9px;
+  box-sizing:border-box;
+  border:1.5px solid #ef4052;
+  border-radius:5px;
+  background:linear-gradient(145deg,rgba(126,18,32,.94),rgba(70,12,25,.96));
+  color:#fff;
+  font-size:13px;
+  font-weight:900;
+  line-height:1;
+  font-variant-numeric:tabular-nums;
+  letter-spacing:.025em;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 2px 8px rgba(28,4,10,.16);
+  white-space:nowrap;
+}
+
 .featured-h-signal{
   border-color:rgba(50,209,139,.23);
   background:rgba(50,209,139,.065);
