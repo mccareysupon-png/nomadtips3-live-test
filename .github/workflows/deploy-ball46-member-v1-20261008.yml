@@ -1,4 +1,4 @@
-name: Rollback Ball46 Member V1 to pre-14:52
+name: Restore Member Direct Read (60s Safe)
 
 on:
   push:
@@ -25,7 +25,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: eb4a53b098f1553dd17c9f427ad8b956d8d17fff
+          ref: f5798efd25fba5d1f3ea9ffe1ba9dffcd073a64f
           fetch-depth: 1
 
       - uses: actions/setup-node@v4
