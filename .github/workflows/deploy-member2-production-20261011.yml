@@ -1,0 +1,61 @@
+name: Deploy Member2 Separate Production
+on:
+  push:
+    branches: [member2/isolated-ui-and-registration-20261011]
+    paths: ['.github/workflows/deploy-member2-production-20261011.yml']
+permissions: {contents: read}
+concurrency:
+  group: member2-isolated-production
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 54735f4ce59a7c9f0dc17cd7313a7805d10ff582
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify complete member and disabled billing
+        run: |
+          set -euo pipefail
+          grep -q '"name":"ball46-member2-production"' ball46-member2/wrangler.production.jsonc
+          grep -q '"MEMBER_CHECKOUT_ENABLED":"false"' ball46-member2/wrangler.production.jsonc
+          grep -q 'member2.ball46.com' ball46-member2/wrangler.production.jsonc
+          test -s ball46-member2/public/pricing.html
+          test -s ball46-member2/public/login.html
+          test -s ball46-member2/public/member.html
+          test -s ball46-member2/public/success.html
+          node --check ball46-member2/src/worker.js
+          node --check ball46-member2/public/member.js
+          node --test ball46-member2/tests/*.test.mjs
+      - name: Deploy Member2 custom domain only
+        working-directory: ball46-member2
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.production.jsonc
+      - name: Verify isolated Member2 Production
+        shell: bash
+        run: |
+          set -euo pipefail
+          base='https://ball46-member2-production.mccarey-supon.workers.dev'
+          for n in $(seq 1 15); do
+            code=$(curl -sS --max-time 12 -o /tmp/health -w '%{http_code}' "$base/api/health" || true)
+            if [ "$code" = 200 ]; then break; fi
+            sleep 2
+          done
+          jq -e '.ok==true and .service' /tmp/health
+          for route in /api/member/daily '/api/member/match?fixtureId=1'; do
+            code=$(curl -sS --max-time 15 -o /tmp/deny -w '%{http_code}' "$base$route")
+            test "$code" = 401
+            jq -e '.error=="MEMBERSHIP_AUTH_REQUIRED"' /tmp/deny
+          done
+          code=$(curl -sS --max-time 12 -o /tmp/unauthed -w '%{http_code}' "$base/member")
+          test "$code" = 303
+          code=$(curl -sS --max-time 15 -o /tmp/public -w '%{http_code}' 'https://member2.ball46.com/')
+          test "$code" = 200 || test "$code" = 302
+          grep -Eiq 'cloudflare|Ball46|pricing' /tmp/public
+          echo 'MEMBER2_DOMAIN_DEPLOYED_AND_GUARDED'
