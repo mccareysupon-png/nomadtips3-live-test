@@ -1,0 +1,21 @@
+name: Emergency Ball46 Statistics Readonly Diagnose
+on:
+  push:
+    branches: [work/ball46-phase3-missing-hub-final-20261011]
+    paths:
+      - '.github/workflows/diag-ball46-statistics-incident-20261011.yml'
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node deploy-assets/ball46-phase3/stats-incident-readonly.mjs
