@@ -1,0 +1,40 @@
+name: Deploy Ball46 Phase3 Missing HUB FT Verify
+on:
+  push:
+    branches: [work/ball46-phase3-missing-hub-final-20261011]
+    paths:
+      - '.github/workflows/deploy-ball46-phase3-final-20261011.yml'
+permissions:
+  contents: read
+concurrency:
+  group: ball46-engine343-phase3-final-deploy
+  cancel-in-progress: false
+jobs:
+  guarded-production:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 16
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install parser without modifying project
+        run: npm install --no-save --ignore-scripts acorn@8
+      - name: Verify scripts
+        run: |
+          node --check deploy-assets/ball46-phase3/patch.mjs
+          node --check deploy-assets/ball46-phase3/test.mjs
+          node --check deploy-assets/ball46-phase3/deploy.mjs
+      - name: Patch CURRENT active Worker and verify Phase3 Production
+        run: node deploy-assets/ball46-phase3/deploy.mjs
+      - name: Retain Production rollback checkpoint and QA
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-phase3-final-${{ github.run_id }}
+          path: audit/
+          if-no-files-found: warn
+          retention-days: 30
