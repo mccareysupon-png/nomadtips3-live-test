@@ -1,0 +1,41 @@
+name: Repair Ball46 Signal Referee Backoff Limited 20261011
+on:
+  push:
+    branches: [fix/ball46-signal-referee-backoff-20261011]
+    paths:
+      - '.github/workflows/repair-ball46-signal-referee-backoff-20261011.yml'
+permissions:
+  contents: read
+concurrency:
+  group: ball46-engine343-signal-referee-backoff-20261011
+  cancel-in-progress: false
+jobs:
+  guarded-repair:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate repair script syntax
+        run: node --check deploy-assets/ball46-signal-referee-backoff-20261011/deploy.mjs
+      - name: Dry-run exact active source and locked rules, NO writes
+        env:
+          RECOVERY_DRY_RUN: '1'
+        run: node deploy-assets/ball46-signal-referee-backoff-20261011/deploy.mjs
+      - name: Apply only guarded referee backoff repair, rollback on QA failure
+        env:
+          RECOVERY_DRY_RUN: '0'
+        run: node deploy-assets/ball46-signal-referee-backoff-20261011/deploy.mjs
+      - name: Save rollback checkpoint
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-referee-backoff-${{ github.run_id }}
+          path: audit/
+          if-no-files-found: warn
+          retention-days: 30
