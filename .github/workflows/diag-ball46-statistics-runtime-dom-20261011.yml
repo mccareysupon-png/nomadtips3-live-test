@@ -1,0 +1,81 @@
+name: DIAG Ball46 Statistics Runtime DOM 20261011
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/diag-ball46-statistics-runtime-dom-20261011.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Inspect runtime DOM and computed styles
+        shell: bash
+        run: |
+          set -euo pipefail
+          which google-chrome || which google-chrome-stable || true
+          google-chrome --version || google-chrome-stable --version || true
+          npm install --no-save --ignore-scripts puppeteer-core@24 >/dev/null 2>&1
+          node <<'NODE'
+          const puppeteer=require('puppeteer-core');
+          const fs=require('fs');
+          const candidates=['/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium','/usr/bin/chromium-browser'];
+          const executablePath=candidates.find(p=>fs.existsSync(p));
+          if(!executablePath) throw new Error('NO_CHROME');
+          (async()=>{
+            const browser=await puppeteer.launch({headless:true,executablePath,args:['--no-sandbox','--disable-setuid-sandbox']});
+            const page=await browser.newPage();
+            page.on('console',m=>console.log('BROWSER_CONSOLE',m.type(),m.text()));
+            page.on('pageerror',e=>console.log('PAGE_ERROR',String(e)));
+            page.on('response',r=>{
+              const u=r.url();
+              if(u.includes('singlepage-workspace-343.js')) console.log('WORKSPACE_RESPONSE',r.status(),u,r.headers()['etag']||'',r.headers()['cf-cache-status']||'');
+            });
+            await page.goto('https://ball46.com/?view=statistics',{waitUntil:'networkidle2',timeout:90000});
+            await new Promise(r=>setTimeout(r,7000));
+            const result=await page.evaluate(()=>{
+              const scripts=[...document.scripts].map(s=>s.src).filter(Boolean);
+              const body=document.querySelector('[data-sp-table-body]');
+              const rows=body?[...body.querySelectorAll('tr')]:[];
+              const details=rows.slice(0,20).map((tr,idx)=>{
+                const cells=[...tr.children];
+                const entry=cells[7];
+                if(!entry)return null;
+                const div=entry.querySelector('div');
+                const smalls=[...entry.querySelectorAll('small')];
+                const score=entry.querySelector('span');
+                const cs=getComputedStyle(entry);
+                const ds=div?getComputedStyle(div):null;
+                return {
+                  idx,
+                  text:entry.innerText,
+                  html:entry.innerHTML,
+                  td:{height:cs.height,overflow:cs.overflow,whiteSpace:cs.whiteSpace,color:cs.color},
+                  div:ds?{display:ds.display,rowGap:ds.rowGap,gap:ds.gap,paddingTop:ds.paddingTop,paddingBottom:ds.paddingBottom,lineHeight:ds.lineHeight}:null,
+                  score:score?{text:score.textContent,color:getComputedStyle(score).color,display:getComputedStyle(score).display}:null,
+                  smalls:smalls.map(x=>({text:x.textContent,color:getComputedStyle(x).color,display:getComputedStyle(x).display,lineHeight:getComputedStyle(x).lineHeight,marginTop:getComputedStyle(x).marginTop,rect:x.getBoundingClientRect().toJSON()})),
+                  rect:entry.getBoundingClientRect().toJSON()
+                };
+              }).filter(Boolean);
+              return {
+                url:location.href,
+                title:document.title,
+                workspaceView:document.body.dataset.workspaceView,
+                scripts,
+                rowCount:rows.length,
+                details
+              };
+            });
+            console.log('RUNTIME_RESULT '+JSON.stringify(result,null,2));
+            await browser.close();
+          })().catch(e=>{console.error(e.stack||e);process.exit(1)});
+          NODE
