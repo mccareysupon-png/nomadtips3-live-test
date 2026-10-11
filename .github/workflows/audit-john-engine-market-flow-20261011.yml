@@ -1,0 +1,29 @@
+name: Audit John Engine Price Flow and HUB Budget 20261011
+on:
+  push:
+    branches: [incident/ball46-signal-silent-20261011]
+    paths: [.github/workflows/audit-john-engine-market-flow-20261011.yml]
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: Inspect exact active market selection and HUD rich gate (no writes)
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          const b='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+'/workers';
+          const api=async p=>{const r=await fetch(b+p,{headers:{Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN}}),j=await r.json();if(!r.ok||!j.success)throw Error('CF '+p+' '+r.status);return j.result};
+          for(const script of ['nomadtips3-engine-343','nomadtips3-5usd-hub-343']){
+            const ds=await api('/scripts/'+script+'/deployments'),id=ds.deployments[0].versions.find(x=>x.percentage===100).version_id;
+            const v=await api('/workers/'+script+'/versions/'+id+'?include=modules');
+            const src=Buffer.from(v.modules.find(x=>x.name===v.main_module).content_base64,'base64').toString('utf8'),l=src.split('\n');
+            const ranges=script.includes('engine')?[[546,710],[705,830],[1075,1195],[1200,1270]]:[[1,55],[585,603],[749,865]];
+            for(const [from,to] of ranges)console.log('EXACT_FLOW',JSON.stringify({script,version:id,from,to,source:l.slice(from-1,to).map((x,i)=>String(from+i)+':'+x).join('\n').slice(0,17500)}));
+          }
+          NODE
