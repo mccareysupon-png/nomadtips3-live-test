@@ -49,7 +49,7 @@ async function runtimeCheck(){
   });
   report.runtime=r;save();
   assert(r.ok&&r.rowCount>0,'STAT_ROWS_MISSING');
-  assert.equal(r.borderSpacing,'0px','PREMIUM_ROW_SPACING_STILL_ACTIVE');
+  assert.equal(r.borderSpacing,'0px 2px','ORIGINAL_ROW_SPACING_NOT_RESTORED');
   assert(!r.firstBg.includes('linear-gradient'),'PREMIUM_ROW_BACKGROUND_STILL_ACTIVE');
   assert.equal(r.oddsColor,'rgb(243, 201, 105)','ODDS_TEXT_COLOR_MISSING');
   assert.equal(r.finalColor,'rgb(127, 215, 255)','FINAL_TEXT_COLOR_MISSING');
