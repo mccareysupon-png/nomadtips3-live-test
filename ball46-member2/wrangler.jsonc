@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "ball46-member-production",
+  "name": "ball46-member2-staging",
   "main": "src/worker.js",
   "compatibility_date": "2026-10-08",
   "workers_dev": true,
@@ -10,9 +10,9 @@
     "run_worker_first": true
   },
   "vars": {
-    "APP_STAGE": "production",
+    "APP_STAGE": "staging",
     "STRIPE_PRICE_ID": "price_1UOGIkFXmKSSVxQdhVjI9ml6",
     "OWNER_CHECKOUT_EMAIL": "mccarey.supon@gmail.com",
-    "MEMBER_CHECKOUT_ENABLED": "true"
+    "MEMBER_CHECKOUT_ENABLED": "false"
   }
 }
