@@ -1,0 +1,22 @@
+name: Audit Statistics Finished Corners
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Inspect public statistics row fields
+        run: |
+          python3 - <<'PY'
+          import json,urllib.request
+          u="https://ball46.com/api/engine/statistics?paged=1"
+          j=json.load(urllib.request.urlopen(u,timeout=30))
+          rows=j.get("rows",[])
+          print("rows",len(rows))
+          samples=[r for r in rows if "corner" in str(r.get("market","")).lower() and str(r.get("status","")).upper()=="SETTLED"]
+          print("settled corners",len(samples))
+          for r in samples[:4]:
+              print(json.dumps({k:v for k,v in r.items() if "corner" in k.lower() or k in ("market","status","finalScore","mirrorScore","result")},ensure_ascii=False))
+          PY
