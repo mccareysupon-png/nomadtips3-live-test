@@ -1,0 +1,143 @@
+name: Ball46 Statistics UNSETTLED KPI Only 20261011
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-ball46-statistics-unsettled-kpi-20261011.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ball46-production-deploy
+  cancel-in-progress: false
+jobs:
+  unsettled-kpi-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ops/ball46-easybet-crossdevice-fix-20261007
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install parser
+        run: npm install --no-save --ignore-scripts acorn@8
+      - name: Add one UNSETTLED Statistics KPI from active Production
+        working-directory: deploy-assets/ball46-member-nav-20261009
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';
+          import {resolve} from 'node:path';
+          import {parse} from 'acorn';
+          import {inspect,api,script,activeVersion,getVersion,publicFile,sha,canonical,directOrigin} from '../daily-performance-20261005/production.mjs';
+          import {schedules,stageCurrentRail,verifyRailBase,wrangler} from '../daily-performance-20261005/rail.mjs';
+          const htmlAnchor="<article class=\"sp-kpi\"><span>SETTLED</span><strong data-sp-kpi=\"total\">—</strong><small>Current sample</small></article>",newCard="<article class=\"sp-kpi\"><span>UNSETTLED</span><strong data-sp-kpi=\"unsettled\">—</strong><small>Awaiting settlement</small></article>";
+          const oldFn="function renderKpis(rows){const settled=rows.filter(window.BALL46_STATISTICS_DATA.isSettled);",newFn="function renderKpis(rows){const unsettled=rows.filter(r=>['PENDING','UNRESOLVED'].includes(String(r?.status||'').trim().toUpperCase())).length;const settled=rows.filter(window.BALL46_STATISTICS_DATA.isSettled);";
+          const oldVals="const vals={total:rows.length,win,loss,push,rate:",newVals="const vals={total:rows.length,unsettled,win,loss,push,rate:";
+          const cssAppend="\n/* B46_STAT_UNSETTLED_KPI_GRID_20261011: seven existing-layout KPI slots */\n.workspace.singlepage .sp-kpis{grid-template-columns:repeat(7,minmax(0,1fr))}\n@media(max-width:1180px){\n .workspace.singlepage .sp-kpis{grid-template-columns:repeat(12,minmax(0,1fr))}\n .workspace.singlepage .sp-kpis>.sp-kpi{grid-column:span 3;border-right:1px solid var(--line);border-bottom:1px solid var(--line)}\n .workspace.singlepage .sp-kpis>.sp-kpi:nth-child(4){border-right:0}\n .workspace.singlepage .sp-kpis>.sp-kpi:nth-child(n+5){grid-column:span 4;border-bottom:0}\n .workspace.singlepage .sp-kpis>.sp-kpi:last-child{border-right:0}\n}\n";
+          const changed=['index.html','singlepage-workspace-343.js','singlepage-workspace-343.css'];
+          const report={scope:'Only add one UNSETTLED statistics KPI. Count current selected ledger rows with explicit PENDING or UNRESOLVED status. Preserve existing six KPI formulas, backend, settlement and all other UI.',startedAt:new Date().toISOString()};
+          mkdirSync('audit-stat-unsettled',{recursive:true});
+          const save=()=>writeFileSync('audit-stat-unsettled/report.json',JSON.stringify(report,null,2));
+          const pause=ms=>new Promise(r=>setTimeout(r,ms));
+          let original=null,candidate=null;
+          function once(s,search,where){assert.equal(s.split(search).length-1,1,where+':NOT_EXACTLY_ONCE');}
+          function patchHtml(s){
+           once(s,htmlAnchor,'SETTLED_CARD_CHANGED');
+           assert(!s.includes('data-sp-kpi="unsettled"'),'UNSETTLED_CARD_ALREADY_PRESENT');
+           assert.equal((s.match(/data-sp-kpi="/g)||[]).length,6,'CURRENT_6_KPI_CARDS_CHANGED');
+           return s.replace(htmlAnchor,htmlAnchor+newCard);
+          }
+          function patchJs(s){
+           assert(!s.includes("const unsettled=rows.filter("),'UNSETTLED_ALREADY_PATCHED');
+           once(s,oldFn,'RENDER_KPI_HEADER_CHANGED');
+           once(s,oldVals,'KPI_VALUE_SHAPE_CHANGED');
+           const next=s.replace(oldFn,newFn).replace(oldVals,newVals);
+           assert.equal(next.replace(newFn,oldFn).replace(newVals,oldVals),s,'UNRELATED_JS_CHANGE');
+           parse(next,{ecmaVersion:'latest',sourceType:'script'});
+           return next;
+          }
+          function patchCss(s){
+           assert(!s.includes('B46_STAT_UNSETTLED_KPI_GRID_20261011'),'GRID_ALREADY_PATCHED');
+           assert(s.includes('.sp-kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr))'),'ORIGINAL_KPI_GRID_CHANGED');
+           return s+'
+          '+cssAppend;
+          }
+          const sample=[{status:'SETTLED'},{status:'PENDING'},{status:'UNRESOLVED'},{status:'settled'},{status:'LIVE'}];
+          assert.equal(sample.filter(r=>['PENDING','UNRESOLVED'].includes(String(r?.status||'').trim().toUpperCase())).length,2,'UNSETTLED_STATUS_COUNT_BAD');
+          async function rollback(){
+           if(!original)return;const v=await activeVersion();if(v===original)return;
+           if(!candidate||v!==candidate)throw Error('FOREIGN_PRODUCTION_VERSION_NO_ROLLBACK');
+           await api('/scripts/'+script+'/deployments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({strategy:'percentage',versions:[{version_id:original,percentage:100}],annotations:{'workers/message':'Rollback isolated Statistics UNSETTLED KPI display'}})});
+           assert.equal(await activeVersion(),original,'ROLLBACK_NOT_CONFIRMED');
+          }
+          try{
+           const current=await inspect();original=current.restore.version;
+           const settings=await api('/scripts/'+script+'/settings'),crons=await schedules();
+           const settingsSha=sha(canonical(settings)),engineSha=sha(Buffer.from(current.source));
+           const meta=JSON.parse(await publicFile('/api/engine/statistics?paged=1','json'));
+           assert(meta.ok===true&&Number.isSafeInteger(meta.pending)&&Number.isSafeInteger(meta.unresolved),'UNSETTLED_API_STATUS_FIELDS_MISSING');
+           assert(meta.ledgerTotal===meta.total+meta.pending+meta.unresolved,'LEDGER_TOTAL_INCONSISTENT');
+           const staged=await stageCurrentRail(current.version,settings,crons,current.source);
+           await verifyRailBase(staged);
+           assert.equal(await activeVersion(),original,'PRODUCTION_MOVED_DURING_STAGE');
+           const originals={},results={};
+           for(const name of changed){
+            const old=await publicFile('/'+name,undefined,directOrigin);
+            assert.equal(sha(old),sha(await publicFile('/'+name)),'PRODUCTION_HOST_MISMATCH:'+name);
+            assert.equal(sha(old),staged.hashes[name],'STAGED_ASSET_NOT_CURRENT:'+name);
+            const s=old.toString('utf8');
+            const updated=name==='index.html'?patchHtml(s):name.endsWith('.js')?patchJs(s):patchCss(s);
+            assert(updated!==s,'NO_CHANGE:'+name);
+            originals[name]=sha(old);results[name]=sha(Buffer.from(updated));
+            writeFileSync(resolve(staged.runtime,'assets',name),updated);
+           }
+           report.beforeVersion=original;report.apiSnapshot={ledgerTotal:meta.ledgerTotal,total:meta.total,pending:meta.pending,unresolved:meta.unresolved};report.changed=changed.map(name=>({name,oldSha:originals[name],newSha:results[name]}));save();
+           wrangler(staged,true);
+           assert.equal(await activeVersion(),original,'PRODUCTION_MOVED_BEFORE_DEPLOY');
+           await verifyRailBase(staged);
+           wrangler(staged,false);
+           for(let i=0;i<30;i++){const v=await activeVersion();if(v!==original){candidate=v;break}await pause(1200)}
+           assert(candidate,'NEW_VERSION_NOT_OBSERVED');report.candidate=candidate;save();
+           for(let i=0;i<30;i++){
+            assert.equal(await activeVersion(),candidate,'PRODUCTION_MOVED_DURING_VERIFY');
+            let ok=true;
+            try{for(const name of changed){
+             ok=ok&&sha(await publicFile('/'+name,undefined,directOrigin))===results[name];
+             ok=ok&&sha(await publicFile('/'+name))===results[name];
+            }}catch{ok=false}
+            if(ok)break;
+            if(i===29)throw Error('PUBLIC_KPI_FILES_NOT_VERIFIED');
+            await pause(1200);
+           }
+           for(const [name,hash] of Object.entries(staged.hashes)){
+            if(changed.includes(name))continue;
+            assert.equal(sha(await publicFile('/'+name)),hash,'UNRELATED_ASSET_CHANGED:'+name);
+           }
+           const v=await getVersion(candidate),main=v.modules.find(m=>m.name===v.main_module);
+           assert(main,'MAIN_MODULE_MISSING');
+           assert.equal(sha(Buffer.from(main.content_base64,'base64')),engineSha,'WORKER_OR_ENGINE_CHANGED');
+           assert.equal(sha(canonical(await api('/scripts/'+script+'/settings'))),settingsSha,'SETTINGS_CHANGED');
+           assert.equal(canonical(await schedules()),canonical(crons),'CRONS_CHANGED');
+           report.result='SUCCESS';report.deployedVersion=candidate;report.completedAt=new Date().toISOString();save();
+           console.log('BALL46_STATISTICS_UNSETTLED_KPI_SUCCESS',JSON.stringify({before:original,deployed:candidate,changed,unchangedAssets:Object.keys(staged.hashes).length-changed.length,apiSample:report.apiSnapshot}));
+          }catch(e){
+           report.result='FAIL_STOPPED';report.error=String(e.message||e);save();
+           try{await rollback();report.rolledBack=true;save()}catch(rb){report.rollbackError=String(rb.message||rb);save()}
+           console.error(e.stack);process.exitCode=1;
+          }
+          
+          NODE
+      - name: Save deployment audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-stat-unsettled-${{ github.run_id }}
+          path: deploy-assets/ball46-member-nav-20261009/audit-stat-unsettled
+          retention-days: 30
