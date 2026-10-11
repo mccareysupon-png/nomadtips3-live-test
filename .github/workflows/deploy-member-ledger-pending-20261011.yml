@@ -1,0 +1,68 @@
+name: Repair Member Ledger Signals 20261011
+on:
+  push:
+    branches: [member/ledger-pending-repair-20261011]
+    paths: ['.github/workflows/deploy-member-ledger-pending-20261011.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ball46-member-production-deploy
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 2f85a6ebf2c7b93feacdbdf7e1859d765bb21b94
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify read-only member patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check ball46-member/src/worker.js
+          node --check ball46-member/public/member.js
+          node --test ball46-member/tests/*.test.mjs
+          grep -q "const MIRROR_TTL_MS = 60_000" ball46-member/src/worker.js
+          grep -q "const SOURCE_BASE = 'https://www.ball46.com'" ball46-member/src/worker.js
+          grep -q '"name": "ball46-member-production"' ball46-member/wrangler.jsonc
+          ! grep -q 'MEMBER_DAILY_SNAPSHOTS' ball46-member/wrangler.jsonc
+      - name: Verify live source API pagination responds
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fSs --max-time 25 -H 'accept: application/json' 'https://www.ball46.com/api/engine/statistics?paged=1' > /tmp/source.json
+          jq -e '.ok==true and (.rows|type=="array")' /tmp/source.json >/dev/null
+          echo "LEDGER_SOURCE_OK rows=$(jq '.rows|length' /tmp/source.json)"
+      - name: Dry-run isolated Member Worker
+        working-directory: ball46-member
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.jsonc
+      - name: Deploy ONLY Member worker
+        working-directory: ball46-member
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.jsonc
+      - name: Verify production health and auth guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          base=https://ball46-member-production.mccarey-supon.workers.dev
+          for n in $(seq 1 15); do
+            code="$(curl -sS --max-time 12 -o /tmp/health.json -w '%{http_code}' "$base/api/health" || true)"
+            if [ "$code" = 200 ] && jq -e '.ok==true and .service=="ball46-member-production"' /tmp/health.json >/dev/null; then break; fi
+            sleep 2
+          done
+          jq -e '.ok==true and .service=="ball46-member-production"' /tmp/health.json
+          for path in '/api/member/daily' '/api/member/match?fixtureId=123'; do
+            code="$(curl -sS --max-time 12 -o /tmp/deny.json -w '%{http_code}' "$base$path")"
+            test "$code" = 401
+            jq -e '.error=="MEMBERSHIP_AUTH_REQUIRED"' /tmp/deny.json >/dev/null
+          done
+          curl -fSs --max-time 12 "$base/member.js" >/tmp/member.js
+          grep -q "DAILY_FEED_UNAVAILABLE_" /tmp/member.js
+          echo "MEMBER_PROD_LEDGER_UI_DEPLOYED_AUTH_GUARDED"
