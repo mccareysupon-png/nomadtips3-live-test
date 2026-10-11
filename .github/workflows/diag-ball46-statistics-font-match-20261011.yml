@@ -1,0 +1,55 @@
+name: DIAG Ball46 Statistics Font Match 20261011
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/diag-ball46-statistics-font-match-20261011.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --ignore-scripts puppeteer-core@24
+      - name: Inspect computed Statistics fonts
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const puppeteer=require('puppeteer-core');
+          const fs=require('fs');
+          const exe=['/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium'].find(fs.existsSync);
+          if(!exe) throw new Error('NO_CHROME');
+          (async()=>{
+            const browser=await puppeteer.launch({headless:true,executablePath:exe,args:['--no-sandbox']});
+            const page=await browser.newPage();
+            await page.setViewport({width:1440,height:1000});
+            await page.goto('https://ball46.com/?view=statistics&fontdiag='+Date.now(),{waitUntil:'networkidle2',timeout:90000});
+            await new Promise(r=>setTimeout(r,5000));
+            const r=await page.evaluate(()=>{
+              const row=document.querySelector('[data-sp-table-body] tr');
+              if(!row)return {ok:false};
+              const cells=[...row.children];
+              const entry=cells[7];
+              const score=entry?.querySelector('span');
+              const smalls=[...entry?.querySelectorAll('small')||[]];
+              const css=e=>e?{fontFamily:getComputedStyle(e).fontFamily,fontWeight:getComputedStyle(e).fontWeight,fontSize:getComputedStyle(e).fontSize,lineHeight:getComputedStyle(e).lineHeight}:null;
+              return {
+                ok:true,
+                cells:cells.map((c,i)=>({i,text:(c.innerText||'').slice(0,80),...css(c)})),
+                entryScore:css(score),
+                entrySmalls:smalls.map(s=>({text:s.textContent,...css(s)}))
+              };
+            });
+            console.log('FONT_RESULT '+JSON.stringify(r,null,2));
+            await browser.close();
+          })().catch(e=>{console.error(e.stack);process.exit(1)});
+          NODE
