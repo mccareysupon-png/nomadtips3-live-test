@@ -1,0 +1,59 @@
+name: Audit Ball46 Refresh History Trace Readonly
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/audit-ball46-refresh-history-trace-20261011.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser-trace:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ops/ball46-easybet-crossdevice-fix-20261007
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright
+        run: |
+          npm install --no-save --ignore-scripts playwright@1.56.1
+          npx playwright install chromium
+      - name: Record browser route transitions without writes
+        run: |
+          node --input-type=module <<'NODE'
+          import {chromium} from 'playwright';
+          const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
+          for(const viewport of [{width:390,height:844},{width:1440,height:900}]){
+           const context=await browser.newContext({viewport,isMobile:viewport.width===390});
+           const page=await context.newPage();
+           page.on('console',msg=>{if(msg.text().startsWith('B46_ROUTE_TRACE'))console.log('BROWSER_CONSOLE',viewport.width,msg.text().slice(0,1300))});
+           page.on('pageerror',err=>console.log('BROWSER_PAGEERROR',viewport.width,err.message.slice(0,300)));
+           await page.addInitScript(()=>{
+            for(const method of ['pushState','replaceState']){
+             const before=history[method];
+             history[method]=function(...args){
+              console.info('B46_ROUTE_TRACE '+method+' '+String(args[2]||'')+' STACK '+new Error().stack?.split('\n').slice(1,6).join(' ~ '));
+              return before.apply(this,args);
+             };
+            }
+            document.addEventListener('click',event=>{
+             const b=event.target?.closest?.('[data-status-filter]');
+             if(b)console.info('B46_ROUTE_TRACE CLICK_STATUS '+b.getAttribute('data-status-filter')+' trusted='+event.isTrusted+' STACK '+new Error().stack?.split('\n').slice(1,5).join(' ~ '));
+            },true);
+           });
+           const url='https://ball46.com/index.html?view=statistics&market=corners';
+           const res=await page.goto(url,{waitUntil:'domcontentloaded',timeout:40000});
+           for(const delay of [0,150,700,2200]){
+            if(delay)await page.waitForTimeout(delay);
+            const view=await page.evaluate(()=>({href:location.href,view:document.body?.dataset.workspaceView,market:[...document.querySelectorAll('[data-stat-market].active')].map(x=>x.dataset.statMarket),status:[...document.querySelectorAll('[data-status-filter].active')].map(x=>x.dataset.statusFilter)}));
+            console.log('STATE',viewport.width,'AFTER_MS',delay,'HTTP',res.status(),JSON.stringify(view));
+           }
+           await context.close();
+          }
+          await browser.close();
+          
+          NODE
