@@ -30,4 +30,18 @@ try{
  if(await market.count()){await market.click({timeout:6000});await pause(2000);await capture("clicked-total");}
  await page.reload({waitUntil:"domcontentloaded",timeout:30000});await pause(3500);await capture("after-reload");
 }catch(e){console.log("BROWSER_EXEC_ERROR",String(e.stack||e).slice(0,1300));}
+const variants=[
+  {url:"https://ball46.com/index.html?view=statistics",label:"apex-statistics"},
+  {url:"https://ball46.com/statistics.html",label:"apex-legacy-stats"},
+  {url:"https://www.ball46.com/statistics.html",label:"www-legacy-stats"}
+];
+for(const v of variants){
+  try { await page.goto(v.url,{waitUntil:"domcontentloaded",timeout:35000});await pause(2500);
+    const d=await page.evaluate(()=>({url:location.href,title:document.title,
+      view:document.body?.dataset.workspaceView,statNav:document.querySelectorAll("[data-stat-market]").length,
+      panel:document.querySelector('[data-workspace-panel="statistics"]')?.innerText?.slice(0,500),
+      body:document.body?.innerText?.slice(0,400)}));
+    console.log("BROWSER_VARIANT",JSON.stringify({label:v.label,...d,errors:errors.slice(-3)}));
+  }catch(e){console.log("BROWSER_VARIANT_ERROR",JSON.stringify({label:v.label,error:String(e.message)}));}
+}
 await browser.close();
