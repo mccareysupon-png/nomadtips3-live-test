@@ -71,7 +71,7 @@ jobs:
           const c=JSON.parse(fs.readFileSync(path,'utf8'));
           if(c.name!=='ball46-member-production')throw Error('WRONG_WORKER_ABORT');
           c.kv_namespaces=[{binding:'MEMBER_DAILY_SNAPSHOTS',id:process.env.MEMBER_PROD_KV_ID}];
-          delete c.triggers; // Dedicated GitHub publisher owns scheduling; visitors read KV only.
+          c.triggers={crons:['*/10 * * * *']}; // Proven staged Cron; visitors still read KV only.
           fs.writeFileSync(path,JSON.stringify(c,null,2)+'\n');
           NODE
       - name: Dry run Member Worker (no Engine deploy)
