@@ -1,0 +1,34 @@
+name: Verify Current Ball46 Signal Recovery Against John Bulk Contract
+on:
+  push:
+    branches: [incident/ball46-signal-silent-20261011]
+    paths: [.github/workflows/qa-ball46-john-contract-current-20261011.yml]
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - name: Read public signal status and backoff after repair without writes
+        run: |
+          node --input-type=module <<'NODE'
+          const root='https://www.ball46.com/api/engine/';
+          const endpoints=['health','board','signals','ledger-health','statistics?paged=1'];
+          const res={};
+          for(const path of endpoints){
+            try{const r=await fetch(root+path,{cache:'no-store',signal:AbortSignal.timeout(22000)}),j=await r.json();res[path.split('?')[0]]=j}
+            catch(e){console.log('JOHN_QA_ERROR',JSON.stringify({path,error:String(e)}))}
+          }
+          const h=res.health||{},b=res.board||{},ss=res.signals||{},led=res['ledger-health']||{},st=res.statistics||{};
+          const threshold=Date.parse('2026-10-11T12:16:13Z');
+          const rows=Array.isArray(st.rows)?st.rows:[];
+          const newest=rows[0]||{};
+          const signals=(ss.signals||[]);
+          const recent=rows.filter(x=>Number(x.createdAt)>=threshold);
+          const count={};for(const e of h.refereeErrors||[])count[e.error]=(count[e.error]||0)+1;
+          const states={};for(const f of b.fixtures||[])for(const [market,obj] of Object.entries(f.analysis||{})){if(obj?.state==='PASS'||String(obj?.state||'').includes('BUDGET'))states[market+':'+obj.state]=(states[market+':'+obj.state]||0)+1}
+          console.log('JOHN_QA_AFTER_REPAIR',JSON.stringify({at:new Date().toISOString(),scanStart:h.startedAt,scanFinish:h.finishedAt,live:h.liveCount,refereeRequests:h.refereeRequests,refereeQueued:h.refereeQueued,refereeErrors:count,boardFixtures:b.fixtures?.length,boardStale:b.stale,recentLedgerSignals:recent.length,newestSignalAt:Number(newest.createdAt)?new Date(Number(newest.createdAt)).toISOString():null,pendingFeed:signals.length,ledgerTotal:led.ledgerTotal,settledTotal:led.settledTotal,states}));
+          const r=await fetch('https://www.ball46.com/api/full-market/health',{cache:'no-store',signal:AbortSignal.timeout(18000)}),j=await r.json();
+          console.log('JOHN_QA_PROVIDER',JSON.stringify({http:r.status,mode:j.mode,blockedUntil:j.blockedUntil,retryAfterSec:j.retryAfterSec,requestsLastMinute:j.callsLast60s,remainingLocalBudget:j.remainingLocalBudget,providerMeta:j.providerMeta}));
+          NODE
