@@ -8,7 +8,11 @@ export async function verifyAccessIdentity(request,env){
   const team=String(env.CF_ACCESS_TEAM_DOMAIN||'').replace(/^https?:\/\//,'').replace(/\/$/,'');
   const aud=String(env.CF_ACCESS_AUD||'');
   if(!team||!aud||!/^[-a-zA-Z0-9.]+\.cloudflareaccess\.com$/.test(team))return null;
-  const jwt=request.headers.get('Cf-Access-Jwt-Assertion');
+  // Cloudflare usually injects the assertion header. Browser-origin requests may
+  // carry only the Access cookie; verify its signature using the same JWKS.
+  const cookie=request.headers.get('Cookie')||'';
+  const cookieToken=cookie.split(';').map(x=>x.trim()).find(x=>x.startsWith('CF_Authorization='));
+  const jwt=request.headers.get('Cf-Access-Jwt-Assertion') || (cookieToken?decodeURIComponent(cookieToken.slice('CF_Authorization='.length)):'');
   if(!jwt)return null;
   const parts=jwt.split('.');
   if(parts.length!==3)return null;
