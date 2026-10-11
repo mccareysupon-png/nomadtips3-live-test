@@ -1,0 +1,126 @@
+name: Repair Ball46 Legacy Statistics Route to Main 20261011
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/repair-ball46-legacy-statistics-route-20261011.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ball46-production-deploy
+  cancel-in-progress: false
+jobs:
+  legacy-stats-route-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ops/ball46-easybet-crossdevice-fix-20261007
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install parser dependency
+        run: npm install --no-save --ignore-scripts acorn@8
+      - name: Repair only active Production legacy Statistics entrypoint
+        working-directory: deploy-assets/ball46-member-nav-20261009
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import {writeFileSync,mkdirSync} from 'node:fs';
+          import {resolve} from 'node:path';
+          import {inspect,api,script,activeVersion,getVersion,publicFile,sha,canonical,directOrigin} from '../daily-performance-20261005/production.mjs';
+          import {schedules,stageCurrentRail,verifyRailBase,wrangler} from '../daily-performance-20261005/rail.mjs';
+          const target='statistics.html';
+          const marker='B46_LEGACY_STATISTICS_TO_MAIN_20261011';
+          const anchor='<meta charset="utf-8">';
+          const injection=String.raw"\n<!-- B46_LEGACY_STATISTICS_TO_MAIN_20261011: the one production Statistics view owns all data. -->\n<meta http-equiv=\"refresh\" content=\"0;url=/index.html?view=statistics\">\n<script>window.location.replace('/index.html?view=statistics');</script>";
+          mkdirSync('audit-legacy-route-repair',{recursive:true});
+          const report={scope:'Legacy /statistics.html entrypoint ONLY: direct navigation to the live one-page /index.html?view=statistics. No changes to main index, statistics UI, data, worker or Engine.',createdAt:new Date().toISOString()};
+          const save=()=>writeFileSync('audit-legacy-route-repair/report.json',JSON.stringify(report,null,2));
+          const wait=ms=>new Promise(r=>setTimeout(r,ms));
+          let original=null,candidate=null;
+          function patch(t){
+           assert(!t.includes(marker),'ALREADY_PATCHED_STOP');
+           assert.equal(t.split(anchor).length-1,1,'LEGACY_HEAD_SHAPE_CHANGED');
+           assert(t.includes('<title>Football Signal Statistics & Results | Ball46</title>'),'NOT_EXPECTED_LEGACY_FILE');
+           assert(t.includes('statistics-next.js'),'LEGACY_SCRIPT_EXPECTED_STOP');
+           const revised=t.replace(anchor,anchor+injection);
+           assert.equal(revised.replace(anchor+injection,anchor),t,'OUT_OF_SCOPE_HTML_CHANGE');
+           assert.equal(revised.split(marker).length-1,1,'MARKER_NOT_UNIQUE');
+           return revised;
+          }
+          async function rollback(){
+           if(!original)return;
+           const active=await activeVersion();
+           if(active===original)return;
+           if(!candidate||active!==candidate)throw Error('OTHER_PRODUCTION_VERSION_ACTIVE_NO_ROLLBACK');
+           await api('/scripts/'+script+'/deployments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({strategy:'percentage',versions:[{version_id:original,percentage:100}],annotations:{'workers/message':'Rollback legacy Statistics entry redirect only'}})});
+           assert.equal(await activeVersion(),original,'ROLLBACK_NOT_CONFIRMED');
+          }
+          try{
+           const current=await inspect();original=current.restore.version;
+           const settings=await api('/scripts/'+script+'/settings'),crons=await schedules();
+           const settingsSha=sha(canonical(settings)),workerSha=sha(Buffer.from(current.source));
+           const prior=await publicFile('/'+target,undefined,directOrigin);
+           assert.equal(sha(prior),sha(await publicFile('/'+target)),'LEGACY_ROUTE_HOSTS_DIFFER');
+           const updated=patch(prior.toString('utf8')),newSha=sha(Buffer.from(updated));
+           const main=(await publicFile('/index.html','html')).toString('utf8');
+           const statsJs=(await publicFile('/singlepage-workspace-343.js')).toString('utf8');
+           assert(main.includes('data-sp-kpi="total"')&&main.includes('data-workspace-view="statistics"'),'MAIN_STATS_UI_NOT_PRESENT');
+           assert(statsJs.includes('function renderKpis(rows){')&&statsJs.includes('function loadStatistics(){'),'MAIN_STATS_SCRIPT_NOT_PRESENT');
+           const apiData=JSON.parse(await publicFile('/api/engine/statistics?paged=1','json'));
+           assert(apiData.ok===true&&apiData.statisticsSource==='LEDGER_V2_ONLY'&&apiData.ledgerTotal>0,'STATISTICS_API_NOT_READY');
+           const staged=await stageCurrentRail(current.version,settings,crons,current.source);
+           await verifyRailBase(staged);
+           assert.equal(staged.hashes[target],sha(prior),'STAGED_OLD_STATS_NOT_LIVE');
+           assert.equal(await activeVersion(),original,'PRODUCTION_MOVED_DURING_STAGE');
+           writeFileSync(resolve(staged.runtime,'assets',target),updated);
+           report.oldVersion=original;report.oldSha=sha(prior);report.newSha=newSha;report.settledAtAudit=apiData.total;report.ledgerAtAudit=apiData.ledgerTotal;save();
+           wrangler(staged,true);
+           assert.equal(await activeVersion(),original,'PRODUCTION_MOVED_BEFORE_DEPLOY');
+           await verifyRailBase(staged);
+           wrangler(staged,false);
+           for(let i=0;i<30;i++){const v=await activeVersion();if(v!==original){candidate=v;break}await wait(1200)}
+           assert(candidate,'NEW_VERSION_NOT_OBSERVED');report.deployedCandidate=candidate;save();
+           let direct=false,publicUrl=false;
+           for(let i=0;i<35;i++){
+            assert.equal(await activeVersion(),candidate,'PRODUCTION_MOVED_DURING_VERIFY');
+            try{
+             direct=sha(await publicFile('/'+target,undefined,directOrigin))===newSha;
+             publicUrl=sha(await publicFile('/'+target))===newSha;
+             if(direct&&publicUrl)break;
+            }catch{}
+            await wait(1200);
+           }
+           assert(direct&&publicUrl,'LEGACY_STATS_REDIRECT_NOT_VERIFIED');
+           for(const [name,hash] of Object.entries(staged.hashes)){
+            if(name===target)continue;
+            assert.equal(sha(await publicFile('/'+name)),hash,'OTHER_ASSET_CHANGED:'+name);
+           }
+           const ver=await getVersion(candidate),primary=ver.modules.find(m=>m.name===ver.main_module);
+           assert(primary,'WORKER_MAIN_MISSING');
+           assert.equal(sha(Buffer.from(primary.content_base64,'base64')),workerSha,'WORKER_OR_ENGINE_MODIFIED');
+           assert.equal(sha(canonical(await api('/scripts/'+script+'/settings'))),settingsSha,'SETTINGS_CHANGED');
+           assert.equal(canonical(await schedules()),canonical(crons),'CRONS_CHANGED');
+           report.result='SUCCESS';report.deployedVersion=candidate;report.completedAt=new Date().toISOString();save();
+           console.log('BALL46_LEGACY_STATISTICS_MAIN_ROUTE_RECOVERED',JSON.stringify({from:original,to:candidate,oneChangedAsset:target,unchangedAssets:Object.keys(staged.hashes).length-1,ledgerTotal:apiData.ledgerTotal}));
+          }catch(e){
+           report.result='FAIL_STOPPED';report.error=String(e.message||e);save();
+           try{await rollback();report.rolledBack=true;save()}catch(err){report.rollbackError=String(err.message||err);save()}
+           console.error(e.stack);process.exitCode=1;
+          }
+          
+          NODE
+      - name: Retain deployment verification
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-legacy-stats-route-${{ github.run_id }}
+          path: deploy-assets/ball46-member-nav-20261009/audit-legacy-route-repair
+          retention-days: 30
