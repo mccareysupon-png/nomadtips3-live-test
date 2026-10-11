@@ -1,0 +1,56 @@
+name: INCIDENT Ball46 Signal Silent Audit 20261011
+on:
+  push:
+    branches: [incident/ball46-signal-silent-20261011]
+    paths: [.github/workflows/incident-ball46-signal-silent-audit-20261011.yml]
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: Read exact active Worker, real signal sequence, referee budget, runstate, and health
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import {createHash} from 'node:crypto';
+          const account=process.env.CLOUDFLARE_ACCOUNT_ID,token=process.env.CLOUDFLARE_API_TOKEN;
+          const base='https://api.cloudflare.com/client/v4/accounts/'+account+'/workers';
+          const cf=async p=>{
+            const r=await fetch(base+p,{headers:{Authorization:'Bearer '+token},signal:AbortSignal.timeout(28000)}),j=await r.json();
+            if(!r.ok||!j.success)throw Error('CLOUDFLARE_'+r.status);
+            return j.result;
+          };
+          const ds=await cf('/scripts/nomadtips3-engine-343/deployments');
+          console.log('INCIDENT_ENGINE_DEPLOYMENTS',JSON.stringify(ds.deployments?.slice(0,8).map(x=>({created:x.created_on,versions:x.versions}))));
+          const version=ds.deployments?.[0]?.versions?.find(x=>Number(x.percentage)===100)?.version_id;
+          const v=await cf('/workers/nomadtips3-engine-343/versions/'+version+'?include=modules');
+          const src=Buffer.from(v.modules.find(x=>x.name===v.main_module).content_base64,'base64').toString('utf8');
+          const important=['BALL46_GOAL_TICK_MAX_AGE_MS','BALL46_GOAL_TICK_REQUESTS_PER_SCAN','BALL46_CORNER_TICK_MAX_AGE_MS','BALL46_CORNER_TICK_REQUESTS_PER_SCAN','let goalTickRequests=0;','GOAL_HISTORY_BUDGET','GOAL_LIVE_PRICE_UNVERIFIED','function pickBestPriced','FULL_MARKET','missing-final-direct-v1'];
+          console.log('INCIDENT_ACTIVE_ENGINE',JSON.stringify({version,created:ds.deployments?.[0]?.created_on,sha:createHash('sha256').update(src).digest('hex'),flags:Object.fromEntries(important.map(x=>[x,src.includes(x)])),bytes:src.length}));
+          const urls=['health','settings','board','signals','ledger-health','statistics?paged=1'];
+          const results={};
+          for(const p of urls){
+            try{
+              const r=await fetch('https://www.ball46.com/api/engine/'+p+(p.includes('?')?'&':'?')+'diagnose='+Date.now(),{cache:'no-store',signal:AbortSignal.timeout(23000)}),j=await r.json();
+              results[p.split('?')[0]]={http:r.status,j};
+            }catch(e){results[p.split('?')[0]]={error:String(e?.message||e)}}
+          }
+          const now=Date.now(),health=results.health?.j||{},settings=results.settings?.j||{},board=results.board?.j||{},signals=results.signals?.j||{},ledger=results['ledger-health']?.j||{},statistics=results.statistics?.j||{};
+          console.log('INCIDENT_HEALTH',JSON.stringify({http:results.health?.http,now:new Date(now).toISOString(),lastScanStart:health.startedAt,lastScanFinish:health.finishedAt,lastError:health.lastError,fixtureCount:health.fixtureCount,liveCount:health.liveCount,signalCount:health.signalCount,refereeQueued:health.refereeQueued,refereeRequests:health.refereeRequests,externalOddsRequests:health.externalOddsRequests,refereeErrorCount:health.refereeErrors?.length,refereeErrorTypes:Object.fromEntries([...new Set((health.refereeErrors||[]).map(x=>String(x.error||'')))].map(x=>[x,(health.refereeErrors||[]).filter(y=>String(y.error||'')===x).length]))}));
+          const keys=['ft_over','ft_under','ht_over','ht_under','ft_corner_over','ft_corner_under','ht_corner_over','ht_corner_under','ft_corner_ah','ft_ah','ft_1x2'];
+          console.log('INCIDENT_RUNSTATE',JSON.stringify({http:results.settings?.http,markets:Object.fromEntries(keys.map(k=>[k,{run:settings.runState?.[k],oddsMin:settings.settings?.[k]?.oddsMin,lineGapMax:settings.settings?.[k]?.lineGapMax}]))}));
+          const states={},samples={};
+          for(const f of board.fixtures||[])for(const k of keys){if(!f.analysis||!f.analysis[k])continue;const state=String(f.analysis[k].state||'NO_STATE');states[k+':'+state]=(states[k+':'+state]||0)+1;
+            if(['GOAL_LIVE_PRICE_UNVERIFIED','GOAL_HISTORY_BUDGET','CORNER_LIVE_PRICE_UNVERIFIED','CORNER_HISTORY_BUDGET','NO_MATCHING_LINE_PRICE','PASS'].includes(state)&&!samples[k+':'+state])samples[k+':'+state]={fixtureId:f.fixtureId,minute:f.minute,status:f.status,goals:f.goals,state}};
+          console.log('INCIDENT_BOARD',JSON.stringify({http:results.board?.http,fixtures:board.fixtures?.length,hubFetchedAt:board.hubFetchedAt,hubAgeMs:board.hubAgeMs,stale:board.stale,states,samples,referee:board.referee?{queued:board.referee.queued,requests:board.referee.requests,errorCount:board.referee.errors?.length}:null}));
+          const pending=Array.isArray(signals.signals)?signals.signals:[];
+          console.log('INCIDENT_SIGNALS',JSON.stringify({http:results.signals?.http,count:pending.length,allCount:signals.allCount,latest:pending.slice().sort((a,b)=>Number(b.createdAt)-Number(a.createdAt)).slice(0,12).map(s=>({fixtureId:s.fixtureId,market:s.market,createdAt:s.createdAt,time:new Date(Number(s.createdAt)).toISOString(),priceSource:s.priceSource,book:s.bookmakerSlug,odds:s.odds,line:s.line}))}));
+          const rows=Array.isArray(statistics.rows)?statistics.rows:[];
+          console.log('INCIDENT_LEDGER',JSON.stringify({http:results['ledger-health']?.http,ledgerTotal:ledger.ledgerTotal,settled:ledger.settledTotal,pending:ledger.pending,statisticsHttp:results.statistics?.http,statisticsRows:rows.length,latest:rows.slice(0,15).map(s=>({fixtureId:s.fixtureId,market:s.market,status:s.status,createdAt:s.createdAt,time:Number.isFinite(Number(s.createdAt))?new Date(Number(s.createdAt)).toISOString():null,priceSource:s.priceSource,book:s.bookmakerSlug}))}));
+          NODE
