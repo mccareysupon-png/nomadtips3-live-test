@@ -1,0 +1,36 @@
+name: Audit Live Ball46 5Dollar Producers and Full Market Shared Gate
+on:
+  push:
+    branches: [incident/ball46-signal-silent-20261011]
+    paths: [.github/workflows/audit-live-account-producers-20261011.yml]
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: Read live FULL_MARKET and AUTO_Engine Worker producer implementation (no writes)
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          const b='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+'/workers',h={Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN};
+          const g=async p=>{const r=await fetch(b+p,{headers:h,signal:AbortSignal.timeout(20000)}),j=await r.json();if(!r.ok||!j.success)throw Error('CLOUDFLARE '+r.status);return j.result};
+          for(const n of ['nomadtips3-full-market-343-ball46','nomadtips3-343-auto-engine']){
+            const ds=await g('/scripts/'+n+'/deployments'),id=ds.deployments[0].versions.find(x=>Number(x.percentage)===100).version_id;
+            const version=await g('/workers/'+n+'/versions/'+id+'?include=modules'),code=Buffer.from(version.modules.find(x=>x.name===version.main_module).content_base64,'base64').toString('utf8'),lines=code.split('\n');
+            const sched=(await g('/scripts/'+n+'/schedules')).schedules.map(x=>x.cron);
+            console.log('PRODUCER_HEAD',JSON.stringify({worker:n,id,bytes:code.length,crons:sched}));
+            if(n.includes('full-market')){
+              const matches=['async prewarm(', 'prewarm(', 'board-cache', 'providerRemaining', 'providerMeta','blockedUntil','lastProvider','async scheduled','RICH_','PREWARM'];
+              for(const key of matches){const hits=lines.flatMap((s,i)=>s.includes(key)?[{line:i+1,excerpt:s.trim().slice(0,350)}]:[]).slice(0,22);console.log('PRODUCER_MATCH',JSON.stringify({worker:n,key,hits}))}
+              for(const [from,to] of [[1,95],[165,285],[286,380],[400,530]])console.log('PRODUCER_CODE',JSON.stringify({worker:n,from,to,source:lines.slice(from-1,to).map((s,i)=>String(i+from)+':'+s).join('\n').slice(0,10500)}));
+            }else{
+              for(const key of ['api.5dollar','fetch(', 'scheduled(', 'fixtures/', 'bulk','/odds','/history','MAX_','rateLimit']){const matches=lines.flatMap((s,i)=>s.includes(key)?[{line:i+1,excerpt:s.trim().slice(0,400)}]:[]).slice(0,35);console.log('PRODUCER_MATCH',JSON.stringify({worker:n,key,hits:matches}))}
+              for(const [from,to] of [[170,230],[340,425],[525,590]])console.log('PRODUCER_CODE',JSON.stringify({worker:n,from,to,source:lines.slice(from-1,to).map((s,i)=>String(i+from)+':'+s).join('\n').slice(0,11500)}));
+            }
+          }
+          NODE
