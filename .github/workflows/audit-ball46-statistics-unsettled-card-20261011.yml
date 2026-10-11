@@ -1,0 +1,39 @@
+name: Audit Ball46 Statistics Unsettled Card Readonly
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/audit-ball46-statistics-unsettled-card-20261011.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    steps:
+      - name: Read live Statistics display and API only
+        run: |
+          node --input-type=module <<'NODE'
+          const base='https://ball46.com';
+          for (const route of ['/api/engine/statistics','/api/engine/statistics?paged=1']) {
+            try {
+              const r=await fetch(base+route,{headers:{'Cache-Control':'no-cache'},signal:AbortSignal.timeout(25000)});
+              console.log('API',route,r.status,r.headers.get('content-type'));
+              if (!r.ok) continue;
+              const j=await r.json();
+              console.log('API_KEYS',route,Object.keys(j).join(','));
+              console.log('API_TOP',route,JSON.stringify(Object.fromEntries(Object.entries(j).filter(([k,v])=>!Array.isArray(v)&&typeof v!=='object'))).slice(0,4500));
+              console.log('API_SUMMARIES',route,JSON.stringify(Object.fromEntries(Object.entries(j).filter(([k,v])=>!Array.isArray(v)&&typeof v==='object'&&v!==null))).slice(0,9000));
+              const rows=j.rows||j.ledgerRows||[];
+              console.log('ROW_META',route,rows.length,JSON.stringify(rows.slice(0,3).map(x=>({status:x.status,result:x.result,settlement:x.settlement,market:x.market}))));
+            } catch(e) {console.log('API_ERROR',route,String(e).slice(0,350));}
+          }
+          for(const route of ['/singlepage-workspace-343.js','/singlepage-workspace-343.css','/index.html']) {
+            const r=await fetch(base+route,{headers:{'Cache-Control':'no-cache'},signal:AbortSignal.timeout(25000)});
+            if(!r.ok){console.log('ASSET_ERROR',route,r.status);continue}
+            const s=await r.text(); console.log('ASSET',route,s.length);
+            const tokens=route.includes('.css')?['sp-kpi','sp-summary','sp-stats','sp-metric','sp-card','sp-result']:['Current sample','Winning signals','Losing signals','Neutral results','Push excluded','Recorded entry','UNSETTLED','unsettled','pending','SETTLED'];
+            for(const token of tokens){let a=0,n=0;while((a=s.toLowerCase().indexOf(token.toLowerCase(),a))>=0&&n++<8){console.log('HIT',route,token,a,s.slice(Math.max(0,a-750),Math.min(s.length,a+1100)).replaceAll('\n',' '));a+=token.length}}
+          }
+          NODE
