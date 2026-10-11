@@ -49,6 +49,8 @@ jobs:
           PY
           echo "=== HTML STAT LINES ==="
           grep -Ein "statistics|PENDING|ledger|api/engine|signal" "$ROOT/page.html" | head -n 160 || true
+          echo "=== SINGLEPAGE FULL STAT CORE ==="
+          nl -ba "$ROOT/script-10.js" | sed -n '1,260p'
           echo "=== JS STAT LINES ==="
           for f in "$ROOT"/script-*.js; do
             [ -f "$f" ] || continue
