@@ -1,0 +1,50 @@
+name: Deploy Member 2 UI Preview Only
+on:
+  push:
+    branches: [member2/isolated-ui-and-registration-20261011]
+    paths: ['.github/workflows/deploy-member2-preview-20261011.yml']
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  preview:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: '490daba1fce48c13c84d61de5eac8574d38508df'}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Assert separate worker with non-billing demo preview
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check ball46-member2/src/worker.js
+          node --check ball46-member2/public/member.js
+          node --check ball46-member2/public/preview-data.js
+          grep -q '"name": "ball46-member2-staging"' ball46-member2/wrangler.jsonc
+          grep -q '"MEMBER_CHECKOUT_ENABLED": "false"' ball46-member2/wrangler.jsonc
+          grep -q "Staging-only visual preview" ball46-member2/public/preview-data.js
+          node --test ball46-member2/tests/*.test.mjs
+      - name: Deploy isolated member2 staging only
+        working-directory: ball46-member2
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.jsonc
+      - name: Check preview URL and original UI assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          base='https://ball46-member2-staging.mccarey-supon.workers.dev'
+          for n in $(seq 1 12); do
+            code="$(curl -sS --max-time 12 -o /tmp/preview -w '%{http_code}' "$base/preview" || true)"
+            if [ "$code" = 200 ] && grep -q 'member.js' /tmp/preview; then break; fi
+            sleep 2
+          done
+          test "$code" = 200
+          grep -q 'preview-data.js' /tmp/preview
+          curl -fsS --max-time 15 "$base/preview-data.js" -o /tmp/preview-data.js
+          grep -q 'MEMBER 2' /tmp/preview-data.js
+          code="$(curl -sS --max-time 12 -o /tmp/memberdaily -w '%{http_code}' "$base/api/member/daily")"
+          test "$code" = 401
+          echo "MEMBER2_PREVIEW_READY $base/preview"
