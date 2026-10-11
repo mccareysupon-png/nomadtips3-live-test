@@ -1,0 +1,44 @@
+name: Audit Ball46 Recovery Timeline 20261011 Read Only
+on:
+  push:
+    branches: [incident/ball46-signal-silent-20261011]
+    paths: [.github/workflows/audit-ball46-recovery-timeline-20261011.yml]
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: Verify current cron, Engine, recent signals and 5Dollar quota
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          const base='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+'/workers';
+          const auth={Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN};
+          const get=async path=>{
+            const r=await fetch(base+path,{headers:auth,signal:AbortSignal.timeout(20000)}),j=await r.json();
+            if(!r.ok||j.success!==true)throw Error('CLOUDFLARE_'+r.status);
+            return j.result;
+          };
+          const names=['nomadtips3-engine-343','nomadtips3-5usd-hub-343','nomadtips3-full-market-343-ball46',
+            'nomadtips3-343-central-cache','nomadtips3-343-central-cache-canary',
+            'nomadtips3-343-full-market-central-canary','nomadtips3-5usd-hub-343-stable-canary'];
+          for(const name of names){
+            const [sch,dep]=await Promise.all([get('/scripts/'+name+'/schedules'),get('/scripts/'+name+'/deployments')]);
+            console.log('RECOVERY_WORKER',JSON.stringify({name,crons:sch.schedules.map(x=>x.cron),version:dep.deployments[0].versions.find(x=>x.percentage===100)?.version_id}));
+          }
+          const getWeb=async p=>{const r=await fetch('https://www.ball46.com/api/'+p+'?recovery='+Date.now(),{cache:'no-store',signal:AbortSignal.timeout(21000)});return {http:r.status,json:await r.json().catch(()=>({}))}};
+          const [health,ledger,stats,full]=await Promise.all([
+            getWeb('engine/health'),getWeb('engine/ledger-health'),getWeb('engine/statistics?paged=1'),getWeb('full-market/health')
+          ]);
+          const errs={};for(const e of health.json.refereeErrors||[])errs[e.error]=(errs[e.error]||0)+1;
+          const cutoff=Date.parse('2026-10-11T12:16:00Z');
+          const rows=(stats.json.rows||[]).filter(x=>Number(x.createdAt)>cutoff).slice().sort((a,b)=>Number(a.createdAt)-Number(b.createdAt));
+          console.log('RECOVERY_SIGNAL_EVENTS',JSON.stringify(rows.map(x=>({market:x.market,at:new Date(Number(x.createdAt)).toISOString(),source:x.priceSource,reference:x.priceReference})).slice(-40)));
+          console.log('RECOVERY_STATUS',JSON.stringify({at:new Date().toISOString(),health:{scan:health.json.finishedAt,live:health.json.liveCount,requests:health.json.refereeRequests,errors:errs},ledger:{total:ledger.json.ledgerTotal,settled:ledger.json.settledTotal},provider:{status:full.json.providerMeta?.lastStatus,remaining:full.json.providerMeta?.remaining,rate:full.json.callsLast60s,retry:full.json.retryAfterSec}}));
+          NODE
