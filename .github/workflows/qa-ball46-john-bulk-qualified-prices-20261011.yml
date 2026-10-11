@@ -1,0 +1,40 @@
+name: QA Ball46 John Bulk Signal Recovery After Deploy
+on:
+  push:
+    branches: [fix/ball46-john-bulk-qualified-prices-20261011]
+    paths: [.github/workflows/qa-ball46-john-bulk-qualified-prices-20261011.yml]
+permissions:
+  contents: read
+jobs:
+  read-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: Verify exact active code and inspect production signal flow with no writes
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import {createHash} from 'node:crypto';
+          const b='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+'/workers',h={Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN};
+          const api=async p=>{const r=await fetch(b+p,{headers:h,signal:AbortSignal.timeout(20000)}),j=await r.json();if(!r.ok||!j.success)throw Error('CF_'+r.status);return j.result};
+          const ds=await api('/scripts/nomadtips3-engine-343/deployments'),v=ds.deployments[0].versions.find(x=>x.percentage===100);
+          const version=v.version_id,srcVersion=await api('/workers/nomadtips3-engine-343/versions/'+version+'?include=modules'),module=srcVersion.modules.find(x=>x.name===srcVersion.main_module),src=Buffer.from(module.content_base64,'base64').toString('utf8');
+          const flags={bulkGate:src.includes('JOHN_BULK_QUALIFIED_PRICE_PREWARM_20261011'),goals:src.includes('BALL46_GOAL_TICK_MAX_AGE_MS=90*1e3'),corners:src.includes('BALL46_CORNER_TICK_MAX_AGE_MS=90*1e3'),noPerFixtureScan:!src.slice(src.indexOf('async scan() {'),src.indexOf('async fetch(request) {',src.indexOf('async scan() {'))).includes('/fixture-odds?fixtureId=')};
+          console.log('JOHN_DEPLOY_READBACK',JSON.stringify({version,sha:createHash('sha256').update(src).digest('hex'),flags}));
+          const urls=['health','board','signals','ledger-health','statistics?paged=1'];
+          const results={};
+          for(const name of urls){const r=await fetch('https://www.ball46.com/api/engine/'+name,{cache:'no-store',signal:AbortSignal.timeout(25000)}),j=await r.json();results[name.split('?')[0]]=j;console.log('JOHN_ENDPOINT',JSON.stringify({name,http:r.status,ok:j.ok,bytes:JSON.stringify(j).length}))}
+          const q=results.health||{},bb=results.board||{},ss=results.signals||{},l=results['ledger-health']||{},st=results.statistics||{};
+          const cnt={};for(const e of q.refereeErrors||[])cnt[e.error||'unknown']=(cnt[e.error||'unknown']||0)+1;
+          const states={};for(const f of bb.fixtures||[])for(const [k,x] of Object.entries(f.analysis||{})){if(x?.state==='PASS'||/BUDGET|UNVERIFIED|UNAVAILABLE|CACHE/.test(x?.state||''))states[k+':'+x.state]=(states[k+':'+x.state]||0)+1}
+          const after=Date.parse('2026-10-11T12:35:30Z');
+          const fresh=(st.rows||[]).filter(x=>Number(x.createdAt)>after),signal=(ss.signals||[]);
+          console.log('JOHN_RECOVERY_STATUS',JSON.stringify({at:new Date().toISOString(),scanStarted:q.startedAt,scanFinished:q.finishedAt,scanOk:q.ok,lastError:q.lastError,live:q.liveCount,refereeRequests:q.refereeRequests,refereeQueued:q.refereeQueued,externalOddsRequests:q.externalOddsRequests,refereeErrors:cnt,boardFixtures:bb.fixtures?.length,boardStale:bb.stale,pending:signal.length,postDeploySignalCount:fresh.length,lastSignalAt:st.rows?.[0]?.createdAt,ledgerTotal:l.ledgerTotal,settled:l.settledTotal,states}));
+          const r=await fetch('https://www.ball46.com/api/full-market/health',{cache:'no-store',signal:AbortSignal.timeout(15000)}),j=await r.json();
+          console.log('JOHN_FULL_MARKET_BUDGET',JSON.stringify({http:r.status,blockedUntil:j.blockedUntil,retryAfter:j.retryAfterSec,providerMeta:j.providerMeta,last60:j.callsLast60s,remaining:j.remainingLocalBudget}));
+          if(version!=='d5e2cfba-0ec8-4098-ae4c-41cda0a18689'||!Object.values(flags).every(Boolean)||!q.ok||l.ledgerTotal<6470)throw Error('PRODUCTION_READBACK_INCOMPLETE');
+          NODE
