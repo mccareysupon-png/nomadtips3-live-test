@@ -1,0 +1,58 @@
+name: QA Ball46 UNSETTLED KPI Desktop Mobile 20261011
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/qa-ball46-statistics-unsettled-kpi-20261011.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser-qa-readonly:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ops/ball46-easybet-crossdevice-fix-20261007
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install headless browser
+        run: |
+          npm install --no-save --ignore-scripts playwright@1.56.1
+          npx playwright install chromium
+      - name: Verify seven KPI cards and count via live ledger; no writes
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import {chromium} from 'playwright';
+          const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
+          for(const [name,viewport] of [['desktop',{width:1440,height:900}],['mobile',{width:390,height:844}]]){
+           const context=await browser.newContext({viewport,isMobile:name==='mobile'});
+           const page=await context.newPage();const errors=[];
+           page.on('pageerror',e=>errors.push(e.message));
+           await page.goto('https://ball46.com/index.html?view=statistics',{waitUntil:'domcontentloaded',timeout:40000});
+           await page.waitForFunction(()=>{const s=document.querySelector('[data-sp-kpi="unsettled"]')?.textContent?.trim();return s&&s!=='—'},null,{timeout:45000});
+           const result=await page.evaluate(async()=>{
+            const d=await window.BALL46_STATISTICS_DATA.load();
+            const rows=d.ledgerRows||[];
+            const count=rows.filter(r=>['PENDING','UNRESOLVED'].includes(String(r?.status||'').trim().toUpperCase())).length;
+            const el=document.querySelector('.sp-kpis');const cards=[...el.querySelectorAll('article.sp-kpi')];
+            const rects=cards.map(e=>{const r=e.getBoundingClientRect();return{x:r.x,y:r.y,w:r.width,h:r.height}});
+            const overlap=rects.some((a,i)=>rects.some((b,j)=>j>i&&Math.min(a.x+a.w,b.x+b.w)-Math.max(a.x,b.x)>2&&Math.min(a.y+a.h,b.y+b.h)-Math.max(a.y,b.y)>2));
+            return {view:document.body.dataset.workspaceView,settled:Number(document.querySelector('[data-sp-kpi="total"]')?.textContent?.replaceAll(',','')),unsettled:Number(document.querySelector('[data-sp-kpi="unsettled"]')?.textContent?.replaceAll(',','')),count,apiPending:d.pending,apiUnresolved:d.unresolved,ledgerTotal:d.ledgerTotal,apiSettled:d.total,cards:cards.length,cardLabels:cards.map(e=>e.querySelector('span')?.textContent),overlap,rects,gridColumns:getComputedStyle(el).gridTemplateColumns};
+           });
+           console.log('QA_RESULT',name,JSON.stringify(result),'BROWSER_ERRORS',JSON.stringify(errors.slice(0,6)));
+           assert.equal(result.view,'statistics','VIEW_LOST');
+           assert.equal(result.cards,7,'NOT_SEVEN_KPI_CARDS');
+           assert.deepEqual(result.cardLabels,['SETTLED','UNSETTLED','WIN','LOSS','PUSH','WIN RATE','AVG ODDS'],'WRONG_KPI_ORDER');
+           assert.equal(result.unsettled,result.count,'UNSETTLED_UI_NOT_LEDGER_COUNT');
+           assert.equal(result.unsettled,result.apiPending+result.apiUnresolved,'UNSETTLED_NOT_PENDING_PLUS_UNRESOLVED');
+           assert.equal(result.settled,result.apiSettled,'SETTLED_CARD_CHANGED');
+           assert(!result.overlap,'KPI_CARDS_OVERLAPPING');
+           assert.equal(errors.length,0,'PAGE_SCRIPT_ERRORS');
+           await context.close();
+          }
+          await browser.close();console.log('BALL46_UNSETTLED_KPI_BROWSER_QA_SUCCESS');
+          NODE
