@@ -1,5 +1,9 @@
 name: Audit Statistics Finished Corners
 on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/audit-statistics-finished-corners-20261011.yml'
   workflow_dispatch:
 permissions:
   contents: read
