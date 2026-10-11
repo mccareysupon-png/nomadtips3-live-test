@@ -1,0 +1,56 @@
+name: Audit Ball46 Asset Readback After Rollback
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/audit-ball46-asset-readback-20261011.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ops/ball46-easybet-crossdevice-fix-20261007
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install parser dependency
+        run: npm install --no-save --ignore-scripts acorn@8
+      - name: Trace asset source and Cloudflare version read-only
+        working-directory: deploy-assets/ball46-member-nav-20261009
+        run: |
+          node --input-type=module <<'NODE'
+          import {inspect,api,script,activeVersion,getVersion,publicFile,sha,directOrigin,origin} from '../daily-performance-20261005/production.mjs';
+          const active=await inspect();
+          console.log('ACTIVE_VERSION',active.restore.version);
+          for(const base of [origin,directOrigin]){
+           for(const query of ['?audit='+Date.now(),'?v=343-dashboard-v2-ui-tune-v5-mobile-single-status-20261006&order=20261006-mobile-eventflow']){
+            const url=base+'/dashboard-v2-tune.js'+query;
+            const r=await fetch(url,{signal:AbortSignal.timeout(10000),headers:{'cache-control':'no-cache'}});
+            const b=Buffer.from(await r.arrayBuffer());
+            console.log('READBACK',url,r.status,'size',b.length,'sha',sha(b),'cache',r.headers.get('cf-cache-status'),'etag',r.headers.get('etag'),'lastModified',r.headers.get('last-modified'),'contentType',r.headers.get('content-type'),'marker',b.toString('utf8').includes('B46_STATS_REFRESH_PRESERVE_NONLIVE_20261011'));
+           }
+          }
+          const deployments=await api('/scripts/'+script+'/deployments?per_page=8');
+          console.log('DEPLOYMENTS',JSON.stringify((deployments.deployments||[]).slice(0,7).map(x=>({id:x.id,created_on:x.created_on,versions:x.versions?.map(y=>({id:y.version_id,pct:y.percentage}))}))));
+          for(const versionId of ['bee98b42-1f37-44c4-aee0-4aec29832284',active.restore.version]){
+           try{
+            const ver=await getVersion(versionId);
+            const main=ver.modules.find(m=>m.name===ver.main_module);
+            const src=Buffer.from(main.content_base64,'base64').toString('utf8');
+            console.log('VERSION_META',versionId,'main',ver.main_module,'modCount',ver.modules.length,'assets',JSON.stringify(ver.assets).slice(0,1200),'bindings',ver.bindings?.map(b=>({type:b.type,name:b.name})),'mainSha',sha(Buffer.from(src)));
+            for(const token of ['dashboard-v2-tune.js','__B46_','ASSETS.fetch','assetManifest']){
+             const i=src.indexOf(token);
+             console.log('MAIN_TOKEN',versionId,token,i,i>=0?src.slice(Math.max(0,i-200),i+300):'');
+            }
+           }catch(e){console.log('VERSION_ERR',versionId,String(e.message||e))}
+          }
+          
+          NODE
