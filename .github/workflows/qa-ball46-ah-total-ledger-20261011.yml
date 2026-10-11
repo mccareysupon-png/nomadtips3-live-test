@@ -1,0 +1,72 @@
+name: QA Ball46 AH Total Ledger Menu 20261011
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/qa-ball46-ah-total-ledger-20261011.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ops/ball46-easybet-crossdevice-fix-20261007
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser
+        run: |
+          npm install --no-save --ignore-scripts playwright@1.56.1
+          npx playwright install chromium
+      - name: Assert menu matches AH ledger count on desktop and mobile before and after 15-second refresh
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import {chromium} from 'playwright';
+          const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
+          async function run(label,viewport){
+           const ctx=await browser.newContext({viewport,isMobile:viewport.width<600});
+           const page=await ctx.newPage(),errors=[];
+           page.on('pageerror',e=>errors.push(e.message.slice(0,240)));
+           await page.goto('https://ball46.com/index.html?view=statistics&market=ah',{waitUntil:'domcontentloaded',timeout:40000});
+           await page.waitForFunction(()=>{
+            const nav=document.querySelector('[data-stat-market="ah"] b');
+            const settled=document.querySelector('[data-sp-kpi="total"]');
+            const pending=document.querySelector('[data-sp-kpi="unsettled"]');
+            return document.body.dataset.workspaceView==='statistics'&&nav&&settled&&pending&&/^\d+$/.test(nav.textContent)&&/^\d+$/.test(settled.textContent)&&/^\d+$/.test(pending.textContent)&&Number(settled.textContent)>0;
+           },null,{timeout:40000});
+           for(const delay of [0,18000]){
+            if(delay)await page.waitForTimeout(delay);
+            const values=await page.evaluate(()=>({
+             view:document.body.dataset.workspaceView,
+             market:location.search,
+             nav:Number(document.querySelector('[data-stat-market="ah"] b')?.textContent||0),
+             settled:Number(document.querySelector('[data-sp-kpi="total"]')?.textContent||0),
+             unsettled:Number(document.querySelector('[data-sp-kpi="unsettled"]')?.textContent||0),
+             totalMenu:Number(document.querySelector('[data-stat-market="all"] b')?.textContent||0)
+            }));
+            console.log('QA_AH',label,'DELAY',delay,JSON.stringify(values),'ERRORS',JSON.stringify(errors));
+            assert.equal(values.view,'statistics','WRONG_VIEW');
+            assert.equal(values.nav,values.settled+values.unsettled,'AH_MENU_NOT_TOTAL_LEDGER');
+            assert(values.nav>values.settled,'AH_MENU_IS_SETTLED_ONLY');
+            assert.equal(errors.length,0,'BROWSER_JS_ERROR');
+           }
+           // Secondary writer runs every 15sec, and must never replace AH full total with settled-only value.
+           const clicked=await page.locator('[data-workspace-view="live"]').first().count();
+           if(clicked){
+             await page.locator('[data-workspace-view="live"]').first().click({timeout:8000});
+             await page.waitForTimeout(550);
+             const n=Number(await page.locator('[data-stat-market="ah"] b').first().textContent());
+             console.log('QA_LIVE_NAV',label,n);
+             assert(n>0,'LIVE_NAV_AH_MISSING');
+           }
+           await ctx.close();
+           console.log('QA_DEVICE_PASS',label);
+          }
+          try{await Promise.all([run('desktop',{width:1440,height:900}),run('mobile',{width:390,height:844})]);console.log('BALL46_AH_FULL_LEDGER_MENU_BROWSER_QA_SUCCESS')}finally{await browser.close()}
+          
+          NODE
