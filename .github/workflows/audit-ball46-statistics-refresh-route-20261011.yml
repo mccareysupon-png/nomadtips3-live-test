@@ -1,0 +1,61 @@
+name: Audit Ball46 Statistics Refresh Routing Readonly
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/audit-ball46-statistics-refresh-route-20261011.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ops/ball46-easybet-crossdevice-fix-20261007
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install parser
+        run: npm install --no-save --ignore-scripts acorn@8
+      - name: Inspect live refresh route and navigation code only
+        working-directory: deploy-assets/ball46-member-nav-20261009
+        run: |
+          node --input-type=module <<'NODE'
+          import {publicFile} from '../daily-performance-20261005/production.mjs';
+          import {parse} from 'acorn';
+          const names=['singlepage-workspace-343.js','workspace-route-guard-343.js','mobile-menu-classic-343.js','ui-sync-fixes-343-v2.js'];
+          for(const name of names){
+           try{
+           const t=(await publicFile('/'+name)).toString('utf8');
+           console.log('\nFILE',name,'BYTES',t.length);
+           if(name==='workspace-route-guard-343.js')console.log('ROUTE_GUARD_ALL',t.slice(0,16000));
+           if(name==='singlepage-workspace-343.js'){
+           const tree=parse(t,{ecmaVersion:'latest',sourceType:'script'});
+           function walk(n){if(!n||typeof n!=='object')return;if((n.type==='FunctionDeclaration'||n.type==='VariableDeclarator')&&/route|view|stat|navigate|init/i.test(n.id?.name||'')){const z=t.slice(n.start,n.end);if(z.length<7500)console.log('FUNCTION',n.id?.name,z);else console.log('FUNCTION_LARGE',n.id?.name,z.slice(0,4000),z.slice(-1700));}for(const[k,v]of Object.entries(n)){if(['start','end'].includes(k))continue;if(Array.isArray(v))v.forEach(walk);else if(v&&typeof v==='object')walk(v)}}
+           walk(tree);
+           console.log('JS_START',t.slice(0,6200)); console.log('JS_END',t.slice(-10500));
+           }
+           const tokens=['history.pushState','history.replaceState','popstate','location.search','location.hash','location.pathname','URLSearchParams','state.view','view=statistics','pageshow','DOMContentLoaded','location.reload','window.location'];
+           for(const token of tokens){
+            const hits=[];let i=0;
+            while((i=t.indexOf(token,i))>=0&&hits.length<16){hits.push(t.slice(Math.max(i-220,0),i+280).replace(/\n/g,' '));i+=token.length}
+            if(hits.length)console.log('HITS',name,token,JSON.stringify(hits).slice(0,8300));
+           }
+           }catch(e){console.log('FILE_ERR',name,String(e.message||e))}
+          }
+          const html=(await publicFile('/index.html','html')).toString('utf8');
+          console.log('HTML_START',html.slice(0,4000));
+          console.log('HTML_URL_HINTS', [...html.matchAll(/.{0,220}(?:view=statistics|workspace-route-guard|data-workspace-view="statistics"|location.search|pushState|replaceState|window.location).{0,300}/gi)].slice(0,30).map(z=>z[0]));
+          for(const suffix of ['/index.html?view=statistics','/index.html?view=statistics&market=corners','/?view=statistics']){
+           try{const x=await fetch('https://ball46.com'+suffix,{redirect:'manual',signal:AbortSignal.timeout(10000)});
+           console.log('FETCH_ROUTE',suffix,x.status,x.headers.get('location'),x.headers.get('content-type'));
+           }catch(e){console.log('FETCH_ROUTE_ERR',suffix,String(e.message))}
+          }
+          
+          NODE
