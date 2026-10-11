@@ -1,0 +1,28 @@
+name: Audit Ball46 Live Corner Referee Path 20261011
+on:
+  push:
+    branches: [audit/ball46-corner-live-price-20261011]
+    paths: [.github/workflows/audit-ball46-corner-referee-branch-20261011.yml]
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: Read only exact live selection path
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          const a=process.env.CLOUDFLARE_ACCOUNT_ID,t=process.env.CLOUDFLARE_API_TOKEN,b='https://api.cloudflare.com/client/v4/accounts/'+a+'/workers';
+          const j=async p=>{const r=await fetch(b+p,{headers:{Authorization:'Bearer '+t}});return (await r.json()).result};
+          const ds=await j('/scripts/nomadtips3-engine-343/deployments');
+          const id=ds.deployments[0].versions.find(x=>x.percentage===100).version_id;
+          const v=await j('/workers/nomadtips3-engine-343/versions/'+id+'?include=modules');
+          const code=Buffer.from(v.modules.find(x=>x.name===v.main_module).content_base64,'base64').toString('utf8'),l=code.split('\n');
+          console.log('SOURCE_VER',id);
+          for(const [start,end] of [[982,1024],[1025,1037],[660,743]])console.log('SOURCE_RANGE',JSON.stringify({start,end,code:l.slice(start-1,end).map((x,i)=>(i+start)+':'+x).join('\n')}));
+          NODE
