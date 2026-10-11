@@ -39,7 +39,7 @@ jobs:
           const target='statistics.html';
           const marker='B46_LEGACY_STATISTICS_TO_MAIN_20261011';
           const anchor='<meta charset="utf-8">';
-          const injection=String.raw"\n<!-- B46_LEGACY_STATISTICS_TO_MAIN_20261011: the one production Statistics view owns all data. -->\n<meta http-equiv=\"refresh\" content=\"0;url=/index.html?view=statistics\">\n<script>window.location.replace('/index.html?view=statistics');</script>";
+          const injection="\n<!-- B46_LEGACY_STATISTICS_TO_MAIN_20261011: the one production Statistics view owns all data. -->\n<meta http-equiv=\"refresh\" content=\"0;url=/index.html?view=statistics\">\n<script>window.location.replace('/index.html?view=statistics');</script>";
           mkdirSync('audit-legacy-route-repair',{recursive:true});
           const report={scope:'Legacy /statistics.html entrypoint ONLY: direct navigation to the live one-page /index.html?view=statistics. No changes to main index, statistics UI, data, worker or Engine.',createdAt:new Date().toISOString()};
           const save=()=>writeFileSync('audit-legacy-route-repair/report.json',JSON.stringify(report,null,2));
