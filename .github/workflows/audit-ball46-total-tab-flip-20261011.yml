@@ -16,6 +16,11 @@ jobs:
         run: |
           node --input-type=module <<'NODE'
           const base='https://ball46.com';
+          const sync=await(await fetch(base+'/ui-sync-fixes-343-v2.js',{signal:AbortSignal.timeout(20000)})).text();
+          for(const term of ['function paintStatCounts','function paintStatSummary','function loadStatCountsOnce','ball46:statistics-snapshot','const summary','function bind']){
+           const i=sync.indexOf(term);console.log('UI_SYNC_FUNCTION',term,i,i>=0?sync.slice(Math.max(0,i-250),Math.min(sync.length,i+2300)).replaceAll('\n',' '):'');
+          }
+          console.log('UI_SYNC_LENGTH',sync.length);
           const sjs=await(await fetch(base+'/singlepage-workspace-343.js',{signal:AbortSignal.timeout(20000)})).text();
           console.log('MIRROR_FUNCTION_BLOCK',sjs.slice(15550,17520).replaceAll('\n',' '));
           console.log('STAT_NAV_BLOCK',sjs.slice(17000,17600).replaceAll('\n',' '));
