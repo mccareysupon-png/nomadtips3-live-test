@@ -16,6 +16,16 @@ jobs:
         run: |
           node --input-type=module <<'NODE'
           const base='https://ball46.com';
+          const source=await (await fetch(base+'/singlepage-workspace-343.js',{signal:AbortSignal.timeout(25000)})).text();
+          for(const name of ['function filteredRows(){','function renderKpis(rows){','function renderStatHeader(){','function renderStatNav(){','function renderFilters(){','function renderVariants(){']) {
+           const start=source.indexOf(name); console.log('FUNCTION',name,start,start>=0?source.slice(start,Math.min(source.length,start+5200)).replaceAll('\n',' '):'');
+          }
+          const html=await (await fetch(base+'/index.html',{signal:AbortSignal.timeout(25000)})).text();
+          for(const term of ['data-sp-kpis','data-sp-kpi','data-stat-kpis','Current sample','Winning signals','Recorded entry','sp-kpi-grid','sp-kpi']){
+           let pos=0,n=0;while((pos=html.toLowerCase().indexOf(term.toLowerCase(),pos))>=0&&n++<5){console.log('HTML_HIT',term,pos,html.slice(Math.max(0,pos-700),pos+1600).replaceAll('\n',' '));pos+=term.length}
+          }
+          const css=await (await fetch(base+'/singlepage-workspace-343.css',{signal:AbortSignal.timeout(25000)})).text();
+          for(const term of ['.sp-kpi','.sp-kpis','.sp-summary','.sp-kpi-grid']){let pos=0,n=0;while((pos=css.indexOf(term,pos))>=0&&n++<8){console.log('CSS_HIT',term,pos,css.slice(Math.max(0,pos-260),pos+800).replaceAll('\n',' '));pos+=term.length}}
           for (const route of ['/api/engine/statistics','/api/engine/statistics?paged=1']) {
             try {
               const r=await fetch(base+route,{headers:{'Cache-Control':'no-cache'},signal:AbortSignal.timeout(25000)});
