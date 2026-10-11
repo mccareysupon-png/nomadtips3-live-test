@@ -1,0 +1,54 @@
+name: Audit Ball46 O-U Live Goal Tick and Active Corners Guard
+on:
+  push:
+    branches: [audit/ball46-goal-live-referee-20261011]
+    paths: [.github/workflows/audit-ball46-goals-odds-ticks-20261011.yml]
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
+    steps:
+      - name: Inspect active Engine exact source and sample O-U history ticks (read only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import {createHash} from 'node:crypto';
+          const account=process.env.CLOUDFLARE_ACCOUNT_ID,token=process.env.CLOUDFLARE_API_TOKEN;
+          const base='https://api.cloudflare.com/client/v4/accounts/'+account+'/workers';
+          const cf=async p=>{
+            const r=await fetch(base+p,{headers:{Authorization:'Bearer '+token},signal:AbortSignal.timeout(28000)}),j=await r.json();
+            if(!r.ok||!j.success)throw Error('CLOUDFLARE_'+r.status);
+            return j.result;
+          };
+          const ds=await cf('/scripts/nomadtips3-engine-343/deployments');
+          const id=ds.deployments?.[0]?.versions?.find(v=>Number(v.percentage)===100)?.version_id;
+          const v=await cf('/workers/nomadtips3-engine-343/versions/'+id+'?include=modules');
+          const src=Buffer.from(v.modules.find(m=>m.name===v.main_module).content_base64,'base64').toString('utf8');
+          const lines=src.split('\n');
+          console.log('ACTIVE_OU_SOURCE',JSON.stringify({versionId:id,sha:createHash('sha256').update(src).digest('hex'),bytes:src.length,main:v.main_module,modules:v.modules.length,cornerGuard:src.includes('BALL46_CORNER_TICK_MAX_AGE_MS'),priorSettlement:src.includes('missing-final-direct-v1')}));
+          for(const term of ['function isVerifiedCornerMarket(key)','function cornerHistorySpec(key)','function verifyRecentCornerHistory(','function fetchVerifiedCornerOnly(','let cornerTickRequests=0;','const cornerTickCache=new Map();','if (!full && !marketCandidates.some(','if (isVerifiedCornerMarket(key))','const best = pickBestPriced(cands,','BET365_VERIFIED_HISTORY_INPLAY','ft_over:', 'ht_over:','ft_corner_over:']){
+            const hits=lines.flatMap((x,i)=>x.includes(term)?[i]:[]).slice(0,3);
+            console.log('OU_SOURCE_MATCH',JSON.stringify({term,lines:hits.map(i=>({line:i+1,code:lines.slice(i,Math.min(i+45,lines.length)).join('\n').slice(0,6500)}))}));
+          }
+          const board=await fetch('https://www.ball46.com/api/engine/board?goals_audit='+Date.now(),{cache:'no-store',signal:AbortSignal.timeout(22000)}).then(r=>r.json());
+          const live=(board.fixtures||[]).filter(x=>String(x.boardState||'').toLowerCase()==='live');
+          const sample=live.find(x=>Number(x.minute)>=12&&Number(x.minute)<=38)||live.find(x=>Number(x.minute)>=20&&Number(x.minute)<80)||live[0];
+          const fid=String(sample?.fixtureId||'');
+          console.log('OU_AUDIT_FIXTURE',JSON.stringify({liveCount:live.length,fixtureId:fid,minute:sample?.minute??null,score:sample?.goals??null,analysis:{ft_over:sample?.analysis?.ft_over?.state,ht_over:sample?.analysis?.ht_over?.state}}));
+          const key=process.env.FIVEDOLLAR_API_KEY;
+          if(!key||!fid){console.log('OU_TICKS_ERROR','KEY_OR_LIVE_FIXTURE_MISSING');process.exit(0)}
+          for(const m of ['goalline','goalline_half']){
+            const url='https://api.5dollarfootballapi.com/v1/fixtures/'+encodeURIComponent(fid)+'/odds/history?market='+m+'&bookmaker=bet365&per_page=500';
+            const r=await fetch(url,{headers:{Authorization:'Bearer '+key},signal:AbortSignal.timeout(20000)});
+            const j=await r.json().catch(()=>({})),d=j.data||{},ticks=Array.isArray(d.ticks)?d.ticks:[];
+            const last=ticks.at(-1)||{},ts=Date.parse(String(last.recorded_at||''));
+            console.log('OU_HISTORY_PROBE',JSON.stringify({market:m,http:r.status,error:j.error?.code||null,fixtureId:d.fixture_id??null,bookmaker:d.bookmaker?.slug??null,returnedMarket:d.market??null,count:ticks.length,hasMore:j.pagination?.has_more??null,limit:r.headers.get('x-ratelimit-limit'),remaining:r.headers.get('x-ratelimit-remaining'),latest:{minute:last.minute??null,line:last.line??null,over:last.over??null,under:last.under??null,suspended:last.suspended??null,half_time:last.half_time??null,recorded_at:last.recorded_at??null,ageSeconds:Number.isFinite(ts)?Math.round((Date.now()-ts)/1000):null}}));
+          }
+          NODE
