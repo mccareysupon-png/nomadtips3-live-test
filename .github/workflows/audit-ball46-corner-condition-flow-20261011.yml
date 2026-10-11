@@ -1,0 +1,62 @@
+name: Audit Ball46 Corner Condition Flow 20261011
+on:
+  push:
+    branches: [audit/ball46-corner-live-price-20261011]
+    paths: [.github/workflows/audit-ball46-corner-condition-flow-20261011.yml]
+permissions:
+  contents: read
+jobs:
+  audit-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: Inspect exact active engine conditions without scanning or changing runstate
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import {createHash} from 'node:crypto';
+          const acc=process.env.CLOUDFLARE_ACCOUNT_ID,token=process.env.CLOUDFLARE_API_TOKEN;
+          if(!acc||!token)throw Error('CF_CREDENTIALS_UNAVAILABLE');
+          const base='https://api.cloudflare.com/client/v4/accounts/'+acc+'/workers';
+          const get=async p=>{
+            const r=await fetch(base+p,{headers:{Authorization:'Bearer '+token},signal:AbortSignal.timeout(25000)});
+            const j=await r.json().catch(()=>({}));
+            if(!r.ok||!j.success)throw Error('CF_READ_FAILED_'+r.status);
+            return j.result;
+          };
+          const deploy=(await get('/scripts/nomadtips3-engine-343/deployments')).deployments?.[0];
+          const id=deploy?.versions?.find(x=>Number(x.percentage)===100)?.version_id;
+          if(!id)throw Error('ACTIVE_VERSION_NOT_100_PERCENT');
+          const v=await get('/workers/nomadtips3-engine-343/versions/'+id+'?include=modules');
+          const m=v.modules?.find(x=>x.name===v.main_module);
+          if(!m?.content_base64)throw Error('SOURCE_UNAVAILABLE');
+          const source=Buffer.from(m.content_base64,'base64').toString('utf8');
+          const lines=source.split('\n');
+          console.log('ACTIVE_CORNER_ENGINE',JSON.stringify({versionId:id,created:deploy.created_on,main:v.main_module,bytes:source.length,sha256:createHash('sha256').update(source).digest('hex'),lineCount:lines.length}));
+          const functions=['MARKET_RULES','DEFAULT_SETTINGS','sanitizeSettings','sanitizeRun','currentBasisTotal','lineGap','gapPass','periodEligible','evidenceForSelection','preCandidatesForRule','oddsRoot','findMarket','stageValue','priceFor','pricePass','bookmakerRows','bookmakerIdentity','bookmakerWeight','consensusProviderLine','referencePrice','offersFor','pickBestPriced','fetchFullOdds','fetchFullMarket','refereeQuote'];
+          const printed=new Set();
+          for(const name of functions){
+            const pattern=name==='MARKET_RULES'||name==='DEFAULT_SETTINGS'
+              ?new RegExp('(?:var|const|let)\\s+'+name+'\\s*=')
+              :new RegExp('(?:function\\s+'+name+'\\s*\\(|(?:async\\s+)?'+name+'\\s*\\([^\\n]*\\)\\s*\\{)');
+            const idx=lines.findIndex(x=>pattern.test(x));
+            if(idx<0){console.log('SOURCE_FUNCTION_MISSING',name);continue}
+            const max=name==='offersFor'||name==='consensusProviderLine'||name==='pickBestPriced'?52:name==='pricePass'||name==='preCandidatesForRule'?33:name==='DEFAULT_SETTINGS'||name==='MARKET_RULES'?34:26;
+            const fragment=lines.slice(idx,Math.min(idx+max,lines.length)).map((x,i)=>String(idx+i+1)+':'+x).join('\n');
+            console.log('SOURCE_FUNCTION',JSON.stringify({name,startLine:idx+1,lines:fragment.slice(0,9500)}));
+          }
+          const interest=['ft_corner_over','ft_corner_under','ht_corner_over','ht_corner_under','ft_corner_ah','refereeConsensusSlugs','canonicalLine','referenceProviderLine','lineGapMax','priceSource','selectionLine','providerLine','quoteAt','observedAt','sourceUpdatedAt','suspended','PRICE_REJECT'];
+          for(const term of interest){
+            const hits=lines.map((x,i)=>({line:i+1,code:x.trim().slice(0,550)})).filter(x=>x.code.includes(term));
+            console.log('SOURCE_TERM',JSON.stringify({term,count:hits.length,examples:hits.slice(0,6)}));
+          }
+          // Public settings is a passive endpoint; never call /scan, /board, /signals, or /health.
+          const r=await fetch('https://www.ball46.com/api/engine/settings?corner_conditions='+Date.now(),{cache:'no-store',signal:AbortSignal.timeout(20000)});
+          const j=await r.json().catch(()=>({}));
+          const keys=['ft_corner_over','ft_corner_under','ht_corner_over','ht_corner_under','ft_corner_ah'];
+          console.log('ACTIVE_CORNER_SETTINGS',JSON.stringify({http:r.status,version:j.version,corners:Object.fromEntries(keys.map(k=>[k,{run:j.runState?.[k]??null,settings:j.settings?.[k]??null}]))}));
+          NODE
