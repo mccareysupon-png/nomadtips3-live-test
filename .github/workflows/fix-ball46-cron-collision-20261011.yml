@@ -1,0 +1,25 @@
+name: Fix Ball46 FullMarket HUB Cron Collision Only 20261011
+on:
+  push:
+    branches: [fix/ball46-5usd-cron-collision-20261011]
+    paths:
+      - '.github/workflows/fix-ball46-cron-collision-20261011.yml'
+permissions:
+  contents: read
+concurrency:
+  group: ball46-fullmarket-cron-stagger-20261011
+  cancel-in-progress: false
+jobs:
+  guarded:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check deploy-assets/ball46-5usd-cron-stagger/stagger.mjs
+      - run: node deploy-assets/ball46-5usd-cron-stagger/stagger.mjs
