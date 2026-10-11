@@ -20,8 +20,14 @@ function method(source, name, edit) {
     }
   };
   walk(ast);
-  assert.equal(methods.length,1,"METHOD_SHAPE_"+name);
-  const m = methods[0], before = source.slice(m.start,m.end);
+  const selected = methods.filter(m => {
+    const body = source.slice(m.start,m.end);
+    return name === "scan" ? body.includes("      let reconciled = 0;") && body.includes("realtimePendingNewRows") :
+      name === "compactWorkingSignalsAfterLedger" ? body.includes("WORK_SETTLED_TAIL") :
+      name === "reconcileExternalFinal" ? body.includes("secureTokenOk") : false;
+  });
+  assert.equal(selected.length,1,"METHOD_SHAPE_"+name);
+  const m = selected[0], before = source.slice(m.start,m.end);
   return source.slice(0,m.start) + edit(before) + source.slice(m.end);
 }
 function keepProvisional(source) {
