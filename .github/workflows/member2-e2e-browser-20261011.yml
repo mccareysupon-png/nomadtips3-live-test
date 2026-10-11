@@ -1,0 +1,65 @@
+name: Member2 Browser Real End-To-End Render QA
+on:
+  push:
+    branches: [member2/isolated-ui-and-registration-20261011]
+    paths: ['.github/workflows/member2-e2e-browser-20261011.yml']
+permissions: {contents: read}
+jobs:
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Install DOM harness only
+        run: npm install --silent --no-save --no-package-lock --prefix /tmp/member2dom jsdom@26
+      - name: Authenticated real API to browser, expand Featured Match and Event Flow
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import {webcrypto as crypto} from 'node:crypto';
+          import {createRequire} from 'node:module';
+          import fs from 'node:fs';
+          import worker from './ball46-member2/src/worker.js';
+          const require=createRequire(import.meta.url);
+          const {JSDOM}=require('/tmp/member2dom/node_modules/jsdom');
+          const kp=await crypto.subtle.generateKey({name:'RSASSA-PKCS1-v1_5',modulusLength:2048,publicExponent:new Uint8Array([1,0,1]),hash:'SHA-256'},true,['sign','verify']);
+          const key=await crypto.subtle.exportKey('jwk',kp.publicKey);key.kid='test';key.use='sig';
+          const p=o=>Buffer.from(JSON.stringify(o)).toString('base64url');
+          const now=Math.floor(Date.now()/1000);
+          const h=p({alg:'RS256',kid:'test'});
+          const payload=p({sub:'qa',email:'owner@test.invalid',iss:'https://test.cloudflareaccess.com',aud:['test'],iat:now-10,exp:now+600});
+          const unsigned=h+'.'+payload;
+          const token=unsigned+'.'+Buffer.from(await crypto.subtle.sign('RSASSA-PKCS1-v1_5',kp.privateKey,new TextEncoder().encode(unsigned))).toString('base64url');
+          const orig=globalThis.fetch;
+          globalThis.fetch=(u,o)=>String(u).includes('test.cloudflareaccess.com/cdn-cgi/access/certs')?Promise.resolve(new Response(JSON.stringify({keys:[key]}))):orig(u,o);
+          const env={CF_ACCESS_TEAM_DOMAIN:'test.cloudflareaccess.com',CF_ACCESS_AUD:'test',OWNER_CHECKOUT_EMAIL:'owner@test.invalid'};
+          const html=fs.readFileSync('ball46-member2/public/member.html','utf8');
+          const dom=new JSDOM(html,{url:'https://staging.example/member',runScripts:'outside-only',pretendToBeVisual:true});
+          const win=dom.window;win.setInterval=()=>0;win.CSS.escape??=(s=>String(s).replace(/[^a-zA-Z0-9_-]/g,'_'));
+          const errors=[];win.console.error=(...a)=>errors.push(a.map(String).join(' '));
+          let detailCount=0;
+          win.fetch=async(input)=>{
+            const path=new URL(typeof input==='string'?input:input.url,win.location.href).pathname;
+            if(path==='/api/member/match')detailCount++;
+            return worker.fetch(new Request(new URL(typeof input==='string'?input:input.url,win.location.href),{headers:{'Cf-Access-Jwt-Assertion':token}}),env,{});
+          };
+          win.eval(fs.readFileSync('ball46-member2/public/event-flow-icons.js','utf8'));
+          win.eval(fs.readFileSync('ball46-member2/public/member.js','utf8'));
+          await new Promise(r=>setTimeout(r,2400));
+          const total=win.document.querySelectorAll('#signalRows tr.signal-row').length;
+          console.log('BOARD_RENDER',JSON.stringify({pageRows:total,visibleSignals:win.document.querySelector('.live-pill')?.textContent,errors}));
+          if(!total){process.exitCode=1;dom.window.close();process.exit()}
+          win.document.querySelector('#signalRows tr.signal-row')?.click();
+          await new Promise(r=>setTimeout(r,2200));
+          const inner=win.document.querySelector('#signalRows .signal-detail-row');
+          const featured=!!inner?.querySelector('.featured-horizontal');
+          const flow=!!inner?.querySelector('.member-flow');
+          const chart=!!inner?.querySelector('.member-flow-chart');
+          const eventPins=inner?.querySelectorAll('.member-flow-pin').length||0;
+          const signalPins=inner?.querySelectorAll('.member-flow-signal').length||0;
+          console.log('DETAIL_RENDER',JSON.stringify({detailRequests:detailCount,featured,flow,chart,eventPins,signalPins,info:inner?.textContent.slice(0,150),errors}));
+          if(!featured||!flow||detailCount<1||errors.length)process.exitCode=1;
+          dom.window.close();
+          NODE
