@@ -1,8 +1,6 @@
 name: Deploy Member2 Separate Production
 on:
-  push:
-    branches: [member2/isolated-ui-and-registration-20261011]
-    paths: ['.github/workflows/deploy-member2-production-20261011.yml']
+  workflow_dispatch:
 permissions: {contents: read}
 concurrency:
   group: member2-isolated-production
