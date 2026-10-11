@@ -1,0 +1,56 @@
+name: Audit Ball46 Statistics Table Columns Readonly
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/audit-ball46-statistics-columns-20261011.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ops/ball46-easybet-crossdevice-fix-20261007
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install parser
+        run: npm install --no-save --ignore-scripts acorn@8
+      - name: Inspect live Stats table markup and CSS only
+        working-directory: deploy-assets/ball46-member-nav-20261009
+        run: |
+          node --input-type=module <<'NODE'
+          import {publicFile} from '../daily-performance-20261005/production.mjs';
+          const names=['index.html','singlepage-workspace-343.css','statistics-page-343.css','dashboard-v2.css','theme-light-343.css'];
+          for(const name of names) {
+           try{
+            const src=(await publicFile('/'+name)).toString('utf8');
+            console.log('=== FILE',name,'SIZE',src.length,'===');
+            if(name==='index.html'){
+             for(const term of ['data-sp-table-body','sp-table','Statistics','ENTRY','Entry']){
+              const idx=src.indexOf(term);console.log('HTML_TERM',term,'IDX',idx,idx>=0?src.slice(Math.max(0,idx-1800),Math.min(src.length,idx+2500)).replace(/\s+/g,' '):'MISSING');
+             }
+             continue;
+            }
+            const lines=src.split('\n');
+            let count=0, at=[];
+            for(let i=0;i<lines.length;i++) if(/sp-table|sp-record|data-sp-table|table-layout|th:nth-child|td:nth-child|overflow-x|\.sp-layout|\.statistics|\.stats-table/i.test(lines[i])) at.push(i);
+            const shown=new Set();
+            for(const i of at) {
+             if(count++>=85)break;
+             const begin=Math.max(0,i-8),end=Math.min(lines.length,i+10);
+             for(let j=begin;j<end;j++){if(shown.has(j))continue;shown.add(j);console.log('CSS',name,(j+1)+':',lines[j])}
+             console.log('---');
+            }
+            console.log('MATCHED_LINES',name,at.length);
+           }catch(e){console.log('INSPECT_ERROR',name,String(e).slice(0,350))}
+          }
+          
+          NODE
