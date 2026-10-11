@@ -1,0 +1,25 @@
+name: Configure Member2 Separate Access
+on:
+  push:
+    branches: [member2/isolated-ui-and-registration-20261011]
+    paths: ['.github/workflows/member2-access-config.yml']
+permissions: {contents: read}
+jobs:
+  access:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure separate Cloudflare Access application for member2
+        run: |
+          set -euo pipefail
+          api="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/access/apps"
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$api" > /tmp/apps.json
+          existing=$(jq -r '.result[]? | select(.domain=="member2.ball46.com") | .aud' /tmp/apps.json | head -n1)
+          if [ -n "$existing" ]; then echo "MEMBER2_ACCESS_READY"; exit 0; fi
+          jq -n --arg owner "mccarey.supon@gmail.com" '{name:"Ball46 Member2",type:"self_hosted",domain:"member2.ball46.com",session_duration:"24h",policies:[{name:"Owner only",decision:"allow",include:[{email:{email:$owner}}]}]}' > /tmp/payload.json
+          code=$(curl -sS -o /tmp/created.json -w '%{http_code}' -X POST -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'content-type: application/json' --data-binary @/tmp/payload.json "$api")
+          jq -c '{success,errors,aud:.result.aud,domain:.result.domain}' /tmp/created.json
+          test "$code" = 200 || test "$code" = 201
