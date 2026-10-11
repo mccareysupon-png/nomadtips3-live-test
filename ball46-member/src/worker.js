@@ -185,6 +185,15 @@ function normalizeSignal(row) {
   };
 }
 
+function isActiveUnsettledSignal(row) {
+  // A real recorded Ledger signal, NOT the match count and NOT every
+  // unresolved signal: finished fixtures awaiting settlement are excluded.
+  if (!row?.id || !row?.fixtureId || row.status!=='PENDING' || row.result!=='PENDING') return false;
+  const matchStatus=String(row.mirrorStatus||'').toLowerCase();
+  if (/(finished|ended|full.?time|\\bft\\b|after.?pen|\\baet\\b|cancel|postpon|abandon|not.?start|scheduled)/.test(matchStatus)) return false;
+  return /(live|in.?play|1h|2h|half.?time|\\bht\\b|break|paused|extra.?time|penalt|in.progress)/.test(matchStatus);
+}
+
 function dailySummary(rows) {
   const out = {};
   for (const market of MARKET_ORDER) {
@@ -198,7 +207,7 @@ function dailySummary(rows) {
       else if (row.result === 'PUSH') counts.push++;
       else if (row.result === 'HALF_WIN') counts.halfWin++;
       else if (row.result === 'HALF_LOSS') counts.halfLoss++;
-      else counts.pending++;
+      else if (isActiveUnsettledSignal(row)) counts.pending++;
     }
     const decided = counts.win + counts.loss + counts.halfWin + counts.halfLoss;
     const winPoints = counts.win + counts.halfWin * 0.5;
