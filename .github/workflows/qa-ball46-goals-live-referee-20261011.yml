@@ -1,0 +1,52 @@
+name: QA Ball46 Goals O-U Verified Live Odds Referee 20261011
+on:
+  push:
+    branches: [work/ball46-goals-live-referee-20261011]
+    paths: [.github/workflows/qa-ball46-goals-live-referee-20261011.yml]
+permissions:
+  contents: read
+jobs:
+  read-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: Verify deployed Worker, goals guard, existing corners and Statistics
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import {createHash} from 'node:crypto';
+          const base='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+'/workers';
+          const head={Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN};
+          const get=async p=>{const r=await fetch(base+p,{headers:head,signal:AbortSignal.timeout(25000)}),j=await r.json();if(!r.ok||j?.success!==true)throw Error('CLOUDFLARE_READ_'+r.status);return j.result};
+          const ds=await get('/scripts/nomadtips3-engine-343/deployments'),id=ds.deployments?.[0]?.versions?.find(x=>Number(x.percentage)===100)?.version_id;
+          const v=await get('/workers/nomadtips3-engine-343/versions/'+id+'?include=modules');
+          const src=Buffer.from(v.modules.find(m=>m.name===v.main_module).content_base64,'base64').toString('utf8');
+          const sha=createHash('sha256').update(src).digest('hex');
+          const flags={verifiedGoals:src.includes('BALL46_GOAL_TICK_MAX_AGE_MS=90*1e3'),verifiedCorners:src.includes('BALL46_CORNER_TICK_MAX_AGE_MS=90*1e3'),goalBudget1:src.includes('BALL46_GOAL_TICK_REQUESTS_PER_SCAN=1'),cornerBudget2:src.includes('BALL46_CORNER_TICK_REQUESTS_PER_SCAN=2'),goalPriceSource:src.includes('BET365_VERIFIED_GOALS_HISTORY_INPLAY'),settlementBridge:src.includes('missing-final-direct-v1')};
+          console.log('POST_GOALS_ACTIVE',JSON.stringify({versionId:id,sha,flags}));
+          if(id!=='cde92e54-ed87-4144-9c16-c12d365bbc01'||Object.values(flags).some(x=>!x))throw Error('WORKER_NEW_DEPLOY_NOT_ACTIVE_OR_GUARD_LOST');
+          const origin='https://www.ball46.com';
+          const request=async path=>{const r=await fetch(origin+path,{cache:'no-store',signal:AbortSignal.timeout(27000)}),j=await r.json().catch(()=>({}));return {http:r.status,j}};
+          const [health,ledger,settings,statistics,signals,board]=await Promise.all([
+            request('/api/engine/health'),request('/api/engine/ledger-health'),request('/api/engine/settings'),
+            request('/api/engine/statistics?paged=1'),request('/api/engine/signals'),request('/api/engine/board')
+          ]);
+          const ids=['ft_over','ft_under','ht_over','ht_under'];
+          console.log('POST_GOALS_HEALTH',JSON.stringify({http:health.http,ok:health.j.ok,version:health.j.version,lastError:health.j.lastError,refereeErrors:health.j.refereeErrors?.length||0}));
+          console.log('POST_GOALS_STATISTICS',JSON.stringify({ledgerHttp:ledger.http,ledgerTotal:ledger.j.ledgerTotal,settled:ledger.j.settledTotal,statisticsHttp:statistics.http,statisticsRows:statistics.j.rows?.length,statisticsTotal:statistics.j.ledgerTotal}));
+          console.log('POST_GOALS_SETTINGS',JSON.stringify({http:settings.http,run:Object.fromEntries(ids.map(k=>[k,settings.j.runState?.[k]])),lineGapMax:settings.j.settings?.ft_over?.lineGapMax,oddsMin:settings.j.settings?.ft_over?.oddsMin}));
+          const rows=signals.j.signals||[];
+          const at=Date.parse('2026-10-11T10:48:24Z');
+          const changed=rows.filter(x=>ids.includes(String(x.market))&&Number(x.createdAt)>at);
+          const newQuotes=changed.map(x=>({market:x.market,source:x.priceSource,book:x.bookmakerSlug,line:x.line,odds:x.odds}));
+          console.log('POST_GOALS_PROVENANCE',JSON.stringify({http:signals.http,allPending:rows.length,newGoalsSinceDeploy:changed.length,quotes:newQuotes.slice(-10)}));
+          if(changed.some(x=>x.priceSource!=='BET365_VERIFIED_GOALS_HISTORY_INPLAY'||String(x.bookmakerSlug||'').toLowerCase()!=='bet365'))throw Error('UNVERIFIED_GOAL_SIGNAL_CREATED_AFTER_DEPLOY');
+          const states={};for(const f of board.j.fixtures||[])for(const k of ids){const x=f.analysis?.[k]?.state||'NONE';states[k+':'+x]=(states[k+':'+x]||0)+1}
+          console.log('POST_GOALS_BOARD',JSON.stringify({http:board.http,ok:board.j.ok,fixtures:board.j.fixtures?.length,states}));
+          if(!health.j.ok||!ledger.j.ok||ledger.j.ledgerTotal<6458||!statistics.j.ok||!Array.isArray(statistics.j.rows)||!settings.j.ok)throw Error('PRODUCTION_DATA_HEALTH_FAILURE');
+          console.log('GOALS_LIVE_REFEREE_READBACK_QA_PASS');
+          NODE
