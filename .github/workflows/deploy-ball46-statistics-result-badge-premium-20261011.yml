@@ -1,0 +1,45 @@
+name: Deploy Ball46 Statistics Result Badge Premium 20261011
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-ball46-statistics-result-badge-premium-20261011.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ball46-production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Checkout isolated Result badge patch
+        uses: actions/checkout@v4
+        with:
+          ref: work/ball46-statistics-result-badge-premium-20261011
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install verification dependencies
+        run: npm install --no-save --ignore-scripts acorn@8 puppeteer-core@24
+      - name: Deploy premium Result badges
+        working-directory: deploy-assets/statistics-result-badge-premium-20261011
+        run: node run.mjs
+      - name: Upload audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-statistics-result-badge-premium-${{ github.run_id }}
+          path: deploy-assets/statistics-result-badge-premium-20261011/audit
+          if-no-files-found: warn
+          retention-days: 30
