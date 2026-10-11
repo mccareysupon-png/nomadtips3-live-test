@@ -114,7 +114,7 @@ jobs:
           s=s[:pos]+'\n    const realtimePendingNewRows = []; // realtime-pending-v2-new-only'+s[pos:]
           s=s.replace('signals.push(sig);','signals.push(sig);\n                realtimePendingNewRows.push(sig);',1)
           old='await writeWorkingSignals(this.ctx, capped);'
-          new='await writeWorkingSignals(this.ctx, capped);\\n      // realtime-pending-v2-new-only: persist only Signals created in this scan.\\n      if (realtimePendingNewRows.length) {\\n        await this.upsertLedgerRows(realtimePendingNewRows, fixtureMap);\\n      }'
+          new='await writeWorkingSignals(this.ctx, capped);\n      // realtime-pending-v2-new-only: persist only Signals created in this scan.\n      if (realtimePendingNewRows.length) {\n        await this.upsertLedgerRows(realtimePendingNewRows, fixtureMap);\n      }'
           s=s.replace(old,new,1)
           if s.count('realtime-pending-v2-new-only')<2: raise SystemExit('PATCH_NOT_WIRED')
           if 'capped.filter((x) => String(x?.status || "").toUpperCase() === "PENDING")' in s: raise SystemExit('ALL_PENDING_PATTERN_FORBIDDEN')
