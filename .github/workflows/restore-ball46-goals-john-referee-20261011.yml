@@ -1,13 +1,13 @@
-name: Restore Ball46 Goals O-U John Referee Only 20261011 v3
+name: Ball46 Goals O-U Inplay Only Strict 20261011
 on:
   push:
-    branches: [fix/ball46-goals-john-referee-restore-20261011]
+    branches: [fix/ball46-goals-inplay-only-20261011]
     paths:
       - '.github/workflows/restore-ball46-goals-john-referee-20261011.yml'
 permissions:
   contents: read
 concurrency:
-  group: ball46-engine343-john-goals-referee-restore-20261011
+  group: ball46-engine343-goals-inplay-only-20261011
   cancel-in-progress: false
 jobs:
   guarded:
@@ -29,13 +29,13 @@ jobs:
         env:
           RECOVERY_DRY_RUN: '1'
         run: node deploy-assets/ball46-goals-john-referee/deploy.mjs
-      - name: Deploy only Goals O-U John price source from current Worker, auto rollback on QA failure
+      - name: Deploy only Goals O-U exact inplay from active Worker, auto rollback on QA failure
         run: node deploy-assets/ball46-goals-john-referee/deploy.mjs
       - name: Save production checkpoint and QA
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ball46-goals-john-referee-${{ github.run_id }}
+          name: ball46-goals-inplay-only-${{ github.run_id }}
           path: audit/
           if-no-files-found: warn
           retention-days: 30
