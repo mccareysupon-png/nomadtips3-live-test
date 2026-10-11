@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import worker from '../src/worker.js';
 let snapshot;
-const env={MEMBER_DAILY_SNAPSHOTS:{put:async(key,value)=>{snapshot={key,value};}}};
+const env={MEMBER_DAILY_SNAPSHOTS:{put:async(key,value)=>{if(key.startsWith('member:daily:v1:'))snapshot={key,value};}}};
 let task;
 await worker.scheduled({},env,{waitUntil:p=>{task=p;}});
 await task;
