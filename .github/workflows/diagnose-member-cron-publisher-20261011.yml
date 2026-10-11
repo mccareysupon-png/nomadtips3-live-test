@@ -38,13 +38,13 @@ jobs:
           fs.writeFileSync('/tmp/snapshot_key.txt',captured.key);
           NODE
           base="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/storage/kv/namespaces"
-          curl --fail-with-body -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base?per_page=100" >/tmp/namespaces.json
+          curl --fail-with-body -sS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base?per_page=100" >/tmp/namespaces.json
           id="$(jq -r '.result[] | select(.title=="BALL46_MEMBER_DAILY_SNAPSHOT_STAGING") | .id' /tmp/namespaces.json | head -n1)"
           test -n "$id"
           key="$(cat /tmp/snapshot_key.txt)"
           encoded="$(node -p 'encodeURIComponent(process.argv[1])' "$key")"
-          curl --fail-with-body -fsS -X PUT -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'Content-Type: application/json' --data-binary @/tmp/snapshot_payload.json "$base/$id/values/$encoded?expiration_ttl=172800" >/tmp/write.json
+          curl --fail-with-body -sS -X PUT -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'Content-Type: application/json' --data-binary @/tmp/snapshot_payload.json "$base/$id/values/$encoded?expiration_ttl=172800" >/tmp/write.json
           jq -e '.success==true' /tmp/write.json
-          curl --fail-with-body -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/$id/values/$encoded" >/tmp/readback.json
+          curl --fail-with-body -sS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/$id/values/$encoded" >/tmp/readback.json
           jq -e --arg key "$key" '.version==1 and .daily.ok==true and (.daily.signalCount==(.daily.signals|length))' /tmp/readback.json
           echo "STAGING_KV_READBACK_OK"
