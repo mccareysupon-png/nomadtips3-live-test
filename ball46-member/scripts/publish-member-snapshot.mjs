@@ -1,0 +1,16 @@
+import fs from 'node:fs';
+import worker from '../src/worker.js';
+let snapshot;
+const env={MEMBER_DAILY_SNAPSHOTS:{put:async(key,value)=>{snapshot={key,value};}}};
+let task;
+await worker.scheduled({},env,{waitUntil:p=>{task=p;}});
+await task;
+if(!snapshot)throw Error('SNAPSHOT_NOT_CREATED');
+const data=JSON.parse(snapshot.value);
+if(data.version!==1||data.daily?.signalCount!==data.daily?.signals?.length)throw Error('SNAPSHOT_COUNT_MISMATCH');
+const s=data.daily.summary.ALL;
+const sum=s.win+s.loss+s.push+s.halfWin+s.halfLoss+s.pending;
+if(sum!==s.signals||sum!==data.daily.signalCount)throw Error('SNAPSHOT_RESULTS_MISMATCH');
+fs.writeFileSync('/tmp/member-snapshot-payload.json',snapshot.value);
+fs.writeFileSync('/tmp/member-snapshot-key',snapshot.key);
+console.log(JSON.stringify({event:'SNAPSHOT_READY',generatedAt:data.generatedAt,cycleStart:data.cycleStart,counts:s,bytes:Buffer.byteLength(snapshot.value)}));
