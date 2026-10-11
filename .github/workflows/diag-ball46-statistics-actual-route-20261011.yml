@@ -1,0 +1,78 @@
+name: DIAG Ball46 Statistics Actual Route 20261011
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/diag-ball46-statistics-actual-route-20261011.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - name: Inspect all Statistics routes and script owners
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT=/tmp/b46-actual-route
+          mkdir -p "$ROOT"
+          python3 - <<'PY'
+          import re, subprocess, urllib.parse, os, hashlib
+          routes=[
+            ('root','https://ball46.com/'),
+            ('query','https://ball46.com/?view=statistics'),
+            ('statistics','https://ball46.com/statistics'),
+            ('statistics_html','https://ball46.com/statistics.html'),
+            ('statistics_next','https://ball46.com/statistics-next.html'),
+          ]
+          for name,url in routes:
+              out=f'/tmp/b46-actual-route/{name}.html'
+              r=subprocess.run(['curl','-fsSL','--max-time','30',url,'-o',out])
+              if r.returncode:
+                  print('ROUTE_FAIL',name,url)
+                  continue
+              b=open(out,'rb').read()
+              t=b.decode('utf-8','replace')
+              print('\n=== ROUTE',name,url,'===')
+              print('SHA',hashlib.sha256(b).hexdigest(),'BYTES',len(b))
+              title=re.search(r'<title[^>]*>(.*?)</title>',t,re.I|re.S)
+              print('TITLE',re.sub(r'\s+',' ',title.group(1)).strip() if title else '')
+              scripts=re.findall(r'<script[^>]+src=["\']([^"\']+)["\']',t,re.I)
+              print('SCRIPTS',len(scripts))
+              for i,s in enumerate(scripts):
+                  print('SCRIPT',i,urllib.parse.urljoin(url,s))
+              for needle in ['data-sp-table-body','STATISTICS V2','ENTRY','Corners','singlepage-workspace-343.js']:
+                  if needle in t: print('HTML_HAS',needle)
+          PY
+
+          python3 - <<'PY'
+          import re, subprocess, urllib.parse, os, hashlib
+          seen={}
+          for fn in ['root.html','query.html','statistics.html','statistics_html.html','statistics_next.html']:
+              p='/tmp/b46-actual-route/'+fn
+              if not os.path.exists(p): continue
+              base={'root.html':'https://ball46.com/','query.html':'https://ball46.com/?view=statistics','statistics.html':'https://ball46.com/statistics','statistics_html.html':'https://ball46.com/statistics.html','statistics_next.html':'https://ball46.com/statistics-next.html'}[fn]
+              h=open(p,encoding='utf-8',errors='replace').read()
+              for s in re.findall(r'<script[^>]+src=["\']([^"\']+)["\']',h,re.I):
+                  u=urllib.parse.urljoin(base,s)
+                  if u in seen: continue
+                  idx=len(seen); seen[u]=idx
+                  out=f'/tmp/b46-actual-route/script-{idx}.js'
+                  if subprocess.run(['curl','-fsSL','--max-time','30',u,'-o',out]).returncode: continue
+                  t=open(out,encoding='utf-8',errors='replace').read()
+                  hits=[x for x in ['data-sp-table-body','b46StatEntryContext20261011','ENTRY ','Corners ','renderTable(rows)','signalEntryMinute','entryCorners'] if x in t]
+                  if hits:
+                      print('\n=== SCRIPT_OWNER',idx,u,'===')
+                      print('SHA',hashlib.sha256(open(out,'rb').read()).hexdigest())
+                      print('HITS',','.join(hits))
+                      for needle in ['b46StatEntryContext20261011','ENTRY ','data-sp-table-body']:
+                          pos=t.find(needle)
+                          if pos>=0:
+                              print('---',needle,'---')
+                              print(t[max(0,pos-1200):pos+3200].replace('\n',' '))
+          PY
