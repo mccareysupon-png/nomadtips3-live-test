@@ -64,5 +64,5 @@ jobs:
             jq -e '.error=="MEMBERSHIP_AUTH_REQUIRED"' /tmp/deny.json >/dev/null
           done
           curl -fSs --max-time 12 "$base/member.js" >/tmp/member.js
-          grep -q "DAILY_FEED_UNAVAILABLE_" /tmp/member.js
+          grep -q "INVALID_MEMBER_DAILY_PAYLOAD" /tmp/member.js
           echo "MEMBER_PROD_LEDGER_UI_DEPLOYED_AUTH_GUARDED"
