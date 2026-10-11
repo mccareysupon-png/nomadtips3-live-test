@@ -1,0 +1,80 @@
+name: Ball46 Statistics Realtime Production Preflight 20261011
+
+on:
+  push:
+    branches:
+      - ops/ball46-stat-realtime-production-20261011
+    paths:
+      - '.github/workflows/ball46-stat-realtime-production-preflight-20261011.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Inspect exact current production worker and bindings
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64,hashlib,json,os,urllib.request
+          account=os.environ['CLOUDFLARE_ACCOUNT_ID']; token=os.environ['CLOUDFLARE_API_TOKEN']
+          api=f'https://api.cloudflare.com/client/v4/accounts/{account}'
+          worker='nomadtips3-engine-343'
+          h={'Authorization':f'Bearer {token}','Accept':'application/json'}
+          def getj(u):
+            req=urllib.request.Request(u,headers=h)
+            with urllib.request.urlopen(req,timeout=30) as r:
+              return json.load(r)
+          deps=getj(f'{api}/workers/scripts/{worker}/deployments')['result']['deployments']
+          if not deps: raise SystemExit('NO_DEPLOYMENTS')
+          versions=deps[0].get('versions') or []
+          active=[str(v['version_id']) for v in versions if v.get('version_id') and float(v.get('percentage',0))>=99.999]
+          if len(active)!=1: raise SystemExit('ACTIVE_VERSION_AMBIGUOUS:'+repr(active))
+          vid=active[0]
+          ver=getj(f'{api}/workers/workers/{worker}/versions/{vid}?include=modules')['result']
+          mods=ver.get('modules') or []
+          target=[m for m in mods if m.get('content_base64')]
+          names=[m.get('name') for m in mods]
+          preferred=[m for m in target if m.get('name')=='index-bulk-recovery.js']
+          if len(preferred)!=1:
+            raise SystemExit('EXPECTED_SOURCE_MODULE_MISSING:'+repr(names))
+          raw=base64.b64decode(preferred[0]['content_base64'])
+          s=raw.decode()
+          sha=hashlib.sha256(raw).hexdigest()
+          settings=getj(f'{api}/workers/scripts/{worker}/settings')['result']
+          print('ACTIVE_VERSION',vid)
+          print('SOURCE_SHA256',sha)
+          print('SOURCE_LEN',len(s))
+          print('MODULES',json.dumps(names))
+          print('SETTINGS_KEYS',json.dumps(sorted(settings.keys())))
+          print('BINDINGS',json.dumps(settings.get('bindings') or [],sort_keys=True))
+          req=[
+            'signal-ledger-v2-longterm',
+            'STAT_LEDGER_PREFIX = "stat:v2:row:"',
+            'async upsertLedgerRows',
+            'async syncStatisticsLedger',
+            'async statisticsLedgerResponse',
+            'writeWorkingSignals(this.ctx, capped)',
+            'signals.push(sig);',
+            'status: "PENDING"',
+            'mirrorMinute',
+            'mirrorScore',
+            'reconcileExternalFinal',
+            'statisticsSource: "LEDGER_V2_ONLY"'
+          ]
+          missing=[x for x in req if x not in s]
+          print('MISSING_REQUIRED',json.dumps(missing))
+          print('HAS_V1_BAD_PATCH', 'realtime-pending-ledger-v1' in s)
+          print('HAS_V2_PATCH', 'realtime-pending-v2-new-only' in s)
+          if missing: raise SystemExit('CURRENT_PRODUCTION_CONTRACT_CHANGED')
+          if s.count('signals.push(sig);')!=1: raise SystemExit('SIGNAL_PUSH_COUNT_CHANGED')
+          if s.count('await writeWorkingSignals(this.ctx, capped);')!=1: raise SystemExit('WORKING_COMMIT_COUNT_CHANGED')
+          PY
