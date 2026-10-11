@@ -27,6 +27,10 @@ jobs:
         env:
           GOALS_DRY_RUN: '1'
         run: node deploy-assets/ball46-goals-live-referee-20261011/deploy.mjs
+      - name: Deploy Goals O-U verifier from latest active Worker with rollback on failure
+        env:
+          GOALS_DRY_RUN: '0'
+        run: node deploy-assets/ball46-goals-live-referee-20261011/deploy.mjs
       - name: Store audit
         if: always()
         uses: actions/upload-artifact@v4
