@@ -120,14 +120,13 @@ function resultPnl(result,odds) {
 }
 
 function signalState(row) {
-  const result = String(row?.result||'').toUpperCase();
-  const terminal = ['WIN','LOSS','PUSH','HALF_WIN','HALF_LOSS','VOID'].includes(result);
-  if (String(row?.status||'').toUpperCase() === 'SETTLED' || terminal) return 'FINISHED';
-  const s = String(row?.mirrorStatus||'').toLowerCase();
-  if (/(finished|ended|full.?time|\bft\b|after.?pen|\baet\b)/.test(s)) return 'FINISHED';
-  if (/(live|in.?play|1h|2h|half.?time|\bht\b|break|paused|extra.?time|penalt)/.test(s)) return 'LIVE';
-  if (num(row?.mirrorMinute)!==null && num(row?.mirrorMinute)>0) return 'LIVE';
-  return 'WAITING';
+  // This is DISPLAY STATE, never an independent settlement state.
+  const result=String(row?.result||'').toUpperCase();
+  const settled=['WIN','LOSS','PUSH','HALF_WIN','HALF_LOSS','VOID'].includes(result);
+  if(settled) return 'FINISHED';
+  // All genuine, not-yet-settled Ledger signals remain PENDING,
+  // whether a match is in progress or already ended.
+  return 'PENDING';
 }
 
 function normalizeSignal(row) {
@@ -272,6 +271,9 @@ async function buildDailyMirror(force=false) {
   }
 
   if (hasMore && pagesRead >= MAX_DAILY_PAGES) throw new Error('DAILY_MIRROR_PAGE_LIMIT');
+  // Never report an apparently healthy empty signal feed if ledger pagination
+  // stopped on a malformed upstream response.
+  if (!lastMeta || !Array.isArray(lastMeta.rows)) throw new Error('LEDGER_ROWS_INVALID');
 
   let signals = [...unique.values()]
     .map(normalizeSignal)
@@ -287,16 +289,10 @@ async function buildDailyMirror(force=false) {
       const f = byFixture.get(String(s.fixtureId));
       if (!f) return s;
       const rawStatus = String(f.status??f.statusCode??f.boardState??'');
-      const probe = {
-        status:'PENDING',
-        result:'PENDING',
-        mirrorStatus:rawStatus,
-        mirrorMinute:num(f.minute)
-      };
-      const currentState = signalState(probe);
+      // Match clocks/scores are context only; NEVER override ledger settlement.
       return {
         ...s,
-        state:currentState,
+        state:signalState(s),
         matchMinute:num(f.minute)??s.matchMinute,
         mirrorMinute:num(f.minute)??s.mirrorMinute,
         mirrorStatus:rawStatus||s.mirrorStatus,
