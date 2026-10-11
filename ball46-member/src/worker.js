@@ -268,12 +268,7 @@ async function buildDailyMirror(force=false) {
       const createdAt = num(row?.createdAt);
       if (createdAt===null) continue;
       oldest = Math.min(oldest,createdAt);
-      // Retain genuine unsettled signals from earlier cycles until Settlement
-      // updates the original Ledger row. Statistics remain anchored to createdAt.
-      const result=String(row?.result||'PENDING').toUpperCase();
-      const unsettled=String(row?.status||'PENDING').toUpperCase()!=='SETTLED'
-        && !['WIN','LOSS','PUSH','HALF_WIN','HALF_LOSS','VOID'].includes(result);
-      if (((createdAt >= cycle.start && createdAt < cycle.end) || unsettled) && row?.id) {
+      if (createdAt >= cycle.start && createdAt < cycle.end && row?.id) {
         const id=String(row.id);
         if (!unique.has(id)) unique.set(id,row);
       }
@@ -281,13 +276,10 @@ async function buildDailyMirror(force=false) {
 
     hasMore = page.hasMore===true && Boolean(page.nextCursor);
     cursor = page.nextCursor || null;
-    if (!rows.length) break;
+    if (!rows.length || oldest < cycle.start) break;
   }
 
   if (hasMore && pagesRead >= MAX_DAILY_PAGES) throw new Error('DAILY_MIRROR_PAGE_LIMIT');
-  // Never report an apparently healthy empty signal feed if ledger pagination
-  // stopped on a malformed upstream response.
-  if (!lastMeta || !Array.isArray(lastMeta.rows)) throw new Error('LEDGER_ROWS_INVALID');
 
   let signals = [...unique.values()]
     .map(normalizeSignal)
@@ -303,10 +295,16 @@ async function buildDailyMirror(force=false) {
       const f = byFixture.get(String(s.fixtureId));
       if (!f) return s;
       const rawStatus = String(f.status??f.statusCode??f.boardState??'');
-      // Match clocks/scores are context only; NEVER override ledger settlement.
+      const probe = {
+        status:'PENDING',
+        result:'PENDING',
+        mirrorStatus:rawStatus,
+        mirrorMinute:num(f.minute)
+      };
+      const currentState = signalState(probe);
       return {
         ...s,
-        state:signalState(s),
+        state:currentState,
         matchMinute:num(f.minute)??s.matchMinute,
         mirrorMinute:num(f.minute)??s.mirrorMinute,
         mirrorStatus:rawStatus||s.mirrorStatus,
@@ -333,7 +331,7 @@ async function buildDailyMirror(force=false) {
     generatedAt:nowMs,
     pagesRead,
     signalCount:signals.length,
-    summary:dailySummary(signals.filter(row=>row.createdAt>=cycle.start && row.createdAt<cycle.end)),
+    summary:dailySummary(signals),
     signals
   };
 
