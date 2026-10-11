@@ -1,0 +1,65 @@
+name: Audit Ball46 Statistics Refresh in Browser Readonly
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/audit-ball46-statistics-refresh-browser-20261011.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser-readonly:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ops/ball46-easybet-crossdevice-fix-20261007
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install headless browser and browser library
+        run: |
+          npm install --no-save --ignore-scripts playwright@1.56.1
+          npx playwright install chromium
+      - name: Diagnose refresh in actual browser (no writes)
+        run: |
+          node <<'NODE'
+          const {chromium}=require('playwright');
+          const tests=[
+           {name:'desktop',viewport:{width:1440,height:900},isMobile:false},
+           {name:'mobile',viewport:{width:390,height:844},isMobile:true}
+          ];
+          const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
+          const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+          for(const test of tests){
+           const context=await browser.newContext({viewport:test.viewport,isMobile:test.isMobile,ignoreHTTPSErrors:false});
+           const page=await context.newPage();
+           const errors=[];
+           page.on('pageerror',e=>errors.push(e.message.slice(0,180)));
+           const snapshot=async(label)=>{console.log('SNAPSHOT',test.name,label,JSON.stringify(await page.evaluate(()=>({
+            url:location.href,
+            view:document.body?.dataset.workspaceView,
+            statPanelHidden:document.querySelector('[data-workspace-panel="statistics"]')?.hidden,
+            statisticsNav:[...document.querySelectorAll('[data-workspace-view="statistics"]')].map(x=>({tag:x.tagName,text:x.textContent?.trim().slice(0,38),active:x.classList.contains('active')})).slice(0,5),
+            selectedMarket:[...document.querySelectorAll('[data-stat-market].active')].map(x=>x.getAttribute('data-stat-market')),
+            scriptStatus:document.querySelector('[data-sp-feed-state]')?.textContent?.trim().slice(0,100),
+           })),null,0).catch(e=>({error:e.message})), 'ERRORS',JSON.stringify(errors.slice(-3)))};
+           for(const path of ['/index.html?view=statistics&market=corners','/index.html']){
+            try{await page.goto('https://ball46.com'+path,{waitUntil:'domcontentloaded',timeout:40000});await sleep(1800);await snapshot('direct '+path);await page.reload({waitUntil:'domcontentloaded',timeout:40000});await sleep(1800);await snapshot('reloaded '+path);}catch(e){console.log('BROWSER_ERR',test.name,path,String(e.message).slice(0,350))}
+           }
+           try{
+           const nav=page.locator('[data-workspace-view="statistics"]').first();
+           console.log('NAV_STATS_COUNT',test.name,await page.locator('[data-workspace-view="statistics"]').count());
+           await nav.click({timeout:9000});
+           await sleep(700);await snapshot('after click statistics');
+           const corners=page.locator('[data-stat-market="corners"]').first();
+           console.log('NAV_CORNERS_COUNT',test.name,await page.locator('[data-stat-market="corners"]').count());
+           await corners.click({timeout:9000});await sleep(700);await snapshot('after corners click');
+           await page.reload({waitUntil:'domcontentloaded',timeout:40000});await sleep(1400);await snapshot('after refresh on corners');
+           }catch(e){console.log('NAV_CLICK_ERR',test.name,String(e.message).slice(0,500))}
+           await context.close();
+          }
+          await browser.close();
+          
+          NODE
