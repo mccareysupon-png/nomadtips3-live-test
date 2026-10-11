@@ -1,0 +1,58 @@
+name: Member 2 UI and Live Feed Contract Tests
+on:
+  push:
+    branches: [member2/isolated-ui-and-registration-20261011]
+    paths: ['ball46-member2/**', '.github/workflows/member2-qa-20261011.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  member2:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Verify full cloned UI, access and signup flow exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          for f in public/member.html public/member.js public/member.css public/pricing.html public/pricing.js public/login.html public/success.html src/access-auth.js src/checkout.js src/worker.js; do
+            test -s "ball46-member2/$f" || { echo "MISSING $f"; exit 1; }
+          done
+          grep -q '"name": "ball46-member2-staging"' ball46-member2/wrangler.jsonc
+          grep -q '"MEMBER_CHECKOUT_ENABLED": "false"' ball46-member2/wrangler.jsonc
+          node --check ball46-member2/src/worker.js
+          node --check ball46-member2/public/member.js
+      - name: Regression tests for Member UI and entitlement
+        shell: bash
+        run: node --test ball46-member2/tests/*.test.mjs
+      - name: Run real Member2 Worker daily mirror with synthetic signed OWNER identity
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import worker from './ball46-member2/src/worker.js';
+          import {webcrypto as crypto} from 'node:crypto';
+          const kp=await crypto.subtle.generateKey({name:'RSASSA-PKCS1-v1_5',modulusLength:2048,publicExponent:new Uint8Array([1,0,1]),hash:'SHA-256'},true,['sign','verify']);
+          const jwk=await crypto.subtle.exportKey('jwk',kp.publicKey);
+          jwk.kid='test-kid'; jwk.use='sig';
+          const pack=o=>Buffer.from(JSON.stringify(o)).toString('base64url');
+          const now=Math.floor(Date.now()/1000);
+          const h=pack({alg:'RS256',kid:jwk.kid});
+          const p=pack({sub:'member2-qa',email:'owner@test.invalid',iss:'https://qa.cloudflareaccess.com',aud:['qa-audience'],iat:now-10,exp:now+600});
+          const payload=h+'.'+p;
+          const sig=Buffer.from(await crypto.subtle.sign('RSASSA-PKCS1-v1_5',kp.privateKey,new TextEncoder().encode(payload))).toString('base64url');
+          const nativeFetch=globalThis.fetch;
+          globalThis.fetch=async(input,init)=>String(input).includes('qa.cloudflareaccess.com/cdn-cgi/access/certs')?new Response(JSON.stringify({keys:[jwk]})):nativeFetch(input,init);
+          const req=new Request('https://staging.invalid/api/member/daily',{headers:{'Cf-Access-Jwt-Assertion':payload+'.'+sig}});
+          const started=Date.now();
+          const response=await worker.fetch(req,{CF_ACCESS_TEAM_DOMAIN:'qa.cloudflareaccess.com',CF_ACCESS_AUD:'qa-audience',OWNER_CHECKOUT_EMAIL:'owner@test.invalid'}, {});
+          const data=await response.json();
+          const marketKeys=['ALL','AH','1X2','O/U','CORNERS','BTTS','CARDS','OTHER'];
+          const valid=data.ok===true && response.status===200 && Array.isArray(data.signals) &&
+            marketKeys.every(k=>data.summary?.[k] && typeof data.summary[k].signals==='number') &&
+            data.signals.every(s=>s.id&&s.fixtureId&&marketKeys.includes(s.market) && !!s.signalTime);
+          console.log('MEMBER2_MONITOR',JSON.stringify({status:response.status,ok:data.ok,signalCount:data.signalCount,summaryCount:data.summary?.ALL?.signals,valid,ms:Date.now()-started,error:data.error,detail:data.detail}));
+          if(!valid||data.signalCount<1)process.exitCode=1;
+          NODE
