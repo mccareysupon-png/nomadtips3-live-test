@@ -466,6 +466,23 @@ export default {
       return json({ok:true,authenticated:Boolean(member),identityVerified:Boolean(identity),member:member||null,
         loginReady:Boolean(env.CF_ACCESS_TEAM_DOMAIN&&env.CF_ACCESS_AUD&&env.STRIPE_SECRET_KEY&&env.STRIPE_PRICE_ID)});
     }
+    // Protected production troubleshooting: reveal no secrets or premium rows.
+    // A verified owner may check the live feed and the exact auth stage.
+    if (url.pathname === '/api/member/diagnostics') {
+      const identity=await verifyAccessIdentity(request,env);
+      const owner=String(env.OWNER_CHECKOUT_EMAIL||'').trim().toLowerCase();
+      if (!identity || identity.email!==owner)
+        return json({ok:false,error:'OWNER_AUTH_REQUIRED',identityVerified:Boolean(identity)},401);
+      try {
+        const payload=await loadDailyMirror(true);
+        return json({ok:true,identityVerified:true,ownerVerified:true,liveFeedOk:true,
+          signalCount:payload.signalCount,pagesRead:payload.pagesRead,markets:Object.keys(payload.summary||{}),
+          generatedAt:payload.generatedAt,appStage:env.APP_STAGE||null});
+      } catch (error) {
+        return json({ok:false,identityVerified:true,ownerVerified:true,liveFeedOk:false,
+          error:'MEMBER_DAILY_FEED_FAILED',detail:String(error?.message||error).slice(0,160)},502);
+      }
+    }
     // Owner-only non-mutating Stripe credential check; never return secret values.
     // This route is also covered by the Cloudflare Access /api/member/* policy.
     if (url.pathname === '/api/member/stripe-readiness' && request.method === 'GET') {
