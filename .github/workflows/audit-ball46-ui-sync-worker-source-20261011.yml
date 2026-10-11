@@ -1,0 +1,36 @@
+name: Audit Ball46 UI Sync Worker Source Readonly
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/audit-ball46-ui-sync-worker-source-20261011.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ops/ball46-easybet-crossdevice-fix-20261007
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install acorn
+        run: npm install --no-save --ignore-scripts acorn@8
+      - name: Inspect exact Worker route for UI sync JS - no write
+        working-directory: deploy-assets/ball46-member-nav-20261009
+        run: |
+          node --input-type=module <<'NODE'
+          import {inspect,literals,publicFile,sha} from '../daily-performance-20261005/production.mjs';
+          const c=await inspect();const s=c.source;
+          for(const t of ['/ui-sync-fixes-343-v2.js','ui-sync-fixes-343-v2.js','__B46_UI_SYNC','__B46_SYNC']){let start=0,n=0;while((start=s.indexOf(t,start))>=0&&n++<6){console.log('WORKER_TOKEN',t,start,s.slice(Math.max(0,start-200),start+300));start+=t.length}}
+          const b=await publicFile('/ui-sync-fixes-343-v2.js');
+          console.log('PUBLIC_SHA',sha(b),'SIZE',b.length,'ACTIVE',c.restore.version);
+          for(const [key,v]of literals(s))console.log('LITERAL',key,v.value.length,sha(Buffer.from(v.value)),v.value.includes('paintStatSummary'));
+          NODE
