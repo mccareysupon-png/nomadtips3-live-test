@@ -48,7 +48,8 @@ export function patchJohnGoals(source){
   const rNew='verifiedCorner ? "BET365_RECENT_CORNER_TICK" : "BEST19_CONSENSUS_LINE"';
   assert.equal(s.split(pr).length-1,2,"PRICE_REF_COUNT_CHANGED");
   s=s.split(pr).join(rNew);
-  assert(!/isVerifiedGoalMarket\(|fetchVerifiedGoalsOnly\(|goalTickRequests|goalTickCache|GOAL_HISTORY_BUDGET|GOAL_LIVE_PRICE_UNVERIFIED|BET365_VERIFIED_GOALS_HISTORY_INPLAY|BET365_RECENT_GOAL_TICK/.test(s),"GOAL_HISTORY_REMAINS_IN_ACTIVE_CODE");
+  const leftovers=["isVerifiedGoalMarket(","fetchVerifiedGoalsOnly(","goalTickRequests","goalTickCache","GOAL_HISTORY_BUDGET","GOAL_LIVE_PRICE_UNVERIFIED","BET365_VERIFIED_GOALS_HISTORY_INPLAY","BET365_RECENT_GOAL_TICK"].filter(symbol=>s.includes(symbol));
+  assert.equal(leftovers.length,0,"GOAL_HISTORY_REMAINS_"+leftovers.join("|"));
   assert(s.includes("const full=requiresFullMarket?(johnQuotesByFixture.get(id)||null):null;"),"JOHN_CACHE_LOOKUP_CHANGED");
   assert(s.includes("const best = pickBestPriced(cands,verifiedCorner?verifiedCorner.payload:full,root,f,settings);"),"JOHN_PRICING_NOT_RESTORED");
   assert(s.includes("function consensusProviderLine(")&&s.includes("function offersFor(")&&s.includes("function pickBestPriced("),"JOHN_LINE_ODDS_ENGINE_REMOVED");
