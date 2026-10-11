@@ -268,7 +268,12 @@ async function buildDailyMirror(force=false) {
       const createdAt = num(row?.createdAt);
       if (createdAt===null) continue;
       oldest = Math.min(oldest,createdAt);
-      if (createdAt >= cycle.start && createdAt < cycle.end && row?.id) {
+      // Retain genuine unsettled signals from earlier cycles until Settlement
+      // updates the original Ledger row. Statistics remain anchored to createdAt.
+      const result=String(row?.result||'PENDING').toUpperCase();
+      const unsettled=String(row?.status||'PENDING').toUpperCase()!=='SETTLED'
+        && !['WIN','LOSS','PUSH','HALF_WIN','HALF_LOSS','VOID'].includes(result);
+      if (((createdAt >= cycle.start && createdAt < cycle.end) || unsettled) && row?.id) {
         const id=String(row.id);
         if (!unique.has(id)) unique.set(id,row);
       }
@@ -276,7 +281,7 @@ async function buildDailyMirror(force=false) {
 
     hasMore = page.hasMore===true && Boolean(page.nextCursor);
     cursor = page.nextCursor || null;
-    if (!rows.length || oldest < cycle.start) break;
+    if (!rows.length) break;
   }
 
   if (hasMore && pagesRead >= MAX_DAILY_PAGES) throw new Error('DAILY_MIRROR_PAGE_LIMIT');
@@ -328,7 +333,7 @@ async function buildDailyMirror(force=false) {
     generatedAt:nowMs,
     pagesRead,
     signalCount:signals.length,
-    summary:dailySummary(signals),
+    summary:dailySummary(signals.filter(row=>row.createdAt>=cycle.start && row.createdAt<cycle.end)),
     signals
   };
 
