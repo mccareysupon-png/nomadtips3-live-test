@@ -14,7 +14,7 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
       - uses: actions/checkout@v4
-        with: {ref: '6873750f493e87e9d1aae0da60fbbd0d9dac491b'}
+        with: {ref: '3b46e63dd3cb6dc397d492a90700c243b51131ce'}
       - uses: actions/setup-node@v4
         with: {node-version: '22'}
       - name: Assert separate worker with non-billing demo preview
@@ -42,6 +42,9 @@ jobs:
             sleep 2
           done
           test "$code" = 200
+          grep -q 'preview-data.js' /tmp/preview
+          code=$(curl -sS --max-time 12 -o /tmp/protected -w '%{http_code}' "$base/member")
+          test "$code" = 303
           grep -q 'preview-data.js' /tmp/preview
           curl -fsS --max-time 15 "$base/preview-data.js" -o /tmp/preview-data.js
           grep -q 'MEMBER 2' /tmp/preview-data.js
