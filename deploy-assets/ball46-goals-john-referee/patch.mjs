@@ -23,6 +23,9 @@ export function patchJohnGoals(source){
   for(const symbol of ["function isVerifiedGoalMarket(","function goalHistorySpec(","function verifyRecentGoalHistory(","async function fetchVerifiedGoalsOnly("])assert(removed.includes(symbol),"MISSING_GOAL_HELPER_"+symbol);
   s=s.slice(0,start)+"/* B46_GOALS_JOHN_RESTORED_20261011 */\n"+s.slice(end);
   s=once(s, "      let goalTickRequests=0;\n      const goalTickCache=new Map();\n", "", "GOAL_SCAN_CACHE");
+  s=once(s, "if(!run[market]||isVerifiedCornerMarket(market)||isVerifiedGoalMarket(market)||",
+   "if(!run[market]||isVerifiedCornerMarket(market)||", "JOHN_PREFETCH_ELIGIBILITY");
+  // John\x27s qualified bulk price cache must include Goals before its selection pass.
   s=once(s, "const requiresFullMarket=marketCandidates.some(c=>!isVerifiedGoalMarket(c.market)&&!isVerifiedCornerMarket(c.market));",
    "const requiresFullMarket=marketCandidates.some(c=>!isVerifiedCornerMarket(c.market));", "JOHN_CACHE_ELIGIBILITY");
   s=once(s, "if (!full && !marketCandidates.some(c=>isVerifiedCornerMarket(c.market)||isVerifiedGoalMarket(c.market)))",
