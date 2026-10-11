@@ -1,0 +1,138 @@
+name: Fix Ball46 Legacy Statistics URL to Working Single Page 20261011
+on:
+  push:
+    branches: [fix/ball46-statistics-legacy-route-20261011]
+    paths: [.github/workflows/fix-ball46-statistics-legacy-route-20261011.yml]
+permissions:
+  contents: read
+concurrency:
+  group: ball46-production-deploy
+  cancel-in-progress: false
+jobs:
+  guarded-ui-route-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 22
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ops/ball46-easybet-crossdevice-fix-20261007
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Route old /statistics.html to current working single-page Statistics only
+        working-directory: deploy-assets/ball46-member-nav-20261009
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import {writeFileSync,mkdirSync} from 'node:fs';
+          import {inspect,api,script,activeVersion,getVersion,publicFile,sha,canonical,directOrigin,manifest} from '../daily-performance-20261005/production.mjs';
+          import {schedules,stageCurrentRail,verifyRailBase,wrangler} from '../daily-performance-20261005/rail.mjs';
+          const label='B46_LEGACY_STATISTICS_REDIRECT_SINGLEPAGE_20261011';
+          const oldAnchor="export default {...__B46_BASE_WORKER__,async fetch(request,env,ctx){const url=new URL(request.url);if(request.method==='GET'){";
+          const replacement="export default {...__B46_BASE_WORKER__,async fetch(request,env,ctx){const url=new URL(request.url);"+
+            "if(request.method==='GET'&&url.pathname==='/statistics.html'){"+
+            "/*"+label+"*/"+
+            "const dest=new URL('/index.html',url);dest.searchParams.set('view','statistics');"+
+            "return new Response(null,{status:302,headers:{'location':dest.toString(),'cache-control':'no-store'}});"+
+            "}if(request.method==='GET'){";
+          const report={scope:'Only legacy /statistics.html URL redirect to live /index.html?view=statistics; no Engine, API, Ledger, assets or other UI changes',startedAt:new Date().toISOString()};
+          mkdirSync('audit-stat-legacy-route',{recursive:true});
+          const save=()=>writeFileSync('audit-stat-legacy-route/report.json',JSON.stringify(report,null,2));
+          const delay=ms=>new Promise(r=>setTimeout(r,ms));
+          let beforeVersion=null,ownVersion=null;
+          function patch(src){
+            assert(!src.includes(label),'ALREADY_PATCHED');
+            assert.equal(src.split(oldAnchor).length-1,1,'LIVE_EXPORT_ROUTE_CHANGED_ABORT');
+            assert(src.includes("if (url.pathname.startsWith(\"/api/engine/\"))"),'ENGINE_PROXY_MUST_EXIST');
+            const next=src.replace(oldAnchor,replacement);
+            assert.equal(next.replace(replacement,oldAnchor),src,'UNEXPECTED_CODE_CHANGE');
+            assert(next.includes(label),'REDIRECT_MARKER_MISSING');
+            return next;
+          }
+          async function probeRedirect(host){
+            const r=await fetch(host+'/statistics.html?stat_route_qa='+Date.now(),{cache:'no-store',redirect:'manual',signal:AbortSignal.timeout(15000)});
+            return {http:r.status,location:r.headers.get('location')};
+          }
+          async function rollback(){
+            if(!beforeVersion||!ownVersion)return;
+            if(await activeVersion()!==ownVersion)throw Error('ANOTHER_DEPLOY_ACTIVE_NO_ROLLBACK');
+            await api('/scripts/'+script+'/deployments',{method:'POST',headers:{'Content-Type':'application/json'},
+              body:JSON.stringify({strategy:'percentage',versions:[{version_id:beforeVersion,percentage:100}],annotations:{'workers/message':'Rollback legacy statistics route only'}})});
+            assert.equal(await activeVersion(),beforeVersion,'ROLLBACK_DID_NOT_ACTIVATE');
+          }
+          try{
+            const current=await inspect();beforeVersion=current.restore.version;
+            const [s,crons,oldPage,workingPage,statBytes]=await Promise.all([
+              api('/scripts/'+script+'/settings'),schedules(),
+              publicFile('/statistics.html',undefined,directOrigin),
+              publicFile('/index.html?view=statistics',undefined,directOrigin),
+              publicFile('/api/engine/statistics?paged=1','json')
+            ]);
+            const stat=JSON.parse(statBytes.toString('utf8'));
+            assert(stat.ok===true&&Array.isArray(stat.rows)&&stat.rows.length>0,'LEDGER_NOT_READY_ABORT');
+            assert(workingPage.toString().includes('singlepage-workspace-343.js'),'MAIN_SINGLEPAGE_UNVERIFIED_ABORT');
+            assert(oldPage.toString().includes('statistics-next.js'),'LEGACY_PAGE_UNEXPECTED_ABORT');
+            const previousRoute=await probeRedirect('https://www.ball46.com');
+            assert.equal(previousRoute.http,200,'STATISTICS_ALREADY_REDIRECTED_OR_NOT_EXPECTED');
+            const nextSource=patch(current.source);
+            const candidateHash=sha(Buffer.from(nextSource)),beforeHash=sha(Buffer.from(current.source));
+            writeFileSync('/tmp/b46-stat-route-check-'+process.pid+'.mjs',nextSource);
+            (await import('node:child_process')).execFileSync(process.execPath,['--check','/tmp/b46-stat-route-check-'+process.pid+'.mjs']);
+            const originalManifest=manifest(current.version).filter(x=>x.name!==current.version.main_module);
+            const staged=await stageCurrentRail(current.version,s,crons,nextSource);
+            await verifyRailBase(staged);
+            assert.equal(await activeVersion(),beforeVersion,'PRODUCTION_CHANGED_DURING_STAGE');
+            assert.equal(staged.hashes['index.html'],sha(workingPage),'INDEX_ASSET_CHANGED_DURING_STAGE');
+            assert.equal(staged.hashes['statistics.html'],sha(oldPage),'LEGACY_ASSET_CHANGED_DURING_STAGE');
+            report.preflight={oldVersion:beforeVersion,beforeHash,candidateHash,ledgerTotal:stat.ledgerTotal,settled:stat.total,changedOnly:'GET /statistics.html redirect'};
+            save();
+            wrangler(staged,true);
+            assert.equal(await activeVersion(),beforeVersion,'PRODUCTION_CHANGED_BEFORE_DEPLOY');
+            await verifyRailBase(staged);
+            wrangler(staged,false);
+            for(let i=0;i<30;i++){const v=await activeVersion();if(v!==beforeVersion){ownVersion=v;break}await delay(1200)}
+            assert(ownVersion,'DEPLOY_VERSION_NOT_OBSERVED');
+            let success=false,qa=null;
+            for(let i=0;i<25;i++){
+              assert.equal(await activeVersion(),ownVersion,'NEWER_DEPLOY_STOP_QA');
+              qa=await probeRedirect('https://www.ball46.com');
+              if(qa.http===302 && qa.location?.includes('/index.html?view=statistics')){success=true;break}
+              await delay(1000);
+            }
+            assert(success,'LEGACY_STAT_REDIRECT_NOT_ACTIVE_'+JSON.stringify(qa));
+            const direct=await probeRedirect(directOrigin.replace(/\/$/,''));
+            assert.equal(direct.http,302,'DIRECT_ROUTE_REDIRECT_NOT_ACTIVE');
+            assert(direct.location?.includes('/index.html?view=statistics'),'DIRECT_DEST_WRONG');
+            for(const [file,expected] of Object.entries(staged.hashes)){
+              assert.equal(sha(await publicFile('/'+file)),expected,'UNRELATED_ASSET_CHANGED:'+file);
+            }
+            const after=await getVersion(ownVersion);
+            assert.equal(sha(Buffer.from(after.modules.find(x=>x.name===after.main_module).content_base64,'base64')),candidateHash,'ACTIVE_CODE_DIFF');
+            assert.deepEqual(manifest(after).filter(x=>x.name!==after.main_module),originalManifest,'OTHER_MODULE_CHANGED');
+            assert.equal(sha(canonical(await api('/scripts/'+script+'/settings'))),sha(canonical(s)),'SETTINGS_CHANGED');
+            assert.equal(canonical(await schedules()),canonical(crons),'SCHEDULES_CHANGED');
+            const newStat=JSON.parse((await publicFile('/api/engine/statistics?paged=1','json')).toString('utf8'));
+            assert(newStat.ok===true&&newStat.ledgerTotal>=stat.ledgerTotal,'LEDGER_NOT_HEALTHY');
+            report.result='SUCCESS';report.newVersion=ownVersion;report.redirect=qa;report.ledgerStillIntact=newStat.ledgerTotal;save();
+            console.log('BALL46_STATISTICS_LEGACY_ROUTE_FIX_SUCCESS',JSON.stringify({before:beforeVersion,active:ownVersion,redirect:qa,ledger:newStat.ledgerTotal,otherAssetsUnchanged:Object.keys(staged.hashes).length,settingsUnchanged:true}));
+          }catch(e){
+            report.result='FAILED';report.error=String(e?.message||e);save();
+            try{await rollback();report.rolledBack=true;save()}catch(rb){report.rollbackError=String(rb?.message||rb);save()}
+            console.error('BALL46_STATISTICS_LEGACY_ROUTE_FIX_FAILED',String(e?.stack||e));
+            process.exitCode=1;
+          }
+          NODE
+      - name: Save rollback checkpoint
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-statistics-legacy-route-${{ github.run_id }}
+          path: deploy-assets/ball46-member-nav-20261009/audit-stat-legacy-route
+          retention-days: 30
+          if-no-files-found: warn
