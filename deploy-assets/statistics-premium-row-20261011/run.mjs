@@ -72,7 +72,7 @@ async function runtimeCheck(){
  const executablePath=candidates.find(existsSync);assert(executablePath,'NO_CHROME');
  const browser=await puppeteer.launch({headless:true,executablePath,args:['--no-sandbox']});
  try{
-  const page=await browser.newPage();await page.setCacheEnabled(false);
+  const page=await browser.newPage();await page.setViewport({width:1440,height:1000,deviceScaleFactor:1});await page.setCacheEnabled(false);
   await page.goto('https://ball46.com/?view=statistics&premiumRowVerify='+Date.now(),{waitUntil:'networkidle2',timeout:90000});
   await delay(5000);
   const r=await page.evaluate(()=>{
