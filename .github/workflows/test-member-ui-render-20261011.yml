@@ -1,0 +1,42 @@
+name: Test Member UI Render With Live Signal Payload
+on:
+  push:
+    branches: [member/ledger-pending-repair-20261011]
+    paths: ['.github/workflows/test-member-ui-render-20261011.yml']
+permissions:
+  contents: read
+jobs:
+  ui:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: b6176e185cd98b5fe7958e719ce613b6fc307545
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Render production UI against actual Worker payload (no deployed changes)
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --no-save --no-package-lock --prefix /tmp/jsdom jsdom@26 >/dev/null
+          NODE_PATH=/tmp/jsdom/node_modules node <<'NODE'
+          const fs=require('fs'),{JSDOM}=require('jsdom');
+          const html=fs.readFileSync('ball46-member/public/member.html','utf8');
+          const js=fs.readFileSync('ball46-member/public/member.js','utf8');
+          const fixture={id:'probe-signal',fixtureId:'12345',createdAt:Date.now(),signalTime:'12:30:00',league:'TEST',home:'HOME',away:'AWAY',market:'1X2',result:'PENDING',status:'PENDING',state:'PENDING',signalMinute:32,matchMinute:67,entryScore:{home:0,away:0},mirrorScore:{home:1,away:0},bookmaker:'TEST',selection:'HOME',odds:1.9,pnl:0};
+          const stats={signals:1,win:0,loss:0,push:0,halfWin:0,halfLoss:0,pending:1,winRate:null,pnl:0};
+          const summary=Object.fromEntries(['ALL','AH','1X2','O/U','CORNERS','BTTS','CARDS','OTHER'].map(k=>[k,k==='ALL'||k==='1X2'?stats:{...stats,signals:0,pending:0}]));
+          const dom=new JSDOM(html,{url:'https://member.ball46.com/member',runScripts:'outside-only',pretendToBeVisual:true});
+          const w=dom.window;
+          w.fetch=async input=>({ok:true,status:200,json:async()=>String(input).includes('/session')?{authenticated:true,member:{status:'ACTIVE',displayName:'OWNER',role:'OWNER',accessType:'LIFETIME'}}:{ok:true,signalCount:1,summary,signals:[fixture]}});
+          w.setInterval=()=>0;
+          w.console.error=(...args)=>console.log('BROWSER_ERROR',...args);
+          w.eval(js);
+          setTimeout(()=>{
+            const rows=w.document.querySelectorAll('#signalRows .signal-row');
+            console.log('UI_PROBE',JSON.stringify({rows:rows.length,content:w.document.querySelector('#signalRows').textContent.slice(0,300),error:w.document.querySelector('#emptyState').textContent,summary:w.document.querySelector('#dailySummary').textContent.slice(0,200)}));
+            if(rows.length!==1)process.exitCode=1;
+            dom.window.close();
+          },500);
+          NODE
