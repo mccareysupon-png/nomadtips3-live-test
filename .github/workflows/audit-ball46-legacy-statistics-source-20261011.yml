@@ -21,6 +21,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Install parser dependency
+        run: npm install --no-save --ignore-scripts acorn@8
       - name: Inspect old Statistics path without changes
         working-directory: deploy-assets/ball46-member-nav-20261009
         run: |
