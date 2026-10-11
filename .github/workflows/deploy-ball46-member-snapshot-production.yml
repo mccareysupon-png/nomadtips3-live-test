@@ -1,0 +1,100 @@
+name: Cutover Member Production to KV Snapshot
+on:
+  push:
+    branches: [member/snapshot-readonly-20261011]
+    paths: ['.github/workflows/deploy-ball46-member-snapshot-production.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ball46-member-production-deploy
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: member/snapshot-readonly-20261011
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate member code and isolated tests
+        run: |
+          set -euo pipefail
+          node --check ball46-member/src/worker.js
+          node --check ball46-member/src/member-snapshot.js
+          node --check ball46-member/public/member.js
+          node --test ball46-member/tests/*.test.mjs
+      - name: Prove fresh complete same-cycle production snapshot before deploy
+        id: kv
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/storage/kv/namespaces"
+          curl --fail-with-body -sS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base?per_page=100" >/tmp/n.json
+          id="$(jq -r '.result[] | select(.title=="BALL46_MEMBER_DAILY_SNAPSHOT_PRODUCTION") | .id' /tmp/n.json | head -n1)"
+          test -n "$id"
+          echo "id=$id" >> "$GITHUB_OUTPUT"
+          node <<'NODE' >/tmp/key
+          const now=Date.now(),d=new Date(now+25200000);
+          let t=Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate(),12)-25200000;
+          if(now<t)t-=86400000;
+          process.stdout.write('member:daily:v1:'+t)
+          NODE
+          key="$(cat /tmp/key)"
+          encoded="$(node -p 'encodeURIComponent(process.argv[1])' "$key")"
+          curl --fail-with-body -sS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/$id/values/$encoded" >/tmp/snapshot.json
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const v=JSON.parse(fs.readFileSync('/tmp/snapshot.json','utf8')),now=Date.now();
+          const s=v.daily?.summary?.ALL;
+          if(v.version!==1||!v.daily?.ok||!Array.isArray(v.daily.signals)||!s)throw Error('SNAPSHOT_FORMAT_INVALID');
+          if(v.cycleStart!==v.daily.cycleStart)throw Error('SNAPSHOT_CYCLE_INVALID');
+          if(now-v.generatedAt>15*60*1000||v.generatedAt>now+60000)throw Error('SNAPSHOT_TOO_OLD');
+          if(v.daily.signalCount!==v.daily.signals.length||s.signals!==v.daily.signalCount||
+             s.win+s.loss+s.push+s.halfWin+s.halfLoss+s.pending!==s.signals)throw Error('SNAPSHOT_COUNTS_INVALID');
+          console.log(JSON.stringify({SNAPSHOT_ACCEPTED:true,ageSeconds:Math.floor((now-v.generatedAt)/1000),summary:s}));
+          NODE
+      - name: Inject KV binding into isolated Member worker configuration
+        env:
+          MEMBER_PROD_KV_ID: ${{ steps.kv.outputs.id }}
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const path='ball46-member/wrangler.jsonc';
+          const c=JSON.parse(fs.readFileSync(path,'utf8'));
+          if(c.name!=='ball46-member-production')throw Error('WRONG_WORKER_ABORT');
+          c.kv_namespaces=[{binding:'MEMBER_DAILY_SNAPSHOTS',id:process.env.MEMBER_PROD_KV_ID}];
+          delete c.triggers; // Dedicated GitHub publisher owns scheduling; visitors read KV only.
+          fs.writeFileSync(path,JSON.stringify(c,null,2)+'\n');
+          NODE
+      - name: Dry run Member Worker (no Engine deploy)
+        working-directory: ball46-member
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.jsonc
+      - name: Deploy ONLY ball46-member-production
+        working-directory: ball46-member
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.jsonc
+      - name: Verify Member Worker healthy and unauthorized data blocked
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://ball46-member-production.mccarey-supon.workers.dev"
+          good=0
+          for n in $(seq 1 20); do
+            code="$(curl -sS --max-time 15 -o /tmp/h.json -w '%{http_code}' "$base/api/health" || true)"
+            if [ "$code" = 200 ] && jq -e '.ok==true and .service=="ball46-member-production"' /tmp/h.json >/dev/null; then good=1;break;fi
+            sleep 3
+          done
+          test "$good" = 1
+          for endpoint in '/api/member/daily' '/api/member/match?fixtureId=123'; do
+            code="$(curl -sS --max-time 15 -o /tmp/g.json -w '%{http_code}' "$base$endpoint")"
+            test "$code" = 401
+            jq -e '.error=="MEMBERSHIP_AUTH_REQUIRED"' /tmp/g.json >/dev/null
+          done
+          echo "MEMBER_KV_CUTOVER_SECURITY_GATE_PASS"
