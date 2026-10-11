@@ -34,3 +34,29 @@ jobs:
           const recent=rows.slice(0,5).map(r=>({createdAt:r.createdAt,hasId:!!r.id,hasFixtureId:!!r.fixtureId,status:r.status,result:r.result,market:r.market}));
           console.log('DIAG',JSON.stringify({timestamp:new Date().toISOString(),statisticsOk:j.ok,rows:rows.length,hasMore:j.hasMore,nextCursor:!!j.nextCursor,statisticsSource:j.statisticsSource,keys:Object.keys(j),boardOk:b.ok,boardFixtures:fixtures.length,boardKeys:Object.keys(b),ledgerStatuses:status,missingId,missingFixture,missingCreatedAt,createdMin:Math.min(...createdValues),createdMax:Math.max(...createdValues),cycleStart:new Date(start).toISOString(),cycleRowsInFirstPage:within.length,recent},null,2));
           NODE
+          node - <<'NODE'
+          (async()=>{
+            let cursor=null,pages=0,rows=0,retained=0;const t0=Date.now();
+            const now=Date.now(),offset=7*3600000,local=new Date(now+offset);
+            let start=Date.UTC(local.getUTCFullYear(),local.getUTCMonth(),local.getUTCDate(),12)-offset;
+            if(now<start)start-=86400000;
+            for(let i=0;i<30;i++){
+              const u=new URL('https://www.ball46.com/api/engine/statistics');
+              u.searchParams.set('paged','1');
+              if(cursor)u.searchParams.set('cursor',cursor);
+              u.searchParams.set('_member_mirror',String(Date.now()));
+              const t=Date.now();
+              try{
+                const res=await fetch(u,{headers:{accept:'application/json','cache-control':'no-cache'},signal:AbortSignal.timeout(20000)});
+                const j=await res.json();const arr=Array.isArray(j.rows)?j.rows:[];
+                const selected=arr.filter(r=>{const createdAt=Number(r.createdAt);const result=String(r.result||'PENDING').toUpperCase();const unsettled=String(r.status||'PENDING').toUpperCase()!=='SETTLED'&&!['WIN','LOSS','PUSH','HALF_WIN','HALF_LOSS','VOID'].includes(result);return (createdAt>=start&&createdAt<start+86400000)||unsettled});
+                rows+=arr.length;retained+=selected.length;pages++;
+                console.log('PAGE',JSON.stringify({page:pages,http:res.status,ms:Date.now()-t,count:arr.length,retained:selected.length,hasMore:j.hasMore,nextCursor:!!j.nextCursor,keys:arr.length?Object.keys(arr[0]).slice(0,15):[]}));
+                if(!res.ok||j.ok===false||!Array.isArray(j.rows))throw Error('INVALID_LEDGER');
+                if(!j.hasMore||!j.nextCursor||!arr.length)break;
+                cursor=j.nextCursor;
+              }catch(err){console.log('LEDGER_PAGE_FAILURE',JSON.stringify({page:i+1,error:String(err)}));process.exitCode=1;break}
+            }
+            console.log('PAGINATION_SUMMARY',JSON.stringify({pages,rows,retained,ms:Date.now()-t0}));
+          })();
+          NODE
