@@ -1,0 +1,85 @@
+name: Audit Ball46 Live Corner Price Only 20261011
+on:
+  push:
+    branches: [audit/ball46-corner-live-price-20261011]
+    paths: [.github/workflows/audit-ball46-corner-live-price-20261011.yml]
+permissions:
+  contents: read
+jobs:
+  audit-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
+    steps:
+      - name: Read current Worker and provider corner ticks without mutation
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          const wait=ms=>AbortSignal.timeout(ms);
+          const safe=async(url,headers={})=>{
+            const r=await fetch(url,{headers,cache:'no-store',signal:wait(20000)});
+            const j=await r.json().catch(()=>({}));
+            return {http:r.status,data:j};
+          };
+          const apiRoot='https://www.ball46.com/api/engine/';
+          const parts={};
+          for(const k of ['health','registry','settings','board','signals']){
+            try{parts[k]=await safe(apiRoot+k+'?corner_audit='+Date.now());}
+            catch(e){parts[k]={error:String(e?.message||e)};}
+          }
+          const unwrap=k=>parts[k]?.data||{};
+          const h=unwrap('health'),registry=unwrap('registry'),settings=unwrap('settings'),board=unwrap('board');
+          console.log('ENGINE_STATE',JSON.stringify({at:new Date().toISOString(),http:parts.health?.http,version:h.version,revision:h.settlementRevision,boardHttp:parts.board?.http,boardVersion:board.version,fixtureCount:board.fixtures?.length,signalsHttp:parts.signals?.http}));
+          const keys=['ft_corner_over','ft_corner_under','ht_corner_over','ht_corner_under','ft_corner_ah'];
+          console.log('CORNERS_SETTINGS',JSON.stringify(Object.fromEntries(keys.map(k=>[k,{run:settings.runState?.[k]??null,aliases:registry.markets?.[k]?.aliases??null}]))));
+          const account=process.env.CLOUDFLARE_ACCOUNT_ID,token=process.env.CLOUDFLARE_API_TOKEN;
+          if(account&&token){
+            try {
+              const base='https://api.cloudflare.com/client/v4/accounts/'+account+'/workers';
+              const get=async(p)=>{
+                const x=await safe(base+p,{Authorization:'Bearer '+token});
+                if(x.http!==200||!x.data?.success)throw Error('CF_HTTP_'+x.http);
+                return x.data.result;
+              };
+              const ds=await get('/scripts/nomadtips3-engine-343/deployments');
+              const d=ds.deployments?.[0],vId=d?.versions?.find(x=>Number(x.percentage)===100)?.version_id;
+              if(!vId)throw Error('ACTIVE_VERSION_NOT_FOUND');
+              const v=await get('/workers/nomadtips3-engine-343/versions/'+vId+'?include=modules');
+              const m=v.modules?.find(x=>x.name===v.main_module);
+              if(!m?.content_base64)throw Error('ACTIVE_SOURCE_UNAVAILABLE');
+              const s=Buffer.from(m.content_base64,'base64').toString('utf8');
+              const {createHash}=await import('node:crypto');
+              const probes=['consensusProviderLine','pickBestPriced','offersFor','priceFor','odds/history','recorded_at','suspended','priceAge','corner_line','corner_asian','fullOdds','sourceUpdatedAt'];
+              console.log('ACTIVE_CORNER_SOURCE',JSON.stringify({versionId:vId,created:d.created_on,main:v.main_module,bytes:s.length,sha256:createHash('sha256').update(s).digest('hex'),flags:Object.fromEntries(probes.map(x=>[x,s.includes(x)]))}));
+            } catch(e){console.log('ACTIVE_SOURCE_ERROR',String(e?.message||e))}
+          } else console.log('ACTIVE_SOURCE_ERROR','CF_CREDENTIAL_MISSING');
+          const fx=Array.isArray(board.fixtures)?board.fixtures:[];
+          const sigs=Array.isArray(unwrap('signals').signals)?unwrap('signals').signals:[];
+          const live=fx.filter(x=>/live|in_play|playing|first|second/i.test(String(x.boardState||x.status||x.statusCode||'')));
+          const signalIds=new Set(sigs.filter(x=>String(x.market||'').includes('corner')).map(x=>String(x.fixtureId)));
+          const ids=[...new Set([...live.filter(x=>signalIds.has(String(x.fixtureId||x.id))),...live.filter(x=>x.fullOdds?.corner_line?.inplay||x.fullOdds?.corner_asian?.inplay),...live].map(x=>String(x.fixtureId||x.id||'')).filter(Boolean))].slice(0,2);
+          console.log('CORNERS_SAMPLE_SELECTION',JSON.stringify({liveFixtures:live.length,cornerSignals:sigs.filter(x=>String(x.market||'').includes('corner')).length,selectedFixtureIds:ids}));
+          const key=process.env.FIVEDOLLAR_API_KEY;
+          if(!key){console.log('PROVIDER_ERROR','FIVEDOLLAR_SECRET_MISSING');process.exit(0)}
+          for(const id of ids){
+            const base='https://api.5dollarfootballapi.com/v1/fixtures/'+encodeURIComponent(id);
+            const headers={Authorization:'Bearer '+key,Accept:'application/json'};
+            for(const [market,field] of [['corner','corner_line'],['corner_asian','corner_asian']]){
+              try {
+                const x=await safe(base+'/odds?bookmakers=bet365&market='+market,headers);
+                const b=x.data?.data?.bookmakers?.find(y=>String(y.slug||'').toLowerCase()==='bet365');
+                const q=b?.odds?.[field]?.inplay??null;
+                console.log('RAW_LIVE_CORNER',JSON.stringify({fixtureId:id,market,http:x.http,bookmaker:b?.slug||null,present:!!q,line:q?.line??null,over:q?.over??null,under:q?.under??null,home:q?.home??null,away:q?.away??null,suspended:q?.suspended??null,error:x.http!==200?x.data?.error||x.data?.message||null:null}));
+              }catch(e){console.log('RAW_LIVE_CORNER_ERROR',JSON.stringify({fixtureId:id,market,error:String(e?.message||e)}))}
+            }
+            try{
+              const x=await safe(base+'/odds/history?bookmaker=bet365&market=corner&per_page=500',headers);
+              const tick=x.data?.data?.ticks||[],last=tick.at(-1)||null,ts=last?.recorded_at?Date.parse(last.recorded_at):NaN;
+              console.log('RAW_CORNER_HISTORY',JSON.stringify({fixtureId:id,http:x.http,ticks:tick.length,more:x.data?.pagination?.has_more??null,lastMinute:last?.minute??null,lastLine:last?.line??null,lastOver:last?.over??null,lastUnder:last?.under??null,lastSuspended:last?.suspended??null,lastRecordedAt:last?.recorded_at??null,lastAgeSeconds:Number.isFinite(ts)?Math.round((Date.now()-ts)/1000):null,error:x.http!==200?x.data?.error||x.data?.message||null:null}));
+            }catch(e){console.log('RAW_CORNER_HISTORY_ERROR',JSON.stringify({fixtureId:id,error:String(e?.message||e)}))}
+          }
+          NODE
