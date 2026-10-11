@@ -72,7 +72,7 @@ try{
   const beforeResponse=await fetch('https://www.ball46.com/statistics.html?before='+Date.now(),{cache:'no-store',redirect:'manual',signal:AbortSignal.timeout(25000)});
   assert.equal(beforeResponse.status,200,'LEGACY_ROUTE_NOT_CURRENTLY_BROKEN_200');
   const beforeText=await beforeResponse.text();
-  assert(beforeText.includes('Statistics')&&beforeText.includes('feedState'),'LEGACY_PAGE_SIGNATURE_CHANGED');
+  assert(beforeText.includes('Statistics')&&beforeText.includes('SETTLED SIGNALS'),'LEGACY_PAGE_SIGNATURE_CHANGED');
   save('checkpoint.json',{worker,prior,shaBefore,shaAfter,bytes:source.length,moduleCount:before.modules.length,at:new Date().toISOString()});
   log('SITE_STATS_PREFLIGHT_PASS',{prior,shaBefore,shaAfter,onlyLegacyRoute:true,main:before.main_module,moduleCount:before.modules.length});
   assert.equal(await activeId(),prior,'FRONTEND_CHANGED_DURING_PREFLIGHT');
