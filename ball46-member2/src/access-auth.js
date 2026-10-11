@@ -12,28 +12,35 @@ export async function verifyAccessIdentity(request,env){
   // carry only the Access cookie; verify its signature using the same JWKS.
   const cookie=request.headers.get('Cookie')||'';
   const cookieToken=cookie.split(';').map(x=>x.trim()).find(x=>x.startsWith('CF_Authorization='));
-  const jwt=request.headers.get('Cf-Access-Jwt-Assertion') || (cookieToken?decodeURIComponent(cookieToken.slice('CF_Authorization='.length)):'');
-  if(!jwt)return null;
-  const parts=jwt.split('.');
-  if(parts.length!==3)return null;
-  try{
-    const header=decodeJson64(parts[0]),claims=decodeJson64(parts[1]);
-    const now=Math.floor(Date.now()/1000);
-    if(header.alg!=='RS256'||!header.kid||!claims.sub||!claims.email||
-       claims.iss!=='https://'+team||!Array.isArray(claims.aud)||!claims.aud.includes(aud)||
-       !Number.isFinite(claims.exp)||claims.exp<=now||!Number.isFinite(claims.iat)||claims.iat>now+60||
-       (claims.nbf!=null&&claims.nbf>now))return null;
-    const jwksResponse=await fetch('https://'+team+'/cdn-cgi/access/certs',{signal:AbortSignal.timeout(7000)});
-    if(!jwksResponse.ok)return null;
-    const jwks=await jwksResponse.json();
-    const jwk=jwks.keys?.find(k=>k.kid===header.kid&&k.kty==='RSA'&&k.use==='sig');
-    if(!jwk)return null;
-    const key=await crypto.subtle.importKey('jwk',jwk,{name:'RSASSA-PKCS1-v1_5',hash:'SHA-256'},false,['verify']);
-    const signature=Uint8Array.from(atob(parts[2].replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0));
-    const ok=await crypto.subtle.verify('RSASSA-PKCS1-v1_5',key,signature,new TextEncoder().encode(parts[0]+'.'+parts[1]));
-    if(!ok)return null;
-    return {id:claims.sub,email:String(claims.email).trim().toLowerCase()};
-  }catch{return null}
+  const assertion=request.headers.get('Cf-Access-Jwt-Assertion');
+  let accessCookie='';
+  try { if(cookieToken) accessCookie=decodeURIComponent(cookieToken.slice('CF_Authorization='.length)); }
+  catch { accessCookie=''; }
+  const tokens=[assertion,accessCookie].filter(Boolean);
+  if(!tokens.length)return null;
+  for(const jwt of tokens){
+    const parts=jwt.split('.');
+    if(parts.length!==3)continue;
+    try{
+      const header=decodeJson64(parts[0]),claims=decodeJson64(parts[1]);
+      const now=Math.floor(Date.now()/1000);
+      if(header.alg!=='RS256'||!header.kid||!claims.sub||!claims.email||
+         claims.iss!=='https://'+team||!Array.isArray(claims.aud)||!claims.aud.includes(aud)||
+         !Number.isFinite(claims.exp)||claims.exp<=now||
+         (claims.iat!=null&&(!Number.isFinite(claims.iat)||claims.iat>now+60))||
+         (claims.nbf!=null&&claims.nbf>now))continue;
+      const jwksResponse=await fetch('https://'+team+'/cdn-cgi/access/certs',{signal:AbortSignal.timeout(7000)});
+      if(!jwksResponse.ok)continue;
+      const jwks=await jwksResponse.json();
+      const jwk=jwks.keys?.find(k=>k.kid===header.kid&&k.kty==='RSA'&&k.use==='sig');
+      if(!jwk)continue;
+      const key=await crypto.subtle.importKey('jwk',jwk,{name:'RSASSA-PKCS1-v1_5',hash:'SHA-256'},false,['verify']);
+      const signature=Uint8Array.from(atob(parts[2].replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0));
+      const ok=await crypto.subtle.verify('RSASSA-PKCS1-v1_5',key,signature,new TextEncoder().encode(parts[0]+'.'+parts[1]));
+      if(ok)return {id:claims.sub,email:String(claims.email).trim().toLowerCase()};
+    }catch{ /* A malformed or expired assertion must not mask a valid signed Access cookie. */ }
+  }
+  return null;
 }
 // Stripe API 2025-03-31+ stores the current billing period on subscription items.
 // Require the period on the item for *our* configured price, not another plan.
