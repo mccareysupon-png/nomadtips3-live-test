@@ -1,0 +1,126 @@
+name: Ball46 Statistics FT Corners Total Only 20261011
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-ball46-statistics-final-corner-total-20261011.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ball46-production-deploy
+  cancel-in-progress: false
+jobs:
+  ft-corners-ui-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ops/ball46-easybet-crossdevice-fix-20261007
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install parser
+        run: npm install --no-save --ignore-scripts acorn@8
+      - name: Patch only settled Corners FT total UI from Production
+        working-directory: deploy-assets/ball46-member-nav-20261009
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import {writeFileSync,mkdirSync} from 'node:fs';
+          import {resolve} from 'node:path';
+          import {parse} from 'acorn';
+          import {runInNewContext} from 'node:vm';
+          import {inspect,api,script,activeVersion,getVersion,publicFile,sha,canonical,directOrigin} from '../daily-performance-20261005/production.mjs';
+          import {schedules,stageCurrentRail,verifyRailBase,wrangler} from '../daily-performance-20261005/rail.mjs';
+          const target='singlepage-workspace-343.js',marker='b46StatFinalCornersTotal20261011';
+          const helper="function b46StatFinalCornersTotal20261011(r){\n const isCorner=/corner/i.test([r?.market,r?.marketLabel,r?.providerMarket].join(' '));\n if(!isCorner)return '';\n const h=r?.finalCorners?.home,a=r?.finalCorners?.away;\n if(!Number.isInteger(h)||!Number.isInteger(a)||h<0||a<0)return '';\n return '<small style=\"display:block;font-size:10px;line-height:1.45;white-space:nowrap\">FT Corners '+esc(h+a)+'</small>';\n}\n";
+          const oldCell='<td>'+'$'+'{settled?esc(finalText):';
+          const newCell='<td>'+'$'+'{settled?esc(finalText)+b46StatFinalCornersTotal20261011(r):';
+          const report={scope:'Only show finalCorners HOME+AWAY beneath FT score on settled Corners market Statistics rows. No change to ENTRY, pending, totals, backend, settlement or non-Corners.',startedAt:new Date().toISOString()};
+          mkdirSync('audit-stat-ft-corners',{recursive:true});
+          const save=()=>writeFileSync('audit-stat-ft-corners/report.json',JSON.stringify(report,null,2));
+          const pause=ms=>new Promise(r=>setTimeout(r,ms));
+          let original=null,candidate=null;
+          const render=runInNewContext(helper+';'+marker,{esc:x=>String(x)});
+          assert(render({market:'ft_corner_over',finalCorners:{home:6,away:3}}).includes('FT Corners 9'),'TOTAL_BAD');
+          assert(render({market:'ft_corner_over',finalCorners:{home:0,away:0}}).includes('FT Corners 0'),'ZERO_BAD');
+          assert(!render({market:'ft_over',finalCorners:{home:6,away:3}}),'NON_CORNERS_LEAK');
+          assert(!render({market:'ft_corner_over',entryCorners:{home:8,away:7},mirrorCorners:{home:10,away:8}}),'UNVERIFIED_FT_LEAK');
+          function patch(before){
+           assert(!before.includes('function '+marker+'('),'ALREADY_PRESENT_STOP');
+           assert.equal(before.split('function renderTable(rows){').length-1,1,'RENDERER_CHANGED');
+           assert.equal(before.split(oldCell).length-1,1,'FINAL_CELL_CHANGED');
+           assert(before.includes('b46StatEntryContext20261011(r)'),'EXISTING_ENTRY_DATA_MUST_REMAIN');
+           const next=before.replace('function renderTable(rows){',helper+'function renderTable(rows){').replace(oldCell,newCell);
+           assert.equal(next.replace(helper,'').replace(newCell,oldCell),before,'OUT_OF_SCOPE_JS_PATCH');
+           parse(next,{ecmaVersion:'latest',sourceType:'script'});
+           return next;
+          }
+          async function rollback(){
+           if(!original)return;
+           const v=await activeVersion();if(v===original)return;
+           if(!candidate||v!==candidate)throw Error('FOREIGN_PRODUCTION_VERSION_NO_ROLLBACK');
+           await api('/scripts/'+script+'/deployments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({strategy:'percentage',versions:[{version_id:original,percentage:100}],annotations:{'workers/message':'Rollback Statistics FT Corners UI'}})});
+           assert.equal(await activeVersion(),original,'ROLLBACK_NOT_CONFIRMED');
+          }
+          try{
+           const current=await inspect();original=current.restore.version;
+           const settings=await api('/scripts/'+script+'/settings'),crons=await schedules();
+           const settingsSha=sha(canonical(settings)),engineSha=sha(Buffer.from(current.source));
+           const beforeBytes=await publicFile('/'+target,undefined,directOrigin);
+           assert.equal(sha(beforeBytes),sha(await publicFile('/'+target)),'HOSTS_DIFFER');
+           const after=patch(beforeBytes.toString('utf8')),newHash=sha(Buffer.from(after));
+           const liveData=JSON.parse(await publicFile('/api/engine/statistics?paged=1','json'));
+           assert(liveData.ok===true&&Array.isArray(liveData.rows),'STAT_API_UNAVAILABLE');
+           const example=liveData.rows.find(r=>/corner/i.test(String(r.market))&&r.status==='SETTLED'&&Number.isInteger(r?.finalCorners?.home)&&Number.isInteger(r?.finalCorners?.away));
+           assert(example&&render(example).includes(String(example.finalCorners.home+example.finalCorners.away)),'FT_CORNERS_EXAMPLE_NOT_CONFIRMED');
+           const staged=await stageCurrentRail(current.version,settings,crons,current.source);
+           await verifyRailBase(staged);
+           assert.equal(staged.hashes[target],sha(beforeBytes),'STAGED_FILE_NOT_LIVE');
+           assert.equal(await activeVersion(),original,'PRODUCTION_CHANGED_DURING_STAGE');
+           writeFileSync(resolve(staged.runtime,'assets',target),after);
+           report.beforeVersion=original;report.onlyChangedFile=target;report.afterSha=newHash;save();
+           wrangler(staged,true);
+           assert.equal(await activeVersion(),original,'PRODUCTION_CHANGED_BEFORE_DEPLOY');
+           await verifyRailBase(staged);
+           wrangler(staged,false);
+           for(let i=0;i<30;i++){const v=await activeVersion();if(v!==original){candidate=v;break}await pause(1200)}
+           assert(candidate,'NEW_VERSION_NOT_OBSERVED');
+           let yes=false;
+           for(let i=0;i<35;i++){
+            assert.equal(await activeVersion(),candidate,'PRODUCTION_MOVED_DURING_QA');
+            try{yes=sha(await publicFile('/'+target,undefined,directOrigin))===newHash&&sha(await publicFile('/'+target))===newHash;if(yes)break}catch{}
+            await pause(1200);
+           }
+           assert(yes,'FT_CORNERS_JS_NOT_VERIFIED');
+           for(const [file,hash] of Object.entries(staged.hashes)){
+            if(file===target)continue;
+            assert.equal(sha(await publicFile('/'+file)),hash,'OTHER_ASSET_CHANGED:'+file);
+           }
+           const v=await getVersion(candidate),main=v.modules.find(m=>m.name===v.main_module);
+           assert(main,'MAIN_MISSING');
+           assert.equal(sha(Buffer.from(main.content_base64,'base64')),engineSha,'ENGINE_CHANGED');
+           assert.equal(sha(canonical(await api('/scripts/'+script+'/settings'))),settingsSha,'SETTINGS_CHANGED');
+           assert.equal(canonical(await schedules()),canonical(crons),'CRONS_CHANGED');
+           report.result='SUCCESS';report.deployedVersion=candidate;save();
+           console.log('BALL46_STATISTICS_FT_CORNERS_TOTAL_SUCCESS',JSON.stringify({old:original,newVersion:candidate,changedFile:target,unchangedAssets:Object.keys(staged.hashes).length-1}));
+          }catch(e){
+           report.result='FAIL_STOPPED';report.error=String(e?.message||e);save();
+           try{await rollback();report.rolledBack=true;save()}catch(rb){report.rollbackError=String(rb?.message||rb);save()}
+           console.error(e.stack);process.exitCode=1;
+          }
+          
+          NODE
+      - name: Save audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-stat-ft-corners-${{ github.run_id }}
+          path: deploy-assets/ball46-member-nav-20261009/audit-stat-ft-corners
+          retention-days: 30
