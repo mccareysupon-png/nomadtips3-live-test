@@ -1,0 +1,49 @@
+name: Audit Origin of 60 Per Scan Referee Requests Ball46
+on:
+  push:
+    branches: [incident/ball46-signal-silent-20261011]
+    paths:
+      - '.github/workflows/audit-ball46-60-fanout-origin-20261011.yml'
+permissions:
+  contents: read
+jobs:
+  read-old-worker-versions:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: Compare original pre-Corners, post-Corners and Goals Worker referee call loops without writes
+        run: |
+          node --input-type=module <<'NODE'
+          const base='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+'/workers/nomadtips3-engine-343/versions/';
+          const hdr={Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN};
+          const ids=[
+            ['BEFORE_CORNER_REPAIR','e8f4f122-f27c-4d96-984b-56f028891cfe'],
+            ['AFTER_CORNER_REPAIR','1d017a67-0c2d-46df-beec-daaab08a4f37'],
+            ['AFTER_GOALS_VERIFICATION','cde92e54-ed87-4144-9c16-c12d365bbc01'],
+            ['AFTER_BACKOFF_4CAP','42a8bf93-895c-4b10-898e-56c209165517'],
+            ['AFTER_BULK_CHANGE','d5e2cfba-0ec8-4098-ae4c-41cda0a18689'],
+            ['GOALS_RESTORED','e8baed42-7eea-4247-81af-780d5c77d28e']
+          ];
+          for(const [label,id] of ids){
+            try{
+              const res=await fetch(base+id+'?include=modules',{headers:hdr,signal:AbortSignal.timeout(25000)});
+              const j=await res.json().catch(()=>({}));
+              if(!res.ok||j.success!==true){console.log('HISTORY_VERSION_READ_ERROR',JSON.stringify({label,id,http:res.status,errors:j.errors?.map(x=>x.code)}));continue}
+              const v=j.result,m=v.modules?.find(x=>x.name===v.main_module);
+              const src=Buffer.from(m.content_base64,'base64').toString('utf8'),line=src.split('\n');
+              const scan=src.slice(src.indexOf('async scan() {'),src.indexOf('async fetch(request) {',src.indexOf('async scan() {')));
+              const fullMatches=[...scan.matchAll(/FULL_MARKET\.fetch\(/g)].length;
+              const fixtureFanout=scan.includes('/fixture-odds?fixtureId=');
+              const strict=scan.includes('FULL_MARKET_REQUESTS_PER_SCAN=4;');
+              const histGoals=scan.includes('fetchVerifiedGoalsOnly(this.env,id,key,f)');
+              const histCorners=scan.includes('fetchVerifiedCornerOnly(this.env,id,key,f)');
+              const bulk=scan.includes('JOHN_BULK_QUALIFIED_PRICE_PREWARM_20261011');
+              const spot=line.findIndex(x=>x.includes('let refereeRequests = 0'));
+              const snap=line.slice(spot,spot+68).map((x,i)=>String(spot+i+1)+':'+x).filter(x=>/refereeRequests|FULL_MARKET|marketCandidates|for \(const f of hub|MAX_|budget|cornerTick|goalTick|refereeQueued|requiresFullMarket/.test(x));
+              console.log('HISTORY_REFEREE_VERSION',JSON.stringify({label,id,bytes:src.length,fullMarketCallsInScan:fullMatches,fixtureFanout,cap4:strict,histGoals,histCorners,bulk,sourceRows:snap}));
+            }catch(error){console.log('HISTORY_VERSION_READ_ERROR',JSON.stringify({label,id,error:String(error?.message||error)}))}
+          }
+          NODE
