@@ -70,7 +70,7 @@ jobs:
             assert.equal((html.match(/<\/head>/gi)||[]).length,1,'HEAD_COUNT_NOT_ONE');
             const next=html.replace(whole,opening+inner+'</a>').replace('</head>',style+'\n</head>');
             assert.notEqual(next,html,'NO_CHANGE');
-            assert.equal((next.match(/b46-premium-detail/g)||[]).length,3,'PREMIUM_STRUCTURE_NOT_EXACT');
+            assert.equal((next.match(/class="b46-premium-detail"/g)||[]).length,1,'PREMIUM_STRUCTURE_NOT_EXACT');
             return next;
           }
           async function rollback(){
