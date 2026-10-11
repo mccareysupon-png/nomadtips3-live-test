@@ -50,7 +50,10 @@ jobs:
           echo "=== HTML STAT LINES ==="
           grep -Ein "statistics|PENDING|ledger|api/engine|signal" "$ROOT/page.html" | head -n 160 || true
           echo "=== SINGLEPAGE FULL STAT CORE ==="
-          grep -n "function renderTable\|finalScore\|scoreAt\|mirrorMinute\|entryMinute\|minute" "$ROOT/script-10.js" | head -n 120
+          grep -n "ENTRY\|Corners\|entryMinute\|entryScore\|finalScore\|mirrorMinute\|sp-match\|sp-result" "$ROOT/script-10.js" | head -n 220
+          echo "=== STAT CSS DETAIL ==="
+          curl -L -fsS --max-time 30 "https://ball46.com/singlepage-workspace-343.css?v=343-scorebar-player-right-20260928a" -o "$ROOT/stat.css"
+          grep -n "sp-match\|sp-result\|entry\|corner\|td\|small" "$ROOT/stat.css" | head -n 260
           echo "=== JS STAT LINES ==="
           for f in "$ROOT"/script-*.js; do
             [ -f "$f" ] || continue
