@@ -1,0 +1,19 @@
+name: Member2 Active Production Version Readonly
+on:
+  push:
+    branches: [member2/isolated-ui-and-registration-20261011]
+    paths: ['.github/workflows/member2-active-version-readonly.yml']
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    env:
+      CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Check current version and installed settings only
+        run: |
+          set -euo pipefail
+          api="https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT/workers/scripts/ball46-member2-production"
+          curl -fsS -H "Authorization: Bearer $CF_TOKEN" "$api/deployments" | jq -c '{success,deployments:[.result.deployments[:4][] | {created_on,versions}]}'
+          curl -fsS -H "Authorization: Bearer $CF_TOKEN" "$api/settings" | jq -c '{success,bindings:[.result.bindings[]?|{name,type,value: (if .name=="CF_ACCESS_AUD" or .name=="CF_ACCESS_TEAM_DOMAIN" or .name=="OWNER_CHECKOUT_EMAIL" or .name=="APP_STAGE" then .value else null end)}]}'
