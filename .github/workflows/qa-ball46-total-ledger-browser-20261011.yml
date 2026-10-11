@@ -1,0 +1,57 @@
+name: QA Ball46 Total Ledger Desktop Mobile 20261011
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/qa-ball46-total-ledger-browser-20261011.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser-qa-readonly:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ops/ball46-easybet-crossdevice-fix-20261007
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Chromium
+        run: |
+          npm install --no-save --ignore-scripts playwright@1.56.1
+          npx playwright install chromium
+      - name: Verify Total always equals ledgerTotal across UI refresh cycles
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import {chromium} from 'playwright';
+          const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
+          async function test(name,view,viewport){
+           const ctx=await browser.newContext({viewport,isMobile:viewport.width<600});
+           const p=await ctx.newPage();const errors=[];p.on('pageerror',e=>errors.push(e.message));
+           await p.goto('https://ball46.com/index.html'+(view==='statistics'?'?view=statistics':''),{waitUntil:'domcontentloaded',timeout:40000});
+           await p.waitForFunction(()=>{const x=document.querySelector('[data-stat-market="all"] b');return x&&Number(x.textContent)>0},null,{timeout:40000});
+           for(const wait of [3000,17500]){await p.waitForTimeout(wait);
+            const stat=await p.evaluate(async()=>{
+             const count=Number(document.querySelector('[data-stat-market="all"] b')?.textContent?.trim().replaceAll(',',''));
+             const api=await(await fetch('/api/engine/statistics?paged=1&_audit='+Date.now(),{cache:'no-store'})).json();
+             return {count,ledgerTotal:api.ledgerTotal,settled:api.total,pending:api.pending,unresolved:api.unresolved,view:document.body?.dataset?.workspaceView};
+            });
+            console.log('QA_TOTAL',name,view,wait,JSON.stringify(stat),'ERRORS',JSON.stringify(errors.slice(0,3)));
+            assert.equal(stat.count,stat.ledgerTotal,'TOTAL_NOT_LEDGER:'+name+':'+view+':'+wait);
+            assert.equal(stat.ledgerTotal,stat.settled+stat.pending+stat.unresolved,'LEDGER_SUM_BAD');
+            assert.equal(stat.view,view,'WORKSPACE_VIEW_CHANGED');
+           }
+           assert.equal(errors.length,0,'PAGE_JAVASCRIPT_ERROR');
+           await ctx.close();
+           console.log('QA_PASS',name,view);
+          }
+          try{await Promise.all([
+           test('desktop','live',{width:1440,height:900}),
+           test('desktop','statistics',{width:1440,height:900}),
+           test('mobile','live',{width:390,height:844}),
+           test('mobile','statistics',{width:390,height:844})
+          ]);console.log('BALL46_TOTAL_LEDGER_BROWSER_QA_SUCCESS')}finally{await browser.close()}
+          NODE
