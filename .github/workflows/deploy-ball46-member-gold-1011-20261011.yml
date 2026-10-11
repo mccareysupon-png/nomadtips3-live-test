@@ -1,0 +1,134 @@
+name: Ball46 MEMBER Premium Gold 1011 — Production Only
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-ball46-member-gold-1011-20261011.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ball46-production-deploy
+  cancel-in-progress: false
+jobs:
+  member-premium-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ops/ball46-easybet-crossdevice-fix-20261007
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install verified parser dependency
+        run: npm install --no-save --ignore-scripts acorn@8
+      - name: Modify only existing MEMBER rail from latest active Production
+        working-directory: deploy-assets/ball46-member-nav-20261009
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import {readFileSync, writeFileSync, mkdirSync} from 'node:fs';
+          import {resolve} from 'node:path';
+          import {inspect,api,script,activeVersion,getVersion,publicFile,sha,canonical} from '../daily-performance-20261005/production.mjs';
+          import {schedules,stageCurrentRail,verifyRailBase,wrangler} from '../daily-performance-20261005/rail.mjs';
+          
+          const report={scope:'ONLY existing MEMBER navigation button on Ball46 main Production: champagne gold and static mock count 1,011',startedAt:new Date().toISOString()};
+          mkdirSync('audit-member-gold',{recursive:true});
+          const save=()=>writeFileSync('audit-member-gold/report.json',JSON.stringify(report,null,2));
+          const delay=ms=>new Promise(r=>setTimeout(r,ms));
+          let original=null,candidate=null;
+          
+          const style=String.raw`<style id="b46-member-gold-1011">
+          a[data-b46-member-entry="rail"]{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:9px!important;background:linear-gradient(125deg,#ffe7a8 0%,#e6be68 65%,#c99437 100%)!important;color:#192538!important;border:1px solid #ffeca8!important;box-shadow:0 2px 9px #00000022,inset 0 1px 0 #ffffff99!important;box-sizing:border-box!important}
+          a[data-b46-member-entry="rail"]:hover,a[data-b46-member-entry="rail"]:focus-visible{background:linear-gradient(125deg,#fff0be,#efcf82 65%,#d6a64d)!important;color:#182335!important}
+          a[data-b46-member-entry="rail"] .b46-premium-name{display:inline-flex;align-items:center;gap:7px;min-width:0;white-space:nowrap;font-weight:800;letter-spacing:1px;color:#192538!important}
+          a[data-b46-member-entry="rail"] .b46-premium-star{font-size:17px;line-height:1;color:#765116!important}
+          a[data-b46-member-entry="rail"] .b46-premium-members{display:inline-flex;align-items:center;gap:7px;border-radius:7px;padding:4px 8px;background:#15253b!important;color:#f8df9b!important;white-space:nowrap;box-sizing:border-box}
+          a[data-b46-member-entry="rail"] .b46-premium-members svg{width:16px;height:16px;flex:none;stroke:#f8df9b!important}
+          a[data-b46-member-entry="rail"] .b46-premium-detail{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:1px;line-height:1.05}
+          a[data-b46-member-entry="rail"] .b46-premium-detail small{font-size:8px;font-weight:750;letter-spacing:.85px;color:#acbbcf!important}
+          a[data-b46-member-entry="rail"] .b46-premium-detail strong{font-size:14px;font-weight:850;letter-spacing:.1px;font-variant-numeric:tabular-nums;color:#f8df9b!important}
+          @media(max-width:440px){a[data-b46-member-entry="rail"]{gap:5px!important}a[data-b46-member-entry="rail"] .b46-premium-name{gap:5px;font-size:12px;letter-spacing:.4px}a[data-b46-member-entry="rail"] .b46-premium-members{gap:5px;padding:4px 6px}}
+          </style>`;
+          const inner=String.raw`<span class="b46-premium-name"><span class="b46-premium-star" aria-hidden="true">✦</span><span>MEMBER</span></span><span class="b46-premium-members" aria-label="Members 1,011 (display example)"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 20v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 20v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg><span class="b46-premium-detail"><small>MEMBERS</small><strong>1,011</strong></span></span>`;
+          
+          function changeOnlyMember(html){
+            assert.equal((html.match(/data-b46-member-entry="rail"/g)||[]).length,1,'RAIL_MEMBER_COUNT_NOT_ONE');
+            assert.equal((html.match(/data-b46-member-entry="footer"/g)||[]).length,1,'FOOTER_MEMBER_MISSING');
+            assert.equal((html.match(/data-b46-member-entry="brand"/g)||[]).length,1,'BRAND_MEMBER_MISSING');
+            assert(!html.includes('id="b46-member-gold-1011"'),'PREMIUM_STYLE_ALREADY_PRESENT');
+            const matches=[...html.matchAll(/<a\b(?=[^>]*data-b46-member-entry="rail")[^>]*>[\s\S]*?<\/a>/g)];
+            assert.equal(matches.length,1,'RAIL_MEMBER_ANCHOR_NOT_FOUND');
+            const whole=matches[0][0],opening=whole.slice(0,whole.indexOf('>')+1);
+            assert(/href="https:\/\/member\.ball46\.com\/pricing"/.test(opening),'EXPECTED_MEMBER_LINK_CHANGED');
+            assert(opening.includes('target="_blank"')&&opening.includes('rel="noopener noreferrer"'),'MEMBER_LINK_BEHAVIOR_CHANGED');
+            assert.equal((html.match(/<\/head>/gi)||[]).length,1,'HEAD_COUNT_NOT_ONE');
+            const next=html.replace(whole,opening+inner+'</a>').replace('</head>',style+'\n</head>');
+            assert.notEqual(next,html,'NO_CHANGE');
+            assert.equal((next.match(/b46-premium-detail/g)||[]).length,3,'PREMIUM_STRUCTURE_NOT_EXACT');
+            return next;
+          }
+          async function rollback(){
+            if(!original)return;
+            const active=await activeVersion();
+            if(active===original)return;
+            if(!candidate||active!==candidate)throw Error('FOREIGN_PRODUCTION_VERSION_STOP_NO_ROLLBACK');
+            await api('/scripts/'+script+'/deployments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({strategy:'percentage',versions:[{version_id:original,percentage:100}],annotations:{'workers/message':'Rollback isolated MEMBER gold UI'}})});
+            assert.equal(await activeVersion(),original,'ROLLBACK_NOT_CONFIRMED');
+          }
+          try{
+            const current=await inspect();original=current.restore.version;
+            const settings=await api('/scripts/'+script+'/settings'),crons=await schedules();
+            const settingsSha=sha(canonical(settings)),workerSha=sha(Buffer.from(current.source));
+            const staged=await stageCurrentRail(current.version,settings,crons,current.source);
+            await verifyRailBase(staged);
+            assert.equal(await activeVersion(),original,'PRODUCTION_MOVED_WHILE_STAGING');
+            const path=resolve(staged.runtime,'assets/index.html');
+            const before=readFileSync(path,'utf8');
+            const after=changeOnlyMember(before);
+            const oldSha=staged.hashes['index.html'],newSha=sha(Buffer.from(after));
+            assert.equal(sha(Buffer.from(before)),oldSha,'STAGED_HTML_NOT_CURRENT');
+            writeFileSync(path,after);
+            report.beforeVersion=original;report.onlyChangedAsset='index.html';report.oldSha=oldSha;report.newSha=newSha;save();
+            wrangler(staged,true);
+            assert.equal(await activeVersion(),original,'PRODUCTION_CHANGED_BEFORE_DEPLOY');
+            wrangler(staged,false);
+            for(let i=0;i<25;i++){const v=await activeVersion();if(v!==original){candidate=v;break}await delay(1200)}
+            assert(candidate,'DEPLOYED_VERSION_NOT_OBSERVED');
+            let liveOk=false;
+            for(let i=0;i<25;i++){
+              assert.equal(await activeVersion(),candidate,'PRODUCTION_MOVED_DURING_VERIFY');
+              try{liveOk=sha(await publicFile('/index.html','html'))===newSha;if(liveOk)break}catch{}
+              await delay(1200);
+            }
+            assert(liveOk,'PUBLIC_MEMBER_HTML_NOT_VERIFIED');
+            for(const [file,hash] of Object.entries(staged.hashes)){
+              if(file==='index.html')continue;
+              assert.equal(sha(await publicFile('/'+file)),hash,'UNRELATED_ASSET_CHANGED:'+file);
+            }
+            const deployed=await getVersion(candidate);
+            const main=deployed.modules.find(m=>m.name===deployed.main_module);
+            assert(main,'DEPLOYED_MAIN_MISSING');
+            assert.equal(sha(Buffer.from(Buffer.from(main.content_base64,'base64').toString('utf8'))),workerSha,'WORKER_ENGINE_CHANGED');
+            assert.equal(sha(canonical(await api('/scripts/'+script+'/settings'))),settingsSha,'WORKER_SETTINGS_CHANGED');
+            assert.equal(canonical(await schedules()),canonical(crons),'WORKER_CRONS_CHANGED');
+            report.result='SUCCESS';report.deployedVersion=candidate;report.completedAt=new Date().toISOString();save();
+            console.log('MEMBER_GOLD_1011_PRODUCTION_SUCCESS',JSON.stringify({original,candidate,newSha,unchangedAssets:Object.keys(staged.hashes).length-1}));
+          }catch(e){
+            report.result='FAIL_STOPPED';report.error=String(e?.message||e);save();
+            try{await rollback();report.rolledBack=true;save()}catch(rb){report.rollbackError=String(rb?.message||rb);save()}
+            console.error(e.stack);process.exitCode=1;
+          }
+          NODE
+      - name: Save auditable report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-member-gold-1011-${{ github.run_id }}
+          path: deploy-assets/ball46-member-nav-20261009/audit-member-gold
+          retention-days: 30
