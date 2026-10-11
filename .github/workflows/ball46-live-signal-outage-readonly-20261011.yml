@@ -1,0 +1,26 @@
+name: Ball46 Live Signal Outage Readonly
+on:
+  push:
+    branches: [member2/isolated-ui-and-registration-20261011]
+    paths: ['.github/workflows/ball46-live-signal-outage-readonly-20261011.yml']
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Read-only production endpoints
+        run: |
+          node --input-type=module <<'NODE'
+          const base='https://www.ball46.com';const now=Date.now();const cutoff=Date.parse('2026-10-11T10:00:00.000Z');
+          for(const path of ['/api/engine/statistics?paged=1','/api/engine/board','/api/engine/history?fixtureId=202642795&window=10']){
+            try{
+              const r=await fetch(base+path,{signal:AbortSignal.timeout(15000),headers:{'cache-control':'no-cache'}});
+              const d=await r.json(); const rows=d.rows||d.signals||[];const times=rows.map(x=>Number(x.createdAt)).filter(Number.isFinite);
+              const fresh=rows.filter(x=>Number(x.createdAt)>=cutoff);
+              let summary={path,http:r.status,ok:d.ok,rows:rows.length,newest:times.length?new Date(Math.max(...times)).toISOString():null,since17: fresh.length,keys:Object.keys(d).slice(0,30)};
+              if(path.includes('board')){const fixtures=d.fixtures||[];summary.fixtures=fixtures.length;summary.statuses=Object.fromEntries([...new Set(fixtures.map(x=>x.status||x.statusCode))].map(k=>[k,fixtures.filter(x=>(x.status||x.statusCode)===k).length]));}
+              if(path.includes('statistics'))summary.sample=rows.slice(0,8).map(x=>({id:x.id,createdAt:x.createdAt,result:x.result,market:x.market}));
+              console.log('DIAGNOSTIC',JSON.stringify(summary));
+            }catch(e){console.log('DIAGNOSTIC_ERROR',path,String(e))}
+          }
+          NODE
