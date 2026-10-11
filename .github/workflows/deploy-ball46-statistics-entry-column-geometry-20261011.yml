@@ -1,0 +1,126 @@
+name: Ball46 Statistics ENTRY Column Geometry 20261011
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-ball46-statistics-entry-column-geometry-20261011.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ball46-production-deploy
+  cancel-in-progress: false
+jobs:
+  stats-table-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ops/ball46-easybet-crossdevice-fix-20261007
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install parser dependency
+        run: npm install --no-save --ignore-scripts acorn@8
+      - name: Patch only live Statistics table CSS
+        working-directory: deploy-assets/ball46-member-nav-20261009
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import {writeFileSync,mkdirSync} from 'node:fs';
+          import {resolve} from 'node:path';
+          import {inspect,api,script,activeVersion,getVersion,publicFile,sha,canonical,directOrigin} from '../daily-performance-20261005/production.mjs';
+          import {schedules,stageCurrentRail,verifyRailBase,wrangler} from '../daily-performance-20261005/rail.mjs';
+          const target='singlepage-workspace-343.css',marker='B46_STATS_ENTRY_COLUMN_GEOMETRY_20261011';
+          const css="\n/* B46_STATS_ENTRY_COLUMN_GEOMETRY_20261011: only Statistics table sizing. */\n.workspace.singlepage .sp-results .sp-table{\n  width:100%!important;\n  min-width:970px!important;\n  table-layout:fixed!important;\n}\n.workspace.singlepage .sp-results .sp-table thead th,\n.workspace.singlepage .sp-results .sp-table tbody td{\n  box-sizing:border-box!important;\n  padding-left:6px!important;\n  padding-right:6px!important;\n}\n.workspace.singlepage .sp-results .sp-table thead th:nth-child(1){width:9%!important}\n.workspace.singlepage .sp-results .sp-table thead th:nth-child(2){width:20%!important}\n.workspace.singlepage .sp-results .sp-table thead th:nth-child(3){width:10%!important}\n.workspace.singlepage .sp-results .sp-table thead th:nth-child(4){width:9%!important}\n.workspace.singlepage .sp-results .sp-table thead th:nth-child(5){width:5%!important}\n.workspace.singlepage .sp-results .sp-table thead th:nth-child(6){width:5%!important}\n.workspace.singlepage .sp-results .sp-table thead th:nth-child(7){width:9%!important}\n.workspace.singlepage .sp-results .sp-table thead th:nth-child(8){width:15%!important}\n.workspace.singlepage .sp-results .sp-table thead th:nth-child(9){width:11%!important}\n.workspace.singlepage .sp-results .sp-table thead th:nth-child(10){width:7%!important}\n.workspace.singlepage .sp-results .sp-table tbody td:nth-child(8){\n  white-space:normal!important;\n  text-overflow:clip!important;\n}\n.workspace.singlepage .sp-results .sp-table-wrap{\n  overflow-x:auto!important;\n  max-width:100%!important;\n}\n";
+          const report={scope:'Only Statistics table column sizing; expand Entry, redistribute blank widths, avoid overlap; no records, JS, HTML, other CSS, settlement or engine changes',startedAt:new Date().toISOString()};
+          mkdirSync('audit-entry-width',{recursive:true});
+          const save=()=>writeFileSync('audit-entry-width/report.json',JSON.stringify(report,null,2));
+          const delay=ms=>new Promise(r=>setTimeout(r,ms));
+          let original=null,candidate=null;
+          function patch(before){
+           assert(before.includes('.sp-table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:9px}'),'BASE_STATS_TABLE_SHAPE_CHANGED');
+           assert(before.includes('.sp-table th:nth-child(n+5){width:70px}'),'CURRENT_70PX_DEFAULT_NOT_FOUND');
+           assert(before.includes('.sp-table{min-width:850px}'),'MOBILE_TABLE_BEHAVIOR_CHANGED');
+           assert(!before.includes(marker),'ALREADY_PATCHED_STOP');
+           const percentages=[9,20,10,9,5,5,9,15,11,7];
+           assert.equal(percentages.reduce((a,b)=>a+b,0),100,'COLUMN_PERCENT_NOT_100');
+           assert.equal(percentages.length,10,'TEN_COLUMNS_EXPECTED');
+           const after=before+'\n'+css;
+           assert(after.endsWith(css),'CSS_APPEND_FAILED');
+           assert.equal(after.length-before.length,css.length+1,'OUTSIDE_CSS_MODIFICATION');
+           return after;
+          }
+          async function rollback(){
+           if(!original)return;
+           const active=await activeVersion();
+           if(active===original)return;
+           if(!candidate||active!==candidate)throw Error('FOREIGN_PRODUCTION_VERSION_STOP_NO_ROLLBACK');
+           await api('/scripts/'+script+'/deployments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({strategy:'percentage',versions:[{version_id:original,percentage:100}],annotations:{'workers/message':'Rollback Statistics ENTRY column sizing only'}})});
+           assert.equal(await activeVersion(),original,'ROLLBACK_UNCONFIRMED');
+          }
+          try{
+           const current=await inspect();original=current.restore.version;
+           const settings=await api('/scripts/'+script+'/settings'),crons=await schedules();
+           const settingsSha=sha(canonical(settings)),workerSha=sha(Buffer.from(current.source));
+           const beforeBytes=await publicFile('/'+target,undefined,directOrigin),before=beforeBytes.toString('utf8');
+           assert.equal(sha(beforeBytes),sha(await publicFile('/'+target)),'PRODUCTION_CSS_HOSTS_DIFFER');
+           const after=patch(before),afterSha=sha(Buffer.from(after));
+           const jsCurrent=(await publicFile('/singlepage-workspace-343.js')).toString('utf8');
+           assert(jsCurrent.includes('b46StatEntryContext20261011'),'ENTRY_CONTEXT_NOT_ON_PRODUCTION_STOP');
+           assert(jsCurrent.includes('data-sp-table-body'),'STAT_TABLE_RUNTIME_MISSING');
+           const html=(await publicFile('/index.html','html')).toString('utf8');
+           assert(html.includes('class="sp-table"'),'STATS_TABLE_MISSING');
+           const staged=await stageCurrentRail(current.version,settings,crons,current.source);
+           await verifyRailBase(staged);
+           assert.equal(staged.hashes[target],sha(beforeBytes),'STAGED_CSS_NOT_IDENTICAL');
+           assert.equal(await activeVersion(),original,'PRODUCTION_MOVED_DURING_STAGE');
+           writeFileSync(resolve(staged.runtime,'assets',target),after);
+           report.beforeVersion=original;report.onlyChangedAsset=target;report.oldSha=sha(beforeBytes);report.newSha=afterSha;save();
+           wrangler(staged,true);
+           assert.equal(await activeVersion(),original,'PRODUCTION_MOVED_BEFORE_DEPLOY');
+           await verifyRailBase(staged);
+           wrangler(staged,false);
+           for(let i=0;i<30;i++){const v=await activeVersion();if(v!==original){candidate=v;break}await delay(1200)}
+           assert(candidate,'NEW_PRODUCTION_VERSION_NOT_OBSERVED');
+           let directOk=false,publicOk=false;
+           for(let i=0;i<35;i++){
+            assert.equal(await activeVersion(),candidate,'PRODUCTION_MOVED_DURING_VERIFY');
+            try{
+             directOk=sha(await publicFile('/'+target,undefined,directOrigin))===afterSha;
+             publicOk=sha(await publicFile('/'+target))===afterSha;
+             if(directOk&&publicOk)break;
+            }catch{}
+            await delay(1200);
+           }
+           assert(directOk&&publicOk,'NEW_CSS_NOT_VERIFIED');
+           for(const [file,hash] of Object.entries(staged.hashes)){
+            if(file===target)continue;
+            assert.equal(sha(await publicFile('/'+file)),hash,'UNRELATED_ASSET_CHANGED:'+file);
+           }
+           const ver=await getVersion(candidate),main=ver.modules.find(m=>m.name===ver.main_module);
+           assert(main,'MAIN_MODULE_MISSING');
+           assert.equal(sha(Buffer.from(main.content_base64,'base64')),workerSha,'WORKER_ENGINE_CHANGED');
+           assert.equal(sha(canonical(await api('/scripts/'+script+'/settings'))),settingsSha,'WORKER_SETTINGS_CHANGED');
+           assert.equal(canonical(await schedules()),canonical(crons),'WORKER_CRONS_CHANGED');
+           report.result='SUCCESS';report.deployedVersion=candidate;report.completedAt=new Date().toISOString();save();
+           console.log('BALL46_STATS_ENTRY_WIDTH_SUCCESS',JSON.stringify({oldVersion:original,newVersion:candidate,changed:target,unchangedAssets:Object.keys(staged.hashes).length-1,entryPercent:15,minimumTableWidth:970}));
+          }catch(e){
+           report.result='FAIL_STOPPED';report.error=String(e.message||e);save();
+           try{await rollback();report.rolledBack=true;save()}catch(rb){report.rollbackError=String(rb.message||rb);save()}
+           console.error(e.stack);process.exitCode=1;
+          }
+          
+          NODE
+      - name: Save audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-entry-table-width-${{ github.run_id }}
+          path: deploy-assets/ball46-member-nav-20261009/audit-entry-width
+          retention-days: 30
