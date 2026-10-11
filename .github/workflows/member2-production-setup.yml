@@ -1,5 +1,8 @@
 name: Member2 Production Domain And Access
 on:
+  push:
+    branches: [member2/isolated-ui-and-registration-20261011]
+    paths: ['.github/workflows/member2-production-setup.yml']
   workflow_dispatch:
 permissions:
   contents: read
