@@ -77,3 +77,17 @@ jobs:
                               print('---',needle,'---')
                               print(t[max(0,pos-1200):pos+3200].replace('\n',' '))
           PY
+
+          echo "=== STATISTICS-NEXT PRODUCTION JS ==="
+          curl -fsSL --max-time 30 "https://ball46.com/statistics-next.js?v=343-next-production-v1" -o "$ROOT/statistics-next.js"
+          sha256sum "$ROOT/statistics-next.js"
+          python3 - <<'PY'
+          t=open('/tmp/b46-actual-route/statistics-next.js',encoding='utf-8',errors='replace').read()
+          print('BYTES',len(t))
+          for needle in ['ENTRY','Corners','entryScore','entryMinute','signalEntryMinute','entryCorners','data-sp-table-body','renderTable','statistics']:
+              print('HAS',needle,needle in t)
+              p=t.find(needle)
+              if p>=0:
+                  print('---',needle,'---')
+                  print(t[max(0,p-1400):p+3600].replace('\n',' '))
+          PY
