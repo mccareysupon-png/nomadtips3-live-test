@@ -1,0 +1,21 @@
+name: Audit Ball46 John Price Cache Freshness 20261011
+on:
+  push:
+    branches: [audit/ball46-john-goal-price-validation-20261011]
+    paths:
+      - '.github/workflows/audit-ball46-john-price-source-20261011.yml'
+permissions:
+  contents: read
+jobs:
+  readonly:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node deploy-assets/john-goal-price-audit-20261011/audit-source.mjs
