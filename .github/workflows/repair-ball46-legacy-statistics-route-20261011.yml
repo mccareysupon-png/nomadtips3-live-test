@@ -72,7 +72,7 @@ jobs:
            const updated=patch(prior.toString('utf8')),newSha=sha(Buffer.from(updated));
            const main=(await publicFile('/index.html','html')).toString('utf8');
            const statsJs=(await publicFile('/singlepage-workspace-343.js')).toString('utf8');
-           assert(main.includes('data-sp-kpi="total"')&&main.includes('data-workspace-view="statistics"'),'MAIN_STATS_UI_NOT_PRESENT');
+           assert(main.includes('data-sp-kpi="total"')&&main.includes('data-sp-market-title'),'MAIN_STATS_UI_NOT_PRESENT');
            assert(statsJs.includes('function renderKpis(rows){')&&statsJs.includes('function loadStatistics(){'),'MAIN_STATS_SCRIPT_NOT_PRESENT');
            const apiData=JSON.parse(await publicFile('/api/engine/statistics?paged=1','json'));
            assert(apiData.ok===true&&apiData.statisticsSource==='LEDGER_V2_ONLY'&&apiData.ledgerTotal>0,'STATISTICS_API_NOT_READY');
