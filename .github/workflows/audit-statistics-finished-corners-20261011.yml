@@ -9,18 +9,24 @@ permissions:
   contents: read
 jobs:
   audit:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
     steps:
-      - name: Inspect public statistics row fields
+      - name: Inspect live statistics with Node fetch
         run: |
-          python3 - <<'PY'
-          import json,urllib.request
-          u="https://ball46.com/api/engine/statistics?paged=1"
-          j=json.load(urllib.request.urlopen(u,timeout=30))
-          rows=j.get("rows",[])
-          print("rows",len(rows))
-          samples=[r for r in rows if "corner" in str(r.get("market","")).lower() and str(r.get("status","")).upper()=="SETTLED"]
-          print("settled corners",len(samples))
-          for r in samples[:4]:
-              print(json.dumps({k:v for k,v in r.items() if "corner" in k.lower() or k in ("market","status","finalScore","mirrorScore","result")},ensure_ascii=False))
-          PY
+          node --input-type=module <<'NODE'
+          const base='https://ball46.com';
+          const response=await fetch(base+'/api/engine/statistics?paged=1',{headers:{'Cache-Control':'no-cache','User-Agent':'Mozilla/5.0'},signal:AbortSignal.timeout(20000)});
+          console.log('STATUS',response.status,response.headers.get('content-type'));
+          if(!response.ok)process.exit(1);
+          const j=await response.json();
+          const rows=j.rows||[];
+          const corners=rows.filter(r=>/corner/i.test([r.market,r.marketLabel,r.providerMarket].join(' ')));
+          const settled=corners.filter(r=>r.status==='SETTLED');
+          console.log('META',JSON.stringify({rows:rows.length,corners:corners.length,settled:settled.length,markets:[...new Set(corners.map(r=>r.market))].slice(0,20)}));
+          console.log('SAMPLES',JSON.stringify(settled.slice(0,7).map(r=>Object.fromEntries(Object.entries(r).filter(([k])=>/corner|score|result|settlement|market|status|final|ft|mirror/i.test(k))))).slice(0,16000));
+          console.log('ALL_KEYS',JSON.stringify([...new Set(settled.flatMap(r=>Object.keys(r)))]));
+          const script=await fetch(base+'/singlepage-workspace-343.js',{signal:AbortSignal.timeout(20000)});
+          console.log('SCRIPT_STATUS',script.status);
+          if(script.ok){const js=await script.text();const i=js.indexOf('function renderTable(rows){');console.log('RENDER_TABLE',js.slice(i,i+3500));}
+          NODE
