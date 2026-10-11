@@ -1,0 +1,35 @@
+name: Restore Ball46 Legacy Statistics Route Only
+on:
+  push:
+    branches: [work/ball46-restore-statistics-legacy-route-20261011]
+    paths:
+      - '.github/workflows/restore-ball46-legacy-statistics-20261011.yml'
+permissions:
+  contents: read
+concurrency:
+  group: ball46-production-statistics-legacy-route-restore
+  cancel-in-progress: false
+jobs:
+  guarded-redirect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 14
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify deployment syntax
+        run: node --check deploy-assets/ball46-stats-route/deploy.mjs
+      - name: Deploy exact legacy Statistics route redirect from active UI Worker and QA
+        run: node deploy-assets/ball46-stats-route/deploy.mjs
+      - name: Keep rollback checkpoint
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-statistics-route-${{ github.run_id }}
+          path: audit/
+          if-no-files-found: warn
+          retention-days: 30
