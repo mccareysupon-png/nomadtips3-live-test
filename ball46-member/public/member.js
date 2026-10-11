@@ -458,7 +458,8 @@ function makeSignalRow(row){
   const resultText=unresolved
     ? (ended?'FT · WAITING':Number.isFinite(matchMinute)&&matchMinute>0?Math.floor(matchMinute)+"'":'WAITING')
     : String(row.result).replaceAll('_',' ');
-  result.append(node('span','badge '+(unresolved?'neutral':resultClass(row.result)),resultText));
+  const isMinuteCard=unresolved && !ended && Number.isFinite(matchMinute) && matchMinute>0;
+  result.append(node('span',isMinuteCard?'result-minute-card':'badge '+(unresolved?'neutral':resultClass(row.result)),resultText));
   tr.append(result);
 
   const p=Number(row.pnl||0);
