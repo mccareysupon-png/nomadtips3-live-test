@@ -1,0 +1,21 @@
+name: Audit Active Ball46 Goals John Referee 20261011
+on:
+  push:
+    branches: [fix/ball46-goals-john-referee-restore-20261011]
+    paths:
+      - '.github/workflows/audit-ball46-goals-john-20261011.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node deploy-assets/ball46-goals-john-referee/audit-active.mjs
