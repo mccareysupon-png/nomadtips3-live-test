@@ -1,0 +1,26 @@
+name: Audit Member Snapshot Freshness
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/audit-ball46-member-snapshot-freshness.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Verify current snapshot from production KV without touching Engine
+        run: |
+          set -euo pipefail
+          root="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/storage/kv/namespaces"
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$root?per_page=100" >/tmp/namespaces.json
+          id="$(jq -r '.result[]|select(.title=="BALL46_MEMBER_DAILY_SNAPSHOT_PRODUCTION")|.id' /tmp/namespaces.json | head -n1)"
+          test -n "$id"
+          key="$(node -e 'const now=Date.now(),d=new Date(now+25200000);let t=Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate(),12)-25200000;if(now<t)t-=86400000;process.stdout.write("member:daily:v1:"+t)')"
+          key_encoded="$(node -p 'encodeURIComponent(process.argv[1])' "$key")"
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$root/$id/values/$key_encoded" >/tmp/snap.json
+          node -e 'const s=require("/tmp/snap.json");const now=Date.now();const n=s.daily?.summary?.ALL;console.log(JSON.stringify({snapshotAgeSeconds:Math.floor((now-s.generatedAt)/1000),generatedAt:new Date(s.generatedAt).toISOString(),signals:n?.signals,win:n?.win,loss:n?.loss,pending:n?.pending,valid:n?.signals===s.daily?.signals?.length})); if(n?.signals!==s.daily?.signals?.length)process.exit(1)'
