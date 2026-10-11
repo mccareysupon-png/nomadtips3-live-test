@@ -20,3 +20,13 @@ test('verified assertion header is accepted',async()=>{const i=await verifyAcces
 test('verified Cloudflare Access cookie is accepted',async()=>{const i=await verifyAccessIdentity(req({Cookie:'unrelated=1; CF_Authorization='+jwt}),env);assert.equal(i?.email,'owner@example.com')});
 test('unsigned or forged cookie cannot bypass authorization',async()=>{const i=await verifyAccessIdentity(req({Cookie:'CF_Authorization='+jwt.slice(0,-8)+'12345678'}),env);assert.equal(i,null)});
 test('missing identity denied',async()=>{assert.equal(await verifyAccessIdentity(req({}),env),null)});
+
+test('invalid assertion still accepts independently signed valid Access cookie',async()=>{
+  const bad=jwt.slice(0,-8)+'12345678';
+  const i=await verifyAccessIdentity(req({'Cf-Access-Jwt-Assertion':bad,Cookie:'CF_Authorization='+jwt}),env);
+  assert.equal(i?.email,'owner@example.com');
+});
+test('invalid assertion and invalid cookie fail closed',async()=>{
+  const bad=jwt.slice(0,-8)+'12345678';
+  assert.equal(await verifyAccessIdentity(req({'Cf-Access-Jwt-Assertion':bad,Cookie:'CF_Authorization='+bad}),env),null);
+});
