@@ -1,0 +1,55 @@
+name: Audit Ball46 Total Tab DOM Writers Readonly
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/audit-ball46-total-tab-browser-writers-20261011.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ops/ball46-easybet-crossdevice-fix-20261007
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser
+        run: |
+          npm install --no-save --ignore-scripts playwright@1.56.1
+          npx playwright install chromium
+      - name: Trace Total text writers without modifying Production
+        run: |
+          node --input-type=module <<'NODE'
+          import {chromium} from 'playwright';
+          const b=await chromium.launch({headless:true,args:['--no-sandbox']});
+          for(const viewport of [{width:1440,height:900},{width:390,height:844}]){
+           const ctx=await b.newContext({viewport,isMobile:viewport.width<600});
+           const page=await ctx.newPage();
+           page.on('console',msg=>{if(msg.text().startsWith('TOTAL_TRACE'))console.log('FROM_BROWSER',viewport.width,msg.text().slice(0,1800))});
+           await page.addInitScript(()=>{
+            const desc=Object.getOwnPropertyDescriptor(Node.prototype,'textContent');
+            Object.defineProperty(Node.prototype,'textContent',{configurable:true,enumerable:desc.enumerable,get(){return desc.get.call(this)},set(v){
+             try{if(this.nodeType===1&&this.matches?.('[data-stat-market="all"] b'))console.info('TOTAL_TRACE WRITE '+String(v)+' STACK '+new Error().stack?.split('\n').slice(1,6).join(' / '));}catch{}
+             return desc.set.call(this,v);
+            }});
+            document.addEventListener('DOMContentLoaded',()=>{
+             const el=document.querySelector('[data-stat-market="all"] b');if(!el)return;
+             const mo=new MutationObserver(()=>console.info('TOTAL_TRACE OBSERVE '+el.textContent+' URL '+location.search));
+             mo.observe(el,{subtree:true,childList:true,characterData:true});
+            },{once:true});
+           });
+           for(const route of ['/index.html','/index.html?view=statistics']){
+            try{await page.goto('https://ball46.com'+route,{waitUntil:'domcontentloaded',timeout:40000});
+            console.log('URL',viewport.width,route,'SCRIPTS',JSON.stringify(await page.locator('script[src]').evaluateAll(es=>es.map(x=>x.src))));
+            for(const wait of [700,1400,2200,3500]){await page.waitForTimeout(wait);console.log('TIMELINE',viewport.width,route,wait,JSON.stringify(await page.evaluate(()=>({total:document.querySelector('[data-stat-market="all"] b')?.textContent,view:document.body?.dataset?.workspaceView,apiObj:window.BALL46_STATISTICS_DATA?true:false}))));}
+            }catch(e){console.log('PAGE_ERR',route,String(e.message).slice(0,300))}
+           }
+           await ctx.close();
+          }
+          await b.close();
+          NODE
