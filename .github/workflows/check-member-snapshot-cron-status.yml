@@ -1,0 +1,37 @@
+name: Check Member Snapshot Cron Status
+on:
+  push:
+    branches: [member/snapshot-readonly-20261011]
+    paths: ['.github/workflows/check-member-snapshot-cron-status.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  status:
+    runs-on: ubuntu-24.04
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Read staging Cron status and current-day snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/storage/kv/namespaces"
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base?per_page=100" >/tmp/n.json
+          id="$(jq -r '.result[] | select(.title=="BALL46_MEMBER_DAILY_SNAPSHOT_STAGING") | .id' /tmp/n.json | head -n1)"
+          test -n "$id"
+          code="$(curl -sS -o /tmp/status.json -w '%{http_code}' -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/$id/values/member%3Apublisher%3Astatus")"
+          echo "PUBLISHER_STATUS_HTTP=$code"
+          if [ "$code" = 200 ]; then jq -c '{ok,error,at,cycleStart,signalCount,generatedAt}' /tmp/status.json; fi
+          node <<'NODE' >/tmp/key
+          let now=Date.now(),d=new Date(now+25200000);
+          let t=Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate(),12)-25200000;
+          if(now<t)t-=86400000;
+          process.stdout.write('member:daily:v1:'+t)
+          NODE
+          key="$(cat /tmp/key)"
+          encoded="$(node -p 'encodeURIComponent(process.argv[1])' "$key")"
+          code="$(curl -sS -o /tmp/current.json -w '%{http_code}' -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/$id/values/$encoded")"
+          echo "SNAPSHOT_HTTP=$code"
+          if [ "$code" = 200 ]; then jq -c '{cycleStart,generatedAt,signalCount:.daily.signalCount,summary:.daily.summary.ALL,pages:.daily.pagesRead}' /tmp/current.json; fi
