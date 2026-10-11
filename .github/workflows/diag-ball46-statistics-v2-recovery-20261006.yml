@@ -1,4 +1,4 @@
-name: DIAG Ball46 Statistics V2 Recovery 20261006
+name: Ball46 Statistics Realtime PENDING Production 20261011
 
 on:
   push:
@@ -10,53 +10,249 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ball46-stat-realtime-production-20261011
+  cancel-in-progress: false
+
 jobs:
-  diagnose:
+  deploy:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 25
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      EXPECTED_VERSION: c4174e9b-50ab-4e15-a7f5-6ef637fb6599
+      EXPECTED_SHA: 5805e5eac5833a3e6fae38e4f2d1665d90d0943856535e8216f07b73d94aacb9
     steps:
-      - name: Inspect current production statistics engine
+      - name: Deploy realtime Statistics PENDING from exact live source
         shell: bash
         run: |
           set -euo pipefail
+          ROOT=/tmp/b46-stat-realtime-20261011
+          ENGINE=nomadtips3-engine-343
+          ENGINE_URL=https://nomadtips3-engine-343.mccarey-supon.workers.dev
+          PUBLIC_URL=https://www.ball46.com
+          rm -rf "$ROOT"; mkdir -p "$ROOT/before" "$ROOT/worker" "$ROOT/after"
+          DEPLOYED=0
+          PRE_VERSION=""
+          rollback(){
+            code=$?
+            if [ "$DEPLOYED" = 1 ] && [ -n "$PRE_VERSION" ]; then
+              echo "ROLLBACK_TO=$PRE_VERSION"
+              npx --yes wrangler@4.92.0 versions deploy "$PRE_VERSION@100%" --name "$ENGINE" -y --message "Auto rollback realtime statistics ${GITHUB_RUN_ID}" || true
+            fi
+            exit "$code"
+          }
+          trap rollback ERR
+
           python3 - <<'PY'
-          import base64,hashlib,json,os,urllib.request
+          import base64,hashlib,json,os,pathlib,urllib.request
+          root=pathlib.Path('/tmp/b46-stat-realtime-20261011')
           account=os.environ['CLOUDFLARE_ACCOUNT_ID']; token=os.environ['CLOUDFLARE_API_TOKEN']
+          expected_v=os.environ['EXPECTED_VERSION']; expected_sha=os.environ['EXPECTED_SHA']
           api=f'https://api.cloudflare.com/client/v4/accounts/{account}'; worker='nomadtips3-engine-343'
           h={'Authorization':f'Bearer {token}','Accept':'application/json'}
           def getj(u):
-            with urllib.request.urlopen(urllib.request.Request(u,headers=h),timeout=30) as r:
-              j=json.load(r)
-            if isinstance(j,dict) and j.get('success') is False:
-              raise SystemExit('CF_API_FAIL:'+json.dumps(j)[:800])
+            with urllib.request.urlopen(urllib.request.Request(u,headers=h),timeout=30) as r:j=json.load(r)
+            if isinstance(j,dict) and j.get('success') is False: raise SystemExit('CF_API_FAIL:'+json.dumps(j)[:700])
             return j
           deps=getj(f'{api}/workers/scripts/{worker}/deployments')['result']['deployments']
-          versions=deps[0].get('versions') or []
-          active=[str(v['version_id']) for v in versions if v.get('version_id') and float(v.get('percentage',0))>=99.999]
-          if len(active)!=1: raise SystemExit('ACTIVE_VERSION_AMBIGUOUS:'+repr(active))
-          vid=active[0]
-          ver=getj(f'{api}/workers/workers/{worker}/versions/{vid}?include=modules')['result']
+          vs=deps[0].get('versions') or []
+          active=[str(v['version_id']) for v in vs if v.get('version_id') and float(v.get('percentage',0))>=99.999]
+          if active!=[expected_v]: raise SystemExit('PRODUCTION_VERSION_MOVED:'+repr(active))
+          ver=getj(f'{api}/workers/workers/{worker}/versions/{expected_v}?include=modules')['result']
           mods=ver.get('modules') or []
           target=[m for m in mods if m.get('name')=='index-bulk-recovery.js' and m.get('content_base64')]
-          if len(target)!=1: raise SystemExit('SOURCE_MODULE_MISSING:'+repr([m.get('name') for m in mods]))
-          raw=base64.b64decode(target[0]['content_base64']); s=raw.decode()
-          settings=getj(f'{api}/workers/scripts/{worker}/settings')['result']
-          sha=hashlib.sha256(raw).hexdigest()
-          print('ACTIVE_VERSION',vid)
-          print('SOURCE_SHA256',sha)
-          print('SOURCE_LEN',len(s))
-          print('BINDINGS',json.dumps(settings.get('bindings') or [],sort_keys=True))
-          required=['signal-ledger-v2-longterm','STAT_LEDGER_PREFIX = "stat:v2:row:"','async upsertLedgerRows','async syncStatisticsLedger','async statisticsLedgerResponse','signals.push(sig);','writeWorkingSignals(this.ctx, capped)','reconcileExternalFinal']
+          if len(mods)!=1 or len(target)!=1: raise SystemExit('MODULE_SHAPE_CHANGED:'+repr([m.get('name') for m in mods]))
+          raw=base64.b64decode(target[0]['content_base64']); s=raw.decode(); sha=hashlib.sha256(raw).hexdigest()
+          if sha!=expected_sha: raise SystemExit('PRODUCTION_SOURCE_MOVED:'+sha)
+          required=['signal-ledger-v2-longterm','STAT_LEDGER_PREFIX = "stat:v2:row:"','async upsertLedgerRows','async syncStatisticsLedger','async statisticsLedgerResponse','signals.push(sig);','writeWorkingSignals(this.ctx, capped)','reconcileExternalFinal','statisticsSource: "LEDGER_V2_ONLY"']
           missing=[x for x in required if x not in s]
-          print('MISSING_REQUIRED',json.dumps(missing))
-          print('HAS_V1_BAD_PATCH','realtime-pending-ledger-v1' in s)
-          print('HAS_V2_PATCH','realtime-pending-v2-new-only' in s)
-          print('SIGNAL_PUSH_COUNT',s.count('signals.push(sig);'))
-          print('WORKING_COMMIT_COUNT',s.count('await writeWorkingSignals(this.ctx, capped);'))
-          if missing: raise SystemExit('PRODUCTION_CONTRACT_CHANGED')
+          if missing: raise SystemExit('PRODUCTION_CONTRACT_MOVED:'+repr(missing))
+          if 'realtime-pending-ledger-v1' in s: raise SystemExit('OLD_BAD_PATCH_PRESENT')
+          if 'realtime-pending-v2-new-only' in s: raise SystemExit('V2_ALREADY_PRESENT')
           if s.count('signals.push(sig);')!=1: raise SystemExit('SIGNAL_PUSH_COUNT_CHANGED')
           if s.count('await writeWorkingSignals(this.ctx, capped);')!=1: raise SystemExit('WORKING_COMMIT_COUNT_CHANGED')
+          if ver.get('compatibility_date')!='2026-09-09' or (ver.get('compatibility_flags') or []): raise SystemExit('COMPAT_CHANGED')
+          names={b.get('name'):b for b in (ver.get('bindings') or [])}
+          if names.get('ENGINE',{}).get('class_name')!='Nomad343Engine': raise SystemExit('ENGINE_BINDING_CHANGED')
+          if names.get('HUB',{}).get('service')!='nomadtips3-5usd-hub-343': raise SystemExit('HUB_BINDING_CHANGED')
+          if names.get('FULL_MARKET',{}).get('service')!='nomadtips3-full-market-343-ball46': raise SystemExit('FULL_MARKET_BINDING_CHANGED')
+          if names.get('FIVEDOLLAR_API_KEY',{}).get('type')!='secret_text': raise SystemExit('SECRET_BINDING_CHANGED')
+          def block(text,a,b):
+            i=text.find(a); j=text.find(b,i)
+            if i<0 or j<0: raise SystemExit('BLOCK_ANCHOR_MISSING')
+            return text[i:j]
+          referee=block(s,'if (u.pathname === "/referee" && request.method === "GET") {','    if (u.pathname === "/fixture-odds" && request.method === "GET") {')
+          statresp=block(s,'  async statisticsLedgerResponse(cursor = null, paged = false) {','  async scan() {')
+          reconcile=block(s,'  async reconcileExternalFinal(request) {','  async fetch(request) {')
+          root.joinpath('before/live.js').write_bytes(raw)
+          root.joinpath('before/version.txt').write_text(expected_v)
+          root.joinpath('before/referee.sha').write_text(hashlib.sha256(referee.encode()).hexdigest())
+          root.joinpath('before/statresp.sha').write_text(hashlib.sha256(statresp.encode()).hexdigest())
+          root.joinpath('before/reconcile.sha').write_text(hashlib.sha256(reconcile.encode()).hexdigest())
+          print('LOCK_OK',expected_v,sha)
           PY
+          PRE_VERSION=$(cat "$ROOT/before/version.txt")
+
+          curl -fsS -L --retry 3 --retry-all-errors --max-time 45 "$ENGINE_URL/statistics?paged=1&probe=pre-${GITHUB_RUN_ID}" -o "$ROOT/before/statistics.json"
+          curl -fsS -L --retry 3 --retry-all-errors --max-time 45 "$ENGINE_URL/signals?probe=pre-${GITHUB_RUN_ID}" -o "$ROOT/before/signals.json"
+          curl -fsS -L --retry 3 --retry-all-errors --max-time 45 "$ENGINE_URL/ledger-health?probe=pre-${GITHUB_RUN_ID}" -o "$ROOT/before/ledger.json"
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          src=Path('/tmp/b46-stat-realtime-20261011/before/live.js')
+          out=Path('/tmp/b46-stat-realtime-20261011/worker/index-bulk-recovery.js')
+          s=src.read_text()
+          scan_anchor='  async scan() {'
+          hits=[m.start() for m in re.finditer(re.escape(scan_anchor),s)]
+          if len(hits)<2: raise SystemExit('SCAN_ANCHOR_COUNT:'+str(len(hits)))
+          push=s.find('signals.push(sig);')
+          if hits[0]>push: raise SystemExit('CORE_SCAN_SCOPE_BAD')
+          pos=hits[0]+len(scan_anchor)
+          s=s[:pos]+'\n    const realtimePendingNewRows = []; // realtime-pending-v2-new-only'+s[pos:]
+          s=s.replace('signals.push(sig);','signals.push(sig);\n                realtimePendingNewRows.push(sig);',1)
+          old='await writeWorkingSignals(this.ctx, capped);'
+          new='''await writeWorkingSignals(this.ctx, capped);
+      // realtime-pending-v2-new-only: persist only Signals created in this scan.
+      if (realtimePendingNewRows.length) {
+        await this.upsertLedgerRows(realtimePendingNewRows, fixtureMap);
+      }'''
+          s=s.replace(old,new,1)
+          if s.count('realtime-pending-v2-new-only')<2: raise SystemExit('PATCH_NOT_WIRED')
+          if 'capped.filter((x) => String(x?.status || "").toUpperCase() === "PENDING")' in s: raise SystemExit('ALL_PENDING_PATTERN_FORBIDDEN')
+          out.write_text(s)
+          print('PATCH_OK',len(s))
+          PY
+          node --check "$ROOT/worker/index-bulk-recovery.js"
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import difflib,hashlib
+          root=Path('/tmp/b46-stat-realtime-20261011')
+          a=root.joinpath('before/live.js').read_text().splitlines()
+          b=root.joinpath('worker/index-bulk-recovery.js').read_text().splitlines()
+          d=list(difflib.unified_diff(a,b,lineterm=''))
+          removed=[x for x in d if x.startswith('-') and not x.startswith('---')]
+          if removed: raise SystemExit('PATCH_REMOVED_EXISTING_LINE:'+repr(removed[:10]))
+          before='\n'.join(a); after='\n'.join(b)
+          def hblock(text,a,b):
+            i=text.find(a);j=text.find(b,i)
+            if i<0 or j<0: raise SystemExit('VERIFY_ANCHOR_MISSING')
+            return hashlib.sha256(text[i:j].encode()).hexdigest()
+          guards=[
+            ('referee','if (u.pathname === "/referee" && request.method === "GET") {','    if (u.pathname === "/fixture-odds" && request.method === "GET") {'),
+            ('statresp','  async statisticsLedgerResponse(cursor = null, paged = false) {','  async scan() {'),
+            ('reconcile','  async reconcileExternalFinal(request) {','  async fetch(request) {')
+          ]
+          for n,x,y in guards:
+            expected=root.joinpath('before/'+n+'.sha').read_text().strip()
+            if hblock(before,x,y)!=expected or hblock(after,x,y)!=expected: raise SystemExit(n.upper()+'_CHANGED')
+          print('SURGICAL_PATCH_PASS')
+          PY
+
+          cat > "$ROOT/wrangler.toml" <<'TOML'
+          name = "nomadtips3-engine-343"
+          main = "worker/index-bulk-recovery.js"
+          compatibility_date = "2026-09-09"
+          workers_dev = true
+
+          [observability]
+          enabled = true
+
+          [triggers]
+          crons = ["* * * * *"]
+
+          [[services]]
+          binding = "HUB"
+          service = "nomadtips3-5usd-hub-343"
+          environment = "production"
+
+          [[services]]
+          binding = "FULL_MARKET"
+          service = "nomadtips3-full-market-343-ball46"
+          environment = "production"
+
+          [[durable_objects.bindings]]
+          name = "ENGINE"
+          class_name = "Nomad343Engine"
+
+          [[migrations]]
+          tag = "v1"
+          new_sqlite_classes = ["Nomad343Engine"]
+          TOML
+
+          npx --yes wrangler@4.92.0 deploy --dry-run --config "$ROOT/wrangler.toml"
+
+          python3 - <<'PY'
+          import base64,hashlib,json,os,urllib.request
+          account=os.environ['CLOUDFLARE_ACCOUNT_ID'];token=os.environ['CLOUDFLARE_API_TOKEN'];api=f'https://api.cloudflare.com/client/v4/accounts/{account}';worker='nomadtips3-engine-343'
+          h={'Authorization':f'Bearer {token}','Accept':'application/json'}
+          def j(u):
+            with urllib.request.urlopen(urllib.request.Request(u,headers=h),timeout=30) as r:return json.load(r)
+          d=j(f'{api}/workers/scripts/{worker}/deployments')['result']['deployments']
+          a=[str(v['version_id']) for v in (d[0].get('versions') or []) if v.get('version_id') and float(v.get('percentage',0))>=99.999]
+          if a!=[os.environ['EXPECTED_VERSION']]:raise SystemExit('RACE_VERSION_MOVED:'+repr(a))
+          v=j(f'{api}/workers/workers/{worker}/versions/{a[0]}?include=modules')['result']
+          m=[x for x in (v.get('modules') or []) if x.get('name')=='index-bulk-recovery.js' and x.get('content_base64')]
+          sha=hashlib.sha256(base64.b64decode(m[0]['content_base64'])).hexdigest() if len(m)==1 else ''
+          if sha!=os.environ['EXPECTED_SHA']:raise SystemExit('RACE_SOURCE_MOVED:'+sha)
+          print('RACE_GUARD_PASS')
+          PY
+
+          npx --yes wrangler@4.92.0 deploy --config "$ROOT/wrangler.toml" | tee "$ROOT/after/deploy.txt"
+          DEPLOYED=1
+          sleep 4
+
+          curl -fsS -L --retry 4 --retry-all-errors --max-time 60 -X POST "$ENGINE_URL/scan?realtime=${GITHUB_RUN_ID}" -o "$ROOT/after/scan.json"
+          curl -fsS -L --retry 4 --retry-all-errors --max-time 60 "$ENGINE_URL/statistics?paged=1&probe=post-${GITHUB_RUN_ID}" -o "$ROOT/after/statistics.json"
+          curl -fsS -L --retry 4 --retry-all-errors --max-time 60 "$ENGINE_URL/signals?probe=post-${GITHUB_RUN_ID}" -o "$ROOT/after/signals.json"
+          curl -fsS -L --retry 4 --retry-all-errors --max-time 60 "$ENGINE_URL/ledger-health?probe=post-${GITHUB_RUN_ID}" -o "$ROOT/after/ledger.json"
+          curl -fsS -L --retry 4 --retry-all-errors --max-time 60 "$ENGINE_URL/bridge-health?probe=post-${GITHUB_RUN_ID}" -o "$ROOT/after/bridge.json"
+          curl -fsS -L --retry 4 --retry-all-errors --max-time 60 "$PUBLIC_URL/api/engine/statistics?paged=1&probe=post-${GITHUB_RUN_ID}" -o "$ROOT/after/public-statistics.json"
+
+          python3 - <<'PY'
+          import base64,hashlib,json,os,pathlib,urllib.request
+          root=pathlib.Path('/tmp/b46-stat-realtime-20261011')
+          def load(p): return json.loads(root.joinpath(p).read_text())
+          pre=load('before/statistics.json'); post=load('after/statistics.json'); sig=load('after/signals.json'); ledger=load('after/ledger.json'); bridge=load('after/bridge.json'); pub=load('after/public-statistics.json'); scan=load('after/scan.json')
+          for n,j in [('statistics',post),('signals',sig),('ledger',ledger),('bridge',bridge),('public',pub),('scan',scan)]:
+            if j.get('ok') is not True: raise SystemExit('POST_'+n.upper()+'_NOT_OK:'+repr(j)[:500])
+          if post.get('statisticsLedgerVersion')!='signal-ledger-v2-longterm' or post.get('statisticsSource')!='LEDGER_V2_ONLY': raise SystemExit('STAT_CONTRACT_CHANGED')
+          if int(post.get('ledgerTotal',0))<int(pre.get('ledgerTotal',0)): raise SystemExit('LEDGER_TOTAL_REGRESSION')
+          rows=post.get('rows') or []; ids=[str(x.get('id') or '') for x in rows]
+          if any(not x for x in ids) or len(ids)!=len(set(ids)): raise SystemExit('DUPLICATE_LEDGER_ID')
+          byid={str(x.get('id')):x for x in rows}
+          current_pending=[x for x in (sig.get('signals') or []) if str(x.get('status','')).upper()=='PENDING']
+          missing=[str(x.get('id')) for x in current_pending if str(x.get('id')) not in byid]
+          if missing: raise SystemExit('CURRENT_PENDING_MISSING_FROM_STATISTICS:'+repr(missing[:10]))
+          if pub.get('statisticsLedgerVersion')!=post.get('statisticsLedgerVersion') or pub.get('statisticsSource')!=post.get('statisticsSource'): raise SystemExit('PUBLIC_STAT_CONTRACT_MISMATCH')
+          account=os.environ['CLOUDFLARE_ACCOUNT_ID'];token=os.environ['CLOUDFLARE_API_TOKEN'];api=f'https://api.cloudflare.com/client/v4/accounts/{account}';worker='nomadtips3-engine-343';h={'Authorization':f'Bearer {token}','Accept':'application/json'}
+          def getj(u):
+            with urllib.request.urlopen(urllib.request.Request(u,headers=h),timeout=30) as r:return json.load(r)
+          deps=getj(f'{api}/workers/scripts/{worker}/deployments')['result']['deployments'];vs=deps[0].get('versions') or []
+          active=[str(v['version_id']) for v in vs if v.get('version_id') and float(v.get('percentage',0))>=99.999]
+          if len(active)!=1 or active[0]==os.environ['EXPECTED_VERSION']: raise SystemExit('NEW_VERSION_NOT_ACTIVE:'+repr(active))
+          ver=getj(f'{api}/workers/workers/{worker}/versions/{active[0]}?include=modules')['result'];mods=ver.get('modules') or [];m=[x for x in mods if x.get('name')=='index-bulk-recovery.js' and x.get('content_base64')]
+          if len(m)!=1: raise SystemExit('POST_SOURCE_MISSING')
+          text=base64.b64decode(m[0]['content_base64']).decode()
+          if text.count('realtime-pending-v2-new-only')<2: raise SystemExit('V2_MARKER_MISSING_POST_DEPLOY')
+          def bh(text,a,b):
+            i=text.find(a);j=text.find(b,i)
+            if i<0 or j<0: raise SystemExit('POST_BLOCK_MISSING')
+            return hashlib.sha256(text[i:j].encode()).hexdigest()
+          guards=[
+            ('referee','if (u.pathname === "/referee" && request.method === "GET") {','    if (u.pathname === "/fixture-odds" && request.method === "GET") {'),
+            ('statresp','  async statisticsLedgerResponse(cursor = null, paged = false) {','  async scan() {'),
+            ('reconcile','  async reconcileExternalFinal(request) {','  async fetch(request) {')]
+          for n,a,b in guards:
+            if bh(text,a,b)!=root.joinpath('before/'+n+'.sha').read_text().strip(): raise SystemExit(n.upper()+'_POST_DEPLOY_CHANGED')
+          print('PRODUCTION_VERSION',active[0])
+          print('REALTIME_PENDING_V2_ACTIVE')
+          print('LEDGER_TOTAL',post.get('ledgerTotal'),'PENDING',post.get('pending'),'CURRENT_PENDING_SIGNALS',len(current_pending))
+          PY
+
+          DEPLOYED=0
+          trap - ERR
+          echo BALL46_REALTIME_STATISTICS_PRODUCTION_SUCCESS
