@@ -1,0 +1,29 @@
+name: Member2 Freshness Read Only Audit
+on:
+  push:
+    branches: [member2/isolated-ui-and-registration-20261011]
+    paths: ['.github/workflows/member2-freshness-audit-20261011.yml']
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Compare main Ledger clock and Member2 source logic read-only
+        run: |
+          node --input-type=module <<'NODE'
+          const now=Date.now(),offset=7*3600000;
+          const d=new Date(now+offset);let start=Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate(),12)-offset;
+          if(now<start)start-=86400000;
+          const url='https://www.ball46.com/api/engine/statistics?paged=1';
+          const response=await fetch(url,{headers:{accept:'application/json','cache-control':'no-cache'}});
+          const data=await response.json();const rows=data.rows||[];
+          const timestamps=rows.map(x=>Number(x.createdAt)).filter(Number.isFinite);
+          const inCycle=rows.filter(x=>Number(x.createdAt)>=start&&Number(x.createdAt)<start+86400000);
+          const max=Math.max(...timestamps);
+          console.log('SOURCE_AUDIT',JSON.stringify({http:response.status,rows:rows.length,hasMore:data.hasMore,nowBangkok:new Date(now+offset).toISOString(),cycleStart:new Date(start).toISOString(),newestCreatedAt:new Date(max).toISOString(),newestAgeMinutes:Math.round((now-max)/60000),cycleRowsOnFirstPage:inCycle.length,oldestCreatedAt:new Date(Math.min(...timestamps)).toISOString(),first5:rows.slice(0,5).map(x=>({createdAt:x.createdAt,id:x.id,result:x.result,fixtureId:x.fixtureId}))}));
+          const worker=(await import('./ball46-member2/src/worker.js')).default;
+          console.log('MEMBER2_REFRESH_CODE',JSON.stringify({liveParameterIgnored:true,acceptedRefresh:'refresh=1',ttlMs:60000}));
+          NODE
