@@ -1,0 +1,83 @@
+name: QA Ball46 SETTLED Card New Time Corners Readonly
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/qa-ball46-settled-new-timing-corners-20261011.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit-browser-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ops/ball46-easybet-crossdevice-fix-20261007
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser
+        run: |
+          npm install --no-save --ignore-scripts playwright@1.56.1
+          npx playwright install chromium
+      - name: Compare actual Corners SETTLED KPI versus latest Ledger after timing change without writes
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import {chromium} from 'playwright';
+          const base='https://ball46.com', url=base+'/index.html?view=statistics&market=corners';
+          const r=await fetch(base+'/singlepage-workspace-343.js',{signal:AbortSignal.timeout(30000)});
+          const source=await r.text();
+          for(const name of ['function filteredRows(){','function renderKpis(rows){','function startStatistics(){','function renderStatNav(){','function loadStatistics(){']){
+            const i=source.indexOf(name);
+            console.log('RENDER_SOURCE',name,i,i>=0?source.slice(i,i+3100).replaceAll('\n',' '):'missing');
+          }
+          const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
+          const tests=[{name:'desktop',width:1440,height:900},{name:'mobile',width:390,height:844}];
+          const all=[];
+          for(const {name,width,height} of tests) {
+           const context=await browser.newContext({viewport:{width,height},isMobile:name==='mobile'});
+           const page=await context.newPage();
+           const errors=[];
+           let calls=0;
+           page.on('pageerror',e=>errors.push(e.message.slice(0,260)));
+           page.on('response',rs=>{if(rs.url().includes('/api/engine/statistics?'))calls++});
+           await page.goto(url,{waitUntil:'domcontentloaded',timeout:40000});
+           await page.waitForFunction(()=>{
+            const el=document.querySelector('[data-sp-kpi="total"]');
+            return document.body.dataset.workspaceView==='statistics' && el && /^[0-9,]+$/.test(el.textContent.trim())
+           },null,{timeout:40000});
+           for(const lapse of [0,18000]){
+            if(lapse)await page.waitForTimeout(lapse);
+            const snap=await page.evaluate(async()=>{
+             const summary=await(await fetch('/api/engine/statistics?paged=1&limit=1&qa_time='+Date.now(),{cache:'no-store'})).json();
+             const txt=key=>document.querySelector('[data-sp-kpi="'+key+'"]')?.textContent?.trim();
+             const kpis=Object.fromEntries(['total','unsettled','win','loss','push','rate','odds'].map(x=>[x,txt(x)]));
+             const tabs=[...document.querySelectorAll('[data-stat-market].active')].map(e=>e.getAttribute('data-stat-market'));
+             return {url:location.href,view:document.body?.dataset.workspaceView,
+               title:document.querySelector('[data-sp-market-title]')?.textContent?.trim(),
+               tabs,kpis,feedStatus:document.querySelector('[data-sp-feed-state]')?.textContent?.trim(),
+               byMarket:summary.byMarket,total:summary.total,ledgerTotal:summary.ledgerTotal,pending:summary.pending,unresolved:summary.unresolved,
+               ledgerUpdatedAt:summary.ledgerUpdatedAt,source:summary.statisticsSource,settlementRevision:summary.settlementRevision,
+               cornerExpected:(summary.byMarket?.ft_corner_over||0)+(summary.byMarket?.ft_corner_under||0),
+               currentPublicSignalAge:summary.finalReconcileVersion
+             }
+            });
+            console.log('BROWSER_SETTLED_QA',name,'LAPSE',lapse,'CALLS',calls,'DATA',JSON.stringify(snap),'JS_ERRORS',JSON.stringify(errors));
+            assert.equal(snap.view,'statistics','NOT_STATISTICS_VIEW_'+name);
+            assert(snap.tabs.includes('corners'),'NOT_CORNERS_MARKET_'+name);
+            const displayed=Number(snap.kpis.total.replaceAll(',',''));
+            assert(Number.isSafeInteger(displayed)&&displayed>=0,'SETTLED_KPI_INVALID_'+name);
+            const delta=snap.cornerExpected-displayed;
+            console.log('CORNERS_KPI_DELTA',name,delta);
+            all.push({name,lapse,displayed,expected:snap.cornerExpected,delta,calls});
+            assert(Math.abs(delta)<=4,'SETTLED_KPI_NOT_LEDGER_'+name);
+           }
+           await context.close();
+          }
+          await browser.close();
+          console.log('BALL46_SETTLED_CORNER_POST_TIME_QA_SUCCESS',JSON.stringify(all));
+          
+          NODE
