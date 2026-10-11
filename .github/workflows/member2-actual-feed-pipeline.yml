@@ -10,7 +10,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 268c4d9bb
+          ref: 268c4d9bb4e9c252d4ead2f02092a176fa890d2a
       - uses: actions/setup-node@v4
         with: {node-version: '22'}
       - name: Execute actual Worker daily mirror using live Ball46 API without bypassing production auth
