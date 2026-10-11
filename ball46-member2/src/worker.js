@@ -446,6 +446,10 @@ export default {
   async fetch(request,env) {
     const url = new URL(request.url);
 
+    // Isolated visual preview. Only staging, never unlock premium production APIs.
+    if (env.APP_STAGE === 'staging' && url.pathname === '/preview') {
+      return staticResponse(request,env,'/member.html');
+    }
     if (url.pathname === '/api/health') {
       return json({ok:true,service:'ball46-member-production',stage:env.APP_STAGE||'unknown'});
     }
