@@ -1,0 +1,21 @@
+name: Inspect Ball46 Zone Redirect Rules Readonly
+on:
+  push:
+    branches: [work/ball46-restore-statistics-legacy-route-20261011]
+    paths:
+      - '.github/workflows/audit-ball46-zone-redirect-20261011.yml'
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node deploy-assets/ball46-stats-route/zone-redirect-audit.mjs
