@@ -192,7 +192,7 @@ function cardsTotal(cards){
 }
 function matchClockLabel(row){
   if(row.state==='FINISHED') return 'FT';
-  if(row.state==='LIVE') return row.matchMinute==null?'LIVE':`LIVE ${row.matchMinute}'`;
+  if(row.state==='PENDING') return row.matchMinute==null?'PENDING':`${row.matchMinute}'`;
   return row.state==='WAITING'?'WAITING':String(row.state||'—');
 }
 function displayScore(row){
@@ -201,7 +201,7 @@ function displayScore(row){
 }
 function marketEvidence(row){
   const finished=row.state==='FINISHED';
-  const prefix=finished?'FT':'LIVE';
+  const prefix=finished?'FT':'CURRENT';
   if(row.market==='CORNERS'){
     const c=(finished?row.finalCorners:null)??row.mirrorCorners??row.entryCorners;
     if(c?.home!=null&&c?.away!=null) return `${prefix} CORNERS ${c.home}-${c.away} = ${pairTotal(c)}`;
@@ -239,7 +239,7 @@ function resultClass(result){
   return 'pending';
 }
 function statusClass(status){
-  if(status==='LIVE') return 'live';
+  if(status==='PENDING') return 'pending';
   if(status==='FINISHED') return 'finished';
   return 'pending';
 }
@@ -841,7 +841,7 @@ function featuredHorizontal(detail,selected){
     : (f?.score??selected.mirrorScore??selected.entryScore);
   const shownMinute=finished
     ? 'FT'
-    : (f?.minute!=null?`LIVE ${f.minute}'`:matchClockLabel(selected));
+    : (f?.minute!=null?`${f.minute}'`:matchClockLabel(selected));
   const shownCorners=finished
     ? (selected.finalCorners??selected.mirrorCorners??selected.entryCorners)
     : (f?.corners??selected.mirrorCorners??selected.entryCorners);
@@ -878,7 +878,7 @@ function featuredHorizontal(detail,selected){
   const statRow=node('div','featured-h-stats premium-match-stats');
   statRow.setAttribute('aria-label','Live match statistics: Home versus Away');
   const heading=node('div','premium-stats-heading');
-  heading.append(node('strong','','LIVE MATCH STATISTICS'));
+  heading.append(node('strong','','MATCH STATISTICS'));
   const legend=node('div','premium-stats-legend');
   legend.append(node('span','home','HOME'),node('span','away','AWAY'));
   heading.append(legend);statRow.append(heading);
@@ -914,14 +914,14 @@ function featuredHorizontal(detail,selected){
   const scored=shownScore&&typeof shownScore==='object'&&shownScore.home!=null&&shownScore.away!=null
     ? Number(shownScore.home)+Number(shownScore.away):null;
   const goals=Number.isFinite(scored)?String(scored):'—';
-  const matchState=finished?'FINISHED':selected.state==='LIVE'?shownMinute:matchClockLabel(selected);
+  const matchState=finished?'FINISHED':matchClockLabel(selected);
   const factsData=[
     ['HALF-TIME',halfScoreText(shownScore),'clock','First-half result'],
     ['CORNERS',metricValue(shownCorners),'corner','Corner kicks'],
     ['CARDS',cardsText(shownCards),'cards','Home · Away'],
     ['MARKET',marketEvidence(selected)||'—','goal','Signal market'],
     ['TOTAL GOALS',goals,'ball','Goals scored'],
-    ['MATCH STATUS',matchState,'stadium',finished?'Full time':'Match status']
+    ['MATCH STATUS',matchState,'stadium',finished?'Full time':'Pending settlement']
   ];
   for(const [label,value,kind,sub] of factsData){
     const item=node('div','premium-side-fact premium-fact-'+kind);
@@ -1109,8 +1109,8 @@ async function boot(){
     location.replace('/pricing');
     return;
   }
-  const daily=await dailyRes.json();
-  if(!dailyRes.ok || daily?.ok!==true) throw new Error('DAILY_FEED_UNAVAILABLE');
+  const daily=await dailyRes.json().catch(()=>null);
+  if(!dailyRes.ok || daily?.ok!==true) throw new Error('DAILY_FEED_UNAVAILABLE_'+String(daily?.error||dailyRes.status));
 
   qs('#memberName').textContent=session.member.displayName;
   qs('#memberAvatar').textContent=session.member.displayName.slice(0,1).toUpperCase();
@@ -1126,8 +1126,9 @@ async function boot(){
   });
 }
 
-boot().catch(()=>{
+boot().catch(error=>{
+  console.error('Member Signal Center data connection failed:',error);
   rowsEl.replaceChildren();
   empty.hidden=false;
-  empty.textContent='Member Signal Center is temporarily unavailable.';
+  empty.textContent='Signal data unavailable: '+String(error?.message||'UNKNOWN')+'. Please retry.';
 });
