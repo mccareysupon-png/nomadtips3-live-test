@@ -1,0 +1,41 @@
+name: DIAG Ball46 User Route 20261012
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/diag-ball46-user-route-20261012.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Compare public and workers routes
+        shell: bash
+        run: |
+          set -euo pipefail
+          for host in https://ball46.com https://ball46-production.mccarey-supon.workers.dev; do
+            echo "=== HOST $host ==="
+            curl -L -sS -D /tmp/h.txt "$host/" -o /tmp/i.html
+            grep -Ei '^(HTTP/|server:|cf-ray:|cache-control:|etag:|location:)' /tmp/h.txt || true
+            echo "INDEX_SHA=$(sha256sum /tmp/i.html | awk '{print $1}')"
+            echo "--- ASSET REFS ---"
+            grep -Eo 'longterm-performance[^"'"'"' ]*\.js[^"'"'"' ]*|singlepage-workspace[^"'"'"' ]*\.css[^"'"'"' ]*' /tmp/i.html | sort -u || true
+            echo "--- MARKER IN INDEX? ---"
+            grep -o 'B46_CUMULATIVE_UNIT_CANDLES_V2_20261012' /tmp/i.html || true
+            echo
+            for p in /longterm-performance-343.js /singlepage-workspace-343.css; do
+              curl -L -sS -D /tmp/a.h "$host$p" -o /tmp/a.bin
+              echo "$p SHA=$(sha256sum /tmp/a.bin | awk '{print $1}') LEN=$(wc -c < /tmp/a.bin)"
+              grep -Ei '^(HTTP/|server:|cf-ray:|cache-control:|etag:|location:)' /tmp/a.h || true
+              if strings /tmp/a.bin | grep -q 'B46_CUMULATIVE_UNIT_CANDLES_V2_20261012'; then
+                echo "$p MARKER=YES"
+              else
+                echo "$p MARKER=NO"
+              fi
+            done
+          done
