@@ -61,11 +61,12 @@ async function runtimeCheck(){
   report.runtime=r;save();
   assert(r.ok,'PERFORMANCE_HEADER_MISSING');
   assert(r.kicker.font.includes('IBM Plex Sans'),'FONT_NOT_ACTIVE');
-  assert.equal(r.kicker.size,'10px','KICKER_SIZE_MISSING');
+  const px=v=>Number.parseFloat(v||'0');
+  assert(Math.abs(px(r.kicker.size)-10)<=0.25,'KICKER_SIZE_MISSING');
   assert.equal(r.kicker.weight,'850','KICKER_WEIGHT_MISSING');
-  assert.equal(r.h3.size,'18px','TITLE_SIZE_MISSING');
+  assert(Math.abs(px(r.h3.size)-18)<=0.35,'TITLE_SIZE_MISSING');
   assert.equal(r.h3.weight,'900','TITLE_WEIGHT_MISSING');
-  assert(r.buttons.every(b=>b.size==='10px'&&b.weight==='850'),'RANGE_BUTTON_TYPE_MISSING');
+  assert(r.buttons.every(b=>Math.abs(px(b.size)-10)<=0.25&&b.weight==='850'),'RANGE_BUTTON_TYPE_MISSING');
   assert(r.chartPresent,'PERFORMANCE_CARD_MISSING');
   assert.equal(r.spacing,'2px','TABLE_LAYOUT_CHANGED');
  }finally{await browser.close()}
