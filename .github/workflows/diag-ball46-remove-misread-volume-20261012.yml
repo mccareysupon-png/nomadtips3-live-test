@@ -1,0 +1,52 @@
+name: DIAG Ball46 Remove Misread Volume 20261012
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/diag-ball46-remove-misread-volume-20261012.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --ignore-scripts puppeteer-core@24
+      - name: Inspect live performance DOM
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const puppeteer=require('puppeteer-core'),fs=require('fs');
+          const exe=['/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium'].find(fs.existsSync);
+          (async()=>{
+            const b=await puppeteer.launch({headless:true,executablePath:exe,args:['--no-sandbox']});
+            const p=await b.newPage(); await p.setViewport({width:1440,height:1000});
+            await p.goto('https://ball46.com/?view=statistics&diagRemoveVolume='+Date.now(),{waitUntil:'networkidle2',timeout:90000});
+            await new Promise(r=>setTimeout(r,4000));
+            const r=await p.evaluate(()=>{
+              const root=document.querySelector('.sp-trend.b46-perf-card');
+              if(!root)return {ok:false};
+              const all=[...root.querySelectorAll('*')];
+              return {
+                ok:true,
+                html:root.outerHTML.slice(0,30000),
+                suspicious:all.filter(e=>{
+                  const s=((e.className&&typeof e.className==='string'?e.className:'')+' '+(e.id||'')+' '+(e.getAttribute('data-b46-mode')||'')+' '+(e.getAttribute('aria-label')||'')+' '+(e.textContent||'')).toLowerCase();
+                  return /vol|candle|bar|profit|loss|unit/.test(s);
+                }).slice(0,120).map(e=>({tag:e.tagName,cls:typeof e.className==='string'?e.className:e.getAttribute('class'),id:e.id,txt:(e.textContent||'').trim().slice(0,100),html:e.outerHTML.slice(0,1200)})),
+                svgRects:[...root.querySelectorAll('svg rect')].map(e=>({x:e.getAttribute('x'),y:e.getAttribute('y'),w:e.getAttribute('width'),h:e.getAttribute('height'),cls:e.getAttribute('class'),fill:e.getAttribute('fill')})).slice(0,300),
+                svgLines:[...root.querySelectorAll('svg line')].map(e=>({x1:e.getAttribute('x1'),y1:e.getAttribute('y1'),x2:e.getAttribute('x2'),y2:e.getAttribute('y2'),cls:e.getAttribute('class')})).slice(0,300)
+              };
+            });
+            console.log('REMOVE_VOLUME_DIAG '+JSON.stringify(r));
+            await b.close();
+          })().catch(e=>{console.error(e.stack);process.exit(1)});
+          NODE
