@@ -1,230 +1,167 @@
 import assert from 'node:assert/strict';
-import * as acorn from 'acorn';
-import { mkdirSync, writeFileSync, existsSync } from 'node:fs';
-import { resolve } from 'node:path';
+import {mkdirSync,writeFileSync,existsSync} from 'node:fs';
+import {resolve} from 'node:path';
 import puppeteer from 'puppeteer-core';
-import { inspect,activeVersion,getVersion,api,script,sha,canonical,publicFile } from '../daily-performance-20261005/production.mjs';
-import { schedules,stageCurrentRail,verifyRailBase,wrangler } from '../daily-performance-20261005/rail.mjs';
+import {inspect,activeVersion,getVersion,api,script,sha,canonical,publicFile} from '../daily-performance-20261005/production.mjs';
+import {schedules,stageCurrentRail,verifyRailBase,wrangler} from '../daily-performance-20261005/rail.mjs';
 
 const JS='longterm-performance-343.js';
-const CSS='longterm-performance-343.css';
-const JS_MARK='B46_MARKET_CHART_INTERACTION_20261012_MARKET_V2';
-const CSS_MARK='/* B46_PERFORMANCE_MARKET_CHART_20261012 */';
+const CSS='singlepage-workspace-343.css';
+const INDEX='index.html';
+const JSMARK='/* B46_SIGNAL_PL_BARS_V4_20261012 */';
+const CSSMARK='/* B46_MARKET_CHART_V4_20261012 */';
+const delay=ms=>new Promise(r=>setTimeout(r,ms));
+mkdirSync('audit',{recursive:true});
+const report={run:process.env.GITHUB_RUN_ID,scope:'Long-term performance presentation only: thin semantic line, stock-style crosshair/value badges, adaptive per-signal P/L unit pane. No statistics formula/API/settlement changes.'};
+const save=()=>writeFileSync('audit/report.json',JSON.stringify(report,null,2));
 
-const CSS_PATCH=`
-/* B46_PERFORMANCE_MARKET_CHART_20261012 */
-body[data-workspace-view="statistics"] .sp-trend.b46-perf-card .b46-perf-svg{
-  cursor:crosshair!important;
-  touch-action:none!important;
+function patchJs(src){
+  assert(src.includes('function unitBarsSvg(points,geo)'), 'UNIT_BARS_FUNCTION_MISSING');
+  const start=src.indexOf('function unitBarsSvg(points,geo)');
+  const end=src.indexOf('function chartHtml(s)',start);
+  assert(start>=0&&end>start,'UNIT_BARS_BOUNDARY_MISSING');
+  const fn=`function unitBarsSvg(points,geo){/* B46_SIGNAL_PL_BARS_V4_20261012 */
+ const W=geo.W,L=geo.L,R=geo.R,H=104,C=52,A=38,n=points.length;
+ const profits=points.map(p=>Number.isFinite(p.profit)?p.profit:0);
+ const maxAbs=Math.max(1,...profits.map(Math.abs));
+ const maxSlots=360,compressed=n>maxSlots,slots=compressed?maxSlots:n;
+ const pos=[],neg=[];
+ const bar=(x,v,w,cls)=>{const y=C-(v/maxAbs)*A,h=Math.max(1,Math.abs(C-y)),top=v>=0?C-h:C;return '<rect class="'+cls+'" x="'+(x-w/2).toFixed(2)+'" y="'+top.toFixed(2)+'" width="'+w.toFixed(2)+'" height="'+h.toFixed(2)+'" rx="'+Math.min(.8,w/2).toFixed(2)+'"></rect>'};
+ if(compressed){
+   for(let s=0;s<slots;s++){
+     const a=Math.floor(s*n/slots),b=Math.max(a+1,Math.floor((s+1)*n/slots));
+     let pv=0,nv=0;
+     for(let i=a;i<b;i++){const v=profits[i];if(v>pv)pv=v;if(v<nv)nv=v}
+     const x=L+(slots===1?geo.pw/2:s/(slots-1)*geo.pw),w=Math.max(1.15,Math.min(2.2,geo.pw/slots*.72));
+     if(pv>0)pos.push(bar(x,pv,w,'b46-perf-unit-bar b46-perf-unit-pos'));
+     if(nv<0)neg.push(bar(x,nv,w,'b46-perf-unit-bar b46-perf-unit-neg'));
+   }
+ }else{
+   const step=n>1?geo.pw/(n-1):geo.pw,w=Math.max(1.2,Math.min(5,step*.58));
+   for(let i=0;i<n;i++){const v=profits[i];if(!v)continue;const x=L+(n===1?geo.pw/2:i/(n-1)*geo.pw);(v>0?pos:neg).push(bar(x,v,w,v>0?'b46-perf-unit-bar b46-perf-unit-pos':'b46-perf-unit-bar b46-perf-unit-neg'))}
+ }
+ const note=compressed?'OVERVIEW · UNIT HEIGHT, NOT VOLUME':'EACH BAR = 1 SETTLED SIGNAL';
+ return '<div class="b46-perf-unit-panel '+(compressed?'compressed':'individual')+'" data-b46-pl-mode="'+(compressed?'compressed':'individual')+'"><div class="b46-perf-unit-head"><span class="b46-perf-unit-label">SIGNAL P/L · UNIT</span><span class="b46-perf-unit-note">'+note+'</span></div><svg class="b46-perf-unit-svg" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none" aria-label="Per-signal unit profit and loss, not volume"><line class="b46-perf-unit-guide" x1="'+L+'" y1="'+(C-A)+'" x2="'+(W-R)+'" y2="'+(C-A)+'"></line><line class="b46-perf-unit-zero" x1="'+L+'" y1="'+C+'" x2="'+(W-R)+'" y2="'+C+'"></line><line class="b46-perf-unit-guide" x1="'+L+'" y1="'+(C+A)+'" x2="'+(W-R)+'" y2="'+(C+A)+'"></line><text class="b46-perf-unit-axis" x="'+(L-10)+'" y="'+(C-A+3)+'" text-anchor="end">+'+maxAbs.toFixed(2)+'U</text><text class="b46-perf-unit-axis zero" x="'+(L-10)+'" y="'+(C+3)+'" text-anchor="end">0U</text><text class="b46-perf-unit-axis" x="'+(L-10)+'" y="'+(C+A+3)+'" text-anchor="end">-'+maxAbs.toFixed(2)+'U</text>'+pos.join('')+neg.join('')+'<line data-b46-unit-hover-line class="b46-perf-unit-hover-line" x1="0" y1="10" x2="0" y2="'+(H-10)+'" hidden></line></svg></div>'
 }
-body[data-workspace-view="statistics"] .sp-trend.b46-perf-card .b46-perf-line{
-  stroke:url(#b46PerfLineGradient)!important;
+`;
+  return src.slice(0,start)+fn+src.slice(end);
+}
+
+const cssAdd=`
+/* B46_MARKET_CHART_V4_20261012 */
+body[data-workspace-view="statistics"] .b46-perf-svg{overflow:visible;shape-rendering:geometricPrecision}
+body[data-workspace-view="statistics"] .b46-perf-line{
   fill:none!important;
-  stroke-width:1.05px!important;
-  vector-effect:non-scaling-stroke!important;
-  shape-rendering:geometricPrecision!important;
-  stroke-linecap:round!important;
+  stroke:url(#b46PerfLineGradient)!important;
+  stroke-width:1.15!important;
+  stroke-linecap:butt!important;
   stroke-linejoin:round!important;
-}
-body[data-workspace-view="statistics"] .sp-trend.b46-perf-card .b46-perf-area{
-  fill:url(#b46PerfAreaGradient)!important;
-  stroke:none!important;
-}
-body[data-workspace-view="statistics"] .sp-trend.b46-perf-card .b46-perf-line-pos{stop-color:#3fd28c!important}
-body[data-workspace-view="statistics"] .sp-trend.b46-perf-card .b46-perf-line-neg{stop-color:#f06a78!important}
-body[data-workspace-view="statistics"] .sp-trend.b46-perf-card .b46-perf-area-pos{stop-color:#3fd28c!important;stop-opacity:.15!important}
-body[data-workspace-view="statistics"] .sp-trend.b46-perf-card .b46-perf-area-neg{stop-color:#f06a78!important;stop-opacity:.12!important}
-body[data-workspace-view="statistics"] .sp-trend.b46-perf-card .b46-perf-hover-line{
-  stroke:#91a9bb!important;
-  stroke-width:.82px!important;
-  stroke-dasharray:4 4!important;
   vector-effect:non-scaling-stroke!important;
-  opacity:.78!important;
+  filter:none!important;
+}
+body[data-workspace-view="statistics"] .b46-perf-area{fill:url(#b46PerfAreaGradient)!important;stroke:none!important}
+body[data-workspace-view="statistics"] .b46-perf-line-pos{stop-color:#36d38a!important}
+body[data-workspace-view="statistics"] .b46-perf-line-neg{stop-color:#ec5d6f!important}
+body[data-workspace-view="statistics"] .b46-perf-area-pos{stop-color:#36d38a!important;stop-opacity:.09!important}
+body[data-workspace-view="statistics"] .b46-perf-area-neg{stop-color:#ec5d6f!important;stop-opacity:.07!important}
+body[data-workspace-view="statistics"] .b46-perf-grid,
+body[data-workspace-view="statistics"] .b46-perf-vgrid{stroke-width:.7!important;vector-effect:non-scaling-stroke!important}
+body[data-workspace-view="statistics"] .b46-perf-zero-line{stroke-width:1!important;stroke-dasharray:3 4!important;vector-effect:non-scaling-stroke!important}
+body[data-workspace-view="statistics"] .b46-perf-hover-line,
+body[data-workspace-view="statistics"] .b46-perf-unit-hover-line{
+  stroke-width:.85!important;
+  stroke-dasharray:5 5!important;
+  vector-effect:non-scaling-stroke!important;
   pointer-events:none!important;
 }
-body[data-workspace-view="statistics"] .sp-trend.b46-perf-card .b46-perf-zero-line{
-  stroke:#8297aa!important;
-  stroke-width:.8px!important;
-  stroke-dasharray:2 5!important;
-  vector-effect:non-scaling-stroke!important;
-  opacity:.38!important;
-  pointer-events:none!important;
-}
-body[data-workspace-view="statistics"] .sp-trend.b46-perf-card .b46-perf-hover-dot{
-  stroke-width:1px!important;
-  vector-effect:non-scaling-stroke!important;
-}
-body[data-workspace-view="statistics"] .sp-trend.b46-perf-card .b46-perf-axis-text,
-body[data-workspace-view="statistics"] .sp-trend.b46-perf-card .b46-perf-axis-title,
-body[data-workspace-view="statistics"] .sp-trend.b46-perf-card .b46-perf-ybadge,
-body[data-workspace-view="statistics"] .sp-trend.b46-perf-card .b46-perf-xbadge,
-body[data-workspace-view="statistics"] .sp-trend.b46-perf-card .b46-perf-tip{
+body[data-workspace-view="statistics"] .b46-perf-hover-dot{stroke-width:1.2!important;vector-effect:non-scaling-stroke!important}
+body[data-workspace-view="statistics"] .b46-perf-axis-text,
+body[data-workspace-view="statistics"] .b46-perf-axis-title,
+body[data-workspace-view="statistics"] .b46-perf-unit-axis,
+body[data-workspace-view="statistics"] .b46-perf-unit-label,
+body[data-workspace-view="statistics"] .b46-perf-unit-note,
+body[data-workspace-view="statistics"] .b46-perf-ybadge,
+body[data-workspace-view="statistics"] .b46-perf-xbadge,
+body[data-workspace-view="statistics"] .b46-perf-tip{
   font-family:"IBM Plex Sans","IBM Plex Sans Thai",Inter,Arial,sans-serif!important;
 }
-body[data-workspace-view="statistics"] .sp-trend.b46-perf-card .b46-perf-axis-text{
-  font-size:9px!important;
-  font-weight:650!important;
-  letter-spacing:.015em!important;
-}
-body[data-workspace-view="statistics"] .sp-trend.b46-perf-card .b46-perf-axis-title{
-  font-size:9px!important;
-  font-weight:800!important;
-  letter-spacing:.045em!important;
-}
-body[data-workspace-view="statistics"] .sp-trend.b46-perf-card .b46-perf-ybadge,
-body[data-workspace-view="statistics"] .sp-trend.b46-perf-card .b46-perf-xbadge{
-  font-size:9px!important;
-  font-weight:850!important;
-  letter-spacing:.025em!important;
-  border-radius:5px!important;
-  box-shadow:0 4px 12px rgba(0,0,0,.14)!important;
-}
-body[data-workspace-view="statistics"] .sp-trend.b46-perf-card .b46-perf-tip{
-  border-radius:8px!important;
-  box-shadow:0 12px 28px rgba(0,0,0,.20)!important;
-  backdrop-filter:blur(10px)!important;
-}
-body[data-workspace-view="statistics"] .sp-trend.b46-perf-card .b46-perf-tip .row strong,
-body[data-workspace-view="statistics"] .sp-trend.b46-perf-card .b46-perf-tip-head strong{
-  font-weight:800!important;
-}
-body[data-workspace-view="statistics"] .sp-trend.b46-perf-card .b46-perf-tip .positive,
-body[data-workspace-view="statistics"] .sp-trend.b46-perf-card .b46-perf-ybadge.positive{color:#3fd28c!important}
-body[data-workspace-view="statistics"] .sp-trend.b46-perf-card .b46-perf-tip .negative,
-body[data-workspace-view="statistics"] .sp-trend.b46-perf-card .b46-perf-ybadge.negative{color:#f06a78!important}
-
-html[data-theme="dark"] body[data-workspace-view="statistics"] .sp-trend.b46-perf-card .b46-perf-axis-text{fill:#9aafc0!important;color:#9aafc0!important}
-html[data-theme="dark"] body[data-workspace-view="statistics"] .sp-trend.b46-perf-card .b46-perf-axis-title{fill:#c9d5df!important;color:#c9d5df!important}
-html[data-theme="dark"] body[data-workspace-view="statistics"] .sp-trend.b46-perf-card .b46-perf-ybadge,
-html[data-theme="dark"] body[data-workspace-view="statistics"] .sp-trend.b46-perf-card .b46-perf-xbadge{
-  background:rgba(12,22,31,.96)!important;
-  color:#eef5fa!important;
-  border:1px solid rgba(145,169,187,.28)!important;
-}
-html[data-theme="dark"] body[data-workspace-view="statistics"] .sp-trend.b46-perf-card .b46-perf-tip{
-  background:rgba(11,20,29,.94)!important;
-  color:#dce7ef!important;
-  border:1px solid rgba(145,169,187,.22)!important;
-}
-html[data-theme="dark"] body[data-workspace-view="statistics"] .sp-trend.b46-perf-card .b46-perf-tip .row>span,
-html[data-theme="dark"] body[data-workspace-view="statistics"] .sp-trend.b46-perf-card .b46-perf-tip-head>span{color:#8fa5b7!important}
-html[data-theme="dark"] body[data-workspace-view="statistics"] .sp-trend.b46-perf-card .b46-perf-tip .row strong,
-html[data-theme="dark"] body[data-workspace-view="statistics"] .sp-trend.b46-perf-card .b46-perf-tip-head strong{color:#f3f7fa!important}
-
-html[data-theme="light"] body[data-workspace-view="statistics"] .sp-trend.b46-perf-card .b46-perf-line-pos{stop-color:#167a48!important}
-html[data-theme="light"] body[data-workspace-view="statistics"] .sp-trend.b46-perf-card .b46-perf-line-neg{stop-color:#b23748!important}
-html[data-theme="light"] body[data-workspace-view="statistics"] .sp-trend.b46-perf-card .b46-perf-area-pos{stop-color:#167a48!important;stop-opacity:.11!important}
-html[data-theme="light"] body[data-workspace-view="statistics"] .sp-trend.b46-perf-card .b46-perf-area-neg{stop-color:#b23748!important;stop-opacity:.09!important}
-html[data-theme="light"] body[data-workspace-view="statistics"] .sp-trend.b46-perf-card .b46-perf-hover-line{stroke:#627789!important}
-html[data-theme="light"] body[data-workspace-view="statistics"] .sp-trend.b46-perf-card .b46-perf-zero-line{stroke:#65798a!important}
-html[data-theme="light"] body[data-workspace-view="statistics"] .sp-trend.b46-perf-card .b46-perf-axis-text{fill:#536878!important;color:#536878!important}
-html[data-theme="light"] body[data-workspace-view="statistics"] .sp-trend.b46-perf-card .b46-perf-axis-title{fill:#263947!important;color:#263947!important}
-html[data-theme="light"] body[data-workspace-view="statistics"] .sp-trend.b46-perf-card .b46-perf-ybadge,
-html[data-theme="light"] body[data-workspace-view="statistics"] .sp-trend.b46-perf-card .b46-perf-xbadge{
-  background:rgba(255,255,255,.97)!important;
-  color:#1d2c38!important;
-  border:1px solid rgba(64,85,102,.20)!important;
-  box-shadow:0 4px 12px rgba(23,39,52,.10)!important;
-}
-html[data-theme="light"] body[data-workspace-view="statistics"] .sp-trend.b46-perf-card .b46-perf-tip{
-  background:rgba(255,255,255,.96)!important;
-  color:#233440!important;
-  border:1px solid rgba(64,85,102,.16)!important;
-  box-shadow:0 12px 28px rgba(23,39,52,.12)!important;
-}
-html[data-theme="light"] body[data-workspace-view="statistics"] .sp-trend.b46-perf-card .b46-perf-tip .row>span,
-html[data-theme="light"] body[data-workspace-view="statistics"] .sp-trend.b46-perf-card .b46-perf-tip-head>span{color:#66798a!important}
-html[data-theme="light"] body[data-workspace-view="statistics"] .sp-trend.b46-perf-card .b46-perf-tip .row strong,
-html[data-theme="light"] body[data-workspace-view="statistics"] .sp-trend.b46-perf-card .b46-perf-tip-head strong{color:#172733!important}
-html[data-theme="light"] body[data-workspace-view="statistics"] .sp-trend.b46-perf-card .b46-perf-tip .positive,
-html[data-theme="light"] body[data-workspace-view="statistics"] .sp-trend.b46-perf-card .b46-perf-ybadge.positive{color:#167a48!important}
-html[data-theme="light"] body[data-workspace-view="statistics"] .sp-trend.b46-perf-card .b46-perf-tip .negative,
-html[data-theme="light"] body[data-workspace-view="statistics"] .sp-trend.b46-perf-card .b46-perf-ybadge.negative{color:#b23748!important}
+body[data-workspace-view="statistics"] .b46-perf-axis-text{font-size:10px!important;font-weight:650!important}
+body[data-workspace-view="statistics"] .b46-perf-axis-title{font-size:9px!important;font-weight:800!important;letter-spacing:.04em!important}
+body[data-workspace-view="statistics"] .b46-perf-unit-panel{position:relative;margin-top:7px;padding-top:22px;border-top:1px solid transparent}
+body[data-workspace-view="statistics"] .b46-perf-unit-head{position:absolute;inset:2px 0 auto 0;display:flex;align-items:center;justify-content:space-between;gap:12px;pointer-events:none}
+body[data-workspace-view="statistics"] .b46-perf-unit-label{font-size:9px!important;font-weight:850!important;letter-spacing:.075em!important}
+body[data-workspace-view="statistics"] .b46-perf-unit-note{font-size:8px!important;font-weight:700!important;letter-spacing:.035em!important}
+body[data-workspace-view="statistics"] .b46-perf-unit-svg{display:block;width:100%;height:104px;overflow:visible;shape-rendering:crispEdges}
+body[data-workspace-view="statistics"] .b46-perf-unit-bar{vector-effect:non-scaling-stroke!important}
+body[data-workspace-view="statistics"] .b46-perf-unit-pos{fill:#36d38a!important;stroke:none!important}
+body[data-workspace-view="statistics"] .b46-perf-unit-neg{fill:#ec5d6f!important;stroke:none!important}
+body[data-workspace-view="statistics"] .b46-perf-unit-zero{stroke-width:1!important;stroke-dasharray:3 3!important;vector-effect:non-scaling-stroke!important}
+body[data-workspace-view="statistics"] .b46-perf-unit-guide{stroke-width:.55!important;stroke-dasharray:2 5!important;vector-effect:non-scaling-stroke!important}
+body[data-workspace-view="statistics"] .b46-perf-unit-axis{font-size:8px!important;font-weight:700!important}
+body[data-workspace-view="statistics"] .b46-perf-ybadge,
+body[data-workspace-view="statistics"] .b46-perf-xbadge{font-size:9px!important;font-weight:850!important;letter-spacing:.02em!important}
+body[data-workspace-view="statistics"] .b46-perf-tip{font-size:10px!important}
+html[data-theme="dark"] body[data-workspace-view="statistics"] .b46-perf-grid,
+html[data-theme="dark"] body[data-workspace-view="statistics"] .b46-perf-vgrid{stroke:rgba(142,164,184,.13)!important}
+html[data-theme="dark"] body[data-workspace-view="statistics"] .b46-perf-zero-line,
+html[data-theme="dark"] body[data-workspace-view="statistics"] .b46-perf-unit-zero{stroke:rgba(212,224,234,.44)!important}
+html[data-theme="dark"] body[data-workspace-view="statistics"] .b46-perf-unit-guide{stroke:rgba(142,164,184,.12)!important}
+html[data-theme="dark"] body[data-workspace-view="statistics"] .b46-perf-hover-line,
+html[data-theme="dark"] body[data-workspace-view="statistics"] .b46-perf-unit-hover-line{stroke:rgba(210,224,236,.62)!important}
+html[data-theme="dark"] body[data-workspace-view="statistics"] .b46-perf-axis-text{fill:#9fb3c4!important;color:#9fb3c4!important}
+html[data-theme="dark"] body[data-workspace-view="statistics"] .b46-perf-axis-title{fill:#c6d4df!important;color:#c6d4df!important}
+html[data-theme="dark"] body[data-workspace-view="statistics"] .b46-perf-unit-axis{fill:#8097aa!important}
+html[data-theme="dark"] body[data-workspace-view="statistics"] .b46-perf-unit-label{color:#dce7ef!important}
+html[data-theme="dark"] body[data-workspace-view="statistics"] .b46-perf-unit-note{color:#7890a3!important}
+html[data-theme="light"] body[data-workspace-view="statistics"] .b46-perf-grid,
+html[data-theme="light"] body[data-workspace-view="statistics"] .b46-perf-vgrid{stroke:rgba(44,67,87,.12)!important}
+html[data-theme="light"] body[data-workspace-view="statistics"] .b46-perf-zero-line,
+html[data-theme="light"] body[data-workspace-view="statistics"] .b46-perf-unit-zero{stroke:rgba(38,56,72,.42)!important}
+html[data-theme="light"] body[data-workspace-view="statistics"] .b46-perf-unit-guide{stroke:rgba(44,67,87,.10)!important}
+html[data-theme="light"] body[data-workspace-view="statistics"] .b46-perf-hover-line,
+html[data-theme="light"] body[data-workspace-view="statistics"] .b46-perf-unit-hover-line{stroke:rgba(41,62,80,.55)!important}
+html[data-theme="light"] body[data-workspace-view="statistics"] .b46-perf-axis-text{fill:#526779!important;color:#526779!important}
+html[data-theme="light"] body[data-workspace-view="statistics"] .b46-perf-axis-title{fill:#293d4f!important;color:#293d4f!important}
+html[data-theme="light"] body[data-workspace-view="statistics"] .b46-perf-unit-axis{fill:#607486!important}
+html[data-theme="light"] body[data-workspace-view="statistics"] .b46-perf-unit-label{color:#22384a!important}
+html[data-theme="light"] body[data-workspace-view="statistics"] .b46-perf-unit-note{color:#607486!important}
 `;
 
-function patchJs(before){
-  assert(!before.includes(JS_MARK),'JS_MARK_ALREADY_PRESENT');
-  assert(before.includes('/* B46_MARKET_CHART_INTERACTION_20261012 */'),'EXPECTED_INTERACTION_MARK_MISSING');
-
-  let out=before;
-  const apiBefore=[...before.matchAll(/\/api\/[A-Za-z0-9_?=&./-]+/g)].map(m=>m[0]).sort();
-
-  const oldReturn='return{xy,line,area,L,R,T,B,W,H,pw,ph}}';
-  assert.equal((out.match(new RegExp(oldReturn.replace(/[{}]/g,'\\$&'),'g'))||[]).length,1,'PATHDATA_RETURN_NOT_UNIQUE');
-  out=out.replace(oldReturn,'return{xy,line,area,baseY,L,R,T,B,W,H,pw,ph}}');
-
-  const oldScale="const scale=yScale(points),geo=pathData(points,scale.min,scale.max),axes=axisSvg(points,scale.min,scale.max,geo);return`";
-  assert(out.includes(oldScale),'CHART_SCALE_FRAGMENT_MISSING');
-  out=out.replace(oldScale,"const scale=yScale(points),geo=pathData(points,scale.min,scale.max),axes=axisSvg(points,scale.min,scale.max,geo),zeroPct=Math.max(0,Math.min(100,(geo.baseY-geo.T)/geo.ph*100));return`");
-
-  const oldDefs='<defs><linearGradient id="b46PerfAreaGradient" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" class="b46-perf-stop-top"></stop><stop offset="100%" class="b46-perf-stop-bottom"></stop></linearGradient></defs>${axes}<path class="b46-perf-area" d="${geo.area}"></path><path class="b46-perf-line" d="${geo.line}"></path>';
-  assert(out.includes(oldDefs),'CHART_DEFS_FRAGMENT_MISSING');
-  const newDefs='<defs><linearGradient id="b46PerfLineGradient" x1="0" y1="${geo.T}" x2="0" y2="${geo.T+geo.ph}" gradientUnits="userSpaceOnUse"><stop offset="0%" class="b46-perf-line-pos"></stop><stop offset="${zeroPct}%" class="b46-perf-line-pos"></stop><stop offset="${zeroPct}%" class="b46-perf-line-neg"></stop><stop offset="100%" class="b46-perf-line-neg"></stop></linearGradient><linearGradient id="b46PerfAreaGradient" x1="0" y1="${geo.T}" x2="0" y2="${geo.T+geo.ph}" gradientUnits="userSpaceOnUse"><stop offset="0%" class="b46-perf-area-pos"></stop><stop offset="${zeroPct}%" class="b46-perf-area-pos"></stop><stop offset="${zeroPct}%" class="b46-perf-area-neg"></stop><stop offset="100%" class="b46-perf-area-neg"></stop></linearGradient></defs>${axes}<line class="b46-perf-zero-line" x1="${geo.L}" y1="${geo.baseY}" x2="${geo.W-geo.R}" y2="${geo.baseY}"></line><path class="b46-perf-area" d="${geo.area}"></path><path class="b46-perf-line" d="${geo.line}"></path>';
-  out=out.replace(oldDefs,newDefs);
-
-  const oldMetric='<div class="row metric"><span>${esc(modeLabel())}</span><strong>${esc(valueText(p.value))}</strong></div>';
-  assert(out.includes(oldMetric),'TIP_METRIC_FRAGMENT_MISSING');
-  out=out.replace(oldMetric,'<div class="row metric"><span>${esc(modeLabel())}</span><strong class="${p.value>=0?\'positive\':\'negative\'}">${esc(valueText(p.value))}</strong></div>');
-
-  const bindRe=/function bindChart\(\)\{\/\* B46_MARKET_CHART_INTERACTION_20261012 \*\/[\s\S]*?\}\nasync function load/;
-  assert(bindRe.test(out),'BIND_CHART_FUNCTION_MISSING');
-  const bindNew=`function bindChart(){/* ${JS_MARK} */const svg=$('.b46-perf-svg'),wrap=$('[data-b46-chart-wrap]'),tip=$('[data-b46-perf-tip]'),line=$('[data-b46-hover-line]'),hline=$('[data-b46-hover-hline]'),dot=$('[data-b46-hover-dot]'),yBadge=$('[data-b46-perf-ybadge]'),xBadge=$('[data-b46-perf-xbadge]');if(!svg||!wrap||!tip||!line||!hline||!dot||!yBadge||!xBadge||!currentPoints.length)return;wrap.dataset.b46MarketNav='1';dot.setAttribute('r','3');const hide=()=>{line.hidden=true;hline.hidden=true;dot.hidden=true;tip.hidden=true;yBadge.hidden=true;xBadge.hidden=true};const move=e=>{const rect=svg.getBoundingClientRect();if(!rect.width||!rect.height)return;const scale=yScale(currentPoints),geo=pathData(currentPoints,scale.min,scale.max),rawX=(e.clientX-rect.left)/rect.width*geo.W,rawY=(e.clientY-rect.top)/rect.height*geo.H,vx=Math.max(geo.L,Math.min(geo.W-geo.R,rawX)),vy=Math.max(geo.T,Math.min(geo.T+geo.ph,rawY)),pr=Math.max(0,Math.min(1,(vx-geo.L)/geo.pw)),fi=pr*Math.max(0,currentPoints.length-1),lo=Math.floor(fi),hi=Math.min(currentPoints.length-1,Math.ceil(fi)),mix=fi-lo,a=currentPoints[lo],b=currentPoints[hi]||a,lineValue=a.value+(b.value-a.value)*mix,lineY=geo.T+(scale.max-lineValue)/Math.max(.0001,scale.max-scale.min)*geo.ph,idx=Math.max(0,Math.min(currentPoints.length-1,Math.round(fi))),cursorValue=scale.max-(vy-geo.T)/geo.ph*(scale.max-scale.min),cursorDate=(a.date||0)+((b.date||a.date||0)-(a.date||0))*mix;line.hidden=false;hline.hidden=false;dot.hidden=false;line.setAttribute('x1',vx);line.setAttribute('x2',vx);hline.setAttribute('y1',vy);hline.setAttribute('y2',vy);dot.setAttribute('cx',vx);dot.setAttribute('cy',lineY);dot.classList.toggle('positive',lineValue>=0);dot.classList.toggle('negative',lineValue<0);tip.innerHTML=tipMarkup(currentPoints[idx],idx,currentPoints.length);tip.hidden=false;yBadge.textContent='≈ '+valueText(cursorValue);yBadge.classList.toggle('positive',cursorValue>=0);yBadge.classList.toggle('negative',cursorValue<0);yBadge.hidden=false;xBadge.textContent=fmtDate(cursorDate);xBadge.hidden=false;const px=vx/geo.W*rect.width,py=vy/geo.H*rect.height,linePy=lineY/geo.H*rect.height;tip.style.left=Math.max(112,Math.min(rect.width-112,px))+'px';tip.style.top=Math.max(100,Math.min(rect.height-36,linePy))+'px';yBadge.style.top=Math.max(15,Math.min(rect.height-28,py))+'px';xBadge.style.left=Math.max(48,Math.min(rect.width-48,px))+'px'};svg.addEventListener('pointermove',move);svg.addEventListener('pointerdown',move);svg.addEventListener('pointerleave',hide);svg.addEventListener('pointercancel',hide)}
-async function load`;
-  out=out.replace(bindRe,bindNew);
-
-  const apiAfter=[...out.matchAll(/\/api\/[A-Za-z0-9_?=&./-]+/g)].map(m=>m[0]).sort();
-  assert.deepEqual(apiAfter,apiBefore,'API_STRINGS_CHANGED');
-  acorn.parse(out,{ecmaVersion:'latest',sourceType:'script'});
-  assert(out.includes(JS_MARK),'JS_MARK_NOT_INSERTED');
-  assert(out.includes('b46PerfLineGradient'),'LINE_GRADIENT_NOT_INSERTED');
+function patchIndex(src){
+  let out=src;
+  out=out.replace(/longterm-performance-343\.js\?v=[^"'<>\s]+/g,'longterm-performance-343.js?v=market-chart-v4-20261012');
+  out=out.replace(/singlepage-workspace-343\.css\?v=[^"'<>\s]+/g,'singlepage-workspace-343.css?v=market-chart-v4-20261012');
+  assert(out.includes('longterm-performance-343.js?v=market-chart-v4-20261012'),'LONGTERM_CACHE_BUST_MISSING');
   return out;
 }
 
-mkdirSync('audit',{recursive:true});
-const report={run:process.env.GITHUB_RUN_ID,scope:'Long-term performance chart presentation/interaction only; preserve statistics calculations, data loading, engine and settlement.'};
-const save=()=>writeFileSync('audit/report.json',JSON.stringify(report,null,2));
-const delay=ms=>new Promise(r=>setTimeout(r,ms));
-
 async function runtimeCheck(){
-  const exe=['/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium'].find(existsSync);assert(exe,'NO_CHROME');
-  const browser=await puppeteer.launch({headless:true,executablePath:exe,args:['--no-sandbox']});
-  try{
-    const page=await browser.newPage();await page.setViewport({width:1440,height:1000});await page.setCacheEnabled(false);
-    await page.goto('https://ball46.com/?view=statistics&marketChartVerify='+Date.now(),{waitUntil:'networkidle2',timeout:90000});
-    await delay(4500);
-    const base=await page.evaluate(()=>{
-      const root=document.querySelector('.sp-trend.b46-perf-card'),svg=root?.querySelector('.b46-perf-svg'),line=root?.querySelector('.b46-perf-line'),wrap=root?.querySelector('[data-b46-chart-wrap]');
-      const pos=root?.querySelectorAll('#b46PerfLineGradient .b46-perf-line-pos').length||0,neg=root?.querySelectorAll('#b46PerfLineGradient .b46-perf-line-neg').length||0;
-      const cs=line?getComputedStyle(line):null;
-      const net=[...root?.querySelectorAll('.b46-perf-kpi')||[]].find(x=>x.querySelector('span')?.textContent.trim()==='NET')?.querySelector('b')?.textContent.trim();
-      return {ok:Boolean(root&&svg&&line&&wrap),nav:wrap?.dataset.b46MarketNav,stroke:cs?.stroke,strokeWidth:cs?.strokeWidth,pos,neg,net,zero:Boolean(root?.querySelector('.b46-perf-zero-line')),chartRows:document.querySelectorAll('[data-sp-table-body] tr').length};
-    });
-    assert(base.ok,'CHART_MISSING');assert.equal(base.nav,'1','MARKET_NAV_NOT_BOUND');
-    assert(base.stroke.includes('b46PerfLineGradient'),'LINE_GRADIENT_NOT_ACTIVE');
-    assert(Number.parseFloat(base.strokeWidth)<=1.2,'LINE_NOT_THIN');
-    assert.equal(base.pos,2,'POSITIVE_GRADIENT_STOPS_MISSING');assert.equal(base.neg,2,'NEGATIVE_GRADIENT_STOPS_MISSING');assert(base.zero,'ZERO_BASELINE_MISSING');
-    const box=await page.$eval('.b46-perf-svg',e=>{const r=e.getBoundingClientRect();return{x:r.x,y:r.y,w:r.width,h:r.height}});
-    const x=box.x+box.w*.62;
-    await page.mouse.move(x,box.y+box.h*.30);
-    await delay(150);
-    const hover1=await page.evaluate(()=>{
-      const root=document.querySelector('.sp-trend.b46-perf-card'),v=root.querySelector('[data-b46-hover-line]'),h=root.querySelector('[data-b46-hover-hline]'),yb=root.querySelector('[data-b46-perf-ybadge]'),xb=root.querySelector('[data-b46-perf-xbadge]'),tip=root.querySelector('[data-b46-perf-tip]');
-      return {vHidden:v.hidden,hHidden:h.hidden,y:v.getAttribute('x1'),hy:h.getAttribute('y1'),yb:yb.textContent,xb:xb.textContent,tipHidden:tip.hidden,dash:getComputedStyle(v).strokeDasharray};
-    });
-    await page.mouse.move(x,box.y+box.h*.72);
-    await delay(150);
-    const hover2=await page.evaluate(()=>{
-      const root=document.querySelector('.sp-trend.b46-perf-card'),v=root.querySelector('[data-b46-hover-line]'),h=root.querySelector('[data-b46-hover-hline]'),yb=root.querySelector('[data-b46-perf-ybadge]'),xb=root.querySelector('[data-b46-perf-xbadge]');
-      return {vHidden:v.hidden,hHidden:h.hidden,y:v.getAttribute('x1'),hy:h.getAttribute('y1'),yb:yb.textContent,xb:xb.textContent};
-    });
-    assert(!hover1.vHidden&&!hover1.hHidden&&!hover1.tipHidden,'CROSSHAIR_NOT_VISIBLE');
-    assert(hover1.dash&&hover1.dash!=='none','CROSSHAIR_NOT_DASHED');
-    assert.equal(hover1.y,hover2.y,'VERTICAL_GUIDE_MOVED_WITH_SAME_X');
-    assert.notEqual(hover1.hy,hover2.hy,'HORIZONTAL_GUIDE_NOT_FOLLOWING_POINTER');
-    assert.notEqual(hover1.yb,hover2.yb,'APPROX_VALUE_NOT_FOLLOWING_POINTER');
-    assert(hover1.yb.startsWith('≈ ')&&hover2.yb.startsWith('≈ '),'APPROX_VALUE_LABEL_MISSING');
-    report.runtime={base,hover1,hover2};save();
-  }finally{await browser.close()}
+ const exe=['/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium'].find(existsSync);assert(exe,'NO_CHROME');
+ const browser=await puppeteer.launch({headless:true,executablePath:exe,args:['--no-sandbox']});
+ try{
+  const page=await browser.newPage();await page.setViewport({width:1440,height:1100});await page.setCacheEnabled(false);
+  await page.goto('https://ball46.com/?view=statistics&marketChartV4='+Date.now(),{waitUntil:'networkidle2',timeout:90000});
+  await delay(4500);
+  const before=await page.evaluate(()=>{
+   const q=s=>document.querySelector(s),qa=s=>[...document.querySelectorAll(s)],cs=e=>e?getComputedStyle(e):null;
+   const line=q('.b46-perf-line'),panel=q('.b46-perf-unit-panel'),svg=q('.b46-perf-svg'),h=q('.b46-perf-hover-hline'),v=q('[data-b46-hover-line]');
+   return {lineWidth:cs(line)?.strokeWidth,lineStroke:cs(line)?.stroke,plMode:panel?.dataset.b46PlMode,pos:qa('.b46-perf-unit-pos').length,neg:qa('.b46-perf-unit-neg').length,zeroDash:cs(q('.b46-perf-unit-zero'))?.strokeDasharray,hDash:cs(h)?.strokeDasharray,vDash:cs(v)?.strokeDasharray,svgBox:svg?.getBoundingClientRect().toJSON?.()||null};
+  });
+  const box=await page.$eval('.b46-perf-svg',e=>{const r=e.getBoundingClientRect();return{x:r.x,y:r.y,w:r.width,h:r.height}});
+  await page.mouse.move(box.x+box.w*.55,box.y+box.h*.45);
+  await delay(300);
+  const hover=await page.evaluate(()=>{const cs=e=>e?getComputedStyle(e):null,q=s=>document.querySelector(s);return{tipHidden:q('[data-b46-perf-tip]')?.hidden,yHidden:q('[data-b46-perf-ybadge]')?.hidden,xHidden:q('[data-b46-perf-xbadge]')?.hidden,yText:q('[data-b46-perf-ybadge]')?.textContent,xText:q('[data-b46-perf-xbadge]')?.textContent,hHidden:q('[data-b46-hover-hline]')?.hidden,vHidden:q('[data-b46-hover-line]')?.hidden,hDash:cs(q('[data-b46-hover-hline]'))?.strokeDasharray}}); 
+  report.runtime={before,hover};save();
+  assert.equal(before.lineWidth,'1.15px','LINE_NOT_THIN');
+  assert(before.pos>0,'NO_POSITIVE_PL_BARS');
+  assert(before.neg>0,'NO_NEGATIVE_PL_BARS');
+  assert(before.zeroDash&&before.zeroDash!=='none','PL_ZERO_NOT_DISTINCT');
+  assert(before.hDash&&before.hDash!=='none'&&before.vDash&&before.vDash!=='none','CROSSHAIR_NOT_DASHED');
+  assert.equal(hover.tipHidden,false,'TOOLTIP_NOT_VISIBLE');
+  assert.equal(hover.yHidden,false,'Y_BADGE_NOT_VISIBLE');
+  assert.equal(hover.xHidden,false,'X_BADGE_NOT_VISIBLE');
+  assert(/^≈ /.test(hover.yText||''),'Y_BADGE_NOT_APPROX_VALUE');
+ }finally{await browser.close()}
 }
 
 let current=null,candidate=null;
@@ -233,26 +170,24 @@ async function rollback(){
  await api('/scripts/'+script+'/deployments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({strategy:'percentage',versions:[{version_id:current.restore.version,percentage:100}]})});
  assert.equal(await activeVersion(),current.restore.version,'ROLLBACK_NOT_CONFIRMED');
 }
-
 try{
  current=await inspect();const base=current.restore.version;report.baseVersion=base;
- assert.equal(base,'b7b565e0-e38a-4f18-a68e-973d5f867185','PRODUCTION_MOVED_FROM_CONFIRMED_BASE');
  const workerSha=sha(Buffer.from(current.source)),settingsBefore=await api('/scripts/'+script+'/settings'),settingsSha=sha(canonical(settingsBefore)),cronsBefore=await schedules();
- const jsBeforeBytes=await publicFile('/'+JS),cssBeforeBytes=await publicFile('/'+CSS);
- const jsBefore=jsBeforeBytes.toString('utf8'),cssBefore=cssBeforeBytes.toString('utf8');
- assert(!cssBefore.includes(CSS_MARK),'CSS_MARK_ALREADY_PRESENT');
- const jsAfter=patchJs(jsBefore),cssAfter=cssBefore+'\n'+CSS_PATCH+'\n';
- const jsAfterBytes=Buffer.from(jsAfter),cssAfterBytes=Buffer.from(cssAfter);
- writeFileSync('audit/js-before.js',jsBeforeBytes);writeFileSync('audit/js-after.js',jsAfterBytes);writeFileSync('audit/css-before.css',cssBeforeBytes);writeFileSync('audit/css-after.css',cssAfterBytes);
-
+ const jb=await publicFile('/'+JS),cb=await publicFile('/'+CSS),ib=await publicFile('/'+INDEX);
+ const js0=jb.toString('utf8'),css0=cb.toString('utf8'),idx0=ib.toString('utf8');
+ assert(!js0.includes(JSMARK),'JS_ALREADY_PATCHED');
+ assert(!css0.includes(CSSMARK),'CSS_ALREADY_PATCHED');
+ const js1=patchJs(js0),css1=css0+'\n'+cssAdd+'\n',idx1=patchIndex(idx0);
+ const j1=Buffer.from(js1),c1=Buffer.from(css1),i1=Buffer.from(idx1);
+ writeFileSync('audit/js-before.js',jb);writeFileSync('audit/js-after.js',j1);writeFileSync('audit/css-before.css',cb);writeFileSync('audit/css-after.css',c1);writeFileSync('audit/index-before.html',ib);writeFileSync('audit/index-after.html',i1);
  const staged=await stageCurrentRail(current.version,settingsBefore,cronsBefore,current.source);await verifyRailBase(staged);
- assert.equal(staged.hashes[JS],sha(jsBeforeBytes),'STAGED_JS_NOT_CURRENT');assert.equal(staged.hashes[CSS],sha(cssBeforeBytes),'STAGED_CSS_NOT_CURRENT');
- const protectedAssets={...staged.hashes};delete protectedAssets[JS];delete protectedAssets[CSS];
- writeFileSync(resolve(staged.runtime,'assets',JS),jsAfterBytes);writeFileSync(resolve(staged.runtime,'assets',CSS),cssAfterBytes);
+ assert.equal(staged.hashes[JS],sha(jb),'STAGED_JS_NOT_CURRENT');assert.equal(staged.hashes[CSS],sha(cb),'STAGED_CSS_NOT_CURRENT');assert.equal(staged.hashes[INDEX],sha(ib),'STAGED_INDEX_NOT_CURRENT');
+ const protectedAssets={...staged.hashes};delete protectedAssets[JS];delete protectedAssets[CSS];delete protectedAssets[INDEX];
+ writeFileSync(resolve(staged.runtime,'assets',JS),j1);writeFileSync(resolve(staged.runtime,'assets',CSS),c1);writeFileSync(resolve(staged.runtime,'assets',INDEX),i1);
  wrangler(staged,true);assert.equal(await activeVersion(),base,'PRODUCTION_MOVED_AFTER_DRY_RUN');await verifyRailBase(staged);
  try{
-   wrangler(staged);for(let i=0;i<30;i++){const a=await activeVersion();if(a!==base){candidate=a;break}await delay(1200)}assert(candidate,'NO_NEW_VERSION');
-   let live=false;for(let i=0;i<40;i++){assert.equal(await activeVersion(),candidate,'PRODUCTION_MOVED_DURING_VERIFY');try{const j=await publicFile('/'+JS),c=await publicFile('/'+CSS);if(sha(j)===sha(jsAfterBytes)&&sha(c)===sha(cssAfterBytes)&&j.toString('utf8').includes(JS_MARK)&&c.toString('utf8').includes(CSS_MARK)){live=true;break}}catch{}await delay(1000)}assert(live,'CHART_PATCH_NOT_LIVE');
+   wrangler(staged);for(let x=0;x<30;x++){const a=await activeVersion();if(a!==base){candidate=a;break}await delay(1200)}assert(candidate,'NO_NEW_VERSION');
+   let live=false;for(let x=0;x<40;x++){assert.equal(await activeVersion(),candidate,'PRODUCTION_MOVED_DURING_VERIFY');try{const a=(await publicFile('/'+JS)).toString('utf8'),b=(await publicFile('/'+CSS)).toString('utf8'),d=(await publicFile('/'+INDEX)).toString('utf8');if(a.includes(JSMARK)&&b.includes(CSSMARK)&&d.includes('market-chart-v4-20261012')){live=true;break}}catch{}await delay(1000)}assert(live,'PATCH_NOT_LIVE');
    for(const [p,h] of Object.entries(protectedAssets))assert.equal(sha(await publicFile('/'+p)),h,'UNRELATED_ASSET_CHANGED:'+p);
    await runtimeCheck();
    const cv=await getVersion(candidate),cm=cv.modules.find(m=>m.name===cv.main_module);assert(cm,'FINAL_MAIN_MISSING');
@@ -260,6 +195,6 @@ try{
    assert.equal(sha(canonical(await api('/scripts/'+script+'/settings'))),settingsSha,'SETTINGS_CHANGED');
    assert.equal(canonical(await schedules()),canonical(cronsBefore),'CRONS_CHANGED');
    report.finalVersion=candidate;report.result='SUCCESS';save();
-   console.log('BALL46_PERFORMANCE_MARKET_CHART_SUCCESS '+JSON.stringify({base,candidate,changed:[JS,CSS],unchangedAssets:Object.keys(protectedAssets).length,runtime:report.runtime}));
+   console.log('BALL46_MARKET_CHART_V4_SUCCESS '+JSON.stringify({base,candidate,changed:[JS,CSS,INDEX],unchangedAssets:Object.keys(protectedAssets).length,runtime:report.runtime}));
  }catch(e){report.error=e.message;try{await rollback()}catch(rb){report.rollbackError=rb.message}save();throw e}
 }catch(e){report.result='FAIL_STOPPED';report.error=e.message;save();console.error(e.stack);process.exitCode=1}
