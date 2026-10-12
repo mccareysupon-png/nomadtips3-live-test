@@ -1,0 +1,45 @@
+name: DIAG Ball46 Performance SVG Structure 20261012
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/diag-ball46-performance-svg-structure-20261012.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --ignore-scripts puppeteer-core@24
+      - name: Inspect SVG
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const puppeteer=require('puppeteer-core'),fs=require('fs');
+          const exe=['/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium'].find(fs.existsSync);
+          (async()=>{
+            const b=await puppeteer.launch({headless:true,executablePath:exe,args:['--no-sandbox']});
+            const p=await b.newPage(); await p.setViewport({width:1440,height:1000});
+            await p.goto('https://ball46.com/?view=statistics&svgdiag='+Date.now(),{waitUntil:'networkidle2',timeout:90000});
+            await new Promise(r=>setTimeout(r,4000));
+            const r=await p.evaluate(()=>{
+              const root=document.querySelector('.sp-trend.b46-perf-card');
+              const svg=root?.querySelector('svg');
+              const scripts=[...document.scripts].map(s=>s.src).filter(Boolean);
+              if(!svg)return {ok:false};
+              const els=[...svg.querySelectorAll('*')].map(e=>({tag:e.tagName,cls:e.getAttribute('class'),d:(e.getAttribute('d')||'').slice(0,220),x1:e.getAttribute('x1'),y1:e.getAttribute('y1'),x2:e.getAttribute('x2'),y2:e.getAttribute('y2'),x:e.getAttribute('x'),y:e.getAttribute('y'),text:(e.textContent||'').trim().slice(0,80)}));
+              return {ok:true,viewBox:svg.getAttribute('viewBox'),children:els,scripts};
+            });
+            console.log('SVG_STRUCT '+JSON.stringify(r));
+            await b.close();
+          })().catch(e=>{console.error(e.stack);process.exit(1)});
+          NODE
