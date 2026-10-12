@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-10-12T02:45:17Z",
+  "updated_at": "2026-10-12T09:23:27Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -6739,8 +6739,8 @@
       "edge": 13.9,
       "ev": 0.1836,
       "required_confidence": 0.56,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "2-1",
       "locked_at": "2026-10-12T02:40:32Z",
       "source_url": "https://www.goaloo.com/football/chinese-football-association-yi-league-yan-an-ronghai-vs-jiangxi-liansheng-fc/h2h-3087149",
       "summary_url": "https://www.goaloo.com/football/chinese-football-association-yi-league-yan-an-ronghai-vs-jiangxi-liansheng-fc/summary-3087149",
@@ -6800,7 +6800,12 @@
         "away_recent": 10,
         "h2h_n": 2,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-12T09:23:27Z"
     },
     {
       "id": "e8059f2401be526b-AH-HOME-m0p0",
@@ -233998,6 +234003,96 @@
       "settlement_source": "goaloo-bf_us-direct-index",
       "goaloo_terminal_state": -1,
       "settled_at": "2026-10-12T01:24:32Z"
+    },
+    {
+      "id": "6f3ba49b72e6f561-AH-AWAY-0p25",
+      "goaloo_id": "3087149",
+      "date": "2026-10-12",
+      "kickoff": "2026-10-12 07:00:00",
+      "league": "Chinese Football Association Yi League",
+      "home": "Yan An Ronghai",
+      "away": "Jiangxi Liansheng FC",
+      "market": "AH",
+      "selection": "AWAY",
+      "line": 0.25,
+      "pick": "Jiangxi Liansheng FC +0.25",
+      "side": "away",
+      "odds": 1.98,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.597,
+      "model_probability": 0.597,
+      "market_fair_probability": 0.4575,
+      "market_edge": 0.1394,
+      "edge": 13.9,
+      "ev": 0.1836,
+      "required_confidence": 0.56,
+      "result": "LOSS",
+      "ft": "2-1",
+      "locked_at": "2026-10-12T02:40:32Z",
+      "source_url": "https://www.goaloo.com/football/chinese-football-association-yi-league-yan-an-ronghai-vs-jiangxi-liansheng-fc/h2h-3087149",
+      "summary_url": "https://www.goaloo.com/football/chinese-football-association-yi-league-yan-an-ronghai-vs-jiangxi-liansheng-fc/summary-3087149",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 1.012,
+        "lambda_away": 1.076,
+        "home_win": 0.2997,
+        "draw": 0.322,
+        "away_win": 0.3783,
+        "h2h_adjustment": -0.0075,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": -0.2569,
+          "gd_edge": -0.1357,
+          "clean_sheet_edge": -0.039,
+          "failed_to_score_edge": -0.4293,
+          "bounded_adjustment": -0.0153,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 8,
+        "away_recent": 10,
+        "h2h_n": 2,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-12T09:23:27Z"
     }
   ],
   "note": "Automated Full-Time Winner First feed. Supplemental markets remain unpublished.",
