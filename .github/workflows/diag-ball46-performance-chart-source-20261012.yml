@@ -1,4 +1,5 @@
 name: DIAG Ball46 Performance Chart Source 20261012
+# browser-fetch-2
 
 on:
   push:
@@ -15,21 +16,37 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 12
     steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --ignore-scripts puppeteer-core@24
       - name: Inspect live JS/CSS
         shell: bash
         run: |
           set -euo pipefail
-          python - <<'PY'
-          import urllib.request
-          for p in ['singlepage-workspace-343.js','singlepage-workspace-343.css']:
-              u='https://ball46.com/'+p+'?diag=20261012'
-              s=urllib.request.urlopen(u,timeout=30).read().decode('utf-8','replace')
-              print('FILE',p,'LEN',len(s))
-              for needle in ['b46-perf-svg','b46-perf-chart-wrap','data-b46-mode','data-b46-range','LONG-TERM PERFORMANCE','b46-perf-axis-note']:
-                  i=s.find(needle)
-                  if i>=0:
-                      a=max(0,i-5000); b=min(len(s),i+12000)
-                      print('SNIP',needle)
-                      print(s[a:b])
-                      print('ENDSNIP')
-          PY
+          node <<'NODE'
+          const puppeteer=require('puppeteer-core');
+          const fs=require('fs');
+          const exe=['/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium'].find(fs.existsSync);
+          if(!exe) throw new Error('NO_CHROME');
+          (async()=>{
+            const browser=await puppeteer.launch({headless:true,executablePath:exe,args:['--no-sandbox']});
+            const page=await browser.newPage();
+            await page.goto('https://ball46.com/?view=statistics&srcdiag='+Date.now(),{waitUntil:'networkidle2',timeout:90000});
+            const out=await page.evaluate(async()=>{
+              const files={};
+              for(const p of ['singlepage-workspace-343.js','singlepage-workspace-343.css']){
+                const s=await (await fetch('/'+p+'?diag='+Date.now(),{cache:'no-store'})).text();
+                const snips={};
+                for(const needle of ['b46-perf-svg','b46-perf-chart-wrap','data-b46-mode','data-b46-range','LONG-TERM PERFORMANCE','b46-perf-axis-note']){
+                  const i=s.indexOf(needle);
+                  if(i>=0)snips[needle]=s.slice(Math.max(0,i-5000),Math.min(s.length,i+14000));
+                }
+                files[p]={len:s.length,snips};
+              }
+              return files;
+            });
+            console.log('CHART_SOURCE '+JSON.stringify(out));
+            await browser.close();
+          })().catch(e=>{console.error(e.stack);process.exit(1)});
+          NODE
