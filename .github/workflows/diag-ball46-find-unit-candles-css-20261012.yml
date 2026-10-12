@@ -1,0 +1,37 @@
+name: DIAG Ball46 Find Unit Candles CSS 20261012
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/diag-ball46-find-unit-candles-css-20261012.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --ignore-scripts puppeteer-core@24
+      - name: Find CSS
+        shell: bash
+        run: |
+          node <<'NODE'
+          const puppeteer=require('puppeteer-core'),fs=require('fs');
+          const exe=['/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium'].find(fs.existsSync);
+          (async()=>{
+            const b=await puppeteer.launch({headless:true,executablePath:exe,args:['--no-sandbox']});
+            const p=await b.newPage(); await p.goto('https://ball46.com/?view=statistics&findUnitCss='+Date.now(),{waitUntil:'networkidle2',timeout:90000});
+            const r=await p.evaluate(async()=>{
+              const hrefs=[...document.querySelectorAll('link[rel="stylesheet"]')].map(x=>x.href).filter(Boolean), out=[];
+              for(const u of hrefs){try{const s=await (await fetch(u,{cache:'no-store'})).text();if(s.includes('b46-perf-unit-')){const i=s.indexOf('b46-perf-unit-');out.push({url:u,len:s.length,snip:s.slice(Math.max(0,i-8000),Math.min(s.length,i+25000))})}}catch{}}
+              return {hrefs,out};
+            });
+            console.log('UNIT_CSS '+JSON.stringify(r)); await b.close();
+          })().catch(e=>{console.error(e.stack);process.exit(1)});
+          NODE
