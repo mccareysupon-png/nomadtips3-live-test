@@ -1,0 +1,39 @@
+name: DIAG Ball46 Longterm JS 20261012
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/diag-ball46-longterm-js-20261012.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --ignore-scripts puppeteer-core@24
+      - name: Inspect longterm JS
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const puppeteer=require('puppeteer-core'),fs=require('fs');
+          const exe=['/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium'].find(fs.existsSync);
+          (async()=>{
+            const b=await puppeteer.launch({headless:true,executablePath:exe,args:['--no-sandbox']});
+            const p=await b.newPage();
+            await p.goto('https://ball46.com/?view=statistics&jsdiag='+Date.now(),{waitUntil:'networkidle2',timeout:90000});
+            const s=await p.evaluate(async()=>await (await fetch('/longterm-performance-343.js?diag='+Date.now(),{cache:'no-store'})).text());
+            for(const n of ['hover','pointermove','mousemove','b46-perf-hover-line','b46-perf-line','tooltip','getBoundingClientRect','data-b46-mode']){
+              const i=s.indexOf(n); if(i>=0){console.log('SNIP '+n+'\n'+s.slice(Math.max(0,i-9000),Math.min(s.length,i+26000))+'\nENDSNIP')}
+            }
+            await b.close();
+          })().catch(e=>{console.error(e.stack);process.exit(1)});
+          NODE
