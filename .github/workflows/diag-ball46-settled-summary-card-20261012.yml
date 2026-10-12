@@ -1,0 +1,49 @@
+name: DIAG Ball46 Settled Summary Card 20261012
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/diag-ball46-settled-summary-card-20261012.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/ball46-performance-chart-market-style-20261012
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --ignore-scripts acorn@8
+      - name: Find settled summary card
+        working-directory: deploy-assets/performance-chart-market-style-20261012
+        run: |
+          node --input-type=module <<'NODE'
+          import {inspect,api,script} from '../daily-performance-20261005/production.mjs';
+          import {schedules,stageCurrentRail} from '../daily-performance-20261005/rail.mjs';
+          import {readFileSync,readdirSync,statSync} from 'node:fs';
+          import {join} from 'node:path';
+          const cur=await inspect();
+          const settings=await api('/scripts/'+script+'/settings');
+          const crons=await schedules();
+          const staged=await stageCurrentRail(cur.version,settings,crons,cur.source);
+          const root=join(staged.runtime,'assets');
+          function walk(d){let out=[];for(const n of readdirSync(d)){const p=join(d,n),st=statSync(p);if(st.isDirectory())out=out.concat(walk(p));else out.push(p)}return out}
+          for(const p of walk(root)){
+            let s='';try{s=readFileSync(p,'utf8')}catch{}
+            if(/Current sample|Awaiting settlement|Winning signals|Losing signals|Neutral results|Push excluded|Recorded entry/.test(s)){
+              console.log('\n=== FILE '+p+' ===');
+              for(const needle of ['Current sample','Awaiting settlement','Winning signals','Losing signals','Neutral results','Push excluded','Recorded entry']){
+                const i=s.indexOf(needle);if(i>=0){console.log('\n--- '+needle+' @ '+i+' ---\n'+s.slice(Math.max(0,i-3200),Math.min(s.length,i+6500)))}
+              }
+            }
+          }
+          NODE
