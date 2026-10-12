@@ -7,7 +7,7 @@ import { inspect,activeVersion,getVersion,api,script,sha,canonical,publicFile } 
 import { schedules,stageCurrentRail,verifyRailBase,wrangler } from '../daily-performance-20261005/rail.mjs';
 
 const JS='longterm-performance-343.js';
-const CSS='singlepage-workspace-343.css';
+const CSS='longterm-performance-343.css';
 const JS_MARK='B46_MARKET_CHART_INTERACTION_20261012_MARKET_V2';
 const CSS_MARK='/* B46_PERFORMANCE_MARKET_CHART_20261012 */';
 
@@ -236,7 +236,7 @@ async function rollback(){
 
 try{
  current=await inspect();const base=current.restore.version;report.baseVersion=base;
- assert.equal(base,'6404c3cc-9b66-4f2a-bafe-12fff7cbf529','PRODUCTION_MOVED_FROM_CONFIRMED_BASE');
+ assert.equal(base,'b7b565e0-e38a-4f18-a68e-973d5f867185','PRODUCTION_MOVED_FROM_CONFIRMED_BASE');
  const workerSha=sha(Buffer.from(current.source)),settingsBefore=await api('/scripts/'+script+'/settings'),settingsSha=sha(canonical(settingsBefore)),cronsBefore=await schedules();
  const jsBeforeBytes=await publicFile('/'+JS),cssBeforeBytes=await publicFile('/'+CSS);
  const jsBefore=jsBeforeBytes.toString('utf8'),cssBefore=cssBeforeBytes.toString('utf8');
