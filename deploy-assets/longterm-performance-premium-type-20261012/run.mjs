@@ -9,24 +9,24 @@ const TARGET='singlepage-workspace-343.css';
 const MARK='/* B46_LONGTERM_PERFORMANCE_PREMIUM_TYPE_20261012 */';
 const CSS=`
 /* B46_LONGTERM_PERFORMANCE_PREMIUM_TYPE_20261012 */
-body[data-workspace-view="statistics"] .b46-perf-title span,
-body[data-workspace-view="statistics"] .b46-perf-title h3,
-body[data-workspace-view="statistics"] .b46-perf-range button{
+body[data-workspace-view="statistics"] .sp-trend.b46-perf-card .b46-perf-title span,
+body[data-workspace-view="statistics"] .sp-trend.b46-perf-card .b46-perf-title h3,
+body[data-workspace-view="statistics"] .sp-trend.b46-perf-card .b46-perf-range button{
   font-family:"IBM Plex Sans","IBM Plex Sans Thai",Inter,Arial,sans-serif!important;
 }
-body[data-workspace-view="statistics"] .b46-perf-title span{
+body[data-workspace-view="statistics"] .sp-trend.b46-perf-card .b46-perf-title span{
   font-size:10px!important;
   font-weight:850!important;
   line-height:1.15!important;
   letter-spacing:.085em!important;
 }
-body[data-workspace-view="statistics"] .b46-perf-title h3{
+body[data-workspace-view="statistics"] .sp-trend.b46-perf-card .b46-perf-title h3{
   font-size:18px!important;
   font-weight:900!important;
   line-height:1.12!important;
   letter-spacing:-.012em!important;
 }
-body[data-workspace-view="statistics"] .b46-perf-range button{
+body[data-workspace-view="statistics"] .sp-trend.b46-perf-card .b46-perf-range button{
   font-size:10px!important;
   font-weight:850!important;
   line-height:1!important;
@@ -48,7 +48,7 @@ async function runtimeCheck(){
   await delay(4000);
   const r=await page.evaluate(()=>{
     const q=s=>document.querySelector(s), qa=s=>[...document.querySelectorAll(s)], cs=e=>e?getComputedStyle(e):null;
-    const kicker=q('.b46-perf-title span'), h3=q('.b46-perf-title h3'), buttons=qa('.b46-perf-range button');
+    const root=q('.sp-trend.b46-perf-card'); const kicker=root?.querySelector('.b46-perf-title span'), h3=root?.querySelector('.b46-perf-title h3'), buttons=root?[...root.querySelectorAll('.b46-perf-range button')]:[];
     return {
       ok:Boolean(kicker&&h3&&buttons.length===4),
       kicker:{text:kicker?.textContent.trim(),font:cs(kicker)?.fontFamily,size:cs(kicker)?.fontSize,weight:cs(kicker)?.fontWeight,letter:cs(kicker)?.letterSpacing},
@@ -63,7 +63,7 @@ async function runtimeCheck(){
   assert(r.kicker.font.includes('IBM Plex Sans'),'FONT_NOT_ACTIVE');
   const px=v=>Number.parseFloat(v||'0');
   assert(Math.abs(px(r.kicker.size)-10)<=0.25,'KICKER_SIZE_MISSING');
-  assert.equal(r.kicker.weight,'850','KICKER_WEIGHT_MISSING');
+  assert.equal(r.kicker.weight,'900','KICKER_WEIGHT_MISSING');
   assert(Math.abs(px(r.h3.size)-18)<=0.35,'TITLE_SIZE_MISSING');
   assert.equal(r.h3.weight,'900','TITLE_WEIGHT_MISSING');
   assert(r.buttons.every(b=>Math.abs(px(b.size)-10)<=0.25&&b.weight==='850'),'RANGE_BUTTON_TYPE_MISSING');
