@@ -109,7 +109,7 @@
             <div><dt>Risk</dt><dd class="warning">${esc(item.risk||'Moderate')}</dd></div>
             <div><dt>Grade</dt><dd><span class="p3-grade">${esc(item.grade||'A')}</span></dd></div>
           </dl>
-          <p class="p3-price-rule">Playable only at <strong>1.90+</strong>. Re-check price before kick-off.</p>
+          <p class="p3-price-rule">Minimum reference odds <strong>${fmtOdds(item.minimumOdds||1.80)}+</strong>. Verify the currently available price before kick-off.</p>
         </aside>
       </section>
 
