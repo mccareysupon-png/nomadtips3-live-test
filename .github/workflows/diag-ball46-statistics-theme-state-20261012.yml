@@ -1,0 +1,62 @@
+name: DIAG Ball46 Statistics Theme State 20261012
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/diag-ball46-statistics-theme-state-20261012.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --ignore-scripts puppeteer-core@24
+      - name: Inspect theme runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const puppeteer=require('puppeteer-core');
+          const fs=require('fs');
+          const exe=['/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium'].find(fs.existsSync);
+          if(!exe) throw new Error('NO_CHROME');
+          (async()=>{
+            const browser=await puppeteer.launch({headless:true,executablePath:exe,args:['--no-sandbox']});
+            const page=await browser.newPage();
+            await page.setViewport({width:1440,height:1000});
+            await page.goto('https://ball46.com/?view=statistics&themediag='+Date.now(),{waitUntil:'networkidle2',timeout:90000});
+            await new Promise(r=>setTimeout(r,5000));
+            const snap=()=>page.evaluate(()=>{
+              const html=document.documentElement, body=document.body;
+              const attrs=e=>Object.fromEntries([...e.attributes].map(a=>[a.name,a.value]));
+              const candidates=[...document.querySelectorAll('button,[role=button],a')].filter(e=>/theme|light|dark|mode|sun|moon/i.test((e.textContent||'')+' '+(e.getAttribute('aria-label')||'')+' '+(e.id||'')+' '+(e.className||''))).slice(0,20).map(e=>({tag:e.tagName,text:(e.textContent||'').trim().slice(0,80),id:e.id,cls:e.className,aria:e.getAttribute('aria-label'),title:e.getAttribute('title')}));
+              const ls={}; for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);ls[k]=localStorage.getItem(k)}
+              return {htmlAttrs:attrs(html),bodyAttrs:attrs(body),candidates,localStorage:ls,scheme:getComputedStyle(body).colorScheme,bg:getComputedStyle(body).backgroundColor,color:getComputedStyle(body).color};
+            });
+            const before=await snap();
+            let clicked=false;
+            for(const c of before.candidates){
+              const sel=c.id?'#'+CSS.escape(c.id):null;
+              if(sel){try{await page.click(sel);clicked=true;break}catch{}}
+            }
+            if(!clicked){
+              clicked=await page.evaluate(()=>{
+                const els=[...document.querySelectorAll('button,[role=button],a')];
+                const e=els.find(x=>/theme|light|dark|mode|sun|moon/i.test((x.textContent||'')+' '+(x.getAttribute('aria-label')||'')+' '+(x.id||'')+' '+(x.className||'')));
+                if(e){e.click();return true} return false;
+              });
+            }
+            if(clicked) await new Promise(r=>setTimeout(r,1200));
+            const after=await snap();
+            console.log('THEME_STATE '+JSON.stringify({before,clicked,after},null,2));
+            await browser.close();
+          })().catch(e=>{console.error(e.stack);process.exit(1)});
+          NODE
