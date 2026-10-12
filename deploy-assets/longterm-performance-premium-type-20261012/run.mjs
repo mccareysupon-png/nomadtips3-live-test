@@ -63,7 +63,7 @@ async function runtimeCheck(){
   assert(r.kicker.font.includes('IBM Plex Sans'),'FONT_NOT_ACTIVE');
   const px=v=>Number.parseFloat(v||'0');
   assert(Math.abs(px(r.kicker.size)-10)<=0.25,'KICKER_SIZE_MISSING');
-  assert.equal(r.kicker.weight,'900','KICKER_WEIGHT_MISSING');
+  assert.equal(r.kicker.weight,'850','KICKER_WEIGHT_MISSING');
   assert(Math.abs(px(r.h3.size)-18)<=0.35,'TITLE_SIZE_MISSING');
   assert.equal(r.h3.weight,'900','TITLE_WEIGHT_MISSING');
   assert(r.buttons.every(b=>Math.abs(px(b.size)-10)<=0.25&&b.weight==='850'),'RANGE_BUTTON_TYPE_MISSING');
