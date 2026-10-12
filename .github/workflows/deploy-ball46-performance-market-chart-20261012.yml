@@ -1,4 +1,5 @@
 name: Deploy Ball46 Performance Market Chart 20261012
+# trigger-3
 
 on:
   push:
@@ -25,21 +26,21 @@ jobs:
       - name: Checkout isolated market chart patch
         uses: actions/checkout@v4
         with:
-          ref: work/ball46-performance-market-chart-20261012
+          ref: work/ball46-performance-chart-market-style-20261012
           fetch-depth: 1
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
       - name: Install verification dependencies
         run: npm install --no-save --ignore-scripts acorn@8 puppeteer-core@24
-      - name: Deploy market-style interactive performance chart
-        working-directory: deploy-assets/performance-market-chart-20261012
+      - name: Deploy stock-style performance chart
+        working-directory: deploy-assets/performance-chart-market-style-20261012
         run: node run.mjs
       - name: Upload audit
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: ball46-performance-market-chart-${{ github.run_id }}
-          path: deploy-assets/performance-market-chart-20261012/audit
+          path: deploy-assets/performance-chart-market-style-20261012/audit
           if-no-files-found: warn
           retention-days: 30
