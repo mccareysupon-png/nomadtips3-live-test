@@ -53,7 +53,7 @@ body[data-workspace-view="statistics"] .b46-perf-svg{overflow:visible;shape-rend
 body[data-workspace-view="statistics"] .b46-perf-line{
   fill:none!important;
   stroke:url(#b46PerfLineGradient)!important;
-  stroke-width:1.15!important;
+  stroke-width:1!important;
   stroke-linecap:butt!important;
   stroke-linejoin:round!important;
   vector-effect:non-scaling-stroke!important;
@@ -152,7 +152,7 @@ async function runtimeCheck(){
   await delay(300);
   const hover=await page.evaluate(()=>{const cs=e=>e?getComputedStyle(e):null,q=s=>document.querySelector(s);return{tipHidden:q('[data-b46-perf-tip]')?.hidden,yHidden:q('[data-b46-perf-ybadge]')?.hidden,xHidden:q('[data-b46-perf-xbadge]')?.hidden,yText:q('[data-b46-perf-ybadge]')?.textContent,xText:q('[data-b46-perf-xbadge]')?.textContent,hHidden:q('[data-b46-hover-hline]')?.hidden,vHidden:q('[data-b46-hover-line]')?.hidden,hDash:cs(q('[data-b46-hover-hline]'))?.strokeDasharray}}); 
   report.runtime={before,hover};save();
-  assert.equal(before.lineWidth,'1.15px','LINE_NOT_THIN');
+  assert.equal(before.lineWidth,'1px','LINE_NOT_THIN');
   assert(before.pos>0,'NO_POSITIVE_PL_BARS');
   assert(before.neg>0,'NO_NEGATIVE_PL_BARS');
   assert(before.zeroDash&&before.zeroDash!=='none','PL_ZERO_NOT_DISTINCT');
