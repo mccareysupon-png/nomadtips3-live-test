@@ -89,7 +89,7 @@ async function runtimeCheck(){
       const s=e?getComputedStyle(e):null,a=axis?getComputedStyle(axis):null,g=grid?getComputedStyle(grid):null,b=active?getComputedStyle(active):null;
       return{exists:!!e,stroke:s?.stroke,filter:s?.filter,width:s?.strokeWidth,axisFill:a?.fill,axisFont:a?.fontFamily,gridStroke:g?.stroke,activeColor:b?.color};
     });
-    assert(line.exists,'LINE_MISSING');assert(/67, 245, 139|67 245 139|#43f58b/i.test(line.stroke||''),'LINE_NOT_GREEN');assert(line.filter&&line.filter!=='none','LINE_GLOW_MISSING');assert(/IBM Plex Sans/i.test(line.axisFont||''),'GRAPH_FONT_NOT_APPLIED');
+    assert(line.exists,'LINE_MISSING');assert(/67, 245, 139|67 245 139|18, 168, 91|18 168 91|#43f58b|#12a85b/i.test(line.stroke||''),'LINE_NOT_GREEN');assert(line.filter&&line.filter!=='none','LINE_GLOW_MISSING');assert(/IBM Plex Sans/i.test(line.axisFont||''),'GRAPH_FONT_NOT_APPLIED');
     await page.click('[data-b46-chart-type="candles"]');await delay(200);
     const candles=await page.evaluate(()=>{
       const p=document.querySelector('.b46-perf-unit-candle-pos'),n=document.querySelector('.b46-perf-unit-candle-neg'),nav=document.querySelector('.b46-perf-unit-nav-window');
