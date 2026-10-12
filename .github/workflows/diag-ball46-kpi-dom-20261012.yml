@@ -30,11 +30,15 @@ jobs:
             await page.goto('https://ball46.com/?view=statistics&kpiDom='+Date.now(),{waitUntil:'networkidle2',timeout:90000});
             await new Promise(r=>setTimeout(r,4500));
             const out=await page.evaluate(()=>{
-              const all=[...document.querySelectorAll('body *')];
-              const hit=all.find(e=>/Current sample/.test(e.textContent||'')&&/Awaiting settlement/.test(e.textContent||'')&&/Recorded entry/.test(e.textContent||''));
-              if(!hit)return {found:false,bodyText:document.body.innerText.slice(0,10000)};
-              let el=hit;for(let i=0;i<5&&el.parentElement;i++){if((el.innerText||'').length<5000)el=el.parentElement;else break}
-              return {found:true,tag:hit.tagName,cls:hit.className,html:hit.outerHTML,ancestor:el.outerHTML.slice(0,30000)};
+              const labels=['SETTLED','UNSETTLED','WIN','LOSS','PUSH','WIN RATE','AVG ODDS'];
+              const hits=[];
+              for(const e of document.querySelectorAll('body *')){
+                const t=(e.childElementCount===0?e.textContent:'').trim();
+                if(labels.includes(t)){
+                  hits.push({text:t,tag:e.tagName,cls:e.className,parent:e.parentElement?.outerHTML?.slice(0,1800)||''});
+                }
+              }
+              return hits.slice(0,50);
             });
             console.log(JSON.stringify(out,null,2));
           }finally{await browser.close()}
