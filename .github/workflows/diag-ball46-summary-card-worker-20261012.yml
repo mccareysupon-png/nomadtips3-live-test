@@ -1,0 +1,36 @@
+name: DIAG Ball46 Summary Card Worker 20261012
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/diag-ball46-summary-card-worker-20261012.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/ball46-performance-chart-market-style-20261012
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --ignore-scripts acorn@8
+      - name: Find summary card in worker
+        working-directory: deploy-assets/performance-chart-market-style-20261012
+        run: |
+          node --input-type=module <<'NODE'
+          import {inspect} from '../daily-performance-20261005/production.mjs';
+          const cur=await inspect();
+          const s=String(cur.source||'');
+          for(const needle of ['Current sample','Awaiting settlement','Winning signals','Losing signals','Neutral results','Push excluded','Recorded entry','UNSETTLED','AVG ODDS','WIN RATE']){
+            let from=0,n=0;while(true){const i=s.indexOf(needle,from);if(i<0)break;n++;console.log('\n--- '+needle+' #'+n+' @ '+i+' ---\n'+s.slice(Math.max(0,i-2500),Math.min(s.length,i+6500)));from=i+needle.length;if(n>=10)break}
+          }
+          NODE
