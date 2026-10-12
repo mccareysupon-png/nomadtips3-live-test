@@ -32,10 +32,10 @@ jobs:
           async function read(path){let last;for(let i=0;i<5;i++){try{return (await publicFile('/'+path)).toString('utf8')}catch(e){last=e;await delay(1000*(i+1))}}throw last}
           for(const name of ['singlepage-workspace-343.js','statistics.js','statistics-next.js','statistics.html','statistics-next.html','ui-sync-fixes-343-v2.js','dashboard-v2-stage3.js']){
             const s=await read(name);
-            if(/UNSETTLED|SETTLED|WIN RATE|AVG ODDS|Current sample|Awaiting settlement|Winning signals|Losing signals|Neutral results|Push excluded|Recorded entry/.test(s)){
+            if(name==='singlepage-workspace-343.js'){
               console.log('\n=== FILE '+name+' ===');
               for(const needle of ['UNSETTLED','SETTLED','WIN RATE','AVG ODDS','Current sample','Awaiting settlement','Winning signals','Losing signals','Neutral results','Push excluded','Recorded entry']){
-                const i=s.indexOf(needle);if(i>=0) console.log('\n--- '+needle+' @ '+i+' ---\n'+s.slice(Math.max(0,i-3200),Math.min(s.length,i+6500)));
+                let from=0,n=0;while(true){const i=s.indexOf(needle,from);if(i<0)break;n++;console.log('\n--- '+needle+' #'+n+' @ '+i+' ---\n'+s.slice(Math.max(0,i-1800),Math.min(s.length,i+3200)));from=i+needle.length;if(n>=12)break}
               }
             }
           }
