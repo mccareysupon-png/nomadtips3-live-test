@@ -1,0 +1,37 @@
+name: DIAG Ball46 Graph Style Source 20261012
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/diag-ball46-graph-style-source-20261012.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/ball46-performance-chart-market-style-20261012
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --ignore-scripts acorn@8
+      - name: Print current graph style
+        working-directory: deploy-assets/performance-chart-market-style-20261012
+        run: |
+          node --input-type=module <<'NODE'
+          import {publicFile} from '../daily-performance-20261005/production.mjs';
+          const css=(await publicFile('/singlepage-workspace-343.css')).toString('utf8');
+          for(const needle of ['.b46-perf-unit-line','.b46-perf-axis-text','.b46-perf-axis-title','.b46-perf-grid','.b46-perf-zero-line','.b46-perf-ybadge','.b46-perf-xbadge','.b46-perf-tip','.b46-perf-unit-candle-pos','.b46-perf-unit-candle-neg','.b46-perf-chart-type']){
+            const i=css.lastIndexOf(needle);
+            console.log('\n=== '+needle+' @ '+i+' ===');
+            if(i>=0) console.log(css.slice(Math.max(0,i-500),Math.min(css.length,i+2200)));
+          }
+          NODE
