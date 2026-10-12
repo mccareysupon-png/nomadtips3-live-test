@@ -30,7 +30,7 @@ jobs:
           import {publicFile} from '../daily-performance-20261005/production.mjs';
           const delay=ms=>new Promise(r=>setTimeout(r,ms));
           async function read(path){let last;for(let i=0;i<5;i++){try{return (await publicFile('/'+path)).toString('utf8')}catch(e){last=e;await delay(1000*(i+1))}}throw last}
-          for(const name of ['singlepage-workspace-343.js','statistics.js','statistics-next.js','statistics.html','statistics-next.html','ui-sync-fixes-343-v2.js','dashboard-v2-stage3.js']){
+          for(const name of ['index.html','singlepage-workspace-343.js','longterm-performance-343.js','statistics.js','statistics-next.js','statistics.html','statistics-next.html','ui-sync-fixes-343-v2.js','dashboard-v2-stage3.js']){
             const s=await read(name);
             if(name==='singlepage-workspace-343.js'){
               console.log('\n=== FILE '+name+' ===');
