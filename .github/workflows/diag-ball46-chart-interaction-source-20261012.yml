@@ -20,6 +20,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - run: npm install --no-save --ignore-scripts acorn@8
       - name: Print chart source
         working-directory: deploy-assets/performance-chart-market-style-20261012
         run: |
