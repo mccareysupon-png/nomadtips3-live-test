@@ -1,4 +1,5 @@
 name: DIAG Ball46 Performance Renderer Rail 20261012
+# locate-all-2
 
 on:
   push:
@@ -28,4 +29,4 @@ jobs:
       - run: npm install --no-save --ignore-scripts acorn@8
       - name: Inspect live renderer
         working-directory: deploy-assets/performance-chart-interactive-20261012
-        run: node inspect.mjs
+        run: node inspect-all.mjs
