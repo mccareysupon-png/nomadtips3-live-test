@@ -1,0 +1,45 @@
+name: Deploy Ball46 Settled Days KPI 20261012
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-ball46-settled-days-kpi-20261012.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ball46-production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Checkout isolated Settled Days KPI patch
+        uses: actions/checkout@v4
+        with:
+          ref: work/ball46-performance-unit-candles-20261012
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install verification dependencies
+        run: npm install --no-save --ignore-scripts puppeteer-core@24 acorn@8
+      - name: Deploy Settled Days KPI
+        working-directory: deploy-assets/statistics-settled-days-20261012
+        run: node run.mjs
+      - name: Upload audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-settled-days-kpi-${{ github.run_id }}
+          path: deploy-assets/statistics-settled-days-20261012/audit
+          if-no-files-found: warn
+          retention-days: 30
