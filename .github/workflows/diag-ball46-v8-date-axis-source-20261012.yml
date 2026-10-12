@@ -1,0 +1,32 @@
+name: DIAG Ball46 V8 Date Axis Source 20261012
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/diag-ball46-v8-date-axis-source-20261012.yml'
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/ball46-performance-chart-market-style-20261012
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --ignore-scripts acorn@8
+      - working-directory: deploy-assets/performance-chart-market-style-20261012
+        run: |
+          node --input-type=module <<'NODE'
+          import {publicFile} from '../daily-performance-20261005/production.mjs';
+          const s=(await publicFile('/longterm-performance-343.js')).toString('utf8');
+          for(const needle of ['function axisSvg','function bangkokDayKey','function unitNavHtml','function tipMarkup']){
+            const i=s.indexOf(needle);console.log('\n=== '+needle+' @ '+i+' ===\n');if(i>=0)console.log(s.slice(Math.max(0,i-1000),Math.min(s.length,i+9000)));
+          }
+          NODE
