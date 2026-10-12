@@ -19,7 +19,7 @@ async function readRetry(label,fn,tries=5){let last;for(let i=0;i<tries;i++){try
 function exampleCheck(){const profits=[.17,-.80,1.80,2.80],expected=[[0,.17],[.17,-.63],[-.63,1.17],[1.17,3.97]];let net=0;const actual=profits.map(p=>{const open=net;net=Number((net+p).toFixed(10));return[Number(open.toFixed(2)),Number(net.toFixed(2))]});assert.deepEqual(actual,expected,'UNIT_EXAMPLE_MISMATCH');report.example={profits,actual,final:net}}
 exampleCheck();
 
-const TARGET_JS_SHA='0004425d7ef61348ef814ba1667ede14b49b04a4e0c8f0c188f544f79a56da68';
+const TARGET_JS_SHA='d7fe6eac52d84a2b9a90bba518f0ef4f019024338f1276248c43b9a25763c8b4';
 const dec=s=>Buffer.from(s,'base64').toString('utf8');
 function patchJs(src){
  let out=src;
