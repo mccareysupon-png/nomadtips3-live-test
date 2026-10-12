@@ -1,0 +1,35 @@
+name: DIAG Ball46 Performance Chart Source 20261012
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/diag-ball46-performance-chart-source-20261012.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - name: Inspect live JS/CSS
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import urllib.request
+          for p in ['singlepage-workspace-343.js','singlepage-workspace-343.css']:
+              u='https://ball46.com/'+p+'?diag=20261012'
+              s=urllib.request.urlopen(u,timeout=30).read().decode('utf-8','replace')
+              print('FILE',p,'LEN',len(s))
+              for needle in ['b46-perf-svg','b46-perf-chart-wrap','data-b46-mode','data-b46-range','LONG-TERM PERFORMANCE','b46-perf-axis-note']:
+                  i=s.find(needle)
+                  if i>=0:
+                      a=max(0,i-5000); b=min(len(s),i+12000)
+                      print('SNIP',needle)
+                      print(s[a:b])
+                      print('ENDSNIP')
+          PY
