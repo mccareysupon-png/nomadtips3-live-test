@@ -1,0 +1,44 @@
+name: DIAG Ball46 Volume Runtime 20261012
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/diag-ball46-volume-runtime-20261012.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --ignore-scripts puppeteer-core@24
+      - name: Inspect current Statistics volume UI
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const puppeteer=require('puppeteer-core'),fs=require('fs');
+          const exe=['/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium'].find(fs.existsSync);
+          (async()=>{
+            const b=await puppeteer.launch({headless:true,executablePath:exe,args:['--no-sandbox']});
+            const p=await b.newPage(); await p.setViewport({width:1440,height:1000});
+            await p.goto('https://ball46.com/?view=statistics&volumediag='+Date.now(),{waitUntil:'networkidle2',timeout:90000});
+            await new Promise(r=>setTimeout(r,4500));
+            const r=await p.evaluate(()=>{
+              const root=document.querySelector('.sp-trend.b46-perf-card');
+              const all=[...root.querySelectorAll('*')];
+              const hits=all.filter(e=>/volume/i.test((e.textContent||'')+' '+(e.className?.baseVal||e.className||'')+' '+[...e.attributes].map(a=>a.name+'='+a.value).join(' '))).slice(0,30)
+                .map(e=>({tag:e.tagName,cls:e.className?.baseVal||e.className,id:e.id,text:(e.textContent||'').trim().slice(0,200),html:e.outerHTML.slice(0,1800)}));
+              return {ok:Boolean(root),hits,rootHtml:root?.outerHTML.slice(0,18000)};
+            });
+            console.log('VOLUME_RUNTIME '+JSON.stringify(r));
+            await b.close();
+          })().catch(e=>{console.error(e.stack);process.exit(1)});
+          NODE
