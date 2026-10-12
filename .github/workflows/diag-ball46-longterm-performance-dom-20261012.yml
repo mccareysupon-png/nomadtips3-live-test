@@ -1,0 +1,48 @@
+name: DIAG Ball46 Longterm Performance DOM 20261012
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/diag-ball46-longterm-performance-dom-20261012.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --ignore-scripts puppeteer-core@24
+      - name: Inspect long-term performance DOM
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const puppeteer=require('puppeteer-core');
+          const fs=require('fs');
+          const exe=['/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium'].find(fs.existsSync);
+          if(!exe) throw new Error('NO_CHROME');
+          (async()=>{
+            const browser=await puppeteer.launch({headless:true,executablePath:exe,args:['--no-sandbox']});
+            const page=await browser.newPage();
+            await page.setViewport({width:1440,height:1000});
+            await page.goto('https://ball46.com/?view=statistics&longtermdiag='+Date.now(),{waitUntil:'networkidle2',timeout:90000});
+            await new Promise(r=>setTimeout(r,4000));
+            const r=await page.evaluate(()=>{
+              const spans=[...document.querySelectorAll('span')];
+              const s=spans.find(e=>(e.textContent||'').trim()==='LONG-TERM PERFORMANCE · 1 UNIT');
+              if(!s)return {ok:false,all:[...document.querySelectorAll('.b46-perf-title span')].map(x=>x.textContent.trim())};
+              let n=s;const chain=[];
+              for(let i=0;i<6&&n;i++,n=n.parentElement)chain.push({tag:n.tagName,cls:n.className,id:n.id,text:(n.innerText||'').slice(0,300),html:n.outerHTML.slice(0,1800)});
+              return {ok:true,chain};
+            });
+            console.log('LONGTERM_DOM '+JSON.stringify(r,null,2));
+            await browser.close();
+          })().catch(e=>{console.error(e.stack);process.exit(1)});
+          NODE
