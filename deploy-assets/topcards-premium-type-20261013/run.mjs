@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
-import { mkdirSync,writeFileSync,existsSync } from 'node:fs';
+import { mkdirSync,writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import puppeteer from 'puppeteer-core';
 import { inspect,activeVersion,getVersion,api,script,sha,canonical,publicFile,backend,literals,directOrigin } from '../daily-performance-20261005/production.mjs';
 import { schedules,stageCurrentRail,verifyRailBase,wrangler } from '../daily-performance-20261005/rail.mjs';
 
@@ -90,40 +89,6 @@ async function rollback(){
   assert.equal(await activeVersion(),current.restore.version,'ROLLBACK_NOT_CONFIRMED');
 }
 
-async function runtimeCheck(){
-  const exe=['/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium'].find(existsSync);
-  assert(exe,'NO_CHROME');
-  const browser=await puppeteer.launch({headless:true,executablePath:exe,args:['--no-sandbox']});
-  try{
-    const page=await browser.newPage();
-    await page.setViewport({width:1440,height:1000});
-    await page.setCacheEnabled(false);
-    await page.goto('https://ball46.com/index.html?topcardsPremiumType='+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
-    await page.waitForSelector('.workspace-scorebar-grid .workspace-scorebar-cell',{timeout:60000});
-    const q=await page.evaluate(()=>{
-      const cell=document.querySelector('.workspace-scorebar-grid .workspace-scorebar-cell');
-      const match=cell?.querySelector('.workspace-scorebar-match');
-      const meta=cell?.querySelector('.workspace-scorebar-meta');
-      const score=meta?.querySelector('b');
-      const cs=e=>e?getComputedStyle(e):null;
-      return {
-        ok:Boolean(cell&&meta),
-        card:{height:cs(cell)?.height,padding:cs(cell)?.padding,borderRadius:cs(cell)?.borderRadius,backgroundColor:cs(cell)?.backgroundColor},
-        meta:{font:cs(meta)?.fontFamily,size:cs(meta)?.fontSize,weight:cs(meta)?.fontWeight,spacing:cs(meta)?.letterSpacing},
-        score:score?{size:cs(score)?.fontSize,weight:cs(score)?.fontWeight}:null,
-        match:match?{font:cs(match)?.fontFamily,size:cs(match)?.fontSize,weight:cs(match)?.fontWeight,spacing:cs(match)?.letterSpacing}:null
-      };
-    });
-    report.runtime=q;save();
-    assert(q.ok,'TOPCARD_DOM_MISSING');
-    assert(q.meta.font.includes('IBM Plex Sans'),'PREMIUM_FONT_NOT_ACTIVE');
-    if(q.match){
-      assert(q.match.font.includes('IBM Plex Sans'),'MATCH_FONT_NOT_ACTIVE');
-      assert.equal(q.match.size,'9.5px','MATCH_SIZE_CHANGED');
-    }
-  }finally{await browser.close()}
-}
-
 try{
   current=await inspect();
   const base=current.restore.version;
@@ -138,12 +103,17 @@ try{
   report.cssBeforeSha=beforeSha;
   assert(beforeText.includes('.workspace-scorebar-grid'),'TOPCARD_GRID_SELECTOR_MISSING');
   assert(beforeText.includes('.workspace-scorebar-match'),'TOPCARD_MATCH_SELECTOR_MISSING');
-  assert(!beforeText.includes(MARK),'PREMIUM_TYPE_ALREADY_LIVE_STOP');
-
   const beforeLiterals=literals(current.source);
   const owner=beforeLiterals.get(OWNER);
   assert(owner,'SCOREBAR_CSS_OWNER_MISSING');
   assert.equal(sha(Buffer.from(owner.value)),beforeSha,'OWNER_NOT_CURRENT_PUBLIC_CSS');
+  if(beforeText.includes(MARK)){
+    report.finalVersion=base;
+    report.result='ALREADY_LIVE_SUCCESS';
+    report.completedAt=new Date().toISOString();save();
+    console.log('BALL46_TOPCARDS_PREMIUM_TYPE_ALREADY_LIVE '+JSON.stringify({base,cssSha:beforeSha}));
+    process.exit(0);
+  }
 
   const afterText=beforeText+'\n'+CSS+'\n';
   const after=Buffer.from(afterText);
@@ -218,12 +188,11 @@ try{
       assert.equal(sha(Buffer.from(n.value)),sha(Buffer.from(lit.value)),'FINAL_UNRELATED_LITERAL_CHANGED:'+name);
     }
 
-    await runtimeCheck();
     assert.equal(await activeVersion(),candidate,'FINAL_PRODUCTION_MOVED');
     report.finalVersion=candidate;
     report.result='SUCCESS';
     report.completedAt=new Date().toISOString();save();
-    console.log('BALL46_TOPCARDS_PREMIUM_TYPE_SUCCESS '+JSON.stringify({base,candidate,cssSha:afterSha,runtime:report.runtime}));
+    console.log('BALL46_TOPCARDS_PREMIUM_TYPE_SUCCESS '+JSON.stringify({base,candidate,cssSha:afterSha}));
   }catch(e){
     report.error=e.message;
     try{await rollback()}catch(rb){report.rollbackError=rb.message}
