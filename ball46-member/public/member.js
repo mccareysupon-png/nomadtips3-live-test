@@ -454,11 +454,16 @@ function makeSignalRow(row){
   const unresolved=!['WIN','LOSS','PUSH','HALF_WIN','HALF_LOSS','VOID'].includes(String(row.result||'').toUpperCase());
   const clockStatus=String(row.mirrorStatus||'').toLowerCase();
   const ended=/(finished|ended|full.?time|\\bft\\b|after.?pen|\\baet\\b)/.test(clockStatus);
-  const matchMinute=Number(row.matchMinute);
+  const rawMinute=String(row.matchMinute??'').trim();
+  const matchMinute=Number(rawMinute);
+  const halfTime=/^(HT|HALF[ -]?TIME)$/i.test(String(row.mirrorStatus||'').trim());
+  const minuteLabel=/^\\d{1,3}\\+\\d{1,2}$/.test(rawMinute)
+    ? rawMinute+"′"
+    : Number.isFinite(matchMinute)&&matchMinute>0?Math.floor(matchMinute)+"′":null;
+  const isMinuteCard=unresolved && !ended && (halfTime || minuteLabel!==null);
   const resultText=unresolved
-    ? (ended?'FT · WAITING':Number.isFinite(matchMinute)&&matchMinute>0?Math.floor(matchMinute)+"'":'WAITING')
+    ? (ended?'FT · WAITING':halfTime?'HT':minuteLabel||'LIVE')
     : String(row.result).replaceAll('_',' ');
-  const isMinuteCard=unresolved && !ended && Number.isFinite(matchMinute) && matchMinute>0;
   result.append(node('span',isMinuteCard?'result-minute-card':'badge '+(unresolved?'neutral':resultClass(row.result)),resultText));
   tr.append(result);
 
