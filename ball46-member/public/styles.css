@@ -2123,19 +2123,3 @@ body.page-member:before{
 .page-pricing .topbar .ghost-btn:hover{
   color:#ff9f43!important;
 }
-
-/* B46_MEMBER_MATCH_STATUS_CARD_70PCT_20261013 */
-/* Only the live match-status fact card: 30% smaller card and typography. */
-.featured-horizontal .premium-side-fact.premium-fact-stadium {
-  width:70%; min-height:0; padding:5px 6px; gap:1px;
-  justify-self:start; align-self:center;
-}
-.featured-horizontal .premium-fact-stadium .premium-side-fact-label {font-size:6.3px;letter-spacing:.04em}
-.featured-horizontal .premium-fact-stadium .premium-side-fact-value {font-size:clamp(7.7px,.7vw,10.5px);line-height:1.2}
-.featured-horizontal .premium-fact-stadium .premium-fact-sub {font-size:5.6px}
-.featured-horizontal .premium-fact-stadium .premium-fact-icon {width:17.15px;height:17.15px}
-@media(max-width:680px){
-  .featured-horizontal .premium-side-fact.premium-fact-stadium {min-height:47.6px;padding:5px}
-  .featured-horizontal .premium-fact-stadium .premium-side-fact-value {font-size:8.4px}
-  .featured-horizontal .premium-fact-stadium .premium-fact-icon {width:15.68px;height:15.68px}
-}
