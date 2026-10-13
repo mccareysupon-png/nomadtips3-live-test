@@ -764,26 +764,30 @@ function eventFlowChart(detail,fixtureId){
     g.append(svgNode('circle',{cx:x,cy:y,r:'6.1',class:'member-flow-signal-ring'}));
     g.append(svgNode('circle',{cx:x,cy:y,r:'3.1',class:'member-flow-signal-dot'}));
 
-    const tagW=92,tagH=19,cut=6;
-    const tagX=clamp(x+9,pad.left+5,w-pad.right-tagW-2);
-    const tagY=clamp(y-22,pad.top+2,h-pad.bottom-tagH-2);
+    // Compact verified entry snapshot. Never substitute a current live price.
+    const market=String(s.market==='CORNERS'?cornerRuleName(s):s.market||'').trim();
+    const pickLabel=String(s.selection||'').trim();
+    const lineLabel=fmtLine(s);
+    const oddsLabel=s.odds==null?'':fmtOdds(s.odds);
+    const bookmaker=String(s.bookmaker||'').trim();
+    const entryParts=[market,[pickLabel,lineLabel].filter(Boolean).join(' '),oddsLabel,bookmaker].filter(Boolean);
+    const entryText=entryParts.join(' · ');
+    const tagW=clamp(42+entryText.length*4.7,150,236),tagH=36;
+    const safeLeft=pad.left+6,safeRight=w-pad.right-6;
+    // Anchor to the left for late signals; never permit the plate to touch either edge.
+    const tagX=x+12+tagW<=safeRight?x+12:clamp(x-tagW-12,safeLeft,safeRight-tagW);
+    const tagY=clamp(y-44,pad.top+3,h-pad.bottom-tagH-3);
     const tag=svgNode('g',{class:'member-flow-signal-tag'});
-    const plate=svgNode('path',{
-      d:[
-        'M',tagX+cut,tagY,
-        'H',tagX+tagW,
-        'V',tagY+tagH-cut,
-        'L',tagX+tagW-cut,tagY+tagH,
-        'H',tagX,
-        'V',tagY+cut,
-        'Z'
-      ].join(' '),
-      class:'member-flow-signal-plate'
-    });
-    const accent=svgNode('rect',{x:tagX+5,y:tagY+5,width:'2.4',height:tagH-10,rx:'1.2',class:'member-flow-signal-accent'});
-    const label=svgNode('text',{x:tagX+12,y:tagY+12.6,class:'member-flow-signal-label'});
-    label.textContent='SIGNAL // '+minute+"'";
-    tag.append(plate,accent,label);
+    const plate=svgNode('rect',{x:tagX,y:tagY,width:tagW,height:tagH,rx:'5',ry:'5',class:'member-flow-signal-plate'});
+    const accent=svgNode('rect',{x:tagX+6,y:tagY+7,width:'2.4',height:tagH-14,rx:'1.2',class:'member-flow-signal-accent'});
+    const label=svgNode('text',{x:tagX+14,y:tagY+14,class:'member-flow-signal-label'});
+    label.textContent='SIGNAL '+minute+"′";
+    const detailText=svgNode('text',{x:tagX+14,y:tagY+28,class:'member-flow-signal-detail'});
+    // Constrain SVG text to the card's inner width while retaining the full tooltip.
+    detailText.setAttribute('textLength',Math.min(tagW-24,Math.max(30,entryText.length*4.5)));
+    detailText.setAttribute('lengthAdjust','spacingAndGlyphs');
+    detailText.textContent=entryText||'ENTRY NOT AVAILABLE';
+    tag.append(plate,accent,label,detailText);
     g.append(tag);
     svg.append(g);
   }
