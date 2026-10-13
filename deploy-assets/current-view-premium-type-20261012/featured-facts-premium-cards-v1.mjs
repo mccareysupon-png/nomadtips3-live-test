@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {mkdirSync,writeFileSync,existsSync} from 'node:fs';
 import {resolve} from 'node:path';
 import puppeteer from 'puppeteer-core';
-import {inspect,activeVersion,getVersion,api,script,sha,canonical,publicFile} from '../daily-performance-20261005/production.mjs';
+import {inspect,activeVersion,getVersion,api,script,sha,canonical,publicFile,directOrigin} from '../daily-performance-20261005/production.mjs';
 import {schedules,stageCurrentRail,verifyRailBase,wrangler} from '../daily-performance-20261005/rail.mjs';
 
 const JS='dashboard-v2-stage3.js',CSS='dashboard-v2.css',INDEX='index.html';
@@ -51,7 +51,7 @@ async function runtimeCheck(){
  const browser=await puppeteer.launch({headless:true,executablePath:exe,args:['--no-sandbox']});
  try{
   const page=await browser.newPage();await page.setViewport({width:1440,height:1000});await page.setCacheEnabled(false);
-  await page.goto('https://ball46.com/?featuredFactsVerify='+Date.now(),{waitUntil:'networkidle2',timeout:90000});await delay(4500);
+  await page.goto(directOrigin+'/?featuredFactsVerify='+Date.now(),{waitUntil:'networkidle2',timeout:90000});await delay(4500);
   const r=await page.evaluate(()=>{
    const facts=document.querySelector('[data-featured-facts]'),sp=facts?.querySelector('span'),bp=facts?.querySelector('b'),vals=facts?[...facts.querySelectorAll('b')]:[];
    const ss=sp?getComputedStyle(sp):null,bs=bp?getComputedStyle(bp):null,cardText=vals[2]?.textContent?.trim()||'';
@@ -82,7 +82,7 @@ try{
  wrangler(staged,true);assert.equal(await activeVersion(),base,'PRODUCTION_MOVED_AFTER_DRY_RUN');await verifyRailBase(staged);
  try{
   wrangler(staged);for(let i=0;i<30;i++){const a=await activeVersion();if(a!==base){candidate=a;break}await delay(1200)}assert(candidate,'NO_NEW_VERSION');
-  let live=false;for(let i=0;i<45;i++){assert.equal(await activeVersion(),candidate,'PRODUCTION_MOVED_DURING_VERIFY');try{const j=(await publicFile('/'+JS)).toString('utf8'),c=(await publicFile('/'+CSS)).toString('utf8'),x=(await publicFile('/'+INDEX)).toString('utf8');if(j.includes(' Yellow / ')&&j.includes(' Red · ')&&c.includes(MARK)&&x.includes(CACHE)){live=true;break}}catch{}await delay(1000)}assert(live,'FEATURED_FACTS_ASSETS_NOT_LIVE');
+  let live=false;for(let i=0;i<45;i++){assert.equal(await activeVersion(),candidate,'PRODUCTION_MOVED_DURING_VERIFY');try{const j=(await publicFile('/'+JS,undefined,directOrigin)).toString('utf8'),c=(await publicFile('/'+CSS,undefined,directOrigin)).toString('utf8'),x=(await publicFile('/'+INDEX,undefined,directOrigin)).toString('utf8');if(j.includes(' Yellow / ')&&j.includes(' Red · ')&&c.includes(MARK)&&x.includes(CACHE)){live=true;break}}catch{}await delay(1000)}assert(live,'FEATURED_FACTS_ASSETS_NOT_LIVE');
   for(const [p,h] of Object.entries(protectedAssets))assert.equal(sha(await publicFile('/'+p)),h,'UNRELATED_ASSET_CHANGED:'+p);
   await runtimeCheck();
   const cv=await getVersion(candidate),cm=cv.modules.find(m=>m.name===cv.main_module);assert(cm,'FINAL_MAIN_MISSING');assert.equal(sha(Buffer.from(cm.content_base64,'base64')),workerSha,'WORKER_CHANGED');assert.equal(sha(canonical(await api('/scripts/'+script+'/settings'))),settingsSha,'SETTINGS_CHANGED');assert.equal(canonical(await schedules()),canonical(cronsBefore),'CRONS_CHANGED');
