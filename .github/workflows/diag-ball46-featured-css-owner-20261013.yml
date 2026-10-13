@@ -27,7 +27,7 @@ jobs:
         working-directory: deploy-assets/performance-chart-market-style-20261012
         run: |
           node --input-type=module <<'NODE'
-          import {publicFile} from '../daily-performance-20261005/production.mjs';
+          import {publicFile,inspect} from '../daily-performance-20261005/production.mjs';\n          const cur=await inspect(); console.log('ACTIVE_VERSION='+cur.restore.version);
           const html=(await publicFile('/index.html')).toString('utf8');
           const links=[...html.matchAll(/<link[^>]+href=["']([^"']+\.css[^"']*)["'][^>]*>/gi)].map(m=>m[1]);
           console.log('CSS_LINKS='+JSON.stringify(links));
@@ -42,3 +42,5 @@ jobs:
             }catch(e){console.log('MISS '+path+' '+e.message)}
           }
           NODE
+
+# verify-active-after-featured-v1-fail
