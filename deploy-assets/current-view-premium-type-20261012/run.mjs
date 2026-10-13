@@ -1,1 +1,1 @@
-await import('./featured-facts-premium-cards-v1.mjs');
+await import('./featured-facts-immutable-v1.mjs');
