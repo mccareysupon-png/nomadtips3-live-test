@@ -30,3 +30,10 @@
 
 ## New-chat instruction
 Read this file first; confirm exact Member 2 production domain, Worker, active version and broken route before touching code/deployment. Member 1 is working; do not sacrifice it again. This file is documentation only and does not trigger deploy.
+
+## CANONICAL NAME — USER CONFIRMED (2026-10-14)
+- **"Member1" = "Member" = "หน้าสมาชิก"**: all three terms mean the SAME currently working member production system. Treat unqualified user requests mentioning `member` or `หน้าสมาชิก` as **Member1**, not Member2.
+- **"Member2"** is a separate system and MUST only be targeted if user explicitly says `Member2` or `สมาชิก 2`.
+- Confirmed successful Member1 RESULT clock change in production: `member.js` commit `537068ca5a28321a941dff613124f26bb0c64bf7`; `styles.css` commit `2ea5d824a8a45d9b0e4b1bffe9627905e828a9e2`; deploy workflow ref pinned to `2ea5d824a8a45d9b0e4b1bffe9627905e828a9e2` by commit `b6790393e6ebc6a1d1899e77041b0e85be342c53`.
+- Successful production deploy and checks: https://github.com/mccareysupon-png/nomadtips3-live-test/actions/runs/38441038812 ; USER CONFIRMED "ได้ผล".
+- For future Member1 requests follow this exact successful rail: `member/ball46-member-v1-20261008` → targeted changes only under `ball46-member/` → pinned immutable source commit in `.github/workflows/deploy-ball46-member-v1-20261008.yml` → isolated `ball46-member-production` deployment → verify production → user confirmation. Do not silently use Member2 branch. Keep no unnecessary edits.
