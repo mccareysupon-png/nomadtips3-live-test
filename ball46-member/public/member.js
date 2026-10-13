@@ -470,7 +470,7 @@ function makeSignalRow(row){
   away.append(node('span','favorite-side-label','AWAY'),node('span','favorite-team-away',row.away));
   teamNames.append(home,away);
   teams.append(makeFavoriteButton(row),teamNames);
-  match.append(teams,node('small','',row.league),node('small','detail-hint','Featured Match · Event Flow'));
+  match.append(teams,node('small','detail-hint','Featured Match · Event Flow'));
   tr.append(match);
 
   const live=document.createElement('td');
