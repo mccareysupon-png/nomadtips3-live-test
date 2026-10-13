@@ -10,37 +10,31 @@ const state = {
   detailCache:new Map(),
   detailPromises:new Map(),
   favoritesView:false,
-  favoriteMatches:new Set(),
-  favoriteTeams:new Set(),
+  favoriteSignals:new Set(),
   favoriteStorageKey:null
 };
-function favoriteKey(value){return String(value??'').trim().toLowerCase();}
-function favoriteMatchKey(row){return String(row?.fixtureId??'').trim();}
+function favoriteSignalKey(row){return String(row?.id??'').trim();}
 function favoriteStorageInit(member){
   const identity=String(member?.id||member?.email||member?.displayName||'').trim().toLowerCase();
-  state.favoriteStorageKey='b46-member1-favorites-v1:'+identity;
+  state.favoriteStorageKey='b46-member1-favorites-cards-v2:'+identity;
   try{
     const saved=JSON.parse(localStorage.getItem(state.favoriteStorageKey)||'{}');
-    state.favoriteMatches=new Set(Array.isArray(saved.matches)?saved.matches.map(String):[]);
-    state.favoriteTeams=new Set(Array.isArray(saved.teams)?saved.teams.map(favoriteKey):[]);
-  }catch{state.favoriteMatches=new Set();state.favoriteTeams=new Set();}
+    state.favoriteSignals=new Set(Array.isArray(saved.signals)?saved.signals.map(String):[]);
+  }catch{state.favoriteSignals=new Set();}
 }
 function persistFavorites(){
-  try{localStorage.setItem(state.favoriteStorageKey,JSON.stringify({matches:[...state.favoriteMatches],teams:[...state.favoriteTeams]}));}catch{}
+  try{localStorage.setItem(state.favoriteStorageKey,JSON.stringify({signals:[...state.favoriteSignals]}));}catch{}
 }
-function isFavoriteRow(row){
-  return state.favoriteMatches.has(favoriteMatchKey(row))||
-    state.favoriteTeams.has(favoriteKey(row.home))||
-    state.favoriteTeams.has(favoriteKey(row.away));
+function isFavoriteRow(row){return state.favoriteSignals.has(favoriteSignalKey(row));}
+function toggleFavorite(row){
+  const id=favoriteSignalKey(row);
+  if(!id)return;
+  if(state.favoriteSignals.has(id))state.favoriteSignals.delete(id);
+  else state.favoriteSignals.add(id);
+  persistFavorites();
+  render();
 }
-function toggleFavorite(type,key){
-  const collection=type==='team'?state.favoriteTeams:state.favoriteMatches;
-  const value=type==='team'?favoriteKey(key):String(key);
-  if(!value)return;
-  if(collection.has(value))collection.delete(value);else collection.add(value);
-  persistFavorites();render();
-}
-function favoritesCount(){return state.favoriteMatches.size+state.favoriteTeams.size;}
+function favoritesCount(){return state.favoriteSignals.size;}
 function renderFavoritesNav(){
   const host=qs('#memberFavoriteNav');
   if(!host)return;
@@ -53,14 +47,16 @@ function renderFavoritesNav(){
   });
   host.append(b);
   const note=qs('#memberFavoriteDescription');
-  if(note)note.textContent=on?'WATCHLIST · '+state.favoriteMatches.size+' MATCHES · '+state.favoriteTeams.size+' TEAMS · SAVED ON THIS DEVICE':'★ Save a match or team to your watchlist';
+  if(note)note.textContent=on?'WATCHLIST · '+favoritesCount()+' SAVED SIGNAL CARDS · THIS DEVICE':'★ Save individual signal cards';
 }
-function makeFavoriteButton(type,key,label){
-  const selected=(type==='team'?state.favoriteTeams:state.favoriteMatches).has(type==='team'?favoriteKey(key):String(key));
+function makeFavoriteButton(row){
+  const selected=isFavoriteRow(row);
   const button=node('button','favorite-star'+(selected?' selected':''),selected?'★':'☆');
-  button.type='button';button.title=(selected?'Remove ':'Add ')+label+(selected?' from':' to')+' favorites';
-  button.setAttribute('aria-label',button.title);button.setAttribute('aria-pressed',String(selected));
-  button.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();toggleFavorite(type,key);});
+  button.type='button';
+  button.title=selected?'Remove this signal card from favorites':'Save this signal card to favorites';
+  button.setAttribute('aria-label',button.title);
+  button.setAttribute('aria-pressed',String(selected));
+  button.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();toggleFavorite(row);});
   button.addEventListener('keydown',e=>e.stopPropagation());
   return button;
 }
@@ -467,15 +463,11 @@ function makeSignalRow(row){
 
   const match=node('td','match');
   const teams=node('div','favorite-teams');
-  const homeTeam=node('span','favorite-team-home',row.home);
-  const awayTeam=node('span','favorite-team-away',row.away);
   teams.append(
-    makeFavoriteButton('match',favoriteMatchKey(row),'match'),
-    makeFavoriteButton('team',row.home,row.home),
-    homeTeam,
+    makeFavoriteButton(row),
+    node('span','favorite-team-home',row.home),
     node('span','favorite-versus','vs'),
-    makeFavoriteButton('team',row.away,row.away),
-    awayTeam
+    node('span','favorite-team-away',row.away)
   );
   match.append(teams,node('small','',row.league),node('small','detail-hint','Featured Match · Event Flow'));
   tr.append(match);
