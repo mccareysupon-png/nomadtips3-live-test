@@ -2158,3 +2158,44 @@ body.page-member:before{
 .favorite-star:hover,.favorite-star:focus-visible{color:#f9c85b;transform:scale(1.12);background:rgba(249,200,91,.1);outline:none}
 .favorite-star.selected{color:#f9c85b;text-shadow:0 0 9px rgba(249,200,91,.25)}
 @media(max-width:680px){.favorite-teams{gap:3px}.favorite-star{font-size:17px;padding:3px}.member-favorite-toolbar{align-items:flex-start}}
+
+
+/* MEMBER1 FAVORITES RAIL: one balanced desktop row, responsive mobile rail */
+.page-member .toolbar-left{
+  display:flex;
+  align-items:stretch;
+  gap:12px;
+  width:100%;
+  min-width:0;
+}
+.page-member .toolbar-left .market-tabs{
+  flex:1 1 auto;
+  min-width:0;
+  gap:clamp(5px,.6vw,10px);
+  padding:4px 0 8px;
+  overflow-x:auto;
+  overscroll-behavior-x:contain;
+}
+.page-member .toolbar-left .market-tab{
+  min-width:0;
+  flex:1 0 104px;
+  padding-inline:clamp(7px,.75vw,12px);
+}
+.page-member .toolbar-left .member-favorite-toolbar{
+  flex:0 0 auto;
+  align-self:center;
+  margin:0;
+  gap:0;
+}
+.page-member .member-favorite-toolbar small{display:none}
+.page-member .favorite-nav-button{
+  min-height:58px;
+  white-space:nowrap;
+  padding-inline:14px;
+}
+@media(max-width:700px){
+  .page-member .toolbar-left{gap:8px}
+  .page-member .toolbar-left .market-tabs{gap:6px}
+  .page-member .toolbar-left .market-tab{flex:0 0 105px;min-height:56px}
+  .page-member .favorite-nav-button{min-height:56px;padding-inline:9px;font-size:10px;letter-spacing:.02em}
+}
