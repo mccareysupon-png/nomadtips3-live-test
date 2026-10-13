@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdirSync,writeFileSync,readFileSync } from 'node:fs';
+import { mkdirSync,writeFileSync,existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import puppeteer from 'puppeteer-core';
 import { inspect,activeVersion,getVersion,api,script,sha,canonical,publicFile,backend,literals,directOrigin } from '../daily-performance-20261005/production.mjs';
@@ -91,7 +91,7 @@ async function rollback(){
 }
 
 async function runtimeCheck(){
-  const exe=['/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium'].find(p=>{try{return readFileSync(p),true}catch{return false}});
+  const exe=['/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium'].find(existsSync);
   assert(exe,'NO_CHROME');
   const browser=await puppeteer.launch({headless:true,executablePath:exe,args:['--no-sandbox']});
   try{
