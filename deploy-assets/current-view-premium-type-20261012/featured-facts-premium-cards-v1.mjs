@@ -60,7 +60,7 @@ async function runtimeCheck(){
   assert(r.ok,'FEATURED_FACTS_MISSING');
   assert(/IBM Plex Sans/i.test(r.fontSpan)&&/IBM Plex Sans/i.test(r.fontValue),'PREMIUM_FACT_FONT_NOT_ACTIVE');
   assert.deepEqual(r.labels,['HALF-TIME','CORNERS','CARDS H · A','ODDS AGE'],'FACT_LABELS_CHANGED');
-  if(r.cardText&&r.cardText!=='—'){assert(/Yellow/.test(r.cardText)&&/Red/.test(r.cardText),'FULL_CARD_WORDS_NOT_RENDERED');assert(!/\\dY\\//.test(r.cardText),'SHORT_CARD_WORDS_STILL_RENDERED')}
+  if(r.cardText&&r.cardText!=='—'){assert(/Yellow/.test(r.cardText)&&/Red/.test(r.cardText),'FULL_CARD_WORDS_NOT_RENDERED');assert(!/\dY\//.test(r.cardText),'SHORT_CARD_WORDS_STILL_RENDERED')}
   report.runtime=r;save();
  }finally{await browser.close()}
 }
