@@ -1,1 +1,1 @@
-await import('./featured-signal-patch-v2.mjs');
+await import('./featured-facts-premium-cards-v1.mjs');
