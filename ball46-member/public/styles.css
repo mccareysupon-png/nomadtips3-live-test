@@ -2203,3 +2203,26 @@ body.page-member:before{
 /* Member1 EVENT FLOW: increase only chart vertical drawing area by 30%. */
 .page-member .member-flow-chart svg{height:247px}
 @media(max-width:680px){.page-member .member-flow-chart svg{height:202px}}
+
+
+/* Member1 Event Flow SIGNAL entry readout: thin premium emerald, two readable lines. */
+.page-member .member-flow-signal-plate{
+  fill:#0c2824;
+  stroke:#38dfa2;
+  stroke-width:1;
+  filter:none;
+  animation:none;
+}
+.page-member .member-flow-signal-label{
+  fill:#69f0ba;
+  font-size:9px;
+  font-weight:850;
+  letter-spacing:.025em;
+}
+.page-member .member-flow-signal-detail{
+  fill:#ffffff;
+  font-family:"Manrope",Inter,ui-sans-serif,system-ui,sans-serif;
+  font-size:8.6px;
+  font-weight:700;
+  letter-spacing:0;
+}
