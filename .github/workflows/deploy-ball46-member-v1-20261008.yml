@@ -111,3 +111,5 @@ jobs:
           jq -e '.error=="CHECKOUT_DISABLED_UNTIL_VERIFIED_ENTITLEMENTS"' /tmp/checkout.json >/dev/null
           echo "BALL46_MEMBER_FAIL_CLOSED_VERIFIED"
           echo "BALL46_MEMBER_PRODUCTION_SECURITY_DEPLOY_SUCCESS"
+
+# Incident recovery 2026-10-14: redeploy immutable verified commit 2d83fa8; do not change build source.
