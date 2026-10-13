@@ -2264,3 +2264,9 @@ body.page-member:before{
   .page-member .signal-row .favorite-teams{grid-template-columns:26px minmax(0,1fr);column-gap:9px}
   .page-member .signal-row .favorite-star{width:26px;min-height:34px}
 }
+
+/* Keep the two score baselines level with the paired names, not the status badge. */
+.page-member .signal-row>td.match,
+.page-member .signal-row>td.live-score-cell{vertical-align:top}
+.page-member .signal-row .live-score-pair{margin-top:0}
+.page-member .signal-row .live-score-cell .badge{display:inline-flex;margin-top:5px;margin-bottom:0}
