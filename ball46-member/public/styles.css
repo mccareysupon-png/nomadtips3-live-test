@@ -2143,3 +2143,18 @@ body.page-member:before{
 .page-pricing .topbar .ghost-btn:hover{
   color:#ff9f43!important;
 }
+
+
+/* BALL46 MEMBER1 FAVORITES — compact crypto watchlist, isolated selectors */
+.member-favorite-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:12px}
+.member-favorite-toolbar small{color:#89a5bc;font-size:11px;letter-spacing:.025em}
+.favorite-nav-button{appearance:none;border:1px solid #6f6034;color:#f9c85b;border-radius:9px;background:linear-gradient(115deg,#142b36,#102035);font:800 12px Manrope,Inter,system-ui,sans-serif;letter-spacing:.08em;padding:10px 14px;cursor:pointer;transition:background .15s,border-color .15s,box-shadow .15s}
+.favorite-nav-button:hover,.favorite-nav-button:focus-visible,.favorite-nav-button.active{border-color:#f9c85b;background:linear-gradient(120deg,#263323,#162f3b);box-shadow:0 0 0 1px rgba(249,200,91,.12)}
+.favorite-teams{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.favorite-team-home{color:#43e6a2;font-weight:800}
+.favorite-team-away{color:#ffa451;font-weight:800}
+.favorite-versus{color:#7894aa;font-size:10px;text-transform:uppercase}
+.favorite-star{appearance:none;background:transparent;border:1px solid transparent;color:#91a3b7;font-size:20px;line-height:1;border-radius:6px;padding:3px 4px;cursor:pointer;flex:none;transition:color .15s,transform .15s,background .15s}
+.favorite-star:hover,.favorite-star:focus-visible{color:#f9c85b;transform:scale(1.12);background:rgba(249,200,91,.1);outline:none}
+.favorite-star.selected{color:#f9c85b;text-shadow:0 0 9px rgba(249,200,91,.25)}
+@media(max-width:680px){.favorite-teams{gap:3px}.favorite-star{font-size:17px;padding:3px}.member-favorite-toolbar{align-items:flex-start}}
