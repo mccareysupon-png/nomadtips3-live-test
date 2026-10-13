@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-10-13T04:01:37Z",
+  "updated_at": "2026-10-13T09:32:51Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -5634,8 +5634,8 @@
       "edge": 15.4,
       "ev": 0.2174,
       "required_confidence": 0.6,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "0-2",
       "locked_at": "2026-10-13T03:55:37Z",
       "source_url": "https://www.goaloo.com/football/china-league-women-shanghai-shenhua-w-vs-fujian-nanan-w/h2h-3101794",
       "summary_url": "https://www.goaloo.com/football/china-league-women-shanghai-shenhua-w-vs-fujian-nanan-w/summary-3101794",
@@ -5695,7 +5695,12 @@
         "away_recent": 10,
         "h2h_n": 4,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-13T09:32:51Z"
     },
     {
       "id": "515e26e03af89548-OU-OVER-2p25",
@@ -237438,6 +237443,96 @@
       "settlement_source": "goaloo-bf_us-direct-index",
       "goaloo_terminal_state": -1,
       "settled_at": "2026-10-12T19:52:23Z"
+    },
+    {
+      "id": "0cba2642a66ee45f-AH-HOME-m0p0",
+      "goaloo_id": "3101794",
+      "date": "2026-10-13",
+      "kickoff": "2026-10-13 07:30:00",
+      "league": "China League Women",
+      "home": "Shanghai Shenhua W",
+      "away": "Fujian Nanan (W)",
+      "market": "AH",
+      "selection": "HOME",
+      "line": -0.0,
+      "pick": "Shanghai Shenhua W -0",
+      "side": "home",
+      "odds": 1.85,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.6485,
+      "model_probability": 0.6485,
+      "market_fair_probability": 0.4945,
+      "market_edge": 0.1539,
+      "edge": 15.4,
+      "ev": 0.2174,
+      "required_confidence": 0.6,
+      "result": "LOSS",
+      "ft": "0-2",
+      "locked_at": "2026-10-13T03:55:37Z",
+      "source_url": "https://www.goaloo.com/football/china-league-women-shanghai-shenhua-w-vs-fujian-nanan-w/h2h-3101794",
+      "summary_url": "https://www.goaloo.com/football/china-league-women-shanghai-shenhua-w-vs-fujian-nanan-w/summary-3101794",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 1.946,
+        "lambda_away": 1.238,
+        "home_win": 0.5537,
+        "draw": 0.2362,
+        "away_win": 0.2101,
+        "h2h_adjustment": 0.0112,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": -0.0602,
+          "gd_edge": 0.4352,
+          "clean_sheet_edge": 0.4049,
+          "failed_to_score_edge": -0.2,
+          "bounded_adjustment": 0.0121,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 8,
+        "away_recent": 10,
+        "h2h_n": 4,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-13T09:32:51Z"
     }
   ],
   "note": "Automated Full-Time Winner First feed. Supplemental markets remain unpublished.",
