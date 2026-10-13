@@ -1,0 +1,42 @@
+name: DIAG Ball46 Featured Facts Live 20261013
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/diag-ball46-featured-facts-live-20261013.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/ball46-performance-chart-market-style-20261012
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --ignore-scripts acorn@8
+      - name: Inspect live Featured facts
+        working-directory: deploy-assets/performance-chart-market-style-20261012
+        run: |
+          node --input-type=module <<'NODE'
+          import {inspect,publicFile} from '../daily-performance-20261005/production.mjs';
+          const cur=await inspect();console.log('ACTIVE='+cur.restore.version);
+          for(const file of ['dashboard-v2-stage3.js','dashboard-v2.css','index.html']){
+            const s=(await publicFile('/'+file+'?diag='+Date.now())).toString('utf8');
+            console.log('\nFILE='+file);
+            console.log('HAS_FULL='+s.includes(' Yellow / '));
+            console.log('HAS_MARK='+s.includes('B46_FEATURED_FACTS_PREMIUM_CARDS_V1_20261013'));
+            console.log('HAS_CACHE='+s.includes('343-featured-facts-premium-cards-v1-20261013'));
+            for(const needle of ['function cardsLabel','B46_FEATURED_FACTS_PREMIUM_CARDS_V1_20261013','dashboard-v2-stage3.js?v=','dashboard-v2.css?v=']){
+              const i=s.indexOf(needle);if(i>=0)console.log('\n'+needle+' @ '+i+'\n'+s.slice(Math.max(0,i-500),Math.min(s.length,i+1800)));
+            }
+          }
+          NODE
