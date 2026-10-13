@@ -1,0 +1,41 @@
+name: DIAG Ball46 Featured Worker Literals 20261013
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/diag-ball46-featured-worker-literals-20261013.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/ball46-performance-chart-market-style-20261012
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --ignore-scripts acorn@8
+      - name: Inspect worker literals
+        working-directory: deploy-assets/performance-chart-market-style-20261012
+        run: |
+          node --input-type=module <<'NODE'
+          import {inspect,literals} from '../daily-performance-20261005/production.mjs';
+          const cur=await inspect();
+          const map=literals(cur.source);
+          for(const [name,e] of map){
+            if(e.value.includes('function cardsLabel')||e.value.includes('.feature-score')||e.value.includes('dashboard-v2-stage3.js')||e.value.includes('dashboard-v2.css')){
+              console.log('\n===== '+name+' size='+e.value.length+' =====');
+              for(const needle of ['function cardsLabel','.feature-score','dashboard-v2-stage3.js','dashboard-v2.css']){
+                const i=e.value.indexOf(needle);if(i>=0)console.log('\n-- '+needle+' @ '+i+' --\n'+e.value.slice(Math.max(0,i-900),Math.min(e.value.length,i+3500)));
+              }
+            }
+          }
+          NODE
