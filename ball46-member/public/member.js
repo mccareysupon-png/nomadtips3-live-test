@@ -486,7 +486,6 @@ function makeSignalRow(row){
     node('strong','live-score-team away',scoreParts[1]==null?'—':String(scoreParts[1]))
   );
   live.append(scores);
-  live.append(node('span','badge '+statusClass(row.state),matchClockLabel(row)));
   const evidence=marketEvidence(row);
   if(evidence) live.append(node('small','market-evidence '+(row.state==='LIVE'?'live-evidence':row.state==='FINISHED'?'ft-evidence':''),evidence));
   tr.append(live);
