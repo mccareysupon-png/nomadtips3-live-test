@@ -2199,3 +2199,7 @@ body.page-member:before{
   .page-member .toolbar-left .market-tab{flex:0 0 105px;min-height:56px}
   .page-member .favorite-nav-button{min-height:56px;padding-inline:9px;font-size:10px;letter-spacing:.02em}
 }
+
+/* Member1 EVENT FLOW: increase only chart vertical drawing area by 30%. */
+.page-member .member-flow-chart svg{height:247px}
+@media(max-width:680px){.page-member .member-flow-chart svg{height:202px}}
