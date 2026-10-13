@@ -439,6 +439,26 @@ button,input{font:inherit}
 .result-cell{
   font-weight:900;
 }
+/* Member 1: crisp live clock in RESULT; settled result badges unchanged. */
+.result-cell .result-minute-card{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:44px;
+  min-height:30px;
+  padding:4px 9px;
+  box-sizing:border-box;
+  border:1px solid #e54855;
+  border-radius:4px;
+  background:#c51f2d;
+  color:#ffffff;
+  font-size:13px;
+  font-weight:900;
+  line-height:1;
+  font-variant-numeric:tabular-nums;
+  white-space:nowrap;
+  box-shadow:none;
+}
 .featured-h-signal{
   border-color:rgba(50,209,139,.23);
   background:rgba(50,209,139,.065);
