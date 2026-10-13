@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-10-13T17:39:37Z",
+  "updated_at": "2026-10-13T22:54:55Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -4054,8 +4054,8 @@
       "edge": 21.5,
       "ev": 0.3423,
       "required_confidence": 0.6,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "4-0",
       "locked_at": "2026-10-13T04:01:13Z",
       "source_url": "https://www.goaloo.com/football/england-championship-birmingham-city-vs-preston-north-end/h2h-3008260",
       "summary_url": "https://www.goaloo.com/football/england-championship-birmingham-city-vs-preston-north-end/summary-3008260",
@@ -4115,7 +4115,12 @@
         "away_recent": 10,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-13T22:54:55Z"
     },
     {
       "id": "556afb6cb515f082-1X2-AWAY",
@@ -6384,8 +6389,8 @@
       "edge": 22.1,
       "ev": 0.3722,
       "required_confidence": 0.56,
-      "result": "PENDING",
-      "ft": null,
+      "result": "PUSH",
+      "ft": "1-1",
       "locked_at": "2026-10-13T04:01:20Z",
       "source_url": "https://www.goaloo.com/football/botola-pro-1-fus-rabat-vs-raja-club-athletic/h2h-3076997",
       "summary_url": "https://www.goaloo.com/football/botola-pro-1-fus-rabat-vs-raja-club-athletic/summary-3076997",
@@ -6445,7 +6450,12 @@
         "away_recent": 10,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": 0.0,
+      "profit": 0.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-13T22:54:55Z"
     },
     {
       "id": "c05ae371e1ceb809-OU-OVER-3p25",
@@ -7834,8 +7844,8 @@
       "edge": 15.0,
       "ev": 0.2077,
       "required_confidence": 0.56,
-      "result": "PENDING",
-      "ft": null,
+      "result": "HALF_LOSS",
+      "ft": "1-0",
       "locked_at": "2026-10-13T04:01:19Z",
       "source_url": "https://www.goaloo.com/football/algerian-ligue-professionnelle-1-usm-alger-vs-js-saoura/h2h-3056773",
       "summary_url": "https://www.goaloo.com/football/algerian-ligue-professionnelle-1-usm-alger-vs-js-saoura/summary-3056773",
@@ -7895,7 +7905,12 @@
         "away_recent": 10,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": -0.5,
+      "profit": -50.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-13T22:54:55Z"
     },
     {
       "id": "972616357b424c96-OU-OVER-2p75",
@@ -239148,6 +239163,276 @@
       "settlement_source": "goaloo-bf_us-direct-index",
       "goaloo_terminal_state": -1,
       "settled_at": "2026-10-13T17:39:37Z"
+    },
+    {
+      "id": "1b00767fbe051940-OU-UNDER-2p75",
+      "goaloo_id": "3008260",
+      "date": "2026-10-13",
+      "kickoff": "2026-10-13 19:00:00",
+      "league": "England Championship",
+      "home": "Birmingham City",
+      "away": "Preston North End",
+      "market": "OU",
+      "selection": "UNDER",
+      "line": 2.75,
+      "pick": "Under 2.75",
+      "side": null,
+      "odds": 1.87,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.7146,
+      "model_probability": 0.7146,
+      "market_fair_probability": 0.5,
+      "market_edge": 0.2146,
+      "edge": 21.5,
+      "ev": 0.3423,
+      "required_confidence": 0.6,
+      "result": "LOSS",
+      "ft": "4-0",
+      "locked_at": "2026-10-13T04:01:13Z",
+      "source_url": "https://www.goaloo.com/football/england-championship-birmingham-city-vs-preston-north-end/h2h-3008260",
+      "summary_url": "https://www.goaloo.com/football/england-championship-birmingham-city-vs-preston-north-end/summary-3008260",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 0.988,
+        "lambda_away": 1.041,
+        "home_win": 0.3196,
+        "draw": 0.3274,
+        "away_win": 0.353,
+        "h2h_adjustment": 0.005,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": -0.1024,
+          "gd_edge": -0.1185,
+          "clean_sheet_edge": 0.0244,
+          "failed_to_score_edge": -0.2341,
+          "bounded_adjustment": -0.0078,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-13T22:54:55Z"
+    },
+    {
+      "id": "b9066e9141f52a08-AH-HOME-m0p0",
+      "goaloo_id": "3076997",
+      "date": "2026-10-13",
+      "kickoff": "2026-10-13 20:00:00",
+      "league": "Botola Pro 1",
+      "home": "FUS Rabat",
+      "away": "Raja Club Athletic",
+      "market": "AH",
+      "selection": "HOME",
+      "line": -0.0,
+      "pick": "FUS Rabat -0",
+      "side": "home",
+      "odds": 2.19,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.6385,
+      "model_probability": 0.6385,
+      "market_fair_probability": 0.4176,
+      "market_edge": 0.221,
+      "edge": 22.1,
+      "ev": 0.3722,
+      "required_confidence": 0.56,
+      "result": "PUSH",
+      "ft": "1-1",
+      "locked_at": "2026-10-13T04:01:20Z",
+      "source_url": "https://www.goaloo.com/football/botola-pro-1-fus-rabat-vs-raja-club-athletic/h2h-3076997",
+      "summary_url": "https://www.goaloo.com/football/botola-pro-1-fus-rabat-vs-raja-club-athletic/summary-3076997",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 1.543,
+        "lambda_away": 0.953,
+        "home_win": 0.5122,
+        "draw": 0.2756,
+        "away_win": 0.2122,
+        "h2h_adjustment": -0.01,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.2553,
+          "gd_edge": 0.3665,
+          "clean_sheet_edge": 0.1951,
+          "failed_to_score_edge": 0.239,
+          "bounded_adjustment": 0.0214,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": 0.0,
+      "profit": 0.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-13T22:54:55Z"
+    },
+    {
+      "id": "9aa272e18b573b73-AH-AWAY-0p75",
+      "goaloo_id": "3056773",
+      "date": "2026-10-13",
+      "kickoff": "2026-10-13 19:15:00",
+      "league": "Algerian Ligue Professionnelle 1",
+      "home": "USM Alger",
+      "away": "JS Saoura",
+      "market": "AH",
+      "selection": "AWAY",
+      "line": 0.75,
+      "pick": "JS Saoura +0.75",
+      "side": "away",
+      "odds": 2.02,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.5985,
+      "model_probability": 0.5985,
+      "market_fair_probability": 0.4481,
+      "market_edge": 0.1504,
+      "edge": 15.0,
+      "ev": 0.2077,
+      "required_confidence": 0.56,
+      "result": "HALF_LOSS",
+      "ft": "1-0",
+      "locked_at": "2026-10-13T04:01:19Z",
+      "source_url": "https://www.goaloo.com/football/algerian-ligue-professionnelle-1-usm-alger-vs-js-saoura/h2h-3056773",
+      "summary_url": "https://www.goaloo.com/football/algerian-ligue-professionnelle-1-usm-alger-vs-js-saoura/summary-3056773",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 1.382,
+        "lambda_away": 0.943,
+        "home_win": 0.4714,
+        "draw": 0.2936,
+        "away_win": 0.235,
+        "h2h_adjustment": -0.005,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.2358,
+          "gd_edge": 0.2882,
+          "clean_sheet_edge": 0.1024,
+          "failed_to_score_edge": 0.0195,
+          "bounded_adjustment": 0.0161,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": -0.5,
+      "profit": -50.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-13T22:54:55Z"
     }
   ],
   "note": "Automated Full-Time Winner First feed. Supplemental markets remain unpublished.",
