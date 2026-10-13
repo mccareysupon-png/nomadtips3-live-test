@@ -1,0 +1,48 @@
+name: DIAG Ball46 Featured Signal Production 20261013
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/diag-ball46-featured-signal-production-20261013.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/ball46-performance-chart-market-style-20261012
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --ignore-scripts acorn@8
+      - name: Inspect current Production assets for Featured Signal
+        working-directory: deploy-assets/performance-chart-market-style-20261012
+        run: |
+          node --input-type=module <<'NODE'
+          import {inspect,publicFile} from '../daily-performance-20261005/production.mjs';
+          const cur=await inspect(); console.log('ACTIVE='+cur.restore.version);
+          const files=['index.html','singlepage-workspace-343.js','singlepage-workspace-343.css','rich-odds-343.js','app.js'];
+          for(const file of files){
+            try{
+              const s=(await publicFile('/'+file)).toString('utf8');
+              let found=false;
+              for(const needle of ['FEATURED SIGNAL','FEATURED','HALF-TIME','HOME','AWAY']){
+                let from=0,n=0;
+                while(true){
+                  const i=s.indexOf(needle,from); if(i<0) break;
+                  if(!found){console.log('\n===== FILE '+file+' =====');found=true}
+                  console.log('\n--- '+needle+' @ '+i+' ---\n'+s.slice(Math.max(0,i-1800),Math.min(s.length,i+6000)));
+                  from=i+needle.length;if(++n>=8)break;
+                }
+              }
+            }catch(e){ console.log('MISS '+file+' '+e.message) }
+          }
+          NODE
