@@ -1,0 +1,43 @@
+name: DIAG Ball46 Featured Cards Formatter 20261013
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/diag-ball46-featured-cards-formatter-20261013.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/ball46-performance-chart-market-style-20261012
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --ignore-scripts acorn@8
+      - name: Locate cards formatter in Production
+        working-directory: deploy-assets/performance-chart-market-style-20261012
+        run: |
+          node --input-type=module <<'NODE'
+          import {publicFile} from '../daily-performance-20261005/production.mjs';
+          const html=(await publicFile('/index.html')).toString('utf8');
+          const scripts=[...html.matchAll(/<script[^>]+src=["']([^"']+\.js[^"']*)["'][^>]*>/gi)].map(m=>m[1]);
+          console.log('SCRIPTS='+JSON.stringify(scripts));
+          for(const href of scripts){
+            const path=href.replace(/^https?:\/\/[^/]+/,'').split('?')[0];
+            try{
+              const s=(await publicFile(path)).toString('utf8');
+              for(const needle of ['CARDS H · A','Y/','cardsText','featured-facts','data-featured-facts']){
+                let from=0,n=0;while(true){const i=s.indexOf(needle,from);if(i<0)break;console.log('\n===== '+path+' :: '+needle+' @ '+i+' =====\n'+s.slice(Math.max(0,i-1800),Math.min(s.length,i+7000)));from=i+needle.length;if(++n>=12)break}
+              }
+            }catch(e){console.log('MISS '+path+' '+e.message)}
+          }
+          NODE
