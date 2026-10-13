@@ -8,8 +8,62 @@ const state = {
   expandedFixtureId:null,
   expandedSignalId:null,
   detailCache:new Map(),
-  detailPromises:new Map()
+  detailPromises:new Map(),
+  favoritesView:false,
+  favoriteMatches:new Set(),
+  favoriteTeams:new Set(),
+  favoriteStorageKey:null
 };
+function favoriteKey(value){return String(value??'').trim().toLowerCase();}
+function favoriteMatchKey(row){return String(row?.fixtureId??'').trim();}
+function favoriteStorageInit(member){
+  const identity=String(member?.id||member?.email||member?.displayName||'').trim().toLowerCase();
+  state.favoriteStorageKey='b46-member1-favorites-v1:'+identity;
+  try{
+    const saved=JSON.parse(localStorage.getItem(state.favoriteStorageKey)||'{}');
+    state.favoriteMatches=new Set(Array.isArray(saved.matches)?saved.matches.map(String):[]);
+    state.favoriteTeams=new Set(Array.isArray(saved.teams)?saved.teams.map(favoriteKey):[]);
+  }catch{state.favoriteMatches=new Set();state.favoriteTeams=new Set();}
+}
+function persistFavorites(){
+  try{localStorage.setItem(state.favoriteStorageKey,JSON.stringify({matches:[...state.favoriteMatches],teams:[...state.favoriteTeams]}));}catch{}
+}
+function isFavoriteRow(row){
+  return state.favoriteMatches.has(favoriteMatchKey(row))||
+    state.favoriteTeams.has(favoriteKey(row.home))||
+    state.favoriteTeams.has(favoriteKey(row.away));
+}
+function toggleFavorite(type,key){
+  const collection=type==='team'?state.favoriteTeams:state.favoriteMatches;
+  const value=type==='team'?favoriteKey(key):String(key);
+  if(!value)return;
+  if(collection.has(value))collection.delete(value);else collection.add(value);
+  persistFavorites();render();
+}
+function favoritesCount(){return state.favoriteMatches.size+state.favoriteTeams.size;}
+function renderFavoritesNav(){
+  const host=qs('#memberFavoriteNav');
+  if(!host)return;
+  const on=state.favoritesView;
+  host.replaceChildren();
+  const b=node('button','favorite-nav-button'+(on?' active':''),'★ FAVORITES ('+favoritesCount()+')');
+  b.type='button';b.setAttribute('aria-pressed',String(on));
+  b.addEventListener('click',()=>{
+    state.favoritesView=!state.favoritesView;state.page=1;render();
+  });
+  host.append(b);
+  const note=qs('#memberFavoriteDescription');
+  if(note)note.textContent=on?'WATCHLIST · '+state.favoriteMatches.size+' MATCHES · '+state.favoriteTeams.size+' TEAMS · SAVED ON THIS DEVICE':'★ Save a match or team to your watchlist';
+}
+function makeFavoriteButton(type,key,label){
+  const selected=(type==='team'?state.favoriteTeams:state.favoriteMatches).has(type==='team'?favoriteKey(key):String(key));
+  const button=node('button','favorite-star'+(selected?' selected':''),selected?'★':'☆');
+  button.type='button';button.title=(selected?'Remove ':'Add ')+label+(selected?' from':' to')+' favorites';
+  button.setAttribute('aria-label',button.title);button.setAttribute('aria-pressed',String(selected));
+  button.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();toggleFavorite(type,key);});
+  button.addEventListener('keydown',e=>e.stopPropagation());
+  return button;
+}
 
 const qs = s => document.querySelector(s);
 const tabs = qs('#marketTabs');
@@ -314,6 +368,7 @@ function renderSummary(){
 function filteredRows(){
   return state.payload.signals.filter(row=>{
     if(state.market!=='ALL' && row.market!==state.market) return false;
+    if(state.favoritesView && !isFavoriteRow(row)) return false;
     return true;
   });
 }
@@ -411,11 +466,18 @@ function makeSignalRow(row){
   tr.append(time);
 
   const match=node('td','match');
-  match.append(
-    node('strong','',row.home+' - '+row.away),
-    node('small','',row.league),
-    node('small','detail-hint','Featured Match · Event Flow')
+  const teams=node('div','favorite-teams');
+  const homeTeam=node('span','favorite-team-home',row.home);
+  const awayTeam=node('span','favorite-team-away',row.away);
+  teams.append(
+    makeFavoriteButton('match',favoriteMatchKey(row),'match'),
+    makeFavoriteButton('team',row.home,row.home),
+    homeTeam,
+    node('span','favorite-versus','vs'),
+    makeFavoriteButton('team',row.away,row.away),
+    awayTeam
   );
+  match.append(teams,node('small','',row.league),node('small','detail-hint','Featured Match · Event Flow'));
   tr.append(match);
 
   const live=document.createElement('td');
@@ -1056,7 +1118,7 @@ function renderCornerAudit(){
   }
   cornerAuditEl.append(node('small','','Source-based · never infer Asian from decimal lines'));
 }
-function render(){renderTabs();renderSummary();renderCornerAudit();renderRows();renderPagination();}
+function render(){renderFavoritesNav();renderTabs();renderSummary();renderCornerAudit();renderRows();renderPagination();}
 
 async function refreshExpandedDetail(){
   const fixtureId=state.expandedFixtureId;
@@ -1135,6 +1197,7 @@ async function boot(){
   const livePill=qs('.live-pill');
   if(livePill) livePill.textContent='TODAY · '+daily.signalCount+' SIGNALS';
   state.payload=daily;
+  favoriteStorageInit(session.member);
   render();
   setInterval(refreshFreshSignalClock,1000);
   setInterval(refreshLiveMirror,LIVE_REFRESH_MS);
