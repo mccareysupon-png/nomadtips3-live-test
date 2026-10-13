@@ -463,19 +463,30 @@ function makeSignalRow(row){
 
   const match=node('td','match');
   const teams=node('div','favorite-teams');
-  teams.append(
-    makeFavoriteButton(row),
-    node('span','favorite-team-home',row.home),
-    node('span','favorite-versus','vs'),
-    node('span','favorite-team-away',row.away)
-  );
+  const teamNames=node('div','favorite-team-names');
+  const home=node('div','favorite-team-line');
+  home.append(node('span','favorite-side-label','HOME'),node('span','favorite-team-home',row.home));
+  const away=node('div','favorite-team-line');
+  away.append(node('span','favorite-side-label','AWAY'),node('span','favorite-team-away',row.away));
+  teamNames.append(home,away);
+  teams.append(makeFavoriteButton(row),teamNames);
   match.append(teams,node('small','',row.league),node('small','detail-hint','Featured Match · Event Flow'));
   tr.append(match);
 
   const live=document.createElement('td');
   live.className='live-score-cell';
   live.append(node('span','badge '+statusClass(row.state),matchClockLabel(row)));
-  live.append(node('strong','live-score-value',scoreText(displayScore(row))));
+  const score=displayScore(row);
+  const textScore=scoreText(score);
+  const scoreParts=score&&typeof score==='object'
+    ?[score.home,score.away]
+    :(typeof textScore==='string'&&/^\\d+\\s*[-–:]\\s*\\d+$/.test(textScore)?textScore.split(/\\s*[-–:]\\s*/):[null,null]);
+  const scores=node('div','live-score-pair');
+  scores.append(
+    node('strong','live-score-team home',scoreParts[0]==null?'—':String(scoreParts[0])),
+    node('strong','live-score-team away',scoreParts[1]==null?'—':String(scoreParts[1]))
+  );
+  live.append(scores);
   const evidence=marketEvidence(row);
   if(evidence) live.append(node('small','market-evidence '+(row.state==='LIVE'?'live-evidence':row.state==='FINISHED'?'ft-evidence':''),evidence));
   tr.append(live);
