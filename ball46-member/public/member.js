@@ -455,7 +455,17 @@ function makeSignalRow(row){
 
   const result=document.createElement('td');
   result.className='result-cell';
-  result.append(node('span','badge '+resultClass(row.result),String(row.result||'PENDING').replaceAll('_',' ')));
+  // Presentation only: show the verified live match clock, never change settlement.
+  const liveResult=String(row.result||'').toUpperCase()==='LIVE';
+  const clockStatus=String(row.mirrorStatus||'').trim();
+  const rawMinute=String(row.matchMinute??'').trim();
+  const parsedMinute=Number(rawMinute);
+  const minuteText=/^\\d{1,3}\\+\\d{1,2}$/.test(rawMinute)
+    ? rawMinute+"′"
+    : rawMinute!==''&&Number.isFinite(parsedMinute)&&parsedMinute>0?Math.floor(parsedMinute)+"′":null;
+  const halfTime=/^(HT|HALF[ -]?TIME)$/i.test(clockStatus);
+  const liveLabel=halfTime?'HT':minuteText||'LIVE';
+  result.append(node('span',liveResult?'result-minute-card':'badge '+resultClass(row.result),liveResult?liveLabel:String(row.result||'PENDING').replaceAll('_',' ')));
   tr.append(result);
 
   const p=Number(row.pnl||0);
