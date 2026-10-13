@@ -80,7 +80,7 @@ try{
  wrangler(staged,true);assert.equal(await activeVersion(),base,'PRODUCTION_MOVED_AFTER_DRY_RUN');await verifyRailBase(staged);
  try{
   wrangler(staged);for(let i=0;i<30;i++){const a=await activeVersion();if(a!==base){candidate=a;break}await delay(1200)}assert(candidate,'NO_NEW_VERSION');
-  let live=false;for(let i=0;i<40;i++){assert.equal(await activeVersion(),candidate,'PRODUCTION_MOVED_DURING_VERIFY');try{const j=(await publicFile('/'+JS)).toString('utf8'),c=(await publicFile('/'+CSS)).toString('utf8'),x=(await publicFile('/'+INDEX)).toString('utf8');if(j.includes(' Yellow / ')&&j.includes(' Red · ')&&c.includes(MARK)&&x.includes(CACHE)){live=true;break}}catch{}await delay(1000)}assert(live,'FEATURED_FACTS_PATCH_NOT_LIVE');
+  let live=false;for(let i=0;i<40;i++){assert.equal(await activeVersion(),candidate,'PRODUCTION_MOVED_DURING_VERIFY');try{const q='?verify='+Date.now(),j=(await publicFile('/'+JS+q)).toString('utf8'),c=(await publicFile('/'+CSS+q)).toString('utf8'),x=(await publicFile('/'+INDEX+q)).toString('utf8');if(j.includes(' Yellow / ')&&j.includes(' Red · ')&&c.includes(MARK)&&x.includes(CACHE)){live=true;break}}catch{}await delay(1000)}assert(live,'FEATURED_FACTS_PATCH_NOT_LIVE');
   for(const [p,h] of Object.entries(protectedAssets))assert.equal(sha(await publicFile('/'+p)),h,'UNRELATED_ASSET_CHANGED:'+p);
   await runtimeCheck();
   const cv=await getVersion(candidate),cm=cv.modules.find(m=>m.name===cv.main_module);assert(cm,'FINAL_MAIN_MISSING');assert.equal(sha(Buffer.from(cm.content_base64,'base64')),workerSha,'WORKER_CHANGED');assert.equal(sha(canonical(await api('/scripts/'+script+'/settings'))),settingsSha,'SETTINGS_CHANGED');assert.equal(canonical(await schedules()),canonical(cronsBefore),'CRONS_CHANGED');
