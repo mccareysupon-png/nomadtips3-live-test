@@ -17,6 +17,7 @@ jobs:
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -35,6 +36,10 @@ jobs:
         if: always()
         working-directory: deploy-assets/performance-concept-b-20261014
         run: node hub-live-diagnosis.mjs
+      - name: Read one live provider response
+        if: always()
+        working-directory: deploy-assets/performance-concept-b-20261014
+        run: node provider-live-probe.mjs
       - name: Record repair evidence
         if: always()
         shell: bash
@@ -42,7 +47,7 @@ jobs:
           set -euo pipefail
           folder="deploy-assets/performance-concept-b-20261014"
           mkdir -p "$folder/audit-last"
-          for name in performance-repair hub-live-diagnosis; do
+          for name in performance-repair hub-live-diagnosis provider-live-probe; do
             if [ -f "$folder/audit/$name.json" ]; then cp "$folder/audit/$name.json" "$folder/audit-last/$name-${GITHUB_RUN_ID}.json"; fi
           done
           for file in "$folder"/audit/*.png; do
@@ -60,3 +65,5 @@ jobs:
           path: deploy-assets/performance-concept-b-20261014/audit
           if-no-files-found: warn
           retention-days: 30
+
+# exact-active-assets-repair-2
