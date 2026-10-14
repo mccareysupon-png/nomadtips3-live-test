@@ -2491,3 +2491,22 @@ body.page-member:before{
 
 /* Member Signal Center: borderless top-level card shells, matching pricing homepage. */
 .page-member .member-layout > .card{border:0}
+
+/* Member1 daily performance only: borderless inner stat cards; retain type, values and spacing. */
+.page-member #dailySummary .summary-stat{
+  border:0;
+  box-shadow:none;
+  background:rgba(17,39,55,.70);
+}
+.page-member #dailySummary .summary-stat.win,
+.page-member #dailySummary .summary-stat.half-win,
+.page-member #dailySummary .summary-stat.rate-good,
+.page-member #dailySummary .summary-stat.pnl-card.pos{background:rgba(30,68,60,.45)}
+.page-member #dailySummary .summary-stat.loss,
+.page-member #dailySummary .summary-stat.half-loss,
+.page-member #dailySummary .summary-stat.rate-bad,
+.page-member #dailySummary .summary-stat.pnl-card.neg{background:rgba(75,41,52,.40)}
+.page-member #dailySummary .summary-stat.pending,
+.page-member #dailySummary .summary-stat.unresolved,
+.page-member #dailySummary .summary-stat.rate-mid{background:rgba(71,59,37,.40)}
+.page-member #dailySummary .summary-stat.live{background:rgba(29,57,76,.45)}
