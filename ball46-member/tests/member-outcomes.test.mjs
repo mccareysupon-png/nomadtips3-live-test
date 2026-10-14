@@ -43,8 +43,8 @@ test('Status totals account for all terminal and non-terminal result types',()=>
 });
 test('Member RESULT distinguishes missing data from real pending outcomes',()=>{
  assert.match(member,/const missingResult=row\.resultMissing===true\|\|!rawResult/);
- assert.match(member,/missingResult\?'NO DATA':rawResult\.replaceAll/);
- assert.match(member,/missingResult\?'no-data':resultClass\(rawResult\)/);
+ assert.match(member,/displayNoData\?'NO DATA':rawResult\.replaceAll/);
+ assert.match(member,/displayNoData\?'no-data':resultClass\(rawResult\)/);
 });
 
 test('Member UI renders distinct LIVE and PENDING cards and result badges',()=>{
