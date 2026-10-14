@@ -1,0 +1,21 @@
+import assert from 'node:assert/strict';
+import {mkdirSync,writeFileSync} from 'node:fs';
+import {parse} from 'acorn';
+import {api,sha,origin} from '../daily-performance-20261005/production.mjs';
+const hub='nomadtips3-5usd-hub-343';
+const deployment=await api('/scripts/'+hub+'/deployments?per_page=1');
+const active=deployment.deployments?.[0]?.versions;
+assert(active?.length===1&&active[0].percentage===100,'HUB_VERSION_NOT_SINGLE');
+const id=active[0].version_id;
+const version=await api('/workers/'+hub+'/versions/'+id+'?include=modules');
+const main=version.modules.find(m=>m.name===version.main_module);
+const source=Buffer.from(main.content_base64,'base64').toString('utf8');
+const tree=parse(source,{ecmaVersion:'latest',sourceType:'module'});
+const cuts=[];
+function walk(n){if(!n||typeof n!=='object')return;if(n.type==='Literal'&&typeof n.value==='string'&&(n.value.length>1000||/[?&](?:key|api_key|token)=.{5}/i.test(n.value)))cuts.push(n);for(const[k,c]of Object.entries(n)){if(k==='start'||k==='end')continue;if(Array.isArray(c))c.forEach(walk);else if(c&&typeof c==='object')walk(c)}}
+walk(tree);let concise=source;
+for(const n of cuts.sort((a,b)=>b.start-a.start))concise=concise.slice(0,n.start)+JSON.stringify('[OMITTED_LITERAL_'+n.value.length+']')+concise.slice(n.end);
+const snap=await fetch(origin+'/api/hub/snapshot').then(r=>r.json());
+const board=await fetch(origin+'/api/engine/board').then(r=>r.json());
+const report={run:process.env.GITHUB_RUN_ID,mode:'READ_ONLY_NO_BACKEND_CHANGE',worker:hub,version:id,sourceSha:sha(source),bindingNames:version.bindings?.map(b=>({name:b.name,type:b.type})),hubMeta:Object.fromEntries(Object.entries(snap).filter(([k])=>k!=='fixtures')),engineCounts:board.counts,source:concise};
+mkdirSync('audit',{recursive:true});writeFileSync('audit/hub-live-diagnosis.json',JSON.stringify(report,null,2));console.log(JSON.stringify({...report,source:concise.slice(0,500)},null,2));
