@@ -1024,10 +1024,21 @@ function featuredHorizontal(detail,selected){
     const total=pairTotal(selected.entryCorners);
     if(total!=null) entryContext.push(`Total ${total}`);
   }
-  signal.append(
-    node('span','','ENTRY'),
-    node('b','',`${selected.signalMinute??'—'}' · ${cornerRuleName(selected)} · ${signalPeriod(selected)} · ${selected.selection}${fmtLine(selected)?' '+fmtLine(selected):''} · ${fmtOdds(selected.odds)} · ${selected.bookmaker} · ${entryContext.join(' · ')}`)
-  );
+  const entryDetails=node('b','entry-premium-details');
+  const entryPiece=(value,kind)=>{
+    if(value===null||value===undefined||String(value)==='')return;
+    if(entryDetails.childNodes.length)entryDetails.append(node('span','entry-separator',' · '));
+    entryDetails.append(node('span','entry-'+kind,String(value)));
+  };
+  entryPiece((selected.signalMinute??'—')+"′",'minute');
+  entryPiece(cornerRuleName(selected)+' · '+signalPeriod(selected),'market');
+  const entrySelection=String(selected.selection||'');
+  entryPiece(entrySelection+(fmtLine(selected)?' '+fmtLine(selected):''),/\\bAWAY\\b/i.test(entrySelection)?'away':/\\bHOME\\b/i.test(entrySelection)?'home':'pick');
+  entryPiece(fmtOdds(selected.odds),'odds');
+  entryPiece(selected.bookmaker,'bookmaker');
+  entryPiece('Entry score '+scoreText(selected.entryScore),'score');
+  for(const extra of entryContext.slice(1))entryPiece(extra,'context');
+  signal.append(node('span','','ENTRY'),entryDetails);
 
   if(selected.market==='CORNERS')signal.append(cornerRuleCard(selected));
 
