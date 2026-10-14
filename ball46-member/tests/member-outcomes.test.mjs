@@ -42,7 +42,7 @@ test('Status totals account for all terminal and non-terminal result types',()=>
   assert.equal(s[key],count);
 });
 test('Member RESULT distinguishes missing data from real pending outcomes',()=>{
- assert.match(member,/const missingResult=!rawResult/);
+ assert.match(member,/const missingResult=row\.resultMissing===true\|\|!rawResult/);
  assert.match(member,/missingResult\?'NO DATA':rawResult\.replaceAll/);
  assert.match(member,/missingResult\?'no-data':resultClass\(rawResult\)/);
 });
@@ -53,5 +53,10 @@ test('Member UI renders distinct LIVE and PENDING cards and result badges',()=>{
  assert.match(member,/\['PENDING',s\.pending,'pending'\]/);
  assert.match(member,/\['LIVE',s\.live\|\|0,'live'\]/);
  assert.match(member,/if\(result==='LIVE'\) return 'live'/);
- assert.match(html,/20261014-result-cards-no-data/);
+ assert.match(html,/20261014-half-loss-source-no-data/);
+});
+
+test('Source-empty RESULT is marked for display without modifying settlement',()=>{
+ assert.match(server,/resultMissing:row\?\.result==null\|\|String\(row\.result\)\.trim\(\)===\x27\x27/);
+ assert.match(member,/compactResult=\/\^HALF_/);
 });
