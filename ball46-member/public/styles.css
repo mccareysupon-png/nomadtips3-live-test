@@ -2483,3 +2483,8 @@ body.page-member:before{
 .page-pricing .preview-disclaimer{margin:11px 0 0!important;max-width:none!important;font-size:10px!important;line-height:1.5!important;color:#94acbd!important;text-align:left}
 @media(max-width:750px){.page-pricing .preview-summary{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:410px){.page-pricing .preview-summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Homepage only: borderless outer shells; retain fill, shadow, radius and internal dividers. */
+.page-pricing .hero .member-promo-media,
+.page-pricing .pricing-layout > .preview-card,
+.page-pricing .pricing-layout > .price-card{border:0}
