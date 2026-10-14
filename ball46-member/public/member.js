@@ -531,8 +531,9 @@ function makeSignalRow(row){
   const liveLabel=halfTime?'HT':minuteText||'LIVE';
   const rawResult=String(row.result??'').trim().toUpperCase();
   const missingResult=row.resultMissing===true||!rawResult;
-  const resultLabel=missingResult?'NO DATA':rawResult.replaceAll('_',' ');
-  const resultStyle=missingResult?'no-data':resultClass(rawResult);
+  const displayNoData=missingResult||rawResult==='PENDING';
+  const resultLabel=displayNoData?'NO DATA':rawResult.replaceAll('_',' ');
+  const resultStyle=displayNoData?'no-data':resultClass(rawResult);
   const compactResult=/^HALF_(?:WIN|LOSS)$/.test(rawResult);
   result.append(node('span',liveResult?'result-minute-card':'badge '+resultStyle+(compactResult?' compact-result':''),liveResult?liveLabel:resultLabel));
   tr.append(result);
