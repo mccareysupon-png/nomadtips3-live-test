@@ -195,7 +195,15 @@ function cornerRuleCard(row){
   if(isTotal&&row.lineGap!=null)data.push(['RECORDED LINE GAP',String(row.lineGap)]);
   const grid=node('div','corner-conditions-grid');
   for(const [label,value] of data){
-    const item=node('div','corner-conditions-item');
+    const tone=({
+      'ENGINE RULE':'rule','BET CATEGORY':'category','PERIOD':'period','CONDITION':'condition',
+      'TEAM / PICK':'pick','PICK':'pick','ENTRY LINE':'line','ENTRY ODDS':'odds',
+      'BOOKMAKER':'bookmaker','PROVIDER MARKET':'provider','CONFIGURED ROUTE':'route',
+      'PRICE STAGE':'stage','PRICE ORIGIN':'origin','SIGNAL MINUTE':'minute',
+      'CORNERS AT ENTRY':'corners','COMBINED AT ENTRY':'combined',
+      'RECORDED LINE GAP':'gap'
+    })[label]||'other';
+    const item=node('div','corner-conditions-item corner-tone-'+tone);
     item.append(node('small','',label),node('b','',String(value)));
     grid.append(item);
   }
