@@ -41,7 +41,7 @@ test('Border pulse stops with class removal and respects reduced-motion preferen
   assert.match(css,/@keyframes member-fresh-border/);
   assert.match(css,/@keyframes member-fresh-cell-border/);
   assert.match(css,/\.signal-row\.is-fresh-signal td/);
-  assert.match(html,/20261014-corner-compact-colors/);
+  assert.match(html,/20261014-event-glass-50/);
   assert.match(css,/@keyframes member-signal-green-glow/);
   assert.match(css,/@keyframes member-signal-side-glow/);
   assert.match(css,/@keyframes member-new-badge-glow/);
@@ -58,7 +58,7 @@ test('Event Flow SIGNAL entry uses a two-line emerald card and safe horizontal p
   assert.match(js,/signalMinute.textContent=minute/);
   assert.match(js,/class:'member-flow-signal-'\+kind/);
   assert.match(css,/\.page-member \.member-flow-signal-odds\{fill:#FFA451\}/);
-  assert.match(css,/fill:rgba\(12,40,36,\.30\)/);
+  assert.match(css,/fill:rgba\(12,40,36,\.50\)/);
   assert.match(js,/safeRight-tagW/);
   assert.match(js,/function placeSignalPlate\(/);
   assert.match(js,/function signalPlateOverlaps\(/);
@@ -66,7 +66,7 @@ test('Event Flow SIGNAL entry uses a two-line emerald card and safe horizontal p
   assert.match(js,/if\(!placed\)continue/);
   assert.match(js,/s\.bookmaker/);
   assert.match(css,/\.page-member \.member-flow-signal-plate\{/);
-  assert.match(css,/fill:rgba\(12,40,36,\.30\)/);
+  assert.match(css,/fill:rgba\(12,40,36,\.50\)/);
   assert.match(css,/stroke:rgba\(56,223,162,\.5\)/);
   assert.match(css,/\.page-member \.member-flow-signal-accent\{/);
   assert.match(css,/@keyframes member-flow-accent-soft-pulse/);
