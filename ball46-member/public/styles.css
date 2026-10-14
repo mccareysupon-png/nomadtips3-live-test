@@ -2270,3 +2270,14 @@ body.page-member:before{
 .page-member .signal-row>td.live-score-cell{vertical-align:top}
 .page-member .signal-row .live-score-pair{margin-top:0}
 .page-member .signal-row .live-score-cell .badge{display:inline-flex;margin-top:5px;margin-bottom:0}
+
+
+/* Member1 FEATURED MATCH: keep existing layout, map only team names and score sides. */
+.page-member .featured-h-score .team.home b,
+.page-member .featured-h-score .team.home>span,
+.page-member .featured-h-score .featured-team-score .home{color:#43E6A2}
+.page-member .featured-h-score .team.away b,
+.page-member .featured-h-score .team.away>span,
+.page-member .featured-h-score .featured-team-score .away{color:#FFA451}
+.page-member .featured-h-score .featured-team-score .separator{color:#D6E2EC}
+.page-member .featured-h-score .featured-team-score{font-variant-numeric:tabular-nums}
