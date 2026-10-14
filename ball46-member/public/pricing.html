@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css?v=20261014-home-promo-stage">
+  <link rel="stylesheet" href="/styles.css?v=20261015-current-member-preview">
 </head>
 <body class="page-pricing">
 <header class="topbar">
@@ -54,29 +54,41 @@
           <div><div class="eyebrow">Member preview</div><h2>Today's Signal Center</h2></div>
           <small>Preview data</small>
         </div>
-        <div class="market-tabs" aria-label="Signal markets">
-          <button class="market-tab active">ALL <span class="profit">+2.45u</span></button>
-          <button class="market-tab">AH <span class="profit">50.0%</span></button>
-          <button class="market-tab">1X2 <span class="loss">50.0%</span></button>
-          <button class="market-tab">O/U <span class="profit">100%</span></button>
-          <button class="market-tab">CORNERS <span class="loss">50.0%</span></button>
-          <button class="market-tab">BTTS</button>
-          <button class="market-tab">CARDS</button>
-          <button class="market-tab">OTHER</button>
+        <div class="preview-market-tabs" aria-label="Sample Signal Center markets">
+          <div class="preview-market active"><span><strong>ALL</strong><em>61.1%</em></span><small>P/L <b>+2.45u</b></small></div>
+          <div class="preview-market"><span><strong>AH</strong><em>50.0%</em></span><small>P/L <b>+0.38u</b></small></div>
+          <div class="preview-market"><span><strong>1X2</strong><em>50.0%</em></span><small>P/L <b>+0.60u</b></small></div>
+          <div class="preview-market"><span><strong>O/U</strong><em>66.7%</em></span><small>P/L <b>+1.47u</b></small></div>
+          <div class="preview-market"><span><strong>CORNERS</strong><em>50.0%</em></span><small>P/L <b>+0.00u</b></small></div>
+          <div class="preview-market"><span><strong>BTTS</strong><em>—</em></span><small>P/L <b>+0.00u</b></small></div>
+          <div class="preview-market"><span><strong>CARDS</strong><em>—</em></span><small>P/L <b>+0.00u</b></small></div>
+          <div class="preview-market"><span><strong>OTHER</strong><em>—</em></span><small>P/L <b>+0.00u</b></small></div>
         </div>
-        <div class="mini-stats">
-          <div class="stat"><span>SIGNALS</span><b>12</b></div>
-          <div class="stat"><span>WIN RATE</span><b>61.1%</b></div>
-          <div class="stat"><span>P/L TODAY</span><b class="pnl pos">+2.45u</b></div>
-          <div class="stat"><span>PENDING</span><b>2</b></div>
+        <div class="preview-favorites"><span>★ FAVORITES (2)</span><small>Sample saved signal cards</small></div>
+        <div class="preview-summary" aria-label="Sample daily performance">
+          <div class="preview-stat"><small>SIGNALS</small><strong>12</strong></div>
+          <div class="preview-stat success"><small>WIN</small><strong>6</strong></div>
+          <div class="preview-stat danger"><small>LOSS</small><strong>3</strong></div>
+          <div class="preview-stat"><small>PUSH</small><strong>0</strong></div>
+          <div class="preview-stat"><small>HALF WIN</small><strong>0</strong></div>
+          <div class="preview-stat"><small>HALF LOSS</small><strong>0</strong></div>
+          <div class="preview-stat caution"><small>PENDING</small><strong>2</strong></div>
+          <div class="preview-stat live"><small>LIVE</small><strong>1</strong></div>
+          <div class="preview-stat success"><small>WIN RATE</small><strong>61.1%</strong></div>
+          <div class="preview-stat success"><small>P/L TODAY</small><strong>+2.45u</strong></div>
         </div>
-        <div class="feed">
-          <div class="feed-row head"><span>TIME</span><span>MATCH</span><span>MARKET</span><span>SELECTION</span><span>ODDS</span><span>RESULT</span></div>
-          <div class="feed-row"><span>14:32</span><span><strong>Arsenal - Chelsea</strong><small>LIVE 78'</small></span><span>AH</span><span>HOME -0.5</span><span>@1.86</span><span><i class="badge pending">PENDING</i></span></div>
-          <div class="feed-row"><span>14:28</span><span><strong>Milan - Roma</strong><small>FINISHED</small></span><span>AH</span><span>AWAY +0.25</span><span>@1.91</span><span><i class="badge win">WIN</i></span></div>
-          <div class="feed-row"><span>14:21</span><span><strong>Barcelona - Atletico</strong><small>LIVE 81'</small></span><span>O/U</span><span>OVER 2.5</span><span>@1.88</span><span><i class="badge pending">PENDING</i></span></div>
-          <div class="feed-row"><span>14:17</span><span><strong>Dortmund - Leipzig</strong><small>FINISHED</small></span><span>CORNERS</span><span>OVER 9.5</span><span>@1.83</span><span><i class="badge loss">LOSS</i></span></div>
+        <div class="preview-board" role="region" aria-label="Sample signals table" tabindex="0">
+          <table class="preview-table">
+            <thead><tr><th>DETECTED</th><th>MATCH</th><th>LIVE SCORE</th><th>MARKET</th><th>SELECTION</th><th>ODDS</th><th>ENTRY</th><th>BOOKMAKER</th><th>RESULT</th><th>P/L</th></tr></thead>
+            <tbody>
+              <tr><td>14:32</td><td><strong>Arsenal – Chelsea</strong><small>LIVE 78′</small></td><td>1–1</td><td>AH</td><td class="preview-home">HOME -0.5</td><td class="preview-odds">@1.86</td><td>0–0 · 51′</td><td>Bet 365</td><td><span class="preview-result pending">PENDING</span></td><td>—</td></tr>
+              <tr><td>14:28</td><td><strong>Milan – Roma</strong><small>FINISHED</small></td><td>1–2</td><td>1X2</td><td class="preview-away">AWAY</td><td class="preview-odds">@2.60</td><td>0–1 · 24′</td><td>Bet 365</td><td><span class="preview-result win">WIN</span></td><td class="preview-home">+1.60u</td></tr>
+              <tr><td>14:21</td><td><strong>Barcelona – Atletico</strong><small>LIVE 81′</small></td><td>3–2</td><td>O/U</td><td class="preview-home">OVER 2.5</td><td class="preview-odds">@1.88</td><td>1–1 · 60′</td><td>Bet 365</td><td><span class="preview-result pending">PENDING</span></td><td>—</td></tr>
+              <tr><td>14:17</td><td><strong>Dortmund – Leipzig</strong><small>FINISHED</small></td><td>2–1</td><td>CORNERS</td><td class="preview-home">OVER 9.5</td><td class="preview-odds">@1.83</td><td>4–3 · 64′</td><td>Bet 365</td><td><span class="preview-result loss">LOSS</span></td><td class="preview-loss">-1.00u</td></tr>
+            </tbody>
+          </table>
         </div>
+        <p class="preview-disclaimer">Illustrative preview only · Sample matches, odds, results and performance — not live betting signals.</p>
       </div>
     </div>
 
