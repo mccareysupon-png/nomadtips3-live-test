@@ -43,6 +43,7 @@ test('Status totals account for all terminal and non-terminal result types',()=>
 });
 test('Member RESULT distinguishes missing data from real pending outcomes',()=>{
  assert.match(member,/const missingResult=row\.resultMissing===true\|\|!rawResult/);
+ assert.match(member,/const displayNoData=missingResult\|\|rawResult==='PENDING'/);
  assert.match(member,/displayNoData\?'NO DATA':rawResult\.replaceAll/);
  assert.match(member,/displayNoData\?'no-data':resultClass\(rawResult\)/);
 });
