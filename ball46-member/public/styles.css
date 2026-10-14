@@ -2319,8 +2319,7 @@ body.page-member:before{
 }
 
 
-/* Member1 RESULT: all status cards scaled to 60% of previous dimensions. */
-.page-member .signal-row .result-cell .result-minute-card,
+/* Member1 RESULT: only settled and non-live status badges scaled to 60%; live clock unchanged. */
 .page-member .signal-row .result-cell .badge{
   min-width:0;
   width:max-content;
