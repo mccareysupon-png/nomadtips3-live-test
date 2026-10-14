@@ -1,0 +1,35 @@
+name: DIAG Ball46 Featured Stats Palette 20261014
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/diag-ball46-featured-stats-palette-20261014.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/ball46-performance-chart-market-style-20261012
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --ignore-scripts acorn@8
+      - name: Read current semantic palette
+        working-directory: deploy-assets/performance-chart-market-style-20261012
+        run: |
+          node --input-type=module <<'NODE'
+          import {publicFile} from '../daily-performance-20261005/production.mjs';
+          const s=(await publicFile('/color-semantics-343.css')).toString('utf8');
+          for(const key of ['--b46-home:','--b46-away:','--b46-home-accent:','--b46-away-accent:']){
+            let from=0; while(true){const i=s.indexOf(key,from); if(i<0)break; console.log(s.slice(i,Math.min(s.length,i+120))); from=i+key.length}
+          }
+          NODE
