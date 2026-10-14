@@ -1017,14 +1017,14 @@ html{
 }
 
 /* Premium Event Flow palette · Member only
-   HOME  = Electric Cyan
-   AWAY  = Premium Violet
+   HOME  = Match Emerald
+   AWAY  = Match Orange
    SIGNAL = Premium Emerald Glow
 */
 .member-flow{
   background:
-    radial-gradient(circle at 12% 0%,rgba(89,199,255,.055),transparent 28%),
-    radial-gradient(circle at 88% 0%,rgba(167,139,250,.055),transparent 28%),
+    radial-gradient(circle at 12% 0%,rgba(67,230,162,.055),transparent 28%),
+    radial-gradient(circle at 88% 0%,rgba(255,164,81,.055),transparent 28%),
     rgba(5,12,20,.90);
   border-color:rgba(148,180,208,.14);
 }
@@ -1041,20 +1041,20 @@ html{
     linear-gradient(180deg,rgba(7,14,23,.98),rgba(3,8,14,.99));
   box-shadow:
     inset 0 0 0 1px rgba(148,180,208,.10),
-    inset 0 18px 50px rgba(89,199,255,.018),
+    inset 0 18px 50px rgba(67,230,162,.018),
     0 10px 28px rgba(0,0,0,.15);
 }
 
 /* Legend */
-.expand-flow-legend .home{color:#8CDBFF}
-.expand-flow-legend .away{color:#C1AEFF}
+.expand-flow-legend .home{color:#43E6A2}
+.expand-flow-legend .away{color:#FFA451}
 .expand-flow-legend .home i{
-  background:#59C7FF;
-  box-shadow:0 0 10px rgba(89,199,255,.34);
+  background:#43E6A2;
+  box-shadow:0 0 10px rgba(67,230,162,.34);
 }
 .expand-flow-legend .away i{
-  background:#A78BFA;
-  box-shadow:0 0 10px rgba(167,139,250,.34);
+  background:#FFA451;
+  box-shadow:0 0 10px rgba(255,164,81,.34);
 }
 
 /* Grid / axis */
@@ -1076,21 +1076,21 @@ html{
   stroke-width:.95;
 }
 .expand-flow-line.home{
-  stroke:#59C7FF;
-  filter:drop-shadow(0 1px 1.8px rgba(89,199,255,.34));
+  stroke:#43E6A2;
+  filter:drop-shadow(0 1px 1.8px rgba(67,230,162,.34));
 }
 .expand-flow-line.away{
-  stroke:#A78BFA;
-  filter:drop-shadow(0 1px 1.8px rgba(167,139,250,.32));
+  stroke:#FFA451;
+  filter:drop-shadow(0 1px 1.8px rgba(255,164,81,.32));
 }
 .expand-flow-end.home{
-  fill:#59C7FF;
-  stroke:#D8F3FF;
+  fill:#43E6A2;
+  stroke:#D6FFEA;
   stroke-width:.8;
 }
 .expand-flow-end.away{
-  fill:#A78BFA;
-  stroke:#E7E0FF;
+  fill:#FFA451;
+  stroke:#FFE9D6;
   stroke-width:.8;
 }
 
