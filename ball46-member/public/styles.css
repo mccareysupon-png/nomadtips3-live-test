@@ -2283,25 +2283,22 @@ body.page-member:before{
 .page-member .featured-h-score .featured-team-score{font-variant-numeric:tabular-nums}
 
 
-/* Member1 RESULT only: uniform live-clock silhouette, colors convey settlement. */
+/* Member1 RESULT: colors only; dimensions shared by all non-LIVE badges below. */
 .page-member .signal-row .result-cell .badge.win,
 .page-member .signal-row .result-cell .badge.loss,
 .page-member .signal-row .result-cell .badge.push,
 .page-member .signal-row .result-cell .badge.no-data{
-  display:inline-flex;align-items:center;justify-content:center;
-  min-width:58px;min-height:30px;padding:4px 9px;box-sizing:border-box;
-  border-radius:4px;color:#fff;font-size:13px;font-weight:900;line-height:1;
-  white-space:nowrap;max-width:100%;box-shadow:none;
+  color:#fff;box-shadow:none;
 }
 .page-member .signal-row .result-cell .badge.win{background:#168653;border:1px solid #2FC889}
 .page-member .signal-row .result-cell .badge.loss{background:#A92E42;border:1px solid #E45B6C}
 .page-member .signal-row .result-cell .badge.push{background:#54687C;border:1px solid #8297A9}
 .page-member .signal-row .result-cell .badge.no-data{
-  background:#3E5263;border:1px solid #71879A;font-size:10px;
+  background:#3E5263;border:1px solid #71879A;
 }
 
-/* Member1 RESULT: fit long half-settlement labels in the existing card. */
-.page-member .signal-row .result-cell .badge.compact-result{font-size:10px;letter-spacing:-.015em}
+/* HALF WIN/LOSS letter spacing only; smaller font controlled below. */
+.page-member .signal-row .result-cell .badge.compact-result{letter-spacing:-.015em}
 
 
 /* Member1 signal prediction hierarchy: vivid pick, restrained market metadata. */
