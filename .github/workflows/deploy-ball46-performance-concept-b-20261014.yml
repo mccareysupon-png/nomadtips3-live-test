@@ -38,7 +38,7 @@ jobs:
       - name: Deploy Concept B Performance card
         working-directory: deploy-assets/performance-concept-b-20261014
         run: |
-          node -e 'const fs=require("fs"); const p="run.mjs"; let s=fs.readFileSync(p,"utf8"); const widthFrom="assert(snapshot.rect?.width > 900, `${label}:CARD_WIDTH_CHANGED`);"; const widthTo="assert(snapshot.rect?.width > 320, `${label}:CARD_WIDTH_COLLAPSED:${snapshot.rect?.width}`);"; if(!s.includes(widthFrom)) throw new Error("WIDTH_GUARD_ANCHOR_MISSING"); s=s.replace(widthFrom,widthTo); const waitFrom="    await delay(4500);\n    const live = {};"; const waitTo="    await delay(4500);\n    await page.waitForFunction(() => [...document.querySelectorAll(\"#ball46-daily-performance .b46-perf-stat strong\")].some(node => { const value = node.textContent.trim(); return value && value !== \"\\u2014\"; }), { timeout: 60000 });\n    const live = {};"; if(!s.includes(waitFrom)) throw new Error("LIVE_WAIT_ANCHOR_MISSING"); s=s.replace(waitFrom,waitTo); fs.writeFileSync(p,s);'
+          node -e 'const fs=require("fs"); const p="run.mjs"; let s=fs.readFileSync(p,"utf8"); const widthFrom="assert(snapshot.rect?.width > 900, `${label}:CARD_WIDTH_CHANGED`);"; const widthTo="assert(snapshot.rect?.width > 320, `${label}:CARD_WIDTH_COLLAPSED:${snapshot.rect?.width}`);"; if(!s.includes(widthFrom)) throw new Error("WIDTH_GUARD_ANCHOR_MISSING"); s=s.replace(widthFrom,widthTo); const waitValues="await page.waitForFunction(() => [...document.querySelectorAll(\"#ball46-daily-performance .b46-perf-stat strong\")].some(node => { const value = node.textContent.trim(); return value && value !== \"\\u2014\"; }), { timeout: 60000 });"; const previewFrom="    await delay(3500);\n    const previews = {};"; const previewTo="    await delay(3500);\n    "+waitValues+"\n    const previews = {};"; if(!s.includes(previewFrom)) throw new Error("PREVIEW_WAIT_ANCHOR_MISSING"); s=s.replace(previewFrom,previewTo); const liveFrom="    await delay(4500);\n    const live = {};"; const liveTo="    await delay(4500);\n    "+waitValues+"\n    const live = {};"; if(!s.includes(liveFrom)) throw new Error("LIVE_WAIT_ANCHOR_MISSING"); s=s.replace(liveFrom,liveTo); fs.writeFileSync(p,s);'
           node --check run.mjs
           node run.mjs
 
@@ -70,4 +70,4 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
 
-# trigger-4
+# trigger-5
