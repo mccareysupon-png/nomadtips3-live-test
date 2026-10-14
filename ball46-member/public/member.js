@@ -43,7 +43,11 @@ function renderFavoritesNav(){
   const b=node('button','favorite-nav-button'+(on?' active':''),'★ FAVORITES ('+favoritesCount()+')');
   b.type='button';b.setAttribute('aria-pressed',String(on));
   b.addEventListener('click',()=>{
-    state.favoritesView=!state.favoritesView;state.page=1;render();
+    state.favoritesView=!state.favoritesView;
+    state.page=1;
+    state.expandedFixtureId=null;
+    state.expandedSignalId=null;
+    render();
   });
   host.append(b);
   const note=qs('#memberFavoriteDescription');
@@ -323,6 +327,7 @@ function renderTabs(){
     btn.append(top,bottom);
     btn.addEventListener('click',()=>{
       state.market=market;
+      state.favoritesView=false; // Market tabs always show their complete market, not the saved-only subset.
       state.page=1;
       state.expandedFixtureId=null;
       state.expandedSignalId=null;
@@ -362,11 +367,10 @@ function renderSummary(){
 }
 
 function filteredRows(){
-  return state.payload.signals.filter(row=>{
-    if(state.market!=='ALL' && row.market!==state.market) return false;
-    if(state.favoritesView && !isFavoriteRow(row)) return false;
-    return true;
-  });
+  const signals=Array.isArray(state.payload?.signals)?state.payload.signals:[];
+  // Favorites is a separate all-market watchlist; a previous market tab must not hide saved rows.
+  if(state.favoritesView)return signals.filter(isFavoriteRow);
+  return signals.filter(row=>state.market==='ALL'||row.market===state.market);
 }
 
 // Show twenty signal cards at a time, without changing the complete daily feed.
@@ -1167,6 +1171,9 @@ function renderRows(){
   }
   rowsEl.replaceChildren();
   empty.hidden=data.total>0;
+  if(!data.total)empty.textContent=state.favoritesView
+    ? 'No saved signals in today’s board. Tap ☆ on a signal to add it to Favorites.'
+    : 'No signals available for this market.';
   let detailInserted=false;
 
   for(const row of rows){
