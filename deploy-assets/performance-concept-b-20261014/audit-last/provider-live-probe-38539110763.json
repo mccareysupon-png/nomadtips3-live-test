@@ -1,0 +1,361 @@
+{
+  "run": "38539110763",
+  "mode": "ONE_READ_ONLY_PROVIDER_REQUEST",
+  "provider": "5DollarFootballAPI",
+  "http": 200,
+  "keyPresent": true,
+  "keys": [
+    "success",
+    "data",
+    "pagination"
+  ],
+  "pagination": {
+    "page": 1,
+    "per_page": 500,
+    "count": 15,
+    "has_more": false
+  },
+  "rateLimitRemaining": "16",
+  "extractedRows": 15,
+  "rawSample": [
+    {
+      "id": 202752542,
+      "status": "in_play",
+      "statusCode": "57",
+      "keys": [
+        "id",
+        "league",
+        "teams",
+        "kickoff_utc",
+        "kickoff_ts",
+        "status",
+        "status_reason",
+        "status_code",
+        "goals",
+        "corners",
+        "cards",
+        "odds",
+        "statistics",
+        "events"
+      ],
+      "home": {
+        "id": 3446,
+        "name": "Melbourne Victory"
+      },
+      "away": {
+        "id": 757,
+        "name": "FC Seoul"
+      }
+    },
+    {
+      "id": 202805907,
+      "status": "in_play",
+      "statusCode": "half",
+      "keys": [
+        "id",
+        "league",
+        "teams",
+        "kickoff_utc",
+        "kickoff_ts",
+        "status",
+        "status_reason",
+        "status_code",
+        "goals",
+        "corners",
+        "cards",
+        "odds",
+        "statistics",
+        "events"
+      ],
+      "home": {
+        "id": 181181,
+        "name": "Shanghai Port U20"
+      },
+      "away": {
+        "id": 181172,
+        "name": "Hubei Istar U20"
+      }
+    },
+    {
+      "id": 202811866,
+      "status": "in_play",
+      "statusCode": "half",
+      "keys": [
+        "id",
+        "league",
+        "teams",
+        "kickoff_utc",
+        "kickoff_ts",
+        "status",
+        "status_reason",
+        "status_code",
+        "goals",
+        "corners",
+        "cards",
+        "odds",
+        "statistics",
+        "events"
+      ],
+      "home": {
+        "id": 168254,
+        "name": "Bangalore City FC"
+      },
+      "away": {
+        "id": 110891,
+        "name": "FC Agniputhra"
+      }
+    }
+  ],
+  "normalized": [
+    {
+      "id": "202752542",
+      "home": {
+        "id": "3446",
+        "name": "Melbourne Victory"
+      },
+      "away": {
+        "id": "757",
+        "name": "FC Seoul"
+      },
+      "status": "in_play",
+      "statusCode": "57",
+      "boardState": "live",
+      "minute": 57
+    },
+    {
+      "id": "202805907",
+      "home": {
+        "id": "181181",
+        "name": "Shanghai Port U20"
+      },
+      "away": {
+        "id": "181172",
+        "name": "Hubei Istar U20"
+      },
+      "status": "in_play",
+      "statusCode": "half",
+      "boardState": "live",
+      "minute": null
+    },
+    {
+      "id": "202811866",
+      "home": {
+        "id": "168254",
+        "name": "Bangalore City FC"
+      },
+      "away": {
+        "id": "110891",
+        "name": "FC Agniputhra"
+      },
+      "status": "in_play",
+      "statusCode": "half",
+      "boardState": "live",
+      "minute": null
+    },
+    {
+      "id": "202864208",
+      "home": {
+        "id": "92461",
+        "name": "Manisa FK U19"
+      },
+      "away": {
+        "id": "18455",
+        "name": "Karsiyaka U19"
+      },
+      "status": "in_play",
+      "statusCode": "45",
+      "boardState": "live",
+      "minute": 45
+    },
+    {
+      "id": "202801132",
+      "home": {
+        "id": "98093",
+        "name": "Kandal Province"
+      },
+      "away": {
+        "id": "57869",
+        "name": "Preah Sihanouk"
+      },
+      "status": "in_play",
+      "statusCode": "44",
+      "boardState": "live",
+      "minute": 44
+    },
+    {
+      "id": "202885189",
+      "home": {
+        "id": "57951",
+        "name": "Kampong Speu"
+      },
+      "away": {
+        "id": "58071",
+        "name": "Tboung Khmum"
+      },
+      "status": "in_play",
+      "statusCode": "45",
+      "boardState": "live",
+      "minute": 45
+    },
+    {
+      "id": "202810469",
+      "home": {
+        "id": "188689",
+        "name": "Chainat Hornbill U21"
+      },
+      "away": {
+        "id": "189680",
+        "name": "Rayong FC U21"
+      },
+      "status": "in_play",
+      "statusCode": "28",
+      "boardState": "live",
+      "minute": 28
+    },
+    {
+      "id": "202882327",
+      "home": {
+        "id": "145784",
+        "name": "Kuala Lumpur City U20"
+      },
+      "away": {
+        "id": "181291",
+        "name": "Johor Darul Ta'zim III U20"
+      },
+      "status": "in_play",
+      "statusCode": "13",
+      "boardState": "live",
+      "minute": 13
+    },
+    {
+      "id": "202882329",
+      "home": {
+        "id": "162964",
+        "name": "Terengganu U20"
+      },
+      "away": {
+        "id": "181525",
+        "name": "Kedah FA U20"
+      },
+      "status": "in_play",
+      "statusCode": "12",
+      "boardState": "live",
+      "minute": 12
+    },
+    {
+      "id": "202801160",
+      "home": {
+        "id": "149186",
+        "name": "Hantharwady United FC U20"
+      },
+      "away": {
+        "id": "51270",
+        "name": "Ispe FC U20"
+      },
+      "status": "in_play",
+      "statusCode": "00",
+      "boardState": "live",
+      "minute": 0
+    },
+    {
+      "id": "202801162",
+      "home": {
+        "id": "51269",
+        "name": "Myawady FC U20"
+      },
+      "away": {
+        "id": "182115",
+        "name": "Sagaing United FC U20"
+      },
+      "status": "in_play",
+      "statusCode": "0",
+      "boardState": "live",
+      "minute": 0
+    },
+    {
+      "id": "202805622",
+      "home": {
+        "id": "182732",
+        "name": "Yangon City U20"
+      },
+      "away": {
+        "id": "146960",
+        "name": "Yadanarbon FC U20"
+      },
+      "status": "in_play",
+      "statusCode": "0",
+      "boardState": "live",
+      "minute": 0
+    },
+    {
+      "id": "202811322",
+      "home": {
+        "id": "167896",
+        "name": "Adamas United SA"
+      },
+      "away": {
+        "id": "15607",
+        "name": "Dalhousie AC"
+      },
+      "status": "in_play",
+      "statusCode": "0",
+      "boardState": "live",
+      "minute": 0
+    },
+    {
+      "id": "202811329",
+      "home": {
+        "id": "33556",
+        "name": "WB Police SC"
+      },
+      "away": {
+        "id": "15678",
+        "name": "Milan Bithee"
+      },
+      "status": "in_play",
+      "statusCode": "0",
+      "boardState": "live",
+      "minute": 0
+    },
+    {
+      "id": "202882861",
+      "home": {
+        "id": "167351",
+        "name": "All Airlines Recreation Club"
+      },
+      "away": {
+        "id": "47861",
+        "name": "Young Corner"
+      },
+      "status": "in_play",
+      "statusCode": "0",
+      "boardState": "live",
+      "minute": 0
+    }
+  ],
+  "normalizedLiveCount": 15,
+  "nestedArrayKeys": [],
+  "hubCounts": {
+    "scheduled": 18,
+    "live": 15,
+    "finished": 154,
+    "unknown": 13
+  },
+  "hubLiveIds": [
+    "202752542",
+    "202805907",
+    "202811866",
+    "202864208",
+    "202801132",
+    "202885189",
+    "202810469",
+    "202882327",
+    "202882329",
+    "202801160",
+    "202801162",
+    "202805622",
+    "202811322",
+    "202811329",
+    "202882861"
+  ]
+}
