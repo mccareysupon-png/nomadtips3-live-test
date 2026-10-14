@@ -529,7 +529,11 @@ function makeSignalRow(row){
     : rawMinute!==''&&Number.isFinite(parsedMinute)&&parsedMinute>0?Math.floor(parsedMinute)+"′":null;
   const halfTime=/^(HT|HALF[ -]?TIME)$/i.test(clockStatus);
   const liveLabel=halfTime?'HT':minuteText||'LIVE';
-  result.append(node('span',liveResult?'result-minute-card':'badge '+resultClass(row.result),liveResult?liveLabel:String(row.result||'PENDING').replaceAll('_',' ')));
+  const rawResult=String(row.result??'').trim().toUpperCase();
+  const missingResult=!rawResult;
+  const resultLabel=missingResult?'NO DATA':rawResult.replaceAll('_',' ');
+  const resultStyle=missingResult?'no-data':resultClass(rawResult);
+  result.append(node('span',liveResult?'result-minute-card':'badge '+resultStyle,liveResult?liveLabel:resultLabel));
   tr.append(result);
 
   const p=Number(row.pnl||0);
