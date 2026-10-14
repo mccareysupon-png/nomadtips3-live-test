@@ -41,7 +41,7 @@ test('Border pulse stops with class removal and respects reduced-motion preferen
   assert.match(css,/@keyframes member-fresh-border/);
   assert.match(css,/@keyframes member-fresh-cell-border/);
   assert.match(css,/\.signal-row\.is-fresh-signal td/);
-  assert.match(html,/20261014-featured-entry-premium/);
+  assert.match(html,/20261014-favorites-filter-fix/);
   assert.match(css,/@keyframes member-signal-green-glow/);
   assert.match(css,/@keyframes member-signal-side-glow/);
   assert.match(css,/@keyframes member-new-badge-glow/);
@@ -75,4 +75,12 @@ test('Event Flow SIGNAL entry uses a two-line emerald card and safe horizontal p
   assert.match(css,/fill:#ffffff/);
   assert.match(css,/\.expand-flow-line\.home\{[\s\S]*?stroke:#43E6A2/);
   assert.match(css,/\.expand-flow-line\.away\{[\s\S]*?stroke:#FFA451/);
+});
+
+// Favorites must not carry a market filter into the watchlist or hide normal tabs.
+test('Favorites list is independent of market filtering and normal tabs exit Favorites',()=>{
+  assert.match(js,/if\(state\.favoritesView\)return signals\.filter\(isFavoriteRow\)/);
+  assert.match(js,/state\.favoritesView=false; \/\/ Market tabs always show their complete market/);
+  assert.match(js,/state\.expandedFixtureId=null;\s*state\.expandedSignalId=null;\s*render\(\);/);
+  assert.match(js,/No saved signals in today/);
 });
