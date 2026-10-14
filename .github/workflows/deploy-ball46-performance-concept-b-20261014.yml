@@ -1,4 +1,4 @@
-name: Emergency Rollback Ball46 Concept B 20261014
+name: Ball46 Read Only Repair Scout 20261014
 
 on:
   push:
@@ -6,16 +6,13 @@ on:
     paths:
       - '.github/workflows/deploy-ball46-performance-concept-b-20261014.yml'
   workflow_dispatch:
-
 permissions:
   contents: write
-
 concurrency:
   group: ball46-production-deploy
   cancel-in-progress: false
-
 jobs:
-  rollback:
+  scout:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     env:
@@ -29,55 +26,27 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Install read-only API helper dependency
-        run: npm install --no-save --ignore-scripts acorn@8
-      - name: Roll back exact Concept B deployment
+      - run: npm install --no-save --ignore-scripts acorn@8
+      - name: Read current Production only
         working-directory: deploy-assets/performance-concept-b-20261014
-        run: |
-          node --input-type=module <<'NODE'
-          import assert from 'node:assert/strict';
-          import {mkdirSync,writeFileSync} from 'node:fs';
-          import {activeVersion,getVersion,api,script,sha,canonical} from '../daily-performance-20261005/production.mjs';
-          const bad='3f00c372-0b05-4dfb-bef2-4043c985b453';
-          const restore='7d65162c-b693-4d01-9860-c7973c76b2af';
-          const report={run:process.env.GITHUB_RUN_ID,worker:script,startedAt:new Date().toISOString(),restoreVersion:restore};
-          mkdirSync('audit',{recursive:true});
-          const save=()=>writeFileSync('audit/emergency-rollback.json',JSON.stringify(report,null,2));
-          try {
-            assert.equal(script,'ball46-production');
-            const active=await activeVersion(); report.beforeVersion=active; save();
-            assert([bad,restore].includes(active),'PRODUCTION_MOVED_DO_NOT_OVERWRITE:'+active);
-            const target=await getVersion(restore);
-            const main=target.modules.find(m=>m.name===target.main_module);
-            assert.equal(sha(Buffer.from(main.content_base64,'base64')),'ddfc09cc46e8963a21d9e76e146b936f5243e50860693545d9569104c2a099cc','RESTORE_MAIN_MISMATCH');
-            const html=target.modules.find(m=>m.name==='assets/index.html');
-            assert.equal(sha(Buffer.from(html.content_base64,'base64')),'504b0dce70cf8c2809462311c7802d2e5d9d2251b899a798223d9c4ae26fe6e8','RESTORE_INDEX_MISMATCH');
-            const settingsBefore=canonical(await api('/scripts/'+script+'/settings'));
-            if(active!==restore) await api('/scripts/'+script+'/deployments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({strategy:'percentage',versions:[{version_id:restore,percentage:100}],annotations:{'workers/message':'Emergency rollback: match board missing after Concept B'}})});
-            report.afterVersion=await activeVersion();
-            assert.equal(report.afterVersion,restore,'ROLLBACK_NOT_ACTIVE');
-            assert.equal(canonical(await api('/scripts/'+script+'/settings')),settingsBefore,'SETTINGS_CHANGED');
-            report.result='ROLLBACK_CONFIRMED';report.completedAt=new Date().toISOString();save();
-            console.log(JSON.stringify(report));
-          } catch(e) {report.result='ROLLBACK_FAILED';report.error=e.message;save();throw e;}
-          NODE
-      - name: Record rollback report
+        run: node repair-scout.mjs
+      - name: Record read-only audit
         if: always()
         shell: bash
         run: |
           set -euo pipefail
-          src="deploy-assets/performance-concept-b-20261014/audit/emergency-rollback.json"
+          src="deploy-assets/performance-concept-b-20261014/audit/repair-scout.json"
           if [ ! -f "$src" ]; then exit 0; fi
           mkdir -p deploy-assets/performance-concept-b-20261014/audit-last
-          cp "$src" "deploy-assets/performance-concept-b-20261014/audit-last/emergency-rollback-${GITHUB_RUN_ID}.json"
+          cp "$src" "deploy-assets/performance-concept-b-20261014/audit-last/repair-scout-${GITHUB_RUN_ID}.json"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add deploy-assets/performance-concept-b-20261014/audit-last
-          git commit -m "Record emergency Ball46 rollback ${GITHUB_RUN_ID} [skip ci]" || exit 0
+          git commit -m "Record read-only Ball46 repair scout ${GITHUB_RUN_ID} [skip ci]" || exit 0
           git push origin HEAD:work/ball46-performance-concept-b-20261014
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: ball46-emergency-rollback-${{ github.run_id }}
+          name: ball46-repair-scout-${{ github.run_id }}
           path: deploy-assets/performance-concept-b-20261014/audit
           if-no-files-found: warn
