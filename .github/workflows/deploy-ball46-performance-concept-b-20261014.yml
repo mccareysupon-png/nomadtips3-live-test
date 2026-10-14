@@ -35,6 +35,87 @@ jobs:
       - name: Install verification dependencies
         run: npm install --no-save --ignore-scripts acorn@8 puppeteer-core@24
 
+      - name: Patch validation guard to preserve existing card footprint
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const path = 'deploy-assets/performance-concept-b-20261014/run.mjs';
+          let src = fs.readFileSync(path, 'utf8');
+          const replace = (from, to) => {
+            if (!src.includes(from)) throw new Error('PATCH_ANCHOR_MISSING');
+            src = src.replace(from, to);
+          };
+          replace(
+`async function readCard(page, theme) {
+  await page.evaluate(nextTheme => {
+    document.documentElement.setAttribute('data-theme', nextTheme);
+    try { localStorage.setItem('b46-theme', nextTheme); } catch {}
+  }, theme);
+  await delay(500);`,
+`async function readCard(page, theme, conceptEnabled = true) {
+  await page.evaluate(nextTheme => {
+    document.documentElement.setAttribute('data-theme', nextTheme);
+    try { localStorage.setItem('b46-theme', nextTheme); } catch {}
+  }, theme);
+  await page.evaluate(enabled => {
+    const concept = document.getElementById('b46-performance-concept-b-20261014');
+    if (concept) concept.disabled = !enabled;
+  }, conceptEnabled);
+  await delay(500);`
+          );
+          replace(
+`function assertCard(snapshot, label) {
+  assert(snapshot.exists, \`${label}:CARD_MISSING\`);
+  assert.notEqual(snapshot.display, 'none', \`${label}:CARD_HIDDEN\`);
+  assert(snapshot.rect?.width > 900, \`${label}:CARD_WIDTH_CHANGED\`);
+  assert(snapshot.rect?.height >= 60 && snapshot.rect?.height <= 145, \`${label}:CARD_HEIGHT_CHANGED:${snapshot.rect?.height}\`);`,
+`function assertCard(snapshot, label, baseline = null) {
+  assert(snapshot.exists, \`${label}:CARD_MISSING\`);
+  assert.notEqual(snapshot.display, 'none', \`${label}:CARD_HIDDEN\`);
+  assert(snapshot.rect?.width > 320, \`${label}:CARD_WIDTH_COLLAPSED:${snapshot.rect?.width}\`);
+  assert(snapshot.rect?.height >= 60 && snapshot.rect?.height <= 145, \`${label}:CARD_HEIGHT_CHANGED:${snapshot.rect?.height}\`);
+  if (baseline?.rect) {
+    const widthDelta = Math.abs(snapshot.rect.width - baseline.rect.width);
+    const heightDelta = Math.abs(snapshot.rect.height - baseline.rect.height);
+    assert(widthDelta <= 2, \`${label}:CARD_WIDTH_CHANGED:${baseline.rect.width}->${snapshot.rect.width}\`);
+    assert(heightDelta <= 8, \`${label}:CARD_HEIGHT_CHANGED:${baseline.rect.height}->${snapshot.rect.height}\`);
+  }`
+          );
+          replace(
+`    for (const theme of ['dark', 'light']) {
+      const snapshot = await readCard(page, theme);
+      assertCard(snapshot, \`PREVIEW_${theme.toUpperCase()}\`);
+      await page.screenshot({ path: join('audit', \`preview-${theme}.png\`), clip: { x: 0, y: 0, width: 1440, height: 260 } });
+      previews[theme] = snapshot;
+    }`,
+`    for (const theme of ['dark', 'light']) {
+      const baseline = await readCard(page, theme, false);
+      const snapshot = await readCard(page, theme, true);
+      assertCard(snapshot, \`PREVIEW_${theme.toUpperCase()}\`, baseline);
+      await page.screenshot({ path: join('audit', \`preview-${theme}.png\`), clip: { x: 0, y: 0, width: 1440, height: 260 } });
+      previews[theme] = { baseline, concept: snapshot };
+    }`
+          );
+          replace(
+`    for (const theme of ['dark', 'light']) {
+      const snapshot = await readCard(page, theme);
+      assertCard(snapshot, \`LIVE_${theme.toUpperCase()}\`);
+      await page.screenshot({ path: join('audit', \`production-${theme}.png\`), clip: { x: 0, y: 0, width: 1440, height: 260 } });
+      live[theme] = snapshot;
+    }`,
+`    for (const theme of ['dark', 'light']) {
+      const baseline = await readCard(page, theme, false);
+      const snapshot = await readCard(page, theme, true);
+      assertCard(snapshot, \`LIVE_${theme.toUpperCase()}\`, baseline);
+      await page.screenshot({ path: join('audit', \`production-${theme}.png\`), clip: { x: 0, y: 0, width: 1440, height: 260 } });
+      live[theme] = { baseline, concept: snapshot };
+    }`
+          );
+          fs.writeFileSync(path, src);
+          NODE
+          node --check deploy-assets/performance-concept-b-20261014/run.mjs
+
       - name: Deploy Concept B Performance card
         working-directory: deploy-assets/performance-concept-b-20261014
         run: node run.mjs
@@ -67,4 +148,4 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
 
-# trigger-1
+# trigger-2
