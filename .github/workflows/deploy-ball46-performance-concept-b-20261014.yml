@@ -1,5 +1,4 @@
-name: Ball46 Read Only Repair Scout 20261014
-
+name: Repair Ball46 Performance Read 20261014
 on:
   push:
     branches: [main]
@@ -12,9 +11,9 @@ concurrency:
   group: ball46-production-deploy
   cancel-in-progress: false
 jobs:
-  scout:
+  repair:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 20
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -26,27 +25,38 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: npm install --no-save --ignore-scripts acorn@8
-      - name: Read current Production only
+      - run: npm install --no-save --ignore-scripts acorn@8 puppeteer-core@24
+      - name: Build verify preserve assets and repair card
         working-directory: deploy-assets/performance-concept-b-20261014
-        run: node repair-scout.mjs
-      - name: Record read-only audit
+        run: |
+          node --check performance-repair.mjs
+          node performance-repair.mjs
+      - name: Inspect live fixture source without changing backend
+        if: always()
+        working-directory: deploy-assets/performance-concept-b-20261014
+        run: node hub-live-diagnosis.mjs
+      - name: Record repair evidence
         if: always()
         shell: bash
         run: |
           set -euo pipefail
-          src="deploy-assets/performance-concept-b-20261014/audit/repair-scout.json"
-          if [ ! -f "$src" ]; then exit 0; fi
-          mkdir -p deploy-assets/performance-concept-b-20261014/audit-last
-          cp "$src" "deploy-assets/performance-concept-b-20261014/audit-last/repair-scout-${GITHUB_RUN_ID}.json"
+          folder="deploy-assets/performance-concept-b-20261014"
+          mkdir -p "$folder/audit-last"
+          for name in performance-repair hub-live-diagnosis; do
+            if [ -f "$folder/audit/$name.json" ]; then cp "$folder/audit/$name.json" "$folder/audit-last/$name-${GITHUB_RUN_ID}.json"; fi
+          done
+          for file in "$folder"/audit/*.png; do
+            if [ -f "$file" ]; then cp "$file" "$folder/audit-last/${GITHUB_RUN_ID}-$(basename "$file")"; fi
+          done
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add deploy-assets/performance-concept-b-20261014/audit-last
-          git commit -m "Record read-only Ball46 repair scout ${GITHUB_RUN_ID} [skip ci]" || exit 0
+          git add "$folder/audit-last"
+          git commit -m "Record Ball46 card repair ${GITHUB_RUN_ID} [skip ci]" || exit 0
           git push origin HEAD:work/ball46-performance-concept-b-20261014
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: ball46-repair-scout-${{ github.run_id }}
+          name: ball46-performance-repair-${{ github.run_id }}
           path: deploy-assets/performance-concept-b-20261014/audit
           if-no-files-found: warn
+          retention-days: 30
