@@ -2206,8 +2206,8 @@ body.page-member:before{
 
 /* Member1 Event Flow SIGNAL entry readout: thin premium emerald, two readable lines. */
 .page-member .member-flow-signal-plate{
-  fill:#0c2824;
-  stroke:#38dfa2;
+  fill:rgba(12,40,36,.45); /* 55% transparency: graph stays visible behind SIGNAL */
+  stroke:rgba(56,223,162,.5);
   stroke-width:1;
   filter:none;
   animation:none;
@@ -2225,6 +2225,14 @@ body.page-member:before{
   font-weight:700;
   letter-spacing:0;
 }
+/* Only Event Flow SIGNAL SVG spans; foreground remains fully opaque. */
+.page-member .member-flow-signal-word,
+.page-member .member-flow-signal-pick{fill:#43E6A2}
+.page-member .member-flow-signal-minute{fill:#F3FAFD}
+.page-member .member-flow-signal-market,
+.page-member .member-flow-signal-bookmaker{fill:#BFD3E1}
+.page-member .member-flow-signal-odds{fill:#FFA451}
+.page-member .member-flow-signal-separator{fill:#708E9E}
 
 /* Member1 match rows: one fixed favorite rail + two aligned team and score rows. */
 .page-member .signal-row .favorite-teams{
