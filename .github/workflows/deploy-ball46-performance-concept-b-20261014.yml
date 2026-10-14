@@ -1,0 +1,70 @@
+name: Deploy Ball46 Performance Concept B 20261014
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-ball46-performance-concept-b-20261014.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ball46-production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Checkout isolated Concept B patch
+        uses: actions/checkout@v4
+        with:
+          ref: work/ball46-performance-concept-b-20261014
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install verification dependencies
+        run: npm install --no-save --ignore-scripts acorn@8 puppeteer-core@24
+
+      - name: Deploy Concept B Performance card
+        working-directory: deploy-assets/performance-concept-b-20261014
+        run: node run.mjs
+
+      - name: Record audit report on patch branch
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          src="deploy-assets/performance-concept-b-20261014/audit/report.json"
+          if [ ! -f "$src" ]; then
+            echo "No audit report produced."
+            exit 0
+          fi
+          mkdir -p deploy-assets/performance-concept-b-20261014/audit-last
+          cp "$src" "deploy-assets/performance-concept-b-20261014/audit-last/report-${GITHUB_RUN_ID}.json"
+          cp "$src" "deploy-assets/performance-concept-b-20261014/audit-last/latest.json"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add deploy-assets/performance-concept-b-20261014/audit-last
+          git commit -m "Record Ball46 Performance Concept B audit ${GITHUB_RUN_ID} [skip ci]" || exit 0
+          git push origin HEAD:work/ball46-performance-concept-b-20261014
+
+      - name: Upload audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-performance-concept-b-${{ github.run_id }}
+          path: deploy-assets/performance-concept-b-20261014/audit
+          if-no-files-found: warn
+          retention-days: 30
+
+# trigger-1
