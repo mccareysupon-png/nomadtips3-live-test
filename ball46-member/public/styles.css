@@ -2340,3 +2340,11 @@ body.page-member:before{
 .topbar a.brand .brand-logo{color:#43E6A2!important}
 .topbar a.brand .brand-logo>span{color:#FFA451!important}
 .topbar a.brand .brand-member{color:#BFD3E1!important}
+
+
+/* Member topbar navigation: one palette on Member, Pricing, Login and Success.
+   Overrides legacy Pricing orange !important only for navigation links. */
+.topbar .nav a{color:#8196A7!important}
+.topbar .nav a:hover{color:#EEF8FF!important}
+.topbar .nav a[aria-current="page"],
+.topbar .nav a[aria-current="page"]:hover{color:#F5FAFE!important}
