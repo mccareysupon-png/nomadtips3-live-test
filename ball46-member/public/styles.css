@@ -2206,11 +2206,24 @@ body.page-member:before{
 
 /* Member1 Event Flow SIGNAL entry readout: thin premium emerald, two readable lines. */
 .page-member .member-flow-signal-plate{
-  fill:rgba(12,40,36,.45); /* 55% transparency: graph stays visible behind SIGNAL */
+  fill:rgba(12,40,36,.30); /* 70% transparency: graph stays visible behind SIGNAL */
   stroke:rgba(56,223,162,.5);
   stroke-width:1;
   filter:none;
   animation:none;
+}
+/* Pulse only the vertical accent inside each SVG SIGNAL plate. */
+.page-member .member-flow-signal-accent{
+  animation:member-flow-accent-soft-pulse 3s ease-in-out infinite;
+  transform-box:fill-box;
+  transform-origin:center;
+}
+@keyframes member-flow-accent-soft-pulse{
+  0%,100%{opacity:.36;filter:none}
+  50%{opacity:1;filter:drop-shadow(0 0 2px rgba(67,230,162,.55))}
+}
+@media(prefers-reduced-motion:reduce){
+  .page-member .member-flow-signal-accent{animation:none;opacity:.8;filter:none}
 }
 .page-member .member-flow-signal-label{
   fill:#69f0ba;
