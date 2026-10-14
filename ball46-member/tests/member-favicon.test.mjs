@@ -8,17 +8,18 @@ const pages=['member','pricing','login','success'];
 
 test('Ball46 Member favicon is a self-contained SVG in the deployed public asset directory',()=>{
  assert.match(favicon,/<svg xmlns="http:\/\/www\.w3\.org\/2000\/svg" viewBox="0 0 64 64"/);
- assert.match(favicon,/data-icon-version="member-favicon-20261010"/);
+ assert.match(favicon,/data-icon-version="member-favicon-20261014-home-away"/);
  assert.match(favicon,/>46<\/text>/);
  assert.match(favicon,/#07111b/);
- assert.match(favicon,/#ffe31a/);
+ assert.match(favicon,/#43E6A2/);
+ assert.match(favicon,/#FFA451/);
  assert.doesNotMatch(favicon,/<(?:image|script|foreignObject)\b/i);
  assert.doesNotMatch(favicon,/\b(?:href|src)=["']https?:\/\//i);
 });
 test('Every Member subdomain HTML page declares the same versioned favicon',()=>{
  for(const page of pages){
   const html=readFileSync(new URL(page+'.html',publicDir),'utf8');
-  assert.match(html,/<link rel="icon" type="image\/svg\+xml" href="\/favicon\.svg\?v=20261010-ball46-member1">/);
+  assert.match(html,/<link rel="icon" type="image\/svg\+xml" href="\/favicon\.svg\?v=20261014-home-away">/);
   assert.ok(html.indexOf('rel="icon"')<html.indexOf('</head>'));
  }
 });
