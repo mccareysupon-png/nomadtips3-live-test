@@ -233,15 +233,25 @@ try {
   report.build.exactResponsePatchVerified = true;
   assert.equal(await activeVersion(), base, 'PRODUCTION_MOVED_BEFORE_UPLOAD');
 
-  const metadata = { main_module: current.main_module, compatibility_date: current.compatibility_date, compatibility_flags: current.compatibility_flags || [], bindings: current.bindings, keep_assets: true, assets: { config: current.assets.config }, annotations: { 'workers/message': 'Repair Daily Performance timestamp-only pagination failure; preserve static assets', 'workers/tag': MARK } };
   assert(current.bindings.every(binding => ['assets', 'service'].includes(binding.type)), 'UNEXPECTED_BINDING_TYPE');
-  const form = new FormData();
-  form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
-  for (const module of current.modules) {
-    const bytes = module.name === current.main_module ? Buffer.from(patchedSource) : Buffer.from(module.content_base64, 'base64');
-    form.append(module.name, new Blob([bytes], { type: module.content_type }), module.name);
-  }
-  const uploaded = await api('/scripts/' + script + '/versions?bindings_inherit=strict', { method: 'POST', body: form });
+  // The Workers API accepts an exact version for inherited bindings. The legacy
+  // Scripts API keep_assets flag would reuse the most recently uploaded assets.
+  const metadata = {
+    main_module: current.main_module,
+    compatibility_date: current.compatibility_date,
+    compatibility_flags: current.compatibility_flags || [],
+    bindings: current.bindings.map(binding => binding.type === 'assets'
+      ? { name: binding.name, type: 'inherit', version_id: base } : binding),
+    assets: { config: current.assets.config },
+    annotations: { 'workers/message': 'Repair Daily Performance loader; inherit assets from exact active version', 'workers/tag': MARK },
+    modules: current.modules.map(module => ({
+      name: module.name, content_type: module.content_type,
+      content_base64: module.name === current.main_module ? Buffer.from(patchedSource).toString('base64') : module.content_base64
+    }))
+  };
+  const uploaded = await api('/workers/' + script + '/versions?deploy=false', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(metadata)
+  });
   candidate = uploaded.id;
   assert(candidate && candidate !== base, 'CANDIDATE_VERSION_MISSING');
   report.candidateVersion = candidate;
