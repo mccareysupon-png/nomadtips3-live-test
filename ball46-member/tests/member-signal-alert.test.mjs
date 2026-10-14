@@ -60,6 +60,10 @@ test('Event Flow SIGNAL entry uses a two-line emerald card and safe horizontal p
   assert.match(css,/\.page-member \.member-flow-signal-odds\{fill:#FFA451\}/);
   assert.match(css,/fill:rgba\(12,40,36,\.45\)/);
   assert.match(js,/safeRight-tagW/);
+  assert.match(js,/function placeSignalPlate\(/);
+  assert.match(js,/function signalPlateOverlaps\(/);
+  assert.match(js,/for\(const left of xCandidates\)/);
+  assert.match(js,/if\(!placed\)continue/);
   assert.match(js,/s\.bookmaker/);
   assert.match(css,/\.page-member \.member-flow-signal-plate\{/);
   assert.match(css,/fill:rgba\(12,40,36,\.45\)/);
