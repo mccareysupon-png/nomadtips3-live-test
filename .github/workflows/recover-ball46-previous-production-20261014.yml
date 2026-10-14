@@ -1,0 +1,62 @@
+name: Recover Ball46 Previous Production 20261014
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/recover-ball46-previous-production-20261014.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  recover:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/ball46-performance-chart-market-style-20261012
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --ignore-scripts acorn@8 puppeteer-core@24
+      - name: Restore immediate previous active version
+        working-directory: deploy-assets/performance-chart-market-style-20261012
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import {existsSync} from 'node:fs';
+          import puppeteer from 'puppeteer-core';
+          import {api,script,activeVersion,publicFile} from '../daily-performance-20261005/production.mjs';
+          const bad='e90ca6ea-f373-4092-b57a-c6d1f912e711';
+          const good='dc707e65-55cf-426c-82d9-d0b8124b0e40';
+          assert.equal(await activeVersion(),bad,'ACTIVE_VERSION_MOVED_STOP');
+          await api('/scripts/'+script+'/deployments',{
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({strategy:'percentage',versions:[{version_id:good,percentage:100}]})
+          });
+          assert.equal(await activeVersion(),good,'ROLLBACK_NOT_ACTIVE');
+          const exe=['/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium'].find(existsSync);
+          assert(exe,'NO_CHROME');
+          const browser=await puppeteer.launch({headless:true,executablePath:exe,args:['--no-sandbox']});
+          try{
+            const page=await browser.newPage();
+            await page.setViewport({width:1440,height:1000});
+            await page.setCacheEnabled(false);
+            await page.goto('https://ball46.com/?recovery='+Date.now(),{waitUntil:'networkidle2',timeout:90000});
+            await new Promise(r=>setTimeout(r,5000));
+            const out=await page.evaluate(()=>({
+              matchRows:document.querySelectorAll('.match-row').length,
+              leagueBlocks:document.querySelectorAll('.league-block').length,
+              boardText:(document.querySelector('.board')||document.body).innerText.slice(0,1200)
+            }));
+            console.log('RECOVERY_RUNTIME='+JSON.stringify(out));
+            assert(out.matchRows>0,'MATCH_ROWS_STILL_EMPTY');
+          }finally{await browser.close()}
+          console.log('BALL46_RECOVERY_SUCCESS '+good);
+          NODE
