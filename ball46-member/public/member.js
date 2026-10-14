@@ -797,12 +797,33 @@ function eventFlowChart(detail,fixtureId){
     const plate=svgNode('rect',{x:tagX,y:tagY,width:tagW,height:tagH,rx:'5',ry:'5',class:'member-flow-signal-plate'});
     const accent=svgNode('rect',{x:tagX+6,y:tagY+7,width:'2.4',height:tagH-14,rx:'1.2',class:'member-flow-signal-accent'});
     const label=svgNode('text',{x:tagX+14,y:tagY+14,class:'member-flow-signal-label'});
-    label.textContent='SIGNAL '+minute+"′";
+    const signalWord=svgNode('tspan',{class:'member-flow-signal-word'});
+    signalWord.textContent='SIGNAL ';
+    const signalMinute=svgNode('tspan',{class:'member-flow-signal-minute'});
+    signalMinute.textContent=minute+"′";
+    label.append(signalWord,signalMinute);
     const detailText=svgNode('text',{x:tagX+14,y:tagY+28,class:'member-flow-signal-detail'});
-    // Constrain SVG text to the card's inner width while retaining the full tooltip.
+    // Preserve the original one-line width, placement and complete SVG tooltip.
     detailText.setAttribute('textLength',Math.min(tagW-24,Math.max(30,entryText.length*4.5)));
     detailText.setAttribute('lengthAdjust','spacingAndGlyphs');
-    detailText.textContent=entryText||'ENTRY NOT AVAILABLE';
+    const pickText=[pickLabel,lineLabel].filter(Boolean).join(' ');
+    const pieces=[[market,'market'],[pickText,'pick'],[oddsLabel,'odds'],[bookmaker,'bookmaker']].filter(([value])=>value);
+    if(!pieces.length){
+      const fallback=svgNode('tspan',{class:'member-flow-signal-market'});
+      fallback.textContent='ENTRY NOT AVAILABLE';
+      detailText.append(fallback);
+    }else{
+      pieces.forEach(([value,kind],index)=>{
+        if(index){
+          const separator=svgNode('tspan',{class:'member-flow-signal-separator'});
+          separator.textContent=' · ';
+          detailText.append(separator);
+        }
+        const part=svgNode('tspan',{class:'member-flow-signal-'+kind});
+        part.textContent=value;
+        detailText.append(part);
+      });
+    }
     tag.append(plate,accent,label,detailText);
     g.append(tag);
     svg.append(g);
