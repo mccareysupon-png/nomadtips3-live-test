@@ -67,7 +67,7 @@ test('Event Flow SIGNAL entry uses a two-line emerald card and safe horizontal p
   assert.match(js,/s\.bookmaker/);
   assert.match(css,/\.page-member \.member-flow-signal-plate\{/);
   assert.match(css,/fill:rgba\(12,40,36,\.50\)/);
-  assert.match(css,/stroke:rgba\(56,223,162,\.5\)/);
+  assert.match(css,/stroke:rgba\(67,230,162,\.78\)/);
   assert.match(css,/\.page-member \.member-flow-signal-accent\{/);
   assert.match(css,/@keyframes member-flow-accent-soft-pulse/);
   assert.match(css,/@media\(prefers-reduced-motion:reduce\)/);
