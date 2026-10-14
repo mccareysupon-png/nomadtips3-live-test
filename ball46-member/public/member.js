@@ -1033,7 +1033,7 @@ function featuredHorizontal(detail,selected){
   entryPiece((selected.signalMinute??'—')+"′",'minute');
   entryPiece(cornerRuleName(selected)+' · '+signalPeriod(selected),'market');
   const entrySelection=String(selected.selection||'');
-  entryPiece(entrySelection+(fmtLine(selected)?' '+fmtLine(selected):''),/\\bAWAY\\b/i.test(entrySelection)?'away':/\\bHOME\\b/i.test(entrySelection)?'home':'pick');
+  entryPiece(entrySelection+(fmtLine(selected)?' '+fmtLine(selected):''),/\bAWAY\b/i.test(entrySelection)?'away':/\bHOME\b/i.test(entrySelection)?'home':'pick');
   entryPiece(fmtOdds(selected.odds),'odds');
   entryPiece(selected.bookmaker,'bookmaker');
   entryPiece('Entry score '+scoreText(selected.entryScore),'score');
