@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
+import { dirname, resolve } from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { parse } from 'acorn';
 import puppeteer from 'puppeteer-core';
-import { activeVersion, getVersion, api, script, sha, canonical, publicFile, origin, backend } from '../daily-performance-20261005/production.mjs';
-import { schedules } from '../daily-performance-20261005/rail.mjs';
+import { activeVersion, getVersion, api, script, sha, canonical, publicFile, origin, directOrigin, backend } from '../daily-performance-20261005/production.mjs';
+import { schedules, wrangler } from '../daily-performance-20261005/rail.mjs';
 
 const MARK = 'B46_DAILY_PERFORMANCE_READ_FIX_20261014';
 const report = { run: process.env.GITHUB_RUN_ID, worker: script, scope: 'Repair Daily Performance pagination timestamp comparison only. Reuse all existing static assets. No Engine, API, database, calculation, Member, route, binding or schedule change.' };
@@ -15,35 +17,51 @@ let base;
 let candidate;
 let activated = false;
 
-const shim = String.raw`
-/* B46_DAILY_PERFORMANCE_READ_FIX_20261014: retain the current asset namespace and repair only the card's page signature. */
-const __B46_PERF_READ_ORIGINAL_NOSTORE_20261014__ = noStoreUiAsset;
-noStoreUiAsset = async function(request, env) {
-  const response = await __B46_PERF_READ_ORIGINAL_NOSTORE_20261014__(request, env);
-  if (new URL(request.url).pathname !== '/index.html' || !response.ok) return response;
-  const html = await response.text();
-  const startMarker = '<script id="b46-daily-performance-runtime">';
-  const start = html.indexOf(startMarker);
-  const end = start < 0 ? -1 : html.indexOf('</script>', start);
-  const headers = new Headers(response.headers);
-  headers.delete('content-length');
-  if (start < 0 || end < 0) {
-    headers.set('x-ball46-performance-read-fix', 'source-mismatch');
-    return new Response(html, { status: response.status, statusText: response.statusText, headers });
+async function stageConfirmedAssets(current, settings, crons, source, htmlAfter) {
+  // Run 38395232844 created the active version from the 79-path rail plus these
+  // two immutable assets. Its upload log confirms exactly 81 files.
+  const oldPaths = readFileSync('../../.github/scripts/ball46_current217_live_paths_20260928.txt', 'utf8').trim().split(/\r?\n/);
+  assert.equal(oldPaths.length, 79, 'BASE_ASSET_MANIFEST_CHANGED');
+  const paths = [...oldPaths, 'dashboard-v2-stage3-featured-facts-20261013a.js', 'featured-facts-premium-20261013a.css'];
+  assert.equal(new Set(paths).size, 81, 'CONFIRMED_81_ASSET_MANIFEST_CHANGED');
+  const runtime = resolve('runtime-complete-81');
+  const assets = resolve(runtime, 'assets');
+  const hashes = {};
+  for (let i = 0; i < paths.length; i += 6) {
+    const batch = paths.slice(i, i + 6);
+    const results = await Promise.allSettled(batch.map(async path => {
+      const bytes = await publicFile('/' + path, undefined, directOrigin);
+      assert.equal(sha(await publicFile('/' + path)), sha(bytes), 'CURRENT_ORIGINS_DIFFER:' + path);
+      return bytes;
+    }));
+    results.forEach((result, offset) => {
+      const path = batch[offset];
+      assert.equal(result.status, 'fulfilled', 'CURRENT_ASSET_READ_FAILED:' + path);
+      hashes[path] = sha(result.value);
+      const target = resolve(assets, path);
+      mkdirSync(dirname(target), { recursive: true });
+      writeFileSync(target, result.value);
+    });
   }
-  const runtime = html.slice(start + startMarker.length, end);
-  const tokens = [',st.ledgerUpdatedAt', ',page.ledgerUpdatedAt'];
-  if (!tokens.every(token => runtime.split(token).length - 1 === 1)) {
-    headers.set('x-ball46-performance-read-fix', 'source-mismatch');
-    return new Response(html, { status: response.status, statusText: response.statusText, headers });
-  }
-  const fixed = runtime.replace(tokens[0], '').replace(tokens[1], '');
-  const body = html.slice(0, start + startMarker.length) + fixed + html.slice(end);
-  headers.set('x-ball46-performance-read-fix', 'B46_DAILY_PERFORMANCE_READ_FIX_20261014');
-  headers.set('cache-control', 'no-store, no-cache, must-revalidate, max-age=0');
-  return new Response(body, { status: response.status, statusText: response.statusText, headers });
-};
-`;
+  for (const module of current.modules.filter(module => module.name !== current.main_module)) assert.equal(sha(Buffer.from(module.content_base64, 'base64')), hashes[module.name.slice('assets/'.length)], 'MODULE_ASSET_NOT_CURRENT:' + module.name);
+  assert.equal(hashes['index.html'], sha(await publicFile('/index.html')), 'INDEX_CHANGED_DURING_STAGE');
+  writeFileSync(resolve(assets, 'index.html'), htmlAfter);
+  writeFileSync(resolve(runtime, 'index.js'), source);
+  assert(current.bindings.every(binding => ['assets', 'service'].includes(binding.type)), 'UNSUPPORTED_WEB_BINDING');
+  const assetBindings = current.bindings.filter(binding => binding.type === 'assets');
+  assert.equal(assetBindings.length, 1, 'ASSET_BINDING_SHAPE_CHANGED');
+  const config = {
+    name: script, main: './index.js', compatibility_date: current.compatibility_date,
+    compatibility_flags: current.compatibility_flags || [], no_bundle: true,
+    services: current.bindings.filter(binding => binding.type === 'service').map(binding => ({ binding: binding.name, service: binding.service, ...(binding.environment ? { environment: binding.environment } : {}) })),
+    assets: { directory: assets, binding: assetBindings[0].name, html_handling: current.assets.config.html_handling, not_found_handling: current.assets.config.not_found_handling, run_worker_first: current.assets.config.run_worker_first },
+    triggers: { crons }
+  };
+  for (const key of ['logpush', 'limits', 'observability']) if (settings[key] !== undefined && settings[key] !== null) config[key] = settings[key];
+  if (settings.placement?.mode === 'smart') config.placement = settings.placement;
+  writeFileSync(resolve(runtime, 'wrangler.jsonc'), JSON.stringify(config, null, 2));
+  return { runtime, hashes, crons, paths };
+}
 
 function patchHtml(html) {
   const startMarker = '<script id="b46-daily-performance-runtime">';
@@ -194,7 +212,9 @@ async function verifyBrowser(baseOrigin, label, expected, fullChecks) {
 
 async function rollback() {
   if (!activated) return;
-  assert.equal(await activeVersion(), candidate, 'PRODUCTION_MOVED_DO_NOT_ROLLBACK_OTHER_CHANGE');
+  const active = await activeVersion();
+  if (active === base) return;
+  assert.equal(active, candidate, 'PRODUCTION_MOVED_DO_NOT_ROLLBACK_OTHER_CHANGE');
   await api('/scripts/' + script + '/deployments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ strategy: 'percentage', versions: [{ version_id: base, percentage: 100 }], annotations: { 'workers/message': 'Rollback unsuccessful Daily Performance loader repair' } }) });
   assert.equal(await activeVersion(), base, 'ROLLBACK_NOT_CONFIRMED');
   report.rollback = { version: base, at: new Date().toISOString() };
@@ -210,12 +230,13 @@ try {
   const source = Buffer.from(main.content_base64, 'base64').toString('utf8');
   assert(!source.includes(MARK), 'READ_FIX_ALREADY_PRESENT');
   assert.equal(sha(source), 'ddfc09cc46e8963a21d9e76e146b936f5243e50860693545d9569104c2a099cc', 'ACTIVE_MAIN_CHANGED_SINCE_SCOUT');
-  const patchedSource = source + '\n' + shim;
+  const patchedSource = source;
   parse(patchedSource, { ecmaVersion: 'latest', sourceType: 'module' });
   const htmlBefore = (await publicFile('/index.html')).toString('utf8');
   const patch = patchHtml(htmlBefore);
   report.build = { parsed: true, originalSourceSha: sha(source), patchedSourceSha: sha(patchedSource), originalHtmlSha: sha(htmlBefore), patchedHtmlSha: sha(patch.html), calculationSha: sha(patch.pure) };
-  const settingsBefore = canonical(await api('/scripts/' + script + '/settings'));
+  const settingsObject = await api('/scripts/' + script + '/settings');
+  const settingsBefore = canonical(settingsObject);
   const cronsBefore = await schedules();
   report.backendBefore = await backend();
   const ledgerBefore = await readLedger();
@@ -226,43 +247,32 @@ try {
   report.protectedAssets = protectedAssets;
   save();
 
-  const sandbox = { Request, Response, Headers, URL, atob, console };
-  runInNewContext(patchedSource.replace('export default ', 'globalThis.worker = '), sandbox, { timeout: 10000 });
-  const simulated = await sandbox.worker.fetch(new Request(origin + '/'), { ASSETS: { fetch: async () => new Response(htmlBefore, { headers: { 'content-type': 'text/html; charset=utf-8' } }) } }, {});
-  assert.equal(sha(await simulated.text()), sha(patch.html), 'WORKER_SHIM_CHANGED_MORE_THAN_CARD_LOADER');
+  assert.equal(patch.html.replace(patch.fixed, patch.runtime), htmlBefore, 'NON_CARD_HTML_CHANGED');
+  parse(patch.fixed, { ecmaVersion: 'latest', sourceType: 'script' });
   report.build.exactResponsePatchVerified = true;
+  report.assetLineage = { buildRun: 38395232844, version: base, assetCount: 81, addedAssets: ['dashboard-v2-stage3-featured-facts-20261013a.js', 'featured-facts-premium-20261013a.css'] };
+  const staged = await stageConfirmedAssets(current, settingsObject, cronsBefore, source, patch.html);
+  wrangler(staged, true);
   assert.equal(await activeVersion(), base, 'PRODUCTION_MOVED_BEFORE_UPLOAD');
-
-  assert(current.bindings.every(binding => ['assets', 'service'].includes(binding.type)), 'UNEXPECTED_BINDING_TYPE');
-  // The Workers API accepts an exact version for inherited bindings. The legacy
-  // Scripts API keep_assets flag would reuse the most recently uploaded assets.
-  const metadata = {
-    main_module: current.main_module,
-    compatibility_date: current.compatibility_date,
-    compatibility_flags: current.compatibility_flags || [],
-    bindings: current.bindings.map(binding => binding.type === 'assets'
-      ? { name: binding.name, type: 'inherit', version_id: base } : binding),
-    assets: { config: current.assets.config },
-    annotations: { 'workers/message': 'Repair Daily Performance loader; inherit assets from exact active version', 'workers/tag': MARK },
-    modules: current.modules.map(module => ({
-      name: module.name, content_type: module.content_type,
-      content_base64: module.name === current.main_module ? Buffer.from(patchedSource).toString('base64') : module.content_base64
-    }))
-  };
-  const uploaded = await api('/workers/' + script + '/versions?deploy=false', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(metadata)
-  });
-  candidate = uploaded.id;
+  const upload = spawnSync('npx', ['--yes', 'wrangler@4.92.0', 'versions', 'upload', '--config', 'wrangler.jsonc', '--tag', MARK, '--message', 'Repair Daily Performance pagination only; retain confirmed complete 81-file rail'], { cwd: staged.runtime, encoding: 'utf8', env: process.env, maxBuffer: 4 * 1024 * 1024 });
+  writeFileSync('audit/version-upload.log', (upload.stdout || '') + (upload.stderr || ''));
+  console.log(upload.stdout || '');
+  console.error(upload.stderr || '');
+  assert(!upload.error && upload.status === 0, 'VERSION_UPLOAD_FAILED:' + upload.error?.message + ':' + upload.status);
+  candidate = ((upload.stdout || '') + (upload.stderr || '')).match(/Version ID:\s*([a-f0-9-]{36})/i)?.[1];
   assert(candidate && candidate !== base, 'CANDIDATE_VERSION_MISSING');
   report.candidateVersion = candidate;
   save();
   const previewVersion = await getVersion(candidate);
+  const previewMain = previewVersion.modules.find(module => module.name === previewVersion.main_module);
+  assert.equal(sha(Buffer.from(previewMain.content_base64, 'base64')), sha(source), 'WORKER_MAIN_CHANGED');
   assert.equal(canonical(previewVersion.bindings), canonical(current.bindings), 'CANDIDATE_BINDINGS_CHANGED');
   assert.equal(canonical(previewVersion.assets?.config), canonical(current.assets.config), 'CANDIDATE_ASSET_CONFIG_CHANGED');
   assert.equal(previewVersion.compatibility_date, current.compatibility_date, 'CANDIDATE_COMPATIBILITY_CHANGED');
   for (const module of current.modules.filter(module => module.name !== current.main_module)) {
     const next = previewVersion.modules.find(value => value.name === module.name);
-    assert(next && next.content_base64 === module.content_base64, 'NON_MAIN_MODULE_CHANGED:' + module.name);
+    if (module.name === 'assets/index.html') assert.equal(sha(Buffer.from(next.content_base64, 'base64')), sha(patch.html), 'INDEX_MODULE_NOT_EXPECTED_PATCH');
+    else assert(next && next.content_base64 === module.content_base64, 'NON_MAIN_MODULE_CHANGED:' + module.name);
   }
   const previewOrigin = previewVersion.urls?.[0];
   assert(previewOrigin?.startsWith('https://' + candidate.slice(0,8) + '-' + script + '.'), 'VERSION_PREVIEW_URL_MISSING');
@@ -274,8 +284,8 @@ try {
 
   assert.equal(await activeVersion(), base, 'PRODUCTION_MOVED_BEFORE_ACTIVATION');
   assert.equal(canonical(await api('/scripts/' + script + '/settings')), settingsBefore, 'SETTINGS_MOVED_BEFORE_ACTIVATION');
-  await api('/scripts/' + script + '/deployments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ strategy: 'percentage', versions: [{ version_id: candidate, percentage: 100 }], annotations: { 'workers/message': 'Verified Daily Performance loader repair only' } }) });
   activated = true;
+  await api('/scripts/' + script + '/deployments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ strategy: 'percentage', versions: [{ version_id: candidate, percentage: 100 }], annotations: { 'workers/message': 'Verified Daily Performance loader repair only' } }) });
   assert.equal(await activeVersion(), candidate, 'CANDIDATE_NOT_ACTIVE');
   report.afterVersion = candidate;
   save();
