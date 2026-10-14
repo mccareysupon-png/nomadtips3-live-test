@@ -1,0 +1,38 @@
+name: DIAG Ball46 Featured Stats Colors 20261014
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/diag-ball46-featured-stats-colors-20261014.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/ball46-performance-chart-market-style-20261012
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --ignore-scripts acorn@8
+      - name: Inspect current Featured stats CSS and renderer
+        working-directory: deploy-assets/performance-chart-market-style-20261012
+        run: |
+          node --input-type=module <<'NODE'
+          import {publicFile,inspect} from '../daily-performance-20261005/production.mjs';
+          const cur=await inspect(); console.log('ACTIVE='+cur.restore.version);
+          for(const file of ['dashboard-v2.css','dashboard-v2-tune.css','color-semantics-343.css','index.html']){
+            const s=(await publicFile('/'+file)).toString('utf8');
+            for(const needle of ['.stat-row','.stat-track','data-featured-stats','Shots on target','Possession']){
+              let from=0,n=0;while(true){const i=s.toLowerCase().indexOf(needle.toLowerCase(),from);if(i<0)break;console.log('\n===== '+file+' :: '+needle+' @ '+i+' =====\n'+s.slice(Math.max(0,i-1600),Math.min(s.length,i+6000)));from=i+needle.length;if(++n>=12)break}
+            }
+          }
+          NODE
