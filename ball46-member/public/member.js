@@ -736,9 +736,10 @@ function eventFlowChart(detail,fixtureId){
   wrap.append(legend);
 
   const chart=node('div','expand-flow-chart member-flow-chart');
-  const w=1000,h=232,pad={left:42,right:18,top:14,bottom:30};
+  const w=1000,plotH=232,laneH=72,h=plotH+laneH*2,pad={left:42,right:18,top:14,bottom:30};
+  const plotBottom=laneH+plotH-pad.bottom;
   const xFor=minute=>pad.left+(clamp(minute,0,current)/Math.max(1,current))*(w-pad.left-pad.right);
-  const yFor=value=>pad.top+((100-clamp(value,1,100))/99)*(h-pad.top-pad.bottom);
+  const yFor=value=>laneH+pad.top+((100-clamp(value,1,100))/99)*(plotH-pad.top-pad.bottom);
   const svg=svgNode('svg',{viewBox:`0 0 ${w} ${h}`,preserveAspectRatio:'none',role:'img','aria-label':'Ball46 mirrored Event Flow'});
 
   const defs=svgNode('defs');
@@ -757,8 +758,8 @@ function eventFlowChart(detail,fixtureId){
   const marks=[0];for(let m=step;m<current;m+=step)marks.push(m);if(!marks.includes(current))marks.push(current);
   for(const m of marks){
     const x=xFor(m);
-    svg.append(svgNode('line',{x1:x,y1:pad.top,x2:x,y2:h-pad.bottom,class:'expand-flow-grid v'}));
-    const t=svgNode('text',{x,y:h-7,'text-anchor':'middle',class:'expand-flow-axis'});t.textContent=m+"'";svg.append(t);
+    svg.append(svgNode('line',{x1:x,y1:laneH+pad.top,x2:x,y2:plotBottom,class:'expand-flow-grid v'}));
+    const t=svgNode('text',{x,y:plotBottom+23,'text-anchor':'middle',class:'expand-flow-axis'});t.textContent=m+"'";svg.append(t);
   }
 
   const path=(key)=>points.map((p,i)=>(i?'L':'M')+' '+xFor(p.minute).toFixed(1)+' '+yFor(p[key]).toFixed(1)).join(' ');
@@ -780,6 +781,7 @@ function eventFlowChart(detail,fixtureId){
 
   // Collision-aware placement: keep the real signal point fixed; never move a label forward.
   const occupiedSignalPlates=[];
+  let neutralLaneCount=0;
   const signalPlateGap=4;
   function signalPlateOverlaps(candidate){
     return occupiedSignalPlates.some(p=>
@@ -823,7 +825,7 @@ function eventFlowChart(detail,fixtureId){
     const title=[minute+"'",cornerRuleName(s),signalPeriod(s),s.selection,fmtLine(s),fmtOdds(s.odds),s.bookmaker].filter(Boolean).join(' · ');
     const g=svgNode('g',{class:'member-flow-signal'});
     const tt=svgNode('title');tt.textContent=title;g.append(tt);
-    g.append(svgNode('line',{x1:x,y1:pad.top,x2:x,y2:h-pad.bottom,class:'member-flow-signal-line'}));
+    g.append(svgNode('line',{x1:x,y1:laneH+pad.top,x2:x,y2:plotBottom,class:'member-flow-signal-line'}));
     g.append(svgNode('circle',{cx:x,cy:y,r:'6.1',class:'member-flow-signal-ring'}));
     g.append(svgNode('circle',{cx:x,cy:y,r:'3.1',class:'member-flow-signal-dot'}));
 
@@ -838,9 +840,19 @@ function eventFlowChart(detail,fixtureId){
     const tagW=clamp(42+entryText.length*4.7,150,236),tagH=36;
     const safeLeft=pad.left+6,safeRight=w-pad.right-6;
     // Anchor to the left for late signals; never permit the plate to touch either edge.
-    const initialX=x+12+tagW<=safeRight?x+12:clamp(x-tagW-12,safeLeft,safeRight-tagW);
-    const initialY=clamp(y-44,pad.top+3,h-pad.bottom-tagH-3);
-    const placed=placeSignalPlate(initialX,initialY,tagW,tagH,safeLeft,safeRight,pad.top+3,h-pad.bottom-tagH-3);
+    const initialX=clamp(x-tagW-12,safeLeft,safeRight-tagW);
+    // Separate upper/lower label lanes; pressure curves retain original plot height.
+    const preferredLane=side==='home'?'top':side==='away'?'bottom':(neutralLaneCount++%2?'bottom':'top');
+    const laneBounds=lane=>lane==='top'
+      ? {min:6,max:laneH-tagH-6}
+      : {min:laneH+plotH+7,max:h-tagH-6};
+    const order=[preferredLane,preferredLane==='top'?'bottom':'top'];
+    let placed=null;
+    for(const lane of order){
+      const bounds=laneBounds(lane);
+      placed=placeSignalPlate(initialX,bounds.min,tagW,tagH,safeLeft,safeRight,bounds.min,bounds.max);
+      if(placed)break;
+    }
     // Crowded fallback: retain the signal dot and its full SVG title; do not overlap labels.
     if(!placed)continue;
     const {x:tagX,y:tagY}=placed;
@@ -876,6 +888,11 @@ function eventFlowChart(detail,fixtureId){
       });
     }
     tag.append(plate,accent,label,detailText);
+    // Fixed data anchor, straight green leader line to nearest label edge.
+    const leaderStartX=clamp(x,tagX+8,tagX+tagW-8);
+    const leaderStartY=tagY<y?tagY+tagH:tagY;
+    g.append(svgNode('line',{x1:leaderStartX,y1:leaderStartY,x2:x,y2:y,
+      class:'member-flow-signal-connector'}));
     g.append(tag);
     svg.append(g);
   }
