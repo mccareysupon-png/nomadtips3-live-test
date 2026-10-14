@@ -54,7 +54,7 @@ test('Member UI renders distinct LIVE and PENDING cards and result badges',()=>{
  assert.match(member,/\['PENDING',s\.pending,'pending'\]/);
  assert.match(member,/\['LIVE',s\.live\|\|0,'live'\]/);
  assert.match(member,/if\(result==='LIVE'\) return 'live'/);
- assert.match(html,/20261014-corner-compact-colors/);
+ assert.match(html,/20261014-event-glass-50/);
 });
 
 test('Source-empty RESULT is marked for display without modifying settlement',()=>{
