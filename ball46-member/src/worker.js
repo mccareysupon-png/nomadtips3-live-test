@@ -181,6 +181,7 @@ function normalizeSignal(row) {
     state:signalState(row),
     status:String(row?.status||'PENDING').toUpperCase(),
     result,
+    resultMissing:row?.result==null||String(row.result).trim()==='',
     settledAt:num(row?.settledAt),
     pnl:Number(resultPnl(result,row?.odds).toFixed(3))
   };
