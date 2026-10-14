@@ -2333,3 +2333,10 @@ body.page-member:before{
 }
 .page-member .signal-row .result-cell .badge.compact-result,
 .page-member .signal-row .result-cell .badge.no-data{font-size:6px}
+
+
+/* Shared Ball46 MEMBER lockup: HOME emerald, AWAY orange, premium cool-silver MEMBER.
+   Explicit specificity beats the legacy Pricing orange !important rule. */
+.topbar a.brand .brand-logo{color:#43E6A2!important}
+.topbar a.brand .brand-logo>span{color:#FFA451!important}
+.topbar a.brand .brand-member{color:#BFD3E1!important}
