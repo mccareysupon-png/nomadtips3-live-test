@@ -1,0 +1,32 @@
+import assert from 'node:assert/strict';
+import {mkdirSync,writeFileSync} from 'node:fs';
+import {runInNewContext} from 'node:vm';
+import {api,origin} from '../daily-performance-20261005/production.mjs';
+const hub='nomadtips3-5usd-hub-343';
+const active=(await api('/scripts/'+hub+'/deployments?per_page=1')).deployments?.[0]?.versions;
+assert(active?.length===1&&active[0].percentage===100,'HUB_VERSION_NOT_SINGLE');
+const version=await api('/workers/'+hub+'/versions/'+active[0].version_id+'?include=modules');
+const source=Buffer.from(version.modules.find(m=>m.name===version.main_module).content_base64,'base64').toString('utf8');
+assert(source.includes('https://api.5dollarfootballapi.com/v1'),'UNCONFIRMED_PROVIDER');
+assert(source.includes('status=live&include='),'UNCONFIRMED_LIVE_QUERY');
+assert(process.env.FIVEDOLLAR_API_KEY,'FIVEDOLLAR_API_KEY_NOT_PRESENT_IN_CI');
+const url='https://api.5dollarfootballapi.com/v1/fixtures?per_page=500&page=1&status=live&include=odds,events,stats';
+const response=await fetch(url,{headers:{accept:'application/json',authorization:'Bearer '+process.env.FIVEDOLLAR_API_KEY},signal:AbortSignal.timeout(20000)});
+const payload=await response.json();
+const report={run:process.env.GITHUB_RUN_ID,mode:'ONE_READ_ONLY_PROVIDER_REQUEST',provider:'5DollarFootballAPI',http:response.status,keyPresent:true,keys:Object.keys(payload),pagination:payload.pagination??payload.meta??null,rateLimitRemaining:response.headers.get('x-ratelimit-remaining')};
+if(response.ok){
+ const sandbox={TextEncoder,TextDecoder,Headers,Request,Response,URL,AbortController,setTimeout,clearTimeout,console};
+ const transformed=source.replace(/export\s*\{[\s\S]*?\};/,'globalThis.extractPayload=extract;globalThis.normalizeFixture=normalize;');
+ runInNewContext(transformed,sandbox,{timeout:10000});
+ const raw=sandbox.extractPayload(payload);
+ const normalized=raw.map(sandbox.normalizeFixture);
+ report.extractedRows=raw.length;
+ report.rawSample=raw.slice(0,3).map(f=>({id:f.id??f.fixture_id,status:f.status,statusCode:f.status_code,minute:f.minute,keys:Object.keys(f),home:f.home??f.home_team??f.teams?.home,away:f.away??f.away_team??f.teams?.away}));
+ report.normalized=normalized.map(f=>({id:f.fixtureId,home:f.home,away:f.away,status:f.status,statusCode:f.statusCode,boardState:f.boardState,minute:f.minute}));
+ report.normalizedLiveCount=normalized.filter(f=>f.boardState==='live').length;
+ report.nestedArrayKeys=Object.entries(payload.data||{}).filter(([,v])=>Array.isArray(v)).map(([k,v])=>({key:k,count:v.length}));
+ const snapshot=await fetch(origin+'/api/hub/snapshot').then(r=>r.json());
+ report.hubCounts=snapshot.counts;
+ report.hubLiveIds=snapshot.fixtures?.filter(f=>f.boardState==='live').map(f=>f.fixtureId);
+}else{report.error=payload.message??payload.error??'PROVIDER_HTTP_'+response.status;}
+mkdirSync('audit',{recursive:true});writeFileSync('audit/provider-live-probe.json',JSON.stringify(report,null,2));console.log(JSON.stringify(report,null,2));
