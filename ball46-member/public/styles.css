@@ -2438,3 +2438,11 @@ body.page-member:before{
 @media(max-width:680px){
   .page-pricing .hero .member-promo-media{max-width:100%;margin-top:22px}
 }
+
+/* Event Flow: +20% visual label lanes above/below the original pressure plot. */
+.page-member .member-flow-chart svg{height:346px}
+@media(max-width:680px){.page-member .member-flow-chart svg{height:284px}}
+.page-member .member-flow-signal-connector{
+  stroke:#43E6A2;stroke-width:1.5;stroke-linecap:round;
+  opacity:.9;fill:none;vector-effect:non-scaling-stroke;pointer-events:none
+}
