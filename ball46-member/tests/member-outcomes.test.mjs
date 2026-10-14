@@ -41,6 +41,12 @@ test('Status totals account for all terminal and non-terminal result types',()=>
  for(const [key,count] of Object.entries({pending:1,live:1,void:1,unresolved:1,halfWin:1,halfLoss:1,push:1}))
   assert.equal(s[key],count);
 });
+test('Member RESULT distinguishes missing data from real pending outcomes',()=>{
+ assert.match(member,/const missingResult=!rawResult/);
+ assert.match(member,/missingResult\?'NO DATA':rawResult\.replaceAll/);
+ assert.match(member,/missingResult\?'no-data':resultClass\(rawResult\)/);
+});
+
 test('Member UI renders distinct LIVE and PENDING cards and result badges',()=>{
  assert.match(server,/normalizeMemberOutcome\(row\?\.result,row\?\.status\)/);
  assert.match(server,/countMemberOutcomes\(scoped\)/);
