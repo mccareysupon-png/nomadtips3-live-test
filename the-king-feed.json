@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-10-13T22:54:55Z",
+  "updated_at": "2026-10-14T01:58:47Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -3629,8 +3629,8 @@
       "edge": 24.1,
       "ev": 0.4007,
       "required_confidence": 0.56,
-      "result": "PENDING",
-      "ft": null,
+      "result": "WIN",
+      "ft": "2-2",
       "locked_at": "2026-10-13T04:01:26Z",
       "source_url": "https://www.goaloo.com/football/brazil-serie-b-athletic-club-mg-vs-londrina-pr/h2h-2940225",
       "summary_url": "https://www.goaloo.com/football/brazil-serie-b-athletic-club-mg-vs-londrina-pr/summary-2940225",
@@ -3690,7 +3690,12 @@
         "away_recent": 9,
         "h2h_n": 5,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": 1.0,
+      "profit": 93.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-14T01:58:47Z"
     },
     {
       "id": "48609ad1ce19e449-AH-AWAY-0p75",
@@ -4664,8 +4669,8 @@
       "edge": 20.2,
       "ev": 0.3038,
       "required_confidence": 0.6,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "4-1",
       "locked_at": "2026-10-13T04:01:29Z",
       "source_url": "https://www.goaloo.com/football/liga-de-expansion-mx-club-chivas-tapatio-vs-tepatitlan-de-morelos/h2h-3024460",
       "summary_url": "https://www.goaloo.com/football/liga-de-expansion-mx-club-chivas-tapatio-vs-tepatitlan-de-morelos/summary-3024460",
@@ -4725,7 +4730,12 @@
         "away_recent": 10,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-14T01:58:47Z"
     },
     {
       "id": "637675540eb7b488-OU-OVER-2p75",
@@ -239433,6 +239443,186 @@
       "settlement_source": "goaloo-bf_us-direct-index",
       "goaloo_terminal_state": -1,
       "settled_at": "2026-10-13T22:54:55Z"
+    },
+    {
+      "id": "6d8c829d5778c3a9-OU-OVER-2p25",
+      "goaloo_id": "2940225",
+      "date": "2026-10-13",
+      "kickoff": "2026-10-13 22:30:00",
+      "league": "Brazil Serie B",
+      "home": "Athletic Club MG",
+      "away": "Londrina PR",
+      "market": "OU",
+      "selection": "OVER",
+      "line": 2.25,
+      "pick": "Over 2.25",
+      "side": null,
+      "odds": 1.93,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.724,
+      "model_probability": 0.724,
+      "market_fair_probability": 0.4826,
+      "market_edge": 0.2414,
+      "edge": 24.1,
+      "ev": 0.4007,
+      "required_confidence": 0.56,
+      "result": "WIN",
+      "ft": "2-2",
+      "locked_at": "2026-10-13T04:01:26Z",
+      "source_url": "https://www.goaloo.com/football/brazil-serie-b-athletic-club-mg-vs-londrina-pr/h2h-2940225",
+      "summary_url": "https://www.goaloo.com/football/brazil-serie-b-athletic-club-mg-vs-londrina-pr/summary-2940225",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 1.89,
+        "lambda_away": 1.592,
+        "home_win": 0.4498,
+        "draw": 0.2361,
+        "away_win": 0.3141,
+        "h2h_adjustment": 0.003,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": -0.039,
+          "gd_edge": 0.1662,
+          "clean_sheet_edge": -0.0732,
+          "failed_to_score_edge": 0.2195,
+          "bounded_adjustment": 0.0041,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 9,
+        "h2h_n": 5,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": 1.0,
+      "profit": 93.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-14T01:58:47Z"
+    },
+    {
+      "id": "50dab3cde0ba9679-OU-UNDER-3p25",
+      "goaloo_id": "3024460",
+      "date": "2026-10-13",
+      "kickoff": "2026-10-13 23:00:00",
+      "league": "Liga de Expansion MX",
+      "home": "Club Chivas Tapatio",
+      "away": "Tepatitlan de Morelos",
+      "market": "OU",
+      "selection": "UNDER",
+      "line": 3.25,
+      "pick": "Under 3.25",
+      "side": null,
+      "odds": 1.88,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.6901,
+      "model_probability": 0.6901,
+      "market_fair_probability": 0.4877,
+      "market_edge": 0.2023,
+      "edge": 20.2,
+      "ev": 0.3038,
+      "required_confidence": 0.6,
+      "result": "LOSS",
+      "ft": "4-1",
+      "locked_at": "2026-10-13T04:01:29Z",
+      "source_url": "https://www.goaloo.com/football/liga-de-expansion-mx-club-chivas-tapatio-vs-tepatitlan-de-morelos/h2h-3024460",
+      "summary_url": "https://www.goaloo.com/football/liga-de-expansion-mx-club-chivas-tapatio-vs-tepatitlan-de-morelos/summary-3024460",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 1.468,
+        "lambda_away": 1.095,
+        "home_win": 0.456,
+        "draw": 0.2805,
+        "away_win": 0.2635,
+        "h2h_adjustment": -0.005,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.2455,
+          "gd_edge": 0.2021,
+          "clean_sheet_edge": -0.1268,
+          "failed_to_score_edge": 0.278,
+          "bounded_adjustment": 0.0138,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-14T01:58:47Z"
     }
   ],
   "note": "Automated Full-Time Winner First feed. Supplemental markets remain unpublished.",
