@@ -940,7 +940,14 @@ function featuredHorizontal(detail,selected){
   const score=node('div','featured-h-score');
   const home=node('div','team home');home.append(node('span','','HOME'),node('b','',f?.home||selected.home));
   const center=node('div','score-center');
-  center.append(node('strong','',scoreText(shownScore)),node('small','',shownMinute));
+  const featuredScore=node('strong','featured-team-score');
+  const shownScoreText=scoreText(shownScore);
+  const parts=shownScore&&typeof shownScore==='object'&&shownScore.home!=null&&shownScore.away!=null
+    ?[String(shownScore.home),String(shownScore.away)]
+    :/^\\d+\\s*[-–:]\\s*\\d+$/.test(shownScoreText)?shownScoreText.split(/\\s*[-–:]\\s*/):null;
+  if(parts)featuredScore.append(node('span','home',parts[0]),node('span','separator','-'),node('span','away',parts[1]));
+  else featuredScore.textContent=shownScoreText;
+  center.append(featuredScore,node('small','',shownMinute));
   const away=node('div','team away');away.append(node('span','','AWAY'),node('b','',f?.away||selected.away));
   score.append(home,center,away);
 
