@@ -17,6 +17,7 @@ jobs:
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      REPAIR_EXISTING_VERSION: dc707e65-55cf-426c-82d9-d0b8124b0e40
     steps:
       - uses: actions/checkout@v4
         with:
@@ -56,3 +57,5 @@ jobs:
           path: deploy-assets/performance-concept-b-20261014/audit
           if-no-files-found: warn
           retention-days: 30
+
+# activate-verified-card-repair-only
