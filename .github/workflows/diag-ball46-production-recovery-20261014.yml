@@ -1,0 +1,45 @@
+name: DIAG Ball46 Production Recovery 20261014
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/diag-ball46-production-recovery-20261014.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/ball46-performance-chart-market-style-20261012
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --ignore-scripts acorn@8
+      - name: Inspect active production and critical live assets
+        working-directory: deploy-assets/performance-chart-market-style-20261012
+        run: |
+          node --input-type=module <<'NODE'
+          import {inspect,activeVersion,publicFile,sha} from '../daily-performance-20261005/production.mjs';
+          const cur=await inspect();
+          console.log('ACTIVE_VERSION='+cur.restore.version);
+          console.log('SOURCE_SHA='+sha(Buffer.from(cur.source)));
+          const paths=['index.html','singlepage-workspace-343.js','dashboard-v2.css','color-semantics-343.css'];
+          for(const p of paths){
+            try{
+              const b=await publicFile('/'+p);
+              console.log('ASSET '+p+' SHA='+sha(b)+' SIZE='+b.length);
+              const s=b.toString('utf8');
+              for(const n of ['B46_FEATURED_SIGNAL_PREMIUM_TYPE','stat-kpi-8-one-row-v10-20261013','FEATURED MATCH','data-featured-away']){
+                if(s.includes(n)) console.log('MARK '+p+' '+n);
+              }
+            }catch(e){console.log('MISS '+p+' '+e.message)}
+          }
+          NODE
