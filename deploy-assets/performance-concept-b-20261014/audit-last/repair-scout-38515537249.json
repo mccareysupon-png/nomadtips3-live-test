@@ -1,0 +1,230 @@
+{
+  "run": "38515537249",
+  "mode": "READ_ONLY",
+  "worker": "ball46-production",
+  "version": "7d65162c-b693-4d01-9860-c7973c76b2af",
+  "versionKeys": [
+    "id",
+    "number",
+    "startup_time_ms",
+    "compatibility_date",
+    "main_module",
+    "annotations",
+    "usage_model",
+    "urls",
+    "source",
+    "created_on",
+    "modules",
+    "bindings",
+    "env",
+    "assets",
+    "author_id",
+    "author_email"
+  ],
+  "compatibility_date": "2026-09-09",
+  "bindings": [
+    {
+      "name": "ASSETS",
+      "type": "assets"
+    },
+    {
+      "environment": "production",
+      "name": "ENGINE",
+      "service": "nomadtips3-engine-343",
+      "type": "service"
+    },
+    {
+      "environment": "production",
+      "name": "FULL_MARKET",
+      "service": "nomadtips3-full-market-343-ball46",
+      "type": "service"
+    },
+    {
+      "environment": "production",
+      "name": "HUB",
+      "service": "nomadtips3-5usd-hub-343",
+      "type": "service"
+    }
+  ],
+  "assets": {
+    "config": {
+      "html_handling": "none",
+      "not_found_handling": "none",
+      "run_worker_first": true,
+      "base_path": "/"
+    }
+  },
+  "otherVersionFields": {
+    "id": "7d65162c-b693-4d01-9860-c7973c76b2af",
+    "number": 540,
+    "startup_time_ms": 1,
+    "compatibility_date": "2026-09-09",
+    "main_module": "index.js",
+    "annotations": {
+      "workers/triggered_by": "version_upload"
+    },
+    "usage_model": "standard",
+    "urls": [
+      "https://7d65162c-ball46-production.mccarey-supon.workers.dev"
+    ],
+    "source": "wrangler",
+    "created_on": "2026-10-13T12:10:18.003798Z",
+    "env": {
+      "ASSETS": {
+        "type": "assets"
+      },
+      "ENGINE": {
+        "environment": "production",
+        "service": "nomadtips3-engine-343",
+        "type": "service"
+      },
+      "FULL_MARKET": {
+        "environment": "production",
+        "service": "nomadtips3-full-market-343-ball46",
+        "type": "service"
+      },
+      "HUB": {
+        "environment": "production",
+        "service": "nomadtips3-5usd-hub-343",
+        "type": "service"
+      }
+    },
+    "author_id": "02080c3ec5050302be99673c79823ca2",
+    "author_email": "mccarey.supon@gmail.com"
+  },
+  "settings": {
+    "placement": {},
+    "compatibility_date": "2026-09-09",
+    "compatibility_flags": [],
+    "usage_model": "standard",
+    "tags": [],
+    "tail_consumers": [],
+    "logpush": false,
+    "observability": {
+      "enabled": true,
+      "head_sampling_rate": 1,
+      "redact_query_string": false,
+      "logs": {
+        "enabled": true,
+        "head_sampling_rate": 1,
+        "persist": true,
+        "invocation_logs": true
+      },
+      "traces": {
+        "enabled": false,
+        "persist": true,
+        "head_sampling_rate": 1
+      }
+    },
+    "annotations": {
+      "workers/triggered_by": "version_upload"
+    },
+    "bindings": [
+      {
+        "name": "ASSETS",
+        "type": "assets"
+      },
+      {
+        "environment": "production",
+        "name": "ENGINE",
+        "service": "nomadtips3-engine-343",
+        "type": "service"
+      },
+      {
+        "environment": "production",
+        "name": "FULL_MARKET",
+        "service": "nomadtips3-full-market-343-ball46",
+        "type": "service"
+      },
+      {
+        "environment": "production",
+        "name": "HUB",
+        "service": "nomadtips3-5usd-hub-343",
+        "type": "service"
+      }
+    ]
+  },
+  "schedules": {
+    "schedules": [
+      {
+        "cron": "* * * * *",
+        "created_on": "2026-09-19T11:43:46.605664Z",
+        "modified_on": "2026-10-14T04:52:09.069173Z"
+      }
+    ]
+  },
+  "backend": {
+    "engine": "nomad343-engine-v5-best19-referee",
+    "market": "nomad343-ball46-full-market-v6-server-prewarm-cache",
+    "statistics": "bet365-rules-v2"
+  },
+  "modules": [
+    {
+      "name": "assets/5usd-control.html",
+      "type": "text/plain",
+      "size": 9935,
+      "sha": "3d52c9cd5047238b65d184ca2edac7118b29bd89bdfc7fbff50df40ff77a40e8"
+    },
+    {
+      "name": "assets/api-monitor.html",
+      "type": "text/plain",
+      "size": 16006,
+      "sha": "181823ca5dca06eeb0ffbe91971f8bc5bdac3076fa32a21b82de7a402310d9f5"
+    },
+    {
+      "name": "assets/detection-test.html",
+      "type": "text/plain",
+      "size": 13158,
+      "sha": "510d1e6d2a5738ee20449a8a6e3233fcb7c69fbe63c71bb10c25c748fdfbc71e"
+    },
+    {
+      "name": "assets/index.html",
+      "type": "text/plain",
+      "size": 91226,
+      "sha": "504b0dce70cf8c2809462311c7802d2e5d9d2251b899a798223d9c4ae26fe6e8"
+    },
+    {
+      "name": "assets/robots.txt",
+      "type": "text/plain",
+      "size": 172,
+      "sha": "f2262c458da042583e2bf1a8207109823b1935af67080c9b223fd600ab417f5b"
+    },
+    {
+      "name": "assets/settings.html",
+      "type": "text/plain",
+      "size": 2614,
+      "sha": "08f65d43d98dd31ecf46dae808c20aebc2a84f3e52e9c8c9b69e847c9d12d7b5"
+    },
+    {
+      "name": "assets/signal-next.html",
+      "type": "text/plain",
+      "size": 4101,
+      "sha": "1b4b9c847b768d2ac8fe0936b0a2e38fd51721cb542c2f0aed5ad7556cb669c4"
+    },
+    {
+      "name": "assets/signal.html",
+      "type": "text/plain",
+      "size": 7682,
+      "sha": "4fa313d00c748ce9ffc98bad952495e7b7a1c3f99a6693b6696b6b7dc728f2cc"
+    },
+    {
+      "name": "assets/statistics-next.html",
+      "type": "text/plain",
+      "size": 5066,
+      "sha": "393f1adf39385965986542ff38d740b696bf06c3dfb7a490edffce0f09bba534"
+    },
+    {
+      "name": "assets/statistics.html",
+      "type": "text/plain",
+      "size": 8947,
+      "sha": "9e3754322902d4748f1019cce258f0dd309b0256eccf4fbe53070e09ec7a75f6"
+    },
+    {
+      "name": "index.js",
+      "type": "application/javascript+module",
+      "size": 483191,
+      "sha": "ddfc09cc46e8963a21d9e76e146b936f5243e50860693545d9569104c2a099cc"
+    }
+  ],
+  "mainConcise": "/* B46_SCOREBAR_4STATE_CARD_20261002 — image bytes only */\n/* B46_SCOREBAR_4STATE_CARD_20261002 — image bytes only */\n/* B46_SCOREBAR_WIN_VALID_IMAGE_20261002B — image bytes only */\n/* B46_WIN_VISIBLE_FORCE_20261002 */\n/* B46_WIN_ROUTE_REFRESH_20261002 */\n/* B46_SCOREBAR_WIN_HQ_SHADOW_20261002 */\nvar __defProp = Object.defineProperty;\nvar __name = (target, value) => __defProp(target, \"name\", { value, configurable: true });\n\n// src/index.js\nfunction engineRequest(request, path) {\n  const upstream = new URL(request.url);\n  upstream.protocol = \"https:\";\n  upstream.hostname = \"engine.internal\";\n  upstream.pathname = path;\n  return new Request(upstream, request);\n}\n__name(engineRequest, \"engineRequest\");\nfunction hubRequest(request, path) {\n  const upstream = new URL(request.url);\n  upstream.protocol = \"https:\";\n  upstream.hostname = \"hub.internal\";\n  upstream.pathname = path;\n  return new Request(upstream, request);\n}\n__name(hubRequest, \"hubRequest\");\nfunction fullMarketRequest(request, path) {\n  const upstream = new URL(request.url);\n  upstream.protocol = \"https:\";\n  upstream.hostname = \"full-market.internal\";\n  upstream.pathname = path;\n  return new Request(upstream, request);\n}\n__name(fullMarketRequest, \"fullMarketRequest\");\nvar num = /* @__PURE__ */ __name((value) => value === null || value === void 0 || value === \"\" || !Number.isFinite(Number(value)) ? null : Number(value), \"num\");\nvar copy = /* @__PURE__ */ __name((value) => value && typeof value === \"object\" ? JSON.parse(JSON.stringify(value)) : value ?? null, \"copy\");\nconst __B46_EVENTFLOW_SIGNAL_JS_20261002__=\"[OMITTED_LITERAL_26533_BYTES]\";\nasync function noStoreUiAsset(request, env) {\n  const path = new URL(request.url).pathname;\n  if (path === \"/expanded-match-343.js\") {\n    const headers = new Headers({\"content-type\":\"application/javascript; charset=utf-8\",\"cache-control\":\"no-store, no-cache, must-revalidate, max-age=0\",\"pragma\":\"no-cache\",\"expires\":\"0\",\"x-ball46-ui-revision\":\"eventflow-signal-annotation-20261004\"});\n    return new Response(__B46_EVENTFLOW_SIGNAL_JS_20261002__, {status:200,headers});\n  }\n  if (path === \"/dashboard-v2-stage3.js\" && typeof __B46_MULTI_SIGNAL_STAGE3_JS__ === \"string\") {\n    const headers = new Headers({\"content-type\":\"application/javascript; charset=utf-8\",\"cache-control\":\"no-store, no-cache, must-revalidate, max-age=0\",\"pragma\":\"no-cache\",\"expires\":\"0\",\"x-ball46-ui-revision\":\"multi-signal-card-20261002\"});\n    return new Response(__B46_MULTI_SIGNAL_STAGE3_JS__, { status: 200, headers });\n  }\n  const response = await env.ASSETS.fetch(request);\n  const headers = new Headers(response.headers);\n  headers.set(\"cache-control\", \"no-store, no-cache, must-revalidate, max-age=0\");\n  headers.set(\"pragma\", \"no-cache\");\n  headers.set(\"expires\", \"0\");\n  headers.set(\"x-nomad-ui-revision\", \"343-full-market-v1\");\n  if (path.startsWith(\"/statistics\")) headers.set(\"x-nomad-stat-revision\", \"343-stat-results-v7-live-mirror\");\n  if (path.startsWith(\"/signal\")) headers.set(\"x-nomad-signal-revision\", \"343-signal-bettor-v4\");\n  if (path === \"/index.html\" || path === \"/live.js\" || path === \"/full-odds-main-343.js\" || path.startsWith(\"/event-flow-343\")) headers.set(\"x-nomad-live-revision\", \"343-live-full-market-v1\");\n  if (path === \"/5usd-control.html\") headers.set(\"x-nomad-control-revision\", \"343-5usd-control-v1\");\n  if (path === \"/detection-test.html\") headers.set(\"x-nomad-detection-revision\", \"343-detection-test-v1\");\n  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });\n}\n__name(noStoreUiAsset, \"noStoreUiAsset\");\nfunction fixtureIsLive(fixture) {\n  const raw = String(fixture?.boardState ?? fixture?.status ?? fixture?.statusCode ?? \"\").toLowerCase();\n  if (fixture?.boardState === \"finished\" || /finished|full_time|full time|\\bft\\b|ended/.test(raw)) return false;\n  return fixture?.boardState === \"live\" || /in_play|in play|live|playing|first|second|\\b1h\\b|\\b2h\\b/.test(raw);\n}\n__name(fixtureIsLive, \"fixtureIsLive\");\nfunction liveMinute(fixture) {\n  const direct = num(fixture?.minute);\n  if (direct !== null) return direct;\n  const match = String(fixture?.statusCode ?? \"\").match(/\\d+/);\n  return match ? Number(match[0]) : null;\n}\n__name(liveMinute, \"liveMinute\");\nfunction oddsContainerHasData(value) {\n  if (Array.isArray(value)) return value.length > 0;\n  if (!value || typeof value !== \"object\") return false;\n  if (!Object.keys(value).length) return false;\n  const containers = [\n    value.bookmakers,\n    value.odds,\n    value.markets,\n    value?.data?.bookmakers,\n    value?.data?.odds,\n    value?.data?.markets\n  ];\n  if (containers.some((v) => Array.isArray(v) ? v.length > 0 : Boolean(v && typeof v === \"object\" && Object.keys(v).length))) return true;\n  return Object.keys(value).some((k) => /bet365|pinnacle|williamhill|ladbrokes|vcbet|1xbet|bwin|easybets|interwetten|betfair|snai|macauslot|betsson|betathome|18bet|10bet|12bet|coral|crown|bookmaker/i.test(String(k)));\n}\n__name(oddsContainerHasData, \"oddsContainerHasData\");\nfunction boardHasBookmakerOdds(board) {\n  const fixtures = Array.isArray(board?.fixtures) ? board.fixtures : [];\n  return fixtures.some(\n    (fixture) => oddsContainerHasData(fixture?.providerOdds) || oddsContainerHasData(fixture?.fullOdds) || oddsContainerHasData(fixture?.odds)\n  );\n}\n__name(boardHasBookmakerOdds, \"boardHasBookmakerOdds\");\nfunction mergeLastGood(previous, incoming) {\n  if (incoming === null || incoming === void 0 || incoming === \"\") return previous;\n  if (Array.isArray(incoming)) return incoming.length ? incoming : previous;\n  if (typeof incoming !== \"object\") return incoming;\n  const prev = previous && typeof previous === \"object\" && !Array.isArray(previous) ? previous : {};\n  const out = { ...prev };\n  for (const [key, value] of Object.entries(incoming)) out[key] = mergeLastGood(prev[key], value);\n  return out;\n}\n__name(mergeLastGood, \"mergeLastGood\");\nfunction liveFixtureIds(board) {\n  const seen = /* @__PURE__ */ new Set();\n  const ids = [];\n  for (const fixture of Array.isArray(board?.fixtures) ? board.fixtures : []) {\n    if (!fixtureIsLive(fixture)) continue;\n    const id = String(fixture?.fixtureId ?? fixture?.id ?? \"\").trim();\n    if (!id || seen.has(id)) continue;\n    seen.add(id);\n    ids.push(id);\n  }\n  return ids;\n}\n__name(liveFixtureIds, \"liveFixtureIds\");\nasync function fullMarketCacheSnapshot(env, fixtureIds) {\n  if (!env.FULL_MARKET || !fixtureIds.length) return null;\n  const request = new Request(\"https://full-market.internal/board-cache\", {\n    method: \"POST\",\n    headers: { \"content-type\": \"application/json\" },\n    body: JSON.stringify({ fixtureIds })\n  });\n  const response = await env.FULL_MARKET.fetch(request);\n  if (!response.ok) return null;\n  const data = await response.json().catch(() => null);\n  return data?.ok === true && data?.entries && typeof data.entries === \"object\" ? data : null;\n}\n__name(fullMarketCacheSnapshot, \"fullMarketCacheSnapshot\");\nasync function enrichBoardWithCachedFullMarket(board, env) {\n  if (!board || board.ok !== true || !Array.isArray(board.fixtures)) return { board, changed: false };\n  const ids = liveFixtureIds(board);\n  if (!ids.length) return { board, changed: false };\n  try {\n    const cache = await fullMarketCacheSnapshot(env, ids);\n    if (!cache) return { board, changed: false };\n    let hits = 0;\n    let staleHits = 0;\n    const fixtures = board.fixtures.map((fixture) => {\n      const id = String(fixture?.fixtureId ?? fixture?.id ?? \"\").trim();\n      const hit = cache.entries?.[id];\n      if (!fixtureIsLive(fixture) || !hit?.fullOdds || typeof hit.fullOdds !== \"object\") return fixture;\n      hits += 1;\n      if (hit.stale) staleHits += 1;\n      return {\n        ...fixture,\n        providerOdds: mergeLastGood(fixture?.providerOdds, hit.fullOdds),\n        providerOddsUpdatedAt: Number(hit.fetchedAt || fixture?.providerOddsUpdatedAt || 0) || fixture?.providerOddsUpdatedAt || null,\n        providerOddsFreshAt: Number(hit.fetchedAt || fixture?.providerOddsFreshAt || 0) || fixture?.providerOddsFreshAt || null,\n        providerOddsHeld: Boolean(hit.stale),\n        centralFullMarketCached: true\n      };\n    });\n    if (!hits) return { board, changed: false };\n    return {\n      board: {\n        ...board,\n        fixtures,\n        fullMarketCache: {\n          mode: \"SERVER_CENTRAL_LAST_GOOD\",\n          requested: ids.length,\n          hits,\n          staleHits,\n          externalRequestsAdded: 0,\n          version: cache.version || null\n        }\n      },\n      changed: true\n    };\n  } catch {\n    return { board, changed: false };\n  }\n}\n__name(enrichBoardWithCachedFullMarket, \"enrichBoardWithCachedFullMarket\");\nasync function engineBoardResponse(request, env) {\n  const engineResponse = await env.ENGINE.fetch(engineRequest(request, \"/board\"));\n  const engineBoard = engineResponse.ok ? await engineResponse.clone().json().catch(() => null) : null;\n  const engineHasOdds = boardHasBookmakerOdds(engineBoard);\n  if (engineResponse.ok && engineBoard?.ok === true && engineHasOdds) {\n    const enriched2 = await enrichBoardWithCachedFullMarket(engineBoard, env);\n    if (!enriched2.changed) return engineResponse;\n    return Response.json(enriched2.board, { headers: { \"cache-control\": \"no-store\", \"x-ball46-board-source\": \"engine-plus-central-full-market-cache\" } });\n  }\n  const hubResponse = await env.HUB.fetch(hubRequest(request, \"/snapshot\"));\n  if (!hubResponse.ok) return engineResponse;\n  const hub = await hubResponse.json().catch(() => null);\n  if (!hub || hub.ok !== true || !Array.isArray(hub.fixtures)) return engineResponse;\n  const hubHasOdds = boardHasBookmakerOdds(hub);\n  if (engineResponse.ok && !hubHasOdds) return engineResponse;\n  const fallbackBoard = {\n    ...hub,\n    version: \"ball46-board-fallback-john-continuity-v2-odds-aware\",\n    engineBoardFallback: true,\n    engineBoardFallbackReason: engineResponse.ok ? \"ENGINE_BOARD_ODDS_EMPTY\" : \"ENGINE_BOARD_ERROR\",\n    engineBoardStatus: engineResponse.status,\n    engineBoardHasOdds: engineHasOdds,\n    hubBoardHasOdds: hubHasOdds,\n    hubVersion: hub.version,\n    hubFetchedAt: hub.fetchedAt ?? null,\n    hubAgeMs: hub.ageMs ?? null,\n    referee: { mode: \"HUB_SNAPSHOT_FALLBACK\", externalRequestsAdded: 0, requests: 0, queued: 0, errors: [] }\n  };\n  const enriched = await enrichBoardWithCachedFullMarket(fallbackBoard, env);\n  return Response.json(enriched.board, { headers: { \"cache-control\": \"no-store\", \"x-ball46-board-source\": enriched.changed ? \"hub-plus-central-full-market-cache\" : \"hub-snapshot-fallback\" } });\n}\n__name(engineBoardResponse, \"engineBoardResponse\");\nasync function activeSignals(request, env) {\n  const [signalResponse, boardResponse] = await Promise.all([\n    env.ENGINE.fetch(engineRequest(request, \"/signals\")),\n    engineBoardResponse(request, env)\n  ]);\n  const [signalData, boardData] = await Promise.all([\n    signalResponse.json().catch(() => ({})),\n    boardResponse.json().catch(() => ({}))\n  ]);\n  if (signalData?.ok !== true) return Response.json(signalData || { ok: false, error: \"SIGNALS_NOT_READY\" }, { status: signalResponse.status || 503 });\n  if (boardData?.ok !== true) return Response.json({ ok: false, error: \"BOARD_NOT_READY\", signals: [] }, { status: boardResponse.status || 503 });\n  const fixtures = Array.isArray(boardData?.fixtures) ? boardData.fixtures : [];\n  const liveFixtures = fixtures.filter(fixtureIsLive);\n  const liveFixtureMap = new Map(liveFixtures.map((f) => [String(f?.fixtureId ?? \"\"), f]));\n  const pending = Array.isArray(signalData?.signals) ? signalData.signals : [];\n  let hiddenPendingSignals = 0;\n  const signals = pending.filter((signal) => {\n    const visible = liveFixtureMap.has(String(signal?.fixtureId ?? \"\"));\n    if (!visible) hiddenPendingSignals += 1;\n    return visible;\n  }).map((signal) => {\n    const fixture = liveFixtureMap.get(String(signal.fixtureId));\n    return {\n      ...signal,\n      mirrorMinute: liveMinute(fixture),\n      mirrorScore: copy(fixture?.goals),\n      mirrorState: \"LIVE\",\n      mirrorSource: boardData?.engineBoardFallback ? \"HUB_SNAPSHOT_FALLBACK\" : \"ENGINE_BOARD_LIVE\",\n      liveStatistics: copy(fixture?.statistics),\n      liveCorners: copy(fixture?.corners),\n      liveCards: copy(fixture?.cards),\n      liveEvents: Array.isArray(fixture?.events) ? copy(fixture.events) : [],\n      liveStatus: fixture?.status ?? null,\n      liveStatusCode: fixture?.statusCode ?? null,\n      liveUpdatedAt: boardData?.hubFetchedAt ?? boardData?.fetchedAt ?? null,\n      liveAgeMs: num(boardData?.hubAgeMs ?? boardData?.ageMs)\n    };\n  }).sort((a, b) => Number(b?.createdAt || 0) - Number(a?.createdAt || 0));\n  return Response.json({\n    ...signalData,\n    signals,\n    mirror: {\n      source: boardData?.engineBoardFallback ? \"HUB_SNAPSHOT_FALLBACK\" : \"ENGINE_BOARD_LIVE\",\n      externalRequestsAdded: 0,\n      boardFixtures: fixtures.length,\n      liveFixtures: liveFixtures.length,\n      activeMatches: new Set(signals.map((s) => String(s.fixtureId))).size,\n      activeSignals: signals.length,\n      hiddenPendingSignals,\n      hubFetchedAt: boardData?.hubFetchedAt ?? boardData?.fetchedAt ?? null,\n      hubAgeMs: num(boardData?.hubAgeMs ?? boardData?.ageMs),\n      stale: Boolean(boardData?.stale)\n    }\n  }, { headers: { \"cache-control\": \"no-store\" } });\n}\n__name(activeSignals, \"activeSignals\");\nasync function fullMarketCompat(request, env, path) {\n  if (!env.FULL_MARKET) return Response.json({ ok: false, error: \"FULL_MARKET_SERVICE_NOT_BOUND\" }, { status: 503, headers: { \"cache-control\": \"no-store\" } });\n  if (path === \"/health\" || path === \"/status\") return env.FULL_MARKET.fetch(fullMarketRequest(request, \"/health\"));\n  if (path === \"/fixture-odds\") return env.FULL_MARKET.fetch(fullMarketRequest(request, \"/fixture-odds\"));\n  if (path === \"/settings\") return env.FULL_MARKET.fetch(fullMarketRequest(request, \"/settings\"));\n  return Response.json({ ok: false, error: \"FULL_MARKET_ROUTE_NOT_FOUND\" }, { status: 404, headers: { \"cache-control\": \"no-store\" } });\n}\n__name(fullMarketCompat, \"fullMarketCompat\");\nasync function discoverLiveFixturesForPrewarm(env) {\n  const request = new Request(\"https://ball46-cron.internal/board\");\n  const engineResponse = await env.ENGINE.fetch(engineRequest(request, \"/board\"));\n  if (engineResponse.ok) {\n    const board = await engineResponse.json().catch(() => null);\n    if (board?.ok === true && Array.isArray(board.fixtures)) return liveFixtureIds(board);\n  }\n  const hubResponse = await env.HUB.fetch(hubRequest(request, \"/snapshot\"));\n  if (!hubResponse.ok) return [];\n  const hub = await hubResponse.json().catch(() => null);\n  return hub?.ok === true && Array.isArray(hub.fixtures) ? liveFixtureIds(hub) : [];\n}\n__name(discoverLiveFixturesForPrewarm, \"discoverLiveFixturesForPrewarm\");\nasync function prewarmLiveFullMarket(env) {\n  if (!env.FULL_MARKET) return;\n  const fixtureIds = await discoverLiveFixturesForPrewarm(env);\n  if (!fixtureIds.length) return;\n  const request = new Request(\"https://full-market.internal/prewarm\", {\n    method: \"POST\",\n    headers: { \"content-type\": \"application/json\" },\n    body: JSON.stringify({ fixtureIds })\n  });\n  await env.FULL_MARKET.fetch(request);\n}\n__name(prewarmLiveFullMarket, \"prewarmLiveFullMarket\");\n\n/* B46_BETSSON_AFFILIATE_20261005 */\nconst __B46_BETSSON_AFF__=\"https://www.betsson.mx/apuestas-deportivas/futbol/copa-libertadores/copa-libertadores?from=m-W7IdPQSGxx3x_byoiPYGNd7ZgqdRLk-AV3462274676&affcode=AV3462274676&utm_medium=Affiliates&utm_source=10685357&tab=liveAndUpcoming\";\nconst __B46_BETSSON_LOGO__=\"https://raw.githubusercontent.com/mccareysupon-png/nomadtips3-live-test/ops/ball46-betsson-affiliate-20261005/assets/affiliate/betsson-logo.png\";\nasync function __b46BetssonBookmakerAsset(request,env){\n  const response=await env.ASSETS.fetch(request);\n  if(!response.ok)return response;\n  let source=await response.text();\n  function addMap(name,value){\n    const re=new RegExp('(const '+name+'=Object\\\\.freeze\\\\(\\\\{)([\\\\s\\\\S]*?)(\\\\}\\\\);)');\n    const m=source.match(re); if(!m)throw new Error(name+'_MAP_MISSING');\n    if(m[2].includes(\"'betsson'\"))return;\n    let body=m[2]; if(body.trim()&&!body.trim().endsWith(','))body+=','; body+=\"\\n  'betsson':\"+JSON.stringify(value)+\"\\n\";\n    source=source.replace(re,m[1]+body+m[3]);\n  }\n  addMap('AFFILIATE_URLS',__B46_BETSSON_AFF__);\n  addMap('BOOK_LOGO_URLS',__B46_BETSSON_LOGO__);\n  const h=new Headers(response.headers); h.set('cache-control','no-store, no-cache, must-revalidate, max-age=0'); h.delete('content-length'); h.set('x-ball46-betsson','20261005');\n  return new Response(source,{status:response.status,statusText:response.statusText,headers:h});\n}\n\n\n/* B46_MOBILE_V3_20261005_8c21e5bbd545_4f27dee56209 */\nconst __B46_MOBILE_V3_ORIGINAL_NOSTORE__=noStoreUiAsset;\nnoStoreUiAsset=async function(request,env){\n  const res=await __B46_MOBILE_V3_ORIGINAL_NOSTORE__(request,env);\n  const path=new URL(request.url).pathname;\n  if(path!==\"/index.html\"||!res.ok)return res;\n  let html=await res.text(); const payload=\"[OMITTED_LITERAL_16212_BYTES]\";\n  if(!html.includes(\"b46-mobile-v3-style\")){if(!html.includes(\"</head>\"))throw new Error(\"MOBILE_HEAD_ANCHOR_MISSING\");html=html.replace(\"</head>\",payload+\"</head>\");}\n  else {html=html.replace(/<style id=\"b46-mobile-v3-style\">[\\s\\S]*?<\\/style><script id=\"b46-mobile-v3-script\">[\\s\\S]*?<\\/script>/,payload);}\n  const h=new Headers(res.headers);h.set(\"cache-control\",\"no-store, no-cache, must-revalidate, max-age=0\");h.set(\"x-ball46-mobile-v3\",\"20261005\");h.delete(\"content-length\");\n  return new Response(html,{status:res.status,statusText:res.statusText,headers:h});\n};\n\nvar index_default = {\n  async fetch(request, env) {\n    const url = new URL(request.url);\n    if (url.pathname.startsWith(\"/api/hub/\")) {\n      const path = url.pathname.replace(\"/api/hub\", \"\") || \"/\";\n      return env.HUB.fetch(hubRequest(request, path));\n    }\n    if (url.pathname === \"/api/engine/board\" && request.method === \"GET\") return engineBoardResponse(request, env);\n    if (url.pathname === \"/api/engine/signals\" && request.method === \"GET\") return activeSignals(request, env);\n    if (url.pathname.startsWith(\"/api/engine/\")) {\n      const path = url.pathname.replace(\"/api/engine\", \"\") || \"/\";\n      return env.ENGINE.fetch(engineRequest(request, path));\n    }\n    if (url.pathname === \"/api/full-market/settings\") {\n      if (!env.FULL_MARKET) return Response.json({ ok: false, error: \"FULL_MARKET_SERVICE_NOT_BOUND\" }, { status: 503 });\n      return env.FULL_MARKET.fetch(fullMarketRequest(request, \"/settings\"));\n    }\n    if (url.pathname.startsWith(\"/api/full-market/\")) {\n      const path = url.pathname.replace(\"/api/full-market\", \"\") || \"/\";\n      return fullMarketCompat(request, env, path);\n    }\n    if (request.method === \"GET\" && url.pathname === \"/full-market-bookmaker-343.js\") return __b46BetssonBookmakerAsset(request, env);\n    if (request.method === \"GET\" && (url.pathname === \"/expanded-match-343.js\" || url.pathname === \"/dashboard-v2-stage3.js\" || url.pathname === \"/index.html\" || url.pathname === \"/live.js\" || url.pathname === \"/full-odds-main-343.js\" || url.pathname === \"/event-flow-343.js\" || url.pathname === \"/event-flow-343.css\" || url.pathname === \"/statistics.html\" || url.pathname === \"/statistics.js\" || url.pathname === \"/statistics-page-343.css\" || url.pathname === \"/signal.html\" || url.pathname === \"/signal.js\" || url.pathname === \"/signal-compact-343.css\" || url.pathname === \"/signal-bettor-343.css\" || url.pathname === \"/5usd-control.html\" || url.pathname === \"/detection-test.html\")) return noStoreUiAsset(request, env);\n    if (url.pathname === \"/\") {\n      const assetUrl = new URL(request.url);\n      assetUrl.pathname = \"/index.html\";\n      return noStoreUiAsset(new Request(assetUrl, request), env);\n    }\n    return env.ASSETS.fetch(request);\n  },\n  async scheduled(_controller, env, ctx) {\n    ctx.waitUntil(prewarmLiveFullMarket(env));\n  }\n};\n\n//# sourceMappingURL=index.js.map\n\nconst __B46_MULTI_SIGNAL_STAGE3_JS__=\"[OMITTED_LITERAL_42283_BYTES]\";\nconst __B46_BASE_WORKER__=index_default;\n\n/* __B46_FOOTER_LEGAL_20260929__ */\nconst __B46_LEGAL_PAGES__={\"/information.html\":\"[OMITTED_LITERAL_5776_BYTES]\",\"/about.html\":\"[OMITTED_LITERAL_4751_BYTES]\",\"/user-guide.html\":\"[OMITTED_LITERAL_5015_BYTES]\",\"/methodology.html\":\"[OMITTED_LITERAL_5322_BYTES]\",\"/privacy.html\":\"[OMITTED_LITERAL_5111_BYTES]\",\"/terms.html\":\"[OMITTED_LITERAL_5076_BYTES]\",\"/disclaimer.html\":\"[OMITTED_LITERAL_4381_BYTES]\",\"/affiliate-disclosure.html\":\"[OMITTED_LITERAL_4517_BYTES]\",\"/responsible-gambling.html\":\"[OMITTED_LITERAL_4222_BYTES]\",\"/cookies.html\":\"[OMITTED_LITERAL_4359_BYTES]\",\"/contact.html\":\"[OMITTED_LITERAL_3989_BYTES]\"};\nconst __B46_LEGAL_CSS_20261001__=\"[OMITTED_LITERAL_89962_BYTES]\";\nconst __B46_FOOTER_HTML__=\"[OMITTED_LITERAL_1868_BYTES]\";\nconst __B46_FOOTER_CSS__=\"[OMITTED_LITERAL_3221_BYTES]\";\n/* B46_SCOREBAR_APPROVED_BG_20261002 — approved presentation assets only */\nconst __B46_SCOREBAR_BG_B64__={\"/scorebar-win-20260929a.webp\":\"[OMITTED_LITERAL_23680_BYTES]\",\"/scorebar-loss-20260929a.webp\":\"[OMITTED_LITERAL_21204_BYTES]\",\"/scorebar-draw-20260929a.webp\":\"[OMITTED_LITERAL_21568_BYTES]\",\"/scorebar-pending-20260929a.webp\":\"[OMITTED_LITERAL_24548_BYTES]\",\"/scorebar-win-20261002c.webp\":\"[OMITTED_LITERAL_23680_BYTES]\"};\nfunction __b46ScorebarBgResponse(path){const b64=__B46_SCOREBAR_BG_B64__[path];if(!b64)return null;const raw=atob(b64),bytes=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);return new Response(bytes,{status:200,headers:{'content-type':'image/webp','cache-control':'no-store, no-cache, must-revalidate, max-age=0','pragma':'no-cache','expires':'0','x-ball46-scorebar-bg-revision':'scorebar-bg-approved-20261002'}});}\n/* B46_SCOREBAR_TUNE_CSS_20261002 */\nconst __B46_SCOREBAR_TUNE_CSS__=\"[OMITTED_LITERAL_87656_BYTES]\";\nconst __B46_MATCH_CLOCK_JS__=\"[OMITTED_LITERAL_9331_BYTES]\";\nconst __B46_THEME_TOOLBAR_JS__=\"[OMITTED_LITERAL_7994_BYTES]\";\nfunction __b46Text(body,type){return new Response(body,{status:200,headers:{'content-type':type,'cache-control':'no-store'}});}\nasync function __b46InjectFooter(response){if(!response||response.status!==200)return response;const ct=String(response.headers.get('content-type')||'').toLowerCase();if(!ct.includes('text/html'))return response;let html=await response.text();if(html.includes('b46-site-footer-v1'))return new Response(html,{status:response.status,statusText:response.statusText,headers:response.headers});if(!html.includes('ball46-footer.css'))html=html.replace(/<\\/head>/i,'<link rel=\\\"stylesheet\\\" href=\\\"/ball46-footer.css?v=20260929\\\"></head>');if(/<\\/body>/i.test(html))html=html.replace(/<\\/body>/i,__B46_FOOTER_HTML__+'</body>');else html+=__B46_FOOTER_HTML__;const h=new Headers(response.headers);h.set('cache-control','no-store, no-cache, must-revalidate, max-age=0');h.set('x-ball46-footer-revision','footer-legal-20260929');h.delete('content-length');return new Response(html,{status:response.status,statusText:response.statusText,headers:h});}\n\n/* B46_STATISTICS_ODDS_FORMAT_20261003: transform only the existing public odds formatter response so current Statistics V2 joins the same DEC/FRA/AM preference. */\nasync function __b46OddsFormatForStatistics(request,env){\n  const response=await env.ASSETS.fetch(request);\n  if(!response.ok)return response;\n  const source=await response.text();\n  const before=\"root.querySelectorAll?.('td.odds').forEach(convertDirectElement);\";\n  const after=\"root.querySelectorAll?.('td.odds, [data-sp-table-body] > tr > td:nth-child(6), .odds-readonly').forEach(convertDirectElement);\";\n  const hits=source.split(before).length-1;\n  const body=hits===1?source.replace(before,after):source;\n  const headers=new Headers(response.headers);\n  headers.set('cache-control','no-store, no-cache, must-revalidate, max-age=0');\n  headers.set('pragma','no-cache');\n  headers.set('expires','0');\n  headers.set('x-ball46-odds-statistics','B46_STATISTICS_ODDS_FORMAT_20261003');\n  headers.set('x-ball46-odds-statistics-source',hits===1?'patched':'source-mismatch');\n  headers.delete('content-length');\n  return new Response(body,{status:response.status,statusText:response.statusText,headers});\n}\nexport default {...__B46_BASE_WORKER__,async fetch(request,env,ctx){const url=new URL(request.url);if(request.method==='GET'){const __b46ScorebarBg=__b46ScorebarBgResponse(url.pathname);if(__b46ScorebarBg)return __b46ScorebarBg;if(url.pathname==='/odds-format-343.js')return __b46OddsFormatForStatistics(request,env);if(url.pathname==='/dashboard-v2-tune.css')return __b46Text(__B46_SCOREBAR_TUNE_CSS__,'text/css; charset=utf-8');if(url.pathname==='/dashboard-v2-tune.js')return __b46Text(__B46_THEME_TOOLBAR_JS__,'application/javascript; charset=utf-8');if(url.pathname==='/color-semantics-343.js')return __b46Text(__B46_MATCH_CLOCK_JS__,'application/javascript; charset=utf-8');if(url.pathname==='/legal.css')return __b46Text(__B46_LEGAL_CSS_20261001__,'text/css; charset=utf-8');if(url.pathname==='/ball46-footer.css')return __b46Text(__B46_FOOTER_CSS__,'text/css; charset=utf-8');if(Object.prototype.hasOwnProperty.call(__B46_LEGAL_PAGES__,url.pathname))return __b46Text(__B46_LEGAL_PAGES__[url.pathname],'text/html; charset=utf-8');}const response=await __B46_BASE_WORKER__.fetch(request,env,ctx);if(request.method==='GET'&&(url.pathname==='/'||url.pathname==='/index.html'||url.pathname==='/signal.html'||url.pathname==='/statistics.html'))return __b46InjectFooter(response);return response;}};\n"
+}
