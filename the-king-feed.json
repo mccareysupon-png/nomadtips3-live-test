@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-10-14T02:17:55Z",
+  "updated_at": "2026-10-14T07:46:21Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -24,8 +24,8 @@
       "edge": 50.8,
       "ev": 0.8599,
       "required_confidence": 0.6,
-      "result": "PENDING",
-      "ft": null,
+      "result": "WIN",
+      "ft": "5-0",
       "locked_at": "2026-10-14T02:11:08Z",
       "source_url": "https://www.goaloo.com/football/mongolia-premier-league-deren-fc-vs-erchim/h2h-3089018",
       "summary_url": "https://www.goaloo.com/football/mongolia-premier-league-deren-fc-vs-erchim/summary-3089018",
@@ -85,7 +85,12 @@
         "away_recent": 10,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": 1.0,
+      "profit": 86.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-14T07:46:21Z"
     },
     {
       "id": "c653c0ac649558dc-AH-HOME-3p5",
@@ -4274,8 +4279,8 @@
       "edge": 20.7,
       "ev": 0.2703,
       "required_confidence": 0.6,
-      "result": "PENDING",
-      "ft": null,
+      "result": "WIN",
+      "ft": "2-2",
       "locked_at": "2026-10-14T02:11:09Z",
       "source_url": "https://www.goaloo.com/football/india-bangalore-super-division-hal-fc-vs-rebels-fc/h2h-3102829",
       "summary_url": "https://www.goaloo.com/football/india-bangalore-super-division-hal-fc-vs-rebels-fc/summary-3102829",
@@ -4335,7 +4340,12 @@
         "away_recent": 8,
         "h2h_n": 0,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": 1.0,
+      "profit": 70.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-14T07:46:21Z"
     },
     {
       "id": "c37c8eb9fef378e6-OU-UNDER-3p5",
@@ -240953,6 +240963,186 @@
       "settlement_source": "goaloo-bf_us-direct-index",
       "goaloo_terminal_state": -1,
       "settled_at": "2026-10-14T01:58:47Z"
+    },
+    {
+      "id": "7793866ac868da97-AH-AWAY-5p5",
+      "goaloo_id": "3089018",
+      "date": "2026-10-14",
+      "kickoff": "2026-10-14 05:00:00",
+      "league": "Mongolia Premier League",
+      "home": "Deren FC",
+      "away": "Erchim",
+      "market": "AH",
+      "selection": "AWAY",
+      "line": 5.5,
+      "pick": "Erchim +5.5",
+      "side": "away",
+      "odds": 1.86,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.9999,
+      "model_probability": 0.9999,
+      "market_fair_probability": 0.4918,
+      "market_edge": 0.5081,
+      "edge": 50.8,
+      "ev": 0.8599,
+      "required_confidence": 0.6,
+      "result": "WIN",
+      "ft": "5-0",
+      "locked_at": "2026-10-14T02:11:08Z",
+      "source_url": "https://www.goaloo.com/football/mongolia-premier-league-deren-fc-vs-erchim/h2h-3089018",
+      "summary_url": "https://www.goaloo.com/football/mongolia-premier-league-deren-fc-vs-erchim/summary-3089018",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 1.083,
+        "lambda_away": 3.001,
+        "home_win": 0.0673,
+        "draw": 0.1464,
+        "away_win": 0.7863,
+        "h2h_adjustment": 0.0075,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": -0.4325,
+          "gd_edge": -0.922,
+          "clean_sheet_edge": -0.1659,
+          "failed_to_score_edge": -0.361,
+          "bounded_adjustment": -0.042,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": 1.0,
+      "profit": 86.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-14T07:46:21Z"
+    },
+    {
+      "id": "a6ca0ae5e60c417e-AH-AWAY-0p75",
+      "goaloo_id": "3102829",
+      "date": "2026-10-14",
+      "kickoff": "2026-10-14 05:30:00",
+      "league": "India Bangalore Super Division",
+      "home": "Hal FC",
+      "away": "Rebels FC",
+      "market": "AH",
+      "selection": "AWAY",
+      "line": 0.75,
+      "pick": "Rebels FC +0.75",
+      "side": "away",
+      "odds": 1.7,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.7404,
+      "model_probability": 0.7404,
+      "market_fair_probability": 0.533,
+      "market_edge": 0.2075,
+      "edge": 20.7,
+      "ev": 0.2703,
+      "required_confidence": 0.6,
+      "result": "WIN",
+      "ft": "2-2",
+      "locked_at": "2026-10-14T02:11:09Z",
+      "source_url": "https://www.goaloo.com/football/india-bangalore-super-division-hal-fc-vs-rebels-fc/h2h-3102829",
+      "summary_url": "https://www.goaloo.com/football/india-bangalore-super-division-hal-fc-vs-rebels-fc/summary-3102829",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 1.558,
+        "lambda_away": 1.985,
+        "home_win": 0.2801,
+        "draw": 0.2311,
+        "away_win": 0.4888,
+        "h2h_adjustment": 0.0,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": -0.0293,
+          "gd_edge": -0.4431,
+          "clean_sheet_edge": -0.3854,
+          "failed_to_score_edge": -0.2146,
+          "bounded_adjustment": -0.0181,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 8,
+        "away_recent": 8,
+        "h2h_n": 0,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": 1.0,
+      "profit": 70.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-14T07:46:21Z"
     }
   ],
   "note": "Automated Full-Time Winner First feed. Supplemental markets remain unpublished.",
