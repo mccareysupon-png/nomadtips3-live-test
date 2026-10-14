@@ -2317,3 +2317,23 @@ body.page-member:before{
 .page-member .signal-row .signal-pick .signal-market-period:not(.period-warning){
   color:#A6BCD0;font-weight:800;letter-spacing:.045em;
 }
+
+
+/* Member1 RESULT: all status cards scaled to 60% of previous dimensions. */
+.page-member .signal-row .result-cell .result-minute-card,
+.page-member .signal-row .result-cell .badge{
+  min-width:0;
+  width:max-content;
+  min-height:18px;
+  padding:2px 5px;
+  border-radius:2.4px;
+  font-size:7.8px;
+  line-height:1;
+  font-weight:900;
+  white-space:nowrap;
+  overflow:visible;
+  text-overflow:clip;
+  box-sizing:border-box;
+}
+.page-member .signal-row .result-cell .badge.compact-result,
+.page-member .signal-row .result-cell .badge.no-data{font-size:6px}
