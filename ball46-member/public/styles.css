@@ -2446,3 +2446,40 @@ body.page-member:before{
   stroke:#43E6A2;stroke-width:.5;stroke-linecap:round;
   opacity:.4;fill:none;vector-effect:non-scaling-stroke;pointer-events:none
 }
+
+/* Pricing home preview mirrors the CURRENT Member1 information hierarchy, never live data. */
+.page-pricing .preview-market-tabs{display:flex;gap:7px;overflow-x:auto;padding:2px 0 8px;scrollbar-width:thin}
+.page-pricing .preview-market{flex:0 0 104px;min-width:0;padding:9px 10px;border-radius:10px;border:1px solid rgba(133,180,203,.19);background:rgba(10,30,46,.72);font-family:Manrope,Inter,system-ui,sans-serif}
+.page-pricing .preview-market.active{border-color:rgba(67,230,162,.58);background:rgba(24,73,70,.42)}
+.page-pricing .preview-market>span{display:flex;align-items:center;justify-content:space-between;gap:4px}
+.page-pricing .preview-market strong{font-size:10px;color:#eef8fe;font-weight:900}
+.page-pricing .preview-market em{font-style:normal;font-size:9px;color:#77e8bf;font-weight:850}
+.page-pricing .preview-market small{display:block;margin-top:7px;font-size:9px;color:#91acbe}
+.page-pricing .preview-market small b{color:#8eebc0;font-size:10px}
+.page-pricing .preview-favorites{display:flex;flex-wrap:wrap;align-items:center;gap:7px 11px;margin:11px 0}
+.page-pricing .preview-favorites>span{border:1px solid rgba(255,174,81,.32);border-radius:9px;background:rgba(255,174,81,.07);padding:7px 10px;font-size:10px;font-weight:900;color:#ffd49a}
+.page-pricing .preview-favorites small{font-size:10px;color:#91aaba}
+.page-pricing .preview-summary{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px;margin:12px 0 15px}
+.page-pricing .preview-stat{min-width:0;padding:10px 8px;border:1px solid rgba(152,184,209,.16);border-radius:9px;background:rgba(12,32,49,.76)}
+.page-pricing .preview-stat small{display:block;color:#95adbf;font-size:8px;letter-spacing:.025em;font-weight:850;white-space:nowrap}
+.page-pricing .preview-stat strong{display:block;margin-top:5px;color:#edf7fc;font-size:15px;font-weight:900}
+.page-pricing .preview-stat.success strong{color:#6de7b2}
+.page-pricing .preview-stat.danger strong,.page-pricing .preview-loss{color:#ff919d}
+.page-pricing .preview-stat.caution strong{color:#ffd28a}
+.page-pricing .preview-stat.live strong{color:#81cefa}
+.page-pricing .preview-board{overflow-x:auto;border-radius:10px;border:1px solid rgba(153,187,212,.17);background:rgba(8,22,36,.68)}
+.page-pricing .preview-table{width:100%;min-width:1000px;border-collapse:collapse;text-align:left;white-space:nowrap;font-size:10px}
+.page-pricing .preview-table th{padding:11px 9px;color:#99b5c8;font-size:8px;letter-spacing:.045em;background:#102437;border-bottom:1px solid rgba(150,190,215,.19)}
+.page-pricing .preview-table td{padding:10px 9px;border-bottom:1px solid rgba(150,190,215,.10);color:#e0eef6}
+.page-pricing .preview-table tbody tr:last-child td{border-bottom:0}
+.page-pricing .preview-table td strong{font-size:10px;color:#edf6fa}
+.page-pricing .preview-table td small{display:block;margin-top:4px;font-size:9px;color:#97aebc}
+.page-pricing .preview-table .preview-home{color:#56e6ad}
+.page-pricing .preview-table .preview-away,.page-pricing .preview-table .preview-odds{color:#ffaa69}
+.page-pricing .preview-result{display:inline-flex;padding:4px 6px;border-radius:5px;font-size:8px;font-weight:900}
+.page-pricing .preview-result.pending{color:#ffd18a;background:rgba(240,181,80,.1)}
+.page-pricing .preview-result.win{color:#67e7a9;background:rgba(67,230,162,.1)}
+.page-pricing .preview-result.loss{color:#ff9ba2;background:rgba(250,115,127,.1)}
+.page-pricing .preview-disclaimer{margin:11px 0 0!important;max-width:none!important;font-size:10px!important;line-height:1.5!important;color:#94acbd!important;text-align:left}
+@media(max-width:750px){.page-pricing .preview-summary{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:410px){.page-pricing .preview-summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
