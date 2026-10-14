@@ -531,7 +531,7 @@ function makeSignalRow(row){
   const liveLabel=halfTime?'HT':minuteText||'LIVE';
   const rawResult=String(row.result??'').trim().toUpperCase();
   const missingResult=row.resultMissing===true||!rawResult;
-  const displayNoData=missingResult||rawResult==='PENDING';
+  const displayNoData=missingResult;
   const resultLabel=displayNoData?'NO DATA':rawResult.replaceAll('_',' ');
   const resultStyle=displayNoData?'no-data':resultClass(rawResult);
   const compactResult=/^HALF_(?:WIN|LOSS)$/.test(rawResult);
