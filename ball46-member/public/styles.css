@@ -2388,3 +2388,39 @@ body.page-member:before{
 .page-member .featured-h-signal .entry-odds{color:#FFA451;font-weight:850}
 .page-member .featured-h-signal .entry-context{color:#9EB5C4}
 .page-member .featured-h-signal .entry-separator{color:#587589}
+
+/* Member1 Corner Signal Conditions: compact content-fit rows, retain all original text/sizes. */
+.page-member .corner-conditions-grid{
+  display:flex;flex-wrap:wrap;align-items:stretch;gap:6px;
+}
+.page-member .corner-conditions-item{
+  flex:0 1 auto;width:max-content;max-width:100%;min-width:max-content;
+  padding:7px 9px;background:rgba(13,36,52,.68);
+  border-color:rgba(130,173,196,.15);
+}
+.page-member .corner-conditions-item small{margin-bottom:3px;color:#9CB7C7}
+.page-member .corner-conditions-item b{
+  width:max-content;max-width:100%;white-space:normal;
+  overflow-wrap:anywhere;word-break:normal;
+}
+.page-member .corner-conditions-item.corner-tone-condition,
+.page-member .corner-conditions-item.corner-tone-origin,
+.page-member .corner-conditions-item.corner-tone-route{
+  min-width:0;max-width:100%;
+}
+.page-member .corner-tone-rule b,.page-member .corner-tone-provider b{color:#90C8F1}
+.page-member .corner-tone-category b,.page-member .corner-tone-stage b{color:#64E6C6}
+.page-member .corner-tone-period b,.page-member .corner-tone-origin b{color:#C7B3F1}
+.page-member .corner-tone-condition b,.page-member .corner-tone-route b{color:#ADCADC}
+.page-member .corner-tone-pick b{color:#55E6BC}
+.page-member .corner-tone-line b,.page-member .corner-tone-combined b{color:#E7CA88}
+.page-member .corner-tone-odds b,.page-member .corner-tone-gap b{color:#FFB07B}
+.page-member .corner-tone-bookmaker b,.page-member .corner-tone-corners b,
+.page-member .corner-tone-minute b{color:#F0F6FC}
+@media(max-width:700px){
+ .page-member .corner-conditions-grid{display:flex;flex-wrap:wrap;gap:6px}
+ .page-member .corner-conditions-item{flex:0 1 auto;width:max-content;max-width:100%;min-width:0}
+}
+@media(max-width:420px){
+ .page-member .corner-conditions-grid{display:flex;flex-wrap:wrap}
+}
