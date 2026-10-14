@@ -766,6 +766,41 @@ function eventFlowChart(detail,fixtureId){
     svgNode('circle',{cx:xFor(last.minute),cy:yFor(last.away),r:'2.4',class:'expand-flow-end away'})
   );
 
+  // Collision-aware placement: keep the real signal point fixed; never move a label forward.
+  const occupiedSignalPlates=[];
+  const signalPlateGap=4;
+  function signalPlateOverlaps(candidate){
+    return occupiedSignalPlates.some(p=>
+      candidate.x<p.x+p.w+signalPlateGap &&
+      candidate.x+candidate.w+signalPlateGap>p.x &&
+      candidate.y<p.y+p.h+signalPlateGap &&
+      candidate.y+candidate.h+signalPlateGap>p.y
+    );
+  }
+  function placeSignalPlate(initialX,initialY,tagW,tagH,safeLeft,safeRight,minY,maxY){
+    const xCandidates=[initialX];
+    // A shift 'back' is always left of the initially proposed label; never ahead.
+    for(let left=initialX-12;left>=safeLeft;left-=12)xCandidates.push(Math.max(safeLeft,left));
+    if(xCandidates[xCandidates.length-1]!==safeLeft)xCandidates.push(safeLeft);
+    const stride=tagH+signalPlateGap;
+    const yCandidates=[initialY];
+    for(let step=1;step<=Math.ceil((maxY-minY)/stride)+1;step++){
+      const up=initialY-step*stride,down=initialY+step*stride;
+      if(up>=minY)yCandidates.push(up);
+      if(down<=maxY)yCandidates.push(down);
+    }
+    // Priority: vertical up/down first, then move backward and retry vertically.
+    for(const left of xCandidates){
+      for(const top of yCandidates){
+        const candidate={x:left,y:top,w:tagW,h:tagH};
+        if(left+tagW<=safeRight && !signalPlateOverlaps(candidate)){
+          occupiedSignalPlates.push(candidate);
+          return candidate;
+        }
+      }
+    }
+    return null;
+  }
   for(const s of signals){
     const minute=Number(s.signalMinute);
     if(!Number.isFinite(minute)||minute<0||minute>current+.75) continue;
@@ -791,8 +826,12 @@ function eventFlowChart(detail,fixtureId){
     const tagW=clamp(42+entryText.length*4.7,150,236),tagH=36;
     const safeLeft=pad.left+6,safeRight=w-pad.right-6;
     // Anchor to the left for late signals; never permit the plate to touch either edge.
-    const tagX=x+12+tagW<=safeRight?x+12:clamp(x-tagW-12,safeLeft,safeRight-tagW);
-    const tagY=clamp(y-44,pad.top+3,h-pad.bottom-tagH-3);
+    const initialX=x+12+tagW<=safeRight?x+12:clamp(x-tagW-12,safeLeft,safeRight-tagW);
+    const initialY=clamp(y-44,pad.top+3,h-pad.bottom-tagH-3);
+    const placed=placeSignalPlate(initialX,initialY,tagW,tagH,safeLeft,safeRight,pad.top+3,h-pad.bottom-tagH-3);
+    // Crowded fallback: retain the signal dot and its full SVG title; do not overlap labels.
+    if(!placed)continue;
+    const {x:tagX,y:tagY}=placed;
     const tag=svgNode('g',{class:'member-flow-signal-tag'});
     const plate=svgNode('rect',{x:tagX,y:tagY,width:tagW,height:tagH,rx:'5',ry:'5',class:'member-flow-signal-plate'});
     const accent=svgNode('rect',{x:tagX+6,y:tagY+7,width:'2.4',height:tagH-14,rx:'1.2',class:'member-flow-signal-accent'});
