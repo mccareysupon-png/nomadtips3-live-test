@@ -1,0 +1,43 @@
+name: DIAG Ball46 Deployment History 20261014
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/diag-ball46-deployment-history-20261014.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/ball46-performance-chart-market-style-20261012
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --ignore-scripts acorn@8
+      - name: Read recent deployment history
+        working-directory: deploy-assets/performance-chart-market-style-20261012
+        run: |
+          node --input-type=module <<'NODE'
+          import {api,script,getVersion} from '../daily-performance-20261005/production.mjs';
+          const r=await api('/scripts/'+script+'/deployments?per_page=20');
+          for(const d of (r.deployments||[])){
+            const v=d.versions?.[0];
+            console.log('DEPLOY '+JSON.stringify({
+              id:d.id,
+              created_on:d.created_on,
+              source:d.source,
+              strategy:d.strategy,
+              version_id:v?.version_id,
+              percentage:v?.percentage
+            }));
+          }
+          NODE
