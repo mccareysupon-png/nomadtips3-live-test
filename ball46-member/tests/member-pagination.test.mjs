@@ -44,7 +44,7 @@ test('Compact controls support large page counts',()=>{
   assert.equal(pageNumbers(10,20).at(-1),20);
 });
 test('Market changes reset to page one; stats and signal UX remain',()=>{
-  assert.match(js,/state\.market=market;\s*state\.page=1;/);
+  assert.match(js,/state\.market=market;\s*state\.favoritesView=false;[^\n]*\n\s*state\.page=1;/);
   assert.ok(js.includes('renderSummary();renderCornerAudit();renderRows();renderPagination();'));
   assert.ok(js.includes('function refreshFreshSignalClock('));
   assert.ok(js.includes('function ensureDetail('));
