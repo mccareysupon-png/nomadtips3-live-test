@@ -8,7 +8,27 @@ import {schedules,stageCurrentRail,verifyRailBase,wrangler} from '../daily-perfo
 const TARGET='color-semantics-343.css', INDEX='index.html';
 const MARK='B46_FEATURED_STATS_GREEN_ORANGE_V1_20261014';
 const CACHE='343-featured-stats-green-orange-v1-20261014';
-const CSS="/* B46_FEATURED_STATS_GREEN_ORANGE_V1_20261014 */\\nbody .workspace.singlepage .featured-card .feature-stats .stat-row>b:first-child{color:#137a50!important;font-family:\\"IBM Plex Sans\\",\\"IBM Plex Sans Thai\\",Inter,Arial,sans-serif!important;font-weight:800!important}\\nbody .workspace.singlepage .featured-card .feature-stats .stat-row>b:last-child{color:#ff9f43!important;font-family:\\"IBM Plex Sans\\",\\"IBM Plex Sans Thai\\",Inter,Arial,sans-serif!important;font-weight:800!important}\\nbody .workspace.singlepage .featured-card .feature-stats .stat-row>span{color:var(--muted)!important;font-family:\\"IBM Plex Sans\\",\\"IBM Plex Sans Thai\\",Inter,Arial,sans-serif!important;font-weight:700!important;letter-spacing:.025em!important}\\nbody .workspace.singlepage .featured-card .feature-stats .stat-track.home i{background:#31b878!important}\\nbody .workspace.singlepage .featured-card .feature-stats .stat-track.away i{background:#ff9f43!important}";
+const CSS=`
+/* B46_FEATURED_STATS_GREEN_ORANGE_V1_20261014 */
+body .workspace.singlepage .featured-card .feature-stats .stat-row>b:first-child{
+  color:#137a50!important;
+  font-family:"IBM Plex Sans","IBM Plex Sans Thai",Inter,Arial,sans-serif!important;
+  font-weight:800!important;
+}
+body .workspace.singlepage .featured-card .feature-stats .stat-row>b:last-child{
+  color:#ff9f43!important;
+  font-family:"IBM Plex Sans","IBM Plex Sans Thai",Inter,Arial,sans-serif!important;
+  font-weight:800!important;
+}
+body .workspace.singlepage .featured-card .feature-stats .stat-row>span{
+  color:var(--muted)!important;
+  font-family:"IBM Plex Sans","IBM Plex Sans Thai",Inter,Arial,sans-serif!important;
+  font-weight:700!important;
+  letter-spacing:.025em!important;
+}
+body .workspace.singlepage .featured-card .feature-stats .stat-track.home i{background:#31b878!important}
+body .workspace.singlepage .featured-card .feature-stats .stat-track.away i{background:#ff9f43!important}
+`;
 const delay=ms=>new Promise(r=>setTimeout(r,ms));
 mkdirSync('audit',{recursive:true});
 const report={run:process.env.GITHUB_RUN_ID,scope:'Featured Signal typography only; orange away-team name. No layout/data/engine changes.'};
