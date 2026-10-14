@@ -2424,3 +2424,17 @@ body.page-member:before{
 @media(max-width:420px){
  .page-member .corner-conditions-grid{display:flex;flex-wrap:wrap}
 }
+
+/* Pricing homepage only: promotional video, constrained to Hero. */
+.page-pricing .hero .member-promo-media{
+  width:100%;max-width:720px;aspect-ratio:16 / 9;
+  margin:26px auto 0;border-radius:16px;overflow:hidden;
+  background:#081722;border:1px solid rgba(139,194,222,.20);
+}
+.page-pricing .hero .member-promo-video{
+  display:block;width:100%;height:100%;aspect-ratio:16 / 9;
+  object-fit:cover;border:0;border-radius:inherit;
+}
+@media(max-width:680px){
+  .page-pricing .hero .member-promo-media{max-width:100%;margin-top:22px}
+}
