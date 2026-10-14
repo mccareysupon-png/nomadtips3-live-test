@@ -2302,3 +2302,18 @@ body.page-member:before{
 
 /* Member1 RESULT: fit long half-settlement labels in the existing card. */
 .page-member .signal-row .result-cell .badge.compact-result{font-size:10px;letter-spacing:-.015em}
+
+
+/* Member1 signal prediction hierarchy: vivid pick, restrained market metadata. */
+.page-member .signal-row .corner-market-cell>strong{
+  color:#DCEAF3;font-weight:850;letter-spacing:.015em;
+}
+.page-member .signal-row .corner-market-cell .corner-market-type.total_ou{
+  color:#95BBD2;
+}
+.page-member .signal-row .signal-pick .signal-choice{
+  color:#43E6A2;font-weight:900;letter-spacing:.005em;
+}
+.page-member .signal-row .signal-pick .signal-market-period:not(.period-warning){
+  color:#A6BCD0;font-weight:800;letter-spacing:.045em;
+}
