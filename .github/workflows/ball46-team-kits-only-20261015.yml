@@ -7,6 +7,8 @@ on:
       - 'deploy-assets/team-kits-only-20261015/v2-run.mjs'
       - 'deploy-assets/team-kits-only-20261015/assets.mjs'
       - 'deploy-assets/team-kits-only-20261015/assets.test.mjs'
+      - 'deploy-assets/team-kits-only-20261015/cutover.mjs'
+      - 'deploy-assets/team-kits-only-20261015/cutover.test.mjs'
       - 'deploy-assets/team-kits-only-20261015/patch.mjs'
       - 'deploy-assets/team-kits-only-20261015/team-kits-343.js'
       - 'deploy-assets/team-kits-only-20261015/provenance.json'
@@ -36,6 +38,7 @@ jobs:
         run: |
           node --check v2-run.mjs
           node assets.test.mjs
+          node cutover.test.mjs
           node v2-run.mjs
       - name: Preserve sanitized audit on the isolated branch
         if: always()
