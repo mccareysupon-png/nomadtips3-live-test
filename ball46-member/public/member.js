@@ -547,7 +547,12 @@ function makeSignalRow(row){
   const resultLabel=displayNoData?'NO DATA':rawResult.replaceAll('_',' ');
   const resultStyle=displayNoData?'no-data':resultClass(rawResult);
   const compactResult=/^HALF_(?:WIN|LOSS)$/.test(rawResult);
-  result.append(node('span',liveResult?'result-minute-card':'badge '+resultStyle+(compactResult?' compact-result':''),liveResult?liveLabel:resultLabel));
+  const clockBadge=node('span',liveResult?'result-minute-card':'badge '+resultStyle+(compactResult?' compact-result':''),liveResult?liveLabel:resultLabel);
+  // Blink only the trailing prime on an actual LIVE minute; keep the numeric minute steady.
+  if(liveResult&&minuteText&&liveLabel.endsWith('′')){
+    clockBadge.replaceChildren(node('span','live-minute-number',liveLabel.slice(0,-1)),node('span','live-minute-prime','′'));
+  }
+  result.append(clockBadge);
   tr.append(result);
 
   const p=Number(row.pnl||0);
