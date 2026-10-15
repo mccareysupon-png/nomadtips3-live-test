@@ -25,7 +25,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 6e1add4478ca110f071a217c3420fd0023b79b31
+          ref: e4c9ff28bafa9fccdd963dcc942c3b709416d7ee
           fetch-depth: 1
 
       - uses: actions/setup-node@v4
@@ -56,6 +56,21 @@ jobs:
       - name: Dry run isolated Member worker
         working-directory: ball46-member
         run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.jsonc
+
+      - name: Record current Member production deployment for rollback
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS --retry 3 --max-time 30 -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+            "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/scripts/ball46-member-production/deployments" \
+            -o /tmp/member-previous-deployments.json
+          jq -e '.success==true' /tmp/member-previous-deployments.json >/dev/null
+          jq -er '
+            (.result | if type=="array" then . else .deployments // [] end)[0]
+            | "ROLLBACK_PRODUCTION_DEPLOYMENT_ID=\(.id)\nROLLBACK_PRODUCTION_VERSION_ID=\(.versions[0].version_id)"'
+            /tmp/member-previous-deployments.json | tee /tmp/member-rollback-version.txt
+          grep -Eq "^ROLLBACK_PRODUCTION_VERSION_ID=[0-9a-f-]{20,}$" /tmp/member-rollback-version.txt
+          cat /tmp/member-rollback-version.txt >> "$GITHUB_STEP_SUMMARY"
 
       - name: Deploy isolated Member worker
         working-directory: ball46-member
