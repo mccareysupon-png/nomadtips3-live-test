@@ -1044,7 +1044,7 @@ function featuredHorizontal(detail,selected){
   const homeName=f?.home||selected.home;
   const awayName=f?.away||selected.away;
   const home=node('div','team home');
-  home.append(crestSlot(homeName,'home'),node('b','',homeName),node('span','team-side-label','HOME'));
+  home.append(crestSlot(homeName,'home'),node('b','',homeName));
   const center=node('div','score-center');
   const featuredScore=node('strong','featured-team-score');
   const shownScoreText=scoreText(shownScore);
@@ -1055,7 +1055,7 @@ function featuredHorizontal(detail,selected){
   else featuredScore.textContent=shownScoreText;
   center.append(featuredScore);
   const away=node('div','team away');
-  away.append(crestSlot(awayName,'away'),node('b','',awayName),node('span','team-side-label','AWAY'));
+  away.append(node('b','',awayName),crestSlot(awayName,'away'));
   score.append(home,center,away);
 
   const signal=node('div','featured-h-signal'+(selected.market==='CORNERS'?' has-corner-conditions':''));
