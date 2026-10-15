@@ -65,6 +65,7 @@ jobs:
             "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/scripts/ball46-member-production/deployments" \
             -o /tmp/member-previous-deployments.json
           jq -e '.success==true' /tmp/member-previous-deployments.json >/dev/null
+          jq -r '"BACKUP_API_RESULT_TYPE=\(.result|type) BACKUP_DEPLOYMENTS_COUNT=\((.result.deployments // .result // [])|length) BACKUP_FIRST_KEYS=\((.result.deployments // .result // [])[0] | keys_unsorted | join(","))"' /tmp/member-previous-deployments.json
           jq -er '
             (.result | if type=="array" then . else .deployments // [] end)[0]
             | "ROLLBACK_PRODUCTION_DEPLOYMENT_ID=\(.id)\nROLLBACK_PRODUCTION_VERSION_ID=\(.versions[0].version_id)"'
