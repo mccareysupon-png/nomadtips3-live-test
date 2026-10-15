@@ -1196,6 +1196,11 @@ function renderInsight(host,fixtureId){
     ||state.payload.signals.find(s=>s.fixtureId===fixtureId);
   if(!selected) return;
 
+  // Preserve legacy chip navigation for compatibility; history cards are the visible controls.
+  const alternatives=signalChips(fixtureId);
+  alternatives.classList.add('featured-history-legacy-nav');
+  if(alternatives.children.length) host.append(alternatives);
+
   const detail=state.detailCache.get(fixtureId);
 
   if(!detail){
