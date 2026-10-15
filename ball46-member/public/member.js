@@ -1042,7 +1042,7 @@ function featuredHorizontal(detail,selected){
     :/^\\d+\\s*[-–:]\\s*\\d+$/.test(shownScoreText)?shownScoreText.split(/\\s*[-–:]\\s*/):null;
   if(parts)featuredScore.append(node('span','home',parts[0]),node('span','separator','-'),node('span','away',parts[1]));
   else featuredScore.textContent=shownScoreText;
-  center.append(featuredScore,node('small','',shownMinute));
+  center.append(featuredScore);
   const away=node('div','team away');away.append(node('span','','AWAY'),node('b','',f?.away||selected.away));
   score.append(home,center,away);
 
