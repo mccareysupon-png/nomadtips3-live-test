@@ -3166,3 +3166,16 @@ body.page-member:before{
  .page-member .featured-history-compact-row{gap:5px;overflow-x:auto;overscroll-behavior-x:contain}
  .page-member .featured-history-compact-row:has(.featured-history-technical[open]){overflow-x:visible}
 }
+
+/* Member Signal History V8 — borderless premium Emerald cards. */
+.page-member .featured-entry-history-list .featured-h-signal.featured-history-entry{
+  border:0!important;
+  border-radius:8px;
+  background:#103a2b;
+  box-shadow:none;
+}
+.page-member .featured-entry-history-list .featured-h-signal.featured-history-entry.is-selected{
+  border:0!important;
+  background:#174936;
+  box-shadow:none!important;
+}
