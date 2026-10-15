@@ -3024,3 +3024,14 @@ body.page-member:before{
 
 /* Keep the legacy signal-chip navigation available to the renderer but hide its duplicate UI. */
 .page-member .featured-history-legacy-nav{display:none!important}
+
+/* Match Facts: remove two phantom rows retained from the former 2x3 grid. */
+.page-member .premium-side-facts-panel{
+  grid-template-rows:auto;
+  grid-auto-rows:auto;
+  height:auto;
+  min-height:0;
+  align-content:start;
+  align-self:start;
+}
+.page-member .premium-side-fact{height:auto}
