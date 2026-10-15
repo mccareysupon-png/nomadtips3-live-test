@@ -2877,3 +2877,47 @@ body.page-member:before{
   .page-member .featured-h-score .team b{font-size:11px;line-height:1.35}
   .page-member .featured-h-score .score-center strong{font-size:26px}
 }
+
+/* Compact international match header, Member1 only; preserve signal/entry payload. */
+.page-member .featured-horizontal{gap:7px;padding:11px 14px}
+.page-member .featured-h-meta{
+  display:grid;grid-template-columns:auto minmax(0,1fr) auto;
+  gap:8px 12px;align-items:center;justify-items:start;
+  text-align:left;min-width:0;
+}
+.page-member .featured-h-meta .eyebrow{width:auto;white-space:nowrap;font-size:10px}
+.page-member .featured-h-meta>strong{
+  margin:0;min-width:0;font-size:11px;line-height:1.3;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;overflow-wrap:normal;
+}
+.page-member .featured-h-meta>.badge{justify-self:end;align-self:center;white-space:nowrap}
+.page-member .featured-h-score{
+  width:min(100%,900px);
+  grid-template-columns:minmax(0,1fr) minmax(64px,110px) minmax(0,1fr);
+  gap:clamp(8px,2vw,22px);
+  padding:5px 0;
+}
+.page-member .featured-h-score .team{display:flex;flex-direction:row;gap:10px;min-height:46px}
+.page-member .featured-h-score .team.home{justify-content:flex-end;text-align:right}
+.page-member .featured-h-score .team.away{justify-content:flex-start;text-align:left}
+.page-member .featured-h-score .team b{
+  display:block;margin:0;font-size:clamp(11px,1.18vw,14px);line-height:1.35;
+  white-space:normal;overflow-wrap:anywhere;max-width:210px;
+}
+.page-member .featured-h-score .featured-crest-slot{width:40px;height:46px}
+.page-member .featured-h-score .featured-crest-initials{font-size:12px}
+.page-member .featured-h-score .score-center strong{font-size:clamp(25px,2.6vw,34px)}
+.page-member .featured-h-signal{padding:7px 10px;min-height:30px}
+@media(max-width:680px){
+  .page-member .featured-horizontal{gap:8px;padding:10px}
+  .page-member .featured-h-meta{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 8px}
+  .page-member .featured-h-meta .eyebrow{grid-column:1;grid-row:1;font-size:9px}
+  .page-member .featured-h-meta>strong{grid-column:1;grid-row:2;font-size:10px}
+  .page-member .featured-h-meta>.badge{grid-column:2;grid-row:1 / span 2}
+  .page-member .featured-h-score{grid-template-columns:minmax(0,1fr) 56px minmax(0,1fr);gap:5px;padding:2px 0}
+  .page-member .featured-h-score .team{gap:5px;min-height:38px}
+  .page-member .featured-h-score .team b{font-size:10px;line-height:1.25}
+  .page-member .featured-h-score .featured-crest-slot{width:32px;height:37px}
+  .page-member .featured-h-score .featured-crest-initials{font-size:10px}
+  .page-member .featured-h-score .score-center strong{font-size:23px}
+}
