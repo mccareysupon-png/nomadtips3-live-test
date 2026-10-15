@@ -2609,3 +2609,25 @@ body.page-member:before{
 }
 /* Member1 TODAY · N SIGNALS pill: remove only the exterior stroke. */
 .page-member .member-head .live-pill{border:0}
+
+/* Final row-only treatment: ONE continuous horizontal gradient per competition.
+   Individual columns remain transparent, expanded matches keep their solid surface. */
+.page-member #signalBoard .signal-table tbody tr.signal-row:not(.expanded){
+  background-color:#0b2030;
+  background-image:linear-gradient(90deg,#142839 0%,#091927 100%);
+}
+.page-member #signalBoard .signal-table tbody tr.signal-row:not(.expanded):nth-of-type(even){
+  background-color:#091927;
+  background-image:linear-gradient(90deg,#102233 0%,#071522 100%);
+}
+.page-member #signalBoard .signal-table tbody tr.signal-row:not(.expanded):hover{
+  background-image:linear-gradient(90deg,#182e40 0%,#0b2030 100%);
+}
+.page-member #signalBoard .signal-table tbody tr.signal-row:not(.expanded) > td,
+.page-member #signalBoard .signal-table tbody tr.signal-row:not(.expanded):hover > td{
+  background:transparent!important;
+  background-image:none!important;
+  border-bottom:0;
+  border-top:0;
+  box-shadow:none;
+}
