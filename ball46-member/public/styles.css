@@ -2631,3 +2631,23 @@ body.page-member:before{
   border-top:0;
   box-shadow:none;
 }
+
+/* Match-indexed alternating rows: independent of the inserted expanded detail <tr>.
+   A single horizontal gradient belongs to the match row, never individual table cells. */
+.page-member #signalBoard .signal-table tbody tr.signal-row.signal-shade-odd:not(.expanded){
+  background:#142839 linear-gradient(90deg,#192f40 0%,#102333 100%);
+}
+.page-member #signalBoard .signal-table tbody tr.signal-row.signal-shade-even:not(.expanded){
+  background:#102333 linear-gradient(90deg,#152a3b 0%,#091b2a 100%);
+}
+.page-member #signalBoard .signal-table tbody tr.signal-row:not(.expanded):hover{
+  background:#192f40 linear-gradient(90deg,#1d3547 0%,#102537 100%);
+}
+.page-member #signalBoard .signal-table tbody tr.signal-row:not(.expanded) > td,
+.page-member #signalBoard .signal-table tbody tr.signal-row:not(.expanded):hover > td{
+  background:transparent!important;background-image:none!important;
+  border-top:0;border-bottom:0;box-shadow:none;
+}
+.page-member #signalBoard .signal-table tbody tr.signal-row.expanded{
+  background:#152e40;
+}
