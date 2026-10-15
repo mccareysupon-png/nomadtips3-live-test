@@ -1151,6 +1151,12 @@ function featuredHorizontal(detail,selected){
   const historyList=node('div','featured-entry-history-list');
   for(const item of allSignals){
     const entry=node('div','featured-h-signal featured-history-entry'+(item.market==='CORNERS'?' has-corner-conditions':'')+(item.id===selected.id?' is-selected':''));
+    entry.setAttribute('role','button');
+    entry.tabIndex=0;
+    entry.setAttribute('aria-label','View signal at '+(item.signalMinute??'unknown')+' minutes');
+    const selectHistory=()=>{if(state.expandedSignalId===item.id)return;state.expandedSignalId=item.id;renderRows();};
+    entry.addEventListener('click',selectHistory);
+    entry.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();selectHistory();}});
     const top=node('div','featured-history-entry-top');
     top.append(node('strong','','ENTRY '+(item.signalMinute??'—')+'′'),node('span','',cornerRuleName(item)+' · '+signalPeriod(item)));
     if(item.id===selected.id)top.append(node('em','featured-history-selected','SELECTED'));
@@ -1191,8 +1197,6 @@ function renderInsight(host,fixtureId){
   if(!selected) return;
 
   const detail=state.detailCache.get(fixtureId);
-  const alternatives=signalChips(fixtureId);
-  if(alternatives.children.length) host.append(alternatives);
 
   if(!detail){
     const featured=featuredHorizontal(null,selected);
