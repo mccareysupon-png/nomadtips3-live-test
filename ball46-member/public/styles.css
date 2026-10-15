@@ -2710,3 +2710,47 @@ body.page-member:before{
   border-bottom-right-radius:14px;
   box-shadow:0 10px 22px rgba(0,0,0,.18);
 }
+
+/* Member expanded group polish: continuous charcoal surface, blue 1x frame.
+   Remove legacy left accent, cell seams and column highlights only while expanded. */
+.page-member #signalBoard .signal-table tbody tr.signal-row.expanded,
+.page-member #signalBoard .signal-table tbody tr.signal-row.expanded:hover{
+  background:#111922!important;
+  filter:none;
+}
+.page-member #signalBoard .signal-table tbody tr.signal-row.expanded > td,
+.page-member #signalBoard .signal-table tbody tr.signal-row.expanded:hover > td{
+  background:#111922!important;
+  background-image:none!important;
+  box-shadow:none!important;
+  border-top:1px solid rgba(57,168,255,.85)!important;
+  border-bottom:0!important;
+  transform:none!important;
+}
+.page-member #signalBoard .signal-table tbody tr.signal-row.expanded > td:first-child{
+  border-left:1px solid rgba(57,168,255,.85)!important;
+  border-top-left-radius:14px;
+}
+.page-member #signalBoard .signal-table tbody tr.signal-row.expanded > td:last-child{
+  border-right:1px solid rgba(57,168,255,.85)!important;
+  border-top-right-radius:14px;
+}
+.page-member #signalBoard .signal-table tbody tr.signal-row.expanded > td:first-child::before{
+  display:none!important;
+  content:none!important;
+}
+.page-member #signalBoard .signal-table tbody tr.signal-row.expanded + tr.signal-detail-row > td{
+  background:#0d151e!important;
+  background-image:none!important;
+  border-top:0!important;
+  border-left:1px solid rgba(57,168,255,.85)!important;
+  border-right:1px solid rgba(57,168,255,.85)!important;
+  border-bottom:1px solid rgba(57,168,255,.85)!important;
+  border-bottom-left-radius:14px;
+  border-bottom-right-radius:14px;
+  box-shadow:0 0 6px rgba(57,168,255,.35),0 0 12px rgba(57,168,255,.12)!important;
+}
+.page-member #signalBoard .signal-table tbody tr.signal-row.expanded + tr.signal-detail-row .match-insight{
+  background:#0d151e;
+  background-image:none;
+}
