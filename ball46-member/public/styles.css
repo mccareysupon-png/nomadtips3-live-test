@@ -2950,3 +2950,74 @@ body.page-member:before{
   .page-member .featured-h-score .team.home{justify-content:flex-start;text-align:left}
   .page-member .featured-h-score .team.away{justify-content:flex-end;text-align:right}
 }
+
+/* Member expanded match V4: full-width event flow, six matching facts below,
+   balanced stats + complete emerald signal history above. */
+.page-member .featured-match-stack{display:flex;flex-direction:column;gap:10px;min-width:0}
+.page-member .featured-analysis-layout{
+ display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:stretch;gap:12px;min-width:0;
+}
+.page-member .featured-analysis-layout>.featured-h-stats.premium-match-stats{
+ grid-area:auto;min-width:0;margin:0;align-self:stretch;
+}
+.page-member .featured-entry-history{
+ display:flex;flex-direction:column;min-width:0;min-height:0;gap:10px;
+ padding:12px;border:1px solid rgba(51,151,107,.20);border-radius:12px;
+ background:linear-gradient(165deg,rgba(7,30,25,.93),rgba(5,22,21,.95));
+}
+.page-member .featured-entry-history-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.page-member .featured-entry-history-head strong{font-size:11px;letter-spacing:.09em;color:#74ebaf}
+.page-member .featured-entry-history-head>span{font-size:10px;color:#96c7b1;font-weight:750}
+.page-member .featured-entry-history-list{display:flex;flex-direction:column;gap:9px;min-width:0}
+.page-member .featured-entry-history-list .featured-h-signal.featured-history-entry{
+ display:flex;flex-direction:column;align-items:stretch;gap:9px;min-width:0;
+ padding:12px;border:1px solid rgba(73,175,121,.26);
+ border-radius:10px;background:linear-gradient(135deg,rgba(17,63,47,.76),rgba(8,43,35,.79));
+}
+.page-member .featured-entry-history-list .featured-history-entry.is-selected{
+ border-color:rgba(98,229,163,.65);
+ background:linear-gradient(135deg,rgba(18,77,52,.85),rgba(9,49,40,.89));
+}
+.page-member .featured-history-entry-top,.page-member .featured-history-choice{
+ display:flex;justify-content:space-between;align-items:center;gap:8px;min-width:0;flex-wrap:wrap;
+}
+.page-member .featured-history-entry-top strong{
+ color:#83f3b7;font-size:12px;letter-spacing:.02em;
+}
+.page-member .featured-history-entry-top>span{
+ color:#bedbcc!important;font-size:10px!important;letter-spacing:0!important;
+}
+.page-member .featured-history-selected{
+ font-size:9px;color:#89f5bb;font-weight:800;font-style:normal;letter-spacing:.07em;
+}
+.page-member .featured-history-choice b{font-size:16px;font-weight:850;color:#8ef6bf;line-height:1.3}
+.page-member .featured-history-choice strong{font-size:14px;color:#f0fff7;font-variant-numeric:tabular-nums}
+.page-member .featured-history-details{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;
+ padding-top:8px;border-top:1px solid rgba(134,214,167,.14);
+}
+.page-member .featured-history-detail{display:flex;flex-direction:column;gap:4px;min-width:0}
+.page-member .featured-history-detail small{font-size:9px;color:#92bfae;letter-spacing:.07em}
+.page-member .featured-history-detail b{font-size:12px;color:#e5f7ec;overflow-wrap:anywhere}
+.page-member .featured-match-stack + .member-flow{margin-top:10px}
+.page-member .premium-side-facts-panel{
+ display:grid;grid-template-columns:repeat(6,minmax(0,1fr));align-items:stretch;
+ gap:8px;margin-top:10px;padding:0;background:transparent;border:0;
+}
+.page-member .premium-side-fact{
+ min-width:0;min-height:82px;padding:10px;justify-content:center;
+}
+.page-member .premium-side-fact-label{font-size:9px;overflow-wrap:anywhere}
+.page-member .premium-side-fact-value{
+ font-size:clamp(11px,1.05vw,15px);margin-top:6px;line-height:1.3;overflow-wrap:anywhere;
+}
+.page-member .premium-fact-sub{font-size:9px;line-height:1.2}
+@media(max-width:1050px){
+ .page-member .premium-side-facts-panel{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media(max-width:760px){
+ .page-member .featured-analysis-layout{grid-template-columns:minmax(0,1fr);gap:10px}
+ .page-member .featured-entry-history{padding:10px}
+ .page-member .premium-side-facts-panel{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+ .page-member .premium-side-fact{min-height:74px;padding:9px}
+}
