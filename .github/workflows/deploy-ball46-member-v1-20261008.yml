@@ -68,8 +68,7 @@ jobs:
           jq -r '"BACKUP_API_RESULT_TYPE=\(.result|type) BACKUP_DEPLOYMENTS_COUNT=\((.result.deployments // .result // [])|length) BACKUP_FIRST_KEYS=\((.result.deployments // .result // [])[0] | keys_unsorted | join(","))"' /tmp/member-previous-deployments.json
           jq -er '
             (.result | if type=="array" then . else .deployments // [] end)[0]
-            | "ROLLBACK_PRODUCTION_DEPLOYMENT_ID=\(.id)\nROLLBACK_PRODUCTION_VERSION_ID=\(.versions[0].version_id)"'
-            /tmp/member-previous-deployments.json | tee /tmp/member-rollback-version.txt
+            | "ROLLBACK_PRODUCTION_DEPLOYMENT_ID=\(.id)\nROLLBACK_PRODUCTION_VERSION_ID=\(.versions[0].version_id)"' /tmp/member-previous-deployments.json | tee /tmp/member-rollback-version.txt
           grep -Eq "^ROLLBACK_PRODUCTION_VERSION_ID=[0-9a-f-]{20,}$" /tmp/member-rollback-version.txt
           cat /tmp/member-rollback-version.txt >> "$GITHUB_STEP_SUMMARY"
 
