@@ -1151,33 +1151,38 @@ function featuredHorizontal(detail,selected){
   const historyList=node('div','featured-entry-history-list');
   for(const item of allSignals){
     const entry=node('div','featured-h-signal featured-history-entry'+(item.market==='CORNERS'?' has-corner-conditions':'')+(item.id===selected.id?' is-selected':''));
-    entry.setAttribute('role','button');
-    entry.tabIndex=0;
-    entry.setAttribute('aria-label','View signal at '+(item.signalMinute??'unknown')+' minutes');
+    const row=node('div','featured-history-compact-row');
+    const minute=node('strong','featured-history-minute',(item.signalMinute??'—')+'′');
+    const market=node('div','featured-history-main');
+    market.append(node('small','',cornerRuleName(item)+' · '+signalPeriod(item)));
+    market.append(node('b','',String(item.selection||'—')+(fmtLine(item)?' '+fmtLine(item):'')));
+    const price=node('div','featured-history-price');
+    price.append(node('strong','',fmtOdds(item.odds)),node('small','',item.bookmaker||'—'));
+    const scoreAtEntry=node('div','featured-history-score');
+    scoreAtEntry.append(node('small','','ENTRY SCORE'),node('b','',scoreText(item.entryScore)));
+    row.append(minute,market,price,scoreAtEntry);
+    if(item.id===selected.id)row.append(node('em','featured-history-selected','SELECTED'));
+    entry.append(row);
+    if(item.market==='CORNERS'){
+      if(item.entryCorners?.home!=null&&item.entryCorners?.away!=null){
+        const corners=node('div','featured-history-corners');
+        const total=pairTotal(item.entryCorners);
+        corners.textContent='CORNERS AT ENTRY '+item.entryCorners.home+'–'+item.entryCorners.away+(total!=null?' · TOTAL '+total:'');
+        entry.append(corners);
+      }
+      const technical=node('details','featured-history-technical');
+      const summary=node('summary','','Technical details');
+      technical.append(summary,cornerRuleCard(item));
+      technical.addEventListener('click',event=>event.stopPropagation());
+      technical.addEventListener('keydown',event=>event.stopPropagation());
+      entry.append(technical);
+    }
+    entry.setAttribute('aria-label','Select signal at '+(item.signalMinute??'unknown')+' minutes');
+    row.setAttribute('role','button');
+    row.tabIndex=0;
     const selectHistory=()=>{if(state.expandedSignalId===item.id)return;state.expandedSignalId=item.id;renderRows();};
-    entry.addEventListener('click',selectHistory);
-    entry.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();selectHistory();}});
-    const top=node('div','featured-history-entry-top');
-    top.append(node('strong','','ENTRY '+(item.signalMinute??'—')+'′'),node('span','',cornerRuleName(item)+' · '+signalPeriod(item)));
-    if(item.id===selected.id)top.append(node('em','featured-history-selected','SELECTED'));
-    entry.append(top);
-    const choice=node('div','featured-history-choice');
-    choice.append(node('b','',String(item.selection||'—')+(fmtLine(item)?' '+fmtLine(item):'')),node('strong','',fmtOdds(item.odds)));
-    entry.append(choice);
-    const details=node('div','featured-history-details');
-    const info=[['BOOKMAKER',item.bookmaker||'—'],['ENTRY SCORE',scoreText(item.entryScore)]];
-    if(item.market==='CORNERS'&&item.entryCorners?.home!=null&&item.entryCorners?.away!=null){
-      info.push(['ENTRY CORNERS',item.entryCorners.home+'–'+item.entryCorners.away]);
-      const total=pairTotal(item.entryCorners);
-      if(total!=null)info.push(['TOTAL CORNERS',String(total)]);
-    }
-    for(const [label,value] of info){
-      const cell=node('div','featured-history-detail');
-      cell.append(node('small','',label),node('b','',String(value??'—')));
-      details.append(cell);
-    }
-    entry.append(details);
-    if(item.market==='CORNERS')entry.append(cornerRuleCard(item));
+    row.addEventListener('click',selectHistory);
+    row.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();selectHistory();}});
     historyList.append(entry);
   }
   history.append(historyList);
