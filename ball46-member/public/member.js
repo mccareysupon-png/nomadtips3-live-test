@@ -1037,7 +1037,7 @@ function featuredHorizontal(detail,selected){
   const crestSlot=(name,side)=>{
     const slot=node('span','featured-crest-slot '+side);
     slot.setAttribute('aria-hidden','true');
-    const initials=String(name||'').trim().split(/\\s+/).filter(Boolean).slice(0,2).map(word=>word[0]).join('').toUpperCase()||'FC';
+    const initials=String(name||'').trim().split(/\s+/).filter(Boolean).slice(0,2).map(word=>word[0]).join('').toUpperCase()||'FC';
     slot.append(node('span','featured-crest-initials',initials));
     return slot;
   };
