@@ -1152,42 +1152,33 @@ function featuredHorizontal(detail,selected){
   for(const item of allSignals){
     const entry=node('div','featured-h-signal featured-history-entry'+(item.market==='CORNERS'?' has-corner-conditions':'')+(item.id===selected.id?' is-selected':''));
     const row=node('div','featured-history-compact-row');
-    const minute=node('strong','featured-history-minute',(item.signalMinute??'—')+'′');
-    const market=node('div','featured-history-main');
-    market.append(node('small','',cornerRuleName(item)+' · '+signalPeriod(item)));
-    market.append(node('b','',String(item.selection||'—')+(fmtLine(item)?' '+fmtLine(item):'')));
-    const price=node('div','featured-history-price');
-    price.append(node('strong','',fmtOdds(item.odds)),node('small','',item.bookmaker||'—'));
-    const scoreAtEntry=node('div','featured-history-score');
-    scoreAtEntry.append(node('small','','ENTRY SCORE'),node('b','',scoreText(item.entryScore)));
-    row.append(minute,market,price,scoreAtEntry);
-    // Only show a settlement state explicitly supplied by the Engine payload.
+    const add=(cls,value)=>row.append(node('span',cls,String(value??'—')));
+    add('featured-history-minute',(item.signalMinute??'—')+'′');
+    add('featured-history-market',cornerRuleName(item)+' · '+signalPeriod(item));
+    add('featured-history-pick',String(item.selection||'—')+(fmtLine(item)?' '+fmtLine(item):''));
+    add('featured-history-odds',fmtOdds(item.odds));
+    add('featured-history-bookmaker',item.bookmaker||'—');
+    add('featured-history-entry-score',scoreText(item.entryScore));
+    if(item.market==='CORNERS'&&item.entryCorners?.home!=null&&item.entryCorners?.away!=null){
+      const total=pairTotal(item.entryCorners);
+      add('featured-history-corner-score',item.entryCorners.home+'–'+item.entryCorners.away+(total!=null?' ('+total+')':''));
+    }
+    // The Engine payload is authoritative; never infer settlement from scores.
     const result=String(item.result??'').trim().toUpperCase();
     const allowed=['WIN','LOSS','PUSH','HALF_WIN','HALF_LOSS','VOID','PENDING','LIVE','UNRESOLVED'];
-    const verified=allowed.includes(result);
-    const resultView=node('div','featured-history-outcome');
-    const label=verified?result.replaceAll('_',' '):'NO DATA';
-    resultView.append(node('strong','featured-history-result '+(verified?resultClass(result):'no-data'),label));
+    const label=allowed.includes(result)?result.replaceAll('_',' '):'NO DATA';
+    add('featured-history-result '+(allowed.includes(result)?resultClass(result):'no-data'),label);
     const settled=['WIN','LOSS','PUSH','HALF_WIN','HALF_LOSS','VOID'].includes(result);
     if(settled&&item.pnl!==null&&item.pnl!==undefined&&item.pnl!==''&&Number.isFinite(Number(item.pnl))){
-      resultView.append(node('small','featured-history-units',fmtPnl(item.pnl)));
+      add('featured-history-units',fmtPnl(item.pnl));
     }
-    row.append(resultView);
-    entry.append(row);
     if(item.market==='CORNERS'){
-      if(item.entryCorners?.home!=null&&item.entryCorners?.away!=null){
-        const corners=node('div','featured-history-corners');
-        const total=pairTotal(item.entryCorners);
-        corners.textContent='CORNERS AT ENTRY '+item.entryCorners.home+'–'+item.entryCorners.away+(total!=null?' · TOTAL '+total:'');
-        entry.append(corners);
-      }
       const technical=node('details','featured-history-technical');
-      const summary=node('summary','','Technical details');
-      technical.append(summary,cornerRuleCard(item));
-      technical.addEventListener('click',event=>event.stopPropagation());
-      technical.addEventListener('keydown',event=>event.stopPropagation());
-      entry.append(technical);
+      technical.append(node('summary','','Details'),cornerRuleCard(item));
+      // Native details is the only interactive element; the Signal card has no click route.
+      row.append(technical);
     }
+    entry.append(row);
     // Read-only history rows: no navigation or signal switching from the card.
     entry.setAttribute('aria-label','Signal at '+(item.signalMinute??'unknown')+' minutes');
     historyList.append(entry);
