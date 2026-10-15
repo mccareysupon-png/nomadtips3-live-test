@@ -2510,3 +2510,48 @@ body.page-member:before{
 .page-member #dailySummary .summary-stat.unresolved,
 .page-member #dailySummary .summary-stat.rate-mid{background:rgba(71,59,37,.40)}
 .page-member #dailySummary .summary-stat.live{background:rgba(29,57,76,.45)}
+
+/* Member1 full-page borderless visual system: decorative card outlines only.
+   Preserve status signals, SVG chart strokes, selected controls and separators. */
+.page-member .summary .summary-stat,
+.page-member #marketTabs .market-tab,
+.page-member .featured-horizontal,
+.page-member .featured-h-facts>div,
+.page-member .member-flow,
+.page-member .corner-conditions-card,
+.page-member .corner-conditions-item{
+  border-color:transparent;
+}
+.page-member .summary .summary-stat{
+  background:rgba(17,37,54,.74);
+  box-shadow:0 7px 22px rgba(0,0,0,.10);
+}
+.page-member #marketTabs .market-tab:not(.active){
+  background:rgba(15,34,51,.68);
+  box-shadow:none;
+}
+.page-member #marketTabs .market-tab.active{
+  border-color:rgba(67,230,162,.40);
+}
+.page-member .featured-horizontal{
+  background:rgba(10,28,43,.78);
+  box-shadow:0 10px 28px rgba(0,0,0,.12);
+}
+.page-member .featured-h-facts>div,
+.page-member .corner-conditions-item{
+  background:rgba(26,50,67,.46);
+}
+.page-member .member-flow{
+  background:rgba(7,24,34,.65);
+  box-shadow:none;
+}
+.page-member .expand-flow-chart{
+  box-shadow:inset 0 17px 46px rgba(67,230,162,.016),0 10px 28px rgba(0,0,0,.12);
+}
+.page-member .corner-conditions-card{
+  background:rgba(9,29,41,.68);
+  box-shadow:0 8px 25px rgba(0,0,0,.12);
+}
+.page-member .corner-conditions-card.is-handicap{background:rgba(16,15,35,.53)}
+/* Retain purposeful highlights for featured SIGNAL and saved/current interactions. */
+.page-member .featured-h-signal{border-color:rgba(67,230,162,.17)}
