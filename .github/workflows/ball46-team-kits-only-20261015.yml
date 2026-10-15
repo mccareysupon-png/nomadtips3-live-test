@@ -1,12 +1,15 @@
-name: BALL46 team shirts exact Active inheritance 20261015
+name: BALL46 team shirts complete Active assets 20261015
 on:
   push:
     branches: [codex/ball46-team-kits-only-20261015]
     paths:
       - '.github/workflows/ball46-team-kits-only-20261015.yml'
-      - 'deploy-assets/team-kits-only-20261015/run.mjs'
+      - 'deploy-assets/team-kits-only-20261015/v2-run.mjs'
+      - 'deploy-assets/team-kits-only-20261015/assets.mjs'
+      - 'deploy-assets/team-kits-only-20261015/assets.test.mjs'
       - 'deploy-assets/team-kits-only-20261015/patch.mjs'
       - 'deploy-assets/team-kits-only-20261015/team-kits-343.js'
+      - 'deploy-assets/team-kits-only-20261015/provenance.json'
       - 'deploy-assets/team-kits-only-20261015/request.json'
 permissions:
   contents: write
@@ -15,7 +18,6 @@ concurrency:
   cancel-in-progress: false
 jobs:
   team-shirts:
-    if: ${{ false }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
@@ -24,17 +26,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: codex/ball46-team-kits-only-20261015
+          ref: ${{ github.sha }}
           fetch-depth: 1
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Guard, preserve exact Active assets, and execute requested phase
+      - name: Validate upload protocol and run the requested phase
         working-directory: deploy-assets/team-kits-only-20261015
         run: |
-          node --check run.mjs
-          node run.mjs
-      - name: Preserve sanitized audit on this branch
+          node --check v2-run.mjs
+          node assets.test.mjs
+          node v2-run.mjs
+      - name: Preserve sanitized audit on the isolated branch
         if: always()
         shell: bash
         run: |
@@ -48,6 +51,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: ball46-team-kits-${{ github.run_id }}
+          name: ball46-team-kits-complete-${{ github.run_id }}
           path: deploy-assets/team-kits-only-20261015/audit
           retention-days: 30
