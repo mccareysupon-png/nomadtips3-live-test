@@ -2580,3 +2580,8 @@ body.page-member:before{
 .page-member .member-flow{
   background:linear-gradient(180deg,rgba(10,30,40,.71),rgba(5,19,29,.82));
 }
+
+/* Login page only: borderless main card and nested notice/action card. */
+.page-login .center-card,
+.page-login .center-card .notice,
+.page-login .center-card .secondary{border:0}
