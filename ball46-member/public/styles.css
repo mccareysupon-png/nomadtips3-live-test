@@ -2771,3 +2771,38 @@ body.page-member:before{
   background:rgba(3,8,14,.40);
   background-image:none;
 }
+
+/* Member NEW SIGNAL: single exterior emerald perimeter, never per-column glow.
+   Keep the existing 60-second JS signal lifecycle and stationary row content. */
+.page-member #signalBoard .signal-table tbody tr.signal-row.is-fresh-signal{
+  outline:1px solid #43e6a2;
+  outline-offset:-1px;
+  animation:member-fresh-perimeter-glow 3s linear infinite!important;
+}
+.page-member #signalBoard .signal-table tbody tr.signal-row.is-fresh-signal > td,
+.page-member #signalBoard .signal-table tbody tr.signal-row.is-fresh-signal:hover > td{
+  animation:none!important;
+  background:transparent!important;
+  background-image:none!important;
+  box-shadow:none!important;
+  border-top-color:transparent!important;
+  border-bottom-color:transparent!important;
+  transform:none!important;
+}
+.page-member #signalBoard .signal-table tbody tr.signal-row.is-fresh-signal > td:first-child::before,
+.page-member #signalBoard .signal-table tbody tr.signal-row.is-fresh-signal > td:last-child::after{
+  animation:none!important;
+  content:none!important;
+  display:none!important;
+}
+@keyframes member-fresh-perimeter-glow{
+  0%,100%{outline-color:rgba(67,230,162,.55);filter:drop-shadow(0 0 2px rgba(67,230,162,.14))}
+  25%{outline-color:rgba(67,230,162,.85);filter:drop-shadow(0 0 5px rgba(67,230,162,.26))}
+  50%{outline-color:#72ffc1;filter:drop-shadow(0 0 7px rgba(67,230,162,.35))}
+  75%{outline-color:rgba(67,230,162,.8);filter:drop-shadow(0 0 4px rgba(67,230,162,.22))}
+}
+@media(prefers-reduced-motion:reduce){
+  .page-member #signalBoard .signal-table tbody tr.signal-row.is-fresh-signal{
+    animation:none!important;outline-color:#43e6a2;filter:none;
+  }
+}
