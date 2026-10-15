@@ -2651,3 +2651,15 @@ body.page-member:before{
 .page-member #signalBoard .signal-table tbody tr.signal-row.expanded{
   background:#152e40;
 }
+
+/* Approved Member Graphite Noir Dark Edition · default match rows only.
+   Keep each row as one continuous horizontal gradient; expanded details unchanged. */
+.page-member #signalBoard .signal-table tbody tr.signal-row.signal-shade-odd:not(.expanded){
+  background:#111922 linear-gradient(90deg,#111922 0%,#0d151e 100%);
+}
+.page-member #signalBoard .signal-table tbody tr.signal-row.signal-shade-even:not(.expanded){
+  background:#080f18 linear-gradient(90deg,#080f18 0%,#060c13 100%);
+}
+.page-member #signalBoard .signal-table tbody tr.signal-row:not(.expanded):hover{
+  background:#15212d linear-gradient(90deg,#15212d 0%,#0d1823 100%);
+}
