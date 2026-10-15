@@ -1139,10 +1139,53 @@ function featuredHorizontal(detail,selected){
     item.append(top,node('b','premium-side-fact-value',value),node('small','premium-fact-sub',sub));
     sideFacts.append(item);
   }
-  const lower=node('div','featured-h-lower');
-  lower.append(statRow,sideFacts);
-  card.append(meta,score,signal,lower);
-  return card;
+  // Show every available signal for this fixture; do not synthesize timeline signals.
+  const allSignals=state.payload.signals.filter(item=>String(item.fixtureId)===String(selected.fixtureId));
+  if(!allSignals.some(item=>item.id===selected.id))allSignals.push(selected);
+  allSignals.sort((a,b)=>(Number(a.signalMinute)||0)-(Number(b.signalMinute)||0)||(Number(a.createdAt)||0)-(Number(b.createdAt)||0));
+  const history=node('section','featured-entry-history');
+  history.setAttribute('aria-label','Signal entry history');
+  const historyHead=node('div','featured-entry-history-head');
+  historyHead.append(node('strong','','SIGNAL ENTRY HISTORY'),node('span','',allSignals.length+' SIGNAL'+(allSignals.length===1?'':'S')));
+  history.append(historyHead);
+  const historyList=node('div','featured-entry-history-list');
+  for(const item of allSignals){
+    if(item.id===selected.id){
+      signal.classList.add('is-selected');
+      historyList.append(signal);
+      continue;
+    }
+    const entry=node('div','featured-h-signal featured-history-entry'+(item.market==='CORNERS'?' has-corner-conditions':''));
+    const top=node('div','featured-history-entry-top');
+    top.append(node('strong','','ENTRY '+(item.signalMinute??'—')+'′'),node('span','',cornerRuleName(item)+' · '+signalPeriod(item)));
+    entry.append(top);
+    const choice=node('div','featured-history-choice');
+    choice.append(node('b','',String(item.selection||'—')+(fmtLine(item)?' '+fmtLine(item):'')),node('strong','',fmtOdds(item.odds)));
+    entry.append(choice);
+    const details=node('div','featured-history-details');
+    const info=[['BOOKMAKER',item.bookmaker||'—'],['ENTRY SCORE',scoreText(item.entryScore)]];
+    if(item.market==='CORNERS'&&item.entryCorners?.home!=null&&item.entryCorners?.away!=null){
+      info.push(['ENTRY CORNERS',item.entryCorners.home+'–'+item.entryCorners.away]);
+      const total=pairTotal(item.entryCorners);
+      if(total!=null)info.push(['TOTAL CORNERS',String(total)]);
+    }
+    for(const [label,value] of info){
+      const cell=node('div','featured-history-detail');
+      cell.append(node('small','',label),node('b','',String(value??'—')));
+      details.append(cell);
+    }
+    entry.append(details);
+    if(item.market==='CORNERS')entry.append(cornerRuleCard(item));
+    historyList.append(entry);
+  }
+  history.append(historyList);
+  const analysis=node('div','featured-analysis-layout');
+  analysis.append(statRow,history);
+  card.append(meta,score);
+  const stack=node('div','featured-match-stack');
+  stack.append(card,analysis);
+  stack.matchFacts=sideFacts;
+  return stack;
 }
 
 function renderInsight(host,fixtureId){
@@ -1156,13 +1199,17 @@ function renderInsight(host,fixtureId){
   if(alternatives.children.length) host.append(alternatives);
 
   if(!detail){
-    host.append(featuredHorizontal(null,selected));
+    const featured=featuredHorizontal(null,selected);
+    host.append(featured);
     host.append(node('div','insight-loading','Loading Featured Match and Event Flow from Ball46 Mirror…'));
+    host.append(featured.matchFacts);
     return;
   }
 
-  host.append(featuredHorizontal(detail,selected));
+  const featured=featuredHorizontal(detail,selected);
+  host.append(featured);
   host.append(eventFlowChart(detail,fixtureId));
+  host.append(featured.matchFacts);
 
   if(!detail.featured){
     host.append(node('div','insight-note','Match is no longer on the current live board. Featured Match falls back to the recorded Signal snapshot; Event Flow remains mirrored from Ball46 history when available.'));
