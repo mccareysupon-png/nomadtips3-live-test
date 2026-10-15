@@ -2754,3 +2754,10 @@ body.page-member:before{
   background:#0d151e;
   background-image:none;
 }
+
+/* Member market + FAVORITES outer container: 55% transparent surface.
+   Affect only the shared container background, not icons, labels, data or buttons. */
+.page-member .member-layout > section.card.card-pad:has(#marketTabs){
+  background:rgba(17,25,34,.45);
+  background-image:none;
+}
