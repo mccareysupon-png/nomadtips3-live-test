@@ -2682,3 +2682,31 @@ body.page-member:before{
 .page-member #signalBoard .signal-detail-row .match-insight{
   background:#0d151e;
 }
+
+/* BALL46 MEMBER — Unified Expanded Match Frame · Graphite Noir.
+   Scope: only expanded match + immediately following detail row. */
+.page-member #signalBoard .signal-table{
+  border-collapse:separate;
+  border-spacing:0;
+}
+.page-member #signalBoard .signal-table tbody tr.signal-row.expanded > td{
+  border-top:1px solid rgba(140,170,190,.28)!important;
+  border-bottom:0!important;
+}
+.page-member #signalBoard .signal-table tbody tr.signal-row.expanded > td:first-child{
+  border-left:1px solid rgba(140,170,190,.28)!important;
+  border-top-left-radius:14px;
+}
+.page-member #signalBoard .signal-table tbody tr.signal-row.expanded > td:last-child{
+  border-right:1px solid rgba(140,170,190,.28)!important;
+  border-top-right-radius:14px;
+}
+.page-member #signalBoard .signal-table tbody tr.signal-row.expanded + tr.signal-detail-row > td{
+  border-top:0!important;
+  border-left:1px solid rgba(140,170,190,.28)!important;
+  border-right:1px solid rgba(140,170,190,.28)!important;
+  border-bottom:1px solid rgba(140,170,190,.28)!important;
+  border-bottom-left-radius:14px;
+  border-bottom-right-radius:14px;
+  box-shadow:0 10px 22px rgba(0,0,0,.18);
+}
