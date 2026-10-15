@@ -2555,3 +2555,28 @@ body.page-member:before{
 .page-member .corner-conditions-card.is-handicap{background:rgba(16,15,35,.53)}
 /* Retain purposeful highlights for featured SIGNAL and saved/current interactions. */
 .page-member .featured-h-signal{border-color:rgba(67,230,162,.17)}
+
+/* Soft recessed depth without hard outlines: scoped to Member1 data surfaces. */
+.page-member .summary .summary-stat{
+  background:linear-gradient(165deg,rgba(29,53,69,.80) 0%,rgba(12,30,44,.84) 100%);
+  box-shadow:inset 0 1px 0 rgba(231,249,255,.025),inset 0 -10px 24px rgba(0,7,17,.09);
+}
+.page-member .featured-horizontal{
+  background:linear-gradient(170deg,rgba(17,39,56,.84),rgba(6,23,36,.83));
+  box-shadow:inset 0 1px 0 rgba(224,244,255,.028),0 10px 28px rgba(0,0,0,.10);
+}
+.page-member .featured-h-facts>div,
+.page-member .corner-conditions-item{
+  background:linear-gradient(160deg,rgba(30,53,68,.56),rgba(12,30,44,.60));
+  box-shadow:inset 0 -7px 16px rgba(0,9,20,.055);
+}
+.page-member .corner-conditions-card{
+  background:linear-gradient(170deg,rgba(14,35,49,.76),rgba(6,23,34,.82));
+  box-shadow:inset 0 1px 0 rgba(219,246,255,.02),0 8px 25px rgba(0,0,0,.10);
+}
+.page-member .corner-conditions-card.is-handicap{
+  background:linear-gradient(170deg,rgba(22,24,45,.64),rgba(13,16,34,.67));
+}
+.page-member .member-flow{
+  background:linear-gradient(180deg,rgba(10,30,40,.71),rgba(5,19,29,.82));
+}
