@@ -1161,7 +1161,18 @@ function featuredHorizontal(detail,selected){
     const scoreAtEntry=node('div','featured-history-score');
     scoreAtEntry.append(node('small','','ENTRY SCORE'),node('b','',scoreText(item.entryScore)));
     row.append(minute,market,price,scoreAtEntry);
-    if(item.id===selected.id)row.append(node('em','featured-history-selected','SELECTED'));
+    // Only show a settlement state explicitly supplied by the Engine payload.
+    const result=String(item.result??'').trim().toUpperCase();
+    const allowed=['WIN','LOSS','PUSH','HALF_WIN','HALF_LOSS','VOID','PENDING','LIVE','UNRESOLVED'];
+    const verified=allowed.includes(result);
+    const resultView=node('div','featured-history-outcome');
+    const label=verified?result.replaceAll('_',' '):'NO DATA';
+    resultView.append(node('strong','featured-history-result '+(verified?resultClass(result):'no-data'),label));
+    const settled=['WIN','LOSS','PUSH','HALF_WIN','HALF_LOSS','VOID'].includes(result);
+    if(settled&&item.pnl!==null&&item.pnl!==undefined&&item.pnl!==''&&Number.isFinite(Number(item.pnl))){
+      resultView.append(node('small','featured-history-units',fmtPnl(item.pnl)));
+    }
+    row.append(resultView);
     entry.append(row);
     if(item.market==='CORNERS'){
       if(item.entryCorners?.home!=null&&item.entryCorners?.away!=null){
@@ -1177,12 +1188,8 @@ function featuredHorizontal(detail,selected){
       technical.addEventListener('keydown',event=>event.stopPropagation());
       entry.append(technical);
     }
-    entry.setAttribute('aria-label','Select signal at '+(item.signalMinute??'unknown')+' minutes');
-    row.setAttribute('role','button');
-    row.tabIndex=0;
-    const selectHistory=()=>{if(state.expandedSignalId===item.id)return;state.expandedSignalId=item.id;renderRows();};
-    row.addEventListener('click',selectHistory);
-    row.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();selectHistory();}});
+    // Read-only history rows: no navigation or signal switching from the card.
+    entry.setAttribute('aria-label','Signal at '+(item.signalMinute??'unknown')+' minutes');
     historyList.append(entry);
   }
   history.append(historyList);
