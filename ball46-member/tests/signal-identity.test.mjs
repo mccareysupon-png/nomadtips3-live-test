@@ -35,5 +35,5 @@ test('Member deduplication changes display and summary only, not immutable Engin
  assert.match(worker,/duplicateSignalIds,/);
  assert.match(member,/s\.fixtureId===fixtureId && s\.id!==state\.expandedSignalId/);
  assert.match(member,/if\(alternatives\.children\.length\) host\.append\(alternatives\)/);
- assert.match(html,/20261015-dark-alternating-rows/);
+ assert.match(html,/20261015-dark-alternating-strong/);
 });
