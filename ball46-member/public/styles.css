@@ -3021,3 +3021,6 @@ body.page-member:before{
  .page-member .premium-side-facts-panel{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
  .page-member .premium-side-fact{min-height:74px;padding:9px}
 }
+
+/* Keep the legacy signal-chip navigation available to the renderer but hide its duplicate UI. */
+.page-member .featured-history-legacy-nav{display:none!important}
