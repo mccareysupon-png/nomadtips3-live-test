@@ -2663,3 +2663,22 @@ body.page-member:before{
 .page-member #signalBoard .signal-table tbody tr.signal-row:not(.expanded):hover{
   background:#15212d linear-gradient(90deg,#15212d 0%,#0d1823 100%);
 }
+
+/* Graphite Noir Dark Edition · expanded match + insight panels only.
+   Solid surfaces, no gradients; default rows remain unchanged. */
+.page-member #signalBoard .signal-table tbody tr.signal-row.expanded,
+.page-member #signalBoard .signal-table tbody tr.signal-row.expanded:hover{
+  background:#111922;
+}
+.page-member #signalBoard .signal-table tbody tr.signal-row.expanded>td,
+.page-member #signalBoard .signal-table tbody tr.signal-row.expanded:hover>td{
+  background:#111922!important;
+  background-image:none!important;
+}
+.page-member #signalBoard .signal-table tbody tr.signal-detail-row>td{
+  background:#0d151e!important;
+  background-image:none!important;
+}
+.page-member #signalBoard .signal-detail-row .match-insight{
+  background:#0d151e;
+}
