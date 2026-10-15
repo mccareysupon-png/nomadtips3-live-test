@@ -1201,8 +1201,10 @@ function renderRows(){
     : 'No signals available for this market.';
   let detailInserted=false;
 
-  for(const row of rows){
-    rowsEl.append(makeSignalRow(row));
+  for(const [index,row] of rows.entries()){
+    const signalTr=makeSignalRow(row);
+    signalTr.classList.add(index%2===0?'signal-shade-odd':'signal-shade-even');
+    rowsEl.append(signalTr);
     if(!detailInserted && state.expandedSignalId===row.id){
       detailInserted=true;
       const detailTr=document.createElement('tr');
