@@ -3035,3 +3035,42 @@ body.page-member:before{
   align-self:start;
 }
 .page-member .premium-side-fact{height:auto}
+
+/* Member signal history V5: concise rows; statistics never stretch with signal count. */
+.page-member .featured-analysis-layout{align-items:start}
+.page-member .featured-analysis-layout>.featured-h-stats.premium-match-stats{align-self:start}
+.page-member .featured-entry-history{align-self:start}
+.page-member .featured-entry-history-list .featured-h-signal.featured-history-entry{
+  padding:8px 10px;gap:4px;display:flex;flex-direction:column;align-items:stretch;
+}
+.page-member .featured-history-compact-row{
+ display:grid;grid-template-columns:48px minmax(0,1fr) minmax(64px,auto) minmax(58px,auto);
+ gap:8px;align-items:center;min-height:48px;min-width:0;cursor:pointer;
+}
+.page-member .featured-history-minute{color:#79efb2;font-size:13px}
+.page-member .featured-history-main,.page-member .featured-history-price,.page-member .featured-history-score{
+ display:flex;flex-direction:column;gap:4px;min-width:0;
+}
+.page-member .featured-history-main small,.page-member .featured-history-price small,.page-member .featured-history-score small{
+ color:#a5c9b7;font-size:9px;line-height:1.25;
+}
+.page-member .featured-history-main b{color:#81edb1;font-size:14px;overflow-wrap:anywhere}
+.page-member .featured-history-price{text-align:right}
+.page-member .featured-history-price strong{color:#f1fff7;font-size:13px}
+.page-member .featured-history-score{text-align:right}
+.page-member .featured-history-score b{color:#f1fff7;font-size:12px}
+.page-member .featured-history-selected{grid-column:1/-1;justify-self:end}
+.page-member .featured-history-corners{color:#bbdfca;font-size:10px;padding-top:3px}
+.page-member .featured-history-technical{width:100%;color:#bcebd0;font-size:11px;border-top:1px solid rgba(91,180,137,.18);padding-top:5px}
+.page-member .featured-history-technical summary{cursor:pointer;list-style:revert;font-weight:750}
+.page-member .featured-history-technical:not([open]) .corner-conditions-card{display:none}
+.page-member .featured-history-technical[open] .corner-conditions-card{margin-top:8px}
+@media(max-width:760px){
+ .page-member .featured-history-compact-row{grid-template-columns:40px minmax(0,1fr) 62px 56px;gap:5px}
+ .page-member .featured-history-main b{font-size:12px}
+ .page-member .featured-history-price strong{font-size:12px}
+}
+@media(max-width:390px){
+ .page-member .featured-history-compact-row{grid-template-columns:38px minmax(0,1fr) 58px}
+ .page-member .featured-history-score{grid-column:2/-1;flex-direction:row;justify-content:flex-end}
+}
