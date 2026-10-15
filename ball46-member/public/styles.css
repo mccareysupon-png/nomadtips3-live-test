@@ -3179,3 +3179,17 @@ body.page-member:before{
   background:#174936;
   box-shadow:none!important;
 }
+
+/* Default match card: subtle prime pulse on verified LIVE minute only. */
+.page-member #signalBoard .result-minute-card .live-minute-prime{
+  display:inline-block;
+  color:#81f2b5;
+  animation:member-live-prime-pulse 1.5s ease-in-out infinite;
+}
+@keyframes member-live-prime-pulse{
+  0%,100%{opacity:1}
+  50%{opacity:.18}
+}
+@media(prefers-reduced-motion:reduce){
+  .page-member #signalBoard .result-minute-card .live-minute-prime{animation:none}
+}
