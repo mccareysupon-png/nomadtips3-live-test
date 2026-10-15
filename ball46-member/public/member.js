@@ -1150,14 +1150,10 @@ function featuredHorizontal(detail,selected){
   history.append(historyHead);
   const historyList=node('div','featured-entry-history-list');
   for(const item of allSignals){
-    if(item.id===selected.id){
-      signal.classList.add('is-selected');
-      historyList.append(signal);
-      continue;
-    }
-    const entry=node('div','featured-h-signal featured-history-entry'+(item.market==='CORNERS'?' has-corner-conditions':''));
+    const entry=node('div','featured-h-signal featured-history-entry'+(item.market==='CORNERS'?' has-corner-conditions':'')+(item.id===selected.id?' is-selected':''));
     const top=node('div','featured-history-entry-top');
     top.append(node('strong','','ENTRY '+(item.signalMinute??'—')+'′'),node('span','',cornerRuleName(item)+' · '+signalPeriod(item)));
+    if(item.id===selected.id)top.append(node('em','featured-history-selected','SELECTED'));
     entry.append(top);
     const choice=node('div','featured-history-choice');
     choice.append(node('b','',String(item.selection||'—')+(fmtLine(item)?' '+fmtLine(item):'')),node('strong','',fmtOdds(item.odds)));
