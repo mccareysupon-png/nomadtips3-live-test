@@ -3074,3 +3074,30 @@ body.page-member:before{
  .page-member .featured-history-compact-row{grid-template-columns:38px minmax(0,1fr) 58px}
  .page-member .featured-history-score{grid-column:2/-1;flex-direction:row;justify-content:flex-end}
 }
+
+/* Member outcome: show Engine decision and settled Units; history cards never navigate. */
+.page-member .featured-history-compact-row{
+ grid-template-columns:42px minmax(0,1fr) minmax(62px,auto) minmax(56px,auto) minmax(68px,auto);
+ cursor:default;
+}
+.page-member .featured-history-outcome{
+ display:flex;flex-direction:column;align-items:flex-end;justify-content:center;
+ gap:3px;min-width:0;text-align:right;
+}
+.page-member .featured-history-result{font-size:10px;line-height:1.3;white-space:nowrap}
+.page-member .featured-history-result.win{color:#71edaa}
+.page-member .featured-history-result.loss{color:#ff8f9b}
+.page-member .featured-history-result.push,.page-member .featured-history-result.void{color:#b7c0c9}
+.page-member .featured-history-result.pending,.page-member .featured-history-result.unresolved{color:#f0c579}
+.page-member .featured-history-result.live{color:#84d0ff}
+.page-member .featured-history-result.no-data{color:#94a6b6}
+.page-member .featured-history-units{color:#c9e8d6;font-size:10px;white-space:nowrap}
+@media(max-width:760px){
+ .page-member .featured-history-compact-row{grid-template-columns:34px minmax(0,1fr) 55px 45px 59px;gap:4px}
+ .page-member .featured-history-result{font-size:9px}
+}
+@media(max-width:480px){
+ .page-member .featured-history-compact-row{grid-template-columns:36px minmax(0,1fr) 62px 65px}
+ .page-member .featured-history-score{grid-column:2/3;grid-row:2;flex-direction:row;justify-content:flex-start;gap:5px}
+ .page-member .featured-history-outcome{grid-column:4;grid-row:1/3}
+}
