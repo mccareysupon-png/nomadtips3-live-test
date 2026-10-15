@@ -2761,3 +2761,13 @@ body.page-member:before{
   background:rgba(17,25,34,.45);
   background-image:none;
 }
+
+/* Member EVENT FLOW: 60% transparent background surfaces (40% opacity).
+   Do not apply opacity to the container: preserve SVG chart, event icons and text. */
+.page-member .member-flow{
+  background:rgba(7,24,34,.40);
+}
+.page-member .expand-flow-chart{
+  background:rgba(3,8,14,.40);
+  background-image:none;
+}
