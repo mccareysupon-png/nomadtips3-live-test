@@ -2586,26 +2586,26 @@ body.page-member:before{
 .page-login .center-card .notice,
 .page-login .center-card .secondary{border:0}
 
-/* Member1 Signal Board: one continuous horizontal gradient PER match row.
-   No per-cell gradient bands; expanded rows keep their existing solid fill. */
+/* Member1 Signal Board: premium midnight gradient across the WHOLE default match row.
+   No vertical per-column fills or horizontal separators. Keep expanded row solid. */
 .page-member #signalBoard .signal-table tbody tr.signal-row:not(.expanded):nth-child(odd){
-  background:linear-gradient(90deg,#192F40 0%,#102333 100%);
+  background:linear-gradient(90deg,#142839 0%,#091927 100%);
 }
 .page-member #signalBoard .signal-table tbody tr.signal-row:not(.expanded):nth-child(even){
-  background:linear-gradient(90deg,#142839 0%,#0B1D2B 100%);
+  background:linear-gradient(90deg,#102233 0%,#071522 100%);
 }
 .page-member #signalBoard .signal-table tbody tr.signal-row:not(.expanded):hover{
-  background:linear-gradient(90deg,#1C3447 0%,#122839 100%);
+  background:linear-gradient(90deg,#182E40 0%,#0B2030 100%);
 }
 .page-member #signalBoard .signal-table tbody tr.signal-row:not(.expanded)>td,
 .page-member #signalBoard .signal-table tbody tr.signal-row:not(.expanded):hover>td{
   background:transparent;
   border-top:0;border-bottom:0;
+  box-shadow:none;
 }
 .page-member #signalBoard .signal-table tbody tr.signal-row.expanded>td,
 .page-member #signalBoard .signal-table tbody tr.signal-row.expanded:hover>td{
   background:#152E40;border-top:0;border-bottom:0;
 }
-
 /* Member1 TODAY · N SIGNALS pill: remove only the exterior stroke. */
 .page-member .member-head .live-pill{border:0}
