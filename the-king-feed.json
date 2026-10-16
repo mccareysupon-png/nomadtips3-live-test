@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-10-15T22:26:56Z",
+  "updated_at": "2026-10-16T01:28:59Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -1949,8 +1949,8 @@
       "edge": 30.3,
       "ev": 0.5236,
       "required_confidence": 0.56,
-      "result": "PENDING",
-      "ft": null,
+      "result": "WIN",
+      "ft": "1-2",
       "locked_at": "2026-10-15T01:56:41Z",
       "source_url": "https://www.goaloo.com/football/brasil-cup-women-flamengo-rj-w-vs-fluminense-rj-w/h2h-3100831",
       "summary_url": "https://www.goaloo.com/football/brasil-cup-women-flamengo-rj-w-vs-fluminense-rj-w/summary-3100831",
@@ -2010,7 +2010,12 @@
         "away_recent": 10,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": 1.0,
+      "profit": 101.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-16T01:28:59Z"
     },
     {
       "id": "2fb167ded523bb40-AH-HOME-0p75",
@@ -4274,8 +4279,8 @@
       "edge": 14.1,
       "ev": 0.1849,
       "required_confidence": 0.6,
-      "result": "PENDING",
-      "ft": null,
+      "result": "HALF_WIN",
+      "ft": "1-1",
       "locked_at": "2026-10-15T01:56:39Z",
       "source_url": "https://www.goaloo.com/football/colombia-primera-b-union-magdalena-vs-independiente-yumbo/h2h-3012220",
       "summary_url": "https://www.goaloo.com/football/colombia-primera-b-union-magdalena-vs-independiente-yumbo/summary-3012220",
@@ -4335,7 +4340,12 @@
         "away_recent": 10,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": 0.5,
+      "profit": 41.5,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-16T01:28:59Z"
     },
     {
       "id": "4fa7df06f3c329f7-AH-HOME-m0p0",
@@ -4894,8 +4904,8 @@
       "edge": 19.3,
       "ev": 0.305,
       "required_confidence": 0.56,
-      "result": "PENDING",
-      "ft": null,
+      "result": "WIN",
+      "ft": "1-0",
       "locked_at": "2026-10-15T01:56:42Z",
       "source_url": "https://www.goaloo.com/football/colombia-primera-b-leones-vs-patriotas-fc/h2h-3012223",
       "summary_url": "https://www.goaloo.com/football/colombia-primera-b-leones-vs-patriotas-fc/summary-3012223",
@@ -4955,7 +4965,12 @@
         "away_recent": 10,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": 1.0,
+      "profit": 111.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-16T01:28:59Z"
     },
     {
       "id": "f1c5d1aa8f64a74b-AH-HOME-m0p25",
@@ -243688,6 +243703,276 @@
       "settlement_source": "goaloo-bf_us-direct-index",
       "goaloo_terminal_state": -1,
       "settled_at": "2026-10-15T22:26:56Z"
+    },
+    {
+      "id": "5ce8a93434fcd8c4-AH-AWAY-0p25",
+      "goaloo_id": "3100831",
+      "date": "2026-10-15",
+      "kickoff": "2026-10-15 22:00:00",
+      "league": "Brasil Cup women",
+      "home": "Flamengo/RJ (W)",
+      "away": "Fluminense RJ (W)",
+      "market": "AH",
+      "selection": "AWAY",
+      "line": 0.25,
+      "pick": "Fluminense RJ (W) +0.25",
+      "side": "away",
+      "odds": 2.01,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.7583,
+      "model_probability": 0.7583,
+      "market_fair_probability": 0.4553,
+      "market_edge": 0.303,
+      "edge": 30.3,
+      "ev": 0.5236,
+      "required_confidence": 0.56,
+      "result": "WIN",
+      "ft": "1-2",
+      "locked_at": "2026-10-15T01:56:41Z",
+      "source_url": "https://www.goaloo.com/football/brasil-cup-women-flamengo-rj-w-vs-fluminense-rj-w/h2h-3100831",
+      "summary_url": "https://www.goaloo.com/football/brasil-cup-women-flamengo-rj-w-vs-fluminense-rj-w/summary-3100831",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 0.875,
+        "lambda_away": 1.736,
+        "home_win": 0.134,
+        "draw": 0.2532,
+        "away_win": 0.6128,
+        "h2h_adjustment": 0.0,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": -0.7154,
+          "gd_edge": -0.6451,
+          "clean_sheet_edge": -0.122,
+          "failed_to_score_edge": -0.522,
+          "bounded_adjustment": -0.0444,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": 1.0,
+      "profit": 101.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-16T01:28:59Z"
+    },
+    {
+      "id": "23f8b6c0dd1fd265-AH-AWAY-0p25",
+      "goaloo_id": "3012220",
+      "date": "2026-10-15",
+      "kickoff": "2026-10-15 22:00:00",
+      "league": "Colombia Primera B",
+      "home": "Union Magdalena",
+      "away": "Independiente Yumbo",
+      "market": "AH",
+      "selection": "AWAY",
+      "line": 0.25,
+      "pick": "Independiente Yumbo +0.25",
+      "side": "away",
+      "odds": 1.83,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.6406,
+      "model_probability": 0.6406,
+      "market_fair_probability": 0.5,
+      "market_edge": 0.1406,
+      "edge": 14.1,
+      "ev": 0.1849,
+      "required_confidence": 0.6,
+      "result": "HALF_WIN",
+      "ft": "1-1",
+      "locked_at": "2026-10-15T01:56:39Z",
+      "source_url": "https://www.goaloo.com/football/colombia-primera-b-union-magdalena-vs-independiente-yumbo/h2h-3012220",
+      "summary_url": "https://www.goaloo.com/football/colombia-primera-b-union-magdalena-vs-independiente-yumbo/summary-3012220",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 1.051,
+        "lambda_away": 1.326,
+        "home_win": 0.2751,
+        "draw": 0.2957,
+        "away_win": 0.4292,
+        "h2h_adjustment": 0.0075,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": -0.1902,
+          "gd_edge": -0.3148,
+          "clean_sheet_edge": -0.3073,
+          "failed_to_score_edge": -0.0585,
+          "bounded_adjustment": -0.0178,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": 0.5,
+      "profit": 41.5,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-16T01:28:59Z"
+    },
+    {
+      "id": "5686259f29fddd0e-AH-HOME-m0p0",
+      "goaloo_id": "3012223",
+      "date": "2026-10-15",
+      "kickoff": "2026-10-15 22:15:00",
+      "league": "Colombia Primera B",
+      "home": "Leones",
+      "away": "Patriotas FC",
+      "market": "AH",
+      "selection": "HOME",
+      "line": -0.0,
+      "pick": "Leones -0",
+      "side": "home",
+      "odds": 2.11,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.6262,
+      "model_probability": 0.6262,
+      "market_fair_probability": 0.4328,
+      "market_edge": 0.1934,
+      "edge": 19.3,
+      "ev": 0.305,
+      "required_confidence": 0.56,
+      "result": "WIN",
+      "ft": "1-0",
+      "locked_at": "2026-10-15T01:56:42Z",
+      "source_url": "https://www.goaloo.com/football/colombia-primera-b-leones-vs-patriotas-fc/h2h-3012223",
+      "summary_url": "https://www.goaloo.com/football/colombia-primera-b-leones-vs-patriotas-fc/summary-3012223",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 1.367,
+        "lambda_away": 0.857,
+        "home_win": 0.4914,
+        "draw": 0.2975,
+        "away_win": 0.2111,
+        "h2h_adjustment": -0.0075,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.2455,
+          "gd_edge": 0.3478,
+          "clean_sheet_edge": 0.4341,
+          "failed_to_score_edge": 0.0341,
+          "bounded_adjustment": 0.0215,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": 1.0,
+      "profit": 111.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-16T01:28:59Z"
     }
   ],
   "note": "Automated Full-Time Winner First feed. Supplemental markets remain unpublished.",
