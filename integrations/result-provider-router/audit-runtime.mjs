@@ -58,7 +58,7 @@ async function main(){
  const boardRows=results.engineBoard.json?.fixtures||results.engineBoard.json?.board?.fixtures||[];
  const ids=new Set(hubRows.map(r=>String(r.fixtureId??r.id)));
  const boardIds=new Set(boardRows.map(r=>String(r.fixtureId??r.id)));
- const pending=signalRows.filter(s=>String(s.status??s.result||"").toUpperCase()==="PENDING");
+ const pending=signalRows.filter(s=>String(s.status??s.result??"").toUpperCase()==="PENDING");
  const uniquePending=[...new Set(pending.map(s=>String(s.fixtureId)))];
  const missingPending=uniquePending.filter(x=>!ids.has(x));
  const boardRecover=missingPending.filter(x=>boardIds.has(x));
