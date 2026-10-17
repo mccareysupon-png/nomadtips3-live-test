@@ -1,0 +1,63 @@
+name: READ ONLY Ball46 conditions and Signal throttle audit 20261017
+on:
+  push:
+    branches: [diag/ball46-conditions-20261017]
+    paths: [.github/workflows/diag-ball46-conditions-20261017.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - name: Read effective market settings, signal times, price backoff and per-fixture stages
+        shell: bash
+        run: |
+          node <<'NODE'
+          const base='https://ball46-production.mccarey-supon.workers.dev';
+          const endpoints={
+            settings:'https://nomadtips3-engine-343.mccarey-supon.workers.dev/settings',
+            health:'https://nomadtips3-engine-343.mccarey-supon.workers.dev/health',
+            board:'https://nomadtips3-engine-343.mccarey-supon.workers.dev/board',
+            signals:'https://nomadtips3-engine-343.mccarey-supon.workers.dev/signals',
+            active:base+'/api/engine/signals',
+            fullMarket:base+'/api/full-market/health',
+            fullSettings:base+'/api/full-market/settings',
+            hub:'https://nomadtips3-5usd-hub-343.mccarey-supon.workers.dev/health'
+          };
+          const entries=await Promise.all(Object.entries(endpoints).map(async([k,url])=>{
+            try{const res=await fetch(url+'?audit='+Date.now(),{signal:AbortSignal.timeout(15000),headers:{'cache-control':'no-cache'}}); const j=await res.json();return[k,{http:res.status,data:j}]}catch(e){return[k,{error:String(e.message)}]}
+          }));
+          const all=Object.fromEntries(entries);
+          const get=k=>all[k]?.data||{};
+          const s=get('settings'),h=get('health'),b=get('board'),sg=get('signals'),act=get('active'),fm=get('fullMarket'),fs=get('fullSettings'),hu=get('hub');
+          const keys=Object.keys(s);const skeys=Object.keys(s.settings||{});
+          const getConfig=(v)=>v&&typeof v==='object'?Object.fromEntries(Object.entries(v).filter(([k,x])=>/minute|threshold|evidence|odds|enabled|period|delta|confidence|score|volume|window|run|line|corner|goal|asian|over|under|edge|limit|selection|market|active/i.test(k)&&['string','number','boolean'].includes(typeof x))):{};
+          const markets={};for(const [market,v] of Object.entries(s.settings||{}))if(v&&typeof v==='object')markets[market]=getConfig(v);
+          console.log('SETTINGS_AUDIT '+JSON.stringify({http:all.settings?.http,ok:s.ok,keys,settingsKeys:skeys,marketCount:Object.keys(markets).length,effectiveMarkets:markets,flags:s.run||s.flags||s.enabled||s.settings?.run||null,otherTop:Object.fromEntries(Object.entries(s).filter(([k,v])=>!['settings','run','flags','enabled'].includes(k)&&v!==null&&['string','number','boolean'].includes(typeof v)))}));
+          const fixtures=Array.isArray(b.fixtures)?b.fixtures:Array.isArray(b.rows)?b.rows:[];
+          const status={};const analyses={};const samples=[];let analyzed=0;
+          for(const f of fixtures){
+            const st=String(f.statusCode||f.status||f.boardState||'UNKNOWN');status[st]=(status[st]||0)+1;
+            const rules=f.analysis||f.marketAnalysis||f.decisions||f.markets||null;
+            if(rules&&typeof rules==='object'){
+              analyzed++;
+              for(const [market,r] of Object.entries(rules)){
+                const stage=typeof r==='object'?(r?.state||r?.status||r?.reason||'UNKNOWN'):String(r);
+                const key=market+':'+stage;analyses[key]=(analyses[key]||0)+1;
+              }
+              if(samples.length<2)samples.push({fixtureId:f.fixtureId,state:st,analysisKeys:Object.keys(rules).slice(0,6)});
+            }
+          }
+          const grouped={};for(const [key,count] of Object.entries(analyses)){const stage=key.slice(key.indexOf(':')+1);grouped[stage]=(grouped[stage]||0)+count}
+          console.log('BOARD_AUDIT '+JSON.stringify({http:all.board?.http,keys:Object.keys(b),size:fixtures.length,firstKeys:fixtures.length?Object.keys(fixtures[0]):[],statuses:status,analysisFixtureCount:analyzed,stageTotals:grouped,byMarketStage:analyses,samples}).slice(0,17000));
+          const signals=Array.isArray(sg.signals)?sg.signals:[];const localDay=t=>new Date(t+7*3600e3).toISOString().slice(0,10);
+          const today='2026-10-17';const deployAt=Date.parse('2026-10-17T13:53:23Z');
+          const allDates={},byMarket={},byHour={},newAfterDeploy=[],preDeploy=[];
+          for(const x of signals){const t=Number(x.createdAt||x.lockedAt||0);if(!t)continue;const day=localDay(t);allDates[day]=(allDates[day]||0)+1;if(day!==today)continue;const market=String(x.market||'unknown');byMarket[market]=(byMarket[market]||0)+1;const hour=new Date(t+7*3600e3).toISOString().slice(11,13);byHour[hour]=(byHour[hour]||0)+1;(t>=deployAt?newAfterDeploy:preDeploy).push({market,minute:x.minute||x.entryMinute||null,at:new Date(t).toISOString()});}
+          console.log('SIGNAL_AUDIT '+JSON.stringify({http:all.signals?.http,allCount:sg.allCount,pending:signals.length,dates:allDates,todayByMarket:byMarket,todayByHour:byHour,todayBeforeRepair:preDeploy.length,todayAfterRepair:newAfterDeploy.length,latestAfterRepair:newAfterDeploy.slice(0,6)}));
+          console.log('ACTIVE_AUDIT '+JSON.stringify({http:all.active?.http,activeSignals:act.signals?.length,mirror:act.mirror}));
+          console.log('HEALTH_AUDIT '+JSON.stringify({http:all.health?.http,ok:h.ok,version:h.version,startedAt:h.startedAt,finishedAt:h.finishedAt,fixtureCount:h.fixtureCount,liveCount:h.liveCount,signalCount:h.signalCount,refereeQueued:h.refereeQueued,refereeRequests:h.refereeRequests,externalOddsRequests:h.externalOddsRequests,refereeErrors:h.refereeErrors?.slice?.(0,7),lastError:h.lastError}));
+          console.log('PRICE_AUDIT '+JSON.stringify({http:all.fullMarket?.http,health:fm,settings:fs,hub:{lastError:hu.lastError,liveCount:hu.liveCount,ageMs:hu.ageMs}}).slice(0,11000));
+          NODE
