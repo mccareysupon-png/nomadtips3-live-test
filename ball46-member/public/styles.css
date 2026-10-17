@@ -3278,3 +3278,10 @@ body.page-member:before{
 .page-member #signalBoard .signal-table tbody tr.signal-row.expanded > td:first-child{border-top-left-radius:0}
 .page-member #signalBoard .signal-table tbody tr.signal-row.expanded > td:last-child{border-top-right-radius:0}
 .page-member #signalBoard .signal-table tbody tr.signal-row.expanded + tr.signal-detail-row > td{border-bottom-left-radius:0;border-bottom-right-radius:0}
+
+/* SIGNAL ENTRY HISTORY: subtle borderless elevation on emerald signal cards only. */
+.page-member .featured-entry-history-list .featured-h-signal.featured-history-entry,
+.page-member .featured-entry-history-list .featured-h-signal.featured-history-entry.is-selected{
+  border:0!important;
+  box-shadow:0 6px 14px rgba(0,0,0,.18),inset 0 1px 0 rgba(255,255,255,.04)!important;
+}
