@@ -98,13 +98,13 @@ export async function acceptFinalScore(storage,obs,{certifiedSources={},clock=Da
   const existingWinner=await tx.get(wkey(fid));
   if(existingWinner)return {ok:true,state:'ALREADY_SETTLED',winner:existingWinner.source,
      conflict:existingWinner.score.home!==obs.score.home||existingWinner.score.away!==obs.score.away,writes:0};
-  const all=await tx.get(ek(fid))||{},history=Array.isArray(all[source])?all[source]:[];
+  const all=await tx.get(ekey(fid))||{},history=Array.isArray(all[source])?all[source]:[];
   const point={at:collectorMs,home:obs.score.home,away:obs.score.away};
   const previous=history.length?history[history.length-1]:null;
   const updated=previous&&(previous.home!==point.home||previous.away!==point.away)?[point]:
     previous?.at===point.at?history:[...history,point].slice(-24);
   const next={...all,[source]:updated};
-  await tx.put(ek(fid),next);
+  await tx.put(ekey(fid),next);
   const required=Number(policy.samples)||1,minGapMs=Number(policy.minGapMs)||0;
   if(updated.length<required||updated[updated.length-1].at-updated[0].at<minGapMs)
     return {ok:true,state:'AWAITING_CONFIRMATION',samples:updated.length,writes:1};
