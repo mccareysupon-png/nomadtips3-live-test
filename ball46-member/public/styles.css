@@ -3193,3 +3193,6 @@ body.page-member:before{
 @media(prefers-reduced-motion:reduce){
   .page-member #signalBoard .result-minute-card .live-minute-prime{animation:none}
 }
+
+/* Member expanded LIVE MATCH STATISTICS: borderless outer card only; keep row separators and bars. */
+.page-member .featured-analysis-layout>.featured-h-stats.premium-match-stats{border:0}
