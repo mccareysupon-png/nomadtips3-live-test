@@ -1,4 +1,5 @@
 const MARKET_ORDER = ['ALL','AH','1X2','O/U','CORNERS','BTTS','CARDS','OTHER'];
+const MARKET_ICON_KEYS = Object.freeze({'ALL':'all','AH':'ah','1X2':'1x2','O/U':'ou','CORNERS':'corners','BTTS':'btts','CARDS':'cards','OTHER':'other'});
 const LIVE_REFRESH_MS = 15000;
 const SIGNALS_PER_PAGE = 20;
 const state = {
@@ -52,6 +53,10 @@ function renderFavoritesNav(){
     state.expandedSignalId=null;
     render();
   });
+  const icon=node('img','favorite-nav-icon');
+  icon.src='/icons/market-favorites.svg';
+  icon.alt='';icon.width=25;icon.height=25;icon.setAttribute('aria-hidden','true');
+  b.prepend(icon);
   host.append(b);
   const note=qs('#memberFavoriteDescription');
   if(note)note.textContent=on?'WATCHLIST · '+favoritesCount()+' SAVED SIGNAL CARDS · THIS DEVICE':'★ Save individual signal cards';
@@ -335,7 +340,10 @@ function renderTabs(){
     const bottom=node('span','market-tab-bottom');
     bottom.append(node('span','market-tab-pnl-label','P/L'),node('b','market-tab-pnl '+pnlTone,fmtPnl(s.pnl)));
 
-    btn.append(top,bottom);
+    const icon=node('img','market-tab-icon');
+    icon.src='/icons/market-'+MARKET_ICON_KEYS[market]+'.svg';
+    icon.alt='';icon.width=25;icon.height=25;icon.setAttribute('aria-hidden','true');
+    btn.append(icon,top,bottom);
     btn.addEventListener('click',()=>{
       state.market=market;
       state.favoritesView=false; // Market tabs always show their complete market, not the saved-only subset.

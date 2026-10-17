@@ -3319,3 +3319,47 @@ button,input,select,textarea{font-family:inherit;font-synthesis:none}
   letter-spacing:-.04em;
   line-height:1;
 }
+
+/* MEMBER1 approved reference-matched sportsbook SVG pictograms.
+   Icons only: existing tab interactions, metrics and palette remain unchanged. */
+.page-member #marketTabs .market-tab{
+  align-items:center;
+  justify-content:center;
+  gap:5px;
+  min-height:106px;
+  text-align:center;
+  padding-top:9px;
+  padding-bottom:9px;
+}
+.page-member #marketTabs .market-tab-icon,
+.page-member .favorite-nav-button .favorite-nav-icon{
+  display:block;
+  width:25px;
+  height:25px;
+  flex:0 0 25px;
+  object-fit:contain;
+  pointer-events:none;
+}
+.page-member #marketTabs .market-tab-top{
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:5px;
+}
+.page-member #marketTabs .market-tab-bottom{
+  justify-content:center;
+  gap:6px;
+  padding-top:5px;
+}
+.page-member .favorite-nav-button{
+  min-height:106px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+}
+@media(max-width:700px){
+  .page-member .toolbar-left .market-tab,
+  .page-member .favorite-nav-button{min-height:102px}
+}
