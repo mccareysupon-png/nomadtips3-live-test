@@ -84,3 +84,15 @@ jobs:
             } catch(error){console.log('RUNFLAGS_ERROR '+name+' '+String(error.message))}
           }
           NODE
+
+      - name: Read all persisted thresholds for 18 markets exactly
+        shell: bash
+        run: |
+          node <<'NODE'
+          const r=await fetch('https://nomadtips3-engine-343.mccarey-supon.workers.dev/settings?full_detail='+Date.now(),{signal:AbortSignal.timeout(20000),headers:{'cache-control':'no-cache'}});
+          const j=await r.json();if(!r.ok||j?.ok!==true)throw Error('SETTINGS_UNAVAILABLE');
+          for(const [name,settings] of Object.entries(j.settings||{})){
+            console.log('MARKET_DETAIL '+JSON.stringify({market:name,enabled:j.runState?.[name]===true,settings}));
+          }
+          console.log('SETTINGS_COUNTS '+JSON.stringify({total:Object.keys(j.settings||{}).length,enabled:Object.values(j.runState||{}).filter(Boolean).length}));
+          NODE
