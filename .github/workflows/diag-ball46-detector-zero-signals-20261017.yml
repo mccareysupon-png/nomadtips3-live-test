@@ -37,6 +37,19 @@ jobs:
               const stages={};for(const c of candidates){const key=String(c.stage||c.reason||c.status||'UNKNOWN'); stages[key]=(stages[key]||0)+1}
               const statuses={};for(const f of fixtures){const key=String(f.boardState||f.statusCode||f.status||'unknown');statuses[key]=(statuses[key]||0)+1}
               const meta={probe:name,http:res.status,ok:j.ok,version:j.version,engineState:j.engineState,status:j.status,paused:j.paused,reason:j.reason,lastError:short(j.lastError||j.error),observedAt:j.observedAt,lastScanAt:j.lastScanAt,lastSuccessAt:j.lastSuccessAt,lastSuccessAgeSeconds:j.lastSuccessAgeSeconds,updatedAt:j.updatedAt,fetchedAt:j.fetchedAt,ageMs:j.ageMs,liveAgeMs:j.liveAgeMs,counts:j.counts,provider:j.provider,requestCount:j.lastRequestCount,refereeErrors:j.refereeErrors?.slice?.(0,4),run:j.run,fixtureCount:fixtures.length,candidateCount:candidates.length,signalCount:signals.length,newSignalCount:j.newSignals?.length||0,allCount:j.allCount,stages,statuses};
+              if(name==='engine_health'){
+                meta.healthKeys=Object.keys(j);
+                for(const key of Object.keys(j)){if(/scan|reason|reject|candidate|minute|qualified|evidence|cache|gate|referee|backoff|age|cycle|refresh|source|signal|fetch|warning/i.test(key)&& !/token|key|secret|credential/i.test(key)){const value=j[key];if(value===null||typeof value!=='object'||JSON.stringify(value).length<900)meta['health_'+key]=value}}
+              }
+              if(name==='engine_signals'||name==='ball46_signals'){
+                const ages={};const markets={};let newest=0,oldest=Infinity;const sample=[];
+                for(const sig of signals){
+                  const t=Number(sig.createdAt||sig.lockedAt||sig.selectedAt||0);if(t){newest=Math.max(newest,t);oldest=Math.min(oldest,t);const day=new Date(t).toISOString().slice(0,10);ages[day]=(ages[day]||0)+1}
+                  const market=String(sig.market||sig.providerMarket||'unknown');markets[market]=(markets[market]||0)+1;
+                  if(sample.length<3)sample.push({fixtureId:sig.fixtureId,market,createdAt:sig.createdAt,minute:sig.entryMinute,status:sig.status})
+                }
+                Object.assign(meta,{signalDateCounts:ages,signalMarkets:markets,newestSignalAt:newest?new Date(newest).toISOString():null,oldestSignalAt:oldest<Infinity?new Date(oldest).toISOString():null,sample});
+              }
               console.log('PROBE '+JSON.stringify(meta));
             }catch(e){console.log('PROBE '+JSON.stringify({probe:name,error:short(e.message)}))}
           }
