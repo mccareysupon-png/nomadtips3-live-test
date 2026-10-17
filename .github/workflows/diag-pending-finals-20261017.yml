@@ -1,0 +1,49 @@
+name: READ ONLY audit missing final results and pending settlement 20261017
+on:
+  push:
+    branches: [diag/ball46-settlement-pending-20261017]
+    paths: [.github/workflows/diag-pending-finals-20261017.yml]
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - name: Inspect pending-to-final-to-settled pipeline read only
+        shell: bash
+        run: |
+          node <<'NODE'
+          const e='https://nomadtips3-engine-343.mccarey-supon.workers.dev';
+          const h='https://nomadtips3-5usd-hub-343.mccarey-supon.workers.dev';
+          const b='https://ball46-production.mccarey-supon.workers.dev';
+          const routes={hub:h+'/snapshot',hubhealth:h+'/health',signals:e+'/signals',board:e+'/board',
+            ledger:e+'/ledger-health',statistics:e+'/statistics',memberledger:b+'/api/engine/ledger-health',
+            active:b+'/api/engine/signals'};
+          const results=await Promise.all(Object.entries(routes).map(async([k,url])=>{
+            try{const r=await fetch(url+'?audit='+Date.now(),{signal:AbortSignal.timeout(18000),headers:{'cache-control':'no-cache'}});
+            return[k,{http:r.status,data:await r.json().catch(()=>({error:'NON_JSON'}))}]}catch(err){return[k,{error:String(err.message)}]}
+          }));
+          const all=Object.fromEntries(results),get=k=>all[k]?.data||{};
+          const hm=new Map((get('hub').fixtures||[]).map(f=>[String(f.fixtureId),f]));
+          const bm=new Map((get('board').fixtures||[]).map(f=>[String(f.fixtureId),f]));
+          const pending=get('signals').signals||[],counts={},examples=[];
+          for(const s of pending){
+            const id=String(s.fixtureId||''),f=hm.get(id)||bm.get(id);
+            const state=f?String(f.boardState||f.status||f.statusCode||'unknown').toLowerCase():'MISSING_FROM_HUB_AND_BOARD';
+            counts[state]=(counts[state]||0)+1;
+            if(examples.length<35)examples.push({id,market:s.market,status:s.status,createdAt:s.createdAt,signalKickoff:s.kickoffUtc,
+              fixturePresent:!!f,boardState:f?.boardState,statusCode:f?.statusCode,goals:f?.goals});
+          }
+          console.log('FINAL_CORRELATION '+JSON.stringify({now:new Date().toISOString(),pending:pending.length,allCount:get('signals').allCount,
+            hubTotal:hm.size,boardTotal:bm.size,hubCounts:get('hub').counts,hubError:get('hubhealth').lastError,
+            byState:counts,examples}).slice(0,14500));
+          for(const [k,x] of Object.entries(all)){
+            const d=x.data||{};
+            console.log('SETTLEMENT_ENDPOINT '+JSON.stringify({route:k,http:x.http,error:x.error,ok:d.ok,
+              version:d.version,ledgerTotal:d.ledgerTotal,settledTotal:d.settledTotal,
+              pendingTotal:d.pendingTotal,records:d.records?.length,rows:d.rows?.length,
+              signals:d.signals?.length,allCount:d.allCount,stale:d.stale,
+              lastError:d.lastError,unresolvedCount:d.unresolvedCount,reconciled:d.reconciled}).slice(0,2500));
+          }
+          NODE
