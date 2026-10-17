@@ -1,0 +1,36 @@
+name: Read-only check whether legacy 341 cron is actually armed
+on:
+  push:
+    branches: [fix/ball46-john-single-pricing-cron-20261017]
+    paths: [.github/workflows/audit-341-armed-20261017.yml]
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - name: Inspect active 341 GET control state and any provider traffic guards
+        shell: bash
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          node <<'NODE'
+          const a=process.env.CLOUDFLARE_ACCOUNT_ID,t=process.env.CLOUDFLARE_API_TOKEN;
+          const url='https://api.cloudflare.com/client/v4/accounts/'+a+'/workers/workers/nomadtips3-341-5usd-staged/versions/e28f92e8-03f7-4814-95d5-c14e48d3b6c4?include=modules';
+          const r=await fetch(url,{headers:{Authorization:'Bearer '+t}});const j=await r.json();if(!j.success)throw Error('VERSION_READ_FAILED');
+          const v=j.result,s=Buffer.from(v.modules.find(x=>x.name===v.main_module).content_base64,'base64').toString('utf8');
+          for(const mark of ['async function runCentralCycle','function runCentralCycle','apiArmed','if (url.pathname','if (u.pathname','/api/state','CONTROL_DEFAULTS','async fetch(request']){
+            const i=s.indexOf(mark);
+            console.log('STAGED_GUARD '+JSON.stringify({mark,position:i,snippet:i<0?'':s.slice(Math.max(0,i-60),i+1200)}).slice(0,2400))
+          }
+          for(const endpoint of ['/api/state','/api/control','/api/status','/health']){
+            try{
+              const rr=await fetch('https://nomadtips3-341-5usd-staged.mccarey-supon.workers.dev'+endpoint,{signal:AbortSignal.timeout(15000)});
+              const txt=await rr.text();
+              const sanitized=txt.slice(0,1600).replace(/(token|key|secret|authorization)["\x27\s:]+[^,\s}]+/gi,'$1_REDACTED');
+              console.log('STAGED_PUBLIC_READ '+JSON.stringify({endpoint,status:rr.status,content:sanitized}))
+            }catch(e){console.log('STAGED_READ_ERROR '+endpoint+' '+String(e.message))}
+          }
+          NODE
