@@ -16,9 +16,9 @@ jobs:
       - uses: actions/checkout@v4
       - name: Syntax check
         run: node --check deploy-assets/ball46-john-cron-20261017/repair.mjs
-      - name: Guarded production preflight - no mutation
+      - name: Guarded production repair, post-check and rollback
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          JOHN_DRY_RUN: '1'
+          JOHN_DRY_RUN: '0'
         run: node deploy-assets/ball46-john-cron-20261017/repair.mjs
