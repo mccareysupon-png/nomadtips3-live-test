@@ -3273,3 +3273,8 @@ body.page-member:before{
     padding:7px;
   }
 }
+
+/* Expanded MATCH frame: square outer corners only; preserve blue frame and inner cards. */
+.page-member #signalBoard .signal-table tbody tr.signal-row.expanded > td:first-child{border-top-left-radius:0}
+.page-member #signalBoard .signal-table tbody tr.signal-row.expanded > td:last-child{border-top-right-radius:0}
+.page-member #signalBoard .signal-table tbody tr.signal-row.expanded + tr.signal-detail-row > td{border-bottom-left-radius:0;border-bottom-right-radius:0}
