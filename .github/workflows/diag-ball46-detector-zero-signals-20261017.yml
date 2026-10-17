@@ -18,6 +18,9 @@ jobs:
           node <<'NODE'
           const urls={
             hub_health:'https://nomadtips3-5usd-hub-343.mccarey-supon.workers.dev/health',
+            fullmarket_health:'https://nomadtips3-full-market-343-ball46.mccarey-supon.workers.dev/health',
+            fullmarket_settings:'https://nomadtips3-full-market-343-ball46.mccarey-supon.workers.dev/settings',
+            engine_settings:'https://nomadtips3-engine-343.mccarey-supon.workers.dev/settings',
             hub_snapshot:'https://nomadtips3-5usd-hub-343.mccarey-supon.workers.dev/snapshot',
             engine_health:'https://nomadtips3-engine-343.mccarey-supon.workers.dev/health',
             engine_board:'https://nomadtips3-engine-343.mccarey-supon.workers.dev/board',
@@ -36,7 +39,7 @@ jobs:
               const signals=Array.isArray(j.signals)?j.signals:[];
               const stages={};for(const c of candidates){const key=String(c.stage||c.reason||c.status||'UNKNOWN'); stages[key]=(stages[key]||0)+1}
               const statuses={};for(const f of fixtures){const key=String(f.boardState||f.statusCode||f.status||'unknown');statuses[key]=(statuses[key]||0)+1}
-              const meta={probe:name,http:res.status,ok:j.ok,version:j.version,engineState:j.engineState,status:j.status,paused:j.paused,reason:j.reason,lastError:short(j.lastError||j.error),observedAt:j.observedAt,lastScanAt:j.lastScanAt,lastSuccessAt:j.lastSuccessAt,lastSuccessAgeSeconds:j.lastSuccessAgeSeconds,updatedAt:j.updatedAt,fetchedAt:j.fetchedAt,ageMs:j.ageMs,liveAgeMs:j.liveAgeMs,counts:j.counts,provider:j.provider,requestCount:j.lastRequestCount,refereeErrors:j.refereeErrors?.slice?.(0,4),run:j.run,fixtureCount:fixtures.length,candidateCount:candidates.length,signalCount:signals.length,newSignalCount:j.newSignals?.length||0,allCount:j.allCount,stages,statuses};
+              const meta={probe:name,http:res.status,ok:j.ok,version:j.version,engineState:j.engineState,status:j.status,paused:j.paused,reason:j.reason,lastError:short(j.lastError||j.error),observedAt:j.observedAt,lastScanAt:j.lastScanAt,lastSuccessAt:j.lastSuccessAt,lastSuccessAgeSeconds:j.lastSuccessAgeSeconds,gate:j.gate,settings:j.settings,config:j.config,prewarm:j.prewarm,rate:j.rate,providerMeta:j.providerMeta,lastPrewarm:j.lastPrewarm,updatedAt:j.updatedAt,fetchedAt:j.fetchedAt,ageMs:j.ageMs,liveAgeMs:j.liveAgeMs,counts:j.counts,provider:j.provider,requestCount:j.lastRequestCount,refereeErrors:j.refereeErrors?.slice?.(0,4),run:j.run,fixtureCount:fixtures.length,candidateCount:candidates.length,signalCount:signals.length,newSignalCount:j.newSignals?.length||0,allCount:j.allCount,stages,statuses};
               if(name==='ball46_signals'||name==='engine_signals'){meta.responseKeys=Object.keys(j);meta.signalArrayType=typeof j.signals;meta.activeSignalsLen=Array.isArray(j.activeSignals)?j.activeSignals.length:null;meta.rowsLen=Array.isArray(j.rows)?j.rows.length:null;meta.filters=j.filters||null;meta.emptyReason=j.emptyReason||null;meta.mirrorInfo=j.mirror||null;}
               if(name==='engine_health'){
                 meta.healthKeys=Object.keys(j);
