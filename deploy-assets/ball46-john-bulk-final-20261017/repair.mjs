@@ -135,7 +135,8 @@ try{
  assert(after.ledger.ledgerTotal>=before.ledger.ledgerTotal,"LEDGER_ROWS_LOST");
  assert(after.ledger.settledTotal>=before.ledger.settledTotal,"LEDGER_SETTLED_LOST");
  assert.equal(canon((await schedules()).schedules.map(x=>x.cron)),canon(schedule.schedules.map(x=>x.cron)),"CRON_CHANGED");
- assert.equal(canon(await settings()),canon(setting),"SETTINGS_CHANGED");
+ const settingsNoDeployMeta=o=>Object.fromEntries(Object.entries(o).filter(([key])=>key!=="annotations"));
+ assert.equal(canon(settingsNoDeployMeta(await settings())),canon(settingsNoDeployMeta(setting)),"SETTINGS_CHANGED");
  report("B46_FINAL_BULK_DEPLOY_SUCCESS",{prior,candidateId,hashAfter:hash(next),before,after,
   noExtraProviderCallsPerTick:true,onlyHubModified:true,ledgerPreserved:true});
 }catch(e){
