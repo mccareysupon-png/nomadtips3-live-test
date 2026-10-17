@@ -108,3 +108,32 @@ jobs:
             }catch(e){console.log('DEPLOY_AUDIT_ERROR '+worker+' '+String(e.message).slice(0,150))}
           }
           NODE
+
+      - name: Compare last detector revisions to known healthy architecture (read only)
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          node <<'NODE'
+          const a=process.env.CLOUDFLARE_ACCOUNT_ID,t=process.env.CLOUDFLARE_API_TOKEN;
+          if(!a||!t) process.exit(0);
+          async function api(path){const r=await fetch('https://api.cloudflare.com/client/v4/accounts/'+a+'/workers'+path,{headers:{Authorization:'Bearer '+t},signal:AbortSignal.timeout(25000)});const j=await r.json();if(!r.ok||!j.success)throw Error(JSON.stringify(j.errors).slice(0,120));return j.result}
+          const ids={
+            'nomadtips3-engine-343':['7f7377ac-0bcb-44ed-b7ce-8abac4439bd4','e8baed42-7eea-4247-81af-780d5c77d28e','d5e2cfba-0ec8-4098-ae4c-41cda0a18689','42a8bf93-895c-4b10-898e-56c209165517','cde92e54-ed87-4144-9c16-c12d365bbc01'],
+            'ball46-production':['a7c9d22f-1d69-4cbf-9f40-1a8ef6dfff0f','916e2ad6-88eb-452e-9ff2-a7c778061f7a','d21aa06e-a588-4694-9a18-f1a58c9fa4ee']
+          };
+          for(const [worker,versions] of Object.entries(ids)){
+            for(const id of versions){
+              try{
+                const v=await api('/workers/'+worker+'/versions/'+id+'?include=modules');
+                const m=v.modules?.find(x=>x.name===v.main_module);
+                const source=m?.content_base64?Buffer.from(m.content_base64,'base64').toString('utf8'):'';
+                const code=(pattern)=>{const i=source.indexOf(pattern);return i<0?null:source.slice(Math.max(0,i-60),Math.min(i+450,source.length))};
+                const hints=worker==='ball46-production'?{activeSignals:code('async function activeSignals('),signalRoute:code('url.pathname === "/api/engine/signals"'),mirror:code('hiddenPendingSignals')}: {bulk:!!code('JOHN_BULK_QUALIFIED_PRICE_PREWARM_20261011'),priceMiss:!!code('JOHN_QUALIFIED_PRICE_CACHE_MISS'),fullMarketPerScan:code('FULL_MARKET_REQUESTS_PER_SCAN='),refereeLoop:code('for (const f of refereeScanOrder)'),requestPerFixture:code('https://full-market.internal/fixture-odds'),goalTick:!!code('BALL46_GOAL_TICK'),cornerTick:!!code('BALL46_CORNER_TICK'),prewarmCutoff:code('johnEligibleFixtureIds.slice(0,128)')};
+                const crypto=await import('node:crypto');const sha=crypto.createHash('sha256').update(source).digest('hex');
+                console.log('VERSION_DIFF '+JSON.stringify({worker,id,sha,sourceBytes:source.length,moduleCount:v.modules?.length,main:v.main_module,hints}));
+              }catch(e){console.log('VERSION_DIFF_ERROR '+worker+' '+id+' '+String(e.message).slice(0,140))}
+            }
+          }
+          NODE
