@@ -86,7 +86,7 @@ function initMemberMarketSidebar(){
   const sidebar=qs('#marketSidebar'),opener=qs('#marketMenuToggle');
   const closeButton=qs('#marketMenuClose'),backdrop=qs('#marketMenuBackdrop');
   if(!sidebar||!opener||!closeButton||!backdrop)return;
-  const desktop=window.matchMedia('(min-width:1100px)');
+  const desktop=window.matchMedia('(min-width:1360px)');
   let open=false;
   function sync(){
     const shown=!desktop.matches&&open;
@@ -1378,7 +1378,11 @@ function renderCornerAudit(){
   }
   cornerAuditEl.append(node('small','','Source-based · never infer Asian from decimal lines'));
 }
-function render(){renderFavoritesNav();renderTabs();renderSummary();renderCornerAudit();renderRows();renderPagination();}
+function render(){
+  renderFavoritesNav();renderTabs();renderSummary();renderCornerAudit();renderRows();renderPagination();
+  const selection=qs('#marketMenuSelection');
+  if(selection)selection.textContent=state.favoritesView?'FAVORITES':state.market;
+}
 
 async function refreshExpandedDetail(){
   const fixtureId=state.expandedFixtureId;

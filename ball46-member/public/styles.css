@@ -3440,7 +3440,7 @@ button,input,select,textarea{font-family:inherit;font-synthesis:none}
 .page-member #marketMenuClose:focus-visible,
 .page-member .member-market-toggle:focus-visible{outline:2px solid #43e6a2;outline-offset:2px}
 .page-member .member-market-backdrop[hidden]{display:none!important}
-@media(min-width:1100px){
+@media(min-width:1360px){
   .page-member .member-sidebar-layout{grid-template-columns:232px minmax(0,1fr);gap:16px}
   .page-member .member-market-sidebar{
     position:sticky;top:86px;max-height:calc(100dvh - 100px);
@@ -3449,7 +3449,7 @@ button,input,select,textarea{font-family:inherit;font-synthesis:none}
   .page-member .member-sidebar-heading #marketMenuClose,
   .page-member .member-market-toggle{display:none}
 }
-@media(max-width:1099px){
+@media(max-width:1359px){
   .page-member .member-market-sidebar{
     position:fixed;top:0;bottom:0;left:0;z-index:61;
     width:min(290px,85vw);height:100dvh;max-height:none;
@@ -3641,4 +3641,290 @@ button,input,select,textarea{font-family:inherit;font-synthesis:none}
   .page-member .member-market-sidebar .favorite-nav-button{transition:none}
   .page-member .member-market-sidebar #marketTabs .market-tab:hover,
   .page-member .member-market-sidebar .favorite-nav-button:hover{transform:none}
+}
+
+
+/* BALL46 MEMBER — approved balanced mobile/tablet/desktop responsive system.
+   Visual and layout only. All 10 signal fields and Engine/API calculations remain unchanged.
+   Uses the real content width; never squeeze a 10-column table into small screens. */
+.page-member{overflow-x:clip}
+.page-member .shell{width:min(1600px,calc(100% - 24px))}
+.page-member .member-sidebar-layout,
+.page-member .member-main-content,
+.page-member #dailySummary,
+.page-member #signalBoard,
+.page-member .signal-table,
+.page-member .match-insight{min-width:0;max-width:100%}
+.page-member .member-main-content{gap:clamp(10px,1.2vw,14px)}
+.page-member .summary{gap:8px;grid-template-columns:repeat(2,minmax(0,1fr))}
+.page-member .summary .summary-stat{
+  min-width:0;
+  min-height:74px;
+  padding:11px 10px;
+}
+.page-member .summary .summary-stat span{
+  max-width:100%;
+  font-size:clamp(9px,1vw,11px);
+  white-space:normal;
+  overflow-wrap:anywhere;
+  letter-spacing:.025em;
+  line-height:1.28;
+}
+.page-member .summary .summary-stat b{
+  font-size:clamp(17px,2.8vw,21px);
+  line-height:1.15;
+  font-variant-numeric:tabular-nums;
+  white-space:nowrap;
+}
+.page-member .member-market-selection{
+  margin-left:auto;
+  padding:4px 9px;
+  border-radius:8px;
+  background:rgba(42,108,91,.40);
+  color:#d1ffea;
+  font-size:12px;
+  font-weight:800;
+}
+.page-member .member-main-content .member-market-toggle{
+  width:100%;
+  min-height:46px;
+  padding:10px 14px;
+  justify-content:flex-start;
+  gap:9px;
+  border:0;
+  background:linear-gradient(145deg,#15382f,#132b39);
+  box-shadow:0 4px 12px rgba(0,0,0,.20),inset 0 1px 0 rgba(255,255,255,.05);
+}
+.page-member #signalBoard .signal-table th,
+.page-member #signalBoard .signal-row>td{overflow-wrap:anywhere}
+.page-member #signalBoard .signal-price-note{
+  white-space:normal;
+  overflow-wrap:anywhere;
+  padding:12px clamp(10px,1vw,14px);
+  line-height:1.55;
+}
+.page-member .member-main-content .member-hero-card .member-head p{
+  line-height:1.5;
+  overflow-wrap:anywhere;
+}
+@media (max-width:599px){
+  .page-member .member-sidebar-layout{padding-top:14px}
+  .page-member .shell{width:calc(100% - 22px)}
+  .page-member .summary{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+  .page-member .summary .summary-stat{padding:10px;min-height:76px}
+  .page-member .summary .summary-stat b{font-size:clamp(16px,4.65vw,20px)}
+  .page-member .topbar-inner{gap:8px}
+  .page-member .member-head h1{font-size:clamp(21px,6vw,26px)}
+}
+@media (max-width:359px){
+  .page-member .shell{width:calc(100% - 18px)}
+  .page-member .topbar-inner{column-gap:5px;padding:0 1px}
+  .page-member .topbar a.brand.brand-original-lettering .brand-logo{font-size:26px}
+  .page-member .topbar .brand-member{font-size:9px}
+  .page-member .topbar .member-copy span{display:none}
+  .page-member .member-chip{padding:6px}
+  .page-member .summary .summary-stat{padding:9px;min-height:72px}
+  .page-member .summary .summary-stat b{font-size:16px}
+  .page-member .member-main-content .member-market-toggle{min-height:44px}
+}
+@media(min-width:600px) and (max-width:767px){
+  .page-member .summary{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .page-member .summary .summary-stat{min-height:80px}
+}
+@media(min-width:768px) and (max-width:1099px){
+  .page-member .summary{grid-template-columns:repeat(4,minmax(0,1fr))}
+}
+@media(min-width:1100px) and (max-width:1559px){
+  .page-member .summary{grid-template-columns:repeat(5,minmax(0,1fr))}
+}
+@media(min-width:1560px){
+  .page-member .summary{grid-template-columns:repeat(10,minmax(0,1fr));gap:6px}
+  .page-member .summary .summary-stat{min-height:70px;padding:8px 5px}
+  .page-member .summary .summary-stat b{font-size:clamp(15px,1.12vw,19px)}
+  .page-member .summary .summary-stat span{font-size:clamp(9px,.67vw,11px)}
+}
+/* Responsive signal-cards: mobile one across, medium 2 across, large table only. */
+@media(max-width:1359px){
+  .page-member #signalBoard{overflow:visible!important;max-width:100%}
+  .page-member #signalBoard .signal-table,
+  .page-member #signalBoard .signal-table tbody{
+    display:block;
+    width:100%;
+    min-width:0;
+    max-width:100%;
+  }
+  .page-member #signalBoard .signal-table thead,
+  .page-member #signalBoard .signal-table colgroup{display:none}
+  .page-member #signalBoard .signal-table tbody tr.signal-row{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    grid-template-areas:"detected result" "match match" "score score"
+      "market selection" "odds entry" "bookmaker pnl";
+    gap:0 clamp(7px,1vw,14px);
+    align-items:stretch;
+    min-width:0;
+    max-width:100%;
+    width:100%;
+    min-height:0;
+    height:auto;
+    margin:0 0 10px;
+    padding:clamp(9px,1vw,13px);
+    border:0;
+    border-radius:12px;
+    background:#111922;
+    box-shadow:0 6px 13px rgba(0,0,0,.14),inset 0 1px 0 rgba(255,255,255,.025);
+    overflow:visible;
+  }
+  .page-member #signalBoard .signal-table tbody tr.signal-row>td{
+    display:block;
+    width:auto;
+    max-width:100%;
+    min-width:0;
+    min-height:0;
+    height:auto;
+    padding:7px 3px;
+    border:0!important;
+    border-radius:0!important;
+    box-shadow:none!important;
+    background:transparent!important;
+    white-space:normal!important;
+    text-overflow:clip!important;
+    overflow:visible!important;
+    overflow-wrap:anywhere;
+    font-size:11px;
+  }
+  .page-member #signalBoard .signal-row>td:nth-child(1){grid-area:detected}
+  .page-member #signalBoard .signal-row>td:nth-child(2){grid-area:match}
+  .page-member #signalBoard .signal-row>td:nth-child(3){grid-area:score}
+  .page-member #signalBoard .signal-row>td:nth-child(4){grid-area:market}
+  .page-member #signalBoard .signal-row>td:nth-child(5){grid-area:selection}
+  .page-member #signalBoard .signal-row>td:nth-child(6){grid-area:odds}
+  .page-member #signalBoard .signal-row>td:nth-child(7){grid-area:entry}
+  .page-member #signalBoard .signal-row>td:nth-child(8){grid-area:bookmaker}
+  .page-member #signalBoard .signal-row>td:nth-child(9){grid-area:result}
+  .page-member #signalBoard .signal-row>td:nth-child(10){grid-area:pnl}
+  .page-member #signalBoard .signal-row .mobile-cell-label{
+    display:block;
+    margin-bottom:5px;
+    color:#8aa7b9;
+    font-size:10px;
+    line-height:1.25;
+    letter-spacing:.045em;
+    font-weight:700;
+    white-space:normal;
+  }
+  .page-member #signalBoard .signal-row .favorite-teams{min-width:0}
+  .page-member #signalBoard .signal-row .favorite-team-home,
+  .page-member #signalBoard .signal-row .favorite-team-away,
+  .page-member #signalBoard .signal-row .signal-choice,
+  .page-member #signalBoard .signal-row .signal-market-period{
+    white-space:normal;
+    overflow:visible;
+    text-overflow:clip;
+    overflow-wrap:anywhere;
+  }
+  .page-member #signalBoard .signal-row .live-score-pair{
+    display:flex;
+    flex-direction:row;
+    gap:12px;
+    justify-content:flex-start;
+    align-items:center;
+    width:max-content;
+    max-width:100%;
+  }
+  .page-member #signalBoard .signal-row .market-evidence{
+    width:auto;
+    max-width:100%;
+    overflow:visible;
+    white-space:normal;
+  }
+  .page-member #signalBoard .signal-row .entry-cell>small{
+    display:block;
+    max-height:none;
+    overflow:visible;
+    -webkit-line-clamp:unset;
+    line-clamp:unset;
+  }
+  .page-member #signalBoard .signal-table tbody tr.signal-row.expanded{
+    outline:1px solid rgba(57,168,255,.8);
+    outline-offset:-1px;
+  }
+  .page-member #signalBoard .signal-table tbody tr.signal-row.is-fresh-signal{
+    box-shadow:inset 0 0 0 2px rgba(61,232,137,.75),0 8px 15px rgba(0,0,0,.2)!important;
+  }
+  .page-member #signalBoard .signal-table tbody tr.signal-detail-row{
+    display:block;
+    width:100%;
+    min-width:0;
+    max-width:100%;
+    margin:-10px 0 10px;
+  }
+  .page-member #signalBoard .signal-table tbody tr.signal-detail-row>td{
+    display:block;
+    width:100%;
+    max-width:100%;
+    min-width:0;
+    box-sizing:border-box;
+    padding:0!important;
+    overflow:visible;
+  }
+  .page-member #signalBoard .signal-detail-row .match-insight{width:100%;max-width:100%;min-width:0}
+  .page-member #signalBoard .signal-chips{flex-wrap:wrap;overflow-x:visible;overflow-y:visible}
+  .page-member .featured-history-compact-row{
+    flex-wrap:wrap!important;white-space:normal!important;
+    overflow-x:visible!important;overflow-y:visible!important;
+  }
+  .page-member .featured-history-compact-row>span{
+    flex:0 1 auto;
+    max-width:100%;
+    white-space:normal;
+    overflow-wrap:anywhere;
+  }
+  .page-member .premium-side-facts-panel{min-width:0}
+}
+/* At two-card widths, keep each signal row as a single self-contained card.
+   Expanded insight spans both columns, preserving its existing content. */
+@media(min-width:768px) and (max-width:1359px){
+  .page-member #signalBoard .signal-table tbody{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:10px;
+    align-items:start;
+  }
+  .page-member #signalBoard .signal-table tbody tr.signal-row{
+    margin:0;
+    min-width:0;
+    height:100%;
+    grid-column:auto;
+  }
+  .page-member #signalBoard .signal-table tbody tr.signal-detail-row{
+    grid-column:1 / -1;
+    margin:0;
+    min-width:0;
+  }
+}
+@media(max-width:430px){
+  .page-member #signalBoard .signal-table tbody tr.signal-row{padding:9px;gap:0 7px}
+  .page-member #signalBoard .signal-row .mobile-cell-label{font-size:9px}
+  .page-member #signalBoard .featured-h-score{grid-template-columns:minmax(0,1fr) minmax(55px,auto) minmax(0,1fr)}
+  .page-member #signalBoard .featured-h-score .team b{font-size:11px}
+}
+@media(min-width:1360px){
+  .page-member .summary{grid-template-columns:repeat(5,minmax(0,1fr))}
+  .page-member #signalBoard .signal-table{
+    display:table;
+    width:100%;
+    min-width:0;
+    table-layout:fixed;
+  }
+  .page-member #signalBoard .signal-table tbody{display:table-row-group}
+  .page-member #signalBoard .signal-table thead{display:table-header-group}
+  .page-member #signalBoard .signal-table colgroup{display:table-column-group}
+  .page-member .member-market-sidebar{max-height:calc(100dvh - 100px)}
+}
+@media(min-width:1560px){
+  .page-member .summary{grid-template-columns:repeat(10,minmax(0,1fr))}
+}
+@media(prefers-reduced-motion:reduce){
+  .page-member .member-main-content .member-market-toggle{transition:none}
 }
