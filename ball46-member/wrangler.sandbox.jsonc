@@ -1,0 +1,17 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ball46-member-sandbox",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-10-08",
+  "workers_dev": true,
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "run_worker_first": true
+  },
+  "vars": {
+    "APP_STAGE": "sandbox",
+    "STRIPE_PRICE_ID": "price_1URU2jFXmKSSVxQd98cwIgDY",
+    "MEMBER_CHECKOUT_ENABLED": "false"
+  }
+}
