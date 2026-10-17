@@ -3253,3 +3253,10 @@ body.page-member:before{
   box-shadow:none!important;
 }
 .topbar .member-chip::before{display:none!important}
+
+/* Shared Member header: no underline; subtly raised graphite surface. */
+.topbar{
+  border-bottom:0!important;
+  box-shadow:0 9px 22px rgba(0,0,0,.20),inset 0 1px 0 rgba(255,255,255,.035)!important;
+}
+.topbar::after{display:none!important;content:none!important}
