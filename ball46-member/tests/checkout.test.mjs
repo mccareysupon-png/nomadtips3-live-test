@@ -61,3 +61,19 @@ test('Stripe Checkout never grants entitlement as a side effect',async()=>{
   const r=await createMemberCheckout(customer,env,'https://member.ball46.com',stripe);
   assert.deepEqual(Object.keys(r).sort(),['status','url']);
 });
+
+test('sandbox checkout only accepts sandbox host and returns to sandbox',async()=>{
+  const sandboxEnv={...env,APP_STAGE:'sandbox',STRIPE_PRICE_ID:'price_sandbox'};
+  const mock=async(url,opts)=>{
+    assert.equal(url,'https://api.stripe.com/v1/checkout/sessions');
+    const params=new URLSearchParams(opts.body);
+    assert.equal(params.get('line_items[0][price]'),'price_sandbox');
+    assert.match(params.get('success_url'),/^https:\/\/ball46-member-sandbox\.mccarey-supon\.workers\.dev\/success/);
+    assert.match(params.get('cancel_url'),/^https:\/\/ball46-member-sandbox\.mccarey-supon\.workers\.dev\/pricing/);
+    return {ok:true,json:async()=>({url:'https://checkout.stripe.com/c/pay/cs_mock'})};
+  };
+  const result=await createMemberCheckout(customer,sandboxEnv,'https://ball46-member-sandbox.mccarey-supon.workers.dev',mock);
+  assert.equal(result.status,303);
+  const blocked=await createMemberCheckout(customer,sandboxEnv,'https://member.ball46.com',()=>{throw Error('must not call Stripe')});
+  assert.equal(blocked.status,400);
+});
