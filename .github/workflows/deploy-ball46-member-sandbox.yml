@@ -1,0 +1,58 @@
+name: BALL46 Member Sandbox Deploy
+
+on:
+  push:
+    branches:
+      - test/ball46-member-stripe-sandbox-20261017
+    paths:
+      - 'ball46-member/**'
+      - '.github/workflows/deploy-ball46-member-sandbox.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ball46-member-sandbox-only
+  cancel-in-progress: false
+
+jobs:
+  deploy-sandbox:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Safety gate - sandbox worker only
+        working-directory: ball46-member
+        run: |
+          set -euo pipefail
+          node -e "const c=require('./wrangler.sandbox.jsonc'); if(c.name!=='ball46-member-sandbox'||c.vars.APP_STAGE!=='sandbox'||c.vars.MEMBER_CHECKOUT_ENABLED!=='false'||c.vars.STRIPE_PRICE_ID!=='price_1URU2jFXmKSSVxQd98cwIgDY')process.exit(1)"
+          ! grep -Eq 'STRIPE_SECRET_KEY|CF_ACCESS_AUD|CF_ACCESS_TEAM_DOMAIN' wrangler.sandbox.jsonc
+          node --check src/checkout.js
+          node --check src/access-auth.js
+          node --check src/worker.js
+          node --test tests/*.test.mjs
+      - name: Sandbox dry run
+        working-directory: ball46-member
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.sandbox.jsonc
+      - name: Deploy isolated Sandbox
+        working-directory: ball46-member
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.sandbox.jsonc
+      - name: Smoke test fail-closed sandbox
+        run: |
+          set -euo pipefail
+          BASE=https://ball46-member-sandbox.mccarey-supon.workers.dev
+          curl -fsS --retry 6 --retry-delay 3 "$BASE/api/health" | jq -e '.ok == true and .stage == "sandbox"'
+          curl -fsS "$BASE/api/enrollment-status" | jq -e '.enrollmentAvailable == false'
+          CODE=$(curl -sS -o /tmp/blocked.json -w '%{http_code}' "$BASE/api/member/daily")
+          test "$CODE" = 401
+          jq -e '.error == "MEMBERSHIP_AUTH_REQUIRED"' /tmp/blocked.json
+          CODE=$(curl -sS -o /tmp/checkout.json -w '%{http_code}' "$BASE/api/member/checkout")
+          test "$CODE" = 401
+          jq -e '.error == "IDENTITY_AUTH_REQUIRED"' /tmp/checkout.json
