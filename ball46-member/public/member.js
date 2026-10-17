@@ -516,6 +516,7 @@ function toggleDetail(row){
   renderRows();
 }
 
+const RESPONSIVE_SIGNAL_LABELS=Object.freeze(['DETECTED','MATCH','LIVE SCORE','MARKET','SELECTION','ODDS','ENTRY','BOOKMAKER','RESULT','P/L']);
 function makeSignalRow(row){
   const tr=document.createElement('tr');
   tr.className='signal-row'+(state.expandedSignalId===row.id?' expanded':'');
@@ -619,6 +620,8 @@ function makeSignalRow(row){
   const p=Number(row.pnl||0);
   const pnlState=['PENDING','LIVE','UNRESOLVED','PUSH','VOID'].includes(row.result)?'neutral':(p>0?'pos':p<0?'neg':'neutral');
   tr.append(td(fmtPnl(p),'pnl '+pnlState));
+  // Display-only labels for the responsive card layout, preserve every original cell.
+  for(const [i,cell] of [...tr.cells].entries())cell.prepend(node('span','mobile-cell-label',RESPONSIVE_SIGNAL_LABELS[i]));
 
   tr.addEventListener('click',()=>toggleDetail(row));
   tr.addEventListener('keydown',e=>{

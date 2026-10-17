@@ -3471,3 +3471,118 @@ button,input,select,textarea{font-family:inherit;font-synthesis:none}
 @media(prefers-reduced-motion:reduce){
   .page-member .member-market-sidebar{transition:none}
 }
+
+/* MEMBER1 fluid Signal Board: remove horizontal scrolling without removing any data. */
+.page-member .shell{width:min(1600px,calc(100% - 24px))}
+.page-member .member-main-content{min-width:0;max-width:100%}
+.page-member .member-main-content #signalBoard{min-width:0;max-width:100%;overflow-x:clip;overflow-y:visible}
+.page-member #signalBoard .signal-table{width:100%;min-width:0;max-width:100%;table-layout:fixed}
+.page-member #signalBoard .signal-table col.col-detected{width:8%}
+.page-member #signalBoard .signal-table col.col-match{width:22%}
+.page-member #signalBoard .signal-table col.col-live-score{width:10%}
+.page-member #signalBoard .signal-table col.col-market{width:9%}
+.page-member #signalBoard .signal-table col.col-selection{width:13%}
+.page-member #signalBoard .signal-table col.col-odds{width:6%}
+.page-member #signalBoard .signal-table col.col-entry{width:9%}
+.page-member #signalBoard .signal-table col.col-bookmaker{width:10%}
+.page-member #signalBoard .signal-table col.col-result{width:8%}
+.page-member #signalBoard .signal-table col.col-pnl{width:5%}
+.page-member #signalBoard .signal-table th,
+.page-member #signalBoard .signal-row>td{padding-left:clamp(3px,.45vw,8px);padding-right:clamp(3px,.45vw,8px);min-width:0}
+.page-member #signalBoard .signal-table th{font-size:clamp(7px,.59vw,9px)}
+.page-member #signalBoard .signal-row>td{font-size:clamp(9px,.72vw,11px)}
+.page-member #signalBoard .signal-row .mobile-cell-label{display:none}
+.page-member #signalBoard .signal-price-note{max-width:100%;white-space:normal;overflow-wrap:anywhere}
+@media(min-width:1100px){
+  .page-member #signalBoard .signal-row>td:nth-child(4),
+  .page-member #signalBoard .signal-row>td:nth-child(5),
+  .page-member #signalBoard .signal-row>td:nth-child(8){white-space:normal;overflow-wrap:anywhere;text-overflow:clip}
+  .page-member #signalBoard .signal-row .signal-pick .signal-choice,
+  .page-member #signalBoard .signal-row .signal-pick .signal-market-period,
+  .page-member #signalBoard .signal-row .favorite-team-home,
+  .page-member #signalBoard .signal-row .favorite-team-away{white-space:normal;overflow-wrap:anywhere}
+}
+@media(max-width:1099px){
+  .page-member #signalBoard{overflow:visible}
+  .page-member #signalBoard .signal-table,
+  .page-member #signalBoard .signal-table tbody{display:block;width:100%;min-width:0;max-width:100%}
+  .page-member #signalBoard .signal-table thead,
+  .page-member #signalBoard .signal-table colgroup{display:none}
+  .page-member #signalBoard .signal-table tbody tr.signal-row{
+    display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+    grid-template-areas:"detected result" "match match" "score score"
+    "market selection" "odds entry" "bookmaker pnl";
+    gap:0 10px;align-items:stretch;
+    width:100%;min-width:0;max-width:100%;height:auto;min-height:0;
+    padding:9px 11px;margin:0 0 9px;border:1px solid rgba(150,183,205,.13);
+    border-radius:12px;overflow:visible;background:#111922;
+  }
+  .page-member #signalBoard .signal-table tbody tr.signal-row.expanded{
+    outline:1px solid rgba(57,168,255,.85);outline-offset:-1px;
+  }
+  .page-member #signalBoard .signal-table tbody tr.signal-row>td{
+    display:block;box-sizing:border-box;min-width:0;max-width:100%;
+    width:auto;height:auto;min-height:0;
+    overflow:visible!important;white-space:normal!important;
+    text-overflow:clip!important;overflow-wrap:anywhere;
+    padding:7px 3px;border:0!important;border-radius:0!important;
+    box-shadow:none!important;background:transparent!important;
+  }
+  .page-member #signalBoard .signal-row>td:nth-child(1){grid-area:detected}
+  .page-member #signalBoard .signal-row>td:nth-child(2){grid-area:match}
+  .page-member #signalBoard .signal-row>td:nth-child(3){grid-area:score}
+  .page-member #signalBoard .signal-row>td:nth-child(4){grid-area:market}
+  .page-member #signalBoard .signal-row>td:nth-child(5){grid-area:selection}
+  .page-member #signalBoard .signal-row>td:nth-child(6){grid-area:odds}
+  .page-member #signalBoard .signal-row>td:nth-child(7){grid-area:entry}
+  .page-member #signalBoard .signal-row>td:nth-child(8){grid-area:bookmaker}
+  .page-member #signalBoard .signal-row>td:nth-child(9){grid-area:result}
+  .page-member #signalBoard .signal-row>td:nth-child(10){grid-area:pnl}
+  .page-member #signalBoard .signal-row .mobile-cell-label{
+    display:block;margin:0 0 6px;color:#88a6bc;
+    font-size:9px;line-height:1.2;letter-spacing:.06em;font-weight:800;
+  }
+  .page-member #signalBoard .signal-row .favorite-team-home,
+  .page-member #signalBoard .signal-row .favorite-team-away,
+  .page-member #signalBoard .signal-row .signal-pick .signal-choice,
+  .page-member #signalBoard .signal-row .signal-pick .signal-market-period,
+  .page-member #signalBoard .signal-row .entry-cell>strong{
+    white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;
+  }
+  .page-member #signalBoard .signal-row .live-score-pair{
+    display:flex;flex-direction:row;justify-content:flex-start;align-items:center;
+    gap:16px;width:max-content;max-width:100%;
+  }
+  .page-member #signalBoard .signal-row .market-evidence{
+    width:auto;max-width:100%;white-space:normal;overflow:visible;
+  }
+  .page-member #signalBoard .signal-row .entry-cell>small{
+    max-height:none;display:block;overflow:visible;-webkit-line-clamp:unset;line-clamp:unset;
+  }
+  .page-member #signalBoard .signal-row .pnl{white-space:normal}
+  .page-member #signalBoard .signal-table tbody tr.signal-detail-row{
+    display:block;width:100%;min-width:0;max-width:100%;margin:-9px 0 10px;
+  }
+  .page-member #signalBoard .signal-table tbody tr.signal-detail-row>td{
+    display:block;width:100%;max-width:100%;min-width:0;
+    box-sizing:border-box;padding:0!important;overflow:visible;
+  }
+  .page-member #signalBoard .signal-detail-row .match-insight{
+    width:100%;max-width:100%;min-width:0;
+  }
+  .page-member #signalBoard .signal-chips{
+    flex-wrap:wrap;overflow-x:visible;overflow-y:visible;
+  }
+  .page-member .featured-history-compact-row{
+    flex-wrap:wrap!important;white-space:normal!important;
+    overflow-x:visible!important;overflow-y:visible!important;
+  }
+  .page-member .featured-history-compact-row>span{
+    flex:0 1 auto;max-width:100%;white-space:normal;overflow-wrap:anywhere;
+  }
+  .page-member #signalBoard .signal-price-note{padding:12px 11px;line-height:1.55}
+}
+@media(max-width:430px){
+  .page-member #signalBoard .signal-table tbody tr.signal-row{padding:8px;gap:0 7px}
+  .page-member #signalBoard .signal-row .mobile-cell-label{font-size:8px}
+}
