@@ -88,3 +88,23 @@ jobs:
             }
           }catch(e){console.log('SOURCE_READ_ERROR '+String(e.message).slice(0,250))}
           NODE
+
+      - name: Compare active deployment timelines across the three Ball46 workers read-only
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          node <<'NODE'
+          const a=process.env.CLOUDFLARE_ACCOUNT_ID,t=process.env.CLOUDFLARE_API_TOKEN;
+          if(!a||!t){console.log('DEPLOY_AUDIT_ERROR missing CF credentials');process.exit(0)}
+          const names=['nomadtips3-engine-343','nomadtips3-5usd-hub-343','nomadtips3-full-market-343-ball46','ball46-production'];
+          for(const worker of names){
+            try{
+              const r=await fetch('https://api.cloudflare.com/client/v4/accounts/'+a+'/workers/scripts/'+worker+'/deployments?per_page=16',{headers:{Authorization:'Bearer '+t},signal:AbortSignal.timeout(25000)});
+              const j=await r.json();if(!r.ok||j.success!==true)throw Error(JSON.stringify(j.errors).slice(0,180));
+              const d=(j.result?.deployments||[]).map(x=>({at:x.created_on,id:x.id,source:x.source,versions:(x.versions||[]).map(v=>({id:v.version_id,pct:v.percentage}))}));
+              console.log('DEPLOY_HISTORY '+JSON.stringify({worker,deployments:d.slice(0,14)}));
+            }catch(e){console.log('DEPLOY_AUDIT_ERROR '+worker+' '+String(e.message).slice(0,150))}
+          }
+          NODE
