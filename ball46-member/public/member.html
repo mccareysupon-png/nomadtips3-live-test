@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css?v=20261015-row-gradient-match&featured=20261017-stats-elevation-v16&header=20261017-raised-no-underline-v18&facts=20261017-compact-height-v19&frame=20261017-square-v20&history=20261017-soft-elevation-v21&typography=20261017-premium-v1&logo=20261017-original-v1&icons=20261017-reference-svg-v1">
+  <link rel="stylesheet" href="/styles.css?v=20261015-row-gradient-match&featured=20261017-stats-elevation-v16&header=20261017-raised-no-underline-v18&facts=20261017-compact-height-v19&frame=20261017-square-v20&history=20261017-soft-elevation-v21&typography=20261017-premium-v1&logo=20261017-original-v1&icons=20261017-reference-svg-v1&sidebar=20261017-left-market-v1">
 </head>
 <body class="page-member">
 <header class="topbar">
@@ -27,17 +27,25 @@
   </div>
 </header>
 
-<main class="shell page member-layout">
-  <section class="card card-pad">
+<main class="shell page member-layout member-sidebar-layout">
+  <button id="marketMenuBackdrop" class="member-market-backdrop" type="button" aria-label="Close market menu" hidden></button>
+  <aside id="marketSidebar" class="card member-market-sidebar" aria-label="Market navigation">
+    <div class="member-sidebar-heading">
+      <strong>MARKETS</strong>
+      <button id="marketMenuClose" type="button" aria-label="Close market menu">×</button>
+    </div>
     <div class="toolbar">
       <div class="toolbar-left">
-        <div class="market-tabs" id="marketTabs" aria-label="Markets"></div>
+        <nav class="market-tabs" id="marketTabs" aria-label="Markets"></nav>
         <div class="member-favorite-toolbar"><div id="memberFavoriteNav"></div><small id="memberFavoriteDescription">★ Save a match or team to your watchlist</small></div>
       </div>
     </div>
-  </section>
-
-  <section class="summary" id="dailySummary" aria-label="Daily performance"></section>
+  </aside>
+  <div class="member-main-content">
+    <button id="marketMenuToggle" class="member-market-toggle" type="button" aria-controls="marketSidebar" aria-expanded="false">
+      <span class="member-market-toggle-symbol" aria-hidden="true">☰</span><span>Markets</span>
+    </button>
+    <section class="summary" id="dailySummary" aria-label="Daily performance"></section>
 
   <section class="card table-wrap" id="signalBoard">
     <div id="cornerMarketAudit" class="corner-market-audit" hidden></div>
@@ -84,10 +92,10 @@
       <div class="live-pill">TODAY · LIVE DATA</div>
     </div>
   </section>
-
+  </div>
 </main>
 <footer class="footer shell">Ball46 Member · Daily board only · historical statistics remain on the main Ball46 site</footer>
 <script src="/event-flow-icons.js" defer></script>
-<script src="/member.js?v=20261015-row-gradient-match&featured=20261017-stats-elevation-v16&icons=20261017-reference-svg-v1" defer></script>
+<script src="/member.js?v=20261015-row-gradient-match&featured=20261017-stats-elevation-v16&icons=20261017-reference-svg-v1&sidebar=20261017-left-market-v1" defer></script>
 </body>
 </html>
