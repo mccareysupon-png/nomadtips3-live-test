@@ -34,7 +34,7 @@ test("existing immutable fixture preserves ID, earlier firstSeen and source mapp
  const a=capture([fixture()]);
  const b=capture([fixture()],a.records);
  assert.equal(b.records.length,1);
- assert.equal(b.records[0].firstSeenAt,now);
+ assert.equal(b.records[0].firstSeenAt,new Date(now).toISOString());
  assert.equal(b.audit[0].reason,"UNCHANGED_IDENTITY");
 });
 test("canonical kickoff modification rejected",()=>{
