@@ -3228,7 +3228,7 @@ body.page-member:before{
   content:"";
   position:absolute;
   inset:7% 3.5% 8%;
-  z-index:-1;
+  z-index:0;
   pointer-events:none;
   opacity:.25;
   background:
@@ -3240,3 +3240,5 @@ body.page-member:before{
 @media(prefers-reduced-motion:reduce){
   .page-member .member-flow-chart .member-flow-plot::before{transform:none}
 }
+
+.page-member .member-flow-chart .member-flow-plot>svg{position:relative;z-index:1}
