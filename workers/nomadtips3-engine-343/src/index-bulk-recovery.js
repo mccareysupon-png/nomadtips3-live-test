@@ -1,5 +1,7 @@
 import { Nomad343Engine as BaseNomad343Engine } from './index-bulk.js';
 import { MARKET_RULES, settleMarketSignal } from './market-core.js';
+import { capturePendingIdentities, bindResultProvider, acceptFinalScore } from './multisource-result-v5.js';
+import { pollMappedGoaloo } from './goaloo-final-collector-v5.js';
 
 const BRIDGE_VERSION='external-final-bridge-v1';
 const MAX_SIGNALS=1600;
@@ -45,6 +47,77 @@ function secureTokenOk(request,env){
 }
 
 export class Nomad343Engine extends BaseNomad343Engine{
+  async resultSerial(task){
+    const pending=this.resultTail||Promise.resolve();
+    let done;this.resultTail=new Promise(resolve=>{done=resolve});
+    await pending;
+    try{return await task()}finally{done()}
+  }
+  async scan(){
+    return this.resultSerial(async()=>{
+      const result=await super.scan();
+      if(result?.ok)await capturePendingIdentities(this.ctx.storage);
+      return result;
+    });
+  }
+  verifiedResultToken(request){
+    const expected=String(this.env.RESULT_INGEST_TOKEN||'');
+    const actual=String(request.headers.get('x-result-token')||'');
+    return expected.length>=32&&actual.length===expected.length&&actual===expected;
+  }
+  providerCertification(){
+    return {goaloo:{
+      utcCertified:String(this.env.GOALOO_UTC_CERTIFIED||'')==='1',
+      finalScopeCertified:String(this.env.GOALOO_FT_CERTIFIED||'')==='1',
+      samples:2,minGapMs:60_000
+    }};
+  }
+  async providerMapping(request){
+    if(!this.verifiedResultToken(request))return Response.json({ok:false,error:'UNAUTHORIZED'},{status:401});
+    const claim=await request.json().catch(()=>null);
+    const result=await this.resultSerial(()=>bindResultProvider(this.ctx.storage,claim,{certifiedSources:this.providerCertification()}));
+    return Response.json(result);
+  }
+  async pollGoaloo(){
+    if(String(this.env.GOALOO_POLL_ENABLED||'')!=='1')return {ok:false,reason:'COLLECTOR_NOT_ENABLED'};
+    const cfg=this.providerCertification().goaloo;
+    if(!cfg.utcCertified||!cfg.finalScopeCertified)return {ok:false,reason:'UNCERTIFIED_SOURCE'};
+    const offsetRaw=String(this.env.GOALOO_UTC_OFFSET_MINUTES??'');
+    if(!/^-?\d+$/.test(offsetRaw))return {ok:false,reason:'OFFSET_NOT_CONFIGURED'};
+    const offset=Number(offsetRaw),urls=[
+      'https://live10.goaloo28.com/gf/data/bf_us.js',
+      'https://live10.goaloo28.com/gf/data/bf_us1.js'
+    ];
+    let raw=null;
+    for(const url of urls){
+      try{
+        const res=await fetch(url,{redirect:'error',signal:AbortSignal.timeout(15000)});
+        if(!res.ok)continue;
+        const body=await res.text();
+        if(body.length>4_000_000||!body.includes('A['))continue;
+        raw=body;break;
+      }catch{}
+    }
+    if(!raw)return {ok:false,reason:'GOALOO_READ_FAILED'};
+    const stored=await this.ctx.storage.get('signals')||[];
+    const fixtureIds=[...new Set(stored.filter(s=>s.status==='PENDING').map(s=>String(s.fixtureId)))];
+    let aliases={};
+    try{aliases=JSON.parse(String(this.env.GOALOO_LEAGUE_ALIASES||'{}'))}catch{
+      return {ok:false,reason:'INVALID_APPROVED_ALIASES'};
+    }
+    return this.resultSerial(()=>pollMappedGoaloo({
+      storage:this.ctx.storage,sourceText:raw,fixtureIds,
+      utcCertified:true,offsetMinutes:offset,finalScopeCertified:true,
+      approvedLeagueAliases:aliases
+    }));
+  }
+  async providerFinal(request){
+    if(!this.verifiedResultToken(request))return Response.json({ok:false,error:'UNAUTHORIZED'},{status:401});
+    const observation=await request.json().catch(()=>null);
+    const result=await this.resultSerial(()=>acceptFinalScore(this.ctx.storage,observation,{
+      certifiedSources:this.providerCertification()}));
+    return Response.json(result);
+  }
   async reconcileExternalFinal(request){
     if(!secureTokenOk(request,this.env))return Response.json({ok:false,error:'UNAUTHORIZED'},{status:401});
     const body=await request.json().catch(()=>null);
@@ -65,20 +138,33 @@ export class Nomad343Engine extends BaseNomad343Engine{
   }
   async fetch(request){
     const u=new URL(request.url);
-    if(u.pathname==='/reconcile-final'&&request.method==='POST')return this.reconcileExternalFinal(request);
+    if(u.pathname==='/reconcile-final'&&request.method==='POST')return this.resultSerial(()=>this.reconcileExternalFinal(request));
+    if(u.pathname==='/multisource-map'&&request.method==='POST')return this.providerMapping(request);
+    if(u.pathname==='/multisource-final'&&request.method==='POST')return this.providerFinal(request);
+    if(u.pathname==='/goaloo-poll'&&request.method==='POST'){
+      if(!this.verifiedResultToken(request))return Response.json({ok:false,error:'UNAUTHORIZED'},{status:401});
+      return Response.json(await this.pollGoaloo());
+    }
+    if(u.pathname==='/multisource-health'&&request.method==='GET')return Response.json({ok:true,mode:'STAGING_MULTISOURCE',goalooEnabled:this.providerCertification().goaloo.utcCertified&&this.providerCertification().goaloo.finalScopeCertified});
     if(u.pathname==='/bridge-health'&&request.method==='GET')return Response.json({ok:true,version:BRIDGE_VERSION});
     return super.fetch(request);
   }
 }
 
 function stub(env){return env.ENGINE.get(env.ENGINE.idFromName('global'))}
-function cors(request,response){const h=new Headers(response.headers);h.set('access-control-allow-origin',request.headers.get('origin')||'*');h.set('access-control-allow-methods','GET,PUT,POST,OPTIONS');h.set('access-control-allow-headers','content-type,x-settlement-token');h.set('cache-control','no-store');return new Response(response.body,{status:response.status,headers:h})}
+function cors(request,response){const h=new Headers(response.headers);h.set('access-control-allow-origin',request.headers.get('origin')||'*');h.set('access-control-allow-methods','GET,PUT,POST,OPTIONS');h.set('access-control-allow-headers','content-type,x-settlement-token,x-result-token');h.set('cache-control','no-store');return new Response(response.body,{status:response.status,headers:h})}
 export default{
   async fetch(request,env){
     if(request.method==='OPTIONS')return cors(request,new Response(null,{status:204}));
-    const u=new URL(request.url),allowed=['/health','/registry','/settings','/scan','/board','/signals','/statistics','/history','/fixture-odds','/referee','/reconcile-final','/bridge-health'];
+    const u=new URL(request.url),allowed=['/health','/registry','/settings','/scan','/board','/signals','/statistics','/history','/fixture-odds','/referee','/reconcile-final','/bridge-health','/multisource-map','/multisource-final','/multisource-health','/goaloo-poll'];
     if(!allowed.includes(u.pathname))return cors(request,new Response('Not found',{status:404}));
     return cors(request,await stub(env).fetch(new Request(`https://engine.internal${u.pathname}${u.search}`,request)));
   },
-  async scheduled(_event,env,ctx){ctx.waitUntil(stub(env).fetch('https://engine.internal/scan',{method:'POST'}))}
+  async scheduled(_event,env,ctx){
+    ctx.waitUntil(stub(env).fetch('https://engine.internal/scan',{method:'POST'}));
+    if(String(env.GOALOO_POLL_ENABLED||'')==='1' && String(env.RESULT_INGEST_TOKEN||'').length>=32)
+      ctx.waitUntil(stub(env).fetch('https://engine.internal/goaloo-poll',{
+        method:'POST',headers:{'x-result-token':env.RESULT_INGEST_TOKEN}
+      }));
+  }
 };

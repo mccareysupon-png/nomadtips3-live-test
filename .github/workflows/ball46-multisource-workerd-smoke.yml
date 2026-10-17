@@ -1,0 +1,43 @@
+name: BALL46 real Durable Object local runtime smoke
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - stage/ball46-multisource-v5-20261017
+    paths:
+      - workers/nomadtips3-engine-343/src/multisource-do-harness.js
+      - workers/nomadtips3-engine-343/src/multisource-result-v5.js
+      - workers/nomadtips3-engine-343/wrangler.multisource-stage.toml
+      - .github/workflows/ball46-multisource-workerd-smoke.yml
+permissions:
+  contents: read
+jobs:
+  workerd-sandbox:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test actual local Durable Object transaction runtime
+        working-directory: workers/nomadtips3-engine-343
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4 dev --local --config wrangler.multisource-stage.toml --ip 127.0.0.1 --port 8789 --persist-to /tmp/ball46-v5-do-isolated > /tmp/ball46-v5-workerd.log 2>&1 &
+          pid=$!
+          trap 'kill "$pid" 2>/dev/null || true' EXIT
+          ready=0
+          for i in $(seq 1 45); do
+            if curl -s --max-time 2 http://127.0.0.1:8789/ -o /dev/null; then ready=1; break; fi
+            sleep 2
+          done
+          if [ "$ready" -ne 1 ]; then cat /tmp/ball46-v5-workerd.log; exit 1; fi
+          if ! curl --fail --silent --show-error --max-time 30 http://127.0.0.1:8789/test-native-do -o /tmp/ball46-v5-do-result.json; then
+            cat /tmp/ball46-v5-workerd.log; exit 1
+          fi
+          node -e 'const x=require("/tmp/ball46-v5-do-result.json"); if(!x.ok||x.second?.settled!==1||x.late?.conflict!==true) process.exit(1); console.log("REAL_DO_LOCAL_PASS",JSON.stringify({captured:x.captured.captured,settled:x.second.settled,source:x.second.source,conflictBlocked:x.late.conflict,markets:x.rows.map(r=>[r.market,r.status])}));'
+          curl --fail --silent --show-error --max-time 30 http://127.0.0.1:8789/test-goaloo-feed -o /tmp/ball46-v5-goaloo-feed.json
+          node -e 'const x=require("/tmp/ball46-v5-goaloo-feed.json"); if(!x.ok||x.first?.parsedFT!==1||x.second?.results?.[0]?.settled!==1) process.exit(1); console.log("PARSED_GOALOO_NATIVE_V5_PASS",JSON.stringify({parsed:x.first.parsedFT,matched:x.first.matched,settled:x.second.results[0].settled,markets:x.rows.map(r=>[r.market,r.status])}));'
+
