@@ -3196,3 +3196,9 @@ body.page-member:before{
 
 /* Member expanded LIVE MATCH STATISTICS: borderless outer card only; keep row separators and bars. */
 .page-member .featured-analysis-layout>.featured-h-stats.premium-match-stats{border:0}
+
+/* MATCH FACTS · six cards: borderless subtle elevation, no colored glow. */
+.page-member .premium-side-facts-panel > .premium-side-fact{
+  border:0;
+  box-shadow:0 6px 14px rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.04);
+}
