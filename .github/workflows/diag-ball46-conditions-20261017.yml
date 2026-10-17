@@ -61,3 +61,26 @@ jobs:
           console.log('HEALTH_AUDIT '+JSON.stringify({http:all.health?.http,ok:h.ok,version:h.version,startedAt:h.startedAt,finishedAt:h.finishedAt,fixtureCount:h.fixtureCount,liveCount:h.liveCount,signalCount:h.signalCount,refereeQueued:h.refereeQueued,refereeRequests:h.refereeRequests,externalOddsRequests:h.externalOddsRequests,refereeErrors:h.refereeErrors?.slice?.(0,7),lastError:h.lastError}));
           console.log('PRICE_AUDIT '+JSON.stringify({http:all.fullMarket?.http,health:fm,settings:fs,hub:{lastError:hu.lastError,liveCount:hu.liveCount,ageMs:hu.ageMs}}).slice(0,11000));
           NODE
+
+      - name: Inspect precise run flags and active stage impact without changing settings
+        shell: bash
+        run: |
+          node <<'NODE'
+          for(const [name,url] of [
+            ['settings','https://nomadtips3-engine-343.mccarey-supon.workers.dev/settings'],
+            ['board','https://nomadtips3-engine-343.mccarey-supon.workers.dev/board']
+          ]) {
+            try {
+              const res=await fetch(url+'?runflags='+Date.now(),{signal:AbortSignal.timeout(15000)});
+              const d=await res.json();
+              if(name==='settings'){
+                console.log('RUNFLAGS '+JSON.stringify({ok:d.ok,runState:d.runState,markets:d.markets,settingsCount:Object.keys(d.settings||{}).length}));
+                const names=['ft_1x2','ft_ah','ft_over','ft_under','ht_1x2','ht_ah','ht_over','ht_under','ft_corner_over','ft_corner_under','ht_corner_over','ht_corner_under','ft_corner_ah','ft_cards_over','ft_cards_under','ft_cards_ah','ft_btts_yes','ft_btts_no'];
+                const table=names.map(m=>({market:m,enabled:d.runState?.[m]??d.markets?.[m]?.run??d.markets?.[m]?.enabled??null,minuteFrom:d.settings?.[m]?.minuteFrom,minuteTo:d.settings?.[m]?.minuteTo,evidenceRequired:d.settings?.[m]?.evidenceRequired,oddsMin:d.settings?.[m]?.oddsMin}));
+                console.log('RULE_TABLE '+JSON.stringify(table));
+              }else {
+                console.log('BOARD_RUNFLAGS '+JSON.stringify({runState:d.runState,counts:d.counts,referee:d.referee}).slice(0,12000));
+              }
+            } catch(error){console.log('RUNFLAGS_ERROR '+name+' '+String(error.message))}
+          }
+          NODE
