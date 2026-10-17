@@ -34,7 +34,10 @@ function toggleFavorite(row){
   persistFavorites();
   render();
 }
-function favoritesCount(){return state.favoriteSignals.size;}
+function favoritesCount(){
+  const signals=Array.isArray(state.payload?.signals)?state.payload.signals:[];
+  return signals.filter(isFavoriteRow).length;
+}
 function renderFavoritesNav(){
   const host=qs('#memberFavoriteNav');
   if(!host)return;
