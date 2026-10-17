@@ -137,3 +137,20 @@ jobs:
             }
           }
           NODE
+
+      - name: Pinpoint prewarm actual capacity and Engine code path read only
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          node <<'NODE'
+          const a=process.env.CLOUDFLARE_ACCOUNT_ID,t=process.env.CLOUDFLARE_API_TOKEN;
+          async function get(w,v){const r=await fetch('https://api.cloudflare.com/client/v4/accounts/'+a+'/workers/workers/'+w+'/versions/'+v+'?include=modules',{headers:{Authorization:'Bearer '+t},signal:AbortSignal.timeout(25000)});const j=await r.json();if(!j.success)throw Error(JSON.stringify(j.errors));const m=j.result.modules.find(x=>x.name===j.result.main_module);return Buffer.from(m.content_base64,'base64').toString()}
+          for(const [w,v,marks] of [['nomadtips3-full-market-343-ball46','3a53ee1a-467c-4a20-9f50-ba749e8adab4',['function safeFixtureIds','async prewarm(','async cacheSnapshot(','prewarmCursor']],['nomadtips3-engine-343','7f7377ac-0bcb-44ed-b7ce-8abac4439bd4',['JOHN_BULK_QUALIFIED_PRICE_PREWARM_20261011','JOHN_QUALIFIED_PRICE_CACHE_MISS']]]){
+            try{
+              const src=await get(w,v);
+              for(const mark of marks){const i=src.indexOf(mark);console.log('PINPOINT '+JSON.stringify({worker:w,mark,index:i,snippet:i<0?'':src.slice(Math.max(0,i-180),Math.min(src.length,i+(mark.includes('PREWARM')?4200:mark.includes('prewarm(')?3600:mark.includes('safeFixture')?1100:1700)))}))}
+            }catch(e){console.log('PINPOINT_ERROR '+w+' '+e.message)}
+          }
+          NODE
