@@ -3220,3 +3220,36 @@ body.page-member:before{
   border:0;
   box-shadow:0 6px 14px rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.04);
 }
+
+
+/* Shared Member header: borderless transparent navigation and identity, emerald states. */
+.topbar .nav a,
+.page-pricing .topbar .nav a{
+  border:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  color:#8196A7!important;
+}
+.topbar .nav a:hover,
+.topbar .nav a:focus-visible,
+.page-pricing .topbar .nav a:hover{
+  color:#43E6A2!important;
+  background:transparent!important;
+  box-shadow:none!important;
+}
+.topbar .nav a[aria-current="page"],
+.topbar .nav a[aria-current="page"]:hover,
+.topbar .nav a[aria-current="page"]:focus-visible{
+  color:#43E6A2!important;
+  border:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+}
+.topbar .nav a::before{display:none!important}
+.topbar .member-chip,
+.topbar .member-chip:hover{
+  border:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+}
+.topbar .member-chip::before{display:none!important}
