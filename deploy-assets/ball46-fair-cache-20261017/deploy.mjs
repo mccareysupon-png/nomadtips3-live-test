@@ -207,6 +207,19 @@ try {
   assert.equal(bindings(current),bindings(before),'ACTIVE_BINDINGS_CHANGED');
   assert.equal(settingView(await settings()),settingView(beforeSettings),'SETTINGS_CHANGED');
   assert.equal(canonical(await schedules()),canonical(beforeSchedules),'SCHEDULES_CHANGED');
+  // Verify that the real Engine, and the actual BALL46 production service-binding path, still serve valid signals.
+  for(const [label,url] of [
+    ['engine-health','https://nomadtips3-engine-343.mccarey-supon.workers.dev/health'],
+    ['engine-signals','https://nomadtips3-engine-343.mccarey-supon.workers.dev/signals'],
+    ['ball46-active-signals','https://ball46-production.mccarey-supon.workers.dev/api/engine/signals']
+  ]){
+    const response=await fetch(url+'?repair_smoke='+Date.now(),{cache:'no-store',signal:AbortSignal.timeout(20000)});
+    const data=await response.json().catch(()=>null);
+    assert(response.ok&&data?.ok===true,'POST_DEPLOY_SMOKE_FAILED_'+label+'_'+response.status);
+    if(label.endsWith('signals'))assert(Array.isArray(data.signals),'SIGNALS_ARRAY_MISSING_'+label);
+    log('B46_ENGINE_SIGNAL_SMOKE_PASS',{label,code:response.status,version:data.version||null,
+      signalCount:Array.isArray(data.signals)?data.signals.length:null});
+  }
   const afterBridge = await publicBridge();
   assert.equal(canonical(afterBridge),canonical(beforeBridge),'PUBLIC_BRIDGE_VERSION_CHANGED');
   const afterLedger = await publicLedgerHealth();
