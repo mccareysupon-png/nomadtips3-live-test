@@ -15,9 +15,9 @@ jobs:
       - uses: actions/checkout@v4
       - name: JavaScript syntax validation
         run: node --check deploy-assets/ball46-john-bulk-final-20261017/repair.mjs
-      - name: Guard and dry-run Production source patch
+      - name: Guarded Production HUB deploy and rollback
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          JOHN_DRY_RUN: "1"
+          JOHN_DRY_RUN: "0"
         run: node deploy-assets/ball46-john-bulk-final-20261017/repair.mjs
