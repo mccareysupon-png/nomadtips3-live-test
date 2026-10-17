@@ -3260,3 +3260,16 @@ body.page-member:before{
   box-shadow:0 9px 22px rgba(0,0,0,.20),inset 0 1px 0 rgba(255,255,255,.035)!important;
 }
 .topbar::after{display:none!important;content:none!important}
+
+
+/* MATCH FACTS — reduce six tile minimum heights by 20%, preserve responsive layout. */
+.page-member .premium-side-facts-panel > .premium-side-fact{
+  min-height:66px;
+  padding:8px;
+}
+@media(max-width:760px){
+  .page-member .premium-side-facts-panel > .premium-side-fact{
+    min-height:59px;
+    padding:7px;
+  }
+}
