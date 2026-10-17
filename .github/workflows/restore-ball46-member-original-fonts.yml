@@ -1,0 +1,141 @@
+name: Restore BALL46 Member Original Fonts (Manual Only)
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: 'Type RESTORE_ORIGINAL_FONTS to restore the pre-typography Member release'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ball46-member-production-deploy
+  cancel-in-progress: false
+
+jobs:
+  restore-original-fonts:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Confirm manual font restoration
+        shell: bash
+        env:
+          RESTORE_CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          test "$RESTORE_CONFIRMATION" = "RESTORE_ORIGINAL_FONTS"
+          echo "Restoring verified baseline Member source before typography changes."
+      - uses: actions/checkout@v4
+        with:
+          ref: 8eca8ad81fbe80cbf20ea259fb3ed5a1e05cfb1e
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate isolated member package
+        working-directory: ball46-member
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f wrangler.jsonc
+          test -f src/worker.js
+          test -f public/pricing.html
+          test -f public/member.html
+          grep -Fq '"name": "ball46-member-production"' wrangler.jsonc
+          ! grep -R -Fq '"name": "ball46-production"' .
+          node --check src/worker.js
+          node --check src/access-auth.js
+          node --check src/checkout.js
+          node --test tests/*.test.mjs
+          node --check public/pricing.js
+          node --check public/event-flow-icons.js
+          grep -Fq '/event-flow-icons.js' public/member.html
+          node --check public/member.js
+          echo "BALL46_MEMBER_PACKAGE_VALID"
+
+      - name: Dry run isolated Member worker
+        working-directory: ball46-member
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.jsonc
+
+      - name: Record current Member production deployment for rollback
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS --retry 3 --max-time 30 -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+            "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/scripts/ball46-member-production/deployments" \
+            -o /tmp/member-previous-deployments.json
+          jq -e '.success==true' /tmp/member-previous-deployments.json >/dev/null
+          jq -r '"BACKUP_API_RESULT_TYPE=\(.result|type) BACKUP_DEPLOYMENTS_COUNT=\((.result.deployments // .result // [])|length) BACKUP_FIRST_KEYS=\((.result.deployments // .result // [])[0] | keys_unsorted | join(","))"' /tmp/member-previous-deployments.json
+          jq -er '
+            (.result | if type=="array" then . else .deployments // [] end)[0]
+            | "ROLLBACK_PRODUCTION_DEPLOYMENT_ID=\(.id)\nROLLBACK_PRODUCTION_VERSION_ID=\(.versions[0].version_id)"' /tmp/member-previous-deployments.json | tee /tmp/member-rollback-version.txt
+          grep -Eq "^ROLLBACK_PRODUCTION_VERSION_ID=[0-9a-f-]{20,}$" /tmp/member-rollback-version.txt
+          cat /tmp/member-rollback-version.txt >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Deploy isolated Member worker
+        working-directory: ball46-member
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.jsonc
+
+      - name: Verify Member mirror against live Ball46
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://ball46-member-production.mccarey-supon.workers.dev"
+          prod="https://www.ball46.com"
+
+          for n in {1..20}; do
+            if curl -fsS --max-time 20 "$base/api/health?run=${GITHUB_RUN_ID}" -o /tmp/health.json 2>/dev/null; then
+              if jq -e '.ok==true and .service=="ball46-member-production"' /tmp/health.json >/dev/null; then
+                break
+              fi
+            fi
+            sleep 2
+          done
+          jq -e '.ok==true and .service=="ball46-member-production"' /tmp/health.json >/dev/null
+
+          curl -fsS --max-time 20 "$base/pricing?run=${GITHUB_RUN_ID}" -o /tmp/pricing.html
+          grep -Fq 'Daily signals. One screen.' /tmp/pricing.html
+
+          # Production security gate: unauthenticated users must not see member data.
+          for endpoint in "/api/member/daily" "/api/member/match?fixtureId=123"; do
+            status="$(curl -sS --max-time 20 -o /tmp/blocked.json -w '%{http_code}' "$base$endpoint")"
+            echo "SECURITY_GATE endpoint=$endpoint http=$status body=$(cat /tmp/blocked.json | head -c 150)"
+            test "$status" = 401
+            jq -e '.ok==false and .error=="MEMBERSHIP_AUTH_REQUIRED"' /tmp/blocked.json >/dev/null
+          done
+          for endpoint in "/member" "/member.html"; do
+            status="$(curl -sS --max-time 20 -o /dev/null -D /tmp/member-headers.txt -w '%{http_code}' "$base$endpoint")"
+            echo "MEMBER_REDIRECT_GATE endpoint=$endpoint status=$status"
+            test "$status" = 303
+            grep -Eiq '^location: https://ball46-member-production\.mccarey-supon\.workers\.dev/pricing\?membership=required' /tmp/member-headers.txt
+          done
+          status="$(curl -sS --max-time 20 -o /tmp/stripe-readiness.json -w '%{http_code}' "$base/api/member/stripe-readiness")"
+          test "$status" = 401
+          jq -e '.error=="OWNER_AUTH_REQUIRED"' /tmp/stripe-readiness.json >/dev/null
+          status="$(curl -sS --max-time 20 -o /tmp/identity.json -w '%{http_code}' "$base/api/member/checkout")"
+          test "$status" = 401
+          jq -e '.error=="IDENTITY_AUTH_REQUIRED"' /tmp/identity.json >/dev/null
+          curl -fsS --max-time 20 "$base/api/enrollment-status" -o /tmp/enrollment.json
+          expected_enrollment="$(jq -r '.vars.MEMBER_CHECKOUT_ENABLED' ball46-member/wrangler.jsonc)"
+          jq -e --arg enabled "$expected_enrollment" '.ok==true and .enrollmentAvailable==($enabled=="true")' /tmp/enrollment.json >/dev/null
+          curl -fsS --max-time 20 "$base/api/member/session" -o /tmp/session.json
+          jq -e '.ok==true and .authenticated==false and .member==null' /tmp/session.json >/dev/null
+          checkout_status="$(curl -sS --max-time 20 -X POST -o /tmp/checkout.json -w '%{http_code}' "$base/api/stripe/checkout")"
+          echo "CHECKOUT_GATE http=$checkout_status body=$(cat /tmp/checkout.json | head -c 150)"
+          test "$checkout_status" = 503
+          jq -e '.error=="CHECKOUT_DISABLED_UNTIL_VERIFIED_ENTITLEMENTS"' /tmp/checkout.json >/dev/null
+          echo "BALL46_MEMBER_FAIL_CLOSED_VERIFIED"
+          echo "BALL46_MEMBER_PRODUCTION_SECURITY_DEPLOY_SUCCESS"
+
+# Incident recovery 2026-10-14: redeploy immutable verified commit 2d83fa8; do not change build source.
+
+# Restore baseline: 8eca8ad81fbe80cbf20ea259fb3ed5a1e05cfb1e
+# WARNING: this redeploys the entire baseline Member worker snapshot, not a font-only patch.
+# Run only while no intervening unrelated Member changes need preserving.
