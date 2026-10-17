@@ -1,0 +1,44 @@
+name: READ ONLY - Ball46 Detector Zero Signals 20261017
+on:
+  push:
+    branches: [diag/ball46-detector-zero-signals-20261017]
+    paths:
+      - .github/workflows/diag-ball46-detector-zero-signals-20261017.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect-detector:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - name: Inspect current production engine and upstream HUB - read only
+        shell: bash
+        run: |
+          node <<'NODE'
+          const urls={
+            hub_health:'https://nomadtips3-5usd-hub-343.mccarey-supon.workers.dev/health',
+            hub_snapshot:'https://nomadtips3-5usd-hub-343.mccarey-supon.workers.dev/snapshot',
+            engine_health:'https://nomadtips3-engine-343.mccarey-supon.workers.dev/health',
+            engine_board:'https://nomadtips3-engine-343.mccarey-supon.workers.dev/board',
+            engine_signals:'https://nomadtips3-engine-343.mccarey-supon.workers.dev/signals',
+            ball46_board:'https://ball46-production.mccarey-supon.workers.dev/api/engine/board',
+            ball46_signals:'https://ball46-production.mccarey-supon.workers.dev/api/engine/signals'
+          };
+          const stamp=Date.now();
+          const short=(s)=>String(s||'').slice(0,220);
+          async function probe([name,url]){
+            try{
+              const res=await fetch(url+'?diag='+stamp,{signal:AbortSignal.timeout(19000),headers:{'cache-control':'no-cache'}});
+              const text=await res.text(); let j={};try{j=JSON.parse(text)}catch{}
+              const fixtures=Array.isArray(j.fixtures)?j.fixtures:[];
+              const candidates=Array.isArray(j.candidates)?j.candidates:[];
+              const signals=Array.isArray(j.signals)?j.signals:[];
+              const stages={};for(const c of candidates){const key=String(c.stage||c.reason||c.status||'UNKNOWN'); stages[key]=(stages[key]||0)+1}
+              const statuses={};for(const f of fixtures){const key=String(f.boardState||f.statusCode||f.status||'unknown');statuses[key]=(statuses[key]||0)+1}
+              const meta={probe:name,http:res.status,ok:j.ok,version:j.version,engineState:j.engineState,status:j.status,paused:j.paused,reason:j.reason,lastError:short(j.lastError||j.error),observedAt:j.observedAt,lastScanAt:j.lastScanAt,lastSuccessAt:j.lastSuccessAt,lastSuccessAgeSeconds:j.lastSuccessAgeSeconds,updatedAt:j.updatedAt,fetchedAt:j.fetchedAt,ageMs:j.ageMs,liveAgeMs:j.liveAgeMs,counts:j.counts,provider:j.provider,requestCount:j.lastRequestCount,refereeErrors:j.refereeErrors?.slice?.(0,4),run:j.run,fixtureCount:fixtures.length,candidateCount:candidates.length,signalCount:signals.length,newSignalCount:j.newSignals?.length||0,allCount:j.allCount,stages,statuses};
+              console.log('PROBE '+JSON.stringify(meta));
+            }catch(e){console.log('PROBE '+JSON.stringify({probe:name,error:short(e.message)}))}
+          }
+          await Promise.all(Object.entries(urls).map(probe));
+          NODE
