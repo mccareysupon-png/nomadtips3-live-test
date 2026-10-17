@@ -1,0 +1,24 @@
+name: BALL46 result provider router staging tests
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - prep/goaloo-final-result-20261017
+    paths:
+      - integrations/result-provider-router/**
+      - .github/workflows/ball46-result-provider-router-test.yml
+permissions:
+  contents: read
+jobs:
+  unit-read-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Checkout staging source
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test isolated multi-provider race
+        run: node --test integrations/result-provider-router/test/router.test.mjs
