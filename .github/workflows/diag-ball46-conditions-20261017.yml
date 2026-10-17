@@ -96,3 +96,30 @@ jobs:
           }
           console.log('SETTINGS_COUNTS '+JSON.stringify({total:Object.keys(j.settings||{}).length,enabled:Object.values(j.runState||{}).filter(Boolean).length}));
           NODE
+
+      - name: Compare repeated live signal and price backoff snapshots
+        shell: bash
+        run: |
+          node <<'NODE'
+          const b='https://ball46-production.mccarey-supon.workers.dev';
+          const e='https://nomadtips3-engine-343.mccarey-supon.workers.dev';
+          async function fetchJson(url){
+            const r=await fetch(url+'?repeat='+Date.now(),{headers:{'cache-control':'no-cache'},signal:AbortSignal.timeout(16000)});
+            return {status:r.status,value:await r.json().catch(()=>({}))};
+          }
+          function sig(x){const s=Array.isArray(x?.signals)?x.signals:[];return{count:s.length,first:s.slice(0,8).map(v=>({market:v.market,fixtureId:v.fixtureId,minute:v.entryMinute,createdAt:v.createdAt,bookmaker:v.bookmaker,status:v.status})),allCount:x.allCount,mirror:x.mirror||null}}
+          for(let i=0;i<3;i++){
+            const out=await Promise.allSettled([
+              fetchJson(b+'/api/engine/signals'),fetchJson(e+'/signals'),fetchJson(e+'/health'),fetchJson(b+'/api/full-market/health'),fetchJson(e+'/board')
+            ]);
+            const [active,engine,health,price,board]=out.map(o=>o.status==='fulfilled'?o.value.value:{error:String(o.reason)});
+            const ref=Array.isArray(health.refereeErrors)?health.refereeErrors:[];
+            const priceMiss=ref.filter(v=>String(v.error).includes('CACHE_MISS')).length;
+            const stateCount={};const f=Array.isArray(board.fixtures)?board.fixtures:[];
+            for(const fixture of f)for(const [market,v] of Object.entries(fixture.analysis||{})){if(board.runState?.[market]!==true)continue;const st=v?.state||'UNSET';stateCount[st]=(stateCount[st]||0)+1}
+            console.log('SIGNAL_SNAPSHOT '+JSON.stringify({sample:i,at:new Date().toISOString(),active:sig(active),engine:sig(engine),
+              health:{liveCount:health.liveCount,fixtureCount:health.fixtureCount,signalCount:health.signalCount,refereeQueued:health.refereeQueued,refereeRequests:health.refereeRequests,externalOddsRequests:health.externalOddsRequests,priceMiss,otherErrors:ref.slice(0,4).map(x=>x.error),lastError:health.lastError},
+              pricing:{prewarm:price.prewarmMeta,provider:price.providerMeta,blockedUntil:price.blockedUntil,retryAfterSec:price.retryAfterSec,callsLast60s:price.callsLast60s,remainingLocalBudget:price.remainingLocalBudget},activeMarketStages:stateCount}));
+            if(i<2)await new Promise(done=>setTimeout(done,16000));
+          }
+          NODE
