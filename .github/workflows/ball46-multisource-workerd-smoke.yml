@@ -38,3 +38,6 @@ jobs:
             cat /tmp/ball46-v5-workerd.log; exit 1
           fi
           node -e 'const x=require("/tmp/ball46-v5-do-result.json"); if(!x.ok||x.second?.settled!==1||x.late?.conflict!==true) process.exit(1); console.log("REAL_DO_LOCAL_PASS",JSON.stringify({captured:x.captured.captured,settled:x.second.settled,source:x.second.source,conflictBlocked:x.late.conflict,markets:x.rows.map(r=>[r.market,r.status])}));'
+          curl --fail --silent --show-error --max-time 30 http://127.0.0.1:8789/test-goaloo-feed -o /tmp/ball46-v5-goaloo-feed.json
+          node -e 'const x=require("/tmp/ball46-v5-goaloo-feed.json"); if(!x.ok||x.first?.parsedFT!==1||x.second?.results?.[0]?.settled!==1) process.exit(1); console.log("PARSED_GOALOO_NATIVE_V5_PASS",JSON.stringify({parsed:x.first.parsedFT,matched:x.first.matched,settled:x.second.results[0].settled,markets:x.rows.map(r=>[r.market,r.status])}));'
+
