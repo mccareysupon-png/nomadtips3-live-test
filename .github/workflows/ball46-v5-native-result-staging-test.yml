@@ -1,0 +1,24 @@
+name: BALL46 Engine v5 native-score integration test
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - stage/ball46-multisource-v5-20261017
+    paths:
+      - workers/nomadtips3-engine-343/src/multisource-native-v5.js
+      - workers/nomadtips3-engine-343/test/multisource-native-v5.test.mjs
+      - workers/nomadtips3-engine-343/src/market-core.js
+      - .github/workflows/ball46-v5-native-result-staging-test.yml
+permissions:
+  contents: read
+jobs:
+  test-native-v5:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run existing Engine 3.43 market rules and new settlement integration tests
+        run: node --test workers/nomadtips3-engine-343/test/*.test.mjs
