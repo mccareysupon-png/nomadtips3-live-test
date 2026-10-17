@@ -18,7 +18,7 @@ jobs:
         run: |
           node <<'NODE'
           const a=process.env.CLOUDFLARE_ACCOUNT_ID,t=process.env.CLOUDFLARE_API_TOKEN;
-          const crypto=require('node:crypto');
+          const crypto=await import('node:crypto');
           const workers=['ball46-production','nomadtips3-engine-343','nomadtips3-5usd-hub-343','nomadtips3-full-market-343-ball46','nomadtips3-343-central-cache'];
           async function api(path){
             const r=await fetch('https://api.cloudflare.com/client/v4/accounts/'+a+'/workers/'+path,{headers:{Authorization:'Bearer '+t},signal:AbortSignal.timeout(26000)});
