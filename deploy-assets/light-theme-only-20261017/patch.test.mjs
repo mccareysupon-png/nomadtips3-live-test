@@ -1,0 +1,6 @@
+import test from'node:test';import assert from'node:assert/strict';import{readFileSync}from'node:fs';import{validateCss,patchLightTheme}from'./patch.mjs';
+test('a global or Dark selector is rejected',()=>{assert.throws(()=>validateCss('html[data-theme="dark"] #ball46-daily-performance{color:white}'),/NOT_LIGHT_ONLY/);assert.throws(()=>validateCss('body{background-color:white}'),/NOT_LIGHT_ONLY/);});
+test('layout and external-resource declarations are rejected',()=>{assert.throws(()=>validateCss('html:root[data-theme="light"] #ball46-daily-performance{height:80px}'),/NON_COLOR_PROPERTY/);assert.throws(()=>validateCss('html:root[data-theme="light"] #ball46-daily-performance{background-image:url(other.png)}'),/UNEXPECTED_CSS_RESOURCE/);});
+test('an unrelated component selector is rejected',()=>{assert.throws(()=>validateCss('html:root[data-theme="light"] .teams-cell{color:red}'),/OUT_OF_SCOPE_SELECTOR/);});
+test('unexpected Active HTML cannot be patched',()=>assert.throws(()=>patchLightTheme('<html>another worker</html>'),/ACTIVE_HTML_DRIFT/));
+test('the patch preserves all existing HTML and script bytes',()=>{const source=readFileSync(process.env.LIGHT_BASELINE_FILE||'audit/source-assets/index.html','utf8');const next=patchLightTheme(source);assert.equal(next.html.replace(next.block,''),source);});
