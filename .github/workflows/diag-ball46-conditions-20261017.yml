@@ -123,3 +123,42 @@ jobs:
             if(i<2)await new Promise(done=>setTimeout(done,16000));
           }
           NODE
+
+      - name: Read-only identify current shared 5USD cron competitors
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          node <<'NODE'
+          const a=process.env.CLOUDFLARE_ACCOUNT_ID,t=process.env.CLOUDFLARE_API_TOKEN;
+          if(!a||!t){console.log('CONSUMER_AUDIT missing credentials');process.exit(0)}
+          const workers=['nomadtips3-engine-343','nomadtips3-5usd-hub-343','nomadtips3-5usd-hub-343-stable-canary',
+          'nomadtips3-full-market-343-ball46','nomadtips3-343-central-cache','nomadtips3-343-central-cache-canary',
+          'nomadtips3-343-full-market-central-canary','nomadtips3-343-auto-engine','nomadtips3-rich-odds-343','ball46-production'];
+          async function get(path){
+            const r=await fetch('https://api.cloudflare.com/client/v4/accounts/'+a+'/workers/scripts/'+path,{headers:{Authorization:'Bearer '+t},signal:AbortSignal.timeout(20000)});
+            const j=await r.json();if(!j.success)throw Error('STATUS_'+r.status+'_'+JSON.stringify(j.errors).slice(0,100));return j.result;
+          }
+          for(const w of workers){
+            try{
+              const [sched,setting]=await Promise.all([get(w+'/schedules'),get(w+'/settings')]);
+              const binds=(setting.bindings||[]).filter(x=>x.type==='service'||x.type==='secret_text').map(x=>({name:x.name,type:x.type,service:x.service||null}));
+              console.log('ACTIVE_5USD_CONSUMER '+JSON.stringify({worker:w,crons:(sched.schedules||[]).map(x=>x.cron),bindings:binds,compatibilityDate:setting.compatibility_date}));
+            }catch(e){console.log('CONSUMER_AUDIT_ERROR '+w+' '+String(e.message).slice(0,250))}
+          }
+          NODE
+      - name: Probe parallel old cache producer health read-only
+        shell: bash
+        run: |
+          node <<'NODE'
+          const workers=['nomadtips3-343-central-cache','nomadtips3-343-central-cache-canary','nomadtips3-343-full-market-central-canary','nomadtips3-5usd-hub-343-stable-canary','nomadtips3-343-auto-engine'];
+          await Promise.all(workers.map(async w=>{try{
+            const r=await fetch('https://'+w+'.mccarey-supon.workers.dev/health?compare='+Date.now(),{signal:AbortSignal.timeout(14000)});
+            const j=await r.json().catch(()=>({}));
+            const result={worker:w,http:r.status,ok:j.ok,version:j.version,providerCalls60s:j.providerCalls60s,maxProviderCalls60s:j.maxProviderCalls60s,
+             lastTick:j.lastTick?{providerCalls:j.lastTick.providerCalls,failed:j.lastTick.failed?.slice(0,2),at:j.lastTick.at}:null,refereeRequests:j.refereeRequests,
+             lastError:j.lastError||j.error||null,provider:j.providerMeta||j.provider||null};
+            console.log('COMPETITOR_HEALTH '+JSON.stringify(result).slice(0,1700));
+          }catch(e){console.log('COMPETITOR_HEALTH '+JSON.stringify({worker:w,error:String(e.message)}))}}));
+          NODE
