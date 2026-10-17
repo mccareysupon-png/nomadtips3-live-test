@@ -1,0 +1,48 @@
+name: READ ONLY Ball46 5USD quota ownership 20261017
+on:
+  push:
+    branches: [diag/ball46-conditions-20261017]
+    paths:
+      - .github/workflows/diag-ball46-quota-owner-20261017.yml
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - name: Current three provider consumer counts with no new provider calls
+        shell: bash
+        run: |
+          node <<'NODE'
+          const urls={
+            hub:'https://nomadtips3-5usd-hub-343.mccarey-supon.workers.dev/health',
+            fm:'https://ball46-production.mccarey-supon.workers.dev/api/full-market/health',
+            cache:'https://nomadtips3-343-central-cache.mccarey-supon.workers.dev/health',
+            engine:'https://nomadtips3-engine-343.mccarey-supon.workers.dev/health',
+            canary:'https://nomadtips3-343-central-cache-canary.mccarey-supon.workers.dev/health'
+          };
+          await Promise.all(Object.entries(urls).map(async([n,url])=>{try{
+            const r=await fetch(url+'?quota='+Date.now(),{signal:AbortSignal.timeout(15000)});
+            const j=await r.json();for(const k of Object.keys(j))if(/token|secret|key|credential/i.test(k))delete j[k];
+            console.log('QUOTA_OWNER '+JSON.stringify({worker:n,ok:j.ok,status:r.status,health:j}).slice(0,9000));
+          }catch(e){console.log('QUOTA_ERROR '+n+' '+e.message)}}));
+          NODE
+      - name: Review HUB bulk request budget source and binding ownership
+        shell: bash
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          node <<'NODE'
+          const a=process.env.CLOUDFLARE_ACCOUNT_ID,t=process.env.CLOUDFLARE_API_TOKEN;
+          const workers=['nomadtips3-5usd-hub-343','nomadtips3-343-central-cache','nomadtips3-full-market-343-ball46'];
+          for(const w of workers)try{
+            const head=await fetch('https://api.cloudflare.com/client/v4/accounts/'+a+'/workers/scripts/'+w+'/deployments?per_page=1',{headers:{Authorization:'Bearer '+t}}).then(r=>r.json());
+            const id=head.result?.deployments?.[0]?.versions?.[0]?.version_id;
+            const resp=await fetch('https://api.cloudflare.com/client/v4/accounts/'+a+'/workers/workers/'+w+'/versions/'+id+'?include=modules',{headers:{Authorization:'Bearer '+t}}).then(r=>r.json());
+            const v=resp.result;const src=Buffer.from(v.modules.find(m=>m.name===v.main_module).content_base64,'base64').toString('utf8');
+            const marks=['MAX_PROVIDER_REQUESTS_PER_REFRESH','MAX_REQUESTS','PER_PAGE','perPage','MAX_PAGES','REQUEST_BUDGET','MAX_CALLS_PER_TICK','providerRequest(','scheduled(','maxCallsPerMinute','remaining'];
+            for(const m of marks){const i=src.indexOf(m);if(i!==-1)console.log('QUOTA_CODE '+JSON.stringify({worker:w,mark:m,fragment:src.slice(Math.max(0,i-160),Math.min(src.length,i+550))}))}
+          }catch(e){console.log('QUOTA_CODE_ERROR '+w+' '+e.message)}
+          NODE
