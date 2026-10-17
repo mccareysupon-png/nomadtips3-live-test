@@ -1,0 +1,34 @@
+name: Verify dropped pending on fifth 5USD bulk result page
+on:
+  push:
+    branches: [diag/ball46-bulk-settlement-gaps-20261017]
+    paths: [.github/workflows/verify-fifth-bulk-page-20261017.yml]
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - name: Read only page five for proven missing pending IDs
+        shell: bash
+        env:
+          FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
+        run: |
+          node --input-type=module <<'NODE'
+          const k=process.env.FIVEDOLLAR_API_KEY;
+          const hub=await fetch('https://nomadtips3-5usd-hub-343.mccarey-supon.workers.dev/snapshot').then(r=>r.json());
+          const sig=await fetch('https://nomadtips3-engine-343.mccarey-supon.workers.dev/signals').then(r=>r.json());
+          const current=new Set((hub.fixtures||[]).map(x=>String(x.fixtureId)));
+          const missing=new Set((sig.signals||[]).map(s=>String(s.fixtureId)).filter(x=>!current.has(x)));
+          const w=hub.todayWindow;
+          const url='https://api.5dollarfootballapi.com/v1/fixtures?start_time='+w.start+'&end_time='+w.end+'&status=all&include=odds,events,stats&per_page=50&page=5';
+          const r=await fetch(url,{headers:{Authorization:'Bearer '+k,Accept:'application/json'},signal:AbortSignal.timeout(18000)});
+          const j=await r.json();const f=Array.isArray(j.data)?j.data:[];
+          const hits=f.filter(x=>missing.has(String(x.id??x.fixture_id)));
+          console.log('PAGE5_MISSING_PENDING_MATCH '+JSON.stringify({status:r.status,page:j.pagination,
+            received:f.length,distinctMissing:missing.size,matched:hits.map(x=>({
+              id:String(x.id??x.fixture_id),status:x.status?.name||x.status,
+              goals:x.goals??x.score,home:x.teams?.home?.name,away:x.teams?.away?.name,
+              kickoff:x.kickoff_utc||x.start_time})),finished:f.filter(x=>String(x.status?.name||x.status).toLowerCase()==='finished').length}).slice(0,6500));
+          NODE
