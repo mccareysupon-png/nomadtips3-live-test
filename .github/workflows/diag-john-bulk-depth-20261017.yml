@@ -1,0 +1,79 @@
+name: READ ONLY John bulk pricing depth and duplicate consumer ownership 20261017
+on:
+  push:
+    branches: [audit/ball46-john-runtime-contract-20261017]
+    paths: [.github/workflows/diag-john-bulk-depth-20261017.yml]
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - name: Determine whether 5USD BULK contains John's inplay 19-book market quotes
+        shell: bash
+        run: |
+          node <<'NODE'
+          const urls=['https://nomadtips3-5usd-hub-343.mccarey-supon.workers.dev/snapshot','https://nomadtips3-engine-343.mccarey-supon.workers.dev/board'];
+          function skeleton(x,depth=0){
+            if(depth>=5)return Array.isArray(x)?['array',x.length]:typeof x;
+            if(x===null)return 'null';
+            if(Array.isArray(x))return{arrayLength:x.length,first:x.length?skeleton(x[0],depth+1):null};
+            if(typeof x==='object')return Object.fromEntries(Object.entries(x).slice(0,24).map(([k,v])=>[k,skeleton(v,depth+1)]));
+            return typeof x;
+          }
+          for(const url of urls){
+            try{
+              const r=await fetch(url+'?bulk_shape='+Date.now(),{signal:AbortSignal.timeout(22000)});
+              const data=await r.json();const list=(data.fixtures||[]).filter(x=>Number(x.minute)>0&&Number(x.minute)<90);
+              const tally={}; const arr=[];
+              for(const f of list){
+                const root=f.providerOdds||null;
+                const keyset=JSON.stringify(skeleton(root,0)).slice(0,300);
+                tally[keyset]=(tally[keyset]||0)+1;
+                if(arr.length<5&&root?.odds)arr.push({fixtureId:f.fixtureId,minute:f.minute,
+                  providerOddsKeys:Object.keys(root),oddsShape:skeleton(root.odds),fullOddsShape:skeleton(f.fullOdds),
+                  providerOddsUpdatedAt:f.providerOddsUpdatedAt,providerOddsFreshAt:f.providerOddsFreshAt,bookmakers:root?.bookmakers?.length||0});
+              }
+              console.log('NESTED_BULK '+JSON.stringify({source:url.includes('/board')?'engine':'hub',http:r.status,live:list.length,variants:Object.entries(tally).sort((a,b)=>b[1]-a[1]).slice(0,5),samples:arr}).slice(0,17000));
+            }catch(e){console.log('NESTED_BULK_ERROR '+String(e.message))}
+          }
+          NODE
+      - name: Inspect source line windows around John's provider odds and cron prewarm
+        shell: bash
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          node <<'NODE'
+          const a=process.env.CLOUDFLARE_ACCOUNT_ID,t=process.env.CLOUDFLARE_API_TOKEN;
+          const targets=[
+            ['ball46-production','86dfa3f2-9d48-4c8b-b624-ba5a494a29d9',['async function prewarmLiveFullMarket','function prewarmLiveFullMarket','async function fullMarketCompat','async scheduled(']],
+            ['nomadtips3-engine-343','9b363777-64fc-4a48-a10a-0fad822640cb',['function oddsRoot','function priceFor','function consensusProviderLine','function isVerifiedCornerMarket','FULL_MARKET_REQUESTS_PER_SCAN=4','if (u.pathname === "/scan"']],
+            ['nomadtips3-5usd-hub-343','2b01dc85-a525-4283-959e-8f6db796c81e',['function normalizeOdds','function mergeProviderOdds','/odds?bookmakers','RICH_MAX_PROVIDER_CALLS_PER_MINUTE']]
+          ];
+          for(const [w,id,marks] of targets)try{
+            const r=await fetch('https://api.cloudflare.com/client/v4/accounts/'+a+'/workers/workers/'+w+'/versions/'+id+'?include=modules',{headers:{Authorization:'Bearer '+t}});
+            const j=await r.json();if(!j.success)throw Error(JSON.stringify(j.errors).slice(0,150));
+            const v=j.result;const src=Buffer.from(v.modules.find(m=>m.name===v.main_module).content_base64,'base64').toString('utf8');
+            for(const mark of marks){const idx=src.indexOf(mark);console.log('PRICE_CODE '+JSON.stringify({worker:w,mark,found:idx>=0,snippet:idx<0?'':src.slice(Math.max(0,idx-100),Math.min(src.length,idx+2700))}).slice(0,4800))}
+          }catch(e){console.log('PRICE_CODE_ERROR '+w+' '+String(e.message))}
+          NODE
+      - name: Identify consumer dependencies before proposing to stop old parallel cache cron
+        shell: bash
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          node <<'NODE'
+          const a=process.env.CLOUDFLARE_ACCOUNT_ID,t=process.env.CLOUDFLARE_API_TOKEN,base='https://api.cloudflare.com/client/v4/accounts/'+a+'/workers';
+          const headers={Authorization:'Bearer '+t};
+          async function cf(path){const r=await fetch(base+path,{headers,signal:AbortSignal.timeout(20000)});const j=await r.json();if(!j.success)throw Error(r.status+' '+JSON.stringify(j.errors).slice(0,100));return j.result}
+          const scripts=await cf('/scripts');const names=(scripts||[]).map(x=>x.id||x.name).filter(Boolean);
+          const candidates=[];
+          for(let i=0;i<names.length;i+=12){
+            const items=await Promise.all(names.slice(i,i+12).map(async name=>{try{const j=await cf('/scripts/'+name+'/settings');return{name,binds:j.bindings||[]}}catch(e){return{name,error:String(e.message)}}}));
+            for(const x of items){const deps=(x.binds||[]).filter(b=>String(b.service||'').includes('central-cache')||String(b.service||'').includes('full-market')||String(b.name||'').includes('CENTRAL'));if(deps.length)candidates.push({name:x.name,dependencies:deps.map(b=>({name:b.name,service:b.service,type:b.type}))})}
+          }
+          console.log('PRICE_OWNERS '+JSON.stringify({scripts:names.length,linked:candidates}).slice(0,12500));
+          NODE
