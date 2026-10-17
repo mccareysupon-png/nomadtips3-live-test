@@ -21,4 +21,4 @@ jobs:
         with:
           node-version: '22'
       - name: Test isolated multi-provider race
-        run: node --test integrations/result-provider-router/test/router.test.mjs
+        run: node --test integrations/result-provider-router/test/*.test.mjs
