@@ -1,0 +1,61 @@
+name: READ ONLY Ball46 John pricing mode actor and 5USD paths
+on:
+  push:
+    branches: [diag/ball46-conditions-20261017]
+    paths: [.github/workflows/diag-ball46-john-price-setting-actor-20261017.yml]
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - name: Inspect exact production mode write route, caller, independent 5USD schedulers
+        shell: bash
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          node <<'NODE'
+          const a=process.env.CLOUDFLARE_ACCOUNT_ID,t=process.env.CLOUDFLARE_API_TOKEN;
+          async function api(endpoint){
+            const r=await fetch('https://api.cloudflare.com/client/v4/accounts/'+a+'/workers/'+endpoint,{headers:{Authorization:'Bearer '+t},signal:AbortSignal.timeout(18000)});
+            const j=await r.json();if(!r.ok||!j.success)throw Error('HTTP_'+r.status+'_'+JSON.stringify(j.errors).slice(0,250));return j.result;
+          }
+          for(const w of ['nomadtips3-full-market-343-ball46','ball46-production','nomadtips3-engine-343','nomadtips3-343-central-cache','nomadtips3-343-auto-engine']){
+            try {
+              const d=await api('scripts/'+w+'/deployments?per_page=1');const id=d.deployments?.[0]?.versions?.[0]?.version_id;
+              const v=await api('workers/'+w+'/versions/'+id+'?include=modules');
+              const m=v.modules.find(m=>m.name===v.main_module);const s=Buffer.from(m.content_base64,'base64').toString();
+              const marks=w.includes('full-market')?['async setConfig(mode)', 'setConfig(', '"/settings"','route === "/settings"','controlConfig','async scheduled(']:
+                w==='ball46-production'?['"/api/full-market/settings"','api/full-market/settings','FULL_MARKET.fetch','async scheduled(','modeLabel']:
+                w.includes('central-cache')?['scheduler-tick','providerJson','providerRequest','async scheduled(']:
+                w.includes('auto-engine')?['paused-20260916-hardstop','async scheduled(']:
+                ['JOHN_BULK_QUALIFIED_PRICE_PREWARM_20261011','full-market.internal/prewarm','FIVEDOLLAR_API_KEY'];
+              const chunks=[];
+              for(const mark of marks){const idx=s.indexOf(mark);chunks.push({mark,index:idx,code:idx<0?null:s.slice(Math.max(0,idx-200),Math.min(s.length,idx+1100))})}
+              console.log('WRITE_PATH '+JSON.stringify({worker:w,version:id,length:s.length,main:v.main_module,hits:chunks}).slice(0,14000));
+            }catch(e){console.log('WRITE_PATH_ERROR '+w+' '+String(e.message).slice(0,250))}
+          }
+          NODE
+      - name: Inspect Cloudflare audit trail endpoint availability only without writing
+        shell: bash
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          node <<'NODE'
+          const a=process.env.CLOUDFLARE_ACCOUNT_ID,t=process.env.CLOUDFLARE_API_TOKEN;
+          for(const endpoint of [
+            '/accounts/'+a+'/logs/audit?limit=40',
+            '/accounts/'+a+'/audit_logs?per_page=40'
+          ]) {
+            try {
+              const r=await fetch('https://api.cloudflare.com/client/v4'+endpoint,{headers:{Authorization:'Bearer '+t},signal:AbortSignal.timeout(16000)});
+              const d=await r.json().catch(()=>({}));
+              const items=(d.result?.logs||d.result?.audit_logs||Array.isArray(d.result)&&d.result||[]);
+              const matching=Array.isArray(items)?items.filter(x=>/full.market|settings|worker|eco|fast/i.test(JSON.stringify(x))).map(x=>({when:x.when||x.created_at||x.timestamp,action:x.action?.type||x.action||x.event,resource:x.resource?.name||x.resource,actor:x.actor?.email||x.actor?.id||x.actor?.type})).slice(0,20):[];
+              console.log('AUDIT_TRAIL '+JSON.stringify({endpoint:endpoint.replace(a,'ACCOUNT'),status:r.status,success:d.success,errors:d.errors,items:Array.isArray(items)?items.length:null,matching}).slice(0,6500));
+            }catch(e){console.log('AUDIT_TRAIL_ERROR '+String(e.message).slice(0,250))}
+          }
+          NODE
