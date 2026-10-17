@@ -1,0 +1,140 @@
+name: GOALOO shadow live read-only 20261017
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - prep/goaloo-final-result-20261017
+    paths:
+      - .github/workflows/goaloo-shadow-readonly-20261017.yml
+permissions:
+  contents: read
+jobs:
+  inspect-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Read independent feeds and hold settlement writes
+        shell: bash
+        run: |
+          node --input-type=module <<'JS'
+          
+          import fs from "node:fs";
+          const urls={
+            goaloo:["https://live10.goaloo28.com/gf/data/bf_us.js","https://live10.goaloo28.com/gf/data/bf_us1.js"],
+            hub:"https://nomadtips3-5usd-hub-343.mccarey-supon.workers.dev/snapshot",
+            engine:"https://nomadtips3-engine-343.mccarey-supon.workers.dev/signals",
+            statistics:"https://nomadtips3-engine-343.mccarey-supon.workers.dev/statistics",
+            member:"https://www.ball46.com/api/engine/statistics?paged=1&limit=1"
+          };
+          const allow=new Set([...urls.goaloo,urls.hub,urls.engine,urls.statistics,urls.member]);
+          const timestamp=()=>new Date().toISOString();
+          const err=e=>(String(e?.name||"Error")+": "+String(e?.message||e)).slice(0,180);
+          async function read(url){
+            if(!allow.has(url))throw new Error("UNAUTHORIZED_URL");
+            const t=Date.now();
+            try{
+              const response=await fetch(url,{method:"GET",redirect:"error",headers:{"accept":"*/*","cache-control":"no-cache"},signal:AbortSignal.timeout(16000)});
+              const body=await response.text();
+              if(body.length>4000000)throw new Error("TOO_LARGE");
+              return {ok:response.ok,status:response.status,ms:Date.now()-t,body};
+            }catch(e){return {ok:false,ms:Date.now()-t,error:err(e),body:""}}
+          }
+          function fields(s){const out=[];let v="",q="",esc=false;for(const ch of s){
+            if(q){if(esc){v+=ch;esc=false}else if(ch==="\\"){esc=true}else if(ch===q){q=""}else{v+=ch}}
+            else if(ch==="'"||ch==='"'){q=ch}
+            else if(ch===","){out.push(v.trim());v=""}
+            else{v+=ch}
+          }out.push(v.trim());return out}
+          function numeric(s){if(!/^-?\d+$/.test(String(s)))return null;return Number(s)}
+          function parsedFeed(text){
+            const leagues=new Map();
+            for(const m of text.matchAll(/B\[(\d+)\]\s*=\s*\[([^\n;]*)\]\s*;/g)){const a=fields(m[2]);leagues.set(Number(m[1]),a[2]||"")}
+            const rows=[];
+            for(const m of text.matchAll(/A\[(\d+)\]\s*=\s*\[([^\n;]*)\]\s*;/g)){
+              const a=fields(m[2]);if(a.length<11||!a[0]||numeric(a[8])===null)continue;
+              rows.push({id:String(a[0]),league:leagues.get(Number(a[1]))||"",home:a[4]||"",away:a[5]||"",kickoffRaw:a[6]||"",state:numeric(a[8]),homeGoals:numeric(a[9]),awayGoals:numeric(a[10])});
+            }
+            return rows
+          }
+          async function goaloo(){
+            const attempts=[];
+            for(const url of urls.goaloo){
+              const res=await read(url);
+              if(!res.ok){attempts.push({url,status:res.status||null,error:res.error||"HTTP_NOT_OK",ms:res.ms});continue}
+              const rows=parsedFeed(res.body);
+              if(rows.length)return {ok:true,url,at:timestamp(),rows,attempts,ms:res.ms};
+              attempts.push({url,status:res.status,error:"UNRECOGNIZED_DATA",ms:res.ms})
+            }
+            return {ok:false,at:timestamp(),rows:[],attempts}
+          }
+          const normalize=v=>String(typeof v==="string"?v:v?.name||"").normalize("NFKD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9\u0e00-\u0e7f]+/g," ").trim().replace(/\s+/g," ");
+          const label=v=>typeof v==="string"?v:v?.name||"";
+          function getJson(res){try{return res.ok?JSON.parse(res.body):null}catch{return null}}
+          async function main(){
+            const first=await goaloo();
+            const sources=Object.fromEntries(await Promise.all(["hub","engine","statistics","member"].map(async k=>{
+              const data=await read(urls[k]);const json=getJson(data);
+              return [k,{ok:!!json,status:data.status||null,error:data.error||(json?null:"NON_JSON_OR_ERROR"),ms:data.ms,json}]
+            })));
+            const fixtureList=Array.isArray(sources.hub.json?.fixtures)?sources.hub.json.fixtures:[];
+            const hubMap=new Map(fixtureList.map(f=>[String(f.fixtureId??f.id),f]));
+            const rawSignals=Array.isArray(sources.engine.json?.signals)?sources.engine.json.signals:[];
+            const pending=rawSignals.filter(s=>/^(PENDING|WAITING|UNSETTLED)$/i.test(String(s.status??s.result??"")));
+            const proposed=[];
+            if(first.ok){
+              for(const signal of pending){
+                const id=String(signal.fixtureId??signal.fixture_id??"");
+                const h=hubMap.get(id)||{};
+                const home=label(signal.home)||label(h.home);
+                const away=label(signal.away)||label(h.away);
+                if(!home||!away)continue;
+                const named=first.rows.filter(x=>normalize(x.home)===normalize(home)&&normalize(x.away)===normalize(away));
+                if(named.length!==1)continue;
+                const x=named[0];
+                const targetKickoff=signal.kickoffUtc||h.kickoffUtc||null;
+                const t=targetKickoff?Date.parse(targetKickoff):NaN;
+                const sourceT=Date.parse(x.kickoffRaw.replace(" ","T")+"Z");
+                proposed.push({ball46Id:id,goalooId:x.id,goalooState:x.state,
+                  goalooScore:[x.homeGoals,x.awayGoals],
+                  suggestedOffsetMinutes:Number.isFinite(t)&&Number.isFinite(sourceT)?Math.round((sourceT-t)/60000):null,
+                  decision:"HOLD: timezone, league and provider IDs not independently verified"});
+                if(proposed.length>=40)break
+              }
+            }
+            let second=null,stableCount=0;
+            if(first.ok){
+              await new Promise(r=>setTimeout(r,65000));
+              second=await goaloo();
+              if(second.ok){
+                const m2=new Map(second.rows.map(x=>[x.id,x]));
+                for(const candidate of proposed){
+                  const a=first.rows.find(x=>x.id===candidate.goalooId),b=m2.get(candidate.goalooId);
+                  if(a&&b&&a.state===-1&&b.state===-1&&Number.isInteger(a.homeGoals)&&Number.isInteger(a.awayGoals)&&a.homeGoals===b.homeGoals&&a.awayGoals===b.awayGoals)stableCount++;
+                }
+              }
+            }
+            const report={
+              mode:"READ_ONLY_LIVE_SHADOW",at:timestamp(),productionWrites:0,
+              goaloo:{accessible:first.ok,firstStatus:first.ok?"PARSED":"FAILED",firstRows:first.rows.length,firstFT:first.rows.filter(r=>r.state===-1).length,
+                firstObservedAt:first.at,firstAttempts:first.attempts,secondAccessible:!!second?.ok,
+                secondRows:second?.rows.length??null,secondObservedAt:second?.at??null,secondAttempts:second?.attempts||[]},
+              sources:Object.fromEntries(Object.entries(sources).map(([k,v])=>[k,{accessible:v.ok,status:v.status,error:v.error,ms:v.ms}])),
+              engineSignals:rawSignals.length,pendingSignals:pending.length,hubFixtures:fixtureList.length,
+              provisionalNamePairs:proposed,stableFTFromTwoSnapshots:stableCount,
+              confirmedCrossProviderPairs:0,settlementEligible:0,release:"HOLD",reason:"GOALOO_TIMEZONE_AND_MAPPING_NOT_VERIFIED; NO_WRITER_ATTACHED"
+            };
+            fs.writeFileSync("goaloo-readonly-live-shadow.json",JSON.stringify(report,null,2)+"\n");
+            console.log(JSON.stringify({goalooAccessible:first.ok,firstRows:first.rows.length,secondAccessible:!!second?.ok,
+              engineReadable:sources.engine.ok,hubReadable:sources.hub.ok,memberReadable:sources.member.ok,
+              pending:pending.length,provisional:proposed.length,stableFT:stableCount,settlementEligible:0,release:"HOLD"}));
+          }
+          await main();
+          JS
+      - name: Upload sanitized evidence report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: goaloo-shadow-evidence
+          path: goaloo-readonly-live-shadow.json
+          if-no-files-found: warn
+          retention-days: 7
