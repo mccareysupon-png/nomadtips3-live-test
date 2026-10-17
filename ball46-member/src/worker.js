@@ -472,7 +472,7 @@ export default {
       const identity=await verifyAccessIdentity(request,env);
       if(!identity)return json({ok:false,error:'IDENTITY_AUTH_REQUIRED'},401);
       if(await memberAccess(request,env))
-        return Response.redirect('https://member.ball46.com/member',303);
+        return Response.redirect(env.APP_STAGE==='sandbox'?'https://ball46-member-sandbox.mccarey-supon.workers.dev/member':'https://member.ball46.com/member',303);
       const checkout=await createMemberCheckout(identity,env,url.origin);
       if(checkout.url)return Response.redirect(checkout.url,303);
       return json(checkout.body,checkout.status);
