@@ -1,0 +1,53 @@
+name: Validate 5USD bulk pagination and finished-match retention
+on:
+  push:
+    branches: [diag/ball46-bulk-settlement-gaps-20261017]
+    paths: [.github/workflows/audit-5usd-today-bulk-20261017.yml]
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - name: Inspect exact retention code and compare one larger BULK response
+        shell: bash
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
+        run: |
+          node --input-type=module <<'NODE'
+          const a=process.env.CLOUDFLARE_ACCOUNT_ID,t=process.env.CLOUDFLARE_API_TOKEN;
+          const r=await fetch('https://api.cloudflare.com/client/v4/accounts/'+a+
+            '/workers/workers/nomadtips3-5usd-hub-343/versions/2b01dc85-a525-4283-959e-8f6db796c81e?include=modules',
+            {headers:{Authorization:'Bearer '+t}});
+          const j=await r.json();if(!j.success)throw Error('SOURCE_FETCH_FAILED');
+          const v=j.result,src=Buffer.from(v.modules.find(m=>m.name===v.main_module).content_base64,'base64').toString();
+          for(const term of ['async refreshLive(force = false)','async refreshToday()','function pageInfo','function extract(','async function fetchPages','async writeSnapshot(rows','async refreshIfDue()']){
+            const at=src.indexOf(term);console.log('RETENTION_PATH '+JSON.stringify({term,found:at>=0,code:at>=0?src.slice(at,Math.min(src.length,at+4600)):null}).slice(0,9000))
+          }
+          const s=await fetch('https://nomadtips3-5usd-hub-343.mccarey-supon.workers.dev/snapshot?pagination_truth='+Date.now(),{signal:AbortSignal.timeout(20000)});const hub=await s.json();
+          console.log('HUB_PAGINATION '+JSON.stringify({guardHit:hub.guardHit,todayRequests:hub.todayRequests,liveRequests:hub.liveRequests,
+            todayWindow:hub.todayWindow,refreshKind:hub.refreshKind,todayFetchedAt:hub.todayFetchedAt,liveFetchedAt:hub.liveFetchedAt,
+            fixtures:hub.fixtureCount,counts:hub.counts}));
+          const k=process.env.FIVEDOLLAR_API_KEY;
+          if(!k){console.log('PROVIDER_PAGINATION '+JSON.stringify({secretPresent:false}));process.exit(0)}
+          const w=hub.todayWindow||{};
+          if(!Number.isFinite(Number(w.start))||!Number.isFinite(Number(w.end))){console.log('PROVIDER_PAGINATION '+JSON.stringify({error:'HUB_WINDOW_MISSING'}));process.exit(0)}
+          const url='https://api.5dollarfootballapi.com/v1/fixtures?start_time='+w.start+'&end_time='+w.end+'&status=all&include=odds,events,stats&per_page=500&page=1';
+          const begin=Date.now();
+          const result=await fetch(url,{headers:{Authorization:'Bearer '+k,Accept:'application/json'},signal:AbortSignal.timeout(19000)});
+          const d=await result.json().catch(()=>({}));
+          const rows=Array.isArray(d.data)?d.data:Array.isArray(d.fixtures)?d.fixtures:Array.isArray(d.data?.fixtures)?d.data.fixtures:[];
+          const statusCounts={};for(const x of rows){const s=String(x.status?.name||x.status||x.status_code||'UNKNOWN');statusCounts[s]=(statusCounts[s]||0)+1}
+          const sourceIds=new Set(rows.map(x=>String(x.id??x.fixture_id??'')));
+          const pendingResponse=await fetch('https://nomadtips3-engine-343.mccarey-supon.workers.dev/signals',{signal:AbortSignal.timeout(18000)});
+          const pending=(await pendingResponse.json()).signals||[];
+          const missingIds=[...new Set(pending.map(x=>String(x.fixtureId)))].filter(id=>!(hub.fixtures||[]).some(f=>String(f.fixtureId)===id));
+          console.log('PROVIDER_PAGINATION '+JSON.stringify({http:result.status,ms:Date.now()-begin,
+            success:d.success,keys:Object.keys(d).slice(0,14),pagination:d.pagination||d.meta||null,rowCount:rows.length,
+            finishedLike:rows.filter(f=>/finish|full.?time|ended|\\bft\\b/i.test(String(f.status?.name||f.status||f.status_code))).length,
+            statusCounts:Object.entries(statusCounts).slice(0,15),
+            missingPendingIds:missingIds.length,seenMissing:missingIds.filter(id=>sourceIds.has(id)),firstFiveIds:rows.slice(0,5).map(x=>x.id||x.fixture_id)}).slice(0,7000))
+          NODE
