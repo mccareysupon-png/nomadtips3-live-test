@@ -37,7 +37,7 @@ jobs:
               const stages={};for(const c of candidates){const key=String(c.stage||c.reason||c.status||'UNKNOWN'); stages[key]=(stages[key]||0)+1}
               const statuses={};for(const f of fixtures){const key=String(f.boardState||f.statusCode||f.status||'unknown');statuses[key]=(statuses[key]||0)+1}
               const meta={probe:name,http:res.status,ok:j.ok,version:j.version,engineState:j.engineState,status:j.status,paused:j.paused,reason:j.reason,lastError:short(j.lastError||j.error),observedAt:j.observedAt,lastScanAt:j.lastScanAt,lastSuccessAt:j.lastSuccessAt,lastSuccessAgeSeconds:j.lastSuccessAgeSeconds,updatedAt:j.updatedAt,fetchedAt:j.fetchedAt,ageMs:j.ageMs,liveAgeMs:j.liveAgeMs,counts:j.counts,provider:j.provider,requestCount:j.lastRequestCount,refereeErrors:j.refereeErrors?.slice?.(0,4),run:j.run,fixtureCount:fixtures.length,candidateCount:candidates.length,signalCount:signals.length,newSignalCount:j.newSignals?.length||0,allCount:j.allCount,stages,statuses};
-              if(name==='ball46_signals'||name==='engine_signals'){meta.responseKeys=Object.keys(j);meta.signalArrayType=typeof j.signals;meta.activeSignalsLen=Array.isArray(j.activeSignals)?j.activeSignals.length:null;meta.rowsLen=Array.isArray(j.rows)?j.rows.length:null;meta.filters=j.filters||null;meta.emptyReason=j.emptyReason||null;}
+              if(name==='ball46_signals'||name==='engine_signals'){meta.responseKeys=Object.keys(j);meta.signalArrayType=typeof j.signals;meta.activeSignalsLen=Array.isArray(j.activeSignals)?j.activeSignals.length:null;meta.rowsLen=Array.isArray(j.rows)?j.rows.length:null;meta.filters=j.filters||null;meta.emptyReason=j.emptyReason||null;meta.mirrorInfo=j.mirror||null;}
               if(name==='engine_health'){
                 meta.healthKeys=Object.keys(j);
                 for(const key of Object.keys(j)){if(/scan|reason|reject|candidate|minute|qualified|evidence|cache|gate|referee|backoff|age|cycle|refresh|source|signal|fetch|warning/i.test(key)&& !/token|key|secret|credential/i.test(key)){const value=j[key];if(value===null||typeof value!=='object'||JSON.stringify(value).length<900)meta['health_'+key]=value}}
@@ -55,4 +55,33 @@ jobs:
             }catch(e){console.log('PROBE '+JSON.stringify({probe:name,error:short(e.message)}))}
           }
           await Promise.all(Object.entries(urls).map(probe));
+          NODE
+
+      - name: Read only current detector source and pricing-gate signatures
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          node <<'NODE'
+          const account=process.env.CLOUDFLARE_ACCOUNT_ID,token=process.env.CLOUDFLARE_API_TOKEN;
+          if(!account||!token){console.log('SOURCE_INSPECT_UNAVAILABLE credentials missing');process.exit(0)}
+          async function call(path){
+            const r=await fetch('https://api.cloudflare.com/client/v4/accounts/'+account+'/workers'+path,{headers:{Authorization:'Bearer '+token},signal:AbortSignal.timeout(26000)});
+            const j=await r.json();if(!r.ok||j.success!==true)throw Error('CF_READ_'+r.status+'_'+JSON.stringify(j.errors||[]).slice(0,250));return j.result
+          }
+          try{
+            for(const worker of ['nomadtips3-engine-343','ball46-production']){
+              const deployment=await call('/scripts/'+worker+'/deployments?per_page=2');
+              const versionId=deployment.deployments?.[0]?.versions?.[0]?.version_id;
+              if(!versionId){console.log('CODE '+worker+' current-version-unavailable');continue}
+              const version=await call('/workers/'+worker+'/versions/'+versionId+'?include=modules');
+              const main=version.modules?.find(x=>x.name===version.main_module);
+              const source=main?.content_base64?Buffer.from(main.content_base64,'base64').toString('utf8'):'';
+              const bindings=(version.bindings||[]).map(x=>({name:x.name,type:x.type,service:x.service||null}));
+              console.log('SOURCE '+JSON.stringify({worker,versionId,main:version.main_module,chars:source.length,bindings}));
+              const marks=worker==='nomadtips3-engine-343'?['JOHN_QUALIFIED_PRICE_CACHE_MISS','JOHN_BULK_QUALIFIED_PRICE_PREWARM_20261011','johnEligibleFixtureIds','refereeScanOrder','johnQuotesByFixture','FULL_MARKET_REQUESTS_PER_SCAN','async scan()']:['/api/engine/signals','/api/engine/board','mirror'];
+              for(const mark of marks){const i=source.indexOf(mark);if(i>=0)console.log('SOURCE_FRAGMENT '+JSON.stringify({worker,mark,index:i,fragment:source.slice(Math.max(0,i-340),Math.min(source.length,i+1200))}));else console.log('SOURCE_MARK_MISSING '+worker+' '+mark)}
+            }
+          }catch(e){console.log('SOURCE_READ_ERROR '+String(e.message).slice(0,250))}
           NODE
