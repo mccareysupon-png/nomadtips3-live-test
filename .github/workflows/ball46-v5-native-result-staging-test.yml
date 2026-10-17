@@ -6,7 +6,10 @@ on:
       - stage/ball46-multisource-v5-20261017
     paths:
       - workers/nomadtips3-engine-343/src/multisource-native-v5.js
+      - workers/nomadtips3-engine-343/src/multisource-result-v5.js
+      - workers/nomadtips3-engine-343/src/index-bulk-recovery.js
       - workers/nomadtips3-engine-343/test/multisource-native-v5.test.mjs
+      - workers/nomadtips3-engine-343/test/multisource-result-v5.test.mjs
       - workers/nomadtips3-engine-343/src/market-core.js
       - .github/workflows/ball46-v5-native-result-staging-test.yml
 permissions:
@@ -21,4 +24,6 @@ jobs:
         with:
           node-version: '22'
       - name: Run existing Engine 3.43 market rules and new settlement integration tests
-        run: node --test workers/nomadtips3-engine-343/test/*.test.mjs
+        run: |
+          node --check workers/nomadtips3-engine-343/src/index-bulk-recovery.js
+          node --test workers/nomadtips3-engine-343/test/*.test.mjs
