@@ -94,8 +94,14 @@ jobs:
                 const targetKickoff=signal.kickoffUtc||h.kickoffUtc||null;
                 const t=targetKickoff?Date.parse(targetKickoff):NaN;
                 const sourceT=Date.parse(x.kickoffRaw.replace(" ","T")+"Z");
+                if(proposed.some(p=>p.ball46Id===id&&p.goalooId===x.id))continue;
+                const hubTimeFields=Object.fromEntries(Object.entries(h).filter(([k,v])=>/kickoff|start|date|time/i.test(k)&&typeof v!=="object").slice(0,12));
                 proposed.push({ball46Id:id,goalooId:x.id,goalooState:x.state,
-                  goalooScore:[x.homeGoals,x.awayGoals],
+                  goalooScore:[x.homeGoals,x.awayGoals],goalooKickoffRaw:x.kickoffRaw,
+                  ball46KickoffUtc:targetKickoff,signalKickoffUtc:signal.kickoffUtc??signal.kickoff_utc??null,
+                  goalooLeague:x.league,hubLeague:label(h.league)||null,
+                  hubStatus:h.status??h.statusCode??h.boardState??null,hubGoals:h.goals??null,
+                  hubTimeFields,signalFieldNames:Object.keys(signal).slice(0,55),hubFieldNames:Object.keys(h).slice(0,55),
                   suggestedOffsetMinutes:Number.isFinite(t)&&Number.isFinite(sourceT)?Math.round((sourceT-t)/60000):null,
                   decision:"HOLD: timezone, league and provider IDs not independently verified"});
                 if(proposed.length>=40)break
@@ -119,14 +125,14 @@ jobs:
                 firstObservedAt:first.at,firstAttempts:first.attempts,secondAccessible:!!second?.ok,
                 secondRows:second?.rows.length??null,secondObservedAt:second?.at??null,secondAttempts:second?.attempts||[]},
               sources:Object.fromEntries(Object.entries(sources).map(([k,v])=>[k,{accessible:v.ok,status:v.status,error:v.error,ms:v.ms}])),
-              engineSignals:rawSignals.length,pendingSignals:pending.length,hubFixtures:fixtureList.length,
+              engineSignals:rawSignals.length,pendingSignals:pending.length,uniquePendingFixtures:new Set(pending.map(s=>String(s.fixtureId??s.fixture_id??''))).size,hubFixtures:fixtureList.length,
               provisionalNamePairs:proposed,stableFTFromTwoSnapshots:stableCount,
               confirmedCrossProviderPairs:0,settlementEligible:0,release:"HOLD",reason:"GOALOO_TIMEZONE_AND_MAPPING_NOT_VERIFIED; NO_WRITER_ATTACHED"
             };
             fs.writeFileSync("goaloo-readonly-live-shadow.json",JSON.stringify(report,null,2)+"\n");
             console.log(JSON.stringify({goalooAccessible:first.ok,firstRows:first.rows.length,secondAccessible:!!second?.ok,
               engineReadable:sources.engine.ok,hubReadable:sources.hub.ok,memberReadable:sources.member.ok,
-              pending:pending.length,provisional:proposed.length,stableFT:stableCount,settlementEligible:0,release:"HOLD"}));
+              pending:pending.length,uniquePending:new Set(pending.map(s=>String(s.fixtureId??s.fixture_id??''))).size,provisional:proposed.length,stableFT:stableCount,settlementEligible:0,release:"HOLD"}));
           }
           await main();
           JS
