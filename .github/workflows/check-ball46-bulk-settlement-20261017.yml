@@ -1,0 +1,48 @@
+name: Verify real settlement after BULK result fix
+on:
+  push:
+    branches: [fix/ball46-john-bulk-final-retain-20261017]
+    paths: [.github/workflows/check-ball46-bulk-settlement-20261017.yml]
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - name: Observe HUB pagination and Engine settlement without writes
+        shell: bash
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          node --input-type=module <<'NODE'
+          const a=process.env.CLOUDFLARE_ACCOUNT_ID,t=process.env.CLOUDFLARE_API_TOKEN;
+          const d=await fetch('https://api.cloudflare.com/client/v4/accounts/'+a+
+           '/workers/scripts/nomadtips3-5usd-hub-343/deployments?per_page=1',{headers:{Authorization:'Bearer '+t}}).then(r=>r.json());
+          const versions=d.result?.deployments?.[0]?.versions||[];
+          console.log('BULK_FIX_ACTIVE_VERSION '+JSON.stringify({versions:versions.map(x=>({id:x.version_id,pct:x.percentage}))}));
+          if(versions.length!==1||versions[0].version_id!=='98ea43ab-f40c-4de5-82e3-b0387dffd672')throw Error('HUB_VERSION_REGRESSED');
+          const urls={
+            hub:'https://nomadtips3-5usd-hub-343.mccarey-supon.workers.dev/snapshot',
+            engine:'https://nomadtips3-engine-343.mccarey-supon.workers.dev/signals',
+            ledger:'https://ball46-production.mccarey-supon.workers.dev/api/engine/ledger-health'
+          };
+          for(let i=0;i<3;i++){
+            const v={};for(const [k,url] of Object.entries(urls)){
+              const r=await fetch(url+'?validation='+Date.now(),{signal:AbortSignal.timeout(18000),headers:{'cache-control':'no-cache'}});
+              v[k]=await r.json();
+            }
+            const rows=v.hub.fixtures||[],fm=new Map(rows.map(f=>[String(f.fixtureId),f]));
+            const pending=v.engine.signals||[];
+            const missing=pending.filter(s=>!fm.has(String(s.fixtureId)));
+            const finals=pending.filter(s=>fm.get(String(s.fixtureId))?.boardState==='finished');
+            console.log('SETTLEMENT_POST_PATCH '+JSON.stringify({sample:i,at:new Date().toISOString(),
+              snapshotAt:v.hub.fetchedAt,refreshKind:v.hub.refreshKind,guardHit:v.hub.guardHit,
+              cursor:v.hub.todayPageCursor,todayRequests:v.hub.todayRequests,liveRequests:v.hub.liveRequests,
+              hubError:v.hub.lastError,count:rows.length,finished:v.hub.counts?.finished,live:v.hub.counts?.live,
+              pending:pending.length,pendingMissing:missing.length,pendingHasFinal:finals.length,
+              ledgerTotal:v.ledger.ledgerTotal,settledTotal:v.ledger.settledTotal}));
+            if(i<2)await new Promise(done=>setTimeout(done,38000));
+          }
+          NODE
