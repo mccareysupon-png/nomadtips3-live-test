@@ -1,0 +1,6 @@
+import test from'node:test';import assert from'node:assert/strict';import{readFileSync}from'node:fs';import{validateCss,patchBadge}from'./patch.mjs';
+test('a global or Dark selector is rejected',()=>{assert.throws(()=>validateCss('html[data-theme="dark"] .b46-premium-members{color:white}'),/NOT_LIGHT_BADGE_ONLY/);assert.throws(()=>validateCss('body{color:green}'),/NOT_LIGHT_BADGE_ONLY/);});
+test('layout and external-resource declarations are rejected',()=>{assert.throws(()=>validateCss('html:root[data-theme="light"] a[data-b46-member-entry="rail"] .b46-premium-members{width:90px}'),/NON_COLOR_PROPERTY/);assert.throws(()=>validateCss('html:root[data-theme="light"] a[data-b46-member-entry="rail"] .b46-premium-members{background-image:url(other.png)}'),/UNEXPECTED_RESOURCE/);});
+test('an unrelated component selector is rejected',()=>assert.throws(()=>validateCss('html:root[data-theme="light"] a[data-b46-member-entry="rail"] .teams-cell{color:red}'),/OUT_OF_SCOPE_SELECTOR/));
+test('unexpected Active HTML cannot be patched',()=>assert.throws(()=>patchBadge('<html>another deployment</html>'),/ACTIVE_HTML_DRIFT/));
+test('the patch preserves all original HTML and scripts',()=>{const source=readFileSync(process.env.BADGE_BASELINE_FILE||'audit/source-assets/index.html','utf8'),next=patchBadge(source);assert.equal(next.html.replace(next.block,''),source);});
