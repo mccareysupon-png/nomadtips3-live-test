@@ -1,0 +1,47 @@
+name: Audit remaining 5USD account cron consumers
+on:
+  push:
+    branches: [fix/ball46-john-single-pricing-cron-20261017]
+    paths: [.github/workflows/audit-all-5usd-crons-20261017.yml]
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Read all active provider-key cron workers without changes
+        shell: bash
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          node <<'NODE'
+          const a=process.env.CLOUDFLARE_ACCOUNT_ID,t=process.env.CLOUDFLARE_API_TOKEN;
+          async function read(path){
+            const r=await fetch('https://api.cloudflare.com/client/v4/accounts/'+a+'/workers/'+path,{headers:{Authorization:'Bearer '+t},signal:AbortSignal.timeout(20000)});
+            const j=await r.json();if(!r.ok||!j.success)throw Error('HTTP_'+r.status);return j.result
+          }
+          const scripts=await read('scripts');const ids=scripts.map(s=>s.id||s.name).filter(Boolean);
+          let count=0,errors=0;
+          for(let offset=0;offset<ids.length;offset+=8){
+            const group=await Promise.all(ids.slice(offset,offset+8).map(async w=>{
+              try{
+                const [set,sch]=await Promise.all([read('scripts/'+w+'/settings'),read('scripts/'+w+'/schedules')]);
+                const secret=(set.bindings||[]).filter(b=>b.type==='secret_text').map(b=>b.name);
+                const services=(set.bindings||[]).filter(b=>b.type==='service').map(b=>b.service);
+                const cron=(sch.schedules||[]).map(x=>x.cron);
+                return{w,cron,secrets:secret,services}
+              }catch(e){return{w,error:String(e.message)}}
+            }));
+            for(const item of group){
+              if(item.error){errors++;console.log('CONSUMER_ERROR '+JSON.stringify(item));continue}
+              if(item.cron.length&&item.secrets.some(k=>/5DOLLAR|ODDS_API|API_KEY/i.test(k))){
+                count++;console.log('LIVE_PROVIDER_CRON '+JSON.stringify(item))
+              }else if(item.cron.length&&item.services.some(x=>x&&/HUB|MARKET|engine|cache|ball46/i.test(x))){
+                console.log('LINKED_CRON '+JSON.stringify(item))
+              }
+            }
+          }
+          console.log('CRON_SURVEY_COMPLETE '+JSON.stringify({scripts:ids.length,providerKeyConsumers:count,errors}));
+          NODE
