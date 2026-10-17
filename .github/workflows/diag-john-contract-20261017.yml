@@ -1,0 +1,99 @@
+name: READ ONLY Verify John production contract and wrong-deploy rail 20261017
+on:
+  push:
+    branches: [audit/ball46-john-runtime-contract-20261017]
+    paths: [.github/workflows/diag-john-contract-20261017.yml]
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Verify actual live Worker graph hashes and version timeline
+        shell: bash
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          node <<'NODE'
+          const a=process.env.CLOUDFLARE_ACCOUNT_ID,t=process.env.CLOUDFLARE_API_TOKEN;
+          const crypto=require('node:crypto');
+          const workers=['ball46-production','nomadtips3-engine-343','nomadtips3-5usd-hub-343','nomadtips3-full-market-343-ball46','nomadtips3-343-central-cache'];
+          async function api(path){
+            const r=await fetch('https://api.cloudflare.com/client/v4/accounts/'+a+'/workers/'+path,{headers:{Authorization:'Bearer '+t},signal:AbortSignal.timeout(26000)});
+            const j=await r.json().catch(()=>null);if(!r.ok||!j?.success)throw Error(r.status+' '+JSON.stringify(j?.errors).slice(0,170));return j.result
+          }
+          for(const w of workers)try{
+            const [depls,settings,schedules]=await Promise.all([api('scripts/'+w+'/deployments?per_page=6'),api('scripts/'+w+'/settings'),api('scripts/'+w+'/schedules')]);
+            const deployments=(depls.deployments||[]).slice(0,5).map(x=>({at:x.created_on,source:x.source,id:x.id,versions:x.versions.map(v=>({id:v.version_id,pct:v.percentage}))}));
+            const id=deployments[0]?.versions?.find(x=>Number(x.pct)===100)?.id;
+            const version=await api('workers/'+w+'/versions/'+id+'?include=modules');
+            const main=version.modules.find(m=>m.name===version.main_module);
+            const src=Buffer.from(main.content_base64,'base64').toString('utf8');
+            const sha=crypto.createHash('sha256').update(src).digest('hex');
+            const binds=(version.bindings||[]).map(x=>({name:x.name,type:x.type,service:x.service||null}));
+            console.log('WORKER_TRUTH '+JSON.stringify({worker:w,id,sha,bytes:src.length,main:version.main_module,deployments,crons:(schedules.schedules||[]).map(s=>s.cron),bindings:binds}));
+            const tokens=w==='nomadtips3-engine-343'?['B46_FAIR_CACHE_20261017','JOHN_BULK_QUALIFIED_PRICE_PREWARM_20261011','FULL_MARKET_REQUESTS_PER_SCAN=4','/fixture-odds?fixtureId=','/fixtures/','/odds/history','/prewarm','/board-cache','fetchVerifiedCornerOnly','fetchVerifiedGoalOnly','isVerifiedGoalMarket']:
+             w==='ball46-production'?['async scheduled(','prewarmLiveFullMarket','/api/full-market/settings','async function activeSignals','hiddenPendingSignals']:
+             w==='nomadtips3-5usd-hub-343'?['include=','odds,events,stats','MAX_PROVIDER_REQUESTS_PER_TODAY_REFRESH','/fixtures?per_page','/fixtures/','/odds','viewerRefreshEnabled']:
+             w==='nomadtips3-full-market-343-ball46'?['PREWARM_MAX_PER_RUN','/fixture-odds','/board-cache','/prewarm','providerRequest(','/fixtures/','maxCallsPerMinute','controlConfig','async scheduled(']:
+             ['async scheduled(','/fixtures/','/odds','scheduler-tick'];
+            const signature=Object.fromEntries(tokens.map(m=>[m,{count:src.split(m).length-1,first:src.indexOf(m)}]));
+            console.log('JOHN_SIGNATURE '+JSON.stringify({worker:w,signature}));
+            if(w==='nomadtips3-engine-343'){
+              const probes=['const johnEligibleFixtureIds','const full=requiresFullMarket','function fetchVerifiedCornerOnly','function fetchVerifiedGoalOnly','const refereeRotationOffset'];
+              for(const p of probes){const ix=src.indexOf(p);console.log('JOHN_PATH '+JSON.stringify({worker:w,mark:p,present:ix!==-1,source:ix===-1?'':src.slice(Math.max(0,ix-220),Math.min(src.length,ix+1050)).replace(/(Authorization:\\s*["\x27])[^\x27"]+/gi,'$1REDACTED')}).slice(0,2400))}
+            }
+          }catch(e){console.log('WORKER_AUDIT_ERROR '+w+' '+String(e.message))}
+          NODE
+      - name: Inspect live BULK market availability without additional provider requests
+        shell: bash
+        run: |
+          node <<'NODE'
+          const urls={hub:'https://nomadtips3-5usd-hub-343.mccarey-supon.workers.dev/snapshot',
+             engine:'https://nomadtips3-engine-343.mccarey-supon.workers.dev/board',
+             price:'https://ball46-production.mccarey-supon.workers.dev/api/full-market/health',
+             active:'https://ball46-production.mccarey-supon.workers.dev/api/engine/signals'};
+          for(const [name,url] of Object.entries(urls))try{
+            const r=await fetch(url+'?john_read='+Date.now(),{signal:AbortSignal.timeout(22000),headers:{'cache-control':'no-cache'}});
+            const j=await r.json();const f=Array.isArray(j.fixtures)?j.fixtures:[];
+            if(name==='hub'||name==='engine'){
+              const live=f.filter(x=>['live','1h','2h','half','ht','inplay'].includes(String(x.boardState||'').toLowerCase())||[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88].includes(Number(x.minute)));
+              const counts={rootHasOdds:0,withAnyInplay:0,with19Bookmakers:0,emptyProviderOdds:0,sourceKinds:{},inplayByMarket:{},candidateStages:{}};
+              const samples=[];
+              for(const x of live){
+                const odds=x.providerOdds||x.odds||null;
+                if(odds&&typeof odds==='object'){counts.rootHasOdds++; const roots=Object.keys(odds);if(roots.length)for(const k of roots){counts.sourceKinds[k]=(counts.sourceKinds[k]||0)+1;if(odds[k]&&typeof odds[k]==='object'&&(odds[k].inplay||odds[k].in_play))counts.inplayByMarket[k]=(counts.inplayByMarket[k]||0)+1}
+                  if(roots.some(k=>odds[k]?.inplay||odds[k]?.in_play))counts.withAnyInplay++;
+                  if(Array.isArray(odds.bookmakers)&&odds.bookmakers.length>=19)counts.with19Bookmakers++;
+                }else counts.emptyProviderOdds++;
+                for(const v of Object.values(x.analysis||{})){const state=v?.state||'UNKNOWN';counts.candidateStages[state]=(counts.candidateStages[state]||0)+1}
+                if(samples.length<3&&odds&&Object.keys(odds).length){samples.push({fixtureId:x.fixtureId,minute:x.minute,providerOddsKeys:Object.keys(odds).slice(0,15),providerBookmakersLength:Array.isArray(odds.bookmakers)?odds.bookmakers.length:0,providerOddsUpdatedAt:x.providerOddsUpdatedAt,providerOddsFreshAt:x.providerOddsFreshAt,analysisStages:Object.values(x.analysis||{}).map(v=>v?.state).filter(Boolean).slice(0,5)})}
+              }
+              console.log('BULK_SHAPE '+JSON.stringify({name,http:r.status,version:j.version,total:f.length,live:live.length,stale:j.stale,counts,samples}).slice(0,10500));
+            }else{
+              const data=name==='price'?{mode:j.mode,provider:j.providerMeta,prewarm:j.prewarmMeta,remainingBudget:j.remainingLocalBudget,localCalls:j.callsLast60s,cacheMs:j.cacheMs}:
+                {signals:j.signals?.length,mirror:j.mirror};
+              console.log('LIVE_DIAG '+JSON.stringify({name,http:r.status,data}));
+            }
+          }catch(e){console.log('BULK_ERROR '+name+' '+String(e.message).slice(0,230))}
+          NODE
+      - name: Compare known John before and after bulk deployed code scopes
+        shell: bash
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          node <<'NODE'
+          const a=process.env.CLOUDFLARE_ACCOUNT_ID,t=process.env.CLOUDFLARE_API_TOKEN;
+          for(const id of ['42a8bf93-895c-4b10-898e-56c209165517','d5e2cfba-0ec8-4098-ae4c-41cda0a18689','7f7377ac-0bcb-44ed-b7ce-8abac4439bd4','9b363777-64fc-4a48-a10a-0fad822640cb']){
+            try{
+              const r=await fetch('https://api.cloudflare.com/client/v4/accounts/'+a+'/workers/workers/nomadtips3-engine-343/versions/'+id+'?include=modules',{headers:{Authorization:'Bearer '+t}});
+              const j=await r.json();if(!j.success)throw Error(JSON.stringify(j.errors).slice(0,120));
+              const v=j.result;const s=Buffer.from(v.modules.find(m=>m.name===v.main_module).content_base64,'base64').toString();
+              const keys=['JOHN_BULK_QUALIFIED_PRICE_PREWARM_20261011','B46_FAIR_CACHE_20261017','FULL_MARKET_REQUESTS_PER_SCAN=4','/fixture-odds?fixtureId=','fetchVerifiedCornerOnly','fetchVerifiedGoalOnly','JOHN_QUALIFIED_PRICE_CACHE_MISS','/prewarm','/board-cache'];
+              console.log('HISTORY_SOURCE '+JSON.stringify({id,bytes:s.length,marks:Object.fromEntries(keys.map(k=>[k,s.includes(k)]))}));
+            }catch(e){console.log('HISTORY_ERROR '+id+' '+String(e.message))}
+          }
+          NODE
