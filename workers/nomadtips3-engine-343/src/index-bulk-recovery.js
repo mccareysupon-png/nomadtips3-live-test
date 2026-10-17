@@ -1,5 +1,6 @@
 import { Nomad343Engine as BaseNomad343Engine } from './index-bulk.js';
 import { MARKET_RULES, settleMarketSignal } from './market-core.js';
+import { capturePendingIdentities, bindResultProvider, acceptFinalScore } from './multisource-result-v5.js';
 
 const BRIDGE_VERSION='external-final-bridge-v1';
 const MAX_SIGNALS=1600;
@@ -45,6 +46,44 @@ function secureTokenOk(request,env){
 }
 
 export class Nomad343Engine extends BaseNomad343Engine{
+  async resultSerial(task){
+    const pending=this.resultTail||Promise.resolve();
+    let done;this.resultTail=new Promise(resolve=>{done=resolve});
+    await pending;
+    try{return await task()}finally{done()}
+  }
+  async scan(){
+    return this.resultSerial(async()=>{
+      const result=await super.scan();
+      if(result?.ok)await capturePendingIdentities(this.ctx.storage);
+      return result;
+    });
+  }
+  verifiedResultToken(request){
+    const expected=String(this.env.RESULT_INGEST_TOKEN||'');
+    const actual=String(request.headers.get('x-result-token')||'');
+    return expected.length>=32&&actual.length===expected.length&&actual===expected;
+  }
+  providerCertification(){
+    return {goaloo:{
+      utcCertified:String(this.env.GOALOO_UTC_CERTIFIED||'')==='1',
+      finalScopeCertified:String(this.env.GOALOO_FT_CERTIFIED||'')==='1',
+      samples:2,minGapMs:60_000
+    }};
+  }
+  async providerMapping(request){
+    if(!this.verifiedResultToken(request))return Response.json({ok:false,error:'UNAUTHORIZED'},{status:401});
+    const claim=await request.json().catch(()=>null);
+    const result=await this.resultSerial(()=>bindResultProvider(this.ctx.storage,claim,{certifiedSources:this.providerCertification()}));
+    return Response.json(result);
+  }
+  async providerFinal(request){
+    if(!this.verifiedResultToken(request))return Response.json({ok:false,error:'UNAUTHORIZED'},{status:401});
+    const observation=await request.json().catch(()=>null);
+    const result=await this.resultSerial(()=>acceptFinalScore(this.ctx.storage,observation,{
+      certifiedSources:this.providerCertification()}));
+    return Response.json(result);
+  }
   async reconcileExternalFinal(request){
     if(!secureTokenOk(request,this.env))return Response.json({ok:false,error:'UNAUTHORIZED'},{status:401});
     const body=await request.json().catch(()=>null);
@@ -65,18 +104,21 @@ export class Nomad343Engine extends BaseNomad343Engine{
   }
   async fetch(request){
     const u=new URL(request.url);
-    if(u.pathname==='/reconcile-final'&&request.method==='POST')return this.reconcileExternalFinal(request);
+    if(u.pathname==='/reconcile-final'&&request.method==='POST')return this.resultSerial(()=>this.reconcileExternalFinal(request));
+    if(u.pathname==='/multisource-map'&&request.method==='POST')return this.providerMapping(request);
+    if(u.pathname==='/multisource-final'&&request.method==='POST')return this.providerFinal(request);
+    if(u.pathname==='/multisource-health'&&request.method==='GET')return Response.json({ok:true,mode:'STAGING_MULTISOURCE',goalooEnabled:this.providerCertification().goaloo.utcCertified&&this.providerCertification().goaloo.finalScopeCertified});
     if(u.pathname==='/bridge-health'&&request.method==='GET')return Response.json({ok:true,version:BRIDGE_VERSION});
     return super.fetch(request);
   }
 }
 
 function stub(env){return env.ENGINE.get(env.ENGINE.idFromName('global'))}
-function cors(request,response){const h=new Headers(response.headers);h.set('access-control-allow-origin',request.headers.get('origin')||'*');h.set('access-control-allow-methods','GET,PUT,POST,OPTIONS');h.set('access-control-allow-headers','content-type,x-settlement-token');h.set('cache-control','no-store');return new Response(response.body,{status:response.status,headers:h})}
+function cors(request,response){const h=new Headers(response.headers);h.set('access-control-allow-origin',request.headers.get('origin')||'*');h.set('access-control-allow-methods','GET,PUT,POST,OPTIONS');h.set('access-control-allow-headers','content-type,x-settlement-token,x-result-token');h.set('cache-control','no-store');return new Response(response.body,{status:response.status,headers:h})}
 export default{
   async fetch(request,env){
     if(request.method==='OPTIONS')return cors(request,new Response(null,{status:204}));
-    const u=new URL(request.url),allowed=['/health','/registry','/settings','/scan','/board','/signals','/statistics','/history','/fixture-odds','/referee','/reconcile-final','/bridge-health'];
+    const u=new URL(request.url),allowed=['/health','/registry','/settings','/scan','/board','/signals','/statistics','/history','/fixture-odds','/referee','/reconcile-final','/bridge-health','/multisource-map','/multisource-final','/multisource-health'];
     if(!allowed.includes(u.pathname))return cors(request,new Response('Not found',{status:404}));
     return cors(request,await stub(env).fetch(new Request(`https://engine.internal${u.pathname}${u.search}`,request)));
   },
