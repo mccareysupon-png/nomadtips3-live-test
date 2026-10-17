@@ -1,0 +1,24 @@
+name: Ball46 John price duplicate cron repair
+on:
+  push:
+    branches: [fix/ball46-john-single-pricing-cron-20261017]
+    paths:
+      - .github/workflows/repair-ball46-john-crons-20261017.yml
+      - deploy-assets/ball46-john-cron-20261017/repair.mjs
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax check
+        run: node --check deploy-assets/ball46-john-cron-20261017/repair.mjs
+      - name: Guarded production preflight - no mutation
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          JOHN_DRY_RUN: '1'
+        run: node deploy-assets/ball46-john-cron-20261017/repair.mjs
