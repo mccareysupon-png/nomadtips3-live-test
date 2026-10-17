@@ -8,7 +8,9 @@ export async function createMemberCheckout(identity, env, origin, fetcher=fetch)
   if(!env.STRIPE_SECRET_KEY || !env.STRIPE_PRICE_ID)
     return {status:503,body:{ok:false,error:'STRIPE_NOT_CONFIGURED'}};
   const base=new URL(origin);
-  if(base.protocol!=='https:' || !['member.ball46.com','ball46-member-production.mccarey-supon.workers.dev'].includes(base.hostname))
+  const sandbox=env.APP_STAGE==='sandbox';
+  const allowedHosts=sandbox?['ball46-member-sandbox.mccarey-supon.workers.dev']:['member.ball46.com','ball46-member-production.mccarey-supon.workers.dev'];
+  if(base.protocol!=='https:' || !allowedHosts.includes(base.hostname))
     return {status:400,body:{ok:false,error:'INVALID_CHECKOUT_ORIGIN'}};
   const params=new URLSearchParams();
   params.set('mode','subscription');
@@ -16,8 +18,9 @@ export async function createMemberCheckout(identity, env, origin, fetcher=fetch)
   params.set('line_items[0][quantity]','1');
   params.set('customer_email',email);
   params.set('client_reference_id',identity.id);
-  params.set('success_url','https://member.ball46.com/success?session_id={CHECKOUT_SESSION_ID}');
-  params.set('cancel_url','https://member.ball46.com/pricing?canceled=1');
+  const returnOrigin=sandbox?'https://ball46-member-sandbox.mccarey-supon.workers.dev':'https://member.ball46.com';
+  params.set('success_url',returnOrigin+'/success?session_id={CHECKOUT_SESSION_ID}');
+  params.set('cancel_url',returnOrigin+'/pricing?canceled=1');
   params.set('allow_promotion_codes','true');
   try{
     const response=await fetcher('https://api.stripe.com/v1/checkout/sessions',{
