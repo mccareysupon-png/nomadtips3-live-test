@@ -1,0 +1,23 @@
+name: Guarded repair BALL46 John bulk final pages
+on:
+  push:
+    branches: [fix/ball46-john-bulk-final-retain-20261017]
+    paths:
+      - .github/workflows/repair-ball46-bulk-final-20261017.yml
+      - deploy-assets/ball46-john-bulk-final-20261017/repair.mjs
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  repair:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - name: JavaScript syntax validation
+        run: node --check deploy-assets/ball46-john-bulk-final-20261017/repair.mjs
+      - name: Guard and dry-run Production source patch
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          JOHN_DRY_RUN: "1"
+        run: node deploy-assets/ball46-john-bulk-final-20261017/repair.mjs
