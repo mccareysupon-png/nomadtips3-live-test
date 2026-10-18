@@ -92,21 +92,32 @@ function evaluate(c,p,options){
  */
 export function proposeVerifiedMappings(canonicals,providerFixtures,{
  source='goaloo',approvedLeagues={},approvedTeamAliases={},strictCountry=true,
- minLead=.06
+ sourceUtcCertified=false,minLead=.06
 }={}){
  const config={approvedLeagues,approvedTeamAliases,strictCountry};
  const review=[],edges=[];
- const seenCanonical=new Set(),seenProvider=new Set();
+ if(sourceUtcCertified!==true)return {approved:[],review:[reject('SOURCE_UTC_NOT_CERTIFIED')],
+   coverage:{canonicals:canonicals.length,providers:providerFixtures.length,
+    approved:0,unmapped:canonicals.length},hasProductionWrites:false};
+ const countIds=(rows,k)=>{
+  const counts=new Map();
+  for(const r of rows){const key=text(r?.[k]);if(key)counts.set(key,(counts.get(key)||0)+1)}
+  return counts;
+ };
+ const countedCanonical=countIds(canonicals,'fixtureId'),
+  countedProvider=countIds(providerFixtures,'sourceFixtureId');
  const eligibleCanonicals=[],eligibleProviders=[];
  for(const c of canonicals){
-  if(!text(c?.fixtureId)||seenCanonical.has(text(c?.fixtureId))){
-   review.push(reject('CANONICAL_ID_DUPLICATE_OR_MISSING',{fixtureId:c?.fixtureId||null}));continue}
-  seenCanonical.add(text(c.fixtureId));eligibleCanonicals.push(c);
+  const id=text(c?.fixtureId);
+  if(!id||countedCanonical.get(id)!==1){
+   review.push(reject('CANONICAL_ID_DUPLICATE_OR_MISSING',{fixtureId:id||null}));continue}
+  eligibleCanonicals.push(c);
  }
  for(const p of providerFixtures){
-  if(!text(p?.sourceFixtureId)||seenProvider.has(text(p?.sourceFixtureId))){
-   review.push(reject('SOURCE_ID_DUPLICATE_OR_MISSING',{sourceId:p?.sourceFixtureId||null}));continue}
-  seenProvider.add(text(p.sourceFixtureId));eligibleProviders.push(p);
+  const id=text(p?.sourceFixtureId);
+  if(!id||countedProvider.get(id)!==1){
+   review.push(reject('SOURCE_ID_DUPLICATE_OR_MISSING',{sourceId:id||null}));continue}
+  eligibleProviders.push(p);
  }
  const byCanonical=new Map(),byProvider=new Map();
  for(const c of eligibleCanonicals)for(const p of eligibleProviders){
