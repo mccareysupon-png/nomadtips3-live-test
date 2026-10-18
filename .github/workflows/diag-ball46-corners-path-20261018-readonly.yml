@@ -55,3 +55,23 @@ jobs:
            detection:{states,samples},cornerSignals:pend,ledger:{total:value('ledgerHealth').ledgerTotal,settled:value('ledgerHealth').settledTotal,pending:value('ledgerHealth').pendingTotal}};
           console.log('BALL46_CORNER_PRODUCTION_READONLY '+JSON.stringify(info).slice(0,28000));
           NODE
+      - name: Inspect active native Corners code and settlement guards
+        shell: bash
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          node --input-type=module <<'NODE'
+          const base='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID;
+          const headers={Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN};
+          const deployment=await(await fetch(base+'/workers/scripts/nomadtips3-engine-343/deployments?per_page=1',{headers})).json();
+          if(!deployment.success)throw Error('DEPLOYMENT_READ_FAILED');
+          const id=deployment.result.deployments?.[0]?.versions?.[0]?.version_id;
+          if(!id)throw Error('ACTIVE_VERSION_MISSING');
+          const v=await(await fetch(base+'/workers/workers/nomadtips3-engine-343/versions/'+id+'?include=modules',{headers})).json();
+          if(!v.success)throw Error('SOURCE_READ_FAILED');
+          const code=Buffer.from(v.result.modules.find(m=>m.name===v.result.main_module).content_base64,'base64').toString();
+          const terms=['BALL46_CORNER_TICK_REQUESTS_PER_SCAN','BALL46_CORNER_TICK_MAX_AGE_MS','CORNER_HISTORY_BUDGET','CORNER_LIVE_PRICE_UNVERIFIED','function fetchVerifiedCornerOnly','async function fetchVerifiedCornerOnly','async reconcileExternalFinal','status = "UNRESOLVED"','status === "PENDING"','FINAL_RECHECK_MIN_SIGNAL_AGE_MS'];
+          const spots=Object.fromEntries(terms.map(t=>{const at=code.indexOf(t);return[t,{present:at>=0,snippet:at>=0?code.slice(Math.max(0,at-100),Math.min(code.length,at+340)):null}]}));
+          console.log('NATIVE_CORNER_SOURCE_READONLY '+JSON.stringify({version:id,main:v.result.main_module,spots}).slice(0,9000));
+          NODE
