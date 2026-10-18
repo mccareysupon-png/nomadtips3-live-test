@@ -54,8 +54,8 @@ function renderFavoritesNav(){
     render();
   });
   const icon=node('img','favorite-nav-icon');
-  icon.src='/icons/market-favorites.svg';
-  icon.alt='';icon.width=25;icon.height=25;icon.setAttribute('aria-hidden','true');
+  icon.src='/icons/premium-20261018/market-favorites.webp';
+  icon.alt='';icon.width=40;icon.height=40;icon.setAttribute('aria-hidden','true');
   b.prepend(icon);
   host.append(b);
   const note=qs('#memberFavoriteDescription');
@@ -391,8 +391,8 @@ function renderTabs(){
     bottom.append(node('span','market-tab-pnl-label','P/L'),node('b','market-tab-pnl '+pnlTone,fmtPnl(s.pnl)));
 
     const icon=node('img','market-tab-icon');
-    icon.src='/icons/market-'+MARKET_ICON_KEYS[market]+'.svg';
-    icon.alt='';icon.width=25;icon.height=25;icon.setAttribute('aria-hidden','true');
+    icon.src='/icons/premium-20261018/market-'+MARKET_ICON_KEYS[market]+'.webp';
+    icon.alt='';icon.width=40;icon.height=40;icon.setAttribute('aria-hidden','true');
     btn.append(icon,top,bottom);
     btn.addEventListener('click',()=>{
       state.market=market;

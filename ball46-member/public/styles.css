@@ -4030,3 +4030,28 @@ button,input,select,textarea{font-family:inherit;font-synthesis:none}
     column-gap:3px;
   }
 }
+
+/* BALL46 approved premium original image icons: transparent source image
+   pixels preserved; icon sizes adjusted only in Member market sidebar. */
+.page-member .member-market-sidebar #marketTabs .market-tab{
+  grid-template-columns:42px minmax(0,1fr);
+  column-gap:8px;
+  min-height:64px;
+}
+.page-member .member-market-sidebar #marketTabs .market-tab-icon,
+.page-member .member-market-sidebar .favorite-nav-button .favorite-nav-icon{
+  display:block;
+  width:40px;
+  height:40px;
+  max-width:40px;
+  flex:0 0 40px;
+  object-fit:contain;
+  pointer-events:none;
+}
+.page-member .member-market-sidebar .favorite-nav-button{min-height:60px}
+@media(max-width:359px){
+  .page-member .member-market-sidebar #marketTabs .market-tab{
+    grid-template-columns:40px minmax(0,1fr);
+    column-gap:7px;
+  }
+}
