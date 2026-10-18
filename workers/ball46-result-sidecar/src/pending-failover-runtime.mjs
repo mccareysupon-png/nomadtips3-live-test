@@ -5,6 +5,7 @@
 import {readPendingFromLedgerV2} from './pending-ledger-reader.mjs';
 import {readSettledReceipt} from './ledger-settlement-readback.mjs';
 import {routeOverduePending,closeAfterLedgerSettlement} from './pending-ten-minute-failover.mjs';
+import {captureOnlyNewPending,newSignalCaptureKey} from './new-signal-capture.mjs';
 const PREFIX='ball46:verified-fixture-crosswalk:v3:route:';
 export const routeStorageKey=id=>PREFIX+encodeURIComponent(String(id));
 async function storeRouteWithoutRevival(storage,fixtureId,record){
@@ -31,12 +32,15 @@ export async function refreshPendingGoalooRoutes(storage,engine,{at=new Date().t
  try{ledger=await readPendingFromLedgerV2(engine,{maxPages})}
  catch{return{ok:false,state:'LEDGER_READ_FAILED',eligibleIds:[],selectedRows:[]}}
  if(!ledger.ok)return{ok:false,state:ledger.state,eligibleIds:[],selectedRows:[]};
+ const capture=await captureOnlyNewPending(storage,ledger.rows,{at});
+ if(!capture.ok)return{ok:false,state:capture.state,eligibleIds:[],selectedRows:[]};
+ const newRows=capture.selectedRows;
  const persisted=await storage.list({prefix:PREFIX}),routes={};
  for(const [key,value] of persisted){
   const id=decodeURIComponent(key.slice(PREFIX.length));
   routes[id]=value;
  }
- const planned=routeOverduePending({rows:ledger.rows,routes,now:at});
+ const planned=routeOverduePending({rows:newRows,routes,now:at});
  if(!planned.ok)return{ok:false,state:planned.state,eligibleIds:[],selectedRows:[]};
  for(const change of planned.updates){
   const applied=await storeRouteWithoutRevival(storage,change.fixtureId,change.record);
@@ -46,16 +50,19 @@ export async function refreshPendingGoalooRoutes(storage,engine,{at=new Date().t
  // A full native Ledger V2 readback, not absence of a live card, is required
  // before installing a terminal DONE record.
  let nativeCompleted=0,checks=0;
- const pendingFixtures=new Set(ledger.rows.map(x=>String(x.fixtureId)));
+ const pendingFixtures=new Set(newRows.map(x=>String(x.fixtureId)));
  for(const [fixtureId,route] of Object.entries(routes)){
   if(checks>=3)break;
   if(route?.state!=='GOALOO'||pendingFixtures.has(fixtureId))continue;
+  // Historical routes must never be replayed into the new-only rail.
+  const captured=await Promise.all((route.signalIds||[]).map(id=>storage.get(newSignalCaptureKey(id))));
+  if(!captured.length||captured.some(x=>!x))continue;
   checks++;
   let receipt;
   try{receipt=await readSettledReceipt(engine,route.signalIds,{maxPages})}
   catch{continue}
   const done=closeAfterLedgerSettlement({fixtureId,route,
-   ledgerRows:ledger.rows,verifiedReadback:receipt,now:at});
+   ledgerRows:newRows,verifiedReadback:receipt,now:at});
   if(done.ok){
    const applied=await storeRouteWithoutRevival(storage,fixtureId,done.record);
    if(applied?.state==='DONE'){routes[fixtureId]=applied;nativeCompleted++}
@@ -65,8 +72,10 @@ export async function refreshPendingGoalooRoutes(storage,engine,{at=new Date().t
   .map(x=>x.fixtureId);
  const allowed=new Set(eligibleIds);
  return{ok:true,state:'PENDING_OVER_10M_ROUTER',eligibleIds,
-  selectedRows:ledger.rows.filter(x=>allowed.has(String(x.fixtureId))),
-  pending:ledger.rows.length,eligible:eligibleIds.length,
+  selectedRows:newRows.filter(x=>allowed.has(String(x.fixtureId))),
+  pending:newRows.length,excludedLegacy:capture.excludedLegacy??capture.legacyPendingCount??0,
+  newCapturedThisRun:capture.capturedThisRun??0,newBaselineAt:capture.baselineAt,
+  intakeState:capture.state,eligible:eligibleIds.length,
   routedThisPoll:planned.updates.filter(x=>x.record.state==='GOALOO').length,
   completedByPrimary:nativeCompleted,hold:planned.holds.length,
   ledgerTotal:ledger.ledgerTotal,ledgerPages:ledger.pages,
@@ -78,6 +87,8 @@ export async function markGoalooRouteDone(storage,engine,{
 }={}){
  const route=await storage.get(routeStorageKey(fixtureId));
  if(route?.state==='DONE')return{ok:true,state:'DONE_ALREADY'};
+ const captured=await Promise.all((route?.signalIds||[]).map(id=>storage.get(newSignalCaptureKey(id))));
+ if(!captured.length||captured.some(x=>!x))return{ok:false,state:'NOT_A_NEW_TRACKED_SIGNAL'};
  if(route?.state!=='GOALOO')return{ok:false,state:'GOALOO_ROUTE_NOT_ACTIVE'};
  const expected=[...(route.signalIds||[])].sort();
  const given=[...signalIds].sort();
@@ -87,7 +98,8 @@ export async function markGoalooRouteDone(storage,engine,{
  if(!ledger.ok)return{ok:false,state:ledger.state};
  const receipt=await readSettledReceipt(engine,signalIds,{maxPages});
  const done=closeAfterLedgerSettlement({fixtureId,route,
-  ledgerRows:ledger.rows,verifiedReadback:receipt,now:at});
+  ledgerRows:ledger.rows.filter(x=>captured.some(c=>c.id===x.id)),
+  verifiedReadback:receipt,now:at});
  if(!done.ok)return done;
  const applied=await storeRouteWithoutRevival(storage,fixtureId,done.record);
  return applied?.state==='DONE'
