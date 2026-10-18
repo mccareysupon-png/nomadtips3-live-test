@@ -601,6 +601,8 @@ function makeSignalRow(row){
     const tag=node('small','corner-market-type '+String(detail.type||'UNVERIFIED').toLowerCase(),detail.label||'UNVERIFIED');
     tag.title=[detail.reason,detail.source?'Source: '+detail.source:''].filter(Boolean).join(' · ');
     cell.title=[cell.title,tag.title].filter(Boolean).join(' · ');
+    // Compact V3 label follows the approved four-line prototype; full rule stays in the DOM.
+    cell.prepend(node('span','mobile-default-market','CORNERS'));
     cell.append(tag);tr.append(cell);
   }else tr.append(td(row.market));
   const choice=td(undefined,'signal-pick');
