@@ -199,10 +199,10 @@ export async function inspectSidecar(storage){
    capturedTotal:intake?.capturedTotal??0,lastPollAt:intake?.lastPolledAt??null},forwardRequests:0,
   recentEvents:(meta?.events||[]).slice(-10),version:3};
 }
-async function fetchGoaloo(fetcher){
+export async function fetchGoaloo(fetcher){
  for(const url of ['https://live10.goaloo28.com/gf/data/bf_us.js',
                    'https://live10.goaloo28.com/gf/data/bf_us1.js']){
-  try{const r=await fetcher(url,{redirect:'error',signal:AbortSignal.timeout(15000)});
+  try{const r=await fetcher(url,{redirect:'manual',signal:AbortSignal.timeout(15000)});
    if(!r.ok)continue;
    const length=Number(r.headers.get('content-length')||0);if(length>4_000_000)continue;
    const raw=await r.text();if(raw.length<=4_000_000&&raw.includes('A['))return raw;
@@ -302,8 +302,15 @@ async function poll(storage,env,fetcher=fetch){
   return {state:'PRIMARY_CAPTURE_ONLY',captured,ledger,goaloo:'CERTIFICATION_REQUIRED',engineWrites:0};
  if(!/^-?\d+$/.test(String(env?.GOALOO_OFFSET_MINUTES??'')))
   return {state:'PRIMARY_CAPTURE_ONLY',captured,ledger,goaloo:'OFFSET_UNCERTIFIED',engineWrites:0};
+ let goalooText;
+ try{goalooText=await fetchGoaloo(fetcher)}
+ catch(e){
+  if(String(e?.message||e)!=='GOALOO_FEED_UNAVAILABLE')throw e;
+  return{state:'GOALOO_FEED_RETRY_LATER',captured,ledger,
+   goaloo:'TEMPORARILY_UNAVAILABLE',engineWrites:0,forwardingEnabled:false};
+ }
  const result=await applySnapshot(storage,{
-  hubFixtures:fixtures,goalooText:await fetchGoaloo(fetcher),at,
+  hubFixtures:fixtures,goalooText,at,
   utcCertified:true,ftCertified:true,offsetMinutes:Number(env.GOALOO_OFFSET_MINUTES),
   leagueAliases:getAliases(String(env.GOALOO_APPROVED_LEAGUES||'{}')),
   teamAliases:getAliases(String(env.GOALOO_APPROVED_TEAMS||'{}')),
