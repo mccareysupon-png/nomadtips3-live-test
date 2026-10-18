@@ -98,14 +98,18 @@ const cornerAuditEl = qs('#cornerMarketAudit');
 /* Sidebar controller is independent of signal refresh and market business logic. */
 function initMemberMarketSidebar(){
   const sidebar=qs('#marketSidebar'),opener=qs('#marketMenuToggle');
+  const mobileOpener=qs('#mobileV5MarketToggle');
   const closeButton=qs('#marketMenuClose'),backdrop=qs('#marketMenuBackdrop');
-  if(!sidebar||!opener||!closeButton||!backdrop)return;
+  if(!sidebar||!opener||!closeButton||!backdrop||!mobileOpener)return;
   const desktop=window.matchMedia('(min-width:1360px)');
+  const mobile=window.matchMedia('(max-width:767px)');
+  const triggerForViewport=()=>mobile.matches?mobileOpener:opener;
   let open=false;
   function sync(){
     const shown=!desktop.matches&&open;
     document.body.classList.toggle('market-menu-open',shown);
     opener.setAttribute('aria-expanded',String(shown));
+    mobileOpener.setAttribute('aria-expanded',String(shown));
     sidebar.inert=!desktop.matches&&!shown;
     if(!desktop.matches&&!shown)sidebar.setAttribute('aria-hidden','true');
     else sidebar.removeAttribute('aria-hidden');
@@ -115,13 +119,15 @@ function initMemberMarketSidebar(){
     const wasOpen=open;
     open=false;
     sync();
-    if(wasOpen&&restoreFocus&&!desktop.matches)opener.focus({preventScroll:true});
+    if(wasOpen&&restoreFocus&&!desktop.matches)triggerForViewport().focus({preventScroll:true});
   }
-  opener.addEventListener('click',()=>{
-    if(desktop.matches)return;
-    open=true;sync();
-    (sidebar.querySelector('.market-tab')||closeButton).focus({preventScroll:true});
-  });
+  for(const trigger of [opener,mobileOpener]){
+    trigger.addEventListener('click',()=>{
+      if(desktop.matches)return;
+      open=true;sync();
+      (sidebar.querySelector('.market-tab')||closeButton).focus({preventScroll:true});
+    });
+  }
   closeButton.addEventListener('click',()=>closeMenu());
   backdrop.addEventListener('click',()=>closeMenu());
   sidebar.addEventListener('click',event=>{
@@ -142,6 +148,7 @@ function initMemberMarketSidebar(){
     }
   });
   desktop.addEventListener('change',()=>{open=false;sync();});
+  mobile.addEventListener('change',()=>{open=false;sync();});
   sync();
 }
 
@@ -1467,28 +1474,6 @@ function renderCornerAudit(){
 /* Mobile view consumes only existing Member Signal + match mirror data.
    No settlement calculation or Engine writes are done in this UI. */
 function mobileMemberEnabled(){return window.matchMedia('(max-width:767px)').matches;}
-function renderMobileMarketPills(){
-  const host=qs('#mobileMarketPills');
-  if(!host||!state.payload)return;
-  host.replaceChildren();
-  for(const market of [...MARKET_ORDER,'FAVORITES']){
-    const isFavorite=market==='FAVORITES';
-    const active=isFavorite?state.favoritesView:!state.favoritesView&&state.market===market;
-    const b=node('button','mobile-market-pill'+(active?' active':''),isFavorite?'★ SAVED':market);
-    b.type='button';b.setAttribute('aria-pressed',String(active));
-    b.addEventListener('click',()=>{
-      if(isFavorite){
-        if(!state.favoritesView)qs('#memberFavoriteNav .favorite-nav-button')?.click();
-      }else{
-        const source=[...tabs.querySelectorAll('.market-tab')].find(el=>
-          el.querySelector('.market-tab-name')?.textContent===market);
-        source?.click();
-      }
-    });
-    host.append(b);
-  }
-}
-
 /* V3: decorate only the Expanded card created by renderRows().
    No match-detail fetches or Featured Match are generated before a user expands a row. */
 function attachMobileExpandedControls(host,matchFacts){
@@ -1558,7 +1543,7 @@ function initMobileV4Profile(){
 
 function render(){
   renderFavoritesNav();renderTabs();renderSummary();renderCornerAudit();renderRows();renderPagination();
-  renderMobileMarketPills();
+  // Mobile V5: market selection lives exclusively in the existing left drawer.
   const matchCount=qs('#mobileV4MatchCount');
   if(matchCount){
     const uniqueFixtures=new Set(filteredRows().map(row=>String(row.fixtureId??row.id)));
