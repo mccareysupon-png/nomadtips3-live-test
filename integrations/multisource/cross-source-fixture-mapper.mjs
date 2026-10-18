@@ -120,15 +120,33 @@ export function proposeVerifiedMappings(canonicals,providerFixtures,{
   eligibleProviders.push(p);
  }
  const byCanonical=new Map(),byProvider=new Map();
- for(const c of eligibleCanonicals)for(const p of eligibleProviders){
-  const result=evaluate(c,p,config);
-  if(result.reason)continue;
-  const e={c,p,...result};
-  edges.push(e);
-  if(!byCanonical.has(c.fixtureId))byCanonical.set(c.fixtureId,[]);
-  if(!byProvider.has(p.sourceFixtureId))byProvider.set(p.sourceFixtureId,[]);
-  byCanonical.get(c.fixtureId).push(e);
-  byProvider.get(p.sourceFixtureId).push(e);
+ // Index by verified league and UTC; avoid N×M name-comparison work
+ // when an active feed contains thousands of fixtures.
+ const buckets=new Map();
+ for(const c of eligibleCanonicals){
+  if(!day(c.kickoffUtc))continue;
+  const league=normalizedName(c.league),time=Date.parse(c.kickoffUtc);
+  const group=buckets.get(league)||[];
+  group.push({c,time});buckets.set(league,group);
+ }
+ for(const group of buckets.values())group.sort((a,b)=>a.time-b.time);
+ for(const p of eligibleProviders){
+  if(!day(p.kickoffUtc))continue;
+  const league=approvedAlias(p.league,approvedLeagues);
+  const group=buckets.get(league)||[];
+  const at=Date.parse(p.kickoffUtc),min=at-15*60_000,max=at+15*60_000;
+  let lo=0,hi=group.length;
+  while(lo<hi){const mid=(lo+hi)>>1;if(group[mid].time<min)lo=mid+1;else hi=mid;}
+  for(let j=lo;j<group.length&&group[j].time<=max;j++){
+   const c=group[j].c,result=evaluate(c,p,config);
+   if(result.reason)continue;
+   const e={c,p,...result};
+   edges.push(e);
+   if(!byCanonical.has(c.fixtureId))byCanonical.set(c.fixtureId,[]);
+   if(!byProvider.has(p.sourceFixtureId))byProvider.set(p.sourceFixtureId,[]);
+   byCanonical.get(c.fixtureId).push(e);
+   byProvider.get(p.sourceFixtureId).push(e);
+  }
  }
  const ordered=list=>[...list].sort((a,b)=>b.score-a.score||lex(a.c.fixtureId,b.c.fixtureId)||lex(a.p.sourceFixtureId,b.p.sourceFixtureId));
  const approved=[];
