@@ -50,7 +50,7 @@ async function allAssets(host,paths){
   for(const item of await Promise.all(paths.slice(i,i+5).map(p=>bytes(host,'/'+p)))) {
    assert.equal(item.status,200,'ASSET_NOT_200:'+item.path+':'+item.status);
    assert(item.bytes.length>0,'ASSET_EMPTY:'+item.path);
-   result.set(item.path,item);
+   result.set(item.path.replace(/^\//,''),item);
   }
  }
  return result;
