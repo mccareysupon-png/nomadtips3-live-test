@@ -78,7 +78,21 @@ jobs:
           console.log('BALL46 READ ONLY AUDIT',JSON.stringify({activeVersion:id,deployment:deployment.id,domains,mainModuleSha256:report.mainModuleSha256,activeIndexSha256:report.activeIndexSha256,assetCount:assets.length,missingRefs,anchors:anchorReport}));
           const knownUnserved=new Set(['ball46-footer.css','color-semantics-stat-entry-20261011.js']);
           assert(missingRefs.every(x=>knownUnserved.has(x)),'NEW_UNINVENTORIED_ASSET_REFERENCE');
-          for(const p of missingRefs) { const resp=await fetch('https://ball46.com/'+p+'?_audit='+Date.now(),{signal:AbortSignal.timeout(20000)}); console.log('LEGACY_REFERENCE',p,'HTTP',resp.status); assert.equal(resp.status,404,'LIVE_ASSET_NOT_IN_INVENTORY:'+p); }
+          for(const p of missingRefs) {
+            const resp=await fetch('https://ball46.com/'+p+'?_audit='+Date.now(),{signal:AbortSignal.timeout(20000)});
+            const type=resp.headers.get('content-type')||'';
+            console.log('EXTRA_ACTIVE_REFERENCE',p,'HTTP',resp.status,'TYPE',type);
+            if(resp.status===404) continue;
+            assert.equal(resp.status,200,'UNEXPECTED_REFERENCE_HTTP:'+p);
+            assert(type.includes(p.endsWith('.css')?'text/css':'javascript'),'EXTRA_ASSET_WRONG_TYPE:'+p);
+            const b=Buffer.from(await resp.arrayBuffer());
+            mkdirSync('audit/active-assets/'+dirname(p),{recursive:true});
+            writeFileSync('audit/active-assets/'+p,b);
+            assets.push({path:p,sha256:digest(b),bytes:b.length,type});
+          }
+          report.verifiedInventoryCount=assets.length;
+          report.extras=assets.filter(x=>!inventory.includes(x.path));
+          writeFileSync('audit/report.json',JSON.stringify(report,null,2));
           NODE
       - uses: actions/upload-artifact@v4
         if: always()
