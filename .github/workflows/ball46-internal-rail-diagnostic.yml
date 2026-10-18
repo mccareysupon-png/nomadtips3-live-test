@@ -87,6 +87,7 @@ jobs:
           TOML
           key=$(node -e 'process.stdout.write(require("node:crypto").randomBytes(32).toString("hex"))')
           export B46_DIAG_PROBE_TOKEN="$key"
+          printf '\n[vars]\nDIAG_TOKEN = "%s"\n' "$key" >> wrangler.toml
           cleanup() {
             npx --yes wrangler@4 delete --name ball46-temporary-rail-diag-20261018 --force >/dev/null 2>&1 || true
           }
@@ -100,7 +101,7 @@ jobs:
              'x-diagnostic-token':process.env.B46_DIAG_PROBE_TOKEN},
              signal:AbortSignal.timeout(45000)});
             const d=await r.json().catch(()=>({}));
-            if(!r.ok||d.ok!==true)throw Error('READ_ONLY_PROBE_FAILED_'+r.status);
+            if(!r.ok||d.ok!==true)throw Error('READ_ONLY_PROBE_FAILED_'+r.status+'_'+JSON.stringify(d).slice(0,500));
             console.log('BALL46_PRIVATE_RAIL_DIAGNOSTIC',JSON.stringify(d));
           })().catch(e=>{console.error('PROBE_READ_FAILED',e.message);process.exit(1)});
           NODE
