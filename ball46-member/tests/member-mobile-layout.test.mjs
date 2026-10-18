@@ -137,7 +137,7 @@ test('approved mobile V4 account popover is controlled and uses authenticated se
   assert.match(js,/mobileProfileToggle\.disabled=false/);
   assert.doesNotMatch(html,/>JAY</);
   assert.doesNotMatch(html,/>OWNER · LIFETIME</);
-  assert.match(html,/mobile-v4-contextline/);
+  assert.doesNotMatch(html,/mobile-v4-contextline|DAILY SIGNAL BOARD|DATA MIRROR/);
   assert.match(html,/mobile-v4-sectionbar/);
   assert.match(html,/mobile-v4-intro/);
   assert.match(html,/v4approved=20261018-header-profile-kpi-v1/);
@@ -218,4 +218,16 @@ test('approved V5 default match cards have no outline but soft dimensional shado
   assert.match(v5,/inset 0 1px 0 rgba\(255,255,255,\.05\)!important/);
   assert.match(v5,/@media\(max-width:767px\)/);
   assert.match(js,/if\(!detailInserted && state\.expandedSignalId===row\.id\)/);
+});
+
+test('mobile V5 removes the unused data mirror strip and keeps deliberate spacing under header',()=>{
+  assert.doesNotMatch(html,/DAILY SIGNAL BOARD|DATA MIRROR|mobile-v4-contextline/);
+  assert.doesNotMatch(css,/mobile-v4-contextline/);
+  const v4=css.slice(css.indexOf('/* BALL46 MEMBER — approved mobile V4'));
+  assert.match(v4,/#dailySummary\{[\s\S]*?gap:6px;margin:13px 9px 7px/);
+  assert.match(v4,/\.member-main-content\{display:flex;flex-direction:column;gap:0;width:100%/);
+  assert.match(html,/v5cleanheader=20261018-nostrip-space13-v1/);
+  assert.match(html,/id="mobileV5MarketToggle"/);
+  assert.match(html,/id="dailySummary"/);
+  assert.match(html,/id="signalBoard"/);
 });
