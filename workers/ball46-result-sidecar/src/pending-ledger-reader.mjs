@@ -8,7 +8,7 @@ const PREFIX='stat:v2:row:';
 export const FIRST_LEDGER_CURSOR=PREFIX+'9999999999999:~';
 export function pendingMarketEligible(row){
  if(String(row?.status||'').toUpperCase()!=='PENDING')return false;
- const market=String(row?.market||'').toUpperCase();
+ const market=String(row?.market||'').toUpperCase().replace(/^FT_/, '');
  const period=String(row?.period||'FT').toUpperCase();
  return !!row?.id&&!!row?.fixtureId&&period!=='HT'&&
    !market.includes('CORNER')&&!market.includes('CARD')&&
