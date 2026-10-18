@@ -11,6 +11,14 @@ GOALOO_OFFSET_MINUTES = ""
 GOALOO_APPROVED_LEAGUES = "{}"
 GOALOO_APPROVED_TEAMS = "{}"
 ENABLE_NATIVE_FORWARD = "0"
+CANONICAL_CAPTURE_ENABLED = "1"
+
+[[services]]
+binding = "HUB"
+service = "nomadtips3-5usd-hub-343"
+
+[triggers]
+crons = ["*/5 * * * *"]
 
 [[durable_objects.bindings]]
 name = "RESULT_REGISTRY"
@@ -20,5 +28,7 @@ class_name = "Ball46FixtureResultRegistry"
 tag = "v1"
 new_sqlite_classes = ["Ball46FixtureResultRegistry"]
 
-# Isolated sandbox: intentionally no Engine service binding, no cron, no secret.
-# No changes to nomadtips3-engine-343 or production 5USD Hub.
+# Isolated Shadow: automatic GET-only canonical collection every five minutes.
+# HUB is read-only. No Engine service binding, route or Worker.dev address.
+# GOALOO_POLL_ENABLED=0; no Goaloo feed fetch or FT scoring.
+# SIDECAR_ADMIN_TOKEN is provisioned securely during deployment.
