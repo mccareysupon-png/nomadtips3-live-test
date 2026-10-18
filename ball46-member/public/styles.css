@@ -5438,3 +5438,57 @@ button,input,select,textarea{font-family:inherit;font-synthesis:none}
 @media(prefers-reduced-motion:reduce){
   .page-member .member-market-sidebar{transition:none}
 }
+
+/* BALL46 MEMBER — approved dual-size transparent 3D member avatar (Mobile + Desktop) */
+.page-member .member-profile-desktop-image,
+.page-member .member-profile-mobile-image{
+  display:block;
+  object-fit:contain;
+  object-position:center;
+  background:transparent;
+  border:0;
+  box-shadow:none;
+}
+@media(min-width:768px){
+  .page-member .topbar-account-slot .member-avatar{
+    width:40px;
+    height:40px;
+    min-width:40px;
+    flex:0 0 40px;
+    display:grid;
+    place-items:center;
+    padding:0;
+    margin:0;
+    overflow:visible;
+    background:transparent;
+    border:0;
+    border-radius:0;
+    box-shadow:none;
+  }
+  .page-member .topbar-account-slot .member-profile-desktop-image{
+    width:40px;
+    height:40px;
+  }
+}
+@media(max-width:767px){
+  .page-member .mobile-v4-profile-icon{
+    display:grid;
+    place-items:center;
+    width:36px;
+    height:36px;
+    padding:0;
+    border:0!important;
+    border-radius:0!important;
+    background:transparent!important;
+    box-shadow:none!important;
+  }
+  .page-member .mobile-v4-profile-icon[aria-expanded=true]{
+    background:transparent!important;
+    border:0!important;
+    box-shadow:none!important;
+  }
+  .page-member .member-profile-mobile-image{
+    width:34px;
+    height:34px;
+  }
+}
