@@ -4347,3 +4347,251 @@ button,input,select,textarea{font-family:inherit;font-synthesis:none}
 .page-member #signalBoard .signal-table tbody tr.signal-row:not(.expanded) .live-score-team.away{
   color:#FFFFFF;
 }
+
+/* BALL46 MEMBER — approved mobile match-insights and market navigation, 2026-10-18 */
+.page-member .mobile-market-navigation{display:contents}
+.page-member .mobile-market-pills,
+.page-member .mobile-match-section-tabs,
+.page-member .mobile-match-spotlight{display:none}
+@media(max-width:767px){
+  .page-member{overflow-x:clip}
+  .page-member .shell{width:calc(100% - 18px)}
+  .page-member .member-sidebar-layout{padding-top:7px;gap:6px}
+  .page-member .member-main-content{display:flex;flex-direction:column;gap:9px}
+  .page-member .mobile-market-navigation{
+    display:flex;align-items:center;gap:6px;order:1;min-width:0;
+    padding:6px;background:#0b1c29;border-radius:11px;
+    box-shadow:0 5px 15px rgba(0,0,0,.16);
+  }
+  .page-member .member-main-content .member-market-toggle{
+    flex:0 0 auto;display:flex;width:auto;min-height:34px;
+    padding:7px 9px;gap:5px;border-radius:8px;
+    font-size:10px;white-space:nowrap;letter-spacing:.01em;
+    background:linear-gradient(180deg,#173644,#112937);
+  }
+  .page-member .mobile-market-navigation .member-market-selection{display:none}
+  .page-member .member-market-toggle-symbol{font-size:15px;color:#43e6a2}
+  .page-member .mobile-market-pills{
+    display:flex;align-items:center;gap:5px;min-width:0;flex:1;
+    overflow-x:auto;overflow-y:hidden;scrollbar-width:none;
+    overscroll-behavior-inline:contain;-webkit-overflow-scrolling:touch;
+  }
+  .page-member .mobile-market-pills::-webkit-scrollbar{display:none}
+  .page-member .mobile-market-pill{
+    flex:0 0 auto;min-height:32px;padding:6px 10px;
+    background:#112b39;color:#adbfca;border:0;
+    border-radius:8px;white-space:nowrap;font-size:10px;font-weight:800;
+    letter-spacing:.03em;cursor:pointer;
+  }
+  .page-member .mobile-market-pill.active{
+    color:#72f7c1;background:#134637;
+    box-shadow:inset 0 1px 0 rgba(170,255,225,.15);
+  }
+  .page-member .mobile-market-pill:focus-visible,
+  .page-member .mobile-match-section-tabs button:focus-visible,
+  .page-member .mobile-more-stats:focus-visible,
+  .page-member .mobile-more-history:focus-visible{outline:2px solid #94f4ca;outline-offset:2px}
+  .page-member .mobile-match-section-tabs{
+    display:grid;grid-template-columns:repeat(3,minmax(0,1fr));order:2;
+    gap:3px;padding:3px 4px;border-radius:9px;background:#0b1c29;
+  }
+  .page-member .mobile-match-section-tabs button{
+    min-height:32px;padding:6px 4px;border:0;border-bottom:2px solid transparent;
+    border-radius:6px;background:transparent;color:#95abbb;
+    font-size:10px;font-weight:800;letter-spacing:.035em;cursor:pointer;
+  }
+  .page-member .mobile-match-section-tabs button[aria-current="true"]{
+    color:#62eec0;border-bottom-color:#43e6a2;background:rgba(20,86,71,.20);
+  }
+  .page-member #mobileMatchSpotlight{display:block;order:3;min-width:0}
+  .page-member #signalBoard{order:4;min-width:0}
+  .page-member #signalPagination{order:5}
+  .page-member #dailySummary{order:6}
+  .page-member .member-hero-card{display:none!important}
+  .page-member .mobile-no-match,.page-member .mobile-event-flow-loading{
+    margin:0;padding:16px;border-radius:12px;color:#9ebcca;background:#102431;
+    font-size:11px;line-height:1.55;text-align:center;
+  }
+  .page-member #mobileMatchSpotlight .mobile-match-insight{
+    display:flex;flex-direction:column;gap:10px;
+    padding:0;margin:0;min-width:0;background:none;border:0;box-shadow:none;
+    overflow:visible;
+  }
+  .page-member #mobileMatchSpotlight .featured-match-stack{display:contents}
+  .page-member #mobileMatchSpotlight .stadium-hero{
+    order:1;min-height:210px;max-width:100%;padding:13px 9px 15px;
+    border-radius:14px;background-position:center 57%;
+  }
+  .page-member #mobileMatchSpotlight .stadium-hero .featured-h-meta{
+    padding:0 8px;gap:3px;
+  }
+  .page-member #mobileMatchSpotlight .stadium-hero .featured-h-meta>strong{
+    font-size:clamp(10px,2.7vw,13px);text-align:center;
+  }
+  .page-member #mobileMatchSpotlight .stadium-hero .featured-h-score{
+    grid-template-columns:minmax(0,1fr) minmax(75px,98px) minmax(0,1fr);
+    align-items:center;gap:4px;min-height:137px;padding:2px 0;
+  }
+  .page-member #mobileMatchSpotlight .stadium-hero .featured-h-score .team{min-width:0;gap:6px}
+  .page-member #mobileMatchSpotlight .stadium-hero .featured-h-score .team b{
+    font-size:clamp(10px,2.85vw,13px);line-height:1.3;
+  }
+  .page-member #mobileMatchSpotlight .stadium-hero .featured-crest-slot{
+    width:43px;height:50px;
+  }
+  .page-member #mobileMatchSpotlight .stadium-hero .featured-h-score .score-center strong{
+    font-size:clamp(29px,8.8vw,39px);
+  }
+  .page-member #mobileMatchSpotlight .stadium-hero .featured-h-score .score-center>.stadium-score-status.badge.live{
+    min-height:24px;padding:5px 10px;font-size:11px;
+  }
+  .page-member #mobileMatchSpotlight .member-flow{
+    order:2;min-width:0;margin:0;padding:10px 9px;
+    border-radius:13px;background:linear-gradient(160deg,rgba(15,43,52,.80),rgba(6,25,34,.75));
+    border:0;box-shadow:0 6px 17px rgba(0,0,0,.16);
+  }
+  .page-member #mobileMatchSpotlight .member-flow-chart svg{height:170px}
+  .page-member #mobileMatchSpotlight .member-flow-plot{max-width:100%;min-width:0}
+  .page-member #mobileMatchSpotlight .featured-analysis-layout{
+    order:3;display:grid;grid-template-columns:minmax(0,1fr);
+    gap:9px;align-items:start;min-width:0;
+  }
+  .page-member #mobileMatchSpotlight .featured-h-stats.premium-match-stats,
+  .page-member #mobileMatchSpotlight .featured-entry-history{
+    min-width:0;margin:0;padding:11px 10px;border-radius:12px;border:0;
+    background:linear-gradient(155deg,#102936,#0b202d);
+    box-shadow:0 5px 13px rgba(0,0,0,.17);
+  }
+  .page-member #mobileMatchSpotlight .premium-stats-heading{
+    flex-direction:column;align-items:flex-start;gap:5px;
+  }
+  .page-member #mobileMatchSpotlight .premium-stats-heading strong,
+  .page-member #mobileMatchSpotlight .featured-entry-history-head strong{
+    font-size:10px;letter-spacing:.045em;
+  }
+  .page-member #mobileMatchSpotlight .premium-stats-legend{font-size:8px;gap:8px}
+  .page-member #mobileMatchSpotlight .premium-stat-row{padding:5px 0!important}
+  .page-member #mobileMatchSpotlight .premium-stat-title{font-size:9px!important}
+  .page-member #mobileMatchSpotlight .premium-stat-comparison{
+    grid-template-columns:minmax(15px,auto) minmax(0,1fr) minmax(15px,auto);
+    gap:4px;
+  }
+  .page-member #mobileMatchSpotlight .premium-stat-value{font-size:11px}
+  .page-member #mobileMatchSpotlight .premium-stat-tracks{gap:2px}
+  .page-member #mobileMatchSpotlight .premium-stat-track{height:7px}
+  .page-member #mobileMatchSpotlight .premium-match-stats:not(.mobile-show-all-stats)>.premium-stat-row:nth-child(3),
+  .page-member #mobileMatchSpotlight .premium-match-stats:not(.mobile-show-all-stats)>.premium-stat-row:nth-child(4){display:none}
+  .page-member #mobileMatchSpotlight .mobile-more-stats,
+  .page-member #mobileMatchSpotlight .mobile-more-history{
+    display:block;min-height:30px;margin-top:9px;padding:5px 8px;
+    width:100%;border:0;border-radius:7px;
+    background:rgba(57,145,122,.13);color:#a1f3d5;
+    font-size:10px;font-weight:800;cursor:pointer;
+  }
+  .page-member #mobileMatchSpotlight .featured-entry-history{gap:7px}
+  .page-member #mobileMatchSpotlight .featured-entry-history-head>span{font-size:9px}
+  .page-member #mobileMatchSpotlight .featured-entry-history-list{
+    max-height:227px;overflow-y:auto;overflow-x:hidden;
+    overscroll-behavior:contain;gap:5px;scrollbar-width:thin;
+  }
+  .page-member #mobileMatchSpotlight .mobile-show-all-history .featured-entry-history-list{max-height:none}
+  .page-member #mobileMatchSpotlight .featured-history-entry{padding:8px!important;border-radius:8px}
+  .page-member #mobileMatchSpotlight .featured-history-compact-row{
+    display:flex;flex-wrap:wrap;gap:4px 7px;white-space:normal!important;
+    align-items:center;min-height:0;
+  }
+  .page-member #mobileMatchSpotlight .featured-history-compact-row>span{
+    flex:0 1 auto;max-width:100%;font-size:9px;white-space:normal;
+    overflow-wrap:anywhere;
+  }
+  .page-member #mobileMatchSpotlight .featured-history-minute{color:#43e6a2!important}
+  .page-member #mobileMatchSpotlight .mobile-match-facts{
+    order:4;min-width:0;border-radius:11px;overflow:hidden;
+    background:linear-gradient(145deg,#102735,#0b202b);
+  }
+  .page-member #mobileMatchSpotlight .mobile-match-facts>summary{
+    list-style:none;display:flex;justify-content:space-between;gap:8px;
+    align-items:center;min-height:43px;padding:10px 12px;
+    font-size:10px;font-weight:800;color:#c9e1ec;cursor:pointer;
+  }
+  .page-member #mobileMatchSpotlight .mobile-match-facts>summary::-webkit-details-marker{display:none}
+  .page-member #mobileMatchSpotlight .mobile-match-facts>summary::after{content:'⌄';font-size:17px;color:#43e6a2}
+  .page-member #mobileMatchSpotlight .mobile-match-facts[open]>summary::after{content:'⌃'}
+  .page-member #mobileMatchSpotlight .premium-side-facts-panel{
+    margin:0;padding:5px 9px 11px;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;
+  }
+  .page-member #mobileMatchSpotlight .premium-side-fact{
+    min-height:69px;padding:8px;border:0;border-radius:8px;
+  }
+  .page-member #signalBoard{padding:8px 7px;overflow:visible!important}
+  .page-member #signalBoard .signal-table tbody tr.signal-detail-row{display:none!important}
+  .page-member #signalBoard .signal-table tbody tr.signal-row{
+    grid-template-columns:minmax(0,1fr) 65px;
+    grid-template-areas:"detected result" "match score" "market selection" "odds pnl";
+    gap:2px 8px;padding:9px 10px;margin-bottom:7px;
+    border:0;border-radius:12px;background:#102330;
+  }
+  .page-member #signalBoard .signal-row>td:nth-child(7),
+  .page-member #signalBoard .signal-row>td:nth-child(8){display:none!important}
+  .page-member #signalBoard .signal-row .live-score-pair{
+    display:grid;grid-template-columns:1fr;grid-template-rows:repeat(2,minmax(25px,auto));
+    gap:5px;width:100%;justify-items:end;
+  }
+  .page-member #signalBoard .signal-row .favorite-team-names{
+    grid-template-rows:repeat(2,minmax(25px,auto));gap:5px;
+  }
+  .page-member #signalBoard .signal-row .live-score-team{min-height:25px}
+  .page-member #signalBoard .signal-row>td:nth-child(2),
+  .page-member #signalBoard .signal-row>td:nth-child(3){padding:4px 2px}
+  .page-member #signalBoard .signal-row .favorite-team-line{min-height:25px}
+  .page-member #signalBoard .signal-row .market-evidence{display:none}
+  .page-member #signalBoard .signal-price-note{font-size:9px;line-height:1.4;padding:10px}
+  .page-member .summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
+  .page-member .summary .summary-stat{display:none;min-height:64px;padding:8px 5px}
+  .page-member .summary .summary-stat.signals,
+  .page-member .summary .summary-stat.pending,
+  .page-member .summary .summary-stat.rate-good,
+  .page-member .summary .summary-stat.rate-mid,
+  .page-member .summary .summary-stat.rate-bad,
+  .page-member .summary .summary-stat.pnl-card{display:flex}
+  .page-member .summary .summary-stat span{font-size:9px}
+  .page-member .summary .summary-stat b{font-size:clamp(12px,3.3vw,16px)}
+  .page-member .member-market-sidebar{
+    left:50%;right:auto;top:auto;bottom:0;
+    width:min(100vw,440px);height:auto;max-height:80dvh;
+    padding:16px 12px 22px;border-radius:17px 17px 0 0;
+    transform:translate3d(-50%,105%,0);
+    overflow-y:auto;box-shadow:0 -18px 45px rgba(0,0,0,.5);
+  }
+  .page-member.market-menu-open .member-market-sidebar{transform:translate3d(-50%,0,0)}
+  .page-member .member-market-sidebar #marketTabs{
+    display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:7px;
+  }
+  .page-member .member-market-sidebar #marketTabs .market-tab{
+    min-height:65px;padding:8px;gap:4px;grid-template-columns:24px minmax(0,1fr);
+  }
+  .page-member .member-market-sidebar #marketTabs .market-tab-icon{
+    width:26px;height:26px;max-width:26px;
+  }
+  .page-member .member-market-sidebar #marketTabs .market-tab-name{font-size:10px}
+}
+@media(min-width:390px) and (max-width:767px){
+  .page-member #mobileMatchSpotlight .featured-analysis-layout{
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+    gap:8px;
+  }
+  .page-member #mobileMatchSpotlight .featured-h-stats.premium-match-stats,
+  .page-member #mobileMatchSpotlight .featured-entry-history{padding:10px 8px}
+}
+@media(max-width:359px){
+  .page-member #mobileMatchSpotlight .stadium-hero .featured-h-score{
+    grid-template-columns:minmax(0,1fr) 72px minmax(0,1fr);
+  }
+  .page-member #mobileMatchSpotlight .stadium-hero .featured-crest-slot{width:37px;height:43px}
+  .page-member .mobile-market-pill{font-size:9px;padding:6px 8px}
+  .page-member .summary{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(prefers-reduced-motion:reduce){
+  .page-member .mobile-match-section-tabs button{scroll-behavior:auto}
+}
