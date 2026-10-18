@@ -90,3 +90,15 @@ test('mobile V3 has one DOM component for each of the four visual lines',()=>{
   assert.match(exact,/\.mobile-v3-card\{\s*display:grid!important/);
   assert.match(exact,/td\.signal-time>:not\(\.mobile-v3-card\)/);
 });
+
+test('mobile logo strip uses the approved V3 Deep Teal colors, without changing desktop header',()=>{
+  const marker='/* BALL46 MEMBER — approved V3 mobile logo-strip Deep Teal gradient */';
+  const idx=css.indexOf(marker);
+  assert.ok(idx>0,'approved mobile header override exists');
+  const portion=css.slice(idx);
+  assert.match(portion,/@media\(max-width:767px\)/);
+  assert.match(portion,/\.page-member \.topbar\{/);
+  assert.match(portion,/background:linear-gradient\(180deg,#102635 0%,#0a1a27 100%\)/);
+  assert.match(html,/mobileheader=20261018-v3-deepteal-v1/);
+  assert.match(html,/brand-original-lettering/);
+});
