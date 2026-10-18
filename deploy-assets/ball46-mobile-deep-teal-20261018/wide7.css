@@ -1,0 +1,41 @@
+/* BALL46 Green Noir: approved 7px mobile gutters + redundant hero hidden.
+   Visual-only overrides. No changes to datafeeds, signal logic or desktop. */
+@media (max-width: 760px) {
+  html[data-b46gn="1"] #b46gn-hero {display:none!important}
+  html[data-b46gn="1"] #b46gn-results {
+    display:block!important;padding:17px 7px 44px!important;margin:0!important;
+    max-width:100%!important;min-width:0!important;box-sizing:border-box!important
+  }
+  html[data-b46gn="1"] #b46gn-results .b46gn-section {
+    margin:0 3px 13px!important;padding:0!important
+  }
+  html[data-b46gn="1"] #b46gn-cards,
+  html[data-b46gn="1"] #b46gn-results .b46gn-card {
+    width:100%!important;max-width:100%!important;min-width:0!important;box-sizing:border-box!important
+  }
+  html[data-b46gn="1"] .workspace-panel:not([data-workspace-panel="live"]) {
+    padding:15px 7px 40px!important;margin:0!important;max-width:100%!important;
+    min-width:0!important;box-sizing:border-box!important
+  }
+  html[data-b46gn="1"] .workspace-panel:not([data-workspace-panel="live"]) > .workspace-view-head,
+  html[data-b46gn="1"] .workspace-panel:not([data-workspace-panel="live"]) > .sp-stats-content {
+    width:100%!important;max-width:100%!important;min-width:0!important;box-sizing:border-box!important
+  }
+  html[data-b46gn="1"] #b46m-teal-shell .b46m-search {
+    left:7px!important;right:7px!important
+  }
+  html[data-b46gn="1"] #b46gn-detail .b46gn-sheet {
+    padding:14px 9px max(24px,env(safe-area-inset-bottom))!important;box-sizing:border-box!important
+  }
+  html[data-b46gn="1"] #b46gn-detail .b46gn-sheetbody .b46gn-teams {
+    padding:10px 9px!important
+  }
+  html[data-b46gn="1"] #b46gn-detail .b46gn-event-flow {
+    padding:12px 6px!important;width:100%!important;min-width:0!important;
+    max-width:100%!important;box-sizing:border-box!important
+  }
+}
+@media (max-width:350px) {
+ html[data-b46gn="1"] #b46gn-results{padding-left:7px!important;padding-right:7px!important}
+ html[data-b46gn="1"] #b46gn-detail .b46gn-sheet{padding-left:8px!important;padding-right:8px!important}
+}
