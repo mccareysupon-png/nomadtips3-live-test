@@ -5,7 +5,7 @@
  * No Corners required. Settlement delegated to existing Engine bridge only.
  */
 import {DurableObject} from 'cloudflare:workers';
-import {readPendingFromLedgerV2} from './pending-ledger-reader.mjs';
+import {readPendingFromLedgerV2,pendingMarketEligible} from './pending-ledger-reader.mjs';
 import {planVerifiedPendingFt} from './pending-ft-dispatch-plan.mjs';
 import {readSettledReceipt} from './ledger-settlement-readback.mjs';
 import {routeOverduePending,closeAfterLedgerSettlement} from './pending-ten-minute-failover.mjs';
@@ -246,7 +246,7 @@ async function dispatchNativeVerifiedFt(storage,env,verifiedResults,hubFixtures,
   // The current native Engine can also find older working PENDING on
   // this fixture. Do not forward if ANY old/untracked PENDING shares it.
   const sameFixture=snapshot.rows.filter(x=>String(x.fixtureId)===item.fixtureId);
-  if(sameFixture.some(x=>!item.signalIds.includes(String(x.id)))){
+  if(sameFixture.some(x=>pendingMarketEligible(x)&&!item.signalIds.includes(String(x.id)))){
    outcomes.push({fixtureId:item.fixtureId,state:'HOLD_MIXED_LEGACY_PENDING'});
    continue;
   }
