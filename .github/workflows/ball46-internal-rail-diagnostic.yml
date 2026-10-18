@@ -54,17 +54,21 @@ jobs:
                   recentEvents:d.recentEvents??null};
               });
               await operation('goaloo_feed',async()=>{
+                const tries=[];
                 for(const url of ['https://live10.goaloo28.com/gf/data/bf_us.js',
                      'https://live10.goaloo28.com/gf/data/bf_us1.js']){
                   try{
                     const r=await fetch(url,{redirect:'error',signal:AbortSignal.timeout(12000)});
                     const body=r.ok?await r.text():'';
+                    tries.push({host:new URL(url).hostname,path:new URL(url).pathname,
+                     http:r.status,contentType:r.headers.get('content-type'),
+                     bodyLength:body.length,validFeed:r.ok&&body.includes('A[')});
                     if(r.ok&&body.includes('A['))
-                     return {http:r.status,sourceHost:new URL(url).hostname,
-                       length:body.length,hasFixtureRows:true};
-                  }catch{}
+                     return {ok:true,tries};
+                  }catch(e){tries.push({path:new URL(url).pathname,
+                   exception:String(e?.message||e).slice(0,110)})}
                 }
-                return {ok:false,reason:'NO_READABLE_GOALOO_ENDPOINT'};
+                return {ok:false,reason:'NO_READABLE_GOALOO_ENDPOINT',tries};
               });
               return Response.json({ok:true,steps});
             }
