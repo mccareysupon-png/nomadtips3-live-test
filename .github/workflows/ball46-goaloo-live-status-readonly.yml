@@ -41,6 +41,14 @@ jobs:
             }));
           })().catch(e=>{console.error('CF_WORKER_ERRORS_UNAVAILABLE',e.message)});
           NODE
+      - name: Wait until the first post-fix scheduled invocation
+        run: |
+          node - <<'NODE'
+          const target=Date.parse('2026-10-18T12:55:40Z');
+          const left=Math.max(0,target-Date.now());
+          if(left>240000)throw Error('BAD_FIRST_CRON_OBSERVATION_WINDOW');
+          await new Promise(resolve=>setTimeout(resolve,left));
+          NODE
       - name: Break down Cloudflare scheduled invocation status without writes
         run: |
           node - <<'NODE'
