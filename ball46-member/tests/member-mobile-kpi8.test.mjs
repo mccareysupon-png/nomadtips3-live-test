@@ -53,3 +53,30 @@ test('extra DRAW and AVG ODDS cards are not displayed on Desktop',()=>{
   assert.match(js,/function renderSummary\(\)/);
   assert.doesNotMatch(js,/row\.result\s*=/);
 });
+
+test('desktop KPI backgrounds are 30 percent translucent while text stays opaque',()=>{
+  const marker='/* BALL46 MEMBER — KPI finish: PC 30% transparency / mobile soft premium elevation (2026-10-19) */';
+  const end=css.slice(css.indexOf(marker));
+  assert.ok(end.startsWith(marker));
+  const desktop=end.slice(0,end.indexOf('/* Keep the approved V6'));
+  assert.match(desktop,/@media\(min-width:768px\)/);
+  for(const color of ['17,39,55','30,68,60','75,41,52','71,59,37','29,57,76']){
+    assert.ok(desktop.includes('background:rgba('+color+',.70)'),color+' background must be 30% transparent');
+  }
+  assert.doesNotMatch(desktop,/\bopacity\s*:/);
+  assert.match(html,/kpifinish=20261019-desktop30-mobile-depth-v1/);
+});
+test('mobile eight KPI cards gain clean soft elevation without size or color changes',()=>{
+  const end=css.slice(css.indexOf('/* BALL46 MEMBER — KPI finish: PC 30% transparency / mobile soft premium elevation (2026-10-19) */'));
+  const mobile=end.slice(end.indexOf('/* Keep the approved V6'));
+  assert.match(mobile,/@media\(max-width:767px\)/);
+  assert.match(mobile,/border:0!important/);
+  assert.match(mobile,/0 8px 17px rgba\(0,0,0,\.24\)/);
+  assert.match(mobile,/0 2px 5px rgba\(0,0,0,\.13\)/);
+  assert.match(mobile,/inset 0 1px 0 rgba\(255,255,255,\.12\)/);
+  assert.match(mobile,/inset 0 -1px 0 rgba\(0,0,0,\.12\)!important/);
+  assert.doesNotMatch(mobile,/height:|min-height:|font-size:|background:/);
+  assert.match(cssV6,/height:47px!important/);
+  assert.match(cssV6,/height:45px!important/);
+  assert.match(cssV6,/grid-template-columns:repeat\(4,minmax\(0,1fr\)\)!important/);
+});
