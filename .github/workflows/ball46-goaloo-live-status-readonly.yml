@@ -13,6 +13,34 @@ jobs:
       CF_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
     steps:
+      - name: Retrieve Cloudflare invocation error details read-only
+        run: |
+          node - <<'NODE'
+          const id=process.env.CF_ID,token=process.env.CF_TOKEN;
+          (async()=>{
+            const from=Date.parse('2026-10-18T10:09:54Z'),to=Date.now();
+            const query={queryId:'ball46-goaloo-status-only',dry:true,
+              view:'events',limit:20,timeframe:{from,to},
+              parameters:{datasets:['cloudflare-workers'],
+               filters:[{key:'$metadata.service',operation:'eq',type:'string',
+                value:'ball46-multisource-shadow-20261018'}]}};
+            const r=await fetch('https://api.cloudflare.com/client/v4/accounts/'+id+
+               '/workers/observability/telemetry/query',{method:'POST',
+               headers:{Authorization:'Bearer '+token,'content-type':'application/json'},
+               body:JSON.stringify(query),signal:AbortSignal.timeout(20000)});
+            const d=await r.json().catch(()=>({}));
+            console.log('CF_WORKER_ERRORS_READONLY',JSON.stringify({
+              http:r.status,success:d.success===true,
+              errors:d.errors?.map(x=>x.message).slice(0,3),
+              count:d.result?.events?.count??null,
+              recent:(d.result?.events?.events||[]).slice(0,15).map(x=>({
+               error:String(x?.$metadata?.error||x?.$metadata?.message||'').slice(0,150),
+               timestamp:x.timestamp,
+               outcome:x.$workers?.outcome,
+               eventType:x.$workers?.eventType}))
+            }));
+          })().catch(e=>{console.error('CF_WORKER_ERRORS_UNAVAILABLE',e.message)});
+          NODE
       - name: Inspect deployed settings, cron, ledger and Worker invocation counts without writes
         run: |
           node - <<'NODE'
