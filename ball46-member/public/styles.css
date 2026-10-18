@@ -4055,3 +4055,220 @@ button,input,select,textarea{font-family:inherit;font-synthesis:none}
     column-gap:7px;
   }
 }
+
+
+/* BALL46 MEMBER PHASE 1 — ONLY expanded Featured Match hero.
+   Three locally bundled 3:1 stadium images selected deterministically by fixture ID.
+   All result logic, signal entry, statistics, history, event flow and match facts remain untouched. */
+.page-member .featured-horizontal.stadium-hero{
+  position:relative;
+  isolation:isolate;
+  display:grid;
+  grid-template-columns:minmax(0,1fr);
+  grid-template-areas:"meta" "score";
+  gap:12px;
+  box-sizing:border-box;
+  min-width:0;
+  width:100%;
+  min-height:230px;
+  padding:18px clamp(14px,2vw,25px) 23px;
+  border:0;
+  border-radius:15px;
+  overflow:hidden;
+  background-color:#061421;
+  background-size:cover;
+  background-position:center 57%;
+  background-repeat:no-repeat;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.075),0 12px 29px rgba(0,0,0,.27);
+}
+.page-member .featured-horizontal.stadium-hero.stadium-variant-1{
+  background-image:linear-gradient(180deg,rgba(2,10,20,.40),rgba(2,13,21,.19) 47%,rgba(0,8,12,.59) 100%),url("/images/ball46-stadium-1.webp");
+}
+.page-member .featured-horizontal.stadium-hero.stadium-variant-2{
+  background-image:linear-gradient(180deg,rgba(2,10,20,.40),rgba(2,13,21,.19) 47%,rgba(0,8,12,.59) 100%),url("/images/ball46-stadium-2.webp");
+}
+.page-member .featured-horizontal.stadium-hero.stadium-variant-3{
+  background-image:linear-gradient(180deg,rgba(2,10,20,.39),rgba(2,13,21,.16) 47%,rgba(0,8,12,.52) 100%),url("/images/ball46-stadium-3.webp");
+}
+.page-member .featured-horizontal.stadium-hero .featured-h-meta{
+  position:static;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  justify-items:center;
+  gap:5px;
+  text-align:center;
+  min-width:0;
+  padding:0 clamp(56px,7vw,95px);
+}
+.page-member .featured-horizontal.stadium-hero .featured-h-meta .eyebrow{display:none}
+.page-member .featured-horizontal.stadium-hero .featured-h-meta>strong{
+  display:block;
+  width:100%;
+  min-width:0;
+  max-width:100%;
+  font-size:clamp(11px,1.15vw,14px);
+  font-weight:800;
+  letter-spacing:.01em;
+  color:#f6fbff;
+  line-height:1.4;
+  text-align:center;
+  white-space:normal;
+  overflow-wrap:anywhere;
+  text-shadow:0 2px 7px rgba(0,0,0,.7);
+}
+.page-member .featured-horizontal.stadium-hero .featured-h-meta>.badge{
+  position:absolute;
+  top:12px;
+  right:14px;
+  z-index:2;
+  align-self:auto;
+  justify-self:auto;
+  font-size:10px;
+  text-shadow:0 1px 3px rgba(0,0,0,.8);
+}
+.page-member .featured-horizontal.stadium-hero .stadium-kickoff{
+  display:block;
+  font-size:10px;
+  font-weight:600;
+  color:#d7e5ee;
+  letter-spacing:.01em;
+  text-shadow:0 2px 6px rgba(0,0,0,.8);
+}
+.page-member .featured-horizontal.stadium-hero .featured-h-score{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(76px,118px) minmax(0,1fr);
+  align-items:center;
+  justify-items:stretch;
+  column-gap:clamp(8px,2vw,22px);
+  width:100%;
+  max-width:none;
+  min-width:0;
+  min-height:150px;
+  padding:4px 0;
+}
+.page-member .featured-horizontal.stadium-hero .featured-h-score .team,
+.page-member .featured-horizontal.stadium-hero .featured-h-score .team.home,
+.page-member .featured-horizontal.stadium-hero .featured-h-score .team.away{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  min-width:0;
+  max-width:100%;
+  text-align:center;
+}
+.page-member .featured-horizontal.stadium-hero .featured-h-score .team b{
+  display:block;
+  max-width:100%;
+  margin:0;
+  color:inherit;
+  font-size:clamp(12px,1.5vw,18px);
+  line-height:1.3;
+  font-weight:800;
+  white-space:normal;
+  overflow-wrap:anywhere;
+  text-overflow:clip;
+  text-shadow:0 2px 8px rgba(0,0,0,.86);
+}
+.page-member .featured-horizontal.stadium-hero .featured-h-score .team.home b{color:#43E6A2}
+.page-member .featured-horizontal.stadium-hero .featured-h-score .team.away b{color:#FFA451}
+.page-member .featured-horizontal.stadium-hero .featured-h-score .team .team-side-label{
+  display:block;
+  color:#c1d4e0;
+  font-size:9px;
+  letter-spacing:.18em;
+  font-weight:700;
+  line-height:1.25;
+  text-shadow:0 2px 6px rgba(0,0,0,.8);
+}
+.page-member .featured-horizontal.stadium-hero .featured-h-score .featured-crest-slot{
+  display:grid;
+  width:49px;
+  height:57px;
+  flex:0 0 auto;
+  filter:drop-shadow(0 3px 8px rgba(0,0,0,.55));
+}
+.page-member .featured-horizontal.stadium-hero .featured-h-score .score-center{
+  align-self:center;
+  justify-self:center;
+  min-width:0;
+  max-width:100%;
+  text-align:center;
+}
+.page-member .featured-horizontal.stadium-hero .featured-h-score .score-center strong{
+  display:block;
+  font-size:clamp(30px,3.7vw,49px);
+  font-weight:800;
+  line-height:1.08;
+  letter-spacing:-.035em;
+  color:#fff;
+  white-space:nowrap;
+  text-shadow:0 4px 13px rgba(0,0,0,.9);
+}
+.page-member .featured-horizontal.stadium-hero .stadium-score-status{
+  display:block;
+  margin-top:7px;
+  font-size:10px;
+  font-weight:800;
+  letter-spacing:.14em;
+  line-height:1.3;
+  color:#76efc4;
+  text-shadow:0 2px 7px rgba(0,0,0,.9);
+}
+@media(max-width:680px){
+  .page-member .featured-horizontal.stadium-hero{
+    min-height:202px;
+    padding:16px 9px 18px;
+    gap:7px;
+    background-position:center 53%;
+  }
+  .page-member .featured-horizontal.stadium-hero .featured-h-meta{
+    padding:0 58px;
+    gap:3px;
+  }
+  .page-member .featured-horizontal.stadium-hero .featured-h-meta>strong{
+    font-size:clamp(10px,2.9vw,12px);
+    line-height:1.28;
+  }
+  .page-member .featured-horizontal.stadium-hero .featured-h-meta>.badge{
+    top:9px;right:9px;font-size:8px;
+    max-width:74px;
+    white-space:normal;
+    line-height:1.3;
+  }
+  .page-member .featured-horizontal.stadium-hero .featured-h-score{
+    grid-template-columns:minmax(0,1fr) 68px minmax(0,1fr);
+    gap:5px;
+    min-height:134px;
+    padding:2px 0;
+  }
+  .page-member .featured-horizontal.stadium-hero .featured-h-score .team{
+    gap:5px;
+  }
+  .page-member .featured-horizontal.stadium-hero .featured-h-score .team b{font-size:clamp(10px,3vw,12px)}
+  .page-member .featured-horizontal.stadium-hero .featured-h-score .featured-crest-slot{width:37px;height:43px}
+  .page-member .featured-horizontal.stadium-hero .featured-h-score .featured-crest-initials{font-size:11px}
+  .page-member .featured-horizontal.stadium-hero .featured-h-score .score-center strong{font-size:clamp(23px,7.5vw,30px)}
+  .page-member .featured-horizontal.stadium-hero .stadium-score-status{font-size:9px;margin-top:5px}
+}
+@media(max-width:359px){
+  .page-member .featured-horizontal.stadium-hero{
+    min-height:198px;
+    padding-left:6px;
+    padding-right:6px;
+  }
+  .page-member .featured-horizontal.stadium-hero .featured-h-score{
+    grid-template-columns:minmax(0,1fr) 57px minmax(0,1fr);
+    gap:3px;
+  }
+  .page-member .featured-horizontal.stadium-hero .featured-h-score .team b{font-size:10px}
+  .page-member .featured-horizontal.stadium-hero .featured-h-meta{padding:0 61px}
+  .page-member .featured-horizontal.stadium-hero .featured-h-meta>strong{font-size:10px}
+  .page-member .featured-horizontal.stadium-hero .featured-h-score .score-center strong{font-size:23px}
+}
+@media(prefers-reduced-motion:reduce){
+  .page-member .featured-horizontal.stadium-hero *{animation:none}
+}

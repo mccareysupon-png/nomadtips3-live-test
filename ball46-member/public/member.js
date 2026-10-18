@@ -2,6 +2,16 @@ const MARKET_ORDER = ['ALL','AH','1X2','O/U','CORNERS','BTTS','CARDS','OTHER'];
 const MARKET_ICON_KEYS = Object.freeze({'ALL':'all','AH':'ah','1X2':'1x2','O/U':'ou','CORNERS':'corners','BTTS':'btts','CARDS':'cards','OTHER':'other'});
 const LIVE_REFRESH_MS = 15000;
 const SIGNALS_PER_PAGE = 20;
+// Presentation only: each fixture keeps its stadium backdrop across every 15s refresh.
+function stadiumVariant(fixtureId){
+  const text=String(fixtureId??'');
+  let hash=2166136261;
+  for(let i=0;i<text.length;i++){
+    hash^=text.charCodeAt(i);
+    hash=Math.imul(hash,16777619);
+  }
+  return (hash>>>0)%3+1;
+}
 const state = {
   market:'ALL',
   page:1,
@@ -1082,7 +1092,8 @@ function premiumFactIcon(kind){
 
 function featuredHorizontal(detail,selected){
   const f=detail?.featured;
-  const card=node('section','featured-horizontal');
+  const card=node('section','featured-horizontal stadium-hero stadium-variant-'+stadiumVariant(selected.fixtureId));
+  card.dataset.stadiumVariant=String(stadiumVariant(selected.fixtureId));
   const finished=selected.state==='FINISHED';
   const shownScore=finished
     ? (selected.finalScore??selected.mirrorScore??selected.entryScore)
@@ -1090,6 +1101,7 @@ function featuredHorizontal(detail,selected){
   const shownMinute=finished
     ? 'FT'
     : (f?.minute!=null?`LIVE ${f.minute}'`:matchClockLabel(selected));
+  const beforeKickoff=/^(UPCOMING|SCHEDULED|PREMATCH|PRE_MATCH|NOT_STARTED)$/i.test(String(selected.state||''));
   const shownCorners=finished
     ? (selected.finalCorners??selected.mirrorCorners??selected.entryCorners)
     : (f?.corners??selected.mirrorCorners??selected.entryCorners);
@@ -1099,7 +1111,10 @@ function featuredHorizontal(detail,selected){
 
   const meta=node('div','featured-h-meta');
   meta.append(node('span','eyebrow','FEATURED MATCH'),node('strong','',f?.league||selected.league));
-  meta.append(node('span','badge '+statusClass(selected.state),shownMinute));
+  const displayStatus=beforeKickoff?'UPCOMING':shownMinute;
+  meta.append(node('span','badge '+statusClass(selected.state),displayStatus));
+  const kickoffValue=f?.kickoffLabel??f?.kickoffTime??selected?.kickoffLabel??selected?.kickoffTime;
+  if(typeof kickoffValue==='string'&&kickoffValue.trim())meta.append(node('small','stadium-kickoff',kickoffValue.trim()));
 
   const score=node('div','featured-h-score');
   // Reserved crest slots use typographic monograms until verified club logos are available.
@@ -1113,18 +1128,21 @@ function featuredHorizontal(detail,selected){
   const homeName=f?.home||selected.home;
   const awayName=f?.away||selected.away;
   const home=node('div','team home');
-  home.append(crestSlot(homeName,'home'),node('b','',homeName));
+  home.append(crestSlot(homeName,'home'),node('b','',homeName),node('span','team-side-label','HOME'));
   const center=node('div','score-center');
   const featuredScore=node('strong','featured-team-score');
   const shownScoreText=scoreText(shownScore);
   const parts=shownScore&&typeof shownScore==='object'&&shownScore.home!=null&&shownScore.away!=null
     ?[String(shownScore.home),String(shownScore.away)]
     :/^\\d+\\s*[-–:]\\s*\\d+$/.test(shownScoreText)?shownScoreText.split(/\\s*[-–:]\\s*/):null;
-  if(parts)featuredScore.append(node('span','home',parts[0]),node('span','separator','-'),node('span','away',parts[1]));
+  if(beforeKickoff)featuredScore.textContent='VS';
+  else if(parts)featuredScore.append(node('span','home',parts[0]),node('span','separator','-'),node('span','away',parts[1]));
   else featuredScore.textContent=shownScoreText;
   center.append(featuredScore);
+  center.append(node('small','stadium-score-status',
+    beforeKickoff?'KICKOFF':finished?'FULL TIME':selected.state==='LIVE'?'LIVE':String(selected.state||'MATCH')));
   const away=node('div','team away');
-  away.append(node('b','',awayName),crestSlot(awayName,'away'));
+  away.append(crestSlot(awayName,'away'),node('b','',awayName),node('span','team-side-label','AWAY'));
   score.append(home,center,away);
 
   const signal=node('div','featured-h-signal'+(selected.market==='CORNERS'?' has-corner-conditions':''));
