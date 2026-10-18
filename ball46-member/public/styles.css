@@ -5214,8 +5214,16 @@ button,input,select,textarea{font-family:inherit;font-synthesis:none}
     margin-right:4px;border-radius:50%;background:#43e6a2;
   }
   /* V4 information architecture: header, market, four KPIs, match list. */
-  .page-member .member-sidebar-layout{padding-top:0}
-  .page-member .member-main-content{display:flex;flex-direction:column;gap:0}
+  .page-member .member-sidebar-layout{padding-top:0;gap:0}
+  .page-member main.shell.member-layout{width:100%;max-width:none;margin:0;padding:0 0 30px}
+  .page-member .member-main-content{display:flex;flex-direction:column;gap:0;width:100%;min-width:0}
+  body.page-member::before{display:none!important}
+  .page-member #signalBoard{
+    border:0!important;border-radius:0!important;background:transparent!important;
+    background-image:none!important;box-shadow:none!important;
+    margin:0!important;padding:0 9px 16px!important;
+    overflow:visible!important;
+  }
   .page-member .mobile-v4-contextline{
     display:flex;justify-content:space-between;align-items:center;gap:8px;
     order:0;min-height:32px;margin:0 -9px 0;padding:8px 13px;
