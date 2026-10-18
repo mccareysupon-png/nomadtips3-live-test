@@ -213,23 +213,10 @@ async function readHubFixtures(env){
  return data.fixtures;
 }
 async function inspectPendingLedger(storage,env,at){
- if(!flag(env?.PENDING_LEDGER_READONLY_ENABLED))return{state:'DISABLED'};
- const k=prefix+'pending-audit';
- const last=await storage.get(k);
- if(last?.at&&Date.parse(at)-Date.parse(last.at)<15*60_000)
-  return{state:'THROTTLED',lastAt:last.at,pending:last.pending,eligible:last.eligible};
- try{
-  const r=await readPendingFromLedgerV2(env.ENGINE,{maxPages:30});
-  if(!r.ok)return{state:r.state,readOnly:true};
-  const summary={at,pending:r.rows.length,eligible:r.eligible.length,
-    pages:r.pages,ledgerTotal:r.ledgerTotal,authoritative:true};
-  await storage.put(k,{...summary,
-    // Identity only: not a ledger copy and NEVER a substitute for fresh
-    // Ledger V2 before native SETTLED.
-    rows:r.rows.map(x=>({id:x.id,fixtureId:x.fixtureId,
-      status:x.status,market:x.market,period:x.period}))});
-  return{state:'LEDGER_V2_PENDING_SNAPSHOT',...summary};
- }catch(e){return{state:'LEDGER_READ_FAILED',error:String(e?.message||e).slice(0,90)}}
+ if(!flag(env?.PENDING_LEDGER_READONLY_ENABLED))
+  return{state:'DISABLED',eligibleIds:[],selectedRows:[],eligible:0,readOnly:true};
+ const result=await refreshPendingGoalooRoutes(storage,env?.ENGINE,{at,maxPages:30});
+ return result;
 }
 async function dispatchNativeVerifiedFt(env,verifiedResults,hubFixtures){
  if(!flag(env?.ENABLE_NATIVE_FORWARD))return{state:'READ_ONLY_NOT_FORWARDED',attempts:0,confirmed:0};
