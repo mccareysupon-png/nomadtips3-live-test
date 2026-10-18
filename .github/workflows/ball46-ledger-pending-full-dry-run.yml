@@ -2,7 +2,7 @@ name: BALL46 full Ledger V2 PENDING live dry run
 on:
   push:
     branches: [stage/ball46-multisource-v5-20261017]
-    paths: [.github/workflows/ball46-ledger-pending-full-dry-run.yml]
+    paths: [.github/workflows/ball46-ledger-pending-full-dry-run.yml, workers/ball46-result-sidecar/src/pending-ledger-reader.mjs]
 permissions: {contents: read}
 jobs:
   dry-run:
