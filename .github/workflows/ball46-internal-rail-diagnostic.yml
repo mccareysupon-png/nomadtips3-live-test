@@ -16,6 +16,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Observe a scheduled Worker cycle after the hotfix
+        run: |
+          node - <<'NODE'
+          const end=Date.parse('2026-10-18T12:55:40Z');
+          const left=Math.max(0,end-Date.now());
+          if(left>240000)throw Error('EXPECTED_POSTFIX_CRON_WINDOW_NOT_REACHED');
+          console.log('POST_HOTFIX_CRON_OBSERVATION_WINDOW',JSON.stringify({target:new Date(end).toISOString(),remainingMs:left}));
+          await new Promise(resolve=>setTimeout(resolve,left));
+          NODE
       - name: Create temporary read-only Cloudflare service binding probe, then delete it
         shell: bash
         run: |
