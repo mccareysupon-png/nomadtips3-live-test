@@ -226,14 +226,16 @@ async function inspectPendingLedger(storage,env,at){
 }
 async function dispatchNativeVerifiedFt(storage,env,verifiedResults,hubFixtures,route){
  if(!flag(env?.ENABLE_NATIVE_FORWARD))return{state:'READ_ONLY_NOT_FORWARDED',attempts:0,confirmed:0};
- if(!env.RESULT_PROXY?.fetch||String(env.RESULT_PROXY_TOKEN??'').length<32)
-  return{state:'MISSING_PRIVATE_NATIVE_PROXY',attempts:0,confirmed:0};
+ // Private internal service binding to the EXISTING authenticated native
+ // reconcile-final route. No new Engine code, no public endpoint, no prices.
+ if(!env.ENGINE?.fetch||String(env.NATIVE_SETTLEMENT_TOKEN??'').length<16)
+  return{state:'MISSING_NATIVE_ENGINE_OR_TOKEN',attempts:0,confirmed:0};
  const snapshot=await readPendingFromLedgerV2(env.ENGINE,{maxPages:30});
  if(!snapshot.ok)return{state:snapshot.state,attempts:0,confirmed:0};
  const eligibleIds=new Set(route.eligibleIds||[]);
  const plan=planVerifiedPendingFt({
   pendingRows:snapshot.rows.filter(x=>eligibleIds.has(String(x.fixtureId))),
-  verifiedResults,hubFixtures,maxFixtures:3
+  verifiedResults,hubFixtures,maxFixtures:1
  });
  if(!plan.ok)return{state:plan.reason,attempts:0,confirmed:0};
  let attempts=0,confirmed=0;
@@ -241,18 +243,33 @@ async function dispatchNativeVerifiedFt(storage,env,verifiedResults,hubFixtures,
  for(const item of plan.ready){
   const p=item.prepared;
   if(!p?.ok||!p.provenance.firstFtSeenAt||!p.provenance.verifiedAt)continue;
+  // The current native Engine can also find older working PENDING on
+  // this fixture. Do not forward if ANY old/untracked PENDING shares it.
+  const sameFixture=snapshot.rows.filter(x=>String(x.fixtureId)===item.fixtureId);
+  if(sameFixture.some(x=>!item.signalIds.includes(String(x.id)))){
+   outcomes.push({fixtureId:item.fixtureId,state:'HOLD_MIXED_LEGACY_PENDING'});
+   continue;
+  }
+  const validatedAt=Date.parse(p.provenance.verifiedAt);
+  if(!Number.isFinite(validatedAt)||
+     validatedAt-Date.parse(p.provenance.kickoffUtc)<90*60_000){
+   outcomes.push({fixtureId:item.fixtureId,state:'HOLD_INVALID_FT_CLOCK'});continue;
+  }
   attempts++;
   try{
-   const response=await env.RESULT_PROXY.fetch('https://private.internal/verified-goaloo-ft',{
+   // The existing Engine authenticates x-settlement-token. This binding
+   // is private Cloudflare-to-Cloudflare and Worker has no public route.
+   const response=await env.ENGINE.fetch('https://engine.internal/reconcile-final',{
     method:'POST',headers:{
      'content-type':'application/json',
-     'x-ball46-result-auth':String(env.RESULT_PROXY_TOKEN)
-    },body:JSON.stringify({fixture:p.fixture,provenance:p.provenance})
+     'x-settlement-token':String(env.NATIVE_SETTLEMENT_TOKEN)
+    },body:JSON.stringify({fixture:p.fixture})
    });
-   if(!response.ok){outcomes.push({fixtureId:item.fixtureId,state:'PROXY_'+response.status});continue;}
+   if(!response.ok){outcomes.push({fixtureId:item.fixtureId,state:'NATIVE_'+response.status});continue;}
    const ack=await response.json();
-   if(ack?.ok!==true||ack.ledgerV2Native!==true||
-      String(ack.fixtureId)!==item.fixtureId){
+   if(ack?.ok!==true||ack.statisticsLedgerVersion!=='signal-ledger-v2-longterm'||
+      String(ack.fixtureId)!==item.fixtureId||
+      !Number.isInteger(ack.settled)||!Number.isInteger(ack.ledgerUpdated)){
     outcomes.push({fixtureId:item.fixtureId,state:'NATIVE_ACK_NOT_VERIFIED'});continue;
    }
    const receipt=await readSettledReceipt(env.ENGINE,item.signalIds,{maxPages:30});
@@ -273,6 +290,10 @@ async function poll(storage,env,fetcher=fetch){
  const fixtures=await readHubFixtures(env),at=new Date().toISOString();
  const captured=await captureCanonicalHub(storage,fixtures,{at});
  const ledger=await inspectPendingLedger(storage,env,at);
+ if(ledger?.ok!==true){
+  return {state:'LEDGER_V2_FAIL_CLOSED',captured,ledger,
+   goaloo:'HELD',engineWrites:0,forwardingEnabled:false};
+ }
  if(!flag(env?.GOALOO_POLL_ENABLED))
   return {state:'PRIMARY_CAPTURE_ONLY',captured,ledger,goaloo:'DISABLED',engineWrites:0};
  if(!flag(env?.GOALOO_UTC_CERTIFIED)||!flag(env?.GOALOO_FT_CERTIFIED))
