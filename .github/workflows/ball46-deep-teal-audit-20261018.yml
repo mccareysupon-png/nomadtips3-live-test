@@ -1,0 +1,86 @@
+name: BALL46 Deep Teal Production Read-Only Audit
+on:
+  push:
+    branches:
+      - work/ball46-main-mobile-deep-teal-20261018
+    paths:
+      - .github/workflows/ball46-deep-teal-audit-20261018.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify active Production and snapshot all assets without writing
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import {readFileSync,mkdirSync,writeFileSync} from 'node:fs';
+          import {createHash} from 'node:crypto';
+          import {dirname} from 'node:path';
+          const account=process.env.CLOUDFLARE_ACCOUNT_ID,token=process.env.CLOUDFLARE_API_TOKEN;
+          assert(account&&token,'CLOUDFLARE_CREDENTIALS_MISSING');
+          assert.equal(account,'62cb0db544160e6591342abd6b4f35cc','WRONG_CLOUDFLARE_ACCOUNT');
+          const script='ball46-production',base=`https://api.cloudflare.com/client/v4/accounts/${account}`;
+          const digest=b=>createHash('sha256').update(b).digest('hex');
+          const api=async p=>{const r=await fetch(base+p,{headers:{Authorization:`Bearer ${token}`},signal:AbortSignal.timeout(35000)});const j=await r.json();assert(r.ok&&j.success===true,`CLOUDFLARE_READ_${r.status}`);return j.result};
+          const deployment=(await api(`/workers/scripts/${script}/deployments?per_page=1`)).deployments?.[0];
+          assert(deployment?.versions?.length===1&&deployment.versions[0].percentage===100,'ACTIVE_VERSION_NOT_100_PERCENT');
+          const id=deployment.versions[0].version_id;
+          const version=await api(`/workers/workers/${script}/versions/${id}?include=modules`);
+          const main=version.modules.find(x=>x.name===version.main_module);
+          const html=version.modules.find(x=>x.name==='assets/index.html');
+          assert(main&&html,'ACTIVE_WORKER_INDEX_MODULE_MISSING');
+          const source=Buffer.from(html.content_base64,'base64');
+          const index=source.toString('utf8');
+          const anchors=['<section class="workspace singlepage">','data-status-filter="all"','data-signal-market="ah"','data-workspace-view="signal"','data-search'];
+          const anchorReport=Object.fromEntries(anchors.map(k=>[k,index.includes(k)]));
+          assert(Object.values(anchorReport).every(Boolean),'LIVE_ACTIVE_DOM_ANCHORS_DRIFTED');
+          const settings=await api(`/workers/scripts/${script}/settings`);
+          const domains=(await api('/workers/domains')).filter(d=>d.service===script).map(x=>x.hostname).sort();
+          assert.deepEqual(domains,['ball46.com','www.ball46.com'],'DOMAIN_BINDING_MISMATCH');
+          const schedules=await api(`/workers/scripts/${script}/schedules`);
+          const inventory=JSON.parse(readFileSync('deploy-assets/member-orange-only-20261015/provenance.json','utf8')).paths;
+          assert(inventory.length>=81,'INVENTORY_SHORT');
+          const paths=new Set(inventory);
+          const refs=[...index.matchAll(/(?:src|href)=["']([^"']+\.(?:js|css)(?:\?[^"']*)?)["']/g)].map(m=>new URL(m[1].replaceAll('&amp;','&'),'https://ball46.com/')).filter(u=>u.origin==='https://ball46.com').map(u=>u.pathname.slice(1));
+          const missingRefs=[...new Set(refs.filter(x=>!paths.has(x)))];
+          const fetchAsset=async p=>{
+            const url=new URL('/'+p,'https://ball46.com');
+            url.searchParams.set('_b46_audit',String(Date.now()));
+            const r=await fetch(url,{headers:{'Cache-Control':'no-cache'},signal:AbortSignal.timeout(40000)});
+            assert(r.ok,`ASSET_GET_FAILED:${p}:${r.status}`);
+            const b=Buffer.from(await r.arrayBuffer());
+            assert(b.length,`ASSET_EMPTY:${p}`);
+            mkdirSync('audit/active-assets/'+dirname(p),{recursive:true});
+            writeFileSync('audit/active-assets/'+p,b);
+            return {path:p,sha256:digest(b),bytes:b.length,type:r.headers.get('content-type')};
+          };
+          mkdirSync('audit',{recursive:true});
+          let assets=[];
+          for(let i=0;i<inventory.length;i+=6) assets.push(...await Promise.all(inventory.slice(i,i+6).map(fetchAsset)));
+          const publicIndex=assets.find(x=>x.path==='index.html');
+          assert(publicIndex,'INDEX_NOT_IN_INVENTORY');
+          assert.equal(publicIndex.sha256,digest(source),'ACTIVE_VERSION_VS_PUBLIC_INDEX_MISMATCH');
+          const report={ok:true,readOnly:true,checkedAt:new Date().toISOString(),script,activeVersion:id,activeDeployment:deployment.id,mainModule:version.main_module,mainModuleSha256:digest(Buffer.from(main.content_base64,'base64')),activeIndexSha256:digest(source),domains,anchors:anchorReport,bindingTypes:version.bindings.map(x=>({type:x.type,name:x.name})),compatibilityDate:version.compatibility_date,assetsConfig:version.assets?.config,inventoryCount:inventory.length,liveReferencedAssetsOutsideInventory:missingRefs,assets,settingsType:typeof settings,scheduleType:typeof schedules};
+          writeFileSync('audit/report.json',JSON.stringify(report,null,2));
+          console.log('BALL46 READ ONLY AUDIT',JSON.stringify({activeVersion:id,deployment:deployment.id,domains,mainModuleSha256:report.mainModuleSha256,activeIndexSha256:report.activeIndexSha256,assetCount:assets.length,missingRefs,anchors:anchorReport}));
+          assert.equal(missingRefs.length,0,'ACTIVE_REFERENCES_OUTSIDE_HISTORICAL_ASSET_INVENTORY');
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-deep-teal-current-active-audit
+          path: audit/
+          retention-days: 5
