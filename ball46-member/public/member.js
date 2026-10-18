@@ -651,6 +651,37 @@ function makeSignalRow(row){
   const p=Number(row.pnl||0);
   const pnlState=['PENDING','LIVE','UNRESOLVED','PUSH','VOID'].includes(row.result)?'neutral':(p>0?'pos':p<0?'neg':'neutral');
   tr.append(td(fmtPnl(p),'pnl '+pnlState));
+  // V3: one mobile-only DOM card with four explicit lines from the same Ledger row.
+  // The original ten cells stay untouched for Desktop and all result calculations.
+  const compact=node('div','mobile-v3-card');
+  const head=node('div','mobile-v3-line mobile-v3-meta');
+  head.append(
+    node('span','mobile-v3-clock',clock),
+    node('span','mobile-v3-league',String(row.league||'—')),
+    node('span','mobile-v3-state',row.state==='LIVE'?'● LIVE':row.state==='FINISHED'?'FT':String(row.state||'—'))
+  );
+  const compactStar=makeFavoriteButton(row);
+  compactStar.classList.add('mobile-v3-star');
+  head.append(compactStar,node('span','mobile-v3-arrow',state.expandedSignalId===row.id?'⌃':'⌄'));
+  compact.append(head);
+  const teamLine=(side,name,goals)=>{
+    const line=node('div','mobile-v3-line mobile-v3-team');
+    line.append(node('span','mobile-v3-side',side),node('span','mobile-v3-team-name',String(name||'—')),
+      node('strong','mobile-v3-goals',goals==null?'—':String(goals)));
+    return line;
+  };
+  compact.append(teamLine('HOME',row.home,scoreParts[0]),teamLine('AWAY',row.away,scoreParts[1]));
+  const marketLine=node('div','mobile-v3-line mobile-v3-market');
+  const oddsValue=fmtOdds(row.odds);
+  const oddsLabel=oddsValue==='—'?oddsValue:oddsValue.startsWith('@')?oddsValue:'@'+oddsValue;
+  marketLine.append(node('span','mobile-v3-market-name',String(row.market||'—')),
+    node('span','mobile-v3-pick',choice.querySelector('.signal-choice')?.textContent||'—'),
+    node('span','mobile-v3-odds',oddsLabel));
+  const compactOutcome=clockBadge.cloneNode(true);
+  compactOutcome.classList.add('mobile-v3-result');
+  marketLine.append(compactOutcome);
+  compact.append(marketLine);
+  time.append(compact);
   // Display-only labels for the responsive card layout, preserve every original cell.
   for(const [i,cell] of [...tr.cells].entries())cell.prepend(node('span','mobile-cell-label',RESPONSIVE_SIGNAL_LABELS[i]));
 
