@@ -5360,3 +5360,88 @@ button,input,select,textarea{font-family:inherit;font-synthesis:none}
     line-height:1;color:#9eb3c3!important;
   }
 }
+
+/* BALL46 MEMBER — approved mobile V5 header Markets drawer and borderless elevated defaults */
+/* Nothing extra appears on Desktop or tablet: the existing main-menu toggle remains usable. */
+.page-member .mobile-v5-market-button{display:none}
+@media(max-width:767px){
+  /* Header matches the approved V5 mock: hamburger | centred ball46 | person icon. */
+  .page-member .topbar-inner.shell{
+    display:grid;
+    grid-template-columns:40px minmax(0,1fr) 40px;
+    align-items:center;column-gap:0;
+    width:100%;max-width:none;
+    padding:0 12px;
+  }
+  .page-member .mobile-v5-market-button{
+    appearance:none;display:grid;place-items:center;justify-self:start;
+    width:36px;height:36px;padding:0;
+    color:#d3e2e8;background:transparent;border:0;border-radius:0;
+    box-shadow:none;cursor:pointer;
+  }
+  .page-member .mobile-v5-market-button:focus-visible{
+    outline:2px solid #91f3ce;outline-offset:2px;border-radius:6px;
+  }
+  .page-member .mobile-v5-hamburger{
+    display:flex;flex-direction:column;gap:4px;width:18px;
+  }
+  .page-member .mobile-v5-hamburger i{
+    display:block;width:18px;height:2px;
+    border-radius:2px;background:#d3e2e8;
+  }
+  .page-member .topbar a.brand.brand-original-lettering{
+    justify-self:center!important;
+    justify-content:center!important;
+    gap:8px;
+  }
+  .page-member .topbar .mobile-v4-back{display:none!important}
+  .page-member .topbar-account-slot{justify-self:end!important;max-width:40px}
+  /* Old MARKETS row and market pills no longer take up any screen space. */
+  .page-member .mobile-market-navigation{display:none!important}
+  .page-member .mobile-market-pills{display:none!important}
+  /* Existing sidebar/filter state re-used, now slides from the left like V5. */
+  .page-member .member-market-sidebar{
+    position:fixed!important;
+    left:0!important;right:auto!important;top:0!important;bottom:0!important;
+    z-index:61;
+    width:min(280px,84vw)!important;height:100dvh!important;max-height:100dvh!important;
+    margin:0!important;padding:14px 12px!important;
+    border:0!important;border-radius:0!important;
+    overflow-y:auto;overscroll-behavior:contain;
+    background:linear-gradient(180deg,#112838,#0a1a27)!important;
+    box-shadow:14px 0 30px rgba(0,0,0,.32)!important;
+    transform:translate3d(-105%,0,0)!important;visibility:hidden;
+    transition:transform .18s ease,visibility .18s;
+  }
+  .page-member.market-menu-open .member-market-sidebar{
+    transform:translate3d(0,0,0)!important;visibility:visible;
+  }
+  .page-member .member-market-backdrop:not([hidden]){
+    background:rgba(0,0,0,.45);
+  }
+  .page-member .member-market-sidebar #marketTabs{
+    display:flex!important;flex-direction:column!important;gap:7px;
+    grid-template-columns:none!important;
+  }
+  .page-member .member-market-sidebar #marketTabs .market-tab{
+    width:100%;min-height:59px;border-radius:9px;
+  }
+  /* Borderless premium soft elevation — clean 4-line card, unchanged live data. */
+  .page-member #signalBoard .signal-table tbody tr.signal-row:not(.expanded){
+    border:0!important;outline:0!important;
+    border-radius:12px;
+    background:linear-gradient(145deg,#152c3a,#101f2c);
+    box-shadow:
+      0 10px 20px rgba(0,0,0,.18),
+      0 2px 4px rgba(0,0,0,.10),
+      inset 0 1px 0 rgba(255,255,255,.05)!important;
+    margin-bottom:9px;
+  }
+}
+@media(max-width:359px){
+  .page-member .topbar-inner.shell{grid-template-columns:36px minmax(0,1fr) 36px;padding:0 9px}
+  .page-member .topbar a.brand.brand-original-lettering{gap:5px}
+}
+@media(prefers-reduced-motion:reduce){
+  .page-member .member-market-sidebar{transition:none}
+}
