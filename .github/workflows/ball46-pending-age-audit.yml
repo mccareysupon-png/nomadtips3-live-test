@@ -1,0 +1,27 @@
+name: BALL46 pending age and working window audit
+on:
+  push:
+    branches: [stage/ball46-multisource-v5-20261017]
+    paths: [.github/workflows/ball46-pending-age-audit.yml]
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read Ledger V2 ages only; no settlement writes
+        run: |
+          node --input-type=module - <<'NODE'
+          import {readPendingFromLedgerV2} from './workers/ball46-result-sidecar/src/pending-ledger-reader.mjs';
+          const ep='https://nomadtips3-engine-343.mccarey-supon.workers.dev';
+          const engine={fetch:(url,o)=>fetch(url.replace('https://engine.internal',ep),o)};
+          const r=await readPendingFromLedgerV2(engine);
+          if(!r.ok)throw Error(r.state);
+          const now=Date.now(),byAge={};
+          for(const x of r.rows){
+            const a=now-Number(x.createdAt);
+            const bucket=a<6*3600e3?'under6h':a<24*3600e3?'6to24h':a<3*86400e3?'1to3d':a<7*86400e3?'3to7d':a<30*86400e3?'7to30d':'over30d';
+            byAge[bucket]=(byAge[bucket]||0)+1;
+          }
+          console.log('PENDING_AGE_READ_ONLY',JSON.stringify({rows:r.rows.length,byAge,pages:r.pages,ledgerTotal:r.ledgerTotal,settledWrites:0}));
+          NODE
