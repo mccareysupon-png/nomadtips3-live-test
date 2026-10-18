@@ -427,8 +427,24 @@ function renderTabs(){
   }
 }
 
+function averageRecordedOdds(rows){
+  // Average the actual recorded entry odds across this market's Ledger signal rows.
+  // Do not turn absent/null odds into 0 or guess a bookmaker quote.
+  const valid=(Array.isArray(rows)?rows:[])
+    .map(row=>row?.odds)
+    .filter(value=>value!==null&&value!==undefined&&value!==''&&!Array.isArray(value))
+    .map(Number)
+    .filter(value=>Number.isFinite(value)&&value>0);
+  if(!valid.length)return null;
+  return valid.reduce((sum,value)=>sum+value,0)/valid.length;
+}
+
 function renderSummary(){
   const s=currentStats();
+  const avgOdds=averageRecordedOdds(
+    (Array.isArray(state.payload?.signals)?state.payload.signals:[])
+      .filter(row=>state.market==='ALL'||row.market===state.market)
+  );
   const rate=Number(s.winRate);
   const rateClass=!Number.isFinite(rate)?'neutral':rate>=55?'rate-good':rate<45?'rate-bad':'rate-mid';
   const items=[
@@ -439,6 +455,8 @@ function renderSummary(){
     ['HALF WIN',s.halfWin,'half-win'],
     ['HALF LOSS',s.halfLoss,'half-loss'],
     ['PENDING',s.pending,'pending'],
+    ['DRAW',s.push,'mobile-draw'],
+    ['AVG ODDS',avgOdds===null?'—':avgOdds.toFixed(2),'mobile-avg-odds'],
     ['LIVE',s.live||0,'live'],
     ...(s.unresolved?[['UNRESOLVED',s.unresolved,'unresolved']]:[]),
     ...(s.void?[['VOID',s.void,'void']]:[]),
@@ -447,6 +465,8 @@ function renderSummary(){
   summary.replaceChildren();
   for(const [label,value,kind] of items){
     const box=node('div','stat summary-stat '+kind);
+    if(kind==='mobile-draw')box.title='DRAW / PUSH — stake returned on settlement; not a drawn match';
+    if(kind==='mobile-avg-odds')box.title='Mean recorded entry odds for signals in the selected market; missing prices excluded';
     box.append(node('span','',label),node('b','',String(value)));
     summary.append(box);
   }
