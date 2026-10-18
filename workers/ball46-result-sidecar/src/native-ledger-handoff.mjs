@@ -38,6 +38,7 @@ export function prepareOriginalEngineFinal(candidate){
   },
   provenance:{source:'goaloo',sourceFixtureId:goalooId,
    verifiedAt:candidate.verifiedAt??null,
+   firstFtSeenAt:candidate.firstFtSeenAt??null,
    kickoffUtc:f.kickoffUtc,canonicalId:id},
   scoring:'EXISTING_NATIVE_ONLY',usesCorners:false};
 }
