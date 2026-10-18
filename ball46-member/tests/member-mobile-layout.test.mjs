@@ -109,7 +109,7 @@ test('approved mobile V4 uses exact logo and KPI colors with real account and su
   const v4=css.slice(css.indexOf(marker));
   assert.ok(v4.length>0);
   assert.match(v4,/\.brand-logo\{[\s\S]*?color:#f2f8fb!important/);
-  assert.match(v4,/\.brand-logo>span\{color:#43e6a2!important/);
+  assert.match(v4,/\.brand-logo>span\{\s*color:#43e6a2!important/);
   assert.match(v4,/\.brand-member\{[\s\S]*?color:#9eb3c3!important/);
   assert.match(v4,/background:linear-gradient\(145deg,rgba\(22,64,83,\.48\),rgba\(16,45,65,\.39\)\)/);
   assert.match(v4,/background:linear-gradient\(145deg,rgba\(84,74,35,\.47\),rgba\(59,48,27,\.38\)\)/);
@@ -139,4 +139,16 @@ test('approved mobile V4 account popover is controlled and uses authenticated se
   assert.match(html,/mobile-v4-sectionbar/);
   assert.match(html,/mobile-v4-intro/);
   assert.match(html,/v4approved=20261018-header-profile-kpi-v1/);
+});
+
+test('mobile brand logo is exactly twenty percent larger and boldly rounded without touching desktop',()=>{
+  const marker='/* BALL46 MEMBER — approved mobile V4 source-color lockup, profile and KPI first */';
+  const v4=css.slice(css.indexOf(marker));
+  assert.ok(v4.length>0);
+  assert.match(v4,/@media\(max-width:767px\)/);
+  assert.match(v4,/font-family:"Arial Rounded MT Bold",Manrope,Inter,system-ui,sans-serif/);
+  assert.match(v4,/font-size:27\.6px!important;font-weight:900/);
+  assert.match(v4,/-webkit-text-stroke:\.4px currentColor/);
+  assert.match(v4,/-webkit-text-stroke:\.4px #43e6a2/);
+  assert.match(html,/logofont=20261018-heavy120-v1/);
 });
