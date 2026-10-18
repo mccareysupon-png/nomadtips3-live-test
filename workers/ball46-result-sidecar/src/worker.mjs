@@ -149,11 +149,16 @@ export async function captureCanonicalHub(storage,hubFixtures,{at=new Date().toI
  return storage.transaction(async tx=>{
   const existing=await tx.list({prefix:prefix+'f:'});
   let inserted=0,unchanged=0,rejected=0,conflicts=0;
-  const seen=new Set();
+  // Poison every duplicated ID in this batch: never keep a first random
+  // record when two upstream rows claim the same 5USD fixture identifier.
+  const counts=new Map();
+  for(const raw of hubFixtures){
+   const id=String(raw?.fixtureId??'').trim();
+   if(id)counts.set(id,(counts.get(id)||0)+1);
+  }
   for(const raw of hubFixtures){
    const item=canonical(raw);
-   if(!item||seen.has(item.fixtureId)){rejected++;continue}
-   seen.add(item.fixtureId);
+   if(!item||counts.get(item.fixtureId)!==1){rejected++;continue}
    const prior=existing.get(fixtureKey(item.fixtureId));
    if(prior){
     if(['home','away','league','kickoffUtc'].some(k=>prior[k]!==item[k]))conflicts++;
