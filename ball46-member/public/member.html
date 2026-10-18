@@ -9,21 +9,37 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css?v=20261015-row-gradient-match&featured=20261017-stats-elevation-v16&header=20261017-raised-no-underline-v18&facts=20261017-compact-height-v19&frame=20261017-square-v20&history=20261017-soft-elevation-v21&typography=20261017-premium-v1&logo=20261017-original-v1&icons=20261017-reference-svg-v1&sidebar=20261017-left-market-v1&board=20261017-fluid-v1&sidebarcards=20261017-elevated-borderless-v1&responsive=20261017-all-devices-v1&matchalign=20261018-mobile-v1&premiumicons=20261018-genwebp-v1&stadium=20261018-expanded-phase1-v1&stadiumjpg=20261018-jpeg-hq-v1&sitebackdrop=20261018-threepages-jpeg-v1&liveclock=20261018-red-transparent75-v4&collapsedcolors=20261018-white-v1&mobilelayout=20261018-approved-v1&kpialpha=20261018-desktop65-num85-v1&defaultfirst=20261018-v3-approved&v3colors=20261018-prototype-match-v2&v3grid=20261018-precise-v3&mobileheader=20261018-v3-deepteal-v1">
+  <link rel="stylesheet" href="/styles.css?v=20261015-row-gradient-match&featured=20261017-stats-elevation-v16&header=20261017-raised-no-underline-v18&facts=20261017-compact-height-v19&frame=20261017-square-v20&history=20261017-soft-elevation-v21&typography=20261017-premium-v1&logo=20261017-original-v1&icons=20261017-reference-svg-v1&sidebar=20261017-left-market-v1&board=20261017-fluid-v1&sidebarcards=20261017-elevated-borderless-v1&responsive=20261017-all-devices-v1&matchalign=20261018-mobile-v1&premiumicons=20261018-genwebp-v1&stadium=20261018-expanded-phase1-v1&stadiumjpg=20261018-jpeg-hq-v1&sitebackdrop=20261018-threepages-jpeg-v1&liveclock=20261018-red-transparent75-v4&collapsedcolors=20261018-white-v1&mobilelayout=20261018-approved-v1&kpialpha=20261018-desktop65-num85-v1&defaultfirst=20261018-v3-approved&v3colors=20261018-prototype-match-v2&v3grid=20261018-precise-v3&mobileheader=20261018-v3-deepteal-v1&v4approved=20261018-header-profile-kpi-v1">
 </head>
 <body class="page-member">
 <header class="topbar">
   <div class="shell topbar-inner">
-    <a class="brand brand-original-lettering" href="/pricing" aria-label="ball46 Member"><span class="brand-logo">ball<span>46</span></span><span class="brand-member">MEMBER</span></a>
+    <a class="brand brand-original-lettering" href="/pricing" aria-label="ball46 Member"><span class="mobile-v4-back" aria-hidden="true">‹</span><span class="brand-logo">ball<span>46</span></span><span class="brand-member">MEMBER</span></a>
     <nav class="nav" aria-label="Member navigation">
       <a href="/pricing">Membership</a>
       <a href="/login">Login</a>
       <a href="/member" aria-current="page">Signal Center</a>
     </nav>
-    <div class="topbar-account-slot"><div class="member-chip" aria-label="Current member">
-        <div class="member-avatar" id="memberAvatar">J</div>
-        <div class="member-copy"><strong id="memberName">JAY</strong><span id="memberStatus">OWNER · LIFETIME</span></div>
-      </div></div>
+    <div class="topbar-account-slot">
+      <div class="member-chip" aria-label="Current member">
+        <div class="member-avatar" id="memberAvatar">—</div>
+        <div class="member-copy"><strong id="memberName">—</strong><span id="memberStatus">—</span></div>
+      </div>
+      <div class="mobile-v4-profile-anchor">
+        <button id="mobileV4ProfileToggle" class="mobile-v4-profile-icon" type="button" aria-controls="mobileV4ProfilePopover" aria-expanded="false" aria-label="เปิดรายละเอียดสมาชิก" disabled>
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="8" r="3.5"></circle><path d="M5.1 20c.3-4 2.8-6.2 6.9-6.2s6.6 2.2 6.9 6.2"></path>
+          </svg>
+          <span class="mobile-v4-online-dot" aria-hidden="true"></span>
+        </button>
+        <section id="mobileV4ProfilePopover" class="mobile-v4-profile-popover" aria-label="รายละเอียดสมาชิก" hidden>
+          <div class="mobile-v4-popover-top"><span>MEMBER ACCOUNT</span><button id="mobileV4CloseProfile" type="button" aria-label="ปิดรายละเอียดสมาชิก">×</button></div>
+          <div class="mobile-v4-member-identity"><span id="mobileV4Avatar" class="mobile-v4-profile-avatar">—</span><div><strong id="mobileV4Name">—</strong><small id="mobileV4Status">—</small></div></div>
+          <div class="mobile-v4-profile-info"><span>สถานะสมาชิก</span><b><span class="mobile-v4-status-dot"></span><span id="mobileV4Active">—</span></b></div>
+          <div class="mobile-v4-profile-info"><span>สิทธิ์เข้าใช้งาน</span><b>Member Signal Center</b></div>
+        </section>
+      </div>
+    </div>
   </div>
 </header>
 
@@ -42,6 +58,7 @@
     </div>
   </aside>
   <div class="member-main-content">
+    <div class="mobile-v4-contextline"><span>DAILY SIGNAL BOARD</span><span><b aria-hidden="true">●</b> DATA MIRROR</span></div>
     <div class="mobile-market-navigation" aria-label="Member markets">
       <button id="marketMenuToggle" class="member-market-toggle" type="button" aria-controls="marketSidebar" aria-expanded="false">
         <span class="member-market-toggle-symbol" aria-hidden="true">☷</span><span>MARKETS</span><span class="member-market-selection" id="marketMenuSelection">ALL</span>
@@ -49,7 +66,8 @@
       <nav id="mobileMarketPills" class="mobile-market-pills" aria-label="Quick market filters"></nav>
     </div>
     <section class="summary" id="dailySummary" aria-label="Daily performance"></section>
-
+    <div class="mobile-v4-sectionbar"><strong>LIVE MATCHES <span>&amp; SIGNALS</span></strong><span id="mobileV4MatchCount">— MATCHES</span></div>
+    <div class="mobile-v4-intro"><span>แตะการ์ดแข่งขันเพื่อเปิดรายละเอียด</span><em>4 LINES · COMPACT</em></div>
   <section class="card table-wrap" id="signalBoard">
     <div id="cornerMarketAudit" class="corner-market-audit" hidden></div>
     <table class="signal-table">
@@ -97,14 +115,8 @@
   </section>
   </div>
 </main>
-<nav class="mobile-bottom-navigation" aria-label="Mobile quick navigation">
-  <button type="button" data-mobile-action="match"><span aria-hidden="true">⌂</span>MATCH</button>
-  <button type="button" data-mobile-action="flow"><span aria-hidden="true">⌁</span>FLOW</button>
-  <button type="button" data-mobile-action="signals"><span aria-hidden="true">★</span>SIGNALS</button>
-  <button type="button" data-mobile-action="markets"><span aria-hidden="true">☷</span>MARKETS</button>
-</nav>
 <footer class="footer shell">Ball46 Member · Daily board only · historical statistics remain on the main Ball46 site</footer>
 <script src="/event-flow-icons.js" defer></script>
-<script src="/member.js?v=20261015-row-gradient-match&featured=20261017-stats-elevation-v16&icons=20261017-reference-svg-v1&sidebar=20261017-left-market-v1&board=20261017-fluid-v1&responsive=20261017-all-devices-v1&premiumicons=20261018-genwebp-v1&stadium=20261018-expanded-phase1-v1&liveclock=20261018-red-transparent75-v4&mobilelayout=20261018-approved-v1&defaultfirst=20261018-v3-approved&v3colors=20261018-prototype-match-v2&v3grid=20261018-precise-v3" defer></script>
+<script src="/member.js?v=20261015-row-gradient-match&featured=20261017-stats-elevation-v16&icons=20261017-reference-svg-v1&sidebar=20261017-left-market-v1&board=20261017-fluid-v1&responsive=20261017-all-devices-v1&premiumicons=20261018-genwebp-v1&stadium=20261018-expanded-phase1-v1&liveclock=20261018-red-transparent75-v4&mobilelayout=20261018-approved-v1&defaultfirst=20261018-v3-approved&v3colors=20261018-prototype-match-v2&v3grid=20261018-precise-v3&v4approved=20261018-header-profile-kpi-v1" defer></script>
 </body>
 </html>
