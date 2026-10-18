@@ -103,6 +103,7 @@ async function ui(host,stage){
     const gap=await page.locator('#b46gn-results').evaluate(el=>getComputedStyle(el).paddingLeft);
     assert.equal(gap,'7px','LIVE_MATCHES_GUTTER_NOT_7PX');
     const unusedRight=width-(resultsBox.x+resultsBox.width);
+    console.log('B46_WIDTH_MEASURE',JSON.stringify({stage,width,resultsBox,unusedRight,bodyScroll:await page.evaluate(()=>document.documentElement.scrollWidth)}));
     assert(unusedRight>=-2&&unusedRight<=3,'MOBILE_PAGE_CONTAINER_TOO_NARROW_OR_OVERFLOW');
     if(cards) {
       const cardBox=await page.locator('#b46gn-cards [data-b46gn-fixture]').first().boundingBox();
