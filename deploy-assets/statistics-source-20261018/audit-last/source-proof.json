@@ -1,0 +1,44 @@
+{
+  "capturedAt": "2026-10-18T12:07:24.974Z",
+  "engineVersion": "1f2336fa-7b45-4a23-a23c-06d01a92330d",
+  "engineCommit": "f1a42f94f39eed5cee0177f15b3ef0699bb8c85c",
+  "engineMainSha": "1008c06d4ab705f904b49408fd4e5c347478afae633a499147f3106dfffd2b69",
+  "ledgerVersion": "signal-ledger-v2-longterm",
+  "statisticsSource": "LEDGER_V2_ONLY",
+  "pages": 17,
+  "rows": 8174,
+  "settled": 8051,
+  "sourceValues": {
+    "(missing)": 3463,
+    "DIRECT_FINAL_FALLBACK": 3594,
+    "LIVE_OVER_FINAL_CONFIRMED_V1": 127,
+    "LIVE_OVER_REVERTED_V1": 1,
+    "LIVE_OVER_EARLY_V1": 1,
+    "EXTERNAL_FINAL_BRIDGE": 988
+  },
+  "labelCounts": {
+    "SOURCE 1": 3594
+  },
+  "source1Outcomes": {
+    "PUSH": 367,
+    "WIN": 1760,
+    "LOSS": 1196,
+    "HALF_LOSS": 157,
+    "HALF_WIN": 114
+  },
+  "unknownProviderRows": 4580,
+  "source1Proof": {
+    "marker": "DIRECT_FINAL_FALLBACK",
+    "provider": "5USD",
+    "evidence": "The saved per-record marker is assigned to the result computed from the actual normalized5USD response, after matching fixtureId; finalScore/finalCorners are copied from that same fixture. archivalSignal persists the marker and Ledger V2 returns it unchanged.",
+    "code": "engine-main.mjs:1607-1647;1454-1459;1711-1725"
+  },
+  "source2": {
+    "status": "BLOCKED_NO_PER_RECORD_PROVIDER_PROOF",
+    "ambiguousMarker": "EXTERNAL_FINAL_BRIDGE",
+    "reason": "The authenticated bridge normalizes arbitrary request-body fixture data, computes settlement and saves only EXTERNAL_FINAL_BRIDGE. Sender/provider identity and original response provenance are not stored. This marker must not be mapped to Gaoloo. No SOURCE2 is displayed."
+  },
+  "pendingLabels": 0,
+  "dataFieldsMutated": false,
+  "scope": "Frontend display only. No Engine/API/ledger rules or storage writes."
+}
