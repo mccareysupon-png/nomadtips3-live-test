@@ -1,0 +1,47 @@
+name: BALL46 emergency Goaloo-only rollback (never Engine)
+on:
+  workflow_dispatch:
+    inputs:
+      rollback_version_id:
+        description: 'Pinned Cloudflare Shadow version from live release artifact'
+        type: string
+        required: true
+permissions:
+  contents: read
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    env:
+      CF_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      ROLLBACK_VERSION: ${{ inputs.rollback_version_id }}
+    steps:
+      - name: Restore only BALL46 Goaloo Shadow Worker version to 100 percent
+        run: |
+          node - <<'NODE'
+          const id=process.env.CF_ID,t=process.env.CF_TOKEN,v=process.env.ROLLBACK_VERSION;
+          if(!id||!t||!/^[0-9a-f]{8}-[0-9a-f-]{27,36}$/i.test(v))throw Error('BAD_ROLLBACK_INPUT');
+          const root='https://api.cloudflare.com/client/v4/accounts/'+id+'/workers/scripts/';
+          const hdr={Authorization:'Bearer '+t,'Content-Type':'application/json'};
+          async function get(name){
+           const r=await fetch(root+name+'/deployments',{headers:hdr});
+           const d=await r.json();
+           if(!r.ok||!d.success)throw Error('CANNOT_READ_'+name);
+           return d.result.deployments[0].versions[0].version_id;
+          }
+          (async()=>{
+           const engineBefore=await get('nomadtips3-engine-343');
+           const p=await fetch(root+'ball46-multisource-shadow-20261018/deployments',{
+            method:'POST',headers:hdr,body:JSON.stringify({
+             strategy:'percentage',versions:[{version_id:v,percentage:100}],
+             annotations:{'workers/message':'BALL46 user-approved manual Goaloo safety rollback'}})});
+           const d=await p.json();
+           if(!p.ok||!d.success)throw Error('ROLLBACK_POST_FAILED_'+p.status);
+           const [shadowAfter,engineAfter]=await Promise.all([
+            get('ball46-multisource-shadow-20261018'),get('nomadtips3-engine-343')]);
+           if(shadowAfter!==v||engineBefore!==engineAfter)throw Error('ROLLBACK_VERIFY_FAILED');
+           console.log('BALL46_SAFE_ROLLBACK_CONFIRMED',JSON.stringify({
+            shadowVersion:v,engineUnchanged:true,productionOddsUntouched:true}));
+          })().catch(e=>{console.error(e.message);process.exit(1)});
+          NODE
