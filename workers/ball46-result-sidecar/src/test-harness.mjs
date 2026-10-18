@@ -7,8 +7,32 @@ const source=(status,scoreHome=0,scoreAway=0,other='')=>
 const f={fixtureId:'5USD-8888',home:'Bangkok United',away:'Buriram United',
  league:'Thai League',kickoffUtc:'2026-10-18T10:00:00.000Z'};
 export class SidecarLocalTest extends DurableObject{
+ async stressTest(){
+  const base=Date.parse('2026-10-01T00:00:00Z');
+  const hub=Array.from({length:1443},(_,i)=>({
+   fixtureId:'5USD-L-'+i,home:'Alpha FC',away:'Beta United',league:'League A',
+   kickoffUtc:new Date(base+i*40*60_000).toISOString()
+  }));
+  const a=Array.from({length:752},(_,i)=>{
+   const time=new Date(base+i*40*60_000).toISOString().slice(0,19).replace('T',' ');
+   return "A["+i+"]=['GO-"+i+"','1','','','Alpha FC','Beta United','"+time+"','','2','0','0'];";
+  });
+  const js="var A=[];var B=[];\nB[1]=['','','League A'];\n"+a.join('\n');
+  const t0=Date.now();
+  const r=await applySnapshot(this.ctx.storage,{hubFixtures:hub,goalooText:js,
+   at:new Date(base+1000*40*60_000).toISOString(),
+   utcCertified:true,ftCertified:true,offsetMinutes:0});
+  const elapsedMs=Date.now()-t0;
+  const size=await inspectSidecar(this.ctx.storage);
+  const ok=r.inserted===1443&&r.matched===752&&r.sourceCount===752&&
+   size.fixtureCount===1443&&size.sourceMappings===752&&r.ftReady===0;
+  return Response.json({ok,inserted:r.inserted,matched:r.matched,
+   sourceCount:r.sourceCount,elapsedMs,stored:size,productionWrites:0},
+   {status:ok?200:500});
+ }
  async fetch(req){
   const path=new URL(req.url).pathname;
+  if(path==='/stress')return this.stressTest();
   if(path!=='/selftest')return Response.json({error:'UNKNOWN'},{status:404});
   const t0='2026-10-18T11:00:00Z',
    t1='2026-10-18T12:00:00Z',t2='2026-10-18T12:01:05Z';
@@ -34,6 +58,6 @@ export class SidecarLocalTest extends DurableObject{
  }
 }
 export default{fetch(request,env){
- const id=env.TEST.idFromName('isolated-fixture-crosswalk');
+ const id=env.TEST.idFromName(new URL(request.url).pathname==='/stress'?'isolated-stress-crosswalk':'isolated-fixture-crosswalk');
  return env.TEST.get(id).fetch(request);
 }};
