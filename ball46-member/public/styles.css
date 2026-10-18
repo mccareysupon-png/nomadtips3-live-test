@@ -5138,8 +5138,11 @@ button,input,select,textarea{font-family:inherit;font-synthesis:none}
     font-size:26px;font-weight:400;line-height:1;text-align:left;
   }
   .page-member .topbar a.brand.brand-original-lettering .brand-logo{
-    font-family:Manrope,Inter,system-ui,sans-serif;
-    font-size:23px!important;font-weight:950;letter-spacing:-.07em;
+    /* Sport-style bold rounded lettering inspired by sportsbook wordmarks;
+       20% larger than the approved V4 logo (23px × 1.20 = 27.6px). */
+    font-family:"Arial Rounded MT Bold",Manrope,Inter,system-ui,sans-serif;
+    font-size:27.6px!important;font-weight:900;letter-spacing:-.065em;
+    -webkit-text-stroke:.4px currentColor;
     line-height:1;color:#f2f8fb!important;white-space:nowrap;
   }
   .page-member .topbar a.brand.brand-original-lettering .brand-logo>span{color:#43e6a2!important}
