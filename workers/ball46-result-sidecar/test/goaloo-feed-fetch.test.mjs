@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {fetchGoaloo} from '../src/worker.mjs';
+import {fetchGoaloo} from '../src/goaloo-feed-fetch.mjs';
 test('Cloudflare Worker fetch explicitly uses supported redirect manual',async()=>{
  let calls=0;
  const raw="var A=[]; A[0]=['123','1','','','Home','Away','2026-10-18 12:00:00','','-1','2','1'];";
