@@ -1,5 +1,5 @@
 import {DurableObject} from 'cloudflare:workers';
-import {applySnapshot,inspectSidecar,captureCanonicalHub} from './worker.mjs';
+import {applySnapshot,inspectSidecar,captureCanonicalHub,dispatchNativeVerifiedFt} from './worker.mjs';
 const line=(status,scoreHome=0,scoreAway=0,goalooId='GO-111',home='Bangkok Utd',away='Buriram Utd')=>
  "A[0]=['"+goalooId+"','101','','','"+home+"','"+away+"','2026-10-18 10:00:00','','"+status+"','"+scoreHome+"','"+scoreAway+"'];";
 const source=(status,scoreHome=0,scoreAway=0,other='')=>
@@ -7,6 +7,68 @@ const source=(status,scoreHome=0,scoreAway=0,other='')=>
 const f={fixtureId:'5USD-8888',home:'Bangkok United',away:'Buriram United',
  league:'Thai League',kickoffUtc:'2026-10-18T10:00:00.000Z'};
 export class SidecarLocalTest extends DurableObject{
+ async nativeDispatchCanary({legacy=false}={}){
+  const fid='5USD-NATIVE-FINAL-MOCK',gid='G-101',sigId='NEW-FT-OVER';
+  const nativeToken='TEST-ONLY-NATIVE-TOKEN-NO-PRODUCTION';
+  const makeRow=(id,market='ft_over')=>({
+   id,fixtureId:fid,status:'PENDING',market,period:'FT',
+   createdAt:'2026-10-18T10:00:00Z'
+  });
+  const goal=makeRow(sigId),corner=makeRow('CORNERS-PENDING','ft_corner_over');
+  const old=makeRow('OLD-LEGACY-OVER');
+  let rows=[goal,corner,...(legacy?[old]:[])],nativeCalls=0;
+  const engine={async fetch(url,init={}){
+   if(init.method==='GET'){
+    if(!url.includes('/statistics?cursor='))throw Error('UNEXPECTED_READ');
+    return Response.json({ok:true,statisticsSource:'LEDGER_V2_ONLY',
+     statisticsLedgerVersion:'signal-ledger-v2-longterm',
+     rows,nextCursor:null,ledgerTotal:rows.length,pending:rows.filter(x=>x.status==='PENDING').length});
+   }
+   if(init.method==='POST'&&url.includes('/reconcile-final')){
+    nativeCalls++;
+    if(init.headers['x-settlement-token']!==nativeToken)throw Error('BAD_TOKEN');
+    const payload=JSON.parse(init.body);
+    if(payload.fixture.id!==fid||payload.fixture.goals.home!==2||
+     payload.fixture.goals.away!==1||payload.fixture.corners.home!==null)
+      throw Error('BAD_NATIVE_FT_PAYLOAD');
+    if(rows[0].status!=='PENDING')throw Error('DUPLICATE_NATIVE_SETTLEMENT');
+    rows[0]={...rows[0],status:'SETTLED',result:'WIN'};
+    return Response.json({ok:true,statisticsLedgerVersion:'signal-ledger-v2-longterm',
+     fixtureId:fid,settled:1,ledgerUpdated:1,rows:[{id:sigId}]});
+   }
+   throw Error('UNEXPECTED_ENGINE_REQUEST');
+  }};
+  const store=this.ctx.storage,keyRoot='ball46:verified-fixture-crosswalk:v3:';
+  await store.put(keyRoot+'new-signal:capture:'+sigId,{
+   id:sigId,fixtureId:fid,market:'ft_over',statusOnCapture:'PENDING'});
+  await store.put(keyRoot+'route:'+fid,{
+   state:'GOALOO',signalIds:[sigId],routedAt:'2026-10-18T10:15:00Z'});
+  const candidate={
+   source:'goaloo',fixtureId:fid,sourceFixtureId:gid,
+   score:{home:2,away:1},firstFtSeenAt:'2026-10-18T12:00:00Z',
+   verifiedAt:'2026-10-18T12:01:05Z',
+   fixture:{fixtureId:fid,home:'Home FC',away:'Away FC',
+    league:'Thai League',kickoffUtc:'2026-10-18T10:00:00Z',
+    sourceIds:{goaloo:gid},
+    sourceMapping:{policy:'fixture-match-v3'}}
+  };
+  const env={ENABLE_NATIVE_FORWARD:'1',NATIVE_SETTLEMENT_TOKEN:nativeToken,ENGINE:engine};
+  const route={eligibleIds:[fid],selectedRows:[goal]};
+  const first=await dispatchNativeVerifiedFt(store,env,[candidate],[],route);
+  const routeAfter=await store.get(keyRoot+'route:'+fid);
+  const second=await dispatchNativeVerifiedFt(store,env,[candidate],[],route);
+  const ok=legacy
+    ?first.attempts===0&&first.confirmed===0&&nativeCalls===0&&
+     first.outcomes.some(x=>x.state==='HOLD_MIXED_LEGACY_PENDING')
+    :first.attempts===1&&first.confirmed===1&&nativeCalls===1&&
+     routeAfter.state==='DONE'&&rows[0].status==='SETTLED'&&
+     rows[1].status==='PENDING'&&second.attempts===0;
+  return Response.json({ok,legacy,first:{attempts:first.attempts,
+   confirmed:first.confirmed,outcomes:first.outcomes},second:{attempts:second.attempts},
+   nativeCalls,finalState:routeAfter.state,
+   goalStatus:rows[0].status,cornerStatus:rows[1].status,
+   productionWrites:0},{status:ok?200:500});
+ }
  async canonicalOnlyTest(){
   const t='2026-10-18T08:00:00Z',fixture={
     fixtureId:'5USD-CAPTURE-1',home:'Home United',away:'Away United',
@@ -56,6 +118,8 @@ export class SidecarLocalTest extends DurableObject{
  }
  async fetch(req){
   const path=new URL(req.url).pathname;
+  if(path==='/native-write-canary')return this.nativeDispatchCanary({legacy:false});
+  if(path==='/native-legacy-guard')return this.nativeDispatchCanary({legacy:true});
   if(path==='/canonical-only')return this.canonicalOnlyTest();
   if(path==='/stress')return this.stressTest();
   if(path!=='/selftest')return Response.json({error:'UNKNOWN'},{status:404});
@@ -84,6 +148,6 @@ export class SidecarLocalTest extends DurableObject{
 }
 export default{fetch(request,env){
  const path=new URL(request.url).pathname;
- const id=env.TEST.idFromName(path==='/stress'?'isolated-stress-crosswalk':path==='/canonical-only'?'isolated-canonical-only':'isolated-fixture-crosswalk');
+ const id=env.TEST.idFromName(path==='/stress'?'isolated-stress-crosswalk':path==='/canonical-only'?'isolated-canonical-only':path==='/native-write-canary'?'isolated-native-test':path==='/native-legacy-guard'?'isolated-legacy-test':'isolated-fixture-crosswalk');
  return env.TEST.get(id).fetch(request);
 }};
