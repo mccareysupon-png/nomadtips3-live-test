@@ -5,7 +5,7 @@ const canon=(id='5D-1',patch={})=>({fixtureId:id,home:'Al Hilal FC',away:'Al Nas
  league:'Saudi Pro League',kickoffUtc:'2026-10-18T14:00:00Z',...patch});
 const goaloo=(id='G-1',patch={})=>({sourceFixtureId:id,home:'Al-Hilal',away:'Al Nassr FC',
  league:'Saudi Pro League',kickoffUtc:'2026-10-18T14:05:00Z',...patch});
-const map=(a,b,options={})=>proposeVerifiedMappings(a,b,options);
+const map=(a,b,options={})=>proposeVerifiedMappings(a,b,{sourceUtcCertified:true,...options});
 test('accent, hyphen, FC and common abbreviation are normalized',()=>{
  assert.equal(normalizedName('Ál–Hilal F.C.'),'al hilal f c');
  assert.equal(nameSimilarity('Al-Hilal FC','Al Hilal'),1);
@@ -92,4 +92,19 @@ test('scores alone cannot override wrong league or kickoff',()=>{
  const c=canon('5D-1',{score:{home:2,away:0}}),
   p=goaloo('G-1',{league:'Wrong League',score:{home:2,away:0}});
  assert.equal(map([c],[p]).approved.length,0);
+});
+
+test('without certified Goaloo time zone never produces auto-approved mappings',()=>{
+ const r=map([canon()],[goaloo()],{sourceUtcCertified:false});
+ assert.equal(r.approved.length,0);assert.equal(r.review[0].reason,'SOURCE_UTC_NOT_CERTIFIED');
+});
+test('duplicate canonical ID poisons both copies and cannot auto-approve',()=>{
+ const r=map([canon('5D-1'),canon('5D-1')],[goaloo()]);
+ assert.equal(r.approved.length,0);
+ assert.equal(r.review.filter(x=>x.reason==='CANONICAL_ID_DUPLICATE_OR_MISSING').length,2);
+});
+test('duplicate Goaloo ID poisons both copies and cannot auto-approve',()=>{
+ const r=map([canon()],[goaloo('G-1'),goaloo('G-1')]);
+ assert.equal(r.approved.length,0);
+ assert.equal(r.review.filter(x=>x.reason==='SOURCE_ID_DUPLICATE_OR_MISSING').length,2);
 });
