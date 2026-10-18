@@ -7,6 +7,23 @@ import {readSettledReceipt} from './ledger-settlement-readback.mjs';
 import {routeOverduePending,closeAfterLedgerSettlement} from './pending-ten-minute-failover.mjs';
 const PREFIX='ball46:verified-fixture-crosswalk:v3:route:';
 export const routeStorageKey=id=>PREFIX+encodeURIComponent(String(id));
+async function storeRouteWithoutRevival(storage,fixtureId,record){
+ const key=routeStorageKey(fixtureId);
+ if(typeof storage.transaction!=='function')
+  throw Error('DURABLE_TRANSACTION_REQUIRED');
+ return storage.transaction(async tx=>{
+  const current=await tx.get(key);
+  if(current?.state==='DONE')return current;
+  if(record.state==='DONE'){
+   if(current?.state!=='GOALOO'&&current?.state!=='PRIMARY')
+    return current||null;
+  }else if(current?.state==='GOALOO'&&record.state==='PRIMARY'){
+   return current;
+  }
+  await tx.put(key,record);
+  return record;
+ });
+}
 export async function refreshPendingGoalooRoutes(storage,engine,{at=new Date().toISOString(),maxPages=30}={}){
  if(!storage?.list||!storage?.put||!engine?.fetch)
   return{ok:false,state:'REQUIRED_LEDGER_ROUTE_BINDINGS_MISSING',eligibleIds:[],selectedRows:[]};
@@ -22,8 +39,8 @@ export async function refreshPendingGoalooRoutes(storage,engine,{at=new Date().t
  const planned=routeOverduePending({rows:ledger.rows,routes,now:at});
  if(!planned.ok)return{ok:false,state:planned.state,eligibleIds:[],selectedRows:[]};
  for(const change of planned.updates){
-  await storage.put(routeStorageKey(change.fixtureId),change.record);
-  routes[change.fixtureId]=change.record;
+  const applied=await storeRouteWithoutRevival(storage,change.fixtureId,change.record);
+  if(applied)routes[change.fixtureId]=applied;
  }
  // 5USD might settle the same fixture while the Goaloo route is queued.
  // A full native Ledger V2 readback, not absence of a live card, is required
@@ -40,9 +57,8 @@ export async function refreshPendingGoalooRoutes(storage,engine,{at=new Date().t
   const done=closeAfterLedgerSettlement({fixtureId,route,
    ledgerRows:ledger.rows,verifiedReadback:receipt,now:at});
   if(done.ok){
-   await storage.put(routeStorageKey(fixtureId),done.record);
-   routes[fixtureId]=done.record;
-   nativeCompleted++;
+   const applied=await storeRouteWithoutRevival(storage,fixtureId,done.record);
+   if(applied?.state==='DONE'){routes[fixtureId]=applied;nativeCompleted++}
   }
  }
  const eligibleIds=planned.eligible.filter(x=>routes[x.fixtureId]?.state==='GOALOO')
@@ -73,6 +89,8 @@ export async function markGoalooRouteDone(storage,engine,{
  const done=closeAfterLedgerSettlement({fixtureId,route,
   ledgerRows:ledger.rows,verifiedReadback:receipt,now:at});
  if(!done.ok)return done;
- await storage.put(routeStorageKey(fixtureId),done.record);
- return{ok:true,state:'DONE_NEVER_POLL_GOALOO_AGAIN'};
+ const applied=await storeRouteWithoutRevival(storage,fixtureId,done.record);
+ return applied?.state==='DONE'
+  ?{ok:true,state:'DONE_NEVER_POLL_GOALOO_AGAIN'}
+  :{ok:false,state:'DURABLE_STATE_CHANGED'};
 }
