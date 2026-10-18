@@ -9,6 +9,8 @@ on:
       - workers/ball46-result-sidecar/src/pending-ledger-reader.mjs
       - workers/ball46-result-sidecar/src/pending-ten-minute-failover.mjs
       - workers/ball46-result-sidecar/src/pending-failover-runtime.mjs
+      - workers/ball46-result-sidecar/src/new-signal-capture.mjs
+      - workers/ball46-result-sidecar/test/new-signal-capture.test.mjs
       - workers/ball46-result-sidecar/test/pending-ten-minute-failover.test.mjs
       - workers/ball46-result-sidecar/test/pending-failover-runtime.test.mjs
       - workers/ball46-result-sidecar/test/pending-ledger-reader.test.mjs
@@ -47,6 +49,8 @@ jobs:
           grep -Fxq 'binding = "HUB"' "$conf"
           grep -Fxq 'service = "nomadtips3-5usd-hub-343"' "$conf"
           grep -Fxq 'PENDING_LEDGER_READONLY_ENABLED = "1"' "$conf"
+          grep -Fq 'captureOnlyNewPending' workers/ball46-result-sidecar/src/pending-failover-runtime.mjs
+          grep -Fq 'OLD_PENDING_QUARANTINED' workers/ball46-result-sidecar/src/new-signal-capture.mjs
           grep -Fxq 'binding = "ENGINE"' "$conf"
           grep -Fxq 'service = "nomadtips3-engine-343"' "$conf"
           ! grep -Eq '^routes? =|^workers_dev = true' "$conf"
