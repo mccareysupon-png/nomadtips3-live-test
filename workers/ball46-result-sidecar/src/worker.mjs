@@ -188,11 +188,12 @@ export async function captureCanonicalHub(storage,hubFixtures,{at=new Date().toI
  });
 }
 export async function inspectSidecar(storage){
- const [fixtures,reverse,evidence,meta]=await Promise.all([
+ const [fixtures,reverse,evidence,routes,meta]=await Promise.all([
   storage.list({prefix:prefix+'f:'}),storage.list({prefix:prefix+'r:'}),
-  storage.list({prefix:prefix+'e:'}),storage.get(metaKey)]);
+  storage.list({prefix:prefix+'e:'}),storage.list({prefix:prefix+'route:'}),storage.get(metaKey)]);
  return {fixtureCount:fixtures.size,sourceMappings:reverse.size,
-  ftEvidenceKeys:evidence.size,forwardRequests:0,
+  ftEvidenceKeys:evidence.size,goalooRouted:[...routes.values()].filter(x=>x.state==='GOALOO').length,
+  permanentlyDone:[...routes.values()].filter(x=>x.state==='DONE').length,forwardRequests:0,
   recentEvents:(meta?.events||[]).slice(-10),version:3};
 }
 async function fetchGoaloo(fetcher){
