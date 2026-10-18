@@ -4596,39 +4596,6 @@ button,input,select,textarea{font-family:inherit;font-synthesis:none}
   .page-member .mobile-match-section-tabs button{scroll-behavior:auto}
 }
 
-/* Mobile quick dock approved from the interactive prototype */
-.page-member .mobile-bottom-navigation{display:none}
-@media(max-width:767px){
-  .page-member{padding-bottom:calc(76px + env(safe-area-inset-bottom,0px))}
-  .page-member .mobile-bottom-navigation{
-    position:fixed;bottom:0;left:50%;transform:translateX(-50%);
-    z-index:35;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
-    gap:2px;width:min(100%,440px);
-    padding:7px 8px calc(7px + env(safe-area-inset-bottom,0px));
-    background:rgba(7,23,34,.97);
-    border-top:1px solid rgba(131,190,204,.17);
-    box-shadow:0 -7px 24px rgba(0,0,0,.27);
-    backdrop-filter:blur(12px);
-  }
-  .page-member .mobile-bottom-navigation button{
-    display:flex;flex-direction:column;align-items:center;justify-content:center;
-    gap:3px;min-height:44px;min-width:0;padding:3px 0;
-    border:0;border-radius:8px;background:transparent;
-    color:#a0b8c6;font-size:9px;font-weight:800;letter-spacing:.04em;
-    cursor:pointer;
-  }
-  .page-member .mobile-bottom-navigation button span{
-    color:#7be6c0;font-size:20px;line-height:20px;
-  }
-  .page-member .mobile-bottom-navigation button:focus-visible{
-    outline:2px solid #7be6c0;outline-offset:1px;
-  }
-  .page-member .mobile-match-spotlight .stadium-hero,
-  .page-member .mobile-match-spotlight .member-flow,
-  .page-member .mobile-match-spotlight .featured-analysis-layout,
-  .page-member #signalBoard{scroll-margin-top:75px}
-}
-
 /* BALL46 MEMBER — desktop daily KPI cards: 65% transparent, values 15% smaller (2026-10-18) */
 @media(min-width:1100px){
   /* Use translucent card backgrounds, never opacity on the card/text. */
@@ -5142,4 +5109,220 @@ button,input,select,textarea{font-family:inherit;font-synthesis:none}
     border-bottom:1px solid rgba(255,255,255,.045)!important;
     box-shadow:none!important;
   }
+}
+
+/* BALL46 MEMBER — approved mobile V4 source-color lockup, profile and KPI first */
+.page-member .mobile-v4-back,
+.page-member .mobile-v4-profile-anchor,
+.page-member .mobile-v4-contextline,
+.page-member .mobile-v4-sectionbar,
+.page-member .mobile-v4-intro{display:none}
+@media(max-width:767px){
+  body.page-member{
+    padding-bottom:calc(18px + env(safe-area-inset-bottom,0px));
+    background:radial-gradient(ellipse at 50% 0,#15303e,#07121e 45%,#050b13 100%)!important;
+  }
+  .page-member .topbar{z-index:35;background:linear-gradient(180deg,#102635,#0a1a27)!important;border-bottom:1px solid #ffffff0b!important;box-shadow:none!important}
+  .page-member .topbar-inner.shell{
+    height:57px;width:100%;max-width:none;
+    display:grid;grid-template-columns:minmax(0,1fr) auto;
+    column-gap:8px;align-items:center;padding:0 13px;
+  }
+  .page-member .topbar .nav{display:none!important}
+  .page-member .topbar a.brand.brand-original-lettering{
+    display:flex;flex-direction:row;gap:8px;align-items:center;justify-self:start;
+    min-width:0;padding:0;
+  }
+  .page-member .topbar .mobile-v4-back{
+    display:inline-block;flex:0 0 24px;width:24px;color:#9bb1c1;
+    font-size:26px;font-weight:400;line-height:1;text-align:left;
+  }
+  .page-member .topbar a.brand.brand-original-lettering .brand-logo{
+    font-family:Manrope,Inter,system-ui,sans-serif;
+    font-size:23px!important;font-weight:950;letter-spacing:-.07em;
+    line-height:1;color:#f2f8fb!important;white-space:nowrap;
+  }
+  .page-member .topbar a.brand.brand-original-lettering .brand-logo>span{color:#43e6a2!important}
+  .page-member .topbar a.brand.brand-original-lettering .brand-member{
+    margin-left:1px;white-space:nowrap;font-size:9px!important;
+    font-weight:800;letter-spacing:.15em;line-height:1;
+    color:#9eb3c3!important;
+  }
+  .page-member .topbar-account-slot{
+    width:auto;min-width:0;max-width:none;justify-self:end;
+  }
+  .page-member .topbar-account-slot>.member-chip{display:none!important}
+  .page-member .mobile-v4-profile-anchor{display:block;position:relative;flex:0 0 auto}
+  .page-member .mobile-v4-profile-icon{
+    display:grid;place-items:center;position:relative;width:36px;height:36px;
+    padding:0;border-radius:50%;border:1px solid rgba(126,211,195,.22);
+    background:linear-gradient(155deg,#1a4550,#10313f);color:#d3efe7;
+    box-shadow:0 4px 12px #0003;cursor:pointer;
+  }
+  .page-member .mobile-v4-profile-icon[aria-expanded=true]{
+    border-color:#73eabd;box-shadow:0 0 0 2px #43e6a225;
+  }
+  .page-member .mobile-v4-profile-icon:focus-visible,
+  .page-member .mobile-v4-popover-top button:focus-visible{outline:2px solid #91f3ce;outline-offset:3px}
+  .page-member .mobile-v4-profile-icon:disabled{cursor:wait;opacity:.65}
+  .page-member .mobile-v4-online-dot{
+    position:absolute;bottom:2px;right:0;width:8px;height:8px;
+    border-radius:50%;background:#43e6a2;border:2px solid #0a1a27;
+  }
+  .page-member .mobile-v4-profile-popover{
+    position:absolute;right:0;top:44px;z-index:40;
+    width:min(280px,calc(100vw - 26px));padding:13px;border-radius:14px;
+    border:1px solid rgba(137,211,202,.20);
+    background:linear-gradient(170deg,#193b49 0%,#0e2635 100%);
+    box-shadow:0 18px 32px #000a;
+  }
+  .page-member .mobile-v4-profile-popover[hidden]{display:none!important}
+  .page-member .mobile-v4-popover-top{
+    display:flex;align-items:center;justify-content:space-between;
+    padding-bottom:10px;border-bottom:1px solid #ffffff17;
+    font-size:9px;font-weight:900;letter-spacing:.12em;color:#81ceb4;
+  }
+  .page-member .mobile-v4-popover-top button{
+    display:grid;place-items:center;border:0;border-radius:6px;
+    width:27px;height:25px;padding:0;font-size:20px;
+    background:#ffffff0e;color:#cae1e9;cursor:pointer;
+  }
+  .page-member .mobile-v4-member-identity{display:flex;align-items:center;gap:10px;padding:12px 0 13px}
+  .page-member .mobile-v4-profile-avatar{
+    display:grid;place-items:center;flex:0 0 37px;width:37px;height:37px;
+    border-radius:12px;background:linear-gradient(145deg,#23684f,#174535);
+    color:#b1ffd8;font-size:15px;font-weight:900;
+  }
+  .page-member .mobile-v4-member-identity strong{
+    display:block;max-width:190px;font-size:14px;color:#f7fcff;
+    letter-spacing:.04em;overflow-wrap:anywhere;
+  }
+  .page-member .mobile-v4-member-identity small{
+    display:block;margin-top:4px;color:#91b9ba;font-size:10px;font-weight:750;
+    overflow-wrap:anywhere;
+  }
+  .page-member .mobile-v4-profile-info{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+    padding:9px 0;border-top:1px solid #ffffff13;
+    font-size:10px;color:#a0b9c7;
+  }
+  .page-member .mobile-v4-profile-info b{
+    color:#ddf3ed;font-size:10px;font-weight:850;text-align:right;
+  }
+  .page-member .mobile-v4-status-dot{
+    display:inline-block;vertical-align:1px;width:6px;height:6px;
+    margin-right:4px;border-radius:50%;background:#43e6a2;
+  }
+  /* V4 information architecture: header, market, four KPIs, match list. */
+  .page-member .member-sidebar-layout{padding-top:0}
+  .page-member .member-main-content{display:flex;flex-direction:column;gap:0}
+  .page-member .mobile-v4-contextline{
+    display:flex;justify-content:space-between;align-items:center;gap:8px;
+    order:0;min-height:32px;margin:0 -9px 0;padding:8px 13px;
+    background:#091b27;color:#8eacba;font-size:9px;letter-spacing:.1em;
+  }
+  .page-member .mobile-v4-contextline b{color:#91f3cb}
+  .page-member .mobile-market-navigation{
+    order:1;gap:6px;margin:0;padding:9px 9px 4px;
+    background:transparent;border:0;border-radius:0;box-shadow:none;
+  }
+  .page-member .member-main-content .member-market-toggle{
+    min-height:35px;padding:7px 10px;background:linear-gradient(#1a4550,#15313f);
+    border:0;border-radius:8px;font-size:10px;font-weight:900;letter-spacing:.02em;
+  }
+  .page-member .mobile-market-pill{
+    min-height:34px;padding:7px 10px;border:0;border-radius:7px;
+    background:#112c3b;color:#99b2c0;font-size:10px;font-weight:850;
+    letter-spacing:.02em;
+  }
+  .page-member .mobile-market-pill.active{
+    color:#78f5c5;background:#18483d;
+    box-shadow:inset 0 1px 0 #ffffff14;
+  }
+  .page-member #dailySummary{
+    order:2;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:6px;margin:7px 9px 5px;max-width:calc(100% - 18px);
+    min-width:0;
+  }
+  .page-member #dailySummary .summary-stat{
+    min-width:0;min-height:61px;
+    padding:8px 3px;display:none;
+    flex-direction:column;justify-content:center;align-items:center;gap:6px;
+    border:1px solid rgba(185,223,234,.055);border-radius:11px;
+    box-shadow:0 5px 12px #0002,inset 0 1px 0 #ffffff09;
+    backdrop-filter:blur(7px);text-align:center;
+  }
+  .page-member #dailySummary .summary-stat.signals,
+  .page-member #dailySummary .summary-stat.pending,
+  .page-member #dailySummary .summary-stat.rate-good,
+  .page-member #dailySummary .summary-stat.rate-mid,
+  .page-member #dailySummary .summary-stat.rate-bad,
+  .page-member #dailySummary .summary-stat.pnl-card{display:flex}
+  .page-member #dailySummary .summary-stat.signals{
+    background:linear-gradient(145deg,rgba(22,64,83,.48),rgba(16,45,65,.39));
+  }
+  .page-member #dailySummary .summary-stat.pending{
+    background:linear-gradient(145deg,rgba(84,74,35,.47),rgba(59,48,27,.38));
+  }
+  .page-member #dailySummary .summary-stat.rate-good,
+  .page-member #dailySummary .summary-stat.rate-mid,
+  .page-member #dailySummary .summary-stat.rate-bad{
+    background:linear-gradient(145deg,rgba(25,79,67,.48),rgba(16,53,49,.38));
+  }
+  .page-member #dailySummary .summary-stat.pnl-card{
+    background:linear-gradient(145deg,rgba(23,73,65,.48),rgba(13,53,51,.38));
+  }
+  .page-member #dailySummary .summary-stat span{
+    font-size:8px;line-height:1.2;font-weight:850;
+    letter-spacing:.03em;white-space:nowrap;color:#9ab8c8;
+  }
+  .page-member #dailySummary .summary-stat.pending span{color:#ddca8b}
+  .page-member #dailySummary .summary-stat.rate-good span,
+  .page-member #dailySummary .summary-stat.rate-mid span,
+  .page-member #dailySummary .summary-stat.rate-bad span{color:#91d2b4}
+  .page-member #dailySummary .summary-stat.pnl-card span{color:#9cc8b9}
+  .page-member #dailySummary .summary-stat b{
+    font-size:clamp(12px,3.4vw,16px);font-variant-numeric:tabular-nums;
+    letter-spacing:-.015em;line-height:1;font-weight:900;
+    white-space:nowrap;color:#b3e5fa;
+  }
+  .page-member #dailySummary .summary-stat.pending b{color:#ffe08d}
+  .page-member #dailySummary .summary-stat.rate-good b{color:#75e9b7}
+  .page-member #dailySummary .summary-stat.rate-mid b{color:#f6cf78}
+  .page-member #dailySummary .summary-stat.rate-bad b{color:#ff8b99}
+  .page-member #dailySummary .summary-stat.pnl-card.pos b{color:#58e8ae}
+  .page-member #dailySummary .summary-stat.pnl-card.neg b{color:#ff8b99}
+  .page-member #dailySummary .summary-stat.pnl-card.neutral b{color:#a6c2ce}
+  .page-member .mobile-v4-sectionbar{
+    display:flex;justify-content:space-between;align-items:center;gap:6px;
+    order:3;padding:8px 12px 6px;
+  }
+  .page-member .mobile-v4-sectionbar strong{font-size:11px;letter-spacing:.085em;font-weight:900}
+  .page-member .mobile-v4-sectionbar strong span{color:#43e6a2}
+  .page-member .mobile-v4-sectionbar>span{font-size:9px;color:#9dc1c8;white-space:nowrap}
+  .page-member .mobile-v4-intro{
+    display:flex;justify-content:space-between;align-items:center;gap:6px;
+    order:4;margin:0 12px 8px;padding:7px 9px;
+    border-radius:8px;background:#0b2833;color:#a9c7d2;font-size:9px;
+  }
+  .page-member .mobile-v4-intro em{
+    font-style:normal;color:#83eabc;font-weight:800;white-space:nowrap;
+  }
+  .page-member #signalBoard{order:5}
+  .page-member #signalPagination{order:6}
+  .page-member #signalBoard{scroll-margin-top:69px}
+  .page-member .member-main-content .member-hero-card{display:none!important}
+}
+@media(max-width:349px){
+  .page-member #dailySummary{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+  .page-member #dailySummary .summary-stat{min-height:54px}
+  .page-member #dailySummary .summary-stat b{font-size:15px}
+  .page-member #dailySummary .summary-stat span{font-size:9px}
+  .page-member .mobile-v4-intro{font-size:8px}
+}
+@media(min-width:350px) and (max-width:390px){
+  .page-member #dailySummary{gap:4px}
+  .page-member #dailySummary .summary-stat{padding:8px 2px}
+  .page-member #dailySummary .summary-stat span{font-size:7.5px}
+  .page-member #dailySummary .summary-stat b{font-size:clamp(11px,3.3vw,14px)}
 }
