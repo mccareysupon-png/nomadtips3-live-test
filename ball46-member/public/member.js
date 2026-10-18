@@ -527,10 +527,13 @@ function toggleDetail(row){
     state.expandedFixtureId=row.fixtureId;
     state.expandedSignalId=row.id;
   }
+  if(mobileMemberEnabled()){
+    state.mobileStatsExpanded=false;
+    state.mobileHistoryExpanded=false;
+  }
   renderRows();
-  if(window.matchMedia('(max-width:767px)').matches){
-    renderMobileSpotlight();
-    qs('#mobileMatchSpotlight')?.scrollIntoView({behavior:'smooth',block:'start'});
+  if(mobileMemberEnabled()&&state.expandedSignalId){
+    document.querySelector('#signalBoard .signal-row.expanded')?.scrollIntoView({behavior:'smooth',block:'nearest'});
   }
 }
 
@@ -548,7 +551,15 @@ function makeSignalRow(row){
     if(freshNewestSignal(row))tr.classList.add('is-fresh-signal');
   }
 
-  const time=td(row.signalTime,'signal-time');
+  const time=td(undefined,'signal-time');
+  time.append(node('span','signal-time-record',row.signalTime));
+  // Mobile line 1: fixture minute, league and match state (the signal time stays in Desktop).
+  const clock=row.state==='LIVE'&&row.matchMinute!=null
+    ?String(row.matchMinute).replace(/['′’]/g,'')+'′'
+    :row.state==='FINISHED'?'FT':matchClockLabel(row);
+  time.append(node('span','mobile-default-clock',clock),
+    node('span','mobile-default-league',String(row.league||'—')),
+    node('span','mobile-default-state',row.state==='LIVE'?'● LIVE':row.state==='FINISHED'?'FT':String(row.state||'—')));
   time.append(node('span','expand-glyph',state.expandedSignalId===row.id?'⌃':'⌄'));
   if(isLatest)time.append(makeFreshSignalTag(row));
   tr.append(time);
@@ -1320,14 +1331,14 @@ function renderInsight(host,fixtureId){
     const featured=featuredHorizontal(null,selected);
     host.append(featured);
     host.append(node('div','insight-loading','Loading Featured Match and Event Flow from Ball46 Mirror…'));
-    host.append(featured.matchFacts);
+    attachMobileExpandedControls(host,featured.matchFacts);
     return;
   }
 
   const featured=featuredHorizontal(detail,selected);
   host.append(featured);
   host.append(eventFlowChart(detail,fixtureId));
-  host.append(featured.matchFacts);
+  attachMobileExpandedControls(host,featured.matchFacts);
 
   if(!detail.featured){
     host.append(node('div','insight-note','Match is no longer on the current live board. Featured Match falls back to the recorded Signal snapshot; Event Flow remains mirrored from Ball46 history when available.'));
@@ -1423,10 +1434,6 @@ function renderCornerAudit(){
 /* Mobile view consumes only existing Member Signal + match mirror data.
    No settlement calculation or Engine writes are done in this UI. */
 function mobileMemberEnabled(){return window.matchMedia('(max-width:767px)').matches;}
-function mobileSelectedSignal(){
-  const rows=filteredRows();
-  return rows.find(item=>item.id===state.expandedSignalId)||rows[0]||null;
-}
 function renderMobileMarketPills(){
   const host=qs('#mobileMarketPills');
   if(!host||!state.payload)return;
@@ -1448,45 +1455,18 @@ function renderMobileMarketPills(){
     host.append(b);
   }
 }
-function fetchMobileSpotlightDetail(fixtureId){
-  const key=String(fixtureId??'');
-  if(!key||state.mobileDetailRequests.has(key))return;
-  const now=Date.now();
-  if(now-(state.mobileDetailCheckedAt.get(key)||0)<45000)return;
-  state.mobileDetailCheckedAt.set(key,now);
-  const job=fetch('/api/member/match?fixtureId='+encodeURIComponent(key),{cache:'no-store'})
-    .then(async res=>{
-      const data=await res.json();
-      if(!res.ok||data?.ok!==true)throw new Error('MATCH_DETAIL_UNAVAILABLE');
-      state.detailCache.set(key,data);
-      if(mobileMemberEnabled()&&String(mobileSelectedSignal()?.fixtureId??'')===key)
-        renderMobileSpotlight();
-    }).catch(()=>{}).finally(()=>state.mobileDetailRequests.delete(key));
-  state.mobileDetailRequests.set(key,job);
-}
-function renderMobileSpotlight(){
-  const host=qs('#mobileMatchSpotlight');
-  if(!host||!state.payload||!mobileMemberEnabled())return;
-  const selected=mobileSelectedSignal();
-  host.replaceChildren();
-  if(!selected){
-    host.append(node('p','mobile-no-match',state.favoritesView
-      ?'No saved signals yet. Choose a market or save a match.'
-      :'No signals for this market yet. Choose another market to view matches.'));
+
+/* V3: decorate only the Expanded card created by renderRows().
+   No match-detail fetches or Featured Match are generated before a user expands a row. */
+function attachMobileExpandedControls(host,matchFacts){
+  if(!mobileMemberEnabled()){
+    host.append(matchFacts);
     return;
   }
-  const fixtureId=String(selected.fixtureId??'');
-  const detail=state.detailCache.get(fixtureId)||null;
-  const insight=node('div','match-insight mobile-match-insight');
-  insight.dataset.mobileFixture=fixtureId;
-  const featured=featuredHorizontal(detail,selected);
-  insight.append(featured);
-  if(detail)insight.append(eventFlowChart(detail,fixtureId));
-  else insight.append(node('div','mobile-event-flow-loading','Event Flow is loading from the Member match mirror…'));
   const disclosure=node('details','mobile-match-facts');
-  disclosure.append(node('summary','','MATCH FACTS · HALF-TIME · CORNERS · CARDS · MARKET'),featured.matchFacts);
-  insight.append(disclosure);
-  const stats=insight.querySelector('.premium-match-stats');
+  disclosure.append(node('summary','','MATCH FACTS · HALF-TIME · CORNERS · CARDS · MARKET'),matchFacts);
+  host.append(disclosure);
+  const stats=host.querySelector('.premium-match-stats');
   if(stats){
     stats.classList.toggle('mobile-show-all-stats',state.mobileStatsExpanded);
     const button=node('button','mobile-more-stats',state.mobileStatsExpanded?'Less statistics':'All statistics');
@@ -1499,7 +1479,7 @@ function renderMobileSpotlight(){
     });
     stats.append(button);
   }
-  const history=insight.querySelector('.featured-entry-history');
+  const history=host.querySelector('.featured-entry-history');
   if(history){
     history.classList.toggle('mobile-show-all-history',state.mobileHistoryExpanded);
     const button=node('button','mobile-more-history',state.mobileHistoryExpanded?'Collapse signal history':'View all signal history');
@@ -1512,34 +1492,24 @@ function renderMobileSpotlight(){
     });
     history.append(button);
   }
-  host.append(insight);
-  fetchMobileSpotlightDetail(fixtureId);
 }
 function initMobileSectionTabs(){
-  const targets={match:'#mobileMatchSpotlight .stadium-hero',flow:'#mobileMatchSpotlight .member-flow',
-    insights:'#mobileMatchSpotlight .featured-analysis-layout'};
-  document.querySelectorAll('.mobile-match-section-tabs button').forEach(button=>{
-    button.addEventListener('click',()=>{
-      for(const b of document.querySelectorAll('.mobile-match-section-tabs button'))
-        b.setAttribute('aria-current',String(b===button));
-      qs(targets[button.dataset.mobileSection])?.scrollIntoView({behavior:'smooth',block:'start'});
-    });
-  });
   document.querySelectorAll('.mobile-bottom-navigation button').forEach(button=>{
     button.addEventListener('click',()=>{
+      if(!mobileMemberEnabled())return;
       const action=button.dataset.mobileAction;
       if(action==='markets'){qs('#marketMenuToggle')?.click();return;}
-      const target=action==='match'?'#mobileMatchSpotlight .stadium-hero':
-        action==='flow'?'#mobileMatchSpotlight .member-flow':'#signalBoard';
-      qs(target)?.scrollIntoView({behavior:'smooth',block:'start'});
+      const target=action==='flow'?
+        '#signalBoard .signal-detail-row .member-flow':
+        action==='match'?'#signalBoard .signal-row.expanded':'#signalBoard';
+      (qs(target)||qs('#signalBoard'))?.scrollIntoView({behavior:'smooth',block:'start'});
     });
   });
-  window.matchMedia('(max-width:767px)').addEventListener('change',()=>renderMobileSpotlight());
 }
 
 function render(){
   renderFavoritesNav();renderTabs();renderSummary();renderCornerAudit();renderRows();renderPagination();
-  renderMobileMarketPills();renderMobileSpotlight();
+  renderMobileMarketPills();
   const selection=qs('#marketMenuSelection');
   if(selection)selection.textContent=state.favoritesView?'FAVORITES':state.market;
 }
