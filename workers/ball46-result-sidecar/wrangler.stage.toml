@@ -12,10 +12,15 @@ GOALOO_APPROVED_LEAGUES = "{}"
 GOALOO_APPROVED_TEAMS = "{}"
 ENABLE_NATIVE_FORWARD = "0"
 CANONICAL_CAPTURE_ENABLED = "1"
+PENDING_LEDGER_READONLY_ENABLED = "1"
 
 [[services]]
 binding = "HUB"
 service = "nomadtips3-5usd-hub-343"
+
+[[services]]
+binding = "ENGINE"
+service = "nomadtips3-engine-343"
 
 [triggers]
 crons = ["*/5 * * * *"]
