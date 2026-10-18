@@ -1111,7 +1111,6 @@ function featuredHorizontal(detail,selected){
 
   const meta=node('div','featured-h-meta');
   meta.append(node('span','eyebrow','FEATURED MATCH'),node('strong','',f?.league||selected.league));
-  const displayStatus=beforeKickoff?'UPCOMING':shownMinute;
   // The current fixture clock is rendered once, beneath the central score.
   // Never confuse the signal entry minute with the current fixture minute.
   const liveMinuteMatch=selected.state==='LIVE' && !beforeKickoff
