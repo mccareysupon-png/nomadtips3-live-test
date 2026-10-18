@@ -188,12 +188,15 @@ export async function captureCanonicalHub(storage,hubFixtures,{at=new Date().toI
  });
 }
 export async function inspectSidecar(storage){
- const [fixtures,reverse,evidence,routes,meta]=await Promise.all([
+ const [fixtures,reverse,evidence,routes,meta,intake]=await Promise.all([
   storage.list({prefix:prefix+'f:'}),storage.list({prefix:prefix+'r:'}),
-  storage.list({prefix:prefix+'e:'}),storage.list({prefix:prefix+'route:'}),storage.get(metaKey)]);
+  storage.list({prefix:prefix+'e:'}),storage.list({prefix:prefix+'route:'}),storage.get(metaKey),
+  storage.get(prefix+'new-signal:baseline')]);
  return {fixtureCount:fixtures.size,sourceMappings:reverse.size,
   ftEvidenceKeys:evidence.size,goalooRouted:[...routes.values()].filter(x=>x.state==='GOALOO').length,
-  permanentlyDone:[...routes.values()].filter(x=>x.state==='DONE').length,forwardRequests:0,
+  permanentlyDone:[...routes.values()].filter(x=>x.state==='DONE').length,
+  newSignalIntake:{startedAt:intake?.establishedAt??null,excludedOldPending:intake?.legacyPendingCount??null,
+   capturedTotal:intake?.capturedTotal??0,lastPollAt:intake?.lastPolledAt??null},forwardRequests:0,
   recentEvents:(meta?.events||[]).slice(-10),version:3};
 }
 async function fetchGoaloo(fetcher){
