@@ -220,14 +220,16 @@ async function inspectPendingLedger(storage,env,at){
  const result=await refreshPendingGoalooRoutes(storage,env?.ENGINE,{at,maxPages:30});
  return result;
 }
-async function dispatchNativeVerifiedFt(env,verifiedResults,hubFixtures){
+async function dispatchNativeVerifiedFt(storage,env,verifiedResults,hubFixtures,route){
  if(!flag(env?.ENABLE_NATIVE_FORWARD))return{state:'READ_ONLY_NOT_FORWARDED',attempts:0,confirmed:0};
  if(!env.RESULT_PROXY?.fetch||String(env.RESULT_PROXY_TOKEN??'').length<32)
   return{state:'MISSING_PRIVATE_NATIVE_PROXY',attempts:0,confirmed:0};
  const snapshot=await readPendingFromLedgerV2(env.ENGINE,{maxPages:30});
  if(!snapshot.ok)return{state:snapshot.state,attempts:0,confirmed:0};
+ const eligibleIds=new Set(route.eligibleIds||[]);
  const plan=planVerifiedPendingFt({
-  pendingRows:snapshot.rows,verifiedResults,hubFixtures,maxFixtures:3
+  pendingRows:snapshot.rows.filter(x=>eligibleIds.has(String(x.fixtureId))),
+  verifiedResults,hubFixtures,maxFixtures:3
  });
  if(!plan.ok)return{state:plan.reason,attempts:0,confirmed:0};
  let attempts=0,confirmed=0;
@@ -275,7 +277,7 @@ async function poll(storage,env,fetcher=fetch){
  });
  const planned=planVerifiedPendingFt({pendingRows:ledger.selectedRows||[],
   verifiedResults:result.verifiedResults||[],hubFixtures:fixtures,maxFixtures:3});
- const native=await dispatchNativeVerifiedFt(env,result.verifiedResults||[],fixtures);
+ const native=await dispatchNativeVerifiedFt(storage,env,result.verifiedResults||[],fixtures,ledger);
  return {...result,captured,ledger,pendingPlan:{
    state:planned.ok?'READY_PLAN':'INVALID',ready:planned.ready?.length||0,
    pendingFixtureCount:planned.pendingFixtureCount||0,
