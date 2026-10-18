@@ -18,13 +18,17 @@ export class SidecarLocalTest extends DurableObject{
     {at:'2026-10-18T08:10:00Z'});
   const noFixture=await captureCanonicalHub(this.ctx.storage,[],
     {at:'2026-10-18T08:15:00Z'});
+  const dup={...fixture,fixtureId:'5USD-CAPTURE-DUP'};
+  const duplicateBatch=await captureCanonicalHub(this.ctx.storage,[
+   dup,{...dup,home:'Wrong Duplicate FC'}
+  ],{at:'2026-10-18T08:20:00Z'});
   const snapshot=await inspectSidecar(this.ctx.storage);
   const key='ball46:verified-fixture-crosswalk:v3:f:5USD-CAPTURE-1';
   const durable=await this.ctx.storage.get(key);
   const ok=first.inserted===1&&second.inserted===0&&second.unchanged===1&&
-    drift.conflicts===1&&noFixture.inserted===0&&durable?.home==='Home United'&&
-    snapshot.fixtureCount===1;
-  return Response.json({ok,first,second,drift,noFixture,snapshot,
+    drift.conflicts===1&&noFixture.inserted===0&&duplicateBatch.rejected===2&&
+    duplicateBatch.inserted===0&&durable?.home==='Home United'&&snapshot.fixtureCount===1;
+  return Response.json({ok,first,second,drift,noFixture,duplicateBatch,snapshot,
    heldOriginal:durable?.home,engineWrites:0},{status:ok?200:500});
  }
  async stressTest(){
