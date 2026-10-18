@@ -11,12 +11,12 @@ const SCRIPT='ball46-production', ORIGIN='https://ball46.com';
 const ACCOUNT_EXPECTED='62cb0db544160e6591342abd6b4f35cc';
 // Base version is discovered fresh and held fixed throughout this deployment.
 // Base index bytes are read from current Cloudflare Active, never a historical HTML file.
-const MARK='BALL46_MOBILE_DEEP_TEAL_20261018_OWNER_APPROVED';
+const MARK='BALL46_GREEN_NOIR_MOBILE_PRODUCTION_20261018_OWNER_APPROVED';
 const hash=v=>createHash('sha256').update(v).digest('hex');
 const canonical=v=>JSON.stringify(v,(key,x)=>key==='annotations'?undefined:x&&typeof x==='object'&&!Array.isArray(x)?Object.fromEntries(Object.entries(x).sort(([a],[b])=>a.localeCompare(b))):x);
 const filesDir=join(ROOT,'audit'),preview=id=>'https://'+id.slice(0,8)+'-ball46-production.mccarey-supon.workers.dev';
 mkdirSync(filesDir,{recursive:true});
-const report={startedAt:new Date().toISOString(),scope:'BALL46 main mobile only',mark:MARK,sourceSha256:'acf14036a459dbd39f0d088f45471eedba598b955de16d9fe8a388f46b4a429c',phase:'PRECHECK',activated:false};
+const report={startedAt:new Date().toISOString(),scope:'BALL46 main mobile only',mark:MARK,sourceSha256:'355f1314153867758037152ee85c4afc819c26edd382e02cc053db7ad370f1fc',phase:'PRECHECK',activated:false};
 const save=()=>writeFileSync(join(filesDir,'result.json'),JSON.stringify(report,null,2));
 function apiUrl(path){return 'https://api.cloudflare.com/client/v4/accounts/'+ACCOUNT+path;}
 async function cf(path,body=null) {
@@ -84,9 +84,18 @@ async function ui(host,stage){
     assert.equal(await mobileShell.locator('.b46m-tagline').isVisible(),false,'LOGO_DESCRIPTION_VISIBLE');
     assert.equal(await mobileShell.locator('.b46m-brand').textContent().then(x=>x.startsWith('ball46')),true,'MOBILE_BRAND_TEXT_NOT_LOWERCASE');
     const brandStyle=await mobileShell.locator('.b46m-brand').evaluate(el=>({size:getComputedStyle(el).fontSize,weight:getComputedStyle(el).fontWeight,color:getComputedStyle(el.querySelector('strong')).color}));
-    assert.equal(brandStyle.size,'21px','COMPACT_LOGO_SIZE_MISMATCH');
-    assert.equal(brandStyle.color,'rgb(34, 197, 94)','LOGO_GREEN_MISMATCH');
+    assert.equal(brandStyle.size,width<=350?'30px':'33px','GREEN_NOIR_LOGO_SIZE_MISMATCH');
+    assert.equal(brandStyle.color,'rgb(32, 211, 155)','LOGO_GREEN_MISMATCH');
 
+    await page.locator('#b46gn-hero').waitFor({state:'visible',timeout:18000});
+    assert.equal(await page.locator('html').getAttribute('data-b46gn'),'1','GREEN_NOIR_MODE_NOT_ACTIVE');
+    assert.equal(await page.locator('#b46gn-main-title').textContent(),'Live Matches','GREEN_NOIR_HERO_NOT_LOADED');
+    assert.equal(await page.locator('#b46gn-hero [data-b46gn-tab]').count(),4,'GREEN_NOIR_TABS_MISSING');
+    assert.equal(await page.locator('#b46gn-results').isVisible(),true,'GREEN_NOIR_BOARD_HIDDEN');
+    assert.equal(await page.locator('#b46gn-hero .b46gn-tab').first().isVisible(),true,'GREEN_NOIR_FOOTBALL_TAB_HIDDEN');
+    const rows=await page.locator('[data-board-sections] [data-match-id]').count();
+    const cards=await page.locator('#b46gn-cards [data-b46gn-fixture]').count();
+    if(rows&&cards){const first=page.locator('#b46gn-cards [data-b46gn-fixture]').first();await first.click();assert.equal(await page.locator('#b46gn-detail').getAttribute('aria-hidden'),'false','GREEN_NOIR_DETAIL_NOT_OPEN');await page.locator('[data-b46gn-dismiss]').click();assert.equal(await page.locator('#b46gn-detail').getAttribute('aria-hidden'),'true','GREEN_NOIR_DETAIL_NOT_CLOSED')}
     assert.equal(await page.locator('html').getAttribute('data-b46m-teal'),'1','MOBILE_MODE_NOT_ACTIVE');
     assert.equal(await page.locator('.left-rail').isVisible(),false,'OLD_MOBILE_HORIZONTAL_MENU_STILL_VISIBLE');
     const open=page.locator('[data-b46m-open]');
@@ -99,6 +108,10 @@ async function ui(host,stage){
     await page.locator('[data-b46m-status="live"]').click();
     assert.equal(await open.getAttribute('aria-expanded'),'false','DRAWER_NOT_CLOSED');
     assert(await page.locator('[data-status-filter="live"]').count()>0,'ORIGINAL_STATUS_MISSING');
+    await page.locator('[data-b46gn-tab="scheduled"]').click();
+    assert.equal(await page.locator('.left-rail [data-status-filter="scheduled"]').getAttribute('class').then(x=>x.includes('active')),true,'UPCOMING_NOT_DELEGATED');
+    await page.locator('[data-b46gn-tab="all"]').click();
+    assert.equal(await page.locator('.left-rail [data-status-filter="all"]').getAttribute('class').then(x=>x.includes('active')),true,'ALL_NOT_DELEGATED');
     await page.locator('[data-b46m-searchbutton]').click();
     assert.equal(await page.locator('[data-b46m-searchpanel]').getAttribute('data-open'),'true','SEARCH_PANEL_HIDDEN');
     await page.locator('[data-b46m-searchinput]').fill('Arsenal');
@@ -111,17 +124,23 @@ async function ui(host,stage){
     assert.equal(await page.locator('.left-rail').isVisible(),true,'DESKTOP_NAV_HIDDEN');
     if(width===1280){let shot=join(filesDir,stage+'-desktop-1280.png');await page.screenshot({path:shot});screenshots.push(shot);}
    }
-   assert(errors.every(x=>!x.includes('b46m')),'DEEP_TEAL_JS_ERROR:'+errors.join('; ').slice(0,300));
+   assert(errors.every(x=>!x.includes('b46m')&&!x.includes('b46gn')),'GREEN_NOIR_JS_ERROR:'+errors.join('; ').slice(0,300));
    await page.close();
   }
  }finally{await browser.close();}
  return screenshots;
 }
 async function deploy(to,expected,label){
- assert.equal((await active()).id,expected,'ACTIVE_DRIFT_BEFORE_DEPLOY');
- const deployment=await cf('/workers/scripts/'+SCRIPT+'/deployments',{strategy:'percentage',versions:[{version_id:to,percentage:100}],annotations:{'workers/message':label}});
- assert.equal((await active()).id,to,'DEPLOYED_VERSION_NOT_ACTIVE');
- return deployment.id;
+  assert.equal((await active()).id,expected,'ACTIVE_DRIFT_BEFORE_DEPLOY');
+  const deployment=await cf('/workers/scripts/'+SCRIPT+'/deployments',{strategy:'percentage',versions:[{version_id:to,percentage:100}],annotations:{'workers/message':label}});
+  activationAttempted=activationAttempted||(to===candidate);
+  for(let attempt=0;attempt<20;attempt++){
+    const current=(await active()).id;
+    if(current===to)return deployment.id;
+    assert.equal(current,expected,'UNEXPECTED_THIRD_PARTY_ACTIVE_VERSION');
+    await new Promise(r=>setTimeout(r,2000));
+  }
+  throw new Error('CLOUDFLARE_ACTIVATION_NOT_CONFIRMED_IN_40_SECONDS');
 }
 async function waitPublicIndex(expectedSha,timeoutMs=90000){
  const start=Date.now();let consecutive=0;
@@ -134,19 +153,19 @@ async function waitPublicIndex(expectedSha,timeoutMs=90000){
  }
  throw new Error('PRODUCTION_PUBLIC_CUTOVER_NOT_VISIBLE');
 }
-let candidate=null, original=null, activated=false;
+let candidate=null, original=null, activated=false, activationAttempted=false;
 try{
  assert(ACCOUNT&&TOKEN,'CLOUDFLARE_CREDENTIALS_MISSING');
  assert.equal(ACCOUNT,ACCOUNT_EXPECTED,'WRONG_ACCOUNT');
- const sourceB64=readFileSync(join(ROOT,'source.br.b64'),'utf8').trim();
+ const sourceB64=readFileSync(join(ROOT,'gn-source.br.b64'),'utf8').trim();
  const source=Buffer.from(sourceB64,'base64');
  assert.equal(hash(source),report.sourceSha256,'SOURCE_PACKAGE_CORRUPT');
  const decoded=(await import('node:zlib')).brotliDecompressSync(source);
  const packagePath=join(ROOT,'source.tar');writeFileSync(packagePath,decoded);
  const unpack=spawnSync('tar',['-xf',packagePath,'-C',ROOT],{encoding:'utf8'});
  assert.equal(unpack.status,0,'TAR_UNPACK_FAILED:'+unpack.stderr);
- for(const p of ['mobile-navigation.css','mobile-navigation.js','apply_patch.py'])assert(readFileSync(join(ROOT,p)).length>0,'PATCH_SOURCE_MISSING:'+p);
- const jsCheck=spawnSync('node',['--check',join(ROOT,'mobile-navigation.js')],{encoding:'utf8'});
+ for(const p of ['green-noir.css','green-noir.js','green_noir_patch.py'])assert(readFileSync(join(ROOT,p)).length>0,'PATCH_SOURCE_MISSING:'+p);
+ const jsCheck=spawnSync('node',['--check',join(ROOT,'green-noir.js')],{encoding:'utf8'});
  assert.equal(jsCheck.status,0,'MOBILE_JS_SYNTAX:'+jsCheck.stderr);
 
  original=await active();
@@ -181,11 +200,12 @@ try{
 
  const originalPath=join(ROOT,'active-index.html'),candidatePath=join(ROOT,'candidate-index.html');
  writeFileSync(originalPath,old);
- const patched=spawnSync('python3',[join(ROOT,'brand_header_patch.py'),originalPath,candidatePath],{encoding:'utf8'});
+ const patched=spawnSync('python3',[join(ROOT,'green_noir_patch.py'),originalPath,join(ROOT,'green-noir.css'),join(ROOT,'green-noir.js'),candidatePath],{encoding:'utf8'});
  assert.equal(patched.status,0,'PATCH_FAILED:'+patched.stderr);
  const html=readFileSync(candidatePath,'utf8');
  assert(html.includes('b46-mobile-deep-teal-20261018')&&html.includes('b46-mobile-deep-teal-runtime-20261018'),'PATCH_MARKERS_MISSING');
  assert(html.includes('b46m-compact-brand-hidden-heading-20261018'),'COMPACT_BRAND_PATCH_MISSING');
+ assert(html.includes('b46gn-mobile-real-board-20261018')&&html.includes('b46gn-mobile-real-board-runtime-20261018'),'GREEN_NOIR_PATCH_MISSING');
  const uploadedFiles=new Map([...baseFiles].map(([p,file])=>[p,{bytes:p==='index.html'?Buffer.from(html):file.bytes,type:file.type}]));
  assert.equal(uploadedFiles.size,paths.length,'NEW_ASSET_SET_INCOMPLETE');
  report.change={path:'index.html',before:hash(old),after:hash(Buffer.from(html)),unchangedAssets:paths.length-1};
@@ -216,7 +236,7 @@ try{
  assert.equal((await active()).id,original.id,'CANDIDATE_ALTERED_ACTIVE');
  report.phase='UI_VERIFIED';save();
  console.log('BALL46 CANDIDATE OK',JSON.stringify({version:candidate,assetCount:paths.length,index:report.change.after,screenshots:report.candidate.screenshots}));
- report.activationDeployment=await deploy(candidate,original.id,'BALL46 main mobile Deep Teal owner approved');
+ report.activationDeployment=await deploy(candidate,original.id,'BALL46 Green Noir mobile real-data redesign owner approved');
  activated=true;report.activated=true;report.phase='ACTIVATED';save();
  await waitPublicIndex(report.change.after);
  report.productionScreenshots=await ui(ORIGIN,'production');
@@ -224,16 +244,24 @@ try{
  assert.equal(canonical(await config()),canonical(previousConfig),'PRODUCTION_CONFIGURATION_CHANGED');
  assert.equal((await active()).id,candidate,'ACTIVE_CHANGED_AFTER_ACTIVATION');
  report.phase='SUCCESS';report.ok=true;report.finishedAt=new Date().toISOString();save();
- console.log('BALL46 DEEP TEAL DEPLOY SUCCESS',JSON.stringify({activeVersion:candidate,previousVersion:original.id,deployment:report.activationDeployment}));
+ console.log('BALL46 GREEN NOIR DEPLOY SUCCESS',JSON.stringify({activeVersion:candidate,previousVersion:original.id,deployment:report.activationDeployment}));
 }catch(error){
  report.error=String(error?.stack||error);
  console.error('BALL46 DEPLOY BLOCKED:',String(error?.message||error));
- if(activated&&original?.id){
+ if((activated||activationAttempted)&&original?.id){
+  const seen=await active().catch(()=>null);
+  if(seen?.id!==candidate){
+    report.phase='ACTIVATION_UNVERIFIED_OR_CONCURRENT_UPDATE';
+    report.currentActive=seen?.id||null;
+    report.ok=false;report.finishedAt=new Date().toISOString();save();
+    process.exitCode=1;
+  }else {
   try {
-   report.rollbackDeployment=await deploy(original.id,candidate,'ROLLBACK BALL46 Deep Teal on postdeploy failure');
+   report.rollbackDeployment=await deploy(original.id,candidate,'ROLLBACK BALL46 Green Noir on postdeploy failure');
    await waitPublicIndex(report.preflight.indexSha,90000);
    report.phase='ROLLED_BACK';report.activated=false;
   }catch(rollbackError){report.rollbackError=String(rollbackError?.stack||rollbackError);report.phase='ROLLBACK_FAILED';}
+ }
  } else report.phase='BLOCKED_BEFORE_PRODUCTION_ACTIVATION';
  report.ok=false;report.finishedAt=new Date().toISOString();save();
  process.exitCode=1;
