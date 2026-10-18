@@ -1,0 +1,29 @@
+name: BALL46 paged pending ledger audit
+on:
+  push:
+    branches: [stage/ball46-multisource-v5-20261017]
+    paths: [.github/workflows/ball46-paged-pending-ledger-audit.yml]
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: GET paged Ledger V2 only; no native scan
+        run: |
+          node - <<'NODE'
+          (async()=>{
+            const root='https://nomadtips3-engine-343.mccarey-supon.workers.dev';
+            const url=root+'/statistics?cursor='+encodeURIComponent('stat:v2:row:')+'&paged=1';
+            const r=await fetch(url,{method:'GET',redirect:'error',signal:AbortSignal.timeout(12000)});
+            const s=await r.json();
+            const summary={http:r.status,ok:s.ok,source:s.statisticsSource,version:s.statisticsLedgerVersion,
+              keys:Object.keys(s).slice(0,38),arrayFields:Object.entries(s).filter(x=>Array.isArray(x[1])).map(x=>({key:x[0],len:x[1].length})),
+              nextCursorPresent:!!s.nextCursor,
+              pending:s.pending,ledgerTotal:s.ledgerTotal,sourceRowsStatus:[]};
+            for(const [k,v] of Object.entries(s))if(Array.isArray(v)&&v.length&&v[0]&&typeof v[0]==='object')
+              summary.sourceRowsStatus.push({key:k,fields:Object.keys(v[0]).slice(0,32),
+               pCount:v.filter(x=>x.status==='PENDING').length});
+            console.log('PAGED_LEDGER_READ_ONLY',JSON.stringify(summary));
+            if(!r.ok||!s.ok)process.exitCode=1;
+          })().catch(e=>{console.error(e.message);process.exitCode=1});
+          NODE
