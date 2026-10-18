@@ -37,6 +37,8 @@ jobs:
           grep -Fxq 'GOALOO_OFFSET_MINUTES = "0"' workers/ball46-result-sidecar/wrangler.live.toml
           grep -Fxq 'ENABLE_NATIVE_FORWARD = "1"' workers/ball46-result-sidecar/wrangler.live.toml
           grep -Fq "maxFixtures:1" workers/ball46-result-sidecar/src/worker.mjs
+          grep -Fq "redirect:'manual'" workers/ball46-result-sidecar/src/goaloo-feed-fetch.mjs
+          ! grep -Fq "redirect:'error'" workers/ball46-result-sidecar/src/goaloo-feed-fetch.mjs
           echo 'BALL46_LIVE_GOALOO_RELEASE_SOURCE_GATES_PASS'
       - name: Run all Signal, Ledger V2 and cross-provider tests
         run: |
@@ -70,3 +72,5 @@ jobs:
           path: workers/ball46-result-sidecar/ball46-live-rollback-proof.json
           retention-days: 30
           if-no-files-found: warn
+
+# 2026-10-18: Cloudflare Goaloo fetch redirect bug hotfix; same private Sidecar and same automatic rollback.
