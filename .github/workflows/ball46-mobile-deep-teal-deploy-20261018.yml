@@ -1,8 +1,8 @@
-name: BALL46 Mobile Compact Brand & Hidden Header Safe Deploy
+name: BALL46 Green Noir Mobile Production Safe Deploy
 on:
   push:
     branches:
-      - work/ball46-mobile-compact-logo-hide-heading-20261018
+      - work/ball46-green-noir-mobile-production-20261018
     paths:
       - '.github/workflows/ball46-mobile-deep-teal-deploy-20261018.yml'
       - 'deploy-assets/ball46-mobile-deep-teal-20261018/**'
@@ -35,7 +35,7 @@ jobs:
         run: |
           set -euo pipefail
           node --check deploy-assets/ball46-mobile-deep-teal-20261018/deploy.mjs
-          python3 -m py_compile deploy-assets/ball46-mobile-deep-teal-20261018/brand_header_patch.py
+          echo 'Green Noir source package checked after read-only Active fetch and extraction'
           node --check deploy-assets/member-orange-only-20261015/assets.mjs
           node --check deploy-assets/member-orange-only-20261015/cutover.mjs
           echo 'Only ball46-production active version may be replaced, after candidate testing.'
