@@ -47,4 +47,7 @@ test('corners, cards, half time excluded from goals-only fallback',()=>{
  assert.equal(pendingMarketEligible(row('1','CARDS')),false);
  assert.equal(pendingMarketEligible({...row('1','OVER'),period:'HT'}),false);
  assert.equal(pendingMarketEligible(row('1','OVER')),true);
+ for(const m of ['ft_ah','ft_over','ft_under','ft_1x2'])
+  assert.equal(pendingMarketEligible(row('1',m)),true);
+ assert.equal(pendingMarketEligible(row('1','ft_corner_over')),false);
 });
