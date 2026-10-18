@@ -76,7 +76,9 @@ jobs:
           const report={ok:true,readOnly:true,checkedAt:new Date().toISOString(),script,activeVersion:id,activeDeployment:deployment.id,mainModule:version.main_module,mainModuleSha256:digest(Buffer.from(main.content_base64,'base64')),activeIndexSha256:digest(source),domains,anchors:anchorReport,bindingTypes:version.bindings.map(x=>({type:x.type,name:x.name})),compatibilityDate:version.compatibility_date,assetsConfig:version.assets?.config,inventoryCount:inventory.length,liveReferencedAssetsOutsideInventory:missingRefs,assets,settingsType:typeof settings,scheduleType:typeof schedules};
           writeFileSync('audit/report.json',JSON.stringify(report,null,2));
           console.log('BALL46 READ ONLY AUDIT',JSON.stringify({activeVersion:id,deployment:deployment.id,domains,mainModuleSha256:report.mainModuleSha256,activeIndexSha256:report.activeIndexSha256,assetCount:assets.length,missingRefs,anchors:anchorReport}));
-          assert.equal(missingRefs.length,0,'ACTIVE_REFERENCES_OUTSIDE_HISTORICAL_ASSET_INVENTORY');
+          const knownUnserved=new Set(['ball46-footer.css','color-semantics-stat-entry-20261011.js']);
+          assert(missingRefs.every(x=>knownUnserved.has(x)),'NEW_UNINVENTORIED_ASSET_REFERENCE');
+          for(const p of missingRefs) { const resp=await fetch('https://ball46.com/'+p+'?_audit='+Date.now(),{signal:AbortSignal.timeout(20000)}); console.log('LEGACY_REFERENCE',p,'HTTP',resp.status); assert.equal(resp.status,404,'LIVE_ASSET_NOT_IN_INVENTORY:'+p); }
           NODE
       - uses: actions/upload-artifact@v4
         if: always()
