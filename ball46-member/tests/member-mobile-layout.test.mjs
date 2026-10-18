@@ -51,7 +51,8 @@ test('expanded match reuses original match mirror and featured flow/history',()=
 });
 test('mobile-only V3 does not edit Engine data, existing desktop navigation remains',()=>{
   assert.match(css,/@media\(max-width:767px\)/);
-  assert.match(html,/mobile-bottom-navigation/);
+  assert.doesNotMatch(html,/mobile-bottom-navigation/);
+  assert.doesNotMatch(js,/\.mobile-bottom-navigation button/);
   assert.match(js,/initMobileSectionTabs\(\)/);
   assert.match(css,/\.mobile-market-navigation\{display:contents\}/);
   assert.match(js,/function renderSummary\(\)/);
@@ -101,4 +102,41 @@ test('mobile logo strip uses the approved V3 Deep Teal colors, without changing 
   assert.match(portion,/background:linear-gradient\(180deg,#102635 0%,#0a1a27 100%\)/);
   assert.match(html,/mobileheader=20261018-v3-deepteal-v1/);
   assert.match(html,/brand-original-lettering/);
+});
+
+test('approved mobile V4 uses exact logo and KPI colors with real account and summary data',()=>{
+  const marker='/* BALL46 MEMBER — approved mobile V4 source-color lockup, profile and KPI first */';
+  const v4=css.slice(css.indexOf(marker));
+  assert.ok(v4.length>0);
+  assert.match(v4,/\.brand-logo\{[\s\S]*?color:#f2f8fb!important/);
+  assert.match(v4,/\.brand-logo>span\{color:#43e6a2!important/);
+  assert.match(v4,/\.brand-member\{[\s\S]*?color:#9eb3c3!important/);
+  assert.match(v4,/background:linear-gradient\(145deg,rgba\(22,64,83,\.48\),rgba\(16,45,65,\.39\)\)/);
+  assert.match(v4,/background:linear-gradient\(145deg,rgba\(84,74,35,\.47\),rgba\(59,48,27,\.38\)\)/);
+  assert.match(v4,/background:linear-gradient\(145deg,rgba\(25,79,67,\.48\),rgba\(16,53,49,\.38\)\)/);
+  assert.match(v4,/background:linear-gradient\(145deg,rgba\(23,73,65,\.48\),rgba\(13,53,51,\.38\)\)/);
+  assert.match(v4,/#dailySummary\{[\s\S]*?order:2;display:grid;grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
+  assert.match(v4,/@media\(max-width:349px\)\{[\s\S]*?grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+  assert.match(js,/const s=currentStats\(\)/);
+  assert.match(js,/summary\.append\(pnlBox\)/);
+  assert.match(js,/uniqueFixtures\.size\+' MATCH'/);
+});
+test('approved mobile V4 account popover is controlled and uses authenticated session values',()=>{
+  assert.match(html,/id="mobileV4ProfileToggle"/);
+  assert.match(html,/id="mobileV4ProfilePopover"[^>]*hidden/);
+  assert.match(html,/id="mobileV4Name"/);
+  assert.match(html,/id="mobileV4Status"/);
+  assert.match(html,/id="mobileV4Avatar"/);
+  assert.match(js,/function initMobileV4Profile\(\)/);
+  assert.match(js,/if\(e\.key==='Escape'/);
+  assert.match(js,/mobileName\.textContent=session\.member\.displayName/);
+  assert.match(js,/mobileStatus\.textContent=memberAccessLabel\(session\.member\)/);
+  assert.match(js,/mobileActive\.textContent=session\.member\.status/);
+  assert.match(js,/mobileProfileToggle\.disabled=false/);
+  assert.doesNotMatch(html,/>JAY</);
+  assert.doesNotMatch(html,/>OWNER · LIFETIME</);
+  assert.match(html,/mobile-v4-contextline/);
+  assert.match(html,/mobile-v4-sectionbar/);
+  assert.match(html,/mobile-v4-intro/);
+  assert.match(html,/v4approved=20261018-header-profile-kpi-v1/);
 });
