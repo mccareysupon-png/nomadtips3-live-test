@@ -79,10 +79,21 @@ async function ui(host,stage){
    await page.locator('body').waitFor({timeout:20000});
    if(width<=760){
     await page.locator('#b46m-teal-shell').waitFor({state:'visible',timeout:20000});
+    const mobileShell=page.locator('#b46m-teal-shell');
+    assert.equal(await mobileShell.locator('.b46m-pageinfo').isVisible(),false,'REDUNDANT_MATCH_CENTER_HEADER_VISIBLE');
+    assert.equal(await mobileShell.locator('.b46m-tagline').isVisible(),false,'LOGO_DESCRIPTION_VISIBLE');
+    assert.equal(await mobileShell.locator('.b46m-brand').textContent().then(x=>x.startsWith('ball46')),true,'MOBILE_BRAND_TEXT_NOT_LOWERCASE');
+    const brandStyle=await mobileShell.locator('.b46m-brand').evaluate(el=>({size:getComputedStyle(el).fontSize,weight:getComputedStyle(el).fontWeight,color:getComputedStyle(el.querySelector('strong')).color}));
+    assert.equal(brandStyle.size,'21px','COMPACT_LOGO_SIZE_MISMATCH');
+    assert.equal(brandStyle.color,'rgb(34, 197, 94)','LOGO_GREEN_MISMATCH');
+
     assert.equal(await page.locator('html').getAttribute('data-b46m-teal'),'1','MOBILE_MODE_NOT_ACTIVE');
     assert.equal(await page.locator('.left-rail').isVisible(),false,'OLD_MOBILE_HORIZONTAL_MENU_STILL_VISIBLE');
     const open=page.locator('[data-b46m-open]');
     await open.click();assert.equal(await open.getAttribute('aria-expanded'),'true','DRAWER_NOT_OPEN');
+    assert.equal(await page.locator('#b46m-drawer .b46m-drawerhead strong').textContent(),'ball46','DRAWER_LOGO_NOT_LOWERCASE');
+    assert.equal(await page.locator('#b46m-drawer .b46m-drawerhead small').isVisible(),false,'DRAWER_LOGO_SUBTITLE_VISIBLE');
+
     assert.equal(await page.locator('#b46m-drawer').getAttribute('aria-hidden'),'false','DRAWER_ARIA');
     if(width===390){let shot=join(filesDir,stage+'-mobile-menu-390.png');await page.screenshot({path:shot});screenshots.push(shot);}
     await page.locator('[data-b46m-status="live"]').click();
@@ -170,10 +181,11 @@ try{
 
  const originalPath=join(ROOT,'active-index.html'),candidatePath=join(ROOT,'candidate-index.html');
  writeFileSync(originalPath,old);
- const patched=spawnSync('python3',[join(ROOT,'apply_patch.py'),originalPath,candidatePath],{encoding:'utf8'});
+ const patched=spawnSync('python3',[join(ROOT,'brand_header_patch.py'),originalPath,candidatePath],{encoding:'utf8'});
  assert.equal(patched.status,0,'PATCH_FAILED:'+patched.stderr);
  const html=readFileSync(candidatePath,'utf8');
  assert(html.includes('b46-mobile-deep-teal-20261018')&&html.includes('b46-mobile-deep-teal-runtime-20261018'),'PATCH_MARKERS_MISSING');
+ assert(html.includes('b46m-compact-brand-hidden-heading-20261018'),'COMPACT_BRAND_PATCH_MISSING');
  const uploadedFiles=new Map([...baseFiles].map(([p,file])=>[p,{bytes:p==='index.html'?Buffer.from(html):file.bytes,type:file.type}]));
  assert.equal(uploadedFiles.size,paths.length,'NEW_ASSET_SET_INCOMPLETE');
  report.change={path:'index.html',before:hash(old),after:hash(Buffer.from(html)),unchangedAssets:paths.length-1};
