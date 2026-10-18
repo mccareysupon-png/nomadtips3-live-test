@@ -80,6 +80,11 @@ export function patchNative(source){
   if(count!==2)throw Error('RECOVERY_PENDING_GATE_COUNT_'+count);
   const allow='(sig?.status !== "PENDING" && !(isVerifiedCornerMarket(sig?.market) && sig?.status === "UNRESOLVED") && !phase2IsEarly(sig))';
   recovery=recovery.split(old).join(allow);
+  // A finished match can remain listed in HUB with missing corners:
+  // give only native UNRESOLVED Corners a direct 5USD final recheck.
+  const boardGate='if (boardIds.has(id)) continue;';
+  if(recovery.split(boardGate).length!==2)throw Error('RECOVERY_BOARD_GATE_CHANGED');
+  recovery=recovery.replace(boardGate,'if (boardIds.has(id) && !(isVerifiedCornerMarket(sig?.market) && sig?.status === "UNRESOLVED")) continue;');
   next=next.slice(0,start)+recovery+next.slice(end);
   for(const signature of [
     'var BALL46_CORNER_TICK_REQUESTS_PER_SCAN=2',
