@@ -5,6 +5,7 @@
  * No Corners required. Settlement delegated to existing Engine bridge only.
  */
 import {DurableObject} from 'cloudflare:workers';
+import {readPendingFromLedgerV2} from './pending-ledger-reader.mjs';
 import {proposeVerifiedMappings} from '../../../integrations/multisource/cross-source-fixture-mapper.mjs';
 // One key per match, to avoid Cloudflare's per-value size limit.
 // Never remove unconfirmed PENDING-match mappings during routine polling.
@@ -206,22 +207,42 @@ async function readHubFixtures(env){
  if(!data?.ok||!Array.isArray(data.fixtures))throw Error('HUB_SNAPSHOT_INVALID');
  return data.fixtures;
 }
+async function inspectPendingLedger(storage,env,at){
+ if(!flag(env?.PENDING_LEDGER_READONLY_ENABLED))return{state:'DISABLED'};
+ const k=prefix+'pending-audit';
+ const last=await storage.get(k);
+ if(last?.at&&Date.parse(at)-Date.parse(last.at)<15*60_000)
+  return{state:'THROTTLED',lastAt:last.at,pending:last.pending,eligible:last.eligible};
+ try{
+  const r=await readPendingFromLedgerV2(env.ENGINE,{maxPages:30});
+  if(!r.ok)return{state:r.state,readOnly:true};
+  const summary={at,pending:r.rows.length,eligible:r.eligible.length,
+    pages:r.pages,ledgerTotal:r.ledgerTotal,authoritative:true};
+  await storage.put(k,{...summary,
+    // Identity only: not a ledger copy and NEVER a substitute for fresh
+    // Ledger V2 before native SETTLED.
+    rows:r.rows.map(x=>({id:x.id,fixtureId:x.fixtureId,
+      status:x.status,market:x.market,period:x.period}))});
+  return{state:'LEDGER_V2_PENDING_SNAPSHOT',...summary};
+ }catch(e){return{state:'LEDGER_READ_FAILED',error:String(e?.message||e).slice(0,90)}}
+}
 async function poll(storage,env,fetcher=fetch){
  const fixtures=await readHubFixtures(env),at=new Date().toISOString();
  const captured=await captureCanonicalHub(storage,fixtures,{at});
+ const ledger=await inspectPendingLedger(storage,env,at);
  if(!flag(env?.GOALOO_POLL_ENABLED))
-  return {state:'PRIMARY_CAPTURE_ONLY',captured,goaloo:'DISABLED',engineWrites:0};
+  return {state:'PRIMARY_CAPTURE_ONLY',captured,ledger,goaloo:'DISABLED',engineWrites:0};
  if(!flag(env?.GOALOO_UTC_CERTIFIED)||!flag(env?.GOALOO_FT_CERTIFIED))
-  return {state:'PRIMARY_CAPTURE_ONLY',captured,goaloo:'CERTIFICATION_REQUIRED',engineWrites:0};
+  return {state:'PRIMARY_CAPTURE_ONLY',captured,ledger,goaloo:'CERTIFICATION_REQUIRED',engineWrites:0};
  if(!/^-?\d+$/.test(String(env?.GOALOO_OFFSET_MINUTES??'')))
-  return {state:'PRIMARY_CAPTURE_ONLY',captured,goaloo:'OFFSET_UNCERTIFIED',engineWrites:0};
+  return {state:'PRIMARY_CAPTURE_ONLY',captured,ledger,goaloo:'OFFSET_UNCERTIFIED',engineWrites:0};
  const result=await applySnapshot(storage,{
   hubFixtures:fixtures,goalooText:await fetchGoaloo(fetcher),at,
   utcCertified:true,ftCertified:true,offsetMinutes:Number(env.GOALOO_OFFSET_MINUTES),
   leagueAliases:getAliases(String(env.GOALOO_APPROVED_LEAGUES||'{}')),
   teamAliases:getAliases(String(env.GOALOO_APPROVED_TEAMS||'{}'))
  });
- return {...result,captured,verifiedResultsCount:result.verifiedResults?.length??0,
+ return {...result,captured,ledger,verifiedResultsCount:result.verifiedResults?.length??0,
   verifiedResults:undefined,engineWrites:0,forwardingEnabled:false};
 }
 export class Ball46FixtureResultRegistry extends DurableObject{
