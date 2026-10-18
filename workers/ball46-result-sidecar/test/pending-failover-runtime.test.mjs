@@ -19,8 +19,13 @@ const engine=(data)=>({fetch:async(url,options)=>{
  assert.equal(options.method,'GET');assert.match(url,/\/statistics\?cursor=/);
  return{ok:true,json:async()=>page(data())};
 }});
+async function startFresh(storage){
+ const r=await refreshPendingGoalooRoutes(storage,engine(()=>[]),{at:'2026-10-18T09:59:00Z'});
+ assert.equal(r.ok,true);assert.equal(r.intakeState,'OLD_PENDING_QUARANTINED');
+}
 test('persistent 10-min failover starts after PENDING passes ten minutes',async()=>{
  const s=storage(),e=engine(()=>[row()]);
+ await startFresh(s);
  const r=await refreshPendingGoalooRoutes(s,e,{at:'2026-10-18T10:11:00Z'});
  assert.equal(r.ok,true);assert.equal(r.eligibleIds[0],'5usd-1');
  assert.equal(s.map.get(routeStorageKey('5usd-1')).state,'GOALOO');
@@ -30,11 +35,13 @@ test('persistent 10-min failover starts after PENDING passes ten minutes',async(
 });
 test('eligible route never starts at nine minutes',async()=>{
  const s=storage(),e=engine(()=>[row()]);
+ await startFresh(s);
  const r=await refreshPendingGoalooRoutes(s,e,{at:'2026-10-18T10:09:00Z'});
  assert.deepEqual(r.eligibleIds,[]);assert.equal(s.map.get(routeStorageKey('5usd-1')).state,'PRIMARY');
 });
 test('native settlement immediately tombstones route forever',async()=>{
  const s=storage();let state='PENDING';
+ await startFresh(s);
  const e=engine(()=>[row(state)]);
  await refreshPendingGoalooRoutes(s,e,{at:'2026-10-18T10:11:00Z'});
  state='SETTLED';
@@ -48,6 +55,7 @@ test('native settlement immediately tombstones route forever',async()=>{
 });
 test('Goaloo native settlement readback marks DONE once and no retries',async()=>{
  const s=storage();let state='PENDING';
+ await startFresh(s);
  const e=engine(()=>[row(state)]);
  await refreshPendingGoalooRoutes(s,e,{at:'2026-10-18T10:11:00Z'});
  state='SETTLED';
@@ -60,9 +68,25 @@ test('Goaloo native settlement readback marks DONE once and no retries',async()=
 });
 test('a still-pending fixture is never falsely terminal',async()=>{
  const s=storage(),e=engine(()=>[row()]);
+ await startFresh(s);
  await refreshPendingGoalooRoutes(s,e,{at:'2026-10-18T10:11:00Z'});
  const r=await markGoalooRouteDone(s,e,{fixtureId:'5usd-1',signalIds:['sig-1'],
   at:'2026-10-18T10:16:00Z'});
  assert.equal(r.ok,false);
  assert.equal(s.map.get(routeStorageKey('5usd-1')).state,'GOALOO');
+});
+
+test('old Ledger-only PENDING gets quarantined, only new Signal can use Goaloo',async()=>{
+ const s=storage(),old={...row(),createdAt:'2026-10-18T08:10:00Z'};
+ const first=await refreshPendingGoalooRoutes(s,engine(()=>[old]),{at:'2026-10-18T10:00:00Z'});
+ assert.equal(first.ok,true);assert.equal(first.intakeState,'OLD_PENDING_QUARANTINED');
+ assert.deepEqual(first.eligibleIds,[]);
+ const next={...row(),id:'new-signal-2',fixtureId:'5usd-new',
+  createdAt:'2026-10-18T10:01:00Z',lockedOdds:1.95,selection:'OVER',line:1.5};
+ const later=await refreshPendingGoalooRoutes(s,engine(()=>[old,next]),{
+  at:'2026-10-18T10:12:00Z'});
+ assert.deepEqual(later.eligibleIds,['5usd-new']);
+ assert.equal(later.excludedLegacy,1);
+ assert.equal(later.newCapturedThisRun,1);
+ assert.equal(s.map.has(routeStorageKey('5usd-1')),false);
 });
