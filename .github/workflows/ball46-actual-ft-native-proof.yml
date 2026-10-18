@@ -83,19 +83,21 @@ jobs:
             const signal={id:sigId,fixtureId:id,status:'PENDING',result:null,market:'ft_over',
               selection:'OVER',line:1.5,period:'FT',odds:2.1,
               createdAt:Date.now()-3600000,minute:75,entryMinute:75,entryScore:{home:0,away:0}};
-            const seed=await req('/__sandbox_seed','POST',{signals:[signal]});
+            const corner={...signal,id:'LOCAL-SIGNAL-CORNER-ONLY',market:'ft_corner_over',line:8.5,selection:'OVER'};
+            const seed=await req('/__sandbox_seed','POST',{signals:[signal,corner]});
             if(!seed.ok)throw Error('CANNOT_SEED_LOCAL_SIGNAL_'+seed.http);
-            const body={fixture:{id,status:'finished',status_code:'FT',minute:90,goals:{home:2,away:1}}};
+            const body={fixture:{id,status:'finished',status_code:'FT',minute:90,goals:{home:2,away:1},corners:{home:null,away:null}}};
             const hdr={'x-settlement-token':'sandbox-only-token-for-rehearsal-1234'};
             const one=await req('/reconcile-final','POST',body,hdr);
             const two=await req('/reconcile-final','POST',body,hdr);
             const ledger=await req('/statistics?cursor='+encodeURIComponent('stat:v2:row:9999999999999:~')+'&paged=1');
             const row=ledger.rows?.find(x=>x.id===sigId);
+            const cornerRow=ledger.rows?.find(x=>x.id===corner.id);
             console.log('LOCAL_NATIVE_ENGINE_LEDGER_V2_PROOF',JSON.stringify({
               first:one.settled,replay:two.settled,ledgerStatus:row?.status,
               ledgerResult:row?.result,ledgerUpdated:one.ledgerUpdated,
-              nativeLedger:ledger.statisticsSource,productionMutations:0}));
-            if(one.settled!==1||two.settled!==0||row?.status!=='SETTLED'||row?.result!=='WIN')
+              nativeLedger:ledger.statisticsSource,cornerStatus:cornerRow?.status,cornerResult:cornerRow?.result,productionMutations:0}));
+            if(one.settled!==1||two.settled!==0||row?.status!=='SETTLED'||row?.result!=='WIN'||cornerRow?.status!=='PENDING')
               throw Error('FT_LEDGER_V2_NOT_YET_PROVEN');
             const oldId='LOCAL-LEDGER-ONLY-FIXTURE';
             const oldSignal={...signal,id:'LOCAL-LEDGER-ONLY-SIGNAL',fixtureId:oldId};
