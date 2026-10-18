@@ -40,10 +40,20 @@ jobs:
           grep -Fxq 'crons = ["*/5 * * * *"]' "$conf"
           grep -Fxq 'binding = "HUB"' "$conf"
           grep -Fxq 'service = "nomadtips3-5usd-hub-343"' "$conf"
-          ! grep -Eq 'name = "ENGINE"|binding = "ENGINE"|^routes? =|^workers_dev = true' "$conf"
+          grep -Fxq 'PENDING_LEDGER_READONLY_ENABLED = "1"' "$conf"
+          grep -Fxq 'binding = "ENGINE"' "$conf"
+          grep -Fxq 'service = "nomadtips3-engine-343"' "$conf"
+          ! grep -Eq '^routes? =|^workers_dev = true' "$conf"
+          ! grep -q 'ENABLE_NATIVE_FORWARD = "1"' "$conf"
+          grep -Fq "const url='https://engine.internal/statistics?cursor='" workers/ball46-result-sidecar/src/pending-ledger-reader.mjs
+          ! grep -Fq "method:'POST'" workers/ball46-result-sidecar/src/pending-ledger-reader.mjs
           test -n "${CLOUDFLARE_API_TOKEN:-}"
           test -n "${CLOUDFLARE_ACCOUNT_ID:-}"
-          echo 'SHADOW_SOURCE_GATES_PASS_NO_ENGINE_BRIDGE'
+          echo 'SHADOW_SOURCE_GATES_PASS_LEDGER_V2_GET_ONLY'
+      - name: Test native Ledger V2 read-only paged cursor
+        run: |
+          node --test workers/ball46-result-sidecar/test/*.test.mjs
+          node --test integrations/multisource/test/*.test.mjs
       - name: Run real local Durable Object regression before deployment
         working-directory: workers/ball46-result-sidecar
         shell: bash
