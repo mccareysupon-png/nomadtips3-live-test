@@ -29,11 +29,11 @@ test('default matches appear before expanded details (none open initially)',()=>
 });
 test('default mobile card has exactly four visible rows without deleting signal data',()=>{
   assert.ok(v3.length>0);
-  assert.match(v3,/grid-template-rows:21px 54px 29px/);
+  assert.match(v3,/grid-template-rows:16px 51px 24px/);
   assert.match(v3,/"detected detected detected detected"/);
   assert.match(v3,/"match match score score"/);
   assert.match(v3,/"market selection odds result"/);
-  assert.match(v3,/grid-template-rows:repeat\(2,26px\)/);
+  assert.match(v3,/grid-template-rows:repeat\(2,23px\)/);
   assert.match(js,/mobile-default-clock/);
   assert.match(js,/mobile-default-league/);
   assert.match(js,/mobile-default-state/);
@@ -57,4 +57,17 @@ test('mobile-only V3 does not edit Engine data, existing desktop navigation rema
   assert.match(js,/function renderSummary\(\)/);
   assert.match(js,/function filteredRows\(\)/);
   assert.match(js,/function renderMobileMarketPills\(\)/);
+});
+test('approved V3 surfaces override older dark-shade classes on mobile only',()=>{
+  const theme=v3.slice(v3.indexOf('Approved V3 colors take precedence'));
+  assert.ok(theme.length>0);
+  assert.match(v3,/background:linear-gradient\(145deg,#152c3a,#101f2c\)/);
+  assert.match(theme,/signal-row\.signal-shade-odd:not\(\.expanded\)/);
+  assert.match(theme,/signal-row\.signal-shade-even:not\(\.expanded\)/);
+  assert.match(theme,/background-image:linear-gradient\(145deg,#152c3a,#101f2c\)/);
+  assert.match(theme,/border-top:1px solid rgba\(255,255,255,\.07\)/);
+  assert.match(v3,/grid-template-rows:16px 51px 24px/);
+  assert.match(v3,/row-gap:5px/);
+  assert.match(css,/mobile-default-market\{display:none\}/);
+  assert.match(js,/cell\.prepend\(node\('span','mobile-default-market','CORNERS'\)\)/);
 });
