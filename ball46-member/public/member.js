@@ -551,7 +551,7 @@ function makeSignalRow(row){
     if(freshNewestSignal(row))tr.classList.add('is-fresh-signal');
   }
 
-  const time=td(undefined,'signal-time');
+  const time=node('td','signal-time');
   time.append(node('span','signal-time-record',row.signalTime));
   // Mobile line 1: fixture minute, league and match state (the signal time stays in Desktop).
   const clock=row.state==='LIVE'&&row.matchMinute!=null
