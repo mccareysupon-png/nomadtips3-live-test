@@ -36,10 +36,10 @@ jobs:
             }
             const start=source.indexOf('async reconcileExternalFinal('),pos=source.indexOf('async fetch(request) {',start);
             if(start<0||pos<start)throw Error('NOT_THE_ACTIVE_ENGINE');
-            const inject='async fetch(request) { if(request.method==="POST"&&new URL(request.url).pathname==="/__sandbox_seed"){const v=await request.json();await writeWorkingSignals(this.ctx,v.signals);const x=await this.upsertLedgerRows(v.signals);return Response.json({ok:true,inserted:x.inserted});} ';
+            const inject='async fetch(request) { if(request.method==="POST"&&new URL(request.url).pathname==="/__sandbox_seed"){const v=await request.json();await writeWorkingSignals(this.ctx,v.signals);const x=await this.upsertLedgerRows(v.signals);return Response.json({ok:true,inserted:x.inserted});} if(request.method==="POST"&&new URL(request.url).pathname==="/__sandbox_ledger_only"){const v=await request.json();const x=await this.upsertLedgerRows(v.signals);return Response.json({ok:true,inserted:x.inserted});} ';
             source=source.slice(0,pos)+source.slice(pos).replace('async fetch(request) {',inject);
             if(!source.includes('"/ledger-health"]'))throw Error('ACTIVE_ROUTING_CHANGED');
-            source=source.replace('"/ledger-health"]','"/ledger-health", "/__sandbox_seed"]');
+            source=source.replace('"/ledger-health"]','"/ledger-health", "/__sandbox_seed", "/__sandbox_ledger_only"]');
             fs.writeFileSync('index.mjs',source);
             fs.writeFileSync('wrangler.toml',[
               'name = "ball46-native-test-local"',
@@ -97,5 +97,21 @@ jobs:
               nativeLedger:ledger.statisticsSource,productionMutations:0}));
             if(one.settled!==1||two.settled!==0||row?.status!=='SETTLED'||row?.result!=='WIN')
               throw Error('FT_LEDGER_V2_NOT_YET_PROVEN');
+            const oldId='LOCAL-LEDGER-ONLY-FIXTURE';
+            const oldSignal={...signal,id:'LOCAL-LEDGER-ONLY-SIGNAL',fixtureId:oldId};
+            const oldSeed=await req('/__sandbox_ledger_only','POST',{signals:[oldSignal]});
+            if(!oldSeed.ok)throw Error('CANNOT_SEED_LEDGER_ONLY');
+            const oldFt=await req('/reconcile-final','POST',{fixture:{
+              id:oldId,status:'finished',status_code:'FT',minute:90,goals:{home:2,away:1}
+            }},hdr);
+            const oldLedger=await req('/statistics?cursor='+encodeURIComponent('stat:v2:row:9999999999999:~')+'&paged=1');
+            const oldRow=oldLedger.rows?.find(x=>x.id===oldSignal.id);
+            console.log('LEDGER_ONLY_PENDING_GAP',JSON.stringify({
+             settlementCount:oldFt.settled,ledgerStatus:oldRow?.status,
+             writerUpserted:oldFt.ledgerUpdated,
+             productionWrites:0}));
+            if(oldFt.settled!==0||oldRow?.status!=='PENDING')
+              throw Error('LEDGER_ONLY_BEHAVIOR_CHANGED');
+
           })().catch(e=>{console.error('NATIVE_FT_PROOF_FAILED',e.message);process.exit(1)});
           NODE
