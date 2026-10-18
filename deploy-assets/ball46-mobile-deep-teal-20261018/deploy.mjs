@@ -95,6 +95,11 @@ async function ui(host,stage){
     assert.equal(await page.locator('#b46gn-hero .b46gn-tabs').isVisible(),false,'DUPLICATE_HORIZONTAL_MENU_VISIBLE');
     const rows=await page.locator('[data-board-sections] [data-match-id]').count();
     const cards=await page.locator('#b46gn-cards [data-b46gn-fixture]').count();
+    const nativeKitCount=await page.locator('[data-board-sections] .teams-cell .team-kit-icon.live-row-kit').count();
+    if(nativeKitCount&&cards){
+      await page.locator('#b46gn-cards .b46gn-kit .team-kit-icon').first().waitFor({state:'attached',timeout:10000});
+      assert((await page.locator('#b46gn-cards .b46gn-kit .team-kit-icon').count())>0,'PC_JERSEYS_NOT_MIRRORED_ON_MOBILE');
+    }
     if(rows&&cards){const first=page.locator('#b46gn-cards [data-b46gn-fixture]').first();await first.click();assert.equal(await page.locator('#b46gn-detail').getAttribute('aria-hidden'),'false','GREEN_NOIR_DETAIL_NOT_OPEN');await page.locator('#b46gn-detail .b46gn-event-flow').waitFor({state:'visible',timeout:7000});await page.locator('[data-b46gn-dismiss]').click();assert.equal(await page.locator('#b46gn-detail').getAttribute('aria-hidden'),'true','GREEN_NOIR_DETAIL_NOT_CLOSED')}
     assert.equal(await page.locator('html').getAttribute('data-b46m-teal'),'1','MOBILE_MODE_NOT_ACTIVE');
     assert.equal(await page.locator('.left-rail').isVisible(),false,'OLD_MOBILE_HORIZONTAL_MENU_STILL_VISIBLE');
