@@ -6,6 +6,8 @@
  */
 import {DurableObject} from 'cloudflare:workers';
 import {readPendingFromLedgerV2} from './pending-ledger-reader.mjs';
+import {planVerifiedPendingFt} from './pending-ft-dispatch-plan.mjs';
+import {readSettledReceipt} from './ledger-settlement-readback.mjs';
 import {proposeVerifiedMappings} from '../../../integrations/multisource/cross-source-fixture-mapper.mjs';
 // One key per match, to avoid Cloudflare's per-value size limit.
 // Never remove unconfirmed PENDING-match mappings during routine polling.
@@ -227,6 +229,42 @@ async function inspectPendingLedger(storage,env,at){
   return{state:'LEDGER_V2_PENDING_SNAPSHOT',...summary};
  }catch(e){return{state:'LEDGER_READ_FAILED',error:String(e?.message||e).slice(0,90)}}
 }
+async function dispatchNativeVerifiedFt(env,verifiedResults,hubFixtures){
+ if(!flag(env?.ENABLE_NATIVE_FORWARD))return{state:'READ_ONLY_NOT_FORWARDED',attempts:0,confirmed:0};
+ if(!env.RESULT_PROXY?.fetch||String(env.RESULT_PROXY_TOKEN??'').length<32)
+  return{state:'MISSING_PRIVATE_NATIVE_PROXY',attempts:0,confirmed:0};
+ const snapshot=await readPendingFromLedgerV2(env.ENGINE,{maxPages:30});
+ if(!snapshot.ok)return{state:snapshot.state,attempts:0,confirmed:0};
+ const plan=planVerifiedPendingFt({
+  pendingRows:snapshot.rows,verifiedResults,hubFixtures,maxFixtures:3
+ });
+ if(!plan.ok)return{state:plan.reason,attempts:0,confirmed:0};
+ let attempts=0,confirmed=0;
+ const outcomes=[];
+ for(const item of plan.ready){
+  const p=item.prepared;
+  if(!p?.ok||!p.provenance.firstFtSeenAt||!p.provenance.verifiedAt)continue;
+  attempts++;
+  try{
+   const response=await env.RESULT_PROXY.fetch('https://private.internal/verified-goaloo-ft',{
+    method:'POST',headers:{
+     'content-type':'application/json',
+     'x-ball46-result-auth':String(env.RESULT_PROXY_TOKEN)
+    },body:JSON.stringify({fixture:p.fixture,provenance:p.provenance})
+   });
+   if(!response.ok){outcomes.push({fixtureId:item.fixtureId,state:'PROXY_'+response.status});continue;}
+   const ack=await response.json();
+   if(ack?.ok!==true||ack.ledgerV2Native!==true||
+      String(ack.fixtureId)!==item.fixtureId){
+    outcomes.push({fixtureId:item.fixtureId,state:'NATIVE_ACK_NOT_VERIFIED'});continue;
+   }
+   const receipt=await readSettledReceipt(env.ENGINE,item.signalIds,{maxPages:30});
+   if(receipt.ok){confirmed++;outcomes.push({fixtureId:item.fixtureId,state:'LEDGER_V2_CONFIRMED_SETTLED'});}
+   else outcomes.push({fixtureId:item.fixtureId,state:receipt.state});
+  }catch(e){outcomes.push({fixtureId:item.fixtureId,state:'RETRY',error:String(e?.message||e).slice(0,64)})}
+ }
+ return{state:'NATIVE_RESULT_BRIDGE_ATTEMPTED',attempts,confirmed,outcomes,held:plan.hold.length};
+}
 async function poll(storage,env,fetcher=fetch){
  const fixtures=await readHubFixtures(env),at=new Date().toISOString();
  const captured=await captureCanonicalHub(storage,fixtures,{at});
@@ -243,8 +281,17 @@ async function poll(storage,env,fetcher=fetch){
   leagueAliases:getAliases(String(env.GOALOO_APPROVED_LEAGUES||'{}')),
   teamAliases:getAliases(String(env.GOALOO_APPROVED_TEAMS||'{}'))
  });
- return {...result,captured,ledger,verifiedResultsCount:result.verifiedResults?.length??0,
-  verifiedResults:undefined,engineWrites:0,forwardingEnabled:false};
+ const p=await storage.get(prefix+'pending-audit');
+ const planned=planVerifiedPendingFt({pendingRows:p?.rows||[],
+  verifiedResults:result.verifiedResults||[],hubFixtures:fixtures,maxFixtures:3});
+ const native=await dispatchNativeVerifiedFt(env,result.verifiedResults||[],fixtures);
+ return {...result,captured,ledger,pendingPlan:{
+   state:planned.ok?'READY_PLAN':'INVALID',ready:planned.ready?.length||0,
+   pendingFixtureCount:planned.pendingFixtureCount||0,
+   holdCount:planned.hold?.length||0
+  },native,verifiedResultsCount:result.verifiedResults?.length??0,
+  verifiedResults:undefined,engineWrites:native.attempts||0,
+  forwardingEnabled:flag(env?.ENABLE_NATIVE_FORWARD)};
 }
 export class Ball46FixtureResultRegistry extends DurableObject{
  async fetch(request){
