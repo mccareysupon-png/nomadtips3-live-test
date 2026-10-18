@@ -1,0 +1,32 @@
+name: BALL46 read-only active Engine Ledger V2 health
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - stage/ball46-multisource-v5-20261017
+    paths:
+      - .github/workflows/ball46-active-bridge-health-readonly.yml
+permissions:
+  contents: read
+jobs:
+  read-only-runtime-health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Read engine health endpoints; never POST or trigger a scan
+        run: |
+          node - <<'NODE'
+          const root='https://nomadtips3-engine-343.mccarey-supon.workers.dev';
+          (async()=>{
+            for(const p of ['/bridge-health','/health']){
+              const r=await fetch(root+p,{method:'GET',redirect:'error',signal:AbortSignal.timeout(12000)});
+              let j=null;try{j=await r.json()}catch{}
+              console.log('ENGINE_READ_ONLY_HEALTH',JSON.stringify({path:p,http:r.status,
+                version:j?.version||null,statisticsSource:j?.statisticsSource||null,
+                statisticsLedgerVersion:j?.statisticsLedgerVersion||null,
+                workingStoreVersion:j?.workingStoreVersion||null,
+                finalReconcileVersion:j?.finalReconcileVersion||null,
+                ok:j?.ok??null}));
+            }
+          })().catch(e=>{console.error(String(e?.message||e));process.exit(1)});
+          NODE
