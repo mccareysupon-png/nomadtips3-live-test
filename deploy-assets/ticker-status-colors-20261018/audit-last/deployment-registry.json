@@ -1,0 +1,179 @@
+{
+  "status": "SUCCESS",
+  "verifiedAt": "2026-10-18T13:20:42.939Z",
+  "productionUrl": "https://ball46.com",
+  "repository": "mccareysupon-png/nomadtips3-live-test",
+  "branch": "codex/ball46-ticker-status-colors-20261018",
+  "originalSourceCommit": "bd4e4d8bfc4ffb6e5f04d0ecfeb02314b3899157",
+  "sourceCommit": "12a9593b0fa1e82fa008bb17cc953481b8b23359",
+  "activationCommit": "e29ca045089425f7fc12be6b85a5ec0888217e72",
+  "creatorRun": "39130596978",
+  "activationRun": "39130843743",
+  "workflow": ".github/workflows/ball46-ticker-status-colors-20261018.yml",
+  "worker": "ball46-production",
+  "version": "a9f38129-ded7-46c2-8d68-0de4605e3c8d",
+  "deployment": "8baee2bd-0521-49cb-969c-5ec77362a77d",
+  "trafficPercent": 100,
+  "filesModifiedInProduction": [
+    "index.html"
+  ],
+  "component": "b46-signal-ticker status text; existing renderer remains unchanged",
+  "fix": "Two Light-only CSS color declarations on exact PUSH/PENDING ticker data-status selectors. PUSH slate#475569, PENDING deep amber#b45309. All JavaScript, WIN/LOSS/DRAW, Dark theme, typography and geometry retained. Existing mobile ticker visibility preserved.",
+  "colors": {
+    "PUSH": "#475569",
+    "PENDING": "#B45309"
+  },
+  "contrast": [
+    {
+      "status": "PUSH",
+      "color": "rgb(71, 85, 105)",
+      "contrast": 7.03
+    },
+    {
+      "status": "PENDING",
+      "color": "rgb(180, 83, 9)",
+      "contrast": 4.66
+    }
+  ],
+  "htmlSha": "75caeb731d138c6633ae211e37fd6b2b18d2864028a2f0a5065bcf7d8bd6bb8b",
+  "assetSha": "fe7d3325655f9c9857755dc2df2fbe1c655a45f98407c89e388ef3d384c8b828",
+  "publicPathsVerified": 82,
+  "mainWorkerShaUnchanged": "ddfc09cc46e8963a21d9e76e146b936f5243e50860693545d9569104c2a099cc",
+  "inlineScriptBlocksUnchanged": 4,
+  "tests": 17,
+  "candidateUiCases": 7,
+  "productionUiCases": 7,
+  "productionUi": [
+    {
+      "test": "desktop-light",
+      "width": 1280,
+      "theme": "light",
+      "view": "live",
+      "tickerHeight": 32,
+      "newColors": [
+        {
+          "status": "PUSH",
+          "color": "rgb(71, 85, 105)",
+          "contrast": 7.03
+        },
+        {
+          "status": "PENDING",
+          "color": "rgb(180, 83, 9)",
+          "contrast": 4.66
+        }
+      ]
+    },
+    {
+      "test": "desktop-dark",
+      "width": 1280,
+      "theme": "dark",
+      "view": "live",
+      "tickerHeight": 32,
+      "newColors": []
+    },
+    {
+      "test": "mobile-390",
+      "width": 390,
+      "theme": "dark",
+      "view": "live",
+      "tickerHeight": 0,
+      "mobileVisibilityPreserved": true,
+      "newColors": []
+    },
+    {
+      "test": "mobile-360",
+      "width": 360,
+      "theme": "dark",
+      "view": "live",
+      "tickerHeight": 0,
+      "mobileVisibilityPreserved": true,
+      "newColors": []
+    },
+    {
+      "test": "mobile-430",
+      "width": 430,
+      "theme": "dark",
+      "view": "live",
+      "tickerHeight": 0,
+      "mobileVisibilityPreserved": true,
+      "newColors": []
+    },
+    {
+      "test": "desktop-1024-light",
+      "width": 1024,
+      "theme": "light",
+      "view": "live",
+      "tickerHeight": 32,
+      "newColors": [
+        {
+          "status": "PUSH",
+          "color": "rgb(71, 85, 105)",
+          "contrast": 7.03
+        },
+        {
+          "status": "PENDING",
+          "color": "rgb(180, 83, 9)",
+          "contrast": 4.66
+        }
+      ]
+    },
+    {
+      "test": "statistics-light",
+      "width": 1280,
+      "theme": "light",
+      "view": "statistics",
+      "tickerHeight": 32,
+      "newColors": [
+        {
+          "status": "PUSH",
+          "color": "rgb(71, 85, 105)",
+          "contrast": 7.03
+        },
+        {
+          "status": "PENDING",
+          "color": "rgb(180, 83, 9)",
+          "contrast": 4.66
+        }
+      ]
+    }
+  ],
+  "settledRecordsPreserved": 8055,
+  "configurationUnchanged": [
+    {
+      "name": "settings",
+      "unchanged": true
+    },
+    {
+      "name": "schedules",
+      "unchanged": true
+    },
+    {
+      "name": "domains",
+      "unchanged": true
+    },
+    {
+      "name": "routes",
+      "unchanged": true
+    }
+  ],
+  "allJavaScriptUnchanged": true,
+  "enginesWritten": false,
+  "memberWritten": false,
+  "previousSource1Feature": "RETAINED_UNCHANGED_SOURCE2_REMAINS_UNLABELED_WITHOUT_PROOF",
+  "consoleErrors": 0,
+  "consoleWarnings": [
+    {
+      "level": "warn",
+      "message": "B46 Daily Performance refresh skipped: STATISTICS_CHANGED_DURING_READ",
+      "timestamp": "2026-10-18T13:18:11.447Z",
+      "url": "https://ball46.com/"
+    }
+  ],
+  "rollback": {
+    "status": "READY_WITH_OWNERSHIP_AND_CONFIG_GUARDS",
+    "version": "c5094977-5f2c-4e4a-bb47-2196cfad4104",
+    "preChangeDeployment": "585f1a4a-3c46-4e92-ad74-1c812b0428ee",
+    "process": "Same workflow phase=restore; require Active remains this owned candidate and configuration matches baseline; restore exact prior version and verify old bytes/backend health."
+  },
+  "knownPreExistingIssue": "Optional /color-semantics-stat-entry-20261011.js remains baseline404/empty hash; no new missing assets."
+}
