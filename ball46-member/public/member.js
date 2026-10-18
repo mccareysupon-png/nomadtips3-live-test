@@ -1625,7 +1625,7 @@ async function boot(){
   if(!dailyRes.ok || daily?.ok!==true) throw new Error('DAILY_FEED_UNAVAILABLE');
 
   qs('#memberName').textContent=session.member.displayName;
-  qs('#memberAvatar').textContent=session.member.displayName.slice(0,1).toUpperCase();
+  // Member avatar is now the approved WebP asset; never replace the image on refresh.
   qs('#memberStatus').textContent=memberAccessLabel(session.member);
   // V4 profile uses authenticated session identity, never demo content.
   const mobileName=qs('#mobileV4Name'),mobileStatus=qs('#mobileV4Status');
