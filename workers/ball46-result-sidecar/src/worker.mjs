@@ -252,8 +252,15 @@ async function dispatchNativeVerifiedFt(storage,env,verifiedResults,hubFixtures,
     outcomes.push({fixtureId:item.fixtureId,state:'NATIVE_ACK_NOT_VERIFIED'});continue;
    }
    const receipt=await readSettledReceipt(env.ENGINE,item.signalIds,{maxPages:30});
-   if(receipt.ok){confirmed++;outcomes.push({fixtureId:item.fixtureId,state:'LEDGER_V2_CONFIRMED_SETTLED'});}
-   else outcomes.push({fixtureId:item.fixtureId,state:receipt.state});
+   if(receipt.ok){
+    confirmed++;
+    const done=await markGoalooRouteDone(storage,env.ENGINE,{
+     fixtureId:item.fixtureId,signalIds:item.signalIds,
+     at:new Date().toISOString(),maxPages:30});
+    outcomes.push({fixtureId:item.fixtureId,
+     state:done.ok?'SETTLED_DONE_NEVER_CHECK_AGAIN':
+      'SETTLED_WITH_OPEN_SIGNAL_OR_READBACK_ERROR'});
+   }else outcomes.push({fixtureId:item.fixtureId,state:receipt.state});
   }catch(e){outcomes.push({fixtureId:item.fixtureId,state:'RETRY',error:String(e?.message||e).slice(0,64)})}
  }
  return{state:'NATIVE_RESULT_BRIDGE_ATTEMPTED',attempts,confirmed,outcomes,held:plan.hold.length};
