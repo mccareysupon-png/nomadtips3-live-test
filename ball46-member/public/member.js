@@ -1505,6 +1505,10 @@ function initMobileSectionTabs(){
       (qs(target)||qs('#signalBoard'))?.scrollIntoView({behavior:'smooth',block:'start'});
     });
   });
+  // Rebuild the open card when switching mobile/desktop widths, without changing the selection.
+  window.matchMedia('(max-width:767px)').addEventListener('change',()=>{
+    if(state.payload)renderRows();
+  });
 }
 
 function render(){
