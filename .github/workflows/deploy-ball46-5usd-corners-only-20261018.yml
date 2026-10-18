@@ -1,0 +1,36 @@
+name: DEPLOY APPROVED BALL46 5USD Corners Repair 20261018
+on:
+  push:
+    branches: [repair/ball46-5usd-corners-only-20261018]
+    paths:
+      - '.github/workflows/deploy-ball46-5usd-corners-only-20261018.yml'
+  workflow_dispatch:
+permissions: {contents: read}
+concurrency:
+  group: ball46-corners-production-20261018
+  cancel-in-progress: false
+jobs:
+  deploy-corners-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Checkout isolated tested repair
+        uses: actions/checkout@v4
+      - name: Validate exact approved pre-deploy patch
+        run: |
+          node --check ops/ball46-corners/deploy-native-guarded.mjs
+          node --check ops/ball46-corners/patch-native.mjs
+          node --test ops/ball46-corners/patch-native.test.mjs
+      - name: Deploy and verify only Engine 3.43 Corners repair with guarded rollback
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: node ops/ball46-corners/deploy-native-guarded.mjs
+      - name: Preserve deployment evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-5usd-corners-production-deploy-evidence
+          path: ops/ball46-corners/deployment-evidence/
+          if-no-files-found: warn
+          retention-days: 30
