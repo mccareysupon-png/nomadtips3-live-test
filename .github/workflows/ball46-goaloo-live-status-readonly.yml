@@ -18,7 +18,7 @@ jobs:
           node - <<'NODE'
           const id=process.env.CF_ID,token=process.env.CF_TOKEN;
           (async()=>{
-            const from=Date.parse('2026-10-18T10:09:54Z'),to=Date.now();
+            const from=Date.parse('2026-10-18T12:51:43Z'),to=Date.now();
             const query={queryId:'ball46-goaloo-status-only',dry:true,
               view:'events',limit:20,timeframe:{from,to},
               parameters:{datasets:['cloudflare-workers'],
@@ -49,7 +49,7 @@ jobs:
           (async()=>{
            const r=await fetch('https://api.cloudflare.com/client/v4/graphql',{
             method:'POST',headers:{Authorization:'Bearer '+token,'content-type':'application/json'},
-            body:JSON.stringify({query,variables:{tag:id,since:'2026-10-18T10:09:54Z',
+            body:JSON.stringify({query,variables:{tag:id,since:'2026-10-18T12:51:43Z',
              name:'ball46-multisource-shadow-20261018'}})});
            const x=await r.json();
            const rows=x?.data?.viewer?.accounts?.[0]?.workersInvocationsAdaptive||[];
@@ -71,7 +71,7 @@ jobs:
           const name='ball46-multisource-shadow-20261018';
           const base='https://api.cloudflare.com/client/v4/accounts/'+id+'/workers/scripts/'+name;
           const header={Authorization:'Bearer '+token};
-          const start='2026-10-18T10:09:54Z';
+          const start='2026-10-18T12:51:43Z';
           const now=new Date().toISOString(), report={now,liveReleaseAt:start,readsOnly:true};
           async function get(u){
             const r=await fetch(u,{headers:header,signal:AbortSignal.timeout(17000)});
@@ -157,3 +157,5 @@ jobs:
             console.log('BALL46_LIVE_GOALOO_STATUS_READONLY',JSON.stringify(report));
           })().catch(e=>{console.error('BALL46_LIVE_STATUS_ERROR',e.message);process.exit(1)});
           NODE
+
+# Post-fix monitored from Cloudflare hotfix deploy 2026-10-18T12:51:43Z, read-only.
