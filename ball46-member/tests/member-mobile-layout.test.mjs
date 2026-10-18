@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import {createHash} from 'node:crypto';
 
 const html=readFileSync(new URL('../public/member.html',import.meta.url),'utf8');
 const css=readFileSync(new URL('../public/styles.css',import.meta.url),'utf8');
@@ -230,4 +231,47 @@ test('mobile V5 removes the unused data mirror strip and keeps deliberate spacin
   assert.match(html,/id="mobileV5MarketToggle"/);
   assert.match(html,/id="dailySummary"/);
   assert.match(html,/id="signalBoard"/);
+});
+
+test('approved profile images exactly match attached original WebP bytes',()=>{
+  for(const [filename,size,expectedSha] of [
+    ['member-profile-72.webp',72,'bbeec091445591a92fea07a4329338d90269c850'],
+    ['member-profile-96.webp',96,'338d062185a9ca8dae5815506c2e851161fa82f4'],
+  ]){
+    const file=readFileSync(new URL('../public/icons/premium-20261018/'+filename,import.meta.url));
+    assert.equal(file.toString('ascii',0,4),'RIFF');
+    assert.equal(file.toString('ascii',8,12),'WEBP');
+    assert.equal(file.toString('ascii',12,16),'VP8X');
+    assert.ok(file[20]&0x10,filename+' must retain the alpha channel');
+    assert.equal(file.readUIntLE(24,3)+1,size);
+    assert.equal(file.readUIntLE(27,3)+1,size);
+    const sha=createHash('sha1').update('blob '+file.length+'\0').update(file).digest('hex');
+    assert.equal(sha,expectedSha,filename+' must be the exact supplied file');
+  }
+});
+test('desktop member keeps its premium image through live session refresh',()=>{
+  assert.match(html,/id="memberAvatar"><img class="member-profile-desktop-image" src="\/icons\/premium-20261018\/member-profile-96\.webp"/);
+  assert.doesNotMatch(js,/qs\('#memberAvatar'\)\.textContent\s*=/);
+  assert.match(js,/qs\('#memberName'\)\.textContent=session\.member\.displayName/);
+  assert.match(js,/qs\('#memberStatus'\)\.textContent=memberAccessLabel\(session\.member\)/);
+  const profileCSS=css.slice(css.indexOf('/* BALL46 MEMBER — approved dual-size transparent 3D member avatar'));
+  assert.ok(profileCSS.length>0);
+  assert.match(profileCSS,/@media\(min-width:768px\)/);
+  assert.match(profileCSS,/\.member-profile-desktop-image\{\s*width:40px;\s*height:40px/);
+  assert.match(profileCSS,/background:transparent;/);
+  assert.match(profileCSS,/border:0;/);
+});
+test('mobile profile retains clickable accessible popover with a 34px transparent asset',()=>{
+  assert.match(html,/id="mobileV4ProfileToggle"/);
+  assert.match(html,/<img class="member-profile-mobile-image" src="\/icons\/premium-20261018\/member-profile-72\.webp"/);
+  assert.doesNotMatch(html,/<svg viewBox="0 0 24 24" width="18"/);
+  assert.match(html,/id="mobileV4ProfilePopover"[^>]*hidden/);
+  assert.match(js,/toggle\.addEventListener\('click'/);
+  assert.match(js,/if\(e\.key==='Escape'/);
+  assert.match(js,/if\(!popover\.hidden&&!e\.target\.closest\('\.mobile-v4-profile-anchor'\)\)/);
+  const profileCSS=css.slice(css.indexOf('/* BALL46 MEMBER — approved dual-size transparent 3D member avatar'));
+  assert.match(profileCSS,/@media\(max-width:767px\)/);
+  assert.match(profileCSS,/\.member-profile-mobile-image\{\s*width:34px;\s*height:34px/);
+  assert.match(profileCSS,/background:transparent!important;/);
+  assert.match(html,/profileicon3d=20261018-original-webp-v1/);
 });
