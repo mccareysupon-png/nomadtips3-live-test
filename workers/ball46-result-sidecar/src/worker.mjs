@@ -233,8 +233,10 @@ export async function dispatchNativeVerifiedFt(storage,env,verifiedResults,hubFi
  const snapshot=await readPendingFromLedgerV2(env.ENGINE,{maxPages:30});
  if(!snapshot.ok)return{state:snapshot.state,attempts:0,confirmed:0};
  const eligibleIds=new Set(route.eligibleIds||[]);
+ const trackedIds=new Set((route.selectedRows||[]).map(x=>String(x.id)));
  const plan=planVerifiedPendingFt({
-  pendingRows:snapshot.rows.filter(x=>eligibleIds.has(String(x.fixtureId))),
+  pendingRows:snapshot.rows.filter(x=>
+   eligibleIds.has(String(x.fixtureId))&&trackedIds.has(String(x.id))),
   verifiedResults,hubFixtures,maxFixtures:1
  });
  if(!plan.ok)return{state:plan.reason,attempts:0,confirmed:0};
