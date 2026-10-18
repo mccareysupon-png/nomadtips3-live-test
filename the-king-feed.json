@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-10-17T22:25:51Z",
+  "updated_at": "2026-10-18T01:11:05Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -9524,8 +9524,8 @@
       "edge": 33.9,
       "ev": 0.5893,
       "required_confidence": 0.56,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "0-2",
       "locked_at": "2026-10-17T01:51:30Z",
       "source_url": "https://www.goaloo.com/football/usa-women-utah-royals-w-vs-kansas-city-nwsl-w/h2h-2957075",
       "summary_url": "https://www.goaloo.com/football/usa-women-utah-royals-w-vs-kansas-city-nwsl-w/summary-2957075",
@@ -9585,7 +9585,12 @@
         "away_recent": 9,
         "h2h_n": 5,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-18T01:11:05Z"
     },
     {
       "id": "9e82ff580867e4a5-AH-AWAY-0p75",
@@ -20364,8 +20369,8 @@
       "edge": 20.9,
       "ev": 0.3836,
       "required_confidence": 0.56,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "0-2",
       "locked_at": "2026-10-17T01:51:27Z",
       "source_url": "https://www.goaloo.com/football/brazil-serie-a-atletico-paranaense-vs-palmeiras/h2h-2910927",
       "summary_url": "https://www.goaloo.com/football/brazil-serie-a-atletico-paranaense-vs-palmeiras/summary-2910927",
@@ -20425,7 +20430,12 @@
         "away_recent": 10,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-18T01:11:05Z"
     },
     {
       "id": "23d9a1cf7b478c71-AH-HOME-0p25",
@@ -22909,8 +22919,8 @@
       "edge": 13.4,
       "ev": 0.1661,
       "required_confidence": 0.6,
-      "result": "PENDING",
-      "ft": null,
+      "result": "WIN",
+      "ft": "2-2",
       "locked_at": "2026-10-17T01:51:28Z",
       "source_url": "https://www.goaloo.com/football/primera-division-de-venezuela-carabobo-fc-vs-deportivo-tachira/h2h-3091661",
       "summary_url": "https://www.goaloo.com/football/primera-division-de-venezuela-carabobo-fc-vs-deportivo-tachira/summary-3091661",
@@ -22970,7 +22980,12 @@
         "away_recent": 10,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": 1.0,
+      "profit": 77.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-18T01:11:05Z"
     },
     {
       "id": "730798d39ff067a6-AH-AWAY-0p25",
@@ -299053,6 +299068,276 @@
       "settlement_source": "goaloo-bf_us-direct-index",
       "goaloo_terminal_state": -1,
       "settled_at": "2026-10-17T22:25:51Z"
+    },
+    {
+      "id": "317e8eef185cc134-AH-HOME-0p25",
+      "goaloo_id": "2957075",
+      "date": "2026-10-17",
+      "kickoff": "2026-10-17 22:30:00",
+      "league": "USA Women",
+      "home": "Utah Royals (W)",
+      "away": "Kansas City NWSL (W)",
+      "market": "AH",
+      "selection": "HOME",
+      "line": 0.25,
+      "pick": "Utah Royals (W) +0.25",
+      "side": "home",
+      "odds": 2.02,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.7873,
+      "model_probability": 0.7873,
+      "market_fair_probability": 0.4481,
+      "market_edge": 0.3392,
+      "edge": 33.9,
+      "ev": 0.5893,
+      "required_confidence": 0.56,
+      "result": "LOSS",
+      "ft": "0-2",
+      "locked_at": "2026-10-17T01:51:30Z",
+      "source_url": "https://www.goaloo.com/football/usa-women-utah-royals-w-vs-kansas-city-nwsl-w/h2h-2957075",
+      "summary_url": "https://www.goaloo.com/football/usa-women-utah-royals-w-vs-kansas-city-nwsl-w/summary-2957075",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 2.224,
+        "lambda_away": 1.051,
+        "home_win": 0.6585,
+        "draw": 0.208,
+        "away_win": 0.1335,
+        "h2h_adjustment": -0.015,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.5317,
+          "gd_edge": 0.7015,
+          "clean_sheet_edge": 0.4195,
+          "failed_to_score_edge": 0.3854,
+          "bounded_adjustment": 0.0422,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 9,
+        "away_recent": 9,
+        "h2h_n": 5,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-18T01:11:05Z"
+    },
+    {
+      "id": "cfa1ee2cff5d091b-AH-HOME-m0p0",
+      "goaloo_id": "2910927",
+      "date": "2026-10-17",
+      "kickoff": "2026-10-17 22:30:00",
+      "league": "Brazil Serie A",
+      "home": "Atletico Paranaense",
+      "away": "Palmeiras",
+      "market": "AH",
+      "selection": "HOME",
+      "line": -0.0,
+      "pick": "Atletico Paranaense -0",
+      "side": "home",
+      "odds": 2.09,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.6677,
+      "model_probability": 0.6677,
+      "market_fair_probability": 0.4585,
+      "market_edge": 0.2091,
+      "edge": 20.9,
+      "ev": 0.3836,
+      "required_confidence": 0.56,
+      "result": "LOSS",
+      "ft": "0-2",
+      "locked_at": "2026-10-17T01:51:27Z",
+      "source_url": "https://www.goaloo.com/football/brazil-serie-a-atletico-paranaense-vs-palmeiras/h2h-2910927",
+      "summary_url": "https://www.goaloo.com/football/brazil-serie-a-atletico-paranaense-vs-palmeiras/summary-2910927",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 1.668,
+        "lambda_away": 0.935,
+        "home_win": 0.5537,
+        "draw": 0.2617,
+        "away_win": 0.1845,
+        "h2h_adjustment": -0.0075,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.2959,
+          "gd_edge": 0.4587,
+          "clean_sheet_edge": 0.1366,
+          "failed_to_score_edge": 0.2439,
+          "bounded_adjustment": 0.0245,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-18T01:11:05Z"
+    },
+    {
+      "id": "b0e3bbf7909fb3c0-OU-OVER-2p25",
+      "goaloo_id": "3091661",
+      "date": "2026-10-17",
+      "kickoff": "2026-10-17 22:30:00",
+      "league": "Primera Division de Venezuela",
+      "home": "Carabobo FC",
+      "away": "Deportivo Tachira",
+      "market": "OU",
+      "selection": "OVER",
+      "line": 2.25,
+      "pick": "Over 2.25",
+      "side": null,
+      "odds": 1.77,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.6515,
+      "model_probability": 0.6515,
+      "market_fair_probability": 0.5177,
+      "market_edge": 0.1337,
+      "edge": 13.4,
+      "ev": 0.1661,
+      "required_confidence": 0.6,
+      "result": "WIN",
+      "ft": "2-2",
+      "locked_at": "2026-10-17T01:51:28Z",
+      "source_url": "https://www.goaloo.com/football/primera-division-de-venezuela-carabobo-fc-vs-deportivo-tachira/h2h-3091661",
+      "summary_url": "https://www.goaloo.com/football/primera-division-de-venezuela-carabobo-fc-vs-deportivo-tachira/summary-3091661",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 1.959,
+        "lambda_away": 1.125,
+        "home_win": 0.579,
+        "draw": 0.2343,
+        "away_win": 0.1867,
+        "h2h_adjustment": -0.005,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.2862,
+          "gd_edge": 0.5223,
+          "clean_sheet_edge": 0.1756,
+          "failed_to_score_edge": 0.0927,
+          "bounded_adjustment": 0.0251,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 8,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": 1.0,
+      "profit": 77.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-18T01:11:05Z"
     }
   ],
   "note": "Automated Full-Time Winner First feed. Supplemental markets remain unpublished.",
