@@ -41,6 +41,29 @@ jobs:
             }));
           })().catch(e=>{console.error('CF_WORKER_ERRORS_UNAVAILABLE',e.message)});
           NODE
+      - name: Break down Cloudflare scheduled invocation status without writes
+        run: |
+          node - <<'NODE'
+          const id=process.env.CF_ID,token=process.env.CF_TOKEN;
+          const query='query Q($tag:string,$since:string,$name:string){viewer{accounts(filter:{accountTag:$tag}){workersInvocationsAdaptive(limit:50,filter:{scriptName:$name,datetime_geq:$since}){dimensions{status datetime}sum{requests errors subrequests}}}}}';
+          (async()=>{
+           const r=await fetch('https://api.cloudflare.com/client/v4/graphql',{
+            method:'POST',headers:{Authorization:'Bearer '+token,'content-type':'application/json'},
+            body:JSON.stringify({query,variables:{tag:id,since:'2026-10-18T10:09:54Z',
+             name:'ball46-multisource-shadow-20261018'}})});
+           const x=await r.json();
+           const rows=x?.data?.viewer?.accounts?.[0]?.workersInvocationsAdaptive||[];
+           const groups={};let total=0,errors=0,subrequests=0;
+           for(const p of rows){
+            const key=p.dimensions?.status||'UNKNOWN';
+            groups[key]=(groups[key]||0)+p.sum.requests;total+=p.sum.requests;
+            errors+=p.sum.errors;subrequests+=p.sum.subrequests||0;
+           }
+           console.log('BALL46_WORKER_CRON_OUTCOMES_READONLY',JSON.stringify({
+            totalSampled:total,errors,subrequests,byRuntimeStatus:groups,
+            graphqlErrors:x.errors?.map(e=>e.message)||[]}));
+          })().catch(e=>console.error('WORKER_STATUS_UNAVAILABLE',e.message));
+          NODE
       - name: Inspect deployed settings, cron, ledger and Worker invocation counts without writes
         run: |
           node - <<'NODE'
