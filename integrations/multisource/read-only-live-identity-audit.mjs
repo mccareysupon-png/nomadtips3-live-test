@@ -48,6 +48,9 @@ try{
   const delta=Math.round((ts-ref)/60000);
   if(Math.abs(delta)>840)continue;
   report.unambiguousHomeAway++;
+  if(!report.leaguePairCounts)report.leaguePairCounts={};
+  const leaguePair=JSON.stringify([String(a.league),sourceName(f.league)]);
+  report.leaguePairCounts[leaguePair]=(report.leaguePairCounts[leaguePair]||0)+1;
   report.offsetHistogram[delta]=(report.offsetHistogram[delta]||0)+1;
   const l1=normalizedName(a.league),l2=normalizedName(f.league);
   if(l1!==l2)report.leagueNameDisagreements++;
@@ -60,11 +63,16 @@ try{
     approved:false
   });
  }
+ report.topLeaguePairs=Object.entries(report.leaguePairCounts||{}).map(([k,n])=>({
+  pair:JSON.parse(k),matches:n
+ })).sort((a,b)=>b.matches-a.matches).slice(0,20);
+ delete report.leaguePairCounts;
  report.ok=true;
 }catch(e){report.ok=false;report.error=String(e?.message||e).slice(0,200)}
 fs.writeFileSync('ball46-fixture-shadow-evidence.json',JSON.stringify(report,null,2)+'\n');
 console.log(JSON.stringify({mode:report.mode,ok:report.ok,
  goaloo:report.goalooFixtures,hub:report.hubFixtures,
  provisionalPairs:report.unambiguousHomeAway,offsets:report.offsetHistogram,
- leagueDifferences:report.leagueNameDisagreements,mappedToProduction:0,
+ leagueDifferences:report.leagueNameDisagreements,
+ topLeaguePairs:report.topLeaguePairs?.slice(0,12),mappedToProduction:0,
  error:report.error}));
