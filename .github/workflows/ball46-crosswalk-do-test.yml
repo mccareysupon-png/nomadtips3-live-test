@@ -1,0 +1,40 @@
+name: BALL46 multi-source sidecar persistent crosswalk real DO
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - stage/ball46-multisource-v5-20261017
+    paths:
+      - workers/ball46-result-sidecar/**
+      - integrations/multisource/cross-source-fixture-mapper.mjs
+      - .github/workflows/ball46-crosswalk-do-test.yml
+permissions:
+  contents: read
+jobs:
+  workerd-local:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Execute crosswalk in real Cloudflare workerd Durable Object
+        working-directory: workers/ball46-result-sidecar
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4 dev --local --config wrangler.local-test.toml --ip 127.0.0.1 --port 8791 --persist-to /tmp/b46-result-crosswalk-do > /tmp/b46-workerd.txt 2>&1 &
+          pid=$!
+          trap 'kill "$pid" 2>/dev/null || true' EXIT
+          ready=0
+          for i in $(seq 1 50); do
+            if curl --silent --max-time 2 http://127.0.0.1:8791/ -o /dev/null; then ready=1; break; fi
+            sleep 2
+          done
+          if [ "$ready" -ne 1 ]; then cat /tmp/b46-workerd.txt; exit 1; fi
+          if ! curl --fail --silent --show-error --max-time 20 http://127.0.0.1:8791/selftest -o /tmp/b46-result-test.json; then
+            cat /tmp/b46-workerd.txt
+            exit 1
+          fi
+          node -e 'const r=require("/tmp/b46-result-test.json");if(!r.ok||r.early.mapped!==1||r.first.ready!==0||r.second.ready!==1||r.nativeEngineCalls!==0)process.exit(1);console.log("WORKERD_CROSSWALK_SURVIVES_HUB_EVICTION",JSON.stringify(r))'
