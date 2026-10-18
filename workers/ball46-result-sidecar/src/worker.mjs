@@ -78,7 +78,8 @@ const reverseId=(source,id)=>source+':'+id;
 const log=(s,at,event,details={})=>{s.events.push({at,event,...details});s.events=s.events.slice(-150)};
 export async function applySnapshot(storage,{
  hubFixtures=[],goalooText,at,utcCertified=false,ftCertified=false,
- offsetMinutes=null,leagueAliases={},teamAliases={},countryStrict=false
+ offsetMinutes=null,leagueAliases={},teamAliases={},countryStrict=false,
+ goalooFtEligibleIds=null
 }={}){
  if(!isUtc(at))throw Error('COLLECTOR_CLOCK_UNVERIFIED');
  const parsed=parseGoalooFixtures(goalooText,{certified:utcCertified,offsetMinutes});
@@ -128,6 +129,7 @@ export async function applySnapshot(storage,{
    const fid=await tx.get(sourceKey('goaloo',p.sourceFixtureId));
    const f=fixtures.get(fid);
    if(!f||f.sourceIds.goaloo!==p.sourceFixtureId)continue;
+   if(goalooFtEligibleIds instanceof Set&&!goalooFtEligibleIds.has(fid))continue;
    if(Date.parse(at)<Date.parse(f.kickoffUtc)+90*60_000)continue;
    const ekey=evidenceKey('goaloo',fid),prior=await tx.get(ekey)||[];
    const last=prior.at(-1),same=last?.home===p.score.home&&last?.away===p.score.away;
