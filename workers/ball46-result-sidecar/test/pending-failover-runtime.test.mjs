@@ -4,8 +4,10 @@ import {refreshPendingGoalooRoutes,markGoalooRouteDone,routeStorageKey}
  from '../src/pending-failover-runtime.mjs';
 function storage(){
  const map=new Map();
- return{map,get:async k=>map.get(k),put:async(k,v)=>map.set(k,v),
+ const store={map,get:async k=>map.get(k),put:async(k,v)=>map.set(k,v),
   list:async({prefix})=>new Map([...map].filter(([k])=>k.startsWith(prefix)))};
+ store.transaction=async cb=>cb(store);
+ return store;
 }
 const row=(status='PENDING',createdAt='2026-10-18T10:00:00Z')=>
  ({id:'sig-1',fixtureId:'5usd-1',market:'FT_OVER',period:'FT',status,
