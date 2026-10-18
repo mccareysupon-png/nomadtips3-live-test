@@ -108,8 +108,8 @@ test('approved mobile V4 uses exact logo and KPI colors with real account and su
   const marker='/* BALL46 MEMBER — approved mobile V4 source-color lockup, profile and KPI first */';
   const v4=css.slice(css.indexOf(marker));
   assert.ok(v4.length>0);
-  assert.match(v4,/\.brand-logo\{[\s\S]*?color:#f2f8fb!important/);
-  assert.match(v4,/\.brand-logo>span\{\s*color:#43e6a2!important/);
+  assert.match(v4,/\.brand-logo\{[\s\S]*?color:#43E6A2!important/);
+  assert.match(v4,/\.brand-logo>span\{\s*color:#FFA451!important/);
   assert.match(v4,/\.brand-member\{[\s\S]*?color:#9eb3c3!important/);
   assert.match(v4,/background:linear-gradient\(145deg,rgba\(22,64,83,\.48\),rgba\(16,45,65,\.39\)\)/);
   assert.match(v4,/background:linear-gradient\(145deg,rgba\(84,74,35,\.47\),rgba\(59,48,27,\.38\)\)/);
@@ -149,6 +149,34 @@ test('mobile brand logo is exactly twenty percent larger and boldly rounded with
   assert.match(v4,/font-family:"Arial Rounded MT Bold",Manrope,Inter,system-ui,sans-serif/);
   assert.match(v4,/font-size:27\.6px!important;font-weight:900/);
   assert.match(v4,/-webkit-text-stroke:\.4px currentColor/);
-  assert.match(v4,/-webkit-text-stroke:\.4px #43e6a2/);
+  assert.match(v4,/-webkit-text-stroke:\.4px #FFA451/);
   assert.match(html,/logofont=20261018-heavy120-v1/);
+});
+
+test('unified mobile lockup is green and orange on every Member site page',()=>{
+  const cross=css.slice(css.indexOf('/* BALL46 MEMBER — single mobile wordmark across'));
+  assert.ok(cross.length>0);
+  assert.match(cross,/@media\(max-width:767px\)/);
+  assert.match(cross,/\.topbar a\.brand \.brand-logo\{/);
+  assert.match(cross,/font-size:27\.6px!important/);
+  assert.match(cross,/color:#43E6A2!important/);
+  assert.match(cross,/\.topbar a\.brand \.brand-logo>span\{/);
+  assert.match(cross,/color:#FFA451!important/);
+  assert.match(cross,/\.topbar a\.brand \.brand-member\{/);
+  for(const page of ['member.html','pricing.html','login.html','success.html']){
+    const source=readFileSync(new URL('../public/'+page,import.meta.url),'utf8');
+    assert.match(source,/class="brand(?: brand-original-lettering)?"/);
+    assert.match(source,/<span class="brand-logo">ball<span>46<\/span><\/span>/);
+    assert.match(source,/allmobilelogo=20261018-green-orange-unboxed-v1/);
+  }
+});
+test('mobile profile has only the clickable icon until member details are requested',()=>{
+  const v4=css.slice(css.indexOf('/* BALL46 MEMBER — approved mobile V4'));
+  assert.match(v4,/\.topbar-account-slot>\.member-chip\{display:none!important\}/);
+  assert.match(v4,/\.mobile-v4-profile-icon\{[\s\S]*?padding:0;border:0;border-radius:0;/);
+  assert.match(v4,/background:transparent;color:#d3efe7/);
+  assert.match(v4,/box-shadow:none;cursor:pointer/);
+  assert.match(v4,/\.mobile-v4-online-dot\{display:none!important\}/);
+  assert.match(html,/id="mobileV4ProfilePopover"[^>]*hidden/);
+  assert.match(js,/toggle\.addEventListener\('click'/);
 });
