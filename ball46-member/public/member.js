@@ -1251,6 +1251,8 @@ function featuredHorizontal(detail,selected){
   const allSignals=state.payload.signals.filter(item=>String(item.fixtureId)===String(selected.fixtureId));
   if(!allSignals.some(item=>item.id===selected.id))allSignals.push(selected);
   allSignals.sort((a,b)=>(Number(a.signalMinute)||0)-(Number(b.signalMinute)||0)||(Number(a.createdAt)||0)-(Number(b.createdAt)||0));
+  // Mobile history reads newest first; Desktop retains its established ordering.
+  if(mobileMemberEnabled())allSignals.reverse();
   const history=node('section','featured-entry-history');
   history.setAttribute('aria-label','Signal entry history');
   const historyHead=node('div','featured-entry-history-head');
@@ -1521,6 +1523,15 @@ function initMobileSectionTabs(){
       for(const b of document.querySelectorAll('.mobile-match-section-tabs button'))
         b.setAttribute('aria-current',String(b===button));
       qs(targets[button.dataset.mobileSection])?.scrollIntoView({behavior:'smooth',block:'start'});
+    });
+  });
+  document.querySelectorAll('.mobile-bottom-navigation button').forEach(button=>{
+    button.addEventListener('click',()=>{
+      const action=button.dataset.mobileAction;
+      if(action==='markets'){qs('#marketMenuToggle')?.click();return;}
+      const target=action==='match'?'#mobileMatchSpotlight .stadium-hero':
+        action==='flow'?'#mobileMatchSpotlight .member-flow':'#signalBoard';
+      qs(target)?.scrollIntoView({behavior:'smooth',block:'start'});
     });
   });
   window.matchMedia('(max-width:767px)').addEventListener('change',()=>renderMobileSpotlight());
