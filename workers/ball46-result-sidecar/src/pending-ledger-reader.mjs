@@ -39,7 +39,10 @@ export async function readPendingFromLedgerV2(engine,{maxPages=30}={}){
    seenIds.add(String(row.id));
    all.push({id:String(row.id),fixtureId:String(row.fixtureId??''),
      status:'PENDING',market:String(row.market??''),
-     period:String(row.period??''),createdAt:row.createdAt??null});
+     period:String(row.period??''),createdAt:row.createdAt??null,
+     selection:row.selection??null,line:row.line??null,
+     lockedOdds:row.lockedOdds??null,entryOdds:row.entryOdds??null,
+     odds:row.odds??null,entryMinute:row.entryMinute??null});
   }
   if(!data.nextCursor)return{ok:true,state:'LEDGER_V2_READ_ONLY_COMPLETE',
    authority:'LEDGER_V2_ONLY',rows:all,eligible:all.filter(pendingMarketEligible),
