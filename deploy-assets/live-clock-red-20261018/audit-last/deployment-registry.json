@@ -1,0 +1,228 @@
+{
+  "status": "SUCCESS",
+  "verifiedAt": "2026-10-18T06:37:46.545Z",
+  "productionUrl": "https://ball46.com",
+  "repository": "mccareysupon-png/nomadtips3-live-test",
+  "branch": "codex/ball46-live-clock-red-20261018",
+  "originalSourceCommit": "8962d82eb1e21274455686848e62609c82393eac",
+  "sourceCommit": "304e7b93c9663b35126286637dcc9abcd46a5053",
+  "activationCommit": "cb1c5696ccead7f4e4e4329febdf6e87bc2c700b",
+  "creatorRun": "39104173274",
+  "activationRun": "39104533604",
+  "workflow": ".github/workflows/ball46-live-clock-red-20261018.yml",
+  "worker": "ball46-production",
+  "version": "df6833ed-7214-472c-b532-c0e874b6a63b",
+  "deployment": "a4e8c5b6-188e-43d6-8e25-0295d0063440",
+  "trafficPercent": 100,
+  "filesModifiedInProduction": [
+    "dashboard-v2-stage3-featured-facts-20261013a.js",
+    "index.html"
+  ],
+  "functionModified": "rowHtml and rowClockHtml",
+  "fix": "Wrap the existing live clock label without changing its text or minute calculation. Use existing red token on live clock only; animate only apostrophe opacity at 1s. Non-live clocks, scores, teams, layout, data/API and previous fixes retained. Independent style outside Worker-managed block; script cache key updated.",
+  "htmlSha": "526917ffc8f84b7428c287d81bf87b143c402fd1eec94f4c2e75c6d3833a43e1",
+  "assetSha": "6c1e9862971850a973110736d69bff653035531e7e4cb45aac43958aa696dd15",
+  "publicPathsVerified": 82,
+  "inlineScriptBlocksUnchanged": 4,
+  "clockWidthMeasurementTolerancePx": 0.1,
+  "tests": 16,
+  "candidateUiCases": 8,
+  "productionUiCases": 8,
+  "blinkingMinuteMarksVerified": 55,
+  "productionUi": [
+    {
+      "test": "desktop-light",
+      "width": 1280,
+      "theme": "light",
+      "view": "live",
+      "liveClocks": 10,
+      "blinkingMarks": 9,
+      "examples": [
+        {
+          "text": "LIVE · 76'",
+          "color": "rgb(201, 77, 77)",
+          "markOpacity": "0"
+        },
+        {
+          "text": "LIVE · 72'",
+          "color": "rgb(201, 77, 77)",
+          "markOpacity": "1"
+        }
+      ]
+    },
+    {
+      "test": "desktop-dark",
+      "width": 1280,
+      "theme": "dark",
+      "view": "live",
+      "liveClocks": 10,
+      "blinkingMarks": 9,
+      "examples": [
+        {
+          "text": "LIVE · 77'",
+          "color": "rgb(239, 119, 119)",
+          "markOpacity": "1"
+        },
+        {
+          "text": "LIVE · 73'",
+          "color": "rgb(239, 119, 119)",
+          "markOpacity": "1"
+        }
+      ]
+    },
+    {
+      "test": "mobile-390",
+      "width": 390,
+      "theme": "dark",
+      "view": "live",
+      "liveClocks": 10,
+      "blinkingMarks": 9,
+      "examples": [
+        {
+          "text": "LIVE · 77'",
+          "color": "rgb(239, 119, 119)",
+          "markOpacity": "1"
+        },
+        {
+          "text": "LIVE · 73'",
+          "color": "rgb(239, 119, 119)",
+          "markOpacity": "1"
+        }
+      ]
+    },
+    {
+      "test": "mobile-360",
+      "width": 360,
+      "theme": "dark",
+      "view": "live",
+      "liveClocks": 10,
+      "blinkingMarks": 9,
+      "examples": [
+        {
+          "text": "LIVE · 77'",
+          "color": "rgb(239, 119, 119)",
+          "markOpacity": "1"
+        },
+        {
+          "text": "LIVE · 73'",
+          "color": "rgb(239, 119, 119)",
+          "markOpacity": "1"
+        }
+      ]
+    },
+    {
+      "test": "mobile-430",
+      "width": 430,
+      "theme": "dark",
+      "view": "live",
+      "liveClocks": 10,
+      "blinkingMarks": 9,
+      "examples": [
+        {
+          "text": "LIVE · 77'",
+          "color": "rgb(239, 119, 119)",
+          "markOpacity": "1"
+        },
+        {
+          "text": "LIVE · 73'",
+          "color": "rgb(239, 119, 119)",
+          "markOpacity": "1"
+        }
+      ]
+    },
+    {
+      "test": "mobile-signal",
+      "width": 430,
+      "theme": "dark",
+      "view": "signal",
+      "liveClocks": 10,
+      "blinkingMarks": 10,
+      "examples": [
+        {
+          "text": "LIVE · 73'",
+          "color": "rgb(239, 119, 119)",
+          "markOpacity": "1"
+        },
+        {
+          "text": "LIVE · 73'",
+          "color": "rgb(239, 119, 119)",
+          "markOpacity": "1"
+        }
+      ]
+    },
+    {
+      "test": "finished",
+      "width": 1280,
+      "theme": "light",
+      "view": "live",
+      "liveClocks": 0,
+      "blinkingMarks": 0,
+      "examples": [
+        {
+          "text": "FT",
+          "color": "rgb(113, 128, 120)"
+        },
+        {
+          "text": "FT",
+          "color": "rgb(113, 128, 120)"
+        }
+      ]
+    },
+    {
+      "test": "scheduled",
+      "width": 1280,
+      "theme": "light",
+      "view": "live",
+      "liveClocks": 0,
+      "blinkingMarks": 0,
+      "examples": [
+        {
+          "text": "20:00",
+          "color": "rgb(113, 128, 120)"
+        },
+        {
+          "text": "20:00",
+          "color": "rgb(113, 128, 120)"
+        }
+      ]
+    }
+  ],
+  "settledRecordsPreserved": 8004,
+  "configurationUnchanged": [
+    {
+      "name": "settings",
+      "unchanged": true
+    },
+    {
+      "name": "schedules",
+      "unchanged": true
+    },
+    {
+      "name": "domains",
+      "unchanged": true
+    },
+    {
+      "name": "routes",
+      "unchanged": true
+    }
+  ],
+  "currentCronPreserved": {
+    "schedules": []
+  },
+  "consoleErrors": 0,
+  "consoleWarnings": [
+    {
+      "level": "warn",
+      "message": "B46 Daily Performance refresh skipped: STATISTICS_CHANGED_DURING_READ",
+      "timestamp": "2026-10-18T06:36:01.544Z",
+      "url": "https://ball46.com/?status=live"
+    }
+  ],
+  "rollback": {
+    "status": "READY_WITH_OWNERSHIP_AND_CONFIG_GUARDS",
+    "version": "f9a9e186-7581-4de3-97c8-376fea69aa19",
+    "preChangeDeployment": "96a99563-55a2-4b96-a37e-568bd3dcf785",
+    "process": "Same workflow phase=restore; require Active remains this owned candidate and configuration matches baseline; verify old bytes and backend health."
+  },
+  "knownPreExistingIssue": "Optional /color-semantics-stat-entry-20261011.js remains baseline404/empty hash; no new missing assets."
+}
