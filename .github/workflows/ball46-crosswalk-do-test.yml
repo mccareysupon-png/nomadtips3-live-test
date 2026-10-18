@@ -38,3 +38,5 @@ jobs:
             exit 1
           fi
           node -e 'const r=require("/tmp/b46-result-test.json");if(!r.ok||r.early.mapped!==1||r.first.ready!==0||r.second.ready!==1||r.nativeEngineCalls!==0)process.exit(1);console.log("WORKERD_CROSSWALK_SURVIVES_HUB_EVICTION",JSON.stringify(r))'
+          curl --fail --silent --show-error --max-time 50 http://127.0.0.1:8791/stress -o /tmp/b46-stress.json
+          node -e 'const x=require("/tmp/b46-stress.json");if(!x.ok||x.inserted!==1443||x.matched!==752)process.exit(1);console.log("WORKERD_1443x752_SCALE_PASS",JSON.stringify(x))'
