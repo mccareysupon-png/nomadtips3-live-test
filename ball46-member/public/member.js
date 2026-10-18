@@ -1527,26 +1527,43 @@ function attachMobileExpandedControls(host,matchFacts){
   }
 }
 function initMobileSectionTabs(){
-  document.querySelectorAll('.mobile-bottom-navigation button').forEach(button=>{
-    button.addEventListener('click',()=>{
-      if(!mobileMemberEnabled())return;
-      const action=button.dataset.mobileAction;
-      if(action==='markets'){qs('#marketMenuToggle')?.click();return;}
-      const target=action==='flow'?
-        '#signalBoard .signal-detail-row .member-flow':
-        action==='match'?'#signalBoard .signal-row.expanded':'#signalBoard';
-      (qs(target)||qs('#signalBoard'))?.scrollIntoView({behavior:'smooth',block:'start'});
-    });
-  });
-  // Rebuild the open card when switching mobile/desktop widths, without changing the selection.
+  // Only the viewport transition remains; V4 removed the unused bottom navigation.
   window.matchMedia('(max-width:767px)').addEventListener('change',()=>{
     if(state.payload)renderRows();
+  });
+}
+function initMobileV4Profile(){
+  const toggle=qs('#mobileV4ProfileToggle');
+  const popover=qs('#mobileV4ProfilePopover');
+  const close=qs('#mobileV4CloseProfile');
+  if(!toggle||!popover||!close)return;
+  const setOpen=open=>{
+    popover.hidden=!open;
+    toggle.setAttribute('aria-expanded',String(open));
+    toggle.setAttribute('aria-label',open?'ปิดรายละเอียดสมาชิก':'เปิดรายละเอียดสมาชิก');
+  };
+  toggle.addEventListener('click',e=>{
+    e.stopPropagation();
+    if(toggle.disabled)return;
+    setOpen(popover.hidden);
+  });
+  close.addEventListener('click',()=>{setOpen(false);toggle.focus()});
+  document.addEventListener('pointerdown',e=>{
+    if(!popover.hidden&&!e.target.closest('.mobile-v4-profile-anchor'))setOpen(false);
+  });
+  document.addEventListener('keydown',e=>{
+    if(e.key==='Escape'&&!popover.hidden){setOpen(false);toggle.focus()}
   });
 }
 
 function render(){
   renderFavoritesNav();renderTabs();renderSummary();renderCornerAudit();renderRows();renderPagination();
   renderMobileMarketPills();
+  const matchCount=qs('#mobileV4MatchCount');
+  if(matchCount){
+    const uniqueFixtures=new Set(filteredRows().map(row=>String(row.fixtureId??row.id)));
+    matchCount.textContent=uniqueFixtures.size+' MATCH'+(uniqueFixtures.size===1?'':'ES');
+  }
   const selection=qs('#marketMenuSelection');
   if(selection)selection.textContent=state.favoritesView?'FAVORITES':state.market;
 }
@@ -1625,6 +1642,15 @@ async function boot(){
   qs('#memberName').textContent=session.member.displayName;
   qs('#memberAvatar').textContent=session.member.displayName.slice(0,1).toUpperCase();
   qs('#memberStatus').textContent=memberAccessLabel(session.member);
+  // V4 profile uses authenticated session identity, never demo content.
+  const mobileName=qs('#mobileV4Name'),mobileStatus=qs('#mobileV4Status');
+  const mobileAvatar=qs('#mobileV4Avatar'),mobileActive=qs('#mobileV4Active');
+  if(mobileName)mobileName.textContent=session.member.displayName;
+  if(mobileStatus)mobileStatus.textContent=memberAccessLabel(session.member);
+  if(mobileAvatar)mobileAvatar.textContent=session.member.displayName.slice(0,1).toUpperCase();
+  if(mobileActive)mobileActive.textContent=session.member.status;
+  const mobileProfileToggle=qs('#mobileV4ProfileToggle');
+  if(mobileProfileToggle)mobileProfileToggle.disabled=false;
   const livePill=qs('.live-pill');
   if(livePill) livePill.textContent='TODAY · '+daily.signalCount+' SIGNALS';
   state.payload=daily;
@@ -1639,6 +1665,7 @@ async function boot(){
 
 initMemberMarketSidebar();
 initMobileSectionTabs();
+initMobileV4Profile();
 boot().catch(()=>{
   rowsEl.replaceChildren();
   empty.hidden=false;
