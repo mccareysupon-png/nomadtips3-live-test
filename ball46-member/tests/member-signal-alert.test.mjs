@@ -34,7 +34,11 @@ test('Price notice explicitly disclaims quote availability and alerts do not gua
   assert.match(html,/PRICE NOTICE/);
   assert.match(html,/The displayed odds are not guaranteed/);
   assert.match(html,/The 60-second NEW SIGNAL countdown is an alert only/);
-  assert.doesNotMatch(html,/[\u0E00-\u0E7F]/);
+  // Localized member UI may contain Thai; only the English PRICE NOTICE
+  // is required to remain untranslated for quote-risk clarity.
+  const notice=html.match(/<p class="signal-price-note">[\s\S]*?<\/p>/)?.[0];
+  assert.ok(notice,'PRICE NOTICE paragraph must exist');
+  assert.doesNotMatch(notice,/[\u0E00-\u0E7F]/);
 });
 test('Border pulse stops with class removal and respects reduced-motion preference',()=>{
   assert.match(css,/\.signal-row\.is-fresh-signal/);
