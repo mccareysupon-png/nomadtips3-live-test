@@ -4743,7 +4743,7 @@ button,input,select,textarea{font-family:inherit;font-synthesis:none}
   .page-member #signalBoard .signal-row .member-new-signal{display:none!important}
   /* Lines 2–3 — the HOME/AWAY names and both scores remain aligned. */
   .page-member #signalBoard .signal-row>td.match{
-    grid-area:match;display:block;
+    grid-area:match;display:block;overflow:visible!important;
   }
   .page-member #signalBoard .signal-row .favorite-teams{
     display:block;position:static;min-width:0;width:100%;
