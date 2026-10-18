@@ -36,10 +36,10 @@ jobs:
             }
             const start=source.indexOf('async reconcileExternalFinal('),pos=source.indexOf('async fetch(request) {',start);
             if(start<0||pos<start)throw Error('NOT_THE_ACTIVE_ENGINE');
-            const inject='async fetch(request) { if(request.method==="POST"&&new URL(request.url).pathname==="/__sandbox_seed"){const v=await request.json();await writeWorkingSignals(this.ctx,v.signals);const x=await this.upsertLedgerRows(v.signals);return Response.json({ok:true,inserted:x.inserted});} if(request.method==="POST"&&new URL(request.url).pathname==="/__sandbox_ledger_only"){const v=await request.json();const x=await this.upsertLedgerRows(v.signals);return Response.json({ok:true,inserted:x.inserted});} if(request.method==="POST"&&new URL(request.url).pathname==="/__sandbox_assert_no_repeat"){const s=await readWorkingSignals(this.ctx);const pending=s.filter(x=>x.status==="PENDING"||phase2IsEarly(x)||x.status==="UNRESOLVED");const result=await this.autoReconcileMissingFinals();return Response.json({ok:true,checked:result.checked,candidatesRemaining:result.candidatesRemaining,eligiblePendingCount:pending.length,source:"NATIVE_MISSING_FINAL_FALLBACK",outboundProviderRequestsExpected:0});} ';
+            const inject='async fetch(request) { if(request.method==="POST"&&new URL(request.url).pathname==="/__sandbox_seed"){const v=await request.json();await writeWorkingSignals(this.ctx,v.signals);const x=await this.upsertLedgerRows(v.signals);return Response.json({ok:true,inserted:x.inserted});} if(request.method==="POST"&&new URL(request.url).pathname==="/__sandbox_ledger_only"){const v=await request.json();const x=await this.upsertLedgerRows(v.signals);return Response.json({ok:true,inserted:x.inserted});} if(request.method==="POST"&&new URL(request.url).pathname==="/__sandbox_complete_corners"){const a=await readWorkingSignals(this.ctx);const corners=a.find(x=>x.id==="LOCAL-SIGNAL-CORNER-ONLY");if(!corners)return Response.json({ok:false});corners.status="SETTLED";corners.result="WIN";corners.settlementSource="5USD_NATIVE_CORNER_FT";await writeWorkingSignals(this.ctx,a);await this.upsertLedgerRows(a);return Response.json({ok:true,cornerStatus:corners.status});} if(request.method==="POST"&&new URL(request.url).pathname==="/__sandbox_assert_no_repeat"){const s=await readWorkingSignals(this.ctx);const pending=s.filter(x=>x.status==="PENDING"||phase2IsEarly(x)||x.status==="UNRESOLVED");const result=await this.autoReconcileMissingFinals();return Response.json({ok:true,checked:result.checked,candidatesRemaining:result.candidatesRemaining,eligiblePendingCount:pending.length,source:"NATIVE_MISSING_FINAL_FALLBACK",outboundProviderRequestsExpected:0});} ';
             source=source.slice(0,pos)+source.slice(pos).replace('async fetch(request) {',inject);
             if(!source.includes('"/ledger-health"]'))throw Error('ACTIVE_ROUTING_CHANGED');
-            source=source.replace('"/ledger-health"]','"/ledger-health", "/__sandbox_seed", "/__sandbox_ledger_only", "/__sandbox_assert_no_repeat"]');
+            source=source.replace('"/ledger-health"]','"/ledger-health", "/__sandbox_seed", "/__sandbox_ledger_only", "/__sandbox_assert_no_repeat", "/__sandbox_complete_corners"]');
             fs.writeFileSync('index.mjs',source);
             fs.writeFileSync('wrangler.toml',[
               'name = "ball46-native-test-local"',
@@ -90,12 +90,23 @@ jobs:
             const hdr={'x-settlement-token':'sandbox-only-token-for-rehearsal-1234'};
             const one=await req('/reconcile-final','POST',body,hdr);
             const two=await req('/reconcile-final','POST',body,hdr);
+            // Goaloo settles only goals. 5USD must still be allowed to
+            // finish Corners independently; never confuse that with re-grading
+            // the already settled goal market.
+            const cornerPending=await req('/statistics?cursor='+encodeURIComponent('stat:v2:row:9999999999999:~')+'&paged=1');
+            if(cornerPending.rows?.find(x=>x.id===corner.id)?.status!=='PENDING')
+              throw Error('GOALOO_FALSELY_SETTLED_CORNERS');
+            // Simulate the separate 5USD Corners settlement in local workerd.
+            // Once *all* markets in this fixture are closed, no more final API.
+            const closeCorner=await req('/__sandbox_complete_corners','POST',{});
+            if(!closeCorner.ok||closeCorner.cornerStatus!=='SETTLED')
+              throw Error('ISOLATED_CORNER_CLOSE_FAILED');
             const noRepeat=await req('/__sandbox_assert_no_repeat','POST',{});
-            if(noRepeat.checked!==0||noRepeat.eligiblePendingCount!==1)
-              throw Error('REPEATED_5USD_FIXTURE_API_CANDIDATE_AFTER_GOALOO_FINAL');
+            if(noRepeat.checked!==0||noRepeat.eligiblePendingCount!==0)
+              throw Error('REPEATED_5USD_FIXTURE_API_AFTER_ALL_SIGNALS_SETTLED');
             console.log('GOALOO_SETTLED_NO_5USD_FINAL_REPEAT',JSON.stringify({
               nativeFallbackChecked:noRepeat.checked,remaining:noRepeat.candidatesRemaining,
-              note:'Corners remain independently pending; no qualified final-fetch candidate',
+              note:'All fixture markets terminal; no native 5USD final API candidate',
               productionWrites:0}));
             const ledger=await req('/statistics?cursor='+encodeURIComponent('stat:v2:row:9999999999999:~')+'&paged=1');
             const row=ledger.rows?.find(x=>x.id===sigId);
@@ -104,7 +115,7 @@ jobs:
               first:one.settled,replay:two.settled,ledgerStatus:row?.status,
               ledgerResult:row?.result,ledgerUpdated:one.ledgerUpdated,
               nativeLedger:ledger.statisticsSource,cornerStatus:cornerRow?.status,cornerResult:cornerRow?.result,productionMutations:0}));
-            if(one.settled!==1||two.settled!==0||row?.status!=='SETTLED'||row?.result!=='WIN'||cornerRow?.status!=='PENDING')
+            if(one.settled!==1||two.settled!==0||row?.status!=='SETTLED'||row?.result!=='WIN'||cornerRow?.status!=='SETTLED')
               throw Error('FT_LEDGER_V2_NOT_YET_PROVEN');
             const oldId='LOCAL-LEDGER-ONLY-FIXTURE';
             const oldSignal={...signal,id:'LOCAL-LEDGER-ONLY-SIGNAL',fixtureId:oldId};
