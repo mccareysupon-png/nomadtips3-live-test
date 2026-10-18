@@ -1,0 +1,71 @@
+name: BALL46 deploy isolated native result proxy
+on:
+  push:
+    branches: [stage/ball46-multisource-v5-20261017]
+    paths:
+      - .github/workflows/ball46-private-native-proxy.yml
+  workflow_dispatch:
+permissions: {contents: read}
+concurrency:
+  group: ball46-private-result-proxy
+  cancel-in-progress: false
+jobs:
+  verify-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      ENGINE_PRIMARY_SECRET: ${{ secrets.FIVEDOLLAR_API_KEY }}
+      ENGINE_PRIMARY_ALT: ${{ secrets.FIVE_DOLLAR_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Security and native proxy tests
+        run: |
+          set -euo pipefail
+          node --check workers/ball46-result-native-proxy/src/index.mjs
+          node --test workers/ball46-result-native-proxy/test/proxy.test.mjs
+          grep -Fxq 'name = "ball46-result-native-proxy-20261018"' workers/ball46-result-native-proxy/wrangler.stage.toml
+          grep -Fxq 'workers_dev = false' workers/ball46-result-native-proxy/wrangler.stage.toml
+          grep -Fxq 'binding = "ENGINE"' workers/ball46-result-native-proxy/wrangler.stage.toml
+          ! grep -Eq '^routes? =|^\[triggers\]|^crons = ' workers/ball46-result-native-proxy/wrangler.stage.toml
+          test -n "${CLOUDFLARE_ACCOUNT_ID:-}"
+          test -n "${CLOUDFLARE_API_TOKEN:-}"
+          if [ -z "${ENGINE_PRIMARY_SECRET:-}" ]; then ENGINE_PRIMARY_SECRET="$ENGINE_PRIMARY_ALT"; fi
+          test -n "${ENGINE_PRIMARY_SECRET:-}"
+      - name: Install private proxy script and scoped credentials
+        working-directory: workers/ball46-result-native-proxy
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4 deploy --config wrangler.stage.toml
+          if [ -z "${ENGINE_PRIMARY_SECRET:-}" ]; then ENGINE_PRIMARY_SECRET="$ENGINE_PRIMARY_ALT"; fi
+          printf '%s' "$ENGINE_PRIMARY_SECRET" | npx --yes wrangler@4 secret put FIVEDOLLAR_API_KEY --config wrangler.stage.toml
+          node -e 'process.stdout.write(require("node:crypto").randomBytes(48).toString("base64url"))' > /tmp/ball46-proxy-internal-token
+          npx --yes wrangler@4 secret put RESULT_PROXY_TOKEN --config wrangler.stage.toml < /tmp/ball46-proxy-internal-token
+          (cd ../ball46-result-sidecar && npx --yes wrangler@4 secret put RESULT_PROXY_TOKEN --config wrangler.stage.toml < /tmp/ball46-proxy-internal-token)
+          rm -f /tmp/ball46-proxy-internal-token
+          echo 'PRIVATE_GOALOO_FT_PROXY_SECRETS_INSTALLED_NO_PUBLIC_ROUTE'
+      - name: Confirm production Engine was not changed by this deploy
+        shell: bash
+        run: |
+          node - <<'NODE'
+          (async()=>{
+            const id=process.env.CLOUDFLARE_ACCOUNT_ID,t=process.env.CLOUDFLARE_API_TOKEN;
+            const root='https://api.cloudflare.com/client/v4/accounts/'+id+'/workers/scripts/';
+            const get=async name=>{
+              const r=await fetch(root+name+'/deployments?per_page=1',{headers:{Authorization:'Bearer '+t}});
+              if(!r.ok)throw Error(name+'_'+r.status);
+              const x=(await r.json()).result?.deployments?.[0];
+              return{x:x?.id,version:x?.versions?.[0]?.version_id};
+            };
+            const [engine,proxy,shadow]=await Promise.all([
+              get('nomadtips3-engine-343'),get('ball46-result-native-proxy-20261018'),
+              get('ball46-multisource-shadow-20261018')]);
+            if(!engine.x||!proxy.x||!shadow.x)throw Error('MISSING_DEPLOYMENT');
+            console.log('NATIVE_PROXY_ISOLATED_RELEASE',JSON.stringify({engine,proxy,shadow}));
+          })().catch(e=>{console.error(e.message);process.exit(1)});
+          NODE
