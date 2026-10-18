@@ -1,0 +1,30 @@
+name: BALL46 multi-source real fixture shadow identity audit
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - stage/ball46-multisource-v5-20261017
+    paths:
+      - integrations/multisource/read-only-live-identity-audit.mjs
+      - .github/workflows/ball46-fixture-shadow-identity-readonly.yml
+permissions:
+  contents: read
+jobs:
+  shadow-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Compare two independent real sources without modifying either
+        run: node integrations/multisource/read-only-live-identity-audit.mjs
+      - name: Preserve name and kickoff mismatch evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-real-fixture-identity-shadow
+          path: ball46-fixture-shadow-evidence.json
+          retention-days: 7
+          if-no-files-found: warn
