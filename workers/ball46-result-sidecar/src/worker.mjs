@@ -6,12 +6,18 @@
  */
 import {DurableObject} from 'cloudflare:workers';
 import {proposeVerifiedMappings} from '../../../integrations/multisource/cross-source-fixture-mapper.mjs';
-const key='ball46:verified-fixture-crosswalk:v2';
+// One key per match, to avoid Cloudflare's per-value size limit.
+// Never remove unconfirmed PENDING-match mappings during routine polling.
+const prefix='ball46:verified-fixture-crosswalk:v3:';
+const fixtureKey=id=>prefix+'f:'+encodeURIComponent(String(id));
+const sourceKey=(source,id)=>prefix+'r:'+encodeURIComponent(source)+':'+encodeURIComponent(String(id));
+const evidenceKey=(source,id)=>prefix+'e:'+encodeURIComponent(source)+':'+encodeURIComponent(String(id));
+const metaKey=prefix+'meta';
 const isUtc=x=>typeof x==='string'&&/(?:Z|[+-]\d{2}:\d{2})$/i.test(x)&&Number.isFinite(Date.parse(x));
 const flag=x=>String(x??'')==='1';
 const str=x=>String(typeof x==='string'?x:x?.name??'').trim();
 const clone=x=>JSON.parse(JSON.stringify(x));
-const initial=()=>({fixtures:{},reverse:{},evidence:{},forward:{},events:[],version:2});
+const initial=()=>({events:[],version:3});
 const asInt=x=>/^-?\d+$/.test(String(x))?Number(x):null;
 function csv(s){
  const out=[];let current='',quote=null,slash=false;
@@ -75,66 +81,75 @@ export async function applySnapshot(storage,{
  const sourceFixtures=parsed.rows;
  if(typeof storage?.transaction!=='function')throw Error('DURABLE_DO_REQUIRED');
  return storage.transaction(async tx=>{
-  const s=(await tx.get(key))||initial(),before=JSON.stringify(s);
+  const state=(await tx.get(metaKey))||initial();
+  const all=await tx.list({prefix:prefix+'f:'});
+  const fixtures=new Map([...all.values()].map(f=>[String(f.fixtureId),f]));
   let inserted=0,conflicts=0,matched=0,held=0,ftReady=0,sourceCollision=0;
   for(const raw of hubFixtures){
-   const c=canonical(raw);if(!c){held++;continue}
-   const existing=s.fixtures[c.fixtureId];
+   const f=canonical(raw);if(!f){held++;continue}
+   const existing=fixtures.get(f.fixtureId);
    if(existing){
-    if(['home','away','league','kickoffUtc'].some(f=>existing[f]!==c[f]))conflicts++;
-   }else{
-    s.fixtures[c.fixtureId]={...c,sourceIds:{'5usd':c.fixtureId},firstSeenAt:at};
-    inserted++;
+    if(['home','away','league','kickoffUtc'].some(k=>existing[k]!==f[k]))conflicts++;
+    continue;
    }
+   const entry={...f,sourceIds:{'5usd':f.fixtureId},firstSeenAt:at};
+   fixtures.set(f.fixtureId,entry);
+   await tx.put(fixtureKey(f.fixtureId),entry);inserted++;
   }
-  // Evaluate all currently observed provider fixtures as one batch.
-  // Duplicates/competitors are rejected by the mutual-best matcher.
-  const suggested=proposeVerifiedMappings(Object.values(s.fixtures),sourceFixtures,{
+  // Cross-provider identity must be mutual-best across the FULL source batch.
+  const suggested=proposeVerifiedMappings([...fixtures.values()],sourceFixtures,{
    source:'goaloo',sourceUtcCertified:utcCertified,approvedLeagues:leagueAliases,
    approvedTeamAliases:teamAliases,strictCountry:countryStrict});
   for(const m of suggested.approved){
-   const f=s.fixtures[m.fixtureId],rkey=reverseId(m.source,m.sourceFixtureId);
-   if(!f)continue;
-   if((s.reverse[rkey]&&s.reverse[rkey]!==m.fixtureId)||
-      (f.sourceIds.goaloo&&f.sourceIds.goaloo!==m.sourceFixtureId)){sourceCollision++;continue}
+   const f=fixtures.get(m.fixtureId);if(!f)continue;
+   const rkey=sourceKey(m.source,m.sourceFixtureId);
+   const existingOwner=await tx.get(rkey);
+   if((existingOwner&&existingOwner!==m.fixtureId)||
+      (f.sourceIds.goaloo&&f.sourceIds.goaloo!==m.sourceFixtureId)){
+    sourceCollision++;continue;
+   }
    if(!f.sourceIds.goaloo){
-    s.reverse[rkey]=m.fixtureId;f.sourceIds.goaloo=m.sourceFixtureId;
-    f.sourceMapping={policy:'fixture-match-v2',score:m.score,
-     certifiedAt:at,sourceKickoffUtc:m.sourceKickoffUtc};
-    matched++;
+    const updated={...f,sourceIds:{...f.sourceIds,goaloo:m.sourceFixtureId},
+     sourceMapping:{policy:'fixture-match-v3',score:m.score,
+      certifiedAt:at,sourceKickoffUtc:m.sourceKickoffUtc}};
+    await tx.put(fixtureKey(m.fixtureId),updated);
+    await tx.put(rkey,m.fixtureId);
+    fixtures.set(m.fixtureId,updated);matched++;
    }
   }
   const finished=[];
   for(const p of sourceFixtures){
    if(!p.isFT||!ftCertified)continue;
-   const fid=s.reverse[reverseId('goaloo',p.sourceFixtureId)];
-   const f=s.fixtures[fid];if(!f||f.sourceIds.goaloo!==p.sourceFixtureId)continue;
+   const fid=await tx.get(sourceKey('goaloo',p.sourceFixtureId));
+   const f=fixtures.get(fid);
+   if(!f||f.sourceIds.goaloo!==p.sourceFixtureId)continue;
    if(Date.parse(at)<Date.parse(f.kickoffUtc)+90*60_000)continue;
-   const obsKey='goaloo:'+fid,prior=s.evidence[obsKey]||[];
+   const ekey=evidenceKey('goaloo',fid),prior=await tx.get(ekey)||[];
    const last=prior.at(-1),same=last?.home===p.score.home&&last?.away===p.score.away;
    const next=!same?[{at,home:p.score.home,away:p.score.away}]:
      last.at===at?prior:[...prior,{at,home:p.score.home,away:p.score.away}].slice(-24);
-   s.evidence[obsKey]=next;
+   if(JSON.stringify(prior)!==JSON.stringify(next))await tx.put(ekey,next);
    if(next.length<2||Date.parse(next.at(-1).at)-Date.parse(next[0].at)<60_000)continue;
-   ftReady++;finished.push({fixtureId:fid,source:'goaloo',sourceFixtureId:p.sourceFixtureId,
-     score:clone(p.score),fixture:clone(f)});
+   ftReady++;finished.push({fixtureId:fid,source:'goaloo',
+    sourceFixtureId:p.sourceFixtureId,score:clone(p.score),fixture:clone(f)});
   }
-  if(conflicts||sourceCollision)log(s,at,'IDENTITY_CONFLICT',{conflicts,sourceCollision});
-  if(JSON.stringify(s)!==before)await tx.put(key,s);
+  if(conflicts||sourceCollision){
+   log(state,at,'IDENTITY_CONFLICT',{conflicts,sourceCollision});
+   await tx.put(metaKey,state);
+  }
   return{state:'CAPTURED_AND_EVALUATED',inserted,matched,held,conflicts,
    sourceCollision,ftReady,verifiedResults:finished,
    proposed:suggested.coverage.approved,reviewCount:suggested.review.length,
-   fixtureCount:Object.keys(s.fixtures).length,sourceCount:sourceFixtures.length,
-   releasedToEngine:false};
+   fixtureCount:fixtures.size,sourceCount:sourceFixtures.length,releasedToEngine:false};
  });
 }
 export async function inspectSidecar(storage){
- const s=(await storage.get(key))||initial();
- return {fixtureCount:Object.keys(s.fixtures).length,
-  sourceMappings:Object.keys(s.reverse).length,
-  ftEvidenceKeys:Object.keys(s.evidence).length,
-  forwardRequests:Object.keys(s.forward).length,
-  recentEvents:s.events.slice(-10),version:s.version};
+ const [fixtures,reverse,evidence,meta]=await Promise.all([
+  storage.list({prefix:prefix+'f:'}),storage.list({prefix:prefix+'r:'}),
+  storage.list({prefix:prefix+'e:'}),storage.get(metaKey)]);
+ return {fixtureCount:fixtures.size,sourceMappings:reverse.size,
+  ftEvidenceKeys:evidence.size,forwardRequests:0,
+  recentEvents:(meta?.events||[]).slice(-10),version:3};
 }
 async function fetchGoaloo(fetcher){
  for(const url of ['https://live10.goaloo28.com/gf/data/bf_us.js',
