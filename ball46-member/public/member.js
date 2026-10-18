@@ -1135,6 +1135,8 @@ function featuredHorizontal(detail,selected){
   const parts=shownScore&&typeof shownScore==='object'&&shownScore.home!=null&&shownScore.away!=null
     ?[String(shownScore.home),String(shownScore.away)]
     :/^\\d+\\s*[-–:]\\s*\\d+$/.test(shownScoreText)?shownScoreText.split(/\\s*[-–:]\\s*/):null;
+  if(parts && parts.some(value=>String(value).length>1))featuredScore.classList.add('stadium-long-score');
+  if(parts && parts.some(value=>String(value).length>2))featuredScore.classList.add('stadium-very-long-score');
   if(beforeKickoff)featuredScore.textContent='VS';
   else if(parts)featuredScore.append(node('span','home',parts[0]),node('span','separator','-'),node('span','away',parts[1]));
   else featuredScore.textContent=shownScoreText;
