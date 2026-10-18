@@ -143,6 +143,37 @@ export async function applySnapshot(storage,{
    fixtureCount:fixtures.size,sourceCount:sourceFixtures.length,releasedToEngine:false};
  });
 }
+export async function captureCanonicalHub(storage,hubFixtures,{at=new Date().toISOString()}={}){
+ if(!isUtc(at)||!Array.isArray(hubFixtures))throw Error('CANONICAL_SNAPSHOT_INVALID');
+ if(typeof storage?.transaction!=='function')throw Error('DURABLE_STORAGE_REQUIRED');
+ return storage.transaction(async tx=>{
+  const existing=await tx.list({prefix:prefix+'f:'});
+  let inserted=0,unchanged=0,rejected=0,conflicts=0;
+  const seen=new Set();
+  for(const raw of hubFixtures){
+   const item=canonical(raw);
+   if(!item||seen.has(item.fixtureId)){rejected++;continue}
+   seen.add(item.fixtureId);
+   const prior=existing.get(fixtureKey(item.fixtureId));
+   if(prior){
+    if(['home','away','league','kickoffUtc'].some(k=>prior[k]!==item[k]))conflicts++;
+    else unchanged++;
+   }else{
+    await tx.put(fixtureKey(item.fixtureId),{
+     ...item,sourceIds:{'5usd':item.fixtureId},firstSeenAt:at
+    });inserted++;
+   }
+  }
+  const meta=await tx.get(metaKey)||initial();
+  meta.lastCanonicalPollAt=at;
+  meta.lastCanonicalPoll={inserted,unchanged,rejected,conflicts,sourceCount:hubFixtures.length};
+  meta.totalCanonicalCaptured=Number(meta.totalCanonicalCaptured||0)+inserted;
+  meta.totalCanonicalConflicts=Number(meta.totalCanonicalConflicts||0)+conflicts;
+  await tx.put(metaKey,meta);
+  return {state:'CANONICAL_CAPTURED',inserted,unchanged,rejected,conflicts,
+   fixtureCount:existing.size+inserted,readOnlyFromHub:true,engineWrites:0};
+ });
+}
 export async function inspectSidecar(storage){
  const [fixtures,reverse,evidence,meta]=await Promise.all([
   storage.list({prefix:prefix+'f:'}),storage.list({prefix:prefix+'r:'}),
@@ -162,32 +193,45 @@ async function fetchGoaloo(fetcher){
  }
  throw Error('GOALOO_FEED_UNAVAILABLE');
 }
+async function readHubFixtures(env){
+ if(!env?.HUB?.fetch)throw Error('HUB_READ_BINDING_MISSING');
+ const res=await env.HUB.fetch('https://hub.internal/snapshot',{method:'GET'});
+ if(!res.ok)throw Error('HUB_READ_HTTP_'+res.status);
+ const data=await res.json();
+ if(!data?.ok||!Array.isArray(data.fixtures))throw Error('HUB_SNAPSHOT_INVALID');
+ return data.fixtures;
+}
 async function poll(storage,env,fetcher=fetch){
- if(!flag(env?.GOALOO_POLL_ENABLED))return{state:'DISABLED',nativeWrites:0};
+ const fixtures=await readHubFixtures(env),at=new Date().toISOString();
+ const captured=await captureCanonicalHub(storage,fixtures,{at});
+ if(!flag(env?.GOALOO_POLL_ENABLED))
+  return {state:'PRIMARY_CAPTURE_ONLY',captured,goaloo:'DISABLED',engineWrites:0};
  if(!flag(env?.GOALOO_UTC_CERTIFIED)||!flag(env?.GOALOO_FT_CERTIFIED))
-  return{state:'SOURCE_CERTIFICATION_REQUIRED',nativeWrites:0};
+  return {state:'PRIMARY_CAPTURE_ONLY',captured,goaloo:'CERTIFICATION_REQUIRED',engineWrites:0};
  if(!/^-?\d+$/.test(String(env?.GOALOO_OFFSET_MINUTES??'')))
-  return{state:'OFFSET_NOT_CERTIFIED',nativeWrites:0};
- if(!env?.HUB?.fetch)return{state:'HUB_BINDING_MISSING',nativeWrites:0};
- const hub=await env.HUB.fetch('https://hub.internal/snapshot');
- if(!hub.ok)return{state:'HUB_UNAVAILABLE',http:hub.status,nativeWrites:0};
- const data=await hub.json();
- if(!data?.ok||!Array.isArray(data.fixtures))return{state:'HUB_CONTRACT_INVALID',nativeWrites:0};
- const result=await applySnapshot(storage,{hubFixtures:data.fixtures,goalooText:await fetchGoaloo(fetcher),
-  at:new Date().toISOString(),utcCertified:true,ftCertified:true,
-  offsetMinutes:Number(env.GOALOO_OFFSET_MINUTES),
+  return {state:'PRIMARY_CAPTURE_ONLY',captured,goaloo:'OFFSET_UNCERTIFIED',engineWrites:0};
+ const result=await applySnapshot(storage,{
+  hubFixtures:fixtures,goalooText:await fetchGoaloo(fetcher),at,
+  utcCertified:true,ftCertified:true,offsetMinutes:Number(env.GOALOO_OFFSET_MINUTES),
   leagueAliases:getAliases(String(env.GOALOO_APPROVED_LEAGUES||'{}')),
-  teamAliases:getAliases(String(env.GOALOO_APPROVED_TEAMS||'{}'))});
- // Intentionally shadow-only until current Engine Ledger V2 and dedicated
- // authenticated result bridge are separately certified on actual active code.
- return{...result,verifiedResultsCount:result.verifiedResults?.length??0,
-  verifiedResults:undefined,nativeWrites:0,forwardingEnabled:false};
+  teamAliases:getAliases(String(env.GOALOO_APPROVED_TEAMS||'{}'))
+ });
+ return {...result,captured,verifiedResultsCount:result.verifiedResults?.length??0,
+  verifiedResults:undefined,engineWrites:0,forwardingEnabled:false};
 }
 export class Ball46FixtureResultRegistry extends DurableObject{
  async fetch(request){
   const path=new URL(request.url).pathname;
   if(request.method==='GET'&&path==='/health')
    return Response.json({ok:true,mode:'SIDECAR_SHADOW_NO_ENGINE_BINDING',...await inspectSidecar(this.ctx.storage)});
+  if(request.method==='POST'&&path==='/cron-capture'){
+   const secret=String(this.env.SIDECAR_ADMIN_TOKEN??''),
+    supplied=String(request.headers.get('x-sidecar-token')??'');
+   if(secret.length<32||secret!==supplied)
+    return Response.json({ok:false,error:'UNAUTHORIZED'},{status:401});
+   try{return Response.json(await poll(this.ctx.storage,this.env))}
+   catch(e){return Response.json({ok:false,error:String(e?.message||e).slice(0,90)},{status:503})}
+  }
   if(request.method==='POST'&&path==='/poll'){
    const secret=String(this.env.SIDECAR_ADMIN_TOKEN??''),
      supplied=String(request.headers.get('x-sidecar-token')??'');
@@ -202,5 +246,16 @@ export default {
  fetch(request,env){
   const id=env.RESULT_REGISTRY.idFromName('ball46-fixtures-shadow');
   return env.RESULT_REGISTRY.get(id).fetch(request);
+ },
+ async scheduled(_event,env,ctx){
+  if(String(env.CANONICAL_CAPTURE_ENABLED||'')!=='1')return;
+  const secret=String(env.SIDECAR_ADMIN_TOKEN??'');
+  if(secret.length<32)return;
+  const id=env.RESULT_REGISTRY.idFromName('ball46-fixtures-shadow');
+  ctx.waitUntil(env.RESULT_REGISTRY.get(id).fetch('https://sidecar.internal/cron-capture',{
+   method:'POST',headers:{'x-sidecar-token':secret}
+  }).then(res=>{
+   if(!res.ok)throw Error('SHADOW_CAPTURE_HTTP_'+res.status);
+  }));
  }
 };
