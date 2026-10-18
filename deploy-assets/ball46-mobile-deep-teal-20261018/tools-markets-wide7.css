@@ -1,0 +1,42 @@
+/* BALL46 Green Noir · complete the approved mobile 7px gutter alignment.
+   Main-site view presentation only; no engine, routing, settlement, or desktop edits. */
+@media (max-width:760px) {
+  /* All markets in Signals share the same original board container. */
+  html[data-b46gn="1"] body[data-workspace-view="signal"]
+    .workspace-panel[data-workspace-panel="live"] [data-board-sections] {
+    padding-left:0!important;
+    padding-right:0!important;
+    max-width:100%!important;
+    min-width:0!important;
+    box-sizing:border-box!important;
+  }
+  /* Statistics previously had two nested 7px gutters. Align outer cards to 7px. */
+  html[data-b46gn="1"] .workspace-panel[data-workspace-panel="statistics"] {
+    position:relative!important;
+    left:calc(50% - 50vw)!important;
+    width:100vw!important;
+    max-width:100vw!important;
+    min-width:0!important;
+    padding-left:7px!important;
+    padding-right:7px!important;
+    box-sizing:border-box!important;
+  }
+  html[data-b46gn="1"] .workspace-panel[data-workspace-panel="statistics"] >
+    :is(.workspace-view-head,.sp-stats-content) {
+    max-width:100%!important;
+    min-width:0!important;
+    box-sizing:border-box!important;
+  }
+  /* The drawer remains a side drawer; its three menu groups gain equal 7px insets. */
+  html[data-b46gn="1"] #b46m-teal-shell .b46m-menucontent {
+    padding-left:7px!important;
+    padding-right:7px!important;
+    box-sizing:border-box!important;
+  }
+  html[data-b46gn="1"] #b46m-teal-shell .b46m-menucontent .b46m-item {
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    box-sizing:border-box!important;
+  }
+}
