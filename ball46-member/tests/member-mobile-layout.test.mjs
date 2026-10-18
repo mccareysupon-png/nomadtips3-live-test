@@ -23,7 +23,7 @@ test('default matches appear before expanded details (none open initially)',()=>
   assert.match(js,/if\(!detailInserted && state\.expandedSignalId===row\.id\)/);
   assert.match(js,/rowsEl\.append\(signalTr\)/);
   assert.match(js,/rowsEl\.append\(detailTr\)/);
-  assert.match(js,/tr\.className='signal-row'\+\(state\.expandedSignalId===row\.id\?' expanded':' '\)/.source ? /function toggleDetail\(row\)/ : /function toggleDetail\(row\)/);
+  assert.match(js,/function toggleDetail\(row\)/);
   assert.match(js,/state\.expandedSignalId=null/);
   assert.match(js,/function attachMobileExpandedControls\(host,matchFacts\)/);
 });
