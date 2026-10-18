@@ -1,0 +1,57 @@
+name: READ ONLY BALL46 Corners Detection and Settlement 20261018
+on:
+  push:
+    branches: [diag/ball46-corners-path-20261018-readonly-v1]
+    paths: ['.github/workflows/diag-ball46-corners-path-20261018-readonly.yml']
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  corners:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - name: Inspect native 5USD Corners only
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          const urls={
+            engineBoard:'https://nomadtips3-engine-343.mccarey-supon.workers.dev/board',
+            engineSettings:'https://nomadtips3-engine-343.mccarey-supon.workers.dev/settings',
+            engineSignals:'https://nomadtips3-engine-343.mccarey-supon.workers.dev/signals',
+            engineHealth:'https://nomadtips3-engine-343.mccarey-supon.workers.dev/health',
+            ledgerHealth:'https://nomadtips3-engine-343.mccarey-supon.workers.dev/ledger-health',
+            hubSnapshot:'https://nomadtips3-5usd-hub-343.mccarey-supon.workers.dev/snapshot'
+          };
+          async function read(name,url){
+           try{
+            const r=await fetch(url+'?corner_audit='+Date.now(),{headers:{'cache-control':'no-cache'},signal:AbortSignal.timeout(18000)});
+            const j=await r.json(); return {status:r.status,data:j};
+           }catch(e){return {status:0,error:String(e.message)}}
+          }
+          const d=Object.fromEntries(await Promise.all(Object.entries(urls).map(async([k,u])=>[k,await read(k,u)])));
+          const value=k=>d[k]?.data||{};
+          const b=value('engineBoard'), hub=value('hubSnapshot'), run=value('engineSettings');
+          const markets=['ft_corner_over','ft_corner_under','ht_corner_over','ht_corner_under','ft_corner_ah'];
+          const live=(b.fixtures||[]).filter(f=>String(f.boardState||f.status||'').toLowerCase().includes('live'));
+          const states={};const samples={};const fresh={};
+          for(const m of markets){states[m]={};samples[m]=[];fresh[m]=0;for(const f of live){
+           const a=f.analysis?.[m]||{},stage=a.state||'NO_ANALYSIS';
+           states[m][stage]=(states[m][stage]||0)+1;
+           if(stage==='PASS')fresh[m]++;
+           if(samples[m].length<12&&stage!=='STOP')samples[m].push({id:f.fixtureId,minute:f.minute,stage,line:a.line??null,odds:a.odds??null,source:a.priceSource??null,entryCorners:f.corners??null,priceError:a.reason??a.error??null});
+          }}
+          const all=value('engineSignals').signals||[];
+          const corner=all.filter(x=>markets.includes(x.market));
+          const hm=new Set((hub.fixtures||[]).map(f=>String(f.fixtureId)));
+          const pend=corner.map(s=>({fixtureId:s.fixtureId,market:s.market,status:s.status,result:s.result||null,
+           at:s.createdAt?new Date(s.createdAt).toISOString():null,inHub:hm.has(String(s.fixtureId)),
+           finalCorners:s.finalCorners||null,entryCorners:s.entryCorners||null,
+           settlementError:s.settlementError||null}));
+          const info={checkedAt:new Date().toISOString(),endpoints:Object.fromEntries(Object.entries(d).map(([k,v])=>[k,{http:v.status,error:v.error||null,ok:v.data?.ok,version:v.data?.version}])),
+           hub:{counts:hub.counts,lastError:hub.lastError||null,stale:hub.stale,ageMs:hub.ageMs},
+           engine:{lastError:value('engineHealth').lastError||null,refereeErrors:(value('engineHealth').refereeErrors||[]).slice(0,5),
+           runState:b.runState??run.run??run.runState??run.running??null,
+           activeKeys:Object.keys(run),sampleCount:live.length},
+           detection:{states,samples},cornerSignals:pend,ledger:{total:value('ledgerHealth').ledgerTotal,settled:value('ledgerHealth').settledTotal,pending:value('ledgerHealth').pendingTotal}};
+          console.log('BALL46_CORNER_PRODUCTION_READONLY '+JSON.stringify(info).slice(0,28000));
+          NODE
