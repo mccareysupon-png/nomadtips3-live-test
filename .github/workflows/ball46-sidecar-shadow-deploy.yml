@@ -1,21 +1,5 @@
 name: BALL46 ten-minute pending route — isolated shadow
 on:
-  push:
-    branches:
-      - stage/ball46-multisource-v5-20261017
-    paths:
-      - .github/workflows/ball46-sidecar-shadow-deploy.yml
-      - workers/ball46-result-sidecar/src/worker.mjs
-      - workers/ball46-result-sidecar/src/pending-ledger-reader.mjs
-      - workers/ball46-result-sidecar/src/pending-ten-minute-failover.mjs
-      - workers/ball46-result-sidecar/src/pending-failover-runtime.mjs
-      - workers/ball46-result-sidecar/src/new-signal-capture.mjs
-      - workers/ball46-result-sidecar/test/new-signal-capture.test.mjs
-      - workers/ball46-result-sidecar/test/pending-ten-minute-failover.test.mjs
-      - workers/ball46-result-sidecar/test/pending-failover-runtime.test.mjs
-      - workers/ball46-result-sidecar/test/pending-ledger-reader.test.mjs
-      - workers/ball46-result-sidecar/wrangler.stage.toml
-      - integrations/multisource/cross-source-fixture-mapper.mjs
   workflow_dispatch:
 permissions:
   contents: read
