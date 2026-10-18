@@ -11,7 +11,7 @@ const SCRIPT='ball46-production', ORIGIN='https://ball46.com';
 const ACCOUNT_EXPECTED='62cb0db544160e6591342abd6b4f35cc';
 // Base version is discovered fresh and held fixed throughout this deployment.
 // Base index bytes are read from current Cloudflare Active, never a historical HTML file.
-const MARK='BALL46_GREEN_NOIR_MOBILE_PRODUCTION_20261018_OWNER_APPROVED';
+const MARK='BALL46_GREEN_NOIR_EVENTFLOW_KITS_NAV_20261018';
 const hash=v=>createHash('sha256').update(v).digest('hex');
 const canonical=v=>JSON.stringify(v,(key,x)=>key==='annotations'?undefined:x&&typeof x==='object'&&!Array.isArray(x)?Object.fromEntries(Object.entries(x).sort(([a],[b])=>a.localeCompare(b))):x);
 const filesDir=join(ROOT,'audit'),preview=id=>'https://'+id.slice(0,8)+'-ball46-production.mccarey-supon.workers.dev';
@@ -90,12 +90,12 @@ async function ui(host,stage){
     await page.locator('#b46gn-hero').waitFor({state:'visible',timeout:18000});
     assert.equal(await page.locator('html').getAttribute('data-b46gn'),'1','GREEN_NOIR_MODE_NOT_ACTIVE');
     assert.equal(await page.locator('#b46gn-main-title').textContent(),'Live Matches','GREEN_NOIR_HERO_NOT_LOADED');
-    assert.equal(await page.locator('#b46gn-hero [data-b46gn-tab]').count(),4,'GREEN_NOIR_TABS_MISSING');
+    assert.equal(await page.locator('#b46gn-hero [data-b46gn-tab]').count(),4,'GREEN_NOIR_ORIGINAL_FILTERS_MISSING');
     assert.equal(await page.locator('#b46gn-results').isVisible(),true,'GREEN_NOIR_BOARD_HIDDEN');
-    assert.equal(await page.locator('#b46gn-hero .b46gn-tab').first().isVisible(),true,'GREEN_NOIR_FOOTBALL_TAB_HIDDEN');
+    assert.equal(await page.locator('#b46gn-hero .b46gn-tabs').isVisible(),false,'DUPLICATE_HORIZONTAL_MENU_VISIBLE');
     const rows=await page.locator('[data-board-sections] [data-match-id]').count();
     const cards=await page.locator('#b46gn-cards [data-b46gn-fixture]').count();
-    if(rows&&cards){const first=page.locator('#b46gn-cards [data-b46gn-fixture]').first();await first.click();assert.equal(await page.locator('#b46gn-detail').getAttribute('aria-hidden'),'false','GREEN_NOIR_DETAIL_NOT_OPEN');await page.locator('[data-b46gn-dismiss]').click();assert.equal(await page.locator('#b46gn-detail').getAttribute('aria-hidden'),'true','GREEN_NOIR_DETAIL_NOT_CLOSED')}
+    if(rows&&cards){const first=page.locator('#b46gn-cards [data-b46gn-fixture]').first();await first.click();assert.equal(await page.locator('#b46gn-detail').getAttribute('aria-hidden'),'false','GREEN_NOIR_DETAIL_NOT_OPEN');await page.locator('#b46gn-detail .b46gn-event-flow').waitFor({state:'visible',timeout:7000});await page.locator('[data-b46gn-dismiss]').click();assert.equal(await page.locator('#b46gn-detail').getAttribute('aria-hidden'),'true','GREEN_NOIR_DETAIL_NOT_CLOSED')}
     assert.equal(await page.locator('html').getAttribute('data-b46m-teal'),'1','MOBILE_MODE_NOT_ACTIVE');
     assert.equal(await page.locator('.left-rail').isVisible(),false,'OLD_MOBILE_HORIZONTAL_MENU_STILL_VISIBLE');
     const open=page.locator('[data-b46m-open]');
@@ -108,9 +108,11 @@ async function ui(host,stage){
     await page.locator('[data-b46m-status="live"]').click();
     assert.equal(await open.getAttribute('aria-expanded'),'false','DRAWER_NOT_CLOSED');
     assert(await page.locator('[data-status-filter="live"]').count()>0,'ORIGINAL_STATUS_MISSING');
-    await page.locator('[data-b46gn-tab="scheduled"]').click();
+    await open.click();
+    await page.locator('[data-b46m-status="scheduled"]').click();
     assert.equal(await page.locator('.left-rail [data-status-filter="scheduled"]').getAttribute('class').then(x=>x.includes('active')),true,'UPCOMING_NOT_DELEGATED');
-    await page.locator('[data-b46gn-tab="all"]').click();
+    await open.click();
+    await page.locator('[data-b46m-status="all"]').click();
     assert.equal(await page.locator('.left-rail [data-status-filter="all"]').getAttribute('class').then(x=>x.includes('active')),true,'ALL_NOT_DELEGATED');
     await page.locator('[data-b46m-searchbutton]').click();
     assert.equal(await page.locator('[data-b46m-searchpanel]').getAttribute('data-open'),'true','SEARCH_PANEL_HIDDEN');
@@ -165,6 +167,16 @@ try{
  const unpack=spawnSync('tar',['-xf',packagePath,'-C',ROOT],{encoding:'utf8'});
  assert.equal(unpack.status,0,'TAR_UNPACK_FAILED:'+unpack.stderr);
  for(const p of ['green-noir.css','green-noir.js','green_noir_patch.py'])assert(readFileSync(join(ROOT,p)).length>0,'PATCH_SOURCE_MISSING:'+p);
+ const addonBase64=readFileSync(join(ROOT,'enhance-source.br.b64'),'utf8').trim();
+ const addonBytes=Buffer.from(addonBase64,'base64');
+ assert.equal(hash(addonBytes),'a67377decdf8bdf6296e2e0e3cf27b76d763674ed2377888ba80a59936bb52d4','ENHANCEMENT_SOURCE_SHA_MISMATCH');
+ const addonTar=(await import('node:zlib')).brotliDecompressSync(addonBytes);
+ const addonPath=join(ROOT,'enhance-source.tar');writeFileSync(addonPath,addonTar);
+ const addonUnpack=spawnSync('tar',['-xf',addonPath,'-C',ROOT],{encoding:'utf8'});
+ assert.equal(addonUnpack.status,0,'ENHANCE_TAR_UNPACK_FAILED:'+addonUnpack.stderr);
+ for(const p of ['apply_enhance.py','green-noir-enhance.css','green-noir-enhance.js'])assert(readFileSync(join(ROOT,p)).length>0,'ENHANCE_SOURCE_MISSING:'+p);
+ const addonCheck=spawnSync('node',['--check',join(ROOT,'green-noir-enhance.js')],{encoding:'utf8'});
+ assert.equal(addonCheck.status,0,'ENHANCE_JS_SYNTAX:'+addonCheck.stderr);
  const jsCheck=spawnSync('node',['--check',join(ROOT,'green-noir.js')],{encoding:'utf8'});
  assert.equal(jsCheck.status,0,'MOBILE_JS_SYNTAX:'+jsCheck.stderr);
 
@@ -200,12 +212,13 @@ try{
 
  const originalPath=join(ROOT,'active-index.html'),candidatePath=join(ROOT,'candidate-index.html');
  writeFileSync(originalPath,old);
- const patched=spawnSync('python3',[join(ROOT,'green_noir_patch.py'),originalPath,join(ROOT,'green-noir.css'),join(ROOT,'green-noir.js'),candidatePath],{encoding:'utf8'});
+ const patched=spawnSync('python3',[join(ROOT,'apply_enhance.py'),originalPath,join(ROOT,'green-noir-enhance.css'),join(ROOT,'green-noir-enhance.js'),candidatePath],{encoding:'utf8'});
  assert.equal(patched.status,0,'PATCH_FAILED:'+patched.stderr);
  const html=readFileSync(candidatePath,'utf8');
  assert(html.includes('b46-mobile-deep-teal-20261018')&&html.includes('b46-mobile-deep-teal-runtime-20261018'),'PATCH_MARKERS_MISSING');
  assert(html.includes('b46m-compact-brand-hidden-heading-20261018'),'COMPACT_BRAND_PATCH_MISSING');
  assert(html.includes('b46gn-mobile-real-board-20261018')&&html.includes('b46gn-mobile-real-board-runtime-20261018'),'GREEN_NOIR_PATCH_MISSING');
+ assert(html.includes('b46gn-flow-kits-menu-runtime-20261018')&&html.includes('b46gn-flow-kits-menu-style-20261018'),'ENHANCEMENT_PATCH_MISSING');
  const uploadedFiles=new Map([...baseFiles].map(([p,file])=>[p,{bytes:p==='index.html'?Buffer.from(html):file.bytes,type:file.type}]));
  assert.equal(uploadedFiles.size,paths.length,'NEW_ASSET_SET_INCOMPLETE');
  report.change={path:'index.html',before:hash(old),after:hash(Buffer.from(html)),unchangedAssets:paths.length-1};
@@ -216,7 +229,7 @@ try{
  report.upload={files:uploaded.fileCount,completionToken:!!uploaded.jwt,uploadedHashes:uploaded.uploadedHashCount};
  assert.equal((await active()).id,original.id,'UPLOAD_ALTERED_ACTIVE');
  const payload=createPayload(base,html,uploaded.jwt,MARK);
- payload.annotations['workers/message']='BALL46 main mobile Deep Teal only; unchanged live engine and all other assets';
+ payload.annotations['workers/message']='BALL46 Green Noir mobile only: native Event Flow + PC jerseys, redundant tabs hidden';
  candidate=(await cf('/workers/workers/'+SCRIPT+'/versions?deploy=false',payload)).id;
  assert(candidate&&candidate!==original.id,'CANDIDATE_INVALID');
  const cv=await version(candidate);
@@ -236,7 +249,7 @@ try{
  assert.equal((await active()).id,original.id,'CANDIDATE_ALTERED_ACTIVE');
  report.phase='UI_VERIFIED';save();
  console.log('BALL46 CANDIDATE OK',JSON.stringify({version:candidate,assetCount:paths.length,index:report.change.after,screenshots:report.candidate.screenshots}));
- report.activationDeployment=await deploy(candidate,original.id,'BALL46 Green Noir mobile real-data redesign owner approved');
+ report.activationDeployment=await deploy(candidate,original.id,'BALL46 Green Noir native Event Flow and PC jersey mobile enhancement');
  activated=true;report.activated=true;report.phase='ACTIVATED';save();
  await waitPublicIndex(report.change.after);
  report.productionScreenshots=await ui(ORIGIN,'production');
@@ -244,7 +257,7 @@ try{
  assert.equal(canonical(await config()),canonical(previousConfig),'PRODUCTION_CONFIGURATION_CHANGED');
  assert.equal((await active()).id,candidate,'ACTIVE_CHANGED_AFTER_ACTIVATION');
  report.phase='SUCCESS';report.ok=true;report.finishedAt=new Date().toISOString();save();
- console.log('BALL46 GREEN NOIR DEPLOY SUCCESS',JSON.stringify({activeVersion:candidate,previousVersion:original.id,deployment:report.activationDeployment}));
+ console.log('BALL46 GREEN NOIR EVENTFLOW KITS DEPLOY SUCCESS',JSON.stringify({activeVersion:candidate,previousVersion:original.id,deployment:report.activationDeployment}));
 }catch(error){
  report.error=String(error?.stack||error);
  console.error('BALL46 DEPLOY BLOCKED:',String(error?.message||error));
