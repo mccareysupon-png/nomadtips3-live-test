@@ -1,7 +1,7 @@
 name: READ ONLY BALL46 Corners Detection and Settlement 20261018
 on:
   push:
-    branches: [diag/ball46-corners-path-20261018-readonly-v1]
+    branches: [repair/ball46-5usd-corners-only-20261018]
     paths: ['.github/workflows/diag-ball46-corners-path-20261018-readonly.yml']
   workflow_dispatch:
 permissions: {contents: read}
@@ -74,4 +74,27 @@ jobs:
           const terms=['BALL46_CORNER_TICK_REQUESTS_PER_SCAN','BALL46_CORNER_TICK_MAX_AGE_MS','CORNER_HISTORY_BUDGET','CORNER_LIVE_PRICE_UNVERIFIED','function fetchVerifiedCornerOnly','async function fetchVerifiedCornerOnly','async reconcileExternalFinal','status = "UNRESOLVED"','status === "PENDING"','FINAL_RECHECK_MIN_SIGNAL_AGE_MS'];
           const spots=Object.fromEntries(terms.map(t=>{const at=code.indexOf(t);return[t,{present:at>=0,snippet:at>=0?code.slice(Math.max(0,at-100),Math.min(code.length,at+340)):null}]}));
           console.log('NATIVE_CORNER_SOURCE_READONLY '+JSON.stringify({version:id,main:v.result.main_module,spots}).slice(0,9000));
+          NODE
+      - name: Inspect precise native corner and final recovery code safely
+        shell: bash
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          node --input-type=module <<'NODE'
+          const base='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID;
+          const h={Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN};
+          const dep=await(await fetch(base+'/workers/scripts/nomadtips3-engine-343/deployments?per_page=1',{headers:h})).json();
+          const id=dep.result.deployments[0].versions[0].version_id;
+          const v=await(await fetch(base+'/workers/workers/nomadtips3-engine-343/versions/'+id+'?include=modules',{headers:h})).json();
+          if(!v.success)throw Error('READ_FAILED');
+          const code=Buffer.from(v.result.modules.find(m=>m.name===v.result.main_module).content_base64,'base64').toString('utf8');
+          const targets=['function isVerifiedCornerMarket','function verifyRecentCornerHistory','async function fetchVerifiedCornerOnly','async scan() {','CORNER_HISTORY_BUDGET','async function runFinalRecheck','async finalRecheck','FINAL_RECHECK_MAX_PER_SCAN','FINAL_RECHECK_STATE_KEY','FINAL_DATA_UNAVAILABLE','async reconcileExternalFinal','missing-final-direct-v1','const refereeRotationOffset'];
+          for(const term of targets) {
+           const at=code.indexOf(term);
+           if(at<0) {console.log('CORNER_REPAIR_SOURCE '+JSON.stringify({term,missing:true}));continue}
+           const start=Math.max(0,at-(term.includes('FINAL_')?800:250)),end=Math.min(code.length,at+(term==='FINAL_RECHECK_STATE_KEY'?3500:term==='FINAL_DATA_UNAVAILABLE'?2600:term==='async scan() {'?3700:term==='CORNER_HISTORY_BUDGET'?3000:term==='missing-final-direct-v1'?2500:2000));
+           let fragment=code.slice(start,end).replace(/Bearer\s+[A-Za-z0-9_\-]+/g,'Bearer [REDACTED]');
+           console.log('CORNER_REPAIR_SOURCE '+JSON.stringify({term,at,fragment}).slice(0,4800));
+          }
           NODE
