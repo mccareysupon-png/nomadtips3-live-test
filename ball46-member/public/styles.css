@@ -4281,3 +4281,61 @@ button,input,select,textarea{font-family:inherit;font-synthesis:none}
 .page-member .featured-horizontal.stadium-hero .featured-h-score .score-center strong.stadium-very-long-score{
   font-size:clamp(13px,4vw,18px);
 }
+
+/* BALL46 MEMBER — featured live clock premium raised treatment 2026-10-18 */
+.page-member .featured-horizontal.stadium-hero .featured-h-meta>.badge.live{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:0;
+  min-height:26px;
+  padding:5px 10px;
+  border:0;
+  outline:0;
+  border-radius:9px;
+  background:linear-gradient(180deg,rgba(35,68,91,.97) 0%,rgba(12,36,55,.96) 55%,rgba(8,27,44,.98) 100%);
+  color:#d8f2ff;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.13),inset 0 -2px 3px rgba(0,0,0,.26),0 6px 16px rgba(0,0,0,.33);
+  text-shadow:0 1px 3px rgba(0,0,0,.55);
+  font-size:10px;
+  font-weight:800;
+  letter-spacing:.015em;
+  white-space:nowrap;
+}
+.page-member .featured-horizontal.stadium-hero .stadium-score-status{
+  display:inline-flex;
+  align-items:baseline;
+  justify-content:center;
+  min-height:15px;
+  margin-top:7px;
+  color:#76efc4;
+  font-size:12px;
+  font-weight:800;
+  letter-spacing:.035em;
+  line-height:1.2;
+  text-shadow:0 2px 7px rgba(0,0,0,.9);
+}
+.page-member .featured-horizontal.stadium-hero .live-minute-value,
+.page-member .featured-horizontal.stadium-hero .live-minute-tick{
+  display:inline-block;
+  font-variant-numeric:tabular-nums;
+}
+.page-member .featured-horizontal.stadium-hero .live-minute-tick{
+  margin-left:1px;
+  animation:memberFeaturedMinuteTick 1.45s ease-in-out infinite;
+}
+@keyframes memberFeaturedMinuteTick{
+  0%,100%{opacity:1}
+  50%{opacity:.22}
+}
+@media(max-width:680px){
+  .page-member .featured-horizontal.stadium-hero .featured-h-meta>.badge.live{
+    min-height:23px;
+    padding:4px 8px;
+    font-size:9px;
+  }
+  .page-member .featured-horizontal.stadium-hero .stadium-score-status{font-size:11px}
+}
+@media(prefers-reduced-motion:reduce){
+  .page-member .featured-horizontal.stadium-hero .live-minute-tick{animation:none}
+}
