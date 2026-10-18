@@ -4690,14 +4690,15 @@ button,input,select,textarea{font-family:inherit;font-synthesis:none}
       "match match score score"
       "market selection odds result";
     align-items:center;
-    grid-template-rows:21px 54px 29px;
-    column-gap:5px;row-gap:2px;
+    /* Prototype V3: 16px meta + (23px HOME / 23px AWAY) + 24px market. */
+    grid-template-rows:16px 51px 24px;
+    column-gap:7px;row-gap:5px;
     min-height:0;height:auto;width:100%;
-    padding:7px 9px;
+    padding:8px 9px;
     margin:0 0 7px;
-    border-radius:11px;border:1px solid rgba(181,220,224,.08);
-    background:linear-gradient(150deg,#132c39,#0e202c);
-    box-shadow:0 5px 13px rgba(0,0,0,.14);
+    border-radius:12px;border:1px solid rgba(185,223,234,.075);
+    background:linear-gradient(145deg,#152c3a,#101f2c);
+    box-shadow:0 4px 11px rgba(0,0,0,.25);
     overflow:hidden;
   }
   .page-member #signalBoard .signal-table tbody tr.signal-row.expanded{
@@ -4718,26 +4719,26 @@ button,input,select,textarea{font-family:inherit;font-synthesis:none}
   /* Line 1 — current fixture minute, league, live status, saved star, chevron. */
   .page-member #signalBoard .signal-row>td.signal-time{
     grid-area:detected;display:flex;align-items:center;
-    gap:6px;min-width:0;height:21px;
-    padding-right:69px!important;
+    gap:7px;min-width:0;height:16px;
+    padding-right:54px!important;
     font-variant-numeric:tabular-nums;
   }
   .page-member #signalBoard .signal-time-record{display:none!important}
   .page-member #signalBoard .signal-time .mobile-default-clock{
     display:block;flex:0 0 auto;font-size:10px;
-    font-weight:900;line-height:1;color:#ff6876;
+    font-weight:900;line-height:1;color:#ff6773;
   }
   .page-member #signalBoard .signal-time .mobile-default-league{
     display:block;flex:1 1 auto;min-width:0;overflow:hidden;
     text-overflow:ellipsis;white-space:nowrap;font-size:9px;
-    line-height:1.2;font-weight:700;color:#a9bfcc;
+    line-height:1.2;font-weight:700;color:#a8bfcc;
   }
   .page-member #signalBoard .signal-time .mobile-default-state{
     display:block;flex:0 0 auto;font-size:8px;font-weight:850;
-    color:#77e2b4;white-space:nowrap;
+    color:#77dbb2;white-space:nowrap;
   }
   .page-member #signalBoard .signal-time .expand-glyph{
-    position:absolute;top:8px;right:7px;
+    position:absolute;top:8px;right:8px;
     font-size:16px;line-height:20px;color:#b4ced5;
   }
   .page-member #signalBoard .signal-row .member-new-signal{display:none!important}
@@ -4749,7 +4750,7 @@ button,input,select,textarea{font-family:inherit;font-synthesis:none}
     display:block;position:static;min-width:0;width:100%;
   }
   .page-member #signalBoard .signal-row .favorite-star{
-    position:absolute;right:31px;top:4px;z-index:2;
+    position:absolute;right:30px;top:6px;z-index:2;
     display:grid;place-items:center;
     width:28px;height:28px;min-height:0;padding:0;
     border:0;background:transparent;box-shadow:none;
@@ -4757,45 +4758,45 @@ button,input,select,textarea{font-family:inherit;font-synthesis:none}
   }
   .page-member #signalBoard .signal-row .favorite-team-names{
     display:grid;grid-template-columns:minmax(0,1fr);
-    grid-template-rows:repeat(2,26px);
-    row-gap:2px;align-items:center;min-width:0;width:100%;
+    grid-template-rows:repeat(2,23px);
+    row-gap:5px;align-items:center;min-width:0;width:100%;
   }
   .page-member #signalBoard .signal-row .favorite-team-line{
     display:grid;grid-template-columns:31px minmax(0,1fr);
-    gap:4px;align-items:center;min-height:26px;height:26px;
+    gap:5px;align-items:center;min-height:23px;height:23px;
     overflow:hidden;
   }
   .page-member #signalBoard .signal-row .favorite-side-label{
-    font-size:8px;letter-spacing:.01em;line-height:1.1;color:#8da4b5;
+    font-size:8px;letter-spacing:.01em;line-height:1.1;color:#819bac;
     white-space:nowrap;
   }
   .page-member #signalBoard .signal-row .favorite-team-home,
   .page-member #signalBoard .signal-row .favorite-team-away{
     display:block;min-width:0;max-width:100%;
-    color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-    line-height:26px;font-size:clamp(10px,2.8vw,12px);font-weight:800;
+    color:#f4f9fb;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    line-height:23px;font-size:11px;font-weight:800;
   }
   .page-member #signalBoard .signal-row>td.live-score-cell{
     grid-area:score;display:block;min-width:0;
   }
   .page-member #signalBoard .signal-row .live-score-pair{
     display:grid;grid-template-columns:minmax(0,1fr);
-    grid-template-rows:repeat(2,26px);row-gap:2px;
+    grid-template-rows:repeat(2,23px);row-gap:5px;
     width:100%;min-width:0;max-width:100%;
     justify-items:end;align-items:center;margin:0;
   }
   .page-member #signalBoard .signal-row .live-score-team,
   .page-member #signalBoard .signal-row .live-score-team.home,
   .page-member #signalBoard .signal-row .live-score-team.away{
-    display:block;width:100%;min-height:26px;height:26px;
-    line-height:26px;text-align:right;font-size:15px;
+    display:block;width:100%;min-height:23px;height:23px;
+    line-height:23px;text-align:right;font-size:15px;
     font-weight:900;color:#fff;white-space:nowrap;
   }
   .page-member #signalBoard .signal-row .market-evidence{display:none!important}
   /* Line 4 — market, pick, entry odds and settlement badge. */
   .page-member #signalBoard .signal-row>td:nth-child(4){
     grid-area:market;display:flex;align-items:center;
-    color:#82ebc3;font-size:9px;font-weight:850;
+    color:#8ef1c4;font-size:9px;font-weight:900;
     overflow:hidden!important;
   }
   .page-member #signalBoard .signal-row .corner-market-cell>strong{
@@ -4812,7 +4813,7 @@ button,input,select,textarea{font-family:inherit;font-synthesis:none}
   .page-member #signalBoard .signal-row .signal-market-period{display:none!important}
   .page-member #signalBoard .signal-row>td.odds-readonly{
     grid-area:odds;display:block;min-width:0;
-    text-align:center;font-size:10px;font-weight:850;
+    text-align:right;font-size:10px;font-weight:800;color:#dceef4;
   }
   .page-member #signalBoard .signal-row>td.result-cell{
     grid-area:result;display:flex;align-items:center;justify-content:flex-end;
@@ -4940,8 +4941,66 @@ button,input,select,textarea{font-family:inherit;font-synthesis:none}
   .page-member #signalBoard .signal-detail-row .featured-entry-history{padding:9px 7px}
 }
 @media(max-width:359px){
-  .page-member #signalBoard .signal-row>td.signal-time{padding-right:64px!important}
+  .page-member #signalBoard .signal-row>td.signal-time{padding-right:50px!important}
   .page-member #signalBoard .signal-row .favorite-star{right:29px}
   .page-member #signalBoard .signal-row .favorite-team-home,
   .page-member #signalBoard .signal-row .favorite-team-away{font-size:10px}
+}
+
+/* Approved V3 colors take precedence over older higher-specificity Graphite Noir row shades.
+   Never apply opacity to the whole row: legibility must match the original prototype. */
+@media(max-width:767px){
+  .page-member #signalBoard .signal-table tbody tr.signal-row.signal-shade-odd:not(.expanded),
+  .page-member #signalBoard .signal-table tbody tr.signal-row.signal-shade-even:not(.expanded),
+  .page-member #signalBoard .signal-table tbody tr.signal-row.expanded{
+    background-color:#152c3a;
+    background-image:linear-gradient(145deg,#152c3a,#101f2c);
+    border:1px solid rgba(185,223,234,.075);
+    border-radius:12px;
+    box-shadow:0 4px 11px rgba(0,0,0,.25);
+  }
+  .page-member #signalBoard .signal-table tbody tr.signal-row:not(.expanded):hover{
+    background-color:#193441;
+    background-image:linear-gradient(145deg,#193441,#122735);
+  }
+  .page-member #signalBoard .signal-table tbody tr.signal-row.expanded{
+    border-color:rgba(86,201,176,.48);
+    border-radius:12px 12px 0 0;
+  }
+  /* Align fourth line with the prototype's fine full-width separator. */
+  .page-member #signalBoard .signal-table tbody tr.signal-row::after{
+    content:"";grid-column:1/-1;grid-row:3;
+    align-self:start;border-top:1px solid rgba(255,255,255,.07);
+    margin-top:-2px;pointer-events:none;
+  }
+  .page-member #signalBoard .signal-row>td:nth-child(4),
+  .page-member #signalBoard .signal-row>td.signal-pick,
+  .page-member #signalBoard .signal-row>td.odds-readonly,
+  .page-member #signalBoard .signal-row>td.result-cell{
+    padding-top:4px!important;
+  }
+  .page-member #signalBoard .signal-row .signal-choice{
+    color:#dceef4;font-weight:850;
+  }
+  /* Compact, quiet outcome pills — unlike the large bright desktop badges. */
+  .page-member #signalBoard .signal-row .result-cell .badge,
+  .page-member #signalBoard .signal-row .result-cell .result-minute-card{
+    display:inline-flex;align-items:center;justify-content:center;
+    padding:4px 5px;border:0;border-radius:5px;
+    font-size:8px;font-weight:900;line-height:1.1;
+    box-shadow:none;
+  }
+  .page-member #signalBoard .signal-row .result-cell .badge.win{background:#1e4939;color:#83f0af}
+  .page-member #signalBoard .signal-row .result-cell .badge.loss{background:#562733;color:#ff98a5}
+  .page-member #signalBoard .signal-row .result-cell .badge.pending{background:#403c27;color:#f8d891}
+  .page-member #signalBoard .signal-row .result-cell .result-minute-card,
+  .page-member #signalBoard .signal-row .result-cell .badge.live{background:#15394c;color:#9bdafb}
+  .page-member #signalBoard .signal-row .result-cell .badge.push,
+  .page-member #signalBoard .signal-row .result-cell .badge.void{background:#28363c;color:#cbdde5}
+  /* CORNERS keeps the true detail / original market data; only compact label changes. */
+  .page-member #signalBoard .signal-row .corner-market-cell>.mobile-default-market{
+    display:block;font-size:9px;font-weight:900;
+    color:#8ef1c4;white-space:nowrap;
+  }
+  .page-member #signalBoard .signal-row .corner-market-cell>strong{display:none!important}
 }
