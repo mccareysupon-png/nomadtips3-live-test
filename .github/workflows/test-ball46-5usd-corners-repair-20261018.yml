@@ -1,0 +1,87 @@
+name: TEST ONLY BALL46 5USD Corners Repair 20261018
+on:
+  push:
+    branches: [repair/ball46-5usd-corners-only-20261018]
+    paths:
+      - 'ops/ball46-corners/**'
+      - '.github/workflows/test-ball46-5usd-corners-repair-20261018.yml'
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  offline-test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unit tests of Corners-only source patch
+        run: node --test ops/ball46-corners/patch-native.test.mjs
+      - name: GET current production source, build/test candidate locally, NO DEPLOY
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          node --input-type=module <<'NODE'
+          import {patchNative} from './ops/ball46-corners/patch-native.mjs';
+          import {writeFileSync,mkdirSync} from 'node:fs';
+          import {createHash} from 'node:crypto';
+          import {execFileSync} from 'node:child_process';
+          const account=process.env.CLOUDFLARE_ACCOUNT_ID,token=process.env.CLOUDFLARE_API_TOKEN;
+          if(!account||!token)throw Error('READ_ONLY_CLOUDFLARE_CREDENTIALS_MISSING');
+          const base='https://api.cloudflare.com/client/v4/accounts/'+account;
+          const headers={authorization:'Bearer '+token};
+          async function get(path){
+            const r=await fetch(base+path,{headers,signal:AbortSignal.timeout(20000)});
+            if(!r.ok)throw Error('GET_FAILED_'+r.status);
+            const j=await r.json();
+            if(j.success!==true)throw Error('CLOUDFLARE_API_READ_FAILED');
+            return j.result;
+          }
+          const dep=await get('/workers/scripts/nomadtips3-engine-343/deployments?per_page=1');
+          const deploymentId=dep.deployments?.[0]?.id||null;
+          const versionId=dep.deployments?.[0]?.versions?.[0]?.version_id;
+          const pinned='9b363777-64fc-4a48-a10a-0fad822640cb';
+          if(versionId!==pinned)throw Error('PRODUCTION_VERSION_CHANGED_ABORT_'+String(versionId));
+          const version=await get('/workers/workers/nomadtips3-engine-343/versions/'+versionId+'?include=modules');
+          if(version.main_module!=='index-bulk-recovery.js')throw Error('UNEXPECTED_ENTRYPOINT');
+          const file=version.modules?.find(m=>m.name===version.main_module);
+          if(!file?.content_base64)throw Error('NATIVE_SOURCE_UNAVAILABLE');
+          const source=Buffer.from(file.content_base64,'base64').toString('utf8');
+          const candidate=patchNative(source);
+          mkdirSync('ops/ball46-corners/audit',{recursive:true});
+          const target='ops/ball46-corners/audit/candidate-worker.js';
+          writeFileSync(target,candidate);
+          execFileSync('node',['--check',target],{stdio:'inherit'});
+          const sha=s=>createHash('sha256').update(s).digest('hex');
+          const oldSHA=sha(source),newSHA=sha(candidate);
+          if(oldSHA===newSHA)throw Error('NO_CHANGE');
+          for(const mark of [
+            'var BALL46_CORNER_TICK_REQUESTS_PER_SCAN=2',
+            'var BALL46_CORNER_TICK_MAX_AGE_MS=90*1e3',
+            'FINAL_RECHECK_MAX_PER_SCAN = 3',
+            'FINAL_RECHECK_INTERVAL_MS = 15 * 60 * 1e3',
+            'signal-ledger-v2-longterm',
+            'BET365_VERIFIED_HISTORY_INPLAY',
+            'B46_CORNERS_FAIR_QUEUE_AND_RECHECK_20261018',
+            'b46CornerBudgetWindow.has(cacheKey)',
+            'isVerifiedCornerMarket(sig?.market) && sig?.status === "UNRESOLVED"'
+          ])if(!candidate.includes(mark))throw Error('SAFETY_CONTRACT_MISSING_'+mark);
+          for(const label of ['ft_1x2','ft_ah','ft_over','ft_under','ht_1x2','ht_ah','ht_over','ht_under'])
+            if(!source.includes(label)||!candidate.includes(label))throw Error('NON_CORNERS_MARKET_DROPPED_'+label);
+          const summary={ok:true,deployed:false,deploymentId,sourceVersion:versionId,oldSHA,newSHA,origBytes:source.length,patchedBytes:candidate.length,
+            cornersRequestsPerScan:2,cornersPriceMaxAgeSeconds:90,finalRecheckMax:3,finalRecheckMinutes:15,
+            touched:['Corners fair tick scheduling','Corners UNRESOLVED final retry eligibility'],
+            untouched:['Goaloo','Multi-Source','AH','Goals','5USD source','betting rules','Ledger V2','Cloudflare routes']};
+          writeFileSync('ops/ball46-corners/audit/summary.json',JSON.stringify(summary,null,2));
+          console.log('CORNERS_REPAIR_STAGE_TEST_PASS '+JSON.stringify(summary));
+          NODE
+      - name: Verify no deployment commands in workflow
+        run: |
+          if grep -En 'wrangler[[:space:]]+deploy|/deployments.*/[Pp][Oo][Ss][Tt]|http.*-X POST.*workers/scripts' .github/workflows/test-ball46-5usd-corners-repair-20261018.yml; then exit 1; fi
+          echo NO_PRODUCTION_DEPLOY_PATH
+      - name: Upload staging candidate for inspection ONLY
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-corners-repair-candidate-not-deployed
+          path: ops/ball46-corners/audit/
+          if-no-files-found: error
+          retention-days: 14
