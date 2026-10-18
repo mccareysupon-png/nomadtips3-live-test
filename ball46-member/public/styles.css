@@ -4339,3 +4339,11 @@ button,input,select,textarea{font-family:inherit;font-synthesis:none}
 @media(prefers-reduced-motion:reduce){
   .page-member .featured-horizontal.stadium-hero .live-minute-tick{animation:none}
 }
+
+/* BALL46 MEMBER — collapsed match rows: neutral-white names and scores only (2026-10-18) */
+.page-member #signalBoard .signal-table tbody tr.signal-row:not(.expanded) .favorite-team-home,
+.page-member #signalBoard .signal-table tbody tr.signal-row:not(.expanded) .favorite-team-away,
+.page-member #signalBoard .signal-table tbody tr.signal-row:not(.expanded) .live-score-team.home,
+.page-member #signalBoard .signal-table tbody tr.signal-row:not(.expanded) .live-score-team.away{
+  color:#FFFFFF;
+}
