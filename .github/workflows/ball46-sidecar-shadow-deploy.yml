@@ -6,6 +6,8 @@ on:
     paths:
       - .github/workflows/ball46-sidecar-shadow-deploy.yml
       - workers/ball46-result-sidecar/src/worker.mjs
+      - workers/ball46-result-sidecar/src/pending-ledger-reader.mjs
+      - workers/ball46-result-sidecar/test/pending-ledger-reader.test.mjs
       - workers/ball46-result-sidecar/wrangler.stage.toml
       - integrations/multisource/cross-source-fixture-mapper.mjs
   workflow_dispatch:
