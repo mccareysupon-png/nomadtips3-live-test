@@ -1,4 +1,4 @@
-name: BALL46 isolated canonical registry — shadow only
+name: BALL46 ten-minute pending route — isolated shadow
 on:
   push:
     branches:
@@ -7,6 +7,10 @@ on:
       - .github/workflows/ball46-sidecar-shadow-deploy.yml
       - workers/ball46-result-sidecar/src/worker.mjs
       - workers/ball46-result-sidecar/src/pending-ledger-reader.mjs
+      - workers/ball46-result-sidecar/src/pending-ten-minute-failover.mjs
+      - workers/ball46-result-sidecar/src/pending-failover-runtime.mjs
+      - workers/ball46-result-sidecar/test/pending-ten-minute-failover.test.mjs
+      - workers/ball46-result-sidecar/test/pending-failover-runtime.test.mjs
       - workers/ball46-result-sidecar/test/pending-ledger-reader.test.mjs
       - workers/ball46-result-sidecar/wrangler.stage.toml
       - integrations/multisource/cross-source-fixture-mapper.mjs
