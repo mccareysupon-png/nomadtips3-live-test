@@ -1,0 +1,12 @@
+name = "ball46-multisource-v5-isolated-local-test"
+main = "src/multisource-do-harness.js"
+compatibility_date = "2026-10-17"
+workers_dev = false
+
+[[durable_objects.bindings]]
+name = "STAGING_DO"
+class_name = "Ball46StagingResultObject"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Ball46StagingResultObject"]

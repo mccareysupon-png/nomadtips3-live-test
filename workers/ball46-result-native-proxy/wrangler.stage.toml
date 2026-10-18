@@ -1,0 +1,11 @@
+name = "ball46-result-native-proxy-20261018"
+main = "src/index.mjs"
+compatibility_date = "2026-10-18"
+workers_dev = false
+
+[[services]]
+binding = "ENGINE"
+service = "nomadtips3-engine-343"
+
+# No public workers.dev, routes, cron or URL.
+# Secrets: FIVEDOLLAR_API_KEY and RESULT_PROXY_TOKEN (Cloudflare-managed).

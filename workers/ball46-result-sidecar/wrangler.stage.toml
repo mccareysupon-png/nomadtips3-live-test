@@ -1,0 +1,39 @@
+name = "ball46-multisource-shadow-20261018"
+main = "src/worker.mjs"
+compatibility_date = "2026-10-18"
+workers_dev = false
+
+[vars]
+GOALOO_POLL_ENABLED = "0"
+GOALOO_UTC_CERTIFIED = "0"
+GOALOO_FT_CERTIFIED = "0"
+GOALOO_OFFSET_MINUTES = ""
+GOALOO_APPROVED_LEAGUES = "{}"
+GOALOO_APPROVED_TEAMS = "{}"
+ENABLE_NATIVE_FORWARD = "0"
+CANONICAL_CAPTURE_ENABLED = "1"
+PENDING_LEDGER_READONLY_ENABLED = "1"
+
+[[services]]
+binding = "HUB"
+service = "nomadtips3-5usd-hub-343"
+
+[[services]]
+binding = "ENGINE"
+service = "nomadtips3-engine-343"
+
+[triggers]
+crons = ["*/5 * * * *"]
+
+[[durable_objects.bindings]]
+name = "RESULT_REGISTRY"
+class_name = "Ball46FixtureResultRegistry"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Ball46FixtureResultRegistry"]
+
+# Isolated Shadow: automatic GET-only canonical collection every five minutes.
+# HUB is read-only. No Engine service binding, route or Worker.dev address.
+# GOALOO_POLL_ENABLED=0; no Goaloo feed fetch or FT scoring.
+# SIDECAR_ADMIN_TOKEN is provisioned securely during deployment.

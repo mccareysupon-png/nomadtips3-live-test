@@ -1,0 +1,12 @@
+name = "ball46-results-crosswalk-local-only"
+main = "src/test-harness.mjs"
+compatibility_date = "2026-10-18"
+workers_dev = false
+
+[[durable_objects.bindings]]
+name = "TEST"
+class_name = "SidecarLocalTest"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["SidecarLocalTest"]

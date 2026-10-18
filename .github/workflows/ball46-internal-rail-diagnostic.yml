@@ -1,0 +1,120 @@
+name: BALL46 read-only internal path diagnostic
+on:
+  push:
+    branches: [stage/ball46-multisource-v5-20261017]
+    paths: [.github/workflows/ball46-internal-rail-diagnostic.yml]
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  diagnostic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Observe a scheduled Worker cycle after the hotfix
+        run: |
+          node - <<'NODE'
+          const end=Date.parse('2026-10-18T12:55:40Z');
+          const left=Math.max(0,end-Date.now());
+          if(left>240000)throw Error('EXPECTED_POSTFIX_CRON_WINDOW_NOT_REACHED');
+          console.log('POST_HOTFIX_CRON_OBSERVATION_WINDOW',JSON.stringify({target:new Date(end).toISOString(),remainingMs:left}));
+          await new Promise(resolve=>setTimeout(resolve,left));
+          NODE
+      - name: Create temporary read-only Cloudflare service binding probe, then delete it
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/b46-probe
+          cd /tmp/b46-probe
+          cat > index.mjs <<'JS'
+          export default {
+            async fetch(request,env){
+              if(request.headers.get('x-diagnostic-token')!==env.DIAG_TOKEN)
+                return new Response('Not found',{status:404});
+              const steps={}; 
+              const operation=async(name,fn)=>{
+                try{steps[name]=await fn()}catch(e){steps[name]={exception:String(e?.message||e).slice(0,190)}}};
+              await operation('hub_snapshot',async()=>{
+                const r=await env.HUB.fetch('https://hub.internal/snapshot',{method:'GET'});
+                const d=await r.json().catch(()=>({}));
+                return {http:r.status,ok:d.ok??null,error:String(d.error||'').slice(0,130),
+                  fixtures:Array.isArray(d.fixtures)?d.fixtures.length:null,
+                  fetchedAt:d.fetchedAt??null};
+              });
+              await operation('engine_ledger',async()=>{
+                const u='https://engine.internal/statistics?cursor='+encodeURIComponent('stat:v2:row:9999999999999:~')+'&paged=1';
+                const r=await env.ENGINE.fetch(u,{method:'GET'});
+                const d=await r.json().catch(()=>({}));
+                return {http:r.status,ok:d.ok??null,version:d.statisticsLedgerVersion??null,
+                  pending:d.pending??null,firstRows:d.rows?.length??null};
+              });
+              await operation('sidecar_health',async()=>{
+                const r=await env.SIDECAR.fetch('https://private.internal/health',{method:'GET'});
+                const d=await r.json().catch(()=>({}));
+                return {http:r.status,ok:d.ok??null,fixtureCount:d.fixtureCount??null,
+                  sourceMappings:d.sourceMappings??null,ftEvidenceKeys:d.ftEvidenceKeys??null,
+                  goalooRouted:d.goalooRouted??null,permanentlyDone:d.permanentlyDone??null,
+                  newSignalIntake:d.newSignalIntake??null,
+                  recentEvents:d.recentEvents??null};
+              });
+              await operation('goaloo_feed',async()=>{
+                const tries=[];
+                for(const url of ['https://live10.goaloo28.com/gf/data/bf_us.js',
+                     'https://live10.goaloo28.com/gf/data/bf_us1.js']){
+                  try{
+                    const r=await fetch(url,{redirect:'manual',signal:AbortSignal.timeout(12000)});
+                    const body=r.ok?await r.text():'';
+                    tries.push({host:new URL(url).hostname,path:new URL(url).pathname,
+                     http:r.status,contentType:r.headers.get('content-type'),
+                     bodyLength:body.length,validFeed:r.ok&&body.includes('A[')});
+                    if(r.ok&&body.includes('A['))
+                     return {ok:true,tries};
+                  }catch(e){tries.push({path:new URL(url).pathname,
+                   exception:String(e?.message||e).slice(0,110)})}
+                }
+                return {ok:false,reason:'NO_READABLE_GOALOO_ENDPOINT',tries};
+              });
+              return Response.json({ok:true,steps});
+            }
+          };
+          JS
+          cat > wrangler.toml <<'TOML'
+          name = "ball46-temporary-rail-diag-20261018"
+          main = "index.mjs"
+          compatibility_date = "2026-10-18"
+          workers_dev = true
+          [[services]]
+          binding = "HUB"
+          service = "nomadtips3-5usd-hub-343"
+          [[services]]
+          binding = "ENGINE"
+          service = "nomadtips3-engine-343"
+          [[services]]
+          binding = "SIDECAR"
+          service = "ball46-multisource-shadow-20261018"
+          TOML
+          key=$(node -e 'process.stdout.write(require("node:crypto").randomBytes(32).toString("hex"))')
+          export B46_DIAG_PROBE_TOKEN="$key"
+          printf '\n[vars]\nDIAG_TOKEN = "%s"\n' "$key" >> wrangler.toml
+          cleanup() {
+            npx --yes wrangler@4 delete --name ball46-temporary-rail-diag-20261018 --force >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+          npx --yes wrangler@4 deploy > /tmp/b46-diag-deploy.log
+          echo "DIAGNOSTIC_WORKER_DEPLOYED_EPHEMERAL"
+          node - <<'NODE'
+          const uri='https://ball46-temporary-rail-diag-20261018.mccarey-supon.workers.dev';
+          (async()=>{
+            const r=await fetch(uri+'/diagnose',{headers:{
+             'x-diagnostic-token':process.env.B46_DIAG_PROBE_TOKEN},
+             signal:AbortSignal.timeout(45000)});
+            const d=await r.json().catch(()=>({}));
+            if(!r.ok||d.ok!==true)throw Error('READ_ONLY_PROBE_FAILED_'+r.status+'_'+JSON.stringify(d).slice(0,500));
+            console.log('BALL46_PRIVATE_RAIL_DIAGNOSTIC',JSON.stringify(d));
+          })().catch(e=>{console.error('PROBE_READ_FAILED',e.message);process.exit(1)});
+          NODE
