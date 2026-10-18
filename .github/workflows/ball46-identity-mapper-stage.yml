@@ -1,0 +1,22 @@
+name: BALL46 strict fixture identity mapper staging
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - stage/ball46-multisource-v5-20261017
+    paths:
+      - integrations/multisource/**
+      - .github/workflows/ball46-identity-mapper-stage.yml
+permissions:
+  contents: read
+jobs:
+  map-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run strict fixture identity tests only
+        run: node --test integrations/multisource/test/*.test.mjs
