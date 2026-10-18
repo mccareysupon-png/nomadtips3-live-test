@@ -30,7 +30,8 @@ export async function captureOnlyNewPending(storage,rows,{at=new Date().toISOStr
   const firstRun=!baseline;
   if(firstRun){
    // Called only after a COMPLETE and AUTHORITATIVE Ledger V2 read.
-   baseline={establishedAt:at,legacyPendingCount:rows.length,version:1};
+   baseline={establishedAt:at,legacyPendingCount:rows.length,
+    capturedTotal:0,lastPolledAt:at,lastNewPendingCount:0,version:1};
    for(const r of rows){
     if(r?.id)await tx.put(legacyKey(r.id),true);
    }
@@ -63,8 +64,12 @@ export async function captureOnlyNewPending(storage,rows,{at=new Date().toISOStr
     source:'AUTHORITATIVE_LEDGER_V2',version:1};
    await tx.put(key,record);selectedRows.push(row);created++;
   }
+  baseline.capturedTotal=(Number(baseline.capturedTotal)||0)+created;
+  baseline.lastPolledAt=at;
+  baseline.lastNewPendingCount=selectedRows.length;
+  await tx.put(BASELINE,baseline);
   return{ok:true,state:'NEW_PENDING_TRACKED',firstRun:false,
-   baselineAt:baseline.establishedAt,newPendingCount:selectedRows.length,
+   baselineAt:baseline.establishedAt,capturedTotal:baseline.capturedTotal,newPendingCount:selectedRows.length,
    capturedThisRun:created,previouslyCaptured:alreadyStored,
    excludedLegacy:skippedLegacy,invalid:missingId,selectedRows,ledgerWrites:0};
  });
