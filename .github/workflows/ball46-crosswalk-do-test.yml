@@ -46,3 +46,7 @@ jobs:
           node -e 'const x=require("/tmp/b46-stress.json");if(!x.ok||x.inserted!==1443||x.matched!==752)process.exit(1);console.log("WORKERD_1443x752_SCALE_PASS",JSON.stringify(x))'
           curl --fail --silent --show-error --max-time 20 http://127.0.0.1:8791/canonical-only -o /tmp/b46-canonical-only.json
           node -e 'const x=require("/tmp/b46-canonical-only.json");if(!x.ok||x.first.inserted!==1||x.second.unchanged!==1||x.drift.conflicts!==1||x.engineWrites!==0)process.exit(1);console.log("WORKERD_CANONICAL_ONLY_RETAINS_PROVENANCE",JSON.stringify(x))'
+          for p in native-write-canary native-legacy-guard; do
+            curl --fail --silent --show-error --max-time 45 "http://127.0.0.1:8791/$p" -o "/tmp/b46-$p.json"
+            node -e 'const a=require(process.argv[1]);if(!a.ok||a.productionWrites!==0)process.exit(1);console.log("WORKERD_NATIVE_FT_SAFETY_PASS",JSON.stringify(a))' "/tmp/b46-$p.json"
+          done
