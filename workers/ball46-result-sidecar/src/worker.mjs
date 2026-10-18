@@ -270,8 +270,7 @@ async function poll(storage,env,fetcher=fetch){
   leagueAliases:getAliases(String(env.GOALOO_APPROVED_LEAGUES||'{}')),
   teamAliases:getAliases(String(env.GOALOO_APPROVED_TEAMS||'{}'))
  });
- const p=await storage.get(prefix+'pending-audit');
- const planned=planVerifiedPendingFt({pendingRows:p?.rows||[],
+ const planned=planVerifiedPendingFt({pendingRows:ledger.selectedRows||[],
   verifiedResults:result.verifiedResults||[],hubFixtures:fixtures,maxFixtures:3});
  const native=await dispatchNativeVerifiedFt(env,result.verifiedResults||[],fixtures);
  return {...result,captured,ledger,pendingPlan:{
