@@ -1,5 +1,5 @@
 import {DurableObject} from 'cloudflare:workers';
-import {applySnapshot,inspectSidecar} from './worker.mjs';
+import {applySnapshot,inspectSidecar,captureCanonicalHub} from './worker.mjs';
 const line=(status,scoreHome=0,scoreAway=0,goalooId='GO-111',home='Bangkok Utd',away='Buriram Utd')=>
  "A[0]=['"+goalooId+"','101','','','"+home+"','"+away+"','2026-10-18 10:00:00','','"+status+"','"+scoreHome+"','"+scoreAway+"'];";
 const source=(status,scoreHome=0,scoreAway=0,other='')=>
@@ -7,6 +7,26 @@ const source=(status,scoreHome=0,scoreAway=0,other='')=>
 const f={fixtureId:'5USD-8888',home:'Bangkok United',away:'Buriram United',
  league:'Thai League',kickoffUtc:'2026-10-18T10:00:00.000Z'};
 export class SidecarLocalTest extends DurableObject{
+ async canonicalOnlyTest(){
+  const t='2026-10-18T08:00:00Z',fixture={
+    fixtureId:'5USD-CAPTURE-1',home:'Home United',away:'Away United',
+    league:'Thai League',kickoffUtc:'2026-10-18T09:00:00Z'
+  };
+  const first=await captureCanonicalHub(this.ctx.storage,[fixture],{at:t});
+  const second=await captureCanonicalHub(this.ctx.storage,[fixture],{at:'2026-10-18T08:05:00Z'});
+  const drift=await captureCanonicalHub(this.ctx.storage,[{...fixture,home:'Impostor FC'}],
+    {at:'2026-10-18T08:10:00Z'});
+  const noFixture=await captureCanonicalHub(this.ctx.storage,[],
+    {at:'2026-10-18T08:15:00Z'});
+  const snapshot=await inspectSidecar(this.ctx.storage);
+  const key='ball46:verified-fixture-crosswalk:v3:f:5USD-CAPTURE-1';
+  const durable=await this.ctx.storage.get(key);
+  const ok=first.inserted===1&&second.inserted===0&&second.unchanged===1&&
+    drift.conflicts===1&&noFixture.inserted===0&&durable?.home==='Home United'&&
+    snapshot.fixtureCount===1;
+  return Response.json({ok,first,second,drift,noFixture,snapshot,
+   heldOriginal:durable?.home,engineWrites:0},{status:ok?200:500});
+ }
  async stressTest(){
   const base=Date.parse('2026-10-01T00:00:00Z');
   const hub=Array.from({length:1443},(_,i)=>({
@@ -32,6 +52,7 @@ export class SidecarLocalTest extends DurableObject{
  }
  async fetch(req){
   const path=new URL(req.url).pathname;
+  if(path==='/canonical-only')return this.canonicalOnlyTest();
   if(path==='/stress')return this.stressTest();
   if(path!=='/selftest')return Response.json({error:'UNKNOWN'},{status:404});
   const t0='2026-10-18T11:00:00Z',
@@ -58,6 +79,7 @@ export class SidecarLocalTest extends DurableObject{
  }
 }
 export default{fetch(request,env){
- const id=env.TEST.idFromName(new URL(request.url).pathname==='/stress'?'isolated-stress-crosswalk':'isolated-fixture-crosswalk');
+ const path=new URL(request.url).pathname;
+ const id=env.TEST.idFromName(path==='/stress'?'isolated-stress-crosswalk':path==='/canonical-only'?'isolated-canonical-only':'isolated-fixture-crosswalk');
  return env.TEST.get(id).fetch(request);
 }};
