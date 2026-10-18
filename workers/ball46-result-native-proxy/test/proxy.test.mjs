@@ -5,8 +5,8 @@ const token='x'.repeat(48);
 const proof=()=>({fixture:{id:'5D-1',status:'finished',status_code:'full',
  goals:{home:2,away:1},corners:{home:null,away:null}},
  provenance:{source:'goaloo',sourceFixtureId:'G-1',canonicalId:'5D-1',
- kickoffUtc:'2026-10-18T10:00:00Z',firstFtSeenAt:'2026-10-18T12:00:00Z',
- verifiedAt:'2026-10-18T12:01:10Z'}});
+ kickoffUtc:'2026-10-17T10:00:00Z',firstFtSeenAt:'2026-10-17T12:00:00Z',
+ verifiedAt:'2026-10-17T12:01:10Z'}});
 const request=(path,tokenValue=token,body=proof())=>new Request('https://private.internal'+path,{
  method:'POST',headers:{'x-ball46-result-auth':tokenValue,'content-type':'application/json'},
  body:JSON.stringify(body)});
@@ -14,7 +14,7 @@ const response=()=>({ok:true,status:200,json:async()=>({ok:true,fixtureId:'5D-1'
  statisticsLedgerVersion:'signal-ledger-v2-longterm',settled:1,ledgerInserted:0,ledgerUpdated:1})});
 test('requires certified FT twice after full 90 min',()=>{
  assert.equal(inspectFtProof(proof(),{now:Date.parse('2026-10-18T12:05:00Z')}).ok,true);
- const p=proof();p.provenance.firstFtSeenAt='2026-10-18T12:00:50Z';
+ const p=proof();p.provenance.firstFtSeenAt='2026-10-17T12:00:50Z';
  assert.equal(inspectFtProof(p,{now:Date.parse('2026-10-18T12:05:00Z')}).ok,false);
 });
 test('does not use final goal score to settle corners',()=>{
@@ -41,7 +41,7 @@ test('verified FT uses current Engine native reconcile and expects Ledger V2',as
  let target,options;
  const env={RESULT_PROXY_TOKEN:token,FIVEDOLLAR_API_KEY:token,
   ENGINE:{fetch:async(u,o)=>{target=u;options=o;return response()}}};
- const p=proof();p.provenance.verifiedAt='2026-10-18T12:01:10Z';
+ const p=proof();p.provenance.verifiedAt='2026-10-17T12:01:10Z';
  const r=await handlePrivateFinal(request('/verified-goaloo-ft',token,p),env);
  const d=await r.json();
  assert.equal(r.status,200);assert.equal(d.ledgerV2Native,true);
