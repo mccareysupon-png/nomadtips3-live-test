@@ -11,9 +11,11 @@ const v3=css.slice(css.indexOf(marker));
 test('all markets and favorites use existing Member filters',()=>{
   assert.match(html,/id="marketMenuToggle"/);
   assert.match(html,/id="marketTabs"/);
-  assert.match(html,/id="mobileMarketPills"/);
-  assert.match(js,/for\(const market of \[\.\.\.MARKET_ORDER,'FAVORITES'\]\)/);
-  assert.match(js,/source\?\.click\(\)/);
+  assert.match(html,/id="mobileV5MarketToggle"/);
+  assert.doesNotMatch(html,/id="mobileMarketPills"/);
+  assert.match(js,/for\(const market of MARKET_ORDER\)/);
+  assert.match(js,/sidebar\.addEventListener\('click'/);
+  assert.match(js,/trigger\.addEventListener\('click'/);
   assert.match(js,/state\.favoritesView/);
 });
 test('default matches appear before expanded details (none open initially)',()=>{
@@ -57,7 +59,7 @@ test('mobile-only V3 does not edit Engine data, existing desktop navigation rema
   assert.match(css,/\.mobile-market-navigation\{display:contents\}/);
   assert.match(js,/function renderSummary\(\)/);
   assert.match(js,/function filteredRows\(\)/);
-  assert.match(js,/function renderMobileMarketPills\(\)/);
+  assert.doesNotMatch(js,/function renderMobileMarketPills\(\)/);
 });
 test('approved V3 surfaces override older dark-shade classes on mobile only',()=>{
   const theme=v3.slice(v3.indexOf('Approved V3 colors take precedence'));
@@ -179,4 +181,41 @@ test('mobile profile has only the clickable icon until member details are reques
   assert.match(v4,/\.mobile-v4-online-dot\{display:none!important\}/);
   assert.match(html,/id="mobileV4ProfilePopover"[^>]*hidden/);
   assert.match(js,/toggle\.addEventListener\('click'/);
+});
+
+test('approved V5 mobile top bar centers logo between the markets hamburger and profile',()=>{
+  const v5=css.slice(css.indexOf('/* BALL46 MEMBER — approved mobile V5 header Markets drawer and borderless elevated defaults */'));
+  assert.ok(v5.length>0);
+  assert.match(html,/<button id="mobileV5MarketToggle"/);
+  assert.match(html,/aria-controls="marketSidebar"/);
+  assert.match(html,/<span class="mobile-v5-hamburger" aria-hidden="true">/);
+  assert.match(v5,/grid-template-columns:40px minmax\(0,1fr\) 40px/);
+  assert.match(v5,/\.topbar a\.brand\.brand-original-lettering\{\s*justify-self:center!important/);
+  assert.match(v5,/\.mobile-v4-back\{display:none!important\}/);
+  assert.match(v5,/\.mobile-market-navigation\{display:none!important\}/);
+  assert.doesNotMatch(html,/<nav id="mobileMarketPills"/);
+  assert.match(html,/mobileV5=20261018-clean-card-top-drawer-v1/);
+});
+test('approved V5 reuses the real filter and Favorites sidebar as a left slide-out',()=>{
+  const v5=css.slice(css.indexOf('/* BALL46 MEMBER — approved mobile V5 header Markets drawer and borderless elevated defaults */'));
+  assert.match(js,/const mobileOpener=qs\('#mobileV5MarketToggle'\)/);
+  assert.match(js,/const mobile=window\.matchMedia\('\(max-width:767px\)'\)/);
+  assert.match(js,/for\(const trigger of \[opener,mobileOpener\]\)/);
+  assert.match(js,/mobileOpener\.setAttribute\('aria-expanded',String\(shown\)\)/);
+  assert.match(js,/triggerForViewport\(\)\.focus/);
+  assert.match(js,/sidebar\.addEventListener\('click'/);
+  assert.match(js,/if\(event\.key==='Escape'\)/);
+  assert.match(v5,/transform:translate3d\(-105%,0,0\)!important/);
+  assert.match(v5,/\.page-member\.market-menu-open \.member-market-sidebar\{\s*transform:translate3d\(0,0,0\)!important/);
+  assert.match(v5,/#marketTabs\{\s*display:flex!important;flex-direction:column!important/);
+  assert.match(html,/id="memberFavoriteNav"/);
+});
+test('approved V5 default match cards have no outline but soft dimensional shadows',()=>{
+  const v5=css.slice(css.indexOf('/* BALL46 MEMBER — approved mobile V5 header Markets drawer and borderless elevated defaults */'));
+  assert.match(v5,/\.signal-table tbody tr\.signal-row:not\(\.expanded\)\{\s*border:0!important;outline:0!important/);
+  assert.match(v5,/0 10px 20px rgba\(0,0,0,\.18\)/);
+  assert.match(v5,/0 2px 4px rgba\(0,0,0,\.10\)/);
+  assert.match(v5,/inset 0 1px 0 rgba\(255,255,255,\.05\)!important/);
+  assert.match(v5,/@media\(max-width:767px\)/);
+  assert.match(js,/if\(!detailInserted && state\.expandedSignalId===row\.id\)/);
 });
