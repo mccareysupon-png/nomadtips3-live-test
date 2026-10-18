@@ -1,0 +1,77 @@
+name: READ ONLY BALL46 FT Pending Sydney 20261018
+on:
+  push:
+    branches: [diag/ball46-ft-pending-sydney-20261018]
+    paths:
+      - '.github/workflows/diag-ball46-ft-pending-sydney-20261018.yml'
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Crosscheck FT badge against native Signal Ledger and 5USD HUB
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          const base='https://www.ball46.com';
+          const e='https://nomadtips3-engine-343.mccarey-supon.workers.dev';
+          const h='https://nomadtips3-5usd-hub-343.mccarey-supon.workers.dev';
+          const now=Date.now();
+          const fetchJson=async url=>{
+            try{
+              const r=await fetch(url+(url.includes('?')?'&':'?')+'ft_pending_audit='+now,{signal:AbortSignal.timeout(18000),headers:{'cache-control':'no-cache'}});
+              return {http:r.status,data:await r.json().catch(()=>({error:'NON_JSON'}))};
+            }catch(x){return {http:0,error:String(x.message)}}
+          };
+          const [board,hub,working,health,ledger]=await Promise.all([
+            fetchJson(base+'/api/engine/board'),
+            fetchJson(h+'/snapshot'),
+            fetchJson(e+'/signals'),
+            fetchJson(e+'/health'),
+            fetchJson(e+'/ledger-health')
+          ]);
+          const fixtureMatch=x=>/sydney\s*fc/i.test(String(x?.home?.name??x?.home??''))&&/adelaide\s*united/i.test(String(x?.away?.name??x?.away??''));
+          const relevant=x=>/sydney\s*fc/i.test(JSON.stringify(x?.home??''))&&/adelaide\s*united/i.test(JSON.stringify(x?.away??''));
+          const bd=(board.data?.fixtures||[]).filter(relevant);
+          const hd=(hub.data?.fixtures||[]).filter(relevant);
+          const wk=(working.data?.signals||[]).filter(relevant);
+          const fmtFixture=f=>({
+             fixtureId:String(f.fixtureId),home:f.home?.name,away:f.away?.name,minute:f.minute,
+             status:f.status,statusCode:f.statusCode,boardState:f.boardState,
+             goals:f.goals,corners:f.corners,stale:f.stale, fetchedAt:f.fetchedAt
+          });
+          const fmtSignal=s=>({
+            id:s.id,fixtureId:s.fixtureId,market:s.market,entryMinute:s.entryMinute,entryScore:s.entryScore,
+            selection:s.selection,line:s.line,odds:s.odds,status:s.status,result:s.result,
+            finalScore:s.finalScore,mirrorStatus:s.mirrorStatus,mirrorScore:s.mirrorScore,
+            settlementError:s.settlementError,createdAt:s.createdAt,settledAt:s.settledAt
+          });
+          let cursor=null,pages=0,scanned=0,found=[],lastMeta=null;
+          do {
+            const u=new URL('/api/engine/statistics',base);
+            u.searchParams.set('paged','1');
+            if(cursor)u.searchParams.set('cursor',cursor);
+            const resp=await fetchJson(u.toString());
+            if(resp.http!==200||resp.data?.ok===false){
+              console.log('LEDGER_PAGE_ERROR '+JSON.stringify({page:pages,http:resp.http,error:resp.error||resp.data?.error}));
+              break;
+            }
+            const d=resp.data,rows=d.rows||[];
+            pages++;scanned+=rows.length;
+            found.push(...rows.filter(relevant).map(fmtSignal));
+            lastMeta={hasMore:d.hasMore,nextCursor:!!d.nextCursor,ledgerTotal:d.ledgerTotal,rows:rows.length};
+            cursor=d.hasMore&&d.nextCursor?d.nextCursor:null;
+            if(found.length)break;
+          }while(cursor&&pages<20);
+          console.log('BALL46_FT_PENDING_CASE '+JSON.stringify({
+            at:new Date().toISOString(),timeZone:'Asia/Bangkok',screenshot:'Sydney FC W 2-1 Adelaide United W, 77 AH AWAY 0 @1.88 FT PENDING',
+            endpoints:{board:board.http,hub:hub.http,working:working.http,ledgerHealth:ledger.http},
+            health:{ok:health.data?.ok,engineVersion:health.data?.version,scanAt:health.data?.finishedAt,lastError:health.data?.lastError},
+            board:bd.map(fmtFixture),hub:hd.map(fmtFixture),working:wk.map(fmtSignal),
+            ledgerFound:found,ledgerPages:pages,rowsScanned:scanned,ledgerPageMeta:lastMeta,
+            allWorkingCount:working.data?.signals?.length,
+            ledgerTotals:{total:ledger.data?.ledgerTotal,settled:ledger.data?.settledTotal,pending:ledger.data?.pendingTotal,unresolved:ledger.data?.unresolved}
+          }).slice(0,18000));
+          NODE
