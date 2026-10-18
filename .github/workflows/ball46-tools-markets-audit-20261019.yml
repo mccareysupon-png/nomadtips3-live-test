@@ -1,0 +1,30 @@
+name: BALL46 Mobile Tools and Markets Width Audit
+on:
+  push:
+    branches: [work/ball46-tools-markets-wide7-20261019]
+    paths:
+      - '.github/workflows/ball46-tools-markets-audit-20261019.yml'
+      - 'deploy-assets/ball46-mobile-deep-teal-20261018/measure-gutters.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  measure:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 16
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Inspect exact Production layout (read only)
+        run: node deploy-assets/ball46-mobile-deep-teal-20261018/measure-gutters.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-tools-markets-width-audit-${{ github.run_id }}
+          path: deploy-assets/ball46-mobile-deep-teal-20261018/audit-measure/
+          retention-days: 7
