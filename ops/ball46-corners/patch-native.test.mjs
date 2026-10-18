@@ -45,13 +45,15 @@ test('patch touches only native Corners schedule and Corners unresolved retry; k
     '      await writeWorkingHistories(this.ctx, histories);\n}\n}\n'+
     'class NativeRecovery {\n  async autoReconcileMissingFinals() {\n'+
     '    if ((sig?.status !== "PENDING" && !phase2IsEarly(sig)) || !sig.fixtureId)continue;\n'+
+    '    if (boardIds.has(id)) continue;\n'+
     '    if ((sig?.status !== "PENDING" && !phase2IsEarly(sig)) || !sig.fixtureId)continue;\n'+
     ('let recoveryPadding=0;\n'.repeat(90))+
     '  }\n  async scan() { return super.scan(); }\n}\n';
   const patched=patchNative(mock);
   assert.match(patched,/b46CornerBudgetWindow.has\(cacheKey\)/);
   assert.match(patched,/b46CornerCursor\+Math.min/);
-  assert.equal(patched.split('sig?.status === "UNRESOLVED"').length-1,2);
+  assert.equal(patched.split('sig?.status === "UNRESOLVED"').length-1,3);
+  assert.match(patched,/boardIds\.has\(id\) && !\(isVerifiedCornerMarket/);
   assert.match(patched,/var BALL46_CORNER_TICK_REQUESTS_PER_SCAN=2/);
   assert.match(patched,/var BALL46_CORNER_TICK_MAX_AGE_MS=90\*1e3/);
   assert.match(patched,/FINAL_RECHECK_MAX_PER_SCAN = 3/);
