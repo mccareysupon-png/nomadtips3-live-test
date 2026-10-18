@@ -132,7 +132,8 @@ export async function applySnapshot(storage,{
    if(JSON.stringify(prior)!==JSON.stringify(next))await tx.put(ekey,next);
    if(next.length<2||Date.parse(next.at(-1).at)-Date.parse(next[0].at)<60_000)continue;
    ftReady++;finished.push({fixtureId:fid,source:'goaloo',
-    sourceFixtureId:p.sourceFixtureId,score:clone(p.score),fixture:clone(f)});
+    sourceFixtureId:p.sourceFixtureId,score:clone(p.score),fixture:clone(f),
+    firstFtSeenAt:next[0].at,verifiedAt:at});
   }
   if(conflicts||sourceCollision){
    log(state,at,'IDENTITY_CONFLICT',{conflicts,sourceCollision});
