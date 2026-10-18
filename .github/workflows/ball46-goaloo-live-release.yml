@@ -1,0 +1,72 @@
+name: BALL46 Goaloo active fallback — pinned automatic rollback
+on:
+  push:
+    branches: [stage/ball46-multisource-v5-20261017]
+    paths: [.github/workflows/ball46-goaloo-live-release.yml]
+  workflow_dispatch:
+permissions: {contents: read}
+concurrency:
+  group: ball46-goaloo-controlled-activation
+  cancel-in-progress: false
+jobs:
+  deploy-with-rollback:
+    runs-on: ubuntu-latest
+    timeout-minutes: 13
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
+      FIVE_DOLLAR_API_KEY: ${{ secrets.FIVE_DOLLAR_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify exact native Ledger V2 and Goaloo current source is private
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = "stage/ball46-multisource-v5-20261017"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          test -n "$CLOUDFLARE_API_TOKEN"
+          if [ -z "$FIVEDOLLAR_API_KEY" ] && [ -z "$FIVE_DOLLAR_API_KEY" ]; then
+            echo 'NATIVE_CREDENTIAL_UNAVAILABLE'; exit 1
+          fi
+          grep -Fxq 'workers_dev = false' workers/ball46-result-sidecar/wrangler.live.toml
+          grep -Fxq 'GOALOO_POLL_ENABLED = "1"' workers/ball46-result-sidecar/wrangler.live.toml
+          grep -Fxq 'GOALOO_OFFSET_MINUTES = "0"' workers/ball46-result-sidecar/wrangler.live.toml
+          grep -Fxq 'ENABLE_NATIVE_FORWARD = "1"' workers/ball46-result-sidecar/wrangler.live.toml
+          grep -Fq "maxFixtures:1" workers/ball46-result-sidecar/src/worker.mjs
+          echo 'BALL46_LIVE_GOALOO_RELEASE_SOURCE_GATES_PASS'
+      - name: Run all Signal, Ledger V2 and cross-provider tests
+        run: |
+          node --test workers/ball46-result-sidecar/test/*.test.mjs
+          node --test integrations/multisource/test/*.test.mjs
+      - name: Prove local workerd FT native adapter, Corners safety, duplicate and legacy hold
+        working-directory: workers/ball46-result-sidecar
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4 dev --local --config wrangler.local-test.toml --ip 127.0.0.1 --port 8975 --persist-to /tmp/b46-live-release-private > /tmp/b46-release-test.log 2>&1 &
+          pid=$!
+          trap 'kill "$pid" 2>/dev/null || true' EXIT
+          ready=0
+          for i in $(seq 1 48); do
+            if curl -s --max-time 2 http://127.0.0.1:8975/ -o /dev/null; then ready=1; break; fi
+            sleep 2
+          done
+          if [ "$ready" -ne 1 ]; then tail -n 70 /tmp/b46-release-test.log; exit 1; fi
+          for part in selftest canonical-only stress native-write-canary native-legacy-guard; do
+            curl --fail --silent --show-error --max-time 60 "http://127.0.0.1:8975/$part" -o "/tmp/b46-verify-$part.json"
+            node -e 'const r=require(process.argv[1]);if(!r.ok||(r.nativeCalls!==undefined&&r.productionWrites!==0))process.exit(1);console.log("BALL46_WORKERD_SAFE",process.argv[1])' "/tmp/b46-verify-$part.json"
+          done
+      - name: Provision scoped native credential; capture rollback version; activate live fallback and verify
+        run: node workers/ball46-result-sidecar/release-controlled.mjs
+      - name: Retain exact one-step rollback point and release proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-goaloo-versioned-rollback-proof
+          path: workers/ball46-result-sidecar/ball46-live-rollback-proof.json
+          retention-days: 30
+          if-no-files-found: warn
