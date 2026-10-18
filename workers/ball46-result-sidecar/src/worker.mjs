@@ -224,7 +224,7 @@ async function inspectPendingLedger(storage,env,at){
  const result=await refreshPendingGoalooRoutes(storage,env?.ENGINE,{at,maxPages:30});
  return result;
 }
-async function dispatchNativeVerifiedFt(storage,env,verifiedResults,hubFixtures,route){
+export async function dispatchNativeVerifiedFt(storage,env,verifiedResults,hubFixtures,route){
  if(!flag(env?.ENABLE_NATIVE_FORWARD))return{state:'READ_ONLY_NOT_FORWARDED',attempts:0,confirmed:0};
  // Private internal service binding to the EXISTING authenticated native
  // reconcile-final route. No new Engine code, no public endpoint, no prices.
