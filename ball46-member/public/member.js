@@ -1112,7 +1112,21 @@ function featuredHorizontal(detail,selected){
   const meta=node('div','featured-h-meta');
   meta.append(node('span','eyebrow','FEATURED MATCH'),node('strong','',f?.league||selected.league));
   const displayStatus=beforeKickoff?'UPCOMING':shownMinute;
-  meta.append(node('span','badge '+statusClass(selected.state),displayStatus));
+  // Display the same verified live clock below the score and in the corner badge.
+  // Never confuse the signal entry minute with the current fixture minute.
+  const liveMinuteMatch=selected.state==='LIVE' && !beforeKickoff
+    ? String(shownMinute).match(/(?:^|\\s)(\\d{1,3}(?:\\+\\d{1,2})?)\\s*['′’]*\\s*$/)
+    : null;
+  const liveMinute=liveMinuteMatch?.[1]??null;
+  const minuteText=(container,withLiveLabel)=>{
+    if(withLiveLabel)container.append(node('span','stadium-live-label','LIVE '));
+    container.append(node('span','live-minute-value',liveMinute),node('span','live-minute-tick',"'"));
+    container.setAttribute('aria-label',(withLiveLabel?'Live, ':'Live minute ')+liveMinute+' minutes');
+  };
+  const liveBadge=node('span','badge '+statusClass(selected.state));
+  if(liveMinute!==null)minuteText(liveBadge,true);
+  else liveBadge.textContent=displayStatus;
+  meta.append(liveBadge);
   const kickoffValue=f?.kickoffLabel??f?.kickoffTime??selected?.kickoffLabel??selected?.kickoffTime;
   if(typeof kickoffValue==='string'&&kickoffValue.trim())meta.append(node('small','stadium-kickoff',kickoffValue.trim()));
 
@@ -1141,8 +1155,10 @@ function featuredHorizontal(detail,selected){
   else if(parts)featuredScore.append(node('span','home',parts[0]),node('span','separator','-'),node('span','away',parts[1]));
   else featuredScore.textContent=shownScoreText;
   center.append(featuredScore);
-  center.append(node('small','stadium-score-status',
-    beforeKickoff?'KICKOFF':finished?'FULL TIME':selected.state==='LIVE'?'LIVE':String(selected.state||'MATCH')));
+  const scoreStatus=node('small','stadium-score-status');
+  if(liveMinute!==null)minuteText(scoreStatus,false);
+  else scoreStatus.textContent=beforeKickoff?'KICKOFF':finished?'FULL TIME':selected.state==='LIVE'?'LIVE':String(selected.state||'MATCH');
+  center.append(scoreStatus);
   const away=node('div','team away');
   away.append(crestSlot(awayName,'away'),node('b','',awayName),node('span','team-side-label','AWAY'));
   score.append(home,center,away);
