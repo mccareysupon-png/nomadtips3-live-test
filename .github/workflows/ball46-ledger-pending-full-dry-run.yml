@@ -25,5 +25,7 @@ jobs:
             pendingTotal:result.pendingTotal,readPending:result.rows?.length,
             eligible:result.eligible?.length,goalsMarkets:result.eligible?.reduce((x,r)=>(x[r.market]=(x[r.market]||0)+1,x),{}),
             nativeWrites:0}));
+          const distribution=(key)=>result.rows?.reduce((m,r)=>{const v=String(r[key]??'MISSING');m[v]=(m[v]||0)+1;return m;},{});
+          console.log('LEDGER_PENDING_FIELD_DISTRIBUTION',JSON.stringify({market:distribution('market'),period:distribution('period'),status:distribution('status')}));
           if(!result.ok)process.exitCode=1;
           NODE
