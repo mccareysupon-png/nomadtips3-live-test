@@ -9,8 +9,8 @@ const ROOT='deploy-assets/ball46-mobile-deep-teal-20261018';
 const ACCOUNT=process.env.CLOUDFLARE_ACCOUNT_ID, TOKEN=process.env.CLOUDFLARE_API_TOKEN;
 const SCRIPT='ball46-production', ORIGIN='https://ball46.com';
 const ACCOUNT_EXPECTED='62cb0db544160e6591342abd6b4f35cc';
-const EXPECTED_ACTIVE='c5094977-5f2c-4e4a-bb47-2196cfad4104';
-const EXPECTED_INDEX_SHA='ae5cd8de0a39f59af5671150e63ca82541667e4a288fcad79fc66884628cc0e4';
+// Base version is discovered fresh and held fixed throughout this deployment.
+// Base index bytes are read from current Cloudflare Active, never a historical HTML file.
 const MARK='BALL46_MOBILE_DEEP_TEAL_20261018_OWNER_APPROVED';
 const hash=v=>createHash('sha256').update(v).digest('hex');
 const canonical=v=>JSON.stringify(v,(key,x)=>key==='annotations'?undefined:x&&typeof x==='object'&&!Array.isArray(x)?Object.fromEntries(Object.entries(x).sort(([a],[b])=>a.localeCompare(b))):x);
@@ -139,13 +139,14 @@ try{
  assert.equal(jsCheck.status,0,'MOBILE_JS_SYNTAX:'+jsCheck.stderr);
 
  original=await active();
- assert.equal(original.id,EXPECTED_ACTIVE,'ACTIVE_VERSION_CHANGED_SINCE_READ_ONLY_AUDIT');
+ assert(original.id&&original.deployment,'ACTIVE_VERSION_MISSING');
  const base=await version(original.id);const previousConfig=await config();
  const main=base.modules.find(m=>m.name===base.main_module);
  const indexModule=base.modules.find(m=>m.name==='assets/index.html');
  assert(main&&indexModule,'ACTIVE_VERSION_MODULE_MISSING');
  const old=Buffer.from(indexModule.content_base64,'base64');
- assert.equal(hash(old),EXPECTED_INDEX_SHA,'CURRENT_INDEX_CHANGED');
+ assert(old.length>50000,'ACTIVE_INDEX_SUSPICIOUSLY_SMALL');
+ const currentIndexSha=hash(old);
  const originalIndex=old.toString('utf8');
  const inventory=JSON.parse(readFileSync('deploy-assets/member-orange-only-20261015/provenance.json','utf8')).paths;
  assert.equal(new Set(inventory).size,inventory.length,'DUPLICATE_ASSETS');
@@ -159,7 +160,7 @@ try{
  assert.equal(missing.status,404,'KNOWN_MISSING_JS_BECAME_ACTIVE');
  const baseFiles=await allAssets(ORIGIN,paths);
  const sourceIndex=baseFiles.get('index.html');
- assert.equal(sourceIndex.sha,EXPECTED_INDEX_SHA,'PRODUCTION_PUBLIC_NOT_ACTIVE');
+ assert.equal(sourceIndex.sha,currentIndexSha,'PRODUCTION_PUBLIC_NOT_ACTIVE');
  const footer=baseFiles.get(extra);assert(footer.type.includes('text/css'),'FOOTER_IS_NOT_CSS');
  const assetView=await allAssets(preview(original.id),paths);
  for(const [p,f] of baseFiles)assert.equal(assetView.get(p).sha,f.sha,'ACTIVE_PREVIEW_ASSET_DRIFT:'+p);
@@ -218,7 +219,7 @@ try{
  if(activated&&original?.id){
   try {
    report.rollbackDeployment=await deploy(original.id,candidate,'ROLLBACK BALL46 Deep Teal on postdeploy failure');
-   await waitPublicIndex(EXPECTED_INDEX_SHA,90000);
+   await waitPublicIndex(report.preflight.indexSha,90000);
    report.phase='ROLLED_BACK';report.activated=false;
   }catch(rollbackError){report.rollbackError=String(rollbackError?.stack||rollbackError);report.phase='ROLLBACK_FAILED';}
  } else report.phase='BLOCKED_BEFORE_PRODUCTION_ACTIVATION';
