@@ -71,3 +71,22 @@ test('approved V3 surfaces override older dark-shade classes on mobile only',()=
   assert.match(css,/mobile-default-market\{display:none\}/);
   assert.match(js,/cell\.prepend\(node\('span','mobile-default-market','CORNERS'\)\)/);
 });
+
+test('mobile V3 has one DOM component for each of the four visual lines',()=>{
+  assert.match(js,/const compact=node\('div','mobile-v3-card'\)/);
+  assert.match(js,/const head=node\('div','mobile-v3-line mobile-v3-meta'\)/);
+  assert.match(js,/head\.append\(\s*node\('span','mobile-v3-clock',clock\),\s*node\('span','mobile-v3-league'/);
+  assert.match(js,/compact\.append\(teamLine\('HOME',row\.home,scoreParts\[0\]\),teamLine\('AWAY',row\.away,scoreParts\[1\]\)\)/);
+  assert.match(js,/const marketLine=node\('div','mobile-v3-line mobile-v3-market'\)/);
+  assert.match(js,/compact\.append\(marketLine\)/);
+  assert.match(js,/time\.append\(compact\)/);
+  assert.match(js,/const compactStar=makeFavoriteButton\(row\)/);
+  assert.match(js,/const compactOutcome=clockBadge\.cloneNode\(true\)/);
+  const exact=css.slice(css.indexOf('/* Member Mobile V3 exact hierarchy'));
+  assert.ok(exact.length>0);
+  assert.match(exact,/grid-template-rows:16px 23px 23px 24px/);
+  assert.match(exact,/grid-template-columns:auto minmax\(0,1fr\) auto 23px 13px/);
+  assert.match(exact,/td:not\(\.signal-time\)\{\s*display:none!important/);
+  assert.match(exact,/\.mobile-v3-card\{\s*display:grid!important/);
+  assert.match(exact,/td\.signal-time>:not\(\.mobile-v3-card\)/);
+});
