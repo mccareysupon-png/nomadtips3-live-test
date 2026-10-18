@@ -1151,7 +1151,7 @@ function featuredHorizontal(detail,selected){
   else featuredScore.textContent=shownScoreText;
   center.append(featuredScore);
   const scoreStatus=node('small','stadium-score-status'+(selected.state==='LIVE'?' badge live':''));
-  if(liveMinute!==null)minuteText(scoreStatus,true);
+  if(liveMinute!==null)minuteText(scoreStatus,false);
   else scoreStatus.textContent=beforeKickoff?'KICKOFF':finished?'FULL TIME':selected.state==='LIVE'?'LIVE':String(selected.state||'MATCH');
   center.append(scoreStatus);
   const away=node('div','team away');
