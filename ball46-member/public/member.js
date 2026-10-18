@@ -1115,7 +1115,7 @@ function featuredHorizontal(detail,selected){
   // Display the same verified live clock below the score and in the corner badge.
   // Never confuse the signal entry minute with the current fixture minute.
   const liveMinuteMatch=selected.state==='LIVE' && !beforeKickoff
-    ? String(shownMinute).match(/(?:^|\\s)(\\d{1,3}(?:\\+\\d{1,2})?)\\s*['′’]*\\s*$/)
+    ? String(shownMinute).match(/(?:^|\s)(\d{1,3}(?:\+\d{1,2})?)\s*['′’]*\s*$/)
     : null;
   const liveMinute=liveMinuteMatch?.[1]??null;
   const minuteText=(container,withLiveLabel)=>{
