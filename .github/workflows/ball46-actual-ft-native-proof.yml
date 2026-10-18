@@ -86,7 +86,7 @@ jobs:
             const corner={...signal,id:'LOCAL-SIGNAL-CORNER-ONLY',market:'ft_corner_over',line:8.5,selection:'OVER'};
             const seed=await req('/__sandbox_seed','POST',{signals:[signal,corner]});
             if(!seed.ok)throw Error('CANNOT_SEED_LOCAL_SIGNAL_'+seed.http);
-            const body={fixture:{id,status:'finished',status_code:'FT',minute:90,goals:{home:2,away:1},corners:{home:null,away:null}}};
+            const body={fixture:{id,fixture_id:id,status:'finished',status_code:'full',minute:90,teams:{home:{name:'Home FC'},away:{name:'Away FC'}},league:{name:'Sandbox League'},goals:{home:2,away:1,halfHome:null,halfAway:null},corners:{home:null,away:null,halfHome:null,halfAway:null},cards:null}};
             const hdr={'x-settlement-token':'sandbox-only-token-for-rehearsal-1234'};
             const one=await req('/reconcile-final','POST',body,hdr);
             const two=await req('/reconcile-final','POST',body,hdr);
