@@ -9,6 +9,7 @@ import {readPendingFromLedgerV2} from './pending-ledger-reader.mjs';
 import {planVerifiedPendingFt} from './pending-ft-dispatch-plan.mjs';
 import {readSettledReceipt} from './ledger-settlement-readback.mjs';
 import {routeOverduePending,closeAfterLedgerSettlement} from './pending-ten-minute-failover.mjs';
+import {refreshPendingGoalooRoutes,markGoalooRouteDone} from './pending-failover-runtime.mjs';
 import {proposeVerifiedMappings} from '../../../integrations/multisource/cross-source-fixture-mapper.mjs';
 // One key per match, to avoid Cloudflare's per-value size limit.
 // Never remove unconfirmed PENDING-match mappings during routine polling.
