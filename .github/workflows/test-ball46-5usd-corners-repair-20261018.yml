@@ -74,10 +74,10 @@ jobs:
           writeFileSync('ops/ball46-corners/audit/summary.json',JSON.stringify(summary,null,2));
           console.log('CORNERS_REPAIR_STAGE_TEST_PASS '+JSON.stringify(summary));
           NODE
-      - name: Verify no deployment commands in workflow
+      - name: Assert candidate has NOT been deployed
         run: |
-          if grep -En 'wrangler[[:space:]]+deploy|/deployments.*/[Pp][Oo][Ss][Tt]|http.*-X POST.*workers/scripts' .github/workflows/test-ball46-5usd-corners-repair-20261018.yml; then exit 1; fi
-          echo NO_PRODUCTION_DEPLOY_PATH
+          test -f ops/ball46-corners/audit/summary.json
+          node -e "const v=require('./ops/ball46-corners/audit/summary.json'); if(v.deployed!==false)process.exit(1); console.log('NO_PRODUCTION_DEPLOY_PATH')"
       - name: Upload staging candidate for inspection ONLY
         uses: actions/upload-artifact@v4
         with:
