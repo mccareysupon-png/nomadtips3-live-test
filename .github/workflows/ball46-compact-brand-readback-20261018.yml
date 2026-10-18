@@ -1,0 +1,38 @@
+name: BALL46 Compact Brand Post-Deploy Read Only Check
+on:
+  push:
+    branches: [work/ball46-mobile-compact-logo-hide-heading-20261018]
+    paths: [.github/workflows/ball46-compact-brand-readback-20261018.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  readback:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    env:
+      CLOUDFLARE_API_TOKEN: \${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: \${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect exact Active version, current public HTML, and API response (read only)
+        run: |
+          node --input-type=module <<'NODE'
+          import {createHash} from 'node:crypto';
+          const script='ball46-production',expected='7c7c8db2-baed-4d09-82ce-73842a42e8b7',acc=process.env.CLOUDFLARE_ACCOUNT_ID,token=process.env.CLOUDFLARE_API_TOKEN;
+          if(!acc||!token)throw new Error('CREDENTIALS_NOT_PRESENT');
+          const sha=b=>createHash('sha256').update(b).digest('hex');
+          const read=async path=>{const u='https://api.cloudflare.com/client/v4/accounts/'+acc+path,r=await fetch(u,{headers:{Authorization:'Bearer '+token},signal:AbortSignal.timeout(15000)}),j=await r.json();if(!r.ok||!j.success)throw new Error('CF_READ_FAILED:'+r.status);return j.result;};
+          for(let i=0;i<3;i++){
+            const deployment=(await read('/workers/scripts/'+script+'/deployments?per_page=1')).deployments?.[0];
+            const active=deployment?.versions?.[0]?.version_id;
+            const u=new URL('https://ball46.com/index.html');u.searchParams.set('_b46readback',String(Date.now()));
+            const response=await fetch(u,{headers:{'cache-control':'no-cache'},signal:AbortSignal.timeout(20000)});
+            const html=await response.text();
+            const status={attempt:i+1,active,deployment:deployment?.id,traffic:deployment?.versions?.[0]?.percentage,indexHttp:response.status,indexSha:sha(Buffer.from(html)),hasBrandPatch:html.includes('b46m-compact-brand-hidden-heading-20261018'),hasDeepTeal:html.includes('b46-mobile-deep-teal-20261018'),candidateIsActive:active===expected};
+            console.log('BALL46_READBACK',JSON.stringify(status));
+            if(i<2)await new Promise(r=>setTimeout(r,5000));
+          }
+          const paths=['/api/engine/health','/api/engine/board','/api/engine/statistics?paged=1'];
+          for(const p of paths){const r=await fetch('https://ball46.com'+p,{signal:AbortSignal.timeout(25000)});const j=await r.json();console.log('API_READBACK',p,r.status,j.ok,j.version,j.fixtures?.length,j.rows?.length);}
+          NODE
