@@ -5114,7 +5114,6 @@ button,input,select,textarea{font-family:inherit;font-synthesis:none}
 /* BALL46 MEMBER — approved mobile V4 source-color lockup, profile and KPI first */
 .page-member .mobile-v4-back,
 .page-member .mobile-v4-profile-anchor,
-.page-member .mobile-v4-contextline,
 .page-member .mobile-v4-sectionbar,
 .page-member .mobile-v4-intro{display:none}
 @media(max-width:767px){
@@ -5226,12 +5225,6 @@ button,input,select,textarea{font-family:inherit;font-synthesis:none}
     margin:0!important;padding:0 9px 16px!important;
     overflow:visible!important;
   }
-  .page-member .mobile-v4-contextline{
-    display:flex;justify-content:space-between;align-items:center;gap:8px;
-    order:0;min-height:32px;margin:0 -9px 0;padding:8px 13px;
-    background:#091b27;color:#8eacba;font-size:9px;letter-spacing:.1em;
-  }
-  .page-member .mobile-v4-contextline b{color:#91f3cb}
   .page-member .mobile-market-navigation{
     order:1;gap:6px;margin:0;padding:9px 9px 4px;
     background:transparent;border:0;border-radius:0;box-shadow:none;
@@ -5251,7 +5244,7 @@ button,input,select,textarea{font-family:inherit;font-synthesis:none}
   }
   .page-member #dailySummary{
     order:2;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
-    gap:6px;margin:7px 9px 5px;max-width:calc(100% - 18px);
+    gap:6px;margin:13px 9px 7px;max-width:calc(100% - 18px);
     min-width:0;
   }
   .page-member #dailySummary .summary-stat{
