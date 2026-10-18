@@ -5,6 +5,7 @@
  * No Corners required. Settlement delegated to existing Engine bridge only.
  */
 import {DurableObject} from 'cloudflare:workers';
+import {fetchGoaloo} from './goaloo-feed-fetch.mjs';
 import {readPendingFromLedgerV2,pendingMarketEligible} from './pending-ledger-reader.mjs';
 import {planVerifiedPendingFt} from './pending-ft-dispatch-plan.mjs';
 import {readSettledReceipt} from './ledger-settlement-readback.mjs';
@@ -198,17 +199,6 @@ export async function inspectSidecar(storage){
   newSignalIntake:{startedAt:intake?.establishedAt??null,excludedOldPending:intake?.legacyPendingCount??null,
    capturedTotal:intake?.capturedTotal??0,lastPollAt:intake?.lastPolledAt??null},forwardRequests:0,
   recentEvents:(meta?.events||[]).slice(-10),version:3};
-}
-export async function fetchGoaloo(fetcher){
- for(const url of ['https://live10.goaloo28.com/gf/data/bf_us.js',
-                   'https://live10.goaloo28.com/gf/data/bf_us1.js']){
-  try{const r=await fetcher(url,{redirect:'manual',signal:AbortSignal.timeout(15000)});
-   if(!r.ok)continue;
-   const length=Number(r.headers.get('content-length')||0);if(length>4_000_000)continue;
-   const raw=await r.text();if(raw.length<=4_000_000&&raw.includes('A['))return raw;
-  }catch{}
- }
- throw Error('GOALOO_FEED_UNAVAILABLE');
 }
 async function readHubFixtures(env){
  if(!env?.HUB?.fetch)throw Error('HUB_READ_BINDING_MISSING');
