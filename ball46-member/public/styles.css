@@ -4668,3 +4668,280 @@ button,input,select,textarea{font-family:inherit;font-synthesis:none}
     font-size:clamp(12.75px,.952vw,16.15px);
   }
 }
+
+/* BALL46 MEMBER — V3 mobile default-first: exactly four visible rows, expand inline */
+/* The new mobile-only metadata must never appear on Desktop. */
+.page-member .mobile-default-clock,
+.page-member .mobile-default-league,
+.page-member .mobile-default-state{display:none}
+@media(max-width:767px){
+  /* The formerly automatic hero is gone: default match list comes first. */
+  .page-member .mobile-match-spotlight,
+  .page-member .mobile-match-section-tabs{display:none!important}
+  .page-member #signalBoard{order:2;padding:6px 6px 9px}
+  .page-member #signalPagination{order:3}
+  .page-member #dailySummary{order:4}
+  .page-member #signalBoard .signal-table tbody tr.signal-row{
+    position:relative;
+    display:grid;
+    grid-template-columns:clamp(35px,12%,48px) minmax(0,1fr) clamp(43px,13%,52px) clamp(51px,16%,64px);
+    grid-template-areas:
+      "detected detected detected detected"
+      "match match score score"
+      "market selection odds result";
+    align-items:center;
+    grid-template-rows:21px 54px 29px;
+    column-gap:5px;row-gap:2px;
+    min-height:0;height:auto;width:100%;
+    padding:7px 9px;
+    margin:0 0 7px;
+    border-radius:11px;border:1px solid rgba(181,220,224,.08);
+    background:linear-gradient(150deg,#132c39,#0e202c);
+    box-shadow:0 5px 13px rgba(0,0,0,.14);
+    overflow:hidden;
+  }
+  .page-member #signalBoard .signal-table tbody tr.signal-row.expanded{
+    border-color:rgba(78,221,170,.45);border-radius:11px 11px 0 0;
+    outline:0;box-shadow:0 0 0 1px rgba(78,221,170,.08);
+  }
+  .page-member #signalBoard .signal-row>td{
+    padding:0!important;min-width:0;width:100%;
+    min-height:0;height:auto;max-width:100%;
+    margin:0;border:0!important;overflow:hidden!important;
+    background:transparent!important;box-shadow:none!important;
+    white-space:nowrap!important;text-overflow:ellipsis!important;
+  }
+  .page-member #signalBoard .signal-row>td .mobile-cell-label{display:none!important}
+  .page-member #signalBoard .signal-row>td:nth-child(7),
+  .page-member #signalBoard .signal-row>td:nth-child(8),
+  .page-member #signalBoard .signal-row>td:nth-child(10){display:none!important}
+  /* Line 1 — current fixture minute, league, live status, saved star, chevron. */
+  .page-member #signalBoard .signal-row>td.signal-time{
+    grid-area:detected;display:flex;align-items:center;
+    gap:6px;min-width:0;height:21px;
+    padding-right:69px!important;
+    font-variant-numeric:tabular-nums;
+  }
+  .page-member #signalBoard .signal-time-record{display:none!important}
+  .page-member #signalBoard .signal-time .mobile-default-clock{
+    display:block;flex:0 0 auto;font-size:10px;
+    font-weight:900;line-height:1;color:#ff6876;
+  }
+  .page-member #signalBoard .signal-time .mobile-default-league{
+    display:block;flex:1 1 auto;min-width:0;overflow:hidden;
+    text-overflow:ellipsis;white-space:nowrap;font-size:9px;
+    line-height:1.2;font-weight:700;color:#a9bfcc;
+  }
+  .page-member #signalBoard .signal-time .mobile-default-state{
+    display:block;flex:0 0 auto;font-size:8px;font-weight:850;
+    color:#77e2b4;white-space:nowrap;
+  }
+  .page-member #signalBoard .signal-time .expand-glyph{
+    position:absolute;top:8px;right:7px;
+    font-size:16px;line-height:20px;color:#b4ced5;
+  }
+  .page-member #signalBoard .signal-row .member-new-signal{display:none!important}
+  /* Lines 2–3 — the HOME/AWAY names and both scores remain aligned. */
+  .page-member #signalBoard .signal-row>td.match{
+    grid-area:match;display:block;
+  }
+  .page-member #signalBoard .signal-row .favorite-teams{
+    display:block;position:static;min-width:0;width:100%;
+  }
+  .page-member #signalBoard .signal-row .favorite-star{
+    position:absolute;right:31px;top:4px;z-index:2;
+    display:grid;place-items:center;
+    width:28px;height:28px;min-height:0;padding:0;
+    border:0;background:transparent;box-shadow:none;
+    font-size:17px;line-height:1;
+  }
+  .page-member #signalBoard .signal-row .favorite-team-names{
+    display:grid;grid-template-columns:minmax(0,1fr);
+    grid-template-rows:repeat(2,26px);
+    row-gap:2px;align-items:center;min-width:0;width:100%;
+  }
+  .page-member #signalBoard .signal-row .favorite-team-line{
+    display:grid;grid-template-columns:31px minmax(0,1fr);
+    gap:4px;align-items:center;min-height:26px;height:26px;
+    overflow:hidden;
+  }
+  .page-member #signalBoard .signal-row .favorite-side-label{
+    font-size:8px;letter-spacing:.01em;line-height:1.1;color:#8da4b5;
+    white-space:nowrap;
+  }
+  .page-member #signalBoard .signal-row .favorite-team-home,
+  .page-member #signalBoard .signal-row .favorite-team-away{
+    display:block;min-width:0;max-width:100%;
+    color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    line-height:26px;font-size:clamp(10px,2.8vw,12px);font-weight:800;
+  }
+  .page-member #signalBoard .signal-row>td.live-score-cell{
+    grid-area:score;display:block;min-width:0;
+  }
+  .page-member #signalBoard .signal-row .live-score-pair{
+    display:grid;grid-template-columns:minmax(0,1fr);
+    grid-template-rows:repeat(2,26px);row-gap:2px;
+    width:100%;min-width:0;max-width:100%;
+    justify-items:end;align-items:center;margin:0;
+  }
+  .page-member #signalBoard .signal-row .live-score-team,
+  .page-member #signalBoard .signal-row .live-score-team.home,
+  .page-member #signalBoard .signal-row .live-score-team.away{
+    display:block;width:100%;min-height:26px;height:26px;
+    line-height:26px;text-align:right;font-size:15px;
+    font-weight:900;color:#fff;white-space:nowrap;
+  }
+  .page-member #signalBoard .signal-row .market-evidence{display:none!important}
+  /* Line 4 — market, pick, entry odds and settlement badge. */
+  .page-member #signalBoard .signal-row>td:nth-child(4){
+    grid-area:market;display:flex;align-items:center;
+    color:#82ebc3;font-size:9px;font-weight:850;
+    overflow:hidden!important;
+  }
+  .page-member #signalBoard .signal-row .corner-market-cell>strong{
+    font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .page-member #signalBoard .signal-row .corner-market-type{display:none!important}
+  .page-member #signalBoard .signal-row>td.signal-pick{
+    grid-area:selection;display:block;min-width:0;overflow:hidden!important;
+  }
+  .page-member #signalBoard .signal-row .signal-choice{
+    display:block;min-width:0;width:100%;overflow:hidden;text-overflow:ellipsis;
+    white-space:nowrap;font-size:10px;line-height:1.25;font-weight:800;
+  }
+  .page-member #signalBoard .signal-row .signal-market-period{display:none!important}
+  .page-member #signalBoard .signal-row>td.odds-readonly{
+    grid-area:odds;display:block;min-width:0;
+    text-align:center;font-size:10px;font-weight:850;
+  }
+  .page-member #signalBoard .signal-row>td.result-cell{
+    grid-area:result;display:flex;align-items:center;justify-content:flex-end;
+    min-width:0;padding:0!important;
+  }
+  .page-member #signalBoard .signal-row .result-cell .badge,
+  .page-member #signalBoard .signal-row .result-cell .result-minute-card{
+    font-size:8px;max-width:100%;overflow:hidden;text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  /* Inline expanded card uses the exact existing Featured, Flow, Stats and History renderer. */
+  .page-member #signalBoard .signal-table tbody tr.signal-detail-row{
+    display:block!important;width:100%;max-width:100%;min-width:0;
+    margin:-7px 0 9px;border-radius:0 0 12px 12px;
+    background:#0a1c2a;overflow:hidden;
+    box-shadow:0 8px 18px rgba(0,0,0,.18);
+  }
+  .page-member #signalBoard .signal-table tbody tr.signal-detail-row>td{
+    display:block!important;box-sizing:border-box;width:100%;min-width:0;
+    max-width:100%;padding:8px 5px!important;overflow:visible;
+  }
+  .page-member #signalBoard .signal-detail-row .match-insight{
+    display:flex!important;flex-direction:column!important;gap:9px;
+    padding:0!important;margin:0;min-width:0;width:100%;max-width:100%;
+    background:none!important;border:0!important;box-shadow:none!important;
+    overflow:visible;
+  }
+  .page-member #signalBoard .signal-detail-row .featured-match-stack{display:contents!important}
+  .page-member #signalBoard .signal-detail-row .stadium-hero{
+    order:1;min-height:208px;max-width:100%;padding:12px 9px 14px;
+    border-radius:12px;background-position:center 57%;
+  }
+  .page-member #signalBoard .signal-detail-row .stadium-hero .featured-h-meta>strong{
+    font-size:clamp(10px,2.7vw,13px);
+  }
+  .page-member #signalBoard .signal-detail-row .stadium-hero .featured-h-score{
+    grid-template-columns:minmax(0,1fr) minmax(73px,96px) minmax(0,1fr);
+    align-items:center;gap:4px;min-height:137px;padding:2px 0;
+  }
+  .page-member #signalBoard .signal-detail-row .stadium-hero .featured-crest-slot{width:40px;height:46px}
+  .page-member #signalBoard .signal-detail-row .stadium-hero .featured-h-score .score-center strong{
+    font-size:clamp(28px,8.5vw,38px);
+  }
+  .page-member #signalBoard .signal-detail-row .member-flow{
+    order:2;min-width:0;margin:0;padding:10px 8px;
+    border-radius:12px;border:0;
+    background:linear-gradient(155deg,rgba(16,45,53,.8),rgba(7,26,34,.76));
+    box-shadow:0 5px 14px rgba(0,0,0,.13);
+  }
+  .page-member #signalBoard .signal-detail-row .member-flow-chart svg{height:170px}
+  .page-member #signalBoard .signal-detail-row .featured-analysis-layout{
+    order:3;display:grid;grid-template-columns:minmax(0,1fr);
+    align-items:start;gap:8px;min-width:0;
+  }
+  .page-member #signalBoard .signal-detail-row .featured-h-stats.premium-match-stats,
+  .page-member #signalBoard .signal-detail-row .featured-entry-history{
+    min-width:0;margin:0;padding:10px 9px;
+    border:0;border-radius:11px;background:linear-gradient(155deg,#102a37,#0b202d);
+    box-shadow:0 5px 13px rgba(0,0,0,.17);
+  }
+  .page-member #signalBoard .signal-detail-row .premium-stats-heading{
+    flex-direction:column;align-items:flex-start;gap:5px;
+  }
+  .page-member #signalBoard .signal-detail-row .premium-stat-row{padding:5px 0!important}
+  .page-member #signalBoard .signal-detail-row .premium-stat-title{font-size:9px!important}
+  .page-member #signalBoard .signal-detail-row .premium-stat-comparison{
+    grid-template-columns:minmax(15px,auto) minmax(0,1fr) minmax(15px,auto);gap:4px;
+  }
+  .page-member #signalBoard .signal-detail-row .premium-stat-value{font-size:11px}
+  .page-member #signalBoard .signal-detail-row .premium-stat-tracks{gap:2px}
+  .page-member #signalBoard .signal-detail-row .premium-stat-track{height:7px}
+  .page-member #signalBoard .signal-detail-row .premium-match-stats:not(.mobile-show-all-stats)>.premium-stat-row:nth-child(3),
+  .page-member #signalBoard .signal-detail-row .premium-match-stats:not(.mobile-show-all-stats)>.premium-stat-row:nth-child(4){
+    display:none;
+  }
+  .page-member #signalBoard .signal-detail-row .mobile-more-stats,
+  .page-member #signalBoard .signal-detail-row .mobile-more-history{
+    display:block;width:100%;min-height:30px;margin-top:9px;
+    padding:5px 8px;border:0;border-radius:7px;
+    background:rgba(57,145,122,.13);color:#a1f3d5;
+    font-size:10px;font-weight:800;cursor:pointer;
+  }
+  .page-member #signalBoard .signal-detail-row .featured-entry-history-list{
+    max-height:227px;overflow-y:auto;overflow-x:hidden;gap:5px;
+    overscroll-behavior:contain;scrollbar-width:thin;
+  }
+  .page-member #signalBoard .signal-detail-row .mobile-show-all-history .featured-entry-history-list{max-height:none}
+  .page-member #signalBoard .signal-detail-row .featured-history-entry{padding:8px!important}
+  .page-member #signalBoard .signal-detail-row .featured-history-compact-row{
+    display:flex;flex-wrap:wrap;align-items:center;gap:4px 7px;
+    white-space:normal!important;min-height:0;
+  }
+  .page-member #signalBoard .signal-detail-row .featured-history-compact-row>span{
+    flex:0 1 auto;max-width:100%;font-size:9px;
+    white-space:normal;overflow-wrap:anywhere;
+  }
+  .page-member #signalBoard .signal-detail-row .mobile-match-facts{
+    order:4;min-width:0;border-radius:11px;overflow:hidden;
+    background:linear-gradient(145deg,#102735,#0b202b);
+  }
+  .page-member #signalBoard .signal-detail-row .mobile-match-facts>summary{
+    list-style:none;display:flex;justify-content:space-between;
+    align-items:center;gap:8px;min-height:42px;padding:10px 12px;
+    font-size:10px;font-weight:800;color:#c9e1ec;cursor:pointer;
+  }
+  .page-member #signalBoard .signal-detail-row .mobile-match-facts>summary::-webkit-details-marker{display:none}
+  .page-member #signalBoard .signal-detail-row .mobile-match-facts>summary::after{
+    content:'⌄';font-size:17px;color:#43e6a2;
+  }
+  .page-member #signalBoard .signal-detail-row .mobile-match-facts[open]>summary::after{content:'⌃'}
+  .page-member #signalBoard .signal-detail-row .premium-side-facts-panel{
+    margin:0;padding:5px 9px 11px;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;
+  }
+  .page-member #signalBoard .signal-detail-row .premium-side-fact{
+    min-height:69px;padding:8px;border:0;border-radius:8px;
+  }
+  .page-member #signalBoard .signal-detail-row .insight-loading,
+  .page-member #signalBoard .signal-detail-row .insight-note{order:5}
+}
+@media(min-width:390px) and (max-width:767px){
+  .page-member #signalBoard .signal-detail-row .featured-analysis-layout{
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;
+  }
+  .page-member #signalBoard .signal-detail-row .featured-h-stats.premium-match-stats,
+  .page-member #signalBoard .signal-detail-row .featured-entry-history{padding:9px 7px}
+}
+@media(max-width:359px){
+  .page-member #signalBoard .signal-row>td.signal-time{padding-right:64px!important}
+  .page-member #signalBoard .signal-row .favorite-star{right:29px}
+  .page-member #signalBoard .signal-row .favorite-team-home,
+  .page-member #signalBoard .signal-row .favorite-team-away{font-size:10px}
+}
