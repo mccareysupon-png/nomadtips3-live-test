@@ -1,0 +1,259 @@
+{
+  "otherViewsVerified": {
+    "live": {
+      "clock": "LIVE · 79'",
+      "clockColor": "rgb(201, 77, 77)",
+      "rows": 10,
+      "url": "https://ball46.com/?status=live",
+      "view": "live",
+      "visibleSourceNotes": 0
+    },
+    "signal": {
+      "count": "2",
+      "rows": 2,
+      "url": "https://ball46.com/?view=signal",
+      "view": "signal",
+      "visibleSourceNotes": 0
+    }
+  },
+  "deploymentStatus": "SUCCESS",
+  "featureStatus": "SOURCE_1_LIVE_SOURCE_2_BLOCKED_BY_MISSING_PROVENANCE",
+  "verifiedAt": "2026-10-18T12:27:09.170Z",
+  "productionUrl": "https://ball46.com/?view=statistics",
+  "repository": "mccareysupon-png/nomadtips3-live-test",
+  "branch": "codex/ball46-statistics-source-20261018",
+  "originalSourceCommit": "304e7b93c9663b35126286637dcc9abcd46a5053",
+  "sourceCommit": "bd4e4d8bfc4ffb6e5f04d0ecfeb02314b3899157",
+  "activationCommit": "1203f9ef9d105bbe82aedf307daa7e4b30a14273",
+  "creatorRun": "39126854716",
+  "activationRun": "39127081532",
+  "workflow": ".github/workflows/ball46-statistics-source-20261018.yml",
+  "worker": "ball46-production",
+  "version": "c5094977-5f2c-4e4a-bb47-2196cfad4104",
+  "deployment": "585f1a4a-3c46-4e92-ad74-1c812b0428ee",
+  "trafficPercent": 100,
+  "filesModifiedInProduction": [
+    "singlepage-workspace-343.js",
+    "index.html"
+  ],
+  "component": "renderTable and b46StatResultSource in singlepage-workspace-343.js",
+  "fix": "Append small gray SOURCE1 only to SETTLED known outcomes bearing stored DIRECT_FINAL_FALLBACK marker. Keep original badge markup/styles. Source note inline; allocate146px Result column to prevent clipping. All row heights match baseline. No provider inference from odds/bookmaker/general API usage. Pending/unresolved/unknown/bridge remain unlabeled.",
+  "sourceProof": {
+    "capturedAt": "2026-10-18T12:22:10.179Z",
+    "engineVersion": "1f2336fa-7b45-4a23-a23c-06d01a92330d",
+    "engineCommit": "f1a42f94f39eed5cee0177f15b3ef0699bb8c85c",
+    "engineMainSha": "1008c06d4ab705f904b49408fd4e5c347478afae633a499147f3106dfffd2b69",
+    "ledgerVersion": "signal-ledger-v2-longterm",
+    "statisticsSource": "LEDGER_V2_ONLY",
+    "pages": 17,
+    "rows": 8177,
+    "settled": 8051,
+    "sourceValues": {
+      "(missing)": 3466,
+      "DIRECT_FINAL_FALLBACK": 3594,
+      "LIVE_OVER_FINAL_CONFIRMED_V1": 127,
+      "LIVE_OVER_REVERTED_V1": 1,
+      "LIVE_OVER_EARLY_V1": 1,
+      "EXTERNAL_FINAL_BRIDGE": 988
+    },
+    "labelCounts": {
+      "SOURCE 1": 3594
+    },
+    "source1Outcomes": {
+      "PUSH": 367,
+      "WIN": 1760,
+      "LOSS": 1196,
+      "HALF_LOSS": 157,
+      "HALF_WIN": 114
+    },
+    "unknownProviderRows": 4583,
+    "source1Proof": {
+      "marker": "DIRECT_FINAL_FALLBACK",
+      "provider": "5USD",
+      "evidence": "The saved per-record marker is assigned to the result computed from the actual normalized5USD response, after matching fixtureId; finalScore/finalCorners are copied from that same fixture. archivalSignal persists the marker and Ledger V2 returns it unchanged.",
+      "code": "engine-main.mjs:1607-1647;1454-1459;1711-1725"
+    },
+    "source2": {
+      "status": "BLOCKED_NO_PER_RECORD_PROVIDER_PROOF",
+      "ambiguousMarker": "EXTERNAL_FINAL_BRIDGE",
+      "reason": "The authenticated bridge normalizes arbitrary request-body fixture data, computes settlement and saves only EXTERNAL_FINAL_BRIDGE. Sender/provider identity and original response provenance are not stored. This marker must not be mapped to Gaoloo. No SOURCE2 is displayed."
+    },
+    "pendingLabels": 0,
+    "dataFieldsMutated": false,
+    "scope": "Frontend display only. No Engine/API/ledger rules or storage writes."
+  },
+  "source2": {
+    "status": "BLOCKED_NO_PER_RECORD_PROVIDER_PROOF",
+    "ambiguousMarker": "EXTERNAL_FINAL_BRIDGE",
+    "reason": "The authenticated bridge normalizes arbitrary request-body fixture data, computes settlement and saves only EXTERNAL_FINAL_BRIDGE. Sender/provider identity and original response provenance are not stored. This marker must not be mapped to Gaoloo. No SOURCE2 is displayed."
+  },
+  "htmlSha": "ae5cd8de0a39f59af5671150e63ca82541667e4a288fcad79fc66884628cc0e4",
+  "assetSha": "fe7d3325655f9c9857755dc2df2fbe1c655a45f98407c89e388ef3d384c8b828",
+  "publicPathsVerified": 82,
+  "inlineScriptBlocksUnchanged": 4,
+  "tests": 18,
+  "candidateUiCases": 9,
+  "productionUiCases": 9,
+  "productionUi": [
+    {
+      "test": "desktop-light",
+      "width": 1280,
+      "theme": "light",
+      "rows": 50,
+      "source1Notes": 20,
+      "source2Notes": 0,
+      "rowHeights": [
+        72,
+        80.640625
+      ],
+      "sourceInline": true
+    },
+    {
+      "test": "desktop-dark",
+      "width": 1280,
+      "theme": "dark",
+      "rows": 50,
+      "source1Notes": 20,
+      "source2Notes": 0,
+      "rowHeights": [
+        72,
+        80.640625
+      ],
+      "sourceInline": true
+    },
+    {
+      "test": "mobile-390",
+      "width": 390,
+      "theme": "dark",
+      "rows": 50,
+      "source1Notes": 20,
+      "source2Notes": 0,
+      "rowHeights": [
+        72,
+        80.640625
+      ],
+      "sourceInline": true
+    },
+    {
+      "test": "mobile-360",
+      "width": 360,
+      "theme": "dark",
+      "rows": 50,
+      "source1Notes": 20,
+      "source2Notes": 0,
+      "rowHeights": [
+        72,
+        80.640625
+      ],
+      "sourceInline": true
+    },
+    {
+      "test": "mobile-430",
+      "width": 430,
+      "theme": "dark",
+      "rows": 50,
+      "source1Notes": 20,
+      "source2Notes": 0,
+      "rowHeights": [
+        72,
+        80.640625
+      ],
+      "sourceInline": true
+    },
+    {
+      "test": "market-1x2",
+      "width": 1280,
+      "theme": "light",
+      "rows": 50,
+      "source1Notes": 29,
+      "source2Notes": 0,
+      "rowHeights": [
+        72
+      ],
+      "sourceInline": true
+    },
+    {
+      "test": "market-ah",
+      "width": 1280,
+      "theme": "light",
+      "rows": 50,
+      "source1Notes": 37,
+      "source2Notes": 0,
+      "rowHeights": [
+        72
+      ],
+      "sourceInline": true
+    },
+    {
+      "test": "market-ou",
+      "width": 1280,
+      "theme": "light",
+      "rows": 50,
+      "source1Notes": 24,
+      "source2Notes": 0,
+      "rowHeights": [
+        72
+      ],
+      "sourceInline": true
+    },
+    {
+      "test": "market-corners",
+      "width": 1280,
+      "theme": "light",
+      "rows": 50,
+      "source1Notes": 33,
+      "source2Notes": 0,
+      "rowHeights": [
+        80.640625
+      ],
+      "sourceInline": true
+    }
+  ],
+  "settledRecordsPreserved": 8051,
+  "settledFieldsProtected": [
+    "id",
+    "result",
+    "status",
+    "createdAt",
+    "settledAt",
+    "reconciledAt",
+    "fixtureId",
+    "market",
+    "selection",
+    "line",
+    "odds",
+    "finalScore",
+    "finalCorners",
+    "finalCards",
+    "settlementSource"
+  ],
+  "configurationUnchanged": [
+    {
+      "name": "settings",
+      "unchanged": true
+    },
+    {
+      "name": "schedules",
+      "unchanged": true
+    },
+    {
+      "name": "domains",
+      "unchanged": true
+    },
+    {
+      "name": "routes",
+      "unchanged": true
+    }
+  ],
+  "engineVersionUnchanged": "1f2336fa-7b45-4a23-a23c-06d01a92330d",
+  "mainWorkerShaUnchanged": "ddfc09cc46e8963a21d9e76e146b936f5243e50860693545d9569104c2a099cc",
+  "consoleErrors": 0,
+  "consoleWarnings": [],
+  "rollback": {
+    "status": "READY_WITH_OWNERSHIP_AND_CONFIG_GUARDS",
+    "version": "df6833ed-7214-472c-b532-c0e874b6a63b",
+    "preChangeDeployment": "a4e8c5b6-188e-43d6-8e25-0295d0063440",
+    "process": "Same workflow phase=restore; require Active remains this owned candidate and configuration matches baseline; restore exact prior version and verify old bytes/backend health."
+  },
+  "knownPreExistingIssue": "Optional /color-semantics-stat-entry-20261011.js remains baseline404/empty hash; no new missing assets."
+}
