@@ -3,9 +3,9 @@
   "base": "df6833ed-7214-472c-b532-c0e874b6a63b",
   "script": "ball46-production",
   "mark": "B46_STATISTICS_SOURCE_20261018",
-  "run": "39126565703",
-  "commit": "bbd6b47a658f676d1cc8a17d344cb47e70187c33",
-  "startedAt": "2026-10-18T12:16:05.127Z",
+  "run": "39126854716",
+  "commit": "bd4e4d8bfc4ffb6e5f04d0ecfeb02314b3899157",
+  "startedAt": "2026-10-18T12:20:20.478Z",
   "assetStrategy": "Exact current Active build inventory; every byte fetched fresh; complete upload session with completion token",
   "provenance": {
     "activeVersion": "df6833ed-7214-472c-b532-c0e874b6a63b",
@@ -164,7 +164,7 @@
   ],
   "routesAudit": {
     "ciStatus": 403,
-    "verifiedAt": "2026-10-18T12:14:50.035Z",
+    "verifiedAt": "2026-10-18T12:19:57.802Z",
     "requiresDashboardPostCheck": true
   },
   "configBefore": {
@@ -193,8 +193,8 @@
         }
       },
       "annotations": {
-        "workers/message": "Show LIVE clock red with blinking minute mark only; data and other UI unchanged",
-        "workers/tag": "B46_LIVE_CLOCK_RED_20261018",
+        "workers/message": "Add Statistics source note only where stored settlement marker proves provider; preserve outcomes and data",
+        "workers/tag": "B46_STATISTICS_SOURCE_20261018",
         "workers/triggered_by": "create_version_api"
       },
       "bindings": [
@@ -270,15 +270,15 @@
       "ok": true,
       "version": "nomad343-engine-v5-best19-referee",
       "stale": false,
-      "hubFetchedAt": 1792325715834,
-      "fixtures": 1782
+      "hubFetchedAt": 1792325986275,
+      "fixtures": 1864
     },
     {
       "path": "/api/engine/signals",
       "status": 200,
       "ok": true,
       "version": "nomad343-engine-v5-best19-referee",
-      "signals": 1
+      "signals": 3
     },
     {
       "path": "/api/engine/statistics?paged=1",
@@ -1203,11 +1203,11 @@
   "changes": {
     "/": {
       "status": 200,
-      "sha": "fb38347ab72cb6cb832d82c3a28c638a055aebf4e6b591a7f5fd583770722bb0"
+      "sha": "ae5cd8de0a39f59af5671150e63ca82541667e4a288fcad79fc66884628cc0e4"
     },
     "/index.html": {
       "status": 200,
-      "sha": "fb38347ab72cb6cb832d82c3a28c638a055aebf4e6b591a7f5fd583770722bb0"
+      "sha": "ae5cd8de0a39f59af5671150e63ca82541667e4a288fcad79fc66884628cc0e4"
     },
     "/singlepage-workspace-343.js": {
       "status": 200,
@@ -1216,10 +1216,10 @@
   },
   "assetUpload": {
     "files": 81,
-    "uploadedHashes": 2,
+    "uploadedHashes": 1,
     "completionTokenReceived": true
   },
-  "candidate": "fed6cc25-a79a-418f-b077-e4b0180bcea9",
+  "candidate": "c5094977-5f2c-4e4a-bb47-2196cfad4104",
   "previewHealth": [
     {
       "path": "/api/engine/health",
@@ -1239,15 +1239,15 @@
       "ok": true,
       "version": "nomad343-engine-v5-best19-referee",
       "stale": false,
-      "hubFetchedAt": 1792325715834,
-      "fixtures": 1782
+      "hubFetchedAt": 1792325986275,
+      "fixtures": 1864
     },
     {
       "path": "/api/engine/signals",
       "status": 200,
       "ok": true,
       "version": "nomad343-engine-v5-best19-referee",
-      "signals": 1
+      "signals": 3
     },
     {
       "path": "/api/engine/statistics?paged=1",
@@ -1257,7 +1257,7 @@
       "pageRows": 500
     }
   ],
-  "previewUrl": "https://fed6cc25-ball46-production.mccarey-supon.workers.dev",
+  "previewUrl": "https://c5094977-ball46-production.mccarey-supon.workers.dev",
   "candidateVerified": true,
   "trafficChanged": false
 }
