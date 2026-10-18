@@ -1,0 +1,40 @@
+name = "ball46-multisource-shadow-20261018"
+main = "src/worker.mjs"
+compatibility_date = "2026-10-18"
+workers_dev = false
+
+[vars]
+GOALOO_POLL_ENABLED = "1"
+GOALOO_UTC_CERTIFIED = "1"
+GOALOO_FT_CERTIFIED = "1"
+GOALOO_OFFSET_MINUTES = "0"
+GOALOO_APPROVED_LEAGUES = "{}"
+GOALOO_APPROVED_TEAMS = "{}"
+ENABLE_NATIVE_FORWARD = "1"
+CANONICAL_CAPTURE_ENABLED = "1"
+PENDING_LEDGER_READONLY_ENABLED = "1"
+
+[[services]]
+binding = "HUB"
+service = "nomadtips3-5usd-hub-343"
+
+[[services]]
+binding = "ENGINE"
+service = "nomadtips3-engine-343"
+
+[triggers]
+crons = ["*/5 * * * *"]
+
+[[durable_objects.bindings]]
+name = "RESULT_REGISTRY"
+class_name = "Ball46FixtureResultRegistry"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Ball46FixtureResultRegistry"]
+
+# Opt-in active FALLBACK in existing isolated worker, gated by native token.
+# Canonical matching uses UTC offset 0 supported by live paired-kickoff audit.
+# Only NEW Ledger V2 signals that have been PENDING >= 10 minutes.
+# At most one verified FT fixture per scheduled 5-minute cycle.
+# No workers.dev address, route, Engine code changes, or 5USD odds calls.
