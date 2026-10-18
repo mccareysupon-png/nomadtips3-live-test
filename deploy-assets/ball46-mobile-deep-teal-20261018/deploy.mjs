@@ -11,7 +11,7 @@ const SCRIPT='ball46-production', ORIGIN='https://ball46.com';
 const ACCOUNT_EXPECTED='62cb0db544160e6591342abd6b4f35cc';
 // Base version is discovered fresh and held fixed throughout this deployment.
 // Base index bytes are read from current Cloudflare Active, never a historical HTML file.
-const MARK='BALL46_GN_MOBILE_WIDE7_HIDE_HERO_20261018';
+const MARK='BALL46_GN_TOOLS_MARKETS_MOBILE_WIDE7_20261019';
 const hash=v=>createHash('sha256').update(v).digest('hex');
 const canonical=v=>JSON.stringify(v,(key,x)=>key==='annotations'?undefined:x&&typeof x==='object'&&!Array.isArray(x)?Object.fromEntries(Object.entries(x).sort(([a],[b])=>a.localeCompare(b))):x);
 const filesDir=join(ROOT,'audit'),preview=id=>'https://'+id.slice(0,8)+'-ball46-production.mccarey-supon.workers.dev';
@@ -125,6 +125,8 @@ async function ui(host,stage){
     assert.equal(await page.locator('#b46m-drawer .b46m-drawerhead small').isVisible(),false,'DRAWER_LOGO_SUBTITLE_VISIBLE');
 
     assert.equal(await page.locator('#b46m-drawer').getAttribute('aria-hidden'),'false','DRAWER_ARIA');
+    const navContentPadding=await page.locator('#b46m-drawer .b46m-menucontent').evaluate(el=>[getComputedStyle(el).paddingLeft,getComputedStyle(el).paddingRight]);
+    assert.deepEqual(navContentPadding,['7px','7px'],'DRAWER_GROUP_INSETS_NOT_7PX');
     if(width===390){let shot=join(filesDir,stage+'-mobile-menu-390.png');await page.screenshot({path:shot});screenshots.push(shot);}
     await page.locator('[data-b46m-status="live"]').click();
     assert.equal(await open.getAttribute('aria-expanded'),'false','DRAWER_NOT_CLOSED');
@@ -135,6 +137,35 @@ async function ui(host,stage){
     await open.click();
     await page.locator('[data-b46m-status="all"]').click();
     assert.equal(await page.locator('.left-rail [data-status-filter="all"]').getAttribute('class').then(x=>x.includes('active')),true,'ALL_NOT_DELEGATED');
+    // All MARKETS & INSIGHTS destinations must share the same native Signals layout.
+    for(const market of ['ah','1x2','ou','corners','cards','other']){
+      await open.click();
+      await page.locator('[data-b46m-market="'+market+'"]').click();
+      assert.equal(await page.locator('body').getAttribute('data-workspace-view'),'signal','MARKET_NOT_ROUTED_TO_SIGNALS:'+market);
+      const metrics=await page.locator('[data-board-sections]').evaluate(el=>{const s=getComputedStyle(el),r=el.getBoundingClientRect();return {left:s.paddingLeft,right:s.paddingRight,x:r.x,r:r.right,w:r.width};});
+      assert.equal(metrics.left,'0px','SIGNAL_LEFT_NESTED_PADDING:'+market);
+      assert.equal(metrics.right,'0px','SIGNAL_RIGHT_NESTED_PADDING:'+market);
+      assert(metrics.x>=5&&metrics.x<=9,'SIGNALS_MARKET_NOT_ALIGNED_LEFT:'+market+':'+JSON.stringify(metrics));
+      assert(Math.abs(width-metrics.r-7)<=3,'SIGNALS_MARKET_NOT_ALIGNED_RIGHT:'+market+':'+JSON.stringify(metrics));
+      assert((await page.evaluate(()=>document.documentElement.scrollWidth))<=width+2,'HORIZONTAL_OVERFLOW_MARKET:'+market);
+      if(width===390&&market==='ah'){const shot=join(filesDir,stage+'-market-ah-390.png');await page.screenshot({path:shot});screenshots.push(shot);}
+    }
+    // Both BALL46 TOOLS pages use these same canonical 7px outer edges.
+    await open.click();
+    await page.locator('[data-b46m-page="signal"]').click();
+    assert.equal(await page.locator('body').getAttribute('data-workspace-view'),'signal','TOOLS_SIGNALS_ROUTE_MISSING');
+    await open.click();
+    await page.locator('[data-b46m-page="statistics"]').click();
+    assert.equal(await page.locator('body').getAttribute('data-workspace-view'),'statistics','TOOLS_STATISTICS_ROUTE_MISSING');
+    const statsRect=await page.locator('[data-workspace-panel="statistics"]').evaluate(el=>{const r=el.getBoundingClientRect(),s=getComputedStyle(el);return {x:r.x,r:r.right,w:r.width,left:s.paddingLeft,right:s.paddingRight};});
+    assert(statsRect.x>=-2&&statsRect.x<=2,'STATS_PANEL_NOT_FULL_WIDTH:'+JSON.stringify(statsRect));
+    assert(Math.abs(width-statsRect.r)<=2,'STATS_PANEL_RIGHT_NOT_FULL_WIDTH:'+JSON.stringify(statsRect));
+    assert.deepEqual([statsRect.left,statsRect.right],['7px','7px'],'STATS_GUTTER_NOT_7PX');
+    const statsCard=await page.locator('[data-workspace-panel="statistics"] .sp-stat-hero').boundingBox();
+    assert(statsCard&&statsCard.x>=5&&statsCard.x<=10,'STATISTICS_CARDS_NOT_ALIGNED_TO_7PX');
+    assert(Math.abs(width-(statsCard.x+statsCard.width)-7)<=3,'STATISTICS_CARD_RIGHT_NOT_7PX');
+    assert((await page.evaluate(()=>document.documentElement.scrollWidth))<=width+2,'STATS_HORIZONTAL_OVERFLOW');
+    if(width===390){const shot=join(filesDir,stage+'-statistics-wide7-390.png');await page.screenshot({path:shot});screenshots.push(shot);}
     await page.locator('[data-b46m-searchbutton]').click();
     assert.equal(await page.locator('[data-b46m-searchpanel]').getAttribute('data-open'),'true','SEARCH_PANEL_HIDDEN');
     await page.locator('[data-b46m-searchinput]').fill('Arsenal');
@@ -233,14 +264,15 @@ try{
 
  const originalPath=join(ROOT,'active-index.html'),candidatePath=join(ROOT,'candidate-index.html');
  writeFileSync(originalPath,old);
- const patched=spawnSync('python3',[join(ROOT,'apply_width.py'),originalPath,join(ROOT,'wide7.css'),candidatePath],{encoding:'utf8'});
+ const patched=spawnSync('python3',[join(ROOT,'apply_tools_markets.py'),originalPath,join(ROOT,'tools-markets-wide7.css'),candidatePath],{encoding:'utf8'});
  assert.equal(patched.status,0,'PATCH_FAILED:'+patched.stderr);
  const html=readFileSync(candidatePath,'utf8');
  assert(html.includes('b46-mobile-deep-teal-20261018')&&html.includes('b46-mobile-deep-teal-runtime-20261018'),'PATCH_MARKERS_MISSING');
  assert(html.includes('b46m-compact-brand-hidden-heading-20261018'),'COMPACT_BRAND_PATCH_MISSING');
  assert(html.includes('b46gn-mobile-real-board-20261018')&&html.includes('b46gn-mobile-real-board-runtime-20261018'),'GREEN_NOIR_PATCH_MISSING');
  assert(html.includes('b46gn-flow-kits-menu-runtime-20261018')&&html.includes('b46gn-flow-kits-menu-style-20261018'),'PREVIOUS_EVENTFLOW_KITS_MISSING');
- assert(html.includes('b46gn-mobile-wide7-hidehero-20261018'),'WIDE7_HIDE_HERO_CSS_MISSING');
+ assert(html.includes('b46gn-mobile-wide7-hidehero-20261018'),'PREVIOUS_WIDE7_HIDE_HERO_MISSING');
+ assert(html.includes('b46gn-tools-markets-wide7-20261019'),'TOOLS_MARKETS_WIDE7_PATCH_MISSING');
  const uploadedFiles=new Map([...baseFiles].map(([p,file])=>[p,{bytes:p==='index.html'?Buffer.from(html):file.bytes,type:file.type}]));
  assert.equal(uploadedFiles.size,paths.length,'NEW_ASSET_SET_INCOMPLETE');
  report.change={path:'index.html',before:hash(old),after:hash(Buffer.from(html)),unchangedAssets:paths.length-1};
@@ -251,7 +283,7 @@ try{
  report.upload={files:uploaded.fileCount,completionToken:!!uploaded.jwt,uploadedHashes:uploaded.uploadedHashCount};
  assert.equal((await active()).id,original.id,'UPLOAD_ALTERED_ACTIVE');
  const payload=createPayload(base,html,uploaded.jwt,MARK);
- payload.annotations['workers/message']='BALL46 Green Noir mobile all-page 7px gutter and redundant hero hidden';
+ payload.annotations['workers/message']='BALL46 Green Noir mobile Tools, Markets, Signals, Statistics 7px alignment only';
  candidate=(await cf('/workers/workers/'+SCRIPT+'/versions?deploy=false',payload)).id;
  assert(candidate&&candidate!==original.id,'CANDIDATE_INVALID');
  const cv=await version(candidate);
@@ -271,7 +303,7 @@ try{
  assert.equal((await active()).id,original.id,'CANDIDATE_ALTERED_ACTIVE');
  report.phase='UI_VERIFIED';save();
  console.log('BALL46 CANDIDATE OK',JSON.stringify({version:candidate,assetCount:paths.length,index:report.change.after,screenshots:report.candidate.screenshots}));
- report.activationDeployment=await deploy(candidate,original.id,'BALL46 Green Noir approved 7px mobile gutters and hidden hero');
+ report.activationDeployment=await deploy(candidate,original.id,'BALL46 Green Noir approved Tools and Markets 7px mobile width alignment');
  activated=true;report.activated=true;report.phase='ACTIVATED';save();
  await waitPublicIndex(report.change.after);
  report.productionScreenshots=await ui(ORIGIN,'production');
@@ -279,7 +311,7 @@ try{
  assert.equal(canonical(await config()),canonical(previousConfig),'PRODUCTION_CONFIGURATION_CHANGED');
  assert.equal((await active()).id,candidate,'ACTIVE_CHANGED_AFTER_ACTIVATION');
  report.phase='SUCCESS';report.ok=true;report.finishedAt=new Date().toISOString();save();
- console.log('BALL46 GREEN NOIR WIDE7 HERO HIDDEN DEPLOY SUCCESS',JSON.stringify({activeVersion:candidate,previousVersion:original.id,deployment:report.activationDeployment}));
+ console.log('BALL46 GREEN NOIR TOOLS MARKETS WIDE7 DEPLOY SUCCESS',JSON.stringify({activeVersion:candidate,previousVersion:original.id,deployment:report.activationDeployment}));
 }catch(error){
  report.error=String(error?.stack||error);
  console.error('BALL46 DEPLOY BLOCKED:',String(error?.message||error));
