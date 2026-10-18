@@ -270,7 +270,8 @@ async function poll(storage,env,fetcher=fetch){
   hubFixtures:fixtures,goalooText:await fetchGoaloo(fetcher),at,
   utcCertified:true,ftCertified:true,offsetMinutes:Number(env.GOALOO_OFFSET_MINUTES),
   leagueAliases:getAliases(String(env.GOALOO_APPROVED_LEAGUES||'{}')),
-  teamAliases:getAliases(String(env.GOALOO_APPROVED_TEAMS||'{}'))
+  teamAliases:getAliases(String(env.GOALOO_APPROVED_TEAMS||'{}')),
+  goalooFtEligibleIds:new Set(ledger.eligibleIds||[])
  });
  const planned=planVerifiedPendingFt({pendingRows:ledger.selectedRows||[],
   verifiedResults:result.verifiedResults||[],hubFixtures:fixtures,maxFixtures:3});
