@@ -3928,3 +3928,105 @@ button,input,select,textarea{font-family:inherit;font-synthesis:none}
 @media(prefers-reduced-motion:reduce){
   .page-member .member-main-content .member-market-toggle{transition:none}
 }
+
+
+/* MEMBER1 mobile/tablet DEFAULT signal cards: keep HOME/AWAY teams and scores
+   horizontally paired and vertically aligned. Display only: no score/data changes. */
+@media(max-width:1359px){
+  .page-member #signalBoard .signal-table tbody tr.signal-row{
+    grid-template-columns:minmax(0,1fr) clamp(65px,23%,106px);
+    grid-template-areas:
+      "detected result"
+      "match score"
+      "market selection"
+      "odds entry"
+      "bookmaker pnl";
+    column-gap:clamp(5px,1vw,12px);
+    align-items:stretch;
+  }
+  .page-member #signalBoard .signal-row>td.match,
+  .page-member #signalBoard .signal-row>td.live-score-cell{
+    align-self:stretch;
+    min-width:0;
+    padding-top:8px;
+    padding-bottom:9px;
+  }
+  .page-member #signalBoard .signal-row .favorite-teams{
+    display:grid;
+    grid-template-columns:26px minmax(0,1fr);
+    gap:7px;
+    align-items:center;
+    width:100%;
+    min-width:0;
+  }
+  .page-member #signalBoard .signal-row .favorite-star{
+    width:26px;
+    min-height:34px;
+    align-self:center;
+  }
+  .page-member #signalBoard .signal-row .favorite-team-names,
+  .page-member #signalBoard .signal-row .live-score-pair{
+    display:grid;
+    grid-template-columns:minmax(0,1fr);
+    grid-template-rows:repeat(2,minmax(36px,auto));
+    row-gap:5px;
+    align-items:stretch;
+    min-width:0;
+    margin:0;
+  }
+  .page-member #signalBoard .signal-row .favorite-team-line{
+    grid-template-columns:35px minmax(0,1fr);
+    gap:5px;
+    min-height:36px;
+    align-items:center;
+  }
+  .page-member #signalBoard .signal-row .favorite-team-home,
+  .page-member #signalBoard .signal-row .favorite-team-away{
+    font-size:clamp(10px,2.5vw,12px);
+    line-height:1.3;
+    white-space:normal;
+    overflow-wrap:anywhere;
+  }
+  .page-member #signalBoard .signal-row .live-score-pair{
+    width:100%;
+    max-width:100%;
+    justify-items:end;
+    justify-content:stretch;
+    gap:5px;
+  }
+  .page-member #signalBoard .signal-row .live-score-team{
+    display:flex;
+    align-items:center;
+    justify-content:flex-end;
+    min-height:36px;
+    line-height:1.3;
+    font-size:15px;
+    text-align:right;
+    font-variant-numeric:tabular-nums;
+  }
+  .page-member #signalBoard .signal-row .mobile-cell-label{
+    min-height:13px;
+    line-height:13px;
+    margin:0 0 6px;
+  }
+  .page-member #signalBoard .signal-row .market-evidence{
+    display:block;
+    margin-top:5px;
+    text-align:right;
+    overflow-wrap:anywhere;
+  }
+}
+@media(max-width:359px){
+  .page-member #signalBoard .signal-table tbody tr.signal-row{
+    grid-template-columns:minmax(0,1fr) 62px;
+    column-gap:4px;
+  }
+  .page-member #signalBoard .signal-row .favorite-teams{
+    grid-template-columns:24px minmax(0,1fr);
+    column-gap:5px;
+  }
+  .page-member #signalBoard .signal-row .favorite-team-line{
+    grid-template-columns:32px minmax(0,1fr);
+    column-gap:3px;
+  }
+}
