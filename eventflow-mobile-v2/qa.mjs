@@ -33,7 +33,8 @@ async function json(path){const r=await fetch('https://ball46.com'+path);assert(
 const board=await json('/api/engine/board'),sig=await json('/api/engine/signals'),rows=sig.signals;
 assert(Array.isArray(board.fixtures)&&Array.isArray(rows));
 let chosen,history;
-const fixtures=[...board.fixtures].sort((a,b)=>rows.filter(s=>String(s.fixtureId)===String(b.fixtureId??b.id)).length-rows.filter(s=>String(s.fixtureId)===String(a.fixtureId??a.id)).length);
+const fixtureScore=f=>{const ss=rows.filter(s=>String(s.fixtureId)===String(f.fixtureId??f.id)),groups=new Map();for(const s of ss){const k=String(s.matchTime??s.entryClock??s.entryMinute??s.minute);groups.set(k,(groups.get(k)||0)+1);}return ss.length+100*Math.max(0,...groups.values());};
+const fixtures=[...board.fixtures].sort((a,b)=>fixtureScore(b)-fixtureScore(a));
 for(const f of fixtures.slice(0,25)){const id=String(f.fixtureId??f.id);const h=await json('/api/engine/history?fixtureId='+encodeURIComponent(id)+'&window=10');if(h.pressure?.length>=2){chosen=f;history=h;if(rows.some(s=>String(s.fixtureId)===id))break;}}
 assert(chosen,'NO_REAL_FIXTURE_WITH_HISTORY: QA STOP');
 const id=String(chosen.fixtureId??chosen.id),signals=rows.filter(s=>String(s.fixtureId)===id);
@@ -77,7 +78,34 @@ for(const width of [320,375,390,430,1280]){
   await page.screenshot({path:'audit/after-selected-'+width+'.png',fullPage:true,animations:'disabled'});
   report.tests.push({width,geometry,signals:count,markers:markerCount,selection:'pass',liveSnapshot:'pass'});
 }
+
+await page.unroute('**/api/engine/board*');await page.unroute('**/api/engine/history*');
+await page.route('**/api/engine/board*',r=>r.fulfill({json:board}));
+await page.route('**/api/engine/history*',r=>r.fulfill({json:history}));
+await page.route('**/api/engine/signals*',r=>r.fulfill({json:sig}));
+for(const width of [320,375,390,430,1280]){
+  await page.setViewportSize({width,height:1000});
+  for(const [label,script] of [['before',before],['after',after]]){
+    await page.unroute('**/expanded-match-343.js*');
+    await page.route('**/expanded-match-343.js*',r=>r.fulfill({contentType:'application/javascript',body:script}));
+    await page.goto('https://ball46.com/?view=signal');
+    const row=page.locator('.match-row[data-match-id="'+id+'"]');
+    await row.waitFor({timeout:60000});
+    await row.click();
+    await page.locator('.expand-flow-chart').waitFor();
+    await page.locator('.expand-flow-card').scrollIntoViewIfNeeded();
+    if(label==='after'&&width<=767){
+      await page.locator('.b46-mf-marker').first().click();
+      assert.equal(await page.locator('.b46-mf-panel').count(),1);
+      const g=await page.locator('.expand-flow-card').evaluate(el=>{const r=el.getBoundingClientRect();return {left:r.left,right:r.right,width:innerWidth};});
+      assert(g.left>=-1&&g.right<=g.width+1,'ACTUAL_SITE_FLOW_OVERFLOW');
+    }
+    await page.screenshot({path:'audit/site-'+label+'-'+width+'.png',fullPage:false,animations:'disabled'});
+  }
+  report.tests.push({width,actualProductionPage:'pass'});
+}
 assert.equal(errors.length,0,errors.join('\n'));
+
 const now=await api('/scripts/ball46-production/deployments?per_page=1');assert.equal(now.deployments[0].versions[0].version_id,versionId,'PRODUCTION_CHANGED_DURING_QA');
 report.result='PASS';report.consoleErrors=errors;
 fs.writeFileSync('audit/report.json',JSON.stringify(report,null,2));
