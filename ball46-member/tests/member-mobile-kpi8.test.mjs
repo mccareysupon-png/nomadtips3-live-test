@@ -54,21 +54,25 @@ test('extra DRAW and AVG ODDS cards are not displayed on Desktop',()=>{
   assert.doesNotMatch(js,/row\.result\s*=/);
 });
 
-test('desktop KPI backgrounds are 75 percent translucent while text stays opaque',()=>{
-  const marker='/* BALL46 MEMBER — KPI finish: PC 75% transparency / mobile soft premium elevation (2026-10-19) */';
+test('desktop KPI cards have raised graphite depth and preserve outcome colors',()=>{
+  const marker='/* BALL46 MEMBER — Desktop KPI Premium Soft Elevation; Mobile V6 preserved (2026-10-19) */';
   const end=css.slice(css.indexOf(marker));
   assert.ok(end.startsWith(marker));
   const desktop=end.slice(0,end.indexOf('/* Keep the approved V6'));
   assert.match(desktop,/@media\(min-width:768px\)/);
-  for(const color of ['17,39,55','30,68,60','75,41,52','71,59,37','29,57,76']){
-    assert.ok(desktop.includes('background:rgba('+color+',.25)'),color+' background must be 75% transparent');
+  assert.match(desktop,/\.page-member #dailySummary \.summary-stat\{\s*border:0;/);
+  for(const color of ['35,65,83','43,92,76','94,51,64','88,76,45','37,77,101']){
+    assert.ok(desktop.includes('linear-gradient(160deg,rgba('+color),color+' must preserve its outcome-color family');
   }
+  assert.match(desktop,/0 11px 25px rgba\(0,0,0,\.25\)/);
+  assert.match(desktop,/0 3px 7px rgba\(0,0,0,\.15\)/);
+  assert.match(desktop,/inset 0 1px 0 rgba\(235,250,255,\.13\)/);
+  assert.match(desktop,/inset 0 -1px 0 rgba\(0,8,18,\.20\)/);
   assert.doesNotMatch(desktop,/\bopacity\s*:/);
-  assert.match(html,/kpifinish=20261019-desktop30-mobile-depth-v1/);
-  assert.match(html,/kpialpha75=20261019-pc75-v1/);
+  assert.match(html,/pcdepth=20261019-premium-soft-elevation-v1/);
 });
 test('mobile eight KPI cards gain clean soft elevation without size or color changes',()=>{
-  const end=css.slice(css.indexOf('/* BALL46 MEMBER — KPI finish: PC 75% transparency / mobile soft premium elevation (2026-10-19) */'));
+  const end=css.slice(css.indexOf('/* BALL46 MEMBER — Desktop KPI Premium Soft Elevation; Mobile V6 preserved (2026-10-19) */'));
   const mobile=end.slice(end.indexOf('/* Keep the approved V6'));
   assert.match(mobile,/@media\(max-width:767px\)/);
   assert.match(mobile,/border:0!important/);
