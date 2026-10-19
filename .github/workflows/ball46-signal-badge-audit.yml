@@ -1,0 +1,36 @@
+name: BALL46 Audit Signal Badge Sources
+on:
+  push:
+    branches: [fix/ball46-mobile-signal-count-badge-20261019]
+    paths: ['.github/workflows/ball46-signal-badge-audit.yml']
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: |
+          node --input-type=module <<'JS'
+          const root='https://ball46.com';
+          const files=['/index.html','/dashboard-v2-stage3-featured-facts-20261013a.js','/singlepage-workspace-343.js'];
+          const patterns={
+           '/index.html':['function model(','function cardHtml(','function refresh(){','function visibleRows(){','function signalHtml(','signal-inline-stack','data-inline-signal-count','data-b46gn-fixture','b46gn-live','b46gn-clock','function renderCards(','data-status-section','const all=visibleRows()'],
+           '/dashboard-v2-stage3-featured-facts-20261013a.js':['function inlineSignalsHtml(','function inlineSignalHtml(','function rowHtml(','function visibleSignalsFor(','function visibleRows(){','function signalForFixture(','data-inline-signal-count','signal-inline-stack','function signalMatch(','signalMap=','function renderBoard('],
+           '/singlepage-workspace-343.js':['function parseRoute(','function setView(']
+          };
+          for(const file of files){
+           const r=await fetch(root+file+'?inspectBadge='+Date.now()),text=await r.text();
+           console.log('FETCH',JSON.stringify({file,status:r.status,size:text.length}));
+           for(const needle of patterns[file]){
+             let at=0,n=0;
+             while(n++<5&&(at=text.indexOf(needle,at))>=0){
+               const len=['function cardHtml(','function model(','function refresh(){','function visibleSignalsFor(','function rowHtml(','function inlineSignalsHtml('].includes(needle)?3800:1250;
+               console.log('SOURCE',JSON.stringify({file,needle,pos:at,code:text.slice(Math.max(0,at-250),at+len)}).slice(0,5300));
+               at+=needle.length;
+             }
+           }
+          }
+          const a=await fetch(root+'/api/engine/signals');const signals=await a.json();
+          console.log('API_SIGNALS_SHAPE',JSON.stringify({http:a.status,ok:signals.ok,keys:Object.keys(signals),sample:Array.isArray(signals.signals)?signals.signals.slice(0,2):null}).slice(0,4300));
+          JS
