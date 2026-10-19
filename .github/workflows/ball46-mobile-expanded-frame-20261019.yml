@@ -28,6 +28,9 @@ jobs:
             page.on('pageerror',e=>console.log('PAGE_ERROR',e.message.slice(0,200)));
             await page.goto('https://ball46.com/?view=signals&frameAudit='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
             await page.waitForTimeout(2300);
+            await page.locator('[data-b46m-open]').click();
+            await page.locator('[data-b46m-page="signal"]').click();
+            await page.waitForTimeout(2200);
             const index=await page.evaluate(()=>({
               current:location.href,
               view:document.body.dataset.workspaceView,
@@ -39,6 +42,12 @@ jobs:
             const roots=['#b46gn-cards [data-b46gn-fixture]','#b46gn-cards .b46gn-card','#b46gn-results [data-b46gn-fixture]'];
             const counts=await Promise.all(roots.map(s=>page.locator(s).count()));
             console.log('ROOT_COUNTS',JSON.stringify(Object.fromEntries(roots.map((s,i)=>[s,counts[i]]))));
+            const other=await page.evaluate(()=>{
+              const match=[...document.querySelectorAll('body *')].find(e=>e.children.length===0&&e.textContent.trim()==='ACTIVE SIGNALS');
+              const signals=[...document.querySelectorAll('[class*="signal"],[data-signal]')].filter(e=>e.getBoundingClientRect().width>100).slice(0,45);
+              return {url:location.href,bodyView:document.body.dataset.workspaceView,heading:match?.parentElement?.parentElement?.outerHTML.slice(0,14000),signalEls:signals.map(x=>({tag:x.tagName,id:x.id,cls:x.className,outer:x.outerHTML.slice(0,600)})),text:document.body.innerText.slice(0,6000)}
+            });
+            console.log('SIGNALS_DOM',JSON.stringify(other).slice(0,28000));
             const first=roots.find((s,i)=>counts[i]>0);
             if(first){await page.locator(first).first().click({timeout:7000});await page.waitForTimeout(650)}
             const result=await page.evaluate(()=>{
