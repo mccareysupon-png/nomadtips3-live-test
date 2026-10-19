@@ -9,7 +9,6 @@ REQUIRED = (
     'id="b46gn-tools-markets-wide7-20261019"',
     'id="b46gn-mobile-real-board-20261018"',
     'id="b46gn-flow-kits-menu-runtime-20261018"',
-    'id="b46m-teal-shell"',
     'id="b46gn-results"',
     'data-b46m-searchbutton',
     'data-b46m-open',
