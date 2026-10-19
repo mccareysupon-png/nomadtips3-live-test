@@ -7,7 +7,7 @@ const ACCOUNT='62cb0db544160e6591342abd6b4f35cc',SCRIPT='ball46-production',ORIG
 const path='deploy-assets/global-data-orbit-20261019/';
 const req=JSON.parse(await readFile(path+'request.json','utf8'));
 const assetPaths=JSON.parse(await readFile('deploy-assets/performance-desktop-borderless-20261019/provenance.json','utf8')).paths;
-const MARKER='B46_GLOBAL_DATA_ORBIT_20261019';
+const MARKER='b46-global-data-orbit-style-20261019';
 const bodyTag='<body data-page="live">';
 const style=String.raw`
 <style id="b46-global-data-orbit-style-20261019">
@@ -98,7 +98,7 @@ function patchHomepage(html){
  assert.equal(html.split('</head>').length,2,'HTML_HEAD_ANCHOR_CHANGED');
  assert.equal(html.split(bodyTag).length,2,'HTML_BODY_ANCHOR_CHANGED');
  assert(html.includes('data-board-sections'),'MATCH_BOARD_ANCHOR_MISSING');
- assert(html.includes('B46_MOBILE_FIRST_PAINT_GUARD_20261019'),'MOBILE_FLASH_GUARD_MISSING');
+ assert(html.includes('id="b46-mobile-first-paint-guard-20261019"'),'MOBILE_FLASH_GUARD_MISSING');
  const next=html.replace('</head>',style+runtime+'</head>').replace(bodyTag,bodyTag+loader);
  assert.equal(next.replace(style+runtime,'').replace(loader,''),html,'UNRELATED_HTML_CHANGED');
  return next;
@@ -178,7 +178,7 @@ async function visual(host,fixed){
        rowCount:document.querySelectorAll('[data-board-sections] .match-row[data-match-id]').length,
        defaultStatus:document.querySelector('[data-status-filter].active')?.dataset.statusFilter,
        hasSignalBadge:document.documentElement.innerHTML.includes('B46_MOBILE_SIGNAL_COUNT_BADGE_20261019'),
-       hasMobileFlashFix:document.documentElement.innerHTML.includes('B46_MOBILE_FIRST_PAINT_GUARD_20261019'),
+       hasMobileFlashFix:!!document.querySelector('#b46-mobile-first-paint-guard-20261019'),
        bodyView:document.body.dataset.workspaceView};
    });
    assert(ready.hasSignalBadge&&ready.hasMobileFlashFix,'PREVIOUS_FEATURES_MISSING');
