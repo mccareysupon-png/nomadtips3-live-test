@@ -1,0 +1,32 @@
+name: BALL46 Member Dark Markets Scrollbar Candidate QA (No Deploy)
+on:
+  push:
+    branches: [work/member-market-scrollbar-dark-20261020]
+    paths:
+      - '.github/workflows/member-scrollbar-candidate-qa-20261020.yml'
+      - 'ball46-member/scrollbar-dark-20261020/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  qa:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Chromium for CSS real computed style checks
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Audit only current Member CSS / test scoped scrollbar styles and geometry
+        run: node ball46-member/scrollbar-dark-20261020/check-candidate.mjs
+      - name: Preserve before and after screenshots plus candidate CSS
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: member-scrollbar-dark-candidate-${{ github.run_id }}
+          path: audit/member-scrollbar-visual/
+          retention-days: 7
