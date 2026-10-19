@@ -1,0 +1,16 @@
+name: BALL46 Read Board Observer
+on:
+  push:
+    branches: [fix/ball46-mobile-signal-count-badge-20261019]
+    paths: ['.github/workflows/ball46-read-mobile-board-observer.yml']
+permissions: {contents: read}
+jobs:
+  read:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          node --input-type=module <<'JS'
+          const s=await(await fetch('https://ball46.com/index.html?signalObserver=1')).text();
+          let p=s.indexOf('function init(){if(!mq.matches)',155000);
+          console.log('BOARD_INIT',JSON.stringify({pos:p,section:s.slice(p,p+4700)}));
+          JS
