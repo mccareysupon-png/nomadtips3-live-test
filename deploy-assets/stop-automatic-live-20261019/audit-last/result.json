@@ -1,0 +1,170 @@
+{
+  "phase": "candidate",
+  "run": "39213414187",
+  "startedAt": "2026-10-19T07:02:38.628Z",
+  "mark": "B46_ALLMATCHES_DISABLE_AUTOLIVE_20261019",
+  "before": "e1c37b85-0861-40f8-8067-474c1105bb25",
+  "healthBefore": [
+    {
+      "path": "/api/engine/health",
+      "ok": true
+    },
+    {
+      "path": "/api/full-market/health",
+      "ok": true
+    },
+    {
+      "path": "/api/engine/board",
+      "ok": true,
+      "fixtures": 2240
+    },
+    {
+      "path": "/api/engine/signals",
+      "ok": true,
+      "signals": 3
+    },
+    {
+      "path": "/api/engine/statistics?paged=1",
+      "ok": true,
+      "rows": 500
+    }
+  ],
+  "beforeStyles": [
+    {
+      "width": 390,
+      "route": "/",
+      "href": "https://ball46.com/?status=live",
+      "view": "live",
+      "active": [
+        "live"
+      ],
+      "headline": "Live Matches",
+      "count": 2,
+      "statusKinds": [
+        "live"
+      ],
+      "mobileClock": true,
+      "previousEmptyFix": true,
+      "allHead": "All matches2240",
+      "errors": []
+    },
+    {
+      "width": 390,
+      "route": "/?status=all",
+      "href": "https://ball46.com/?status=live",
+      "view": "live",
+      "active": [
+        "live"
+      ],
+      "headline": "All Matches",
+      "count": 0,
+      "statusKinds": [],
+      "mobileClock": true,
+      "previousEmptyFix": true,
+      "allHead": "All matches2240",
+      "errors": []
+    },
+    {
+      "width": 390,
+      "route": "/?status=live",
+      "href": "https://ball46.com/?status=live",
+      "view": "live",
+      "active": [
+        "live"
+      ],
+      "headline": "Live Matches",
+      "count": 0,
+      "statusKinds": [],
+      "mobileClock": true,
+      "previousEmptyFix": true,
+      "allHead": "All matches0",
+      "errors": []
+    },
+    {
+      "width": 390,
+      "route": "/?view=signal",
+      "href": "https://ball46.com/?view=signal",
+      "view": "signal",
+      "active": [],
+      "headline": "All Matches",
+      "count": 0,
+      "statusKinds": [],
+      "mobileClock": true,
+      "previousEmptyFix": true,
+      "allHead": "All matches2326",
+      "errors": []
+    },
+    {
+      "width": 1280,
+      "route": "/",
+      "href": "https://ball46.com/?status=live",
+      "view": "live",
+      "active": [
+        "live"
+      ],
+      "headline": null,
+      "count": 0,
+      "statusKinds": [],
+      "mobileClock": true,
+      "previousEmptyFix": true,
+      "allHead": "All matches2326",
+      "errors": []
+    },
+    {
+      "width": 1280,
+      "route": "/?status=all",
+      "href": "https://ball46.com/?status=live",
+      "view": "live",
+      "active": [
+        "live"
+      ],
+      "headline": null,
+      "count": 0,
+      "statusKinds": [],
+      "mobileClock": true,
+      "previousEmptyFix": true,
+      "allHead": "All matches2326",
+      "errors": []
+    },
+    {
+      "width": 1280,
+      "route": "/?status=live",
+      "href": "https://ball46.com/?status=live",
+      "view": "live",
+      "active": [
+        "live"
+      ],
+      "headline": null,
+      "count": 0,
+      "statusKinds": [],
+      "mobileClock": true,
+      "previousEmptyFix": true,
+      "allHead": "All matches2326",
+      "errors": []
+    },
+    {
+      "width": 1280,
+      "route": "/?view=signal",
+      "href": "https://ball46.com/?view=signal",
+      "view": "signal",
+      "active": [],
+      "headline": null,
+      "count": 0,
+      "statusKinds": [],
+      "mobileClock": true,
+      "previousEmptyFix": true,
+      "allHead": "All matches2326",
+      "errors": []
+    }
+  ],
+  "tuneBeforeSHA": "65081d9cdbdaa6c02d0a2b6ba75e9a0ee9effef00b1948b5d02c53b0681f164a",
+  "tuneAfterSHA": "a0cc90d18e0b4b64b5dade62144b6f053e85490144c98c468001460ecc64e90b",
+  "candidate": "008948d7-7b46-41a5-b473-2ab550538854",
+  "base": "e1c37b85-0861-40f8-8067-474c1105bb25",
+  "sourceSHA": "b5da3c598e1462b6e0fda3800d17e2a31589ea5f69540cc7105fc3e39edc49b3",
+  "candidateSHA": "b5da3c598e1462b6e0fda3800d17e2a31589ea5f69540cc7105fc3e39edc49b3",
+  "assetCount": 82,
+  "ok": false,
+  "error": "PREVIEW_TUNE_SHA_MISMATCH\n+ actual - expected\n\n+ '65081d9cdbdaa6c02d0a2b6ba75e9a0ee9effef00b1948b5d02c53b0681f164a'\n- 'a0cc90d18e0b4b64b5dade62144b6f053e85490144c98c468001460ecc64e90b'\n",
+  "finishedAt": "2026-10-19T07:03:35.384Z"
+}
