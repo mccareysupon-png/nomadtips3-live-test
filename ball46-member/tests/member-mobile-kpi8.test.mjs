@@ -85,3 +85,18 @@ test('mobile eight KPI cards gain clean soft elevation without size or color cha
   assert.match(cssV6,/height:45px!important/);
   assert.match(cssV6,/grid-template-columns:repeat\(4,minmax\(0,1fr\)\)!important/);
 });
+
+test('desktop KPI cards are exactly 10 percent shorter without altering mobile',()=>{
+  const marker='/* BALL46 MEMBER — Desktop KPI 10% shorter, mobile unchanged (2026-10-19) */';
+  const finish=css.slice(css.indexOf(marker));
+  assert.ok(finish.startsWith(marker),'height override must exist');
+  assert.match(finish,/@media\(min-width:768px\) and \(max-width:1559px\)\{\s*\.page-member #dailySummary \.summary-stat\{\s*height:66\.6px;\s*min-height:66\.6px;\s*padding-block:9px;/);
+  assert.match(finish,/@media\(min-width:1560px\)\{\s*\.page-member #dailySummary \.summary-stat\{\s*height:63px;\s*min-height:63px;\s*padding-block:7\.2px;/);
+  assert.equal(66.6/74,.9);
+  assert.equal(63/70,.9);
+  assert.doesNotMatch(finish,/@media\(max-width:767px\)/);
+  assert.doesNotMatch(finish,/background:|box-shadow:|font-size:|letter-spacing:|width:/);
+  assert.match(html,/pcKpiHeight90=20261019-pc-kpi-90pct-v1/);
+  assert.match(cssV6,/height:47px!important/);
+  assert.match(cssV6,/height:45px!important/);
+});
