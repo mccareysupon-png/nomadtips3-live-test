@@ -86,7 +86,7 @@ async function uploadVersion(oldVersion,old,completion){
  assert.equal((await active()).version,oldVersion,'ACTIVE_DRIFT_BEFORE_VERSION_UPLOAD');
  const payload={
   main_module:old.main_module,
-  modules:undefined,
+  modules:old.modules,
   bindings:old.bindings.map(b=>b.type==='assets'?{name:b.name,type:'assets'}:{name:b.name,type:'inherit',version_id:oldVersion}),
   assets:{jwt:completion,config:old.assets.config},
   compatibility_date:old.compatibility_date,
@@ -95,16 +95,8 @@ async function uploadVersion(oldVersion,old,completion){
   annotations:{'workers/tag':'MARKETS-SCROLLBAR-DARK-20261020','workers/message':'BALL46 MEMBER MARKETS sidebar scrollbar darker only; keep original Worker code, bindings, static assets'},
  };
  for(const k of ['limits','placement'])if(old[k])payload[k]=old[k];
- const form=new FormData();
- form.append('metadata',new Blob([JSON.stringify(payload)],{type:'application/json'}));
- for(const m of old.modules){
-  const bin=Buffer.from(m.content_base64,'base64');
-  form.append(m.name,new Blob([bin],{type:m.content_type||'application/javascript+module'}),m.name);
- }
- const r=await fetch('https://api.cloudflare.com/client/v4/accounts/'+A+'/workers/workers/'+W+'/versions?bindings_inherit=strict',{method:'POST',headers:{Authorization:'Bearer '+T},body:form,signal:AbortSignal.timeout(85000)});
- const j=await r.json();
- assert(r.ok&&j.success===true,'VERSION_CREATE_FAILED_'+r.status+':'+JSON.stringify(j.errors||[]).slice(0,700));
- const id=j.result?.id;
+ const version=await cf('/workers/workers/'+W+'/versions?deploy=false&bindings_inherit=strict',payload);
+ const id=version?.id;
  assert(id&&/^[a-f0-9-]{36}$/.test(id),'VERSION_CREATE_ID_MISSING');
  return id;
 }
