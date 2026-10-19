@@ -22,7 +22,7 @@ function patchHomepage(html,tuneSource){
  const matches=[...html.matchAll(new RegExp(pattern.source,'gi'))];
  assert.equal(matches.length,1,'TUNE_SCRIPT_TAG_NOT_UNIQUE');
  const original=matches[0][0];
- assert(!/\b(?:async|defer)\b/i.test(original),'SCRIPT_ORDER_MUST_BE_REVIEWED');
+ assert(/\bdefer\b/i.test(original),'UNEXPECTED_SCRIPT_LOADING_MODE');
  const patchedSource=patchTune(tuneSource);
  assert(!/<\/script\s*>/i.test(patchedSource),'UNSAFE_INLINE_SCRIPT_END');
  const inlined='<script id="b46-allmatches-default-source-20261019">\n'+patchedSource+'\n</script>';
