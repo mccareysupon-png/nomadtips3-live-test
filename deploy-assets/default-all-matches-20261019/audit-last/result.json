@@ -1,0 +1,240 @@
+{
+  "phase": "candidate",
+  "run": "39210426298",
+  "startedAt": "2026-10-19T06:32:04.089Z",
+  "mark": "B46_DEFAULT_ALL_MATCHES_20261019",
+  "before": "6e9acd84-c6b7-4f47-aef3-eec802b93a77",
+  "healthBefore": [
+    {
+      "path": "/api/engine/health",
+      "ok": true
+    },
+    {
+      "path": "/api/full-market/health",
+      "ok": true
+    },
+    {
+      "path": "/api/engine/board",
+      "ok": true,
+      "fixtures": 2325
+    },
+    {
+      "path": "/api/engine/signals",
+      "ok": true,
+      "signals": 1
+    },
+    {
+      "path": "/api/engine/statistics?paged=1",
+      "ok": true,
+      "rows": 500
+    }
+  ],
+  "beforeStyles": [
+    {
+      "width": 390,
+      "route": "/",
+      "view": "live",
+      "active": [
+        "all"
+      ],
+      "hero": "Live Matches",
+      "list": "Live Matches",
+      "heading": "Today's Matches",
+      "liveSection": "LIVE MATCHES",
+      "cardCount": 0,
+      "signalSection": "LIVE MATCHES",
+      "hasPreviousMobileClock": true,
+      "hasEmptyCardFix": true,
+      "signals": false
+    },
+    {
+      "width": 390,
+      "route": "/?view=signal",
+      "view": "signal",
+      "active": [],
+      "hero": "Live Matches",
+      "list": "Live Matches",
+      "heading": "Active Signals",
+      "liveSection": "ACTIVE SIGNALS",
+      "cardCount": 0,
+      "signalSection": "ACTIVE SIGNALS",
+      "hasPreviousMobileClock": true,
+      "hasEmptyCardFix": true,
+      "signals": true
+    },
+    {
+      "width": 390,
+      "route": "/?status=live",
+      "view": "live",
+      "active": [
+        "live"
+      ],
+      "hero": "Live Matches",
+      "list": "Live Matches",
+      "heading": "Today's Matches",
+      "liveSection": "LIVE MATCHES",
+      "cardCount": 0,
+      "signalSection": "LIVE MATCHES",
+      "hasPreviousMobileClock": true,
+      "hasEmptyCardFix": true,
+      "signals": false
+    },
+    {
+      "width": 1280,
+      "route": "/",
+      "view": "live",
+      "active": [
+        "all"
+      ],
+      "hero": null,
+      "list": null,
+      "heading": "Today's Matches",
+      "liveSection": "LIVE MATCHES",
+      "cardCount": 0,
+      "signalSection": "LIVE MATCHES",
+      "hasPreviousMobileClock": true,
+      "hasEmptyCardFix": true,
+      "signals": false
+    },
+    {
+      "width": 1280,
+      "route": "/?view=signal",
+      "view": "signal",
+      "active": [],
+      "hero": null,
+      "list": null,
+      "heading": "Active Signals",
+      "liveSection": "ACTIVE SIGNALS",
+      "cardCount": 0,
+      "signalSection": "ACTIVE SIGNALS",
+      "hasPreviousMobileClock": true,
+      "hasEmptyCardFix": true,
+      "signals": true
+    },
+    {
+      "width": 1280,
+      "route": "/?status=live",
+      "view": "live",
+      "active": [
+        "live"
+      ],
+      "hero": null,
+      "list": null,
+      "heading": "Today's Matches",
+      "liveSection": "LIVE MATCHES",
+      "cardCount": 0,
+      "signalSection": "LIVE MATCHES",
+      "hasPreviousMobileClock": true,
+      "hasEmptyCardFix": true,
+      "signals": false
+    }
+  ],
+  "candidate": "23ba97e2-a813-44ce-9cfa-edcdc7584b8d",
+  "base": "6e9acd84-c6b7-4f47-aef3-eec802b93a77",
+  "sourceSHA": "d4f520186580cd2cd7749a306dc4e01dfc015380624091c427eb625628615a17",
+  "candidateSHA": "b5da3c598e1462b6e0fda3800d17e2a31589ea5f69540cc7105fc3e39edc49b3",
+  "assetCount": 82,
+  "previewStyles": [
+    {
+      "width": 390,
+      "route": "/",
+      "view": "live",
+      "active": [
+        "all"
+      ],
+      "hero": "All Matches",
+      "list": "All Matches",
+      "heading": "Today's Matches",
+      "liveSection": "LIVE MATCHES",
+      "cardCount": 0,
+      "signalSection": "LIVE MATCHES",
+      "hasPreviousMobileClock": true,
+      "hasEmptyCardFix": true,
+      "signals": false
+    },
+    {
+      "width": 390,
+      "route": "/?view=signal",
+      "view": "signal",
+      "active": [],
+      "hero": "All Matches",
+      "list": "All Matches",
+      "heading": "Active Signals",
+      "liveSection": "ACTIVE SIGNALS",
+      "cardCount": 0,
+      "signalSection": "ACTIVE SIGNALS",
+      "hasPreviousMobileClock": true,
+      "hasEmptyCardFix": true,
+      "signals": true
+    },
+    {
+      "width": 390,
+      "route": "/?status=live",
+      "view": "live",
+      "active": [
+        "live"
+      ],
+      "hero": "Live Matches",
+      "list": "Live Matches",
+      "heading": "Today's Matches",
+      "liveSection": "LIVE MATCHES",
+      "cardCount": 0,
+      "signalSection": "LIVE MATCHES",
+      "hasPreviousMobileClock": true,
+      "hasEmptyCardFix": true,
+      "signals": false
+    },
+    {
+      "width": 1280,
+      "route": "/",
+      "view": "live",
+      "active": [
+        "all"
+      ],
+      "hero": null,
+      "list": null,
+      "heading": "Today's Matches",
+      "liveSection": "LIVE MATCHES",
+      "cardCount": 0,
+      "signalSection": "LIVE MATCHES",
+      "hasPreviousMobileClock": true,
+      "hasEmptyCardFix": true,
+      "signals": false
+    },
+    {
+      "width": 1280,
+      "route": "/?view=signal",
+      "view": "signal",
+      "active": [],
+      "hero": null,
+      "list": null,
+      "heading": "Active Signals",
+      "liveSection": "ACTIVE SIGNALS",
+      "cardCount": 0,
+      "signalSection": "ACTIVE SIGNALS",
+      "hasPreviousMobileClock": true,
+      "hasEmptyCardFix": true,
+      "signals": true
+    },
+    {
+      "width": 1280,
+      "route": "/?status=live",
+      "view": "live",
+      "active": [
+        "live"
+      ],
+      "hero": null,
+      "list": null,
+      "heading": "Today's Matches",
+      "liveSection": "LIVE MATCHES",
+      "cardCount": 0,
+      "signalSection": "LIVE MATCHES",
+      "hasPreviousMobileClock": true,
+      "hasEmptyCardFix": true,
+      "signals": false
+    }
+  ],
+  "ok": false,
+  "error": "DESKTOP_STYLE_DIFF\n+ actual - expected\n\n  {\n    active: [],\n    cardCount: 0,\n    hasEmptyCardFix: true,\n    hasPreviousMobileClock: true,\n    heading: 'Active Signals',\n+   hero: 'All Matches',\n+   list: 'All Matches',\n-   hero: 'Live Matches',\n-   list: 'Live Matches',\n    liveSection: 'ACTIVE SIGNALS',\n    route: '/?view=signal',\n    signalSection: 'ACTIVE SIGNALS',\n    signals: true,\n    view: 'signal',\n",
+  "finishedAt": "2026-10-19T06:32:42.262Z"
+}
