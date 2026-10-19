@@ -1,7 +1,7 @@
 {
-  "phase": "candidate",
-  "run": "39200756194",
-  "startedAt": "2026-10-19T04:42:14.834Z",
+  "phase": "activate",
+  "run": "39200910336",
+  "startedAt": "2026-10-19T04:44:01.935Z",
   "mark": "B46_HIDE_EMPTY_DETAIL_TILES_20261019",
   "before": "252c03fe-fdc0-42ba-a2e0-016686ef83b3",
   "healthBefore": [
@@ -16,7 +16,68 @@
     {
       "path": "/api/engine/board",
       "ok": true,
-      "fixtures": 2240
+      "fixtures": 2324
+    },
+    {
+      "path": "/api/engine/signals",
+      "ok": true,
+      "signals": 0
+    },
+    {
+      "path": "/api/engine/statistics?paged=1",
+      "ok": true,
+      "rows": 500
+    }
+  ],
+  "previewStyles": [
+    {
+      "width": 390,
+      "empty": {
+        "display": "none",
+        "classes": "b46gn-prices b46-empty-tiles-20261019",
+        "slots": [
+          {
+            "display": "none",
+            "classes": "b46-empty-tile-20261019"
+          },
+          {
+            "display": "none",
+            "classes": "b46-empty-tile-20261019"
+          },
+          {
+            "display": "none",
+            "classes": "b46-empty-tile-20261019"
+          }
+        ]
+      },
+      "withRealData": {
+        "display": "grid",
+        "slots": [
+          "block",
+          "none",
+          "none"
+        ],
+        "text": ""
+      }
+    },
+    {
+      "width": 1280,
+      "display": "block"
+    }
+  ],
+  "previewHealth": [
+    {
+      "path": "/api/engine/health",
+      "ok": true
+    },
+    {
+      "path": "/api/full-market/health",
+      "ok": true
+    },
+    {
+      "path": "/api/engine/board",
+      "ok": true,
+      "fixtures": 2324
     },
     {
       "path": "/api/engine/signals",
@@ -66,72 +127,8 @@
     }
   ],
   "candidate": "33965770-6d0e-4bc8-859b-4ef139ab44ec",
-  "base": "252c03fe-fdc0-42ba-a2e0-016686ef83b3",
-  "sourceSHA": "c5a0b7a432bbabfc199976cb6fb064a6061555b56fbf88dfbde15f04996563ed",
-  "candidateSHA": "2db7270df6a8d2cc5e214db2beb441691dea90ab3fe6c4b1978542467402d249",
-  "assetCount": 82,
-  "previewStyles": [
-    {
-      "width": 390,
-      "empty": {
-        "display": "none",
-        "classes": "b46gn-prices b46-empty-tiles-20261019",
-        "slots": [
-          {
-            "display": "none",
-            "classes": "b46-empty-tile-20261019"
-          },
-          {
-            "display": "none",
-            "classes": "b46-empty-tile-20261019"
-          },
-          {
-            "display": "none",
-            "classes": "b46-empty-tile-20261019"
-          }
-        ]
-      },
-      "withRealData": {
-        "display": "grid",
-        "slots": [
-          "block",
-          "none",
-          "none"
-        ],
-        "text": ""
-      }
-    },
-    {
-      "width": 1280,
-      "display": "block"
-    }
-  ],
-  "previewHealth": [
-    {
-      "path": "/api/engine/health",
-      "ok": true
-    },
-    {
-      "path": "/api/full-market/health",
-      "ok": true
-    },
-    {
-      "path": "/api/engine/board",
-      "ok": true,
-      "fixtures": 2240
-    },
-    {
-      "path": "/api/engine/signals",
-      "ok": true,
-      "signals": 0
-    },
-    {
-      "path": "/api/engine/statistics?paged=1",
-      "ok": true,
-      "rows": 500
-    }
-  ],
-  "ok": true,
-  "productionChanged": false,
-  "finishedAt": "2026-10-19T04:42:35.897Z"
+  "deployment": "48282cc4-eec1-41d4-a8c0-1846eb823403",
+  "ok": false,
+  "error": "DEPLOY_DID_NOT_ACTIVATE\n+ actual - expected\n\n+ '252c03fe-fdc0-42ba-a2e0-016686ef83b3'\n- '33965770-6d0e-4bc8-859b-4ef139ab44ec'\n",
+  "finishedAt": "2026-10-19T04:44:18.540Z"
 }
