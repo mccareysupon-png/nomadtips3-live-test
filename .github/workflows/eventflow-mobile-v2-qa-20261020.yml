@@ -1,0 +1,30 @@
+name: BALL46 Event Flow Mobile V2 Current Production QA
+on:
+  push:
+    branches: [work/eventflow-mobile-v2-20261020]
+    paths: ['eventflow-mobile-v2/**', '.github/workflows/eventflow-mobile-v2-qa-20261020.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --ignore-scripts acorn@8 playwright@1.56.1
+      - run: npx playwright install --with-deps chromium
+      - name: Read active Worker, build candidate, validate real data and screenshots (no deploy)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: node eventflow-mobile-v2/qa.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eventflow-mobile-v2-qa
+          path: audit/
+          retention-days: 30
