@@ -131,9 +131,10 @@ export class Prediction3Tracker{
     const current=Array.isArray(await this.state.storage.get('records'))?(await this.state.storage.get('records')):[];const byId=new Map(current.map(row=>[String(row.id),row]));const errors=[];
     let ledger=null,live={matches:[]},finals={finals:[]};const responses=await Promise.allSettled([fetchJson(LEDGER_URL),fetchJson(LIVE_URL),fetchJson(FINAL_URL)]);
     if(responses[0].status==='fulfilled')ledger=responses[0].value;else errors.push(`ledger:${responses[0].reason}`);if(responses[1].status==='fulfilled')live=responses[1].value;else errors.push(`live:${responses[1].reason}`);if(responses[2].status==='fulfilled')finals=responses[2].value;else errors.push(`finals:${responses[2].reason}`);
-    if(ledger&&Array.isArray(ledger.today)){
+    if(ledger&&(Array.isArray(ledger.today)||Array.isArray(ledger.trackingBacklog))){
+      const trackedPicks=[...(Array.isArray(ledger.trackingBacklog)?ledger.trackingBacklog:[]),...(Array.isArray(ledger.today)?ledger.today:[])];
       const refreshedAt=now();const apiDateCache=new Map();const getApiFinals=async item=>{const date=kickoffDate(item);if(!date)return [];if(!apiDateCache.has(date))apiDateCache.set(date,fetchApiFootballFinals(date,this.env).catch(error=>{errors.push(`apiFootball:${date}:${String(error?.message||error)}`);return [];}));return apiDateCache.get(date);};
-      for(const item of ledger.today){
+      for(const item of trackedPicks){
         if(!item?.id)continue;const previous=sanitizeExisting(item,byId.get(String(item.id))||{},refreshedAt);const record=recordFromPick(item,previous);const configuredFixtureId=String(item?.tracking?.fixtureId??item?.fixtureId??'').trim();let knownFixtureId=record.fixtureId||previous.fixtureId||null;
         if(knownFixtureId&&!configuredFixtureId&&!String(knownFixtureId).startsWith('api-football:')){const allRows=[...(Array.isArray(live?.matches)?live.matches:[]),...(Array.isArray(finals?.finals)?finals.finals:[])];const learnedRow=allRows.find(row=>rowId(row)===String(knownFixtureId));if(learnedRow&&!fixtureIdentityMatches(item,learnedRow)){record.fixtureId=null;knownFixtureId=null;}}
         const tcFinalRow=fixtureFor(item,Array.isArray(finals?.finals)?finals.finals:[],{knownFixtureId,final:true,at:refreshedAt});const liveRow=fixtureFor(item,Array.isArray(live?.matches)?live.matches:[],{knownFixtureId,final:false,at:refreshedAt});let apiFinalRow=null;
