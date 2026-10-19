@@ -75,7 +75,7 @@ async function visual(host,fixed){
  if(width===390){
  assert.equal(v.expandedMargin,fixed?'0px':'7px','MOBILE_FRAME_MARGIN_INCORRECT');
  if(fixed){assert.equal(v.detailBorder,'0px','SEAM_BORDER_NOT_REMOVED');assert(v.detailShadow.includes('rgb(42, 207, 131)'),'GREEN_FRAME_NOT_CONNECTED');assert(v.detailRadius.startsWith('0px'),'TOP_RADIUS_NOT_CONTINUOUS')}
- }else{assert.notEqual(v.expandedMargin,'0px','DESKTOP_CHANGED');}
+ }else{assert.equal(typeof v.expandedMargin,'string','DESKTOP_STYLE_MISSING');}
  out.push({width,...v});await page.close();
  }}finally{await browser.close()}return out;
 }
@@ -110,7 +110,7 @@ try{
  const cv=await ver(created.id);assert.equal(cv.annotations?.['workers/tag'],MARK,'NOT_OWNED_PREVIEW');
  assert.equal(hash(Buffer.from(cv.modules.find(x=>x.name==='assets/index.html').content_base64,'base64')),state.candidateSHA,'PREVIEW_MODULE_CHANGED');
  const previewIndex=await get(preview(created.id),'/index.html');assert.equal(previewIndex.status,200);assert.equal(hash(previewIndex.bytes),state.candidateSHA,'PREVIEW_CONTENT_MISMATCH');
- state.previewStyles=await visual(preview(created.id),true);state.previewHealth=await health(preview(created.id));
+ state.previewStyles=await visual(preview(created.id),true);assert.deepEqual(state.previewStyles[1],state.beforeStyles[1],'DESKTOP_STYLE_DIFF');assert.equal(state.previewStyles[0].collapsedMargin,state.beforeStyles[0].collapsedMargin,'COLLAPSED_STYLE_DIFF');state.previewHealth=await health(preview(created.id));
  assert.equal(await active(),current,'PREVIEW_CHANGED_ACTIVE');assert.equal(canonical(await config()),canonical(conf),'SETTINGS_CHANGED');
  await writeFile(path+'audit-last/candidate.json',JSON.stringify({base:current,candidate:created.id,sourceSHA:state.sourceSHA,candidateSHA:state.candidateSHA,assetCount:files.size,previewChecked:true,mark:MARK},null,2));
  state.ok=true;state.productionChanged=false;
