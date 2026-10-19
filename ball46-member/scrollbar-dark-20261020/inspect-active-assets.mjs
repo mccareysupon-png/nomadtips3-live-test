@@ -38,7 +38,17 @@ for(let i=0;i<files.length;i+=6){
     const u=new URL(f.path,HOST);u.searchParams.set('_style_preflight',Date.now().toString(36));
     const r=await fetch(u,{headers,redirect:'manual',signal:AbortSignal.timeout(50000)});
     const response=Buffer.from(await r.arrayBuffer()),status=r.status,actual=hash(response);
-    return {path:f.path,size:f.size,sourceSha256:expected,publicStatus:status,publicSha256:actual,match:status===200&&actual===expected,skippedProtected:status===302||status===403,contentType:r.headers.get('content-type')};
+    let previewStatus=null,previewHash=null,previewMatch=false,previewLocation=null;
+    if(status!==200||actual!==expected){
+      const preview=new URL(f.path,previewBase);preview.searchParams.set('_version_probe',Date.now().toString(36));
+      const pr=await fetch(preview,{redirect:'manual',signal:AbortSignal.timeout(30000)});
+      const pb=Buffer.from(await pr.arrayBuffer());
+      previewStatus=pr.status;previewHash=hash(pb);previewMatch=previewStatus===200&&previewHash===expected;
+      const location=pr.headers.get('location')||'';
+      previewLocation=location.replace(/([?&](?:kid|meta|token|code|state)=)[^&]+/gi,'$1REDACTED').slice(0,170);
+    }
+    return {path:f.path,size:f.size,sourceSha256:expected,publicStatus:status,publicSha256:actual,match:(status===200&&actual===expected)||previewMatch,
+      skippedProtected:status===302||status===403||status===307,previewStatus,previewHash,previewMatch,previewLocation,contentType:r.headers.get('content-type')};
   }));
   checks.push(...arr);
 }
