@@ -1,7 +1,7 @@
 {
-  "phase": "candidate",
-  "run": "39210747477",
-  "startedAt": "2026-10-19T06:35:27.969Z",
+  "phase": "activate",
+  "run": "39210925883",
+  "startedAt": "2026-10-19T06:37:17.618Z",
   "mark": "B46_DEFAULT_ALL_MATCHES_20261019",
   "before": "6e9acd84-c6b7-4f47-aef3-eec802b93a77",
   "healthBefore": [
@@ -16,7 +16,132 @@
     {
       "path": "/api/engine/board",
       "ok": true,
-      "fixtures": 2326
+      "fixtures": 2240
+    },
+    {
+      "path": "/api/engine/signals",
+      "ok": true,
+      "signals": 1
+    },
+    {
+      "path": "/api/engine/statistics?paged=1",
+      "ok": true,
+      "rows": 500
+    }
+  ],
+  "previewStyles": [
+    {
+      "width": 390,
+      "route": "/",
+      "view": "live",
+      "active": [
+        "all"
+      ],
+      "hero": "All Matches",
+      "list": "All Matches",
+      "heading": "Today's Matches",
+      "liveSection": "LIVE MATCHES",
+      "cardCount": 0,
+      "signalSection": "LIVE MATCHES",
+      "hasPreviousMobileClock": true,
+      "hasEmptyCardFix": true,
+      "signals": false
+    },
+    {
+      "width": 390,
+      "route": "/?view=signal",
+      "view": "signal",
+      "active": [],
+      "hero": "All Matches",
+      "list": "All Matches",
+      "heading": "Active Signals",
+      "liveSection": "ACTIVE SIGNALS",
+      "cardCount": 0,
+      "signalSection": "ACTIVE SIGNALS",
+      "hasPreviousMobileClock": true,
+      "hasEmptyCardFix": true,
+      "signals": true
+    },
+    {
+      "width": 390,
+      "route": "/?status=live",
+      "view": "live",
+      "active": [
+        "live"
+      ],
+      "hero": "Live Matches",
+      "list": "Live Matches",
+      "heading": "Today's Matches",
+      "liveSection": "LIVE MATCHES",
+      "cardCount": 0,
+      "signalSection": "LIVE MATCHES",
+      "hasPreviousMobileClock": true,
+      "hasEmptyCardFix": true,
+      "signals": false
+    },
+    {
+      "width": 1280,
+      "route": "/",
+      "view": "live",
+      "active": [
+        "all"
+      ],
+      "hero": null,
+      "list": null,
+      "heading": "Today's Matches",
+      "liveSection": "LIVE MATCHES",
+      "cardCount": 0,
+      "signalSection": "LIVE MATCHES",
+      "hasPreviousMobileClock": true,
+      "hasEmptyCardFix": true,
+      "signals": false
+    },
+    {
+      "width": 1280,
+      "route": "/?view=signal",
+      "view": "signal",
+      "active": [],
+      "hero": null,
+      "list": null,
+      "heading": "Active Signals",
+      "liveSection": "ACTIVE SIGNALS",
+      "cardCount": 0,
+      "signalSection": "ACTIVE SIGNALS",
+      "hasPreviousMobileClock": true,
+      "hasEmptyCardFix": true,
+      "signals": true
+    },
+    {
+      "width": 1280,
+      "route": "/?status=live",
+      "view": "live",
+      "active": [
+        "live"
+      ],
+      "hero": null,
+      "list": null,
+      "heading": "Today's Matches",
+      "liveSection": "LIVE MATCHES",
+      "cardCount": 0,
+      "signalSection": "LIVE MATCHES",
+      "hasPreviousMobileClock": true,
+      "hasEmptyCardFix": true,
+      "signals": false
+    }
+  ],
+  "previewHealth": [
+    {
+      "path": "/api/engine/health",
+      "ok": true
+    },
+    {
+      "path": "/api/full-market/health",
+      "ok": true
+    },
+    {
+      "path": "/api/engine/board",
+      "ok": true,
+      "fixtures": 2240
     },
     {
       "path": "/api/engine/signals",
@@ -130,11 +255,8 @@
     }
   ],
   "candidate": "e1c37b85-0861-40f8-8067-474c1105bb25",
-  "base": "6e9acd84-c6b7-4f47-aef3-eec802b93a77",
-  "sourceSHA": "d4f520186580cd2cd7749a306dc4e01dfc015380624091c427eb625628615a17",
-  "candidateSHA": "b5da3c598e1462b6e0fda3800d17e2a31589ea5f69540cc7105fc3e39edc49b3",
-  "assetCount": 82,
-  "previewStyles": [
+  "deployment": "4032c4a7-a85f-4e29-9154-2d3ec9ecc13e",
+  "productionStyles": [
     {
       "width": 390,
       "route": "/",
@@ -234,7 +356,7 @@
       "signals": false
     }
   ],
-  "previewHealth": [
+  "healthAfter": [
     {
       "path": "/api/engine/health",
       "ok": true
@@ -246,7 +368,7 @@
     {
       "path": "/api/engine/board",
       "ok": true,
-      "fixtures": 2326
+      "fixtures": 2240
     },
     {
       "path": "/api/engine/signals",
@@ -260,6 +382,6 @@
     }
   ],
   "ok": true,
-  "productionChanged": false,
-  "finishedAt": "2026-10-19T06:36:14.503Z"
+  "productionChanged": true,
+  "finishedAt": "2026-10-19T06:38:07.781Z"
 }
