@@ -5622,3 +5622,21 @@ button,input,select,textarea{font-family:inherit;font-synthesis:none}
       inset 0 -1px 0 rgba(0,0,0,.12)!important;
   }
 }
+
+/* BALL46 MEMBER — Desktop KPI 10% shorter, mobile unchanged (2026-10-19) */
+/* Actual desktop card heights: 74px -> 66.6px; wide desktop: 70px -> 63px.
+   Keep text, width, borderless elevated shadows, gradients, and mobile V6 untouched. */
+@media(min-width:768px) and (max-width:1559px){
+  .page-member #dailySummary .summary-stat{
+    height:66.6px;
+    min-height:66.6px;
+    padding-block:9px;
+  }
+}
+@media(min-width:1560px){
+  .page-member #dailySummary .summary-stat{
+    height:63px;
+    min-height:63px;
+    padding-block:7.2px;
+  }
+}
