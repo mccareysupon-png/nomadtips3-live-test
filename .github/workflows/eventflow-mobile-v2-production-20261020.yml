@@ -1,0 +1,42 @@
+name: BALL46 Event Flow Mobile V2 Guarded Production Deploy
+on:
+  push:
+    branches: [work/eventflow-mobile-v2-20261020]
+    paths: ['.github/workflows/eventflow-mobile-v2-production-20261020.yml']
+permissions:
+  contents: read
+concurrency:
+  group: ball46-eventflow-mobile-v2-production
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --ignore-scripts acorn@8 playwright@1.56.1
+      - run: npx playwright install --with-deps chromium
+      - name: Revalidate exact current Production before deployment
+        run: node eventflow-mobile-v2/qa.mjs
+      - name: Retain all current assets and upload only tested code change
+        id: deploy
+        run: node eventflow-mobile-v2/deploy.mjs
+      - name: Verify real Production files, bindings, Desktop and Mobile after deployment
+        env:
+          VERIFY_PRODUCTION: '1'
+        run: node eventflow-mobile-v2/qa.mjs
+      - name: Roll back only this deployment if validation failed
+        if: failure() && steps.deploy.outcome == 'success'
+        run: node eventflow-mobile-v2/deploy.mjs --rollback
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eventflow-mobile-v2-production-proof
+          path: audit/
+          retention-days: 30
