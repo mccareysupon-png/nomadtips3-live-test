@@ -1,0 +1,24 @@
+name: BALL46 Event Flow Active Assets Audit
+on:
+  push:
+    branches: [work/eventflow-mobile-v2-20261020]
+    paths: ['.github/workflows/eventflow-mobile-v2-bindings-audit.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Inspect current version shape without changing it
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          node --input-type=module <<'JS'
+          const root='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+'/workers';
+          const get=async p=>{const r=await fetch(root+p,{headers:{Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN}});const j=await r.json();if(!r.ok||!j.success)throw Error(JSON.stringify(j.errors));return j.result};
+          const d=await get('/scripts/ball46-production/deployments?per_page=1'),id=d.deployments[0].versions[0].version_id,v=await get('/workers/ball46-production/versions/'+id+'?include=modules');
+          const redact=(k,x)=>/jwt|token|secret|key/i.test(k)?(typeof x==='string'?'present-'+x.length:'present'):x;
+          console.log(JSON.stringify({id,keys:Object.keys(v),assets:v.assets,modules:v.modules.map(m=>({name:m.name,type:m.content_type,size:m.content_base64.length})),bindings:v.bindings},redact,2));
+          JS
