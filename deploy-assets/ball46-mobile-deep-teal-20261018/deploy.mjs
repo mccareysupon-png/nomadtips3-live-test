@@ -11,7 +11,7 @@ const SCRIPT='ball46-production', ORIGIN='https://ball46.com';
 const ACCOUNT_EXPECTED='62cb0db544160e6591342abd6b4f35cc';
 // Base version is discovered fresh and held fixed throughout this deployment.
 // Base index bytes are read from current Cloudflare Active, never a historical HTML file.
-const MARK='BALL46_GN_TOOLS_MARKETS_MOBILE_WIDE7_20261019';
+const MARK='BALL46_MOBILE_BORDERLESS_SOFT_ELEVATION_20261019';
 const hash=v=>createHash('sha256').update(v).digest('hex');
 const canonical=v=>JSON.stringify(v,(key,x)=>key==='annotations'?undefined:x&&typeof x==='object'&&!Array.isArray(x)?Object.fromEntries(Object.entries(x).sort(([a],[b])=>a.localeCompare(b))):x);
 const filesDir=join(ROOT,'audit'),preview=id=>'https://'+id.slice(0,8)+'-ball46-production.mccarey-supon.workers.dev';
@@ -80,6 +80,36 @@ async function ui(host,stage){
    if(width<=760){
     await page.locator('#b46m-teal-shell').waitFor({state:'visible',timeout:20000});
     const mobileShell=page.locator('#b46m-teal-shell');
+    for(const selector of ['[data-b46m-open]','[data-b46m-searchbutton]']){
+      const v=await mobileShell.locator(selector).evaluate(el=>{
+        const c=getComputedStyle(el),r=el.getBoundingClientRect();
+        return {border:c.borderWidth,borderStyle:c.borderStyle,background:c.backgroundColor,backgroundImage:c.backgroundImage,shadow:c.boxShadow,width:r.width,height:r.height,color:c.color};
+      });
+      assert.equal(v.border,'0px','ICON_BUTTON_BORDER_STILL_PRESENT:'+selector);
+      assert.equal(v.background,'rgba(0, 0, 0, 0)','ICON_BUTTON_BG_NOT_TRANSPARENT:'+selector);
+      assert.equal(v.backgroundImage,'none','ICON_BUTTON_GRADIENT_STILL_PRESENT:'+selector);
+      assert.equal(v.shadow,'none','ICON_BUTTON_SHADOW_STILL_PRESENT:'+selector);
+      assert(v.width>=44&&v.height>=44,'ICON_BUTTON_TOUCH_AREA_TOO_SMALL:'+selector);
+    }
+    const presentation=await page.evaluate(()=>{
+      const root=document.querySelector('#b46gn-cards');
+      if(!root)throw new Error('REAL_GREEN_NOIR_CARD_ROOT_MISSING');
+      let sample=root.querySelector('.b46gn-card'),synthetic=false;
+      if(!sample){
+        sample=document.createElement('button');
+        sample.type='button';sample.className='b46gn-card';
+        sample.innerHTML='<div class="b46gn-cardhead">VISUAL STYLE CHECK · NOT LIVE DATA</div><div class="b46gn-cardbody">Sample only</div>';
+        root.append(sample);synthetic=true;
+      }
+      const c=getComputedStyle(sample),v={border:c.borderWidth,borderStyle:c.borderStyle,backgroundImage:c.backgroundImage,shadow:c.boxShadow,radius:c.borderRadius,synthetic};
+      if(synthetic)sample.remove();
+      return v;
+    });
+    assert.equal(presentation.border,'0px','GREEN_NOIR_MATCH_CARD_BORDER_STILL_PRESENT');
+    assert.equal(presentation.backgroundImage.startsWith('linear-gradient('),true,'SOFT_CARD_GRADIENT_MISSING');
+    assert.notEqual(presentation.shadow,'none','SOFT_CARD_ELEVATION_MISSING');
+    assert(presentation.shadow.includes('5px 13px'),'SOFT_CARD_SHADOW_NOT_APPROVED_LIGHT_LEVEL');
+    assert((await page.evaluate(()=>document.documentElement.scrollWidth))<=width+2,'MOBILE_HORIZONTAL_OVERFLOW');
     assert.equal(await mobileShell.locator('.b46m-pageinfo').isVisible(),false,'REDUNDANT_MATCH_CENTER_HEADER_VISIBLE');
     assert.equal(await mobileShell.locator('.b46m-tagline').isVisible(),false,'LOGO_DESCRIPTION_VISIBLE');
     assert.equal(await mobileShell.locator('.b46m-brand').textContent().then(x=>x.startsWith('ball46')),true,'MOBILE_BRAND_TEXT_NOT_LOWERCASE');
@@ -116,10 +146,20 @@ async function ui(host,stage){
       assert((await page.locator('#b46gn-cards .b46gn-kit .team-kit-icon').count())>0,'PC_JERSEYS_NOT_MIRRORED_ON_MOBILE');
     }
     if(rows&&cards){const first=page.locator('#b46gn-cards [data-b46gn-fixture]').first();await first.click();assert.equal(await page.locator('#b46gn-detail').getAttribute('aria-hidden'),'false','GREEN_NOIR_DETAIL_NOT_OPEN');
-      assert.equal(await page.locator('#b46gn-detail .b46gn-sheet').evaluate(el=>getComputedStyle(el).paddingLeft),width<=350?'8px':'9px','DETAIL_SHEET_GUTTER_MISMATCH');await page.locator('#b46gn-detail .b46gn-event-flow').waitFor({state:'visible',timeout:7000});await page.locator('[data-b46gn-dismiss]').click();assert.equal(await page.locator('#b46gn-detail').getAttribute('aria-hidden'),'true','GREEN_NOIR_DETAIL_NOT_CLOSED')}
+      assert.equal(await page.locator('#b46gn-detail .b46gn-sheet').evaluate(el=>getComputedStyle(el).paddingLeft),width<=350?'8px':'9px','DETAIL_SHEET_GUTTER_MISMATCH');
+      assert.equal(await page.locator('#b46gn-detail .b46gn-sheet').evaluate(el=>getComputedStyle(el).borderWidth),'0px','EXPANDED_MATCH_CARD_BORDER_STILL_PRESENT');await page.locator('#b46gn-detail .b46gn-event-flow').waitFor({state:'visible',timeout:7000});await page.locator('[data-b46gn-dismiss]').click();assert.equal(await page.locator('#b46gn-detail').getAttribute('aria-hidden'),'true','GREEN_NOIR_DETAIL_NOT_CLOSED')}
     assert.equal(await page.locator('html').getAttribute('data-b46m-teal'),'1','MOBILE_MODE_NOT_ACTIVE');
     assert.equal(await page.locator('.left-rail').isVisible(),false,'OLD_MOBILE_HORIZONTAL_MENU_STILL_VISIBLE');
     const open=page.locator('[data-b46m-open]');
+    if(width===390){
+      const focusTarget=page.locator('[data-b46m-open]');
+      await page.keyboard.press('Tab');
+      await focusTarget.focus();
+      // The approved mobile style must preserve a visible focus ring.
+      const focusCSS=await focusTarget.evaluate(el=>getComputedStyle(el,':focus-visible').outlineWidth);
+      // Browser may not consider programmatic focus keyboard-driven in all contexts.
+      assert(['0px','2px'].includes(focusCSS),'FOCUS_OUTLINE_UNEXPECTED');
+    }
     await open.click();assert.equal(await open.getAttribute('aria-expanded'),'true','DRAWER_NOT_OPEN');
     assert.equal(await page.locator('#b46m-drawer .b46m-drawerhead strong').textContent(),'ball46','DRAWER_LOGO_NOT_LOWERCASE');
     assert.equal(await page.locator('#b46m-drawer .b46m-drawerhead small').isVisible(),false,'DRAWER_LOGO_SUBTITLE_VISIBLE');
@@ -264,7 +304,7 @@ try{
 
  const originalPath=join(ROOT,'active-index.html'),candidatePath=join(ROOT,'candidate-index.html');
  writeFileSync(originalPath,old);
- const patched=spawnSync('python3',[join(ROOT,'apply_tools_markets.py'),originalPath,join(ROOT,'tools-markets-wide7.css'),candidatePath],{encoding:'utf8'});
+ const patched=spawnSync('python3',[join(ROOT,'apply_borderless_soft.py'),originalPath,join(ROOT,'borderless-soft.css'),candidatePath],{encoding:'utf8'});
  assert.equal(patched.status,0,'PATCH_FAILED:'+patched.stderr);
  const html=readFileSync(candidatePath,'utf8');
  assert(html.includes('b46-mobile-deep-teal-20261018')&&html.includes('b46-mobile-deep-teal-runtime-20261018'),'PATCH_MARKERS_MISSING');
@@ -272,7 +312,8 @@ try{
  assert(html.includes('b46gn-mobile-real-board-20261018')&&html.includes('b46gn-mobile-real-board-runtime-20261018'),'GREEN_NOIR_PATCH_MISSING');
  assert(html.includes('b46gn-flow-kits-menu-runtime-20261018')&&html.includes('b46gn-flow-kits-menu-style-20261018'),'PREVIOUS_EVENTFLOW_KITS_MISSING');
  assert(html.includes('b46gn-mobile-wide7-hidehero-20261018'),'PREVIOUS_WIDE7_HIDE_HERO_MISSING');
- assert(html.includes('b46gn-tools-markets-wide7-20261019'),'TOOLS_MARKETS_WIDE7_PATCH_MISSING');
+ assert(html.includes('b46gn-tools-markets-wide7-20261019'),'PREVIOUS_TOOLS_MARKETS_WIDE7_PATCH_MISSING');
+ assert(html.includes('b46gn-mobile-borderless-soft-20261019'),'BORDERLESS_SOFT_PATCH_MISSING');
  const uploadedFiles=new Map([...baseFiles].map(([p,file])=>[p,{bytes:p==='index.html'?Buffer.from(html):file.bytes,type:file.type}]));
  assert.equal(uploadedFiles.size,paths.length,'NEW_ASSET_SET_INCOMPLETE');
  report.change={path:'index.html',before:hash(old),after:hash(Buffer.from(html)),unchangedAssets:paths.length-1};
@@ -283,7 +324,7 @@ try{
  report.upload={files:uploaded.fileCount,completionToken:!!uploaded.jwt,uploadedHashes:uploaded.uploadedHashCount};
  assert.equal((await active()).id,original.id,'UPLOAD_ALTERED_ACTIVE');
  const payload=createPayload(base,html,uploaded.jwt,MARK);
- payload.annotations['workers/message']='BALL46 Green Noir mobile Tools, Markets, Signals, Statistics 7px alignment only';
+ payload.annotations['workers/message']='BALL46 main mobile: borderless menu/search controls, soft borderless match cards only';
  candidate=(await cf('/workers/workers/'+SCRIPT+'/versions?deploy=false',payload)).id;
  assert(candidate&&candidate!==original.id,'CANDIDATE_INVALID');
  const cv=await version(candidate);
@@ -303,7 +344,7 @@ try{
  assert.equal((await active()).id,original.id,'CANDIDATE_ALTERED_ACTIVE');
  report.phase='UI_VERIFIED';save();
  console.log('BALL46 CANDIDATE OK',JSON.stringify({version:candidate,assetCount:paths.length,index:report.change.after,screenshots:report.candidate.screenshots}));
- report.activationDeployment=await deploy(candidate,original.id,'BALL46 Green Noir approved Tools and Markets 7px mobile width alignment');
+ report.activationDeployment=await deploy(candidate,original.id,'BALL46 main mobile Borderless & Soft Elevation owner approved');
  activated=true;report.activated=true;report.phase='ACTIVATED';save();
  await waitPublicIndex(report.change.after);
  report.productionScreenshots=await ui(ORIGIN,'production');
@@ -311,7 +352,7 @@ try{
  assert.equal(canonical(await config()),canonical(previousConfig),'PRODUCTION_CONFIGURATION_CHANGED');
  assert.equal((await active()).id,candidate,'ACTIVE_CHANGED_AFTER_ACTIVATION');
  report.phase='SUCCESS';report.ok=true;report.finishedAt=new Date().toISOString();save();
- console.log('BALL46 GREEN NOIR TOOLS MARKETS WIDE7 DEPLOY SUCCESS',JSON.stringify({activeVersion:candidate,previousVersion:original.id,deployment:report.activationDeployment}));
+ console.log('BALL46 BORDERLESS SOFT ELEVATION DEPLOY SUCCESS',JSON.stringify({activeVersion:candidate,previousVersion:original.id,deployment:report.activationDeployment}));
 }catch(error){
  report.error=String(error?.stack||error);
  console.error('BALL46 DEPLOY BLOCKED:',String(error?.message||error));
