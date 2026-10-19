@@ -1,0 +1,46 @@
+name: BALL46 Real All Landing Root Cause
+on:
+  push:
+    branches: [fix/ball46-all-matches-landing-real-20261019]
+    paths: ['.github/workflows/ball46-real-all-landing-audit.yml']
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: |
+          npm install --no-save --ignore-scripts playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: |
+          node --input-type=module <<'JS'
+          import {chromium} from 'playwright';
+          const html=await (await fetch('https://ball46.com/index.html?inspect='+Date.now())).text();
+          const indices=['function refresh(){','function visibleRows(){','function categoryName(key){','function schedule(){','function init(){if(!mq.matches)','function delegateStatus(','function sync(){','function activeStatus()','function syncWorkspaceMode()','<section class="status-section"','<h2>LIVE MATCHES</h2>'];
+          for(const needle of indices){let p=0,n=0;while(n++<4&&(p=html.indexOf(needle,p))>=0){console.log('SOURCE',JSON.stringify({needle,index:p,excerpt:html.slice(Math.max(0,p-500),p+5400)}));p+=needle.length}}
+          const scripts=['singlepage-workspace-343.js','dashboard-v2-stage3-featured-facts-20261013a.js'];
+          for(const file of scripts){const code=await (await fetch('https://ball46.com/'+file+'?a='+Date.now())).text();for(const needle of ['function visibleRows(){','function renderBoard(){','function statusLabel(','function classify(','function parseRoute(){','function start(){','function init(){']){let p=0,n=0;while(n++<2&&(p=code.indexOf(needle,p))>=0){console.log('ASSET_SOURCE',JSON.stringify({file,needle,pos:p,excerpt:code.slice(Math.max(0,p-500),p+3500)}));p+=needle.length}}}
+          const browser=await chromium.launch({headless:true});try{
+           for(const url of ['https://ball46.com/','https://ball46.com/?status=live','https://ball46.com/?status=all','https://ball46.com/?view=signal']){
+            const page=await browser.newPage({viewport:{width:390,height:850}});
+            await page.goto(url,{waitUntil:'domcontentloaded',timeout:60000});
+            await page.waitForTimeout(6500);
+            const state=await page.evaluate(()=>({href:location.href,view:document.body.dataset.workspaceView,
+              filter:[...document.querySelectorAll('[data-status-filter].active')].map(x=>x.dataset.statusFilter),
+              hero:document.querySelector('#b46gn-main-title')?.textContent,
+              listTitle:document.querySelector('#b46gn-list-title')?.textContent,
+              cardCount:document.querySelectorAll('#b46gn-cards [data-b46gn-fixture]').length,
+              cards:[...document.querySelectorAll('#b46gn-cards [data-b46gn-fixture]')].slice(0,8).map(x=>({status:x.querySelector('[data-kind]')?.dataset.kind,text:x.textContent.slice(0,90)})),
+              visibleHeaders:[...document.querySelectorAll('.status-section:not([hidden]) .status-head h2')].slice(0,10).map(x=>x.textContent.trim()),
+              featureTitle:document.querySelector('[data-featured-kicker]')?.textContent,
+              details:document.querySelector('#b46gn-results')?.innerText.slice(0,400)
+             }));
+            console.log('PAGE',JSON.stringify(state));
+            await page.close();
+           }
+          }finally{await browser.close()}
+          JS
