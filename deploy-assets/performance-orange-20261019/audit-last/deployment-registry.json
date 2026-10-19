@@ -1,0 +1,331 @@
+{
+  "status": "SUCCESS",
+  "verifiedAt": "2026-10-19T08:47:01.909Z",
+  "productionUrl": "https://ball46.com",
+  "repository": "mccareysupon-png/nomadtips3-live-test",
+  "branch": "codex/ball46-performance-orange-20261019",
+  "baselineBranch": "fix/ball46-mobile-old-ui-flash-20261019",
+  "baselineCommit": "fd4e52ebb5f244c5d0fbbc0e04c766042e3a5269",
+  "sourceCommit": "a253dbf65e298c9492cf8a48021bbb0b89cf1056",
+  "activationCommit": "ae81d81eb1a3f716593832e06f09c82375184c1d",
+  "creatorRun": "39224393567",
+  "activationRun": "39224774530",
+  "workflow": ".github/workflows/ball46-performance-orange-20261019.yml",
+  "cloudflareWorker": "ball46-production",
+  "activeVersion": "6cc1d205-e430-4205-b657-87249b1112c7",
+  "deployment": "9789ca01-800d-40d7-8a1d-78b8510faa08",
+  "trafficPercent": 100,
+  "productionFilesModified": [
+    "index.html"
+  ],
+  "component": "#ball46-daily-performance .b46-perf-rate strong and .b46-perf-stat.avg-odds strong",
+  "colorChanges": [
+    [
+      "--b46-pc-gold:#e8c76e",
+      "--b46-pc-gold:#fb923c"
+    ],
+    [
+      "--b46-pc-gold:#896000",
+      "--b46-pc-gold:#c2410c"
+    ]
+  ],
+  "implementation": "Replace only two existing --b46-pc-gold values in the existing Desktop-only Performance style. Dark #fb923c; Light #c2410c. WIN remains green and LOSS red. No added CSS rules and no HTML/JavaScript/layout/mobile changes.",
+  "latestMobileFirstPaintGuardPreserved": true,
+  "heightBeforeAndAfter": 99,
+  "desktopCases": 8,
+  "mobileCases": 2,
+  "candidateUi": {
+    "ok": true,
+    "phase": "candidate",
+    "verifiedAt": "2026-10-19T08:47:01.825Z",
+    "count": 10,
+    "checks": [
+      {
+        "test": "desktop-1920-light",
+        "height": 99,
+        "onlyFourNumericColorsChanged": true,
+        "winGreenLossRedRetained": true,
+        "allOtherPerformanceComputedStylesUnchanged": true,
+        "liveRightRailAutoSizingExcluded": true,
+        "orangeContrast": [
+          4.95,
+          4.59,
+          4.86,
+          4.59
+        ]
+      },
+      {
+        "test": "desktop-1920-dark",
+        "height": 99,
+        "onlyFourNumericColorsChanged": true,
+        "winGreenLossRedRetained": true,
+        "allOtherPerformanceComputedStylesUnchanged": true,
+        "liveRightRailAutoSizingExcluded": true,
+        "orangeContrast": [
+          6.79,
+          5.97,
+          7.01,
+          5.97
+        ]
+      },
+      {
+        "test": "desktop-1440-light",
+        "height": 99,
+        "onlyFourNumericColorsChanged": true,
+        "winGreenLossRedRetained": true,
+        "allOtherPerformanceComputedStylesUnchanged": true,
+        "liveRightRailAutoSizingExcluded": true,
+        "orangeContrast": [
+          4.95,
+          4.59,
+          4.86,
+          4.59
+        ]
+      },
+      {
+        "test": "desktop-1440-dark",
+        "height": 99,
+        "onlyFourNumericColorsChanged": true,
+        "winGreenLossRedRetained": true,
+        "allOtherPerformanceComputedStylesUnchanged": true,
+        "liveRightRailAutoSizingExcluded": true,
+        "orangeContrast": [
+          6.79,
+          5.97,
+          7.01,
+          5.97
+        ]
+      },
+      {
+        "test": "desktop-1366-light",
+        "height": 99,
+        "onlyFourNumericColorsChanged": true,
+        "winGreenLossRedRetained": true,
+        "allOtherPerformanceComputedStylesUnchanged": true,
+        "liveRightRailAutoSizingExcluded": true,
+        "orangeContrast": [
+          4.95,
+          4.59,
+          4.86,
+          4.59
+        ]
+      },
+      {
+        "test": "desktop-1366-dark",
+        "height": 99,
+        "onlyFourNumericColorsChanged": true,
+        "winGreenLossRedRetained": true,
+        "allOtherPerformanceComputedStylesUnchanged": true,
+        "liveRightRailAutoSizingExcluded": true,
+        "orangeContrast": [
+          6.79,
+          5.97,
+          7.01,
+          5.97
+        ]
+      },
+      {
+        "test": "desktop-1024-light",
+        "height": 99,
+        "onlyFourNumericColorsChanged": true,
+        "winGreenLossRedRetained": true,
+        "allOtherPerformanceComputedStylesUnchanged": true,
+        "liveRightRailAutoSizingExcluded": true,
+        "orangeContrast": [
+          4.95,
+          4.59,
+          4.86,
+          4.59
+        ]
+      },
+      {
+        "test": "desktop-1024-dark",
+        "height": 99,
+        "onlyFourNumericColorsChanged": true,
+        "winGreenLossRedRetained": true,
+        "allOtherPerformanceComputedStylesUnchanged": true,
+        "liveRightRailAutoSizingExcluded": true,
+        "orangeContrast": [
+          6.79,
+          5.97,
+          7.01,
+          5.97
+        ]
+      },
+      {
+        "test": "mobile-390",
+        "allComputedStylesUnchanged": true,
+        "cardHeightUnchanged": 0
+      },
+      {
+        "test": "mobile-360",
+        "allComputedStylesUnchanged": true,
+        "cardHeightUnchanged": 0
+      }
+    ]
+  },
+  "productionUi": {
+    "ok": true,
+    "phase": "production",
+    "verifiedAt": "2026-10-19T08:46:38.339Z",
+    "count": 10,
+    "checks": [
+      {
+        "test": "desktop-1920-light",
+        "height": 99,
+        "onlyFourNumericColorsChanged": true,
+        "winGreenLossRedRetained": true,
+        "allOtherPerformanceComputedStylesUnchanged": true,
+        "liveRightRailAutoSizingExcluded": true,
+        "orangeContrast": [
+          4.95,
+          4.59,
+          4.86,
+          4.59
+        ]
+      },
+      {
+        "test": "desktop-1920-dark",
+        "height": 99,
+        "onlyFourNumericColorsChanged": true,
+        "winGreenLossRedRetained": true,
+        "allOtherPerformanceComputedStylesUnchanged": true,
+        "liveRightRailAutoSizingExcluded": true,
+        "orangeContrast": [
+          6.79,
+          5.97,
+          7.01,
+          5.97
+        ]
+      },
+      {
+        "test": "desktop-1440-light",
+        "height": 99,
+        "onlyFourNumericColorsChanged": true,
+        "winGreenLossRedRetained": true,
+        "allOtherPerformanceComputedStylesUnchanged": true,
+        "liveRightRailAutoSizingExcluded": true,
+        "orangeContrast": [
+          4.95,
+          4.59,
+          4.86,
+          4.59
+        ]
+      },
+      {
+        "test": "desktop-1440-dark",
+        "height": 99,
+        "onlyFourNumericColorsChanged": true,
+        "winGreenLossRedRetained": true,
+        "allOtherPerformanceComputedStylesUnchanged": true,
+        "liveRightRailAutoSizingExcluded": true,
+        "orangeContrast": [
+          6.79,
+          5.97,
+          7.01,
+          5.97
+        ]
+      },
+      {
+        "test": "desktop-1366-light",
+        "height": 99,
+        "onlyFourNumericColorsChanged": true,
+        "winGreenLossRedRetained": true,
+        "allOtherPerformanceComputedStylesUnchanged": true,
+        "liveRightRailAutoSizingExcluded": true,
+        "orangeContrast": [
+          4.95,
+          4.59,
+          4.86,
+          4.59
+        ]
+      },
+      {
+        "test": "desktop-1366-dark",
+        "height": 99,
+        "onlyFourNumericColorsChanged": true,
+        "winGreenLossRedRetained": true,
+        "allOtherPerformanceComputedStylesUnchanged": true,
+        "liveRightRailAutoSizingExcluded": true,
+        "orangeContrast": [
+          6.79,
+          5.97,
+          7.01,
+          5.97
+        ]
+      },
+      {
+        "test": "desktop-1024-light",
+        "height": 99,
+        "onlyFourNumericColorsChanged": true,
+        "winGreenLossRedRetained": true,
+        "allOtherPerformanceComputedStylesUnchanged": true,
+        "liveRightRailAutoSizingExcluded": true,
+        "orangeContrast": [
+          4.95,
+          4.59,
+          4.86,
+          4.59
+        ]
+      },
+      {
+        "test": "desktop-1024-dark",
+        "height": 99,
+        "onlyFourNumericColorsChanged": true,
+        "winGreenLossRedRetained": true,
+        "allOtherPerformanceComputedStylesUnchanged": true,
+        "liveRightRailAutoSizingExcluded": true,
+        "orangeContrast": [
+          6.79,
+          5.97,
+          7.01,
+          5.97
+        ]
+      },
+      {
+        "test": "mobile-390",
+        "allComputedStylesUnchanged": true,
+        "cardHeightUnchanged": 0
+      },
+      {
+        "test": "mobile-360",
+        "allComputedStylesUnchanged": true,
+        "cardHeightUnchanged": 0
+      }
+    ]
+  },
+  "mobileUnchanged": true,
+  "inlineScriptBlocksUnchanged": 10,
+  "other81AssetsByteIdentical": true,
+  "mainWorkerShaUnchanged": "ddfc09cc46e8963a21d9e76e146b936f5243e50860693545d9569104c2a099cc",
+  "publicPathsVerified": 83,
+  "testsPassed": 16,
+  "protectedSettledRecordsPreserved": 8250,
+  "configurationUnchanged": [
+    {
+      "name": "settings",
+      "unchanged": true
+    },
+    {
+      "name": "schedules",
+      "unchanged": true
+    },
+    {
+      "name": "domains",
+      "unchanged": true
+    },
+    {
+      "name": "routes",
+      "unchanged": true
+    }
+  ],
+  "noEngineApiLedgerSettlementChanges": true,
+  "consoleErrors": 0,
+  "consoleWarnings": [],
+  "rollback": {
+    "version": "108a4c7e-7018-4d7c-85f1-34ce5c104dd6",
+    "preChangeDeployment": "72d3bd43-3a4b-468f-8238-2dd06c5752ca",
+    "process": "Same workflow phase=restore; require Active remains this owned candidate and configuration matches baseline. Restore exact latest mobile First Paint Guard baseline and verify old bytes and backend health."
+  },
+  "knownPreExistingIssue": "Optional /color-semantics-stat-entry-20261011.js baseline404 retained; no new missing assets."
+}
