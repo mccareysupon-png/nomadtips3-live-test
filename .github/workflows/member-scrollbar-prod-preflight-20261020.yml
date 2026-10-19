@@ -1,0 +1,39 @@
+name: BALL46 Member Scrollbar Deployment Safety Preflight
+on:
+  push:
+    branches: [work/member-market-scrollbar-dark-20261020]
+    paths:
+      - '.github/workflows/member-scrollbar-prod-preflight-20261020.yml'
+      - 'ball46-member/scrollbar-dark-20261020/inspect-active-assets.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  safety:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Export CURRENT GRAPHITE NOIR branch asset tree without changing checkout
+        run: |
+          set -euo pipefail
+          git fetch origin refs/heads/design/member-graphite-noir-dark-20261015:refs/remotes/origin/member-graphite-20261015
+          mkdir -p /tmp/ball46-member-live-tree
+          git archive --format=tar refs/remotes/origin/member-graphite-20261015 ball46-member/public | tar xf - -C /tmp/ball46-member-live-tree
+      - name: Compare all Member public assets to Cloudflare deployment read only
+        run: node ball46-member/scrollbar-dark-20261020/inspect-active-assets.mjs
+      - name: Preserve asset hashes and deployment provenance
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: member-scrollbar-deploy-preflight-${{ github.run_id }}
+          path: audit/member-scrollbar-production-preflight/
+          retention-days: 7
