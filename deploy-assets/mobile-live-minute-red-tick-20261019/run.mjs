@@ -67,58 +67,39 @@ async function health(host){
  out.push({path:p,ok:j.ok,fixtures:j.fixtures?.length,signals:j.signals?.length,rows:j.rows?.length});}return out;
 }
 async function visual(host,fixed){
- const {chromium}=await import('playwright');const browser=await chromium.launch({headless:true});const out=[];
+ const {chromium}=await import('playwright');
+ const browser=await chromium.launch({headless:true});const out=[];
  try{
   for(const width of [390,1280]){
    const page=await browser.newPage({viewport:{width,height:850}});
-   await page.goto(host+'/?hideEmptyDetailTiles='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
-   await page.waitForTimeout(450);
-   if(width===390){
-    await page.locator('#b46gn-detail [data-b46gn-detailbody]').waitFor({state:'attached',timeout:12000});
-    await page.evaluate(()=>{
-     const root=document.querySelector('#b46gn-detail [data-b46gn-detailbody]');
-     const prices=document.createElement('div');prices.className='b46gn-prices';prices.setAttribute('data-b46-empty-fixture','');
-     prices.innerHTML='<div><div class="market-cell" style="display:none!important">1.90</div></div><div><div class="market-cell" style="display:none!important">2.04</div></div><div><div class="market-cell" style="display:none!important">1.65</div></div>';
-     root.appendChild(prices);
-    });
-    await page.waitForTimeout(220);
-    const hidden=await page.evaluate(()=>{
-      const p=document.querySelector('[data-b46-empty-fixture]');
-      const slots=[...p.children].map(e=>({display:getComputedStyle(e).display,classes:e.className}));
-      return {display:getComputedStyle(p).display,classes:p.className,slots};
-    });
-    assert.equal(hidden.display,fixed?'none':'grid','EMPTY_MINI_ROW_VISIBILITY_WRONG');
-    if(fixed){assert.equal(hidden.slots.filter(x=>x.display==='none').length,3,'THREE_EMPTY_TILES_VISIBLE')}
-    await page.evaluate(()=>{
-      const p=document.querySelector('[data-b46-empty-fixture]');
-      const slot=p.firstElementChild;
-      slot.insertAdjacentHTML('beforeend','<span data-visible-market="1">OVER 1.95</span>');
-    });
-    await page.waitForTimeout(220);
-    const visible=await page.evaluate(()=>{
-      const p=document.querySelector('[data-b46-empty-fixture]');
-      return {display:getComputedStyle(p).display,slots:[...p.children].map(e=>getComputedStyle(e).display),text:p.firstElementChild.innerText};
-    });
-    assert.equal(visible.display,'grid','VALID_PRICE_ROW_NOT_VISIBLE');
-    if(fixed)assert.deepEqual(visible.slots,['block','none','none'],'ONLY_REAL_MARKET_TILE_SHOULD_SHOW');
-    await page.evaluate(()=>document.querySelector('[data-b46-empty-fixture]')?.remove());
-    out.push({width,empty:hidden,withRealData:visible});
-   }else{
-    const d=await page.evaluate(()=>{
-      const x=document.createElement('div');
-      x.id='b46gn-detail';
-      x.innerHTML='<div class="b46gn-prices"><div><span>1.95</span></div></div>';
-      document.body.appendChild(x);
-      const p=x.querySelector('.b46gn-prices'),display=getComputedStyle(p).display;
-      x.remove();return {display,greenNoir:document.documentElement.dataset.b46gn};
-    });
-    assert.notEqual(d.display,'none','DESKTOP_PRICES_HIDDEN');
-    out.push({width,...d});
+   const errors=[];page.on('pageerror',e=>errors.push(e.message));
+   await page.goto(host+'/?mobileLiveClockQA='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+   if(width===390)await page.waitForFunction(()=>document.documentElement.dataset.b46gn==='1',{timeout:18000});
+   const sample=await page.evaluate(()=>{
+    const host=document.querySelector('#b46gn-cards')||document.body;
+    const button=document.createElement('button');button.type='button';button.className='b46gn-card';button.setAttribute('data-b46-mobile-clock-probe','');
+    button.innerHTML='<div class="b46gn-cardhead" data-kind="live"><span class="b46gn-league">TEST LEAGUE</span><span class="b46gn-live">LIVE<span class="b46gn-clock"><span class="b46gn-minute-number">33</span><span class="b46gn-minute-tick">&#39;</span></span></span></div><div class="b46gn-cardbody"><div class="b46gn-team">Team</div></div>';
+    host.appendChild(button);
+    const live=button.querySelector('.b46gn-live'),clock=button.querySelector('.b46gn-clock');
+    const number=button.querySelector('.b46gn-minute-number'),tick=button.querySelector('.b46gn-minute-tick');
+    const heading=button.querySelector('.b46gn-cardhead');
+    const computed=e=>getComputedStyle(e);
+    const result={numColor:computed(number).color,tickColor:computed(tick).color,numFontSize:computed(number).fontSize,tickFontSize:computed(tick).fontSize,
+       tickAnimation:computed(tick).animationName,tickDuration:computed(tick).animationDuration,liveColor:computed(live).color,dotBg:computed(live,'::before').backgroundColor,
+       headerHeight:heading.getBoundingClientRect().height,clockPadding:computed(clock).padding,cardMinHeight:computed(button).minHeight,clockText:clock.textContent};
+    button.remove();return result;
+   });
+   if(width===390&&fixed){
+    assert.equal(sample.numColor,'rgb(239, 68, 68)','MINUTE_NUMBER_NOT_RED');
+    assert.equal(sample.tickColor,'rgb(239, 68, 68)','MINUTE_MARK_NOT_RED');
+    assert.equal(sample.tickDuration,'1s','TICK_NOT_1S');
+    assert.equal(sample.tickAnimation,'b46gn-minute-red-tick-20261019','TICK_ONLY_ANIMATION_MISSING');
    }
-   await page.close();
+   if(width===390)assert.equal(sample.clockText,"33'","CLOCK_TEXT_CHANGED");
+   if(errors.length)console.log('PAGE_ERRORS',JSON.stringify({host,width,errors:errors.slice(0,3)}));
+   out.push({width,...sample});await page.close();
   }
- }finally{await browser.close()}
- return out;
+ }finally{await browser.close()}return out;
 }
 
 const state={phase:req.phase,run:process.env.GITHUB_RUN_ID,startedAt:new Date().toISOString(),mark:MARK};
@@ -152,7 +133,7 @@ try{
  const cv=await ver(created.id);assert.equal(cv.annotations?.['workers/tag'],MARK,'NOT_OWNED_PREVIEW');
  assert.equal(hash(Buffer.from(cv.modules.find(x=>x.name==='assets/index.html').content_base64,'base64')),state.candidateSHA,'PREVIEW_MODULE_CHANGED');
  const previewIndex=await get(preview(created.id),'/index.html');assert.equal(previewIndex.status,200);assert.equal(hash(previewIndex.bytes),state.candidateSHA,'PREVIEW_CONTENT_MISMATCH');
- state.previewStyles=await visual(preview(created.id),true);assert.deepEqual(state.previewStyles[1],state.beforeStyles[1],'DESKTOP_STYLE_DIFF');assert.equal(state.previewStyles[1].display,state.beforeStyles[1].display,'DESKTOP_DISPLAY_CHANGED');state.previewHealth=await health(preview(created.id));
+ state.previewStyles=await visual(preview(created.id),true);assert.deepEqual(state.previewStyles[1],state.beforeStyles[1],'DESKTOP_STYLE_DIFF');assert.deepEqual(state.previewStyles[1],state.beforeStyles[1],'DESKTOP_CHANGED');assert.equal(state.previewStyles[0].liveColor,state.beforeStyles[0].liveColor,'LIVE_LABEL_CHANGED');assert.equal(state.previewStyles[0].dotBg,state.beforeStyles[0].dotBg,'LIVE_DOT_CHANGED');assert.equal(state.previewStyles[0].headerHeight,state.beforeStyles[0].headerHeight,'CARD_HEAD_HEIGHT_CHANGED');assert.equal(state.previewStyles[0].numFontSize,state.beforeStyles[0].numFontSize,'MINUTE_FONT_SIZE_CHANGED');assert.equal(state.previewStyles[0].clockPadding,state.beforeStyles[0].clockPadding,'CLOCK_POSITION_CHANGED');state.previewHealth=await health(preview(created.id));
  assert.equal(await active(),current,'PREVIEW_CHANGED_ACTIVE');assert.equal(canonical(await config()),canonical(conf),'SETTINGS_CHANGED');
  await writeFile(path+'audit-last/candidate.json',JSON.stringify({base:current,candidate:created.id,sourceSHA:state.sourceSHA,candidateSHA:state.candidateSHA,assetCount:files.size,previewChecked:true,mark:MARK},null,2));
  state.ok=true;state.productionChanged=false;
