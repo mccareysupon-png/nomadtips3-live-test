@@ -1,7 +1,7 @@
 {
-  "phase": "candidate",
-  "run": "39225721350",
-  "startedAt": "2026-10-19T08:51:36.547Z",
+  "phase": "activate",
+  "run": "39225929231",
+  "startedAt": "2026-10-19T08:53:21.216Z",
   "mark": "B46_GLOBAL_DATA_ORBIT_20261019",
   "before": "6cc1d205-e430-4205-b657-87249b1112c7",
   "healthBefore": [
@@ -16,7 +16,7 @@
     {
       "path": "/api/engine/board",
       "ok": true,
-      "fixtures": 2337
+      "fixtures": 2240
     },
     {
       "path": "/api/engine/signals",
@@ -29,65 +29,6 @@
       "rows": 500
     }
   ],
-  "beforeStyles": [
-    {
-      "width": 390,
-      "early": {
-        "exists": false,
-        "center": false,
-        "cycle": null,
-        "mode": "1",
-        "done": null,
-        "state": "Connecting to Live Data"
-      },
-      "ready": {
-        "done": null,
-        "reason": null,
-        "overlayVisible": null,
-        "mode": "1",
-        "status": "data-state live",
-        "loadingBoard": false,
-        "cardCount": 28,
-        "rowCount": 28,
-        "defaultStatus": "all",
-        "hasSignalBadge": true,
-        "hasMobileFlashFix": true,
-        "bodyView": "live"
-      },
-      "errors": []
-    },
-    {
-      "width": 1280,
-      "early": {
-        "exists": false,
-        "center": false,
-        "cycle": null,
-        "mode": null,
-        "done": null,
-        "state": "Connecting to Live Data"
-      },
-      "ready": {
-        "done": null,
-        "reason": null,
-        "overlayVisible": null,
-        "mode": null,
-        "status": "data-state live",
-        "loadingBoard": false,
-        "cardCount": 0,
-        "rowCount": 28,
-        "defaultStatus": "all",
-        "hasSignalBadge": true,
-        "hasMobileFlashFix": true,
-        "bodyView": "live"
-      },
-      "errors": []
-    }
-  ],
-  "candidate": "0ab88ef1-e3bc-4e7d-9908-4366cc85bb8b",
-  "base": "6cc1d205-e430-4205-b657-87249b1112c7",
-  "sourceSHA": "3f1fd879cf1a5fa491af4cb59cbc23e234b731fafb7ef4b602dec5e5375fd172",
-  "candidateSHA": "26c5a7654b4f159e5631c9bfc04f73893a76505642f12d905fd8d9a477ba5f62",
-  "assetCount": 82,
   "previewStyles": [
     {
       "width": 390,
@@ -98,7 +39,7 @@
         "visibility": "visible",
         "center": true,
         "cycle": "2.8s",
-        "mode": "1",
+        "mode": null,
         "done": null,
         "state": "Connecting to Live Data"
       },
@@ -168,7 +109,156 @@
     {
       "path": "/api/engine/board",
       "ok": true,
-      "fixtures": 2337
+      "fixtures": 2240
+    },
+    {
+      "path": "/api/engine/signals",
+      "ok": true,
+      "signals": 7
+    },
+    {
+      "path": "/api/engine/statistics?paged=1",
+      "ok": true,
+      "rows": 500
+    }
+  ],
+  "beforeStyles": [
+    {
+      "width": 390,
+      "early": {
+        "exists": false,
+        "center": false,
+        "cycle": null,
+        "mode": "1",
+        "done": null,
+        "state": "Connecting to Live Data"
+      },
+      "ready": {
+        "done": null,
+        "reason": null,
+        "overlayVisible": null,
+        "mode": "1",
+        "status": "data-state live",
+        "loadingBoard": false,
+        "cardCount": 28,
+        "rowCount": 28,
+        "defaultStatus": "all",
+        "hasSignalBadge": true,
+        "hasMobileFlashFix": true,
+        "bodyView": "live"
+      },
+      "errors": []
+    },
+    {
+      "width": 1280,
+      "early": {
+        "exists": false,
+        "center": false,
+        "cycle": null,
+        "mode": null,
+        "done": null,
+        "state": "Connecting to Live Data"
+      },
+      "ready": {
+        "done": null,
+        "reason": null,
+        "overlayVisible": null,
+        "mode": null,
+        "status": "data-state live",
+        "loadingBoard": false,
+        "cardCount": 0,
+        "rowCount": 28,
+        "defaultStatus": "all",
+        "hasSignalBadge": true,
+        "hasMobileFlashFix": true,
+        "bodyView": "live"
+      },
+      "errors": []
+    }
+  ],
+  "candidate": "0ab88ef1-e3bc-4e7d-9908-4366cc85bb8b",
+  "deployment": "97ebe53e-f42e-4e29-8e45-3caddbb783ef",
+  "productionStyles": [
+    {
+      "width": 390,
+      "early": {
+        "exists": true,
+        "display": "flex",
+        "opacity": "1",
+        "visibility": "visible",
+        "center": true,
+        "cycle": "2.8s",
+        "mode": "1",
+        "done": null,
+        "state": "Connecting to Live Data"
+      },
+      "ready": {
+        "done": "1",
+        "reason": "data-ready",
+        "overlayVisible": "hidden",
+        "mode": "1",
+        "status": "data-state live",
+        "loadingBoard": false,
+        "cardCount": 28,
+        "rowCount": 28,
+        "defaultStatus": "all",
+        "hasSignalBadge": true,
+        "hasMobileFlashFix": true,
+        "bodyView": "live",
+        "finished": {
+          "reason": "data-ready",
+          "visible": null
+        }
+      },
+      "errors": []
+    },
+    {
+      "width": 1280,
+      "early": {
+        "exists": true,
+        "display": "flex",
+        "opacity": "1",
+        "visibility": "visible",
+        "center": true,
+        "cycle": "2.8s",
+        "mode": null,
+        "done": null,
+        "state": "Connecting to Live Data"
+      },
+      "ready": {
+        "done": "1",
+        "reason": "data-ready",
+        "overlayVisible": "hidden",
+        "mode": null,
+        "status": "data-state live",
+        "loadingBoard": false,
+        "cardCount": 0,
+        "rowCount": 28,
+        "defaultStatus": "all",
+        "hasSignalBadge": true,
+        "hasMobileFlashFix": true,
+        "bodyView": "live",
+        "finished": {
+          "reason": "data-ready",
+          "visible": null
+        }
+      },
+      "errors": []
+    }
+  ],
+  "healthAfter": [
+    {
+      "path": "/api/engine/health",
+      "ok": true
+    },
+    {
+      "path": "/api/full-market/health",
+      "ok": true
+    },
+    {
+      "path": "/api/engine/board",
+      "ok": true,
+      "fixtures": 2240
     },
     {
       "path": "/api/engine/signals",
@@ -182,6 +272,6 @@
     }
   ],
   "ok": true,
-  "productionChanged": false,
-  "finishedAt": "2026-10-19T08:52:20.244Z"
+  "productionChanged": true,
+  "finishedAt": "2026-10-19T08:54:16.788Z"
 }
