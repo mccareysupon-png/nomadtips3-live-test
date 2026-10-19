@@ -1,0 +1,62 @@
+name: BALL46 Match Details Blank Trio Audit 20261019
+on:
+  push:
+    branches: [fix/ball46-mobile-hide-empty-details-trio-20261019]
+    paths: ['.github/workflows/ball46-empty-details-trio-audit-20261019.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: |
+          npm install --no-save --ignore-scripts playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Read-only inspect blank three cards in real mobile Match details
+        run: |
+          node --input-type=module <<'JS'
+          import {chromium} from 'playwright';
+          const browser=await chromium.launch({headless:true});
+          try {
+            const page=await browser.newPage({viewport:{width:390,height:860},deviceScaleFactor:1});
+            page.on('pageerror',e=>console.log('PAGE_ERROR',e.message.slice(0,300)));
+            await page.goto('https://ball46.com/?blankTrioInspect='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+            await page.waitForTimeout(2700);
+            console.log('NAV_STATE',JSON.stringify(await page.evaluate(()=>({
+              url:location.href,greenNoir:document.documentElement.dataset.b46gn,
+              cards:document.querySelectorAll('#b46gn-cards .b46gn-card').length,
+              details:document.querySelector('#b46gn-detail')?.outerHTML.slice(0,1200),
+              scripts:[...document.scripts].map(s=>s.src).filter(s=>/signal|expanded|live|dashboard|singlepage/i.test(s)).slice(0,40)
+            }))));
+            const cards=page.locator('#b46gn-cards .b46gn-card');
+            if(await cards.count()){
+              await cards.first().scrollIntoViewIfNeeded();
+              await cards.first().click({timeout:10000});
+              await page.waitForTimeout(1200);
+            }
+            const dom=await page.evaluate(()=>{
+              const el=document.querySelector('#b46gn-detail');
+              const body=el?.querySelector('[data-b46gn-detailbody]');
+              const summary=e=>{const r=e.getBoundingClientRect(),s=getComputedStyle(e);return {tag:e.tagName,cls:e.className,id:e.id,attributes:[...e.attributes].map(a=>[a.name,a.value]).slice(0,10),text:e.textContent.trim().slice(0,180),children:e.children.length,box:[Math.round(r.x),Math.round(r.y),Math.round(r.width),Math.round(r.height)],css:{display:s.display,gap:s.gap,minHeight:s.minHeight,padding:s.padding,margin:s.margin,border:s.border,background:s.background,visibility:s.visibility},start:e.outerHTML.slice(0,550)}};
+              return {open:el?.getAttribute('aria-hidden'),bodyHTML:body?.outerHTML.slice(0,28000),bodyChildren:[...(body?.children||[])].map(summary),allNodes:[...(body?.querySelectorAll('*')||[])].filter(e=>e.getBoundingClientRect().width>60&&e.getBoundingClientRect().height>10).slice(0,110).map(summary)};
+            });
+            console.log('DETAIL_DOM',JSON.stringify(dom).slice(0,47000));
+            const assets=['/singlepage-workspace-343.js','/expanded-match-343.js','/dashboard-v2-stage3.js'];
+            for(const url of assets){
+              try{
+                const r=await page.request.get('https://ball46.com'+url,{timeout:30000});
+                const src=await r.text();
+                const patterns=['b46gn-detailbody','b46gn-mini','b46gn-stats','mini-stats','featured-match','FEATURED MATCH','b46gn-detail','b46gn-chip'];
+                const snippets=[];
+                for(const pattern of patterns){let pos=0,num=0;while(num<3&&(pos=src.indexOf(pattern,pos))>=0){snippets.push({key:pattern,pos,section:src.slice(Math.max(0,pos-260),pos+550)});pos+=pattern.length;num++}}
+                console.log('JS_CONTEXT',JSON.stringify({url,status:r.status(),length:src.length,snippets}).slice(0,15000));
+              }catch(e){console.log('ASSET_ERROR',url,e.message.slice(0,250))}
+            }
+            await page.close();
+          } finally {await browser.close()}
+          JS
