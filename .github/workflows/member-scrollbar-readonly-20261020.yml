@@ -1,0 +1,31 @@
+name: BALL46 Member Scrollbar Color Read-Only Audit
+on:
+  push:
+    branches: [work/member-market-scrollbar-dark-20261020]
+    paths:
+      - '.github/workflows/member-scrollbar-readonly-20261020.yml'
+      - 'ball46-member/scripts/member-scrollbar-audit.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Read actual Member Active and CSS with no writes
+        run: node ball46-member/scripts/member-scrollbar-audit.mjs
+      - name: Save status and live CSS before changes
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: member-scrollbar-readonly-${{ github.run_id }}
+          path: audit/member-scrollbar-before/
+          retention-days: 7
