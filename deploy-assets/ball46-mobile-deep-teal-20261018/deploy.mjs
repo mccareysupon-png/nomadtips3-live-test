@@ -80,11 +80,14 @@ async function ui(host,stage){
    if(width<=760){
     await page.locator('#b46m-teal-shell').waitFor({state:'visible',timeout:20000});
     const mobileShell=page.locator('#b46m-teal-shell');
+    await page.waitForFunction(()=>document.documentElement.getAttribute('data-b46gn')==='1',{timeout:20000});
+    await page.waitForTimeout(160);
     for(const selector of ['[data-b46m-open]','[data-b46m-searchbutton]']){
       const v=await mobileShell.locator(selector).evaluate(el=>{
         const c=getComputedStyle(el),r=el.getBoundingClientRect();
         return {border:c.borderWidth,borderStyle:c.borderStyle,background:c.backgroundColor,backgroundImage:c.backgroundImage,shadow:c.boxShadow,width:r.width,height:r.height,color:c.color};
       });
+      console.log('BORDERLESS_ICON_STYLE',JSON.stringify({stage,width,selector,...v}));
       assert.equal(v.border,'0px','ICON_BUTTON_BORDER_STILL_PRESENT:'+selector);
       assert.equal(v.background,'rgba(0, 0, 0, 0)','ICON_BUTTON_BG_NOT_TRANSPARENT:'+selector);
       assert.equal(v.backgroundImage,'none','ICON_BUTTON_GRADIENT_STILL_PRESENT:'+selector);
