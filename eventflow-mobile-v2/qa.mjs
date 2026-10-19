@@ -12,7 +12,9 @@ const deps=await api('/scripts/ball46-production/deployments?per_page=3');
 const deployment=deps.deployments[0];assert.equal(deployment.versions.length,1);assert.equal(deployment.versions[0].percentage,100);
 const versionId=deployment.versions[0].version_id;
 const version=await api('/workers/ball46-production/versions/'+versionId+'?include=modules');
-const source=Buffer.from(version.modules.find(m=>m.name===version.main_module).content_base64,'base64').toString('utf8');
+const activeSource=Buffer.from(version.modules.find(m=>m.name===version.main_module).content_base64,'base64').toString('utf8');
+const baselineVersion=process.env.VERIFY_PRODUCTION?await api('/workers/ball46-production/versions/82a493c8-2ed5-486d-91c4-3bc0e841ddce?include=modules'):version;
+const source=Buffer.from(baselineVersion.modules.find(m=>m.name===baselineVersion.main_module).content_base64,'base64').toString('utf8');
 fs.writeFileSync('audit/production-before.js',source);
 let target;
 function walk(n){if(!n||typeof n!=='object')return;if(n.type==='VariableDeclarator'&&n.id.name==='__B46_EVENTFLOW_SIGNAL_JS_20261002__')target=n.init;for(const v of Object.values(n))if(Array.isArray(v))v.forEach(walk);else if(v&&typeof v==='object')walk(v);}
@@ -26,8 +28,20 @@ after=once(after,'if(eventFlowViewportExpanded)rerenderSignalEntries()','if(even
 after=once(after,'function renderFlow(f,history,signals=[]){',mobile+'\nfunction renderFlow(f,history,signals=[]){');
 parse(after,{ecmaVersion:'latest'});const candidate=source.slice(0,target.start)+JSON.stringify(after)+source.slice(target.end);parse(candidate,{ecmaVersion:'latest',sourceType:'module'});
 assert.equal(source.slice(0,target.start),candidate.slice(0,target.start));assert(candidate.endsWith(source.slice(target.end)));
+if(process.env.VERIFY_PRODUCTION){
+  assert.equal(hash(activeSource),hash(candidate),'DEPLOYED_WORKER_NOT_EXACT_TESTED_PATCH');
+  const canonical=o=>JSON.stringify(o,(k,v)=>v&&typeof v==='object'&&!Array.isArray(v)?Object.fromEntries(Object.entries(v).sort(([a],[b])=>a.localeCompare(b))):v);
+  for(const key of ['bindings','compatibility_date','compatibility_flags'])assert.equal(canonical(version[key]),canonical(baselineVersion[key]),'DEPLOYMENT_SETTING_CHANGED:'+key);
+  assert.equal(canonical(version.assets?.config),canonical(baselineVersion.assets?.config),'ASSET_CONFIGURATION_CHANGED');
+  for(const m of baselineVersion.modules.filter(m=>m.name!==baselineVersion.main_module)){assert.equal(version.modules.find(n=>n.name===m.name)?.content_base64,m.content_base64,'OTHER_MODULE_CHANGED:'+m.name);}
+  for(const origin of ['https://ball46.com','https://ball46-production.mccarey-supon.workers.dev']){
+    const r=await fetch(origin+'/expanded-match-343.js?eventflow-v2-verify='+Date.now(),{headers:{'Cache-Control':'no-cache'}});
+    assert(r.ok);assert.equal(hash(await r.text()),hash(after),'PUBLIC_SCRIPT_HASH_MISMATCH');
+    assert(/no-store/.test(r.headers.get('cache-control')||''),'SCRIPT_CACHE_NOT_DISABLED');
+  }
+}
 fs.writeFileSync('audit/expanded-before.js',before);fs.writeFileSync('audit/expanded-after.js',after);fs.writeFileSync('audit/production-candidate.js',candidate);
-const report={versionId,sourceSha:hash(source),candidateSha:hash(candidate),beforeSha:hash(before),afterSha:hash(after),scope:'Only __B46_EVENTFLOW_SIGNAL_JS_20261002__ literal',deploy:false,tests:[]};
+const report={versionId,sourceSha:hash(source),candidateSha:hash(candidate),beforeSha:hash(before),afterSha:hash(after),scope:'Only __B46_EVENTFLOW_SIGNAL_JS_20261002__ literal',deploy:Boolean(process.env.VERIFY_PRODUCTION),tests:[]};
 fs.writeFileSync('audit/report.json',JSON.stringify(report,null,2));
 async function json(path){const r=await fetch('https://ball46.com'+path);assert(r.ok,'HTTP '+r.status);return r.json();}
 const board=await json('/api/engine/board'),sig=await json('/api/engine/signals'),rows=sig.signals;
@@ -87,7 +101,7 @@ for(const width of [320,375,390,430,1280]){
   await page.setViewportSize({width,height:1000});
   for(const [label,script] of [['before',before],['after',after]]){
     await page.unroute('**/expanded-match-343.js*');
-    await page.route('**/expanded-match-343.js*',r=>r.fulfill({contentType:'application/javascript',body:script}));
+    if(label==='before'||!process.env.VERIFY_PRODUCTION)await page.route('**/expanded-match-343.js*',r=>r.fulfill({contentType:'application/javascript',body:script}));
     await page.goto('https://ball46.com/?view=signal');
     const row=page.locator('.match-row[data-match-id="'+id+'"]');
     await row.waitFor({timeout:60000});
