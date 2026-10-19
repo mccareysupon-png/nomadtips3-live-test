@@ -49,7 +49,9 @@ jobs:
             });
             console.log('SIGNALS_DOM',JSON.stringify(other).slice(0,28000));
             const first=roots.find((s,i)=>counts[i]>0);
-            if(first){await page.locator(first).first().click({timeout:7000});await page.waitForTimeout(650)}
+            const signalRow=page.locator('article.match-row[data-match-id]').first();
+            console.log('SIGNAL_ROWS_VISIBLE',await signalRow.count(),await signalRow.isVisible());
+            if(await signalRow.isVisible()){await signalRow.click({timeout:7000});await page.waitForTimeout(650)}
             const result=await page.evaluate(()=>{
               const summary=(el)=>{
                 if(!el)return null;
@@ -64,7 +66,10 @@ jobs:
               const aroundSheet=[];for(let e=sheet,j=0;e&&j<8;e=e.parentElement,j++)aroundSheet.push(summary(e));
               const aroundCard=[];for(let e=first,j=0;e&&j<6;e=e.parentElement,j++)aroundCard.push(summary(e));
               const all=[...document.querySelectorAll('[class*="expand"],[class*="event"],[class*="detail"],[class*="sheet"],[class*="card"]')].filter(e=>e.getBoundingClientRect().width>100&&e.getBoundingClientRect().height>10).slice(0,80).map(summary);
-              return {detail:summary(detail),flow:summary(flow),sheet:summary(sheet),aroundFlow,aroundSheet,aroundCard,all,detailOuter:detail?.outerHTML.slice(0,18000),activeHTML:document.documentElement.getAttribute('data-b46gn'),screenWidth:innerWidth};
+              const actualRow=document.querySelector('article.match-row[data-match-id]');
+              const actualParent=actualRow?.parentElement;
+              const nearby=[actualRow,actualRow?.nextElementSibling,actualRow?.parentElement,actualParent?.nextElementSibling].map(summary);
+              return {detail:summary(detail),flow:summary(flow),sheet:summary(sheet),aroundFlow,aroundSheet,aroundCard,all,nearby,actualRow:actualRow?.outerHTML.slice(0,26000),actualParent:actualParent?.outerHTML.slice(0,24000),detailOuter:detail?.outerHTML.slice(0,4000),activeHTML:document.documentElement.getAttribute('data-b46gn'),screenWidth:innerWidth};
             });
             console.log('FRAME_AUDIT',JSON.stringify(result).slice(0,55000));
             await page.close();
