@@ -1,0 +1,49 @@
+name: BALL46 Mobile Live Clock Readonly Audit 20261019
+on:
+  push:
+    branches: [fix/ball46-mobile-live-minute-red-tick-20261019]
+    paths: ['.github/workflows/ball46-mobile-live-minute-audit-20261019.yml']
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: |
+          npm install --no-save --ignore-scripts playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Inspect live mobile minute and DOM owners without edits
+        run: |
+          node --input-type=module <<'JS'
+          import {chromium} from 'playwright';
+          const browser=await chromium.launch({headless:true});
+          try{
+            for(const width of [390,1280]){
+              const page=await browser.newPage({viewport:{width,height:860}});
+              await page.goto('https://ball46.com/?clockReadOnly='+Date.now(),{waitUntil:'domcontentloaded',timeout:55000});
+              await page.waitForTimeout(2400);
+              const data=await page.evaluate(()=>{
+               const sel=['.b46-live-clock-text','.b46-live-minute-mark','.b46-live-status-clock','#b46gn-cards [data-b46gn-fixture]','.b46gn-card','.b46gn-minute','.b46gn-clock','.b46gn-time','.b46gn-status','.b46gn-live','.b46gn-cardhead','[data-featured] .featured-minute','[data-featured] .live-minute','[data-featured] .featured-clock','.featured-card'];
+               const result={};
+               for(const s of sel){const els=[...document.querySelectorAll(s)];result[s]={count:els.length,first:els.slice(0,2).map(e=>({html:e.outerHTML.slice(0,1100),style:{color:getComputedStyle(e).color,fontSize:getComputedStyle(e).fontSize,display:getComputedStyle(e).display,animation:getComputedStyle(e).animationName}}))}}
+               return {status:document.body.dataset.workspaceView,htmlClasses:document.documentElement.outerHTML.slice(0,250),selectors:result};
+              });
+              console.log('CLOCK_DOM',JSON.stringify({width,...data}).slice(0,23500));
+              await page.close();
+            }
+          }finally{await browser.close()}
+          const html=await (await fetch('https://ball46.com/index.html?clockSource='+Date.now())).text();
+          console.log('INDEX_LENGTH',html.length);
+          for(const term of ['function cardHtml(','function teamData(','function detailFrom(','b46gn-card','b46gn-live','b46gn-minute','b46gn-clock','b46-live-clock-text','b46-live-minute-mark','b46-live-clock-red-20261018','b46-mobile-live-clock-20261018']){
+           let n=0,p=0;while(n++<8&&(p=html.indexOf(term,p))!==-1){console.log('INDEX_MATCH',JSON.stringify({term,pos:p,fragment:html.slice(Math.max(0,p-450),p+1200)}).slice(0,1900));p+=term.length;}
+          }
+          const src=await(await fetch('https://ball46.com/dashboard-v2-stage3-featured-facts-20261013a.js?clockRead=1')).text();
+          console.log('DASHBOARD_LENGTH',src.length);
+          for(const term of ['function rowClockHtml','function rowHtml(','class="b46-live-status-clock"','b46-live-minute-mark','function featured','data-featured']){
+           const p=src.indexOf(term);if(p>=0)console.log('DASH_MATCH',JSON.stringify({term,pos:p,fragment:src.slice(Math.max(0,p-400),p+1400)}));
+          }
+          JS
