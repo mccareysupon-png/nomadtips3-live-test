@@ -128,8 +128,8 @@ async function visual(host,fixed){
     if(fixed){assert.equal(hidden.slots.filter(x=>x.display==='none').length,3,'THREE_EMPTY_TILES_VISIBLE')}
     await page.evaluate(()=>{
       const p=document.querySelector('[data-b46-empty-fixture]');
-      const cell=p.firstElementChild.querySelector('.market-cell');
-      cell.style.setProperty('display','block','important');cell.textContent='OVER 1.95';
+      const slot=p.firstElementChild;
+      slot.insertAdjacentHTML('beforeend','<span data-visible-market="1">OVER 1.95</span>');
     });
     await page.waitForTimeout(220);
     const visible=await page.evaluate(()=>{
