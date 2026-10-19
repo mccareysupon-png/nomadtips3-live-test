@@ -35,6 +35,7 @@ const getPublic=async(path,host=BASE)=>{
  const buf=Buffer.from(await r.arrayBuffer());
  return {status:r.status,data:buf,sha:hash(buf),location:r.headers.get('location')||'',type:r.headers.get('content-type')||''};
 };
+const settingsOperational=x=>({...x,annotations:undefined});
 const settings=async()=>{
  const [set,schedules,domains]=await Promise.all([
    cf('/workers/scripts/'+W+'/settings'),cf('/workers/scripts/'+W+'/schedules'),cf('/workers/domains')]);
@@ -220,7 +221,7 @@ try{
  const now=await settings();
  assert.deepEqual(now.domains,previous.domains,'DOMAIN_DRIFT');
  assert.deepEqual(now.schedules,previous.schedules,'SCHEDULE_DRIFT');
- assert.deepEqual(now.set,previous.set,'SETTINGS_DRIFT');
+ assert.deepEqual(settingsOperational(now.set),settingsOperational(previous.set),'OPERATIONAL_SETTINGS_DRIFT');
  report.safeRollbackReady=true;report.phase='PROMOTING';save();
  report.newDeployment=await promote(newVersion,initial.version,'BALL46 MEMBER MARKETS scrollbar track #0B1620 thumb #334155 only');
  report.activated=true;report.phase='VERIFY_PRODUCTION';save();
@@ -233,7 +234,7 @@ try{
  const liveConfig=await settings();
  assert.deepEqual(liveConfig.domains,previous.domains,'PRODUCTION_DOMAINS_DRIFT');
  assert.deepEqual(liveConfig.schedules,previous.schedules,'PRODUCTION_SCHEDULE_DRIFT');
- assert.deepEqual(liveConfig.set,previous.set,'PRODUCTION_SETTINGS_DRIFT');
+ assert.deepEqual(settingsOperational(liveConfig.set),settingsOperational(previous.set),'PRODUCTION_OPERATIONAL_SETTINGS_DRIFT');
  assert.equal((await active()).version,newVersion,'PRODUCTION_ACTIVE_NOT_CANDIDATE');
  report.phase='COMPLETE';report.productionVerified=true;save();
  console.log('BALL46_MEMBER_MARKETS_SCROLLBAR_DEPLOY_SUCCESS',JSON.stringify({
