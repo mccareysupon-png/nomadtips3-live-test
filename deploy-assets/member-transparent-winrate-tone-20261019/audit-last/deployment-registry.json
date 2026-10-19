@@ -1,0 +1,62 @@
+{
+  "status": "SUCCESS",
+  "verifiedAt": "2026-10-19T09:10:06.443Z",
+  "productionUrl": "https://ball46.com",
+  "repository": "mccareysupon-png/nomadtips3-live-test",
+  "baselineSourceBranch": "fix/ball46-global-loading-orbit-20261019",
+  "branch": "codex/ball46-member-transparent-winrate-tone-20261019",
+  "baselineCommit": "7a399cc4204049767b91737792f56c0bf8f7898e",
+  "sourceCommit": "238edd4bfcc0b3db69bf26afa752ca7fafe71b70",
+  "activationCommit": "d298168f012f18821f1dd12ebb8293821f705695",
+  "workflow": ".github/workflows/ball46-member-transparent-winrate-tone-20261019.yml",
+  "candidateRun": 39227311921,
+  "activationRun": 39227657593,
+  "worker": "ball46-production",
+  "baselineVersion": "0ab88ef1-e3bc-4e7d-9908-4366cc85bb8b",
+  "activeVersion": "82a493c8-2ed5-486d-91c4-3bc0e841ddce",
+  "activeDeployment": "2f9d8a15-ecaa-4e39-943c-8a5af3f10de0",
+  "productionFilesModified": [
+    "index.html (ASSETS and text module assets/index.html)"
+  ],
+  "components": [
+    "Main rail MEMBER count badge background",
+    "TODAY/YESTERDAY WIN RATE presentation"
+  ],
+  "testsPassed": 19,
+  "desktopWidths": [
+    1920,
+    1440,
+    1366,
+    1024
+  ],
+  "mobileWidths": [
+    390,
+    360
+  ],
+  "uiCases": 12,
+  "publicPaths": 83,
+  "settledPreserved": 8250,
+  "allOtherModulesAssetsUnchanged": true,
+  "configurationUnchanged": true,
+  "performanceHeightBefore": 99,
+  "performanceHeightAfter": 99,
+  "threshold": {
+    "above50": "green",
+    "below50": "red",
+    "exactly50": "orange",
+    "unknown": "original neutral"
+  },
+  "rollback": {
+    "worker": "ball46-production",
+    "repository": "mccareysupon-png/nomadtips3-live-test",
+    "branch": "codex/ball46-member-transparent-winrate-tone-20261019",
+    "sourceCommit": "238edd4bfcc0b3db69bf26afa752ca7fafe71b70",
+    "activationCommit": "d298168f012f18821f1dd12ebb8293821f705695",
+    "baselineVersion": "0ab88ef1-e3bc-4e7d-9908-4366cc85bb8b",
+    "candidateVersion": "82a493c8-2ed5-486d-91c4-3bc0e841ddce",
+    "baselineHtmlSha": "26c5a7654b4f159e5631c9bfc04f73893a76505642f12d905fd8d9a477ba5f62",
+    "baselineMainSha": "ddfc09cc46e8963a21d9e76e146b936f5243e50860693545d9569104c2a099cc",
+    "assetCount": 82,
+    "process": "Runner restore phase. Require current Active is this task candidate; require unchanged bindings/settings/schedules/domains/routes; restore traffic to exact baseline only. Then require public byte convergence and verify every asset and health. Stop if another chat deployed a new Active. Never overwrite another chat deployment."
+  }
+}
