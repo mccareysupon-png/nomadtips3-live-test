@@ -60,3 +60,24 @@ jobs:
             await page.close();
           } finally {await browser.close()}
           JS
+
+      - name: Read actual production UI assets for mobile Match details blank trio
+        run: |
+          node --input-type=module <<'JS'
+          import {readFileSync} from 'node:fs';
+          const names=JSON.parse(readFileSync('deploy-assets/performance-desktop-borderless-20261019/provenance.json','utf8')).paths;
+          for (let i=0;i<names.length;i+=10){
+            const group=await Promise.all(names.slice(i,i+10).filter(x=>x.endsWith('.js')||x.endsWith('.css')||x==='index.html').map(async name=>{
+              const r=await fetch('https://ball46.com/'+name);
+              if(r.status!==200)return {name,error:r.status};
+              const data=await r.text();
+              const regex=/b46gn-(?:detailbody|mini|stats|stat|fact|pill|empty|skeleton|summary|featured|insight|info)|data-b46gn-detailbody|Match details|match-detail/i;
+              const snippets=[];let found=0;
+              for(const line of data.split('\n')){
+                if(regex.test(line)){if(found++<10)snippets.push(line.slice(0,850));}
+              }
+              return {name,found,snippets};
+            }));
+            for(const x of group)if(x.found||x.error)console.log('SOURCE_MATCH',JSON.stringify(x).slice(0,9800));
+          }
+          JS
