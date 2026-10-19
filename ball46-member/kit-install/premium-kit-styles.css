@@ -1,0 +1,22 @@
+/* BALL46_MEMBER_PREMIUM_16KITS_20261019 — expanded-only presentation, PC + mobile. */
+.page-member .featured-horizontal.stadium-hero .featured-h-score .team {
+  display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:0;
+}
+.page-member .featured-horizontal.stadium-hero .featured-h-score .team .premium-match-kit {
+  width:80px;height:80px;max-width:100%;flex:0 0 auto;object-fit:contain;
+  object-position:center;display:block;visibility:hidden;margin:0 auto 2px;
+  filter:drop-shadow(0 5px 6px rgba(0,0,0,.3));
+}
+.page-member .featured-horizontal.stadium-hero .featured-h-score .team.premium-kit-ready .premium-match-kit {visibility:visible;}
+.page-member .featured-horizontal.stadium-hero .featured-h-score .team.premium-kit-ready .featured-crest-slot {display:none!important;}
+.page-member .featured-horizontal.stadium-hero .featured-h-score .team .premium-match-kit[hidden] {display:none!important;}
+.page-member .featured-horizontal.stadium-hero .featured-h-score .team b,
+.page-member .featured-horizontal.stadium-hero .featured-h-score .team .team-side-label {
+  max-width:100%;min-width:0;text-align:center;overflow:hidden;text-overflow:ellipsis;
+}
+@media (max-width:680px){
+  .page-member .featured-horizontal.stadium-hero .featured-h-score .team .premium-match-kit {width:60px;height:60px;}
+}
+@media (max-width:359px){
+  .page-member .featured-horizontal.stadium-hero .featured-h-score .team .premium-match-kit {width:56px;height:56px;}
+}
