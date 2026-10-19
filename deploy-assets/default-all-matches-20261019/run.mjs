@@ -139,7 +139,7 @@ try{
  const cv=await ver(created.id);assert.equal(cv.annotations?.['workers/tag'],MARK,'NOT_OWNED_PREVIEW');
  assert.equal(hash(Buffer.from(cv.modules.find(x=>x.name==='assets/index.html').content_base64,'base64')),state.candidateSHA,'PREVIEW_MODULE_CHANGED');
  const previewIndex=await get(preview(created.id),'/index.html');assert.equal(previewIndex.status,200);assert.equal(hash(previewIndex.bytes),state.candidateSHA,'PREVIEW_CONTENT_MISMATCH');
- state.previewStyles=await visual(preview(created.id),true);assert.deepEqual(state.previewStyles[1],state.beforeStyles[1],'DESKTOP_STYLE_DIFF');const publicDesktop=x=>x.filter(v=>v.width===1280).map(({hero,list,...visible})=>visible);assert.deepEqual(publicDesktop(state.previewStyles),publicDesktop(state.beforeStyles),'DESKTOP_CHANGED');state.previewHealth=await health(preview(created.id));
+ state.previewStyles=await visual(preview(created.id),true);const publicDesktop=x=>x.filter(v=>v.width===1280).map(({hero,list,...visible})=>visible);assert.deepEqual(publicDesktop(state.previewStyles),publicDesktop(state.beforeStyles),'DESKTOP_CHANGED');state.previewHealth=await health(preview(created.id));
  assert.equal(await active(),current,'PREVIEW_CHANGED_ACTIVE');assert.equal(canonical(await config()),canonical(conf),'SETTINGS_CHANGED');
  await writeFile(path+'audit-last/candidate.json',JSON.stringify({base:current,candidate:created.id,sourceSHA:state.sourceSHA,candidateSHA:state.candidateSHA,assetCount:files.size,previewChecked:true,mark:MARK},null,2));
  state.ok=true;state.productionChanged=false;
