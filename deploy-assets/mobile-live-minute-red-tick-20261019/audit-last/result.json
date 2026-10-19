@@ -1,0 +1,129 @@
+{
+  "phase": "candidate",
+  "run": "39209226552",
+  "startedAt": "2026-10-19T06:19:40.215Z",
+  "mark": "B46_MOBILE_LIVE_MINUTE_RED_TICK_20261019",
+  "before": "33965770-6d0e-4bc8-859b-4ef139ab44ec",
+  "healthBefore": [
+    {
+      "path": "/api/engine/health",
+      "ok": true
+    },
+    {
+      "path": "/api/full-market/health",
+      "ok": true
+    },
+    {
+      "path": "/api/engine/board",
+      "ok": true,
+      "fixtures": 2326
+    },
+    {
+      "path": "/api/engine/signals",
+      "ok": true,
+      "signals": 1
+    },
+    {
+      "path": "/api/engine/statistics?paged=1",
+      "ok": true,
+      "rows": 500
+    }
+  ],
+  "beforeStyles": [
+    {
+      "width": 390,
+      "numColor": "rgb(164, 181, 188)",
+      "tickColor": "rgb(164, 181, 188)",
+      "numFontSize": "11px",
+      "tickFontSize": "11px",
+      "tickAnimation": "none",
+      "tickDuration": "0s",
+      "liveColor": "rgb(58, 227, 170)",
+      "dotBg": "rgba(0, 0, 0, 0)",
+      "headerHeight": 43,
+      "clockPadding": "0px 0px 0px 9px",
+      "cardMinHeight": "142px",
+      "clockText": "33'"
+    },
+    {
+      "width": 1280,
+      "numColor": "rgb(23, 33, 27)",
+      "tickColor": "rgb(23, 33, 27)",
+      "numFontSize": "13px",
+      "tickFontSize": "13px",
+      "tickAnimation": "none",
+      "tickDuration": "0s",
+      "liveColor": "rgb(23, 33, 27)",
+      "dotBg": "rgba(0, 0, 0, 0)",
+      "headerHeight": 18.84375,
+      "clockPadding": "0px",
+      "cardMinHeight": "0px",
+      "clockText": "33'"
+    }
+  ],
+  "candidate": "6e9acd84-c6b7-4f47-aef3-eec802b93a77",
+  "base": "33965770-6d0e-4bc8-859b-4ef139ab44ec",
+  "sourceSHA": "2db7270df6a8d2cc5e214db2beb441691dea90ab3fe6c4b1978542467402d249",
+  "candidateSHA": "d4f520186580cd2cd7749a306dc4e01dfc015380624091c427eb625628615a17",
+  "assetCount": 82,
+  "previewStyles": [
+    {
+      "width": 390,
+      "numColor": "rgb(239, 68, 68)",
+      "tickColor": "rgb(239, 68, 68)",
+      "numFontSize": "11px",
+      "tickFontSize": "11px",
+      "tickAnimation": "b46gn-minute-red-tick-20261019",
+      "tickDuration": "1s",
+      "liveColor": "rgb(58, 227, 170)",
+      "dotBg": "rgba(0, 0, 0, 0)",
+      "headerHeight": 43,
+      "clockPadding": "0px 0px 0px 9px",
+      "cardMinHeight": "142px",
+      "clockText": "33'"
+    },
+    {
+      "width": 1280,
+      "numColor": "rgb(23, 33, 27)",
+      "tickColor": "rgb(23, 33, 27)",
+      "numFontSize": "13px",
+      "tickFontSize": "13px",
+      "tickAnimation": "none",
+      "tickDuration": "0s",
+      "liveColor": "rgb(23, 33, 27)",
+      "dotBg": "rgba(0, 0, 0, 0)",
+      "headerHeight": 18.84375,
+      "clockPadding": "0px",
+      "cardMinHeight": "0px",
+      "clockText": "33'"
+    }
+  ],
+  "previewHealth": [
+    {
+      "path": "/api/engine/health",
+      "ok": true
+    },
+    {
+      "path": "/api/full-market/health",
+      "ok": true
+    },
+    {
+      "path": "/api/engine/board",
+      "ok": true,
+      "fixtures": 2326
+    },
+    {
+      "path": "/api/engine/signals",
+      "ok": true,
+      "signals": 1
+    },
+    {
+      "path": "/api/engine/statistics?paged=1",
+      "ok": true,
+      "rows": 500
+    }
+  ],
+  "ok": true,
+  "productionChanged": false,
+  "finishedAt": "2026-10-19T06:20:06.804Z"
+}
