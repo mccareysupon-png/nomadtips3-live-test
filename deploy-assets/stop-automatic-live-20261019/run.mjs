@@ -17,6 +17,20 @@ function patchTune(source){
  assert.equal(next.replace(NEW,OLD),source,'UNRELATED_SOURCE_CHANGED');
  return next;
 }
+function patchHomepage(html,tuneSource){
+ const pattern=/<script\b[^>]*\bsrc=(["'])(?:\/)?dashboard-v2-tune\.js[^"']*\1[^>]*>\s*<\/script>/i;
+ const matches=[...html.matchAll(new RegExp(pattern.source,'gi'))];
+ assert.equal(matches.length,1,'TUNE_SCRIPT_TAG_NOT_UNIQUE');
+ const original=matches[0][0];
+ assert(!/\b(?:async|defer)\b/i.test(original),'SCRIPT_ORDER_MUST_BE_REVIEWED');
+ const patchedSource=patchTune(tuneSource);
+ assert(!/<\/script\s*>/i.test(patchedSource),'UNSAFE_INLINE_SCRIPT_END');
+ const inlined='<script id="b46-allmatches-default-source-20261019">\n'+patchedSource+'\n</script>';
+ assert(!html.includes('b46-allmatches-default-source-20261019'),'ALREADY_INLINE');
+ const next=html.replace(original,inlined);
+ assert.equal(next.replace(inlined,original),html,'OTHER_HTML_BYTES_CHANGED');
+ return next;
+}
 assert(['candidate','activate'].includes(req.phase),'INVALID_PHASE');
 assert(process.env.CLOUDFLARE_ACCOUNT_ID===ACCOUNT&&process.env.CLOUDFLARE_API_TOKEN,'CLOUDFLARE_AUTH_WRONG');
 assert.equal(new Set(assetPaths).size,assetPaths.length,'DUPLICATE_ASSET_PATH');
@@ -114,7 +128,9 @@ try{
  const index=Buffer.from(mod.content_base64,'base64');const live=await get(ORIGIN,'/index.html');
  assert.equal(live.status,200);assert.equal(hash(live.bytes),hash(index),'LIVE_INDEX_DIFFERS_FROM_ACTIVE');
  const html=index.toString();
- const patched=html;
+ const liveTune=await get(ORIGIN,'/'+TUNE);assert.equal(liveTune.status,200,'TUNE_ORIGIN_MISSING');
+ const immTune=await get(preview(current),'/'+TUNE);assert.equal(immTune.status,200,'TUNE_IMMUTABLE_MISSING');assert.equal(hash(liveTune.bytes),hash(immTune.bytes),'TUNE_DRIFT');
+ const patched=patchHomepage(html,liveTune.bytes.toString());
  const files=new Map();
  for(let i=0;i<assetPaths.length;i+=5){
  const batch=await Promise.all(assetPaths.slice(i,i+5).map(async p=>{
@@ -126,9 +142,8 @@ try{
  assert.equal(await active(),current,'ACTIVE_CHANGED_DURING_READ');
  assert(files.has(TUNE),'SOURCE_TUNE_MISSING');
  const tuneBefore=files.get(TUNE).bytes;
- const tunePatched=Buffer.from(patchTune(tuneBefore.toString()));
- state.tuneBeforeSHA=hash(tuneBefore);state.tuneAfterSHA=hash(tunePatched);
- files.set(TUNE,{...files.get(TUNE),bytes:tunePatched});
+ assert.equal(hash(tuneBefore),hash(liveTune.bytes),'SOURCE_TUNE_BYTES_DRIFT');
+ state.tuneBeforeSHA=hash(tuneBefore);state.tuneAfterSHA=hash(Buffer.from(patchTune(tuneBefore.toString())));
  files.set('index.html',{...files.get('index.html'),bytes:Buffer.from(patched)});
  const uploaded=await completeAssetUpload({account:ACCOUNT,script:SCRIPT,files,expectedPaths:assetPaths,api:cf});
  assert.equal(await active(),current,'ACTIVE_CHANGED_DURING_UPLOAD');
@@ -139,7 +154,8 @@ try{
  assert.equal(hash(Buffer.from(cv.modules.find(x=>x.name==='assets/index.html').content_base64,'base64')),state.candidateSHA,'PREVIEW_MODULE_CHANGED');
  const previewIndex=await get(preview(created.id),'/index.html');assert.equal(previewIndex.status,200);assert.equal(hash(previewIndex.bytes),state.candidateSHA,'PREVIEW_CONTENT_MISMATCH');
  const previewTune=await get(preview(created.id),'/'+TUNE);
- assert.equal(previewTune.status,200,'PREVIEW_TUNE_HTTP');assert.equal(hash(previewTune.bytes),state.tuneAfterSHA,'PREVIEW_TUNE_SHA_MISMATCH');
+ assert.equal(previewTune.status,200,'PREVIEW_TUNE_HTTP');assert.equal(hash(previewTune.bytes),state.tuneBeforeSHA,'EXTERNAL_TUNE_SHOULD_BE_UNCHANGED');
+ assert(previewIndex.bytes.toString().includes('b46-allmatches-default-source-20261019'),'CANDIDATE_INLINE_TUNE_MISSING');
  state.previewStyles=await visual(preview(created.id),true);state.previewHealth=await health(preview(created.id));
  assert.equal(await active(),current,'PREVIEW_CHANGED_ACTIVE');assert.equal(canonical(await config()),canonical(conf),'SETTINGS_CHANGED');
  await writeFile(path+'audit-last/candidate.json',JSON.stringify({base:current,candidate:created.id,sourceSHA:state.sourceSHA,candidateSHA:state.candidateSHA,assetCount:files.size,tuneBeforeSHA:state.tuneBeforeSHA,tuneAfterSHA:state.tuneAfterSHA,previewChecked:true,mark:MARK},null,2));
@@ -156,7 +172,8 @@ try{
  assert.equal(candidate.main_module,base.main_module,'MAIN_MODULE_CHANGED');
  assert.equal((await get(ORIGIN,'/'+TUNE)).status,200,'ORIGIN_TUNE_MISSING');
  assert.equal(hash((await get(ORIGIN,'/'+TUNE)).bytes),proof.tuneBeforeSHA,'TUNE_SOURCE_DRIFT');
- assert.equal(hash((await get(preview(proof.candidate),'/'+TUNE)).bytes),proof.tuneAfterSHA,'CANDIDATE_TUNE_DRIFT');
+ assert.equal(hash((await get(preview(proof.candidate),'/'+TUNE)).bytes),proof.tuneBeforeSHA,'EXTERNAL_TUNE_CHANGED');
+ const candidateIndex=await get(preview(proof.candidate),'/index.html');assert.equal(hash(candidateIndex.bytes),proof.candidateSHA,'INLINE_SOURCE_CHANGED');
  const baseMain=base.modules.find(x=>x.name===base.main_module),candMain=candidate.modules.find(x=>x.name===base.main_module);
  assert.equal(hash(Buffer.from(candMain.content_base64,'base64')),hash(Buffer.from(baseMain.content_base64,'base64')),'RUNTIME_CHANGED');
  state.previewStyles=await visual(preview(proof.candidate),true);state.previewHealth=await health(preview(proof.candidate));
@@ -165,8 +182,8 @@ try{
  activated=true;state.candidate=proof.candidate;
  const d=await cf('/workers/scripts/'+SCRIPT+'/deployments',{strategy:'percentage',versions:[{version_id:proof.candidate,percentage:100}],annotations:{'workers/message':'Fix wrong automatic Live route when entering Ball46 root; keep All Matches default'}});
  state.deployment=d.id;assert.equal(await active(),proof.candidate,'DEPLOY_DID_NOT_ACTIVATE');
- let loaded=false;for(let i=0;i<15;i++){const p=await get(ORIGIN,'/'+TUNE);if(p.status===200&&hash(p.bytes)===proof.tuneAfterSHA){loaded=true;break}await new Promise(r=>setTimeout(r,3000))}
- assert(loaded,'TUNE_CUTOVER_NOT_VISIBLE');state.productionStyles=await visual(ORIGIN,true);state.healthAfter=await health(ORIGIN);
+ let loaded=false;for(let i=0;i<15;i++){const p=await get(ORIGIN,'/index.html');if(p.status===200&&hash(p.bytes)===proof.candidateSHA){loaded=true;break}await new Promise(r=>setTimeout(r,3000))}
+ assert(loaded,'INLINE_SOURCE_CUTOVER_NOT_VISIBLE');state.productionStyles=await visual(ORIGIN,true);state.healthAfter=await health(ORIGIN);
  assert.equal(canonical(await config()),canonical(conf),'CONFIG_CHANGED_AFTER_ACTIVATION');state.ok=true;state.productionChanged=true;
  }
 }catch(e){
