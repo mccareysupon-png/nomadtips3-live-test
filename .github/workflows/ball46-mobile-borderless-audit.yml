@@ -1,0 +1,31 @@
+name: BALL46 Mobile Borderless Read Only Audit
+on:
+  push:
+    branches:
+      - work/ball46-mobile-borderless-soft-20261019
+    paths:
+      - '.github/workflows/ball46-mobile-borderless-audit.yml'
+      - 'deploy-assets/ball46-mobile-deep-teal-20261018/inspect-current-ui.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Inspect live computed styles without modification
+        run: node deploy-assets/ball46-mobile-deep-teal-20261018/inspect-current-ui.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-mobile-borderless-before-${{ github.run_id }}
+          path: deploy-assets/ball46-mobile-deep-teal-20261018/audit-before/
+          retention-days: 7
