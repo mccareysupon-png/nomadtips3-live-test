@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-10-19T01:52:36Z",
+  "updated_at": "2026-10-19T04:52:32Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -2489,8 +2489,8 @@
       "edge": 25.5,
       "ev": 0.3608,
       "required_confidence": 0.6,
-      "result": "PENDING",
-      "ft": null,
+      "result": "HALF_WIN",
+      "ft": "2-1",
       "locked_at": "2026-10-19T01:48:18Z",
       "source_url": "https://www.goaloo.com/football/liga-nacional-de-guatemala-marquense-vs-suchitepequez/h2h-3011313",
       "summary_url": "https://www.goaloo.com/football/liga-nacional-de-guatemala-marquense-vs-suchitepequez/summary-3011313",
@@ -2550,7 +2550,12 @@
         "away_recent": 10,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": 0.5,
+      "profit": 35.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-19T04:52:32Z"
     },
     {
       "id": "93111e7fe1f792fb-AH-AWAY-0p75",
@@ -293153,6 +293158,96 @@
       "settlement_source": "goaloo-bf_us-direct-index",
       "goaloo_terminal_state": -1,
       "settled_at": "2026-10-19T00:14:59Z"
+    },
+    {
+      "id": "57a81334c9c8a21e-AH-AWAY-1p25",
+      "goaloo_id": "3011313",
+      "date": "2026-10-19",
+      "kickoff": "2026-10-19 02:10:00",
+      "league": "Liga Nacional de Guatemala",
+      "home": "Marquense",
+      "away": "Suchitepequez",
+      "market": "AH",
+      "selection": "AWAY",
+      "line": 1.25,
+      "pick": "Suchitepequez +1.25",
+      "side": "away",
+      "odds": 1.7,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.7926,
+      "model_probability": 0.7926,
+      "market_fair_probability": 0.538,
+      "market_edge": 0.2545,
+      "edge": 25.5,
+      "ev": 0.3608,
+      "required_confidence": 0.6,
+      "result": "HALF_WIN",
+      "ft": "2-1",
+      "locked_at": "2026-10-19T01:48:18Z",
+      "source_url": "https://www.goaloo.com/football/liga-nacional-de-guatemala-marquense-vs-suchitepequez/h2h-3011313",
+      "summary_url": "https://www.goaloo.com/football/liga-nacional-de-guatemala-marquense-vs-suchitepequez/summary-3011313",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 1.437,
+        "lambda_away": 1.564,
+        "home_win": 0.3354,
+        "draw": 0.2604,
+        "away_win": 0.4042,
+        "h2h_adjustment": 0.005,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": -0.1951,
+          "gd_edge": -0.1964,
+          "clean_sheet_edge": 0.0,
+          "failed_to_score_edge": -0.0293,
+          "bounded_adjustment": -0.0114,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": 0.5,
+      "profit": 35.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-19T04:52:32Z"
     }
   ],
   "note": "Automated Full-Time Winner First feed. Supplemental markets remain unpublished.",
