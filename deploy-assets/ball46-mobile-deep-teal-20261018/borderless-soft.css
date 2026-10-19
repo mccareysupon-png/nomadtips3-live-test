@@ -1,0 +1,51 @@
+/* BALL46 Green Noir · owner-approved MOBILE BORDERLESS + LIGHT elevation.
+   Cosmetic only. Default icon surfaces are transparent, all match card outer borders removed.
+   Do not modify source match data, layout gutters, team kits, Event Flow or desktop. */
+@media (max-width:760px) {
+  html[data-b46gn="1"] #b46m-teal-shell [data-b46m-open],
+  html[data-b46gn="1"] #b46m-teal-shell [data-b46m-searchbutton] {
+    width:44px!important;
+    height:44px!important;
+    min-width:44px!important;
+    min-height:44px!important;
+    box-sizing:border-box!important;
+    background:transparent!important;
+    background-image:none!important;
+    border:0!important;
+    border-color:transparent!important;
+    box-shadow:none!important;
+    filter:none!important;
+    color:#acbec4!important;
+    transition:background-color .13s ease,color .13s ease!important;
+  }
+  html[data-b46gn="1"] #b46m-teal-shell [data-b46m-open]:active,
+  html[data-b46gn="1"] #b46m-teal-shell [data-b46m-searchbutton]:active {
+    background:rgba(205,241,230,.05)!important;
+    box-shadow:none!important;
+  }
+  html[data-b46gn="1"] #b46m-teal-shell [data-b46m-open]:focus-visible,
+  html[data-b46gn="1"] #b46m-teal-shell [data-b46m-searchbutton]:focus-visible {
+    outline:2px solid #20d39b!important;
+    outline-offset:2px!important;
+  }
+  html[data-b46gn="1"] #b46gn-results .b46gn-card {
+    border:0!important;
+    outline:0!important;
+    background:linear-gradient(145deg,#14282b 0%,#102126 52%,#0e1d22 100%)!important;
+    box-shadow:0 5px 13px rgba(0,0,0,.21),0 1px 3px rgba(0,0,0,.10)!important;
+    border-radius:13px!important;
+    transition:box-shadow .16s ease,background-color .16s ease!important;
+  }
+  html[data-b46gn="1"] #b46gn-results .b46gn-card:active {
+    box-shadow:0 3px 11px rgba(0,0,0,.19),0 1px 2px rgba(0,0,0,.09)!important;
+  }
+  html[data-b46gn="1"] #b46gn-results .b46gn-card:focus-visible {
+    outline:2px solid #20d39b!important;
+    outline-offset:2px!important;
+  }
+  /* Match-details sheet is the expanded state of the same match presentation. */
+  html[data-b46gn="1"] #b46gn-detail .b46gn-sheet {
+    border:0!important;
+    box-shadow:0 -15px 45px rgba(0,0,0,.54)!important;
+  }
+}
