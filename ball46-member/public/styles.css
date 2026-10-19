@@ -5578,32 +5578,37 @@ button,input,select,textarea{font-family:inherit;font-synthesis:none}
   .page-member #dailySummary .summary-stat b{font-size:10.5px!important}
 }
 
-/* BALL46 MEMBER — KPI finish: PC 75% transparency / mobile soft premium elevation (2026-10-19) */
-/* Alpha .25 means 75% see-through. Only the background is translucent; KPI text is opaque. */
+/* BALL46 MEMBER — Desktop KPI Premium Soft Elevation; Mobile V6 preserved (2026-10-19) */
+/* Raised Graphite Noir finish: depth comes from gradient and shadows, not decorative borders. */
 @media(min-width:768px){
   .page-member #dailySummary .summary-stat{
-    background:rgba(17,39,55,.25);
-    box-shadow:0 3px 10px rgba(0,0,0,.08);
+    border:0;
+    background:linear-gradient(160deg,rgba(35,65,83,.93) 0%,rgba(13,35,52,.87) 100%);
+    box-shadow:
+      0 11px 25px rgba(0,0,0,.25),
+      0 3px 7px rgba(0,0,0,.15),
+      inset 0 1px 0 rgba(235,250,255,.13),
+      inset 0 -1px 0 rgba(0,8,18,.20);
   }
   .page-member #dailySummary .summary-stat.win,
   .page-member #dailySummary .summary-stat.half-win,
   .page-member #dailySummary .summary-stat.rate-good,
   .page-member #dailySummary .summary-stat.pnl-card.pos{
-    background:rgba(30,68,60,.25);
+    background:linear-gradient(160deg,rgba(43,92,76,.92) 0%,rgba(17,56,47,.88) 100%);
   }
   .page-member #dailySummary .summary-stat.loss,
   .page-member #dailySummary .summary-stat.half-loss,
   .page-member #dailySummary .summary-stat.rate-bad,
   .page-member #dailySummary .summary-stat.pnl-card.neg{
-    background:rgba(75,41,52,.25);
+    background:linear-gradient(160deg,rgba(94,51,64,.92) 0%,rgba(62,31,44,.88) 100%);
   }
   .page-member #dailySummary .summary-stat.pending,
   .page-member #dailySummary .summary-stat.unresolved,
   .page-member #dailySummary .summary-stat.rate-mid{
-    background:rgba(71,59,37,.25);
+    background:linear-gradient(160deg,rgba(88,76,45,.92) 0%,rgba(54,45,31,.88) 100%);
   }
   .page-member #dailySummary .summary-stat.live{
-    background:rgba(29,57,76,.25);
+    background:linear-gradient(160deg,rgba(37,77,101,.92) 0%,rgba(21,52,72,.88) 100%);
   }
 }
 /* Keep the approved V6 8-card, 45–47px mobile layout and status colors unchanged. */
