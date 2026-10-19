@@ -1,0 +1,63 @@
+name: BALL46 Mobile Flash Readonly Audit
+on:
+  push:
+    branches: [fix/ball46-mobile-old-ui-flash-20261019]
+    paths: ['.github/workflows/ball46-mobile-flash-readonly-audit.yml']
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: |
+          npm install --no-save --ignore-scripts playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Audit initial paint and runtime CSS on Production (no writes)
+        run: |
+          node --input-type=module <<'JS'
+          import {chromium} from 'playwright';
+          const src=await (await fetch('https://ball46.com/index.html?flashRead='+Date.now())).text();
+          const terms=[
+          '<head','</head>','<body','<main','class="dash-shell"','class="main-board"','data-board-sections',
+          'data-b46gn','b46gn-hero','b46gn-results','b46m-teal-shell','body:has','html[data-b46gn="1"] body','html[data-b46gn="1"] .dash-shell',
+          'function init(){if(!mq.matches)','document.documentElement.dataset.b46gn','window.__BALL46_GREEN_NOIR',
+          'const marker=','const heroHtml=','<style id="b46gn-','<script id="b46gn-'
+          ];
+          console.log('HTML_BYTES',src.length);
+          for(const t of terms){let at=0,n=0;while(n++<4&&(at=src.indexOf(t,at))>=0){
+            console.log('SOURCE_ANCHOR',JSON.stringify({t,pos:at,around:src.slice(Math.max(0,at-330),at+1100)}).slice(0,1550));at+=t.length
+          }}
+          const browser=await chromium.launch({headless:true});
+          try{
+            for(const width of [390,1280]){
+             const page=await browser.newPage({viewport:{width,height:820},deviceScaleFactor:1});
+             await page.route('**/*',async route=>{
+               const url=route.request().url();
+               if(/ball46.com/.test(url)&&(/\.js(?:\?|$)/.test(url))){await new Promise(resolve=>setTimeout(resolve,1200))}
+               await route.continue().catch(()=>{});
+             });
+             await page.addInitScript(()=>{
+               window.__flashes=[];
+               const snap=()=>{
+                const elem=q=>{const e=document.querySelector(q);if(!e)return null;const r=e.getBoundingClientRect(),s=getComputedStyle(e);return {display:s.display,visibility:s.visibility,opacity:s.opacity,rect:[Math.round(r.x),Math.round(r.y),Math.round(r.width),Math.round(r.height)]}};
+                window.__flashes.push({when:Math.round(performance.now()),mode:document.documentElement.dataset.b46gn,body:document.body?.dataset.workspaceView,legacy:elem('.dash-shell'),oldBoard:elem('[data-board-sections]'),gnBoard:elem('#b46gn-results'),tealHeader:elem('#b46m-teal-shell'),htmlClass:document.documentElement.className.slice(0,140)});
+               };
+               new MutationObserver(snap).observe(document.documentElement,{attributes:true,attributeFilter:['data-b46gn','class']});
+               document.addEventListener('DOMContentLoaded',snap,{once:true});
+               requestAnimationFrame(snap);
+             });
+             await page.goto('https://ball46.com/?initialFlashAudit='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+             await page.waitForTimeout(4000);
+             const value=await page.evaluate(()=>{
+               const e=q=>{const x=document.querySelector(q);if(!x)return null;const cs=getComputedStyle(x),r=x.getBoundingClientRect();return {display:cs.display,visibility:cs.visibility,opacity:cs.opacity,height:Math.round(r.height),outer:x.outerHTML.slice(0,500)}};
+               return {timeline:window.__flashes?.slice(0,35),end:{url:location.href,mode:document.documentElement.dataset.b46gn,legacy:e('.dash-shell'),board:e('[data-board-sections]'),newBoard:e('#b46gn-results'),teal:e('#b46m-teal-shell')}};
+             });
+             console.log('FLASH_TIMELINE',JSON.stringify({width,...value}).slice(0,25000));
+             await page.close();
+            }
+          }finally{await browser.close()}
+          JS
