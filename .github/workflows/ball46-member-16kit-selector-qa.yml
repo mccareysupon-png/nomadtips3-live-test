@@ -1,0 +1,44 @@
+name: BALL46 Member 16 Kits — Deterministic Mapping QA (No Deploy)
+on:
+  push:
+    branches: [work/ball46-member-16-premium-kits-20261019]
+    paths:
+      - 'ball46-member/kit-install/**'
+      - '.github/workflows/ball46-member-16kit-selector-qa.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  selector:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check stable 8 preset mapping, 16 unique kits, fallback seed
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import {readFileSync} from 'node:fs';
+          import {PREMIUM_KIT_PRESETS,premiumKitsForFixture} from './ball46-member/kit-install/premium-kit-selector.mjs';
+          const report=JSON.parse(readFileSync('ball46-member/kit-install/premium-kit-presets.json','utf8'));
+          assert.equal(PREMIUM_KIT_PRESETS.length,8);
+          assert.deepEqual(PREMIUM_KIT_PRESETS.map(x=>[...x]),report.presets);
+          assert.deepEqual([...new Set(PREMIUM_KIT_PRESETS.flat())].sort((a,b)=>a-b),Array.from({length:16},(_,i)=>i+1));
+          const seen=new Set();
+          for(let i=1;i<=5000;i++){
+            const fixture={fixtureId:String(i),league:'Test',home:'Home',away:'Away',kickoff:'2026-10-19T16:00:00Z'};
+            const first=premiumKitsForFixture(fixture,null);
+            const again=premiumKitsForFixture({...fixture},null);
+            assert.deepEqual(first,again);
+            assert.notEqual(first[0],first[1]);
+            seen.add(JSON.stringify(first));
+          }
+          assert.equal(seen.size,8);
+          const fallback={league:'Premier League',home:'HOME',away:'AWAY',kickoffTime:'2026-10-19'};
+          assert.deepEqual(premiumKitsForFixture(fallback,null),premiumKitsForFixture({...fallback},null));
+          console.log('PASS: 5000 stable seeds, 8 pairs, all 16 unique PNG IDs, deterministic fallback.');
+          console.log('NON_DEPLOY: No production changes, no binary assets uploaded.');
+          NODE
