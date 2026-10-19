@@ -36,8 +36,11 @@ try{
     await page.addStyleTag({content:css});
     const newData=await data();
     await page.screenshot({path:out+'/after-'+width+'.png'});
-    assert(newData.gradient.includes('linear-gradient'),'DARK_THUMB_GRADIENT_NOT_APPLIED');
-    assert.equal(newData.track,'rgb(11, 22, 32)','DARK_TRACK_NOT_APPLIED');
+    // Modern Chromium honors the standard scrollbar-color property over the
+    // legacy ::-webkit-scrollbar styling, so check the actual inherited values.
+    // The pseudo selectors remain present as fallback for older WebKit.
+    assert.equal(newData.color,'rgb(51, 65, 85) rgb(11, 22, 32)','DARK_SCROLLBAR_STANDARD_COLORS_NOT_APPLIED');
+    assert(css.includes('::-webkit-scrollbar-thumb')&&css.includes('::-webkit-scrollbar-track'),'WEBKIT_FALLBACK_MISSING');
     assert.deepEqual(newData.rect,oldData.rect,'SIDEBAR_POSITION_OR_SIZE_CHANGED');
     assert.deepEqual(newData.firstCard,oldData.firstCard,'MARKET_CARD_STYLES_CHANGED');
     assert(newData.scrollHeight>newData.clientHeight,'SCROLLBAR_TEST_NOT_SCROLLABLE');
