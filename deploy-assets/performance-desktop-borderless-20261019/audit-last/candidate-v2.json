@@ -3,9 +3,9 @@
   "base": "d23bda6c-7015-4e57-9f2e-87e754a667cb",
   "script": "ball46-production",
   "mark": "B46_PERFORMANCE_DESKTOP_BORDERLESS_20261019",
-  "run": "39181027597",
-  "commit": "6b13e7000ae1b89ea54178c4325a1df9ca5e2362",
-  "startedAt": "2026-10-19T00:29:58.110Z",
+  "run": "39181211049",
+  "commit": "2317cf766631ceaa49724632fa828bce7f25639c",
+  "startedAt": "2026-10-19T00:32:16.598Z",
   "assetStrategy": "Exact current Active build inventory; every byte fetched fresh; complete upload session with completion token",
   "provenance": {
     "activeVersion": "d23bda6c-7015-4e57-9f2e-87e754a667cb",
@@ -165,7 +165,7 @@
   ],
   "routesAudit": {
     "ciStatus": 403,
-    "verifiedAt": "2026-10-19T00:29:31.754Z",
+    "verifiedAt": "2026-10-19T00:31:47.660Z",
     "requiresDashboardPostCheck": true
   },
   "configBefore": {
@@ -194,8 +194,8 @@
         }
       },
       "annotations": {
-        "workers/message": "BALL46 main mobile: borderless menu/search controls, soft borderless match cards only",
-        "workers/tag": "BALL46_MOBILE_BORDERLESS_SOFT_ELEVATION_20261019",
+        "workers/message": "Desktop Performance borderless 99px only; retain Mobile, JavaScript and all data",
+        "workers/tag": "B46_PERFORMANCE_DESKTOP_BORDERLESS_20261019",
         "workers/triggered_by": "create_version_api"
       },
       "bindings": [
@@ -271,8 +271,8 @@
       "ok": true,
       "version": "nomad343-engine-v5-best19-referee",
       "stale": false,
-      "hubFetchedAt": 1792369784826,
-      "fixtures": 2240
+      "hubFetchedAt": 1792369904315,
+      "fixtures": 2316
     },
     {
       "path": "/api/engine/signals",
@@ -1210,11 +1210,11 @@
   "changes": {
     "/": {
       "status": 200,
-      "sha": "9b63f83a329731a714fb0e3e3681316d88072b4f21f88d0544f7c47d5681a91b"
+      "sha": "34a369fbb9db125fa4cf50f4f95da1d654f866de8e603cd6fdbd9d95cbf72aae"
     },
     "/index.html": {
       "status": 200,
-      "sha": "9b63f83a329731a714fb0e3e3681316d88072b4f21f88d0544f7c47d5681a91b"
+      "sha": "34a369fbb9db125fa4cf50f4f95da1d654f866de8e603cd6fdbd9d95cbf72aae"
     }
   },
   "assetUpload": {
@@ -1222,7 +1222,7 @@
     "uploadedHashes": 1,
     "completionTokenReceived": true
   },
-  "candidate": "84e9a321-97a6-4679-8a8d-ecf0bf957950",
+  "candidate": "7d70305a-39ed-4f53-a0d3-a8332af9075a",
   "previewHealth": [
     {
       "path": "/api/engine/health",
@@ -1242,8 +1242,8 @@
       "ok": true,
       "version": "nomad343-engine-v5-best19-referee",
       "stale": false,
-      "hubFetchedAt": 1792369784826,
-      "fixtures": 2240
+      "hubFetchedAt": 1792369904315,
+      "fixtures": 2316
     },
     {
       "path": "/api/engine/signals",
@@ -1260,7 +1260,7 @@
       "pageRows": 500
     }
   ],
-  "previewUrl": "https://84e9a321-ball46-production.mccarey-supon.workers.dev",
+  "previewUrl": "https://7d70305a-ball46-production.mccarey-supon.workers.dev",
   "candidateVerified": true,
   "trafficChanged": false
 }
