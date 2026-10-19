@@ -1,0 +1,62 @@
+name: BALL46 Empty Detail Tiles Production QA
+on:
+  push:
+    branches: [fix/ball46-mobile-hide-empty-details-trio-20261019]
+    paths: ['.github/workflows/ball46-empty-detail-production-qa-20261019.yml']
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  qa:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: |
+          npm install --no-save --ignore-scripts playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Verify mobile empty trio removal with real Production page (read-only)
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {chromium} from 'playwright';
+          const browser=await chromium.launch({headless:true});
+          try{
+            for(const width of [390,1280]){
+              const page=await browser.newPage({viewport:{width,height:860},deviceScaleFactor:1});
+              const errors=[];page.on('pageerror',e=>errors.push(e.message));
+              await page.goto('https://ball46.com/?hideEmptyQA='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+              if(width===390){
+                await page.locator('#b46gn-detail [data-b46gn-detailbody]').waitFor({state:'attached',timeout:16000});
+                await page.evaluate(()=>{
+                  const root=document.querySelector('#b46gn-detail [data-b46gn-detailbody]');
+                  const p=document.createElement('div');
+                  p.className='b46gn-prices';p.setAttribute('data-postdeploy-check','');
+                  p.innerHTML='<div><span style="display:none">Dummy 1</span></div><div><span style="display:none">Dummy 2</span></div><div><span style="display:none">Dummy 3</span></div>';
+                  root.appendChild(p);
+                });
+                await page.waitForTimeout(250);
+                const hidden=await page.locator('[data-postdeploy-check]').evaluate(el=>({display:getComputedStyle(el).display,slots:[...el.children].map(x=>getComputedStyle(x).display)}));
+                assert.equal(hidden.display,'none','EMPTY_TRIO_NOT_HIDDEN');
+                assert.deepEqual(hidden.slots,['none','none','none']);
+                await page.evaluate(()=>document.querySelector('[data-postdeploy-check]').firstElementChild.insertAdjacentHTML('beforeend','<span>OVER 1.95</span>'));
+                await page.waitForTimeout(250);
+                const real=await page.locator('[data-postdeploy-check]').evaluate(el=>({display:getComputedStyle(el).display,slots:[...el.children].map(x=>getComputedStyle(x).display)}));
+                assert.equal(real.display,'grid','REAL_DATA_NOT_RESTORED');
+                assert.deepEqual(real.slots,['block','none','none']);
+                await page.evaluate(()=>document.querySelector('[data-postdeploy-check]').remove());
+                console.log('PROD_MOBILE_QA',JSON.stringify({hidden,real,pageErrors:errors.slice(0,4)}));
+              }else{
+                const html=await page.content();assert(html.includes('b46-hide-empty-detail-tiles-style-20261019'),'PROD_PATCH_MISSING');
+                console.log('PROD_DESKTOP_QA',JSON.stringify({width,styleScoped:html.includes('@media (max-width:760px)'),errors:errors.slice(0,4)}));
+              }
+              await page.close();
+            }
+            for(const url of ['https://ball46.com/api/engine/health','https://ball46.com/api/full-market/health','https://ball46.com/api/engine/board','https://ball46.com/api/engine/signals','https://ball46.com/api/engine/statistics?paged=1']){
+              const r=await fetch(url,{signal:AbortSignal.timeout(35000)});assert.equal(r.status,200,url+' HTTP BAD');
+              const j=await r.json();assert.equal(j.ok,true,url+' NOT_OK');
+              console.log('PROD_API_OK',url,Array.isArray(j.rows)?j.rows.length:Array.isArray(j.fixtures)?j.fixtures.length:'');
+            }
+          }finally{await browser.close()}
+          JS
