@@ -1,10 +1,192 @@
 {
-  "phase": "candidate",
-  "run": "39214154989",
-  "startedAt": "2026-10-19T07:09:43.082Z",
+  "phase": "activate",
+  "run": "39214481285",
+  "startedAt": "2026-10-19T07:12:46.914Z",
   "mark": "B46_ALLMATCHES_DISABLE_AUTOLIVE_20261019",
   "before": "e1c37b85-0861-40f8-8067-474c1105bb25",
   "healthBefore": [
+    {
+      "path": "/api/engine/health",
+      "ok": true
+    },
+    {
+      "path": "/api/full-market/health",
+      "ok": true
+    },
+    {
+      "path": "/api/engine/board",
+      "ok": true,
+      "fixtures": 2326
+    },
+    {
+      "path": "/api/engine/signals",
+      "ok": true,
+      "signals": 2
+    },
+    {
+      "path": "/api/engine/statistics?paged=1",
+      "ok": true,
+      "rows": 500
+    }
+  ],
+  "previewStyles": [
+    {
+      "width": 390,
+      "route": "/",
+      "href": "https://8a607594-ball46-production.mccarey-supon.workers.dev/",
+      "view": "live",
+      "active": [
+        "all"
+      ],
+      "headline": "All Matches",
+      "count": 22,
+      "statusKinds": [
+        "live",
+        "scheduled",
+        "finished"
+      ],
+      "mobileClock": true,
+      "previousEmptyFix": true,
+      "allHead": "All matches2326",
+      "manualNavigation": {
+        "afterLive": {
+          "filter": "live",
+          "href": "https://8a607594-ball46-production.mccarey-supon.workers.dev/?status=live"
+        },
+        "afterAll": {
+          "filter": "all",
+          "href": "https://8a607594-ball46-production.mccarey-supon.workers.dev/"
+        }
+      },
+      "errors": []
+    },
+    {
+      "width": 390,
+      "route": "/?status=all",
+      "href": "https://8a607594-ball46-production.mccarey-supon.workers.dev/?status=all",
+      "view": "live",
+      "active": [
+        "all"
+      ],
+      "headline": "All Matches",
+      "count": 30,
+      "statusKinds": [
+        "live",
+        "scheduled",
+        "unknown",
+        "finished"
+      ],
+      "mobileClock": true,
+      "previousEmptyFix": true,
+      "allHead": "All matches2240",
+      "errors": []
+    },
+    {
+      "width": 390,
+      "route": "/?status=live",
+      "href": "https://8a607594-ball46-production.mccarey-supon.workers.dev/?status=live",
+      "view": "live",
+      "active": [
+        "live"
+      ],
+      "headline": "Live Matches",
+      "count": 2,
+      "statusKinds": [
+        "live"
+      ],
+      "mobileClock": true,
+      "previousEmptyFix": true,
+      "allHead": "All matches2240",
+      "errors": []
+    },
+    {
+      "width": 390,
+      "route": "/?view=signal",
+      "href": "https://8a607594-ball46-production.mccarey-supon.workers.dev/?view=signal",
+      "view": "signal",
+      "active": [],
+      "headline": "All Matches",
+      "count": 0,
+      "statusKinds": [],
+      "mobileClock": true,
+      "previousEmptyFix": true,
+      "allHead": "All matches2240",
+      "errors": []
+    },
+    {
+      "width": 1280,
+      "route": "/",
+      "href": "https://8a607594-ball46-production.mccarey-supon.workers.dev/",
+      "view": "live",
+      "active": [
+        "all"
+      ],
+      "headline": null,
+      "count": 0,
+      "statusKinds": [],
+      "mobileClock": true,
+      "previousEmptyFix": true,
+      "allHead": "All matches2240",
+      "manualNavigation": {
+        "afterLive": {
+          "filter": "live",
+          "href": "https://8a607594-ball46-production.mccarey-supon.workers.dev/?status=live"
+        },
+        "afterAll": {
+          "filter": "all",
+          "href": "https://8a607594-ball46-production.mccarey-supon.workers.dev/"
+        }
+      },
+      "errors": []
+    },
+    {
+      "width": 1280,
+      "route": "/?status=all",
+      "href": "https://8a607594-ball46-production.mccarey-supon.workers.dev/?status=all",
+      "view": "live",
+      "active": [
+        "all"
+      ],
+      "headline": null,
+      "count": 0,
+      "statusKinds": [],
+      "mobileClock": true,
+      "previousEmptyFix": true,
+      "allHead": "All matches2240",
+      "errors": []
+    },
+    {
+      "width": 1280,
+      "route": "/?status=live",
+      "href": "https://8a607594-ball46-production.mccarey-supon.workers.dev/?status=live",
+      "view": "live",
+      "active": [
+        "live"
+      ],
+      "headline": null,
+      "count": 0,
+      "statusKinds": [],
+      "mobileClock": true,
+      "previousEmptyFix": true,
+      "allHead": "All matches2240",
+      "errors": []
+    },
+    {
+      "width": 1280,
+      "route": "/?view=signal",
+      "href": "https://8a607594-ball46-production.mccarey-supon.workers.dev/?view=signal",
+      "view": "signal",
+      "active": [],
+      "headline": null,
+      "count": 0,
+      "statusKinds": [],
+      "mobileClock": true,
+      "previousEmptyFix": true,
+      "allHead": "All matches2240",
+      "errors": []
+    }
+  ],
+  "previewHealth": [
     {
       "path": "/api/engine/health",
       "ok": true
@@ -21,7 +203,7 @@
     {
       "path": "/api/engine/signals",
       "ok": true,
-      "signals": 3
+      "signals": 2
     },
     {
       "path": "/api/engine/statistics?paged=1",
@@ -51,17 +233,169 @@
     {
       "width": 390,
       "route": "/?status=all",
+      "href": "https://ball46.com/?status=live",
+      "view": "live",
+      "active": [
+        "live"
+      ],
+      "headline": "Live Matches",
+      "count": 2,
+      "statusKinds": [
+        "live"
+      ],
+      "mobileClock": true,
+      "previousEmptyFix": true,
+      "allHead": "All matches2240",
+      "errors": []
+    },
+    {
+      "width": 390,
+      "route": "/?status=live",
+      "href": "https://ball46.com/?status=live",
+      "view": "live",
+      "active": [
+        "live"
+      ],
+      "headline": "Live Matches",
+      "count": 2,
+      "statusKinds": [
+        "live"
+      ],
+      "mobileClock": true,
+      "previousEmptyFix": true,
+      "allHead": "All matches2240",
+      "errors": []
+    },
+    {
+      "width": 390,
+      "route": "/?view=signal",
+      "href": "https://ball46.com/?view=signal",
+      "view": "signal",
+      "active": [],
+      "headline": "All Matches",
+      "count": 0,
+      "statusKinds": [],
+      "mobileClock": true,
+      "previousEmptyFix": true,
+      "allHead": "All matches2240",
+      "errors": []
+    },
+    {
+      "width": 1280,
+      "route": "/",
+      "href": "https://ball46.com/?status=live",
+      "view": "live",
+      "active": [
+        "live"
+      ],
+      "headline": null,
+      "count": 0,
+      "statusKinds": [],
+      "mobileClock": true,
+      "previousEmptyFix": true,
+      "allHead": "All matches2240",
+      "errors": []
+    },
+    {
+      "width": 1280,
+      "route": "/?status=all",
+      "href": "https://ball46.com/?status=live",
+      "view": "live",
+      "active": [
+        "live"
+      ],
+      "headline": null,
+      "count": 0,
+      "statusKinds": [],
+      "mobileClock": true,
+      "previousEmptyFix": true,
+      "allHead": "All matches2240",
+      "errors": []
+    },
+    {
+      "width": 1280,
+      "route": "/?status=live",
+      "href": "https://ball46.com/?status=live",
+      "view": "live",
+      "active": [
+        "live"
+      ],
+      "headline": null,
+      "count": 0,
+      "statusKinds": [],
+      "mobileClock": true,
+      "previousEmptyFix": true,
+      "allHead": "All matches2240",
+      "errors": []
+    },
+    {
+      "width": 1280,
+      "route": "/?view=signal",
+      "href": "https://ball46.com/?view=signal",
+      "view": "signal",
+      "active": [],
+      "headline": null,
+      "count": 0,
+      "statusKinds": [],
+      "mobileClock": true,
+      "previousEmptyFix": true,
+      "allHead": "All matches2240",
+      "errors": []
+    }
+  ],
+  "candidate": "8a607594-ee73-4925-a499-ddb4bc8c317b",
+  "deployment": "b4327059-4cde-42a6-93a9-cb256b25f2be",
+  "productionStyles": [
+    {
+      "width": 390,
+      "route": "/",
+      "href": "https://ball46.com/",
+      "view": "live",
+      "active": [
+        "all"
+      ],
+      "headline": "All Matches",
+      "count": 30,
+      "statusKinds": [
+        "live",
+        "scheduled",
+        "unknown",
+        "finished"
+      ],
+      "mobileClock": true,
+      "previousEmptyFix": true,
+      "allHead": "All matches2240",
+      "manualNavigation": {
+        "afterLive": {
+          "filter": "live",
+          "href": "https://ball46.com/?status=live"
+        },
+        "afterAll": {
+          "filter": "all",
+          "href": "https://ball46.com/"
+        }
+      },
+      "errors": []
+    },
+    {
+      "width": 390,
+      "route": "/?status=all",
       "href": "https://ball46.com/?status=all",
       "view": "live",
       "active": [
         "all"
       ],
       "headline": "All Matches",
-      "count": 0,
-      "statusKinds": [],
+      "count": 30,
+      "statusKinds": [
+        "live",
+        "scheduled",
+        "unknown",
+        "finished"
+      ],
       "mobileClock": true,
       "previousEmptyFix": true,
-      "allHead": "All matches0",
+      "allHead": "All matches2240",
       "errors": []
     },
     {
@@ -99,10 +433,10 @@
     {
       "width": 1280,
       "route": "/",
-      "href": "https://ball46.com/?status=live",
+      "href": "https://ball46.com/",
       "view": "live",
       "active": [
-        "live"
+        "all"
       ],
       "headline": null,
       "count": 0,
@@ -110,15 +444,25 @@
       "mobileClock": true,
       "previousEmptyFix": true,
       "allHead": "All matches2240",
+      "manualNavigation": {
+        "afterLive": {
+          "filter": "live",
+          "href": "https://ball46.com/?status=live"
+        },
+        "afterAll": {
+          "filter": "all",
+          "href": "https://ball46.com/"
+        }
+      },
       "errors": []
     },
     {
       "width": 1280,
       "route": "/?status=all",
-      "href": "https://ball46.com/?status=live",
+      "href": "https://ball46.com/?status=all",
       "view": "live",
       "active": [
-        "live"
+        "all"
       ],
       "headline": null,
       "count": 0,
@@ -155,176 +499,11 @@
       "statusKinds": [],
       "mobileClock": true,
       "previousEmptyFix": true,
-      "allHead": "All matches2240",
-      "errors": []
-    }
-  ],
-  "tuneBeforeSHA": "65081d9cdbdaa6c02d0a2b6ba75e9a0ee9effef00b1948b5d02c53b0681f164a",
-  "tuneAfterSHA": "a0cc90d18e0b4b64b5dade62144b6f053e85490144c98c468001460ecc64e90b",
-  "candidate": "8a607594-ee73-4925-a499-ddb4bc8c317b",
-  "base": "e1c37b85-0861-40f8-8067-474c1105bb25",
-  "sourceSHA": "b5da3c598e1462b6e0fda3800d17e2a31589ea5f69540cc7105fc3e39edc49b3",
-  "candidateSHA": "d8a3c98acc6903a93557c73766ae98ea5c21f4f0ec38a5c5352a71faaf9c8772",
-  "assetCount": 82,
-  "previewStyles": [
-    {
-      "width": 390,
-      "route": "/",
-      "href": "https://8a607594-ball46-production.mccarey-supon.workers.dev/",
-      "view": "live",
-      "active": [
-        "all"
-      ],
-      "headline": "All Matches",
-      "count": 30,
-      "statusKinds": [
-        "live",
-        "scheduled",
-        "unknown",
-        "finished"
-      ],
-      "mobileClock": true,
-      "previousEmptyFix": true,
-      "allHead": "All matches2240",
-      "manualNavigation": {
-        "afterLive": {
-          "filter": "live",
-          "href": "https://8a607594-ball46-production.mccarey-supon.workers.dev/?status=live"
-        },
-        "afterAll": {
-          "filter": "all",
-          "href": "https://8a607594-ball46-production.mccarey-supon.workers.dev/"
-        }
-      },
-      "errors": []
-    },
-    {
-      "width": 390,
-      "route": "/?status=all",
-      "href": "https://8a607594-ball46-production.mccarey-supon.workers.dev/?status=all",
-      "view": "live",
-      "active": [
-        "all"
-      ],
-      "headline": "All Matches",
-      "count": 30,
-      "statusKinds": [
-        "live",
-        "scheduled",
-        "unknown",
-        "finished"
-      ],
-      "mobileClock": true,
-      "previousEmptyFix": true,
-      "allHead": "All matches2240",
-      "errors": []
-    },
-    {
-      "width": 390,
-      "route": "/?status=live",
-      "href": "https://8a607594-ball46-production.mccarey-supon.workers.dev/?status=live",
-      "view": "live",
-      "active": [
-        "live"
-      ],
-      "headline": "Live Matches",
-      "count": 2,
-      "statusKinds": [
-        "live"
-      ],
-      "mobileClock": true,
-      "previousEmptyFix": true,
-      "allHead": "All matches2240",
-      "errors": []
-    },
-    {
-      "width": 390,
-      "route": "/?view=signal",
-      "href": "https://8a607594-ball46-production.mccarey-supon.workers.dev/?view=signal",
-      "view": "signal",
-      "active": [],
-      "headline": "All Matches",
-      "count": 0,
-      "statusKinds": [],
-      "mobileClock": true,
-      "previousEmptyFix": true,
-      "allHead": "All matches2240",
-      "errors": []
-    },
-    {
-      "width": 1280,
-      "route": "/",
-      "href": "https://8a607594-ball46-production.mccarey-supon.workers.dev/",
-      "view": "live",
-      "active": [
-        "all"
-      ],
-      "headline": null,
-      "count": 0,
-      "statusKinds": [],
-      "mobileClock": true,
-      "previousEmptyFix": true,
-      "allHead": "All matches2326",
-      "manualNavigation": {
-        "afterLive": {
-          "filter": "live",
-          "href": "https://8a607594-ball46-production.mccarey-supon.workers.dev/?status=live"
-        },
-        "afterAll": {
-          "filter": "all",
-          "href": "https://8a607594-ball46-production.mccarey-supon.workers.dev/"
-        }
-      },
-      "errors": []
-    },
-    {
-      "width": 1280,
-      "route": "/?status=all",
-      "href": "https://8a607594-ball46-production.mccarey-supon.workers.dev/?status=all",
-      "view": "live",
-      "active": [
-        "all"
-      ],
-      "headline": null,
-      "count": 0,
-      "statusKinds": [],
-      "mobileClock": true,
-      "previousEmptyFix": true,
-      "allHead": "All matches2326",
-      "errors": []
-    },
-    {
-      "width": 1280,
-      "route": "/?status=live",
-      "href": "https://8a607594-ball46-production.mccarey-supon.workers.dev/?status=live",
-      "view": "live",
-      "active": [
-        "live"
-      ],
-      "headline": null,
-      "count": 0,
-      "statusKinds": [],
-      "mobileClock": true,
-      "previousEmptyFix": true,
-      "allHead": "All matches2326",
-      "errors": []
-    },
-    {
-      "width": 1280,
-      "route": "/?view=signal",
-      "href": "https://8a607594-ball46-production.mccarey-supon.workers.dev/?view=signal",
-      "view": "signal",
-      "active": [],
-      "headline": null,
-      "count": 0,
-      "statusKinds": [],
-      "mobileClock": true,
-      "previousEmptyFix": true,
       "allHead": "All matches2326",
       "errors": []
     }
   ],
-  "previewHealth": [
+  "healthAfter": [
     {
       "path": "/api/engine/health",
       "ok": true
@@ -341,7 +520,7 @@
     {
       "path": "/api/engine/signals",
       "ok": true,
-      "signals": 3
+      "signals": 2
     },
     {
       "path": "/api/engine/statistics?paged=1",
@@ -350,6 +529,6 @@
     }
   ],
   "ok": true,
-  "productionChanged": false,
-  "finishedAt": "2026-10-19T07:11:28.549Z"
+  "productionChanged": true,
+  "finishedAt": "2026-10-19T07:15:06.371Z"
 }
