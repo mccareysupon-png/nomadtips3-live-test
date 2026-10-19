@@ -1,0 +1,43 @@
+name: BALL46 Trace Root to Live Redirect
+on:
+  push:
+    branches: [fix/ball46-all-matches-landing-real-20261019]
+    paths: ['.github/workflows/ball46-root-live-redirect-trace.yml']
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  trace:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: |
+          npm install --no-save --ignore-scripts playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: |
+          node --input-type=module <<'JS'
+          import {chromium} from 'playwright';
+          const browser=await chromium.launch({headless:true});
+          try{
+            const page=await browser.newPage({viewport:{width:390,height:850}});
+            await page.addInitScript(()=>{
+              window.__routeTrace=[];
+              const emit=(kind,extra)=>{const item={at:Date.now(),kind,href:location.href,extra,stack:(new Error).stack?.slice(0,1500)};window.__routeTrace.push(item);if(window.__routeTrace.length>100)window.__routeTrace.shift();};
+              for(const m of ['pushState','replaceState']){const orig=history[m];history[m]=function(...args){emit(m,{args:args.slice(0,3).map(x=>String(x).slice(0,300))});return orig.apply(this,args)}}
+              const click=HTMLElement.prototype.click;HTMLElement.prototype.click=function(...args){if(this?.matches?.('[data-status-filter],[data-b46m-live],[data-b46m-status],[data-b46gn-tab]'))emit('HTMLElement.click',this.outerHTML.slice(0,350));return click.apply(this,args)};
+              document.addEventListener('click',e=>{const el=e.target.closest?.('[data-status-filter],[data-b46m-live],[data-b46m-status],[data-b46gn-tab]');if(el)emit('event.click',el.outerHTML.slice(0,350))},true);
+              window.addEventListener('popstate',()=>emit('popstate',location.search));
+            });
+            await page.goto('https://ball46.com/',{waitUntil:'domcontentloaded',timeout:60000});
+            for(const ms of [300,800,1800,3200,5000,7500]){await page.waitForTimeout(ms);const x=await page.evaluate(()=>({href:location.href,view:document.body.dataset.workspaceView,filter:document.querySelector('[data-status-filter].active')?.dataset.statusFilter,head:document.querySelector('#b46gn-main-title')?.textContent,trace:window.__routeTrace.splice(0)}));console.log('TRACE',JSON.stringify({elapsedMs:ms,...x}).slice(0,22000));}
+            await page.close();
+          }finally{await browser.close()}
+          const src=await (await fetch('https://ball46.com/index.html')).text();
+          const needles=['delegateStatus(','status=live','statusFilter:','data-b46m-live','[data-status-filter="live"]','.click()','setTimeout(','setInterval('];
+          for(const term of needles){
+            let pos=0,n=0;
+            while(n++<7&&(pos=src.indexOf(term,pos))>=0){console.log('SOURCE',JSON.stringify({term,pos,snippet:src.slice(Math.max(0,pos-550),pos+950)}));pos+=term.length}
+          }
+          JS
