@@ -224,6 +224,31 @@ async function ui(host,stage){
  }finally{await browser.close();}
  return screenshots;
 }
+async function visualComparison(host,stage){
+ const {chromium}=await import('playwright');
+ const browser=await chromium.launch({headless:true});
+ const proof=[];
+ try{
+  const page=await browser.newPage({viewport:{width:390,height:850},deviceScaleFactor:1});
+  await page.goto(host+'/?_vischeck='+Date.now(),{waitUntil:'domcontentloaded',timeout:50000});
+  await page.locator('#b46m-teal-shell').waitFor({state:'visible',timeout:20000});
+  await page.waitForTimeout(2000);
+  const synthetic=await page.evaluate(()=>{
+   const root=document.querySelector('#b46gn-cards');
+   if(!root||root.querySelector('.b46gn-card'))return false;
+   const card=document.createElement('button');card.type='button';card.className='b46gn-card';
+   card.dataset.visualOnly='1';
+   card.innerHTML='<div class="b46gn-cardhead"><span class="b46gn-league">STYLE PREVIEW · NO LIVE DATA</span><span class="b46gn-live">VISUAL TEST</span></div><div class="b46gn-cardbody"><div class="b46gn-team"><span class="b46gn-team-name">Home sample</span><span class="b46gn-team-score">—</span></div><div class="b46gn-team"><span class="b46gn-team-name">Away sample</span><span class="b46gn-team-score">—</span></div></div>';
+   root.replaceChildren(card);return true;
+  });
+  const screenshot=join(filesDir,stage+'-visual-mobile-390.png');
+  await page.screenshot({path:screenshot});
+  proof.push({path:screenshot,visualOnlySyntheticCard:synthetic});
+  await page.close();
+ }finally{await browser.close()}
+ return proof;
+}
+
 async function deploy(to,expected,label){
   assert.equal((await active()).id,expected,'ACTIVE_DRIFT_BEFORE_DEPLOY');
   const deployment=await cf('/workers/scripts/'+SCRIPT+'/deployments',{strategy:'percentage',versions:[{version_id:to,percentage:100}],annotations:{'workers/message':label}});
@@ -299,6 +324,7 @@ try{
  const assetView=await allAssets(preview(original.id),paths);
  for(const [p,f] of baseFiles)assert.equal(assetView.get(p).sha,f.sha,'ACTIVE_PREVIEW_ASSET_DRIFT:'+p);
  const before=await health(ORIGIN);
+ report.beforeScreenshots=await visualComparison(preview(original.id),'before');
  report.phase='BASE_VALIDATED';
  report.preflight={activeVersion:original.id,deployment:original.deployment,indexSha:sourceIndex.sha,mainSha:hash(Buffer.from(main.content_base64,'base64')),files:paths.length,extraAsset:extra,bindings:base.bindings.map(x=>({type:x.type,name:x.name})),domains:previousConfig.domains,health:before};save();
 
@@ -340,6 +366,7 @@ try{
  report.candidate={id:candidate,url:candidateHost,health:await health(candidateHost)};
  report.phase='CANDIDATE_VERIFIED';save();
  report.candidate.screenshots=await ui(candidateHost,'candidate');
+ report.candidate.comparison=await visualComparison(candidateHost,'candidate');
  assert.equal(canonical(await config()),canonical(previousConfig),'DEPLOY_CONFIGURATION_CHANGED_BEFORE_ACTIVATION');
  assert.equal((await active()).id,original.id,'CANDIDATE_ALTERED_ACTIVE');
  report.phase='UI_VERIFIED';save();
@@ -348,6 +375,7 @@ try{
  activated=true;report.activated=true;report.phase='ACTIVATED';save();
  await waitPublicIndex(report.change.after);
  report.productionScreenshots=await ui(ORIGIN,'production');
+ report.productionComparison=await visualComparison(ORIGIN,'production');
  report.postHealth=await health(ORIGIN);
  assert.equal(canonical(await config()),canonical(previousConfig),'PRODUCTION_CONFIGURATION_CHANGED');
  assert.equal((await active()).id,candidate,'ACTIVE_CHANGED_AFTER_ACTIVATION');
