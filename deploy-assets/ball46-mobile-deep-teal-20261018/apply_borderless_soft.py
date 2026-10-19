@@ -16,7 +16,8 @@ REQUIRED = (
 )
 def patch(html,css):
     assert len(html)>100000,'CURRENT_ACTIVE_HTML_UNEXPECTEDLY_SHORT'
-    assert all(t in html for t in REQUIRED),'CURRENT_PRODUCTION_ANCHOR_DRIFT'
+    missing=[t for t in REQUIRED if t not in html]
+    assert not missing,'CURRENT_PRODUCTION_ANCHOR_DRIFT:'+repr(missing)
     assert MARK not in html,'PATCH_ALREADY_INSTALLED'
     assert html.count('</body>')==1,'BODY_TAG_DRIFT'
     assert '@media (max-width:760px)' in css,'MOBILE_MEDIA_GUARD_MISSING'
