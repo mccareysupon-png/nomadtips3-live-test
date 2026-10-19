@@ -1,0 +1,1041 @@
+{
+  "status": "SUCCESS",
+  "verifiedAt": "2026-10-19T00:43:47.450Z",
+  "productionUrl": "https://ball46.com",
+  "repository": "mccareysupon-png/nomadtips3-live-test",
+  "branch": "codex/ball46-performance-desktop-borderless-20261019",
+  "baselineBranch": "work/ball46-mobile-borderless-soft-20261019",
+  "baselineCommit": "dca52246803048de9eabf72616a91edac8298eb2",
+  "sourceCommit": "3302964ce2b0615af7a4e45fdd8f4163b3162566",
+  "activationCommit": "652731ea1eee71bfbd0b258106d857574c16af33",
+  "creatorRun": "39181321632",
+  "activationRun": "39181789485",
+  "workflow": ".github/workflows/ball46-performance-desktop-borderless-20261019.yml",
+  "cloudflareWorker": "ball46-production",
+  "activeVersion": "6df28dd8-2fc0-44a6-b8c0-52cf2581281b",
+  "deployment": "dc565633-6804-4297-b4e6-602d05091ea9",
+  "trafficPercent": 100,
+  "productionFilesModified": [
+    "index.html"
+  ],
+  "component": "#ball46-daily-performance: .b46-perf-grid, .b46-perf-side, .b46-perf-head, .b46-perf-rate, .b46-perf-stat and their pseudo-elements",
+  "implementation": "One appended CSS block; every selector scoped to exact Performance root inside Desktop min-width761px media. All original HTML/scripts/styles retained. No JavaScript or data changes.",
+  "heights": [
+    {
+      "test": "desktop-1920-light",
+      "before": 96,
+      "after": 99
+    },
+    {
+      "test": "desktop-1920-dark",
+      "before": 117,
+      "after": 99
+    },
+    {
+      "test": "desktop-1440-light",
+      "before": 96,
+      "after": 99
+    },
+    {
+      "test": "desktop-1440-dark",
+      "before": 117,
+      "after": 99
+    },
+    {
+      "test": "desktop-1366-light",
+      "before": 96,
+      "after": 99
+    },
+    {
+      "test": "desktop-1366-dark",
+      "before": 117,
+      "after": 99
+    },
+    {
+      "test": "desktop-1024-light",
+      "before": 96,
+      "after": 99
+    },
+    {
+      "test": "desktop-1024-dark",
+      "before": 117,
+      "after": 99
+    }
+  ],
+  "desktopCases": 8,
+  "mobileCases": 2,
+  "candidateUi": {
+    "ok": true,
+    "phase": "candidate",
+    "verifiedAt": "2026-10-19T00:37:01.781Z",
+    "count": 10,
+    "checks": [
+      {
+        "test": "desktop-1920-light",
+        "beforeHeight": 96,
+        "afterHeight": 99,
+        "borderless": true,
+        "realValues": true,
+        "datesAndLondonDayRetained": true,
+        "noClippingOrOverlap": true,
+        "contrast": [
+          {
+            "kind": "win",
+            "value": 4.82,
+            "label": 5.61
+          },
+          {
+            "kind": "loss",
+            "value": 4.72,
+            "label": 5.61
+          },
+          {
+            "kind": "push",
+            "value": 5.61,
+            "label": 5.61
+          },
+          {
+            "kind": "pending",
+            "value": 5.13,
+            "label": 5.61
+          },
+          {
+            "kind": "avg-odds",
+            "value": 4.99,
+            "label": 5.61
+          },
+          {
+            "kind": "win",
+            "value": 4.82,
+            "label": 5.61
+          },
+          {
+            "kind": "loss",
+            "value": 4.72,
+            "label": 5.61
+          },
+          {
+            "kind": "push",
+            "value": 5.61,
+            "label": 5.61
+          },
+          {
+            "kind": "avg-odds",
+            "value": 4.99,
+            "label": 5.61
+          }
+        ]
+      },
+      {
+        "test": "desktop-1920-dark",
+        "beforeHeight": 117,
+        "afterHeight": 99,
+        "borderless": true,
+        "realValues": true,
+        "datesAndLondonDayRetained": true,
+        "noClippingOrOverlap": true,
+        "contrast": [
+          {
+            "kind": "win",
+            "value": 7.76,
+            "label": 6.78
+          },
+          {
+            "kind": "loss",
+            "value": 5.02,
+            "label": 6.78
+          },
+          {
+            "kind": "push",
+            "value": 7.42,
+            "label": 6.78
+          },
+          {
+            "kind": "pending",
+            "value": 5.97,
+            "label": 6.78
+          },
+          {
+            "kind": "avg-odds",
+            "value": 8.26,
+            "label": 6.78
+          },
+          {
+            "kind": "win",
+            "value": 7.76,
+            "label": 6.78
+          },
+          {
+            "kind": "loss",
+            "value": 5.02,
+            "label": 6.78
+          },
+          {
+            "kind": "push",
+            "value": 7.42,
+            "label": 6.78
+          },
+          {
+            "kind": "avg-odds",
+            "value": 8.26,
+            "label": 6.78
+          }
+        ]
+      },
+      {
+        "test": "desktop-1440-light",
+        "beforeHeight": 96,
+        "afterHeight": 99,
+        "borderless": true,
+        "realValues": true,
+        "datesAndLondonDayRetained": true,
+        "noClippingOrOverlap": true,
+        "contrast": [
+          {
+            "kind": "win",
+            "value": 4.82,
+            "label": 5.61
+          },
+          {
+            "kind": "loss",
+            "value": 4.72,
+            "label": 5.61
+          },
+          {
+            "kind": "push",
+            "value": 5.61,
+            "label": 5.61
+          },
+          {
+            "kind": "pending",
+            "value": 5.13,
+            "label": 5.61
+          },
+          {
+            "kind": "avg-odds",
+            "value": 4.99,
+            "label": 5.61
+          },
+          {
+            "kind": "win",
+            "value": 4.82,
+            "label": 5.61
+          },
+          {
+            "kind": "loss",
+            "value": 4.72,
+            "label": 5.61
+          },
+          {
+            "kind": "push",
+            "value": 5.61,
+            "label": 5.61
+          },
+          {
+            "kind": "avg-odds",
+            "value": 4.99,
+            "label": 5.61
+          }
+        ]
+      },
+      {
+        "test": "desktop-1440-dark",
+        "beforeHeight": 117,
+        "afterHeight": 99,
+        "borderless": true,
+        "realValues": true,
+        "datesAndLondonDayRetained": true,
+        "noClippingOrOverlap": true,
+        "contrast": [
+          {
+            "kind": "win",
+            "value": 7.76,
+            "label": 6.78
+          },
+          {
+            "kind": "loss",
+            "value": 5.02,
+            "label": 6.78
+          },
+          {
+            "kind": "push",
+            "value": 7.42,
+            "label": 6.78
+          },
+          {
+            "kind": "pending",
+            "value": 5.97,
+            "label": 6.78
+          },
+          {
+            "kind": "avg-odds",
+            "value": 8.26,
+            "label": 6.78
+          },
+          {
+            "kind": "win",
+            "value": 7.76,
+            "label": 6.78
+          },
+          {
+            "kind": "loss",
+            "value": 5.02,
+            "label": 6.78
+          },
+          {
+            "kind": "push",
+            "value": 7.42,
+            "label": 6.78
+          },
+          {
+            "kind": "avg-odds",
+            "value": 8.26,
+            "label": 6.78
+          }
+        ]
+      },
+      {
+        "test": "desktop-1366-light",
+        "beforeHeight": 96,
+        "afterHeight": 99,
+        "borderless": true,
+        "realValues": true,
+        "datesAndLondonDayRetained": true,
+        "noClippingOrOverlap": true,
+        "contrast": [
+          {
+            "kind": "win",
+            "value": 4.82,
+            "label": 5.61
+          },
+          {
+            "kind": "loss",
+            "value": 4.72,
+            "label": 5.61
+          },
+          {
+            "kind": "push",
+            "value": 5.61,
+            "label": 5.61
+          },
+          {
+            "kind": "pending",
+            "value": 5.13,
+            "label": 5.61
+          },
+          {
+            "kind": "avg-odds",
+            "value": 4.99,
+            "label": 5.61
+          },
+          {
+            "kind": "win",
+            "value": 4.82,
+            "label": 5.61
+          },
+          {
+            "kind": "loss",
+            "value": 4.72,
+            "label": 5.61
+          },
+          {
+            "kind": "push",
+            "value": 5.61,
+            "label": 5.61
+          },
+          {
+            "kind": "avg-odds",
+            "value": 4.99,
+            "label": 5.61
+          }
+        ]
+      },
+      {
+        "test": "desktop-1366-dark",
+        "beforeHeight": 117,
+        "afterHeight": 99,
+        "borderless": true,
+        "realValues": true,
+        "datesAndLondonDayRetained": true,
+        "noClippingOrOverlap": true,
+        "contrast": [
+          {
+            "kind": "win",
+            "value": 7.76,
+            "label": 6.78
+          },
+          {
+            "kind": "loss",
+            "value": 5.02,
+            "label": 6.78
+          },
+          {
+            "kind": "push",
+            "value": 7.42,
+            "label": 6.78
+          },
+          {
+            "kind": "pending",
+            "value": 5.97,
+            "label": 6.78
+          },
+          {
+            "kind": "avg-odds",
+            "value": 8.26,
+            "label": 6.78
+          },
+          {
+            "kind": "win",
+            "value": 7.76,
+            "label": 6.78
+          },
+          {
+            "kind": "loss",
+            "value": 5.02,
+            "label": 6.78
+          },
+          {
+            "kind": "push",
+            "value": 7.42,
+            "label": 6.78
+          },
+          {
+            "kind": "avg-odds",
+            "value": 8.26,
+            "label": 6.78
+          }
+        ]
+      },
+      {
+        "test": "desktop-1024-light",
+        "beforeHeight": 96,
+        "afterHeight": 99,
+        "borderless": true,
+        "realValues": true,
+        "datesAndLondonDayRetained": true,
+        "noClippingOrOverlap": true,
+        "contrast": [
+          {
+            "kind": "win",
+            "value": 4.82,
+            "label": 5.61
+          },
+          {
+            "kind": "loss",
+            "value": 4.72,
+            "label": 5.61
+          },
+          {
+            "kind": "push",
+            "value": 5.61,
+            "label": 5.61
+          },
+          {
+            "kind": "pending",
+            "value": 5.13,
+            "label": 5.61
+          },
+          {
+            "kind": "avg-odds",
+            "value": 4.99,
+            "label": 5.61
+          },
+          {
+            "kind": "win",
+            "value": 4.82,
+            "label": 5.61
+          },
+          {
+            "kind": "loss",
+            "value": 4.72,
+            "label": 5.61
+          },
+          {
+            "kind": "push",
+            "value": 5.61,
+            "label": 5.61
+          },
+          {
+            "kind": "avg-odds",
+            "value": 4.99,
+            "label": 5.61
+          }
+        ]
+      },
+      {
+        "test": "desktop-1024-dark",
+        "beforeHeight": 117,
+        "afterHeight": 99,
+        "borderless": true,
+        "realValues": true,
+        "datesAndLondonDayRetained": true,
+        "noClippingOrOverlap": true,
+        "contrast": [
+          {
+            "kind": "win",
+            "value": 7.76,
+            "label": 6.78
+          },
+          {
+            "kind": "loss",
+            "value": 5.02,
+            "label": 6.78
+          },
+          {
+            "kind": "push",
+            "value": 7.42,
+            "label": 6.78
+          },
+          {
+            "kind": "pending",
+            "value": 5.97,
+            "label": 6.78
+          },
+          {
+            "kind": "avg-odds",
+            "value": 8.26,
+            "label": 6.78
+          },
+          {
+            "kind": "win",
+            "value": 7.76,
+            "label": 6.78
+          },
+          {
+            "kind": "loss",
+            "value": 5.02,
+            "label": 6.78
+          },
+          {
+            "kind": "push",
+            "value": 7.42,
+            "label": 6.78
+          },
+          {
+            "kind": "avg-odds",
+            "value": 8.26,
+            "label": 6.78
+          }
+        ]
+      },
+      {
+        "test": "mobile-390",
+        "computedStylesByteIdentical": true,
+        "cardHeightUnchanged": 0,
+        "greenNoirPreserved": "1",
+        "noHorizontalOverflow": true
+      },
+      {
+        "test": "mobile-360",
+        "computedStylesByteIdentical": true,
+        "cardHeightUnchanged": 0,
+        "greenNoirPreserved": "1",
+        "noHorizontalOverflow": true
+      }
+    ]
+  },
+  "productionUi": {
+    "ok": true,
+    "phase": "production",
+    "verifiedAt": "2026-10-19T00:43:32.121Z",
+    "count": 10,
+    "checks": [
+      {
+        "test": "desktop-1920-light",
+        "beforeHeight": 96,
+        "afterHeight": 99,
+        "borderless": true,
+        "realValues": true,
+        "datesAndLondonDayRetained": true,
+        "noClippingOrOverlap": true,
+        "contrast": [
+          {
+            "kind": "win",
+            "value": 4.82,
+            "label": 5.61
+          },
+          {
+            "kind": "loss",
+            "value": 4.72,
+            "label": 5.61
+          },
+          {
+            "kind": "push",
+            "value": 5.61,
+            "label": 5.61
+          },
+          {
+            "kind": "pending",
+            "value": 5.13,
+            "label": 5.61
+          },
+          {
+            "kind": "avg-odds",
+            "value": 4.99,
+            "label": 5.61
+          },
+          {
+            "kind": "win",
+            "value": 4.82,
+            "label": 5.61
+          },
+          {
+            "kind": "loss",
+            "value": 4.72,
+            "label": 5.61
+          },
+          {
+            "kind": "push",
+            "value": 5.61,
+            "label": 5.61
+          },
+          {
+            "kind": "avg-odds",
+            "value": 4.99,
+            "label": 5.61
+          }
+        ]
+      },
+      {
+        "test": "desktop-1920-dark",
+        "beforeHeight": 117,
+        "afterHeight": 99,
+        "borderless": true,
+        "realValues": true,
+        "datesAndLondonDayRetained": true,
+        "noClippingOrOverlap": true,
+        "contrast": [
+          {
+            "kind": "win",
+            "value": 7.76,
+            "label": 6.78
+          },
+          {
+            "kind": "loss",
+            "value": 5.02,
+            "label": 6.78
+          },
+          {
+            "kind": "push",
+            "value": 7.42,
+            "label": 6.78
+          },
+          {
+            "kind": "pending",
+            "value": 5.97,
+            "label": 6.78
+          },
+          {
+            "kind": "avg-odds",
+            "value": 8.26,
+            "label": 6.78
+          },
+          {
+            "kind": "win",
+            "value": 7.76,
+            "label": 6.78
+          },
+          {
+            "kind": "loss",
+            "value": 5.02,
+            "label": 6.78
+          },
+          {
+            "kind": "push",
+            "value": 7.42,
+            "label": 6.78
+          },
+          {
+            "kind": "avg-odds",
+            "value": 8.26,
+            "label": 6.78
+          }
+        ]
+      },
+      {
+        "test": "desktop-1440-light",
+        "beforeHeight": 96,
+        "afterHeight": 99,
+        "borderless": true,
+        "realValues": true,
+        "datesAndLondonDayRetained": true,
+        "noClippingOrOverlap": true,
+        "contrast": [
+          {
+            "kind": "win",
+            "value": 4.82,
+            "label": 5.61
+          },
+          {
+            "kind": "loss",
+            "value": 4.72,
+            "label": 5.61
+          },
+          {
+            "kind": "push",
+            "value": 5.61,
+            "label": 5.61
+          },
+          {
+            "kind": "pending",
+            "value": 5.13,
+            "label": 5.61
+          },
+          {
+            "kind": "avg-odds",
+            "value": 4.99,
+            "label": 5.61
+          },
+          {
+            "kind": "win",
+            "value": 4.82,
+            "label": 5.61
+          },
+          {
+            "kind": "loss",
+            "value": 4.72,
+            "label": 5.61
+          },
+          {
+            "kind": "push",
+            "value": 5.61,
+            "label": 5.61
+          },
+          {
+            "kind": "avg-odds",
+            "value": 4.99,
+            "label": 5.61
+          }
+        ]
+      },
+      {
+        "test": "desktop-1440-dark",
+        "beforeHeight": 117,
+        "afterHeight": 99,
+        "borderless": true,
+        "realValues": true,
+        "datesAndLondonDayRetained": true,
+        "noClippingOrOverlap": true,
+        "contrast": [
+          {
+            "kind": "win",
+            "value": 7.76,
+            "label": 6.78
+          },
+          {
+            "kind": "loss",
+            "value": 5.02,
+            "label": 6.78
+          },
+          {
+            "kind": "push",
+            "value": 7.42,
+            "label": 6.78
+          },
+          {
+            "kind": "pending",
+            "value": 5.97,
+            "label": 6.78
+          },
+          {
+            "kind": "avg-odds",
+            "value": 8.26,
+            "label": 6.78
+          },
+          {
+            "kind": "win",
+            "value": 7.76,
+            "label": 6.78
+          },
+          {
+            "kind": "loss",
+            "value": 5.02,
+            "label": 6.78
+          },
+          {
+            "kind": "push",
+            "value": 7.42,
+            "label": 6.78
+          },
+          {
+            "kind": "avg-odds",
+            "value": 8.26,
+            "label": 6.78
+          }
+        ]
+      },
+      {
+        "test": "desktop-1366-light",
+        "beforeHeight": 96,
+        "afterHeight": 99,
+        "borderless": true,
+        "realValues": true,
+        "datesAndLondonDayRetained": true,
+        "noClippingOrOverlap": true,
+        "contrast": [
+          {
+            "kind": "win",
+            "value": 4.82,
+            "label": 5.61
+          },
+          {
+            "kind": "loss",
+            "value": 4.72,
+            "label": 5.61
+          },
+          {
+            "kind": "push",
+            "value": 5.61,
+            "label": 5.61
+          },
+          {
+            "kind": "pending",
+            "value": 5.13,
+            "label": 5.61
+          },
+          {
+            "kind": "avg-odds",
+            "value": 4.99,
+            "label": 5.61
+          },
+          {
+            "kind": "win",
+            "value": 4.82,
+            "label": 5.61
+          },
+          {
+            "kind": "loss",
+            "value": 4.72,
+            "label": 5.61
+          },
+          {
+            "kind": "push",
+            "value": 5.61,
+            "label": 5.61
+          },
+          {
+            "kind": "avg-odds",
+            "value": 4.99,
+            "label": 5.61
+          }
+        ]
+      },
+      {
+        "test": "desktop-1366-dark",
+        "beforeHeight": 117,
+        "afterHeight": 99,
+        "borderless": true,
+        "realValues": true,
+        "datesAndLondonDayRetained": true,
+        "noClippingOrOverlap": true,
+        "contrast": [
+          {
+            "kind": "win",
+            "value": 7.76,
+            "label": 6.78
+          },
+          {
+            "kind": "loss",
+            "value": 5.02,
+            "label": 6.78
+          },
+          {
+            "kind": "push",
+            "value": 7.42,
+            "label": 6.78
+          },
+          {
+            "kind": "pending",
+            "value": 5.97,
+            "label": 6.78
+          },
+          {
+            "kind": "avg-odds",
+            "value": 8.26,
+            "label": 6.78
+          },
+          {
+            "kind": "win",
+            "value": 7.76,
+            "label": 6.78
+          },
+          {
+            "kind": "loss",
+            "value": 5.02,
+            "label": 6.78
+          },
+          {
+            "kind": "push",
+            "value": 7.42,
+            "label": 6.78
+          },
+          {
+            "kind": "avg-odds",
+            "value": 8.26,
+            "label": 6.78
+          }
+        ]
+      },
+      {
+        "test": "desktop-1024-light",
+        "beforeHeight": 96,
+        "afterHeight": 99,
+        "borderless": true,
+        "realValues": true,
+        "datesAndLondonDayRetained": true,
+        "noClippingOrOverlap": true,
+        "contrast": [
+          {
+            "kind": "win",
+            "value": 4.82,
+            "label": 5.61
+          },
+          {
+            "kind": "loss",
+            "value": 4.72,
+            "label": 5.61
+          },
+          {
+            "kind": "push",
+            "value": 5.61,
+            "label": 5.61
+          },
+          {
+            "kind": "pending",
+            "value": 5.13,
+            "label": 5.61
+          },
+          {
+            "kind": "avg-odds",
+            "value": 4.99,
+            "label": 5.61
+          },
+          {
+            "kind": "win",
+            "value": 4.82,
+            "label": 5.61
+          },
+          {
+            "kind": "loss",
+            "value": 4.72,
+            "label": 5.61
+          },
+          {
+            "kind": "push",
+            "value": 5.61,
+            "label": 5.61
+          },
+          {
+            "kind": "avg-odds",
+            "value": 4.99,
+            "label": 5.61
+          }
+        ]
+      },
+      {
+        "test": "desktop-1024-dark",
+        "beforeHeight": 117,
+        "afterHeight": 99,
+        "borderless": true,
+        "realValues": true,
+        "datesAndLondonDayRetained": true,
+        "noClippingOrOverlap": true,
+        "contrast": [
+          {
+            "kind": "win",
+            "value": 7.76,
+            "label": 6.78
+          },
+          {
+            "kind": "loss",
+            "value": 5.02,
+            "label": 6.78
+          },
+          {
+            "kind": "push",
+            "value": 7.42,
+            "label": 6.78
+          },
+          {
+            "kind": "pending",
+            "value": 5.97,
+            "label": 6.78
+          },
+          {
+            "kind": "avg-odds",
+            "value": 8.26,
+            "label": 6.78
+          },
+          {
+            "kind": "win",
+            "value": 7.76,
+            "label": 6.78
+          },
+          {
+            "kind": "loss",
+            "value": 5.02,
+            "label": 6.78
+          },
+          {
+            "kind": "push",
+            "value": 7.42,
+            "label": 6.78
+          },
+          {
+            "kind": "avg-odds",
+            "value": 8.26,
+            "label": 6.78
+          }
+        ]
+      },
+      {
+        "test": "mobile-390",
+        "computedStylesByteIdentical": true,
+        "cardHeightUnchanged": 0,
+        "greenNoirPreserved": "1",
+        "noHorizontalOverflow": true
+      },
+      {
+        "test": "mobile-360",
+        "computedStylesByteIdentical": true,
+        "cardHeightUnchanged": 0,
+        "greenNoirPreserved": "1",
+        "noHorizontalOverflow": true
+      }
+    ]
+  },
+  "mobileUnchanged": true,
+  "all7InlineScriptBlocksUnchanged": true,
+  "other81PublicAssetsUnchanged": true,
+  "mainWorkerShaUnchanged": "ddfc09cc46e8963a21d9e76e146b936f5243e50860693545d9569104c2a099cc",
+  "publicPathsVerified": 83,
+  "testsPassed": 18,
+  "protectedSettledRecordsPreserved": 8201,
+  "configurationUnchanged": [
+    {
+      "name": "settings",
+      "unchanged": true
+    },
+    {
+      "name": "schedules",
+      "unchanged": true
+    },
+    {
+      "name": "domains",
+      "unchanged": true
+    },
+    {
+      "name": "routes",
+      "unchanged": true
+    }
+  ],
+  "noEngineApiLedgerSettlementChanges": true,
+  "consoleErrors": 0,
+  "consoleWarnings": [],
+  "rollback": {
+    "version": "d23bda6c-7015-4e57-9f2e-87e754a667cb",
+    "preChangeDeployment": "dfff8e80-90ca-4b70-a652-81d37924259f",
+    "process": "Same workflow phase=restore, require Active is this owned candidate and configuration matches baseline. Restore the exact immediately preceding mobile Borderless & Soft Elevation baseline; verify public bytes and backend health."
+  },
+  "knownPreExistingIssue": "Optional /color-semantics-stat-entry-20261011.js baseline404 retained; no new missing assets."
+}
