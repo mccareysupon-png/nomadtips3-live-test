@@ -1,7 +1,7 @@
 {
   "phase": "candidate",
-  "run": "39213414187",
-  "startedAt": "2026-10-19T07:02:38.628Z",
+  "run": "39213824876",
+  "startedAt": "2026-10-19T07:06:37.434Z",
   "mark": "B46_ALLMATCHES_DISABLE_AUTOLIVE_20261019",
   "before": "e1c37b85-0861-40f8-8067-474c1105bb25",
   "healthBefore": [
@@ -33,6 +33,22 @@
     {
       "width": 390,
       "route": "/",
+      "href": "https://ball46.com/",
+      "view": "live",
+      "active": [
+        "all"
+      ],
+      "headline": "All Matches",
+      "count": 0,
+      "statusKinds": [],
+      "mobileClock": true,
+      "previousEmptyFix": true,
+      "allHead": "All matches0",
+      "errors": []
+    },
+    {
+      "width": 390,
+      "route": "/?status=all",
       "href": "https://ball46.com/?status=live",
       "view": "live",
       "active": [
@@ -50,22 +66,6 @@
     },
     {
       "width": 390,
-      "route": "/?status=all",
-      "href": "https://ball46.com/?status=live",
-      "view": "live",
-      "active": [
-        "live"
-      ],
-      "headline": "All Matches",
-      "count": 0,
-      "statusKinds": [],
-      "mobileClock": true,
-      "previousEmptyFix": true,
-      "allHead": "All matches2240",
-      "errors": []
-    },
-    {
-      "width": 390,
       "route": "/?status=live",
       "href": "https://ball46.com/?status=live",
       "view": "live",
@@ -73,11 +73,13 @@
         "live"
       ],
       "headline": "Live Matches",
-      "count": 0,
-      "statusKinds": [],
+      "count": 2,
+      "statusKinds": [
+        "live"
+      ],
       "mobileClock": true,
       "previousEmptyFix": true,
-      "allHead": "All matches0",
+      "allHead": "All matches2240",
       "errors": []
     },
     {
@@ -157,14 +159,7 @@
       "errors": []
     }
   ],
-  "tuneBeforeSHA": "65081d9cdbdaa6c02d0a2b6ba75e9a0ee9effef00b1948b5d02c53b0681f164a",
-  "tuneAfterSHA": "a0cc90d18e0b4b64b5dade62144b6f053e85490144c98c468001460ecc64e90b",
-  "candidate": "008948d7-7b46-41a5-b473-2ab550538854",
-  "base": "e1c37b85-0861-40f8-8067-474c1105bb25",
-  "sourceSHA": "b5da3c598e1462b6e0fda3800d17e2a31589ea5f69540cc7105fc3e39edc49b3",
-  "candidateSHA": "b5da3c598e1462b6e0fda3800d17e2a31589ea5f69540cc7105fc3e39edc49b3",
-  "assetCount": 82,
   "ok": false,
-  "error": "PREVIEW_TUNE_SHA_MISMATCH\n+ actual - expected\n\n+ '65081d9cdbdaa6c02d0a2b6ba75e9a0ee9effef00b1948b5d02c53b0681f164a'\n- 'a0cc90d18e0b4b64b5dade62144b6f053e85490144c98c468001460ecc64e90b'\n",
-  "finishedAt": "2026-10-19T07:03:35.384Z"
+  "error": "SCRIPT_ORDER_MUST_BE_REVIEWED",
+  "finishedAt": "2026-10-19T07:07:24.112Z"
 }
