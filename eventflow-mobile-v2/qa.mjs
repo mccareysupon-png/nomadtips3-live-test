@@ -45,7 +45,7 @@ const page=await browser.newPage({viewport:{width:390,height:1000},deviceScaleFa
 const errors=[];page.on('pageerror',e=>errors.push(e.message));
 async function setup(script,width){
   await page.setViewportSize({width,height:1000});
-  await page.goto('about:blank');
+  await page.goto('https://ball46.com/robots.txt');
   await page.setContent('<html data-theme="dark"><head><style>body{margin:0;background:#030605;color:#fff;font-family:Arial}.workspace{width:100%;box-sizing:border-box}.match-expanded-inner{display:block!important}.expand-full-market-card{display:none!important}.match-expanded{margin:0!important;padding:0!important}.expand-flow-card{box-sizing:border-box;width:100%}.expand-flow-line{fill:none;stroke-width:2}.expand-flow-line.home{stroke:#31b878}.expand-flow-line.away{stroke:#e2c94c}.expand-flow-grid{stroke:#33443c;stroke-width:.5}.expand-flow-axis{fill:#a7b8b0;font-size:10px}'+css+'</style></head><body><main class="workspace singlepage"><div data-board-sections><div class="match-row" data-match-id="'+id+'">Real fixture: '+id+'</div></div></main></body></html>');
   await page.route('**/api/engine/board*',r=>r.fulfill({json:{...board,fixtures:[chosen]}}));
   await page.route('**/api/engine/history*',r=>r.fulfill({json:history}));
