@@ -162,12 +162,13 @@
     const result=String(item.result||'PENDING').toUpperCase();
     const state=result.toLowerCase();
     const search=[item.home,item.away,item.league,item.pick,result].join(' ').toLowerCase();
+    const note=item.autoTracked===true?'Automatically settled from the connected final-score feed.':'Result reviewed manually by Add K after owner command.';
     return `<article class="result-card ${state}" data-search="${esc(search)}">
       <div class="result-main">
         <div class="result-meta"><span>${esc(item.league||'—')}</span><span>•</span><span>${esc(item.kickoff||item.date||'—')}</span></div>
         <div class="result-match"><span>${esc(item.home||'Home')}</span><span class="vs">VS</span><span>${esc(item.away||'Away')}</span></div>
         <div class="result-pick"><strong>${esc(item.pick||'—')}</strong></div>
-        <div class="result-summary">Result reviewed manually by Add K after owner command.</div>
+        <div class="result-summary">${esc(note)}</div>
       </div>
       <div class="result-settle">
         <div class="settle-box"><span>FINAL SCORE</span><strong>${esc(item.ft||item.score||'—')}</strong></div>
@@ -202,23 +203,90 @@
     const tabs=[...document.querySelectorAll('.day-tab')];
     let today=[],results=[],active='today';
 
+    // The visible results page is a view over the complete verified ledger plus
+    // the tracker history. A page boundary never changes the cumulative KPIs.
+    let trackedRecords=[],resultPage=1,lastResultsHtml='';
+    const RESULT_PAGE_SIZE=15;
+    const SETTLED_STATES=new Set(['WIN','LOSS','PUSH']);
+
+    function mergedResults(){
+      const rows=[...results];
+      const knownIds=new Set(rows.map(row=>String(row?.id||'').trim()).filter(Boolean));
+      for(const record of trackedRecords){
+        const id=String(record?.id||'').trim();
+        const outcome=String(record?.result||'').toUpperCase();
+        const score=record?.score;
+        if(!id||knownIds.has(id)||record?.status!=='FT'||!SETTLED_STATES.has(outcome))continue;
+        if(!Array.isArray(score)||score.length!==2||!score.every(n=>Number.isInteger(Number(n))&&Number(n)>=0))continue;
+        if(!record.home||!record.away||!record.pick)continue;
+        knownIds.add(id);
+        rows.push({
+          id,
+          date:record.date||String(record.settledAt||'').slice(0,10),
+          settledAt:record.settledAt||null,
+          league:record.league||'—',
+          home:record.home,
+          away:record.away,
+          pick:record.pick,
+          market:record.market,
+          odds:record.odds,
+          ft:String(Number(score[0]))+'-'+String(Number(score[1])),
+          result:outcome,
+          autoTracked:true,
+        });
+      }
+      rows.sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))||
+        String(b.settledAt||'').localeCompare(String(a.settledAt||'')));
+      return rows;
+    }
+
+    function renderResults(){
+      const all=mergedResults();
+      const stats=summary(all);
+      const set=(id,value)=>{const node=document.getElementById(id);if(node)node.textContent=value;};
+      set('resultCount',String(all.length));
+      set('statSettled',String(stats.settled));
+      set('statWins',String(stats.wins));
+      set('statLosses',String(stats.losses));
+      set('statPushes',String(stats.pushes));
+      set('statWinRate',stats.winRate===null?'—':stats.winRate.toFixed(2)+'%');
+      set('statAvgOdds',stats.avgOdds===null?'—':stats.avgOdds.toFixed(2));
+      const q=String(input?.value||'').trim().toLowerCase();
+      const filtered=q?all.filter(row=>[row.home,row.away,row.league,row.pick,row.result,row.date].join(' ').toLowerCase().includes(q)):all;
+      const pages=Math.max(1,Math.ceil(filtered.length/RESULT_PAGE_SIZE));
+      resultPage=Math.max(1,Math.min(resultPage,pages));
+      const start=(resultPage-1)*RESULT_PAGE_SIZE;
+      const visible=filtered.slice(start,start+RESULT_PAGE_SIZE);
+      let html=visible.length?visible.map(resultCard).join(''):
+        empty(q?'NO MATCHING RESULTS':'NO SETTLED RESULTS YET',
+          q?'Try another team, league or selection.':'Only verified final results enter Sirius statistics.');
+      if(pages>1){
+        html+='<nav class="p3-result-pages" aria-label="Sirius results pagination">'+
+          '<button type="button" data-result-page="'+(resultPage-1)+'"'+(resultPage===1?' disabled':'')+'>Previous</button>'+
+          '<span>PAGE '+resultPage+' OF '+pages+' · '+RESULT_PAGE_SIZE+' RESULTS PER PAGE</span>'+
+          '<button type="button" data-result-page="'+(resultPage+1)+'"'+(resultPage===pages?' disabled':'')+'>Next</button></nav>';
+      }
+      if(html!==lastResultsHtml){resultList.innerHTML=html;lastResultsHtml=html;}
+    }
+
+    // Invoked only when the tracker endpoint returns valid records.
+    // Historical settled matches remain visible when "today" rotates.
+    window.P3SetTrackedResults=records=>{
+      if(!Array.isArray(records))return;
+      trackedRecords=records;
+      renderResults();
+    };
+
+
     try{
       const data=await load();
       today=Array.isArray(data.today)?data.today:[];
       results=Array.isArray(data.results)?data.results:[];
-      const stats=summary(results);
       document.body.dataset.pickMode=today.length===1?'solo':today.length<=3?'spotlight':'grid';
       document.getElementById('pickCount').textContent=today.length;
       document.getElementById('todayCount').textContent=today.length;
-      document.getElementById('resultCount').textContent=results.length;
-      document.getElementById('statSettled').textContent=stats.settled;
-      document.getElementById('statWins').textContent=stats.wins;
-      document.getElementById('statLosses').textContent=stats.losses;
-      document.getElementById('statPushes').textContent=stats.pushes;
-      document.getElementById('statWinRate').textContent=stats.winRate===null?'—':`${stats.winRate.toFixed(2)}%`;
-      document.getElementById('statAvgOdds').textContent=stats.avgOdds===null?'—':stats.avgOdds.toFixed(2);
       predictionList.innerHTML=today.length?today.map(predictionCard).join(''):empty('READY FOR OWNER COMMAND','No Prediction3 picks have been published. NO PICK remains a valid daily result.');
-      resultList.innerHTML=results.length?results.map(resultCard).join(''):empty('NO SETTLED RESULTS YET','Prediction3 statistics start from zero and remain separate from Prediction2 / KING Statistics V3.');
+      renderResults();
     }catch(error){
       console.error('Prediction3 load failed',error);
       predictionList.innerHTML=empty('PREDICTION3 DATA UNAVAILABLE','The isolated manual ledger could not be loaded. No automatic fallback or engine data was used.');
@@ -226,9 +294,11 @@
     }
 
     function applySearch(){
+      if(active==='results'){resultPage=1;renderResults();return;}
       const q=String(input?.value||'').trim().toLowerCase();
-      const host=active==='today'?predictionList:resultList;
-      host.querySelectorAll('[data-search]').forEach(card=>{card.hidden=Boolean(q)&&!String(card.dataset.search||'').includes(q);});
+      predictionList.querySelectorAll('[data-search]').forEach(card=>{
+        card.hidden=Boolean(q)&&!String(card.dataset.search||'').includes(q);
+      });
     }
 
     function setView(view){
@@ -242,6 +312,15 @@
       applySearch();
     }
 
+    resultList.addEventListener('click',event=>{
+      const button=event.target.closest('[data-result-page]');
+      if(!button||!resultList.contains(button)||button.disabled)return;
+      const next=Number(button.dataset.resultPage);
+      if(!Number.isInteger(next)||next<1)return;
+      resultPage=next;
+      renderResults();
+      document.querySelector('.toolbar')?.scrollIntoView({block:'start',behavior:'smooth'});
+    });
     tabs.forEach(tab=>tab.addEventListener('click',()=>setView(tab.dataset.view||'today')));
     if(input)input.addEventListener('input',applySearch);
     setView('today');

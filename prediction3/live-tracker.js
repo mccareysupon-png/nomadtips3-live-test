@@ -222,64 +222,8 @@
     });
   }
 
-  function autoResultCard(item,record){
-    const result=String(record?.result||'PENDING').toUpperCase();
-    const state=result.toLowerCase();
-    const kickoff=localKickoff(kickoffIso(item,record),item?.kickoff||item?.date||'—');
-    return `<article class="result-card ${esc(state)}" data-auto-result-id="${esc(item.id)}" data-search="${esc(`${item.home||''} ${item.away||''} ${item.league||''} ${item.pick||''} ${result}`.toLowerCase())}">
-      <div class="result-main">
-        <div class="result-meta"><span>${esc(item.league||'—')}</span><span>•</span><span>${esc(kickoff)}</span></div>
-        <div class="result-match"><span>${esc(item.home||'Home')}</span><span class="vs">VS</span><span>${esc(item.away||'Away')}</span></div>
-        <div class="result-pick"><strong>${esc(item.pick||'—')}</strong></div>
-        <div class="result-summary">Automatically settled from the connected live-score feed.</div>
-      </div>
-      <div class="result-settle">
-        <div class="settle-box"><span>FINAL SCORE</span><strong>${esc(scoreText(record).replace(' : ','-'))}</strong></div>
-        <div class="settle-box"><span>ODDS</span><strong>${fmtOdds(item.referenceOdds||item.odds)}</strong></div>
-        <div class="settle-box"><span>RESULT</span><strong class="settle-result ${esc(state)}">${esc(result)}</strong></div>
-      </div>
-    </article>`;
-  }
-
-  function mergedSettled(records){
-    const staticRows=Array.isArray(ledger?.results)?ledger.results:[];
-    const dynamic=[];
-    for(const item of Array.isArray(ledger?.today)?ledger.today:[]){
-      const record=recordFor(item,records);
-      if(!record?.result||record.status!=='FT')continue;
-      if(staticRows.some(row=>String(row.id||'')===String(item.id||'')))continue;
-      dynamic.push({item,record});
-    }
-    return {staticRows,dynamic};
-  }
-
   function applyResults(records){
-    if(!ledger)return;
-    const list=document.getElementById('resultList');
-    if(!list)return;
-    const {staticRows,dynamic}=mergedSettled(records);
-    list.querySelectorAll('[data-auto-result-id]').forEach(node=>node.remove());
-    if(dynamic.length){
-      list.insertAdjacentHTML('beforeend',dynamic.map(({item,record})=>autoResultCard(item,record)).join(''));
-    }
-
-    const all=[
-      ...staticRows.map(row=>({result:String(row.result||'').toUpperCase(),odds:Number(row.odds)})),
-      ...dynamic.map(({item,record})=>({result:String(record.result||'').toUpperCase(),odds:Number(item.referenceOdds||item.odds)})),
-    ].filter(row=>['WIN','LOSS','PUSH'].includes(row.result));
-    const wins=all.filter(row=>row.result==='WIN').length;
-    const losses=all.filter(row=>row.result==='LOSS').length;
-    const pushes=all.filter(row=>row.result==='PUSH').length;
-    const decided=wins+losses;
-    const odds=all.map(row=>row.odds).filter(Number.isFinite);
-    const set=(id,value)=>{const el=document.getElementById(id);if(el)el.textContent=value;};
-    set('statSettled',String(all.length));
-    set('statWins',String(wins));
-    set('statLosses',String(losses));
-    set('statPushes',String(pushes));
-    set('statWinRate',decided?`${(wins/decided*100).toFixed(1)}%`:'—');
-    set('statAvgOdds',odds.length?(odds.reduce((a,b)=>a+b,0)/odds.length).toFixed(2):'—');
-    set('resultCount',String(staticRows.length+dynamic.length));
+    if(typeof window.P3SetTrackedResults==='function')window.P3SetTrackedResults(records);
   }
 
   async function waitForCards(timeout=15000){
@@ -297,7 +241,7 @@
     if(trackerState.status==='rejected')console.warn('Prediction3 live tracking unavailable; keeping local kickoff display.',trackerState.reason);
     if(liveState.status==='rejected')console.warn('Sirius live analytics unavailable; keeping Prediction3 card compact.',liveState.reason);
     applyToday(records);
-    applyResults(records);
+    if(trackerState.status==='fulfilled'&&Array.isArray(trackerState.value?.records))applyResults(records);
     applySirius(records,matches);
   }
 
