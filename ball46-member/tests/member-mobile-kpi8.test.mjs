@@ -73,7 +73,7 @@ test('desktop KPI cards have raised graphite depth and preserve outcome colors',
 });
 test('mobile eight KPI cards gain clean soft elevation without size or color changes',()=>{
   const end=css.slice(css.indexOf('/* BALL46 MEMBER — Desktop KPI Premium Soft Elevation; Mobile V6 preserved (2026-10-19) */'));
-  const mobile=end.slice(end.indexOf('/* Keep the approved V6'));
+  const mobile=end.slice(end.indexOf('/* Keep the approved V6'),end.indexOf('/* BALL46 MEMBER — Desktop KPI 10% shorter, mobile unchanged (2026-10-19) */'));
   assert.match(mobile,/@media\(max-width:767px\)/);
   assert.match(mobile,/border:0!important/);
   assert.match(mobile,/0 8px 17px rgba\(0,0,0,\.24\)/);
@@ -92,7 +92,7 @@ test('desktop KPI cards are exactly 10 percent shorter without altering mobile',
   assert.ok(finish.startsWith(marker),'height override must exist');
   assert.match(finish,/@media\(min-width:768px\) and \(max-width:1559px\)\{\s*\.page-member #dailySummary \.summary-stat\{\s*height:66\.6px;\s*min-height:66\.6px;\s*padding-block:9px;/);
   assert.match(finish,/@media\(min-width:1560px\)\{\s*\.page-member #dailySummary \.summary-stat\{\s*height:63px;\s*min-height:63px;\s*padding-block:7\.2px;/);
-  assert.equal(66.6/74,.9);
+  assert.ok(Math.abs(66.6/74-.9)<1e-12);
   assert.equal(63/70,.9);
   assert.doesNotMatch(finish,/@media\(max-width:767px\)/);
   assert.doesNotMatch(finish,/background:|box-shadow:|font-size:|letter-spacing:|width:/);
