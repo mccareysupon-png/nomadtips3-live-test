@@ -97,7 +97,7 @@ function patchHomepage(html){
  assert(!html.includes(MARKER),'LOADER_PATCH_ALREADY_PRESENT');
  assert.equal(html.split('</head>').length,2,'HTML_HEAD_ANCHOR_CHANGED');
  assert.equal(html.split(bodyTag).length,2,'HTML_BODY_ANCHOR_CHANGED');
- assert(html.includes("window.dispatchEvent(new CustomEvent('ball46:board-first-paint')"),'BOARD_READY_EVENT_NOT_FOUND');
+ assert(html.includes('data-board-sections'),'MATCH_BOARD_ANCHOR_MISSING');
  assert(html.includes('B46_MOBILE_FIRST_PAINT_GUARD_20261019'),'MOBILE_FLASH_GUARD_MISSING');
  const next=html.replace('</head>',style+runtime+'</head>').replace(bodyTag,bodyTag+loader);
  assert.equal(next.replace(style+runtime,'').replace(loader,''),html,'UNRELATED_HTML_CHANGED');
@@ -139,53 +139,61 @@ async function health(host){
  out.push({path:p,ok:j.ok,fixtures:j.fixtures?.length,signals:j.signals?.length,rows:j.rows?.length});}return out;
 }
 async function visual(host,fixed){
- const {chromium}=await import('playwright');const browser=await chromium.launch({headless:true});const output=[];
+ const {chromium}=await import('playwright');const browser=await chromium.launch({headless:true});
+ const output=[];
  try{
   for(const width of [390,1280]){
    const page=await browser.newPage({viewport:{width,height:850}});
    const errors=[];page.on('pageerror',e=>errors.push(e.message));
-   await page.goto(host+'/?firstPaintAudit='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
-   await page.waitForTimeout(2100);
-   const normal=await page.evaluate(()=>{
-     const root=document.documentElement,board=document.querySelector('[data-board-sections]'),newUI=document.querySelector('#b46gn-results'),legacy=document.querySelector('.dash-shell');
-     return {ready:root.dataset.b46gn==='1',legacyVisibility:getComputedStyle(legacy).visibility,oldBoardDisplay:getComputedStyle(board).display,
-       newBoardDisplay:newUI?getComputedStyle(newUI).display:null,headGuard:!!document.querySelector('#b46-mobile-first-paint-guard-20261019'),
-       priorSignalBadge:document.documentElement.innerHTML.includes('B46_MOBILE_SIGNAL_COUNT_BADGE_20261019'),url:location.href,
-       chosenStatus:document.querySelector('[data-status-filter].active')?.dataset.statusFilter};
+   // Delay real match data on candidate and on live baseline, ensuring
+   // the loading ring cannot disappear merely because DOMContentLoaded fires.
+   await page.route('**/api/engine/board**',async route=>{
+     await new Promise(resolve=>setTimeout(resolve,1400));
+     await route.continue();
    });
-   assert(normal.priorSignalBadge,'SIGNAL_BADGE_PATCH_WAS_LOST');
-   if(width===390){
-     assert(normal.ready,'GREEN_NOIR_NOT_INITIALIZED');
-     assert.equal(normal.chosenStatus,'all','ALL_MATCHES_DEFAULT_CHANGED');
-     if(fixed){
-       assert(normal.headGuard,'CRITICAL_HEAD_CSS_MISSING');
-       const wait=await page.evaluate(()=>{
-         const root=document.documentElement,old=root.dataset.b46gn;
-         delete root.dataset.b46gn;
-         delete root.dataset.b46BootFallback;
-         const before={visibility:getComputedStyle(document.querySelector('.dash-shell')).visibility,
-          topMask:getComputedStyle(document.body,'::before').content,
-          headerMask:getComputedStyle(document.body,'::after').content};
-         root.dataset.b46BootFallback='1';
-         const fallback={visibility:getComputedStyle(document.querySelector('.dash-shell')).visibility,topMask:getComputedStyle(document.body,'::before').content};
-         delete root.dataset.b46BootFallback;root.dataset.b46gn=old;
-         const after={visibility:getComputedStyle(document.querySelector('.dash-shell')).visibility};
-         return {before,fallback,after};
-       });
-       assert.equal(wait.before.visibility,'hidden','OLD_UI_VISIBLE_DURING_STARTUP');
-       assert(wait.before.headerMask.includes('ball46'),'EXPECTED_LOADING_SHELL_MISSING');
-       assert.equal(wait.fallback.visibility,'visible','FAILSAFE_OLD_UI_NOT_RESTORED');
-       assert.equal(wait.after.visibility,'visible','GREEN_NOIR_SHELL_NOT_RESTORED');
-       output.push({width,normal,guard:wait,errors:errors.slice(0,2)});
-     }else{
-       output.push({width,normal,errors:errors.slice(0,2)});
-     }
-   }else{
-     assert.equal(normal.legacyVisibility,'visible','DESKTOP_LEGACY_LAYOUT_HIDDEN');
-     assert(!normal.ready,'DESKTOP_GREEN_NOIR_SHOULD_BE_DISABLED');
-     output.push({width,normal,errors:errors.slice(0,2)});
-   }
-   assert.equal(errors.length,0,'PAGE_JS_ERROR');
+   await page.goto(host+'/?orbitQA='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+   const early=await page.evaluate(()=>{
+      const e=document.querySelector('#b46-data-orbit-loading');
+      const computed=e?getComputedStyle(e):null;
+      const ring=e?.querySelector('.b46-orbit-ring');
+      return {exists:!!e,display:computed?.display,opacity:computed?.opacity,visibility:computed?.visibility,
+      center:!!ring,cycle:ring?getComputedStyle(ring,'::before').animationDuration:null,
+      mode:document.documentElement.dataset.b46gn||null,done:document.documentElement.dataset.b46OrbitDone||null,
+      state:document.querySelector('[data-state]')?.textContent.trim()||null};
+   });
+   if(fixed){
+     assert(early.exists,'LOADER_MISSING_FROM_FIRST_HTML_PAINT');
+     assert.equal(early.visibility,'visible','LOADER_INVISIBLE_BEFORE_DATA');
+     assert.equal(early.cycle,'2.8s','LIGHT_ORBIT_NOT_ABOUT_THREE_SECONDS');
+     assert.notEqual(early.done,'1','LOADER_DISMISSED_BEFORE_BOARD');
+   }else assert(!early.exists,'OLD_PRODUCTION_ALREADY_HAS_LOADER');
+   await page.waitForFunction(()=>document.querySelector('[data-state]')?.classList.contains('live')||document.querySelector('[data-state]')?.classList.contains('warn'),null,{timeout:16000});
+   await page.waitForTimeout(350);
+   const ready=await page.evaluate(()=>{
+     const e=document.querySelector('#b46-data-orbit-loading');
+     return {done:document.documentElement.dataset.b46OrbitDone||null,reason:document.documentElement.dataset.b46OrbitReason||null,
+       overlayVisible:e?getComputedStyle(e).visibility:null,mode:document.documentElement.dataset.b46gn||null,
+       status:document.querySelector('[data-state]')?.className||null,loadingBoard:!!document.querySelector('[data-board-sections] .board-loading'),
+       cardCount:document.querySelectorAll('#b46gn-cards [data-b46gn-fixture]').length,
+       rowCount:document.querySelectorAll('[data-board-sections] .match-row[data-match-id]').length,
+       defaultStatus:document.querySelector('[data-status-filter].active')?.dataset.statusFilter,
+       hasSignalBadge:document.documentElement.innerHTML.includes('B46_MOBILE_SIGNAL_COUNT_BADGE_20261019'),
+       hasMobileFlashFix:document.documentElement.innerHTML.includes('B46_MOBILE_FIRST_PAINT_GUARD_20261019'),
+       bodyView:document.body.dataset.workspaceView};
+   });
+   assert(ready.hasSignalBadge&&ready.hasMobileFlashFix,'PREVIOUS_FEATURES_MISSING');
+   assert.equal(ready.defaultStatus,'all','DEFAULT_ALL_MATCHES_CHANGED');
+   if(fixed){
+     await page.waitForFunction(()=>document.documentElement.dataset.b46OrbitDone==='1',null,{timeout:2000});
+     const done=await page.evaluate(()=>({reason:document.documentElement.dataset.b46OrbitReason,visible:document.querySelector('#b46-data-orbit-loading')?getComputedStyle(document.querySelector('#b46-data-orbit-loading')).visibility:null}));
+     assert.equal(done.reason,'data-ready','LOADER_NOT_LINKED_TO_REAL_DATA');
+     assert.notEqual(done.visible,'visible','LOADER_STILL_VISIBLE_AFTER_DATA');
+     ready.finished=done;
+   }else assert(ready.done===null,'OLD_PRODUCTION_READY_FLAG_CHANGED');
+   if(width===390)assert.equal(ready.mode,'1','MOBILE_GREEN_NOIR_MISSING');
+   if(width===1280)assert(ready.mode===null,'DESKTOP_LAYOUT_CHANGED');
+   assert.equal(errors.length,0,'PAGE_JAVASCRIPT_ERRORS');
+   output.push({width,early,ready,errors:errors.slice(0,3)});
    await page.close();
   }
  }finally{await browser.close()}
