@@ -1,0 +1,18 @@
+name: BALL46 Inspect Mobile Auto Live Source
+on:
+  push:
+    branches: [fix/ball46-all-matches-landing-real-20261019]
+    paths: ['.github/workflows/ball46-inspect-tune-autolive.yml']
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - run: |
+          node --input-type=module <<'JS'
+          const url='https://ball46.com/dashboard-v2-tune.js?rootAudit='+Date.now();
+          const r=await fetch(url),s=await r.text();
+          console.log('TUNE_SOURCE',JSON.stringify({url,status:r.status,size:s.length,first:s.slice(0,12500)}));
+          JS
