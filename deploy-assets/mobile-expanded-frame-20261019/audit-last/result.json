@@ -1,0 +1,35 @@
+{
+  "phase": "candidate",
+  "run": "39198659964",
+  "startedAt": "2026-10-19T04:17:07.835Z",
+  "mark": "B46_MOBILE_EXPANDED_GREEN_FRAME_20261019",
+  "before": "6df28dd8-2fc0-44a6-b8c0-52cf2581281b",
+  "healthBefore": [
+    {
+      "path": "/api/engine/health",
+      "ok": true
+    },
+    {
+      "path": "/api/full-market/health",
+      "ok": true
+    },
+    {
+      "path": "/api/engine/board",
+      "ok": true,
+      "fixtures": 2240
+    },
+    {
+      "path": "/api/engine/signals",
+      "ok": true,
+      "signals": 1
+    },
+    {
+      "path": "/api/engine/statistics?paged=1",
+      "ok": true,
+      "rows": 500
+    }
+  ],
+  "ok": false,
+  "error": "DESKTOP_CHANGED",
+  "finishedAt": "2026-10-19T04:17:13.122Z"
+}
