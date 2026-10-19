@@ -1,7 +1,7 @@
 {
-  "phase": "activate",
-  "run": "39217902782",
-  "startedAt": "2026-10-19T07:44:36.469Z",
+  "phase": "candidate",
+  "run": "39218270985",
+  "startedAt": "2026-10-19T07:48:22.622Z",
   "mark": "B46_MOBILE_SIGNAL_COUNT_BADGE_20261019",
   "before": "8a607594-ee73-4925-a499-ddb4bc8c317b",
   "healthBefore": [
@@ -17,143 +17,6 @@
       "path": "/api/engine/board",
       "ok": true,
       "fixtures": 2330
-    },
-    {
-      "path": "/api/engine/signals",
-      "ok": true,
-      "signals": 0
-    },
-    {
-      "path": "/api/engine/statistics?paged=1",
-      "ok": true,
-      "rows": 500
-    }
-  ],
-  "previewStyles": [
-    {
-      "width": 390,
-      "route": "/",
-      "href": "https://2eece658-ball46-production.mccarey-supon.workers.dev/",
-      "view": "live",
-      "filter": [
-        "all"
-      ],
-      "mobile": true,
-      "hero": "All Matches",
-      "hadClockFix": true,
-      "hadBlankFix": true,
-      "marker": true,
-      "probe": {
-        "none": {
-          "cardPresent": true,
-          "label": "LIVE",
-          "minute": "33'",
-          "color": "rgb(58, 227, 170)",
-          "minuteColor": "rgb(239, 68, 68)",
-          "minuteAnimation": "1s",
-          "headHeight": 43
-        },
-        "one": {
-          "cardPresent": true,
-          "label": "1 signal",
-          "minute": "33'",
-          "color": "rgb(58, 227, 170)",
-          "minuteColor": "rgb(239, 68, 68)",
-          "minuteAnimation": "1s",
-          "headHeight": 43
-        },
-        "two": {
-          "cardPresent": true,
-          "label": "2 signal",
-          "minute": "33'",
-          "color": "rgb(58, 227, 170)",
-          "minuteColor": "rgb(239, 68, 68)",
-          "minuteAnimation": "1s",
-          "headHeight": 43
-        },
-        "updatedFrom1To2": "2 signal"
-      }
-    },
-    {
-      "width": 390,
-      "route": "/?status=live",
-      "href": "https://2eece658-ball46-production.mccarey-supon.workers.dev/?status=live",
-      "view": "live",
-      "filter": [
-        "live"
-      ],
-      "mobile": true,
-      "hero": "Live Matches",
-      "hadClockFix": true,
-      "hadBlankFix": true,
-      "marker": true
-    },
-    {
-      "width": 390,
-      "route": "/?view=signal",
-      "href": "https://2eece658-ball46-production.mccarey-supon.workers.dev/?view=signal",
-      "view": "signal",
-      "filter": [],
-      "mobile": true,
-      "hero": "All Matches",
-      "hadClockFix": true,
-      "hadBlankFix": true,
-      "marker": true
-    },
-    {
-      "width": 1280,
-      "route": "/",
-      "href": "https://2eece658-ball46-production.mccarey-supon.workers.dev/",
-      "view": "live",
-      "filter": [
-        "all"
-      ],
-      "mobile": false,
-      "hero": null,
-      "hadClockFix": true,
-      "hadBlankFix": true,
-      "marker": true
-    },
-    {
-      "width": 1280,
-      "route": "/?status=live",
-      "href": "https://2eece658-ball46-production.mccarey-supon.workers.dev/?status=live",
-      "view": "live",
-      "filter": [
-        "live"
-      ],
-      "mobile": false,
-      "hero": null,
-      "hadClockFix": true,
-      "hadBlankFix": true,
-      "marker": true
-    },
-    {
-      "width": 1280,
-      "route": "/?view=signal",
-      "href": "https://2eece658-ball46-production.mccarey-supon.workers.dev/?view=signal",
-      "view": "signal",
-      "filter": [],
-      "mobile": false,
-      "hero": null,
-      "hadClockFix": true,
-      "hadBlankFix": true,
-      "marker": true
-    }
-  ],
-  "previewHealth": [
-    {
-      "path": "/api/engine/health",
-      "ok": true
-    },
-    {
-      "path": "/api/full-market/health",
-      "ok": true
-    },
-    {
-      "path": "/api/engine/board",
-      "ok": true,
-      "fixtures": 2240
     },
     {
       "path": "/api/engine/signals",
@@ -277,10 +140,149 @@
       "marker": false
     }
   ],
-  "candidate": "2eece658-7959-4a31-afbe-2b1ba56981a2",
-  "deployment": "335eae77-3973-403d-b2aa-78836b8133d8",
-  "ok": false,
-  "error": "MOBILE_BADGE_FIXTURE_NOT_RENDERED",
-  "rolledBack": true,
-  "finishedAt": "2026-10-19T07:45:32.151Z"
+  "candidate": "9d743b15-914c-4a43-afd3-ab385c4e8f4f",
+  "base": "8a607594-ee73-4925-a499-ddb4bc8c317b",
+  "sourceSHA": "d8a3c98acc6903a93557c73766ae98ea5c21f4f0ec38a5c5352a71faaf9c8772",
+  "candidateSHA": "847d43df76f95edfeded0a4c319c8de8c7967772ba0b7dcc001c590e8a3c4af4",
+  "assetCount": 82,
+  "previewStyles": [
+    {
+      "width": 390,
+      "route": "/",
+      "href": "https://9d743b15-ball46-production.mccarey-supon.workers.dev/",
+      "view": "live",
+      "filter": [
+        "all"
+      ],
+      "mobile": true,
+      "hero": "All Matches",
+      "hadClockFix": true,
+      "hadBlankFix": true,
+      "marker": true,
+      "probe": {
+        "none": {
+          "cardPresent": true,
+          "label": "LIVE",
+          "minute": "33'",
+          "color": "rgb(58, 227, 170)",
+          "minuteColor": "rgb(239, 68, 68)",
+          "minuteAnimation": "1s",
+          "headHeight": 43
+        },
+        "one": {
+          "cardPresent": true,
+          "label": "1 signal",
+          "minute": "33'",
+          "color": "rgb(58, 227, 170)",
+          "minuteColor": "rgb(239, 68, 68)",
+          "minuteAnimation": "1s",
+          "headHeight": 43
+        },
+        "two": {
+          "cardPresent": true,
+          "label": "2 signal",
+          "minute": "33'",
+          "color": "rgb(58, 227, 170)",
+          "minuteColor": "rgb(239, 68, 68)",
+          "minuteAnimation": "1s",
+          "headHeight": 43
+        },
+        "updatedFrom1To2": "2 signal"
+      }
+    },
+    {
+      "width": 390,
+      "route": "/?status=live",
+      "href": "https://9d743b15-ball46-production.mccarey-supon.workers.dev/?status=live",
+      "view": "live",
+      "filter": [
+        "live"
+      ],
+      "mobile": true,
+      "hero": "Live Matches",
+      "hadClockFix": true,
+      "hadBlankFix": true,
+      "marker": true
+    },
+    {
+      "width": 390,
+      "route": "/?view=signal",
+      "href": "https://9d743b15-ball46-production.mccarey-supon.workers.dev/?view=signal",
+      "view": "signal",
+      "filter": [],
+      "mobile": true,
+      "hero": "All Matches",
+      "hadClockFix": true,
+      "hadBlankFix": true,
+      "marker": true
+    },
+    {
+      "width": 1280,
+      "route": "/",
+      "href": "https://9d743b15-ball46-production.mccarey-supon.workers.dev/",
+      "view": "live",
+      "filter": [
+        "all"
+      ],
+      "mobile": false,
+      "hero": null,
+      "hadClockFix": true,
+      "hadBlankFix": true,
+      "marker": true
+    },
+    {
+      "width": 1280,
+      "route": "/?status=live",
+      "href": "https://9d743b15-ball46-production.mccarey-supon.workers.dev/?status=live",
+      "view": "live",
+      "filter": [
+        "live"
+      ],
+      "mobile": false,
+      "hero": null,
+      "hadClockFix": true,
+      "hadBlankFix": true,
+      "marker": true
+    },
+    {
+      "width": 1280,
+      "route": "/?view=signal",
+      "href": "https://9d743b15-ball46-production.mccarey-supon.workers.dev/?view=signal",
+      "view": "signal",
+      "filter": [],
+      "mobile": false,
+      "hero": null,
+      "hadClockFix": true,
+      "hadBlankFix": true,
+      "marker": true
+    }
+  ],
+  "previewHealth": [
+    {
+      "path": "/api/engine/health",
+      "ok": true
+    },
+    {
+      "path": "/api/full-market/health",
+      "ok": true
+    },
+    {
+      "path": "/api/engine/board",
+      "ok": true,
+      "fixtures": 2240
+    },
+    {
+      "path": "/api/engine/signals",
+      "ok": true,
+      "signals": 0
+    },
+    {
+      "path": "/api/engine/statistics?paged=1",
+      "ok": true,
+      "rows": 500
+    }
+  ],
+  "ok": true,
+  "productionChanged": false,
+  "finishedAt": "2026-10-19T07:49:17.818Z"
 }
