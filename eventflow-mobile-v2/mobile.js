@@ -27,7 +27,7 @@ function mobileFlowMarkers(entries,points,current,w,h,pad,selected){
   const placed=[];
   return entries.map(e=>{
     const p=pressureAt(points,e.minute),side=signalSide(e.s),x=xFor(e.minute,w,pad,current),y=yFor(side?p[side]:(p.home+p.away)/2,h,pad);
-    let best=null;
+    let best=placed.some(v=>Math.hypot(v.x-x,v.y-y)<42)?null:{x,y,distance:0};
     for(let cy=pad.top;cy<=h-pad.bottom;cy+=42)for(let cx=pad.left;cx<=w-pad.right;cx+=42){
       if(placed.some(v=>Math.hypot(v.x-cx,v.y-cy)<41))continue;
       const distance=(cx-x)**2+(cy-y)**2;
