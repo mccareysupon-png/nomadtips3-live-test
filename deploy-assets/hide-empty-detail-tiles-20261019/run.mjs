@@ -30,7 +30,7 @@ const css=[
 '     let el=node.parentElement,hidden=false;',
 '     while(el&&el!==slot){',
 '       const s=getComputedStyle(el);',
-'       if(el.hidden||s.display==="none"||s.visibility==="hidden"||s.visibility==="collapse"){hidden=true;break;}',
+'       if(el.hidden||s.display==="none"){hidden=true;break;}',
 '       el=el.parentElement;',
 '     }',
 '     if(!hidden)return true;',
