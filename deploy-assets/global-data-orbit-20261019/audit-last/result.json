@@ -1,0 +1,35 @@
+{
+  "phase": "candidate",
+  "run": "39225405101",
+  "startedAt": "2026-10-19T08:48:55.845Z",
+  "mark": "B46_GLOBAL_DATA_ORBIT_20261019",
+  "before": "6cc1d205-e430-4205-b657-87249b1112c7",
+  "healthBefore": [
+    {
+      "path": "/api/engine/health",
+      "ok": true
+    },
+    {
+      "path": "/api/full-market/health",
+      "ok": true
+    },
+    {
+      "path": "/api/engine/board",
+      "ok": true,
+      "fixtures": 2337
+    },
+    {
+      "path": "/api/engine/signals",
+      "ok": true,
+      "signals": 7
+    },
+    {
+      "path": "/api/engine/statistics?paged=1",
+      "ok": true,
+      "rows": 500
+    }
+  ],
+  "ok": false,
+  "error": "PREVIOUS_FEATURES_MISSING",
+  "finishedAt": "2026-10-19T08:49:09.998Z"
+}
