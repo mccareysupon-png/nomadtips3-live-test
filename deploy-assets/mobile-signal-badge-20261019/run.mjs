@@ -98,9 +98,14 @@ async function visual(host,fixed){
         if(route==='/?view=signal')assert.equal(state.view,'signal','SIGNALS_DEEP_LINK_BROKEN');
         if(width===390&&route==='/'){
           assert(state.mobile,'MOBILE_GREEN_NOIR_MISSING');
+          await page.waitForFunction(()=>document.querySelectorAll('[data-board-sections] .match-row[data-match-id]').length>0,null,{timeout:25000});
+          await page.waitForTimeout(950);
+          let snapshot=null;
+          for(let qaAttempt=0;qaAttempt<5;qaAttempt++){
           const fixture=await page.evaluate(()=>{
             const board=document.querySelector('[data-board-sections]');
             if(!board)return {error:'BOARD_MISSING'};
+            board.querySelectorAll('[data-b46-badge-fixture-root]').forEach(x=>x.remove());
             const section=document.createElement('section');section.className='status-section';section.dataset.statusSection='live';
             section.setAttribute('data-b46-badge-fixture-root','');
             let article='';
@@ -113,7 +118,7 @@ async function visual(host,fixed){
           });
           assert.equal(fixture.added,3,'FAKE_SOURCE_FIXTURES_MISSING');
           await page.waitForTimeout(500);
-          const snapshot=await page.evaluate(()=>{
+          snapshot=await page.evaluate(()=>{
             const rows={};
             for(const id of ['none','one','two']){
               const card=document.querySelector('#b46gn-cards [data-b46gn-fixture="b46-badge-qa-'+id+'"]');
@@ -127,6 +132,10 @@ async function visual(host,fixed){
             }
             return rows;
           });
+          if(snapshot.one.cardPresent&&snapshot.two.cardPresent&&snapshot.none.cardPresent)break;
+          console.log('PROBE_RETRY',JSON.stringify({host,qaAttempt,snapshot}));
+          await page.waitForTimeout(450);
+          }
           assert(snapshot.one.cardPresent&&snapshot.two.cardPresent&&snapshot.none.cardPresent,'MOBILE_BADGE_FIXTURE_NOT_RENDERED');
           assert.equal(snapshot.none.label,'LIVE','NO_SIGNAL_LIVE_BADGE_CHANGED');
           assert.equal(snapshot.one.label,fixed?'1 signal':'LIVE','ONE_SIGNAL_LABEL_MISMATCH');
@@ -140,7 +149,7 @@ async function visual(host,fixed){
               const e=document.querySelector('[data-b46-badge-fixture-root] [data-match-id="b46-badge-qa-one"] .signal-inline-stack');
               e.setAttribute('data-inline-signal-count','2');
             });
-            await page.waitForTimeout(400);
+            await page.waitForFunction(()=>document.querySelector('#b46gn-cards [data-b46gn-fixture="b46-badge-qa-one"] .b46gn-live')?.childNodes[0]?.textContent?.trim()==='2 signal',null,{timeout:2000});
             const fresh=await page.locator('#b46gn-cards [data-b46gn-fixture="b46-badge-qa-one"] .b46gn-live').evaluate(e=>e.childNodes[0].textContent.trim());
             assert.equal(fresh,'2 signal','SIGNAL_COUNT_ATTRIBUTE_UPDATE_NOT_VISIBLE');
             snapshot.updatedFrom1To2=fresh;
