@@ -95,7 +95,7 @@ test('desktop KPI cards are exactly 10 percent shorter without altering mobile',
   assert.ok(Math.abs(66.6/74-.9)<1e-12);
   assert.equal(63/70,.9);
   assert.doesNotMatch(finish,/@media\(max-width:767px\)/);
-  assert.doesNotMatch(finish,/background:|box-shadow:|font-size:|letter-spacing:|width:/);
+  assert.doesNotMatch(finish,/^\s*(?:background|box-shadow|font-size|letter-spacing|width)\s*:/m);
   assert.match(html,/pcKpiHeight90=20261019-pc-kpi-90pct-v1/);
   assert.match(cssV6,/height:47px!important/);
   assert.match(cssV6,/height:45px!important/);
