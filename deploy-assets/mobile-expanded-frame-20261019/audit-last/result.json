@@ -1,7 +1,7 @@
 {
-  "phase": "candidate",
-  "run": "39198759637",
-  "startedAt": "2026-10-19T04:18:20.000Z",
+  "phase": "activate",
+  "run": "39198877735",
+  "startedAt": "2026-10-19T04:19:45.340Z",
   "mark": "B46_MOBILE_EXPANDED_GREEN_FRAME_20261019",
   "before": "6df28dd8-2fc0-44a6-b8c0-52cf2581281b",
   "healthBefore": [
@@ -16,7 +16,7 @@
     {
       "path": "/api/engine/board",
       "ok": true,
-      "fixtures": 2240
+      "fixtures": 2323
     },
     {
       "path": "/api/engine/signals",
@@ -29,29 +29,6 @@
       "rows": 500
     }
   ],
-  "beforeStyles": [
-    {
-      "width": 390,
-      "expandedMargin": "7px",
-      "detailBorder": "1px",
-      "detailShadow": "none",
-      "collapsedMargin": "7px",
-      "detailRadius": "12px"
-    },
-    {
-      "width": 1280,
-      "expandedMargin": "0px",
-      "detailBorder": "1px",
-      "detailShadow": "none",
-      "collapsedMargin": "0px",
-      "detailRadius": "0px"
-    }
-  ],
-  "candidate": "252c03fe-fdc0-42ba-a2e0-016686ef83b3",
-  "base": "6df28dd8-2fc0-44a6-b8c0-52cf2581281b",
-  "sourceSHA": "850b63d8ea0def8c7467937d44f0cc58ef63ae29f8891b20f610fb7567274dce",
-  "candidateSHA": "c5a0b7a432bbabfc199976cb6fb064a6061555b56fbf88dfbde15f04996563ed",
-  "assetCount": 82,
   "previewStyles": [
     {
       "width": 390,
@@ -82,12 +59,75 @@
     {
       "path": "/api/engine/board",
       "ok": true,
-      "fixtures": 2240
+      "fixtures": 2322
     },
     {
       "path": "/api/engine/signals",
       "ok": true,
-      "signals": 1
+      "signals": 0
+    },
+    {
+      "path": "/api/engine/statistics?paged=1",
+      "ok": true,
+      "rows": 500
+    }
+  ],
+  "beforeStyles": [
+    {
+      "width": 390,
+      "expandedMargin": "7px",
+      "detailBorder": "1px",
+      "detailShadow": "none",
+      "collapsedMargin": "7px",
+      "detailRadius": "12px"
+    },
+    {
+      "width": 1280,
+      "expandedMargin": "0px",
+      "detailBorder": "1px",
+      "detailShadow": "none",
+      "collapsedMargin": "0px",
+      "detailRadius": "0px"
+    }
+  ],
+  "candidate": "252c03fe-fdc0-42ba-a2e0-016686ef83b3",
+  "deployment": "2da31bef-cf73-41ee-9967-79af89706f42",
+  "productionStyles": [
+    {
+      "width": 390,
+      "expandedMargin": "0px",
+      "detailBorder": "0px",
+      "detailShadow": "rgb(42, 207, 131) 1px 0px 0px 0px inset, rgb(42, 207, 131) -1px 0px 0px 0px inset, rgb(42, 207, 131) 0px -1px 0px 0px inset, rgba(42, 207, 131, 0.1) 0px 8px 14px 0px",
+      "collapsedMargin": "7px",
+      "detailRadius": "0px 0px 12px 12px"
+    },
+    {
+      "width": 1280,
+      "expandedMargin": "0px",
+      "detailBorder": "1px",
+      "detailShadow": "none",
+      "collapsedMargin": "0px",
+      "detailRadius": "0px"
+    }
+  ],
+  "healthAfter": [
+    {
+      "path": "/api/engine/health",
+      "ok": true
+    },
+    {
+      "path": "/api/full-market/health",
+      "ok": true
+    },
+    {
+      "path": "/api/engine/board",
+      "ok": true,
+      "fixtures": 2322
+    },
+    {
+      "path": "/api/engine/signals",
+      "ok": true,
+      "signals": 0
     },
     {
       "path": "/api/engine/statistics?paged=1",
@@ -96,6 +136,6 @@
     }
   ],
   "ok": true,
-  "productionChanged": false,
-  "finishedAt": "2026-10-19T04:18:39.078Z"
+  "productionChanged": true,
+  "finishedAt": "2026-10-19T04:20:19.806Z"
 }
