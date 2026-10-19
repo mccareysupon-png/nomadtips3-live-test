@@ -1,0 +1,66 @@
+name: BALL46 Default All Matches Audit
+on:
+  push:
+    branches: [fix/ball46-default-all-matches-20261019]
+    paths: ['.github/workflows/ball46-default-all-matches-audit.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: |
+          npm install --no-save --ignore-scripts playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Inspect current landing, menu, and startup behavior (read-only)
+        run: |
+          node --input-type=module <<'JS'
+          import {chromium} from 'playwright';
+          const browser=await chromium.launch({headless:true});
+          try{
+            for(const width of [390,1280]){
+              for(const initial of ['/','/?view=signal','/?view=live']){
+                const page=await browser.newPage({viewport:{width,height:850}});
+                await page.goto('https://ball46.com'+initial+(initial.includes('?')?'&':'?')+'allDefaultAudit='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+                await page.waitForTimeout(2800);
+                console.log('PAGE_STATE',JSON.stringify(await page.evaluate(()=>({
+                  width:innerWidth,href:location.href,view:document.body.dataset.workspaceView,
+                  activeNative:[...document.querySelectorAll('[data-status-filter].active')].map(x=>({status:x.getAttribute('data-status-filter'),text:x.innerText.slice(0,100)})),
+                  mobileMenus:[...document.querySelectorAll('[data-b46m-status]')].map(x=>({status:x.getAttribute('data-b46m-status'),label:x.textContent.trim(),expanded:x.getAttribute('aria-expanded')})),
+                  headings:[...document.querySelectorAll('.status-head h2')].map(x=>x.textContent.trim()),
+                  cardTitle:document.querySelector('#b46gn-main-title')?.textContent,
+                  activeGreenTabs:[...document.querySelectorAll('[data-b46gn-tab].active')].map(x=>({tab:x.getAttribute('data-b46gn-tab'),text:x.textContent})),
+                  activeMobileNav:[...document.querySelectorAll('[data-b46m-page].active')].map(x=>x.getAttribute('data-b46m-page')),
+                  activeSidebar:[...document.querySelectorAll('[data-workspace-view].active')].map(x=>x.getAttribute('data-workspace-view'))
+                }))));
+                await page.close();
+              }
+            }
+          }finally{await browser.close()}
+          const src=await (await fetch('https://ball46.com/index.html?allStartup='+Date.now())).text();
+          console.log('INDEX_BYTES',src.length);
+          const terms=[
+           "let statusFilter=","var statusFilter=","const statusFilter=","let currentView=",
+           "let activeTab=","let selectedTab=","function categoryName(","function renderBoard(","function renderResults(","function refresh(","function delegate(","function init(){","function initControls(","function setupNavigation(","function start(){",
+           "function openNavigation(","data-status-filter=\"all\"","data-status-filter=\"live\"","function setView(","function choosePage(","data-b46m-status","function syncWorkspaceMode(","b46gn-tab","data-b46gn-tab",
+           "URLSearchParams","workspaceView","localStorage","sessionStorage"
+          ];
+          for(const term of terms){
+           let p=0,n=0;while(n++<7&&(p=src.indexOf(term,p))!==-1){const excerpt=src.slice(Math.max(0,p-260),p+900);
+             console.log('SCRIPT_ANCHOR',JSON.stringify({term,pos:p,excerpt:excerpt.slice(0,1100)}));p+=term.length;
+           }
+          }
+          const scripts=['/singlepage-workspace-343.js','/dashboard-v2-stage3-featured-facts-20261013a.js','/ball46-mobile-deep-teal-20261018.js'];
+          for(const file of scripts){
+            const r=await fetch('https://ball46.com'+file);const src=await r.text();
+            console.log('ASSET_INFO',JSON.stringify({file,status:r.status,len:src.length}));
+            for(const term of ["let statusFilter=","let currentView=","let workspaceView=","function start(){","function init(){","function setWorkspaceView(","data-status-filter","URLSearchParams","window.location.search"]){
+              const p=src.indexOf(term);if(p>=0)console.log('ASSET_ANCHOR',JSON.stringify({file,term,pos:p,excerpt:src.slice(Math.max(0,p-350),p+1150)}));
+            }
+          }
+          JS
