@@ -1,0 +1,24 @@
+/* BALL46_MEMBER_MARKETS_SCROLLBAR_DARK_20261020
+   Only the vertical scrollbar of the existing MARKETS sidebar.
+   Keep original width, layout, sidebar cards and all other components unchanged. */
+.page-member .member-market-sidebar {
+  scrollbar-color: #334155 #0b1620;
+}
+.page-member .member-market-sidebar::-webkit-scrollbar {
+  background-color: #0b1620;
+}
+.page-member .member-market-sidebar::-webkit-scrollbar-track {
+  background: #0b1620;
+}
+.page-member .member-market-sidebar::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg,#334155 0%,#293949 100%);
+  border: 2px solid #0b1620;
+  border-radius: 999px;
+}
+.page-member .member-market-sidebar::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+.page-member .member-market-sidebar::-webkit-scrollbar-corner,
+.page-member .member-market-sidebar::-webkit-scrollbar-button {
+  background: #0b1620;
+}
