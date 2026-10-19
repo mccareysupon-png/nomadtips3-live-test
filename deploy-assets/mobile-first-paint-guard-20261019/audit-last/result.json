@@ -1,0 +1,139 @@
+{
+  "phase": "candidate",
+  "run": "39223569589",
+  "startedAt": "2026-10-19T08:33:38.524Z",
+  "mark": "B46_MOBILE_FIRST_PAINT_GUARD_20261019",
+  "before": "9d743b15-914c-4a43-afd3-ab385c4e8f4f",
+  "healthBefore": [
+    {
+      "path": "/api/engine/health",
+      "ok": true
+    },
+    {
+      "path": "/api/full-market/health",
+      "ok": true
+    },
+    {
+      "path": "/api/engine/board",
+      "ok": true,
+      "fixtures": 2240
+    },
+    {
+      "path": "/api/engine/signals",
+      "ok": true,
+      "signals": 6
+    },
+    {
+      "path": "/api/engine/statistics?paged=1",
+      "ok": true,
+      "rows": 500
+    }
+  ],
+  "beforeStyles": [
+    {
+      "width": 390,
+      "normal": {
+        "ready": true,
+        "legacyVisibility": "visible",
+        "oldBoardDisplay": "none",
+        "newBoardDisplay": "block",
+        "headGuard": false,
+        "priorSignalBadge": true,
+        "url": "https://ball46.com/?firstPaintAudit=1792398823119",
+        "chosenStatus": "all"
+      },
+      "errors": []
+    },
+    {
+      "width": 1280,
+      "normal": {
+        "ready": false,
+        "legacyVisibility": "visible",
+        "oldBoardDisplay": "grid",
+        "newBoardDisplay": null,
+        "headGuard": false,
+        "priorSignalBadge": true,
+        "url": "https://ball46.com/?firstPaintAudit=1792398825621",
+        "chosenStatus": "all"
+      },
+      "errors": []
+    }
+  ],
+  "candidate": "108a4c7e-7018-4d7c-85f1-34ce5c104dd6",
+  "base": "9d743b15-914c-4a43-afd3-ab385c4e8f4f",
+  "sourceSHA": "847d43df76f95edfeded0a4c319c8de8c7967772ba0b7dcc001c590e8a3c4af4",
+  "candidateSHA": "881479c612f524e93d97e54eb657d840db8bd6d166e2949d0861abe14d7f1d73",
+  "assetCount": 82,
+  "previewStyles": [
+    {
+      "width": 390,
+      "normal": {
+        "ready": true,
+        "legacyVisibility": "visible",
+        "oldBoardDisplay": "none",
+        "newBoardDisplay": "block",
+        "headGuard": true,
+        "priorSignalBadge": true,
+        "url": "https://108a4c7e-ball46-production.mccarey-supon.workers.dev/?firstPaintAudit=1792398835715",
+        "chosenStatus": "all"
+      },
+      "guard": {
+        "before": {
+          "visibility": "hidden",
+          "topMask": "\"\"",
+          "headerMask": "\"ball46\""
+        },
+        "fallback": {
+          "visibility": "visible",
+          "topMask": "none"
+        },
+        "after": {
+          "visibility": "visible"
+        }
+      },
+      "errors": []
+    },
+    {
+      "width": 1280,
+      "normal": {
+        "ready": false,
+        "legacyVisibility": "visible",
+        "oldBoardDisplay": "grid",
+        "newBoardDisplay": null,
+        "headGuard": true,
+        "priorSignalBadge": true,
+        "url": "https://108a4c7e-ball46-production.mccarey-supon.workers.dev/?firstPaintAudit=1792398838746",
+        "chosenStatus": "all"
+      },
+      "errors": []
+    }
+  ],
+  "previewHealth": [
+    {
+      "path": "/api/engine/health",
+      "ok": true
+    },
+    {
+      "path": "/api/full-market/health",
+      "ok": true
+    },
+    {
+      "path": "/api/engine/board",
+      "ok": true,
+      "fixtures": 2240
+    },
+    {
+      "path": "/api/engine/signals",
+      "ok": true,
+      "signals": 6
+    },
+    {
+      "path": "/api/engine/statistics?paged=1",
+      "ok": true,
+      "rows": 500
+    }
+  ],
+  "ok": true,
+  "productionChanged": false,
+  "finishedAt": "2026-10-19T08:34:05.056Z"
+}
