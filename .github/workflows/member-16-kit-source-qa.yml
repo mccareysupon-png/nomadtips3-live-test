@@ -1,0 +1,83 @@
+name: BALL46 Member 16 Kit Source Integration QA (No Deploy)
+on:
+  push:
+    branches: [work/ball46-member-16-premium-kits-20261019]
+    paths:
+      - '.github/workflows/member-16-kit-source-qa.yml'
+      - 'ball46-member/kit-install/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-qa:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Generate local dummy PNGs for SOURCE TEST only (never deploy these)
+        shell: bash
+        run: |
+          python3 -m pip install --quiet Pillow --break-system-packages
+          python3 - <<'PY'
+          from PIL import Image
+          from pathlib import Path
+          import zipfile
+          root=Path('/tmp/ball46-kit-source-qa')
+          root.mkdir(exist_ok=True)
+          with zipfile.ZipFile(root/'synthetic-do-not-deploy.zip','w',compression=zipfile.ZIP_DEFLATED) as z:
+              for n in range(1,17):
+                  name=f'kit_{n:02d}.png'
+                  im=Image.new('RGBA',(512,512),(n*10%256,120,100,255))
+                  from io import BytesIO
+                  out=BytesIO();im.save(out,format='PNG')
+                  z.writestr(name,out.getvalue())
+          print('SOURCE QA ONLY, 16 temporary images generated outside checkout')
+          PY
+      - name: Fetch exact PUBLIC Member UI assets for read-only integration test
+        run: |
+          mkdir -p /tmp/ball46-kit-source-qa/active
+          curl --fail-with-body --silent --show-error --retry 3 --max-time 30 \
+            "https://member.ball46.com/member.js?_kit_qa=${{ github.run_id }}" -o /tmp/ball46-kit-source-qa/active/member.js
+          curl --fail-with-body --silent --show-error --retry 3 --max-time 30 \
+            "https://member.ball46.com/styles.css?_kit_qa=${{ github.run_id }}" -o /tmp/ball46-kit-source-qa/active/styles.css
+          node --check /tmp/ball46-kit-source-qa/active/member.js
+      - name: Prepare and test patched Candidate source without touching Production
+        shell: bash
+        run: |
+          set -euo pipefail
+          src=/tmp/ball46-kit-source-qa/active
+          out=/tmp/ball46-kit-source-qa/candidate
+          JS_SHA="$(sha256sum "$src/member.js" | cut -d' ' -f1)"
+          CSS_SHA="$(sha256sum "$src/styles.css" | cut -d' ' -f1)"
+          python3 ball46-member/kit-install/prepare_active_candidate.py \
+            --active-dir "$src" \
+            --kits-zip /tmp/ball46-kit-source-qa/synthetic-do-not-deploy.zip \
+            --output-dir "$out" \
+            --expected-js-sha "$JS_SHA" \
+            --expected-css-sha "$CSS_SHA"
+          node --check "$out/member.js"
+          python3 - <<'PY'
+          import json, pathlib,hashlib
+          root=pathlib.Path('/tmp/ball46-kit-source-qa/candidate')
+          data=json.loads((root/'kit-candidate-validation.json').read_text())
+          assert len(data['kits'])==16
+          assert len(data['presetPairs'])==8
+          assert data['productionDeploy'] is False
+          text=(root/'member.js').read_text()
+          assert text.count('appendPremiumMatchKit(home')==1
+          assert text.count('appendPremiumMatchKit(away')==1
+          assert 'BALL46_MEMBER_PREMIUM_16KITS_20261019' in text
+          css=(root/'styles.css').read_text()
+          assert '@media (max-width:680px)' in css
+          print('BALL46_MEMBER_SOURCE_INTEGRATION_QA_PASS_NO_PRODUCTION_DEPLOY')
+          PY
+      - name: Preserve safe redacted source check report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-member-kit-integration-qa-${{ github.run_id }}
+          path: /tmp/ball46-kit-source-qa/candidate/kit-candidate-validation.json
+          retention-days: 7
