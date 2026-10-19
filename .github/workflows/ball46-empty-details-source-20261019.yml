@@ -1,0 +1,29 @@
+name: BALL46 Inspect Match Details Source
+on:
+  push:
+    branches: [fix/ball46-mobile-hide-empty-details-trio-20261019]
+    paths: ['.github/workflows/ball46-empty-details-source-20261019.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Fetch exact active Production HTML and locate details / empty placeholders
+        run: |
+          node --input-type=module <<'JS'
+          const res=await fetch('https://ball46.com/index.html?detailSourceInspect='+Date.now());
+          const html=await res.text();console.log('HTTP',res.status,'LENGTH',html.length);
+          const patterns=['function detailFrom(f)','b46gn-sheetbody','b46gn-featured','b46gn-quick','b46gn-mini','b46gn-stat','b46gn-metric','b46gn-pill','b46gn-detail'];
+          for(const pattern of patterns) {
+            let pos=0,num=0;
+            while(num<10&&(pos=html.indexOf(pattern,pos))!==-1){
+              const before=pattern==='function detailFrom(f)'?350:250;
+              const after=pattern==='function detailFrom(f)'?6500:900;
+              console.log('MATCH',JSON.stringify({pattern,pos,fragment:html.slice(Math.max(0,pos-before),pos+after)}));
+              pos+=pattern.length;num++;
+            }
+          }
+          JS
