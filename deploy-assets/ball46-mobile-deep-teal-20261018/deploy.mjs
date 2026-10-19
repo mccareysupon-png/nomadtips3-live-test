@@ -156,12 +156,12 @@ async function ui(host,stage){
     const open=page.locator('[data-b46m-open]');
     if(width===390){
       const focusTarget=page.locator('[data-b46m-open]');
-      await page.keyboard.press('Tab');
       await focusTarget.focus();
-      // The approved mobile style must preserve a visible focus ring.
-      const focusCSS=await focusTarget.evaluate(el=>getComputedStyle(el,':focus-visible').outlineWidth);
-      // Browser may not consider programmatic focus keyboard-driven in all contexts.
-      assert(['0px','2px'].includes(focusCSS),'FOCUS_OUTLINE_UNEXPECTED');
+      await page.keyboard.press('Shift+Tab');
+      await page.keyboard.press('Tab');
+      const keyboardFocus=await focusTarget.evaluate(el=>({focused:document.activeElement===el,matches:el.matches(':focus-visible'),outline:getComputedStyle(el).outlineWidth}));
+      console.log('BORDERLESS_KEYBOARD_FOCUS',JSON.stringify(keyboardFocus));
+      if(keyboardFocus.matches)assert.equal(keyboardFocus.outline,'2px','KEYBOARD_FOCUS_RING_NOT_VISIBLE');
     }
     await open.click();assert.equal(await open.getAttribute('aria-expanded'),'true','DRAWER_NOT_OPEN');
     assert.equal(await page.locator('#b46m-drawer .b46m-drawerhead strong').textContent(),'ball46','DRAWER_LOGO_NOT_LOWERCASE');
