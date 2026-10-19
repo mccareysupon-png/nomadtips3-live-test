@@ -1,0 +1,32 @@
+name: BALL46 All Matches Source Anchors
+on:
+  push:
+    branches: [fix/ball46-default-all-matches-20261019]
+    paths: ['.github/workflows/ball46-all-matches-source-anchors.yml']
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - run: |
+          node --input-type=module <<'JS'
+          const files=['/index.html','/singlepage-workspace-343.js','/dashboard-v2-stage3-featured-facts-20261013a.js'];
+          for(const file of files){
+            const res=await fetch('https://ball46.com'+file+'?sourceAudit='+Date.now()),code=await res.text();
+            const patterns=file==='/index.html'
+              ?['LIVE MATCHES','Live Matches','All Matches','data-workspace-view="live"','data-b46gn-tab="all"','function refresh(){','function refresh()','function categoryName(','function init(){','function status(){','function updateUI','function syncActive','b46m-current-title','function setTitle']
+              :file.includes('singlepage')
+              ?['function parseRoute(','function writeRoute(','function setView(','function init(){','const state=','function navigationTop(','function bindNavigation(','function setTitle(','function setPage(','data-workspace-view','view:','status=']
+              :['let statusFilter=','function renderBoard(','function renderLeagueFilters(','function syncWorkspaceMode(','function initControls(','function start(){','function renderFeatured(','function setText('];
+            console.log('SOURCE',JSON.stringify({file,status:res.status,len:code.length}));
+            for(const pattern of patterns){
+              let pos=0,n=0;
+              while(n++<7&&(pos=code.indexOf(pattern,pos))>=0){
+                console.log('ANCHOR',JSON.stringify({file,pattern,pos,context:code.slice(Math.max(0,pos-450),pos+(pattern.includes('parseRoute')||pattern.includes('setView')||pattern.includes('syncActive')?2600:1500))}).slice(0,5000));
+                pos+=pattern.length;
+              }
+            }
+          }
+          JS
