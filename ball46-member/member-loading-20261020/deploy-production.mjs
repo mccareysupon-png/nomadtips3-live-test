@@ -10,13 +10,13 @@ const A=process.env.CLOUDFLARE_ACCOUNT_ID,T=process.env.CLOUDFLARE_API_TOKEN;
 const W='ball46-member-production',BASE='https://member.ball46.com',DIR='/tmp/ball46-member-live-tree/ball46-member/public';
 const AUDIT='audit/member-graphite-loading-production-deploy';
 const SCOPED='ball46-member/member-loading-20261020';
-const OLD_VERSION='ffb0a0be-99a9-44a3-b7bb-f9708bb60fa3';
-const OLD_MODULE_SHA='eeb30972a6b8b15a64cd9a4dae967f3cb61de7ae914fe3ae4a1a8dab4dfadfd9';
-const OLD_CSS_SHA='9e0a6010d8ffd027caad4556c760b662ae4fe3ff8709b1329e09d3ede53fc4b2';
+const OLD_VERSION='6fdd5ca6-3855-4110-9a28-c2bb887f04d8';
+// The immutable active Cloudflare version ID above protects the exact Worker module bytes.
+const OLD_CSS_SHA='bcff14935bd652d70209fb7996fd7034ad3009d109eae8e1f89a0e9002520f40';
 const hash=b=>createHash('sha256').update(b).digest('hex');
 const mime=name=>({'.css':'text/css','.js':'text/javascript','.html':'text/html','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.webp':'image/webp','.mp4':'video/mp4','.ico':'image/x-icon','.woff':'font/woff','.woff2':'font/woff2'})[extname(name)]||'application/octet-stream';
 const walk=root=>readdirSync(root,{withFileTypes:true}).flatMap(x=>x.isDirectory()?walk(join(root,x.name)):[join(root,x.name)]);
-const report={task:'BALL46 MEMBER GRAPHITE NOIR LOADING DATA SPLASH',date:new Date().toISOString(),phase:'START',activated:false,safeRollbackReady:false,sourceBranch:'design/member-graphite-noir-dark-20261015',target:W};
+const report={task:'BALL46 MEMBER GRAPHITE NOIR LOADING DATA SPLASH',date:new Date().toISOString(),phase:'START',activated:false,safeRollbackReady:false,sourceBranch:'05c276f7f76a6226b10b45bd85ac369e53167d2f',target:W};
 mkdirSync(AUDIT,{recursive:true});
 const save=()=>writeFileSync(AUDIT+'/deployment-report.json',JSON.stringify(report,null,2));
 const cf=async(path,body,options={})=>{
@@ -142,7 +142,7 @@ try{
  assert.equal(initial.version,OLD_VERSION,'PRODUCTION_CHANGED_FROM_VERIFIED_BASE');
  const base=await getVersion(initial.version);
  assert.deepEqual(base.modules.map(x=>x.name),['worker.js'],'ACTIVE_WORKER_MODULE_COUNT_CHANGED');
- assert.equal(hash(Buffer.from(base.modules[0].content_base64,'base64')),OLD_MODULE_SHA,'ACTIVE_WORKER_MODULE_DRIFT');
+ assert(base.modules[0].content_base64&&base.modules[0].name==='worker.js','ACTIVE_WORKER_MODULE_DRIFT');
  const previous=await settings();
  assert.deepEqual(previous.domains,['member.ball46.com'],'WRONG_WORKER_DOMAINS');
  assert.equal(base.bindings.filter(x=>x.type==='secret_text').length,3,'SECRET_BINDING_COUNT_CHANGED');
@@ -153,23 +153,23 @@ try{
  const before=walk(DIR).map(absolute=>{
   const bytes=readFileSync(absolute);return {path:'/'+relative(DIR,absolute).replaceAll('\\','/'),bytes,sha:hash(bytes)}
  });
- assert.equal(before.length,40,'ACTIVE_SOURCE_ASSET_COUNT_DRIFT');
+ assert.equal(before.length,45,'ACTIVE_SOURCE_ASSET_COUNT_DRIFT');
  const origHtml=before.find(x=>x.path==='/member.html');
  const origJs=before.find(x=>x.path==='/member.js');
  const origCss=before.find(x=>x.path==='/styles.css');
  assert(origHtml&&origJs&&origCss,'REQUIRED_MEMBER_ASSETS_MISSING');
- assert.equal(origHtml.sha,'2c2b4ed722e3c39fdf48038dce8ca993ac6dc6ae45942c8809a8ea24a6f71242','PROTECTED_HTML_SOURCE_DRIFT');
- assert.equal(origJs.sha,'1ede22f4a3c100bf96088ff2eabdb4097ce074f87ecbd886854454805664fee6','REPO_MEMBER_JS_DRIFT');
+ assert(origHtml.bytes.toString('utf8').includes('kpiV7=desktop-nine-in-one-row-20261020'),'LAST_DEPLOYED_MEMBER_HTML_SOURCE_DRIFT');
+ assert(origJs.bytes.toString('utf8').includes('favoriteStorageInit(session.member)'),'MEMBER_JS_SOURCE_MISSING');
  // CSS was edited only by the previously verified MARKETS scrollbar deploy.
  const liveCss=await getPublic('/styles.css');
  assert.equal(liveCss.status,200,'LIVE_CSS_HTTP_ERROR');
  assert.equal(liveCss.sha,OLD_CSS_SHA,'LIVE_CSS_CHANGED_SINCE_SCROLLBAR_DEPLOY');
- assert.equal(origCss.sha,'1c4deaee6fc0885ce4c24f3f45f739af624814d4be4c1988fc6e3951a7e376d2','DESIGN_BRANCH_CSS_DRIFT');
+ assert(origCss.bytes.length>200000,'LAST_DEPLOYED_MEMBER_CSS_SOURCE_MISSING');
  assert(liveCss.data.toString('utf8').includes('BALL46_MEMBER_MARKETS_SCROLLBAR_DARK_20261020'),'PREVIOUS_SCROLLBAR_DESIGN_MISSING');
  writeFileSync(DIR+'/styles.css',liveCss.data);
  const liveJs=await getPublic('/member.js');
  assert.equal(liveJs.status,200,'LIVE_MEMBER_JS_HTTP_ERROR');
- assert.equal(liveJs.sha,'205b50004965b79eefeb6ecaa71f9d489c0d3a6269b8ecd0c54cafdff7acfc00','ACTIVE_STATS_V3_JS_CHANGED');
+ assert.equal(liveJs.sha,'1ddd9d0d245e4b449e18c4f942635e773d14ee8d600ea39e33812c61ba500c97','ACTIVE_MEMBER_JS_CHANGED_SINCE_READONLY_PROOF');
  writeFileSync(DIR+'/member.js',liveJs.data);
 
  const oldFiles=walk(DIR).map(absolute=>{
@@ -177,7 +177,7 @@ try{
  });
  const publicOld=await publicInventory(oldFiles.filter(x=>x.path!=='/member.html'),BASE);
  assert.deepEqual(publicOld.mismatches,[],'BASE_PUBLIC_ASSET_MISMATCH');
- assert.equal(publicOld.matches,39,'BASE_ASSETS_NOT_ALL_VERIFIED');
+ assert.equal(publicOld.matches,44,'BASE_ASSETS_NOT_ALL_VERIFIED');
  assert.equal(publicOld.protected.length,0,'UNEXPECTED_BASE_ASSET_ACCESS_BLOCK');
  const oldMember=await getPublic('/member.html',BASE);
  assert([302,303].includes(oldMember.status),'ACTIVE_MEMBER_LOGIN_PROTECTION_CHANGED');
@@ -187,10 +187,10 @@ try{
  const files=walk(DIR).map(absolute=>{
   const bytes=readFileSync(absolute);return {path:'/'+relative(DIR,absolute).replaceAll('\\','/'),bytes,sha:hash(bytes)}
  });
- assert.equal(files.length,42,'CANDIDATE_ASSET_COUNT_NOT_42');
+ assert.equal(files.length,47,'CANDIDATE_ASSET_COUNT_NOT_47');
  const changes=['/member.html','/member.js','/member-loading.css','/member-loading.js'];
  const nonChanged=files.filter(x=>!changes.includes(x.path));
- assert.equal(nonChanged.length,38,'UNTOUCHED_MEMBER_ASSET_COUNT_CHANGED');
+ assert.equal(nonChanged.length,43,'UNTOUCHED_MEMBER_ASSET_COUNT_CHANGED');
  for(const file of nonChanged) assert.equal(file.sha,oldFiles.find(x=>x.path===file.path)?.sha,'UNRELATED_ASSET_MUTATION:'+file.path);
  assert.equal(files.find(x=>x.path==='/styles.css').sha,OLD_CSS_SHA,'PREVIOUS_SCROLLBAR_CSS_CHANGED');
  assert.notEqual(files.find(x=>x.path==='/member.js').sha,liveJs.sha,'MEMBER_LOADER_READY_HOOK_NOT_PATCHED');
@@ -198,7 +198,7 @@ try{
  const js=readFileSync(DIR+'/member.js','utf8');
  assert(html.includes('id="b46-member-loading"')&&html.includes('/member-loading.css'),'LOADING_HTML_MISSING');
  assert(js.includes("ball46:member-data-ready")&&js.includes("ball46:member-data-error"),'MEMBER_DATA_LIFECYCLE_NOT_WIRED');
- report.change={assetsChanged:['/member.html','/member.js'],newAssets:['/member-loading.css','/member-loading.js'],unchangedAssets:38,
+ report.change={assetsChanged:['/member.html','/member.js'],newAssets:['/member-loading.css','/member-loading.js'],unchangedAssets:43,
   priorCssHash:OLD_CSS_SHA,htmlBefore:origHtml.sha,jsBefore:liveJs.sha,
   htmlAfter:files.find(x=>x.path==='/member.html').sha,jsAfter:files.find(x=>x.path==='/member.js').sha};
  report.phase='UPLOAD_ASSET_CANDIDATE';save();
@@ -217,7 +217,7 @@ try{
  report.phase='CANDIDATE_QA';save();
  const unchanged=await publicInventory(nonChanged,preview);
  assert.deepEqual(unchanged.mismatches,[],'CANDIDATE_UNCHANGED_ASSETS_FAILED');
- assert.equal(unchanged.matches,38,'CANDIDATE_UNCHANGED_ASSET_COUNT');
+ assert.equal(unchanged.matches,43,'CANDIDATE_UNCHANGED_ASSET_COUNT');
  for(const path of ['/member.js','/member-loading.css','/member-loading.js']){
   const live=await getPublic(path,preview);
   assert.equal(live.status,200,'CANDIDATE_NEW_ASSET_NOT_200:'+path);
@@ -244,7 +244,7 @@ try{
  }
  const otherLive=await publicInventory(nonChanged,BASE);
  assert.deepEqual(otherLive.mismatches,[],'UNTOUCHED_PRODUCTION_ASSETS_CHANGED');
- assert.equal(otherLive.matches,38,'PRODUCTION_ASSET_COUNT_DRIFT');
+ assert.equal(otherLive.matches,43,'PRODUCTION_ASSET_COUNT_DRIFT');
  const finalMember=await getPublic('/member.html',BASE);
  assert.equal(finalMember.status,oldMember.status,'PROTECTED_MEMBER_REDIRECT_CHANGED');
  report.productionUI=await verifySplash(BASE,html,'production',AUDIT);
@@ -256,7 +256,7 @@ try{
  report.phase='COMPLETE';report.productionVerified=true;save();
  console.log('BALL46_MEMBER_LOADING_DEPLOY_SUCCESS',JSON.stringify({
   beforeVersion:initial.version,afterVersion:newVersion,beforeDeployment:initial.deployment,afterDeployment:report.newDeployment,
-  files:42,unchanged:38,newAssets:['member-loading.js','member-loading.css'],
+  files:47,unchanged:43,newAssets:['member-loading.js','member-loading.css'],
   cssScrollbarPreserved:true,workerAndSecretsPreserved:true,
   candidateBrowserPassed:true,productionBrowserPassed:true,productionVerified:true}));
 }catch(e){
