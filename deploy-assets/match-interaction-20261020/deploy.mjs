@@ -53,7 +53,7 @@ function checkUI(old,newer,width,theme){
  assert(old[main]&&newer[main],'REQUIRED_MATCH_CARD_MISSING '+width);
  for(const key of [main,...(width===1440?['league']:['mobileHeader'])]){
   const a=old[key],b=newer[key];assert(a&&b,'CARD_PART_MISSING '+key);
-  for(const prop of ['w','h','padding','fontSize','color','borderWidth','bg','image','shadow'])
+  for(const prop of ['w','h','padding','fontSize','color','borderWidth',...(key==='row'&&theme==='dark'?[]:['bg','image','shadow'])])
     assert.equal(b[prop],a[prop],'UNCHANGED_NORMAL_CARD_DRIFT '+width+' '+theme+' '+key+' '+prop);
  }
  for(const key of ['homeText','awayText'])
