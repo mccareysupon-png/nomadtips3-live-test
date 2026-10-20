@@ -3,7 +3,9 @@ export const TICKER_CSS=String.raw`<style id="b46-pc-hide-result-ticker-20261020
 /* BALL46 PC/Laptop: remove the entire scrolling PUSH/LOSS/WIN result ticker visually;
    retain the Signal data/engine, and keep mobile completely unchanged. */
 @media(min-width:768px){
-  body .b46-signal-ticker{
+  html body .b46-signal-ticker,
+  html body .workspace.singlepage .workspace-scorebar-slot .b46-signal-ticker,
+  html body .workspace.singlepage .b46-signal-ticker{
     display:none!important;
     visibility:hidden!important;
   }
