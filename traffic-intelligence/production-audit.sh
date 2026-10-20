@@ -14,7 +14,7 @@ show(){
  case "$label" in
   ROUTES) echo "$body" | jq -r '.result[]? | select(.pattern | contains("ball46.com")) | "ROUTE pattern="+.pattern+" script="+(.script // "none")';;
   WORKERS) echo "$body" | jq -r '.result[]? | select((.id // .name // "") | test("ball46";"i")) | "WORKER id="+(.id // .name)';;
-  DEPLOYS) echo "$body" | jq -r '.result // .deployments // [] | .[0:3][] | "DEPLOY id="+(.id // "n/a")+" created="+(.created_on // "n/a")+" version="+((.versions // [])[0].version_id // "n/a")';;
+  DEPLOYS) echo "$body" | jq -r '(.result.deployments // .deployments // .result // []) | if type=="array" then .[0:3][] | "DEPLOY id="+(.id // "n/a")+" created="+(.created_on // "n/a")+" version="+((.versions // [])[0].version_id // "n/a") else "DEPLOY: response format unexpected" end';;
   DOMAINS) echo "$body" | jq -r '.result[]? | select((.hostname // "") | contains("ball46.com")) | "DOMAIN host="+.hostname+" service="+(.service // .script // "none")';;
  esac
 }
