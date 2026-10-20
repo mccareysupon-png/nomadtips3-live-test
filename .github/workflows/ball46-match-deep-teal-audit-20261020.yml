@@ -45,7 +45,7 @@ jobs:
                   for i,pos in enumerate(offsets):
                       print('SNIPPET',p,token,i,repr(s[max(0,pos-270):pos+430]).replace('\\n',' ')[:760])
               if p=='index.html':
-                  print('CSS_LINKS',re.findall(r'<link[^>]+href=["\\']([^"\\']+\\.css[^"\\']*)',s,re.I)[:30])
-                  print('STYLE_IDS',re.findall(r'<style[^>]+id=["\\']([^"\\']+)',s,re.I)[-30:])
+                  print('CSS_LINKS',re.findall('href=[^ >]+css',s,re.I)[:30])
+                  print('STYLE_IDS',re.findall('id=[^ >]+',s,re.I)[-30:])
           PY
           echo "READ_ONLY_AUDIT_SUCCESS; NO_PRODUCTION_WRITES"
