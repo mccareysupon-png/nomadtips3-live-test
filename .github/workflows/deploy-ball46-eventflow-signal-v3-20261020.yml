@@ -1,0 +1,57 @@
+name: BALL46 Event Flow SIGNAL V3 — Guarded Production
+on:
+  push:
+    branches: [codex/ball46-eventflow-signal-v3-20261020]
+    paths:
+      - '.github/workflows/deploy-ball46-eventflow-signal-v3-20261020.yml'
+      - 'deploy-assets/eventflow-signal-v3-20261020/theme.mjs'
+      - 'deploy-assets/eventflow-signal-v3-20261020/deploy.mjs'
+permissions:
+  contents: read
+concurrency:
+  group: ball46-production-deploy
+  cancel-in-progress: false
+jobs:
+  guarded-eventflow-signal-v3:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check syntax and assert visual-only gradient contract
+        working-directory: deploy-assets/eventflow-signal-v3-20261020
+        run: |
+          set -euo pipefail
+          node --check theme.mjs
+          node --check deploy.mjs
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import {OLD_STYLE,STYLE,DEFS,MARKER,GRADIENT_ID,inject} from './theme.mjs';
+          assert(OLD_STYLE.includes('b46-eventflow-signal-soft-elevation-20261020'));
+          assert(STYLE.includes('stroke:none!important') && STYLE.includes(GRADIENT_ID) && STYLE.includes('drop-shadow'));
+          assert(DEFS.includes('linearGradient') && DEFS.includes(GRADIENT_ID));
+          const before='<html><head>b46-mobile-ultrasoft-flow-v3-20261020 b46-pc-hide-result-ticker-20261020 b46-pc-ticker-gap-fix-20261020'+OLD_STYLE+'</head><body>REAL_DATA_UNCHANGED</body></html>';
+          const after=inject(before);
+          assert(after.includes(MARKER) && after.includes(DEFS) && after.includes('REAL_DATA_UNCHANGED'));
+          assert.equal(after.replace(STYLE,OLD_STYLE).replace(DEFS,''),before);
+          console.log('BALL46_V3_VISUAL_ONLY_CONTRACT_PASS');
+          NODE
+          npm install --no-save --ignore-scripts puppeteer-core@24 >/dev/null 2>&1
+      - name: Check active Worker version, preview, desktop/mobile, deploy and rollback if needed
+        working-directory: deploy-assets/eventflow-signal-v3-20261020
+        run: node deploy.mjs
+      - name: Preserve exact baseline, module hashes, browser screenshots and rollback report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-eventflow-signal-v3-gradient-guard-audit
+          path: deploy-assets/eventflow-signal-v3-20261020/audit/
+          retention-days: 30
+          if-no-files-found: warn
