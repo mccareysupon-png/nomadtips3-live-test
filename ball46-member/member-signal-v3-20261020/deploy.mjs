@@ -211,8 +211,9 @@ try{
  save();
  const paths=['member.html','member.js','styles.css'];
  const original=Object.fromEntries(paths.map(p=>[p,readFileSync(DIR+'/'+p,'utf8')]));
- const updated=patch(original);
- for(const p of paths)writeFileSync(DIR+'/'+p,updated[p],'utf8');
+ const updated=patch({html:original['member.html'],js:original['member.js'],css:original['styles.css']});
+ const outputFiles={'member.html':updated.html,'member.js':updated.js,'styles.css':updated.css};
+ for(const p of paths)writeFileSync(DIR+'/'+p,outputFiles[p],'utf8');
  const files=walk(DIR).map(absolute=>{
    const bytes=readFileSync(absolute);
    return {path:'/'+relative(DIR,absolute).replaceAll('\\','/'),bytes,sha:hash(bytes)};
