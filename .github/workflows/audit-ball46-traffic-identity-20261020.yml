@@ -1,0 +1,22 @@
+name: Audit BALL46 Traffic Intelligence Production Identity
+on:
+  push:
+    branches: [work/ball46-traffic-intelligence-isolated-20261020]
+    paths:
+      - '.github/workflows/audit-ball46-traffic-identity-20261020.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  read-only-audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check audit shell syntax
+        run: bash -n traffic-intelligence/production-audit.sh
+      - name: Read current Cloudflare routing without writing
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: bash traffic-intelligence/production-audit.sh
