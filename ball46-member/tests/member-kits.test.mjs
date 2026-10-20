@@ -46,3 +46,14 @@ test('only the expanded Featured Match inserts team kit images',()=>{
   assert(html.indexOf('/member-kits.js')<html.indexOf('/member.js'));
   assert(html.includes('/member-kits.js'));
 });
+
+test('all 12 approved transparent WebP jersey images exist in public assets',()=>{
+  const names=calc('[...MEMBER_KIT_NAMES]');
+  for(const name of names){
+    const filename=new URL('../public/assets/kits/webp/2x/'+name+'.webp',import.meta.url);
+    const bytes=fs.readFileSync(filename);
+    assert(bytes.length>1000,'file too small: '+name);
+    assert.equal(bytes.toString('ascii',0,4),'RIFF');
+    assert.equal(bytes.toString('ascii',8,12),'WEBP');
+  }
+});
