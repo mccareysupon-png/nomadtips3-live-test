@@ -39,6 +39,14 @@ jobs:
             assets.push({path,status:r.status,bytes:Buffer.byteLength(body),ringMarker:body.includes('BALL46_MEMBER_GRAPHITE_SPLASH_V1_20261020'),overlay:body.includes('b46-member-loading'),readyHook:body.includes('ball46:member-data-ready'),location:r.headers.get('location')?.slice(0,100)});
           }
           console.log('LIVE_MEMBER_RING_READONLY_AUDIT',JSON.stringify({activeVersion:versions[0].version_id,deployment:dep.id,assets}));
+          assert.equal(versions[0].version_id,'65d4ef55-3656-409d-89de-615388817d0c','Member production changed unexpectedly after recovery');
+          for(const name of ['/member-loading.js','/member-loading.css']){
+            const asset=assets.find(x=>x.path===name);
+            assert(asset?.status===200&&asset.ringMarker===true,'Recovered loader asset missing: '+name);
+          }
+          assert(assets.find(x=>x.path==='/member.html')?.status===302,'Protected Member route changed');
+          assert(assets.find(x=>x.path==='/member.js')?.readyHook===true,'Member data-ready event hook missing');
+          console.log('BALL46_MEMBER_SPLASH_RESTORED_LIVE_ASSET_VERIFIED');
           JS
       - name: Verify latest actual Member active version and public JS CSS read only
         run: node ball46-member/scripts/member-scrollbar-audit.mjs
