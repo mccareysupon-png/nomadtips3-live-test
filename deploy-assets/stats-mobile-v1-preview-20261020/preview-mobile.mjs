@@ -129,9 +129,13 @@ async function browserQA(origin){
      assert(await page.evaluate(()=>document.querySelector('.sp-filter-chip[data-sp-filter="all"]')?.classList.contains('active')),'FILTER_STATE_BROKEN');
      out[width]={initial,expanded:{expanded:expanded.expanded,detail:expanded.detail},loaded,errors};
     }else{
-     assert(!initial.visibleCards,'MOBILE_CARDS_LEAKED_TO_DESKTOP '+width);
-     assert(initial.pcRibbonCount===14,'EXISTING_PC_SINGLE_ROW_LOST '+width);
-     assert(initial.pcRibbon?.display==='block','EXISTING_PC_RIBBON_HIDDEN '+width);
+     assert(!initial.visibleCards,'MOBILE_CARDS_LEAKED_TO_DESKTOP_OR_TABLET '+width);
+     if(width>=1024){
+      assert(initial.pcRibbonCount===14,'EXISTING_PC_SINGLE_ROW_LOST '+width);
+      assert(initial.pcRibbon?.display==='block','EXISTING_PC_RIBBON_HIDDEN '+width);
+     }else{
+      assert(initial.pcRibbonCount===0,'TABLET_LAYOUT_UNEXPECTEDLY_CHANGED '+width);
+     }
      out[width]={initial,errors};
     }
     if(errors.length)throw Error('BROWSER_ERRORS '+width+': '+errors.join(';'));
