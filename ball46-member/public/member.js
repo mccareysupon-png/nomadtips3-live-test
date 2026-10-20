@@ -452,21 +452,21 @@ function renderSummary(){
     ['WIN',s.win,'win'],
     ['LOSS',s.loss,'loss'],
     ['PUSH',s.push,'push'],
-    ['HALF WIN',s.halfWin,'half-win'],
-    ['HALF LOSS',s.halfLoss,'half-loss'],
     ['PENDING',s.pending,'pending'],
-    ['DRAW',s.push,'mobile-draw'],
-    ['AVG ODDS',avgOdds===null?'—':avgOdds.toFixed(2),'mobile-avg-odds'],
     ['LIVE',s.live||0,'live'],
-    ...(s.unresolved?[['UNRESOLVED',s.unresolved,'unresolved']]:[]),
-    ...(s.void?[['VOID',s.void,'void']]:[]),
-    ['WIN RATE',fmtPct(s.winRate),rateClass]
+    ['WIN RATE',fmtPct(s.winRate),rateClass],
+    ['AVG ODDS',avgOdds===null?'—':avgOdds.toFixed(2),'avg-odds'],
+    ['DRAW',s.push,'mobile-draw']
   ];
   summary.replaceChildren();
   for(const [label,value,kind] of items){
     const box=node('div','stat summary-stat '+kind);
     if(kind==='mobile-draw')box.title='DRAW / PUSH — stake returned on settlement; not a drawn match';
-    if(kind==='mobile-avg-odds')box.title='Mean recorded entry odds for signals in the selected market; missing prices excluded';
+    if(kind==='avg-odds')box.title='Mean recorded entry odds for signals in the selected market; missing prices excluded';
+    if(kind==='pending'&&(Number(s.unresolved)>0||Number(s.void)>0)){
+      box.title='PENDING: '+String(s.pending)+' · UNRESOLVED: '+String(s.unresolved||0)+' · VOID: '+String(s.void||0);
+      box.setAttribute('aria-label',box.title);
+    }
     box.append(node('span','',label),node('b','',String(value)));
     summary.append(box);
   }
