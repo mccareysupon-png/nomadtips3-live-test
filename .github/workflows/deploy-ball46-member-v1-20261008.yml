@@ -53,6 +53,8 @@ jobs:
           grep -Fq '/event-flow-icons.js' public/member.html
           node --check public/member.js
           node --check public/member-kits.js
+          grep -Fq 'memberVintageKitSVG' public/member-kits.js
+          grep -Fq '20261020-vintage-heritage-kits-v1' public/member.html
           test -f public/member-kits.js
           test "$(find public/assets/kits/webp/2x -maxdepth 1 -name 'kit_*.webp' -type f | wc -l)" -eq 12
           echo "BALL46_MEMBER_PACKAGE_VALID"
