@@ -1,0 +1,41 @@
+name: BALL46 Event Flow SIGNAL V3 — Real Card Read Only Audit
+on:
+  push:
+    branches: [audit/ball46-eventflow-real-signal-v3-20261020]
+    paths:
+      - '.github/workflows/audit-ball46-real-signal-v3-20261020.yml'
+      - 'audit-assets/eventflow-real-signal-v3-20261020/inspect.mjs'
+permissions:
+  contents: read
+jobs:
+  inspect-real-signal:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 14
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate read-only audit and install headless browser
+        working-directory: audit-assets/eventflow-real-signal-v3-20261020
+        run: |
+          set -euo pipefail
+          node --check inspect.mjs
+          npm install --no-save --ignore-scripts puppeteer-core@24 >/dev/null 2>&1
+          command -v google-chrome
+      - name: Inspect real live card and capture desktop/mobile screenshots (no writes)
+        working-directory: audit-assets/eventflow-real-signal-v3-20261020
+        run: node inspect.mjs
+      - name: Preserve browser evidence and result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-eventflow-real-signal-v3-readonly
+          path: audit-assets/eventflow-real-signal-v3-20261020/audit/
+          retention-days: 20
+          if-no-files-found: warn
