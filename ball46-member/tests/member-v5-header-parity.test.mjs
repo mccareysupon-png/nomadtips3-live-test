@@ -64,3 +64,18 @@ test('Desktop navigation remains visible and custom mobile controls stay hidden 
   assert.match(desktop,/\.page-pricing \.mobile-v5-site-menu,[\s\S]*?\.page-login \.mobile-v5-site-profile-link\{display:none\}/);
   assert.doesNotMatch(desktop,/\.nav\s*\{display:none/);
 });
+
+test('desktop Pricing/Login header shell aligns exactly with Signal Center 1600px shell',()=>{
+  const marker='/* BALL46 MEMBER — desktop-only guest-header width parity with Signal Center (2026-10-20) */';
+  const rules=css.slice(css.indexOf(marker));
+  assert.ok(rules.startsWith(marker),'new header width rule must exist');
+  assert.match(rules,/@media\(min-width:768px\)\{\s*\.page-pricing \.topbar-inner\.shell,\s*\.page-login \.topbar-inner\.shell\{\s*width:min\(1600px,calc\(100% - 24px\)\);/);
+  assert.match(css,/\.page-member \.shell\{width:min\(1600px,calc\(100% - 24px\)\)\}/);
+  for(const [name,html] of [['pricing',pricing],['login',login]]){
+    assert.match(header(html),/<div class="shell topbar-inner">/,name+' uses shared header grid');
+    assert.match(html,/desktopHeaderParity=20261020-member-1600px-v1/,name+' stylesheet refreshed');
+  }
+  assert.doesNotMatch(rules,/@media\(max-width:/);
+  assert.doesNotMatch(rules,/main\.shell|\.page\s*\{|\.hero|\.pricing-layout|\.member-layout/);
+  assert.doesNotMatch(rules,/\.topbar \.nav|\.brand\b|\.member-chip|\.topbar-account-slot/);
+});
