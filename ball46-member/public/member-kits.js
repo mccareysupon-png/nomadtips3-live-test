@@ -28,23 +28,14 @@ function memberKitPair(fixture){
 }
 function memberKitPicture(index){
   const slug=MEMBER_KIT_NAMES[index];
-  const prefix='/assets/kits/';
   const picture=node('picture','member-team-kit');
-  const webp=node('source');
-  webp.type='image/webp';
-  webp.srcset=prefix+'webp/1x/'+slug+'.webp 1x, '+prefix+'webp/2x/'+slug+'.webp 2x';
   const img=node('img');
-  img.alt='';img.setAttribute('aria-hidden','true');
-  img.width=512;img.height=512;
+  img.src='/assets/kits/webp/2x/'+slug+'.webp';
+  img.alt='';
+  img.setAttribute('aria-hidden','true');
+  img.width=160;img.height=160;
   img.loading='lazy';img.decoding='async';
-  const png1=prefix+'png/1x/'+slug+'.png';
-  const pngSet=png1+' 1x, '+prefix+'png/2x/'+slug+'.png 2x';
-  img.src=png1;img.srcset=pngSet;
-  let triedPng=false;
-  img.addEventListener('error',()=>{
-    if(!triedPng){triedPng=true;webp.remove();img.removeAttribute('srcset');img.src=png1;}
-    else picture.hidden=true; // Keep team name visible if an asset is unavailable.
-  });
-  picture.append(webp,img);
+  img.addEventListener('error',()=>{picture.hidden=true;}); // Team name remains visible.
+  picture.append(img);
   return picture;
 }
