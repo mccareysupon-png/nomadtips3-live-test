@@ -50,12 +50,20 @@ async function health(origin){
  }
  return x;
 }
-async function visual(browser,url,width,theme,shot){
- const page=await browser.newPage();try{
+async function visual(browser,stagedHtml,width,theme,shot){
+ const page=await browser.newPage();let interceptCount=0;try{
+  await page.setRequestInterception(true);
+  page.on('request',req=>{
+   const u=new URL(req.url());
+   if(req.isNavigationRequest()&&u.hostname==='ball46.com'&&(u.pathname==='/'||u.pathname==='/index.html')){
+    interceptCount++;req.respond({status:200,contentType:'text/html; charset=utf-8',body:stagedHtml});
+   }else req.continue();
+  });
   await page.setViewport({width,height:860,isMobile:width<=767,deviceScaleFactor:1});
   await page.setCacheEnabled(false);
-  await page.goto(url+'/?b46_card_depth_qa='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+  await page.goto(ORIGIN+'/?b46_card_depth_qa='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
   await new Promise(r=>setTimeout(r,2200));
+  assert(interceptCount>0,'CANDIDATE_HTML_NOT_APPLIED_IN_BROWSER');
   await page.evaluate(t=>document.documentElement.setAttribute('data-theme',t),theme);
   const result=await page.evaluate(()=>{
    const body=document.body;
@@ -130,7 +138,7 @@ try{
   report.previewScreenshots={};
   for(const width of [1440,390])for(const theme of ['light','dark']){
    const key=width+'-'+theme;
-   const observed=await visual(browser,preview,width,theme,'preview-'+key);
+   const observed=await visual(browser,previewAssets['/'].body,width,theme,'preview-'+key);
    assert(observed.marker&&observed.stroke==='none'&&Number.parseFloat(observed.strokeWidth)===0&&observed.shadow,
      'SVG_BORDER_OR_ELEVATION_WRONG '+key+' '+JSON.stringify(observed));
    assert(observed.siteExists,'WORKSPACE_NOT_RENDERED '+key);
