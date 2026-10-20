@@ -66,7 +66,13 @@ jobs:
           url='https://b46-visitor-monitor-collector.mccarey-supon.workers.dev'
           A=$(curl -sS -o /dev/null -w '%{http_code}' "$url/")
           B=$(curl -sS -o /dev/null -w '%{http_code}' "$url/api/summary")
-          C=$(curl -sS -o /dev/null -w '%{http_code}' -X POST -H 'Origin: https://ball46.com' "$url/api/collect")
+          # Workers.dev propagation can briefly serve a stale 404 after deploy.
+          C=''
+          for attempt in 1 2 3 4 5 6; do
+            C=$(curl -sS -o /dev/null -w '%{http_code}' -X POST -H 'Origin: https://ball46.com' -H 'Content-Type: application/json' -d '{}' "$url/api/collect")
+            [ "$C" = 503 ] && break
+            sleep 2
+          done
           echo "SMOKE collector_home=$A private_api=$B disabled_beacon=$C"
           test "$A" = 404 && test "$B" = 404 && test "$C" = 503
           echo 'PASS: the collector cannot expose private data and traffic capture remains OFF.'
