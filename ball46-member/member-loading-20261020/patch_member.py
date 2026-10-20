@@ -28,7 +28,7 @@ def main():
   html=once(html,'<body class="page-member">','<body class="page-member">\n'+overlay,'body overlay')
   html=once(html,'<script src="/member.js?','<script src="/member-loading.js?v=20261020-graphite-v1" defer></script>\n<script src="/member.js?','JS ordering')
   js=once(js,'  state.payload=daily;\n  favoriteStorageInit(session.member);\n  render();\n  setInterval',
-          '  state.payload=daily;\n  favoriteStorageInit(session.member);\n  render();\n  window.dispatchEvent(new Event(\\'ball46:member-data-ready\\'));\n  setInterval','boot ready after render')
+          '  state.payload=daily;\n  favoriteStorageInit(session.member);\n  render();\n  window.dispatchEvent(new Event(\'ball46:member-data-ready\'));\n  setInterval','boot ready after render')
   js=once(js,"  empty.textContent='Member Signal Center is temporarily unavailable.';\n});",
            "  empty.textContent='Member Signal Center is temporarily unavailable.';\n  window.dispatchEvent(new Event('ball46:member-data-error'));\n});",'boot error')
   assert html.count('id="b46-member-loading"')==1
