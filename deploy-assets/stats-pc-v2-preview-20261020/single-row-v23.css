@@ -1,137 +1,124 @@
 /*
- BALL46 Statistics PC V2.3 — FLAT SINGLE ROW / -40% information-footprint.
- Preview ONLY. At 1024px and wider:
- - Eight primary settled stats: one single row, never wrap.
- - Six long-term performance KPI metrics: their own single row, never wrap.
- - Remove all top color stroke/pseudo accent on primary KPI cards.
- - Preserve readable labels, accurate data, chart dimensions and mobile untouched.
- Applying a 40% reduction to the KPI information block is achieved largely by
- removing the second row rather than reducing numeric glyphs to illegible sizes.
+ BALL46 Statistics PC V2.3 — all 14 live KPI readings consolidated into ONE row.
+ Original eight summary KPIs + six long-term KPIs are mirrored verbatim
+ for display only; underlying source DOM and data calculations remain intact.
+ Browser preview only. Mobile and light mode are completely untouched.
 */
-@media (min-width:1024px){
-html[data-theme="dark"] body .workspace.singlepage .sp-stats-content{
- --stat-gap:8px!important;
- padding:12px!important;
+@media(min-width:1024px){
+ html[data-theme="dark"] body .workspace.singlepage .sp-stats-content{
+  --stat-gap:8px!important;
+  padding:12px!important;
+ }
+ html[data-theme="dark"] body .workspace.singlepage .sp-stat-hero{
+  min-height:65px!important;
+  margin-bottom:8px!important;
+ }
+ html[data-theme="dark"] body .workspace.singlepage .sp-stats-content.b46v23-ready > .sp-kpis,
+ html[data-theme="dark"] body .workspace.singlepage .sp-stats-content.b46v23-ready .sp-trend .b46-perf-kpis{
+  display:none!important;
+  margin:0!important;
+  padding:0!important;
+  height:0!important;
+ }
+ html[data-theme="dark"] body .workspace.singlepage .b46v23-strip{
+  display:block!important;
+  position:relative;
+  width:100%;
+  max-width:100%;
+  overflow-x:auto;
+  overflow-y:hidden;
+  overscroll-behavior-x:contain;
+  scrollbar-width:thin;
+  scrollbar-color:rgba(90,178,133,.38) transparent;
+  margin:0 0 9px!important;
+  padding:1px 0 4px!important;
+  border:0!important;
+  background:transparent!important;
+ }
+ html[data-theme="dark"] body .workspace.singlepage .b46v23-strip-grid{
+  display:grid!important;
+  grid-template-columns:repeat(11,minmax(70px,1fr)) minmax(125px,1.55fr) repeat(2,minmax(70px,1fr))!important;
+  grid-template-rows:minmax(48px,auto)!important;
+  min-width:1100px!important;
+  width:100%;
+  gap:6px!important;
+  align-items:stretch;
+ }
+ html[data-theme="dark"] body .workspace.singlepage .b46v23-micro-card{
+  display:flex!important;
+  flex-direction:column;
+  justify-content:center;
+  align-items:flex-start;
+  gap:0;
+  box-sizing:border-box;
+  min-width:0!important;
+  min-height:48px!important;
+  height:auto!important;
+  padding:6px 8px!important;
+  margin:0!important;
+  border:0!important;
+  border-radius:8px!important;
+  background:linear-gradient(135deg,#1B3228,#172B23)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.036),0 2px 6px rgba(0,0,0,.11)!important;
+  color:#DCEDE2;
+ }
+ html[data-theme="dark"] body .workspace.singlepage .b46v23-micro-card::before,
+ html[data-theme="dark"] body .workspace.singlepage .b46v23-micro-card::after,
+ html[data-theme="dark"] body .workspace.singlepage .sp-kpi::before,
+ html[data-theme="dark"] body .workspace.singlepage .sp-kpi::after{
+  content:none!important;
+  display:none!important;
+  background:none!important;
+  box-shadow:none!important;
+  border:0!important;
+  height:0!important;
+  width:0!important;
+ }
+ html[data-theme="dark"] body .workspace.singlepage .b46v23-label{
+  display:block;overflow:hidden;
+  white-space:nowrap;
+  text-overflow:ellipsis;
+  width:100%;
+  font-size:8.5px!important;
+  font-weight:760!important;
+  line-height:1.15!important;
+  letter-spacing:.045em!important;
+  color:#9EBFAC!important;
+ }
+ html[data-theme="dark"] body .workspace.singlepage .b46v23-value{
+  display:block;
+  max-width:100%;
+  white-space:nowrap;
+  font-size:clamp(12px,.94vw,15px)!important;
+  line-height:1.23!important;
+  font-weight:740!important;
+  letter-spacing:-.025em!important;
+  font-variant-numeric:tabular-nums;
+  color:#EDF9F1!important;
+  margin:3px 0 1px!important;
+ }
+ html[data-theme="dark"] body .workspace.singlepage .b46v23-meta{
+  display:block;width:100%;overflow:hidden;text-overflow:ellipsis;
+  font-size:8.3px!important;line-height:1.18!important;
+  white-space:nowrap;
+  color:#94B4A1!important;
+ }
+ html[data-theme="dark"] body .workspace.singlepage .b46v23-micro-card[data-kpi-index="2"] .b46v23-value{color:#FFAE65!important}
+ html[data-theme="dark"] body .workspace.singlepage .b46v23-micro-card[data-kpi-index="3"] .b46v23-value,
+ html[data-theme="dark"] body .workspace.singlepage .b46v23-micro-card[data-kpi-index="9"] .b46v23-value,
+ html[data-theme="dark"] body .workspace.singlepage .b46v23-micro-card[data-kpi-index="10"] .b46v23-value{color:#5CDF9D!important}
+ html[data-theme="dark"] body .workspace.singlepage .b46v23-micro-card[data-kpi-index="4"] .b46v23-value,
+ html[data-theme="dark"] body .workspace.singlepage .b46v23-micro-card[data-kpi-index="14"] .b46v23-value{color:#FF8B9F!important}
+ html[data-theme="dark"] body .workspace.singlepage .b46v23-micro-card[data-kpi-index="6"] .b46v23-value{color:#83D5EC!important}
+ html[data-theme="dark"] body .workspace.singlepage .b46v23-micro-card[data-kpi-index="7"] .b46v23-value{color:#B6A5F5!important}
+ html[data-theme="dark"] body .workspace.singlepage .b46v23-micro-card[data-kpi-index="8"] .b46v23-value{color:#E8CC86!important}
+ html[data-theme="dark"] body .workspace.singlepage .b46v23-micro-card[data-kpi-index="12"] .b46v23-value{
+  font-size:clamp(10px,.78vw,12.5px)!important;
+  letter-spacing:-.03em!important;
+ }
+ html[data-theme="dark"] body .workspace.singlepage .sp-trend.b46-perf-card{margin-bottom:8px!important}
+ html[data-theme="dark"] body .workspace.singlepage .b46-perf-head{margin-bottom:10px!important}
 }
-html[data-theme="dark"] body .workspace.singlepage .sp-kpis{
- display:grid!important;
- grid-template-columns:repeat(8,minmax(0,1fr))!important;
- gap:6px!important;
- align-items:stretch!important;
- margin-bottom:8px!important;
-}
-html[data-theme="dark"] body .workspace.singlepage .sp-kpis .sp-kpi{
- min-width:0!important;
- min-height:47px!important;
- height:auto!important;
- padding:6px 8px!important;
- border-radius:8px!important;
- gap:0!important;
- border:0!important;
- background:linear-gradient(135deg,#1C3329,#182B23)!important;
- box-shadow:inset 0 1px 0 rgba(255,255,255,.028),0 2px 7px rgba(0,0,0,.10)!important;
-}
-html[data-theme="dark"] body .workspace.singlepage .sp-kpis .sp-kpi::before,
-html[data-theme="dark"] body .workspace.singlepage .sp-kpis .sp-kpi::after{
- content:none!important;
- display:none!important;
- width:0!important;
- height:0!important;
- border:0!important;
- box-shadow:none!important;
-}
-html[data-theme="dark"] body .workspace.singlepage .sp-kpi > span{
- font-size:9px!important;
- font-weight:730!important;
- letter-spacing:.035em!important;
- white-space:nowrap!important;
- line-height:1.25!important;
-}
-html[data-theme="dark"] body .workspace.singlepage .sp-kpi strong{
- font-size:clamp(13.5px,1vw,16px)!important;
- font-weight:730!important;
- line-height:1.16!important;
- margin:2px 0 1px!important;
- letter-spacing:-.02em!important;
- white-space:nowrap!important;
-}
-html[data-theme="dark"] body .workspace.singlepage .sp-kpi small{
- font-size:9px!important;
- line-height:1.12!important;
- white-space:normal!important;
-}
-html[data-theme="dark"] body .workspace.singlepage .b46-perf-kpis{
- display:grid!important;
- grid-template-columns:repeat(6,minmax(0,1fr))!important;
- align-items:stretch!important;
- gap:6px!important;
- margin-bottom:9px!important;
-}
-html[data-theme="dark"] body .workspace.singlepage .b46-perf-kpi{
- min-width:0!important;
- padding:7px 9px!important;
- border-radius:8px!important;
- box-shadow:inset 0 1px 0 rgba(255,255,255,.025)!important;
-}
-html[data-theme="dark"] body .workspace.singlepage .b46-perf-kpi span{
- font-size:9px!important;
- font-weight:750!important;
- line-height:1.16!important;
- letter-spacing:.045em!important;
- white-space:nowrap!important;
-}
-html[data-theme="dark"] body .workspace.singlepage .b46-perf-kpi b{
- font-size:clamp(12px,.96vw,15px)!important;
- line-height:1.22!important;
- font-weight:750!important;
- margin:3px 0 1px!important;
- letter-spacing:-.025em!important;
- white-space:nowrap!important;
-}
-html[data-theme="dark"] body .workspace.singlepage .b46-perf-kpi:nth-child(4) b{
- font-size:clamp(10.5px,.80vw,13px)!important;
- letter-spacing:-.035em!important;
-}
-html[data-theme="dark"] body .workspace.singlepage .b46-perf-kpi small{
- font-size:9px!important;
- line-height:1.18!important;
-}
-html[data-theme="dark"] body .workspace.singlepage .sp-stat-hero{
- min-height:65px!important;
- margin-bottom:8px!important;
-}
-html[data-theme="dark"] body .workspace.singlepage .sp-trend.b46-perf-card{
- margin-bottom:8px!important;
-}
-html[data-theme="dark"] body .workspace.singlepage .b46-perf-head{
- margin-bottom:9px!important;
-}
-/* Plot, chart axes, tooltip and range/gesture behaviors remain at their V2.2 sizes. */
-}
-@media (min-width:1024px) and (max-width:1199px){
-html[data-theme="dark"] body .workspace.singlepage .sp-kpis{
- gap:4px!important;
-}
-html[data-theme="dark"] body .workspace.singlepage .sp-kpis .sp-kpi{
- padding:6px 6px!important;
-}
-html[data-theme="dark"] body .workspace.singlepage .sp-kpi > span{
- font-size:8.5px!important;
- letter-spacing:0!important;
-}
-html[data-theme="dark"] body .workspace.singlepage .sp-kpi strong{
- font-size:13.5px!important;
-}
-html[data-theme="dark"] body .workspace.singlepage .sp-kpi small{
- font-size:8.5px!important;
-}
-html[data-theme="dark"] body .workspace.singlepage .b46-perf-kpis{
- gap:4px!important;
-}
-html[data-theme="dark"] body .workspace.singlepage .b46-perf-kpi{
- padding:7px 6px!important;
-}
-html[data-theme="dark"] body .workspace.singlepage .b46-perf-kpi:nth-child(4) b{
- font-size:10px!important;
-}
+@media(min-width:1024px) and (max-width:1280px){
+ html[data-theme="dark"] body .workspace.singlepage .b46v23-micro-card{padding:6px 7px!important}
 }
