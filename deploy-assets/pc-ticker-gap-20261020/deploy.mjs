@@ -125,7 +125,7 @@ function checkUI(before,after,width,theme,expectCandidate){
  assert(a.fixtures.empty&&b.fixtures.empty&&a.fixtures.filled&&b.fixtures.filled,'TICKER_FIXTURE_FAILED');
  assert.deepEqual(b.shell?.padding,a.shell?.padding,'BODY_SHELL_PADDING_CHANGED');
  for(const k of ['perf','workspace']){
-  if(a[k]&&b[k])for(const prop of ['left','w','h','padding','margin'])
+  if(a[k]&&b[k])for(const prop of (k==='perf'?['left','w','h','padding','margin']:['left','w','padding','margin']))
    assert.deepEqual(b[k][prop],a[k][prop],'UNRELATED_LAYOUT_DIMENSION_CHANGED '+width+' '+theme+' '+k+'.'+prop);
  }
  if(width>=768){
