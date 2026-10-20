@@ -1,0 +1,46 @@
+name: BALL46 Event Flow SIGNAL Borderless Elevation — Guarded Production
+on:
+  push:
+    branches: [codex/ball46-pc-ticker-camouflage-20261020]
+    paths:
+      - '.github/workflows/deploy-ball46-eventflow-signal-elevation-20261020.yml'
+      - 'deploy-assets/eventflow-signal-elevation-20261020/theme.mjs'
+      - 'deploy-assets/eventflow-signal-elevation-20261020/deploy.mjs'
+permissions:
+  contents: read
+concurrency:
+  group: ball46-production-deploy
+  cancel-in-progress: false
+jobs:
+  protected-signal-elevation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate targeted Signal SVG elevation patch and prepare browser
+        working-directory: deploy-assets/eventflow-signal-elevation-20261020
+        run: |
+          set -euo pipefail
+          node --check theme.mjs
+          node --check deploy.mjs
+          node --input-type=module -e "import {STYLE} from './theme.mjs';if(!STYLE.includes('stroke:none!important')||!STYLE.includes('drop-shadow')||!STYLE.includes('b46-eventflow-signal-annotation'))process.exit(1)"
+          npm install --no-save --ignore-scripts puppeteer-core@24 >/dev/null 2>&1
+      - name: Guarded live-derived candidate, preview, tests, version pin, deploy and rollback
+        working-directory: deploy-assets/eventflow-signal-elevation-20261020
+        run: node deploy.mjs
+      - name: Save baseline, hash guard and desktop/mobile screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-eventflow-signal-borderless-guard-audit
+          path: deploy-assets/eventflow-signal-elevation-20261020/audit/
+          retention-days: 30
+          if-no-files-found: warn
