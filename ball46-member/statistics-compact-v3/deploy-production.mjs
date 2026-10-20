@@ -3,6 +3,7 @@ import {readFileSync,readdirSync,mkdirSync,writeFileSync,statSync} from 'node:fs
 import {join,relative,extname} from 'node:path';
 import {createHash} from 'node:crypto';
 import {chromium} from 'playwright';
+import {spawnSync} from 'node:child_process';
 
 const A=process.env.CLOUDFLARE_ACCOUNT_ID,T=process.env.CLOUDFLARE_API_TOKEN;
 const W='ball46-member-production',BASE='https://member.ball46.com',DIR='/tmp/ball46-member-live-tree/ball46-member/public';
