@@ -17,6 +17,29 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Read only Member loading overlay and active Cloudflare Worker
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          const a=process.env.CLOUDFLARE_ACCOUNT_ID,t=process.env.CLOUDFLARE_API_TOKEN;
+          assert(a&&t,'Missing Cloudflare read credentials');
+          const api='https://api.cloudflare.com/client/v4/accounts/'+a;
+          const res=await fetch(api+'/workers/scripts/ball46-member-production/deployments?per_page=1',{headers:{Authorization:'Bearer '+t}});
+          const j=await res.json();
+          assert(res.ok&&j.success===true,'CF_READ_FAILED');
+          const dep=j.result?.deployments?.[0];
+          const versions=dep?.versions||[];
+          assert(versions.length===1&&Number(versions[0].percentage)===100,'ACTIVE_PERCENTAGE_INVALID');
+          const paths=['/member-loading.js','/member-loading.css','/member.html','/member.js','/styles.css'];
+          const assets=[];
+          for(const path of paths){
+            const url=new URL(path,'https://member.ball46.com');url.searchParams.set('memberRingAudit',String(Date.now()));
+            const r=await fetch(url,{redirect:'manual',headers:{'cache-control':'no-cache'},signal:AbortSignal.timeout(14000)});
+            const body=await r.text();
+            assets.push({path,status:r.status,bytes:Buffer.byteLength(body),ringMarker:body.includes('BALL46_MEMBER_GRAPHITE_SPLASH_V1_20261020'),overlay:body.includes('b46-member-loading'),readyHook:body.includes('ball46:member-data-ready'),location:r.headers.get('location')?.slice(0,100)});
+          }
+          console.log('LIVE_MEMBER_RING_READONLY_AUDIT',JSON.stringify({activeVersion:versions[0].version_id,deployment:dep.id,assets}));
+          JS
       - name: Verify latest actual Member active version and public JS CSS read only
         run: node ball46-member/scripts/member-scrollbar-audit.mjs
       - uses: actions/upload-artifact@v4
