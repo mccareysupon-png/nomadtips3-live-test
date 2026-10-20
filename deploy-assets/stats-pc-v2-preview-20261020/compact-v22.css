@@ -1,0 +1,176 @@
+/*
+ BALL46 Statistics PC V2.2 — 20% additional reduction from approved V2.1.
+ Scope: desktop statistics Dark Mode only, >=1024px.
+ Reduced: heading, KPIs, performance KPI cards, filter chrome, typography and internal spacing.
+ Not reduced: chart viewport/axes, tooltip hit targets, data text below 10px, data model.
+ Intent: consistent spacing, low visual noise, readable contrast; preview-only.
+*/
+@media(min-width:1024px){
+html[data-theme="dark"] body .workspace.singlepage .sp-stats-content{
+ --stat-gap:10px!important;
+ padding:13px!important;
+ border-radius:13px!important;
+}
+html[data-theme="dark"] body .workspace.singlepage .sp-stat-hero{
+ min-height:67px!important;
+ padding:12px 16px!important;
+ margin-bottom:10px!important;
+ border-radius:11px!important;
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.042),0 3px 11px rgba(0,0,0,.13)!important;
+}
+html[data-theme="dark"] body .workspace.singlepage .sp-stat-hero h3{
+ font-size:clamp(17px,1.05vw,19.2px)!important;
+ letter-spacing:-.02em!important;
+ margin:2px 0 3px!important;
+}
+html[data-theme="dark"] body .workspace.singlepage .sp-stat-hero .kicker{
+ font-size:9.5px!important;
+}
+html[data-theme="dark"] body .workspace.singlepage .sp-stat-hero p{
+ font-size:10px!important;
+ line-height:1.3!important;
+}
+html[data-theme="dark"] body .workspace.singlepage .sp-stat-hero .meta{
+ min-width:105px!important;
+ padding:7px 10px!important;
+ border-radius:8px!important;
+}
+html[data-theme="dark"] body .workspace.singlepage .sp-stat-hero .meta span{
+ font-size:9.5px!important;
+}
+html[data-theme="dark"] body .workspace.singlepage .sp-stat-hero .meta b{
+ margin-top:2px!important;
+ font-size:10px!important;
+}
+/* KPI 8 blocks — less vertical density; labels protected at legible minimum. */
+html[data-theme="dark"] body .workspace.singlepage .sp-kpis{
+ gap:7px!important;
+ margin-bottom:10px!important;
+}
+html[data-theme="dark"] body .workspace.singlepage .sp-kpis .sp-kpi{
+ min-height:61px!important;
+ padding:8px 11px!important;
+ border-radius:9px!important;
+ background:linear-gradient(130deg,#1B3228,#172A22)!important;
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.032),0 2px 7px rgba(0,0,0,.10)!important;
+}
+html[data-theme="dark"] body .workspace.singlepage .sp-kpi:before{
+ width:20px!important;left:11px!important;
+ height:1.5px!important;
+}
+html[data-theme="dark"] body .workspace.singlepage .sp-kpi > span{
+ font-size:9.5px!important;
+ letter-spacing:.055em!important;
+}
+html[data-theme="dark"] body .workspace.singlepage .sp-kpi strong{
+ font-size:clamp(17px,1vw,18.4px)!important;
+ font-weight:730!important;
+ letter-spacing:-.015em!important;
+ margin:2px 0 1px!important;
+}
+html[data-theme="dark"] body .workspace.singlepage .sp-kpi small{
+ font-size:9.5px!important;
+ line-height:1.25!important;
+}
+/* Main performance card: retain chart height; tighten only surrounding chrome. */
+html[data-theme="dark"] body .workspace.singlepage .sp-trend.b46-perf-card{
+ margin-bottom:10px!important;
+ border-radius:12px!important;
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.035),0 4px 14px rgba(0,0,0,.13)!important;
+}
+html[data-theme="dark"] body .workspace.singlepage .sp-trend .b46-perf-shell{
+ padding:13px 13px 10px!important;
+}
+html[data-theme="dark"] body .workspace.singlepage .b46-perf-head{
+ margin-bottom:10px!important;
+ gap:10px!important;
+}
+html[data-theme="dark"] body .workspace.singlepage .b46-perf-title > span{
+ font-size:9.5px!important;
+ letter-spacing:.07em!important;
+}
+html[data-theme="dark"] body .workspace.singlepage .b46-perf-title h3{
+ font-size:clamp(16px,.98vw,17px)!important;
+ margin-top:3px!important;
+ font-weight:750!important;
+}
+html[data-theme="dark"] body .workspace.singlepage .b46-perf-kpis{
+ gap:7px!important;
+ margin-bottom:10px!important;
+}
+html[data-theme="dark"] body .workspace.singlepage .b46-perf-kpi{
+ padding:7px 9px!important;
+ border-radius:8px!important;
+}
+html[data-theme="dark"] body .workspace.singlepage .b46-perf-kpi span{
+ font-size:9.5px!important;
+ letter-spacing:.055em!important;
+}
+html[data-theme="dark"] body .workspace.singlepage .b46-perf-kpi b{
+ font-size:clamp(13.5px,.85vw,15.2px)!important;
+ margin:3px 0 1px!important;
+ font-weight:720!important;
+}
+html[data-theme="dark"] body .workspace.singlepage .b46-perf-kpi:nth-child(4) b{
+ font-size:clamp(12.5px,.74vw,14px)!important;
+}
+html[data-theme="dark"] body .workspace.singlepage .b46-perf-kpi small{
+ font-size:9.5px!important;
+ line-height:1.3!important;
+}
+html[data-theme="dark"] body .workspace.singlepage .b46-perf-range button,
+html[data-theme="dark"] body .workspace.singlepage .b46-perf-mode button,
+html[data-theme="dark"] body .workspace.singlepage .b76-perf-chart-type button{
+ min-height:30px!important;
+ font-size:10px!important;
+ padding:5px 9px!important;
+}
+html[data-theme="dark"] body .workspace.singlepage .b46-perf-toolbar{
+ margin-bottom:8px!important;
+}
+html[data-theme="dark"] body .workspace.singlepage .b46-perf-chart-wrap{
+ border-radius:10px!important;
+}
+html[data-theme="dark"] body .workspace.singlepage .b46-perf-unit-nav{
+ padding:6px 8px 2px!important;
+}
+/* Market filter and history: compact, but table text remains readable. */
+html[data-theme="dark"] body .workspace.singlepage .sp-filters{
+ padding:10px 13px!important;
+ margin-bottom:10px!important;
+ border-radius:9px!important;
+}
+html[data-theme="dark"] body .workspace.singlepage .sp-filter-chip{
+ padding:7px 10px!important;
+ font-size:10px!important;
+}
+html[data-theme="dark"] body .workspace.singlepage .sp-results{
+ border-radius:10px!important;
+}
+html[data-theme="dark"] body .workspace.singlepage .sp-results h3{
+ font-size:16px!important;
+}
+html[data-theme="dark"] body .workspace.singlepage .sp-table th{
+ font-size:10px!important;
+ padding:9px 9px!important;
+}
+html[data-theme="dark"] body .workspace.singlepage .sp-table td{
+ font-size:10.5px!important;
+ padding:8px 9px!important;
+ line-height:1.45!important;
+}
+html[data-theme="dark"] body .workspace.singlepage .sp-table .sp-match strong{
+ font-size:10.5px!important;
+}
+/* Chart plot/tooltip intentionally retain V2.1 sizes and browser interactions. */
+}
+@media(min-width:1440px){
+ html[data-theme="dark"] body .workspace.singlepage .sp-kpis{
+  grid-template-columns:repeat(8,minmax(0,1fr))!important;
+ }
+}
+@media(min-width:1024px) and (max-width:1250px){
+ html[data-theme="dark"] body .workspace.singlepage .sp-kpis .sp-kpi{
+  padding:8px 10px!important;
+ }
+}
