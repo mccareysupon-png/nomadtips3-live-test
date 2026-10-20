@@ -5810,3 +5810,13 @@ button,input,select,textarea{font-family:inherit;font-synthesis:none}
   .page-pricing .topbar a.brand.brand-original-lettering,
   .page-login .topbar a.brand.brand-original-lettering{gap:5px}
 }
+
+/* BALL46 MEMBER — desktop-only guest-header width parity with Signal Center (2026-10-20) */
+/* Header only: pricing/login content remains at its own original 1180px shell width.
+   Match the Signal Center 1600px max shell and 12px desktop side gutters. */
+@media(min-width:768px){
+  .page-pricing .topbar-inner.shell,
+  .page-login .topbar-inner.shell{
+    width:min(1600px,calc(100% - 24px));
+  }
+}
