@@ -249,6 +249,24 @@ try{
  report.actions.push({type:'production_promote',candidate,deploymentId:deployment.id||null});save();
  report.activeAfter=await active();
  assert.equal(report.activeAfter.version,candidate,'POST_DEPLOY_WRONG_ACTIVE_WORKER');
+ // Cloudflare may report the deployment as 100% before public routes have
+ // propagated to all edge locations. Keep the guard; wait for exact HTML
+ // parity on BOTH official domains instead of sampling once immediately.
+ async function waitForPublicHtml(base,expectedHash){
+  let last={};const max=20;
+  for(let i=1;i<=max;i++){
+   const [root,index]=await Promise.all([read(base,'/'),read(base,'/index.html')]);
+   last={attempt:i,domain:base,rootSha:root.hash,indexSha:index.hash,rootLen:root.data.length,indexLen:index.data.length,marker:root.data.includes('b46-statistics-pc-single-row-v23-preview-20261020')};
+   console.log('STATS_V23_POST_DEPLOY_PROPAGATION_CHECK',JSON.stringify(last));
+   if(root.status===200&&index.status===200&&root.hash===expectedHash&&index.hash===expectedHash)return last;
+   assert.equal((await active()).version,candidate,'ANOTHER_WORKER_ACTIVATED_DURING_PROPAGATION');
+   await new Promise(r=>setTimeout(r,4500));
+  }
+  throw Error('PRODUCTION_HTML_NOT_PROPAGATED_AFTER_WAIT '+JSON.stringify(last));
+ }
+ report.publicPropagation=[];
+ report.publicPropagation.push(await waitForPublicHtml(ORIGIN,report.expectedHtmlHash));
+ report.publicPropagation.push(await waitForPublicHtml('https://www.ball46.com',report.expectedHtmlHash));
  const updated=await assets(ORIGIN);
  for(const p of paths){
   assert.equal(updated[p].status,200,'POST_DEPLOY_ASSET_HTTP_FAILED '+p);
