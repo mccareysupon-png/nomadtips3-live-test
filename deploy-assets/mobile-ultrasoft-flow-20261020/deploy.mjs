@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import {existsSync,mkdirSync,writeFileSync} from 'node:fs';
 import puppeteer from 'puppeteer-core';
-import {patchFlowJs,verifySoftCurve,PATCH_ID,MOBILE_HELPERS} from './patch.mjs';
+import {verifySoftCurve} from './patch.mjs';
+import {injectFlowOverlay,OVERLAY_HTML} from './overlay.mjs';
 const SCRIPT='ball46-production',EXPECTED_ACTIVE='58d9e23c-8c5c-4488-a2d3-00a10a901c7d',origin='https://ball46.com';
 const account=process.env.CLOUDFLARE_ACCOUNT_ID,token=process.env.CLOUDFLARE_API_TOKEN;
 assert(account&&token,'CLOUDFLARE_ACCOUNT_MISSING');
@@ -17,18 +18,16 @@ const PC_ACTIVE='return __b46PcNoInitialActive20261020(await '+MOBILE.slice(7,-1
 const ANCHOR='return __b46PcSeamlessDrawer20261020(await '+PC_ACTIVE.slice(7,-1)+',url.pathname);';
 const NEXT='return __b46UltraSoftMobile20261020(await '+ANCHOR.slice(7,-1)+',url.pathname);';
 const helper=[
-'function __b46PatchMobileUltraSoft20261020(s){',
-'const PATCH_ID='+JSON.stringify(PATCH_ID)+';',
-'const MOBILE_HELPERS='+JSON.stringify(MOBILE_HELPERS)+';',
-'const assert=function(value,message){if(!value)throw new Error(message);};',
-'assert.equal=function(a,b,message){if(a!==b)throw new Error(message+": "+a+" != "+b);};',
-'return ('+patchFlowJs.toString()+')(s);',
+'function __b46HtmlMobileFlow20261020(s){',
+'const overlay='+JSON.stringify(OVERLAY_HTML)+';',
+'if(!s.includes("b46-pc-seamless-drawer-20261020")||!s.includes("</body>")||s.includes("b46-mobile-ultrasoft-flow-v3-20261020"))throw new Error("MOBILE_HTML_THEME_DRIFT");',
+'return s.replace("</body>",overlay+"</body>");',
 '}',
 'async function __b46UltraSoftMobile20261020(response,path){',
-'if(path!=="/expanded-match-343.js"||!response||response.status!==200)return response;',
+'if(!["/","/index.html"].includes(path)||!response||response.status!==200||!String(response.headers.get("content-type")||"").includes("text/html"))return response;',
 'const original=await response.text();',
-'const modified=__b46PatchMobileUltraSoft20261020(original);',
-'const headers=new Headers(response.headers);headers.delete("content-length");headers.delete("etag");headers.set("Cache-Control","no-store");',
+'const modified=__b46HtmlMobileFlow20261020(original);',
+'const headers=new Headers(response.headers);headers.delete("content-length");headers.delete("etag");',
 'return new Response(modified,{status:response.status,statusText:response.statusText,headers});',
 '}'
 ].join('\n');
@@ -131,8 +130,8 @@ try{
  const original=await assets(origin),originalHTML=original['/'].hash;
  assert.equal(original['/index.html'].hash,originalHTML,'HTML_ASSET_NOT_IDENTICAL');
  assert(original['/'].buf.toString().includes('b46-pc-seamless-drawer-20261020'),'CURRENT_PC_DRAWER_MISSING');
- const expectedJs=patchFlowJs(original['/expanded-match-343.js'].buf.toString());
- report.scriptHashBefore=original['/expanded-match-343.js'].hash;report.scriptHashAfter=sha(expectedJs);
+ const expectedHTML=injectFlowOverlay(original['/'].buf.toString());
+ report.expectedHTMLHash=sha(expectedHTML);report.originalScriptHash=original['/expanded-match-343.js'].hash;
  report.healthBefore=await health(origin);save();
  const chrome=['/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium'].find(existsSync);assert(chrome,'CHROME_MISSING');
  const browser=await puppeteer.launch({executablePath:chrome,headless:true,args:['--no-sandbox']});
@@ -150,15 +149,7 @@ try{
   for(const m of report.baseModules){const hit=modAfter.find(x=>x.name===m.name);assert(hit,'MISSING_UPLOADED_MODULE');assert.equal(hit.hash,m.name===base.main_module?sha(patchedSource):m.hash,'NON_TARGET_MODULE_CHANGED '+m.name);}
   const preview='https://'+candidate.slice(0,8)+'-ball46-production.mccarey-supon.workers.dev';
   const tested=await assets(preview);
-  for(const p of urls){
-   if(p==='/expanded-match-343.js'&&tested[p].hash!==report.scriptHashAfter){
-    const actual=tested[p].buf.toString(),expected=expectedJs;
-    let i=0;while(i<actual.length&&i<expected.length&&actual.charCodeAt(i)===expected.charCodeAt(i))i++;
-    report.jsMismatch={position:i,expectedLength:expected.length,actualLength:actual.length,expectedAround:expected.slice(Math.max(0,i-250),i+400),actualAround:actual.slice(Math.max(0,i-250),i+400)};
-    console.log('FLOW_PREVIEW_JS_SHA_DIAGNOSTIC',JSON.stringify(report.jsMismatch));save();
-   }
-   assert.equal(tested[p].hash,p==='/expanded-match-343.js'?report.scriptHashAfter:original[p].hash,'PREVIEW_ASSET_CHANGED '+p);
-  }
+  for(const p of urls)assert.equal(tested[p].hash,p==='/'||p==='/index.html'?report.expectedHTMLHash:original[p].hash,'PREVIEW_ASSET_CHANGED '+p);
   report.previewAssets=mapHashes(tested);report.previewHealth=await health(preview);
   report.previewUI={};
   for(const width of [1440,390])for(const theme of ['light','dark']){
@@ -175,13 +166,13 @@ try{
   assert.equal((await active()).version,candidate,'CANDIDATE_NOT_ACTIVE');
   let visible=false;
   for(let i=0;i<20;i++){
-   const f=await read(origin,'/expanded-match-343.js');
-   if(f.hash===report.scriptHashAfter){visible=true;break;}
-   assert.equal(f.hash,report.scriptHashBefore,'UNKNOWN_PRODUCTION_JS_VERSION');await sleep(1800);
+   const f=await read(origin,'/');
+   if(f.hash===report.expectedHTMLHash){visible=true;break;}
+   assert.equal(f.hash,originalHTML,'UNKNOWN_PRODUCTION_HTML_VERSION');await sleep(1800);
   }
-  assert(visible,'UPDATED_JS_NOT_PUBLIC');
+  assert(visible,'UPDATED_HTML_NOT_PUBLIC');
   const post=await assets(origin);
-  for(const p of urls)assert.equal(post[p].hash,p==='/expanded-match-343.js'?report.scriptHashAfter:original[p].hash,'PRODUCTION_ASSET_CHANGED '+p);
+  for(const p of urls)assert.equal(post[p].hash,p==='/'||p==='/index.html'?report.expectedHTMLHash:original[p].hash,'PRODUCTION_ASSET_CHANGED '+p);
   report.afterAssets=mapHashes(post);report.healthAfter=await health(origin);
   report.productionUI={};
   for(const width of [1440,390])for(const theme of ['light','dark']){
