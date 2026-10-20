@@ -49,3 +49,42 @@ jobs:
                   print('STYLE_IDS',re.findall('id=[^ >]+',s,re.I)[-30:])
           PY
           echo "READ_ONLY_AUDIT_SUCCESS; NO_PRODUCTION_WRITES"
+
+      - name: Read computed styles in real browser without modifying production
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --no-save --ignore-scripts puppeteer-core@24 >/dev/null 2>&1
+          node --input-type=module <<'NODE'
+          import puppeteer from 'puppeteer-core';
+          import {existsSync} from 'node:fs';
+          const exe=['/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium'].find(existsSync);
+          if(!exe)throw new Error('CHROME_NOT_FOUND');
+          const browser=await puppeteer.launch({executablePath:exe,headless:true,args:['--no-sandbox']});
+          try{
+            for(const width of [1440,390]){
+              const page=await browser.newPage();
+              await page.setViewport({width,height:950,isMobile:width<500,deviceScaleFactor:1});
+              await page.setCacheEnabled(false);
+              await page.goto('https://ball46.com/?teal_browser_readonly='+Date.now(),{waitUntil:'domcontentloaded',timeout:70000});
+              await new Promise(r=>setTimeout(r,4000));
+              const report=await page.evaluate(()=>{
+                document.documentElement.setAttribute('data-theme','dark');
+                const selectors=['.workspace.singlepage .match-row','.workspace.singlepage .league-head','.workspace.singlepage .match-expanded','#b46gn-cards > *','#b46gn-hero','#b46gn-main-title','.b46gn-card','.b46gn-match-card'];
+                const obj={screen:innerWidth,theme:document.documentElement.dataset.theme};
+                for(const sel of selectors){
+                  const els=[...document.querySelectorAll(sel)];
+                  obj[sel]={count:els.length,samples:els.slice(0,2).map(el=>{
+                    const c=getComputedStyle(el),r=el.getBoundingClientRect();
+                    return {tag:el.tagName,cls:String(el.className).slice(0,150),bg:c.backgroundColor,image:c.backgroundImage,border:c.borderColor,borderWidth:c.borderWidth,shadow:c.boxShadow,w:Math.round(r.width),h:Math.round(r.height),display:c.display,hidden:r.height===0};
+                  })};
+                }
+                const parent=document.querySelector('#b46gn-cards');
+                if(parent)obj.mobileContainer={html:parent.outerHTML.slice(0,1350)};
+                return obj;
+              });
+              console.log('BROWSER_OBSERVE',JSON.stringify(report));
+              await page.close();
+            }
+          }finally{await browser.close();}
+          NODE
