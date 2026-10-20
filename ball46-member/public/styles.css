@@ -5494,10 +5494,9 @@ button,input,select,textarea{font-family:inherit;font-synthesis:none}
 }
 
 /* BALL46 MEMBER — Mobile V6 eight compact KPI cards from existing Ledger metrics */
-/* These two extra KPI entries are mobile-only. Desktop retains its approved stats row. */
+/* DRAW duplicates PUSH on Desktop; AVG ODDS now appears on both devices. */
 @media(min-width:768px){
-  .page-member #dailySummary .summary-stat.mobile-draw,
-  .page-member #dailySummary .summary-stat.mobile-avg-odds{display:none!important}
+  .page-member #dailySummary .summary-stat.mobile-draw{display:none!important}
 }
 @media(max-width:767px){
   .page-member #dailySummary{
@@ -5527,7 +5526,7 @@ button,input,select,textarea{font-family:inherit;font-synthesis:none}
   .page-member #dailySummary .summary-stat.win,
   .page-member #dailySummary .summary-stat.loss,
   .page-member #dailySummary .summary-stat.mobile-draw,
-  .page-member #dailySummary .summary-stat.mobile-avg-odds{display:flex!important}
+  .page-member #dailySummary .summary-stat.avg-odds{display:flex!important}
   .page-member #dailySummary .summary-stat.win{
     order:5;
     background:linear-gradient(145deg,rgba(27,76,60,.49),rgba(15,52,47,.39));
@@ -5540,7 +5539,7 @@ button,input,select,textarea{font-family:inherit;font-synthesis:none}
     order:7;
     background:linear-gradient(145deg,rgba(48,68,79,.49),rgba(28,48,62,.38));
   }
-  .page-member #dailySummary .summary-stat.mobile-avg-odds{
+  .page-member #dailySummary .summary-stat.avg-odds{
     order:8;
     background:linear-gradient(145deg,rgba(22,63,81,.48),rgba(13,48,65,.38));
   }
@@ -5568,8 +5567,8 @@ button,input,select,textarea{font-family:inherit;font-synthesis:none}
   .page-member #dailySummary .summary-stat.loss b{color:#ff97a2}
   .page-member #dailySummary .summary-stat.mobile-draw span{color:#a6bbca}
   .page-member #dailySummary .summary-stat.mobile-draw b{color:#dae4ec}
-  .page-member #dailySummary .summary-stat.mobile-avg-odds span{color:#99bbcf}
-  .page-member #dailySummary .summary-stat.mobile-avg-odds b{color:#a9e1fc}
+  .page-member #dailySummary .summary-stat.avg-odds span{color:#99bbcf}
+  .page-member #dailySummary .summary-stat.avg-odds b{color:#a9e1fc}
 }
 @media(max-width:349px){
   .page-member #dailySummary{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:4px!important}
@@ -5819,4 +5818,38 @@ button,input,select,textarea{font-family:inherit;font-synthesis:none}
   .page-login .topbar-inner.shell{
     width:min(1600px,calc(100% - 24px));
   }
+}
+
+/* BALL46 MEMBER — Desktop KPI V7: nine live-data summary cards, one row (2026-10-20).
+   Durable final desktop override: prevents older 5/10-column rules from reviving legacy UI.
+   The source only renders nine approved desktop KPIs; mobile retains its 4x2 grid. */
+@media(min-width:768px){
+  .page-member #dailySummary{
+    display:grid!important;
+    grid-template-columns:repeat(9,minmax(0,1fr))!important;
+    grid-auto-flow:row!important;
+    gap:6px;
+    min-width:0;
+  }
+  .page-member #dailySummary .summary-stat.avg-odds{
+    display:flex!important;
+    background:linear-gradient(160deg,rgba(30,77,100,.45) 0%,rgba(14,48,70,.45) 100%);
+  }
+  .page-member #dailySummary .summary-stat.avg-odds span{color:#9bbccb}
+  .page-member #dailySummary .summary-stat.avg-odds b{color:#a9e1fc}
+  .page-member #dailySummary .summary-stat{
+    min-width:0;
+  }
+  .page-member #dailySummary .summary-stat span,
+  .page-member #dailySummary .summary-stat b{
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:clip;
+  }
+}
+@media(min-width:768px) and (max-width:1099px){
+  .page-member #dailySummary{gap:4px}
+  .page-member #dailySummary .summary-stat{padding-inline:2px}
+  .page-member #dailySummary .summary-stat span{font-size:clamp(7px,.75vw,9px)}
+  .page-member #dailySummary .summary-stat b{font-size:clamp(10px,1.1vw,14px)}
 }
