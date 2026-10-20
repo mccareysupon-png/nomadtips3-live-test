@@ -1,0 +1,24 @@
+name: BALL46 Statistics PC V2 Preview API Diagnostic
+on:
+  push:
+    branches: [codex/ball46-stats-pc-v2-browser-preview-20261020]
+    paths:
+      - '.github/workflows/ball46-stats-pc-v2-diagnose-20261020.yml'
+      - 'deploy-assets/stats-pc-v2-preview-20261020/diagnose.mjs'
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Inspect preview and production Statistics requests without changes
+        working-directory: deploy-assets/stats-pc-v2-preview-20261020
+        run: |
+          node --check diagnose.mjs
+          npm install --no-save --ignore-scripts puppeteer-core@24 >/dev/null 2>&1
+          node diagnose.mjs
