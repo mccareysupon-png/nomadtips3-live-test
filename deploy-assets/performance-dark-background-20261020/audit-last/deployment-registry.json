@@ -1,0 +1,69 @@
+{
+  "status": "SUCCESS",
+  "verifiedAt": "2026-10-20T03:37:42.406Z",
+  "productionUrl": "https://ball46.com",
+  "repository": "mccareysupon-png/nomadtips3-live-test",
+  "branch": "codex/ball46-performance-dark-background-20261020",
+  "baselineSourceBranch": "work/mobile-featured-elevation-20261020",
+  "baselineCommit": "184c4e6028a8fc88702bbfe4b7955def969f6bdc",
+  "sourceCommit": "05a60344fa97f2cff5aaa84b864096a86e40311f",
+  "activationCommit": "2280f8826a979ceb2efa715f76b7c172838042d6",
+  "candidateRun": 39364733363,
+  "activationRun": 39364994253,
+  "worker": "ball46-production",
+  "activeVersion": "bce8d90c-2e7b-4920-b098-b978fae753a2",
+  "deployment": "cec17954-1d3e-4193-a0e3-30eaa301644c",
+  "productionFilesModified": [
+    "index.js (main website HTML response color rendering only)"
+  ],
+  "cssComponent": "b46-performance-desktop-borderless-20261019",
+  "backgroundColors": [
+    [
+      "surface",
+      "#0c2027",
+      "#121a16"
+    ],
+    [
+      "today",
+      "#10282f",
+      "#17211b"
+    ],
+    [
+      "yesterday",
+      "#0f252d",
+      "#161f1a"
+    ],
+    [
+      "stat",
+      "#16323b",
+      "#1e2b23"
+    ]
+  ],
+  "allOriginalWorkerCodePreservedByInverseDiff": true,
+  "other10ModulesUnchanged": true,
+  "assetsRetained": true,
+  "configurationUnchanged": true,
+  "testsPassed": 10,
+  "uiCases": 10,
+  "performanceHeight": 99,
+  "textAndNumberColorsUnchanged": true,
+  "lightAndMobileUnchanged": true,
+  "publicPaths": 83,
+  "knownUnchanged404": [
+    {
+      "path": "/color-semantics-stat-entry-20261011.js",
+      "status": 404,
+      "sha": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "settledPreserved": 8533,
+  "rollback": {
+    "baselineVersion": "87bc7f10-4740-48db-9a0c-c755b12407c7",
+    "baselineDeployment": "dd13c035-402a-4489-a736-0bc928a471fc",
+    "baselineMainSha": "15c31b377c21904764297e251a5d521ceceb8a2bd7ab07fd5968f504b8eb868e",
+    "sourceCommit": "184c4e6028a8fc88702bbfe4b7955def969f6bdc",
+    "candidateVersion": "bce8d90c-2e7b-4920-b098-b978fae753a2",
+    "process": "Guarded restore phase: require current Active is this task candidate and unchanged config. Restore exact baseline traffic only; require two consecutive baseline byte observations and verify all public resources and health. Stop if another chat changed Active. All existing ASSETS retained."
+  },
+  "workflow": ".github/workflows/ball46-performance-dark-background-20261020.yml"
+}
