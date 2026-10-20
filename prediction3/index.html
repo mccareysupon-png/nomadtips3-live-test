@@ -42,6 +42,18 @@
   <link rel="stylesheet" href="sirius-desktop-layout.css?v=20260907-pc-spacing-v1">
   <link rel="stylesheet" href="xbet-team-link.css?v=20260909-v1">
   <link rel="stylesheet" href="sirius-result-flow.css?v=20261019-p15-v1">
+  <style>
+    body[data-page="prediction3"] .ball46-promo{width:100%;box-sizing:border-box;position:relative;isolation:isolate;overflow:hidden;display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr) auto;align-items:center;gap:18px;margin:0 0 14px;padding:19px 22px;border:0;border-radius:12px;color:#fff;background:radial-gradient(ellipse at 73% 25%,#20513b 0%,#0c261c 44%,#050d0a 100%);box-shadow:inset 0 2px 2px #ffffff12,0 12px 26px #0007;font-family:Arial,Helvetica,sans-serif}
+    .ball46-promo:before{content:"";position:absolute;inset:-100%;z-index:-1;pointer-events:none;background:linear-gradient(110deg,transparent 45%,#6dffad1c 50%,transparent 55%);animation:ball46-promo-scan 6s linear infinite}
+    .ball46-promo__copy{min-width:0}.ball46-promo__brand{font-size:clamp(31px,3.5vw,44px);font-weight:1000;letter-spacing:-2.5px;line-height:1;font-style:italic;text-shadow:0 4px 14px #0009}.ball46-promo__brand span{color:#43e6a2}.ball46-promo__live{font-size:10px;letter-spacing:0;color:#5dffb1;vertical-align:middle;animation:ball46-promo-pulse 2s ease-in-out infinite}
+    .ball46-promo__eyebrow{font-size:9px;font-weight:800;letter-spacing:1.7px;color:#a5cbb8;margin-top:6px}.ball46-promo h2{font-size:clamp(17px,2.2vw,26px);font-weight:1000;font-style:italic;letter-spacing:-.7px;line-height:1.12;margin:15px 0 0;color:#fff;text-shadow:0 4px 12px #000a}.ball46-promo h2 em{font-style:inherit;color:#52f6a5}.ball46-promo h2 b{color:#ffd17d}.ball46-promo p{font-size:10px;color:#abc9b8;margin:9px 0 0}
+    .ball46-promo__markets{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.ball46-promo__tile{min-width:0;text-align:center;padding:16px 6px;border:0;border-radius:12px;background:linear-gradient(150deg,var(--tone),#091912 85%);box-shadow:inset 0 2px 2px #ffffff26,inset 0 -5px 10px #0009,0 9px 18px #000a;transform:perspective(420px) rotateX(5deg)}.ball46-promo__tile strong{display:block;font-size:clamp(14px,1.6vw,19px);font-weight:1000;font-style:italic;color:var(--accent)}.ball46-promo__tile small{display:block;font-size:8px;color:#d0ded4;margin-top:5px}.market-ah{--tone:#21456d;--accent:#7ac2ff}.market-ou{--tone:#654025;--accent:#ffb46f}.market-corners{--tone:#4b3268;--accent:#d6a6ff}
+    .ball46-promo__cta{display:block;text-decoration:none;text-align:center;white-space:nowrap;color:#041e12;background:linear-gradient(180deg,#8dffd1,#35e69a 45%,#0b9d5c);font-size:15px;font-weight:1000;font-style:italic;padding:15px 18px;border-radius:11px;box-shadow:inset 0 2px 2px #ffffffb0,0 10px 22px #0bc87855,0 4px 0 #08643d;transition:transform .2s}.ball46-promo__cta:hover{transform:translateY(-3px)}
+    @keyframes ball46-promo-scan{to{transform:translateX(55%)}}@keyframes ball46-promo-pulse{50%{opacity:.4}}
+    @media(max-width:820px){body[data-page="prediction3"] .ball46-promo{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.ball46-promo__cta{grid-column:1/-1}.ball46-promo__markets{grid-template-columns:repeat(3,minmax(0,1fr))}}
+    @media(max-width:530px){body[data-page="prediction3"] .ball46-promo{grid-template-columns:minmax(0,1fr);gap:14px;padding:16px}.ball46-promo__cta{grid-column:auto}.ball46-promo__tile{padding:12px 4px}.ball46-promo__tile strong{font-size:15px}}
+    @media(prefers-reduced-motion:reduce){.ball46-promo:before,.ball46-promo__live{animation:none}}
+  </style>
 </head>
 <body data-page="prediction3">
   <header class="topbar">
@@ -52,6 +64,21 @@
   </header>
 
   <main class="shell">
+    <section class="ball46-promo" aria-label="ball46 football signals promotion">
+      <div class="ball46-promo__copy">
+        <div class="ball46-promo__brand">ball<span>46</span> <small class="ball46-promo__live">● LIVE</small></div>
+        <div class="ball46-promo__eyebrow">LIVE FOOTBALL INTELLIGENCE</div>
+        <h2>REAL <em>WIN RATE.</em><br><b>VERIFIED</b> RESULTS.</h2>
+        <p>LIVE SIGNALS · REAL OUTCOMES · MULTIPLE MARKETS</p>
+      </div>
+      <div class="ball46-promo__markets" aria-label="Football markets">
+        <div class="ball46-promo__tile market-ah"><strong>AH</strong><small>HANDICAP</small></div>
+        <div class="ball46-promo__tile market-ou"><strong>O/U</strong><small>OVER / UNDER</small></div>
+        <div class="ball46-promo__tile market-corners"><strong>CORNERS</strong><small>TOTAL CORNERS</small></div>
+      </div>
+      <a class="ball46-promo__cta" href="https://ball46.com" target="_blank" rel="noopener noreferrer">EXPLORE<br>ball46 ↗</a>
+    </section>
+
     <section class="hero hero-net prediction3-hero">
       <div class="hero-copy">
         <p class="prediction3-kicker">SIRIUS DIVINE VERDICT</p>
