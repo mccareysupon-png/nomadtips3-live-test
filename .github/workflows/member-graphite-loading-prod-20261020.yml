@@ -40,9 +40,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          git fetch origin refs/heads/design/member-graphite-noir-dark-20261015:refs/remotes/origin/member-graphite-20261015
+          # EXACT SHA checked out by the last successful Member Production workflow.
+          # Never follow a moving branch or replace active assets from an older checkout.
+          git fetch origin 05c276f7f76a6226b10b45bd85ac369e53167d2f
+          git cat-file -e 05c276f7f76a6226b10b45bd85ac369e53167d2f^{commit}
           mkdir -p /tmp/ball46-member-live-tree
-          git archive --format=tar refs/remotes/origin/member-graphite-20261015 ball46-member/public | tar xf - -C /tmp/ball46-member-live-tree
+          git archive --format=tar 05c276f7f76a6226b10b45bd85ac369e53167d2f ball46-member/public | tar xf - -C /tmp/ball46-member-live-tree
           test -s /tmp/ball46-member-live-tree/ball46-member/public/member.js
           test -s /tmp/ball46-member-live-tree/ball46-member/public/member.html
       - name: Check Active Version, upload precise asset candidate, Browser QA, Deploy and verify
