@@ -1,0 +1,116 @@
+name: Enable owner-only BALL46 Visitor Monitor via Cloudflare Access and KV
+on:
+  push:
+    branches: [work/ball46-traffic-intelligence-isolated-20261020]
+    paths: ['.github/workflows/enable-ball46-visitor-monitor-owner.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: b46-visitor-monitor-deploy-only
+  cancel-in-progress: false
+jobs:
+  dedicated-owner-monitor:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CF_TELEMETRY_DISABLED: '1'
+    defaults:
+      run:
+        working-directory: traffic-intelligence/isolated-deploy
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/ball46-traffic-intelligence-isolated-20261020
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify isolated Worker tests and syntax
+        run: |
+          node --check worker.mjs
+          node --test worker.test.mjs
+      - name: Derive verified site owner's already confirmed email without recording it in source or logs
+        id: own
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=1 origin 2829ff3a06d1915deba89447deb94ad452f189fb >/dev/null 2>&1
+          OWNER_EMAIL=$(git show -s --format=%ae 2829ff3a06d1915deba89447deb94ad452f189fb | tr '[:upper:]' '[:lower:]')
+          check=$(printf '%s' "$OWNER_EMAIL" | sha256sum | cut -d' ' -f1)
+          if [ "$check" != '2e2873c0275a982578d507b7cce6894dbbaae9326a25f9f6f45ce34187d1f085' ]; then
+            echo 'BLOCKED: repository author does not match previously confirmed owner address'
+            exit 1
+          fi
+          echo "::add-mask::$OWNER_EMAIL"
+          echo "OWNER_EMAIL=$OWNER_EMAIL" >> "$GITHUB_ENV"
+          echo 'Verified owner identity from immutable repository source.'
+      - name: Verify isolated KV and create strictly owner-only Access app
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID"
+          head=(-H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json")
+          curl -fsS -m 20 "${head[@]}" "$base/storage/kv/namespaces?per_page=100" > kv.json
+          ID=$(jq -r '.result[]? | select(.title=="b46-visitor-monitor-kv") | .id' kv.json | head -1)
+          if ! [[ "$ID" =~ ^[a-fA-F0-9]{32}$ ]]; then echo 'BLOCKED: monitor KV resource absent'; exit 1; fi
+          curl -fsS -m 20 "${head[@]}" "$base/access/organizations" > org.json
+          domain=$(jq -r '.result.auth_domain // .result.team_domain // empty' org.json)
+          domain="${domain#https://}"; domain="${domain%%/}"
+          if [[ "$domain" != *.cloudflareaccess.com ]]; then echo 'BLOCKED: missing verified Cloudflare Access team domain'; exit 1; fi
+          curl -fsS -m 20 "${head[@]}" "$base/access/apps?per_page=100" > apps.json
+          host='b46-visitor-monitor-admin.mccarey-supon.workers.dev'
+          app=$(jq -c --arg host "$host" '.result[]? | select(.domain==$host)' apps.json | head -1)
+          if [ -z "$app" ]; then
+            jq -n --arg owner "$OWNER_EMAIL" --arg host "$host" '{
+              name:"BALL46 VISITOR MONITOR — OWNER ONLY",
+              type:"self_hosted",
+              domain:$host,
+              session_duration:"12h",
+              app_launcher_visible:false,
+              policies:[{name:"BALL46 Visitor Monitor owner only",decision:"allow",include:[{email:{email:$owner}}]}]
+            }' > access-create.json
+            status=$(curl -sS -m 20 -o access-result.json -w '%{http_code}' -X POST "${head[@]}" --data @access-create.json "$base/access/apps")
+            if [ "$status" != 200 ] && [ "$status" != 201 ]; then
+              echo "BLOCKED: Cloudflare Access Apps Write permission or schema, HTTP $status"
+              jq -r '.errors[]? | "Cloudflare code "+(.code|tostring)+" "+(.message // "unspecified"|.[0:100])' access-result.json | head -3
+              exit 1
+            fi
+            app=$(jq -c '.result' access-result.json)
+            echo 'CREATED: owner-only Access application for standalone Worker.'
+          else
+            echo 'EXISTING: dedicated Access application.'
+          fi
+          aud=$(printf '%s' "$app" | jq -r '.aud // empty')
+          if [ -z "$aud" ]; then echo 'BLOCKED: Access AUD missing'; exit 1; fi
+          # Verify policy references are non-empty. Never create any allow-all fallback.
+          policyCount=$(printf '%s' "$app" | jq -r '(.policies // []) | length')
+          if [ "$policyCount" = 0 ]; then echo 'BLOCKED: Access app has no verified restrictive policy'; exit 1; fi
+          jq -n --arg id "$ID" --arg team "https://$domain" --arg aud "$aud" --arg email "$OWNER_EMAIL" '{
+            name:"b46-visitor-monitor-admin",
+            main:"worker.mjs",
+            compatibility_date:"2026-10-20",
+            workers_dev:true,
+            vars:{COLLECT_ENABLED:"false",ACCESS_TEAM_DOMAIN:$team,ACCESS_AUD:$aud,ADMIN_EMAIL:$email},
+            kv_namespaces:[{binding:"EVENTS_KV",id:$id}]
+          }' > wrangler.owner.json
+          echo 'OWNER APP VERIFIED; Analytics collection remains disabled; no BALL46 main code touched.'
+      - name: Deploy owner-only monitor Worker with separate KV binding
+        run: |
+          set -euo pipefail
+          npm install --no-save --ignore-scripts wrangler@4.45.0
+          npx wrangler deploy --config wrangler.owner.json | tee owner-deploy.log
+      - name: Confirm anonymous traffic cannot access owner data
+        run: |
+          set -euo pipefail
+          url='https://b46-visitor-monitor-admin.mccarey-supon.workers.dev'
+          for path in / /api/summary; do
+            status=$(curl -sS -m 20 -o /dev/null -w '%{http_code}' "$url$path")
+            echo "Anonymous $path HTTP $status"
+            if [ "$status" = 200 ]; then
+              echo 'FAIL: owner-only route was publicly available'; exit 1
+            fi
+          done
+          echo 'Cloudflare Access and Worker auth deny anonymous users.'
