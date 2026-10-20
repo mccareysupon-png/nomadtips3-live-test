@@ -5761,6 +5761,9 @@ button,input,select,textarea{font-family:inherit;font-synthesis:none}
     border-radius:2px;
     background:#d3e2e8;
   }
+  /* Do not let authored display:flex override the native closed-details state. */
+  .page-pricing .mobile-v5-site-menu:not([open]) > .mobile-v5-site-links,
+  .page-login .mobile-v5-site-menu:not([open]) > .mobile-v5-site-links{display:none!important}
   .page-pricing .mobile-v5-site-links,
   .page-login .mobile-v5-site-links{
     position:fixed;
