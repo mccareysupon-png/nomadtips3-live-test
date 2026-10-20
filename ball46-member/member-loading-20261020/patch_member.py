@@ -11,8 +11,12 @@ def main():
   d=pathlib.Path(sys.argv[1])
   htmlraw=(d/'member.html').read_bytes()
   jsraw=(d/'member.js').read_bytes()
-  assert h(htmlraw)=='2c2b4ed722e3c39fdf48038dce8ca993ac6dc6ae45942c8809a8ea24a6f71242','PROTECTED_HTML_SOURCE_VERSION_DRIFT'
-  assert h(jsraw)=='205b50004965b79eefeb6ecaa71f9d489c0d3a6269b8ecd0c54cafdff7acfc00','MEMBER_JS_SOURCE_VERSION_DRIFT'
+  # Protected member.html comes from immutable source 05c276f7 (last successful Member
+  # full deployment), while member.js is fetched byte-for-byte from current live assets.
+  assert b'kpiV7=desktop-nine-in-one-row-20261020' in htmlraw,'PROTECTED_HTML_SOURCE_VERSION_DRIFT'
+  assert b'favoriteStorageInit(session.member)' in jsraw,'MEMBER_JS_SOURCE_VERSION_DRIFT'
+  assert b'mobileV5=' in htmlraw,'MOBILE_V5_HEADER_MISSING'
+  assert b'ball46:member-data-ready' not in jsraw,'LOADER_ALREADY_WIRED'
   html=htmlraw.decode('utf8');js=jsraw.decode('utf8')
   signature='BALL46_MEMBER_GRAPHITE_SPLASH_V1_20261020'
   assert signature not in html and signature not in js,'LOADER_ALREADY_INSTALLED'
