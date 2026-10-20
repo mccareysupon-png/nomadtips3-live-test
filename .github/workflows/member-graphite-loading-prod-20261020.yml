@@ -1,0 +1,56 @@
+name: BALL46 MEMBER Graphite Noir Data Loading Splash — Safe Production
+on:
+  push:
+    branches:
+      - work/ball46-member-loading-20261020
+    paths:
+      - '.github/workflows/member-graphite-loading-prod-20261020.yml'
+      - 'ball46-member/member-loading-20261020/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ball46-member-production-deploy
+  cancel-in-progress: false
+jobs:
+  guarded-deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 28
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright and Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Check source syntax before touching Cloudflare
+        run: |
+          node --check ball46-member/member-loading-20261020/member-loading.js
+          node --check ball46-member/member-loading-20261020/verify-splash.mjs
+          node --check ball46-member/member-loading-20261020/deploy-production.mjs
+          python3 -m py_compile ball46-member/member-loading-20261020/patch_member.py
+      - name: Export verified current Member source tree (only approved base)
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin refs/heads/design/member-graphite-noir-dark-20261015:refs/remotes/origin/member-graphite-20261015
+          mkdir -p /tmp/ball46-member-live-tree
+          git archive --format=tar refs/remotes/origin/member-graphite-20261015 ball46-member/public | tar xf - -C /tmp/ball46-member-live-tree
+          test -s /tmp/ball46-member-live-tree/ball46-member/public/member.js
+          test -s /tmp/ball46-member-live-tree/ball46-member/public/member.html
+      - name: Check Active Version, upload precise asset candidate, Browser QA, Deploy and verify
+        run: node ball46-member/member-loading-20261020/deploy-production.mjs
+      - name: Archive deployment report and Browser captures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-member-loading-${{ github.run_id }}
+          path: audit/member-graphite-loading-production-deploy/
+          retention-days: 14
