@@ -1,0 +1,31 @@
+name: BALL46 Member Desktop Statistics Compact V3 Candidate QA
+on:
+  push:
+    branches: [work/member-desktop-statistics-compact-v3-20261020]
+    paths:
+      - '.github/workflows/member-statistics-compact-v3-qa.yml'
+      - 'ball46-member/statistics-compact-v3/patch_active_statistics.py'
+      - 'ball46-member/statistics-compact-v3/test-candidate.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  qa:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Test 9 current-production-derived desktop cards and unchanged mobile
+        run: node ball46-member/statistics-compact-v3/test-candidate.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: member-desktop-statistics-v3-candidate-${{ github.run_id }}
+          path: audit/member-statistics-v3-candidate
+          retention-days: 10
