@@ -150,7 +150,15 @@ try{
   for(const m of report.baseModules){const hit=modAfter.find(x=>x.name===m.name);assert(hit,'MISSING_UPLOADED_MODULE');assert.equal(hit.hash,m.name===base.main_module?sha(patchedSource):m.hash,'NON_TARGET_MODULE_CHANGED '+m.name);}
   const preview='https://'+candidate.slice(0,8)+'-ball46-production.mccarey-supon.workers.dev';
   const tested=await assets(preview);
-  for(const p of urls)assert.equal(tested[p].hash,p==='/expanded-match-343.js'?report.scriptHashAfter:original[p].hash,'PREVIEW_ASSET_CHANGED '+p);
+  for(const p of urls){
+   if(p==='/expanded-match-343.js'&&tested[p].hash!==report.scriptHashAfter){
+    const actual=tested[p].buf.toString(),expected=expectedJs;
+    let i=0;while(i<actual.length&&i<expected.length&&actual.charCodeAt(i)===expected.charCodeAt(i))i++;
+    report.jsMismatch={position:i,expectedLength:expected.length,actualLength:actual.length,expectedAround:expected.slice(Math.max(0,i-250),i+400),actualAround:actual.slice(Math.max(0,i-250),i+400)};
+    console.log('FLOW_PREVIEW_JS_SHA_DIAGNOSTIC',JSON.stringify(report.jsMismatch));save();
+   }
+   assert.equal(tested[p].hash,p==='/expanded-match-343.js'?report.scriptHashAfter:original[p].hash,'PREVIEW_ASSET_CHANGED '+p);
+  }
   report.previewAssets=mapHashes(tested);report.previewHealth=await health(preview);
   report.previewUI={};
   for(const width of [1440,390])for(const theme of ['light','dark']){
