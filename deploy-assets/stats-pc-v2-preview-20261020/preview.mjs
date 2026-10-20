@@ -132,7 +132,7 @@ async function previewQA(url){
     await clickText('.b46-perf-mode button','UNITS');
     await new Promise(r=>setTimeout(r,300));
     const graphRect=await page.evaluate(()=>{const e=document.querySelector('.b46-perf-chart-wrap svg,.b46-perf-chart-wrap canvas');if(!e)return null;const r=e.getBoundingClientRect();return{x:r.x,y:r.y,w:r.width,h:r.height};});
-    assert(graphRect&&graphRect.w>400,'CHART_NOT_RENDERED');
+    assert(graphRect&&graphRect.w>(width>=1024?400:150),'CHART_NOT_RENDERED');
     await page.mouse.move(graphRect.x+graphRect.w*.4,graphRect.y+graphRect.h*.4);await new Promise(r=>setTimeout(r,300));
     const tooltip=await page.evaluate(()=>{const el=document.querySelector('.b46-perf-tip');return{exists:!!el,visible:el?getComputedStyle(el).visibility:'missing',text:el?.textContent?.trim().slice(0,170)};});
     const filter=await page.evaluate(()=>{
