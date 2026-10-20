@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 // Existing point, connector, minute, market, price, bookmaker, layout and API stay intact.
 export const MARKER='B46_MEMBER_EVENTFLOW_SIGNAL_V3_20261020';
 export const GRADIENT_ID='b46-member-eventflow-signal-v3-20261020';
-export const STYLE=String.raw\`
+export const STYLE=String.raw`
 /* B46_MEMBER_EVENTFLOW_SIGNAL_V3_20261020 — scoped to Member SVG plate only. */
 .page-member .member-flow-chart svg g.member-flow-signal-tag > rect.member-flow-signal-plate{
   stroke:none!important;
@@ -12,9 +12,9 @@ export const STYLE=String.raw\`
   fill-opacity:.98!important;
   filter:drop-shadow(0 5px 8px rgba(0,0,0,.34)) drop-shadow(0 -1px 2px rgba(104,230,184,.14))!important;
   animation:none!important;
-}\`;
+}`;
 const OLD_DEFS='defs.append(gh,ga); svg.append(defs);';
-const NEXT_DEFS=\`const __b46MemberSignalV3=svgNode('linearGradient',{id:'b46-member-eventflow-signal-v3-20261020',x1:'0%',y1:'0%',x2:'22%',y2:'100%'});\n  __b46MemberSignalV3.append(svgNode('stop',{offset:'0%','stop-color':'#31554d'}),svgNode('stop',{offset:'24%','stop-color':'#21463e'}),svgNode('stop',{offset:'63%','stop-color':'#153932'}),svgNode('stop',{offset:'100%','stop-color':'#0b2727'}));\n  defs.append(gh,ga,__b46MemberSignalV3); svg.append(defs);\`;
+const NEXT_DEFS=`const __b46MemberSignalV3=svgNode('linearGradient',{id:'b46-member-eventflow-signal-v3-20261020',x1:'0%',y1:'0%',x2:'22%',y2:'100%'});\n  __b46MemberSignalV3.append(svgNode('stop',{offset:'0%','stop-color':'#31554d'}),svgNode('stop',{offset:'24%','stop-color':'#21463e'}),svgNode('stop',{offset:'63%','stop-color':'#153932'}),svgNode('stop',{offset:'100%','stop-color':'#0b2727'}));\n  defs.append(gh,ga,__b46MemberSignalV3); svg.append(defs);`;
 function one(s,oldValue,newValue,label){
  assert.equal(s.split(oldValue).length-1,1,'ANCHOR_COUNT_CHANGED '+label);
  return s.replace(oldValue,newValue);
