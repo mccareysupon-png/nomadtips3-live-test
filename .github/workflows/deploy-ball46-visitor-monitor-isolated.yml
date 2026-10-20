@@ -41,26 +41,37 @@ jobs:
         run: |
           set -euo pipefail
           npm install --no-save --ignore-scripts wrangler@4.45.0
-          npx wrangler d1 list --json > d1-list.json
-          ID=$(jq -r '.[] | select(.name == "b46-visitor-monitor-db") | (.uuid // .id)' d1-list.json | head -1)
-          if [ -z "$ID" ]; then
-            npx wrangler d1 create b46-visitor-monitor-db --json > new-db.json
-            ID=$(jq -r '.uuid // .database_id // .id // .database.uuid // .database.database_id // empty' new-db.json)
+          # D1 is optional for initial isolated Worker provisioning.
+          # If missing Cloudflare D1 permissions, keep collection disabled and
+          # make no writes to existing databases or BALL46 production.
+          ID=''
+          if npx wrangler d1 list --json > d1-list.json; then
+            ID=$(jq -r '.[] | select(.name == "b46-visitor-monitor-db") | (.uuid // .id)' d1-list.json | head -1)
+            if [ -z "$ID" ]; then
+              if npx wrangler d1 create b46-visitor-monitor-db --json > new-db.json; then
+                ID=$(jq -r '.uuid // .database_id // .id // .database.uuid // .database.database_id // empty' new-db.json)
+              else
+                echo 'D1 CREATE BLOCKED — provisioning locked Worker only'
+              fi
+            fi
+          else
+            echo 'D1 LIST BLOCKED — provisioning locked Worker only'
           fi
-          if ! [[ "$ID" =~ ^[0-9a-fA-F-]{36}$ ]]; then
-            echo 'BLOCKED: Cannot verify distinct new D1 database ID'
-            exit 1
+          if [[ "$ID" =~ ^[0-9a-fA-F-]{36}$ ]]; then
+            jq -n --arg id "$ID" '{
+              name:"b46-visitor-monitor-admin",
+              main:"worker.mjs",
+              compatibility_date:"2026-10-20",
+              workers_dev:true,
+              vars:{COLLECT_ENABLED:"false"},
+              triggers:{crons:["0 * * * *"]},
+              d1_databases:[{binding:"DB",database_name:"b46-visitor-monitor-db",database_id:$id}]
+            }' > wrangler.deployment.json
+            npx wrangler d1 execute b46-visitor-monitor-db --remote --file=./schema.sql --yes
+          else
+            jq -n '{name:"b46-visitor-monitor-admin",main:"worker.mjs",compatibility_date:"2026-10-20",workers_dev:true,vars:{COLLECT_ENABLED:"false"}}' > wrangler.deployment.json
+            echo 'LOCKED WORKER ONLY: collection disabled; owner dashboard denied until Access and D1 configured'
           fi
-          jq -n --arg id "$ID" '{
-            name:"b46-visitor-monitor-admin",
-            main:"worker.mjs",
-            compatibility_date:"2026-10-20",
-            workers_dev:true,
-            vars:{COLLECT_ENABLED:"false"},
-            triggers:{crons:["0 * * * *"]},
-            d1_databases:[{binding:"DB",database_name:"b46-visitor-monitor-db",database_id:$id}]
-          }' > wrangler.deployment.json
-          npx wrangler d1 execute b46-visitor-monitor-db --remote --file=./schema.sql --yes
       - name: Deploy standalone Worker (no zone routes or public tracking)
         run: |
           set -euo pipefail
