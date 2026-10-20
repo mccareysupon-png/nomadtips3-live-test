@@ -91,7 +91,7 @@ test('mobile eight KPI cards gain clean soft elevation without size or color cha
 
 test('desktop KPI cards are another 6 percent shorter than last release without altering mobile',()=>{
   const marker='/* BALL46 MEMBER — Desktop KPI height: 10% then 6% shorter; Mobile preserved (2026-10-19) */';
-  const finish=css.slice(css.indexOf(marker));
+  const finish=css.slice(css.indexOf(marker),css.indexOf('/* BALL46 MEMBER — Pricing/Login V5 header parity with Signal Center (2026-10-20) */'));
   assert.ok(finish.startsWith(marker),'height override must exist');
   assert.match(finish,/@media\(min-width:768px\) and \(max-width:1559px\)\{\s*\.page-member #dailySummary \.summary-stat\{\s*height:62\.604px;\s*min-height:62\.604px;\s*padding-block:8\.46px;/);
   assert.match(finish,/@media\(min-width:1560px\)\{\s*\.page-member #dailySummary \.summary-stat\{\s*height:59\.22px;\s*min-height:59\.22px;\s*padding-block:6\.768px;/);
