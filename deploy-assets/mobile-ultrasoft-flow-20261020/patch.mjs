@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 export const PATCH_ID='B46_MOBILE_ULTRASOFT_EVENTFLOW_20261020';
-export const MOBILE_HELPERS=String.raw\`
+export const MOBILE_HELPERS=String.raw`
 function b46MobileSoftPoints20261020(points,key){
   return points.map((p,i)=>{
     let sum=0,weight=0;
@@ -38,7 +38,7 @@ function b46MobileSoftSvg20261020(points,key,w,h,pad,current,fill){
   const base=yFor(1,h,pad);
   return 'M '+coord(pp[0][0],base)+' L '+coord(pp[0][0],pp[0][1])+path.slice(path.indexOf(' C '))+' L '+coord(pp[pp.length-1][0],base)+' Z';
 }
-\`;
+`;
 export function patchFlowJs(source){
  assert.equal(typeof source,'string','JS_SOURCE_MISSING');
  assert(!source.includes(PATCH_ID),'PREVIOUS_ULTRA_SOFT_PRESENT');
@@ -50,7 +50,7 @@ export function patchFlowJs(source){
  assert(begin>pos&&end>begin&&end-begin<2000,'MOBILE_PATHS_LAYOUT_DRIFT');
  const old=source.slice(begin,end);
  for(const needle of ['pathLine(points,key,w,h,pad,current)','areaLine(points,key,w,h,pad,current)','class="expand-flow-line '+'' ]){assert(old.includes(needle)||needle.includes('class="'),'ORIGINAL_CHART_PATH_MISSING '+needle);}
- const replacement=String.raw\`  /* B46_MOBILE_ULTRASOFT_EVENTFLOW_20261020: display-only 11-min trend, raw data and signals stay unchanged */
+ const replacement=String.raw`  /* B46_MOBILE_ULTRASOFT_EVENTFLOW_20261020: display-only 11-min trend, raw data and signals stay unchanged */
   const glow='<defs><filter id="b46-mf-soft-'+safe+'" x="-25%" y="-80%" width="150%" height="260%"><feGaussianBlur stdDeviation="1.7"/></filter></defs>';
   const paths=['home','away'].map((key,i)=>{
     const d=b46MobileSoftSvg20261020(points,key,w,h,pad,current,false);
@@ -59,7 +59,7 @@ export function patchFlowJs(source){
     return '<path d="'+area+'" fill="url(#e'+(i?'a':'h')+'-'+safe+')" class="expand-flow-area" opacity=".45"/>'
       +'<path d="'+d+'" fill="none" stroke="'+color+'" stroke-width="3.2" stroke-opacity=".29" filter="url(#b46-mf-soft-'+safe+')" stroke-linejoin="round" stroke-linecap="round" pointer-events="none"/>'
       +'<path d="'+d+'" class="expand-flow-line '+key+'" fill="none" style="stroke:'+color+';stroke-width:'+size+'px;stroke-linecap:round;stroke-linejoin:round" />';
-  }).join('');\`;
+  }).join('');`;
  let out=source.slice(0,begin)+replacement+source.slice(end);
  const returnAnchor="+'<div class=\"expand-flow-chart b46-mf-chart\"><svg";
  const anchor="+'</svg></div>'+mobileFlowPanel(entries,selected);";
