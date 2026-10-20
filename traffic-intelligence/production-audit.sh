@@ -14,6 +14,7 @@ show(){
  case "$label" in
   ROUTES) echo "$body" | jq -r '.result[]? | select(.pattern | contains("ball46.com")) | "ROUTE pattern="+.pattern+" script="+(.script // "none")';;
   WORKERS) echo "$body" | jq -r '.result[]? | select((.id // .name // "") | test("ball46";"i")) | "WORKER id="+(.id // .name)';;
+  DEPLOYS) echo "$body" | jq -r '.result // .deployments // [] | .[0:3][] | "DEPLOY id="+(.id // "n/a")+" created="+(.created_on // "n/a")+" version="+((.versions // [])[0].version_id // "n/a")';;
   DOMAINS) echo "$body" | jq -r '.result[]? | select((.hostname // "") | contains("ball46.com")) | "DOMAIN host="+.hostname+" service="+(.service // .script // "none")';;
  esac
 }
@@ -27,4 +28,5 @@ echo 'ZONE confirmed active (zone ID not printed)'
 show "/zones/${zone}/workers/routes" ROUTES
 show "/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/scripts" WORKERS
 show "/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/domains" DOMAINS
+show "/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/scripts/ball46-production/deployments?per_page=3" DEPLOYS
 echo 'AUDIT_ONLY: no Cloudflare changes made.'
