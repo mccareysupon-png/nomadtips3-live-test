@@ -1,0 +1,25 @@
+name: Probe standalone Visitor Collector runtime
+on:
+  push:
+    branches: [work/ball46-traffic-intelligence-isolated-20261020]
+    paths: ['.github/workflows/probe-visitor-collector-runtime.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check exact deployed Worker paths with HTTP bodies
+        shell: bash
+        run: |
+          url='https://b46-visitor-monitor-collector.mccarey-supon.workers.dev'
+          for p in /health / /api/summary /api/collect; do
+            if [ "$p" = '/api/collect' ]; then
+              echo "POST $p"
+              curl -sS -m 20 -i -X POST -H 'Origin: https://ball46.com' -H 'Content-Type: application/json' -d '{}' "$url$p" | head -20
+            else
+              echo "GET $p"
+              curl -sS -m 20 -i "$url$p" | head -20
+            fi
+          done
