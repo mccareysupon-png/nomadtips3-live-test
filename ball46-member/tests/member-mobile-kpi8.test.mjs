@@ -38,7 +38,7 @@ test('all eight stats have explicit 4x2 mobile placement and compact card height
   assert.match(cssV6,/\.summary-stat\.win\{\s*order:5/);
   assert.match(cssV6,/\.summary-stat\.loss\{\s*order:6/);
   assert.match(cssV6,/\.summary-stat\.mobile-draw\{\s*order:7/);
-  assert.match(cssV6,/\.summary-stat\.mobile-avg-odds\{\s*order:8/);
+  assert.match(cssV6,/\.summary-stat\.avg-odds\{\s*order:8/);
   assert.match(cssV6,/height:47px!important/);
   assert.match(cssV6,/height:45px!important/);
   assert.match(cssV6,/font-size:7\.5px!important/);
@@ -46,10 +46,11 @@ test('all eight stats have explicit 4x2 mobile placement and compact card height
   assert.match(cssV6,/@media\(max-width:349px\)/);
   assert.match(html,/kpi8=20261019-compact8-ledger-v1/);
 });
-test('extra DRAW and AVG ODDS cards are not displayed on Desktop',()=>{
+test('Desktop hides duplicate DRAW but displays AVG ODDS without altering mobile',()=>{
   assert.match(cssV6,/@media\(min-width:768px\)\{/);
-  assert.match(cssV6,/\.page-member #dailySummary \.summary-stat\.mobile-draw,/);
-  assert.match(cssV6,/\.page-member #dailySummary \.summary-stat\.mobile-avg-odds\{display:none!important\}/);
+  assert.match(cssV6,/\.page-member #dailySummary \.summary-stat\.mobile-draw\{display:none!important\}/);
+  assert.doesNotMatch(cssV6,/\.summary-stat\.avg-odds\{display:none!important\}/);
+  assert.match(cssV6,/\.summary-stat\.avg-odds\{\s*display:flex!important/);
   assert.match(js,/function renderSummary\(\)/);
   assert.doesNotMatch(js,/row\.result\s*=/);
 });
@@ -103,4 +104,55 @@ test('desktop KPI cards are another 6 percent shorter than last release without 
   assert.match(html,/pcKpiAlpha45Height94=20261019-alpha45-minus6-v1/);
   assert.match(cssV6,/height:47px!important/);
   assert.match(cssV6,/height:45px!important/);
+});
+
+test('production desktop KPI V7 has nine columns and a visible premium AVG ODDS card',()=>{
+  const marker='/* BALL46 MEMBER — Desktop KPI V7: nine live-data summary cards, one row (2026-10-20).';
+  const v7=css.slice(css.indexOf(marker));
+  assert.ok(v7.startsWith(marker),'the latest desktop nine-column guard is missing');
+  assert.match(v7,/@media\(min-width:768px\)/);
+  assert.match(v7,/grid-template-columns:repeat\(9,minmax\(0,1fr\)\)!important/);
+  assert.match(v7,/\.summary-stat\.avg-odds\{\s*display:flex!important/);
+  assert.match(v7,/linear-gradient\(160deg,rgba\(30,77,100,\.45\)/);
+  assert.match(v7,/\.summary-stat\.avg-odds b\{color:#a9e1fc\}/);
+  assert.match(html,/kpiV7=desktop-nine-in-one-row-20261020/);
+  assert.match(cssV6,/grid-template-columns:repeat\(4,minmax\(0,1fr\)\)!important/);
+});
+
+test('desktop summary never renders legacy half-result tiles and uses real odds per market',()=>{
+  const summarySource=js.match(/function renderSummary\(\)\{[\s\S]*?\n\}/)?.[0];
+  const oddsSource=js.match(/function averageRecordedOdds\(rows\)\{[\s\S]*?\n\}/)?.[0];
+  assert.ok(summarySource&&oddsSource);
+  assert.doesNotMatch(summarySource,/\['HALF WIN'|\['HALF LOSS'/);
+  const averageRecordedOdds=Function('return ('+oddsSource+')')();
+  const summary={children:[],replaceChildren(){this.children=[]},append(...items){this.children.push(...items)}};
+  const node=(tag,cls,text)=>({
+    tag,cls,text,children:[],title:'',attrs:{},
+    append(...items){this.children.push(...items)},
+    setAttribute(k,v){this.attrs[k]=v}
+  });
+  const make=(market,rows)=>{
+    const state={market,payload:{signals:rows,summary:{
+      ALL:{signals:7,win:3,loss:2,push:1,pending:1,live:1,winRate:60,pnl:2.31,halfWin:1,halfLoss:1,unresolved:1,void:2},
+      'O/U':{signals:2,win:1,loss:1,push:0,pending:0,live:0,winRate:50,pnl:-1.25,halfWin:0,halfLoss:0,unresolved:0,void:0}
+    }}};
+    return Function('state','summary','node','currentStats','averageRecordedOdds','fmtPct','fmtPnl',
+      summarySource+';return renderSummary;')(
+        state,summary,node,()=>state.payload.summary[market],averageRecordedOdds,
+        v=>v===null?'—':v.toFixed(1)+'%',
+        v=>(v>0?'+':'')+Number(v||0).toFixed(2)+'u'
+      );
+  };
+  const signals=[{market:'O/U',odds:1.8},{market:'O/U',odds:2.2},{market:'AH',odds:null}];
+  make('ALL',signals)();
+  const desktop=summary.children.filter(x=>!x.cls.includes('mobile-draw'));
+  assert.deepEqual(desktop.map(x=>x.children[0].text),[
+    'SIGNALS','WIN','LOSS','PUSH','PENDING','LIVE','WIN RATE','AVG ODDS','P/L TODAY'
+  ]);
+  assert.equal(desktop.length,9);
+  assert.equal(desktop.find(x=>x.cls.includes('avg-odds')).children[1].text,'2.00');
+  assert.match(desktop.find(x=>x.cls.includes('pending')).title,/UNRESOLVED: 1 · VOID: 2/);
+  make('O/U',signals)();
+  assert.equal(summary.children.find(x=>x.cls.includes('avg-odds')).children[1].text,'2.00');
+  assert.equal(summary.children.find(x=>x.cls.includes('pnl-card')).children[1].text,'-1.25u');
 });
