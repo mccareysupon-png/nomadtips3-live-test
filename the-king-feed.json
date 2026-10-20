@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-10-20T07:43:42Z",
+  "updated_at": "2026-10-20T13:39:26Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -704,8 +704,8 @@
       "edge": 37.2,
       "ev": 0.6211,
       "required_confidence": 0.56,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "2-0",
       "locked_at": "2026-10-20T02:09:17Z",
       "source_url": "https://www.goaloo.com/football/thai-chang-fa-cup-uthai-thani-fc-vs-nakhon-pathom-fc/h2h-3103309",
       "summary_url": "https://www.goaloo.com/football/thai-chang-fa-cup-uthai-thani-fc-vs-nakhon-pathom-fc/summary-3103309",
@@ -765,7 +765,12 @@
         "away_recent": 10,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-20T13:39:26Z"
     },
     {
       "id": "b9fd4b924777554a-AH-AWAY-1p25",
@@ -5379,8 +5384,8 @@
       "edge": 30.6,
       "ev": 0.6861,
       "required_confidence": 0.58,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "5-0",
       "locked_at": "2026-10-20T02:09:21Z",
       "source_url": "https://www.goaloo.com/football/armenia-division-2-lernayin-artsakh-vs-shirak-gjumri-b/h2h-3048128",
       "summary_url": "https://www.goaloo.com/football/armenia-division-2-lernayin-artsakh-vs-shirak-gjumri-b/summary-3048128",
@@ -5440,7 +5445,12 @@
         "away_recent": 10,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-20T13:39:26Z"
     },
     {
       "id": "9a3205130a751ee4-OU-UNDER-2p25",
@@ -296278,6 +296288,186 @@
       "settlement_source": "goaloo-bf_us-direct-index",
       "goaloo_terminal_state": -1,
       "settled_at": "2026-10-20T01:54:44Z"
+    },
+    {
+      "id": "abae639ad58545a8-AH-AWAY-1p5",
+      "goaloo_id": "3103309",
+      "date": "2026-10-20",
+      "kickoff": "2026-10-20 11:00:00",
+      "league": "Thai Chang Fa Cup",
+      "home": "Uthai Thani FC",
+      "away": "Nakhon Pathom FC",
+      "market": "AH",
+      "selection": "AWAY",
+      "line": 1.5,
+      "pick": "Nakhon Pathom FC +1.5",
+      "side": "away",
+      "odds": 1.9,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.8532,
+      "model_probability": 0.8532,
+      "market_fair_probability": 0.4809,
+      "market_edge": 0.3724,
+      "edge": 37.2,
+      "ev": 0.6211,
+      "required_confidence": 0.56,
+      "result": "LOSS",
+      "ft": "2-0",
+      "locked_at": "2026-10-20T02:09:17Z",
+      "source_url": "https://www.goaloo.com/football/thai-chang-fa-cup-uthai-thani-fc-vs-nakhon-pathom-fc/h2h-3103309",
+      "summary_url": "https://www.goaloo.com/football/thai-chang-fa-cup-uthai-thani-fc-vs-nakhon-pathom-fc/summary-3103309",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 1.416,
+        "lambda_away": 1.687,
+        "home_win": 0.3031,
+        "draw": 0.2533,
+        "away_win": 0.4436,
+        "h2h_adjustment": 0.0025,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": -0.1593,
+          "gd_edge": -0.2828,
+          "clean_sheet_edge": -0.2146,
+          "failed_to_score_edge": 0.0341,
+          "bounded_adjustment": -0.0143,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-20T13:39:26Z"
+    },
+    {
+      "id": "cb459aef644575b8-AH-AWAY-0p0",
+      "goaloo_id": "3048128",
+      "date": "2026-10-20",
+      "kickoff": "2026-10-20 11:30:00",
+      "league": "Armenia Division 2",
+      "home": "Lernayin Artsakh",
+      "away": "Shirak Gjumri B",
+      "market": "AH",
+      "selection": "AWAY",
+      "line": 0.0,
+      "pick": "Shirak Gjumri B +0",
+      "side": "away",
+      "odds": 2.79,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.6336,
+      "model_probability": 0.6336,
+      "market_fair_probability": 0.3277,
+      "market_edge": 0.3059,
+      "edge": 30.6,
+      "ev": 0.6861,
+      "required_confidence": 0.58,
+      "result": "LOSS",
+      "ft": "5-0",
+      "locked_at": "2026-10-20T02:09:21Z",
+      "source_url": "https://www.goaloo.com/football/armenia-division-2-lernayin-artsakh-vs-shirak-gjumri-b/h2h-3048128",
+      "summary_url": "https://www.goaloo.com/football/armenia-division-2-lernayin-artsakh-vs-shirak-gjumri-b/summary-3048128",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 1.662,
+        "lambda_away": 2.374,
+        "home_win": 0.2412,
+        "draw": 0.2069,
+        "away_win": 0.5519,
+        "h2h_adjustment": 0.0075,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": -0.3724,
+          "gd_edge": -0.5845,
+          "clean_sheet_edge": -0.122,
+          "failed_to_score_edge": -0.1463,
+          "bounded_adjustment": -0.0292,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-20T13:39:26Z"
     }
   ],
   "note": "Automated Full-Time Winner First feed. Supplemental markets remain unpublished.",
