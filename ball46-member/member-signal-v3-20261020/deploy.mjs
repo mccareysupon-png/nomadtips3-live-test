@@ -214,6 +214,10 @@ try{
  const updated=patch({html:original['member.html'],js:original['member.js'],css:original['styles.css']});
  const outputFiles={'member.html':updated.html,'member.js':updated.js,'styles.css':updated.css};
  for(const p of paths)writeFileSync(DIR+'/'+p,outputFiles[p],'utf8');
+ const jsSyntax=spawnSync(process.execPath,['--check',DIR+'/member.js'],{encoding:'utf8'});
+ assert.equal(jsSyntax.status,0,'PATCHED_MEMBER_JS_SYNTAX_FAILED '+jsSyntax.stderr);
+ assert(updated.html.includes('b46-member-loading')&&updated.js.includes('ball46:member-data-ready'),'MEMBER_LOADING_DATA_READY_REGRESSION');
+ assert(updated.css.includes(MARKER)&&updated.js.includes(GRADIENT_ID),'SIGNAL_SVG_V3_BOTH_ASSETS_REQUIRED');
  const files=walk(DIR).map(absolute=>{
    const bytes=readFileSync(absolute);
    return {path:'/'+relative(DIR,absolute).replaceAll('\\','/'),bytes,sha:hash(bytes)};
