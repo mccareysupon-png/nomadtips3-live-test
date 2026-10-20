@@ -1,0 +1,44 @@
+name: Provision isolated Monitor KV, check Access organization
+on:
+  push:
+    branches: [work/ball46-traffic-intelligence-isolated-20261020]
+    paths: ['.github/workflows/provision-ball46-visitor-kv-only.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  provision:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Provision new, uniquely named KV only; never touch BALL46 production resources
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID"
+          headers=(-H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json")
+          echo 'Checking for dedicated b46-visitor-monitor-kv namespace'
+          rc=$(curl -sS -m 20 -o list.json -w '%{http_code}' "${headers[@]}" "$base/storage/kv/namespaces?per_page=100")
+          if [ "$rc" != 200 ]; then echo "BLOCKED: KV namespaces read HTTP $rc"; exit 0; fi
+          kv=$(jq -r '.result[]? | select(.title == "b46-visitor-monitor-kv") | .id' list.json | head -1)
+          if [ -n "$kv" ]; then
+            echo 'EXISTING: independent namespace already present'
+          else
+            rc=$(curl -sS -m 20 -o create.json -w '%{http_code}' -X POST "${headers[@]}" --data '{"title":"b46-visitor-monitor-kv"}' "$base/storage/kv/namespaces")
+            if [ "$rc" = 200 ]; then
+              echo 'CREATED: dedicated b46-visitor-monitor-kv namespace'
+            else
+              echo "BLOCKED: KV creation HTTP $rc"
+              jq -r '.errors[]? | "Cloudflare error code: "+(.code|tostring)' create.json | head -5
+            fi
+          fi
+          rc=$(curl -sS -m 20 -o org.json -w '%{http_code}' "${headers[@]}" "$base/access/organizations")
+          if [ "$rc" = 200 ]; then
+            jq -r '.result | if type=="object" then "ACCESS_ORGANIZATION: present" else "ACCESS_ORGANIZATION: unexpected_response" end' org.json
+          else
+            echo "ACCESS_ORGANIZATION: read blocked HTTP $rc"
+          fi
+          echo 'No changes to ball46-production, DNS, or existing KV namespaces.'
