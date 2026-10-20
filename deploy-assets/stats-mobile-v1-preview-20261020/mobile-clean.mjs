@@ -71,6 +71,8 @@ export const MOBILE_SCRIPT=String.raw`(function(){
    const button=append('button','b46m-detail-toggle',expanded.has(data.index)?'− Less details':'+ Match details',c);
    button.type='button';button.dataset.expand=String(data.index);button.setAttribute('aria-expanded',expanded.has(data.index)?'true':'false');
    const extra=append('div','b46m-extra',null,c);
+   extraItem(extra,'Match',data.home+' — '+data.away,true);
+   extraItem(extra,'League',data.league,true);
    extraItem(extra,'Market',data.market);
    extraItem(extra,'Pick',data.pick);
    extraItem(extra,'Line',data.line);
