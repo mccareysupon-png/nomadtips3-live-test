@@ -8,7 +8,10 @@ const login=load('login.html');
 const member=load('member.html');
 const css=load('styles.css');
 const marker='/* BALL46 MEMBER — Pricing/Login V5 header parity with Signal Center (2026-10-20) */';
-const added=css.slice(css.indexOf(marker));
+const kpiV7Marker='/* BALL46 MEMBER — Desktop KPI V7: nine live-data summary cards, one row (2026-10-20).';
+const kpiV7Boundary=css.indexOf(kpiV7Marker);
+assert.ok(kpiV7Boundary>css.indexOf(marker),'header tests must end before unrelated desktop KPI styles');
+const added=css.slice(css.indexOf(marker),kpiV7Boundary);
 
 function header(html){
   const start=html.indexOf('<header class="topbar">');
@@ -67,7 +70,7 @@ test('Desktop navigation remains visible and custom mobile controls stay hidden 
 
 test('desktop Pricing/Login header shell aligns exactly with Signal Center 1600px shell',()=>{
   const marker='/* BALL46 MEMBER — desktop-only guest-header width parity with Signal Center (2026-10-20) */';
-  const rules=css.slice(css.indexOf(marker));
+  const rules=css.slice(css.indexOf(marker),kpiV7Boundary);
   assert.ok(rules.startsWith(marker),'new header width rule must exist');
   assert.match(rules,/@media\(min-width:768px\)\{\s*\.page-pricing \.topbar-inner\.shell,\s*\.page-login \.topbar-inner\.shell\{\s*width:min\(1600px,calc\(100% - 24px\)\);/);
   assert.match(css,/\.page-member \.shell\{width:min\(1600px,calc\(100% - 24px\)\)\}/);
