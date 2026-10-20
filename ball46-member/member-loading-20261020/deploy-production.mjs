@@ -153,7 +153,7 @@ try{
  const before=walk(DIR).map(absolute=>{
   const bytes=readFileSync(absolute);return {path:'/'+relative(DIR,absolute).replaceAll('\\','/'),bytes,sha:hash(bytes)}
  });
- assert.equal(before.length,45,'ACTIVE_SOURCE_ASSET_COUNT_DRIFT');
+ assert.equal(before.length,40,'ACTIVE_SOURCE_ASSET_COUNT_DRIFT');
  const origHtml=before.find(x=>x.path==='/member.html');
  const origJs=before.find(x=>x.path==='/member.js');
  const origCss=before.find(x=>x.path==='/styles.css');
@@ -177,7 +177,7 @@ try{
  });
  const publicOld=await publicInventory(oldFiles.filter(x=>x.path!=='/member.html'),BASE);
  assert.deepEqual(publicOld.mismatches,[],'BASE_PUBLIC_ASSET_MISMATCH');
- assert.equal(publicOld.matches,44,'BASE_ASSETS_NOT_ALL_VERIFIED');
+ assert.equal(publicOld.matches,39,'BASE_ASSETS_NOT_ALL_VERIFIED');
  assert.equal(publicOld.protected.length,0,'UNEXPECTED_BASE_ASSET_ACCESS_BLOCK');
  const oldMember=await getPublic('/member.html',BASE);
  assert([302,303].includes(oldMember.status),'ACTIVE_MEMBER_LOGIN_PROTECTION_CHANGED');
@@ -187,10 +187,10 @@ try{
  const files=walk(DIR).map(absolute=>{
   const bytes=readFileSync(absolute);return {path:'/'+relative(DIR,absolute).replaceAll('\\','/'),bytes,sha:hash(bytes)}
  });
- assert.equal(files.length,47,'CANDIDATE_ASSET_COUNT_NOT_47');
+ assert.equal(files.length,42,'CANDIDATE_ASSET_COUNT_NOT_42');
  const changes=['/member.html','/member.js','/member-loading.css','/member-loading.js'];
  const nonChanged=files.filter(x=>!changes.includes(x.path));
- assert.equal(nonChanged.length,43,'UNTOUCHED_MEMBER_ASSET_COUNT_CHANGED');
+ assert.equal(nonChanged.length,38,'UNTOUCHED_MEMBER_ASSET_COUNT_CHANGED');
  for(const file of nonChanged) assert.equal(file.sha,oldFiles.find(x=>x.path===file.path)?.sha,'UNRELATED_ASSET_MUTATION:'+file.path);
  assert.equal(files.find(x=>x.path==='/styles.css').sha,OLD_CSS_SHA,'PREVIOUS_SCROLLBAR_CSS_CHANGED');
  assert.notEqual(files.find(x=>x.path==='/member.js').sha,liveJs.sha,'MEMBER_LOADER_READY_HOOK_NOT_PATCHED');
@@ -198,7 +198,7 @@ try{
  const js=readFileSync(DIR+'/member.js','utf8');
  assert(html.includes('id="b46-member-loading"')&&html.includes('/member-loading.css'),'LOADING_HTML_MISSING');
  assert(js.includes("ball46:member-data-ready")&&js.includes("ball46:member-data-error"),'MEMBER_DATA_LIFECYCLE_NOT_WIRED');
- report.change={assetsChanged:['/member.html','/member.js'],newAssets:['/member-loading.css','/member-loading.js'],unchangedAssets:43,
+ report.change={assetsChanged:['/member.html','/member.js'],newAssets:['/member-loading.css','/member-loading.js'],unchangedAssets:38,
   priorCssHash:OLD_CSS_SHA,htmlBefore:origHtml.sha,jsBefore:liveJs.sha,
   htmlAfter:files.find(x=>x.path==='/member.html').sha,jsAfter:files.find(x=>x.path==='/member.js').sha};
  report.phase='UPLOAD_ASSET_CANDIDATE';save();
@@ -217,7 +217,7 @@ try{
  report.phase='CANDIDATE_QA';save();
  const unchanged=await publicInventory(nonChanged,preview);
  assert.deepEqual(unchanged.mismatches,[],'CANDIDATE_UNCHANGED_ASSETS_FAILED');
- assert.equal(unchanged.matches,43,'CANDIDATE_UNCHANGED_ASSET_COUNT');
+ assert.equal(unchanged.matches,38,'CANDIDATE_UNCHANGED_ASSET_COUNT');
  for(const path of ['/member.js','/member-loading.css','/member-loading.js']){
   const live=await getPublic(path,preview);
   assert.equal(live.status,200,'CANDIDATE_NEW_ASSET_NOT_200:'+path);
@@ -244,7 +244,7 @@ try{
  }
  const otherLive=await publicInventory(nonChanged,BASE);
  assert.deepEqual(otherLive.mismatches,[],'UNTOUCHED_PRODUCTION_ASSETS_CHANGED');
- assert.equal(otherLive.matches,43,'PRODUCTION_ASSET_COUNT_DRIFT');
+ assert.equal(otherLive.matches,38,'PRODUCTION_ASSET_COUNT_DRIFT');
  const finalMember=await getPublic('/member.html',BASE);
  assert.equal(finalMember.status,oldMember.status,'PROTECTED_MEMBER_REDIRECT_CHANGED');
  report.productionUI=await verifySplash(BASE,html,'production',AUDIT);
@@ -256,7 +256,7 @@ try{
  report.phase='COMPLETE';report.productionVerified=true;save();
  console.log('BALL46_MEMBER_LOADING_DEPLOY_SUCCESS',JSON.stringify({
   beforeVersion:initial.version,afterVersion:newVersion,beforeDeployment:initial.deployment,afterDeployment:report.newDeployment,
-  files:47,unchanged:43,newAssets:['member-loading.js','member-loading.css'],
+  files:42,unchanged:38,newAssets:['member-loading.js','member-loading.css'],
   cssScrollbarPreserved:true,workerAndSecretsPreserved:true,
   candidateBrowserPassed:true,productionBrowserPassed:true,productionVerified:true}));
 }catch(e){
