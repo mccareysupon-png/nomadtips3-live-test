@@ -1,0 +1,48 @@
+name: Probe Visitor Monitor Cloudflare Capabilities (Read Only)
+on:
+  push:
+    branches: [work/ball46-traffic-intelligence-isolated-20261020]
+    paths:
+      - '.github/workflows/probe-ball46-visitor-monitor-capabilities.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  read-only-capabilities:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Test analytics, KV, Zero Trust and DNS read scopes
+        shell: bash
+        run: |
+          set -euo pipefail
+          base=https://api.cloudflare.com/client/v4
+          call(){
+            local key="$1" method="$2" url="$3" body="${4:-}"
+            local code resp
+            resp=$(mktemp)
+            if [ -n "$body" ]; then
+              code=$(curl -sS -m 15 -o "$resp" -w '%{http_code}' -X "$method" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'Content-Type: application/json' --data "$body" "$url") || code=NETWORK
+            else
+              code=$(curl -sS -m 15 -o "$resp" -w '%{http_code}' -X "$method" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$url") || code=NETWORK
+            fi
+            echo "PROBE $key: HTTP $code"
+            if [ "$code" = 200 ]; then
+              echo "PROBE $key success=$(jq -r '.success // "n/a"' "$resp") count=$(jq -r '(.result // [] | if type=="array" then length else 0 end)' "$resp")"
+              if [ "$key" = DNS_RECORDS ]; then jq -r '.result[]? | select(.name | contains("monitor.ball46.com")) | "PROBE Existing Monitor DNS: "+.name+" type="+.type' "$resp"; fi
+              if [ "$key" = ACCESS_APPS ]; then jq -r '.result[]? | "PROBE Access App: "+(.name//"unnamed")+" host="+(.domain//"none")' "$resp" | grep -Ei 'visitor|monitor|ball46' || true; fi
+              if [ "$key" = GRAPHQL ]; then jq -r 'if (.errors|length)>0 then "PROBE GraphQL error="+([.errors[].message]|join("|")|.[0:180]) else "PROBE GraphQL zone count="+((.data.viewer.zones|length)|tostring) end' "$resp"; fi
+            fi
+            rm -f "$resp"
+          }
+          zone='d491ee30b7a87a6c37e6a4dacf00ae8d'
+          call KV_LIST GET "$base/accounts/$CLOUDFLARE_ACCOUNT_ID/storage/kv/namespaces?per_page=1"
+          call DNS_RECORDS GET "$base/zones/$zone/dns_records?per_page=100"
+          call ACCESS_APPS GET "$base/accounts/$CLOUDFLARE_ACCOUNT_ID/access/apps?per_page=50"
+          call ZONE_ANALYTICS GET "$base/zones/$zone/analytics/dashboard?since=-1440"
+          payload=$(jq -nc --arg z "$zone" '{query:"query ($zoneTag:String!){ viewer { zones(filter:{zoneTag:$zoneTag}) { zoneTag } } }",variables:{zoneTag:$z}}')
+          call GRAPHQL POST "$base/graphql" "$payload"
+          echo 'All probes were read-only.'
