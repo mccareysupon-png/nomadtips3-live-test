@@ -12,7 +12,7 @@ def main():
   htmlraw=(d/'member.html').read_bytes()
   jsraw=(d/'member.js').read_bytes()
   assert h(htmlraw)=='2c2b4ed722e3c39fdf48038dce8ca993ac6dc6ae45942c8809a8ea24a6f71242','PROTECTED_HTML_SOURCE_VERSION_DRIFT'
-  assert h(jsraw)=='1ede22f4a3c100bf96088ff2eabdb4097ce074f87ecbd886854454805664fee6','MEMBER_JS_SOURCE_VERSION_DRIFT'
+  assert h(jsraw)=='205b50004965b79eefeb6ecaa71f9d489c0d3a6269b8ecd0c54cafdff7acfc00','MEMBER_JS_SOURCE_VERSION_DRIFT'
   html=htmlraw.decode('utf8');js=jsraw.decode('utf8')
   signature='BALL46_MEMBER_GRAPHITE_SPLASH_V1_20261020'
   assert signature not in html and signature not in js,'LOADER_ALREADY_INSTALLED'
