@@ -1,0 +1,137 @@
+/*
+ BALL46 Statistics PC V2.3 — FLAT SINGLE ROW / -40% information-footprint.
+ Preview ONLY. At 1024px and wider:
+ - Eight primary settled stats: one single row, never wrap.
+ - Six long-term performance KPI metrics: their own single row, never wrap.
+ - Remove all top color stroke/pseudo accent on primary KPI cards.
+ - Preserve readable labels, accurate data, chart dimensions and mobile untouched.
+ Applying a 40% reduction to the KPI information block is achieved largely by
+ removing the second row rather than reducing numeric glyphs to illegible sizes.
+*/
+@media (min-width:1024px){
+html[data-theme="dark"] body .workspace.singlepage .sp-stats-content{
+ --stat-gap:8px!important;
+ padding:12px!important;
+}
+html[data-theme="dark"] body .workspace.singlepage .sp-kpis{
+ display:grid!important;
+ grid-template-columns:repeat(8,minmax(0,1fr))!important;
+ gap:6px!important;
+ align-items:stretch!important;
+ margin-bottom:8px!important;
+}
+html[data-theme="dark"] body .workspace.singlepage .sp-kpis .sp-kpi{
+ min-width:0!important;
+ min-height:47px!important;
+ height:auto!important;
+ padding:6px 8px!important;
+ border-radius:8px!important;
+ gap:0!important;
+ border:0!important;
+ background:linear-gradient(135deg,#1C3329,#182B23)!important;
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.028),0 2px 7px rgba(0,0,0,.10)!important;
+}
+html[data-theme="dark"] body .workspace.singlepage .sp-kpis .sp-kpi::before,
+html[data-theme="dark"] body .workspace.singlepage .sp-kpis .sp-kpi::after{
+ content:none!important;
+ display:none!important;
+ width:0!important;
+ height:0!important;
+ border:0!important;
+ box-shadow:none!important;
+}
+html[data-theme="dark"] body .workspace.singlepage .sp-kpi > span{
+ font-size:9px!important;
+ font-weight:730!important;
+ letter-spacing:.035em!important;
+ white-space:nowrap!important;
+ line-height:1.25!important;
+}
+html[data-theme="dark"] body .workspace.singlepage .sp-kpi strong{
+ font-size:clamp(13.5px,1vw,16px)!important;
+ font-weight:730!important;
+ line-height:1.16!important;
+ margin:2px 0 1px!important;
+ letter-spacing:-.02em!important;
+ white-space:nowrap!important;
+}
+html[data-theme="dark"] body .workspace.singlepage .sp-kpi small{
+ font-size:9px!important;
+ line-height:1.12!important;
+ white-space:normal!important;
+}
+html[data-theme="dark"] body .workspace.singlepage .b46-perf-kpis{
+ display:grid!important;
+ grid-template-columns:repeat(6,minmax(0,1fr))!important;
+ align-items:stretch!important;
+ gap:6px!important;
+ margin-bottom:9px!important;
+}
+html[data-theme="dark"] body .workspace.singlepage .b46-perf-kpi{
+ min-width:0!important;
+ padding:7px 9px!important;
+ border-radius:8px!important;
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.025)!important;
+}
+html[data-theme="dark"] body .workspace.singlepage .b46-perf-kpi span{
+ font-size:9px!important;
+ font-weight:750!important;
+ line-height:1.16!important;
+ letter-spacing:.045em!important;
+ white-space:nowrap!important;
+}
+html[data-theme="dark"] body .workspace.singlepage .b46-perf-kpi b{
+ font-size:clamp(12px,.96vw,15px)!important;
+ line-height:1.22!important;
+ font-weight:750!important;
+ margin:3px 0 1px!important;
+ letter-spacing:-.025em!important;
+ white-space:nowrap!important;
+}
+html[data-theme="dark"] body .workspace.singlepage .b46-perf-kpi:nth-child(4) b{
+ font-size:clamp(10.5px,.80vw,13px)!important;
+ letter-spacing:-.035em!important;
+}
+html[data-theme="dark"] body .workspace.singlepage .b46-perf-kpi small{
+ font-size:9px!important;
+ line-height:1.18!important;
+}
+html[data-theme="dark"] body .workspace.singlepage .sp-stat-hero{
+ min-height:65px!important;
+ margin-bottom:8px!important;
+}
+html[data-theme="dark"] body .workspace.singlepage .sp-trend.b46-perf-card{
+ margin-bottom:8px!important;
+}
+html[data-theme="dark"] body .workspace.singlepage .b46-perf-head{
+ margin-bottom:9px!important;
+}
+/* Plot, chart axes, tooltip and range/gesture behaviors remain at their V2.2 sizes. */
+}
+@media (min-width:1024px) and (max-width:1199px){
+html[data-theme="dark"] body .workspace.singlepage .sp-kpis{
+ gap:4px!important;
+}
+html[data-theme="dark"] body .workspace.singlepage .sp-kpis .sp-kpi{
+ padding:6px 6px!important;
+}
+html[data-theme="dark"] body .workspace.singlepage .sp-kpi > span{
+ font-size:8.5px!important;
+ letter-spacing:0!important;
+}
+html[data-theme="dark"] body .workspace.singlepage .sp-kpi strong{
+ font-size:13.5px!important;
+}
+html[data-theme="dark"] body .workspace.singlepage .sp-kpi small{
+ font-size:8.5px!important;
+}
+html[data-theme="dark"] body .workspace.singlepage .b46-perf-kpis{
+ gap:4px!important;
+}
+html[data-theme="dark"] body .workspace.singlepage .b46-perf-kpi{
+ padding:7px 6px!important;
+}
+html[data-theme="dark"] body .workspace.singlepage .b46-perf-kpi:nth-child(4) b{
+ font-size:10px!important;
+}
+}
