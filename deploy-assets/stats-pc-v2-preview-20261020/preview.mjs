@@ -77,7 +77,13 @@ async function previewQA(url){
     await page.setCacheEnabled(false);
     const res=await page.goto(url+'/?view=statistics&stats_v2_preview=1',{waitUntil:'domcontentloaded',timeout:90000});
     assert.equal(res.status(),200,'PREVIEW_PAGE_NOT_200 '+width);
-    await new Promise(r=>setTimeout(r,6200));
+    await new Promise(r=>setTimeout(r,2000));
+    await page.waitForFunction(()=>{
+      const raw=document.querySelector('[data-sp-kpi="total"]')?.textContent||'';
+      const n=Number.parseInt(raw.replace(/[^0-9]/g,''),10);
+      return n>0&&document.querySelectorAll('.sp-table tbody tr').length>0;
+    },{timeout:35000,polling:500});
+    await new Promise(r=>setTimeout(r,1100));
     const first=await page.evaluate(()=>{
      const visible=e=>e&&e.getBoundingClientRect().width>0;
      const style=e=>{if(!e)return null;const c=getComputedStyle(e),r=e.getBoundingClientRect();return {bg:c.backgroundColor,image:c.backgroundImage,radius:c.borderRadius,shadow:c.boxShadow,width:+r.width.toFixed(1),height:+r.height.toFixed(1)}};
@@ -93,6 +99,7 @@ async function previewQA(url){
        typeText:[...document.querySelectorAll('.b76-perf-chart-type button')].map(e=>({text:e.textContent.trim(),active:e.classList.contains('active')})),
        mobileCard:style(document.querySelector('.b46gn-card'))};
     });
+    console.log('STATISTICS_PREVIEW_READY',width,JSON.stringify({theme:first.theme,settled:first.settledCounter,rows:first.settledRows,card:first.metric,hero:first.hero,chart:first.timelineChart}));
     assert(first.marker&&first.statsVisible,'PREVIEW_STATISTICS_NOT_LOADED '+width);
     assert(first.kpiCards===8,'LIVE_KPIS_MISSING '+width);
     assert(first.settledRows>0&&Number.parseInt(first.settledCounter.replaceAll(',',''),10)>0,'REAL_SETTLED_STAT_DATA_MISSING '+width);
