@@ -1,0 +1,51 @@
+name: BALL46 Match Deep Teal READ-ONLY Audit 20261020
+on:
+  push:
+    branches: [codex/ball46-match-deep-teal-20261020]
+    paths: ['.github/workflows/ball46-match-deep-teal-audit-20261020.yml']
+permissions:
+  contents: read
+concurrency:
+  group: ball46-match-deep-teal-audit-20261020
+  cancel-in-progress: false
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect exact live production without writing
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/b46match-audit
+          curl -fsSL --retry 2 --max-time 35 "https://ball46.com/?teal_readonly_audit=${GITHUB_RUN_ID}" -o /tmp/b46match-audit/index.html
+          for path in app.css dashboard-v2-tune.css singlepage-workspace-343.js; do
+            status="$(curl -LsS -w '%{http_code}' --max-time 35 "https://ball46.com/$path?teal_audit=${GITHUB_RUN_ID}" -o "/tmp/b46match-audit/$path" || true)"
+            echo "PUBLIC_ASSET $path HTTP:$status BYTES:$(wc -c < "/tmp/b46match-audit/$path")"
+          done
+          curl -fsS --max-time 30 -H "Authorization: Bearer $CF_TOKEN" "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT/workers/scripts/ball46-production/deployments?per_page=1" -o /tmp/b46match-audit/active.json
+          python3 - <<'PY'
+          import json,re,pathlib
+          root=pathlib.Path('/tmp/b46match-audit')
+          a=json.loads((root/'active.json').read_text())
+          assert a.get('success') is True
+          d=a['result']['deployments'][0]
+          assert len(d['versions'])==1 and d['versions'][0]['percentage']==100
+          print('EXACT_ACTIVE_WORKER_VERSION',d['versions'][0]['version_id'])
+          print('EXACT_ACTIVE_DEPLOYMENT_ID',d['id'])
+          for p in ['index.html','app.css','dashboard-v2-tune.css','singlepage-workspace-343.js']:
+              s=(root/p).read_text(errors='replace')
+              print('AUDIT_FILE',p,'bytes',len(s),'match-row',s.count('match-row'),'league-block',s.count('league-block'),'league-header',s.count('league-header'))
+              for token in [r'match-row',r'league-block',r'league-header',r'league-head',r'data-theme',r'\.dark\s',r'\.match-card']:
+                  offsets=[m.start() for m in re.finditer(token,s,re.I)][:7]
+                  for i,pos in enumerate(offsets):
+                      print('SNIPPET',p,token,i,repr(s[max(0,pos-270):pos+430]).replace('\\n',' ')[:760])
+              if p=='index.html':
+                  print('CSS_LINKS',re.findall(r'<link[^>]+href=["\\']([^"\\']+\\.css[^"\\']*)',s,re.I)[:30])
+                  print('STYLE_IDS',re.findall(r'<style[^>]+id=["\\']([^"\\']+)',s,re.I)[-30:])
+          PY
+          echo "READ_ONLY_AUDIT_SUCCESS; NO_PRODUCTION_WRITES"
