@@ -110,6 +110,14 @@ async function previewQA(url){
      assert(first.metric?.image?.includes('gradient'),'PREMIUM_CARD_STYLING_NOT_APPLIED '+width);
      assert(first.hero?.radius.includes('17px'),'HERO_CARD_NOT_RESTYLED '+width);
     }
+    if(width<1024){
+      assert.equal(first.metric?.image,'none','MOBILE_STATS_CARD_STYLE_CHANGED');
+      assert.equal(first.hero?.image,'none','MOBILE_STATS_HERO_STYLE_CHANGED');
+      await page.screenshot({path:'audit/stats-preview-'+width+'.png',fullPage:true});
+      captures[width]={first,mobileStylesPreserved:true,errors:pageErrors};
+      console.log('STATISTICS_PREVIEW_MOBILE_STYLE_UNCHANGED',width,JSON.stringify({settled:first.settledCounter,records:first.settledRows,hero:first.hero?.image,card:first.metric?.image}));
+      continue;
+    }
     const clickText=async(sel,t)=>page.evaluate((selector,value)=>{
      const e=[...document.querySelectorAll(selector)].find(x=>x.textContent.trim().toUpperCase()===value.toUpperCase());
      if(!e)return false;e.click();return true;
