@@ -21,9 +21,11 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
       - uses: actions/checkout@v4
-        with: {ref: ${{ github.sha }}}
+        with:
+          ref: ${{ github.sha }}
       - uses: actions/setup-node@v4
-        with: {node-version: '22'}
+        with:
+          node-version: '22'
       - name: Check code and install browser
         working-directory: deploy-assets/stats-mobile-v1-preview-20261020
         run: |
