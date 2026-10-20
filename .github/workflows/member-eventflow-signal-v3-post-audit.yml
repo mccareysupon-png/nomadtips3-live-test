@@ -1,0 +1,68 @@
+name: BALL46 Member Signal V3 — Post Deploy Read Only
+on:
+  push:
+    branches: [codex/ball46-member-eventflow-signal-v3-20261020]
+    paths:
+      - '.github/workflows/member-eventflow-signal-v3-post-audit.yml'
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - name: Verify active Member Worker V3 and exact public asset hashes without writes
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {createHash} from 'node:crypto';
+          const account=process.env.CLOUDFLARE_ACCOUNT_ID,token=process.env.CLOUDFLARE_API_TOKEN;
+          assert(account&&token,'CLOUDFLARE_READ_CREDENTIALS_MISSING');
+          const api='https://api.cloudflare.com/client/v4/accounts/'+account;
+          const headers={authorization:'Bearer '+token};
+          const res=await fetch(api+'/workers/scripts/ball46-member-production/deployments?per_page=1',{headers,signal:AbortSignal.timeout(30000)});
+          const payload=await res.json();
+          assert(res.ok&&payload.success,'CLOUDFLARE_READ_FAILED');
+          const dep=payload.result.deployments?.[0];
+          assert(dep?.versions?.length===1&&Number(dep.versions[0].percentage)===100,'MEMBER_PRODUCTION_MULTI_VERSION');
+          const expected='1c45157e-90db-4af8-893a-d5aa08ddeca1';
+          assert.equal(dep.versions[0].version_id,expected,'MEMBER_PRODUCTION_CHANGED_AFTER_DEPLOY');
+          const sha=b=>createHash('sha256').update(b).digest('hex');
+          const expectedPaths=[
+           ['/member.js','729d3084c5934324b34ac7b07484b4807e5c855b67f0524fd82bfcc0833e0ac5'],
+           ['/styles.css','5186dd9dfa27c36b7dced6068b15a20d04ab8f15ab771e33d61116c8725b817d'],
+          ];
+          const observed={version:expected,domain:'member.ball46.com',paths:{}};
+          for(const [path,want] of expectedPaths){
+           const url=new URL(path,'https://member.ball46.com');url.searchParams.set('b46_signal_v3_post_audit',String(Date.now()));
+           const response=await fetch(url,{headers:{'cache-control':'no-cache'},signal:AbortSignal.timeout(25000)});
+           const body=Buffer.from(await response.arrayBuffer());
+           const digest=sha(body);assert.equal(response.status,200,'PUBLIC_ASSET_HTTP_'+path);
+           assert.equal(digest,want,'PUBLIC_ASSET_HASH_'+path);
+           const text=body.toString('utf8');
+           assert(text.includes(path==='/styles.css'?'B46_MEMBER_EVENTFLOW_SIGNAL_V3_20261020':'b46-member-eventflow-signal-v3-20261020'),'VISUAL_MARKER_NOT_FOUND_'+path);
+           if(path==='/styles.css')assert(text.includes('stroke:none!important')&&text.includes('drop-shadow'),'SVG_PAINT_OR_BORDER_MISSING');
+           if(path==='/member.js')assert(text.includes('ball46:member-data-ready')&&text.includes('b46-member-eventflow-signal-v3-20261020'),'MEMBER_REFRESH_OR_GRADIENT_MISSING');
+           observed.paths[path]={status:response.status,sha256:digest,bytes:body.length};
+          }
+          for(const path of ['/member-loading.css','/member-loading.js']){
+           const r=await fetch('https://member.ball46.com'+path,{signal:AbortSignal.timeout(25000)});
+           const body=await r.text();assert.equal(r.status,200,'OLD_LOADING_ASSET_MISSING '+path);
+           assert(body.includes('BALL46_MEMBER_GRAPHITE_SPLASH_V1_20261020'),'MEMBER_LOADING_FEATURE_LOST '+path);
+           observed.paths[path]={status:r.status,bytes:Buffer.byteLength(body)};
+          }
+          const protectedR=await fetch('https://member.ball46.com/member.html',{redirect:'manual',signal:AbortSignal.timeout(25000)});
+          assert([302,303].includes(protectedR.status),'MEMBER_ACCESS_PROTECTION_BYPASS');
+          observed.paths['/member.html']={status:protectedR.status,protected:true};
+          const health=await fetch('https://member.ball46.com/api/health',{signal:AbortSignal.timeout(25000)});
+          const healthBody=await health.json();
+          assert(health.status===200&&healthBody.ok===true&&healthBody.service==='ball46-member-production','MEMBER_HEALTH_API_REGRESSED');
+          observed.paths['/api/health']={status:health.status,service:healthBody.service};
+          console.log('BALL46_MEMBER_SIGNAL_V3_POSTDEPLOY_READONLY_PASS',JSON.stringify(observed));
+          JS
