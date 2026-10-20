@@ -1033,8 +1033,7 @@ function featuredHorizontal(detail,selected){
   meta.append(node('span','badge '+statusClass(selected.state),shownMinute));
 
   const score=node('div','featured-h-score');
-  const kitPair=memberKitPair(selected);
-  const home=node('div','team home');home.append(memberKitPicture(kitPair.home),node('span','','HOME'),node('b','',f?.home||selected.home));
+  const home=node('div','team home');home.append(node('span','','HOME'),node('b','',f?.home||selected.home));
   const center=node('div','score-center');
   const featuredScore=node('strong','featured-team-score');
   const shownScoreText=scoreText(shownScore);
@@ -1044,7 +1043,7 @@ function featuredHorizontal(detail,selected){
   if(parts)featuredScore.append(node('span','home',parts[0]),node('span','separator','-'),node('span','away',parts[1]));
   else featuredScore.textContent=shownScoreText;
   center.append(featuredScore,node('small','',shownMinute));
-  const away=node('div','team away');away.append(memberKitPicture(kitPair.away),node('span','','AWAY'),node('b','',f?.away||selected.away));
+  const away=node('div','team away');away.append(node('span','','AWAY'),node('b','',f?.away||selected.away));
   score.append(home,center,away);
 
   const signal=node('div','featured-h-signal'+(selected.market==='CORNERS'?' has-corner-conditions':''));

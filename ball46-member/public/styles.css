@@ -2651,23 +2651,3 @@ body.page-member:before{
 .page-member #signalBoard .signal-table tbody tr.signal-row.expanded{
   background:#152e40;
 }
-
-/* Member Step 3: premium jersey illustrations in expanded Featured Match ONLY. */
-.page-member .featured-h-score .team{display:flex;flex-direction:column;align-items:flex-start}
-.page-member .featured-h-score .team.away{align-items:flex-end}
-.page-member .featured-h-score .member-team-kit{
-  display:block;width:62px;height:62px;flex:0 0 auto;margin:0 0 3px;
-}
-.page-member .featured-h-score .member-team-kit[hidden]{display:none}
-.page-member .featured-h-score .member-team-kit img,
-.page-member .featured-h-score .member-team-kit svg{
-  display:block;width:100%;height:100%;object-fit:contain;
-  filter:drop-shadow(0 4px 6px rgba(0,0,0,.28));
-}
-.page-member .featured-h-score .team b{max-width:100%}
-@media(max-width:680px){
-  .page-member .featured-h-score .member-team-kit{width:54px;height:54px}
-}
-@media(max-width:360px){
-  .page-member .featured-h-score .member-team-kit{width:44px;height:44px}
-}
