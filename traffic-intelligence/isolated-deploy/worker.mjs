@@ -34,6 +34,36 @@ async function owner(req,env){
   return crypto.subtle.verify('RSASSA-PKCS1-v1_5',pub,bytes(p[2]),new TextEncoder().encode(p[0]+'.'+p[1]));
  }catch{return false;}
 }
+
+async function kvEvents(env){
+ const events=[];let cursor, complete=false;let scanned=0;
+ // Metadata-only listings: no per-event reads or shared BALL46 databases.
+ do {
+  const result=await env.EVENTS_KV.list({prefix:'ev/',limit:1000,...(cursor?{cursor}:{})});
+  for(const key of result.keys||[]){
+   if(key.metadata&&typeof key.metadata.at==='number')events.push(key.metadata);
+  }
+  scanned+=1;complete=result.list_complete===true;
+  cursor=result.cursor;
+ }while(!complete&&cursor&&scanned<30);
+ if(!complete)return {error:'incomplete_report',status:503};
+ const now=Date.now(), cutoff24=now-DAY, cutoff30=now-30*DAY;
+ const valid=events.filter(e=>e.at>=cutoff30&&e.at<=now);
+ const lastSession=new Map();
+ for(const e of valid){ const prev=lastSession.get(e.sid); if(!prev||prev.at<e.at) lastSession.set(e.sid,e); }
+ const today=[...lastSession.values()].filter(e=>e.at>=cutoff24);
+ const online=[...lastSession.values()].filter(e=>e.at>=now-TWO_MIN);
+ const views=valid.filter(e=>e.type==='view');
+ const pageCount=new Map(),countryCount=new Map();
+ for(const e of views){pageCount.set(e.path,(pageCount.get(e.path)||0)+1);}
+ for(const e of lastSession.values())countryCount.set(e.country,(countryCount.get(e.country)||0)+1);
+ const sorted=(mp,k)=>[...mp].map(([name,total])=>({[k]:name,total})).sort((a,b)=>b.total-a.total).slice(0,10);
+ return {online:online.length,visitors24h:today.length,views24h:views.filter(e=>e.at>=cutoff24).length,
+  latest:online.sort((a,b)=>b.at-a.at).slice(0,30).map(e=>({last_ms:e.at,path:e.path,country:e.country,city:e.city,device:e.device,ip_masked:e.ip_masked})),
+  pages:sorted(pageCount,'path'),countries:sorted(countryCount,'country'),updatedAt:new Date(now).toISOString(),source:'b46-visitor-monitor-kv',ip:'masked',collectionEnabled:env.COLLECT_ENABLED==='true',complete:true
+ };
+}
+
 async function collect(req,env){
  const origin=req.headers.get('Origin')||'';
  if(!allow.has(origin))return json({error:'not_allowed'},403);
@@ -41,7 +71,7 @@ async function collect(req,env){
  if(req.method==='OPTIONS')return new Response(null,{status:204,headers:cors});
  if(req.method!=='POST')return json({error:'method'},405,cors);
  if(env.COLLECT_ENABLED!=='true')return json({error:'collection_not_enabled'},503,cors);
- if(!env.DB)return json({error:'database_not_ready'},503,cors);
+ if(!env.DB&&!env.EVENTS_KV)return json({error:'database_not_ready'},503,cors);
  if(req.headers.get('DNT')==='1'||req.headers.get('Sec-GPC')==='1')return new Response(null,{status:204,headers:cors});
  if(!/^application\/json(?:;|$)/i.test(req.headers.get('Content-Type')||''))return json({error:'type'},415,cors);
  const len=Number(req.headers.get('Content-Length')||0);if(len>1400)return json({error:'too_large'},413,cors);
@@ -50,14 +80,20 @@ async function collect(req,env){
  const ts=Date.now(), ip=maskIp(req.headers.get('CF-Connecting-IP')||''), ua=req.headers.get('User-Agent')||'', c=req.cf||{};
  const ref=(()=>{try{return new URL(data.referrer).hostname.slice(0,100);}catch{return'direct';}})();
  try{
+  if(env.EVENTS_KV&&!env.DB){
+   const meta={sid:data.sid,at:ts,type:data.type,path:data.path,country:String(c.country||'??').slice(0,2),city:String(c.city||'Unknown').slice(0,80),device:isMobile(ua)?'Mobile':'Desktop',ip_masked:ip,referrer:ref};
+   await env.EVENTS_KV.put('ev/'+new Date(ts).toISOString().slice(0,10)+'/'+crypto.randomUUID(),'1',{expirationTtl:30*86400,metadata:meta});
+   return new Response(null,{status:204,headers:cors});
+  }
   const st=env.DB.prepare('INSERT INTO sessions (sid,first_ms,last_ms,path,country,city,device,ip_masked,referrer,pageviews) VALUES (?,?,?,?,?,?,?,?,?,?) ON CONFLICT(sid) DO UPDATE SET last_ms=excluded.last_ms,path=excluded.path,pageviews=sessions.pageviews+excluded.pageviews').bind(data.sid,ts,ts,data.path,String(c.country||'??').slice(0,2),String(c.city||'Unknown').slice(0,80),isMobile(ua)?'Mobile':'Desktop',ip,ref,data.type==='view'?1:0);
   if(data.type==='view')await env.DB.batch([st,env.DB.prepare('INSERT INTO views (sid,at_ms,path) VALUES (?,?,?)').bind(data.sid,ts,data.path)]);else await st.run();
   return new Response(null,{status:204,headers:cors});
  }catch(e){console.error('collector DB failed',String(e?.message||''));return json({error:'storage_failure'},503,cors);}
 }
 async function summary(env){
- if(!env.DB)return json({error:'database_not_ready'},503);
- const ts=Date.now(),days=[1,7,30];
+ if(!env.DB&&!env.EVENTS_KV)return json({error:'database_not_ready'},503);
+ if(env.EVENTS_KV&&!env.DB){try{const result=await kvEvents(env);return result.error?json({error:result.error},result.status):json(result);}catch(e){console.error('KV analytics failed');return json({error:'storage_failure'},503);}}
+ const ts=Date.now();
  try{
   const [online,visitors,views,latest,pages,countries]=await Promise.all([
    env.DB.prepare('SELECT count(*) total FROM sessions WHERE last_ms>=?').bind(ts-TWO_MIN).first(),
@@ -70,7 +106,7 @@ async function summary(env){
   return json({online:online?.total||0,visitors24h:visitors?.total||0,views24h:views?.total||0,latest:latest.results||[],pages:pages.results||[],countries:countries.results||[],updatedAt:new Date(ts).toISOString(),source:'b46-visitor-monitor-db',ip:'masked'});
  }catch(e){console.error('summary DB failed',String(e?.message||''));return json({error:'storage_failure'},503);}
 }
-const DASHBOARD=String.raw`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>BALL46 VISITOR MONITOR</title><style>*{box-sizing:border-box}body{margin:0;background:#0b1518;color:#e7f5f1;font:15px system-ui,Arial}main{max-width:1080px;margin:auto;padding:26px}h1{font-size:clamp(23px,4vw,39px);letter-spacing:1px}h1 b{color:#4cdaa9}small{color:#89aaab}header{display:flex;justify-content:space-between;align-items:center;gap:12px}.kpi{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.card{padding:23px;border-radius:19px;background:linear-gradient(155deg,#243c3e,#122428);box-shadow:inset 0 1px 0 #fff2,0 14px 24px #0004}.card strong{display:block;font-size:32px;color:#63e5bc;margin-top:8px}.tables{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}table{width:100%;border-collapse:collapse;font-size:13px}td,th{padding:10px 4px;border-bottom:1px solid #ffffff13;text-align:left}th{color:#96c0b4}#status{font-size:12px;color:#b5d3c8}@media(max-width:720px){.kpi{grid-template-columns:1fr}.tables{grid-template-columns:1fr}}</style><main><header><div><small>SEPARATE CONTROL CENTER · PRIVATE</small><h1>BALL46 <b>VISITOR MONITOR</b></h1></div><div id="status">Connecting to private data…</div></header><section class="kpi"><article class="card">Online now<strong id="online">—</strong></article><article class="card">Visitors 24h<strong id="visitors24h">—</strong></article><article class="card">Pageviews 24h<strong id="views24h">—</strong></article></section><section class="tables"><article class="card"><h3>Popular pages</h3><table><tbody id="pages"></tbody></table></article><article class="card"><h3>Countries</h3><table><tbody id="countries"></tbody></table></article></section><article class="card" style="margin-top:14px"><h3>Recent online visitors (IP masked)</h3><table><thead><tr><th>Last seen</th><th>Page</th><th>Country / City</th><th>IP</th></tr></thead><tbody id="latest"></tbody></table></article><p><small>Actual data only · Updates every 30 seconds · No personally identifying precision promised</small></p></main><script>
+const DASHBOARD=String.raw`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>BALL46 VISITOR MONITOR</title><style>*{box-sizing:border-box}body{margin:0;background:#0b1518;color:#e7f5f1;font:15px system-ui,Arial}main{max-width:1080px;margin:auto;padding:26px}h1{font-size:clamp(23px,4vw,39px);letter-spacing:1px}h1 b{color:#4cdaa9}small{color:#89aaab}header{display:flex;justify-content:space-between;align-items:center;gap:12px}.kpi{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.card{padding:23px;border-radius:19px;background:linear-gradient(155deg,#243c3e,#122428);box-shadow:inset 0 1px 0 #fff2,0 14px 24px #0004}.card strong{display:block;font-size:32px;color:#63e5bc;margin-top:8px}.tables{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}table{width:100%;border-collapse:collapse;font-size:13px}td,th{padding:10px 4px;border-bottom:1px solid #ffffff13;text-align:left}th{color:#96c0b4}#status{font-size:12px;color:#b5d3c8}@media(max-width:720px){.kpi{grid-template-columns:1fr}.tables{grid-template-columns:1fr}}</style><main><header><div><small>SEPARATE CONTROL CENTER · PRIVATE</small><h1>BALL46 <b>VISITOR MONITOR</b></h1></div><div id="status">Connecting to private data…</div></header><section class="kpi"><article class="card">Online now<strong id="online">—</strong></article><article class="card">Visitors 24h<strong id="visitors24h">—</strong></article><article class="card">Pageviews 24h<strong id="views24h">—</strong></article></section><section class="tables"><article class="card"><h3>Popular pages</h3><table><tbody id="pages"></tbody></table></article><article class="card"><h3>Countries</h3><table><tbody id="countries"></tbody></table></article></section><article class="card" style="margin-top:14px"><h3>Recent online visitors (IP masked)</h3><table><thead><tr><th>Last seen</th><th>Page</th><th>Country / City</th><th>IP</th></tr></thead><tbody id="latest"></tbody></table></article><p><small>Actual collected events only · Tracker integration still required · Updates every 30 seconds</small></p></main><script>
 const $=id=>document.getElementById(id);
 function rows(id,data,fn){const t=$(id);t.replaceChildren();for(const x of data){const tr=document.createElement('tr');for(const v of fn(x)){const td=document.createElement('td');td.textContent=String(v??'—');tr.append(td)}t.append(tr)}}
 async function load(){try{const r=await fetch('/api/summary',{credentials:'same-origin',cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);const x=await r.json();for(const k of ['online','visitors24h','views24h'])$(k).textContent=x[k]??'—';rows('pages',x.pages||[],v=>[v.path,v.total]);rows('countries',x.countries||[],v=>[v.country,v.total]);rows('latest',x.latest||[],v=>[new Date(v.last_ms).toLocaleTimeString(),v.path,[v.country,v.city].join(' / '),v.ip_masked]);$('status').textContent='Last updated: '+new Date(x.updatedAt).toLocaleString()}catch(e){$('status').textContent='Data unavailable — '+e.message;}}
@@ -79,7 +115,7 @@ load();setInterval(load,30000);
 export default {
  async fetch(req,env){
   const u=new URL(req.url);
-  if(u.pathname==='/health')return json({ok:true,service:'BALL46 VISITOR MONITOR',isolated:true,collectionEnabled:env.COLLECT_ENABLED==='true',ownerAccessConfigured:!!(env.ACCESS_TEAM_DOMAIN&&env.ACCESS_AUD&&env.ADMIN_EMAIL)});
+  if(u.pathname==='/health')return json({ok:true,service:'BALL46 VISITOR MONITOR',isolated:true,collectionEnabled:env.COLLECT_ENABLED==='true',storageReady:!!(env.DB||env.EVENTS_KV),ownerAccessConfigured:!!(env.ACCESS_TEAM_DOMAIN&&env.ACCESS_AUD&&env.ADMIN_EMAIL)});
   if(u.pathname==='/api/collect')return collect(req,env);
   if(u.pathname!=='/'&&u.pathname!=='/api/summary')return json({error:'not_found'},404);
   if(!await owner(req,env))return new Response('Forbidden — Cloudflare Access owner login required',{status:403,headers:{'cache-control':'no-store','x-robots-tag':'noindex,nofollow'}});
