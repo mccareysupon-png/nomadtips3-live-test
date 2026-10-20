@@ -1,0 +1,72 @@
+name: Deploy dedicated BALL46 Visitor Monitor Collector (Disabled)
+on:
+  push:
+    branches: [work/ball46-traffic-intelligence-isolated-20261020]
+    paths: ['.github/workflows/deploy-ball46-visitor-collector.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: b46-visitor-monitor-collector-only
+  cancel-in-progress: false
+jobs:
+  standalone-collector:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CF_TELEMETRY_DISABLED: '1'
+    defaults:
+      run:
+        working-directory: traffic-intelligence/isolated-deploy
+    steps:
+      - uses: actions/checkout@v4
+        with: 
+          ref: work/ball46-traffic-intelligence-isolated-20261020
+      - uses: actions/setup-node@v4
+        with: 
+          node-version: '22'
+      - name: Validate collector cannot serve private dashboard
+        run: |
+          set -euo pipefail
+          node --check collector.mjs
+          node --test worker.test.mjs
+          node --input-type=module <<'NODE'
+          import collector from './collector.mjs';
+          for (const path of ['/', '/api/summary']) {
+            const r=await collector.fetch(new Request('https://test.invalid'+path),{});
+            if (r.status!==404) throw Error('Collector private route exposed: '+path);
+          }
+          console.log('Collector routing: 2/2 routes blocked');
+          NODE
+      - name: Bind independent KV namespace only
+        run: |
+          set -euo pipefail
+          base="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID"
+          curl -fsS --max-time 20 -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/storage/kv/namespaces?per_page=100" > kv.json
+          ID=$(jq -r '.result[]? | select(.title=="b46-visitor-monitor-kv") | .id' kv.json | head -1)
+          if ! [[ "$ID" =~ ^[a-fA-F0-9]{32}$ ]]; then echo 'Dedicated KV missing'; exit 1; fi
+          jq -n --arg id "$ID" '{
+            name:"b46-visitor-monitor-collector",
+            main:"collector.mjs",
+            compatibility_date:"2026-10-20",
+            workers_dev:true,
+            vars:{COLLECT_ENABLED:"false"},
+            kv_namespaces:[{binding:"EVENTS_KV",id:$id}]
+          }' > wrangler.collector.json
+      - name: Deploy ONLY standalone public collector (collection remains disabled)
+        run: |
+          set -euo pipefail
+          npm install --no-save --ignore-scripts wrangler@4.45.0
+          npx wrangler deploy --config wrangler.collector.json | tee collector-deploy.log
+      - name: Verify collector has no private API and is disabled
+        run: |
+          set -euo pipefail
+          url='https://b46-visitor-monitor-collector.mccarey-supon.workers.dev'
+          A=$(curl -sS -o /dev/null -w '%{http_code}' "$url/")
+          B=$(curl -sS -o /dev/null -w '%{http_code}' "$url/api/summary")
+          C=$(curl -sS -o /dev/null -w '%{http_code}' -X POST -H 'Origin: https://ball46.com' "$url/api/collect")
+          echo "SMOKE collector_home=$A private_api=$B disabled_beacon=$C"
+          test "$A" = 404 && test "$B" = 404 && test "$C" = 503
+          echo 'PASS: the collector cannot expose private data and traffic capture remains OFF.'
