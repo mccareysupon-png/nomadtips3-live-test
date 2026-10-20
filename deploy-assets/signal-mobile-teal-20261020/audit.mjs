@@ -33,6 +33,23 @@ if(el){el.click();return{clicked:true,html:el.outerHTML.slice(0,320)}}return{cli
 });
 console.log('SIGNAL_CLICK',width,JSON.stringify(menuClick));
 await new Promise(r=>setTimeout(r,2800));console.log('SIGNAL_AFTER',width,JSON.stringify(await dump()));
+const sel='.workspace.singlepage .status-section .league-block > article.match-row';
+const line=await page.$(sel);
+if(line){
+const expandBefore=await page.evaluate(()=>{
+const ss=['.workspace.singlepage .status-section .league-block > .league-head','.workspace.singlepage .status-section .league-block > article.match-row','.workspace.singlepage .status-section .league-block > section.match-expanded','.workspace.singlepage .status-section'];
+return ss.map(x=>{const e=[...document.querySelectorAll(x)].find(y=>y.getBoundingClientRect().width>0);if(!e)return{sel:x,found:false};const s=getComputedStyle(e),r=e.getBoundingClientRect();return {sel:x,found:true,css:{bg:s.backgroundColor,image:s.backgroundImage,border:s.borderColor,borderWidth:s.borderWidth,radius:s.borderRadius,shadow:s.boxShadow,margin:s.margin,padding:s.padding},r:{x:r.x,w:r.width,h:r.height},html:e.outerHTML.slice(0,450),parent:e.parentElement?.outerHTML.slice(0,300)};});
+});
+console.log('SIGNAL_CARD_PRECLICK',width,JSON.stringify(expandBefore));
+await line.click();await new Promise(r=>setTimeout(r,1700));
+const ext=await page.evaluate(()=>{
+const r=[...document.querySelectorAll('.workspace.singlepage .status-section .league-block > article.match-row')].find(e=>e.getBoundingClientRect().width>0);
+const e=r?.nextElementSibling;const el=e?.matches('section.match-expanded')?e:null;
+const pick=e=>{if(!e)return null;const c=getComputedStyle(e),r=e.getBoundingClientRect();return {tag:e.tagName,cls:e.className,attrExpanded:e.getAttribute('aria-expanded'),w:r.width,h:r.height,x:r.x,y:r.y,style:{bg:c.backgroundColor,image:c.backgroundImage,border:c.borderColor,borderWidth:c.borderWidth,radius:c.borderRadius,shadow:c.boxShadow,margin:c.margin},html:e.outerHTML.slice(0,500)};};
+return {row:pick(r),panel:pick(el),inner:pick(el?.firstElementChild)};
+});
+console.log('SIGNAL_EXPANDED',width,JSON.stringify(ext));
+}
 await page.close();
 }
 }finally{await b.close()}
