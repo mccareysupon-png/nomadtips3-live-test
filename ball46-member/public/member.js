@@ -905,7 +905,16 @@ function eventFlowChart(detail,fixtureId){
   gh.append(svgNode('stop',{offset:'0%','stop-color':'#43E6A2','stop-opacity':'.22'}),svgNode('stop',{offset:'100%','stop-color':'#43E6A2','stop-opacity':'0'}));
   const ga=svgNode('linearGradient',{id:'member-away-'+fixtureId,x1:'0',y1:'0',x2:'0',y2:'1'});
   ga.append(svgNode('stop',{offset:'0%','stop-color':'#FFA451','stop-opacity':'.20'}),svgNode('stop',{offset:'100%','stop-color':'#FFA451','stop-opacity':'0'}));
-  defs.append(gh,ga); svg.append(defs);
+  // Premium borderless SIGNAL plate: one shared gradient per fixture, presentation only.
+  // Reuse the fixture ID already used by pressure-curve fills; signal price/data stay intact.
+  const signalPlateGradientId='member-signal-plate-'+fixtureId;
+  const plateGradient=svgNode('linearGradient',{id:signalPlateGradientId,x1:'0',y1:'0',x2:'0',y2:'1'});
+  plateGradient.append(
+    svgNode('stop',{offset:'0%','stop-color':'#236b57','stop-opacity':'.93'}),
+    svgNode('stop',{offset:'46%','stop-color':'#164c41','stop-opacity':'.94'}),
+    svgNode('stop',{offset:'100%','stop-color':'#092c28','stop-opacity':'.97'})
+  );
+  defs.append(gh,ga,plateGradient); svg.append(defs);
 
   for(const v of [100,75,50,25,1]){
     const y=yFor(v);
@@ -1015,7 +1024,7 @@ function eventFlowChart(detail,fixtureId){
     if(!placed)continue;
     const {x:tagX,y:tagY}=placed;
     const tag=svgNode('g',{class:'member-flow-signal-tag'});
-    const plate=svgNode('rect',{x:tagX,y:tagY,width:tagW,height:tagH,rx:'5',ry:'5',class:'member-flow-signal-plate'});
+    const plate=svgNode('rect',{x:tagX,y:tagY,width:tagW,height:tagH,rx:'5',ry:'5',class:'member-flow-signal-plate',style:'fill:url(#'+signalPlateGradientId+')'});
     const accent=svgNode('rect',{x:tagX+6,y:tagY+7,width:'2.4',height:tagH-14,rx:'1.2',class:'member-flow-signal-accent'});
     const label=svgNode('text',{x:tagX+14,y:tagY+14,class:'member-flow-signal-label'});
     const signalWord=svgNode('tspan',{class:'member-flow-signal-word'});
