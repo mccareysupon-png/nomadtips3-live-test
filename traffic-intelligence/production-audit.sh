@@ -2,19 +2,29 @@
 # Read-only Cloudflare production provenance audit. Never writes/deploys.
 set -euo pipefail
 if [[ -z "${CLOUDFLARE_API_TOKEN:-}" || -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]]; then
-  echo 'BLOCKED: Cloudflare credentials are not configured'; exit 3
+  echo 'BLOCKED: Cloudflare credentials not configured'; exit 3
 fi
 base=https://api.cloudflare.com/client/v4
-get(){ curl -fsS --retry 2 -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" -H 'Accept: application/json' "${base}${1}"; }
+get(){ curl -sS --max-time 15 -w '\n%{http_code}' -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" -H 'Accept: application/json' "${base}${1}"; }
+show(){
+ local url="$1" label="$2" response http body
+ response=$(get "$url") || { echo "BLOCKED_READ ${label}: network failure"; return 0; }
+ http="${response##*$'\n'}"; body="${response%$'\n'*}"
+ if [[ "$http" != "200" ]]; then echo "BLOCKED_READ ${label}: HTTP ${http}"; return 0; fi
+ case "$label" in
+  ROUTES) echo "$body" | jq -r '.result[]? | select(.pattern | contains("ball46.com")) | "ROUTE pattern="+.pattern+" script="+(.script // "none")';;
+  WORKERS) echo "$body" | jq -r '.result[]? | select((.id // .name // "") | test("ball46";"i")) | "WORKER id="+(.id // .name)';;
+  DOMAINS) echo "$body" | jq -r '.result[]? | select((.hostname // "") | contains("ball46.com")) | "DOMAIN host="+.hostname+" service="+(.service // .script // "none")';;
+ esac
+}
 echo '=== Active ball46.com zone ==='
-zone_json=$(get '/zones?name=ball46.com&status=active')
-echo "$zone_json" | jq -r 'if .success != true then "BLOCKED: zone lookup denied" else (.result // [] | .[] | "ZONE id="+.id+" name="+.name+" status="+.status) end'
-zone=$(echo "$zone_json" | jq -r '.result[]? | select(.name=="ball46.com") | .id' | head -1)
+r=$(get '/zones?name=ball46.com&status=active')
+http="${r##*$'\n'}"; body="${r%$'\n'*}"
+if [[ "$http" != "200" ]]; then echo "BLOCKED: Zone HTTP $http"; exit 4; fi
+zone=$(echo "$body" | jq -r '.result[]? | select(.name=="ball46.com") | .id' | head -1)
 if [[ -z "$zone" ]]; then echo 'BLOCKED: No verified BALL46 zone'; exit 4; fi
-echo '=== Cloudflare Worker routes for zone ==='
-routes_json=$(get "/zones/${zone}/workers/routes")
-echo "$routes_json" | jq -r 'if .success != true then "BLOCKED: routes lookup denied" else (.result // [] | .[] | select(.pattern | contains("ball46.com")) | "ROUTE pattern="+.pattern+" script="+(.script // "none")) end'
-echo '=== Candidate Worker scripts ==='
-workers_json=$(get "/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/scripts")
-echo "$workers_json" | jq -r 'if .success != true then "BLOCKED: worker read denied" else (.result // [] | .[] | select((.id // .name // "") | test("ball46";"i")) | "WORKER id="+(.id // .name)) end'
-echo 'AUDIT_ONLY: no Cloudflare changes were made.'
+echo 'ZONE confirmed active (zone ID not printed)'
+show "/zones/${zone}/workers/routes" ROUTES
+show "/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/scripts" WORKERS
+show "/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/domains" DOMAINS
+echo 'AUDIT_ONLY: no Cloudflare changes made.'
