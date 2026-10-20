@@ -165,7 +165,7 @@ try{
  assert.equal(liveCss.status,200,'LIVE_CSS_HTTP_ERROR');
  assert.equal(liveCss.sha,OLD_CSS_SHA,'LIVE_CSS_CHANGED_SINCE_SCROLLBAR_DEPLOY');
  assert(origCss.bytes.length>200000,'LAST_DEPLOYED_MEMBER_CSS_SOURCE_MISSING');
- assert(liveCss.data.toString('utf8').includes('BALL46_MEMBER_MARKETS_SCROLLBAR_DARK_20261020'),'PREVIOUS_SCROLLBAR_DESIGN_MISSING');
+ assert(liveCss.data.toString('utf8').includes('BALL46 MEMBER — Desktop KPI V7: nine live-data summary cards'),'LATEST_MEMBER_KPI_V7_CSS_MISSING');
  writeFileSync(DIR+'/styles.css',liveCss.data);
  const liveJs=await getPublic('/member.js');
  assert.equal(liveJs.status,200,'LIVE_MEMBER_JS_HTTP_ERROR');
