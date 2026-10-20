@@ -77,6 +77,21 @@ jobs:
           set -euo pipefail
           npx wrangler deploy --config wrangler.deployment.json | tee deploy.log
           echo 'Only b46-visitor-monitor-admin deployed; BALL46 main Workers untouched.'
+      - name: Production smoke test standalone monitor Worker
+        run: |
+          set -euo pipefail
+          URL="https://b46-visitor-monitor-admin.mccarey-supon.workers.dev"
+          for i in 1 2 3 4 5; do
+            if curl -fsS "$URL/health" > health.json; then break; fi
+            sleep 2
+          done
+          jq -e '.ok == true and .isolated == true and .collectionEnabled == false and .ownerAccessConfigured == false' health.json
+          A=$(curl -sS -o /dev/null -w '%{http_code}' "$URL/")
+          B=$(curl -sS -o /dev/null -w '%{http_code}' "$URL/api/summary")
+          C=$(curl -sS -o /dev/null -w '%{http_code}' "$URL/api/collect")
+          D=$(curl -sS -o /dev/null -w '%{http_code}' -X POST -H 'Origin: https://ball46.com' "$URL/api/collect")
+          echo "LIVE_SMOKE owner=$A summary=$B invalid_origin=$C collection_disabled=$D"
+          test "$A" = 403 && test "$B" = 403 && test "$C" = 403 && test "$D" = 503
       - name: Non-secret deployment audit
         if: always()
         run: |
