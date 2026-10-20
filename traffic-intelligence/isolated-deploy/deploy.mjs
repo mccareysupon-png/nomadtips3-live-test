@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 const ADMIN='b46-visitor-monitor-admin',MAIN='ball46-production',COLLECTOR='b46-visitor-monitor-collector';
 const ACCOUNT='62cb0db544160e6591342abd6b4f35cc',KV='4b13b81758934e91a8b6bd03bfbbfcb9';
 const HOST='b46-visitor-monitor-admin.mccarey-supon.workers.dev';
-const EXPECTED='73b75b17-296e-4c30-97b2-54176f97a1b7';
+const EXPECTED='65425a90-81a1-4ca4-a802-2342b18d3400';
 const mode=process.argv[2]||'audit',token=process.env.CLOUDFLARE_API_TOKEN;
 assert(['audit','deploy'].includes(mode));assert(token,'Missing deploy credential');assert.equal(process.env.CLOUDFLARE_ACCOUNT_ID,ACCOUNT);
 const root=`/accounts/${ACCOUNT}`,admin=`${root}/workers/scripts/${ADMIN}`;
@@ -44,11 +44,11 @@ async function accessState(settings){
  return {appId:app.id,hash:hash({app,policies}),ownerOnly:true};
 }
 function validateBindings(settings){
- assert.equal(settings.bindings.length,6,'Unexpected bindings: review latest deployment first');
- assert.deepEqual(settings.bindings.map(b=>b.name).sort(),['ACCESS_AUD','ACCESS_TEAM_DOMAIN','ADMIN_EMAIL','CF_ANALYTICS_TOKEN','COLLECT_ENABLED','EVENTS_KV'].sort());
+ assert.equal(settings.bindings.length,7,'Unexpected bindings: review latest deployment first');
+ assert.deepEqual(settings.bindings.map(b=>b.name).sort(),['ACCESS_AUD','ACCESS_TEAM_DOMAIN','ADMIN_EMAIL','CF_ANALYTICS_TOKEN','CF_WEB_ANALYTICS_TOKEN','COLLECT_ENABLED','EVENTS_KV'].sort());
  assert.equal(settings.bindings.find(b=>b.name==='COLLECT_ENABLED').text,'false');
  assert.equal(settings.bindings.find(b=>b.name==='EVENTS_KV').namespace_id,KV);
- assert.equal(settings.bindings.find(b=>b.name==='CF_ANALYTICS_TOKEN').type,'secret_text');
+ for(const name of ['CF_ANALYTICS_TOKEN','CF_WEB_ANALYTICS_TOKEN'])assert.equal(settings.bindings.find(b=>b.name===name).type,'secret_text');
  assert(!settings.bindings.some(b=>b.type==='d1'||b.type==='service'));assert(!settings.has_assets);
 }
 async function snapshot(){
@@ -75,16 +75,16 @@ assert.equal(before.version,EXPECTED,'Active Admin changed: stop; never overwrit
 const versions=await api(`${admin}/versions`);assert.equal((versions.items||versions)[0]?.id,EXPECTED,'Inactive newer Admin version exists: review before continuing');
 if(mode==='audit'){console.log('AUDIT PASSED; no writes');process.exit(0);}
 // Keep the settings of the pinned latest version. Secrets stay inside Cloudflare.
-const metadata={main_module:'worker.mjs',bindings:before.settings.bindings.map(b=>b.type==='secret_text'?{type:'inherit',name:b.name,version_id:'latest'}:b),annotations:{'workers/message':'Visitor Monitor V1: real Cloudflare request analytics; Collector OFF','workers/tag':process.env.GITHUB_SHA?.slice(0,40)||'visitor-monitor-v1'}};
+const metadata={main_module:'worker.mjs',bindings:before.settings.bindings.map(b=>b.type==='secret_text'?{type:'inherit',name:b.name,version_id:'latest'}:b),annotations:{'workers/message':'Visitor Monitor: browser visits, pageviews, pages and devices; Collector OFF','workers/tag':process.env.GITHUB_SHA?.slice(0,40)||'visitor-monitor-v1'}};
 for(const k of ['compatibility_date','compatibility_flags','usage_model','limits','logpush','observability','placement','tail_consumers'])if(before.settings[k]!==undefined)metadata[k]=before.settings[k];
 const form=new FormData();form.set('metadata',new Blob([JSON.stringify(metadata)],{type:'application/json'}));
 const sourceHashes={};
-for(const file of ['worker.mjs','analytics.mjs']){const content=await readFile(file,'utf8');sourceHashes[file]=hash(content);form.set(file,new Blob([content],{type:'application/javascript+module'}),file);}
+for(const file of ['worker.mjs','analytics.mjs','web-analytics.mjs']){const content=await readFile(file,'utf8');sourceHashes[file]=hash(content);form.set(file,new Blob([content],{type:'application/javascript+module'}),file);}
 await writeFile('deployment-evidence/rollback.json',JSON.stringify({worker:ADMIN,version:before.version,method:'POST isolated Admin /deployments with this version at 100%; never upload old source',sourceHashes,commit:process.env.GITHUB_SHA},null,2));
 const staged=await api(`${admin}/versions?bindings_inherit=strict`,{method:'POST',body:form});assert(staged.id,'No staged version ID');
 console.log('STAGED',staged.id,'source',JSON.stringify(sourceHashes));
 const stagedDetail=await api(`${admin}/versions/${staged.id}`);
-assert.equal(stagedDetail.resources?.bindings?.find(b=>b.name==='CF_ANALYTICS_TOKEN')?.type,'secret_text','Secret inheritance failed');
+for(const name of ['CF_ANALYTICS_TOKEN','CF_WEB_ANALYTICS_TOKEN'])assert.equal(stagedDetail.resources?.bindings?.find(b=>b.name===name)?.type,'secret_text','Secret inheritance failed: '+name);
 const preactivate=await snapshot();preserved(before,preactivate);assert.equal(preactivate.version,before.version);
 const deployment=await api(`${admin}/deployments`,{method:'POST',body:{strategy:'percentage',versions:[{version_id:staged.id,percentage:100}],annotations:{'workers/message':'Activate tested isolated Visitor Monitor analytics V1'}}});
 console.log('DEPLOYED',staged.id,'deployment',deployment.id);
