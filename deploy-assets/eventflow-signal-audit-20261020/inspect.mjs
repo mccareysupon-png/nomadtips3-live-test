@@ -60,6 +60,9 @@ if(main){
  const workerSource=Buffer.from(main.content_base64,'base64').toString('utf8');
  report.workerMarkers=[...new Set(workerSource.match(/b46-[a-z0-9-]+-20261020/g)||[])].slice(-60);
  report.workerSignalContext=excerpts(workerSource,patterns[1].re,25);
+ const exportAt=workerSource.lastIndexOf('export default');
+ report.workerExportSnippet=exportAt>=0?workerSource.slice(exportAt,exportAt+3100):'NO_EXPORT';
+ report.workerReturnCalls=[...workerSource.matchAll(/return __b46[A-Za-z0-9_]+\([^;]{0,1800}url\.pathname\);/g)].map(x=>x[0].slice(0,1200)).slice(-9);
 }
 mkdirSync('audit',{recursive:true});
 writeFileSync('audit/eventflow-signal-report.json',JSON.stringify(report,null,2));
@@ -73,5 +76,7 @@ for(const [p,a] of Object.entries(report.assets)){
  for(const x of (a.flowCss||[]).slice(0,30))console.log('FLOWCSS',p,x.slice(0,400));
 }
 console.log('LIVE_SIGNAL_ANNOTATION_SOURCE',report.assets['/expanded-match-343.js']?.annotationSource||'NOT_FOUND');
+console.log('WORKER_RETURN_CALLS',JSON.stringify(report.workerReturnCalls||[]));
+console.log('WORKER_EXPORT_SNIPPET',JSON.stringify(report.workerExportSnippet||''));
 console.log('WORKER_MARKERS',JSON.stringify(report.workerMarkers||[]));
 console.log('EVENTFLOW_SIGNAL_READ_ONLY_AUDIT_SUCCESS');
