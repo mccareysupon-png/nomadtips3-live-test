@@ -188,6 +188,9 @@ try{
  // source and patch; verify EVERY public asset byte before adding V3.
  const splash=spawnSync('python3',[SCOPED+'/patch_member.py',DIR],{encoding:'utf8'});
  assert.equal(splash.status,0,'REBUILD_CURRENT_MEMBER_LOADING_FAILED '+splash.stderr+' '+splash.stdout);
+ // Preserve the current public Member JS byte-for-byte (including any latest Member-only updates),
+ // while reconstructing the protected HTML only from the exact pinned previous release.
+ writeFileSync(DIR+'/member.js',beforeJs.data);
  const previousFiles=walk(DIR).map(absolute=>{
    const bytes=readFileSync(absolute);
    return {path:'/'+relative(DIR,absolute).replaceAll('\\','/'),bytes,sha:hash(bytes)};
