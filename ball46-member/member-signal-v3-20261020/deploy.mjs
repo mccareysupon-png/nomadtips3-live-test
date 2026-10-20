@@ -228,7 +228,7 @@ try{
  for(const x of untouched)assert.equal(x.sha,previousFiles.find(y=>y.path===x.path)?.sha,'UNEXPECTED_MEMBER_ASSET_CHANGE '+x.path);
  assert.equal(files.length,42,'CANDIDATE_FILE_COUNT_CHANGED');
  assert(updated.js.includes(GRADIENT_ID)&&updated.css.includes(MARKER),'MEMBER_V3_MARKER_MISSING');
- assert(!original.js.includes(GRADIENT_ID),'MEMBER_V3_WAS_ALREADY_ACTIVE');
+ assert(!original['member.js'].includes(GRADIENT_ID),'MEMBER_V3_WAS_ALREADY_ACTIVE');
  report.diff=files.filter(x=>previousFiles.find(y=>y.path===x.path)?.sha!==x.sha).map(x=>({path:x.path,before:previousFiles.find(y=>y.path===x.path)?.sha,after:x.sha}));
  assert.deepEqual(report.diff.map(x=>x.path).sort(),modified.sort(),'MEMBER_V3_FILE_DIFF_EXCEEDED_SCOPE');
  save();
