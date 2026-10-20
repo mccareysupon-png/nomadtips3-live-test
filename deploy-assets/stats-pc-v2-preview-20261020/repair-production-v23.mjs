@@ -18,9 +18,20 @@ async function api(path,body){
 async function active(){const x=(await api('/workers/scripts/'+SCRIPT+'/deployments?per_page=1')).deployments?.[0];assert(x?.versions?.length===1&&Number(x.versions[0].percentage)===100);return{version:x.versions[0].version_id,deployment:x.id}}
 async function version(id){return await api('/workers/workers/'+SCRIPT+'/versions/'+id+'?include=modules')}
 async function read(base,path){
- const u=new URL(path,base);u.searchParams.set('b46v23_allthemes',process.env.GITHUB_RUN_ID+'-'+Date.now());
- const r=await fetch(u,{headers:{'Cache-Control':'no-cache'},signal:AbortSignal.timeout(40000)});
- const bytes=Buffer.from(await r.arrayBuffer());return{status:r.status,sha:hash(bytes),body:bytes};
+ let last;
+ for(let attempt=1;attempt<=5;attempt++){
+  try{
+   const u=new URL(path,base);u.searchParams.set('b46v23_allthemes',process.env.GITHUB_RUN_ID+'-'+Date.now()+'-'+attempt);
+   const r=await fetch(u,{headers:{'Cache-Control':'no-cache'},signal:AbortSignal.timeout(35000)});
+   const bytes=Buffer.from(await r.arrayBuffer());
+   return{status:r.status,sha:hash(bytes),body:bytes};
+  }catch(err){
+   last=err;
+   console.log('TRANSIENT_ROUTE_READ_RETRY',JSON.stringify({base,path,attempt,error:String(err)}));
+   if(attempt<5)await new Promise(r=>setTimeout(r,1800*attempt));
+  }
+ }
+ throw new Error('PUBLIC_ROUTE_READ_FAILED '+base+path+' : '+String(last));
 }
 const paths=['/','/index.html','/longterm-performance-343.js','/singlepage-workspace-343.js','/dashboard-v2-tune.css','/expanded-match-343.js'];
 async function assets(base){const x={};for(const path of paths){x[path]=await read(base,path);assert.equal(x[path].status,200,'HTTP_STATUS_FAILED '+base+' '+path)}return x}
