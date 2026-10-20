@@ -10,9 +10,9 @@ const A=process.env.CLOUDFLARE_ACCOUNT_ID,T=process.env.CLOUDFLARE_API_TOKEN;
 const W='ball46-member-production',BASE='https://member.ball46.com',DIR='/tmp/ball46-member-live-tree/ball46-member/public';
 const AUDIT='audit/member-graphite-loading-production-deploy';
 const SCOPED='ball46-member/member-loading-20261020';
-const OLD_VERSION='4373d1fa-4534-498b-98d3-b2c39296569b';
+const OLD_VERSION='ffb0a0be-99a9-44a3-b7bb-f9708bb60fa3';
 const OLD_MODULE_SHA='eeb30972a6b8b15a64cd9a4dae967f3cb61de7ae914fe3ae4a1a8dab4dfadfd9';
-const OLD_CSS_SHA='fa96bbdf0cc293082b17032752c4c84b57b31a00c8c7fca32929ac13bf0f6bb0';
+const OLD_CSS_SHA='9e0a6010d8ffd027caad4556c760b662ae4fe3ff8709b1329e09d3ede53fc4b2';
 const hash=b=>createHash('sha256').update(b).digest('hex');
 const mime=name=>({'.css':'text/css','.js':'text/javascript','.html':'text/html','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.webp':'image/webp','.mp4':'video/mp4','.ico':'image/x-icon','.woff':'font/woff','.woff2':'font/woff2'})[extname(name)]||'application/octet-stream';
 const walk=root=>readdirSync(root,{withFileTypes:true}).flatMap(x=>x.isDirectory()?walk(join(root,x.name)):[join(root,x.name)]);
@@ -169,7 +169,8 @@ try{
  writeFileSync(DIR+'/styles.css',liveCss.data);
  const liveJs=await getPublic('/member.js');
  assert.equal(liveJs.status,200,'LIVE_MEMBER_JS_HTTP_ERROR');
- assert.equal(liveJs.sha,origJs.sha,'LIVE_JS_CHANGED_SINCE_VERIFIED_SOURCE');
+ assert.equal(liveJs.sha,'205b50004965b79eefeb6ecaa71f9d489c0d3a6269b8ecd0c54cafdff7acfc00','ACTIVE_STATS_V3_JS_CHANGED');
+ writeFileSync(DIR+'/member.js',liveJs.data);
 
  const oldFiles=walk(DIR).map(absolute=>{
   const bytes=readFileSync(absolute);return {path:'/'+relative(DIR,absolute).replaceAll('\\','/'),bytes,sha:hash(bytes)}
@@ -192,13 +193,13 @@ try{
  assert.equal(nonChanged.length,38,'UNTOUCHED_MEMBER_ASSET_COUNT_CHANGED');
  for(const file of nonChanged) assert.equal(file.sha,oldFiles.find(x=>x.path===file.path)?.sha,'UNRELATED_ASSET_MUTATION:'+file.path);
  assert.equal(files.find(x=>x.path==='/styles.css').sha,OLD_CSS_SHA,'PREVIOUS_SCROLLBAR_CSS_CHANGED');
- assert.equal(files.find(x=>x.path==='/member.js').sha!==origJs.sha,true,'MEMBER_LOADER_READY_HOOK_NOT_PATCHED');
+ assert.notEqual(files.find(x=>x.path==='/member.js').sha,liveJs.sha,'MEMBER_LOADER_READY_HOOK_NOT_PATCHED');
  const html=readFileSync(DIR+'/member.html','utf8');
  const js=readFileSync(DIR+'/member.js','utf8');
  assert(html.includes('id="b46-member-loading"')&&html.includes('/member-loading.css'),'LOADING_HTML_MISSING');
  assert(js.includes("ball46:member-data-ready")&&js.includes("ball46:member-data-error"),'MEMBER_DATA_LIFECYCLE_NOT_WIRED');
  report.change={assetsChanged:['/member.html','/member.js'],newAssets:['/member-loading.css','/member-loading.js'],unchangedAssets:38,
-  priorCssHash:OLD_CSS_SHA,htmlBefore:origHtml.sha,jsBefore:origJs.sha,
+  priorCssHash:OLD_CSS_SHA,htmlBefore:origHtml.sha,jsBefore:liveJs.sha,
   htmlAfter:files.find(x=>x.path==='/member.html').sha,jsAfter:files.find(x=>x.path==='/member.js').sha};
  report.phase='UPLOAD_ASSET_CANDIDATE';save();
  assert.equal((await active()).version,initial.version,'ACTIVE_CHANGED_DURING_PREP');
