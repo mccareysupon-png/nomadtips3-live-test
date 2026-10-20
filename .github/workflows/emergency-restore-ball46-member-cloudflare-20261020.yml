@@ -1,0 +1,84 @@
+name: EMERGENCY Restore BALL46 Member Cloudflare Previous Version
+on:
+  push:
+    branches:
+      - emergency/restore-member-cloudflare-prekits-20261020
+    paths:
+      - '.github/workflows/emergency-restore-ball46-member-cloudflare-20261020.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ball46-member-production-deploy
+  cancel-in-progress: false
+
+jobs:
+  restore-exact-pre-incident-version:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      PRE_INCIDENT_VERSION: d53a9985-71d0-4526-86cc-5f2b4f64d152
+      INCIDENT_VERSION: d1a77bfe-20a6-4813-983d-4a18239ce4c4
+      WORKER: ball46-member-production
+    steps:
+      - name: Prove current deployment exactly matches the incident, not another newer release
+        shell: bash
+        run: |
+          set -euo pipefail
+          endpoint="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/scripts/${WORKER}/deployments"
+          curl -fsS --max-time 25 -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" "$endpoint" -o /tmp/member-before-rollback.json
+          jq -e '.success==true' /tmp/member-before-rollback.json >/dev/null
+          current="$(jq -er '(.result | if type=="array" then . else .deployments // [] end)[0].versions[0].version_id' /tmp/member-before-rollback.json)"
+          echo "ACTIVE_VERSION_BEFORE=${current}"
+          if [ "$current" != "$INCIDENT_VERSION" ] && [ "$current" != "$PRE_INCIDENT_VERSION" ]; then
+            echo "::error::A different production release is now live. Refusing to overwrite its deployment."
+            exit 1
+          fi
+          jq -e --arg target "$PRE_INCIDENT_VERSION" '(.result | if type=="array" then . else .deployments // [] end) | any(.versions[]?; .version_id==$target)' /tmp/member-before-rollback.json >/dev/null
+          echo "PRE_INCIDENT_CLOUDFLARE_VERSION_FOUND_IN_HISTORY"
+          echo "SAFE_TO_RESTORE_CONFIRMED"
+
+      - name: Roll back to exact Cloudflare version active before our jersey deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+          endpoint="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/scripts/${WORKER}/deployments"
+          current="$(jq -er '(.result | if type=="array" then . else .deployments // [] end)[0].versions[0].version_id' /tmp/member-before-rollback.json)"
+          if [ "$current" = "$PRE_INCIDENT_VERSION" ]; then
+            echo "CLOUDFLARE_ALREADY_AT_PRE_INCIDENT_VERSION"
+            exit 0
+          fi
+          jq -n --arg version "$PRE_INCIDENT_VERSION" '{
+            strategy:"percentage",
+            versions:[{version_id:$version,percentage:100}],
+            annotations:{"workers/message":"Emergency restore of exact pre-jersey Cloudflare Worker version; retain member UI"}
+          }' > /tmp/rollback.json
+          curl -fsS --max-time 35 -X POST -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+            -H "Content-Type: application/json" --data-binary @/tmp/rollback.json "$endpoint" -o /tmp/rollback-response.json
+          jq -e '.success==true' /tmp/rollback-response.json >/dev/null
+          echo "CLOUDFLARE_ROLLBACK_API_SUCCESS"
+
+      - name: Verify the exact old Cloudflare version now serves 100 percent of traffic
+        shell: bash
+        run: |
+          set -euo pipefail
+          endpoint="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/scripts/${WORKER}/deployments"
+          for attempt in 1 2 3 4 5 6; do
+            curl -fsS --max-time 25 -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" "$endpoint" -o /tmp/member-after-rollback.json
+            if jq -e --arg target "$PRE_INCIDENT_VERSION" '.success==true and ((.result | if type=="array" then . else .deployments // [] end)[0].versions | length)==1 and ((.result | if type=="array" then . else .deployments // [] end)[0].versions[0].version_id==$target)' /tmp/member-after-rollback.json >/dev/null; then
+              echo "CLOUDFLARE_RESTORED_EXACT_PRE_INCIDENT_VERSION=${PRE_INCIDENT_VERSION}"
+              break
+            fi
+            if [ "$attempt" -eq 6 ]; then echo "::error::Version not restored"; exit 1; fi
+            sleep 3
+          done
+          base="https://ball46-member-production.mccarey-supon.workers.dev"
+          curl -fsS --retry 3 --max-time 25 "$base/api/health" -o /tmp/member-restored-health.json
+          jq -e '.ok==true and .service=="ball46-member-production"' /tmp/member-restored-health.json >/dev/null
+          curl -fsS --retry 3 --max-time 25 "$base/pricing" -o /tmp/member-restored-pricing.html
+          grep -Fq 'Daily signals. One screen.' /tmp/member-restored-pricing.html
+          echo "BALL46_MEMBER_PRE_JERSEY_PRODUCTION_RESTORED_AND_HEALTHY"
