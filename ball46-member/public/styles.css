@@ -5853,3 +5853,21 @@ button,input,select,textarea{font-family:inherit;font-synthesis:none}
   .page-member #dailySummary .summary-stat span{font-size:clamp(7px,.75vw,9px)}
   .page-member #dailySummary .summary-stat b{font-size:clamp(10px,1.1vw,14px)}
 }
+
+/* BALL46 MEMBER — Event Flow SIGNAL raised borderless plate, single 1x glow (2026-10-20) */
+/* Plate geometry, label/price and chart remain unchanged. Only the raised finish changes. */
+.page-member .member-flow-signal-plate{
+  fill:rgba(13,54,44,.94); /* SVG inline gradient overrides this safe fallback. */
+  stroke:none!important;
+  stroke-width:0!important;
+  animation:none!important;
+  /* One emerald bloom layer (1x); separate dark shadow creates physical depth. */
+  filter:drop-shadow(0 3px 5px rgba(0,0,0,.30))
+         drop-shadow(0 0 3px rgba(67,230,162,.20))!important;
+}
+.page-member .member-flow-signal-accent{
+  /* Avoid a second glowing/pulsing source beside the single soft plate bloom. */
+  animation:none!important;
+  opacity:.84;
+  filter:none!important;
+}
