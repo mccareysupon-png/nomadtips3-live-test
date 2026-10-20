@@ -70,16 +70,16 @@ async function health(base){
  }
  return out;
 }
-async function observe(browser,width,theme,shot,assetBytes=null){
+async function observe(browser,width,theme,shot,overrideHtml=null){
  const page=await browser.newPage(),errs=[];let intercepted=0;
  try{
   page.on('pageerror',e=>errs.push(String(e).slice(0,250)));
-  if(assetBytes){
+  if(overrideHtml){
    await page.setRequestInterception(true);
    page.on('request',req=>{
     const u=new URL(req.url());
-    if(u.hostname==='ball46.com'&&u.pathname==='/expanded-match-343.js'){
-     intercepted++;req.respond({status:200,contentType:'application/javascript; charset=utf-8',body:assetBytes});
+    if(req.isNavigationRequest()&&u.hostname==='ball46.com'&&u.pathname==='/'){
+     intercepted++;req.respond({status:200,contentType:'text/html; charset=utf-8',body:overrideHtml});
     }else req.continue();
    });
   }
@@ -101,8 +101,28 @@ async function observe(browser,width,theme,shot,assetBytes=null){
    const market=[...document.querySelectorAll('.expand-full-market-card')].find(x=>x.getBoundingClientRect().width>0);
    return{flow:!!el,flowTitle:el?.querySelector('.expand-card-head')?.textContent?.slice(0,45),hasChart:!!svg,hasFullMarket:!!market,chartAspect:svg?.getAttribute('preserveAspectRatio'),chartViewBox:svg?.getAttribute('viewBox')};
   });
+
+  // A synthetic event fixture is necessary when live matches have no pressure history at audit time.
+  await page.evaluate(()=>{
+   const root=document.createElement('div');
+   root.style.cssText='position:fixed;left:-12000px;top:0;width:350px;';
+   const home=Array.from({length:81},(_,i)=>[36+i*3.75,120+(i%2?65:-65)]);
+   const away=Array.from({length:81},(_,i)=>[36+i*3.75,145+(i%2?-45:45)]);
+   const toPath=pts=>pts.map(([x,y],i)=>(i?' L ':'M ')+x.toFixed(2)+' '+y.toFixed(2)).join('');
+   const h=toPath(home),a=toPath(away);
+   root.id='b46-synthetic-flow-qa';
+   root.innerHTML='<section class="expand-card expand-flow-card"><div class="expand-card-head"><div><b>0′ → 80′</b></div></div><div class="expand-flow-chart b46-mf-chart"><svg viewBox="0 0 360 300"><defs></defs><path class="expand-flow-area" d="'+h+'"/><path class="expand-flow-area" d="'+a+'"/><path class="expand-flow-line home" d="'+h+'"/><path class="expand-flow-line away" d="'+a+'"/></svg></div></section>';
+   document.body.appendChild(root);
+  });
+  await new Promise(r=>setTimeout(r,700));
+  const synthetic=await page.evaluate(()=>{
+   const el=document.querySelector('#b46-synthetic-flow-qa'),svg=el?.querySelector('svg');
+   const h=svg?.querySelector('path.expand-flow-line.home'),a=svg?.querySelector('path.expand-flow-line.away');
+   const output={installed:!!window.__b46MobileFlowUltraSoftV3Installed,homeCurved:h?.getAttribute('d')?.includes(' C ')||false,awayCurved:a?.getAttribute('d')?.includes(' C ')||false,halos:svg?.querySelectorAll('path.b46-mf-ultrasoft-halo').length||0,homeStroke:h?getComputedStyle(h).strokeWidth:null,awayStroke:a?getComputedStyle(a).strokeWidth:null};
+   el?.remove();return output;
+  });
   await page.screenshot({path:'audit/'+shot+'.png',fullPage:false});
-  return{width,theme,initial,detail,intercepted,errorCount:errs.length,errors:errs.slice(0,3)};
+  return{width,theme,initial,detail,synthetic,intercepted,errorCount:errs.length,errors:errs.slice(0,3)};
  }finally{await page.close();}
 }
 function compareUI(before,after,requireIntercept){
@@ -112,7 +132,17 @@ function compareUI(before,after,requireIntercept){
  assert.equal(after.detail.hasFullMarket,before.detail.hasFullMarket,'FULL_MARKET_CHANGED');
  assert.equal(after.detail.chartAspect,before.detail.chartAspect,'CHART_ASPECT_CHANGED');
  assert.equal(after.errorCount,before.errorCount,'ADDED_BROWSER_ERRORS '+after.errors.join(';'));
- if(requireIntercept)assert(after.intercepted>0,'CANDIDATE_JS_NOT_EXECUTED');
+ if(requireIntercept)assert(after.intercepted>0,'CANDIDATE_HTML_NOT_EXECUTED');
+ if(after.width<=767){
+  assert(after.synthetic.installed,'MOBILE_FLOW_OVERLAY_MISSING');
+  assert(after.synthetic.homeCurved&&after.synthetic.awayCurved,'MOBILE_SOFT_CURVE_NOT_APPLIED');
+  assert.equal(after.synthetic.halos,2,'EXPECTED_ONE_GLOW_PER_LINE');
+  assert.equal(after.synthetic.homeStroke,'1.05px','HOME_HAIRLINE_BAD');
+  assert.equal(after.synthetic.awayStroke,'0.95px','AWAY_HAIRLINE_BAD');
+ }else{
+  assert(!after.synthetic.homeCurved&&!after.synthetic.awayCurved,'DESKTOP_FLOW_WAS_MODIFIED');
+  assert.equal(after.synthetic.halos,0,'DESKTOP_GLOW_WAS_MODIFIED');
+ }
 }
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 let candidate=null,activated=false;
@@ -154,7 +184,7 @@ try{
   report.previewUI={};
   for(const width of [1440,390])for(const theme of ['light','dark']){
    const k=width+'-'+theme;
-   const val=await observe(browser,width,theme,'preview-'+k,tested['/expanded-match-343.js'].buf);
+   const val=await observe(browser,width,theme,'preview-'+k,tested['/'].buf);
    report.previewUI[k]=val;save();compareUI(report.beforeUI[k],val,true);
   }
   report.candidateVerified=true;save();
