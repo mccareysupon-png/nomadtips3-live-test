@@ -1,0 +1,32 @@
+name: BALL46 Mobile Event Flow Transparent Header
+on:
+  push:
+    branches: [work/eventflow-mobile-transparent-header-20261020]
+    paths: ['eventflow-mobile-transparent-header/**', '.github/workflows/eventflow-mobile-transparent-header-20261020.yml']
+permissions:
+  contents: read
+concurrency:
+  group: ball46-eventflow-mobile-header-production
+  cancel-in-progress: false
+jobs:
+  transparent-header:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --ignore-scripts acorn@8 playwright@1.56.1
+      - run: npx playwright install --with-deps chromium
+      - name: Test five widths, retain current assets, deploy and verify exact header change
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: node eventflow-mobile-transparent-header/run.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eventflow-mobile-transparent-header-proof
+          path: audit/
+          retention-days: 30
