@@ -41,7 +41,13 @@ for(const path of paths){
  }else{
   rec.signalContext=excerpts(body,patterns[1].re,9);
  }
- report.assets[path]=rec;
+ if(path==='/expanded-match-343.js'){
+  rec.signalRender=excerpts(body,/signalAnnotationLines\s*\(|signalMarkers\s*\(|flow-marker|flow-signal|signal-annotation|signal-entry|signal-badge|<rect|foreignObject|SIGNAL[^A-Za-z]/gi,62);
+}
+if(path==='/'||path==='/index.html'||path==='/dashboard-v2-tune.css'||path==='/app.css'){
+  rec.flowCss=excerpts(body,/\.expand-flow-[\w-]+|\.b46-eventflow-[\w-]+|\.signal-annotation[\w-]*|\.signal-marker[\w-]*|\.flow-signal[\w-]*|\.signal-entry[\w-]*/gi,45);
+}
+report.assets[path]=rec;
 }
 const v=JSON.parse(await request(prefix+'/workers/workers/'+SCRIPT+'/versions/'+versionId+'?include=modules',true));
 if(!v.success)throw Error('CF_VERSION_READ_FAILED');
@@ -59,6 +65,10 @@ console.log('READ_ONLY_BALL46_ACTIVE_VERSION',versionId);
 for(const [p,a] of Object.entries(report.assets)){
  console.log('ASSET',p,a.bytes,a.sha256,'classes',JSON.stringify((a.signalClasses||[]).slice(0,30)));
  for(const x of (a.signalContext||[]).slice(0,p.includes('singlepage')?10:5))console.log('SNIPPET',p,x.slice(0,230));
+}
+for(const [p,a] of Object.entries(report.assets)){
+ for(const x of (a.signalRender||[]).slice(0,45))console.log('RENDER',p,x.slice(0,450));
+ for(const x of (a.flowCss||[]).slice(0,30))console.log('FLOWCSS',p,x.slice(0,400));
 }
 console.log('WORKER_MARKERS',JSON.stringify(report.workerMarkers||[]));
 console.log('EVENTFLOW_SIGNAL_READ_ONLY_AUDIT_SUCCESS');
