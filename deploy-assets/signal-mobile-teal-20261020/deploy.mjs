@@ -100,6 +100,8 @@ async function observe(browser,width,theme,shot,overrideHtml=null){
     assert(clicked,'MOBILE_NAV_ITEM_MISSING '+mode);
     await new Promise(r=>setTimeout(r,850));
    }
+   await page.evaluate(t=>document.documentElement.setAttribute('data-theme',t),theme);
+   await new Promise(r=>setTimeout(r,1050));
    const snap=await page.evaluate(mode=>{
     const sample=e=>{
      if(!e)return null;const c=getComputedStyle(e),r=e.getBoundingClientRect();
@@ -108,7 +110,7 @@ async function observe(browser,width,theme,shot,overrideHtml=null){
     const visible=s=>[...document.querySelectorAll(s)].find(e=>e.getBoundingClientRect().width>0&&e.getBoundingClientRect().height>0);
     const check=visible('.workspace.singlepage .status-section .league-block > article.match-row');
     const mobile=visible('.b46gn-card'),pc=visible('.workspace.singlepage .match-row');
-    const s={route:new URL(location.href).searchParams.get('view'),tag:document.documentElement.getAttribute('data-b46-signal-mobile-v2'),installed:!!window.__b46SignalMobileV2Installed,realSignal:sample(mode==='signal'?check:null),regularCard:sample(mode==='signal'?null:(innerWidth<=767?mobile:pc)),league:sample(visible('.workspace.singlepage .status-section .league-block > header.league-head')),signalCount:document.querySelectorAll('.workspace.singlepage .status-section .league-block > article.match-row').length,otherCard:sample(mobile)};
+    const s={renderedTheme:document.documentElement.dataset.theme,route:new URL(location.href).searchParams.get('view'),tag:document.documentElement.getAttribute('data-b46-signal-mobile-v2'),installed:!!window.__b46SignalMobileV2Installed,realSignal:sample(mode==='signal'?check:null),regularCard:sample(mode==='signal'?null:(innerWidth<=767?mobile:pc)),league:sample(visible('.workspace.singlepage .status-section .league-block > header.league-head')),signalCount:document.querySelectorAll('.workspace.singlepage .status-section .league-block > article.match-row').length,otherCard:sample(mobile)};
     // Use a synthetic Signal league/card to prove selector gating when live signals expire.
     const host=document.querySelector('.workspace.singlepage');
     if(host){
@@ -140,6 +142,7 @@ function checkUI(a,b,width,theme,needsInjection){
  for(const [mode,v] of Object.entries(b.modes)){
   const old=a.modes[mode];
   assert(old&&old.synthetic&&v.synthetic,'SYNTHETIC_SCOPED_FIXTURE_MISSING '+mode);
+  assert.equal(v.renderedTheme,theme,'THEME_NOT_STABLE_AFTER_NAV '+width+' '+theme+' '+mode);
   assert.equal(v.flowScriptPresent,old.flowScriptPresent,'EVENT_FLOW_ULTRA_SOFT_LOST '+width+' '+mode);
   const expected=width<=767&&theme==='dark'&&mode==='signal';
   assert.equal(v.tag==='1',mode==='signal','SIGNAL_MENU_SCOPE_BAD '+mode+' '+width);
