@@ -94,17 +94,35 @@ try{
  const baseline=await version(BASELINE);report.modulesBefore=baseline.modules.map(m=>({name:m.name,hash:h(Buffer.from(m.content_base64,'base64'))}));
  const index=baseline.modules.find(m=>m.name==='assets/index.html'),main=baseline.modules.find(m=>m.name===baseline.main_module);
  assert(index&&main,'LIVE_INDEX_OR_MAIN_MODULE_NOT_FOUND');
- const indexText=Buffer.from(index.content_base64,'base64').toString('utf8');
- assert(indexText.includes('</head>')&&!indexText.includes(MARKER),'BASE_INDEX_INVALID_OR_ALREADY_PATCHED');
- const modifiedIndex=indexText.replace('</head>',STYLE+'</head>');
- // The immutable injected CSS must match the separately reviewed theme exactly.
+ // Root HTML is composed by the live Worker response wrappers, NOT by directly replacing index.html asset.
+ // Patch only the current active Worker's outermost HTML response call. All other modules stay byte-identical.
+ const oldMain=Buffer.from(main.content_base64,'base64').toString('utf8');
+ assert(oldMain.includes('b46-pc-ticker-gap-fix-20261020')&&!oldMain.includes('b46-eventflow-signal-soft-elevation-20261020'),'LIVE_MAIN_SOURCE_DRIFT');
+ const returnCalls=[...oldMain.matchAll(/return __b46PcCollapseTickerGap20261020\([\s\S]{0,2400}?url\.pathname\);/g)];
+ assert.equal(returnCalls.length,1,'CURRENT_RESPONSE_WRAPPER_NOT_UNIQUE');
+ const oldCall=returnCalls[0][0];
+ const nextCall='return __b46EventflowSignalElevation20261020(await '+oldCall.slice('return '.length,-1)+',url.pathname);';
+ const helper=[
+  'async function __b46EventflowSignalElevation20261020(response,path){',
+  'if(!["/","/index.html"].includes(path)||!response||response.status!==200||!String(response.headers.get("content-type")||"").includes("text/html"))return response;',
+  'const original=await response.text();',
+  'const overlay='+JSON.stringify(STYLE)+';',
+  'if(!original.includes("b46-pc-ticker-gap-fix-20261020")||!original.includes("b46-mobile-ultrasoft-flow-v3-20261020")||!original.includes("</head>")||original.includes("b46-eventflow-signal-soft-elevation-20261020"))throw new Error("EVENTFLOW_SIGNAL_BASELINE_DRIFT");',
+  'const headers=new Headers(response.headers);headers.delete("content-length");headers.delete("etag");',
+  'return new Response(original.replace("</head>",overlay+"</head>"),{status:response.status,statusText:response.statusText,headers});',
+  '}'
+ ].join('\n');
+ const exportAt=oldMain.lastIndexOf('export default');
+ assert(exportAt>0,'WORKER_EXPORT_NOT_FOUND');
+ const modifiedMain=oldMain.slice(0,exportAt)+'\n'+helper+'\n'+oldMain.slice(exportAt).replace(oldCall,nextCall);
+ assert.equal(modifiedMain.replace('\n'+helper+'\n','').replace(nextCall,oldCall),oldMain,'WORKER_NON_TARGET_CONTENT_MODIFIED');
  const publicBefore=await assets(ORIGIN),liveHtml=publicBefore['/'].body.toString();
  assert.equal(publicBefore['/'].hash,publicBefore['/index.html'].hash,'ROOT_INDEX_HTML_DIFFER');
  const expected=inject(liveHtml);
  assert(expected.includes(MARKER),'STYLE_NOT_IN_EXPECTED_HTML');
  report.beforeAssets=assetHashes(publicBefore);report.healthBefore=await health(ORIGIN);
- report.newIndexHash=h(Buffer.from(modifiedIndex));
- report.baseMainHash=h(Buffer.from(main.content_base64,'base64'));save();
+ report.newMainHash=h(Buffer.from(modifiedMain));
+ report.baseIndexHash=h(Buffer.from(index.content_base64,'base64'));save();
  const metadata={main_module:baseline.main_module,compatibility_date:baseline.compatibility_date,
   compatibility_flags:baseline.compatibility_flags||[],bindings:baseline.bindings,keep_assets:true,
   assets:{config:baseline.assets.config},
@@ -113,7 +131,7 @@ try{
  for(const key of ['usage_model','logpush','limits','observability','placement'])if(settings[key]!=null)metadata[key]=settings[key];
  const form=new FormData();form.set('metadata',new Blob([JSON.stringify(metadata)],{type:'application/json'}));
  for(const m of baseline.modules){
-  const bytes=m.name===index.name?Buffer.from(modifiedIndex):Buffer.from(m.content_base64,'base64');
+  const bytes=m.name===main.name?Buffer.from(modifiedMain):Buffer.from(m.content_base64,'base64');
   form.set(m.name,new Blob([bytes],{type:m.content_type}),m.name);
  }
  assert.equal((await active()).version,BASELINE,'LIVE_VERSION_CHANGED_BEFORE_CANDIDATE');
@@ -123,7 +141,7 @@ try{
  assert.equal(staged.annotations?.['workers/tag'],'B46_EVENTFLOW_SIGNAL_BORDERLESS_ELEVATION_20261020','CANDIDATE_TAG_MISSING');
  for(const m of report.modulesBefore){
   const now=staged.modules.find(x=>x.name===m.name);assert(now,'CANDIDATE_MODULE_MISSING '+m.name);
-  assert.equal(h(Buffer.from(now.content_base64,'base64')),m.name===index.name?report.newIndexHash:m.hash,'CANDIDATE_UNEXPECTED_MODULE_CHANGE '+m.name);
+  assert.equal(h(Buffer.from(now.content_base64,'base64')),m.name===main.name?report.newMainHash:m.hash,'CANDIDATE_UNEXPECTED_MODULE_CHANGE '+m.name);
  }
  const preview='https://'+candidate.slice(0,8)+'-ball46-production.mccarey-supon.workers.dev';
  const previewAssets=await assets(preview);
