@@ -1,0 +1,75 @@
+name: Deploy isolated BALL46 Visitor Monitor
+on:
+  push:
+    branches: [work/ball46-traffic-intelligence-isolated-20261020]
+    paths:
+      - '.github/workflows/deploy-ball46-visitor-monitor-isolated.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: b46-visitor-monitor-deploy-only
+  cancel-in-progress: false
+jobs:
+  dedicated-worker-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CF_TELEMETRY_DISABLED: '1'
+    defaults:
+      run:
+        working-directory: traffic-intelligence/isolated-deploy
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/ball46-traffic-intelligence-isolated-20261020
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate isolated worker and owner access
+        run: |
+          set -euo pipefail
+          node --check worker.mjs
+          node --test worker.test.mjs
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo 'BLOCKED: Cloudflare credentials unavailable'
+            exit 1
+          fi
+      - name: Set up distinct D1 database (never football DB)
+        run: |
+          set -euo pipefail
+          npm install --no-save --ignore-scripts wrangler@4.45.0
+          npx wrangler d1 list --json > d1-list.json
+          ID=$(jq -r '.[] | select(.name == "b46-visitor-monitor-db") | (.uuid // .id)' d1-list.json | head -1)
+          if [ -z "$ID" ]; then
+            npx wrangler d1 create b46-visitor-monitor-db --json > new-db.json
+            ID=$(jq -r '.uuid // .database_id // .id // .database.uuid // .database.database_id // empty' new-db.json)
+          fi
+          if ! [[ "$ID" =~ ^[0-9a-fA-F-]{36}$ ]]; then
+            echo 'BLOCKED: Cannot verify distinct new D1 database ID'
+            exit 1
+          fi
+          jq -n --arg id "$ID" '{
+            name:"b46-visitor-monitor-admin",
+            main:"worker.mjs",
+            compatibility_date:"2026-10-20",
+            workers_dev:true,
+            vars:{COLLECT_ENABLED:"false"},
+            triggers:{crons:["0 * * * *"]},
+            d1_databases:[{binding:"DB",database_name:"b46-visitor-monitor-db",database_id:$id}]
+          }' > wrangler.deployment.json
+          npx wrangler d1 execute b46-visitor-monitor-db --remote --file=./schema.sql --yes
+      - name: Deploy standalone Worker (no zone routes or public tracking)
+        run: |
+          set -euo pipefail
+          npx wrangler deploy --config wrangler.deployment.json | tee deploy.log
+          echo 'Only b46-visitor-monitor-admin deployed; BALL46 main Workers untouched.'
+      - name: Non-secret deployment audit
+        if: always()
+        run: |
+          echo "GitHub commit $(git rev-parse HEAD)"
+          echo 'Service b46-visitor-monitor-admin / D1 b46-visitor-monitor-db'
+          echo 'Collect DISABLED / owner access DENY BY DEFAULT'
+          if [ -f deploy.log ]; then grep -E 'workers.dev|Deployed|Uploaded' deploy.log || true; fi
