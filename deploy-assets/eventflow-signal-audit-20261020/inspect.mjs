@@ -43,6 +43,8 @@ for(const path of paths){
  }
  if(path==='/expanded-match-343.js'){
   rec.signalRender=excerpts(body,/signalAnnotationLines\s*\(|signalMarkers\s*\(|flow-marker|flow-signal|signal-annotation|signal-entry|signal-badge|<rect|foreignObject|SIGNAL[^A-Za-z]/gi,62);
+  const annotationAt=body.indexOf('b46-eventflow-signal-entry b46-eventflow-signal-annotation');
+  if(annotationAt>=0)rec.annotationSource=body.slice(Math.max(0,annotationAt-1400),Math.min(body.length,annotationAt+2900));
 }
 if(path==='/'||path==='/index.html'||path==='/dashboard-v2-tune.css'||path==='/app.css'){
   rec.flowCss=excerpts(body,/\.expand-flow-[\w-]+|\.b46-eventflow-[\w-]+|\.signal-annotation[\w-]*|\.signal-marker[\w-]*|\.flow-signal[\w-]*|\.signal-entry[\w-]*/gi,45);
@@ -70,5 +72,6 @@ for(const [p,a] of Object.entries(report.assets)){
  for(const x of (a.signalRender||[]).slice(0,45))console.log('RENDER',p,x.slice(0,450));
  for(const x of (a.flowCss||[]).slice(0,30))console.log('FLOWCSS',p,x.slice(0,400));
 }
+console.log('LIVE_SIGNAL_ANNOTATION_SOURCE',report.assets['/expanded-match-343.js']?.annotationSource||'NOT_FOUND');
 console.log('WORKER_MARKERS',JSON.stringify(report.workerMarkers||[]));
 console.log('EVENTFLOW_SIGNAL_READ_ONLY_AUDIT_SUCCESS');
