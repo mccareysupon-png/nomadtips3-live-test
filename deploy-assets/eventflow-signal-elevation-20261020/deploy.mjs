@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import {existsSync,mkdirSync,writeFileSync} from 'node:fs';
 import puppeteer from 'puppeteer-core';
-import {inject,MARKER} from './theme.mjs';
+import {inject,MARKER,STYLE} from './theme.mjs';
 
 // Immutable live-production baseline. Abort if any other writer has changed it.
 const SCRIPT='ball46-production',BASELINE='ba937a65-f132-40bd-89a7-816ffd6f4d18';
@@ -55,6 +55,7 @@ async function visual(browser,url,width,theme,shot){
   await page.setViewport({width,height:860,isMobile:width<=767,deviceScaleFactor:1});
   await page.setCacheEnabled(false);
   await page.goto(url+'/?b46_card_depth_qa='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+  await new Promise(r=>setTimeout(r,2200));
   await page.evaluate(t=>document.documentElement.setAttribute('data-theme',t),theme);
   const result=await page.evaluate(()=>{
    const body=document.body;
@@ -87,7 +88,7 @@ try{
  assert(index&&main,'LIVE_INDEX_OR_MAIN_MODULE_NOT_FOUND');
  const indexText=Buffer.from(index.content_base64,'base64').toString('utf8');
  assert(indexText.includes('</head>')&&!indexText.includes(MARKER),'BASE_INDEX_INVALID_OR_ALREADY_PATCHED');
- const modifiedIndex=indexText.replace('</head>',String.raw`<style id="b46-eventflow-signal-soft-elevation-20261020">svg g.b46-eventflow-signal-entry.b46-eventflow-signal-annotation > rect{stroke:none!important;stroke-width:0!important;fill:#12392f!important;fill-opacity:.95!important;filter:drop-shadow(0 5px 7px rgba(0,0,0,.35)) drop-shadow(0 -1px 2px rgba(68,228,164,.17))!important}</style>`+'</head>');
+ const modifiedIndex=indexText.replace('</head>',STYLE+'</head>');
  // The immutable injected CSS must match the separately reviewed theme exactly.
  const publicBefore=await assets(ORIGIN),liveHtml=publicBefore['/'].body.toString();
  assert.equal(publicBefore['/'].hash,publicBefore['/index.html'].hash,'ROOT_INDEX_HTML_DIFFER');
@@ -130,7 +131,7 @@ try{
   for(const width of [1440,390])for(const theme of ['light','dark']){
    const key=width+'-'+theme;
    const observed=await visual(browser,preview,width,theme,'preview-'+key);
-   assert(observed.marker&&observed.stroke==='none'&&observed.strokeWidth==='0px'&&observed.shadow,
+   assert(observed.marker&&observed.stroke==='none'&&Number.parseFloat(observed.strokeWidth)===0&&observed.shadow,
      'SVG_BORDER_OR_ELEVATION_WRONG '+key+' '+JSON.stringify(observed));
    assert(observed.siteExists,'WORKSPACE_NOT_RENDERED '+key);
    report.previewScreenshots[key]=observed;
