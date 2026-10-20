@@ -210,11 +210,11 @@ try{
  assert.equal(html.sha,otherFiles.find(x=>x.path==='/pricing.html').sha,'PRICING_ROOT_ASSET_CHANGED');
  // Browser-check the actual Candidate JS/CSS from version URL. Member auth remains enforced.
  const browser=await chromium.launch({headless:true});
- const source=nextJS.toString('utf8');
- const start=source.indexOf('function renderSummary(){');
- const stop=source.indexOf('\nfunction filteredRows(){',start);
+ const candidateJS=nextJS.toString('utf8');
+ const start=candidateJS.indexOf('function renderSummary(){');
+ const stop=candidateJS.indexOf('\nfunction filteredRows(){',start);
  assert(start>=0&&stop>start,'CANDIDATE_STAT_RENDER_NOT_FOUND');
- const renderSource=source.slice(start,stop);
+ const renderSource=candidateJS.slice(start,stop);
  try{
    for(const width of [390,767,768,900,1280,1920]){
      const page=await browser.newPage({viewport:{width,height:760},deviceScaleFactor:1});
