@@ -51,6 +51,16 @@ jobs:
           node --check public/event-flow-icons.js
           grep -Fq '/event-flow-icons.js' public/member.html
           node --check public/member.js
+          # Fail closed: this pinned checkout predates the successfully restored
+          # graphite loading overlay. Never let a full Member Worker deploy erase it.
+          test -s public/member-loading.css
+          test -s public/member-loading.js
+          grep -Fq 'BALL46_MEMBER_GRAPHITE_SPLASH_V1_20261020' public/member-loading.css
+          grep -Fq 'BALL46_MEMBER_GRAPHITE_SPLASH_V1_20261020' public/member-loading.js
+          grep -Fq 'id="b46-member-loading"' public/member.html
+          grep -Fq 'ball46:member-data-ready' public/member.js
+          grep -Fq 'ball46:member-data-error' public/member.js
+          echo "BALL46_MEMBER_LOADER_PRESERVATION_GATE_PASSED"
           echo "BALL46_MEMBER_PACKAGE_VALID"
 
       - name: Dry run isolated Member worker
