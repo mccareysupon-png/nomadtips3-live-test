@@ -1,0 +1,36 @@
+name: BALL46 Event Flow Signal Live Audit (Read Only)
+on:
+  push:
+    branches: [codex/ball46-pc-ticker-camouflage-20261020]
+    paths:
+      - '.github/workflows/audit-ball46-eventflow-signal-live-20261020.yml'
+      - 'deploy-assets/eventflow-signal-audit-20261020/inspect.mjs'
+permissions:
+  contents: read
+jobs:
+  inspect-production:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Read-only identify active Worker and Event Flow signal card selectors
+        working-directory: deploy-assets/eventflow-signal-audit-20261020
+        run: |
+          node --check inspect.mjs
+          node inspect.mjs
+      - name: Save read-only evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-eventflow-signal-read-only
+          path: deploy-assets/eventflow-signal-audit-20261020/audit/
+          retention-days: 14
+          if-no-files-found: warn
