@@ -25,7 +25,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 4cc36d759f5f5b3f67d915f2c745c713fb313c73
+          # Deploy the exact tested push SHA instead of an old immutable recovery snapshot.
+          ref: ${{ github.sha }}
           fetch-depth: 1
 
       - uses: actions/setup-node@v4
@@ -51,6 +52,9 @@ jobs:
           node --check public/event-flow-icons.js
           grep -Fq '/event-flow-icons.js' public/member.html
           node --check public/member.js
+          node --check public/member-kits.js
+          test -f public/member-kits.js
+          test "$(find public/assets/kits/webp/2x -maxdepth 1 -name 'kit_*.webp' -type f | wc -l)" -eq 12
           echo "BALL46_MEMBER_PACKAGE_VALID"
 
       - name: Dry run isolated Member worker
@@ -125,6 +129,15 @@ jobs:
           test "$checkout_status" = 503
           jq -e '.error=="CHECKOUT_DISABLED_UNTIL_VERIFIED_ENTITLEMENTS"' /tmp/checkout.json >/dev/null
           echo "BALL46_MEMBER_FAIL_CLOSED_VERIFIED"
+          # Deploy is only accepted if all 12 jersey files and the selector are served.
+          curl -fsS --max-time 20 "$base/member-kits.js?run=${GITHUB_RUN_ID}" -o /tmp/member-kits.js
+          grep -Fq 'memberStableKitIndex' /tmp/member-kits.js
+          for asset in ball46-member/public/assets/kits/webp/2x/kit_*.webp; do
+            filename="$(basename "$asset")"
+            curl -fsS --retry 3 --max-time 20 "$base/assets/kits/webp/2x/$filename?run=${GITHUB_RUN_ID}" -o /tmp/verify-kit.webp
+            test "$(head -c 4 /tmp/verify-kit.webp)" = "RIFF"
+          done
+          echo "BALL46_MEMBER_PREMIUM_KITS_ASSET_VERIFIED"
           echo "BALL46_MEMBER_PRODUCTION_SECURITY_DEPLOY_SUCCESS"
 
-# Incident recovery 2026-10-14: redeploy immutable verified commit 2d83fa8; do not change build source.
+# Member premium kit release 2026-10-20: SHA-pinned to triggering push, with tested asset gate.
