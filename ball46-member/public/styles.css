@@ -5640,3 +5640,170 @@ button,input,select,textarea{font-family:inherit;font-synthesis:none}
     padding-block:6.768px;
   }
 }
+
+/* BALL46 MEMBER — Pricing/Login V5 header parity with Signal Center (2026-10-20) */
+.page-pricing .mobile-v5-site-menu,
+.page-login .mobile-v5-site-menu,
+.page-pricing .mobile-v5-site-profile-link,
+.page-login .mobile-v5-site-profile-link{display:none}
+@media(max-width:767px){
+  /* The member page is the approved reference: 57px Deep Teal header,
+     40px left/right slots and the centered green/orange BALL46 logo. */
+  .page-pricing .topbar,
+  .page-login .topbar{
+    z-index:35;
+    background:linear-gradient(180deg,#102635,#0a1a27)!important;
+    border-bottom:1px solid #ffffff0b!important;
+    box-shadow:none!important;
+  }
+  .page-pricing .topbar-inner.shell,
+  .page-login .topbar-inner.shell{
+    height:57px;
+    width:100%;
+    max-width:none;
+    display:grid;
+    grid-template-columns:40px minmax(0,1fr) 40px;
+    column-gap:0;
+    align-items:center;
+    padding:0 12px;
+  }
+  .page-pricing .topbar .nav,
+  .page-login .topbar .nav{display:none!important}
+  .page-pricing .topbar a.brand.brand-original-lettering,
+  .page-login .topbar a.brand.brand-original-lettering{
+    display:flex;
+    flex-direction:row;
+    align-items:center;
+    justify-self:center!important;
+    justify-content:center!important;
+    gap:8px;
+    min-width:0;
+    padding:0;
+  }
+  .page-pricing .topbar-account-slot,
+  .page-login .topbar-account-slot{
+    width:auto;
+    min-width:0;
+    max-width:40px;
+    justify-self:end;
+    justify-content:flex-end;
+  }
+  .page-pricing .topbar-account-placeholder,
+  .page-login .topbar-account-placeholder{display:none}
+  .page-pricing .mobile-v5-site-profile-link,
+  .page-login .mobile-v5-site-profile-link{
+    display:grid;
+    place-items:center;
+    width:36px;
+    height:36px;
+    padding:0;
+    border:0;
+    border-radius:0;
+    background:transparent;
+    box-shadow:none;
+  }
+  .page-pricing .mobile-v5-site-profile-link img,
+  .page-login .mobile-v5-site-profile-link img{
+    width:34px;
+    height:34px;
+    display:block;
+    object-fit:contain;
+    background:transparent;
+    box-shadow:none;
+  }
+  .page-pricing .mobile-v5-site-menu,
+  .page-login .mobile-v5-site-menu{
+    display:block;
+    position:relative;
+    justify-self:start;
+    width:36px;
+    height:36px;
+    z-index:55;
+  }
+  .page-pricing .mobile-v5-site-menu>summary,
+  .page-login .mobile-v5-site-menu>summary{
+    display:grid;
+    place-items:center;
+    width:36px;
+    height:36px;
+    padding:0;
+    border:0;
+    border-radius:0;
+    outline-offset:2px;
+    color:#d3e2e8;
+    background:transparent;
+    box-shadow:none;
+    cursor:pointer;
+    list-style:none;
+  }
+  .page-pricing .mobile-v5-site-menu>summary::-webkit-details-marker,
+  .page-login .mobile-v5-site-menu>summary::-webkit-details-marker{display:none}
+  .page-pricing .mobile-v5-site-menu>summary:focus-visible,
+  .page-login .mobile-v5-site-menu>summary:focus-visible,
+  .page-pricing .mobile-v5-site-profile-link:focus-visible,
+  .page-login .mobile-v5-site-profile-link:focus-visible{
+    outline:2px solid #91f3ce;
+    outline-offset:2px;
+    border-radius:6px;
+  }
+  .page-pricing .mobile-v5-hamburger,
+  .page-login .mobile-v5-hamburger{
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+    width:18px;
+  }
+  .page-pricing .mobile-v5-hamburger i,
+  .page-login .mobile-v5-hamburger i{
+    display:block;
+    width:18px;
+    height:2px;
+    border-radius:2px;
+    background:#d3e2e8;
+  }
+  .page-pricing .mobile-v5-site-links,
+  .page-login .mobile-v5-site-links{
+    position:fixed;
+    left:0;
+    top:57px;
+    z-index:60;
+    display:flex;
+    flex-direction:column;
+    width:min(280px,84vw);
+    max-height:calc(100dvh - 57px);
+    padding:13px 12px 18px;
+    gap:7px;
+    overflow-y:auto;
+    border:0;
+    border-radius:0 0 12px 0;
+    background:linear-gradient(180deg,#112838,#0a1a27);
+    box-shadow:14px 12px 30px rgba(0,0,0,.32);
+  }
+  .page-pricing .mobile-v5-site-links a,
+  .page-login .mobile-v5-site-links a{
+    display:flex;
+    align-items:center;
+    min-height:44px;
+    padding:0 13px;
+    border:0;
+    border-radius:8px;
+    color:#adbfca;
+    font-size:12px;
+    font-weight:800;
+    background:rgba(255,255,255,.015);
+  }
+  .page-pricing .mobile-v5-site-links a[aria-current="page"],
+  .page-login .mobile-v5-site-links a[aria-current="page"]{
+    color:#43e6a2;
+    background:rgba(67,230,162,.075);
+  }
+}
+@media(max-width:359px){
+  .page-pricing .topbar-inner.shell,
+  .page-login .topbar-inner.shell{
+    grid-template-columns:36px minmax(0,1fr) 36px;
+    padding:0 9px;
+  }
+  .page-pricing .topbar a.brand.brand-original-lettering,
+  .page-login .topbar a.brand.brand-original-lettering{gap:5px}
+}
