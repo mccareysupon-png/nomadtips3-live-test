@@ -11,7 +11,7 @@ const css=readFileSync('./mobile-clean.css','utf8')+'\n'+readFileSync('./mobile-
 assert(css.includes('@media(max-width:767px)'),'MOBILE_CSS_MEDIA_GATE_MISSING');
 const hash=d=>createHash('sha256').update(d).digest('hex');
 mkdirSync('audit',{recursive:true});
-const report={intent:'Statistics mobile-first clean match cards PREVIEW ONLY - no Production activation',sha:process.env.GITHUB_SHA,created:new Date().toISOString(),productionActions:[],cssHash:hash(css)};
+const report={intent:'User-approved Statistics mobile 14 KPI in 7-by-2 rows + clean match cards, guarded PRODUCTION deployment',sha:process.env.GITHUB_SHA,created:new Date().toISOString(),productionActions:[],cssHash:hash(css)};
 const save=()=>writeFileSync('audit/report.json',JSON.stringify(report,null,2));
 async function api(path,body){
  const r=await fetch(base+path,{method:body?'POST':'GET',headers:{Authorization:'Bearer '+token,...(body&&!(body instanceof FormData)?{'Content-Type':'application/json'}:{})},
@@ -179,26 +179,30 @@ async function browserQA(origin){
  }finally{await browser.close()}
  return out;
 }
+let activated=false;
 try{
  report.activeBefore=await active();
- console.log('MOBILE_PREVIEW_CURRENT_PRODUCTION',JSON.stringify(report.activeBefore));
- const v=await version(report.activeBefore.version),main=v.modules.find(m=>m.name===v.main_module);
+ console.log('MOBILE14_GUARDED_ACTIVE_BEFORE',JSON.stringify(report.activeBefore));
+ const v=await version(report.activeBefore.version);
+ const main=v.modules.find(m=>m.name===v.main_module);
  assert(main,'WORKER_MAIN_MODULE_MISSING');
  const beforeHash=v.modules.map(m=>({name:m.name,sha:hash(Buffer.from(m.content_base64,'base64'))}));
  const source=Buffer.from(main.content_base64,'base64').toString('utf8');
- assert(source.includes('__b46StatsV23AllThemes20261020'),'LATEST_PC_STATISTICS_14_CARD_REPAIR_MISSING');
+ assert(source.includes('__b46StatsV23AllThemes20261020'),'LATEST_PC_14_CARD_REPAIR_MISSING_FROM_ACTIVE_WORKER');
+ assert(!source.includes('__b46MobileStatsCleanV1Response20261020'),'MOBILE_OLD_STYLE_ALREADY_ACTIVE');
  const patched=patchWorker(source);
  const original=await assets('https://ball46.com');
  assert(original['/'].body.includes('b46-statistics-v23-allthemes-repaired-20261020'),'LIVE_PC_14_CARD_TAG_MISSING');
+ assert(!original['/'].body.includes('b46-mobile-stats-clean-v1-20261020'),'MOBILE_STYLE_ALREADY_LIVE');
  report.liveHashesBefore=Object.fromEntries(Object.entries(original).map(([k,v])=>[k,v.sha]));
  const expected=hash(htmlPatch(original['/'].body.toString()));
  report.expectedHtmlHash=expected;
  const domains=(await api('/workers/domains')).filter(x=>x.service===script).map(x=>x.hostname).sort();
  assert.deepEqual(domains,['ball46.com','www.ball46.com'],'UNEXPECTED_PRODUCTION_TARGET');
  const settings=await api('/workers/scripts/'+script+'/settings');
- const metadata={main_module:v.main_module,compatibility_date:v.compatibility_date,compatibility_flags:v.compatibility_flags||[],bindings:v.bindings,keep_assets:true,assets:{config:v.assets.config},annotations:{'workers/tag':'B46_STATS_MOBILE_CLEAN_V1_PREVIEW_ONLY_20261020','workers/message':'Mobile Statistics clean match cards, inactive preview, NO PRODUCTION ACTIVATION'}};
+ const metadata={main_module:v.main_module,compatibility_date:v.compatibility_date,compatibility_flags:v.compatibility_flags||[],bindings:v.bindings,keep_assets:true,assets:{config:v.assets.config},annotations:{'workers/tag':'B46_STATS_MOBILE_14KPI_7X2_PRODUCTION_20261020','workers/message':'Approved Statistics Mobile 14 KPI 7 columns x 2 rows and clean match history, preserve PC'}};
  for(const key of ['usage_model','logpush','limits','observability','placement'])if(settings[key]!=null)metadata[key]=settings[key];
- assert.deepEqual(await active(),report.activeBefore,'ACTIVE_WORKER_CHANGED_BEFORE_UPLOAD');
+ assert.deepEqual(await active(),report.activeBefore,'PRODUCTION_CHANGED_BEFORE_UPLOAD');
  const form=new FormData();form.set('metadata',new Blob([JSON.stringify(metadata)],{type:'application/json'}));
  for(const m of v.modules)form.set(m.name,new Blob([m.name===v.main_module?patched:Buffer.from(m.content_base64,'base64')],{type:m.content_type}),m.name);
  const response=await api('/workers/scripts/'+script+'/versions',form);
@@ -212,11 +216,50 @@ try{
  const preview='https://'+response.id.slice(0,8)+'-'+script+'.'+sub+'.workers.dev';
  report.preview=preview+'/?view=statistics';save();
  assert.equal((await read(preview,'/')).sha,expected,'INACTIVE_PREVIEW_HTML_MISMATCH');
- for(const p of paths.filter(p=>p!=='/'&&p!=='/index.html'))assert.equal((await read(preview,p)).sha,original[p].sha,'MOBILE_PREVIEW_ALTERED_PUBLIC_ASSET '+p);
- report.browser=await browserQA(preview);
- assert.deepEqual(await active(),report.activeBefore,'PRODUCTION_VERSION_CHANGED_DURING_PREVIEW');
- const after=await assets('https://ball46.com');
- for(const p of paths)assert.equal(after[p].sha,original[p].sha,'PRODUCTION_CHANGED_DURING_PREVIEW '+p);
- report.success=true;save();
- console.log('BALL46_STATS_MOBILE_V1_PREVIEW_SUCCESS',JSON.stringify({url:report.preview,currentProduction:report.activeBefore.version,previewVersion:report.candidate,mobile:[360,390,430],desktop:[768,1440],productionPromotions:0}));
-}catch(e){report.success=false;report.error=e.stack||String(e);save();console.error('BALL46_STATS_MOBILE_V1_PREVIEW_FAILED',report.error);process.exitCode=1}
+ assert.equal((await read(preview,'/index.html')).sha,expected,'INACTIVE_PREVIEW_INDEX_HTML_MISMATCH');
+ for(const p of paths.filter(p=>p!=='/'&&p!=='/index.html'))
+   assert.equal((await read(preview,p)).sha,original[p].sha,'MOBILE_CANDIDATE_CHANGED_PUBLIC_ASSET '+p);
+ report.previewBrowserQA=await browserQA(preview);
+ assert.deepEqual(await active(),report.activeBefore,'PRODUCTION_CHANGED_DURING_PREVIEW_QA');
+ // Only a verified candidate can be promoted; it derives from the currently
+ // active production source and preserves all other modules/assets byte-for-byte.
+ const promoted=await api('/workers/scripts/'+script+'/deployments',{
+  strategy:'percentage',versions:[{version_id:response.id,percentage:100}],
+  annotations:{'workers/message':'Approved BALL46 Statistics mobile 14 metrics 7 by 2; retain PC 14 row and current data engine'}
+ });
+ activated=true;
+ report.productionActions.push({action:'PROMOTE_EXACT_TESTED_CANDIDATE',id:response.id,deployment:promoted.id||null});save();
+ assert.equal((await active()).version,response.id,'PROMOTED_WORKER_NOT_ACTIVE');
+ // Wait for Cloudflare edge propagation; never assume active version = visible HTML.
+ for(const hostname of ['https://ball46.com','https://www.ball46.com']){
+  let reached=false;
+  for(let attempt=1;attempt<=22;attempt++){
+   const a=await read(hostname,'/'),b=await read(hostname,'/index.html');
+   if(a.sha===expected&&b.sha===expected){reached=true;console.log('MOBILE14_PUBLIC_PROPAGATED',hostname,'attempt',attempt);break}
+   assert.equal((await active()).version,response.id,'ACTIVE_VERSION_CHANGED_DURING_PROPAGATION');
+   await new Promise(r=>setTimeout(r,3400));
+  }
+  assert(reached,'PRODUCTION_HTML_NOT_PROPAGATED '+hostname);
+ }
+ const post=await assets('https://ball46.com');
+ for(const p of paths)assert.equal(post[p].sha,p==='/'||p==='/index.html'?expected:original[p].sha,'UNRELATED_PRODUCTION_ASSET_CHANGED '+p);
+ report.productionBrowserQA=await browserQA('https://ball46.com');
+ report.activeAfter=await active();assert.equal(report.activeAfter.version,response.id,'OTHER_PRODUCTION_DEPLOYMENT_DETECTED');
+ report.success=true;report.finished=new Date().toISOString();save();
+ console.log('BALL46_STATS_MOBILE14_7X2_PRODUCTION_SUCCESS',JSON.stringify({productionVersion:response.id,previousVersion:report.activeBefore.version,branch:process.env.GITHUB_REF_NAME,commit:process.env.GITHUB_SHA,mobileWidths:[320,360,390,430],desktopPreserved:1440}));
+}catch(e){
+ report.error=e.stack||String(e);report.finished=new Date().toISOString();
+ if(activated&&report.candidate&&report.activeBefore?.version){
+  try{
+   if((await active()).version===report.candidate){
+    await api('/workers/scripts/'+script+'/deployments',{
+     strategy:'percentage',versions:[{version_id:report.activeBefore.version,percentage:100}],
+     annotations:{'workers/message':'Automatic rollback: mobile Statistics 14 KPI 7x2 did not pass live verification'}
+    });
+    report.rolledBack=(await active()).version===report.activeBefore.version;
+    report.productionActions.push({action:'AUTOMATIC_ROLLBACK',version:report.activeBefore.version,success:report.rolledBack});
+   }
+  }catch(err){report.rollbackError=String(err)}
+ }
+ save();console.error('BALL46_STATS_MOBILE14_7X2_PRODUCTION_STOP',report.error);process.exitCode=1;
+}
