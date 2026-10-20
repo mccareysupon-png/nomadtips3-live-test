@@ -6,11 +6,11 @@ const SCRIPT='ball46-production',ORIGIN='https://ball46.com';
 const account=process.env.CLOUDFLARE_ACCOUNT_ID,token=process.env.CLOUDFLARE_API_TOKEN;
 assert(account&&token,'CLOUDFLARE_ACCOUNT_OR_TOKEN_MISSING');
 const apiRoot='https://api.cloudflare.com/client/v4/accounts/'+account;
-const stylesheet=readFileSync('./preview.css','utf8');
+const stylesheet=readFileSync('./preview.css','utf8')+'\n'+readFileSync('./compact-v21.css','utf8');
 assert(stylesheet.includes('.sp-kpis')&&stylesheet.includes('.sp-trend')&&stylesheet.includes('.sp-table')&&stylesheet.includes('@media (min-width: 1024px)'),'PREVIEW_STYLES_INCOMPLETE');
 const hash=b=>createHash('sha256').update(b).digest('hex');
 mkdirSync('audit',{recursive:true});
-const report={run:process.env.GITHUB_RUN_ID,sha:process.env.GITHUB_SHA,createdAt:new Date().toISOString(),purpose:'Statistics PC V2 browser preview only',noProductionDeployment:true,actions:[],cssHash:hash(stylesheet)};
+const report={run:process.env.GITHUB_RUN_ID,sha:process.env.GITHUB_SHA,createdAt:new Date().toISOString(),purpose:'Statistics PC V2.1 clean compact browser preview only',noProductionDeployment:true,actions:[],cssHash:hash(stylesheet)};
 const save=()=>writeFileSync('audit/report.json',JSON.stringify(report,null,2));
 async function api(path,body){
  const response=await fetch(apiRoot+path,{method:body?'POST':'GET',headers:{Authorization:'Bearer '+token,...(body&&!(body instanceof FormData)?{'Content-Type':'application/json'}:{})},body:body instanceof FormData?body:body?JSON.stringify(body):undefined,signal:AbortSignal.timeout(65000)});
@@ -27,12 +27,12 @@ async function version(id){
  return v;
 }
 const modules=v=>v.modules.map(m=>({name:m.name,kind:m.content_type,hash:hash(Buffer.from(m.content_base64,'base64'))})).sort((a,b)=>a.name.localeCompare(b.name));
-const previewStyle='<style id="b46-statistics-pc-premium-v2-preview-20261020">'+stylesheet+'</style>';
+const previewStyle='<style id="b46-statistics-pc-clean-v21-preview-20261020">'+stylesheet+'</style>';
 const themeBoot='<script id="b46-statistics-pc-v2-preview-theme">(function(){if(!window.matchMedia("(min-width:1024px)").matches)return;try{localStorage.setItem("nomad343_dashboard_theme_v1","dark");}catch(e){}document.documentElement.setAttribute("data-theme","dark");})();</script>';
 function htmlPreview(html){
  assert(typeof html==='string'&&html.includes('</head>')&&html.includes('<head'),'HTML_DOCUMENT_NOT_CONFIRMED');
  assert(html.includes('sp-stats-content')||html.includes('statistics'),'LIVE_STATISTICS_ANCHOR_NOT_FOUND');
- assert(!html.includes('b46-statistics-pc-premium-v2-preview-20261020'),'PREVIEW_STYLE_ALREADY_PRESENT');
+ assert(!html.includes('b46-statistics-pc-clean-v21-preview-20261020'),'PREVIEW_STYLE_ALREADY_PRESENT');
  return html.replace(/<head([^>]*)>/i,(x)=>x+themeBoot).replace('</head>',previewStyle+'</head>');
 }
 const helper=[
@@ -41,7 +41,7 @@ const helper=[
 'const raw=await response.text();',
 'if(!raw.includes("sp-stats-content")&&!raw.includes("statistics"))throw new Error("NO_STATISTICS_MARKUP_IN_HTML");',
 'if(!raw.includes("</head>"))throw new Error("NO_HTML_HEAD");',
-'if(raw.includes("b46-statistics-pc-premium-v2-preview-20261020"))throw new Error("ALREADY_PREVIEW");',
+'if(raw.includes("b46-statistics-pc-clean-v21-preview-20261020"))throw new Error("ALREADY_PREVIEW");',
 'const html=raw.replace(/<head([^>]*)>/i,function(x){return x+'+JSON.stringify(themeBoot)+';}).replace("</head>",'+JSON.stringify(previewStyle)+'+"</head>");',
 'const headers=new Headers(response.headers);headers.delete("content-length");headers.delete("etag");headers.set("Cache-Control","no-store");',
 'return new Response(html,{status:response.status,statusText:response.statusText,headers:headers});',
@@ -88,7 +88,7 @@ async function previewQA(url){
      const visible=e=>e&&e.getBoundingClientRect().width>0;
      const style=e=>{if(!e)return null;const c=getComputedStyle(e),r=e.getBoundingClientRect();return {bg:c.backgroundColor,image:c.backgroundImage,radius:c.borderRadius,shadow:c.boxShadow,width:+r.width.toFixed(1),height:+r.height.toFixed(1)}};
      const stat=document.querySelector('.sp-stats-content'),hero=document.querySelector('.sp-stat-hero'),kpi=document.querySelector('.sp-kpi'),panel=document.querySelector('.sp-trend'),table=document.querySelector('.sp-table');
-     return{title:document.title,href:location.href,theme:document.documentElement.dataset.theme,marker:!!document.querySelector('#b46-statistics-pc-premium-v2-preview-20261020'),statsVisible:visible(stat),hero:style(hero),metric:style(kpi),chartPanel:style(panel),table:style(table),kpiCards:document.querySelectorAll('.sp-kpi').length,
+     return{title:document.title,href:location.href,theme:document.documentElement.dataset.theme,marker:!!document.querySelector('#b46-statistics-pc-clean-v21-preview-20261020'),statsVisible:visible(stat),hero:style(hero),metric:style(kpi),chartPanel:style(panel),table:style(table),kpiCards:document.querySelectorAll('.sp-kpi').length,
        filteredButtons:[...document.querySelectorAll('.sp-filter-chip')].map(e=>e.textContent.trim()).slice(0,10),
        timelineChart:!!document.querySelector('.b46-perf-chart-wrap svg,.b46-perf-chart-wrap canvas'),
        settledRows:document.querySelectorAll('.sp-table tbody tr').length,
@@ -97,7 +97,9 @@ async function previewQA(url){
        rangeText:[...document.querySelectorAll('[data-b46-range]')].map(e=>({text:e.textContent.trim(),active:e.classList.contains('active')})),
        modeText:[...document.querySelectorAll('.b46-perf-mode button')].map(e=>({text:e.textContent.trim(),active:e.classList.contains('active')})),
        typeText:[...document.querySelectorAll('.b76-perf-chart-type button')].map(e=>({text:e.textContent.trim(),active:e.classList.contains('active')})),
-       mobileCard:style(document.querySelector('.b46gn-card'))};
+       mobileCard:style(document.querySelector('.b46gn-card')),
+       typography:{headline:document.querySelector('.sp-stat-hero h3')?getComputedStyle(document.querySelector('.sp-stat-hero h3')).fontSize:null,primaryNumber:document.querySelector('.sp-kpi strong')?getComputedStyle(document.querySelector('.sp-kpi strong')).fontSize:null},
+       overflowKPIs:[...document.querySelectorAll('.b46-perf-kpi')].map(e=>({w:e.clientWidth,scroll:e.scrollWidth,name:e.querySelector('span')?.textContent?.trim()}))};
     });
     console.log('STATISTICS_PREVIEW_READY',width,JSON.stringify({theme:first.theme,settled:first.settledCounter,rows:first.settledRows,card:first.metric,hero:first.hero,chart:first.timelineChart}));
     assert(first.marker&&first.statsVisible,'PREVIEW_STATISTICS_NOT_LOADED '+width);
@@ -108,7 +110,12 @@ async function previewQA(url){
     if(width>=1024){
      assert(first.theme==='dark','DESKTOP_PREVIEW_NOT_DARK');
      assert(first.metric?.image?.includes('gradient'),'PREMIUM_CARD_STYLING_NOT_APPLIED '+width);
-     assert(first.hero?.radius.includes('17px'),'HERO_CARD_NOT_RESTYLED '+width);
+     assert(first.hero?.radius.includes('13px'),'CLEAN_HERO_CORNER_NOT_APPLIED '+width);
+     assert(first.hero.height<=106,'CLEAN_HERO_STILL_TOO_TALL '+width+' '+first.hero.height);
+     assert(first.metric.height<=90,'CLEAN_KPI_STILL_TOO_TALL '+width+' '+first.metric.height);
+     assert(parseFloat(first.typography.primaryNumber)<=24,'CLEAN_NUMERAL_STILL_TOO_LARGE '+width+' '+first.typography.primaryNumber);
+     assert(parseFloat(first.typography.headline)<=25,'CLEAN_HEADING_STILL_TOO_LARGE '+width+' '+first.typography.headline);
+     assert(first.overflowKPIs.every(k=>k.scroll<=k.w+4),'PERFORMANCE_KPI_TEXT_OVERFLOW '+width+': '+JSON.stringify(first.overflowKPIs));
     }
     if(width<1024){
       assert.equal(first.metric?.image,'none','MOBILE_STATS_CARD_STYLE_CHANGED');
@@ -172,7 +179,7 @@ try{
  const beforeDomain=await api('/workers/domains');report.domainsBefore=beforeDomain.filter(x=>x.service===SCRIPT).map(x=>x.hostname).sort();
  assert.deepEqual(report.domainsBefore,['ball46.com','www.ball46.com'],'WRONG_WORKER_DOMAINS');
  const settings=await api('/workers/scripts/'+SCRIPT+'/settings');
- const metadata={main_module:prod.main_module,compatibility_date:prod.compatibility_date,compatibility_flags:prod.compatibility_flags||[],bindings:prod.bindings,keep_assets:true,assets:{config:prod.assets.config},annotations:{'workers/tag':'B46_STATS_PC_V2_PREVIEW_ONLY_20261020','workers/message':'Inactive candidate only - desktop Statistics design preview - DO NOT ACTIVATE'}};
+ const metadata={main_module:prod.main_module,compatibility_date:prod.compatibility_date,compatibility_flags:prod.compatibility_flags||[],bindings:prod.bindings,keep_assets:true,assets:{config:prod.assets.config},annotations:{'workers/tag':'B46_STATS_PC_V21_CLEAN_PREVIEW_ONLY_20261020','workers/message':'Inactive candidate only - desktop Statistics design preview - DO NOT ACTIVATE'}};
  for(const k of ['usage_model','logpush','limits','observability','placement'])if(settings[k]!=null)metadata[k]=settings[k];
  assert.equal((await active()).version,report.activeBefore.version,'PRODUCTION_CHANGED_BEFORE_PREVIEW_UPLOAD');
  const form=new FormData();form.set('metadata',new Blob([JSON.stringify(metadata)],{type:'application/json'}));
@@ -180,7 +187,7 @@ try{
  const uploaded=await api('/workers/scripts/'+SCRIPT+'/versions',form);
  candidate=uploaded.id;report.candidateVersion=candidate;report.actions.push('UPLOAD_INACTIVE_PREVIEW_VERSION_ONLY');save();
  const cv=await version(candidate);
- assert.equal(cv.annotations?.['workers/tag'],'B46_STATS_PC_V2_PREVIEW_ONLY_20261020','WRONG_PREVIEW_CANDIDATE');
+ assert.equal(cv.annotations?.['workers/tag'],'B46_STATS_PC_V21_CLEAN_PREVIEW_ONLY_20261020','WRONG_PREVIEW_CANDIDATE');
  const newHashes=modules(cv);
  for(const x of report.workerBase.modules){const target=newHashes.find(y=>y.name===x.name);assert(target,'MISSING_PREVIEW_MODULE '+x.name);assert.equal(target.hash,x.name===prod.main_module?hash(modifiedSource):x.hash,'NON_MAIN_MODULE_CHANGED '+x.name);}
  let workerSubdomain='mccarey-supon';
@@ -202,9 +209,9 @@ try{
  for(const p of paths)assert.equal(post[p].hash,original[p].hash,'PRODUCTION_ASSET_CHANGED_DURING_PREVIEW '+p);
  report.productionAssetsAfter=hashReport(post);
  report.success=true;report.finishedAt=new Date().toISOString();save();
- console.log('BALL46_STATISTICS_PC_V2_PREVIEW_SUCCESS',JSON.stringify({previewUrl:report.previewUrl,candidateVersion:candidate,productionStillActive:report.activeAfter.version,desktopWidths:[1366,1440,1920],mobileUntouched:true,productionPromotions:0}));
+ console.log('BALL46_STATISTICS_PC_V21_CLEAN_PREVIEW_SUCCESS',JSON.stringify({previewUrl:report.previewUrl,candidateVersion:candidate,productionStillActive:report.activeAfter.version,desktopWidths:[1366,1440,1920],mobileUntouched:true,productionPromotions:0}));
 }catch(e){
  report.success=false;report.error=e.stack||String(e);report.finishedAt=new Date().toISOString();save();
- console.error('BALL46_STATISTICS_PC_V2_PREVIEW_FAILED',e.stack||String(e));
+ console.error('BALL46_STATISTICS_PC_V21_CLEAN_PREVIEW_FAILED',e.stack||String(e));
  process.exitCode=1;
 }
