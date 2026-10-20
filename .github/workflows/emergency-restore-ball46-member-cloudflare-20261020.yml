@@ -38,7 +38,7 @@ jobs:
             echo "::error::A different production release is now live. Refusing to overwrite its deployment."
             exit 1
           fi
-          jq -e --arg target "$PRE_INCIDENT_VERSION" '(.result | if type=="array" then . else .deployments // [] end) | any(.versions[]?; .version_id==$target)' /tmp/member-before-rollback.json >/dev/null
+          jq -e --arg target "$PRE_INCIDENT_VERSION" '[(.result | if type=="array" then . else .deployments // [] end)[] | .versions[]? | .version_id] | index($target) != null' /tmp/member-before-rollback.json >/dev/null
           echo "PRE_INCIDENT_CLOUDFLARE_VERSION_FOUND_IN_HISTORY"
           echo "SAFE_TO_RESTORE_CONFIRMED"
 
