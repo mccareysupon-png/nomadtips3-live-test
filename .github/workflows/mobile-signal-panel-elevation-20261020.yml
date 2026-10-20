@@ -1,0 +1,32 @@
+name: BALL46 Mobile Signal Panel Elevation
+on:
+  push:
+    branches: [work/mobile-signal-panel-elevation-20261020]
+    paths: ['mobile-signal-panel-elevation/**', '.github/workflows/mobile-signal-panel-elevation-20261020.yml']
+permissions:
+  contents: read
+concurrency:
+  group: ball46-mobile-signal-panel-production
+  cancel-in-progress: false
+jobs:
+  mobile-panel:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --ignore-scripts acorn@8 playwright@1.56.1
+      - run: npx playwright install --with-deps chromium
+      - name: Verify real details, marker selection, scoped surface, deploy and verify
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: node mobile-signal-panel-elevation/run.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mobile-signal-panel-elevation-proof
+          path: audit/
+          retention-days: 30
