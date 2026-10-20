@@ -1,0 +1,50 @@
+name: BALL46 Visitor Monitor Guest Access Security Check
+on:
+  push:
+    branches: [work/ball46-traffic-intelligence-isolated-20261020]
+    paths: ['.github/workflows/audit-ball46-monitor-guest-access.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  access-audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Fresh guest HTTP with NO cookies, auth headers or sessions
+        shell: bash
+        run: |
+          set -euo pipefail
+          url='https://b46-visitor-monitor-admin.mccarey-supon.workers.dev'
+          for p in / /api/summary /health; do
+            hdr=$(mktemp)
+            status=$(curl -sS --max-time 20 --cookie '' -H 'Authorization:' -H 'Cf-Access-Jwt-Assertion:' -H 'Cache-Control: no-cache' -D "$hdr" -o /dev/null -w '%{http_code}' "$url$p")
+            location=$(grep -i '^location:' "$hdr" | head -1 | sed -E 's#(https?://[^/]+).*#\1#' || true)
+            echo "GUEST path=$p status=$status redirect_host=$location"
+            if [ "$p" = / ] || [ "$p" = /api/summary ]; then
+              if [ "$status" = 200 ]; then echo 'CRITICAL: Access is bypassable!'; exit 7; fi
+            fi
+            rm -f "$hdr"
+          done
+      - name: Verify Cloudflare Access app and policy shape without displaying identities
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID"
+          header="Authorization: Bearer $CLOUDFLARE_API_TOKEN"
+          code=$(curl -sS --max-time 20 -o apps.json -w '%{http_code}' -H "$header" "$base/access/apps?per_page=100")
+          if [ "$code" != 200 ]; then echo "ACCESS_API blocked $code"; exit 2; fi
+          APP=$(jq -c '.result[]? | select(.domain=="b46-visitor-monitor-admin.mccarey-supon.workers.dev")' apps.json|head -1)
+          if [ -z "$APP" ]; then echo 'CRITICAL: Access application not present'; exit 7; fi
+          ID=$(echo "$APP" | jq -r '.id')
+          echo "$APP" | jq -r '"ACCESS_APP present type="+(.type//"unknown")+" session_duration="+(.session_duration//"unknown")+" app_policies="+((.policies//[]|length)|tostring)'
+          code=$(curl -sS --max-time 20 -o policies.json -w '%{http_code}' -H "$header" "$base/access/apps/$ID/policies")
+          echo "POLICY_READ status=$code"
+          if [ "$code" = 200 ]; then
+            jq -r '.result[]? | "POLICY decision="+(.decision//"unknown")+" include_types="+((.include//[]|map(keys|join(","))|join("|")))+" exclude_types="+((.exclude//[]|map(keys|join(","))|join("|")))' policies.json
+            jq -e '([.result[]? | select(.decision=="allow" and (.include // []|any(has("everyone") or has("any_valid_service_token"))))]|length)==0' policies.json >/dev/null || { echo 'CRITICAL: broad allow policy'; exit 7; }
+          fi
+          echo 'No changes were made.'
