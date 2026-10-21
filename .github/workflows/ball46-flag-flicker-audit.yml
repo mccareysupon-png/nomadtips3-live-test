@@ -1,0 +1,30 @@
+name: BALL46 Flag Flicker Root Cause Read Only
+on:
+  push:
+    branches: [fix/ball46-flag-flicker-root-cause-20261021]
+    paths:
+      - '.github/workflows/ball46-flag-flicker-audit.yml'
+      - 'deploy-assets/flag-flicker-20261021/flag-audit.mjs'
+permissions:
+  contents: read
+jobs:
+  flag-readonly:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Inspect live flag mutation and network behavior without Production changes
+        working-directory: deploy-assets/flag-flicker-20261021
+        run: |
+          npm install --no-save --ignore-scripts puppeteer-core@24
+          node flag-audit.mjs
+      - name: Flag audit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-flag-flicker-readonly-proof
+          path: deploy-assets/flag-flicker-20261021/proof/
+          retention-days: 15
+          if-no-files-found: warn
