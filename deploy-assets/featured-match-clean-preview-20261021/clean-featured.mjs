@@ -18,16 +18,24 @@ function sync(){
   if(!button){
    button=document.createElement('button');
    button.type='button';button.className='b46fm-events-more';
-   button.addEventListener('click',()=>{
+   button.addEventListener('click',(event)=>{
+    event.preventDefault();
+    event.stopPropagation();
     const expanded=source.classList.toggle('b46fm-all-events');
-    button.setAttribute('aria-expanded',String(expanded));
-    button.textContent=expanded?'Show fewer events ↑':'View all events ↓';
+    const state=String(expanded);
+    const label=expanded?'Show fewer events ↑':'View all events ↓';
+    if(button.getAttribute('aria-expanded')!==state)button.setAttribute('aria-expanded',state);
+    if(button.textContent!==label)button.textContent=label;
    });
    panel.appendChild(button);
   }
   const expanded=source.classList.contains('b46fm-all-events');
-  button.setAttribute('aria-expanded',String(expanded));
-  button.textContent=expanded?'Show fewer events ↑':'View all events ↓';
+  const state=String(expanded);
+  const label=expanded?'Show fewer events ↑':'View all events ↓';
+  // The live feed polls; repeated textContent writes reset the control every
+  // 1.4 s and can visibly flash/focus-jump when the user expands events.
+  if(button.getAttribute('aria-expanded')!==state)button.setAttribute('aria-expanded',state);
+  if(button.textContent!==label)button.textContent=label;
  }else panel?.querySelector('.b46fm-events-more')?.remove();
 }
 const start=()=>{sync();setInterval(sync,1400)};
