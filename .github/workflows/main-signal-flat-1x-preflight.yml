@@ -34,10 +34,17 @@ jobs:
           const match=[...code.matchAll(/const newStyle=/g)];
           assert.equal(match.length,1,'SIGNAL_V3_HELPER_ANCHOR_NOT_UNIQUE');
           const offset=match[0].index;
-          const end=code.indexOf(';',offset);
-          assert(end>offset&&end-offset<2400,'SIGNAL_V3_HELPER_NOT_SIMPLE_STRING');
-          const jsExpr=code.slice(offset+'const newStyle='.length,end);
-          const expected=JSON.parse(jsExpr);
+          const start=offset+'const newStyle='.length;
+          assert.equal(code[start],'"','SIGNAL_V3_STYLE_NOT_JSON_LITERAL');
+          let end=start+1,escaped=false;
+          for(;end<code.length;end++){
+            const ch=code[end];
+            if(escaped){escaped=false;continue;}
+            if(ch==='\\\\'){escaped=true;continue;}
+            if(ch==='"'){end++;break;}
+          }
+          assert(end>start&&end-start<2400&&code[end]===';','SIGNAL_V3_HELPER_NOT_SIMPLE_STRING');
+          const expected=JSON.parse(code.slice(start,end));
           assert(expected.includes('b46-eventflow-signal-v3-gradient-20261020')&&expected.includes('b46-eventflow-signal-graphite-gradient-20261020'),'SIGNAL_V3_STYLE_SOURCE_CHANGED');
           assert(expected.includes('drop-shadow(0 5px 8px'),'LATEST_OLD_SHADOW_NOT_FOUND');
           assert(code.includes('b46-pc-ticker-gap-fix-20261020'),'MAIN_PC_FEATURE_MISSING');
