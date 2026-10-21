@@ -1,4 +1,4 @@
-# Verified browser analytics audit 39436107274 passed before activation.
+# IP source is existing sampled Cloudflare request data; no Collector or main Worker changes.
 name: BALL46 Visitor Monitor Analytics V1 (isolated, preserve latest)
 on:
   push:
@@ -33,17 +33,18 @@ jobs:
           node --check worker.mjs
           node --check analytics.mjs
           node --check web-analytics.mjs
+          node --check request-logs.mjs
           node --check deploy.mjs
-          node --test worker.test.mjs analytics.test.mjs web-analytics.test.mjs
+          node --test worker.test.mjs analytics.test.mjs web-analytics.test.mjs request-logs.test.mjs
       - name: Verify exact latest state and preserve isolated Admin bindings
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          ACTION: ${{ github.event_name == 'workflow_dispatch' && inputs.action || (github.event.head_commit.message == 'Activate verified BALL46 browser visits [visitor-web-analytics-deploy-v1]' && 'deploy' || 'audit') }}
+          ACTION: ${{ github.event_name == 'workflow_dispatch' && inputs.action || (github.event.head_commit.message == 'Activate verified BALL46 request IPs [visitor-ip-deploy-v1]' && 'deploy' || 'audit') }}
         run: node deploy.mjs "$ACTION"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: visitor-monitor-web-analytics-evidence
+          name: visitor-monitor-request-ip-evidence
           path: traffic-intelligence/isolated-deploy/deployment-evidence/
           retention-days: 30

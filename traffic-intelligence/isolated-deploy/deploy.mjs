@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 const ADMIN='b46-visitor-monitor-admin',MAIN='ball46-production',COLLECTOR='b46-visitor-monitor-collector';
 const ACCOUNT='62cb0db544160e6591342abd6b4f35cc',KV='4b13b81758934e91a8b6bd03bfbbfcb9';
 const HOST='b46-visitor-monitor-admin.mccarey-supon.workers.dev';
-const EXPECTED='65425a90-81a1-4ca4-a802-2342b18d3400';
+const EXPECTED='10ab98eb-a7a4-4640-99b2-21b2f58b4b8b';
 const mode=process.argv[2]||'audit',token=process.env.CLOUDFLARE_API_TOKEN;
 assert(['audit','deploy'].includes(mode));assert(token,'Missing deploy credential');assert.equal(process.env.CLOUDFLARE_ACCOUNT_ID,ACCOUNT);
 const root=`/accounts/${ACCOUNT}`,admin=`${root}/workers/scripts/${ADMIN}`;
@@ -75,11 +75,11 @@ assert.equal(before.version,EXPECTED,'Active Admin changed: stop; never overwrit
 const versions=await api(`${admin}/versions`);assert.equal((versions.items||versions)[0]?.id,EXPECTED,'Inactive newer Admin version exists: review before continuing');
 if(mode==='audit'){console.log('AUDIT PASSED; no writes');process.exit(0);}
 // Keep the settings of the pinned latest version. Secrets stay inside Cloudflare.
-const metadata={main_module:'worker.mjs',bindings:before.settings.bindings.map(b=>b.type==='secret_text'?{type:'inherit',name:b.name,version_id:'latest'}:b),annotations:{'workers/message':'Visitor Monitor: browser visits, pageviews, pages and devices; Collector OFF','workers/tag':process.env.GITHUB_SHA?.slice(0,40)||'visitor-monitor-v1'}};
+const metadata={main_module:'worker.mjs',bindings:before.settings.bindings.map(b=>b.type==='secret_text'?{type:'inherit',name:b.name,version_id:'latest'}:b),annotations:{'workers/message':'Visitor Monitor: owner-only request IP, country and time samples; Collector OFF','workers/tag':process.env.GITHUB_SHA?.slice(0,40)||'visitor-monitor-v1'}};
 for(const k of ['compatibility_date','compatibility_flags','usage_model','limits','logpush','observability','placement','tail_consumers'])if(before.settings[k]!==undefined)metadata[k]=before.settings[k];
 const form=new FormData();form.set('metadata',new Blob([JSON.stringify(metadata)],{type:'application/json'}));
 const sourceHashes={};
-for(const file of ['worker.mjs','analytics.mjs','web-analytics.mjs']){const content=await readFile(file,'utf8');sourceHashes[file]=hash(content);form.set(file,new Blob([content],{type:'application/javascript+module'}),file);}
+for(const file of ['worker.mjs','analytics.mjs','web-analytics.mjs','request-logs.mjs']){const content=await readFile(file,'utf8');sourceHashes[file]=hash(content);form.set(file,new Blob([content],{type:'application/javascript+module'}),file);}
 await writeFile('deployment-evidence/rollback.json',JSON.stringify({worker:ADMIN,version:before.version,method:'POST isolated Admin /deployments with this version at 100%; never upload old source',sourceHashes,commit:process.env.GITHUB_SHA},null,2));
 const staged=await api(`${admin}/versions?bindings_inherit=strict`,{method:'POST',body:form});assert(staged.id,'No staged version ID');
 console.log('STAGED',staged.id,'source',JSON.stringify(sourceHashes));
