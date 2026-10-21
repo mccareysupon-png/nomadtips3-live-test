@@ -154,6 +154,17 @@ async function browserQA(domain,phase,patched){
      if(actual.rows.length)assert(actual.legendCount===1&&actual.legendText.includes('HOME')&&actual.legendText.includes('AWAY'),'TEAM_LEGEND_MISSING');
      if(actual.eventRows)assert(actual.events.every(e=>!!e.label),'EVENT_LABELS_NOT_NORMALIZED');
      if(mode==='light'){
+      const specificity=await page.evaluate(()=>{
+       const el=innerWidth<768?document.querySelector('#b46gn-detail .b46gn-featured .featured-card[data-featured]'):document.querySelector('.right-rail > .featured-card[data-featured]');
+       const s='html[data-theme="light"] body .workspace.singlepage .live-stage-grid > .right-rail > .featured-card[data-featured]';
+       const s2='html[data-theme="light"] body #b46gn-detail#b46gn-detail .b46gn-featured .featured-card[data-featured]';
+       const st=getComputedStyle(el);
+       return {htmlTheme:document.documentElement.dataset.theme,bodyTheme:document.body.dataset.theme,
+        matches:el.matches(s),matchesMobile:el.matches(s2),rootClasses:String(el.className),rootParent:String(el.parentElement?.className),
+        actual:st.backgroundColor,ruleCount:document.getElementById('b46-featured-approved-sections-v10-20261021')?.sheet?.cssRules.length,
+        styleEnding:document.getElementById('b46-featured-approved-sections-v10-20261021')?.textContent?.slice(-600)};
+      });
+      console.log('B46_V11_LIGHT_CASCADE_DIAGNOSTIC',JSON.stringify({phase,width,mode,view,specificity,root:actual.root}));
       assert(/rgb\(248, 251, 248\)/.test(actual.root.bg),'APPROVED_MATTE_LIGHT_CARD_NOT_PRESENT '+actual.root.bg);
       assert(/rgb\(237, 243, 238\)/.test(actual.stats.bg),'APPROVED_SOFT_LIGHT_SECTION_NOT_PRESENT '+actual.stats.bg);
       assert(actual.root.shadow.includes('rgba(34, 74, 48, 0.075)'),'UNWANTED_LIGHT_GLOW '+actual.root.shadow);
