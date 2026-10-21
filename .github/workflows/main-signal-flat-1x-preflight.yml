@@ -1,0 +1,50 @@
+name: BALL46 Main SIGNAL Flat 1x — Read Only Preflight
+on:
+  push:
+    branches: [codex/ball46-main-eventflow-signal-flat-1x-20261021]
+    paths:
+      - '.github/workflows/main-signal-flat-1x-preflight.yml'
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Confirm main Worker latest mobile source and exact V3 helper patch anchor
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {createHash} from 'node:crypto';
+          const a=process.env.CLOUDFLARE_ACCOUNT_ID,t=process.env.CLOUDFLARE_API_TOKEN;
+          assert(a&&t,'MISSING_READ_CREDS');
+          async function cf(path){const r=await fetch('https://api.cloudflare.com/client/v4/accounts/'+a+path,{headers:{Authorization:'Bearer '+t},signal:AbortSignal.timeout(29000)});const j=await r.json();assert(r.ok&&j.success,'CF_READ_ERROR '+path);return j.result;}
+          const d=(await cf('/workers/scripts/ball46-production/deployments?per_page=1')).deployments?.[0];
+          assert(d?.versions?.length===1&&Number(d.versions[0].percentage)===100,'ACTIVE_MAIN_VERSION_SPLIT');
+          const active=d.versions[0].version_id;
+          assert.equal(active,'4cd96601-43b4-400c-adbe-79fab90955d5','ACTIVE_MAIN_CHANGED');
+          const v=await cf('/workers/workers/ball46-production/versions/'+active+'?include=modules');
+          const main=v.modules.find(m=>m.name===v.main_module);
+          assert(main?.content_base64,'ACTIVE_MAIN_MODULE_MISSING');
+          const code=Buffer.from(main.content_base64,'base64').toString('utf8');
+          const marker='const newStyle=';
+          const match=[...code.matchAll(/const newStyle=/g)];
+          assert.equal(match.length,1,'SIGNAL_V3_HELPER_ANCHOR_NOT_UNIQUE');
+          const offset=match[0].index;
+          const end=code.indexOf(';',offset);
+          assert(end>offset&&end-offset<2400,'SIGNAL_V3_HELPER_NOT_SIMPLE_STRING');
+          const jsExpr=code.slice(offset+'const newStyle='.length,end);
+          const expected=JSON.parse(jsExpr);
+          assert(expected.includes('b46-eventflow-signal-v3-gradient-20261020')&&expected.includes('b46-eventflow-signal-graphite-gradient-20261020'),'SIGNAL_V3_STYLE_SOURCE_CHANGED');
+          assert(expected.includes('drop-shadow(0 5px 8px'),'LATEST_OLD_SHADOW_NOT_FOUND');
+          assert(code.includes('b46-pc-ticker-gap-fix-20261020'),'MAIN_PC_FEATURE_MISSING');
+          const page=await fetch('https://ball46.com/?signalFlatPreflight='+Date.now(),{headers:{'cache-control':'no-cache'},signal:AbortSignal.timeout(25000)});
+          assert.equal(page.status,200,'MAIN_PAGE_UNAVAILABLE');
+          const html=await page.text();
+          assert(html.includes(expected),'MAIN_PAGE_STYLE_NOT_FROM_WORKER');
+          assert(html.includes('b46-mobile-ultrasoft-flow-v3-20261020'),'MAIN_MOBILE_FEATURE_GONE');
+          console.log('BALL46_MAIN_SIGNAL_FLAT1X_PREFLIGHT_PASS',JSON.stringify({active,mainModule:main.name,mainSha256:createHash('sha256').update(Buffer.from(main.content_base64,'base64')).digest('hex'),moduleCount:v.modules.length,styleChars:expected.length,htmlBytes:Buffer.byteLength(html),v3HelperCount:match.length}));
+          JS
