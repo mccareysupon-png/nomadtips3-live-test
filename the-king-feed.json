@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-10-21T18:44:42Z",
+  "updated_at": "2026-10-21T22:27:17Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -1234,8 +1234,8 @@
       "edge": 47.8,
       "ev": 0.8563,
       "required_confidence": 0.56,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "1-5",
       "locked_at": "2026-10-21T02:10:07Z",
       "source_url": "https://www.goaloo.com/football/copa-libertadores-femenino-independiente-santa-fe-w-vs-sc-corinthians-paulista-w/h2h-3101695",
       "summary_url": "https://www.goaloo.com/football/copa-libertadores-femenino-independiente-santa-fe-w-vs-sc-corinthians-paulista-w/summary-3101695",
@@ -1295,7 +1295,12 @@
         "away_recent": 10,
         "h2h_n": 3,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-21T22:27:17Z"
     },
     {
       "id": "54d84df1a7d1b598-AH-AWAY-1p5",
@@ -303148,6 +303153,96 @@
       "settlement_source": "goaloo-bf_us-direct-index",
       "goaloo_terminal_state": -1,
       "settled_at": "2026-10-21T18:44:42Z"
+    },
+    {
+      "id": "892ebb2a6f158d01-AH-HOME-0p75",
+      "goaloo_id": "3101695",
+      "date": "2026-10-21",
+      "kickoff": "2026-10-21 20:00:00",
+      "league": "Copa Libertadores Femenino",
+      "home": "Independiente Santa Fe (W)",
+      "away": "SC Corinthians Paulista (W)",
+      "market": "AH",
+      "selection": "HOME",
+      "line": 0.75,
+      "pick": "Independiente Santa Fe (W) +0.75",
+      "side": "home",
+      "odds": 1.99,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.9327,
+      "model_probability": 0.9327,
+      "market_fair_probability": 0.4548,
+      "market_edge": 0.4779,
+      "edge": 47.8,
+      "ev": 0.8563,
+      "required_confidence": 0.56,
+      "result": "LOSS",
+      "ft": "1-5",
+      "locked_at": "2026-10-21T02:10:07Z",
+      "source_url": "https://www.goaloo.com/football/copa-libertadores-femenino-independiente-santa-fe-w-vs-sc-corinthians-paulista-w/h2h-3101695",
+      "summary_url": "https://www.goaloo.com/football/copa-libertadores-femenino-independiente-santa-fe-w-vs-sc-corinthians-paulista-w/summary-3101695",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 2.455,
+        "lambda_away": 0.709,
+        "home_win": 0.7863,
+        "draw": 0.1672,
+        "away_win": 0.0465,
+        "h2h_adjustment": -0.015,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.5772,
+          "gd_edge": 0.8782,
+          "clean_sheet_edge": 0.5756,
+          "failed_to_score_edge": 0.478,
+          "bounded_adjustment": 0.0506,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 3,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-21T22:27:17Z"
     }
   ],
   "note": "Automated Full-Time Winner First feed. Supplemental markets remain unpublished.",
