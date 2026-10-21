@@ -1,0 +1,29 @@
+name: BALL46 Stats Leagues Real Click Diagnostics
+on:
+  push:
+    branches: [fix/ball46-stats-leagues-nav-20261021]
+    paths:
+      - '.github/workflows/ball46-stats-leagues-click-audit.yml'
+      - 'deploy-assets/stats-leagues-20261021/click-audit.mjs'
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Click actual league after stats and check mobile drawer
+        working-directory: deploy-assets/stats-leagues-20261021
+        run: |
+          npm install --no-save --ignore-scripts puppeteer-core@24
+          node click-audit.mjs
+      - name: Preserve audit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: b46-stats-leagues-click-diagnostics
+          path: deploy-assets/stats-leagues-20261021/proof2/
+          retention-days: 14
+          if-no-files-found: warn
