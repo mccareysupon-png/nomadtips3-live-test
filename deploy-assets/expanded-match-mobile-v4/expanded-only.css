@@ -1,0 +1,131 @@
+/* BALL46 Expanded Match Mobile V4.
+   Scoped exclusively to newly added content under an ALREADY-EXPANDED match row.
+   Do not edit match-row, expand-flow-card, Event Flow, or full market. */
+@media(max-width:767px){
+  body .workspace.singlepage .live-stage-grid > aside.right-rail{
+    display:none!important; /* Restore original mobile layout; remove accidental standalone FEATURED MATCH */
+  }
+  .workspace.singlepage section.match-expanded .match-expanded-inner > section.b46x-live-detail{
+    --x-mint:#54ebad;
+    --x-amber:#ffe077;
+    --x-text:#effaf3;
+    --x-muted:#a1c5ae;
+    display:block!important;
+    grid-column:1 / -1!important;
+    order:999!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:100%!important;
+    padding:14px 12px 16px!important;
+    margin:10px 0 0!important;
+    border:0!important;
+    border-radius:13px!important;
+    color:var(--x-text)!important;
+    background:linear-gradient(148deg,#214637 0%,#17382a 50%,#10271e 100%)!important;
+    box-shadow:inset 0 1px 0 rgba(190,255,215,.13),0 5px 12px rgba(0,8,4,.15)!important;
+    overflow:hidden!important;
+    box-sizing:border-box!important;
+  }
+  .workspace.singlepage .b46x-live-detail *{box-sizing:border-box;min-width:0}
+  .workspace.singlepage .b46x-live-detail .b46x-title{
+    display:flex;justify-content:space-between;align-items:center;gap:8px;
+    font-size:9px;font-weight:900;letter-spacing:.08em;color:#73f3be;
+  }
+  .workspace.singlepage .b46x-live-detail .b46x-live{
+    background:#216a4e;padding:4px 7px;border-radius:7px;color:#dcffed;
+    font-size:10px;font-weight:850;letter-spacing:0;
+  }
+  .workspace.singlepage .b46x-live-detail .b46x-league{
+    font-size:12px;font-weight:800;line-height:1.42;overflow-wrap:anywhere;
+    margin:7px 0 0;padding:0 0 11px;border-bottom:1px solid rgba(176,244,197,.11);
+  }
+  .workspace.singlepage .b46x-live-detail .b46x-score{
+    display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);
+    align-items:center;gap:8px;margin:0;padding:14px 0 12px;
+  }
+  .workspace.singlepage .b46x-live-detail .b46x-side:last-child{text-align:right}
+  .workspace.singlepage .b46x-live-detail .b46x-side small{
+    display:block;font-size:9px;font-weight:850;color:var(--x-muted);letter-spacing:.06em;
+  }
+  .workspace.singlepage .b46x-live-detail .b46x-side strong{
+    display:block;margin-top:4px;color:var(--x-mint);font-size:12px;
+    font-weight:850;line-height:1.2;overflow-wrap:anywhere;
+  }
+  .workspace.singlepage .b46x-live-detail .b46x-side:last-child strong{color:var(--x-amber)}
+  .workspace.singlepage .b46x-live-detail .b46x-score-number{
+    color:#f7fff9;font-size:30px;font-weight:950;line-height:1;
+    white-space:nowrap;letter-spacing:-.06em;font-variant-numeric:tabular-nums;
+  }
+  .workspace.singlepage .b46x-live-detail .b46x-section-head{
+    display:flex;justify-content:space-between;align-items:center;gap:7px;
+    margin:14px 0 7px;color:#d5f2df;
+  }
+  .workspace.singlepage .b46x-live-detail .b46x-section-head b{
+    font-size:10px;font-weight:900;letter-spacing:.07em;
+  }
+  .workspace.singlepage .b46x-live-detail .b46x-section-head span{
+    font-size:9px;font-weight:700;color:#91c6a7;
+  }
+  .workspace.singlepage .b46x-live-detail .b46x-facts{
+    display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;
+  }
+  .workspace.singlepage .b46x-live-detail .b46x-fact{
+    display:flex;flex-direction:column;justify-content:center;gap:5px;
+    min-height:61px;padding:9px 10px;border:0;border-radius:10px;
+    background:linear-gradient(160deg,#061710,#0d291c)!important;
+    box-shadow:inset 0 4px 10px rgba(0,0,0,.79),inset 0 1px 3px rgba(0,0,0,.55),inset 0 -1px rgba(185,251,206,.13)!important;
+  }
+  .workspace.singlepage .b46x-live-detail .b46x-fact small{
+    display:block;font-size:9px;font-weight:850;letter-spacing:.035em;color:#a3c9b0;
+  }
+  .workspace.singlepage .b46x-live-detail .b46x-fact strong{
+    display:block;font-size:13px;font-weight:850;color:#f5fff7;
+    line-height:1.3;overflow-wrap:anywhere;
+  }
+  .workspace.singlepage .b46x-live-detail .b46x-fact:nth-child(3) strong{
+    font-size:10.5px;line-height:1.35;
+  }
+  .workspace.singlepage .b46x-live-detail .b46x-live-group{
+    background:linear-gradient(148deg,#275e46,#1a4835);
+    padding:10px;border-radius:10px;overflow-wrap:anywhere;
+  }
+  .workspace.singlepage .b46x-live-detail .b46x-live-group:empty{display:none}
+  .workspace.singlepage .b46x-live-detail .b46x-live-group .feature-signal{
+    margin:0;background:none;border:0;box-shadow:none;padding:0;
+  }
+  .workspace.singlepage .b46x-live-detail .b46x-live-group .feature-signal > *{
+    max-width:100%;overflow-wrap:anywhere;
+  }
+  .workspace.singlepage .b46x-live-detail .b46x-empty{
+    font-size:11px;line-height:1.5;color:#9cbca8;
+  }
+  .workspace.singlepage .b46x-live-detail .b46x-comparison{
+    width:100%;overflow:hidden;
+  }
+  .workspace.singlepage .b46x-live-detail .b46x-comparison .feature-stats{
+    padding:0;margin:0;background:none;box-shadow:none;border:0;
+  }
+  .workspace.singlepage .b46x-live-detail .b46x-comparison .feature-empty{
+    color:#a5c4ad;font-size:11px;line-height:1.5;
+  }
+  .workspace.singlepage .b46x-live-detail .b46x-events .feature-events{
+    margin:0;padding:0;width:100%;background:none;border:0;box-shadow:none;
+  }
+  .workspace.singlepage .b46x-live-detail .b46x-events .feature-events > *{
+    max-width:100%;overflow-wrap:anywhere;
+  }
+  html[data-theme="light"] .workspace.singlepage .match-expanded .match-expanded-inner > .b46x-live-detail{
+    --x-text:#163c28;--x-muted:#4c7659;--x-mint:#196f4d;--x-amber:#96700c;
+    color:var(--x-text)!important;background:linear-gradient(144deg,#e4f0e7,#d7e9dc)!important;
+  }
+  html[data-theme="light"] .workspace.singlepage .b46x-live-detail .b46x-fact{
+    background:linear-gradient(160deg,#c4dacb,#d9e8dc)!important;
+    box-shadow:inset 0 4px 9px rgba(24,61,34,.32),inset 0 1px 3px rgba(26,65,37,.2),inset 0 -1px rgba(255,255,255,.8)!important;
+  }
+  html[data-theme="light"] .workspace.singlepage .b46x-live-detail .b46x-fact small{color:#50745c}
+  html[data-theme="light"] .workspace.singlepage .b46x-live-detail .b46x-fact strong,
+  html[data-theme="light"] .workspace.singlepage .b46x-live-detail .b46x-score-number{color:#1a4029}
+  html[data-theme="light"] .workspace.singlepage .b46x-live-detail .b46x-live-group{
+    background:#c6e2d0;
+  }
+}
