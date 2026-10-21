@@ -1,0 +1,62 @@
+name: BALL46 Member ODDS Opacity75 V5 — Independent Read Only Audit
+on:
+  push:
+    branches: [codex/ball46-member-odds-opacity75-20261021]
+    paths:
+      - '.github/workflows/member-odds-opacity75-v5-independent.yml'
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Verify live ODDS 75% opacity and unchanged Member functionality without writing
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {createHash} from 'node:crypto';
+          const a=process.env.CLOUDFLARE_ACCOUNT_ID,t=process.env.CLOUDFLARE_API_TOKEN;
+          assert(a&&t,'MISSING_CLOUDFLARE_ACCOUNT');
+          const resp=await fetch('https://api.cloudflare.com/client/v4/accounts/'+a+'/workers/scripts/ball46-member-production/deployments?per_page=1',{headers:{Authorization:'Bearer '+t},signal:AbortSignal.timeout(25000)});
+          const j=await resp.json();assert(resp.ok&&j.success,'PRODUCTION_READ_FAIL');
+          const v=j.result.deployments?.[0]?.versions;
+          assert(v?.length===1&&Number(v[0].percentage)===100,'MEMBER_SPLIT_ROLLOUT');
+          assert.equal(v[0].version_id,'0d3b0c9b-a82a-4894-85b3-15469b0022e1','WORKER_VERSION_DRIFT');
+          const hashes={
+            '/member-odds-topbar.css':'476df19b96343f643b483e795a87d6f4ab63632b42b22d13a21714f9cbabd11e',
+            '/member-odds-topbar.js':'12265bd447751f9223860a852196bc97a576e1c70a08020343f12524698848c7',
+            '/member.js':'ef4489618ae07303a7f275b4b37fddd0f7a8cb721bf98d3216c887128c806524',
+            '/styles.css':'5186dd9dfa27c36b7dced6068b15a20d04ab8f15ab771e33d61116c8725b817d'
+          };
+          const results={};
+          for(const [path,want] of Object.entries(hashes)){
+            const url=new URL(path,'https://member.ball46.com');url.searchParams.set('independentOpacity75',Date.now());
+            const response=await fetch(url,{headers:{'cache-control':'no-cache'},signal:AbortSignal.timeout(26000)});
+            assert.equal(response.status,200,'ASSET_HTTP_ERROR_'+path);
+            const data=Buffer.from(await response.arrayBuffer());
+            const sha=createHash('sha256').update(data).digest('hex');
+            assert.equal(sha,want,'LIVE_FILE_HASH_CHANGED_'+path);
+            const s=data.toString('utf8');
+            if(path==='/member-odds-topbar.css'){
+              assert(s.includes('B46_MEMBER_ODDS_DROPDOWN_OPACITY75_V5_20261021'),'ODDS_V5_MARKER_MISSING');
+              assert(s.includes('background:rgba(18,38,48,.75)!important'),'ODDS_ALPHA_NOT_75_PERCENT');
+              assert(s.includes('B46_MEMBER_ODDS_DROPDOWN_GLASS55_V4_20261021'),'OLD_ODDS_STYLES_NOT_PRESERVED');
+            }
+            if(path==='/member.js'){
+              assert(s.includes("['WIN',Number(s.win||0)+Number(s.halfWin||0),'win']"),'HALF_WIN_MERGE_LOST');
+              assert(s.includes("['LOSS',Number(s.loss||0)+Number(s.halfLoss||0),'loss']"),'HALF_LOSS_MERGE_LOST');
+              assert(s.includes('b46-member-eventflow-signal-v3-20261020'),'EVENT_FLOW_V3_MISSING');
+              assert(s.includes('ball46:member-odds-format-change'),'ODDS_FORMAT_LOST');
+            }
+            results[path]={sha256:sha,status:response.status};
+          }
+          const gate=await fetch('https://member.ball46.com/member.html',{redirect:'manual',signal:AbortSignal.timeout(26000)});
+          assert([302,303].includes(gate.status),'MEMBER_ACCESS_BYPASS');
+          const health=await fetch('https://member.ball46.com/api/health',{signal:AbortSignal.timeout(26000)});
+          const h=await health.json();assert(health.status===200&&h.ok&&h.service==='ball46-member-production','MEMBER_HEALTH_FAILED');
+          console.log('BALL46_MEMBER_ODDS_OPACITY75_V5_INDEPENDENT_PASS',JSON.stringify({worker:v[0].version_id,files:results,memberGate:gate.status,health:health.status}));
+          JS
