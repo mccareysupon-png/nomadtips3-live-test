@@ -1,0 +1,66 @@
+name: BALL46 Member ODDS Opacity85 V6 — Read Only Preflight
+on:
+  push:
+    branches: [codex/ball46-member-odds-opacity85-20261021]
+    paths:
+      - '.github/workflows/member-odds-opacity85-v6-preflight.yml'
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate 85 percent opacity patch contract and syntax
+        run: |
+          set -euo pipefail
+          node --check ball46-member/member-odds-opacity85-v6-20261021/opacity85.mjs
+          node --check ball46-member/member-odds-opacity85-v6-20261021/deploy.mjs
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {patchOpacity85,CSS} from './ball46-member/member-odds-opacity85-v6-20261021/opacity85.mjs';
+          const html='<html><span class="b46-odds-trigger-label">ODDS</span><link href="/member-odds-topbar.css?v=20261021-odds-opacity75-v5"></html>';
+          const css='/* B46_MEMBER_ODDS_DROPDOWN_OPACITY75_V5_20261021 */';
+          const result=patchOpacity85({html,css});
+          assert.equal(result.html.replace('odds-opacity85-v6','odds-opacity75-v5'),html,'MEMBER_HTML_DIFF_SCOPE');
+          assert.equal(result.css,css+'\n'+CSS+'\n','MEMBER_CSS_APPEND_ONLY');
+          assert(CSS.includes('rgba(18,38,48,.85)!important'),'85_PERCENT_ALPHA_NOT_SELECTED');
+          assert(!CSS.includes('opacity:.85')&&!CSS.includes('opacity:0.85'),'TEXT_ALPHA_CHANGE_NOT_ALLOWED');
+          console.log('BALL46_MEMBER_ODDS_OPACITY85_PATCH_CONTRACT_PASS');
+          JS
+      - name: Verify current active Member Worker, CSS hash and Access in read-only mode
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {createHash} from 'node:crypto';
+          const a=process.env.CLOUDFLARE_ACCOUNT_ID,t=process.env.CLOUDFLARE_API_TOKEN;
+          assert(a&&t,'NO_CLOUDFLARE_CREDS');
+          const r=await fetch('https://api.cloudflare.com/client/v4/accounts/'+a+'/workers/scripts/ball46-member-production/deployments?per_page=1',{headers:{Authorization:'Bearer '+t},signal:AbortSignal.timeout(25000)});
+          const j=await r.json();assert(r.ok&&j.success,'CF_READ_FAILED');
+          const versions=j.result.deployments?.[0]?.versions;
+          assert(versions?.length===1&&Number(versions[0].percentage)===100,'WORKER_ACTIVE_MULTIPLE_VERSIONS');
+          assert.equal(versions[0].version_id,'0d3b0c9b-a82a-4894-85b3-15469b0022e1','ACTIVE_MEMBER_VERSION_MOVED');
+          const expected={
+            '/member-odds-topbar.css':'476df19b96343f643b483e795a87d6f4ab63632b42b22d13a21714f9cbabd11e',
+            '/member.js':'ef4489618ae07303a7f275b4b37fddd0f7a8cb721bf98d3216c887128c806524',
+            '/styles.css':'5186dd9dfa27c36b7dced6068b15a20d04ab8f15ab771e33d61116c8725b817d'
+          };
+          for(const [path,want] of Object.entries(expected)){
+            const u=new URL(path,'https://member.ball46.com');u.searchParams.set('readOnly85',Date.now());
+            const x=await fetch(u,{headers:{'cache-control':'no-cache'},signal:AbortSignal.timeout(22000)});
+            assert.equal(x.status,200,'HTTP_ERROR_'+path);
+            assert.equal(createHash('sha256').update(Buffer.from(await x.arrayBuffer())).digest('hex'),want,'LIVE_ASSET_MOVED_'+path);
+          }
+          const member=await fetch('https://member.ball46.com/member.html',{redirect:'manual',signal:AbortSignal.timeout(22000)});
+          assert([302,303].includes(member.status),'MEMBER_ACCESS_GATE_CHANGED');
+          console.log('BALL46_MEMBER_ODDS_OPACITY85_READONLY_PREFLIGHT_PASS',JSON.stringify({activeVersion:versions[0].version_id,verifiedAssets:Object.keys(expected).length,memberAccess:member.status}));
+          JS
