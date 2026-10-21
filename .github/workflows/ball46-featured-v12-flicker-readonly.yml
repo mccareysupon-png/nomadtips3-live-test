@@ -1,0 +1,29 @@
+name: BALL46 FEATURED V12 Flicker and CSS Conflict Read-Only
+on:
+  push:
+    branches: [fix/ball46-featured-events-inline-v12-20261021]
+    paths:
+      - '.github/workflows/ball46-featured-v12-flicker-readonly.yml'
+      - 'deploy-assets/featured-events-v12/flicker-audit.mjs'
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Measure original Featured card animation, movement, re-mounts and data mutations
+        working-directory: deploy-assets/featured-events-v12
+        run: |
+          npm install --no-save --ignore-scripts puppeteer-core@24
+          node flicker-audit.mjs
+      - name: Save read-only browser measurements and screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-featured-v12-flicker-movement-readonly
+          path: deploy-assets/featured-events-v12/flicker-audit/
+          retention-days: 15
+          if-no-files-found: warn
