@@ -2,151 +2,209 @@
   "engine": "add-k-multimarket-goaloo-v2-ah-sign",
   "policy": "ADD_K_MULTI_170_STRONGEST",
   "status": "OK",
-  "last_selection_run": "2026-10-20T02:14:07Z",
+  "last_selection_run": "2026-10-21T02:10:36Z",
   "last_settlement_run": "2026-10-21T01:41:35Z",
-  "selection_date": "2026-10-20",
-  "fixtures_seen": 209,
-  "qualified": 89,
-  "pending": 80,
+  "selection_date": "2026-10-21",
+  "fixtures_seen": 268,
+  "qualified": 110,
+  "pending": 110,
   "max_daily_picks": null,
   "no_pick": false,
   "primary_source": "Goaloo bf_us.js + H2H + goal50.xml",
   "decision_layer": "ADD K strongest market across 1X2/AH/O-U; one pick per match",
-  "rejected": 120,
+  "rejected": 158,
   "rejection_reasons": {
-    "GOALOO_FORM_SHORT": 59,
-    "NO_GOALOO_MARKETS": 20,
-    "NO_MARKET_PASSED": 41
+    "NO_MARKET_PASSED": 28,
+    "GOALOO_FORM_SHORT": 97,
+    "NO_GOALOO_MARKETS": 33
   },
   "rejection_samples": [
     {
-      "match": "Nakhon Phanom United vs Marines Eureka FC",
-      "reason": "GOALOO_FORM_SHORT",
-      "home_n": 0,
-      "away_n": 7
+      "match": "Montedio Yamagata vs Consadole Sapporo",
+      "reason": "NO_MARKET_PASSED",
+      "best_market": "OU",
+      "best_pick": "Over 2.5",
+      "confidence": 0.5905,
+      "odds": 1.8,
+      "gate": "CONFIDENCE_GATE"
     },
     {
-      "match": "Romklao United vs Sukhothai",
-      "reason": "GOALOO_FORM_SHORT",
-      "home_n": 1,
-      "away_n": 7
+      "match": "AC Nagano Parceiro vs FC Ryukyu",
+      "reason": "NO_MARKET_PASSED",
+      "best_market": "AH",
+      "best_pick": "AC Nagano Parceiro -0",
+      "confidence": 0.537,
+      "odds": 1.87,
+      "gate": "CONFIDENCE_GATE"
     },
     {
-      "match": "Udon United vs Lopburi POMA FC",
+      "match": "Dome FC vs Sisaket United",
+      "reason": "GOALOO_FORM_SHORT",
+      "home_n": 7,
+      "away_n": 9
+    },
+    {
+      "match": "Kasem Bundit University FC vs Customs Department FC",
+      "reason": "NO_MARKET_PASSED",
+      "best_market": "OU",
+      "best_pick": "Under 3.25",
+      "confidence": 0.5946,
+      "odds": 1.79,
+      "gate": "CONFIDENCE_GATE"
+    },
+    {
+      "match": "Olimpia Cluj (W) vs CS U Craiova (W)",
+      "reason": "NO_GOALOO_MARKETS"
+    },
+    {
+      "match": "YANGON UNITED vs Taguig",
       "reason": "GOALOO_FORM_SHORT",
       "home_n": 7,
       "away_n": 8
     },
     {
-      "match": "NS See Khwae City vs Udon Banjan United",
+      "match": "Sparta Praha B vs Viktoria Plzen B",
       "reason": "NO_GOALOO_MARKETS"
     },
     {
-      "match": "Isenmulang Kalteng<font color=#880000>(N)</font> vs Java United FC",
+      "match": "Nagoya Grampus vs Cerezo Osaka",
+      "reason": "NO_MARKET_PASSED",
+      "best_market": "OU",
+      "best_pick": "Over 2.75",
+      "confidence": 0.5608,
+      "odds": 1.85,
+      "gate": "CONFIDENCE_GATE"
+    },
+    {
+      "match": "Jubilo Iwata vs Oita Trinita",
+      "reason": "NO_MARKET_PASSED",
+      "best_market": "AH",
+      "best_pick": "Oita Trinita +0.75",
+      "confidence": 0.5453,
+      "odds": 1.59,
+      "gate": "ODDS_MIN"
+    },
+    {
+      "match": "Shonan Bellmare vs Iwaki FC",
+      "reason": "GOALOO_FORM_SHORT",
+      "home_n": 5,
+      "away_n": 9
+    },
+    {
+      "match": "Miyazaki vs Blaublitz Akita",
       "reason": "GOALOO_FORM_SHORT",
       "home_n": 7,
       "away_n": 10
     },
     {
-      "match": "Arambagh KS vs Dhaka Wanderers",
-      "reason": "NO_GOALOO_MARKETS"
-    },
-    {
-      "match": "MSPCC City Club vs Bashundhara Kings",
-      "reason": "NO_GOALOO_MARKETS"
-    },
-    {
-      "match": "Armed Forces FC vs Malaysia Universiteti",
+      "match": "Tochigi City vs Fujieda MYFC",
       "reason": "GOALOO_FORM_SHORT",
-      "home_n": 7,
-      "away_n": 8
-    },
-    {
-      "match": "Olympic MobiUZ vs Yaypan FK",
-      "reason": "GOALOO_FORM_SHORT",
-      "home_n": 6,
-      "away_n": 9
-    },
-    {
-      "match": "Chonburi Shark FC vs Pattaya City",
-      "reason": "GOALOO_FORM_SHORT",
-      "home_n": 10,
+      "home_n": 8,
       "away_n": 6
     },
     {
-      "match": "Huasamrong Gateway vs Mahasarakham United FC",
-      "reason": "GOALOO_FORM_SHORT",
-      "home_n": 2,
-      "away_n": 8
-    },
-    {
-      "match": "Suphanburi FC vs Lamphun Warrior",
+      "match": "Vegalta Sendai vs Imabari FC",
       "reason": "GOALOO_FORM_SHORT",
       "home_n": 7,
-      "away_n": 8
-    },
-    {
-      "match": "Homs Al Fidaa SC<font color=#880000>(N)</font> vs Al-Nejmeh",
-      "reason": "GOALOO_FORM_SHORT",
-      "home_n": 7,
-      "away_n": 10
-    },
-    {
-      "match": "Be'sat Kermanshah FC vs Pars Jonoubi Jam",
-      "reason": "GOALOO_FORM_SHORT",
-      "home_n": 9,
       "away_n": 7
     },
     {
-      "match": "Pyunik B vs Olympia Yerevan",
-      "reason": "GOALOO_FORM_SHORT",
-      "home_n": 7,
-      "away_n": 4
-    },
-    {
-      "match": "Dewa United FC vs Persijap Jepara",
-      "reason": "GOALOO_FORM_SHORT",
-      "home_n": 7,
-      "away_n": 9
-    },
-    {
-      "match": "Bhayangkara Solo FC vs PSIM Yogyakarta",
+      "match": "Banbueng City vs Chiangrai United",
       "reason": "NO_MARKET_PASSED",
       "best_market": "AH",
-      "best_pick": "PSIM Yogyakarta +1.25",
-      "confidence": 0.9111,
+      "best_pick": "Banbueng City +1.5",
+      "confidence": 0.6636,
+      "odds": 1.58,
+      "gate": "ODDS_MIN"
+    },
+    {
+      "match": "Kasetsart FC vs Chanthaburi FC",
+      "reason": "NO_MARKET_PASSED",
+      "best_market": "AH",
+      "best_pick": "Kasetsart FC +0.75",
+      "confidence": 0.8647,
+      "odds": 1.58,
+      "gate": "ODDS_MIN"
+    },
+    {
+      "match": "Respublika FA vs Pakhtakor II",
+      "reason": "NO_GOALOO_MARKETS"
+    },
+    {
+      "match": "Urawa Red Diamonds vs JEF United Ichihara Chiba",
+      "reason": "NO_MARKET_PASSED",
+      "best_market": "AH",
+      "best_pick": "JEF United Ichihara Chiba +1.25",
+      "confidence": 0.8882,
       "odds": 1.49,
       "gate": "ODDS_MIN"
     },
     {
-      "match": "Kenya Police FC vs AFC Leopards",
-      "reason": "NO_MARKET_PASSED",
-      "best_market": "OU",
-      "best_pick": "Over 1.75",
-      "confidence": 0.5837,
-      "odds": 1.72,
-      "gate": "CONFIDENCE_GATE"
-    },
-    {
-      "match": "Ethio Electric FC vs Sheger Ketema",
-      "reason": "GOALOO_FORM_SHORT",
-      "home_n": 6,
-      "away_n": 6
-    },
-    {
-      "match": "FC Istaravshan vs Ravshan Kulob",
-      "reason": "NO_MARKET_PASSED",
-      "best_market": "AH",
-      "best_pick": "FC Istaravshan +1.5",
-      "confidence": 0.9119,
-      "odds": 1.61,
-      "gate": "ODDS_MIN"
-    },
-    {
-      "match": "Peshmerga Sulaymaniya SC vs Al Shatrah SC",
+      "match": "Buriram United vs DPU Thayang FC",
       "reason": "GOALOO_FORM_SHORT",
       "home_n": 10,
       "away_n": 0
+    },
+    {
+      "match": "Rasi Salai United vs Port FC",
+      "reason": "GOALOO_FORM_SHORT",
+      "home_n": 7,
+      "away_n": 8
+    },
+    {
+      "match": "Thap Luang United vs Rayong FC",
+      "reason": "GOALOO_FORM_SHORT",
+      "home_n": 8,
+      "away_n": 5
+    },
+    {
+      "match": "Warin Chamrap vs Karin United",
+      "reason": "GOALOO_FORM_SHORT",
+      "home_n": 0,
+      "away_n": 0
+    },
+    {
+      "match": "Qarabag Khankendi vs E Nel G Tick",
+      "reason": "GOALOO_FORM_SHORT",
+      "home_n": 4,
+      "away_n": 10
+    },
+    {
+      "match": "ODI SC vs Club Eagles",
+      "reason": "GOALOO_FORM_SHORT",
+      "home_n": 2,
+      "away_n": 10
+    },
+    {
+      "match": "Lion City Sailors vs Tampines Rovers FC",
+      "reason": "NO_GOALOO_MARKETS"
+    },
+    {
+      "match": "Ayutthaya United vs Muang Thong United",
+      "reason": "NO_MARKET_PASSED",
+      "best_market": "AH",
+      "best_pick": "Ayutthaya United -0.25",
+      "confidence": 0.7354,
+      "odds": 1.46,
+      "gate": "ODDS_MIN"
+    },
+    {
+      "match": "Bentonit Idzhevan vs Sardarapat B",
+      "reason": "GOALOO_FORM_SHORT",
+      "home_n": 8,
+      "away_n": 4
+    },
+    {
+      "match": "Wuhan Lianzhen vs Dalian Juxing Shengheng",
+      "reason": "GOALOO_FORM_SHORT",
+      "home_n": 8,
+      "away_n": 5
+    },
+    {
+      "match": "Shaanxi United Soaring vs Jiangsu Changjin",
+      "reason": "GOALOO_FORM_SHORT",
+      "home_n": 4,
+      "away_n": 9
     },
     {
       "match": "15 de Agosto (Gnq) vs Simba Sports Club",
@@ -155,247 +213,201 @@
       "away_n": 8
     },
     {
-      "match": "Al Taawun vs AlHilal",
-      "reason": "NO_MARKET_PASSED",
-      "best_market": "OU",
-      "best_pick": "Over 1.5",
-      "confidence": 0.7273,
-      "odds": 1.44,
-      "gate": "ODDS_MIN"
-    },
-    {
-      "match": "Darnes vs Al Afreky Libya",
+      "match": "Bangkok United FC vs Old Blood",
       "reason": "GOALOO_FORM_SHORT",
-      "home_n": 7,
-      "away_n": 10
-    },
-    {
-      "match": "Sagadam FK vs Arkadag FK",
-      "reason": "NO_GOALOO_MARKETS"
-    },
-    {
-      "match": "Ma Lu vs Kataka FC",
-      "reason": "NO_MARKET_PASSED",
-      "best_market": "AH",
-      "best_pick": "Kataka FC +1.25",
-      "confidence": 0.863,
-      "odds": 1.57,
-      "gate": "ODDS_MIN"
-    },
-    {
-      "match": "Ario Eslamshahr vs Naft Bandar Abbas",
-      "reason": "GOALOO_FORM_SHORT",
-      "home_n": 6,
-      "away_n": 5
-    },
-    {
-      "match": "Mes Rafsanjan vs Niroye Zamini",
-      "reason": "GOALOO_FORM_SHORT",
-      "home_n": 8,
-      "away_n": 7
-    },
-    {
-      "match": "Qeshm Island CSC vs Mes krman",
-      "reason": "GOALOO_FORM_SHORT",
-      "home_n": 7,
-      "away_n": 5
-    },
-    {
-      "match": "Al Athad vs Al-Madina",
-      "reason": "GOALOO_FORM_SHORT",
-      "home_n": 7,
-      "away_n": 8
+      "home_n": 9,
+      "away_n": 0
     }
   ],
   "near_gate_top": [
     {
-      "match": "FC Istaravshan vs Ravshan Kulob",
+      "match": "Urawa Red Diamonds vs JEF United Ichihara Chiba",
       "reason": "NO_MARKET_PASSED",
       "best_market": "AH",
-      "best_pick": "FC Istaravshan +1.5",
-      "confidence": 0.9119,
-      "odds": 1.61,
-      "gate": "ODDS_MIN"
-    },
-    {
-      "match": "Bhayangkara Solo FC vs PSIM Yogyakarta",
-      "reason": "NO_MARKET_PASSED",
-      "best_market": "AH",
-      "best_pick": "PSIM Yogyakarta +1.25",
-      "confidence": 0.9111,
+      "best_pick": "JEF United Ichihara Chiba +1.25",
+      "confidence": 0.8882,
       "odds": 1.49,
       "gate": "ODDS_MIN"
     },
     {
-      "match": "Ebbsfleet United vs Horsham",
+      "match": "Kasetsart FC vs Chanthaburi FC",
       "reason": "NO_MARKET_PASSED",
       "best_market": "AH",
-      "best_pick": "Horsham +1.5",
-      "confidence": 0.9072,
-      "odds": 1.54,
+      "best_pick": "Kasetsart FC +0.75",
+      "confidence": 0.8647,
+      "odds": 1.58,
       "gate": "ODDS_MIN"
     },
     {
-      "match": "Atletico Levante vs Crevillente",
+      "match": "Deportivo Tachira vs Monagas SC",
       "reason": "NO_MARKET_PASSED",
       "best_market": "AH",
-      "best_pick": "Crevillente +1.25",
-      "confidence": 0.8811,
-      "odds": 1.6,
+      "best_pick": "Monagas SC +1.25",
+      "confidence": 0.8379,
+      "odds": 1.46,
       "gate": "ODDS_MIN"
     },
     {
-      "match": "Chertsey Town vs Evesham United",
+      "match": "FK Zvijezda 09 vs FK Omarska",
       "reason": "NO_MARKET_PASSED",
       "best_market": "AH",
-      "best_pick": "Evesham United +1.25",
-      "confidence": 0.8649,
-      "odds": 1.61,
+      "best_pick": "FK Omarska +1.5",
+      "confidence": 0.8358,
+      "odds": 1.46,
       "gate": "ODDS_MIN"
     },
     {
-      "match": "Ma Lu vs Kataka FC",
+      "match": "Sao Paulo/SP (W) vs EC Bahia (W)",
       "reason": "NO_MARKET_PASSED",
       "best_market": "AH",
-      "best_pick": "Kataka FC +1.25",
-      "confidence": 0.863,
+      "best_pick": "EC Bahia (W) +1.25",
+      "confidence": 0.8193,
       "odds": 1.57,
       "gate": "ODDS_MIN"
     },
     {
-      "match": "Bath City vs Havant Waterlooville",
+      "match": "CA Independiente de la Chorrera Reserves vs San Francisco Reserves",
       "reason": "NO_MARKET_PASSED",
       "best_market": "AH",
-      "best_pick": "Havant Waterlooville +1.25",
-      "confidence": 0.8291,
-      "odds": 1.58,
+      "best_pick": "San Francisco Reserves +1.25",
+      "confidence": 0.8173,
+      "odds": 1.52,
       "gate": "ODDS_MIN"
     },
     {
-      "match": "Maccabi Lroni Amishav Petah Tikva vs Beitar Ramat Gan",
-      "reason": "NO_MARKET_PASSED",
-      "best_market": "AH",
-      "best_pick": "Beitar Ramat Gan +1.25",
-      "confidence": 0.8184,
-      "odds": 1.67,
-      "gate": "ODDS_MIN"
-    },
-    {
-      "match": "Sporting San Jose vs AD San Carlos",
-      "reason": "NO_MARKET_PASSED",
-      "best_market": "AH",
-      "best_pick": "AD San Carlos +1.5",
-      "confidence": 0.8127,
-      "odds": 1.4,
-      "gate": "ODDS_MIN"
-    },
-    {
-      "match": "Wolves vs Portsmouth",
-      "reason": "NO_MARKET_PASSED",
-      "best_market": "AH",
-      "best_pick": "Portsmouth +1.25",
-      "confidence": 0.8059,
-      "odds": 1.58,
-      "gate": "ODDS_MIN"
-    },
-    {
-      "match": "Bishop·s Cleeve vs Willand Rovers",
-      "reason": "NO_MARKET_PASSED",
-      "best_market": "AH",
-      "best_pick": "Willand Rovers +1.25",
-      "confidence": 0.7729,
-      "odds": 1.51,
-      "gate": "ODDS_MIN"
-    },
-    {
-      "match": "Chesterfield vs Colchester United",
-      "reason": "NO_MARKET_PASSED",
-      "best_market": "AH",
-      "best_pick": "Colchester United +1.25",
-      "confidence": 0.7705,
-      "odds": 1.6,
-      "gate": "ODDS_MIN"
-    },
-    {
-      "match": "Hanley Town vs Vauxhall Motors",
-      "reason": "NO_MARKET_PASSED",
-      "best_market": "AH",
-      "best_pick": "Vauxhall Motors +1.25",
-      "confidence": 0.7692,
-      "odds": 1.47,
-      "gate": "ODDS_MIN"
-    },
-    {
-      "match": "Hitchin Town vs Stamford",
-      "reason": "NO_MARKET_PASSED",
-      "best_market": "AH",
-      "best_pick": "Stamford +1.25",
-      "confidence": 0.7653,
-      "odds": 1.48,
-      "gate": "ODDS_MIN"
-    },
-    {
-      "match": "Luton Town vs Barnsley",
-      "reason": "NO_MARKET_PASSED",
-      "best_market": "AH",
-      "best_pick": "Barnsley +1.5",
-      "confidence": 0.7617,
-      "odds": 1.56,
-      "gate": "ODDS_MIN"
-    },
-    {
-      "match": "Independiente Yumbo vs Boca Juniors De Cali",
-      "reason": "NO_MARKET_PASSED",
-      "best_market": "AH",
-      "best_pick": "Boca Juniors De Cali +0.75",
-      "confidence": 0.7537,
-      "odds": 1.66,
-      "gate": "ODDS_MIN"
-    },
-    {
-      "match": "Al Taawun vs AlHilal",
+      "match": "Widzew Lodz II vs Sieradz",
       "reason": "NO_MARKET_PASSED",
       "best_market": "OU",
-      "best_pick": "Over 1.5",
-      "confidence": 0.7273,
-      "odds": 1.44,
-      "gate": "ODDS_MIN"
-    },
-    {
-      "match": "Tacuary vs Independiente Luque",
-      "reason": "NO_MARKET_PASSED",
-      "best_market": "AH",
-      "best_pick": "Tacuary +0.75",
-      "confidence": 0.7263,
-      "odds": 1.67,
-      "gate": "ODDS_MIN"
-    },
-    {
-      "match": "Taunton Town vs Bracknell Town",
-      "reason": "NO_MARKET_PASSED",
-      "best_market": "AH",
-      "best_pick": "Bracknell Town +0.75",
-      "confidence": 0.7238,
-      "odds": 1.67,
-      "gate": "ODDS_MIN"
-    },
-    {
-      "match": "Al-Draih vs Al-Riyadh",
-      "reason": "NO_MARKET_PASSED",
-      "best_market": "AH",
-      "best_pick": "Al-Riyadh +1.25",
-      "confidence": 0.7047,
+      "best_pick": "Over 2.75",
+      "confidence": 0.778,
       "odds": 1.66,
       "gate": "ODDS_MIN"
+    },
+    {
+      "match": "Desamparados vs Union Villa Krause",
+      "reason": "NO_MARKET_PASSED",
+      "best_market": "AH",
+      "best_pick": "Union Villa Krause +1.5",
+      "confidence": 0.7767,
+      "odds": 1.54,
+      "gate": "ODDS_MIN"
+    },
+    {
+      "match": "Terrassa vs Girona B",
+      "reason": "NO_MARKET_PASSED",
+      "best_market": "AH",
+      "best_pick": "Girona B +1.25",
+      "confidence": 0.7416,
+      "odds": 1.43,
+      "gate": "ODDS_MIN"
+    },
+    {
+      "match": "Ayutthaya United vs Muang Thong United",
+      "reason": "NO_MARKET_PASSED",
+      "best_market": "AH",
+      "best_pick": "Ayutthaya United -0.25",
+      "confidence": 0.7354,
+      "odds": 1.46,
+      "gate": "ODDS_MIN"
+    },
+    {
+      "match": "Reading vs Leyton Orient",
+      "reason": "NO_MARKET_PASSED",
+      "best_market": "AH",
+      "best_pick": "Leyton Orient +1.25",
+      "confidence": 0.7341,
+      "odds": 1.69,
+      "gate": "ODDS_MIN"
+    },
+    {
+      "match": "Montrose LFC (W) vs Aberdeen (W)",
+      "reason": "NO_MARKET_PASSED",
+      "best_market": "AH",
+      "best_pick": "Aberdeen (W) +1.25",
+      "confidence": 0.7315,
+      "odds": 1.61,
+      "gate": "ODDS_MIN"
+    },
+    {
+      "match": "Banbueng City vs Chiangrai United",
+      "reason": "NO_MARKET_PASSED",
+      "best_market": "AH",
+      "best_pick": "Banbueng City +1.5",
+      "confidence": 0.6636,
+      "odds": 1.58,
+      "gate": "ODDS_MIN"
+    },
+    {
+      "match": "Glasgow City (W) vs Glasgow Rangers (W)",
+      "reason": "NO_MARKET_PASSED",
+      "best_market": "OU",
+      "best_pick": "Under 3.25",
+      "confidence": 0.6439,
+      "odds": 1.58,
+      "gate": "ODDS_MIN"
+    },
+    {
+      "match": "Estudiantes Merida FC vs Caracas FC",
+      "reason": "NO_MARKET_PASSED",
+      "best_market": "AH",
+      "best_pick": "Caracas FC +0.75",
+      "confidence": 0.6275,
+      "odds": 1.62,
+      "gate": "ODDS_MIN"
+    },
+    {
+      "match": "Bellinzona vs Bruhl SG",
+      "reason": "NO_MARKET_PASSED",
+      "best_market": "AH",
+      "best_pick": "Bruhl SG +0",
+      "confidence": 0.621,
+      "odds": 1.61,
+      "gate": "ODDS_MIN"
+    },
+    {
+      "match": "Kasem Bundit University FC vs Customs Department FC",
+      "reason": "NO_MARKET_PASSED",
+      "best_market": "OU",
+      "best_pick": "Under 3.25",
+      "confidence": 0.5946,
+      "odds": 1.79,
+      "gate": "CONFIDENCE_GATE"
+    },
+    {
+      "match": "Montedio Yamagata vs Consadole Sapporo",
+      "reason": "NO_MARKET_PASSED",
+      "best_market": "OU",
+      "best_pick": "Over 2.5",
+      "confidence": 0.5905,
+      "odds": 1.8,
+      "gate": "CONFIDENCE_GATE"
+    },
+    {
+      "match": "BUL FC vs NEC FC Bugolobi",
+      "reason": "NO_MARKET_PASSED",
+      "best_market": "OU",
+      "best_pick": "Over 1.75",
+      "confidence": 0.579,
+      "odds": 1.71,
+      "gate": "CONFIDENCE_GATE"
+    },
+    {
+      "match": "Ghazl El Mahallah vs Al-Ittihad Alexandria",
+      "reason": "NO_MARKET_PASSED",
+      "best_market": "AH",
+      "best_pick": "Ghazl El Mahallah -0",
+      "confidence": 0.566,
+      "odds": 1.87,
+      "gate": "CONFIDENCE_GATE"
     }
   ],
   "source_health": {
     "index_url": "https://live10.goaloo28.com/gf/data/bf_us.js",
     "index_ok": true,
-    "odds_ok": false,
-    "index_rows": 366,
-    "odds_rows": 0,
-    "h2h_static_ok": 0,
+    "odds_ok": true,
+    "index_rows": 378,
+    "odds_rows": 291,
+    "h2h_static_ok": 268,
     "h2h_browser_fallback": 0,
     "errors": []
   },
@@ -426,6 +438,5 @@
     "Each match publishes only the strongest qualified market among 1X2, AH and O/U.",
     "Published odds must be at least 1.70 and the published side itself passes the gate.",
     "Reverse prediction is disabled."
-  ],
-  "settled_this_run": 3
+  ]
 }
