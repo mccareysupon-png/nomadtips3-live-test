@@ -1,0 +1,63 @@
+name: BALL46 Member ODDS Borderless V3 — Read Only Preflight
+on:
+  push:
+    branches: [codex/ball46-member-odds-borderless-label-20261021]
+    paths:
+      - '.github/workflows/member-odds-borderless-v3-preflight.yml'
+permissions:
+  contents: read
+jobs:
+  preflight:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Compile and ensure borderless HTML/CSS-only patch is reversible
+        run: |
+          set -euo pipefail
+          node --check ball46-member/member-odds-borderless-v3-20261021/borderless.mjs
+          node --check ball46-member/member-odds-borderless-v3-20261021/deploy.mjs
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {patchOddsBorderless,MARKER,CSS,LABEL} from './ball46-member/member-odds-borderless-v3-20261021/borderless.mjs';
+          const svg='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6.5h4.5m4.1 0h7.2M4 12h9.2m4.2 0h2.4M4 17.5h4.5m4.1 0h7.2"/><circle cx="10.6" cy="6.5" r="2"/><circle cx="15.6" cy="12" r="2"/><circle cx="10.6" cy="17.5" r="2"/></svg>';
+          const html='<link href="/member-odds-topbar.css?v=20261021-topbar-premium-v2"><button id="b46-member-odds-trigger">'+svg+'</button>';
+          const css='/* B46_MEMBER_ODDS_TOPBAR_ALIGNMENT_PREMIUM_V2_20261021 */';
+          const newCode=patchOddsBorderless({html,css});
+          assert(newCode.html.includes(svg+LABEL));
+          assert.equal(newCode.html.replace(svg+LABEL,svg).replace('member-odds-topbar.css?v=20261021-odds-borderless-v3','member-odds-topbar.css?v=20261021-topbar-premium-v2'),html);
+          assert.equal(newCode.css,css+'\n'+CSS+'\n');
+          assert(newCode.css.includes(MARKER));
+          console.log('BALL46_MEMBER_ODDS_BORDERLESS_V3_PATCH_CONTRACT_PASS');
+          JS
+      - name: Read only verify active Worker and critical files match exact V2
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {createHash} from 'node:crypto';
+          const account=process.env.CLOUDFLARE_ACCOUNT_ID,token=process.env.CLOUDFLARE_API_TOKEN;
+          assert(account&&token,'CLOUDFLARE_CREDENTIALS_MISSING');
+          const resp=await fetch('https://api.cloudflare.com/client/v4/accounts/'+account+'/workers/scripts/ball46-member-production/deployments?per_page=1',{headers:{Authorization:'Bearer '+token},signal:AbortSignal.timeout(24000)});
+          const result=await resp.json();
+          assert(resp.ok&&result.success,'READ_ONLY_CLOUDFLARE_ERROR');
+          const versions=result.result.deployments?.[0]?.versions;
+          assert(versions?.length===1&&Number(versions[0].percentage)===100,'MEMBER_VERSION_SPLIT');
+          const active=versions[0].version_id;
+          assert.equal(active,'f519877b-fc26-4df7-b0e4-90577b1d9c5a','MEMBER_ACTIVE_VERSION_MOVED');
+          for(const [p,want] of [['/member-odds-topbar.css','9df93d4b6c953705e312738afb2d9504bdb7ea1d1c396967a68d5873d7641ba3'],['/member.js','ef4489618ae07303a7f275b4b37fddd0f7a8cb721bf98d3216c887128c806524'],['/styles.css','5186dd9dfa27c36b7dced6068b15a20d04ab8f15ab771e33d61116c8725b817d']]){
+           const u=new URL(p,'https://member.ball46.com');u.searchParams.set('b46Preflight',Date.now());
+           const r=await fetch(u,{headers:{'cache-control':'no-cache'},signal:AbortSignal.timeout(24000)});
+           assert.equal(r.status,200,'MEMBER_HTTP_CHANGED_'+p);
+           const h=createHash('sha256').update(Buffer.from(await r.arrayBuffer())).digest('hex');
+           assert.equal(h,want,'LIVE_MEMBER_FILE_CHANGED_'+p);
+          }
+          console.log('BALL46_MEMBER_ODDS_BORDERLESS_V3_PREFLIGHT_PASS',JSON.stringify({active,liveAssetHashesChecked:3}));
+          JS
