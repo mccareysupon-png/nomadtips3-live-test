@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-10-20T22:23:34Z",
+  "updated_at": "2026-10-21T01:41:35Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -279,8 +279,8 @@
       "edge": 46.1,
       "ev": 0.8872,
       "required_confidence": 0.56,
-      "result": "PENDING",
-      "ft": null,
+      "result": "WIN",
+      "ft": "1-0",
       "locked_at": "2026-10-20T02:13:59Z",
       "source_url": "https://www.goaloo.com/football/categoria-primera-a-cucuta-vs-atletico-nacional-medellin/h2h-3011899",
       "summary_url": "https://www.goaloo.com/football/categoria-primera-a-cucuta-vs-atletico-nacional-medellin/summary-3011899",
@@ -340,7 +340,12 @@
         "away_recent": 10,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": 1.0,
+      "profit": 108.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-21T01:41:35Z"
     },
     {
       "id": "c1198b52db3fc9f2-AH-HOME-0p75",
@@ -6089,8 +6094,8 @@
       "edge": 8.7,
       "ev": 0.0986,
       "required_confidence": 0.6,
-      "result": "PENDING",
-      "ft": null,
+      "result": "WIN",
+      "ft": "4-0",
       "locked_at": "2026-10-20T02:13:56Z",
       "source_url": "https://www.goaloo.com/football/copa-lfpb-independiente-petrolero-vs-aurora/h2h-3101754",
       "summary_url": "https://www.goaloo.com/football/copa-lfpb-independiente-petrolero-vs-aurora/summary-3101754",
@@ -6150,7 +6155,12 @@
         "away_recent": 10,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": 1.0,
+      "profit": 71.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-21T01:41:35Z"
     },
     {
       "id": "51ad4af62a60f707-AH-HOME-m0p0",
@@ -6599,8 +6609,8 @@
       "edge": 15.5,
       "ev": 0.2447,
       "required_confidence": 0.56,
-      "result": "PENDING",
-      "ft": null,
+      "result": "WIN",
+      "ft": "2-1",
       "locked_at": "2026-10-20T02:13:57Z",
       "source_url": "https://www.goaloo.com/football/categoria-primera-a-internacional-de-bogota-vs-fortaleza-f-c/h2h-3011903",
       "summary_url": "https://www.goaloo.com/football/categoria-primera-a-internacional-de-bogota-vs-fortaleza-f-c/summary-3011903",
@@ -6660,7 +6670,12 @@
         "away_recent": 10,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": 1.0,
+      "profit": 106.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-21T01:41:35Z"
     },
     {
       "id": "5663d959f5e544fa-OU-OVER-2p25",
@@ -296848,6 +296863,276 @@
       "settlement_source": "goaloo-bf_us-direct-index",
       "goaloo_terminal_state": -1,
       "settled_at": "2026-10-20T22:23:34Z"
+    },
+    {
+      "id": "3a8ca06de6c7a36f-AH-HOME-0p75",
+      "goaloo_id": "3011899",
+      "date": "2026-10-20",
+      "kickoff": "2026-10-20 23:30:00",
+      "league": "Categoria Primera A",
+      "home": "Cucuta",
+      "away": "Atletico Nacional Medellin",
+      "market": "AH",
+      "selection": "HOME",
+      "line": 0.75,
+      "pick": "Cucuta +0.75",
+      "side": "home",
+      "odds": 2.08,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.9081,
+      "model_probability": 0.9081,
+      "market_fair_probability": 0.4468,
+      "market_edge": 0.4613,
+      "edge": 46.1,
+      "ev": 0.8872,
+      "required_confidence": 0.56,
+      "result": "WIN",
+      "ft": "1-0",
+      "locked_at": "2026-10-20T02:13:59Z",
+      "source_url": "https://www.goaloo.com/football/categoria-primera-a-cucuta-vs-atletico-nacional-medellin/h2h-3011899",
+      "summary_url": "https://www.goaloo.com/football/categoria-primera-a-cucuta-vs-atletico-nacional-medellin/summary-3011899",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 1.864,
+        "lambda_away": 0.639,
+        "home_win": 0.6898,
+        "draw": 0.2282,
+        "away_win": 0.082,
+        "h2h_adjustment": -0.0125,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.5789,
+          "gd_edge": 0.7151,
+          "clean_sheet_edge": 0.2098,
+          "failed_to_score_edge": 0.5268,
+          "bounded_adjustment": 0.0429,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": 1.0,
+      "profit": 108.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-21T01:41:35Z"
+    },
+    {
+      "id": "7146d84d33b290bf-AH-HOME-m0p0",
+      "goaloo_id": "3101754",
+      "date": "2026-10-20",
+      "kickoff": "2026-10-20 23:00:00",
+      "league": "Copa LFPB",
+      "home": "Independiente Petrolero",
+      "away": "Aurora",
+      "market": "AH",
+      "selection": "HOME",
+      "line": -0.0,
+      "pick": "Independiente Petrolero -0",
+      "side": "home",
+      "odds": 1.71,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.6211,
+      "model_probability": 0.6211,
+      "market_fair_probability": 0.5341,
+      "market_edge": 0.0871,
+      "edge": 8.7,
+      "ev": 0.0986,
+      "required_confidence": 0.6,
+      "result": "WIN",
+      "ft": "4-0",
+      "locked_at": "2026-10-20T02:13:56Z",
+      "source_url": "https://www.goaloo.com/football/copa-lfpb-independiente-petrolero-vs-aurora/h2h-3101754",
+      "summary_url": "https://www.goaloo.com/football/copa-lfpb-independiente-petrolero-vs-aurora/summary-3101754",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 1.765,
+        "lambda_away": 1.209,
+        "home_win": 0.5164,
+        "draw": 0.2517,
+        "away_win": 0.2319,
+        "h2h_adjustment": 0.0025,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.1528,
+          "gd_edge": 0.3512,
+          "clean_sheet_edge": 0.1463,
+          "failed_to_score_edge": 0.4098,
+          "bounded_adjustment": 0.0186,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": 1.0,
+      "profit": 71.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-21T01:41:35Z"
+    },
+    {
+      "id": "bb5418b58846d23e-1X2-HOME",
+      "goaloo_id": "3011903",
+      "date": "2026-10-20",
+      "kickoff": "2026-10-20 23:15:00",
+      "league": "Categoria Primera A",
+      "home": "Internacional de Bogota",
+      "away": "Fortaleza F.C",
+      "market": "1X2",
+      "selection": "HOME",
+      "line": null,
+      "pick": "Internacional de Bogota Win",
+      "side": "home",
+      "odds": 2.06,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.6042,
+      "model_probability": 0.6042,
+      "market_fair_probability": 0.4496,
+      "market_edge": 0.1546,
+      "edge": 15.5,
+      "ev": 0.2447,
+      "required_confidence": 0.56,
+      "result": "WIN",
+      "ft": "2-1",
+      "locked_at": "2026-10-20T02:13:57Z",
+      "source_url": "https://www.goaloo.com/football/categoria-primera-a-internacional-de-bogota-vs-fortaleza-f-c/h2h-3011903",
+      "summary_url": "https://www.goaloo.com/football/categoria-primera-a-internacional-de-bogota-vs-fortaleza-f-c/summary-3011903",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 1.548,
+        "lambda_away": 0.658,
+        "home_win": 0.6042,
+        "draw": 0.2724,
+        "away_win": 0.1234,
+        "h2h_adjustment": -0.01,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.3984,
+          "gd_edge": 0.5649,
+          "clean_sheet_edge": 0.478,
+          "failed_to_score_edge": 0.3415,
+          "bounded_adjustment": 0.0348,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": 1.0,
+      "profit": 106.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-21T01:41:35Z"
     }
   ],
   "note": "Automated Full-Time Winner First feed. Supplemental markets remain unpublished.",
