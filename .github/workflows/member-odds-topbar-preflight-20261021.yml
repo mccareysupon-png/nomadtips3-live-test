@@ -1,0 +1,65 @@
+name: BALL46 MEMBER — ODDS Topbar Read-Only Preflight
+on:
+  push:
+    branches: [codex/ball46-member-odds-topbar-20261021]
+    paths:
+      - '.github/workflows/member-odds-topbar-preflight-20261021.yml'
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: ${{ github.sha }}}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Test source syntax and topbar ODDS patch contract
+        run: |
+          set -euo pipefail
+          node --check ball46-member/member-odds-topbar-20261021/topbar.js
+          node --check ball46-member/member-odds-topbar-20261021/patch.mjs
+          node --check ball46-member/member-odds-topbar-20261021/deploy.mjs
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {patchOdds} from './ball46-member/member-odds-topbar-20261021/patch.mjs';
+          const html='<html><head>kpiV7=desktop-nine-in-one-row-20261020</head><body>b46-member-loading<div class="topbar-account-slot">USER</div><script src="/member.js?v=test" defer></script></body></html>';
+          const js="ball46:member-data-ready b46-member-eventflow-signal-v3-20261020 ['WIN',Number(s.win||0)+Number(s.halfWin||0),'win'] ['LOSS',Number(s.loss||0)+Number(s.halfLoss||0),'loss'] function fmtOdds(v){ const n=Number(v); return Number.isFinite(n)?'@'+n.toFixed(2):'—'; } function render(){renderFavoritesNav();renderTabs();renderSummary();renderCornerAudit();renderRows();renderPagination();}";
+          const result=patchOdds({html,js});
+          assert(result.html.includes('b46-member-odds-trigger'));
+          assert(result.html.includes('member-odds-topbar.js'));
+          assert(result.js.includes("ball46:member-odds-format-change"));
+          assert(result.js.includes('Ball46MemberOdds'));
+          assert(result.js.includes("['WIN',Number(s.win||0)+Number(s.halfWin||0),'win']"));
+          assert(result.js.includes('b46-member-eventflow-signal-v3-20261020'));
+          console.log('BALL46_MEMBER_ODDS_TOPBAR_PATCH_CONTRACT_PASS');
+          JS
+      - name: Read-only inspect current Member active Cloudflare version and live files
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {createHash} from 'node:crypto';
+          const a=process.env.CLOUDFLARE_ACCOUNT_ID,t=process.env.CLOUDFLARE_API_TOKEN;
+          assert(a&&t,'CLOUDFLARE_SECRETS_MISSING');
+          const r=await fetch('https://api.cloudflare.com/client/v4/accounts/'+a+'/workers/scripts/ball46-member-production/deployments?per_page=1',{headers:{Authorization:'Bearer '+t},signal:AbortSignal.timeout(26000)});
+          const payload=await r.json();
+          assert(r.ok&&payload.success,'CLOUDFLARE_READ_ERROR');
+          const versions=payload.result.deployments?.[0]?.versions;
+          assert(versions?.length===1&&Number(versions[0].percentage)===100,'MEMBER_ACTIVE_VERSION_SPLIT');
+          const active=versions[0].version_id;
+          assert.equal(active,'f8e5c136-ef14-43da-9042-d252acebfeec','MEMBER_VERSION_CHANGED_STOP');
+          const hash=b=>createHash('sha256').update(b).digest('hex');
+          const checks=[['/member.js','6f62bf55ad0edbf3f3837d4754bc2a65e13ea62dcf27fd76b5d77780a2878acf'],['/styles.css','5186dd9dfa27c36b7dced6068b15a20d04ab8f15ab771e33d61116c8725b817d']];
+          for(const [path,expected] of checks){
+           const r=await fetch('https://member.ball46.com'+path+'?memberOddsPreflight='+Date.now(),{headers:{'cache-control':'no-cache'},signal:AbortSignal.timeout(26000)});
+           assert.equal(r.status,200,'LIVE_ASSET_HTTP_ERROR_'+path);
+           assert.equal(hash(Buffer.from(await r.arrayBuffer())),expected,'LIVE_ASSET_CHANGED_'+path);
+          }
+          const html=await fetch('https://member.ball46.com/member.html',{redirect:'manual',signal:AbortSignal.timeout(26000)});
+          assert([302,303].includes(html.status),'MEMBER_AUTH_GATE_CHANGED');
+          console.log('BALL46_MEMBER_ODDS_TOPBAR_LIVE_PREFLIGHT_PASS',JSON.stringify({activeVersion:active,liveAssetHashesVerified:2,memberLoginProtected:true}));
+          JS
