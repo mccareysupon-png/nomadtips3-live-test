@@ -1,0 +1,18 @@
+name: BALL46 All Matches Native Expansion Source Audit
+on:
+  push:
+    branches: [fix/ball46-allmatches-expanded-native-v5-20261021]
+    paths:
+      - '.github/workflows/ball46-native-expanded-v5-source-audit.yml'
+      - 'deploy-assets/allmatches-expanded-v5/source-audit.mjs'
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Audit actual Production existing expansion source (no write access)
+        run: node deploy-assets/allmatches-expanded-v5/source-audit.mjs
