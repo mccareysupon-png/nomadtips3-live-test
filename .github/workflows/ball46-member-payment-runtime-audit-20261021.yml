@@ -32,6 +32,7 @@ jobs:
           assert(versions.length===1&&Number(versions[0].percentage)===100,'MULTIPLE_MEMBER_WORKER_VERSIONS_ACTIVE');
           const current=versions[0].version_id;
           const settings=await read('/workers/scripts/ball46-member-production/settings');
+          const deployedVersion=await read('/workers/workers/ball46-member-production/versions/'+current+'?include=modules');
           const bindings=settings.bindings||[];
           const find=name=>bindings.find(b=>b.name===name);
           const present=name=>Boolean(find(name));
@@ -40,9 +41,12 @@ jobs:
           assert(required.every(present),'REQUIRED_PRODUCTION_BINDING_MISSING '+JSON.stringify(has));
           assert.equal(find('STRIPE_SECRET_KEY').type,'secret_text','LIVE_STRIPE_SECRET_NOT_SECRET_BINDING');
           const priceBinding=find('STRIPE_PRICE_ID');
-          const priceValueVisible=typeof priceBinding?.value==='string';
+          const versionPriceBinding=(deployedVersion.bindings||[]).find(b=>b.name==='STRIPE_PRICE_ID');
+          const verifiedPriceCandidate=[priceBinding,versionPriceBinding].find(b=>typeof b?.value==='string');
+          const priceValueVisible=Boolean(verifiedPriceCandidate);
+          if(priceValueVisible)assert.equal(verifiedPriceCandidate.value,'price_1UOGIkFXmKSSVxQdhVjI9ml6','ACTIVE_VERSION_STRIPE_PRICE_MISMATCH');
           assert(priceBinding&&typeof priceBinding.type==='string','LIVE_STRIPE_PRICE_BINDING_MISSING');
-          if(priceValueVisible)assert.equal(priceBinding.value,'price_1UOGIkFXmKSSVxQdhVjI9ml6','LIVE_STRIPE_PRICE_BINDING_MISMATCH');
+
           const checkoutVar=find('MEMBER_CHECKOUT_ENABLED');
           if(typeof checkoutVar.value==='string')assert.equal(checkoutVar.value,'true','CHECKOUT_FLAG_DISABLED');
           // The script-settings endpoint may omit custom-domain mappings; verify routing via HTTPS health instead.
@@ -54,7 +58,7 @@ jobs:
             assert.equal(r.status,expectedStatus,'PUBLIC_ROUTE_UNEXPECTED_'+path);
             checks.push({path,http:r.status});
           }
-          const expectedWorkerScript=await read('/workers/workers/ball46-member-production/versions/'+current+'?include=modules');
+          const expectedWorkerScript=deployedVersion;
           const main=(expectedWorkerScript.modules||[]).find(m=>m.name===expectedWorkerScript.main_module);
           assert(main?.content_base64,'MEMBER_WORKER_MODULE_UNREADABLE');
           const bytes=Buffer.from(main.content_base64,'base64');
