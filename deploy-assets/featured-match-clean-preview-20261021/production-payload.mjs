@@ -9,16 +9,16 @@ let script=FEATURED_PREVIEW_SCRIPT.slice(0,sampleStart)+FEATURED_PREVIEW_SCRIPT.
 const old='const data=missing?sampleFromScreenshot():actual;';
 if(!script.includes(old))throw Error('SCREENSHOT_FALLBACK_NOT_FOUND');
 script=script.replace(old,
- "if(missing){\\n"+
- "  // No real fixture available. Never show mock screenshot data to visitors.\\n"+
- "  if(pc)pc.replaceChildren();\\n"+
- "  if(mobile)mobile.replaceChildren();\\n"+
- "  src.classList.remove('b46fm-source-hidden');\\n"+
- "  last='';\\n"+
- "  return;\\n"+
- " }\\n"+
+ "if(missing){\n"+
+ "  // No real fixture available. Never show mock screenshot data to visitors.\n"+
+ "  if(pc)pc.replaceChildren();\n"+
+ "  if(mobile)mobile.replaceChildren();\n"+
+ "  src.classList.remove('b46fm-source-hidden');\n"+
+ "  last='';\n"+
+ "  return;\n"+
+ " }\n"+
  " const data=actual;");
 if(script.includes('function sampleFromScreenshot')||script.includes('sampleFromScreenshot()'))throw Error('MOCK_DATA_STILL_REACHABLE');
 export const FEATURED_PRODUCTION_SCRIPT=script;
-export const FEATURED_PRODUCTION_CSS=readFileSync('./clean-featured.css','utf8')+'\\n'+readFileSync('./recessed-facts-production.css','utf8');
+export const FEATURED_PRODUCTION_CSS=readFileSync('./clean-featured.css','utf8')+'\n'+readFileSync('./recessed-facts-production.css','utf8');
 if(!FEATURED_PRODUCTION_CSS.includes('inset 0 3px 7px -3px'))throw Error('RECESSED_CSS_NOT_INCLUDED');
