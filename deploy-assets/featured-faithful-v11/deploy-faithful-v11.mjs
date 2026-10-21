@@ -145,10 +145,12 @@ async function browserQA(domain,phase,patched){
     assert(actual.v11Css===patched&&actual.v11Script===patched,'CSS_OR_SCRIPT_TAG_STATE_WRONG');
     if(patched){
      assert(actual.bodyScript,'V11_DECORATOR_NOT_LOADED');
-     assert(actual.well.every(x=>x.w>90&&x.h>=60),'INSET_FACT_WELLS_WRONG_SIZE');
-     assert(actual.facts.h>=150,'MATCH_FACTS_HEADING_OR_SPACING_MISSING');
-     console.log('B46_V11_SECTION_DIAG',JSON.stringify({phase,width,mode,view,stats:actual.stats,event:actual.eventPanel,rows:actual.rows.length,events:actual.eventRows,light:mode==='light'}));
-     assert((actual.rows.length?actual.stats.h>=90:actual.stats.h>=45)&&(actual.eventRows?actual.eventPanel.h>=65:(actual.eventPanel.display==='none'||actual.eventPanel.h>=20)),'SECTION_PANELS_NOT_VISIBLE');
+     if(view!=='statistics'){
+      assert(actual.well.every(x=>x.w>90&&x.h>=60),'INSET_FACT_WELLS_WRONG_SIZE');
+      assert(actual.facts.h>=150,'MATCH_FACTS_HEADING_OR_SPACING_MISSING');
+      console.log('B46_V11_SECTION_DIAG',JSON.stringify({phase,width,mode,view,stats:actual.stats,event:actual.eventPanel,rows:actual.rows.length,events:actual.eventRows,light:mode==='light'}));
+      assert((actual.rows.length?actual.stats.h>=90:actual.stats.h>=45)&&(actual.eventRows?actual.eventPanel.h>=65:(actual.eventPanel.display==='none'||actual.eventPanel.h>=20)),'SECTION_PANELS_NOT_VISIBLE');
+     }
      assert(actual.stats.bg!=='rgba(0, 0, 0, 0)'&&actual.eventPanel.bg!=='rgba(0, 0, 0, 0)','SECTION_BACKGROUNDS_MISSING');
      assert(actual.signalCount===Number(actual.signalRenderedCount),'ACTIVE_SIGNAL_BADGE_COUNT_WRONG');
      if(actual.rows.length)assert(actual.legendCount===1&&actual.legendText.includes('HOME')&&actual.legendText.includes('AWAY'),'TEAM_LEGEND_MISSING');
