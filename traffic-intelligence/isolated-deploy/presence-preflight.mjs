@@ -49,6 +49,7 @@ function validateBindings(settings){
 }
 async function snapshot(){
  const [version,settings,subdomain,schedules,main,collector,domains]=await Promise.all([active(ADMIN),api(`${admin}/settings`),api(`${admin}/subdomain`),api(`${admin}/schedules`),protectedWorker(MAIN),protectedWorker(COLLECTOR),api(`${root}/workers/domains`)]);
+ const activeDetail=await api(`${admin}/versions/${version}`);assert(Array.isArray(activeDetail.resources?.bindings),'Active version binding inventory required');settings.bindings=activeDetail.resources.bindings;
  validateBindings(settings);
  const access=await accessState(settings);
  return {version,settings,subdomain,schedules,main,collector,domainsHash:hash(domains),access};
@@ -72,5 +73,5 @@ const versions=await api(`${admin}/versions`);assert.equal((versions.items||vers
 const collectorSettings=await api(`${root}/workers/scripts/${COLLECTOR}/settings`);
 assert.equal(before.collector.version,'ff93556d-2416-4268-b237-d6aa6ee29b16','Collector drift: review before any release');
 await writeFile('deployment-evidence/presence-readonly.json',JSON.stringify({admin:evidence(before),collector:{bindings:collectorSettings.bindings.map(b=>({name:b.name,type:b.type,namespace_id:b.namespace_id,valueHash:b.type==='plain_text'?hash(b.text):undefined})),settingsHash:hash(collectorSettings)},writes},null,2));
-console.log('COLLECTOR_BINDING_NAMES',JSON.stringify(collectorSettings.bindings.map(b=>({name:b.name,type:b.type,namespace_id:b.namespace_id}))));
+console.log('COLLECTOR_LATEST_BINDING_NAMES',JSON.stringify(collectorSettings.bindings.map(b=>({name:b.name,type:b.type,namespace_id:b.namespace_id}))));
 console.log('PRESENCE PREFLIGHT PASSED; no writes; Collector remains OFF; no Zaraz or main Worker changes');
