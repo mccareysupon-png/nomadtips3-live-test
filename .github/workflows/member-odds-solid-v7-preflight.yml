@@ -1,0 +1,67 @@
+name: BALL46 Member ODDS Solid V7 — Read Only Preflight
+on:
+  push:
+    branches: [codex/ball46-member-odds-solid-v7-20261021]
+    paths:
+      - '.github/workflows/member-odds-solid-v7-preflight.yml'
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate fully opaque popup only, unchanged label, and syntax
+        run: |
+          set -euo pipefail
+          node --check ball46-member/member-odds-solid-v7-20261021/solid.mjs
+          node --check ball46-member/member-odds-solid-v7-20261021/deploy.mjs
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {patchSolid,CSS} from './ball46-member/member-odds-solid-v7-20261021/solid.mjs';
+          const html='<html><span class="b46-odds-trigger-label">ODDS</span><link href="/member-odds-topbar.css?v=20261021-odds-opacity85-v6"></html>';
+          const css='/* B46_MEMBER_ODDS_DROPDOWN_OPACITY85_V6_20261021 */';
+          const patch=patchSolid({html,css});
+          assert.equal(patch.html.replace('odds-solid-v7','odds-opacity85-v6'),html,'MEMBER_HTML_SCOPE');
+          assert.equal(patch.css,css+'\n'+CSS+'\n','CSS_APPEND_ONLY');
+          assert(CSS.includes('background:rgb(18,38,48)!important'),'SOLID_OPAQUE_BACKGROUND_MISSING');
+          assert(CSS.includes('backdrop-filter:none!important'),'BACKDROP_BLUR_NOT_DISABLED');
+          assert(!CSS.includes('rgba(')&&!CSS.includes('opacity:.'),'TRANSPARENCY_NOT_ALLOWED');
+          console.log('BALL46_MEMBER_ODDS_SOLID_V7_PATCH_PREFLIGHT_PASS');
+          JS
+      - name: Read-only verify latest Worker V6, public SHA, and Cloudflare Access
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {createHash} from 'node:crypto';
+          const a=process.env.CLOUDFLARE_ACCOUNT_ID,t=process.env.CLOUDFLARE_API_TOKEN;
+          assert(a&&t,'NO_CLOUDFLARE_READ_ACCESS');
+          const r=await fetch('https://api.cloudflare.com/client/v4/accounts/'+a+'/workers/scripts/ball46-member-production/deployments?per_page=1',{headers:{Authorization:'Bearer '+t},signal:AbortSignal.timeout(25000)});
+          const j=await r.json();assert(r.ok&&j.success,'CF_READ_FAILED');
+          const versions=j.result.deployments?.[0]?.versions;
+          assert(versions?.length===1&&Number(versions[0].percentage)===100,'MEMBER_VERSION_SPLIT');
+          assert.equal(versions[0].version_id,'9f1c922e-270e-4655-8bc3-bd40abbb5763','ACTIVE_WORKER_VERSION_MOVED');
+          const files={
+           '/member-odds-topbar.css':'cd27fb17fd5941d41f234d81d8047c3fcac436dd247a3cad0792a00c8f037e7d',
+           '/member.js':'ef4489618ae07303a7f275b4b37fddd0f7a8cb721bf98d3216c887128c806524',
+           '/styles.css':'5186dd9dfa27c36b7dced6068b15a20d04ab8f15ab771e33d61116c8725b817d'
+          };
+          for(const [path,want] of Object.entries(files)){
+           const url=new URL(path,'https://member.ball46.com');url.searchParams.set('preflightSolidOdds',Date.now());
+           const x=await fetch(url,{headers:{'cache-control':'no-cache'},signal:AbortSignal.timeout(20000)});
+           assert.equal(x.status,200,'MEMBER_ASSET_HTTP_ERROR_'+path);
+           assert.equal(createHash('sha256').update(Buffer.from(await x.arrayBuffer())).digest('hex'),want,'MEMBER_ASSET_SHA_CHANGED_'+path);
+          }
+          const gate=await fetch('https://member.ball46.com/member.html',{redirect:'manual',signal:AbortSignal.timeout(20000)});
+          assert([302,303].includes(gate.status),'MEMBER_ACCESS_CHANGED');
+          console.log('BALL46_MEMBER_ODDS_SOLID_V7_READONLY_PASS',JSON.stringify({worker:versions[0].version_id,assets:3,memberGate:gate.status}));
+          JS
