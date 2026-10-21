@@ -73,3 +73,12 @@ html body .featured-card.b46fm-source-hidden{display:none!important}
 @media(min-width:768px){
  .b46fm-preview-mobile{display:none!important}
 }
+
+/* Explicit preview-only screenshot-reference styling, never mistaken for a live signal */
+.b46fm .fm-sample-signal{display:grid;gap:4px;padding:11px 12px!important}
+.b46fm .fm-sample-signal-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.b46fm .fm-sample-signal-top b{color:var(--fm-green)!important;font-size:12px;font-weight:850}
+.b46fm .fm-sample-signal-top span{color:var(--fm-fg);font-size:10px;font-weight:760;text-align:right}
+.b46fm .fm-sample-signal-detail,.b46fm .fm-sample-signal-meta{display:block;color:var(--fm-dim);font-size:9px;line-height:1.35}
+.b46fm .fm-sample-signal-meta{color:var(--fm-green)}
+.b46fm .fm-eyebrow:has(+.fm-league){flex-wrap:wrap}
