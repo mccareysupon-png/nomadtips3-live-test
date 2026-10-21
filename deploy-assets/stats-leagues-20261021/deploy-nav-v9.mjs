@@ -95,7 +95,7 @@ async function browserQA(domain,phase,patched){
     });
     assert(before.count>5&&before.flags===143,'BOARD_OR_FLAG_REGISTRY_CHANGED');
     assert(before.docWidth<=width+5,'PAGE_OVERFLOW');
-    assert(before.pcFacts===4&&before.pcRecessed,'PC_FEATURED_V7_REGRESSED');
+    if(width>=768)assert(before.pcFacts===4&&before.pcRecessed,'PC_FEATURED_V7_REGRESSED');
     let clicked={};
     if(width>=768){
       const chosen=await page.$('[data-league-filter]:not([disabled])');
