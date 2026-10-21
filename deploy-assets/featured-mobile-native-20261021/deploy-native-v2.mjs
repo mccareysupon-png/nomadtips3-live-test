@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import {existsSync,mkdirSync,writeFileSync,readFileSync} from 'node:fs';
 import puppeteer from 'puppeteer-core';
+import {PNG} from 'pngjs';
 
 /* BALL46 — enable ORIGINAL Featured Match on mobile, with 4 inset fact wells.
    Preserve exact active Worker base, modules, assets, bindings and rendering.
@@ -103,6 +104,8 @@ async function browserQA(domain,prefix,expectedMobileVisible){
     sourcePatched:!!document.getElementById('b46-native-featured-mobile-20261021'),oldPatch:!!document.getElementById('b46-featured-clean-recessed-production-20261021-style'),
     originalFields:root.querySelectorAll('[data-featured-home],[data-featured-away],[data-featured-score],[data-featured-stats],[data-featured-events],[data-featured-signal]').length,
     facts:cssFacts,
+    wellPixel: {inside:{x:Math.round(facts[0].getBoundingClientRect().right-14),y:Math.round(facts[0].getBoundingClientRect().top+12)},
+      outside:{x:Math.round((facts[0].getBoundingClientRect().right+facts[1].getBoundingClientRect().left)/2),y:Math.round(facts[0].getBoundingClientRect().top+12)}},
     gapAboveStats:root.querySelector('.feature-stats')?.getBoundingClientRect().top-root.querySelector('.feature-facts')?.getBoundingClientRect().bottom,
     emptySignal:!root.querySelector('.feature-signal')?.textContent?.trim()&&!root.querySelector('.feature-signal')?.children?.length,
     secondaryRailVisible:[...rail.children].filter(x=>!x.matches('.featured-card')).some(x=>getComputedStyle(x).display!=='none'),
@@ -134,7 +137,16 @@ async function browserQA(domain,prefix,expectedMobileVisible){
   if(width<768&&!expectedMobileVisible)assert(d.card.w===0&&d.railDisplay==='none','BASELINE_MOBILE_NOT_HIDDEN');
   if(width>=768)assert(d.card.w>=260&&d.railDisplay==='grid','PC_FEATURED_CARD_CHANGED');
   assert.deepEqual(errors,[],'PAGE_JS_ERRORS');
-  await p.screenshot({path:'proof/'+prefix+'-'+width+'-'+mode+'.png',fullPage:false});
+  const shot=await p.screenshot({path:'proof/'+prefix+'-'+width+'-'+mode+'.png',fullPage:false});
+  if(width<768&&prefix!=='before'){
+   const image=PNG.sync.read(shot);
+   const rgb=pt=>{assert(pt.x>=0&&pt.y>=0&&pt.x<image.width&&pt.y<image.height,'WELL_PIXEL_OUTSIDE_SCREENSHOT');const at=(pt.y*image.width+pt.x)*4;return [...image.data.subarray(at,at+3)]};
+   const a=rgb(d.wellPixel.inside),z=rgb(d.wellPixel.outside);
+   const brightness=v=>v[0]*.2126+v[1]*.7152+v[2]*.0722;
+   const delta=brightness(z)-brightness(a);
+   assert(delta>=12,'INSET_WELLS_NOT_VISIBLY_DARKER_THAN_CARD: '+JSON.stringify({a,z,delta}));
+   console.log('B46_VISUAL_WELL_CONTRAST_PASS',JSON.stringify({prefix,width,mode,inside:a,outside:z,delta}));
+  }
   console.log('B46_NATIVE_MOBILE_BROWSER_PASS',JSON.stringify({prefix,mode,...d, facts:d.facts.map(x=>({width:x.width,height:x.height,border:x.border,shadow:x.shadow}))}));
   checks.push(d);
   }finally{await p.close()}
