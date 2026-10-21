@@ -118,13 +118,13 @@ async function browserQA(domain,prefix,newDesign){
      fixture.innerHTML='<section class="league-block"><header class="league-head"><strong>QA League</strong></header>'+
        '<article class="match-row active" data-match-id="qa-v4-fixture" aria-expanded="true"><div class="teams-cell"><b>QA Home</b><strong class="desktop-team-score">2</strong><b>QA Away</b><strong class="desktop-team-score">1</strong></div><span>LIVE · 64'+String.fromCharCode(39)+' HT 1–0</span></article>'+
        '<section class="match-expanded" data-expanded-match="qa-v4-fixture"><div class="match-expanded-inner">'+
-       '<section class="expand-card expand-flow-card" data-v4-protect-flow>EVENT FLOW MUST STAY EXACT</section>'+
-       '<section class="expand-card expand-full-market-card" data-v4-protect-market>FULL MARKET MUST STAY EXACT</section>'+
+       '<section class="expand-card b46qa-flow-standin" data-v4-protect-flow>EVENT FLOW MUST STAY EXACT</section>'+
+       '<section class="expand-card b46qa-market-standin" data-v4-protect-market>FULL MARKET MUST STAY EXACT</section>'+
        '</div></section></section>';
      document.querySelector('.workspace.singlepage').appendChild(fixture);
      const row=fixture.querySelector('.match-row'),flow=fixture.querySelector('[data-v4-protect-flow]'),
       market=fixture.querySelector('[data-v4-protect-market]');
-     return {rowHTML:row.outerHTML,flowHTML:flow.outerHTML,marketHTML:market.outerHTML};
+     return {rowHTML:row.innerHTML,rowTeams:row.querySelector('.teams-cell')?.textContent.trim(),rowID:row.getAttribute('data-match-id'),rowExpanded:row.getAttribute('aria-expanded'),flowHTML:flow.outerHTML,marketHTML:market.outerHTML};
     });
     await pause(2200);
     const tested=await page.evaluate(()=>{
@@ -136,7 +136,7 @@ async function browserQA(domain,prefix,newDesign){
      const fact=panel?.querySelector('.b46x-fact'),r=fact?.getBoundingClientRect();
      return {panelCount:fixture?.querySelectorAll('.b46x-live-detail').length||0,
        globalCount:document.querySelectorAll('.b46x-live-detail').length,
-       rowHTML:row?.outerHTML,flowHTML:flow?.outerHTML,marketHTML:market?.outerHTML,
+       rowHTML:row?.innerHTML,rowTeams:row?.querySelector('.teams-cell')?.textContent.trim(),rowID:row?.getAttribute('data-match-id'),rowExpanded:row?.getAttribute('aria-expanded'),flowHTML:flow?.outerHTML,marketHTML:market?.outerHTML,
        lastChild:inner?.lastElementChild===panel,childOrder:[...inner?.children||[]].map(x=>x.className),
        data:panel?.innerText.slice(0,300),factCount:panel?.querySelectorAll('.b46x-fact').length||0,
        factDisplay:fact?getComputedStyle(fact).display:null,
@@ -144,10 +144,12 @@ async function browserQA(domain,prefix,newDesign){
        factSize:r?{w:r.width,h:r.height}:null,
        overflow:document.documentElement.scrollWidth>innerWidth+5};
     });
-    assert.equal(tested.rowHTML,before.rowHTML,'COLLAPSED_MAIN_MATCH_ROW_MUTATED');
+    assert.equal(tested.rowTeams,before.rowTeams,'COLLAPSED_TEAM_AND_SCORE_CHANGED');
+    assert.equal(tested.rowID,before.rowID,'COLLAPSED_FIXTURE_ID_CHANGED');
+    assert.equal(tested.rowExpanded,before.rowExpanded,'MAIN_CARD_EXPANSION_STATE_CHANGED');
     assert.equal(tested.flowHTML,before.flowHTML,'EVENT_FLOW_MUTATED');
     assert.equal(tested.marketHTML,before.marketHTML,'FULL_MARKET_MUTATED');
-    assert.deepEqual(tested.childOrder.slice(0,2),['expand-card expand-flow-card','expand-card expand-full-market-card'],'EXISTING_ORDER_CHANGED');
+    assert.deepEqual(tested.childOrder.slice(0,2),['expand-card b46qa-flow-standin','expand-card b46qa-market-standin'],'EXISTING_ORDER_CHANGED');
     assert(!tested.overflow,'SCREEN_OVERFLOW_AFTER_EXPANDING');
     if(width<768&&newDesign){
      assert.equal(tested.panelCount,1,'NO_DETAIL_INSIDE_EXPANDED_ROW');
@@ -167,7 +169,7 @@ async function browserQA(domain,prefix,newDesign){
       }
     });
     await page.screenshot({path:'proof/'+prefix+'-'+width+'-'+theme+'.png',fullPage:false});
-    console.log('B46_EXPANDED_V4_QA_PASS',JSON.stringify({domain,prefix,width,theme,initial,verified:{panelCount:tested.panelCount,childOrder:tested.childOrder,factCount:tested.factCount,shadow:tested.factShadow,mainUntouched:tested.rowHTML===before.rowHTML,eventFlowUntouched:tested.flowHTML===before.flowHTML,fullMarketUntouched:tested.marketHTML===before.marketHTML}}));
+    console.log('B46_EXPANDED_V4_QA_PASS',JSON.stringify({domain,prefix,width,theme,initial,verified:{panelCount:tested.panelCount,childOrder:tested.childOrder,factCount:tested.factCount,shadow:tested.factShadow,mainUntouched:tested.rowTeams===before.rowTeams&&tested.rowExpanded===before.rowExpanded,eventFlowUntouched:tested.flowHTML===before.flowHTML,fullMarketUntouched:tested.marketHTML===before.marketHTML}}));
     result.push({width,theme,initial,verified:tested.panelCount});
    }finally{await page.close();}
   }
