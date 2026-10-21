@@ -22,13 +22,51 @@ function info(src){
  home:t(q(src,'[data-featured-home]')),away:t(q(src,'[data-featured-away]')),score:t(q(src,'[data-featured-score]')),
  facts,stats,events,signal,sigContent};
 }
+function sampleFromScreenshot(){
+ return {
+  isSample:true,
+  minute:"84'",
+  league:'Brazil Serie B',
+  flagSrc:'',
+  home:'Londrina',
+  away:'Cuiaba',
+  score:'1–0',
+  facts:[
+   {label:'HALF-TIME',value:'HT 1–0'},
+   {label:'CORNERS',value:'2–7'},
+   {label:'CARDS H · A',value:'0 Yellow / 0 Red · 0 Yellow / 0 Red'},
+   {label:'ODDS AGE',value:'40s'}
+  ],
+  stats:[
+   {home:'2',name:'Shots on target',away:'7',homePct:'29%',awayPct:'100%'},
+   {home:'10',name:'Shots off target',away:'15',homePct:'67%',awayPct:'100%'},
+   {home:'2',name:'Corners',away:'7',homePct:'29%',awayPct:'100%'},
+   {home:'66',name:'Attacks',away:'141',homePct:'47%',awayPct:'100%'},
+   {home:'14',name:'Dangerous attacks',away:'72',homePct:'19%',awayPct:'100%'},
+   {home:'36%',name:'Possession',away:'64%',homePct:'36%',awayPct:'64%'}
+  ],
+  events:[
+   {minute:"84'",message:'corner · away'},
+   {minute:"79'",message:'corner · away'},
+   {minute:"79'",message:'substitution · home'},
+   {minute:"74'",message:'corner · away'},
+   {minute:"72'",message:'substitution · away'}
+  ],
+  sampleSignals:[
+   {title:'OVER',market:'Goals OVER · Full Time',detail:"Line +1.50 · Pinnacle",time:"Signal 35' · Entry 1–0"},
+   {title:'AWAY',market:'1X2 · Full Time',detail:'Bet365',time:"Signal 21' · Entry 0–0"}
+  ],
+  sigContent:'SAMPLE ONLY',
+  signal:null
+ };
+}
 function render(root,d,isMobile){
  const panel=create('article','b46fm',root);
  panel.setAttribute('aria-label','Featured match live data overview');
  const head=create('div','fm-header',panel);
  const main=create('div','fm-header-main',head);
  const ey=create('div','fm-eyebrow',main);
- create('span','fm-live-dot',ey);create('span','',ey,'FEATURED MATCH');
+ create('span','fm-live-dot',ey);create('span','',ey,d.isSample?'FEATURED MATCH · DESIGN SAMPLE':'FEATURED MATCH');
  const league=create('div','fm-league',main);
  if(d.flagSrc){const f=create('img','',league);f.src=d.flagSrc;f.width=15;f.height=11;f.alt='';f.setAttribute('aria-hidden','true');}
  const l=create('span','',league,d.league||'League unavailable');l.title=d.league;
@@ -46,7 +84,15 @@ function render(root,d,isMobile){
  const signalSection=create('section','fm-section',panel);signalSection.dataset.section='signal';
  const sigTop=create('div','fm-section-top',signalSection);create('span','fm-caption',sigTop,'ACTIVE SIGNALS');
  const sigRoot=create('div','fm-signal-container',signalSection);
- if(!d.sigContent)signalSection.hidden=true;
+ if(d.isSample&&d.sampleSignals?.length){
+  for(const sign of d.sampleSignals){
+   const box=create('div','fm-signal fm-sample-signal',sigRoot);
+   const top=create('div','fm-sample-signal-top',box);
+   create('b','',top,sign.title);create('span','',top,sign.market);
+   create('span','fm-sample-signal-detail',box,sign.detail);
+   create('span','fm-sample-signal-meta',box,sign.time);
+  }
+ }else if(!d.sigContent)signalSection.hidden=true;
  else{
   const wrapper=create('div','fm-signal',sigRoot);
   const clone=d.signal.cloneNode(true);clone.removeAttribute('id');wrapper.appendChild(clone);
@@ -94,13 +140,15 @@ function attach(src){
 function refresh(){
  const src=document.querySelector('.featured-card[data-featured]');
  if(!src)return;
- const data=info(src);
+ const actual=info(src);
+ const missing=!actual.home||actual.home==='—'||!actual.away||actual.away==='—'||!actual.score||actual.score==='—';
+ const data=missing?sampleFromScreenshot():actual;
  if(!attach(src))return;
  const signature=[data.minute,data.league,data.home,data.away,data.score,
    data.facts.map(x=>x.label+':'+x.value).join('|'),
    data.stats.map(x=>[x.home,x.name,x.away,x.homePct,x.awayPct].join('/')).join('|'),
    data.events.map(x=>x.minute+x.message).join('|'),
-   data.signal?.innerHTML||'',expanded].join('\u001d');
+   data.signal?.innerHTML||'',data.isSample?'SCREENSHOT_SAMPLE':'LIVE',expanded].join('\u001d');
  if(signature!==last||!pc.querySelector('.b46fm')||!mobile.querySelector('.b46fm')){
   pc.replaceChildren();mobile.replaceChildren();
   render(pc,data,false);render(mobile,data,true);
