@@ -87,3 +87,6 @@
 :is(html[data-theme="light"] body .workspace.singlepage .live-stage-grid > .right-rail > .featured-card[data-featured],html[data-theme="light"] body #b46gn-detail#b46gn-detail .b46gn-featured .featured-card[data-featured]) .feature-events>.event-item{background:#f9fcf9!important;box-shadow:none!important}
 
 :is(html body .workspace.singlepage .live-stage-grid > .right-rail > .featured-card[data-featured],html body #b46gn-detail#b46gn-detail .b46gn-featured .featured-card[data-featured]) .feature-events:empty{display:none!important;margin:0!important;padding:0!important}
+
+/* Late-injected historical overlays use higher specificity. This only matches original V11 Featured card in Soft Light. */
+:is(html[data-theme="light"] body .workspace.singlepage .live-stage-grid > .right-rail > .featured-card.featured-card[data-featured]:not(#b46-v11-other-a):not(#b46-v11-other-b):not(#b46-v11-other-c),html[data-theme="light"] body #b46gn-detail#b46gn-detail .b46gn-featured .featured-card.featured-card[data-featured]:not(#b46-v11-other-a):not(#b46-v11-other-b):not(#b46-v11-other-c)){background:#f8fbf8!important;background-image:none!important;box-shadow:0 5px 18px rgba(34,74,48,.075)!important}
