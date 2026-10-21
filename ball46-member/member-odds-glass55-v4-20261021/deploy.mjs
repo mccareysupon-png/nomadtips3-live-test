@@ -284,8 +284,11 @@ try{
  writeFileSync(DIR+'/member.html',oddsV1.html,'utf8');
  writeFileSync(DIR+'/member.js',oddsV1.js,'utf8');
  writeFileSync(DIR+'/styles.css',restored.css,'utf8');
+ const borderlessEnd='\n'+BORDERLESS_CSS+'\n';
+ const liveBorderlessCss=currentOddsCss.data.toString('utf8');
+ assert(liveBorderlessCss.endsWith(borderlessEnd),'ACTIVE_BORDERLESS_V3_CSS_FOOTER_MISSING');
+ const activePremiumCss=liveBorderlessCss.slice(0,-borderlessEnd.length);
  const premiumEnd='\n'+PREMIUM_CSS+'\n';
- const activePremiumCss=currentOddsCss.data.toString('utf8');
  assert(activePremiumCss.endsWith(premiumEnd),'ACTIVE_PREMIUM_V2_CSS_FOOTER_MISSING');
  const oddsV1Css=activePremiumCss.slice(0,-premiumEnd.length);
  assert.equal(hash(oddsV1Css),'97f544c20ab10ad1d44b1ecd29ea590fc41d3435e0698824ceefb21b1ce7282b','ODDS_V1_CSS_REVERSAL_FAILED');
