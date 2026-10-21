@@ -1,0 +1,80 @@
+{
+  "status": "SUCCESS",
+  "verifiedAt": "2026-10-21T13:32:00.067Z",
+  "productionUrl": "https://ball46.com",
+  "repository": "mccareysupon-png/nomadtips3-live-test",
+  "branch": "codex/ball46-scoreboard-viewport-fit-20261021",
+  "baselineSourceBranch": "fix/ball46-stats-leagues-nav-20261021",
+  "baselineCommit": "bba7833aa3bd385adbe2730c8723eacdd1a89ba9",
+  "sourceCommit": "e63ff84c33df11355201ee190fef669382c703d4",
+  "verificationCommit": "8a84415636fbfa36fda8d76ddd41f3a6d0b9da04",
+  "activationCommit": "09b4e978a549e7547d2d03dbf04e9514efac0d6f",
+  "candidateRun": 39607635010,
+  "activationRun": 39608291835,
+  "worker": "ball46-production",
+  "activeVersion": "d24b4a73-f89c-4f72-80c3-7031539bc51f",
+  "deployment": "cc02723a-5dbb-4196-9ff2-4a9c05ace206",
+  "productionFilesModified": [
+    "index.js: __B46_SCOREBAR_TUNE_CSS__ append only; public /dashboard-v2-tune.css"
+  ],
+  "desktopBreakpoint": 761,
+  "spaceGainPx": 128,
+  "bottomGapBefore": 140,
+  "bottomGapAfter": 12,
+  "matchCardHeightPx": 69.046875,
+  "matchCardGeometryFontsSpacingUnchanged": true,
+  "mobileUnchanged": true,
+  "allOriginalWorkerCodePreservedByInverseDiff": true,
+  "other10ModulesUnchanged": true,
+  "htmlUnchanged": true,
+  "assetsRetained": true,
+  "configurationUnchanged": true,
+  "testsPassed": 10,
+  "uiCases": 12,
+  "publicHttp200Paths": 83,
+  "knownUnchanged404": [
+    {
+      "path": "/color-semantics-stat-entry-20261011.js",
+      "status": 404,
+      "sha": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "health": [
+    {
+      "path": "/api/engine/health",
+      "ok": true
+    },
+    {
+      "path": "/api/full-market/health",
+      "ok": true
+    },
+    {
+      "path": "/api/engine/board",
+      "ok": true,
+      "stale": false,
+      "fixtures": 895
+    },
+    {
+      "path": "/api/engine/signals",
+      "ok": true,
+      "signals": 20
+    },
+    {
+      "path": "/api/engine/statistics?paged=1",
+      "ok": true
+    }
+  ],
+  "settledPreserved": 8828,
+  "expandedCardScrollVerified": true,
+  "consoleErrors": 0,
+  "rollback": {
+    "baselineVersion": "b8ea6f51-5c57-4dc2-9583-fd6b887dad15",
+    "baselineDeployment": "bb201ebe-fbd0-4c34-bd22-242fd8631729",
+    "baselineSourceCommit": "bba7833aa3bd385adbe2730c8723eacdd1a89ba9",
+    "candidate": "d24b4a73-f89c-4f72-80c3-7031539bc51f",
+    "phase": "restore",
+    "workflow": ".github/workflows/ball46-scoreboard-viewport-fit-20261021.yml",
+    "instructions": "Use verified restore phase with fresh routes audit. Require Active is this task candidate and configuration unchanged. Restore exact baseline traffic, verify two consecutive baseline byte observations, all public paths and health. Stop if another deployment changed Active. No assets or bindings replaced.",
+    "executed": false
+  }
+}
