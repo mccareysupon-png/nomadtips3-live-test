@@ -1,6 +1,6 @@
 # Consented presence release — 21 October 2026
 
-Status: implementation prepared, not activated. Owner explicitly authorized the Zaraz/main-public-page heartbeat scope after reviewing the local consent screenshot. Production verification is still required.
+Status: activated and verified in Production on 21 October 2026. Owner explicitly authorized the Zaraz/main-public-page heartbeat scope after reviewing the local consent screenshot. See STATE-20261020.md for current versions, live consent/deduplication/withdrawal checks and verification logs.
 
 ## Data and meaning
 
