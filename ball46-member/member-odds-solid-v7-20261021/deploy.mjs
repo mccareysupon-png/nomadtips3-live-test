@@ -175,8 +175,20 @@ async function browserHeader(browser,host,label,width,updatedHtml,expectedPremiu
  const page=await browser.newPage({viewport:{width,height:800,isMobile:width<=680,deviceScaleFactor:1}});
  try{
   await page.goto(host+'/?member_header_premium_qa='+Date.now(),{waitUntil:'domcontentloaded',timeout:58000});
-  const controls=await getPublic('/member-odds-topbar.css',host);
-  assert.equal(controls.sha,expectedPremiumCssSha,'PREMIUM_STYLES_NOT_LIVE_ON_BROWSER_HOST');
+  // A successful activation may briefly return CSS from different Cloudflare edge caches.
+  // Demand three consecutive live SHA matches; never accept stale CSS as success.
+  let controls=null;
+  for(let attempt=0;attempt<24;attempt++){
+   let stable=true;
+   for(let probe=0;probe<3;probe++){
+    controls=await getPublic('/member-odds-topbar.css',host);
+    if(controls.status!==200||controls.sha!==expectedPremiumCssSha){stable=false;break;}
+    if(probe<2)await new Promise(r=>setTimeout(r,500));
+   }
+   if(stable)break;
+   if(attempt<23)await new Promise(r=>setTimeout(r,1800));
+  }
+  assert.equal(controls?.sha,expectedPremiumCssSha,'PREMIUM_STYLES_NOT_CONSISTENTLY_VISIBLE_ON_BROWSER_HOST '+host);
   assert.equal((await getPublic('/member.js',host)).sha,expectedJsSha,'MEMBER_APP_JS_CHANGED_IN_BROWSER_QA');
   const headerStart=updatedHtml.indexOf('<header class="topbar">');
   const headerEnd=updatedHtml.indexOf('</header>',headerStart);
@@ -189,7 +201,7 @@ async function browserHeader(browser,host,label,width,updatedHtml,expectedPremiu
    document.body.insertAdjacentHTML('beforeend','<main class="shell" style="min-height:300px"><h1 style="font-size:18px">Member header layout QA</h1><p>Production CSS and protected Member header template.</p></main>');
   },fragment);
   await page.addStyleTag({url:host+'/styles.css'});
-  await page.addStyleTag({url:host+'/member-odds-topbar.css'});
+  await page.addStyleTag({url:host+'/member-odds-topbar.css?v=20261021-odds-solid-v7-'+Date.now()});
   await page.addScriptTag({url:host+'/member-odds-topbar.js'});
   const observed=await page.evaluate(()=>{
    const rect=q=>{const el=document.querySelector(q),r=el?.getBoundingClientRect();return r?{left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height,middleY:(r.top+r.bottom)/2}:null};
