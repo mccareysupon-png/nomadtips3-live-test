@@ -24,6 +24,18 @@ return {hasRows:document.querySelectorAll('article.match-row').length,hasExpande
   bodyText:document.body.innerText.slice(0,550)};
 });
 console.log('LIVE_SOURCE_MAP',JSON.stringify({width:w,info,links}).slice(0,50000));
+try{
+ const payload=await page.evaluate(async()=>{
+  const r=await fetch('/api/engine/board',{cache:'no-store'}),data=await r.json(),fixtures=data.fixtures||[],fixture=fixtures.find(f=>f?.fixtureId)||fixtures[0]||{};
+  const keys=(o)=>o&&typeof o==='object'?Object.keys(o):[];
+  return {status:r.status,count:fixtures.length,fixtureKeys:keys(fixture),fixtureSample:fixture,
+   statsKeys:keys(fixture.stats),statisticsKeys:keys(fixture.statistics),
+   goalsKeys:keys(fixture.goals),homeKeys:keys(fixture.home),
+   resultKeys:keys(data)};
+ });
+ console.log('BALL46_BOARD_FIELDS',JSON.stringify({width:w,...payload}).slice(0,11000));
+}catch(e){console.log('BALL46_BOARD_FIELDS_ERROR',String(e));}
+
 writeFileSync('source-proof/map-'+w+'.json',JSON.stringify({info,links},null,2));
 const checked=[];
 for(const item of [...links,...info.scripts.filter(x=>x.src).map(x=>({url:x.src}))]){
