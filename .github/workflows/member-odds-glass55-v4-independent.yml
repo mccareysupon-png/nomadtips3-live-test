@@ -1,0 +1,61 @@
+name: BALL46 Member ODDS Glass55 V4 — Independent Production Audit
+on:
+  push:
+    branches: [codex/ball46-member-odds-glass55-v4-20261021]
+    paths:
+      - '.github/workflows/member-odds-glass55-v4-independent.yml'
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Independently confirm active Worker, 55 percent transparent CSS, and preserved Member logic
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {createHash} from 'node:crypto';
+          const a=process.env.CLOUDFLARE_ACCOUNT_ID,t=process.env.CLOUDFLARE_API_TOKEN;
+          assert(a&&t,'CF_READ_CREDENTIALS_MISSING');
+          const q=await fetch('https://api.cloudflare.com/client/v4/accounts/'+a+'/workers/scripts/ball46-member-production/deployments?per_page=1',{headers:{Authorization:'Bearer '+t},signal:AbortSignal.timeout(24000)});
+          const j=await q.json();assert(q.ok&&j.success,'CF_READ_FAILED');
+          const versions=j.result.deployments?.[0]?.versions;
+          assert(versions?.length===1&&Number(versions[0].percentage)===100,'PRODUCTION_ROLLOUT_INCOMPLETE');
+          assert.equal(versions[0].version_id,'1c85b2ca-17ae-4bec-9049-ca6db3e3778f','WORKER_VERSION_CHANGED');
+          const expected={
+            '/member-odds-topbar.css':'b6633b6d654bcd11396b3975726ac612b32e06b8601572421d3b4045e420c833',
+            '/member-odds-topbar.js':'12265bd447751f9223860a852196bc97a576e1c70a08020343f12524698848c7',
+            '/member.js':'ef4489618ae07303a7f275b4b37fddd0f7a8cb721bf98d3216c887128c806524',
+            '/styles.css':'5186dd9dfa27c36b7dced6068b15a20d04ab8f15ab771e33d61116c8725b817d'
+          };
+          const observed={};
+          for(const [p,sha] of Object.entries(expected)){
+            const u=new URL(p,'https://member.ball46.com');u.searchParams.set('independentGlass55Audit',Date.now());
+            const r=await fetch(u,{headers:{'cache-control':'no-cache'},signal:AbortSignal.timeout(24000)});
+            assert.equal(r.status,200,'MEMBER_ASSET_HTTP_'+p);
+            const content=Buffer.from(await r.arrayBuffer());
+            assert.equal(createHash('sha256').update(content).digest('hex'),sha,'MEMBER_ASSET_HASH_'+p);
+            const s=content.toString('utf8');
+            if(p==='/member-odds-topbar.css'){
+              assert(s.includes('B46_MEMBER_ODDS_DROPDOWN_GLASS55_V4_20261021'),'GLASS55_CSS_MARKER_MISSING');
+              assert(s.includes('background:rgba(18,38,48,.45)!important')&&s.includes('backdrop-filter:blur(10px)'),'GLASS55_CSS_PROPERTIES_MISSING');
+              assert(s.includes('B46_MEMBER_ODDS_BORDERLESS_LABEL_V3_20261021'),'BORDERLESS_V3_MISSING');
+            }
+            if(p==='/member.js'){
+              assert(s.includes("['WIN',Number(s.win||0)+Number(s.halfWin||0),'win']"),'HALF_WIN_FOLD_MISSING');
+              assert(s.includes("['LOSS',Number(s.loss||0)+Number(s.halfLoss||0),'loss']"),'HALF_LOSS_FOLD_MISSING');
+              assert(s.includes('b46-member-eventflow-signal-v3-20261020'),'MEMBER_EVENT_FLOW_V3_MISSING');
+              assert(s.includes('ball46:member-odds-format-change'),'ODDS_FORMAT_HANDLER_MISSING');
+            }
+            observed[p]={status:r.status,sha256:sha};
+          }
+          const protectedPage=await fetch('https://member.ball46.com/member.html',{redirect:'manual',signal:AbortSignal.timeout(25000)});
+          assert([302,303].includes(protectedPage.status),'MEMBER_ACCESS_GATE_CHANGED');
+          const health=await fetch('https://member.ball46.com/api/health',{signal:AbortSignal.timeout(25000)});
+          const h=await health.json();assert(health.status===200&&h.ok&&h.service==='ball46-member-production','MEMBER_API_HEALTH_FAILED');
+          console.log('BALL46_MEMBER_ODDS_GLASS55_V4_INDEPENDENT_PASS',JSON.stringify({activeVersion:versions[0].version_id,assets:observed,auth:protectedPage.status,health:health.status}));
+          JS
