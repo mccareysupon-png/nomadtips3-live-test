@@ -10,7 +10,7 @@ const FAITHFUL_JS=readFileSync('faithful-v11.js','utf8');
 const ACCOUNT=process.env.CLOUDFLARE_ACCOUNT_ID,TOKEN=process.env.CLOUDFLARE_API_TOKEN;
 assert(ACCOUNT&&TOKEN,'NO_CLOUDFLARE_AUTH');
 const SCRIPT='ball46-production',PROD='https://ball46.com',ALIAS='https://www.ball46.com';
-const EXPECTED_ACTIVE='ed2951df-146e-4768-96a1-c3b97d3a2832';
+const EXPECTED_ACTIVE='5dc795f3-6382-441f-ae3e-d617c63e9c71';
 // Latest English SEO wraps the original V10 Worker. Replace only the exact CSS literal inside the V10 helper.
 const ROOT='https://api.cloudflare.com/client/v4/accounts/'+ACCOUNT;
 const PATHS=['/','/index.html','/expanded-match-343.js','/singlepage-workspace-343.js','/singlepage-workspace-343.css','/featured-facts-premium-20261013a.css','/league-flags-343.js'];
