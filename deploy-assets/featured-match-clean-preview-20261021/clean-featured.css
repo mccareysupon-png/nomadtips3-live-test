@@ -161,3 +161,10 @@ html[data-theme="light"] .b46fm-preview-mobile{
  .b46fm-preview-mobile .fm-fact b{font-size:12px!important}
  .b46fm-preview-mobile .fm-fact[data-name*="CARDS"] b{font-size:9.5px!important}
 }
+
+/* 2026-10-21 MOBILE HOTFIX: remove incorrectly injected top-of-page Featured Match mirror.
+   Keep the desktop redesign intact. Mobile match list and its native expanded cards
+   remain in their existing DOM positions; do not make a new mobile mirror. */
+@media (max-width:767px) {
+  .b46fm-preview-mobile { display:none!important; padding:0!important; margin:0!important; }
+}
