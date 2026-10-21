@@ -1,0 +1,63 @@
+{
+  "status": "SUCCESS",
+  "verifiedAt": "2026-10-21T14:17:04.830Z",
+  "repository": "mccareysupon-png/nomadtips3-live-test",
+  "branch": "codex/ball46-search-favicon-20261021",
+  "baselineBranch": "codex/ball46-seo-english-metadata-20261021",
+  "baselineCommit": "ec7f0687cba1fa6d3c5505eb5a3d4dac399e74ed",
+  "sourceCommit": "d52864cf58276fb575fa70947cb5166080a92da1",
+  "activationCommit": "28b86dacf75feaa3c18b341ed60824191c44c9a0",
+  "candidateRun": 39614143088,
+  "activationRun": 39614520233,
+  "candidateVersion": "5dc795f3-6382-441f-ae3e-d617c63e9c71",
+  "worker": "ball46-production",
+  "activeVersion": "5dc795f3-6382-441f-ae3e-d617c63e9c71",
+  "deployment": "6f96184d-9089-4517-9ba5-87e77e127329",
+  "productionFilesModified": [
+    "index.js: __b46FaviconMeta20261021 and __b46FaviconFile20261021"
+  ],
+  "publicHtmlChanged": [
+    "/",
+    "/index.html",
+    "/signal.html",
+    "/statistics.html"
+  ],
+  "publicImageRoutes": [
+    "/favicon-192.png",
+    "/favicon.ico"
+  ],
+  "pngSize": "192x192",
+  "icoSizes": [
+    "32x32",
+    "48x48"
+  ],
+  "iconSource": "Existing BALL46 inline square favicon SVG",
+  "getAndHeadVerified": true,
+  "anonymousPublicImagesVerified": true,
+  "htmlHeadOnly": true,
+  "bodyScriptsStylesAndSeoMetadataUnchanged": true,
+  "other10WorkerModulesUnchanged": true,
+  "assetsRetained": true,
+  "configurationUnchanged": true,
+  "testsPassed": 10,
+  "uiCases": 4,
+  "http200Paths": 85,
+  "knownPreExisting404": [
+    {
+      "path": "/color-semantics-stat-entry-20261011.js",
+      "status": 404,
+      "sha": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "settledPreserved": 8839,
+  "rollback": {
+    "baselineVersion": "ed2951df-146e-4768-96a1-c3b97d3a2832",
+    "baselineDeployment": "a0d27f59-4c66-40bd-b5f4-7c662dc2d901",
+    "baselineSourceCommit": "ec7f0687cba1fa6d3c5505eb5a3d4dac399e74ed",
+    "candidate": "5dc795f3-6382-441f-ae3e-d617c63e9c71",
+    "workflow": ".github/workflows/ball46-search-favicon-20261021.yml",
+    "phase": "restore",
+    "instructions": "Refresh authenticated routes audit. Require Active is this task candidate and unchanged configuration; restore exact baseline traffic only. Verify two consecutive baseline observations including original HTML and the two original 404 icon endpoints; verify all public paths and health. Stop if another deployment changed Active. Retain original ASSETS and bindings.",
+    "executed": false
+  }
+}
