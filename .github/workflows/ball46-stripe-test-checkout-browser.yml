@@ -1,0 +1,64 @@
+name: BALL46 Stripe Sandbox — Hosted Checkout Browser Inspection
+on:
+  push:
+    branches: [audit/ball46-member-stripe-e2e-20261021]
+    paths:
+      - '.github/workflows/ball46-stripe-test-checkout-browser.yml'
+permissions:
+  contents: read
+jobs:
+  inspect-test-checkout:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright Chromium for actual hosted Stripe Test Mode
+        run: |
+          set -euo pipefail
+          npm install --no-save --ignore-scripts playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Read test-only Checkout hosted UI and capture form metadata (no payment on this run)
+        env:
+          TEST_CHECKOUT_URL: "https://checkout.stripe.com/c/pay/cs_test_a14jYICcHvwJJk7Ze8PB9TiWD0AmKYmYcgDQ4HBdsm9b20qgSOLaIW25G0#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSdicyc%2FNSknZHVsTmB8Jz8ndW5acWB2cVowNEkxYE9dQ11oTlZWU31UYUZ%2FN1AxRkhARHNJaVIzTlZEfU9wXWAzcERMUkNnNj1KbDRBNEFBTDdxY309c0hSdHVEXFdraG8wX2lMd312ZF1SQUcySHd9cTU1VWhddnB0T0knKSdjd2poVmB3c2B3Jz9xd3BgKSdnZGZuYndqcGthRmppancnPycmY2NjY2NjJyknaWR8anBxUXx1YCc%2FJ3Zsa2JpYFpscWBoJyknYGtkZ2lgVWlkZmBtamlhYHd2Jz9xd3BgeCUl"
+        run: |
+          node <<'JS'
+          const {chromium}=require('playwright');
+          const assert=require('node:assert/strict');
+          (async()=>{
+            const url=process.env.TEST_CHECKOUT_URL;
+            const parsed=new URL(url);
+            assert(parsed.protocol==='https:'&&parsed.hostname==='checkout.stripe.com','CHECKOUT_URL_NOT_STRIPE');
+            const browser=await chromium.launch({headless:true});
+            try{
+              const page=await browser.newPage({viewport:{width:1280,height:900}});
+              await page.goto(url,{waitUntil:'domcontentloaded',timeout:60000});
+              await page.waitForTimeout(5000);
+              const details=await page.evaluate(()=>({
+                hostname:location.hostname,
+                title:document.title,
+                heading:[...document.querySelectorAll('h1,h2,[role=heading]')].map(x=>x.innerText?.slice(0,140)).filter(Boolean).slice(0,15),
+                buttonTexts:[...document.querySelectorAll('button')].map(x=>x.innerText?.trim().slice(0,120)).filter(Boolean).slice(0,20),
+                inputs:[...document.querySelectorAll('input')].map(x=>({type:x.type,name:x.name,placeholder:x.placeholder,autocomplete:x.autocomplete})).slice(0,25),
+                iframeCount:document.querySelectorAll('iframe').length,
+                stripeTestIndicator:document.body.innerText.toLowerCase().includes('test mode')
+              }));
+              console.log('BALL46_STRIPE_TEST_HOSTED_CHECKOUT_BROWSER_INSPECTION',JSON.stringify(details));
+              await page.screenshot({path:'stripe-test-checkout-inspection.png',fullPage:true});
+              assert(details.hostname.endsWith('stripe.com'),'CHECKOUT_NAVIGATED_AWAY');
+              assert(details.heading.length>0||details.inputs.length>0,'STRIPE_FORM_NOT_VISIBLE');
+            }finally{await browser.close();}
+          })().catch(e=>{console.error('STRIPE_HOSTED_CHECKOUT_BROWSER_INSPECTION_FAILED',String(e.stack||e));process.exitCode=1});
+          JS
+      - name: Upload test-only screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-stripe-sandbox-checkout-ui
+          path: stripe-test-checkout-inspection.png
+          retention-days: 7
+          if-no-files-found: ignore
