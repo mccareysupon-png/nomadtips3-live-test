@@ -1,0 +1,52 @@
+name: BALL46 Member Half Outcome Counters — Independent Postdeploy Audit
+on:
+  push:
+    branches: [codex/ball46-member-win-loss-combined-20261021]
+    paths:
+      - '.github/workflows/member-half-counters-postdeploy-readonly-20261021.yml'
+permissions:
+  contents: read
+jobs:
+  live:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Read-only verify Member live version and both KPI expressions
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {createHash} from 'node:crypto';
+          const account=process.env.CLOUDFLARE_ACCOUNT_ID,token=process.env.CLOUDFLARE_API_TOKEN;
+          assert(account&&token,'MISSING_CLOUDFLARE_READ_CREDS');
+          const api='https://api.cloudflare.com/client/v4/accounts/'+account;
+          const resp=await fetch(api+'/workers/scripts/ball46-member-production/deployments?per_page=1',{headers:{Authorization:'Bearer '+token},signal:AbortSignal.timeout(25000)});
+          const j=await resp.json();assert(resp.ok&&j.success,'CLOUDFLARE_READ_FAILED');
+          const d=j.result.deployments?.[0];assert(d?.versions?.length===1&&Number(d.versions[0].percentage)===100,'MEMBER_VERSION_SPLIT');
+          const version=d.versions[0].version_id;
+          assert.equal(version,'f8e5c136-ef14-43da-9042-d252acebfeec','MEMBER_WORKER_VERSION_MOVED');
+          const sha=x=>createHash('sha256').update(x).digest('hex');
+          const assets={};
+          for(const [path,want] of [['/member.js','6f62bf55ad0edbf3f3837d4754bc2a65e13ea62dcf27fd76b5d77780a2878acf'],['/styles.css','5186dd9dfa27c36b7dced6068b15a20d04ab8f15ab771e33d61116c8725b817d']]){
+           const url=new URL(path,'https://member.ball46.com');url.searchParams.set('verifyHalfCount',Date.now());
+           const r=await fetch(url,{headers:{'cache-control':'no-cache'},signal:AbortSignal.timeout(25000)});
+           const body=Buffer.from(await r.arrayBuffer());
+           assert.equal(r.status,200,'ASSET_STATUS_CHANGED_'+path);
+           assert.equal(sha(body),want,'ASSET_HASH_CHANGED_'+path);
+           const str=body.toString('utf8');
+           if(path==='/member.js'){
+            assert(str.includes("['WIN',Number(s.win||0)+Number(s.halfWin||0),'win']"),'WIN_HALF_MERGE_MISSING');
+            assert(str.includes("['LOSS',Number(s.loss||0)+Number(s.halfLoss||0),'loss']"),'LOSS_HALF_MERGE_MISSING');
+            assert(str.includes('ball46:member-data-ready'),'MEMBER_REFRESH_HOOK_LOST');
+            assert(str.includes('b46-member-eventflow-signal-v3-20261020'),'EVENTFLOW_V3_LOST');
+           }else assert(str.includes('B46_MEMBER_EVENTFLOW_SIGNAL_V3_20261020'),'EVENTFLOW_STYLES_LOST');
+           assets[path]={http:r.status,sha256:sha(body)};
+          }
+          const auth=await fetch('https://member.ball46.com/member.html',{redirect:'manual',signal:AbortSignal.timeout(20000)});
+          assert([302,303].includes(auth.status),'MEMBER_ACCESS_BYPASS');
+          const h=await fetch('https://member.ball46.com/api/health',{signal:AbortSignal.timeout(20000)});
+          const body=await h.json();assert(h.status===200&&body.ok&&body.service==='ball46-member-production','MEMBER_API_HEALTH_FAILED');
+          console.log('BALL46_MEMBER_HALF_COUNTS_INDEPENDENT_READONLY_PASS',JSON.stringify({version,assets,memberProtection:auth.status,api:h.status}));
+          JS
