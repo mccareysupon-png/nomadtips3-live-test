@@ -5,7 +5,7 @@ export const NEW_HANDLER="$$('[data-league-filter]').forEach(btn=>btn.addEventLi
 export function patchNav(source){
  const count=source.split(OLD_HANDLER).length-1;
  if(count!==1)throw Error('ORIGINAL_LEAGUE_HANDLER_DRIFT '+count);
- const out=source.replace(OLD_HANDLER,NEW_HANDLER);
- if(out.replace(NEW_HANDLER,OLD_HANDLER)!==source)throw Error('UNRELATED_CODE_CHANGED');
+ const out=source.replace(OLD_HANDLER,()=>NEW_HANDLER);
+ if(out.replace(NEW_HANDLER,()=>OLD_HANDLER)!==source)throw Error('UNRELATED_CODE_CHANGED');
  return out;
 }
