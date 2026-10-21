@@ -1,0 +1,56 @@
+name: BALL46 Member ODDS Glass55 V4 — Guarded Production
+on:
+  push:
+    branches:
+      - codex/ball46-member-odds-glass55-v4-20261021
+    paths:
+      - '.github/workflows/member-odds-glass55-v4-production.yml'
+permissions:
+  contents: read
+concurrency:
+  group: ball46-member-production-deploy
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 32
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Chromium for six sizes
+        run: |
+          set -euo pipefail
+          npm install --no-save --ignore-scripts playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Validate pinned live Member source and all scripts
+        run: |
+          set -euo pipefail
+          node --check ball46-member/member-odds-glass55-v4-20261021/glass55.mjs
+          node --check ball46-member/member-odds-glass55-v4-20261021/deploy.mjs
+          node --check ball46-member/member-odds-borderless-v3-20261021/borderless.mjs
+          node --check ball46-member/member-odds-topbar-premium-v2-20261021/premium.mjs
+          node --check ball46-member/member-odds-topbar-20261021/patch.mjs
+          python3 -m py_compile ball46-member/member-loading-20261020/patch_member.py
+          git fetch origin 05c276f7f76a6226b10b45bd85ac369e53167d2f
+          git cat-file -e 05c276f7f76a6226b10b45bd85ac369e53167d2f^{commit}
+          mkdir -p /tmp/ball46-member-live-tree
+          git archive --format=tar 05c276f7f76a6226b10b45bd85ac369e53167d2f ball46-member/public | tar xf - -C /tmp/ball46-member-live-tree
+          test -s /tmp/ball46-member-live-tree/ball46-member/public/member.html
+      - name: Verify 44 current live assets and Candidate, deploy safely, verify Production
+        run: node ball46-member/member-odds-glass55-v4-20261021/deploy.mjs
+      - name: Archive read-only proofs and rollback metadata
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-member-odds-glass55-v4-audit
+          path: audit/member-odds-glass55-v4-20261021/
+          retention-days: 30
+          if-no-files-found: warn
