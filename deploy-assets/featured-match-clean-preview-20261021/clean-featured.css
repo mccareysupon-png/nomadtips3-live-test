@@ -161,3 +161,80 @@ html[data-theme="light"] .b46fm-preview-mobile{
  .b46fm-preview-mobile .fm-fact b{font-size:12px!important}
  .b46fm-preview-mobile .fm-fact[data-name*="CARDS"] b{font-size:9.5px!important}
 }
+
+
+/* V1.3 — OWNER-DIRECTED RECESSED FACTS (2026-10-21)
+   HALF-TIME, CORNERS, CARDS H · A, ODDS AGE:
+   four independent darkened recessed wells; NO elevated/card-outset shadow.
+   Preserve all four source facts, contrast and 2-column PC/mobile layout. */
+.b46fm-preview-pc,.b46fm-preview-mobile{
+  --fm-tile-well:#10241B;
+  --fm-tile-well-edge:rgba(155,222,176,.075);
+  --fm-tile-well-top:rgba(0,8,4,.66);
+  --fm-tile-well-inside:rgba(0,7,3,.34);
+  --fm-tile-well-bottom:rgba(202,255,218,.065);
+  --fm-tile-well-label:#97BDA5;
+  --fm-tile-well-value:#ECF6EE;
+}
+html[data-theme="light"] .b46fm-preview-pc,
+html[data-theme="light"] .b46fm-preview-mobile{
+  --fm-tile-well:#DAE9DE;
+  --fm-tile-well-edge:rgba(35,81,51,.09);
+  --fm-tile-well-top:rgba(42,89,56,.20);
+  --fm-tile-well-inside:rgba(54,109,73,.09);
+  --fm-tile-well-bottom:rgba(255,255,255,.36);
+  --fm-tile-well-label:#567563;
+  --fm-tile-well-value:#1F402C;
+}
+.b46fm .fm-facts{
+  display:grid!important;
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  gap:8px!important;
+  padding:0!important;
+  background:transparent!important;
+}
+.b46fm .fm-fact{
+  min-width:0!important;
+  min-height:54px!important;
+  padding:10px 11px!important;
+  border:1px solid var(--fm-tile-well-edge)!important;
+  border-radius:9px!important;
+  outline:none!important;
+  background:var(--fm-tile-well)!important;
+  background-image:linear-gradient(180deg,rgba(0,0,0,.095) 0%,transparent 47%,rgba(255,255,255,.013) 100%)!important;
+  box-shadow:
+     inset 0 3px 6px -2px var(--fm-tile-well-top),
+     inset 1px 1px 3px -2px var(--fm-tile-well-inside),
+     inset 0 -1px 0 var(--fm-tile-well-bottom)!important;
+  transform:none!important;
+  filter:none!important;
+}
+.b46fm .fm-fact span{
+  font-size:8.4px!important;
+  line-height:1.22!important;
+  letter-spacing:.07em!important;
+  font-weight:760!important;
+  color:var(--fm-tile-well-label)!important;
+}
+.b46fm .fm-fact b{
+  margin-top:5px!important;
+  font-size:11.5px!important;
+  line-height:1.25!important;
+  letter-spacing:-.01em!important;
+  font-weight:800!important;
+  color:var(--fm-tile-well-value)!important;
+}
+.b46fm .fm-fact[data-name*="CARDS"] b{
+  font-size:9.8px!important;
+  line-height:1.34!important;
+  overflow-wrap:anywhere!important;
+}
+@media(max-width:767px){
+ .b46fm-preview-mobile .fm-fact{
+  min-height:56px!important;
+  padding:10px 11px!important;
+  border-radius:9px!important;
+ }
+ .b46fm-preview-mobile .fm-fact b{font-size:12px!important}
+ .b46fm-preview-mobile .fm-fact[data-name*="CARDS"] b{font-size:10px!important}
+}
