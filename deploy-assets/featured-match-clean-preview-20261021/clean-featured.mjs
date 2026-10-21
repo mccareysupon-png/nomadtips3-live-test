@@ -13,7 +13,15 @@ function sync(){
  // Clean up earlier-preview nodes defensively (never production widgets).
  for(const node of document.querySelectorAll('.b46fm-preview-pc,.b46fm-preview-mobile'))node.remove();
  const panel=source.querySelector('.feature-events');
- if(panel&&panel.querySelectorAll('.event-item').length>3){
+ // Tag the fourth and later REAL event rows. The event header's DOM tag varies
+ // between renderers, so CSS nth-of-type is not a reliable event count.
+ const items=panel?[...panel.querySelectorAll('.event-item')]:[];
+ for(let i=0;i<items.length;i++){
+  const extra=i>=3;
+  if(items[i].classList.contains('b46fm-extra-event')!==extra)
+    items[i].classList.toggle('b46fm-extra-event',extra);
+ }
+ if(panel&&items.length>3){
   let button=panel.querySelector('.b46fm-events-more');
   if(!button){
    button=document.createElement('button');
