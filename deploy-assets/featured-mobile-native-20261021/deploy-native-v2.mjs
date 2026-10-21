@@ -139,7 +139,7 @@ async function browserQA(domain,prefix,expectedMobileVisible){
   assert.deepEqual(errors,[],'PAGE_JS_ERRORS');
   const shot=await p.screenshot({path:'proof/'+prefix+'-'+width+'-'+mode+'.png',fullPage:false});
   if(width<768&&prefix!=='before'){
-   const image=PNG.sync.read(shot);
+   const image=PNG.sync.read(Buffer.from(shot));
    const rgb=pt=>{assert(pt.x>=0&&pt.y>=0&&pt.x<image.width&&pt.y<image.height,'WELL_PIXEL_OUTSIDE_SCREENSHOT');const at=(pt.y*image.width+pt.x)*4;return [...image.data.subarray(at,at+3)]};
    const a=rgb(d.wellPixel.inside),z=rgb(d.wellPixel.outside);
    const brightness=v=>v[0]*.2126+v[1]*.7152+v[2]*.0722;
