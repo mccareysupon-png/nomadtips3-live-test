@@ -1,0 +1,63 @@
+name: BALL46 Member ODDS Topbar — Independent Production Audit
+on:
+  push:
+    branches: [codex/ball46-member-odds-topbar-20261021]
+    paths:
+      - '.github/workflows/member-odds-topbar-independent-audit-20261021.yml'
+permissions:
+  contents: read
+jobs:
+  verify-live:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Inspect live Worker, current asset SHA, membership Access and old feature markers
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {createHash} from 'node:crypto';
+          const api='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID;
+          const token=process.env.CLOUDFLARE_API_TOKEN;
+          assert(token&&process.env.CLOUDFLARE_ACCOUNT_ID,'MISSING_ACCOUNT_READ_CREDS');
+          const cf=await fetch(api+'/workers/scripts/ball46-member-production/deployments?per_page=1',{headers:{Authorization:'Bearer '+token},signal:AbortSignal.timeout(20000)});
+          const body=await cf.json();
+          assert(cf.ok&&body.success,'READ_CLOUDFLARE_FAILED');
+          const d=body.result.deployments?.[0];
+          assert(d?.versions?.length===1&&Number(d.versions[0].percentage)===100,'ACTIVE_VERSION_NOT_SINGLE');
+          assert.equal(d.versions[0].version_id,'83e2727d-360a-481e-9884-eae184d0a7fa','PRODUCTION_VERSION_DRIFT');
+          const hash=x=>createHash('sha256').update(x).digest('hex');
+          const expected={
+           '/member.js':'ef4489618ae07303a7f275b4b37fddd0f7a8cb721bf98d3216c887128c806524',
+           '/styles.css':'5186dd9dfa27c36b7dced6068b15a20d04ab8f15ab771e33d61116c8725b817d',
+           '/member-odds-topbar.css':'97f544c20ab10ad1d44b1ecd29ea590fc41d3435e0698824ceefb21b1ce7282b',
+           '/member-odds-topbar.js':'12265bd447751f9223860a852196bc97a576e1c70a08020343f12524698848c7'
+          };
+          const observed={version:d.versions[0].version_id,assets:{}};
+          for(const [path,sha] of Object.entries(expected)){
+            const url=new URL(path,'https://member.ball46.com');url.searchParams.set('oddsIndependent',Date.now());
+            const res=await fetch(url,{headers:{'cache-control':'no-cache'},signal:AbortSignal.timeout(20000)});
+            const bytes=Buffer.from(await res.arrayBuffer());
+            assert.equal(res.status,200,'LIVE_ASSET_NOT_200 '+path);
+            assert.equal(hash(bytes),sha,'LIVE_ASSET_HASH_CHANGED '+path);
+            const str=bytes.toString('utf8');
+            if(path==='/member.js'){
+              assert(str.includes('Ball46MemberOdds')&&str.includes('ball46:member-odds-format-change'),'ODDS_RENDER_CHANGE_LOST');
+              assert(str.includes("['WIN',Number(s.win||0)+Number(s.halfWin||0),'win']"),'HALF_WIN_FOLD_LOST');
+              assert(str.includes("['LOSS',Number(s.loss||0)+Number(s.halfLoss||0),'loss']"),'HALF_LOSS_FOLD_LOST');
+              assert(str.includes('b46-member-eventflow-signal-v3-20261020'),'EVENTFLOW_V3_LOST');
+              assert(str.includes('ball46:member-data-ready'),'DATA_READINESS_LOST');
+            }
+            if(path==='/styles.css')assert(str.includes('B46_MEMBER_EVENTFLOW_SIGNAL_V3_20261020'),'V3_STYLE_LOST');
+            observed.assets[path]={status:res.status,sha256:sha,bytes:bytes.length};
+          }
+          const auth=await fetch('https://member.ball46.com/member.html',{redirect:'manual',signal:AbortSignal.timeout(20000)});
+          assert([302,303].includes(auth.status),'MEMBER_ACCESS_BYPASS');
+          const health=await fetch('https://member.ball46.com/api/health',{signal:AbortSignal.timeout(20000)});
+          const healthBody=await health.json();
+          assert(health.status===200&&healthBody.ok&&healthBody.service==='ball46-member-production','MEMBER_HEALTH_API_FAILED');
+          observed.auth=auth.status;observed.health=health.status;
+          console.log('BALL46_MEMBER_ODDS_TOPBAR_INDEPENDENT_AUDIT_PASS',JSON.stringify(observed));
+          JS
