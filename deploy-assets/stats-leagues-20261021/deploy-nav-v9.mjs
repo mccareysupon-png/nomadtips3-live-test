@@ -62,7 +62,7 @@ function patchWorker(source){
   ' const before='+JSON.stringify(OLD_HANDLER)+',after='+JSON.stringify(NEW_HANDLER)+';\n'+
   ' const source=await original.text();\n'+
   ' if(source.split(before).length!==2)throw Error("LEAGUES_HANDLER_DRIFT");\n'+
-  ' const output=source.replace(before,after);\n'+
+  ' const output=source.replace(before,()=>after);\n'+
   ' const headers=new Headers(original.headers);headers.delete("content-length");headers.delete("etag");headers.set("Cache-Control","no-store");\n'+
   ' return new Response(output,{status:original.status,statusText:original.statusText,headers});\n'+
   '}\n';
