@@ -1,0 +1,61 @@
+name: BALL46 Member Premium Header V2 — Independent Read Only Audit
+on:
+  push:
+    branches: [codex/ball46-member-topbar-alignment-premium-v2-20261021]
+    paths:
+      - '.github/workflows/member-header-premium-v2-post-audit-20261021.yml'
+permissions:
+  contents: read
+jobs:
+  independent:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Verify live Worker V2 and critical asset hashes with no changes
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {createHash} from 'node:crypto';
+          const account=process.env.CLOUDFLARE_ACCOUNT_ID,token=process.env.CLOUDFLARE_API_TOKEN;
+          assert(account&&token,'NO_READONLY_CREDS');
+          const r=await fetch('https://api.cloudflare.com/client/v4/accounts/'+account+'/workers/scripts/ball46-member-production/deployments?per_page=1',{headers:{Authorization:'Bearer '+token},signal:AbortSignal.timeout(25000)});
+          const j=await r.json();assert(r.ok&&j.success,'CLOUDFLARE_READ_FAILED');
+          const d=j.result.deployments?.[0],versions=d?.versions;
+          assert(versions?.length===1&&Number(versions[0].percentage)===100,'WORKER_ROLLOUT_NOT_FULL');
+          assert.equal(versions[0].version_id,'f519877b-fc26-4df7-b0e4-90577b1d9c5a','MEMBER_WORKER_VERSION_CHANGED');
+          const hashes={
+            '/member-odds-topbar.css':'9df93d4b6c953705e312738afb2d9504bdb7ea1d1c396967a68d5873d7641ba3',
+            '/member-odds-topbar.js':'12265bd447751f9223860a852196bc97a576e1c70a08020343f12524698848c7',
+            '/member.js':'ef4489618ae07303a7f275b4b37fddd0f7a8cb721bf98d3216c887128c806524',
+            '/styles.css':'5186dd9dfa27c36b7dced6068b15a20d04ab8f15ab771e33d61116c8725b817d'
+          };
+          const sha=x=>createHash('sha256').update(x).digest('hex');
+          const results={};
+          for(const [path,expected] of Object.entries(hashes)){
+            const u=new URL(path,'https://member.ball46.com');u.searchParams.set('premiumTopbarAudit',Date.now());
+            const r=await fetch(u,{headers:{'cache-control':'no-cache'},signal:AbortSignal.timeout(25000)});
+            const data=Buffer.from(await r.arrayBuffer());assert.equal(r.status,200,'ASSET_HTTP_'+path);
+            assert.equal(sha(data),expected,'ASSET_SHA_DRIFT_'+path);
+            const content=data.toString('utf8');
+            if(path==='/member-odds-topbar.css'){
+              assert(content.includes('B46_MEMBER_ODDS_TOPBAR_ALIGNMENT_PREMIUM_V2_20261021'),'FOUR_GRID_PREMIUM_MARKER_MISSING');
+              assert(content.includes('grid-template-columns:132px minmax(0,1fr) 38px 176px'),'FOUR_COLUMN_MEMBER_HEADER_MISSING');
+            }
+            if(path==='/member.js'){
+              assert(content.includes("['WIN',Number(s.win||0)+Number(s.halfWin||0),'win']"),'HALF_WIN_COUNT_GONE');
+              assert(content.includes("['LOSS',Number(s.loss||0)+Number(s.halfLoss||0),'loss']"),'HALF_LOSS_COUNT_GONE');
+              assert(content.includes('b46-member-eventflow-signal-v3-20261020'),'SIGNAL_V3_GONE');
+              assert(content.includes('ball46:member-data-ready'),'MEMBER_DATA_READY_GONE');
+            }
+            results[path]={status:r.status,sha256:expected};
+          }
+          const auth=await fetch('https://member.ball46.com/member.html',{redirect:'manual',signal:AbortSignal.timeout(20000)});
+          assert([302,303].includes(auth.status),'MEMBER_AUTH_CHANGED');
+          const health=await fetch('https://member.ball46.com/api/health',{signal:AbortSignal.timeout(20000)});
+          const h=await health.json();
+          assert(health.status===200&&h.ok===true&&h.service==='ball46-member-production','MEMBER_HEALTH_BAD');
+          console.log('BALL46_MEMBER_PREMIUM_TOPBAR_V2_INDEPENDENT_PASS',JSON.stringify({version:versions[0].version_id,assetHashes:results,auth:auth.status,health:health.status}));
+          JS
