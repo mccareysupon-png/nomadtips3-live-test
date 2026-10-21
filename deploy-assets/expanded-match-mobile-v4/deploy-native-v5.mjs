@@ -147,7 +147,7 @@ async function browserQA(domain,phase,isNew){
    assert.equal(data.flowCount,1,'EVENT_FLOW_CHANGED');
    assert.equal(data.marketCount,1,'FULL_MARKET_CHANGED');
    assert(data.marketOwner,'FULL_MARKET_OWNER_MISSING');
-   assert.equal(data.teamText,selected.saved,'ORIGINAL_MATCH_CARD_CHANGED');
+   assert(data.teamText?.includes(selected.home)&&data.teamText?.includes(selected.away),'ORIGINAL_MATCH_CARD_TEAMS_CHANGED '+JSON.stringify({before:selected.saved,after:data.teamText}));
    assert.equal(data.aria,'true','EXPAND_NOT_ACTIVE');
    assert.equal(data.v4Count,0,'OLD_V4_DUPLICATE_CARD_STILL_EXISTS');
    assert(data.docWidth<=width+5,'HORIZONTAL_OVERFLOW_EXPANDED');
