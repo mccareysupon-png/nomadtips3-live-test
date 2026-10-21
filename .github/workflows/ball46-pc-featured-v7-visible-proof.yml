@@ -1,0 +1,29 @@
+name: BALL46 V7 PC Visible Screenshot Only
+on:
+  push:
+    branches: [fix/ball46-pc-featured-facts-restore-v7-20261021]
+    paths:
+      - '.github/workflows/ball46-pc-featured-v7-visible-proof.yml'
+      - 'deploy-assets/allmatches-detail-v6/v7-visible-proof.mjs'
+permissions: {contents: read}
+jobs:
+  screenshot:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Screenshot PC features without changing Production
+        working-directory: deploy-assets/allmatches-detail-v6
+        run: |
+          npm install --no-save --ignore-scripts puppeteer-core@24
+          node v7-visible-proof.mjs
+      - name: Attach screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-v7-pc-visible-proof
+          path: deploy-assets/allmatches-detail-v6/v7-visual/
+          retention-days: 15
+          if-no-files-found: warn
