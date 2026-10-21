@@ -4,6 +4,7 @@ on:
     branches: [codex/ball46-member-odds-topbar-20261021]
     paths:
       - '.github/workflows/member-odds-topbar-preflight-20261021.yml'
+      - 'ball46-member/member-odds-topbar-20261021/patch.mjs'
 permissions:
   contents: read
 jobs:
@@ -30,7 +31,7 @@ jobs:
           import assert from 'node:assert/strict';
           import {patchOdds} from './ball46-member/member-odds-topbar-20261021/patch.mjs';
           const html='<html><head>kpiV7=desktop-nine-in-one-row-20261020</head><body>b46-member-loading<div class="topbar-account-slot">USER</div><script src="/member.js?v=test" defer></script></body></html>';
-          const js="ball46:member-data-ready b46-member-eventflow-signal-v3-20261020 ['WIN',Number(s.win||0)+Number(s.halfWin||0),'win'] ['LOSS',Number(s.loss||0)+Number(s.halfLoss||0),'loss'] function fmtOdds(v){ const n=Number(v); return Number.isFinite(n)?'@'+n.toFixed(2):'—'; } function render(){renderFavoritesNav();renderTabs();renderSummary();renderCornerAudit();renderRows();renderPagination();}";
+          const js="ball46:member-data-ready b46-member-eventflow-signal-v3-20261020 ['WIN',Number(s.win||0)+Number(s.halfWin||0),'win'] ['LOSS',Number(s.loss||0)+Number(s.halfLoss||0),'loss'] function fmtOdds(v){ const n=Number(v); return Number.isFinite(n)?'@'+n.toFixed(2):'—'; } function render(){renderFavoritesNav();renderTabs();renderSummary();renderCornerAudit();renderRows();renderPagination();} async function refreshExpandedDetail(){}";
           const result=patchOdds({html,js});
           assert(result.html.includes('b46-member-odds-trigger'));
           assert(result.html.includes('member-odds-topbar.js'));
