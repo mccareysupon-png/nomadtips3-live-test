@@ -14,7 +14,7 @@ class Element {
 }
 function browser(options={}){
  let now=START;const map=options.storage||new Map(),roots=new Map(),windowEvents=new Map(),docEvents=new Map(),intervals=[],sent=[];
- const doc={readyState:'complete',visibilityState:'visible',getElementById:id=>roots.get(id),createElement:()=>new Element(),addEventListener:(type,fn)=>docEvents.set(type,fn),body:{append(el){roots.set(el.id,el);}}};
+ const doc={readyState:'complete',visibilityState:'visible',getElementById:id=>roots.get(id),querySelector:()=>null,createElement:()=>new Element(),addEventListener:(type,fn)=>docEvents.set(type,fn),body:{append(el){roots.set(el.id,el);}}};
  const win={addEventListener:(type,fn)=>windowEvents.set(type,fn)};
  const location={hostname:'ball46.com',pathname:'/',search:'?private=no',hash:'#private',...options.location};
  const nav={globalPrivacyControl:false,doNotTrack:null,...options.navigator};
@@ -30,7 +30,7 @@ test('no choice sends nothing and creates no analytics IDs; rejection remains us
  b.ui('.manage').click();assert.equal(b.ui('.panel').hidden,false);
 });
 test('acceptance starts one bounded heartbeat; only approved fields leave the browser',async()=>{
- const b=browser();b.ui('.accept').click();await b.flush();assert.equal(b.sent.length,1);
+ const b=browser();b.ui('.accept').click();await b.flush();assert.equal(b.sent.length,1);assert.equal(b.ui('.panel').hidden,true);
  const first=b.sent[0];assert.equal(first.init.credentials,'omit');assert.equal(first.init.referrerPolicy,'no-referrer');assert.equal(first.body.path,'/');assert.equal(first.body.consent,true);
  assert.deepEqual(Object.keys(first.body).sort(),['consent','path','sid','type','v','vid']);
  b.advance(15000);b.tick();await b.flush();assert.equal(b.sent.length,1);
@@ -60,7 +60,7 @@ test('DNT and GPC cannot be overridden by accepting the banner',async()=>{
  for(const navigator of [{doNotTrack:'1'},{globalPrivacyControl:true}]){const b=browser({navigator});b.ui('.manage').click();b.ui('.accept').click();b.advance(60000);b.tick();await b.flush();assert.equal(b.sent.length,0);assert.equal(b.read(VISITOR),null);assert.equal(b.ui('.accept').disabled,true);}
 });
 test('blocked LocalStorage fails closed without an ephemeral tracking identifier',async()=>{
- const b=browser({storageBlocked:true});b.ui('.accept').click();await b.flush();assert.equal(b.sent.length,0);assert.equal(b.ui('.panel').hidden,false);assert.match(b.ui('.state').textContent,/ยังไม่เก็บข้อมูล/);
+ const b=browser({storageBlocked:true});b.ui('.accept').click();await b.flush();assert.equal(b.sent.length,0);assert.equal(b.ui('.panel').hidden,true);assert.equal(b.read(VISITOR),null);
 });
 test('Member, private paths and unlisted paths never mount or send',()=>{
  for(const location of [{hostname:'member.ball46.com'},{hostname:'other.invalid'},{pathname:'/login'},{pathname:'/account'},{pathname:'/match/private-id'},{pathname:'/api/engine/board'}]){const b=browser({location});assert.equal(b.ui('.panel'),undefined);assert.equal(b.sent.length,0);assert.equal(b.map.size,0);}
