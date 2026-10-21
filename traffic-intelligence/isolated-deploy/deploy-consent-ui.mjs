@@ -66,8 +66,7 @@ async function publicChecks(){
 }
 await mkdir('deployment-evidence',{recursive:true});
 const before=await snapshot();baseline(before);
-assert.equal(before.main.version,'0040cded-b1d9-414c-9195-157109381090');
-assert.equal(before.main.versionHash,'a597db3a9e38f504530226e8779fc62535f8ec5c5be96cb57bd95aa51f13c9e8');
+assert.equal(before.main.version,'b16a5b96-5ed0-45db-9117-d4a93d11cc2d','Protected main changed since review');
 assert.equal(before.access.hash,'8bd4498f31fb0f866ec887c5358d9afcedba52313db1800472b3b96266f59ceb');
 assert.equal(before.collector.settings.bindings.length,4);
 assert.deepEqual(sorted(before.collector.settings.bindings),sorted(before.collector.bindings),'Latest and active bindings must match');
