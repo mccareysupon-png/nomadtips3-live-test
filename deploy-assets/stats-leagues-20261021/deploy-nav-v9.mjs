@@ -128,6 +128,7 @@ async function browserQA(domain,phase,patched){
       assert(nav,'MOBILE_MENU_TOGGLE_MISSING');
       await nav.click();
       await page.waitForFunction(()=>document.querySelector('#b46m-drawer[aria-hidden="false"]'),{timeout:5000});
+      await page.waitForFunction(()=>{const n=document.querySelector('#b46m-drawer [data-b46m-status="all"]'),r=n?.getBoundingClientRect();return !!r&&r.width>150&&r.x>=0&&r.x<innerWidth;},{timeout:7000,polling:100});
       const all=await page.$('#b46m-drawer [data-b46m-status="all"]');
       assert(all,'ORIGINAL_MOBILE_ALL_MATCHES_MISSING');
       await all.click();
