@@ -1,0 +1,29 @@
+name: BALL46 Featured Mobile Native Card Audit
+on:
+  push:
+    branches: [fix/ball46-featured-mobile-native-card-20261021]
+    paths:
+      - 'deploy-assets/featured-mobile-native-20261021/audit-layout.mjs'
+      - '.github/workflows/ball46-featured-mobile-native-20261021.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Inspect live FEATURED MATCH mobile layout
+        working-directory: deploy-assets/featured-mobile-native-20261021
+        run: |
+          npm install --no-save --ignore-scripts puppeteer-core@24
+          node audit-layout.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-mobile-native-audit
+          path: deploy-assets/featured-mobile-native-20261021/proof/
+          retention-days: 7
