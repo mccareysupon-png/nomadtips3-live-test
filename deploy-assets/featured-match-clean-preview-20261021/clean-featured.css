@@ -190,3 +190,9 @@ html body .workspace.singlepage .featured-card.b46fm-inplace .b46fm-events-more:
   grid-template-columns:29px minmax(0,1fr) 92px minmax(0,1fr) 29px!important;
  }
 }
+
+/* Avoid flash on event expand: toggle visibility only; do not animate/repaint the whole card. */
+html body .workspace.singlepage .featured-card.b46fm-inplace .feature-events>.event-item,
+html body .workspace.singlepage .featured-card.b46fm-inplace .b46fm-events-more{
+ animation:none!important;transition:none!important;
+}
