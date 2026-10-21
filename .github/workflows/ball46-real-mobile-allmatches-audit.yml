@@ -1,0 +1,30 @@
+name: BALL46 Actual Mobile All Matches Card Audit
+on:
+  push:
+    branches: [fix/ball46-featured-expanded-only-20261021]
+    paths:
+      - 'deploy-assets/expanded-match-mobile-v4/audit-real-mobile-list.mjs'
+      - '.github/workflows/ball46-real-mobile-allmatches-audit.yml'
+permissions:
+  contents: read
+jobs:
+  mobile:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Inspect the exact mobile All Matches interactive card, read only
+        working-directory: deploy-assets/expanded-match-mobile-v4
+        run: |
+          npm install --no-save --ignore-scripts puppeteer-core@24
+          node audit-real-mobile-list.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-actual-mobile-renderer-source
+          path: deploy-assets/expanded-match-mobile-v4/mobile-proof/
+          retention-days: 3
+          if-no-files-found: warn
