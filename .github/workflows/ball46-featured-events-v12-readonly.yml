@@ -1,0 +1,29 @@
+name: BALL46 FEATURED Events V12 Read-Only Diagnosis
+on:
+  push:
+    branches: [fix/ball46-featured-events-inline-v12-20261021]
+    paths:
+      - '.github/workflows/ball46-featured-events-v12-readonly.yml'
+      - 'deploy-assets/featured-events-v12/diagnose.mjs'
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Inspect actual event box layout, read-only
+        working-directory: deploy-assets/featured-events-v12
+        run: |
+          npm install --no-save --ignore-scripts puppeteer-core@24
+          node diagnose.mjs
+      - name: Store evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: b46-events-v12-readonly
+          path: deploy-assets/featured-events-v12/audit/
+          retention-days: 10
+          if-no-files-found: warn
