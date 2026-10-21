@@ -1,0 +1,161 @@
+{
+  "phase": "activate",
+  "base": "57394847-ad47-41ca-af2b-40d22b925a17",
+  "script": "ball46-production",
+  "mark": "B46_SEO_ENGLISH_METADATA_20261021",
+  "run": "39611954362",
+  "commit": "663287b9eeb6d488497f4f78eb09a11ac1cd9107",
+  "startedAt": "2026-10-21T13:53:32.360Z",
+  "assetsRetained": true,
+  "before": {
+    "id": "57394847-ad47-41ca-af2b-40d22b925a17",
+    "deployment": "3e29e40e-5751-4bc0-8d15-72d3d260d2c0"
+  },
+  "baseModules": [
+    {
+      "name": "assets/5usd-control.html",
+      "type": "text/plain",
+      "sha": "3d52c9cd5047238b65d184ca2edac7118b29bd89bdfc7fbff50df40ff77a40e8"
+    },
+    {
+      "name": "assets/api-monitor.html",
+      "type": "text/plain",
+      "sha": "181823ca5dca06eeb0ffbe91971f8bc5bdac3076fa32a21b82de7a402310d9f5"
+    },
+    {
+      "name": "assets/detection-test.html",
+      "type": "text/plain",
+      "sha": "510d1e6d2a5738ee20449a8a6e3233fcb7c69fbe63c71bb10c25c748fdfbc71e"
+    },
+    {
+      "name": "assets/index.html",
+      "type": "text/plain",
+      "sha": "4dbdb46a79970dd1b1c7f3707206d3465307796640b919319a55731fe587b33c"
+    },
+    {
+      "name": "assets/robots.txt",
+      "type": "text/plain",
+      "sha": "f2262c458da042583e2bf1a8207109823b1935af67080c9b223fd600ab417f5b"
+    },
+    {
+      "name": "assets/settings.html",
+      "type": "text/plain",
+      "sha": "08f65d43d98dd31ecf46dae808c20aebc2a84f3e52e9c8c9b69e847c9d12d7b5"
+    },
+    {
+      "name": "assets/signal-next.html",
+      "type": "text/plain",
+      "sha": "1b4b9c847b768d2ac8fe0936b0a2e38fd51721cb542c2f0aed5ad7556cb669c4"
+    },
+    {
+      "name": "assets/signal.html",
+      "type": "text/plain",
+      "sha": "4fa313d00c748ce9ffc98bad952495e7b7a1c3f99a6693b6696b6b7dc728f2cc"
+    },
+    {
+      "name": "assets/statistics-next.html",
+      "type": "text/plain",
+      "sha": "393f1adf39385965986542ff38d740b696bf06c3dfb7a490edffce0f09bba534"
+    },
+    {
+      "name": "assets/statistics.html",
+      "type": "text/plain",
+      "sha": "9e3754322902d4748f1019cce258f0dd309b0256eccf4fbe53070e09ec7a75f6"
+    },
+    {
+      "name": "index.js",
+      "type": "application/javascript+module",
+      "sha": "8b3badb346d20a5a465691802bfe6a81f67ccea69bdfee03526ff7a9c5f5f4d6"
+    }
+  ],
+  "routesAudit": {
+    "ciStatus": 403,
+    "verifiedAt": "2026-10-21T13:53:08.037Z"
+  },
+  "configBefore": {
+    "settings": {
+      "placement": {},
+      "compatibility_date": "2026-09-09",
+      "compatibility_flags": [],
+      "usage_model": "standard",
+      "tags": [],
+      "tail_consumers": [],
+      "logpush": false,
+      "observability": {
+        "enabled": true,
+        "head_sampling_rate": 1,
+        "redact_query_string": false,
+        "logs": {
+          "enabled": true,
+          "head_sampling_rate": 1,
+          "persist": true,
+          "invocation_logs": true
+        },
+        "traces": {
+          "enabled": false,
+          "persist": true,
+          "head_sampling_rate": 1
+        }
+      },
+      "annotations": {
+        "workers/message": "Homepage English SEO metadata only; retain UI, scripts, styles, data and Mobile",
+        "workers/tag": "B46_SEO_ENGLISH_METADATA_20261021",
+        "workers/triggered_by": "version_upload"
+      },
+      "bindings": [
+        {
+          "name": "ASSETS",
+          "type": "assets"
+        },
+        {
+          "environment": "production",
+          "name": "ENGINE",
+          "service": "nomadtips3-engine-343",
+          "type": "service"
+        },
+        {
+          "environment": "production",
+          "name": "FULL_MARKET",
+          "service": "nomadtips3-full-market-343-ball46",
+          "type": "service"
+        },
+        {
+          "environment": "production",
+          "name": "HUB",
+          "service": "nomadtips3-5usd-hub-343",
+          "type": "service"
+        }
+      ]
+    },
+    "schedules": {
+      "schedules": []
+    },
+    "domains": [
+      {
+        "id": "1fd1fb4d1a469f27a657c0403fe74e7de5700d97",
+        "zone_id": "d491ee30b7a87a6c37e6a4dacf00ae8d",
+        "zone_name": "ball46.com",
+        "hostname": "ball46.com",
+        "service": "ball46-production",
+        "environment": "production",
+        "cert_id": "f9d87c5a-5cb4-45a2-b8a7-4fc779c78b6a",
+        "previews_enabled": false,
+        "enabled": true
+      },
+      {
+        "id": "4c7d61ed4dd2d6e0906cdce6e4b95b62915ad21b",
+        "zone_id": "d491ee30b7a87a6c37e6a4dacf00ae8d",
+        "zone_name": "ball46.com",
+        "hostname": "www.ball46.com",
+        "service": "ball46-production",
+        "environment": "production",
+        "cert_id": "308acf6b-b201-432c-90cf-06666aff03a0",
+        "previews_enabled": false,
+        "enabled": true
+      }
+    ],
+    "routes": []
+  },
+  "ok": false,
+  "error": "fetch failed"
+}
