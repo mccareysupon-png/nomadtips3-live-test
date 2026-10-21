@@ -45,7 +45,7 @@ jobs:
               assert(content.includes('B46_MEMBER_ODDS_DROPDOWN_OPACITY85_V6_20261021'),'OPACITY85_MARKER_MISSING');
               assert(content.includes('B46_MEMBER_ODDS_DROPDOWN_OPACITY75_V5_20261021'),'PREVIOUS_CSS_NOT_PRESERVED');
               assert(/background:rgba\(18,38,48,\.85\)!important/.test(content),'OPACITY_NOT_85_PERCENT');
-              assert(/\/* B46_MEMBER_ODDS_DROPDOWN_OPACITY85_V6_20261021/.test(content),'ODDS_V6_HEADER_MISSING');
+              assert(content.includes('/* B46_MEMBER_ODDS_DROPDOWN_OPACITY85_V6_20261021'),'ODDS_V6_HEADER_MISSING');
               assert(content.trimEnd().endsWith('}'),'ODDS_V6_CSS_APPEND_NOT_LAST');
             }
             if(p==='/member.js'){
