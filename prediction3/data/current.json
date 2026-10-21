@@ -1,23 +1,23 @@
 {
   "record_version": "PREDICTION3_CURRENT_V1",
-  "updated_at": "2026-10-20T03:30:00Z",
+  "updated_at": "2026-10-21T00:32:00Z",
   "selection": {
-    "daily_strategy": "2026-10-20 SIRIUS · owner-approved five manual 1X2 picks · unverified reference odds >1.70 · FT tracking",
-    "minimum_decimal_odds": 1.7,
+    "daily_strategy": "2026-10-21 SIRIUS · owner-approved 4 editorial 1X2 home-win candidates · reference odds >=1.80 · automatic name-matched FT tracking",
+    "minimum_decimal_odds": 1.8,
     "maximum_official_picks": 5,
-    "test_exception_note": "One-day owner-authorized five-pick exception 20 Oct 2026; default policy for other dates remains unchanged."
+    "test_exception_note": "No forced fifth pick. A–B–C unscored. Fixture IDs remain null until tracker learns from provider; match identity verified before settlement."
   },
   "today": [
     {
-      "id": "p3-2026-10-20-stu-atm",
-      "date": "2026-10-20",
+      "id": "p3-2026-10-21-como-mun",
+      "date": "2026-10-21",
       "league": "UEFA Champions League · League phase",
-      "round": "20 October 2026",
-      "kickoff": "02:00 Thailand Time · 21 Oct",
-      "home": "Stuttgart",
-      "away": "Atlético Madrid",
-      "homeShort": "STU",
-      "awayShort": "ATM",
+      "round": "21 October 2026",
+      "kickoff": "23:45 Thailand Time · 21 Oct",
+      "home": "Como",
+      "away": "Manchester United",
+      "homeShort": "COM",
+      "awayShort": "MUN",
       "homeColors": {
         "base": "#1d4d87",
         "stripe": "#d9d0a5",
@@ -30,172 +30,88 @@
         "accent": "#ffffff",
         "pattern": "stripe"
       },
-      "pick": "Atlético Madrid to Win",
+      "pick": "Como to Win",
       "market": "1X2",
-      "referenceOdds": 2.07,
-      "bestOddsObserved": 2.07,
-      "oddsCapturedAt": "Previously presented reference price; NOT independently verified live/executable on 20 Oct 2026",
-      "minimumOdds": 1.7,
-      "confidenceLabel": "SIRIUS 1 · Manual editorial pick · Unscored",
+      "referenceOdds": 2.2,
+      "bestOddsObserved": 2.2,
+      "oddsCapturedAt": "2026-10-21 · source page snapshot (exact quote timestamp unavailable)",
+      "minimumOdds": 1.8,
+      "confidenceLabel": "SIRIUS 1 · Editorial selection · Unscored",
       "grade": "TEST",
-      "currentView": "OWNER APPROVED · 5-PICK TEST · UNVERIFIED REFERENCE ODDS",
-      "finalCheck": "Verify 1X2 price >1.70 and confirmed XI before any wager",
-      "nomadView": "Manual editorial selection · automatic A–B–C scoring not performed",
+      "currentView": "EDITORIAL · VERIFIED FIXTURE · REFERENCE ODDS · TRACKER AUTO-MATCH PENDING",
+      "finalCheck": "Verify live odds and team lineups; Tracker must verify fixture identity before settlement",
+      "nomadView": "Manual editorial selection; A–B–C not scored",
       "risk": "High",
       "tracking": {
         "provider": "TotalCorner V3",
         "fixtureId": null,
-        "kickoffUtc": "2026-10-20T19:00:00Z",
-        "pickSide": "away",
-        "liveScore": true,
-        "automaticSettlement": true
-      },
-      "rawBestMarket": {
-        "market": "1X2",
-        "selection": "Atlético Madrid Win",
-        "oddsRange": "Unverified reference 2.07 (not live)",
-        "status": "REFERENCE ONLY · OWNER TEST"
-      },
-      "marketViews": [
-        {
-          "market": "1X2",
-          "pick": "Atlético Madrid to Win",
-          "odds": 2.07,
-          "status": "UNVERIFIED REFERENCE · NOT LIVE"
-        }
-      ],
-      "why": [
-        "Owner-approved manual 1X2 selection for existing Prediction3 tracking workflow.",
-        "Fixture verified on UEFA 2026/27 Matchday 3 schedule; quoted odds are not independently verified."
-      ],
-      "support": {
-        "form": "No automated form score verified.",
-        "squad": "Starting XI not confirmed.",
-        "level": "UEFA Champions League matchday 3, 20 Oct 2026.",
-        "price": "Unverified reference 2.07; do not treat as executable odds."
-      },
-      "tactical": [
-        "Full-time 1X2 win only; draw counts as LOSS.",
-        "Only settle when verified FT and exact home/away identity match."
-      ],
-      "riskFactors": [
-        "Reference odds are unverified and may be stale.",
-        "Manual selection; model edge not established."
-      ],
-      "noBetIf": [
-        "Live 1X2 price is not above 1.70.",
-        "Fixture identity or verified final score is unavailable."
-      ],
-      "finalCall": "SIRIUS 1 — ATLÉTICO MADRID WIN · REF 2.07",
-      "finalNote": "Owner-authorized five-pick 1X2 publication using yesterday's schema. Reference odds unverified; no bet executed.",
-      "disciplineNote": "No wagering transaction. Missing or uncertain FT remains pending; never fabricate result.",
-      "sources": [
-        {
-          "label": "UEFA official matchday 3 fixtures",
-          "type": "fixture",
-          "url": "https://www.uefa.com/uefachampionsleague/news/02a8-2174c9e9019d-f909a77bd77a-1000--2026-27-champions-league-all-the-league-phase-fixtures-a/"
-        }
-      ]
-    },
-    {
-      "id": "p3-2026-10-20-psg-bar",
-      "date": "2026-10-20",
-      "league": "UEFA Champions League · League phase",
-      "round": "20 October 2026",
-      "kickoff": "02:00 Thailand Time · 21 Oct",
-      "home": "Paris Saint-Germain",
-      "away": "Barcelona",
-      "homeShort": "PSG",
-      "awayShort": "BAR",
-      "homeColors": {
-        "base": "#1d4d87",
-        "stripe": "#d9d0a5",
-        "accent": "#ffffff",
-        "pattern": "stripe"
-      },
-      "awayColors": {
-        "base": "#e6bd2b",
-        "stripe": "#102a62",
-        "accent": "#ffffff",
-        "pattern": "stripe"
-      },
-      "pick": "Paris Saint-Germain to Win",
-      "market": "1X2",
-      "referenceOdds": 2.39,
-      "bestOddsObserved": 2.39,
-      "oddsCapturedAt": "Previously presented reference price; NOT independently verified live/executable on 20 Oct 2026",
-      "minimumOdds": 1.7,
-      "confidenceLabel": "SIRIUS 2 · Manual editorial pick · Unscored",
-      "grade": "TEST",
-      "currentView": "OWNER APPROVED · 5-PICK TEST · UNVERIFIED REFERENCE ODDS",
-      "finalCheck": "Verify 1X2 price >1.70 and confirmed XI before any wager",
-      "nomadView": "Manual editorial selection · automatic A–B–C scoring not performed",
-      "risk": "High",
-      "tracking": {
-        "provider": "TotalCorner V3",
-        "fixtureId": null,
-        "kickoffUtc": "2026-10-20T19:00:00Z",
+        "kickoffUtc": "2026-10-21T16:45:00Z",
         "pickSide": "home",
         "liveScore": true,
         "automaticSettlement": true
       },
       "rawBestMarket": {
         "market": "1X2",
-        "selection": "Paris Saint-Germain Win",
-        "oddsRange": "Unverified reference 2.39 (not live)",
-        "status": "REFERENCE ONLY · OWNER TEST"
+        "selection": "Como Win",
+        "oddsRange": "Reference 2.20 · exact quote timestamp unavailable",
+        "status": "REFERENCE ONLY · NOT EXECUTABLE"
       },
       "marketViews": [
         {
           "market": "1X2",
-          "pick": "Paris Saint-Germain to Win",
-          "odds": 2.39,
-          "status": "UNVERIFIED REFERENCE · NOT LIVE"
+          "pick": "Como to Win",
+          "odds": 2.2,
+          "status": "REFERENCE · NOT LIVE VERIFIED"
         }
       ],
       "why": [
-        "Owner-approved manual 1X2 selection for existing Prediction3 tracking workflow.",
-        "Fixture verified on UEFA 2026/27 Matchday 3 schedule; quoted odds are not independently verified."
+        "UEFA 2026/27 matchday 3 fixture verified.",
+        "Editorial home-win candidate with 1X2 reference price above 1.80; A–B–C scoring not performed."
       ],
       "support": {
-        "form": "No automated form score verified.",
+        "form": "Not independently scored.",
         "squad": "Starting XI not confirmed.",
-        "level": "UEFA Champions League matchday 3, 20 Oct 2026.",
-        "price": "Unverified reference 2.39; do not treat as executable odds."
+        "level": "UEFA Champions League matchday 3.",
+        "price": "Stake 1X2 reference 2.20; quote timestamp unavailable."
       },
       "tactical": [
-        "Full-time 1X2 win only; draw counts as LOSS.",
-        "Only settle when verified FT and exact home/away identity match."
+        "Full-time 1X2 home win only; draw counts as LOSS.",
+        "Tracker auto-matches team identity and only settles on verified FT."
       ],
       "riskFactors": [
-        "Reference odds are unverified and may be stale.",
-        "Manual selection; model edge not established."
+        "Price is a reference snapshot, not a verified executable quote.",
+        "TotalCorner V3 fixture ID pending auto-discovery."
       ],
       "noBetIf": [
-        "Live 1X2 price is not above 1.70.",
-        "Fixture identity or verified final score is unavailable."
+        "1X2 price falls below 1.80.",
+        "Fixture identity or verified FT unavailable."
       ],
-      "finalCall": "SIRIUS 2 — PARIS SAINT-GERMAIN WIN · REF 2.39",
-      "finalNote": "Owner-authorized five-pick 1X2 publication using yesterday's schema. Reference odds unverified; no bet executed.",
-      "disciplineNote": "No wagering transaction. Missing or uncertain FT remains pending; never fabricate result.",
+      "finalCall": "SIRIUS 1 — COMO WIN · REF 2.20",
+      "finalNote": "Owner-approved editorial listing; not A–B–C scored; no wager executed.",
+      "disciplineNote": "Missing or ambiguous fixture identity remains pending; never fabricate settlement.",
       "sources": [
         {
-          "label": "UEFA official matchday 3 fixtures",
+          "label": "UEFA official 2026/27 fixtures",
           "type": "fixture",
-          "url": "https://www.uefa.com/uefachampionsleague/news/02a8-2174c9e9019d-f909a77bd77a-1000--2026-27-champions-league-all-the-league-phase-fixtures-a/"
+          "url": "https://www.uefa.com/uefachampionsleague/news/02a8-2174c9e9019d-f909a77bd77a-1000--champions-league-league-phase-fixtures-and-results/"
+        },
+        {
+          "label": "Stake 1X2 reference market",
+          "type": "odds",
+          "url": "https://stake.bet/sports/soccer/international-clubs/uefa-champions-league"
         }
       ]
     },
     {
-      "id": "p3-2026-10-20-por-psv",
-      "date": "2026-10-20",
+      "id": "p3-2026-10-21-lil-gal",
+      "date": "2026-10-21",
       "league": "UEFA Champions League · League phase",
-      "round": "20 October 2026",
-      "kickoff": "02:00 Thailand Time · 21 Oct",
-      "home": "Porto",
-      "away": "PSV Eindhoven",
-      "homeShort": "POR",
-      "awayShort": "PSV",
+      "round": "21 October 2026",
+      "kickoff": "23:45 Thailand Time · 21 Oct",
+      "home": "Lille",
+      "away": "Galatasaray",
+      "homeShort": "LIL",
+      "awayShort": "GAL",
       "homeColors": {
         "base": "#1d4d87",
         "stripe": "#d9d0a5",
@@ -208,83 +124,88 @@
         "accent": "#ffffff",
         "pattern": "stripe"
       },
-      "pick": "PSV Eindhoven to Win",
+      "pick": "Lille to Win",
       "market": "1X2",
-      "referenceOdds": 5.4,
-      "bestOddsObserved": 5.4,
-      "oddsCapturedAt": "Previously presented reference price; NOT independently verified live/executable on 20 Oct 2026",
-      "minimumOdds": 1.7,
-      "confidenceLabel": "SIRIUS 3 · Manual editorial pick · Unscored",
+      "referenceOdds": 2.19,
+      "bestOddsObserved": 2.19,
+      "oddsCapturedAt": "2026-10-21 · source page snapshot (exact quote timestamp unavailable)",
+      "minimumOdds": 1.8,
+      "confidenceLabel": "SIRIUS 2 · Editorial selection · Unscored",
       "grade": "TEST",
-      "currentView": "OWNER APPROVED · 5-PICK TEST · UNVERIFIED REFERENCE ODDS",
-      "finalCheck": "Verify 1X2 price >1.70 and confirmed XI before any wager",
-      "nomadView": "Manual editorial selection · automatic A–B–C scoring not performed",
-      "risk": "Very High",
+      "currentView": "EDITORIAL · VERIFIED FIXTURE · REFERENCE ODDS · TRACKER AUTO-MATCH PENDING",
+      "finalCheck": "Verify live odds and team lineups; Tracker must verify fixture identity before settlement",
+      "nomadView": "Manual editorial selection; A–B–C not scored",
+      "risk": "High",
       "tracking": {
         "provider": "TotalCorner V3",
         "fixtureId": null,
-        "kickoffUtc": "2026-10-20T19:00:00Z",
-        "pickSide": "away",
+        "kickoffUtc": "2026-10-21T16:45:00Z",
+        "pickSide": "home",
         "liveScore": true,
         "automaticSettlement": true
       },
       "rawBestMarket": {
         "market": "1X2",
-        "selection": "PSV Eindhoven Win",
-        "oddsRange": "Unverified reference 5.40 (not live)",
-        "status": "REFERENCE ONLY · OWNER TEST"
+        "selection": "Lille Win",
+        "oddsRange": "Reference 2.19 · exact quote timestamp unavailable",
+        "status": "REFERENCE ONLY · NOT EXECUTABLE"
       },
       "marketViews": [
         {
           "market": "1X2",
-          "pick": "PSV Eindhoven to Win",
-          "odds": 5.4,
-          "status": "UNVERIFIED REFERENCE · NOT LIVE"
+          "pick": "Lille to Win",
+          "odds": 2.19,
+          "status": "REFERENCE · NOT LIVE VERIFIED"
         }
       ],
       "why": [
-        "Owner-approved manual 1X2 selection for existing Prediction3 tracking workflow.",
-        "Fixture verified on UEFA 2026/27 Matchday 3 schedule; quoted odds are not independently verified."
+        "UEFA 2026/27 matchday 3 fixture verified.",
+        "Editorial home-win candidate with 1X2 reference price above 1.80; A–B–C scoring not performed."
       ],
       "support": {
-        "form": "No automated form score verified.",
+        "form": "Not independently scored.",
         "squad": "Starting XI not confirmed.",
-        "level": "UEFA Champions League matchday 3, 20 Oct 2026.",
-        "price": "Unverified reference 5.40; do not treat as executable odds."
+        "level": "UEFA Champions League matchday 3.",
+        "price": "Stake 1X2 reference 2.19; quote timestamp unavailable."
       },
       "tactical": [
-        "Full-time 1X2 win only; draw counts as LOSS.",
-        "Only settle when verified FT and exact home/away identity match."
+        "Full-time 1X2 home win only; draw counts as LOSS.",
+        "Tracker auto-matches team identity and only settles on verified FT."
       ],
       "riskFactors": [
-        "Reference odds are unverified and may be stale.",
-        "Manual selection; model edge not established."
+        "Price is a reference snapshot, not a verified executable quote.",
+        "TotalCorner V3 fixture ID pending auto-discovery."
       ],
       "noBetIf": [
-        "Live 1X2 price is not above 1.70.",
-        "Fixture identity or verified final score is unavailable."
+        "1X2 price falls below 1.80.",
+        "Fixture identity or verified FT unavailable."
       ],
-      "finalCall": "SIRIUS 3 — PSV EINDHOVEN WIN · REF 5.40",
-      "finalNote": "Owner-authorized five-pick 1X2 publication using yesterday's schema. Reference odds unverified; no bet executed.",
-      "disciplineNote": "No wagering transaction. Missing or uncertain FT remains pending; never fabricate result.",
+      "finalCall": "SIRIUS 2 — LILLE WIN · REF 2.19",
+      "finalNote": "Owner-approved editorial listing; not A–B–C scored; no wager executed.",
+      "disciplineNote": "Missing or ambiguous fixture identity remains pending; never fabricate settlement.",
       "sources": [
         {
-          "label": "UEFA official matchday 3 fixtures",
+          "label": "UEFA official 2026/27 fixtures",
           "type": "fixture",
-          "url": "https://www.uefa.com/uefachampionsleague/news/02a8-2174c9e9019d-f909a77bd77a-1000--2026-27-champions-league-all-the-league-phase-fixtures-a/"
+          "url": "https://www.uefa.com/uefachampionsleague/news/02a8-2174c9e9019d-f909a77bd77a-1000--champions-league-league-phase-fixtures-and-results/"
+        },
+        {
+          "label": "Stake 1X2 reference market",
+          "type": "odds",
+          "url": "https://stake.bet/sports/soccer/international-clubs/uefa-champions-league"
         }
       ]
     },
     {
-      "id": "p3-2026-10-20-nap-bod",
-      "date": "2026-10-20",
+      "id": "p3-2026-10-21-bay-ars",
+      "date": "2026-10-21",
       "league": "UEFA Champions League · League phase",
-      "round": "20 October 2026",
-      "kickoff": "02:00 Thailand Time · 21 Oct",
-      "home": "Napoli",
-      "away": "Bodø/Glimt",
-      "homeShort": "NAP",
-      "awayShort": "BOD",
+      "round": "21 October 2026",
+      "kickoff": "02:00 Thailand Time · 22 Oct",
+      "home": "Bayern Munich",
+      "away": "Arsenal",
+      "homeShort": "BAY",
+      "awayShort": "ARS",
       "homeColors": {
         "base": "#1d4d87",
         "stripe": "#d9d0a5",
@@ -297,83 +218,88 @@
         "accent": "#ffffff",
         "pattern": "stripe"
       },
-      "pick": "Bodø/Glimt to Win",
+      "pick": "Bayern Munich to Win",
       "market": "1X2",
-      "referenceOdds": 4.7,
-      "bestOddsObserved": 4.7,
-      "oddsCapturedAt": "Previously presented reference price; NOT independently verified live/executable on 20 Oct 2026",
-      "minimumOdds": 1.7,
-      "confidenceLabel": "SIRIUS 4 · Manual editorial pick · Unscored",
+      "referenceOdds": 2.05,
+      "bestOddsObserved": 2.05,
+      "oddsCapturedAt": "2026-10-21 · source page snapshot (exact quote timestamp unavailable)",
+      "minimumOdds": 1.8,
+      "confidenceLabel": "SIRIUS 3 · Editorial selection · Unscored",
       "grade": "TEST",
-      "currentView": "OWNER APPROVED · 5-PICK TEST · UNVERIFIED REFERENCE ODDS",
-      "finalCheck": "Verify 1X2 price >1.70 and confirmed XI before any wager",
-      "nomadView": "Manual editorial selection · automatic A–B–C scoring not performed",
-      "risk": "Very High",
+      "currentView": "EDITORIAL · VERIFIED FIXTURE · REFERENCE ODDS · TRACKER AUTO-MATCH PENDING",
+      "finalCheck": "Verify live odds and team lineups; Tracker must verify fixture identity before settlement",
+      "nomadView": "Manual editorial selection; A–B–C not scored",
+      "risk": "High",
       "tracking": {
         "provider": "TotalCorner V3",
         "fixtureId": null,
-        "kickoffUtc": "2026-10-20T19:00:00Z",
-        "pickSide": "away",
+        "kickoffUtc": "2026-10-21T19:00:00Z",
+        "pickSide": "home",
         "liveScore": true,
         "automaticSettlement": true
       },
       "rawBestMarket": {
         "market": "1X2",
-        "selection": "Bodø/Glimt Win",
-        "oddsRange": "Unverified reference 4.70 (not live)",
-        "status": "REFERENCE ONLY · OWNER TEST"
+        "selection": "Bayern Munich Win",
+        "oddsRange": "Reference 2.05 · exact quote timestamp unavailable",
+        "status": "REFERENCE ONLY · NOT EXECUTABLE"
       },
       "marketViews": [
         {
           "market": "1X2",
-          "pick": "Bodø/Glimt to Win",
-          "odds": 4.7,
-          "status": "UNVERIFIED REFERENCE · NOT LIVE"
+          "pick": "Bayern Munich to Win",
+          "odds": 2.05,
+          "status": "REFERENCE · NOT LIVE VERIFIED"
         }
       ],
       "why": [
-        "Owner-approved manual 1X2 selection for existing Prediction3 tracking workflow.",
-        "Fixture verified on UEFA 2026/27 Matchday 3 schedule; quoted odds are not independently verified."
+        "UEFA 2026/27 matchday 3 fixture verified.",
+        "Editorial home-win candidate with 1X2 reference price above 1.80; A–B–C scoring not performed."
       ],
       "support": {
-        "form": "No automated form score verified.",
+        "form": "Not independently scored.",
         "squad": "Starting XI not confirmed.",
-        "level": "UEFA Champions League matchday 3, 20 Oct 2026.",
-        "price": "Unverified reference 4.70; do not treat as executable odds."
+        "level": "UEFA Champions League matchday 3.",
+        "price": "Stake 1X2 reference 2.05; quote timestamp unavailable."
       },
       "tactical": [
-        "Full-time 1X2 win only; draw counts as LOSS.",
-        "Only settle when verified FT and exact home/away identity match."
+        "Full-time 1X2 home win only; draw counts as LOSS.",
+        "Tracker auto-matches team identity and only settles on verified FT."
       ],
       "riskFactors": [
-        "Reference odds are unverified and may be stale.",
-        "Manual selection; model edge not established."
+        "Price is a reference snapshot, not a verified executable quote.",
+        "TotalCorner V3 fixture ID pending auto-discovery."
       ],
       "noBetIf": [
-        "Live 1X2 price is not above 1.70.",
-        "Fixture identity or verified final score is unavailable."
+        "1X2 price falls below 1.80.",
+        "Fixture identity or verified FT unavailable."
       ],
-      "finalCall": "SIRIUS 4 — BODØ/GLIMT WIN · REF 4.70",
-      "finalNote": "Owner-authorized five-pick 1X2 publication using yesterday's schema. Reference odds unverified; no bet executed.",
-      "disciplineNote": "No wagering transaction. Missing or uncertain FT remains pending; never fabricate result.",
+      "finalCall": "SIRIUS 3 — BAYERN MUNICH WIN · REF 2.05",
+      "finalNote": "Owner-approved editorial listing; not A–B–C scored; no wager executed.",
+      "disciplineNote": "Missing or ambiguous fixture identity remains pending; never fabricate settlement.",
       "sources": [
         {
-          "label": "UEFA official matchday 3 fixtures",
+          "label": "UEFA official 2026/27 fixtures",
           "type": "fixture",
-          "url": "https://www.uefa.com/uefachampionsleague/news/02a8-2174c9e9019d-f909a77bd77a-1000--2026-27-champions-league-all-the-league-phase-fixtures-a/"
+          "url": "https://www.uefa.com/uefachampionsleague/news/02a8-2174c9e9019d-f909a77bd77a-1000--champions-league-league-phase-fixtures-and-results/"
+        },
+        {
+          "label": "Stake 1X2 reference market",
+          "type": "odds",
+          "url": "https://stake.bet/sports/soccer/international-clubs/uefa-champions-league"
         }
       ]
     },
     {
-      "id": "p3-2026-10-20-liv-vil",
-      "date": "2026-10-20",
+      "id": "p3-2026-10-21-bru-len",
+      "date": "2026-10-21",
       "league": "UEFA Champions League · League phase",
-      "round": "20 October 2026",
-      "kickoff": "02:00 Thailand Time · 21 Oct",
-      "home": "Liverpool",
-      "away": "Villarreal",
-      "homeShort": "LIV",
-      "awayShort": "VIL",
+      "round": "21 October 2026",
+      "kickoff": "02:00 Thailand Time · 22 Oct",
+      "home": "Club Brugge",
+      "away": "Lens",
+      "homeShort": "BRU",
+      "awayShort": "LEN",
       "homeColors": {
         "base": "#1d4d87",
         "stripe": "#d9d0a5",
@@ -386,70 +312,75 @@
         "accent": "#ffffff",
         "pattern": "stripe"
       },
-      "pick": "Villarreal to Win",
+      "pick": "Club Brugge to Win",
       "market": "1X2",
-      "referenceOdds": 5.8,
-      "bestOddsObserved": 5.8,
-      "oddsCapturedAt": "Previously presented reference price; NOT independently verified live/executable on 20 Oct 2026",
-      "minimumOdds": 1.7,
-      "confidenceLabel": "SIRIUS 5 · Manual editorial pick · Unscored",
+      "referenceOdds": 2.02,
+      "bestOddsObserved": 2.02,
+      "oddsCapturedAt": "2026-10-21 · source page snapshot (exact quote timestamp unavailable)",
+      "minimumOdds": 1.8,
+      "confidenceLabel": "SIRIUS 4 · Editorial selection · Unscored",
       "grade": "TEST",
-      "currentView": "OWNER APPROVED · 5-PICK TEST · UNVERIFIED REFERENCE ODDS",
-      "finalCheck": "Verify 1X2 price >1.70 and confirmed XI before any wager",
-      "nomadView": "Manual editorial selection · automatic A–B–C scoring not performed",
-      "risk": "Very High",
+      "currentView": "EDITORIAL · VERIFIED FIXTURE · REFERENCE ODDS · TRACKER AUTO-MATCH PENDING",
+      "finalCheck": "Verify live odds and team lineups; Tracker must verify fixture identity before settlement",
+      "nomadView": "Manual editorial selection; A–B–C not scored",
+      "risk": "High",
       "tracking": {
         "provider": "TotalCorner V3",
         "fixtureId": null,
-        "kickoffUtc": "2026-10-20T19:00:00Z",
-        "pickSide": "away",
+        "kickoffUtc": "2026-10-21T19:00:00Z",
+        "pickSide": "home",
         "liveScore": true,
         "automaticSettlement": true
       },
       "rawBestMarket": {
         "market": "1X2",
-        "selection": "Villarreal Win",
-        "oddsRange": "Unverified reference 5.80 (not live)",
-        "status": "REFERENCE ONLY · OWNER TEST"
+        "selection": "Club Brugge Win",
+        "oddsRange": "Reference 2.02 · exact quote timestamp unavailable",
+        "status": "REFERENCE ONLY · NOT EXECUTABLE"
       },
       "marketViews": [
         {
           "market": "1X2",
-          "pick": "Villarreal to Win",
-          "odds": 5.8,
-          "status": "UNVERIFIED REFERENCE · NOT LIVE"
+          "pick": "Club Brugge to Win",
+          "odds": 2.02,
+          "status": "REFERENCE · NOT LIVE VERIFIED"
         }
       ],
       "why": [
-        "Owner-approved manual 1X2 selection for existing Prediction3 tracking workflow.",
-        "Fixture verified on UEFA 2026/27 Matchday 3 schedule; quoted odds are not independently verified."
+        "UEFA 2026/27 matchday 3 fixture verified.",
+        "Editorial home-win candidate with 1X2 reference price above 1.80; A–B–C scoring not performed."
       ],
       "support": {
-        "form": "No automated form score verified.",
+        "form": "Not independently scored.",
         "squad": "Starting XI not confirmed.",
-        "level": "UEFA Champions League matchday 3, 20 Oct 2026.",
-        "price": "Unverified reference 5.80; do not treat as executable odds."
+        "level": "UEFA Champions League matchday 3.",
+        "price": "Stake 1X2 reference 2.02; quote timestamp unavailable."
       },
       "tactical": [
-        "Full-time 1X2 win only; draw counts as LOSS.",
-        "Only settle when verified FT and exact home/away identity match."
+        "Full-time 1X2 home win only; draw counts as LOSS.",
+        "Tracker auto-matches team identity and only settles on verified FT."
       ],
       "riskFactors": [
-        "Reference odds are unverified and may be stale.",
-        "Manual selection; model edge not established."
+        "Price is a reference snapshot, not a verified executable quote.",
+        "TotalCorner V3 fixture ID pending auto-discovery."
       ],
       "noBetIf": [
-        "Live 1X2 price is not above 1.70.",
-        "Fixture identity or verified final score is unavailable."
+        "1X2 price falls below 1.80.",
+        "Fixture identity or verified FT unavailable."
       ],
-      "finalCall": "SIRIUS 5 — VILLARREAL WIN · REF 5.80",
-      "finalNote": "Owner-authorized five-pick 1X2 publication using yesterday's schema. Reference odds unverified; no bet executed.",
-      "disciplineNote": "No wagering transaction. Missing or uncertain FT remains pending; never fabricate result.",
+      "finalCall": "SIRIUS 4 — CLUB BRUGGE WIN · REF 2.02",
+      "finalNote": "Owner-approved editorial listing; not A–B–C scored; no wager executed.",
+      "disciplineNote": "Missing or ambiguous fixture identity remains pending; never fabricate settlement.",
       "sources": [
         {
-          "label": "UEFA official matchday 3 fixtures",
+          "label": "UEFA official 2026/27 fixtures",
           "type": "fixture",
-          "url": "https://www.uefa.com/uefachampionsleague/news/02a8-2174c9e9019d-f909a77bd77a-1000--2026-27-champions-league-all-the-league-phase-fixtures-a/"
+          "url": "https://www.uefa.com/uefachampionsleague/news/02a8-2174c9e9019d-f909a77bd77a-1000--champions-league-league-phase-fixtures-and-results/"
+        },
+        {
+          "label": "Stake 1X2 reference market",
+          "type": "odds",
+          "url": "https://stake.bet/sports/soccer/international-clubs/uefa-champions-league"
         }
       ]
     }
@@ -1475,6 +1406,451 @@
           "label": "Jong Utrecht – Roda · statistics and odds",
           "type": "price",
           "url": "https://dutchleague.net/match/jong-utrecht-vs-roda-2026-10-19"
+        }
+      ]
+    },
+    {
+      "id": "p3-2026-10-20-stu-atm",
+      "date": "2026-10-20",
+      "league": "UEFA Champions League · League phase",
+      "round": "20 October 2026",
+      "kickoff": "02:00 Thailand Time · 21 Oct",
+      "home": "Stuttgart",
+      "away": "Atlético Madrid",
+      "homeShort": "STU",
+      "awayShort": "ATM",
+      "homeColors": {
+        "base": "#1d4d87",
+        "stripe": "#d9d0a5",
+        "accent": "#ffffff",
+        "pattern": "stripe"
+      },
+      "awayColors": {
+        "base": "#e6bd2b",
+        "stripe": "#102a62",
+        "accent": "#ffffff",
+        "pattern": "stripe"
+      },
+      "pick": "Atlético Madrid to Win",
+      "market": "1X2",
+      "referenceOdds": 2.07,
+      "bestOddsObserved": 2.07,
+      "oddsCapturedAt": "Previously presented reference price; NOT independently verified live/executable on 20 Oct 2026",
+      "minimumOdds": 1.7,
+      "confidenceLabel": "SIRIUS 1 · Manual editorial pick · Unscored",
+      "grade": "TEST",
+      "currentView": "OWNER APPROVED · 5-PICK TEST · UNVERIFIED REFERENCE ODDS",
+      "finalCheck": "Verify 1X2 price >1.70 and confirmed XI before any wager",
+      "nomadView": "Manual editorial selection · automatic A–B–C scoring not performed",
+      "risk": "High",
+      "tracking": {
+        "provider": "TotalCorner V3",
+        "fixtureId": null,
+        "kickoffUtc": "2026-10-20T19:00:00Z",
+        "pickSide": "away",
+        "liveScore": true,
+        "automaticSettlement": true
+      },
+      "rawBestMarket": {
+        "market": "1X2",
+        "selection": "Atlético Madrid Win",
+        "oddsRange": "Unverified reference 2.07 (not live)",
+        "status": "REFERENCE ONLY · OWNER TEST"
+      },
+      "marketViews": [
+        {
+          "market": "1X2",
+          "pick": "Atlético Madrid to Win",
+          "odds": 2.07,
+          "status": "UNVERIFIED REFERENCE · NOT LIVE"
+        }
+      ],
+      "why": [
+        "Owner-approved manual 1X2 selection for existing Prediction3 tracking workflow.",
+        "Fixture verified on UEFA 2026/27 Matchday 3 schedule; quoted odds are not independently verified."
+      ],
+      "support": {
+        "form": "No automated form score verified.",
+        "squad": "Starting XI not confirmed.",
+        "level": "UEFA Champions League matchday 3, 20 Oct 2026.",
+        "price": "Unverified reference 2.07; do not treat as executable odds."
+      },
+      "tactical": [
+        "Full-time 1X2 win only; draw counts as LOSS.",
+        "Only settle when verified FT and exact home/away identity match."
+      ],
+      "riskFactors": [
+        "Reference odds are unverified and may be stale.",
+        "Manual selection; model edge not established."
+      ],
+      "noBetIf": [
+        "Live 1X2 price is not above 1.70.",
+        "Fixture identity or verified final score is unavailable."
+      ],
+      "finalCall": "SIRIUS 1 — ATLÉTICO MADRID WIN · REF 2.07",
+      "finalNote": "Owner-authorized five-pick 1X2 publication using yesterday's schema. Reference odds unverified; no bet executed.",
+      "disciplineNote": "No wagering transaction. Missing or uncertain FT remains pending; never fabricate result.",
+      "sources": [
+        {
+          "label": "UEFA official matchday 3 fixtures",
+          "type": "fixture",
+          "url": "https://www.uefa.com/uefachampionsleague/news/02a8-2174c9e9019d-f909a77bd77a-1000--2026-27-champions-league-all-the-league-phase-fixtures-a/"
+        }
+      ]
+    },
+    {
+      "id": "p3-2026-10-20-psg-bar",
+      "date": "2026-10-20",
+      "league": "UEFA Champions League · League phase",
+      "round": "20 October 2026",
+      "kickoff": "02:00 Thailand Time · 21 Oct",
+      "home": "Paris Saint-Germain",
+      "away": "Barcelona",
+      "homeShort": "PSG",
+      "awayShort": "BAR",
+      "homeColors": {
+        "base": "#1d4d87",
+        "stripe": "#d9d0a5",
+        "accent": "#ffffff",
+        "pattern": "stripe"
+      },
+      "awayColors": {
+        "base": "#e6bd2b",
+        "stripe": "#102a62",
+        "accent": "#ffffff",
+        "pattern": "stripe"
+      },
+      "pick": "Paris Saint-Germain to Win",
+      "market": "1X2",
+      "referenceOdds": 2.39,
+      "bestOddsObserved": 2.39,
+      "oddsCapturedAt": "Previously presented reference price; NOT independently verified live/executable on 20 Oct 2026",
+      "minimumOdds": 1.7,
+      "confidenceLabel": "SIRIUS 2 · Manual editorial pick · Unscored",
+      "grade": "TEST",
+      "currentView": "OWNER APPROVED · 5-PICK TEST · UNVERIFIED REFERENCE ODDS",
+      "finalCheck": "Verify 1X2 price >1.70 and confirmed XI before any wager",
+      "nomadView": "Manual editorial selection · automatic A–B–C scoring not performed",
+      "risk": "High",
+      "tracking": {
+        "provider": "TotalCorner V3",
+        "fixtureId": null,
+        "kickoffUtc": "2026-10-20T19:00:00Z",
+        "pickSide": "home",
+        "liveScore": true,
+        "automaticSettlement": true
+      },
+      "rawBestMarket": {
+        "market": "1X2",
+        "selection": "Paris Saint-Germain Win",
+        "oddsRange": "Unverified reference 2.39 (not live)",
+        "status": "REFERENCE ONLY · OWNER TEST"
+      },
+      "marketViews": [
+        {
+          "market": "1X2",
+          "pick": "Paris Saint-Germain to Win",
+          "odds": 2.39,
+          "status": "UNVERIFIED REFERENCE · NOT LIVE"
+        }
+      ],
+      "why": [
+        "Owner-approved manual 1X2 selection for existing Prediction3 tracking workflow.",
+        "Fixture verified on UEFA 2026/27 Matchday 3 schedule; quoted odds are not independently verified."
+      ],
+      "support": {
+        "form": "No automated form score verified.",
+        "squad": "Starting XI not confirmed.",
+        "level": "UEFA Champions League matchday 3, 20 Oct 2026.",
+        "price": "Unverified reference 2.39; do not treat as executable odds."
+      },
+      "tactical": [
+        "Full-time 1X2 win only; draw counts as LOSS.",
+        "Only settle when verified FT and exact home/away identity match."
+      ],
+      "riskFactors": [
+        "Reference odds are unverified and may be stale.",
+        "Manual selection; model edge not established."
+      ],
+      "noBetIf": [
+        "Live 1X2 price is not above 1.70.",
+        "Fixture identity or verified final score is unavailable."
+      ],
+      "finalCall": "SIRIUS 2 — PARIS SAINT-GERMAIN WIN · REF 2.39",
+      "finalNote": "Owner-authorized five-pick 1X2 publication using yesterday's schema. Reference odds unverified; no bet executed.",
+      "disciplineNote": "No wagering transaction. Missing or uncertain FT remains pending; never fabricate result.",
+      "sources": [
+        {
+          "label": "UEFA official matchday 3 fixtures",
+          "type": "fixture",
+          "url": "https://www.uefa.com/uefachampionsleague/news/02a8-2174c9e9019d-f909a77bd77a-1000--2026-27-champions-league-all-the-league-phase-fixtures-a/"
+        }
+      ]
+    },
+    {
+      "id": "p3-2026-10-20-por-psv",
+      "date": "2026-10-20",
+      "league": "UEFA Champions League · League phase",
+      "round": "20 October 2026",
+      "kickoff": "02:00 Thailand Time · 21 Oct",
+      "home": "Porto",
+      "away": "PSV Eindhoven",
+      "homeShort": "POR",
+      "awayShort": "PSV",
+      "homeColors": {
+        "base": "#1d4d87",
+        "stripe": "#d9d0a5",
+        "accent": "#ffffff",
+        "pattern": "stripe"
+      },
+      "awayColors": {
+        "base": "#e6bd2b",
+        "stripe": "#102a62",
+        "accent": "#ffffff",
+        "pattern": "stripe"
+      },
+      "pick": "PSV Eindhoven to Win",
+      "market": "1X2",
+      "referenceOdds": 5.4,
+      "bestOddsObserved": 5.4,
+      "oddsCapturedAt": "Previously presented reference price; NOT independently verified live/executable on 20 Oct 2026",
+      "minimumOdds": 1.7,
+      "confidenceLabel": "SIRIUS 3 · Manual editorial pick · Unscored",
+      "grade": "TEST",
+      "currentView": "OWNER APPROVED · 5-PICK TEST · UNVERIFIED REFERENCE ODDS",
+      "finalCheck": "Verify 1X2 price >1.70 and confirmed XI before any wager",
+      "nomadView": "Manual editorial selection · automatic A–B–C scoring not performed",
+      "risk": "Very High",
+      "tracking": {
+        "provider": "TotalCorner V3",
+        "fixtureId": null,
+        "kickoffUtc": "2026-10-20T19:00:00Z",
+        "pickSide": "away",
+        "liveScore": true,
+        "automaticSettlement": true
+      },
+      "rawBestMarket": {
+        "market": "1X2",
+        "selection": "PSV Eindhoven Win",
+        "oddsRange": "Unverified reference 5.40 (not live)",
+        "status": "REFERENCE ONLY · OWNER TEST"
+      },
+      "marketViews": [
+        {
+          "market": "1X2",
+          "pick": "PSV Eindhoven to Win",
+          "odds": 5.4,
+          "status": "UNVERIFIED REFERENCE · NOT LIVE"
+        }
+      ],
+      "why": [
+        "Owner-approved manual 1X2 selection for existing Prediction3 tracking workflow.",
+        "Fixture verified on UEFA 2026/27 Matchday 3 schedule; quoted odds are not independently verified."
+      ],
+      "support": {
+        "form": "No automated form score verified.",
+        "squad": "Starting XI not confirmed.",
+        "level": "UEFA Champions League matchday 3, 20 Oct 2026.",
+        "price": "Unverified reference 5.40; do not treat as executable odds."
+      },
+      "tactical": [
+        "Full-time 1X2 win only; draw counts as LOSS.",
+        "Only settle when verified FT and exact home/away identity match."
+      ],
+      "riskFactors": [
+        "Reference odds are unverified and may be stale.",
+        "Manual selection; model edge not established."
+      ],
+      "noBetIf": [
+        "Live 1X2 price is not above 1.70.",
+        "Fixture identity or verified final score is unavailable."
+      ],
+      "finalCall": "SIRIUS 3 — PSV EINDHOVEN WIN · REF 5.40",
+      "finalNote": "Owner-authorized five-pick 1X2 publication using yesterday's schema. Reference odds unverified; no bet executed.",
+      "disciplineNote": "No wagering transaction. Missing or uncertain FT remains pending; never fabricate result.",
+      "sources": [
+        {
+          "label": "UEFA official matchday 3 fixtures",
+          "type": "fixture",
+          "url": "https://www.uefa.com/uefachampionsleague/news/02a8-2174c9e9019d-f909a77bd77a-1000--2026-27-champions-league-all-the-league-phase-fixtures-a/"
+        }
+      ]
+    },
+    {
+      "id": "p3-2026-10-20-nap-bod",
+      "date": "2026-10-20",
+      "league": "UEFA Champions League · League phase",
+      "round": "20 October 2026",
+      "kickoff": "02:00 Thailand Time · 21 Oct",
+      "home": "Napoli",
+      "away": "Bodø/Glimt",
+      "homeShort": "NAP",
+      "awayShort": "BOD",
+      "homeColors": {
+        "base": "#1d4d87",
+        "stripe": "#d9d0a5",
+        "accent": "#ffffff",
+        "pattern": "stripe"
+      },
+      "awayColors": {
+        "base": "#e6bd2b",
+        "stripe": "#102a62",
+        "accent": "#ffffff",
+        "pattern": "stripe"
+      },
+      "pick": "Bodø/Glimt to Win",
+      "market": "1X2",
+      "referenceOdds": 4.7,
+      "bestOddsObserved": 4.7,
+      "oddsCapturedAt": "Previously presented reference price; NOT independently verified live/executable on 20 Oct 2026",
+      "minimumOdds": 1.7,
+      "confidenceLabel": "SIRIUS 4 · Manual editorial pick · Unscored",
+      "grade": "TEST",
+      "currentView": "OWNER APPROVED · 5-PICK TEST · UNVERIFIED REFERENCE ODDS",
+      "finalCheck": "Verify 1X2 price >1.70 and confirmed XI before any wager",
+      "nomadView": "Manual editorial selection · automatic A–B–C scoring not performed",
+      "risk": "Very High",
+      "tracking": {
+        "provider": "TotalCorner V3",
+        "fixtureId": null,
+        "kickoffUtc": "2026-10-20T19:00:00Z",
+        "pickSide": "away",
+        "liveScore": true,
+        "automaticSettlement": true
+      },
+      "rawBestMarket": {
+        "market": "1X2",
+        "selection": "Bodø/Glimt Win",
+        "oddsRange": "Unverified reference 4.70 (not live)",
+        "status": "REFERENCE ONLY · OWNER TEST"
+      },
+      "marketViews": [
+        {
+          "market": "1X2",
+          "pick": "Bodø/Glimt to Win",
+          "odds": 4.7,
+          "status": "UNVERIFIED REFERENCE · NOT LIVE"
+        }
+      ],
+      "why": [
+        "Owner-approved manual 1X2 selection for existing Prediction3 tracking workflow.",
+        "Fixture verified on UEFA 2026/27 Matchday 3 schedule; quoted odds are not independently verified."
+      ],
+      "support": {
+        "form": "No automated form score verified.",
+        "squad": "Starting XI not confirmed.",
+        "level": "UEFA Champions League matchday 3, 20 Oct 2026.",
+        "price": "Unverified reference 4.70; do not treat as executable odds."
+      },
+      "tactical": [
+        "Full-time 1X2 win only; draw counts as LOSS.",
+        "Only settle when verified FT and exact home/away identity match."
+      ],
+      "riskFactors": [
+        "Reference odds are unverified and may be stale.",
+        "Manual selection; model edge not established."
+      ],
+      "noBetIf": [
+        "Live 1X2 price is not above 1.70.",
+        "Fixture identity or verified final score is unavailable."
+      ],
+      "finalCall": "SIRIUS 4 — BODØ/GLIMT WIN · REF 4.70",
+      "finalNote": "Owner-authorized five-pick 1X2 publication using yesterday's schema. Reference odds unverified; no bet executed.",
+      "disciplineNote": "No wagering transaction. Missing or uncertain FT remains pending; never fabricate result.",
+      "sources": [
+        {
+          "label": "UEFA official matchday 3 fixtures",
+          "type": "fixture",
+          "url": "https://www.uefa.com/uefachampionsleague/news/02a8-2174c9e9019d-f909a77bd77a-1000--2026-27-champions-league-all-the-league-phase-fixtures-a/"
+        }
+      ]
+    },
+    {
+      "id": "p3-2026-10-20-liv-vil",
+      "date": "2026-10-20",
+      "league": "UEFA Champions League · League phase",
+      "round": "20 October 2026",
+      "kickoff": "02:00 Thailand Time · 21 Oct",
+      "home": "Liverpool",
+      "away": "Villarreal",
+      "homeShort": "LIV",
+      "awayShort": "VIL",
+      "homeColors": {
+        "base": "#1d4d87",
+        "stripe": "#d9d0a5",
+        "accent": "#ffffff",
+        "pattern": "stripe"
+      },
+      "awayColors": {
+        "base": "#e6bd2b",
+        "stripe": "#102a62",
+        "accent": "#ffffff",
+        "pattern": "stripe"
+      },
+      "pick": "Villarreal to Win",
+      "market": "1X2",
+      "referenceOdds": 5.8,
+      "bestOddsObserved": 5.8,
+      "oddsCapturedAt": "Previously presented reference price; NOT independently verified live/executable on 20 Oct 2026",
+      "minimumOdds": 1.7,
+      "confidenceLabel": "SIRIUS 5 · Manual editorial pick · Unscored",
+      "grade": "TEST",
+      "currentView": "OWNER APPROVED · 5-PICK TEST · UNVERIFIED REFERENCE ODDS",
+      "finalCheck": "Verify 1X2 price >1.70 and confirmed XI before any wager",
+      "nomadView": "Manual editorial selection · automatic A–B–C scoring not performed",
+      "risk": "Very High",
+      "tracking": {
+        "provider": "TotalCorner V3",
+        "fixtureId": null,
+        "kickoffUtc": "2026-10-20T19:00:00Z",
+        "pickSide": "away",
+        "liveScore": true,
+        "automaticSettlement": true
+      },
+      "rawBestMarket": {
+        "market": "1X2",
+        "selection": "Villarreal Win",
+        "oddsRange": "Unverified reference 5.80 (not live)",
+        "status": "REFERENCE ONLY · OWNER TEST"
+      },
+      "marketViews": [
+        {
+          "market": "1X2",
+          "pick": "Villarreal to Win",
+          "odds": 5.8,
+          "status": "UNVERIFIED REFERENCE · NOT LIVE"
+        }
+      ],
+      "why": [
+        "Owner-approved manual 1X2 selection for existing Prediction3 tracking workflow.",
+        "Fixture verified on UEFA 2026/27 Matchday 3 schedule; quoted odds are not independently verified."
+      ],
+      "support": {
+        "form": "No automated form score verified.",
+        "squad": "Starting XI not confirmed.",
+        "level": "UEFA Champions League matchday 3, 20 Oct 2026.",
+        "price": "Unverified reference 5.80; do not treat as executable odds."
+      },
+      "tactical": [
+        "Full-time 1X2 win only; draw counts as LOSS.",
+        "Only settle when verified FT and exact home/away identity match."
+      ],
+      "riskFactors": [
+        "Reference odds are unverified and may be stale.",
+        "Manual selection; model edge not established."
+      ],
+      "noBetIf": [
+        "Live 1X2 price is not above 1.70.",
+        "Fixture identity or verified final score is unavailable."
+      ],
+      "finalCall": "SIRIUS 5 — VILLARREAL WIN · REF 5.80",
+      "finalNote": "Owner-authorized five-pick 1X2 publication using yesterday's schema. Reference odds unverified; no bet executed.",
+      "disciplineNote": "No wagering transaction. Missing or uncertain FT remains pending; never fabricate result.",
+      "sources": [
+        {
+          "label": "UEFA official matchday 3 fixtures",
+          "type": "fixture",
+          "url": "https://www.uefa.com/uefachampionsleague/news/02a8-2174c9e9019d-f909a77bd77a-1000--2026-27-champions-league-all-the-league-phase-fixtures-a/"
         }
       ]
     }
