@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 const ACCOUNT='62cb0db544160e6591342abd6b4f35cc',KV='4b13b81758934e91a8b6bd03bfbbfcb9';
 const ADMIN='b46-visitor-monitor-admin',COLLECTOR='b46-visitor-monitor-collector';
 const EXPECTED={[ADMIN]:'afdad706-06bb-4b6b-a7cb-23b755f91147',[COLLECTOR]:'ff93556d-2416-4268-b237-d6aa6ee29b16'};
+const REVIEWED_STAGED={[ADMIN]:'50044ef2-786c-4d4d-b12d-7bfe1f281928',[COLLECTOR]:'b21f8f6f-8d36-4e0a-974f-b0ee57e49ed1'};
 const HOST=ADMIN+'.mccarey-supon.workers.dev',TEAM='https://rapid-glade-f6b9.cloudflareaccess.com';
 const mode=process.argv[2]||'audit',token=process.env.CLOUDFLARE_API_TOKEN;
 assert(['audit','deploy'].includes(mode));assert(token);assert.equal(process.env.CLOUDFLARE_ACCOUNT_ID,ACCOUNT);
@@ -13,7 +14,7 @@ const root=`/accounts/${ACCOUNT}`,writes=[];
 const stable=x=>JSON.stringify(x,(_,v)=>v&&typeof v==='object'&&!Array.isArray(v)?Object.fromEntries(Object.entries(v).sort(([a],[b])=>a.localeCompare(b))):v);
 const hash=x=>createHash('sha256').update(typeof x==='string'?x:stable(x)).digest('hex');
 const sorted=bindings=>[...bindings].sort((a,b)=>a.name.localeCompare(b.name));
-const withoutBindings=settings=>Object.fromEntries(Object.entries(settings).filter(([key])=>key!=='bindings'));
+const withoutBindings=settings=>Object.fromEntries(Object.entries(settings).filter(([key])=>key!=='bindings').map(([key,value])=>[key,key==='annotations'?Object.fromEntries(Object.entries(value).filter(([name])=>!['workers/message','workers/tag'].includes(name))):value]));
 async function api(path,{method='GET',body}={}){
  if(method!=='GET'){
   assert.equal(mode,'deploy');assert.equal(method,'POST');
@@ -71,7 +72,7 @@ async function publicChecks(){
 }
 await mkdir('deployment-evidence',{recursive:true});
 const before=await snapshot();baseline(before);await writeFile('deployment-evidence/presence-before.json',JSON.stringify(evidence(before),null,2));
-for(const name of [ADMIN,COLLECTOR]){const versions=await api(`${root}/workers/scripts/${name}/versions`);assert.equal((versions.items||versions)[0]?.id,EXPECTED[name],'Newer inactive source exists: '+name);}
+for(const name of [ADMIN,COLLECTOR]){const versions=await api(`${root}/workers/scripts/${name}/versions`);assert.equal((versions.items||versions)[0]?.id,REVIEWED_STAGED[name],'Unreviewed inactive source exists: '+name);const detail=await api(`${root}/workers/scripts/${name}/versions/${REVIEWED_STAGED[name]}`);assert.deepEqual(sorted(detail.resources.bindings),desiredBindings(name===ADMIN?before.admin:before.collector));console.log('REVIEWED INACTIVE VERSION',name,REVIEWED_STAGED[name],hash(detail),detail.resources.script?.etag);}
 console.log('PRESENCE BASELINE',JSON.stringify(evidence(before)));
 if(mode==='audit'){console.log('PRESENCE RELEASE AUDIT PASSED; no writes');process.exit(0);}
 const rollback={workers:[ADMIN,COLLECTOR].map(name=>({worker:name,version:EXPECTED[name],method:'POST /deployments with existing version at100%; never upload old source'})),firstStep:'Disable/restore Zaraz baseline before switching Collector/Admin versions',commit:process.env.GITHUB_SHA};

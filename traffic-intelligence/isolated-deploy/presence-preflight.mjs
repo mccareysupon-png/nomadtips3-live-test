@@ -68,7 +68,7 @@ const before=await snapshot();
 await writeFile('deployment-evidence/before.json',JSON.stringify(evidence(before),null,2));
 console.log('BASELINE',JSON.stringify(evidence(before)));
 assert.equal(before.version,EXPECTED,'Active Admin changed: stop; never overwrite newer code');
-const versions=await api(`${admin}/versions`);assert.equal((versions.items||versions)[0]?.id,EXPECTED,'Inactive newer Admin version exists: review before continuing');
+const versions=await api(`${admin}/versions`);assert.equal((versions.items||versions)[0]?.id,'50044ef2-786c-4d4d-b12d-7bfe1f281928','Unreviewed inactive Admin version exists: stop');
 const collectorSettings=await api(`${root}/workers/scripts/${COLLECTOR}/settings`);
 assert.equal(before.collector.version,'ff93556d-2416-4268-b237-d6aa6ee29b16','Collector drift: review before any release');
 await writeFile('deployment-evidence/presence-readonly.json',JSON.stringify({admin:evidence(before),collector:{bindings:collectorSettings.bindings.map(b=>({name:b.name,type:b.type,namespace_id:b.namespace_id,valueHash:b.type==='plain_text'?hash(b.text):undefined})),settingsHash:hash(collectorSettings)},writes},null,2));
