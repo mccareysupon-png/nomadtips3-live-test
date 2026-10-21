@@ -1,0 +1,65 @@
+name: BALL46 Member ODDS Opacity85 V6 — Independent Production Audit
+on:
+  push:
+    branches: [codex/ball46-member-odds-opacity85-20261021]
+    paths:
+      - '.github/workflows/member-odds-opacity85-v6-independent.yml'
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Read only current version, final CSS opacity, legacy Member assets, Access and API
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {createHash} from 'node:crypto';
+          const account=process.env.CLOUDFLARE_ACCOUNT_ID,token=process.env.CLOUDFLARE_API_TOKEN;
+          assert(account&&token,'CLOUDFLARE_READ_CREDENTIALS_MISSING');
+          const response=await fetch('https://api.cloudflare.com/client/v4/accounts/'+account+'/workers/scripts/ball46-member-production/deployments?per_page=1',{headers:{Authorization:'Bearer '+token},signal:AbortSignal.timeout(25000)});
+          const data=await response.json();assert(response.ok&&data.success,'CLOUDFLARE_READ_FAILED');
+          const versions=data.result.deployments?.[0]?.versions;
+          assert(versions?.length===1&&Number(versions[0].percentage)===100,'INCOMPLETE_ROLLOUT');
+          const version=versions[0].version_id;
+          assert.equal(version,'9f1c922e-270e-4655-8bc3-bd40abbb5763','MEMBER_WORKER_CHANGED');
+          const hashes={
+            '/member-odds-topbar.js':'12265bd447751f9223860a852196bc97a576e1c70a08020343f12524698848c7',
+            '/member.js':'ef4489618ae07303a7f275b4b37fddd0f7a8cb721bf98d3216c887128c806524',
+            '/styles.css':'5186dd9dfa27c36b7dced6068b15a20d04ab8f15ab771e33d61116c8725b817d'
+          };
+          const observed={};
+          for(const p of ['/member-odds-topbar.css',...Object.keys(hashes)]){
+            const u=new URL(p,'https://member.ball46.com');u.searchParams.set('independentOpacity85',Date.now());
+            const response=await fetch(u,{headers:{'cache-control':'no-cache'},signal:AbortSignal.timeout(25000)});
+            assert.equal(response.status,200,'MEMBER_ASSET_HTTP_'+p);
+            const bytes=Buffer.from(await response.arrayBuffer());
+            const actual=createHash('sha256').update(bytes).digest('hex');
+            if(hashes[p])assert.equal(actual,hashes[p],'PRESERVED_ASSET_HASH_CHANGED_'+p);
+            const content=bytes.toString('utf8');
+            if(p==='/member-odds-topbar.css'){
+              assert(content.includes('B46_MEMBER_ODDS_DROPDOWN_OPACITY85_V6_20261021'),'OPACITY85_MARKER_MISSING');
+              assert(content.includes('B46_MEMBER_ODDS_DROPDOWN_OPACITY75_V5_20261021'),'PREVIOUS_CSS_NOT_PRESERVED');
+              assert(/background:rgba\(18,38,48,\.85\)!important/.test(content),'OPACITY_NOT_85_PERCENT');
+              assert(/\/* B46_MEMBER_ODDS_DROPDOWN_OPACITY85_V6_20261021/.test(content),'ODDS_V6_HEADER_MISSING');
+              assert(content.trimEnd().endsWith('}'),'ODDS_V6_CSS_APPEND_NOT_LAST');
+            }
+            if(p==='/member.js'){
+              assert(content.includes("['WIN',Number(s.win||0)+Number(s.halfWin||0),'win']"),'HALF_WIN_COUNT_MISSING');
+              assert(content.includes("['LOSS',Number(s.loss||0)+Number(s.halfLoss||0),'loss']"),'HALF_LOSS_COUNT_MISSING');
+              assert(content.includes('b46-member-eventflow-signal-v3-20261020'),'EVENTFLOW_SIGNAL_V3_MISSING');
+              assert(content.includes('ball46:member-odds-format-change'),'ODDS_CONVERSION_HOOK_MISSING');
+            }
+            observed[p]={http:response.status,sha256:actual};
+          }
+          const auth=await fetch('https://member.ball46.com/member.html',{redirect:'manual',signal:AbortSignal.timeout(22000)});
+          assert([302,303].includes(auth.status),'MEMBER_ACCESS_GATE_BYPASS');
+          const health=await fetch('https://member.ball46.com/api/health',{signal:AbortSignal.timeout(22000)});
+          const h=await health.json();
+          assert(health.status===200&&h.ok&&h.service==='ball46-member-production','MEMBER_API_HEALTH_FAILED');
+          console.log('BALL46_MEMBER_ODDS_OPACITY85_V6_INDEPENDENT_PASS',JSON.stringify({version,assets:observed,auth:auth.status,health:health.status}));
+          JS
