@@ -1,0 +1,54 @@
+name: BALL46 SIGNAL 1x — Independent Member and Main Read Only Audit
+on:
+  push:
+    branches: [codex/ball46-member-eventflow-flat-1x-20261021]
+    paths:
+      - '.github/workflows/eventflow-signal-flat-1x-independent-audit.yml'
+permissions:
+  contents: read
+jobs:
+  independent:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Verify active Member and check current Main site compatibility read-only
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {createHash} from 'node:crypto';
+          const account=process.env.CLOUDFLARE_ACCOUNT_ID,token=process.env.CLOUDFLARE_API_TOKEN;
+          assert(account&&token,'MISSING_CLOUDFLARE_READ_CREDS');
+          const api='https://api.cloudflare.com/client/v4/accounts/'+account;
+          async function cf(path){
+           const x=await fetch(api+path,{headers:{Authorization:'Bearer '+token},signal:AbortSignal.timeout(27000)});
+           const j=await x.json();assert(x.ok&&j.success,'CLOUDFLARE_READ_FAILED '+path);return j.result;
+          }
+          async function active(worker){
+           const d=(await cf('/workers/scripts/'+worker+'/deployments?per_page=1')).deployments?.[0];
+           assert(d?.versions?.length===1&&Number(d.versions[0].percentage)===100,'SPLIT_VERSION_'+worker);
+           return d.versions[0].version_id;
+          }
+          const member=await active('ball46-member-production');
+          assert.equal(member,'6ba427b5-579a-4cc4-928d-2b32f393daba','MEMBER_WORKER_MOVED');
+          const css=await fetch('https://member.ball46.com/styles.css?flat1xAudit='+Date.now(),{headers:{'cache-control':'no-cache'},signal:AbortSignal.timeout(27000)});
+          assert.equal(css.status,200,'MEMBER_STYLES_NOT_200');
+          const cssBytes=Buffer.from(await css.arrayBuffer());
+          const styles=cssBytes.toString('utf8');
+          assert(styles.includes('B46_MEMBER_SIGNAL_FLAT_TEAL_GLOW_1X_20261021'),'SOLID_SIGNAL_STYLE_MISSING');
+          assert(styles.includes('fill:#0C4C3E!important')&&styles.includes('drop-shadow(0 0 3px rgba(43,229,153,.17))'),'SOLID_1X_STYLE_CHANGED');
+          assert(styles.includes('B46_MEMBER_EVENTFLOW_SIGNAL_V3_20261020'),'ORIGINAL_MEMBER_SIGNAL_NOT_PRESERVED');
+          const main=await active('ball46-production');
+          const current=(await cf('/workers/workers/ball46-production/versions/'+main+'?include=modules'));
+          const mod=current.modules?.find(x=>x.name===current.main_module)??current.modules?.[0];
+          assert(mod?.content_base64,'MAIN_MODULE_UNAVAILABLE');
+          const script=Buffer.from(mod.content_base64,'base64').toString('utf8');
+          const marker='b46-eventflow-signal-v3-gradient-20261020';
+          const mainHasSignalV3=script.includes(marker);
+          const mainHasRecentMobile=script.includes('featured')&&script.includes('signal');
+          const sha=x=>createHash('sha256').update(x).digest('hex');
+          console.log('BALL46_SIGNAL_1X_MEMBER_INDEPENDENT_PASS',JSON.stringify({worker:member,cssSha256:sha(cssBytes),marker:'B46_MEMBER_SIGNAL_FLAT_TEAL_GLOW_1X_20261021'}));
+          console.log('BALL46_SIGNAL_MAIN_READONLY_COMPATIBILITY',JSON.stringify({worker:main,module:mod.name,moduleSha256:sha(Buffer.from(mod.content_base64,'base64')),mainHasSignalV3,mainHasRecentMobile,domain:'ball46.com',decision:mainHasSignalV3?'PATCH_ONLY_NEW_LIVE_WORKER_AFTER_INDEPENDENT_QA':'STOP_MARKER_MISSING'}));
+          JS
