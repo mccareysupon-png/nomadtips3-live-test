@@ -293,7 +293,7 @@ try{
  const oddsV1Css=activePremiumCss.slice(0,-premiumEnd.length);
  assert.equal(hash(oddsV1Css),'97f544c20ab10ad1d44b1ecd29ea590fc41d3435e0698824ceefb21b1ce7282b','ODDS_V1_CSS_REVERSAL_FAILED');
  const currentPremiumV2=patchPremiumTopbar({html:oddsV1.html,css:oddsV1Css});
- assert.equal(hash(currentPremiumV2.css),currentOddsCss.sha,'PREMIUM_V2_CSS_REBUILD_FAILED');
+ assert.equal(hash(currentPremiumV2.css),'9df93d4b6c953705e312738afb2d9504bdb7ea1d1c396967a68d5873d7641ba3','PREMIUM_V2_CSS_REBUILD_FAILED');
  const currentBorderlessV3=patchOddsBorderless({html:currentPremiumV2.html,css:currentPremiumV2.css});
  assert.equal(hash(currentBorderlessV3.css),currentOddsCss.sha,'MEMBER_BORDERLESS_V3_CSS_REBUILD_FAILED');
  assert(currentBorderlessV3.html.includes('member-odds-topbar.css?v=20261021-odds-borderless-v3'),'MEMBER_BORDERLESS_V3_HTML_NOT_REBUILT');
