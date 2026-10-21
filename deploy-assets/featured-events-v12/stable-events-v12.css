@@ -1,0 +1,61 @@
+/* BALL46 V12 | Stabilize V11 team headings against repeated native live DOM repaint.
+   Correct the Event rows that had a first dot-only grid row.
+   Styling ONLY inside existing FEATURED card; Event Flow, stats content and match rows untouched. */
+:is(html body .workspace.singlepage .live-stage-grid > .right-rail > .featured-card[data-featured],html body #b46gn-detail#b46gn-detail .b46gn-featured .featured-card[data-featured]) .feature-stats{padding-top:68px!important;min-width:0!important}
+:is(html body .workspace.singlepage .live-stage-grid > .right-rail > .featured-card[data-featured],html body #b46gn-detail#b46gn-detail .b46gn-featured .featured-card[data-featured]) .feature-stats::before{
+ content:"MATCH COMPARISON\A● HOME · " attr(data-v12-home)!important;
+ position:absolute!important;top:9px!important;left:10px!important;
+ width:calc(50% - 12px)!important;min-width:0!important;
+ display:block!important;overflow:hidden!important;text-overflow:ellipsis!important;
+ white-space:pre!important;line-height:22px!important;font-size:9px!important;font-weight:900!important;
+ letter-spacing:0!important;color:var(--v11-mint)!important
+}
+:is(html body .workspace.singlepage .live-stage-grid > .right-rail > .featured-card[data-featured],html body #b46gn-detail#b46gn-detail .b46gn-featured .featured-card[data-featured]) .feature-stats::after{
+ content:"LIVE STATS\A" attr(data-v12-away) " · AWAY ●"!important;
+ position:absolute!important;top:9px!important;right:10px!important;
+ width:calc(50% - 12px)!important;min-width:0!important;
+ display:block!important;overflow:hidden!important;text-overflow:ellipsis!important;
+ white-space:pre!important;line-height:22px!important;text-align:right!important;
+ font-size:9px!important;font-weight:900!important;letter-spacing:0!important;
+ color:var(--v11-gold)!important
+}
+:is(html body .workspace.singlepage .live-stage-grid > .right-rail > .featured-card[data-featured],html body #b46gn-detail#b46gn-detail .b46gn-featured .featured-card[data-featured]) .feature-stats>.b46v11-legend{display:none!important}
+:is(html body .workspace.singlepage .live-stage-grid > .right-rail > .featured-card[data-featured],html body #b46gn-detail#b46gn-detail .b46gn-featured .featured-card[data-featured]) .feature-events>.event-item{
+ display:grid!important;grid-template-columns:31px 7px minmax(0,1fr)!important;
+ grid-template-rows:minmax(18px,auto)!important;
+ align-items:center!important;gap:7px!important;
+ min-height:32px!important;margin:0 0 5px!important;padding:6px 8px!important;
+ box-sizing:border-box!important;overflow:hidden!important
+}
+:is(html body .workspace.singlepage .live-stage-grid > .right-rail > .featured-card[data-featured],html body #b46gn-detail#b46gn-detail .b46gn-featured .featured-card[data-featured]) .feature-events>.event-item>time{
+ grid-column:1!important;grid-row:1!important;justify-self:start!important;
+ align-self:center!important;white-space:nowrap!important
+}
+:is(html body .workspace.singlepage .live-stage-grid > .right-rail > .featured-card[data-featured],html body #b46gn-detail#b46gn-detail .b46gn-featured .featured-card[data-featured]) .feature-events>.event-item::before{
+ grid-column:2!important;grid-row:1!important;align-self:center!important;
+ justify-self:center!important;margin:0!important
+}
+:is(html body .workspace.singlepage .live-stage-grid > .right-rail > .featured-card[data-featured],html body #b46gn-detail#b46gn-detail .b46gn-featured .featured-card[data-featured]) .feature-events>.event-item>span{
+ grid-column:3!important;grid-row:1!important;
+ display:flex!important;flex-direction:row!important;
+ align-items:center!important;justify-content:space-between!important;
+ gap:7px!important;min-width:0!important;min-height:0!important;
+ height:auto!important;width:100%!important;box-sizing:border-box!important;
+ white-space:nowrap!important;overflow:hidden!important;font-size:0!important;line-height:normal!important
+}
+:is(html body .workspace.singlepage .live-stage-grid > .right-rail > .featured-card[data-featured],html body #b46gn-detail#b46gn-detail .b46gn-featured .featured-card[data-featured]) .feature-events>.event-item>span::before{
+ content:attr(data-v11-event)!important;
+ display:block!important;flex:1 1 auto!important;min-width:0!important;
+ font-size:9px!important;line-height:1.25!important;font-weight:800!important;
+ white-space:nowrap!important;text-overflow:ellipsis!important;overflow:hidden!important;
+ color:var(--v11-text)!important
+}
+:is(html body .workspace.singlepage .live-stage-grid > .right-rail > .featured-card[data-featured],html body #b46gn-detail#b46gn-detail .b46gn-featured .featured-card[data-featured]) .feature-events>.event-item>span::after{
+ content:attr(data-v11-side)!important;display:block!important;
+ flex:none!important;min-width:0!important;
+ font-size:8px!important;line-height:1.25!important;font-weight:800!important;
+ white-space:nowrap!important;text-align:right!important;
+ color:var(--v11-muted)!important
+}
+:is(html[data-theme="light"] body .workspace.singlepage .live-stage-grid > .right-rail > .featured-card[data-featured],html[data-theme="light"] body #b46gn-detail#b46gn-detail .b46gn-featured .featured-card[data-featured]) .feature-stats::before{color:#168255!important}
+:is(html[data-theme="light"] body .workspace.singlepage .live-stage-grid > .right-rail > .featured-card[data-featured],html[data-theme="light"] body #b46gn-detail#b46gn-detail .b46gn-featured .featured-card[data-featured]) .feature-stats::after{color:#94751b!important}
