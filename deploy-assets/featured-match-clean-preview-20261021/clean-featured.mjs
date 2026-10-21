@@ -33,9 +33,9 @@ function sampleFromScreenshot(){
   score:'1–0',
   facts:[
    {label:'HALF-TIME',value:'HT 1–0'},
-   {label:'CORNERS',value:'2–7'},
-   {label:'CARDS H · A',value:'0 Yellow / 0 Red · 0 Yellow / 0 Red'},
-   {label:'ODDS AGE',value:'40s'}
+   {label:'CORNERS',value:'3–4'},
+   {label:'CARDS H · A',value:'2 Yellow / 0 Red · 2 Yellow / 1 Red'},
+   {label:'ODDS AGE',value:'8s'}
   ],
   stats:[
    {home:'2',name:'Shots on target',away:'7',homePct:'29%',awayPct:'100%'},
