@@ -160,6 +160,7 @@ async function browserQA(domain,phase,isNew){
    assert(opened.flowOriginExists&&opened.originalFlowCount===1,'EVENT_FLOW_ORIGINAL_MISSING');
    assert.equal(opened.originalMarketCount,1,'FULL_MARKET_ORIGINAL_MISSING');
    assert(opened.docWidth<=width+5,'OPEN_MOBILE_HORIZONTAL_OVERFLOW');
+   console.log('B46_V6_WELL_DIAGNOSTIC',JSON.stringify({phase,width,mode,opened}));
    if(isNew){
      assert.equal(opened.nativeCount,0,'V5_DUPLICATE_SUMMARY_REMAINS');
      assert.equal(opened.v4Count,0,'V4_DUPLICATE_SUMMARY_REMAINS');
