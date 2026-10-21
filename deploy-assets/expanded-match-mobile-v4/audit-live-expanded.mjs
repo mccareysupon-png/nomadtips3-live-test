@@ -24,6 +24,21 @@ try{
  return candidates.filter(e=>{const r=e.getBoundingClientRect(),c=getComputedStyle(e);return r.width>120&&r.height>18&&c.display!=='none'}).slice(0,7).map(e=>({tag:e.tagName,cl:String(e.className).slice(0,100),text:e.innerText?.slice(0,110)}));
  });
  console.log('EXPANDED_AUDIT_CANDIDATES',JSON.stringify({width,mode,attempts}));
+ if(width>=768) {
+  const row=await page.$('article.match-row[data-match-id]');
+  if(row){
+   await row.click();await sleep(1200);
+   const expanded=await page.evaluate(()=>{
+    const row=document.querySelector('article.match-row[data-match-id]');
+    const sib=row?.nextElementSibling;
+    const par=row?.parentElement;
+    const normalize=e=>{if(!e)return null;const rc=e.getBoundingClientRect(),st=getComputedStyle(e);return{tag:e.tagName,cl:String(e.className).slice(0,180),outer:e.outerHTML.slice(0,8500),text:e.innerText?.slice(0,1000),rect:{w:rc.width,h:rc.height},display:st.display}};
+    const all=[...document.querySelectorAll('*')].filter(e=>{const cl=String(e.className||'');return /(expand|detail|event-flow|timeline|signal|match-stats|stat-block|market-card|corner|card|odds)/i.test(cl)}).filter(e=>e.getBoundingClientRect().width>200&&e.getBoundingClientRect().height>35).slice(0,30).map(e=>({tag:e.tagName,cl:String(e.className).slice(0,130),html:e.outerHTML.slice(0,1600)}));
+    return {row:normalize(row),nextSibling:normalize(sib),parent:normalize(par),related:all};
+   });
+   console.log('EXPANDED_AUDIT_CLICKED',JSON.stringify({width,mode,...expanded}).slice(0,74000));
+  }
+ }
  await page.close();
  }
 }finally{await browser.close()}
