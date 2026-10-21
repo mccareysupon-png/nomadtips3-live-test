@@ -1,0 +1,54 @@
+name: BALL46 Member Premium Header V2 — Guarded Production
+on:
+  push:
+    branches:
+      - codex/ball46-member-topbar-alignment-premium-v2-20261021
+    paths:
+      - '.github/workflows/member-header-premium-v2-production-20261021.yml'
+permissions:
+  contents: read
+concurrency:
+  group: ball46-member-production-deploy
+  cancel-in-progress: false
+jobs:
+  premium-header-v2:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 32
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Chromium for six browser sizes
+        run: |
+          set -euo pipefail
+          npm install --no-save --ignore-scripts playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Syntax check and reconstruct immutable Member source
+        run: |
+          set -euo pipefail
+          node --check ball46-member/member-odds-topbar-premium-v2-20261021/premium.mjs
+          node --check ball46-member/member-odds-topbar-premium-v2-20261021/deploy.mjs
+          node --check ball46-member/member-odds-topbar-20261021/patch.mjs
+          python3 -m py_compile ball46-member/member-loading-20261020/patch_member.py
+          git fetch origin 05c276f7f76a6226b10b45bd85ac369e53167d2f
+          git cat-file -e 05c276f7f76a6226b10b45bd85ac369e53167d2f^{commit}
+          mkdir -p /tmp/ball46-member-live-tree
+          git archive --format=tar 05c276f7f76a6226b10b45bd85ac369e53167d2f ball46-member/public | tar xf - -C /tmp/ball46-member-live-tree
+          test -s /tmp/ball46-member-live-tree/ball46-member/public/member.html
+      - name: Guard 44 live assets and test Candidate layout before Production
+        run: node ball46-member/member-odds-topbar-premium-v2-20261021/deploy.mjs
+      - name: Preserve 1440, 1024, 768, 680, 390, 320px screenshots and rollback audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-member-premium-header-v2-production-audit
+          path: audit/member-odds-topbar-premium-v2-20261021/
+          retention-days: 30
+          if-no-files-found: warn
