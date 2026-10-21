@@ -1,0 +1,41 @@
+name: BALL46 Existing All Matches Mobile Detail V6
+on:
+  push:
+    branches: [fix/ball46-existing-allmatches-mobile-detail-v6-20261021]
+    paths:
+      - '.github/workflows/ball46-existing-allmatches-mobile-v6-deploy.yml'
+      - 'deploy-assets/allmatches-detail-v6/deploy-existing-detail.mjs'
+      - 'deploy-assets/allmatches-detail-v6/existing-detail.css'
+permissions:
+  contents: read
+concurrency:
+  group: ball46-production-deploy
+  cancel-in-progress: false
+jobs:
+  deploy-existing:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 28
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Validate script and install browser QA
+        working-directory: deploy-assets/allmatches-detail-v6
+        run: |
+          set -euo pipefail
+          node --check deploy-existing-detail.mjs
+          npm install --no-save --ignore-scripts puppeteer-core@24 pngjs@7
+      - name: Check live Production version, test actual All Matches mobile accordion, deploy if safe
+        working-directory: deploy-assets/allmatches-detail-v6
+        run: node deploy-existing-detail.mjs
+      - name: Record screenshot proof and auto rollback report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-existing-allmatches-mobile-v6-proof
+          path: deploy-assets/allmatches-detail-v6/proof/
+          retention-days: 30
+          if-no-files-found: warn
