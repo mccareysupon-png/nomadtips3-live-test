@@ -1,0 +1,63 @@
+/* BALL46 Featured Match — recessed fact wells, approved design.
+   HALF-TIME / CORNERS / CARDS H·A / ODDS AGE: concave, one step darker,
+   no colored top stroke or floating tile / drop shadow. PC + mobile. */
+.b46fm-preview-pc,.b46fm-preview-mobile{
+ --fm-well-top:#0F2219;
+ --fm-well-bottom:#142920;
+ --fm-well-shadow:rgba(0,7,3,.55);
+ --fm-well-lip:rgba(192,240,207,.065);
+ --fm-well-value:#E9F6EC;
+}
+html[data-theme="light"] .b46fm-preview-pc,
+html[data-theme="light"] .b46fm-preview-mobile{
+ --fm-well-top:#D8E6DC;
+ --fm-well-bottom:#E6F0E9;
+ --fm-well-shadow:rgba(36,79,49,.18);
+ --fm-well-lip:rgba(255,255,255,.75);
+ --fm-well-value:#1C422D;
+}
+.b46fm .fm-facts{
+ display:grid!important;
+ grid-template-columns:repeat(2,minmax(0,1fr))!important;
+ gap:7px!important;
+ margin-top:11px!important;
+}
+.b46fm .fm-fact{
+ position:relative!important;
+ min-height:51px!important;
+ border:0!important;
+ border-radius:9px!important;
+ background:linear-gradient(168deg,var(--fm-well-top),var(--fm-well-bottom))!important;
+ box-shadow:inset 0 3px 7px -3px var(--fm-well-shadow),inset 0 1px 2px var(--fm-well-shadow),inset 0 -1px 0 var(--fm-well-lip)!important;
+ transform:none!important;
+ filter:none!important;
+ outline:none!important;
+}
+.b46fm .fm-fact::before,.b46fm .fm-fact::after{
+ display:none!important;content:none!important;
+}
+.b46fm .fm-fact span{
+ font-size:8px!important;
+ color:var(--fm-dim)!important;
+ font-weight:780!important;
+ letter-spacing:.045em!important;
+}
+.b46fm .fm-fact b{
+ margin-top:4px!important;
+ font-size:11px!important;
+ line-height:1.28!important;
+ color:var(--fm-well-value)!important;
+ font-weight:820!important;
+}
+.b46fm .fm-fact[data-name*="CARDS"] b{
+ font-size:9px!important;
+ line-height:1.32!important;
+}
+@media(max-width:767px){
+ .b46fm-preview-mobile .fm-fact{
+  min-height:55px!important;
+  padding:9px 10px!important;
+ }
+ .b46fm-preview-mobile .fm-fact b{font-size:12px!important}
+ .b46fm-preview-mobile .fm-fact[data-name*="CARDS"] b{font-size:9.5px!important}
+}
