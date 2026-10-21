@@ -13,7 +13,7 @@ const q=s=>document.querySelector(s),card=q('.featured-card[data-featured]'),rai
 const styles=e=>{if(!e)return null;const s=getComputedStyle(e),r=e.getBoundingClientRect();return {tag:e.tagName,cls:e.className,id:e.id,display:s.display,position:s.position,order:s.order,gridColumn:s.gridColumn,gridArea:s.gridArea,overflow:s.overflow,width:r.width,height:r.height,margin:s.margin,flex:s.flex}};
 const chain=[];let z=card;while(z&&chain.length<8){chain.push(styles(z));z=z.parentElement}
 const tree=e=>e?[...e.children].slice(0,16).map(z=>({tag:z.tagName,cls:z.className,id:z.id,text:z.textContent?.trim().slice(0,45),css:styles(z)})):null;
-return{viewport:innerWidth,docWidth:document.documentElement.scrollWidth,chain,railChildren:tree(rail),stageChildren:tree(q('.workspace-stage')),workspaceChildren:tree(q('.workspace.singlepage')),cardHtml:card?.outerHTML.slice(0,3200),stylesheets:[...document.styleSheets].map(s=>s.href).filter(Boolean).filter(x=>/workspace|feature|ball46/.test(x)).slice(0,30)};
+return{viewport:innerWidth,docWidth:document.documentElement.scrollWidth,chain,railChildren:tree(rail),liveGridChildren:tree(q('.live-stage-grid')),panelChildren:tree(rail?.closest('.workspace-panel')),stageChildren:tree(q('.workspace-stage')),workspaceChildren:tree(q('.workspace.singlepage')),cardHtml:card?.outerHTML.slice(0,3200),stylesheets:[...document.styleSheets].map(s=>s.href).filter(Boolean).filter(x=>/workspace|feature|ball46/.test(x)).slice(0,30)};
 });
 writeFileSync('proof/layout-'+width+'.json',JSON.stringify(state,null,2));
 await page.screenshot({path:'proof/before-'+width+'.png',fullPage:false});
