@@ -137,6 +137,18 @@ async function browserQA(domain,prefix,expectedMobileVisible){
   if(width<768&&!expectedMobileVisible)assert(d.card.w===0&&d.railDisplay==='none','BASELINE_MOBILE_NOT_HIDDEN');
   if(width>=768)assert(d.card.w>=260&&d.railDisplay==='grid','PC_FEATURED_CARD_CHANGED');
   assert.deepEqual(errors,[],'PAGE_JS_ERRORS');
+  if(width<768&&prefix!=='before'){
+   await p.waitForFunction(()=>{
+    const texts=[...document.querySelectorAll('body *')].filter(e=>e.children.length===0&&/loading match data/i.test((e.textContent||'').trim()));
+    return texts.every(node=>{
+     for(let z=node;z;z=z.parentElement){
+      const st=getComputedStyle(z),rc=z.getBoundingClientRect();
+      if(st.display==='none'||st.visibility==='hidden'||Number(st.opacity)<.01||rc.width===0||rc.height===0||rc.bottom<=0||rc.top>=innerHeight)return true;
+     }
+     return false;
+    });
+   },{timeout:20000,polling:250});
+  }
   const shot=await p.screenshot({path:'proof/'+prefix+'-'+width+'-'+mode+'.png',fullPage:false});
   if(width<768&&prefix!=='before'){
    const image=PNG.sync.read(Buffer.from(shot));
