@@ -84,80 +84,83 @@ html body .featured-card.b46fm-source-hidden{display:none!important}
 .b46fm .fm-eyebrow:has(+.fm-league){flex-wrap:wrap}
 
 
-/* V1.2 — SHARP RAISED FACT TILES (owner requested, 2026-10-21).
-   Convex, clean edge-light and a short sharp drop step, NOT inset/recessed.
-   The four labels and values still follow Featured Match source data. */
+/* V1.3 — RECESSED FACT WELLS (requested).
+   FOUR information blocks are sunken, slightly darker than surrounding card.
+   Inner shadows and restrained concave lighting; no outer raised rim/drop shadow.
+   Scope only the Featured Match preview on PC and mobile. */
 .b46fm-preview-pc,.b46fm-preview-mobile{
- --fm-tile-bg:#1B392B;
- --fm-tile-highlight:#2C503C;
- --fm-tile-base:#183225;
- --fm-tile-edge:rgba(177,242,196,.19);
- --fm-tile-step:rgba(1,11,6,.58);
- --fm-tile-ambient:rgba(0,8,4,.26);
- --fm-tile-toplight:rgba(235,255,241,.18);
- --fm-tile-value:#F0F9F1;
+ --fm-well-top:#10231B;
+ --fm-well-bottom:#142A20;
+ --fm-well-ink:#E6F2E8;
+ --fm-well-inner-shadow:rgba(0,4,2,.63);
+ --fm-well-inner-edge:rgba(111,169,130,.12);
+ --fm-well-bottom-light:rgba(181,224,193,.045);
 }
 html[data-theme="light"] .b46fm-preview-pc,
 html[data-theme="light"] .b46fm-preview-mobile{
- --fm-tile-bg:#E2EEE6;
- --fm-tile-highlight:#F8FCF9;
- --fm-tile-base:#D7E7DB;
- --fm-tile-edge:rgba(61,123,75,.21);
- --fm-tile-step:rgba(54,98,64,.26);
- --fm-tile-ambient:rgba(46,96,56,.11);
- --fm-tile-toplight:rgba(255,255,255,.90);
- --fm-tile-value:#1B3D2A;
+ --fm-well-top:#D3E3D7;
+ --fm-well-bottom:#DDEBE0;
+ --fm-well-ink:#1D3E29;
+ --fm-well-inner-shadow:rgba(37,75,43,.15);
+ --fm-well-inner-edge:rgba(51,112,67,.12);
+ --fm-well-bottom-light:rgba(255,255,255,.75);
 }
 .b46fm .fm-facts{
+ display:grid!important;
  grid-template-columns:repeat(2,minmax(0,1fr))!important;
- gap:8px!important;
- margin-top:12px!important;
+ gap:7px!important;
+ margin-top:11px!important;
  padding:0!important;
  background:transparent!important;
 }
 .b46fm .fm-fact{
+ display:flex!important;
+ flex-direction:column!important;
+ justify-content:center!important;
+ position:relative!important;
  min-width:0!important;
- min-height:51px!important;
+ min-height:50px!important;
+ margin:0!important;
  padding:9px 10px!important;
- border:1px solid var(--fm-tile-edge)!important;
- outline:0!important;
- border-radius:7px!important;
- background-color:var(--fm-tile-bg)!important;
- background-image:linear-gradient(155deg,var(--fm-tile-highlight) 0%,var(--fm-tile-bg) 42%,var(--fm-tile-base) 100%)!important;
- /* Keep the visual edge sharply raised, with no wide soft halo. */
+ outline:none!important;
+ border:0!important;
+ border-radius:9px!important;
+ background:linear-gradient(172deg,var(--fm-well-top),var(--fm-well-bottom))!important;
  box-shadow:
-   0 2px 0 var(--fm-tile-step),
-   0 5px 8px -4px var(--fm-tile-ambient),
-   inset 0 1px 0 var(--fm-tile-toplight)!important;
+   inset 0 3px 6px -2px var(--fm-well-inner-shadow),
+   inset 1px 1px 0 var(--fm-well-inner-edge),
+   inset 0 -1px 0 var(--fm-well-bottom-light)!important;
  filter:none!important;
  transform:none!important;
+}
+.b46fm .fm-fact::before,.b46fm .fm-fact::after{
+ display:none!important;content:none!important;
 }
 .b46fm .fm-fact span{
  color:var(--fm-dim)!important;
  font-size:8px!important;
- font-weight:790!important;
- letter-spacing:.07em!important;
- line-height:1.20!important;
+ font-weight:780!important;
+ letter-spacing:.055em!important;
+ line-height:1.2!important;
 }
 .b46fm .fm-fact b{
- margin-top:5px!important;
- font-weight:830!important;
+ color:var(--fm-well-ink)!important;
  font-size:11px!important;
- line-height:1.28!important;
- color:var(--fm-tile-value)!important;
- letter-spacing:-.012em!important;
+ font-weight:800!important;
+ line-height:1.29!important;
+ margin-top:4px!important;
+ letter-spacing:-.01em!important;
+ overflow-wrap:anywhere!important;
 }
 .b46fm .fm-fact[data-name*="CARDS"] b{
  font-size:9px!important;
  line-height:1.35!important;
- letter-spacing:-.014em!important;
+ letter-spacing:-.01em!important;
 }
-.b46fm .fm-fact[data-name*="ODDS"] b{
- font-variant-numeric:tabular-nums;
-}
+.b46fm .fm-fact[data-name*="ODDS"] b{font-variant-numeric:tabular-nums}
 @media(max-width:767px){
- .b46fm-preview-mobile .fm-facts{gap:8px!important}
- .b46fm-preview-mobile .fm-fact{min-height:54px!important;padding:9px 10px!important}
+ .b46fm-preview-mobile .fm-facts{gap:7px!important}
+ .b46fm-preview-mobile .fm-fact{min-height:53px!important;padding:9px 10px!important}
  .b46fm-preview-mobile .fm-fact b{font-size:12px!important}
  .b46fm-preview-mobile .fm-fact[data-name*="CARDS"] b{font-size:9.5px!important}
 }
