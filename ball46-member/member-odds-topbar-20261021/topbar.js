@@ -15,6 +15,7 @@
    for(const q of den){
       const p=Math.max(1,Math.round(d*q)),error=Math.abs(p/q-d);
       if(error<best.error-0.000001)best={p,q,error};
+      if(error<=0.0049)break; // Prefer standard bookmaker fractions within decimal-price rounding tolerance.
    }
    const common=gcd(best.p,best.q);
    return (best.p/common)+'/'+(best.q/common);
