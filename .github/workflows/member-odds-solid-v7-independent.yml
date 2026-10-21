@@ -1,0 +1,72 @@
+name: BALL46 Member ODDS Solid V7 — Independent Production Audit
+on:
+  push:
+    branches: [codex/ball46-member-odds-solid-v7-20261021]
+    paths:
+      - '.github/workflows/member-odds-solid-v7-independent.yml'
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Confirm active Worker, fully opaque ODDS CSS and preserved Member systems read only
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {createHash} from 'node:crypto';
+          const a=process.env.CLOUDFLARE_ACCOUNT_ID,t=process.env.CLOUDFLARE_API_TOKEN;
+          assert(a&&t,'MISSING_CLOUDFLARE_ACCOUNT');
+          const resp=await fetch('https://api.cloudflare.com/client/v4/accounts/'+a+'/workers/scripts/ball46-member-production/deployments?per_page=1',{headers:{Authorization:'Bearer '+t},signal:AbortSignal.timeout(25000)});
+          const j=await resp.json();assert(resp.ok&&j.success,'CF_READ_FAILED');
+          const versions=j.result.deployments?.[0]?.versions;
+          assert(versions?.length===1&&Number(versions[0].percentage)===100,'ACTIVE_VERSION_SPLIT');
+          const active=versions[0].version_id;
+          assert.equal(active,'93b72cd1-b0f9-4692-837f-081a7dc9feae','ACTIVE_WORKER_VERSION_CHANGED');
+          const want={
+            '/member-odds-topbar.js':'12265bd447751f9223860a852196bc97a576e1c70a08020343f12524698848c7',
+            '/member.js':'ef4489618ae07303a7f275b4b37fddd0f7a8cb721bf98d3216c887128c806524',
+            '/styles.css':'5186dd9dfa27c36b7dced6068b15a20d04ab8f15ab771e33d61116c8725b817d'
+          };
+          const observed={};
+          const sha=b=>createHash('sha256').update(b).digest('hex');
+          let firstCssHash=null;
+          for(let round=0;round<3;round++){
+            const path='/member-odds-topbar.css';
+            const u=new URL(path,'https://member.ball46.com');u.searchParams.set('solidReadOnlyAudit',Date.now()+'-'+round);
+            const r=await fetch(u,{headers:{'cache-control':'no-cache'},signal:AbortSignal.timeout(23000)});
+            assert.equal(r.status,200,'LIVE_SOLID_CSS_NOT_200');
+            const data=Buffer.from(await r.arrayBuffer()),str=data.toString('utf8'),hash=sha(data);
+            firstCssHash??=hash;assert.equal(hash,firstCssHash,'LIVE_SOLID_CSS_NOT_CONSISTENT');
+            assert(str.includes('B46_MEMBER_ODDS_DROPDOWN_SOLID_V7_20261021'),'SOLID_V7_MARKER_NOT_LIVE');
+            assert(str.includes('background:rgb(18,38,48)!important'),'DROPDOWN_BACKGROUND_NOT_SOLID');
+            assert(str.includes('-webkit-backdrop-filter:none!important')&&str.includes('backdrop-filter:none!important'),'BACKDROP_BLUR_NOT_OFF');
+            assert(str.includes('B46_MEMBER_ODDS_DROPDOWN_OPACITY85_V6_20261021'),'PRIOR_ODDS_SETTINGS_LAYER_MISSING');
+            assert(str.trimEnd().endsWith('}'),'SOLID_PATCH_NOT_LAST_RULE');
+            observed[path]={status:r.status,sha256:hash,checked:round+1};
+          }
+          for(const [path,expected] of Object.entries(want)){
+            const u=new URL(path,'https://member.ball46.com');u.searchParams.set('solidReadOnlyAudit',Date.now());
+            const r=await fetch(u,{headers:{'cache-control':'no-cache'},signal:AbortSignal.timeout(23000)});
+            assert.equal(r.status,200,'ASSET_HTTP_'+path);
+            const data=Buffer.from(await r.arrayBuffer()),hash=sha(data),str=data.toString('utf8');
+            assert.equal(hash,expected,'UNRELATED_MEMBER_ASSET_CHANGED_'+path);
+            if(path==='/member.js'){
+              assert(str.includes("['WIN',Number(s.win||0)+Number(s.halfWin||0),'win']"),'HALF_WIN_MERGE_MISSING');
+              assert(str.includes("['LOSS',Number(s.loss||0)+Number(s.halfLoss||0),'loss']"),'HALF_LOSS_MERGE_MISSING');
+              assert(str.includes('b46-member-eventflow-signal-v3-20261020'),'EVENT_FLOW_SIGNAL_V3_MISSING');
+              assert(str.includes('ball46:member-odds-format-change'),'ODDS_FORMAT_HANDLER_MISSING');
+            }
+            observed[path]={status:r.status,sha256:hash};
+          }
+          const auth=await fetch('https://member.ball46.com/member.html',{redirect:'manual',signal:AbortSignal.timeout(24000)});
+          assert([302,303].includes(auth.status),'MEMBER_ACCESS_BYPASS');
+          const h=await fetch('https://member.ball46.com/api/health',{signal:AbortSignal.timeout(24000)});
+          const body=await h.json();
+          assert(h.status===200&&body.ok&&body.service==='ball46-member-production','MEMBER_HEALTH_API_FAILED');
+          console.log('BALL46_MEMBER_ODDS_SOLID_V7_INDEPENDENT_AUDIT_PASS',JSON.stringify({activeVersion:active,observed,access:auth.status,health:h.status}));
+          JS
