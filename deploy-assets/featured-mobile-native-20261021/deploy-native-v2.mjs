@@ -149,6 +149,35 @@ async function browserQA(domain,prefix,expectedMobileVisible){
     });
    },{timeout:20000,polling:250});
   }
+  if(width<768&&prefix!=='before'){
+    await p.evaluate(()=>{
+      document.querySelector('.featured-card[data-featured]').scrollIntoView({block:'center',behavior:'instant'});
+    });
+    await pause(250);
+    const visualQA=await p.evaluate(()=>{
+      const root=document.querySelector('.featured-card[data-featured]');
+      const facts=[...root.querySelectorAll('.feature-facts > div')];
+      const points=()=>{
+       const a=facts[0].getBoundingClientRect(),b=facts[1].getBoundingClientRect();
+       return {inside:{x:Math.round(a.right-14),y:Math.round(a.top+12)},outside:{x:Math.round((a.right+b.left)/2),y:Math.round(a.top+12)}};
+      };
+      let removedOverlay='';
+      for(let tries=0;tries<3;tries++){
+       const p=points(),top=document.elementFromPoint(p.inside.x,p.inside.y);
+       if(top&&root.contains(top))break;
+       let fixed=null;
+       for(let n=top;n&&!root.contains(n);n=n.parentElement)if(getComputedStyle(n).position==='fixed')fixed=n;
+       if(!fixed)break;
+       removedOverlay=String(fixed.className||fixed.id||fixed.tagName).slice(0,80);
+       fixed.style.setProperty('display','none','important');
+      }
+      const p=points(),top=document.elementFromPoint(p.inside.x,p.inside.y);
+      return {points:p,removedOverlay,cardVisible:!!top&&root.contains(top),scrollY};
+    });
+    assert(visualQA.cardVisible,'CARD_STILL_OBSCURED_AFTER_QA_ONLY_DISMISSAL '+JSON.stringify(visualQA));
+    d.wellPixel=visualQA.points;
+    console.log('B46_VISUAL_QA_SCREEN_PREPARED',JSON.stringify({prefix,width,mode,...visualQA}));
+  }
   const shot=await p.screenshot({path:'proof/'+prefix+'-'+width+'-'+mode+'.png',fullPage:false});
   if(width<768&&prefix!=='before'){
    const image=PNG.sync.read(Buffer.from(shot));
