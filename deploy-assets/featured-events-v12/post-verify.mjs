@@ -23,7 +23,7 @@ for(const [width,mode] of [[1440,'dark'],[390,'dark'],[390,'light']]){
   }
   await pause(2500);
   const samples=[];
-  for(let i=0;i<width===390?58:73;i++){
+  for(let i=0;i<(width===390?58:73);i++){
     const a=await page.evaluate(()=>{
       const root=innerWidth<768?document.querySelector('#b46gn-detail .b46gn-featured .featured-card'):document.querySelector('.right-rail > .featured-card');
       const stats=root?.querySelector('.feature-stats');
