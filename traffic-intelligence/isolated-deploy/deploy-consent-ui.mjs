@@ -21,7 +21,10 @@ async function api(path,{method='GET',body}={}){
   writes.push({method,path});
  }
  const response=await fetch('https://api.cloudflare.com/client/v4'+path,{method,headers:{authorization:`Bearer ${token}`,...(body instanceof FormData?{}:{'content-type':'application/json'})},body:body instanceof FormData?body:body===undefined?undefined:JSON.stringify(body),signal:AbortSignal.timeout(45000)});
- const data=await response.json();if(!response.ok||data.success===false)throw Error(`Cloudflare HTTP ${response.status}; codes ${(data.errors||[]).map(e=>e.code).join(',')}`);
+ const data=await response.json();if(!response.ok||data.success===false){
+  const safe=(data.errors||[]).map(e=>({code:e.code,message:String(e.message||'').replaceAll(token,'[REDACTED]').slice(0,1600),details:(e.error_chain||[]).map(c=>({code:c.code,message:String(c.message||'').replaceAll(token,'[REDACTED]').slice(0,1000)}))}));
+  throw Error(`Cloudflare HTTP ${response.status}; ${JSON.stringify(safe)}`);
+ }
  return data.result;
 }
 async function worker(name){
