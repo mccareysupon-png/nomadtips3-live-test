@@ -16,9 +16,9 @@ export function patchOdds({html,js}){
  const compactFmt="function fmtOdds(v){ const n=Number(v); return Number.isFinite(n)?'@'+n.toFixed(2):'—'; }";
  const match=js.includes(originalFmt)?originalFmt:compactFmt;
  js=exact(js,match,"function fmtOdds(v){\n  const fmt=window.Ball46MemberOdds;\n  if(fmt&&typeof fmt.formatOdds==='function')return fmt.formatOdds(v);\n  const n=Number(v);return Number.isFinite(n)?'@'+n.toFixed(2):'—';\n}",'FMT_ODDS');
- const renderLine="function render(){renderFavoritesNav();renderTabs();renderSummary();renderCornerAudit();renderRows();renderPagination();}";
+ const refreshAnchor="async function refreshExpandedDetail(){";
  const eventLine="window.addEventListener('ball46:member-odds-format-change',()=>{if(state.payload)render();});";
- js=exact(js,renderLine,renderLine+'\n'+eventLine,'ODDS_REFRESH');
+ js=exact(js,refreshAnchor,eventLine+'\n'+refreshAnchor,'ODDS_REFRESH');
  assert(html.includes('<div class="b46-odds-wrap"')&&html.includes('member-odds-topbar.css'));
  assert(js.includes('Ball46MemberOdds')&&js.includes(eventLine));
  return {html,js};
