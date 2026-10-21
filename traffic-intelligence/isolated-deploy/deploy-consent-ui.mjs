@@ -84,7 +84,7 @@ await writeFile('deployment-evidence/consent-ui-rollback.json',JSON.stringify({w
 console.log('CONSENT UI BASELINE',JSON.stringify(evidence(before)));console.log('REVIEWED SOURCE',JSON.stringify(sourceHashes));
 if(mode==='audit'){console.log('COLLECTOR-ONLY AUDIT PASSED; no Cloudflare writes');process.exit(0);}
 const settings=before.collector.settings;
-const metadata={main_module:'collector.mjs',bindings:before.collector.bindings,annotations:{...settings.annotations,'workers/message':'English consent; dismiss both choices; footer privacy settings','workers/tag':process.env.GITHUB_SHA.slice(0,40)}};
+const metadata={main_module:'collector.mjs',bindings:before.collector.bindings,annotations:{'workers/message':'English consent; dismiss both choices; footer privacy settings','workers/tag':process.env.GITHUB_SHA.slice(0,40)}};
 for(const key of ['compatibility_date','compatibility_flags','usage_model','limits','logpush','observability','placement','tail_consumers'])if(settings[key]!==undefined)metadata[key]=settings[key];
 const form=new FormData();form.set('metadata',new Blob([JSON.stringify(metadata)],{type:'application/json'}));
 for(const file of Object.keys(sourceHashes))form.set(file,new Blob([await readFile(file,'utf8')],{type:'application/javascript+module'}),file);
