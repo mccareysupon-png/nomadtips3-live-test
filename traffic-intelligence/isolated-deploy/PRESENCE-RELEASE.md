@@ -1,3 +1,18 @@
+# Current public consent UI — 21 October 2026, 12:37 ICT
+
+Public consent is English. Accept and Decline / withdraw dismiss immediately; remembered choices stay dismissed on reload. A normal-flow Privacy settings control in the site footer replaces the floating button. Blocked browser storage stays fail-closed while still dismissing on a choice. Measurement schema, consent requirements, retention and all server logic are unchanged.
+
+Collector active version: 2a18ffc3-6218-409d-ae82-98603549b134 at100%, deployment c3324517-5a99-4ac6-a535-993081570db5, compiled etag727216734004933f94781a667b997f0609afc6cea161493fb0ad68e62a38d988. Release commit5618d976c1fe16bc48f57a5903a896a1f6a1a935. Admin remains50044ef2-786c-4d4d-b12d-7bfe1f281928.
+
+Audit39550118280 and release39550383102 passed, including45tests, generated-file equality, exact public production bytes, four Collector bindings, seven Admin bindings, owner Access, private API denial and main board health. Actual production browser tests verified both choices dismiss, reload stays dismissed, English copy and footer placement. Local390px browser QA passed. Controlled production acceptance was withdrawn; do not report this QA browser as an external visitor.
+
+Main was already b16a5b96-5ed0-45db-9117-d4a93d11cc2d before this UI release (changed externally since the08:33 snapshot). Its detail hash e307caf331c34d3becadd59e1c84dabedbc9d71568cf8e3c82453cd6e31a1365, settings, schedules and subdomain matched before/after. Admin, Member6ba427b5-579a-4cc4-928d-2b32f393daba, Member2, domains and Access were unchanged within this release. Only Collector /versions and /deployments were written; Zaraz unchanged.
+
+Rollback this UI update by deploying the existing Collector version b21f8f6f-8d36-4e0a-974f-b0ee57e49ed1 at100%. Never upload older source or replay a guarded old release. The new deploy-consent-ui.mjs baseline intentionally rejects replay after activation. Cloudflare owns the read-only workers/triggered_by annotation; upload only supported message/tag, then verify remaining settings unchanged.
+
+---
+
+## Historical activation evidence follows (08:33 ICT)
 # Consented presence release — 21 October 2026
 
 Status: activated and verified in Production on 21 October 2026. Owner explicitly authorized the Zaraz/main-public-page heartbeat scope after reviewing the local consent screenshot. See STATE-20261020.md for current versions, live consent/deduplication/withdrawal checks and verification logs.
