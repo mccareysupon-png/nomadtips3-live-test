@@ -103,6 +103,7 @@ async function browserQA(domain,phase,patched){
       });
       states.push(snap);await wait(450);
     }
+    console.log('B46_FLAG_V8_DIAGNOSTIC',JSON.stringify({phase,width,theme,stats:states.map(s=>({count:s.count,flags:s.flags,loaded:s.loaded,globes:s.globes})),unmatched:states.at(-1).sample}));
     assert(states.every(s=>s.count>=8&&s.hasFeatured&&s.iconCount===143),'LEAGUE_FLAG_REGISTRY_OR_CARD_CHANGED');
     assert(states.every(s=>s.docWidth<=width+5),'HORIZONTAL_OVERFLOW');
     if(patched){
