@@ -74,20 +74,22 @@ await mkdir('deployment-evidence',{recursive:true});
 const before=await snapshot();baseline(before);await writeFile('deployment-evidence/presence-before.json',JSON.stringify(evidence(before),null,2));
 for(const name of [ADMIN,COLLECTOR]){const versions=await api(`${root}/workers/scripts/${name}/versions`);assert.equal((versions.items||versions)[0]?.id,REVIEWED_STAGED[name],'Unreviewed inactive source exists: '+name);const detail=await api(`${root}/workers/scripts/${name}/versions/${REVIEWED_STAGED[name]}`);assert.deepEqual(sorted(detail.resources.bindings),desiredBindings(name===ADMIN?before.admin:before.collector));console.log('REVIEWED INACTIVE VERSION',name,REVIEWED_STAGED[name],hash(detail),detail.resources.script?.etag);}
 console.log('PRESENCE BASELINE',JSON.stringify(evidence(before)));
-if(mode==='audit'){console.log('PRESENCE RELEASE AUDIT PASSED; no writes');process.exit(0);}
-const rollback={workers:[ADMIN,COLLECTOR].map(name=>({worker:name,version:EXPECTED[name],method:'POST /deployments with existing version at100%; never upload old source'})),firstStep:'Disable/restore Zaraz baseline before switching Collector/Admin versions',commit:process.env.GITHUB_SHA};
+
+const rollback={workers:[ADMIN,COLLECTOR].map(name=>({worker:name,version:EXPECTED[name],method:'POST /deployments with existing version at100%; never upload old source'})),firstStep:'Disable Zaraz (originally OFF with no configured tools) before switching Collector/Admin versions',sourceCommit:'2f57eb3a17272ccb780517c21d00cd16e7677eea',commit:process.env.GITHUB_SHA};
 await writeFile('deployment-evidence/presence-rollback.json',JSON.stringify(rollback,null,2));
-const staged={},sourceHashes={};
+// Activate the exact immutable versions already uploaded and audited; do not upload older or duplicate source.
+const staged={...REVIEWED_STAGED},sourceHashes={};
+const expectedSource={
+ [ADMIN]:{'worker.mjs':'7660a5937ec16637b5955a9304d134d6a55af185e4f14a0614d4521c73fefa97','analytics.mjs':'28badf13c008dcb11027c7622ca71b96108a63394c50b6c68ce9dc3967fa040f','web-analytics.mjs':'36c7e5a784dfd18f17552ec16733e6e52091c93605bd702243c3c8413796d2cb','request-logs.mjs':'0ed48ab5bb30d5d789f6c87358ff3361ee099333a0a6b7645a1106d11e61938e','presence.mjs':'d02cceab1e893796d6d8ce151f93277705d25e59c9ea94ac08cecc17e552392e'},
+ [COLLECTOR]:{'collector.mjs':'eb6eca9c7c81f08028216be59691c0e5eb49dc0076bf28cffdca492076b7e4cb','presence.mjs':'d02cceab1e893796d6d8ce151f93277705d25e59c9ea94ac08cecc17e552392e','tracker-assets.mjs':'38bcd7c3f101b79d6ae7b37cc0821adfa427e4b67075a8658d3aefedcf47fcb0'}
+};
+const etags={[ADMIN]:'02171f8cc24be8cab194714058f6556ab6ee801e9f19dff778977a727024ba64',[COLLECTOR]:'000f123a52a3a3857f8fd5700cf6681eef5f514214856151ddc3b97c66ed74bd'};
 for(const w of [before.admin,before.collector]){
- const metadata={main_module:w.name===ADMIN?'worker.mjs':'collector.mjs',bindings:desiredBindings(w).map(b=>b.type==='secret_text'?{type:'inherit',name:b.name,version_id:'latest'}:b),annotations:{'workers/message':'Visitor Monitor: explicit opt-in browser presence; no main Worker changes','workers/tag':process.env.GITHUB_SHA?.slice(0,40)||'visitor-presence-v1'}};
- for(const key of ['compatibility_date','compatibility_flags','usage_model','limits','logpush','observability','placement','tail_consumers'])if(w.settings[key]!==undefined)metadata[key]=w.settings[key];
- const form=new FormData();form.set('metadata',new Blob([JSON.stringify(metadata)],{type:'application/json'}));
- const modules=w.name===ADMIN?['worker.mjs','analytics.mjs','web-analytics.mjs','request-logs.mjs','presence.mjs']:['collector.mjs','presence.mjs','tracker-assets.mjs'];
- sourceHashes[w.name]={};for(const file of modules){const content=await readFile(file,'utf8');sourceHashes[w.name][file]=hash(content);form.set(file,new Blob([content],{type:'application/javascript+module'}),file);}
- const uploaded=await api(`${root}/workers/scripts/${w.name}/versions?bindings_inherit=strict`,{method:'POST',body:form});assert(uploaded.id);staged[w.name]=uploaded.id;
- const detail=await api(`${root}/workers/scripts/${w.name}/versions/${uploaded.id}`);assert(Array.isArray(detail.resources?.bindings));assert.deepEqual(sorted(detail.resources.bindings),desiredBindings(w),'Staged bindings differ from exact approved diff');
- console.log('PRESENCE STAGED',w.name,uploaded.id,JSON.stringify(sourceHashes[w.name]));
+ sourceHashes[w.name]={};for(const [file,expected] of Object.entries(expectedSource[w.name])){sourceHashes[w.name][file]=hash(await readFile(file,'utf8'));assert.equal(sourceHashes[w.name][file],expected,'Source differs from reviewed upload: '+file);}
+ const detail=await api(`${root}/workers/scripts/${w.name}/versions/${staged[w.name]}`);assert.equal(detail.resources.script?.etag,etags[w.name],'Immutable staged code differs');assert.deepEqual(sorted(detail.resources.bindings),desiredBindings(w));
+ console.log('PRESENCE VERIFIED UPLOAD',w.name,staged[w.name],JSON.stringify(sourceHashes[w.name]));
 }
+if(mode==='audit'){console.log('PRESENCE RELEASE AUDIT PASSED; exact staged bytes verified; no writes');process.exit(0);}
 const ready=await snapshot();baseline(ready);preserveProtected(before,ready);
 for(const w of [before.admin,before.collector])assert.deepEqual(sorted(ready[w.name===ADMIN?'admin':'collector'].bindings),sorted(w.bindings));
 for(const name of [ADMIN,COLLECTOR]){
@@ -97,5 +99,5 @@ for(const name of [ADMIN,COLLECTOR]){
 const after=await snapshot();preserveProtected(before,after);
 for(const key of ['admin','collector']){assert.equal(after[key].version,staged[after[key].name]);assert.deepEqual(sorted(after[key].bindings),desiredBindings(before[key]));}
 const anonymous=await publicChecks();
-await writeFile('deployment-evidence/presence-after.json',JSON.stringify({...evidence(after),sourceHashes,anonymous,commit:process.env.GITHUB_SHA},null,2));
+await writeFile('deployment-evidence/presence-after.json',JSON.stringify({...evidence(after),sourceHashes,anonymous,sourceCommit:'2f57eb3a17272ccb780517c21d00cd16e7677eea',commit:process.env.GITHUB_SHA},null,2));
 console.log('PRESENCE RELEASE VERIFIED; only Admin/Collector changed; exact bindings, owner Access, main/member versions, domains and schedules preserved. Zaraz activation and real browser verification remain required.');
