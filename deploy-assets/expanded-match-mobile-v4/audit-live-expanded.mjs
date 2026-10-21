@@ -27,14 +27,15 @@ try{
  if(width>=768) {
   const row=await page.$('article.match-row[data-match-id]');
   if(row){
-   await row.click();await sleep(1200);
+   await row.click();await sleep(6500);
    const expanded=await page.evaluate(()=>{
+    const globalKeys=Object.keys(window).filter(k=>/match|fixture|flow|market|signal|live|data|ball|feed|snapshot|store/i.test(k)&&!k.startsWith('on')).slice(0,90);
     const row=document.querySelector('article.match-row[data-match-id]');
     const sib=row?.nextElementSibling;
     const par=row?.parentElement;
     const normalize=e=>{if(!e)return null;const rc=e.getBoundingClientRect(),st=getComputedStyle(e);return{tag:e.tagName,cl:String(e.className).slice(0,180),outer:e.outerHTML.slice(0,8500),text:e.innerText?.slice(0,1000),rect:{w:rc.width,h:rc.height},display:st.display}};
     const all=[...document.querySelectorAll('*')].filter(e=>{const cl=String(e.className||'');return /(expand|detail|event-flow|timeline|signal|match-stats|stat-block|market-card|corner|card|odds)/i.test(cl)}).filter(e=>e.getBoundingClientRect().width>200&&e.getBoundingClientRect().height>35).slice(0,30).map(e=>({tag:e.tagName,cl:String(e.className).slice(0,130),html:e.outerHTML.slice(0,1600)}));
-    return {row:normalize(row),nextSibling:normalize(sib),parent:normalize(par),related:all};
+    return {row:normalize(row),nextSibling:normalize(sib),parent:normalize(par),related:all,globalKeys,expandedInner:document.querySelector('.match-expanded .match-expanded-inner')?.outerHTML.slice(0,13500)};
    });
    console.log('EXPANDED_AUDIT_CLICKED',JSON.stringify({width,mode,...expanded}).slice(0,74000));
   }
