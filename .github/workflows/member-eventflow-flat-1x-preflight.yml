@@ -1,0 +1,68 @@
+name: BALL46 Member SIGNAL Flat 1x — Read Only Preflight
+on:
+  push:
+    branches: [codex/ball46-member-eventflow-flat-1x-20261021]
+    paths:
+      - '.github/workflows/member-eventflow-flat-1x-preflight.yml'
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify flat Teal 1x CSS is the only presentational patch
+        run: |
+          set -euo pipefail
+          node --check ball46-member/member-eventflow-signal-flat-1x-20261021/flat.mjs
+          node --check ball46-member/member-eventflow-signal-flat-1x-20261021/deploy.mjs
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {patchSignal1x,CSS,MARKER} from './ball46-member/member-eventflow-signal-flat-1x-20261021/flat.mjs';
+          const html='<div class="b46-member-odds-wrap"></div><link href="/member-odds-topbar.css?v=20261021-odds-solid-v7"><link href="/styles.css?v=eventflow">';
+          const css='/* B46_MEMBER_EVENTFLOW_SIGNAL_V3_20261020 */\n.member-flow-signal-accent{}';
+          const candidate=patchSignal1x({html,css});
+          assert.equal(candidate.html.replace('&b46SignalFlat1x20261021=1',''),html);
+          assert.equal(candidate.css,css+'\n'+CSS+'\n');
+          assert(candidate.css.includes(MARKER));
+          assert(CSS.includes('fill:#0C4C3E!important')&&CSS.includes('stroke:none!important'),'SOLID_BORDERLESS_SURFACE_MISSING');
+          assert(CSS.includes('drop-shadow(0 0 3px rgba(43,229,153,.17))'),'ONE_X_GLOW_NOT_SCOPED');
+          assert(!CSS.includes('linear-gradient')&&!CSS.includes('animation:pulse'),'FLAT_DESIGN_REGRESSED');
+          console.log('BALL46_MEMBER_SIGNAL_FLAT1X_PATCH_CONTRACT_PASS');
+          JS
+      - name: Verify active Worker V7, Member CSS/JS hashes and Access read-only
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {createHash} from 'node:crypto';
+          const a=process.env.CLOUDFLARE_ACCOUNT_ID,t=process.env.CLOUDFLARE_API_TOKEN;
+          assert(a&&t,'NO_CLOUDFLARE_READ_ACCESS');
+          const x=await fetch('https://api.cloudflare.com/client/v4/accounts/'+a+'/workers/scripts/ball46-member-production/deployments?per_page=1',{headers:{Authorization:'Bearer '+t},signal:AbortSignal.timeout(26000)});
+          const j=await x.json();assert(x.ok&&j.success,'CLOUDFLARE_READ_FAILED');
+          const versions=j.result.deployments?.[0]?.versions;
+          assert(versions?.length===1&&Number(versions[0].percentage)===100,'ACTIVE_WORKER_SPLIT');
+          assert.equal(versions[0].version_id,'93b72cd1-b0f9-4692-837f-081a7dc9feae','ACTIVE_WORKER_MOVED');
+          const want={
+            '/styles.css':'5186dd9dfa27c36b7dced6068b15a20d04ab8f15ab771e33d61116c8725b817d',
+            '/member.js':'ef4489618ae07303a7f275b4b37fddd0f7a8cb721bf98d3216c887128c806524',
+            '/member-odds-topbar.css':'3a6ea0a6cd39b6c94fdc0874999c92d0468bca2c980a37d8bb4c2bc27b48443d'
+          };
+          for(const [path,sha] of Object.entries(want)){
+            const u=new URL(path,'https://member.ball46.com');u.searchParams.set('signalPreflight',Date.now());
+            const r=await fetch(u,{headers:{'cache-control':'no-cache'},signal:AbortSignal.timeout(25000)});
+            assert.equal(r.status,200,'LIVE_ASSET_HTTP_'+path);
+            assert.equal(createHash('sha256').update(Buffer.from(await r.arrayBuffer())).digest('hex'),sha,'LIVE_ASSET_SHA_'+path);
+          }
+          const p=await fetch('https://member.ball46.com/member.html',{redirect:'manual',signal:AbortSignal.timeout(25000)});
+          assert([302,303].includes(p.status),'MEMBER_AUTH_GATE_CHANGED');
+          console.log('BALL46_MEMBER_SIGNAL_FLAT1X_LIVE_PREFLIGHT_PASS',JSON.stringify({active:versions[0].version_id,verifiedAssets:3,memberGate:p.status}));
+          JS
