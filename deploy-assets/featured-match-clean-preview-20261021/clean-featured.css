@@ -160,7 +160,8 @@ html body .workspace.singlepage .featured-card.b46fm-inplace .event-item time{
 html body .workspace.singlepage .featured-card.b46fm-inplace .event-item span{
  color:var(--fmx-muted)!important;font-size:10px!important;line-height:1.25!important;
 }
-html body .workspace.singlepage .featured-card.b46fm-inplace:not(.b46fm-all-events) .feature-events>.event-item:nth-of-type(n+5){display:none!important}
+html body .workspace.singlepage .featured-card.b46fm-inplace:not(.b46fm-all-events) .feature-events .event-item.b46fm-extra-event{display:none!important}
+html body .workspace.singlepage .featured-card.b46fm-inplace.b46fm-all-events .feature-events .event-item.b46fm-extra-event{display:grid!important}
 html body .workspace.singlepage .featured-card.b46fm-inplace .b46fm-events-more{
  display:block!important;width:100%!important;min-height:28px!important;margin-top:2px!important;
  color:var(--fmx-green)!important;font-size:10px!important;font-weight:740!important;
