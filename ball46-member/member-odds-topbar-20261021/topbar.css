@@ -1,0 +1,26 @@
+
+/* BALL46 MEMBER ODDS TOPBAR V1 — tiny neutral silver icon; Member only */
+.page-member .b46-odds-wrap{position:relative;flex:0 0 auto;z-index:36;margin-left:2px}
+.page-member .b46-odds-trigger{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;padding:0;border:1px solid rgba(179,200,207,.25);border-radius:10px;background:rgba(177,195,201,.035);color:#c0ccd0;box-shadow:none;cursor:pointer;vertical-align:middle}
+.page-member .b46-odds-trigger:hover,.page-member .b46-odds-trigger[aria-expanded="true"]{background:rgba(181,201,207,.10);border-color:rgba(191,209,215,.45)}
+.page-member .b46-odds-trigger svg{display:block;width:18px;height:18px;stroke:currentColor;stroke-width:1.65;stroke-linecap:round;stroke-linejoin:round;fill:none}
+.page-member .b46-odds-trigger:focus-visible,.page-member .b46-odds-option:focus-visible{outline:2px solid #a8c0c6;outline-offset:3px}
+.page-member .b46-odds-menu{position:absolute;right:0;top:calc(100% + 11px);z-index:95;width:238px;padding:7px;background:linear-gradient(180deg,#1a2b32,#12232b);border:1px solid rgba(174,195,199,.23);border-radius:12px;box-shadow:0 14px 33px rgba(0,0,0,.27);color:#e3edeb}
+.page-member .b46-odds-menu[hidden]{display:none!important}
+.page-member .b46-odds-heading{display:flex;align-items:center;justify-content:space-between;padding:9px 10px 10px;font-size:9px;font-weight:900;letter-spacing:.11em;color:#9dafb4}
+.page-member .b46-odds-code{border:1px solid rgba(175,196,199,.20);background:#26383d;padding:3px 6px;border-radius:5px;color:#d2ddda;font-size:10px;letter-spacing:.02em}
+.page-member .b46-odds-option{display:flex;align-items:center;gap:10px;width:100%;padding:11px 10px;border:0;border-radius:8px;background:transparent;cursor:pointer;text-align:left;font:inherit;font-size:12px;font-weight:800;color:#cbd9d9}
+.page-member .b46-odds-option:hover{background:rgba(183,200,205,.09)}
+.page-member .b46-odds-option[aria-checked="true"]{background:rgba(160,191,186,.13);color:#f1f5f4}
+.page-member .b46-odds-dot{position:relative;width:15px;height:15px;border:1px solid #63787d;border-radius:50%;flex:0 0 15px}
+.page-member .b46-odds-option[aria-checked="true"] .b46-odds-dot{border-color:#b1c7bf}
+.page-member .b46-odds-option[aria-checked="true"] .b46-odds-dot:after{content:"";position:absolute;inset:3px;background:#b1c7bf;border-radius:50%}
+.page-member .b46-odds-short{margin-left:auto;color:#94aaaf;font-size:10px;font-weight:800;letter-spacing:.04em}
+.page-member .b46-odds-note{margin-top:7px;padding:11px 10px 5px;border-top:1px solid rgba(169,189,195,.16);color:#8fa7ad;font-size:10px;font-weight:500;line-height:1.5}
+@media(max-width:767px){
+ .page-member .topbar-inner{gap:8px}
+ .page-member .b46-odds-wrap{margin-left:auto}
+ .page-member .b46-odds-trigger{width:34px;height:34px}
+ .page-member .b46-odds-menu{right:-48px;max-width:calc(100vw - 18px)}
+}
+@media(max-width:370px){.page-member .b46-odds-menu{right:-25px}}
