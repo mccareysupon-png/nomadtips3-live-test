@@ -63,81 +63,82 @@ async function qa(host){
   for(const [width,theme] of [[390,'dark'],[390,'light'],[1440,'dark'],[1440,'light']]){
    const p=await browser.newPage(),errors=[];p.on('pageerror',e=>errors.push(String(e).slice(0,280)));
    try{
-    await p.setViewport({width,height:950,deviceScaleFactor:1,isMobile:width<768});await p.setCacheEnabled(false);
-    await p.goto(host+'/?featured_match_design_preview=1&check='+width+'-'+theme+'-'+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
+    await p.setViewport({width,height:960,deviceScaleFactor:1,isMobile:width<768});await p.setCacheEnabled(false);
+    await p.goto(host+'/?featured_match_design_preview=original&check='+width+'-'+theme+'-'+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
     await p.evaluate(t=>document.documentElement.dataset.theme=t,theme);
-    await p.waitForFunction(()=>document.querySelector('[data-featured-home]')?.textContent?.trim()&&document.querySelector('.b46fm-preview-pc .b46fm')&&document.querySelector('.b46fm-preview-mobile .b46fm'),{timeout:60000,polling:400});
-    await new Promise(r=>setTimeout(r,1500));
+    await p.waitForFunction(()=>{
+     const c=document.querySelector('.featured-card[data-featured].b46fm-inplace');
+     return c&&c.getBoundingClientRect().width>=230&&getComputedStyle(c).display!=='none';
+    },{timeout:60000,polling:450});
+    await new Promise(r=>setTimeout(r,2000));
     const a=await p.evaluate(()=>{
-     const src=document.querySelector('.featured-card[data-featured]'),
-      target=window.innerWidth<768?document.querySelector('.b46fm-preview-mobile .b46fm'):document.querySelector('.b46fm-preview-pc .b46fm');
-     const b=target?.getBoundingClientRect();
-     const eventsSrc=[...src.querySelectorAll('.feature-events .event-item')];
-     return{theme:document.documentElement.dataset.theme,width:innerWidth,docWidth:document.documentElement.scrollWidth,
-      original:{home:src.querySelector('[data-featured-home]')?.textContent.trim(),away:src.querySelector('[data-featured-away]')?.textContent.trim(),
-       score:src.querySelector('[data-featured-score]')?.textContent.trim(),stats:src.querySelectorAll('.feature-stats .stat-row').length,events:eventsSrc.length,signal:src.querySelector('.feature-signal')?.textContent.trim()},
-      display:{home:target?.querySelector('.fm-team.home strong')?.textContent,away:target?.querySelector('.fm-team.away strong')?.textContent,
-        score:target?.querySelector('.fm-score-number')?.textContent,stats:target?.querySelectorAll('.fm-stat').length,
-        events:target?.querySelectorAll('.fm-event').length,signals:target?.querySelector('.fm-signal-container')?.textContent.trim()},
-      cardRect:b?{x:b.x,y:b.y,w:b.width,h:b.height}:null,
-      sample:target?.querySelector('.fm-eyebrow')?.textContent.includes('DESIGN SAMPLE')||false,
-      sampleSignalCount:target?.querySelectorAll('.fm-sample-signal').length,
-      recessedFacts:(()=>{
-       const e=[...target?.querySelectorAll('.fm-fact')||[]];
-       const container=target?.querySelector('.fm-facts');
-       return {columns:getComputedStyle(container).gridTemplateColumns.split(' ').length,
-        items:e.map(x=>({label:x.querySelector('span')?.textContent,value:x.querySelector('b')?.textContent,
-          background:getComputedStyle(x).backgroundColor,
-          shadow:getComputedStyle(x).boxShadow,
-          gradient:getComputedStyle(x).backgroundImage,
-          radius:getComputedStyle(x).borderRadius,
-          border:getComputedStyle(x).borderTopWidth,
-          overflow:x.scrollWidth>x.clientWidth+3}))};
-      })(),
-      pcVisible:!!document.querySelector('.b46fm-preview-pc .b46fm')?.getBoundingClientRect().width,
-      mobileVisible:!!document.querySelector('.b46fm-preview-mobile .b46fm')?.getBoundingClientRect().width,
-      marker:!!window.__b46FeaturedCleanPreviewV1,hasRealApp:!!document.querySelector('.workspace.singlepage'),
-      sourceHidden:getComputedStyle(src).display==='none'};
+     const src=document.querySelector('.featured-card[data-featured]'),rail=src.closest('.right-rail');
+     const get=(e)=>e?{display:getComputedStyle(e).display,width:e.getBoundingClientRect().width,height:e.getBoundingClientRect().height}:null;
+     const facts=[...src.querySelectorAll('.feature-facts > div')].map(x=>{
+       const c=getComputedStyle(x);return{label:x.querySelector('span')?.textContent?.trim(),value:x.querySelector('b')?.textContent?.trim(),
+         border:c.borderTopWidth,bg:c.backgroundImage,shadow:c.boxShadow,radius:c.borderRadius,
+         overflow:x.scrollWidth>x.clientWidth+3};
+     });
+     const section=src.querySelector('.feature-events');
+     const events=[...section?.querySelectorAll('.event-item')||[]];
+     return {theme:document.documentElement.dataset.theme,width:innerWidth,docWidth:document.documentElement.scrollWidth,
+       featuredOriginalCount:document.querySelectorAll('.featured-card[data-featured]').length,
+       duplicatePreviewNodes:document.querySelectorAll('.b46fm-preview-pc,.b46fm-preview-mobile,.b46fm').length,
+       sourceInOriginalRail:!!rail&&rail.contains(src),rail:get(rail),card:get(src),
+       marker:!!window.__b46FeaturedCleanPreviewV2Installed,
+       sourceFields:{
+        league:src.querySelector('[data-featured-league]')?.textContent.trim(),
+        home:src.querySelector('[data-featured-home]')?.textContent.trim(),
+        away:src.querySelector('[data-featured-away]')?.textContent.trim(),
+        score:src.querySelector('[data-featured-score]')?.textContent.trim(),
+        facts:src.querySelectorAll('.feature-facts > div').length,
+        stats:src.querySelectorAll('.feature-stats .stat-row').length,
+        signals:src.querySelectorAll('.feature-signal').length,
+        events:events.length},
+       factColumns:getComputedStyle(src.querySelector('.feature-facts')).gridTemplateColumns.split(' ').length,
+       facts,events:events.map(e=>({label:e.textContent.trim(),display:getComputedStyle(e).display})),
+       buttonCount:section?.querySelectorAll('.b46fm-events-more').length||0,
+       appExists:!!document.querySelector('.workspace.singlepage')};
     });
-    assert(a.marker&&a.hasRealApp,'PREVIEW_NOT_RUNNING_IN_REAL_APP');
-    assert.equal(a.recessedFacts.items.length,4,'FOUR_RECESSED_FACT_WELLS_NOT_RENDERED');
-    assert.equal(a.recessedFacts.columns,2,'FOUR_RECESSED_FACT_WELLS_NOT_TWO_COLUMNS');
-    assert(a.recessedFacts.items.every(x=>x.shadow.match(/inset/g)?.length>=3&&x.border==='0px'&&x.radius==='9px'&&x.gradient.includes('linear-gradient')&&!x.overflow),'FACT_WELLS_NOT_INSET_OR_OVERFLOWING '+width+' '+theme+' '+JSON.stringify(a.recessedFacts.items));
-    assert(a.recessedFacts.items.every(x=>x.gradient.includes(theme==='dark'?'rgb(16, 35, 27)':'rgb(211, 227, 215)')),'FACT_WELLS_NOT_DARKER_THAN_SURFACE '+width+' '+theme+' '+JSON.stringify(a.recessedFacts.items));
-    if(a.sample){
-     assert(['','—'].includes(a.original.home)&&['','—'].includes(a.original.away),'SAMPLE_WAS_SHOWN_OVER_REAL_MATCH');
-     assert.equal(a.display.home,'Londrina','REFERENCE_SAMPLE_HOME_MISMATCH');
-     assert.equal(a.display.away,'Cuiaba','REFERENCE_SAMPLE_AWAY_MISMATCH');
-     assert.equal(a.display.score,'1–0','REFERENCE_SAMPLE_SCORE_MISMATCH');
-     assert.equal(a.display.stats,6,'REFERENCE_SAMPLE_STATS_NOT_RENDERED');
-     assert.equal(a.display.events,3,'REFERENCE_SAMPLE_EVENTS_NOT_RENDERED');
-     assert.equal(a.sampleSignalCount,2,'REFERENCE_SAMPLE_SIGNALS_NOT_RENDERED');
-     assert.deepEqual(a.recessedFacts.items.map(x=>x.value),['HT 1–0','3–4','2 Yellow / 0 Red · 2 Yellow / 1 Red','8s'],'REFERENCE_SAMPLE_FACT_VALUES_DO_NOT_MATCH_OWNER_REQUEST');
-    }else{
-     assert.equal(a.display.home,a.original.home,'HOME_TEAM_VALUE_CHANGED');
-     assert.equal(a.display.away,a.original.away,'AWAY_TEAM_VALUE_CHANGED');
-     assert.equal(a.display.score,a.original.score,'SCORE_VALUE_CHANGED');
-     assert.equal(a.display.stats,a.original.stats,'MATCH_STATS_DROPPED');
-     assert.equal(a.display.events,Math.min(3,a.original.events),'EVENTS_SUMMARY_WRONG');
-    }
-    assert(a.cardRect?.w>=Math.min(250,width-35),'PREVIEW_CARD_HIDDEN_OR_TOO_NARROW '+width);
+    assert(a.marker&&a.appExists,'PREVIEW_NOT_RUNNING_ON_REAL_WORKSPACE '+width);
+    assert.equal(a.featuredOriginalCount,1,'FEATURED_CARD_NOT_UNIQUE '+width);
+    assert.equal(a.duplicatePreviewNodes,0,'ANOTHER_FEATURED_CARD_WAS_INSERTED '+width);
+    assert(a.sourceInOriginalRail,'ORIGINAL_FEATURED_CARD_WAS_MOVED_FROM_RAIL '+width);
+    assert(a.card.width>=230&&a.card.height>200,'ORIGINAL_FEATURED_CARD_NOT_VISIBLE '+width+' '+JSON.stringify(a.card));
+    assert.equal(a.sourceFields.facts,4,'SOURCE_FACT_CARDS_CHANGED');
+    assert.equal(a.factColumns,2,'FOUR_FACT_WELLS_NOT_IN_2_COLUMNS');
+    assert(a.facts.every(x=>x.shadow.match(/inset/g)?.length>=2&&x.border==='0px'&&x.radius==='9px'&&x.bg.includes('linear-gradient')&&!x.overflow),
+      'FEATURED_FACTS_NOT_RECESSED '+width+' '+theme+' '+JSON.stringify(a.facts));
+    assert(a.facts.every(x=>x.bg.includes(theme==='dark'?'rgb(14, 32, 23)':'rgb(211, 227, 214)')),
+      'FEATURED_FACT_WELL_THEME_NOT_DARKER '+width+' '+theme);
+    assert(a.sourceFields.signals===1,'ORIGINAL_SIGNAL_CONTAINER_CHANGED');
     assert(a.docWidth<=width+4,'HORIZONTAL_OVERFLOW '+width+' '+a.docWidth);
-    assert(a.sourceHidden,'ORIGINAL_FEATURED_CARD_DUPLICATED');
-    if(width<768)assert(a.mobileVisible,'MOBILE_PREVIEW_NOT_VISIBLE');
-    else assert(a.pcVisible,'PC_PREVIEW_NOT_VISIBLE');
-    if(a.original.events>3||a.sample){
-      await p.evaluate(()=>{const n=window.innerWidth<768?document.querySelector('.b46fm-preview-mobile .fm-more'):document.querySelector('.b46fm-preview-pc .fm-more');n?.click()});
-      await p.waitForFunction(()=>{const e=window.innerWidth<768?document.querySelector('.b46fm-preview-mobile .b46fm'):document.querySelector('.b46fm-preview-pc .b46fm');const original=document.querySelector('.featured-card');return e?.querySelectorAll('.fm-event').length===(e?.querySelector('.fm-eyebrow')?.textContent.includes('DESIGN SAMPLE')?5:original?.querySelectorAll('.feature-events .event-item').length)},{timeout:10000,polling:200});
+    if(width<768){
+     assert(a.rail.display!=='none'&&a.rail.width>230,'ORIGINAL_RAIL_HIDDEN_ON_MOBILE '+width);
+    }else assert(a.card.width>=260&&a.card.width<=460,'PC_SIDEBAR_CARD_LOST '+a.card.width);
+    if(a.sourceFields.events>3){
+     assert.equal(a.buttonCount,1,'MORE_EVENTS_BUTTON_NOT_IN_ORIGINAL_CARD');
+     assert.equal(a.events.filter(e=>e.display!=='none').length,3,'RECENT_EVENTS_NOT_COLLAPSED_IN_PLACE');
+     await p.evaluate(()=>document.querySelector('.featured-card[data-featured] .b46fm-events-more').click());
+     const open=await p.evaluate(()=>{
+      const src=document.querySelector('.featured-card[data-featured]');
+      return{count:[...src.querySelectorAll('.feature-events .event-item')].filter(x=>getComputedStyle(x).display!=='none').length,
+       original:[...src.querySelectorAll('.feature-events .event-item')].length};
+     });
+     assert.equal(open.count,open.original,'IN_PLACE_MORE_EVENTS_BUTTON_DID_NOT_REVEAL_ALL');
     }
-    assert.deepEqual(errors,[],'JS_RUNTIME_ERRORS '+JSON.stringify(errors));
-    await p.screenshot({path:'audit/featured-clean-'+width+'-'+theme+'.png',fullPage:false});
+    assert.deepEqual(errors,[],'BROWSER_RUNTIME_ERRORS '+JSON.stringify(errors));
+    await p.evaluate(()=>document.querySelector('.featured-card[data-featured]').scrollIntoView({block:'start',behavior:'instant'}));
+    await new Promise(r=>setTimeout(r,300));
+    await p.screenshot({path:'audit/featured-original-in-place-'+width+'-'+theme+'.png',fullPage:false});
+    console.log('FEATURED_ORIGINAL_INPLACE_PREVIEW_BROWSER_PASS',width,theme,JSON.stringify(a));
     result.push(a);
-    console.log('FEATURED_CLEAN_PREVIEW_BROWSER_PASS',width,theme,JSON.stringify(a));
    }finally{await p.close()}
   }
  }finally{await browser.close()}
  return result;
 }
+
 try{
  report.before=await active();console.log('FEATURED_CLEAN_PREVIEW_CURRENT_ACTIVE',JSON.stringify(report.before));
  const v=await version(report.before.version),main=v.modules.find(x=>x.name===v.main_module);
@@ -176,7 +177,7 @@ try{
  const after=await assets(ORIGIN);
  for(const p of files)assert.equal(after[p].sha,original[p].sha,'PRODUCTION_ASSET_CHANGED '+p);
  report.success=true;report.finished=new Date().toISOString();save();
- console.log('FEATURED_CLEAN_PC_MOBILE_RECESSED_WELLS_PREVIEW_SUCCESS',JSON.stringify({url:report.previewUrl,active:report.before.version,previewVersion:uploaded.id,productionPromotions:0,checked:[390,1440]}));
+ console.log('FEATURED_ORIGINAL_INPLACE_PC_MOBILE_PREVIEW_SUCCESS',JSON.stringify({url:report.previewUrl,active:report.before.version,previewVersion:uploaded.id,productionPromotions:0,checked:[390,1440]}));
 }catch(e){
  report.error=e.stack||String(e);report.success=false;save();
  console.error('FEATURED_CLEAN_PC_MOBILE_PREVIEW_FAILED',report.error);process.exitCode=1;
