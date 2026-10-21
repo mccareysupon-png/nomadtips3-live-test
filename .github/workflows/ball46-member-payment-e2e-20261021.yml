@@ -1,0 +1,56 @@
+name: BALL46 Member Payment — Signed Access and Stripe Sandbox QA
+on:
+  push:
+    branches: [audit/ball46-member-stripe-e2e-20261021]
+    paths:
+      - '.github/workflows/ball46-member-payment-e2e-20261021.yml'
+      - 'ball46-member/tests/payment-e2e-20261021.test.mjs'
+permissions:
+  contents: read
+jobs:
+  payment-audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run all Member unit, checkout, billing, authorization and security tests
+        run: |
+          set -euo pipefail
+          node --test ball46-member/tests/*.test.mjs
+      - name: Check actual BALL46 Member public Production endpoints without authorization or changes
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          const origin='https://member.ball46.com';
+          async function req(path,{redirect='manual'}={}){
+            const res=await fetch(origin+path+'?paymentQa='+Date.now(),{redirect,headers:{'cache-control':'no-cache'},signal:AbortSignal.timeout(22000)});
+            const body=await res.text();
+            let json;try{json=JSON.parse(body)}catch{}
+            return {status:res.status,location:res.headers.get('location'),json};
+          }
+          const health=await req('/api/health');
+          assert.equal(health.status,200);assert(health.json?.ok,'MEMBER_PRODUCTION_HEALTH_UNAVAILABLE');
+          assert.equal(health.json?.service,'ball46-member-production');
+          const enrollment=await req('/api/enrollment-status');
+          assert.equal(enrollment.status,200);assert.equal(enrollment.json?.ok,true);
+          const gated=await req('/member.html');
+          assert([302,303].includes(gated.status),'PROTECTED_HTML_ACCESS_BYPASS');
+          const unauthorized=await req('/api/member/session');
+          assert(!unauthorized.json?.authenticated,'ANONYMOUS_SESSION_GRANTED');
+          const daily=await req('/api/member/daily');
+          assert(daily.status!==200,'ANONYMOUS_DAILY_DATA_LEAK');
+          const webhook=await req('/api/stripe/webhook');
+          assert.equal(webhook.status,503,'WEBHOOK_STATE_CHANGED');
+          assert.equal(webhook.json?.error,'WEBHOOK_NOT_CONFIGURED');
+          console.log('BALL46_MEMBER_PAYMENT_LIVE_READONLY_SMOKE_PASS',JSON.stringify({
+            health:health.status,enrollmentEnabled:enrollment.json.enrollmentAvailable,
+            protectedHtml:gated.status,anonymousSession:unauthorized.status,
+            anonymousAuth:unauthorized.json?.authenticated,
+            anonymousDaily:daily.status,webhook:webhook.status
+          }));
+          JS
