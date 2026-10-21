@@ -124,6 +124,7 @@ async function browserQA(domain,phase,isV6){
   await page.goto(domain+'/?view=live&mobile_allmatches_v6='+Date.now()+'-'+width,{waitUntil:'domcontentloaded',timeout:85000});
   await page.evaluate(t=>document.documentElement.dataset.theme=t,theme);
   await page.waitForFunction(()=>document.querySelector('.workspace.singlepage'),{timeout:45000});
+  if(width>=768)await page.waitForSelector('article.match-row[data-match-id]',{timeout:40000});
   const initial=await page.evaluate(()=>{
    const card=document.querySelector('#b46gn-cards [data-b46gn-fixture]'),sheet=document.querySelector('#b46gn-detail');
    return {card:!!card,sheet:!!sheet,realMobileUI:document.documentElement.dataset.b46gn==='1',mobileVersion:!!document.getElementById('b46-mobile-allmatches-v6'),oldV5Style:!!document.getElementById('b46-native-featured-mobile-20261021'),
