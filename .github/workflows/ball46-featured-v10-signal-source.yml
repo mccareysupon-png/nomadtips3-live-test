@@ -1,0 +1,17 @@
+name: BALL46 Featured Signal Data Source Audit
+on:
+  push:
+    branches: [fix/ball46-featured-sections-approved-v10-20261021]
+    paths:
+      - '.github/workflows/ball46-featured-v10-signal-source.yml'
+      - 'deploy-assets/featured-sections-v10/signal-source.mjs'
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: node deploy-assets/featured-sections-v10/signal-source.mjs
