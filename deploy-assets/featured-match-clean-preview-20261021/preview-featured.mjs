@@ -139,6 +139,73 @@ async function qa(host){
  return result;
 }
 
+/* Expansion regression test. Live feed may have zero events now, therefore
+   seed ONLY the isolated browser DOM (not the Worker/API) with five events.
+   Verify tapping More never recreates/reset the control during 3 sync ticks. */
+async function qaExpansionStability(host){
+ const executablePath=['/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium'].find(existsSync);
+ const browser=await puppeteer.launch({executablePath,headless:true,args:['--no-sandbox']});
+ const results=[];
+ try{
+  for(const width of [390,1440]){
+   const page=await browser.newPage();
+   const errors=[];page.on('pageerror',e=>errors.push(String(e)));
+   try{
+    await page.setViewport({width,height:900,deviceScaleFactor:1,isMobile:width<768});
+    await page.setCacheEnabled(false);
+    await page.goto(host+'/?featured_expand_regression='+width+'-'+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
+    await page.waitForFunction(()=>{
+      const c=document.querySelector('.featured-card.b46fm-inplace');
+      return c&&getComputedStyle(c).display!=='none'&&c.getBoundingClientRect().width>200;
+    },{timeout:50000,polling:400});
+    await page.evaluate(()=>{
+      const events=document.querySelector('.featured-card.b46fm-inplace .feature-events');
+      const current=events.querySelectorAll('.event-item');
+      current.forEach(e=>e.remove());
+      for(const [i,kind] of ['corner · away','substitution · home','corner · away','shot · home','corner · away'].entries()){
+        const item=document.createElement('div');item.className='event-item';
+        const time=document.createElement('time');time.textContent=String(84-i*2)+"'";
+        const content=document.createElement('span');content.textContent=kind;
+        item.append(time,content);events.appendChild(item);
+      }
+    });
+    await page.waitForFunction(()=>document.querySelector('.featured-card.b46fm-inplace .b46fm-events-more'),{timeout:10000,polling:200});
+    const start=await page.evaluate(()=>{
+      const c=document.querySelector('.featured-card.b46fm-inplace'),button=c.querySelector('.b46fm-events-more');
+      window.__fmQaButton=button;
+      button.click();
+      let writes=0;
+      const observer=new MutationObserver(records=>{writes+=records.length;});
+      observer.observe(button,{attributes:true,childList:true,characterData:true,subtree:true});
+      window.__fmQaStop=()=>{observer.disconnect();return writes};
+      return{expanded:c.classList.contains('b46fm-all-events'),
+       label:button.textContent,count:[...c.querySelectorAll('.feature-events .event-item')].filter(e=>getComputedStyle(e).display!=='none').length};
+    });
+    assert(start.expanded&&start.count===5,'EXPAND_DID_NOT_REVEAL_ALL '+width+' '+JSON.stringify(start));
+    await new Promise(r=>setTimeout(r,4700));
+    const after=await page.evaluate(()=>{
+      const c=document.querySelector('.featured-card.b46fm-inplace'),button=c.querySelector('.b46fm-events-more');
+      const count=[...c.querySelectorAll('.feature-events .event-item')].filter(e=>getComputedStyle(e).display!=='none').length;
+      const out={expanded:c.classList.contains('b46fm-all-events'),sameButton:window.__fmQaButton===button,
+       count,writes:window.__fmQaStop(),label:button?.textContent};
+      button.click();
+      out.collapsed=!c.classList.contains('b46fm-all-events');
+      out.collapsedVisible=[...c.querySelectorAll('.feature-events .event-item')].filter(e=>getComputedStyle(e).display!=='none').length;
+      return out;
+    });
+    assert(after.expanded&&after.sameButton&&after.count===5,'EXPANSION_BLINKED_OR_COLLAPSED '+width+' '+JSON.stringify(after));
+    assert.equal(after.writes,0,'BUTTON_MUTATED_DURING_LIVE_FEED_SYNC '+width+' '+JSON.stringify(after));
+    assert(after.collapsed&&after.collapsedVisible===3,'COLLAPSE_COUNT_BROKEN '+width+' '+JSON.stringify(after));
+    assert.deepEqual(errors,[],'EXPAND_BROWSER_ERRORS '+JSON.stringify(errors));
+    await page.screenshot({path:'audit/featured-expand-stable-'+width+'.png',fullPage:false});
+    results.push({width,start,after});
+    console.log('FEATURED_EXPANSION_STABILITY_PASS',width,JSON.stringify(after));
+   }finally{await page.close()}
+  }
+ }finally{await browser.close()}
+ return results;
+}
+
 try{
  report.before=await active();console.log('FEATURED_CLEAN_PREVIEW_CURRENT_ACTIVE',JSON.stringify(report.before));
  const v=await version(report.before.version),main=v.modules.find(x=>x.name===v.main_module);
@@ -173,6 +240,7 @@ try{
   const doc=await read(preview,p);assert.equal(doc.sha,original[p].sha,'ORIGINAL_SCRIPT_OR_STYLE_CHANGED '+p);
  }
  report.browser=await qa(preview);
+ report.expansionQA=await qaExpansionStability(preview);
  assert.deepEqual(await active(),report.before,'PRODUCTION_ACTIVATED_UNEXPECTEDLY');
  const after=await assets(ORIGIN);
  for(const p of files)assert.equal(after[p].sha,original[p].sha,'PRODUCTION_ASSET_CHANGED '+p);
