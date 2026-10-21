@@ -449,8 +449,8 @@ function renderSummary(){
   const rateClass=!Number.isFinite(rate)?'neutral':rate>=55?'rate-good':rate<45?'rate-bad':'rate-mid';
   const items=[
     ['SIGNALS',s.signals,'signals'],
-    ['WIN',s.win,'win'],
-    ['LOSS',s.loss,'loss'],
+    ['WIN',Number(s.win||0)+Number(s.halfWin||0),'win'],
+    ['LOSS',Number(s.loss||0)+Number(s.halfLoss||0),'loss'],
     ['PUSH',s.push,'push'],
     ['PENDING',s.pending,'pending'],
     ['LIVE',s.live||0,'live'],
