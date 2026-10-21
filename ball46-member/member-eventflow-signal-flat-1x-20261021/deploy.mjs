@@ -191,8 +191,13 @@ async function browserHeader(browser,host,label,width,updatedHtml,expectedPremiu
   }
   assert.equal(controls?.sha,expectedPremiumCssSha,'PREMIUM_STYLES_NOT_CONSISTENTLY_VISIBLE_ON_BROWSER_HOST '+host);
   assert.equal((await getPublic('/member.js',host)).sha,expectedJsSha,'MEMBER_APP_JS_CHANGED_IN_BROWSER_QA');
-  const signalStyles=await getPublic('/styles.css',host);
-  assert.equal(signalStyles.sha,expectedSignalCssSha,'MEMBER_SIGNAL_1X_STYLES_NOT_LIVE_'+width);
+  let signalStyles=null;
+  for(let a=0;a<25;a++){
+   signalStyles=await getPublic('/styles.css',host);
+   if(signalStyles.status===200&&signalStyles.sha===expectedSignalCssSha)break;
+   if(a<24)await new Promise(r=>setTimeout(r,1700));
+  }
+  assert.equal(signalStyles?.sha,expectedSignalCssSha,'MEMBER_SIGNAL_1X_STYLES_NOT_LIVE_'+width);
   const headerStart=updatedHtml.indexOf('<header class="topbar">');
   const headerEnd=updatedHtml.indexOf('</header>',headerStart);
   assert(headerStart>=0&&headerEnd>headerStart,'REAL_MEMBER_HEADER_MARKUP_MISSING');
