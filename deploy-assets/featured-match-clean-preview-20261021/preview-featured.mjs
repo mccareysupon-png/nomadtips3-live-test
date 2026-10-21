@@ -82,12 +82,26 @@ async function qa(host){
       cardRect:b?{x:b.x,y:b.y,w:b.width,h:b.height}:null,
       sample:target?.querySelector('.fm-eyebrow')?.textContent.includes('DESIGN SAMPLE')||false,
       sampleSignalCount:target?.querySelectorAll('.fm-sample-signal').length,
+      recessedFacts:(()=>{
+       const e=[...target?.querySelectorAll('.fm-fact')||[]];
+       const container=target?.querySelector('.fm-facts');
+       return {columns:getComputedStyle(container).gridTemplateColumns.split(' ').length,
+        items:e.map(x=>({label:x.querySelector('span')?.textContent,value:x.querySelector('b')?.textContent,
+          background:getComputedStyle(x).backgroundColor,
+          shadow:getComputedStyle(x).boxShadow,
+          border:getComputedStyle(x).borderTopWidth,
+          overflow:x.scrollWidth>x.clientWidth+3}))};
+      })(),
       pcVisible:!!document.querySelector('.b46fm-preview-pc .b46fm')?.getBoundingClientRect().width,
       mobileVisible:!!document.querySelector('.b46fm-preview-mobile .b46fm')?.getBoundingClientRect().width,
       marker:!!window.__b46FeaturedCleanPreviewV1,hasRealApp:!!document.querySelector('.workspace.singlepage'),
       sourceHidden:getComputedStyle(src).display==='none'};
     });
     assert(a.marker&&a.hasRealApp,'PREVIEW_NOT_RUNNING_IN_REAL_APP');
+    assert.equal(a.recessedFacts.items.length,4,'FOUR_FACT_PITS_NOT_RENDERED');
+    assert.equal(a.recessedFacts.columns,2,'FACT_PITS_NOT_IN_TWO_COLUMNS');
+    assert(a.recessedFacts.items.every(x=>x.shadow.includes('inset')&&x.border==='0px'&&!x.overflow),'FACT_WELLS_NOT_INSET_OR_OVERFLOWING '+width+' '+theme);
+    assert(a.recessedFacts.items.every(x=>x.background===(theme==='dark'?'rgb(16, 30, 24)':'rgb(219, 233, 222)')),'FACT_RECESSED_COLOR_MISMATCH '+width+' '+theme);
     if(a.sample){
      assert(['','—'].includes(a.original.home)&&['','—'].includes(a.original.away),'SAMPLE_WAS_SHOWN_OVER_REAL_MATCH');
      assert.equal(a.display.home,'Londrina','REFERENCE_SAMPLE_HOME_MISMATCH');
@@ -96,6 +110,7 @@ async function qa(host){
      assert.equal(a.display.stats,6,'REFERENCE_SAMPLE_STATS_NOT_RENDERED');
      assert.equal(a.display.events,3,'REFERENCE_SAMPLE_EVENTS_NOT_RENDERED');
      assert.equal(a.sampleSignalCount,2,'REFERENCE_SAMPLE_SIGNALS_NOT_RENDERED');
+     assert.deepEqual(a.recessedFacts.items.map(x=>x.value),['HT 1–0','3–4','2 Yellow / 0 Red · 2 Yellow / 1 Red','8s'],'REFERENCE_SAMPLE_FACT_VALUES_DO_NOT_MATCH_OWNER_REQUEST');
     }else{
      assert.equal(a.display.home,a.original.home,'HOME_TEAM_VALUE_CHANGED');
      assert.equal(a.display.away,a.original.away,'AWAY_TEAM_VALUE_CHANGED');
