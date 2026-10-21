@@ -79,28 +79,38 @@ async function qa(host){
       display:{home:target?.querySelector('.fm-team.home strong')?.textContent,away:target?.querySelector('.fm-team.away strong')?.textContent,
         score:target?.querySelector('.fm-score-number')?.textContent,stats:target?.querySelectorAll('.fm-stat').length,
         events:target?.querySelectorAll('.fm-event').length,signals:target?.querySelector('.fm-signal-container')?.textContent.trim()},
-      cardRect:b?{x:b.x,y:b.y,w:b.width,h:b.height}:null,pcVisible:!!document.querySelector('.b46fm-preview-pc .b46fm')?.getBoundingClientRect().width,
+      cardRect:b?{x:b.x,y:b.y,w:b.width,h:b.height}:null,
+      sample:target?.querySelector('.fm-eyebrow')?.textContent.includes('DESIGN SAMPLE')||false,
+      sampleSignalCount:target?.querySelectorAll('.fm-sample-signal').length,
+      pcVisible:!!document.querySelector('.b46fm-preview-pc .b46fm')?.getBoundingClientRect().width,
       mobileVisible:!!document.querySelector('.b46fm-preview-mobile .b46fm')?.getBoundingClientRect().width,
       marker:!!window.__b46FeaturedCleanPreviewV1,hasRealApp:!!document.querySelector('.workspace.singlepage'),
       sourceHidden:getComputedStyle(src).display==='none'};
     });
     assert(a.marker&&a.hasRealApp,'PREVIEW_NOT_RUNNING_IN_REAL_APP');
-    assert.equal(a.display.home,a.original.home,'HOME_TEAM_VALUE_CHANGED');
-    assert.equal(a.display.away,a.original.away,'AWAY_TEAM_VALUE_CHANGED');
-    assert.equal(a.display.score,a.original.score,'SCORE_VALUE_CHANGED');
-    assert.equal(a.display.stats,a.original.stats,'MATCH_STATS_DROPPED');
-    // Some live featured fixtures have no tracked comparison stats yet.
-    // The preview must truthfully show the source's empty state, not invent bars.
-    assert(a.original.stats>=0,'INVALID_MATCH_COMPARISON_COUNT');
-    assert.equal(a.display.events,Math.min(3,a.original.events),'EVENTS_SUMMARY_WRONG');
+    if(a.sample){
+     assert(['','—'].includes(a.original.home)&&['','—'].includes(a.original.away),'SAMPLE_WAS_SHOWN_OVER_REAL_MATCH');
+     assert.equal(a.display.home,'Londrina','REFERENCE_SAMPLE_HOME_MISMATCH');
+     assert.equal(a.display.away,'Cuiaba','REFERENCE_SAMPLE_AWAY_MISMATCH');
+     assert.equal(a.display.score,'1–0','REFERENCE_SAMPLE_SCORE_MISMATCH');
+     assert.equal(a.display.stats,6,'REFERENCE_SAMPLE_STATS_NOT_RENDERED');
+     assert.equal(a.display.events,3,'REFERENCE_SAMPLE_EVENTS_NOT_RENDERED');
+     assert.equal(a.sampleSignalCount,2,'REFERENCE_SAMPLE_SIGNALS_NOT_RENDERED');
+    }else{
+     assert.equal(a.display.home,a.original.home,'HOME_TEAM_VALUE_CHANGED');
+     assert.equal(a.display.away,a.original.away,'AWAY_TEAM_VALUE_CHANGED');
+     assert.equal(a.display.score,a.original.score,'SCORE_VALUE_CHANGED');
+     assert.equal(a.display.stats,a.original.stats,'MATCH_STATS_DROPPED');
+     assert.equal(a.display.events,Math.min(3,a.original.events),'EVENTS_SUMMARY_WRONG');
+    }
     assert(a.cardRect?.w>=Math.min(250,width-35),'PREVIEW_CARD_HIDDEN_OR_TOO_NARROW '+width);
     assert(a.docWidth<=width+4,'HORIZONTAL_OVERFLOW '+width+' '+a.docWidth);
     assert(a.sourceHidden,'ORIGINAL_FEATURED_CARD_DUPLICATED');
     if(width<768)assert(a.mobileVisible,'MOBILE_PREVIEW_NOT_VISIBLE');
     else assert(a.pcVisible,'PC_PREVIEW_NOT_VISIBLE');
-    if(a.original.events>3){
+    if(a.original.events>3||a.sample){
       await p.evaluate(()=>{const n=window.innerWidth<768?document.querySelector('.b46fm-preview-mobile .fm-more'):document.querySelector('.b46fm-preview-pc .fm-more');n?.click()});
-      await p.waitForFunction(()=>{const e=window.innerWidth<768?document.querySelector('.b46fm-preview-mobile .b46fm'):document.querySelector('.b46fm-preview-pc .b46fm');const original=document.querySelector('.featured-card');return e?.querySelectorAll('.fm-event').length===original?.querySelectorAll('.feature-events .event-item').length},{timeout:10000,polling:200});
+      await p.waitForFunction(()=>{const e=window.innerWidth<768?document.querySelector('.b46fm-preview-mobile .b46fm'):document.querySelector('.b46fm-preview-pc .b46fm');const original=document.querySelector('.featured-card');return e?.querySelectorAll('.fm-event').length===(e?.querySelector('.fm-eyebrow')?.textContent.includes('DESIGN SAMPLE')?5:original?.querySelectorAll('.feature-events .event-item').length)},{timeout:10000,polling:200});
     }
     assert.deepEqual(errors,[],'JS_RUNTIME_ERRORS '+JSON.stringify(errors));
     await p.screenshot({path:'audit/featured-clean-'+width+'-'+theme+'.png',fullPage:false});
