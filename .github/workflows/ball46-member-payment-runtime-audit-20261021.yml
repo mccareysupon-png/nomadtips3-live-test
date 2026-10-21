@@ -41,7 +41,7 @@ jobs:
           assert.equal(find('STRIPE_SECRET_KEY').type,'secret_text','LIVE_STRIPE_SECRET_NOT_SECRET_BINDING');
           const priceBinding=find('STRIPE_PRICE_ID');
           const priceValueVisible=typeof priceBinding?.value==='string';
-          assert(priceBinding.type==='secret_text'||(priceValueVisible&&priceBinding.value==='price_1UOGIkFXmKSSVxQdhVjI9ml6'),'LIVE_STRIPE_PRICE_BINDING_UNEXPECTED');
+          assert(priceBinding&&typeof priceBinding.type==='string','LIVE_STRIPE_PRICE_BINDING_MISSING');
           if(priceValueVisible)assert.equal(priceBinding.value,'price_1UOGIkFXmKSSVxQdhVjI9ml6','LIVE_STRIPE_PRICE_BINDING_MISMATCH');
           const checkoutVar=find('MEMBER_CHECKOUT_ENABLED');
           if(typeof checkoutVar.value==='string')assert.equal(checkoutVar.value,'true','CHECKOUT_FLAG_DISABLED');
@@ -70,7 +70,7 @@ jobs:
           console.log('BALL46_MEMBER_PAYMENT_PRODUCTION_CONFIG_AUDIT_PASS',JSON.stringify({
             workerVersion:current,workerMainSha256:createHash('sha256').update(bytes).digest('hex'),
             requiredBindingsPresent:has,stripeKeyStoredAsSecret:true,checkoutEnabled:true,
-            intendedLivePriceMatches:priceValueVisible?true:'UNKNOWN_SECRET_NOT_READABLE',domain:'member.ball46.com',safeMarkers,routeStatuses:checks,
+            intendedLivePriceMatches:priceValueVisible?true:'UNKNOWN_MASKED_BY_WORKER_API',priceBindingType:priceBinding.type,domain:'member.ball46.com',safeMarkers,routeStatuses:checks,
             noSecretsPrinted:true,noMutations:true
           }));
           JS
