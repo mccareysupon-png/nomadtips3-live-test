@@ -100,10 +100,10 @@ async function qa(host){
       sourceHidden:getComputedStyle(src).display==='none'};
     });
     assert(a.marker&&a.hasRealApp,'PREVIEW_NOT_RUNNING_IN_REAL_APP');
-    assert.equal(a.raisedFacts.items.length,4,'FOUR_RAISED_FACT_TILES_NOT_RENDERED');
-    assert.equal(a.raisedFacts.columns,2,'FOUR_RAISED_FACT_TILES_NOT_TWO_COLUMNS');
-    assert(a.raisedFacts.items.every(x=>x.shadow.includes('2px')&&!x.shadow.startsWith('inset')&&x.border==='1px'&&x.radius==='7px'&&x.gradient.includes('linear-gradient')&&!x.overflow),'FACT_TILES_NOT_SHARP_RAISED_OR_OVERFLOWING '+width+' '+theme);
-    assert(a.raisedFacts.items.every(x=>x.background===(theme==='dark'?'rgb(27, 57, 43)':'rgb(226, 238, 230)')),'FACT_RAISED_TILE_THEME_COLOR_MISMATCH '+width+' '+theme);
+    assert.equal(a.raisedFacts.items.length,4,'FOUR_RECESSED_FACT_WELLS_NOT_RENDERED');
+    assert.equal(a.raisedFacts.columns,2,'FOUR_RECESSED_FACT_WELLS_NOT_TWO_COLUMNS');
+    assert(a.raisedFacts.items.every(x=>x.shadow.split(', ').every(y=>y.includes('inset'))&&x.shadow.split('inset').length>=3&&x.border==='1px'&&x.radius==='9px'&&x.gradient.includes('linear-gradient')&&!x.overflow),'FACT_WELLS_NOT_RECESSED_OR_OVERFLOWING '+width+' '+theme);
+    assert(a.raisedFacts.items.every(x=>x.background===(theme==='dark'?'rgb(16, 36, 27)':'rgb(218, 233, 222)')),'FACT_RECESSED_WELL_THEME_COLOR_MISMATCH '+width+' '+theme);
     if(a.sample){
      assert(['','—'].includes(a.original.home)&&['','—'].includes(a.original.away),'SAMPLE_WAS_SHOWN_OVER_REAL_MATCH');
      assert.equal(a.display.home,'Londrina','REFERENCE_SAMPLE_HOME_MISMATCH');
