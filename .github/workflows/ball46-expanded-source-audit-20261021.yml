@@ -1,0 +1,30 @@
+name: BALL46 All Matches Expanded Source Audit Readonly
+on:
+  push:
+    branches: [fix/ball46-featured-expanded-only-20261021]
+    paths:
+      - 'deploy-assets/expanded-match-mobile-v4/source-audit.mjs'
+      - '.github/workflows/ball46-expanded-source-audit-20261021.yml'
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Read All Matches real DOM and identify renderer source
+        working-directory: deploy-assets/expanded-match-mobile-v4
+        run: |
+          npm install --no-save --ignore-scripts puppeteer-core@24
+          node source-audit.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-expanded-source-readonly
+          path: deploy-assets/expanded-match-mobile-v4/source-proof/
+          retention-days: 2
+          if-no-files-found: warn
