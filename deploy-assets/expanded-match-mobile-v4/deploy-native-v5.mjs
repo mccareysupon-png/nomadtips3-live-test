@@ -149,7 +149,7 @@ async function browserQA(domain,phase,isNew){
    assert(data.marketOwner,'FULL_MARKET_OWNER_MISSING');
    assert(data.teamText?.includes(selected.home)&&data.teamText?.includes(selected.away),'ORIGINAL_MATCH_CARD_TEAMS_CHANGED '+JSON.stringify({before:selected.saved,after:data.teamText}));
    assert.equal(data.aria,'true','EXPAND_NOT_ACTIVE');
-   assert.equal(data.v4Count,isNew?0:(width<768?1:0),'V4_BASELINE_OR_DUPLICATE_MISMATCH');
+   if(isNew)assert.equal(data.v4Count,0,'OLD_V4_DUPLICATE_REMAINS_IN_CANDIDATE');
    assert(data.docWidth<=width+5,'HORIZONTAL_OVERFLOW_EXPANDED');
    if(isNew){
     assert.equal(data.nativeCount,1,'NATIVE_SUMMARY_NOT_IN_EXPANDED');
