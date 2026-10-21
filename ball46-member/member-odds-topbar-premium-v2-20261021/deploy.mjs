@@ -246,7 +246,7 @@ try{
  assert.equal(hash(beforeV3Css),OLD_CSS_SHA,'MEMBER_V3_CSS_RECONSTRUCTION_UNSAFE');
  const oddsV1Js=currentJs.data.toString('utf8');
  const oldFmt="function fmtOdds(v){\n  const fmt=window.Ball46MemberOdds;\n  if(fmt&&typeof fmt.formatOdds==='function')return fmt.formatOdds(v);\n  const n=Number(v);return Number.isFinite(n)?'@'+n.toFixed(2):'—';\n}";
- const initialFmt="function fmtOdds(v){ const n=Number(v); return Number.isFinite(n)?'@'+n.toFixed(2):'—'; }";
+ const initialFmt="function fmtOdds(v){\n  const n=Number(v);\n  return Number.isFinite(n)?'@'+n.toFixed(2):'—';\n}";
  const hook="window.addEventListener('ball46:member-odds-format-change',()=>{if(state.payload)render();});\n";
  const oldVersionJs=replaceOne(replaceOne(oddsV1Js,oldFmt,initialFmt,'UNDO_ODDS_FMTOdds'),hook,'','UNDO_ODDS_HOOK');
  assert.equal(hash(oldVersionJs),'6f62bf55ad0edbf3f3837d4754bc2a65e13ea62dcf27fd76b5d77780a2878acf','MEMBER_ODDS_V1_UNDO_FAILED');
