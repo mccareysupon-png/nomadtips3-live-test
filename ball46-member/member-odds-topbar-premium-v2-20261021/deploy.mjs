@@ -199,7 +199,7 @@ async function browserHeader(browser,host,label,width,updatedHtml,expectedPremiu
    };
   });
   assert.equal(observed.iconCircleCount,3,'PREMIUM_ODDS_SVG_NOT_RENDERED');
-  assert(observed.memberChip&&observed.memberChip.width>48&&observed.account,'MEMBER_IDENTITY_NOT_VISIBLE');
+  assert(observed.memberChip&&observed.memberChip.width>48&&observed.account,'MEMBER_IDENTITY_NOT_VISIBLE '+width+' '+JSON.stringify(observed));
   assert(Math.abs(observed.account.middleY-observed.brand.middleY)<=9,'MEMBER_ACCOUNT_DROPPED_TO_SECOND_ROW '+width+' '+JSON.stringify(observed));
   assert(Math.abs(observed.icon.middleY-observed.brand.middleY)<=9,'ODDS_ICON_NOT_ALIGNED '+width);
   assert(observed.account.bottom<=observed.header.bottom+3,'MEMBER_ACCOUNT_BELOW_HEADER '+width);
