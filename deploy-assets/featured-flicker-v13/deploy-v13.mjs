@@ -287,7 +287,14 @@ export default {
        return env.ASSETS.fetch(input,init);
      }
    }};
-   return __b46V13OriginalHandler.fetch.call(__b46V13OriginalHandler,request,shadow,ctx);
+   try{
+     return await __b46V13OriginalHandler.fetch.call(__b46V13OriginalHandler,request,shadow,ctx);
+   }catch(error){
+     const stack=String(error&&error.stack||error).slice(0,2000);
+     console.error('B46_V13_CANDIDATE_ONLY_WORKER_EXCEPTION',stack);
+     return new Response('B46_V13_CANDIDATE_ONLY_WORKER_EXCEPTION\\n'+stack,{status:599,
+       headers:{'content-type':'text/plain;charset=utf-8','cache-control':'no-store'}});
+   }
  }
 };
 `;
