@@ -1,0 +1,26 @@
+name: BALL46 Featured Flag Registry — Read Only 20261023
+on:
+  push:
+    branches: [fix/ball46-v13-pinned-index-candidate-20261023]
+    paths: ['.github/workflows/ball46-featured-flags-readonly-20261023.yml']
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Inspect public league flag registry without any writes
+        run: |
+          node --input-type=module <<'NODE'
+          const u='https://ball46.com/league-flags-343.js?audit=20261023-'+Date.now();
+          const r=await fetch(u,{headers:{'Cache-Control':'no-cache'}});
+          const s=await r.text();
+          console.log('B46_FLAG_SCRIPT_META',JSON.stringify({status:r.status,size:s.length,first:s.slice(0,550)}));
+          for(const term of ['NOMAD_LEAGUE_FLAGS_343','function decorateLine','function flag(code)','function globe','data-featured-league','MutationObserver','league-label','data-league-country','dataset.league','function codeFor']){
+            let cursor=0;let n=0;
+            while((cursor=s.indexOf(term,cursor))>=0 && n++<4){
+              console.log('B46_FLAG_SCRIPT_CONTEXT',JSON.stringify({term,index:cursor,context:s.slice(Math.max(0,cursor-750),cursor+1650)}).slice(0,3200));
+              cursor+=term.length;
+            }
+          }
+          NODE
