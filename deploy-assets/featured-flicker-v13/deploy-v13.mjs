@@ -258,7 +258,40 @@ try{
  const originalMain=current.modules.find(x=>x.name===current.main_module);
  assert(originalMain,'MAIN_MODULE_NOT_FOUND');
  const source=Buffer.from(originalMain.content_base64,'base64').toString('utf8');
- const modified=patchWorker(source);
+ const pristine=current.modules.find(x=>x.name==='assets/index.html');
+ assert(pristine&&pristine.content_type==='text/plain','PINNED_INDEX_TEXT_MODULE_MISSING');
+ const pristineText=Buffer.from(pristine.content_base64,'base64').toString('utf8');
+ assert(pristineText.includes('</body>')&&!pristineText.includes('b46-dark-match-deep-graphite-teal-20261020'),
+   'PINNED_INDEX_NOT_PRISTINE');
+ const transformed=patchWorker(source);
+ assert.equal(transformed.split('export default ').length-1,1,'V13_MAIN_DEFAULT_EXPORT_DRIFT');
+ // The ASSETS binding of freshly uploaded previews unexpectedly served already
+ // transformed HTML. Return the pinned, byte-exact original assets/index.html
+ // text module for document paths; all other assets/bindings are untouched.
+ const modified='import __b46V13PristineIndex from "./assets/index.html";\n'
+   +transformed.replace('export default ','const __b46V13OriginalHandler = ')
+   +String.raw`
+export default {
+ ...__b46V13OriginalHandler,
+ async fetch(request,env,ctx){
+   const shadow={...env,ASSETS:{
+     async fetch(input,init){
+       const raw=input instanceof Request?input.url:input instanceof URL?input.href:String(input);
+       const pathname=new URL(raw,'https://assets.local').pathname;
+       if(pathname==='/'||pathname==='/index.html'){
+         return new Response(__b46V13PristineIndex,{status:200,
+           headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store'}});
+       }
+       return env.ASSETS.fetch(input,init);
+     }
+   }};
+   return __b46V13OriginalHandler.fetch.call(__b46V13OriginalHandler,request,shadow,ctx);
+ }
+};
+`;
+ console.log('B46_V13_PINNED_PRISTINE_INDEX_CANDIDATE',JSON.stringify({
+   length:pristineText.length,hash:hash(pristineText),moduleName:pristine.name
+ }));
  // Versions API can accept uploads that later throw 1101 on version URLs.
  // Validate exact generated Worker module syntax before touching any candidate.
  const syntax=spawnSync(process.execPath,['--input-type=module','--check','-'],{
@@ -342,6 +375,11 @@ try{
  assert.equal(candidateAsset.hash,report.newRendererHash,'V13_RENDERER_ASSET_CANDIDATE_MISMATCH');
  report.candidateQA=await browserQA(preview,'candidate',true);
  assert.deepEqual(await active(),report.activeBefore,'WORKER_CHANGED_DURING_CANDIDATE_QA');
+ if(process.env.B46_V13_CANDIDATE_ONLY!=='1')throw Error('CANDIDATE_ONLY_REQUIRED_FOR_THIS_BRANCH');
+ report.ok=true;report.candidateOnly=true;save();
+ console.log('B46_V13_PINNED_INDEX_CANDIDATE_QA_PASS_NO_PRODUCTION_DEPLOY',JSON.stringify({candidate:uploaded.id,activeUnchanged:report.activeBefore.version,preview,qa:report.candidateQA.length}));
+ // IMPORTANT: Never permit this experimental version to be promoted.
+ process.exit(0);
  const deploy=await api('/workers/scripts/'+SCRIPT+'/deployments',
   {strategy:'percentage',versions:[{version_id:uploaded.id,percentage:100}],annotations:{'workers/message':'Stop Featured PC/mobile row remount and flag flicker; no Event Flow or Statistics change'}});
  promoted=true;report.deployment=deploy.id;save();
