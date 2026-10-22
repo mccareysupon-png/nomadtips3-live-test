@@ -299,7 +299,10 @@ async function inspectBrowser(baseOrigin, label, fullChecks) {
     await page.waitForFunction(() => document.querySelectorAll('.match-row[data-match-id]').length > 0, { timeout: 60000 });
     await page.waitForFunction(() => {
       const keys = ['today-win', 'today-loss', 'today-push', 'today-pending', 'yesterday-win', 'yesterday-loss', 'yesterday-push'];
-      return keys.every(key => document.querySelector(`[data-b46-stat="${key}"]`)?.textContent?.trim() !== '');
+      return keys.every(key => {
+        const value = document.querySelector(`[data-b46-stat="${key}"]`)?.textContent?.trim();
+        return value && value !== '—';
+      });
     }, { timeout: 90000 });
     const themes = {};
     for (const theme of ['dark', 'light']) {
@@ -479,4 +482,3 @@ try {
   console.error(error.stack);
   process.exitCode = 1;
 }
-
