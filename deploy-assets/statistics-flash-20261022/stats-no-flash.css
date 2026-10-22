@@ -1,0 +1,26 @@
+/* BALL46 Statistics hydration guard — scoped solely to existing Statistics panel.
+   Hide legacy stat skeleton before first paint; reveal only after authoritative V2 renderer signals Updated.
+   No fixed-time loading, no changes to league filters, EVENT FLOW or live fixtures. */
+html:not([data-b46-statistics-render-ready="1"]) body[data-workspace-view="statistics"] .workspace-panel[data-workspace-panel="statistics"] > .sp-stats-content {
+  display:none!important;
+}
+html:not([data-b46-statistics-render-ready="1"]) body[data-workspace-view="statistics"] .workspace-panel[data-workspace-panel="statistics"]::after {
+  content:"Loading statistics…";
+  display:flex!important;
+  justify-content:center;
+  align-items:flex-start;
+  padding:31px 12px 70px;
+  min-height:110px;
+  box-sizing:border-box;
+  font-family:Inter,system-ui,sans-serif;
+  font-size:12px;
+  font-weight:700;
+  color:var(--muted,#8daa9b);
+  letter-spacing:.025em;
+}
+html[data-b46-statistics-render-ready="1"] body .workspace-panel[data-workspace-panel="statistics"]::after{
+  content:none!important;display:none!important;
+}
+html[data-b46-statistics-render-error="1"]:not([data-b46-statistics-render-ready="1"]) body[data-workspace-view="statistics"] .workspace-panel[data-workspace-panel="statistics"]::after {
+  content:"Statistics unavailable — please try again";
+}
