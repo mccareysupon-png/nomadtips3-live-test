@@ -68,3 +68,22 @@ node --test isolated-labs/add-k-ai-adaptive/engine.test.mjs isolated-labs/add-k-
 ```
 
 Do not merge into `main` or deploy until source verification, exact production record mapping, safety review and real-data chronological tests are complete.
+
+
+## V3 read-only adapter for legacy AH match feed (isolated test only)
+
+- `legacy-ah-adapter.mjs` accepts the CURRENT `nomad-live-engine` `/feed` match shape (fields `id`, `freshness`, `rolling.recent`, `selectedPrice`, `priceSources`). This is a source-code contract, not a claim that live source data is currently available.
+- Requires a known-match ID, `freshness.sourceStale === false`, available rolling pressure metrics, and `PASS` selected AH quotes whose source ID, bookmaker, side, line, odds and source update timestamp match one existing `priceSources` snapshot. Missing or stale values produce `NO_PICK` prerequisites; no values are invented.
+- `appendLegacyAhQuote()` is a PURE function that appends a verified observation to the caller-supplied array, ignoring repeated polls of the same source timestamp. It **does not persist** quotes to Cloudflare, D1 or the public statistics ledger.
+- `buildLegacyAhCandidate()` requires at least two actual distinct source timestamps for the same fixture/selection/line/bookmaker/source, with at least one minute between first and last. It rejects conflicting price histories, changed source or line, and attempts to reconstruct missing history from a single current quote.
+- This bridge currently covers `AH` only. `OU`, `1X2` and `CORNERS` remain supported by the isolated analysis engine **only when** a future provider-specific adapter proves the required actual odds/time/settlement contract for each market. Do not label them source-connected today.
+- `rolling.recent.homePressure` and `awayPressure` are preexisting weighted match-pressure values. Their normalized difference is a *heuristic directional feature*, not verified probability or odds-derived money flow.
+- The existing live Worker retains only the current market snapshot in `state.matches`; the match's rolling history concerns match statistics, not a durable market-price ledger. A future collector must persist immutable, provider-attributed, timestamped price changes **before** this can be used with real history.
+- Production `/statistics`, TOTAL and all condition settings have NOT been changed. All code remains in the isolated branch and draft PR.
+
+Tests:
+```sh
+node --test isolated-labs/add-k-ai-adaptive/*.test.mjs
+```
+
+Test fixture values are synthetic, tests are offline, and no Cloudflare deployment or live-provider permissions are claimed.
