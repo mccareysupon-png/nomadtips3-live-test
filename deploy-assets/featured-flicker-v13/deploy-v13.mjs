@@ -246,6 +246,53 @@ async function browserQA(domain,phase,patched){
 }
 
 
+async function statisticsQA(domain,phase){
+ const browser=await puppeteer.launch({headless:true,executablePath:'/usr/bin/google-chrome',args:['--no-sandbox']});
+ const records=[];
+ try{
+  for(const [width,theme] of [[1440,'dark'],[390,'light']]){
+   const p=await browser.newPage(),errors=[];
+   p.on('pageerror',e=>errors.push(String(e).slice(0,250)));
+   try{
+    await p.setViewport({width,height:1000,isMobile:width<768,deviceScaleFactor:1});
+    await p.goto(domain+'/?view=statistics&v13stats='+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
+    await p.evaluate(theme=>document.documentElement.dataset.theme=theme,theme);
+    await p.waitForSelector('[data-workspace-panel="statistics"] .sp-stats-content',{timeout:45000});
+    const first=await p.evaluate(()=>{
+      const pane=document.querySelector('[data-workspace-panel="statistics"]');
+      const content=pane?.querySelector('.sp-stats-content');
+      return {view:document.body.dataset.workspaceView,
+       ready:document.documentElement.getAttribute('data-b46-statistics-render-ready'),
+       display:content?getComputedStyle(content).display:null,
+       statGuard:!!document.querySelector('#b46-statistics-no-old-flash-20261022')};
+    });
+    assert(first.statGuard&&first.view==='statistics','STATISTICS_PANEL_ROUTE_OR_GUARD_CHANGED '+JSON.stringify(first));
+    if(first.ready!=='1')assert.equal(first.display,'none','LEGACY_STATISTICS_VISIBLE_BEFORE_READY');
+    await p.waitForFunction(()=>{
+      const pane=document.querySelector('[data-workspace-panel="statistics"]');
+      const state=pane?.querySelector('[data-sp-feed-state]')?.textContent.trim()||'';
+      const content=pane?.querySelector('.sp-stats-content');
+      return /^Updated\b/i.test(state)&&document.documentElement.dataset.b46StatisticsRenderReady==='1' &&
+        content&&getComputedStyle(content).display!=='none';
+    },{timeout:60000,polling:250});
+    const last=await p.evaluate(()=>{
+      const pane=document.querySelector('[data-workspace-panel="statistics"]');
+      return {kpis:pane?.querySelectorAll('.sp-kpi').length,
+        markets:document.querySelectorAll('[data-stat-market]').length,
+        scrollWidth:document.documentElement.scrollWidth};
+    });
+    assert(last.kpis>=8&&last.markets>=4&&last.scrollWidth<=width+5,
+      'STATISTICS_REGRESSION '+JSON.stringify({first,last}));
+    assert.deepEqual(errors,[],'STATISTICS_PAGE_ERRORS');
+    await p.screenshot({path:'proof/'+phase+'-statistics-'+width+'-'+theme+'.png'});
+    records.push({width,theme,first,last});
+    console.log('B46_V13_STATISTICS_NO_LEGACY_FLASH_QA_PASS',JSON.stringify({phase,width,theme,first,last}));
+   }finally{await p.close();}
+  }
+ }finally{await browser.close();}
+ return records;
+}
+
 async function purgeAffectedFilesOnly(){
  const zone='d491ee30b7a87a6c37e6a4dacf00ae8d';
  const files=[];
@@ -424,11 +471,14 @@ export default {
  assert.equal(candidateAsset.hash,report.newRendererHash,'V13_RENDERER_ASSET_CANDIDATE_MISMATCH');
  report.candidateQA=await browserQA(preview,'candidate',true);
  assert.deepEqual(await active(),report.activeBefore,'WORKER_CHANGED_DURING_CANDIDATE_QA');
- if(process.env.B46_V13_CANDIDATE_ONLY!=='1')throw Error('CANDIDATE_ONLY_REQUIRED_FOR_THIS_BRANCH');
- report.ok=true;report.candidateOnly=true;save();
- console.log('B46_V13_PINNED_INDEX_CANDIDATE_QA_PASS_NO_PRODUCTION_DEPLOY',JSON.stringify({candidate:uploaded.id,activeUnchanged:report.activeBefore.version,preview,qa:report.candidateQA.length}));
- // IMPORTANT: Never permit this experimental version to be promoted.
- process.exit(0);
+ if(process.env.B46_V13_PRODUCTION_RELEASE!=='APPROVED_20261023')
+   throw Error('V13_PRODUCTION_RELEASE_GUARD_NOT_SET');
+ report.candidateStatisticsQA=await statisticsQA(preview,'candidate');
+ assert.deepEqual(await active(),report.activeBefore,'PRODUCTION_MOVED_BEFORE_PROMOTION');
+ console.log('B46_V13_CANDIDATE_ALL_QA_PASS_DEPLOY_ALLOWED',JSON.stringify({
+   candidate:uploaded.id,base:report.activeBefore.version,
+   featuredChecks:report.candidateQA.length,statisticsChecks:report.candidateStatisticsQA.length
+ }));
  const deploy=await api('/workers/scripts/'+SCRIPT+'/deployments',
   {strategy:'percentage',versions:[{version_id:uploaded.id,percentage:100}],annotations:{'workers/message':'Stop Featured PC/mobile row remount and flag flicker; no Event Flow or Statistics change'}});
  promoted=true;report.deployment=deploy.id;save();
@@ -454,7 +504,7 @@ export default {
   for(let i=0;i<70;i++){
    const head=await get(domain,'/');
    const body=head.bytes.toString('utf8'); const exactNew=body.includes(NEW_STYLE_TAG);
-    const restoredHash=exactNew?hash(body.replace(NEW_STYLE_TAG,OLD_STYLE_TAG)):null;
+    const restoredHash=exactNew?hash(body.replace(NEW_STYLE_TAG,PREVIOUS_STYLE_TAG)):null;
     if(exactNew&&restoredHash===originalHtml.hash){propagated=true;break;}
     if(i%8===0)console.log('B46_V13_EDGE_PROPAGATION',JSON.stringify({domain,attempt:i+1,
       exactNew,exactOld:body.includes(PREVIOUS_STYLE_TAG),restoredHashMatches:restoredHash===originalHtml.hash,
@@ -468,10 +518,11 @@ export default {
  for(const p of PATHS.filter(p=>!HTML_PATHS.includes(p)))assert.equal(liveFiles[p].hash,files[p].hash,'UNRELATED_PRODUCTION_ASSET_CHANGED '+p);
  const liveHtml=(await get(PROD,'/')).bytes.toString('utf8');
  assert(liveHtml.includes(NEW_STYLE_TAG),'STAT_FLASH_FIX_PRODUCTION_MISSING');
- assert.equal(hash(liveHtml.replace(NEW_STYLE_TAG,OLD_STYLE_TAG)),originalHtml.hash,'LIVE_OTHER_HTML_OR_SEO_CHANGED');
+ assert.equal(hash(liveHtml.replace(NEW_STYLE_TAG,PREVIOUS_STYLE_TAG)),originalHtml.hash,'LIVE_OTHER_HTML_OR_SEO_CHANGED');
  const liveAsset=await get(PROD,TARGET);
  assert.equal(liveAsset.hash,report.newRendererHash,'V13_RENDERER_ASSET_PRODUCTION_MISMATCH');
  report.productionQA=await browserQA(PROD,'production',true);
+ report.productionStatisticsQA=await statisticsQA(PROD,'production');
  report.activeAfter=await active();assert.equal(report.activeAfter.version,uploaded.id,'ACTIVE_NOT_PROMOTED_VERSION');
  report.ok=true;save();
  console.log('B46_V13_FEATURED_FLAGS_PRODUCTION_SUCCESS',JSON.stringify({workerVersion:uploaded.id,previousVersion:report.activeBefore.version,
