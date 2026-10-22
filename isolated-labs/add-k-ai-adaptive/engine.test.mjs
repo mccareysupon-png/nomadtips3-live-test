@@ -3,14 +3,14 @@ import assert from 'node:assert/strict';
 import { CONDITION_ID, MARKET_TYPES, evaluateCandidate, createShadowSignal, mergeLedger, summarizeLedger } from './engine.mjs';
 const now = Date.parse('2026-10-22T12:00:00Z');
 const candidate = (market = 'AH') => ({ matchId: `fixture-${market}`, market,
-  selection: market === 'OU' ? 'OVER' : market === '1X2' ? 'HOME' : 'HOME',
-  line: market === '1X2' ? undefined : market === 'OU' ? 2.5 : -0.5,
+  selection: (market === 'OU' || market === 'CORNERS') ? 'OVER' : market === '1X2' ? 'HOME' : 'HOME',
+  line: market === '1X2' ? undefined : market === 'OU' ? 2.5 : market === 'CORNERS' ? 9.5 : -0.5,
   sourceVerified: true, momentum: 0.8,
-  observations: [{ at: now - 7 * 60_000, odds: 2.05, line: market === '1X2' ? undefined : market === 'OU' ? 2.5 : -0.5, selection: market === 'OU' ? 'OVER' : 'HOME' },
-                 { at: now - 60_000, odds: 1.9, line: market === '1X2' ? undefined : market === 'OU' ? 2.5 : -0.5, selection: market === 'OU' ? 'OVER' : 'HOME' }] });
+  observations: [{ at: now - 7 * 60_000, odds: 2.05, line: market === '1X2' ? undefined : market === 'OU' ? 2.5 : market === 'CORNERS' ? 9.5 : -0.5, selection: (market === 'OU' || market === 'CORNERS') ? 'OVER' : 'HOME' },
+                 { at: now - 60_000, odds: 1.9, line: market === '1X2' ? undefined : market === 'OU' ? 2.5 : market === 'CORNERS' ? 9.5 : -0.5, selection: (market === 'OU' || market === 'CORNERS') ? 'OVER' : 'HOME' }] });
 
-test('supports all three normalized market types without publishing', () => {
-  assert.deepEqual(MARKET_TYPES, ['AH', 'OU', '1X2']);
+test('supports all four normalized market types without publishing', () => {
+  assert.deepEqual(MARKET_TYPES, ['AH', 'OU', '1X2', 'CORNERS']);
   for (const market of MARKET_TYPES) {
     const c = candidate(market), evaluation = evaluateCandidate(c, { nowMs: now });
     assert.equal(evaluation.status, 'SHADOW_PICK');
