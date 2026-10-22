@@ -238,7 +238,18 @@ try{
  assert.equal(candidateHtml.status,200,'CANDIDATE_HTML_MISSING');
  const candidateStr=candidateHtml.bytes.toString('utf8');
  assert(candidateStr.includes(NEW_STYLE_TAG),'V13_GLOBE_STYLE_NOT_INSTALLED');
- assert.equal(hash(candidateStr.replace(NEW_STYLE_TAG,OLD_STYLE_TAG)),originalHtml.hash,'CANDIDATE_CHANGED_UNRELATED_HTML_OR_SEO');
+ {
+ const restored=candidateStr.replace(NEW_STYLE_TAG,PREVIOUS_STYLE_TAG);
+ if(hash(restored)!==originalHtml.hash){
+  let i=0;while(i<Math.min(restored.length,originalHtml.bytes.length)&&restored.charCodeAt(i)===originalHtml.bytes.toString('utf8').charCodeAt(i))i++;
+  console.log('B46_V13_HTML_DIFF_DIAG',JSON.stringify({candidateLength:candidateStr.length,oldLength:originalHtml.bytes.length,
+    restoredLength:restored.length,matchNew:candidateStr.includes(NEW_STYLE_TAG),
+    firstMismatch:i,restoredAround:restored.slice(Math.max(0,i-250),i+650),
+    originalAround:originalHtml.bytes.toString('utf8').slice(Math.max(0,i-250),i+650),
+    oldStyleCount:originalHtml.bytes.toString('utf8').split(PREVIOUS_STYLE_TAG).length-1}));
+ }
+ assert.equal(hash(restored),originalHtml.hash,'CANDIDATE_CHANGED_UNRELATED_HTML_OR_SEO');
+}
  const candidateAsset=await get(preview,TARGET);
  assert.equal(candidateAsset.hash,report.newRendererHash,'V13_RENDERER_ASSET_CANDIDATE_MISMATCH');
  report.candidateQA=await browserQA(preview,'candidate',true);
