@@ -8,9 +8,14 @@ export const HELPER=String.raw`
 /* B46_V13_FEATURED_STABLE_RENDER: do not unmount live UI on identical refresh */
 function b46StableFeaturedLeague(next){
  const el=$('[data-featured-league]');if(!el)return;
+ // Keep the flag element mounted; replacing the league container's textContent
+ // destroys the image and allows the globe placeholder to reappear.
  const label=el.querySelector(':scope > .league-label');
- const value=label?label.textContent:el.textContent;
- if(value!==next)el.textContent=next;
+ if(label){if(label.textContent!==next)label.textContent=next;return;}
+ const nodes=[...el.childNodes].filter(n=>n.nodeType===Node.TEXT_NODE);
+ const textNode=nodes[nodes.length-1];
+ if(textNode){if(textNode.textContent!==next)textNode.textContent=next;return;}
+ const span=document.createElement('span');span.className='league-label';span.textContent=next;el.appendChild(span);
 }
 function b46StableFeaturedContent(host,markup,kind){
  if(!host)return;
