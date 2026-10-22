@@ -31,13 +31,13 @@ test('training requires chronological holdout with no future outcomes', () => {
 test('inference rejects other markets, stale feed, and unvalidated model', () => {
   const rows = Array.from({ length: 76 }, (_, i) => example(i));
   const model = trainShadowModel(rows, 'AH', { asOfMs: origin + 80 * day });
-  const live = example(81).candidate;
-  const picked = predictShadow(model, live, origin + 81 * day, 0.6);
+  const live = example(82).candidate;
+  const picked = predictShadow(model, live, origin + 82 * day, 0.6);
   assert.equal(picked.status, 'SHADOW_PICK');
   assert.equal(picked.calibratedProbability, false);
-  assert.equal(predictShadow(model, example(81, 'OU').candidate, origin + 81 * day).reason, 'NO_VALIDATED_MODEL');
-  assert.equal(predictShadow(model, live, origin + 81 * day + 9 * 60_000).reason, 'BAD_OR_STALE_DATA');
-  assert.equal(predictShadow({ ...model, ready: false }, live, origin + 81 * day).reason, 'NO_VALIDATED_MODEL');
+  assert.equal(predictShadow(model, example(82, 'OU').candidate, origin + 82 * day).reason, 'NO_VALIDATED_MODEL');
+  assert.equal(predictShadow(model, live, origin + 82 * day + 9 * 60_000).reason, 'BAD_OR_STALE_DATA');
+  assert.equal(predictShadow({ ...model, ready: false }, live, origin + 82 * day).reason, 'NO_VALIDATED_MODEL');
 });
 test('duplicate training rows do not increase sample count', () => {
   const rows = Array.from({ length: 76 }, (_, i) => example(i));
