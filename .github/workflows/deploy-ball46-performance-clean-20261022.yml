@@ -1,0 +1,50 @@
+name: Deploy BALL46 Performance Card Clean 20261022
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-ball46-performance-clean-20261022.yml'
+      - 'deploy-assets/performance-card-clean-20261022/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ball46-production-deploy
+  cancel-in-progress: false
+
+jobs:
+  guarded-presentation-deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install verification dependencies only
+        run: npm install --no-save --ignore-scripts acorn@8 puppeteer-core@24
+
+      - name: Patch exact active Production and verify protected surfaces
+        working-directory: deploy-assets/performance-card-clean-20261022
+        run: |
+          node --check deploy.mjs
+          node deploy.mjs
+
+      - name: Upload deployment proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-performance-card-clean-${{ github.run_id }}
+          path: deploy-assets/performance-card-clean-20261022/audit
+          if-no-files-found: warn
+          retention-days: 30
