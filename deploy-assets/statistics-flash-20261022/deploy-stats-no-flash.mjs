@@ -152,7 +152,8 @@ async function browserQA(domain,phase,patched){
       flow:!!document.querySelector('.expand-flow-card'),
       market:!!document.querySelector('.expand-full-market-card')
     }));
-    assert(existed.menu&&existed.fixture&&existed.flow&&existed.market,'ORIGINAL_MOBILE_ALLMATCHES_OR_FLOW_GONE '+JSON.stringify(existed));
+    assert(existed.menu&&existed.fixture,'ORIGINAL_MOBILE_ALLMATCHES_MENU_OR_FIXTURE_MISSING '+JSON.stringify(existed));
+    // EVENT FLOW exists in the expanded detail only; check it after opening.
     await page.evaluate(()=>document.querySelector('#b46gn-cards [data-b46gn-fixture]').click());
     await page.waitForFunction(()=>document.querySelector('#b46gn-detail[aria-hidden="false"] .b46gn-featured .featured-card[data-featured]'),{timeout:18000,polling:200});
     const flow=await page.evaluate(()=>({
