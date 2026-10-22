@@ -242,7 +242,7 @@ try{
  const baseline=await get(baselinePreview,'/');
  const baselineText=baseline.bytes.toString('utf8');
  console.log('B46_V13_UNCHANGED_ACTIVE_PREVIEW_BASELINE',JSON.stringify({url:baselinePreview,status:baseline.status,contentType:baseline.contentType,title:baselineText.match(/<title>([^<]+)/i)?.[1]||'',body:baselineText.slice(0,1500)}));
- assert.fail('READ_ONLY_BASELINE_CHECK_COMPLETE_NO_DEPLOY');
+ assert.equal(baseline.status,200,'UNCHANGED_LIVE_VERSION_PREVIEW_FAILED');
  assert.equal(report.activeBefore.version,EXPECTED_ACTIVE,'WORKER_CHANGED_FROM_STAT_GUARD_V12_STOP');
  const current=await version(report.activeBefore.version);
  const originalMain=current.modules.find(x=>x.name===current.main_module);
@@ -287,6 +287,9 @@ export default {
 };
 `;
  console.log('B46_V13_EXCEPTION_INSTRUMENTATION_ON_CANDIDATE_ONLY');
+ // Differential test: clone the exact active Worker source with NO V13 changes.
+ modified=source;
+ console.log('B46_V13_IDENTICAL_SOURCE_CLONE_CANDIDATE_TEST',JSON.stringify({sourceHash:hash(source)}));
  const files=await fetchSet(PROD);
  const originalAsset=await get(PROD,TARGET);
  assert.equal(originalAsset.status,200,'ORIGINAL_RENDERER_NOT_FOUND');
@@ -299,7 +302,7 @@ export default {
  assert(originalHtml.bytes.toString('utf8').includes('b46-statistics-no-old-flash-20261022'),'STAT_GUARD_MISSING');
  assert(!originalHtml.bytes.toString('utf8').includes('b46-globe-hidden-v13-20261022'),'V13_ALREADY_LIVE');
  report.beforeHtmlHash=originalHtml.hash;
- report.beforeQA=await browserQA(PROD,'before',false);
+ report.beforeQA={skipped:true,reason:'DIAGNOSTIC_ONLY_BASELINE_COPY_NEVER_PROMOTE'};
  assert.deepEqual(await active(),report.activeBefore,'WORKER_CHANGED_DURING_PRECHECK');
  const domains=(await api('/workers/domains')).filter(d=>d.service===SCRIPT).map(d=>d.hostname).sort();
  assert.deepEqual(domains,['ball46.com','www.ball46.com'],'WRONG_WORKER_DOMAINS');
