@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { extractFeatures, trainShadowModel, predictShadow } from './adaptive-model.mjs';
+import { createShadowSignal, CONDITION_ID } from './engine.mjs';
 
 const origin = Date.parse('2026-01-01T00:00:00Z');
 const day = 24 * 60 * 60 * 1000;
@@ -50,4 +51,19 @@ test('invalid and future price observations are rejected without guessing values
   assert.equal(extractFeatures({ ...candidate, sourceVerified: false }, lockedAt), null);
   assert.equal(extractFeatures({ ...candidate, observations: [{ ...candidate.observations[0], at: lockedAt + 100 }, candidate.observations[1]] }, lockedAt), null);
   assert.equal(extractFeatures({ ...candidate, observations: candidate.observations.map(o => ({ ...o, line: 4.5 })) }, lockedAt), null);
+});
+
+test('validated model shadow pick carries price and version into distinct locked records', () => {
+  const history = Array.from({ length: 76 }, (_, i) => example(i));
+  const model = trainShadowModel(history, 'AH', { asOfMs: origin + 80 * day });
+  const c = example(82).candidate, lockTime = origin + 82 * day;
+  const evaluation = predictShadow(model, c, lockTime, 0.6);
+  assert.equal(evaluation.status, 'SHADOW_PICK');
+  const signal = createShadowSignal(c, evaluation, lockTime);
+  assert.equal(signal.odds, 1.85);
+  assert.equal(signal.modelVersion, 'logistic-shadow-v1');
+  assert.equal(signal.conditionIds[0], CONDITION_ID);
+  assert.equal(signal.shadowOnly, true);
+  assert.ok(signal.id.includes(String(lockTime)));
+  assert.equal(createShadowSignal(c, evaluation, lockTime + 60_000).id !== signal.id, true);
 });
