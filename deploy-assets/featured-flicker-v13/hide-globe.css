@@ -1,2 +1,3 @@
-/* BALL46 V13 — user requested no globe placeholders. Preserve real flags and all league names. */
-.league-flag-ready > .league-globe{display:none!important;visibility:hidden!important}
+/* BALL46: do not display the fallback globe behind/over a national flag.
+   Only hide the exact placeholder; leave real flag <img> and league name untouched. */
+.league-globe{display:none!important;visibility:hidden!important}
