@@ -48,3 +48,23 @@ node --test isolated-labs/add-k-ai-adaptive/engine.test.mjs
 5. Enable a scheduled Worker only after source permissions, isolation, accounting, load, and cost validation. No VPS is required for this small screening core.
 
 Do not present shadow results, synthetic fixtures, or heuristic scores to members as live AI selections.
+
+
+## V2 shadow machine-learning module (not production)
+
+- `adaptive-model.mjs` adds a small per-market supervised logistic model. It can be trained using **only already-settled** historical WIN/LOSS decisions with verified price observations available at each original lock time.
+- A chronological validation window begins only after training results were settled. If there is too little data, only one class, no leakage-safe holdout, or no improvement over the historical baseline Brier score, it returns `ready: false`; inference then returns `NO_PICK`.
+- Each market has its own model; AH, OU, 1X2 and CORNERS are not pooled into one performance estimate. Models are **not** trained by page loads; Cloudflare Worker/D1 training schedules and persistence are future work.
+- The model is an experimental statistical classifier, not a pretrained conversational model. Its `score` is **not calibrated**, should not be presented as a promised winning probability, and has no established live edge. Predicting on existing data does not retrain weights by itself.
+- This prototype does not yet implement an automated five-minute observation runner, a one-to-two-hour retraining process, a production database, odds ingestion, or actual signal posting.
+- Synthetic test fixtures are used **only** for logic tests; no synthetic fixtures or scores appear on the public site.
+- `predictShadow()` passes the observed last price and model version to `createShadowSignal()`; all such records remain `shadowOnly: true`.
+- Ledger IDs include a lock timestamp. Existing historical records with incomplete structure remain present rather than disappearing.
+
+Run the complete tests with Node 22+:
+
+```sh
+node --test isolated-labs/add-k-ai-adaptive/engine.test.mjs isolated-labs/add-k-ai-adaptive/adaptive-model.test.mjs
+```
+
+Do not merge into `main` or deploy until source verification, exact production record mapping, safety review and real-data chronological tests are complete.
