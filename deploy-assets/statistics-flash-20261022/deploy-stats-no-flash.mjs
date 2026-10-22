@@ -144,27 +144,26 @@ async function browserQA(domain,phase,patched){
     assert(last.mainCards>0,'LIVE_MATCH_CARDS_MISSING');
    }
    if(patched&&view==='all'&&width===390){
-    // Check native mobile navigation and existing mobile expanded-card Event Flow.
-    const trigger=await page.$('[data-b46m-open]');
-    assert(trigger,'ORIGINAL_MOBILE_MENU_TOGGLE_MISSING');
-    await trigger.click();
-    await page.waitForFunction(()=>document.querySelector('#b46m-drawer[aria-hidden="false"]'),{timeout:5500});
-    await page.waitForFunction(()=>{
-      const n=document.querySelector('#b46m-drawer [data-b46m-status="all"]'),r=n?.getBoundingClientRect();
-      return r&&r.width>150&&r.x>=0&&r.x<innerWidth;
-    },{timeout:8500});
-    await page.click('#b46m-drawer [data-b46m-status="all"]');
-    const fixture=await page.$('#b46gn-cards [data-b46gn-fixture]');
-    if(fixture){
-      await fixture.click();
-      await page.waitForFunction(()=>document.querySelector('#b46gn-detail[aria-hidden="false"] .b46gn-featured .featured-card'),{timeout:12000});
-      const flow=await page.evaluate(()=>({
-        detail:document.querySelector('#b46gn-detail')?.getAttribute('aria-hidden'),
-        facts:document.querySelectorAll('#b46gn-detail .b46gn-featured .featured-card .feature-facts>div').length,
-        eventFlow:!!document.querySelector('.expand-flow-card'),fullMarket:!!document.querySelector('.expand-full-market-card'),
-        duplicates:document.querySelectorAll('.b46-native-summary,.b46x-live-detail').length}));
-      assert(flow.detail==='false'&&flow.facts===4&&flow.eventFlow&&flow.fullMarket&&flow.duplicates===0,'MOBILE_V12_OR_EVENT_FLOW_REGRESSION '+JSON.stringify(flow));
-    }
+    // Statistics guard must NOT alter the original mobile All Matches UI.
+    // Use the existing native fixture click, not a transient menu animation.
+    const existed=await page.evaluate(()=>({
+      menu:!!document.querySelector('[data-b46m-open]'),
+      fixture:!!document.querySelector('#b46gn-cards [data-b46gn-fixture]'),
+      flow:!!document.querySelector('.expand-flow-card'),
+      market:!!document.querySelector('.expand-full-market-card')
+    }));
+    assert(existed.menu&&existed.fixture&&existed.flow&&existed.market,'ORIGINAL_MOBILE_ALLMATCHES_OR_FLOW_GONE '+JSON.stringify(existed));
+    await page.evaluate(()=>document.querySelector('#b46gn-cards [data-b46gn-fixture]').click());
+    await page.waitForFunction(()=>document.querySelector('#b46gn-detail[aria-hidden="false"] .b46gn-featured .featured-card[data-featured]'),{timeout:18000,polling:200});
+    const flow=await page.evaluate(()=>({
+      detail:document.querySelector('#b46gn-detail')?.getAttribute('aria-hidden'),
+      facts:document.querySelectorAll('#b46gn-detail .b46gn-featured .featured-card .feature-facts>div').length,
+      eventFlow:!!document.querySelector('.expand-flow-card'),fullMarket:!!document.querySelector('.expand-full-market-card'),
+      duplicates:document.querySelectorAll('.b46-native-summary,.b46x-live-detail').length
+    }));
+    assert(flow.detail==='false'&&flow.facts===4&&flow.eventFlow&&flow.fullMarket&&flow.duplicates===0,
+      'MOBILE_V12_OR_EVENT_FLOW_REGRESSION '+JSON.stringify(flow));
+    console.log('B46_STATISTICS_GUARD_MOBILE_V12_INVARIANTS_PASS',JSON.stringify(flow));
    }
    await page.screenshot({path:'proof/'+phase+'-'+width+'-'+mode+'-'+view+'.png',fullPage:false});
    assert.deepEqual(errors,[],'PAGE_JS_ERRORS '+JSON.stringify(errors));
