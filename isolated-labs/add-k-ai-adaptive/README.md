@@ -5,12 +5,12 @@ Status: **ISOLATED TEST ONLY**. Not enabled, not scheduled, not connected to BAL
 ## Decisions
 
 - New condition ID: `ADD_K_AI_ADAPTIVE_V1`.
-- Supports the normalized market families `AH`, `OU` (Over/Under),  `1X2`, and `CORNERS`; no vendor integrations are included.
+- Supports the normalized market families `AH`, `OU` (Over/Under), `1X2`, and `CORNERS`; no vendor integrations are included.
 - First release is a transparent price-momentum **heuristic baseline**, NOT ML, self-learning AI, or a true profitability forecast. `score` is **not** a probability.
 - It rejects stale, missing, unverified, mismatched-line or insufficient data. No sample/placeholder data enters production.
 - It produces only `SHADOW_PICK` and `shadowOnly: true` records. No Cloudflare routes, cron triggers, production bindings, historic statistics, or actual markets are modified.
 - `mergeLedger(existing, aiSignals)` merges identical underlying selections. `summarizeLedger()` returns `total` and `aiAdaptive` views; TOTAL is the unique union, AI is a filter over that union. A pick attributed to both existing and AI conditions appears **once in TOTAL**, not twice.
-- One pick identity is match + market + side + line. If the future live ledger permits multiple distinct entries of the same underlying selection within a fixture, replace this identity with a persisted canonical signal ID and lock-bucket policy before integrating.
+- Unique ledger identity uses a supplied canonical signal ID if present; otherwise match + market + selection + line + **exact lock timestamp**. Repeated analysis of one fixture at different lock times is therefore NOT silently merged. Unknown-schema historical records are retained. Production integration must supply stable canonical signal IDs and deterministic lock-time semantics, and verify late result updates.
 
 ## Input contract
 
