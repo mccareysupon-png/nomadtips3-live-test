@@ -247,6 +247,13 @@ try{
    console.log('B46_V13_WORKER_ANCHOR_CONTEXT',JSON.stringify({needle,pos,context:pos<0?'NOT_FOUND':source.slice(Math.max(0,pos-2500),pos+850)}));
  }
  let modified=patchWorker(source);
+ // CANDIDATE DIAGNOSTIC ONLY: an already-applied October 20 dark card
+ // stylesheet must not be installed a second time. Keep HTML unchanged.
+ const guard='if(!html.includes("</body>")||html.includes("b46-dark-match-deep-graphite-teal-20261020"))throw new Error("MATCH_PATCH_ANCHOR_DRIFT");';
+ const idempotent='if(html.includes("b46-dark-match-deep-graphite-teal-20261020"))return response;if(!html.includes("</body>"))throw new Error("MATCH_PATCH_ANCHOR_DRIFT");';
+ assert.equal(modified.split(guard).length-1,1,'DARK_MATCH_ANCHOR_NOT_UNIQUE');
+ modified=modified.replace(guard,idempotent);
+ console.log('B46_V13_CANDIDATE_DARK_CARD_DUPLICATE_STYLE_GUARD_ISOLATION');
  // CANDIDATE-ONLY exception diagnostic: return a non-200 status with the
  // stack; never promote this diagnostic build to Production.
  const exportAnchors=[...modified.matchAll(/\bexport\s+default\s+/g)];
