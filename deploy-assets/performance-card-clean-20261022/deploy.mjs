@@ -73,6 +73,13 @@ async function publicFile(path, baseOrigin = ORIGIN) {
   return bytes;
 }
 
+async function probePublic(path, baseOrigin) {
+  const url = new URL(path, baseOrigin);
+  url.searchParams.set('performanceCardProbe', `${process.env.GITHUB_RUN_ID || 'local'}-${Date.now()}`);
+  const response = await fetch(url, { headers: { 'Cache-Control': 'no-cache' }, signal: AbortSignal.timeout(45000) });
+  return { status: response.status, bytes: Buffer.from(await response.arrayBuffer()) };
+}
+
 async function backend() {
   const records = {};
   for (const [name, path] of [['engine', '/api/engine/health'], ['market', '/api/full-market/health'], ['statistics', '/api/engine/statistics']]) {
@@ -142,8 +149,9 @@ async function stageCurrent(version, settings, crons, source, htmlBefore, patche
   const runtime = resolve('runtime');
   const assets = resolve(runtime, 'assets');
   const originalHashes = {};
-  const paths = new Set(readFileSync(resolve('assets', 'production-paths-20260928.txt'), 'utf8').split(/\r?\n/).filter(Boolean));
-  for (const module of version.modules.filter(module => module.name !== version.main_module)) paths.add(safeAssetPath(module.name));
+  const requiredPaths = new Set(readFileSync(resolve('assets', 'production-paths-20260928.txt'), 'utf8').split(/\r?\n/).filter(Boolean));
+  for (const module of version.modules.filter(module => module.name !== version.main_module)) requiredPaths.add(safeAssetPath(module.name));
+  const paths = new Set(requiredPaths);
   for (const match of htmlBefore.matchAll(/\b(?:src|href)\s*=\s*["']([^"']+)["']/g)) {
     const url = new URL(match[1], ORIGIN);
     if (url.origin === ORIGIN && /\.(?:html|js|css|png|jpe?g|webp|svg|ico|txt|xml)$/i.test(url.pathname) && !url.pathname.startsWith('/cdn-cgi/')) paths.add(url.pathname.slice(1));
@@ -153,13 +161,16 @@ async function stageCurrent(version, settings, crons, source, htmlBefore, patche
   for (let i = 0; i < queue.length; i += 6) {
     const batch = queue.slice(i, i + 6);
     const results = await Promise.all(batch.map(async path => {
-      const direct = await publicFile('/' + path, DIRECT_ORIGIN);
-      const custom = await publicFile('/' + path);
-      assert.equal(sha(custom), sha(direct), `PRODUCTION_ORIGINS_DISAGREE:${path}`);
-      return direct;
+      const [direct, custom] = await Promise.all([probePublic('/' + path, DIRECT_ORIGIN), probePublic('/' + path, ORIGIN)]);
+      if (direct.status === 404 && custom.status === 404 && !requiredPaths.has(path)) return null;
+      assert.equal(direct.status, 200, `DIRECT_ORIGIN_ASSET_HTTP:${path}:${direct.status}`);
+      assert.equal(custom.status, 200, `CUSTOM_DOMAIN_ASSET_HTTP:${path}:${custom.status}`);
+      assert.equal(sha(custom.bytes), sha(direct.bytes), `PRODUCTION_ORIGINS_DISAGREE:${path}`);
+      return direct.bytes;
     }));
     results.forEach((bytes, offset) => {
       const path = batch[offset];
+      if (!bytes) return;
       originalHashes[path] = sha(bytes);
       const target = resolve(assets, path);
       mkdirSync(dirname(target), { recursive: true });
@@ -175,7 +186,7 @@ async function stageCurrent(version, settings, crons, source, htmlBefore, patche
   writeFileSync(resolve(assets, IMAGE_PATH), image);
   writeFileSync(resolve(runtime, 'index.js'), source);
   writeFileSync(resolve(runtime, 'wrangler.jsonc'), JSON.stringify(configFromCurrent(version, settings, crons, assets), null, 2));
-  return { runtime, assets, originalHashes, pathCount: paths.size, cssSha: sha(css), imageSha: sha(image) };
+  return { runtime, assets, originalHashes, pathCount: Object.keys(originalHashes).length, cssSha: sha(css), imageSha: sha(image) };
 }
 
 function runWrangler(staged, args, logName) {
@@ -414,3 +425,4 @@ try {
   console.error(error.stack);
   process.exitCode = 1;
 }
+
