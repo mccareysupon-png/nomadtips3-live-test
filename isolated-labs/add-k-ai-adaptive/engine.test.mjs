@@ -45,3 +45,15 @@ test('duplicate signal of the same pick contributes once to total and AI', () =>
   assert.equal(totals.total.losses, 1);
   assert.ok(Math.abs(totals.total.roi - (-10)) < 1e-9);
 });
+
+test('keeps separate locked signals at different timestamps and preserves old rows', () => {
+  const c = candidate();
+  const ai = createShadowSignal(c, evaluateCandidate(c, { nowMs: now }), now);
+  const later = { ...ai, lockedAt: now + 300_000, id: 'later-event' };
+  const legacy = { matchId: 'old-fixture', lockedAt: now - 60_000, selection: 'HOME',
+    settlement: { result: 'WIN', profit: 0.6 } }; // old schema lacks market + id
+  const joined = mergeLedger([legacy, ai], [later]);
+  assert.equal(joined.length, 3);
+  assert.equal(summarizeLedger(joined).total.totalSignals, 3);
+  assert.equal(summarizeLedger(joined).aiAdaptive.totalSignals, 2);
+});
