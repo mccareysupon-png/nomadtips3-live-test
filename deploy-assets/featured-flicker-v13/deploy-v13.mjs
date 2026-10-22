@@ -301,7 +301,7 @@ try{
   for(let i=0;i<70;i++){
    const head=await get(domain,'/');
    const body=head.bytes.toString('utf8'); const exactNew=body.includes(NEW_STYLE_TAG);
-    const restoredHash=exactNew?hash(body.replace(NEW_STYLE_TAG,OLD_STYLE_TAG)):null;
+    const restoredHash=exactNew?hash(body.replace(NEW_STYLE_TAG,PREVIOUS_STYLE_TAG)):null;
     if(exactNew&&restoredHash===originalHtml.hash){propagated=true;break;}
     if(i%8===0)console.log('B46_V13_EDGE_PROPAGATION',JSON.stringify({domain,attempt:i+1,
       exactNew,exactOld:body.includes(PREVIOUS_STYLE_TAG),restoredHashMatches:restoredHash===originalHtml.hash,
@@ -315,7 +315,7 @@ try{
  for(const p of PATHS.filter(p=>!HTML_PATHS.includes(p)))assert.equal(liveFiles[p].hash,files[p].hash,'UNRELATED_PRODUCTION_ASSET_CHANGED '+p);
  const liveHtml=(await get(PROD,'/')).bytes.toString('utf8');
  assert(liveHtml.includes(NEW_STYLE_TAG),'STAT_FLASH_FIX_PRODUCTION_MISSING');
- assert.equal(hash(liveHtml.replace(NEW_STYLE_TAG,OLD_STYLE_TAG)),originalHtml.hash,'LIVE_OTHER_HTML_OR_SEO_CHANGED');
+ assert.equal(hash(liveHtml.replace(NEW_STYLE_TAG,PREVIOUS_STYLE_TAG)),originalHtml.hash,'LIVE_OTHER_HTML_OR_SEO_CHANGED');
  const liveAsset=await get(PROD,TARGET);
  assert.equal(liveAsset.hash,report.newRendererHash,'V13_RENDERER_ASSET_PRODUCTION_MISMATCH');
  report.productionQA=await browserQA(PROD,'production',true);
