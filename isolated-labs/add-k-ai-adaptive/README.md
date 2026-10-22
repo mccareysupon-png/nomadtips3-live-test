@@ -5,7 +5,7 @@ Status: **ISOLATED TEST ONLY**. Not enabled, not scheduled, not connected to BAL
 ## Decisions
 
 - New condition ID: `ADD_K_AI_ADAPTIVE_V1`.
-- Supports the normalized market families `AH`, `OU` (Over/Under), and `1X2`; no vendor integrations are included.
+- Supports the normalized market families `AH`, `OU` (Over/Under),  `1X2`, and `CORNERS`; no vendor integrations are included.
 - First release is a transparent price-momentum **heuristic baseline**, NOT ML, self-learning AI, or a true profitability forecast. `score` is **not** a probability.
 - It rejects stale, missing, unverified, mismatched-line or insufficient data. No sample/placeholder data enters production.
 - It produces only `SHADOW_PICK` and `shadowOnly: true` records. No Cloudflare routes, cron triggers, production bindings, historic statistics, or actual markets are modified.
@@ -31,7 +31,7 @@ The caller must normalize provider data and provide:
 }
 ```
 
-The timestamps are illustrations of schema only, NOT verified real football prices. For `1X2`, omit `line`. Observations must represent the same market, line and selection. The live data adapter must justify how `momentum` is computed and document source timestamps and quality.
+The timestamps are illustrations of schema only, NOT verified real football prices. For `1X2`, omit `line`. For `CORNERS`, a verified numeric total-corners line is required. Observations must represent the same market, line and selection. The live data adapter must justify how `momentum` is computed and document source timestamps and quality.
 
 ## Run tests
 
