@@ -454,11 +454,21 @@ try {
   report.afterVersion = candidate;
   save();
 
-  for (let attempt = 0; attempt < 25; attempt++) {
-    if (sha(await publicFile('/index.html')) === sha(patch.html) && sha(await publicFile('/index.html', DIRECT_ORIGIN)) === sha(patch.html)) break;
-    if (attempt === 24) throw new Error('PUBLIC_HTML_DID_NOT_PROPAGATE');
+  let propagated = false;
+  for (let attempt = 0; attempt < 60; attempt++) {
+    try {
+      const custom = await publicFile('/index.html');
+      const direct = await publicFile('/index.html', DIRECT_ORIGIN);
+      if (sha(custom) === sha(patch.html) && sha(direct) === sha(patch.html)) {
+        propagated = true;
+        break;
+      }
+    } catch (error) {
+      if (!String(error.message).includes('PUBLIC_HTTP:/index.html:500')) throw error;
+    }
     await delay(1000);
   }
+  assert.equal(propagated, true, 'PUBLIC_HTML_DID_NOT_PROPAGATE');
   assert.equal(sha(await publicFile('/' + CSS_PATH)), staged.cssSha, 'PRODUCTION_CSS_MISMATCH');
   assert.equal(sha(await publicFile('/' + IMAGE_PATH)), staged.imageSha, 'PRODUCTION_IMAGE_MISMATCH');
   await verifyAssets(ORIGIN, staged);
@@ -482,3 +492,4 @@ try {
   console.error(error.stack);
   process.exitCode = 1;
 }
+
