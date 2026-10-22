@@ -4,7 +4,7 @@
  * The code makes no network calls and cannot publish live selections.
  */
 export const CONDITION_ID = 'ADD_K_AI_ADAPTIVE_V1';
-export const MARKET_TYPES = Object.freeze(['AH', 'OU', '1X2']);
+export const MARKET_TYPES = Object.freeze(['AH', 'OU', '1X2', 'CORNERS']);
 export const MODEL_VERSION = 'heuristic-v1-shadow';
 
 const finite = value => typeof value === 'number' && Number.isFinite(value);
