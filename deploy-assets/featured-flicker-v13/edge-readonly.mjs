@@ -19,3 +19,5 @@ for(const base of ['https://ball46.com','https://www.ball46.com','https://83e175
   }
  }
 }
+
+// Verify automatic rollback after token-limited targeted purge.
