@@ -1,7 +1,7 @@
 /* B46_PERFORMANCE_CARD_CLEAN_20261022
    Desktop presentation only. Existing DOM, API data and calculation runtime remain unchanged. */
 @media (min-width: 761px) {
-  #ball46-daily-performance {
+  html body #ball46-daily-performance {
     --b46-perf-bg: #101b15;
     --b46-perf-bg-deep: #0d1711;
     --b46-perf-text: #edf4ef;
@@ -25,8 +25,8 @@
     font-family: Inter, "IBM Plex Sans", "IBM Plex Sans Thai", Arial, sans-serif !important;
   }
 
-  #ball46-daily-performance::before,
-  #ball46-daily-performance::after {
+  html body #ball46-daily-performance::before,
+  html body #ball46-daily-performance::after {
     position: absolute !important;
     z-index: 8 !important;
     top: 8px !important;
@@ -45,17 +45,17 @@
     pointer-events: none !important;
   }
 
-  #ball46-daily-performance::before {
+  html body #ball46-daily-performance::before {
     content: "BALL46 PERFORMANCE" !important;
     left: 18px !important;
   }
 
-  #ball46-daily-performance::after {
+  html body #ball46-daily-performance::after {
     content: "LONDON DAY · 06:00" !important;
     right: 18px !important;
   }
 
-  #ball46-daily-performance .b46-perf-grid {
+  html body #ball46-daily-performance .b46-perf-grid {
     position: relative !important;
     z-index: 1 !important;
     display: block !important;
@@ -66,14 +66,14 @@
     background: transparent !important;
   }
 
-  #ball46-daily-performance .b46-perf-side {
+  html body #ball46-daily-performance .b46-perf-side {
     min-width: 0 !important;
     border: 0 !important;
     border-radius: 0 !important;
     box-shadow: none !important;
   }
 
-  #ball46-daily-performance .b46-perf-side.today {
+  html body #ball46-daily-performance .b46-perf-side.today {
     position: relative !important;
     isolation: isolate !important;
     overflow: hidden !important;
@@ -85,7 +85,7 @@
     background: var(--b46-perf-bg) !important;
   }
 
-  #ball46-daily-performance .b46-perf-side.today::after {
+  html body #ball46-daily-performance .b46-perf-side.today::after {
     content: "" !important;
     position: absolute !important;
     z-index: -2 !important;
@@ -106,7 +106,7 @@
     mask-image: linear-gradient(90deg, transparent 0%, #000 24%) !important;
   }
 
-  #ball46-daily-performance .b46-perf-side.today::before {
+  html body #ball46-daily-performance .b46-perf-side.today::before {
     content: "" !important;
     position: absolute !important;
     z-index: -1 !important;
@@ -123,7 +123,7 @@
     pointer-events: none !important;
   }
 
-  #ball46-daily-performance .b46-perf-head {
+  html body #ball46-daily-performance .b46-perf-head {
     position: relative !important;
     z-index: 2 !important;
     display: flex !important;
@@ -134,11 +134,11 @@
     padding: 0 !important;
   }
 
-  #ball46-daily-performance .b46-perf-title {
+  html body #ball46-daily-performance .b46-perf-title {
     min-width: 0 !important;
   }
 
-  #ball46-daily-performance .b46-perf-kicker {
+  html body #ball46-daily-performance .b46-perf-kicker {
     display: flex !important;
     align-items: center !important;
     gap: 8px !important;
@@ -151,7 +151,7 @@
     white-space: nowrap !important;
   }
 
-  #ball46-daily-performance .b46-perf-side.today .b46-perf-kicker::before {
+  html body #ball46-daily-performance .b46-perf-side.today .b46-perf-kicker::before {
     content: "" !important;
     flex: 0 0 auto !important;
     width: 6px !important;
@@ -161,7 +161,7 @@
     box-shadow: none !important;
   }
 
-  #ball46-daily-performance .b46-perf-sub {
+  html body #ball46-daily-performance .b46-perf-sub {
     display: block !important;
     margin-top: 5px !important;
     color: var(--b46-perf-muted) !important;
@@ -171,7 +171,7 @@
     letter-spacing: 0 !important;
   }
 
-  #ball46-daily-performance .b46-perf-rate {
+  html body #ball46-daily-performance .b46-perf-rate {
     position: relative !important;
     z-index: 2 !important;
     flex: 0 0 auto !important;
@@ -180,7 +180,7 @@
     text-align: right !important;
   }
 
-  #ball46-daily-performance .b46-perf-rate > span {
+  html body #ball46-daily-performance .b46-perf-rate > span {
     display: block !important;
     margin: 0 0 3px !important;
     color: var(--b46-perf-muted) !important;
@@ -190,7 +190,7 @@
     letter-spacing: .08em !important;
   }
 
-  #ball46-daily-performance .b46-perf-rate > strong {
+  html body #ball46-daily-performance .b46-perf-rate > strong {
     display: block !important;
     margin: 0 !important;
     color: var(--b46-perf-green) !important;
@@ -200,7 +200,7 @@
     letter-spacing: -.055em !important;
   }
 
-  #ball46-daily-performance .b46-perf-stats {
+  html body #ball46-daily-performance .b46-perf-stats {
     position: relative !important;
     z-index: 2 !important;
     display: grid !important;
@@ -211,7 +211,7 @@
     padding: 0 !important;
   }
 
-  #ball46-daily-performance .b46-perf-stat {
+  html body #ball46-daily-performance .b46-perf-stat {
     min-width: 0 !important;
     padding: 7px 6px 8px !important;
     border: 0 !important;
@@ -221,7 +221,7 @@
     text-align: center !important;
   }
 
-  #ball46-daily-performance .b46-perf-stat > span {
+  html body #ball46-daily-performance .b46-perf-stat > span {
     display: block !important;
     margin: 0 0 2px !important;
     color: #829188 !important;
@@ -231,7 +231,7 @@
     letter-spacing: .04em !important;
   }
 
-  #ball46-daily-performance .b46-perf-stat > strong {
+  html body #ball46-daily-performance .b46-perf-stat > strong {
     display: block !important;
     margin: 0 !important;
     color: var(--b46-perf-text) !important;
@@ -240,22 +240,22 @@
     line-height: 1 !important;
   }
 
-  #ball46-daily-performance [data-b46-stat="today-win"],
-  #ball46-daily-performance [data-b46-stat="yesterday-win"] { color: var(--b46-perf-green) !important; }
-  #ball46-daily-performance [data-b46-stat="today-loss"],
-  #ball46-daily-performance [data-b46-stat="yesterday-loss"] { color: var(--b46-perf-pink) !important; }
-  #ball46-daily-performance [data-b46-stat="today-pending"],
-  #ball46-daily-performance [data-b46-avg-odds="today"],
-  #ball46-daily-performance [data-b46-avg-odds="yesterday"] { color: var(--b46-perf-orange) !important; }
-  #ball46-daily-performance [data-b46-stat="today-push"],
-  #ball46-daily-performance [data-b46-stat="yesterday-push"] { color: #b9c4bd !important; }
+  html body #ball46-daily-performance [data-b46-stat="today-win"],
+  html body #ball46-daily-performance [data-b46-stat="yesterday-win"] { color: var(--b46-perf-green) !important; }
+  html body #ball46-daily-performance [data-b46-stat="today-loss"],
+  html body #ball46-daily-performance [data-b46-stat="yesterday-loss"] { color: var(--b46-perf-pink) !important; }
+  html body #ball46-daily-performance [data-b46-stat="today-pending"],
+  html body #ball46-daily-performance [data-b46-avg-odds="today"],
+  html body #ball46-daily-performance [data-b46-avg-odds="yesterday"] { color: var(--b46-perf-orange) !important; }
+  html body #ball46-daily-performance [data-b46-stat="today-push"],
+  html body #ball46-daily-performance [data-b46-stat="yesterday-push"] { color: #b9c4bd !important; }
 
-  #ball46-daily-performance .b46-perf-foot,
-  #ball46-daily-performance .b46-perf-state {
+  html body #ball46-daily-performance .b46-perf-foot,
+  html body #ball46-daily-performance .b46-perf-state {
     display: none !important;
   }
 
-  #ball46-daily-performance .b46-perf-side.yesterday {
+  html body #ball46-daily-performance .b46-perf-side.yesterday {
     position: relative !important;
     display: grid !important;
     grid-template-columns: minmax(238px, 1.5fr) minmax(300px, 2fr) !important;
@@ -265,40 +265,40 @@
     background: var(--b46-perf-bg-deep) !important;
   }
 
-  #ball46-daily-performance .b46-perf-side.yesterday .b46-perf-head {
+  html body #ball46-daily-performance .b46-perf-side.yesterday .b46-perf-head {
     display: grid !important;
     grid-template-columns: minmax(0, 1fr) auto !important;
     gap: 12px !important;
     padding: 10px 18px 10px 22px !important;
   }
 
-  #ball46-daily-performance .b46-perf-side.yesterday .b46-perf-kicker {
+  html body #ball46-daily-performance .b46-perf-side.yesterday .b46-perf-kicker {
     font-size: 10px !important;
     line-height: 1.05 !important;
     letter-spacing: -.01em !important;
   }
 
-  #ball46-daily-performance .b46-perf-side.yesterday .b46-perf-sub {
+  html body #ball46-daily-performance .b46-perf-side.yesterday .b46-perf-sub {
     margin-top: 3px !important;
     font-size: 6px !important;
     letter-spacing: .04em !important;
     text-transform: uppercase !important;
   }
 
-  #ball46-daily-performance .b46-perf-side.yesterday .b46-perf-rate {
+  html body #ball46-daily-performance .b46-perf-side.yesterday .b46-perf-rate {
     min-width: auto !important;
   }
 
-  #ball46-daily-performance .b46-perf-side.yesterday .b46-perf-rate > span {
+  html body #ball46-daily-performance .b46-perf-side.yesterday .b46-perf-rate > span {
     display: none !important;
   }
 
-  #ball46-daily-performance .b46-perf-side.yesterday .b46-perf-rate > strong {
+  html body #ball46-daily-performance .b46-perf-side.yesterday .b46-perf-rate > strong {
     color: var(--b46-perf-pink) !important;
     font-size: 23px !important;
   }
 
-  #ball46-daily-performance .b46-perf-side.yesterday .b46-perf-stats {
+  html body #ball46-daily-performance .b46-perf-side.yesterday .b46-perf-stats {
     display: grid !important;
     grid-template-columns: repeat(4, minmax(58px, 1fr)) !important;
     gap: 0 !important;
@@ -307,7 +307,7 @@
     margin: 0 !important;
   }
 
-  #ball46-daily-performance .b46-perf-side.yesterday .b46-perf-stat {
+  html body #ball46-daily-performance .b46-perf-side.yesterday .b46-perf-stat {
     display: flex !important;
     flex-direction: column !important;
     align-items: center !important;
@@ -318,17 +318,18 @@
     background: transparent !important;
   }
 
-  #ball46-daily-performance .b46-perf-side.yesterday .b46-perf-stat > strong {
+  html body #ball46-daily-performance .b46-perf-side.yesterday .b46-perf-stat > strong {
     font-size: 14px !important;
   }
 
   @media (max-width: 900px) {
-    #ball46-daily-performance .b46-perf-side.today { padding-inline: 18px !important; }
-    #ball46-daily-performance .b46-perf-kicker { font-size: 17px !important; }
-    #ball46-daily-performance .b46-perf-rate > strong { font-size: 34px !important; }
-    #ball46-daily-performance .b46-perf-stats { width: 72% !important; }
-    #ball46-daily-performance .b46-perf-side.yesterday { grid-template-columns: minmax(215px, 1.25fr) minmax(284px, 1.75fr) !important; }
-    #ball46-daily-performance .b46-perf-side.yesterday .b46-perf-head { padding-left: 18px !important; }
-    #ball46-daily-performance .b46-perf-side.yesterday .b46-perf-kicker { font-size: 9px !important; }
+    html body #ball46-daily-performance .b46-perf-side.today { padding-inline: 18px !important; }
+    html body #ball46-daily-performance .b46-perf-kicker { font-size: 17px !important; }
+    html body #ball46-daily-performance .b46-perf-rate > strong { font-size: 34px !important; }
+    html body #ball46-daily-performance .b46-perf-stats { width: 72% !important; }
+    html body #ball46-daily-performance .b46-perf-side.yesterday { grid-template-columns: minmax(215px, 1.25fr) minmax(284px, 1.75fr) !important; }
+    html body #ball46-daily-performance .b46-perf-side.yesterday .b46-perf-head { padding-left: 18px !important; }
+    html body #ball46-daily-performance .b46-perf-side.yesterday .b46-perf-kicker { font-size: 9px !important; }
   }
 }
+
