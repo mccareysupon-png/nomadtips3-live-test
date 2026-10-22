@@ -306,9 +306,12 @@ try {
   parse(source, { ecmaVersion: 'latest', sourceType: 'module' });
   const indexModule = current.modules.find(module => module.name === 'assets/index.html');
   assert(indexModule, 'ACTIVE_INDEX_MISSING');
-  const htmlBefore = Buffer.from(indexModule.content_base64, 'base64').toString('utf8');
-  assert.equal(sha(await publicFile('/index.html', DIRECT_ORIGIN)), sha(htmlBefore), 'DIRECT_ORIGIN_INDEX_NOT_ACTIVE_MODULE');
-  assert.equal(sha(await publicFile('/index.html')), sha(htmlBefore), 'CUSTOM_DOMAIN_INDEX_NOT_ACTIVE_MODULE');
+  const moduleHtml = Buffer.from(indexModule.content_base64, 'base64');
+  const directHtml = await publicFile('/index.html', DIRECT_ORIGIN);
+  const customHtml = await publicFile('/index.html');
+  assert.equal(sha(customHtml), sha(directHtml), 'PRODUCTION_ORIGINS_DISAGREE');
+  assert.equal(await activeVersion(), base, 'PRODUCTION_MOVED_DURING_INDEX_LOCK');
+  const htmlBefore = directHtml.toString('utf8');
   const runtimeBefore = cardRuntime(htmlBefore);
   const patch = patchHtml(htmlBefore);
   assert.equal(patch.html.replace(patch.tag, ''), htmlBefore, 'NON_LINK_HTML_CHANGED');
@@ -319,6 +322,8 @@ try {
   const backendBefore = await backend();
   report.guards = {
     workerSourceSha: sha(source),
+    activeModuleIndexSha: sha(moduleHtml),
+    servedIndexSha: sha(directHtml),
     htmlBeforeSha: sha(htmlBefore),
     htmlAfterSha: sha(patch.html),
     cardRuntimeSha: sha(runtimeBefore),
@@ -388,3 +393,4 @@ try {
   console.error(error.stack);
   process.exitCode = 1;
 }
+
