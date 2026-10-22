@@ -188,6 +188,23 @@ async function browserQA(domain,phase,patched){
  return records;
 }
 
+
+async function purgeAffectedFilesOnly(){
+ const zone='d491ee30b7a87a6c37e6a4dacf00ae8d';
+ const files=[];
+ for(const domain of [PROD,ALIAS])for(const path of ['/','/index.html',TARGET])files.push(domain+path);
+ const url='https://api.cloudflare.com/client/v4/zones/'+zone+'/purge_cache';
+ const response=await fetch(url,{method:'POST',
+  headers:{Authorization:'Bearer '+TOKEN,'Content-Type':'application/json'},
+  body:JSON.stringify({files}),signal:AbortSignal.timeout(30000)});
+ const data=await response.json().catch(()=>({}));
+ const record={status:response.status,success:data.success===true,errors:data.errors||[],
+  purgedFiles:files};
+ report.cachePurge=record;save();
+ console.log('B46_V13_PURGE_ONLY_AFFECTED_FILES',JSON.stringify(record));
+ if(!response.ok||data.success!==true)throw Error('TARGETED_CACHE_PURGE_NOT_AUTHORIZED_OR_FAILED');
+}
+
 let promoted=false,rollbackAttempted=false;
 try{
  report.activeBefore=await active();
@@ -265,14 +282,15 @@ try{
   assert.equal(a.version,report.activeBefore.version,'UNEXPECTED_WORKER_VERSION_DURING_DEPLOY');await wait(1200);
  }
  assert(live,'DEPLOY_ACCEPTED_NOT_ACTIVE');
+ await purgeAffectedFilesOnly();
  for(const domain of [PROD,ALIAS]){
   let propagated=false;
-  for(let i=0;i<25;i++){
+  for(let i=0;i<70;i++){
    const head=await get(domain,'/');
    if(head.bytes.toString('utf8').includes(NEW_STYLE_TAG)&&hash(head.bytes.toString('utf8').replace(NEW_STYLE_TAG,OLD_STYLE_TAG))===originalHtml.hash){propagated=true;break;}
    assert.equal((await active()).version,uploaded.id,'OTHER_PRODUCTION_VERSION_DURING_EDGE');await wait(1800);
   }
-  assert(propagated,'LIVE_EDGE_HAS_OLD_LEAGUE_NAV_JS '+domain);
+  assert(propagated,'LIVE_EDGE_NOT_SHOWING_V13_AFTER_TARGETED_CACHE_PURGE '+domain);
  }
  const liveFiles=await fetchSet(PROD);
  for(const p of PATHS.filter(p=>!HTML_PATHS.includes(p)))assert.equal(liveFiles[p].hash,files[p].hash,'UNRELATED_PRODUCTION_ASSET_CHANGED '+p);
