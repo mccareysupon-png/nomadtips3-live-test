@@ -276,7 +276,17 @@ async function verifyStagedBrowser(staged) {
 async function inspectBrowser(baseOrigin, label, fullChecks) {
   const executablePath = ['/usr/bin/google-chrome', '/usr/bin/google-chrome-stable', '/usr/bin/chromium', '/usr/bin/chromium-browser'].find(existsSync);
   assert(executablePath, 'CHROME_MISSING');
-  const browser = await puppeteer.launch({ executablePath, headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage'] });
+  let browser;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      browser = await puppeteer.launch({ executablePath, headless: true, timeout: 60000, protocolTimeout: 60000, args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu'] });
+      break;
+    } catch (error) {
+      if (attempt === 2) throw error;
+      await delay(1000);
+    }
+  }
+  assert(browser, 'CHROME_LAUNCH_FAILED');
   const pageErrors = [];
   try {
     const page = await browser.newPage();
