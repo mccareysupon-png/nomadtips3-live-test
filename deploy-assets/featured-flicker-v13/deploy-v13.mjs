@@ -242,7 +242,26 @@ try{
  const originalMain=current.modules.find(x=>x.name===current.main_module);
  assert(originalMain,'MAIN_MODULE_NOT_FOUND');
  const source=Buffer.from(originalMain.content_base64,'base64').toString('utf8');
- const modified=patchWorker(source);
+ let modified=patchWorker(source);
+ // CANDIDATE-ONLY exception diagnostic: return a non-200 status with the
+ // stack; never promote this diagnostic build to Production.
+ const exportAnchors=[...modified.matchAll(/\bexport\s+default\s+/g)];
+ assert.equal(exportAnchors.length,1,'DIAGNOSTIC_EXPORT_SHAPE_UNEXPECTED');
+ modified=modified.replace(/\bexport\s+default\s+/,'const __b46DiagOriginalWorker = ');
+ modified+=String.raw`
+export default {
+  ...__b46DiagOriginalWorker,
+  async fetch(req,env,ctx){
+    try{return await __b46DiagOriginalWorker.fetch(req,env,ctx);}
+    catch(error){
+      const msg=String(error&&error.stack||error).slice(0,1500);
+      console.error('B46_V13_CANDIDATE_WORKER_EXCEPTION',msg);
+      return new Response('B46_V13_CANDIDATE_EXCEPTION\\n'+msg,{status:599,headers:{'content-type':'text/plain'}});
+    }
+  }
+};
+`;
+ console.log('B46_V13_EXCEPTION_INSTRUMENTATION_ON_CANDIDATE_ONLY');
  const files=await fetchSet(PROD);
  const originalAsset=await get(PROD,TARGET);
  assert.equal(originalAsset.status,200,'ORIGINAL_RENDERER_NOT_FOUND');
@@ -301,6 +320,7 @@ try{
  assert.equal(candidateAsset.hash,report.newRendererHash,'V13_RENDERER_ASSET_CANDIDATE_MISMATCH');
  report.candidateQA=await browserQA(preview,'candidate',true);
  assert.deepEqual(await active(),report.activeBefore,'WORKER_CHANGED_DURING_CANDIDATE_QA');
+ assert.fail('DIAGNOSTIC_ONLY_NO_PRODUCTION_PROMOTION');
  const deploy=await api('/workers/scripts/'+SCRIPT+'/deployments',
   {strategy:'percentage',versions:[{version_id:uploaded.id,percentage:100}],annotations:{'workers/message':'Stop Featured PC/mobile row remount and flag flicker; no Event Flow or Statistics change'}});
  promoted=true;report.deployment=deploy.id;save();
