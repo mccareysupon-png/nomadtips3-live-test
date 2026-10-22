@@ -171,7 +171,7 @@ async function browserQA(domain,phase,patched){
      assert(state.updates.f<=1,'FEATURED_FACTS_REBUILT_REPEATEDLY '+JSON.stringify(state.updates));
      assert(state.updates.s<=1,'FEATURED_STAT_ROWS_REBUILT_REPEATEDLY '+JSON.stringify(state.updates));
      assert(state.updates.flag<=1,'FEATURED_LEAGUE_FLAG_RERENDERED '+JSON.stringify(state.updates));
-     assert(state.start.flags>=2,'ORIGINAL_NATIONAL_FLAGS_MISSING');
+     assert(state.flagImages>=2,'CURRENT_NATIONAL_FLAG_IMAGES_MISSING');
     }
     await page.evaluate(()=>{
       const root=innerWidth<768?document.querySelector('#b46gn-detail .b46gn-featured .featured-card'):document.querySelector('.right-rail > .featured-card');
