@@ -39,7 +39,8 @@ function b46StableFeaturedLeague(next){
  });
  img.src=registry.iconUrl(code);
  if(flag)flag.replaceWith(img);
- else (label||el.firstChild)?.before(img)??el.appendChild(img);
+ else if(label)label.before(img);
+ else el.prepend(img);
  el.dataset.leagueFlagCode=code;
 }
 function b46StableFeaturedContent(host,markup,kind){
