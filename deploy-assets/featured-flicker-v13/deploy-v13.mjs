@@ -237,6 +237,12 @@ return true;
 let promoted=false,rollbackAttempted=false;
 try{
  report.activeBefore=await active();
+ // Strict read-only control: does the ORIGINAL active version URL fail too?
+ const baselinePreview='https://'+EXPECTED_ACTIVE.slice(0,8)+'-'+SCRIPT+'.mccarey-supon.workers.dev';
+ const baseline=await get(baselinePreview,'/');
+ const baselineText=baseline.bytes.toString('utf8');
+ console.log('B46_V13_UNCHANGED_ACTIVE_PREVIEW_BASELINE',JSON.stringify({url:baselinePreview,status:baseline.status,contentType:baseline.contentType,title:baselineText.match(/<title>([^<]+)/i)?.[1]||'',body:baselineText.slice(0,1500)}));
+ assert.fail('READ_ONLY_BASELINE_CHECK_COMPLETE_NO_DEPLOY');
  assert.equal(report.activeBefore.version,EXPECTED_ACTIVE,'WORKER_CHANGED_FROM_STAT_GUARD_V12_STOP');
  const current=await version(report.activeBefore.version);
  const originalMain=current.modules.find(x=>x.name===current.main_module);
