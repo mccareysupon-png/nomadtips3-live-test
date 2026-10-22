@@ -321,14 +321,20 @@ async function inspectBrowser(baseOrigin, label, fullChecks) {
           cardHeight: card?.getBoundingClientRect().height,
           cardBackground: style?.backgroundColor,
           cardBorder: style?.borderTopWidth,
+          cardPadding: style?.padding,
           todayHeight: today?.getBoundingClientRect().height,
+          todayMinHeight: todayStyle?.minHeight,
           yesterdayHeight: yesterday?.getBoundingClientRect().height,
           footballVisual: imageStyle?.backgroundImage?.includes(imagePath),
           todayBackground: todayStyle?.backgroundColor,
+          viewportWidth: innerWidth,
+          desktopMedia: matchMedia('(min-width: 761px)').matches,
+          patchSheets: [...document.styleSheets].filter(sheet => (sheet.href || '').includes('ball46-performance-clean')).map(sheet => ({ href: sheet.href, rules: (() => { try { return sheet.cssRules.length; } catch { return -1; } })() })),
           matchRows: document.querySelectorAll('.match-row[data-match-id]').length,
           values
         };
       }, IMAGE_PATH);
+      console.log('CARD_SNAPSHOT ' + label + ':' + theme + ' ' + JSON.stringify(snapshot));
       assert.equal(snapshot.cardDisplay, 'block', `${label}:${theme}:CARD_HIDDEN`);
       assert(snapshot.cardHeight >= 210 && snapshot.cardHeight <= 280, `${label}:${theme}:CARD_HEIGHT:${snapshot.cardHeight}`);
       assert(snapshot.todayHeight >= 145, `${label}:${theme}:TODAY_HEIGHT:${snapshot.todayHeight}`);
