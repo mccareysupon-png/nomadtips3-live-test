@@ -300,7 +300,13 @@ try{
   let propagated=false;
   for(let i=0;i<70;i++){
    const head=await get(domain,'/');
-   if(head.bytes.toString('utf8').includes(NEW_STYLE_TAG)&&hash(head.bytes.toString('utf8').replace(NEW_STYLE_TAG,OLD_STYLE_TAG))===originalHtml.hash){propagated=true;break;}
+   const body=head.bytes.toString('utf8'); const exactNew=body.includes(NEW_STYLE_TAG);
+    const restoredHash=exactNew?hash(body.replace(NEW_STYLE_TAG,OLD_STYLE_TAG)):null;
+    if(exactNew&&restoredHash===originalHtml.hash){propagated=true;break;}
+    if(i%8===0)console.log('B46_V13_EDGE_PROPAGATION',JSON.stringify({domain,attempt:i+1,
+      exactNew,exactOld:body.includes(PREVIOUS_STYLE_TAG),restoredHashMatches:restoredHash===originalHtml.hash,
+      receivedHash:head.hash,receivedLength:head.bytes.length,
+      workerVersion:(await active()).version}));
    assert.equal((await active()).version,uploaded.id,'OTHER_PRODUCTION_VERSION_DURING_EDGE');await wait(1800);
   }
   assert(propagated,'LIVE_EDGE_NOT_SHOWING_V13_AFTER_TARGETED_CACHE_PURGE '+domain);
