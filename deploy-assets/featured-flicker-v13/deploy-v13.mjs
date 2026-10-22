@@ -215,7 +215,16 @@ async function purgeAffectedFilesOnly(){
   purgedFiles:files};
  report.cachePurge=record;save();
  console.log('B46_V13_PURGE_ONLY_AFFECTED_FILES',JSON.stringify(record));
- if(!response.ok||data.success!==true)throw Error('TARGETED_CACHE_PURGE_NOT_AUTHORIZED_OR_FAILED');
+ if(!response.ok||data.success!==true){
+  // The Worker deploy token may lack Zone Cache Purge permission (Cloudflare 10000).
+  // Do not count this as success: require the independent public-edge hash checks below
+  // for both ball46.com and www.ball46.com, otherwise the rollback guard remains active.
+  report.cachePurge.warning='PURGE_DENIED_VERIFY_PUBLIC_EDGE_OR_ROLLBACK';
+  save();
+  console.warn('B46_V13_CACHE_PURGE_DENIED_EDGE_VERIFICATION_REQUIRED',JSON.stringify(record));
+  return false;
+}
+return true;
 }
 
 let promoted=false,rollbackAttempted=false;
