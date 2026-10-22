@@ -306,7 +306,13 @@ export default {
       try{
         const assetResponse=await env.ASSETS.fetch(req.clone());
         const assetText=await assetResponse.text();
-        assetDiag={status:assetResponse.status,length:assetText.length,dark:assetText.includes('b46-dark-match-deep-graphite-teal-20261020'),stat:assetText.includes('b46-statistics-no-old-flash-20261022'),matchRows:assetText.includes('class="match-row'),hashHint:assetText.slice(0,180)};
+        const indexUrl=new URL('/index.html',req.url);
+        const indexResponse=await env.ASSETS.fetch(new Request(indexUrl, {method:'GET'}));
+        const indexText=await indexResponse.text();
+        assetDiag={status:assetResponse.status,length:assetText.length,
+        indexStatus:indexResponse.status,indexLength:indexText.length,
+        indexDark:indexText.includes('b46-dark-match-deep-graphite-teal-20261020'),indexStats:indexText.includes('b46-statistics-no-old-flash-20261022'),
+        dark:assetText.includes('b46-dark-match-deep-graphite-teal-20261020'),stat:assetText.includes('b46-statistics-no-old-flash-20261022'),matchRows:assetText.includes('class="match-row'),hashHint:indexText.slice(0,120)};
       }catch(assetError){assetDiag={error:String(assetError)}}
       console.error('B46_V13_UNCHANGED_CLONE_EXCEPTION',msg,JSON.stringify(assetDiag));
       return new Response('B46_V13_UNCHANGED_CLONE_EXCEPTION\\n'+msg+'\\nRAW_ASSET '+JSON.stringify(assetDiag),{status:599,headers:{'content-type':'text/plain'}});
@@ -332,7 +338,7 @@ export default {
  assert.deepEqual(domains,['ball46.com','www.ball46.com'],'WRONG_WORKER_DOMAINS');
  const settings=await api('/workers/scripts/'+SCRIPT+'/settings');
  const metadata={main_module:current.main_module,compatibility_date:current.compatibility_date,
-   compatibility_flags:current.compatibility_flags||[],bindings:current.bindings,keep_assets:true,assets:{config:current.assets.config},
+   compatibility_flags:current.compatibility_flags||[],bindings:current.bindings,keep_assets:true,
    annotations:{'workers/tag':'B46_FEATURED_FLAG_STABLE_V13_20261022','workers/message':'Stop repeated Featured DOM rebuilding and hide fallback globes; all active apps and V12 preserved.'}};
  for(const k of ['usage_model','logpush','limits','observability','placement'])if(settings[k]!=null)metadata[k]=settings[k];
  const form=new FormData();
