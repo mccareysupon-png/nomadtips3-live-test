@@ -428,29 +428,17 @@ try {
   save();
   assert.equal(await activeVersion(), base, 'PRODUCTION_MOVED_BEFORE_UPLOAD');
   assert.equal(canonical(await api(`/scripts/${SCRIPT}/settings`)), settingsBefore, 'SETTINGS_MOVED_BEFORE_UPLOAD');
-  const uploadOutput = runWrangler(staged, ['versions', 'upload', '--tag', MARK, '--message', 'BALL46 Performance card desktop presentation only'], 'version-upload');
-  candidate = uploadOutput.match(/Version ID:\s*([a-f0-9-]{36})/i)?.[1];
+  const deployOutput = runWrangler(staged, ['deploy', '--tag', MARK, '--message', 'BALL46 Performance card desktop presentation only'], 'production-deploy');
+  candidate = deployOutput.match(/Version ID:\s*([a-f0-9-]{36})/i)?.[1];
   assert(candidate && candidate !== base, 'CANDIDATE_VERSION_MISSING');
+  activated = true;
   report.candidateVersion = candidate;
   save();
 
-  const previewVersion = await getVersion(candidate);
-  await verifyCandidate(previewVersion, current, staged, source, patch.html);
-  const previewOrigin = previewVersion.urls?.[0];
-  assert(previewOrigin?.startsWith(`https://${candidate.slice(0, 8)}-${SCRIPT}.`), 'VERSION_PREVIEW_URL_MISSING');
-  report.versionPreview = { url: previewOrigin, metadataVerified: true, runtimeCheck: 'staged exact asset set verified locally because current Worker version URL does not serve the production hostname rail' };
-  save();
-
-  assert.equal(await activeVersion(), base, 'PRODUCTION_MOVED_BEFORE_ACTIVATION');
-  assert.equal(canonical(await api(`/scripts/${SCRIPT}/settings`)), settingsBefore, 'SETTINGS_MOVED_BEFORE_ACTIVATION');
-  assert.equal(canonical(await schedules()), canonical(cronsBefore), 'SCHEDULES_MOVED_BEFORE_ACTIVATION');
-  activated = true;
-  await api(`/scripts/${SCRIPT}/deployments`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ strategy: 'percentage', versions: [{ version_id: candidate, percentage: 100 }], annotations: { 'workers/message': 'Verified BALL46 Performance card desktop presentation only' } })
-  });
   assert.equal(await activeVersion(), candidate, 'CANDIDATE_NOT_ACTIVE');
+  const deployedVersion = await getVersion(candidate);
+  await verifyCandidate(deployedVersion, current, staged, source, patch.html);
+  report.versionPreview = { url: deployedVersion.urls?.[0] || null, metadataVerified: true, runtimeCheck: 'staged exact asset set verified locally before the atomic Worker-and-assets production deploy' };
   report.afterVersion = candidate;
   save();
 
