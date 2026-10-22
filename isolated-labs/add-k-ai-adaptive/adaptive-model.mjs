@@ -111,6 +111,9 @@ export function predictShadow(model, candidate, atMs, minScore = 0.68) {
   return { status: score >= minScore ? 'SHADOW_PICK' : 'NO_PICK',
     reason: score >= minScore ? 'SCREEN_PASSED' : 'BELOW_THRESHOLD',
     score, modelVersion: model.modelVersion, market: candidate.market,
+    evidence: { lastOdds: candidate.observations.at(-1).odds,
+      firstAt: candidate.observations[0].at, lastAt: candidate.observations.at(-1).at,
+      momentum: candidate.momentum, modelAsOfMs: model.asOfMs },
     // This score must NOT be presented as calibrated betting probability.
     calibratedProbability: false };
 }
