@@ -20,6 +20,15 @@ for(const prefix of prefs){
  const d=await get('/workers/workers/'+NAME+'/versions/'+v+'?include=modules');
  if(!d){continue;}
  const modules=d.modules||[];
+ const indexHtml=modules.find(m=>m.name==='assets/index.html');
+ const assetHtml=indexHtml?.content_base64?Buffer.from(indexHtml.content_base64,'base64').toString('utf8'):'';
+ console.log('B46_V13_WORKER_STATIC_ASSET_MARKERS',JSON.stringify({prefix,htmlLength:assetHtml.length,
+  markers:['b46-dark-match-deep-graphite-teal-20261020','b46-dark-match-hover-active-20261020',
+   'b46-pc-active-only-expanded-20261020','B46_MOBILE_CARD_RESTORED_20261020',
+   'b46-featured-approved-sections-v10-20261021','b46-statistics-no-old-flash-20261022'
+  ].map(m=>({key:m,present:assetHtml.includes(m),count:assetHtml.split(m).length-1})),
+  hasCloseBody:assetHtml.includes('</body>')}));
+
  const types=(d.bindings||[]).map(x=>({name:x.name,type:x.type,
    sourceVersionId:x.version_id?.slice?.(0,8)||null,
    namespaceProvided:!!x.namespace_id,durableEnv:x.environment||null}));
