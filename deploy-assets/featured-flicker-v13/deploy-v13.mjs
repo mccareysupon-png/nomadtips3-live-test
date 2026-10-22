@@ -100,8 +100,36 @@ function patchWorker(source){
   ' const h=new Headers(original.headers);h.delete("content-length");h.delete("etag");h.set("Cache-Control","no-store");\n'+
   ' return new Response(output,{status:original.status,statusText:original.statusText,headers:h});\n'+
   '}\n';
- const out=source.replace(old,()=>newStyle).replace(from,()=>to)+helper;
- assert.equal(out.slice(0,-helper.length).replace(to,()=>from).replace(newStyle,()=>old),source,'V13_UNRELATED_WORKER_CODE_CHANGED');
+ const copy='const h=new Headers(response.headers);h.delete("content-length");h.delete("etag");return new Response(html,{status:response.status,statusText:response.statusText,headers:h});';
+ // Existing V12 Worker applies 20 October styles to HTML in nested wrappers.
+ // On an already-styled response, idempotent rehydration avoids the old
+ // MATCH_PATCH_ANCHOR_DRIFT 1101. Return a fresh Response because text() consumed
+ // the original stream; otherwise the next wrapper throws "Body already used".
+ const guards=[
+  ['b46-dark-match-deep-graphite-teal-20261020','MATCH_PATCH_ANCHOR_DRIFT'],
+  ['b46-dark-match-hover-active-20261020','INTERACTION_PATCH_ANCHOR_DRIFT'],
+  ['b46-pc-active-only-expanded-20261020','PC_ACTIVE_PATCH_DUPLICATE']
+ ].map(([tag,err])=>{
+  const before='if(!html.includes("</body>")||html.includes("'+tag+'"))throw new Error("'+err+'");';
+  const after='if(!html.includes("</body>"))throw new Error("'+err+'");if(html.includes("'+tag+'")){'+copy+'}';
+  return [before,after,err];
+ });
+ // One other old wrapper consumes and transforms the original mobile CSS.
+ // Skip it only when its exact restoration marker is already present.
+ guards.push([
+  'if(block.split(old).length!==2||block.includes(mark))throw new Error("ORIGINAL_MOBILE_CSS_DRIFT");',
+  'if(block.includes(mark)){'+copy+'}if(block.split(old).length!==2)throw new Error("ORIGINAL_MOBILE_CSS_DRIFT");',
+  'ORIGINAL_MOBILE_CSS_DRIFT'
+ ]);
+ let patched=source;
+ for(const [before,after,label] of guards){
+  assert.equal(patched.split(before).length-1,1,'LEGACY_IDEMPOTENCY_ANCHOR_DRIFT '+label);
+  patched=patched.replace(before,()=>after);
+ }
+ const out=patched.replace(old,()=>newStyle).replace(from,()=>to)+helper;
+ let restored=out.slice(0,-helper.length).replace(to,()=>from).replace(newStyle,()=>old);
+ for(const [before,after] of [...guards].reverse())restored=restored.replace(after,()=>before);
+ assert.equal(restored,source,'V13_UNRELATED_WORKER_CODE_CHANGED');
  return out;
 }
 
