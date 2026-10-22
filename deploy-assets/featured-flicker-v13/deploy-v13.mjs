@@ -265,7 +265,16 @@ try{
  const pristineText=Buffer.from(pristine.content_base64,'base64').toString('utf8');
  assert(pristineText.includes('</body>')&&!pristineText.includes('b46-dark-match-deep-graphite-teal-20261020'),
    'PINNED_INDEX_NOT_PRISTINE');
- const transformed=patchWorker(source);
+ let transformed=patchWorker(source);
+ // A newly uploaded version's ASSETS binding can return the previously V8-patched
+ // flag script. Detect precisely that already-patched body and return it as-is;
+ // do not run the legacy flag transformer twice.
+ const flagGuard='if(!portion.includes("const placeholder=globe();")||!portion.includes("return placeholder;"))throw Error("BALL46_FLAG_BEHAVIOR_CHANGED");';
+ assert.equal(transformed.split(flagGuard).length-1,1,'FLAG_V8_BEHAVIOR_GUARD_DRIFT');
+ const flagSafe='if(portion.includes("img.className=\\'league-flag\\';")&&!portion.includes("const placeholder=globe();")){'
+   +'const h=new Headers(original.headers);h.delete("content-length");h.delete("etag");return new Response(source,{status:original.status,statusText:original.statusText,headers:h});}';
+ transformed=transformed.replace(flagGuard,()=>flagSafe+flagGuard);
+ console.log('B46_V13_FLAG_PATCH_IDEMPOTENT_ON_PREPATCHED_ASSET');
  assert.equal(transformed.split('export default ').length-1,1,'V13_MAIN_DEFAULT_EXPORT_DRIFT');
  // The ASSETS binding of freshly uploaded previews unexpectedly served already
  // transformed HTML. Return the pinned, byte-exact original assets/index.html
