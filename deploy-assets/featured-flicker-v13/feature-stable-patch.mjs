@@ -9,8 +9,38 @@ export const HELPER=String.raw`
 function b46StableFeaturedLeague(next){
  const el=$('[data-featured-league]');if(!el)return;
  const label=el.querySelector(':scope > .league-label');
- if(label){if(label.textContent!==next)label.textContent=next;return;}
- if(el.textContent!==next)el.textContent=next;
+ if(label){
+   if(label.textContent!==next)label.textContent=next;
+ }else if(el.textContent!==next)el.textContent=next;
+ const registry=window.NOMAD_LEAGUE_FLAGS_343;
+ if(!registry?.codeForLeagueLabel||!registry?.iconUrl)return;
+ const code=registry.codeForLeagueLabel(next);
+ const desiredCode=code||'unknown';
+ const flag=el.querySelector(':scope > .league-flag,:scope > .league-globe');
+ const oldCode=el.dataset.leagueFlagCode||'unknown';
+ const valid=code&&code!=='WORLD';
+ if(el.dataset.leagueCountry!==String(next).split(' · ')[0].trim())
+   el.dataset.leagueCountry=String(next).split(' · ')[0].trim();
+ if(oldCode===desiredCode&&((valid&&flag?.classList.contains('league-flag'))||
+    (!valid&&!flag?.classList.contains('league-flag'))))return;
+ if(!valid){
+   // Unknown / international leagues have no genuine national flag.
+   // Remove the old country's flag, and leave the globe hidden by CSS.
+   flag?.remove();el.dataset.leagueFlagCode=desiredCode;return;
+ }
+ const img=document.createElement('img');
+ img.className='league-flag';
+ img.alt='';img.setAttribute('aria-hidden','true');img.width=16;img.height=12;
+ img.loading='eager';img.decoding='async';img.referrerPolicy='no-referrer';
+ let retry=false;
+ img.addEventListener('error',()=>{
+   if(!retry){retry=true;img.src='https://flagcdn.com/'+code+'.svg'}
+   else if(img.isConnected)img.remove();
+ });
+ img.src=registry.iconUrl(code);
+ if(flag)flag.replaceWith(img);
+ else (label||el.firstChild)?.before(img)??el.appendChild(img);
+ el.dataset.leagueFlagCode=code;
 }
 function b46StableFeaturedContent(host,markup,kind){
  if(!host)return;
