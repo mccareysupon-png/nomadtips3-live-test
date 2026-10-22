@@ -1,0 +1,16 @@
+name: BALL46 V13 Source Exact Guard Audit
+on:
+  push:
+    branches: [fix/ball46-featured-flag-flicker-v13-20261022]
+    paths:
+      - '.github/workflows/ball46-v13-source-audit.yml'
+      - 'deploy-assets/featured-flicker-v13/source.mjs'
+permissions: {contents: read}
+jobs:
+  source:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: node deploy-assets/featured-flicker-v13/source.mjs
