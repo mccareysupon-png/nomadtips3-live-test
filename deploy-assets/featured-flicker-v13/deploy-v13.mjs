@@ -187,6 +187,13 @@ async function browserQA(domain,phase,patched){
       return {start:window.__v13Start,updates:window.__v13Count,
         visibleGlobes:ghost,totalGlobes:flag.length,flagImages:known.length,
         mainLeague:main.querySelector('[data-featured-league]')?.outerHTML.slice(0,450),
+        featuredFlag:(()=>{
+          const el=main.querySelector('[data-featured-league]'),label=el?.querySelector(':scope > .league-label')?.textContent||'';
+          const expected=window.NOMAD_LEAGUE_FLAGS_343?.codeForLeagueLabel?.(label)||null;
+          const img=el?.querySelector(':scope > img.league-flag');
+          return {label,expected,actual:el?.dataset.leagueFlagCode,hasImage:!!img,
+            src:img?.getAttribute('src')||null};
+        })(),
         fixture:main.querySelector('[data-featured-home]')?.textContent,
         status:main.querySelector('[data-featured-status]')?.textContent,
         stats:stats.querySelectorAll('.stat-row').length,events:root.querySelectorAll('.feature-events .event-item').length,
@@ -213,6 +220,9 @@ async function browserQA(domain,phase,patched){
     if(width<768)assert(state.flow&&state.fullMarket,'EVENT_FLOW_OR_MARKET_MISSING');
     if(patched){
      assert(state.visibleGlobes===0,'GLOBE_ICONS_STILL_VISIBLE');
+     if(state.featuredFlag?.expected && state.featuredFlag.expected!=='WORLD')
+      assert(state.featuredFlag.actual===state.featuredFlag.expected && state.featuredFlag.hasImage,
+       'FEATURED_COUNTRY_FLAG_NOT_UPDATED '+JSON.stringify(state.featuredFlag));
      // Render updates may change numbers; rows/wells must retain their DOM identity.
      assert(state.updates.f<=1,'FEATURED_FACTS_REBUILT_REPEATEDLY '+JSON.stringify(state.updates));
      assert(state.updates.s<=1,'FEATURED_STAT_ROWS_REBUILT_REPEATEDLY '+JSON.stringify(state.updates));
