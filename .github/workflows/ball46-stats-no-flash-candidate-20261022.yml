@@ -1,0 +1,33 @@
+name: BALL46 Statistics No-Flash Candidate Browser QA - NO DEPLOY
+on:
+  push:
+    branches: [audit/ball46-statistics-ui-flash-20261022]
+    paths:
+      - '.github/workflows/ball46-stats-no-flash-candidate-20261022.yml'
+      - 'deploy-assets/statistics-flash-20261022/stats-no-flash.css'
+      - 'deploy-assets/statistics-flash-20261022/stats-ready.js'
+      - 'deploy-assets/statistics-flash-20261022/test-candidate.mjs'
+permissions: {contents: read}
+jobs:
+  qa:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Inject Statistics guard ONLY into test-browser response, never Production
+        working-directory: deploy-assets/statistics-flash-20261022
+        run: |
+          node --check stats-ready.js
+          node --check test-candidate.mjs
+          npm install --no-save --ignore-scripts puppeteer-core@24
+          node test-candidate.mjs
+      - name: Candidate screenshots and event gate timing
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-statistics-no-flash-candidate-only
+          path: deploy-assets/statistics-flash-20261022/candidate-proof/
+          retention-days: 14
+          if-no-files-found: warn
