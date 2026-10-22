@@ -159,6 +159,7 @@ async function browserQA(domain,phase,patched){
         duplicate:document.querySelectorAll('.b46x-live-detail,.b46-native-summary').length,
         parentDisplay:cs.display};
     });
+    console.log('B46_V13_CANDIDATE_DIAG',JSON.stringify({phase,width,theme,patched,state,errors}).slice(0,12000));
     assert.equal(state.tag,patched,'GLOBE_STYLESHEET_TAG_MISMATCH');
     assert(state.factWells===4&&state.v12&&state.statReadyTag,'FEATURED_V12_OR_STATISTICS_GUARD_REGRESSION');
     assert(state.flagsRegistry===143&&state.flagImages>=2,'NATIONAL_FLAGS_REGRESSION');
