@@ -48,8 +48,21 @@ async function active(){
  assert(d?.versions?.length===1&&Number(d.versions[0].percentage)===100,'ACTIVE_WORKER_SPLIT');
  return {version:d.versions[0].version_id,deployment:d.id};
 }
-async function version(v){const d=await api('/workers/workers/'+SCRIPT+'/versions/'+v+'?include=modules');
- assert(d.main_module&&d.modules?.length,'ACTIVE_MODULES_UNREADABLE');return d;}
+async function version(v){
+ let last;
+ for(let i=0;i<12;i++){
+  try{
+   const d=await api('/workers/workers/'+SCRIPT+'/versions/'+v+'?include=modules');
+   assert(d.main_module&&d.modules?.length,'ACTIVE_MODULES_UNREADABLE');return d;
+  }catch(e){
+   last=e;
+   if(!String(e).includes('code":10071'))throw e;
+   console.log('B46_V13_VERSION_NOT_READY_RETRY',JSON.stringify({version:v,attempt:i+1}));
+   await wait(1800);
+  }
+ }
+ throw last;
+}
 async function get(origin,path){
  let last;
  for(let i=0;i<5;i++)try{
