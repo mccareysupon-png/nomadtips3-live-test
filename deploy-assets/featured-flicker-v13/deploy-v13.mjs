@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {spawnSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import {mkdirSync,writeFileSync} from 'node:fs';
 import puppeteer from 'puppeteer-core';
@@ -230,6 +231,16 @@ try{
  assert(originalMain,'MAIN_MODULE_NOT_FOUND');
  const source=Buffer.from(originalMain.content_base64,'base64').toString('utf8');
  const modified=patchWorker(source);
+ // Versions API can accept uploads that later throw 1101 on version URLs.
+ // Validate exact generated Worker module syntax before touching any candidate.
+ const syntax=spawnSync(process.execPath,['--input-type=module','--check','-'],{
+   input:modified,encoding:'utf8',maxBuffer:8*1024*1024});
+ if(syntax.status!==0){
+   console.error('B46_V13_WORKER_MODULE_SYNTAX_FAILURE',
+     JSON.stringify({status:syntax.status,stderr:syntax.stderr.slice(0,6500)}));
+   throw Error('GENERATED_WORKER_MAIN_MODULE_SYNTAX_INVALID');
+ }
+ console.log('B46_V13_WORKER_MODULE_SYNTAX_PASS',JSON.stringify({size:modified.length}));
  const files=await fetchSet(PROD);
  const originalAsset=await get(PROD,TARGET);
  assert.equal(originalAsset.status,200,'ORIGINAL_RENDERER_NOT_FOUND');
