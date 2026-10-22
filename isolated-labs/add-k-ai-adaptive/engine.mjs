@@ -53,10 +53,10 @@ export function createShadowSignal(candidate, evaluation, nowMs = Date.now()) {
   if (evaluation?.status !== 'SHADOW_PICK') return null;
   const key = pickIdentity(candidate);
   if (!key || !validTime(nowMs)) return null;
-  return { id: `${CONDITION_ID}:${key}`, matchId: candidate.matchId, market: candidate.market,
+  return { id: `${CONDITION_ID}:${key}:${nowMs}`, matchId: candidate.matchId, market: candidate.market,
     selection: candidate.selection, line: candidate.market === '1X2' ? null : candidate.line,
     odds: evaluation.evidence.lastOdds, lockedAt: nowMs, conditionIds: [CONDITION_ID],
-    modelVersion: MODEL_VERSION, evaluation: evaluation.evidence, settlement: null,
+    modelVersion: evaluation.modelVersion || MODEL_VERSION, evaluation: evaluation.evidence, settlement: null,
     shadowOnly: true };
 }
 
