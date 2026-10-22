@@ -138,20 +138,33 @@ function configFromCurrent(version, settings, crons, assetsDirectory) {
   return config;
 }
 
-function stageCurrent(version, settings, crons, source, patchedHtml) {
+async function stageCurrent(version, settings, crons, source, htmlBefore, patchedHtml) {
   const runtime = resolve('runtime');
   const assets = resolve(runtime, 'assets');
   const originalHashes = {};
-  const assetModules = version.modules.filter(module => module.name !== version.main_module);
-  assert(assetModules.length >= 70, `ACTIVE_ASSET_SET_INCOMPLETE:${assetModules.length}`);
-  for (const module of assetModules) {
-    const path = safeAssetPath(module.name);
-    const bytes = Buffer.from(module.content_base64, 'base64');
-    assert(bytes.length, `EMPTY_ACTIVE_MODULE:${path}`);
-    originalHashes[path] = sha(bytes);
-    const target = resolve(assets, path);
-    mkdirSync(dirname(target), { recursive: true });
-    writeFileSync(target, path === 'index.html' ? patchedHtml : bytes);
+  const paths = new Set(readFileSync(resolve('assets', 'production-paths-20260928.txt'), 'utf8').split(/\r?\n/).filter(Boolean));
+  for (const module of version.modules.filter(module => module.name !== version.main_module)) paths.add(safeAssetPath(module.name));
+  for (const match of htmlBefore.matchAll(/\b(?:src|href)\s*=\s*["']([^"']+)["']/g)) {
+    const url = new URL(match[1], ORIGIN);
+    if (url.origin === ORIGIN && /\.(?:html|js|css|png|jpe?g|webp|svg|ico|txt|xml)$/i.test(url.pathname) && !url.pathname.startsWith('/cdn-cgi/')) paths.add(url.pathname.slice(1));
+  }
+  assert(paths.size >= 80, `ACTIVE_ASSET_SET_INCOMPLETE:${paths.size}`);
+  const queue = [...paths].sort();
+  for (let i = 0; i < queue.length; i += 6) {
+    const batch = queue.slice(i, i + 6);
+    const results = await Promise.all(batch.map(async path => {
+      const direct = await publicFile('/' + path, DIRECT_ORIGIN);
+      const custom = await publicFile('/' + path);
+      assert.equal(sha(custom), sha(direct), `PRODUCTION_ORIGINS_DISAGREE:${path}`);
+      return direct;
+    }));
+    results.forEach((bytes, offset) => {
+      const path = batch[offset];
+      originalHashes[path] = sha(bytes);
+      const target = resolve(assets, path);
+      mkdirSync(dirname(target), { recursive: true });
+      writeFileSync(target, path === 'index.html' ? patchedHtml : bytes);
+    });
   }
   assert(originalHashes['index.html'], 'ACTIVE_INDEX_MODULE_MISSING');
   const css = readFileSync(resolve('assets', CSS_PATH));
@@ -162,7 +175,7 @@ function stageCurrent(version, settings, crons, source, patchedHtml) {
   writeFileSync(resolve(assets, IMAGE_PATH), image);
   writeFileSync(resolve(runtime, 'index.js'), source);
   writeFileSync(resolve(runtime, 'wrangler.jsonc'), JSON.stringify(configFromCurrent(version, settings, crons, assets), null, 2));
-  return { runtime, assets, originalHashes, cssSha: sha(css), imageSha: sha(image) };
+  return { runtime, assets, originalHashes, pathCount: paths.size, cssSha: sha(css), imageSha: sha(image) };
 }
 
 function runWrangler(staged, args, logName) {
@@ -184,7 +197,6 @@ function moduleMap(version) {
 }
 
 async function verifyCandidate(candidateVersion, current, staged, source, patchedHtml) {
-  const before = moduleMap(current);
   const after = moduleMap(candidateVersion);
   const main = after.get(candidateVersion.main_module);
   assert(main, 'CANDIDATE_MAIN_MISSING');
@@ -193,15 +205,21 @@ async function verifyCandidate(candidateVersion, current, staged, source, patche
   assert.equal(canonical(candidateVersion.assets?.config), canonical(current.assets?.config), 'ASSET_CONFIG_CHANGED');
   assert.equal(candidateVersion.compatibility_date, current.compatibility_date, 'COMPATIBILITY_DATE_CHANGED');
   assert.equal(canonical(candidateVersion.compatibility_flags || []), canonical(current.compatibility_flags || []), 'COMPATIBILITY_FLAGS_CHANGED');
-  for (const [name, module] of before) {
-    if (name === current.main_module) continue;
-    const next = after.get(name);
-    assert(next, `ORIGINAL_MODULE_MISSING:${name}`);
-    const expected = name === 'assets/index.html' ? sha(patchedHtml) : sha(Buffer.from(module.content_base64, 'base64'));
-    assert.equal(sha(Buffer.from(next.content_base64, 'base64')), expected, `ORIGINAL_MODULE_CHANGED:${name}`);
+  const index = after.get('assets/index.html');
+  if (index) assert.equal(sha(Buffer.from(index.content_base64, 'base64')), sha(patchedHtml), 'INDEX_MODULE_MISMATCH');
+}
+
+async function verifyAssets(baseOrigin, staged) {
+  const entries = Object.entries(staged.originalHashes);
+  for (let i = 0; i < entries.length; i += 6) {
+    const batch = entries.slice(i, i + 6);
+    const results = await Promise.all(batch.map(([path]) => publicFile('/' + path, baseOrigin)));
+    results.forEach((bytes, offset) => {
+      const [path, expected] = batch[offset];
+      const wanted = path === 'index.html' ? null : expected;
+      if (wanted) assert.equal(sha(bytes), wanted, `EXISTING_ASSET_CHANGED:${path}`);
+    });
   }
-  assert.equal(sha(Buffer.from(after.get(`assets/${CSS_PATH}`).content_base64, 'base64')), staged.cssSha, 'NEW_CSS_MODULE_MISMATCH');
-  assert.equal(sha(Buffer.from(after.get(`assets/${IMAGE_PATH}`).content_base64, 'base64')), staged.imageSha, 'NEW_IMAGE_MODULE_MISMATCH');
 }
 
 async function inspectBrowser(baseOrigin, label, fullChecks) {
@@ -334,7 +352,7 @@ try {
   };
   save();
 
-  const staged = stageCurrent(current, settings, cronsBefore, source, patch.html);
+  const staged = await stageCurrent(current, settings, cronsBefore, source, htmlBefore, patch.html);
   runWrangler(staged, ['deploy', '--dry-run'], 'dry-run');
   assert.equal(await activeVersion(), base, 'PRODUCTION_MOVED_BEFORE_UPLOAD');
   assert.equal(canonical(await api(`/scripts/${SCRIPT}/settings`)), settingsBefore, 'SETTINGS_MOVED_BEFORE_UPLOAD');
@@ -351,6 +369,7 @@ try {
   assert.equal(sha(await publicFile('/index.html', previewOrigin)), sha(patch.html), 'PREVIEW_INDEX_MISMATCH');
   assert.equal(sha(await publicFile('/' + CSS_PATH, previewOrigin)), staged.cssSha, 'PREVIEW_CSS_MISMATCH');
   assert.equal(sha(await publicFile('/' + IMAGE_PATH, previewOrigin)), staged.imageSha, 'PREVIEW_IMAGE_MISMATCH');
+  await verifyAssets(previewOrigin, staged);
   report.preview = await inspectBrowser(previewOrigin, 'preview', false);
   save();
 
@@ -374,6 +393,8 @@ try {
   }
   assert.equal(sha(await publicFile('/' + CSS_PATH)), staged.cssSha, 'PRODUCTION_CSS_MISMATCH');
   assert.equal(sha(await publicFile('/' + IMAGE_PATH)), staged.imageSha, 'PRODUCTION_IMAGE_MISMATCH');
+  await verifyAssets(ORIGIN, staged);
+  await verifyAssets(DIRECT_ORIGIN, staged);
   report.production = await inspectBrowser(ORIGIN, 'production', true);
   assert.equal(canonical(await api(`/scripts/${SCRIPT}/settings`)), settingsBefore, 'SETTINGS_CHANGED');
   assert.equal(canonical(await schedules()), canonical(cronsBefore), 'SCHEDULES_CHANGED');
@@ -384,7 +405,7 @@ try {
   report.result = 'SUCCESS';
   report.completedAt = new Date().toISOString();
   save();
-  console.log('BALL46_PERFORMANCE_CARD_CLEAN_SUCCESS ' + JSON.stringify({ beforeVersion: base, afterVersion: candidate, originalModules: current.modules.length, cssSha: staged.cssSha, imageSha: staged.imageSha }));
+  console.log('BALL46_PERFORMANCE_CARD_CLEAN_SUCCESS ' + JSON.stringify({ beforeVersion: base, afterVersion: candidate, protectedAssets: staged.pathCount, originalModules: current.modules.length, cssSha: staged.cssSha, imageSha: staged.imageSha }));
 } catch (error) {
   report.error = error.message;
   report.result = activated ? 'FAILED_ROLLBACK_REQUIRED' : 'FAILED_BEFORE_ACTIVATION';
@@ -393,4 +414,3 @@ try {
   console.error(error.stack);
   process.exitCode = 1;
 }
-
