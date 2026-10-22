@@ -242,6 +242,10 @@ try{
  const originalMain=current.modules.find(x=>x.name===current.main_module);
  assert(originalMain,'MAIN_MODULE_NOT_FOUND');
  const source=Buffer.from(originalMain.content_base64,'base64').toString('utf8');
+ for(const needle of ['MATCH_PATCH_ANCHOR_DRIFT','__b46DarkMatchCard20261020','__b46StatsLeaguesNavV9']){
+   const pos=source.indexOf(needle);
+   console.log('B46_V13_WORKER_ANCHOR_CONTEXT',JSON.stringify({needle,pos,context:pos<0?'NOT_FOUND':source.slice(Math.max(0,pos-2500),pos+850)}));
+ }
  let modified=patchWorker(source);
  // CANDIDATE-ONLY exception diagnostic: return a non-200 status with the
  // stack; never promote this diagnostic build to Production.
