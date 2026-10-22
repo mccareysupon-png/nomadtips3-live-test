@@ -1,5 +1,6 @@
 const bases=[
  ['prod','https://ball46.com'],
+ ['active-v12-version','https://578fd91b-ball46-production.mccarey-supon.workers.dev'],
  ['last-failed-new','https://f71b04c1-ball46-production.mccarey-supon.workers.dev'],
  ['old-passed-candidate','https://7dc75355-ball46-production.mccarey-supon.workers.dev'],
  ['older-passed-candidate','https://83e1752e-ball46-production.mccarey-supon.workers.dev'],
