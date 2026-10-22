@@ -61,19 +61,38 @@ export function createShadowSignal(candidate, evaluation, nowMs = Date.now()) {
 }
 
 /**
- * Join existing and future AI signals by underlying pick, not by condition label.
- * Preserve original settlement/price/timestamp on a collision. Never count a pick twice.
- * This is a pure offline preview; no production persistence is performed.
+ * Merge records using a stable canonical signal ID, or the exact lock event
+ * (fixture + market + selection + line + lock time). Two independent signals
+ * for the same pick at DIFFERENT times remain distinct entries in TOTAL.
+ * Historical records without market or lock metadata are preserved, never
+ * silently dropped or guessed to be duplicates. No persistence occurs here.
  */
 export function mergeLedger(existing = [], aiSignals = []) {
   const byKey = new Map();
+  let serial = 0;
   for (const record of [...existing, ...aiSignals]) {
-    const key = pickIdentity(record) ?? (record?.id ? `ID:${record.id}` : null);
-    if (!key) continue; // incomplete records are never invented
+    if (!record || typeof record !== 'object') continue;
+    const conditions = [
+      ...(Array.isArray(record.conditionIds) ? record.conditionIds : []),
+      ...(record.conditionId ? [record.conditionId] : [])
+    ];
+    const selectionKey = pickIdentity(record);
+    const key = String(record.canonicalSignalId ?? '').trim()
+      ? `CANONICAL:${record.canonicalSignalId}`
+      : selectionKey && validTime(record.lockedAt)
+        ? `LOCK:${selectionKey}:${record.lockedAt}`
+        : record.id != null
+          ? `ID:${record.id}`
+          : `LEGACY_UNKEYED:${serial++}`;
     const current = byKey.get(key);
-    if (!current) { byKey.set(key, { ...record, conditionIds: [...new Set(record.conditionIds || (record.conditionId ? [record.conditionId] : []))] }); continue; }
-    const conditionIds = [...new Set([...(current.conditionIds || []), ...(record.conditionIds || []), ...(record.conditionId ? [record.conditionId] : [])])];
-    byKey.set(key, { ...current, conditionIds });
+    if (!current) {
+      byKey.set(key, { ...record, conditionIds: [...new Set(conditions)] });
+      continue;
+    }
+    byKey.set(key, { ...current, conditionIds: [...new Set([
+      ...(current.conditionIds || []),
+      ...conditions
+    ])] });
   }
   return [...byKey.values()];
 }
