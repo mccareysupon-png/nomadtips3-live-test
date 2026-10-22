@@ -77,7 +77,9 @@ async function get(origin,path){
 async function fetchSet(origin){
  const result={};
  for(const p of PATHS){
-  const d=await get(origin,p);assert.equal(d.status,200,'ASSET_FAILED '+origin+p);result[p]=d;
+  const d=await get(origin,p);
+  if(d.status!==200)console.error('B46_V13_ASSET_REJECTION_DIAGNOSTIC',JSON.stringify({origin,path:p,status:d.status,contentType:d.contentType,body:d.bytes.toString('utf8').slice(0,2300)}));
+  assert.equal(d.status,200,'ASSET_FAILED '+origin+p);result[p]=d;
  }
  return result;
 }
