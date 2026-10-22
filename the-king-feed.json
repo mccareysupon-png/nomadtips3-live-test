@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-10-22T07:43:37Z",
+  "updated_at": "2026-10-22T13:54:07Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -2829,8 +2829,8 @@
       "edge": 27.5,
       "ev": 0.4328,
       "required_confidence": 0.56,
-      "result": "PENDING",
-      "ft": null,
+      "result": "HALF_LOSS",
+      "ft": "2-3",
       "locked_at": "2026-10-22T01:57:31Z",
       "source_url": "https://www.goaloo.com/football/vietnamese-first-division-xuan-thien-phu-tho-vs-pvf-cand/h2h-3085366",
       "summary_url": "https://www.goaloo.com/football/vietnamese-first-division-xuan-thien-phu-tho-vs-pvf-cand/summary-3085366",
@@ -2890,7 +2890,12 @@
         "away_recent": 9,
         "h2h_n": 1,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": -0.5,
+      "profit": -50.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-22T13:54:07Z"
     },
     {
       "id": "0b299bacd5f6dbe2-OU-OVER-2p5",
@@ -3169,8 +3174,8 @@
       "edge": 27.0,
       "ev": 0.4591,
       "required_confidence": 0.56,
-      "result": "PENDING",
-      "ft": null,
+      "result": "WIN",
+      "ft": "3-2",
       "locked_at": "2026-10-22T01:57:25Z",
       "source_url": "https://www.goaloo.com/football/philippines-ufl-ust-growling-tigers-vs-feu-tamaraws/h2h-3104952",
       "summary_url": "https://www.goaloo.com/football/philippines-ufl-ust-growling-tigers-vs-feu-tamaraws/summary-3104952",
@@ -3230,7 +3235,12 @@
         "away_recent": 10,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": 1.0,
+      "profit": 102.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-22T13:54:07Z"
     },
     {
       "id": "c74906118d72e6f8-AH-HOME-m0p0",
@@ -5294,8 +5304,8 @@
       "edge": 11.5,
       "ev": 0.1568,
       "required_confidence": 0.6,
-      "result": "PENDING",
-      "ft": null,
+      "result": "WIN",
+      "ft": "3-1",
       "locked_at": "2026-10-22T01:57:28Z",
       "source_url": "https://www.goaloo.com/football/azerbaijan-division-2-fk-moik-baku-vs-karvan-evlakh/h2h-3103537",
       "summary_url": "https://www.goaloo.com/football/azerbaijan-division-2-fk-moik-baku-vs-karvan-evlakh/summary-3103537",
@@ -5355,7 +5365,12 @@
         "away_recent": 10,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": 1.0,
+      "profit": 80.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-22T13:54:07Z"
     },
     {
       "id": "867507098b6d6fd5-OU-UNDER-2p75",
@@ -300493,6 +300508,276 @@
       "settlement_source": "goaloo-bf_us-direct-index",
       "goaloo_terminal_state": -1,
       "settled_at": "2026-10-22T01:36:27Z"
+    },
+    {
+      "id": "cd4dacc60a03e4a2-AH-HOME-0p75",
+      "goaloo_id": "3085366",
+      "date": "2026-10-22",
+      "kickoff": "2026-10-22 11:00:00",
+      "league": "Vietnamese First Division",
+      "home": "Xuan Thien Phu Tho",
+      "away": "PVF-CAND",
+      "market": "AH",
+      "selection": "HOME",
+      "line": 0.75,
+      "pick": "Xuan Thien Phu Tho +0.75",
+      "side": "home",
+      "odds": 1.9,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.7519,
+      "model_probability": 0.7519,
+      "market_fair_probability": 0.4766,
+      "market_edge": 0.2753,
+      "edge": 27.5,
+      "ev": 0.4328,
+      "required_confidence": 0.56,
+      "result": "HALF_LOSS",
+      "ft": "2-3",
+      "locked_at": "2026-10-22T01:57:31Z",
+      "source_url": "https://www.goaloo.com/football/vietnamese-first-division-xuan-thien-phu-tho-vs-pvf-cand/h2h-3085366",
+      "summary_url": "https://www.goaloo.com/football/vietnamese-first-division-xuan-thien-phu-tho-vs-pvf-cand/summary-3085366",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 1.484,
+        "lambda_away": 1.174,
+        "home_win": 0.4427,
+        "draw": 0.2764,
+        "away_win": 0.2809,
+        "h2h_adjustment": 0.0,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.1463,
+          "gd_edge": 0.23,
+          "clean_sheet_edge": 0.2878,
+          "failed_to_score_edge": -0.5415,
+          "bounded_adjustment": 0.0093,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 9,
+        "away_recent": 9,
+        "h2h_n": 1,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": -0.5,
+      "profit": -50.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-22T13:54:07Z"
+    },
+    {
+      "id": "193cd8598726fc66-AH-HOME-0p75",
+      "goaloo_id": "3104952",
+      "date": "2026-10-22",
+      "kickoff": "2026-10-22 11:00:00",
+      "league": "Philippines UFL",
+      "home": "UST Growling Tigers",
+      "away": "FEU Tamaraws",
+      "market": "AH",
+      "selection": "HOME",
+      "line": 0.75,
+      "pick": "UST Growling Tigers +0.75",
+      "side": "home",
+      "odds": 2.02,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.7227,
+      "model_probability": 0.7227,
+      "market_fair_probability": 0.4526,
+      "market_edge": 0.2702,
+      "edge": 27.0,
+      "ev": 0.4591,
+      "required_confidence": 0.56,
+      "result": "WIN",
+      "ft": "3-2",
+      "locked_at": "2026-10-22T01:57:25Z",
+      "source_url": "https://www.goaloo.com/football/philippines-ufl-ust-growling-tigers-vs-feu-tamaraws/h2h-3104952",
+      "summary_url": "https://www.goaloo.com/football/philippines-ufl-ust-growling-tigers-vs-feu-tamaraws/summary-3104952",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 1.625,
+        "lambda_away": 1.393,
+        "home_win": 0.4201,
+        "draw": 0.2582,
+        "away_win": 0.3217,
+        "h2h_adjustment": 0.0,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": -0.0309,
+          "gd_edge": 0.0662,
+          "clean_sheet_edge": -0.122,
+          "failed_to_score_edge": -0.122,
+          "bounded_adjustment": -0.0015,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": 1.0,
+      "profit": 102.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-22T13:54:07Z"
+    },
+    {
+      "id": "1cb3fc0e5bf77daa-AH-HOME-m0p0",
+      "goaloo_id": "3103537",
+      "date": "2026-10-22",
+      "kickoff": "2026-10-22 11:00:00",
+      "league": "Azerbaijan Division 2",
+      "home": "FK MOIK Baku",
+      "away": "Karvan Evlakh",
+      "market": "AH",
+      "selection": "HOME",
+      "line": -0.0,
+      "pick": "FK MOIK Baku -0",
+      "side": "home",
+      "odds": 1.8,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.6284,
+      "model_probability": 0.6284,
+      "market_fair_probability": 0.5135,
+      "market_edge": 0.1149,
+      "edge": 11.5,
+      "ev": 0.1568,
+      "required_confidence": 0.6,
+      "result": "WIN",
+      "ft": "3-1",
+      "locked_at": "2026-10-22T01:57:28Z",
+      "source_url": "https://www.goaloo.com/football/azerbaijan-division-2-fk-moik-baku-vs-karvan-evlakh/h2h-3103537",
+      "summary_url": "https://www.goaloo.com/football/azerbaijan-division-2-fk-moik-baku-vs-karvan-evlakh/summary-3103537",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 1.725,
+        "lambda_away": 1.144,
+        "home_win": 0.5193,
+        "draw": 0.2558,
+        "away_win": 0.2249,
+        "h2h_adjustment": -0.0075,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.4374,
+          "gd_edge": 0.3597,
+          "clean_sheet_edge": 0.1463,
+          "failed_to_score_edge": 0.2341,
+          "bounded_adjustment": 0.0263,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 8,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": 1.0,
+      "profit": 80.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-10-22T13:54:07Z"
     }
   ],
   "note": "Automated Full-Time Winner First feed. Supplemental markets remain unpublished.",
