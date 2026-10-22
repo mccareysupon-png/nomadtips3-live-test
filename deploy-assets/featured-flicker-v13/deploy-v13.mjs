@@ -275,6 +275,12 @@ try{
    +String.raw`const h=new Headers(original.headers);h.delete("content-length");h.delete("etag");return new Response(source,{status:original.status,statusText:original.statusText,headers:h});}`;
  transformed=transformed.replace(flagGuard,()=>flagSafe+flagGuard);
  console.log('B46_V13_FLAG_PATCH_IDEMPOTENT_ON_PREPATCHED_ASSET');
+ // League filter V9 JS may also arrive pre-transformed in candidate ASSETS.
+ const leagueGuard='if(source.split(before).length!==2)throw Error("LEAGUES_HANDLER_DRIFT");';
+ assert.equal(transformed.split(leagueGuard).length-1,1,'LEAGUE_V9_GUARD_DRIFT');
+ const leagueSafe='if(source.includes(after)&&!source.includes(before)){const h=new Headers(original.headers);h.delete("content-length");h.delete("etag");return new Response(source,{status:original.status,statusText:original.statusText,headers:h});}';
+ transformed=transformed.replace(leagueGuard,()=>leagueSafe+leagueGuard);
+ console.log('B46_V13_LEAGUE_FILTER_PATCH_IDEMPOTENT_ON_PREPATCHED_ASSET');
  assert.equal(transformed.split('export default ').length-1,1,'V13_MAIN_DEFAULT_EXPORT_DRIFT');
  // The ASSETS binding of freshly uploaded previews unexpectedly served already
  // transformed HTML. Return the pinned, byte-exact original assets/index.html
