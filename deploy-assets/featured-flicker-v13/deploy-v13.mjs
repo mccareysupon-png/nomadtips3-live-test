@@ -248,6 +248,9 @@ try{
  const originalMain=current.modules.find(x=>x.name===current.main_module);
  assert(originalMain,'MAIN_MODULE_NOT_FOUND');
  const source=Buffer.from(originalMain.content_base64,'base64').toString('utf8');
+ const indexed=current.modules.find(m=>m.name==='assets/index.html');
+ if(indexed){const raw=Buffer.from(indexed.content_base64,'base64').toString('utf8');
+ console.log('B46_V13_CURRENT_VERSION_STATIC_INDEX',JSON.stringify({size:raw.length,hasDark:raw.includes('b46-dark-match-deep-graphite-teal-20261020'),hasInteraction:raw.includes('b46-dark-match-interaction'),hasStatistics:raw.includes('b46-statistics-no-old-flash-20261022'),hash:hash(raw)}));}
  for(const needle of ['MATCH_PATCH_ANCHOR_DRIFT','__b46DarkMatchCard20261020','__b46StatsLeaguesNavV9']){
    const pos=source.indexOf(needle);
    console.log('B46_V13_WORKER_ANCHOR_CONTEXT',JSON.stringify({needle,pos,context:pos<0?'NOT_FOUND':source.slice(Math.max(0,pos-2500),pos+850)}));
@@ -299,8 +302,14 @@ export default {
    try{return await __b46UntouchedCloneWorker.fetch(req,env,ctx);}
    catch(error){
       const msg=String(error&&error.stack||error).slice(0,2100);
-      console.error('B46_V13_UNCHANGED_CLONE_EXCEPTION',msg);
-      return new Response('B46_V13_UNCHANGED_CLONE_EXCEPTION\\n'+msg,{status:599,headers:{'content-type':'text/plain'}});
+      let assetDiag={};
+      try{
+        const assetResponse=await env.ASSETS.fetch(req.clone());
+        const assetText=await assetResponse.text();
+        assetDiag={status:assetResponse.status,length:assetText.length,dark:assetText.includes('b46-dark-match-deep-graphite-teal-20261020'),stat:assetText.includes('b46-statistics-no-old-flash-20261022'),matchRows:assetText.includes('class="match-row'),hashHint:assetText.slice(0,180)};
+      }catch(assetError){assetDiag={error:String(assetError)}}
+      console.error('B46_V13_UNCHANGED_CLONE_EXCEPTION',msg,JSON.stringify(assetDiag));
+      return new Response('B46_V13_UNCHANGED_CLONE_EXCEPTION\\n'+msg+'\\nRAW_ASSET '+JSON.stringify(assetDiag),{status:599,headers:{'content-type':'text/plain'}});
    }
  }
 };`;
