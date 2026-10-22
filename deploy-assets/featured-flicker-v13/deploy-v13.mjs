@@ -271,8 +271,8 @@ try{
  // do not run the legacy flag transformer twice.
  const flagGuard='if(!portion.includes("const placeholder=globe();")||!portion.includes("return placeholder;"))throw Error("BALL46_FLAG_BEHAVIOR_CHANGED");';
  assert.equal(transformed.split(flagGuard).length-1,1,'FLAG_V8_BEHAVIOR_GUARD_DRIFT');
- const flagSafe='if(portion.includes("img.className=\\'league-flag\\';")&&!portion.includes("const placeholder=globe();")){'
-   +'const h=new Headers(original.headers);h.delete("content-length");h.delete("etag");return new Response(source,{status:original.status,statusText:original.statusText,headers:h});}';
+ const flagSafe=String.raw`if(portion.includes("img.className='league-flag';")&&!portion.includes("const placeholder=globe();")){`
+   +String.raw`const h=new Headers(original.headers);h.delete("content-length");h.delete("etag");return new Response(source,{status:original.status,statusText:original.statusText,headers:h});}`;
  transformed=transformed.replace(flagGuard,()=>flagSafe+flagGuard);
  console.log('B46_V13_FLAG_PATCH_IDEMPOTENT_ON_PREPATCHED_ASSET');
  assert.equal(transformed.split('export default ').length-1,1,'V13_MAIN_DEFAULT_EXPORT_DRIFT');
