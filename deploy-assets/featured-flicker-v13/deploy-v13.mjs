@@ -253,6 +253,14 @@ try{
  const idempotent='if(html.includes("b46-dark-match-deep-graphite-teal-20261020"))return response;if(!html.includes("</body>"))throw new Error("MATCH_PATCH_ANCHOR_DRIFT");';
  assert.equal(modified.split(guard).length-1,1,'DARK_MATCH_ANCHOR_NOT_UNIQUE');
  modified=modified.replace(guard,idempotent);
+ // Original response.text() consumes the stream. The idempotent early return
+ // must preserve a readable Response for the next existing Worker transform.
+ const darkFn='async function __b46DarkMatchCard20261020(response,path)';
+ const darkAt=modified.indexOf(darkFn);
+ assert(darkAt>=0,'DARK_CARD_FN_MISSING');
+ const darkSection=modified.slice(darkAt,darkAt+1200);
+ assert(darkSection.includes('const html=await response.text();'),'DARK_CARD_BODY_READ_CHANGED');
+ modified=modified.slice(0,darkAt)+darkSection.replace('const html=await response.text();','const html=await response.clone().text();')+modified.slice(darkAt+darkSection.length);
  console.log('B46_V13_CANDIDATE_DARK_CARD_DUPLICATE_STYLE_GUARD_ISOLATION');
  // CANDIDATE-ONLY exception diagnostic: return a non-200 status with the
  // stack; never promote this diagnostic build to Production.
