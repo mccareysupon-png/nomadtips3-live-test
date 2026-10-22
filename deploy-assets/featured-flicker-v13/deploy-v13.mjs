@@ -390,6 +390,21 @@ export default {
  assert.equal(hash(restored),originalHtml.hash,'CANDIDATE_CHANGED_UNRELATED_HTML_OR_SEO');
 }
  const candidateAsset=await get(preview,TARGET);
+
+ if(candidateAsset.hash!==report.newRendererHash){
+   const actual=candidateAsset.bytes.toString('utf8'),expected=expectedAsset;
+   let first=0;while(first<Math.min(actual.length,expected.length)&&actual[first]===expected[first])first++;
+   const markers=['B46_V13_FEATURED_STABLE_RENDER','b46StableFeaturedContent','b46StableFeaturedLeague','data-featured-league'];
+   console.error('B46_V13_RENDERER_MISMATCH_SOURCE_DIFF',JSON.stringify({
+     oldHash:originalAsset.hash,expectedHash:report.newRendererHash,actualHash:candidateAsset.hash,
+     length:{live:originalAsset.bytes.length,expected:expected.length,actual:actual.length},
+     firstDifference:first,
+     actualAround:actual.slice(Math.max(0,first-250),first+1250),
+     expectedAround:expected.slice(Math.max(0,first-250),first+1250),
+     markerCount:markers.map(m=>({name:m,live:originalAsset.bytes.toString('utf8').split(m).length-1,
+       expected:expected.split(m).length-1,actual:actual.split(m).length-1}))
+   }).slice(0,8000));
+ }
  assert.equal(candidateAsset.hash,report.newRendererHash,'V13_RENDERER_ASSET_CANDIDATE_MISMATCH');
  report.candidateQA=await browserQA(preview,'candidate',true);
  assert.deepEqual(await active(),report.activeBefore,'WORKER_CHANGED_DURING_CANDIDATE_QA');
