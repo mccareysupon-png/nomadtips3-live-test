@@ -290,6 +290,21 @@ export default {
  // Differential test: clone the exact active Worker source with NO V13 changes.
  modified=source;
  console.log('B46_V13_IDENTICAL_SOURCE_CLONE_CANDIDATE_TEST',JSON.stringify({sourceHash:hash(source)}));
+ assert.equal(source.split('export default ').length-1,1,'CLONE_EXPORT_DEFAULT_NOT_UNIQUE');
+ modified=source.replace('export default ','const __b46UntouchedCloneWorker = ');
+ modified+=String.raw`
+export default {
+ ...__b46UntouchedCloneWorker,
+ async fetch(req,env,ctx){
+   try{return await __b46UntouchedCloneWorker.fetch(req,env,ctx);}
+   catch(error){
+      const msg=String(error&&error.stack||error).slice(0,2100);
+      console.error('B46_V13_UNCHANGED_CLONE_EXCEPTION',msg);
+      return new Response('B46_V13_UNCHANGED_CLONE_EXCEPTION\\n'+msg,{status:599,headers:{'content-type':'text/plain'}});
+   }
+ }
+};`;
+ console.log('B46_V13_CLONE_CATCH_ONLY',JSON.stringify({originalHash:hash(source)}));
  const files=await fetchSet(PROD);
  const originalAsset=await get(PROD,TARGET);
  assert.equal(originalAsset.status,200,'ORIGINAL_RENDERER_NOT_FOUND');
@@ -317,6 +332,12 @@ export default {
  const uploaded=await api('/workers/scripts/'+SCRIPT+'/versions',form);
  report.candidate=uploaded.id;
  const candVersion=await version(uploaded.id);
+ const digestVersion=d=>({main_module:d.main_module,compatibility_date:d.compatibility_date,
+   compatibility_flags:d.compatibility_flags,assets:d.assets,
+   modules:d.modules?.map(x=>({name:x.name,type:x.content_type})),
+   bindings:d.bindings?.map(x=>({name:x.name,type:x.type})),
+   hasTriggers:!!d.triggers});
+ console.log('B46_V13_OLD_NEW_VERSION_METADATA_DIFF',JSON.stringify({old:digestVersion(current),clone:digestVersion(candVersion)}).slice(0,14000));
  for(const m of candVersion.modules){
   const old=current.modules.find(x=>x.name===m.name);
   assert(old,'UNKNOWN_WORKER_MODULE '+m.name);
