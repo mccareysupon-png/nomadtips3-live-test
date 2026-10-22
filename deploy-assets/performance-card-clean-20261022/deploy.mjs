@@ -103,8 +103,8 @@ function cardRuntime(html) {
 function patchHtml(html) {
   assert(html.includes('id="ball46-daily-performance"') || html.includes('B46_DAILY_PERFORMANCE_20261005'), 'DAILY_PERFORMANCE_COMPONENT_MISSING');
   assert(!html.includes(MARK), 'PRESENTATION_PATCH_ALREADY_PRESENT');
-  const anchor = '</head>';
-  assert.equal(html.split(anchor).length - 1, 1, 'HEAD_ANCHOR_CHANGED');
+  const anchor = '</body>';
+  assert.equal(html.split(anchor).length - 1, 1, 'BODY_ANCHOR_CHANGED');
   const tag = `\n  <!-- ${MARK} -->\n  <link rel="stylesheet" href="/${CSS_PATH}?v=1">\n`;
   return { html: html.replace(anchor, tag + anchor), tag };
 }
