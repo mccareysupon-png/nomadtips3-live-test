@@ -1,19 +1,19 @@
 {
   "record_version": "PREDICTION3_CURRENT_V1",
-  "updated_at": "2026-10-23T05:49:20.722Z",
+  "updated_at": "2026-10-23T05:51:37.196Z",
   "selection": {
-    "daily_strategy": "2026-10-23 SIRIUS · 5 owner-requested provisional editorial 1X2 candidates · odds and fixtures NOT VERIFIED · A–B–C unscored",
+    "daily_strategy": "2026-10-23 SIRIUS · 5 scheduled 1X2 editorial picks · kickoff UTC supplied for automatic TotalCorner fixture name-matching and FT settlement",
     "minimum_decimal_odds": 1.8,
     "maximum_official_picks": 5,
-    "test_exception_note": "Provisional editorial only; no verified fixture IDs, UTC kickoff, bookmaker odds or automatic settlement. Previous 2026-10-21 today moved to trackingBacklog without changing history."
+    "test_exception_note": "A–B–C unscored; TotalCorner fixture IDs null until provider auto-discovery; no claim of verified runtime settlement. Odds are references."
   },
   "today": [
     {
       "id": "p3-2026-10-23-ipswich-town-nottingham-forest",
       "date": "2026-10-23",
-      "league": "UNVERIFIED · Editorial",
-      "round": "23 October 2026 · fixture confirmation pending",
-      "kickoff": "Time not verified",
+      "league": "England · Premier League",
+      "round": "23 October 2026",
+      "kickoff": "02:00 Thailand Time · 24 Oct",
       "home": "Ipswich Town",
       "away": "Nottingham Forest",
       "homeShort": "IPS",
@@ -22,69 +22,80 @@
       "market": "1X2",
       "referenceOdds": 2.25,
       "bestOddsObserved": 2.25,
-      "oddsCapturedAt": "Prior assistant candidate list · bookmaker quote not independently verified",
+      "oddsCapturedAt": "24score 23 October 2026 reference market; not executable quote",
       "minimumOdds": 1.8,
-      "confidenceLabel": "SIRIUS 1 · Owner-requested editorial · Unscored",
+      "confidenceLabel": "SIRIUS 1 · Editorial · Unscored",
       "grade": "TEST",
-      "currentView": "EDITORIAL · FIXTURE/ODDS UNVERIFIED · NO AUTOMATIC SETTLEMENT UNTIL VERIFIED",
-      "finalCheck": "Verify date, competition, UTC kickoff, fixture ID, and bookmaker odds before betting or settlement",
-      "nomadView": "Owner-requested candidate; A–B–C not scored",
-      "risk": "High · unverified",
+      "currentView": "FIXTURE VERIFIED · TRACKER AUTO-MATCH PENDING · REFERENCE ODDS",
+      "finalCheck": "Tracker must match verified home/away and FT before settlement",
+      "nomadView": "Editorial · A–B–C not scored",
+      "risk": "High · A–B–C unscored",
       "tracking": {
         "provider": "TotalCorner V3",
         "fixtureId": null,
-        "kickoffUtc": null,
+        "kickoffUtc": "2026-10-23T19:00:00Z",
         "pickSide": "away",
-        "liveScore": false,
-        "automaticSettlement": false
+        "liveScore": true,
+        "automaticSettlement": true
       },
       "rawBestMarket": {
         "market": "1X2",
         "selection": "Nottingham Forest Win",
-        "oddsRange": "Unverified reference 2.25",
-        "status": "UNVERIFIED REFERENCE · NOT EXECUTABLE"
+        "oddsRange": "Reference 2.25",
+        "status": "REFERENCE ONLY · NOT EXECUTABLE"
       },
       "marketViews": [
         {
           "market": "1X2",
           "pick": "Nottingham Forest to Win",
           "odds": 2.25,
-          "status": "UNVERIFIED REFERENCE"
+          "status": "REFERENCE · NOT LIVE VERIFIED"
         }
       ],
       "why": [
-        "Owner requested publication of five provisional editorial picks.",
-        "Fixture date, competition, odds, and model A–B–C remain unverified."
+        "Fixture and kickoff cross-checked against 23 Oct 2026 published schedules.",
+        "Editorial 1X2 candidate; A–B–C not scored."
       ],
       "support": {
-        "form": "Not scored.",
-        "squad": "Not verified.",
-        "level": "Fixture not verified.",
-        "price": "Unverified reference 2.25."
+        "form": "Not independently scored.",
+        "squad": "Lineup not confirmed.",
+        "level": "England · Premier League",
+        "price": "Reference 2.25; quote timestamp unavailable."
       },
       "tactical": [
         "Full-time 1X2 only; draw counts as LOSS.",
         "Do not auto-settle without verified fixture identity and FT."
       ],
       "riskFactors": [
-        "Fixture and date unverified.",
-        "Reference odds are not live bookmaker quotes."
+        "Bookmaker reference odds not executable quote.",
+        "Provider fixture ID pending auto-discovery."
       ],
       "noBetIf": [
-        "Fixture identity cannot be confirmed.",
-        "Verified live price is below 1.80."
+        "Live 1X2 price below 1.80.",
+        "Fixture identity mismatch or FT unverified."
       ],
-      "finalCall": "SIRIUS 1 — NOTTINGHAM FOREST WIN · UNVERIFIED REF 2.25",
-      "finalNote": "Owner-requested provisional editorial listing, not verified betting advice; no wager executed.",
+      "finalCall": "SIRIUS 1 — NOTTINGHAM FOREST WIN · REF 2.25",
+      "finalNote": "Owner-requested 1X2 editorial listing; FT tracking enabled, no guarantee runtime worker will settle.",
       "disciplineNote": "No invented fixture ID, kickoff, source or settlement.",
-      "sources": []
+      "sources": [
+        {
+          "label": "LiveScore 23 Oct 2026 fixture schedule",
+          "type": "fixture",
+          "url": "https://www.livescore.mobi/football/2026-10-23/"
+        },
+        {
+          "label": "24score 23 Oct 2026 1X2 reference odds",
+          "type": "odds",
+          "url": "https://m.24score.com/football/?date=2026-10-23"
+        }
+      ]
     },
     {
       "id": "p3-2026-10-23-torino-monza",
       "date": "2026-10-23",
-      "league": "UNVERIFIED · Editorial",
-      "round": "23 October 2026 · fixture confirmation pending",
-      "kickoff": "Time not verified",
+      "league": "Italy · Serie A",
+      "round": "23 October 2026",
+      "kickoff": "01:45 Thailand Time · 24 Oct",
       "home": "Torino",
       "away": "Monza",
       "homeShort": "TOR",
@@ -93,69 +104,80 @@
       "market": "1X2",
       "referenceOdds": 2.14,
       "bestOddsObserved": 2.14,
-      "oddsCapturedAt": "Prior assistant candidate list · bookmaker quote not independently verified",
+      "oddsCapturedAt": "24score 23 October 2026 reference market; not executable quote",
       "minimumOdds": 1.8,
-      "confidenceLabel": "SIRIUS 2 · Owner-requested editorial · Unscored",
+      "confidenceLabel": "SIRIUS 2 · Editorial · Unscored",
       "grade": "TEST",
-      "currentView": "EDITORIAL · FIXTURE/ODDS UNVERIFIED · NO AUTOMATIC SETTLEMENT UNTIL VERIFIED",
-      "finalCheck": "Verify date, competition, UTC kickoff, fixture ID, and bookmaker odds before betting or settlement",
-      "nomadView": "Owner-requested candidate; A–B–C not scored",
-      "risk": "High · unverified",
+      "currentView": "FIXTURE VERIFIED · TRACKER AUTO-MATCH PENDING · REFERENCE ODDS",
+      "finalCheck": "Tracker must match verified home/away and FT before settlement",
+      "nomadView": "Editorial · A–B–C not scored",
+      "risk": "High · A–B–C unscored",
       "tracking": {
         "provider": "TotalCorner V3",
         "fixtureId": null,
-        "kickoffUtc": null,
+        "kickoffUtc": "2026-10-23T18:45:00Z",
         "pickSide": "home",
-        "liveScore": false,
-        "automaticSettlement": false
+        "liveScore": true,
+        "automaticSettlement": true
       },
       "rawBestMarket": {
         "market": "1X2",
         "selection": "Torino Win",
-        "oddsRange": "Unverified reference 2.14",
-        "status": "UNVERIFIED REFERENCE · NOT EXECUTABLE"
+        "oddsRange": "Reference 2.14",
+        "status": "REFERENCE ONLY · NOT EXECUTABLE"
       },
       "marketViews": [
         {
           "market": "1X2",
           "pick": "Torino to Win",
           "odds": 2.14,
-          "status": "UNVERIFIED REFERENCE"
+          "status": "REFERENCE · NOT LIVE VERIFIED"
         }
       ],
       "why": [
-        "Owner requested publication of five provisional editorial picks.",
-        "Fixture date, competition, odds, and model A–B–C remain unverified."
+        "Fixture and kickoff cross-checked against 23 Oct 2026 published schedules.",
+        "Editorial 1X2 candidate; A–B–C not scored."
       ],
       "support": {
-        "form": "Not scored.",
-        "squad": "Not verified.",
-        "level": "Fixture not verified.",
-        "price": "Unverified reference 2.14."
+        "form": "Not independently scored.",
+        "squad": "Lineup not confirmed.",
+        "level": "Italy · Serie A",
+        "price": "Reference 2.14; quote timestamp unavailable."
       },
       "tactical": [
         "Full-time 1X2 only; draw counts as LOSS.",
         "Do not auto-settle without verified fixture identity and FT."
       ],
       "riskFactors": [
-        "Fixture and date unverified.",
-        "Reference odds are not live bookmaker quotes."
+        "Bookmaker reference odds not executable quote.",
+        "Provider fixture ID pending auto-discovery."
       ],
       "noBetIf": [
-        "Fixture identity cannot be confirmed.",
-        "Verified live price is below 1.80."
+        "Live 1X2 price below 1.80.",
+        "Fixture identity mismatch or FT unverified."
       ],
-      "finalCall": "SIRIUS 2 — TORINO WIN · UNVERIFIED REF 2.14",
-      "finalNote": "Owner-requested provisional editorial listing, not verified betting advice; no wager executed.",
+      "finalCall": "SIRIUS 2 — TORINO WIN · REF 2.14",
+      "finalNote": "Owner-requested 1X2 editorial listing; FT tracking enabled, no guarantee runtime worker will settle.",
       "disciplineNote": "No invented fixture ID, kickoff, source or settlement.",
-      "sources": []
+      "sources": [
+        {
+          "label": "LiveScore 23 Oct 2026 fixture schedule",
+          "type": "fixture",
+          "url": "https://www.livescore.mobi/football/2026-10-23/"
+        },
+        {
+          "label": "24score 23 Oct 2026 1X2 reference odds",
+          "type": "odds",
+          "url": "https://m.24score.com/football/?date=2026-10-23"
+        }
+      ]
     },
     {
       "id": "p3-2026-10-23-brest-nice",
       "date": "2026-10-23",
-      "league": "UNVERIFIED · Editorial",
-      "round": "23 October 2026 · fixture confirmation pending",
-      "kickoff": "Time not verified",
+      "league": "France · Ligue 1",
+      "round": "23 October 2026",
+      "kickoff": "01:45 Thailand Time · 24 Oct",
       "home": "Brest",
       "away": "Nice",
       "homeShort": "BRE",
@@ -164,140 +186,162 @@
       "market": "1X2",
       "referenceOdds": 2.25,
       "bestOddsObserved": 2.25,
-      "oddsCapturedAt": "Prior assistant candidate list · bookmaker quote not independently verified",
+      "oddsCapturedAt": "24score 23 October 2026 reference market; not executable quote",
       "minimumOdds": 1.8,
-      "confidenceLabel": "SIRIUS 3 · Owner-requested editorial · Unscored",
+      "confidenceLabel": "SIRIUS 3 · Editorial · Unscored",
       "grade": "TEST",
-      "currentView": "EDITORIAL · FIXTURE/ODDS UNVERIFIED · NO AUTOMATIC SETTLEMENT UNTIL VERIFIED",
-      "finalCheck": "Verify date, competition, UTC kickoff, fixture ID, and bookmaker odds before betting or settlement",
-      "nomadView": "Owner-requested candidate; A–B–C not scored",
-      "risk": "High · unverified",
+      "currentView": "FIXTURE VERIFIED · TRACKER AUTO-MATCH PENDING · REFERENCE ODDS",
+      "finalCheck": "Tracker must match verified home/away and FT before settlement",
+      "nomadView": "Editorial · A–B–C not scored",
+      "risk": "High · A–B–C unscored",
       "tracking": {
         "provider": "TotalCorner V3",
         "fixtureId": null,
-        "kickoffUtc": null,
+        "kickoffUtc": "2026-10-23T18:45:00Z",
         "pickSide": "home",
-        "liveScore": false,
-        "automaticSettlement": false
+        "liveScore": true,
+        "automaticSettlement": true
       },
       "rawBestMarket": {
         "market": "1X2",
         "selection": "Brest Win",
-        "oddsRange": "Unverified reference 2.25",
-        "status": "UNVERIFIED REFERENCE · NOT EXECUTABLE"
+        "oddsRange": "Reference 2.25",
+        "status": "REFERENCE ONLY · NOT EXECUTABLE"
       },
       "marketViews": [
         {
           "market": "1X2",
           "pick": "Brest to Win",
           "odds": 2.25,
-          "status": "UNVERIFIED REFERENCE"
+          "status": "REFERENCE · NOT LIVE VERIFIED"
         }
       ],
       "why": [
-        "Owner requested publication of five provisional editorial picks.",
-        "Fixture date, competition, odds, and model A–B–C remain unverified."
+        "Fixture and kickoff cross-checked against 23 Oct 2026 published schedules.",
+        "Editorial 1X2 candidate; A–B–C not scored."
       ],
       "support": {
-        "form": "Not scored.",
-        "squad": "Not verified.",
-        "level": "Fixture not verified.",
-        "price": "Unverified reference 2.25."
+        "form": "Not independently scored.",
+        "squad": "Lineup not confirmed.",
+        "level": "France · Ligue 1",
+        "price": "Reference 2.25; quote timestamp unavailable."
       },
       "tactical": [
         "Full-time 1X2 only; draw counts as LOSS.",
         "Do not auto-settle without verified fixture identity and FT."
       ],
       "riskFactors": [
-        "Fixture and date unverified.",
-        "Reference odds are not live bookmaker quotes."
+        "Bookmaker reference odds not executable quote.",
+        "Provider fixture ID pending auto-discovery."
       ],
       "noBetIf": [
-        "Fixture identity cannot be confirmed.",
-        "Verified live price is below 1.80."
+        "Live 1X2 price below 1.80.",
+        "Fixture identity mismatch or FT unverified."
       ],
-      "finalCall": "SIRIUS 3 — BREST WIN · UNVERIFIED REF 2.25",
-      "finalNote": "Owner-requested provisional editorial listing, not verified betting advice; no wager executed.",
+      "finalCall": "SIRIUS 3 — BREST WIN · REF 2.25",
+      "finalNote": "Owner-requested 1X2 editorial listing; FT tracking enabled, no guarantee runtime worker will settle.",
       "disciplineNote": "No invented fixture ID, kickoff, source or settlement.",
-      "sources": []
+      "sources": [
+        {
+          "label": "LiveScore 23 Oct 2026 fixture schedule",
+          "type": "fixture",
+          "url": "https://www.livescore.mobi/football/2026-10-23/"
+        },
+        {
+          "label": "24score 23 Oct 2026 1X2 reference odds",
+          "type": "odds",
+          "url": "https://m.24score.com/football/?date=2026-10-23"
+        }
+      ]
     },
     {
-      "id": "p3-2026-10-23-akhmat-grozny-orenburg",
+      "id": "p3-2026-10-23-deportivo-alaves-malaga",
       "date": "2026-10-23",
-      "league": "UNVERIFIED · Editorial",
-      "round": "23 October 2026 · fixture confirmation pending",
-      "kickoff": "Time not verified",
-      "home": "Akhmat Grozny",
-      "away": "Orenburg",
-      "homeShort": "AKH",
-      "awayShort": "ORE",
-      "pick": "Akhmat Grozny to Win",
+      "league": "Spain · La Liga",
+      "round": "23 October 2026",
+      "kickoff": "02:00 Thailand Time · 24 Oct",
+      "home": "Deportivo Alaves",
+      "away": "Malaga",
+      "homeShort": "DEP",
+      "awayShort": "MAL",
+      "pick": "Malaga to Win",
       "market": "1X2",
-      "referenceOdds": 2,
-      "bestOddsObserved": 2,
-      "oddsCapturedAt": "Prior assistant candidate list · bookmaker quote not independently verified",
+      "referenceOdds": 4.8,
+      "bestOddsObserved": 4.8,
+      "oddsCapturedAt": "24score 23 October 2026 reference market; not executable quote",
       "minimumOdds": 1.8,
-      "confidenceLabel": "SIRIUS 4 · Owner-requested editorial · Unscored",
+      "confidenceLabel": "SIRIUS 4 · Editorial · Unscored",
       "grade": "TEST",
-      "currentView": "EDITORIAL · FIXTURE/ODDS UNVERIFIED · NO AUTOMATIC SETTLEMENT UNTIL VERIFIED",
-      "finalCheck": "Verify date, competition, UTC kickoff, fixture ID, and bookmaker odds before betting or settlement",
-      "nomadView": "Owner-requested candidate; A–B–C not scored",
-      "risk": "High · unverified",
+      "currentView": "FIXTURE VERIFIED · TRACKER AUTO-MATCH PENDING · REFERENCE ODDS",
+      "finalCheck": "Tracker must match verified home/away and FT before settlement",
+      "nomadView": "Editorial · A–B–C not scored",
+      "risk": "High · A–B–C unscored",
       "tracking": {
         "provider": "TotalCorner V3",
         "fixtureId": null,
-        "kickoffUtc": null,
-        "pickSide": "home",
-        "liveScore": false,
-        "automaticSettlement": false
+        "kickoffUtc": "2026-10-23T19:00:00Z",
+        "pickSide": "away",
+        "liveScore": true,
+        "automaticSettlement": true
       },
       "rawBestMarket": {
         "market": "1X2",
-        "selection": "Akhmat Grozny Win",
-        "oddsRange": "Unverified reference 2.00",
-        "status": "UNVERIFIED REFERENCE · NOT EXECUTABLE"
+        "selection": "Malaga Win",
+        "oddsRange": "Reference 4.80",
+        "status": "REFERENCE ONLY · NOT EXECUTABLE"
       },
       "marketViews": [
         {
           "market": "1X2",
-          "pick": "Akhmat Grozny to Win",
-          "odds": 2,
-          "status": "UNVERIFIED REFERENCE"
+          "pick": "Malaga to Win",
+          "odds": 4.8,
+          "status": "REFERENCE · NOT LIVE VERIFIED"
         }
       ],
       "why": [
-        "Owner requested publication of five provisional editorial picks.",
-        "Fixture date, competition, odds, and model A–B–C remain unverified."
+        "Fixture and kickoff cross-checked against 23 Oct 2026 published schedules.",
+        "Editorial 1X2 candidate; A–B–C not scored."
       ],
       "support": {
-        "form": "Not scored.",
-        "squad": "Not verified.",
-        "level": "Fixture not verified.",
-        "price": "Unverified reference 2.00."
+        "form": "Not independently scored.",
+        "squad": "Lineup not confirmed.",
+        "level": "Spain · La Liga",
+        "price": "Reference 4.80; quote timestamp unavailable."
       },
       "tactical": [
         "Full-time 1X2 only; draw counts as LOSS.",
         "Do not auto-settle without verified fixture identity and FT."
       ],
       "riskFactors": [
-        "Fixture and date unverified.",
-        "Reference odds are not live bookmaker quotes."
+        "Bookmaker reference odds not executable quote.",
+        "Provider fixture ID pending auto-discovery."
       ],
       "noBetIf": [
-        "Fixture identity cannot be confirmed.",
-        "Verified live price is below 1.80."
+        "Live 1X2 price below 1.80.",
+        "Fixture identity mismatch or FT unverified."
       ],
-      "finalCall": "SIRIUS 4 — AKHMAT GROZNY WIN · UNVERIFIED REF 2.00",
-      "finalNote": "Owner-requested provisional editorial listing, not verified betting advice; no wager executed.",
+      "finalCall": "SIRIUS 4 — MALAGA WIN · REF 4.80",
+      "finalNote": "Owner-requested 1X2 editorial listing; FT tracking enabled, no guarantee runtime worker will settle.",
       "disciplineNote": "No invented fixture ID, kickoff, source or settlement.",
-      "sources": []
+      "sources": [
+        {
+          "label": "LiveScore 23 Oct 2026 fixture schedule",
+          "type": "fixture",
+          "url": "https://www.livescore.mobi/football/2026-10-23/"
+        },
+        {
+          "label": "24score 23 Oct 2026 1X2 reference odds",
+          "type": "odds",
+          "url": "https://m.24score.com/football/?date=2026-10-23"
+        }
+      ]
     },
     {
       "id": "p3-2026-10-23-bochum-wolfsburg",
       "date": "2026-10-23",
-      "league": "UNVERIFIED · Editorial",
-      "round": "23 October 2026 · fixture confirmation pending",
-      "kickoff": "Time not verified",
+      "league": "Germany · 2. Bundesliga",
+      "round": "23 October 2026",
+      "kickoff": "23:30 Thailand Time · 24 Oct",
       "home": "Bochum",
       "away": "Wolfsburg",
       "homeShort": "BOC",
@@ -306,62 +350,73 @@
       "market": "1X2",
       "referenceOdds": 2.07,
       "bestOddsObserved": 2.07,
-      "oddsCapturedAt": "Prior assistant candidate list · bookmaker quote not independently verified",
+      "oddsCapturedAt": "24score 23 October 2026 reference market; not executable quote",
       "minimumOdds": 1.8,
-      "confidenceLabel": "SIRIUS 5 · Owner-requested editorial · Unscored",
+      "confidenceLabel": "SIRIUS 5 · Editorial · Unscored",
       "grade": "TEST",
-      "currentView": "EDITORIAL · FIXTURE/ODDS UNVERIFIED · NO AUTOMATIC SETTLEMENT UNTIL VERIFIED",
-      "finalCheck": "Verify date, competition, UTC kickoff, fixture ID, and bookmaker odds before betting or settlement",
-      "nomadView": "Owner-requested candidate; A–B–C not scored",
-      "risk": "High · unverified",
+      "currentView": "FIXTURE VERIFIED · TRACKER AUTO-MATCH PENDING · REFERENCE ODDS",
+      "finalCheck": "Tracker must match verified home/away and FT before settlement",
+      "nomadView": "Editorial · A–B–C not scored",
+      "risk": "High · A–B–C unscored",
       "tracking": {
         "provider": "TotalCorner V3",
         "fixtureId": null,
-        "kickoffUtc": null,
+        "kickoffUtc": "2026-10-23T16:30:00Z",
         "pickSide": "away",
-        "liveScore": false,
-        "automaticSettlement": false
+        "liveScore": true,
+        "automaticSettlement": true
       },
       "rawBestMarket": {
         "market": "1X2",
         "selection": "Wolfsburg Win",
-        "oddsRange": "Unverified reference 2.07",
-        "status": "UNVERIFIED REFERENCE · NOT EXECUTABLE"
+        "oddsRange": "Reference 2.07",
+        "status": "REFERENCE ONLY · NOT EXECUTABLE"
       },
       "marketViews": [
         {
           "market": "1X2",
           "pick": "Wolfsburg to Win",
           "odds": 2.07,
-          "status": "UNVERIFIED REFERENCE"
+          "status": "REFERENCE · NOT LIVE VERIFIED"
         }
       ],
       "why": [
-        "Owner requested publication of five provisional editorial picks.",
-        "Fixture date, competition, odds, and model A–B–C remain unverified."
+        "Fixture and kickoff cross-checked against 23 Oct 2026 published schedules.",
+        "Editorial 1X2 candidate; A–B–C not scored."
       ],
       "support": {
-        "form": "Not scored.",
-        "squad": "Not verified.",
-        "level": "Fixture not verified.",
-        "price": "Unverified reference 2.07."
+        "form": "Not independently scored.",
+        "squad": "Lineup not confirmed.",
+        "level": "Germany · 2. Bundesliga",
+        "price": "Reference 2.07; quote timestamp unavailable."
       },
       "tactical": [
         "Full-time 1X2 only; draw counts as LOSS.",
         "Do not auto-settle without verified fixture identity and FT."
       ],
       "riskFactors": [
-        "Fixture and date unverified.",
-        "Reference odds are not live bookmaker quotes."
+        "Bookmaker reference odds not executable quote.",
+        "Provider fixture ID pending auto-discovery."
       ],
       "noBetIf": [
-        "Fixture identity cannot be confirmed.",
-        "Verified live price is below 1.80."
+        "Live 1X2 price below 1.80.",
+        "Fixture identity mismatch or FT unverified."
       ],
-      "finalCall": "SIRIUS 5 — WOLFSBURG WIN · UNVERIFIED REF 2.07",
-      "finalNote": "Owner-requested provisional editorial listing, not verified betting advice; no wager executed.",
+      "finalCall": "SIRIUS 5 — WOLFSBURG WIN · REF 2.07",
+      "finalNote": "Owner-requested 1X2 editorial listing; FT tracking enabled, no guarantee runtime worker will settle.",
       "disciplineNote": "No invented fixture ID, kickoff, source or settlement.",
-      "sources": []
+      "sources": [
+        {
+          "label": "LiveScore 23 Oct 2026 fixture schedule",
+          "type": "fixture",
+          "url": "https://www.livescore.mobi/football/2026-10-23/"
+        },
+        {
+          "label": "24score 23 Oct 2026 1X2 reference odds",
+          "type": "odds",
+          "url": "https://m.24score.com/football/?date=2026-10-23"
+        }
+      ]
     }
   ],
   "results": [
