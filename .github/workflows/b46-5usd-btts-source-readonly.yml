@@ -22,7 +22,8 @@ jobs:
       - name: Inspect current Hub / Engine source, routes, and cached health. No upstream 5USD requests
         run: |
           node --check deploy-assets/5usd-btts-source-20261023/inspect.mjs
-          node deploy-assets/5usd-btts-source-20261023/inspect.mjs
+          node --check deploy-assets/5usd-btts-source-20261023/routes.mjs
+          node deploy-assets/5usd-btts-source-20261023/routes.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
