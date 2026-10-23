@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import vm from 'node:vm';
 import {writeFile,mkdir} from 'node:fs/promises';
 import {BASE_ID,BASE_MAIN_SHA,BASE_HTML_SHA,BASE_ICON_SHA,patchHtml,patchMain,sha} from './patch.mjs';
 const acc=process.env.CLOUDFLARE_ACCOUNT_ID,tok=process.env.CLOUDFLARE_API_TOKEN,worker='ball46-production';
@@ -32,6 +33,12 @@ try{
  proof.files=await assets(origin);assert.equal(proof.files['/favicon-192.png'].sha,BASE_ICON_SHA,'FAVICON_CHANGED');
  proof.healthBefore=await health(origin);
  const newSource=patchMain(source);
+ const helperStart=newSource.lastIndexOf('const __b46PatchRing20261023 =');
+ const helperEnd=newSource.lastIndexOf('export default {...__b46BeforeRingFix20261023');
+ assert(helperStart>0&&helperEnd>helperStart,'HELPER_NOT_FOUND');
+ const inlined=newSource.slice(helperStart,helperEnd);
+ const livePatcher=vm.runInNewContext(inlined+'\n__b46PatchRing20261023',{}, {timeout:2000});
+ assert.equal(livePatcher(beforeText),afterText,'INLINED_RUNTIME_FAILED');
  await writeFile('audit/candidate-runtime.mjs',newSource);
  const metadata={main_module:base.main_module,compatibility_date:base.compatibility_date,compatibility_flags:base.compatibility_flags||[],bindings:base.bindings,keep_assets:true,assets:{config:base.assets.config},annotations:{'workers/tag':'BALL46_LOADING_RING_20261023','workers/message':'Fix loading ring CSS reduced motion: original 2.8s, reduced 6s; no other UI or API edits'}};
  for(const k of ['usage_model','logpush','limits','observability','placement'])if(settings[k]!=null)metadata[k]=settings[k];
