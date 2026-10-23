@@ -28,7 +28,8 @@ jobs:
           node --check deploy-assets/5usd-btts-source-20261023/cache-paths.mjs
           node --check deploy-assets/5usd-btts-source-20261023/cache-read.mjs
           node --check deploy-assets/5usd-btts-source-20261023/cache-proof.mjs
-          node deploy-assets/5usd-btts-source-20261023/cache-proof.mjs
+          node --check deploy-assets/5usd-btts-source-20261023/price-split.mjs
+          node deploy-assets/5usd-btts-source-20261023/price-split.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
