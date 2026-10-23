@@ -26,6 +26,7 @@ jobs:
           node --check deploy-assets/btts-form5-20261023/engine-context.mjs
           node --test deploy-assets/btts-form5-20261023/*.test.mjs
           node --check deploy-assets/btts-form5-20261023/form5-runtime.mjs
+          node deploy-assets/btts-form5-20261023/preview-verify.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
