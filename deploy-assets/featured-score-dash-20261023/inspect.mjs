@@ -14,3 +14,8 @@ const output={at:new Date().toISOString(),version:d.versions[0].version_id,deplo
 await mkdir('audit',{recursive:true});await writeFile('audit/score-scan.json',JSON.stringify(output,null,2));
 const brief={at:output.at,version:output.version,deployment:output.deployment,mainModuleSha:output.mainModuleSha,htmlSha:output.htmlSha,htmlStatus:r.status,scoreMarkup:output.scoreMarkup.slice(0,7),styles:scoreBlocks.map(x=>({index:x.index,id:x.id,length:x.length,offset:x.offset,excerpts:x.excerpts.slice(-15)})),jsRelevant:output.jsRelevant.map(x=>({path:x.path,size:x.size,hits:x.hits.slice(0,6)}))};
 console.log('BALL46_SCORE_AUDIT='+JSON.stringify(brief).slice(0,39000));
+const link='dashboard-v2-stage3-featured-facts-20261013a.js?v=live-header-search-20261018-b46-atomic-v11-20261023-no-empty-ghost';
+const sr=await fetch(new URL(link,'https://ball46.com/'),{signal:AbortSignal.timeout(25000)});const js=await sr.text();
+const special=(token)=>{let i=-1,o=[];while((i=js.indexOf(token,i+1))>=0&&o.length<12)o.push({i,excerpt:js.slice(Math.max(0,i-200),i+800)});return o};
+const scoreLabels=special('function scoreLabel'),scoreRefs=special('scoreLabel(');
+console.log('B46_SCORE_FOCUS='+JSON.stringify({jsSha:sha(Buffer.from(js)),scoreLabels,scoreRefs}).slice(0,22000));
