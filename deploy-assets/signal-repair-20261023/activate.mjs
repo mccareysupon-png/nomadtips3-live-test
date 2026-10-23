@@ -8,6 +8,7 @@ assert(c.ok&&!c.trafficChanged&&c.base===BASE&&qa.ok&&qa.tests.length===2&&qa.te
 const A=process.env.CLOUDFLARE_ACCOUNT_ID,T=process.env.CLOUDFLARE_API_TOKEN;assert.equal(A,'62cb0db544160e6591342abd6b4f35cc');assert(T);
 const root='https://api.cloudflare.com/client/v4/accounts/'+A,hosts=['https://ball46.com','https://www.ball46.com'];
 const out={at:new Date().toISOString(),ok:false,candidate:c.candidate,base:BASE,checks:[],liveQA:[]};
+const canonical=x=>JSON.stringify(x,(k,v)=>v&&typeof v==='object'&&!Array.isArray(v)?Object.fromEntries(Object.entries(v).sort(([a],[b])=>a.localeCompare(b))):v);
 async function api(p,body){if(body!==undefined)assert.equal(p,'/workers/scripts/'+WORKER+'/deployments','ONLY_WORKER_DEPLOYMENTS_WRITE');
  const r=await fetch(root+p,{method:body?'POST':'GET',headers:{authorization:'Bearer '+T,...(body?{'content-type':'application/json'}:{})},body:body?JSON.stringify(body):undefined,signal:AbortSignal.timeout(55000)}),j=await r.json();
  if(!r.ok||!j.success)throw Error('CF_'+r.status+JSON.stringify(j.errors).slice(0,250));return j.result;}
@@ -57,11 +58,11 @@ try{
  assert.equal((await active()).id,BASE,'SOURCE_PRODUCTION_DRIFT');await expectAssets('before');
  const [jh,hh]=await Promise.all([get(c.preview,JS_PATH),get(c.preview,HTML_PATH)]);
  assert.equal(jh.sha,c.newJsSha);assert.equal(hh.sha,c.newHtmlSha);
- assert.equal(JSON.stringify(await api('/workers/scripts/'+WORKER+'/settings')),JSON.stringify(c.originalVersionSettings),'SETTINGS_CHANGED');
+ assert.equal(canonical(await api('/workers/scripts/'+WORKER+'/settings')),canonical(c.originalVersionSettings),'SETTINGS_CHANGED');
  attempted=true;out.deployment=await traffic(c.candidate,BASE,'Repair standalone signal.html LIVE feed only; preserve current Engine343 and statistics');
  await converge();await expectAssets('after');await verifyBrowserLive();
  assert.equal((await active()).id,c.candidate);
- assert.equal(JSON.stringify(await api('/workers/scripts/'+WORKER+'/settings')),JSON.stringify(c.originalVersionSettings),'SETTINGS_CHANGED_AFTER_DEPLOY');
+ assert.equal(canonical(await api('/workers/scripts/'+WORKER+'/settings')),canonical(c.originalVersionSettings),'SETTINGS_CHANGED_AFTER_DEPLOY');
  out.after=await active();out.ok=true;
  console.log('B46_SIGNAL_PRODUCTION_REPAIRED='+JSON.stringify({ok:true,worker:WORKER,active:out.after,liveQA:out.liveQA,retainedAssets:Object.keys(c.assets).length,checks:out.checks.length}));
 }catch(e){
