@@ -21,7 +21,8 @@ jobs:
       - name: Inspect Production version and exact signal renderer (READ ONLY)
         run: |
           node --check deploy-assets/active-signals-atomic-20261023/inspect.mjs
-          node deploy-assets/active-signals-atomic-20261023/inspect.mjs
+          node --check deploy-assets/active-signals-atomic-20261023/verify.mjs
+          node deploy-assets/active-signals-atomic-20261023/verify.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
