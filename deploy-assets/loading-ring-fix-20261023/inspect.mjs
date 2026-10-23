@@ -15,5 +15,7 @@ const html=await (await fetch('https://ball46.com/?loadingRingAudit='+Date.now()
 report.styles=[...html.matchAll(/<link\b[^>]*rel=["']stylesheet["'][^>]*>/gi)].map(x=>x[0]).slice(0,80);
 report.scripts=[...html.matchAll(/<script\b[^>]*src=["'][^"']+["'][^>]*>/gi)].map(x=>x[0]).slice(0,100);
 const body=html.toLowerCase().indexOf('loading match data'); if(body>=0)report.loadingContext=html.slice(Math.max(0,body-5500),Math.min(html.length,body+4500));
+report.orbitCSS=html.slice(Math.max(0,html.indexOf('#b46-data-orbit-loading{')-200),html.indexOf('</style>',html.indexOf('b46-orbit-rotate-20261019'))+8).slice(0,7500);
+report.orbitJS=html.slice(html.indexOf('<script id="b46-global-data-orbit-runtime-20261019">'),html.indexOf('</script>',html.indexOf('<script id="b46-global-data-orbit-runtime-20261019">'))+9).slice(0,12000);
 await mkdir('audit',{recursive:true});await writeFile('audit/loading-readonly.json',JSON.stringify(report,null,2));
 console.log('BALL46_LOADING_AUDIT='+JSON.stringify(report).slice(0,50000));
