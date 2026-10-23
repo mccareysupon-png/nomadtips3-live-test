@@ -1,0 +1,10 @@
+import {mkdir,writeFile} from 'node:fs/promises';
+const response=await fetch('https://ball46.com/?activeSignalSourceDepth='+Date.now(),{headers:{'cache-control':'no-cache'},signal:AbortSignal.timeout(40000)});const html=await response.text();
+const styleBlocks=[...html.matchAll(/<style\b([^>]*)>([\s\S]*?)<\/style>/gi)].map((m,i)=>({index:i,attrs:m[1],body:m[2],start:m.index}));
+const scriptBlocks=[...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)].map((m,i)=>({index:i,attrs:m[1],body:m[2],start:m.index}));
+const patterns=['feature-signal','data-featured-signal','data-v11-count','data-b46-stable-signal','ACTIVE SIGNALS','featured-v11','b46-featured'];
+function matches(block,pats){const hits=[];for(const key of pats){let i=-1,c=0;while((i=block.body.toLowerCase().indexOf(key.toLowerCase(),i+1))>=0){c++;if(hits.length<8)hits.push({key,at:i,excerpt:block.body.slice(Math.max(0,i-260),i+440)});}}return{count:hits.length,hits};}
+const styles=styleBlocks.filter(b=>patterns.some(k=>b.body.toLowerCase().includes(k.toLowerCase()))).map(b=>({...b,body:undefined,len:b.body.length,...matches(b,['feature-signal::before','data-v11-count','data-b46-stable-signal','feature-signal','ACTIVE SIGNALS'])}));
+const scripts=scriptBlocks.filter(b=>patterns.some(k=>b.body.toLowerCase().includes(k.toLowerCase()))).map(b=>({...b,body:undefined,len:b.body.length,...matches(b,['feature-signal','data-featured-signal','data-v11-count','data-b46-stable-signal'])}));
+const report={at:new Date().toISOString(),http:response.status,styleCount:styleBlocks.length,scriptCount:scriptBlocks.length,styles,scripts};await mkdir('audit',{recursive:true});await writeFile('audit/signals-styles-scripts.json',JSON.stringify(report,null,2));
+console.log('SIGNALS_STYLE_SUMMARY='+JSON.stringify({styles:styles.map(x=>({index:x.index,attrs:x.attrs,len:x.len,start:x.start,count:x.count,example:x.hits.slice(0,2)})),scripts:scripts.map(x=>({index:x.index,attrs:x.attrs,len:x.len,start:x.start,count:x.count,example:x.hits.slice(0,2)}))}).slice(0,20000));
