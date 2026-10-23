@@ -1,0 +1,63 @@
+{
+  "status": "SUCCESS",
+  "verifiedAt": "2026-10-23T03:50:12.039Z",
+  "repository": "mccareysupon-png/nomadtips3-live-test",
+  "branch": "codex/ball46-league-market-signal-20261023",
+  "baselineBranch": "release/ball46-v13-featured-flag-stable-20261023",
+  "baselineCommit": "9887f38b48ac12fd512030afea8fabfc751e21d1",
+  "sourceCommit": "6a77e7adcf32ea977e2366bcf80d7b5d17d728e4",
+  "activationCommit": "4e6e307e524361bd49ee252a2b1db135e39ac2af",
+  "candidateRun": 39895756270,
+  "activationRun": 39896238923,
+  "worker": "ball46-production",
+  "activeVersion": "3da48773-796b-4076-b6f1-3cd70fd6eea5",
+  "deployment": "45bae34e-7eed-48e8-b777-5b9355927e2d",
+  "trafficPercentage": 100,
+  "productionFilesModified": [
+    "index.js: __b46LeagueMarketHtml20261023 + fetch wrapper; appended Desktop-only presentation CSS/JS"
+  ],
+  "publicHtmlChanged": [
+    "/",
+    "/index.html"
+  ],
+  "other10WorkerModulesUnchanged": true,
+  "assetsRetained": true,
+  "configurationUnchanged": true,
+  "testsPassed": 10,
+  "uiCases": 10,
+  "desktopWidths": [
+    1920,
+    1440,
+    1366,
+    1024
+  ],
+  "desktopThemes": [
+    "light",
+    "dark"
+  ],
+  "mobileWidths": [
+    390,
+    360
+  ],
+  "mobileThemeTested": "dark",
+  "mobileVisibleStylesGeometryUnchanged": true,
+  "matchCardHeightBefore": 69.046875,
+  "matchCardHeightAfter": 69.046875,
+  "performanceHeightUnchanged": 99,
+  "http200Paths": 85,
+  "knownPreExisting404": [
+    "/color-semantics-stat-entry-20261011.js"
+  ],
+  "settledPreserved": 9219,
+  "liveSignalsDuringQA": 0,
+  "signalBadgeVerification": "Actual per-card count metadata in source; isolated synthetic UI fixture tested 1/2, rerender, both themes and responsive cleanup. No actual live badge claimed during zero-Signal window.",
+  "rollback": {
+    "baselineVersion": "2960e38d-7415-4355-9f62-a1a24487d89c",
+    "baselineDeployment": "864703b0-b1b2-47ac-b589-32e6961cf269",
+    "candidate": "3da48773-796b-4076-b6f1-3cd70fd6eea5",
+    "phase": "restore",
+    "workflow": ".github/workflows/ball46-league-market-signal-20261023.yml",
+    "instructions": "See ROLLBACK.md. Require candidate still Active, unchanged configuration and fresh authenticated routes proof. Stop if another chat deployed a newer version.",
+    "executed": false
+  }
+}
