@@ -195,10 +195,12 @@ function dailySummary(rows) {
     let pnl = 0;
     for (const row of scoped) pnl += Number(row.pnl||0);
     const decided = counts.win + counts.loss + counts.halfWin + counts.halfLoss;
-    const winPoints = counts.win + counts.halfWin * 0.5;
+    // Each resolved pick counts once: HALF_WIN is a win and HALF_LOSS is a loss.
+    // PUSH/VOID/PENDING/LIVE/UNRESOLVED are not decided picks.
+    const winningBets = counts.win + counts.halfWin;
     out[market] = {
       ...counts,
-      winRate: decided ? Number((winPoints / decided * 100).toFixed(1)) : null,
+      winRate: decided ? Number((winningBets / decided * 100).toFixed(1)) : null,
       pnl:Number(pnl.toFixed(2))
     };
   }
