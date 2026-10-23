@@ -5,6 +5,7 @@ on:
     paths:
       - .github/workflows/ball46-btts-live-audit.yml
       - deploy-assets/btts-live-audit-20261023/deep.mjs
+      - deploy-assets/btts-live-audit-20261023/trace.mjs
 permissions:
   contents: read
 jobs:
@@ -23,7 +24,8 @@ jobs:
         run: |
           node --check deploy-assets/btts-live-audit-20261023/inspect.mjs
           node --check deploy-assets/btts-live-audit-20261023/deep.mjs
-          node deploy-assets/btts-live-audit-20261023/deep.mjs
+          node --check deploy-assets/btts-live-audit-20261023/trace.mjs
+          node deploy-assets/btts-live-audit-20261023/trace.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
