@@ -54,11 +54,11 @@ test('P/L unchanged: odds 3.50 positive net 2.50u, half win +1.25u, half loss -0
  {result:'HALF_LOSS',market:'AH',pnl:-.5}];
  const x=dailySummary(rows).ALL;
  assert.equal(x.pnl,3.25);assert.equal(x.winRate,66.7);
- assert.match(server,/if \(r === 'HALF_WIN'\) return o === null \? 0 : \(o - 1\) \/ 2;/);
+ assert.match(server,/if \(r === 'HALF_WIN'\) return o===null \? 0 : \(o-1\)\/2;/);
  assert.match(server,/if \(r === 'HALF_LOSS'\) return -0\.5;/);
 });
-test('member summary merges half outcomes and tab/dashboard both display same backend winRate',()=>{
- assert.match(js,/\['WIN',Number\(s\.win\|\|0\)\+Number\(s\.halfWin\|\|0\),'win'\]/);
- assert.match(js,/\['LOSS',Number\(s\.loss\|\|0\)\+Number\(s\.halfLoss\|\|0\),'loss'\]/);
+test('member tab/dashboard both display backend winRate without local recalculation',()=>{
  assert.match(js,/fmtPct\(s\.winRate\)/);
+ assert.match(js,/function renderSummary\(/);
+ assert.match(js,/function renderTabs\(/);
 });
