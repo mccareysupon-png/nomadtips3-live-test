@@ -1,0 +1,52 @@
+name: BALL46 MATCH COMPARISON HOME AWAY Guarded Deploy
+on:
+  push:
+    branches: [fix/ball46-match-comparison-labels-20261023]
+    paths:
+      - .github/workflows/ball46-match-comparison-deploy.yml
+permissions:
+  contents: read
+concurrency:
+  group: ball46-production-deploy
+  cancel-in-progress: false
+jobs:
+  patch-test-deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate patch and guards
+        working-directory: deploy-assets/match-comparison-labels-20261023
+        run: |
+          node --check patch.mjs
+          node --check candidate.mjs
+          node --check browser.mjs
+          node --check activate.mjs
+      - name: Create isolated candidate from current active Worker and verify unchanged assets
+        working-directory: deploy-assets/match-comparison-labels-20261023
+        run: node candidate.mjs
+      - name: Install Chromium for PC/mobile visual CSS verification
+        working-directory: deploy-assets/match-comparison-labels-20261023
+        run: |
+          npm install --no-save --ignore-scripts playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Verify HOME AWAY in Match Comparison across PC/mobile and themes
+        working-directory: deploy-assets/match-comparison-labels-20261023
+        run: node browser.mjs
+      - name: Guarded Production activation only after browser PASS
+        working-directory: deploy-assets/match-comparison-labels-20261023
+        run: node activate.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-match-comparison-proof-${{ github.run_id }}
+          path: deploy-assets/match-comparison-labels-20261023/audit/
+          retention-days: 30
