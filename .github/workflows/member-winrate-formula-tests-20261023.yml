@@ -1,0 +1,25 @@
+name: BALL46 Member WIN RATE — Exact Formula Unit Tests
+on:
+  push:
+    branches: [audit/ball46-member-winrate-math-20261023]
+    paths:
+      - .github/workflows/member-winrate-formula-tests-20261023.yml
+      - ball46-member/tests/winrate-mathematics-20261023.test.mjs
+      - ball46-member/src/worker.js
+permissions:
+  contents: read
+jobs:
+  math:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test exact win-rate and profit mathematics, market scopes, and all existing Member features
+        run: |
+          set -euo pipefail
+          node --check ball46-member/src/worker.js
+          node --test ball46-member/tests/*.test.mjs
+          echo BALL46_MEMBER_WINRATE_FORMULA_TESTS_PASS
