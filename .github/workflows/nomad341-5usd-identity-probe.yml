@@ -1,0 +1,65 @@
+name: NOMAD 3.41 Native 5USD Identity Probe
+
+on:
+  push:
+    branches:
+      - work/nomad341-5usd-native
+    paths:
+      - 'nomad-live-engine/src/fivedollar.js'
+      - 'nomad-live-engine/src/fivedollar-identity.js'
+      - 'nomad-live-engine/test/fivedollar-identity.test.js'
+      - '.github/workflows/nomad341-5usd-identity-probe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
+  LEGACY_FEED_URL: https://nomadtips3-live-engine.mccarey-supon.workers.dev/feed
+
+jobs:
+  identity-readonly-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Offline identity tests
+        working-directory: nomad-live-engine
+        run: node --test test/fivedollar-identity.test.js
+      - name: Compare production 3.41 live matches to current 5USD live fixtures
+        working-directory: nomad-live-engine
+        run: |
+          set -euo pipefail
+          test -n "$FIVEDOLLAR_API_KEY"
+          node --input-type=module <<'NODE'
+          import {fetchLiveFixtures} from './src/fivedollar.js';
+          import {buildFixtureIdentityBridge,publicBridgeRow} from './src/fivedollar-identity.js';
+
+          const feedResponse=await fetch(process.env.LEGACY_FEED_URL,{headers:{accept:'application/json','cache-control':'no-cache'}});
+          if(!feedResponse.ok) throw new Error(`legacy feed HTTP ${feedResponse.status}`);
+          const feed=await feedResponse.json();
+          const legacy=Array.isArray(feed?.matches)?feed.matches:[];
+          const five=await fetchLiveFixtures({apiKey:process.env.FIVEDOLLAR_API_KEY,maxPages:1});
+          if(five.truncated) throw new Error('MATERIAL: 5USD live page truncated during identity gate');
+          const bridge=buildFixtureIdentityBridge(legacy,five.fixtures);
+
+          const matchedFive=bridge.rows.filter(r=>r.status==='MATCHED').map(r=>r.fiveUsdFixtureId);
+          if(new Set(matchedFive).size!==matchedFive.length) throw new Error('MATERIAL: duplicate 5USD fixture mapping detected');
+
+          const out={
+            legacyGeneratedAt:feed?.generatedAt??feed?.updatedAt??null,
+            legacyCount:legacy.length,
+            fiveUsdCount:five.fixtures.length,
+            providerRate:five.rate,
+            summary:bridge.summary,
+            rows:bridge.rows.map(publicBridgeRow),
+          };
+          console.log('IDENTITY_GATE',JSON.stringify(out,null,2));
+          if(bridge.summary.ambiguous>0) console.log('::warning::MATERIAL_REVIEW: ambiguous identity candidates detected');
+          if(legacy.length>0&&bridge.summary.coverage<0.80) console.log('::warning::MATERIAL_REVIEW: identity coverage below 80%');
+          if(legacy.length===0) console.log('IDENTITY_GATE_NOTE no current legacy live matches; mapping coverage cannot be judged this run');
+          NODE
