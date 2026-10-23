@@ -1,0 +1,70 @@
+name: BALL46 Member WIN RATE Math — Guarded Production Deploy
+on:
+  push:
+    branches:
+      - audit/ball46-member-winrate-math-20261023
+    paths:
+      - .github/workflows/member-winrate-math-production-20261023.yml
+permissions:
+  contents: read
+concurrency:
+  group: ball46-member-production-deploy
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Re-run full Member math and regression test suite
+        run: |
+          set -euo pipefail
+          node --check ball46-member/winrate-math-20261023/deploy.mjs
+          node --check ball46-member/src/worker.js
+          node --test ball46-member/tests/*.test.mjs
+      - name: Install Chromium for six viewport regression checks
+        run: |
+          set -euo pipefail
+          npm install --no-save --ignore-scripts playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Rebuild latest authenticated Member assets from immutable pinned tree
+        run: |
+          set -euo pipefail
+          for f in \
+            ball46-member/member-winrate-math-20261023/deploy.mjs \
+            ball46-member/member-signal-v3-20261020/theme.mjs \
+            ball46-member/member-odds-topbar-20261021/patch.mjs \
+            ball46-member/member-odds-topbar-premium-v2-20261021/premium.mjs \
+            ball46-member/member-odds-borderless-v3-20261021/borderless.mjs \
+            ball46-member/member-odds-glass55-v4-20261021/glass55.mjs \
+            ball46-member/member-odds-opacity75-v5-20261021/opacity75.mjs \
+            ball46-member/member-odds-opacity85-v6-20261021/opacity85.mjs \
+            ball46-member/member-odds-solid-v7-20261021/solid.mjs \
+            ball46-member/member-eventflow-signal-flat-1x-20261021/flat.mjs; do
+            node --check "$f"
+          done
+          python3 -m py_compile ball46-member/member-loading-20261020/patch_member.py
+          git fetch origin 05c276f7f76a6226b10b45bd85ac369e53167d2f
+          git cat-file -e 05c276f7f76a6226b10b45bd85ac369e53167d2f^{commit}
+          mkdir -p /tmp/ball46-member-live-tree
+          git archive --format=tar 05c276f7f76a6226b10b45bd85ac369e53167d2f ball46-member/public | tar xf - -C /tmp/ball46-member-live-tree
+          test -s /tmp/ball46-member-live-tree/ball46-member/public/member.html
+      - name: Verify current live Worker and all 43 visible assets, test Candidate, promote with rollback, verify production
+        run: node ball46-member/winrate-math-20261023/deploy.mjs
+      - name: Preserve module hashes, asset and viewport regression report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-member-winrate-math-20261023-audit
+          path: audit/member-winrate-mathematics-20261023/
+          retention-days: 30
+          if-no-files-found: warn
