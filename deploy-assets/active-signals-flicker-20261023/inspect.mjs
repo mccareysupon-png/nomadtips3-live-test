@@ -20,4 +20,12 @@ for(const p of [...scripts,...styles].filter(x=>!x.includes('http')).slice(0,75)
  try{const url=new URL(p,'https://ball46.com/'),r=await fetch(url,{signal:AbortSignal.timeout(13000)});if(!r.ok)continue;const type=r.headers.get('content-type')||'';if(!/(javascript|css|text)/.test(type))continue;const s=await r.text(),m=scan(s,15);if(m.length)reports.external[p]={status:r.status,sha:sha(Buffer.from(s)),bytes:s.length,matches:m};
  }catch(e){reports.external[p]={error:String(e)}}}
 await mkdir('audit',{recursive:true});await writeFile('audit/active-signals-source.json',JSON.stringify(reports,null,2));
-console.log('BALL46_SIGNALS_AUDIT='+JSON.stringify({...reports,workerMatches:reports.workerMatches.slice(0,15),htmlMatches:reports.htmlMatches.slice(0,30),external:Object.fromEntries(Object.entries(reports.external).map(([p,v])=>[p,{...v,matches:v.matches?.slice(0,8)}]))}).slice(0,95000));
+const brief={version:versionId,htmlSha:reports.htmlSha,htmlMatches:reports.htmlMatches.length,workerMatches:reports.workerMatches.length,externalFiles:Object.keys(reports.external)};
+function nearby(source,term,amount=5,radius=450){let i=-1,out=[];while((i=source.toLowerCase().indexOf(term.toLowerCase(),i+1))>=0&&out.length<amount)out.push({offset:i,excerpt:source.slice(Math.max(0,i-radius),i+term.length+radius)});return out;}
+brief.signalHeadings=nearby(html,'ACTIVE SIGNALS',8,800);
+brief.signalMarkup=nearby(html,'class="feature-signal"',9,520);
+brief.signalScripts=nearby(html,'feature-signal',12,500);
+brief.featuredRender=nearby(html,'renderFeatured',8,500);
+brief.workerHeads=nearby(body,'ACTIVE SIGNALS',4,250);
+brief.external=Object.fromEntries(Object.entries(reports.external).map(([p,v])=>[p,{bytes:v.bytes,matches:v.matches?.slice(0,3).map(x=>({text:x.text,context:x.context.slice(0,400)}))}]));
+console.log('BALL46_SIGNALS_BRIEF='+JSON.stringify(brief).slice(0,24000));
