@@ -1,0 +1,43 @@
+name: BALL46 Member Worker READ ONLY Audit
+on:
+  push:
+    branches:
+      - audit/ball46-member-winrate-math-20261023
+    paths:
+      - .github/workflows/member-worker-drift-audit-20261023.yml
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Audit live Worker without any mutation
+        run: |
+          node <<'JS'
+          const crypto=require('node:crypto');
+          (async()=>{
+            if(!process.env.CF_TOKEN||!process.env.CF_ACCOUNT) throw Error('MISSING_CF_SECRETS');
+            const root='https://api.cloudflare.com/client/v4/accounts/'+process.env.CF_ACCOUNT;
+            async function read(path){
+              const response=await fetch(root+path,{headers:{Authorization:'Bearer '+process.env.CF_TOKEN}});
+              const json=await response.json();
+              if(!response.ok||!json.success) throw Error('READ_FAILED:'+response.status);
+              return json.result;
+            }
+            const deployments=await read('/workers/scripts/ball46-member-production/deployments?per_page=1');
+            const current=deployments.deployments[0];
+            if(current.versions.length!==1||current.versions[0].percentage!==100)throw Error('ACTIVE_VERSION_NOT_SINGLE');
+            const id=current.versions[0].version_id;
+            const data=await read('/workers/workers/ball46-member-production/versions/'+id+'?include=modules');
+            const modules=data.modules.map(m=>{
+              const raw=Buffer.from(m.content_base64,'base64');
+              const source=raw.toString('utf8');
+              return {name:m.name,sha256:crypto.createHash('sha256').update(raw).digest('hex'),bytes:raw.length,weightedHalfWin:source.includes('counts.halfWin * 0.5'),countedHalfWin:source.includes('counts.win + counts.halfWin'),pnlFunction:source.includes('function resultPnl(result, odds)'),dailySummary:source.includes('function dailySummary(')};
+            });
+            console.log('READ_ONLY_WORKER_AUDIT',JSON.stringify({id,modules}));
+          })().catch(e=>{console.error(e.message);process.exitCode=1});
+          JS
