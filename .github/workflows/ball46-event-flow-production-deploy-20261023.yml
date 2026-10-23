@@ -1,0 +1,64 @@
+name: BALL46 Desktop Event Flow Stadium Crosshair 20261023
+on:
+  push:
+    branches: [codex/ball46-event-flow-20261023]
+    paths:
+      - '.github/workflows/ball46-event-flow-production-deploy-20261023.yml'
+      - 'deploy-assets/event-flow-production-deploy-20261023/run.mjs'
+      - 'deploy-assets/event-flow-production-deploy-20261023/patch.mjs'
+      - 'deploy-assets/event-flow-production-deploy-20261023/patch.test.mjs'
+      - 'deploy-assets/event-flow-production-deploy-20261023/cutover.mjs'
+      - 'deploy-assets/event-flow-production-deploy-20261023/cutover.test.mjs'
+      - 'deploy-assets/event-flow-production-deploy-20261023/provenance.json'
+      - 'deploy-assets/event-flow-production-deploy-20261023/resource-404.json'
+      - 'deploy-assets/event-flow-production-deploy-20261023/request.json'
+      - 'deploy-assets/event-flow-production-deploy-20261023/images/**'
+      - 'deploy-assets/event-flow-production-deploy-20261023/images-b64/**'
+permissions:
+  contents: write
+concurrency:
+  group: ball46-production-deploy
+  cancel-in-progress: false
+jobs:
+  event-flow:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify scope and execute guarded phase
+        working-directory: deploy-assets/event-flow-production-deploy-20261023
+        run: |
+          mkdir -p images
+          for f in images-b64/*.b64; do base64 --decode "$f" > "images/$(basename "$f" .b64).webp"; done
+          node --check run.mjs
+          node cutover.test.mjs
+          node patch.test.mjs
+          node run.mjs
+          if [ -f audit/source-index.html ]; then node patch.test.mjs; fi
+          if [ -f audit/candidate-runtime.mjs ]; then node --check audit/candidate-runtime.mjs; fi
+      - name: Preserve audit on isolated branch
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add deploy-assets/event-flow-production-deploy-20261023/audit-last
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Record Event Flow phase ${GITHUB_RUN_ID} [skip ci]"
+          git push origin HEAD:codex/ball46-event-flow-20261023
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-event-flow-${{ github.run_id }}
+          path: deploy-assets/event-flow-production-deploy-20261023/audit
+          retention-days: 30
