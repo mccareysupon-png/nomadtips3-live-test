@@ -14,7 +14,7 @@ try{
  const domains=(await cf('/workers/domains')).filter(x=>x.service===worker).map(x=>x.hostname).sort();
  output.cloudflareDomains=domains;
  const a=active?.versions?.[0]?.version_id;if(a){const v=await cf('/workers/workers/'+worker+'/versions/'+a+'?include=modules');output.version={id:a,mainModule:v.main_module,moduleNames:v.modules?.map(x=>x.name),assetsPresent:!!v.assets,assetConfig:v.assets?.config,compatibilityDate:v.compatibility_date,annotations:v.annotations};
- const m=v.modules?.find(x=>x.name===v.main_module);if(m){const src=Buffer.from(m.content_base64,'base64').toString('utf8');output.version.sourceSha=sha(Buffer.from(src));output.version.sourceBytes=Buffer.byteLength(src);output.version.hasSignalHeading=src.includes('__b46SignalHeadingHtml20261023');output.version.hasFaviconOverride=src.includes('BALL46_FAVICON_SEO_PATCH_20261023');output.version.hasPriorSEO=src.includes('Live Football Scores');}}
+ const m=v.modules?.find(x=>x.name===v.main_module);if(m){const src=Buffer.from(m.content_base64,'base64').toString('utf8');output.version.sourceSha=sha(Buffer.from(src));output.version.sourceBytes=Buffer.byteLength(src);output.version.hasSignalHeading=src.includes('__b46SignalHeadingHtml20261023');output.version.hasFaviconOverride=src.includes('__b46Fav192B6420261023');output.version.hasPriorSEO=src.includes('Live Football Scores');}}
  for(const hostname of ['ball46.com','www.ball46.com']){
   for(const path of ['/','/index.html','/favicon.ico','/favicon-192.png','/robots.txt']){
    try{const x=await publicRead(hostname,path);const key=hostname+path;output.files[key]={status:x.status,type:x.contentType,length:x.length,sha:x.sha,url:x.url};
