@@ -24,7 +24,8 @@ jobs:
           node --check deploy-assets/5usd-btts-source-20261023/inspect.mjs
           node --check deploy-assets/5usd-btts-source-20261023/routes.mjs
           node --check deploy-assets/5usd-btts-source-20261023/bindings.mjs
-          node deploy-assets/5usd-btts-source-20261023/bindings.mjs
+          node --check deploy-assets/5usd-btts-source-20261023/fullmarket.mjs
+          node deploy-assets/5usd-btts-source-20261023/fullmarket.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
