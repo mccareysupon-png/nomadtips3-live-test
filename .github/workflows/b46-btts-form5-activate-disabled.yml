@@ -1,0 +1,35 @@
+name: BALL46 BTTS Form5 — guarded DISABLED Engine staging
+on:
+  push:
+    branches: [feature/ball46-btts-form5-statistics-20261023]
+    paths:
+      - .github/workflows/b46-btts-form5-activate-disabled.yml
+permissions:
+  contents: read
+concurrency:
+  group: ball46-engine343-form5-staging
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Recheck 22 Form5 model, FT settlement and integration tests
+        run: |
+          node --check deploy-assets/btts-form5-20261023/activate-disabled.mjs
+          node --test deploy-assets/btts-form5-20261023/*.test.mjs
+      - name: Staging cutover to disabled-only candidate, rollback on failure
+        run: node deploy-assets/btts-form5-20261023/activate-disabled.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: b46-form5-disabled-deploy-${{ github.run_id }}
+          path: audit/disabled-activation.json
+          retention-days: 14
