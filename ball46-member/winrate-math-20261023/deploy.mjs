@@ -9,7 +9,7 @@ import {patchGlass55,CSS as GLASS_CSS,MARKER as GLASS_MARKER} from '../member-od
 import {patchOpacity75,CSS as OPACITY75_CSS,MARKER as OPACITY75_MARKER} from '../member-odds-opacity75-v5-20261021/opacity75.mjs';
 import {patchOpacity85,CSS as OPACITY85_CSS,MARKER as OPACITY85_MARKER} from '../member-odds-opacity85-v6-20261021/opacity85.mjs';
 import {patchSolid,CSS as SOLID_CSS,MARKER as SOLID_MARKER} from '../member-odds-solid-v7-20261021/solid.mjs';
-import {patchSignal1x,CSS as SIGNAL1X_CSS,MARKER as SIGNAL1X_MARKER} from './flat.mjs';
+import {patchSignal1x,CSS as SIGNAL1X_CSS,MARKER as SIGNAL1X_MARKER} from '../member-eventflow-signal-flat-1x-20261021/flat.mjs';
 import {join,relative,extname} from 'node:path';
 import {createHash} from 'node:crypto';
 import {chromium} from 'playwright';
