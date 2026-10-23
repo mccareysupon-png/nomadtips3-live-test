@@ -13,7 +13,7 @@ export function patchHtml(html){
  if(!html.includes('<style id="b46-global-data-orbit-style-20261019">'))throw Error('LOADING_STYLE_MISSING');
  if(!html.includes('@keyframes b46-orbit-rotate-20261019{to{transform:rotate(360deg)}}'))throw Error('SPIN_KEYFRAMES_MISSING');
  const out=html.replace(OLD,FIX);
- assert(out.includes(FIX));
+ if(!out.includes(FIX))throw Error('SPINNER_REPLACEMENT_FAILED');
  if(out.slice(out.indexOf('</head>'))!==html.slice(html.indexOf('</head>')))throw Error('BODY_MUST_BE_BYTE_IDENTICAL');
  if(out.includes(OLD))throw Error('REDUCED_MOTION_STATIC_RULE_REMAINED');
  return out;
