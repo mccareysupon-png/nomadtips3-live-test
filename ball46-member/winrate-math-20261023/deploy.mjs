@@ -416,7 +416,7 @@ try{
  writeFileSync(DIR+'/member-odds-topbar.js',currentOddsJs.data);
  const existing=walk(DIR).map(f=>{const bytes=readFileSync(f);return {path:'/'+relative(DIR,f).replaceAll('\\','/'),sha:hash(bytes),bytes};});
  assert.equal(existing.length,44,'LATEST_MEMBER_44_FILES_MISSING');
- const productionPublic=await publicInventory(existing.filter(f=>f.path!=='/member.html'),BASE);
+ const productionPublic=await publicInventory(existing.filter(f=>f.path!=='/member.html'),BASE,currentCss.data);
  assert.deepEqual(productionPublic.mismatches,[],'LATEST_MEMBER_PUBLIC_ASSET_DRIFT');
  assert.equal(productionPublic.matches,43,'MEMBER_43_PUBLIC_ASSET_CHECK_FAILED');
  const protectedBefore=await getPublic('/member.html');
