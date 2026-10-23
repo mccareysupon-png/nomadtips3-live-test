@@ -1,0 +1,16 @@
+import{mkdir,writeFile}from'node:fs/promises';import{createHash}from'node:crypto';
+const sha=x=>createHash('sha256').update(x).digest('hex'),ACCOUNT=process.env.CLOUDFLARE_ACCOUNT_ID,TOKEN=process.env.CLOUDFLARE_API_TOKEN; if(!ACCOUNT||!TOKEN)throw Error('MISSING_CREDENTIALS');
+const cf=async p=>{const r=await fetch('https://api.cloudflare.com/client/v4/accounts/'+ACCOUNT+p,{headers:{Authorization:'Bearer '+TOKEN},signal:AbortSignal.timeout(40000)}),j=await r.json();if(!r.ok||!j.success)throw Error('CF_API_'+r.status);return j.result};
+const d=(await cf('/workers/scripts/ball46-production/deployments?per_page=1')).deployments[0],v=await cf('/workers/workers/ball46-production/versions/'+d.versions[0].version_id+'?include=modules');
+const entry=v.modules.find(x=>x.name===v.main_module),source=Buffer.from(entry.content_base64,'base64');
+const url=new URL('https://ball46.com/');url.searchParams.set('featuredScoreAudit',Date.now());const r=await fetch(url,{headers:{'cache-control':'no-cache'},signal:AbortSignal.timeout(45000)}),b=Buffer.from(await r.arrayBuffer()),html=b.toString();
+const snippets=(s,terms,num=10,rad=530)=>{let o=[];for(const term of terms){let i=-1,c=0;while((i=s.toLowerCase().indexOf(term.toLowerCase(),i+1))>=0&&c++<num){o.push({term,at:i,excerpt:s.slice(Math.max(0,i-rad),Math.min(s.length,i+term.length+rad))});}}return o.sort((a,b)=>a.at-b.at)};
+const styles=[...html.matchAll(/<style\b([^>]*)>([\s\S]*?)<\/style>/gi)].map((m,i)=>({index:i,id:m[1],size:m[2].length,offset:m.index,body:m[2]}));
+const scoreBlocks=styles.filter(x=>/feature-score|data-featured-score|score-separator|score-dash|feature-scoreboard|b46v11-score|scoreline/i.test(x.body)).map(x=>({index:x.index,id:x.id,length:x.size,offset:x.offset,excerpts:snippets(x.body,['feature-score','data-featured-score','score-separator','score-dash','feature-scoreboard'],22,320)}));
+const jsSources=[...html.matchAll(/<script\b[^>]*src=["']([^"']+)["']/gi)].map(x=>x[1]);
+let jsRelevant=[];
+for(const path of jsSources){if(!path.startsWith('http')){try{const url=new URL(path,'https://ball46.com/');url.searchParams.set('audit',Date.now());const response=await fetch(url,{signal:AbortSignal.timeout(18000)});if(!response.ok)continue;const body=await response.text(),hits=snippets(body,['data-featured-score','feature-score','scoreline'],6,450);if(hits.length)jsRelevant.push({path,size:body.length,hits});}catch(e){}}}
+const output={at:new Date().toISOString(),version:d.versions[0].version_id,deployment:d.id,mainModuleSha:sha(source),htmlSha:sha(b),htmlStatus:r.status,scoreMarkup:snippets(html,['data-featured-score','class="feature-score','feature-scoreboard','feature-scoreline'],12,580),scoreBlocks,jsRelevant};
+await mkdir('audit',{recursive:true});await writeFile('audit/score-scan.json',JSON.stringify(output,null,2));
+const brief={at:output.at,version:output.version,deployment:output.deployment,mainModuleSha:output.mainModuleSha,htmlSha:output.htmlSha,htmlStatus:r.status,scoreMarkup:output.scoreMarkup.slice(0,7),styles:scoreBlocks.map(x=>({index:x.index,id:x.id,length:x.length,offset:x.offset,excerpts:x.excerpts.slice(-15)})),jsRelevant:output.jsRelevant.map(x=>({path:x.path,size:x.size,hits:x.hits.slice(0,6)}))};
+console.log('BALL46_SCORE_AUDIT='+JSON.stringify(brief).slice(0,39000));
