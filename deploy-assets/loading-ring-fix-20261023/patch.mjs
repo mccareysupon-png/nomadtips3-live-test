@@ -36,7 +36,7 @@ export default {...__b46BeforeRingFix20261023, async fetch(request,env,ctx){
 `;
  // patchHtml uses module-scope OLD/FIX only in development: embedded wrapper needs literals:
  const embedded=helper.replace(`${patchHtml.toString()}`,patchHtml.toString()
-    .replaceAll('OLD',JSON.stringify(OLD)).replaceAll('FIX',JSON.stringify(FIX)));
+    .replaceAll(/\bOLD\b/g,JSON.stringify(OLD)).replaceAll(/\bFIX\b/g,JSON.stringify(FIX)));
  const out=source.replace(anchor,before)+embedded;
  assert.equal(out.split('export default {').length,2);
  assert(out.includes('__b46BeforeRingFix20261023'));
