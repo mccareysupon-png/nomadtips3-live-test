@@ -1,0 +1,52 @@
+name: BALL46 ACTIVE SIGNALS No Active Ghost Fix
+on:
+  push:
+    branches: [fix/ball46-active-signals-empty-ghost-20261023]
+    paths:
+      - .github/workflows/b46-active-signal-empty-deploy.yml
+permissions:
+  contents: read
+concurrency:
+  group: ball46-production-deploy
+  cancel-in-progress: false
+jobs:
+  guarded-fix:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Static validation
+        working-directory: deploy-assets/active-signal-empty-ghost-20261023
+        run: |
+          node --check patch.mjs
+          node --check candidate.mjs
+          node --check browser.mjs
+          node --check activate.mjs
+      - name: Stage guarded Worker candidate from current production
+        working-directory: deploy-assets/active-signal-empty-ghost-20261023
+        run: node candidate.mjs
+      - name: Install Chromium
+        working-directory: deploy-assets/active-signal-empty-ghost-20261023
+        run: |
+          npm install --no-save --ignore-scripts playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Test ghost text removal with live signal data and repeated updates PC/mobile
+        working-directory: deploy-assets/active-signal-empty-ghost-20261023
+        run: node browser.mjs
+      - name: Guarded production deploy and postdeploy verification with rollback
+        working-directory: deploy-assets/active-signal-empty-ghost-20261023
+        run: node activate.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-active-signal-empty-ghost-proof-${{ github.run_id }}
+          path: deploy-assets/active-signal-empty-ghost-20261023/audit/
+          retention-days: 30
