@@ -1,0 +1,43 @@
+name: BALL46 SIGNAL page — precise repair PC/mobile guarded deploy
+on:
+  push:
+    branches: [fix/ball46-signal-feed-20261023]
+    paths:
+      - .github/workflows/ball46-signal-repair-deploy.yml
+permissions:
+  contents: read
+concurrency:
+  group: ball46-signal-page-production-20261023
+  cancel-in-progress: false
+jobs:
+  repair:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Setup headless browser and validate source
+        run: |
+          npm install --no-save --no-package-lock --ignore-scripts playwright-core
+          command -v google-chrome
+          node --check deploy-assets/signal-repair-20261023/patch.mjs
+          node --check deploy-assets/signal-repair-20261023/candidate.mjs
+          node --check deploy-assets/signal-repair-20261023/browser.mjs
+          node --check deploy-assets/signal-repair-20261023/activate.mjs
+      - name: Upload isolated Cloudflare candidate — production must remain unchanged
+        run: node deploy-assets/signal-repair-20261023/candidate.mjs
+      - name: Chromium PC + mobile actual live SIGNAL fetch candidate QA
+        run: node deploy-assets/signal-repair-20261023/browser.mjs
+      - name: Guarded production deploy, independent asset and Chromium live checks, conditional rollback
+        run: node deploy-assets/signal-repair-20261023/activate.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-signal-repair-audit-${{ github.run_id }}
+          path: deploy-assets/signal-repair-20261023/audit/
+          retention-days: 14
