@@ -20,3 +20,11 @@ const tokens=['b46v11-legend','data-v12-home','data-v12-away','feature-stats::be
 const focused={};
 for(const token of tokens){let i=-1,a=[];while((i=h.text.indexOf(token,i+1))>=0&&a.length<12)a.push({index:i,slice:h.text.slice(Math.max(0,i-360),Math.min(h.text.length,i+token.length+750))});focused[token]=a;}
 console.log('B46_LABELS_FOCUSED='+JSON.stringify({version:out.activeVersion,rootSha:out.rootSha,focused}).slice(0,26000));
+
+
+const vr=await fetch('https://api.cloudflare.com/client/v4/accounts/'+account+'/workers/workers/ball46-production/versions/'+active.versions[0].version_id+'?include=modules',{headers:{Authorization:'Bearer '+token}});
+const vj=await vr.json();if(!vr.ok||!vj.success)throw Error('VERSION_API_FAILED');
+const ver=vj.result;const entry=ver.modules.find(x=>x.name===ver.main_module);
+const cssOldHome=String.raw`content:"MATCH COMPARISON\A● HOME · " attr(data-v12-home)!important;`;
+const cssOldAway=String.raw`content:"LIVE STATS\A" attr(data-v12-away) " · AWAY ●"!important;`;
+console.log('B46_LABELS_BASELINE='+JSON.stringify({activeVersion:out.activeVersion,deployment:out.activeDeployment,rootSha:out.rootSha,mainSha:sha(Buffer.from(entry.content_base64,'base64')),mainModule:ver.main_module,moduleCount:ver.modules.length,homeRuleMatches:h.text.split(cssOldHome).length-1,awayRuleMatches:h.text.split(cssOldAway).length-1,otherStatTextMatches:(h.text.match(/attr\(data-v12-(home|away)\)/g)||[]).length}));
