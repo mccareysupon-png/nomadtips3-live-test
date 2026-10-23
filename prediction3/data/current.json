@@ -1,388 +1,367 @@
 {
   "record_version": "PREDICTION3_CURRENT_V1",
-  "updated_at": "2026-10-21T00:32:00Z",
+  "updated_at": "2026-10-23T05:49:20.722Z",
   "selection": {
-    "daily_strategy": "2026-10-21 SIRIUS · owner-approved 4 editorial 1X2 home-win candidates · reference odds >=1.80 · automatic name-matched FT tracking",
+    "daily_strategy": "2026-10-23 SIRIUS · 5 owner-requested provisional editorial 1X2 candidates · odds and fixtures NOT VERIFIED · A–B–C unscored",
     "minimum_decimal_odds": 1.8,
     "maximum_official_picks": 5,
-    "test_exception_note": "No forced fifth pick. A–B–C unscored. Fixture IDs remain null until tracker learns from provider; match identity verified before settlement."
+    "test_exception_note": "Provisional editorial only; no verified fixture IDs, UTC kickoff, bookmaker odds or automatic settlement. Previous 2026-10-21 today moved to trackingBacklog without changing history."
   },
   "today": [
     {
-      "id": "p3-2026-10-21-como-mun",
-      "date": "2026-10-21",
-      "league": "UEFA Champions League · League phase",
-      "round": "21 October 2026",
-      "kickoff": "23:45 Thailand Time · 21 Oct",
-      "home": "Como",
-      "away": "Manchester United",
-      "homeShort": "COM",
-      "awayShort": "MUN",
-      "homeColors": {
-        "base": "#1d4d87",
-        "stripe": "#d9d0a5",
-        "accent": "#ffffff",
-        "pattern": "stripe"
-      },
-      "awayColors": {
-        "base": "#e6bd2b",
-        "stripe": "#102a62",
-        "accent": "#ffffff",
-        "pattern": "stripe"
-      },
-      "pick": "Como to Win",
+      "id": "p3-2026-10-23-ipswich-town-nottingham-forest",
+      "date": "2026-10-23",
+      "league": "UNVERIFIED · Editorial",
+      "round": "23 October 2026 · fixture confirmation pending",
+      "kickoff": "Time not verified",
+      "home": "Ipswich Town",
+      "away": "Nottingham Forest",
+      "homeShort": "IPS",
+      "awayShort": "NOT",
+      "pick": "Nottingham Forest to Win",
       "market": "1X2",
-      "referenceOdds": 2.2,
-      "bestOddsObserved": 2.2,
-      "oddsCapturedAt": "2026-10-21 · source page snapshot (exact quote timestamp unavailable)",
+      "referenceOdds": 2.25,
+      "bestOddsObserved": 2.25,
+      "oddsCapturedAt": "Prior assistant candidate list · bookmaker quote not independently verified",
       "minimumOdds": 1.8,
-      "confidenceLabel": "SIRIUS 1 · Editorial selection · Unscored",
+      "confidenceLabel": "SIRIUS 1 · Owner-requested editorial · Unscored",
       "grade": "TEST",
-      "currentView": "EDITORIAL · VERIFIED FIXTURE · REFERENCE ODDS · TRACKER AUTO-MATCH PENDING",
-      "finalCheck": "Verify live odds and team lineups; Tracker must verify fixture identity before settlement",
-      "nomadView": "Manual editorial selection; A–B–C not scored",
-      "risk": "High",
+      "currentView": "EDITORIAL · FIXTURE/ODDS UNVERIFIED · NO AUTOMATIC SETTLEMENT UNTIL VERIFIED",
+      "finalCheck": "Verify date, competition, UTC kickoff, fixture ID, and bookmaker odds before betting or settlement",
+      "nomadView": "Owner-requested candidate; A–B–C not scored",
+      "risk": "High · unverified",
       "tracking": {
         "provider": "TotalCorner V3",
         "fixtureId": null,
-        "kickoffUtc": "2026-10-21T16:45:00Z",
-        "pickSide": "home",
-        "liveScore": true,
-        "automaticSettlement": true
+        "kickoffUtc": null,
+        "pickSide": "away",
+        "liveScore": false,
+        "automaticSettlement": false
       },
       "rawBestMarket": {
         "market": "1X2",
-        "selection": "Como Win",
-        "oddsRange": "Reference 2.20 · exact quote timestamp unavailable",
-        "status": "REFERENCE ONLY · NOT EXECUTABLE"
+        "selection": "Nottingham Forest Win",
+        "oddsRange": "Unverified reference 2.25",
+        "status": "UNVERIFIED REFERENCE · NOT EXECUTABLE"
       },
       "marketViews": [
         {
           "market": "1X2",
-          "pick": "Como to Win",
-          "odds": 2.2,
-          "status": "REFERENCE · NOT LIVE VERIFIED"
+          "pick": "Nottingham Forest to Win",
+          "odds": 2.25,
+          "status": "UNVERIFIED REFERENCE"
         }
       ],
       "why": [
-        "UEFA 2026/27 matchday 3 fixture verified.",
-        "Editorial home-win candidate with 1X2 reference price above 1.80; A–B–C scoring not performed."
+        "Owner requested publication of five provisional editorial picks.",
+        "Fixture date, competition, odds, and model A–B–C remain unverified."
       ],
       "support": {
-        "form": "Not independently scored.",
-        "squad": "Starting XI not confirmed.",
-        "level": "UEFA Champions League matchday 3.",
-        "price": "Stake 1X2 reference 2.20; quote timestamp unavailable."
+        "form": "Not scored.",
+        "squad": "Not verified.",
+        "level": "Fixture not verified.",
+        "price": "Unverified reference 2.25."
       },
       "tactical": [
-        "Full-time 1X2 home win only; draw counts as LOSS.",
-        "Tracker auto-matches team identity and only settles on verified FT."
+        "Full-time 1X2 only; draw counts as LOSS.",
+        "Do not auto-settle without verified fixture identity and FT."
       ],
       "riskFactors": [
-        "Price is a reference snapshot, not a verified executable quote.",
-        "TotalCorner V3 fixture ID pending auto-discovery."
+        "Fixture and date unverified.",
+        "Reference odds are not live bookmaker quotes."
       ],
       "noBetIf": [
-        "1X2 price falls below 1.80.",
-        "Fixture identity or verified FT unavailable."
+        "Fixture identity cannot be confirmed.",
+        "Verified live price is below 1.80."
       ],
-      "finalCall": "SIRIUS 1 — COMO WIN · REF 2.20",
-      "finalNote": "Owner-approved editorial listing; not A–B–C scored; no wager executed.",
-      "disciplineNote": "Missing or ambiguous fixture identity remains pending; never fabricate settlement.",
-      "sources": [
-        {
-          "label": "UEFA official 2026/27 fixtures",
-          "type": "fixture",
-          "url": "https://www.uefa.com/uefachampionsleague/news/02a8-2174c9e9019d-f909a77bd77a-1000--champions-league-league-phase-fixtures-and-results/"
-        },
-        {
-          "label": "Stake 1X2 reference market",
-          "type": "odds",
-          "url": "https://stake.bet/sports/soccer/international-clubs/uefa-champions-league"
-        }
-      ]
+      "finalCall": "SIRIUS 1 — NOTTINGHAM FOREST WIN · UNVERIFIED REF 2.25",
+      "finalNote": "Owner-requested provisional editorial listing, not verified betting advice; no wager executed.",
+      "disciplineNote": "No invented fixture ID, kickoff, source or settlement.",
+      "sources": []
     },
     {
-      "id": "p3-2026-10-21-lil-gal",
-      "date": "2026-10-21",
-      "league": "UEFA Champions League · League phase",
-      "round": "21 October 2026",
-      "kickoff": "23:45 Thailand Time · 21 Oct",
-      "home": "Lille",
-      "away": "Galatasaray",
-      "homeShort": "LIL",
-      "awayShort": "GAL",
-      "homeColors": {
-        "base": "#1d4d87",
-        "stripe": "#d9d0a5",
-        "accent": "#ffffff",
-        "pattern": "stripe"
-      },
-      "awayColors": {
-        "base": "#e6bd2b",
-        "stripe": "#102a62",
-        "accent": "#ffffff",
-        "pattern": "stripe"
-      },
-      "pick": "Lille to Win",
+      "id": "p3-2026-10-23-torino-monza",
+      "date": "2026-10-23",
+      "league": "UNVERIFIED · Editorial",
+      "round": "23 October 2026 · fixture confirmation pending",
+      "kickoff": "Time not verified",
+      "home": "Torino",
+      "away": "Monza",
+      "homeShort": "TOR",
+      "awayShort": "MON",
+      "pick": "Torino to Win",
       "market": "1X2",
-      "referenceOdds": 2.19,
-      "bestOddsObserved": 2.19,
-      "oddsCapturedAt": "2026-10-21 · source page snapshot (exact quote timestamp unavailable)",
+      "referenceOdds": 2.14,
+      "bestOddsObserved": 2.14,
+      "oddsCapturedAt": "Prior assistant candidate list · bookmaker quote not independently verified",
       "minimumOdds": 1.8,
-      "confidenceLabel": "SIRIUS 2 · Editorial selection · Unscored",
+      "confidenceLabel": "SIRIUS 2 · Owner-requested editorial · Unscored",
       "grade": "TEST",
-      "currentView": "EDITORIAL · VERIFIED FIXTURE · REFERENCE ODDS · TRACKER AUTO-MATCH PENDING",
-      "finalCheck": "Verify live odds and team lineups; Tracker must verify fixture identity before settlement",
-      "nomadView": "Manual editorial selection; A–B–C not scored",
-      "risk": "High",
+      "currentView": "EDITORIAL · FIXTURE/ODDS UNVERIFIED · NO AUTOMATIC SETTLEMENT UNTIL VERIFIED",
+      "finalCheck": "Verify date, competition, UTC kickoff, fixture ID, and bookmaker odds before betting or settlement",
+      "nomadView": "Owner-requested candidate; A–B–C not scored",
+      "risk": "High · unverified",
       "tracking": {
         "provider": "TotalCorner V3",
         "fixtureId": null,
-        "kickoffUtc": "2026-10-21T16:45:00Z",
+        "kickoffUtc": null,
         "pickSide": "home",
-        "liveScore": true,
-        "automaticSettlement": true
+        "liveScore": false,
+        "automaticSettlement": false
       },
       "rawBestMarket": {
         "market": "1X2",
-        "selection": "Lille Win",
-        "oddsRange": "Reference 2.19 · exact quote timestamp unavailable",
-        "status": "REFERENCE ONLY · NOT EXECUTABLE"
+        "selection": "Torino Win",
+        "oddsRange": "Unverified reference 2.14",
+        "status": "UNVERIFIED REFERENCE · NOT EXECUTABLE"
       },
       "marketViews": [
         {
           "market": "1X2",
-          "pick": "Lille to Win",
-          "odds": 2.19,
-          "status": "REFERENCE · NOT LIVE VERIFIED"
+          "pick": "Torino to Win",
+          "odds": 2.14,
+          "status": "UNVERIFIED REFERENCE"
         }
       ],
       "why": [
-        "UEFA 2026/27 matchday 3 fixture verified.",
-        "Editorial home-win candidate with 1X2 reference price above 1.80; A–B–C scoring not performed."
+        "Owner requested publication of five provisional editorial picks.",
+        "Fixture date, competition, odds, and model A–B–C remain unverified."
       ],
       "support": {
-        "form": "Not independently scored.",
-        "squad": "Starting XI not confirmed.",
-        "level": "UEFA Champions League matchday 3.",
-        "price": "Stake 1X2 reference 2.19; quote timestamp unavailable."
+        "form": "Not scored.",
+        "squad": "Not verified.",
+        "level": "Fixture not verified.",
+        "price": "Unverified reference 2.14."
       },
       "tactical": [
-        "Full-time 1X2 home win only; draw counts as LOSS.",
-        "Tracker auto-matches team identity and only settles on verified FT."
+        "Full-time 1X2 only; draw counts as LOSS.",
+        "Do not auto-settle without verified fixture identity and FT."
       ],
       "riskFactors": [
-        "Price is a reference snapshot, not a verified executable quote.",
-        "TotalCorner V3 fixture ID pending auto-discovery."
+        "Fixture and date unverified.",
+        "Reference odds are not live bookmaker quotes."
       ],
       "noBetIf": [
-        "1X2 price falls below 1.80.",
-        "Fixture identity or verified FT unavailable."
+        "Fixture identity cannot be confirmed.",
+        "Verified live price is below 1.80."
       ],
-      "finalCall": "SIRIUS 2 — LILLE WIN · REF 2.19",
-      "finalNote": "Owner-approved editorial listing; not A–B–C scored; no wager executed.",
-      "disciplineNote": "Missing or ambiguous fixture identity remains pending; never fabricate settlement.",
-      "sources": [
-        {
-          "label": "UEFA official 2026/27 fixtures",
-          "type": "fixture",
-          "url": "https://www.uefa.com/uefachampionsleague/news/02a8-2174c9e9019d-f909a77bd77a-1000--champions-league-league-phase-fixtures-and-results/"
-        },
-        {
-          "label": "Stake 1X2 reference market",
-          "type": "odds",
-          "url": "https://stake.bet/sports/soccer/international-clubs/uefa-champions-league"
-        }
-      ]
+      "finalCall": "SIRIUS 2 — TORINO WIN · UNVERIFIED REF 2.14",
+      "finalNote": "Owner-requested provisional editorial listing, not verified betting advice; no wager executed.",
+      "disciplineNote": "No invented fixture ID, kickoff, source or settlement.",
+      "sources": []
     },
     {
-      "id": "p3-2026-10-21-bay-ars",
-      "date": "2026-10-21",
-      "league": "UEFA Champions League · League phase",
-      "round": "21 October 2026",
-      "kickoff": "02:00 Thailand Time · 22 Oct",
-      "home": "Bayern Munich",
-      "away": "Arsenal",
-      "homeShort": "BAY",
-      "awayShort": "ARS",
-      "homeColors": {
-        "base": "#1d4d87",
-        "stripe": "#d9d0a5",
-        "accent": "#ffffff",
-        "pattern": "stripe"
-      },
-      "awayColors": {
-        "base": "#e6bd2b",
-        "stripe": "#102a62",
-        "accent": "#ffffff",
-        "pattern": "stripe"
-      },
-      "pick": "Bayern Munich to Win",
+      "id": "p3-2026-10-23-brest-nice",
+      "date": "2026-10-23",
+      "league": "UNVERIFIED · Editorial",
+      "round": "23 October 2026 · fixture confirmation pending",
+      "kickoff": "Time not verified",
+      "home": "Brest",
+      "away": "Nice",
+      "homeShort": "BRE",
+      "awayShort": "NIC",
+      "pick": "Brest to Win",
       "market": "1X2",
-      "referenceOdds": 2.05,
-      "bestOddsObserved": 2.05,
-      "oddsCapturedAt": "2026-10-21 · source page snapshot (exact quote timestamp unavailable)",
+      "referenceOdds": 2.25,
+      "bestOddsObserved": 2.25,
+      "oddsCapturedAt": "Prior assistant candidate list · bookmaker quote not independently verified",
       "minimumOdds": 1.8,
-      "confidenceLabel": "SIRIUS 3 · Editorial selection · Unscored",
+      "confidenceLabel": "SIRIUS 3 · Owner-requested editorial · Unscored",
       "grade": "TEST",
-      "currentView": "EDITORIAL · VERIFIED FIXTURE · REFERENCE ODDS · TRACKER AUTO-MATCH PENDING",
-      "finalCheck": "Verify live odds and team lineups; Tracker must verify fixture identity before settlement",
-      "nomadView": "Manual editorial selection; A–B–C not scored",
-      "risk": "High",
+      "currentView": "EDITORIAL · FIXTURE/ODDS UNVERIFIED · NO AUTOMATIC SETTLEMENT UNTIL VERIFIED",
+      "finalCheck": "Verify date, competition, UTC kickoff, fixture ID, and bookmaker odds before betting or settlement",
+      "nomadView": "Owner-requested candidate; A–B–C not scored",
+      "risk": "High · unverified",
       "tracking": {
         "provider": "TotalCorner V3",
         "fixtureId": null,
-        "kickoffUtc": "2026-10-21T19:00:00Z",
+        "kickoffUtc": null,
         "pickSide": "home",
-        "liveScore": true,
-        "automaticSettlement": true
+        "liveScore": false,
+        "automaticSettlement": false
       },
       "rawBestMarket": {
         "market": "1X2",
-        "selection": "Bayern Munich Win",
-        "oddsRange": "Reference 2.05 · exact quote timestamp unavailable",
-        "status": "REFERENCE ONLY · NOT EXECUTABLE"
+        "selection": "Brest Win",
+        "oddsRange": "Unverified reference 2.25",
+        "status": "UNVERIFIED REFERENCE · NOT EXECUTABLE"
       },
       "marketViews": [
         {
           "market": "1X2",
-          "pick": "Bayern Munich to Win",
-          "odds": 2.05,
-          "status": "REFERENCE · NOT LIVE VERIFIED"
+          "pick": "Brest to Win",
+          "odds": 2.25,
+          "status": "UNVERIFIED REFERENCE"
         }
       ],
       "why": [
-        "UEFA 2026/27 matchday 3 fixture verified.",
-        "Editorial home-win candidate with 1X2 reference price above 1.80; A–B–C scoring not performed."
+        "Owner requested publication of five provisional editorial picks.",
+        "Fixture date, competition, odds, and model A–B–C remain unverified."
       ],
       "support": {
-        "form": "Not independently scored.",
-        "squad": "Starting XI not confirmed.",
-        "level": "UEFA Champions League matchday 3.",
-        "price": "Stake 1X2 reference 2.05; quote timestamp unavailable."
+        "form": "Not scored.",
+        "squad": "Not verified.",
+        "level": "Fixture not verified.",
+        "price": "Unverified reference 2.25."
       },
       "tactical": [
-        "Full-time 1X2 home win only; draw counts as LOSS.",
-        "Tracker auto-matches team identity and only settles on verified FT."
+        "Full-time 1X2 only; draw counts as LOSS.",
+        "Do not auto-settle without verified fixture identity and FT."
       ],
       "riskFactors": [
-        "Price is a reference snapshot, not a verified executable quote.",
-        "TotalCorner V3 fixture ID pending auto-discovery."
+        "Fixture and date unverified.",
+        "Reference odds are not live bookmaker quotes."
       ],
       "noBetIf": [
-        "1X2 price falls below 1.80.",
-        "Fixture identity or verified FT unavailable."
+        "Fixture identity cannot be confirmed.",
+        "Verified live price is below 1.80."
       ],
-      "finalCall": "SIRIUS 3 — BAYERN MUNICH WIN · REF 2.05",
-      "finalNote": "Owner-approved editorial listing; not A–B–C scored; no wager executed.",
-      "disciplineNote": "Missing or ambiguous fixture identity remains pending; never fabricate settlement.",
-      "sources": [
-        {
-          "label": "UEFA official 2026/27 fixtures",
-          "type": "fixture",
-          "url": "https://www.uefa.com/uefachampionsleague/news/02a8-2174c9e9019d-f909a77bd77a-1000--champions-league-league-phase-fixtures-and-results/"
-        },
-        {
-          "label": "Stake 1X2 reference market",
-          "type": "odds",
-          "url": "https://stake.bet/sports/soccer/international-clubs/uefa-champions-league"
-        }
-      ]
+      "finalCall": "SIRIUS 3 — BREST WIN · UNVERIFIED REF 2.25",
+      "finalNote": "Owner-requested provisional editorial listing, not verified betting advice; no wager executed.",
+      "disciplineNote": "No invented fixture ID, kickoff, source or settlement.",
+      "sources": []
     },
     {
-      "id": "p3-2026-10-21-bru-len",
-      "date": "2026-10-21",
-      "league": "UEFA Champions League · League phase",
-      "round": "21 October 2026",
-      "kickoff": "02:00 Thailand Time · 22 Oct",
-      "home": "Club Brugge",
-      "away": "Lens",
-      "homeShort": "BRU",
-      "awayShort": "LEN",
-      "homeColors": {
-        "base": "#1d4d87",
-        "stripe": "#d9d0a5",
-        "accent": "#ffffff",
-        "pattern": "stripe"
-      },
-      "awayColors": {
-        "base": "#e6bd2b",
-        "stripe": "#102a62",
-        "accent": "#ffffff",
-        "pattern": "stripe"
-      },
-      "pick": "Club Brugge to Win",
+      "id": "p3-2026-10-23-akhmat-grozny-orenburg",
+      "date": "2026-10-23",
+      "league": "UNVERIFIED · Editorial",
+      "round": "23 October 2026 · fixture confirmation pending",
+      "kickoff": "Time not verified",
+      "home": "Akhmat Grozny",
+      "away": "Orenburg",
+      "homeShort": "AKH",
+      "awayShort": "ORE",
+      "pick": "Akhmat Grozny to Win",
       "market": "1X2",
-      "referenceOdds": 2.02,
-      "bestOddsObserved": 2.02,
-      "oddsCapturedAt": "2026-10-21 · source page snapshot (exact quote timestamp unavailable)",
+      "referenceOdds": 2,
+      "bestOddsObserved": 2,
+      "oddsCapturedAt": "Prior assistant candidate list · bookmaker quote not independently verified",
       "minimumOdds": 1.8,
-      "confidenceLabel": "SIRIUS 4 · Editorial selection · Unscored",
+      "confidenceLabel": "SIRIUS 4 · Owner-requested editorial · Unscored",
       "grade": "TEST",
-      "currentView": "EDITORIAL · VERIFIED FIXTURE · REFERENCE ODDS · TRACKER AUTO-MATCH PENDING",
-      "finalCheck": "Verify live odds and team lineups; Tracker must verify fixture identity before settlement",
-      "nomadView": "Manual editorial selection; A–B–C not scored",
-      "risk": "High",
+      "currentView": "EDITORIAL · FIXTURE/ODDS UNVERIFIED · NO AUTOMATIC SETTLEMENT UNTIL VERIFIED",
+      "finalCheck": "Verify date, competition, UTC kickoff, fixture ID, and bookmaker odds before betting or settlement",
+      "nomadView": "Owner-requested candidate; A–B–C not scored",
+      "risk": "High · unverified",
       "tracking": {
         "provider": "TotalCorner V3",
         "fixtureId": null,
-        "kickoffUtc": "2026-10-21T19:00:00Z",
+        "kickoffUtc": null,
         "pickSide": "home",
-        "liveScore": true,
-        "automaticSettlement": true
+        "liveScore": false,
+        "automaticSettlement": false
       },
       "rawBestMarket": {
         "market": "1X2",
-        "selection": "Club Brugge Win",
-        "oddsRange": "Reference 2.02 · exact quote timestamp unavailable",
-        "status": "REFERENCE ONLY · NOT EXECUTABLE"
+        "selection": "Akhmat Grozny Win",
+        "oddsRange": "Unverified reference 2.00",
+        "status": "UNVERIFIED REFERENCE · NOT EXECUTABLE"
       },
       "marketViews": [
         {
           "market": "1X2",
-          "pick": "Club Brugge to Win",
-          "odds": 2.02,
-          "status": "REFERENCE · NOT LIVE VERIFIED"
+          "pick": "Akhmat Grozny to Win",
+          "odds": 2,
+          "status": "UNVERIFIED REFERENCE"
         }
       ],
       "why": [
-        "UEFA 2026/27 matchday 3 fixture verified.",
-        "Editorial home-win candidate with 1X2 reference price above 1.80; A–B–C scoring not performed."
+        "Owner requested publication of five provisional editorial picks.",
+        "Fixture date, competition, odds, and model A–B–C remain unverified."
       ],
       "support": {
-        "form": "Not independently scored.",
-        "squad": "Starting XI not confirmed.",
-        "level": "UEFA Champions League matchday 3.",
-        "price": "Stake 1X2 reference 2.02; quote timestamp unavailable."
+        "form": "Not scored.",
+        "squad": "Not verified.",
+        "level": "Fixture not verified.",
+        "price": "Unverified reference 2.00."
       },
       "tactical": [
-        "Full-time 1X2 home win only; draw counts as LOSS.",
-        "Tracker auto-matches team identity and only settles on verified FT."
+        "Full-time 1X2 only; draw counts as LOSS.",
+        "Do not auto-settle without verified fixture identity and FT."
       ],
       "riskFactors": [
-        "Price is a reference snapshot, not a verified executable quote.",
-        "TotalCorner V3 fixture ID pending auto-discovery."
+        "Fixture and date unverified.",
+        "Reference odds are not live bookmaker quotes."
       ],
       "noBetIf": [
-        "1X2 price falls below 1.80.",
-        "Fixture identity or verified FT unavailable."
+        "Fixture identity cannot be confirmed.",
+        "Verified live price is below 1.80."
       ],
-      "finalCall": "SIRIUS 4 — CLUB BRUGGE WIN · REF 2.02",
-      "finalNote": "Owner-approved editorial listing; not A–B–C scored; no wager executed.",
-      "disciplineNote": "Missing or ambiguous fixture identity remains pending; never fabricate settlement.",
-      "sources": [
+      "finalCall": "SIRIUS 4 — AKHMAT GROZNY WIN · UNVERIFIED REF 2.00",
+      "finalNote": "Owner-requested provisional editorial listing, not verified betting advice; no wager executed.",
+      "disciplineNote": "No invented fixture ID, kickoff, source or settlement.",
+      "sources": []
+    },
+    {
+      "id": "p3-2026-10-23-bochum-wolfsburg",
+      "date": "2026-10-23",
+      "league": "UNVERIFIED · Editorial",
+      "round": "23 October 2026 · fixture confirmation pending",
+      "kickoff": "Time not verified",
+      "home": "Bochum",
+      "away": "Wolfsburg",
+      "homeShort": "BOC",
+      "awayShort": "WOL",
+      "pick": "Wolfsburg to Win",
+      "market": "1X2",
+      "referenceOdds": 2.07,
+      "bestOddsObserved": 2.07,
+      "oddsCapturedAt": "Prior assistant candidate list · bookmaker quote not independently verified",
+      "minimumOdds": 1.8,
+      "confidenceLabel": "SIRIUS 5 · Owner-requested editorial · Unscored",
+      "grade": "TEST",
+      "currentView": "EDITORIAL · FIXTURE/ODDS UNVERIFIED · NO AUTOMATIC SETTLEMENT UNTIL VERIFIED",
+      "finalCheck": "Verify date, competition, UTC kickoff, fixture ID, and bookmaker odds before betting or settlement",
+      "nomadView": "Owner-requested candidate; A–B–C not scored",
+      "risk": "High · unverified",
+      "tracking": {
+        "provider": "TotalCorner V3",
+        "fixtureId": null,
+        "kickoffUtc": null,
+        "pickSide": "away",
+        "liveScore": false,
+        "automaticSettlement": false
+      },
+      "rawBestMarket": {
+        "market": "1X2",
+        "selection": "Wolfsburg Win",
+        "oddsRange": "Unverified reference 2.07",
+        "status": "UNVERIFIED REFERENCE · NOT EXECUTABLE"
+      },
+      "marketViews": [
         {
-          "label": "UEFA official 2026/27 fixtures",
-          "type": "fixture",
-          "url": "https://www.uefa.com/uefachampionsleague/news/02a8-2174c9e9019d-f909a77bd77a-1000--champions-league-league-phase-fixtures-and-results/"
-        },
-        {
-          "label": "Stake 1X2 reference market",
-          "type": "odds",
-          "url": "https://stake.bet/sports/soccer/international-clubs/uefa-champions-league"
+          "market": "1X2",
+          "pick": "Wolfsburg to Win",
+          "odds": 2.07,
+          "status": "UNVERIFIED REFERENCE"
         }
-      ]
+      ],
+      "why": [
+        "Owner requested publication of five provisional editorial picks.",
+        "Fixture date, competition, odds, and model A–B–C remain unverified."
+      ],
+      "support": {
+        "form": "Not scored.",
+        "squad": "Not verified.",
+        "level": "Fixture not verified.",
+        "price": "Unverified reference 2.07."
+      },
+      "tactical": [
+        "Full-time 1X2 only; draw counts as LOSS.",
+        "Do not auto-settle without verified fixture identity and FT."
+      ],
+      "riskFactors": [
+        "Fixture and date unverified.",
+        "Reference odds are not live bookmaker quotes."
+      ],
+      "noBetIf": [
+        "Fixture identity cannot be confirmed.",
+        "Verified live price is below 1.80."
+      ],
+      "finalCall": "SIRIUS 5 — WOLFSBURG WIN · UNVERIFIED REF 2.07",
+      "finalNote": "Owner-requested provisional editorial listing, not verified betting advice; no wager executed.",
+      "disciplineNote": "No invented fixture ID, kickoff, source or settlement.",
+      "sources": []
     }
   ],
   "results": [
@@ -1851,6 +1830,382 @@
           "label": "UEFA official matchday 3 fixtures",
           "type": "fixture",
           "url": "https://www.uefa.com/uefachampionsleague/news/02a8-2174c9e9019d-f909a77bd77a-1000--2026-27-champions-league-all-the-league-phase-fixtures-a/"
+        }
+      ]
+    },
+    {
+      "id": "p3-2026-10-21-como-mun",
+      "date": "2026-10-21",
+      "league": "UEFA Champions League · League phase",
+      "round": "21 October 2026",
+      "kickoff": "23:45 Thailand Time · 21 Oct",
+      "home": "Como",
+      "away": "Manchester United",
+      "homeShort": "COM",
+      "awayShort": "MUN",
+      "homeColors": {
+        "base": "#1d4d87",
+        "stripe": "#d9d0a5",
+        "accent": "#ffffff",
+        "pattern": "stripe"
+      },
+      "awayColors": {
+        "base": "#e6bd2b",
+        "stripe": "#102a62",
+        "accent": "#ffffff",
+        "pattern": "stripe"
+      },
+      "pick": "Como to Win",
+      "market": "1X2",
+      "referenceOdds": 2.2,
+      "bestOddsObserved": 2.2,
+      "oddsCapturedAt": "2026-10-21 · source page snapshot (exact quote timestamp unavailable)",
+      "minimumOdds": 1.8,
+      "confidenceLabel": "SIRIUS 1 · Editorial selection · Unscored",
+      "grade": "TEST",
+      "currentView": "EDITORIAL · VERIFIED FIXTURE · REFERENCE ODDS · TRACKER AUTO-MATCH PENDING",
+      "finalCheck": "Verify live odds and team lineups; Tracker must verify fixture identity before settlement",
+      "nomadView": "Manual editorial selection; A–B–C not scored",
+      "risk": "High",
+      "tracking": {
+        "provider": "TotalCorner V3",
+        "fixtureId": null,
+        "kickoffUtc": "2026-10-21T16:45:00Z",
+        "pickSide": "home",
+        "liveScore": true,
+        "automaticSettlement": true
+      },
+      "rawBestMarket": {
+        "market": "1X2",
+        "selection": "Como Win",
+        "oddsRange": "Reference 2.20 · exact quote timestamp unavailable",
+        "status": "REFERENCE ONLY · NOT EXECUTABLE"
+      },
+      "marketViews": [
+        {
+          "market": "1X2",
+          "pick": "Como to Win",
+          "odds": 2.2,
+          "status": "REFERENCE · NOT LIVE VERIFIED"
+        }
+      ],
+      "why": [
+        "UEFA 2026/27 matchday 3 fixture verified.",
+        "Editorial home-win candidate with 1X2 reference price above 1.80; A–B–C scoring not performed."
+      ],
+      "support": {
+        "form": "Not independently scored.",
+        "squad": "Starting XI not confirmed.",
+        "level": "UEFA Champions League matchday 3.",
+        "price": "Stake 1X2 reference 2.20; quote timestamp unavailable."
+      },
+      "tactical": [
+        "Full-time 1X2 home win only; draw counts as LOSS.",
+        "Tracker auto-matches team identity and only settles on verified FT."
+      ],
+      "riskFactors": [
+        "Price is a reference snapshot, not a verified executable quote.",
+        "TotalCorner V3 fixture ID pending auto-discovery."
+      ],
+      "noBetIf": [
+        "1X2 price falls below 1.80.",
+        "Fixture identity or verified FT unavailable."
+      ],
+      "finalCall": "SIRIUS 1 — COMO WIN · REF 2.20",
+      "finalNote": "Owner-approved editorial listing; not A–B–C scored; no wager executed.",
+      "disciplineNote": "Missing or ambiguous fixture identity remains pending; never fabricate settlement.",
+      "sources": [
+        {
+          "label": "UEFA official 2026/27 fixtures",
+          "type": "fixture",
+          "url": "https://www.uefa.com/uefachampionsleague/news/02a8-2174c9e9019d-f909a77bd77a-1000--champions-league-league-phase-fixtures-and-results/"
+        },
+        {
+          "label": "Stake 1X2 reference market",
+          "type": "odds",
+          "url": "https://stake.bet/sports/soccer/international-clubs/uefa-champions-league"
+        }
+      ]
+    },
+    {
+      "id": "p3-2026-10-21-lil-gal",
+      "date": "2026-10-21",
+      "league": "UEFA Champions League · League phase",
+      "round": "21 October 2026",
+      "kickoff": "23:45 Thailand Time · 21 Oct",
+      "home": "Lille",
+      "away": "Galatasaray",
+      "homeShort": "LIL",
+      "awayShort": "GAL",
+      "homeColors": {
+        "base": "#1d4d87",
+        "stripe": "#d9d0a5",
+        "accent": "#ffffff",
+        "pattern": "stripe"
+      },
+      "awayColors": {
+        "base": "#e6bd2b",
+        "stripe": "#102a62",
+        "accent": "#ffffff",
+        "pattern": "stripe"
+      },
+      "pick": "Lille to Win",
+      "market": "1X2",
+      "referenceOdds": 2.19,
+      "bestOddsObserved": 2.19,
+      "oddsCapturedAt": "2026-10-21 · source page snapshot (exact quote timestamp unavailable)",
+      "minimumOdds": 1.8,
+      "confidenceLabel": "SIRIUS 2 · Editorial selection · Unscored",
+      "grade": "TEST",
+      "currentView": "EDITORIAL · VERIFIED FIXTURE · REFERENCE ODDS · TRACKER AUTO-MATCH PENDING",
+      "finalCheck": "Verify live odds and team lineups; Tracker must verify fixture identity before settlement",
+      "nomadView": "Manual editorial selection; A–B–C not scored",
+      "risk": "High",
+      "tracking": {
+        "provider": "TotalCorner V3",
+        "fixtureId": null,
+        "kickoffUtc": "2026-10-21T16:45:00Z",
+        "pickSide": "home",
+        "liveScore": true,
+        "automaticSettlement": true
+      },
+      "rawBestMarket": {
+        "market": "1X2",
+        "selection": "Lille Win",
+        "oddsRange": "Reference 2.19 · exact quote timestamp unavailable",
+        "status": "REFERENCE ONLY · NOT EXECUTABLE"
+      },
+      "marketViews": [
+        {
+          "market": "1X2",
+          "pick": "Lille to Win",
+          "odds": 2.19,
+          "status": "REFERENCE · NOT LIVE VERIFIED"
+        }
+      ],
+      "why": [
+        "UEFA 2026/27 matchday 3 fixture verified.",
+        "Editorial home-win candidate with 1X2 reference price above 1.80; A–B–C scoring not performed."
+      ],
+      "support": {
+        "form": "Not independently scored.",
+        "squad": "Starting XI not confirmed.",
+        "level": "UEFA Champions League matchday 3.",
+        "price": "Stake 1X2 reference 2.19; quote timestamp unavailable."
+      },
+      "tactical": [
+        "Full-time 1X2 home win only; draw counts as LOSS.",
+        "Tracker auto-matches team identity and only settles on verified FT."
+      ],
+      "riskFactors": [
+        "Price is a reference snapshot, not a verified executable quote.",
+        "TotalCorner V3 fixture ID pending auto-discovery."
+      ],
+      "noBetIf": [
+        "1X2 price falls below 1.80.",
+        "Fixture identity or verified FT unavailable."
+      ],
+      "finalCall": "SIRIUS 2 — LILLE WIN · REF 2.19",
+      "finalNote": "Owner-approved editorial listing; not A–B–C scored; no wager executed.",
+      "disciplineNote": "Missing or ambiguous fixture identity remains pending; never fabricate settlement.",
+      "sources": [
+        {
+          "label": "UEFA official 2026/27 fixtures",
+          "type": "fixture",
+          "url": "https://www.uefa.com/uefachampionsleague/news/02a8-2174c9e9019d-f909a77bd77a-1000--champions-league-league-phase-fixtures-and-results/"
+        },
+        {
+          "label": "Stake 1X2 reference market",
+          "type": "odds",
+          "url": "https://stake.bet/sports/soccer/international-clubs/uefa-champions-league"
+        }
+      ]
+    },
+    {
+      "id": "p3-2026-10-21-bay-ars",
+      "date": "2026-10-21",
+      "league": "UEFA Champions League · League phase",
+      "round": "21 October 2026",
+      "kickoff": "02:00 Thailand Time · 22 Oct",
+      "home": "Bayern Munich",
+      "away": "Arsenal",
+      "homeShort": "BAY",
+      "awayShort": "ARS",
+      "homeColors": {
+        "base": "#1d4d87",
+        "stripe": "#d9d0a5",
+        "accent": "#ffffff",
+        "pattern": "stripe"
+      },
+      "awayColors": {
+        "base": "#e6bd2b",
+        "stripe": "#102a62",
+        "accent": "#ffffff",
+        "pattern": "stripe"
+      },
+      "pick": "Bayern Munich to Win",
+      "market": "1X2",
+      "referenceOdds": 2.05,
+      "bestOddsObserved": 2.05,
+      "oddsCapturedAt": "2026-10-21 · source page snapshot (exact quote timestamp unavailable)",
+      "minimumOdds": 1.8,
+      "confidenceLabel": "SIRIUS 3 · Editorial selection · Unscored",
+      "grade": "TEST",
+      "currentView": "EDITORIAL · VERIFIED FIXTURE · REFERENCE ODDS · TRACKER AUTO-MATCH PENDING",
+      "finalCheck": "Verify live odds and team lineups; Tracker must verify fixture identity before settlement",
+      "nomadView": "Manual editorial selection; A–B–C not scored",
+      "risk": "High",
+      "tracking": {
+        "provider": "TotalCorner V3",
+        "fixtureId": null,
+        "kickoffUtc": "2026-10-21T19:00:00Z",
+        "pickSide": "home",
+        "liveScore": true,
+        "automaticSettlement": true
+      },
+      "rawBestMarket": {
+        "market": "1X2",
+        "selection": "Bayern Munich Win",
+        "oddsRange": "Reference 2.05 · exact quote timestamp unavailable",
+        "status": "REFERENCE ONLY · NOT EXECUTABLE"
+      },
+      "marketViews": [
+        {
+          "market": "1X2",
+          "pick": "Bayern Munich to Win",
+          "odds": 2.05,
+          "status": "REFERENCE · NOT LIVE VERIFIED"
+        }
+      ],
+      "why": [
+        "UEFA 2026/27 matchday 3 fixture verified.",
+        "Editorial home-win candidate with 1X2 reference price above 1.80; A–B–C scoring not performed."
+      ],
+      "support": {
+        "form": "Not independently scored.",
+        "squad": "Starting XI not confirmed.",
+        "level": "UEFA Champions League matchday 3.",
+        "price": "Stake 1X2 reference 2.05; quote timestamp unavailable."
+      },
+      "tactical": [
+        "Full-time 1X2 home win only; draw counts as LOSS.",
+        "Tracker auto-matches team identity and only settles on verified FT."
+      ],
+      "riskFactors": [
+        "Price is a reference snapshot, not a verified executable quote.",
+        "TotalCorner V3 fixture ID pending auto-discovery."
+      ],
+      "noBetIf": [
+        "1X2 price falls below 1.80.",
+        "Fixture identity or verified FT unavailable."
+      ],
+      "finalCall": "SIRIUS 3 — BAYERN MUNICH WIN · REF 2.05",
+      "finalNote": "Owner-approved editorial listing; not A–B–C scored; no wager executed.",
+      "disciplineNote": "Missing or ambiguous fixture identity remains pending; never fabricate settlement.",
+      "sources": [
+        {
+          "label": "UEFA official 2026/27 fixtures",
+          "type": "fixture",
+          "url": "https://www.uefa.com/uefachampionsleague/news/02a8-2174c9e9019d-f909a77bd77a-1000--champions-league-league-phase-fixtures-and-results/"
+        },
+        {
+          "label": "Stake 1X2 reference market",
+          "type": "odds",
+          "url": "https://stake.bet/sports/soccer/international-clubs/uefa-champions-league"
+        }
+      ]
+    },
+    {
+      "id": "p3-2026-10-21-bru-len",
+      "date": "2026-10-21",
+      "league": "UEFA Champions League · League phase",
+      "round": "21 October 2026",
+      "kickoff": "02:00 Thailand Time · 22 Oct",
+      "home": "Club Brugge",
+      "away": "Lens",
+      "homeShort": "BRU",
+      "awayShort": "LEN",
+      "homeColors": {
+        "base": "#1d4d87",
+        "stripe": "#d9d0a5",
+        "accent": "#ffffff",
+        "pattern": "stripe"
+      },
+      "awayColors": {
+        "base": "#e6bd2b",
+        "stripe": "#102a62",
+        "accent": "#ffffff",
+        "pattern": "stripe"
+      },
+      "pick": "Club Brugge to Win",
+      "market": "1X2",
+      "referenceOdds": 2.02,
+      "bestOddsObserved": 2.02,
+      "oddsCapturedAt": "2026-10-21 · source page snapshot (exact quote timestamp unavailable)",
+      "minimumOdds": 1.8,
+      "confidenceLabel": "SIRIUS 4 · Editorial selection · Unscored",
+      "grade": "TEST",
+      "currentView": "EDITORIAL · VERIFIED FIXTURE · REFERENCE ODDS · TRACKER AUTO-MATCH PENDING",
+      "finalCheck": "Verify live odds and team lineups; Tracker must verify fixture identity before settlement",
+      "nomadView": "Manual editorial selection; A–B–C not scored",
+      "risk": "High",
+      "tracking": {
+        "provider": "TotalCorner V3",
+        "fixtureId": null,
+        "kickoffUtc": "2026-10-21T19:00:00Z",
+        "pickSide": "home",
+        "liveScore": true,
+        "automaticSettlement": true
+      },
+      "rawBestMarket": {
+        "market": "1X2",
+        "selection": "Club Brugge Win",
+        "oddsRange": "Reference 2.02 · exact quote timestamp unavailable",
+        "status": "REFERENCE ONLY · NOT EXECUTABLE"
+      },
+      "marketViews": [
+        {
+          "market": "1X2",
+          "pick": "Club Brugge to Win",
+          "odds": 2.02,
+          "status": "REFERENCE · NOT LIVE VERIFIED"
+        }
+      ],
+      "why": [
+        "UEFA 2026/27 matchday 3 fixture verified.",
+        "Editorial home-win candidate with 1X2 reference price above 1.80; A–B–C scoring not performed."
+      ],
+      "support": {
+        "form": "Not independently scored.",
+        "squad": "Starting XI not confirmed.",
+        "level": "UEFA Champions League matchday 3.",
+        "price": "Stake 1X2 reference 2.02; quote timestamp unavailable."
+      },
+      "tactical": [
+        "Full-time 1X2 home win only; draw counts as LOSS.",
+        "Tracker auto-matches team identity and only settles on verified FT."
+      ],
+      "riskFactors": [
+        "Price is a reference snapshot, not a verified executable quote.",
+        "TotalCorner V3 fixture ID pending auto-discovery."
+      ],
+      "noBetIf": [
+        "1X2 price falls below 1.80.",
+        "Fixture identity or verified FT unavailable."
+      ],
+      "finalCall": "SIRIUS 4 — CLUB BRUGGE WIN · REF 2.02",
+      "finalNote": "Owner-approved editorial listing; not A–B–C scored; no wager executed.",
+      "disciplineNote": "Missing or ambiguous fixture identity remains pending; never fabricate settlement.",
+      "sources": [
+        {
+          "label": "UEFA official 2026/27 fixtures",
+          "type": "fixture",
+          "url": "https://www.uefa.com/uefachampionsleague/news/02a8-2174c9e9019d-f909a77bd77a-1000--champions-league-league-phase-fixtures-and-results/"
+        },
+        {
+          "label": "Stake 1X2 reference market",
+          "type": "odds",
+          "url": "https://stake.bet/sports/soccer/international-clubs/uefa-champions-league"
         }
       ]
     }
