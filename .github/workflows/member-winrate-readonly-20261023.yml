@@ -1,0 +1,64 @@
+name: BALL46 Member WIN RATE — Live Production Read Only Audit
+on:
+  push:
+    branches: [audit/ball46-member-winrate-math-20261023]
+    paths: [.github/workflows/member-winrate-readonly-20261023.yml]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Inspect active Worker runtime, actual WIN RATE, P/L, live member UI and access
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {createHash} from 'node:crypto';
+          const account=process.env.CLOUDFLARE_ACCOUNT_ID, token=process.env.CLOUDFLARE_API_TOKEN;
+          assert(account&&token,'MISSING_CREDENTIALS');
+          const root='https://api.cloudflare.com/client/v4/accounts/'+account;
+          async function cf(url){
+            const response=await fetch(root+url,{headers:{Authorization:'Bearer '+token},signal:AbortSignal.timeout(30000)});
+            const json=await response.json();
+            assert(response.ok&&json.success,'CLOUDFLARE_READ_ERROR');
+            return json.result;
+          }
+          const deployment=(await cf('/workers/scripts/ball46-member-production/deployments?per_page=1')).deployments[0];
+          assert(deployment.versions.length===1&&deployment.versions[0].percentage===100,'SPLIT_DEPLOYMENT');
+          const version=deployment.versions[0].version_id;
+          const runtime=await cf('/workers/workers/ball46-member-production/versions/'+version+'?include=modules');
+          const main=runtime.modules.find(x=>x.name===runtime.main_module);
+          assert(main?.content_base64,'MAIN_MODULE_NOT_FOUND');
+          const buf=Buffer.from(main.content_base64,'base64');
+          const js=buf.toString('utf8');
+          const start=js.indexOf('function dailySummary(');
+          const end=js.indexOf('async function sourceJson(',start);
+          assert(start>=0&&end>start&&end-start<1900,'SUMMARY_SOURCE_ANCHOR_CHANGED');
+          const summary=js.slice(start,end);
+          const pnlStart=js.indexOf('function resultPnl('),pnlEnd=js.indexOf('function signalState(',pnlStart);
+          const pnl=js.slice(pnlStart,pnlEnd);
+          const assets={};
+          for(const p of ['/member.js','/styles.css','/member-odds-topbar.css']){
+            const u=new URL(p,'https://member.ball46.com');u.searchParams.set('readOnlyWinRate',Date.now());
+            const r=await fetch(u,{headers:{'cache-control':'no-cache'},signal:AbortSignal.timeout(25000)});
+            assert.equal(r.status,200,'ASSET_UNAVAILABLE '+p);
+            const b=Buffer.from(await r.arrayBuffer()),str=b.toString('utf8');
+            assets[p]={bytes:b.length,sha256:createHash('sha256').update(b).digest('hex')};
+            if(p==='/member.js'){
+              const i=str.indexOf('function renderSummary(){'),j=str.indexOf('function filteredRows(){',i);
+              assert(i>=0&&j>i,'MEMBER_UI_SUMMARY_CHANGED');
+              assets[p].ui=str.slice(i,j).slice(0,1800);
+              const k=str.indexOf('function renderTabs(){');
+              assets[p].tabLogic=str.slice(k,k+850);
+            }
+          }
+          const gated=await fetch('https://member.ball46.com/member.html',{redirect:'manual',signal:AbortSignal.timeout(25000)});
+          console.log('BALL46_MEMBER_WINRATE_READONLY_SOURCE',JSON.stringify({
+            version,main:runtime.main_module,moduleSha256:createHash('sha256').update(buf).digest('hex'),moduleCount:runtime.modules.length,
+            summary,pnl,assets,accessStatus:gated.status,assetsConfig:runtime.assets?.config
+          }));
+          JS
