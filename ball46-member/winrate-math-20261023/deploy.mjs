@@ -294,6 +294,23 @@ let initial=null,newVersion=null;
 try{
  assert(A&&T,'CLOUDFLARE_SECRETS_MISSING');
  initial=await active();report.activeBefore=initial;
+ if(initial.version!==OLD_VERSION){
+   const current=await getVersion(initial.version);
+   const modules=(current.modules||[]).map(m=>{
+     const bytes=Buffer.from(m.content_base64||'','base64');
+     const source=bytes.toString('utf8');
+     return {name:m.name,sha256:hash(bytes),bytes:bytes.length,
+       weightedHalfWin:source.includes('counts.halfWin * 0.5'),
+       countedHalfWin:source.includes('counts.win + counts.halfWin'),
+       pnlFunction:source.includes('function resultPnl(result, odds)'),
+       dailySummary:source.includes('function dailySummary(')};
+   });
+   report.workerDrift={expectedVersion:OLD_VERSION,activeVersion:initial.version,modules};
+   report.phase='SAFE_STOP_WORKER_DRIFT';
+   save();
+   console.log('BALL46_MEMBER_WORKER_DRIFT_READ_ONLY',JSON.stringify(report.workerDrift));
+   throw Error('MEMBER_WORKER_VERSION_MOVED_STOP');
+ }
  assert.equal(initial.version,OLD_VERSION,'MEMBER_WORKER_VERSION_MOVED_STOP');
  const base=await getVersion(initial.version);
  assert.deepEqual(base.modules.map(m=>m.name),['worker.js'],'MEMBER_WORKER_MODULES_CHANGED');
