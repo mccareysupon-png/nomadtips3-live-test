@@ -27,7 +27,7 @@ async function checkedFiles(base,snapshot){const out={};for(const path of retain
 function verifyHtml(r,expected){assert.equal(r.status,200,'HTML_HTTP');assert(r.type?.includes('text/html'),'HTML_MIME');assert.equal(r.sha,sha(Buffer.from(expected)),'HTML_BYTES_CHANGED');assert(r.bytes.toString().includes('Live Betting Tips'),'SEO_TITLE_MISSING');}
 async function setTraffic(to,expected,message){assert.equal((await active()).id,expected,'ACTIVE_CHANGED_BEFORE_TRAFFIC_WRITE');const d=await api('/workers/scripts/'+SCRIPT+'/deployments',{strategy:'percentage',versions:[{version_id:to,percentage:100}],annotations:{'workers/message':message}});return d.id;}
 async function converge(target,expectedHtml,expectedIcon){let stable=0;const deadline=Date.now()+65000;while(Date.now()<deadline){assert.equal((await active()).id,target,'ACTIVE_CHANGED_DURING_CUTOVER');let passed=true;for(const host of ['https://ball46.com','https://www.ball46.com']){const [html,icon]=await Promise.all([read(host,'/'),read(host,'/favicon-192.png')]);if(html.sha!==sha(Buffer.from(expectedHtml))||html.status!==200||icon.sha!==expectedIcon||icon.status!==200)passed=false;}if(passed&&++stable>=2)return;stable=passed?stable:0;await new Promise(r=>setTimeout(r,1800));}throw Error('PUBLIC_CUTOVER_TIMEOUT');}
-let activated=false,candidate;
+let activated=false,candidate,baselineHtml;
 try{
  REPORT.before=await active();assert.equal(REPORT.before.id,BASE_ID,'ACTIVE_VERSION_CHANGED_ABORT');
  const base=await version(BASE_ID),m=base.modules.find(x=>x.name===base.main_module);assert(m,'NO_MAIN_MODULE');
@@ -37,7 +37,7 @@ try{
  const [home,ico]=await Promise.all([read(ORIGIN,'/'),read(ORIGIN,'/favicon-192.png')]);
  assert.equal(home.sha,BASE_HTML_SHA,'BASE_HTML_CHANGED');assert.equal(home.status,200);
  assert.equal(ico.sha,'686b2cec512ba60632818aabdbf7bb38e55876c169f8a27825dd3c97d615af16','OLD_FAVICON_CHANGED');
- const originalHtml=home.bytes.toString(),newHtml=patchHtml(originalHtml);
+ const originalHtml=home.bytes.toString(),newHtml=patchHtml(originalHtml);baselineHtml=originalHtml;
  assert.notEqual(originalHtml,newHtml,'NO_SEO_CHANGE');assert.equal(newHtml.slice(newHtml.indexOf('</head>')),originalHtml.slice(originalHtml.indexOf('</head>')),'BODY_CHANGED');
  REPORT.htmlChange={before:sha(home.bytes),after:sha(Buffer.from(newHtml)),bodyUnchanged:true};
  REPORT.iconChange={before:ico.sha,after:NEW_ICON_SHA};
@@ -73,7 +73,7 @@ try{
  REPORT.ok=true;REPORT.finishedAt=new Date().toISOString();
 }catch(e){
  REPORT.error=e.message;REPORT.ok=false;
- if(activated&&candidate){try{if((await active()).id===candidate){REPORT.rollbackDeployment=await setTraffic(BASE_ID,candidate,'Automatic rollback after BALL46 favicon/SEO verification failure');await converge(BASE_ID,await (async()=>{const r=await read(ORIGIN,'/index.html');return r.sha===BASE_HTML_SHA?r.bytes.toString():null})()||'', '686b2cec512ba60632818aabdbf7bb38e55876c169f8a27825dd3c97d615af16');REPORT.rolledBack=true;}else REPORT.rollbackSkippedCurrentActive=await active();}catch(rollbackError){REPORT.rollbackError=rollbackError.message;}}
+ if(activated&&candidate){try{if((await active()).id===candidate){REPORT.rollbackDeployment=await setTraffic(BASE_ID,candidate,'Automatic rollback after BALL46 favicon/SEO verification failure');await converge(BASE_ID,baselineHtml,'686b2cec512ba60632818aabdbf7bb38e55876c169f8a27825dd3c97d615af16');REPORT.rolledBack=true;}else REPORT.rollbackSkippedCurrentActive=await active();}catch(rollbackError){REPORT.rollbackError=rollbackError.message;}}
  console.error('DEPLOY_FAILED: '+e.message);process.exitCode=1;
 }
 await save();
