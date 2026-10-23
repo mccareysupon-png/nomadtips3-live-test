@@ -1,0 +1,31 @@
+name: BALL46 BTTS Form5 — read-only prerequisites
+on:
+  push:
+    branches: [feature/ball46-btts-form5-statistics-20261023]
+    paths:
+      - .github/workflows/b46-btts-form5-audit.yml
+      - deploy-assets/btts-form5-20261023/**
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Inspect exact current worker and latest statistics routes READ ONLY
+        run: |
+          node --check deploy-assets/btts-form5-20261023/inspect.mjs
+          node deploy-assets/btts-form5-20261023/inspect.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: btts-form5-prerequisites-${{ github.run_id }}
+          path: deploy-assets/btts-form5-20261023/audit/
+          retention-days: 14
