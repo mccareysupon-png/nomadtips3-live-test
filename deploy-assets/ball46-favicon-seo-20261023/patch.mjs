@@ -45,7 +45,7 @@ export default {...__b46BeforeFaviconSeo20261023,async fetch(request,env,ctx){
 }};
 `;
  const candidate=source.replace(before,after)+cloudflareHook;
- assert(!candidate.includes('export default {'));
+ assert.equal(candidate.split('export default {').length,2,'EXPORT_COUNT_CHANGED');
  assert(candidate.includes('x-ball46-favicon-version'));
  return candidate;
 }
