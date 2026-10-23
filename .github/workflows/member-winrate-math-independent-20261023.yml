@@ -1,0 +1,66 @@
+name: BALL46 Member WIN RATE — Independent Production Verification
+on:
+  push:
+    branches: [audit/ball46-member-winrate-math-20261023]
+    paths:
+      - .github/workflows/member-winrate-math-independent-20261023.yml
+permissions:
+  contents: read
+jobs:
+  verify-live:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Read-only verify deployed Worker, new formula, preserved P/L and Member assets
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {createHash} from 'node:crypto';
+          const a=process.env.CLOUDFLARE_ACCOUNT_ID,t=process.env.CLOUDFLARE_API_TOKEN;
+          assert(a&&t,'NO_CLOUDFLARE_READ_CREDENTIALS');
+          async function cf(path){
+            const r=await fetch('https://api.cloudflare.com/client/v4/accounts/'+a+path,{headers:{Authorization:'Bearer '+t},signal:AbortSignal.timeout(25000)});
+            const j=await r.json();assert(r.ok&&j.success,'CLOUDFLARE_READ_FAILED');return j.result;
+          }
+          const dep=(await cf('/workers/scripts/ball46-member-production/deployments?per_page=1')).deployments?.[0];
+          const versions=dep?.versions||[];
+          assert(versions.length===1&&Number(versions[0].percentage)===100,'PRODUCTION_NOT_FULLY_LIVE');
+          const active=versions[0].version_id;
+          assert.equal(active,'df432587-3741-4235-a6c5-000d8eacba4e','NEW_WINRATE_WORKER_NOT_ACTIVE');
+          const obj=await cf('/workers/workers/ball46-member-production/versions/'+active+'?include=modules');
+          const main=obj.modules.find(x=>x.name===obj.main_module);
+          assert(main?.content_base64,'WORKER_MAIN_UNAVAILABLE');
+          const raw=Buffer.from(main.content_base64,'base64');
+          const sha=createHash('sha256').update(raw).digest('hex');
+          assert.equal(sha,'219534ac884da9eec5f9ddb43228a11a518a00d1e4acedaa41041f2d0f304f26','DEPLOYED_WORKER_NOT_EXACT_TESTED_PATCH');
+          const code=raw.toString('utf8');
+          const i=code.indexOf('function dailySummary('),j=code.indexOf('__name(dailySummary,',i);
+          assert(i>=0&&j>i&&j-i<1400,'SUMMARY_ROUTINE_MOVED');
+          const summary=code.slice(i,j);
+          assert(summary.includes('const winningBets = counts.win + counts.halfWin;'),'HALF_WIN_NOT_FULL_WIN');
+          assert(summary.includes('winRate: decided ? Number((winningBets / decided * 100).toFixed(1)) : null'),'WRONG_WIN_RATE_FORMULA');
+          assert(!summary.includes('counts.halfWin * 0.5'),'OLD_INCONSISTENT_FORMULA_REMAINED');
+          assert(summary.includes('const decided = counts.win + counts.loss + counts.halfWin + counts.halfLoss;'),'WRONG_WINRATE_DENOMINATOR');
+          const p=code.slice(code.indexOf('function resultPnl('),code.indexOf('function signalState('));
+          assert(p.includes('if (r === "HALF_WIN") return o === null ? 0 : (o - 1) / 2;'),'HALF_WIN_PROFIT_FORMULA_CHANGED');
+          assert(p.includes('if (r === "HALF_LOSS") return -0.5;'),'HALF_LOSS_PROFIT_FORMULA_CHANGED');
+          const assets={
+            '/member.js':'ef4489618ae07303a7f275b4b37fddd0f7a8cb721bf98d3216c887128c806524',
+            '/styles.css':'f685a95c6bf6cadd280e26ac092a04e89b51a1675e0fd2d8cc78ccb36b27e7df',
+            '/member-odds-topbar.css':'3a6ea0a6cd39b6c94fdc0874999c92d0468bca2c980a37d8bb4c2bc27b48443d'
+          };
+          for(const [path,want] of Object.entries(assets)){
+            const url=new URL(path,'https://member.ball46.com');url.searchParams.set('winrateReadOnlyAudit',Date.now());
+            const r=await fetch(url,{headers:{'cache-control':'no-cache'},signal:AbortSignal.timeout(25000)});
+            assert.equal(r.status,200,'MEMBER_ASSET_BAD_HTTP_'+path);
+            assert.equal(createHash('sha256').update(Buffer.from(await r.arrayBuffer())).digest('hex'),want,'MEMBER_UI_ASSET_CHANGED_'+path);
+          }
+          const gate=await fetch('https://member.ball46.com/member.html',{redirect:'manual',signal:AbortSignal.timeout(24000)});
+          assert([302,303].includes(gate.status),'CLOUDFLARE_ACCESS_GATE_CHANGED');
+          const health=await fetch('https://member.ball46.com/api/health',{signal:AbortSignal.timeout(24000)});
+          const h=await health.json();assert(health.status===200&&h.ok&&h.service==='ball46-member-production','MEMBER_HEALTH_CHANGED');
+          console.log('BALL46_MEMBER_WINRATE_MATH_INDEPENDENT_PASS',JSON.stringify({version:active,workerSha256:sha,formula:'100*(win+halfWin)/(win+halfWin+loss+halfLoss)',pnlUnchanged:true,uiAssetHashesUnchanged:Object.keys(assets),memberGate:gate.status,health:health.status,readOnly:true}));
+          JS
