@@ -1,0 +1,73 @@
+{
+  "status": "SUCCESS",
+  "verifiedAt": "2026-10-23T04:21:45.055Z",
+  "repository": "mccareysupon-png/nomadtips3-live-test",
+  "branch": "codex/ball46-signal-heading-20261023",
+  "baselineBranch": "codex/ball46-league-market-signal-20261023",
+  "baselineCommit": "6a77e7adcf32ea977e2366bcf80d7b5d17d728e4",
+  "sourceCommit": "3f22766d581c6a3afe92df29c74ba961a7688789",
+  "activationCommit": "4cfab3a75a9571ebfbb3484b040a5e132f08c5e4",
+  "candidateRun": 39899267571,
+  "activationRun": 39899564139,
+  "worker": "ball46-production",
+  "activeVersion": "917557b5-5622-4ac6-b2a3-fcee9779dddb",
+  "deployment": "d0076148-4e50-463f-908b-5a874811609d",
+  "trafficPercentage": 100,
+  "productionFilesModified": [
+    "index.js: __b46SignalHeadingHtml20261023 plus fetch wrapper"
+  ],
+  "componentsModified": [
+    ".league-head",
+    "SIGNAL label in existing grid column 6",
+    ".b46-signal-heading-league-count"
+  ],
+  "publicHtmlChanged": [
+    "/",
+    "/index.html"
+  ],
+  "other10WorkerModulesUnchanged": true,
+  "assetsRetained": true,
+  "configurationUnchanged": true,
+  "existingSignalBadgeCodeUnchanged": true,
+  "desktopBreakpoint": 761,
+  "testsPassed": 10,
+  "uiCases": 10,
+  "desktopWidths": [
+    1920,
+    1440,
+    1366,
+    1024
+  ],
+  "desktopThemes": [
+    "light",
+    "dark"
+  ],
+  "mobileWidths": [
+    390,
+    360
+  ],
+  "mobileThemeTested": "dark",
+  "mobileStylesAndGeometryUnchanged": true,
+  "cardHeightBefore": 69.046875,
+  "cardHeightAfter": 69.046875,
+  "performanceHeightUnchanged": 99,
+  "headingAlignmentTolerancePx": 0.1,
+  "leagueMatchCountPreserved": true,
+  "originalCountNodeKeptAsSibling": true,
+  "http200Paths": 85,
+  "knownUnchanged404": [
+    "/color-semantics-stat-entry-20261011.js"
+  ],
+  "settledPreserved": 9219,
+  "liveSignalsDuringQA": 0,
+  "signalFixture": "Isolated synthetic 1/2 test with exact old badge injection plus new heading injection; Light/Dark, rerender, Desktop-Mobile-Desktop passed. No actual live Signal badges claimed during empty active-Signal window.",
+  "rollback": {
+    "baselineVersion": "3da48773-796b-4076-b6f1-3cd70fd6eea5",
+    "baselineDeployment": "45bae34e-7eed-48e8-b777-5b9355927e2d",
+    "candidate": "917557b5-5622-4ac6-b2a3-fcee9779dddb",
+    "phase": "restore",
+    "workflow": ".github/workflows/ball46-signal-heading-deploy-20261023.yml",
+    "instructions": "See ROLLBACK.md. Require this candidate still Active, unchanged configuration and fresh authenticated routes proof. Stop on newer deployment.",
+    "executed": false
+  }
+}
