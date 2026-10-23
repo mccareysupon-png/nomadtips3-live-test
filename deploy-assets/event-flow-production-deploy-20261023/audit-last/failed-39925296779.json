@@ -1,0 +1,83 @@
+{
+  "phase": "candidate",
+  "base": "55e8db05-c9a7-4665-b9fe-ada34e57804f",
+  "script": "ball46-production",
+  "mark": "B46_EVENT_FLOW_CROSSHAIR_20261023",
+  "run": "39925296779",
+  "commit": "ec49216335516e6e6c77ddf9a2db4939cd270214",
+  "startedAt": "2026-10-23T08:31:59.971Z",
+  "assetsRetained": true,
+  "before": {
+    "id": "55e8db05-c9a7-4665-b9fe-ada34e57804f",
+    "deployment": "895233f1-557e-4768-81bf-e09d6a726483"
+  },
+  "baseModules": [
+    {
+      "name": "assets/5usd-control.html",
+      "type": "text/plain",
+      "sha": "3d52c9cd5047238b65d184ca2edac7118b29bd89bdfc7fbff50df40ff77a40e8"
+    },
+    {
+      "name": "assets/api-monitor.html",
+      "type": "text/plain",
+      "sha": "181823ca5dca06eeb0ffbe91971f8bc5bdac3076fa32a21b82de7a402310d9f5"
+    },
+    {
+      "name": "assets/detection-test.html",
+      "type": "text/plain",
+      "sha": "510d1e6d2a5738ee20449a8a6e3233fcb7c69fbe63c71bb10c25c748fdfbc71e"
+    },
+    {
+      "name": "assets/index.html",
+      "type": "text/plain",
+      "sha": "4dbdb46a79970dd1b1c7f3707206d3465307796640b919319a55731fe587b33c"
+    },
+    {
+      "name": "assets/robots.txt",
+      "type": "text/plain",
+      "sha": "f2262c458da042583e2bf1a8207109823b1935af67080c9b223fd600ab417f5b"
+    },
+    {
+      "name": "assets/settings.html",
+      "type": "text/plain",
+      "sha": "08f65d43d98dd31ecf46dae808c20aebc2a84f3e52e9c8c9b69e847c9d12d7b5"
+    },
+    {
+      "name": "assets/signal-next.html",
+      "type": "text/plain",
+      "sha": "1b4b9c847b768d2ac8fe0936b0a2e38fd51721cb542c2f0aed5ad7556cb669c4"
+    },
+    {
+      "name": "assets/signal.html",
+      "type": "text/plain",
+      "sha": "4fa313d00c748ce9ffc98bad952495e7b7a1c3f99a6693b6696b6b7dc728f2cc"
+    },
+    {
+      "name": "assets/statistics-next.html",
+      "type": "text/plain",
+      "sha": "393f1adf39385965986542ff38d740b696bf06c3dfb7a490edffce0f09bba534"
+    },
+    {
+      "name": "assets/statistics.html",
+      "type": "text/plain",
+      "sha": "9e3754322902d4748f1019cce258f0dd309b0256eccf4fbe53070e09ec7a75f6"
+    },
+    {
+      "name": "b46-performance-banner-dark.bin",
+      "type": "application/octet-stream",
+      "sha": "e249fa0f014597459f0b148f55b4d49ed3831e7ee184d623b91daf76766330d5"
+    },
+    {
+      "name": "b46-performance-banner-light.bin",
+      "type": "application/octet-stream",
+      "sha": "f23d41134d08eeea3216ce916508a8d3ae5c298e53576c7fa1cb8341265cd1b1"
+    },
+    {
+      "name": "index.js",
+      "type": "application/javascript+module",
+      "sha": "953745d9d9926d5c51d6e1e32f025dd98c71af90719c28f22b0da984b4908438"
+    }
+  ],
+  "ok": false,
+  "error": "The expression evaluated to a falsy value:\n\n  assert(p?.source==='authenticated-dashboard-session'&&p.zone===zone&&p.success&&Array.isArray(p.result))\n"
+}
