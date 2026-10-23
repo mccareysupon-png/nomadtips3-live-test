@@ -1,0 +1,35 @@
+name: BALL46 BTTS Form5 candidate upload — DISABLED
+on:
+  push:
+    branches: [feature/ball46-btts-form5-statistics-20261023]
+    paths:
+      - .github/workflows/b46-btts-form5-candidate.yml
+permissions:
+  contents: read
+concurrency:
+  group: b46-form5-candidate
+  cancel-in-progress: false
+jobs:
+  candidate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Prove deterministic Form5 decision and FT logic before any candidate upload
+        run: |
+          node --test deploy-assets/btts-form5-20261023/*.test.mjs
+          node --check deploy-assets/btts-form5-20261023/candidate.mjs
+      - name: Upload isolated candidate version with traffic unchanged
+        run: node deploy-assets/btts-form5-20261023/candidate.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: b46-form5-candidate-${{ github.run_id }}
+          path: deploy-assets/btts-form5-20261023/audit/
+          retention-days: 14
