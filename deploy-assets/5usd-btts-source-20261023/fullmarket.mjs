@@ -1,0 +1,11 @@
+import{mkdir,writeFile}from'node:fs/promises';
+const account=process.env.CLOUDFLARE_ACCOUNT_ID,token=process.env.CLOUDFLARE_API_TOKEN;if(!account||!token)throw Error('MISSING_READONLY_TOKEN');
+async function cf(path){const r=await fetch('https://api.cloudflare.com/client/v4/accounts/'+account+path,{headers:{Authorization:'Bearer '+token},signal:AbortSignal.timeout(40000)}),j=await r.json();if(!r.ok||!j.success)throw Error('CF_'+r.status);return j.result;}
+const worker='nomadtips3-full-market-343-ball46',d=(await cf('/workers/scripts/'+worker+'/deployments?per_page=1')).deployments[0],id=d.versions[0].version_id;
+const v=await cf('/workers/workers/'+worker+'/versions/'+id+'?include=modules'),src=Buffer.from(v.modules.find(m=>m.name===v.main_module).content_base64,'base64').toString();
+const terms=['btts','both_teams_to_score','odds_full','include=','/odds','bookmakers','GET','prewarm','cache','loadRich','load','fetch(','API_BASE','per_fixture','/fixtures','providerJson','reqPerMinute','x-ratelimit','inplay','cacheHit','market','fixture_id','status=live'];
+const cleaned=s=>s.replace(/\b(authorization|secret|bearer|token|password|api[_-]?key)\s*[:=]\s*["'][^"']+/gi,'$1=[REDACTED]').replace(/[a-zA-Z0-9+/_-]{100,}/g,'[long_value]');
+const matches={};for(const term of terms){let i=-1,n=0;const hits=[];while((i=src.toLowerCase().indexOf(term.toLowerCase(),i+1))>=0){n++;if(hits.length<6)hits.push({at:i,context:cleaned(src.slice(Math.max(0,i-300),Math.min(src.length,i+term.length+940))).slice(0,1000)})}matches[term]={count:n,hits};}
+const out={at:new Date().toISOString(),worker,active:id,deployment:d.id,sourceLength:src.length,sourceBeginning:src.slice(0,1300),matches};
+await mkdir('audit',{recursive:true});await writeFile('audit/full-market-code.json',JSON.stringify(out,null,2));
+console.log('B46_FM_WORKER_CODE='+JSON.stringify({active:id,sourceLength:src.length,start:out.sourceBeginning,counts:Object.fromEntries(Object.entries(matches).map(([k,v])=>[k,v.count])),snips:Object.fromEntries(Object.entries(matches).filter(([k])=>['btts','odds_full','/odds','/fixtures','prewarm','providerJson','inplay','loadRich'].includes(k)).map(([k,v])=>[k,v.hits.slice(0,4)]))}).slice(0,26000));
