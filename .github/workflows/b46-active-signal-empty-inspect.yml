@@ -1,0 +1,30 @@
+name: BALL46 Active Signal Empty Ghost READ ONLY
+on:
+  push:
+    branches: [fix/ball46-active-signals-empty-ghost-20261023]
+    paths:
+      - .github/workflows/b46-active-signal-empty-inspect.yml
+      - deploy-assets/active-signal-empty-ghost-20261023/inspect.mjs
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Inspect live empty signal ghost message and renderers
+        run: |
+          node --check deploy-assets/active-signal-empty-ghost-20261023/inspect.mjs
+          node deploy-assets/active-signal-empty-ghost-20261023/inspect.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-empty-state-investigation-${{ github.run_id }}
+          path: deploy-assets/active-signal-empty-ghost-20261023/audit/
