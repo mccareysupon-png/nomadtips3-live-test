@@ -30,6 +30,17 @@ jobs:
         run: |
           set -euo pipefail
           node --check ball46-member/winrate-math-20261023/deploy.mjs
+          python3 - <<'PY'
+          import pathlib, re
+          entry = pathlib.Path('ball46-member/winrate-math-20261023/deploy.mjs')
+          source = entry.read_text()
+          imports = re.findall(r'''from\s+['\"](\.[^'\"]+)['\"]''', source)
+          assert imports, 'No local imports found in deploy entrypoint'
+          missing = [str((entry.parent / ref).resolve()) for ref in imports if not (entry.parent / ref).is_file()]
+          if missing:
+              raise SystemExit('Missing local deploy imports: ' + ', '.join(missing))
+          print(f'PASS: {len(imports)} deploy imports resolved')
+          PY
           node --check ball46-member/src/worker.js
           node --test ball46-member/tests/*.test.mjs
       - name: Install Chromium for six viewport regression checks
