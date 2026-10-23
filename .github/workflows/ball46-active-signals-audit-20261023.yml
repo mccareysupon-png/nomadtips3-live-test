@@ -7,6 +7,7 @@ on:
       - 'deploy-assets/active-signals-flicker-20261023/inspect.mjs'
       - 'deploy-assets/active-signals-flicker-20261023/styles.mjs'
       - 'deploy-assets/active-signals-flicker-20261023/renderers.mjs'
+      - 'deploy-assets/active-signals-flicker-20261023/focus.mjs'
 permissions:
   contents: read
 jobs:
@@ -26,7 +27,8 @@ jobs:
           node --check deploy-assets/active-signals-flicker-20261023/inspect.mjs
           node --check deploy-assets/active-signals-flicker-20261023/styles.mjs
           node --check deploy-assets/active-signals-flicker-20261023/renderers.mjs
-          node deploy-assets/active-signals-flicker-20261023/renderers.mjs
+          node --check deploy-assets/active-signals-flicker-20261023/focus.mjs
+          node deploy-assets/active-signals-flicker-20261023/focus.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
