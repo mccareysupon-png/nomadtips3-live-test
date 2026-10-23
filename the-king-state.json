@@ -3,7 +3,7 @@
   "policy": "ADD_K_MULTI_170_STRONGEST",
   "status": "OK",
   "last_selection_run": "2026-10-23T02:10:48Z",
-  "last_settlement_run": "2026-10-23T01:37:12Z",
+  "last_settlement_run": "2026-10-23T07:41:05Z",
   "selection_date": "2026-10-23",
   "fixtures_seen": 455,
   "qualified": 219,
@@ -391,14 +391,17 @@
     }
   ],
   "source_health": {
-    "index_url": "https://live10.goaloo28.com/gf/data/bf_us.js",
-    "index_ok": true,
-    "odds_ok": true,
-    "index_rows": 551,
-    "odds_rows": 466,
-    "h2h_static_ok": 455,
+    "index_url": null,
+    "index_ok": false,
+    "odds_ok": false,
+    "index_rows": 0,
+    "odds_rows": 0,
+    "h2h_static_ok": 0,
     "h2h_browser_fallback": 0,
-    "errors": []
+    "errors": [
+      "https://live10.goaloo28.com/gf/data/bf_us.js: short response 15",
+      "https://live10.goaloo28.com/gf/data/bf_us1.js: short response 15"
+    ]
   },
   "policy_limits": {
     "markets": [
@@ -427,5 +430,6 @@
     "Each match publishes only the strongest qualified market among 1X2, AH and O/U.",
     "Published odds must be at least 1.70 and the published side itself passes the gate.",
     "Reverse prediction is disabled."
-  ]
+  ],
+  "settled_this_run": 0
 }
