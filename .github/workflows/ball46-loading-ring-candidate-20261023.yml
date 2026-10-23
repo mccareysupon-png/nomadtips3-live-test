@@ -29,6 +29,7 @@ jobs:
           node --check patch.mjs
           node --check candidate.mjs
           node --check browser.mjs
+          node --check activate.mjs
       - name: Create verified isolated candidate WITHOUT Production traffic
         working-directory: deploy-assets/loading-ring-fix-20261023
         run: node candidate.mjs
