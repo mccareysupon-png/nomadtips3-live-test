@@ -1,0 +1,48 @@
+name: BALL46 Loading Ring Safe Candidate and Browser QA 20261023
+on:
+  push:
+    branches: [audit/ball46-loading-ring-fix-20261023]
+    paths:
+      - '.github/workflows/ball46-loading-ring-candidate-20261023.yml'
+permissions:
+  contents: read
+concurrency:
+  group: ball46-production-deploy
+  cancel-in-progress: false
+jobs:
+  candidate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check patch and candidate scripts
+        working-directory: deploy-assets/loading-ring-fix-20261023
+        run: |
+          node --check patch.mjs
+          node --check candidate.mjs
+          node --check browser.mjs
+      - name: Create verified isolated candidate WITHOUT Production traffic
+        working-directory: deploy-assets/loading-ring-fix-20261023
+        run: node candidate.mjs
+      - name: Install Chromium for cross-platform animation verification
+        working-directory: deploy-assets/loading-ring-fix-20261023
+        run: |
+          npm install --no-save --ignore-scripts playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Verify actual transform rotation on desktop/mobile and motion preferences
+        working-directory: deploy-assets/loading-ring-fix-20261023
+        run: node browser.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-ring-candidate-browser-proof-${{ github.run_id }}
+          path: deploy-assets/loading-ring-fix-20261023/audit/
+          retention-days: 30
