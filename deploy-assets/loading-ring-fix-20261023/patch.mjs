@@ -9,13 +9,13 @@ const OLD='@media(prefers-reduced-motion:reduce){#b46-data-orbit-loading .b46-or
 const FIX='@media(prefers-reduced-motion:reduce){#b46-data-orbit-loading .b46-orbit-ring::before{animation:b46-orbit-rotate-20261019 6s linear infinite;transform-origin:50% 50%}}';
 export function patchHtml(html){
  if(typeof html!=='string')throw Error('INPUT_NOT_HTML');
- assert.equal(html.split(OLD).length,2,'LOADING_OLD_RULE_MISSING_OR_DUPLICATED');
- assert(html.includes('<style id="b46-global-data-orbit-style-20261019">'),'LOADING_STYLE_MISSING');
- assert(html.includes('@keyframes b46-orbit-rotate-20261019{to{transform:rotate(360deg)}}'),'SPIN_KEYFRAMES_MISSING');
+ if(html.split(OLD).length!==2)throw Error('LOADING_OLD_RULE_MISSING_OR_DUPLICATED');
+ if(!html.includes('<style id="b46-global-data-orbit-style-20261019">'))throw Error('LOADING_STYLE_MISSING');
+ if(!html.includes('@keyframes b46-orbit-rotate-20261019{to{transform:rotate(360deg)}}'))throw Error('SPIN_KEYFRAMES_MISSING');
  const out=html.replace(OLD,FIX);
  assert(out.includes(FIX));
- assert.equal(out.slice(out.indexOf('</head>')),html.slice(html.indexOf('</head>')),'BODY_MUST_BE_BYTE_IDENTICAL');
- assert(!out.includes(OLD));
+ if(out.slice(out.indexOf('</head>'))!==html.slice(html.indexOf('</head>')))throw Error('BODY_MUST_BE_BYTE_IDENTICAL');
+ if(out.includes(OLD))throw Error('REDUCED_MOTION_STATIC_RULE_REMAINED');
  return out;
 }
 export function patchMain(source){
