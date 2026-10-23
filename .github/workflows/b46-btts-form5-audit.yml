@@ -22,7 +22,8 @@ jobs:
       - name: Inspect exact current worker and latest statistics routes READ ONLY
         run: |
           node --check deploy-assets/btts-form5-20261023/inspect.mjs
-          node deploy-assets/btts-form5-20261023/inspect.mjs
+          node --check deploy-assets/btts-form5-20261023/runtime.mjs
+          node deploy-assets/btts-form5-20261023/runtime.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
