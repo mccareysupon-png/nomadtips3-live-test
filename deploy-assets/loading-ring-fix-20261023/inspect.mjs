@@ -1,0 +1,19 @@
+import {createHash} from 'node:crypto';
+import {mkdir,writeFile} from 'node:fs/promises';
+const acc=process.env.CLOUDFLARE_ACCOUNT_ID,tok=process.env.CLOUDFLARE_API_TOKEN; if(!acc||!tok)throw Error('MISSING_CREDS');
+const id='ball46-production';const base='https://api.cloudflare.com/client/v4/accounts/'+acc;
+async function api(path){const r=await fetch(base+path,{headers:{Authorization:'Bearer '+tok},signal:AbortSignal.timeout(30000)});const j=await r.json();if(!r.ok||!j.success)throw Error('CF_GET_'+r.status+' '+JSON.stringify(j.errors).slice(0,300));return j.result;}
+const sha=b=>createHash('sha256').update(b).digest('hex');
+const find=(data,re,limit=50,around=260)=>{let m,out=[];const rg=new RegExp(re,'gi');while((m=rg.exec(data))&&out.length<limit){let start=Math.max(0,m.index-around),end=Math.min(data.length,m.index+m[0].length+around);out.push({at:m.index,match:m[0],excerpt:data.slice(start,end)});}return out;};
+let report={at:new Date().toISOString(),worker:id};
+const v0=(await api('/workers/scripts/'+id+'/deployments?per_page=1')).deployments[0]; report.deployment={id:v0.id,versions:v0.versions};
+const vid=v0.versions[0].version_id;const v=await api('/workers/workers/'+id+'/versions/'+vid+'?include=modules');
+report.main_module=v.main_module;report.modules=v.modules.map(m=>({name:m.name,type:m.content_type,sha:sha(Buffer.from(m.content_base64,'base64'))}));
+const mod=v.modules.find(m=>m.name===v.main_module);const code=Buffer.from(mod.content_base64,'base64').toString();
+report.workerMatches=find(code,'LOADING MATCH DATA|loading[ _-]?screen|loading[ _-]?ring|spinner|loadingOverlay|@keyframes|prefers-reduced-motion|match-data-loading',35,190);
+const html=await (await fetch('https://ball46.com/?loadingRingAudit='+Date.now(),{headers:{'cache-control':'no-cache'},signal:AbortSignal.timeout(40000)})).text();report.html={sha:sha(Buffer.from(html)),bytes:Buffer.byteLength(html),matches:find(html,'LOADING MATCH DATA|loading[ _-]?screen|loading[ _-]?ring|spinner|loadingOverlay|@keyframes|prefers-reduced-motion|match-data-loading',70,330)};
+report.styles=[...html.matchAll(/<link\b[^>]*rel=["']stylesheet["'][^>]*>/gi)].map(x=>x[0]).slice(0,80);
+report.scripts=[...html.matchAll(/<script\b[^>]*src=["'][^"']+["'][^>]*>/gi)].map(x=>x[0]).slice(0,100);
+const body=html.toLowerCase().indexOf('loading match data'); if(body>=0)report.loadingContext=html.slice(Math.max(0,body-5500),Math.min(html.length,body+4500));
+await mkdir('audit',{recursive:true});await writeFile('audit/loading-readonly.json',JSON.stringify(report,null,2));
+console.log('BALL46_LOADING_AUDIT='+JSON.stringify(report).slice(0,50000));
