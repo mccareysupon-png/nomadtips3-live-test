@@ -42,6 +42,7 @@ jobs:
           print(f'PASS: {len(imports)} deploy imports resolved')
           PY
           node --check ball46-member/src/worker.js
+          node --check ball46-member/member-eventflow-signal-flat-1x-20261021/flat.mjs
           node --test ball46-member/tests/*.test.mjs
       - name: Install Chromium for six viewport regression checks
         run: |
