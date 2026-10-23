@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import { patchSignalAge } from './patch-live-engine.mjs';
+const old = 'var FINAL_RECHECK_MIN_SIGNAL_AGE_MS = 45 * 60 * 1e3;';
+const next = 'var FINAL_RECHECK_MIN_SIGNAL_AGE_MS = 0;';
+const src = 'var FINAL_RECONCILE_VERSION = "missing-final-direct-v1";\nvar STAT_LEDGER_VERSION = "LEDGER_V2";\nasync autoReconcileMissingFinals() {}\n' + old + '\nvar FINAL_RECHECK_MAX_PER_SCAN = 3;';
+const modified = patchSignalAge(src);
+assert.equal(modified, src.replace(old, next), 'only one line may change');
+assert.throws(() => patchSignalAge(modified), /EXPECTED_EXACTLY_ONE_45_MIN_GATE/);
+assert.throws(() => patchSignalAge('unrelated'), /ACTIVE_ENGINE_BASELINE_NOT_VERIFIED/);
+console.log('PASS: one-line Signal age change only; unmatched inputs rejected');
