@@ -1,0 +1,30 @@
+name: BALL46 ACTIVE SIGNALS atomic UI - inspect live production
+on:
+  push:
+    branches: [fix/ball46-active-signals-atomic-v11-20261023]
+    paths:
+      - '.github/workflows/ball46-active-signals-atomic-inspect.yml'
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Inspect Production version and exact signal renderer (READ ONLY)
+        run: |
+          node --check deploy-assets/active-signals-atomic-20261023/inspect.mjs
+          node deploy-assets/active-signals-atomic-20261023/inspect.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-atomic-inspection-${{ github.run_id }}
+          path: deploy-assets/active-signals-atomic-20261023/audit/
+          retention-days: 14
