@@ -5,6 +5,7 @@ on:
     paths:
       - .github/workflows/ball46-match-comparison-inspect.yml
       - deploy-assets/match-comparison-labels-20261023/inspect.mjs
+      - deploy-assets/match-comparison-labels-20261023/verify.mjs
 permissions:
   contents: read
 jobs:
@@ -22,7 +23,8 @@ jobs:
       - name: Inspect current Worker and compare label code
         run: |
           node --check deploy-assets/match-comparison-labels-20261023/inspect.mjs
-          node deploy-assets/match-comparison-labels-20261023/inspect.mjs
+          node --check deploy-assets/match-comparison-labels-20261023/verify.mjs
+          node deploy-assets/match-comparison-labels-20261023/verify.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
