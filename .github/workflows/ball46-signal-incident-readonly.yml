@@ -24,7 +24,8 @@ jobs:
           node --check deploy-assets/signal-loss-20261023/inspect.mjs
           node --check deploy-assets/signal-loss-20261023/compare.mjs
           node --check deploy-assets/signal-loss-20261023/proxy-concise.mjs
-          node deploy-assets/signal-loss-20261023/proxy-concise.mjs
+          node --check deploy-assets/signal-loss-20261023/stale-explain.mjs
+          node deploy-assets/signal-loss-20261023/stale-explain.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
