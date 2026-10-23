@@ -3,9 +3,9 @@
   "base": "04b634d7-5dd3-48c4-93c0-bd2124ae129f",
   "script": "ball46-production",
   "mark": "B46_CLEAN_NEUTRAL_ODDS_20261023",
-  "run": "40040251981",
-  "commit": "9d8bd01a7dc50354b5ec3536cde8e352402ff874",
-  "startedAt": "2026-10-23T23:32:34.536Z",
+  "run": "40040504287",
+  "commit": "2d95a102c0d3764eadd04bdbcef296f3862031f3",
+  "startedAt": "2026-10-23T23:35:19.360Z",
   "assetsRetained": true,
   "before": {
     "id": "04b634d7-5dd3-48c4-93c0-bd2124ae129f",
@@ -90,7 +90,7 @@
   ],
   "routesAudit": {
     "ciStatus": 403,
-    "verifiedAt": "2026-10-23T23:32:18.794Z"
+    "verifiedAt": "2026-10-23T23:35:02.726Z"
   },
   "configBefore": {
     "settings": {
@@ -118,8 +118,8 @@
         }
       },
       "annotations": {
-        "workers/message": "Fix standalone SIGNAL page fetch only; preserve all current engine/assets/data",
-        "workers/tag": "BALL46_SIGNAL_STANDALONE_REPAIR_20261023",
+        "workers/message": "Approved Desktop Clean Neutral odds cards and expanded edge colors; preserve Mobile, data, Signal, Event Flow and all modules",
+        "workers/tag": "B46_CLEAN_NEUTRAL_ODDS_20261023",
         "workers/triggered_by": "version_upload"
       },
       "bindings": [
@@ -192,7 +192,7 @@
       "status": 200,
       "ok": true,
       "stale": false,
-      "fixtures": 756
+      "fixtures": 929
     },
     {
       "path": "/api/engine/signals",
@@ -661,18 +661,18 @@
   "changes": {
     "/dashboard-v2-stage3-featured-facts-20261013a.js": {
       "status": 200,
-      "sha": "4e9d4643ef205361787a6528ed1e126e8b6b1a3ad31e5413cf7ec0184d4926de"
+      "sha": "ebd655e2aebbccccc80112ff9149636eb1e82c5775938c12993be1f2432ad875"
     },
     "/": {
       "status": 200,
-      "sha": "be4be6f593ad9cdf0c98785bfdcd19e9ef847cecb68d632c9b395c0ca5579664"
+      "sha": "fddc09c60a4f3f83a0d030a3bba12fbf4a3c637ad8e76ae071c47e14c1c8fc34"
     },
     "/index.html": {
       "status": 200,
-      "sha": "be4be6f593ad9cdf0c98785bfdcd19e9ef847cecb68d632c9b395c0ca5579664"
+      "sha": "fddc09c60a4f3f83a0d030a3bba12fbf4a3c637ad8e76ae071c47e14c1c8fc34"
     }
   },
-  "candidate": "bc526b46-07d6-4531-b95d-4948691752fa",
+  "candidate": "372e0541-3af7-4917-b137-87e049e073aa",
   "previewHealth": [
     {
       "path": "/api/engine/health",
@@ -689,7 +689,7 @@
       "status": 200,
       "ok": true,
       "stale": false,
-      "fixtures": 756
+      "fixtures": 929
     },
     {
       "path": "/api/engine/signals",
