@@ -15,4 +15,8 @@ function match(s,n=16){const out=[];let m;terms.lastIndex=0;while((m=terms.exec(
 const out={time:new Date().toISOString(),activeVersion:active.versions[0].version_id,activeDeployment:active.id,rootSha:h.sha,rootStatus:h.status,htmlMatches:match(h.text,30),scripts:[]};
 for(const p of scripts){try{const s=await get(p);let m=match(s.text,8);if(m.length)out.scripts.push({path:p,sha:s.sha,bytes:s.text.length,matches:m});}catch(e){out.scripts.push({path:p,error:String(e)})}}
 await mkdir('audit',{recursive:true});await writeFile('audit/live-inspection.json',JSON.stringify(out,null,2));
-console.log('B46_COMPARE_AUDIT='+JSON.stringify({activeVersion:out.activeVersion,activeDeployment:out.activeDeployment,rootSha:out.rootSha,htmlMatches:out.htmlMatches.slice(0,14),scriptHits:out.scripts.map(s=>({path:s.path,sha:s.sha,bytes:s.bytes,matches:s.matches?.slice(0,3)}))}).slice(0,14000));
+
+const tokens=['b46v11-legend','data-v12-home','data-v12-away','feature-stats::before','feature-stats::after','feature-stats >','feature-stats>'];
+const focused={};
+for(const token of tokens){let i=-1,a=[];while((i=h.text.indexOf(token,i+1))>=0&&a.length<12)a.push({index:i,slice:h.text.slice(Math.max(0,i-360),Math.min(h.text.length,i+token.length+750))});focused[token]=a;}
+console.log('B46_LABELS_FOCUSED='+JSON.stringify({version:out.activeVersion,rootSha:out.rootSha,focused}).slice(0,26000));
