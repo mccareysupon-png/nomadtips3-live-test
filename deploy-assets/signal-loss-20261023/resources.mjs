@@ -8,4 +8,4 @@ for(const p of paths){const r=await fetch(root+p,{headers:{'cache-control':'no-c
  out.resources.push(item);}
 console.log('B46_SIGNAL_RESOURCES='+JSON.stringify(out).slice(0,8500));
 const script=await fetch('https://ball46.com/signal-next.js?v=343-next-production-v1',{signal:AbortSignal.timeout(30000)}).then(r=>r.text());
-console.log('B46_SIGNAL_SCRIPT_FOCUS='+JSON.stringify({len:script.length,tail:script.slice(-5000),fetchRefs:[...script.matchAll(/fetch\\(|async function |function load|DOMContentLoaded|visibilitychange|setInterval|signalFeed/gi)].slice(0,28).map(m=>({at:m.index,term:m[0],s:script.slice(Math.max(0,m.index-80),m.index+200)}))}).slice(0,9200));
+console.log('B46_SIGNAL_SCRIPT_FOCUS='+JSON.stringify({len:script.length,tail:script.slice(-5000),fetchRefs:[...script.matchAll(/fetch|async function |function load|DOMContentLoaded|visibilitychange|setInterval|signalFeed/gi)].slice(0,28).map(m=>({at:m.index,term:m[0],s:script.slice(Math.max(0,m.index-80),m.index+200)}))}).slice(0,9200));
