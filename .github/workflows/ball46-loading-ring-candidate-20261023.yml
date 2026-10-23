@@ -41,6 +41,9 @@ jobs:
       - name: Verify actual transform rotation on desktop/mobile and motion preferences
         working-directory: deploy-assets/loading-ring-fix-20261023
         run: node browser.mjs
+      - name: Activate only if 4 browser animation tests PASS; auto-rollback on verification failure
+        working-directory: deploy-assets/loading-ring-fix-20261023
+        run: node activate.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
