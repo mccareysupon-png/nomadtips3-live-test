@@ -55,13 +55,14 @@ for(const mobile of [false,true])for(const dark of [false,true]){
    }
    const decorated=[...host.querySelectorAll(':scope > .feature-signal-meta[data-v11-kind="metrics"]')];
    const spanValues=decorated.map(x=>[...x.querySelectorAll(':scope > span')].map(y=>({label:y.dataset.v11Label,value:y.dataset.v11Value})));
+   const cssDisplay=decorated[0]?getComputedStyle(decorated[0]).display:null;
    const nodesBefore=[...host.children];window.__b46AtomicPatchHost(host,signals,'');const unchangedNodes=nodesBefore.every((n,i)=>host.children[i]===n);
    window.__b46AtomicPatchHost(host,[signals[0]],'');
    const afterShrink={count:host.dataset.v11Count,main:host.querySelectorAll(':scope > .feature-signal-main').length};
    window.__b46AtomicPatchHost(host,[],'');
    const empty={count:host.dataset.v11Count,stableState:host.dataset.b46StableSignalState,main:host.querySelectorAll(':scope > .feature-signal-main').length};
    observer.disconnect();
-   return{events,mutations:mutations.length,spanValues,unchangedNodes,afterShrink,empty,cssDisplay:decorated[0]?getComputedStyle(decorated[0]).display:null};
+   return{events,mutations:mutations.length,spanValues,unchangedNodes,afterShrink,empty,cssDisplay};
   });
   o={...o,metrics,pageErrors:errors};
   assert.deepEqual(metrics.events,[],'STALE_UI_APPEARED_DURING_UPDATES');
