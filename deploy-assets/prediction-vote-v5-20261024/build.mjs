@@ -6,7 +6,7 @@ const raw=await readFile(base+'approved-v5-preview.html','utf8');
 const stylesheet=raw.match(/<style>([\s\S]*?)<\/style>/)?.[1];
 const start=raw.indexOf('<article class="prediction"'),end=raw.indexOf('</article>',start)+10;
 assert(stylesheet&&start>0&&end>start,'APPROVED_V5_PARTS_MISSING');
-const template=raw.slice(start,end);
+const template=raw.slice(start,end).replace('<div class="bars">','<div class="bars" id="audienceBars">');
 assert(template.includes('id="homeJersey"')&&template.includes('id="awayJersey"')&&template.includes('data-vote="0"')&&template.includes('id="audienceBars"'));
 const root=postcss.parse(stylesheet);
 root.walkRules(rule=>{
