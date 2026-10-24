@@ -1,0 +1,39 @@
+name: BALL46 Approved V5 — isolated candidate and validation
+on:
+  push:
+    branches: [feature/ball46-prediction-vote-v5-20261024]
+    paths:
+      - .github/workflows/b46-v5-stage.yml
+permissions:
+  contents: read
+concurrency:
+  group: b46-v5-stage
+  cancel-in-progress: false
+jobs:
+  stage:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Test vote identity and scoring guards
+        run: |
+          npm install --no-save --no-package-lock --ignore-scripts postcss playwright-core
+          node --test deploy-assets/prediction-vote-v5-20261024/vote-api.test.mjs
+      - name: Assemble original 6 PNG jerseys and exact approved borderless card
+        run: |
+          node deploy-assets/prediction-vote-v5-20261024/build.mjs
+          node --check deploy-assets/prediction-vote-v5-20261024/build/v5-browser.js
+          node --check deploy-assets/prediction-vote-v5-20261024/candidate.mjs
+      - name: Cloudflare isolated version upload only (NO live traffic)
+        run: node deploy-assets/prediction-vote-v5-20261024/candidate.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: b46-v5-staging-${{ github.run_id }}
+          path: deploy-assets/prediction-vote-v5-20261024/audit/
+          retention-days: 14
