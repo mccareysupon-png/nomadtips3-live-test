@@ -20,8 +20,8 @@ jobs:
         with:
           node-version: '22'
       - run: |
-          node --check deploy-assets/corner-entry-20261024/focus.mjs
-          node deploy-assets/corner-entry-20261024/focus.mjs
+          node --check deploy-assets/corner-entry-20261024/anchors.mjs
+          node deploy-assets/corner-entry-20261024/anchors.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
