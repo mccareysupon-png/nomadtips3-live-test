@@ -1,0 +1,29 @@
+name: BALL46 Prediction Vote V5 — production READ ONLY audit
+on:
+  push:
+    branches: [feature/ball46-prediction-vote-v5-20261024]
+    paths:
+      - .github/workflows/b46-prediction-v5-inspect.yml
+      - deploy-assets/prediction-vote-v5-20261024/inspect.mjs
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: |
+          node --check deploy-assets/prediction-vote-v5-20261024/inspect.mjs
+          node deploy-assets/prediction-vote-v5-20261024/inspect.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: b46-vote-v5-audit-${{ github.run_id }}
+          path: audit/prediction-vote-prerequisites.json
+          retention-days: 14
