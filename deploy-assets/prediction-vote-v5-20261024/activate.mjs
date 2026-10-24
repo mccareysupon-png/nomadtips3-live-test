@@ -2,7 +2,7 @@ import assert from'node:assert/strict';
 import{chromium}from'playwright-core';
 import{createHash}from'node:crypto';
 const A=process.env.CLOUDFLARE_ACCOUNT_ID,T=process.env.CLOUDFLARE_API_TOKEN;
-const W='ball46-production',OLD='dc158cd1-bf39-4b6a-a4eb-3e3c8b0c2db4',NEW='c8b2b85f-a722-472b-bdc9-d4f3c4f5d6fe';
+const W='ball46-production',OLD='dc158cd1-bf39-4b6a-a4eb-3e3c8b0c2db4',NEW='548de7db-52b6-475d-b625-f0d52dfcdfd9';
 assert.equal(A,'62cb0db544160e6591342abd6b4f35cc');assert(T);
 const hosts=['https://ball46.com','https://www.ball46.com'];
 const unchanged=['/signal.html','/signal-next.js','/statistics.html','/dashboard-v2-stage3-featured-facts-20261013a.js'];
@@ -13,6 +13,7 @@ async function cf(p,body){
 }
 async function active(){const d=(await cf('/workers/scripts/'+W+'/deployments?per_page=1')).deployments[0];assert.equal(d.versions.length,1);assert.equal(d.versions[0].percentage,100);return d.versions[0].version_id;}
 const sha=b=>createHash('sha256').update(b).digest('hex');
+const canonical=o=>JSON.stringify(o,(k,v)=>v&&typeof v==='object'&&!Array.isArray(v)?Object.fromEntries(Object.entries(v).sort(([a],[b])=>a.localeCompare(b))):v);
 async function read(host,p){const u=new URL(p,host);u.searchParams.set('v5deploycheck',Date.now()+Math.random());const r=await fetch(u,{signal:AbortSignal.timeout(60000)}),b=Buffer.from(await r.arrayBuffer());return{status:r.status,hash:sha(b),text:b.toString(),bytes:b}}
 async function deploy(id,expected,msg){assert.equal(await active(),expected,'ACTIVE_CHANGED');return(await cf('/workers/scripts/'+W+'/deployments',{strategy:'percentage',versions:[{version_id:id,percentage:100}],annotations:{'workers/message':msg}})).id}
 async function browserQA(){
@@ -41,8 +42,8 @@ try{
  assert(v.bindings.some(x=>x.name==='PREDICTION_VOTES_KV'));
  const originals=new Map();
  for(const host of hosts)for(const p of unchanged)originals.set(host+p,await read(host,p));
- const config=JSON.stringify(await cf('/workers/scripts/'+W+'/settings'));
- const pre=await read('https://c8b2b85f-ball46-production.mccarey-supon.workers.dev','/live-prediction-343.js');
+ const config=canonical(await cf('/workers/scripts/'+W+'/settings'));
+ const pre=await read('https://548de7db-ball46-production.mccarey-supon.workers.dev','/live-prediction-343.js');
  assert(pre.status===200&&pre.text.includes('b46-v5-runtime-styles'),'CANDIDATE_NOT_READY');
  const deployment=await deploy(NEW,OLD,'Approved borderless V5 vote card; isolated KV votes and original six 3D jerseys');
  switched=true;
@@ -56,7 +57,7 @@ try{
  for(const h of hosts){for(const p of['/api/engine/health','/api/engine/signals','/api/full-market/health','/api/prediction-vote?fixtureId=1234567']){
   const r=await read(h,p);assert.equal(r.status,200,'API_HTTP_'+p);assert(JSON.parse(r.text).ok,'API_NOT_OK_'+p);
  }}
- assert.equal(JSON.stringify(await cf('/workers/scripts/'+W+'/settings')),config,'SETTINGS_CHANGED');
+ assert.equal(canonical(await cf('/workers/scripts/'+W+'/settings')),config,'SETTINGS_CHANGED');
  await browserQA();assert.equal(await active(),NEW,'LIVE_WORKER_CHANGED');
  console.log('B46_V5_DEPLOY_PASS='+JSON.stringify({ok:true,worker:W,active:NEW,deployment,domains:2,unchangedAssets:4,apiHealth:8,pcMobile:true}));
 }catch(e){console.error('B46_V5_DEPLOY_FAIL='+String(e.stack||e).slice(0,900));
