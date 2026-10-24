@@ -1,9 +1,9 @@
 import assert from'node:assert/strict';import{readFile,writeFile}from'node:fs/promises';
 let prefix=(await readFile('../vote-reconnect-20261024/run.mjs','utf8')).split('let activated=false,base,prior;')[0];
-prefix=prefix.replace("assert(['candidate','verify','activate','restore'].includes(req.phase));","assert(['backend','candidate','activate','restore'].includes(req.phase));");
+prefix=prefix.replace("assert(['candidate','verify','activate','restore'].includes(req.phase));","assert(['backend','candidate','verify','activate','restore'].includes(req.phase));");
 const start=prefix.indexOf('async function cf('),end=prefix.indexOf('async function active(');assert(start>=0&&end>start);
 prefix=prefix.slice(0,start)+`async function cf(path,body,method){const verb=method||(body?'POST':'GET');if(verb!=='GET')assert([\`POST /workers/scripts/\${W}/versions\`,\`POST /workers/scripts/\${W}/deployments\`,\`PUT /workers/scripts/\${HISTORY}\`,\`POST /workers/scripts/\${HISTORY}/subdomain\`].includes(verb+' '+path),'WRITE_TARGET_DENIED');const r=await fetch(API+path,{method:verb,headers:{Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN,...(body&&!(body instanceof FormData)?{'content-type':'application/json'}:{})},body:body instanceof FormData?body:body?JSON.stringify(body):undefined,signal:AbortSignal.timeout(60000)}),j=await r.json();assert(r.ok&&j.success===true,'CF_API:'+r.status+':'+JSON.stringify(j.errors||[]).slice(0,300));return j.result;}\n`+prefix.slice(end);
-prefix=prefix.replace("const req=JSON.parse", "const HISTORY='ball46-form-history-v1',historyBinding={name:'FORM_HISTORY_SERVICE',type:'service',service:HISTORY};\nconst req=JSON.parse");
+prefix=prefix.replace("const req=JSON.parse", "const HISTORY='ball46-form-history-v1',historyBinding={name:'FORM_HISTORY_SERVICE',type:'service',service:HISTORY,environment:'production'};\nconst req=JSON.parse");
 prefix=prefix.replace("['browser','proxy']","['browser','route']").replaceAll('b46-pv9-','b46-last5-');
 prefix=prefix.replace('canonical(bindings(base.bindings)))','canonical(bindings([...base.bindings,historyBinding])))');
 prefix=prefix.replace("phase:req.phase,base:BASE,worker:W,run:","phase:req.phase,base:BASE,worker:W,historyWorker:HISTORY,run:");
