@@ -89,6 +89,17 @@ try{
    assert.equal(res.status(),200);await page.waitForTimeout(7000);
    await page.evaluate(t=>document.documentElement.setAttribute('data-theme',t),d.theme);
    const observed=await measure(page);
+   const diag=await page.evaluate(()=>{
+    const e=document.querySelector('.workspace.singlepage>.left-rail>.workspace-brand-card'),s=document.getElementById('b46-pc-sidebar-spacing-20261024');
+    return {selectorMatch:!!document.querySelector('html body .workspace.singlepage > .left-rail > .rail-card.workspace-brand-card'),
+      styleLen:s?.textContent.length,styleEnds:s?.textContent.slice(-180),media:matchMedia('(min-width:761px)').matches,
+      brandInline:e?.getAttribute('style'),railAttrs:e?.parentElement?.outerHTML.slice(0,80),
+      styleColor:getComputedStyle(e||document.body).color,
+      overrideTest: (()=>{if(!e)return null;const initial=getComputedStyle(e).marginBottom;
+        e.style.setProperty('margin-bottom','0px','important');const after=getComputedStyle(e).marginBottom;
+        e.style.removeProperty('margin-bottom');return {initial,after};})()};
+   });
+   console.log('B46_SIDEBAR_DIAG='+JSON.stringify({name:d.name,diag}).slice(0,2200));
    console.log('B46_SIDEBAR_MEASUREMENT='+JSON.stringify({name:d.name,observed}).slice(0,4200));
    assert.equal(observed.tag,true,'STYLE_MISSING_'+d.name);
    assert.equal(errors.length,0,'JS_ERRORS_'+d.name+':'+errors.join(';'));
