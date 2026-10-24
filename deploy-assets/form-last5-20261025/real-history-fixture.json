@@ -1,0 +1,568 @@
+{
+  "at": "2026-10-24T23:15:56.092Z",
+  "mode": "READ_ONLY",
+  "providerRequests": 2,
+  "productionWrites": 0,
+  "deployment": {
+    "id": "6cbec888-e950-4cab-a26d-e36112083fe8",
+    "source": "api",
+    "strategy": "percentage",
+    "author_email": "mccarey.supon@gmail.com",
+    "annotations": {
+      "workers/message": "Approved Vote reconnect V9: confirm/update votes,20vote threshold,HOME/AWAY,12jerseys and Featured synchronization; existing Engine343/Signal/Statistics retained",
+      "workers/triggered_by": "deployment"
+    },
+    "versions": [
+      {
+        "version_id": "02108724-ac78-4575-a98a-f7ee40053814",
+        "percentage": 100
+      }
+    ],
+    "created_on": "2026-10-24T16:10:24.031962Z"
+  },
+  "bindings": {
+    "ball46-production": [
+      {
+        "name": "ASSETS",
+        "type": "assets"
+      },
+      {
+        "name": "ENGINE",
+        "type": "service",
+        "service": "nomadtips3-engine-343"
+      },
+      {
+        "name": "FULL_MARKET",
+        "type": "service",
+        "service": "nomadtips3-full-market-343-ball46"
+      },
+      {
+        "name": "HUB",
+        "type": "service",
+        "service": "nomadtips3-5usd-hub-343"
+      },
+      {
+        "name": "PREDICTION_VOTES_KV",
+        "type": "kv_namespace"
+      },
+      {
+        "name": "PREDICTION_VOTES_SERVICE",
+        "type": "service",
+        "service": "ball46-prediction-votes-v6"
+      }
+    ],
+    "nomadtips3-5usd-hub-343": [
+      {
+        "name": "FIVEDOLLAR_API_KEY",
+        "type": "secret_text"
+      },
+      {
+        "name": "HUB",
+        "type": "durable_object_namespace"
+      },
+      {
+        "name": "RICH_GATE",
+        "type": "durable_object_namespace"
+      }
+    ],
+    "nomadtips3-full-market-343-ball46": [
+      {
+        "name": "FIVEDOLLAR_API_KEY",
+        "type": "secret_text"
+      },
+      {
+        "name": "FULL_MARKET_GATE",
+        "type": "durable_object_namespace"
+      }
+    ]
+  },
+  "fixture": {
+    "fixtureId": "202804770",
+    "home": {
+      "id": "90020",
+      "name": "San Antonio Bulo Bulo"
+    },
+    "away": {
+      "id": "3727",
+      "name": "Real Potosi"
+    },
+    "kickoffUtc": "2026-10-24T21:15:00+00:00",
+    "boardState": "live"
+  },
+  "githubProviderSecretAvailable": true,
+  "provider": [
+    {
+      "teamId": "90020",
+      "status": 200,
+      "retryAfter": null,
+      "data": {
+        "success": 1,
+        "data": [
+          {
+            "id": 201641703,
+            "league": {
+              "id": 326,
+              "name": "Bolivia Primera Division"
+            },
+            "teams": {
+              "home": {
+                "id": 43400,
+                "name": "Universitario De Vinto"
+              },
+              "away": {
+                "id": 90020,
+                "name": "San Antonio Bulo Bulo"
+              }
+            },
+            "kickoff_utc": "2026-10-17T21:15:00+00:00",
+            "kickoff_ts": 1792271700,
+            "status": "finished",
+            "status_reason": null,
+            "status_code": "full",
+            "goals": {
+              "home": 2,
+              "away": 1,
+              "half_home": 2,
+              "half_away": 0
+            },
+            "corners": {
+              "home": 1,
+              "away": 3,
+              "half_home": 0,
+              "half_away": 1
+            },
+            "cards": {
+              "home": {
+                "yellow": 4,
+                "red": 1
+              },
+              "away": {
+                "yellow": 1,
+                "red": 1
+              }
+            }
+          },
+          {
+            "id": 201641652,
+            "league": {
+              "id": 326,
+              "name": "Bolivia Primera Division"
+            },
+            "teams": {
+              "home": {
+                "id": 90020,
+                "name": "San Antonio Bulo Bulo"
+              },
+              "away": {
+                "id": 53757,
+                "name": "Real Tomayapo"
+              }
+            },
+            "kickoff_utc": "2026-10-09T19:00:00+00:00",
+            "kickoff_ts": 1791572400,
+            "status": "finished",
+            "status_reason": null,
+            "status_code": "full",
+            "goals": {
+              "home": 0,
+              "away": 0,
+              "half_home": 0,
+              "half_away": 0
+            },
+            "corners": {
+              "home": 5,
+              "away": 2,
+              "half_home": 2,
+              "half_away": 0
+            },
+            "cards": {
+              "home": {
+                "yellow": 2,
+                "red": 0
+              },
+              "away": {
+                "yellow": 6,
+                "red": 1
+              }
+            }
+          },
+          {
+            "id": 202029929,
+            "league": {
+              "id": 29137,
+              "name": "Bolivia Copa Division Profesional"
+            },
+            "teams": {
+              "home": {
+                "id": 90020,
+                "name": "San Antonio Bulo Bulo"
+              },
+              "away": {
+                "id": 89070,
+                "name": "ABB"
+              }
+            },
+            "kickoff_utc": "2026-10-02T19:00:00+00:00",
+            "kickoff_ts": 1790967600,
+            "status": "finished",
+            "status_reason": null,
+            "status_code": "full",
+            "goals": {
+              "home": 0,
+              "away": 2,
+              "half_home": 0,
+              "half_away": 1
+            },
+            "corners": {
+              "home": 13,
+              "away": 2,
+              "half_home": 5,
+              "half_away": 1
+            },
+            "cards": {
+              "home": {
+                "yellow": 3,
+                "red": 0
+              },
+              "away": {
+                "yellow": 3,
+                "red": 0
+              }
+            }
+          },
+          {
+            "id": 201975766,
+            "league": {
+              "id": 29137,
+              "name": "Bolivia Copa Division Profesional"
+            },
+            "teams": {
+              "home": {
+                "id": 13640,
+                "name": "Club Aurora"
+              },
+              "away": {
+                "id": 90020,
+                "name": "San Antonio Bulo Bulo"
+              }
+            },
+            "kickoff_utc": "2026-09-30T00:00:00+00:00",
+            "kickoff_ts": 1790726400,
+            "status": "finished",
+            "status_reason": null,
+            "status_code": "full",
+            "goals": {
+              "home": 2,
+              "away": 2,
+              "half_home": 1,
+              "half_away": 1
+            },
+            "corners": {
+              "home": 1,
+              "away": 4,
+              "half_home": 0,
+              "half_away": 2
+            },
+            "cards": {
+              "home": {
+                "yellow": 1,
+                "red": 0
+              },
+              "away": {
+                "yellow": 2,
+                "red": 0
+              }
+            }
+          },
+          {
+            "id": 201755724,
+            "league": {
+              "id": 29137,
+              "name": "Bolivia Copa Division Profesional"
+            },
+            "teams": {
+              "home": {
+                "id": 90020,
+                "name": "San Antonio Bulo Bulo"
+              },
+              "away": {
+                "id": 3727,
+                "name": "Real Potosi"
+              }
+            },
+            "kickoff_utc": "2026-09-25T19:00:00+00:00",
+            "kickoff_ts": 1790362800,
+            "status": "finished",
+            "status_reason": null,
+            "status_code": "full",
+            "goals": {
+              "home": 3,
+              "away": 0,
+              "half_home": 3,
+              "half_away": 0
+            },
+            "corners": {
+              "home": 4,
+              "away": 7,
+              "half_home": 3,
+              "half_away": 1
+            },
+            "cards": {
+              "home": {
+                "yellow": 1,
+                "red": 0
+              },
+              "away": {
+                "yellow": 1,
+                "red": 1
+              }
+            }
+          }
+        ],
+        "pagination": {
+          "page": 1,
+          "per_page": 5,
+          "count": 5,
+          "has_more": true
+        }
+      }
+    },
+    {
+      "teamId": "3727",
+      "status": 200,
+      "retryAfter": null,
+      "data": {
+        "success": 1,
+        "data": [
+          {
+            "id": 203228680,
+            "league": {
+              "id": 29137,
+              "name": "Bolivia Copa Division Profesional"
+            },
+            "teams": {
+              "home": {
+                "id": 3727,
+                "name": "Real Potosi"
+              },
+              "away": {
+                "id": 3046,
+                "name": "Bolivar"
+              }
+            },
+            "kickoff_utc": "2026-10-21T22:30:00+00:00",
+            "kickoff_ts": 1792621800,
+            "status": "finished",
+            "status_reason": null,
+            "status_code": "full",
+            "goals": {
+              "home": 3,
+              "away": 1,
+              "half_home": 2,
+              "half_away": 1
+            },
+            "corners": {
+              "home": 4,
+              "away": 8,
+              "half_home": 1,
+              "half_away": 5
+            },
+            "cards": {
+              "home": {
+                "yellow": 6,
+                "red": 0
+              },
+              "away": {
+                "yellow": 3,
+                "red": 0
+              }
+            }
+          },
+          {
+            "id": 201641686,
+            "league": {
+              "id": 326,
+              "name": "Bolivia Primera Division"
+            },
+            "teams": {
+              "home": {
+                "id": 89070,
+                "name": "ABB"
+              },
+              "away": {
+                "id": 3727,
+                "name": "Real Potosi"
+              }
+            },
+            "kickoff_utc": "2026-10-16T19:00:00+00:00",
+            "kickoff_ts": 1792177200,
+            "status": "finished",
+            "status_reason": null,
+            "status_code": "full",
+            "goals": {
+              "home": 0,
+              "away": 1,
+              "half_home": 0,
+              "half_away": 1
+            },
+            "corners": {
+              "home": 4,
+              "away": 5,
+              "half_home": 3,
+              "half_away": 1
+            },
+            "cards": {
+              "home": {
+                "yellow": 3,
+                "red": 2
+              },
+              "away": {
+                "yellow": 1,
+                "red": 0
+              }
+            }
+          },
+          {
+            "id": 201641658,
+            "league": {
+              "id": 326,
+              "name": "Bolivia Primera Division"
+            },
+            "teams": {
+              "home": {
+                "id": 3727,
+                "name": "Real Potosi"
+              },
+              "away": {
+                "id": 4220,
+                "name": "The Strongest"
+              }
+            },
+            "kickoff_utc": "2026-10-11T19:00:00+00:00",
+            "kickoff_ts": 1791745200,
+            "status": "finished",
+            "status_reason": null,
+            "status_code": "full",
+            "goals": {
+              "home": 1,
+              "away": 0,
+              "half_home": 0,
+              "half_away": 0
+            },
+            "corners": {
+              "home": 9,
+              "away": 2,
+              "half_home": 5,
+              "half_away": 1
+            },
+            "cards": {
+              "home": {
+                "yellow": 3,
+                "red": 0
+              },
+              "away": {
+                "yellow": 2,
+                "red": 0
+              }
+            }
+          },
+          {
+            "id": 202130344,
+            "league": {
+              "id": 29137,
+              "name": "Bolivia Copa Division Profesional"
+            },
+            "teams": {
+              "home": {
+                "id": 3727,
+                "name": "Real Potosi"
+              },
+              "away": {
+                "id": 13640,
+                "name": "Club Aurora"
+              }
+            },
+            "kickoff_utc": "2026-10-03T00:00:00+00:00",
+            "kickoff_ts": 1790985600,
+            "status": "finished",
+            "status_reason": null,
+            "status_code": "full",
+            "goals": {
+              "home": 1,
+              "away": 1,
+              "half_home": 1,
+              "half_away": 1
+            },
+            "corners": {
+              "home": 9,
+              "away": 1,
+              "half_home": 4,
+              "half_away": 0
+            },
+            "cards": {
+              "home": {
+                "yellow": 0,
+                "red": 0
+              },
+              "away": {
+                "yellow": 3,
+                "red": 0
+              }
+            }
+          },
+          {
+            "id": 201915268,
+            "league": {
+              "id": 29137,
+              "name": "Bolivia Copa Division Profesional"
+            },
+            "teams": {
+              "home": {
+                "id": 3727,
+                "name": "Real Potosi"
+              },
+              "away": {
+                "id": 89070,
+                "name": "ABB"
+              }
+            },
+            "kickoff_utc": "2026-09-29T22:00:00+00:00",
+            "kickoff_ts": 1790719200,
+            "status": "finished",
+            "status_reason": null,
+            "status_code": "full",
+            "goals": {
+              "home": 3,
+              "away": 1,
+              "half_home": 2,
+              "half_away": 0
+            },
+            "corners": {
+              "home": 3,
+              "away": 3,
+              "half_home": 2,
+              "half_away": 1
+            },
+            "cards": {
+              "home": {
+                "yellow": 0,
+                "red": 1
+              },
+              "away": {
+                "yellow": 2,
+                "red": 0
+              }
+            }
+          }
+        ],
+        "pagination": {
+          "page": 1,
+          "per_page": 5,
+          "count": 5,
+          "has_more": true
+        }
+      }
+    }
+  ],
+  "ok": true
+}
