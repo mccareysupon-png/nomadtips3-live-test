@@ -1,0 +1,25 @@
+name: BALL46 Search Surface Dark and Light — guarded Production
+on:
+  push:
+    branches: [fix/ball46-search-surface-dualmode-20261024]
+    paths:
+      - .github/workflows/b46-search-surface-activate.yml
+permissions:
+  contents: read
+concurrency:
+  group: ball46-search-surface-production-20261024
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: |
+          node --check deploy-assets/search-surface-20261024/activate.mjs
+          node deploy-assets/search-surface-20261024/activate.mjs
