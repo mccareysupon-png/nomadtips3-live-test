@@ -28,7 +28,7 @@ function paint(data){
 function valid(data,target){return data?.ok===true&&data.source==='5USD'&&String(data.fixtureId)===target&&['home','away'].every(s=>data[s]?.verified===true&&Array.isArray(data[s].rows)&&data[s].rows.length<=5&&data[s].count===data[s].rows.length&&data[s].rows.every(r=>['W','D','L'].includes(r.result)&&r.status==='FT'&&r.opponent?.name&&Number.isInteger(r.gf)&&Number.isInteger(r.ga)&&Number.isFinite(Date.parse(r.kickoffUtc))));}
 async function load(){
  if(!open||!fixtureId||loading)return;const target=fixtureId,seq=++sequence;const hit=cache.get(target);if(hit&&Date.now()-hit.at<600000){paint(hit.data);return;}
- loading=true;abort?.abort();const controller=new AbortController();abort=controller;const timer=setTimeout(()=>controller.abort(),75000);button.disabled=true;status('Loading verified Last 5…');
+ loading=true;abort?.abort();const controller=new AbortController();abort=controller;const timer=setTimeout(()=>controller.abort(),75000);button.disabled=!fixtureId;status('Loading verified Last 5…');
  try{
   const response=await fetch('/api/form-last5?fixtureId='+encodeURIComponent(target),{credentials:'same-origin',cache:'no-store',signal:controller.signal}),data=await response.json();
   if(seq!==sequence||target!==fixtureId||!open)return;
