@@ -1,6 +1,8 @@
 import assert from'node:assert/strict';
 import{chromium}from'playwright-core';
-const host='https://b3d6320b-ball46-production.mccarey-supon.workers.dev';
+import{readFile}from'node:fs/promises';
+const stage=JSON.parse(await readFile('deploy-assets/prediction-vote-v5-20261024/audit/candidate.json','utf8'));
+const host=stage.preview;assert(stage.ok);
 const browser=await chromium.launch({headless:true,executablePath:'/usr/bin/google-chrome',args:['--no-sandbox','--disable-dev-shm-usage','--disable-gpu']});
 let outcomes=[];
 try{
