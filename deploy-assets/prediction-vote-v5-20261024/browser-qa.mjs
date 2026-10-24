@@ -26,7 +26,8 @@ try{
      dimensions:root?{width:root.getBoundingClientRect().width,height:root.getBoundingClientRect().height,display:getComputedStyle(root).display}:null,
      selectedScore:document.querySelector('[data-featured-score]')?.innerText,photo:false,ancestors:(()=>{let p=card;const arr=[];for(let i=0;i<6&&p;i++,p=p.parentElement)arr.push({tag:p.tagName,cls:p.className?.toString().slice(0,100),display:getComputedStyle(p).display,visibility:getComputedStyle(p).visibility,w:p.getBoundingClientRect().width,h:p.getBoundingClientRect().height});return arr})()};
   });
-  assert(before.present,'V5_ROOT_ABSENT_'+d.name);assert.equal(before.buttons,3,'VOTE_BUTTONS_ABSENT_'+d.name);
+  assert(before.present,'V5_ROOT_ABSENT_'+d.name);
+  assert(before.ancestors?.[0]?.h<720,'V5_CARD_TOO_TALL_'+d.name);assert.equal(before.buttons,3,'VOTE_BUTTONS_ABSENT_'+d.name);
   assert(before.shirts.length===2&&before.shirts.every(i=>i.complete&&i.naturalWidth>0),'ORIGINAL_3D_IMAGES_NOT_LOADED_'+d.name);
   assert(before.innerText.includes('Audience Prediction')&&before.innerText.includes('Awaiting verified last 5'),'REAL_DATA_DISCLOSURE_MISSING_'+d.name);
   assert(!before.innerText.includes('128 votes'),'FAKE_VOTES_DETECTED_'+d.name);
