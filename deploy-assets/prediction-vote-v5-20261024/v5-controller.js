@@ -1,4 +1,4 @@
-/* Browser controller for approved V5 card. __V5_TEMPLATE__ and __V5_CSS__ are injected by the staging builder. */
+/* Browser controller: V5 */
 (()=>{
  'use strict';if(window.__B46_V5_CARD)return;window.__B46_V5_CARD='20261024';
  const $=s=>document.querySelector(s);
