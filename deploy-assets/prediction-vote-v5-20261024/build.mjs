@@ -10,6 +10,7 @@ const template=raw.slice(start,end).replace('<div class="bars">','<div class="ba
 assert(template.includes('id="homeJersey"')&&template.includes('id="awayJersey"')&&template.includes('data-vote="0"')&&template.includes('id="audienceBars"'));
 const root=postcss.parse(stylesheet);
 root.walkRules(rule=>{
+ if(rule.selector.trim()==='body'){rule.remove();return;}
  const selectors=rule.selectors||[rule.selector];
  rule.selectors=selectors.map(a=>{
   let s=a.trim();
