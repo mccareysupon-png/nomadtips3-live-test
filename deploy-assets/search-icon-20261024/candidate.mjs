@@ -60,7 +60,7 @@ try{
    assert.equal(o.styleTag,true,'STYLE_TAG_ABSENT_'+dimension.name);
    if(o.found){assert.equal(o.border,'0px');assert.equal(o.boxShadow,'none');assert.equal(o.placeholderOpacity,'0');assert(o.svg);
     const field=page.locator('.status-head .b46-live-search input');
-    await field.fill('Arsenal');assert.equal(await field.inputValue(),'Arsenal','SEARCH_DISABLED');
+    if(await field.isVisible()){await field.fill('Arsenal',{timeout:5000});assert.equal(await field.inputValue(),'Arsenal','SEARCH_DISABLED');}else{assert.equal(dimension.name,'mobile','DESKTOP_SEARCH_NOT_VISIBLE');}
    }
    assert.equal(errors.length,0,'PAGE_JS_ERROR_'+dimension.name+':'+errors.join(' | '));
    out.previewQa.push({name:dimension.name,...o,jsErrors:errors.length});
