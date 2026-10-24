@@ -8,6 +8,7 @@ const hashes={'/':'8ba4fec5f99a16ed363e747f0cac5b4c6d0289f17173962d30be19566844f
 const hosts=['https://ball46.com','https://www.ball46.com'];
 const dir='deploy-assets/corner-entry-20261024/audit',report={at:new Date().toISOString(),ok:false};await mkdir(dir,{recursive:true});
 const digest=b=>createHash('sha256').update(b).digest('hex');
+const stable=o=>JSON.stringify(o,(k,v)=>v&&typeof v==='object'&&!Array.isArray(v)?Object.fromEntries(Object.entries(v).sort(([a],[b])=>a.localeCompare(b))):v);
 async function cf(path,body){
  if(body!==undefined)assert.equal(path,'/workers/scripts/'+W+'/deployments');
  const r=await fetch('https://api.cloudflare.com/client/v4/accounts/'+A+path,{method:body?'POST':'GET',headers:{authorization:'Bearer '+T,...(body?{'content-type':'application/json'}:{})},body:body?JSON.stringify(body):undefined,signal:AbortSignal.timeout(80000)});
@@ -27,7 +28,7 @@ try{
  const c=await cf('/workers/workers/'+W+'/versions/'+NEXT+'?include=modules');
  assert.equal(c.annotations?.['workers/tag'],'BALL46_CORNER_ENTRY_20261024');
  const unrelated=await inspectOriginal();
- const config=JSON.stringify(await cf('/workers/scripts/'+W+'/settings'));
+ const config=stable(await cf('/workers/scripts/'+W+'/settings'));
  await assertEndpoints();
  const preview='https://'+NEXT.slice(0,8)+'-'+W+'.mccarey-supon.workers.dev';
  for(const [p,hash]of Object.entries(hashes)){const r=await read(preview+p);assert.equal(r.status,200);assert.equal(r.hash,hash,'PREVIEW_CHANGED_'+p);}
@@ -41,7 +42,7 @@ try{
  assert.equal(confirmed,2,'NEW_ASSETS_NOT_LIVE');
  for(const host of hosts)for(const [p,hash]of Object.entries(unrelated)){const r=await read(host+p);assert.equal(r.status,200);assert.equal(r.hash,hash,'UNRELATED_ASSET_CHANGED_'+p);}
  await assertEndpoints();
- assert.equal(JSON.stringify(await cf('/workers/scripts/'+W+'/settings')),config,'SETTINGS_CHANGED');
+ assert.equal(stable(await cf('/workers/scripts/'+W+'/settings')),config,'SETTINGS_CHANGED');
  report.active=await live();report.ok=true;report.passed={domains:2,unchangedAssets:Object.keys(unrelated).length,apiRoutes:3};
  console.log('CORNER_ENTRY_PRODUCTION_PASS='+JSON.stringify(report));
 }catch(e){report.error=String(e.stack||e);console.error('CORNER_ENTRY_PRODUCTION_FAIL='+String(e.message||e));
