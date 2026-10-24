@@ -7,11 +7,11 @@ export const css=[
 '<style id="'+TAG+'">',
 '/* PC-only spacing — leave mobile, row heights, labels, icons & theme untouched */',
 '@media(min-width:761px){',
-'html body .workspace.singlepage > .left-rail > .rail-card.workspace-brand-card{margin-bottom:0px!important;}',
-'html body .workspace.singlepage > .left-rail > .rail-card[data-b46-member-independent="1"]{margin-bottom:0px!important;}',
-'html body .workspace.singlepage > .left-rail > .rail-card.b46-mobile-status-menu{margin-bottom:0px!important;}',
-'html body .workspace.singlepage > .left-rail > .rail-card.b46-mobile-status-menu > .rail-title{margin-bottom:4px!important;}',
-'html body .workspace.singlepage > .left-rail > .rail-card.workspace-stats-card > .rail-title{margin-bottom:2px!important;}',
+'html body .workspace.singlepage > .left-rail:not(#b46-sidebar-css-specificity-guard) > .rail-card.workspace-brand-card{margin-bottom:0px!important;}',
+'html body .workspace.singlepage > .left-rail:not(#b46-sidebar-css-specificity-guard) > .rail-card[data-b46-member-independent="1"]{margin-bottom:0px!important;}',
+'html body .workspace.singlepage > .left-rail:not(#b46-sidebar-css-specificity-guard) > .rail-card.b46-mobile-status-menu{margin-bottom:0px!important;}',
+'html body .workspace.singlepage > .left-rail:not(#b46-sidebar-css-specificity-guard) > .rail-card.b46-mobile-status-menu > .rail-title{margin-bottom:4px!important;}',
+'html body .workspace.singlepage > .left-rail:not(#b46-sidebar-css-specificity-guard) > .rail-card.workspace-stats-card > .rail-title{margin-bottom:2px!important;}',
 '}',
 '</style>'].join('\n');
 export function patchHtml(s){
