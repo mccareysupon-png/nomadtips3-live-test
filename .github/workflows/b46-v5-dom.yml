@@ -1,0 +1,19 @@
+name: V5 prediction browser source check
+on:
+  push:
+    branches: [feature/ball46-prediction-vote-v5-20261024]
+    paths:
+      - .github/workflows/b46-v5-dom.yml
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: |
+          npm install --no-save --no-package-lock --ignore-scripts playwright-core
+          node deploy-assets/prediction-vote-v5-20261024/ui-dom.mjs
