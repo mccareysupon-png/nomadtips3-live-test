@@ -2,9 +2,9 @@
   "phase": "candidate",
   "base": "246319a6-203b-475f-afd6-95ed792b35be",
   "worker": "ball46-production",
-  "run": "40108423663",
-  "commit": "7b98f6db520b09ede9c34f08acf3cb50fb75c477",
-  "at": "2026-10-24T15:45:31.116Z",
+  "run": "40109080614",
+  "commit": "fd7bc236c226291e01b38dec52497c9dd8aaa68b",
+  "at": "2026-10-24T15:54:17.639Z",
   "trafficChanged": false,
   "before": {
     "id": "246319a6-203b-475f-afd6-95ed792b35be",
@@ -138,8 +138,8 @@
         }
       },
       "annotations": {
-        "workers/message": "62px smaller PC-only sidebar group spacing; preserve latest Prediction V8 and mobile",
-        "workers/tag": "BALL46_PC_SIDEBAR_SPACING_20261024",
+        "workers/message": "Fix vote reads to share the existing authoritative website board; add Retry Votes; retain12jerseys and all vote data",
+        "workers/tag": "B46_VOTE_RECONNECT_V9_20261024",
         "workers/triggered_by": "version_upload"
       },
       "bindings": [
@@ -228,13 +228,13 @@
       "path": "/api/engine/board",
       "status": 200,
       "ok": true,
-      "fixtures": 1497
+      "fixtures": 1520
     },
     {
       "path": "/api/engine/signals",
       "status": 200,
       "ok": true,
-      "signals": 30
+      "signals": 20
     },
     {
       "path": "/api/engine/statistics?paged=1",
@@ -828,7 +828,7 @@
       "sha": "18dd7df71c7dd492295371976fd3100676dd419d0063c65f084ac7b005f07309"
     }
   },
-  "candidate": "0bb96c3e-145f-42d1-961d-32cb2cb7f8ba",
+  "candidate": "73c328cb-f041-4e97-93c3-58165b783642",
   "configAfter": {
     "settings": {
       "placement": {},
@@ -945,13 +945,13 @@
       "path": "/api/engine/board",
       "status": 200,
       "ok": true,
-      "fixtures": 1497
+      "fixtures": 1520
     },
     {
       "path": "/api/engine/signals",
       "status": 200,
       "ok": true,
-      "signals": 31
+      "signals": 20
     },
     {
       "path": "/api/engine/statistics?paged=1",
@@ -965,7 +965,7 @@
     }
   ],
   "integration": {
-    "fixtureId": "203233474",
+    "fixtureId": "201648363",
     "scope": "preview",
     "persisted": true,
     "start": 0,
