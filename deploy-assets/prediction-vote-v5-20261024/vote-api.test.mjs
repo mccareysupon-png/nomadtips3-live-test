@@ -1,0 +1,15 @@
+import assert from'node:assert/strict';
+import test from'node:test';
+import{voteRoute}from'./vote-api.mjs';
+function kv(){const store=new Map();return{store,async put(k,v){store.set(k,v)},async delete(k){store.delete(k)},async list({prefix,limit=1000,cursor}){const keys=[...store.keys()].filter(k=>k.startsWith(prefix)).sort();const start=cursor?Number(cursor):0;const page=keys.slice(start,start+limit);return{keys:page.map(name=>({name})),list_complete:start+limit>=keys.length,cursor:start+limit>=keys.length?undefined:String(start+limit)}}}}
+const fixture={fixtureId:'213456789',boardState:'live'};
+const env=()=>({PREDICTION_VOTES_KV:kv(),HUB:{fetch:async()=>Response.json({ok:true,stale:false,fixtures:[fixture]})}});
+const rid='00000000-0000-4000-a000-000000000001',other='00000000-0000-4000-a000-000000000002';
+const request=(method,body)=>new Request('https://ball46.com/api/prediction-vote?fixtureId=213456789&voterId='+rid,{method,...(body?{headers:{'content-type':'application/json','Origin':'https://ball46.com'},body:JSON.stringify(body)}:{})});
+test('new tally is empty; never invent votes',async()=>{const e=env();const j=await(await voteRoute(request('GET'),e)).json();assert.deepEqual(j.counts,[0,0,0]);assert.equal(j.total,0)});
+test('post one and retrieve truthful one-person vote',async()=>{const e=env();const b={fixtureId:fixture.fixtureId,voterId:rid,choice:'1'};assert.equal((await voteRoute(request('POST',b),e)).status,200);const j=await(await voteRoute(request('GET'),e)).json();assert.equal(j.total,1);assert.deepEqual(j.counts,[1,0,0]);assert.equal(j.myPick,'1')});
+test('changing one vote leaves one tally, not two',async()=>{const e=env();await voteRoute(request('POST',{fixtureId:fixture.fixtureId,voterId:rid,choice:'1'}),e);await voteRoute(request('POST',{fixtureId:fixture.fixtureId,voterId:rid,choice:'X'}),e);const j=await(await voteRoute(request('GET'),e)).json();assert.deepEqual(j.counts,[0,1,0]);assert.equal(j.total,1)});
+test('two different anonymous voters count separately',async()=>{const e=env();for(const [v,c]of[[rid,'2'],[other,'1']])await voteRoute(request('POST',{fixtureId:fixture.fixtureId,voterId:v,choice:c}),e);const j=await(await voteRoute(request('GET'),e)).json();assert.deepEqual(j.counts,[1,0,1])});
+test('finished match cannot receive vote',async()=>{const e=env();fixture.boardState='finished';const r=await voteRoute(request('POST',{fixtureId:fixture.fixtureId,voterId:rid,choice:'1'}),e);assert.equal(r.status,409);fixture.boardState='live'});
+test('foreign origin cannot post votes',async()=>{const e=env();const r=await voteRoute(new Request('https://ball46.com/api/prediction-vote',{method:'POST',headers:{origin:'https://other.example','content-type':'application/json'},body:JSON.stringify({fixtureId:fixture.fixtureId,voterId:rid,choice:'1'})}),e);assert.equal(r.status,403)});
+test('invalid choices/ids rejected',async()=>{const e=env();const r=await voteRoute(request('POST',{fixtureId:fixture.fixtureId,voterId:rid,choice:'3'}),e);assert.equal(r.status,400)});
