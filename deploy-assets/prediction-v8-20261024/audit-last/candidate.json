@@ -1,10 +1,10 @@
 {
-  "phase": "candidate",
+  "phase": "verify",
   "base": "4c40159f-84a2-400c-80dc-8b13c268c898",
   "worker": "ball46-production",
-  "run": "40091509153",
-  "commit": "9d2caaa2fd05fa382410081ebc8324dec9e8fcca",
-  "at": "2026-10-24T11:50:39.334Z",
+  "run": "40091911920",
+  "commit": "bcff6e34ffd9b69d8e68cc75f66aa19b26f3b2a9",
+  "at": "2026-10-24T11:56:51.922Z",
   "trafficChanged": false,
   "before": {
     "id": "4c40159f-84a2-400c-80dc-8b13c268c898",
@@ -128,8 +128,8 @@
         }
       },
       "annotations": {
-        "workers/message": "Issue367 V5 borderless prediction + six NEW transparent3D kits; isolated real audience votes; verified-history-only independent Form Model",
-        "workers/tag": "B46_PREDICTION_V6_20261024",
+        "workers/message": "Approved Vote confirmation, honest20vote percentage threshold, HOME/AWAY labels,12new3D jerseys and Featured pair synchronization; no data engine changes",
+        "workers/tag": "B46_PREDICTION_V8_20261024",
         "workers/triggered_by": "version_upload"
       },
       "bindings": [
@@ -218,13 +218,13 @@
       "path": "/api/engine/board",
       "status": 200,
       "ok": true,
-      "fixtures": 1048
+      "fixtures": 1167
     },
     {
       "path": "/api/engine/signals",
       "status": 200,
       "ok": true,
-      "signals": 2
+      "signals": 1
     },
     {
       "path": "/api/engine/statistics?paged=1",
@@ -237,6 +237,7 @@
       "ok": true
     }
   ],
+  "candidate": "3d9e0ad6-6b23-4abe-9981-4c8d3fbd4eda",
   "publicBefore": [
     {
       "path": "/",
@@ -815,7 +816,7 @@
     },
     "/live-prediction-343.js": {
       "status": 200,
-      "sha": "e7a2512a48d88c4bcfd8039be70c56bd4df37f8c6f58253a9b810d6af4445c20"
+      "sha": "b058697d24f55fa4a8873c29c84b7348fc4122842f15014912258e6d69a3e691"
     },
     "/prediction-v8/jersey-yellow-3d-v8.webp": {
       "status": 200,
@@ -842,7 +843,6 @@
       "sha": "519ed58ea55a3626e00dc74f5bde6d81f0f6ae835c890a3f9b78a4b6d2cc70c8"
     }
   },
-  "candidate": "fe2f470e-f94e-48de-8fd6-9676ec30191f",
   "configAfter": {
     "settings": {
       "placement": {},
@@ -959,13 +959,13 @@
       "path": "/api/engine/board",
       "status": 200,
       "ok": true,
-      "fixtures": 1048
+      "fixtures": 1149
     },
     {
       "path": "/api/engine/signals",
       "status": 200,
       "ok": true,
-      "signals": 2
+      "signals": 1
     },
     {
       "path": "/api/engine/statistics?paged=1",
@@ -979,12 +979,13 @@
     }
   ],
   "integration": {
-    "fixtureId": "201660503",
+    "fixtureId": "203436547",
     "scope": "preview",
     "persisted": true,
     "start": 0,
     "end": 1,
-    "changesWithoutInflation": 4
+    "changesWithoutInflation": 4,
+    "skipped": []
   },
   "candidateVerified": true
 }
