@@ -22,13 +22,15 @@ try{
      buttons:buttons.length,shirts:imgs.map(i=>({src:i.getAttribute('src'),complete:i.complete,naturalWidth:i.naturalWidth})),
      fixtureId:card?.querySelector('.b46-v5 .prediction')?.dataset.fixtureId,
      dimensions:root?{width:root.getBoundingClientRect().width,height:root.getBoundingClientRect().height,display:getComputedStyle(root).display}:null,
-     selectedScore:document.querySelector('[data-featured-score]')?.innerText,photo:false};
+     selectedScore:document.querySelector('[data-featured-score]')?.innerText,photo:false,ancestors:(()=>{let p=card;const arr=[];for(let i=0;i<6&&p;i++,p=p.parentElement)arr.push({tag:p.tagName,cls:p.className?.toString().slice(0,100),display:getComputedStyle(p).display,visibility:getComputedStyle(p).visibility,w:p.getBoundingClientRect().width,h:p.getBoundingClientRect().height});return arr})()};
   });
   assert(before.present,'V5_ROOT_ABSENT_'+d.name);assert.equal(before.buttons,3,'VOTE_BUTTONS_ABSENT_'+d.name);
   assert(before.shirts.length===2&&before.shirts.every(i=>i.complete&&i.naturalWidth>0),'ORIGINAL_3D_IMAGES_NOT_LOADED_'+d.name);
   assert(before.innerText.includes('Audience Prediction')&&before.innerText.includes('Awaiting verified last 5'),'REAL_DATA_DISCLOSURE_MISSING_'+d.name);
   assert(!before.innerText.includes('128 votes'),'FAKE_VOTES_DETECTED_'+d.name);
-  await page.locator('[data-prediction-card] [data-vote="0"]').click({force:true,timeout:8000});
+  console.log('B46_V5_BROWSER_BEFORE='+JSON.stringify({name:d.name,before}).slice(0,4500));
+  if(before.ancestors?.every(a=>a.display!=='none'&&a.w>0))await page.locator('[data-prediction-card] [data-vote="0"]').click({force:true,timeout:8000});
+  else throw Error('PREDICTION_HIDDEN_'+d.name);
   await page.waitForTimeout(800);
   const after=await page.evaluate(()=>({voteNote:document.querySelector('#voteNote')?.innerText,
      total:document.querySelector('#votesCount')?.innerText,selected:document.querySelector('[data-vote="0"]')?.getAttribute('aria-pressed')}));
