@@ -8,4 +8,4 @@ const audit={active:id,mainLength:s.length,htmlLength:h.length,htmlStatus:r.stat
 const toks=['Team or league','team or league','Search team','search-input','header-search','live-header-search','search-field','type="search"'];
 for(const t of toks)for(const [name,str]of[['HTML',h],['WORKER',s]]){let i=-1,n=0;while((i=str.toLowerCase().indexOf(t.toLowerCase(),i+1))>=0&&n++<6)audit.occurrences.push({name,token:t,at:i,context:str.slice(Math.max(0,i-570),i+790)});}
 await mkdir('audit',{recursive:true});await writeFile('audit/search.json',JSON.stringify(audit,null,2));
-console.log('SEARCH_ICON_CONTEXT='+JSON.stringify(audit).slice(0,25000));
+const detail=[];for(const t of ['b46-live-search','Team or league','data-b46-live-search-slot','placeholder="Team or league"'])for(const [nm,str]of [['HTML',h],['WORKER',s]]){let i=-1,n=0;while((i=str.indexOf(t,i+1))>=0&&n++<4)detail.push({nm,t,at:i,ctx:str.slice(Math.max(0,i-350),i+1050)});}console.log('SEARCH_EXACT='+JSON.stringify({active:id,htmlStatus:r.status,detail}).slice(0,17500));
