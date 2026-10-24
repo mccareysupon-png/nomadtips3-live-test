@@ -34,6 +34,8 @@ jobs:
           node --check deploy-assets/prediction-vote-v5-20261024/candidate.mjs
       - name: Cloudflare isolated version upload only (NO live traffic)
         run: node deploy-assets/prediction-vote-v5-20261024/candidate.mjs
+      - name: Test V5 actual site on PC and mobile with mock votes (no live writes)
+        run: node deploy-assets/prediction-vote-v5-20261024/browser-qa.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
