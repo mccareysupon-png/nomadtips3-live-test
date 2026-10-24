@@ -89,6 +89,7 @@ try{
    assert.equal(res.status(),200);await page.waitForTimeout(7000);
    await page.evaluate(t=>document.documentElement.setAttribute('data-theme',t),d.theme);
    const observed=await measure(page);
+   console.log('B46_SIDEBAR_MEASUREMENT='+JSON.stringify({name:d.name,observed}).slice(0,4200));
    assert.equal(observed.tag,true,'STYLE_MISSING_'+d.name);
    assert.equal(errors.length,0,'JS_ERRORS_'+d.name+':'+errors.join(';'));
    assert.equal(observed.voteCards,1,'PREDICTION_V8_NOT_PRESERVED_'+d.name);
