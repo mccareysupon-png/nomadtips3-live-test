@@ -2,7 +2,7 @@
 (()=>{
  'use strict';if(window.__B46_V5_CARD)return;window.__B46_V5_CARD='20261024';
  const $=s=>document.querySelector(s);
- const safe=s=>String(s??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot':'&quot',"'":'&#39;'}[c]));
+ const safe=s=>String(s??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
  const norm=s=>String(s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
  const num=x=>x!==null&&x!==undefined&&x!==''&&Number.isFinite(Number(x))?Number(x):null;
  const name=x=>String(x?.name??x??'');
