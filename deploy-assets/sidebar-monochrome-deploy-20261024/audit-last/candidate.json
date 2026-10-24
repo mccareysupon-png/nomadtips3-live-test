@@ -3,9 +3,9 @@
   "base": "dc158cd1-bf39-4b6a-a4eb-3e3c8b0c2db4",
   "script": "ball46-production",
   "mark": "B46_SIDEBAR_MONOCHROME_20261024",
-  "run": "40069133628",
-  "commit": "1a8888328cee723e619939543a6751aba3283ab9",
-  "startedAt": "2026-10-24T06:10:27.876Z",
+  "run": "40069316094",
+  "commit": "95520da6e2ab6a4c9c12ca70e8015e68b62a3741",
+  "startedAt": "2026-10-24T06:13:11.193Z",
   "assetsRetained": true,
   "before": {
     "id": "dc158cd1-bf39-4b6a-a4eb-3e3c8b0c2db4",
@@ -90,7 +90,7 @@
   ],
   "routesAudit": {
     "ciStatus": 403,
-    "verifiedAt": "2026-10-24T06:10:00.371Z"
+    "verifiedAt": "2026-10-24T06:12:43.761Z"
   },
   "configBefore": {
     "settings": {
@@ -233,6 +233,11 @@
           "name": "HUB",
           "service": "nomadtips3-5usd-hub-343",
           "type": "service"
+        },
+        {
+          "name": "PREDICTION_VOTES_KV",
+          "namespace_id": "a7a435999144427c8227e1aba8c5f255",
+          "type": "kv_namespace"
         }
       ]
     },
@@ -265,7 +270,7 @@
     ],
     "routes": []
   },
-  "restoredStagedBinding": {
+  "preservedStagedBinding": {
     "name": "PREDICTION_VOTES_KV",
     "namespace_id": "a7a435999144427c8227e1aba8c5f255",
     "type": "kv_namespace"
@@ -759,14 +764,14 @@
     },
     "/": {
       "status": 200,
-      "sha": "e355811d6858f0fb22819fe46fc5240de89c6791f9ea79fc5f6d8e57894a4fe9"
+      "sha": "40799f5b087e3511041fe8999ddb3a005317c118be2bd55703a8078fbcd66c64"
     },
     "/index.html": {
       "status": 200,
-      "sha": "e355811d6858f0fb22819fe46fc5240de89c6791f9ea79fc5f6d8e57894a4fe9"
+      "sha": "40799f5b087e3511041fe8999ddb3a005317c118be2bd55703a8078fbcd66c64"
     }
   },
-  "candidate": "bd7fd233-7600-4690-a038-8cd132c0d9bc",
+  "candidate": "718d4481-36b9-438c-8eff-8f9b42a30934",
   "previewHealth": [
     {
       "path": "/api/engine/health",
