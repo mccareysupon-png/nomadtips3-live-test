@@ -8,6 +8,13 @@
  const name=x=>String(x?.name??x??'');
  const active=f=>['live','halftime','ht','inplay','in_play'].includes(String(f?.boardState??'').toLowerCase());
  const state={id:'',f:null,summary:null,ready:false,busy:false,model:null,voter:''};
+ const voteCard=$('[data-prediction-card]'),rail=voteCard?.parentElement,after=voteCard?.nextElementSibling;
+ function placeCard(){
+  if(!voteCard||!rail)return;
+  const mobile=matchMedia('(max-width:760px)').matches;
+  if(mobile){const board=$('[data-board-sections]');if(board?.parentElement&&voteCard.parentElement!==board.parentElement)board.parentElement.insertBefore(voteCard,board);}
+  else if(voteCard.parentElement!==rail){if(after?.parentElement===rail)rail.insertBefore(voteCard,after);else rail.appendChild(voteCard);}
+ }
  function find(){
   const dash=window.NOMAD343_DASHBOARD_V2;if(!dash?.getFixture)return null;
   const h=$('[data-featured-home]')?.textContent?.trim(),a=$('[data-featured-away]')?.textContent?.trim();
@@ -112,6 +119,7 @@
  }
  let pollCount=0;
  function sync(){
+  placeCard();
   const f=find(),id=active(f)?String(f.fixtureId??f.id??''):'';
   if(id!==state.id){state.id=id;state.f=id?f:null;state.ready=false;state.summary=null;state.model=id?model(f):null;
    if(id){mount();void refresh();}else{const host=$('[data-prediction-content]');if(host){host.innerHTML='<div class="b46-v5"><div class="b46-v5-empty">Choose an active match to vote on its outcome.</div></div>'}}
