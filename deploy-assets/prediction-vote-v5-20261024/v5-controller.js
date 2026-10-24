@@ -76,7 +76,7 @@
  }
  function display(){
   const root=$('[data-prediction-card] .b46-v5');if(!root)return;
-  const note=$('#voteNote'),total=$('#votesCount'),aud=$('#audienceBars'),formEl=root.querySelector('.form-result');
+  const note=$('#voteNote'),total=$('#votesCount'),aud=$('#audienceBars'),formEl=root.querySelector('.model');
   if(!state.summary){
     if(aud)aud.innerHTML='<div class="b46-v5-empty">Waiting for community vote totals…</div>';
   }else{
