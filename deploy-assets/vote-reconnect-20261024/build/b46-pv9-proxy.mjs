@@ -28,3 +28,5 @@ export async function predictionVoteRoute(request,env,readBoard){try{
  if(data.sessionToken)extra['set-cookie']=COOKIE+'='+data.sessionToken+'; Max-Age=15552000; Path=/; Secure; HttpOnly; SameSite=Lax'+(production?'; Domain=ball46.com':'');
  delete data.sessionToken;return json({...data,canVote},response.status,extra);
  }catch(error){if(['TOO_LARGE','INVALID_JSON'].includes(error.message))return json({ok:false,error:error.message},error.message==='TOO_LARGE'?413:400);return json({ok:false,error:'VOTE_TEMPORARILY_UNAVAILABLE'},503);}}
+
+export function readVoteBoard(request,env,read){return read(new Request(new URL("/api/engine/board",request.url),{method:"GET",headers:{accept:"application/json"}}),env);}
