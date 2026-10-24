@@ -1,0 +1,37 @@
+name: BALL46 Last 5 guarded investigation
+on:
+  push:
+    branches: [codex/ball46-form-last5-20261025]
+    paths:
+      - '.github/workflows/ball46-form-last5-20261025.yml'
+      - 'deploy-assets/form-last5-20261025/probe.mjs'
+permissions:
+  contents: write
+concurrency:
+  group: ball46-production-deploy
+  cancel-in-progress: false
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Read current deployment and at most two real team-history requests
+        working-directory: deploy-assets/form-last5-20261025
+        run: node probe.mjs
+      - name: Preserve safe read-only evidence
+        if: always()
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add deploy-assets/form-last5-20261025/audit
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Record Last 5 source probe [skip ci]"
+          git push origin HEAD:codex/ball46-form-last5-20261025
