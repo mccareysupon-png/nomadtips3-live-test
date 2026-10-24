@@ -1,0 +1,20 @@
+name: BALL46 V5 — isolated browser QA PC and mobile
+on:
+  push:
+    branches: [feature/ball46-prediction-vote-v5-20261024]
+    paths:
+      - .github/workflows/b46-v5-browser-qa.yml
+permissions:
+  contents: read
+jobs:
+  qa:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: |
+          npm install --no-save --no-package-lock --ignore-scripts playwright-core
+          node --check deploy-assets/prediction-vote-v5-20261024/browser-qa.mjs
+          node deploy-assets/prediction-vote-v5-20261024/browser-qa.mjs
