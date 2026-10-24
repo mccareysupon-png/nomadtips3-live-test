@@ -111,7 +111,15 @@ try{
     assert.equal(observed.y.status,154,'STATUS_POSITION_WRONG');
     assert.equal(observed.y.stats,402,'STATS_POSITION_WRONG');
    }else{
-    assert.deepEqual(observed.mb,{brand:12,member:20,status:20,statusTitle:8,statsTitle:8},'MOBILE_SPACING_CHANGED');
+    const baseline=await browser.newPage({viewport:{width:d.width,height:d.height}});
+    await baseline.goto('https://ball46.com/?mobileSpacingBaseline='+Date.now(),{waitUntil:'domcontentloaded',timeout:70000});
+    await baseline.waitForTimeout(5500);
+    await baseline.evaluate(t=>document.documentElement.setAttribute('data-theme',t),d.theme);
+    const untouched=await measure(baseline);
+    assert.deepEqual(observed.mb,untouched.mb,'MOBILE_SPACING_CHANGED');
+    assert.deepEqual(observed.y,untouched.y,'MOBILE_POSITIONS_CHANGED');
+    assert.deepEqual(observed.rowHeights,untouched.rowHeights,'MOBILE_ROW_HEIGHT_CHANGED');
+    await baseline.close();
    }
    out.previewQa.push({name:d.name,...observed,errors:0});await page.close();
   }
