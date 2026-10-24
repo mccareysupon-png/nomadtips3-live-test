@@ -1,0 +1,22 @@
+name: BALL46 Search Icon Only — guarded production
+on:
+  push:
+    branches: [fix/ball46-search-borderless-icon-20261024]
+    paths:
+      - .github/workflows/b46-search-icon-activate.yml
+permissions:
+  contents: read
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: |
+          node --check deploy-assets/search-icon-20261024/activate.mjs
+          node deploy-assets/search-icon-20261024/activate.mjs
