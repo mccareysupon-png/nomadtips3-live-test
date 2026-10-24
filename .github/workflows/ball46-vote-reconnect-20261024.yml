@@ -34,6 +34,7 @@ jobs:
           node --check build/browser.js
           node threshold.test.mjs
           node vote-proxy.test.mjs
+          node read-flow.test.mjs
           node run.mjs
           if [ -f audit/candidate-runtime.mjs ]; then node --check audit/candidate-runtime.mjs; fi
       - name: Preserve audit

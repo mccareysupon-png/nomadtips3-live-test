@@ -63,7 +63,7 @@ function voteReadFailure(error){
 const card=document.querySelector('[data-pv-version="8"]');if(!card)return;
 const q=s=>card.querySelector(s),name=t=>String(t?.name??t??''),norm=s=>String(s||'').toLowerCase().replace(/[^a-z0-9]/g,''),set=(el,text)=>{if(el&&el.textContent!==String(text))el.textContent=String(text)},label=c=>c==='1'?'HOME':c==='X'?'DRAW':'AWAY';
 const rail=card.parentElement,anchor=document.createComment('prediction-v8-position');rail.insertBefore(anchor,card);
-let fixture=null,id='',summary=null,draft=null,busy=false,savingId='',readSequence=0,requestAbort=null,lastRead=0,errorText='',savedText='',readIssue='';
+let fixture=null,id='',summary=null,draft=null,busy=false,savingId='',readSequence=0,readingId='',requestAbort=null,lastRead=0,errorText='',savedText='',readIssue='';
 const allowed=f=>['scheduled','live','halftime','ht','inplay','in_play','upcoming'].includes(String(f?.boardState??'').toLowerCase());
 const expectedScope=['ball46.com','www.ball46.com'].includes(location.hostname)?'production':'preview';
 const kitPath=color=>['yellow','orange','sky','pink','navy','burgundy'].includes(color)?'/prediction-v8/jersey-'+color+'-3d-v8.webp':'/prediction-v6/jersey-'+color+'-3d-v6.webp';
@@ -86,16 +86,16 @@ function render(){
  modelBars(formModel(f));
 }
 async function request(method,target,choice,signal){const r=await fetch('/api/prediction-vote'+(method==='GET'?'?fixtureId='+encodeURIComponent(target):''),{method,credentials:'same-origin',cache:'no-store',headers:method==='POST'?{'content-type':'application/json'}:{},body:method==='POST'?JSON.stringify({fixtureId:target,choice}):undefined,signal}),j=await r.json();if(!r.ok||!j.ok){const error=Error(r.status===429?'Please wait a moment before voting again.':r.status===409?'Voting is closed for this match.':'Votes are temporarily unavailable. Please retry.');error.status=r.status;error.code=j.error;throw error;}if(String(j.fixtureId)!==target||j.scope!==expectedScope||!communityView(j).available||j.myPick!==null&&!OUTCOMES.includes(j.myPick))throw Error('Community votes are temporarily unavailable.');return j;}
-async function readVotes(){if(!id||busy)return;const target=id,seq=++readSequence;readIssue='';errorText='';lastRead=Date.now();render();requestAbort?.abort();const abort=new AbortController();requestAbort=abort;const timer=setTimeout(()=>abort.abort(),12000);try{const j=await request('GET',target,null,abort.signal);if(seq!==readSequence||target!==id)return;summary=j;readIssue='';errorText='';lastRead=Date.now();}catch(e){if(seq!==readSequence||target!==id)return;summary=null;const problem=voteReadFailure(e);readIssue=problem.kind;errorText=problem.message;lastRead=Date.now();}finally{clearTimeout(timer);}render();}
+async function readVotes(){if(!id||busy||readingId===id)return;const target=id,seq=++readSequence;readingId=target;readIssue='';errorText='';lastRead=Date.now();render();requestAbort?.abort();const abort=new AbortController();requestAbort=abort;const timer=setTimeout(()=>abort.abort(),45000);try{const j=await request('GET',target,null,abort.signal);if(seq!==readSequence||target!==id)return;summary=j;readIssue='';errorText='';lastRead=Date.now();}catch(e){if(seq!==readSequence||target!==id)return;summary=null;const problem=voteReadFailure(e);readIssue=problem.kind;errorText=problem.message;lastRead=Date.now();}finally{clearTimeout(timer);if(readSequence===seq)readingId='';}render();}
 card.addEventListener('click',async e=>{
  const pick=e.target.closest('[data-choice]');if(pick){if(pick.disabled||busy||!id)return;draft=pick.dataset.choice;errorText='';savedText='';render();return;}
  const confirm=e.target.closest('#pv8-confirm');if(confirm&&!confirm.disabled&&readIssue==='retry'){readVotes();return;}if(!confirm||confirm.disabled||busy||!OUTCOMES.includes(draft))return;
- const target=id,choice=draft;busy=true;savingId=target;readSequence++;requestAbort?.abort();errorText='';savedText='';render();const abort=new AbortController(),timer=setTimeout(()=>abort.abort(),15000);
+ const target=id,choice=draft;busy=true;savingId=target;readSequence++;readingId='';requestAbort?.abort();errorText='';savedText='';render();const abort=new AbortController(),timer=setTimeout(()=>abort.abort(),45000);
  try{const j=await request('POST',target,choice,abort.signal);if(target===id){summary=j;draft=null;lastRead=Date.now();savedText='Vote saved · '+label(choice)+'. You can change it anytime.';}}
  catch(e){if(target===id){errorText=e.name==='AbortError'?'Connection timed out. Your vote may be saved; reload to check.':e.message;if(e.name==='AbortError')summary=null;}}
  finally{clearTimeout(timer);busy=false;savingId='';render();if(target!==id||!summary)readVotes();}
 });
-function sync(){placement();const next=find(),nextId=String(next?.fixtureId||'');fixture=next;if(nextId!==id){id=nextId;summary=null;draft=null;readIssue='';errorText='';savedText='';readSequence++;requestAbort?.abort();render();if(id&&!busy)readVotes();}else render();}
+function sync(){placement();const next=find(),nextId=String(next?.fixtureId||'');fixture=next;if(nextId!==id){id=nextId;summary=null;draft=null;readIssue='';errorText='';savedText='';readSequence++;readingId='';requestAbort?.abort();render();if(id&&!busy)readVotes();}else render();}
 let queued=false;const schedule=()=>{if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;sync();});};
 const featured=document.querySelector('[data-featured]');if(featured)new MutationObserver(schedule).observe(featured,{childList:true,subtree:true,characterData:true});
 const dialog=document.querySelector('#b46gn-detail');if(dialog)new MutationObserver(schedule).observe(dialog,{childList:true,subtree:true,attributes:true,attributeFilter:['aria-hidden']});
