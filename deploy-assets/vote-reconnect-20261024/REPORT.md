@@ -53,3 +53,9 @@ GitHub evidence: `audit-last/candidate.json`, `audit-last/activate-40110218208.j
 ## Rollback
 
 Verified baseline is version `246319a6-203b-475f-afd6-95ed792b35be`, deployment `2de3db66-daf6-48f3-8941-70c07b029674`, containing the latest PC Sidebar Compact and V8 card. Use this rail's guarded restore only while the owned V9 candidate is still active, with freshly verified configuration/routes. Preserve votes and every private backend. Never restore the older pre-sidebar V8/V6 baseline. See `ROLLBACK.md`.
+
+## Late observation — connectivity remains intermittent
+
+After the successful activation checks, a later Production browser refresh showed Connection interrupted again. The same browser also logged HTTP599/timeouts for Statistics/Performance, and direct browser navigation/CDP commands later timed out. Separately, a fresh uncookied Node vote GET returned HTTP429 RATE_LIMITED. The retained private backend source limits new anonymous identities per IP/day; this observation is not proof that a valid existing voter is rate-limited. No security limit was relaxed and no new vote was cast on Production.
+
+These late observations do not undo the demonstrated saved/updated/reloaded Preview vote, successful earlier Production UI/API read, or completed deployment/data-preservation checks. They mean continuous browser connectivity is **not yet confirmed stable**. The root cause of the late browser failures is not established. Keep the deployed mismatch/timeout fix and Retry behavior; do not claim that every temporary-unavailable condition has been eliminated. A new browser run with a working connection and an existing anonymous session is still needed to establish sustained stability.
