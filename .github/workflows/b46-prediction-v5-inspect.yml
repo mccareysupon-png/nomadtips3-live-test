@@ -4,7 +4,7 @@ on:
     branches: [feature/ball46-prediction-vote-v5-20261024]
     paths:
       - .github/workflows/b46-prediction-v5-inspect.yml
-      - deploy-assets/prediction-vote-v5-20261024/inspect.mjs
+      - deploy-assets/prediction-vote-v5-20261024/focus.mjs
 permissions:
   contents: read
 jobs:
@@ -20,7 +20,8 @@ jobs:
         with: {node-version: '22'}
       - run: |
           node --check deploy-assets/prediction-vote-v5-20261024/inspect.mjs
-          node deploy-assets/prediction-vote-v5-20261024/inspect.mjs
+          node --check deploy-assets/prediction-vote-v5-20261024/focus.mjs
+          node deploy-assets/prediction-vote-v5-20261024/focus.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
