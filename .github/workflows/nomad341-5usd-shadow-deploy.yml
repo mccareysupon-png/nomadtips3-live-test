@@ -1,0 +1,188 @@
+name: NOMAD 3.41 Native 5USD Test Authority
+
+on:
+  push:
+    branches:
+      - work/nomad341-5usd-native
+    paths:
+      - 'nomad-live-engine/src/fivedollar*.js'
+      - 'nomad-live-engine/src/index-fiveusd-*.js'
+      - 'nomad-live-engine/test/fivedollar*.test.js'
+      - 'nomad-live-engine/test/index-fiveusd-*.test.js'
+      - 'nomad-live-engine/test/live-board-ui.test.js'
+      - 'nomad-live-engine/wrangler-fiveusd-shadow.toml'
+      - 'nomad-live/runtime.js'
+      - 'nomad-live/index.html'
+      - 'nomad-live/match-list-overflow.js'
+      - 'nomad-live/match-list-overflow.css'
+      - '.github/workflows/nomad341-5usd-shadow-deploy.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
+  TEST_URL: https://nomadtips3-live-engine-5usd-shadow.mccarey-supon.workers.dev
+  EXPECTED_RUNTIME_CONTRACT: 341-5usd-test-authority-v1
+
+jobs:
+  validate-deploy-observe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate native authority code
+        working-directory: nomad-live-engine
+        run: |
+          set -euo pipefail
+          node --test
+          node --check src/fivedollar.js
+          node --check src/fivedollar-runtime.js
+          node --check src/index-fiveusd-shadow.js
+          node --check src/index-fiveusd-test.js
+          grep -Fq 'main = "src/index-fiveusd-test.js"' wrangler-fiveusd-shadow.toml
+          grep -Fq 'FIVEUSD_NATIVE_MODE = "authority"' wrangler-fiveusd-shadow.toml
+          grep -Fq 'FIVEUSD_SHADOW_LEGACY_DISABLED = "true"' wrangler-fiveusd-shadow.toml
+          grep -Fq 'FIVEUSD_LIVE_REFRESH_MS = "3000"' wrangler-fiveusd-shadow.toml
+          grep -Fq 'FIVEUSD_GLOBAL_REQUEST_BUDGET_PER_60S = "40"' wrangler-fiveusd-shadow.toml
+          grep -Fq '341-5usd-test-authority-v1' src/index-fiveusd-test.js
+          grep -Fq '/fiveusd-test-referee' src/index-fiveusd-test.js
+          grep -Fq '/fiveusd-test-signals' src/index-fiveusd-test.js
+          ! grep -Fq 'FIVEUSD_LIVE_REQUEST_BUDGET_PER_60S' wrangler-fiveusd-shadow.toml
+          ! grep -Fq 'FIVEUSD_UPCOMING_REQUEST_BUDGET_PER_60S' wrangler-fiveusd-shadow.toml
+          ! grep -Fq 'FIVEUSD_REFEREE_REQUEST_BUDGET_PER_60S' wrangler-fiveusd-shadow.toml
+          ! grep -Fq 'FIVEUSD_MAX_REFEREE_STARTS_PER_TICK' wrangler-fiveusd-shadow.toml
+          ! grep -Fq 'FIVEUSD_LIVE_MAX_PAGES' wrangler-fiveusd-shadow.toml
+
+      - name: Dry-run authority bundle
+        working-directory: nomad-live-engine
+        run: npx --yes wrangler@4.131.1 deploy --dry-run --config wrangler-fiveusd-shadow.toml
+
+      - name: Validate deploy credentials
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          test -n "$FIVEDOLLAR_API_KEY"
+
+      - name: Deploy isolated 3.41 authority worker
+        working-directory: nomad-live-engine
+        run: npx --yes wrangler@4.131.1 deploy --config wrangler-fiveusd-shadow.toml
+
+      - name: Bind 5USD secret to test worker
+        working-directory: nomad-live-engine
+        run: printf '%s' "$FIVEDOLLAR_API_KEY" | npx --yes wrangler@4.131.1 secret put FIVEDOLLAR_API_KEY --config wrangler-fiveusd-shadow.toml
+
+      - name: Re-deploy code after secret update
+        working-directory: nomad-live-engine
+        run: npx --yes wrangler@4.131.1 deploy --config wrangler-fiveusd-shadow.toml
+
+      - name: Observe 3s engine, LIVE-only feed and real 10-book referee
+        run: |
+          set -euo pipefail
+          probe() {
+            local url="$1" out="$2"
+            local code=""
+            for attempt in $(seq 1 15); do
+              code=$(curl -sS --max-time 20 -o "$out" -w '%{http_code}' "$url" || true)
+              echo "probe attempt $attempt -> HTTP $code"
+              if [ "$code" = "200" ]; then return 0; fi
+              sleep 2
+            done
+            echo "::error::Test endpoint never became ready: $url"
+            [ -f "$out" ] && cat "$out" || true
+            return 1
+          }
+
+          wait_contract() {
+            local out="$1"
+            for attempt in $(seq 1 20); do
+              probe "$TEST_URL/fiveusd-native?contract=$RANDOM" "$out"
+              actual=$(node -e "const x=require('$out');process.stdout.write(String(x.runtimeContract||''))")
+              echo "runtime contract attempt $attempt -> ${actual:-missing}"
+              if [ "$actual" = "$EXPECTED_RUNTIME_CONTRACT" ]; then return 0; fi
+              sleep 2
+            done
+            echo "::error::Expected runtime contract $EXPECTED_RUNTIME_CONTRACT was not active"
+            cat "$out" || true
+            return 1
+          }
+
+          probe "$TEST_URL/health?arm=$RANDOM" /tmp/health0.json
+          wait_contract /tmp/contract.json
+          sleep 10
+          probe "$TEST_URL/fiveusd-native?sample=1&n=$RANDOM" /tmp/native1.json
+          sleep 8
+          probe "$TEST_URL/fiveusd-native?sample=2&n=$RANDOM" /tmp/native2.json
+          probe "$TEST_URL/fiveusd-feed?n=$RANDOM" /tmp/feed.json
+          probe "$TEST_URL/fiveusd-test-signals?n=$RANDOM" /tmp/signals.json
+
+          node - <<'NODE'
+          const fs=require('fs');
+          const a=JSON.parse(fs.readFileSync('/tmp/native1.json','utf8'));
+          const b=JSON.parse(fs.readFileSync('/tmp/native2.json','utf8'));
+          const f=JSON.parse(fs.readFileSync('/tmp/feed.json','utf8'));
+          const s=JSON.parse(fs.readFileSync('/tmp/signals.json','utf8'));
+          const expected=process.env.EXPECTED_RUNTIME_CONTRACT;
+          if(a.runtimeContract!==expected||b.runtimeContract!==expected||f.runtimeContract!==expected||s.runtimeContract!==expected) throw new Error('stale runtime contract');
+          if(a.ok!==true||b.ok!==true||f.ok!==true) throw new Error('authority/feed endpoint not ok');
+          if(a.enabled!==true||a.mode!=='authority'||a.shadowOnly!==false) throw new Error('authority mode contract mismatch');
+          if(a.legacyShadowDisabled!==true) throw new Error('legacy isolation missing');
+          if(a.cadence?.cycleMs!==3000||a.cadence?.noOverlap!==true) throw new Error('3s cadence contract mismatch');
+          if(!a.state?.startedAt||!b.state?.startedAt) throw new Error('native alarm did not tick');
+          if(b.state?.ok!==true) throw new Error(`native state unhealthy: ${b.state?.lastError||'unknown'}`);
+          if(Number(b.live?.fetchedAt||0)<=Number(a.live?.fetchedAt||0)) throw new Error('live snapshot did not advance');
+          if(b.state?.live?.truncated===true||b.snapshot?.live?.truncated===true) throw new Error('live pagination truncated: not all live matches were fetched');
+          if(Number(b.board?.terminalDisplayed||0)!==0) throw new Error('terminal fixture leaked to board');
+          if(Number(b.rate?.global?.usedLast60s||0)>40) throw new Error('provider global ceiling exceeded');
+          for(const [name,rate] of Object.entries({live:b.rate?.live,waiting:b.rate?.upcoming,referee:b.rate?.referee})){
+            if(rate?.unlocked!==true) throw new Error(`${name} lane is still locked`);
+            if(rate?.configuredCeiling!==null) throw new Error(`${name} lane still has a configured ceiling`);
+            if(rate?.guardScope!=='GLOBAL_ONLY') throw new Error(`${name} lane guard scope is not GLOBAL_ONLY`);
+          }
+          if(f.liveOnly!==true) throw new Error('public feed is not marked LIVE-only');
+          if(Number(f.counts?.waiting||0)!==0) throw new Error(`public feed leaked WAITING count: ${f.counts?.waiting}`);
+          if((f.matches||[]).some(row=>row?.boardState!=='live'||String(row?.state||'').toUpperCase()==='WAITING')) throw new Error('public feed leaked a non-LIVE row');
+          const expectedLive=(b.snapshot?.live?.fixtures||[]).filter(row=>row?.boardState==='live').length;
+          if((f.matches||[]).length!==expectedLive) throw new Error(`public feed card count mismatch: feed=${(f.matches||[]).length} nativeLive=${expectedLive}`);
+          const ids=(f.matches||[]).map(row=>String(row?.fixtureId||row?.id||''));
+          if(new Set(ids).size!==ids.length) throw new Error('public feed contains duplicate LIVE fixtures');
+          if(b.testAuthority?.enabled!==true||b.testAuthority?.isolated!==true) throw new Error('isolated test authority missing');
+          if(b.testAuthority?.bookmakerPanel!==10||b.testAuthority?.votingEnabled!==true||b.testAuthority?.signalAuthority!==true) throw new Error('10-book authority flags missing');
+          if(s.testOnly!==true||s.votingEnabled!==true||s.signalAuthority!==true) throw new Error('test signal endpoint is not authoritative');
+          console.log('LIVE_PUBLIC_FEED_PASS',JSON.stringify({cards:f.matches.length,waiting:f.counts.waiting,liveOnly:f.liveOnly,truncated:Boolean(b.snapshot?.live?.truncated)},null,2));
+          console.log('NATIVE_TEST_AUTHORITY_PASS',JSON.stringify({
+            runtimeContract:b.runtimeContract,
+            live:b.board?.counts?.live,
+            waiting:b.board?.counts?.waiting,
+            globalRate:b.rate?.global,
+            refereeRate:b.rate?.referee,
+            testAuthority:b.testAuthority,
+            candidateShadow:b.candidateShadow,
+            testSignals:s.count,
+            state:b.state
+          },null,2));
+          NODE
+
+          fixture=$(node -e "const x=require('/tmp/native2.json');const f=x.snapshot?.live?.fixtures?.find(v=>v&&v.fixtureId);process.stdout.write(f?String(f.fixtureId):'')")
+          if [ -n "$fixture" ]; then
+            echo "Testing 10-book referee on live fixture $fixture"
+            probe "$TEST_URL/fiveusd-test-referee?fixtureId=$fixture&side=home&n=$RANDOM" /tmp/referee.json
+            node - <<'NODE'
+            const x=require('/tmp/referee.json');
+            if(x.ok!==true) throw new Error(`referee probe failed: ${x.error||'unknown'}`);
+            if(x.bookmakerPanel!==10||x.total!==10) throw new Error(`expected 10 referee sockets, got ${x.total}`);
+            if(!Array.isArray(x.referees)||x.referees.length!==10) throw new Error('10-book referee payload incomplete');
+            if(x.decision?.testOnly!==true) throw new Error('referee decision is not test-only');
+            console.log('REAL_10_BOOK_REFEREE_PASS',JSON.stringify({fixtureId:x.fixtureId,total:x.total,readyCount:x.readyCount,decision:x.decision},null,2));
+          NODE
+          else
+            echo 'REAL_10_BOOK_REFEREE_SKIPPED_NO_LIVE_FIXTURE'
+          fi

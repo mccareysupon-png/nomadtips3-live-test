@@ -79,7 +79,7 @@
     return delta > 0 ? Math.min(9, Math.round(delta)) : 0;
   }
 
-  function snapshotEvents(match) {
+  function snapshotEvents(match, {includeCorner=true} = {}) {
     const currentMinute = number(match?.minute);
     if (currentMinute == null) return [];
     const snapshots = Array.isArray(match?.snapshots)
@@ -96,11 +96,36 @@
         const sot = metricDelta(current, previous, 'shotsOn', side);
         const corner = metricDelta(current, previous, 'corners', side);
         if (sot) events.push({type:'sot', side, minute, count:sot});
-        if (corner) events.push({type:'corner', side, minute, count:corner});
+        if (includeCorner && corner) events.push({type:'corner', side, minute, count:corner});
       }
     }
 
     return events.filter(event => event.minute >= currentMinute - WINDOW_MINUTES && event.minute <= currentMinute);
+  }
+
+  function normalizeNativeType(value) {
+    const type = normalize(value).replace(/[\s-]+/g, '_');
+    if (type === 'goal') return 'goal';
+    if (type === 'corner') return 'corner';
+    if (type === 'yellow_card' || type === 'yellow') return 'yellow';
+    if (type === 'red_card' || type === 'red') return 'red';
+    if (type === 'missed_penalty' || type === 'penalty_missed') return 'penalty';
+    if (type === 'substitution' || type === 'sub') return 'sub';
+    return null;
+  }
+
+  function nativeEvents(match) {
+    const currentMinute = number(match?.minute);
+    if (currentMinute == null || !Array.isArray(match?.events)) return [];
+    return match.events.flatMap(event => {
+      const type = normalizeNativeType(event?.type ?? event?.event_type ?? event?.name);
+      const minute = number(event?.minute ?? event?.time?.elapsed ?? event?.elapsed);
+      const sideRaw = normalize(event?.team ?? event?.side ?? event?.home_away);
+      const side = sideRaw === 'home' || sideRaw === 'away' ? sideRaw : null;
+      if (!type || minute == null || !side) return [];
+      if (minute < currentMinute - WINDOW_MINUTES || minute > currentMinute) return [];
+      return [{type, side, minute, count:Math.max(1, number(event?.count) || 1), native:true}];
+    });
   }
 
   function goalEvents(match, store) {
@@ -115,11 +140,18 @@
 
   function groupedEvents(match, store) {
     const groups = new Map();
-    const events = [...snapshotEvents(match), ...goalEvents(match, store)];
+    const native = nativeEvents(match);
+    const hasNativeGoal = native.some(event => event.type === 'goal');
+    const hasNativeCorner = native.some(event => event.type === 'corner');
+    const events = [
+      ...native,
+      ...snapshotEvents(match, {includeCorner:!hasNativeCorner}),
+      ...(hasNativeGoal ? [] : goalEvents(match, store)),
+    ];
     for (const event of events) {
       if (!['home', 'away'].includes(event.side)) continue;
       const key = `${event.side}|${event.minute}`;
-      if (!groups.has(key)) groups.set(key, {side:event.side, minute:event.minute, goal:0, sot:0, corner:0});
+      if (!groups.has(key)) groups.set(key, {side:event.side, minute:event.minute, goal:0, sot:0, corner:0, yellow:0, red:0, penalty:0, sub:0});
       groups.get(key)[event.type] += Math.max(1, Number(event.count) || 1);
     }
     return [...groups.values()].sort((a, b) => a.minute - b.minute);
@@ -128,7 +160,7 @@
   function eventSignature(match, store) {
     const minute = number(match?.minute);
     const groups = groupedEvents(match, store);
-    return `${minute ?? 'x'}|${groups.map(group => `${group.side}:${group.minute}:${group.goal}:${group.sot}:${group.corner}`).join(';')}`;
+    return `${minute ?? 'x'}|${groups.map(group => `${group.side}:${group.minute}:${group.goal}:${group.sot}:${group.corner}:${group.yellow}:${group.red}:${group.penalty}:${group.sub}`).join(';')}`;
   }
 
   function goalIcon(count = 1) {
@@ -148,10 +180,15 @@
       `<svg viewBox="0 0 14 16" aria-hidden="true"><path d="M3 13V3.2M3.2 3.5h6.3L8 6H3.2"></path></svg>${badge}</span>`;
   }
 
+  function textIcon(kind, label, count = 1) {
+    const badge = count > 1 ? `<small>×${count}</small>` : '';
+    return `<span class="event-icon event-${kind}" title="${esc(label)}"><span>${esc(label)}</span>${badge}</span>`;
+  }
+
   function marker(group, startMinute, endMinute) {
     const span = Math.max(1, endMinute - startMinute);
     const position = clamp((group.minute - startMinute) / span * 100, 2.5, 97.5);
-    const icons = `${group.goal ? goalIcon(group.goal) : ''}${group.sot ? sotIcon(group.sot) : ''}${group.corner ? cornerIcon(group.corner) : ''}`;
+    const icons = `${group.goal ? goalIcon(group.goal) : ''}${group.sot ? sotIcon(group.sot) : ''}${group.corner ? cornerIcon(group.corner) : ''}${group.yellow ? textIcon('yellow','YC',group.yellow) : ''}${group.red ? textIcon('red','RC',group.red) : ''}${group.penalty ? textIcon('penalty','PEN',group.penalty) : ''}${group.sub ? textIcon('sub','SUB',group.sub) : ''}`;
     return `<span class="event-point" style="--event-pos:${position.toFixed(1)}%" title="${esc(`${group.minute}′`)}">` +
       `<span class="event-icons">${icons}</span><span class="event-minute">${esc(`${group.minute}′`)}</span></span>`;
   }
@@ -169,7 +206,7 @@
     const empty = groups.length ? '' : '<div class="event-empty">No key events in last 10 min</div>';
     return `<section class="detail-card event-timeline-card" data-event-timeline="1">` +
       `<h3>EVENTS · LAST ${WINDOW_MINUTES} MIN</h3>` +
-      `<div class="event-legend"><span class="legend-goal">GOAL</span><span class="legend-sot">SOT</span><span class="legend-corner">CORNER</span></div>` +
+      `<div class="event-legend"><span class="legend-goal">GOAL</span><span class="legend-sot">SOT</span><span class="legend-corner">CORNER</span><span>YC</span><span>RC</span><span>PEN</span><span>SUB</span></div>` +
       `<div class="event-rows">${timelineRow('home', groups, startMinute, currentMinute)}${timelineRow('away', groups, startMinute, currentMinute)}</div>` +
       `<div class="event-axis"><span>${startMinute}′</span><span>${currentMinute}′</span></div>${empty}</section>`;
   }

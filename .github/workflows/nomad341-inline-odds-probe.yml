@@ -1,0 +1,39 @@
+name: NOMAD 3.41 Inline Odds Schema Probe
+
+on:
+  push:
+    branches:
+      - work/nomad341-5usd-native
+    paths:
+      - '.github/workflows/nomad341-inline-odds-probe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe-inline-odds:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Read live 5USD snapshot without upstream odds calls
+        env:
+          URL: https://nomadtips3-live-engine-5usd-shadow.mccarey-supon.workers.dev/fiveusd-native
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 25 "$URL?schema=$RANDOM" -o /tmp/native.json
+          node - <<'NODE'
+          const x=require('/tmp/native.json');
+          const fixtures=x?.snapshot?.live?.fixtures||[];
+          const withOdds=fixtures.filter(f=>f?.inlineOdds!=null);
+          console.log('INLINE_ODDS_FIXTURE_COUNTS',JSON.stringify({live:fixtures.length,withInlineOdds:withOdds.length}));
+          if(!withOdds.length) process.exit(2);
+          const shape=v=>{
+            if(Array.isArray(v)) return {type:'array',length:v.length,sample:v.slice(0,2)};
+            if(v&&typeof v==='object') return {type:'object',keys:Object.keys(v),sample:v};
+            return {type:typeof v,sample:v};
+          };
+          for(const f of withOdds.slice(0,3)){
+            console.log('INLINE_ODDS_SAMPLE',JSON.stringify({fixtureId:f.fixtureId,home:f.home?.name,away:f.away?.name,shape:shape(f.inlineOdds)},null,2));
+          }
+          NODE

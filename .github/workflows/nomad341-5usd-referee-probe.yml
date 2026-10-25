@@ -1,0 +1,32 @@
+name: NOMAD 3.41 Native 5USD Referee Gate
+
+on:
+  push:
+    branches:
+      - work/nomad341-5usd-native
+    paths:
+      - 'nomad-live-engine/scripts/fivedollar-referee-probe.mjs'
+      - 'nomad-live-engine/src/fivedollar.js'
+      - 'nomad-live-engine/src/fivedollar-runtime.js'
+      - '.github/workflows/nomad341-5usd-referee-probe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  referee-shadow-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: nomad-live-engine
+    env:
+      FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run 10-book referee shadow gate
+        run: node scripts/fivedollar-referee-probe.mjs
