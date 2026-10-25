@@ -2,7 +2,7 @@
 import {mkdir,writeFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 const base='https://ball46.com';
-const paths=['/','/full-odds-main-343.js','/full-odds-main-343.css','/expanded-match-343.js','/expanded-match-343.css','/bulk-odds-compat-343.js','/dashboard-v2-stage3.js'];
+const paths=['/','/full-market-bookmaker-343.js','/full-market-bookmaker-343.css','/full-odds-main-343.js','/full-odds-main-343.css','/expanded-match-343.js','/expanded-match-343.css','/bulk-odds-compat-343.js','/dashboard-v2-stage3.js'];
 const dir=new URL('./audit/public/',import.meta.url);
 await mkdir(dir,{recursive:true});
 const report=[];
@@ -18,5 +18,5 @@ for (const path of paths) {
     }
   }catch(e){report.push({path,error:String(e.message||e)})}
 }
-await writeFile(new URL('../audit/report.json',dir),JSON.stringify(report,null,2));
+await writeFile(new URL('../report.json',dir),JSON.stringify(report,null,2));
 console.log(JSON.stringify(report,null,2));
