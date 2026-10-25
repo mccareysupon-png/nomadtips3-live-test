@@ -7,13 +7,14 @@
   const mq=window.matchMedia('(max-width:760px)');
   const state=new Map();
   let scheduled=false;
-  const ROOT='[data-full-odds-main],[data-full-market],.fom-addon,.full-market-board,.full-market-panel,.bookmaker-panel';
+  const ROOT='[data-full-market-card],.expand-full-market-card,[data-full-odds-main],[data-full-market],.fom-addon';
   const CLASS='b46-mobile-fm-market';
   const HEAD=':scope > .fom-market-head,:scope > .market-head,:scope > .market-header,:scope > header,:scope > h3,:scope > h4';
   const TITLES=/^(?:1x2|asian handicap|goal(?:s)?\s*o\/u|goals?\s*over\/under|corners?(?:\s*o\/u)?|cards?(?:\s*o\/u)?|both teams to score|btts|corner asian|card asian)/i;
   const trim=v=>String(v||'').replace(/\s+/g,' ').trim();
   const clean=v=>trim(v).toLowerCase();
-  const fixture=root=>root.closest('[data-match-id],[data-fixture-id]')?.getAttribute('data-match-id')||
+  const fixture=root=>root.closest('[data-expanded-match]')?.getAttribute('data-expanded-match')||
+      root.closest('[data-match-id],[data-fixture-id]')?.getAttribute('data-match-id')||
       root.closest('[data-match-id],[data-fixture-id]')?.getAttribute('data-fixture-id')||'';
   const numeric=s=>/\b\d+(?:\.\d+)?\b/.test(s);
   function titleOf(header){
@@ -37,7 +38,7 @@
     return fallback;
   }
   function candidateCards(root){
-    const candidates=new Set(root.querySelectorAll('.fom-market,[data-market-key],.market-card,.odds-market-card,.fm-market,.bookmaker-market'));
+    const candidates=new Set(root.querySelectorAll('.fmb-market,.fom-market,[data-market-key],.market-card,.odds-market-card,.fm-market,.bookmaker-market'));
     // Semantic fallback for UIs that use a plain <section> around each market table.
     for(const node of root.querySelectorAll('section,article')){
       if(candidates.has(node))continue;
@@ -55,7 +56,8 @@
   function upgrade(root,card){
     const header=card.querySelector(HEAD),title=titleOf(header);
     if(!header||!title)return;
-    const key=fixture(root)+'|'+trim(root.getAttribute('data-book')||root.querySelector('[aria-selected="true"]')?.textContent||'')+'|'+title;
+    const activeBook=root.querySelector('[data-fmb-book][aria-pressed="true"]')?.getAttribute('data-fmb-book')||'bet365';
+    const key=fixture(root)+'|'+activeBook+'|'+(card.getAttribute('data-market')||title)+'|'+(header.querySelector('span')?.textContent||'');
     if(card.dataset.b46FmInstalled==='1'){
       const live=stageRow(card),summary=header.querySelector('.b46-mobile-fm-summary');
       if(summary){const nextText=live?live.stage+'  '+live.value:'Tap to view prices';if(summary.textContent!==nextText)summary.textContent=nextText;}
@@ -101,7 +103,7 @@
   function roots(){
     const found=[...document.querySelectorAll(ROOT)];
     // Never fall back to general match cards outside the Full Market area.
-    return found.filter(r=>r.querySelectorAll('.fom-market,[data-market-key],.market-card,.odds-market-card,.fm-market,section').length>0);
+    return found.filter(r=>r.querySelectorAll('.fmb-market,.fom-market,[data-market-key],.market-card,.odds-market-card,.fm-market,section').length>0);
   }
   function hydrate(){
     scheduled=false;
@@ -120,6 +122,8 @@
     '.'+CLASS+'{min-width:0!important;border:0!important;box-shadow:0 3px 14px rgba(0,0,0,.10)!important;border-radius:12px!important;overflow:hidden!important;}',
     '.'+CLASS+'[data-b46-fm-open="false"] > .b46-mobile-fm-body{display:none!important;}',
     '.'+CLASS+' > .fom-market-head,.'+CLASS+' > .market-head,.'+CLASS+' > .market-header,.'+CLASS+' > header{min-width:0!important;border:0!important;}',
+    '.'+CLASS+'.fmb-market > header{display:flex!important;flex-wrap:wrap!important;align-items:center!important;row-gap:3px!important;}',
+    '.'+CLASS+'.fmb-market > header > .b46-mobile-fm-toggle{flex:0 0 100%;margin:0!important;}',
     '.'+CLASS+' .b46-mobile-fm-toggle{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:36px;margin-top:5px;padding:5px 0;background:transparent;border:0;color:inherit;text-align:left;font:inherit;cursor:pointer;}',
     '.'+CLASS+' .b46-mobile-fm-summary{font-size:12px;font-weight:650;line-height:1.4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-variant-numeric:tabular-nums;color:#bfe5d1;}',
     '.'+CLASS+' .b46-mobile-fm-chevron{flex:0 0 auto;width:9px;height:9px;border-right:2px solid #a6cdb8;border-bottom:2px solid #a6cdb8;transform:rotate(45deg);transition:transform .18s ease;}',
