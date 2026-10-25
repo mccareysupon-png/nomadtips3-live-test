@@ -1,0 +1,21 @@
+name: Audit Ball46 Missing LIVE OVER vs Provider FT
+on:
+  push:
+    branches: [work/ball46-early-over-stage2-20261011]
+    paths:
+      - '.github/workflows/audit-ball46-provider-final-20261011.yml'
+permissions:
+  contents: read
+jobs:
+  readonly:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Compare missing-B46-board LIVE OVER wins against 5USD fixture
+        run: node deploy-assets/ball46-early-over-20261011/qa-final-provider.mjs
