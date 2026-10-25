@@ -1,0 +1,26 @@
+name: BALL46 Last5 Snapshot Candidate Tests (NO DEPLOY)
+on:
+  push:
+    branches: [fix/ball46-last5-preloaded-snapshot-20261025]
+    paths:
+      - 'deploy-assets/form-last5-snapshot-20261025/**'
+      - '.github/workflows/ball46-last5-snapshot-tests.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax checks
+        run: |
+          node --check deploy-assets/form-last5-snapshot-20261025/snapshot-core.mjs
+          node --check deploy-assets/form-last5-snapshot-20261025/prepare-snapshot.mjs
+          node --check deploy-assets/form-last5-snapshot-20261025/snapshot-browser.js
+      - name: Unit tests - no network and no deployments
+        run: node --test deploy-assets/form-last5-snapshot-20261025/*.test.mjs
