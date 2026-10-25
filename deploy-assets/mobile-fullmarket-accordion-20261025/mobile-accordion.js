@@ -58,7 +58,7 @@
     const key=fixture(root)+'|'+trim(root.getAttribute('data-book')||root.querySelector('[aria-selected="true"]')?.textContent||'')+'|'+title;
     if(card.dataset.b46FmInstalled==='1'){
       const live=stageRow(card),summary=header.querySelector('.b46-mobile-fm-summary');
-      if(summary){summary.textContent=live?live.stage+'  '+live.value:'Tap to view prices';}
+      if(summary){const nextText=live?live.stage+'  '+live.value:'Tap to view prices';if(summary.textContent!==nextText)summary.textContent=nextText;}
       return;
     }
     const children=[...card.children].filter(e=>e!==header);
