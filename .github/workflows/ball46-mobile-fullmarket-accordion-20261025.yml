@@ -1,0 +1,47 @@
+name: BALL46 mobile Full Market read-only UI audit
+on:
+  push:
+    branches: [work/ball46-mobile-fullmarket-accordion-20261025]
+    paths:
+      - '.github/workflows/ball46-mobile-fullmarket-accordion-20261025.yml'
+      - 'deploy-assets/mobile-fullmarket-accordion-20261025/audit.mjs'
+      - 'deploy-assets/mobile-fullmarket-accordion-20261025/mobile-accordion.js'
+      - 'deploy-assets/mobile-fullmarket-accordion-20261025/patch.mjs'
+      - 'deploy-assets/mobile-fullmarket-accordion-20261025/patch.test.mjs'
+      - 'deploy-assets/mobile-fullmarket-accordion-20261025/qa.mjs'
+permissions:
+  contents: write
+concurrency:
+  group: ball46-mobile-fullmarket-readonly-audit
+  cancel-in-progress: false
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Read-only capture of currently served public UI files
+        run: |
+          node --check deploy-assets/mobile-fullmarket-accordion-20261025/audit.mjs
+          node deploy-assets/mobile-fullmarket-accordion-20261025/audit.mjs
+      - name: Validate mobile-only implementation against current FMB renderer
+        run: |
+          set -e
+          WORKDIR=deploy-assets/mobile-fullmarket-accordion-20261025
+          node --check "$WORKDIR/mobile-accordion.js"
+          node "$WORKDIR/patch.test.mjs"
+          npm install --no-save --prefix "$WORKDIR" jsdom@26.1.0
+          node "$WORKDIR/qa.mjs"
+          printf '{"ok":true,"mobile":true,"desktopPreserved":true,"zeroClickRequests":true,"productionDeployed":false}\n' > "$WORKDIR/audit/qa-result.json"
+      - name: Record public-only read-only UI evidence
+        if: always()
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add deploy-assets/mobile-fullmarket-accordion-20261025/audit/
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Record public Full Market UI audit [skip ci]"
+          git push origin HEAD:work/ball46-mobile-fullmarket-accordion-20261025

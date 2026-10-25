@@ -1,0 +1,24 @@
+import assert from 'node:assert/strict';
+import {readFile,writeFile} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {execFileSync} from 'node:child_process';
+import {patchMain,browserModule,sha,PRODUCTION_BASE,BROWSER_ROUTE} from './patch.mjs';
+assert.equal(PRODUCTION_BASE,'15607595-5930-4093-8e9e-e64c52d9f120');
+const browser=await readFile(new URL('./mobile-accordion.js',import.meta.url),'utf8');
+new Function(browser); // Check browser syntax, do not execute.
+const exported=browserModule(browser);
+assert(exported.includes('export const mobileMarketBrowser='));
+assert(!/fetch\s*\(|XMLHttpRequest|sendBeacon/.test(browser));
+const fake='const __last5Previous={fetch:async()=>new Response("ok")};\nexport default{...__last5Previous,async fetch(request,env,ctx){return __last5Previous.fetch(request,env,ctx);}};\n';
+const newModule=patchMain(fake,sha(fake));
+assert(newModule.includes('__b46FmOriginal.fetch.call(__b46FmOriginal'));
+assert(newModule.includes('defer src='));
+assert(newModule.includes(BROWSER_ROUTE));
+assert.equal((newModule.match(/export default/g)||[]).length,1);
+const path=join(tmpdir(),'b46-mobile-fullmarket-accordion-worker-check.mjs');
+await writeFile(path,newModule);
+execFileSync(process.execPath,['--check',path],{stdio:'pipe'});
+assert.throws(()=>patchMain(fake),'PRODUCTION_SOURCE_DRIFT');
+assert.throws(()=>browserModule('fetch("/secret")'),'BROWSER_MARKER_MISSING');
+console.log('PASS: mobile-only browser syntax, no browser network, guarded additive Worker syntax, default export preservation');
