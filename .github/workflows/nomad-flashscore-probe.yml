@@ -1,0 +1,53 @@
+name: NOMAD Flashscore Probe
+
+on:
+  pull_request:
+    paths:
+      - 'nomad-live-engine/src/flashscore-probe.js'
+      - 'nomad-live-engine/wrangler.flashscore-probe.toml'
+      - '.github/workflows/nomad-flashscore-probe.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Validate Cloudflare credentials
+        env:
+          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          test -n "$CF_API_TOKEN"
+          test -n "$CF_ACCOUNT_ID"
+      - name: Deploy isolated Flashscore probe
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: nomad-live-engine
+          wranglerVersion: '4'
+          command: deploy --config wrangler.flashscore-probe.toml
+      - name: Probe Flashscore layers
+        run: |
+          URL='https://nomadtips3-flashscore-probe.mccarey-supon.workers.dev/probe'
+          rm -f /tmp/probe.json
+          for i in $(seq 1 12); do
+            CODE=$(curl -sS -o /tmp/probe.json -w '%{http_code}' "$URL" || true)
+            echo "probe attempt $i HTTP $CODE"
+            if [ "$CODE" = "200" ] && [ -s /tmp/probe.json ]; then break; fi
+            sleep 5
+          done
+          test -s /tmp/probe.json
+          node <<'NODE'
+          const fs=require('fs');
+          const x=JSON.parse(fs.readFileSync('/tmp/probe.json','utf8'));
+          const compact={checkedAt:x.checkedAt,feed:x.feed,samples:x.samples,anchor:x.anchor,extras:x.extras,teamPages:x.teamPages,error:x.error||null};
+          console.log(JSON.stringify(compact,null,2));
+          if(x.error) process.exit(2);
+          NODE
