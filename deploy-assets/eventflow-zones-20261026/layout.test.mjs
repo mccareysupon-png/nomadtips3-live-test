@@ -1,0 +1,4 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {makeLayout,connector} from './layout.mjs';
+test('adds exactly twenty percent on each side while keeping unchanged plot height',()=>{const x=makeLayout({plotWidth:900,plotHeight:200,signals:[]});assert.equal(x.topPadding,40);assert.equal(x.bottomPadding,40);assert.equal(x.totalHeight,280);assert.equal(x.plotBottom-x.plotTop,200)});
+test('HOME above, AWAY below, and OU starts at middle 50-percent line',()=>{const x=makeLayout({plotWidth:900,plotHeight:200,signals:[{type:'HOME',minute:35,pressure:70},{type:'AWAY',minute:68,pressure:30},{type:'OU',minute:55}]});assert.equal(x.entries[0].lane,'top');assert.equal(x.entries[1].lane,'bottom');assert.equal(x.entries[2].sourceY,140);assert.equal(x.entries[2].x,550)});
+test('connector is a straight one-segment line, never angled path',()=>{assert.deepEqual(connector({cardX:30,cardY:30,sourceX:55,sourceY:100}),{x1:30,y1:30,x2:55,y2:100})});
