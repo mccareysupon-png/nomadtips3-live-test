@@ -1,0 +1,8 @@
+@media(min-width:761px){
+ html:root[data-theme] body .workspace.singlepage>aside.left-rail.b46-scroll-external[data-b46-sidebar="1"][data-b46-sidebar="1"]{scrollbar-width:none!important;padding-right:var(--b46-scroll-padding)!important}
+ .left-rail.b46-scroll-external::-webkit-scrollbar{display:none!important}
+ .b46-sidebar-outside-scroll{position:fixed;width:8px;overflow-x:hidden;overflow-y:scroll;scrollbar-width:thin;scrollbar-color:#3c5747 transparent;background:transparent;z-index:20;border:0;border-radius:0;overscroll-behavior:contain}
+ .b46-sidebar-outside-scroll>div{width:1px;pointer-events:none}
+ html[data-theme="light"] .b46-sidebar-outside-scroll{scrollbar-color:#afc4b5 transparent}
+ .b46-sidebar-outside-scroll:focus-visible{outline:1px solid #3c5747;outline-offset:2px}
+}
