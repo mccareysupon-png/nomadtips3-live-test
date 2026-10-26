@@ -1,0 +1,48 @@
+name: BALL46 Hide Last5 guarded deployment
+on:
+  push:
+    branches: [codex/ball46-hide-last5-20261026]
+    paths:
+      - '.github/workflows/ball46-hide-last5-20261026.yml'
+      - 'deploy-assets/hide-last5-20261026/probe.mjs'
+      - 'deploy-assets/hide-last5-20261026/request.json'
+      - 'deploy-assets/hide-last5-20261026/run.mjs'
+      - 'deploy-assets/hide-last5-20261026/build/**'
+permissions:
+  contents: write
+concurrency:
+  group: ball46-production-deploy
+  cancel-in-progress: false
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Source validation, regression tests and guarded phase
+        working-directory: deploy-assets/hide-last5-20261026
+        run: |
+          node --check run.mjs
+          node run.mjs
+          if [ -f audit/candidate-runtime.mjs ]; then node --check audit/candidate-runtime.mjs; fi
+      - name: Preserve safe read-only evidence
+        if: always()
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add deploy-assets/hide-last5-20261026/audit-last
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Record sidebar guarded audit [skip ci]"
+          git push origin HEAD:codex/ball46-hide-last5-20261026
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-hide-last5-${{ github.run_id }}
+          path: deploy-assets/hide-last5-20261026/audit
+          retention-days: 30
