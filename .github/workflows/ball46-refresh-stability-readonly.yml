@@ -1,0 +1,32 @@
+name: BALL46 Refresh Stability READ ONLY
+on:
+  push:
+    branches: [codex/ball46-eventflow-zones-20261026]
+    paths:
+      - 'deploy-assets/eventflow-zones-20261026/refresh-diagnostics.mjs'
+      - '.github/workflows/ball46-refresh-stability-readonly.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    container:
+      image: mcr.microsoft.com/playwright:v1.56.1-noble
+      options: --ipc=host
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save playwright@1.56.1
+      - name: Read-only repeated API and page-refresh checks
+        run: node deploy-assets/eventflow-zones-20261026/refresh-diagnostics.mjs
+      - name: Preserve evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-refresh-stability-evidence
+          path: deploy-assets/eventflow-zones-20261026/audit-refresh/
+          retention-days: 14
