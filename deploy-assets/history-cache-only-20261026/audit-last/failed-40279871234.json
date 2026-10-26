@@ -1,0 +1,304 @@
+{
+  "at": "2026-10-26T06:27:01.771Z",
+  "phase": "activate",
+  "run": "40279871234",
+  "commit": "a5b028247dc06fc06c5a5e7844df5c406037d017",
+  "base": "9f2562d4-1dea-45d1-a43d-1c94dcd84d0d",
+  "main": "61e444b7-86af-4125-a652-717a4b74572c",
+  "productionWrites": [],
+  "configBefore": {
+    "history": {
+      "placement": {},
+      "compatibility_date": "2026-10-01",
+      "compatibility_flags": [],
+      "usage_model": "standard",
+      "tags": [],
+      "tail_consumers": [],
+      "logpush": false,
+      "annotations": {
+        "workers/message": "Guarded restore baseline history code; same data and namespace",
+        "workers/tag": "B46_HISTORY_CACHE_ONLY_20261026",
+        "workers/triggered_by": "upload"
+      },
+      "bindings": [
+        {
+          "name": "FIVEDOLLAR_API_KEY",
+          "type": "secret_text"
+        },
+        {
+          "class_name": "HistoryGate",
+          "name": "HISTORY_GATE",
+          "namespace_id": "f04eb37c27b54c29b45d35c702391522",
+          "type": "durable_object_namespace"
+        }
+      ]
+    },
+    "schedules": {
+      "schedules": []
+    },
+    "subdomain": {
+      "enabled": false,
+      "previews_enabled": false
+    },
+    "main": {
+      "placement": {},
+      "compatibility_date": "2026-09-09",
+      "compatibility_flags": [],
+      "usage_model": "standard",
+      "tags": [],
+      "tail_consumers": [],
+      "logpush": false,
+      "observability": {
+        "enabled": true,
+        "head_sampling_rate": 1,
+        "redact_query_string": false,
+        "logs": {
+          "enabled": true,
+          "head_sampling_rate": 1,
+          "persist": true,
+          "invocation_logs": true
+        },
+        "traces": {
+          "enabled": false,
+          "persist": true,
+          "head_sampling_rate": 1
+        }
+      },
+      "annotations": {
+        "workers/message": "Byte-identical main modules; refresh history service runtime reference only",
+        "workers/tag": "B46_HISTORY_SERVICE_REBIND_20261026",
+        "workers/triggered_by": "version_upload"
+      },
+      "bindings": [
+        {
+          "name": "ASSETS",
+          "type": "assets"
+        },
+        {
+          "environment": "production",
+          "name": "ENGINE",
+          "service": "nomadtips3-engine-343",
+          "type": "service"
+        },
+        {
+          "environment": "production",
+          "name": "FORM_HISTORY_SERVICE",
+          "service": "ball46-form-history-v1",
+          "type": "service"
+        },
+        {
+          "environment": "production",
+          "name": "FULL_MARKET",
+          "service": "nomadtips3-full-market-343-ball46",
+          "type": "service"
+        },
+        {
+          "environment": "production",
+          "name": "HUB",
+          "service": "nomadtips3-5usd-hub-343",
+          "type": "service"
+        },
+        {
+          "name": "PREDICTION_VOTES_KV",
+          "namespace_id": "a7a435999144427c8227e1aba8c5f255",
+          "type": "kv_namespace"
+        },
+        {
+          "environment": "production",
+          "name": "PREDICTION_VOTES_SERVICE",
+          "service": "ball46-prediction-votes-v6",
+          "type": "service"
+        }
+      ]
+    },
+    "mainSchedules": {
+      "schedules": []
+    }
+  },
+  "healthBefore": [
+    {
+      "host": "https://ball46.com",
+      "path": "/api/engine/health",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "host": "https://ball46.com",
+      "path": "/api/full-market/health",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "host": "https://ball46.com",
+      "path": "/api/engine/board",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "host": "https://ball46.com",
+      "path": "/api/engine/signals",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "host": "https://ball46.com",
+      "path": "/api/engine/statistics?paged=1",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "host": "https://ball46.com",
+      "path": "/api/prediction-vote/health",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "host": "https://ball46.com",
+      "path": "/api/form-last5/health",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "host": "https://www.ball46.com",
+      "path": "/api/engine/health",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "host": "https://www.ball46.com",
+      "path": "/api/full-market/health",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "host": "https://www.ball46.com",
+      "path": "/api/engine/board",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "host": "https://www.ball46.com",
+      "path": "/api/engine/signals",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "host": "https://www.ball46.com",
+      "path": "/api/engine/statistics?paged=1",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "host": "https://www.ball46.com",
+      "path": "/api/prediction-vote/health",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "host": "https://www.ball46.com",
+      "path": "/api/form-last5/health",
+      "status": 200,
+      "ok": true
+    }
+  ],
+  "mainModulesBefore": [
+    {
+      "name": "assets/5usd-control.html",
+      "sha": "3d52c9cd5047238b65d184ca2edac7118b29bd89bdfc7fbff50df40ff77a40e8"
+    },
+    {
+      "name": "assets/api-monitor.html",
+      "sha": "181823ca5dca06eeb0ffbe91971f8bc5bdac3076fa32a21b82de7a402310d9f5"
+    },
+    {
+      "name": "assets/detection-test.html",
+      "sha": "510d1e6d2a5738ee20449a8a6e3233fcb7c69fbe63c71bb10c25c748fdfbc71e"
+    },
+    {
+      "name": "assets/index.html",
+      "sha": "4dbdb46a79970dd1b1c7f3707206d3465307796640b919319a55731fe587b33c"
+    },
+    {
+      "name": "assets/robots.txt",
+      "sha": "f2262c458da042583e2bf1a8207109823b1935af67080c9b223fd600ab417f5b"
+    },
+    {
+      "name": "assets/settings.html",
+      "sha": "08f65d43d98dd31ecf46dae808c20aebc2a84f3e52e9c8c9b69e847c9d12d7b5"
+    },
+    {
+      "name": "assets/signal-next.html",
+      "sha": "1b4b9c847b768d2ac8fe0936b0a2e38fd51721cb542c2f0aed5ad7556cb669c4"
+    },
+    {
+      "name": "assets/signal.html",
+      "sha": "4fa313d00c748ce9ffc98bad952495e7b7a1c3f99a6693b6696b6b7dc728f2cc"
+    },
+    {
+      "name": "assets/statistics-next.html",
+      "sha": "393f1adf39385965986542ff38d740b696bf06c3dfb7a490edffce0f09bba534"
+    },
+    {
+      "name": "assets/statistics.html",
+      "sha": "9e3754322902d4748f1019cce258f0dd309b0256eccf4fbe53070e09ec7a75f6"
+    },
+    {
+      "name": "b46-event-flow-stadium-dark.bin",
+      "sha": "9663612f6fe833eee828aa0bfe2006f714777fa52e6eb8bf4010ce2caa435580"
+    },
+    {
+      "name": "b46-event-flow-stadium-light.bin",
+      "sha": "fb0f3284132d275ead642e2c112d3cf610b08f489dab17bd52e76772af5e10d6"
+    },
+    {
+      "name": "b46-last5-browser.mjs",
+      "sha": "48d7a62861b3e454362c146bbb057ca5ada21b4c367235d8aeb855c7b5e7bdea"
+    },
+    {
+      "name": "b46-last5-route.mjs",
+      "sha": "b03f4ca012a9a092b12b4fcff3fcfc085baba40712ea73b7ef24e459e855d3b0"
+    },
+    {
+      "name": "b46-performance-banner-dark.bin",
+      "sha": "e249fa0f014597459f0b148f55b4d49ed3831e7ee184d623b91daf76766330d5"
+    },
+    {
+      "name": "b46-performance-banner-light.bin",
+      "sha": "f23d41134d08eeea3216ce916508a8d3ae5c298e53576c7fa1cb8341265cd1b1"
+    },
+    {
+      "name": "b46-pv6-browser.mjs",
+      "sha": "52a770c52a094d2ac5e57fb6fc5f6f7b284936441304b017c08e2a585c6113ed"
+    },
+    {
+      "name": "b46-pv6-jerseys.mjs",
+      "sha": "eb85f9151ee2be0dc41d86f5c616201964ccac1878e7993c5b1791c17558809f"
+    },
+    {
+      "name": "b46-pv6-proxy.mjs",
+      "sha": "cdcc9fde461f9e2becfdf075636e44045dc5f61cba8bb10b7da51be9f849c112"
+    },
+    {
+      "name": "b46-pv8-browser.mjs",
+      "sha": "5d05833493647ab78d4bbc4e93c6b5b390175748de9675674c1e51853ec3d27f"
+    },
+    {
+      "name": "b46-pv8-jerseys.mjs",
+      "sha": "ce0f0f9b4e54ddcb5e9cbd4293c0bcb3f5cbe21f5900fed8fbee48b14c683867"
+    },
+    {
+      "name": "b46-pv9-browser.mjs",
+      "sha": "bef128694db646931d615eec086542f72040d68da23a893215abb04c9276ebba"
+    },
+    {
+      "name": "b46-pv9-proxy.mjs",
+      "sha": "d0e2482f7a313fc696f1bccceac6edb39ec8b9009e56fcf7dd0b7f6a9d7bb631"
+    },
+    {
+      "name": "index.js",
+      "sha": "63f788a24f6bffebdef13311577be3553038594103bc2ce6fda08cdcf961e48d"
+    }
+  ],
+  "ok": false,
+  "error": "AssertionError [ERR_ASSERTION]: CF:400:[{\"code\":100402,\"message\":\"Durable Object exports reconciliation failed:\\n- [provisioned_class_missing_from_config] class 'HistoryGate': class 'HistoryGate' has a provisioned Durable Object namespace (f04eb37c27b54c29b45d35c702391522) but is not declared in `exports`. Every provisioned class must be declared in `exports` (live or tombstone); silent drift is not permitted. (add 'HistoryGate' back t\n    at cf (file:///home/runner/work/nomadtips3-live-test/nomadtips3-live-test/deploy-assets/history-cache-only-20261026/classic.mjs:9:707)\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n    at async upload (file:///home/runner/work/nomadtips3-live-test/nomadtips3-live-test/deploy-assets/history-cache-only-20261026/classic.mjs:24:2)\n    at async file:///home/runner/work/nomadtips3-live-test/nomadtips3-live-test/deploy-assets/history-cache-only-20261026/classic.mjs:39:76"
+}
