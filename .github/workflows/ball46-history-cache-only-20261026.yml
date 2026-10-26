@@ -31,7 +31,8 @@ jobs:
           node --check run.mjs
           node history.test.mjs
           node cache-only.test.mjs
-          node run.mjs
+          node --check classic.mjs
+          node classic.mjs
           if [ -f audit/candidate-runtime.mjs ]; then node --check audit/candidate-runtime.mjs; fi
       - name: Preserve safe read-only evidence
         if: always()
