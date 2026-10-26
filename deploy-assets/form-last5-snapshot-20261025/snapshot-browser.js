@@ -12,6 +12,12 @@ detail.id='b46-last5-detail';detail.className='last5-detail';detail.hidden=true;
 host.append(button,detail);
 const el=(tag,value,cls)=>{const n=document.createElement(tag);n.textContent=value;if(cls)n.className=cls;return n;};
 let fixtureId=card.dataset.fixtureId||'',expanded=false;
+function available(){
+ const snap=window.__B46_LAST5_SNAPSHOT__,data=snap?.schema==='ball46.last5.snapshot.v1'&&snap?.source==='verified-stored-FT'?snap.fixtures?.[fixtureId]:null;
+ return !!fixtureId&&!!data&&String(data.fixtureId)===fixtureId&&['home','away'].every(side=>Array.isArray(data[side]?.rows))&&
+  (data.home.rows.length+data.away.rows.length)>0;
+}
+function visibility(){button.hidden=!available();button.disabled=button.hidden;}
 function render(){
  const snap=window.__B46_LAST5_SNAPSHOT__,data=snap?.schema==='ball46.last5.snapshot.v1'&&snap?.source==='verified-stored-FT'?snap.fixtures?.[fixtureId]:null;
  detail.replaceChildren();
@@ -31,7 +37,7 @@ function render(){
  detail.append(el('p','Source: verified local FT history. No 5USD request on expansion.','last5-footnote'));
 }
 function close(){expanded=false;detail.hidden=true;detail.replaceChildren();button.textContent='View Last 5';button.setAttribute('aria-expanded','false');}
-button.addEventListener('click',()=>{if(expanded){close();return;}if(!fixtureId)return;expanded=true;button.textContent='Hide';button.setAttribute('aria-expanded','true');detail.hidden=false;render();});
-new MutationObserver(()=>{const next=card.dataset.fixtureId||'';if(next!==fixtureId){fixtureId=next;close();button.disabled=!fixtureId;}}).observe(card,{attributes:true,attributeFilter:['data-fixture-id']});
-button.disabled=!fixtureId;
+button.addEventListener('click',()=>{if(expanded){close();return;}if(!available()){close();visibility();return;}expanded=true;button.textContent='Hide';button.setAttribute('aria-expanded','true');detail.hidden=false;render();});
+new MutationObserver(()=>{const next=card.dataset.fixtureId||'';if(next!==fixtureId){fixtureId=next;close();visibility();}}).observe(card,{attributes:true,attributeFilter:['data-fixture-id']});
+visibility();
 })();
