@@ -1,0 +1,14 @@
+/* Candidate only. Must bind to verified production graph element; not global selectors. */
+.b46-eventflow-v2{position:relative;isolation:isolate;overflow:hidden;--b46-top-zone:20%;--b46-bottom-zone:20%;border:0}
+.b46-eventflow-v2::before{content:"";position:absolute;inset:0;pointer-events:none;z-index:0;background:linear-gradient(180deg,rgba(6,24,19,.93) 0%,rgba(9,31,25,.34) 24%,transparent 40%,transparent 61%,rgba(8,28,22,.37) 80%,rgba(5,21,17,.94) 100%)}
+.b46-eventflow-v2 .b46-v2-field{position:absolute;inset:0;background-size:cover;background-position:center;pointer-events:none;z-index:-1}
+.b46-eventflow-v2 .b46-v2-signal-top,.b46-eventflow-v2 .b46-v2-signal-bottom{position:relative;display:flex;gap:6px;align-items:center;flex-wrap:wrap;min-height:0;padding:4px 12px;z-index:3}
+.b46-eventflow-v2 .b46-v2-signal-top{height:var(--b46-top-zone);align-items:flex-start}
+.b46-eventflow-v2 .b46-v2-signal-bottom{height:var(--b46-bottom-zone);align-items:flex-end}
+.b46-eventflow-v2 .b46-v2-original-plot{position:relative;height:60%;z-index:1}
+.b46-eventflow-v2 .b46-v2-connector-overlay{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none;z-index:2}
+.b46-eventflow-v2 .b46-v2-connector-overlay line{vector-effect:non-scaling-stroke;stroke-width:1.4;stroke-dasharray:4 3}
+.b46-eventflow-v2 .b46-v2-signal-card{border:0!important;box-shadow:0 5px 17px rgba(0,0,0,.25);border-radius:7px;max-width:35%}
+.b46-eventflow-v2 .b46-v2-signal-card[data-side=home]{color:#43E6A2}
+.b46-eventflow-v2 .b46-v2-signal-card[data-side=away]{color:#FFA451}
+@media(max-width:540px){.b46-eventflow-v2 .b46-v2-signal-card{max-width:47%;font-size:11px}}
