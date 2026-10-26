@@ -1,0 +1,45 @@
+(()=>{
+'use strict';if(window.__BALL46_LAST5_V1)return;window.__BALL46_LAST5_V1=true;
+const card=document.querySelector('.b46-pv8'),host=card?.querySelector('.form');if(!host)return;
+host.dataset.last5='true';
+const button=document.createElement('button');button.type='button';button.className='last5-button';button.textContent='View Last 5';button.setAttribute('aria-expanded','false');button.setAttribute('aria-controls','b46-last5-detail');
+const detail=document.createElement('section');detail.id='b46-last5-detail';detail.className='last5-detail';detail.hidden=true;detail.setAttribute('aria-label','Verified last five results');host.append(button,detail);
+let fixtureId=card.dataset.fixtureId||'',open=false,sequence=0,abort=null,loading=false;
+const cache=new Map(),text=(tag,value,cls)=>{const e=document.createElement(tag);e.textContent=value;if(cls)e.className=cls;return e;};
+function status(message){detail.replaceChildren(text('p',message,'last5-status'));}
+function paint(data){
+ detail.replaceChildren();detail.append(text('p','5USD · Verified FT results · Most recent first','last5-source'));
+ for(const side of ['home','away']){
+  const team=data[side],block=document.createElement('section');block.className='last5-team';block.setAttribute('aria-label',side.toUpperCase()+' last five');
+  const header=document.createElement('div');header.className='last5-team-head';header.append(text('strong',side.toUpperCase()),text('span',team.count+'/5 results'));block.append(header);
+  if(!team.rows.length)block.append(text('p','No verified finished matches available.','last5-status'));
+  for(const r of team.rows){
+   const row=document.createElement('div');row.className='last5-row';row.dataset.result=r.result;
+   const badge=text('b',r.result,'last5-result');badge.title={W:'Win',D:'Draw',L:'Loss'}[r.result];
+   const info=document.createElement('div');info.className='last5-info';const opponent=text('strong',r.opponent.name);opponent.title=r.opponent.name;
+   const date=new Date(r.kickoffUtc).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric',timeZone:'UTC'});const meta=text('small',date+' · '+r.venue+' · FT');meta.title=r.kickoffUtc+' (UTC)';info.append(opponent,meta);
+   const score=text('b',r.gf+'–'+r.ga,'last5-score');score.title='Team goals – opponent goals';row.append(badge,info,score);block.append(row);
+  }
+  if(team.count<5)block.append(text('p','Only '+team.count+' verified result'+(team.count===1?'':'s')+' available.','last5-status'));
+  detail.append(block);
+ }
+ detail.append(text('p','Results before this fixture’s kickoff. Scores shown from each team’s perspective. Form is separate from community votes; no win probability is inferred.','last5-footnote'));
+}
+function valid(data,target){return data?.ok===true&&data.source==='5USD'&&String(data.fixtureId)===target&&['home','away'].every(s=>data[s]?.verified===true&&Array.isArray(data[s].rows)&&data[s].rows.length<=5&&data[s].count===data[s].rows.length&&data[s].rows.every(r=>['W','D','L'].includes(r.result)&&r.status==='FT'&&r.opponent?.name&&Number.isInteger(r.gf)&&Number.isInteger(r.ga)&&Number.isFinite(Date.parse(r.kickoffUtc))));}
+async function load(){
+ if(!open||!fixtureId||loading)return;const target=fixtureId,seq=++sequence;const hit=cache.get(target);if(hit&&Date.now()-hit.at<600000){paint(hit.data);return;}
+ loading=true;abort?.abort();const controller=new AbortController();abort=controller;const timer=setTimeout(()=>controller.abort(),75000);button.disabled=!fixtureId;status('Loading verified Last 5…');
+ try{
+  const response=await fetch('/api/form-last5?fixtureId='+encodeURIComponent(target),{credentials:'same-origin',cache:'no-store',signal:controller.signal}),data=await response.json();
+  if(seq!==sequence||target!==fixtureId||!open)return;
+  if(!response.ok){const e=Error(response.status===429?'History is temporarily busy. Please retry after '+(response.headers.get('retry-after')||'60')+' seconds.':response.status===404?'This fixture is no longer available.':'Verified history is temporarily unavailable. Please retry.');throw e;}
+  if(!valid(data,target))throw Error('Verified history is not available for this fixture.');
+  cache.set(target,{at:Date.now(),data});if(cache.size>20)cache.delete(cache.keys().next().value);paint(data);
+ }catch(e){if(seq!==sequence||target!==fixtureId||!open)return;status(e.name==='AbortError'?'History request timed out. Please retry.':e.message);const retry=document.createElement('button');retry.type='button';retry.className='last5-retry';retry.textContent='Retry Last 5';retry.addEventListener('click',()=>load());detail.append(retry);}
+ finally{clearTimeout(timer);if(seq===sequence){loading=false;button.disabled=!fixtureId;}}
+}
+function close(){open=false;sequence++;abort?.abort();loading=false;detail.hidden=true;detail.replaceChildren();button.textContent='View Last 5';button.setAttribute('aria-expanded','false');button.disabled=!fixtureId;}
+button.addEventListener('click',()=>{if(open){close();return;}if(!fixtureId)return;open=true;detail.hidden=false;button.textContent='Hide';button.setAttribute('aria-expanded','true');load();});
+new MutationObserver(()=>{const next=card.dataset.fixtureId||'';if(next!==fixtureId){fixtureId=next;close();}}).observe(card,{attributes:true,attributeFilter:['data-fixture-id']});
+button.disabled=!fixtureId;
+})();
