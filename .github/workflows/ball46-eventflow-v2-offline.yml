@@ -1,0 +1,22 @@
+name: BALL46 Event Flow V2 Offline Checks (NO DEPLOY)
+on:
+  push:
+    branches: [codex/ball46-eventflow-zones-20261026]
+    paths:
+      - 'deploy-assets/eventflow-zones-20261026/**'
+      - '.github/workflows/ball46-eventflow-v2-offline.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax and geometry tests
+        run: |
+          node --check deploy-assets/eventflow-zones-20261026/layout.mjs
+          node --test deploy-assets/eventflow-zones-20261026/layout.test.mjs
