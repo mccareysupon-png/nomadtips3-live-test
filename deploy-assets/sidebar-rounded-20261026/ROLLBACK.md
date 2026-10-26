@@ -1,0 +1,1 @@
+Baseline: 15607595-5930-4093-8e9e-e64c52d9f120, deployment942790e4-50c4-480d-9459-cfa725464451. Only restore while this owned sidebar candidate remains current and configuration is unchanged. Use run.mjs phase restore with freshly captured routesAudit. Never replace modules with an older branch. No database or service writes.
