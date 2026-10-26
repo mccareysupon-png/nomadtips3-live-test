@@ -19,4 +19,5 @@ jobs:
       - name: Syntax and geometry tests
         run: |
           node --check deploy-assets/eventflow-zones-20261026/layout.mjs
-          node --test deploy-assets/eventflow-zones-20261026/layout.test.mjs
+          node --check deploy-assets/eventflow-zones-20261026/guard.mjs
+          node --test deploy-assets/eventflow-zones-20261026/*.test.mjs
