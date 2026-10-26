@@ -1,0 +1,30 @@
+name: BALL46 Board Latency Forensics READ ONLY
+on:
+  push:
+    branches: [codex/ball46-eventflow-zones-20261026]
+    paths: ['deploy-assets/eventflow-zones-20261026/board-latency-diagnostic.mjs','.github/workflows/ball46-board-latency-readonly.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    container:
+      image: mcr.microsoft.com/playwright:v1.56.1-noble
+      options: --ipc=host
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save playwright@1.56.1
+      - name: Inspect board TTFB, download and reload behavior
+        run: node deploy-assets/eventflow-zones-20261026/board-latency-diagnostic.mjs
+      - name: Retain timing evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-board-latency-diagnostics
+          path: deploy-assets/eventflow-zones-20261026/audit-board/
+          retention-days: 14
