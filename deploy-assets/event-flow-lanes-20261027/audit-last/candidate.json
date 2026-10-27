@@ -2,9 +2,9 @@
   "phase": "candidate",
   "base": "21c1519b-5874-412a-aea7-ebee2e057f46",
   "worker": "ball46-production",
-  "run": "40462189276",
-  "commit": "968038ffdeaa2dadb95292ff61cc4c770afd65da",
-  "at": "2026-10-27T06:37:22.753Z",
+  "run": "40496616100",
+  "commit": "599b983d1d82b790f38cde5c4328b6987253178e",
+  "at": "2026-10-27T11:30:20.280Z",
   "trafficChanged": false,
   "before": {
     "id": "21c1519b-5874-412a-aea7-ebee2e057f46",
@@ -158,8 +158,8 @@
         }
       },
       "annotations": {
-        "workers/message": "Sidebar external scrollbar UI and remove homepage loader only; preserve Vote, Engine and all data",
-        "workers/tag": "B46_SIDEBAR_SCROLL_OUTSIDE_20261026",
+        "workers/message": "Approved Event Flow desktop signal lanes and theme gradients only",
+        "workers/tag": "B46_EVENT_FLOW_LANES_20261027",
         "workers/triggered_by": "version_upload"
       },
       "bindings": [
@@ -255,13 +255,13 @@
       "path": "/api/engine/board",
       "status": 200,
       "ok": true,
-      "fixtures": 1963
+      "fixtures": 1758
     },
     {
       "path": "/api/engine/signals",
       "status": 200,
       "ok": true,
-      "signals": 0
+      "signals": 6
     },
     {
       "path": "/api/engine/statistics?paged=1",
@@ -849,14 +849,14 @@
   "changes": {
     "/": {
       "status": 200,
-      "sha": "72caa077f89b0a670581d0ad2ebb8973c0f5a02ce6b4803511752da9376c5162"
+      "sha": "cdf0d352603c8d1311964529cda082b01dda795a6878d399688be6449aad1615"
     },
     "/index.html": {
       "status": 200,
-      "sha": "72caa077f89b0a670581d0ad2ebb8973c0f5a02ce6b4803511752da9376c5162"
+      "sha": "cdf0d352603c8d1311964529cda082b01dda795a6878d399688be6449aad1615"
     }
   },
-  "candidate": "64ee508c-7aec-43b1-92f9-4664291856fc",
+  "candidate": "f94031d0-100b-413a-942e-af93b17114da",
   "configAfter": {
     "settings": {
       "placement": {},
@@ -980,13 +980,13 @@
       "path": "/api/engine/board",
       "status": 200,
       "ok": true,
-      "fixtures": 1963
+      "fixtures": 1758
     },
     {
       "path": "/api/engine/signals",
       "status": 200,
       "ok": true,
-      "signals": 0
+      "signals": 6
     },
     {
       "path": "/api/engine/statistics?paged=1",
