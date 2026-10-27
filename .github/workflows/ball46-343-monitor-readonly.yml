@@ -42,6 +42,10 @@ jobs:
         run: |
           node --check operations/ball46-343-monitor/handler-contract.mjs
           node operations/ball46-343-monitor/handler-contract.mjs
+      - name: Public homepage refresh footprint
+        run: |
+          node --check operations/ball46-343-monitor/public-refresh-audit.mjs
+          node operations/ball46-343-monitor/public-refresh-audit.mjs
       - name: Save sanitized observation artifact
         if: always()
         uses: actions/upload-artifact@v4
