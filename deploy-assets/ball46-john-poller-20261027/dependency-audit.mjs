@@ -55,8 +55,8 @@ try{
  const data=bytes.length<=5000000?bytes.toString('utf8'):'';
  content={ok:r.ok,status:r.status,sizeBytes:bytes.length,sha256:r.ok?createHash('sha256').update(bytes).digest('hex'):null,
   markers:r.ok?{
-   hasCadence3000:/liveRefreshMs\\s*:\\s*3_000|FIVEUSD_LIVE_REFRESH_MS.{0,80}3000/.test(data),
-   has50Page:/livePageSize\\s*:\\s*50|per_page=50/.test(data),
+   hasCadence3000:data.includes('liveRefreshMs:3_000')||data.includes('FIVEUSD_LIVE_REFRESH_MS')&&data.includes('3000'),
+   has50Page:data.includes('livePageSize:50')||data.includes('per_page=50'),
    hasOnDemand:/on_demand/.test(data),
    hasShadowLegacy:/FIVEUSD_SHADOW_LEGACY_DISABLED/.test(data),
    hasAlarmSource:/nextNativeAlarmAt|setAlarm/.test(data)
