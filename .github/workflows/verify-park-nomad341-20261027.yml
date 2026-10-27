@@ -1,0 +1,19 @@
+name: Verify NOMAD 3.41 alarm pause (GET only)
+on:
+  push:
+    branches: [ops/park-nomad341-shadow-20261027]
+    paths: ['.github/workflows/verify-park-nomad341-20261027.yml']
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - name: Sample shadow refresh state without mutations
+        run: |
+          set -euo pipefail
+          for i in 1 2 3 4 5; do
+            curl -fsS --max-time 15 'https://nomadtips3-live-engine-5usd-shadow.mccarey-supon.workers.dev/fiveusd-native' | node -e 'let s="";process.stdin.on("data",b=>s+=b).on("end",()=>{let j=JSON.parse(s); console.log(JSON.stringify({fetchedAt:j.live?.fetchedAt??j.snapshot?.live?.fetchedAt,requestsPer60:j.rate?.live?.usedLast60s,hasKey:j.hasKey,ok:j.ok}))})'
+            [ "$i" = 5 ] || sleep 12
+          done
