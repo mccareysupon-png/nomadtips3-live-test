@@ -42,6 +42,8 @@ run=run.replaceAll('Approved Event Flow desktop lanes and theme gradients only',
 run=run.replaceAll('Approved Event Flow desktop lanes and gradients; all data and other UI retained','Approved Statistics header art; all data and other UI retained');
 run=run.replaceAll('Guarded restore of V6 baseline after Event Flow fullscreen scrollbar fix; votes retained','Guarded restore of previous Statistics header and all data');
 run=run.replaceAll('Automatic guarded restore after V8 verification failure','Automatic guarded restore after Statistics hero verification failure');
+run=run.replace("u.searchParams.set('predictionV8Audit'","u.searchParams.set('statisticsHeroAudit'");
+run=run.replace("const r=await fetch(u,{headers:{'cache-control':'no-cache'},signal:AbortSignal.timeout(45000)}),body=Buffer.from(await r.arrayBuffer());return{status:r.status,sha:sha(body),body};","for(let attempt=0;attempt<3;attempt++){try{const r=await fetch(u,{headers:{'cache-control':'no-cache'},signal:AbortSignal.timeout(45000)}),body=Buffer.from(await r.arrayBuffer());return{status:r.status,sha:sha(body),body};}catch(e){if(attempt===2||!(e instanceof TypeError))throw e;await new Promise(resolve=>setTimeout(resolve,600*(attempt+1)));}}");
 await writeFile(new URL('run.mjs',dir),run);
 let workflow=await readFile(new URL('workflow.yml',prev),'utf8');
 workflow=workflow.replaceAll('event-flow-fullscreen-scroll-20261027','statistics-hero-art-20261027').replaceAll('Event Flow fullscreen scrollbar fix','Statistics header artwork').replaceAll('ball46-sidebar-scroll-outside-','ball46-statistics-hero-art-');
