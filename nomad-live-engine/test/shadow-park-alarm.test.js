@@ -8,13 +8,14 @@ test('shadow mode on_demand prevents 3-second Durable Object Alarm from reschedu
   const storage={
     getAlarm:async()=>{calls.push('getAlarm');return Date.now()+1000},
     setAlarm:async()=>{calls.push('setAlarm')},
+    deleteAlarm:async()=>{calls.push('deleteAlarm')},
     get:async()=>{calls.push('get');return null}
   };
   const engine=new EngineState({storage}, {ENGINE_CYCLE_MODE:'on_demand',FIVEUSD_NATIVE_MODE:'authority'});
   assert.equal(engine.continuousCycles(),false);
   await engine.armAlarm();
   await engine.alarm();
-  assert.deepEqual(calls,[],'on-demand worker must not create or reschedule alarms');
+  assert.deepEqual(calls,['deleteAlarm'],'on-demand worker must cancel prior alarms and never rearm');
 });
 
 test('on-demand is the exact supported key; off is NOT safe',()=>{
