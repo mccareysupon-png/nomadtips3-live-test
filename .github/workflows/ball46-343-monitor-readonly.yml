@@ -34,6 +34,10 @@ jobs:
         run: |
           node --check operations/ball46-343-monitor/error-triage.mjs
           node operations/ball46-343-monitor/error-triage.mjs
+      - name: Focused error and exception telemetry (read-only)
+        run: |
+          node --check operations/ball46-343-monitor/error-focus.mjs
+          node operations/ball46-343-monitor/error-focus.mjs
       - name: Save sanitized observation artifact
         if: always()
         uses: actions/upload-artifact@v4
