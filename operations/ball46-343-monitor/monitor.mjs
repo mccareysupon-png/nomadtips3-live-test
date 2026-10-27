@@ -141,4 +141,5 @@ console.log('BALL46_MONITOR_DETAILS='+JSON.stringify({
  cloudflare:cloud,versions
 }));
 console.log('BALL46_MONITOR_SUMMARY='+JSON.stringify({status,checks:checks.map(x=>({name:x.check,status:x.status})),main:publicHome.http,hubRefreshSeconds:hub.health?.refreshSeconds??null,shadowRPM:shadow.health?.providerLiveRPM??null,workerMetrics:cloud.ok,reportFile:'reports/ball46-343-observation.json'}));
-// Do NOT fail deployment CI; this observer never deploys. Alerts can be added after baseline calibration.
+// Mark critical synthetic failures for GitHub Actions visibility; this never deploys or rolls back.
+if(status==='CRITICAL')process.exitCode=1;
