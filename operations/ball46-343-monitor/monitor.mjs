@@ -8,9 +8,9 @@ const CF_ACCOUNT=process.env.CLOUDFLARE_ACCOUNT_ID||'';
 const CF_TOKEN=process.env.CLOUDFLARE_API_TOKEN||'';
 const now=new Date(), since=new Date(now.getTime()-20*60*1000);
 const names=['ball46-production','nomadtips3-5usd-hub-343','nomadtips3-engine-343','nomadtips3-full-market-343-ball46','ball46-member-production','nomadtips3-live-engine-5usd-shadow'];
-const checks=[],errors=[];
+const checks=[];
 function add(check,status,detail){checks.push({check,status,detail});}
-function safeNumber(value){return Number.isFinite(Number(value))?Number(value):null;}
+function safeNumber(value){return value!==null&&value!==undefined&&value!==''&&Number.isFinite(Number(value))?Number(value):null;}
 async function getJSON(url,{auth=false,timeout=17000}={}){
  try{
   const res=await fetch(url,{method:'GET',headers:auth?{Authorization:'Bearer '+CF_TOKEN,Accept:'application/json'}:{Accept:'application/json'},signal:AbortSignal.timeout(timeout),redirect:'manual'});
@@ -22,7 +22,7 @@ function selectHealth(key,data){
  if(!data||typeof data!=='object')return null;
  if(key==='hub'){
   const ctl=data.control||{};
-  return {ok:data.ok??null,version:data.version??null,refreshSeconds:safeNumber(ctl.liveRefreshSeconds??data.refreshMs/1000),
+  return {ok:data.ok??null,version:data.version??null,refreshSeconds:safeNumber(ctl.liveRefreshSeconds??(data.refreshMs==null?null:data.refreshMs/1000)),
    estimatedBulkRPM:safeNumber(data.estimatedBulkRequestsPerMinute),providerRequestCount:safeNumber(data.providerRequestCount),
    lastError:data.lastError?String(data.lastError).slice(0,120):null,lastProviderError:data.lastProviderError?String(data.lastProviderError).slice(0,120):null,
    stale:data.stale??data.snapshot?.stale??null,updatedAt:data.updatedAt??data.lastSuccessAt??data.snapshot?.updatedAt??null};
