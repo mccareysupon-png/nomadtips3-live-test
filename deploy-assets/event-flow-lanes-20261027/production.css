@@ -1,0 +1,31 @@
+@media(min-width:768px){
+.b46-flow-space{position:relative;isolation:isolate;background:linear-gradient(180deg,#0c2017 0%,#0c2017ed 13%,#07160f80 35%,#07160f70 62%,#0c2017ed 87%,#0c2017 100%),url('/ball46-event-flow-stadium-20261023-dark.webp') center 57%/cover}
+html body .workspace.singlepage .expand-flow-card .b46-flow-space .expand-flow-chart[data-b46-flow]{background:transparent!important;border-radius:0!important}
+html body .expand-flow-card .b46-flow-space .expand-flow-chart[data-b46-flow]{background:transparent!important;border-radius:0!important}
+.b46-flow-lane{height:var(--lane-height);position:relative;background:transparent}
+.b46-flow-connectors{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2;overflow:visible}
+.b46-flow-connectors path{fill:none;stroke-width:1;stroke-dasharray:3 4;opacity:.6;stroke:#31b878}.b46-flow-connectors path.away{stroke:#e2c94c}.b46-flow-connectors path.active{opacity:1;stroke-width:1.8}.b46-flow-connectors circle{fill:#31b878;stroke:#e9fff4;stroke-width:1.5}.b46-flow-connectors circle.away{fill:#e2c94c}
+html body .b46-flow-signal{position:absolute;top:calc((var(--lane-height) - 43px)/2);width:174px;height:43px;box-sizing:border-box;background:linear-gradient(130deg,#183e2b,#102c20);border:0;border-radius:7px;padding:6px 10px;color:#e3f6e9;z-index:3;box-shadow:0 3px 8px #0002;font:10px/14px Arial,sans-serif;text-align:left;cursor:pointer}
+html body .b46-flow-signal.away{background:linear-gradient(130deg,#323822,#20291b)}
+.b46-flow-signal .card-top{display:flex;justify-content:space-between;gap:5px;font-weight:800;color:#55e7a0;font-size:10px;white-space:nowrap}.b46-flow-signal.away .card-top{color:#f1dc68}.b46-flow-signal .card-top small{font-size:8px;color:#b4cebd;font-weight:600}.b46-flow-signal .card-detail{font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#c5d8cd}.b46-flow-signal:focus-visible{outline:1px solid #92c9aa;outline-offset:1px}
+html body .b46-flow-page{position:absolute;right:6px;top:calc((var(--lane-height) - 24px)/2);padding:5px 7px;font:700 9px Arial,sans-serif;z-index:4;border:0;background:#1c3025;color:#a6bdaf;border-radius:7px;cursor:pointer}
+[data-b46-lanes] .b46-eventflow-signal-annotation{display:none!important}
+html[data-theme=light] .b46-flow-space{background:linear-gradient(180deg,#edf5ef 0%,#f8fbf9 40%,#f8fbf9 60%,#edf5ef 100%)}
+html[data-theme=light] body .expand-flow-card:has(.b46-flow-space) .expand-flow-legend{background:#e4efe7!important;color:#274d39}
+html[data-theme=light] body .expand-flow-card:has(.b46-flow-space) .expand-flow-legend .home{color:#087c4a!important}
+html[data-theme=light] body .expand-flow-card:has(.b46-flow-space) .expand-flow-legend .away{color:#916300!important}
+html[data-theme=light] body .expand-flow-card:has(.b46-flow-space) .expand-flow-legend b{color:#244735!important}
+html[data-theme=light] body .expand-flow-card:has(.b46-flow-space) .expand-flow-legend small{color:#607969!important}
+html[data-theme=light] body .expand-flow-card .b46-flow-space .expand-flow-axis{fill:#466451!important}
+html[data-theme=light] body .expand-flow-card .b46-flow-space .expand-flow-line.home{stroke:#078652!important;filter:none!important;stroke-width:1.5}
+html[data-theme=light] body .expand-flow-card .b46-flow-space .expand-flow-line.away{stroke:#a77500!important;filter:none!important;stroke-width:1.5}
+html[data-theme=light] .b46-flow-space .expand-flow-area.home{fill:#149d6020!important}
+html[data-theme=light] .b46-flow-space .expand-flow-area.away{fill:#b486001a!important}
+html[data-theme=light] body .b46-flow-signal{background:linear-gradient(130deg,#dcefe3,#e5f2e9);color:#244735;box-shadow:0 3px 8px #214e3010}
+html[data-theme=light] body .b46-flow-signal.away{background:linear-gradient(130deg,#eee9cf,#f3efde)}
+html[data-theme=light] .b46-flow-signal .card-top{color:#087c4a}html[data-theme=light] .b46-flow-signal.away .card-top{color:#835c00}
+html[data-theme=light] .b46-flow-signal .card-top small,html[data-theme=light] .b46-flow-signal .card-detail{color:#44614e}
+html[data-theme=light] .b46-flow-connectors path{stroke:#648473;opacity:.8}html[data-theme=light] .b46-flow-connectors circle{fill:#168559;stroke:#fff}
+html[data-theme=light] .b46-flow-space .b46-inspect-guide{stroke:#587764}html[data-theme=light] .b46-flow-space .b46-inspect-tag{fill:#e0eee4;stroke:#789a85}html[data-theme=light] .b46-flow-space .b46-inspect-tag-text{fill:#244735}
+.b46-flow-space .b46-inspect-layer[hidden]{display:none!important}
+}
