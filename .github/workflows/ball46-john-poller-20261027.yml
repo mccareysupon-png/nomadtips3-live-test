@@ -10,6 +10,8 @@ on:
       - 'deploy-assets/ball46-john-poller-20261027/all-rates.mjs'
       - 'deploy-assets/ball46-john-poller-20261027/legacy-dependencies.mjs'
       - 'deploy-assets/ball46-john-poller-20261027/live-health.mjs'
+      - 'deploy-assets/ball46-john-poller-20261027/observability.mjs'
+      - 'deploy-assets/ball46-john-poller-20261027/url-routes.mjs'
       - '.github/workflows/ball46-john-poller-20261027.yml'
   workflow_dispatch:
 permissions:
@@ -62,3 +64,12 @@ jobs:
         run: |
           node --check deploy-assets/ball46-john-poller-20261027/live-health.mjs
           node deploy-assets/ball46-john-poller-20261027/live-health.mjs
+
+      - name: Read-only outbound observability events diagnostic
+        run: |
+          node --check deploy-assets/ball46-john-poller-20261027/observability.mjs
+          node deploy-assets/ball46-john-poller-20261027/observability.mjs
+      - name: Read-only route and worker subdomain inspection
+        run: |
+          node --check deploy-assets/ball46-john-poller-20261027/url-routes.mjs
+          node deploy-assets/ball46-john-poller-20261027/url-routes.mjs
