@@ -8,6 +8,7 @@ on:
       - 'deploy-assets/ball46-john-poller-20261027/do-analytics.mjs'
       - 'deploy-assets/ball46-john-poller-20261027/dependency-audit.mjs'
       - 'deploy-assets/ball46-john-poller-20261027/all-rates.mjs'
+      - 'deploy-assets/ball46-john-poller-20261027/legacy-dependencies.mjs'
       - '.github/workflows/ball46-john-poller-20261027.yml'
   workflow_dispatch:
 permissions:
@@ -50,3 +51,8 @@ jobs:
         run: |
           node --check deploy-assets/ball46-john-poller-20261027/all-rates.mjs
           node deploy-assets/ball46-john-poller-20261027/all-rates.mjs
+
+      - name: Read-only legacy and member Worker dependency check
+        run: |
+          node --check deploy-assets/ball46-john-poller-20261027/legacy-dependencies.mjs
+          node deploy-assets/ball46-john-poller-20261027/legacy-dependencies.mjs
