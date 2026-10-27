@@ -1,0 +1,23 @@
+name: BALL46 live mobile CSS origin diagnostic
+on:
+  push:
+    branches: [audit/ball46-mobile-pc-theme-20261027]
+    paths:
+      - '.github/workflows/ball46-mobile-css-origin-20261027.yml'
+      - 'operations/ball46-mobile-theme/css-source-audit.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Read-only current public CSS rule origin
+        run: |
+          node --check operations/ball46-mobile-theme/css-source-audit.mjs
+          node operations/ball46-mobile-theme/css-source-audit.mjs
