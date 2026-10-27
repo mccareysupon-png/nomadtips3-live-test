@@ -6,6 +6,7 @@ on:
       - 'deploy-assets/ball46-john-poller-20261027/audit.mjs'
       - 'deploy-assets/ball46-john-poller-20261027/analytics.mjs'
       - 'deploy-assets/ball46-john-poller-20261027/do-analytics.mjs'
+      - 'deploy-assets/ball46-john-poller-20261027/dependency-audit.mjs'
       - '.github/workflows/ball46-john-poller-20261027.yml'
   workflow_dispatch:
 permissions:
@@ -38,3 +39,8 @@ jobs:
         run: |
           node --check deploy-assets/ball46-john-poller-20261027/do-analytics.mjs
           node deploy-assets/ball46-john-poller-20261027/do-analytics.mjs
+
+      - name: Read-only active-version and dependency verification
+        run: |
+          node --check deploy-assets/ball46-john-poller-20261027/dependency-audit.mjs
+          node deploy-assets/ball46-john-poller-20261027/dependency-audit.mjs
