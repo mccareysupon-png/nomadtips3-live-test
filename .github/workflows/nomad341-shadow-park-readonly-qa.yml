@@ -1,0 +1,24 @@
+name: NOMAD 3.41 shadow 3s poller park — source-only QA
+on:
+  push:
+    branches: [fix/nomad341-park-3s-shadow-20261027]
+    paths:
+      - 'nomad-live-engine/wrangler-fiveusd-shadow.toml'
+      - 'nomad-live-engine/test/shadow-park-alarm.test.js'
+      - '.github/workflows/nomad341-shadow-park-readonly-qa.yml'
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Source-only — never deploy
+        run: |
+          node --check nomad-live-engine/src/index-fiveusd-test.js
+          node --check nomad-live-engine/test/shadow-park-alarm.test.js
+          node --test nomad-live-engine/test/shadow-park-alarm.test.js
