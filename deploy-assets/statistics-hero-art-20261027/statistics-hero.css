@@ -1,0 +1,49 @@
+/* Statistics banner artwork only; no data, controls, or card geometry changes. */
+body[data-workspace-view="statistics"] .sp-stat-hero{
+  position:relative!important;
+  isolation:isolate;
+  overflow:hidden;
+  background:linear-gradient(107deg,#203e30 0%,#173429 58%,#0e281f 100%)!important;
+}
+html[data-theme="light"] body[data-workspace-view="statistics"] .sp-stat-hero{
+  background:linear-gradient(107deg,#e3f3e9 0%,#f0f8f1 62%,#d8ecdf 100%)!important;
+}
+body[data-workspace-view="statistics"] .sp-stat-hero::before{
+  content:"";
+  position:absolute;
+  z-index:0;
+  right:0;
+  top:-7px;
+  width:246px;
+  height:88px;
+  pointer-events:none;
+  background:url("/statistics-hero-emerald-20261027.webp") center/contain no-repeat;
+  filter:drop-shadow(0 1px 5px rgb(18 181 104 / .17));
+}
+html[data-theme="light"] body[data-workspace-view="statistics"] .sp-stat-hero::before{
+  filter:drop-shadow(0 2px 6px rgb(0 100 50 / .17));
+}
+body[data-workspace-view="statistics"] .sp-stat-hero>div:first-child{
+  position:relative;
+  z-index:1;
+  max-width:calc(100% - 158px);
+  min-width:0;
+}
+body[data-workspace-view="statistics"] .sp-stat-hero .meta{
+  position:absolute!important;
+  width:1px!important;
+  height:1px!important;
+  overflow:hidden!important;
+  clip-path:inset(50%)!important;
+  white-space:nowrap!important;
+}
+body[data-workspace-view="statistics"] .sp-stat-hero .kicker{color:#86dcb0!important}
+body[data-workspace-view="statistics"] .sp-stat-hero p{color:#b6c9bc!important}
+html[data-theme="light"] body[data-workspace-view="statistics"] .sp-stat-hero .kicker{color:#168452!important}
+html[data-theme="light"] body[data-workspace-view="statistics"] .sp-stat-hero p{color:#506b5b!important}
+@media(max-width:580px){
+  body[data-workspace-view="statistics"] .sp-stat-hero::before{width:167px;height:72px;top:0;opacity:.82}
+  body[data-workspace-view="statistics"] .sp-stat-hero>div:first-child{max-width:calc(100% - 86px)}
+  body[data-workspace-view="statistics"] .sp-stat-hero h3{font-size:14px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  body[data-workspace-view="statistics"] .sp-stat-hero p{font-size:8px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+}
