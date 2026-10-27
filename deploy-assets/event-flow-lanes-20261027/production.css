@@ -29,3 +29,10 @@ html[data-theme=light] .b46-flow-connectors path{stroke:#648473;opacity:.8}html[
 html[data-theme=light] .b46-flow-space .b46-inspect-guide{stroke:#587764}html[data-theme=light] .b46-flow-space .b46-inspect-tag{fill:#e0eee4;stroke:#789a85}html[data-theme=light] .b46-flow-space .b46-inspect-tag-text{fill:#244735}
 .b46-flow-space .b46-inspect-layer[hidden]{display:none!important}
 }
+@media(min-width:768px){
+html:root[data-theme=light] body :is(.workspace.singlepage .live-stage-grid .match-expanded,#b46gn-detail) .expand-flow-card:has(.b46-flow-space) .expand-flow-legend{background:#e4efe7!important;color:#274d39!important}
+html:root[data-theme=light] body :is(.workspace.singlepage .live-stage-grid .match-expanded,#b46gn-detail) .expand-flow-card:has(.b46-flow-space) .expand-flow-legend b{color:#244735!important}
+html:root[data-theme=light] body :is(.workspace.singlepage .live-stage-grid .match-expanded,#b46gn-detail) .expand-flow-card:has(.b46-flow-space) .expand-flow-legend>small{color:#607969!important}
+html:root[data-theme=light] body .workspace.singlepage .expand-flow-card .b46-flow-space .expand-flow-chart[data-b46-flow] .expand-flow-axis{fill:#466451!important}
+html:root[data-theme=light] body :is(.workspace.singlepage .live-stage-grid .match-expanded,#b46gn-detail) .expand-flow-card:has(.b46-flow-space) .expand-card-head{background:#d5e5d9!important;color:#244c35!important}
+}
