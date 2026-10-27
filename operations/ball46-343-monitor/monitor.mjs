@@ -132,5 +132,13 @@ const md=['# BALL46 3.43 health monitor',`UTC: ${now.toISOString()} | Status: **
 '','## Evidence limits','429, Retry-After, X-RateLimit headers, snapshot staleness, browser LCP, account-global quota, and FT settlement correctness require separate instrumentation or data-source access.'];
 await writeFile('reports/ball46-343-summary.md',md.join('\n')+'\n');
 if(process.env.GITHUB_STEP_SUMMARY)await writeFile(process.env.GITHUB_STEP_SUMMARY,md.join('\n')+'\n',{flag:'a'});
+console.log('BALL46_MONITOR_DETAILS='+JSON.stringify({
+ observedAtUtc:now.toISOString(),public:{home:publicHome,member:publicMember},
+ health:{hub:{http:hub.http,latencyMs:hub.responseMs,refreshSeconds:hub.health?.refreshSeconds??null,estimatedBulkRPM:hub.health?.estimatedBulkRPM??null,lastErrorPresent:Boolean(hub.health?.lastError),lastProviderErrorPresent:Boolean(hub.health?.lastProviderError)},
+  engine:{http:engine.http,latencyMs:engine.responseMs,ok:engine.health?.ok??null},
+  siteEngine:{http:siteEngine.http,latencyMs:siteEngine.responseMs,ok:siteEngine.health?.ok??null},
+  fullMarket:{http:market.http,latencyMs:market.responseMs},shadow:{http:shadow.http,liveRPM:shadow.health?.providerLiveRPM??null}},
+ cloudflare:cloud,versions
+}));
 console.log('BALL46_MONITOR_SUMMARY='+JSON.stringify({status,checks:checks.map(x=>({name:x.check,status:x.status})),main:publicHome.http,hubRefreshSeconds:hub.health?.refreshSeconds??null,shadowRPM:shadow.health?.providerLiveRPM??null,workerMetrics:cloud.ok,reportFile:'reports/ball46-343-observation.json'}));
 // Do NOT fail deployment CI; this observer never deploys. Alerts can be added after baseline calibration.
