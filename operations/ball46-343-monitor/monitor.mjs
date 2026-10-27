@@ -80,13 +80,34 @@ async function cloudflare(){
 async function versionGuard(){
  if(!CF_ACCOUNT||!CF_TOKEN)return [];
  const out=[];
- for(const name of ['ball46-production','nomadtips3-5usd-hub-343','nomadtips3-engine-343','nomadtips3-full-market-343-ball46','nomadtips3-live-engine-5usd-shadow']){
-  const url='https://api.cloudflare.com/client/v4/accounts/'+encodeURIComponent(CF_ACCOUNT)+'/workers/scripts/'+encodeURIComponent(name)+'/deployments?per_page=1';
-  const r=await getJSON(url,{auth:true});
+ const scripts=['ball46-production','nomadtips3-5usd-hub-343','nomadtips3-engine-343',
+  'nomadtips3-full-market-343-ball46','ball46-member-production','nomadtips3-live-engine-5usd-shadow'];
+ const checkCron=new Set(['nomadtips3-full-market-343-ball46','ball46-member-production']);
+ for(const name of scripts){
+  const base='https://api.cloudflare.com/client/v4/accounts/'+encodeURIComponent(CF_ACCOUNT)+'/workers/scripts/'+encodeURIComponent(name);
+  const r=await getJSON(base+'/deployments?per_page=1',{auth:true});
   const list=Array.isArray(r.payload?.result)?r.payload.result:(r.payload?.result?.deployments||[]);
   const item=list[0];const active=(item?.versions||[]).filter(x=>Number(x.percentage)>0).map(x=>({version:x.version_id,pct:Number(x.percentage)}));
-  out.push({name,ok:r.ok&&r.payload?.success===true,active});
+  const record={name,ok:r.ok&&r.payload?.success===true,active};
   if(!r.ok)add('version_'+name,'UNKNOWN','deployment metadata unavailable');
+  if(checkCron.has(name)){
+   const cronResponse=await getJSON(base+'/schedules',{auth:true});
+   const schedules=Array.isArray(cronResponse.payload?.result)?cronResponse.payload.result:(cronResponse.payload?.result?.schedules||[]);
+   const cronRules=schedules.map(x=>x.cron).filter(Boolean);
+   const handlerResults=[];
+   for(const v of active){
+    const detail=await getJSON(base+'/versions/'+encodeURIComponent(v.version),{auth:true});
+    handlerResults.push({version:v.version,ok:detail.ok&&detail.payload?.success===true,
+      scheduled:(detail.payload?.result?.resources?.script?.handlers||[]).includes('scheduled')});
+   }
+   record.cron={rules:cronRules,activeHandlerVersions:handlerResults};
+   if(!cronResponse.ok||handlerResults.some(x=>!x.ok))add('cron_handler_'+name,'UNKNOWN','could not verify active handler metadata');
+   else if(cronRules.length&&handlerResults.length&&handlerResults.every(x=>!x.scheduled)){
+    add('cron_handler_'+name,'WARNING','Cron configured but active Worker exposes no scheduled handler; inspect before changing production');
+    console.log('::warning title=BALL46 Cron handler mismatch::'+name+' has active Cron but no scheduled event handler');
+   }else add('cron_handler_'+name,'PASS','no orphaned Cron detected');
+  }
+  out.push(record);
  }
  return out;
 }
