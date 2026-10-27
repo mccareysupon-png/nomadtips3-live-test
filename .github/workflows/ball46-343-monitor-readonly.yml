@@ -38,6 +38,10 @@ jobs:
         run: |
           node --check operations/ball46-343-monitor/error-focus.mjs
           node operations/ball46-343-monitor/error-focus.mjs
+      - name: Active Worker Cron handler contract readback
+        run: |
+          node --check operations/ball46-343-monitor/handler-contract.mjs
+          node operations/ball46-343-monitor/handler-contract.mjs
       - name: Save sanitized observation artifact
         if: always()
         uses: actions/upload-artifact@v4
