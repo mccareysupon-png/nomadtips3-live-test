@@ -1,0 +1,80 @@
+name: PARK isolated NOMAD 3.41 runtime - guarded rollout
+on:
+  push:
+    branches: [fix/nomad341-park-3s-shadow-20261027]
+    paths: [.github/workflows/nomad341-park-runtime-deploy-20261027.yml]
+permissions:
+  contents: read
+concurrency:
+  group: nomad341-shadow-guarded-runtime
+  cancel-in-progress: false
+jobs:
+  park:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Source tests and isolated dry run
+        run: |
+          set -euo pipefail
+          node --test nomad-live-engine/test/shadow-park-alarm.test.js
+          cd nomad-live-engine
+          npx --yes wrangler@4.131.1 deploy --dry-run --config wrangler-fiveusd-shadow.toml --keep-vars
+      - name: Validate current active script and exactly scoped config
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          test -n "$CLOUDFLARE_API_TOKEN"
+          node - <<'NODE'
+          const root='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+'/workers/scripts/nomadtips3-live-engine-5usd-shadow';
+          const h={Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN};
+          const get=async(path)=>{const r=await fetch(root+path,{headers:h});const j=await r.json();if(!r.ok||!j.success)throw Error('CF_READ_FAILED');return j.result;};
+          const deployments=await get('/deployments?per_page=1');
+          const first=(deployments.deployments||deployments)[0];
+          const active=first?.versions?.find(x=>x.percentage===100)?.version_id;
+          const settings=await get('/settings');
+          const bindings=settings.bindings||[];
+          if(active!=='1df6faf7-dd09-4bcc-a39f-83f98dde7d60')throw Error('ACTIVE_VERSION_MISMATCH');
+          if(bindings.find(x=>x.name==='ENGINE_CYCLE_MODE')?.text!=='on_demand')throw Error('NOT_PARKED');
+          if(bindings.length!==10)throw Error('BINDINGS_MISMATCH');
+          if(!bindings.some(x=>x.name==='FIVEDOLLAR_API_KEY'&&x.type==='secret_text'))throw Error('SECRET_MISSING');
+          if(!bindings.some(x=>x.name==='ENGINE'&&x.type==='durable_object_namespace'))throw Error('DO_MISSING');
+          console.log('PARK_RUNTIME_GUARD_PASS',JSON.stringify({active,bindings:bindings.length,mode:'on_demand'}));
+          NODE
+      - name: Deploy code-only alarm cancellation to OLD TEST worker (not BALL46)
+        working-directory: nomad-live-engine
+        run: npx --yes wrangler@4.131.1 deploy --config wrangler-fiveusd-shadow.toml --keep-vars
+      - name: Verify new version, bindings, runtime quiescence
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const root='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+'/workers/scripts/nomadtips3-live-engine-5usd-shadow';
+          const headers={Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN};
+          const get=async(path)=>{const r=await fetch(root+path,{headers});const j=await r.json();if(!r.ok||!j.success)throw Error('CF_READBACK_FAILED');return j.result;};
+          const deployments=await get('/deployments?per_page=1');const d=(deployments.deployments||deployments)[0];
+          const active=d?.versions?.find(x=>x.percentage===100)?.version_id;
+          const settings=await get('/settings');const b=settings.bindings||[];
+          if(!active||active==='1df6faf7-dd09-4bcc-a39f-83f98dde7d60')throw Error('NEW_VERSION_NOT_DEPLOYED');
+          if(b.find(x=>x.name==='ENGINE_CYCLE_MODE')?.text!=='on_demand')throw Error('ON_DEMAND_LOST');
+          if(b.length!==10||!b.some(x=>x.name==='FIVEDOLLAR_API_KEY'&&x.type==='secret_text')||!b.some(x=>x.name==='ENGINE'&&x.type==='durable_object_namespace'))throw Error('BINDING_LOST');
+          console.log('PARK_RUNTIME_DEPLOYED='+JSON.stringify({active,mode:'on_demand',bindingCount:b.length}));
+          const url='https://nomadtips3-live-engine-5usd-shadow.mccarey-supon.workers.dev/fiveusd-native';
+          const sample=async()=>{
+            const r=await fetch(url,{signal:AbortSignal.timeout(16000)});
+            const j=await r.json();
+            if(!r.ok||j.runtimeContract!=='341-5usd-test-authority-v1'||!j.hasKey)throw Error('SHADOW_HEALTH_FAILED');
+            return {at:new Date().toISOString(),fetchedAt:j.live?.fetchedAt??j.snapshot?.live?.fetchedAt??null,liveRate:j.rate?.live?.usedLast60s??null};
+          };
+          const points=[];
+          for(let i=0;i<7;i++){points.push(await sample());if(i<6)await new Promise(ok=>setTimeout(ok,12000));}
+          console.log('PARK_RUNTIME_POST_SAMPLES='+JSON.stringify(points));
+          if(points.slice(-4).some((v,i,a)=>i>0&&v.fetchedAt!==a[i-1].fetchedAt))throw Error('LIVE_REFRESH_STILL_RUNNING');
+          if(Number(points.at(-1).liveRate)!==0)throw Error('5USD_LIVE_REQUESTS_NOT_ZERO');
+          console.log('PARK_RUNTIME_CONFIRMED_STOPPED='+JSON.stringify({active,latestRate:points.at(-1).liveRate,latestFetchedAt:points.at(-1).fetchedAt}));
+          NODE
