@@ -235,7 +235,11 @@ export class EngineState extends BaseEngineState{
   }
 
   async alarm(){
-    if(!this.continuousCycles()) return;
+    if(!this.continuousCycles()){
+      // One-time parking: cancel any alarm left by the old 3s continuous runtime.
+      await this.state.storage.deleteAlarm();
+      return;
+    }
     if(!this.fiveUsdNative.enabled()) return super.alarm();
 
     const cycleStartedAt=now();
