@@ -5,7 +5,7 @@ function uninstall(chart,s){s.resize.disconnect();if(s.space.contains(chart))s.s
 function install(chart){
  if(states.has(chart))return;
  const svg=chart.querySelector('svg'),card=chart.closest('.expand-flow-card');if(!svg||!card||!chart.dataset.b46Flow)return;
- const laneHeight=card.getBoundingClientRect().height*.2;if(laneHeight<43||!chart.clientWidth)return;
+ const baseHeight=card.classList.contains('b46-eventflow-viewport-expanded')?199+(card.querySelector('.expand-card-head')?.getBoundingClientRect().height||43)+(card.querySelector('.expand-flow-legend')?.getBoundingClientRect().height||23.5):card.getBoundingClientRect().height;const laneHeight=baseHeight*.2;if(laneHeight<43||!chart.clientWidth)return;
  const space=document.createElement('div');space.className='b46-flow-space';space.style.setProperty('--lane-height',laneHeight+'px');
  const top=document.createElement('div'),bottom=document.createElement('div'),lines=document.createElementNS(ns,'svg');top.className='b46-flow-lane top';bottom.className='b46-flow-lane bottom';lines.setAttribute('class','b46-flow-connectors');lines.setAttribute('aria-hidden','true');
  chart.before(space);space.append(top,chart,bottom,lines);chart.dataset.b46Lanes='20261027';
