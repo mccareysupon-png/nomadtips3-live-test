@@ -9,6 +9,7 @@ on:
       - 'deploy-assets/ball46-john-poller-20261027/dependency-audit.mjs'
       - 'deploy-assets/ball46-john-poller-20261027/all-rates.mjs'
       - 'deploy-assets/ball46-john-poller-20261027/legacy-dependencies.mjs'
+      - 'deploy-assets/ball46-john-poller-20261027/live-health.mjs'
       - '.github/workflows/ball46-john-poller-20261027.yml'
   workflow_dispatch:
 permissions:
@@ -56,3 +57,8 @@ jobs:
         run: |
           node --check deploy-assets/ball46-john-poller-20261027/legacy-dependencies.mjs
           node deploy-assets/ball46-john-poller-20261027/legacy-dependencies.mjs
+
+      - name: Public read-only HUB and SHADOW health
+        run: |
+          node --check deploy-assets/ball46-john-poller-20261027/live-health.mjs
+          node deploy-assets/ball46-john-poller-20261027/live-health.mjs
