@@ -1,0 +1,29 @@
+name: PARK NOMAD 3.41 SHADOW only — guarded settings
+on:
+  push:
+    branches:
+      - ops/park-nomad341-shadow-20261027
+    paths:
+      - 'deploy-assets/park-nomad341-20261027/park.mjs'
+      - '.github/workflows/park-nomad341-shadow-20261027.yml'
+permissions:
+  contents: read
+concurrency:
+  group: park-nomad341-shadow-20261027
+  cancel-in-progress: false
+jobs:
+  park:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Stop isolated Shadow 3.41 only, with version and binding guards
+        run: |
+          node --check deploy-assets/park-nomad341-20261027/park.mjs
+          node deploy-assets/park-nomad341-20261027/park.mjs
