@@ -26,6 +26,8 @@ jobs:
           node-version: '22'
       - name: Syntax check
         run: node --check operations/ball46-343-monitor/monitor.mjs
+      - name: Inspect default-branch push trigger risks
+        run: node operations/ball46-343-monitor/trigger-audit.mjs
       - name: Read-only 3.43 health and analytics
         run: node operations/ball46-343-monitor/monitor.mjs
       - name: Save sanitized observation artifact
