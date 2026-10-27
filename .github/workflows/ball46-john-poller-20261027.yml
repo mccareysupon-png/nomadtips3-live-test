@@ -12,6 +12,7 @@ on:
       - 'deploy-assets/ball46-john-poller-20261027/live-health.mjs'
       - 'deploy-assets/ball46-john-poller-20261027/observability.mjs'
       - 'deploy-assets/ball46-john-poller-20261027/url-routes.mjs'
+      - 'deploy-assets/ball46-john-poller-20261027/outbound-counters.mjs'
       - '.github/workflows/ball46-john-poller-20261027.yml'
   workflow_dispatch:
 permissions:
@@ -73,3 +74,8 @@ jobs:
         run: |
           node --check deploy-assets/ball46-john-poller-20261027/url-routes.mjs
           node deploy-assets/ball46-john-poller-20261027/url-routes.mjs
+
+      - name: Read-only shadow upstream usage counters
+        run: |
+          node --check deploy-assets/ball46-john-poller-20261027/outbound-counters.mjs
+          node deploy-assets/ball46-john-poller-20261027/outbound-counters.mjs
