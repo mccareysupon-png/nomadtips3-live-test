@@ -1,0 +1,41 @@
+name: BALL46 Mobile vs PC THEME audit (read only)
+on:
+  push:
+    branches: [audit/ball46-mobile-pc-theme-20261027]
+    paths:
+      - '.github/workflows/ball46-mobile-pc-theme-audit-20261027.yml'
+      - 'operations/ball46-mobile-theme/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ball46-mobile-pc-theme-audit
+  cancel-in-progress: true
+jobs:
+  observe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install isolated Playwright browser tools
+        run: |
+          mkdir -p /tmp/ball46-browser-audit
+          npm install --prefix /tmp/ball46-browser-audit --no-audit --no-fund playwright@1.56.1
+          /tmp/ball46-browser-audit/node_modules/.bin/playwright install --with-deps chromium
+      - name: Read-only real browser PC, tablet and mobile styles
+        run: |
+          node --check operations/ball46-mobile-theme/theme-probe.mjs
+          cp operations/ball46-mobile-theme/theme-probe.mjs /tmp/ball46-browser-audit/theme-probe.mjs
+          cd "$GITHUB_WORKSPACE"
+          node /tmp/ball46-browser-audit/theme-probe.mjs
+      - name: Save screen and computed-style evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-mobile-pc-theme-proof
+          path: reports/
+          retention-days: 14
+          if-no-files-found: warn
