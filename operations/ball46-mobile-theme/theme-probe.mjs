@@ -14,6 +14,7 @@ const selectors=[
 '[data-featured]','[data-featured-signal]','[data-fixture-id]','[data-theme]'
 ];
 const devices=[{name:'pc',width:1440,height:900,mobile:false},{name:'mobile',width:390,height:844,mobile:true},{name:'tablet',width:768,height:1024,mobile:true}];
+await fs.mkdir('reports',{recursive:true});
 const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
 const results={atUtc:new Date().toISOString(),origin:base,devices:[],note:'read-only computed browser styles; selectors may refer to different responsive element instances'};
 try{
