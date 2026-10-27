@@ -30,6 +30,10 @@ jobs:
         run: node operations/ball46-343-monitor/trigger-audit.mjs
       - name: Read-only 3.43 health and analytics
         run: node operations/ball46-343-monitor/monitor.mjs
+      - name: Full Market and Member exception triage (sanitized)
+        run: |
+          node --check operations/ball46-343-monitor/error-triage.mjs
+          node operations/ball46-343-monitor/error-triage.mjs
       - name: Save sanitized observation artifact
         if: always()
         uses: actions/upload-artifact@v4
