@@ -28,7 +28,7 @@ jobs:
         run: node --check operations/ball46-343-monitor/monitor.mjs
       - name: Read-only 3.43 health and analytics
         run: node operations/ball46-343-monitor/monitor.mjs
-      - name: Save observation report (private workflow artifact if repo public: avoid secrets)
+      - name: Save sanitized observation artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
