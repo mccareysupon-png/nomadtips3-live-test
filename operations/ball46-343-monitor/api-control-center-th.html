@@ -14,7 +14,7 @@
 <p class="muted">หมายเหตุ: เป็นการคำนวณสมมติฐานว่าแต่ละงานยิง API แยกกัน ยังไม่ใช่ยอดจริง และอาจนับซ้ำถ้า HUB รวมหลายข้อมูลในคำขอเดียว</p></section>
 <section><div class="top"><h2>ตั้งค่าเพดานและจูนรอบ</h2><button id="reset">คืนค่าตัวอย่าง</button></div><div class="line"><label for="limit">เพดาน API (ครั้ง/นาที)</label><input id="limit" type="number" min="1" max="10000" value="40" style="width:95px;background:#20382f;color:white;border:0;padding:9px;border-radius:8px"></div><div class="cards" id="jobs"></div></section>
 <section><div class="top"><h2>ตารางสรุปจังหวะเรียก</h2><button class="primary" id="export">ส่งออกค่าจูน JSON</button></div><div style="overflow:auto"><table><thead><tr><th>ประเภท</th><th>รอบ (วินาที)</th><th>ประมาณการครั้ง/นาที</th><th>สถานะ</th></tr></thead><tbody id="summary"></tbody></table></div></section>
-<section><h2>สถานะเชื่อมต่อข้อมูลจริง</h2><p id="connection">ยังไม่เชื่อม Cloudflare / HUB / 5DollarFootballAPI</p><small>หน้าจอนี้ไม่เรียก API ผู้ให้บริการ ไม่ส่งคำสั่งไป Worker และไม่แก้ค่าการทำงานจริง</small></section>
+<section><h2>ข้อมูลตรวจวัดจริงจากรายงานเดิม (อ่านไฟล์เท่านั้น)</h2><p class="muted">นำเข้าไฟล์ <code>ball46-343-observation.json</code> จาก GitHub Actions ของมอนิเตอร์เดิม ไม่มีการเรียก API ใดจากหน้านี้</p><input type="file" id="observationFile" accept=".json,application/json" aria-label="เลือกไฟล์รายงานมอนิเตอร์"><button id="clearObservation">ล้างข้อมูลตรวจวัด</button><p id="connection">ยังไม่ได้โหลดรายงาน • ข้อมูลจริง: ไม่ทราบ</p><div class="tiles"><div class="tile"><small>HUB รอบจริงที่รายงาน</small><b id="realCadence">—</b></div><div class="tile"><small>HUB ประมาณการจาก health</small><b id="realHubRPM">—</b></div><div class="tile"><small>Shadow 3.41 / นาที</small><b id="realShadow">—</b></div><div class="tile"><small>5USD รวมจริง / นาที</small><b id="realProvider">—</b></div></div><p class="muted" id="observedAt">UTC ที่ตรวจวัด: —</p><div style="overflow:auto"><table><thead><tr><th>Worker</th><th>Invocations / 20 นาที</th><th>Errors / 20 นาที</th></tr></thead><tbody id="realWorkers"><tr><td colspan="3">ยังไม่มีข้อมูล</td></tr></tbody></table></div><p class="muted">Invocations ไม่ใช่คำขอไปยัง 5USD; ตัวเลข HUB เป็นค่าประมาณจาก health เท่านั้น ไม่ใช่ยอดรวม API จริง ข้อมูลนี้เป็น snapshot ไม่ใช่สตรีมเรียลไทม์</p></section>
 <footer>ความถี่ Signal อาจเป็นงานประมวลผลภายใน ไม่ใช่การเรียก 5USD โดยตรง ต้องตรวจจาก telemetry ก่อนเปิดใช้การจูนจริง • ปุ่มหยุด/เริ่ม Worker จริงจะต้องมีการยืนยันสิทธิ์ บันทึก audit และ rollback</footer>
 </main><script>
 const defaults=[['live','บอลสด / Live Fixtures',30],['odds','ราคาบอล / Odds',30],['signal','สัญญาณ / Signal Engine',30],['results','ผลบอล FT / Settlement',60],['events','เหตุการณ์ / Events',30],['stats','สถิติ / History',300]];
@@ -25,5 +25,31 @@ function calculate(){const limit=Math.max(1,Number($('limit').value)||40);let to
 $('limit').addEventListener('input',calculate);$('reset').addEventListener('click',()=>{jobs=defaults.map(([id,name,seconds])=>({id,name,seconds,enabled:true}));$('limit').value=40;renderCards();calculate()});
 $('export').addEventListener('click',()=>{let data={type:'BALL46_SIMULATION_ONLY',createdAt:new Date().toISOString(),limitPerMinute:Number($('limit').value),jobs};let blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});let a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='ball46-api-tuning-demo.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)});
 for(let i=0;i<=48;i++){let angle=(-120+i*5)*Math.PI/180;let radius=150;let x=200+Math.sin(angle)*radius,y=188-Math.cos(angle)*radius;let r2=i%4===0?130:139;let x2=200+Math.sin(angle)*r2,y2=188-Math.cos(angle)*r2;let line=document.createElementNS('http://www.w3.org/2000/svg','line');for(const [k,v] of Object.entries({x1:x,y1:y,x2:x2,y2:y2,stroke:i>43?'#ef6c68':i>33?'#ffa451':'#43e6a2','stroke-width':i%4===0?3:1,opacity:.85}))line.setAttribute(k,v);$('ticks').appendChild(line)}
+function clearObservation(){for(const id of ['realCadence','realHubRPM','realShadow','realProvider'])$(id).textContent='—';$('realWorkers').innerHTML='<tr><td colspan="3">ยังไม่มีข้อมูล</td></tr>';$('observedAt').textContent='UTC ที่ตรวจวัด: —';$('connection').textContent='ยังไม่ได้โหลดรายงาน • ข้อมูลจริง: ไม่ทราบ';$('observationFile').value=''}
+$('clearObservation').addEventListener('click',clearObservation);
+$('observationFile').addEventListener('change',async e=>{
+ clearObservation();const file=e.target.files?.[0];if(!file)return;
+ try{
+  if(file.size>2_000_000)throw Error('ไฟล์ใหญ่เกิน 2 MB');
+  const report=JSON.parse(await file.text());
+  if(report.schema!=='ball46-343-readonly-v1'||!report.endpoints||!Array.isArray(report.checks))throw Error('รูปแบบรายงานไม่ตรงกับมอนิเตอร์ BALL46');
+  const timestamp=Date.parse(report.observedAtUtc);
+  if(!Number.isFinite(timestamp))throw Error('ไม่พบเวลา UTC ที่ถูกต้อง');
+  const ageMinutes=(Date.now()-timestamp)/60000;
+  const fresh=ageMinutes>=0&&ageMinutes<=60;
+  $('connection').textContent=fresh?'โหลดรายงานสำเร็จ • ข้อมูลย้อนหลัง ไม่ใช่ Live':'โหลดรายงานสำเร็จ • ข้อมูลเก่าหรือเวลาผิดปกติ';
+  $('observedAt').textContent='UTC ที่ตรวจวัด: '+new Date(timestamp).toISOString()+' • อายุข้อมูล '+(ageMinutes>=0?ageMinutes.toFixed(0)+' นาที':'เวลาอยู่ในอนาคต');
+  function show(id,n,suffix=''){ $(id).textContent=typeof n==='number'&&Number.isFinite(n)&&n>=0?n.toFixed(Number.isInteger(n)?0:2)+suffix:'—' }
+  show('realCadence',report.endpoints.hub?.health?.refreshSeconds,' วิ');
+  show('realHubRPM',report.endpoints.hub?.health?.estimatedBulkRPM);
+  show('realShadow',report.endpoints.shadow?.health?.providerLiveRPM);
+  // No 5USD total measurement exists in this schema. Keep unknown.
+  $('realProvider').textContent='—';
+  const workers=Array.isArray(report.cloudflare?.workers)?report.cloudflare.workers:[];
+  $('realWorkers').replaceChildren();
+  if(!workers.length){const tr=document.createElement('tr');const td=document.createElement('td');td.colSpan=3;td.textContent='ไม่มีข้อมูล Worker';tr.append(td);$('realWorkers').append(tr)}
+  for(const w of workers){const tr=document.createElement('tr');for(const v of [w.name,w.requests,w.errors]){const td=document.createElement('td');td.textContent=String(v??'—');tr.append(td)}$('realWorkers').append(tr)}
+ }catch(err){clearObservation();$('connection').textContent='อ่านรายงานไม่ได้: '+String(err.message).slice(0,140)}
+});
 renderCards();calculate();
 </script></body></html>
