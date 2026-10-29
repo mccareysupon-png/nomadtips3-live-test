@@ -37,23 +37,29 @@ function refAggregate(runtime,rows,nowMs){
   const cut=runtime.match(/\bCUT\s*=\s*(\d+)/);
   if(tz?.[1]!=='Europe/London'||Number(cut?.[1])!==6)throw Error('PROD_LONDON_DAY_CHANGED');
   const ast=parse(runtime,{ecmaVersion:'latest',sourceType:'script'});
-  const names=['parts','prev','sportDay','ms','createdStamp','outcome','market','rowId','rowOdds',
-    'bucket','addOdds','addSettled','isPending','aggregate','rate','avgOdds'];
+  // Use declarations from the CURRENT production source, rather than assuming
+  // helper names from an older deployment. Never execute the full page runtime.
   const found=new Map();
   function visit(n){
     if(!n||typeof n!=='object')return;
-    if(n.type==='FunctionDeclaration'&&n.id?.name&&names.includes(n.id.name)){
-      if(found.has(n.id.name))throw Error('DUPLICATE_PROD_FN_'+n.id.name);
-      found.set(n.id.name,runtime.slice(n.start,n.end));
+    if(n.type==='FunctionDeclaration'&&n.id?.name){
+      const name=n.id.name;
+      if(!found.has(name))found.set(name,{at:n.start,code:runtime.slice(n.start,n.end)});
+    }
+    if(n.type==='VariableDeclarator'&&n.id?.type==='Identifier'&&
+       (n.init?.type==='ArrowFunctionExpression'||n.init?.type==='FunctionExpression')){
+      const name=n.id.name;
+      if(!found.has(name))found.set(name,{at:n.start,code:'const '+name+'='+runtime.slice(n.init.start,n.init.end)+';'});
     }
     for(const [k,v] of Object.entries(n)){
       if(k==='start'||k==='end')continue;
-      if(Array.isArray(v))v.forEach(visit);else if(v&&typeof v==='object')visit(v);
+      if(Array.isArray(v))v.forEach(visit);
+      else if(v&&typeof v==='object')visit(v);
     }
   }
   visit(ast);
-  for(const name of names)if(!found.has(name))throw Error('PROD_FN_MISSING_'+name);
-  const pure=names.map(n=>found.get(n)).join('\n');
+  for(const name of ['aggregate','rate','avgOdds'])if(!found.has(name))throw Error('PROD_FN_MISSING_'+name);
+  const pure=[...found.values()].sort((a,b)=>a.at-b.at).map(x=>x.code).join('\n');
   class FixedDate extends Date{static now(){return nowMs}}
   const sandbox=vm.createContext({rows,Date:FixedDate,Intl,TZ:tz[1],CUT:Number(cut[1])});
   const call='\nconst val=aggregate(rows);globalThis.output={tk:val.tk,yk:val.yk,'+
