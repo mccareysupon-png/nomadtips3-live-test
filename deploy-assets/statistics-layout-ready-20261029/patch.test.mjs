@@ -1,0 +1,4 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';import {patchStatisticsHTML,replacements} from './patch.mjs';
+test('only the five expected presentation blocks change',()=>{const before='protected-before'+replacements.map(x=>x.before).join('\nPROTECTED\n')+'protected-after';const expected='protected-before'+replacements.map(x=>x.after).join('\nPROTECTED\n')+'protected-after';assert.equal(patchStatisticsHTML(before),expected);});
+test('rejects missing and repeated source blocks',()=>{const before=replacements.map(x=>x.before).join('\n');assert.throws(()=>patchStatisticsHTML(before.replace(replacements[0].before,'')));assert.throws(()=>patchStatisticsHTML(before+replacements[0].before));});
+test('adapters react to source mutations instead of polling',()=>{for(const k of ['desktop','mobile','history']){const p=replacements.find(x=>x.key===k);assert.match(p.after,/MutationObserver/);assert.doesNotMatch(p.after,/setInterval/);}});
