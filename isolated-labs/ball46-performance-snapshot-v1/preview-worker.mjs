@@ -13,6 +13,8 @@ function response(data,status,headers={}){
   return new Response(JSON.stringify(data),{status,headers:{
     'content-type':'application/json; charset=utf-8',
     'x-content-type-options':'nosniff',
+    'x-robots-tag':'noindex, nofollow, noarchive',
+    'content-security-policy':"default-src 'none'; frame-ancestors 'none'",
     'cache-control':'no-store',
     ...headers
   }});
