@@ -1,0 +1,46 @@
+name: BALL46 Snapshot V1 TEST ONLY — Ledger parity
+on:
+  push:
+    branches:
+      - work/ball46-performance-snapshot-v1-20261029
+    paths:
+      - .github/workflows/ball46-snapshot-v1-test-20261029.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ball46-snapshot-v1-readonly-test
+  cancel-in-progress: false
+jobs:
+  tests-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check Snapshot V1 syntax
+        run: |
+          node --check isolated-labs/ball46-performance-snapshot-v1/snapshot.mjs
+          node --check isolated-labs/ball46-performance-snapshot-v1/parity-audit.mjs
+          node --check isolated-labs/ball46-performance-snapshot-v1/snapshot.test.mjs
+      - name: Unit tests (no network)
+        run: node --test isolated-labs/ball46-performance-snapshot-v1/snapshot.test.mjs
+      - name: Install isolated AST parser only
+        run: npm install --no-save --ignore-scripts acorn@8
+      - name: Real Ledger parity vs live Production card — GET only
+        run: node isolated-labs/ball46-performance-snapshot-v1/parity-audit.mjs
+      - name: Save sanitized aggregate report only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-snapshot-v1-parity-20261029
+          path: |
+            reports/ball46-snapshot-v1-parity.json
+            reports/ball46-snapshot-v1-summary.md
+          retention-days: 7
+          if-no-files-found: warn
