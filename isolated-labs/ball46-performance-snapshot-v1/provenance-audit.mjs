@@ -43,6 +43,35 @@ function onlyTags(s){
   cssCount:(s.match(/<style\b/gi)||[]).length};
  return {bytes:Buffer.byteLength(s),sha256:hash(s),tags,ids,tokens};
 }
+function listScripts(content){
+ const entries=[];
+ for(const match of content.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)){
+   const attrs=match[1]||'',body=match[2]||'';
+   const id=attrs.match(/\bid=["']([a-zA-Z0-9:_-]+)["']/)?.[1]||null;
+   const src=attrs.match(/\bsrc=["']([^"']{1,240})["']/)?.[1]||null;
+   entries.push({id,src,bytes:Buffer.byteLength(body),hash:hash(body),
+     key:id?'ID:'+id:src?'SRC:'+src:'HASH:'+hash(body)});
+ }
+ return entries;
+}
+function unmatchedScripts(left,right){
+ const a=listScripts(left),b=listScripts(right);
+ const remaining=new Map();
+ for(const item of b)remaining.set(item.key,(remaining.get(item.key)||0)+1);
+ const missing=[];
+ for(const item of a){const count=remaining.get(item.key)||0;if(count)remaining.set(item.key,count-1);
+ else missing.push(item)}
+ return {scriptCountLeft:a.length,scriptCountRight:b.length,extraInLeft:missing.slice(0,14),
+   rightOnly:unmatchedOneWay(b,a).slice(0,14)};
+}
+function unmatchedOneWay(a,b){
+ const remaining=new Map();
+ for(const item of b)remaining.set(item.key,(remaining.get(item.key)||0)+1);
+ const missing=[];
+ for(const item of a){const count=remaining.get(item.key)||0;if(count)remaining.set(item.key,count-1);
+ else missing.push(item)}
+ return missing;
+}
 function compare(name,left,right){
  let a=0;const lim=Math.min(left.length,right.length);
  while(a<lim&&left[a]===right[a])a++;
@@ -51,7 +80,8 @@ function compare(name,left,right){
  const l=left.slice(a,left.length-b),r=right.slice(a,right.length-b);
  report.comparisons.push({pair:name,identical:left===right,prefixChars:a,suffixChars:b,
   commonStartHash:hash(commonStart),commonEndHash:hash(commonEnd),
-  leftDifference:onlyTags(l),rightDifference:onlyTags(r)});
+  leftDifference:onlyTags(l),rightDifference:onlyTags(r),
+  scripts:unmatchedScripts(left,right)});
 }
 let exit=0;
 try{
