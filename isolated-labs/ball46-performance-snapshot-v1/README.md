@@ -46,7 +46,11 @@ The 5-minute schedule is provisional. Given current ledger size (~39 MB unpaged)
 
 ## Current known blocker
 
-Previous read-only audits saw `assets/index.html` module content SHA differ from the HTML served at `www.ball46.com` while the direct Worker and custom domain served equal bytes. This is a **provenance ambiguity**. Reconcile it before production release rather than inventing a reconstruction from GitHub history.
+Production read-only audit 2026-10-29 confirmed **three different views**: Version `assets/index.html` module 194,656 bytes, direct Worker served 453,957 bytes, custom domain served 456,429 bytes. The card runtime SHA was equal across served origins. The public domain contained two extra script blocks relative to direct Worker (one is Cloudflare Web Analytics beacon, the other is a 2,022-byte dynamic inline script). Thus static module SHA must **not** be compared directly with live rendered HTML as if the asset alone were the response. A source-aware deployment method must preserve current Worker synthesis and edge instrumentation.
+
+The Cloudflare API token available to the GitHub read-only inventory returned HTTP 401 for D1 listing. New **remote** dedicated D1 cannot be provisioned or verified with current accessible credentials; do not reuse member or production D1. The dedicated local Wrangler D1 database is independent and can be tested without Cloudflare credentials.
+
+Local runtime initially revealed pinned Wrangler 4.92 supported compatibility dates only through 2026-05-22, so the local emulator config uses that date only; production compatibility is unchanged. Subsequent local scheduled tests found live-ledger consistency changes while paging; tests fail closed while investigating this before using a remote Worker.
 
 ## Commands for local CI
 
