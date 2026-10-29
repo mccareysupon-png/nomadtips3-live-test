@@ -17,8 +17,9 @@ export function createPagedStatisticsSource(fetchFn=fetch,{url=FIXED_SOURCE,time
     if(cursor!==null)target.searchParams.set('cursor',cursor);
     const res=await fetchFn(target.toString(),{
       method:'GET',headers:{Accept:'application/json'},
-      signal:AbortSignal.timeout(timeoutMs),redirect:'error',cache:'no-store'
+      signal:AbortSignal.timeout(timeoutMs),redirect:'manual',cache:'no-store'
     });
+    if(res.status>=300&&res.status<400)throw Error('STATISTICS_REDIRECT_BLOCKED');
     if(!res.ok)throw Error('STATISTICS_HTTP_'+res.status);
     if(!String(res.headers.get('content-type')||'').includes('application/json'))
       throw Error('STATISTICS_CONTENT_TYPE_MISMATCH');
