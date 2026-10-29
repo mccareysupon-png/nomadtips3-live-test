@@ -57,7 +57,10 @@ export function createPagedStatisticsSource(fetchFn=fetch,{url=FIXED_SOURCE,time
     const seen=new Set();
     let current=first,iterations=0,rowCount=0;
     while(true){
-      if(signature(current)!==initialSignature)throw Error('LEDGER_CHANGED_DURING_PAGING');
+      if(signature(current)!==initialSignature){
+        const changed=FIELDS.filter(k=>JSON.stringify(current?.[k]??null)!==JSON.stringify(first?.[k]??null));
+        throw Error('LEDGER_CHANGED_DURING_PAGING_FIELDS:'+changed.join(','));
+      }
       if(!Array.isArray(current.rows)||current.ok!==true)throw Error('LEDGER_PAGE_INVALID');
       rowCount+=current.rows.length;
       yield current;
