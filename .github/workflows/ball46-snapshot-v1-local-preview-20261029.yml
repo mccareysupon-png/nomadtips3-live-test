@@ -1,0 +1,56 @@
+name: BALL46 Snapshot V1 Local Wrangler D1 & browser (NO DEPLOY)
+on:
+  push:
+    branches:
+      - work/ball46-performance-snapshot-v1-20261029
+    paths:
+      - .github/workflows/ball46-snapshot-v1-local-preview-20261029.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  preview-local:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Wrangler local emulator and browser driver (no remote auth)
+        run: npm install --no-save --ignore-scripts wrangler@4.92.0 puppeteer-core@24
+      - name: Confirm source and config syntax
+        run: |
+          node --check isolated-labs/ball46-performance-snapshot-v1/preview-worker.mjs
+          node --check isolated-labs/ball46-performance-snapshot-v1/local-browser-probe.mjs
+          node --test isolated-labs/ball46-performance-snapshot-v1/snapshot.test.mjs isolated-labs/ball46-performance-snapshot-v1/service.test.mjs
+      - name: Create ONLY local D1 database from isolated migration
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/b46-snapshot-v1-ci
+          npx wrangler d1 execute ball46-performance-snapshot-v1-local-test --local \
+            --config isolated-labs/ball46-performance-snapshot-v1/wrangler.local.jsonc \
+            --persist-to /tmp/b46-snapshot-v1-ci \
+            --file isolated-labs/ball46-performance-snapshot-v1/migrations/0001_snapshot.sql
+      - name: Start ONLY local dev Worker, no Cloudflare publish
+        run: |
+          set -euo pipefail
+          npx wrangler dev --local --test-scheduled --ip 127.0.0.1 --port 8788 \
+            --config isolated-labs/ball46-performance-snapshot-v1/wrangler.local.jsonc \
+            --persist-to /tmp/b46-snapshot-v1-ci \
+            > /tmp/b46-snapshot-local-worker.log 2>&1 &
+          echo $! > /tmp/b46-snapshot-local-worker.pid
+      - name: Generate from existing public Ledger and browser test desktop/mobile
+        run: node isolated-labs/ball46-performance-snapshot-v1/local-browser-probe.mjs
+      - name: Save local emulator and browser measurements only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-snapshot-v1-local-d1-browser
+          path: reports/ball46-snapshot-v1-local-browser.json
+          retention-days: 7
+          if-no-files-found: warn
+      - name: Print sanitized local-emulator errors only on failure
+        if: failure()
+        run: |
+          grep -E 'Error|ERROR|WARN|failed|D1|Worker' /tmp/b46-snapshot-local-worker.log | tail -35 || true
