@@ -3,7 +3,7 @@
  * Reads the public engine Statistics ledger via an injected source; does not call 5USD.
  * No Production Worker, Engine, settlement or member dependencies.
  */
-import {buildDailySnapshot,validateSummary,londonSportDay,SNAPSHOT_SCHEMA} from './snapshot.mjs';
+import {buildDailySnapshot,createDailyAccumulator,validateSummary,londonSportDay,SNAPSHOT_SCHEMA} from './snapshot.mjs';
 
 export const SNAPSHOT_KEY='ball46:performance:v1:latest';
 export const STALE_AFTER_MS=6*60*1000;
@@ -88,16 +88,37 @@ export function makeRecord(full,nowMs){
  */
 export async function refreshSnapshot({store,source,nowMs=Date.now()}){
   if(!Number.isSafeInteger(nowMs)||nowMs<=0)throw Error('CLOCK_INVALID');
+  if(typeof source?.head!=='function'||typeof source?.pages!=='function')throw Error('STREAMING_SOURCE_REQUIRED');
   const current=await store.read(SNAPSHOT_KEY);
   const head=await source.head();
   if(!head?.ok)throw Error('SOURCE_HEAD_UNAVAILABLE');
   if(!needsRefresh(current,head,nowMs))return {state:'UNCHANGED',generatedAtMs:current.generatedAtMs};
-  const full=await source.full();
-  const record=makeRecord(full,nowMs);
+  const acc=createDailyAccumulator({asOfMs:nowMs});
+  let pageCount=0;
+  for await(const page of source.pages(head)){
+    if(!Array.isArray(page?.rows))throw Error('PAGED_LEDGER_BAD_SHAPE');
+    acc.append(page.rows);
+    pageCount++;
+    if(pageCount>200)throw Error('LEDGER_PAGE_LIMIT');
+  }
+  const ledgerTotal=Number(head.ledgerTotal);
+  const latestUpdate=parseEpoch(head.ledgerUpdatedAt);
+  if(!integer(ledgerTotal)||!latestUpdate)throw Error('LEDGER_HEAD_INVALID');
+  if(acc.rowCount!==ledgerTotal)throw Error('LEDGER_INCOMPLETE_ABORT');
+  const snapshot=slimSnapshot(acc.finish({
+    ledgerRevision:head.settlementRevision??null,
+    expectedRows:ledgerTotal
+  }));
+  const record={
+    schema:SNAPSHOT_SCHEMA,generatedAtMs:nowMs,
+    source:{ledgerTotal,ledgerUpdatedAt:latestUpdate,
+      settlementRevision:String(head.settlementRevision??'unknown')},
+    snapshot
+  };
+  validateStoredRecord(record);
   const wrote=await store.putIfNewer(SNAPSHOT_KEY,record);
-  return {state:wrote?'UPDATED':'CONCURRENT_NEWER',generatedAtMs:record.generatedAtMs,
-    ledgerTotal:record.source.ledgerTotal,
-    today:record.snapshot.londonDay.today};
+  return {state:wrote?'UPDATED':'CONCURRENT_NEWER',generatedAtMs:nowMs,
+    ledgerTotal,readPages:pageCount,today:snapshot.londonDay.today};
 }
 export async function getSnapshot({store,nowMs=Date.now()}){
   const data=await store.read(SNAPSHOT_KEY);
