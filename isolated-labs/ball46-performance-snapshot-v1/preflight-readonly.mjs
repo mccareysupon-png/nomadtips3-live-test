@@ -38,7 +38,8 @@ try{
   result.changedFiles=files;
   check('branch_additions_only',files.length>0&&files.every(f=>
     f.startsWith('isolated-labs/ball46-performance-snapshot-v1/')||
-    f==='.github/workflows/ball46-snapshot-v1-test-20261029.yml'
+    f==='.github/workflows/ball46-snapshot-v1-test-20261029.yml'||
+    f==='.github/workflows/ball46-snapshot-v1-deploy-preflight-20261029.yml'
   ));
   const original=execFileSync('git',['diff','--name-status',PINNED_BASE,'HEAD'],{encoding:'utf8'});
   check('no_existing_files_edited',original.trim().split('\n').every(row=>row.startsWith('A\t')));
