@@ -33,6 +33,7 @@ try {
  try{scheduled=await req('/__scheduled?cron=%2A%2F5%20%2A%20%2A%20%2A%20%2A');}
  catch(e){throw Error('SCHEDULED_TRIGGER_FAILED:'+e.message)}
  out.scheduledTrigger={status:scheduled.status,elapsedMs:scheduled.elapsedMs};
+ if(scheduled.status!==200)throw Error('SCHEDULED_TRIGGER_HTTP_'+scheduled.status);
  let value=null;
  for(let i=0;i<60;i++){
   const r=await req('/api/performance/snapshot');
