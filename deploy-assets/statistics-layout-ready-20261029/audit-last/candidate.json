@@ -2,9 +2,9 @@
   "phase": "candidate",
   "base": "4339d24c-f80f-4096-90b7-ac28943b5afb",
   "worker": "ball46-production",
-  "run": "40852997043",
-  "commit": "e5ec158b56d656bd42249347e30235672e4e185a",
-  "at": "2026-10-29T09:52:15.527Z",
+  "run": "40853755198",
+  "commit": "8e92b9d959244aacf07aa2e2f134c6128d15347f",
+  "at": "2026-10-29T09:58:08.284Z",
   "trafficChanged": false,
   "before": {
     "id": "4339d24c-f80f-4096-90b7-ac28943b5afb",
@@ -158,8 +158,8 @@
         }
       },
       "annotations": {
-        "workers/message": "Hide MEMBER display count only; all other UI and services preserved",
-        "workers/tag": "B46_HIDE_MEMBER_COUNT_20261029",
+        "workers/message": "Statistics layout ready before reveal; PC and mobile; data unchanged",
+        "workers/tag": "B46_STATS_LAYOUT_READY_20261029",
         "workers/triggered_by": "version_upload"
       },
       "bindings": [
@@ -255,13 +255,13 @@
       "path": "/api/engine/board",
       "status": 200,
       "ok": true,
-      "fixtures": 976
+      "fixtures": 907
     },
     {
       "path": "/api/engine/signals",
       "status": 200,
       "ok": true,
-      "signals": 2
+      "signals": 1
     },
     {
       "path": "/api/engine/statistics?paged=1",
@@ -854,14 +854,14 @@
   "changes": {
     "/": {
       "status": 200,
-      "sha": "dbf7881a01c3136d45e1ae41c603631b562612c85b11a21cdb6e4ca86221e613"
+      "sha": "ff16a9e26c24e2b7d4420c4071e397c9f7fbf1023c7c7f05fe58ff516f85def0"
     },
     "/index.html": {
       "status": 200,
-      "sha": "dbf7881a01c3136d45e1ae41c603631b562612c85b11a21cdb6e4ca86221e613"
+      "sha": "ff16a9e26c24e2b7d4420c4071e397c9f7fbf1023c7c7f05fe58ff516f85def0"
     }
   },
-  "candidate": "6512cbc3-70da-4386-ae35-4f04177d4929",
+  "candidate": "3eb88e9b-f497-40cd-b67a-c6a6f3319d06",
   "configAfter": {
     "settings": {
       "placement": {},
@@ -985,13 +985,13 @@
       "path": "/api/engine/board",
       "status": 200,
       "ok": true,
-      "fixtures": 976
+      "fixtures": 907
     },
     {
       "path": "/api/engine/signals",
       "status": 200,
       "ok": true,
-      "signals": 2
+      "signals": 1
     },
     {
       "path": "/api/engine/statistics?paged=1",
