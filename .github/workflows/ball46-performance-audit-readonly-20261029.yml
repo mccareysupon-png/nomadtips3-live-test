@@ -1,0 +1,39 @@
+name: BALL46 Performance card 20261029 READ ONLY audit
+on:
+  push:
+    branches:
+      - audit/ball46-performance-readonly-20261029
+    paths:
+      - .github/workflows/ball46-performance-audit-readonly-20261029.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ball46-performance-audit-readonly-20261029
+  cancel-in-progress: false
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install audit-only browser library
+        run: npm install --no-save --ignore-scripts puppeteer-core@24
+      - name: Validate standalone read-only probe
+        run: node --check operations/ball46-performance-audit-20261029/audit.mjs
+      - name: Inspect active production without writes or direct provider calls
+        run: node operations/ball46-performance-audit-20261029/audit.mjs
+      - name: Preserve sanitized performance observations
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-performance-readonly-20261029
+          path: reports/ball46-performance-audit-20261029.json
+          retention-days: 7
+          if-no-files-found: warn
