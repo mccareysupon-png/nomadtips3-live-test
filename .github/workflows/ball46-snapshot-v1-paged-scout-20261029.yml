@@ -1,0 +1,31 @@
+name: BALL46 Snapshot V1 PAGED LEDGER SCOUT (READ ONLY)
+on:
+  push:
+    branches:
+      - work/ball46-performance-snapshot-v1-20261029
+    paths:
+      - .github/workflows/ball46-snapshot-v1-paged-scout-20261029.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  scout:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify script syntax
+        run: node --check isolated-labs/ball46-performance-snapshot-v1/paged-scout.mjs
+      - name: One-shot real Ledger scan, GET only, no provider
+        run: node isolated-labs/ball46-performance-snapshot-v1/paged-scout.mjs
+      - name: Archive aggregate summary only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: b46-snapshot-v1-paged-scout-readonly
+          path: reports/ball46-snapshot-v1-paged-scout.json
+          retention-days: 7
+          if-no-files-found: warn
