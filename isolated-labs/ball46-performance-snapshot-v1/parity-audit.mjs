@@ -76,7 +76,9 @@ function compare(snapshot,ref){
       if(!(k==='oddsSum'?Math.abs(a-b)<0.000001:Object.is(a,b)))
         diffs.push({period:p,key:k,new:a,existing:b});
     }
-    for(const m of ['AH','O/U','1X2'])for(const k of ['win','loss','push']){
+    // The current production card omits market-family counters from its aggregate.
+    // Compare those only when its reference explicitly exposes the same structure.
+    if(ref[p]?.markets)for(const m of ['AH','O/U','1X2'])for(const k of ['win','loss','push']){
       const a=snapshot[p]?.markets?.[m]?.[k],b=ref[p]?.markets?.[m]?.[k];
       if(a!==b)diffs.push({period:p,key:m+'.'+k,new:a,existing:b});
     }
@@ -116,6 +118,7 @@ try{
   out.referenceFunctionsSha256=ref.sha256;
   const diffs=compare(snapshot,ref.value);
   out.differences=diffs.slice(0,30);
+  out.parityScope={visibleCardFields:['win','loss','push','pending','oddsSum','oddsCount','winRate','avgOdds'],periods:['today','yesterday'],marketFamiliesChecked:Boolean(ref.value.today?.markets&&ref.value.yesterday?.markets)};
   check('production_ledger_parity',diffs.length===0,{differenceCount:diffs.length});
   out.snapshot=snapshot;  // aggregate values only; no individual rows or user IDs
   out.activeAfter=await active();
