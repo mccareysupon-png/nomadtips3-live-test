@@ -1,0 +1,35 @@
+name: BALL46 Snapshot V1 Remote-Config Build DRY RUN ONLY
+on:
+  push:
+    branches:
+      - work/ball46-performance-snapshot-v1-20261029
+    paths:
+      - .github/workflows/ball46-snapshot-v1-remote-build-dryrun.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  dryrun:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate preview-only config and safety tests
+        run: |
+          node --test isolated-labs/ball46-performance-snapshot-v1/*.test.mjs
+          node --check isolated-labs/ball46-performance-snapshot-v1/preview-worker.mjs
+          node isolated-labs/ball46-performance-snapshot-v1/generate-remote-dryrun.mjs
+      - name: Install pinned Wrangler for isolated dry run
+        run: npm install --no-save --ignore-scripts wrangler@4.92.0
+      - name: Compile but NEVER upload or deploy
+        run: |
+          set -euo pipefail
+          npx wrangler deploy --dry-run \
+            --config isolated-labs/ball46-performance-snapshot-v1/wrangler.remote.generated.jsonc \
+            --outdir /tmp/ball46-snapshot-v1-remote-compiled
+          test -s /tmp/ball46-snapshot-v1-remote-compiled/preview-worker.js || \
+            find /tmp/ball46-snapshot-v1-remote-compiled -maxdepth 1 -type f -printf '%f %s bytes\n'
+          echo "B46_PREVIEW_DRYRUN_COMPLETE; REMOTE_UPLOADS=0; PRODUCTION_CHANGES=0"
