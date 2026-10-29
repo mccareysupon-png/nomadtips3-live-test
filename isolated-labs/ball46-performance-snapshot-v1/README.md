@@ -60,3 +60,13 @@ node --check isolated-labs/ball46-performance-snapshot-v1/preview-worker.mjs
 ```
 
 The workflow `.github/workflows/ball46-snapshot-v1-test-20261029.yml` checks unit tests and can re-run read-only Ledger parity. No secrets are stored in this folder.
+
+## Latest stage-local proof — 2026-10-29 04:13 UTC
+
+- A fresh **Wrangler local Worker and local D1 migration** was actually exercised in GitHub Actions run `40816493059`. This was not a remote Cloudflare deploy.
+- The simulated scheduled event successfully read the live Production Ledger, built the compact daily Snapshot, and persisted it in isolated local D1 in 8.6 seconds, with 10,921 ledger rows.
+- Missing-snapshot 503, disabled mutations, and 200 JSON after generation passed. Response payload was **549 bytes**.
+- Seven Chrome requests on each desktop and mobile passed: local desktop p50 8 ms/p95 33 ms; local mobile p50 6 ms/p95 8 ms. **These are local API/browser measurements, NOT end-to-end production page load times.**
+- The local Worker exposed a platform-specific `redirect:'error'` incompatibility, fixed to `redirect:'manual'` with redirect status refusal. A transient ledger paging revision mismatch was also observed in one run and correctly failed closed; a subsequent run consumed a coherent revision and passed.
+- Preview resource GET-only preflight run `40816111675` confirmed the dedicated script name was unoccupied, but the token returned **HTTP 401** on D1 inventory. **Do not attempt remote D1 creation with this access; obtain appropriate scoped Cloudflare permission in GitHub Actions first.**
+- Current Production rendered HTML is synthesized/modified at serving time; direct Worker and custom domain have different dynamic wrappers, while the card runtime matches. Keep the production release gate blocked until a method preserving the exact active Worker plus all Cloudflare edge additions is proven.
