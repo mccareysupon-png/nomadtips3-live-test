@@ -19,6 +19,7 @@ function renderProfile(){
   const membership=profile.membership;
   const active=membership.status==='ACTIVE';
   const lifetime=membership.accessType==='LIFETIME';
+  select('#billingSection').hidden=lifetime;
   const access=active?'Active':'Access unavailable';
   select('#accessBadge').textContent=access;
   select('#summaryPlan').textContent=membership.plan||'BALL46 MEMBER';

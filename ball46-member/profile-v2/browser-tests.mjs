@@ -34,7 +34,14 @@ try{
  await page.getByRole('tab',{name:'Profile',exact:true}).click();
  mkdirSync('audit/member-profile-v2-20261029',{recursive:true});
  for(const width of [1440,1024,768,390,320]){await page.setViewportSize({width,height:900});const measure=await page.evaluate(()=>({width:innerWidth,scroll:document.documentElement.scrollWidth}));assert(measure.scroll<=measure.width,'PROFILE_HORIZONTAL_OVERFLOW '+width);await page.screenshot({path:'audit/member-profile-v2-20261029/profile-'+width+'.png',fullPage:true});}
+ const manage=page.getByRole('link',{name:/Manage \/ Cancel subscription/});
+ assert.equal(await manage.getAttribute('href'),'https://billing.stripe.com/p/login/4gMfZh0z0cuJ2LqevZ8AE00');
+ assert.equal(await manage.getAttribute('target'),'_blank');
+ const popupPromise=page.waitForEvent('popup');await manage.click();const portal=await popupPromise;
+ await portal.waitForLoadState('domcontentloaded');assert.equal(new URL(portal.url()).hostname,'billing.stripe.com');
+ await portal.getByRole('textbox').first().waitFor({state:'visible'});
+ await portal.screenshot({path:'audit/member-profile-v2-20261029/stripe-portal-login.png',fullPage:true});await portal.close();
  assert.deepEqual(errors,[],'BROWSER_ERRORS');
- console.log('PROFILE_BROWSER_TESTS_PASSED name-save-reload avatar-save-reload-remove preferences-reload security five-viewports');
+ console.log('PROFILE_BROWSER_TESTS_PASSED name-save-reload avatar-save-reload-remove preferences-reload security five-viewports portal-login-link');
 }finally{await browser?.close();server.kill();}
 

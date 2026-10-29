@@ -1,0 +1,56 @@
+name: BALL46 Member Portal and Borderless UI - Guarded Deploy
+on:
+  push:
+    branches: [feature/member-profile-portal-ui-20261029]
+    paths:
+      - ball46-member/profile-v2/**
+      - .github/workflows/member-profile-portal-ui.yml
+permissions:
+  contents: read
+concurrency:
+  group: ball46-member-production-deploy
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Validate profile integration
+        run: |
+          node --check ball46-member/profile-v2/deploy-portal-ui.mjs
+          node --check ball46-member/profile-v2/public/profile-v2.js
+          node --test --test-isolation=none ball46-member/profile-v2/profile-handler.test.mjs
+      - name: Install browser validation tools
+        run: |
+          npm install --no-save --ignore-scripts playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Test profile, mobile layouts and live Stripe portal login
+        run: node ball46-member/profile-v2/browser-tests.mjs
+      - name: Restore immutable source assets
+        run: |
+          set -euo pipefail
+          git fetch origin 05c276f7f76a6226b10b45bd85ac369e53167d2f
+          mkdir -p /tmp/ball46-member-live-tree
+          git archive --format=tar 05c276f7f76a6226b10b45bd85ac369e53167d2f ball46-member/public | tar xf - -C /tmp/ball46-member-live-tree
+      - name: Verify unchanged runtime, deploy scoped UI and verify Production
+        run: node ball46-member/profile-v2/deploy-portal-ui.mjs
+      - name: Preserve verification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: member-profile-portal-ui-${{ github.run_id }}
+          path: |
+            audit/member-profile-portal-ui-20261029/
+            audit/member-profile-v2-20261029/
+          retention-days: 14
+          if-no-files-found: warn
