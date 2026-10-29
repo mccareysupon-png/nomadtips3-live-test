@@ -1,0 +1,43 @@
+name: BALL46 Member Profile V2 - Read Only Preflight
+on:
+  push:
+    branches: [feature/member-profile-v2-20261029]
+    paths: [.github/workflows/member-profile-v2-preflight.yml]
+permissions:
+  contents: read
+jobs:
+  preflight:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Read Member version, settings, D1 access and public health
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {createHash} from 'node:crypto';
+          const root='https://api.cloudflare.com/client/v4/accounts/'+process.env.CF_ACCOUNT;
+          async function read(path){
+            const response=await fetch(root+path,{headers:{Authorization:'Bearer '+process.env.CF_TOKEN},signal:AbortSignal.timeout(30000)});
+            const body=await response.json();
+            assert(response.ok&&body.success,'CF_READ_FAILED '+response.status+' '+JSON.stringify(body.errors||[]));
+            return body.result;
+          }
+          const current=(await read('/workers/scripts/ball46-member-production/deployments?per_page=1')).deployments[0];
+          assert.equal(current.versions.length,1);assert.equal(current.versions[0].percentage,100);
+          assert.equal(current.versions[0].version_id,'df432587-3741-4235-a6c5-000d8eacba4e','ACTIVE_VERSION_DRIFT');
+          const version=await read('/workers/workers/ball46-member-production/versions/'+current.versions[0].version_id+'?include=modules');
+          const hashes=version.modules.map(module=>({name:module.name,sha256:createHash('sha256').update(Buffer.from(module.content_base64,'base64')).digest('hex')}));
+          assert.equal(hashes.find(module=>module.name===version.main_module).sha256,'219534ac884da9eec5f9ddb43228a11a518a00d1e4acedaa41041f2d0f304f26');
+          console.log('PROFILE_BASELINE',JSON.stringify({version:current.versions[0].version_id,hashes,bindings:version.bindings.map(binding=>({name:binding.name,type:binding.type}))}));
+          const health=await fetch('https://ball46-member-production.mccarey-supon.workers.dev/api/health',{signal:AbortSignal.timeout(30000)});
+          const body=await health.json();assert(health.ok&&body.ok,'MEMBER_HEALTH_NOT_OK');console.log('HEALTH',JSON.stringify(body));
+          const databases=await read('/d1/database?per_page=100');
+          console.log('D1_READ_ACCESS_OK',JSON.stringify({profileDatabasePresent:databases.some(database=>database.name==='ball46-member-profiles-v2')}));
+          console.log('PROFILE_PREFLIGHT_SUCCESS');
+          JS
