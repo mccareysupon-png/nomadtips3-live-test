@@ -1,0 +1,4 @@
+import assert from 'node:assert/strict';import {test} from 'node:test';import {visualHTML,css} from './patch.mjs';
+test('adds presentation assets while preserving the source document',()=>{const source='<html><head><title>Statistics</title></head><body><div>Protected content</div></body></html>';const result=visualHTML(source);assert.equal(result.replace(/<style id="b46-statistics-visual-release-20261029">[\s\S]*?<\/style>/,'').replace(/<script id="b46-statistics-tones-release-20261029">[\s\S]*?<\/script>/,''),source);});
+test('rejects already-patched and ambiguous documents',()=>{const doc='<head></head><body></body>';assert.throws(()=>visualHTML(visualHTML(doc)));assert.throws(()=>visualHTML(doc+'</body>'));});
+test('card colors remain outside the added palette rules',()=>{assert.doesNotMatch(css,/\.b46m-hcard|\.b46m-outcome/);});
