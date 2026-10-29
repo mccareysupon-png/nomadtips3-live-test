@@ -90,6 +90,7 @@ finally{
   result.productionDeployReady=false; // never authorize deploy from this audit.
   await mkdir('reports',{recursive:true});
   await writeFile('reports/ball46-snapshot-v1-deploy-preflight.json',JSON.stringify(result,null,2)+'\n');
+  process.exitCode=result.blockers.length>0?1:0;
   console.log('B46_SNAPSHOT_PREFLIGHT='+JSON.stringify({
     activeBefore:result.activeBefore,activeAfter:result.activeAfter,
     changedFiles:result.changedFiles,checks:result.checks,blockers:result.blockers,
