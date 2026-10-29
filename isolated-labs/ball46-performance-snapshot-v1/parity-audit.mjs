@@ -119,6 +119,7 @@ try{
   const diffs=compare(snapshot,ref.value);
   out.differences=diffs.slice(0,30);
   out.parityScope={visibleCardFields:['win','loss','push','pending','oddsSum','oddsCount','winRate','avgOdds'],periods:['today','yesterday'],marketFamiliesChecked:Boolean(ref.value.today?.markets&&ref.value.yesterday?.markets)};
+  check('market_counters_exposed_by_current_card',out.parityScope.marketFamiliesChecked);
   check('production_ledger_parity',diffs.length===0,{differenceCount:diffs.length});
   out.snapshot=snapshot;  // aggregate values only; no individual rows or user IDs
   out.activeAfter=await active();
@@ -141,6 +142,6 @@ finally{
   if(process.env.GITHUB_STEP_SUMMARY)await writeFile(process.env.GITHUB_STEP_SUMMARY,summary,{flag:'a'});
   console.log('B46_SNAPSHOT_V1_RESULT='+JSON.stringify({activeBefore:out.activeBefore,activeAfter:out.activeAfter,
     ledger:out.ledger,snapshot:out.snapshot,checks:out.checks,differences:out.differences,errors:out.errors,
-    computeMs:out.snapshotComputationMs}));
+    computeMs:out.snapshotComputationMs,parityScope:out.parityScope}));
   process.exitCode=code;
 }
