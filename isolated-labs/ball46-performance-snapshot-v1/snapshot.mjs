@@ -98,35 +98,54 @@ function publicBucket(b) {
  * No network, secrets, persistent mutations or source effects.
  * Input must be a COMPLETE ledger revision, checked by the caller.
  */
-export function buildDailySnapshot(rows, {asOfMs=Date.now(),timezone=DEFAULT_TZ,cut=DEFAULT_CUT,ledgerRevision=null}={}) {
-  if(!Array.isArray(rows))throw Error('SNAPSHOT_ROWS_NOT_ARRAY');
+/**
+ * Streaming accumulator for Cloudflare Worker memory safety. Each page is
+ * reduced to counters immediately; raw rows are never stored inside the store.
+ * Same logic and same order as the verified buildDailySnapshot implementation.
+ */
+export function createDailyAccumulator({asOfMs=Date.now(),timezone=DEFAULT_TZ,cut=DEFAULT_CUT}={}) {
   if(!Number.isFinite(asOfMs))throw Error('SNAPSHOT_INVALID_ASOF');
   if(timezone!==DEFAULT_TZ||cut!==DEFAULT_CUT)throw Error('SNAPSHOT_PRODUCTION_DAY_RULE_DRIFT');
   const todayKey=londonSportDay(asOfMs,{timezone,cut}),yesterdayKey=previousDay(todayKey);
   const today=emptyBucket(),yesterday=emptyBucket(),seen=new Set();
-  let ignoredOtherDay=0,ignoredMissingTime=0,duplicates=0;
-  for(const r of rows){
-    const id=rowId(r);
-    if(id && seen.has(id)){duplicates++;continue}
-    if(id)seen.add(id);
-    const t=createdStamp(r);
-    if(t===null){ignoredMissingTime++;continue}
-    const k=londonSportDay(t,{timezone,cut});
-    if(k!==todayKey&&k!==yesterdayKey){ignoredOtherDay++;continue}
-    const outcome=rowOutcome(r);
-    if(k===todayKey){
-      if(outcome)addSettled(today,r,outcome);
-      else if(isPending(r)){today.pending++;addOdds(today,r)}
-    }else if(outcome)addSettled(yesterday,r,outcome);
+  let ignoredOtherDay=0,ignoredMissingTime=0,duplicates=0,rowsRead=0;
+  function append(rows){
+    if(!Array.isArray(rows))throw Error('SNAPSHOT_ROWS_NOT_ARRAY');
+    for(const r of rows){
+      rowsRead++;
+      const id=rowId(r);
+      if(id&&seen.has(id)){duplicates++;continue}
+      if(id)seen.add(id);
+      const t=createdStamp(r);
+      if(t===null){ignoredMissingTime++;continue}
+      const k=londonSportDay(t,{timezone,cut});
+      if(k!==todayKey&&k!==yesterdayKey){ignoredOtherDay++;continue}
+      const o=rowOutcome(r);
+      if(k===todayKey){
+        if(o)addSettled(today,r,o);
+        else if(isPending(r)){today.pending++;addOdds(today,r)}
+      }else if(o)addSettled(yesterday,r,o);
+    }
+    return rowsRead;
   }
-  return {
-    schema:SNAPSHOT_SCHEMA,
-    asOfUtc:new Date(asOfMs).toISOString(),
-    londonDay:{timezone,cutHour:cut,today:todayKey,yesterday:yesterdayKey},
-    ledger:{rowCount:rows.length,revision:ledgerRevision},
-    today:publicBucket(today),yesterday:publicBucket(yesterday),
-    diagnostics:{duplicates,ignoredOtherDay,ignoredMissingTime}
-  };
+  function finish({ledgerRevision=null,expectedRows=rowsRead}={}){
+    if(!Number.isSafeInteger(expectedRows)||rowsRead!==expectedRows)throw Error('LEDGER_INCOMPLETE_ABORT');
+    return {
+      schema:SNAPSHOT_SCHEMA,
+      asOfUtc:new Date(asOfMs).toISOString(),
+      londonDay:{timezone,cutHour:cut,today:todayKey,yesterday:yesterdayKey},
+      ledger:{rowCount:rowsRead,revision:ledgerRevision},
+      today:publicBucket(today),yesterday:publicBucket(yesterday),
+      diagnostics:{duplicates,ignoredOtherDay,ignoredMissingTime}
+    };
+  }
+  return {append,finish,get rowCount(){return rowsRead}};
+}
+export function buildDailySnapshot(rows, options={}) {
+  if(!Array.isArray(rows))throw Error('SNAPSHOT_ROWS_NOT_ARRAY');
+  const a=createDailyAccumulator(options);
+  a.append(rows);
+  return a.finish({ledgerRevision:options.ledgerRevision??null,expectedRows:rows.length});
 }
 export function validateSummary(snapshot) {
   for(const k of periods){
