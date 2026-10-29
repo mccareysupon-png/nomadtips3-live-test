@@ -6,6 +6,8 @@ on:
     paths:
       - .github/workflows/ball46-snapshot-v1-local-preview-20261029.yml
       - isolated-labs/ball46-performance-snapshot-v1/wrangler.local.jsonc
+      - isolated-labs/ball46-performance-snapshot-v1/source-pages.mjs
+      - isolated-labs/ball46-performance-snapshot-v1/local-browser-probe.mjs
   workflow_dispatch:
 permissions:
   contents: read
