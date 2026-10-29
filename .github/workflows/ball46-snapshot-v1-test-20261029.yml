@@ -5,7 +5,6 @@ on:
       - work/ball46-performance-snapshot-v1-20261029
     paths:
       - .github/workflows/ball46-snapshot-v1-test-20261029.yml
-      - 'isolated-labs/ball46-performance-snapshot-v1/**'
   workflow_dispatch:
 permissions:
   contents: read
@@ -29,8 +28,11 @@ jobs:
           node --check isolated-labs/ball46-performance-snapshot-v1/snapshot.mjs
           node --check isolated-labs/ball46-performance-snapshot-v1/parity-audit.mjs
           node --check isolated-labs/ball46-performance-snapshot-v1/snapshot.test.mjs
+          node --check isolated-labs/ball46-performance-snapshot-v1/service.test.mjs
+          node --check isolated-labs/ball46-performance-snapshot-v1/preview-worker.mjs
+          node --check isolated-labs/ball46-performance-snapshot-v1/source-pages.mjs
       - name: Unit tests (no network)
-        run: node --test isolated-labs/ball46-performance-snapshot-v1/snapshot.test.mjs
+        run: node --test isolated-labs/ball46-performance-snapshot-v1/snapshot.test.mjs isolated-labs/ball46-performance-snapshot-v1/service.test.mjs
       - name: Install isolated AST parser only
         run: npm install --no-save --ignore-scripts acorn@8
       - name: Real Ledger parity vs live Production card — GET only
