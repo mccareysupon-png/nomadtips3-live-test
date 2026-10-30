@@ -1,0 +1,7 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import {patchHTML,patchMain,sha,assetRecords} from './patch.mjs';
+test('HTML changes only three approved includes, preserving existing executable source',async()=>{const h=await readFile('live.html','utf8'),next=patchHTML(h);assert.equal(next.replace('<link id="b46-visual-suite-20261030" rel="stylesheet" href="/b46-visual-suite-20261030.css">','').replace('<script src="/b46-visual-suite-20261030.js" defer></script>',''),h.replace('<script src="color-semantics-stat-entry-20261011.js?v=1" defer></script>',''));assert.throws(()=>patchHTML(next));});
+test('Main wrapper preserves prior module code and adds only explicit visual routes',()=>{const source='export default{...__statsVisualPrevious,async fetch(){return new Response("ok")}};',p=patchMain(source);assert(p.includes(source.replace('export default{...__statsVisualPrevious','const __visualSuitePrevious={...__statsVisualPrevious')));assert.throws(()=>patchMain('export default{}'));});
+test('All visual assets have unique approved paths, valid bytes and no localhost URLs',async()=>{const files=await assetRecords();assert.equal(files.length,20);assert.equal(new Set(files.map(f=>f.path)).size,20);for(const f of files){const b=Buffer.from(f.base64,'base64');assert.equal(sha(b),f.sha);assert(b.length>0);assert(/^\/b46-/.test(f.path));if(f.type==='text/css'||f.type==='application/javascript')assert(!b.toString().includes('127.0.0.1'));}});

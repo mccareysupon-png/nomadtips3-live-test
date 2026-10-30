@@ -1,0 +1,24 @@
+/* Approved Statistics market artwork. No card/data geometry changes. */
+html body[data-workspace-view="statistics"] .workspace.singlepage .sp-stat-hero::before{
+ background-image:var(--b46-market-art,url('/b46-stat-art-total-20261030.webp'))!important;
+ background-position:right center!important;background-size:contain!important;background-repeat:no-repeat!important;
+ width:198px!important;height:60px!important;right:8px!important;left:auto!important;bottom:auto!important;
+ top:50%!important;transform:translateY(-50%)!important;border-radius:0!important;
+ clip-path:none!important;mask-image:none!important;opacity:1!important;
+ filter:brightness(1.08) saturate(1.03) drop-shadow(0 2px 4px rgb(0 0 0 / .22))!important;
+}
+@media(max-width:580px){html body[data-workspace-view="statistics"] .workspace.singlepage .sp-stat-hero::before{width:132px!important;height:50px!important}}
+@media(max-width:760px){
+ html body #b46gn-detail [data-b46gn-detailbody]{display:flex!important;flex-direction:column!important;gap:12px!important}
+ html body #b46gn-detail [data-b46gn-detailbody]>.b46-suite-nav{order:-2;position:sticky;top:0;z-index:12;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;background:#10261e;padding:7px 4px;border-radius:10px}
+ .b46-suite-nav button{font:700 10px system-ui,sans-serif;min-height:42px;padding:8px 3px;border:0;border-radius:7px;color:#e3f1e8;background:#214b37;cursor:pointer}
+ .b46-suite-nav button:disabled{opacity:.4;cursor:default}
+ .b46-suite-nav button:focus-visible{outline:2px solid #84ddb1;outline-offset:1px}
+ html body #b46gn-detail .b46-suite-summary{order:1;margin-top:0!important}
+ html body #b46gn-detail .b46gn-event-flow{order:2}
+ html body #b46gn-detail .b46-suite-stats{order:3;margin-top:0!important}
+ html body #b46gn-detail .b46gn-full-market{order:4}
+ html body #b46gn-detail .prediction-card{order:5}
+ html body #b46gn-detail :is(#b46-suite-summary,#b46-suite-flow,#b46-suite-stats,#b46-suite-markets){scroll-margin-top:64px}
+ html body #b46gn-detail .b46-suite-stats .featured-card{padding-top:12px!important}
+}
