@@ -1,0 +1,49 @@
+name: BALL46 Event Flow fast - isolated test only
+on:
+  push:
+    branches: [codex/ball46-event-flow-fast-test-20261030]
+    paths: ['design-preview/event-flow-fast-20261030/test-request.json']
+permissions:
+  contents: write
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    defaults:
+      run:
+        working-directory: design-preview/event-flow-fast-20261030
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Build exact source changes and test logic
+        run: |
+          node download-sources.mjs
+          node build.mjs
+          node --check expanded.js
+          node --check dashboard.js
+          node --check decorator.js
+          node --check visual.js
+          node --check browser-check.mjs
+          node test.mjs
+      - name: Verify recorded fixtures in isolated browser
+        run: |
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium
+          node server.mjs > audit/server.log 2>&1 &
+          node browser-check.mjs
+      - name: Save test evidence without deploying
+        if: always()
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add audit
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Record isolated Event Flow test evidence [skip ci]"
+          git push origin HEAD:codex/ball46-event-flow-fast-test-20261030
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: event-flow-fast-test-${{ github.run_id }}
+          path: design-preview/event-flow-fast-20261030/audit

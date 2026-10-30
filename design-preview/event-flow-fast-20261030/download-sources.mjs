@@ -1,0 +1,2 @@
+import{readFile,writeFile}from'node:fs/promises';import{createHash}from'node:crypto';import assert from'node:assert/strict';
+const list=JSON.parse(await readFile('source-manifest.json','utf8'));for(const x of list){const r=await fetch('https://4549b05a-ball46-production.mccarey-supon.workers.dev'+x.url);assert(r.ok);const bytes=Buffer.from(await r.arrayBuffer());assert.equal(createHash('sha256').update(bytes).digest('hex'),x.sha,'PINNED_SOURCE_DRIFT:'+x.url);await writeFile(x.file,bytes);}console.log('Pinned production static sources verified',list.length);
