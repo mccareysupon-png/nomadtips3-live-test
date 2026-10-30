@@ -1,0 +1,11 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {DEFAULT_SECONDS,validateSeconds,decideBulkRefresh,restoreDefault} from './core.mjs';
+const nowMs=1800000000000;
+const safe={accountWideVerified:true,observedAtMs:nowMs,providerHealthy:true,anyBackoff:false,requestsLast60s:12,currentBulkSeconds:30,accountRemaining:28};
+test('DEFAULT always 30',()=>{assert.equal(DEFAULT_SECONDS,30);assert.deepEqual(restoreDefault(),{requestedSeconds:30});assert.equal(decideBulkRefresh().effectiveSeconds,30)});
+test('accept only 30/20/15 numeric seconds',()=>{for(const n of [30,20,15])assert.equal(validateSeconds(n),n);for(const n of ['15',0,10,45,20.5,null])assert.throws(()=>validateSeconds(n),RangeError)});
+test('no account-wide data must fail closed',()=>{assert.equal(decideBulkRefresh({requestedSeconds:15}).effectiveSeconds,30)});
+test('validated safe telemetry can select 20/15',()=>{for(const n of [20,15])assert.equal(decideBulkRefresh({requestedSeconds:n,nowMs,monitor:safe}).effectiveSeconds,n)});
+test('stale, budget, backoff and missing data fail closed',()=>{for(const patch of [{observedAtMs:nowMs-91000},{requestsLast60s:32},{providerHealthy:false},{anyBackoff:true},{accountWideVerified:false},{accountRemaining:3},{currentBulkSeconds:NaN}])assert.equal(decideBulkRefresh({requestedSeconds:15,nowMs,monitor:{...safe,...patch}}).effectiveSeconds,30)});
+test('HTTP 429 respects explicit Retry-After cooldown',()=>{const d=decideBulkRefresh({requestedSeconds:15,nowMs,provider429:true,retryAfterSeconds:120});assert.equal(d.effectiveSeconds,30);assert.equal(d.retryUntilMs,nowMs+120000)});
