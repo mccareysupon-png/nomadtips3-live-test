@@ -1,0 +1,31 @@
+name: BALL46 Signal source inspection - read only
+on:
+  push:
+    branches: [codex/ball46-light-icons-20261030]
+    paths: ['deploy-assets/light-icons-20261030/source-check-request.json']
+permissions:
+  contents: write
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: deploy-assets/light-icons-20261030
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Inspect deployed Engine source and schedule without mutation
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: node source-check.mjs
+      - name: Save read-only evidence
+        if: always()
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add audit/signals-source-readonly.json
+          git commit -m "Record deployed Signal warning source without runtime changes [skip ci]"
+          git push origin HEAD:codex/ball46-light-icons-20261030
