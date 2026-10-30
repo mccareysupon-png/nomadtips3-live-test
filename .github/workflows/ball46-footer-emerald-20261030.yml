@@ -35,6 +35,8 @@ jobs:
         run: |
           npm install --no-save --package-lock=false playwright@1.56.1
           npx playwright install --with-deps chromium
+      - name: Verify existing production pointer access before activation
+        run: node baseline-ready.mjs
       - name: Guarded candidate and browser verification
         run: |
           phase=$(node -p "JSON.parse(require('fs').readFileSync('request.json')).phase")

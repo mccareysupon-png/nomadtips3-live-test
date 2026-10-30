@@ -1,8 +1,9 @@
+import{ready}from'./ready.mjs';
 import{chromium}from'playwright';import assert from'node:assert/strict';import{readFile,writeFile}from'node:fs/promises';
 const candidate=JSON.parse(await readFile('audit/candidate.json','utf8')),host=process.argv[2]||'https://'+candidate.candidate.slice(0,8)+'-ball46-production.mccarey-supon.workers.dev',isCandidate=host.includes('workers.dev');
 const old=await readFile('footer-original.html','utf8'),links=[...old.matchAll(/href="([^"]+)"/g)].map(m=>new URL(m[1],'https://ball46.com').href).sort();
 const browser=await chromium.launch({headless:true}),results=[],errors=[],views=[];
-async function ready(page){await page.locator('#b46-data-orbit-loading').waitFor({state:'hidden',timeout:20000});const root=page.locator('#b46-vm-consent-root');if(await root.count()){const buttons=root.getByRole('button');const labels=await buttons.evaluateAll(nodes=>nodes.map(n=>(n.textContent||n.getAttribute('aria-label')||'').trim()));const index=labels.findIndex(t=>/reject|decline|necessary only|essential only|only necessary|only essential|without accepting|ปฏิเสธ|เฉพาะ.*จำเป็น/i.test(t));if(index>=0){await buttons.nth(index).click();await root.waitFor({state:'hidden',timeout:10000});}else if(await root.isVisible())throw Error('COOKIE_DIALOG_BUTTONS:'+JSON.stringify(labels));}}
+
 try{
  for(const width of[1440,1024,390,320])for(const theme of['dark','light']){
   const context=await browser.newContext({viewport:{width,height:900},deviceScaleFactor:1});await context.addInitScript(theme=>localStorage.setItem('nomad343_dashboard_theme_v1',theme),theme);const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
