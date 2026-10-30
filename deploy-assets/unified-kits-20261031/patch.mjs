@@ -1,0 +1,25 @@
+import{readFile,writeFile}from'node:fs/promises';import assert from'node:assert/strict';import{createHash}from'node:crypto';
+export const BASE='e9ed6731-649f-4172-b3de-69248c56ed29',MARK='B46_UNIFIED_KITS_SIGNAL_THEME_20261031';
+export const sha=b=>createHash('sha256').update(b).digest('hex');
+const host='https://'+BASE.slice(0,8)+'-ball46-production.mccarey-supon.workers.dev';
+const once=(s,a,b)=>{assert.equal(s.split(a).length,2,'SOURCE_DRIFT:'+a);return s.replace(a,b)};
+export function transform(dashboard,legacy,shared){
+ const oldDashboard=dashboard,oldShared=shared;
+ for(const side of['home','away'])dashboard=once(dashboard,`document.body.dataset.workspaceView!=='signal'&&window.B46_TEAM_KITS?window.B46_TEAM_KITS.markup(id,'${side}')`,`window.B46_TEAM_KITS?window.B46_TEAM_KITS.markup(id,'${side}')`);
+ dashboard=once(dashboard,"if(document.body.dataset.workspaceView==='signal'){el.innerHTML=desired.innerHTML;}else{",'{');
+ legacy=once(legacy,"if(document.body.dataset.workspaceView!=='signal'&&window.B46_TEAM_KITS)return;","if(window.B46_TEAM_KITS)return;");
+ shared=once(shared,"if(img.getAttribute('src')===k.src)return;const token={key};pending.set(img,token);","const token={key};pending.set(img,token);if(img.getAttribute('src')===k.src){img.dataset.b46Kit=key;return;}");
+ for(const name of['signalsFor','visibleSignalsFor','loadSignals','signalDetailsHtml']){const line=s=>s.split('\n').find(x=>x.startsWith('function '+name+'(')||x.startsWith('async function '+name+'('));assert.equal(line(dashboard),line(oldDashboard),'SIGNAL_LOGIC_CHANGED:'+name)}
+ assert.equal(shared.match(/const kits=(\[[^\n]+\]);/)[1],oldShared.match(/const kits=(\[[^\n]+\]);/)[1],'KIT_CATALOG_CHANGED');
+ return{dashboard,legacy,shared};
+}
+export function patchHTML(h){assert(h.includes('/b46-event-icons-light-20261030.css')&&!h.includes('/b46-signal-card-theme-20261031.css'),'HTML_BASE_DRIFT');for(const name of['b46-shared-kits-20261030.js','dashboard-v2-stage3-featured-facts-20261013a.js','team-kits-343.js']){const re=new RegExp('(<script[^>]+src=["\x27])(/?)'+name.replaceAll('.','\\.')+'(?:\\?[^"\x27]*)?(["\x27])','g');let n=0;h=h.replace(re,(_,a,slash,z)=>{n++;return a+slash+name+'?v=b46-unified-kits-20261031'+z});assert.equal(n,1,'SCRIPT_REF_DRIFT:'+name)}return h.replace('</head>','<link rel="stylesheet" href="/b46-signal-card-theme-20261031.css"></head>')}
+export async function assetRecords(){
+ const names=['/dashboard-v2-stage3-featured-facts-20261013a.js','/team-kits-343.js','/b46-shared-kits-20261030.js'];
+ const original=await Promise.all(names.map(async p=>{const r=await fetch(host+p,{signal:AbortSignal.timeout(45000)});assert.equal(r.status,200,'SOURCE_UNAVAILABLE:'+p);return r.text()}));
+ const patched=transform(...original),bodies=[patched.dashboard,patched.legacy,patched.shared];
+ await writeFile('audit/source-boundary.json',JSON.stringify({source:host,paths:names,before:original.map(sha),after:bodies.map(sha),signalFunctionsPreserved:true,kitCatalogPreserved:true,onlyFiveTargetedEdits:true},null,2));
+ const css=await readFile('signal-theme.css','utf8');names.push('/b46-signal-card-theme-20261031.css');bodies.push(css);
+ return names.map((path,i)=>{const b=Buffer.from(bodies[i]);assert(!/__B46_KIT_TEST_TICK|127\.0\.0\.1|UI-KIT-TEST-/.test(b.toString()),'PREVIEW_CODE_DENIED');return{path,type:path.endsWith('.js')?'application/javascript; charset=utf-8':'text/css; charset=utf-8',base64:b.toString('base64'),bytes:b.length,sha:sha(b)}});
+}
+export function patchMain(source){const token='export default{...__lightIconPrevious';assert.equal(source.split(token).length,2,'MAIN_EXPORT_DRIFT');return 'import __unifiedKitsJSON from "./unified-kits-assets-20261031.txt";\n'+source.replace(token,'const __unifiedKitsPrevious={...__lightIconPrevious')+'\n'+patchHTML.toString().replace('function patchHTML','function __unifiedKitsPatchHTML').replaceAll('assert(', '__unifiedAssert(').replaceAll('assert.equal(', '__unifiedAssert.equal(')+'\nfunction __unifiedAssert(v,m){if(!v)throw Error(m)};__unifiedAssert.equal=(a,b,m)=>{if(a!==b)throw Error(m)};\nconst __unifiedFiles=JSON.parse(__unifiedKitsJSON);\nexport default{...__unifiedKitsPrevious,async fetch(request,env,ctx){const path=new URL(request.url).pathname,file=__unifiedFiles.find(f=>f.path===path);if(file&&["GET","HEAD"].includes(request.method)){const bytes=Uint8Array.from(atob(file.base64),c=>c.charCodeAt(0));return new Response(request.method==="HEAD"?null:bytes,{headers:{"content-type":file.type,"cache-control":"no-cache, must-revalidate","x-content-type-options":"nosniff"}});}const r=await __unifiedKitsPrevious.fetch.call(__unifiedKitsPrevious,request,env,ctx);if(request.method!=="GET"||!["/","/index.html"].includes(path)||!r.ok||!(r.headers.get("content-type")||"").includes("text/html"))return r;const body=__unifiedKitsPatchHTML(await r.text()),headers=new Headers(r.headers);headers.delete("content-length");headers.delete("etag");headers.set("cache-control","no-cache, must-revalidate");return new Response(body,{status:r.status,statusText:r.statusText,headers});}};\n'}

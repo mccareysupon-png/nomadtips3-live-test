@@ -1,0 +1,72 @@
+name: BALL46 approved unified kits and Signal theme
+on:
+  push:
+    branches: [codex/ball46-unified-kits-20261031]
+    paths: ['deploy-assets/unified-kits-20261031/request.json']
+permissions:
+  contents: write
+concurrency:
+  group: ball46-production-deploy
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    defaults:
+      run:
+        working-directory: deploy-assets/unified-kits-20261031
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Unit and source boundary tests
+        run: |
+          node -e "fetch('https://e9ed6731-ball46-production.mccarey-supon.workers.dev/').then(r=>{if(!r.ok)throw Error(r.status);return r.text()}).then(h=>require('fs').writeFileSync('live.html',h))"
+          node --check patch.mjs
+          node --check run.mjs
+          node --check browser-check.mjs
+          node test.mjs
+
+      - name: Install browser verification
+        run: |
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Guarded candidate and browser verification
+        run: |
+          phase=$(node -p "JSON.parse(require('fs').readFileSync('request.json')).phase")
+          if [ "$phase" = "candidate" ]; then node run.mjs; fi
+          node browser-check.mjs
+          cp browser-proof.json audit/candidate-browser-proof.json
+      - name: Activate approved change and verify production
+        run: |
+          node -e "const fs=require('fs'),c=JSON.parse(fs.readFileSync('audit/candidate.json'));fs.writeFileSync('request.json',JSON.stringify({phase:'activate',base:c.base,candidate:c.candidate}))"
+          node run.mjs
+          node browser-check.mjs https://ball46.com
+      - name: Restore if production browser verification fails
+        if: failure()
+        run: |
+          node -e "const fs=require('fs');if(fs.existsSync('audit/result.json')){const r=JSON.parse(fs.readFileSync('audit/result.json'));if(r.activated){fs.writeFileSync('request.json',JSON.stringify({phase:'restore',base:r.base,candidate:r.candidate}));fs.writeFileSync('restore-needed','yes')}}"
+          if [ -f restore-needed ]; then node run.mjs; fi
+      - name: Commit sanitized audit
+        if: always()
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add audit/*.json
+          if ls audit/kits-*.png >/dev/null 2>&1; then git add audit/kits-*.png; fi
+          if [ -f browser-proof.json ]; then git add browser-proof.json; fi
+          git restore -- request.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Record Unified kits and Signal theme release audit [skip ci]"
+          git fetch origin codex/ball46-unified-kits-20261031
+          git rebase FETCH_HEAD
+          git push origin HEAD:codex/ball46-unified-kits-20261031
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: unified-kits-${{ github.run_id }}
+          path: deploy-assets/unified-kits-20261031/audit
