@@ -1,0 +1,35 @@
+name: BALL46 footer design preview only
+on:
+  push:
+    branches: [codex/ball46-footer-design-20261030]
+    paths: ['design-preview/footer-20261030/preview.html']
+permissions:
+  contents: write
+jobs:
+  preview:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: design-preview/footer-20261030
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium
+          node check.mjs
+      - name: Save design screenshots and verification
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add audit
+          git commit -m "Record footer design screenshots and responsive checks [skip ci]"
+          git push origin HEAD:codex/ball46-footer-design-20261030
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: footer-design-${{ github.run_id }}
+          path: design-preview/footer-20261030/audit
