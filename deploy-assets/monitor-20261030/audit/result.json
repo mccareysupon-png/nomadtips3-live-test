@@ -1,0 +1,315 @@
+{
+  "phase": "restore",
+  "base": "4549b05a-c6c9-48d3-8cab-0fdc9c4b1869",
+  "worker": "ball46-production",
+  "run": "41053996730",
+  "commit": "6f73b472ac55d206036a07dd7cc8bdf22cc2052b",
+  "at": "2026-10-30T12:18:18.098Z",
+  "trafficChanged": true,
+  "before": {
+    "id": "cab39416-0524-4f14-b4b4-90301f3f6bcd",
+    "deployment": "9e711945-f549-4348-8e9c-283e8e217447"
+  },
+  "baselineModules": [
+    {
+      "name": "assets/5usd-control.html",
+      "type": "text/plain",
+      "sha": "3d52c9cd5047238b65d184ca2edac7118b29bd89bdfc7fbff50df40ff77a40e8"
+    },
+    {
+      "name": "assets/api-monitor.html",
+      "type": "text/plain",
+      "sha": "181823ca5dca06eeb0ffbe91971f8bc5bdac3076fa32a21b82de7a402310d9f5"
+    },
+    {
+      "name": "assets/detection-test.html",
+      "type": "text/plain",
+      "sha": "510d1e6d2a5738ee20449a8a6e3233fcb7c69fbe63c71bb10c25c748fdfbc71e"
+    },
+    {
+      "name": "assets/index.html",
+      "type": "text/plain",
+      "sha": "4dbdb46a79970dd1b1c7f3707206d3465307796640b919319a55731fe587b33c"
+    },
+    {
+      "name": "assets/robots.txt",
+      "type": "text/plain",
+      "sha": "f2262c458da042583e2bf1a8207109823b1935af67080c9b223fd600ab417f5b"
+    },
+    {
+      "name": "assets/settings.html",
+      "type": "text/plain",
+      "sha": "08f65d43d98dd31ecf46dae808c20aebc2a84f3e52e9c8c9b69e847c9d12d7b5"
+    },
+    {
+      "name": "assets/signal-next.html",
+      "type": "text/plain",
+      "sha": "1b4b9c847b768d2ac8fe0936b0a2e38fd51721cb542c2f0aed5ad7556cb669c4"
+    },
+    {
+      "name": "assets/signal.html",
+      "type": "text/plain",
+      "sha": "4fa313d00c748ce9ffc98bad952495e7b7a1c3f99a6693b6696b6b7dc728f2cc"
+    },
+    {
+      "name": "assets/statistics-next.html",
+      "type": "text/plain",
+      "sha": "393f1adf39385965986542ff38d740b696bf06c3dfb7a490edffce0f09bba534"
+    },
+    {
+      "name": "assets/statistics.html",
+      "type": "text/plain",
+      "sha": "9e3754322902d4748f1019cce258f0dd309b0256eccf4fbe53070e09ec7a75f6"
+    },
+    {
+      "name": "b46-event-flow-stadium-dark.bin",
+      "type": "application/octet-stream",
+      "sha": "9663612f6fe833eee828aa0bfe2006f714777fa52e6eb8bf4010ce2caa435580"
+    },
+    {
+      "name": "b46-event-flow-stadium-light.bin",
+      "type": "application/octet-stream",
+      "sha": "fb0f3284132d275ead642e2c112d3cf610b08f489dab17bd52e76772af5e10d6"
+    },
+    {
+      "name": "b46-last5-browser.mjs",
+      "type": "application/javascript+module",
+      "sha": "48d7a62861b3e454362c146bbb057ca5ada21b4c367235d8aeb855c7b5e7bdea"
+    },
+    {
+      "name": "b46-last5-route.mjs",
+      "type": "application/javascript+module",
+      "sha": "b03f4ca012a9a092b12b4fcff3fcfc085baba40712ea73b7ef24e459e855d3b0"
+    },
+    {
+      "name": "b46-performance-banner-dark.bin",
+      "type": "application/octet-stream",
+      "sha": "e249fa0f014597459f0b148f55b4d49ed3831e7ee184d623b91daf76766330d5"
+    },
+    {
+      "name": "b46-performance-banner-light.bin",
+      "type": "application/octet-stream",
+      "sha": "f23d41134d08eeea3216ce916508a8d3ae5c298e53576c7fa1cb8341265cd1b1"
+    },
+    {
+      "name": "b46-pv6-browser.mjs",
+      "type": "application/javascript+module",
+      "sha": "52a770c52a094d2ac5e57fb6fc5f6f7b284936441304b017c08e2a585c6113ed"
+    },
+    {
+      "name": "b46-pv6-jerseys.mjs",
+      "type": "application/javascript+module",
+      "sha": "eb85f9151ee2be0dc41d86f5c616201964ccac1878e7993c5b1791c17558809f"
+    },
+    {
+      "name": "b46-pv6-proxy.mjs",
+      "type": "application/javascript+module",
+      "sha": "cdcc9fde461f9e2becfdf075636e44045dc5f61cba8bb10b7da51be9f849c112"
+    },
+    {
+      "name": "b46-pv8-browser.mjs",
+      "type": "application/javascript+module",
+      "sha": "5d05833493647ab78d4bbc4e93c6b5b390175748de9675674c1e51853ec3d27f"
+    },
+    {
+      "name": "b46-pv8-jerseys.mjs",
+      "type": "application/javascript+module",
+      "sha": "ce0f0f9b4e54ddcb5e9cbd4293c0bcb3f5cbe21f5900fed8fbee48b14c683867"
+    },
+    {
+      "name": "b46-pv9-browser.mjs",
+      "type": "application/javascript+module",
+      "sha": "bef128694db646931d615eec086542f72040d68da23a893215abb04c9276ebba"
+    },
+    {
+      "name": "b46-pv9-proxy.mjs",
+      "type": "application/javascript+module",
+      "sha": "d0e2482f7a313fc696f1bccceac6edb39ec8b9009e56fcf7dd0b7f6a9d7bb631"
+    },
+    {
+      "name": "footer-emerald-assets-20261030.txt",
+      "type": "text/plain",
+      "sha": "c1b77c3ffc59236d56ca85d21d44896969e4122d4b3bf924b5bea32bf7cd39d5"
+    },
+    {
+      "name": "index.js",
+      "type": "application/javascript+module",
+      "sha": "81f11a773ec93a112d153c743766aedd56735959ea76d7430940754baffe0539"
+    },
+    {
+      "name": "kit-spacing-assets-20261030.txt",
+      "type": "text/plain",
+      "sha": "a856e7c10ccc679894706b2a85b42bf84c0e56d2aa9aeb2b3adf76fa226f8948"
+    },
+    {
+      "name": "performance-shared-assets-20261030.txt",
+      "type": "text/plain",
+      "sha": "3141a7f428beee59826e80badcd464066ff798667d252bdb3700601e1d929b0b"
+    },
+    {
+      "name": "team-kits-assets-20261030.txt",
+      "type": "text/plain",
+      "sha": "85ee62234a42e15f3348aedaaf7a2c13afdd3e6ee9f2392670e930c399d3c012"
+    },
+    {
+      "name": "visual-suite-assets-20261030.txt",
+      "type": "text/plain",
+      "sha": "27ff303c072ff5aa53a5db448035f022956bfc2373ab91fc1ccd3ef521623c8a"
+    }
+  ],
+  "configBefore": {
+    "settings": {
+      "placement": {},
+      "compatibility_date": "2026-09-09",
+      "compatibility_flags": [],
+      "usage_model": "standard",
+      "tags": [],
+      "tail_consumers": [],
+      "logpush": false,
+      "observability": {
+        "enabled": true,
+        "head_sampling_rate": 1,
+        "redact_query_string": false,
+        "logs": {
+          "enabled": true,
+          "head_sampling_rate": 1,
+          "persist": true,
+          "invocation_logs": true
+        },
+        "traces": {
+          "enabled": false,
+          "persist": true,
+          "head_sampling_rate": 1
+        }
+      },
+      "annotations": {
+        "workers/message": "Approved Match Monitor and content card corners; existing data only",
+        "workers/tag": "B46_MATCH_MONITOR_20261030",
+        "workers/triggered_by": "version_upload"
+      },
+      "bindings": [
+        {
+          "name": "ASSETS",
+          "type": "assets"
+        },
+        {
+          "environment": "production",
+          "name": "ENGINE",
+          "service": "nomadtips3-engine-343",
+          "type": "service"
+        },
+        {
+          "environment": "production",
+          "name": "FORM_HISTORY_SERVICE",
+          "service": "ball46-form-history-v1",
+          "type": "service"
+        },
+        {
+          "environment": "production",
+          "name": "FULL_MARKET",
+          "service": "nomadtips3-full-market-343-ball46",
+          "type": "service"
+        },
+        {
+          "environment": "production",
+          "name": "HUB",
+          "service": "nomadtips3-5usd-hub-343",
+          "type": "service"
+        },
+        {
+          "name": "PREDICTION_VOTES_KV",
+          "namespace_id": "a7a435999144427c8227e1aba8c5f255",
+          "type": "kv_namespace"
+        },
+        {
+          "environment": "production",
+          "name": "PREDICTION_VOTES_SERVICE",
+          "service": "ball46-prediction-votes-v6",
+          "type": "service"
+        }
+      ]
+    },
+    "schedules": {
+      "schedules": []
+    },
+    "domains": [
+      {
+        "id": "1fd1fb4d1a469f27a657c0403fe74e7de5700d97",
+        "zone_id": "d491ee30b7a87a6c37e6a4dacf00ae8d",
+        "zone_name": "ball46.com",
+        "hostname": "ball46.com",
+        "service": "ball46-production",
+        "environment": "production",
+        "cert_id": "f9d87c5a-5cb4-45a2-b8a7-4fc779c78b6a",
+        "previews_enabled": false,
+        "enabled": true
+      },
+      {
+        "id": "4c7d61ed4dd2d6e0906cdce6e4b95b62915ad21b",
+        "zone_id": "d491ee30b7a87a6c37e6a4dacf00ae8d",
+        "zone_name": "ball46.com",
+        "hostname": "www.ball46.com",
+        "service": "ball46-production",
+        "environment": "production",
+        "cert_id": "308acf6b-b201-432c-90cf-06666aff03a0",
+        "previews_enabled": false,
+        "enabled": true
+      }
+    ],
+    "services": {
+      "nomadtips3-engine-343": "1f2336fa-7b45-4a23-a23c-06d01a92330d",
+      "ball46-form-history-v1": "ff926e7d-e275-41ac-b67f-c2a8d5393d16",
+      "nomadtips3-full-market-343-ball46": "3a53ee1a-467c-4a20-9f50-ba749e8adab4",
+      "nomadtips3-5usd-hub-343": "98ea43ab-f40c-4de5-82e3-b0387dffd672",
+      "ball46-prediction-votes-v6": "8f11708f-5fe6-415e-8439-e3b5777c517a"
+    }
+  },
+  "healthBefore": [
+    {
+      "path": "/api/engine/health",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "path": "/api/full-market/health",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "path": "/api/engine/board",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "path": "/api/engine/signals",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "path": "/api/engine/statistics?paged=1",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "path": "/api/prediction-vote/health",
+      "status": 200,
+      "ok": true
+    }
+  ],
+  "candidate": "cab39416-0524-4f14-b4b4-90301f3f6bcd",
+  "trafficWrites": [
+    {
+      "from": "cab39416-0524-4f14-b4b4-90301f3f6bcd",
+      "to": "4549b05a-c6c9-48d3-8cab-0fdc9c4b1869",
+      "deployment": "bde52c1e-2ece-47e5-8f72-9d5f88256d03",
+      "at": "2026-10-30T12:18:25.926Z"
+    }
+  ],
+  "restored": true,
+  "ok": true,
+  "active": {
+    "id": "4549b05a-c6c9-48d3-8cab-0fdc9c4b1869",
+    "deployment": "bde52c1e-2ece-47e5-8f72-9d5f88256d03"
+  },
+  "finishedAt": "2026-10-30T12:18:34.445Z"
+}
