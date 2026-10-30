@@ -1,0 +1,4 @@
+/* Light desktop chart only; mobile Green Noir charts retain their dark treatment. */
+html[data-theme="light"]:not([data-b46gn="1"]) .match-expanded .expand-flow-chart svg [data-b46-event-icon="1"]>circle {
+  fill:#f3faf5!important;
+}
