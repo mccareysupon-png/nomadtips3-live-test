@@ -1,0 +1,48 @@
+name: BALL46 footer production verification - no deployment
+on:
+  push:
+    branches: [codex/ball46-footer-emerald-20261030]
+    paths: ['deploy-assets/footer-emerald-20261030/verify-request.json']
+permissions:
+  contents: write
+concurrency:
+  group: ball46-production-deploy
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    defaults:
+      run:
+        working-directory: deploy-assets/footer-emerald-20261030
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify active version, public hashes, health and preserved settings without writes
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: node verify.mjs
+      - name: Install isolated test browser
+        run: |
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Verify actual footer links on production
+        run: node browser-check.mjs https://ball46.com
+      - name: Save verification and screenshots
+        if: always()
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add audit/*.json
+          if [ -f audit/production-browser-proof.json ]; then git add audit/footer-1440-dark.png audit/footer-390-dark.png; fi
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Record production footer verification without deployment [skip ci]"
+          git push origin HEAD:codex/ball46-footer-emerald-20261030
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: footer-verification-${{ github.run_id }}
+          path: deploy-assets/footer-emerald-20261030/audit
