@@ -27,7 +27,7 @@ jobs:
           if [ "$phase" = "preflight" ]; then node preflight.mjs; else
             node -e "const fs=require('fs');fs.writeFileSync('assets.json',fs.readdirSync('.').filter(n=>/^assets-part-/.test(n)).sort().map(n=>fs.readFileSync(n,'utf8')).join(''))"
             node -e "fetch('https://ball46.com/').then(r=>r.text()).then(h=>require('fs').writeFileSync('live.html',h))"
-            node --check client.js
+            node --check shared-built.js
             node --test patch.test.mjs
             node run.mjs
             if [ -f audit/candidate-runtime-check.mjs ]; then node --check audit/candidate-runtime-check.mjs; fi
