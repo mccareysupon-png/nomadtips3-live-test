@@ -1,3 +1,4 @@
+import {execFileSync} from 'node:child_process';
 import assert from 'node:assert/strict';
 import {readFile,writeFile,mkdir} from 'node:fs/promises';
 import {BASE,MARK,sha,patchHTML,patchMain,assetRecords} from './patch.mjs';
@@ -25,7 +26,7 @@ try{
  report.before=await active();assert.equal(report.before.id,request.phase==='restore'?request.candidate:BASE,'ACTIVE_CHANGED_STOP');const base=await version(BASE),baseline=JSON.parse(await readFile('preflight-baseline.json','utf8'));assert.deepEqual(modules(base),baseline.modules.sort((a,b)=>a.name.localeCompare(b.name)),'BASE_MODULE_DRIFT');
  report.configBefore=await config();report.healthBefore=await health('https://ball46.com');
  const files=await assetRecords(),source=Buffer.from(base.modules.find(m=>m.name===base.main_module).content_base64,'base64').toString(),changed=patchMain(source);
- await writeFile('audit/candidate-runtime-check.mjs',changed);await writeFile('audit/asset-manifest.json',JSON.stringify(files.map(({base64,...v})=>v),null,2));
+ await writeFile('audit/candidate-runtime-check.mjs',changed);execFileSync(process.execPath,['--check','audit/candidate-runtime-check.mjs'],{stdio:'pipe'});await writeFile('audit/asset-manifest.json',JSON.stringify(files.map(({base64,...v})=>v),null,2));
  const textModule={name:'team-kits-assets-20261030.txt',content_type:'text/plain',content_base64:Buffer.from(JSON.stringify(files)).toString('base64')};
  const expectedModules=[...base.modules.map(m=>m.name===base.main_module?{...m,content_base64:Buffer.from(changed).toString('base64')}:m),textModule];
  async function owned(id){const v=await version(id);assert.equal(v.annotations?.['workers/tag'],MARK);assert.deepEqual(modules(v),modules({modules:expectedModules}));assert.equal(canonical(v.bindings),canonical(base.bindings));for(const k of ['assets','compatibility_date','compatibility_flags'])assert.equal(canonical(v[k]),canonical(base[k]),'CONFIG_CHANGED:'+k);}
@@ -53,3 +54,4 @@ try{
  }
  report.ok=true;report.active=await active();report.finishedAt=new Date().toISOString();await save();console.log('SHARED_KITS_PASS='+JSON.stringify({phase:report.phase,active:report.active,candidate:report.candidate,paths:report.expected?.length||prior?.expected?.length,settledPreserved:report.settledPreserved}));
 }catch(e){report.ok=false;report.error=e.stack||e.message;if(switched)try{if((await active()).id===candidate){await traffic(BASE,candidate,'Automatic restore after visual suite validation failure');await converge(BASE,prior.publicBefore);report.emergencyRestored=true;}}catch(f){report.restoreError=f.message;}await save();console.error(report.error);process.exitCode=1;}
+
