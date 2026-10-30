@@ -1,0 +1,30 @@
+name: BALL46 monitor request diagnosis - read only
+on:
+  push:
+    branches: [codex/ball46-monitor-release-20261030]
+    paths: ['deploy-assets/monitor-20261030/diagnose-request.json']
+permissions:
+  contents: write
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    defaults:
+      run:
+        working-directory: deploy-assets/monitor-20261030
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium
+          node diagnose.mjs
+      - if: always()
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add audit/request-diagnostic.json
+          git commit -m "Record request diagnosis without production writes [skip ci]"
+          git push origin HEAD:codex/ball46-monitor-release-20261030
