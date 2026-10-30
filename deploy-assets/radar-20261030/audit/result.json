@@ -1,14 +1,14 @@
 {
-  "phase": "restore",
+  "phase": "activate",
   "base": "cab39416-0524-4f14-b4b4-90301f3f6bcd",
   "worker": "ball46-production",
-  "run": "41057969975",
-  "commit": "352186cbfce10e36fb173edbcbe2b3316a8ba11f",
-  "at": "2026-10-30T12:50:09.447Z",
+  "run": "41058593274",
+  "commit": "f9fb525d4efeff92b17c80a67e8fa8490665d4db",
+  "at": "2026-10-30T12:53:17.736Z",
   "trafficChanged": true,
   "before": {
-    "id": "952bf96e-d548-4fbf-87d5-a13c34627ff9",
-    "deployment": "de32b5fa-add5-410b-adfc-6fba1ab9dad1"
+    "id": "cab39416-0524-4f14-b4b4-90301f3f6bcd",
+    "deployment": "9cc1b396-b91b-4bca-9311-a722f7703cf2"
   },
   "baselineModules": [
     {
@@ -302,19 +302,93 @@
     }
   ],
   "candidate": "952bf96e-d548-4fbf-87d5-a13c34627ff9",
+  "settledBefore": 10888,
   "trafficWrites": [
     {
-      "from": "952bf96e-d548-4fbf-87d5-a13c34627ff9",
-      "to": "cab39416-0524-4f14-b4b4-90301f3f6bcd",
-      "deployment": "9cc1b396-b91b-4bca-9311-a722f7703cf2",
-      "at": "2026-10-30T12:50:18.427Z"
+      "from": "cab39416-0524-4f14-b4b4-90301f3f6bcd",
+      "to": "952bf96e-d548-4fbf-87d5-a13c34627ff9",
+      "deployment": "b32e73c9-9c0f-4828-98cb-b06a10b28b6c",
+      "at": "2026-10-30T12:53:47.973Z"
     }
   ],
-  "restored": true,
+  "healthAfter": [
+    {
+      "host": "https://ball46.com",
+      "results": [
+        {
+          "path": "/api/engine/health",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "path": "/api/full-market/health",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "path": "/api/engine/board",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "path": "/api/engine/signals",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "path": "/api/engine/statistics?paged=1",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "path": "/api/prediction-vote/health",
+          "status": 200,
+          "ok": true
+        }
+      ]
+    },
+    {
+      "host": "https://www.ball46.com",
+      "results": [
+        {
+          "path": "/api/engine/health",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "path": "/api/full-market/health",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "path": "/api/engine/board",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "path": "/api/engine/signals",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "path": "/api/engine/statistics?paged=1",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "path": "/api/prediction-vote/health",
+          "status": 200,
+          "ok": true
+        }
+      ]
+    }
+  ],
+  "settledPreserved": 10888,
+  "activated": true,
   "ok": true,
   "active": {
-    "id": "cab39416-0524-4f14-b4b4-90301f3f6bcd",
-    "deployment": "9cc1b396-b91b-4bca-9311-a722f7703cf2"
+    "id": "952bf96e-d548-4fbf-87d5-a13c34627ff9",
+    "deployment": "b32e73c9-9c0f-4828-98cb-b06a10b28b6c"
   },
-  "finishedAt": "2026-10-30T12:50:25.741Z"
+  "finishedAt": "2026-10-30T12:54:17.967Z"
 }
