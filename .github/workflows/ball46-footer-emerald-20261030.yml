@@ -37,7 +37,8 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Guarded candidate and browser verification
         run: |
-          node run.mjs
+          phase=$(node -p "JSON.parse(require('fs').readFileSync('request.json')).phase")
+          if [ "$phase" = "candidate" ]; then node run.mjs; fi
           node browser-check.mjs
           cp browser-proof.json audit/candidate-browser-proof.json
       - name: Activate approved change and verify production
