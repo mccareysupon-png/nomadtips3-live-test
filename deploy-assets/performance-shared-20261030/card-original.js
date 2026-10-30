@@ -1,0 +1,44 @@
+
+/* B46_DAILY_PERFORMANCE_20261005
+ * Presentation-only Daily Performance card.
+ * Daily buckets are based on pick createdAt only.
+ * Statistics only: never reads /api/engine/signals and never changes engine/API state.
+ * REFRESH_MOUNT_FIX_20261005: mount against .main-board, not the toolbar that stable chrome moves.
+ * AVG_ODDS_20261005: daily average uses the confirmed Statistics row.odds decimal field only.
+ */
+(()=>{'use strict';
+const ID='ball46-daily-performance',TZ='Europe/London',CUT=6,REFRESH=10000;
+let lastGood=null,busy=false,anchorQueued=false,observer=null;
+const $=(s,r=document)=>r.querySelector(s);
+function ensure(){let r=document.getElementById(ID);if(r)return r;const board=$('.main-board');if(!board)return null;r=document.createElement('section');r.id=ID;r.setAttribute('aria-label','Daily performance');r.innerHTML=`<div class="b46-perf-grid"><section class="b46-perf-side today"><div class="b46-perf-head"><div class="b46-perf-title"><span class="b46-perf-kicker">TODAY'S PERFORMANCE</span><span class="b46-perf-sub" data-b46-label="today">Live Summary</span></div><div class="b46-perf-rate"><span>WIN RATE</span><strong data-b46-rate="today">—</strong></div></div><div class="b46-perf-stats"><div class="b46-perf-stat win"><span>WIN</span><strong data-b46-stat="today-win">—</strong></div><div class="b46-perf-stat loss"><span>LOSS</span><strong data-b46-stat="today-loss">—</strong></div><div class="b46-perf-stat push"><span>PUSH</span><strong data-b46-stat="today-push">—</strong></div><div class="b46-perf-stat pending"><span>PENDING</span><strong data-b46-stat="today-pending">—</strong></div><div class="b46-perf-stat avg-odds"><span>AVG ODDS</span><strong data-b46-avg-odds="today">—</strong></div></div><div class="b46-perf-foot"><span class="b46-perf-total">TOTAL PICKS <b data-b46-total="today">—</b></span><div class="b46-market-row" data-b46-markets="today"></div></div><span class="b46-perf-state">LONDON DAY · 06:00</span></section><section class="b46-perf-side yesterday"><div class="b46-perf-head"><div class="b46-perf-title"><span class="b46-perf-kicker">YESTERDAY'S PERFORMANCE</span><span class="b46-perf-sub" data-b46-label="yesterday">Final Summary</span></div><div class="b46-perf-rate"><span>WIN RATE</span><strong data-b46-rate="yesterday">—</strong></div></div><div class="b46-perf-stats"><div class="b46-perf-stat win"><span>WIN</span><strong data-b46-stat="yesterday-win">—</strong></div><div class="b46-perf-stat loss"><span>LOSS</span><strong data-b46-stat="yesterday-loss">—</strong></div><div class="b46-perf-stat push"><span>PUSH</span><strong data-b46-stat="yesterday-push">—</strong></div><div class="b46-perf-stat avg-odds"><span>AVG ODDS</span><strong data-b46-avg-odds="yesterday">—</strong></div></div><div class="b46-perf-foot"><span class="b46-perf-total">TOTAL PICKS <b data-b46-total="yesterday">—</b></span><div class="b46-market-row" data-b46-markets="yesterday"></div></div><span class="b46-perf-state">FINAL · SETTLED ONLY</span></section></div>`;const toolbar=board.querySelector(':scope > .board-toolbar');if(toolbar)toolbar.insertAdjacentElement('afterend',r);else board.insertBefore(r,board.firstChild);return r}
+function parts(ms){const o={};for(const p of new Intl.DateTimeFormat('en-GB',{timeZone:TZ,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',hourCycle:'h23'}).formatToParts(new Date(ms)))if(p.type!=='literal')o[p.type]=p.value;return o}
+function prev(k){const [y,m,d]=k.split('-').map(Number);return new Date(Date.UTC(y,m-1,d)-86400000).toISOString().slice(0,10)}
+function sportDay(ms){const p=parts(ms);let k=`${p.year}-${p.month}-${p.day}`;if(Number(p.hour)<CUT)k=prev(k);return k}
+function ms(v){if(v==null||v==='')return null;if(typeof v==='number'||/^\d+(?:\.\d+)?$/.test(String(v))){const n=Number(v);return Number.isFinite(n)?(n>1e12?n:n>1e9?n*1000:null):null}const n=Date.parse(String(v));return Number.isFinite(n)?n:null}
+function createdStamp(r){for(const k of ['createdAt','created_at']){const n=ms(r?.[k]);if(n!==null)return n}return null}
+function outcome(r){const x=String(r?.result??r?.settlement??r?.outcome??'').trim().toUpperCase();if(x==='WIN'||x==='HALF_WIN')return'win';if(x==='LOSS'||x==='HALF_LOSS')return'loss';if(x==='PUSH'||x==='VOID')return'push';return null}
+
+function rowId(r){return String(r?.id??r?.signalId??[r?.fixtureId,r?.market,r?.selection,r?.createdAt].filter(v=>v!==undefined&&v!==null&&v!=='').join('|'))}
+function rowOdds(r){const n=Number(r?.odds);return Number.isFinite(n)&&n>1?n:null}
+function bucket(){return{win:0,loss:0,push:0,pending:0,oddsSum:0,oddsCount:0}}
+function addOdds(b,r){const n=rowOdds(r);if(n===null)return;b.oddsSum+=n;b.oddsCount++}
+function addSettled(b,r,o){b[o]++;addOdds(b,r)}
+function isPending(r){return String(r?.status||'').toUpperCase()==='PENDING'}
+function aggregate(rows){const tk=sportDay(Date.now()),yk=prev(tk),today=bucket(),yesterday=bucket(),seen=new Set();for(const r of rows){const id=rowId(r);if(id&&seen.has(id))continue;if(id)seen.add(id);const t=createdStamp(r);if(t===null)continue;const k=sportDay(t);if(k!==tk&&k!==yk)continue;const o=outcome(r);if(k===tk){if(o)addSettled(today,r,o);else if(isPending(r)){today.pending++;addOdds(today,r)}}else if(o)addSettled(yesterday,r,o)}return{today,yesterday,tk,yk}}
+function rate(b){const n=b.win+b.loss;return n?`${(b.win/n*100).toFixed(1).replace(/\.0$/,'')}%`:'—'}
+function avgOdds(b){return b.oddsCount?(b.oddsSum/b.oddsCount).toFixed(2):'—'}
+function dateLabel(k){const [y,m,d]=k.split('-').map(Number);return new Intl.DateTimeFormat('en-GB',{timeZone:'UTC',day:'2-digit',month:'short'}).format(new Date(Date.UTC(y,m-1,d))).toUpperCase()}
+
+function text(r,s,v){const e=$(s,r);if(e&&e.textContent!==String(v))e.textContent=String(v)}
+function rateTone(value){const s=String(value);if(!/^\d+(?:\.\d+)?%$/.test(s))return'neutral';const n=Number(s.slice(0,-1));return n>50?'positive':n<50?'negative':'neutral';}
+function paintRate(r,s,v){text(r,s,v);const e=$(s,r);if(e)e.setAttribute('data-b46-rate-tone',rateTone(v))}
+function paint(r,d){for(const [day,b] of [['today',d.today],['yesterday',d.yesterday]]){for(const o of ['win','loss','push'])text(r,`[data-b46-stat="${day}-${o}"]`,b[o]);if(day==='today')text(r,'[data-b46-stat="today-pending"]',b.pending);paintRate(r,`[data-b46-rate="${day}"]`,rate(b));text(r,`[data-b46-avg-odds="${day}"]`,avgOdds(b));text(r,`[data-b46-total="${day}"]`,b.win+b.loss+b.push+(day==='today'?b.pending:0));}text(r,'[data-b46-label="today"]',`Live Summary · ${dateLabel(d.tk)}`);text(r,'[data-b46-label="yesterday"]',`Final Summary · ${dateLabel(d.yk)}`)}
+function render(d){const r=ensure();if(!r)return;paint(r,d)}
+function restoreIfRemoved(){if(document.getElementById(ID)||anchorQueued)return;anchorQueued=true;requestAnimationFrame(()=>{anchorQueued=false;if(document.getElementById(ID))return;const r=ensure();if(r&&lastGood)paint(r,lastGood)})}
+function watchAnchor(){if(observer||!document.body)return;observer=new MutationObserver(()=>{if(!document.getElementById(ID))restoreIfRemoved()});observer.observe(document.body,{childList:true,subtree:true})}
+async function json(url){const r=await fetch(url,{cache:'no-store',headers:{Accept:'application/json'}});if(!r.ok)throw Error(`${url}:${r.status}`);return r.json()}
+async function refresh(){if(busy)return;busy=true;try{let st=await json('/api/engine/statistics?paged=1&_='+Date.now());if(st?.ok!==true||!Array.isArray(st?.rows))throw Error('STATISTICS_SHAPE');const sig=JSON.stringify([st.ledgerTotal,st.total,st.pending,st.unresolved,st.win,st.loss,st.push,st.halfWin,st.halfLoss]);let rows=[...st.rows],cursor=st.nextCursor,seen=new Set();while(cursor){if(seen.has(cursor))throw Error('STATISTICS_CURSOR_CYCLE');seen.add(cursor);const page=await json('/api/engine/statistics?paged=1&cursor='+encodeURIComponent(cursor)+'&_='+Date.now());if(page?.ok!==true||!Array.isArray(page?.rows))throw Error('STATISTICS_PAGE_SHAPE');const pageSig=JSON.stringify([page.ledgerTotal,page.total,page.pending,page.unresolved,page.win,page.loss,page.push,page.halfWin,page.halfLoss]);if(pageSig!==sig)throw Error('STATISTICS_CHANGED_DURING_READ');rows.push(...page.rows);cursor=page.nextCursor||null}if(Number.isFinite(Number(st.ledgerTotal))&&rows.length!==Number(st.ledgerTotal))throw Error('STATISTICS_LEDGER_INCOMPLETE:'+rows.length+'/'+st.ledgerTotal);lastGood=aggregate(rows);render(lastGood)}catch(e){if(lastGood)render(lastGood);console.warn('B46 Daily Performance refresh skipped:',e?.message||e)}finally{busy=false}}
+function boot(){ensure();watchAnchor();refresh();setInterval(refresh,REFRESH);document.addEventListener('visibilitychange',()=>{if(!document.hidden){restoreIfRemoved();refresh()}})}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
+})();
+
