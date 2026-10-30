@@ -1,0 +1,50 @@
+name: BALL46 shared team kits stable release
+on:
+  push:
+    branches: [codex/ball46-team-kits-stable-20261030]
+    paths: ['deploy-assets/team-kits-stable-20261030/request.json']
+permissions:
+  contents: write
+concurrency:
+  group: ball46-production-deploy
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run approved guarded phase
+        working-directory: deploy-assets/team-kits-stable-20261030
+        run: |
+          phase=$(node -p "JSON.parse(require('fs').readFileSync('request.json')).phase")
+          if [ "$phase" = "preflight" ]; then node preflight.mjs; else
+            node -e "const fs=require('fs');fs.writeFileSync('assets.json',fs.readdirSync('.').filter(n=>/^assets-part-/.test(n)).sort().map(n=>fs.readFileSync(n,'utf8')).join(''))"
+            node -e "fetch('https://ball46.com/').then(r=>r.text()).then(h=>require('fs').writeFileSync('live.html',h))"
+            node --check client.js
+            node --test patch.test.mjs
+            node run.mjs
+            if [ -f audit/candidate-runtime-check.mjs ]; then node --check audit/candidate-runtime-check.mjs; fi
+          fi
+      - name: Commit sanitized audit
+        if: always()
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add deploy-assets/team-kits-stable-20261030/audit
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Record visual suite release audit [skip ci]"
+          git fetch origin codex/ball46-team-kits-stable-20261030
+          git rebase FETCH_HEAD
+          git push origin HEAD:codex/ball46-team-kits-stable-20261030
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: visual-suite-${{ github.run_id }}
+          path: deploy-assets/team-kits-stable-20261030/audit
