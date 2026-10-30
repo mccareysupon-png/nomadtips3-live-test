@@ -1,0 +1,105 @@
+(()=>{
+'use strict';if(window.__B46_PREDICTION_V8)return;window.__B46_PREDICTION_V8=true;
+const KIT_COLORS=Object.freeze(['green','blue','red','white','black','purple','yellow','orange','sky','pink','navy','burgundy']);
+const OUTCOMES=Object.freeze(['1','X','2']);
+function percentages(values){
+ if(!Array.isArray(values)||values.length!==3||values.some(x=>typeof x!=='number'||!Number.isFinite(x)||x<0))return null;
+ const sum=values.reduce((a,b)=>a+b,0);if(!sum||!Number.isFinite(sum))return null;
+ const raw=values.map(x=>100*x/sum),rounded=raw.map(Math.floor),order=raw.map((x,i)=>({i,fraction:x-rounded[i]})).sort((a,b)=>b.fraction-a.fraction||a.i-b.i);
+ for(let left=100-rounded.reduce((a,b)=>a+b,0),i=0;left>0;left--,i++)rounded[order[i%3].i]++;
+ return rounded;
+}
+function jerseyPair(fixtureId){
+ if(window.B46_TEAM_KITS){const p=window.B46_TEAM_KITS.pair(fixtureId);return[p.home.key,p.away.key];}
+ function hash(s){let n=2166136261;for(const c of s)n=Math.imul(n^c.charCodeAt(0),16777619)>>>0;return n;}
+ const id=String(fixtureId),home=hash('ball46-jersey-v8:'+id)%12,away=(home+1+hash('ball46-jersey-v8-away:'+id)%11)%12;
+ return [KIT_COLORS[home],KIT_COLORS[away]];
+}
+function formModel(fixture,now=Date.now()){
+ const unavailable=reason=>({available:false,reason,percentages:null});
+ const history=fixture?.history,kickoff=Number(fixture?.kickoffAt)||Date.parse(fixture?.kickoffUtc||'');
+ if(!history||history.verified!==true||history.completeLastFive!==true)return unavailable('Verified last-five results are not connected.');
+ const provider=String(history.source||'').toLowerCase();
+ if(!['5usd','5dollar','goaloo','gaoloo'].includes(provider)||!Number.isFinite(kickoff)||kickoff<=0)return unavailable('History source or match time is unverified.');
+ const cutoff=Math.min(kickoff,now),asOf=Date.parse(history.reportedAt||'');
+ if(!Number.isFinite(asOf)||asOf>now||asOf<cutoff-86400000)return unavailable('History report time is unverified or outdated.');
+ const goals=v=>(typeof v==='number'||typeof v==='string'&&/^\d{1,2}$/.test(v))&&Number.isInteger(Number(v))&&Number(v)>=0&&Number(v)<=99?Number(v):null;
+ function records(side){
+  const data=history[side],teamId=String(fixture?.[side]?.id??'');
+  if(!teamId||String(data?.teamId??'')!==teamId||!Array.isArray(data.lastFive)||data.lastFive.length!==5)return null;
+  const ids=new Set(),rows=[];
+  for(const r of data.lastFive){const id=String(r.fixtureId??''),ended=typeof r.endedAt==='number'?r.endedAt:Date.parse(r.endedAt||''),gf=goals(r.gf),ga=goals(r.ga);
+   if(!/^\d{4,18}$/.test(id)||id===String(fixture.fixtureId)||ids.has(id)||String(r.status).toUpperCase()!=='FT'||!Number.isFinite(ended)||ended<=0||ended>=cutoff||ended>asOf||gf===null||ga===null)return null;
+   ids.add(id);rows.push({fixtureId:id,endedAt:ended,gf,ga});
+  }
+  return rows.sort((a,b)=>b.endedAt-a.endedAt);
+ }
+ const home=records('home'),away=records('away');if(!home||!away)return unavailable('Five verified completed matches per team are required.');
+ const avg=(rows,key)=>rows.reduce((sum,r)=>sum+r[key],0)/5;
+ const lh=Math.max(.1,Math.min(4,(avg(home,'gf')+avg(away,'ga'))/2)),la=Math.max(.1,Math.min(4,(avg(away,'gf')+avg(home,'ga'))/2));
+ const p=(n,l)=>{let factorial=1;for(let i=2;i<=n;i++)factorial*=i;return Math.exp(-l)*l**n/factorial;},weights=[0,0,0];
+ for(let h=0;h<=10;h++)for(let a=0;a<=10;a++)weights[h>a?0:h===a?1:2]+=p(h,lh)*p(a,la);
+ return {available:true,source:history.source,asOf:history.reportedAt,cutoff,percentages:percentages(weights),homeResults:home,awayResults:away,method:'Independent Poisson estimate from verified last-five goals for/against; no audience votes, odds or live score.'};
+}
+
+const MINIMUM_PERCENTAGE_VOTES=20;
+
+// Presentation threshold only. Counts and stored votes are never changed.
+function communityView(summary){
+ const missing={available:false,display:'counts',total:null,values:['—','—','—'],percentages:null,note:'Community votes are temporarily unavailable.'};
+ if(!summary||!Number.isSafeInteger(summary.total)||summary.total<0||!Array.isArray(summary.counts)||summary.counts.length!==3||summary.counts.some(n=>!Number.isSafeInteger(n)||n<0)||summary.counts.reduce((a,b)=>a+b,0)!==summary.total)return missing;
+ const total=summary.total;
+ if(total<MINIMUM_PERCENTAGE_VOTES)return{available:true,display:'counts',total,values:summary.counts.map(n=>n.toLocaleString('en')+(n===1?' vote':' votes')),percentages:null,note:total===0?'Be the first to vote.':'Collecting votes · '+total+'/'+MINIMUM_PERCENTAGE_VOTES};
+ const raw=summary.counts.map(n=>n/total*100),percentages=raw.map(Math.floor),order=raw.map((n,i)=>({i,remainder:n-percentages[i]})).sort((a,b)=>b.remainder-a.remainder||a.i-b.i);
+ for(let left=100-percentages.reduce((a,b)=>a+b,0),i=0;left>0;left--,i++)percentages[order[i%3].i]++;
+ return{available:true,display:'percentages',total,values:percentages.map(n=>n+'%'),percentages,note:'Based on '+total.toLocaleString('en')+' votes.'};
+}
+
+function voteReadFailure(error){
+ if(error?.status===404||error?.status===409)return{kind:'closed',message:'This match is no longer available for voting.'};
+ if(error?.status===429)return{kind:'retry',message:'Voting is temporarily busy. Please retry shortly.'};
+ return{kind:'retry',message:'Connection interrupted. Select RETRY VOTES to reconnect.'};
+}
+
+const card=document.querySelector('[data-pv-version="8"]');if(!card)return;
+const q=s=>card.querySelector(s),name=t=>String(t?.name??t??''),norm=s=>String(s||'').toLowerCase().replace(/[^a-z0-9]/g,''),set=(el,text)=>{if(el&&el.textContent!==String(text))el.textContent=String(text)},label=c=>c==='1'?'HOME':c==='X'?'DRAW':'AWAY';
+const rail=card.parentElement,anchor=document.createComment('prediction-v8-position');rail.insertBefore(anchor,card);
+let fixture=null,id='',summary=null,draft=null,busy=false,savingId='',readSequence=0,readingId='',requestAbort=null,lastRead=0,errorText='',savedText='',readIssue='';
+const allowed=f=>['scheduled','live','halftime','ht','inplay','in_play','upcoming'].includes(String(f?.boardState??'').toLowerCase());
+const expectedScope=['ball46.com','www.ball46.com'].includes(location.hostname)?'production':'preview';
+const kitPath=color=>['yellow','orange','sky','pink','navy','burgundy'].includes(color)?'/prediction-v8/jersey-'+color+'-3d-v8.webp':'/prediction-v6/jersey-'+color+'-3d-v6.webp';
+function placement(){const body=document.querySelector('#b46gn-detail[aria-hidden="false"] [data-b46gn-detailbody]'),featured=body?.querySelector('.b46gn-featured');if(matchMedia('(max-width:760px)').matches&&featured){if(card.previousElementSibling!==featured)featured.after(card);}else if(card.parentElement!==rail)anchor.after(card);}
+function find(){const dash=window.NOMAD343_DASHBOARD_V2;if(!dash?.getFixture)return null;const visible=[...document.querySelectorAll('[data-featured]')].find(e=>e.getClientRects().length),host=visible||document.querySelector('[data-featured]'),h=host?.querySelector('[data-featured-home]')?.textContent?.trim(),a=host?.querySelector('[data-featured-away]')?.textContent?.trim();if(!h||h==='—'||!a||a==='—')return null;const rows=[...document.querySelectorAll('.match-row.active[data-match-id]'),...document.querySelectorAll('.match-row[data-match-id]')];for(const row of rows){const f=dash.getFixture(row.dataset.matchId);if(f&&norm(name(f.home))===norm(h)&&norm(name(f.away))===norm(a))return f;}return null;}
+function image(img,color,side){if(window.B46_TEAM_KITS){window.B46_TEAM_KITS.setImage(img,color,side);return;}const src=kitPath(color);if(img.getAttribute('src')!==src)img.src=src;img.alt=side==='home'?'Home team jersey':'Away team jersey';}
+function featuredKits(pair){for(const host of document.querySelectorAll('[data-featured]')){const matching=fixture&&norm(host.querySelector('[data-featured-home]')?.textContent)===norm(name(fixture.home))&&norm(host.querySelector('[data-featured-away]')?.textContent)===norm(name(fixture.away));if(!matching){host.removeAttribute('data-pv8-fixture');for(const img of host.querySelectorAll('.pv8-feature-kit'))img.remove();for(const team of host.querySelectorAll('.pv8-feature-team'))team.classList.remove('pv8-feature-team');continue;}if(host.dataset.pv8Fixture!==id)host.dataset.pv8Fixture=id;for(const[i,side]of['home','away'].entries()){const owner=host.querySelector('[data-featured-'+side+']')?.parentElement;if(!owner)continue;owner.classList.add('pv8-feature-team');let img=owner.querySelector('.pv8-feature-kit');if(!img){img=document.createElement('img');img.className='pv8-feature-kit';img.width=48;img.height=48;img.decoding='async';owner.prepend(img);}image(img,pair[i],side);}}}
+function modelBars(model){let host=q('.form-model-bars');if(!host){host=document.createElement('div');host.className='form-model-bars vote-bars';host.innerHTML=['1','X','2'].map(c=>'<div class="bar-row"><span>'+c+'</span><div class="track"><div class="fill"></div></div><b>—</b></div>').join('');q('.form').append(host);}host.hidden=!model.available;q('.unavailable').hidden=model.available;if(model.available)host.querySelectorAll('.bar-row').forEach((r,i)=>{set(r.querySelector('b'),model.percentages[i]+'%');r.querySelector('.fill').style.width=model.percentages[i]+'%';});}
+function render(){
+ const f=fixture,state=String(f?.boardState||'').toLowerCase(),live=['live','halftime','ht','inplay','in_play'].includes(state),finished=state==='finished';card.dataset.fixtureId=id;
+ set(q('#pv8-home-name'),'HOME');set(q('#pv8-away-name'),'AWAY');set(q('.snapshot-pill'),f?(live?'LIVE':finished?'FINISHED':'UPCOMING'):'SELECT MATCH');
+ set(q('#pv8-clock'),live?(Number.isFinite(Number(f.minute))?f.minute+'′':'LIVE'):finished?'FULL TIME':f?.kickoffUtc?new Date(f.kickoffUtc).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'—');
+ const g=f?.goals;set(q('#pv8-score'),g&&g.home!=null&&g.away!=null?g.home+' – '+g.away:'—');
+ const pair=id?jerseyPair(id):null;if(pair)for(const[i,side]of['home','away'].entries())image(q('#pv8-'+side+'-kit'),pair[i],side);else for(const side of['home','away'])q('#pv8-'+side+'-kit').removeAttribute('src');featuredKits(pair);
+ const view=communityView(summary),can=!!id&&allowed(f)&&summary?.canVote===true&&view.available,usable=can&&!busy,selected=draft??summary?.myPick??null,changed=draft!==null&&draft!==summary?.myPick,saved=!!summary?.myPick&&!changed;
+ for(const b of card.querySelectorAll('[data-choice]')){b.disabled=!usable;b.setAttribute('aria-pressed',String(selected===b.dataset.choice));}
+ const confirm=q('#pv8-confirm');confirm.disabled=readIssue==='retry'?busy||!id:!usable||!changed;confirm.dataset.saved=String(saved);set(confirm.querySelector('span'),readIssue==='retry'?'RETRY VOTES':readIssue==='closed'?'VOTING CLOSED':busy?'SAVING YOUR VOTE…':!id?'SELECT MATCH':!summary?errorText?'VOTES UNAVAILABLE':'LOADING VOTES…':!can?'VOTING CLOSED':saved?'VOTE SAVED · '+label(summary.myPick):changed?summary.myPick?'UPDATE VOTE':'CONFIRM VOTE':'CHOOSE AN OUTCOME');
+ let note=errorText||savedText||(busy?'Saving your vote…':!id?'Select a match to view votes.':!summary?'Loading community votes…':!can?'Voting is closed for this match.':changed?'Selected '+label(draft)+' · Confirm to save your vote.':saved?'Your vote: '+label(summary.myPick)+' · Select another to change.':'Choose an outcome, then confirm your vote.');set(q('#pv8-vote-message'),note);q('#pv8-vote-message').dataset.kind=errorText?'error':saved&&!changed?'success':'';
+ set(q('#pv8-total'),view.available?view.total.toLocaleString()+(view.total===1?' vote':' votes'):'— votes');q('.vote-bars').dataset.display=view.display;q('.vote-bars').querySelectorAll('.bar-row').forEach((r,i)=>{set(r.querySelector('b'),view.values[i]);const fill=r.querySelector('.fill'),w=(view.percentages?.[i]??0)+'%';if(fill.style.width!==w)fill.style.width=w;});set(q('#pv8-audience-note'),!id?'Select a match to view votes.':view.available?!allowed(f)?'Voting closed.':view.note:errorText?'Community votes are temporarily unavailable.':'Loading community votes…');card.dataset.loading=String(!summary&&!!id&&!errorText);
+ modelBars(formModel(f));
+}
+async function request(method,target,choice,signal){const r=await fetch('/api/prediction-vote'+(method==='GET'?'?fixtureId='+encodeURIComponent(target):''),{method,credentials:'same-origin',cache:'no-store',headers:method==='POST'?{'content-type':'application/json'}:{},body:method==='POST'?JSON.stringify({fixtureId:target,choice}):undefined,signal}),j=await r.json();if(!r.ok||!j.ok){const error=Error(r.status===429?'Please wait a moment before voting again.':r.status===409?'Voting is closed for this match.':'Votes are temporarily unavailable. Please retry.');error.status=r.status;error.code=j.error;throw error;}if(String(j.fixtureId)!==target||j.scope!==expectedScope||!communityView(j).available||j.myPick!==null&&!OUTCOMES.includes(j.myPick))throw Error('Community votes are temporarily unavailable.');return j;}
+async function readVotes(){if(!id||busy||readingId===id)return;const target=id,seq=++readSequence;readingId=target;readIssue='';errorText='';lastRead=Date.now();render();requestAbort?.abort();const abort=new AbortController();requestAbort=abort;const timer=setTimeout(()=>abort.abort(),45000);try{const j=await request('GET',target,null,abort.signal);if(seq!==readSequence||target!==id)return;summary=j;readIssue='';errorText='';lastRead=Date.now();}catch(e){if(seq!==readSequence||target!==id)return;summary=null;const problem=voteReadFailure(e);readIssue=problem.kind;errorText=problem.message;lastRead=Date.now();}finally{clearTimeout(timer);if(readSequence===seq)readingId='';}render();}
+card.addEventListener('click',async e=>{
+ const pick=e.target.closest('[data-choice]');if(pick){if(pick.disabled||busy||!id)return;draft=pick.dataset.choice;errorText='';savedText='';render();return;}
+ const confirm=e.target.closest('#pv8-confirm');if(confirm&&!confirm.disabled&&readIssue==='retry'){readVotes();return;}if(!confirm||confirm.disabled||busy||!OUTCOMES.includes(draft))return;
+ const target=id,choice=draft;busy=true;savingId=target;readSequence++;readingId='';requestAbort?.abort();errorText='';savedText='';render();const abort=new AbortController(),timer=setTimeout(()=>abort.abort(),45000);
+ try{const j=await request('POST',target,choice,abort.signal);if(target===id){summary=j;draft=null;lastRead=Date.now();savedText='Vote saved · '+label(choice)+'. You can change it anytime.';}}
+ catch(e){if(target===id){errorText=e.name==='AbortError'?'Connection timed out. Your vote may be saved; reload to check.':e.message;if(e.name==='AbortError')summary=null;}}
+ finally{clearTimeout(timer);busy=false;savingId='';render();if(target!==id||!summary)readVotes();}
+});
+function sync(){placement();const next=find(),nextId=String(next?.fixtureId||'');fixture=next;if(nextId!==id){id=nextId;summary=null;draft=null;readIssue='';errorText='';savedText='';readSequence++;readingId='';requestAbort?.abort();render();if(id&&!busy)readVotes();}else render();}
+let queued=false;const schedule=()=>{if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;sync();});};
+const featured=document.querySelector('[data-featured]');if(featured)new MutationObserver(schedule).observe(featured,{childList:true,subtree:true,characterData:true});
+const dialog=document.querySelector('#b46gn-detail');if(dialog)new MutationObserver(schedule).observe(dialog,{childList:true,subtree:true,attributes:true,attributeFilter:['aria-hidden']});
+addEventListener('resize',schedule);document.addEventListener('visibilitychange',()=>{if(!document.hidden){schedule();if(Date.now()-lastRead>15000)readVotes();}});
+setInterval(()=>{sync();if(!document.hidden&&card.getClientRects().length&&Date.now()-lastRead>30000)readVotes();},3000);sync();
+})();
