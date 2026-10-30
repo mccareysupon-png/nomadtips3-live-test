@@ -1,0 +1,22 @@
+{
+  "readOnly": true,
+  "productionWrites": 0,
+  "worker": "nomadtips3-engine-343",
+  "activeVersion": "1f2336fa-7b45-4a23-a23c-06d01a92330d",
+  "schedules": {
+    "schedules": [
+      {
+        "cron": "* * * * *",
+        "created_on": "2026-09-09T15:01:18.232119Z",
+        "modified_on": "2026-10-11T02:03:36.296349Z"
+      }
+    ]
+  },
+  "matches": [
+    {
+      "module": "index-bulk-recovery.js",
+      "context": "         analysis[key] = { state: \"LOCKED\" };\n              continue;\n            }\n            const pre = preCandidatesForRule(key, f, histories[id] || [], settings[key]);\n            analysis[key] = { state: pre.state };\n            if (pre.candidates.length) marketCandidates.push(...pre.candidates);\n          }\n          if (marketCandidates.length) {\n            refereeQueued++;\n            const requiresFullMarket=marketCandidates.some(c=>!isVerifiedCornerMarket(c.market));\n            const full=requiresFullMarket?(johnQuotesByFixture.get(id)||null):null;\n            if(requiresFullMarket&&!full)refereeErrors.push({fixtureId:id,error:\"JOHN_QUALIFIED_PRICE_CACHE_MISS\"});\n            if (!full && !marketCandidates.some(c=>isVerifiedCornerMarket(c.market))) {\n              for (const c of marketCandidates) analysis[c.market] = { state: \"PRICE_REFEREE_UNAVAILABLE\" };\n            } else {\n              const grouped = /* @__PURE__ */ new Map();\n              for (const c of marketCandidates) {\n                if (!grouped.has(c.market)) grouped.set(c.market, []);\n                grouped.get(c.market).push(c);\n  "
+    }
+  ],
+  "at": "2026-10-30T13:10:57.932Z"
+}
