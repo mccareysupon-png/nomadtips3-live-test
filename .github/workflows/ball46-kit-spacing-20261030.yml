@@ -51,6 +51,7 @@ jobs:
           git add audit/*.json
           if [ -f browser-proof.json ]; then git add browser-proof.json; fi
           if git diff --cached --quiet; then exit 0; fi
+          git restore -- request.json
           git commit -m "Record jersey spacing deployment evidence [skip ci]"
           git fetch origin codex/ball46-kit-spacing-20261030
           git rebase FETCH_HEAD
