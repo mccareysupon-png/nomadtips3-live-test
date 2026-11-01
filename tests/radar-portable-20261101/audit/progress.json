@@ -1,60 +1,60 @@
 {
   "engine": "webkit",
-  "width": 1440,
-  "reducedMotion": "no-preference",
+  "width": 390,
+  "reducedMotion": "reduce",
   "baselineMoves": false,
-  "autoMoves": true,
+  "autoMoves": false,
   "observed": {
     "first": [
       {
-        "transform": "matrix(1, 0, 0, 1, 0, 0)",
-        "name": "b46-radar-orbit-portable",
+        "transform": "none",
+        "name": "none",
         "centerError": 0
       },
       {
-        "transform": "matrix(1, 0, 0, 1, 0, 0)",
-        "name": "b46-radar-orbit-portable",
+        "transform": "none",
+        "name": "none",
         "centerError": 0
       },
       {
-        "transform": "matrix(1, 0, 0, 1, 0, 0)",
-        "name": "b46-radar-orbit-portable",
+        "transform": "none",
+        "name": "none",
         "centerError": 0
       },
       {
-        "transform": "matrix(1, 0, 0, 1, 0, 0)",
-        "name": "b46-radar-orbit-portable",
+        "transform": "none",
+        "name": "none",
         "centerError": 0
       }
     ],
     "last": [
       {
-        "transform": "matrix(0.661312, 0.750111, -0.750111, 0.661312, 0, 0)",
-        "name": "b46-radar-orbit-portable",
-        "centerError": 19.786952820236603
+        "transform": "none",
+        "name": "none",
+        "centerError": 0
       },
       {
-        "transform": "matrix(0.661312, 0.750111, -0.750111, 0.661312, 0, 0)",
-        "name": "b46-radar-orbit-portable",
-        "centerError": 19.786952820236603
+        "transform": "none",
+        "name": "none",
+        "centerError": 0
       },
       {
-        "transform": "matrix(0.661312, 0.750111, -0.750111, 0.661312, 0, 0)",
-        "name": "b46-radar-orbit-portable",
-        "centerError": 19.786952820236603
+        "transform": "none",
+        "name": "none",
+        "centerError": 0
       },
       {
-        "transform": "matrix(0.661312, 0.750111, -0.750111, 0.661312, 0, 0)",
-        "name": "b46-radar-orbit-portable",
-        "centerError": 19.786952820236603
+        "transform": "none",
+        "name": "none",
+        "centerError": 0
       }
     ],
-    "moves": true,
+    "moves": false,
     "changed": [
-      true,
-      true,
-      true,
-      true
+      false,
+      false,
+      false,
+      false
     ]
   },
   "passedCases": [
@@ -68,7 +68,7 @@
       "explicitOffStops": true,
       "preferenceSurvivesReload": true,
       "signalHidesWhenNonempty": true,
-      "maxRotationCenterError": 0
+      "maxRotationCenterError": 0.0000152587890625
     },
     {
       "engine": "chromium",
@@ -80,7 +80,7 @@
       "explicitOffStops": true,
       "preferenceSurvivesReload": true,
       "signalHidesWhenNonempty": true,
-      "maxRotationCenterError": 0
+      "maxRotationCenterError": 0.0000152587890625
     },
     {
       "engine": "chromium",
@@ -116,7 +116,7 @@
       "explicitOffStops": true,
       "preferenceSurvivesReload": true,
       "signalHidesWhenNonempty": true,
-      "maxRotationCenterError": 0.00002750817318316642
+      "maxRotationCenterError": 0.011787661454167271
     },
     {
       "engine": "firefox",
@@ -128,7 +128,7 @@
       "explicitOffStops": true,
       "preferenceSurvivesReload": true,
       "signalHidesWhenNonempty": true,
-      "maxRotationCenterError": 0.011793025388136237
+      "maxRotationCenterError": 0.000017059844799040144
     },
     {
       "engine": "firefox",
@@ -140,7 +140,7 @@
       "explicitOffStops": true,
       "preferenceSurvivesReload": true,
       "signalHidesWhenNonempty": true,
-      "maxRotationCenterError": 0.011793025388136237
+      "maxRotationCenterError": 0.0000152587890625
     },
     {
       "engine": "firefox",
@@ -152,7 +152,43 @@
       "explicitOffStops": true,
       "preferenceSurvivesReload": true,
       "signalHidesWhenNonempty": true,
-      "maxRotationCenterError": 0.000030517578125
+      "maxRotationCenterError": 0.00006103515625
+    },
+    {
+      "engine": "webkit",
+      "width": 1440,
+      "reducedMotion": "no-preference",
+      "baselineMoves": true,
+      "autoMoves": true,
+      "explicitOnMoves": true,
+      "explicitOffStops": true,
+      "preferenceSurvivesReload": true,
+      "signalHidesWhenNonempty": true,
+      "maxRotationCenterError": 0
+    },
+    {
+      "engine": "webkit",
+      "width": 1440,
+      "reducedMotion": "reduce",
+      "baselineMoves": false,
+      "autoMoves": false,
+      "explicitOnMoves": true,
+      "explicitOffStops": true,
+      "preferenceSurvivesReload": true,
+      "signalHidesWhenNonempty": true,
+      "maxRotationCenterError": 0.0000152587890625
+    },
+    {
+      "engine": "webkit",
+      "width": 390,
+      "reducedMotion": "no-preference",
+      "baselineMoves": true,
+      "autoMoves": true,
+      "explicitOnMoves": true,
+      "explicitOffStops": true,
+      "preferenceSurvivesReload": true,
+      "signalHidesWhenNonempty": true,
+      "maxRotationCenterError": 0.0000019073486328125
     }
   ]
 }
