@@ -1,0 +1,61 @@
+{
+  "status": "DRAFT_ONLY_NOT_APPLIED",
+  "scope": "Owner-only Bulk control, no account-wide changes",
+  "issuer": "https://rapid-glade-f6b9.cloudflareaccess.com",
+  "audience": null,
+  "ownerIdentitySource": "Existing owner-only Cloudflare Access policies in captured baseline",
+  "proposedOwnerEmail": "mccarey.supon@gmail.com",
+  "requiredPaths": [
+    "ball46.com/5usd-control.html",
+    "ball46.com/api/hub/control",
+    "www.ball46.com/5usd-control.html",
+    "www.ball46.com/api/hub/control",
+    "ball46-production.mccarey-supon.workers.dev/5usd-control.html",
+    "ball46-production.mccarey-supon.workers.dev/api/hub/control",
+    "nomadtips3-5usd-hub-343.mccarey-supon.workers.dev/control"
+  ],
+  "proposedPolicy": {
+    "decision": "allow",
+    "include": [
+      {
+        "email": {
+          "email": "mccarey.supon@gmail.com"
+        }
+      }
+    ],
+    "exclude": [],
+    "require": []
+  },
+  "bindingPlan": {
+    "website": [
+      "BULK_ACCESS_ISSUER",
+      "BULK_ACCESS_AUD",
+      "BULK_OWNER_EMAIL"
+    ],
+    "hub": [
+      "BULK_ACCESS_ISSUER",
+      "BULK_ACCESS_AUD",
+      "BULK_OWNER_EMAIL",
+      "BULK_QUOTA_ACCOUNT_ID"
+    ]
+  },
+  "legacyVersionPreviewExposure": {
+    "status": "UNRESOLVED_BLOCKER",
+    "requirement": "Validate historical preview protection and exact supported host matching, or narrowly disable relevant preview exposure after explicit approval. Active route wrapper alone is insufficient evidence."
+  },
+  "mustNotChange": [
+    "Existing Member/Visitor/NOMAD Access apps",
+    "Account-wide default policies",
+    "Provider API key",
+    "Cron",
+    "DO namespaces"
+  ],
+  "authVerificationRequired": [
+    "Unauthenticated canonical HTML and control rejected",
+    "Forged JWT and email header rejected",
+    "Unapproved owner identity rejected",
+    "Exact owner login succeeds",
+    "workers.dev current and historical preview control rejected or narrowly protected",
+    "Cross-origin write rejected"
+  ]
+}

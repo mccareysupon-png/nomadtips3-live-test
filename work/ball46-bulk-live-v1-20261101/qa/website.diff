@@ -1,0 +1,18 @@
+diff --git a/baseline/source-ball46-production-index.js b/candidate/website.mjs
+index 3a89a93..043ec55 100644
+--- a/baseline/source-ball46-production-index.js
++++ b/candidate/website.mjs
+@@ -1,3 +1,5 @@
++import {wrapWebsite} from "./website-extension.mjs";
++import __bulkControlHTML from "./bulk-live-control.html";
+ import __statisticsLightJSON from "./statistics-light-assets-20261101.txt";
+ import __miniMonitorJSON from "./monitor-mini-assets-20261101.txt";
+ import __unifiedKitsJSON from "./unified-kits-assets-20261031.txt";
+@@ -1098,4 +1100,6 @@ const __statisticsLightPrevious={...__miniMonitorPrevious,async fetch(request,en
+ 
+ function __statisticsLightPatchHTML(h){if(!h.includes('b46-mini-monitor-20261101')||h.includes('b46-statistics-light-20261101.css')||h.split('</head>').length!==2)throw Error('HTML_BASE_DRIFT');return h.replace('</head>','<link rel="stylesheet" href="/b46-statistics-light-20261101.css?v=1">\n</head>')}
+ const __statisticsLightFiles=JSON.parse(__statisticsLightJSON);
+-export default{...__statisticsLightPrevious,async fetch(request,env,ctx){const path=new URL(request.url).pathname,file=__statisticsLightFiles.find(f=>f.path===path);if(file&&["GET","HEAD"].includes(request.method)){const bytes=Uint8Array.from(atob(file.base64),c=>c.charCodeAt(0));return new Response(request.method==="HEAD"?null:bytes,{headers:{"content-type":file.type,"cache-control":"no-cache, must-revalidate","x-content-type-options":"nosniff"}});}const r=await __statisticsLightPrevious.fetch.call(__statisticsLightPrevious,request,env,ctx);if(request.method!=="GET"||!["/","/index.html"].includes(path)||!r.ok||!(r.headers.get("content-type")||"").includes("text/html"))return r;const body=__statisticsLightPatchHTML(await r.text()),headers=new Headers(r.headers);headers.delete("content-length");headers.delete("etag");headers.set("cache-control","no-cache, must-revalidate");return new Response(body,{status:r.status,statusText:r.statusText,headers});}};
++const __bulkLivePrevious={...__statisticsLightPrevious,async fetch(request,env,ctx){const path=new URL(request.url).pathname,file=__statisticsLightFiles.find(f=>f.path===path);if(file&&["GET","HEAD"].includes(request.method)){const bytes=Uint8Array.from(atob(file.base64),c=>c.charCodeAt(0));return new Response(request.method==="HEAD"?null:bytes,{headers:{"content-type":file.type,"cache-control":"no-cache, must-revalidate","x-content-type-options":"nosniff"}});}const r=await __statisticsLightPrevious.fetch.call(__statisticsLightPrevious,request,env,ctx);if(request.method!=="GET"||!["/","/index.html"].includes(path)||!r.ok||!(r.headers.get("content-type")||"").includes("text/html"))return r;const body=__statisticsLightPatchHTML(await r.text()),headers=new Headers(r.headers);headers.delete("content-length");headers.delete("etag");headers.set("cache-control","no-cache, must-revalidate");return new Response(body,{status:r.status,statusText:r.statusText,headers});}};
++
++export default wrapWebsite(__bulkLivePrevious,__bulkControlHTML);

@@ -1,0 +1,46 @@
+diff --git a/baseline/hub-exact.mjs b/candidate/hub.mjs
+index d2cb1e4..ddff2d2 100644
+--- a/baseline/hub-exact.mjs
++++ b/candidate/hub.mjs
+@@ -1,3 +1,4 @@
++import {extendHub,wrapHub} from "./hub-extension.mjs";
+ var __defProp = Object.defineProperty;
+ var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
+ 
+@@ -172,10 +173,12 @@ function pageInfo(payload) {
+   return { hasMore: raw === true || raw === 1 || raw === "1" || raw === "true" };
+ }
+ __name(pageInfo, "pageInfo");
+-async function fetchJson(url, key) {
++async function fetchJson(url, key, bulkV1) {
++  if(bulkV1)await bulkV1.before();
+   const ac = new AbortController(), timer = setTimeout(() => ac.abort(), TIMEOUT_MS);
+   try {
+     const r = await fetch(url, { cache: "no-store", signal: ac.signal, headers: { accept: "application/json", authorization: `Bearer ${key}` } });
++    if(bulkV1)await bulkV1.response(r);
+     const raw = await r.text();
+     let j = null;
+     try {
+@@ -204,7 +207,7 @@ async function fetchPages(env, query, perPage, maxPages, startPage = 1) {
+   let page = startPage, hasMore = false;
+   do {
+     const join = query ? `&${query}` : "";
+-    const j = await fetchJson(`${API_BASE}/fixtures?per_page=${perPage}&page=${page}${join}`, env.FIVEDOLLAR_API_KEY);
++    const j = await fetchJson(`${API_BASE}/fixtures?per_page=${perPage}&page=${page}${join}`, env.FIVEDOLLAR_API_KEY, env.__bulkV1);
+     rows.push(...extract(j));
+     hasMore = pageInfo(j).hasMore;
+     page += 1;
+@@ -842,9 +845,11 @@ var index_viewer_safe_default = {
+     return index_rich_odds_default.scheduled(event, env, ctx);
+   }
+ };
++const BulkLiveV1Hub=extendHub(FiveUsdHub2);
++const bulkLiveV1Default=wrapHub(index_viewer_safe_default);
+ export {
+-  FiveUsdHub2 as FiveUsdHub,
++  BulkLiveV1Hub as FiveUsdHub,
+   RichOddsGate,
+-  index_viewer_safe_default as default
++  bulkLiveV1Default as default
+ };
+ //# sourceMappingURL=index-viewer-safe.js.map

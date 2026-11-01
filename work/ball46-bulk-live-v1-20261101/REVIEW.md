@@ -44,3 +44,10 @@ Rollback preparation:
 5. Account-wide cooldown coordination and old preview exposure must be resolved in the rollout/rollback design before approving activation. Restoring legacy HUB also restores its weaker 429 behavior, so do not perform that rollback during an active provider cooldown without a validated pause plan.
 
 Out-of-scope finding (reported only): current Full Odds settings UI/API also merits a separate owner-auth review. Its API and logic are unchanged in this candidate because Full Odds is expressly excluded.
+
+Final test evidence:
+- GitHub Actions 41301924794: success, candidate source commit a4e2e71cac2436f2a22619732eab175bfed34a9e.
+- 58 unit/auth/integration tests + 12 isolated browser checks = 70 passed.
+- PC 1280px and mobile 390px; 30/20/15 + DEFAULT; missing quota; 429/backoff; zero simulated-browser provider requests.
+- GET-only production final check: both active deployments and all 36 existing modules exact; settings and cron exact; 47 referenced static/control assets all HTTP 200; control HTML hash unchanged.
+- No Cloudflare versions created, no deployment, no traffic change, no configuration or Access change, no merge.
