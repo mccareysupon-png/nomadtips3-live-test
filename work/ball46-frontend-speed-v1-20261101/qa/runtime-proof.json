@@ -1,0 +1,26 @@
+{
+  "ok": true,
+  "tests": 5,
+  "results": [
+    {
+      "name": "new version serves candidate and preserves production asset cache policy",
+      "ok": true
+    },
+    {
+      "name": "old version remains delegated for safe rollback and cached pages",
+      "ok": true
+    },
+    {
+      "name": "HEAD new version has no body",
+      "ok": true
+    },
+    {
+      "name": "root HTML equals tested candidate exactly",
+      "ok": true
+    },
+    {
+      "name": "API, non-GET and scheduled handlers delegated unchanged",
+      "ok": true
+    }
+  ]
+}
