@@ -1,0 +1,1468 @@
+{
+  "runs": [
+    {
+      "profile": {
+        "name": "desktop",
+        "width": 1440,
+        "height": 1000,
+        "cpu": 1
+      },
+      "repeat": 0,
+      "variant": "baseline",
+      "cache": "cold",
+      "ttfb": 558,
+      "fcp": 1148,
+      "lcp": 2832,
+      "firstDOM": 5106.1999999999825,
+      "firstVisible": 7030.1999999999825,
+      "liveReady": 5106.299999999988,
+      "signalsReady": 7875,
+      "observedTBT": 5173,
+      "measurementWindowMs": 18000,
+      "measuredInteractionMs": 576,
+      "inp": "not field INP",
+      "taskDuration": 9944.337,
+      "scriptDuration": 2983.072,
+      "requests": {
+        "/api/engine/board": 1,
+        "/api/engine/statistics": 3,
+        "/api/prediction-vote": 1,
+        "/api/full-market/fixture-odds": 6,
+        "/api/engine/signals": 1
+      },
+      "api": [
+        {
+          "path": "/api/engine/board",
+          "query": "?_=1793533970787",
+          "method": "GET"
+        },
+        {
+          "path": "/api/engine/statistics",
+          "query": "?_=1793533971250",
+          "method": "GET"
+        },
+        {
+          "path": "/api/engine/statistics",
+          "query": "?paged=1&limit=1&_=1793533971795",
+          "method": "GET"
+        },
+        {
+          "path": "/api/prediction-vote",
+          "query": "?fixtureId=203790620",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203613392&_=1793533975950",
+          "method": "GET"
+        },
+        {
+          "path": "/api/engine/signals",
+          "query": "?_=1793533975976",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203613391&_=1793533978149",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203570885&_=1793533982518",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203747742&_=1793533983366",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203747744&_=1793533984211",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203790620&_=1793533985057",
+          "method": "GET"
+        },
+        {
+          "path": "/api/engine/statistics",
+          "query": "?paged=1&limit=1&_=1793533986796",
+          "method": "GET"
+        }
+      ],
+      "correctness": {
+        "fixtureHash": "ffd7356c6d2dbbb2001c2150d223380857e657282aace9e440e302ea695f1b3f",
+        "missing": 0,
+        "fixtures": 1870,
+        "signalRows": "c975550ba2b784e3f030f009f1e0876dd1abf4a5b02102570bd4b719dd2844a5",
+        "stats": {
+          "total": 11810,
+          "pending": 291,
+          "ledgerTotal": 12101,
+          "rows": 12101
+        },
+        "styles": [
+          {
+            "q": ".match-row",
+            "bg": "none",
+            "color": "rgb(23, 33, 27)",
+            "font": "\"IBM Plex Sans\", \"IBM Plex Sans Thai\", Inter, Arial, sans-serif"
+          },
+          null,
+          {
+            "q": "[data-featured]",
+            "bg": "none",
+            "color": "rgb(25, 60, 41)",
+            "font": "\"IBM Plex Sans\", \"IBM Plex Sans Thai\", Inter, Arial, sans-serif"
+          }
+        ]
+      },
+      "errors": [],
+      "failed": []
+    },
+    {
+      "profile": {
+        "name": "desktop",
+        "width": 1440,
+        "height": 1000,
+        "cpu": 1
+      },
+      "repeat": 0,
+      "variant": "baseline",
+      "cache": "warm",
+      "ttfb": 527.2999999999884,
+      "fcp": 1012,
+      "lcp": 2416,
+      "firstDOM": 7452.600000000006,
+      "firstVisible": 9436.399999999994,
+      "liveReady": 7452.799999999988,
+      "signalsReady": 10618.299999999988,
+      "observedTBT": 5209,
+      "measurementWindowMs": 18000,
+      "measuredInteractionMs": 592,
+      "inp": "not field INP",
+      "taskDuration": 9905.755000000001,
+      "scriptDuration": 2755.6820000000002,
+      "requests": {
+        "/api/engine/board": 1,
+        "/api/engine/statistics": 3,
+        "/api/prediction-vote": 1,
+        "/api/engine/signals": 1,
+        "/api/full-market/fixture-odds": 6
+      },
+      "api": [
+        {
+          "path": "/api/engine/board",
+          "query": "?_=1793533993987",
+          "method": "GET"
+        },
+        {
+          "path": "/api/engine/statistics",
+          "query": "?_=1793533994452",
+          "method": "GET"
+        },
+        {
+          "path": "/api/engine/statistics",
+          "query": "?paged=1&limit=1&_=1793533994530",
+          "method": "GET"
+        },
+        {
+          "path": "/api/prediction-vote",
+          "query": "?fixtureId=203790620",
+          "method": "GET"
+        },
+        {
+          "path": "/api/engine/signals",
+          "query": "?_=1793534001571",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203613392&_=1793534001645",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203613391&_=1793534004117",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203570885&_=1793534005733",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203747742&_=1793534006576",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203747744&_=1793534007420",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203790620&_=1793534008264",
+          "method": "GET"
+        },
+        {
+          "path": "/api/engine/statistics",
+          "query": "?paged=1&limit=1&_=1793534009531",
+          "method": "GET"
+        }
+      ],
+      "correctness": {
+        "fixtureHash": "ffd7356c6d2dbbb2001c2150d223380857e657282aace9e440e302ea695f1b3f",
+        "missing": 0,
+        "fixtures": 1870,
+        "signalRows": "c975550ba2b784e3f030f009f1e0876dd1abf4a5b02102570bd4b719dd2844a5",
+        "stats": {
+          "total": 11810,
+          "pending": 291,
+          "ledgerTotal": 12101,
+          "rows": 12101
+        },
+        "styles": [
+          {
+            "q": ".match-row",
+            "bg": "none",
+            "color": "rgb(23, 33, 27)",
+            "font": "\"IBM Plex Sans\", \"IBM Plex Sans Thai\", Inter, Arial, sans-serif"
+          },
+          null,
+          {
+            "q": "[data-featured]",
+            "bg": "none",
+            "color": "rgb(25, 60, 41)",
+            "font": "\"IBM Plex Sans\", \"IBM Plex Sans Thai\", Inter, Arial, sans-serif"
+          }
+        ]
+      },
+      "errors": [],
+      "failed": []
+    },
+    {
+      "profile": {
+        "name": "desktop",
+        "width": 1440,
+        "height": 1000,
+        "cpu": 1
+      },
+      "repeat": 0,
+      "variant": "candidate",
+      "cache": "cold",
+      "ttfb": 534.5,
+      "fcp": 1088,
+      "lcp": 2496,
+      "firstDOM": 5098.399999999994,
+      "firstVisible": 7057.299999999988,
+      "liveReady": 5098.6999999999825,
+      "signalsReady": 7767.6999999999825,
+      "observedTBT": 3351,
+      "measurementWindowMs": 18000,
+      "measuredInteractionMs": 536,
+      "inp": "not field INP",
+      "taskDuration": 7945.183,
+      "scriptDuration": 1939.373,
+      "requests": {
+        "/api/engine/board": 1,
+        "/api/engine/statistics": 3,
+        "/api/prediction-vote": 1,
+        "/api/full-market/fixture-odds": 6,
+        "/api/engine/signals": 1
+      },
+      "api": [
+        {
+          "path": "/api/engine/board",
+          "query": "?_=1793534017239",
+          "method": "GET"
+        },
+        {
+          "path": "/api/engine/statistics",
+          "query": "?paged=1&limit=1&_=1793534017814",
+          "method": "GET"
+        },
+        {
+          "path": "/api/engine/statistics",
+          "query": "?_=1793534020829",
+          "method": "GET"
+        },
+        {
+          "path": "/api/prediction-vote",
+          "query": "?fixtureId=203790620",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203613392&_=1793534022423",
+          "method": "GET"
+        },
+        {
+          "path": "/api/engine/signals",
+          "query": "?_=1793534022455",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203613391&_=1793534024530",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203570885&_=1793534027201",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203747742&_=1793534028047",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203747744&_=1793534028891",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203790620&_=1793534029737",
+          "method": "GET"
+        },
+        {
+          "path": "/api/engine/statistics",
+          "query": "?paged=1&limit=1&_=1793534032815",
+          "method": "GET"
+        }
+      ],
+      "correctness": {
+        "fixtureHash": "ffd7356c6d2dbbb2001c2150d223380857e657282aace9e440e302ea695f1b3f",
+        "missing": 0,
+        "fixtures": 1870,
+        "signalRows": "c975550ba2b784e3f030f009f1e0876dd1abf4a5b02102570bd4b719dd2844a5",
+        "stats": {
+          "total": 11810,
+          "pending": 291,
+          "ledgerTotal": 12101,
+          "rows": 12101
+        },
+        "styles": [
+          {
+            "q": ".match-row",
+            "bg": "none",
+            "color": "rgb(23, 33, 27)",
+            "font": "\"IBM Plex Sans\", \"IBM Plex Sans Thai\", Inter, Arial, sans-serif"
+          },
+          null,
+          {
+            "q": "[data-featured]",
+            "bg": "none",
+            "color": "rgb(25, 60, 41)",
+            "font": "\"IBM Plex Sans\", \"IBM Plex Sans Thai\", Inter, Arial, sans-serif"
+          }
+        ]
+      },
+      "errors": [],
+      "failed": []
+    },
+    {
+      "profile": {
+        "name": "desktop",
+        "width": 1440,
+        "height": 1000,
+        "cpu": 1
+      },
+      "repeat": 0,
+      "variant": "candidate",
+      "cache": "warm",
+      "ttfb": 526.1000000000058,
+      "fcp": 1032,
+      "lcp": 2368,
+      "firstDOM": 5007.700000000012,
+      "firstVisible": 6876.8000000000175,
+      "liveReady": 5007.899999999994,
+      "signalsReady": 7518,
+      "observedTBT": 3135,
+      "measurementWindowMs": 18000,
+      "measuredInteractionMs": 528,
+      "inp": "not field INP",
+      "taskDuration": 7728.560000000001,
+      "scriptDuration": 1847.136,
+      "requests": {
+        "/api/engine/board": 1,
+        "/api/engine/statistics": 3,
+        "/api/prediction-vote": 1,
+        "/api/full-market/fixture-odds": 6,
+        "/api/engine/signals": 1
+      },
+      "api": [
+        {
+          "path": "/api/engine/board",
+          "query": "?_=1793534040335",
+          "method": "GET"
+        },
+        {
+          "path": "/api/engine/statistics",
+          "query": "?paged=1&limit=1&_=1793534040869",
+          "method": "GET"
+        },
+        {
+          "path": "/api/engine/statistics",
+          "query": "?_=1793534043868",
+          "method": "GET"
+        },
+        {
+          "path": "/api/prediction-vote",
+          "query": "?fixtureId=203790620",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203613392&_=1793534045378",
+          "method": "GET"
+        },
+        {
+          "path": "/api/engine/signals",
+          "query": "?_=1793534045418",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203613391&_=1793534047368",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203570885&_=1793534049984",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203747742&_=1793534050829",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203747744&_=1793534051673",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203790620&_=1793534052517",
+          "method": "GET"
+        },
+        {
+          "path": "/api/engine/statistics",
+          "query": "?paged=1&limit=1&_=1793534055870",
+          "method": "GET"
+        }
+      ],
+      "correctness": {
+        "fixtureHash": "ffd7356c6d2dbbb2001c2150d223380857e657282aace9e440e302ea695f1b3f",
+        "missing": 0,
+        "fixtures": 1870,
+        "signalRows": "c975550ba2b784e3f030f009f1e0876dd1abf4a5b02102570bd4b719dd2844a5",
+        "stats": {
+          "total": 11810,
+          "pending": 291,
+          "ledgerTotal": 12101,
+          "rows": 12101
+        },
+        "styles": [
+          {
+            "q": ".match-row",
+            "bg": "none",
+            "color": "rgb(23, 33, 27)",
+            "font": "\"IBM Plex Sans\", \"IBM Plex Sans Thai\", Inter, Arial, sans-serif"
+          },
+          null,
+          {
+            "q": "[data-featured]",
+            "bg": "none",
+            "color": "rgb(25, 60, 41)",
+            "font": "\"IBM Plex Sans\", \"IBM Plex Sans Thai\", Inter, Arial, sans-serif"
+          }
+        ]
+      },
+      "errors": [],
+      "failed": []
+    },
+    {
+      "profile": {
+        "name": "desktop",
+        "width": 1440,
+        "height": 1000,
+        "cpu": 1
+      },
+      "repeat": 1,
+      "variant": "candidate",
+      "cache": "cold",
+      "ttfb": 527.8999999999651,
+      "fcp": 1088,
+      "lcp": 2428,
+      "firstDOM": 5021.399999999965,
+      "firstVisible": 6960.899999999965,
+      "liveReady": 5021.699999999953,
+      "signalsReady": 7687.299999999988,
+      "observedTBT": 3274,
+      "measurementWindowMs": 18000,
+      "measuredInteractionMs": 544,
+      "inp": "not field INP",
+      "taskDuration": 7838.635,
+      "scriptDuration": 1940.955,
+      "requests": {
+        "/api/engine/board": 1,
+        "/api/engine/statistics": 3,
+        "/api/prediction-vote": 1,
+        "/api/full-market/fixture-odds": 6,
+        "/api/engine/signals": 1
+      },
+      "api": [
+        {
+          "path": "/api/engine/board",
+          "query": "?_=1793534063322",
+          "method": "GET"
+        },
+        {
+          "path": "/api/engine/statistics",
+          "query": "?paged=1&limit=1&_=1793534063853",
+          "method": "GET"
+        },
+        {
+          "path": "/api/engine/statistics",
+          "query": "?_=1793534066847",
+          "method": "GET"
+        },
+        {
+          "path": "/api/prediction-vote",
+          "query": "?fixtureId=203790620",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203613392&_=1793534068394",
+          "method": "GET"
+        },
+        {
+          "path": "/api/engine/signals",
+          "query": "?_=1793534068432",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203613391&_=1793534070521",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203570885&_=1793534073124",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203747742&_=1793534073970",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203747744&_=1793534074814",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203790620&_=1793534075658",
+          "method": "GET"
+        },
+        {
+          "path": "/api/engine/statistics",
+          "query": "?paged=1&limit=1&_=1793534078855",
+          "method": "GET"
+        }
+      ],
+      "correctness": {
+        "fixtureHash": "ffd7356c6d2dbbb2001c2150d223380857e657282aace9e440e302ea695f1b3f",
+        "missing": 0,
+        "fixtures": 1870,
+        "signalRows": "c975550ba2b784e3f030f009f1e0876dd1abf4a5b02102570bd4b719dd2844a5",
+        "stats": {
+          "total": 11810,
+          "pending": 291,
+          "ledgerTotal": 12101,
+          "rows": 12101
+        },
+        "styles": [
+          {
+            "q": ".match-row",
+            "bg": "none",
+            "color": "rgb(23, 33, 27)",
+            "font": "\"IBM Plex Sans\", \"IBM Plex Sans Thai\", Inter, Arial, sans-serif"
+          },
+          null,
+          {
+            "q": "[data-featured]",
+            "bg": "none",
+            "color": "rgb(25, 60, 41)",
+            "font": "\"IBM Plex Sans\", \"IBM Plex Sans Thai\", Inter, Arial, sans-serif"
+          }
+        ]
+      },
+      "errors": [],
+      "failed": []
+    },
+    {
+      "profile": {
+        "name": "desktop",
+        "width": 1440,
+        "height": 1000,
+        "cpu": 1
+      },
+      "repeat": 1,
+      "variant": "candidate",
+      "cache": "warm",
+      "ttfb": 527.0999999999767,
+      "fcp": 1032,
+      "lcp": 2396,
+      "firstDOM": 5000.099999999977,
+      "firstVisible": 6781.899999999965,
+      "liveReady": 5000.399999999965,
+      "signalsReady": 7559.200000000012,
+      "observedTBT": 3142,
+      "measurementWindowMs": 18000,
+      "measuredInteractionMs": 512,
+      "inp": "not field INP",
+      "taskDuration": 7752.029000000002,
+      "scriptDuration": 1958.7669999999998,
+      "requests": {
+        "/api/engine/board": 1,
+        "/api/engine/statistics": 3,
+        "/api/prediction-vote": 1,
+        "/api/full-market/fixture-odds": 6,
+        "/api/engine/signals": 1
+      },
+      "api": [
+        {
+          "path": "/api/engine/board",
+          "query": "?_=1793534086306",
+          "method": "GET"
+        },
+        {
+          "path": "/api/engine/statistics",
+          "query": "?paged=1&limit=1&_=1793534086844",
+          "method": "GET"
+        },
+        {
+          "path": "/api/engine/statistics",
+          "query": "?_=1793534089830",
+          "method": "GET"
+        },
+        {
+          "path": "/api/prediction-vote",
+          "query": "?fixtureId=203790620",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203613392&_=1793534091315",
+          "method": "GET"
+        },
+        {
+          "path": "/api/engine/signals",
+          "query": "?_=1793534091350",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203613391&_=1793534093410",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203570885&_=1793534096058",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203747742&_=1793534096904",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203747744&_=1793534097747",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203790620&_=1793534098590",
+          "method": "GET"
+        },
+        {
+          "path": "/api/engine/statistics",
+          "query": "?paged=1&limit=1&_=1793534101845",
+          "method": "GET"
+        }
+      ],
+      "correctness": {
+        "fixtureHash": "ffd7356c6d2dbbb2001c2150d223380857e657282aace9e440e302ea695f1b3f",
+        "missing": 0,
+        "fixtures": 1870,
+        "signalRows": "c975550ba2b784e3f030f009f1e0876dd1abf4a5b02102570bd4b719dd2844a5",
+        "stats": {
+          "total": 11810,
+          "pending": 291,
+          "ledgerTotal": 12101,
+          "rows": 12101
+        },
+        "styles": [
+          {
+            "q": ".match-row",
+            "bg": "none",
+            "color": "rgb(23, 33, 27)",
+            "font": "\"IBM Plex Sans\", \"IBM Plex Sans Thai\", Inter, Arial, sans-serif"
+          },
+          null,
+          {
+            "q": "[data-featured]",
+            "bg": "none",
+            "color": "rgb(25, 60, 41)",
+            "font": "\"IBM Plex Sans\", \"IBM Plex Sans Thai\", Inter, Arial, sans-serif"
+          }
+        ]
+      },
+      "errors": [],
+      "failed": []
+    },
+    {
+      "profile": {
+        "name": "desktop",
+        "width": 1440,
+        "height": 1000,
+        "cpu": 1
+      },
+      "repeat": 1,
+      "variant": "baseline",
+      "cache": "cold",
+      "ttfb": 528.2999999999884,
+      "fcp": 1092,
+      "lcp": 2420,
+      "firstDOM": 7362.400000000023,
+      "firstVisible": 9366.900000000023,
+      "liveReady": 7362.5,
+      "signalsReady": 10513.5,
+      "observedTBT": 5012,
+      "measurementWindowMs": 18000,
+      "measuredInteractionMs": 584,
+      "inp": "not field INP",
+      "taskDuration": 9660.436,
+      "scriptDuration": 2885.4669999999996,
+      "requests": {
+        "/api/engine/board": 1,
+        "/api/engine/statistics": 3,
+        "/api/prediction-vote": 1,
+        "/api/engine/signals": 1,
+        "/api/full-market/fixture-odds": 6
+      },
+      "api": [
+        {
+          "path": "/api/engine/board",
+          "query": "?_=1793534109235",
+          "method": "GET"
+        },
+        {
+          "path": "/api/engine/statistics",
+          "query": "?_=1793534109695",
+          "method": "GET"
+        },
+        {
+          "path": "/api/engine/statistics",
+          "query": "?paged=1&limit=1&_=1793534109772",
+          "method": "GET"
+        },
+        {
+          "path": "/api/prediction-vote",
+          "query": "?fixtureId=203790620",
+          "method": "GET"
+        },
+        {
+          "path": "/api/engine/signals",
+          "query": "?_=1793534116675",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203613392&_=1793534116950",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203613391&_=1793534119274",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203570885&_=1793534120884",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203747742&_=1793534121728",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203747744&_=1793534122573",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203790620&_=1793534123417",
+          "method": "GET"
+        },
+        {
+          "path": "/api/engine/statistics",
+          "query": "?paged=1&limit=1&_=1793534124773",
+          "method": "GET"
+        }
+      ],
+      "correctness": {
+        "fixtureHash": "ffd7356c6d2dbbb2001c2150d223380857e657282aace9e440e302ea695f1b3f",
+        "missing": 0,
+        "fixtures": 1870,
+        "signalRows": "c975550ba2b784e3f030f009f1e0876dd1abf4a5b02102570bd4b719dd2844a5",
+        "stats": {
+          "total": 11810,
+          "pending": 291,
+          "ledgerTotal": 12101,
+          "rows": 12101
+        },
+        "styles": [
+          {
+            "q": ".match-row",
+            "bg": "none",
+            "color": "rgb(23, 33, 27)",
+            "font": "\"IBM Plex Sans\", \"IBM Plex Sans Thai\", Inter, Arial, sans-serif"
+          },
+          null,
+          {
+            "q": "[data-featured]",
+            "bg": "none",
+            "color": "rgb(25, 60, 41)",
+            "font": "\"IBM Plex Sans\", \"IBM Plex Sans Thai\", Inter, Arial, sans-serif"
+          }
+        ]
+      },
+      "errors": [],
+      "failed": []
+    },
+    {
+      "profile": {
+        "name": "desktop",
+        "width": 1440,
+        "height": 1000,
+        "cpu": 1
+      },
+      "repeat": 1,
+      "variant": "baseline",
+      "cache": "warm",
+      "ttfb": 527.2000000000116,
+      "fcp": 1024,
+      "lcp": 2376,
+      "firstDOM": 7490.700000000012,
+      "firstVisible": 9470.200000000012,
+      "liveReady": 7491.099999999977,
+      "signalsReady": 10725.599999999977,
+      "observedTBT": 5206,
+      "measurementWindowMs": 18000,
+      "measuredInteractionMs": 520,
+      "inp": "not field INP",
+      "taskDuration": 9865.706000000002,
+      "scriptDuration": 2756.6559999999995,
+      "requests": {
+        "/api/engine/board": 1,
+        "/api/engine/statistics": 3,
+        "/api/prediction-vote": 1,
+        "/api/engine/signals": 1,
+        "/api/full-market/fixture-odds": 6
+      },
+      "api": [
+        {
+          "path": "/api/engine/board",
+          "query": "?_=1793534132144",
+          "method": "GET"
+        },
+        {
+          "path": "/api/engine/statistics",
+          "query": "?_=1793534132607",
+          "method": "GET"
+        },
+        {
+          "path": "/api/engine/statistics",
+          "query": "?paged=1&limit=1&_=1793534132682",
+          "method": "GET"
+        },
+        {
+          "path": "/api/prediction-vote",
+          "query": "?fixtureId=203790620",
+          "method": "GET"
+        },
+        {
+          "path": "/api/engine/signals",
+          "query": "?_=1793534139768",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203613392&_=1793534139830",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203613391&_=1793534142397",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203570885&_=1793534144041",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203747742&_=1793534144884",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203747744&_=1793534145728",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203790620&_=1793534146571",
+          "method": "GET"
+        },
+        {
+          "path": "/api/engine/statistics",
+          "query": "?paged=1&limit=1&_=1793534147682",
+          "method": "GET"
+        }
+      ],
+      "correctness": {
+        "fixtureHash": "ffd7356c6d2dbbb2001c2150d223380857e657282aace9e440e302ea695f1b3f",
+        "missing": 0,
+        "fixtures": 1870,
+        "signalRows": "c975550ba2b784e3f030f009f1e0876dd1abf4a5b02102570bd4b719dd2844a5",
+        "stats": {
+          "total": 11810,
+          "pending": 291,
+          "ledgerTotal": 12101,
+          "rows": 12101
+        },
+        "styles": [
+          {
+            "q": ".match-row",
+            "bg": "none",
+            "color": "rgb(23, 33, 27)",
+            "font": "\"IBM Plex Sans\", \"IBM Plex Sans Thai\", Inter, Arial, sans-serif"
+          },
+          null,
+          {
+            "q": "[data-featured]",
+            "bg": "none",
+            "color": "rgb(25, 60, 41)",
+            "font": "\"IBM Plex Sans\", \"IBM Plex Sans Thai\", Inter, Arial, sans-serif"
+          }
+        ]
+      },
+      "errors": [],
+      "failed": []
+    },
+    {
+      "profile": {
+        "name": "desktop",
+        "width": 1440,
+        "height": 1000,
+        "cpu": 1
+      },
+      "repeat": 2,
+      "variant": "baseline",
+      "cache": "cold",
+      "ttfb": 528,
+      "fcp": 1076,
+      "lcp": 2392,
+      "firstDOM": 7413.799999999988,
+      "firstVisible": 9326.200000000012,
+      "liveReady": 7414,
+      "signalsReady": 10594.400000000023,
+      "observedTBT": 5144,
+      "measurementWindowMs": 18000,
+      "measuredInteractionMs": 544,
+      "inp": "not field INP",
+      "taskDuration": 9786.391,
+      "scriptDuration": 2912.616,
+      "requests": {
+        "/api/engine/board": 1,
+        "/api/engine/statistics": 3,
+        "/api/prediction-vote": 1,
+        "/api/engine/signals": 1,
+        "/api/full-market/fixture-odds": 6
+      },
+      "api": [
+        {
+          "path": "/api/engine/board",
+          "query": "?_=1793534155255",
+          "method": "GET"
+        },
+        {
+          "path": "/api/engine/statistics",
+          "query": "?_=1793534155718",
+          "method": "GET"
+        },
+        {
+          "path": "/api/engine/statistics",
+          "query": "?paged=1&limit=1&_=1793534155797",
+          "method": "GET"
+        },
+        {
+          "path": "/api/prediction-vote",
+          "query": "?fixtureId=203790620",
+          "method": "GET"
+        },
+        {
+          "path": "/api/engine/signals",
+          "query": "?_=1793534162795",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203613392&_=1793534163280",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203613391&_=1793534165435",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203570885&_=1793534167042",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203747742&_=1793534167885",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203747744&_=1793534168729",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203790620&_=1793534169574",
+          "method": "GET"
+        },
+        {
+          "path": "/api/engine/statistics",
+          "query": "?paged=1&limit=1&_=1793534170798",
+          "method": "GET"
+        }
+      ],
+      "correctness": {
+        "fixtureHash": "ffd7356c6d2dbbb2001c2150d223380857e657282aace9e440e302ea695f1b3f",
+        "missing": 0,
+        "fixtures": 1870,
+        "signalRows": "c975550ba2b784e3f030f009f1e0876dd1abf4a5b02102570bd4b719dd2844a5",
+        "stats": {
+          "total": 11810,
+          "pending": 291,
+          "ledgerTotal": 12101,
+          "rows": 12101
+        },
+        "styles": [
+          {
+            "q": ".match-row",
+            "bg": "none",
+            "color": "rgb(23, 33, 27)",
+            "font": "\"IBM Plex Sans\", \"IBM Plex Sans Thai\", Inter, Arial, sans-serif"
+          },
+          null,
+          {
+            "q": "[data-featured]",
+            "bg": "none",
+            "color": "rgb(25, 60, 41)",
+            "font": "\"IBM Plex Sans\", \"IBM Plex Sans Thai\", Inter, Arial, sans-serif"
+          }
+        ]
+      },
+      "errors": [],
+      "failed": []
+    },
+    {
+      "profile": {
+        "name": "desktop",
+        "width": 1440,
+        "height": 1000,
+        "cpu": 1
+      },
+      "repeat": 2,
+      "variant": "baseline",
+      "cache": "warm",
+      "ttfb": 525.9000000000233,
+      "fcp": 1032,
+      "lcp": 2408,
+      "firstDOM": 7393.299999999988,
+      "firstVisible": 9224.099999999977,
+      "liveReady": 7393.5,
+      "signalsReady": 10613.099999999977,
+      "observedTBT": 5147,
+      "measurementWindowMs": 18000,
+      "measuredInteractionMs": 568,
+      "inp": "not field INP",
+      "taskDuration": 9954.530000000002,
+      "scriptDuration": 2724.4010000000003,
+      "requests": {
+        "/api/engine/board": 1,
+        "/api/engine/statistics": 3,
+        "/api/prediction-vote": 1,
+        "/api/engine/signals": 1,
+        "/api/full-market/fixture-odds": 6
+      },
+      "api": [
+        {
+          "path": "/api/engine/board",
+          "query": "?_=1793534178282",
+          "method": "GET"
+        },
+        {
+          "path": "/api/engine/statistics",
+          "query": "?_=1793534178742",
+          "method": "GET"
+        },
+        {
+          "path": "/api/engine/statistics",
+          "query": "?paged=1&limit=1&_=1793534178823",
+          "method": "GET"
+        },
+        {
+          "path": "/api/prediction-vote",
+          "query": "?fixtureId=203790620",
+          "method": "GET"
+        },
+        {
+          "path": "/api/engine/signals",
+          "query": "?_=1793534185741",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203613392&_=1793534186089",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203613391&_=1793534188437",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203570885&_=1793534190076",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203747742&_=1793534190920",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203747744&_=1793534191763",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203790620&_=1793534192607",
+          "method": "GET"
+        },
+        {
+          "path": "/api/engine/statistics",
+          "query": "?paged=1&limit=1&_=1793534193824",
+          "method": "GET"
+        }
+      ],
+      "correctness": {
+        "fixtureHash": "ffd7356c6d2dbbb2001c2150d223380857e657282aace9e440e302ea695f1b3f",
+        "missing": 0,
+        "fixtures": 1870,
+        "signalRows": "c975550ba2b784e3f030f009f1e0876dd1abf4a5b02102570bd4b719dd2844a5",
+        "stats": {
+          "total": 11810,
+          "pending": 291,
+          "ledgerTotal": 12101,
+          "rows": 12101
+        },
+        "styles": [
+          {
+            "q": ".match-row",
+            "bg": "none",
+            "color": "rgb(23, 33, 27)",
+            "font": "\"IBM Plex Sans\", \"IBM Plex Sans Thai\", Inter, Arial, sans-serif"
+          },
+          null,
+          {
+            "q": "[data-featured]",
+            "bg": "none",
+            "color": "rgb(25, 60, 41)",
+            "font": "\"IBM Plex Sans\", \"IBM Plex Sans Thai\", Inter, Arial, sans-serif"
+          }
+        ]
+      },
+      "errors": [],
+      "failed": []
+    },
+    {
+      "profile": {
+        "name": "desktop",
+        "width": 1440,
+        "height": 1000,
+        "cpu": 1
+      },
+      "repeat": 2,
+      "variant": "candidate",
+      "cache": "cold",
+      "ttfb": 526.7999999999884,
+      "fcp": 1072,
+      "lcp": 2384,
+      "firstDOM": 5017.399999999965,
+      "firstVisible": 6953.599999999977,
+      "liveReady": 5017.599999999977,
+      "signalsReady": 7601.5,
+      "observedTBT": 3318,
+      "measurementWindowMs": 18000,
+      "measuredInteractionMs": 512,
+      "inp": "not field INP",
+      "taskDuration": 7830.995,
+      "scriptDuration": 1899.612,
+      "requests": {
+        "/api/engine/board": 1,
+        "/api/engine/statistics": 3,
+        "/api/prediction-vote": 1,
+        "/api/full-market/fixture-odds": 6,
+        "/api/engine/signals": 1
+      },
+      "api": [
+        {
+          "path": "/api/engine/board",
+          "query": "?_=1793534201463",
+          "method": "GET"
+        },
+        {
+          "path": "/api/engine/statistics",
+          "query": "?paged=1&limit=1&_=1793534201990",
+          "method": "GET"
+        },
+        {
+          "path": "/api/engine/statistics",
+          "query": "?_=1793534204999",
+          "method": "GET"
+        },
+        {
+          "path": "/api/prediction-vote",
+          "query": "?fixtureId=203790620",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203613392&_=1793534206536",
+          "method": "GET"
+        },
+        {
+          "path": "/api/engine/signals",
+          "query": "?_=1793534206568",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203613391&_=1793534208610",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203570885&_=1793534211291",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203747742&_=1793534212137",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203747744&_=1793534212980",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203790620&_=1793534213825",
+          "method": "GET"
+        },
+        {
+          "path": "/api/engine/statistics",
+          "query": "?paged=1&limit=1&_=1793534216992",
+          "method": "GET"
+        }
+      ],
+      "correctness": {
+        "fixtureHash": "ffd7356c6d2dbbb2001c2150d223380857e657282aace9e440e302ea695f1b3f",
+        "missing": 0,
+        "fixtures": 1870,
+        "signalRows": "c975550ba2b784e3f030f009f1e0876dd1abf4a5b02102570bd4b719dd2844a5",
+        "stats": {
+          "total": 11810,
+          "pending": 291,
+          "ledgerTotal": 12101,
+          "rows": 12101
+        },
+        "styles": [
+          {
+            "q": ".match-row",
+            "bg": "none",
+            "color": "rgb(23, 33, 27)",
+            "font": "\"IBM Plex Sans\", \"IBM Plex Sans Thai\", Inter, Arial, sans-serif"
+          },
+          null,
+          {
+            "q": "[data-featured]",
+            "bg": "none",
+            "color": "rgb(25, 60, 41)",
+            "font": "\"IBM Plex Sans\", \"IBM Plex Sans Thai\", Inter, Arial, sans-serif"
+          }
+        ]
+      },
+      "errors": [],
+      "failed": []
+    },
+    {
+      "profile": {
+        "name": "desktop",
+        "width": 1440,
+        "height": 1000,
+        "cpu": 1
+      },
+      "repeat": 2,
+      "variant": "candidate",
+      "cache": "warm",
+      "ttfb": 527.3999999999651,
+      "fcp": 1072,
+      "lcp": 2452,
+      "firstDOM": 5057.899999999965,
+      "firstVisible": 6897.799999999988,
+      "liveReady": 5058.200000000012,
+      "signalsReady": 7609.399999999965,
+      "observedTBT": 3198,
+      "measurementWindowMs": 18000,
+      "measuredInteractionMs": 512,
+      "inp": "not field INP",
+      "taskDuration": 7714.178000000001,
+      "scriptDuration": 1827.3509999999997,
+      "requests": {
+        "/api/engine/board": 1,
+        "/api/engine/statistics": 3,
+        "/api/prediction-vote": 1,
+        "/api/full-market/fixture-odds": 6,
+        "/api/engine/signals": 1
+      },
+      "api": [
+        {
+          "path": "/api/engine/board",
+          "query": "?_=1793534224315",
+          "method": "GET"
+        },
+        {
+          "path": "/api/engine/statistics",
+          "query": "?paged=1&limit=1&_=1793534224851",
+          "method": "GET"
+        },
+        {
+          "path": "/api/engine/statistics",
+          "query": "?_=1793534227854",
+          "method": "GET"
+        },
+        {
+          "path": "/api/prediction-vote",
+          "query": "?fixtureId=203790620",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203613392&_=1793534229349",
+          "method": "GET"
+        },
+        {
+          "path": "/api/engine/signals",
+          "query": "?_=1793534229385",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203613391&_=1793534231483",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203570885&_=1793534233973",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203747742&_=1793534234818",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203747744&_=1793534235661",
+          "method": "GET"
+        },
+        {
+          "path": "/api/full-market/fixture-odds",
+          "query": "?fixtureId=203790620&_=1793534236504",
+          "method": "GET"
+        },
+        {
+          "path": "/api/engine/statistics",
+          "query": "?paged=1&limit=1&_=1793534239852",
+          "method": "GET"
+        }
+      ],
+      "correctness": {
+        "fixtureHash": "ffd7356c6d2dbbb2001c2150d223380857e657282aace9e440e302ea695f1b3f",
+        "missing": 0,
+        "fixtures": 1870,
+        "signalRows": "c975550ba2b784e3f030f009f1e0876dd1abf4a5b02102570bd4b719dd2844a5",
+        "stats": {
+          "total": 11810,
+          "pending": 291,
+          "ledgerTotal": 12101,
+          "rows": 12101
+        },
+        "styles": [
+          {
+            "q": ".match-row",
+            "bg": "none",
+            "color": "rgb(23, 33, 27)",
+            "font": "\"IBM Plex Sans\", \"IBM Plex Sans Thai\", Inter, Arial, sans-serif"
+          },
+          null,
+          {
+            "q": "[data-featured]",
+            "bg": "none",
+            "color": "rgb(25, 60, 41)",
+            "font": "\"IBM Plex Sans\", \"IBM Plex Sans Thai\", Inter, Arial, sans-serif"
+          }
+        ]
+      },
+      "errors": [],
+      "failed": []
+    }
+  ]
+}
