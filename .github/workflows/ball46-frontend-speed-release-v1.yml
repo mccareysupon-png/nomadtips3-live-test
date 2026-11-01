@@ -38,6 +38,8 @@ jobs:
         run: |
           npm install --no-save --package-lock=false playwright@1.56.1
           npx playwright install --with-deps chromium
+      - name: Verify existing Production first with identified audit-only telemetry suppression
+        run: node release-browser.mjs https://ball46.com baseline
       - name: Stage non-traffic candidate preserving all current modules and assets
         run: node release.mjs
       - name: Verify candidate desktop, mobile, current monitor and Event Flow
@@ -47,6 +49,7 @@ jobs:
           cp browser-proof.json release-audit/candidate-browser-proof.json
           node -e "const fs=require('fs'),c=JSON.parse(fs.readFileSync('release-audit/candidate.json'));fs.writeFileSync('request.json',JSON.stringify({phase:'activate',base:c.base,candidate:c.candidate}))"
           node release.mjs
+          cp release-audit/result.json release-audit/activation-result.json
           node release-browser.mjs https://ball46.com
       - name: Restore immediate baseline if post-activation verification fails
         if: failure()
