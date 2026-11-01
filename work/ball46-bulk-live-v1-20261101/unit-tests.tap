@@ -1,0 +1,346 @@
+TAP version 13
+# Subtest: owner signature accepted, JWKS cached
+ok 1 - owner signature accepted, JWKS cached
+  ---
+  duration_ms: 30.449814
+  type: 'test'
+  ...
+# Subtest: reject wrong owner
+ok 2 - reject wrong owner
+  ---
+  duration_ms: 1.615124
+  type: 'test'
+  ...
+# Subtest: reject wrong audience
+ok 3 - reject wrong audience
+  ---
+  duration_ms: 0.838413
+  type: 'test'
+  ...
+# Subtest: reject wrong issuer
+ok 4 - reject wrong issuer
+  ---
+  duration_ms: 0.733221
+  type: 'test'
+  ...
+# Subtest: reject expired
+ok 5 - reject expired
+  ---
+  duration_ms: 0.752527
+  type: 'test'
+  ...
+# Subtest: reject future nbf
+ok 6 - reject future nbf
+  ---
+  duration_ms: 0.842394
+  type: 'test'
+  ...
+# Subtest: reject future iat
+ok 7 - reject future iat
+  ---
+  duration_ms: 0.785271
+  type: 'test'
+  ...
+# Subtest: reject missing expiry
+ok 8 - reject missing expiry
+  ---
+  duration_ms: 0.764488
+  type: 'test'
+  ...
+# Subtest: reject missing subject
+ok 9 - reject missing subject
+  ---
+  duration_ms: 0.861581
+  type: 'test'
+  ...
+# Subtest: reject unsigned algorithm
+ok 10 - reject unsigned algorithm
+  ---
+  duration_ms: 0.808718
+  type: 'test'
+  ...
+# Subtest: reject unknown key
+ok 11 - reject unknown key
+  ---
+  duration_ms: 0.810886
+  type: 'test'
+  ...
+# Subtest: forged signature rejected
+ok 12 - forged signature rejected
+  ---
+  duration_ms: 0.689194
+  type: 'test'
+  ...
+# Subtest: forged email header is not authentication
+ok 13 - forged email header is not authentication
+  ---
+  duration_ms: 0.303233
+  type: 'test'
+  ...
+# Subtest: unconfigured access fails closed
+ok 14 - unconfigured access fails closed
+  ---
+  duration_ms: 0.189082
+  type: 'test'
+  ...
+# Subtest: workers.dev blocked even with valid token
+ok 15 - workers.dev blocked even with valid token
+  ---
+  duration_ms: 0.367188
+  type: 'test'
+  ...
+# Subtest: cross-origin mutation blocked
+ok 16 - cross-origin mutation blocked
+  ---
+  duration_ms: 0.162651
+  type: 'test'
+  ...
+# Subtest: wrappers block control and preserve unrelated routes/cron
+ok 17 - wrappers block control and preserve unrelated routes/cron
+  ---
+  duration_ms: 1.251238
+  type: 'test'
+  ...
+# Subtest: pinned Website baseline exact hash; protected modules untouched
+ok 18 - pinned Website baseline exact hash; protected modules untouched
+  ---
+  duration_ms: 11.863585
+  type: 'test'
+  ...
+# Subtest: HUB rich odds class unchanged byte-for-byte
+ok 19 - HUB rich odds class unchanged byte-for-byte
+  ---
+  duration_ms: 0.101719
+  type: 'test'
+  ...
+# Subtest: snapshot merge, retention and normalization stay inherited
+ok 20 - snapshot merge, retention and normalization stay inherited
+  ---
+  duration_ms: 0.100069
+  type: 'test'
+  ...
+# Subtest: viewer snapshot reads add zero provider requests
+ok 21 - viewer snapshot reads add zero provider requests
+  ---
+  duration_ms: 6.690524
+  type: 'test'
+  ...
+# Subtest: cooldown blocks both alarm and original scheduled producer path
+ok 22 - cooldown blocks both alarm and original scheduled producer path
+  ---
+  duration_ms: 2.580983
+  type: 'test'
+  ...
+# Subtest: expired FAST proof defers early alarm to DEFAULT interval
+ok 23 - expired FAST proof defers early alarm to DEFAULT interval
+  ---
+  duration_ms: 0.328891
+  type: 'test'
+  ...
+# Subtest: direct DO control cannot bypass authentication
+ok 24 - direct DO control cannot bypass authentication
+  ---
+  duration_ms: 0.583815
+  type: 'test'
+  ...
+# Subtest: public HUB control denied without changing snapshot path
+ok 25 - public HUB control denied without changing snapshot path
+  ---
+  duration_ms: 0.84294
+  type: 'test'
+  ...
+# Subtest: Full Odds UI and settings behavior unchanged
+ok 26 - Full Odds UI and settings behavior unchanged
+  ---
+  duration_ms: 9.097374
+  type: 'test'
+  ...
+# Subtest: mode DEFAULT schedules 30 seconds
+ok 27 - mode DEFAULT schedules 30 seconds
+  ---
+  duration_ms: 0.587994
+  type: 'test'
+  ...
+# Subtest: mode FAST schedules 20 seconds
+ok 28 - mode FAST schedules 20 seconds
+  ---
+  duration_ms: 0.235022
+  type: 'test'
+  ...
+# Subtest: mode ULTRA schedules 15 seconds
+ok 29 - mode ULTRA schedules 15 seconds
+  ---
+  duration_ms: 0.133967
+  type: 'test'
+  ...
+# Subtest: DEFAULT restores 30 after ULTRA
+ok 30 - DEFAULT restores 30 after ULTRA
+  ---
+  duration_ms: 0.240275
+  type: 'test'
+  ...
+# Subtest: acceleration fails closed: no proof
+ok 31 - acceleration fails closed: no proof
+  ---
+  duration_ms: 0.072554
+  type: 'test'
+  ...
+# Subtest: acceleration fails closed: no account
+ok 32 - acceleration fails closed: no account
+  ---
+  duration_ms: 0.026858
+  type: 'test'
+  ...
+# Subtest: acceleration fails closed: incomplete coverage
+ok 33 - acceleration fails closed: incomplete coverage
+  ---
+  duration_ms: 0.039314
+  type: 'test'
+  ...
+# Subtest: acceleration fails closed: wrong account
+ok 34 - acceleration fails closed: wrong account
+  ---
+  duration_ms: 0.02279
+  type: 'test'
+  ...
+# Subtest: acceleration fails closed: stale proof
+ok 35 - acceleration fails closed: stale proof
+  ---
+  duration_ms: 0.02472
+  type: 'test'
+  ...
+# Subtest: acceleration fails closed: future proof
+ok 36 - acceleration fails closed: future proof
+  ---
+  duration_ms: 0.019945
+  type: 'test'
+  ...
+# Subtest: acceleration fails closed: missing expiry
+ok 37 - acceleration fails closed: missing expiry
+  ---
+  duration_ms: 0.043342
+  type: 'test'
+  ...
+# Subtest: acceleration fails closed: expired proof
+ok 38 - acceleration fails closed: expired proof
+  ---
+  duration_ms: 0.0246
+  type: 'test'
+  ...
+# Subtest: acceleration fails closed: wrong plan
+ok 39 - acceleration fails closed: wrong plan
+  ---
+  duration_ms: 0.02664
+  type: 'test'
+  ...
+# Subtest: acceleration fails closed: low remaining
+ok 40 - acceleration fails closed: low remaining
+  ---
+  duration_ms: 0.026968
+  type: 'test'
+  ...
+# Subtest: acceleration fails closed: low reservation
+ok 41 - acceleration fails closed: low reservation
+  ---
+  duration_ms: 0.023084
+  type: 'test'
+  ...
+# Subtest: acceleration fails closed: missing headers
+ok 42 - acceleration fails closed: missing headers
+  ---
+  duration_ms: 0.023004
+  type: 'test'
+  ...
+# Subtest: acceleration fails closed: stale headers
+ok 43 - acceleration fails closed: stale headers
+  ---
+  duration_ms: 0.019452
+  type: 'test'
+  ...
+# Subtest: acceleration fails closed: reset mismatch
+ok 44 - acceleration fails closed: reset mismatch
+  ---
+  duration_ms: 0.023808
+  type: 'test'
+  ...
+# Subtest: settings cannot supply quota or arbitrary interval
+ok 45 - settings cannot supply quota or arbitrary interval
+  ---
+  duration_ms: 0.203581
+  type: 'test'
+  ...
+# Subtest: no proof causes no control write
+ok 46 - no proof causes no control write
+  ---
+  duration_ms: 0.106281
+  type: 'test'
+  ...
+# Subtest: proof expiry falls back to 30 preserving requested mode
+ok 47 - proof expiry falls back to 30 preserving requested mode
+  ---
+  duration_ms: 0.213134
+  type: 'test'
+  ...
+# Subtest: Retry-After seconds
+ok 48 - Retry-After seconds
+  ---
+  duration_ms: 0.203679
+  type: 'test'
+  ...
+# Subtest: Retry-After HTTP date
+ok 49 - Retry-After HTTP date
+  ---
+  duration_ms: 0.081678
+  type: 'test'
+  ...
+# Subtest: Retry-After missing
+ok 50 - Retry-After missing
+  ---
+  duration_ms: 0.03236
+  type: 'test'
+  ...
+# Subtest: Retry-After malformed
+ok 51 - Retry-After malformed
+  ---
+  duration_ms: 0.052195
+  type: 'test'
+  ...
+# Subtest: Retry-After zero
+ok 52 - Retry-After zero
+  ---
+  duration_ms: 0.031229
+  type: 'test'
+  ...
+# Subtest: Retry-After negative
+ok 53 - Retry-After negative
+  ---
+  duration_ms: 0.026692
+  type: 'test'
+  ...
+# Subtest: cooldown survives restart and DEFAULT never schedules inside it
+ok 54 - cooldown survives restart and DEFAULT never schedules inside it
+  ---
+  duration_ms: 0.871764
+  type: 'test'
+  ...
+# Subtest: exhausted account header prevents another attempt until reset
+ok 55 - exhausted account header prevents another attempt until reset
+  ---
+  duration_ms: 0.283367
+  type: 'test'
+  ...
+# Subtest: observed HUB counts are separate from unknown account counts
+ok 56 - observed HUB counts are separate from unknown account counts
+  ---
+  duration_ms: 0.332825
+  type: 'test'
+  ...
+1..56
+# tests 56
+# suites 0
+# pass 56
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 144.186586
