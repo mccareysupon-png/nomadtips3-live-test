@@ -1,0 +1,36 @@
+name: BALL46 fresh Production identity READ ONLY
+on:
+  push:
+    branches: [codex/ball46-frontend-speed-cache-proof-20261101]
+    paths: ['work/ball46-frontend-speed-v1-20261101/fresh-request.json']
+permissions:
+  contents: write
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    defaults:
+      run:
+        working-directory: work/ball46-frontend-speed-v1-20261101
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: GET-only active version, source, monitor assets and health
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: node fresh-production.mjs
+      - name: Preserve read-only evidence
+        if: always()
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add release-audit
+          git commit -m "Record fresh Production identity before any deployment [skip ci]"
+          git push origin HEAD:codex/ball46-frontend-speed-cache-proof-20261101
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: frontend-speed-fresh-production-${{ github.run_id }}
+          path: work/ball46-frontend-speed-v1-20261101/release-audit
