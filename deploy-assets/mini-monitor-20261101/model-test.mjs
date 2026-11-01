@@ -1,0 +1,13 @@
+import assert from'node:assert/strict';import{readFile,writeFile}from'node:fs/promises';import{OutlookCache,probabilities}from'./model.mjs';
+const now=1900000000000,f=(id='A',at=now,prices=[2.1,3.3,3.6])=>({fixtureId:id,boardState:'live',providerOddsFreshAt:at,providerOdds:{odds:{'1x2':{inplay:{home:prices[0],draw:prices[1],away:prices[2]}}}}});
+const data=new Map(),storage={getItem:k=>data.get(k),setItem:(k,v)=>data.set(k,v)},cache=new OutlookCache(storage);const tests=[];
+assert.equal(cache.resolve('A',null,now).model,null);tests.push('no fabricated initial estimate');
+const first=cache.resolve('A',f(),now);assert.equal(first.state,'live');assert.equal(first.model.whole.reduce((a,b)=>a+b,0),100);tests.push('existing 1X2 formula and rounding');
+for(const input of[null,{...f(),providerOddsHeld:true},f('A',now-180000),f('A',now,[1,3,4]),{...f(),providerOdds:{}}]){const next=cache.resolve('A',input,now);assert.deepEqual(next.model,first.model);assert.equal(next.state,'saved')}tests.push('retain valid values on missing held stale invalid prices');
+const updated=cache.resolve('A',f('A',now+50000,[1.72,3.85,5.2]),now+60000);assert(updated.model.at>first.model.at);assert.notDeepEqual(updated.model.whole,first.model.whole);tests.push('accept strictly newer valid quote atomically');
+assert.deepEqual(cache.resolve('A',f('A',now+10000,[2.8,3.2,2.6]),now+60000).model,updated.model);assert.deepEqual(cache.resolve('A',f('A',now+50000,[2.8,3.2,2.6]),now+60000).model,updated.model);tests.push('ignore delayed and conflicting equal-timestamp quotes');
+assert.equal(cache.resolve('B',f('A'),now).model,null);assert.equal(cache.resolve('B',null,now).model,null);assert.deepEqual(cache.resolve('A',null,now+70000).model,updated.model);tests.push('no fixture cross-contamination; return to fixture restores own values');
+const restored=new OutlookCache(storage);assert.deepEqual(restored.resolve('A',null,now+3600000).model,updated.model);assert.equal(restored.resolve('A',null,now+3600000).state,'saved');tests.push('same browser session reload preserves timestamped last outlook');
+assert.equal(cache.resolve('A',{...f('A',now+70000),boardState:'finished'},now+70000).state,'ended');assert.deepEqual(cache.resolve('A',null,now+80000).model,updated.model);tests.push('finished match keeps last estimate without recalculation');
+assert.equal(probabilities(f('A',now+20000),now),null);tests.push('future timestamps still rejected');
+assert(!/fetch\(|XMLHttpRequest|setInterval/.test(await readFile('model.mjs','utf8')));const report={ok:true,previewOnly:true,productionWrites:0,upstreamRequests:0,tests};await writeFile('audit/model-tests.json',JSON.stringify(report,null,2));console.log(JSON.stringify(report));
