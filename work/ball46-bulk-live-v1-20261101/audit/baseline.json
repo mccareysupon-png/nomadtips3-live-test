@@ -1,7 +1,7 @@
 {
-  "at": "2026-11-01T11:11:23.627Z",
+  "at": "2026-11-01T11:13:42.948Z",
   "readOnly": true,
-  "run": "41300771223",
+  "run": "41300935026",
   "workers": {
     "ball46-production": {
       "version": "1f6499e3-6faf-408c-b47a-0b18d700b228",
@@ -815,6 +815,137 @@
       "status": 200,
       "sha": "3d52c9cd5047238b65d184ca2edac7118b29bd89bdfc7fbff50df40ff77a40e8",
       "location": null
+    }
+  ],
+  "observations": [
+    {
+      "host": "https://ball46.com",
+      "path": "/api/hub/health",
+      "status": 200,
+      "data": {
+        "ok": true,
+        "component": "5USD_HUB",
+        "version": "nomad343-5usd-hub-v6-viewer-cache-only",
+        "fixtureCount": 1734,
+        "counts": {
+          "scheduled": 0,
+          "live": 166,
+          "finished": 1562,
+          "unknown": 6
+        },
+        "continuityEnabled": true,
+        "continuityHeldFixtures": 5,
+        "fetchedAt": 1793531626991,
+        "ageMs": 1373,
+        "stale": false,
+        "refreshMs": 30000,
+        "todayRefreshMs": 120000,
+        "providerRequestCount": 1,
+        "providerRequestBudget": 5,
+        "include": "odds,events,stats",
+        "control": {
+          "liveRefreshSeconds": 30,
+          "autoReturnMinutes": 0,
+          "autoReturnAt": null,
+          "returnRefreshSeconds": 120,
+          "updatedAt": 1789732992622
+        },
+        "estimatedBulkRequestsPerMinute": 2,
+        "accountLimitPerMinute": 40,
+        "nextAlarmAt": 1793531656991,
+        "lastError": null,
+        "lastRateLimitAt": null,
+        "retryAfterSec": null,
+        "cacheOnlyViewer": true,
+        "viewerRefreshEnabled": false,
+        "externalRequestsPerViewer": 0
+      }
+    },
+    {
+      "host": "https://ball46-production.mccarey-supon.workers.dev",
+      "path": "/api/hub/health",
+      "status": 200,
+      "data": {
+        "ok": true,
+        "component": "5USD_HUB",
+        "version": "nomad343-5usd-hub-v6-viewer-cache-only",
+        "fixtureCount": 1734,
+        "counts": {
+          "scheduled": 0,
+          "live": 166,
+          "finished": 1562,
+          "unknown": 6
+        },
+        "continuityEnabled": true,
+        "continuityHeldFixtures": 5,
+        "fetchedAt": 1793531626991,
+        "ageMs": 1859,
+        "stale": false,
+        "refreshMs": 30000,
+        "todayRefreshMs": 120000,
+        "providerRequestCount": 1,
+        "providerRequestBudget": 5,
+        "include": "odds,events,stats",
+        "control": {
+          "liveRefreshSeconds": 30,
+          "autoReturnMinutes": 0,
+          "autoReturnAt": null,
+          "returnRefreshSeconds": 120,
+          "updatedAt": 1789732992622
+        },
+        "estimatedBulkRequestsPerMinute": 2,
+        "accountLimitPerMinute": 40,
+        "nextAlarmAt": 1793531656991,
+        "lastError": null,
+        "lastRateLimitAt": null,
+        "retryAfterSec": null,
+        "cacheOnlyViewer": true,
+        "viewerRefreshEnabled": false,
+        "externalRequestsPerViewer": 0
+      }
+    },
+    {
+      "host": "https://nomadtips3-5usd-hub-343.mccarey-supon.workers.dev",
+      "path": "/health",
+      "status": 200,
+      "data": {
+        "ok": true,
+        "component": "5USD_HUB",
+        "version": "nomad343-5usd-hub-v6-viewer-cache-only",
+        "fixtureCount": 1734,
+        "counts": {
+          "scheduled": 0,
+          "live": 166,
+          "finished": 1562,
+          "unknown": 6
+        },
+        "continuityEnabled": true,
+        "continuityHeldFixtures": 5,
+        "fetchedAt": 1793531626991,
+        "ageMs": 2270,
+        "stale": false,
+        "refreshMs": 30000,
+        "todayRefreshMs": 120000,
+        "providerRequestCount": 1,
+        "providerRequestBudget": 5,
+        "include": "odds,events,stats",
+        "control": {
+          "liveRefreshSeconds": 30,
+          "autoReturnMinutes": 0,
+          "autoReturnAt": null,
+          "returnRefreshSeconds": 120,
+          "updatedAt": 1789732992622
+        },
+        "estimatedBulkRequestsPerMinute": 2,
+        "accountLimitPerMinute": 40,
+        "nextAlarmAt": 1793531656991,
+        "lastError": null,
+        "lastRateLimitAt": null,
+        "retryAfterSec": null,
+        "cacheOnlyViewer": true,
+        "viewerRefreshEnabled": false,
+        "externalRequestsPerViewer": 0
+      }
     }
   ]
 }
