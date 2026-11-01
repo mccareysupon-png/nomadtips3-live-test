@@ -1,0 +1,476 @@
+{
+  "status": "PREPARED_NOT_DEPLOYABLE_PENDING_GATES",
+  "ownerApprovalRequired": true,
+  "productionWritesPerformed": 0,
+  "baseline": {
+    "ball46-production": {
+      "version": "1f6499e3-6faf-408c-b47a-0b18d700b228",
+      "deployment": "8626fe0b-a8c3-464a-ba3f-e9f3b17eb4d7",
+      "modules": [
+        {
+          "name": "assets/5usd-control.html",
+          "type": "text/plain",
+          "sha": "3d52c9cd5047238b65d184ca2edac7118b29bd89bdfc7fbff50df40ff77a40e8",
+          "bytes": 9935
+        },
+        {
+          "name": "assets/api-monitor.html",
+          "type": "text/plain",
+          "sha": "181823ca5dca06eeb0ffbe91971f8bc5bdac3076fa32a21b82de7a402310d9f5",
+          "bytes": 16006
+        },
+        {
+          "name": "assets/detection-test.html",
+          "type": "text/plain",
+          "sha": "510d1e6d2a5738ee20449a8a6e3233fcb7c69fbe63c71bb10c25c748fdfbc71e",
+          "bytes": 13158
+        },
+        {
+          "name": "assets/index.html",
+          "type": "text/plain",
+          "sha": "4dbdb46a79970dd1b1c7f3707206d3465307796640b919319a55731fe587b33c",
+          "bytes": 194656
+        },
+        {
+          "name": "assets/robots.txt",
+          "type": "text/plain",
+          "sha": "f2262c458da042583e2bf1a8207109823b1935af67080c9b223fd600ab417f5b",
+          "bytes": 172
+        },
+        {
+          "name": "assets/settings.html",
+          "type": "text/plain",
+          "sha": "08f65d43d98dd31ecf46dae808c20aebc2a84f3e52e9c8c9b69e847c9d12d7b5",
+          "bytes": 2614
+        },
+        {
+          "name": "assets/signal-next.html",
+          "type": "text/plain",
+          "sha": "1b4b9c847b768d2ac8fe0936b0a2e38fd51721cb542c2f0aed5ad7556cb669c4",
+          "bytes": 4101
+        },
+        {
+          "name": "assets/signal.html",
+          "type": "text/plain",
+          "sha": "4fa313d00c748ce9ffc98bad952495e7b7a1c3f99a6693b6696b6b7dc728f2cc",
+          "bytes": 7682
+        },
+        {
+          "name": "assets/statistics-next.html",
+          "type": "text/plain",
+          "sha": "393f1adf39385965986542ff38d740b696bf06c3dfb7a490edffce0f09bba534",
+          "bytes": 5066
+        },
+        {
+          "name": "assets/statistics.html",
+          "type": "text/plain",
+          "sha": "9e3754322902d4748f1019cce258f0dd309b0256eccf4fbe53070e09ec7a75f6",
+          "bytes": 8947
+        },
+        {
+          "name": "b46-event-flow-stadium-dark.bin",
+          "type": "application/octet-stream",
+          "sha": "9663612f6fe833eee828aa0bfe2006f714777fa52e6eb8bf4010ce2caa435580",
+          "bytes": 1546518
+        },
+        {
+          "name": "b46-event-flow-stadium-light.bin",
+          "type": "application/octet-stream",
+          "sha": "fb0f3284132d275ead642e2c112d3cf610b08f489dab17bd52e76772af5e10d6",
+          "bytes": 1779112
+        },
+        {
+          "name": "b46-last5-browser.mjs",
+          "type": "application/javascript+module",
+          "sha": "48d7a62861b3e454362c146bbb057ca5ada21b4c367235d8aeb855c7b5e7bdea",
+          "bytes": 5439
+        },
+        {
+          "name": "b46-last5-route.mjs",
+          "type": "application/javascript+module",
+          "sha": "b03f4ca012a9a092b12b4fcff3fcfc085baba40712ea73b7ef24e459e855d3b0",
+          "bytes": 1656
+        },
+        {
+          "name": "b46-performance-banner-dark.bin",
+          "type": "application/octet-stream",
+          "sha": "e249fa0f014597459f0b148f55b4d49ed3831e7ee184d623b91daf76766330d5",
+          "bytes": 1635334
+        },
+        {
+          "name": "b46-performance-banner-light.bin",
+          "type": "application/octet-stream",
+          "sha": "f23d41134d08eeea3216ce916508a8d3ae5c298e53576c7fa1cb8341265cd1b1",
+          "bytes": 1057938
+        },
+        {
+          "name": "b46-pv6-browser.mjs",
+          "type": "application/javascript+module",
+          "sha": "52a770c52a094d2ac5e57fb6fc5f6f7b284936441304b017c08e2a585c6113ed",
+          "bytes": 9877
+        },
+        {
+          "name": "b46-pv6-jerseys.mjs",
+          "type": "application/javascript+module",
+          "sha": "eb85f9151ee2be0dc41d86f5c616201964ccac1878e7993c5b1791c17558809f",
+          "bytes": 194256
+        },
+        {
+          "name": "b46-pv6-proxy.mjs",
+          "type": "application/javascript+module",
+          "sha": "cdcc9fde461f9e2becfdf075636e44045dc5f61cba8bb10b7da51be9f849c112",
+          "bytes": 4587
+        },
+        {
+          "name": "b46-pv8-browser.mjs",
+          "type": "application/javascript+module",
+          "sha": "5d05833493647ab78d4bbc4e93c6b5b390175748de9675674c1e51853ec3d27f",
+          "bytes": 14952
+        },
+        {
+          "name": "b46-pv8-jerseys.mjs",
+          "type": "application/javascript+module",
+          "sha": "ce0f0f9b4e54ddcb5e9cbd4293c0bcb3f5cbe21f5900fed8fbee48b14c683867",
+          "bytes": 214923
+        },
+        {
+          "name": "b46-pv9-browser.mjs",
+          "type": "application/javascript+module",
+          "sha": "bef128694db646931d615eec086542f72040d68da23a893215abb04c9276ebba",
+          "bytes": 15740
+        },
+        {
+          "name": "b46-pv9-proxy.mjs",
+          "type": "application/javascript+module",
+          "sha": "d0e2482f7a313fc696f1bccceac6edb39ec8b9009e56fcf7dd0b7f6a9d7bb631",
+          "bytes": 4916
+        },
+        {
+          "name": "event-icons-light-assets-20261030.txt",
+          "type": "text/plain",
+          "sha": "acbc0c3fab3f2112fe7710d40b80b6cea8f461fccba78e80070f7b019ebff20a",
+          "bytes": 494
+        },
+        {
+          "name": "footer-emerald-assets-20261030.txt",
+          "type": "text/plain",
+          "sha": "c1b77c3ffc59236d56ca85d21d44896969e4122d4b3bf924b5bea32bf7cd39d5",
+          "bytes": 9952
+        },
+        {
+          "name": "index.js",
+          "type": "application/javascript+module",
+          "sha": "5c72190b6f57a87e84f8b196916cebd07b4f2e3bdcc968244962da6e6320d023",
+          "bytes": 1110352
+        },
+        {
+          "name": "kit-spacing-assets-20261030.txt",
+          "type": "text/plain",
+          "sha": "a856e7c10ccc679894706b2a85b42bf84c0e56d2aa9aeb2b3adf76fa226f8948",
+          "bytes": 3833
+        },
+        {
+          "name": "match-monitor-assets-20261030.txt",
+          "type": "text/plain",
+          "sha": "b5b5fab45ef7a04c3ade6abfc03ad3f2cc94071bb406c83d5355dc6d10882e87",
+          "bytes": 32987
+        },
+        {
+          "name": "monitor-mini-assets-20261101.txt",
+          "type": "text/plain",
+          "sha": "23421fbc8adace50cafe90f3010790e92a238f4078857192fb23ddf90d3463d4",
+          "bytes": 92804
+        },
+        {
+          "name": "performance-shared-assets-20261030.txt",
+          "type": "text/plain",
+          "sha": "3141a7f428beee59826e80badcd464066ff798667d252bdb3700601e1d929b0b",
+          "bytes": 41707
+        },
+        {
+          "name": "radar-watch-assets-20261030.txt",
+          "type": "text/plain",
+          "sha": "a5864691c56d960270564e9109b2b622bf44c930aa5af7b398610a715d7578ff",
+          "bytes": 12314
+        },
+        {
+          "name": "statistics-light-assets-20261101.txt",
+          "type": "text/plain",
+          "sha": "9352d41e6db78c8ceec185cff8c8b1764f3ffe1de02145400154153ea8211f5f",
+          "bytes": 14355
+        },
+        {
+          "name": "team-kits-assets-20261030.txt",
+          "type": "text/plain",
+          "sha": "85ee62234a42e15f3348aedaaf7a2c13afdd3e6ee9f2392670e930c399d3c012",
+          "bytes": 933297
+        },
+        {
+          "name": "unified-kits-assets-20261031.txt",
+          "type": "text/plain",
+          "sha": "b9a484655a5001957cc7e0ce9c39f4588766377dcceca9ecabbc9a07c4b3b2bd",
+          "bytes": 103100
+        },
+        {
+          "name": "visual-suite-assets-20261030.txt",
+          "type": "text/plain",
+          "sha": "27ff303c072ff5aa53a5db448035f022956bfc2373ab91fc1ccd3ef521623c8a",
+          "bytes": 762032
+        }
+      ],
+      "settings": {
+        "placement": {},
+        "compatibility_date": "2026-09-09",
+        "compatibility_flags": [],
+        "usage_model": "standard",
+        "tags": [],
+        "tail_consumers": [],
+        "logpush": false,
+        "observability": {
+          "enabled": true,
+          "head_sampling_rate": 1,
+          "redact_query_string": false,
+          "logs": {
+            "enabled": true,
+            "head_sampling_rate": 1,
+            "persist": true,
+            "invocation_logs": true
+          },
+          "traces": {
+            "enabled": false,
+            "persist": true,
+            "head_sampling_rate": 1
+          }
+        },
+        "annotations": {
+          "workers/message": "Approved Statistics light-theme surfaces and contrast only",
+          "workers/tag": "B46_STATISTICS_LIGHT_20261101",
+          "workers/triggered_by": "version_upload"
+        },
+        "bindings": [
+          {
+            "name": "ASSETS",
+            "type": "assets"
+          },
+          {
+            "environment": "production",
+            "name": "ENGINE",
+            "service": "nomadtips3-engine-343",
+            "type": "service"
+          },
+          {
+            "environment": "production",
+            "name": "FORM_HISTORY_SERVICE",
+            "service": "ball46-form-history-v1",
+            "type": "service"
+          },
+          {
+            "environment": "production",
+            "name": "FULL_MARKET",
+            "service": "nomadtips3-full-market-343-ball46",
+            "type": "service"
+          },
+          {
+            "environment": "production",
+            "name": "HUB",
+            "service": "nomadtips3-5usd-hub-343",
+            "type": "service"
+          },
+          {
+            "name": "PREDICTION_VOTES_KV",
+            "namespace_id": "a7a435999144427c8227e1aba8c5f255",
+            "type": "kv_namespace"
+          },
+          {
+            "environment": "production",
+            "name": "PREDICTION_VOTES_SERVICE",
+            "service": "ball46-prediction-votes-v6",
+            "type": "service"
+          }
+        ]
+      },
+      "cron": {
+        "schedules": []
+      },
+      "bindings": [
+        {
+          "name": "ASSETS",
+          "type": "assets"
+        },
+        {
+          "environment": "production",
+          "name": "ENGINE",
+          "service": "nomadtips3-engine-343",
+          "type": "service"
+        },
+        {
+          "environment": "production",
+          "name": "FORM_HISTORY_SERVICE",
+          "service": "ball46-form-history-v1",
+          "type": "service"
+        },
+        {
+          "environment": "production",
+          "name": "FULL_MARKET",
+          "service": "nomadtips3-full-market-343-ball46",
+          "type": "service"
+        },
+        {
+          "environment": "production",
+          "name": "HUB",
+          "service": "nomadtips3-5usd-hub-343",
+          "type": "service"
+        },
+        {
+          "name": "PREDICTION_VOTES_KV",
+          "namespace_id": "a7a435999144427c8227e1aba8c5f255",
+          "type": "kv_namespace"
+        },
+        {
+          "environment": "production",
+          "name": "PREDICTION_VOTES_SERVICE",
+          "service": "ball46-prediction-votes-v6",
+          "type": "service"
+        }
+      ]
+    },
+    "nomadtips3-5usd-hub-343": {
+      "version": "98ea43ab-f40c-4de5-82e3-b0387dffd672",
+      "deployment": "2bf73f8a-b3e2-4f50-b33f-df2523656581",
+      "modules": [
+        {
+          "name": "index-viewer-safe.js",
+          "type": "application/javascript+module",
+          "sha": "95147295271dedf9959c769e57975344eee58209b7341cb20791f610a3688404",
+          "bytes": 41319
+        }
+      ],
+      "settings": {
+        "placement": {},
+        "compatibility_date": "2026-09-09",
+        "compatibility_flags": [],
+        "usage_model": "standard",
+        "tags": [],
+        "tail_consumers": [],
+        "logpush": false,
+        "observability": {
+          "enabled": true,
+          "head_sampling_rate": 1,
+          "redact_query_string": false,
+          "logs": {
+            "enabled": true,
+            "head_sampling_rate": 1,
+            "persist": true,
+            "invocation_logs": true
+          },
+          "traces": {
+            "enabled": false,
+            "persist": true,
+            "head_sampling_rate": 1
+          }
+        },
+        "annotations": {
+          "workers/commit_sha": "cea843afd998f79c1e7f3f8dd5245f0c33645897",
+          "workers/message": "Ball46 John rotate bulk final pages and retain finished history 72h",
+          "workers/triggered_by": "version_upload"
+        },
+        "bindings": [
+          {
+            "name": "FIVEDOLLAR_API_KEY",
+            "type": "secret_text"
+          },
+          {
+            "class_name": "FiveUsdHub",
+            "name": "HUB",
+            "namespace_id": "385ad1193c114fcdb8d92e4d56d6a532",
+            "type": "durable_object_namespace"
+          },
+          {
+            "class_name": "RichOddsGate",
+            "name": "RICH_GATE",
+            "namespace_id": "9eb6121eba114d21b902996f7dceb37c",
+            "type": "durable_object_namespace"
+          }
+        ]
+      },
+      "cron": {
+        "schedules": [
+          {
+            "cron": "*/2 * * * *",
+            "created_on": "2026-09-15T00:49:08.503243Z",
+            "modified_on": "2026-09-20T10:45:42.015278Z"
+          }
+        ]
+      },
+      "bindings": [
+        {
+          "name": "FIVEDOLLAR_API_KEY",
+          "type": "secret_text"
+        },
+        {
+          "class_name": "FiveUsdHub",
+          "name": "HUB",
+          "namespace_id": "385ad1193c114fcdb8d92e4d56d6a532",
+          "type": "durable_object_namespace"
+        },
+        {
+          "class_name": "RichOddsGate",
+          "name": "RICH_GATE",
+          "namespace_id": "9eb6121eba114d21b902996f7dceb37c",
+          "type": "durable_object_namespace"
+        }
+      ]
+    }
+  },
+  "changes": {
+    "website": {
+      "replace": {
+        "module": "index.js",
+        "fromSha": "5c72190b6f57a87e84f8b196916cebd07b4f2e3bdcc968244962da6e6320d023",
+        "candidate": "candidate/website.mjs",
+        "toSha": "3c1458fa1fe2d0098106ca9fd4c09f1821349f0e676d092523a5089ffc153b5f"
+      },
+      "add": [
+        "website-extension.mjs",
+        "auth.mjs",
+        "bulk-live-control.html"
+      ]
+    },
+    "hub": {
+      "replace": {
+        "module": "index-viewer-safe.js",
+        "fromSha": "95147295271dedf9959c769e57975344eee58209b7341cb20791f610a3688404",
+        "candidate": "candidate/hub.mjs",
+        "toSha": "17083741021b668446d9438b94263197c7d8af337d7f30e079e5126be17b020c"
+      },
+      "add": [
+        "hub-extension.mjs",
+        "policy.mjs",
+        "auth.mjs"
+      ]
+    }
+  },
+  "requires": [
+    "Owner-only Cloudflare Access app on exact control paths",
+    "Configured and independently verified issuer/audience/owner in both Workers",
+    "Review protection of existing workers.dev and historical preview control URLs",
+    "Trusted all-consumer quota coordination for FAST/ULTRA; until then locked",
+    "Isolated Cloudflare DO and real owner authentication integration test",
+    "Fresh baseline and explicit owner deployment approval"
+  ],
+  "unchanged": [
+    "Engine 3.43",
+    "Signal formulas",
+    "Ledger",
+    "Settlement",
+    "Statistics",
+    "Full Odds logic and settings",
+    "Member",
+    "Stripe",
+    "votes",
+    "other UI",
+    "Cron",
+    "API key",
+    "DO namespace IDs"
+  ]
+}
