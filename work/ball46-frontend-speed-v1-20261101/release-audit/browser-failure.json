@@ -1,0 +1,52 @@
+{
+  "host": "https://ball46.com",
+  "error": "AssertionError [ERR_ASSERTION]: CONSOLE_ERROR\n+ actual - expected\n\n+ [\n+   'Failed to load resource: net::ERR_FAILED',\n+   'Failed to load resource: net::ERR_FAILED',\n+   'Failed to load resource: net::ERR_FAILED'\n+ ]\n- []\n\n    at file:///home/runner/work/nomadtips3-live-test/nomadtips3-live-test/work/ball46-frontend-speed-v1-20261101/release-browser.mjs:17:109",
+  "errors": [],
+  "network": [],
+  "consoleMessages": [
+    "Failed to load resource: net::ERR_FAILED",
+    "Failed to load resource: net::ERR_FAILED",
+    "Failed to load resource: net::ERR_FAILED"
+  ],
+  "results": [
+    {
+      "width": 1440,
+      "theme": "dark",
+      "miniMonitorRings": 3,
+      "fixtureId": "203827950",
+      "eventFlowLines": 2,
+      "timings": {
+        "firstVisible": 3479,
+        "liveReady": 2696.8000000000466,
+        "signalsReady": 6037.800000000047
+      },
+      "ok": true
+    },
+    {
+      "width": 1440,
+      "theme": "light",
+      "miniMonitorRings": 3,
+      "fixtureId": "203827950",
+      "eventFlowLines": 2,
+      "timings": {
+        "firstVisible": 3629.2000000000116,
+        "liveReady": 2882.9000000000233,
+        "signalsReady": 6484.900000000023
+      },
+      "ok": true
+    },
+    {
+      "width": 390,
+      "theme": "dark",
+      "miniMonitorRings": 3,
+      "fixtureId": "203827950",
+      "eventFlowLines": 2,
+      "timings": {
+        "firstVisible": 2203.2000000000116,
+        "liveReady": 1922.9000000000233,
+        "signalsReady": 14155.5
+      },
+      "ok": true
+    }
+  ]
+}
