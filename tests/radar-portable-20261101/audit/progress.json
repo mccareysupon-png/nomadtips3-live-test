@@ -2,49 +2,157 @@
   "engine": "webkit",
   "width": 1440,
   "reducedMotion": "no-preference",
-  "baselineMoves": true,
-  "baselineBefore": [
+  "baselineMoves": false,
+  "autoMoves": true,
+  "observed": {
+    "first": [
+      {
+        "transform": "matrix(1, 0, 0, 1, 0, 0)",
+        "name": "b46-radar-orbit-portable",
+        "centerError": 0
+      },
+      {
+        "transform": "matrix(1, 0, 0, 1, 0, 0)",
+        "name": "b46-radar-orbit-portable",
+        "centerError": 0
+      },
+      {
+        "transform": "matrix(1, 0, 0, 1, 0, 0)",
+        "name": "b46-radar-orbit-portable",
+        "centerError": 0
+      },
+      {
+        "transform": "matrix(1, 0, 0, 1, 0, 0)",
+        "name": "b46-radar-orbit-portable",
+        "centerError": 0
+      }
+    ],
+    "last": [
+      {
+        "transform": "matrix(0.661312, 0.750111, -0.750111, 0.661312, 0, 0)",
+        "name": "b46-radar-orbit-portable",
+        "centerError": 19.786952820236603
+      },
+      {
+        "transform": "matrix(0.661312, 0.750111, -0.750111, 0.661312, 0, 0)",
+        "name": "b46-radar-orbit-portable",
+        "centerError": 19.786952820236603
+      },
+      {
+        "transform": "matrix(0.661312, 0.750111, -0.750111, 0.661312, 0, 0)",
+        "name": "b46-radar-orbit-portable",
+        "centerError": 19.786952820236603
+      },
+      {
+        "transform": "matrix(0.661312, 0.750111, -0.750111, 0.661312, 0, 0)",
+        "name": "b46-radar-orbit-portable",
+        "centerError": 19.786952820236603
+      }
+    ],
+    "moves": true,
+    "changed": [
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "passedCases": [
     {
-      "transform": "matrix(1, 0, 0, 1, 0, 0)",
-      "name": "ew-sweep",
-      "centerError": 0
+      "engine": "chromium",
+      "width": 1440,
+      "reducedMotion": "no-preference",
+      "baselineMoves": true,
+      "autoMoves": true,
+      "explicitOnMoves": true,
+      "explicitOffStops": true,
+      "preferenceSurvivesReload": true,
+      "signalHidesWhenNonempty": true,
+      "maxRotationCenterError": 0
     },
     {
-      "transform": "matrix(1, 0, 0, 1, 0, 0)",
-      "name": "ew-sweep",
-      "centerError": 0
+      "engine": "chromium",
+      "width": 1440,
+      "reducedMotion": "reduce",
+      "baselineMoves": false,
+      "autoMoves": false,
+      "explicitOnMoves": true,
+      "explicitOffStops": true,
+      "preferenceSurvivesReload": true,
+      "signalHidesWhenNonempty": true,
+      "maxRotationCenterError": 0
     },
     {
-      "transform": "matrix(1, 0, 0, 1, 0, 0)",
-      "name": "ew-sweep",
-      "centerError": 0
+      "engine": "chromium",
+      "width": 390,
+      "reducedMotion": "no-preference",
+      "baselineMoves": true,
+      "autoMoves": true,
+      "explicitOnMoves": true,
+      "explicitOffStops": true,
+      "preferenceSurvivesReload": true,
+      "signalHidesWhenNonempty": true,
+      "maxRotationCenterError": 0
     },
     {
-      "transform": "matrix(1, 0, 0, 1, 0, 0)",
-      "name": "ew-sweep",
-      "centerError": 0
-    }
-  ],
-  "baselineAfter": [
-    {
-      "transform": "matrix(0.471812, 0.881699, -0.881699, 0.471812, 0, 0)",
-      "name": "ew-sweep",
-      "centerError": 0
+      "engine": "chromium",
+      "width": 390,
+      "reducedMotion": "reduce",
+      "baselineMoves": false,
+      "autoMoves": false,
+      "explicitOnMoves": true,
+      "explicitOffStops": true,
+      "preferenceSurvivesReload": true,
+      "signalHidesWhenNonempty": true,
+      "maxRotationCenterError": 0
     },
     {
-      "transform": "matrix(0.471812, 0.881699, -0.881699, 0.471812, 0, 0)",
-      "name": "ew-sweep",
-      "centerError": 0
+      "engine": "firefox",
+      "width": 1440,
+      "reducedMotion": "no-preference",
+      "baselineMoves": true,
+      "autoMoves": true,
+      "explicitOnMoves": true,
+      "explicitOffStops": true,
+      "preferenceSurvivesReload": true,
+      "signalHidesWhenNonempty": true,
+      "maxRotationCenterError": 0.00002750817318316642
     },
     {
-      "transform": "matrix(0.471812, 0.881699, -0.881699, 0.471812, 0, 0)",
-      "name": "ew-sweep",
-      "centerError": 0
+      "engine": "firefox",
+      "width": 1440,
+      "reducedMotion": "reduce",
+      "baselineMoves": false,
+      "autoMoves": false,
+      "explicitOnMoves": true,
+      "explicitOffStops": true,
+      "preferenceSurvivesReload": true,
+      "signalHidesWhenNonempty": true,
+      "maxRotationCenterError": 0.011793025388136237
     },
     {
-      "transform": "matrix(0.471812, 0.881699, -0.881699, 0.471812, 0, 0)",
-      "name": "ew-sweep",
-      "centerError": 0
+      "engine": "firefox",
+      "width": 390,
+      "reducedMotion": "no-preference",
+      "baselineMoves": true,
+      "autoMoves": true,
+      "explicitOnMoves": true,
+      "explicitOffStops": true,
+      "preferenceSurvivesReload": true,
+      "signalHidesWhenNonempty": true,
+      "maxRotationCenterError": 0.011793025388136237
+    },
+    {
+      "engine": "firefox",
+      "width": 390,
+      "reducedMotion": "reduce",
+      "baselineMoves": false,
+      "autoMoves": false,
+      "explicitOnMoves": true,
+      "explicitOffStops": true,
+      "preferenceSurvivesReload": true,
+      "signalHidesWhenNonempty": true,
+      "maxRotationCenterError": 0.000030517578125
     }
   ]
 }
