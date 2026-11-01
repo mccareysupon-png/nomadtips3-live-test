@@ -1,0 +1,50 @@
+name: BALL46 Frontend Speed V1 controlled comparison NO DEPLOY
+on:
+  push:
+    branches: [codex/ball46-frontend-speed-v1-20261101]
+    paths: ['work/ball46-frontend-speed-v1-20261101/measure-request.json']
+permissions:
+  contents: write
+jobs:
+  compare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: work/ball46-frontend-speed-v1-20261101
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Freeze existing ledger for identical before-after inputs
+        run: node freeze-statistics.mjs
+      - name: Build minimal candidate and prove source/output equivalence
+        run: |
+          node patch.mjs --build
+          node source-test.mjs
+      - name: Install browser tooling
+        run: |
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Same-condition PC/mobile cold/warm measurements and correctness
+        run: node benchmark.mjs
+      - name: GET-only Production preservation gate
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: node final-check.mjs
+      - name: Commit proof only, never deploy
+        if: always()
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add qa
+          git commit -m "Record controlled Frontend Speed measurements and regression proof [skip ci]"
+          git push origin HEAD:codex/ball46-frontend-speed-v1-20261101
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: frontend-speed-comparison-${{ github.run_id }}
+          path: |
+            work/ball46-frontend-speed-v1-20261101/qa
+            work/ball46-frontend-speed-v1-20261101/candidate
