@@ -1,0 +1,11 @@
+/* Existing wait-state presentation only. No Signal or event detection changes. */
+:is(.b46-event-watch,.b46-signal-watch) .ew-orbit{transform-box:view-box;transform-origin:50% 50%;animation:b46-radar-orbit-portable 5s linear infinite}
+@keyframes b46-radar-orbit-portable{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+/* Auto follows the device. On is an explicit visitor choice for this website. */
+@media(prefers-reduced-motion:reduce){html:not([data-b46-motion="on"]) :is(.b46-event-watch,.b46-signal-watch) .ew-orbit{animation:none!important}}
+html[data-b46-motion="on"] :is(.b46-event-watch,.b46-signal-watch) .ew-orbit{animation:b46-radar-orbit-portable 5s linear infinite!important;animation-play-state:running!important}
+html[data-b46-motion="on"] :is(.b46-event-watch,.b46-signal-watch) .ew-dot{animation:ew-breathe 3s ease-in-out infinite!important}
+html[data-b46-motion="on"] :is(.b46-event-watch,.b46-signal-watch) .ew-track:after{animation:ew-line 4.5s ease-in-out infinite!important}
+html[data-b46-motion="off"] :is(.b46-event-watch,.b46-signal-watch) .ew-orbit,
+html[data-b46-motion="off"] :is(.b46-event-watch,.b46-signal-watch) .ew-dot,
+html[data-b46-motion="off"] :is(.b46-event-watch,.b46-signal-watch) .ew-track:after{animation:none!important}

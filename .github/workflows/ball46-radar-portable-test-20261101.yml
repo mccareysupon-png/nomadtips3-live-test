@@ -1,0 +1,43 @@
+name: BALL46 radar cross-browser TEST only
+on:
+  push:
+    branches: [codex/ball46-radar-portable-20261101]
+    paths: ['tests/radar-portable-20261101/request.json']
+permissions:
+  contents: write
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    defaults:
+      run:
+        working-directory: tests/radar-portable-20261101
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install test browsers
+        run: |
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium firefox webkit
+      - name: Isolated local browser tests and read-only public CSS verification
+        run: |
+          node server.mjs > server.log 2>&1 &
+          node check.mjs
+      - name: Record sanitized TEST evidence
+        if: always()
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add audit/*.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Record read-only radar cross-browser TEST evidence [skip ci]"
+          git fetch origin codex/ball46-radar-portable-20261101
+          git rebase FETCH_HEAD
+          git push origin HEAD:codex/ball46-radar-portable-20261101
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: radar-portable-test-${{ github.run_id }}
+          path: tests/radar-portable-20261101/audit
