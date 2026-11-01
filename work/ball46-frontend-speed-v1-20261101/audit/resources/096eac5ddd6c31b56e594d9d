@@ -1,0 +1,55 @@
+.b46-match-monitor{--mm-green:#48e6aa;--mm-white:#edf7f1;--mm-yellow:#edcf58;--mm-muted:#9ab6a7;box-sizing:border-box;padding:20px 16px!important;border:0!important;border-radius:20px!important;color:var(--mm-white)!important;background:radial-gradient(ellipse at 50% 38%,#20513d55,transparent 65%),linear-gradient(150deg,#1b382b,#0e2119 80%)!important;box-shadow:inset 0 1px #ffffff09,0 12px 24px #00000018;min-width:0;isolation:isolate;overflow:hidden;flex:none}
+.b46-match-monitor *{box-sizing:border-box}
+.mm-heading{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.mm-eyebrow{font-size:9px;font-weight:800;letter-spacing:1px;color:var(--mm-green)}
+.mm-badge{font-size:8px;letter-spacing:.5px;padding:5px 7px;border-radius:20px;color:var(--mm-muted);background:#ffffff08;white-space:nowrap}
+.b46-match-monitor h2{font-size:21px!important;line-height:1.2;margin:9px 0 5px!important;font-weight:800;letter-spacing:-.6px}
+.mm-sub{font-size:10px;color:var(--mm-muted);line-height:1.5;margin:0}
+.mm-dial{position:relative;width:min(100%,210px);aspect-ratio:1;margin:17px auto 14px;display:grid;place-items:center;background:radial-gradient(circle,#173c2b88 0,transparent 65%)}
+.mm-dial svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.mm-ticks{fill:none;stroke:#8fbaa53b;stroke-width:2;stroke-dasharray:.7 3.5}
+.mm-track{fill:none;stroke:#4e766341;stroke-width:12}
+.mm-arc{fill:none;stroke-width:12;stroke-linecap:butt;transform:rotate(-90deg);transform-origin:110px 110px;filter:drop-shadow(0 2px 3px #0005)}
+.mm-core{position:relative;width:138px;height:138px;border-radius:50%;background:radial-gradient(circle at 40% 15%,#214b37,#10281e 72%);box-shadow:inset 0 1px 1px #d6ffe121,0 5px 18px #0004;display:flex;align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:12px;gap:4px}
+.mm-core small{font-size:8px;letter-spacing:1.3px;color:var(--mm-muted)}
+.mm-core strong{font-size:39px;font-variant-numeric:tabular-nums;line-height:1.1;letter-spacing:-1.5px}
+.mm-core b{font-size:10px;max-width:110px;overflow-wrap:anywhere;line-height:1.3;color:var(--mm-green)}
+.mm-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;margin-top:8px}
+.mm-outcome{border-radius:10px;background:#ffffff05;padding:10px 4px;text-align:center;min-width:0;box-shadow:inset 0 1px #ffffff04}
+.mm-outcome span{display:block;font-size:8px;letter-spacing:.6px;color:var(--mm-muted);margin-bottom:6px}
+.mm-outcome strong{font-size:19px;font-variant-numeric:tabular-nums}.mm-home{color:var(--mm-green)}.mm-draw{color:var(--mm-white)}.mm-away{color:var(--mm-yellow)}
+.mm-foot{font-size:9px;line-height:1.6;color:var(--mm-muted);margin:13px 0 0;padding-top:11px;border-top:1px solid #ffffff0c}
+
+.right-rail>.overview-card{display:none!important}
+html[data-theme=light] .b46-match-monitor{--mm-green:#087a4f;--mm-white:#213d2e;--mm-yellow:#8d700c;--mm-muted:#657f70;background:radial-gradient(ellipse at 50% 38%,#a9e1c444,transparent 70%),linear-gradient(150deg,#f7fcf8,#e8f2eb)!important;box-shadow:0 6px 20px #244b3010}
+html[data-theme=light] .mm-core{background:linear-gradient(145deg,#fff,#edf5ef);box-shadow:inset 0 1px #fff,0 5px 18px #244b3015}
+html[data-theme=light] .mm-outcome{background:#ffffff88}html[data-theme=light] .mm-foot{border-color:#254b3010}
+#b46gn-detail .b46-match-monitor{margin:12px 0!important;width:100%;border-radius:18px!important;order:5!important}
+@media(max-width:760px){.b46-match-monitor{padding:20px!important}.mm-dial{width:210px;margin-top:18px}.mm-grid{gap:8px}.mm-outcome{padding:12px 6px}}
+
+/* TEST ONLY: finish the desktop match-list scroll viewport as a card. */
+@media (min-width: 761px) {
+  .workspace .main-board > .board-sections {
+    background-color: var(--panel-2) !important;
+    border-bottom: 6px solid var(--panel-2) !important;
+    border-bottom-left-radius: 16px !important;
+    border-bottom-right-radius: 16px !important;
+    clip-path: inset(0 round 0 0 16px 16px);
+  }
+}
+
+.mini-monitor{--home:#57e3ab;--draw:#edf5f0;--away:#eed166;--ink:#eef7f1;--muted:#a7c0b1;--track:#355646;--center:#142f23;--line:#a0d5b219;font-family:Arial,Helvetica,sans-serif;color:var(--ink);background:radial-gradient(ellipse at 30% 0,#2d62413b,transparent 70%),linear-gradient(145deg,#1b3b2c,#10251b);padding:18px 15px 14px;border-radius:18px;box-sizing:border-box;box-shadow:inset 0 1px #ffffff08,0 10px 24px #00000014;min-width:0;overflow:hidden}
+.mini-monitor *{box-sizing:border-box}.mini-heading{display:flex;align-items:center;justify-content:space-between;gap:6px}.mini-eyebrow{font-size:8px;letter-spacing:.09em;font-weight:800;color:var(--home)}.mini-badge{display:flex;align-items:center;gap:4px;padding:5px 6px;border-radius:20px;background:#ffffff08;font-size:7px;letter-spacing:.045em;font-weight:700;color:var(--muted);white-space:nowrap}.mini-badge i{width:4px;height:4px;background:currentColor;border-radius:50%}.mini-monitor[data-state=live] .mini-badge{color:var(--home)}.mini-monitor[data-state=saved] .mini-badge{color:var(--away)}.mini-monitor h2{font-size:20px;line-height:1.2;letter-spacing:-.55px;margin:11px 0 5px;font-weight:800}.mini-teams{font-size:10px;line-height:1.5;color:var(--muted);margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mini-rings{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:18px 0 14px}.mini-outcome{min-width:0;text-align:center;color:var(--home)}.mini-outcome:nth-child(2){color:var(--draw)}.mini-outcome:nth-child(3){color:var(--away)}.mini-label{display:block;font-size:8px;font-weight:800;letter-spacing:.1em;margin-bottom:7px}.mini-ring{position:relative;display:grid;place-items:center;width:100%;max-width:78px;aspect-ratio:1;margin:0 auto;border-radius:50%;background:radial-gradient(circle at 40% 26%,#2d503c77,var(--center) 70%)}.mini-ring svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}.mini-track,.mini-arc{fill:none;stroke-width:5}.mini-track{stroke:var(--track);opacity:.7}.mini-arc{stroke:currentColor;stroke-linecap:round;transform:rotate(-90deg);transform-origin:40px 40px;filter:drop-shadow(0 1px 2px #0002)}.mini-percent{position:relative;font-size:21px;font-variant-numeric:tabular-nums;font-weight:800;line-height:1;letter-spacing:-.7px;color:var(--ink)}.mini-percent small{font-size:11px;letter-spacing:0;margin-left:1px;color:var(--muted)}.mini-updated{border-top:1px solid var(--line);padding-top:10px;display:flex;align-items:center;justify-content:space-between;gap:7px;font-size:9px;line-height:1.5;color:var(--muted);font-variant-numeric:tabular-nums}.mini-time{color:var(--ink)}.mini-note{font-size:9px;line-height:1.6;margin:7px 0 0;color:var(--muted)}.mini-monitor[data-state=saved] .mini-note{color:var(--away)}.mini-method{font-size:8px;color:var(--muted);line-height:1.5;margin:6px 0 0}
+html[data-theme=light] .mini-monitor{--home:#087a4e;--draw:#708778;--away:#946e00;--ink:#183e2a;--muted:#576e60;--track:#c7d9cc;--center:#f4f9f5;--line:#254e321c;background:radial-gradient(ellipse at 30% 0,#bbdfc744,transparent 70%),linear-gradient(145deg,#fcfefc,#ebf4ed);box-shadow:0 8px 24px #1c4e2b0c}html[data-theme=light] .mini-ring{background:linear-gradient(145deg,#fff,#edf5ef)}html[data-theme=light] .mini-badge{background:#245b3410}
+@media(max-width:480px){.mini-monitor{padding:17px 14px 13px}.mini-rings{gap:8px;margin:17px 0 13px}.mini-ring{max-width:76px}.mini-monitor h2{font-size:19px}}
+@media(prefers-reduced-motion:reduce){.mini-monitor *{animation:none!important;transition:none!important}}
+
+/* Waiting light follows exactly the same radius and width as the circular track. */
+.mini-scan{animation:mini-scan-turn 3.2s linear infinite;transform-origin:40px 40px;pointer-events:none}.mini-scan circle{fill:none;stroke:currentColor;stroke-width:5;stroke-linecap:round}.mini-scan-beam{opacity:1;filter:none}.mini-monitor[data-state=awaiting] .mini-percent{font-size:22px;color:var(--muted)}
+@keyframes mini-scan-turn{from{transform:rotate(-90deg)}to{transform:rotate(270deg)}}
+@media(prefers-reduced-motion:reduce){.mini-scan{animation:none!important;transform:rotate(-90deg);opacity:.65}}
+
+/* Keep existing prediction placement hooks when staging beside legacy monitor CSS. */
+html body .b46-match-monitor.mini-monitor{padding:18px 15px 14px!important;border-radius:18px!important;color:var(--ink)!important;background:radial-gradient(ellipse at 30% 0,#2d62413b,transparent 70%),linear-gradient(145deg,#1b3b2c,#10251b)!important}
+html[data-theme=light] body .b46-match-monitor.mini-monitor{background:radial-gradient(ellipse at 30% 0,#bbdfc744,transparent 70%),linear-gradient(145deg,#fcfefc,#ebf4ed)!important}
+#b46gn-detail .b46-match-monitor.mini-monitor{width:100%;margin:12px 0!important}
