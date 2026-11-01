@@ -1,0 +1,4 @@
+/* Presentation-only compatibility layer. Rotates an HTML layer instead of an SVG group. */
+(()=>{'use strict';let queued=false;
+function render(){queued=false;for(const group of document.querySelectorAll('.ew-emblem svg g.ew-orbit')){const original=group.ownerSVGElement,emblem=original.parentElement;if(!emblem?.classList.contains('ew-emblem'))continue;const layer=document.createElement('span');layer.className='ew-orbit ew-html-orbit';layer.setAttribute('aria-hidden','true');const svg=original.cloneNode(false);svg.appendChild(group.cloneNode(true));svg.firstElementChild.removeAttribute('class');layer.appendChild(svg);group.remove();emblem.appendChild(layer)}}
+function schedule(){if(!queued){queued=true;requestAnimationFrame(render)}}new MutationObserver(schedule).observe(document.body,{childList:true,subtree:true});schedule();})();

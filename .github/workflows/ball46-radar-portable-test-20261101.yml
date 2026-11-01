@@ -33,6 +33,7 @@ jobs:
           git add audit/*.json
           if git diff --cached --quiet; then exit 0; fi
           git commit -m "Record read-only radar cross-browser TEST evidence [skip ci]"
+          git restore -- baseline.css
           git fetch origin codex/ball46-radar-portable-20261101
           git rebase FETCH_HEAD
           git push origin HEAD:codex/ball46-radar-portable-20261101

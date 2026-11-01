@@ -1,6 +1,8 @@
 /* Existing wait-state presentation only. No Signal or event detection changes. */
 :is(.b46-event-watch,.b46-signal-watch) .ew-orbit{transform-box:view-box;transform-origin:50% 50%;animation:b46-radar-orbit-portable 5s linear infinite}
 @keyframes b46-radar-orbit-portable{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+.ew-emblem>.ew-html-orbit{position:absolute;inset:0;display:block;transform-box:border-box!important;transform-origin:50% 50%!important;pointer-events:none}
+.ew-emblem>.ew-html-orbit>svg{width:100%!important;height:100%!important;display:block;filter:none}
 /* Auto follows the device. On is an explicit visitor choice for this website. */
 @media(prefers-reduced-motion:reduce){html:not([data-b46-motion="on"]) :is(.b46-event-watch,.b46-signal-watch) .ew-orbit{animation:none!important}}
 html[data-b46-motion="on"] :is(.b46-event-watch,.b46-signal-watch) .ew-orbit{animation:b46-radar-orbit-portable 5s linear infinite!important;animation-play-state:running!important}
