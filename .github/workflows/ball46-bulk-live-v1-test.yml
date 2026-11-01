@@ -1,0 +1,50 @@
+name: BALL46 Bulk Live V1 isolated tests NO DEPLOY
+on:
+  push:
+    branches: [codex/ball46-bulk-live-v1-20261101]
+    paths: ['work/ball46-bulk-live-v1-20261101/test-request.json']
+permissions:
+  contents: write
+jobs:
+  verify-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: work/ball46-bulk-live-v1-20261101
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Reconstruct hash-pinned current production source locally
+        run: |
+          node hydrate.mjs
+          node build.mjs
+          node --check candidate/hub.mjs
+          node --check candidate/website.mjs
+      - name: Policy, cryptographic auth and integration tests with no provider
+        run: node --test --test-isolation=none --test-reporter=tap policy.test.mjs auth.test.mjs integration.test.mjs > unit-tests.tap
+      - name: Browser checks against local simulated server only
+        run: |
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium
+          node browser-test.mjs
+      - name: GET-only final production preservation verification
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: node final-read.mjs
+      - name: Commit reviewable test evidence only
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add qa/*.json unit-tests.tap
+          git commit -m "Record isolated Bulk Live V1 test proof; Production unchanged [skip ci]"
+          git push origin HEAD:codex/ball46-bulk-live-v1-20261101
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bulk-live-v1-test-${{ github.run_id }}
+          path: |
+            work/ball46-bulk-live-v1-20261101/qa
+            work/ball46-bulk-live-v1-20261101/unit-tests.tap
