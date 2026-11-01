@@ -1,0 +1,17 @@
+{
+  "ok": true,
+  "previewOnly": true,
+  "productionWrites": 0,
+  "upstreamRequests": 0,
+  "tests": [
+    "no fabricated initial estimate",
+    "existing 1X2 formula and rounding",
+    "retain valid values on missing held stale invalid prices",
+    "accept strictly newer valid quote atomically",
+    "ignore delayed and conflicting equal-timestamp quotes",
+    "no fixture cross-contamination; return to fixture restores own values",
+    "same browser session reload preserves timestamped last outlook",
+    "finished match keeps last estimate without recalculation",
+    "future timestamps still rejected"
+  ]
+}
