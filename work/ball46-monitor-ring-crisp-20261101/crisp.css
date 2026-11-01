@@ -1,0 +1,20 @@
+/* Monitor circles only: keep vector geometry fixed while the dash travels. */
+html body .mini-monitor .mini-ring svg,
+html body .mini-monitor .mini-ring circle{shape-rendering:geometricPrecision}
+html body .mini-monitor .mini-arc{filter:none}
+html body .mini-monitor .mini-scan{
+ animation:none;transform:none;opacity:1;
+}
+html body .mini-monitor .mini-scan-beam{
+ filter:none;opacity:1;
+ animation:mini-crisp-travel 3.2s linear infinite;
+}
+@keyframes mini-crisp-travel{
+ from{stroke-dashoffset:25}
+ to{stroke-dashoffset:-75}
+}
+@media(prefers-reduced-motion:reduce){
+ html body .mini-monitor .mini-scan-beam{
+  animation:none!important;stroke-dashoffset:25;
+ }
+}
