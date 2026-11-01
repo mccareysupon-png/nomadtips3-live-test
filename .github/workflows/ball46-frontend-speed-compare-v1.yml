@@ -1,7 +1,7 @@
 name: BALL46 Frontend Speed V1 controlled comparison NO DEPLOY
 on:
   push:
-    branches: [codex/ball46-frontend-speed-v1-20261101]
+    branches: [codex/ball46-frontend-speed-cache-proof-20261101]
     paths: ['work/ball46-frontend-speed-v1-20261101/measure-request.json']
 permissions:
   contents: write
@@ -43,7 +43,7 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add qa
           git commit -m "Record controlled Frontend Speed measurements and regression proof [skip ci]"
-          git push origin HEAD:codex/ball46-frontend-speed-v1-20261101
+          git push origin HEAD:codex/ball46-frontend-speed-cache-proof-20261101
       - uses: actions/upload-artifact@v4
         if: always()
         with:
