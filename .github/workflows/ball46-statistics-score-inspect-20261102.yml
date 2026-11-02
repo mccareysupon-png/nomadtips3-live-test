@@ -1,0 +1,29 @@
+name: BALL46 Statistics approved UI source inspection
+on:
+  push:
+    branches: [codex/ball46-statistics-score-columns-20261102]
+    paths: ['work/ball46-statistics-score-release-20261102/inspect-request.json']
+permissions:
+  contents: write
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    defaults:
+      run:
+        working-directory: work/ball46-statistics-score-release-20261102
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node inspect.mjs
+      - name: Preserve public source and sanitized fingerprints only
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add source-audit
+          git commit -m "Capture current public Statistics source for approved UI integration [skip ci]"
+          git push origin HEAD:codex/ball46-statistics-score-columns-20261102
