@@ -1,66 +1,35 @@
 {
-  "production": false,
-  "error": "AssertionError [ERR_ASSERTION]: THEME_INK_WRONG\n+ actual - expected\n\n+ 'rgb(35, 69, 54)'\n- 'rgb(26, 60, 43)'\n       ^\n\n    at inspect (file:///home/runner/work/nomadtips3-live-test/nomadtips3-live-test/work/ball46-statistics-score-release-20261102/release-browser.mjs:14:195)\n    at async file:///home/runner/work/nomadtips3-live-test/nomadtips3-live-test/work/ball46-statistics-score-release-20261102/release-browser.mjs:20:487",
-  "errors": [],
-  "consoleErrors": [
-    {
-      "label": "baseline",
-      "text": "Failed to load resource: the server responded with a status of 404 ()",
-      "location": {
-        "url": "https://ball46.com/api/prediction-vote?fixtureId=203793048",
-        "lineNumber": 0,
-        "columnNumber": 0
-      }
-    },
+  "ok": true,
+  "candidate": "224cac7e-11fe-4549-a462-8f2f0e3ef25f",
+  "desktop": true,
+  "mobile": true,
+  "statisticsColumns": true,
+  "dataUnchanged": true,
+  "sameSourceData": true,
+  "noExtraAPI": true,
+  "pageErrors": 0,
+  "consoleErrors": 0,
+  "existingVote404": [
     {
       "label": "candidate",
-      "text": "Failed to load resource: the server responded with a status of 404 ()",
-      "location": {
-        "url": "https://81d6122f-ball46-production.mccarey-supon.workers.dev/api/prediction-vote?fixtureId=203793048",
-        "lineNumber": 0,
-        "columnNumber": 0
-      }
-    },
-    {
-      "label": "baseline",
-      "text": "Failed to load resource: the server responded with a status of 404 ()",
-      "location": {
-        "url": "https://ball46.com/api/prediction-vote?fixtureId=203793048",
-        "lineNumber": 0,
-        "columnNumber": 0
-      }
-    },
-    {
-      "label": "candidate",
-      "text": "Failed to load resource: the server responded with a status of 404 ()",
-      "location": {
-        "url": "https://81d6122f-ball46-production.mccarey-supon.workers.dev/api/prediction-vote?fixtureId=203793048",
-        "lineNumber": 0,
-        "columnNumber": 0
-      }
-    }
-  ],
-  "network": [
-    {
-      "label": "baseline",
-      "path": "/api/prediction-vote",
-      "status": 404,
-      "body": "{\"ok\":false,\"error\":\"FIXTURE_NOT_FOUND\"}"
-    },
-    {
-      "label": "candidate",
+      "url": "https://224cac7e-ball46-production.mccarey-supon.workers.dev/api/prediction-vote?fixtureId=203793048",
+      "fixtureId": "203793048",
       "path": "/api/prediction-vote",
       "status": 404,
       "body": "{\"ok\":false,\"error\":\"FIXTURE_NOT_FOUND\"}"
     },
     {
       "label": "baseline",
+      "url": "https://ball46.com/api/prediction-vote?fixtureId=203793048",
+      "fixtureId": "203793048",
       "path": "/api/prediction-vote",
       "status": 404,
       "body": "{\"ok\":false,\"error\":\"FIXTURE_NOT_FOUND\"}"
     },
     {
       "label": "candidate",
+      "url": "https://224cac7e-ball46-production.mccarey-supon.workers.dev/api/prediction-vote?fixtureId=203793048",
+      "fixtureId": "203793048",
       "path": "/api/prediction-vote",
       "status": 404,
       "body": "{\"ok\":false,\"error\":\"FIXTURE_NOT_FOUND\"}"
@@ -1165,9 +1134,9 @@
         }
       ],
       "counts": {
-        "/api/engine/board": 1,
-        "/api/engine/statistics": 3,
-        "/api/engine/signals": 1
+        "/api/engine/board": 2,
+        "/api/engine/statistics": 5,
+        "/api/engine/signals": 2
       },
       "ok": true
     },
@@ -2269,9 +2238,9 @@
         }
       ],
       "counts": {
-        "/api/engine/board": 1,
-        "/api/engine/statistics": 3,
-        "/api/engine/signals": 1
+        "/api/engine/board": 2,
+        "/api/engine/statistics": 5,
+        "/api/engine/signals": 2
       },
       "ok": true
     },
@@ -3373,9 +3342,9 @@
         }
       ],
       "counts": {
-        "/api/engine/board": 1,
-        "/api/engine/statistics": 3,
-        "/api/engine/signals": 1
+        "/api/engine/board": 2,
+        "/api/engine/statistics": 4,
+        "/api/engine/signals": 2
       },
       "ok": true
     },
@@ -4477,11 +4446,1160 @@
         }
       ],
       "counts": {
-        "/api/engine/board": 1,
-        "/api/engine/statistics": 3,
-        "/api/engine/signals": 1
+        "/api/engine/board": 2,
+        "/api/engine/statistics": 4,
+        "/api/engine/signals": 2
+      },
+      "ok": true
+    },
+    {
+      "label": "candidate",
+      "width": 1440,
+      "theme": "light",
+      "appliedTheme": "light",
+      "ledgerTotal": 12491,
+      "ledgerHash": "84f7b84d4d38c61499e380b4485a5cefbbd75405b4745bd6118eeb218da07df9",
+      "kpis": [
+        {
+          "key": "total",
+          "value": "12215"
+        },
+        {
+          "key": "unsettled",
+          "value": "276"
+        },
+        {
+          "key": "win",
+          "value": "6037"
+        },
+        {
+          "key": "loss",
+          "value": "4459"
+        },
+        {
+          "key": "push",
+          "value": "1719"
+        },
+        {
+          "key": "rate",
+          "value": "54.8%"
+        },
+        {
+          "key": "odds",
+          "value": "1.98"
+        },
+        {
+          "key": "settled-days",
+          "value": "34"
+        }
+      ],
+      "page1": [
+        {
+          "date": "—",
+          "line": "+0.25",
+          "odds": "1.7",
+          "bookmaker": "12bet",
+          "result": "HALF_WIN"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "1.41",
+          "bookmaker": "1xBet",
+          "result": "PUSH"
+        },
+        {
+          "date": "—",
+          "line": "—",
+          "odds": "2.25",
+          "bookmaker": "Bet 365",
+          "result": "WIN"
+        },
+        {
+          "date": "—",
+          "line": "+0.5",
+          "odds": "1.725",
+          "bookmaker": "Bet 365",
+          "result": "WIN"
+        },
+        {
+          "date": "—",
+          "line": "+0.25",
+          "odds": "1.95",
+          "bookmaker": "Bet 365",
+          "result": "HALF_WIN"
+        },
+        {
+          "date": "—",
+          "line": "+0.5",
+          "odds": "1.85",
+          "bookmaker": "12bet",
+          "result": "WIN"
+        },
+        {
+          "date": "—",
+          "line": "+0.25",
+          "odds": "1.58",
+          "bookmaker": "1xBet",
+          "result": "HALF_WIN"
+        },
+        {
+          "date": "—",
+          "line": "1.5",
+          "odds": "1.95",
+          "bookmaker": "Crown",
+          "result": "WIN"
+        },
+        {
+          "date": "—",
+          "line": "—",
+          "odds": "1.5",
+          "bookmaker": "Bet 365",
+          "result": "WIN"
+        },
+        {
+          "date": "—",
+          "line": "+0.25",
+          "odds": "1.92",
+          "bookmaker": "Easybets",
+          "result": "LOSS"
+        },
+        {
+          "date": "—",
+          "line": "+0.75",
+          "odds": "2.01",
+          "bookmaker": "1xBet",
+          "result": "LOSS"
+        },
+        {
+          "date": "—",
+          "line": "+0.25",
+          "odds": "2.02",
+          "bookmaker": "1xBet",
+          "result": "LOSS"
+        },
+        {
+          "date": "—",
+          "line": "1.5",
+          "odds": "1.94",
+          "bookmaker": "Pinnacle",
+          "result": "WIN"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "1.61",
+          "bookmaker": "Pinnacle",
+          "result": "PUSH"
+        },
+        {
+          "date": "—",
+          "line": "+0.25",
+          "odds": "1.95",
+          "bookmaker": "12bet",
+          "result": "LOSS"
+        },
+        {
+          "date": "—",
+          "line": "+0.25",
+          "odds": "1.92",
+          "bookmaker": "Pinnacle",
+          "result": "WIN"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "1.85",
+          "bookmaker": "1xBet",
+          "result": "PUSH"
+        },
+        {
+          "date": "—",
+          "line": "2.25",
+          "odds": "2.03",
+          "bookmaker": "12bet",
+          "result": "HALF_LOSS"
+        },
+        {
+          "date": "—",
+          "line": "—",
+          "odds": "1.833",
+          "bookmaker": "Bet 365",
+          "result": "LOSS"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "1.69",
+          "bookmaker": "12bet",
+          "result": "LOSS"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "1.8",
+          "bookmaker": "Bet 365",
+          "result": "PUSH"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "1.88",
+          "bookmaker": "Pinnacle",
+          "result": "PUSH"
+        },
+        {
+          "date": "—",
+          "line": "+0.25",
+          "odds": "2.24",
+          "bookmaker": "1xBet",
+          "result": "LOSS"
+        },
+        {
+          "date": "—",
+          "line": "—",
+          "odds": "1.952",
+          "bookmaker": "Bet 365",
+          "result": "WIN"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "2.26",
+          "bookmaker": "Vcbet",
+          "result": "PUSH"
+        },
+        {
+          "date": "—",
+          "line": "+0.25",
+          "odds": "1.97",
+          "bookmaker": "Crown",
+          "result": "LOSS"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "2.075",
+          "bookmaker": "Bet 365",
+          "result": "PUSH"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "1.74",
+          "bookmaker": "1xBet",
+          "result": "PUSH"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "1.88",
+          "bookmaker": "Pinnacle",
+          "result": "PENDING"
+        },
+        {
+          "date": "—",
+          "line": "+0.25",
+          "odds": "1.74",
+          "bookmaker": "12bet",
+          "result": "WIN"
+        },
+        {
+          "date": "—",
+          "line": "2.5",
+          "odds": "1.62",
+          "bookmaker": "18Bet",
+          "result": "WIN"
+        },
+        {
+          "date": "—",
+          "line": "+0.25",
+          "odds": "1.72",
+          "bookmaker": "12bet",
+          "result": "LOSS"
+        },
+        {
+          "date": "—",
+          "line": "+0.25",
+          "odds": "1.44",
+          "bookmaker": "12bet",
+          "result": "WIN"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "2.54",
+          "bookmaker": "1xBet",
+          "result": "PUSH"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "1.42",
+          "bookmaker": "1xBet",
+          "result": "PUSH"
+        },
+        {
+          "date": "—",
+          "line": "+0.25",
+          "odds": "1.73",
+          "bookmaker": "12bet",
+          "result": "HALF_WIN"
+        },
+        {
+          "date": "—",
+          "line": "+0.25",
+          "odds": "1.85",
+          "bookmaker": "1xBet",
+          "result": "HALF_WIN"
+        },
+        {
+          "date": "—",
+          "line": "+0.25",
+          "odds": "2.01",
+          "bookmaker": "1xBet",
+          "result": "LOSS"
+        },
+        {
+          "date": "—",
+          "line": "—",
+          "odds": "1.571",
+          "bookmaker": "Bet 365",
+          "result": "LOSS"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "1.8",
+          "bookmaker": "Bet 365",
+          "result": "WIN"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "1.92",
+          "bookmaker": "12bet",
+          "result": "PUSH"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "2.02",
+          "bookmaker": "12bet",
+          "result": "LOSS"
+        },
+        {
+          "date": "—",
+          "line": "—",
+          "odds": "1.727",
+          "bookmaker": "Bet 365",
+          "result": "WIN"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "2.025",
+          "bookmaker": "Bet 365",
+          "result": "PUSH"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "2.24",
+          "bookmaker": "Vcbet",
+          "result": "PUSH"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "1.84",
+          "bookmaker": "Easybets",
+          "result": "PUSH"
+        },
+        {
+          "date": "—",
+          "line": "—",
+          "odds": "2",
+          "bookmaker": "Bet 365",
+          "result": "LOSS"
+        },
+        {
+          "date": "—",
+          "line": "—",
+          "odds": "2",
+          "bookmaker": "Bet 365",
+          "result": "LOSS"
+        },
+        {
+          "date": "—",
+          "line": "+0.5",
+          "odds": "1.94",
+          "bookmaker": "12bet",
+          "result": "LOSS"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "1.81",
+          "bookmaker": "Pinnacle",
+          "result": "LOSS"
+        }
+      ],
+      "page2": [
+        {
+          "date": "—",
+          "line": "—",
+          "odds": "2.25",
+          "bookmaker": "Bet 365",
+          "result": "LOSS"
+        },
+        {
+          "date": "—",
+          "line": "+0.25",
+          "odds": "1.77",
+          "bookmaker": "Crown",
+          "result": "WIN"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "1.65",
+          "bookmaker": "12bet",
+          "result": "PUSH"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "1.58",
+          "bookmaker": "Vcbet",
+          "result": "WIN"
+        },
+        {
+          "date": "—",
+          "line": "—",
+          "odds": "1.4",
+          "bookmaker": "Bet 365",
+          "result": "WIN"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "2.15",
+          "bookmaker": "Interwetten",
+          "result": "PUSH"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "1.84",
+          "bookmaker": "1xBet",
+          "result": "PUSH"
+        },
+        {
+          "date": "—",
+          "line": "+0.5",
+          "odds": "1.93",
+          "bookmaker": "Easybets",
+          "result": "LOSS"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "1.9",
+          "bookmaker": "1xBet",
+          "result": "LOSS"
+        },
+        {
+          "date": "—",
+          "line": "+0.25",
+          "odds": "1.97",
+          "bookmaker": "1xBet",
+          "result": "LOSS"
+        },
+        {
+          "date": "—",
+          "line": "—",
+          "odds": "1.833",
+          "bookmaker": "Bet 365",
+          "result": "WIN"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "1.65",
+          "bookmaker": "1xBet",
+          "result": "PUSH"
+        },
+        {
+          "date": "—",
+          "line": "1.25",
+          "odds": "1.98",
+          "bookmaker": "12bet",
+          "result": "LOSS"
+        },
+        {
+          "date": "—",
+          "line": "—",
+          "odds": "2.4",
+          "bookmaker": "Bet 365",
+          "result": "LOSS"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "2.26",
+          "bookmaker": "Vcbet",
+          "result": "LOSS"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "1.85",
+          "bookmaker": "1xBet",
+          "result": "PUSH"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "2.09",
+          "bookmaker": "Easybets",
+          "result": "WIN"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "1.74",
+          "bookmaker": "Pinnacle",
+          "result": "PUSH"
+        },
+        {
+          "date": "—",
+          "line": "+0.25",
+          "odds": "1.68",
+          "bookmaker": "12bet",
+          "result": "HALF_WIN"
+        },
+        {
+          "date": "—",
+          "line": "—",
+          "odds": "1.8",
+          "bookmaker": "Bet 365",
+          "result": "WIN"
+        },
+        {
+          "date": "—",
+          "line": "+0.25",
+          "odds": "1.66",
+          "bookmaker": "1xBet",
+          "result": "HALF_WIN"
+        },
+        {
+          "date": "—",
+          "line": "1.25",
+          "odds": "2.14",
+          "bookmaker": "Crown",
+          "result": "WIN"
+        },
+        {
+          "date": "—",
+          "line": "—",
+          "odds": "1.8",
+          "bookmaker": "Bet 365",
+          "result": "WIN"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "1.72",
+          "bookmaker": "12bet",
+          "result": "LOSS"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "2.03",
+          "bookmaker": "12bet",
+          "result": "PUSH"
+        },
+        {
+          "date": "—",
+          "line": "3.5",
+          "odds": "1.97",
+          "bookmaker": "Pinnacle",
+          "result": "LOSS"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "1.88",
+          "bookmaker": "12bet",
+          "result": "PUSH"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "1.7",
+          "bookmaker": "12bet",
+          "result": "WIN"
+        },
+        {
+          "date": "—",
+          "line": "+0.25",
+          "odds": "1.51",
+          "bookmaker": "1xBet",
+          "result": "LOSS"
+        },
+        {
+          "date": "—",
+          "line": "—",
+          "odds": "2.2",
+          "bookmaker": "Bet 365",
+          "result": "WIN"
+        },
+        {
+          "date": "—",
+          "line": "3",
+          "odds": "1.79",
+          "bookmaker": "1xBet",
+          "result": "WIN"
+        },
+        {
+          "date": "—",
+          "line": "—",
+          "odds": "1.833",
+          "bookmaker": "Bet 365",
+          "result": "WIN"
+        },
+        {
+          "date": "—",
+          "line": "+1",
+          "odds": "2",
+          "bookmaker": "1xBet",
+          "result": "PUSH"
+        },
+        {
+          "date": "—",
+          "line": "+0.25",
+          "odds": "1.73",
+          "bookmaker": "1xBet",
+          "result": "LOSS"
+        },
+        {
+          "date": "—",
+          "line": "—",
+          "odds": "1.444",
+          "bookmaker": "Bet 365",
+          "result": "WIN"
+        },
+        {
+          "date": "—",
+          "line": "+0.25",
+          "odds": "1.91",
+          "bookmaker": "12bet",
+          "result": "LOSS"
+        },
+        {
+          "date": "—",
+          "line": "+0.25",
+          "odds": "1.54",
+          "bookmaker": "1xBet",
+          "result": "HALF_WIN"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "2.04",
+          "bookmaker": "12bet",
+          "result": "PUSH"
+        },
+        {
+          "date": "—",
+          "line": "0.5",
+          "odds": "1.81",
+          "bookmaker": "1xBet",
+          "result": "WIN"
+        },
+        {
+          "date": "—",
+          "line": "+0.25",
+          "odds": "1.61",
+          "bookmaker": "12bet",
+          "result": "LOSS"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "1.47",
+          "bookmaker": "Pinnacle",
+          "result": "PUSH"
+        },
+        {
+          "date": "—",
+          "line": "+0.25",
+          "odds": "1.54",
+          "bookmaker": "12bet",
+          "result": "HALF_WIN"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "1.69",
+          "bookmaker": "Easybets",
+          "result": "WIN"
+        },
+        {
+          "date": "—",
+          "line": "—",
+          "odds": "2",
+          "bookmaker": "Bet 365",
+          "result": "LOSS"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "1.48",
+          "bookmaker": "1xBet",
+          "result": "PUSH"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "1.59",
+          "bookmaker": "1xBet",
+          "result": "WIN"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "1.75",
+          "bookmaker": "12bet",
+          "result": "WIN"
+        },
+        {
+          "date": "—",
+          "line": "+0.25",
+          "odds": "2.07",
+          "bookmaker": "12bet",
+          "result": "LOSS"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "1.675",
+          "bookmaker": "Bet 365",
+          "result": "PUSH"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "2.05",
+          "bookmaker": "12bet",
+          "result": "WIN"
+        }
+      ],
+      "ah": [
+        {
+          "date": "—",
+          "line": "+0.25",
+          "odds": "1.7",
+          "bookmaker": "12bet",
+          "result": "HALF_WIN"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "1.41",
+          "bookmaker": "1xBet",
+          "result": "PUSH"
+        },
+        {
+          "date": "—",
+          "line": "+0.5",
+          "odds": "1.725",
+          "bookmaker": "Bet 365",
+          "result": "WIN"
+        },
+        {
+          "date": "—",
+          "line": "+0.25",
+          "odds": "1.95",
+          "bookmaker": "Bet 365",
+          "result": "HALF_WIN"
+        },
+        {
+          "date": "—",
+          "line": "+0.5",
+          "odds": "1.85",
+          "bookmaker": "12bet",
+          "result": "WIN"
+        },
+        {
+          "date": "—",
+          "line": "+0.25",
+          "odds": "1.58",
+          "bookmaker": "1xBet",
+          "result": "HALF_WIN"
+        },
+        {
+          "date": "—",
+          "line": "+0.25",
+          "odds": "1.92",
+          "bookmaker": "Easybets",
+          "result": "LOSS"
+        },
+        {
+          "date": "—",
+          "line": "+0.75",
+          "odds": "2.01",
+          "bookmaker": "1xBet",
+          "result": "LOSS"
+        },
+        {
+          "date": "—",
+          "line": "+0.25",
+          "odds": "2.02",
+          "bookmaker": "1xBet",
+          "result": "LOSS"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "1.61",
+          "bookmaker": "Pinnacle",
+          "result": "PUSH"
+        },
+        {
+          "date": "—",
+          "line": "+0.25",
+          "odds": "1.95",
+          "bookmaker": "12bet",
+          "result": "LOSS"
+        },
+        {
+          "date": "—",
+          "line": "+0.25",
+          "odds": "1.92",
+          "bookmaker": "Pinnacle",
+          "result": "WIN"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "1.85",
+          "bookmaker": "1xBet",
+          "result": "PUSH"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "1.69",
+          "bookmaker": "12bet",
+          "result": "LOSS"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "1.8",
+          "bookmaker": "Bet 365",
+          "result": "PUSH"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "1.88",
+          "bookmaker": "Pinnacle",
+          "result": "PUSH"
+        },
+        {
+          "date": "—",
+          "line": "+0.25",
+          "odds": "2.24",
+          "bookmaker": "1xBet",
+          "result": "LOSS"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "2.26",
+          "bookmaker": "Vcbet",
+          "result": "PUSH"
+        },
+        {
+          "date": "—",
+          "line": "+0.25",
+          "odds": "1.97",
+          "bookmaker": "Crown",
+          "result": "LOSS"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "2.075",
+          "bookmaker": "Bet 365",
+          "result": "PUSH"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "1.74",
+          "bookmaker": "1xBet",
+          "result": "PUSH"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "1.88",
+          "bookmaker": "Pinnacle",
+          "result": "PENDING"
+        },
+        {
+          "date": "—",
+          "line": "+0.25",
+          "odds": "1.74",
+          "bookmaker": "12bet",
+          "result": "WIN"
+        },
+        {
+          "date": "—",
+          "line": "+0.25",
+          "odds": "1.72",
+          "bookmaker": "12bet",
+          "result": "LOSS"
+        },
+        {
+          "date": "—",
+          "line": "+0.25",
+          "odds": "1.44",
+          "bookmaker": "12bet",
+          "result": "WIN"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "2.54",
+          "bookmaker": "1xBet",
+          "result": "PUSH"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "1.42",
+          "bookmaker": "1xBet",
+          "result": "PUSH"
+        },
+        {
+          "date": "—",
+          "line": "+0.25",
+          "odds": "1.73",
+          "bookmaker": "12bet",
+          "result": "HALF_WIN"
+        },
+        {
+          "date": "—",
+          "line": "+0.25",
+          "odds": "1.85",
+          "bookmaker": "1xBet",
+          "result": "HALF_WIN"
+        },
+        {
+          "date": "—",
+          "line": "+0.25",
+          "odds": "2.01",
+          "bookmaker": "1xBet",
+          "result": "LOSS"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "1.8",
+          "bookmaker": "Bet 365",
+          "result": "WIN"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "1.92",
+          "bookmaker": "12bet",
+          "result": "PUSH"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "2.02",
+          "bookmaker": "12bet",
+          "result": "LOSS"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "2.025",
+          "bookmaker": "Bet 365",
+          "result": "PUSH"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "2.24",
+          "bookmaker": "Vcbet",
+          "result": "PUSH"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "1.84",
+          "bookmaker": "Easybets",
+          "result": "PUSH"
+        },
+        {
+          "date": "—",
+          "line": "+0.5",
+          "odds": "1.94",
+          "bookmaker": "12bet",
+          "result": "LOSS"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "1.81",
+          "bookmaker": "Pinnacle",
+          "result": "LOSS"
+        },
+        {
+          "date": "—",
+          "line": "+0.25",
+          "odds": "1.77",
+          "bookmaker": "Crown",
+          "result": "WIN"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "1.65",
+          "bookmaker": "12bet",
+          "result": "PUSH"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "1.58",
+          "bookmaker": "Vcbet",
+          "result": "WIN"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "2.15",
+          "bookmaker": "Interwetten",
+          "result": "PUSH"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "1.84",
+          "bookmaker": "1xBet",
+          "result": "PUSH"
+        },
+        {
+          "date": "—",
+          "line": "+0.5",
+          "odds": "1.93",
+          "bookmaker": "Easybets",
+          "result": "LOSS"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "1.9",
+          "bookmaker": "1xBet",
+          "result": "LOSS"
+        },
+        {
+          "date": "—",
+          "line": "+0.25",
+          "odds": "1.97",
+          "bookmaker": "1xBet",
+          "result": "LOSS"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "1.65",
+          "bookmaker": "1xBet",
+          "result": "PUSH"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "2.26",
+          "bookmaker": "Vcbet",
+          "result": "LOSS"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "1.85",
+          "bookmaker": "1xBet",
+          "result": "PUSH"
+        },
+        {
+          "date": "—",
+          "line": "0",
+          "odds": "2.09",
+          "bookmaker": "Easybets",
+          "result": "WIN"
+        }
+      ],
+      "counts": {
+        "/api/engine/board": 2,
+        "/api/engine/statistics": 5,
+        "/api/engine/signals": 2
       },
       "ok": true
     }
-  ]
+  ],
+  "preventedProviders": 0,
+  "preventedWrites": [
+    {
+      "path": "/cdn-cgi/rum",
+      "method": "POST"
+    },
+    {
+      "path": "/cdn-cgi/rum",
+      "method": "POST"
+    },
+    {
+      "path": "/cdn-cgi/rum",
+      "method": "POST"
+    },
+    {
+      "path": "/cdn-cgi/rum",
+      "method": "POST"
+    },
+    {
+      "path": "/cdn-cgi/rum",
+      "method": "POST"
+    },
+    {
+      "path": "/cdn-cgi/rum",
+      "method": "POST"
+    },
+    {
+      "path": "/cdn-cgi/rum",
+      "method": "POST"
+    },
+    {
+      "path": "/cdn-cgi/rum",
+      "method": "POST"
+    },
+    {
+      "path": "/cdn-cgi/rum",
+      "method": "POST"
+    },
+    {
+      "path": "/cdn-cgi/rum",
+      "method": "POST"
+    }
+  ],
+  "fullOddsNotExercised": true,
+  "at": "2026-11-02T07:16:01.492Z"
 }
