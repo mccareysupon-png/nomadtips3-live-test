@@ -19,13 +19,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - run: npm install --no-save --package-lock=false acorn@8.15.0
+      - run: npm install --no-save --package-lock=false acorn@8.15.0 miniflare@4
       - name: Capture exact Engine source and snapshot without requesting a scan
         run: node prepare.mjs
       - name: Build guarded candidate and restoration module privately
         run: node build.mjs
       - name: Test isolated transactional storage with network forbidden
         run: node --experimental-vm-modules test.mjs
+      - name: Verify atomic archive and restore in isolated workerd KV Durable Object
+        run: node runtime-test.mjs
       - name: Preserve sanitized results only; no Worker upload or traffic change
         if: always()
         run: |
