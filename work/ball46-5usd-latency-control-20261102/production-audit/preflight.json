@@ -1,7 +1,7 @@
 {
   "readOnly": true,
-  "at": "2026-11-02T11:45:17.638Z",
-  "run": "41439239454",
+  "at": "2026-11-02T12:03:27.038Z",
+  "run": "41441577109",
   "workers": {
     "ball46-production": {
       "version": "224cac7e-11fe-4549-a462-8f2f0e3ef25f",
@@ -563,6 +563,23 @@
   ],
   "accessApps": [
     {
+      "id": "5101cd55-8bf2-4647-b117-f215a393c4ad",
+      "name": "BALL46 Bulk Live Settings — Owner Only",
+      "domain": "ball46.com/5usd-bulk-control.html",
+      "self_hosted_domains": [
+        "ball46.com/5usd-bulk-control.html",
+        "www.ball46.com/5usd-bulk-control.html",
+        "ball46.com/5usd-control.html",
+        "www.ball46.com/5usd-control.html",
+        "ball46.com/api/hub/control",
+        "www.ball46.com/api/hub/control",
+        "ball46.com/api/hub/bulk-settings",
+        "www.ball46.com/api/hub/bulk-settings"
+      ],
+      "aud": "8e0e7f7d2907abb27e9dbb156550f8b9a26db7a96b9dbfe02c16c2a87e7e835f",
+      "type": "self_hosted"
+    },
+    {
       "id": "7a75e2d6-10fd-4b14-bca4-1d70be959ea5",
       "name": "BALL46 VISITOR MONITOR — OWNER ONLY",
       "domain": "b46-visitor-monitor-admin.mccarey-supon.workers.dev",
@@ -618,6 +635,30 @@
     }
   ],
   "policies": {
+    "5101cd55-8bf2-4647-b117-f215a393c4ad": [
+      {
+        "created_at": "2026-08-11T08:00:52Z",
+        "decision": "allow",
+        "exclude": [],
+        "id": "608526e7-4a3c-4c14-aa35-aba6ddcee6fb",
+        "include": [
+          {
+            "email": {
+              "email": "mccarey.supon@gmail.com"
+            }
+          }
+        ],
+        "name": "NOMADTIPS3 Owner Only",
+        "require": [],
+        "connection_rules": {
+          "rdp": {}
+        },
+        "uid": "608526e7-4a3c-4c14-aa35-aba6ddcee6fb",
+        "updated_at": "2026-08-11T08:00:52Z",
+        "reusable": true,
+        "precedence": 1
+      }
+    ],
     "235f0305-06c0-4afc-9a69-12068ea3ffec": [
       {
         "created_at": "2026-10-11T09:14:48Z",
@@ -709,95 +750,36 @@
   "public": [
     {
       "path": "/5usd-control.html",
-      "status": 200,
-      "location": null,
-      "sha": "3d52c9cd5047238b65d184ca2edac7118b29bd89bdfc7fbff50df40ff77a40e8"
+      "status": 302,
+      "location": "https://rapid-glade-f6b9.cloudflareaccess.com/cdn-cgi/access/login/ball46.com?kid=8e0e7f7d2907abb27e9dbb156550f8b9a26db7a96b9dbfe02c16c2a87e7e835f&meta=eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsImtpZCI6ImU5NDhhMDViOGNmOTFjMzMzYWExZjk1MjE0ZTQ5ZWY2YmY0M2E5YTMxNGE2NWRjNDllY2JjODZiY2VlMmI3ZTAifQ.eyJ0eXBlIjoibWV0YSIsImF1ZCI6IjhlMGU3ZjdkMjkwN2FiYjI3ZTlkYmIxNTY1NTBmOGI5YTI2ZGI3YTk2YjlkYmZlMDJjMTZjMmE4N2U3ZTgzNWYiLCJob3N0bmFtZSI6ImJhbGw0Ni5jb20iLCJyZWRpcmVjdF91cmwiOiIvNXVzZC1jb250cm9sLmh0bWwiLCJzZXJ2aWNlX3Rva2VuX3N0YXR1cyI6ZmFsc2UsImlzX3dhcnAiOmZhbHNlLCJpc19nYXRld2F5IjpmYWxzZSwiZXhwIjoxNzkzNjIxMzE1LCJuYmYiOjE3OTM2MjEwMTUsImlhdCI6MTc5MzYyMTAxNSwiYXV0aF9zdGF0dXMiOiJOT05FIiwibXRsc19hdXRoIjp7ImNlcnRfaXNzdWVyX2RuIjoiIiwiY2VydF9zZXJpYWwiOiIiLCJjZXJ0X2lzc3Vlcl9za2kiOiIiLCJjZXJ0X3ByZXNlbnRlZCI6ZmFsc2UsImNvbW1vbl9uYW1lIjoiIiwiYXV0aF9zdGF0dXMiOiJOT05FIn0sInJlYWxfY291bnRyeSI6IlVTIiwiYXBwX3Nlc3Npb25faGFzaCI6IjI4NmYwMjhlYjUwOTM2MTNlN2QzMTdmMjc5ODNkZGEzNTA0ZTZjZmUwMmRkYWQxMTZiMzA2NWI2YWMxMTY4ODIifQ.LATZRjHN9LTu86xonUhhVxqWhHFrb4MHNMIGvFmPB1LLk9JxnRecRn5Q6RGkoKCwf3sKgcOg90PyuCHLwGIjvp5Ke1immHMkPyTkNRuZ9rB44dbvb44iUKtibXXz4mU3essUR0xFJyBw949YGJIV9udKP1zxX7ZQA-311xs6BtKfel25zS30Mt4u_e_NQbgOYJhBiQ2WUl4TDY81BZcD2Txaa8AAGH7PzeM1pOiTBSF0nKDiP8CO3WjqPlnGgxhSs2uwGZsHRXFUwTTMyR9_ZPpG-caQQEIm_QBdVMQ7SwHF_Ok0T_dC2qpxSKVjrpCe19jQHuxfRXutvZBmncB5oA&redirect_url=%2F5usd-control.html",
+      "sha": "12755429beb15d5eb57eafa45b8dba326343dd099bf0552038694c3856e8860e"
     },
     {
       "path": "/api/hub/control",
-      "status": 200,
-      "location": null,
-      "sha": "59b1ccc4b3931732b9d149fb1ffbc8dc67433d455b50287e28d56292f7507a9a",
-      "data": {
-        "ok": true,
-        "component": "5USD_HUB",
-        "version": "nomad343-5usd-hub-v6-viewer-cache-only",
-        "fixtureCount": 2086,
-        "counts": {
-          "scheduled": 0,
-          "live": 16,
-          "finished": 2062,
-          "unknown": 8
-        },
-        "continuityEnabled": true,
-        "continuityHeldFixtures": 0,
-        "fetchedAt": 1793619915457,
-        "ageMs": 10309,
-        "stale": false,
-        "refreshMs": 30000,
-        "todayRefreshMs": 120000,
-        "providerRequestCount": 1,
-        "providerRequestBudget": 5,
-        "include": "odds,events,stats",
-        "control": {
-          "liveRefreshSeconds": 30,
-          "autoReturnMinutes": 0,
-          "autoReturnAt": null,
-          "returnRefreshSeconds": 120,
-          "updatedAt": 1789732992622
-        },
-        "estimatedBulkRequestsPerMinute": 2,
-        "accountLimitPerMinute": 40,
-        "nextAlarmAt": 1793619945457,
-        "lastError": null,
-        "lastRateLimitAt": null,
-        "retryAfterSec": null,
-        "cacheOnlyViewer": true,
-        "viewerRefreshEnabled": false,
-        "externalRequestsPerViewer": 0,
-        "presets": [
-          120,
-          60,
-          30,
-          15,
-          6,
-          3,
-          2
-        ],
-        "autoReturnOptions": [
-          0,
-          30,
-          60,
-          120
-        ],
-        "notes": {
-          "bulk": "1 รอบ = 1 request สำหรับ live board สูงสุด 500 คู่",
-          "today": "Today/Schedule แยกรอบ 120 วินาที ไม่เร่งตาม Bulk Live",
-          "continuity": "Last Known Good odds are preserved centrally for fixtures that remain live; null/empty/omitted markets cannot erase the previous good price.",
-          "limit": "Ultra 40 requests/min ต่อ account"
-        }
-      }
+      "status": 302,
+      "location": "https://rapid-glade-f6b9.cloudflareaccess.com/cdn-cgi/access/login/ball46.com?kid=8e0e7f7d2907abb27e9dbb156550f8b9a26db7a96b9dbfe02c16c2a87e7e835f&meta=eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsImtpZCI6ImU5NDhhMDViOGNmOTFjMzMzYWExZjk1MjE0ZTQ5ZWY2YmY0M2E5YTMxNGE2NWRjNDllY2JjODZiY2VlMmI3ZTAifQ.eyJ0eXBlIjoibWV0YSIsImF1ZCI6IjhlMGU3ZjdkMjkwN2FiYjI3ZTlkYmIxNTY1NTBmOGI5YTI2ZGI3YTk2YjlkYmZlMDJjMTZjMmE4N2U3ZTgzNWYiLCJob3N0bmFtZSI6ImJhbGw0Ni5jb20iLCJyZWRpcmVjdF91cmwiOiIvYXBpL2h1Yi9jb250cm9sIiwic2VydmljZV90b2tlbl9zdGF0dXMiOmZhbHNlLCJpc193YXJwIjpmYWxzZSwiaXNfZ2F0ZXdheSI6ZmFsc2UsImV4cCI6MTc5MzYyMTMxNSwibmJmIjoxNzkzNjIxMDE1LCJpYXQiOjE3OTM2MjEwMTUsImF1dGhfc3RhdHVzIjoiTk9ORSIsIm10bHNfYXV0aCI6eyJjZXJ0X2lzc3Vlcl9kbiI6IiIsImNlcnRfc2VyaWFsIjoiIiwiY2VydF9pc3N1ZXJfc2tpIjoiIiwiY2VydF9wcmVzZW50ZWQiOmZhbHNlLCJjb21tb25fbmFtZSI6IiIsImF1dGhfc3RhdHVzIjoiTk9ORSJ9LCJyZWFsX2NvdW50cnkiOiJVUyIsImFwcF9zZXNzaW9uX2hhc2giOiIyZWM0OThkNTcwM2UzMTU0MWM3M2Y5NDMwZDY3Zjc1M2VlZDA3Nzk2MGM3MTExZWYxY2NmYjYyYjVkMTAxMjhmIn0.LZZR4GljyBzV7QgkRkZyDhRoURi3qt0kgOVIYJe7eTDT-swyT9q42jgr2FUyjuWzgllFbBpI0Z5ficrQTWh6kfHO7PWuNlDjNs8io7DcW3rnkFa84slWr-fPomRhCIfNceGqGKGD1HTpwdzZqq5bQq9eLpelLAZh2Ap8CFNtven1rFKbIO8osxAmzw6ZbpnPW1dpM8SGzJlr-Yr837oJOm_DfEHoAqOHzdPmSfW6-kmDSs1QisBlJZZ6kRP2AYal9hmRWw80Tc8xkgGFEXk8VkwV-NFlVWD7XfvU0wkfdVdRQmVMRnbk--YlLZZZFSUGRYW-44iFJba-qUwIyIn0xA&redirect_url=%2Fapi%2Fhub%2Fcontrol",
+      "sha": "12755429beb15d5eb57eafa45b8dba326343dd099bf0552038694c3856e8860e"
     },
     {
       "path": "/api/hub/health",
       "status": 200,
       "location": null,
-      "sha": "ecf542c29ac1da0374006c90b1dc3bd96cf58dcfc7578789800f325523adf97c",
+      "sha": "6d56d03da44cc5a88bec94b8abe2ab3614379a6fa3790b8bff24619eb1d12b55",
       "data": {
         "ok": true,
         "component": "5USD_HUB",
         "version": "nomad343-5usd-hub-v6-viewer-cache-only",
-        "fixtureCount": 2086,
+        "fixtureCount": 2153,
         "counts": {
-          "scheduled": 0,
-          "live": 16,
-          "finished": 2062,
-          "unknown": 8
+          "scheduled": 77,
+          "live": 27,
+          "finished": 2049,
+          "unknown": 0
         },
         "continuityEnabled": true,
-        "continuityHeldFixtures": 0,
-        "fetchedAt": 1793619915457,
-        "ageMs": 10522,
+        "continuityHeldFixtures": 1,
+        "fetchedAt": 1793620994300,
+        "ageMs": 21233,
         "stale": false,
         "refreshMs": 30000,
         "todayRefreshMs": 120000,
@@ -813,7 +795,7 @@
         },
         "estimatedBulkRequestsPerMinute": 2,
         "accountLimitPerMinute": 40,
-        "nextAlarmAt": 1793619945457,
+        "nextAlarmAt": 1793621024300,
         "lastError": null,
         "lastRateLimitAt": null,
         "retryAfterSec": null,
