@@ -1,0 +1,25 @@
+✔ owner signature accepted, JWKS cached (28.16505ms)
+✔ reject wrong owner (5.319989ms)
+✔ reject wrong audience (1.454951ms)
+✔ reject wrong issuer (1.28873ms)
+✔ reject expired (1.293567ms)
+✔ reject future nbf (1.407239ms)
+✔ reject future iat (1.406638ms)
+✔ reject missing expiry (1.38167ms)
+✔ reject missing subject (1.418996ms)
+✔ reject unsigned algorithm (1.362ms)
+✔ reject unknown key (1.456122ms)
+✔ forged signature rejected (0.613694ms)
+✔ forged email header is not authentication (0.269606ms)
+✔ unconfigured access fails closed (0.253943ms)
+✔ workers.dev blocked even with valid token (0.640644ms)
+✔ cross-origin mutation blocked (0.271209ms)
+✔ wrappers block control and preserve unrelated routes/cron (1.872328ms)
+ℹ tests 17
+ℹ suites 0
+ℹ pass 17
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 57.926232
