@@ -33,6 +33,7 @@ jobs:
           node connection/owner-only.test.mjs > production-audit/owner-release-unit.txt
           node connection/owner-auth.test.mjs > production-audit/owner-release-auth.txt
           node connection/owner-source-test.mjs > production-audit/owner-release-source.txt
+          node connection/upload-bindings.test.mjs > production-audit/owner-release-upload-bindings.txt
       - name: Verify PC/mobile and server hard-lock before any traffic change
         run: |
           npx playwright install --with-deps chromium
