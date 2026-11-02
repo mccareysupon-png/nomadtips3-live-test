@@ -22,7 +22,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - run: npm install --no-save --package-lock=false acorn@8.15.0
+      - run: npm install --no-save --package-lock=false acorn@8.15.0 playwright@1.56.1
       - name: Read exact current Production, never deploy
         run: node production-preflight.mjs
       - name: Verify authenticated manual settings and immutable source boundaries
@@ -34,6 +34,10 @@ jobs:
           node connection/source-integration.mjs > production-audit/manual-source-tests.txt
       - name: Connect exact-path owner-only Access app, no Worker or refresh changes
         run: node connection/access-owner.mjs --provision-owner-access
+      - name: PC and mobile verify manual selection, Save, DEFAULT and no provider calls
+        run: |
+          npx playwright install --with-deps chromium
+          node connection/browser-check.mjs
       - name: Preserve sanitized connection evidence only
         if: always()
         run: |
