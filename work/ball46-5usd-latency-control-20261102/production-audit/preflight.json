@@ -1,7 +1,7 @@
 {
   "readOnly": true,
-  "at": "2026-11-02T13:02:30.109Z",
-  "run": "41449504589",
+  "at": "2026-11-02T22:40:23.208Z",
+  "run": "41539201798",
   "workers": {
     "ball46-production": {
       "version": "224cac7e-11fe-4549-a462-8f2f0e3ef25f",
@@ -40,14 +40,30 @@
           }
         },
         "annotations": {
-          "workers/message": "Approved Statistics Score/Result columns, compact labels and vertical scores",
-          "workers/tag": "B46_STATISTICS_COLUMNS_20261102",
+          "workers/commit_sha": "25fb0f3b53006d236e4f26ddb6b575ca78077888",
+          "workers/message": "Approved owner settings only; retain30; acceleration locked server-side",
+          "workers/tag": "B46_OWNER_30_ONLY_20261102",
           "workers/triggered_by": "version_upload"
         },
         "bindings": [
           {
             "name": "ASSETS",
             "type": "assets"
+          },
+          {
+            "name": "BULK_ACCESS_AUD",
+            "text": "8e0e7f7d2907abb27e9dbb156550f8b9a26db7a96b9dbfe02c16c2a87e7e835f",
+            "type": "plain_text"
+          },
+          {
+            "name": "BULK_ACCESS_ISSUER",
+            "text": "https://rapid-glade-f6b9.cloudflareaccess.com",
+            "type": "plain_text"
+          },
+          {
+            "name": "BULK_OWNER_EMAIL",
+            "text": "mccarey.supon@gmail.com",
+            "type": "plain_text"
           },
           {
             "environment": "production",
@@ -328,7 +344,7 @@
     },
     "nomadtips3-5usd-hub-343": {
       "version": "98ea43ab-f40c-4de5-82e3-b0387dffd672",
-      "deployment": "2bf73f8a-b3e2-4f50-b33f-df2523656581",
+      "deployment": "963922cf-d0e8-48e0-9c00-d38612f6c01f",
       "main": "index-viewer-safe.js",
       "settings": {
         "placement": {},
@@ -355,11 +371,27 @@
           }
         },
         "annotations": {
-          "workers/commit_sha": "cea843afd998f79c1e7f3f8dd5245f0c33645897",
-          "workers/message": "Ball46 John rotate bulk final pages and retain finished history 72h",
+          "workers/commit_sha": "25fb0f3b53006d236e4f26ddb6b575ca78077888",
+          "workers/message": "Approved owner settings only; retain30; acceleration locked server-side",
+          "workers/tag": "B46_OWNER_30_ONLY_20261102",
           "workers/triggered_by": "version_upload"
         },
         "bindings": [
+          {
+            "name": "BULK_ACCESS_AUD",
+            "text": "8e0e7f7d2907abb27e9dbb156550f8b9a26db7a96b9dbfe02c16c2a87e7e835f",
+            "type": "plain_text"
+          },
+          {
+            "name": "BULK_ACCESS_ISSUER",
+            "text": "https://rapid-glade-f6b9.cloudflareaccess.com",
+            "type": "plain_text"
+          },
+          {
+            "name": "BULK_OWNER_EMAIL",
+            "text": "mccarey.supon@gmail.com",
+            "type": "plain_text"
+          },
           {
             "name": "FIVEDOLLAR_API_KEY",
             "type": "secret_text"
@@ -751,39 +783,39 @@
     {
       "path": "/5usd-control.html",
       "status": 302,
-      "location": "https://rapid-glade-f6b9.cloudflareaccess.com/cdn-cgi/access/login/ball46.com?kid=8e0e7f7d2907abb27e9dbb156550f8b9a26db7a96b9dbfe02c16c2a87e7e835f&meta=eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsImtpZCI6ImU5NDhhMDViOGNmOTFjMzMzYWExZjk1MjE0ZTQ5ZWY2YmY0M2E5YTMxNGE2NWRjNDllY2JjODZiY2VlMmI3ZTAifQ.eyJ0eXBlIjoibWV0YSIsImF1ZCI6IjhlMGU3ZjdkMjkwN2FiYjI3ZTlkYmIxNTY1NTBmOGI5YTI2ZGI3YTk2YjlkYmZlMDJjMTZjMmE4N2U3ZTgzNWYiLCJob3N0bmFtZSI6ImJhbGw0Ni5jb20iLCJyZWRpcmVjdF91cmwiOiIvNXVzZC1jb250cm9sLmh0bWwiLCJzZXJ2aWNlX3Rva2VuX3N0YXR1cyI6ZmFsc2UsImlzX3dhcnAiOmZhbHNlLCJpc19nYXRld2F5IjpmYWxzZSwiZXhwIjoxNzkzNjI0ODYxLCJuYmYiOjE3OTM2MjQ1NjEsImlhdCI6MTc5MzYyNDU2MSwiYXV0aF9zdGF0dXMiOiJOT05FIiwibXRsc19hdXRoIjp7ImNlcnRfaXNzdWVyX2RuIjoiIiwiY2VydF9zZXJpYWwiOiIiLCJjZXJ0X2lzc3Vlcl9za2kiOiIiLCJjZXJ0X3ByZXNlbnRlZCI6ZmFsc2UsImNvbW1vbl9uYW1lIjoiIiwiYXV0aF9zdGF0dXMiOiJOT05FIn0sInJlYWxfY291bnRyeSI6IlVTIiwiYXBwX3Nlc3Npb25faGFzaCI6IjdmYWUzZWY1MWYzMzliNGIzNWFhNzIwODRiZmVhMGIxZjFiZDNkMjc1NmM3NjM0NGMyYzNiZDlkYmJiODY3MTAifQ.h61rnXhK3bXZnQhQyD5Y9bQkxCzQ_ELh1WuvPSu0blNlca06UqTKOnNcgv4oR_QKq03AuzYcccJ2N6MDHBJ3w9i2w9rJeu951K1SugayKkFYFlLzyiZwzw1O6dul4N012kNsFyhxM7z7Z4D5dqguNfl4Lu-O6LxCoLrDg2gAKWbXDJgfpIjoRxwpSIBU2R2IgECrEMC83yrESgBjaymBnyrq3-K28Wjmz7OygVxcB5UUrrGiQh1EVuQhy9BbuODbOXBsSWrXoCE4IdIRD4MIEEJELOUFp8u9O3CFlZWTBBx_NJoBmEjbYIIVwsMAQaYdeUEOvNB3X1myh50sZ9oupA&redirect_url=%2F5usd-control.html",
+      "location": "https://rapid-glade-f6b9.cloudflareaccess.com/cdn-cgi/access/login/ball46.com?kid=8e0e7f7d2907abb27e9dbb156550f8b9a26db7a96b9dbfe02c16c2a87e7e835f&meta=eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsImtpZCI6ImU5NDhhMDViOGNmOTFjMzMzYWExZjk1MjE0ZTQ5ZWY2YmY0M2E5YTMxNGE2NWRjNDllY2JjODZiY2VlMmI3ZTAifQ.eyJ0eXBlIjoibWV0YSIsImF1ZCI6IjhlMGU3ZjdkMjkwN2FiYjI3ZTlkYmIxNTY1NTBmOGI5YTI2ZGI3YTk2YjlkYmZlMDJjMTZjMmE4N2U3ZTgzNWYiLCJob3N0bmFtZSI6ImJhbGw0Ni5jb20iLCJyZWRpcmVjdF91cmwiOiIvNXVzZC1jb250cm9sLmh0bWwiLCJzZXJ2aWNlX3Rva2VuX3N0YXR1cyI6ZmFsc2UsImlzX3dhcnAiOmZhbHNlLCJpc19nYXRld2F5IjpmYWxzZSwiZXhwIjoxNzkzNjU5NTMzLCJuYmYiOjE3OTM2NTkyMzMsImlhdCI6MTc5MzY1OTIzMywiYXV0aF9zdGF0dXMiOiJOT05FIiwibXRsc19hdXRoIjp7ImNlcnRfaXNzdWVyX2RuIjoiIiwiY2VydF9zZXJpYWwiOiIiLCJjZXJ0X2lzc3Vlcl9za2kiOiIiLCJjZXJ0X3ByZXNlbnRlZCI6ZmFsc2UsImNvbW1vbl9uYW1lIjoiIiwiYXV0aF9zdGF0dXMiOiJOT05FIn0sInJlYWxfY291bnRyeSI6IlVTIiwiYXBwX3Nlc3Npb25faGFzaCI6IjBmMzA1MTk0MWE1Y2Q0MDQxOGQzNTlkNzVmZGY0NzAxYzI5MWJlMjdiZGViM2Y4NGQ4MWRkZTE0OGQzMzQyNWMifQ.VEW7E6ETBrqg2unkJ2ETpM6Iq-uJZ896Q4aij_w1zG_uonkUztgtitmkk0DD8ggwCBKYNLE1PGx9xTjixeKsheSIvBC_qAb2R9pqEpip0DEoVYe61p9ilvloykfWh-9LsxAgXMqVBQMmNKySQ3lPI05BqfmAp2bglQKcC2XASb01_YnMYH4leUyvjSkQLued37oqh7IRbG0O6Y__sE6NUl6X1e-QXvUy2VyPVmSEtZmf0rUoyHrWB5u4PsEYL3NC8TJTvvBZt2WqdS1sLZMtNoHLnTes2z-bIL3daQK5LoNIpDcyVajupCfEmvgACTWVeYCJA9WFknS-WPURCoCJEQ&redirect_url=%2F5usd-control.html",
       "sha": "12755429beb15d5eb57eafa45b8dba326343dd099bf0552038694c3856e8860e"
     },
     {
       "path": "/api/hub/control",
       "status": 302,
-      "location": "https://rapid-glade-f6b9.cloudflareaccess.com/cdn-cgi/access/login/ball46.com?kid=8e0e7f7d2907abb27e9dbb156550f8b9a26db7a96b9dbfe02c16c2a87e7e835f&meta=eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsImtpZCI6ImU5NDhhMDViOGNmOTFjMzMzYWExZjk1MjE0ZTQ5ZWY2YmY0M2E5YTMxNGE2NWRjNDllY2JjODZiY2VlMmI3ZTAifQ.eyJ0eXBlIjoibWV0YSIsImF1ZCI6IjhlMGU3ZjdkMjkwN2FiYjI3ZTlkYmIxNTY1NTBmOGI5YTI2ZGI3YTk2YjlkYmZlMDJjMTZjMmE4N2U3ZTgzNWYiLCJob3N0bmFtZSI6ImJhbGw0Ni5jb20iLCJyZWRpcmVjdF91cmwiOiIvYXBpL2h1Yi9jb250cm9sIiwic2VydmljZV90b2tlbl9zdGF0dXMiOmZhbHNlLCJpc193YXJwIjpmYWxzZSwiaXNfZ2F0ZXdheSI6ZmFsc2UsImV4cCI6MTc5MzYyNDg2MSwibmJmIjoxNzkzNjI0NTYxLCJpYXQiOjE3OTM2MjQ1NjEsImF1dGhfc3RhdHVzIjoiTk9ORSIsIm10bHNfYXV0aCI6eyJjZXJ0X2lzc3Vlcl9kbiI6IiIsImNlcnRfc2VyaWFsIjoiIiwiY2VydF9pc3N1ZXJfc2tpIjoiIiwiY2VydF9wcmVzZW50ZWQiOmZhbHNlLCJjb21tb25fbmFtZSI6IiIsImF1dGhfc3RhdHVzIjoiTk9ORSJ9LCJyZWFsX2NvdW50cnkiOiJVUyIsImFwcF9zZXNzaW9uX2hhc2giOiIyMTBkNTAyZWU0NzhjMzFiOGE5ODg1NjgwN2MzNDg2OTE3NmM1NDJmMmE4NzczNDAyMDY1NGEzMjE3Y2Y0NWJmIn0.v4JbRSQblkPWHLz1fhrhRVdIElNN_TIBLEl8Pwp-pXbqn3FRgwtYwBEU8o6iCq7nbwnlzjUwWzbnNGEa2WT-qJhkigwLtEijEyq087ftXuyP06cpFSqLD34pnc3NxLKT4x7OXtnEdkE3LFtOQ0TuF0VyDrCiFekTXKa0OaQyWM4_m52vOMfVAKonm1Ff5FpXXLBKzFkJLnpU5SwHOfAEMBOxj65ZSFjGymE-Gw0vECMB8-MLpIE2KKe0d3J-NcyHJHHNLzTZQctVkcq2Bmo61u48k9yo4_giqS4xn1l79kIUsrL9rz609lzNMUGV4gS3-uUH0lf1zEanc0nha036FQ&redirect_url=%2Fapi%2Fhub%2Fcontrol",
+      "location": "https://rapid-glade-f6b9.cloudflareaccess.com/cdn-cgi/access/login/ball46.com?kid=8e0e7f7d2907abb27e9dbb156550f8b9a26db7a96b9dbfe02c16c2a87e7e835f&meta=eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsImtpZCI6ImU5NDhhMDViOGNmOTFjMzMzYWExZjk1MjE0ZTQ5ZWY2YmY0M2E5YTMxNGE2NWRjNDllY2JjODZiY2VlMmI3ZTAifQ.eyJ0eXBlIjoibWV0YSIsImF1ZCI6IjhlMGU3ZjdkMjkwN2FiYjI3ZTlkYmIxNTY1NTBmOGI5YTI2ZGI3YTk2YjlkYmZlMDJjMTZjMmE4N2U3ZTgzNWYiLCJob3N0bmFtZSI6ImJhbGw0Ni5jb20iLCJyZWRpcmVjdF91cmwiOiIvYXBpL2h1Yi9jb250cm9sIiwic2VydmljZV90b2tlbl9zdGF0dXMiOmZhbHNlLCJpc193YXJwIjpmYWxzZSwiaXNfZ2F0ZXdheSI6ZmFsc2UsImV4cCI6MTc5MzY1OTUzMywibmJmIjoxNzkzNjU5MjMzLCJpYXQiOjE3OTM2NTkyMzMsImF1dGhfc3RhdHVzIjoiTk9ORSIsIm10bHNfYXV0aCI6eyJjZXJ0X2lzc3Vlcl9kbiI6IiIsImNlcnRfc2VyaWFsIjoiIiwiY2VydF9pc3N1ZXJfc2tpIjoiIiwiY2VydF9wcmVzZW50ZWQiOmZhbHNlLCJjb21tb25fbmFtZSI6IiIsImF1dGhfc3RhdHVzIjoiTk9ORSJ9LCJyZWFsX2NvdW50cnkiOiJVUyIsImFwcF9zZXNzaW9uX2hhc2giOiIxZTZlOTAyN2UzMGRiYzE4ZmNhZTYwZGVmMmFkYzhlOThiYWEwOWQ0YjBkYzU2M2QzOGUyNGRkNWM2YmExMDQ5In0.anplT6EdvWTCIikzt04o2os2qhHUojA8nlJHphg3k2DRQmAw-4TLcsrxwr0R7IgTAjRvm4nJ7x--nTarFFwIFIDZB1uvxVE2mrQ1FcsiLbAc-ia4glPTTegv1KfOPJDSzUHczCXrOuTHQ3GBwwENsoQlT5vXUjjywvIyLhEZO5zdhCXZF2nwpmepTjsulcCRAMzxfaOq0sLlqDXFJV_uN2tdoaxGL5HOeWbll-rD3MszIDGzVvixVqXQKPWO5trEspyjHurKJAjICy-PWMHp-k1zyhIvVhlLH-icWkLacHTuLXt4vnu7isvkn7b6uYn-C7bY58zUK6i6NRws0blLCg&redirect_url=%2Fapi%2Fhub%2Fcontrol",
       "sha": "12755429beb15d5eb57eafa45b8dba326343dd099bf0552038694c3856e8860e"
     },
     {
       "path": "/api/hub/health",
       "status": 200,
       "location": null,
-      "sha": "735140c115fe3f2ff79cd46c1312896dec42547bb72600d68186fd6d3cd57572",
+      "sha": "004157975d494dc7c08cc573a0b1bd5317602bdcde27b73c2ace0745110f7a98",
       "data": {
         "ok": true,
         "component": "5USD_HUB",
         "version": "nomad343-5usd-hub-v6-viewer-cache-only",
-        "fixtureCount": 2093,
+        "fixtureCount": 1992,
         "counts": {
-          "scheduled": 60,
-          "live": 36,
-          "finished": 1997,
+          "scheduled": 39,
+          "live": 9,
+          "finished": 1944,
           "unknown": 0
         },
         "continuityEnabled": true,
         "continuityHeldFixtures": 0,
-        "fetchedAt": 1793624533760,
-        "ageMs": 27909,
+        "fetchedAt": 1793659212690,
+        "ageMs": 21474,
         "stale": false,
         "refreshMs": 30000,
         "todayRefreshMs": 120000,
-        "providerRequestCount": 4,
+        "providerRequestCount": 2,
         "providerRequestBudget": 5,
         "include": "odds,events,stats",
         "control": {
@@ -795,7 +827,7 @@
         },
         "estimatedBulkRequestsPerMinute": 2,
         "accountLimitPerMinute": 40,
-        "nextAlarmAt": 1793624563760,
+        "nextAlarmAt": 1793659242690,
         "lastError": null,
         "lastRateLimitAt": null,
         "retryAfterSec": null,

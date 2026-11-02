@@ -1,0 +1,261 @@
+{
+  "at": "2026-11-02T22:40:35.578Z",
+  "readOnly": true,
+  "productionWrites": 0,
+  "hubControlSource": [],
+  "workerGateway": "index_viewer_safe_default = {\n  async fetch(request, env, ctx) {\n    const url = new URL(request.url);\n    if (url.pathname === \"/rich-odds\") return viewerBlockedResponse();\n    return index_rich_odds_default.fetch(request, env, ctx);\n  },\n  async scheduled(event, env, ctx) {\n    return index_rich_odds_default.scheduled(event, env, ctx);\n  }\n}",
+  "controlDomain": {
+    "unavailable": true,
+    "status": 403,
+    "codes": [
+      10000
+    ]
+  },
+  "customDomains": [
+    {
+      "id": "b6301d21a05504fe57907bdd4e7456850f55a16d",
+      "zone_id": "35badb923b6451ed5109276f20b6c749",
+      "zone_name": "nomadtips3.com",
+      "hostname": "bot-owner.nomadtips3.com",
+      "service": "nomadtips3-test-api",
+      "environment": "production",
+      "cert_id": "5a5746a6-cc52-4c3b-b09f-6fbb261c860a",
+      "previews_enabled": false,
+      "enabled": true
+    },
+    {
+      "id": "1fd1fb4d1a469f27a657c0403fe74e7de5700d97",
+      "zone_id": "d491ee30b7a87a6c37e6a4dacf00ae8d",
+      "zone_name": "ball46.com",
+      "hostname": "ball46.com",
+      "service": "ball46-production",
+      "environment": "production",
+      "cert_id": "f9d87c5a-5cb4-45a2-b8a7-4fc779c78b6a",
+      "previews_enabled": false,
+      "enabled": true
+    },
+    {
+      "id": "4c7d61ed4dd2d6e0906cdce6e4b95b62915ad21b",
+      "zone_id": "d491ee30b7a87a6c37e6a4dacf00ae8d",
+      "zone_name": "ball46.com",
+      "hostname": "www.ball46.com",
+      "service": "ball46-production",
+      "environment": "production",
+      "cert_id": "308acf6b-b201-432c-90cf-06666aff03a0",
+      "previews_enabled": false,
+      "enabled": true
+    },
+    {
+      "id": "4684fa2706733d23f29c4233103ce4aa9df85a4f",
+      "zone_id": "d491ee30b7a87a6c37e6a4dacf00ae8d",
+      "zone_name": "ball46.com",
+      "hostname": "member.ball46.com",
+      "service": "ball46-member-production",
+      "environment": "production",
+      "cert_id": "fff6c578-0d8a-4132-913f-5d7b41806354",
+      "previews_enabled": false,
+      "enabled": true
+    },
+    {
+      "id": "c4d726ad92d464cdd56bf406a7cf6efa9c24babc",
+      "zone_id": "d491ee30b7a87a6c37e6a4dacf00ae8d",
+      "zone_name": "ball46.com",
+      "hostname": "member2.ball46.com",
+      "service": "ball46-member2-production",
+      "environment": "production",
+      "cert_id": "2dbd6784-8101-449b-b195-bbdfeae40802",
+      "previews_enabled": false,
+      "enabled": true
+    }
+  ],
+  "ownerApp": {
+    "id": "5101cd55-8bf2-4647-b117-f215a393c4ad",
+    "uid": "5101cd55-8bf2-4647-b117-f215a393c4ad",
+    "type": "self_hosted",
+    "name": "BALL46 Bulk Live Settings — Owner Only",
+    "aud": "8e0e7f7d2907abb27e9dbb156550f8b9a26db7a96b9dbfe02c16c2a87e7e835f",
+    "created_at": "2026-11-02T11:45:29Z",
+    "updated_at": "2026-11-02T12:13:49Z",
+    "domain": "ball46.com/5usd-bulk-control.html",
+    "self_hosted_domains": [
+      "ball46.com/5usd-bulk-control.html",
+      "www.ball46.com/5usd-bulk-control.html",
+      "ball46.com/5usd-control.html",
+      "www.ball46.com/5usd-control.html",
+      "ball46.com/api/hub/control",
+      "www.ball46.com/api/hub/control",
+      "ball46.com/api/hub/bulk-settings",
+      "www.ball46.com/api/hub/bulk-settings"
+    ],
+    "destinations": [
+      {
+        "type": "public",
+        "uri": "ball46.com/5usd-bulk-control.html"
+      },
+      {
+        "type": "public",
+        "uri": "www.ball46.com/5usd-bulk-control.html"
+      },
+      {
+        "type": "public",
+        "uri": "ball46.com/5usd-control.html"
+      },
+      {
+        "type": "public",
+        "uri": "www.ball46.com/5usd-control.html"
+      },
+      {
+        "type": "public",
+        "uri": "ball46.com/api/hub/control"
+      },
+      {
+        "type": "public",
+        "uri": "www.ball46.com/api/hub/control"
+      },
+      {
+        "type": "public",
+        "uri": "ball46.com/api/hub/bulk-settings"
+      },
+      {
+        "type": "public",
+        "uri": "www.ball46.com/api/hub/bulk-settings"
+      }
+    ],
+    "app_launcher_visible": false,
+    "allowed_idps": [],
+    "tags": [],
+    "auto_redirect_to_identity": false,
+    "policies": [
+      {
+        "created_at": "2026-08-11T08:00:52Z",
+        "decision": "allow",
+        "exclude": [],
+        "id": "608526e7-4a3c-4c14-aa35-aba6ddcee6fb",
+        "include": [
+          {
+            "email": {
+              "email": "mccarey.supon@gmail.com"
+            }
+          }
+        ],
+        "name": "NOMADTIPS3 Owner Only",
+        "require": [],
+        "connection_rules": {
+          "rdp": {}
+        },
+        "uid": "608526e7-4a3c-4c14-aa35-aba6ddcee6fb",
+        "updated_at": "2026-08-11T08:00:52Z",
+        "reusable": true,
+        "precedence": 1
+      }
+    ],
+    "session_duration": "1h",
+    "enable_binding_cookie": false,
+    "http_only_cookie_attribute": true,
+    "same_site_cookie_attribute": "lax",
+    "options_preflight_bypass": false,
+    "eager_redirect_cookie_setting": true
+  },
+  "org": {
+    "auth_domain": "rapid-glade-f6b9.cloudflareaccess.com",
+    "created_at": "2026-08-11T07:35:18Z",
+    "login_design": {},
+    "name": "rapid-glade-f6b9.cloudflareaccess.com",
+    "updated_at": "2026-08-11T07:35:18Z",
+    "is_ui_read_only": false,
+    "has_migrated_private_apps": true,
+    "allow_authenticate_via_warp": false,
+    "warp_auth_non_browser_401": false,
+    "cache_device_posture": true,
+    "disable_end_user_app_creation": false,
+    "deny_unmatched_requests": false,
+    "strict_service_token_auth": false,
+    "deny_unmatched_requests_exempted_zone_names": [],
+    "service_token_inactivity": {
+      "enabled": false,
+      "inactivity_threshold_days": null,
+      "action": null
+    },
+    "trusted_accounts": []
+  },
+  "workerNames": [
+    "add-k-ah-detector",
+    "b46-visitor-monitor-admin",
+    "b46-visitor-monitor-collector",
+    "ball46-form-history-v1",
+    "ball46-live-preview-20261012",
+    "ball46-member-production",
+    "ball46-member-sandbox",
+    "ball46-member-snapshot-staging",
+    "ball46-member2-production",
+    "ball46-member2-staging",
+    "ball46-multisource-shadow-20261018",
+    "ball46-next-preview",
+    "ball46-prediction-votes-v6",
+    "ball46-production",
+    "ball46-result-native-proxy-20261018",
+    "m88-private-monitor",
+    "nomad341-match-scout-registry",
+    "nomadtips3-341-5usd-staged",
+    "nomadtips3-342-ledger",
+    "nomadtips3-342-signal-engine",
+    "nomadtips3-342-sot-off-bridge-test",
+    "nomadtips3-343-auto-engine",
+    "nomadtips3-343-central-cache",
+    "nomadtips3-343-central-cache-canary",
+    "nomadtips3-343-full-market-central-canary",
+    "nomadtips3-343-full-market-v4-canary",
+    "nomadtips3-343-prediction-preview",
+    "nomadtips3-343-preview",
+    "nomadtips3-343-production",
+    "nomadtips3-343-production-canary",
+    "nomadtips3-343-stable-preview",
+    "nomadtips3-343-ultra-preview",
+    "nomadtips3-5usd-hub-343",
+    "nomadtips3-5usd-hub-343-stable-canary",
+    "nomadtips3-apex-redirect",
+    "nomadtips3-car3-paper-v6",
+    "nomadtips3-car31-goaloo",
+    "nomadtips3-car33-live",
+    "nomadtips3-car34-line-alerts",
+    "nomadtips3-car34-real-market-audit",
+    "nomadtips3-car341-preview",
+    "nomadtips3-car341-source-monitor",
+    "nomadtips3-car35-preview",
+    "nomadtips3-engine-343",
+    "nomadtips3-engine-343-best19-canary",
+    "nomadtips3-flashscore-full-probe",
+    "nomadtips3-flashscore-probe",
+    "nomadtips3-full-market-343-ball46",
+    "nomadtips3-goaloo-stats-342-test",
+    "nomadtips3-live-342-web-test",
+    "nomadtips3-live-engine",
+    "nomadtips3-live-engine-342-lab",
+    "nomadtips3-live-engine-342-test",
+    "nomadtips3-live-engine-5dollar",
+    "nomadtips3-live-engine-5usd-shadow",
+    "nomadtips3-live-engine-test",
+    "nomadtips3-live-score-feed-v2",
+    "nomadtips3-live-score-feed-v3",
+    "nomadtips3-live-web-production",
+    "nomadtips3-live-web-production-canary",
+    "nomadtips3-live-web-test",
+    "nomadtips3-marathon-engine",
+    "nomadtips3-market-engine",
+    "nomadtips3-melbet-preview",
+    "nomadtips3-nowgoal-probe-342-test",
+    "nomadtips3-odds-display-343",
+    "nomadtips3-oddstorm-referee",
+    "nomadtips3-prediction3-tracker",
+    "nomadtips3-rich-odds-343",
+    "nomadtips3-s8-sidecar",
+    "nomadtips3-shot-public-shield",
+    "nomadtips3-shot-sidecar-342",
+    "nomadtips3-source-probe",
+    "nomadtips3-telegram-alerts-test",
+    "nomadtips3-test-api",
+    "nomadtips3-totalcorner-edge-probe-test",
+    "nomadtips3-x1-preview",
+    "purple-fire-835a"
+  ]
+}
