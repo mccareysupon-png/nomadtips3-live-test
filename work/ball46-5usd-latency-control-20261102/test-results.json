@@ -1,6 +1,6 @@
 {
   "policyTests": {
-    "passed": 20,
+    "passed": 26,
     "failed": 0,
     "runner": "node policy.test.mjs (same process; sandbox disallows spawned test isolation)"
   },
@@ -39,6 +39,22 @@
       "Request history explicitly unavailable rather than fabricated counts"
     ],
     "consoleErrors": 0
+  },
+  "maximumSpeedAddition": {
+    "profilesSeconds": [30, 20, 15, 6, 3, 2],
+    "policyTestsPassed": 26,
+    "browserChecks": [
+      "Unknown quota: MAX and Save disabled",
+      "Simulated budget 18 rpm: MAX 6s uses 10 rpm; next 3s needs 20 rpm and fails",
+      "MAX selection and Save confirm local 6s only; effective interval remains captured 30s",
+      "Expanded details show technical 2s floor is not approved safe Production speed",
+      "DEFAULT restores proposed 30s",
+      "402 and 429 disable both MAX and Save",
+      "Mobile 390x844: body clientWidth and scrollWidth both 375; MAX card width 313",
+      "Temporary mobile viewport reset; final scenario unknown and proposed 30s"
+    ],
+    "consoleErrors": 0,
+    "productionEnabled": false
   },
   "productionWrites": 0,
   "providerRequestsAddedByAudit": 0,

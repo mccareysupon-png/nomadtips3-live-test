@@ -11,3 +11,9 @@ test('missing or invalid Retry-After defaults to safe 60 seconds',()=>{assert.eq
 test('existing cooldown is not extended on every UI read',()=>{const r=recommend({quota:p,cooldownUntil:at+20000},at);assert.equal(r.until,at+20000)});
 test('expired cooldown allows fresh verified quota evaluation',()=>assert.equal(recommend({quota:p,cooldownUntil:at-1},at).state,'READY'));
 test('15 second proposal reports only 7.5 second average Hub wait saving',()=>assert.deepEqual(waitSavings(30,15).averageSeconds,7.5));
+test('MAX projection selects 6s when verified simulated live budget is 18 rpm',()=>{const r=recommend({quota:{...p,otherReserved:12}},at);assert.equal(r.seconds,6);assert.equal(r.requestRpm,10);assert.deepEqual(r.nextFaster,{seconds:3,requestRpm:20})});
+test('MAX projection selects 3s for simulated 28 rpm and 2s only at 30 rpm',()=>{assert.equal(recommend({quota:{...p,otherReserved:2}},at).seconds,3);assert.equal(recommend({quota:{...p,otherReserved:0}},at).seconds,2)});
+test('extra pages reduce MAX speed rather than exceeding live request budget',()=>{const r=recommend({livePages:2,quota:{...p,otherReserved:12}},at);assert.equal(r.seconds,15);assert.equal(r.requestRpm,8)});
+test('page multiplication can exhaust default budget and must hold requests',()=>assert.equal(recommend({livePages:3,quota:p},at).state,'HOLD'));
+test('unverified page count locks acceleration',()=>{for(const pages of[0,-1,1.5,NaN])assert.equal(recommend({livePages:pages,quota:p},at).state,'LOCKED')});
+test('remaining window quota must cover at least one complete multi-page cycle',()=>assert.equal(recommend({livePages:2,quota:{...p,remaining:1}},at).state,'LOCKED'));
