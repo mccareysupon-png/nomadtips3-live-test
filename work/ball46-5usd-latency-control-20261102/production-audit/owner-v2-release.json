@@ -1,7 +1,7 @@
 {
-  "at": "2026-11-02T22:50:02.791Z",
-  "run": "41540460936",
-  "commit": "95e9f358b2e769180e49b31d7b4ca3349f42deb0",
+  "at": "2026-11-02T22:55:51.456Z",
+  "run": "41541250710",
+  "commit": "f068a091abfd0bfc23fa09712504592b44c9d6b1",
   "mode": "OWNER_V2_30_ONLY",
   "websiteWrites": 0,
   "producerChanges": false,
@@ -23,14 +23,25 @@
   "settledBefore": 12378,
   "secretLineage": {
     "active": "98ea43ab-f40c-4de5-82e3-b0387dffd672",
-    "ownedStaged": "d848bf59-20b1-4a3d-aaa1-57dcf03d9ad6",
+    "ownedStaged": "dc32b2e9-81f9-43b3-868e-836ac42f54ed",
     "verified": true
   },
   "sourceBodyPreserved": true,
   "accessApp": "4b201cae-a4d6-4721-aae2-2fe15d2e0442",
   "url": "https://ball46-owner-control-v2.mccarey-supon.workers.dev",
-  "hubCandidate": "dc32b2e9-81f9-43b3-868e-836ac42f54ed",
-  "adminVersion": "14047c00-e476-486c-88e8-0c61c70bb22b",
-  "error": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n+ actual - expected\n\n+ '[{\"name\":\"BULK_ACCESS_AUD\",\"text\":\"59926996cb69e5bf57e26756d7dc23ff718e791b423cbd5af835cb90847c73f5\",\"type\":\"plain_text\"},{\"name\":\"BULK_ACCESS_ISSUER\",\"text\":\"https://rapid-glade-f6b9.cloudflareaccess.com\",\"type\":\"plain_text\"},{\"name\":\"BULK_LEGACY_ACCESS_AUD\",\"text\":\"8e0e7f7d2907abb27e9dbb156550f8b9a26db7a96b9dbfe02c16c2a87e7e835f\",\"type\":\"plain_text\"},{\"name\":\"BULK_OWNER_EMAIL\",\"text\":\"mccarey.supon@gmail.com\",\"type\":\"plain_text\"},{\"environment\":\"production\",\"name\":\"HUB\",\"service\":\"nomadtips3-5usd-hub-343\",\"type\":\"service\"}]'\n- '[{\"name\":\"BULK_ACCESS_AUD\",\"text\":\"59926996cb69e5bf57e26756d7dc23ff718e791b423cbd5af835cb90847c73f5\",\"type\":\"plain_text\"},{\"name\":\"BULK_ACCESS_ISSUER\",\"text\":\"https://rapid-glade-f6b9.cloudflareaccess.com\",\"type\":\"plain_text\"},{\"name\":\"BULK_LEGACY_ACCESS_AUD\",\"text\":\"8e0e7f7d2907abb27e9dbb156550f8b9a26db7a96b9dbfe02c16c2a87e7e835f\",\"type\":\"plain_text\"},{\"name\":\"BULK_OWNER_EMAIL\",\"text\":\"mccarey.supon@gmail.com\",\"type\":\"plain_text\"},{\"name\":\"HUB\",\"service\":\"nomadtips3-5usd-hub-343\",\"type\":\"service\"}]'\n\n    at file:///home/runner/work/nomadtips3-live-test/nomadtips3-live-test/work/api-settings-v2/release.mjs:23:850\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+  "hubCandidate": "097eb3ed-a07c-4861-9ec7-11c0e5748f79",
+  "adminVersion": "8c101467-5976-487e-8fc3-6b8b9f79d7a2",
+  "deployment": "f491500e-8d8c-4308-b7a1-dfc760b31aa2",
+  "hubVersion": "097eb3ed-a07c-4861-9ec7-11c0e5748f79",
+  "controlAfter": {
+    "liveRefreshSeconds": 30,
+    "autoReturnMinutes": 0,
+    "autoReturnAt": null,
+    "returnRefreshSeconds": 120,
+    "updatedAt": 1789732992622
+  },
+  "settledPreserved": 12378,
+  "error": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n+ actual - expected\n\n+ '[{\"name\":\"FIVEDOLLAR_API_KEY\",\"type\":\"secret_text\"},{\"class_name\":\"FiveUsdHub\",\"name\":\"HUB\",\"namespace_id\":\"385ad1193c114fcdb8d92e4d56d6a532\",\"type\":\"durable_object_namespace\"},{\"class_name\":\"RichOddsGate\",\"name\":\"RICH_GATE\",\"namespace_id\":\"9eb6121eba114d21b902996f7dceb37c\",\"type\":\"durable_object_namespace\"}]'\n- '[{\"name\":\"BULK_ACCESS_AUD\",\"text\":\"59926996cb69e5bf57e26756d7dc23ff718e791b423cbd5af835cb90847c73f5\",\"type\":\"plain_text\"},{\"name\":\"BULK_ACCESS_ISSUER\",\"text\":\"https://rapid-glade-f6b9.cloudflareaccess.com\",\"type\":\"plain_text\"},{\"name\":\"BULK_LEGACY_ACCESS_AUD\",\"text\":\"8e0e7f7d2907abb27e9dbb156550f8b9a26db7a96b9dbfe02c16c2a87e7e835f\",\"type\":\"plain_text\"},{\"name\":\"BULK_OWNER_EMAIL\",\"text\":\"mccarey.supon@gmail.com\",\"type\":\"plain_text\"},{\"name\":\"FIVEDOLLAR_API_KEY\",\"type\":\"secret_text\"},{\"class_name\":\"FiveUsdHub\",\"name\":\"HUB\",\"namespace_id\":\"385ad1193c114fcdb8d92e4d56d6a532\",\"type\":\"durable_object_namespace\"},{\"class_name\":\"RichOddsGate\",\"name\":\"RICH_GATE\",\"namespace_id\":\"9eb6121eba114d21b902996f7dceb37c\",\"type\":\"durable_object_namespace\"}]'\n\n    at file:///home/runner/work/nomadtips3-live-test/nomadtips3-live-test/work/api-settings-v2/release.mjs:26:655\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+  "hubRestored": true,
   "adminDisabled": true
 }
