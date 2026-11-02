@@ -1,0 +1,427 @@
+{
+  "at": "2026-11-02T11:49:42.901Z",
+  "readOnly": true,
+  "ownerCoverageAnswer": "Only BALL46 on Cloudflare",
+  "providerRequestsAdded": 0,
+  "workersInspected": 78,
+  "candidates": [
+    {
+      "name": "ball46-form-history-v1",
+      "providerBindings": [
+        {
+          "name": "FIVEDOLLAR_API_KEY",
+          "type": "secret_text"
+        }
+      ],
+      "services": [],
+      "schedules": [],
+      "activeVersions": [
+        {
+          "version_id": "ff926e7d-e275-41ac-b67f-c2a8d5393d16",
+          "percentage": 100
+        }
+      ],
+      "deployment": "78ad2bb0-5005-43b6-866a-fba69d6b897c"
+    },
+    {
+      "name": "ball46-result-native-proxy-20261018",
+      "providerBindings": [
+        {
+          "name": "FIVEDOLLAR_API_KEY",
+          "type": "secret_text"
+        }
+      ],
+      "services": [
+        {
+          "name": "ENGINE",
+          "service": "nomadtips3-engine-343"
+        }
+      ],
+      "schedules": [],
+      "activeVersions": [
+        {
+          "version_id": "4c646d3c-03f3-4c8c-afbf-e35c66e02443",
+          "percentage": 100
+        }
+      ],
+      "deployment": "59091d2f-0fd9-4a49-9b66-cc3d0f237959"
+    },
+    {
+      "name": "nomadtips3-341-5usd-staged",
+      "providerBindings": [
+        {
+          "name": "FIVEUSD_API_KEY",
+          "type": "secret_text"
+        }
+      ],
+      "services": [],
+      "schedules": [
+        {
+          "cron": "* * * * *",
+          "created_on": "2026-09-15T03:15:51.9573Z",
+          "modified_on": "2026-09-15T03:15:51.9573Z"
+        }
+      ],
+      "activeVersions": [
+        {
+          "version_id": "e28f92e8-03f7-4814-95d5-c14e48d3b6c4",
+          "percentage": 100
+        }
+      ],
+      "deployment": "ec1911e8-fcde-4009-989d-f0aa04a44d5a"
+    },
+    {
+      "name": "nomadtips3-343-auto-engine",
+      "providerBindings": [
+        {
+          "name": "FIVEDOLLAR_API_KEY",
+          "type": "secret_text"
+        }
+      ],
+      "services": [],
+      "schedules": [
+        {
+          "cron": "* * * * *",
+          "created_on": "2026-09-10T01:37:27.983563Z",
+          "modified_on": "2026-09-13T05:37:05.134703Z"
+        }
+      ],
+      "activeVersions": [
+        {
+          "version_id": "ae2d3e1f-a0d5-4d09-b0ac-4a48ec1a2489",
+          "percentage": 100
+        }
+      ],
+      "deployment": "b94af0b0-a433-47af-8246-295f0b49d9a9"
+    },
+    {
+      "name": "nomadtips3-343-central-cache",
+      "providerBindings": [
+        {
+          "name": "FIVEDOLLAR_API_KEY",
+          "type": "secret_text"
+        }
+      ],
+      "services": [],
+      "schedules": [],
+      "activeVersions": [
+        {
+          "version_id": "0892ccba-7187-4d42-96a3-5ed87f6069cf",
+          "percentage": 100
+        }
+      ],
+      "deployment": "b168b794-ec2e-4df0-99fa-1be08786e375"
+    },
+    {
+      "name": "nomadtips3-343-central-cache-canary",
+      "providerBindings": [
+        {
+          "name": "FIVEDOLLAR_API_KEY",
+          "type": "secret_text"
+        }
+      ],
+      "services": [],
+      "schedules": [],
+      "activeVersions": [
+        {
+          "version_id": "6777de59-8fd7-44eb-94dd-17f3950347a6",
+          "percentage": 100
+        }
+      ],
+      "deployment": "57361480-3a57-41ca-92a6-e6bf57f748fc"
+    },
+    {
+      "name": "nomadtips3-343-full-market-central-canary",
+      "providerBindings": [
+        {
+          "name": "FIVEDOLLAR_API_KEY",
+          "type": "secret_text"
+        }
+      ],
+      "services": [],
+      "schedules": [],
+      "activeVersions": [
+        {
+          "version_id": "4fcf795f-91ac-417c-8609-43497416c746",
+          "percentage": 100
+        }
+      ],
+      "deployment": "cbbeef58-d899-4001-875b-5f63e4c56f9b"
+    },
+    {
+      "name": "nomadtips3-343-full-market-v4-canary",
+      "providerBindings": [
+        {
+          "name": "FIVEDOLLAR_API_KEY",
+          "type": "secret_text"
+        }
+      ],
+      "services": [],
+      "schedules": [],
+      "activeVersions": [
+        {
+          "version_id": "1c39807a-1deb-45b4-bc72-ae30cb29c1c2",
+          "percentage": 100
+        }
+      ],
+      "deployment": "77e7614b-c99e-4cee-a6e2-728a13d31f1e"
+    },
+    {
+      "name": "nomadtips3-5usd-hub-343",
+      "providerBindings": [
+        {
+          "name": "FIVEDOLLAR_API_KEY",
+          "type": "secret_text"
+        }
+      ],
+      "services": [],
+      "schedules": [
+        {
+          "cron": "*/2 * * * *",
+          "created_on": "2026-09-15T00:49:08.503243Z",
+          "modified_on": "2026-09-20T10:45:42.015278Z"
+        }
+      ],
+      "activeVersions": [
+        {
+          "version_id": "98ea43ab-f40c-4de5-82e3-b0387dffd672",
+          "percentage": 100
+        }
+      ],
+      "deployment": "2bf73f8a-b3e2-4f50-b33f-df2523656581"
+    },
+    {
+      "name": "nomadtips3-5usd-hub-343-stable-canary",
+      "providerBindings": [
+        {
+          "name": "FIVEDOLLAR_API_KEY",
+          "type": "secret_text"
+        }
+      ],
+      "services": [],
+      "schedules": [],
+      "activeVersions": [
+        {
+          "version_id": "4134978b-88d5-49bb-84ec-07b255460af9",
+          "percentage": 100
+        }
+      ],
+      "deployment": "497ee780-4217-4da1-b8ea-ce697d3df50b"
+    },
+    {
+      "name": "nomadtips3-engine-343",
+      "providerBindings": [
+        {
+          "name": "FIVEDOLLAR_API_KEY",
+          "type": "secret_text"
+        }
+      ],
+      "services": [
+        {
+          "name": "FULL_MARKET",
+          "service": "nomadtips3-full-market-343-ball46"
+        },
+        {
+          "name": "HUB",
+          "service": "nomadtips3-5usd-hub-343"
+        }
+      ],
+      "schedules": [
+        {
+          "cron": "* * * * *",
+          "created_on": "2026-09-09T15:01:18.232119Z",
+          "modified_on": "2026-10-11T02:03:36.296349Z"
+        }
+      ],
+      "activeVersions": [
+        {
+          "version_id": "02e09215-02b1-47fb-b1cf-9423f50c7ce9",
+          "percentage": 100
+        }
+      ],
+      "deployment": "77b9e330-7dde-4350-9178-20aea667cd1d"
+    },
+    {
+      "name": "nomadtips3-full-market-343-ball46",
+      "providerBindings": [
+        {
+          "name": "FIVEDOLLAR_API_KEY",
+          "type": "secret_text"
+        }
+      ],
+      "services": [],
+      "schedules": [
+        {
+          "cron": "1-59/2 * * * *",
+          "created_on": "2026-10-11T12:28:03.260379Z",
+          "modified_on": "2026-10-11T12:28:03.260379Z"
+        }
+      ],
+      "activeVersions": [
+        {
+          "version_id": "3a53ee1a-467c-4a20-9f50-ba749e8adab4",
+          "percentage": 100
+        }
+      ],
+      "deployment": "95ad2e7b-7ac2-48bd-b9f0-28f7ca889715"
+    },
+    {
+      "name": "nomadtips3-live-engine",
+      "providerBindings": [
+        {
+          "name": "FIVEDOLLAR_API_KEY",
+          "type": "secret_text"
+        }
+      ],
+      "services": [],
+      "schedules": [],
+      "activeVersions": [
+        {
+          "version_id": "f20c833a-ba1d-4eca-be3b-3daa1aa63d3e",
+          "percentage": 100
+        }
+      ],
+      "deployment": "23d91b3b-3df7-4d8f-a9ac-36b2c6d55cc9"
+    },
+    {
+      "name": "nomadtips3-live-engine-5usd-shadow",
+      "providerBindings": [
+        {
+          "name": "FIVEDOLLAR_API_KEY",
+          "type": "secret_text"
+        },
+        {
+          "name": "FIVEUSD_GLOBAL_REQUEST_BUDGET_PER_60S",
+          "type": "plain_text"
+        },
+        {
+          "name": "FIVEUSD_LIVE_REFRESH_MS",
+          "type": "plain_text"
+        },
+        {
+          "name": "FIVEUSD_NATIVE_MODE",
+          "type": "plain_text"
+        },
+        {
+          "name": "FIVEUSD_REFEREE_REFRESH_MS",
+          "type": "plain_text"
+        },
+        {
+          "name": "FIVEUSD_SHADOW_LEGACY_DISABLED",
+          "type": "plain_text"
+        },
+        {
+          "name": "FIVEUSD_UPCOMING_REFRESH_MS",
+          "type": "plain_text"
+        },
+        {
+          "name": "FIVEUSD_UPCOMING_WINDOW_MINUTES",
+          "type": "plain_text"
+        }
+      ],
+      "services": [],
+      "schedules": [],
+      "activeVersions": [
+        {
+          "version_id": "8ee59e11-f442-47fc-a44d-0d3d96cdc51c",
+          "percentage": 100
+        }
+      ],
+      "deployment": "c911f429-4bea-41e6-b01c-7f7509f7769b"
+    },
+    {
+      "name": "nomadtips3-odds-display-343",
+      "providerBindings": [
+        {
+          "name": "FIVEDOLLAR_API_KEY",
+          "type": "secret_text"
+        }
+      ],
+      "services": [],
+      "schedules": [],
+      "activeVersions": [
+        {
+          "version_id": "5fb89820-60c8-45dc-b13b-9e1fe52034e4",
+          "percentage": 100
+        }
+      ],
+      "deployment": "43a31f21-d367-43f1-b164-bb4e344d0974"
+    },
+    {
+      "name": "nomadtips3-rich-odds-343",
+      "providerBindings": [
+        {
+          "name": "FIVEDOLLAR_API_KEY",
+          "type": "secret_text"
+        }
+      ],
+      "services": [
+        {
+          "name": "HUB",
+          "service": "nomadtips3-5usd-hub-343"
+        }
+      ],
+      "schedules": [
+        {
+          "cron": "* * * * *",
+          "created_on": "2026-09-15T15:36:13.590515Z",
+          "modified_on": "2026-09-15T15:36:13.590515Z"
+        }
+      ],
+      "activeVersions": [
+        {
+          "version_id": "02dc4c25-1b19-43b4-bf9e-981522adb6d3",
+          "percentage": 100
+        }
+      ],
+      "deployment": "9f673384-7779-404d-82d7-aa21be369705"
+    },
+    {
+      "name": "nomadtips3-s8-sidecar",
+      "providerBindings": [
+        {
+          "name": "FIVEDOLLAR_API_KEY",
+          "type": "secret_text"
+        }
+      ],
+      "services": [],
+      "schedules": [],
+      "activeVersions": [
+        {
+          "version_id": "a50176a8-9132-4a95-b173-95a8b949b473",
+          "percentage": 100
+        }
+      ],
+      "deployment": "6916e2a3-2644-4589-ba39-1fd262fef6b8"
+    },
+    {
+      "name": "nomadtips3-shot-sidecar-342",
+      "providerBindings": [
+        {
+          "name": "FIVEDOLLAR_API_KEY",
+          "type": "secret_text"
+        }
+      ],
+      "services": [
+        {
+          "name": "NOMAD_LIVE_FEED",
+          "service": "nomadtips3-live-score-feed-v3"
+        }
+      ],
+      "schedules": [],
+      "activeVersions": [
+        {
+          "version_id": "4951de99-f605-453a-90e3-4f631ac1072c",
+          "percentage": 100
+        }
+      ],
+      "deployment": "0872fc56-769f-4a4c-9da3-9926bd15dd69"
+    }
+  ],
+  "unknownSecretAliases": [],
+  "failures": [],
+  "candidateCount": 18,
+  "ok": true,
+  "coverageVerified": false,
+  "reason": "Binding inventory identifies possible consumers, not proof that all keys/aliases use one provider account or every outgoing request is coordinated. No source, keys, cron or runtime was changed."
+}
