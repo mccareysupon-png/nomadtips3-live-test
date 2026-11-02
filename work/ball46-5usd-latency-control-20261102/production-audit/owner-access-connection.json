@@ -1,5 +1,5 @@
 {
-  "at": "2026-11-02T12:03:36.980Z",
+  "at": "2026-11-02T12:13:46.665Z",
   "scope": "One owner-only Access application; no Worker deployment, frequency, global-policy, IdP or billing change",
   "paths": [
     "ball46.com/5usd-bulk-control.html",
@@ -15,6 +15,12 @@
   "providerRequestsAdded": 0,
   "created": false,
   "appId": "5101cd55-8bf2-4647-b117-f215a393c4ad",
+  "cookieAdjustment": {
+    "from": "strict",
+    "to": "lax",
+    "reason": "Cloudflare Access documentation: Strict can cause ERR_TOO_MANY_REDIRECTS",
+    "ownerPolicyAndPathsUnchanged": true
+  },
   "bindingsToApplyAtApprovedDeployment": {
     "BULK_ACCESS_ISSUER": "https://rapid-glade-f6b9.cloudflareaccess.com",
     "BULK_ACCESS_AUD": "8e0e7f7d2907abb27e9dbb156550f8b9a26db7a96b9dbfe02c16c2a87e7e835f",
