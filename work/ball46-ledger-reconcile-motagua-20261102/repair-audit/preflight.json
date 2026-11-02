@@ -1,0 +1,128 @@
+{
+  "readOnly": true,
+  "base": "1f2336fa-7b45-4a23-a23c-06d01a92330d",
+  "deployment": "ede913e3-6c9d-403d-9fba-c8494922e46d",
+  "worker": "nomadtips3-engine-343",
+  "main": "index-bulk-recovery.js",
+  "sourceSha": "1008c06d4ab705f904b49408fd4e5c347478afae633a499147f3106dfffd2b69",
+  "modules": [
+    {
+      "name": "index-bulk-recovery.js",
+      "type": "application/javascript+module",
+      "sha": "1008c06d4ab705f904b49408fd4e5c347478afae633a499147f3106dfffd2b69"
+    }
+  ],
+  "settings": {
+    "placement": {},
+    "compatibility_date": "2026-09-09",
+    "compatibility_flags": [],
+    "usage_model": "standard",
+    "tags": [],
+    "tail_consumers": [],
+    "logpush": false,
+    "observability": {
+      "enabled": true,
+      "head_sampling_rate": 1,
+      "redact_query_string": false,
+      "logs": {
+        "enabled": true,
+        "head_sampling_rate": 1,
+        "persist": true,
+        "invocation_logs": true
+      },
+      "traces": {
+        "enabled": false,
+        "persist": true,
+        "head_sampling_rate": 1
+      }
+    },
+    "annotations": {
+      "workers/message": "BTTS five recent matches; disabled isolated candidate; no production change",
+      "workers/tag": "B46_BTTS_FORM5_CANDIDATE_DISABLED_20261023",
+      "workers/triggered_by": "version_upload"
+    },
+    "bindings": [
+      {
+        "class_name": "Nomad343Engine",
+        "name": "ENGINE",
+        "namespace_id": "7404dc5f593a4fbeaebae44cad6ae7da",
+        "type": "durable_object_namespace"
+      },
+      {
+        "name": "FIVEDOLLAR_API_KEY",
+        "type": "secret_text"
+      },
+      {
+        "environment": "production",
+        "name": "FULL_MARKET",
+        "service": "nomadtips3-full-market-343-ball46",
+        "type": "service"
+      },
+      {
+        "environment": "production",
+        "name": "HUB",
+        "service": "nomadtips3-5usd-hub-343",
+        "type": "service"
+      }
+    ]
+  },
+  "schedules": {
+    "schedules": [
+      {
+        "cron": "* * * * *",
+        "created_on": "2026-09-09T15:01:18.232119Z",
+        "modified_on": "2026-10-11T02:03:36.296349Z"
+      }
+    ]
+  },
+  "engineHost": "https://nomadtips3-engine-343.mccarey-supon.workers.dev",
+  "health": {
+    "ok": true,
+    "component": "NOMAD343_ENGINE",
+    "version": "nomad343-engine-v5-best19-referee",
+    "revision": "343-best19-referee-20260918",
+    "dataMode": "BULK_PLUS_BEST19_REFEREE",
+    "startedAt": 1793606753980,
+    "finishedAt": 1793606756184,
+    "fixtureCount": 2120,
+    "liveCount": 1,
+    "signalCount": 22,
+    "unresolvedCount": 0,
+    "reconciled": 0,
+    "refereeRequests": 0,
+    "refereeQueued": 0,
+    "externalOddsRequests": 0,
+    "refereeErrors": [],
+    "lastError": null
+  },
+  "websiteDeployment": {
+    "id": "72ff0133-fe30-4a5c-8e7b-f78eb8dfaf6e",
+    "source": "api",
+    "strategy": "percentage",
+    "author_email": "mccarey.supon@gmail.com",
+    "annotations": {
+      "workers/message": "Approved Statistics Score/Result columns, compact labels and vertical scores",
+      "workers/triggered_by": "deployment"
+    },
+    "versions": [
+      {
+        "version_id": "224cac7e-11fe-4549-a462-8f2f0e3ef25f",
+        "percentage": 100
+      }
+    ],
+    "created_on": "2026-11-02T07:16:22.883878Z"
+  },
+  "ledgerBefore": {
+    "ledgerTotal": 12491,
+    "total": 12215,
+    "pending": 276
+  },
+  "target": {
+    "canonicalId": "203745645-ft_ah-mvyiwh1q",
+    "duplicateId": "203745645-ft_ah-mvyiwfq7",
+    "createdDeltaMs": 1711
+  },
+  "upstreamRequestsAdded": 0,
+  "commit": "493a8e6a6988f21ee09b34734c9bb8f9f78b5f11",
+  "at": "2026-11-02T08:06:49.335Z"
+}
