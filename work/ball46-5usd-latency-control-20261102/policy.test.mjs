@@ -1,0 +1,13 @@
+import test from'node:test';import assert from'node:assert/strict';import{recommend,retryUntil,waitSavings}from'./speed-policy.mjs';const at=1793610000000,p={verified:true,coverage:'ALL_WORKERS_AND_KEYS',expiresAt:at+60000,limit:40,otherReserved:25,scheduleReserved:2,safetyReserve:8,remaining:10};
+test('unknown aggregate quota preserves current interval and locks acceleration',()=>{const r=recommend({currentSeconds:30},at);assert.equal(r.state,'LOCKED');assert.equal(r.seconds,30);assert.deepEqual(r.eligible,[])});
+test('verified shared budget selects fastest safe profile 15 seconds',()=>{const r=recommend({quota:p},at);assert.equal(r.state,'READY');assert.equal(r.seconds,15);assert.equal(r.budget,5)});
+test('tight budget restricts to Default 30 seconds',()=>{const r=recommend({quota:{...p,otherReserved:28}},at);assert.equal(r.seconds,30);assert.deepEqual(r.eligible,['DEFAULT'])});
+test('insufficient budget holds requests instead of blindly falling back to 30',()=>assert.equal(recommend({quota:{...p,otherReserved:34}},at).state,'HOLD'));
+for(const[name,change]of Object.entries({expired:{expiresAt:at},partial:{coverage:'HUB_ONLY'},unverified:{verified:false},missingLimit:{limit:undefined},missingReserve:{safetyReserve:undefined},exhausted:{remaining:0},negative:{otherReserved:-1}}))test(name+' proof cannot authorize acceleration',()=>assert.equal(recommend({quota:{...p,...change}},at).state,'LOCKED'));
+for(const status of[401,402,403])test('HTTP '+status+' holds requests with no auto retry',()=>{const r=recommend({quota:p,httpStatus:status},at);assert.equal(r.state,'HOLD');assert.equal(r.seconds,null)});
+test('429 numeric Retry-After sets cooldown',()=>{const r=recommend({quota:p,httpStatus:429,retryAfter:'90'},at);assert.equal(r.state,'COOLDOWN');assert.equal(r.until,at+90000)});
+test('429 HTTP-date respected',()=>assert.equal(retryUntil(new Date(at+120000).toUTCString(),at),at+120000));
+test('missing or invalid Retry-After defaults to safe 60 seconds',()=>{assert.equal(retryUntil(null,at),at+60000);assert.equal(retryUntil('invalid',at),at+60000)});
+test('existing cooldown is not extended on every UI read',()=>{const r=recommend({quota:p,cooldownUntil:at+20000},at);assert.equal(r.until,at+20000)});
+test('expired cooldown allows fresh verified quota evaluation',()=>assert.equal(recommend({quota:p,cooldownUntil:at-1},at).state,'READY'));
+test('15 second proposal reports only 7.5 second average Hub wait saving',()=>assert.deepEqual(waitSavings(30,15).averageSeconds,7.5));

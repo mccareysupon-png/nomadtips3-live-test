@@ -1,0 +1,51 @@
+{
+  "policyTests": {
+    "passed": 20,
+    "failed": 0,
+    "runner": "node policy.test.mjs (same process; sandbox disallows spawned test isolation)"
+  },
+  "localHTTP": [
+    "captured evidence available",
+    "POST rejected 405",
+    "production control path absent 404",
+    "connect-src self",
+    "provider remaining and timestamp served from local file"
+  ],
+  "browser": {
+    "desktop": {
+      "viewport": {
+        "width": 1197,
+        "height": 892
+      },
+      "checked": true
+    },
+    "mobile": {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "bodyScrollWidth": 375,
+      "mainWidth": 347,
+      "horizontalOverflow": false
+    },
+    "scenarios": [
+      "Unknown quota: Save disabled and Production interval 30s",
+      "Verified simulated quota: AUTO picks 15s and 7.5s model saving",
+      "Save: local confirmation only; actual remains 30s",
+      "HTTP402: hold and Save disabled",
+      "HTTP429: cooldown and Save disabled",
+      "Default: proposed 30s",
+      "Mobile FAST20: 5s model saving",
+      "Request history explicitly unavailable rather than fabricated counts"
+    ],
+    "consoleErrors": 0
+  },
+  "productionWrites": 0,
+  "providerRequestsAddedByAudit": 0,
+  "preview": "http://127.0.0.1:8820/",
+  "notReadyForProduction": [
+    "Owner server authentication required",
+    "Global coordinator/coverage and fresh quota reservation required",
+    "No synchronized Goaloo event measurement yet"
+  ]
+}
