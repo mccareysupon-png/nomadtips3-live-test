@@ -1,0 +1,28 @@
+{
+  "constants": [
+    {
+      "name": "BOARD_CACHE_MS",
+      "value": "15000"
+    },
+    {
+      "name": "HISTORY_CACHE_MS",
+      "value": "20000"
+    }
+  ],
+  "functions": [
+    {
+      "name": "fetchJson",
+      "code": "async function fetchJson(url){\n  const r=await fetch(`${url}${url.includes('?')?'&':'?'}_=${Date.now()}`,{cache:'no-store'});\n  const j=await r.json().catch(()=>({}));\n  if(!r.ok||j?.ok===false)throw new Error(j?.error||`HTTP_${r.status}`);\n  return j;\n}",
+      "truncated": false
+    }
+  ],
+  "routes": [
+    "/api/engine/board",
+    "/api/engine/history"
+  ],
+  "timers": [
+    "setTimeout(()=>{if(expandedId){queuePlacement();refreshExpanded(force)}},60)",
+    "setTimeout(()=>{const row=currentRow(sid);if(!row||expandedId!==sid)return;row.insertAdjacentElement('afterend',expandedEl);row.setAttribute('aria-expanded','true');captureAnchor();refreshExpanded(true)},0)",
+    "setInterval(recapture,500)"
+  ]
+}

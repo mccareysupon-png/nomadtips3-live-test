@@ -1,0 +1,22 @@
+{
+  "constants": [
+    {
+      "name": "CACHE_MS",
+      "value": "10000"
+    },
+    {
+      "name": "STAT_CACHE_MS",
+      "value": "300000"
+    }
+  ],
+  "functions": [],
+  "routes": [
+    "/api/engine/statistics"
+  ],
+  "timers": [
+    "setTimeout(ensureStableChrome,0)",
+    "setTimeout(()=>document.querySelector(`[data-status-filter=\"${CSS.escape(status)}\"]`)?.click(),0)",
+    "setTimeout(()=>document.querySelector(`[data-status-filter=\"${CSS.escape(status)}\"]`)?.click(),50)",
+    "setTimeout(run,10000)"
+  ]
+}

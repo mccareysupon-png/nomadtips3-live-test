@@ -1,0 +1,56 @@
+{
+  "constants": [
+    {
+      "name": "MIN_SCAN_GAP_MS",
+      "value": "6e4"
+    },
+    {
+      "name": "SETTLEMENT_REVISION",
+      "value": "\"bet365-rules-v2\""
+    },
+    {
+      "name": "BALL46_CORNER_TICK_REQUESTS_PER_SCAN",
+      "value": "2"
+    },
+    {
+      "name": "WORK_SETTLED_TAIL",
+      "value": "120"
+    },
+    {
+      "name": "FULL_MARKET_REQUESTS_PER_SCAN",
+      "value": "4"
+    },
+    {
+      "name": "FINAL_RECHECK_INTERVAL_MS",
+      "value": "15 * 60 * 1e3"
+    },
+    {
+      "name": "FINAL_RECHECK_TIMEOUT_MS",
+      "value": "12 * 1e3"
+    }
+  ],
+  "functions": [
+    {
+      "name": "metricSnapshot",
+      "code": "function metricSnapshot(f, at) {\n  return { at, minute: num2(f.minute), shotsOnTarget: pair2(f.statistics?.shotsOnTarget), shotsOffTarget: pair2(f.statistics?.shotsOffTarget), corners: pair2(f.corners), attacks: pair2(f.statistics?.attacks), dangerousAttacks: pair2(f.statistics?.dangerousAttacks), possession: pair2(f.statistics?.possession), goals: pair2(f.goals), cards: cardPair(f.cards) };\n}",
+      "truncated": false
+    },
+    {
+      "name": "stageSnapshot",
+      "code": "function stageSnapshot(root, def, stage) {\n  const v = stageValue(findMarket(root, def), stage);\n  return v && typeof v === \"object\" ? clone(v) : v ?? null;\n}",
+      "truncated": false
+    },
+    {
+      "name": "scanIfDue",
+      "code": "async scanIfDue() {\n    const last = await this.ctx.storage.get(\"lastScan\");\n    if (last?.finishedAt && now() - last.finishedAt < MIN_SCAN_GAP_MS) return last;\n    if (this.scanPromise) return this.scanPromise;\n    this.scanPromise = this.scan().finally(() => {\n      this.scanPromise = null;\n    });\n    return this.scanPromise;\n  }",
+      "truncated": false
+    }
+  ],
+  "routes": [
+    "/health",
+    "/history"
+  ],
+  "timers": [
+    "setTimeout(() => ac.abort(), FINAL_RECHECK_TIMEOUT_MS)"
+  ]
+}
