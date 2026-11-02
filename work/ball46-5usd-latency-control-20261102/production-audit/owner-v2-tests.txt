@@ -1,0 +1,31 @@
+✔ owner page and cached status traverse the real authenticated gateway (21.478422ms)
+✔ DEFAULT confirms exact current control without PUT to producer or alarm/storage changes (2.438263ms)
+✔ reject locked cadence 15 before reading producer (1.714395ms)
+✔ reject locked cadence 10 before reading producer (1.347073ms)
+✔ reject locked cadence 20 before reading producer (1.980776ms)
+✔ reject locked cadence 6 before reading producer (1.008694ms)
+✔ reject locked cadence 3 before reading producer (0.960118ms)
+✔ reject locked cadence 2 before reading producer (1.016612ms)
+✔ reject locked cadence 60 before reading producer (1.065561ms)
+✔ reject locked cadence 120 before reading producer (1.090834ms)
+✔ reject locked cadence 0 before reading producer (1.225775ms)
+✔ reject locked cadence -1 before reading producer (0.942714ms)
+✔ stale revision rejects and preserves current control (1.624016ms)
+✔ concurrent cadence/auto-return change cannot be overwritten (2.958424ms)
+✔ JWT rejects wrong owner (0.985428ms)
+✔ JWT rejects wrong audience (0.622709ms)
+✔ JWT rejects expired (0.676999ms)
+✔ JWT rejects wrong issuer (0.654639ms)
+✔ JWT rejects future token (0.586471ms)
+✔ missing/forged auth cannot reach producer (0.313143ms)
+✔ native HUB and preview hosts denied even with valid owner JWT (0.559742ms)
+✔ cross-origin PUT and legacy body cannot bypass server validation (0.744492ms)
+✔ all unrelated HUB routes and scheduled handler preserved (0.24374ms)
+ℹ tests 23
+ℹ suites 0
+ℹ pass 23
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 51.820408
