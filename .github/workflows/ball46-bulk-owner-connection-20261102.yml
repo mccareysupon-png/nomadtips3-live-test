@@ -1,0 +1,45 @@
+name: BALL46 manual owner connection verify and scoped Access provisioning
+on:
+  push:
+    branches: [codex/ball46-5usd-latency-control-20261102]
+    paths: ['work/ball46-5usd-latency-control-20261102/connection/verify-request.json']
+permissions:
+  contents: write
+concurrency:
+  group: ball46-bulk-owner-connection
+  cancel-in-progress: false
+jobs:
+  connect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    defaults:
+      run:
+        working-directory: work/ball46-5usd-latency-control-20261102
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-save --package-lock=false acorn@8.15.0
+      - name: Read exact current Production, never deploy
+        run: node production-preflight.mjs
+      - name: Verify authenticated manual settings and immutable source boundaries
+        run: |
+          node connection/build-candidate.mjs
+          node --check connection-stage/ball46-production.mjs
+          node --check connection-stage/nomadtips3-5usd-hub-343.mjs
+          node connection/test-suite.mjs > production-audit/manual-unit-tests.txt
+          node connection/source-integration.mjs > production-audit/manual-source-tests.txt
+      - name: Connect exact-path owner-only Access app, no Worker or refresh changes
+        run: node connection/access-owner.mjs --provision-owner-access
+      - name: Preserve sanitized connection evidence only
+        if: always()
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add production-audit
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Record manual owner connection tests and scoped Access result; Production cadence unchanged [skip ci]"
+          git push origin HEAD:codex/ball46-5usd-latency-control-20261102
