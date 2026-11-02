@@ -1,0 +1,365 @@
+{
+  "worker": "nomadtips3-engine-343",
+  "base": "1f2336fa-7b45-4a23-a23c-06d01a92330d",
+  "sourceCommit": "4ee6052f80bed43f3d2141db1d51439462e2ac11",
+  "run": "41414582593",
+  "at": "2026-11-02T08:39:15.038Z",
+  "approvedOperation": "B46_MOTAGUA_DUPLICATE_20261102_V1",
+  "trafficChanges": [],
+  "scope": "Named Motagua duplicate only; shared scan and Ledger-write guards; no strategy, settlement formula, UI or API cadence change",
+  "beforeActive": {
+    "version": "1f2336fa-7b45-4a23-a23c-06d01a92330d",
+    "deployment": "ede913e3-6c9d-403d-9fba-c8494922e46d"
+  },
+  "configBefore": {
+    "settings": {
+      "placement": {},
+      "compatibility_date": "2026-09-09",
+      "compatibility_flags": [],
+      "usage_model": "standard",
+      "tags": [],
+      "tail_consumers": [],
+      "logpush": false,
+      "observability": {
+        "enabled": true,
+        "head_sampling_rate": 1,
+        "redact_query_string": false,
+        "logs": {
+          "enabled": true,
+          "head_sampling_rate": 1,
+          "persist": true,
+          "invocation_logs": true
+        },
+        "traces": {
+          "enabled": false,
+          "persist": true,
+          "head_sampling_rate": 1
+        }
+      },
+      "annotations": {
+        "workers/message": "BTTS five recent matches; disabled isolated candidate; no production change",
+        "workers/tag": "B46_BTTS_FORM5_CANDIDATE_DISABLED_20261023",
+        "workers/triggered_by": "version_upload"
+      },
+      "bindings": [
+        {
+          "class_name": "Nomad343Engine",
+          "name": "ENGINE",
+          "namespace_id": "7404dc5f593a4fbeaebae44cad6ae7da",
+          "type": "durable_object_namespace"
+        },
+        {
+          "name": "FIVEDOLLAR_API_KEY",
+          "type": "secret_text"
+        },
+        {
+          "environment": "production",
+          "name": "FULL_MARKET",
+          "service": "nomadtips3-full-market-343-ball46",
+          "type": "service"
+        },
+        {
+          "environment": "production",
+          "name": "HUB",
+          "service": "nomadtips3-5usd-hub-343",
+          "type": "service"
+        }
+      ]
+    },
+    "schedules": {
+      "schedules": [
+        {
+          "cron": "* * * * *",
+          "created_on": "2026-09-09T15:01:18.232119Z",
+          "modified_on": "2026-10-11T02:03:36.296349Z"
+        }
+      ]
+    }
+  },
+  "protectedBefore": {
+    "ball46-production": {
+      "version": "224cac7e-11fe-4549-a462-8f2f0e3ef25f",
+      "deployment": "72ff0133-fe30-4a5c-8e7b-f78eb8dfaf6e"
+    },
+    "nomadtips3-5usd-hub-343": {
+      "version": "98ea43ab-f40c-4de5-82e3-b0387dffd672",
+      "deployment": "2bf73f8a-b3e2-4f50-b33f-df2523656581"
+    },
+    "nomadtips3-full-market-343-ball46": {
+      "version": "3a53ee1a-467c-4a20-9f50-ba749e8adab4",
+      "deployment": "95ad2e7b-7ac2-48bd-b9f0-28f7ca889715"
+    },
+    "ball46-member-production": {
+      "version": "87ae60e7-0245-4ba4-868f-1a25fe44e5c8",
+      "deployment": "8488ab67-3662-4f82-bad3-630be79640ea"
+    }
+  },
+  "healthBefore": {
+    "ok": true,
+    "component": "NOMAD343_ENGINE",
+    "version": "nomad343-engine-v5-best19-referee",
+    "revision": "343-best19-referee-20260918",
+    "dataMode": "BULK_PLUS_BEST19_REFEREE",
+    "startedAt": 1793608734627,
+    "finishedAt": 1793608737774,
+    "fixtureCount": 2213,
+    "liveCount": 2,
+    "signalCount": 22,
+    "unresolvedCount": 0,
+    "reconciled": 0,
+    "refereeRequests": 0,
+    "refereeQueued": 0,
+    "externalOddsRequests": 0,
+    "refereeErrors": [],
+    "lastError": null
+  },
+  "publicAssetsBefore": [
+    {
+      "path": "/b46-event-icons-light-20261030.css",
+      "status": 200,
+      "sha": "8657b812770646746cc631c47a932f335b9ef465dc0a624a9d8b7f935aa7d90c"
+    },
+    {
+      "path": "/b46-footer-emerald-20261030.css",
+      "status": 200,
+      "sha": "de3f19577dd9a07c41cdcf7d47b7c8266fbc66b5bef94caa9ad613f505560412"
+    },
+    {
+      "path": "/b46-mobile-event-flow-bars-20261102.js?v=1",
+      "status": 200,
+      "sha": "fb77ade6d094020a38cefbc296908a70c4c86f87f45ba422de4485f3f288d291"
+    },
+    {
+      "path": "/b46-monitor-20261030.css?v=b46-monitor-ring-crisp-20261102",
+      "status": 200,
+      "sha": "4e8c25082620386cb9df068daa0ae6a7ed60f1bd69c70b6389d3b5977d4e0043"
+    },
+    {
+      "path": "/b46-monitor-20261030.js?v=b46-mini-monitor-20261101",
+      "status": 200,
+      "sha": "c65cb04de3c6ea9abe9ab80955c16c1bd0a3a7e93d4473bc541bd85944705c4d"
+    },
+    {
+      "path": "/b46-radar-watch-20261030.css",
+      "status": 200,
+      "sha": "ad51f489cf1b5437d8471294ed6cb8594e9997c88a26b4be9017ff702e8acb15"
+    },
+    {
+      "path": "/b46-radar-watch-20261030.js",
+      "status": 200,
+      "sha": "f716259b7651a8f51342b1ac14b1f9aa86d9b59b78ded45686882032ae0a9edf"
+    },
+    {
+      "path": "/b46-shared-kits-20261030.css?v=spacing-20261030",
+      "status": 200,
+      "sha": "3001f3d38f3becc50202515161b56fdeaf5c0dfb243f680f3888d04e060b5f4f"
+    },
+    {
+      "path": "/b46-shared-kits-20261030.js?v=b46-unified-kits-20261031",
+      "status": 200,
+      "sha": "0b9c7610e68716c78f670a1f5b0583723e52b49e44aeee6ac77e18a8a946d54c"
+    },
+    {
+      "path": "/b46-signal-card-theme-20261031.css",
+      "status": 200,
+      "sha": "855f4d72f9d0a2676b5fda306c7c9cbecd9a3fe807b2497c626bd0b206435b01"
+    },
+    {
+      "path": "/b46-statistics-columns-20261102.css?v=1",
+      "status": 200,
+      "sha": "69e8cfaca3ad0b7119593ad5ef1b785d6ffec94960191ba9e350ae68f2a9193c"
+    },
+    {
+      "path": "/b46-statistics-columns-20261102.js?v=1",
+      "status": 200,
+      "sha": "413437e50211b7debaadb3d474eef3d8c1db8733557c816dd9422787432d4ada"
+    },
+    {
+      "path": "/b46-statistics-light-20261101.css?v=1",
+      "status": 200,
+      "sha": "a4daf725e4799fbeb755e89b67857ed89f503aec353ded66e569d7b9b7bd13bc"
+    },
+    {
+      "path": "/b46-visual-suite-20261030.css",
+      "status": 200,
+      "sha": "056bf7c70483fc84022cf77716d40e4cd6df3f700ba6be759deaed4f59ddbbbe"
+    },
+    {
+      "path": "/b46-visual-suite-20261030.js",
+      "status": 200,
+      "sha": "c623d2595d4cf87ac1776a1fde4e20c660e8bade2029ad656476f4740183641f"
+    },
+    {
+      "path": "/ball46-next.css?v=343-signal-compact-20260922a",
+      "status": 200,
+      "sha": "0682f3edcb12229de783f507732be9821ebd62c0ab8b9ecb4cf1e8e3025e42f0"
+    },
+    {
+      "path": "/ball46-performance-banner-20261023-dark.webp",
+      "status": 200,
+      "sha": "e249fa0f014597459f0b148f55b4d49ed3831e7ee184d623b91daf76766330d5"
+    },
+    {
+      "path": "/ball46-performance-banner-20261023-light.webp",
+      "status": 200,
+      "sha": "f23d41134d08eeea3216ce916508a8d3ae5c298e53576c7fa1cb8341265cd1b1"
+    },
+    {
+      "path": "/brand-clean-header-343.css?v=343-brand-clean-20260922b",
+      "status": 200,
+      "sha": "14f6e3c426bc54efc8426cc9f6676a856240d0d80d96bd4a458173d54b74982a"
+    },
+    {
+      "path": "/bulk-odds-compat-343.js?v=343-bulk-odds-compat-v3-market-alias-safe&order=20260918-1",
+      "status": 200,
+      "sha": "d794d1c9d1f13d6c48499c766c79bfbc59f6293e953ff815f225aff0f6e40637"
+    },
+    {
+      "path": "/color-semantics-343.css?v=343-featured-away-owner-clean-v3-20261013",
+      "status": 200,
+      "sha": "ff77692d6cd58c106839c8787f51f907c75403a513e5b79324d5a71e22b2d439"
+    },
+    {
+      "path": "/dashboard-v2-stage3-featured-facts-20261013a.js?v=b46-mini-monitor-20261101",
+      "status": 200,
+      "sha": "b5991143b8bda922335562126a3d084f0aa7a0b8651bdd43e6d961959fd6e337"
+    },
+    {
+      "path": "/dashboard-v2-tune.css?v=343-scorebar-divider-camo-20260929a",
+      "status": 200,
+      "sha": "b41212ae2a770640c7fc2a6c69b34e6e1db38becf54ec6b8fa3d322d24c7190c"
+    },
+    {
+      "path": "/dashboard-v2.css?v=343-market-clean-20260922a",
+      "status": 200,
+      "sha": "be44a6270297d0bf9890ba003402259289b120cf38e5bd2b8692900f536290e3"
+    },
+    {
+      "path": "/expanded-match-343.css?v=343-geometry-frame-20260922a",
+      "status": 200,
+      "sha": "f49a0cb83557b2de95d119df441098fbfa609f29c16a08d7a2be39a382850221"
+    },
+    {
+      "path": "/expanded-match-343.js?v=b46-mobile-event-flow-bars-20261102",
+      "status": 200,
+      "sha": "442ae0764c218ae9b5af097aaaac74c7a219e9d662913f512f9b14774461016a"
+    },
+    {
+      "path": "/favicon-192.png",
+      "status": 200,
+      "sha": "dfd187357c6b321a05890922c4b3590abcc62cda68803e13cb0f5d787ea5eb8c"
+    },
+    {
+      "path": "/featured-facts-premium-20261013a.css?v=1",
+      "status": 200,
+      "sha": "9d32c73a0ae578809fc4f9e2f8450695cf0128a8e995abac57d8a78a364a8e74"
+    },
+    {
+      "path": "/full-market-bookmaker-343.css?v=343-12bet-onefile-20261007a",
+      "status": 200,
+      "sha": "cd26f286798bbd7dc631471510628fdf9d73d9dd722857522e65990fea26b187"
+    },
+    {
+      "path": "/full-market-bookmaker-343.js?v=text-only-20261018",
+      "status": 200,
+      "sha": "1abccafd8919bc6d634eeaf8423ca2ad3b2bb388d91182f5a1b818944b5e877f"
+    },
+    {
+      "path": "/league-flags-343.js?v=343-league-flags-menu-143-20261004b",
+      "status": 200,
+      "sha": "39e0e566c9497f7a8d9122b62ccec2b2137bf422b2bee7946765bd164002b18e"
+    },
+    {
+      "path": "/live-prediction-343.js?v=b46-monitor-20261030",
+      "status": 200,
+      "sha": "23c6042c0ac9eda9c53d048ba420f626cd5c7e93706d34e63b60b701809bc0c0"
+    },
+    {
+      "path": "/live-summary-full-odds-343.js?v=343-live-summary-john-gated-v7-default-visible-rich&order=20260919-2",
+      "status": 200,
+      "sha": "c9108199894cf90909bb2698ba185c1a279607db7710a06586737c2366de2961"
+    },
+    {
+      "path": "/longterm-performance-343.css?v=343-geometry-frame-20260922a",
+      "status": 200,
+      "sha": "21dfcb080703063e5d9b033fd8db2f87511bc837b91c1f734caa172a2d7f15da"
+    },
+    {
+      "path": "/longterm-performance-343.js?v=daily-date-axis-v9-20261012",
+      "status": 200,
+      "sha": "822f3d9d271a948d6b862eb7732f8797dcedbcc743cd63f3094f217b537b22bf"
+    },
+    {
+      "path": "/market-registry-343.js?v=343-market-registry-v1",
+      "status": 200,
+      "sha": "cf07987a442c6d8bfc4a19cd6035afb4d43a06ca3a2bc60ed2cc801e4babf126"
+    },
+    {
+      "path": "/mobile-menu-classic-343.css?v=343-mobile-classic-20260922b",
+      "status": 200,
+      "sha": "0b543ae91c331978e11e0a1a0f6e7934e6303c43b1bd33b909d5a829c7513f26"
+    },
+    {
+      "path": "/mobile-menu-classic-343.js?v=343-mobile-classic-20260922b",
+      "status": 200,
+      "sha": "cdc7ee7c411f945611095f0ac829c7cb5f670cb44acf88faded905ee9e8827a4"
+    },
+    {
+      "path": "/odds-format-343.js?v=343-odds-under-logo-surgical-20260928a",
+      "status": 200,
+      "sha": "5031d28727126b6965861f7e3cd5944dacbc3bdbccfaf1db7ee2119a5e62fded"
+    },
+    {
+      "path": "/signal-event-flow-line-343.css?v=343-signal-flow-line-20260922b",
+      "status": 200,
+      "sha": "7195df3190761ff049e2c66b033c79f1015395e3fb6bdeef4e8f579e496fbbd9"
+    },
+    {
+      "path": "/signal-event-flow-line-343.js?v=343-signal-flow-line-20260922b",
+      "status": 200,
+      "sha": "a51b857be1eb25d80fe76e4018f93ca7c92a2505a6b2cf9a02ab4639a6446b9a"
+    },
+    {
+      "path": "/signal-shared-view-343.css?v=343-signal-toolbar-clean-20260923",
+      "status": 200,
+      "sha": "e25db3d8815b2577499035be97ba0ea83d0055d1acdde700c5fdd574337fbb7f"
+    },
+    {
+      "path": "/singlepage-workspace-343.css?v=stat-kpi-8-one-row-v10-20261013",
+      "status": 200,
+      "sha": "2c124a0a7a19751b0576230100a5e1755b86234ba38cb7dcb815bd039678c00c"
+    },
+    {
+      "path": "/singlepage-workspace-343.js?v=b46-statistics-columns-20261102",
+      "status": 200,
+      "sha": "4957e9d547e5c468d45aa5ce7436fbe7510e740dcf20177ecf5cff4f51dcf8ed"
+    },
+    {
+      "path": "/team-kits-343.js?v=b46-unified-kits-20261031",
+      "status": 200,
+      "sha": "26824160b68866e510765f1aa028cfc664ccf344310e43427ff4023cc2e4a4f1"
+    },
+    {
+      "path": "/ui-sync-fixes-343-v2.js?v=statistics-no-total-cap-20261005",
+      "status": 200,
+      "sha": "1f16802464844a85e7aee4bf0b21ddc2f1a9c97cf4ad1f89581825561c2ca4dd"
+    },
+    {
+      "path": "/ui-sync-fixes-343.css?v=343-ui-sync-20260922b",
+      "status": 200,
+      "sha": "e2142330c7bd13213cdebc4b52365a9caf7f6d3edb7e85a7f56a61d1daede33e"
+    },
+    {
+      "path": "/v2-shared.css?v=343-v2-shared-v1",
+      "status": 200,
+      "sha": "8cb3141029ed8d4c3e8818665528a34241243ed1ac533614fd280b23c9efa065"
+    },
+    {
+      "path": "/workspace-route-guard-343.js?v=343-refresh-state-20260929a",
+      "status": 200,
+      "sha": "ae8b5eb11c7bc69b9ce4bff2dacdfc38b634b309106362643d8edbc4703c28be"
+    }
+  ],
+  "ok": false,
+  "error": "AssertionError [ERR_ASSERTION]: CF_API:400:[{\"code\":10021,\"message\":\"invalid or missing text property for binding FIVEDOLLAR_API_KEY\",\"documentation_url\":\"https://developers.cloudflare.com/workers/observability/errors/#validation-errors-10021\"}]\n    at cf (file:///home/runner/work/nomadtips3-live-test/nomadtips3-live-test/work/ball46-ledger-reconcile-motagua-20261102/deploy.mjs:7:480)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async upload (file:///home/runner/work/nomadtips3-live-test/nomadtips3-live-test/work/ball46-ledger-reconcile-motagua-20261102/deploy.mjs:18:16)\n    at async file:///home/runner/work/nomadtips3-live-test/nomadtips3-live-test/work/ball46-ledger-reconcile-motagua-20261102/deploy.mjs:30:12"
+}
