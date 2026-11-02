@@ -1,0 +1,172 @@
+{
+  "noDeploy": true,
+  "versions": {
+    "ball46-production": "224cac7e-11fe-4549-a462-8f2f0e3ef25f",
+    "nomadtips3-5usd-hub-343": "98ea43ab-f40c-4de5-82e3-b0387dffd672",
+    "nomadtips3-engine-343": "02e09215-02b1-47fb-b1cf-9423f50c7ce9",
+    "nomadtips3-full-market-343-ball46": "3a53ee1a-467c-4a20-9f50-ba749e8adab4"
+  },
+  "changes": {
+    "ball46-production": {
+      "main": "index.js",
+      "beforeSha": "158e61f73469af35512e77c3a91ada3f0e928660f0f141036dd785b808c780c2",
+      "afterSha": "fc8de633db9c7f400f37abf293d540478067a57adc47fc4e9c4cdb43212b3a10",
+      "addedModules": [
+        "adapters.mjs",
+        "owner-auth.mjs",
+        "manual-policy.mjs",
+        "manual-owner-page.html"
+      ]
+    },
+    "nomadtips3-5usd-hub-343": {
+      "main": "index-viewer-safe.js",
+      "beforeSha": "95147295271dedf9959c769e57975344eee58209b7341cb20791f610a3688404",
+      "afterSha": "3a7979e3a202c5b35f01728218f5d90ff88953df7d68368cd50943c4dbc6b2c0",
+      "addedModules": [
+        "adapters.mjs",
+        "owner-auth.mjs",
+        "manual-policy.mjs"
+      ]
+    }
+  },
+  "preserved": {
+    "ball46-production": {
+      "existingModulesUnchanged": 38,
+      "assets": "{\"config\":{\"html_handling\":\"none\",\"not_found_handling\":\"none\",\"run_worker_first\":true,\"base_path\":\"/\"}}",
+      "settings": {
+        "placement": {},
+        "compatibility_date": "2026-09-09",
+        "compatibility_flags": [],
+        "usage_model": "standard",
+        "tags": [],
+        "tail_consumers": [],
+        "logpush": false,
+        "observability": {
+          "enabled": true,
+          "head_sampling_rate": 1,
+          "redact_query_string": false,
+          "logs": {
+            "enabled": true,
+            "head_sampling_rate": 1,
+            "persist": true,
+            "invocation_logs": true
+          },
+          "traces": {
+            "enabled": false,
+            "persist": true,
+            "head_sampling_rate": 1
+          }
+        },
+        "annotations": {
+          "workers/message": "Approved Statistics Score/Result columns, compact labels and vertical scores",
+          "workers/tag": "B46_STATISTICS_COLUMNS_20261102",
+          "workers/triggered_by": "version_upload"
+        },
+        "bindings": [
+          {
+            "name": "ASSETS",
+            "type": "assets"
+          },
+          {
+            "environment": "production",
+            "name": "ENGINE",
+            "service": "nomadtips3-engine-343",
+            "type": "service"
+          },
+          {
+            "environment": "production",
+            "name": "FORM_HISTORY_SERVICE",
+            "service": "ball46-form-history-v1",
+            "type": "service"
+          },
+          {
+            "environment": "production",
+            "name": "FULL_MARKET",
+            "service": "nomadtips3-full-market-343-ball46",
+            "type": "service"
+          },
+          {
+            "environment": "production",
+            "name": "HUB",
+            "service": "nomadtips3-5usd-hub-343",
+            "type": "service"
+          },
+          {
+            "name": "PREDICTION_VOTES_KV",
+            "namespace_id": "a7a435999144427c8227e1aba8c5f255",
+            "type": "kv_namespace"
+          },
+          {
+            "environment": "production",
+            "name": "PREDICTION_VOTES_SERVICE",
+            "service": "ball46-prediction-votes-v6",
+            "type": "service"
+          }
+        ]
+      },
+      "cron": {
+        "schedules": []
+      }
+    },
+    "nomadtips3-5usd-hub-343": {
+      "existingModulesUnchanged": 0,
+      "settings": {
+        "placement": {},
+        "compatibility_date": "2026-09-09",
+        "compatibility_flags": [],
+        "usage_model": "standard",
+        "tags": [],
+        "tail_consumers": [],
+        "logpush": false,
+        "observability": {
+          "enabled": true,
+          "head_sampling_rate": 1,
+          "redact_query_string": false,
+          "logs": {
+            "enabled": true,
+            "head_sampling_rate": 1,
+            "persist": true,
+            "invocation_logs": true
+          },
+          "traces": {
+            "enabled": false,
+            "persist": true,
+            "head_sampling_rate": 1
+          }
+        },
+        "annotations": {
+          "workers/commit_sha": "cea843afd998f79c1e7f3f8dd5245f0c33645897",
+          "workers/message": "Ball46 John rotate bulk final pages and retain finished history 72h",
+          "workers/triggered_by": "version_upload"
+        },
+        "bindings": [
+          {
+            "name": "FIVEDOLLAR_API_KEY",
+            "type": "secret_text"
+          },
+          {
+            "class_name": "FiveUsdHub",
+            "name": "HUB",
+            "namespace_id": "385ad1193c114fcdb8d92e4d56d6a532",
+            "type": "durable_object_namespace"
+          },
+          {
+            "class_name": "RichOddsGate",
+            "name": "RICH_GATE",
+            "namespace_id": "9eb6121eba114d21b902996f7dceb37c",
+            "type": "durable_object_namespace"
+          }
+        ]
+      },
+      "cron": {
+        "schedules": [
+          {
+            "cron": "*/2 * * * *",
+            "created_on": "2026-09-15T00:49:08.503243Z",
+            "modified_on": "2026-09-20T10:45:42.015278Z"
+          }
+        ]
+      }
+    }
+  }
+}
