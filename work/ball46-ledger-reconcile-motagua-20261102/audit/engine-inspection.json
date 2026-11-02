@@ -1,0 +1,599 @@
+{
+  "readOnly": true,
+  "worker": "nomadtips3-engine-343",
+  "version": "1f2336fa-7b45-4a23-a23c-06d01a92330d",
+  "deployment": "ede913e3-6c9d-403d-9fba-c8494922e46d",
+  "at": "2026-11-02T07:40:46.121Z",
+  "main": "index-bulk-recovery.js",
+  "health": {
+    "ok": true,
+    "component": "NOMAD343_ENGINE",
+    "version": "nomad343-engine-v5-best19-referee",
+    "revision": "343-best19-referee-20260918",
+    "dataMode": "BULK_PLUS_BEST19_REFEREE",
+    "startedAt": 1793605194785,
+    "finishedAt": 1793605197288,
+    "fixtureCount": 2223,
+    "liveCount": 0,
+    "signalCount": 22,
+    "unresolvedCount": 0,
+    "reconciled": 0,
+    "refereeRequests": 0,
+    "refereeQueued": 0,
+    "externalOddsRequests": 0,
+    "refereeErrors": [],
+    "lastError": null
+  },
+  "modules": [
+    {
+      "name": "index-bulk-recovery.js",
+      "type": "application/javascript+module",
+      "sha": "1008c06d4ab705f904b49408fd4e5c347478afae633a499147f3106dfffd2b69",
+      "functions": [
+        {
+          "name": "__name",
+          "start": 43,
+          "end": 127
+        },
+        {
+          "name": "splitAsianLine",
+          "start": 4839,
+          "end": 5130
+        },
+        {
+          "name": "combineAsianParts",
+          "start": 5305,
+          "end": 5801
+        },
+        {
+          "name": "settleOu",
+          "start": 6000,
+          "end": 6480
+        },
+        {
+          "name": "settleAh",
+          "start": 6607,
+          "end": 7160
+        },
+        {
+          "name": "settle1x2",
+          "start": 7287,
+          "end": 7664
+        },
+        {
+          "name": "cardPointsSide",
+          "start": 7799,
+          "end": 8020
+        },
+        {
+          "name": "cardPointsPair",
+          "start": 8195,
+          "end": 8312
+        },
+        {
+          "name": "periodPair",
+          "start": 8487,
+          "end": 8697
+        },
+        {
+          "name": "basisPair",
+          "start": 8840,
+          "end": 9119
+        },
+        {
+          "name": "subtractPair",
+          "start": 9254,
+          "end": 9628
+        },
+        {
+          "name": "settleMarketSignal",
+          "start": 9787,
+          "end": 11039
+        },
+        {
+          "name": "lineGap",
+          "start": 11246,
+          "end": 11443
+        },
+        {
+          "name": "gapPass",
+          "start": 11562,
+          "end": 11809
+        },
+        {
+          "name": "migrateLegacySettings",
+          "start": 14482,
+          "end": 14864
+        },
+        {
+          "name": "migrateLegacyRun",
+          "start": 15095,
+          "end": 15762
+        },
+        {
+          "name": "sanitizeSettings",
+          "start": 15953,
+          "end": 17072
+        },
+        {
+          "name": "sanitizeRun",
+          "start": 17263,
+          "end": 17427
+        },
+        {
+          "name": "fixtureStatus",
+          "start": 17578,
+          "end": 17689
+        },
+        {
+          "name": "isLive",
+          "start": 17856,
+          "end": 18021
+        },
+        {
+          "name": "isFinished",
+          "start": 18132,
+          "end": 18291
+        },
+        {
+          "name": "isHalfComplete",
+          "start": 18434,
+          "end": 18726
+        },
+        {
+          "name": "periodEligible",
+          "start": 18901,
+          "end": 19157
+        },
+        {
+          "name": "periodCompleteForSignal",
+          "start": 19332,
+          "end": 19505
+        },
+        {
+          "name": "cardPair",
+          "start": 19752,
+          "end": 19812
+        },
+        {
+          "name": "totalPair",
+          "start": 19939,
+          "end": 20060
+        },
+        {
+          "name": "currentBasisTotal",
+          "start": 20195,
+          "end": 20437
+        },
+        {
+          "name": "metricSnapshot",
+          "start": 20636,
+          "end": 21032
+        },
+        {
+          "name": "delta",
+          "start": 21207,
+          "end": 21320
+        },
+        {
+          "name": "deltaPair",
+          "start": 21423,
+          "end": 21538
+        },
+        {
+          "name": "sharePair",
+          "start": 21673,
+          "end": 21888
+        },
+        {
+          "name": "rolling",
+          "start": 22023,
+          "end": 22805
+        },
+        {
+          "name": "pressurePoint",
+          "start": 23054,
+          "end": 24505
+        },
+        {
+          "name": "pressureSeries",
+          "start": 24672,
+          "end": 24838
+        },
+        {
+          "name": "sideValue",
+          "start": 25013,
+          "end": 25096
+        },
+        {
+          "name": "evidenceSide",
+          "start": 25231,
+          "end": 26497
+        },
+        {
+          "name": "selectionsFor",
+          "start": 26656,
+          "end": 27247
+        },
+        {
+          "name": "evidenceForSelection",
+          "start": 27414,
+          "end": 28847
+        },
+        {
+          "name": "scoreTrailingPass",
+          "start": 29070,
+          "end": 29368
+        },
+        {
+          "name": "preCandidatesForRule",
+          "start": 29567,
+          "end": 30291
+        },
+        {
+          "name": "oddsRoot",
+          "start": 30514,
+          "end": 31140
+        },
+        {
+          "name": "findMarket",
+          "start": 31267,
+          "end": 31477
+        },
+        {
+          "name": "stageValue",
+          "start": 31620,
+          "end": 31855
+        },
+        {
+          "name": "stageSnapshot",
+          "start": 31998,
+          "end": 32156
+        },
+        {
+          "name": "priceFor",
+          "start": 32323,
+          "end": 33549
+        },
+        {
+          "name": "pricePass",
+          "start": 33676,
+          "end": 34534
+        },
+        {
+          "name": "bookmakerRows",
+          "start": 34669,
+          "end": 34858
+        },
+        {
+          "name": "bookmakerIdentity",
+          "start": 35025,
+          "end": 35355
+        },
+        {
+          "name": "bookmakerRoot",
+          "start": 35554,
+          "end": 35670
+        },
+        {
+          "name": "sameProviderLine",
+          "start": 35837,
+          "end": 35968
+        },
+        {
+          "name": "offersFor",
+          "start": 36159,
+          "end": 36931
+        },
+        {
+          "name": "referencePrice",
+          "start": 37066,
+          "end": 37417
+        },
+        {
+          "name": "consensusProviderLine",
+          "start": 37592,
+          "end": 38717
+        },
+        {
+          "name": "isVerifiedCornerMarket",
+          "start": 39162,
+          "end": 39330
+        },
+        {
+          "name": "cornerHistorySpec",
+          "start": 39331,
+          "end": 39750
+        },
+        {
+          "name": "verifyRecentCornerHistory",
+          "start": 39751,
+          "end": 41239
+        },
+        {
+          "name": "fetchVerifiedCornerOnly",
+          "start": 41240,
+          "end": 41890
+        },
+        {
+          "name": "pickBestPriced",
+          "start": 41892,
+          "end": 43258
+        },
+        {
+          "name": "storedFixture",
+          "start": 43433,
+          "end": 43569
+        },
+        {
+          "name": "phase2IsEarly",
+          "start": 43784,
+          "end": 43893
+        },
+        {
+          "name": "phase2Market",
+          "start": 43894,
+          "end": 44070
+        },
+        {
+          "name": "phase2LiveFixture",
+          "start": 44071,
+          "end": 44662
+        },
+        {
+          "name": "phase2EntryAlreadyWon",
+          "start": 44663,
+          "end": 44981
+        },
+        {
+          "name": "phase2Win",
+          "start": 44984,
+          "end": 45383
+        },
+        {
+          "name": "phase2Reopen",
+          "start": 45384,
+          "end": 45672
+        },
+        {
+          "name": "phase2ConfirmFinal",
+          "start": 45673,
+          "end": 46072
+        },
+        {
+          "name": "phase2ApplyLive",
+          "start": 46075,
+          "end": 47191
+        },
+        {
+          "name": "reconcileSettled",
+          "start": 47193,
+          "end": 47565
+        },
+        {
+          "name": "statsFrom",
+          "start": 47756,
+          "end": 48720
+        },
+        {
+          "name": "readWorkingSignals",
+          "start": 49205,
+          "end": 49745
+        },
+        {
+          "name": "writeWorkingSignals",
+          "start": 49847,
+          "end": 50768
+        },
+        {
+          "name": "readWorkingHistories",
+          "start": 50874,
+          "end": 51505
+        },
+        {
+          "name": "writeWorkingHistories",
+          "start": 51615,
+          "end": 52679
+        },
+        {
+          "name": "constructor",
+          "start": 53056,
+          "end": 53133
+        },
+        {
+          "name": "readSettings",
+          "start": 53136,
+          "end": 53237
+        },
+        {
+          "name": "readRun",
+          "start": 53240,
+          "end": 53331
+        },
+        {
+          "name": "scanIfDue",
+          "start": 53334,
+          "end": 53668
+        },
+        {
+          "name": "scan",
+          "start": 53671,
+          "end": 69798
+        },
+        {
+          "name": "fetch",
+          "start": 69801,
+          "end": 76753
+        },
+        {
+          "name": "isFinished2",
+          "start": 77171,
+          "end": 77386
+        },
+        {
+          "name": "isHalfComplete2",
+          "start": 77536,
+          "end": 77830
+        },
+        {
+          "name": "periodComplete",
+          "start": 78012,
+          "end": 78206
+        },
+        {
+          "name": "normalizeFinalFixture",
+          "start": 78381,
+          "end": 79744
+        },
+        {
+          "name": "secureTokenOk",
+          "start": 79975,
+          "end": 80244
+        },
+        {
+          "name": "ledgerTs",
+          "start": 80860,
+          "end": 80991
+        },
+        {
+          "name": "ledgerKey",
+          "start": 81118,
+          "end": 81231
+        },
+        {
+          "name": "blankLedgerMeta",
+          "start": 81366,
+          "end": 81578
+        },
+        {
+          "name": "normalizeLedgerMeta",
+          "start": 81761,
+          "end": 82131
+        },
+        {
+          "name": "ledgerResultBucket",
+          "start": 82346,
+          "end": 82639
+        },
+        {
+          "name": "applyLedgerMeta",
+          "start": 82846,
+          "end": 83629
+        },
+        {
+          "name": "archivalSignal",
+          "start": 83812,
+          "end": 84911
+        },
+        {
+          "name": "mirrorInto",
+          "start": 85086,
+          "end": 86177
+        },
+        {
+          "name": "ledgerMarker",
+          "start": 86320,
+          "end": 86601
+        },
+        {
+          "name": "upsertLedgerRows",
+          "start": 87028,
+          "end": 88620
+        },
+        {
+          "name": "syncStatisticsLedger",
+          "start": 88623,
+          "end": 90287
+        },
+        {
+          "name": "autoReconcileMissingFinals",
+          "start": 90290,
+          "end": 95933
+        },
+        {
+          "name": "compactWorkingSignalsAfterLedger",
+          "start": 95936,
+          "end": 96673
+        },
+        {
+          "name": "latestLedgerRows",
+          "start": 96676,
+          "end": 97220
+        },
+        {
+          "name": "statisticsLedgerResponse",
+          "start": 97223,
+          "end": 99953
+        },
+        {
+          "name": "scan",
+          "start": 99956,
+          "end": 100629
+        },
+        {
+          "name": "reconcileExternalFinal",
+          "start": 100632,
+          "end": 103343
+        },
+        {
+          "name": "fetch",
+          "start": 103346,
+          "end": 105875
+        },
+        {
+          "name": "stub",
+          "start": 105879,
+          "end": 105959
+        },
+        {
+          "name": "cors",
+          "start": 106054,
+          "end": 106469
+        },
+        {
+          "name": "fetch",
+          "start": 106602,
+          "end": 107219
+        },
+        {
+          "name": "scheduled",
+          "start": 107223,
+          "end": 107350
+        }
+      ]
+    }
+  ],
+  "bindings": [
+    {
+      "class_name": "Nomad343Engine",
+      "name": "ENGINE",
+      "namespace_id": "7404dc5f593a4fbeaebae44cad6ae7da",
+      "type": "durable_object_namespace"
+    },
+    {
+      "name": "FIVEDOLLAR_API_KEY",
+      "type": "secret_text"
+    },
+    {
+      "environment": "production",
+      "name": "FULL_MARKET",
+      "service": "nomadtips3-full-market-343-ball46",
+      "type": "service"
+    },
+    {
+      "environment": "production",
+      "name": "HUB",
+      "service": "nomadtips3-5usd-hub-343",
+      "type": "service"
+    }
+  ],
+  "schedules": {
+    "schedules": [
+      {
+        "cron": "* * * * *",
+        "created_on": "2026-09-09T15:01:18.232119Z",
+        "modified_on": "2026-10-11T02:03:36.296349Z"
+      }
+    ]
+  }
+}
