@@ -1,0 +1,36 @@
+name: BALL46 Motagua Ledger candidate tests - NO DEPLOY
+on:
+  push:
+    branches: [codex/ball46-ledger-reconcile-motagua-20261102]
+    paths: ['work/ball46-ledger-reconcile-motagua-20261102/test-request.json']
+permissions:
+  contents: write
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    defaults:
+      run:
+        working-directory: work/ball46-ledger-reconcile-motagua-20261102
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-save --package-lock=false acorn@8.15.0
+      - name: Capture exact Engine source and snapshot without requesting a scan
+        run: node prepare.mjs
+      - name: Build guarded candidate and restoration module privately
+        run: node build.mjs
+      - name: Test isolated transactional storage with network forbidden
+        run: node --experimental-vm-modules test.mjs
+      - name: Preserve sanitized results only; no Worker upload or traffic change
+        if: always()
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add repair-audit
+          git diff --cached --quiet || git commit -m "Motagua candidate test evidence; Production unchanged [skip ci]"
+          git push origin HEAD:codex/ball46-ledger-reconcile-motagua-20261102
