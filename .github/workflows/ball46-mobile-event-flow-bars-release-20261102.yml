@@ -25,6 +25,7 @@ jobs:
           node-version: '24'
       - name: Capture exact current Production, assets and rollback version
         run: |
+          node -e "require('fs').rmSync('release-audit/browser-failure.json',{force:true})"
           node preflight-release.mjs
           node build-component.mjs
           node unit.mjs
@@ -59,6 +60,7 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           if ls release-audit/*.json >/dev/null 2>&1; then git add release-audit/*.json; fi
           if ls release-audit/*.png >/dev/null 2>&1; then git add release-audit/*.png; fi
+          git add -u release-audit
           if ls qa/*.json >/dev/null 2>&1; then git add qa/*.json; fi
           if git diff --cached --quiet; then exit 0; fi
           git commit -m "Record guarded mobile Event Flow verification and rollback evidence [skip ci]"
