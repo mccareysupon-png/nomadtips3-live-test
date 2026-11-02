@@ -1,0 +1,14 @@
+{
+  "passed": 6,
+  "failed": 0,
+  "tests": [
+    "workerd legacy KV transaction archives only duplicate and preserves exact canonical PUSH",
+    "workerd full archived original retained in committed journal",
+    "workerd concurrent migration applies counter delta once",
+    "workerd compensating rollback restores exact duplicate and counters",
+    "workerd failed transaction leaves no partial write",
+    "workerd zero outbound requests"
+  ],
+  "outboundRequests": 0,
+  "runtime": "Miniflare/workerd; isolated legacy KV Durable Object; no Production bindings"
+}
