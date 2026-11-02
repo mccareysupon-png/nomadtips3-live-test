@@ -32,11 +32,11 @@ try{
  async function owned(id){const v=await version(id);assert.equal(v.annotations?.['workers/tag'],MARK);assert.deepEqual(modules(v),modules({modules:expectedModules}));assert.equal(canonical(v.bindings),canonical(base.bindings));for(const k of ['assets','compatibility_date','compatibility_flags'])assert.equal(canonical(v[k]),canonical(base[k]),'CONFIG_CHANGED:'+k);}
  if(request.phase==='candidate'){
   const live=await get('https://ball46.com','/');assert.equal(live.status,200);const html=live.body.toString(),next=patchHTML(html);
-  const inventory=JSON.parse(await readFile('public-paths.json','utf8'));const referenced=[...html.matchAll(/(?:src|href)=["']([^"']+\.(?:js|css|webp)[^"']*)/g)].map(m=>new URL(m[1],'https://ball46.com')).filter(u=>u.hostname==='ball46.com').map(u=>u.pathname);
+  const inventory=JSON.parse(await readFile('public-paths.json','utf8'));const referenced=[...html.matchAll(/(?:src|href)=["']([^"']+\.(?:js|css|webp)[^"']*)/g)].map(m=>new URL(m[1],'https://ball46.com')).filter(u=>u.hostname==='ball46.com').map(u=>u.pathname+u.search);
   const paths=[...new Set(['/', '/index.html',...inventory,...referenced])];report.publicBefore=[];
   for(let n=0;n<paths.length;n+=5){report.publicBefore.push(...await Promise.all(paths.slice(n,n+5).map(async path=>{const r=await get('https://ball46.com',path);return{path,status:r.status,sha:r.sha};})));}
-  const currentReferences=[...next.matchAll(/(?:src|href)=["']([^"']+\.(?:js|css|webp)[^"']*)/g)].map(m=>new URL(m[1],'https://ball46.com')).filter(u=>u.hostname==='ball46.com').map(u=>u.pathname);
-  for(const path of currentReferences){if(files.some(f=>new URL(f.path,'https://ball46.com').pathname===path))continue;assert.equal(report.publicBefore.find(f=>f.path===path)?.status,200,'REFERENCED_ASSET_MISSING:'+path);}
+  const currentReferences=[...next.matchAll(/(?:src|href)=["']([^"']+\.(?:js|css|webp)[^"']*)/g)].map(m=>new URL(m[1],'https://ball46.com')).filter(u=>u.hostname==='ball46.com').map(u=>u.pathname+u.search);
+  for(const path of currentReferences){if(files.some(f=>f.path===path))continue;assert.equal(report.publicBefore.find(f=>f.path===path)?.status,200,'REFERENCED_ASSET_MISSING:'+path);}
   report.expected=report.publicBefore.map(x=>{const f=files.find(f=>f.path===x.path);return ['/','/index.html'].includes(x.path)?{path:x.path,status:200,sha:sha(Buffer.from(next))}:f?{path:x.path,status:200,sha:f.sha}:x;}).concat(files.filter(f=>!report.publicBefore.some(p=>p.path===f.path)).map(f=>({path:f.path,status:200,sha:f.sha})));
   const metadata={main_module:base.main_module,compatibility_date:base.compatibility_date,compatibility_flags:base.compatibility_flags||[],bindings:base.bindings.map(b=>b.type==='secret_text'?{name:b.name,type:b.type,version_id:'latest'}:b),keep_assets:true,assets:{config:base.assets.config},annotations:{'workers/tag':MARK,'workers/message':'Approved Statistics Score/Result columns, compact labels and vertical scores'}};
   for(const k of ['usage_model','logpush','limits','observability','placement'])if(report.configBefore.settings[k]!=null)metadata[k]=report.configBefore.settings[k];
@@ -54,3 +54,4 @@ try{
  }
  report.ok=true;report.active=await active();report.finishedAt=new Date().toISOString();await save();console.log('STATISTICS_COLUMNS_RELEASE_PASS='+JSON.stringify({phase:report.phase,active:report.active,candidate:report.candidate,paths:report.expected?.length||prior?.expected?.length,settledPreserved:report.settledPreserved}));
 }catch(e){report.ok=false;report.error=e.stack||e.message;if(switched)try{if((await active()).id===candidate){await traffic(BASE,candidate,'Automatic restore after visual suite validation failure');await converge(BASE,prior.publicBefore);report.emergencyRestored=true;}}catch(f){report.restoreError=f.message;}await save();console.error(report.error);process.exitCode=1;}
+
