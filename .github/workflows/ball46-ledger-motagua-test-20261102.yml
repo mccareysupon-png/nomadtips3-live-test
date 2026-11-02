@@ -19,7 +19,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - run: npm install --no-save --package-lock=false acorn@8.15.0 miniflare@4
+      - run: npm install --no-save --package-lock=false acorn@8.15.0 miniflare@5.20261101.0-beta
       - name: Capture exact Engine source and snapshot without requesting a scan
         run: node prepare.mjs
       - name: Build guarded candidate and restoration module privately
@@ -36,3 +36,4 @@ jobs:
           git add repair-audit
           git diff --cached --quiet || git commit -m "Motagua candidate test evidence; Production unchanged [skip ci]"
           git push origin HEAD:codex/ball46-ledger-reconcile-motagua-20261102
+
