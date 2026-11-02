@@ -1,0 +1,41 @@
+name: BALL46 mobile Event Flow bars PREVIEW ONLY
+on:
+  push:
+    branches: [codex/ball46-mobile-event-flow-bars-20261102]
+    paths: ['work/ball46-mobile-event-flow-bars-20261102/request.json']
+permissions:
+  contents: write
+jobs:
+  preview:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: work/ball46-mobile-event-flow-bars-20261102
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Layout, input preservation, lanes, clusters and data gaps
+        run: node unit.mjs
+      - name: Install browser tooling
+        run: |
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Phone widths, themes, dense signals, details and zero external requests
+        run: node check.mjs
+      - name: Preserve preview evidence only
+        if: always()
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add qa
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Record mobile Event Flow bar preview geometry and interaction checks [skip ci]"
+          git push origin HEAD:codex/ball46-mobile-event-flow-bars-20261102
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mobile-event-flow-bars-${{ github.run_id }}
+          path: work/ball46-mobile-event-flow-bars-20261102/qa
