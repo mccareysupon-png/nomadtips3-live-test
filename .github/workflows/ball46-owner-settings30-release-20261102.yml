@@ -1,0 +1,50 @@
+name: BALL46 approved owner settings30 only release
+on:
+  push:
+    branches: [codex/ball46-5usd-latency-control-20261102]
+    paths: ['work/ball46-5usd-latency-control-20261102/connection/owner-release-request.json']
+permissions:
+  contents: write
+concurrency:
+  group: ball46-production-deploy
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    defaults:
+      run:
+        working-directory: work/ball46-5usd-latency-control-20261102
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-save --package-lock=false acorn@8.15.0 playwright@1.56.1
+      - name: Capture exact current Production restore point, settings and cron
+        run: node production-preflight.mjs
+      - name: Build only owner paths, preserving every producer function
+        run: |
+          node connection/build-owner-release.mjs
+          node --check owner-release-stage/ball46-production.mjs
+          node --check owner-release-stage/nomadtips3-5usd-hub-343.mjs
+          node connection/owner-only.test.mjs > production-audit/owner-release-unit.txt
+          node connection/owner-auth.test.mjs > production-audit/owner-release-auth.txt
+          node connection/owner-source-test.mjs > production-audit/owner-release-source.txt
+      - name: Verify PC/mobile and server hard-lock before any traffic change
+        run: |
+          npx playwright install --with-deps chromium
+          node connection/owner-browser-check.mjs
+      - name: Stage latest exact modules, verify public assets and activate owner30 only
+        run: node connection/release-owner-only.mjs
+      - name: Preserve sanitized deployment and preservation proof
+        if: always()
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add production-audit
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Record approved owner-only30 deployment, preservation checks and rollback result [skip ci]"
+          git push origin HEAD:codex/ball46-5usd-latency-control-20261102
