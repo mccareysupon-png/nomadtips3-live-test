@@ -8,6 +8,7 @@ permissions:
 jobs:
   diagnose:
     runs-on: ubuntu-24.04
+    timeout-minutes: 3
     defaults:
       run:
         working-directory: work/ball46-mobile-event-flow-bars-20261102
