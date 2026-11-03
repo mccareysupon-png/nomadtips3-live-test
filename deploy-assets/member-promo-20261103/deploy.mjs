@@ -398,8 +398,13 @@ try {
   assert(main, 'ACTIVE_MAIN_MISSING');
   const source = Buffer.from(main.content_base64, 'base64').toString('utf8');
   parse(source, { ecmaVersion: 'latest', sourceType: 'module' });
-  const signalContexts = [...source.matchAll(/signal-next\.js/g)].map(match => source.slice(Math.max(0, match.index - 2400), match.index + 2400));
-  console.log('B46_SIGNAL_SOURCE_DIAGNOSTIC ' + JSON.stringify(signalContexts));
+  const rawPathProbes = [];
+  for (const path of ['/signal-next.js', '/%73ignal-next.js', '/signal-next%2Ejs', '//signal-next.js', '/./signal-next.js']) {
+    const response = await fetch(DIRECT_ORIGIN + path + '?rawPathProbe=' + Date.now(), { headers: { 'Cache-Control': 'no-cache' } });
+    const body = await response.text();
+    rawPathProbes.push({ path, status: response.status, length: body.length, injectionCount: body.split('BALL46_SIGNAL_STANDALONE_FETCH_20261023').length - 1, anchorCount: body.split("window.addEventListener('beforeunload',stop,{once:true});").length - 1 });
+  }
+  console.log('B46_RAW_PATH_DIAGNOSTIC ' + JSON.stringify(rawPathProbes));
   throw new Error('B46_SIGNAL_SOURCE_DIAGNOSTIC_COMPLETE');
   const indexModule = current.modules.find(module => module.name === 'assets/index.html');
   assert(indexModule, 'ACTIVE_INDEX_MISSING');
