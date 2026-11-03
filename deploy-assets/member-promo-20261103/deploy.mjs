@@ -106,12 +106,13 @@ function patchHtml(html) {
 }
 
 function safeAssetPath(moduleName) {
-  const path = moduleName.startsWith('assets/') ? moduleName.slice('assets/'.length) : moduleName;
+  assert(moduleName.startsWith('assets/'), `NON_PUBLIC_ASSET_MODULE:${moduleName}`);
+  const path = moduleName.slice('assets/'.length);
   assert(path && /^[a-zA-Z0-9][a-zA-Z0-9./_-]*$/.test(path) && !path.split('/').includes('..'), `UNSAFE_ASSET_PATH:${path}`);
   return path;
 }
 
-function configFromCurrent(version, settings, crons, assetsDirectory) {
+function configFromCurrent(version, settings, crons, assetsDirectory, extraModules) {
   assert.equal(version.main_module, 'index.js', 'CURRENT_MAIN_MODULE_CHANGED');
   assert(version.compatibility_date, 'CURRENT_COMPATIBILITY_DATE_MISSING');
   assert(Array.isArray(version.bindings), 'CURRENT_BINDINGS_MISSING');
@@ -136,6 +137,7 @@ function configFromCurrent(version, settings, crons, assetsDirectory) {
     },
     triggers: { crons }
   };
+  if (extraModules.length) config.rules = [{ type: 'Data', globs: extraModules.map(module => module.name), fallthrough: true }];
   for (const key of ['logpush', 'limits', 'observability']) if (settings[key] !== undefined && settings[key] !== null) config[key] = settings[key];
   if (settings.placement?.mode === 'smart') config.placement = settings.placement;
   return config;
@@ -145,8 +147,19 @@ async function stageCurrent(version, settings, crons, source, htmlBefore, patche
   const runtime = resolve('runtime');
   const assets = resolve(runtime, 'assets');
   const originalHashes = {};
+  const extraHashes = {};
   const requiredPaths = new Set(readFileSync(resolve('assets', 'production-paths-20260928.txt'), 'utf8').split(/\r?\n/).filter(Boolean));
-  for (const module of version.modules.filter(module => module.name !== version.main_module)) requiredPaths.add(safeAssetPath(module.name));
+  const publicModules = version.modules.filter(module => module.name !== version.main_module && module.name.startsWith('assets/'));
+  const extraModules = version.modules.filter(module => module.name !== version.main_module && !module.name.startsWith('assets/'));
+  for (const module of publicModules) requiredPaths.add(safeAssetPath(module.name));
+  for (const module of extraModules) {
+    assert(/^[a-zA-Z0-9][a-zA-Z0-9._-]*\.bin$/.test(module.name), `UNSUPPORTED_EXTRA_MODULE:${module.name}`);
+    assert(source.includes(module.name), `UNREFERENCED_EXTRA_MODULE:${module.name}`);
+    const bytes = Buffer.from(module.content_base64, 'base64');
+    assert(bytes.length > 0, `EMPTY_EXTRA_MODULE:${module.name}`);
+    writeFileSync(resolve(runtime, module.name), bytes);
+    extraHashes[module.name] = sha(bytes);
+  }
   const paths = new Set(requiredPaths);
   for (const match of htmlBefore.matchAll(/\b(?:src|href)\s*=\s*["']([^"']+)["']/g)) {
     const url = new URL(match[1], ORIGIN);
@@ -184,8 +197,8 @@ async function stageCurrent(version, settings, crons, source, htmlBefore, patche
   writeFileSync(resolve(assets, JS_PATH), runtimeJs);
   writeFileSync(resolve(assets, IMAGE_PATH), image);
   writeFileSync(resolve(runtime, 'index.js'), source);
-  writeFileSync(resolve(runtime, 'wrangler.jsonc'), JSON.stringify(configFromCurrent(version, settings, crons, assets), null, 2));
-  return { runtime, assets, originalHashes, pathCount: Object.keys(originalHashes).length, cssSha: sha(css), jsSha: sha(runtimeJs), imageSha: sha(image) };
+  writeFileSync(resolve(runtime, 'wrangler.jsonc'), JSON.stringify(configFromCurrent(version, settings, crons, assets, extraModules), null, 2));
+  return { runtime, assets, originalHashes, extraHashes, pathCount: Object.keys(originalHashes).length, cssSha: sha(css), jsSha: sha(runtimeJs), imageSha: sha(image) };
 }
 
 function runWrangler(staged, args, logName) {
@@ -217,6 +230,11 @@ async function verifyCandidate(candidateVersion, current, staged, source, patche
   assert.equal(canonical(candidateVersion.compatibility_flags || []), canonical(current.compatibility_flags || []), 'COMPATIBILITY_FLAGS_CHANGED');
   const index = after.get('assets/index.html');
   if (index) assert.equal(sha(Buffer.from(index.content_base64, 'base64')), sha(patchedHtml), 'INDEX_MODULE_MISMATCH');
+  for (const [name, expected] of Object.entries(staged.extraHashes)) {
+    const module = after.get(name);
+    assert(module, `CANDIDATE_EXTRA_MODULE_MISSING:${name}`);
+    assert.equal(sha(Buffer.from(module.content_base64, 'base64')), expected, `CANDIDATE_EXTRA_MODULE_CHANGED:${name}`);
+  }
 }
 
 async function verifyAssets(baseOrigin, staged) {
