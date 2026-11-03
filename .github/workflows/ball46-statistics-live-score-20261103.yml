@@ -1,0 +1,46 @@
+name: BALL46 Statistics live score release 20261103
+
+on:
+  push:
+    branches: [codex/ball46-statistics-live-score-20261103]
+    paths:
+      - 'work/ball46-universal-live-minute-20261103/release-request.json'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ball46-production-deploy
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    defaults:
+      run:
+        working-directory: work/ball46-universal-live-minute-20261103
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install release verification dependencies
+        run: |
+          npm install --no-save --package-lock=false acorn@8.15.0 playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Run offline scope and rollback guards
+        run: node offline-test.mjs
+      - name: Upload candidate, verify Statistics live scores, activate and re-verify
+        run: node release.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-statistics-live-score-${{ github.run_id }}
+          path: work/ball46-universal-live-minute-20261103/audit/*.json
+          if-no-files-found: warn
+          retention-days: 30
+
