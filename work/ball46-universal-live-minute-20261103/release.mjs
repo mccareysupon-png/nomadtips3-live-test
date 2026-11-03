@@ -150,14 +150,14 @@ function patchMain(source) {
   const between = source.slice(node.start, node.declaration.start);
   const after = source.slice(node.declaration.start);
   assert.equal(between.trim(), 'export default', 'EXPORT_DEFAULT_DRIFT');
-  const previous = `${before}const __b46MinutePrevious=${after}`;
+  const previous = `${before}const __b46MotionPrevious=${after}`;
   const patchFunction = patchHTML.toString()
-    .replace('function patchHTML', 'function __b46MinutePatchHTML')
-    .replaceAll('assert(', '__b46MinuteAssert(')
-    .replaceAll('assert.equal(', '__b46MinuteAssertEqual(')
-    .replaceAll('STYLE_ID', '__b46MinuteStyleId')
-    .replaceAll('style', '__b46MinuteStyle');
-  return `${previous}\nconst __b46MinuteMarker=${JSON.stringify(MARK)},__b46MinuteStyleId=${JSON.stringify(STYLE_ID)},__b46MinuteStyle=${JSON.stringify(style)};\nconst __b46MinuteAssert=(value,message)=>{if(!value)throw Error(message)},__b46MinuteAssertEqual=(a,b,message)=>{if(a!==b)throw Error(message)};\n${patchFunction}\nexport default{...__b46MinutePrevious,async fetch(request,env,ctx){const response=await __b46MinutePrevious.fetch(request,env,ctx),url=new URL(request.url);if(request.method!==\"GET\"||![\"/\",\"/index.html\"].includes(url.pathname)||!response.ok||!(response.headers.get(\"content-type\")||\"\").includes(\"text/html\"))return response;const headers=new Headers(response.headers);headers.delete(\"etag\");headers.delete(\"content-length\");headers.set(\"x-b46-live-minute\",__b46MinuteMarker);return new Response(__b46MinutePatchHTML(await response.text()),{status:response.status,statusText:response.statusText,headers})}};\n`;
+    .replace('function patchHTML', 'function __b46MotionPatchHTML')
+    .replaceAll('assert(', '__b46MotionAssert(')
+    .replaceAll('assert.equal(', '__b46MotionAssertEqual(')
+    .replaceAll('STYLE_ID', '__b46MotionStyleId')
+    .replaceAll('style', '__b46MotionStyle');
+  return `${previous}\nconst __b46MotionMarker=${JSON.stringify(MARK)},__b46MotionStyleId=${JSON.stringify(STYLE_ID)},__b46MotionStyle=${JSON.stringify(style)};\nconst __b46MotionAssert=(value,message)=>{if(!value)throw Error(message)},__b46MotionAssertEqual=(a,b,message)=>{if(a!==b)throw Error(message)};\n${patchFunction}\nexport default{...__b46MotionPrevious,async fetch(request,env,ctx){const response=await __b46MotionPrevious.fetch(request,env,ctx),url=new URL(request.url);if(request.method!==\"GET\"||![\"/\",\"/index.html\"].includes(url.pathname)||!response.ok||!(response.headers.get(\"content-type\")||\"\").includes(\"text/html\"))return response;const headers=new Headers(response.headers);headers.delete(\"etag\");headers.delete(\"content-length\");headers.set(\"x-b46-monitor-motion\",__b46MotionMarker);return new Response(__b46MotionPatchHTML(await response.text()),{status:response.status,statusText:response.statusText,headers})}};\n`;
 }
 
 async function publicInventory(host, html) {
