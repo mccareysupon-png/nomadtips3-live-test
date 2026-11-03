@@ -11,6 +11,7 @@ const MARK = 'B46_MEMBER_PROMO_20261103';
 const CSS_PATH = 'ball46-member-promo-20261103a.css';
 const JS_PATH = 'ball46-member-promo-20261103a.js';
 const IMAGE_PATH = 'ball46-member-promo-20261103a.jpg';
+const IMAGE_MODULE = 'b46-member-promo-20261103a.bin';
 const ORIGIN = 'https://ball46.com';
 const DIRECT_ORIGIN = 'https://ball46-production.mccarey-supon.workers.dev';
 const SCRIPT = 'ball46-production';
@@ -93,15 +94,19 @@ async function backend() {
   return records;
 }
 
-function patchHtml(html) {
-  assert(!html.includes(MARK), 'MEMBER_PROMO_PATCH_ALREADY_PRESENT');
-  const anchor = '</body>';
-  assert.equal(html.split(anchor).length - 1, 1, 'BODY_ANCHOR_CHANGED');
-  const tag = `
+function promoTag() {
+  return `
   <!-- ${MARK} -->
   <link rel="stylesheet" href="/${CSS_PATH}?v=1">
   <script src="/${JS_PATH}?v=1" data-asset="/${IMAGE_PATH}" defer></script>
 `;
+}
+
+function patchHtml(html) {
+  assert(!html.includes(MARK), 'MEMBER_PROMO_PATCH_ALREADY_PRESENT');
+  const anchor = '</body>';
+  assert.equal(html.split(anchor).length - 1, 1, 'BODY_ANCHOR_CHANGED');
+  const tag = promoTag();
   return { html: html.replace(anchor, tag + anchor), tag };
 }
 
@@ -110,6 +115,63 @@ function hasServedPromo(bytes) {
   return html.split(MARK).length - 1 === 1
     && html.includes(`href="/${CSS_PATH}?v=1"`)
     && html.includes(`src="/${JS_PATH}?v=1"`);
+}
+
+function patchWorkerSource(source, css, runtimeJs) {
+  assert(!source.includes(MARK), 'WORKER_PROMO_PATCH_ALREADY_PRESENT');
+  assert(!source.includes(IMAGE_MODULE), 'WORKER_PROMO_IMAGE_MODULE_ALREADY_PRESENT');
+  assert(!css.includes('</style>') && !runtimeJs.includes('</script>'), 'PROMO_ASSET_INLINE_TERMINATOR_FOUND');
+  const finalExport = /export\s+default\s+([A-Za-z_$][\w$]*)\s*;?\s*$/.exec(source);
+  assert(finalExport?.index !== undefined, 'WORKER_FINAL_EXPORT_SHAPE_CHANGED');
+  const delegate = finalExport[1];
+  const wrapper = `const __b46BeforeMemberPromo20261103=${delegate};\n` +
+    `const __b46MemberPromoCss20261103=${JSON.stringify(css)};\n` +
+    `const __b46MemberPromoJs20261103=${JSON.stringify(runtimeJs)};\n` +
+    `const __b46MemberPromo20261103={...__b46BeforeMemberPromo20261103,async fetch(request,env,ctx){\n` +
+    ` const url=new URL(request.url),path=url.pathname;\n` +
+    ` if(request.method==='GET'&&path==='/${CSS_PATH}')return new Response(__b46MemberPromoCss20261103,{headers:{'content-type':'text/css; charset=utf-8','cache-control':'public, max-age=31536000, immutable','x-ball46-member-promo':'${MARK}'}});\n` +
+    ` if(request.method==='GET'&&path==='/${JS_PATH}')return new Response(__b46MemberPromoJs20261103,{headers:{'content-type':'application/javascript; charset=utf-8','cache-control':'public, max-age=31536000, immutable','x-ball46-member-promo':'${MARK}'}});\n` +
+    ` if(request.method==='GET'&&path==='/${IMAGE_PATH}')return new Response(__b46MemberPromoImage20261103.slice(0),{headers:{'content-type':'image/jpeg','cache-control':'public, max-age=31536000, immutable','x-ball46-member-promo':'${MARK}'}});\n` +
+    ` const response=await __b46BeforeMemberPromo20261103.fetch.call(__b46BeforeMemberPromo20261103,request,env,ctx);\n` +
+    ` if(request.method!=='GET'||!['/','/index.html'].includes(path)||response.status!==200||!String(response.headers.get('content-type')||'').toLowerCase().includes('text/html'))return response;\n` +
+    ` const html=await response.text();if(html.includes('${MARK}'))throw Error('MEMBER_PROMO_RUNTIME_DUPLICATE');if(html.split('</body>').length!==2)throw Error('MEMBER_PROMO_BODY_ANCHOR_DRIFT');\n` +
+    ` const headers=new Headers(response.headers);headers.delete('content-length');headers.delete('etag');headers.set('cache-control','no-cache, must-revalidate');headers.set('x-ball46-member-promo','${MARK}');\n` +
+    ` return new Response(html.replace('</body>',${JSON.stringify(promoTag())}+'</body>'),{status:response.status,statusText:response.statusText,headers});\n` +
+    `}};\nexport default __b46MemberPromo20261103;\n`;
+  const patched = `import __b46MemberPromoImage20261103 from './${IMAGE_MODULE}';\n` + source.slice(0, finalExport.index) + wrapper;
+  parse(patched, { ecmaVersion: 'latest', sourceType: 'module' });
+  return patched;
+}
+
+function moduleContentType(name, mainModule) {
+  if (name === mainModule || /\.m?js$/.test(name)) return 'application/javascript+module';
+  if (name.endsWith('.bin')) return 'application/octet-stream';
+  if (name.endsWith('.txt')) return 'text/plain';
+  if (name.endsWith('.html')) return 'text/html';
+  throw new Error(`UNSUPPORTED_MODULE_CONTENT_TYPE:${name}`);
+}
+
+async function uploadKeepAssetsVersion(current, patchedSource, image) {
+  const metadata = {
+    main_module: current.main_module,
+    compatibility_date: current.compatibility_date,
+    compatibility_flags: current.compatibility_flags || [],
+    bindings: current.bindings,
+    keep_assets: true,
+    assets: { config: current.assets.config },
+    annotations: { 'workers/tag': MARK, 'workers/message': 'BALL46 membership promo before Featured Match only; preserve active static assets' }
+  };
+  if (current.placement) metadata.placement = current.placement;
+  const form = new FormData();
+  form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }), 'metadata.json');
+  for (const module of current.modules) {
+    const bytes = module.name === current.main_module ? Buffer.from(patchedSource) : Buffer.from(module.content_base64, 'base64');
+    form.append(module.name, new Blob([bytes], { type: module.content_type || moduleContentType(module.name, current.main_module) }), module.name);
+  }
+  form.append(IMAGE_MODULE, new Blob([image], { type: 'application/octet-stream' }), IMAGE_MODULE);
+  const result = await api(`/scripts/${SCRIPT}/versions`, { method: 'POST', body: form });
+  assert(result?.id, 'VERSION_UPLOAD_ID_MISSING');
+  return result.id;
 }
 
 function sourceString(source, name) {
@@ -265,7 +327,7 @@ function moduleMap(version) {
   return new Map(version.modules.map(module => [module.name, module]));
 }
 
-async function verifyCandidate(candidateVersion, current, staged, source, patchedHtml) {
+async function verifyCandidate(candidateVersion, current, source, imageSha) {
   const after = moduleMap(candidateVersion);
   const main = after.get(candidateVersion.main_module);
   assert(main, 'CANDIDATE_MAIN_MISSING');
@@ -274,13 +336,16 @@ async function verifyCandidate(candidateVersion, current, staged, source, patche
   assert.equal(canonical(candidateVersion.assets?.config), canonical(current.assets?.config), 'ASSET_CONFIG_CHANGED');
   assert.equal(candidateVersion.compatibility_date, current.compatibility_date, 'COMPATIBILITY_DATE_CHANGED');
   assert.equal(canonical(candidateVersion.compatibility_flags || []), canonical(current.compatibility_flags || []), 'COMPATIBILITY_FLAGS_CHANGED');
-  const index = after.get('assets/index.html');
-  if (index) assert.equal(sha(Buffer.from(index.content_base64, 'base64')), sha(patchedHtml), 'INDEX_MODULE_MISMATCH');
-  for (const [name, expected] of Object.entries(staged.extraHashes)) {
-    const module = after.get(name);
-    assert(module, `CANDIDATE_EXTRA_MODULE_MISSING:${name}`);
-    assert.equal(sha(Buffer.from(module.content_base64, 'base64')), expected, `CANDIDATE_EXTRA_MODULE_CHANGED:${name}`);
+  for (const module of current.modules) {
+    if (module.name === current.main_module) continue;
+    const preserved = after.get(module.name);
+    assert(preserved, `CANDIDATE_MODULE_MISSING:${module.name}`);
+    assert.equal(sha(Buffer.from(preserved.content_base64, 'base64')), sha(Buffer.from(module.content_base64, 'base64')), `CANDIDATE_MODULE_CHANGED:${module.name}`);
   }
+  const image = after.get(IMAGE_MODULE);
+  assert(image, 'CANDIDATE_PROMO_IMAGE_MODULE_MISSING');
+  assert.equal(sha(Buffer.from(image.content_base64, 'base64')), imageSha, 'CANDIDATE_PROMO_IMAGE_MODULE_CHANGED');
+  assert.equal(after.size, current.modules.length + 1, 'CANDIDATE_MODULE_COUNT_CHANGED');
 }
 
 async function verifyAssets(baseOrigin, staged) {
@@ -432,15 +497,22 @@ try {
   const customHtml = await publicFile('/index.html');
   assert.equal(sha(customHtml), sha(directHtml), 'PRODUCTION_ORIGINS_DISAGREE');
   assert.equal(await activeVersion(), base, 'PRODUCTION_MOVED_DURING_INDEX_LOCK');
-  const htmlBefore = moduleHtml.toString('utf8');
+  const htmlBefore = directHtml.toString('utf8');
   const patch = patchHtml(htmlBefore);
   assert.equal(patch.html.replace(patch.tag, ''), htmlBefore, 'NON_PROMO_HTML_CHANGED');
+  const css = readFileSync(resolve('assets', CSS_PATH));
+  const runtimeJs = readFileSync(resolve('assets', JS_PATH));
+  const image = readFileSync(resolve('assets', IMAGE_PATH));
+  assert(css.includes(Buffer.from(MARK)) && runtimeJs.includes(Buffer.from(MARK)), 'PROMO_ASSET_MARKER_MISSING');
+  assert(image.length > 100000 && image.length < 500000, `IMAGE_SIZE_OUT_OF_RANGE:${image.length}`);
+  const patchedSource = patchWorkerSource(source, css.toString('utf8'), runtimeJs.toString('utf8'));
   const settings = await api(`/scripts/${SCRIPT}/settings`);
   const settingsBefore = canonical(settings);
   const cronsBefore = await schedules();
   const backendBefore = await backend();
   report.guards = {
     workerSourceSha: sha(source),
+    candidateWorkerSourceSha: sha(patchedSource),
     activeModuleIndexSha: sha(moduleHtml),
     servedIndexSha: sha(directHtml),
     htmlBeforeSha: sha(htmlBefore),
@@ -453,21 +525,29 @@ try {
   save();
 
   const staged = await stageCurrent(current, settings, cronsBefore, source, htmlBefore, patch.html);
-  runWrangler(staged, ['deploy', '--dry-run'], 'dry-run');
   report.staged = await verifyStagedBrowser(staged);
   save();
   assert.equal(await activeVersion(), base, 'PRODUCTION_MOVED_BEFORE_UPLOAD');
   assert.equal(canonical(await api(`/scripts/${SCRIPT}/settings`)), settingsBefore, 'SETTINGS_MOVED_BEFORE_UPLOAD');
-  const deployOutput = runWrangler(staged, ['deploy', '--tag', MARK, '--message', 'BALL46 membership promo before Featured Match only'], 'production-deploy');
-  candidate = deployOutput.match(/Version ID:\s*([a-f0-9-]{36})/i)?.[1];
+  candidate = await uploadKeepAssetsVersion(current, patchedSource, image);
   assert(candidate && candidate !== base, 'CANDIDATE_VERSION_MISSING');
-  activated = true;
   report.candidateVersion = candidate;
   save();
 
-  assert.equal(await activeVersion(), candidate, 'CANDIDATE_NOT_ACTIVE');
+  assert.equal(await activeVersion(), base, 'PRODUCTION_MOVED_DURING_CANDIDATE_UPLOAD');
   const deployedVersion = await getVersion(candidate);
-  await verifyCandidate(deployedVersion, current, staged, source, patch.html);
+  await verifyCandidate(deployedVersion, current, patchedSource, sha(image));
+  const previewOrigin = `https://${candidate.slice(0, 8)}-${SCRIPT}.mccarey-supon.workers.dev`;
+  report.preview = await inspectPromo(previewOrigin, 'candidate-preview', true);
+  assert.equal(await activeVersion(), base, 'PRODUCTION_MOVED_DURING_CANDIDATE_PREVIEW');
+
+  await api(`/scripts/${SCRIPT}/deployments`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ strategy: 'percentage', versions: [{ version_id: candidate, percentage: 100 }], annotations: { 'workers/message': `Deploy ${MARK}` } })
+  });
+  activated = true;
+  assert.equal(await activeVersion(), candidate, 'CANDIDATE_NOT_ACTIVE');
   report.afterVersion = candidate;
   save();
 
@@ -498,7 +578,7 @@ try {
   assert.equal(canonical(await schedules()), canonical(cronsBefore), 'SCHEDULES_CHANGED');
   assert.equal(canonical(await backend()), canonical(backendBefore), 'BACKEND_REVISION_CHANGED');
   const finalVersion = await getVersion(candidate);
-  await verifyCandidate(finalVersion, current, staged, source, patch.html);
+  await verifyCandidate(finalVersion, current, patchedSource, sha(image));
   assert.equal(await activeVersion(), candidate, 'PRODUCTION_MOVED_DURING_VERIFICATION');
   report.result = 'SUCCESS';
   report.completedAt = new Date().toISOString();
