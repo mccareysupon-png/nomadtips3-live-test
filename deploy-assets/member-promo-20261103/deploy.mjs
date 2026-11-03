@@ -443,7 +443,10 @@ try {
         break;
       }
     } catch (error) {
-      if (!String(error.message).includes('PUBLIC_HTTP:/index.html:500')) throw error;
+      // Cloudflare can briefly return a transient edge status while the newly
+      // activated version propagates. Retry only rate-limit/server statuses;
+      // authentication, routing and all other failures still fail closed.
+      if (!/PUBLIC_HTTP:\/index\.html:(?:429|5\d\d)$/.test(String(error.message))) throw error;
     }
     await delay(1000);
   }
