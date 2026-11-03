@@ -146,6 +146,7 @@ function configFromCurrent(version, settings, crons, assetsDirectory, extraModul
 async function stageCurrent(version, settings, crons, source, htmlBefore, patchedHtml) {
   const runtime = resolve('runtime');
   const assets = resolve(runtime, 'assets');
+  mkdirSync(runtime, { recursive: true });
   const originalHashes = {};
   const extraHashes = {};
   const requiredPaths = new Set(readFileSync(resolve('assets', 'production-paths-20260928.txt'), 'utf8').split(/\r?\n/).filter(Boolean));
