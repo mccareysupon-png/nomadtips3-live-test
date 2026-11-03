@@ -7,8 +7,8 @@ import { parse } from 'acorn';
 const ACCOUNT = '62cb0db544160e6591342abd6b4f35cc';
 const WORKER = 'ball46-production';
 const API = `https://api.cloudflare.com/client/v4/accounts/${ACCOUNT}`;
-const MARK = 'B46_UNIVERSAL_MONITOR_MOTION_20261103';
-const STYLE_ID = 'b46-universal-monitor-motion-20261103';
+const MARK = 'B46_WORLDWIDE_LIVE_CLOCK_RUNTIME_20261103';
+const STYLE_ID = 'b46-worldwide-live-clock-runtime-20261103';
 const request = JSON.parse(await readFile('release-request.json', 'utf8'));
 
 assert.equal(request.approved, true, 'OWNER_APPROVAL_REQUIRED');
@@ -99,44 +99,49 @@ async function health(host) {
   return checked;
 }
 
-const style = `<style id="${STYLE_ID}">
-/* Keep the live Match Monitor and Signal Watch moving on every device. */
-html body .mini-monitor .mini-scan-beam{
- animation-name:mini-crisp-travel!important;
- animation-duration:3.2s!important;
- animation-timing-function:linear!important;
- animation-iteration-count:infinite!important;
- animation-play-state:running!important;
+const payload = `<style id="${STYLE_ID}">
+/* Runtime owns the apostrophe blink so OS motion preferences cannot stop it. */
+.b46-live-minute-mark,.b46gn-minute-tick,.b46-sc-mark,[data-b46-world-minute-mark]{will-change:opacity}
+</style>
+<script id="b46-worldwide-live-clock-script-20261103">
+(()=>{'use strict';
+if(window.__b46WorldwideLiveClock20261103)return;
+window.__b46WorldwideLiveClock20261103=true;
+const clocks='#b46gn-cards .b46gn-cardhead[data-kind="live"] .b46gn-clock,.match-row .b46-live-status-clock,.b46-sc-minute';
+const marks='.b46-live-minute-mark,.b46gn-minute-tick,.b46-sc-mark,[data-b46-world-minute-mark]';
+let phase=true,queued=false;
+function splitClock(clock){
+ if(clock.querySelector(marks))return;
+ const value=String(clock.textContent||'').trim();
+ if(!/\\d(?:\\+\\d{1,2})?['’′]$/.test(value))return;
+ const walker=document.createTreeWalker(clock,NodeFilter.SHOW_TEXT);let node,last=null;
+ while((node=walker.nextNode()))if(String(node.nodeValue||'').trim())last=node;
+ if(!last)return;
+ const match=String(last.nodeValue||'').match(/(['’′])(\\s*)$/);if(!match)return;
+ const cut=last.nodeValue.lastIndexOf(match[1]),mark=document.createElement('span');
+ last.nodeValue=last.nodeValue.slice(0,cut);mark.textContent=match[1];mark.dataset.b46WorldMinuteMark='1';last.after(mark);
 }
-html body .b46-signal-watch .ew-orbit{
- animation-name:ew-sweep!important;
- animation-duration:5s!important;
- animation-timing-function:linear!important;
- animation-iteration-count:infinite!important;
- animation-play-state:running!important;
+function apply(mark){
+ mark.dataset.b46WorldMinuteMark='1';
+ mark.style.setProperty('animation','none','important');
+ mark.style.setProperty('transition','none','important');
+ mark.style.setProperty('opacity',phase?'1':'0','important');
 }
-html body .b46-signal-watch .ew-dot{
- animation-name:ew-breathe!important;
- animation-duration:3s!important;
- animation-timing-function:ease-in-out!important;
- animation-iteration-count:infinite!important;
- animation-play-state:running!important;
-}
-html body .b46-signal-watch .ew-track::after{
- animation-name:ew-line!important;
- animation-duration:4.5s!important;
- animation-timing-function:ease-in-out!important;
- animation-iteration-count:infinite!important;
- animation-play-state:running!important;
-}
-</style>`;
+function normalize(){queued=false;document.querySelectorAll(clocks).forEach(splitClock);document.querySelectorAll(marks).forEach(apply)}
+function schedule(){if(queued)return;queued=true;requestAnimationFrame(normalize)}
+function paint(){phase=!phase;document.querySelectorAll(marks).forEach(apply)}
+function boot(){normalize();new MutationObserver(schedule).observe(document.body,{childList:true,subtree:true,characterData:true});setInterval(paint,500);document.addEventListener('visibilitychange',()=>{if(!document.hidden){phase=true;normalize()}})}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
+})();
+</script>`;
 
 function patchHTML(html) {
   assert.equal(html.split(`id="${STYLE_ID}"`).length - 1, 0, 'STYLE_ALREADY_PRESENT');
-  assert(html.includes('/b46-monitor-20261030.css'), 'MATCH_MONITOR_CSS_MISSING');
-  assert(html.includes('/b46-radar-watch-20261030.css'), 'SIGNAL_WATCH_CSS_MISSING');
+  assert(html.includes('function b46gnLiveMinuteMarkup'), 'MOBILE_ALL_MATCHES_RENDERER_MISSING');
+  assert(html.includes('b46-live-minute-mark'), 'DESKTOP_MARK_RENDERER_MISSING');
+  assert(html.includes('/b46-statistics-columns-20261102.js'), 'STATISTICS_RENDERER_MISSING');
   assert.equal(html.split('</head>').length - 1, 1, 'HEAD_ANCHOR_DRIFT');
-  return html.replace('</head>', `${style}\n</head>`);
+  return html.replace('</head>', `${payload}\n</head>`);
 }
 
 function patchMain(source) {
@@ -150,14 +155,14 @@ function patchMain(source) {
   const between = source.slice(node.start, node.declaration.start);
   const after = source.slice(node.declaration.start);
   assert.equal(between.trim(), 'export default', 'EXPORT_DEFAULT_DRIFT');
-  const previous = `${before}const __b46MotionPrevious=${after}`;
+  const previous = `${before}const __b46WorldClockPrevious=${after}`;
   const patchFunction = patchHTML.toString()
-    .replace('function patchHTML', 'function __b46MotionPatchHTML')
-    .replaceAll('assert(', '__b46MotionAssert(')
-    .replaceAll('assert.equal(', '__b46MotionAssertEqual(')
-    .replaceAll('STYLE_ID', '__b46MotionStyleId')
-    .replaceAll('style', '__b46MotionStyle');
-  return `${previous}\nconst __b46MotionMarker=${JSON.stringify(MARK)},__b46MotionStyleId=${JSON.stringify(STYLE_ID)},__b46MotionStyle=${JSON.stringify(style)};\nconst __b46MotionAssert=(value,message)=>{if(!value)throw Error(message)},__b46MotionAssertEqual=(a,b,message)=>{if(a!==b)throw Error(message)};\n${patchFunction}\nexport default{...__b46MotionPrevious,async fetch(request,env,ctx){const response=await __b46MotionPrevious.fetch(request,env,ctx),url=new URL(request.url);if(request.method!==\"GET\"||![\"/\",\"/index.html\"].includes(url.pathname)||!response.ok||!(response.headers.get(\"content-type\")||\"\").includes(\"text/html\"))return response;const headers=new Headers(response.headers);headers.delete(\"etag\");headers.delete(\"content-length\");headers.set(\"x-b46-monitor-motion\",__b46MotionMarker);return new Response(__b46MotionPatchHTML(await response.text()),{status:response.status,statusText:response.statusText,headers})}};\n`;
+    .replace('function patchHTML', 'function __b46WorldClockPatchHTML')
+    .replaceAll('assert(', '__b46WorldClockAssert(')
+    .replaceAll('assert.equal(', '__b46WorldClockAssertEqual(')
+    .replaceAll('STYLE_ID', '__b46WorldClockStyleId')
+    .replaceAll('payload', '__b46WorldClockPayload');
+  return `${previous}\nconst __b46WorldClockMarker=${JSON.stringify(MARK)},__b46WorldClockStyleId=${JSON.stringify(STYLE_ID)},__b46WorldClockPayload=${JSON.stringify(payload)};\nconst __b46WorldClockAssert=(value,message)=>{if(!value)throw Error(message)},__b46WorldClockAssertEqual=(a,b,message)=>{if(a!==b)throw Error(message)};\n${patchFunction}\nexport default{...__b46WorldClockPrevious,async fetch(request,env,ctx){const response=await __b46WorldClockPrevious.fetch(request,env,ctx),url=new URL(request.url);if(request.method!==\"GET\"||![\"/\",\"/index.html\"].includes(url.pathname)||!response.ok||!(response.headers.get(\"content-type\")||\"\").includes(\"text/html\"))return response;const headers=new Headers(response.headers);headers.delete(\"etag\");headers.delete(\"content-length\");headers.set(\"x-b46-world-clock\",__b46WorldClockMarker);return new Response(__b46WorldClockPatchHTML(await response.text()),{status:response.status,statusText:response.statusText,headers})}};\n`;
 }
 
 async function publicInventory(host, html) {
@@ -198,48 +203,46 @@ async function browserProof(host, candidate) {
       document.documentElement.dataset.b46gn = '1';
       const specimen = document.createElement('div');
       specimen.id = 'b46-minute-specimen';
-      specimen.innerHTML = '<div class="mini-monitor"><svg><g class="mini-scan"><circle class="mini-scan-beam"></circle></g></svg></div><div class="b46-signal-watch"><span class="ew-emblem"><svg><g class="ew-orbit"></g><circle class="ew-dot"></circle></svg></span><span class="ew-track"></span></div>';
+      specimen.innerHTML = "<div id=\"b46gn-cards\"><div class=\"b46gn-cardhead\" data-kind=\"live\"><span class=\"b46gn-clock\">37'</span></div></div><span class=\"b46-live-minute-mark\">′</span><span class=\"b46-sc-mark\">′</span>";
       document.body.append(specimen);
     });
-    const result = await page.evaluate(() => {
-      const selectors = ['.mini-scan-beam', '.ew-orbit', '.ew-dot'];
-      const rows = Object.fromEntries(selectors.map((selector) => {
-        const element = document.querySelector(`#b46-minute-specimen ${selector}`);
-        const css = getComputedStyle(element);
-        return [selector, {
-          animationName: css.animationName,
-          duration: css.animationDuration,
-          iterationCount: css.animationIterationCount,
-          playState: css.animationPlayState,
-          animations: element.getAnimations().length,
-        }];
-      }));
-      const track = document.querySelector('#b46-minute-specimen .ew-track');
-      const trackCSS = getComputedStyle(track, '::after');
-      rows['.ew-track::after'] = {
-        animationName: trackCSS.animationName,
-        duration: trackCSS.animationDuration,
-        iterationCount: trackCSS.animationIterationCount,
-        playState: trackCSS.animationPlayState,
-        animations: track.getAnimations({ subtree: true }).length,
-      };
-      return rows;
-    });
-    const expected = {
-      '.mini-scan-beam': ['mini-crisp-travel', '3.2s'],
-      '.ew-orbit': ['ew-sweep', '5s'],
-      '.ew-dot': ['ew-breathe', '3s'],
-      '.ew-track::after': ['ew-line', '4.5s'],
-    };
-    for (const [selector, proof] of Object.entries(result)) {
-      assert.equal(proof.animationName, expected[selector][0], `ANIMATION_NAME:${selector}`);
-      assert.equal(proof.duration, expected[selector][1], `ANIMATION_DURATION:${selector}`);
-      assert.equal(proof.iterationCount, 'infinite', `ANIMATION_ITERATION:${selector}`);
-      assert.equal(proof.playState, 'running', `ANIMATION_STOPPED:${selector}`);
-      assert(proof.animations >= 1, `ANIMATION_NOT_CREATED:${selector}`);
+    const selectors = [
+      '#b46-minute-specimen .b46gn-clock [data-b46-world-minute-mark]',
+      '#b46-minute-specimen .b46-live-minute-mark',
+      '#b46-minute-specimen .b46-sc-mark',
+    ];
+    const samples = Object.fromEntries(selectors.map((selector) => [selector, []]));
+    for (let index = 0; index < 9; index++) {
+      await page.waitForTimeout(180);
+      const row = await page.evaluate((wanted) => Object.fromEntries(wanted.map((selector) => {
+        const element = document.querySelector(selector);
+        return [selector, element ? getComputedStyle(element).opacity : null];
+      })), selectors);
+      for (const selector of selectors) samples[selector].push(row[selector]);
     }
+    for (const selector of selectors) {
+      assert(!samples[selector].includes(null), `MINUTE_MARK_NOT_CREATED:${selector}`);
+      assert.deepEqual([...new Set(samples[selector])].sort(), ['0', '1'], `MINUTE_MARK_NOT_BLINKING:${selector}`);
+    }
+    const result = await page.evaluate(() => {
+      const clock = document.querySelector('#b46-minute-specimen .b46gn-clock');
+      const mark = clock?.querySelector('[data-b46-world-minute-mark]');
+      const actualClock = [...document.querySelectorAll('#b46gn-cards .b46gn-cardhead[data-kind="live"] .b46gn-clock')].find((item) => !item.closest('#b46-minute-specimen'));
+      const actualMark = actualClock?.querySelector('.b46gn-minute-tick,[data-b46-world-minute-mark]');
+      return {
+        specimenText: clock?.textContent,
+        specimenMark: mark?.textContent,
+        specimenAnimation: mark?.style.getPropertyValue('animation'),
+        actualLiveClockFound: Boolean(actualClock),
+        actualLiveMarkFound: actualClock ? Boolean(actualMark) : null,
+      };
+    });
+    assert.equal(result.specimenText, "37'", 'MOBILE_CLOCK_TEXT_CHANGED');
+    assert.equal(result.specimenMark, "'", 'APOSTROPHE_SPLIT_FAILED');
+    assert.equal(result.specimenAnimation, 'none', 'CSS_ANIMATION_NOT_NEUTRALIZED');
+    if (result.actualLiveClockFound) assert.equal(result.actualLiveMarkFound, true, 'ACTUAL_MOBILE_LIVE_MARK_MISSING');
     assert.equal(errors.length, 0, `PAGE_ERRORS:${errors.join('|')}`);
-    return { candidate, reducedMotion: 'reduce', viewport: '390x844', selectors: result, pageErrors: errors };
+    return { candidate, reducedMotion: 'reduce', viewport: '390x844', samples, result, pageErrors: errors };
   } finally {
     await browser.close();
   }
@@ -281,12 +284,11 @@ try {
   assert.equal(root.status, 200, 'BASELINE_ROOT_NOT_OK');
   const html = root.body.toString('utf8');
   assert(html.includes('id="b46-universal-live-minute-20261103"'), 'LIVE_MINUTE_FIX_NOT_PRESERVED');
-  const monitorCSS = await get('https://ball46.com', '/b46-monitor-20261030.css?v=b46-monitor-ring-crisp-20261102');
-  const radarCSS = await get('https://ball46.com', '/b46-radar-watch-20261030.css');
-  assert.equal(monitorCSS.status, 200, 'MATCH_MONITOR_CSS_MISSING');
-  assert.equal(radarCSS.status, 200, 'SIGNAL_WATCH_CSS_MISSING');
-  assert(monitorCSS.body.toString('utf8').includes('@media(prefers-reduced-motion:reduce){.mini-monitor *{animation:none!important'), 'MATCH_MONITOR_REDUCED_MOTION_ANCHOR_DRIFT');
-  assert(radarCSS.body.toString('utf8').includes('@media(prefers-reduced-motion:reduce){.ew-orbit,.ew-dot,.ew-track:after{animation:none!important}'), 'SIGNAL_WATCH_REDUCED_MOTION_ANCHOR_DRIFT');
+  assert(html.includes('id="b46-universal-monitor-motion-20261103"'), 'MONITOR_MOTION_FIX_NOT_PRESERVED');
+  assert(html.includes('function b46gnLiveMinuteMarkup'), 'MOBILE_ALL_MATCHES_RENDERER_MISSING');
+  const statisticsRenderer = await get('https://ball46.com', '/b46-statistics-columns-20261102.js?v=1');
+  assert.equal(statisticsRenderer.status, 200, 'STATISTICS_RENDERER_MISSING');
+  assert(statisticsRenderer.body.toString('utf8').includes('b46-sc-mark'), 'STATISTICS_MARK_RENDERER_DRIFT');
   const patchedHTML = patchHTML(html);
   report.rootBeforeSha = root.sha;
   report.rootExpectedSha = sha(Buffer.from(patchedHTML));
@@ -312,7 +314,7 @@ try {
     assets: { config: base.assets.config },
     annotations: {
       'workers/tag': MARK,
-      'workers/message': 'Universal Match Monitor and Signal Watch motion on every device',
+      'workers/message': 'Worldwide live-minute apostrophe runtime for every renderer and device',
     },
   };
   for (const key of ['usage_model', 'logpush', 'limits', 'observability', 'placement']) {
@@ -343,14 +345,14 @@ try {
   report.preview = preview;
   const previewRoot = await get(preview, '/');
   assert.equal(previewRoot.status, 200, 'PREVIEW_ROOT_NOT_OK');
-  assert(previewRoot.body.toString('utf8').includes(`id="${STYLE_ID}"`), 'PREVIEW_STYLE_MISSING');
+  assert(previewRoot.body.toString('utf8').includes(`id="${STYLE_ID}"`), 'PREVIEW_RUNTIME_MISSING');
   assert.equal(previewRoot.sha, report.rootExpectedSha, 'PREVIEW_HTML_UNEXPECTED');
   await assertInventory(preview, report.publicAssets);
   report.previewHealth = await health(preview);
   report.browserProof = await browserProof(preview, candidateId);
   assert.equal((await active()).version, baseId, 'PRODUCTION_MOVED_DURING_PREVIEW');
 
-  await deployTraffic(candidateId, baseId, 'Universal Match Monitor and Signal Watch motion verified on reduced-motion devices');
+  await deployTraffic(candidateId, baseId, 'Worldwide live-minute apostrophe runtime verified on mobile reduced-motion devices');
   switched = true;
   for (let attempt = 0; attempt < 40; attempt++) {
     const current = await active();
@@ -372,14 +374,14 @@ try {
   report.ok = true;
   report.finishedAt = new Date().toISOString();
   await save();
-  console.log(`BALL46_UNIVERSAL_MONITOR_MOTION_PASS=${JSON.stringify({ base: baseId, candidate: candidateId, deployment: report.after.deployment })}`);
+  console.log(`BALL46_WORLDWIDE_LIVE_CLOCK_PASS=${JSON.stringify({ base: baseId, candidate: candidateId, deployment: report.after.deployment })}`);
 } catch (error) {
   report.ok = false;
   report.error = error.stack || error.message;
   if (switched && baseId && candidateId) {
     try {
       if ((await active()).version === candidateId) {
-        await deployTraffic(baseId, candidateId, 'Automatic restore: universal monitor motion verification failed');
+        await deployTraffic(baseId, candidateId, 'Automatic restore: worldwide live clock verification failed');
         report.automaticRestore = await active();
       }
     } catch (restoreError) {
