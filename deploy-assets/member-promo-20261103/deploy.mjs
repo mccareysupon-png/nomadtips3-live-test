@@ -105,6 +105,13 @@ function patchHtml(html) {
   return { html: html.replace(anchor, tag + anchor), tag };
 }
 
+function hasServedPromo(bytes) {
+  const html = bytes.toString('utf8');
+  return html.split(MARK).length - 1 === 1
+    && html.includes(`href="/${CSS_PATH}?v=1"`)
+    && html.includes(`src="/${JS_PATH}?v=1"`);
+}
+
 function safeAssetPath(moduleName) {
   assert(moduleName.startsWith('assets/'), `NON_PUBLIC_ASSET_MODULE:${moduleName}`);
   const path = moduleName.slice('assets/'.length);
@@ -180,6 +187,10 @@ async function stageCurrent(version, settings, crons, source, htmlBefore, patche
   for (let i = 0; i < queue.length; i += 6) {
     const batch = queue.slice(i, i + 6);
     const results = await Promise.all(batch.map(async path => {
+      // The active Worker applies guarded runtime transformations to index.html.
+      // Re-upload the raw version module, not the already transformed HTTP body,
+      // otherwise those guards execute twice and fail closed on anchor drift.
+      if (path === 'index.html') return Buffer.from(htmlBefore);
       const direct = await probePublic('/' + path, DIRECT_ORIGIN);
       if (direct.status === 404 && !requiredPaths.has(path)) return null;
       assert.equal(direct.status, 200, `DIRECT_ORIGIN_ASSET_HTTP:${path}:${direct.status}`);
@@ -394,7 +405,7 @@ try {
   const customHtml = await publicFile('/index.html');
   assert.equal(sha(customHtml), sha(directHtml), 'PRODUCTION_ORIGINS_DISAGREE');
   assert.equal(await activeVersion(), base, 'PRODUCTION_MOVED_DURING_INDEX_LOCK');
-  const htmlBefore = directHtml.toString('utf8');
+  const htmlBefore = moduleHtml.toString('utf8');
   const patch = patchHtml(htmlBefore);
   assert.equal(patch.html.replace(patch.tag, ''), htmlBefore, 'NON_PROMO_HTML_CHANGED');
   const settings = await api(`/scripts/${SCRIPT}/settings`);
@@ -438,7 +449,7 @@ try {
     try {
       const custom = await publicFile('/index.html');
       const direct = await publicFile('/index.html', DIRECT_ORIGIN);
-      if (sha(custom) === sha(patch.html) && sha(direct) === sha(patch.html)) {
+      if (hasServedPromo(custom) && hasServedPromo(direct) && sha(custom) === sha(direct)) {
         propagated = true;
         break;
       }
