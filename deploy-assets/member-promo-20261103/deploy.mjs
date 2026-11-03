@@ -116,10 +116,12 @@ function configFromCurrent(version, settings, crons, assetsDirectory, extraModul
   assert.equal(version.main_module, 'index.js', 'CURRENT_MAIN_MODULE_CHANGED');
   assert(version.compatibility_date, 'CURRENT_COMPATIBILITY_DATE_MISSING');
   assert(Array.isArray(version.bindings), 'CURRENT_BINDINGS_MISSING');
-  const unsupportedBindings = version.bindings.filter(binding => !['assets', 'service'].includes(binding.type));
+  const unsupportedBindings = version.bindings.filter(binding => !['assets', 'service', 'kv_namespace'].includes(binding.type));
   assert.equal(unsupportedBindings.length, 0, `UNSUPPORTED_CURRENT_BINDING_STOP:${JSON.stringify(unsupportedBindings.map(binding => ({ name: binding.name, type: binding.type })))}`);
   const assetBindings = version.bindings.filter(binding => binding.type === 'assets');
   assert.equal(assetBindings.length, 1, 'CURRENT_ASSET_BINDING_SHAPE_CHANGED');
+  const kvBindings = version.bindings.filter(binding => binding.type === 'kv_namespace');
+  assert(kvBindings.every(binding => binding.name && binding.namespace_id), 'CURRENT_KV_BINDING_SHAPE_CHANGED');
   const assetConfig = version.assets?.config;
   assert(assetConfig && assetConfig.base_path === '/', 'CURRENT_ASSET_CONFIG_MISSING');
   const config = {
@@ -129,6 +131,7 @@ function configFromCurrent(version, settings, crons, assetsDirectory, extraModul
     compatibility_flags: version.compatibility_flags || [],
     no_bundle: true,
     services: version.bindings.filter(binding => binding.type === 'service').map(binding => ({ binding: binding.name, service: binding.service, ...(binding.environment ? { environment: binding.environment } : {}) })),
+    kv_namespaces: kvBindings.map(binding => ({ binding: binding.name, id: binding.namespace_id })),
     assets: {
       directory: assetsDirectory,
       binding: assetBindings[0].name,
