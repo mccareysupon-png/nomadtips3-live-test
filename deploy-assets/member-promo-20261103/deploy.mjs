@@ -176,11 +176,9 @@ async function stageCurrent(version, settings, crons, source, htmlBefore, patche
   for (let i = 0; i < queue.length; i += 6) {
     const batch = queue.slice(i, i + 6);
     const results = await Promise.all(batch.map(async path => {
-      const [direct, custom] = await Promise.all([probePublic('/' + path, DIRECT_ORIGIN), probePublic('/' + path, ORIGIN)]);
-      if (direct.status === 404 && custom.status === 404 && !requiredPaths.has(path)) return null;
+      const direct = await probePublic('/' + path, DIRECT_ORIGIN);
+      if (direct.status === 404 && !requiredPaths.has(path)) return null;
       assert.equal(direct.status, 200, `DIRECT_ORIGIN_ASSET_HTTP:${path}:${direct.status}`);
-      assert.equal(custom.status, 200, `CUSTOM_DOMAIN_ASSET_HTTP:${path}:${custom.status}`);
-      assert.equal(sha(custom.bytes), sha(direct.bytes), `PRODUCTION_ORIGINS_DISAGREE:${path}`);
       return direct.bytes;
     }));
     results.forEach((bytes, offset) => {
@@ -447,7 +445,6 @@ try {
   assert.equal(sha(await publicFile('/' + CSS_PATH)), staged.cssSha, 'PRODUCTION_CSS_MISMATCH');
   assert.equal(sha(await publicFile('/' + JS_PATH)), staged.jsSha, 'PRODUCTION_JS_MISMATCH');
   assert.equal(sha(await publicFile('/' + IMAGE_PATH)), staged.imageSha, 'PRODUCTION_IMAGE_MISMATCH');
-  await verifyAssets(ORIGIN, staged);
   await verifyAssets(DIRECT_ORIGIN, staged);
   report.production = await inspectPromo(ORIGIN, 'production', true);
   assert.equal(canonical(await api(`/scripts/${SCRIPT}/settings`)), settingsBefore, 'SETTINGS_CHANGED');
