@@ -137,7 +137,11 @@ function configFromCurrent(version, settings, crons, assetsDirectory, extraModul
     },
     triggers: { crons }
   };
-  if (extraModules.length) config.rules = [{ type: 'Data', globs: extraModules.map(module => module.name), fallthrough: true }];
+  const moduleRules = [
+    { type: 'Data', globs: extraModules.filter(module => module.name.endsWith('.bin')).map(module => module.name), fallthrough: true },
+    { type: 'ESModule', globs: extraModules.filter(module => /\.m?js$/.test(module.name)).map(module => module.name), fallthrough: true }
+  ].filter(rule => rule.globs.length);
+  if (moduleRules.length) config.rules = moduleRules;
   for (const key of ['logpush', 'limits', 'observability']) if (settings[key] !== undefined && settings[key] !== null) config[key] = settings[key];
   if (settings.placement?.mode === 'smart') config.placement = settings.placement;
   return config;
@@ -154,7 +158,7 @@ async function stageCurrent(version, settings, crons, source, htmlBefore, patche
   const extraModules = version.modules.filter(module => module.name !== version.main_module && !module.name.startsWith('assets/'));
   for (const module of publicModules) requiredPaths.add(safeAssetPath(module.name));
   for (const module of extraModules) {
-    assert(/^[a-zA-Z0-9][a-zA-Z0-9._-]*\.bin$/.test(module.name), `UNSUPPORTED_EXTRA_MODULE:${module.name}`);
+    assert(/^[a-zA-Z0-9][a-zA-Z0-9._-]*\.(?:bin|m?js)$/.test(module.name), `UNSUPPORTED_EXTRA_MODULE:${module.name}`);
     assert(source.includes(module.name), `UNREFERENCED_EXTRA_MODULE:${module.name}`);
     const bytes = Buffer.from(module.content_base64, 'base64');
     assert(bytes.length > 0, `EMPTY_EXTRA_MODULE:${module.name}`);
