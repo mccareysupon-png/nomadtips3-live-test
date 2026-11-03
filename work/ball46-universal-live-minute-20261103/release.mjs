@@ -7,8 +7,8 @@ import { parse } from 'acorn';
 const ACCOUNT = '62cb0db544160e6591342abd6b4f35cc';
 const WORKER = 'ball46-production';
 const API = `https://api.cloudflare.com/client/v4/accounts/${ACCOUNT}`;
-const MARK = 'B46_STATISTICS_LIVE_SCORE_RUNTIME_20261103';
-const STYLE_ID = 'b46-statistics-live-score-runtime-20261103';
+const MARK = 'B46_UNIVERSAL_EVENT_WATCH_MOTION_20261103';
+const STYLE_ID = 'b46-universal-event-watch-motion-20261103';
 const request = JSON.parse(await readFile('release-request.json', 'utf8'));
 
 assert.equal(request.approved, true, 'OWNER_APPROVAL_REQUIRED');
@@ -80,7 +80,7 @@ async function config() {
 
 async function get(host, path) {
   const url = new URL(path, host);
-  url.searchParams.set('b46StatisticsLiveScoreAudit', `${process.env.GITHUB_RUN_ID}-${Date.now()}`);
+  url.searchParams.set('b46EventWatchMotionAudit', `${process.env.GITHUB_RUN_ID}-${Date.now()}`);
   const response = await fetch(url, { headers: { 'cache-control': 'no-cache' }, signal: AbortSignal.timeout(45000) });
   const body = Buffer.from(await response.arrayBuffer());
   return { status: response.status, headers: Object.fromEntries(response.headers), body, sha: sha(body) };
@@ -105,42 +105,36 @@ async function health(host) {
   return checked;
 }
 
-const payload = `<script id="${STYLE_ID}">
-(()=>{'use strict';
-if(window.__b46StatisticsLiveScore20261103)return;
-window.__b46StatisticsLiveScore20261103=true;
-let queued=false;
-function scoreOf(fixture){
- const goals=fixture?.goals,home=Number(goals?.home),away=Number(goals?.away);
- return Number.isInteger(home)&&home>=0&&Number.isInteger(away)&&away>=0?{home,away,value:home+'-'+away}:null;
+const payload = `<style id="${STYLE_ID}">
+/* Keep Event Watch moving on every browser and device, including reduced-motion OS settings. */
+html body .b46-event-watch .ew-orbit{
+ animation-name:ew-sweep!important;
+ animation-duration:5s!important;
+ animation-timing-function:linear!important;
+ animation-iteration-count:infinite!important;
+ animation-play-state:running!important;
 }
-function live(fixture){
- const text=[fixture?.boardState,fixture?.status,fixture?.statusCode].filter(Boolean).join(' ').toLowerCase();
- return fixture?.boardState==='live'||/\\blive\\b|in[_ ]?play|playing|first half|second half|half.?time|\\b1h\\b|\\b2h\\b|\\bht\\b/.test(text);
+html body .b46-event-watch .ew-dot{
+ animation-name:ew-breathe!important;
+ animation-duration:3s!important;
+ animation-timing-function:ease-in-out!important;
+ animation-iteration-count:infinite!important;
+ animation-play-state:running!important;
 }
-function updateRow(row){
- let data;try{data=JSON.parse(row.dataset.b46StatDisplay||'')}catch{return}
- if(data?.settled)return;
- const fixture=window.NOMAD343_DASHBOARD_V2?.getFixture?.(data.fixtureId);if(!fixture||!live(fixture))return;
- const score=scoreOf(fixture),stack=row.querySelector('.b46-sc-score .b46-sc-stack');if(!score||!stack)return;
- const values=stack.querySelectorAll(':scope > span');if(values.length<2)return;
- if(values[0].textContent!==String(score.home))values[0].textContent=String(score.home);
- if(values[1].textContent!==String(score.away))values[1].textContent=String(score.away);
- stack.dataset.scoreValue=score.value;stack.setAttribute('aria-label','Score: Home '+score.home+', Away '+score.away);
- if(data.finalScore!==score.value){data.finalScore=score.value;data.final=score.value+(data.cornerText?' · '+data.cornerText:'');row.dataset.b46StatDisplay=JSON.stringify(data)}
- row.dataset.b46LiveScore='1';
+html body .b46-event-watch .ew-track::after{
+ animation-name:ew-line!important;
+ animation-duration:4.5s!important;
+ animation-timing-function:ease-in-out!important;
+ animation-iteration-count:infinite!important;
+ animation-play-state:running!important;
 }
-function sync(){queued=false;document.querySelectorAll('.sp-table tbody tr[data-b46-stat-display]').forEach(updateRow)}
-function schedule(){if(queued)return;queued=true;requestAnimationFrame(sync)}
-function boot(){sync();new MutationObserver(schedule).observe(document.body,{childList:true,subtree:true});setInterval(sync,2000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)sync()})}
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
-})();
-</script>`;
+</style>`;
 
 function patchHTML(html) {
   assert.equal(html.split(`id="${STYLE_ID}"`).length - 1, 0, 'STYLE_ALREADY_PRESENT');
-  assert(html.includes('id="b46-worldwide-live-clock-runtime-20261103"'), 'WORLDWIDE_CLOCK_RUNTIME_MISSING');
-  assert(html.includes('/b46-statistics-columns-20261102.js'), 'STATISTICS_RENDERER_MISSING');
+  assert(html.includes('id="b46-universal-monitor-motion-20261103"'), 'PREVIOUS_MONITOR_MOTION_MISSING');
+  assert(html.includes('/b46-radar-watch-20261030.css'), 'EVENT_WATCH_STYLE_MISSING');
+  assert(html.includes('/b46-radar-watch-20261030.js'), 'EVENT_WATCH_RENDERER_MISSING');
   assert.equal(html.split('</head>').length - 1, 1, 'HEAD_ANCHOR_DRIFT');
   return html.replace('</head>', `${payload}\n</head>`);
 }
@@ -156,14 +150,14 @@ function patchMain(source) {
   const between = source.slice(node.start, node.declaration.start);
   const after = source.slice(node.declaration.start);
   assert.equal(between.trim(), 'export default', 'EXPORT_DEFAULT_DRIFT');
-  const previous = `${before}const __b46StatsScorePrevious=${after}`;
+  const previous = `${before}const __b46EventWatchPrevious=${after}`;
   const patchFunction = patchHTML.toString()
-    .replace('function patchHTML', 'function __b46StatsScorePatchHTML')
-    .replaceAll('assert(', '__b46StatsScoreAssert(')
-    .replaceAll('assert.equal(', '__b46StatsScoreAssertEqual(')
-    .replaceAll('STYLE_ID', '__b46StatsScoreRuntimeId')
-    .replaceAll('payload', '__b46StatsScorePayload');
-  return `${previous}\nconst __b46StatsScoreMarker=${JSON.stringify(MARK)},__b46StatsScoreRuntimeId=${JSON.stringify(STYLE_ID)},__b46StatsScorePayload=${JSON.stringify(payload)};\nconst __b46StatsScoreAssert=(value,message)=>{if(!value)throw Error(message)},__b46StatsScoreAssertEqual=(a,b,message)=>{if(a!==b)throw Error(message)};\n${patchFunction}\nexport default{...__b46StatsScorePrevious,async fetch(request,env,ctx){const response=await __b46StatsScorePrevious.fetch(request,env,ctx),url=new URL(request.url);if(request.method!==\"GET\"||![\"/\",\"/index.html\"].includes(url.pathname)||!response.ok||!(response.headers.get(\"content-type\")||\"\").includes(\"text/html\"))return response;const headers=new Headers(response.headers);headers.delete(\"etag\");headers.delete(\"content-length\");headers.set(\"x-b46-statistics-live-score\",__b46StatsScoreMarker);return new Response(__b46StatsScorePatchHTML(await response.text()),{status:response.status,statusText:response.statusText,headers})}};\n`;
+    .replace('function patchHTML', 'function __b46EventWatchPatchHTML')
+    .replaceAll('assert(', '__b46EventWatchAssert(')
+    .replaceAll('assert.equal(', '__b46EventWatchAssertEqual(')
+    .replaceAll('STYLE_ID', '__b46EventWatchStyleId')
+    .replaceAll('payload', '__b46EventWatchPayload');
+  return `${previous}\nconst __b46EventWatchMarker=${JSON.stringify(MARK)},__b46EventWatchStyleId=${JSON.stringify(STYLE_ID)},__b46EventWatchPayload=${JSON.stringify(payload)};\nconst __b46EventWatchAssert=(value,message)=>{if(!value)throw Error(message)},__b46EventWatchAssertEqual=(a,b,message)=>{if(a!==b)throw Error(message)};\n${patchFunction}\nexport default{...__b46EventWatchPrevious,async fetch(request,env,ctx){const response=await __b46EventWatchPrevious.fetch(request,env,ctx),url=new URL(request.url);if(request.method!==\"GET\"||![\"/\",\"/index.html\"].includes(url.pathname)||!response.ok||!(response.headers.get(\"content-type\")||\"\").includes(\"text/html\"))return response;const headers=new Headers(response.headers);headers.delete(\"etag\");headers.delete(\"content-length\");headers.set(\"x-b46-event-watch-motion\",__b46EventWatchMarker);return new Response(__b46EventWatchPatchHTML(await response.text()),{status:response.status,statusText:response.statusText,headers})}};\n`;
 }
 
 async function publicInventory(host, html) {
@@ -199,68 +193,60 @@ async function browserProof(host, candidate) {
     const page = await context.newPage();
     const errors = [];
     page.on('pageerror', (error) => errors.push(error.message));
-    await page.goto(new URL('/?view=statistics', host).href, { waitUntil: 'domcontentloaded', timeout: 90000 });
-    await page.waitForFunction(() => typeof window.NOMAD343_DASHBOARD_V2?.getFixture === 'function', null, { timeout: 60000 });
+    await page.goto(host, { waitUntil: 'domcontentloaded', timeout: 90000 });
     await page.evaluate(() => {
-      const api = window.NOMAD343_DASHBOARD_V2;
-      window.__b46StatsScoreOriginalGetFixture = api.getFixture;
-      window.__b46StatsScoreFixture = { id: '__b46_stats_live_score_test__', boardState: 'live', status: 'LIVE', goals: { home: 2, away: 1 } };
-      api.getFixture = (id) => id === '__b46_stats_live_score_test__'
-        ? window.__b46StatsScoreFixture
-        : window.__b46StatsScoreOriginalGetFixture(id);
-      const table = document.createElement('table');
-      table.id = 'b46-stats-live-score-specimen';
-      table.className = 'sp-table';
-      table.innerHTML = '<tbody><tr data-b46-stat-display=\'{"fixtureId":"__b46_stats_live_score_test__","settled":false,"finalScore":"0-0","cornerText":""}\'><td class="b46-sc-score"><div class="b46-sc-stack" data-score-value="0-0"><span>0</span><span>0</span></div></td></tr></tbody>';
-      document.body.append(table);
+      const specimen = document.createElement('div');
+      specimen.id = 'b46-event-watch-motion-specimen';
+      specimen.className = 'b46-event-watch';
+      specimen.innerHTML = '<svg viewBox="0 0 40 40"><g class="ew-orbit"><path d="M20 3a17 17 0 0 1 17 17"/></g><circle class="ew-dot" cx="20" cy="20" r="2.5"/></svg><span class="ew-track"></span>';
+      document.body.append(specimen);
     });
-    const score = async () => page.evaluate(() => {
-      const row = document.querySelector('#b46-stats-live-score-specimen tr');
-      const stack = row?.querySelector('.b46-sc-stack');
-      const values = [...(stack?.querySelectorAll(':scope > span') || [])].map((item) => item.textContent);
+    const animations = await page.evaluate(() => {
+      const root = document.querySelector('#b46-event-watch-motion-specimen');
+      const orbit = root.querySelector('.ew-orbit');
+      const dot = root.querySelector('.ew-dot');
+      const track = root.querySelector('.ew-track');
       return {
-        value: values.join('-'),
-        dataValue: stack?.dataset.scoreValue,
-        display: row?.dataset.b46StatDisplay ? JSON.parse(row.dataset.b46StatDisplay) : null,
-        liveMarker: row?.dataset.b46LiveScore,
+        orbit: getComputedStyle(orbit).animationName,
+        dot: getComputedStyle(dot).animationName,
+        line: getComputedStyle(track, '::after').animationName,
+        orbitPlayState: getComputedStyle(orbit).animationPlayState,
       };
     });
-    await page.waitForFunction(() => document.querySelector('#b46-stats-live-score-specimen .b46-sc-stack')?.dataset.scoreValue === '2-1', null, { timeout: 5000 });
-    const initial = await score();
-    assert.equal(initial.value, '2-1', 'INITIAL_LIVE_SCORE_NOT_SYNCED');
-    assert.equal(initial.display?.finalScore, '2-1', 'MOBILE_DATASET_NOT_SYNCED');
-    assert.equal(initial.liveMarker, '1', 'LIVE_SCORE_MARKER_MISSING');
-    await page.evaluate(() => { window.__b46StatsScoreFixture.goals = { home: 2, away: 2 }; });
-    await page.waitForFunction(() => document.querySelector('#b46-stats-live-score-specimen .b46-sc-stack')?.dataset.scoreValue === '2-2', null, { timeout: 5000 });
-    const changed = await score();
-    assert.equal(changed.value, '2-2', 'LIVE_SCORE_DID_NOT_CHANGE_WHILE_OPEN');
-    assert.equal(changed.display?.finalScore, '2-2', 'MOBILE_DATASET_DID_NOT_CHANGE');
-    await page.evaluate(() => {
-      const row = document.querySelector('#b46-stats-live-score-specimen tr');
-      const data = JSON.parse(row.dataset.b46StatDisplay);
-      data.settled = true;
-      row.dataset.b46StatDisplay = JSON.stringify(data);
-      window.__b46StatsScoreFixture.goals = { home: 9, away: 9 };
+    assert.equal(animations.orbit, 'ew-sweep', 'EVENT_WATCH_ORBIT_ANIMATION_DISABLED');
+    assert.equal(animations.dot, 'ew-breathe', 'EVENT_WATCH_DOT_ANIMATION_DISABLED');
+    assert.equal(animations.line, 'ew-line', 'EVENT_WATCH_LINE_ANIMATION_DISABLED');
+    assert.equal(animations.orbitPlayState, 'running', 'EVENT_WATCH_ORBIT_NOT_RUNNING');
+    const samples = { orbit: [], dot: [], line: [] };
+    for (let index = 0; index < 9; index++) {
+      await page.waitForTimeout(180);
+      const sample = await page.evaluate(() => {
+        const root = document.querySelector('#b46-event-watch-motion-specimen');
+        return {
+          orbit: getComputedStyle(root.querySelector('.ew-orbit')).transform,
+          dot: getComputedStyle(root.querySelector('.ew-dot')).opacity,
+          line: getComputedStyle(root.querySelector('.ew-track'), '::after').left,
+        };
+      });
+      for (const key of Object.keys(samples)) samples[key].push(sample[key]);
+    }
+    for (const [key, values] of Object.entries(samples)) {
+      assert(new Set(values).size > 1, `EVENT_WATCH_${key.toUpperCase()}_STATIC_ON_REDUCED_MOTION`);
+    }
+    const actual = await page.evaluate(() => {
+      const root = [...document.querySelectorAll('.b46-event-watch')].find((item) => item.id !== 'b46-event-watch-motion-specimen');
+      if (!root) return { found: false };
+      return {
+        found: true,
+        orbit: getComputedStyle(root.querySelector('.ew-orbit')).animationName,
+        dot: getComputedStyle(root.querySelector('.ew-dot')).animationName,
+        line: getComputedStyle(root.querySelector('.ew-track'), '::after').animationName,
+      };
     });
-    await page.waitForTimeout(2400);
-    const locked = await score();
-    assert.equal(locked.value, '2-2', 'SETTLED_SCORE_WAS_MUTATED');
-    const actual = await page.evaluate(() => [...document.querySelectorAll('.sp-table tbody tr[data-b46-stat-display]')]
-      .filter((row) => !row.closest('#b46-stats-live-score-specimen'))
-      .map((row) => {
-        let data; try { data = JSON.parse(row.dataset.b46StatDisplay || ''); } catch { return null; }
-        const fixture = window.NOMAD343_DASHBOARD_V2?.getFixture?.(data.fixtureId);
-        const stack = row.querySelector('.b46-sc-score .b46-sc-stack');
-        return { fixtureId: data.fixtureId, settled: Boolean(data.settled), boardState: fixture?.boardState, expected: fixture?.goals ? `${fixture.goals.home}-${fixture.goals.away}` : null, actual: stack?.dataset.scoreValue };
-      }).filter(Boolean));
-    await page.evaluate(() => {
-      window.NOMAD343_DASHBOARD_V2.getFixture = window.__b46StatsScoreOriginalGetFixture;
-      document.querySelector('#b46-stats-live-score-specimen')?.remove();
-      delete window.__b46StatsScoreFixture;
-      delete window.__b46StatsScoreOriginalGetFixture;
-    });
+    if (actual.found) assert.deepEqual({ orbit: actual.orbit, dot: actual.dot, line: actual.line }, { orbit: 'ew-sweep', dot: 'ew-breathe', line: 'ew-line' }, 'ACTUAL_EVENT_WATCH_ANIMATION_DRIFT');
+    await page.evaluate(() => document.querySelector('#b46-event-watch-motion-specimen')?.remove());
     assert.equal(errors.length, 0, `PAGE_ERRORS:${errors.join('|')}`);
-    return { candidate, viewport: '390x844', initial, changed, locked, actualRowsSampled: actual.length, actual, pageErrors: errors };
+    return { candidate, viewport: '390x844', reducedMotion: 'reduce', animations, samples, actual, pageErrors: errors };
   } finally {
     await browser.close();
   }
@@ -304,7 +290,16 @@ try {
   assert(html.includes('id="b46-universal-live-minute-20261103"'), 'LIVE_MINUTE_FIX_NOT_PRESERVED');
   assert(html.includes('id="b46-universal-monitor-motion-20261103"'), 'MONITOR_MOTION_FIX_NOT_PRESERVED');
   assert(html.includes('id="b46-worldwide-live-clock-runtime-20261103"'), 'WORLDWIDE_CLOCK_FIX_NOT_PRESERVED');
+  assert(html.includes('id="b46-statistics-live-score-runtime-20261103"'), 'STATISTICS_LIVE_SCORE_FIX_NOT_PRESERVED');
   assert(html.includes('function b46gnLiveMinuteMarkup'), 'MOBILE_ALL_MATCHES_RENDERER_MISSING');
+  const [eventStyle, eventRenderer] = await Promise.all([
+    get('https://ball46.com', '/b46-radar-watch-20261030.css'),
+    get('https://ball46.com', '/b46-radar-watch-20261030.js'),
+  ]);
+  assert.equal(eventStyle.status, 200, 'EVENT_WATCH_STYLE_MISSING');
+  assert.equal(eventRenderer.status, 200, 'EVENT_WATCH_RENDERER_MISSING');
+  assert(eventStyle.body.toString('utf8').includes('@media(prefers-reduced-motion:reduce)'), 'EVENT_WATCH_REDUCED_MOTION_SOURCE_DRIFT');
+  assert(eventRenderer.body.toString('utf8').includes('EVENT WATCH'), 'EVENT_WATCH_RENDERER_DRIFT');
   const statisticsRenderer = await get('https://ball46.com', '/b46-statistics-columns-20261102.js?v=1');
   assert.equal(statisticsRenderer.status, 200, 'STATISTICS_RENDERER_MISSING');
   const statisticsSource = statisticsRenderer.body.toString('utf8');
@@ -335,7 +330,7 @@ try {
     assets: { config: base.assets.config },
     annotations: {
       'workers/tag': MARK,
-      'workers/message': 'Live Statistics scores follow current shared Board goals; settled rows locked',
+      'workers/message': 'Universal Event Watch motion on every device, including reduced-motion settings',
     },
   };
   for (const key of ['usage_model', 'logpush', 'limits', 'observability', 'placement']) {
@@ -373,7 +368,7 @@ try {
   report.browserProof = await browserProof(preview, candidateId);
   assert.equal((await active()).version, baseId, 'PRODUCTION_MOVED_DURING_PREVIEW');
 
-  await deployTraffic(candidateId, baseId, 'Live Statistics score synchronization verified on desktop and mobile; settled rows locked');
+  await deployTraffic(candidateId, baseId, 'Universal Event Watch orbit, pulse and track motion verified on mobile reduced-motion devices');
   switched = true;
   for (let attempt = 0; attempt < 40; attempt++) {
     const current = await active();
@@ -395,14 +390,14 @@ try {
   report.ok = true;
   report.finishedAt = new Date().toISOString();
   await save();
-  console.log(`BALL46_STATISTICS_LIVE_SCORE_PASS=${JSON.stringify({ base: baseId, candidate: candidateId, deployment: report.after.deployment })}`);
+  console.log(`BALL46_EVENT_WATCH_MOTION_PASS=${JSON.stringify({ base: baseId, candidate: candidateId, deployment: report.after.deployment })}`);
 } catch (error) {
   report.ok = false;
   report.error = error.stack || error.message;
   if (switched && baseId && candidateId) {
     try {
       if ((await active()).version === candidateId) {
-        await deployTraffic(baseId, candidateId, 'Automatic restore: Statistics live score verification failed');
+        await deployTraffic(baseId, candidateId, 'Automatic restore: Event Watch motion verification failed');
         report.automaticRestore = await active();
       }
     } catch (restoreError) {
