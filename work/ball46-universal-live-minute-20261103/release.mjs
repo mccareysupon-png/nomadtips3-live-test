@@ -89,7 +89,13 @@ async function get(host, path) {
 async function health(host) {
   const checked = [];
   for (const path of ['/api/engine/health', '/api/full-market/health', '/api/engine/board', '/api/engine/statistics?paged=1']) {
-    const response = await get(host, path);
+    let response;
+    for (let attempt = 1; attempt <= 4; attempt++) {
+      response = await get(host, path);
+      if (response.status === 200) break;
+      assert(attempt < 4, `HEALTH_STATUS:${path}`);
+      await wait(2000 * attempt);
+    }
     assert.equal(response.status, 200, `HEALTH_STATUS:${path}`);
     const json = JSON.parse(response.body);
     assert.equal(json.ok, true, `HEALTH_NOT_OK:${path}`);
