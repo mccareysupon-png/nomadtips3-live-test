@@ -121,11 +121,15 @@ function patchWorkerSource(source, css, runtimeJs) {
   assert(!source.includes(MARK), 'WORKER_PROMO_PATCH_ALREADY_PRESENT');
   assert(!source.includes(IMAGE_MODULE), 'WORKER_PROMO_IMAGE_MODULE_ALREADY_PRESENT');
   assert(!css.includes('</style>') && !runtimeJs.includes('</script>'), 'PROMO_ASSET_INLINE_TERMINATOR_FOUND');
-  const finalExport = /export\s+default\s+([A-Za-z_$][\w$]*)\s*;?\s*$/.exec(source);
-  if (!finalExport) console.log('B46_WORKER_EXPORT_DIAGNOSTIC ' + JSON.stringify({ tail: source.slice(-2400), exports: [...source.matchAll(/export\s+default/g)].map(match => match.index) }));
-  assert(finalExport?.index !== undefined, 'WORKER_FINAL_EXPORT_SHAPE_CHANGED');
-  const delegate = finalExport[1];
-  const wrapper = `const __b46BeforeMemberPromo20261103=${delegate};\n` +
+  const ast = parse(source, { ecmaVersion: 'latest', sourceType: 'module' });
+  const defaultExports = ast.body.filter(node => node.type === 'ExportDefaultDeclaration');
+  assert.equal(defaultExports.length, 1, 'WORKER_DEFAULT_EXPORT_COUNT_CHANGED');
+  const finalExport = defaultExports[0];
+  assert.equal(source.slice(finalExport.end).trim(), '', 'WORKER_CODE_AFTER_DEFAULT_EXPORT');
+  assert(finalExport.declaration?.start !== undefined && finalExport.declaration?.end !== undefined, 'WORKER_DEFAULT_EXPORT_DECLARATION_MISSING');
+  const delegate = '__b46BeforeMemberPromo20261103';
+  const exportedValue = source.slice(finalExport.declaration.start, finalExport.declaration.end);
+  const wrapper = `const ${delegate}=${exportedValue};\n` +
     `const __b46MemberPromoCss20261103=${JSON.stringify(css)};\n` +
     `const __b46MemberPromoJs20261103=${JSON.stringify(runtimeJs)};\n` +
     `const __b46MemberPromo20261103={...__b46BeforeMemberPromo20261103,async fetch(request,env,ctx){\n` +
@@ -139,7 +143,7 @@ function patchWorkerSource(source, css, runtimeJs) {
     ` const headers=new Headers(response.headers);headers.delete('content-length');headers.delete('etag');headers.set('cache-control','no-cache, must-revalidate');headers.set('x-ball46-member-promo','${MARK}');\n` +
     ` return new Response(html.replace('</body>',${JSON.stringify(promoTag())}+'</body>'),{status:response.status,statusText:response.statusText,headers});\n` +
     `}};\nexport default __b46MemberPromo20261103;\n`;
-  const patched = `import __b46MemberPromoImage20261103 from './${IMAGE_MODULE}';\n` + source.slice(0, finalExport.index) + wrapper;
+  const patched = `import __b46MemberPromoImage20261103 from './${IMAGE_MODULE}';\n` + source.slice(0, finalExport.start) + wrapper;
   parse(patched, { ecmaVersion: 'latest', sourceType: 'module' });
   return patched;
 }
