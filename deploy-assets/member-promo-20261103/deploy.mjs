@@ -194,7 +194,8 @@ async function stageCurrent(version, settings, crons, source, htmlBefore, patche
   const requiredPaths = new Set(readFileSync(resolve('assets', 'production-paths-20260928.txt'), 'utf8').split(/\r?\n/).filter(Boolean));
   const publicModules = version.modules.filter(module => module.name !== version.main_module && module.name.startsWith('assets/'));
   const extraModules = version.modules.filter(module => module.name !== version.main_module && !module.name.startsWith('assets/'));
-  for (const module of publicModules) requiredPaths.add(safeAssetPath(module.name));
+  const rawPublicModules = new Map(publicModules.map(module => [safeAssetPath(module.name), Buffer.from(module.content_base64, 'base64')]));
+  for (const path of rawPublicModules.keys()) requiredPaths.add(path);
   for (const module of extraModules) {
     assert(/^[a-zA-Z0-9][a-zA-Z0-9._-]*\.(?:bin|m?js|txt)$/.test(module.name), `UNSUPPORTED_EXTRA_MODULE:${module.name}`);
     assert(source.includes(module.name), `UNREFERENCED_EXTRA_MODULE:${module.name}`);
@@ -213,23 +214,22 @@ async function stageCurrent(version, settings, crons, source, htmlBefore, patche
   for (let i = 0; i < queue.length; i += 6) {
     const batch = queue.slice(i, i + 6);
     const results = await Promise.all(batch.map(async path => {
-      // The active Worker applies guarded runtime transformations to index.html.
-      // Re-upload the raw version module, not the already transformed HTTP body,
-      // otherwise those guards execute twice and fail closed on anchor drift.
-      if (path === 'index.html') return Buffer.from(htmlBefore);
       const direct = await probePublic('/' + path, DIRECT_ORIGIN);
       if (direct.status === 404 && !requiredPaths.has(path)) return null;
       assert.equal(direct.status, 200, `DIRECT_ORIGIN_ASSET_HTTP:${path}:${direct.status}`);
-      return direct.bytes;
+      // Version modules are the authoritative raw bytes. HTTP responses may
+      // already contain guarded Worker transformations and must never be fed
+      // back into the next version as source assets.
+      const stored = rawPublicModules.get(path) || restoreRuntimePatchedAsset(path, direct.bytes, source);
+      return { served: direct.bytes, stored };
     }));
-    results.forEach((bytes, offset) => {
+    results.forEach((result, offset) => {
       const path = batch[offset];
-      if (!bytes) return;
-      originalHashes[path] = sha(bytes);
-      const storedBytes = path === 'index.html' ? bytes : restoreRuntimePatchedAsset(path, bytes, source);
+      if (!result) return;
+      originalHashes[path] = sha(result.served);
       const target = resolve(assets, path);
       mkdirSync(dirname(target), { recursive: true });
-      writeFileSync(target, path === 'index.html' ? patchedHtml : storedBytes);
+      writeFileSync(target, path === 'index.html' ? patchedHtml : result.stored);
     });
   }
   assert(originalHashes['index.html'], 'ACTIVE_INDEX_MODULE_MISSING');
