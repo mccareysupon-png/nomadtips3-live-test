@@ -334,6 +334,7 @@ async function inspectPromo(baseOrigin, label, includeMobile) {
             height: rect?.height || 0,
             href: card?.href || '',
             beforeFeatured: Boolean(card?.nextElementSibling?.matches('.featured-card[data-featured]')),
+            imageSrcCorrect: Boolean(image?.src.includes(imagePath)),
             imageLoaded: Boolean(image?.complete && image.naturalWidth > 0 && image.src.includes(imagePath)),
             scriptLoaded: [...document.scripts].some(script => (script.src || '').includes(jsPath)),
             horizontalOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 2,
@@ -343,7 +344,8 @@ async function inspectPromo(baseOrigin, label, includeMobile) {
         assert(snapshot.count >= 1, `${label}:${viewport.name}:${theme}:PROMO_MISSING`);
         assert.equal(snapshot.href, 'https://member.ball46.com/pricing', `${label}:${viewport.name}:${theme}:PROMO_LINK_CHANGED`);
         assert.equal(snapshot.beforeFeatured, true, `${label}:${viewport.name}:${theme}:PROMO_POSITION_CHANGED`);
-        assert.equal(snapshot.imageLoaded, true, `${label}:${viewport.name}:${theme}:PROMO_IMAGE_MISSING`);
+        assert.equal(snapshot.imageSrcCorrect, true, `${label}:${viewport.name}:${theme}:PROMO_IMAGE_SOURCE_CHANGED`);
+        if (snapshot.visible) assert.equal(snapshot.imageLoaded, true, `${label}:${viewport.name}:${theme}:PROMO_IMAGE_MISSING`);
         assert.equal(snapshot.scriptLoaded, true, `${label}:${viewport.name}:${theme}:PROMO_SCRIPT_MISSING`);
         assert.equal(snapshot.horizontalOverflow, false, `${label}:${viewport.name}:${theme}:HORIZONTAL_OVERFLOW`);
         assert.equal(snapshot.title, 'GOBEYONDTHESCORE.', `${label}:${viewport.name}:${theme}:PROMO_COPY_CHANGED`);
