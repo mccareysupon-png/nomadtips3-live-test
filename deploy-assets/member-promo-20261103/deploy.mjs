@@ -122,6 +122,7 @@ function patchWorkerSource(source, css, runtimeJs) {
   assert(!source.includes(IMAGE_MODULE), 'WORKER_PROMO_IMAGE_MODULE_ALREADY_PRESENT');
   assert(!css.includes('</style>') && !runtimeJs.includes('</script>'), 'PROMO_ASSET_INLINE_TERMINATOR_FOUND');
   const finalExport = /export\s+default\s+([A-Za-z_$][\w$]*)\s*;?\s*$/.exec(source);
+  if (!finalExport) console.log('B46_WORKER_EXPORT_DIAGNOSTIC ' + JSON.stringify({ tail: source.slice(-2400), exports: [...source.matchAll(/export\s+default/g)].map(match => match.index) }));
   assert(finalExport?.index !== undefined, 'WORKER_FINAL_EXPORT_SHAPE_CHANGED');
   const delegate = finalExport[1];
   const wrapper = `const __b46BeforeMemberPromo20261103=${delegate};\n` +
