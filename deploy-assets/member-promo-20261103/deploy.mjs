@@ -116,7 +116,8 @@ function configFromCurrent(version, settings, crons, assetsDirectory, extraModul
   assert.equal(version.main_module, 'index.js', 'CURRENT_MAIN_MODULE_CHANGED');
   assert(version.compatibility_date, 'CURRENT_COMPATIBILITY_DATE_MISSING');
   assert(Array.isArray(version.bindings), 'CURRENT_BINDINGS_MISSING');
-  assert(version.bindings.every(binding => ['assets', 'service'].includes(binding.type)), 'UNSUPPORTED_CURRENT_BINDING_STOP');
+  const unsupportedBindings = version.bindings.filter(binding => !['assets', 'service'].includes(binding.type));
+  assert.equal(unsupportedBindings.length, 0, `UNSUPPORTED_CURRENT_BINDING_STOP:${JSON.stringify(unsupportedBindings.map(binding => ({ name: binding.name, type: binding.type })))}`);
   const assetBindings = version.bindings.filter(binding => binding.type === 'assets');
   assert.equal(assetBindings.length, 1, 'CURRENT_ASSET_BINDING_SHAPE_CHANGED');
   const assetConfig = version.assets?.config;
