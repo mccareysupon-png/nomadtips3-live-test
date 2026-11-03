@@ -7,8 +7,8 @@ import { parse } from 'acorn';
 const ACCOUNT = '62cb0db544160e6591342abd6b4f35cc';
 const WORKER = 'ball46-production';
 const API = `https://api.cloudflare.com/client/v4/accounts/${ACCOUNT}`;
-const MARK = 'B46_UNIVERSAL_LIVE_MINUTE_20261103';
-const STYLE_ID = 'b46-universal-live-minute-20261103';
+const MARK = 'B46_UNIVERSAL_MONITOR_MOTION_20261103';
+const STYLE_ID = 'b46-universal-monitor-motion-20261103';
 const request = JSON.parse(await readFile('release-request.json', 'utf8'));
 
 assert.equal(request.approved, true, 'OWNER_APPROVAL_REQUIRED');
@@ -100,14 +100,32 @@ async function health(host) {
 }
 
 const style = `<style id="${STYLE_ID}">
-/* One live-minute blink contract for desktop, mobile and Statistics. */
-@keyframes b46-universal-live-minute-blink-20261103{0%,49.99%{opacity:1}50%,100%{opacity:0}}
-html body .b46-live-minute-mark,
-html[data-b46gn="1"] body #b46gn-cards .b46gn-cardhead[data-kind="live"] .b46gn-clock .b46gn-minute-tick,
-html body .b46-sc-mark{
- animation-name:b46-universal-live-minute-blink-20261103!important;
- animation-duration:1s!important;
- animation-timing-function:step-end!important;
+/* Keep the live Match Monitor and Signal Watch moving on every device. */
+html body .mini-monitor .mini-scan-beam{
+ animation-name:mini-crisp-travel!important;
+ animation-duration:3.2s!important;
+ animation-timing-function:linear!important;
+ animation-iteration-count:infinite!important;
+ animation-play-state:running!important;
+}
+html body .b46-signal-watch .ew-orbit{
+ animation-name:ew-sweep!important;
+ animation-duration:5s!important;
+ animation-timing-function:linear!important;
+ animation-iteration-count:infinite!important;
+ animation-play-state:running!important;
+}
+html body .b46-signal-watch .ew-dot{
+ animation-name:ew-breathe!important;
+ animation-duration:3s!important;
+ animation-timing-function:ease-in-out!important;
+ animation-iteration-count:infinite!important;
+ animation-play-state:running!important;
+}
+html body .b46-signal-watch .ew-track::after{
+ animation-name:ew-line!important;
+ animation-duration:4.5s!important;
+ animation-timing-function:ease-in-out!important;
  animation-iteration-count:infinite!important;
  animation-play-state:running!important;
 }
@@ -115,8 +133,8 @@ html body .b46-sc-mark{
 
 function patchHTML(html) {
   assert.equal(html.split(`id="${STYLE_ID}"`).length - 1, 0, 'STYLE_ALREADY_PRESENT');
-  assert(html.includes('b46-live-minute-mark'), 'DESKTOP_MINUTE_MARK_MISSING');
-  assert(html.includes('b46gn-minute-tick'), 'MOBILE_MINUTE_MARK_MISSING');
+  assert(html.includes('/b46-monitor-20261030.css'), 'MATCH_MONITOR_CSS_MISSING');
+  assert(html.includes('/b46-radar-watch-20261030.css'), 'SIGNAL_WATCH_CSS_MISSING');
   assert.equal(html.split('</head>').length - 1, 1, 'HEAD_ANCHOR_DRIFT');
   return html.replace('</head>', `${style}\n</head>`);
 }
@@ -180,12 +198,12 @@ async function browserProof(host, candidate) {
       document.documentElement.dataset.b46gn = '1';
       const specimen = document.createElement('div');
       specimen.id = 'b46-minute-specimen';
-      specimen.innerHTML = '<span class="b46-live-minute-mark">′</span><div id="b46gn-cards"><div class="b46gn-cardhead" data-kind="live"><span class="b46gn-clock"><span class="b46gn-minute-tick">′</span></span></div></div><span class="b46-sc-mark">′</span>';
+      specimen.innerHTML = '<div class="mini-monitor"><svg><g class="mini-scan"><circle class="mini-scan-beam"></circle></g></svg></div><div class="b46-signal-watch"><span class="ew-emblem"><svg><g class="ew-orbit"></g><circle class="ew-dot"></circle></svg></span><span class="ew-track"></span></div>';
       document.body.append(specimen);
     });
     const result = await page.evaluate(() => {
-      const selectors = ['.b46-live-minute-mark', '.b46gn-minute-tick', '.b46-sc-mark'];
-      return Object.fromEntries(selectors.map((selector) => {
+      const selectors = ['.mini-scan-beam', '.ew-orbit', '.ew-dot'];
+      const rows = Object.fromEntries(selectors.map((selector) => {
         const element = document.querySelector(`#b46-minute-specimen ${selector}`);
         const css = getComputedStyle(element);
         return [selector, {
@@ -196,10 +214,26 @@ async function browserProof(host, candidate) {
           animations: element.getAnimations().length,
         }];
       }));
+      const track = document.querySelector('#b46-minute-specimen .ew-track');
+      const trackCSS = getComputedStyle(track, '::after');
+      rows['.ew-track::after'] = {
+        animationName: trackCSS.animationName,
+        duration: trackCSS.animationDuration,
+        iterationCount: trackCSS.animationIterationCount,
+        playState: trackCSS.animationPlayState,
+        animations: track.getAnimations({ subtree: true }).length,
+      };
+      return rows;
     });
+    const expected = {
+      '.mini-scan-beam': ['mini-crisp-travel', '3.2s'],
+      '.ew-orbit': ['ew-sweep', '5s'],
+      '.ew-dot': ['ew-breathe', '3s'],
+      '.ew-track::after': ['ew-line', '4.5s'],
+    };
     for (const [selector, proof] of Object.entries(result)) {
-      assert.equal(proof.animationName, 'b46-universal-live-minute-blink-20261103', `ANIMATION_NAME:${selector}`);
-      assert.equal(proof.duration, '1s', `ANIMATION_DURATION:${selector}`);
+      assert.equal(proof.animationName, expected[selector][0], `ANIMATION_NAME:${selector}`);
+      assert.equal(proof.duration, expected[selector][1], `ANIMATION_DURATION:${selector}`);
       assert.equal(proof.iterationCount, 'infinite', `ANIMATION_ITERATION:${selector}`);
       assert.equal(proof.playState, 'running', `ANIMATION_STOPPED:${selector}`);
       assert(proof.animations >= 1, `ANIMATION_NOT_CREATED:${selector}`);
@@ -246,10 +280,13 @@ try {
   const root = await get('https://ball46.com', '/');
   assert.equal(root.status, 200, 'BASELINE_ROOT_NOT_OK');
   const html = root.body.toString('utf8');
-  assert(html.includes('/b46-statistics-columns-20261102.js'), 'STATISTICS_RENDERER_NOT_CURRENT');
-  const stats = await get('https://ball46.com', '/b46-statistics-columns-20261102.js?v=1');
-  assert.equal(stats.status, 200, 'STATISTICS_RENDERER_MISSING');
-  assert(stats.body.toString('utf8').includes('b46-sc-mark'), 'STATISTICS_MARK_NOT_SEPARATED');
+  assert(html.includes('id="b46-universal-live-minute-20261103"'), 'LIVE_MINUTE_FIX_NOT_PRESERVED');
+  const monitorCSS = await get('https://ball46.com', '/b46-monitor-20261030.css?v=b46-monitor-ring-crisp-20261102');
+  const radarCSS = await get('https://ball46.com', '/b46-radar-watch-20261030.css');
+  assert.equal(monitorCSS.status, 200, 'MATCH_MONITOR_CSS_MISSING');
+  assert.equal(radarCSS.status, 200, 'SIGNAL_WATCH_CSS_MISSING');
+  assert(monitorCSS.body.toString('utf8').includes('@media(prefers-reduced-motion:reduce){.mini-monitor *{animation:none!important'), 'MATCH_MONITOR_REDUCED_MOTION_ANCHOR_DRIFT');
+  assert(radarCSS.body.toString('utf8').includes('@media(prefers-reduced-motion:reduce){.ew-orbit,.ew-dot,.ew-track:after{animation:none!important}'), 'SIGNAL_WATCH_REDUCED_MOTION_ANCHOR_DRIFT');
   const patchedHTML = patchHTML(html);
   report.rootBeforeSha = root.sha;
   report.rootExpectedSha = sha(Buffer.from(patchedHTML));
@@ -275,7 +312,7 @@ try {
     assets: { config: base.assets.config },
     annotations: {
       'workers/tag': MARK,
-      'workers/message': 'Universal live-minute apostrophe blink on Main and Statistics',
+      'workers/message': 'Universal Match Monitor and Signal Watch motion on every device',
     },
   };
   for (const key of ['usage_model', 'logpush', 'limits', 'observability', 'placement']) {
@@ -313,7 +350,7 @@ try {
   report.browserProof = await browserProof(preview, candidateId);
   assert.equal((await active()).version, baseId, 'PRODUCTION_MOVED_DURING_PREVIEW');
 
-  await deployTraffic(candidateId, baseId, 'Universal live-minute apostrophe blink verified on Main and Statistics');
+  await deployTraffic(candidateId, baseId, 'Universal Match Monitor and Signal Watch motion verified on reduced-motion devices');
   switched = true;
   for (let attempt = 0; attempt < 40; attempt++) {
     const current = await active();
@@ -335,14 +372,14 @@ try {
   report.ok = true;
   report.finishedAt = new Date().toISOString();
   await save();
-  console.log(`BALL46_UNIVERSAL_LIVE_MINUTE_PASS=${JSON.stringify({ base: baseId, candidate: candidateId, deployment: report.after.deployment })}`);
+  console.log(`BALL46_UNIVERSAL_MONITOR_MOTION_PASS=${JSON.stringify({ base: baseId, candidate: candidateId, deployment: report.after.deployment })}`);
 } catch (error) {
   report.ok = false;
   report.error = error.stack || error.message;
   if (switched && baseId && candidateId) {
     try {
       if ((await active()).version === candidateId) {
-        await deployTraffic(baseId, candidateId, 'Automatic restore: universal live-minute verification failed');
+        await deployTraffic(baseId, candidateId, 'Automatic restore: universal monitor motion verification failed');
         report.automaticRestore = await active();
       }
     } catch (restoreError) {
