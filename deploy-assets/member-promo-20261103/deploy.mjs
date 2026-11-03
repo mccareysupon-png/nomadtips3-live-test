@@ -106,8 +106,7 @@ function patchHtml(html) {
 }
 
 function safeAssetPath(moduleName) {
-  assert(moduleName.startsWith('assets/'), `NON_ASSET_MODULE:${moduleName}`);
-  const path = moduleName.slice('assets/'.length);
+  const path = moduleName.startsWith('assets/') ? moduleName.slice('assets/'.length) : moduleName;
   assert(path && /^[a-zA-Z0-9][a-zA-Z0-9./_-]*$/.test(path) && !path.split('/').includes('..'), `UNSAFE_ASSET_PATH:${path}`);
   return path;
 }
@@ -445,4 +444,5 @@ try {
   console.error(error.stack);
   process.exitCode = 1;
 }
+
 
