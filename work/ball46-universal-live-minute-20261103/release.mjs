@@ -295,7 +295,12 @@ try {
   assert.deepEqual(moduleSummary(candidate), moduleSummary({ modules: candidateModules }), 'CANDIDATE_MODULES_DIFFER');
   assert.equal(canonical(candidate.bindings), canonical(base.bindings), 'BINDINGS_CHANGED');
   assert.equal((await active()).version, baseId, 'CANDIDATE_UPLOAD_CHANGED_TRAFFIC');
-  assert.equal(sha(canonical(await config())), report.configBeforeSha, 'CONFIG_CHANGED_AFTER_UPLOAD');
+  const configAfterUpload = await config();
+  if (sha(canonical(configAfterUpload)) !== report.configBeforeSha) {
+    await writeFile('audit/config-before.json', JSON.stringify(configBefore, null, 2));
+    await writeFile('audit/config-after-upload.json', JSON.stringify(configAfterUpload, null, 2));
+  }
+  assert.equal(sha(canonical(configAfterUpload)), report.configBeforeSha, 'CONFIG_CHANGED_AFTER_UPLOAD');
 
   const preview = `https://${candidateId.slice(0, 8)}-${WORKER}.mccarey-supon.workers.dev`;
   report.preview = preview;
