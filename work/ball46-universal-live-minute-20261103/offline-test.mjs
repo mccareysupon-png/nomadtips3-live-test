@@ -14,6 +14,8 @@ assert(source.includes('INITIAL_LIVE_SCORE_NOT_SYNCED'), 'INITIAL_SCORE_TEST_MIS
 assert(source.includes('LIVE_SCORE_DID_NOT_CHANGE_WHILE_OPEN'), 'IN_SESSION_CHANGE_TEST_MISSING');
 assert(source.includes('SETTLED_SCORE_WAS_MUTATED'), 'SETTLED_REGRESSION_TEST_MISSING');
 assert(source.includes('CANDIDATE_UPLOAD_CHANGED_TRAFFIC'), 'NO_TRAFFIC_GUARD_MISSING');
+assert(source.includes('attempt <= 4'), 'BOUNDED_HEALTH_RETRY_MISSING');
+assert(source.includes('attempt < 4'), 'HEALTH_FAIL_CLOSED_MISSING');
 assert(source.includes('Automatic restore: Statistics live score verification failed'), 'AUTO_RESTORE_MISSING');
 assert(source.includes("MutationObserver(schedule)"), 'DYNAMIC_RENDERER_OBSERVER_MISSING');
 assert(source.includes("['ball46.com', 'www.ball46.com']"), 'DOMAIN_SCOPE_GUARD_MISSING');
