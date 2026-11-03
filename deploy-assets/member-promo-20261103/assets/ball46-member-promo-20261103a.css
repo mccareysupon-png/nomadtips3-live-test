@@ -1,0 +1,176 @@
+/* B46_MEMBER_PROMO_20261103 */
+.b46-member-promo {
+  --b46-promo-ink: #f3fff8;
+  --b46-promo-muted: #b8cec2;
+  --b46-promo-accent: #62eeaa;
+  --b46-promo-button-ink: #052115;
+  position: relative;
+  isolation: isolate;
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: 148px;
+  max-height: 176px;
+  aspect-ratio: 2.18 / 1;
+  margin: 0 0 10px;
+  overflow: hidden;
+  border: 1px solid rgba(116, 235, 173, .16);
+  border-radius: 15px;
+  color: var(--b46-promo-ink);
+  background: #17382d;
+  box-shadow: 0 12px 30px rgba(0, 10, 7, .28), inset 0 1px 0 rgba(255, 255, 255, .07);
+  text-decoration: none;
+  box-sizing: border-box;
+}
+
+.b46-member-promo::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(90deg, #0b2a20 0%, rgba(11, 42, 32, .98) 38%, rgba(11, 42, 32, .86) 52%, rgba(11, 42, 32, .34) 66%, transparent 80%);
+}
+
+.b46-member-promo::after {
+  content: none;
+}
+
+.b46-member-promo__image {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  object-fit: contain;
+  object-position: right center;
+  filter: none;
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+.b46-member-promo__content {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  width: 55%;
+  height: 100%;
+  padding: 16px 0 15px 17px;
+  box-sizing: border-box;
+}
+
+.b46-member-promo__eyebrow {
+  margin: 0 0 6px;
+  color: var(--b46-promo-accent);
+  font: 850 8px/1.15 Inter, ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+}
+
+.b46-member-promo__title {
+  max-width: 210px;
+  margin: 0;
+  color: var(--b46-promo-ink);
+  font: 950 clamp(16px, 1.55vw, 20px)/.98 Inter, ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: -.035em;
+  text-wrap: balance;
+}
+
+.b46-member-promo__copy {
+  max-width: 190px;
+  margin: 7px 0 10px;
+  color: var(--b46-promo-muted);
+  font: 650 9px/1.35 Inter, ui-sans-serif, system-ui, sans-serif;
+}
+
+.b46-member-promo__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 8px;
+  color: var(--b46-promo-button-ink);
+  background: var(--b46-promo-accent);
+  box-shadow: 0 5px 14px rgba(24, 181, 103, .2);
+  font: 900 8px/1 Inter, ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.b46-member-promo__cta::after {
+  content: "→";
+  font-size: 12px;
+  line-height: 1;
+}
+
+.b46-member-promo:hover,
+.b46-member-promo:focus-visible {
+  border-color: rgba(98, 238, 170, .42);
+  box-shadow: 0 14px 34px rgba(0, 10, 7, .34), 0 0 0 2px rgba(98, 238, 170, .12);
+  outline: none;
+}
+
+html[data-theme="light"] .b46-member-promo {
+  --b46-promo-ink: #153d2c;
+  --b46-promo-muted: #4f7160;
+  --b46-promo-accent: #168c58;
+  --b46-promo-button-ink: #f4fff8;
+  border-color: rgba(24, 113, 73, .14);
+  background: #f8fbf9;
+  box-shadow: 0 8px 24px rgba(36, 82, 55, .12), inset 0 1px 0 rgba(255, 255, 255, .8);
+}
+
+html[data-theme="light"] .b46-member-promo::before {
+  background: linear-gradient(90deg, #f8fbf9 0%, rgba(248, 251, 249, .98) 38%, rgba(248, 251, 249, .88) 52%, rgba(248, 251, 249, .38) 66%, transparent 80%);
+}
+
+html[data-theme="light"] .b46-member-promo__image {
+  filter: none;
+}
+
+@media (max-width: 760px) {
+  .b46-member-promo {
+    min-height: 132px;
+    max-height: 148px;
+    aspect-ratio: 2.28 / 1;
+    margin-bottom: 8px;
+    border-radius: 13px;
+  }
+
+  .b46-member-promo__content {
+    width: 58%;
+    padding: 13px 0 12px 13px;
+  }
+
+  .b46-member-promo__image {
+    right: 0;
+    width: 100%;
+    object-position: right center;
+  }
+
+  .b46-member-promo__title {
+    font-size: 15px;
+  }
+
+  .b46-member-promo__copy {
+    max-width: 155px;
+    margin: 5px 0 8px;
+    font-size: 8px;
+  }
+
+  .b46-member-promo__cta {
+    min-height: 25px;
+    padding-inline: 8px;
+  }
+}
+
+@media (max-width: 360px) {
+  .b46-member-promo__copy { display: none; }
+  .b46-member-promo__title { margin-bottom: 10px; }
+}
+
