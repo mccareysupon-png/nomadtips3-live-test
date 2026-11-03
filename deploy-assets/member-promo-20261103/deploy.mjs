@@ -112,6 +112,32 @@ function hasServedPromo(bytes) {
     && html.includes(`src="/${JS_PATH}?v=1"`);
 }
 
+function sourceString(source, name) {
+  const match = source.match(new RegExp(`const ${name}=("(?:\\\\.|[^"\\\\])*");`));
+  assert(match, `ACTIVE_SOURCE_CONSTANT_MISSING:${name}`);
+  return JSON.parse(match[1]);
+}
+
+function restoreRuntimePatchedAsset(path, bytes, source) {
+  if (path === 'signal-next.js') {
+    const anchor = sourceString(source, '__b46SignalOldJsAnchor');
+    const injection = sourceString(source, '__b46SignalJsInjection');
+    const patched = injection + '\n' + anchor;
+    const body = bytes.toString('utf8');
+    assert.equal(body.split(patched).length - 1, 1, 'ACTIVE_SIGNAL_JS_PATCH_SHAPE_CHANGED');
+    return Buffer.from(body.replace(patched, anchor));
+  }
+  if (path === 'signal.html') {
+    const oldTag = sourceString(source, '__b46SignalOldHtmlTag');
+    const newTag = sourceString(source, '__b46SignalNewHtmlTag');
+    const body = bytes.toString('utf8');
+    assert.equal(body.split(newTag).length - 1, 1, 'ACTIVE_SIGNAL_HTML_PATCH_SHAPE_CHANGED');
+    assert.equal(body.includes(oldTag), false, 'ACTIVE_SIGNAL_HTML_ALREADY_RAW');
+    return Buffer.from(body.replace(newTag, oldTag));
+  }
+  return bytes;
+}
+
 function safeAssetPath(moduleName) {
   assert(moduleName.startsWith('assets/'), `NON_PUBLIC_ASSET_MODULE:${moduleName}`);
   const path = moduleName.slice('assets/'.length);
@@ -200,9 +226,10 @@ async function stageCurrent(version, settings, crons, source, htmlBefore, patche
       const path = batch[offset];
       if (!bytes) return;
       originalHashes[path] = sha(bytes);
+      const storedBytes = path === 'index.html' ? bytes : restoreRuntimePatchedAsset(path, bytes, source);
       const target = resolve(assets, path);
       mkdirSync(dirname(target), { recursive: true });
-      writeFileSync(target, path === 'index.html' ? patchedHtml : bytes);
+      writeFileSync(target, path === 'index.html' ? patchedHtml : storedBytes);
     });
   }
   assert(originalHashes['index.html'], 'ACTIVE_INDEX_MODULE_MISSING');
@@ -398,14 +425,6 @@ try {
   assert(main, 'ACTIVE_MAIN_MISSING');
   const source = Buffer.from(main.content_base64, 'base64').toString('utf8');
   parse(source, { ecmaVersion: 'latest', sourceType: 'module' });
-  const rawPathProbes = [];
-  for (const path of ['/signal-next.js', '/%73ignal-next.js', '/signal-next%2Ejs', '//signal-next.js', '/./signal-next.js']) {
-    const response = await fetch(DIRECT_ORIGIN + path + '?rawPathProbe=' + Date.now(), { headers: { 'Cache-Control': 'no-cache' } });
-    const body = await response.text();
-    rawPathProbes.push({ path, status: response.status, length: body.length, injectionCount: body.split('BALL46_SIGNAL_STANDALONE_FETCH_20261023').length - 1, anchorCount: body.split("window.addEventListener('beforeunload',stop,{once:true});").length - 1 });
-  }
-  console.log('B46_RAW_PATH_DIAGNOSTIC ' + JSON.stringify(rawPathProbes));
-  throw new Error('B46_SIGNAL_SOURCE_DIAGNOSTIC_COMPLETE');
   const indexModule = current.modules.find(module => module.name === 'assets/index.html');
   assert(indexModule, 'ACTIVE_INDEX_MISSING');
   const moduleHtml = Buffer.from(indexModule.content_base64, 'base64');
