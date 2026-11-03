@@ -398,6 +398,9 @@ try {
   assert(main, 'ACTIVE_MAIN_MISSING');
   const source = Buffer.from(main.content_base64, 'base64').toString('utf8');
   parse(source, { ecmaVersion: 'latest', sourceType: 'module' });
+  const signalContexts = [...source.matchAll(/signal-next\.js/g)].map(match => source.slice(Math.max(0, match.index - 2400), match.index + 2400));
+  console.log('B46_SIGNAL_SOURCE_DIAGNOSTIC ' + JSON.stringify(signalContexts));
+  throw new Error('B46_SIGNAL_SOURCE_DIAGNOSTIC_COMPLETE');
   const indexModule = current.modules.find(module => module.name === 'assets/index.html');
   assert(indexModule, 'ACTIVE_INDEX_MISSING');
   const moduleHtml = Buffer.from(indexModule.content_base64, 'base64');
