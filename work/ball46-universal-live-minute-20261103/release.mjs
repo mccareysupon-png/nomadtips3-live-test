@@ -232,7 +232,8 @@ async function browserProof(host, candidate) {
       return {
         specimenText: clock?.textContent,
         specimenMark: mark?.textContent,
-        specimenAnimation: mark?.style.getPropertyValue('animation'),
+        specimenAnimation: mark ? getComputedStyle(mark).animationName : null,
+        specimenAnimationPriority: mark?.style.getPropertyPriority('animation'),
         actualLiveClockFound: Boolean(actualClock),
         actualLiveMarkFound: actualClock ? Boolean(actualMark) : null,
       };
@@ -240,6 +241,7 @@ async function browserProof(host, candidate) {
     assert.equal(result.specimenText, "37'", 'MOBILE_CLOCK_TEXT_CHANGED');
     assert.equal(result.specimenMark, "'", 'APOSTROPHE_SPLIT_FAILED');
     assert.equal(result.specimenAnimation, 'none', 'CSS_ANIMATION_NOT_NEUTRALIZED');
+    assert.equal(result.specimenAnimationPriority, 'important', 'INLINE_TIMER_PRIORITY_MISSING');
     if (result.actualLiveClockFound) assert.equal(result.actualLiveMarkFound, true, 'ACTUAL_MOBILE_LIVE_MARK_MISSING');
     assert.equal(errors.length, 0, `PAGE_ERRORS:${errors.join('|')}`);
     return { candidate, reducedMotion: 'reduce', viewport: '390x844', samples, result, pageErrors: errors };
