@@ -16,7 +16,7 @@ try{await Promise.all([1366,390].map(async width=>{
  });
  await p.goto('https://ball46.com/?status=live',{waitUntil:'domcontentloaded',timeout:60000});
  await p.waitForFunction(()=>document.querySelector('.match-row[data-match-id]'),null,{timeout:30000});
- await p.evaluate(()=>{window.__testRow=document.querySelector('.match-row');window.__testTeams=document.querySelector('.match-row .teams-cell');window.__fastChildLists=0;new MutationObserver(rs=>window.__fastChildLists+=rs.length).observe(document.querySelector('[data-board-sections]'),{childList:true,subtree:true});const table=document.createElement('table');table.hidden=true;table.className='sp-table';table.innerHTML='<tbody><tr data-b46-stat-display=\'{"fixtureId":"screen-test-1","settled":false}\'><td class="b46-sc-score"><span class="b46-sc-stack"><span>0</span><span>0</span></span></td></tr></tbody>';document.body.append(table);});
+ await p.evaluate(()=>{window.__testRow=document.querySelector('.match-row');window.__testTeams=document.querySelector('.match-row .teams-cell');window.__fastChildLists=0;window.__fastMutations=[];new MutationObserver(rs=>{window.__fastChildLists+=rs.length;window.__fastMutations.push(...rs.map(r=>({at:performance.now(),target:r.target.className,added:[...r.addedNodes].map(n=>n.nodeType===1?n.outerHTML.slice(0,250):n.textContent),removed:[...r.removedNodes].map(n=>n.nodeType===1?n.outerHTML.slice(0,250):n.textContent)})))}).observe(document.querySelector('[data-board-sections]'),{childList:true,subtree:true});const table=document.createElement('table');table.hidden=true;table.className='sp-table';table.innerHTML='<tbody><tr data-b46-stat-display=\'{"fixtureId":"screen-test-1","settled":false}\'><td class="b46-sc-score"><span class="b46-sc-stack"><span>0</span><span>0</span></span></td></tr></tbody>';document.body.append(table);});
  const start=Date.now(),initialReads=reads;
  value=1;minute=61;
  await p.waitForFunction(()=>window.NOMAD343_DASHBOARD_V2.getFixture('screen-test-1')?.goals?.home===1,null,{timeout:7000});
@@ -29,7 +29,7 @@ try{await Promise.all([1366,390].map(async width=>{
  fail=true;const oldReads=reads;await new Promise(r=>setTimeout(r,5400));assert(reads>oldReads);assert.equal(await p.locator('.desktop-team-score').first().textContent(),'0');fail=false;
  old=true;value=9;await new Promise(r=>setTimeout(r,5100));assert.equal(await p.locator('.desktop-team-score').first().textContent(),'0');old=false;value=2;minute=65;
  await p.waitForFunction(()=>window.NOMAD343_DASHBOARD_V2.getFixture('screen-test-1')?.minute===65,null,{timeout:7000});
- const identity=await p.evaluate(()=>({row:window.__testRow===document.querySelector('.match-row'),teams:window.__testTeams===document.querySelector('.match-row .teams-cell'),childLists:window.__fastChildLists}));
+ const identity=await p.evaluate(()=>({row:window.__testRow===document.querySelector('.match-row'),teams:window.__testTeams===document.querySelector('.match-row .teams-cell'),childLists:window.__fastChildLists,mutations:window.__fastMutations}));console.log(JSON.stringify({width,identity,requests}));
  assert(identity.row&&identity.teams);assert.equal(identity.childLists,0,'FAST_DOM_TRIGGERED_EXPANDED_ENGINE_FETCH');
  await p.waitForFunction(()=>document.querySelector('.match-row .desktop-team-score')?.textContent==='2');const wait=Math.max(0,32000-(Date.now()-t));if(wait)await new Promise(r=>setTimeout(r,wait));
  assert.equal(await p.locator('.desktop-team-score').first().textContent(),'2','OLD_ENGINE_BOARD_OVERWROTE_NEW_SCORE');
