@@ -1,0 +1,17 @@
+{
+  "preExistingStatisticsFailures": [],
+  "unexplainedFailures": [
+    {
+      "path": "/api/engine/signals",
+      "url": "/api/engine/signals?_=1793833143277",
+      "status": 599,
+      "bodyReadError": "response.text: Target page, context or browser has been closed"
+    },
+    {
+      "path": "/api/prediction-vote",
+      "url": "/api/prediction-vote?fixtureId=204054299",
+      "status": 503,
+      "body": "{\"ok\":false,\"error\":\"VOTE_TEMPORARILY_UNAVAILABLE\"}"
+    }
+  ]
+}
