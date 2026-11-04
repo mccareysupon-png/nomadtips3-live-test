@@ -1,0 +1,49 @@
+{
+  "at": "2026-11-04T03:54:28.044Z",
+  "run": "41769926952",
+  "readOnly": true,
+  "productionWrites": 0,
+  "ok": true,
+  "anonymous": [
+    {
+      "path": "/",
+      "method": "GET",
+      "status": 302,
+      "blocked": true
+    },
+    {
+      "path": "/api/settings",
+      "method": "GET",
+      "status": 302,
+      "blocked": true
+    },
+    {
+      "path": "/api/settings",
+      "method": "GET",
+      "forged": true,
+      "status": 302,
+      "blocked": true
+    },
+    {
+      "path": "/api/settings",
+      "method": "PUT",
+      "status": 302,
+      "blocked": true
+    }
+  ],
+  "versions": {
+    "ball46-production": "88dce0f2-40e2-4725-ae7c-22d84c946724",
+    "nomadtips3-5usd-hub-343": "98ea43ab-f40c-4de5-82e3-b0387dffd672",
+    "nomadtips3-engine-343": "02e09215-02b1-47fb-b1cf-9423f50c7ce9",
+    "nomadtips3-full-market-343-ball46": "3a53ee1a-467c-4a20-9f50-ba749e8adab4"
+  },
+  "adminVersion": "fbec2b2f-de89-41b3-bf6f-4ba8b6eab01c",
+  "controlAfterOwnerConfirmation": {
+    "liveRefreshSeconds": 30,
+    "autoReturnMinutes": 0,
+    "autoReturnAt": null,
+    "returnRefreshSeconds": 120,
+    "updatedAt": 1789732992622
+  },
+  "effectiveSeconds": 30
+}
