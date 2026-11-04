@@ -1,0 +1,35 @@
+name: BALL46 member promo actual-origin read-only layout diagnosis
+on:
+  push:
+    branches: [codex/ball46-member-promo-20261104]
+    paths: ['work/member-promo-card-20261104/layout-request.json']
+permissions:
+  contents: write
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-save --package-lock=false --prefix work/member-promo-card-20261104 acorn@8.15.0 parse5@7.3.0 playwright@1.56.1
+      - run: cd work/member-promo-card-20261104 && npx playwright install --with-deps chromium
+      - run: node work/member-promo-card-20261104/build-release.mjs
+      - name: Browser-only response overlay on the real origin; no Cloudflare credential and no Production writes
+        run: node work/member-promo-card-20261104/release-browser.mjs shadow
+      - name: Preserve layout diagnostic evidence
+        if: always()
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add work/member-promo-card-20261104/release-audit/*.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Diagnose member promo layout without Production changes [skip ci]"
+          git push origin HEAD:codex/ball46-member-promo-20261104
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: member-promo-layout-diagnosis
+          path: work/member-promo-card-20261104/release-audit
