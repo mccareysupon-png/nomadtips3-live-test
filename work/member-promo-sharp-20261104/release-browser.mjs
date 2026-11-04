@@ -1,9 +1,9 @@
 import assert from'node:assert/strict';import{chromium}from'playwright';import{readFile,writeFile}from'node:fs/promises';import{ROOT,DIR,sha,preview,patchHTML}from'./release-ops.mjs';
 const phase=process.argv[2];assert(['candidate','production','shadow'].includes(phase));const candidate=JSON.parse(await readFile(DIR+'/candidate.json')),host=phase==='candidate'?preview(candidate.candidate):'https://ball46.com',build=JSON.parse(await readFile(DIR+'/build.json')),payload=JSON.parse(await readFile(ROOT+'/stage/assets.json')),browser=await chromium.launch({headless:true}),results=[];
 try{for(const {width,theme} of [1366,390].flatMap(width=>['light','dark'].map(theme=>({width,theme})))){
-const reduced=width===390&&theme==='light',ctx=await browser.newContext({viewport:{width,height:900},reducedMotion:reduced?'reduce':'no-preference'}),p=await ctx.newPage(),errors=[],failures=[],snapshots=[],writes=[];let preventedProvider=0,directProvider=0;
+const reduced=width===390&&theme==='light',ctx=await browser.newContext({viewport:{width,height:900},reducedMotion:reduced?'reduce':'no-preference'}),p=await ctx.newPage(),errors=[],failures=[],snapshots=[],writes=[],failureReads=[];let preventedProvider=0,directProvider=0;
 await ctx.addInitScript(t=>localStorage.setItem('nomad343_dashboard_theme_v1',t),theme);
-p.on('pageerror',e=>errors.push(e.message));p.on('response',r=>{const u=new URL(r.url());if(u.hostname===new URL(host).hostname&&r.status()>=400&&!u.pathname.startsWith('/cdn-cgi/'))failures.push({path:u.pathname,status:r.status()});});
+p.on('pageerror',e=>errors.push(e.message));p.on('response',r=>{const u=new URL(r.url());if(u.hostname===new URL(host).hostname&&r.status()>=400&&!u.pathname.startsWith('/cdn-cgi/')){const item={path:u.pathname,url:u.pathname+u.search,status:r.status()};failures.push(item);failureReads.push(r.text().then(body=>{item.body=body}).catch(e=>{item.bodyReadError=e.message}));}});
 await ctx.route('**/*',async route=>{const req=route.request(),u=new URL(req.url());
 if(phase==='shadow'&&req.isNavigationRequest()&&u.hostname==='ball46.com'){const response=await route.fetch(),html=await response.text();return route.fulfill({response,body:patchHTML(html,payload.head,candidate.previousHead)});}
 if(phase==='shadow'&&build.assets.some(a=>a.path===u.pathname)){const response=await route.fetch({url:preview(candidate.candidate)+u.pathname+u.search});return route.fulfill({response});}
@@ -34,8 +34,26 @@ assert.equal(state.theme,theme);assert.equal(state.height,width===390?160:156);a
 const gaps=snapshots.slice(1,4).map((s,i)=>s.at-snapshots[i].at);for(const g of gaps)assert(g>=3500&&g<=8000,'DISPLAY_CADENCE_CHANGED:'+g);
 for(const asset of build.assets){const r=await ctx.request.get((phase==='shadow'?preview(candidate.candidate):host)+asset.path+'?v='+asset.version,{headers:{'cache-control':'no-cache'}});assert.equal(r.status(),200);assert.equal(sha(await r.body()),asset.sha,'ASSET_HASH_MISMATCH:'+asset.path);}
 const dashboard=await ctx.request.get(host+'/dashboard-v2-stage3-featured-facts-20261013a.js?v=b46-screen-refresh-5s-20261104',{headers:{'cache-control':'no-cache'}});assert.equal(sha(await dashboard.body()),'fd6202e8154f7ee6dd3c1b1bd589ef64e2580781cbb70bdadd8d6a68e2c82d50','5S_SOURCE_CHANGED');
-assert.deepEqual(errors,[]);assert.deepEqual(failures,[]);assert.deepEqual(writes,[]);assert.equal(directProvider,0);
-await p.screenshot({path:DIR+'/'+phase+'-'+width+'-'+theme+'.png',fullPage:false});results.push({width,theme,ok:true,reducedMotion:reduced,state,cacheReadGapsMs:gaps,providerReadsSuppressed:preventedProvider,directProviderAttempts:directProvider,pageErrors:errors,failedResources:failures,ownServerWrites:0});
+await Promise.all(failureReads);
+const preExistingStatisticsFailures=[],unexplainedFailures=[];
+for(const failure of failures){
+ if(failure.path==='/api/engine/statistics'&&failure.status===599&&typeof failure.body==='string'){
+  // Read the identical request through the untouched immediate baseline.
+  // Only a byte-identical 599 body is classified as an existing Statistics issue.
+  // Every other API/resource failure remains a hard failure.
+  const referenceURL=preview(candidate.base)+failure.url;
+  const reference=await ctx.request.get(referenceURL,{timeout:45000,headers:{'cache-control':'no-cache'}});
+  const referenceBody=await reference.text();
+  if(reference.status()===599&&referenceBody===failure.body){
+   preExistingStatisticsFailures.push({path:failure.path,url:failure.url,status:failure.status,referenceStatus:reference.status(),referenceVersion:candidate.base,identicalErrorBody:true,errorBodySha256:sha(referenceBody),errorBody:referenceBody.slice(0,1200)});
+   continue;
+  }
+  unexplainedFailures.push({...failure,referenceStatus:reference.status(),referenceBody:referenceBody.slice(0,1200)});
+ }else unexplainedFailures.push(failure);
+}
+await writeFile(DIR+'/'+phase+'-'+width+'-'+theme+'-request-comparison.json',JSON.stringify({preExistingStatisticsFailures,unexplainedFailures},null,2));
+assert.deepEqual(errors,[]);assert.deepEqual(unexplainedFailures,[],'UNEXPLAINED_RESOURCE_OR_API_FAILURE');assert.deepEqual(writes,[]);assert.equal(directProvider,0);
+await p.screenshot({path:DIR+'/'+phase+'-'+width+'-'+theme+'.png',fullPage:false});results.push({width,theme,ok:true,reducedMotion:reduced,state,cacheReadGapsMs:gaps,providerReadsSuppressed:preventedProvider,directProviderAttempts:directProvider,pageErrors:errors,failedResources:failures,preExistingStatisticsFailures,unexplainedFailures,ownServerWrites:0});
 await ctx.unrouteAll({behavior:'wait'});await ctx.close();
 }await writeFile(DIR+'/'+phase+'-browser.json',JSON.stringify({ok:true,phase,candidate:candidate.candidate,host,run:process.env.GITHUB_RUN_ID,at:new Date().toISOString(),results},null,2));console.log(JSON.stringify({ok:true,phase,results}));}catch(e){await writeFile(DIR+'/'+phase+'-browser-failure.json',JSON.stringify({ok:false,phase,error:e.stack,results},null,2));throw e}finally{for(const c of browser.contexts())await c.unrouteAll({behavior:'wait'});await browser.close()}
 
