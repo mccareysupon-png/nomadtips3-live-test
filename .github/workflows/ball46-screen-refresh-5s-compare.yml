@@ -1,0 +1,28 @@
+name: BALL46 5s screen refresh baseline request comparison
+on:
+  push:
+    branches: [codex/ball46-screen-refresh-5s-20261104]
+    paths: ['work/screen-refresh-5s-20261104/compare-request.json']
+permissions:
+  contents: write
+jobs:
+  compare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-save --package-lock=false --prefix work/screen-refresh-5s-20261104 playwright@1.56.1
+      - run: cd work/screen-refresh-5s-20261104 && npx playwright install --with-deps chromium
+      - run: node work/screen-refresh-5s-20261104/compare.mjs
+      - name: Preserve request comparison
+        if: always()
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add work/screen-refresh-5s-20261104/audit/request-comparison.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Compare original and fast display request cadence [skip ci]"
+          git push origin HEAD:codex/ball46-screen-refresh-5s-20261104
