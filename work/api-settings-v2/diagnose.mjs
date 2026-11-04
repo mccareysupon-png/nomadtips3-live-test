@@ -17,7 +17,7 @@ async function health(){for(let n=0;;n++)try{const r=await fetch('https://'+HUB+
 try{
  const proof=JSON.parse(await readFile('production-audit/preflight.json','utf8'));assert(proof.ok);report.before=Object.fromEntries(Object.entries(proof.workers).map(([w,v])=>[w,v.version]));
  for(const[w,id]of Object.entries(report.before))assert.equal(await active(w),id,'PRODUCTION_CHANGED_STOP');report.controlBefore=await health();
- previous=await active(ADMIN);assert.equal(previous,'8c101467-5976-487e-8fc3-6b8b9f79d7a2','UNKNOWN_ADMIN_STOP');report.previous=previous;
+ previous=await active(ADMIN);assert.equal(previous,'ada6b1d9-dfa9-4edf-8bcb-bc0af456f38e','UNKNOWN_ADMIN_STOP');report.previous=previous;
  const v=await version(ADMIN,previous),settings=await cf('/workers/scripts/'+ADMIN+'/settings'),schedules=await cf('/workers/scripts/'+ADMIN+'/schedules');await writeFile('private-production/owner-v2-admin-rollback.json',JSON.stringify(v));
  assert.equal(v.main_module,'index.mjs');assert(v.bindings.every(b=>['plain_text','service'].includes(b.type)),'UNEXPECTED_ADMIN_SECRET');
  const app=await cf('/access/apps/'+APP),policies=await cf('/access/apps/'+APP+'/policies');assert.equal(app.domain,HOST);assert.equal(policies.length,1);assert.equal(policies[0].decision,'allow');assert.deepEqual(policies[0].include,[{email:{email:OWNER}}]);assert(!policies[0].exclude?.length&&!policies[0].require?.length);
