@@ -1,6 +1,6 @@
 import assert from'node:assert/strict';import{chromium}from'playwright';import{readFile,writeFile}from'node:fs/promises';import{ROOT,DIR,sha,preview,patchHTML}from'./release-ops.mjs';
 const phase=process.argv[2];assert(['candidate','production','shadow'].includes(phase));const candidate=JSON.parse(await readFile(DIR+'/candidate.json')),host=phase==='candidate'?preview(candidate.candidate):'https://ball46.com',build=JSON.parse(await readFile(DIR+'/build.json')),payload=JSON.parse(await readFile(ROOT+'/stage/assets.json')),browser=await chromium.launch({headless:true}),results=[];
-try{await Promise.all([1366,390].flatMap(width=>['light','dark'].map(theme=>({width,theme}))).map(async({width,theme})=>{
+try{for(const {width,theme} of [1366,390].flatMap(width=>['light','dark'].map(theme=>({width,theme})))){
 const reduced=width===390&&theme==='light',ctx=await browser.newContext({viewport:{width,height:900},reducedMotion:reduced?'reduce':'no-preference'}),p=await ctx.newPage(),errors=[],failures=[],snapshots=[],writes=[];let preventedProvider=0,directProvider=0;
 await ctx.addInitScript(t=>localStorage.setItem('nomad343_dashboard_theme_v1',t),theme);
 p.on('pageerror',e=>errors.push(e.message));p.on('response',r=>{const u=new URL(r.url());if(u.hostname===new URL(host).hostname&&r.status()>=400&&!u.pathname.startsWith('/cdn-cgi/'))failures.push({path:u.pathname,status:r.status()});});
@@ -36,8 +36,8 @@ for(const asset of build.assets){const r=await ctx.request.get((phase==='shadow'
 const dashboard=await ctx.request.get(host+'/dashboard-v2-stage3-featured-facts-20261013a.js?v=b46-screen-refresh-5s-20261104',{headers:{'cache-control':'no-cache'}});assert.equal(sha(await dashboard.body()),'fd6202e8154f7ee6dd3c1b1bd589ef64e2580781cbb70bdadd8d6a68e2c82d50','5S_SOURCE_CHANGED');
 assert.deepEqual(errors,[]);assert.deepEqual(failures,[]);assert.deepEqual(writes,[]);assert.equal(directProvider,0);
 await p.screenshot({path:DIR+'/'+phase+'-'+width+'-'+theme+'.png',fullPage:false});results.push({width,theme,ok:true,reducedMotion:reduced,state,cacheReadGapsMs:gaps,providerReadsSuppressed:preventedProvider,directProviderAttempts:directProvider,pageErrors:errors,failedResources:failures,ownServerWrites:0});
-await ctx.close();
-}));await writeFile(DIR+'/'+phase+'-browser.json',JSON.stringify({ok:true,phase,candidate:candidate.candidate,host,run:process.env.GITHUB_RUN_ID,at:new Date().toISOString(),results},null,2));console.log(JSON.stringify({ok:true,phase,results}));}catch(e){await writeFile(DIR+'/'+phase+'-browser-failure.json',JSON.stringify({ok:false,phase,error:e.stack,results},null,2));throw e}finally{await browser.close()}
+await ctx.unrouteAll({behavior:'wait'});await ctx.close();
+}await writeFile(DIR+'/'+phase+'-browser.json',JSON.stringify({ok:true,phase,candidate:candidate.candidate,host,run:process.env.GITHUB_RUN_ID,at:new Date().toISOString(),results},null,2));console.log(JSON.stringify({ok:true,phase,results}));}catch(e){await writeFile(DIR+'/'+phase+'-browser-failure.json',JSON.stringify({ok:false,phase,error:e.stack,results},null,2));throw e}finally{for(const c of browser.contexts())await c.unrouteAll({behavior:'wait'});await browser.close()}
 
 
 
