@@ -1,6 +1,6 @@
 {
   "ok": true,
-  "passed": 21,
+  "passed": 22,
   "results": [
     "valid cache snapshot accepted",
     "reject provider response",
@@ -22,6 +22,7 @@
     "FT transition and subsequent FT correction",
     "legacy Engine board can invoke scan; do not accelerate it",
     "100 exact current cache getter reads add no provider or Engine calls",
+    "100 current website HUB routes add no Engine scan or provider call",
     "5s path uses HUB snapshot, baseline loops unchanged"
   ],
   "cacheReads": 100,
