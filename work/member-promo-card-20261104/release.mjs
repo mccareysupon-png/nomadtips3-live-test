@@ -22,6 +22,12 @@ const v=await version(report.candidate);assert.equal(v.annotations?.['workers/ta
 await checkPublic(preview(report.candidate),report.expected);assert.equal(canon(await config()),canon(report.configBefore));assert.equal((await active()).version,report.base);report.candidateVerified=true;report.ok=true;await json('candidate.json',report);
 }else{
 prior=JSON.parse(await readFile(DIR+'/candidate.json'));assert(prior.ok&&prior.candidateVerified);report.base=prior.base;report.candidate=prior.candidate;assert.equal((await active()).version,prior.base);assert.equal(canon(await config()),canon(prior.configBefore),'CONFIG_DRIFT');
+const original=await version(prior.base),candidateV=await version(prior.candidate),payload=JSON.parse(await readFile(ROOT+'/stage/assets.json'));
+assert.deepEqual(modules(original),prior.baseModules,'RESTORED_BASELINE_MODULE_DRIFT');
+assert.equal(candidateV.annotations?.['workers/tag'],TAG);const expectedModules=[...prior.baseModules.map(m=>m.name===original.main_module?{...m,sha:prior.boundary.candidateMainSha}:m),{name:MODULE,type:'text/plain',sha:sha(JSON.stringify(payload))}].sort((a,b)=>a.name.localeCompare(b.name));
+assert.deepEqual(modules(candidateV),expectedModules,'VERIFIED_CANDIDATE_MODULE_DRIFT');
+assert.equal(canon(candidateV.bindings),canon(original.bindings));for(const k of['assets','compatibility_date','compatibility_flags'])assert.equal(canon(candidateV[k]),canon(original[k]));
+
 const proof=JSON.parse(await readFile(DIR+'/candidate-browser.json'));assert(proof.ok&&proof.candidate===prior.candidate&&proof.results.length===4&&proof.results.every(x=>x.ok),'ALL_FOUR_BROWSER_CASES_REQUIRED');
 await checkPublic('https://ball46.com',prior.publicBefore);await checkPublic(preview(prior.candidate),prior.expected);report.healthBefore=await health();
 report.deployment=await traffic(prior.candidate,prior.base,'Activate owner-approved compact member promotion only');switched=true;report.activated=true;await json('activation.json',report);
@@ -30,3 +36,5 @@ report.healthAfter=await health();assert.equal(report.healthAfter.ownerConfigure
 }
 report.active=await active();report.finishedAt=new Date().toISOString();await json(phase==='stage'?'candidate.json':'activation.json',report);console.log(JSON.stringify({phase,ok:report.ok,base:report.base,candidate:report.candidate,active:report.active,publicPaths:report.expected?.length??prior?.expected.length}));
 }catch(e){report.ok=false;report.error=e.stack;if(switched)try{if((await active()).version===prior.candidate){await traffic(prior.base,prior.candidate,'Automatic restore after member promo verification failure');await converge(prior.base,prior.publicBefore);report.restored=true;}}catch(f){report.restoreError=f.message;}await json(phase+'-failure.json',report);console.error(e.stack);process.exitCode=1;}
+
+
