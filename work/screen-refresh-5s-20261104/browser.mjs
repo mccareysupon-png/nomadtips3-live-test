@@ -16,13 +16,15 @@ try{await Promise.all([1366,390].map(async width=>{
  });
  await p.goto('https://ball46.com/?status=live',{waitUntil:'domcontentloaded',timeout:60000});
  await p.waitForFunction(()=>document.querySelector('.match-row[data-match-id]'),null,{timeout:30000});
- await p.evaluate(()=>{window.__testRow=document.querySelector('.match-row');window.__testTeams=document.querySelector('.match-row .teams-cell');window.__fastChildLists=0;new MutationObserver(rs=>window.__fastChildLists+=rs.length).observe(document.querySelector('[data-board-sections]'),{childList:true,subtree:true});});
+ await p.evaluate(()=>{window.__testRow=document.querySelector('.match-row');window.__testTeams=document.querySelector('.match-row .teams-cell');window.__fastChildLists=0;new MutationObserver(rs=>window.__fastChildLists+=rs.length).observe(document.querySelector('[data-board-sections]'),{childList:true,subtree:true});const table=document.createElement('table');table.hidden=true;table.className='sp-table';table.innerHTML='<tbody><tr data-b46-stat-display=\'{"fixtureId":"screen-test-1","settled":false}\'><td class="b46-sc-score"><span class="b46-sc-stack"><span>0</span><span>0</span></span></td></tr></tbody>';document.body.append(table);});
  const start=Date.now(),initialReads=reads;
  value=1;minute=61;
  await p.waitForFunction(()=>window.NOMAD343_DASHBOARD_V2.getFixture('screen-test-1')?.goals?.home===1,null,{timeout:7000});
  let delta=Date.now()-start;assert(delta<6500,'NOT_WITHIN_5S_PLUS_NETWORK');assert.equal(await p.locator('.desktop-team-score').first().textContent(),'1');
  if(width===390){await p.waitForFunction(()=>document.querySelector('#b46gn-cards .b46gn-team-score')?.textContent==='1');}
  assert.equal(await p.locator('[data-featured-score]').first().textContent(),'1-0');
+ await p.waitForFunction(()=>document.querySelector('.sp-table .b46-sc-stack > span')?.textContent==='1',null,{timeout:3000});
+ await p.waitForFunction(()=>document.querySelector('#pv8-score')?.textContent.includes('1')&&document.querySelector('#pv8-clock')?.textContent.includes('61'),null,{timeout:3000});
  value=0;minute=62;await p.waitForFunction(()=>window.NOMAD343_DASHBOARD_V2.getFixture('screen-test-1')?.minute===62,null,{timeout:7000});assert.equal(await p.locator('.desktop-team-score').first().textContent(),'0');
  fail=true;const oldReads=reads;await new Promise(r=>setTimeout(r,5400));assert(reads>oldReads);assert.equal(await p.locator('.desktop-team-score').first().textContent(),'0');fail=false;
  old=true;value=9;await new Promise(r=>setTimeout(r,5100));assert.equal(await p.locator('.desktop-team-score').first().textContent(),'0');old=false;value=2;minute=65;
@@ -36,7 +38,7 @@ try{await Promise.all([1366,390].map(async width=>{
  const hiddenReads=reads;await new Promise(r=>setTimeout(r,5500));assert.equal(reads,hiddenReads,'HIDDEN_TAB_NOT_PAUSED');
  const resume=Date.now();await p.evaluate(()=>{window.__testHidden=false;document.dispatchEvent(new Event('visibilitychange'));});await p.waitForFunction(()=>window.NOMAD343_DASHBOARD_V2.getFixture('screen-test-1')?.minute===65);await new Promise(r=>setTimeout(r,250));assert(reads>hiddenReads,'NO_IMMEDIATE_RESUME');
  assert.deepEqual(errors,[]);const overflow=await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1);assert.equal(overflow,false);
- await p.screenshot({path:root+'/audit/preview-'+width+'.png'});
+ assert.equal(await p.locator('.sp-table .b46-sc-stack > span').first().textContent(),'2');await p.screenshot({path:root+'/audit/preview-'+width+'.png'});
  results.push({width,ok:true,firstUpdateMs:delta,fastReads:reads,boardReadsBeforeResume:boardReads,signalReads:requests.filter(r=>r.path==='/api/engine/signals').length,hiddenPause:true,resumeMs:Date.now()-resume,scoresCorrected:true,staleRejected:true,networkFailureRetainsData:true,oldBoardDidNotOverwrite:true,stableRows:true,fastChildListMutations:0,pageErrors:errors,overflow,providerRequestsAdded:0});
  await ctx.close();
 }));await writeFile(root+'/audit/browser-tests.json',JSON.stringify({ok:true,results,fixture:'isolated UI test - not Production match data'},null,2));console.log(JSON.stringify({ok:true,results}));}finally{await browser.close()}

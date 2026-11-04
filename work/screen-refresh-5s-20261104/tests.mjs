@@ -19,6 +19,10 @@ const snapshotContract=contracts.filter(c=>c.worker.includes('hub')&&c.name==='s
 const factory=new Function('VERSION2','STALE_MS2','now3','return class{'+snapshotContract.source+'}'),Hub=factory('TEST',90000,()=>t),hub=new Hub();let provider=0,engine=0;Object.assign(hub,{meta:async()=>({fetchedAt:t,liveFetchedAt:t}),state:async()=>({}),control:async()=>({liveRefreshSeconds:10}),readRows:async()=>base,refreshIfDue:async()=>{provider++;throw Error('PROVIDER_FORBIDDEN')}});
 for(let i=0;i<100;i++){const x=await hub.snapshot();assert.equal(x.cacheOnly,true);assert.equal(x.externalRequestsAdded,0)}
 test('100 exact current cache getter reads add no provider or Engine calls',()=>{assert.equal(provider,0);assert.equal(engine,0)});
+const routeContract=contracts.find(c=>c.worker==='ball46-production'&&c.name==='fetch'&&c.source.includes('url.pathname.startsWith("/api/hub/")'));
+const Site=new Function('hubRequest','return class{'+routeContract.source+'}')((request,path)=>new Request('https://hub.internal'+path,request)),site=new Site();
+for(let i=0;i<100;i++){const response=await site.fetch(new Request('https://ball46.com/api/hub/snapshot'),{HUB:{fetch:async request=>{assert.equal(new URL(request.url).pathname,'/snapshot');return Response.json(await hub.snapshot());}},ENGINE:{fetch:async()=>{engine++;throw Error('ENGINE_FORBIDDEN');}}});assert.equal((await response.json()).cacheOnly,true);}
+test('100 current website HUB routes add no Engine scan or provider call',()=>{assert.equal(engine,0);assert.equal(provider,0)});
 const after=await readFile(new URL('./stage/dashboard-after.js',import.meta.url),'utf8');
 test('5s path uses HUB snapshot, baseline loops unchanged',()=>{assert(after.includes("fetch('/api/hub/snapshot?_='"));for(const v of ['POLL_MS=30_000','SIGNAL_POLL_MS=30_000','SCOREBAR_STATS_POLL_MS=60_000'])assert(after.includes(v));});
 await writeFile(new URL('./audit/unit-tests.json',import.meta.url),JSON.stringify({ok:true,passed,results,cacheReads:100,providerRequestsAdded:0,engineScansAddedByFastLoop:0},null,2));console.log(JSON.stringify({ok:true,passed}));
