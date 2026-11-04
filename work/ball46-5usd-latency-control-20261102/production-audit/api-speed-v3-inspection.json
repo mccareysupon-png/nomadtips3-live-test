@@ -1,0 +1,1952 @@
+{
+  "at": "2026-11-04T04:03:15.797Z",
+  "run": "41770779696",
+  "readOnly": true,
+  "productionWrites": 0,
+  "providerRequestsAdded": 0,
+  "consumers": [
+    {
+      "name": "ball46-form-history-v1",
+      "version": "ff926e7d-e275-41ac-b67f-c2a8d5393d16",
+      "main": "history-store.mjs",
+      "cron": [],
+      "modules": [
+        {
+          "name": "history-core.mjs",
+          "sha": "4d03f45139313c41eaf11c098776ea43d114a0177eb4d21cfd374896e62a4c66",
+          "bytes": 1777
+        },
+        {
+          "name": "history-store.mjs",
+          "sha": "a9519b733081505d09e5d8206a9c024e94188d4792f4d5060c3b6cec3d9da5f1",
+          "bytes": 4832
+        }
+      ],
+      "bindings": [
+        {
+          "name": "FIVEDOLLAR_API_KEY",
+          "type": "secret_text"
+        },
+        {
+          "name": "HISTORY_GATE",
+          "type": "durable_object_namespace",
+          "class_name": "HistoryGate",
+          "namespace_id": "f04eb37c27b54c29b45d35c702391522"
+        }
+      ],
+      "providerHosts": [
+        "https://api.5dollarfootballapi.com/v1/teams/"
+      ],
+      "fetchFunctions": [
+        {
+          "module": "history-store.mjs",
+          "name": "read",
+          "bytes": 3090,
+          "sha": "64bd2f6c5c4d491f64b8db0c821f28272e9ad4041f733a80cf71b1d6f1e87ac8",
+          "providerReference": true,
+          "has429": true,
+          "hasQuota": false
+        },
+        {
+          "module": "history-store.mjs",
+          "name": "fetch",
+          "bytes": 1180,
+          "sha": "d44fbf9d473a952d93742674fc2a01f8c5abbf0b80154dc3ff02b69f8200a689",
+          "providerReference": true,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "history-store.mjs",
+          "name": "fetch",
+          "bytes": 217,
+          "sha": "9aafb07a5f8cfee51bf2359c3a70050df40d58f63fbb240b64f83b5ba060f758",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        }
+      ],
+      "quotaHeadersUsed": false,
+      "handles429": true
+    },
+    {
+      "name": "ball46-result-native-proxy-20261018",
+      "version": "4c646d3c-03f3-4c8c-afbf-e35c66e02443",
+      "main": "index.js",
+      "cron": [],
+      "modules": [
+        {
+          "name": "index.js",
+          "sha": "e9e58d0fc790c62e962c63eeda255145119f8f1e3738a1fb01a592f15784ce01",
+          "bytes": 3273
+        }
+      ],
+      "bindings": [
+        {
+          "name": "ENGINE",
+          "type": "service",
+          "service": "nomadtips3-engine-343"
+        },
+        {
+          "name": "FIVEDOLLAR_API_KEY",
+          "type": "secret_text"
+        },
+        {
+          "name": "RESULT_PROXY_TOKEN",
+          "type": "secret_text"
+        }
+      ],
+      "providerHosts": [],
+      "fetchFunctions": [
+        {
+          "module": "index.js",
+          "name": "handlePrivateFinal",
+          "bytes": 1824,
+          "sha": "b8cb85bc3f99b3ab8c2314cca97d5fcdb76d81a015d001d4a1ad2d81b0309689",
+          "providerReference": true,
+          "has429": false,
+          "hasQuota": false
+        }
+      ],
+      "quotaHeadersUsed": false,
+      "handles429": false
+    },
+    {
+      "name": "nomadtips3-341-5usd-staged",
+      "version": "e28f92e8-03f7-4814-95d5-c14e48d3b6c4",
+      "main": "worker-staged.js",
+      "cron": [
+        {
+          "cron": "* * * * *",
+          "created_on": "2026-09-15T03:15:51.9573Z",
+          "modified_on": "2026-09-15T03:15:51.9573Z"
+        }
+      ],
+      "modules": [
+        {
+          "name": "worker-staged.js",
+          "sha": "fc1fa605bcd8760680169731cccec80d11acbbb785a2a151290d9b8c8ebfada2",
+          "bytes": 52061
+        }
+      ],
+      "bindings": [
+        {
+          "name": "FIVEUSD_API_KEY",
+          "type": "secret_text"
+        },
+        {
+          "name": "NOMAD341_CONTROL",
+          "type": "durable_object_namespace",
+          "class_name": "Nomad341ControlState",
+          "namespace_id": "6a780771db23421ab25b26dadc1e358b"
+        },
+        {
+          "name": "NOMAD341_LIVE_PROVIDER_ENABLED",
+          "type": "plain_text",
+          "value": "false"
+        },
+        {
+          "name": "NOMAD341_MACHINE_ID",
+          "type": "plain_text"
+        }
+      ],
+      "providerHosts": [
+        "https://api.5dollarfootballapi.com/v1/fixtures"
+      ],
+      "fetchFunctions": [
+        {
+          "module": "worker-staged.js",
+          "name": "renderControlPage",
+          "bytes": 6922,
+          "sha": "e50252e47ca343faf5afbc6e8d72daa28b56ff0ee853ff4f4569946eefa93509",
+          "providerReference": false,
+          "has429": true,
+          "hasQuota": false
+        },
+        {
+          "module": "worker-staged.js",
+          "name": "fetch",
+          "bytes": 2106,
+          "sha": "cb7f08625672e76a93af2e3216e385f9b03f4db50a958bde149defc14eed077f",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "worker-staged.js",
+          "name": "loadControl",
+          "bytes": 219,
+          "sha": "385baa60e9689b2dda2bb834e6a90f8ca736ab4078ff03e74675c9d8dcca2d73",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "worker-staged.js",
+          "name": "patchControl",
+          "bytes": 1150,
+          "sha": "950399164e67c4df5b457a059a2452b2e0917341ed3af38a09208249aa53562d",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "worker-staged.js",
+          "name": "acquireLease",
+          "bytes": 603,
+          "sha": "ed7ad526db3dc1028d8e38e1605910b26139761cdb6aaf91bfaef9791d3a886d",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "worker-staged.js",
+          "name": "releaseLease",
+          "bytes": 292,
+          "sha": "1cde1726744c49451784f91c22a4772e14f46349533971684399a30b76b038f3",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "worker-staged.js",
+          "name": "loadState",
+          "bytes": 294,
+          "sha": "78927565f0f93acf2d88e3aba74a8393bbc4209891f251a0e4594994c468cf95",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "worker-staged.js",
+          "name": "saveState",
+          "bytes": 422,
+          "sha": "01238844896c9d6e6fdceff2cbb79007cb57d042f78513eb9cce2b147e3c0497",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "worker-staged.js",
+          "name": "fetchProviderOnce",
+          "bytes": 1580,
+          "sha": "b4c52427cba2c92b3cc1277f7bed59b26750d2afdecdae01638d7a3a1632ac9a",
+          "providerReference": true,
+          "has429": true,
+          "hasQuota": true
+        },
+        {
+          "module": "worker-staged.js",
+          "name": "fetch",
+          "bytes": 4318,
+          "sha": "12b7cab6e5ae0f1f114e5a66a5dc8b76791450c1660491dc87a22de2e5d17b22",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        }
+      ],
+      "quotaHeadersUsed": true,
+      "handles429": true
+    },
+    {
+      "name": "nomadtips3-343-auto-engine",
+      "version": "ae2d3e1f-a0d5-4d09-b0ac-4a48ec1a2489",
+      "main": "pause.js",
+      "cron": [
+        {
+          "cron": "* * * * *",
+          "created_on": "2026-09-10T01:37:27.983563Z",
+          "modified_on": "2026-09-13T05:37:05.134703Z"
+        }
+      ],
+      "modules": [
+        {
+          "name": "pause.js",
+          "sha": "e2acf0cb46da9b4cfcb66629608c112c0b87f781c36f10abf143d16732ff5ed4",
+          "bytes": 38199
+        }
+      ],
+      "bindings": [
+        {
+          "name": "FIVEDOLLAR_API_KEY",
+          "type": "secret_text"
+        },
+        {
+          "name": "STATE",
+          "type": "durable_object_namespace",
+          "class_name": "Nomad343State",
+          "namespace_id": "227d9ba60ddf4624b5a792eb27911508"
+        }
+      ],
+      "providerHosts": [
+        "https://api.5dollarfootballapi.com/v1"
+      ],
+      "fetchFunctions": [
+        {
+          "module": "pause.js",
+          "name": "fetchFullOdds",
+          "bytes": 490,
+          "sha": "385cdf4956bd86b5faea81f6cc40261e79964a155dc045fe7716ea80efdff7a3",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "pause.js",
+          "name": "providerLive",
+          "bytes": 560,
+          "sha": "f92576b5a248b87d0cc2392ef3ca11b533581a4caf95ad92e18a1a5a2ad88ee2",
+          "providerReference": true,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "pause.js",
+          "name": "fetch",
+          "bytes": 2656,
+          "sha": "c28913fee5ececf7cd0981f32bd73836400a0c4bf47bb606b38f4b6559d40ab7",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "pause.js",
+          "name": "proxy",
+          "bytes": 106,
+          "sha": "99af10075b845fce5c0d67fa7dcf1b28168ab6a38161cfd6afc3691bb8bd5544",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "pause.js",
+          "name": "fetch",
+          "bytes": 1249,
+          "sha": "93867da30cd1ab9c2393026d0ee722cdfc60136570a83008c02c9eeb16a2adc8",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "pause.js",
+          "name": "fetch",
+          "bytes": 2511,
+          "sha": "50666cfc371f4ff7fefc4f3e8242804646c092050089f3340ac3b180a3486694",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        }
+      ],
+      "quotaHeadersUsed": false,
+      "handles429": false
+    },
+    {
+      "name": "nomadtips3-343-central-cache",
+      "version": "0892ccba-7187-4d42-96a3-5ed87f6069cf",
+      "main": "index.js",
+      "cron": [],
+      "modules": [
+        {
+          "name": "index.js",
+          "sha": "1fe1b9aa1a7fc025f0f2fd78160345dbd8015e7ab576affe15f52af3fe748c49",
+          "bytes": 13342
+        }
+      ],
+      "bindings": [
+        {
+          "name": "CENTRAL_MARKET",
+          "type": "durable_object_namespace",
+          "class_name": "CentralMarketHub",
+          "namespace_id": "b2de35d826d0424387ab83f9c0f58b14"
+        },
+        {
+          "name": "FIVEDOLLAR_API_KEY",
+          "type": "secret_text"
+        },
+        {
+          "name": "HUB_SNAPSHOT_URL",
+          "type": "plain_text"
+        }
+      ],
+      "providerHosts": [
+        "https://api.5dollarfootballapi.com/v1"
+      ],
+      "fetchFunctions": [
+        {
+          "module": "index.js",
+          "name": "authorizedTick",
+          "bytes": 220,
+          "sha": "4352cc3abc2317f749193884f9e19e647d5180aa3ca42d6f604db48b4e4cc90b",
+          "providerReference": true,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "index.js",
+          "name": "hubSnapshot",
+          "bytes": 494,
+          "sha": "7211082c6f731abb1e08f0c76cb90c7e598abf3794f094625eb78faa69fab96b",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "index.js",
+          "name": "providerFetch",
+          "bytes": 1141,
+          "sha": "8c70afa6ee67b89c38086dfb7a17b5c6c50c30a539bf003be331a580659e8900",
+          "providerReference": true,
+          "has429": true,
+          "hasQuota": false
+        },
+        {
+          "module": "index.js",
+          "name": "runTick",
+          "bytes": 2264,
+          "sha": "2687990fba66fcc87117f20c6d17e8f7504a0e4ec18a4d13588e3f9bab34f3cc",
+          "providerReference": false,
+          "has429": true,
+          "hasQuota": false
+        },
+        {
+          "module": "index.js",
+          "name": "fetch",
+          "bytes": 596,
+          "sha": "ad82222e6346f00ba0d467dea2163e2727bc2da501cc6d4748118ed85b796da3",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "index.js",
+          "name": "fetch",
+          "bytes": 893,
+          "sha": "9e098661e443a856d8e0f79a54582766cd0a8e7b92e4858b6b0245e3c198774e",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "index.js",
+          "name": "scheduled",
+          "bytes": 143,
+          "sha": "a4c4995b68ffa829dc27277bff0b75e10aaaa74c0e201ed427e14f32fcb603eb",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        }
+      ],
+      "quotaHeadersUsed": false,
+      "handles429": true
+    },
+    {
+      "name": "nomadtips3-343-central-cache-canary",
+      "version": "6777de59-8fd7-44eb-94dd-17f3950347a6",
+      "main": "index.js",
+      "cron": [],
+      "modules": [
+        {
+          "name": "index.js",
+          "sha": "1fe1b9aa1a7fc025f0f2fd78160345dbd8015e7ab576affe15f52af3fe748c49",
+          "bytes": 13342
+        }
+      ],
+      "bindings": [
+        {
+          "name": "CENTRAL_MARKET",
+          "type": "durable_object_namespace",
+          "class_name": "CentralMarketHub",
+          "namespace_id": "a8642667098549c2a78f4bc66028db60"
+        },
+        {
+          "name": "FIVEDOLLAR_API_KEY",
+          "type": "secret_text"
+        },
+        {
+          "name": "HUB_SNAPSHOT_URL",
+          "type": "plain_text"
+        }
+      ],
+      "providerHosts": [
+        "https://api.5dollarfootballapi.com/v1"
+      ],
+      "fetchFunctions": [
+        {
+          "module": "index.js",
+          "name": "authorizedTick",
+          "bytes": 220,
+          "sha": "4352cc3abc2317f749193884f9e19e647d5180aa3ca42d6f604db48b4e4cc90b",
+          "providerReference": true,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "index.js",
+          "name": "hubSnapshot",
+          "bytes": 494,
+          "sha": "7211082c6f731abb1e08f0c76cb90c7e598abf3794f094625eb78faa69fab96b",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "index.js",
+          "name": "providerFetch",
+          "bytes": 1141,
+          "sha": "8c70afa6ee67b89c38086dfb7a17b5c6c50c30a539bf003be331a580659e8900",
+          "providerReference": true,
+          "has429": true,
+          "hasQuota": false
+        },
+        {
+          "module": "index.js",
+          "name": "runTick",
+          "bytes": 2264,
+          "sha": "2687990fba66fcc87117f20c6d17e8f7504a0e4ec18a4d13588e3f9bab34f3cc",
+          "providerReference": false,
+          "has429": true,
+          "hasQuota": false
+        },
+        {
+          "module": "index.js",
+          "name": "fetch",
+          "bytes": 596,
+          "sha": "ad82222e6346f00ba0d467dea2163e2727bc2da501cc6d4748118ed85b796da3",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "index.js",
+          "name": "fetch",
+          "bytes": 893,
+          "sha": "9e098661e443a856d8e0f79a54582766cd0a8e7b92e4858b6b0245e3c198774e",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "index.js",
+          "name": "scheduled",
+          "bytes": 143,
+          "sha": "a4c4995b68ffa829dc27277bff0b75e10aaaa74c0e201ed427e14f32fcb603eb",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        }
+      ],
+      "quotaHeadersUsed": false,
+      "handles429": true
+    },
+    {
+      "name": "nomadtips3-343-full-market-central-canary",
+      "version": "4fcf795f-91ac-417c-8609-43497416c746",
+      "main": "index-central.js",
+      "cron": [],
+      "modules": [
+        {
+          "name": "index-central.js",
+          "sha": "c9fef13c24b0ac95530e48cbf6e90286cbc9b339fdc54fde62505e1861b9d5c3",
+          "bytes": 48752
+        }
+      ],
+      "bindings": [
+        {
+          "name": "FIVEDOLLAR_API_KEY",
+          "type": "secret_text"
+        },
+        {
+          "name": "FULL_MARKET",
+          "type": "durable_object_namespace",
+          "class_name": "FullMarketHub",
+          "namespace_id": "a2c89808ba294d078c7457ad57ba2a6e"
+        },
+        {
+          "name": "HUB_SNAPSHOT_URL",
+          "type": "plain_text"
+        }
+      ],
+      "providerHosts": [
+        "https://api.5dollarfootballapi.com/v1"
+      ],
+      "fetchFunctions": [
+        {
+          "module": "index-central.js",
+          "name": "externalJson",
+          "bytes": 540,
+          "sha": "ed5c936e4c6e14715e3e000975dfe88afa85fb246b43ad10ff3c83eefbb19ba7",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "index-central.js",
+          "name": "mixerPage",
+          "bytes": 18231,
+          "sha": "554737d527d4cec5494d265b154c2c7d92a86f7064f3996525d530e3a6f61432",
+          "providerReference": false,
+          "has429": true,
+          "hasQuota": false
+        },
+        {
+          "module": "index-central.js",
+          "name": "providerFetch",
+          "bytes": 950,
+          "sha": "8613a59338a611d07b949ff22f49677056eff3d195e312b794243f401c82f364",
+          "providerReference": true,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "index-central.js",
+          "name": "freshFixture",
+          "bytes": 2645,
+          "sha": "37ee59df3eca7a86c5f4c07d6aa41d88fb8c011916661aada4e37f606f6eb20c",
+          "providerReference": false,
+          "has429": true,
+          "hasQuota": false
+        },
+        {
+          "module": "index-central.js",
+          "name": "monitor",
+          "bytes": 2904,
+          "sha": "1eccc5080b72713f4c8193a93b73d310ee7a5355ca3ae37301384d3f436b94de",
+          "providerReference": false,
+          "has429": true,
+          "hasQuota": false
+        },
+        {
+          "module": "index-central.js",
+          "name": "fetch",
+          "bytes": 2654,
+          "sha": "dde6925088f3d291482edf8539e32d04402eb3b818aeed15485079e6b9a7032b",
+          "providerReference": false,
+          "has429": true,
+          "hasQuota": false
+        },
+        {
+          "module": "index-central.js",
+          "name": "fetch",
+          "bytes": 655,
+          "sha": "877d96cd71ef8f78da56631ccb81254d37f97519676cd33c67968e9922ec1812",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "index-central.js",
+          "name": "fetchHubSnapshot",
+          "bytes": 563,
+          "sha": "f7d7e4c3c27158fd061cf064d316b43153e14e7df5dd1973af335dc9a13930e0",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "index-central.js",
+          "name": "runSchedulerTick",
+          "bytes": 3034,
+          "sha": "f678c9eae759c7f42171cd3c6ae8ebf6274cc6363bf0d0d127968cc18a5f246a",
+          "providerReference": false,
+          "has429": true,
+          "hasQuota": false
+        },
+        {
+          "module": "index-central.js",
+          "name": "fetch",
+          "bytes": 793,
+          "sha": "f6184975ac7fec5be05e13bfd2073952ce99afcd24850f281227a9b0694e8563",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "index-central.js",
+          "name": "fetch",
+          "bytes": 77,
+          "sha": "a38dcad03b3dbecdd41c1765c1ef11f33ee5b4d5b17c8231e564c0110253d8a3",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "index-central.js",
+          "name": "scheduled",
+          "bytes": 148,
+          "sha": "0105a98536708de6b348ab1ed3e24ba31fb8beea64396fd6033d34a7b000784f",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        }
+      ],
+      "quotaHeadersUsed": false,
+      "handles429": true
+    },
+    {
+      "name": "nomadtips3-343-full-market-v4-canary",
+      "version": "1c39807a-1deb-45b4-bc72-ae30cb29c1c2",
+      "main": "index-v4.js",
+      "cron": [],
+      "modules": [
+        {
+          "name": "index-v4.js",
+          "sha": "a67c7e72a53d6b836404d3730696aa45f847fabb211881dcc59074ce72dfd737",
+          "bytes": 65356
+        }
+      ],
+      "bindings": [
+        {
+          "name": "FIVEDOLLAR_API_KEY",
+          "type": "secret_text"
+        },
+        {
+          "name": "FULL_MARKET",
+          "type": "durable_object_namespace",
+          "class_name": "FullMarketHub",
+          "namespace_id": "a3a9f56a340f4d4082ef72021856b67c"
+        }
+      ],
+      "providerHosts": [
+        "https://api.5dollarfootballapi.com/v1"
+      ],
+      "fetchFunctions": [
+        {
+          "module": "index-v4.js",
+          "name": "externalJson",
+          "bytes": 540,
+          "sha": "ed5c936e4c6e14715e3e000975dfe88afa85fb246b43ad10ff3c83eefbb19ba7",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "index-v4.js",
+          "name": "mixerPage",
+          "bytes": 18231,
+          "sha": "554737d527d4cec5494d265b154c2c7d92a86f7064f3996525d530e3a6f61432",
+          "providerReference": false,
+          "has429": true,
+          "hasQuota": false
+        },
+        {
+          "module": "index-v4.js",
+          "name": "providerFetch",
+          "bytes": 939,
+          "sha": "999edb98b8f93c6df33ecbd056a794d098980b0b9430d4146f1685cecc7ed3bb",
+          "providerReference": true,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "index-v4.js",
+          "name": "freshFixture",
+          "bytes": 2569,
+          "sha": "eedaca71d09c3b00655d39d1378bd9c3bcfd9aa8b17d6662dcd4c115080d24a1",
+          "providerReference": false,
+          "has429": true,
+          "hasQuota": false
+        },
+        {
+          "module": "index-v4.js",
+          "name": "monitor",
+          "bytes": 2904,
+          "sha": "1eccc5080b72713f4c8193a93b73d310ee7a5355ca3ae37301384d3f436b94de",
+          "providerReference": false,
+          "has429": true,
+          "hasQuota": false
+        },
+        {
+          "module": "index-v4.js",
+          "name": "fetch",
+          "bytes": 2624,
+          "sha": "b57dc84cd2c3bd047c7d9b3a42416610045f738ac8e5bc57b5b2c9ec37268ca6",
+          "providerReference": false,
+          "has429": true,
+          "hasQuota": false
+        },
+        {
+          "module": "index-v4.js",
+          "name": "fetch",
+          "bytes": 655,
+          "sha": "877d96cd71ef8f78da56631ccb81254d37f97519676cd33c67968e9922ec1812",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "index-v4.js",
+          "name": "fetchJson",
+          "bytes": 570,
+          "sha": "11f1db394bc71f9c8dd13b233673ee2902e3703625533775938fc57f00332c42",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "index-v4.js",
+          "name": "providerRateHint",
+          "bytes": 723,
+          "sha": "b7a10af6bd351196e20ba7eda9f4d39a60ca3b1ff6f8af919b3d316ff1ea4063",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": true
+        },
+        {
+          "module": "index-v4.js",
+          "name": "externalAccountState",
+          "bytes": 1558,
+          "sha": "62c65fd77342846bedc060ebfe6c285315f2c5b0abab8c3078218b0f4659b11e",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "index-v4.js",
+          "name": "hubSnapshot",
+          "bytes": 1139,
+          "sha": "028b55009556dc610d0621924cbfff34a2691a557d053f2e82e33f6202f59122",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "index-v4.js",
+          "name": "providerFetch",
+          "bytes": 1880,
+          "sha": "440b4f56219c4c406bcbeceb7767daa6ee33ab7075b7f6727a0e894aef03f462",
+          "providerReference": true,
+          "has429": true,
+          "hasQuota": false
+        },
+        {
+          "module": "index-v4.js",
+          "name": "freshFixtureNow",
+          "bytes": 4687,
+          "sha": "5ef253b4d3728300e9a96f723b8eef4409acdf9d627eb18ba340b0589d79f7b7",
+          "providerReference": false,
+          "has429": true,
+          "hasQuota": false
+        }
+      ],
+      "quotaHeadersUsed": true,
+      "handles429": true
+    },
+    {
+      "name": "nomadtips3-5usd-hub-343",
+      "version": "98ea43ab-f40c-4de5-82e3-b0387dffd672",
+      "main": "index-viewer-safe.js",
+      "cron": [
+        {
+          "cron": "*/2 * * * *",
+          "created_on": "2026-09-15T00:49:08.503243Z",
+          "modified_on": "2026-09-20T10:45:42.015278Z"
+        }
+      ],
+      "modules": [
+        {
+          "name": "index-viewer-safe.js",
+          "sha": "95147295271dedf9959c769e57975344eee58209b7341cb20791f610a3688404",
+          "bytes": 41319
+        }
+      ],
+      "bindings": [
+        {
+          "name": "FIVEDOLLAR_API_KEY",
+          "type": "secret_text"
+        },
+        {
+          "name": "HUB",
+          "type": "durable_object_namespace",
+          "class_name": "FiveUsdHub",
+          "namespace_id": "385ad1193c114fcdb8d92e4d56d6a532"
+        },
+        {
+          "name": "RICH_GATE",
+          "type": "durable_object_namespace",
+          "class_name": "RichOddsGate",
+          "namespace_id": "9eb6121eba114d21b902996f7dceb37c"
+        }
+      ],
+      "providerHosts": [
+        "https://api.5dollarfootballapi.com/v1"
+      ],
+      "fetchFunctions": [
+        {
+          "module": "index-viewer-safe.js",
+          "name": "fetchJson",
+          "bytes": 802,
+          "sha": "a29cb060648992000432912087e9234305868904c2f91cfbc1c8ec4cde679955",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "index-viewer-safe.js",
+          "name": "fetchPages",
+          "bytes": 651,
+          "sha": "1ffc7a3445abde454971d56fd2873e83b72946ed7947dccfca10f06898c7c074",
+          "providerReference": true,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "index-viewer-safe.js",
+          "name": "markError",
+          "bytes": 411,
+          "sha": "a20f4f9dd3cbe6e09a5e3dea62996bbae488d7f7560eb682fcb1e3470830570f",
+          "providerReference": false,
+          "has429": true,
+          "hasQuota": false
+        },
+        {
+          "module": "index-viewer-safe.js",
+          "name": "fetch",
+          "bytes": 2139,
+          "sha": "6cebe1df3914297ad02df081fd350a931d6520c26820ed1a57530f12a844999a",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "index-viewer-safe.js",
+          "name": "fetch",
+          "bytes": 867,
+          "sha": "cecc03a14eb039eceedd1b7d47dc3dbf54a1bc44ae6964d908c4d42db922094c",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "index-viewer-safe.js",
+          "name": "scheduled",
+          "bytes": 143,
+          "sha": "1ee9c6c24e99ee8c8cc64c3e7572331edcdeb5c134e506c1b15b306172cef56f",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "index-viewer-safe.js",
+          "name": "hubHealth",
+          "bytes": 275,
+          "sha": "81a666a127e5edf09bbe45994ee89226d4b3f0ded5936a47813296d9289955ed",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "index-viewer-safe.js",
+          "name": "providerJson",
+          "bytes": 1159,
+          "sha": "9b30558c8a60800723ca4086d17f288bae4a489395803b50d5216f500a5f2a97",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": true
+        },
+        {
+          "module": "index-viewer-safe.js",
+          "name": "loadRich",
+          "bytes": 2381,
+          "sha": "7aeadec5fe015fbf74060e3e8529ccffd729312a75a74af3f5720d474bafb09a",
+          "providerReference": true,
+          "has429": true,
+          "hasQuota": false
+        },
+        {
+          "module": "index-viewer-safe.js",
+          "name": "fetch",
+          "bytes": 995,
+          "sha": "69a06023b69d391a360c5ec7a627a6ad511c022197854d9cc4c73a2b0bb6207c",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "index-viewer-safe.js",
+          "name": "fetch",
+          "bytes": 438,
+          "sha": "9d942e70e678248b2432e56a7fbd9c7ad040eee5a253677a209c2e0ce6a6d31d",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "index-viewer-safe.js",
+          "name": "fetch",
+          "bytes": 206,
+          "sha": "d7c73f6003523ba9b17ff2eba866d39211b74117e4e92aadc05eb32c34e784f0",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        }
+      ],
+      "quotaHeadersUsed": true,
+      "handles429": true
+    },
+    {
+      "name": "nomadtips3-5usd-hub-343-stable-canary",
+      "version": "4134978b-88d5-49bb-84ec-07b255460af9",
+      "main": "index-v5.js",
+      "cron": [],
+      "modules": [
+        {
+          "name": "index-v5.js",
+          "sha": "338d417e55c0deadd9210699e672400719787365a776ec0d42ea951d44f87ba4",
+          "bytes": 22544
+        }
+      ],
+      "bindings": [
+        {
+          "name": "FIVEDOLLAR_API_KEY",
+          "type": "secret_text"
+        },
+        {
+          "name": "HUB",
+          "type": "durable_object_namespace",
+          "class_name": "FiveUsdHub",
+          "namespace_id": "96dda4c4cde246b3a29b08a0f4e3bd64"
+        }
+      ],
+      "providerHosts": [
+        "https://api.5dollarfootballapi.com/v1"
+      ],
+      "fetchFunctions": [
+        {
+          "module": "index-v5.js",
+          "name": "fetchJson",
+          "bytes": 673,
+          "sha": "91d4f71b6c594213c8bcc78ddcc93703fcf217d6726efa8830c1db13058ffc10",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "index-v5.js",
+          "name": "fetchPages",
+          "bytes": 566,
+          "sha": "9304ffdfb41aa6b2d613776597ad4ae4b17196cc95a1c9d4d96caf5822d1d75d",
+          "providerReference": true,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "index-v5.js",
+          "name": "fetch",
+          "bytes": 845,
+          "sha": "cf99ff3ff49597f75f6c5b15fb1da5f44aa29b2ab5b02a1db7f93b95d1943230",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "index-v5.js",
+          "name": "fetch",
+          "bytes": 619,
+          "sha": "6b50cd9a924fd3c1e04752d4cc777d9a91188cfa986a560b2ec9ee5baa799354",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "index-v5.js",
+          "name": "scheduled",
+          "bytes": 133,
+          "sha": "174b65b2a5aa21aa58cbb722d2e0c9530ab2ab9aad38bd5b0f5d5fcac8db318e",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        }
+      ],
+      "quotaHeadersUsed": false,
+      "handles429": false
+    },
+    {
+      "name": "nomadtips3-engine-343",
+      "version": "02e09215-02b1-47fb-b1cf-9423f50c7ce9",
+      "main": "index-bulk-recovery.js",
+      "cron": [
+        {
+          "cron": "* * * * *",
+          "created_on": "2026-09-09T15:01:18.232119Z",
+          "modified_on": "2026-10-11T02:03:36.296349Z"
+        }
+      ],
+      "modules": [
+        {
+          "name": "index-bulk-recovery.js",
+          "sha": "30aef0bb9c4be48a40c4bf38bf113b40ca1fd2d384187eefc275829c43e8ba56",
+          "bytes": 118774
+        }
+      ],
+      "bindings": [
+        {
+          "name": "ENGINE",
+          "type": "durable_object_namespace",
+          "class_name": "Nomad343Engine",
+          "namespace_id": "7404dc5f593a4fbeaebae44cad6ae7da"
+        },
+        {
+          "name": "FIVEDOLLAR_API_KEY",
+          "type": "secret_text"
+        },
+        {
+          "name": "FULL_MARKET",
+          "type": "service",
+          "service": "nomadtips3-full-market-343-ball46"
+        },
+        {
+          "name": "HUB",
+          "type": "service",
+          "service": "nomadtips3-5usd-hub-343"
+        }
+      ],
+      "providerHosts": [
+        "https://api.5dollarfootballapi.com/v1/fixtures/",
+        "https://api.5dollarfootballapi.com/v1/fixtures/${encodeURIComponent(fixtureId)}"
+      ],
+      "fetchFunctions": [
+        {
+          "module": "index-bulk-recovery.js",
+          "name": "fetchVerifiedCornerOnly",
+          "bytes": 650,
+          "sha": "0e543ba71597f744abf3944f01c1749d8db72826fdeef1455a2a357a4d3ceac7",
+          "providerReference": true,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "index-bulk-recovery.js",
+          "name": "scan",
+          "bytes": 16127,
+          "sha": "4c086a569cdb5c33c239b3ee06ef54af92edf4dca5b4dffa103dd9216f520faf",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "index-bulk-recovery.js",
+          "name": "fetch",
+          "bytes": 6952,
+          "sha": "f158b77254f83d5d623d76c6d3eebc8730056ee6a401986b298419e630be534c",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "index-bulk-recovery.js",
+          "name": "secureTokenOk",
+          "bytes": 269,
+          "sha": "4be294d4a2e2b51ca48d520f79807207bee67b54af09ef9a7414c38a4e99d38e",
+          "providerReference": true,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "index-bulk-recovery.js",
+          "name": "autoReconcileMissingFinals",
+          "bytes": 5643,
+          "sha": "3479f31fbba9be2d68481524e604bf75588c76f58f85b2528cc5900554ce814a",
+          "providerReference": true,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "index-bulk-recovery.js",
+          "name": "fetch",
+          "bytes": 2586,
+          "sha": "6ec15eefa027e26e535846a573303856d586aa3b0ff8ec13b5c802755579865d",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "index-bulk-recovery.js",
+          "name": "fetch",
+          "bytes": 617,
+          "sha": "a06b8147a7c16cbd4f4c96fab9379b8af582fdaa445c9af5bb459efedba52c68",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "index-bulk-recovery.js",
+          "name": "scheduled",
+          "bytes": 127,
+          "sha": "d096c37767e8f7174d72768da38422b0dd877ab6209f1ded0368718dc0c6d996",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        }
+      ],
+      "quotaHeadersUsed": false,
+      "handles429": false
+    },
+    {
+      "name": "nomadtips3-full-market-343-ball46",
+      "version": "3a53ee1a-467c-4a20-9f50-ba749e8adab4",
+      "main": "index.js",
+      "cron": [
+        {
+          "cron": "1-59/2 * * * *",
+          "created_on": "2026-10-11T12:28:03.260379Z",
+          "modified_on": "2026-10-11T12:28:03.260379Z"
+        }
+      ],
+      "modules": [
+        {
+          "name": "index.js",
+          "sha": "c24c3dad23b01a2a662788bd0f3bf51eca7ebf992ec34d793eec4c3ed3540093",
+          "bytes": 20189
+        }
+      ],
+      "bindings": [
+        {
+          "name": "FIVEDOLLAR_API_KEY",
+          "type": "secret_text"
+        },
+        {
+          "name": "FULL_MARKET_GATE",
+          "type": "durable_object_namespace",
+          "class_name": "FullMarketGate",
+          "namespace_id": "314b662666f5409dae469f303041b8cd"
+        }
+      ],
+      "providerHosts": [
+        "https://api.5dollarfootballapi.com/v1"
+      ],
+      "fetchFunctions": [
+        {
+          "module": "index.js",
+          "name": "providerRequest",
+          "bytes": 1634,
+          "sha": "0c4ce990a3d990a8499aa466f0c15e21ebe96c9f80bf13b15ded05281477f783",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": true
+        },
+        {
+          "module": "index.js",
+          "name": "prewarm",
+          "bytes": 2608,
+          "sha": "6d605dd1cb983102d9e4e9a127aa8b3eb5e56a726d138cc1905b70df104f169e",
+          "providerReference": false,
+          "has429": true,
+          "hasQuota": false
+        },
+        {
+          "module": "index.js",
+          "name": "load",
+          "bytes": 3260,
+          "sha": "146b0d2f3c1aff8f855494ac342563d9214234149d6b09e5c4fe028aa393df92",
+          "providerReference": true,
+          "has429": true,
+          "hasQuota": false
+        },
+        {
+          "module": "index.js",
+          "name": "fetch",
+          "bytes": 2526,
+          "sha": "9be4fe673dc5ddd0dde5b9fbcd35a3074ff7c0845bba246feb6fbcef9344c247",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "index.js",
+          "name": "fetch",
+          "bytes": 297,
+          "sha": "6c5263dfc155d876b918495e5ac9822961397387e50427b86645c0da66e4528e",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        }
+      ],
+      "quotaHeadersUsed": true,
+      "handles429": true
+    },
+    {
+      "name": "nomadtips3-live-engine",
+      "version": "f20c833a-ba1d-4eca-be3b-3daa1aa63d3e",
+      "main": "index.js",
+      "cron": [],
+      "modules": [
+        {
+          "name": "index.js",
+          "sha": "cebdb3a29e6d4ca24f60377a0971824cddc0dbebe390afc287f3951e01aa2717",
+          "bytes": 166229
+        }
+      ],
+      "bindings": [
+        {
+          "name": "API_FOOTBALL_KEY",
+          "type": "secret_text"
+        },
+        {
+          "name": "ENGINE",
+          "type": "durable_object_namespace",
+          "class_name": "EngineState",
+          "namespace_id": "7d5154f3f7d143ae868fc89faa06adcf"
+        },
+        {
+          "name": "FIVEDOLLAR_API_KEY",
+          "type": "secret_text"
+        },
+        {
+          "name": "ODDS_API_KEY",
+          "type": "secret_text"
+        },
+        {
+          "name": "THE_ODDS_API_KEY",
+          "type": "secret_text"
+        }
+      ],
+      "providerHosts": [],
+      "fetchFunctions": [
+        {
+          "module": "index.js",
+          "name": "fetchJson",
+          "bytes": 643,
+          "sha": "c76a73ef07cd11df6dcc86abbd98c010724d6af8785cd67c748e582bd6019179",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "index.js",
+          "name": "fetchLiveEvents",
+          "bytes": 227,
+          "sha": "fd15ca5ed4d43a36318a740ce760721d3d37acccb213a31e894b37e990d6b88b",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "index.js",
+          "name": "fetchMultiOdds",
+          "bytes": 409,
+          "sha": "0b76671bdac78075faf040c46adf48916f76f7d5b1ac2015f50719d6e5ded3f8",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "index.js",
+          "name": "fetchJson2",
+          "bytes": 1225,
+          "sha": "a0dc0025431cd1bfebccb559d24776d0e96c3101f2032e53e58a73ab77a33eb0",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "index.js",
+          "name": "fetchJson3",
+          "bytes": 1613,
+          "sha": "3fb81f609b49551169fba91eb061b07ab2526d6002be4e91b94312a4ee7b971b",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": true
+        },
+        {
+          "module": "index.js",
+          "name": "fetch",
+          "bytes": 1378,
+          "sha": "84d0b76fd0041a74f8cfe19ce93f044088076c723f37948f4360d18853f64de8",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "index.js",
+          "name": "fetch",
+          "bytes": 667,
+          "sha": "d1678ec7c06e4b443804f250581ebb1affbfe84f2239806ac3834d0519c07dd6",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "index.js",
+          "name": "scheduled",
+          "bytes": 170,
+          "sha": "f1c0870f902974ba406dfb8fc9d854369b86c4c2ffe450012df03779966fdaa8",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        }
+      ],
+      "quotaHeadersUsed": true,
+      "handles429": false
+    },
+    {
+      "name": "nomadtips3-live-engine-5usd-shadow",
+      "version": "8ee59e11-f442-47fc-a44d-0d3d96cdc51c",
+      "main": "index-fiveusd-test.js",
+      "cron": [],
+      "modules": [
+        {
+          "name": "index-fiveusd-test.js",
+          "sha": "dc52cd535e0bb24f38aba9748489fd36d525d66036a9ad1f9a1e5201c8975f52",
+          "bytes": 253150
+        }
+      ],
+      "bindings": [
+        {
+          "name": "ENGINE",
+          "type": "durable_object_namespace",
+          "class_name": "EngineState",
+          "namespace_id": "50fde348b85d4fb2a73449ee471b699a"
+        },
+        {
+          "name": "ENGINE_CYCLE_MODE",
+          "type": "plain_text"
+        },
+        {
+          "name": "FIVEDOLLAR_API_KEY",
+          "type": "secret_text"
+        },
+        {
+          "name": "FIVEUSD_GLOBAL_REQUEST_BUDGET_PER_60S",
+          "type": "plain_text",
+          "value": "40"
+        },
+        {
+          "name": "FIVEUSD_LIVE_REFRESH_MS",
+          "type": "plain_text",
+          "value": "3000"
+        },
+        {
+          "name": "FIVEUSD_NATIVE_MODE",
+          "type": "plain_text"
+        },
+        {
+          "name": "FIVEUSD_REFEREE_REFRESH_MS",
+          "type": "plain_text",
+          "value": "60000"
+        },
+        {
+          "name": "FIVEUSD_SHADOW_LEGACY_DISABLED",
+          "type": "plain_text",
+          "value": "true"
+        },
+        {
+          "name": "FIVEUSD_UPCOMING_REFRESH_MS",
+          "type": "plain_text",
+          "value": "120000"
+        },
+        {
+          "name": "FIVEUSD_UPCOMING_WINDOW_MINUTES",
+          "type": "plain_text"
+        }
+      ],
+      "providerHosts": [
+        "https://api.5dollarfootballapi.com/v1"
+      ],
+      "fetchFunctions": [
+        {
+          "module": "index-fiveusd-test.js",
+          "name": "fetchJson",
+          "bytes": 646,
+          "sha": "221c4c5bbb57f6e5ad85e08f98248c11fd595de29f5aaefcdfbba2fdae55057a",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "index-fiveusd-test.js",
+          "name": "fetchLiveEvents",
+          "bytes": 227,
+          "sha": "fd15ca5ed4d43a36318a740ce760721d3d37acccb213a31e894b37e990d6b88b",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "index-fiveusd-test.js",
+          "name": "fetchMultiOdds",
+          "bytes": 409,
+          "sha": "0b76671bdac78075faf040c46adf48916f76f7d5b1ac2015f50719d6e5ded3f8",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "index-fiveusd-test.js",
+          "name": "fetchJson2",
+          "bytes": 1229,
+          "sha": "487202e11c1243bcbb5480b3ed437956c1b3ad28ece51ff6dd1474a0342eb34b",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "index-fiveusd-test.js",
+          "name": "fetchJson3",
+          "bytes": 1619,
+          "sha": "301282081e154e1848cc03e53d9a27859cd529f25bb9c839adc5b89d45ec783e",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": true
+        },
+        {
+          "module": "index-fiveusd-test.js",
+          "name": "fetch",
+          "bytes": 1378,
+          "sha": "84d0b76fd0041a74f8cfe19ce93f044088076c723f37948f4360d18853f64de8",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "index-fiveusd-test.js",
+          "name": "fetch",
+          "bytes": 667,
+          "sha": "d1678ec7c06e4b443804f250581ebb1affbfe84f2239806ac3834d0519c07dd6",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "index-fiveusd-test.js",
+          "name": "scheduled",
+          "bytes": 170,
+          "sha": "f1c0870f902974ba406dfb8fc9d854369b86c4c2ffe450012df03779966fdaa8",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "index-fiveusd-test.js",
+          "name": "rateMeta",
+          "bytes": 309,
+          "sha": "2c8385f3fe78e683996907ee323a31d678e6c04c08785f9eeaac8e7e86432992",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": true
+        },
+        {
+          "module": "index-fiveusd-test.js",
+          "name": "providerRequest",
+          "bytes": 692,
+          "sha": "04188e38ca1016158723f7167920db46c90b6cd6740fbc2cd57386537a0657b5",
+          "providerReference": true,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "index-fiveusd-test.js",
+          "name": "apiKey",
+          "bytes": 62,
+          "sha": "5cfc1835b9c221574ef56029f4c26b46fcefb7542bab1ad00700cb5c26ab1a76",
+          "providerReference": true,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "index-fiveusd-test.js",
+          "name": "fetch",
+          "bytes": 3567,
+          "sha": "4b3ec3fd9c9ce17307d31ccd362ebb6e81887a69a05699fbe7deba41d483d229",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "index-fiveusd-test.js",
+          "name": "fetch",
+          "bytes": 2484,
+          "sha": "fcccb66218fa813801764024a5a2d23b27ab33fd4bdf1d2eb9067198506874e6",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        }
+      ],
+      "quotaHeadersUsed": true,
+      "handles429": true
+    },
+    {
+      "name": "nomadtips3-odds-display-343",
+      "version": "5fb89820-60c8-45dc-b13b-9e1fe52034e4",
+      "main": "index.js",
+      "cron": [],
+      "modules": [
+        {
+          "name": "index.js",
+          "sha": "1320c7f47af6e871fe9e64de17b7aa356151e758b3e26d095daa3e5cc2edd389",
+          "bytes": 4160
+        }
+      ],
+      "bindings": [
+        {
+          "name": "FIVEDOLLAR_API_KEY",
+          "type": "secret_text"
+        }
+      ],
+      "providerHosts": [
+        "https://api.5dollarfootballapi.com/v1"
+      ],
+      "fetchFunctions": [
+        {
+          "module": "index.js",
+          "name": "fetch",
+          "bytes": 2661,
+          "sha": "07d26ff8af88f22f937c0e3c4ca24ac126aefd70bd880e920cd918aea9aff22d",
+          "providerReference": true,
+          "has429": true,
+          "hasQuota": false
+        }
+      ],
+      "quotaHeadersUsed": false,
+      "handles429": true
+    },
+    {
+      "name": "nomadtips3-rich-odds-343",
+      "version": "02dc4c25-1b19-43b4-bf9e-981522adb6d3",
+      "main": "index.js",
+      "cron": [
+        {
+          "cron": "* * * * *",
+          "created_on": "2026-09-15T15:36:13.590515Z",
+          "modified_on": "2026-09-15T15:36:13.590515Z"
+        }
+      ],
+      "modules": [
+        {
+          "name": "index.js",
+          "sha": "b5614efbca00b139a68e3f21016ae8fe1d0dcaa8890a3f4d5bb739d77e3af88c",
+          "bytes": 2096
+        }
+      ],
+      "bindings": [
+        {
+          "name": "CACHE",
+          "type": "durable_object_namespace",
+          "class_name": "RichOddsCache",
+          "namespace_id": "5a63fa78878b454abaee539e54fda0bf"
+        },
+        {
+          "name": "FIVEDOLLAR_API_KEY",
+          "type": "secret_text"
+        },
+        {
+          "name": "HUB",
+          "type": "service",
+          "service": "nomadtips3-5usd-hub-343"
+        }
+      ],
+      "providerHosts": [],
+      "fetchFunctions": [
+        {
+          "module": "index.js",
+          "name": "fetch",
+          "bytes": 734,
+          "sha": "0f3a90d28ed408cbc5d5ee0ffe48ba98a743ea5de69a7fd7e0df26ad0c3c87f5",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "index.js",
+          "name": "fetch",
+          "bytes": 381,
+          "sha": "9fe9b6ea2406b6591b9e85a6e65cdba598d2a67bc977eba7dfd73b6961bc47c9",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        }
+      ],
+      "quotaHeadersUsed": false,
+      "handles429": false
+    },
+    {
+      "name": "nomadtips3-s8-sidecar",
+      "version": "a50176a8-9132-4a95-b173-95a8b949b473",
+      "main": "index.js",
+      "cron": [],
+      "modules": [
+        {
+          "name": "index.js",
+          "sha": "46303cd1672563ff25e5b8800fcf1484f96731489607ea545820febac177f381",
+          "bytes": 15360
+        }
+      ],
+      "bindings": [
+        {
+          "name": "FIVEDOLLAR_API_KEY",
+          "type": "secret_text"
+        }
+      ],
+      "providerHosts": [
+        "https://api.5dollarfootballapi.com/v1"
+      ],
+      "fetchFunctions": [
+        {
+          "module": "index.js",
+          "name": "apiFetch",
+          "bytes": 1005,
+          "sha": "1ff611b9f0bf703991b10810d68e6d636fb38ae5f0e499ca88b52f1d91d470df",
+          "providerReference": true,
+          "has429": true,
+          "hasQuota": false
+        },
+        {
+          "module": "index.js",
+          "name": "fetch",
+          "bytes": 1814,
+          "sha": "03dbf3aefc5efa8eeef19d73657ec7db838915b30812d1eaab941675db4b70da",
+          "providerReference": true,
+          "has429": false,
+          "hasQuota": false
+        }
+      ],
+      "quotaHeadersUsed": false,
+      "handles429": true
+    },
+    {
+      "name": "nomadtips3-shot-sidecar-342",
+      "version": "4951de99-f605-453a-90e3-4f631ac1072c",
+      "main": "index.js",
+      "cron": [],
+      "modules": [
+        {
+          "name": "index.js",
+          "sha": "4cb368cba8acfb1a3712ebf440648220a824d189bc2f845b8cf06891fbaa0204",
+          "bytes": 21426
+        }
+      ],
+      "bindings": [
+        {
+          "name": "FIVEDOLLAR_API_KEY",
+          "type": "secret_text"
+        },
+        {
+          "name": "NOMAD_LIVE_FEED",
+          "type": "service",
+          "service": "nomadtips3-live-score-feed-v3"
+        }
+      ],
+      "providerHosts": [
+        "https://api.5dollarfootballapi.com/v1"
+      ],
+      "fetchFunctions": [
+        {
+          "module": "index.js",
+          "name": "fetchJson",
+          "bytes": 517,
+          "sha": "42a7f5e7ad5c4acd9cf2f9215a98f486ee53583db4168a84c2d89a5131d95155",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "index.js",
+          "name": "providerFixtures",
+          "bytes": 906,
+          "sha": "3fd5f70cbf79eab9cd12684ddb8273f3cb4cf5168d3b934ec52ebb65c332f377",
+          "providerReference": true,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "index.js",
+          "name": "nomadMatches",
+          "bytes": 1169,
+          "sha": "15ef565c3737a2139bd4a4296f093601931d6cde9ba9b8d4ee71ab203f762598",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        },
+        {
+          "module": "index.js",
+          "name": "fetch",
+          "bytes": 1338,
+          "sha": "de03dfa4ba9e94e918e1f244eaff7badb6b1a38e1829e13e4403300bb9b8f29a",
+          "providerReference": false,
+          "has429": false,
+          "hasQuota": false
+        }
+      ],
+      "quotaHeadersUsed": false,
+      "handles429": false
+    }
+  ],
+  "failures": [],
+  "workersInspected": 79,
+  "unknownAliases": [],
+  "hubContracts": [
+    {
+      "module": "index-viewer-safe.js",
+      "name": "fetchJson",
+      "source": "async function fetchJson(url, key) {\n  const ac = new AbortController(), timer = setTimeout(() => ac.abort(), TIMEOUT_MS);\n  try {\n    const r = await fetch(url, { cache: \"no-store\", signal: ac.signal, headers: { accept: \"application/json\", authorization: `Bearer ${key}` } });\n    const raw = await r.text();\n    let j = null;\n    try {\n      j = JSON.parse(raw);\n    } catch {\n    }\n    if (!r.ok) {\n      const e = new Error(`provider:HTTP_${r.status}`);\n      e.status = r.status;\n      e.retryAfter = finite(r.headers.get(\"retry-after\"));\n      throw e;\n    }\n    if (!j || typeof j !== \"object\") throw new Error(\"provider:INVALID_JSON\");\n    return j;\n  } catch (e) {\n    if (e?.name === \"AbortError\") throw new Error(\"provider:TIMEOUT\");\n    throw e;\n  } finally {\n    clearTimeout(timer);\n  }\n}"
+    },
+    {
+      "module": "index-viewer-safe.js",
+      "name": "control",
+      "source": "async control() {\n    const stored = await this.ctx.storage.get(\"bulkLiveControl\") || {};\n    let control = { liveRefreshSeconds: presetSeconds(stored.liveRefreshSeconds), autoReturnMinutes: autoMinutes(stored.autoReturnMinutes), autoReturnAt: finite(stored.autoReturnAt), returnRefreshSeconds: 120, updatedAt: finite(stored.updatedAt) };\n    if (control.autoReturnAt !== null && now() >= control.autoReturnAt) {\n      control = { liveRefreshSeconds: 120, autoReturnMinutes: 0, autoReturnAt: null, returnRefreshSeconds: 120, updatedAt: now() };\n      await this.ctx.storage.put(\"bulkLiveControl\", control);\n    }\n    return control;\n  }"
+    },
+    {
+      "module": "index-viewer-safe.js",
+      "name": "setControl",
+      "source": "async setControl(raw = {}) {\n    const current = await this.control();\n    const liveRefreshSeconds = presetSeconds(raw.liveRefreshSeconds, current.liveRefreshSeconds);\n    const autoReturnMinutes = autoMinutes(raw.autoReturnMinutes, 0);\n    const control = { liveRefreshSeconds, autoReturnMinutes, autoReturnAt: autoReturnMinutes > 0 && liveRefreshSeconds !== 120 ? now() + autoReturnMinutes * 6e4 : null, returnRefreshSeconds: 120, updatedAt: now() };\n    await this.ctx.storage.put(\"bulkLiveControl\", control);\n    await this.scheduleNext(control, 750);\n    return control;\n  }"
+    },
+    {
+      "module": "index-viewer-safe.js",
+      "name": "scheduleNext",
+      "source": "async scheduleNext(control = null, delayMs = null) {\n    const c = control || await this.control();\n    const wait = Math.max(1500, Number(delayMs ?? c.liveRefreshSeconds * 1e3));\n    const at = now() + wait;\n    await this.ctx.storage.setAlarm(at);\n    return at;\n  }"
+    },
+    {
+      "module": "index-viewer-safe.js",
+      "name": "markSuccess",
+      "source": "async markSuccess(at, meta) {\n    await this.ctx.storage.put(\"state\", { lastAttemptAt: at, lastSuccessAt: meta.fetchedAt, lastError: null, lastRateLimitAt: null, retryAfterSec: null });\n  }"
+    },
+    {
+      "module": "index-viewer-safe.js",
+      "name": "markError",
+      "source": "async markError(at, error) {\n    const previous = await this.state(), status = Number(error?.status || 0), retryAfter = finite(error?.retryAfter);\n    await this.ctx.storage.put(\"state\", { ...previous, lastAttemptAt: at, lastError: String(error?.message || error), lastRateLimitAt: status === 429 ? at : previous.lastRateLimitAt, retryAfterSec: status === 429 ? retryAfter ?? 10 : previous.retryAfterSec });\n  }"
+    },
+    {
+      "module": "index-viewer-safe.js",
+      "name": "refreshLive",
+      "source": "async refreshLive(force = false) {\n    const control = await this.control(), oldMeta = await this.meta();\n    if (!force && oldMeta?.liveFetchedAt && now() - Number(oldMeta.liveFetchedAt) < control.liveRefreshSeconds * 1e3) return oldMeta;\n    if (this.refreshPromise) return this.refreshPromise;\n    this.refreshPromise = (async () => {\n      const attempt = now(), oldRows = await this.readRows(oldMeta);\n      try {\n        const p = await fetchLive(this.env), map = /* @__PURE__ */ new Map(), oldById = new Map(oldRows.filter((x) => x?.fixtureId).map((x) => [x.fixtureId, x]));\n        for (const old of oldRows) {\n          if (old.boardState !== \"live\" && old.fixtureId) map.set(old.fixtureId, old);\n        }\n        for (const raw of p.live.rows) {\n          const n = normalize(raw);\n          if (n.fixtureId) map.set(n.fixtureId, merge(oldById.get(n.fixtureId), n));\n        }\n        const rows = [...map.values()].sort((a, b) => (a.kickoffAt ?? 0) - (b.kickoffAt ?? 0)), meta = await this.writeSnapshot(rows, { providerRequestCount: p.live.requests, liveRequests: p.live.requests, guardHit: p.live.guardHit, include: p.include, liveFetchedAt: now(), refreshKind: \"LIVE\" });\n        await this.markSuccess(attempt, meta);\n        return meta;\n      } catch (e) {\n        await this.markError(attempt, e);\n        if (oldMeta) return oldMeta;\n        throw e;\n      }\n    })().finally(() => {\n      this.refreshPromise = null;\n    });\n    return this.refreshPromise;\n  }"
+    },
+    {
+      "module": "index-viewer-safe.js",
+      "name": "health",
+      "source": "async health() {\n    const m = await this.meta(), s = await this.state(), control = await this.control(), ageMs = m?.fetchedAt ? Math.max(0, now() - m.fetchedAt) : null, alarmAt = await this.ctx.storage.getAlarm();\n    return { ok: Boolean(m), component: \"5USD_HUB\", version: VERSION, fixtureCount: m?.fixtureCount ?? 0, counts: m?.counts ?? { scheduled: 0, live: 0, finished: 0, unknown: 0 }, continuityEnabled: m?.continuityEnabled === true, continuityHeldFixtures: Number(m?.continuityHeldFixtures || 0), fetchedAt: m?.fetchedAt ?? null, ageMs, stale: ageMs === null || ageMs > STALE_MS, refreshMs: control.liveRefreshSeconds * 1e3, todayRefreshMs: TODAY_REFRESH_MS, providerRequestCount: m?.providerRequestCount ?? 0, providerRequestBudget: m?.providerRequestBudget ?? MAX_PROVIDER_REQUESTS_PER_TODAY_REFRESH, include: m?.include ?? \"odds,events,stats\", control, estimatedBulkRequestsPerMinute: reqPerMinute(control.liveRefreshSeconds), accountLimitPerMinute: ACCOUNT_LIMIT_PER_MINUTE, nextAlarmAt: alarmAt, lastError: s.lastError, lastRateLimitAt: s.lastRateLimitAt, retryAfterSec: s.retryAfterSec };\n  }"
+    },
+    {
+      "module": "index-viewer-safe.js",
+      "name": "settings",
+      "source": "async settings() {\n    const health = await this.health();\n    return { ok: true, ...health, presets: [120, 60, 30, 15, 6, 3, 2], autoReturnOptions: [0, 30, 60, 120], notes: { bulk: \"1 \\u0E23\\u0E2D\\u0E1A = 1 request \\u0E2A\\u0E33\\u0E2B\\u0E23\\u0E31\\u0E1A live board \\u0E2A\\u0E39\\u0E07\\u0E2A\\u0E38\\u0E14 500 \\u0E04\\u0E39\\u0E48\", today: \"Today/Schedule \\u0E41\\u0E22\\u0E01\\u0E23\\u0E2D\\u0E1A 120 \\u0E27\\u0E34\\u0E19\\u0E32\\u0E17\\u0E35 \\u0E44\\u0E21\\u0E48\\u0E40\\u0E23\\u0E48\\u0E07\\u0E15\\u0E32\\u0E21 Bulk Live\", continuity: \"Last Known Good odds are preserved centrally for fixtures that remain live; null/empty/omitted markets cannot erase the previous good price.\", limit: \"Ultra 40 requests/min \\u0E15\\u0E48\\u0E2D account\" } };\n  }"
+    },
+    {
+      "module": "index-viewer-safe.js",
+      "name": "alarm",
+      "source": "async alarm() {\n    const control = await this.control();\n    try {\n      await this.refreshLive(true);\n    } catch {\n    }\n    const s = await this.state();\n    const retry = s.lastError && s.retryAfterSec ? Math.max(control.liveRefreshSeconds, Number(s.retryAfterSec)) * 1e3 : null;\n    await this.scheduleNext(await this.control(), retry);\n  }"
+    },
+    {
+      "module": "index-viewer-safe.js",
+      "name": "health",
+      "source": "async health() {\n    const h = await super.health();\n    return {\n      ...h,\n      version: VERSION2,\n      cacheOnlyViewer: true,\n      viewerRefreshEnabled: false,\n      externalRequestsPerViewer: 0\n    };\n  }"
+    }
+  ],
+  "analytics": {
+    "status": 200,
+    "start": "2026-11-04T03:03:19.556Z",
+    "end": "2026-11-04T04:03:19.556Z",
+    "kind": "Worker invocation/subrequest analytics, NOT exact provider requests or live quota",
+    "rows": [
+      {
+        "dimensions": {
+          "scriptName": "nomadtips3-rich-odds-343",
+          "status": "success"
+        },
+        "sum": {
+          "errors": 0,
+          "requests": 59,
+          "subrequests": 0
+        }
+      },
+      {
+        "dimensions": {
+          "scriptName": "nomadtips3-live-engine-5usd-shadow",
+          "status": "success"
+        },
+        "sum": {
+          "errors": 0,
+          "requests": 1,
+          "subrequests": 1
+        }
+      },
+      {
+        "dimensions": {
+          "scriptName": "nomadtips3-full-market-343-ball46",
+          "status": "clientDisconnected"
+        },
+        "sum": {
+          "errors": 0,
+          "requests": 3,
+          "subrequests": 3
+        }
+      },
+      {
+        "dimensions": {
+          "scriptName": "nomadtips3-343-auto-engine",
+          "status": "success"
+        },
+        "sum": {
+          "errors": 0,
+          "requests": 68,
+          "subrequests": 0
+        }
+      },
+      {
+        "dimensions": {
+          "scriptName": "nomadtips3-engine-343",
+          "status": "success"
+        },
+        "sum": {
+          "errors": 0,
+          "requests": 208,
+          "subrequests": 208
+        }
+      },
+      {
+        "dimensions": {
+          "scriptName": "nomadtips3-5usd-hub-343",
+          "status": "clientDisconnected"
+        },
+        "sum": {
+          "errors": 0,
+          "requests": 1,
+          "subrequests": 1
+        }
+      },
+      {
+        "dimensions": {
+          "scriptName": "nomadtips3-341-5usd-staged",
+          "status": "success"
+        },
+        "sum": {
+          "errors": 0,
+          "requests": 59,
+          "subrequests": 59
+        }
+      },
+      {
+        "dimensions": {
+          "scriptName": "nomadtips3-5usd-hub-343",
+          "status": "success"
+        },
+        "sum": {
+          "errors": 0,
+          "requests": 95,
+          "subrequests": 95
+        }
+      },
+      {
+        "dimensions": {
+          "scriptName": "nomadtips3-full-market-343-ball46",
+          "status": "scriptThrewException"
+        },
+        "sum": {
+          "errors": 29,
+          "requests": 29,
+          "subrequests": 0
+        }
+      },
+      {
+        "dimensions": {
+          "scriptName": "nomadtips3-full-market-343-ball46",
+          "status": "success"
+        },
+        "sum": {
+          "errors": 0,
+          "requests": 55,
+          "subrequests": 55
+        }
+      }
+    ]
+  },
+  "ok": true
+}
