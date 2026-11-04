@@ -1,0 +1,217 @@
+{
+  "at": "2026-11-04T04:09:10.635Z",
+  "readOnly": true,
+  "productionWrites": 0,
+  "providerRequestsAdded": 0,
+  "workers": {
+    "nomadtips3-5usd-hub-343": {
+      "constants": [
+        {
+          "name": "DEFAULT_LIVE_REFRESH_SECONDS",
+          "value": "120"
+        },
+        {
+          "name": "TODAY_REFRESH_MS",
+          "value": "12e4"
+        },
+        {
+          "name": "TODAY_MAX_PAGES",
+          "value": "4"
+        },
+        {
+          "name": "LIVE_MAX_PAGES",
+          "value": "1"
+        },
+        {
+          "name": "MAX_PROVIDER_REQUESTS_PER_TODAY_REFRESH",
+          "value": "5"
+        },
+        {
+          "name": "ACCOUNT_LIMIT_PER_MINUTE",
+          "value": "40"
+        },
+        {
+          "name": "ACCOUNT_LIMIT_PER_MINUTE2",
+          "value": "40"
+        },
+        {
+          "name": "RICH_MAX_PROVIDER_CALLS_PER_MINUTE",
+          "value": "15"
+        }
+      ],
+      "contracts": [
+        {
+          "name": "fetchJson",
+          "module": "index-viewer-safe.js",
+          "source": "async function fetchJson(url, key) {\n  const ac = new AbortController(), timer = setTimeout(() => ac.abort(), TIMEOUT_MS);\n  try {\n    const r = await fetch(url, { cache: \"no-store\", signal: ac.signal, headers: { accept: \"application/json\", authorization: `Bearer ${key}` } });\n    const raw = await r.text();\n    let j = null;\n    try {\n      j = JSON.parse(raw);\n    } catch {\n    }\n    if (!r.ok) {\n      const e = new Error(`provider:HTTP_${r.status}`);\n      e.status = r.status;\n      e.retryAfter = finite(r.headers.get(\"retry-after\"));\n      throw e;\n    }\n    if (!j || typeof j !== \"object\") throw new Error(\"provider:INVALID_JSON\");\n    return j;\n  } catch (e) {\n    if (e?.name === \"AbortError\") throw new Error(\"provider:TIMEOUT\");\n    throw e;\n  } finally {\n    clearTimeout(timer);\n  }\n}"
+        },
+        {
+          "name": "fetchPages",
+          "module": "index-viewer-safe.js",
+          "source": "async function fetchPages(env, query, perPage, maxPages, startPage = 1) {\n  if (!env.FIVEDOLLAR_API_KEY) throw new Error(\"provider:FIVEDOLLAR_API_KEY_MISSING\");\n  const rows = [];\n  let page = startPage, hasMore = false;\n  do {\n    const join = query ? `&${query}` : \"\";\n    const j = await fetchJson(`${API_BASE}/fixtures?per_page=${perPage}&page=${page}${join}`, env.FIVEDOLLAR_API_KEY);\n    rows.push(...extract(j));\n    hasMore = pageInfo(j).hasMore;\n    page += 1;\n  } while (hasMore && page < startPage + maxPages);\n  return { rows, requests: page - startPage, guardHit: hasMore && page >= startPage + maxPages, nextPage: hasMore ? page : 1 };\n}"
+        },
+        {
+          "name": "fetchLive",
+          "module": "index-viewer-safe.js",
+          "source": "async function fetchLive(env) {\n  const include = \"odds,events,stats\";\n  const live = await fetchPages(env, `status=live&include=${include}`, LIVE_PAGE_SIZE, LIVE_MAX_PAGES);\n  return { live, include };\n}"
+        },
+        {
+          "name": "constructor",
+          "module": "index-viewer-safe.js",
+          "source": "constructor(ctx, env) {\n    this.ctx = ctx;\n    this.env = env;\n    this.refreshPromise = null;\n  }"
+        },
+        {
+          "name": "control",
+          "module": "index-viewer-safe.js",
+          "source": "async control() {\n    const stored = await this.ctx.storage.get(\"bulkLiveControl\") || {};\n    let control = { liveRefreshSeconds: presetSeconds(stored.liveRefreshSeconds), autoReturnMinutes: autoMinutes(stored.autoReturnMinutes), autoReturnAt: finite(stored.autoReturnAt), returnRefreshSeconds: 120, updatedAt: finite(stored.updatedAt) };\n    if (control.autoReturnAt !== null && now() >= control.autoReturnAt) {\n      control = { liveRefreshSeconds: 120, autoReturnMinutes: 0, autoReturnAt: null, returnRefreshSeconds: 120, updatedAt: now() };\n      await this.ctx.storage.put(\"bulkLiveControl\", control);\n    }\n    return control;\n  }"
+        },
+        {
+          "name": "setControl",
+          "module": "index-viewer-safe.js",
+          "source": "async setControl(raw = {}) {\n    const current = await this.control();\n    const liveRefreshSeconds = presetSeconds(raw.liveRefreshSeconds, current.liveRefreshSeconds);\n    const autoReturnMinutes = autoMinutes(raw.autoReturnMinutes, 0);\n    const control = { liveRefreshSeconds, autoReturnMinutes, autoReturnAt: autoReturnMinutes > 0 && liveRefreshSeconds !== 120 ? now() + autoReturnMinutes * 6e4 : null, returnRefreshSeconds: 120, updatedAt: now() };\n    await this.ctx.storage.put(\"bulkLiveControl\", control);\n    await this.scheduleNext(control, 750);\n    return control;\n  }"
+        },
+        {
+          "name": "health",
+          "module": "index-viewer-safe.js",
+          "source": "async health() {\n    const m = await this.meta(), s = await this.state(), control = await this.control(), ageMs = m?.fetchedAt ? Math.max(0, now() - m.fetchedAt) : null, alarmAt = await this.ctx.storage.getAlarm();\n    return { ok: Boolean(m), component: \"5USD_HUB\", version: VERSION, fixtureCount: m?.fixtureCount ?? 0, counts: m?.counts ?? { scheduled: 0, live: 0, finished: 0, unknown: 0 }, continuityEnabled: m?.continuityEnabled === true, continuityHeldFixtures: Number(m?.continuityHeldFixtures || 0), fetchedAt: m?.fetchedAt ?? null, ageMs, stale: ageMs === null || ageMs > STALE_MS, refreshMs: control.liveRefreshSeconds * 1e3, todayRefreshMs: TODAY_REFRESH_MS, providerRequestCount: m?.providerRequestCount ?? 0, providerRequestBudget: m?.providerRequestBudget ?? MAX_PROVIDER_REQUESTS_PER_TODAY_REFRESH, include: m?.include ?? \"odds,events,stats\", control, estimatedBulkRequestsPerMinute: reqPerMinute(control.liveRefreshSeconds), accountLimitPerMinute: ACCOUNT_LIMIT_PER_MINUTE, nextAlarmAt: alarmAt, lastError: s.lastError, lastRateLimitAt: s.lastRateLimitAt, retryAfterSec: s.retryAfterSec };\n  }"
+        },
+        {
+          "name": "fetch",
+          "module": "index-viewer-safe.js",
+          "source": "async fetch(request) {\n    const u = new URL(request.url);\n    if (u.pathname === \"/_internal/today-refresh\" && request.method === \"POST\") {\n      try {\n        const m = await this.refreshToday();\n        await this.scheduleNext(await this.control());\n        return new Response(JSON.stringify({ ok: true, meta: m, health: await this.health() }), { headers: { \"content-type\": \"application/json\" } });\n      } catch (e) {\n        return new Response(JSON.stringify({ ok: false, error: String(e?.message || e) }), { status: 502, headers: { \"content-type\": \"application/json\" } });\n      }\n    }\n    if (u.pathname === \"/_internal/live-refresh\" && request.method === \"POST\") {\n      try {\n        await this.refreshLive(true);\n        return new Response(JSON.stringify(await this.health()), { headers: { \"content-type\": \"application/json\" } });\n      } catch (e) {\n        return new Response(JSON.stringify({ ok: false, error: String(e?.message || e) }), { status: 502, headers: { \"content-type\": \"application/json\" } });\n      }\n    }\n    if (u.pathname === \"/snapshot\" && request.method === \"GET\") return new Response(JSON.stringify(await this.snapshot()), { headers: { \"content-type\": \"application/json\" } });\n    if (u.pathname === \"/health\" && request.method === \"GET\") return new Response(JSON.stringify(await this.health()), { headers: { \"content-type\": \"application/json\" } });\n    if (u.pathname === \"/control\" && request.method === \"GET\") return new Response(JSON.stringify(await this.settings()), { headers: { \"content-type\": \"application/json\" } });\n    if (u.pathname === \"/control\" && request.method === \"PUT\") {\n      const body = await request.json().catch(() => null);\n      if (!body || typeof body !== \"object\") return new Response(JSON.stringify({ ok: false, error: \"INVALID_CONTROL\" }), { status: 400, headers: { \"content-type\": \"application/json\" } });\n      const control = await this.setControl(body);\n      return new Response(JSON.stringify({ ok: true, control, health: await this.health() }), { headers: { \"content-type\": \"application/json\" } });\n    }\n    return new Response(\"Not found\", { status: 404 });\n  }"
+        },
+        {
+          "name": "fetch",
+          "module": "index-viewer-safe.js",
+          "source": "async fetch(request, env) {\n    if (request.method === \"OPTIONS\") return json(request, null, 204);\n    const u = new URL(request.url), s = stub(env);\n    if (request.method === \"GET\" && u.pathname === \"/snapshot\") {\n      const r = await s.fetch(\"https://hub.internal/snapshot\");\n      return json(request, await r.json(), r.status);\n    }\n    if (request.method === \"GET\" && (u.pathname === \"/health\" || u.pathname === \"/status\")) {\n      const r = await s.fetch(\"https://hub.internal/health\");\n      return json(request, await r.json(), r.status);\n    }\n    if ((request.method === \"GET\" || request.method === \"PUT\") && u.pathname === \"/control\") {\n      const r = await s.fetch(internalRequest(request, \"/control\"));\n      return json(request, await r.json(), r.status);\n    }\n    return json(request, { ok: false, version: VERSION, error: \"NOT_FOUND\" }, 404);\n  }"
+        },
+        {
+          "name": "providerJson",
+          "module": "index-viewer-safe.js",
+          "source": "async function providerJson(url, key) {\n  const ac = new AbortController();\n  const timer = setTimeout(() => ac.abort(), TIMEOUT_MS2);\n  try {\n    const r = await fetch(url, {\n      cache: \"no-store\",\n      signal: ac.signal,\n      headers: {\n        accept: \"application/json\",\n        authorization: `Bearer ${key}`\n      }\n    });\n    const text2 = await r.text();\n    let payload = null;\n    try {\n      payload = JSON.parse(text2);\n    } catch {\n    }\n    if (!r.ok) {\n      const err = new Error(`provider:HTTP_${r.status}`);\n      err.status = r.status;\n      err.retryAfter = finite2(r.headers.get(\"retry-after\"));\n      err.payload = payload;\n      throw err;\n    }\n    if (!payload || typeof payload !== \"object\") throw new Error(\"provider:INVALID_JSON\");\n    return {\n      payload,\n      rateLimitLimit: finite2(r.headers.get(\"x-ratelimit-limit\")),\n      rateLimitRemaining: finite2(r.headers.get(\"x-ratelimit-remaining\")),\n      rateLimitReset: finite2(r.headers.get(\"x-ratelimit-reset\"))\n    };\n  } catch (err) {\n    if (err?.name === \"AbortError\") throw new Error(\"provider:TIMEOUT\");\n    throw err;\n  } finally {\n    clearTimeout(timer);\n  }\n}"
+        },
+        {
+          "name": "constructor",
+          "module": "index-viewer-safe.js",
+          "source": "constructor(ctx, env) {\n    this.ctx = ctx;\n    this.env = env;\n    this.inflight = /* @__PURE__ */ new Map();\n  }"
+        },
+        {
+          "name": "loadRich",
+          "module": "index-viewer-safe.js",
+          "source": "async loadRich(id) {\n    const at = now2();\n    const cached = await this.ctx.storage.get(`rich:${id}`);\n    if (cached?.fetchedAt && at - Number(cached.fetchedAt) < RICH_CACHE_MS && cached?.payload) {\n      return {\n        ok: true,\n        fixtureId: id,\n        cache: \"HIT\",\n        fetchedAt: Number(cached.fetchedAt),\n        ageMs: Math.max(0, at - Number(cached.fetchedAt)),\n        provider: cached.payload,\n        guard: cached.guard || null\n      };\n    }\n    const blockedUntil = finite2(await this.ctx.storage.get(\"richBlockedUntil\"));\n    if (blockedUntil && at < blockedUntil) {\n      const retry = Math.max(1, Math.ceil((blockedUntil - at) / 1e3));\n      const err = new Error(\"RICH_ODDS_PROVIDER_BACKOFF\");\n      err.status = 429;\n      err.retryAfter = retry;\n      throw err;\n    }\n    const budget = await this.currentBudget();\n    const calls = await this.callWindow();\n    if (budget.richBudget <= 0 || calls.length >= budget.richBudget) {\n      const oldest = calls[0] || at;\n      const retry = Math.max(1, Math.ceil((6e4 - (at - oldest)) / 1e3));\n      const err = new Error(\"RICH_ODDS_GUARD\");\n      err.status = 429;\n      err.retryAfter = retry;\n      err.guard = { ...budget, richCallsLast60s: calls.length };\n      throw err;\n    }\n    if (!this.env.FIVEDOLLAR_API_KEY) {\n      const err = new Error(\"FIVEDOLLAR_API_KEY_MISSING\");\n      err.status = 503;\n      throw err;\n    }\n    await this.recordCall(calls, at);\n    try {\n      const result = await providerJson(`${API_BASE2}/fixtures/${encodeURIComponent(id)}/odds`, this.env.FIVEDOLLAR_API_KEY);\n      const guard = {\n        ...budget,\n        richCallsLast60s: calls.length + 1,\n        providerRemaining: result.rateLimitRemaining,\n        providerLimit: result.rateLimitLimit,\n        providerReset: result.rateLimitReset\n      };\n      const entry = { fetchedAt: now2(), payload: result.payload, guard };\n      await this.ctx.storage.put(`rich:${id}`, entry);\n      return {\n        ok: true,\n        fixtureId: id,\n        cache: \"MISS\",\n        fetchedAt: entry.fetchedAt,\n        ageMs: 0,\n        provider: result.payload,\n        guard\n      };\n    } catch (err) {\n      if (Number(err?.status) === 429) {\n        const retry = Math.max(1, Number(err?.retryAfter || 5));\n        await this.ctx.storage.put(\"richBlockedUntil\", now2() + retry * 1e3);\n      }\n      throw err;\n    }\n  }"
+        },
+        {
+          "name": "fetch",
+          "module": "index-viewer-safe.js",
+          "source": "async fetch(request) {\n    if (request.method !== \"GET\") return response({ ok: false, error: \"METHOD_NOT_ALLOWED\" }, 405);\n    const url = new URL(request.url);\n    const id = safeFixtureId(url.searchParams.get(\"fixture_id\") || url.searchParams.get(\"fixtureId\") || url.searchParams.get(\"id\"));\n    if (!id) return response({ ok: false, error: \"INVALID_FIXTURE_ID\" }, 400);\n    if (this.inflight.has(id)) return this.inflight.get(id);\n    const task = this.loadRich(id).then((body) => response(body, 200, { \"x-nomad-rich-cache\": body.cache })).catch((err) => {\n      const status = Number(err?.status || 502);\n      const retry = finite2(err?.retryAfter);\n      return response({\n        ok: false,\n        fixtureId: id,\n        error: String(err?.message || err),\n        retryAfterSec: retry,\n        guard: err?.guard || null\n      }, status, retry ? { \"retry-after\": String(retry) } : {});\n    }).finally(() => this.inflight.delete(id));\n    this.inflight.set(id, task);\n    return task;\n  }"
+        },
+        {
+          "name": "fetch",
+          "module": "index-viewer-safe.js",
+          "source": "async fetch(request, env, ctx) {\n    const url = new URL(request.url);\n    if (request.method === \"GET\" && url.pathname === \"/rich-odds\") {\n      const internal = new URL(request.url);\n      internal.protocol = \"https:\";\n      internal.hostname = \"rich-odds.internal\";\n      internal.pathname = \"/rich-odds\";\n      return richStub(env).fetch(new Request(internal, request));\n    }\n    return index_v2_default.fetch(request, env, ctx);\n  }"
+        },
+        {
+          "name": "health",
+          "module": "index-viewer-safe.js",
+          "source": "async health() {\n    const h = await super.health();\n    return {\n      ...h,\n      version: VERSION2,\n      cacheOnlyViewer: true,\n      viewerRefreshEnabled: false,\n      externalRequestsPerViewer: 0\n    };\n  }"
+        },
+        {
+          "name": "fetch",
+          "module": "index-viewer-safe.js",
+          "source": "async fetch(request, env, ctx) {\n    const url = new URL(request.url);\n    if (url.pathname === \"/rich-odds\") return viewerBlockedResponse();\n    return index_rich_odds_default.fetch(request, env, ctx);\n  }"
+        }
+      ]
+    },
+    "nomadtips3-full-market-343-ball46": {
+      "constants": [
+        {
+          "name": "PROVIDER_LIMIT_PER_MINUTE",
+          "value": "40"
+        },
+        {
+          "name": "PREWARM_MAX_PER_RUN",
+          "value": "6"
+        }
+      ],
+      "contracts": [
+        {
+          "name": "providerRequest",
+          "module": "index.js",
+          "source": "async function providerRequest(fixtureId, key) {\n  const url = new URL(`${API_BASE}/fixtures/${encodeURIComponent(fixtureId)}/odds`);\n  url.searchParams.set(\"bookmakers\", BOOKMAKERS.join(\",\"));\n  const controller = new AbortController();\n  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);\n  try {\n    const r = await fetch(url, { cache: \"no-store\", signal: controller.signal, headers: { accept: \"application/json\", authorization: `Bearer ${key}` } });\n    const raw = await r.text();\n    let payload = null;\n    try {\n      payload = JSON.parse(raw);\n    } catch {\n    }\n    const limit = finite(r.headers.get(\"x-ratelimit-limit\"));\n    const remaining = finite(r.headers.get(\"x-ratelimit-remaining\"));\n    const reset = finite(r.headers.get(\"x-ratelimit-reset\"));\n    const retryAfter = finite(r.headers.get(\"retry-after\"));\n    if (!r.ok) {\n      const err = new Error(`provider:HTTP_${r.status}`);\n      err.status = r.status;\n      err.retryAfter = retryAfter;\n      err.providerLimit = limit;\n      err.providerRemaining = remaining;\n      err.providerReset = reset;\n      err.payload = payload;\n      throw err;\n    }\n    if (!payload || typeof payload !== \"object\" || Number(payload.success) !== 1) {\n      const err = new Error(\"provider:INVALID_ODDS_RESPONSE\");\n      err.status = 502;\n      err.payload = payload;\n      throw err;\n    }\n    return { payload, limit, remaining, reset };\n  } catch (err) {\n    if (err?.name === \"AbortError\") {\n      const timeout = new Error(\"provider:TIMEOUT\");\n      timeout.status = 504;\n      throw timeout;\n    }\n    throw err;\n  } finally {\n    clearTimeout(timer);\n  }\n}"
+        },
+        {
+          "name": "constructor",
+          "module": "index.js",
+          "source": "constructor(ctx, env) {\n    this.ctx = ctx;\n    this.env = env;\n    this.inflight = /* @__PURE__ */ new Map();\n  }"
+        },
+        {
+          "name": "health",
+          "module": "index.js",
+          "source": "async health() {\n    const [calls, cfg, blockedUntil, providerMeta, prewarmMeta] = await Promise.all([\n      this.callWindow(),\n      this.config(),\n      this.ctx.storage.get(\"blockedUntil\"),\n      this.ctx.storage.get(\"providerMeta\"),\n      this.ctx.storage.get(\"prewarmMeta\")\n    ]);\n    const blocked = finite(blockedUntil);\n    return {\n      ok: true,\n      component: \"BALL46_FULL_MARKET_GATE\",\n      version: VERSION,\n      bookmakerCount: BOOKMAKERS.length,\n      bookmakers: BOOKMAKERS,\n      mode: cfg.mode,\n      modeLabel: cfg.label,\n      cacheMs: cfg.cacheMs,\n      staleCacheMs: STALE_CACHE_MS,\n      staleCachePolicy: \"LAST_GOOD_UNTIL_REPLACED\",\n      serverPrewarm: true,\n      prewarmMaxPerRun: PREWARM_MAX_PER_RUN,\n      prewarmMeta: prewarmMeta || null,\n      accountLimitPerMinute: PROVIDER_LIMIT_PER_MINUTE,\n      maxFullMarketCallsPerMinute: cfg.maxCallsPerMinute,\n      callsLast60s: calls.length,\n      remainingLocalBudget: Math.max(0, cfg.maxCallsPerMinute - calls.length),\n      blockedUntil: blocked,\n      retryAfterSec: blocked && blocked > now() ? Math.max(1, Math.ceil((blocked - now()) / 1e3)) : 0,\n      providerMeta: providerMeta || null,\n      presets: Object.values(PRESETS)\n    };\n  }"
+        },
+        {
+          "name": "fetch",
+          "module": "index.js",
+          "source": "async fetch(request) {\n    const url = new URL(request.url);\n    const route = routeOf(url.pathname);\n    if (route === \"/health\" && request.method === \"GET\") return response(await this.health());\n    if (route === \"/settings\") {\n      if (request.method === \"GET\") return response({ ok: true, version: VERSION, config: await this.config(), presets: Object.values(PRESETS) });\n      if (request.method === \"PUT\" || request.method === \"POST\") {\n        try {\n          const body = await request.json().catch(() => ({}));\n          const cfg = await this.setConfig(body?.mode);\n          return response({ ok: true, version: VERSION, config: cfg, presets: Object.values(PRESETS) });\n        } catch (err) {\n          return response({ ok: false, version: VERSION, error: String(err?.message || err) }, Number(err?.status || 400));\n        }\n      }\n      return response({ ok: false, version: VERSION, error: \"METHOD_NOT_ALLOWED\" }, 405);\n    }\n    if (route === \"/board-cache\") {\n      if (request.method !== \"POST\") return response({ ok: false, version: VERSION, error: \"METHOD_NOT_ALLOWED\" }, 405);\n      const body = await request.json().catch(() => ({}));\n      return response(await this.cacheSnapshot(body?.fixtureIds));\n    }\n    if (route === \"/prewarm\") {\n      if (request.method !== \"POST\") return response({ ok: false, version: VERSION, error: \"METHOD_NOT_ALLOWED\" }, 405);\n      const body = await request.json().catch(() => ({}));\n      return response(await this.prewarm(body?.fixtureIds));\n    }\n    if (route !== \"/fixture-odds\") return response({ ok: false, version: VERSION, error: \"NOT_FOUND\", path: url.pathname }, 404);\n    if (request.method !== \"GET\") return response({ ok: false, version: VERSION, error: \"METHOD_NOT_ALLOWED\" }, 405);\n    const fixtureId = safeFixtureId(url.searchParams.get(\"fixtureId\") || url.searchParams.get(\"fixture_id\") || url.searchParams.get(\"id\"));\n    if (!fixtureId) return response({ ok: false, version: VERSION, error: \"INVALID_FIXTURE_ID\" }, 400);\n    try {\n      const body = await this.loadDeduped(fixtureId);\n      return response(body, 200, { \"x-nomad-full-market-cache\": body.cached ? body.stale ? \"STALE\" : \"HIT\" : \"MISS\" });\n    } catch (err) {\n      const status = Number(err?.status || 502), retryAfter = finite(err?.retryAfter);\n      return response({ ok: false, version: VERSION, fixtureId, error: String(err?.message || err), retryAfterSec: retryAfter, guard: err?.guard || null }, status, retryAfter ? { \"retry-after\": String(retryAfter) } : {});\n    }\n  }"
+        },
+        {
+          "name": "fetch",
+          "module": "index.js",
+          "source": "async fetch(request, env) {\n    const route = routeOf(new URL(request.url).pathname);\n    if (![\"/fixture-odds\", \"/health\", \"/settings\", \"/board-cache\", \"/prewarm\"].includes(route)) return response({ ok: false, version: VERSION, error: \"NOT_FOUND\" }, 404);\n    return gate(env).fetch(request);\n  }"
+        }
+      ]
+    },
+    "nomadtips3-engine-343": {
+      "constants": [
+        {
+          "name": "MIN_SCAN_GAP_MS",
+          "value": "6e4"
+        },
+        {
+          "name": "MAX_HISTORY_ROWS",
+          "value": "180"
+        },
+        {
+          "name": "MAX_SIGNALS",
+          "value": "1600"
+        },
+        {
+          "name": "BALL46_CORNER_TICK_MAX_AGE_MS",
+          "value": "90*1e3"
+        },
+        {
+          "name": "WORK_SETTLED_TAIL",
+          "value": "120"
+        },
+        {
+          "name": "MAX_SIGNALS2",
+          "value": "1600"
+        },
+        {
+          "name": "FINAL_RECHECK_INTERVAL_MS",
+          "value": "15 * 60 * 1e3"
+        },
+        {
+          "name": "FINAL_RECHECK_MIN_SIGNAL_AGE_MS",
+          "value": "0"
+        },
+        {
+          "name": "FINAL_RECHECK_MAX_PER_SCAN",
+          "value": "3"
+        }
+      ],
+      "contracts": [
+        {
+          "name": "fetchVerifiedCornerOnly",
+          "module": "index-bulk-recovery.js",
+          "source": "async function fetchVerifiedCornerOnly(env,id,key,fixture){\n  const spec=cornerHistorySpec(key);\n  if(!spec||!env.FIVEDOLLAR_API_KEY)return null;\n  const url=\"https://api.5dollarfootballapi.com/v1/fixtures/\"+encodeURIComponent(id)+\"/odds/history?market=\"+encodeURIComponent(spec.market)+\"&bookmaker=bet365&per_page=500\";\n  const response=await fetch(url,{headers:{Authorization:\"Bearer \"+env.FIVEDOLLAR_API_KEY,Accept:\"application/json\"},cache:\"no-store\",signal:AbortSignal.timeout(11000)});\n  if(!response.ok)return null;\n  const payload=await response.json().catch(()=>null);\n  return verifyRecentCornerHistory(payload,id,key,fixture,Date.now());\n}"
+        },
+        {
+          "name": "autoReconcileMissingFinals",
+          "module": "index-bulk-recovery.js",
+          "source": "async autoReconcileMissingFinals() {\n    const at = now2(), signals = await readWorkingSignals(this.ctx), board = await this.ctx.storage.get(\"board\") || { fixtures: [] }, boardIds = new Set((board.fixtures || []).map((f) => String(f?.fixtureId ?? f?.id ?? \"\")).filter(Boolean)), groups = /* @__PURE__ */ new Map();\n    for (const sig of signals) {\n      if ((sig?.status !== \"PENDING\" && !(isVerifiedCornerMarket(sig?.market) && sig?.status === \"UNRESOLVED\") && !phase2IsEarly(sig)) || !sig?.fixtureId) continue;\n      const id = String(sig.fixtureId);\n      if (boardIds.has(id) && !(isVerifiedCornerMarket(sig?.market) && sig?.status === \"UNRESOLVED\")) continue;\n      const created = Number(sig.createdAt || 0);\n      if (created > 0 && at - created < FINAL_RECHECK_MIN_SIGNAL_AGE_MS) continue;\n      if (!groups.has(id)) groups.set(id, []);\n      groups.get(id).push(sig);\n    }\n    const rawState = await this.ctx.storage.get(FINAL_RECHECK_STATE_KEY), state = rawState && typeof rawState === \"object\" && !Array.isArray(rawState) ? { ...rawState } : {}, candidates = [...groups.entries()].filter(([id]) => at - Number(state[id]?.checkedAt || 0) >= FINAL_RECHECK_INTERVAL_MS).sort((a, b) => Math.min(...a[1].map((x) => Number(x?.createdAt || 0))) - Math.min(...b[1].map((x) => Number(x?.createdAt || 0)))).slice(0, FINAL_RECHECK_MAX_PER_SCAN);\n    let checked = 0, finishedFixtures = 0, settledSignals = 0, incompleteFinalData = 0, errors = 0;\n    for (const [fixtureId] of candidates) {\n      checked++;\n      state[fixtureId] = { ...state[fixtureId] || {}, checkedAt: at, state: \"CHECKING\" };\n      try {\n        if (!this.env.FIVEDOLLAR_API_KEY) throw new Error(\"FIVEDOLLAR_API_KEY_MISSING\");\n        const ac = new AbortController(), timer = setTimeout(() => ac.abort(), FINAL_RECHECK_TIMEOUT_MS);\n        let response;\n        try {\n          response = await fetch(`https://api.5dollarfootballapi.com/v1/fixtures/${encodeURIComponent(fixtureId)}?include=events,stats`, { cache: \"no-store\", signal: ac.signal, headers: { accept: \"application/json\", authorization: `Bearer ${this.env.FIVEDOLLAR_API_KEY}` } });\n        } finally {\n          clearTimeout(timer);\n        }\n        if (!response.ok) throw new Error(`FINAL_HTTP_${response.status}`);\n        const payload = await response.json(), fixture = normalizeFinalFixture(payload);\n        if (!fixture || String(fixture.fixtureId) !== fixtureId) throw new Error(\"FINAL_FIXTURE_MISMATCH\");\n        if (!isFinished2(fixture)) {\n          state[fixtureId] = { checkedAt: at, state: \"NOT_FINAL\", status: fixture.status ?? fixture.statusCode ?? null };\n          continue;\n        }\n        finishedFixtures++;\n        let fixtureSettled = 0, fixtureIncomplete = 0;\n        for (const sig of signals) {\n          if ((sig?.status !== \"PENDING\" && !(isVerifiedCornerMarket(sig?.market) && sig?.status === \"UNRESOLVED\") && !phase2IsEarly(sig)) || String(sig?.fixtureId) !== fixtureId || !periodComplete(sig, fixture)) continue;\n          const result = settleMarketSignal(sig, fixture);\n          if (!result) {\n            fixtureIncomplete++;\n            incompleteFinalData++;\n            continue;\n          }\n          if (phase2IsEarly(sig) && result !== sig.result) { sig.previousResult = sig.result; sig.reconciledAt = at; }\n          sig.status = \"SETTLED\";\n          sig.result = result;\n          sig.finalScore = clone2(fixture.goals);\n          sig.finalCorners = clone2(fixture.corners);\n          sig.finalCards = clone2(fixture.cards);\n          sig.settledAt = at;\n          sig.settlementError = null;\n          sig.settlementSource = \"DIRECT_FINAL_FALLBACK\";\n          sig.settlementRevision = SETTLEMENT_REVISION;\n          sig.mirrorMinute = num3(fixture.minute) ?? sig.mirrorMinute ?? sig.minute ?? sig.entryMinute ?? null;\n          sig.mirrorScore = clone2(fixture.goals);\n          sig.mirrorCorners = clone2(fixture.corners);\n          sig.mirrorCards = clone2(fixture.cards);\n          sig.mirrorStatus = \"finished\";\n          sig.mirrorUpdatedAt = at;\n          fixtureSettled++;\n          settledSignals++;\n        }\n        state[fixtureId] = { checkedAt: at, state: fixtureIncomplete > 0 ? \"FINAL_PARTIAL\" : \"FINAL_SETTLED\", settled: fixtureSettled, incomplete: fixtureIncomplete, status: fixture.status ?? fixture.statusCode ?? \"finished\" };\n      } catch (e) {\n        errors++;\n        state[fixtureId] = { checkedAt: at, state: \"ERROR\", error: String(e?.message || e).slice(0, 160) };\n      }\n    }\n    if (settledSignals > 0) {\n      const nonSettled = signals.filter((x) => x?.status !== \"SETTLED\"), nonSettledIds = new Set(nonSettled.map((x) => String(x?.id || \"\"))), recentSettled = signals.filter((x) => x?.status === \"SETTLED\" && !nonSettledIds.has(String(x?.id || \"\"))).slice(-1600);\n      await writeWorkingSignals(this.ctx, [...recentSettled, ...nonSettled].sort((a, b) => Number(a?.createdAt || 0) - Number(b?.createdAt || 0)));\n    }\n    const stillPendingIds = new Set(signals.filter((x) => x?.status === \"PENDING\" || phase2IsEarly(x)).map((x) => String(x?.fixtureId || \"\"))), compact = {};\n    for (const [id, value] of Object.entries(state).sort((a, b) => Number(b[1]?.checkedAt || 0) - Number(a[1]?.checkedAt || 0))) {\n      if (stillPendingIds.has(id) || Object.keys(compact).length < 64) compact[id] = value;\n      if (Object.keys(compact).length >= 256) break;\n    }\n    await this.ctx.storage.put(FINAL_RECHECK_STATE_KEY, compact);\n    return { ok: true, version: FINAL_RECONCILE_VERSION, checked, finishedFixtures, settledSignals, incompleteFinalData, errors, candidatesRemaining: Math.max(0, groups.size - candidates.length) };\n  }"
+        }
+      ]
+    }
+  }
+}
