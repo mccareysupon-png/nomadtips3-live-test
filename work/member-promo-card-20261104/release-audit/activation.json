@@ -1,0 +1,35 @@
+{
+  "phase": "activate",
+  "run": "41833740593",
+  "commit": "a10a0d7ba49196ff7955e9178f0424aa48c9d1e2",
+  "at": "2026-11-04T12:58:46.279Z",
+  "worker": "ball46-production",
+  "writes": [
+    {
+      "path": "/workers/scripts/ball46-production/deployments",
+      "method": "POST"
+    }
+  ],
+  "base": "79966896-1609-4df8-976b-f29438a5d9be",
+  "candidate": "41931c2e-58a3-4f4c-ae5b-2214f7413938",
+  "healthBefore": {
+    "engine": {
+      "status": 200,
+      "ok": true,
+      "version": "nomad343-engine-v5-best19-referee",
+      "revision": "343-best19-referee-20260918"
+    },
+    "hub": {
+      "status": 200,
+      "cacheOnly": true,
+      "fixtureCount": 991,
+      "fetchedAt": 1793797124951,
+      "liveFetchedAt": 1793797124951
+    },
+    "ownerConfiguredSeconds": 10
+  },
+  "deployment": {
+    "id": "568694c4-d236-4e60-9aef-3476e45a6e8f"
+  },
+  "activated": true
+}
