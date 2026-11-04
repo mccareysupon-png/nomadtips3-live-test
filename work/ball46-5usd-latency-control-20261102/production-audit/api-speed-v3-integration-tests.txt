@@ -1,23 +1,23 @@
-✔ actual current Rich Odds class and all data-producing/normalizing methods remain byte-identical (1.29957ms)
-✔ candidate uses the existing exported Durable Object class and exposes readiness without subclass migration (2.103418ms)
-✔ 100 viewer snapshot and health reads preserve fixtures and add zero provider requests (13.305771ms)
-✔ candidate and baseline produce identical scores/events/odds and retain all fixtures {"home":2,"away":1} (29.152514ms)
-✔ candidate and baseline produce identical scores/events/odds and retain all fixtures {"home":1,"away":1} (2.310363ms)
-✔ owner status reads traverse the actual Worker and existing DO without provider calls (31.173037ms)
-✔ real authenticated manual 15 applies to the current DO and DEFAULT restores 30 without immediate provider calls (4.980797ms)
-✔ real authenticated manual 10 applies to the current DO and DEFAULT restores 30 without immediate provider calls (2.597067ms)
-✔ DEFAULT remains an exact no-op with no alarm write (1.398805ms)
-✔ quota unavailable refuses manual acceleration without changing control (1.801475ms)
-✔ native workers.dev and private route deny even valid owner JWT (0.704341ms)
-✔ server refuses unauthorized owner claims {"aud":["wrong"]} (1.822805ms)
-✔ server refuses unauthorized owner claims {"email":"other@example.test"} (1.297466ms)
-✔ server refuses unauthorized owner claims {"exp":1799999999} (1.198072ms)
-✔ server refuses unauthorized owner claims {"iss":"https://other.test"} (1.161243ms)
-✔ legacy control cannot bypass quota gate or revision checks (1.996187ms)
-✔ 429 in a real live producer prevents further live and today requests during Retry-After (1.840077ms)
-✔ a missing quota header preserves the normal default 30-second producer (0.922848ms)
-✔ actual alarm keeps 15s cadence across a provider window boundary (5.387293ms)
-✔ actual alarm keeps 10s cadence across a provider window boundary (6.949914ms)
+✔ actual current Rich Odds class and all data-producing/normalizing methods remain byte-identical (1.177753ms)
+✔ candidate uses the existing exported Durable Object class and exposes readiness without subclass migration (2.193953ms)
+✔ 100 viewer snapshot and health reads preserve fixtures and add zero provider requests (16.125884ms)
+✔ candidate and baseline produce identical scores/events/odds and retain all fixtures {"home":2,"away":1} (27.073789ms)
+✔ candidate and baseline produce identical scores/events/odds and retain all fixtures {"home":1,"away":1} (2.022261ms)
+✔ owner status reads traverse the actual Worker and existing DO without provider calls (30.329116ms)
+✔ real authenticated manual 15 applies to the current DO and DEFAULT restores 30 without immediate provider calls (4.460792ms)
+✔ real authenticated manual 10 applies to the current DO and DEFAULT restores 30 without immediate provider calls (2.546305ms)
+✔ DEFAULT remains an exact no-op with no alarm write (1.36236ms)
+✔ quota unavailable refuses manual acceleration without changing control (1.759947ms)
+✔ native workers.dev and private route deny even valid owner JWT (0.691329ms)
+✔ server refuses unauthorized owner claims {"aud":["wrong"]} (1.867469ms)
+✔ server refuses unauthorized owner claims {"email":"other@example.test"} (1.298791ms)
+✔ server refuses unauthorized owner claims {"exp":1799999999} (1.159629ms)
+✔ server refuses unauthorized owner claims {"iss":"https://other.test"} (1.110187ms)
+✔ legacy control cannot bypass quota gate or revision checks (1.983107ms)
+✔ 429 in a real live producer prevents further live and today requests during Retry-After (1.61783ms)
+✔ a missing quota header preserves the normal default 30-second producer (0.843495ms)
+✔ actual alarm keeps 15s cadence across a provider window boundary (5.286715ms)
+✔ actual alarm keeps 10s cadence across a provider window boundary (6.467453ms)
 ℹ tests 20
 ℹ suites 0
 ℹ pass 20
@@ -25,4 +25,4 @@
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 121.286237
+ℹ duration_ms 118.54234

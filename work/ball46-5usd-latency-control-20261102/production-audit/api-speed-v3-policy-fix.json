@@ -1,0 +1,71 @@
+{
+  "at": "2026-11-04T04:57:32.834Z",
+  "run": "41776261541",
+  "commit": "912df55bded3dee137fc346f9f3899e6a4f581f5",
+  "frequencyWrites": 0,
+  "ownerWrites": 0,
+  "otherWorkerWrites": 0,
+  "changedModules": [
+    "speed-policy.mjs"
+  ],
+  "ok": true,
+  "before": {
+    "ball46-production": "88dce0f2-40e2-4725-ae7c-22d84c946724",
+    "nomadtips3-5usd-hub-343": "03ce445c-f2e4-4b88-a255-bde4f4ff9f61",
+    "nomadtips3-engine-343": "02e09215-02b1-47fb-b1cf-9423f50c7ce9",
+    "nomadtips3-full-market-343-ball46": "3a53ee1a-467c-4a20-9f50-ba749e8adab4",
+    "ball46-owner-control-v2": "81239f87-a2e2-4246-bf29-6a3315d6fe99"
+  },
+  "controlBefore": {
+    "liveRefreshSeconds": 30,
+    "autoReturnMinutes": 0,
+    "autoReturnAt": null,
+    "returnRefreshSeconds": 120,
+    "updatedAt": 1789732992622
+  },
+  "candidate": "f434025a-e092-4bf0-844f-6f1e01ad7173",
+  "moduleHashes": [
+    {
+      "name": "index-viewer-safe.js",
+      "type": "application/javascript+module",
+      "sha": "24eb523f789d8481ff94250c714f8068a830950f7b6c3f193a9cfec0caccfa85"
+    },
+    {
+      "name": "owner-auth.mjs",
+      "type": "application/javascript+module",
+      "sha": "fc84204880eade48b3fe04ac38a7769cdab951db6c66958de09b680ccad3a2e6"
+    },
+    {
+      "name": "speed-gateway.mjs",
+      "type": "application/javascript+module",
+      "sha": "eca046d9a052eaef81a4bcf555bffcf80304fec2a50ae27feccbec6636c8d0c0"
+    },
+    {
+      "name": "speed-policy.mjs",
+      "type": "application/javascript+module",
+      "sha": "61102b9225b052393c4f066647a34e91606efdef93f6a2392901c148914644f4"
+    }
+  ],
+  "deployment": "487d7685-cc35-49f6-afb9-9949c2df22cf",
+  "lastRuntime": {
+    "ready": true,
+    "policyRevision": "LIVE_CAPACITY_GUARD_V3_1",
+    "quotaObserved": true,
+    "accelerationAvailable": true,
+    "configuredSeconds": 30
+  },
+  "controlAfter": {
+    "liveRefreshSeconds": 30,
+    "autoReturnMinutes": 0,
+    "autoReturnAt": null,
+    "returnRefreshSeconds": 120,
+    "updatedAt": 1789732992622
+  },
+  "versionsAfter": {
+    "ball46-production": "88dce0f2-40e2-4725-ae7c-22d84c946724",
+    "nomadtips3-5usd-hub-343": "f434025a-e092-4bf0-844f-6f1e01ad7173",
+    "nomadtips3-engine-343": "02e09215-02b1-47fb-b1cf-9423f50c7ce9",
+    "nomadtips3-full-market-343-ball46": "3a53ee1a-467c-4a20-9f50-ba749e8adab4",
+    "ball46-owner-control-v2": "81239f87-a2e2-4246-bf29-6a3315d6fe99"
+  }
+}
