@@ -1,11 +1,11 @@
 {
   "readOnly": true,
-  "at": "2026-11-02T22:58:03.553Z",
-  "run": "41541598129",
+  "at": "2026-11-04T03:43:17.340Z",
+  "run": "41768834320",
   "workers": {
     "ball46-production": {
-      "version": "224cac7e-11fe-4549-a462-8f2f0e3ef25f",
-      "deployment": "72ff0133-fe30-4a5c-8e7b-f78eb8dfaf6e",
+      "version": "88dce0f2-40e2-4725-ae7c-22d84c946724",
+      "deployment": "527ef6fb-c0d1-4257-a41c-248dcfed1bc1",
       "main": "index.js",
       "assets": {
         "config": {
@@ -40,30 +40,14 @@
           }
         },
         "annotations": {
-          "workers/commit_sha": "25fb0f3b53006d236e4f26ddb6b575ca78077888",
-          "workers/message": "Approved owner settings only; retain30; acceleration locked server-side",
-          "workers/tag": "B46_OWNER_30_ONLY_20261102",
+          "workers/message": "BALL46 membership promo before Featured Match only; preserve active static assets",
+          "workers/tag": "B46_MEMBER_PROMO_20261103",
           "workers/triggered_by": "version_upload"
         },
         "bindings": [
           {
             "name": "ASSETS",
             "type": "assets"
-          },
-          {
-            "name": "BULK_ACCESS_AUD",
-            "text": "8e0e7f7d2907abb27e9dbb156550f8b9a26db7a96b9dbfe02c16c2a87e7e835f",
-            "type": "plain_text"
-          },
-          {
-            "name": "BULK_ACCESS_ISSUER",
-            "text": "https://rapid-glade-f6b9.cloudflareaccess.com",
-            "type": "plain_text"
-          },
-          {
-            "name": "BULK_OWNER_EMAIL",
-            "text": "mccarey.supon@gmail.com",
-            "type": "plain_text"
           },
           {
             "environment": "production",
@@ -265,8 +249,8 @@
         {
           "name": "index.js",
           "type": "application/javascript+module",
-          "sha": "158e61f73469af35512e77c3a91ada3f0e928660f0f141036dd785b808c780c2",
-          "bytes": 1116884
+          "sha": "bc7e87d12bfd76ad12da1c173f54de4d90c6561426877d63867695e671477601",
+          "bytes": 1131629
         },
         {
           "name": "kit-spacing-assets-20261030.txt",
@@ -344,7 +328,7 @@
     },
     "nomadtips3-5usd-hub-343": {
       "version": "98ea43ab-f40c-4de5-82e3-b0387dffd672",
-      "deployment": "f491500e-8d8c-4308-b7a1-dfc760b31aa2",
+      "deployment": "c31b2f54-5447-4bce-b073-ac558eaf72c2",
       "main": "index-viewer-safe.js",
       "settings": {
         "placement": {},
@@ -821,35 +805,35 @@
     {
       "path": "/5usd-control.html",
       "status": 302,
-      "location": "https://rapid-glade-f6b9.cloudflareaccess.com/cdn-cgi/access/login/ball46.com?kid=8e0e7f7d2907abb27e9dbb156550f8b9a26db7a96b9dbfe02c16c2a87e7e835f&meta=eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsImtpZCI6ImU5NDhhMDViOGNmOTFjMzMzYWExZjk1MjE0ZTQ5ZWY2YmY0M2E5YTMxNGE2NWRjNDllY2JjODZiY2VlMmI3ZTAifQ.eyJ0eXBlIjoibWV0YSIsImF1ZCI6IjhlMGU3ZjdkMjkwN2FiYjI3ZTlkYmIxNTY1NTBmOGI5YTI2ZGI3YTk2YjlkYmZlMDJjMTZjMmE4N2U3ZTgzNWYiLCJob3N0bmFtZSI6ImJhbGw0Ni5jb20iLCJyZWRpcmVjdF91cmwiOiIvNXVzZC1jb250cm9sLmh0bWwiLCJzZXJ2aWNlX3Rva2VuX3N0YXR1cyI6ZmFsc2UsImlzX3dhcnAiOmZhbHNlLCJpc19nYXRld2F5IjpmYWxzZSwiZXhwIjoxNzkzNjYwNTkxLCJuYmYiOjE3OTM2NjAyOTEsImlhdCI6MTc5MzY2MDI5MSwiYXV0aF9zdGF0dXMiOiJOT05FIiwibXRsc19hdXRoIjp7ImNlcnRfaXNzdWVyX2RuIjoiIiwiY2VydF9zZXJpYWwiOiIiLCJjZXJ0X2lzc3Vlcl9za2kiOiIiLCJjZXJ0X3ByZXNlbnRlZCI6ZmFsc2UsImNvbW1vbl9uYW1lIjoiIiwiYXV0aF9zdGF0dXMiOiJOT05FIn0sInJlYWxfY291bnRyeSI6IlVTIiwiYXBwX3Nlc3Npb25faGFzaCI6IjMzZjc3OTU0MDUzNDBhMjg1NGY0MDVlODc1OWRiYjQwNjczZWY0ODFlZDVlMWU2Y2QyMjljZGZiZDc0MGY0YTIifQ.sbG_QtbiGSSqtCIon8xix15iZRXC5IodTBZwMicCzKmO98ZBE_yXymBGP7Q8b1vjZcMVrltG8HpOQyl6zILQOWuMPvSsgf_Hb62CL1IP9cYvYu9LiCGvVdI18c3WRlG9SkNs2VEXGDJ5w6Rtnlt97AVlK1MJjvgO6Ht380eU3gjGHPgauqJ9vzCGeVIyx9Vrr_tUqz_YNki_uhsxsq8yo-CS_rBZLFNO1BuqtuUDn1Y1dp0mlJXXbHVPnwiK2SCxGjdHAOnC96wqcowfIR1QkmqXSRvTquQxG89xXcHZdJsWMgIcpimbLw7HjVvXQuPjdrzaH8DiPHB9cVF0Zqyr4g&redirect_url=%2F5usd-control.html",
+      "location": "https://rapid-glade-f6b9.cloudflareaccess.com/cdn-cgi/access/login/ball46.com?kid=8e0e7f7d2907abb27e9dbb156550f8b9a26db7a96b9dbfe02c16c2a87e7e835f&meta=eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsImtpZCI6ImU5NDhhMDViOGNmOTFjMzMzYWExZjk1MjE0ZTQ5ZWY2YmY0M2E5YTMxNGE2NWRjNDllY2JjODZiY2VlMmI3ZTAifQ.eyJ0eXBlIjoibWV0YSIsImF1ZCI6IjhlMGU3ZjdkMjkwN2FiYjI3ZTlkYmIxNTY1NTBmOGI5YTI2ZGI3YTk2YjlkYmZlMDJjMTZjMmE4N2U3ZTgzNWYiLCJob3N0bmFtZSI6ImJhbGw0Ni5jb20iLCJyZWRpcmVjdF91cmwiOiIvNXVzZC1jb250cm9sLmh0bWwiLCJzZXJ2aWNlX3Rva2VuX3N0YXR1cyI6ZmFsc2UsImlzX3dhcnAiOmZhbHNlLCJpc19nYXRld2F5IjpmYWxzZSwiZXhwIjoxNzkzNzY0MTA2LCJuYmYiOjE3OTM3NjM4MDYsImlhdCI6MTc5Mzc2MzgwNiwiYXV0aF9zdGF0dXMiOiJOT05FIiwibXRsc19hdXRoIjp7ImNlcnRfaXNzdWVyX2RuIjoiIiwiY2VydF9zZXJpYWwiOiIiLCJjZXJ0X2lzc3Vlcl9za2kiOiIiLCJjZXJ0X3ByZXNlbnRlZCI6ZmFsc2UsImNvbW1vbl9uYW1lIjoiIiwiYXV0aF9zdGF0dXMiOiJOT05FIn0sInJlYWxfY291bnRyeSI6IlVTIiwiYXBwX3Nlc3Npb25faGFzaCI6IjUzNGFmMjlhZGViYWVlOTE0NWQxMzg0YTFjZTBmYTM4YTc4MTNjYjQ5MGEyOGQ0NmI5YWRhODZhNGRlOGU5OTUifQ.D-1wuu4l9rANl7ptAH3QMqvmlVycgNE4nEKnzj57_huaEPT4E7e_7C6jcPCw7M8lnCivDPOdfYOp620Ov9vDtLDvLGiEqsGYpeXIYveYOZSJXcfhPeTy3H3h7RNJg-D4t6m3Oe4QhkJXoS1C8ZeownzpAo4SyiNiuQcs3po6XgVPJYIVl_3ukBAorCk1DlgQkkYzsmimuiiLpyadFJHgKJvZ_OnkyDvwRR5PRdfA_CfQw5ASYDyxf-75Dnj5gN4fr529LTO-wONxaYMsFw0S7gCEA-yuXIGW-L1xjCiindA-cxLocAEH6GpD2zOBlxnTUujtoQOMovRBMHgI-WsW_g&redirect_url=%2F5usd-control.html",
       "sha": "12755429beb15d5eb57eafa45b8dba326343dd099bf0552038694c3856e8860e"
     },
     {
       "path": "/api/hub/control",
       "status": 302,
-      "location": "https://rapid-glade-f6b9.cloudflareaccess.com/cdn-cgi/access/login/ball46.com?kid=8e0e7f7d2907abb27e9dbb156550f8b9a26db7a96b9dbfe02c16c2a87e7e835f&meta=eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsImtpZCI6ImU5NDhhMDViOGNmOTFjMzMzYWExZjk1MjE0ZTQ5ZWY2YmY0M2E5YTMxNGE2NWRjNDllY2JjODZiY2VlMmI3ZTAifQ.eyJ0eXBlIjoibWV0YSIsImF1ZCI6IjhlMGU3ZjdkMjkwN2FiYjI3ZTlkYmIxNTY1NTBmOGI5YTI2ZGI3YTk2YjlkYmZlMDJjMTZjMmE4N2U3ZTgzNWYiLCJob3N0bmFtZSI6ImJhbGw0Ni5jb20iLCJyZWRpcmVjdF91cmwiOiIvYXBpL2h1Yi9jb250cm9sIiwic2VydmljZV90b2tlbl9zdGF0dXMiOmZhbHNlLCJpc193YXJwIjpmYWxzZSwiaXNfZ2F0ZXdheSI6ZmFsc2UsImV4cCI6MTc5MzY2MDU5MSwibmJmIjoxNzkzNjYwMjkxLCJpYXQiOjE3OTM2NjAyOTEsImF1dGhfc3RhdHVzIjoiTk9ORSIsIm10bHNfYXV0aCI6eyJjZXJ0X2lzc3Vlcl9kbiI6IiIsImNlcnRfc2VyaWFsIjoiIiwiY2VydF9pc3N1ZXJfc2tpIjoiIiwiY2VydF9wcmVzZW50ZWQiOmZhbHNlLCJjb21tb25fbmFtZSI6IiIsImF1dGhfc3RhdHVzIjoiTk9ORSJ9LCJyZWFsX2NvdW50cnkiOiJVUyIsImFwcF9zZXNzaW9uX2hhc2giOiI4ZDI2NzM0OWNkNDAzMmU5OWZkN2U3N2UyMWJjNGFkYTNmNzg4NWJhNmQ3ZjM2ODhiMmUwYjlmYWY3Yzc1YjU1In0.wIwpv_qO1pVyyEv4QSg2F7UdTYwMbm78CCNSByeY34MlvjX_uTOQYJWII64DnYO-QRcX0BmTA73d1EK8h2LArrvM5poY_u6h0LCb62cePB1ZEJFg8A-ozXwVeBlZB_TnI6tlRUn6XhBfYibPpqmn1E3mu-QnAhv-jy8ahAJZKEDoucQDifKJxqEr98nBB9z9EJ7OjHNPl-bNqeTiMeQX9tcF-mNGLkxb5ko7GEB4WSzmdxWSo2OVsCr1ahq08_ZAUOq37VgMn_l4XsnyjbaDr9eMl04G7sndIYcHOout13cJ38051Jk4PoGcCFq5s2eRUQ_QPe9XPTEjUM5Y_108iw&redirect_url=%2Fapi%2Fhub%2Fcontrol",
+      "location": "https://rapid-glade-f6b9.cloudflareaccess.com/cdn-cgi/access/login/ball46.com?kid=8e0e7f7d2907abb27e9dbb156550f8b9a26db7a96b9dbfe02c16c2a87e7e835f&meta=eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsImtpZCI6ImU5NDhhMDViOGNmOTFjMzMzYWExZjk1MjE0ZTQ5ZWY2YmY0M2E5YTMxNGE2NWRjNDllY2JjODZiY2VlMmI3ZTAifQ.eyJ0eXBlIjoibWV0YSIsImF1ZCI6IjhlMGU3ZjdkMjkwN2FiYjI3ZTlkYmIxNTY1NTBmOGI5YTI2ZGI3YTk2YjlkYmZlMDJjMTZjMmE4N2U3ZTgzNWYiLCJob3N0bmFtZSI6ImJhbGw0Ni5jb20iLCJyZWRpcmVjdF91cmwiOiIvYXBpL2h1Yi9jb250cm9sIiwic2VydmljZV90b2tlbl9zdGF0dXMiOmZhbHNlLCJpc193YXJwIjpmYWxzZSwiaXNfZ2F0ZXdheSI6ZmFsc2UsImV4cCI6MTc5Mzc2NDEwNiwibmJmIjoxNzkzNzYzODA2LCJpYXQiOjE3OTM3NjM4MDYsImF1dGhfc3RhdHVzIjoiTk9ORSIsIm10bHNfYXV0aCI6eyJjZXJ0X2lzc3Vlcl9kbiI6IiIsImNlcnRfc2VyaWFsIjoiIiwiY2VydF9pc3N1ZXJfc2tpIjoiIiwiY2VydF9wcmVzZW50ZWQiOmZhbHNlLCJjb21tb25fbmFtZSI6IiIsImF1dGhfc3RhdHVzIjoiTk9ORSJ9LCJyZWFsX2NvdW50cnkiOiJVUyIsImFwcF9zZXNzaW9uX2hhc2giOiJkMzQ3ZmIwNGU2ZTZjMGM5NjY5MDZmMjBkYjE0ZDgzZWI4ZDgzYTk3Y2E5OTZhMDI0MTRhZTMxNjQ4YzRkNjhiIn0.Jy_jOm5o8B2bKybyPBz8RkROxM9qM_WnXKd0ibYB4Y4BINTpP9OQYZGF7eILnsyGLtuagvuLQJ_rQ0IJHs0QtDTAgOA49yetMZz1YRj7q8jd-L9HzCiQt7AoZyAMbaJicEnZ2C13PdiFytVSVYO1gHdnZqNdWBIeNTZVWtPvxVc72uW5LcsuyFuuB9RC7KCTsQJHgZDqqUb-lHgbevCENxkZVFS09Wi6kK94aAEBqCbuZF_E8R-b3myunzyhOxFLgZ2KfTsnCgNXLZ_Vh2cysOFco5ZPTTf2B-5qmYg7BKHgHQDYz6tyukPPcSwHtizwgsRMY-3Ecg5YMs5_mrMR_w&redirect_url=%2Fapi%2Fhub%2Fcontrol",
       "sha": "12755429beb15d5eb57eafa45b8dba326343dd099bf0552038694c3856e8860e"
     },
     {
       "path": "/api/hub/health",
       "status": 200,
       "location": null,
-      "sha": "226becb6298db72ca98070a2be1c64c43566fbf7fb89675bec13de831cf18ff1",
+      "sha": "d05111e1bdfbc9b2d89a95ac8e6d499040eae066345df5a06fd33b5ff1513298",
       "data": {
         "ok": true,
         "component": "5USD_HUB",
         "version": "nomad343-5usd-hub-v6-viewer-cache-only",
-        "fixtureCount": 1995,
+        "fixtureCount": 1293,
         "counts": {
-          "scheduled": 39,
-          "live": 12,
-          "finished": 1944,
-          "unknown": 0
+          "scheduled": 57,
+          "live": 1,
+          "finished": 1223,
+          "unknown": 12
         },
         "continuityEnabled": true,
-        "continuityHeldFixtures": 1,
-        "fetchedAt": 1793660263090,
-        "ageMs": 29710,
+        "continuityHeldFixtures": 0,
+        "fetchedAt": 1793763794586,
+        "ageMs": 12051,
         "stale": false,
         "refreshMs": 30000,
         "todayRefreshMs": 120000,
@@ -865,7 +849,7 @@
         },
         "estimatedBulkRequestsPerMinute": 2,
         "accountLimitPerMinute": 40,
-        "nextAlarmAt": 1793660293090,
+        "nextAlarmAt": 1793763824586,
         "lastError": null,
         "lastRateLimitAt": null,
         "retryAfterSec": null,
@@ -886,7 +870,7 @@
     }
   },
   "after": {
-    "ball46-production": "224cac7e-11fe-4549-a462-8f2f0e3ef25f",
+    "ball46-production": "88dce0f2-40e2-4725-ae7c-22d84c946724",
     "nomadtips3-5usd-hub-343": "98ea43ab-f40c-4de5-82e3-b0387dffd672",
     "nomadtips3-engine-343": "02e09215-02b1-47fb-b1cf-9423f50c7ce9",
     "nomadtips3-full-market-343-ball46": "3a53ee1a-467c-4a20-9f50-ba749e8adab4"
