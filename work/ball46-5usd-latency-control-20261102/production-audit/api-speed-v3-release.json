@@ -1,0 +1,69 @@
+{
+  "at": "2026-11-04T04:37:22.201Z",
+  "run": "41774245006",
+  "commit": "7a00870edf9d5da6543280bcd50fe1fe38e977aa",
+  "mode": "MANUAL_BULK_SPEED_V3",
+  "frequencyWrites": 0,
+  "websiteWrites": 0,
+  "engineWrites": 0,
+  "fullMarketWrites": 0,
+  "cronWrites": 0,
+  "providerRequestsAddedByVerification": 0,
+  "ok": false,
+  "before": {
+    "ball46-production": "88dce0f2-40e2-4725-ae7c-22d84c946724",
+    "nomadtips3-5usd-hub-343": "98ea43ab-f40c-4de5-82e3-b0387dffd672",
+    "nomadtips3-engine-343": "02e09215-02b1-47fb-b1cf-9423f50c7ce9",
+    "nomadtips3-full-market-343-ball46": "3a53ee1a-467c-4a20-9f50-ba749e8adab4"
+  },
+  "adminBefore": "fbec2b2f-de89-41b3-bf6f-4ba8b6eab01c",
+  "controlBefore": {
+    "liveRefreshSeconds": 30,
+    "autoReturnMinutes": 0,
+    "autoReturnAt": null,
+    "returnRefreshSeconds": 120,
+    "updatedAt": 1789732992622
+  },
+  "healthBefore": {
+    "fixtureCount": 1296,
+    "counts": {
+      "scheduled": 81,
+      "live": 2,
+      "finished": 1213,
+      "unknown": 0
+    },
+    "ageMs": 10959
+  },
+  "hubCandidate": "03ce445c-f2e4-4b88-a255-bde4f4ff9f61",
+  "secretLineage": {
+    "verified": true,
+    "source": "PREVIOUS_OWNED_STAGED_VERSION",
+    "version": "097eb3ed-a07c-4861-9ec7-11c0e5748f79",
+    "priorRun": "41541598129"
+  },
+  "hubModuleHashes": [
+    {
+      "name": "index-viewer-safe.js",
+      "type": "application/javascript+module",
+      "sha": "24eb523f789d8481ff94250c714f8068a830950f7b6c3f193a9cfec0caccfa85"
+    },
+    {
+      "name": "owner-auth.mjs",
+      "type": "application/javascript+module",
+      "sha": "fc84204880eade48b3fe04ac38a7769cdab951db6c66958de09b680ccad3a2e6"
+    },
+    {
+      "name": "speed-gateway.mjs",
+      "type": "application/javascript+module",
+      "sha": "eca046d9a052eaef81a4bcf555bffcf80304fec2a50ae27feccbec6636c8d0c0"
+    },
+    {
+      "name": "speed-policy.mjs",
+      "type": "application/javascript+module",
+      "sha": "5beb0320b81b7dbc67e2b773f5de598348358bafd4e3d27b891616c5b54328db"
+    }
+  ],
+  "hubDeployment": "71f8548e-910e-4619-a7c0-a709ac0f3ead",
+  "error": "AssertionError [ERR_ASSERTION]: LIVE_HEADER_QUOTA_NOT_READY_STOP\n    at file:///home/runner/work/nomadtips3-live-test/nomadtips3-live-test/work/api-speed-v3/release.mjs:36:320",
+  "hubRestored": true
+}
