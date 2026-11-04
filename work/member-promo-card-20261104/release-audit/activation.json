@@ -1,8 +1,8 @@
 {
   "phase": "activate",
-  "run": "41833740593",
-  "commit": "a10a0d7ba49196ff7955e9178f0424aa48c9d1e2",
-  "at": "2026-11-04T12:58:46.279Z",
+  "run": "41834557388",
+  "commit": "d93c7fa4bd643a110be74d4335a23f6dead8d36c",
+  "at": "2026-11-04T13:03:29.365Z",
   "worker": "ball46-production",
   "writes": [
     {
@@ -22,14 +22,40 @@
     "hub": {
       "status": 200,
       "cacheOnly": true,
-      "fixtureCount": 991,
-      "fetchedAt": 1793797124951,
-      "liveFetchedAt": 1793797124951
+      "fixtureCount": 899,
+      "fetchedAt": 1793797408522,
+      "liveFetchedAt": 1793797408522
     },
-    "ownerConfiguredSeconds": 10
+    "ownerConfiguredSeconds": 10,
+    "effectiveSeconds": 10,
+    "configuredField": "bulkSpeedV3.configuredSeconds"
   },
   "deployment": {
-    "id": "568694c4-d236-4e60-9aef-3476e45a6e8f"
+    "id": "be1f8b99-48aa-4625-b634-f05b34423d79"
   },
-  "activated": true
+  "activated": true,
+  "healthAfter": {
+    "engine": {
+      "status": 200,
+      "ok": true,
+      "version": "nomad343-engine-v5-best19-referee",
+      "revision": "343-best19-referee-20260918"
+    },
+    "hub": {
+      "status": 200,
+      "cacheOnly": true,
+      "fixtureCount": 899,
+      "fetchedAt": 1793797429152,
+      "liveFetchedAt": 1793797429152
+    },
+    "ownerConfiguredSeconds": 10,
+    "effectiveSeconds": 10,
+    "configuredField": "bulkSpeedV3.configuredSeconds"
+  },
+  "ok": true,
+  "active": {
+    "version": "41931c2e-58a3-4f4c-ae5b-2214f7413938",
+    "deployment": "be1f8b99-48aa-4625-b634-f05b34423d79"
+  },
+  "finishedAt": "2026-11-04T13:03:56.181Z"
 }
