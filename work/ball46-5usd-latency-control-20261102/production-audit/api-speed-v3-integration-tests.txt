@@ -1,21 +1,21 @@
-✔ actual current Rich Odds class and all data-producing/normalizing methods remain byte-identical (1.495394ms)
-✔ candidate uses the existing exported Durable Object class and exposes readiness without subclass migration (2.118849ms)
-✔ 100 viewer snapshot and health reads preserve fixtures and add zero provider requests (15.688512ms)
-✔ candidate and baseline produce identical scores/events/odds and retain all fixtures {"home":2,"away":1} (29.183696ms)
-✔ candidate and baseline produce identical scores/events/odds and retain all fixtures {"home":1,"away":1} (2.069155ms)
-✔ owner status reads traverse the actual Worker and existing DO without provider calls (29.864939ms)
-✔ real authenticated manual 15 applies to the current DO and DEFAULT restores 30 without immediate provider calls (4.710381ms)
-✔ real authenticated manual 10 applies to the current DO and DEFAULT restores 30 without immediate provider calls (2.57982ms)
-✔ DEFAULT remains an exact no-op with no alarm write (1.402721ms)
-✔ quota unavailable refuses manual acceleration without changing control (1.592445ms)
-✔ native workers.dev and private route deny even valid owner JWT (0.64189ms)
-✔ server refuses unauthorized owner claims {"aud":["wrong"]} (1.875685ms)
-✔ server refuses unauthorized owner claims {"email":"other@example.test"} (1.310179ms)
-✔ server refuses unauthorized owner claims {"exp":1799999999} (1.221657ms)
-✔ server refuses unauthorized owner claims {"iss":"https://other.test"} (1.18282ms)
-✔ legacy control cannot bypass quota gate or revision checks (2.046804ms)
-✔ 429 in a real live producer prevents further live and today requests during Retry-After (1.750762ms)
-✔ a missing quota header preserves the normal default 30-second producer (0.918356ms)
+✔ actual current Rich Odds class and all data-producing/normalizing methods remain byte-identical (1.18635ms)
+✔ candidate uses the existing exported Durable Object class and exposes readiness without subclass migration (2.209324ms)
+✔ 100 viewer snapshot and health reads preserve fixtures and add zero provider requests (13.423731ms)
+✔ candidate and baseline produce identical scores/events/odds and retain all fixtures {"home":2,"away":1} (31.868753ms)
+✔ candidate and baseline produce identical scores/events/odds and retain all fixtures {"home":1,"away":1} (2.205637ms)
+✔ owner status reads traverse the actual Worker and existing DO without provider calls (31.006257ms)
+✔ real authenticated manual 15 applies to the current DO and DEFAULT restores 30 without immediate provider calls (5.222747ms)
+✔ real authenticated manual 10 applies to the current DO and DEFAULT restores 30 without immediate provider calls (2.622565ms)
+✔ DEFAULT remains an exact no-op with no alarm write (1.507308ms)
+✔ quota unavailable refuses manual acceleration without changing control (1.812115ms)
+✔ native workers.dev and private route deny even valid owner JWT (0.720251ms)
+✔ server refuses unauthorized owner claims {"aud":["wrong"]} (1.957847ms)
+✔ server refuses unauthorized owner claims {"email":"other@example.test"} (1.354162ms)
+✔ server refuses unauthorized owner claims {"exp":1799999999} (1.184947ms)
+✔ server refuses unauthorized owner claims {"iss":"https://other.test"} (1.181721ms)
+✔ legacy control cannot bypass quota gate or revision checks (2.025913ms)
+✔ 429 in a real live producer prevents further live and today requests during Retry-After (1.847691ms)
+✔ a missing quota header preserves the normal default 30-second producer (1.005483ms)
 ℹ tests 18
 ℹ suites 0
 ℹ pass 18
@@ -23,4 +23,4 @@
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 108.670732
+ℹ duration_ms 111.42461
