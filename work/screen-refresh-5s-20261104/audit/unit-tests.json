@@ -1,0 +1,30 @@
+{
+  "ok": true,
+  "passed": 21,
+  "results": [
+    "valid cache snapshot accepted",
+    "reject provider response",
+    "reject side effects",
+    "reject stale flag",
+    "reject old data",
+    "reject old LIVE despite fresh TODAY",
+    "reject future data",
+    "reject error payload",
+    "reject missing fixtures",
+    "score/minute advance",
+    "provider score correction may decrease",
+    "no fixture removal or creation",
+    "odds/events/team references preserved",
+    "older snapshot never overwrites newer board",
+    "same data preserves fixture reference",
+    "partial goals preserve other score fields",
+    "invalid goals cannot overwrite",
+    "FT transition and subsequent FT correction",
+    "legacy Engine board can invoke scan; do not accelerate it",
+    "100 exact current cache getter reads add no provider or Engine calls",
+    "5s path uses HUB snapshot, baseline loops unchanged"
+  ],
+  "cacheReads": 100,
+  "providerRequestsAdded": 0,
+  "engineScansAddedByFastLoop": 0
+}
