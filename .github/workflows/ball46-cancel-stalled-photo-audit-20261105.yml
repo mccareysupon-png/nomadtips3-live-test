@@ -1,0 +1,27 @@
+name: Cancel only stalled pre-activation member photo audit
+on:
+  push:
+    branches: [codex/ball46-member-promo-20261104]
+    paths: ['work/member-promo-sharp-20261104/cancel-stalled-audit.json']
+permissions:
+  actions: write
+  contents: read
+jobs:
+  cancel-exact-audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const run_id=41928100665;
+            const run=(await github.rest.actions.getWorkflowRun({...context.repo,run_id})).data;
+            if(run.head_sha!=='36a2afbb3eb6c181ce57d77881167f393f35a265')throw Error('RUN_IDENTITY_MISMATCH');
+            if(run.status==='completed'){core.info('Audit already finished; no cancellation needed');return;}
+            const jobs=(await github.rest.actions.listJobsForWorkflowRun({...context.repo,run_id})).data.jobs;
+            const job=jobs.find(j=>j.name==='release');
+            if(!job)throw Error('EXACT_JOB_NOT_FOUND');
+            const activation=job.steps.find(s=>s.name.startsWith('Activate only after'));
+            if(!activation||activation.status!=='pending')throw Error('DO_NOT_CANCEL_POSSIBLE_ACTIVATION');
+            await github.rest.actions.cancelWorkflowRun({...context.repo,run_id});
+            core.info('Cancelled only the identified pre-activation audit; no Cloudflare credentials or Production requests used');
