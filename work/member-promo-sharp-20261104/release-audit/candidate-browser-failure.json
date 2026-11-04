@@ -1,7 +1,7 @@
 {
   "ok": false,
   "phase": "candidate",
-  "error": "AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:\n+ actual - expected\n\n+ [\n+   {\n+     path: '/api/engine/statistics',\n+     status: 599\n+   },\n+   {\n+     path: '/api/engine/statistics',\n+     status: 599\n+   },\n+   {\n+     path: '/api/engine/board',\n+     status: 599\n+   }\n+ ]\n- []\n\n    at file:///home/runner/work/nomadtips3-live-test/nomadtips3-live-test/work/member-promo-sharp-20261104/release-browser.mjs:37:36",
+  "error": "AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:\n+ actual - expected\n\n+ [\n+   {\n+     path: '/api/engine/statistics',\n+     status: 599\n+   }\n+ ]\n- []\n\n    at file:///home/runner/work/nomadtips3-live-test/nomadtips3-live-test/work/member-promo-sharp-20261104/release-browser.mjs:37:36",
   "results": [
     {
       "width": 1366,
@@ -39,8 +39,8 @@
         "testData": false
       },
       "cacheReadGapsMs": [
-        5185,
-        4800,
+        4990,
+        5000,
         5000
       ],
       "providerReadsSuppressed": 6,
@@ -85,8 +85,8 @@
         "testData": false
       },
       "cacheReadGapsMs": [
-        5049,
-        4941,
+        5409,
+        4581,
         4999
       ],
       "providerReadsSuppressed": 6,
