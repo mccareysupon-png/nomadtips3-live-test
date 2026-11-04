@@ -17,6 +17,9 @@ export function readQuota(headers,at){
  return{limit,remaining,resetAt:reset*1000,observedAt:at,source:'5USD_RESPONSE_HEADERS',scope:'ACCOUNT_ALL_KEYS',window:'PROVIDER_FIXED_WINDOW'};
 }
 const empty=()=>({startedAt:null,requests:[],extraLiveRequests:[],lastBaselineLiveAt:null,extraDeferredUntil:0,response429:0,backoffUntil:0,strikes:0,accelerationBlockedStatus:null,provider:null,pending:[]});
+// Existing metadata intentionally carries Today guardHit into later LIVE snapshots.
+// It indicates live capacity only when the actual LIVE count reaches the existing 500-row page.
+const livePageCapacityReached=m=>m?.refreshKind==='LIVE'&&m?.guardHit===true&&Number(m?.counts?.live||0)>=500;
 export function quotaGate(t,at,seconds,{faulted=false,liveTruncated=false}={}){
  if(seconds===30)return{allowed:true,reason:null};
  if(!PRESETS.includes(seconds))return{allowed:false,reason:'UNSUPPORTED_INTERVAL'};
@@ -37,18 +40,18 @@ export class BulkSpeedPolicy{
  constructor(storage,clock=Date.now){this.storage=storage;this.clock=clock;this.faulted=false;this.memoryBackoffUntil=0;}
  async telemetry(tx=this.storage){const t=await tx.get(TELEMETRY);return t?{...empty(),...t}:empty();}
  async rawControl(tx=this.storage){const c=await tx.get(CONTROL)||{};return{liveRefreshSeconds:Number.isFinite(c.liveRefreshSeconds)?c.liveRefreshSeconds:120,autoReturnMinutes:c.autoReturnMinutes??0,autoReturnAt:c.autoReturnAt??null,returnRefreshSeconds:c.returnRefreshSeconds??120,updatedAt:c.updatedAt??null};}
- async gate(seconds,tx=this.storage){const t=await this.telemetry(tx),m=await tx.get('meta');return quotaGate(t,this.clock(),seconds,{faulted:this.faulted,liveTruncated:m?.refreshKind==='LIVE'&&m?.guardHit===true});}
+ async gate(seconds,tx=this.storage){const t=await this.telemetry(tx),m=await tx.get('meta');return quotaGate(t,this.clock(),seconds,{faulted:this.faulted,liveTruncated:livePageCapacityReached(m)});}
  async effectiveControl(control){
   if(control.liveRefreshSeconds>=30)return control;
   try{return(await this.gate(control.liveRefreshSeconds)).allowed?control:{...control,liveRefreshSeconds:30};}
   catch{this.faulted=true;return{...control,liveRefreshSeconds:30};}
  }
  async status(){
-  const at=this.clock(),t=await this.telemetry(),c=await this.rawControl(),m=await this.storage.get('meta'),options={faulted:this.faulted,liveTruncated:m?.refreshKind==='LIVE'&&m?.guardHit===true};
+  const at=this.clock(),t=await this.telemetry(),c=await this.rawControl(),m=await this.storage.get('meta'),options={faulted:this.faulted,liveTruncated:livePageCapacityReached(m)};
   const profiles=PRESETS.map(seconds=>({seconds,...quotaGate(t,at,seconds,options)})),effectiveSeconds=c.liveRefreshSeconds<30&&!profiles.find(p=>p.seconds===c.liveRefreshSeconds)?.allowed?30:c.liveRefreshSeconds;
   return{release:'BULK_SPEED_V3',serverTime:at,control:c,revision:revision(c),effectiveSeconds,profiles,canAccelerate:profiles.some(p=>p.seconds<30&&p.allowed),accountWindow:t.provider?{...t.provider,used:t.provider.limit-t.provider.remaining,ageMs:Math.max(0,at-t.provider.observedAt),valid:t.provider.resetAt>at&&at>=t.provider.observedAt&&at-t.provider.observedAt<=MAX_OBSERVATION_AGE_MS}:null,safetyReserve:SAFETY_RESERVE,requestCoordination:'HEADERS_AND_HUB_EXTRA_REQUEST_GUARD_NOT_ALL_WORKER_RESERVATIONS',telemetry:{counterStartedAt:t.startedAt,hubRequestsLast60s:t.startedAt===null?null:t.requests.filter(x=>x.at>at-60000).length,counterScope:'BULK_HUB_ONLY',accountRequestsLast60s:null,response429:t.startedAt===null?null:t.response429,backoffUntil:Math.max(t.backoffUntil,this.memoryBackoffUntil)||null,retryAfterSeconds:Math.max(0,Math.ceil((Math.max(t.backoffUntil,this.memoryBackoffUntil)-at)/1000)),accelerationBlockedStatus:t.accelerationBlockedStatus}};
  }
- async publicState(){const s=await this.status();return{ready:true,quotaObserved:Boolean(s.accountWindow?.valid&&s.accountWindow.limit===40),accelerationAvailable:s.canAccelerate,configuredSeconds:s.control.liveRefreshSeconds};}
+ async publicState(){const s=await this.status();return{ready:true,policyRevision:'LIVE_CAPACITY_GUARD_V3_1',quotaObserved:Boolean(s.accountWindow?.valid&&s.accountWindow.limit===40),accelerationAvailable:s.canAccelerate,configuredSeconds:s.control.liveRefreshSeconds};}
  async before(url,kind){
   const at=this.clock();if(this.memoryBackoffUntil>at)throw Object.assign(error('BULK_PROVIDER_COOLDOWN',429),{retryAfter:Math.ceil((this.memoryBackoffUntil-at)/1000)});
   let extra;
@@ -56,7 +59,7 @@ export class BulkSpeedPolicy{
    const t=await this.telemetry(tx);if(t.backoffUntil>at)throw Object.assign(error('BULK_PROVIDER_COOLDOWN',429),{retryAfter:Math.ceil((t.backoffUntil-at)/1000)});
    const c=await this.rawControl(tx),m=await tx.get('meta'),live=kind==='ALARM_LIVE',baselineAt=t.lastBaselineLiveAt??Number(m?.liveFetchedAt||0);extra=live&&c.liveRefreshSeconds<30&&baselineAt+30000>at;
    t.requests=t.requests.filter(x=>x.at>at-60000);t.extraLiveRequests=t.extraLiveRequests.filter(x=>x>at-60000);t.pending=t.pending.filter(x=>x.startedAt>at-60000);
-   if(extra){const gate=quotaGate(t,at,c.liveRefreshSeconds,{faulted:this.faulted,liveTruncated:m?.refreshKind==='LIVE'&&m?.guardHit===true}),maxExtra=Math.ceil(60/c.liveRefreshSeconds)-2;const reason=!gate.allowed?gate.reason:t.extraLiveRequests.length>=maxExtra?'ROLLING_EXTRA_LIMIT':null;if(reason){t.extraDeferredUntil=baselineAt+30000;await tx.put(TELEMETRY,t);return{denied:'BULK_EXTRA_DEFERRED:'+reason};}t.extraLiveRequests.push(at);}
+   if(extra){const gate=quotaGate(t,at,c.liveRefreshSeconds,{faulted:this.faulted,liveTruncated:livePageCapacityReached(m)}),maxExtra=Math.ceil(60/c.liveRefreshSeconds)-2;const reason=!gate.allowed?gate.reason:t.extraLiveRequests.length>=maxExtra?'ROLLING_EXTRA_LIMIT':null;if(reason){t.extraDeferredUntil=baselineAt+30000;await tx.put(TELEMETRY,t);return{denied:'BULK_EXTRA_DEFERRED:'+reason};}t.extraLiveRequests.push(at);}
    if(live&&!extra){t.lastBaselineLiveAt=at;t.extraDeferredUntil=0;}
    const id=crypto.randomUUID();t.startedAt??=at;t.requests.push({at,kind:kind||'TODAY',extra});t.pending.push({id,startedAt:at});await tx.put(TELEMETRY,t);return{id,startedAt:at};
   }).catch(e=>{e.bulkSpeedExtra=extra;throw e;});

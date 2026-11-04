@@ -1,0 +1,44 @@
+name: BALL46 V3 actual LIVE capacity guard correction only
+on:
+  push:
+    branches: [codex/ball46-owner-control-v2-20261103]
+    paths: ['work/api-speed-v3/policy-fix-request.json']
+permissions:
+  contents: write
+concurrency:
+  group: ball46-production-deploy
+  cancel-in-progress: false
+jobs:
+  fix:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    defaults:
+      run:
+        working-directory: work/ball46-5usd-latency-control-20261102
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node production-preflight.mjs
+      - run: node ../api-speed-v3/policy-fix-capture.mjs
+      - name: Test source core and actual LIVE capacity regression without provider calls
+        run: |
+          node ../api-settings-v2/prepare.mjs
+          node ../api-speed-v3/build.mjs --test-baseline-only
+          node ../api-speed-v3/policy.test.mjs > production-audit/api-speed-v3-policy-tests.txt
+          node ../api-speed-v3/integration.test.mjs > production-audit/api-speed-v3-integration-tests.txt
+          node --check ../api-speed-v3/policy-fix-release.mjs
+      - name: Change only policy helper, preserving current main and all other modules
+        run: node ../api-speed-v3/policy-fix-release.mjs
+      - name: Preserve helper correction and unchanged-module evidence
+        if: always()
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add production-audit
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Record LIVE capacity helper correction and original30 preservation [skip ci]"
+          git push origin HEAD:codex/ball46-owner-control-v2-20261103
