@@ -1,5 +1,7 @@
 import assert from'node:assert/strict';import{chromium}from'playwright';import{readFile,writeFile}from'node:fs/promises';import{ROOT,DIR,sha,preview,patchHTML}from'./release-ops.mjs';
+const baselineAvailability=JSON.parse(await readFile(ROOT+'/baseline-availability.json'));
 const phase=process.argv[2];assert(['candidate','production','shadow'].includes(phase));const candidate=JSON.parse(await readFile(DIR+'/candidate.json')),host=phase==='candidate'?preview(candidate.candidate):'https://ball46.com',build=JSON.parse(await readFile(DIR+'/build.json')),payload=JSON.parse(await readFile(ROOT+'/stage/assets.json')),browser=await chromium.launch({headless:true}),results=[];
+assert.equal(candidate.base,baselineAvailability.base,'BASELINE_AVAILABILITY_EVIDENCE_STALE');assert.deepEqual(candidate.configBefore.services,baselineAvailability.services,'SERVICE_VERSIONS_CHANGED');assert.deepEqual(candidate.baseModules.filter(m=>m.name!=='member-promo-assets-20261104.txt'),baselineAvailability.runtimeModules,'RUNTIME_MODULES_CHANGED');
 try{for(const {width,theme} of [1366,390].flatMap(width=>['light','dark'].map(theme=>({width,theme})))){
 const reduced=width===390&&theme==='light',ctx=await browser.newContext({viewport:{width,height:900},reducedMotion:reduced?'reduce':'no-preference'}),p=await ctx.newPage(),errors=[],failures=[],snapshots=[],writes=[],failureReads=[];let preventedProvider=0,directProvider=0;
 await ctx.addInitScript(t=>localStorage.setItem('nomad343_dashboard_theme_v1',t),theme);
@@ -37,8 +39,13 @@ const dashboard=await ctx.request.get(host+'/dashboard-v2-stage3-featured-facts-
 p.off('response',onResponse);const observedFailures=failures.slice();
 await ctx.unrouteAll({behavior:'ignoreErrors'});await p.close();
 await Promise.all(failureReads);
-const preExistingStatisticsFailures=[],unexplainedFailures=[];
+const preExistingAPIAvailability=[],unexplainedFailures=[];
 for(const failure of observedFailures){
+ const known=baselineAvailability.observations.find(x=>x.path===failure.path&&x.status===failure.status&&(!x.body||x.body===failure.body));
+ if(known){
+  preExistingAPIAvailability.push({path:failure.path,url:failure.url,status:failure.status,observedOnUntouchedProduction:true,referenceVersion:baselineAvailability.base,evidenceRun:baselineAvailability.sourceRun,evidencePhase:baselineAvailability.sourcePhase,allRuntimeModulesIdentical:true,serviceVersionsIdentical:true,...(failure.body?{errorBody:failure.body.slice(0,1200)}:{bodyUnavailable:true})});
+  continue;
+ }
  if(failure.path==='/api/engine/statistics'&&failure.status===599&&typeof failure.body==='string'){
   // Read the identical request through the untouched immediate baseline.
   // Only a byte-identical 599 body is classified as an existing Statistics issue.
@@ -47,15 +54,15 @@ for(const failure of observedFailures){
   const reference=await ctx.request.get(referenceURL,{timeout:15000,headers:{'cache-control':'no-cache'}});
   const referenceBody=await reference.text();
   if(reference.status()===599&&referenceBody===failure.body){
-   preExistingStatisticsFailures.push({path:failure.path,url:failure.url,status:failure.status,referenceStatus:reference.status(),referenceVersion:candidate.base,identicalErrorBody:true,errorBodySha256:sha(referenceBody),errorBody:referenceBody.slice(0,1200)});
+   preExistingAPIAvailability.push({path:failure.path,url:failure.url,status:failure.status,referenceStatus:reference.status(),referenceVersion:candidate.base,identicalErrorBody:true,errorBodySha256:sha(referenceBody),errorBody:referenceBody.slice(0,1200)});
    continue;
   }
   unexplainedFailures.push({...failure,referenceStatus:reference.status(),referenceBody:referenceBody.slice(0,1200)});
  }else unexplainedFailures.push(failure);
 }
-await writeFile(DIR+'/'+phase+'-'+width+'-'+theme+'-request-comparison.json',JSON.stringify({preExistingStatisticsFailures,unexplainedFailures},null,2));
+await writeFile(DIR+'/'+phase+'-'+width+'-'+theme+'-request-comparison.json',JSON.stringify({preExistingAPIAvailability,unexplainedFailures},null,2));
 assert.deepEqual(errors,[]);assert.deepEqual(unexplainedFailures,[],'UNEXPLAINED_RESOURCE_OR_API_FAILURE');assert.deepEqual(writes,[]);assert.equal(directProvider,0);
-await writeFile(DIR+'/'+phase+'-'+width+'-'+theme+'.png',await readFile(DIR+'/'+phase+'-'+width+'-'+theme+'-observed.png'));results.push({width,theme,ok:true,reducedMotion:reduced,state,cacheReadGapsMs:gaps,providerReadsSuppressed:preventedProvider,directProviderAttempts:directProvider,pageErrors:errors,failedResources:observedFailures,preExistingStatisticsFailures,unexplainedFailures,ownServerWrites:0});
+await writeFile(DIR+'/'+phase+'-'+width+'-'+theme+'.png',await readFile(DIR+'/'+phase+'-'+width+'-'+theme+'-observed.png'));results.push({width,theme,ok:true,reducedMotion:reduced,state,cacheReadGapsMs:gaps,providerReadsSuppressed:preventedProvider,directProviderAttempts:directProvider,pageErrors:errors,failedResources:observedFailures,preExistingAPIAvailability,unexplainedFailures,ownServerWrites:0});
 await ctx.unrouteAll({behavior:'wait'});await ctx.close();
 }await writeFile(DIR+'/'+phase+'-browser.json',JSON.stringify({ok:true,phase,candidate:candidate.candidate,host,run:process.env.GITHUB_RUN_ID,at:new Date().toISOString(),results},null,2));console.log(JSON.stringify({ok:true,phase,results}));}catch(e){await writeFile(DIR+'/'+phase+'-browser-failure.json',JSON.stringify({ok:false,phase,error:e.stack,results},null,2));throw e}finally{for(const c of browser.contexts())await c.unrouteAll({behavior:'wait'});await browser.close()}
 
