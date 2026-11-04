@@ -4,9 +4,10 @@ import {createHash} from 'node:crypto';
 const A='62cb0db544160e6591342abd6b4f35cc',API='https://api.cloudflare.com/client/v4/accounts/'+A,ADMIN='ball46-owner-control-v2',HOST=ADMIN+'.mccarey-supon.workers.dev',HUB='nomadtips3-5usd-hub-343',APP='4b201cae-a4d6-4721-aae2-2fe15d2e0442',OWNER='mccarey.supon@gmail.com';
 const root=new URL('./',import.meta.url),sha=b=>createHash('sha256').update(b).digest('hex'),canon=x=>JSON.stringify(x,(k,v)=>v&&typeof v==='object'&&!Array.isArray(v)?Object.fromEntries(Object.entries(v).sort(([a],[b])=>a.localeCompare(b))):v);
 const hashModules=v=>v.modules.map(m=>({name:m.name,type:m.content_type,sha:sha(Buffer.from(m.content_base64,'base64'))})).sort((a,b)=>a.name.localeCompare(b.name));
-const report={at:new Date().toISOString(),run:process.env.GITHUB_RUN_ID,mode:'ISOLATED_ADMIN_AUTH_DIAGNOSTICS',websiteWrites:0,hubWrites:0,providerRequestsAdded:0,frequencyWrites:0,ok:false};
+const publish=process.env.OWNER_PUBLISH_PHASE==='true';
+const report={at:new Date().toISOString(),run:process.env.GITHUB_RUN_ID,mode:publish?'ISOLATED_OWNER_30_ONLY':'ISOLATED_ADMIN_AUTH_DIAGNOSTICS',websiteWrites:0,hubWrites:0,providerRequestsAdded:0,frequencyWrites:0,ok:false};
 let previous,candidate,touched=false;
-const save=()=>writeFile('production-audit/owner-v2-auth-diagnostic.json',JSON.stringify(report,null,2));
+const save=()=>writeFile('production-audit/'+(publish?'owner-v2-published.json':'owner-v2-auth-diagnostic.json'),JSON.stringify(report,null,2));
 async function cf(path,body,method=body?'POST':'GET'){
  if(method!=='GET')assert(path==='/workers/scripts/'+ADMIN&&method==='PUT'||path==='/workers/scripts/'+ADMIN+'/subdomain'&&method==='POST'||path==='/workers/scripts/'+ADMIN+'/deployments'&&method==='POST','ADMIN_ONLY_WRITE_SCOPE');
  for(let n=0;;n++)try{const r=await fetch(API+path,{method,headers:{authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN,...(body&&!(body instanceof FormData)?{'content-type':'application/json'}:{})},body:body instanceof FormData?body:body?JSON.stringify(body):undefined,signal:AbortSignal.timeout(30000)}),j=await r.json();if(!r.ok||!j.success)throw Error('CF:'+r.status+':'+JSON.stringify(j.errors));return j.result;}catch(e){if(method!=='GET'||n>=2)throw e;await new Promise(r=>setTimeout(r,1000*(n+1)));}
@@ -17,15 +18,19 @@ async function health(){for(let n=0;;n++)try{const r=await fetch('https://'+HUB+
 try{
  const proof=JSON.parse(await readFile('production-audit/preflight.json','utf8'));assert(proof.ok);report.before=Object.fromEntries(Object.entries(proof.workers).map(([w,v])=>[w,v.version]));
  for(const[w,id]of Object.entries(report.before))assert.equal(await active(w),id,'PRODUCTION_CHANGED_STOP');report.controlBefore=await health();
- previous=await active(ADMIN);assert.equal(previous,'5eb3105a-d210-4d92-8302-2879d45dc97a','UNKNOWN_ADMIN_STOP');report.previous=previous;
+ const prior=publish?JSON.parse(await readFile('production-audit/owner-v2-auth-diagnostic.json','utf8')):null;
+ if(publish){assert(prior.ok);const browser=JSON.parse(await readFile('production-audit/owner-v2-browser.json','utf8'));assert(browser.ok&&browser.layouts.length===2&&!browser.errors.length&&browser.providerRequests===0);}
+ previous=await active(ADMIN);assert.equal(previous,publish?prior.candidate:'5eb3105a-d210-4d92-8302-2879d45dc97a','UNKNOWN_ADMIN_STOP');report.previous=previous;
  const v=await version(ADMIN,previous),settings=await cf('/workers/scripts/'+ADMIN+'/settings'),schedules=await cf('/workers/scripts/'+ADMIN+'/schedules');await writeFile('private-production/owner-v2-admin-rollback.json',JSON.stringify(v));
  assert.equal(v.main_module,'index.mjs');assert(v.bindings.every(b=>['plain_text','service'].includes(b.type)),'UNEXPECTED_ADMIN_SECRET');
  const app=await cf('/access/apps/'+APP),policies=await cf('/access/apps/'+APP+'/policies');assert.equal(app.domain,HOST);assert.equal(policies.length,1);assert.equal(policies[0].decision,'allow');assert.deepEqual(policies[0].include,[{email:{email:OWNER}}]);assert(!policies[0].exclude?.length&&!policies[0].require?.length);
  for(const[name,text]of Object.entries({BULK_ACCESS_AUD:app.aud,BULK_ACCESS_ISSUER:'https://rapid-glade-f6b9.cloudflareaccess.com',BULK_OWNER_EMAIL:OWNER}))assert.equal(v.bindings.find(b=>b.name===name)?.text,text,'ADMIN_AUTH_BINDING_DRIFT');
  const auth=await readFile(new URL('owner-auth.mjs',root),'utf8');assert(auth.includes('reason:')&&auth.includes('JWT_AUDIENCE')&&auth.includes('crypto.subtle.verify'),'DIAGNOSTIC_AUTH_INVALID');
- const modules=v.modules.map(m=>m.name==='owner-auth.mjs'?{...m,content_base64:Buffer.from(auth).toString('base64')}:m);assert.equal(v.modules.filter(m=>m.name==='owner-auth.mjs').length,1);
- for(const m of modules)if(m.name!=='owner-auth.mjs')assert.equal(m.content_base64,v.modules.find(x=>x.name===m.name).content_base64,'NON_AUTH_MODULE_CHANGED');
- const metadata={main_module:v.main_module,compatibility_date:v.compatibility_date,compatibility_flags:v.compatibility_flags||[],bindings:v.bindings,annotations:{'workers/message':'Owner JWT reason codes only; HUB untouched','workers/commit_sha':process.env.GITHUB_SHA}};
+ const replacements={'owner-auth.mjs':auth};if(publish){assert.deepEqual(hashModules(v),prior.moduleHashes,'PREVIOUS_ADMIN_BYTES_CHANGED');assert(auth.includes("redirect:'manual'")&&!auth.includes("redirect:'error'"));replacements['owner-gateway.mjs']=await readFile(new URL('owner-gateway.mjs',root),'utf8');}
+ const modules=v.modules.map(m=>Object.hasOwn(replacements,m.name)?{...m,content_base64:Buffer.from(replacements[m.name]).toString('base64')}:m);
+ for(const name of Object.keys(replacements))assert.equal(v.modules.filter(m=>m.name===name).length,1);
+ for(const m of modules)if(!Object.hasOwn(replacements,m.name))assert.equal(m.content_base64,v.modules.find(x=>x.name===m.name).content_base64,'UNAPPROVED_ADMIN_MODULE_CHANGED');
+ const metadata={main_module:v.main_module,compatibility_date:v.compatibility_date,compatibility_flags:v.compatibility_flags||[],bindings:v.bindings,annotations:{'workers/message':publish?'Private owner cached health and DEFAULT 30 confirmation; HUB untouched':'Owner JWT reason codes only; HUB untouched','workers/commit_sha':process.env.GITHUB_SHA}};
  for(const k of ['usage_model','logpush','limits','observability','placement','tail_consumers'])if(settings[k]!=null)metadata[k]=settings[k];
  const form=new FormData();form.set('metadata',new Blob([JSON.stringify(metadata)],{type:'application/json'}));for(const m of modules)form.set(m.name,new Blob([Buffer.from(m.content_base64,'base64')],{type:m.content_type}),m.name);
  assert.equal(await active(ADMIN),previous,'ADMIN_CONCURRENT_CHANGE');await cf('/workers/scripts/'+ADMIN,form,'PUT');touched=true;candidate=await active(ADMIN);assert.notEqual(candidate,previous);report.candidate=candidate;await save();

@@ -5,4 +5,23 @@ export const headers={'cache-control':'no-store','x-content-type-options':'nosni
 const fail=(code,status=409)=>Object.assign(Error(code),{status});
 async function setting(request){const text=await request.text();if(new TextEncoder().encode(text).length>2048)throw fail('BODY_TOO_LARGE',413);let j;try{j=JSON.parse(text)}catch{throw fail('INVALID_JSON',400)}if(!j||Array.isArray(j)||Object.keys(j).sort().join(',')!=='expectedRevision,seconds'||typeof j.seconds!=='number'||typeof j.expectedRevision!=='string'||j.expectedRevision.length>300)throw fail('INVALID_SETTING',400);if(j.seconds!==30)throw fail('ACCELERATION_LOCKED_BY_OWNER');return j;}
 export function hubGateway(previous,verify=verifyOwner){return{...previous,async fetch(request,env,ctx){const p=controlPath(request);if(!['/control','/bulk-settings'].includes(p))return previous.fetch(request,env,ctx);try{const owner=await verify(request,env,{internal:true});if(!['GET','PUT'].includes(request.method))throw fail('METHOD_NOT_ALLOWED',405);const data=request.method==='PUT'?await setting(request):null;const response=await previous.fetch(new Request('https://hub.internal/health'),env,ctx);if(response.status!==200)throw fail('HUB_UNAVAILABLE',503);const health=await response.json(),c=health.control;if(!health.ok||!c||!Number.isFinite(c.liveRefreshSeconds))throw fail('HUB_CONTROL_UNAVAILABLE',503);const state={ok:true,release:'OWNER_V2_30_ONLY',serverTime:Date.now(),owner:{email:owner.email},control:c,revision:revision(c),effectiveSeconds:health.refreshMs/1000,health,canAccelerate:false,accountWindow:null,telemetry:null};if(data){if(data.expectedRevision!==state.revision)throw fail('REVISION_CONFLICT',412);if(c.liveRefreshSeconds!==30||c.autoReturnMinutes!==0||c.autoReturnAt!==null)throw fail('CADENCE_CHANGED_RELOAD_REQUIRED',412);return Response.json({...state,unchanged:true},{headers});}return Response.json(p==='/control'?{...health,presets:[30],autoReturnOptions:[0],canAccelerate:false}:state,{headers});}catch(e){return errorResponse(e);}}};}
-export function adminGateway(assets,verify=verifyOwner){return{async fetch(request,env){try{if(new URL(request.url).hostname!==ADMIN_HOST)throw fail('ADMIN_HOST_DENIED',403);await verify(request,env);const p=controlPath(request);if(p==='/api/settings'){if(!['GET','PUT'].includes(request.method))throw fail('METHOD_NOT_ALLOWED',405);if(request.method==='PUT')await setting(request.clone());if(!env.HUB?.fetch)throw fail('HUB_NOT_CONNECTED',503);const u=new URL(request.url);u.pathname='/bulk-settings';u.search='';const r=await env.HUB.fetch(new Request(u,request));return new Response(r.body,{status:r.status,headers:{...headers,'content-type':'application/json; charset=utf-8'}});}if(!['GET','HEAD'].includes(request.method))throw fail('METHOD_NOT_ALLOWED',405);const asset=assets[p||'/'];if(!asset)throw fail('NOT_FOUND',404);return new Response(request.method==='HEAD'?null:asset.body,{headers:{...headers,'content-type':asset.type}});}catch(e){return errorResponse(e);}}};}
+export function adminGateway(assets,verify=verifyOwner){return{async fetch(request,env){try{
+ if(new URL(request.url).hostname!==ADMIN_HOST)throw fail('ADMIN_HOST_DENIED',403);
+ const owner=await verify(request,env),p=controlPath(request);
+ if(p==='/api/settings'){
+  if(!['GET','PUT'].includes(request.method))throw fail('METHOD_NOT_ALLOWED',405);
+  const data=request.method==='PUT'?await setting(request):null;
+  if(!env.HUB?.fetch)throw fail('HUB_NOT_CONNECTED',503);
+  // Read the existing cached health route only. No producer control route, storage or alarm writes.
+  const r=await env.HUB.fetch(new Request('https://hub.internal/health'));
+  if(r.status!==200)throw fail('HUB_UNAVAILABLE',503);
+  const health=await r.json(),c=health.control;
+  if(!health.ok||!c||!Number.isFinite(c.liveRefreshSeconds))throw fail('HUB_CONTROL_UNAVAILABLE',503);
+  const state={ok:true,release:'OWNER_V2_30_ONLY',serverTime:Date.now(),owner:{email:owner.email},control:c,revision:revision(c),effectiveSeconds:health.refreshMs/1000,health,canAccelerate:false,accountWindow:null,telemetry:null};
+  if(data){if(data.expectedRevision!==state.revision)throw fail('REVISION_CONFLICT',412);if(c.liveRefreshSeconds!==30||c.autoReturnMinutes!==0||c.autoReturnAt!==null)throw fail('CADENCE_CHANGED_RELOAD_REQUIRED',412);return Response.json({...state,unchanged:true},{headers});}
+  return Response.json(state,{headers});
+ }
+ if(!['GET','HEAD'].includes(request.method))throw fail('METHOD_NOT_ALLOWED',405);
+ const asset=assets[p||'/'];if(!asset)throw fail('NOT_FOUND',404);
+ return new Response(request.method==='HEAD'?null:asset.body,{headers:{...headers,'content-type':asset.type}});
+}catch(e){return errorResponse(e);}}};}
