@@ -1,32 +1,35 @@
-✔ owner page and cached status traverse the real authenticated gateway (35.585884ms)
-✔ DEFAULT confirms exact current control without PUT to producer or alarm/storage changes (3.746932ms)
-✔ reject locked cadence 15 before reading producer (2.526989ms)
-✔ reject locked cadence 10 before reading producer (2.840714ms)
-✔ reject locked cadence 20 before reading producer (1.612508ms)
-✔ reject locked cadence 6 before reading producer (1.406742ms)
-✔ reject locked cadence 3 before reading producer (1.362018ms)
-✔ reject locked cadence 2 before reading producer (1.320882ms)
-✔ reject locked cadence 60 before reading producer (1.441416ms)
-✔ reject locked cadence 120 before reading producer (1.366075ms)
-✔ reject locked cadence 0 before reading producer (1.671795ms)
-✔ reject locked cadence -1 before reading producer (1.660234ms)
-✔ stale revision rejects and preserves current control (1.818839ms)
-✔ concurrent cadence/auto-return change cannot be overwritten (4.652487ms)
-✔ JWT rejects wrong owner (2.172007ms)
-✔ JWT rejects wrong audience (1.461593ms)
-✔ JWT rejects expired (1.40592ms)
-✔ JWT rejects wrong issuer (1.421489ms)
-✔ JWT rejects future token (1.276107ms)
-✔ missing/forged auth cannot reach producer (0.481908ms)
-✔ native HUB and preview hosts denied even with valid owner JWT (0.837831ms)
-✔ cross-origin PUT and legacy body cannot bypass server validation (0.988112ms)
-✔ all unrelated HUB routes and scheduled handler preserved (0.390227ms)
-✔ existing Website hub.internal proxy preserves legacy owner JWT audience (2.303052ms)
-ℹ tests 24
+✔ owner page and cached status use authenticated admin with unchanged HUB health route (16.693623ms)
+✔ DEFAULT confirms exact current control without PUT to producer or alarm/storage changes (0.936982ms)
+✔ reject locked cadence 15 before reading producer (1.316953ms)
+✔ reject locked cadence 10 before reading producer (0.924412ms)
+✔ reject locked cadence 20 before reading producer (1.581952ms)
+✔ reject locked cadence 6 before reading producer (0.799794ms)
+✔ reject locked cadence 3 before reading producer (0.647615ms)
+✔ reject locked cadence 2 before reading producer (0.619243ms)
+✔ reject locked cadence 60 before reading producer (0.715758ms)
+✔ reject locked cadence 120 before reading producer (0.817101ms)
+✔ reject locked cadence 0 before reading producer (0.654586ms)
+✔ reject locked cadence -1 before reading producer (0.659132ms)
+✔ stale revision rejects and preserves current control (0.607705ms)
+✔ concurrent cadence/auto-return change cannot be overwritten (1.71309ms)
+✔ JWT rejects wrong owner (0.78401ms)
+✔ JWT rejects wrong audience (0.779203ms)
+✔ JWT rejects expired (0.430728ms)
+✔ JWT rejects wrong issuer (0.458311ms)
+✔ JWT rejects future token (0.463698ms)
+✔ missing/forged auth cannot reach producer (0.23239ms)
+✔ native HUB and preview hosts denied even with valid owner JWT (0.308404ms)
+✔ cross-origin PUT and legacy body cannot bypass server validation (0.539672ms)
+✔ all unrelated HUB routes and scheduled handler preserved (0.333062ms)
+✔ existing Website hub.internal proxy preserves legacy owner JWT audience (0.91604ms)
+✔ JWKS uses Workers-supported manual redirects and sends no owner credentials (0.680675ms)
+✔ JWKS redirect is rejected without following or accepting an unverified token (0.498431ms)
+✔ a token with valid claims but corrupted signature is rejected (0.33875ms)
+ℹ tests 27
 ℹ suites 0
-ℹ pass 24
+ℹ pass 27
 ℹ fail 0
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 84.541743
+ℹ duration_ms 40.842014
