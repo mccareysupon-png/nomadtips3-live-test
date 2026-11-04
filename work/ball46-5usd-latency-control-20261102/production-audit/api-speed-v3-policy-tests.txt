@@ -1,0 +1,42 @@
+✔ status and DEFAULT preserve the exact original 30-second control and do not invent counters (7.686266ms)
+✔ observed account window comes only from provider response headers (30.394628ms)
+✔ owner can manually apply 15 and return to DEFAULT (0.843586ms)
+✔ owner can manually apply 10 and return to DEFAULT (0.767403ms)
+✔ unsupported interval 2 is rejected without a write (1.024074ms)
+✔ unsupported interval 3 is rejected without a write (0.472854ms)
+✔ unsupported interval 6 is rejected without a write (0.641008ms)
+✔ unsupported interval 20 is rejected without a write (0.549287ms)
+✔ unsupported interval 60 is rejected without a write (0.503441ms)
+✔ unsupported interval 120 is rejected without a write (0.772403ms)
+✔ unsupported interval 0 is rejected without a write (0.547282ms)
+✔ unsupported interval -1 is rejected without a write (0.321831ms)
+✔ unsupported interval "15" is rejected without a write (0.339093ms)
+✔ missing owner or stale revision cannot change cadence (0.458617ms)
+✔ headroom protects the existing account workload and distinguishes 15 from 10 (0.664341ms)
+✔ changed or malformed quota is denied {"limit":10} (0.548525ms)
+✔ changed or malformed quota is denied {"remaining":41} (0.445091ms)
+✔ changed or malformed quota is denied {"remaining":-1} (0.344013ms)
+✔ changed or malformed quota is denied {"resetAt":1799999999000} (1.314265ms)
+✔ changed or malformed quota is denied {"resetAt":1800000060000000} (0.295182ms)
+✔ missing response headers remove previous acceleration permission (0.362317ms)
+✔ expired window and stale observations fall back to 30 without altering the selected configuration (0.390069ms)
+✔ out of order responses cannot increase remaining quota within the same provider window (0.413994ms)
+✔ 429 blocks both live and schedule attempts until Retry-After and persists across restarts (1.513628ms)
+✔ Retry-After accepts HTTP dates, clock skew and conservative exponential fallback (0.372686ms)
+✔ HTTP 401 locks acceleration and preserves baseline control (0.77624ms)
+✔ HTTP 402 locks acceleration and preserves baseline control (0.442447ms)
+✔ HTTP 403 locks acceleration and preserves baseline control (0.36897ms)
+✔ continuous 15s cadence correctly separates baseline and extra requests (1.612222ms)
+✔ continuous 10s cadence correctly separates baseline and extra requests (1.315799ms)
+✔ concurrent extra attempts cannot exceed the rolling extra-request allowance (0.732047ms)
+✔ quota loss after an extra poll preserves the next original baseline slot (0.442486ms)
+✔ default 30-second alarm behavior remains unchanged when no cooldown is active (0.271528ms)
+✔ provider reset is a fixed account window rather than a fabricated rolling request count (0.16592ms)
+ℹ tests 34
+ℹ suites 0
+ℹ pass 34
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 72.764537
