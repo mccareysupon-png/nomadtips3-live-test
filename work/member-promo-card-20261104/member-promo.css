@@ -1,7 +1,7 @@
 /* BALL46 member promotion: isolated visual component, no data requests. */
 .b46mp-card{
  --b46mp-lime:#d4fb91;position:relative;display:block;isolation:isolate;
- width:100%;height:156px;margin:0;overflow:hidden;border:0;border-radius:14px;
+ width:100%;height:156px!important;min-height:156px!important;max-height:156px!important;flex:0 0 auto;margin:0;overflow:hidden;border:0;border-radius:14px;
  background:#0a281b;color:#fff!important;text-decoration:none!important;
  box-shadow:0 10px 25px rgb(0 15 9 / .16),inset 0 1px 0 rgb(225 255 236 / .12);
  font-family:Arial,Helvetica,sans-serif;contain:layout paint;
@@ -39,7 +39,7 @@
 @keyframes b46mp-letter-lift{0%,100%{transform:translateY(0);opacity:1}40%{transform:translateY(-2.5px);opacity:1}}
 @keyframes b46mp-letter-replay{0%,100%{transform:translateY(0)}40%{transform:translateY(-2.5px)}}
 @media(max-width:760px){
- .b46mp-card{height:160px;margin-bottom:12px;border-radius:12px}
+ .b46mp-card{height:160px!important;min-height:160px!important;max-height:160px!important;margin-bottom:12px;border-radius:12px}
  .b46mp-content{padding-left:15px;width:61%}
  .b46mp-kicker{font-size:8.5px;margin-bottom:8px}
  .b46mp-title{font-size:23px}

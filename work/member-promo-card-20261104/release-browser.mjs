@@ -1,11 +1,11 @@
 import assert from'node:assert/strict';import{chromium}from'playwright';import{readFile,writeFile}from'node:fs/promises';import{ROOT,DIR,sha,preview,patchHTML}from'./release-ops.mjs';
-const phase=process.argv[2];assert(['candidate','production','shadow'].includes(phase));const candidate=JSON.parse(await readFile(DIR+'/candidate.json')),host=phase==='candidate'?preview(candidate.candidate):'https://ball46.com',build=JSON.parse(await readFile(DIR+'/build.json')),browser=await chromium.launch({headless:true}),results=[];
+const phase=process.argv[2];assert(['candidate','production','shadow'].includes(phase));const candidate=JSON.parse(await readFile(DIR+'/candidate.json')),host=phase==='candidate'?preview(candidate.candidate):'https://ball46.com',build=JSON.parse(await readFile(DIR+'/build.json')),payload=JSON.parse(await readFile(ROOT+'/stage/assets.json')),browser=await chromium.launch({headless:true}),results=[];
 try{await Promise.all([1366,390].flatMap(width=>['light','dark'].map(theme=>({width,theme}))).map(async({width,theme})=>{
 const reduced=width===390&&theme==='light',ctx=await browser.newContext({viewport:{width,height:900},reducedMotion:reduced?'reduce':'no-preference'}),p=await ctx.newPage(),errors=[],failures=[],snapshots=[],writes=[];let preventedProvider=0,directProvider=0;
 await ctx.addInitScript(t=>localStorage.setItem('nomad343_dashboard_theme_v1',t),theme);
 p.on('pageerror',e=>errors.push(e.message));p.on('response',r=>{const u=new URL(r.url());if(u.hostname===new URL(host).hostname&&r.status()>=400&&!u.pathname.startsWith('/cdn-cgi/'))failures.push({path:u.pathname,status:r.status()});});
 await ctx.route('**/*',async route=>{const req=route.request(),u=new URL(req.url());
-if(phase==='shadow'&&req.isNavigationRequest()&&u.hostname==='ball46.com'){const response=await route.fetch(),html=await response.text();return route.fulfill({response,body:patchHTML(html)});}
+if(phase==='shadow'&&req.isNavigationRequest()&&u.hostname==='ball46.com'){const response=await route.fetch(),html=await response.text();return route.fulfill({response,body:patchHTML(html,payload.head)});}
 if(phase==='shadow'&&build.assets.some(a=>a.path===u.pathname)){const response=await route.fetch({url:preview(candidate.candidate)+u.pathname+u.search});return route.fulfill({response});}
 
 if(/5dollarfootballapi|goaloo/i.test(u.hostname)){directProvider++;return route.abort();}
