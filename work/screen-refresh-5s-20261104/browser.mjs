@@ -9,6 +9,7 @@ try{await Promise.all([1366,390].map(async width=>{
  if(u.hostname==='ball46.com'&&u.pathname.startsWith('/api/')){
  requests.push({path:u.pathname,at:Date.now()-t});let body={ok:true,fixtures:[],signals:[],rows:[],ledgerRows:[],ledgerTotal:0,nextCursor:null,entries:{},markets:[],bookmakers:[],externalRequestsAdded:0};
  if(u.pathname==='/api/engine/board')body={ok:true,fixtures:[fixture],fetchedAt:t,hubFetchedAt:t,counts:{live:1}};
+ if(u.pathname==='/api/engine/signals')body.mirror={screenAuditInitial:true};
  if(u.pathname==='/api/hub/snapshot'){reads++;if(fail)return r.fulfill({status:503,body:'temporarily unavailable'});body={ok:true,cacheOnly:true,externalRequestsAdded:0,fetchedAt:old?t-1000:Date.now(),liveFetchedAt:Date.now(),fixtures:[{...fixture,minute,goals:{...fixture.goals,home:value}}]};}
  return r.fulfill({json:body});}
  if(u.hostname!=='ball46.com')return r.fulfill({status:204,body:''});
@@ -16,6 +17,9 @@ try{await Promise.all([1366,390].map(async width=>{
  });
  await p.goto('https://ball46.com/?status=live',{waitUntil:'domcontentloaded',timeout:60000});
  await p.waitForFunction(()=>document.querySelector('.match-row[data-match-id]'),null,{timeout:30000});
+ // The original initial Signal response also renders the board. Observe only
+ // after that existing startup render, before the first periodic 5s read.
+ await p.waitForFunction(()=>window.NOMAD343_DASHBOARD_V2?.getSignalMirror?.()?.screenAuditInitial===true,null,{timeout:10000});
  await p.evaluate(()=>{window.__testRow=document.querySelector('.match-row');window.__testTeams=document.querySelector('.match-row .teams-cell');window.__fastChildLists=0;window.__fastMutations=[];new MutationObserver(rs=>{window.__fastChildLists+=rs.length;window.__fastMutations.push(...rs.map(r=>({at:performance.now(),target:r.target.className,added:[...r.addedNodes].map(n=>n.nodeType===1?n.outerHTML.slice(0,250):n.textContent),removed:[...r.removedNodes].map(n=>n.nodeType===1?n.outerHTML.slice(0,250):n.textContent)})))}).observe(document.querySelector('[data-board-sections]'),{childList:true,subtree:true});const table=document.createElement('table');table.hidden=true;table.className='sp-table';table.innerHTML='<tbody><tr data-b46-stat-display=\'{"fixtureId":"screen-test-1","settled":false}\'><td class="b46-sc-score"><span class="b46-sc-stack"><span>0</span><span>0</span></span></td></tr></tbody>';document.body.append(table);});
  const start=Date.now(),initialReads=reads;
  value=1;minute=61;
