@@ -1,0 +1,52 @@
+name: BALL46 authorized real manual Bulk control V3 retain default30
+on:
+  push:
+    branches: [codex/ball46-owner-control-v2-20261103]
+    paths: ['work/api-speed-v3/release-request.json']
+permissions:
+  contents: write
+concurrency:
+  group: ball46-production-deploy
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    defaults:
+      run:
+        working-directory: work/ball46-5usd-latency-control-20261102
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-save --package-lock=false --prefix ../api-speed-v3 playwright@1.56.1
+      - run: node production-preflight.mjs
+      - run: node ../api-speed-v3/capture-owner.mjs
+      - name: Build and verify exact current source and security boundaries
+        run: |
+          node ../api-settings-v2/prepare.mjs
+          node ../api-speed-v3/build.mjs
+          node ../api-speed-v3/build-ui.mjs
+          node --check ../api-speed-v3/stage/hub.mjs
+          node --check ../api-speed-v3/stage/admin-entry.mjs
+          node --check ../api-speed-v3/release.mjs
+          node ../api-speed-v3/policy.test.mjs > production-audit/api-speed-v3-policy-tests.txt
+          node ../api-speed-v3/integration.test.mjs > production-audit/api-speed-v3-integration-tests.txt
+      - name: Verify real manual UI behavior on PC/mobile using isolated fixtures
+        run: |
+          ../api-speed-v3/node_modules/.bin/playwright install --with-deps chromium
+          node ../api-speed-v3/browser-check.mjs
+      - name: Stage and activate narrow HUB and owner controller patches only
+        run: node ../api-speed-v3/release.mjs
+      - name: Preserve release checks and rollback evidence
+        if: always()
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add production-audit
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Record real manual Bulk control release and default30 preservation [skip ci]"
+          git push origin HEAD:codex/ball46-owner-control-v2-20261103
