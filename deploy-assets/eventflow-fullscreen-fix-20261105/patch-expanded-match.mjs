@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
 
-const MARK='B46_EVENTFLOW_FULLSCREEN_PORTAL_FIX_20261105';
+const MARK='B46_EVENTFLOW_FULLSCREEN_DIALOG_FIX_20261105B';
 const DEFAULT_URL='https://ball46.com/expanded-match-343.js?v=b46-mobile-event-flow-bars-20261102';
 const args=process.argv.slice(2);
 const take=name=>{const i=args.indexOf(name);return i>=0?args[i+1]:null};
@@ -37,7 +37,7 @@ const replaceOnce=(before,after,label)=>{
 
 replaceOnce(
   "let eventFlowViewportExpanded=false;\nlet eventFlowSavedScrollY=null;",
-  "let eventFlowViewportExpanded=false;\nlet eventFlowSavedScrollY=null;\nlet eventFlowPortalCard=null;\nlet eventFlowPortalPlaceholder=null;\nlet eventFlowPortalParent=null;\nlet eventFlowPortalNextSibling=null;\nlet eventFlowTopLayer=null;\nconst B46_EVENTFLOW_FULLSCREEN_PORTAL_FIX_20261105=true;",
+  "let eventFlowViewportExpanded=false;\nlet eventFlowSavedScrollY=null;\nlet eventFlowPortalCard=null;\nlet eventFlowPortalPlaceholder=null;\nlet eventFlowPortalParent=null;\nlet eventFlowPortalNextSibling=null;\nlet eventFlowTopLayer=null;\nconst B46_EVENTFLOW_FULLSCREEN_DIALOG_FIX_20261105B=true;",
   'state'
 );
 
@@ -193,7 +193,7 @@ replaceOnce(
 );
 
 assert(out.includes(MARK),'PATCH_MARKER_MISSING');
-assert.equal((out.match(/B46_EVENTFLOW_FULLSCREEN_PORTAL_FIX_20261105/g)||[]).length,1,'PATCH_MARKER_COUNT');
+assert.equal((out.match(/B46_EVENTFLOW_FULLSCREEN_DIALOG_FIX_20261105B/g)||[]).length,1,'PATCH_MARKER_COUNT');
 assert(out.includes("const flow=currentEventFlowCard(),head=flow?.querySelector('.expand-card-head')"),'TOGGLE_NOT_PATCHED');
 assert(out.includes("flow=currentEventFlowCard(),full=el.querySelector('[data-full-market-card]')"),'REFRESH_NOT_PATCHED');
 assert(out.includes("e.key==='Escape'&&eventFlowViewportExpanded"),'ESCAPE_NOT_PATCHED');
