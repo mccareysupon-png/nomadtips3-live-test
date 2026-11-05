@@ -441,7 +441,15 @@ async function inspectPromo(baseOrigin, label, includeMobile) {
             width: rect?.width || 0,
             height: rect?.height || 0,
             href: card?.href || '',
-            beforeFeatured: Boolean(card?.nextElementSibling?.matches('.featured-card[data-featured]')),
+            beforeFeatured: (() => {
+              const featured = card?.parentElement?.querySelector('.featured-card[data-featured]');
+              return Boolean(
+                card &&
+                featured &&
+                card.parentElement === featured.parentElement &&
+                (card.compareDocumentPosition(featured) & Node.DOCUMENT_POSITION_FOLLOWING)
+              );
+            })(),
             imageSrcCorrect: Boolean(image?.src.includes(imagePath)),
             imageLoaded: Boolean(image?.complete && image.naturalWidth > 0 && image.src.includes(imagePath)),
             scriptLoaded: [...document.scripts].some(script => (script.src || '').includes(jsPath)),
