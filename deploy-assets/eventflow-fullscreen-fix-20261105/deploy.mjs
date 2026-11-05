@@ -7,6 +7,8 @@ import puppeteer from 'puppeteer-core';
 
 const MARK='B46_EVENTFLOW_FULLSCREEN_DIALOG_FIX_20261105B';
 const TARGET='__B46_EVENTFLOW_SIGNAL_JS_20261002__';
+const OLD_EVENTFLOW_SCRIPT_VERSION='b46-mobile-event-flow-bars-20261102';
+const NEW_EVENTFLOW_SCRIPT_VERSION='b46-eventflow-dialog-20261105b';
 const SCRIPT='ball46-production';
 const ORIGIN='https://ball46.com';
 const DIRECT='https://ball46-production.mccarey-supon.workers.dev';
@@ -107,6 +109,9 @@ async function verifyLiveBrowser(){
     await page.setViewport({width:1628,height:889});
     await page.goto(ORIGIN+'/?eventFlowProdQa='+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
     await page.waitForSelector('.match-row[data-match-id]',{timeout:90000});await delay(4000);
+    const eventFlowScriptSrc=await page.evaluate(()=>[...document.scripts].map(s=>s.src||'').find(src=>/\/expanded-match-343\.js(?:\?|$)/.test(src))||'');
+    console.log('LIVE_EVENTFLOW_SCRIPT='+eventFlowScriptSrc);
+    assert(eventFlowScriptSrc.includes('v='+NEW_EVENTFLOW_SCRIPT_VERSION),'LIVE_INDEX_EVENTFLOW_SCRIPT_VERSION_STALE');
     const id=await page.$eval('.match-row[data-match-id]',e=>e.dataset.matchId);
     await page.click(`.match-row[data-match-id="${id}"]`);
     await page.waitForSelector('.expand-flow-card [data-eventflow-expand-toggle]',{timeout:60000});
@@ -150,7 +155,12 @@ try{
   const check=spawnSync(process.execPath,['--check','audit/expanded-match-patched.js'],{encoding:'utf8'});assert(!check.error&&check.status===0,'PATCHED_LITERAL_SYNTAX_BAD');
   assert(patchedLiteral.includes(MARK),'PATCH_MARKER_MISSING');
 
-  const patchedSource=patchOne(source,TARGET,patchedLiteral);
+  let patchedSource=patchOne(source,TARGET,patchedLiteral);
+  const cacheBustAnchor="'?v="+OLD_EVENTFLOW_SCRIPT_VERSION+"'+z";
+  const cacheBustReplacement="'?v="+NEW_EVENTFLOW_SCRIPT_VERSION+"'+z";
+  assert.equal(patchedSource.split(cacheBustAnchor).length-1,1,'EVENTFLOW_SCRIPT_VERSION_ANCHOR_CHANGED');
+  patchedSource=patchedSource.replace(cacheBustAnchor,cacheBustReplacement);
+  assert.equal(patchedSource.split(cacheBustReplacement).length-1,1,'EVENTFLOW_SCRIPT_VERSION_PATCH_BAD');
   parse(patchedSource,{ecmaVersion:'latest',sourceType:'module'});
   const after=literals(patchedSource);
   for(const [name,b] of before){
@@ -163,7 +173,7 @@ try{
   const settingsSha=sha(Buffer.from(canonical(settingsBefore)));
   const cronsBefore=await schedules();
   const backendBefore=await backend();
-  report.before={settingsSha,crons:cronsBefore,backend:backendBefore,targetSha:sha(Buffer.from(target.value)),patchedTargetSha:sha(Buffer.from(patchedLiteral)),workerSha:sha(Buffer.from(source)),patchedWorkerSha:sha(Buffer.from(patchedSource)),moduleCount:current.modules.length};save();
+  report.before={settingsSha,crons:cronsBefore,backend:backendBefore,targetSha:sha(Buffer.from(target.value)),patchedTargetSha:sha(Buffer.from(patchedLiteral)),workerSha:sha(Buffer.from(source)),patchedWorkerSha:sha(Buffer.from(patchedSource)),moduleCount:current.modules.length,scriptVersionBefore:OLD_EVENTFLOW_SCRIPT_VERSION,scriptVersionAfter:NEW_EVENTFLOW_SCRIPT_VERSION};save();
 
   assert.equal(await activeVersion(),base,'PRODUCTION_MOVED_BEFORE_VERSION_UPLOAD');
   candidate=await uploadVersion(current,patchedSource);report.candidateVersion=candidate;save();
