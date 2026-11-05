@@ -1,0 +1,53 @@
+name: Diagnose BALL46 Visitor Collector Assets 20261106
+
+on:
+  push:
+    branches: [test/ball46-visitor-copy-20261105]
+    paths:
+      - '.github/workflows/diag-ball46-visitor-collector-assets-20261106.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Inspect visitor collector version metadata and modules
+        shell: bash
+        run: |
+          node <<'NODE'
+          (async()=>{
+          const assert=require('assert/strict');
+          const account=process.env.CLOUDFLARE_ACCOUNT_ID,token=process.env.CLOUDFLARE_API_TOKEN;
+          const script='b46-visitor-monitor-collector';
+          const root=`https://api.cloudflare.com/client/v4/accounts/${account}/workers`;
+          async function api(path,options={}){
+            const r=await fetch(root+path,{...options,headers:{Authorization:`Bearer ${token}`,...(options.headers||{})}});
+            const j=await r.json();assert(r.ok&&j.success===true,`CF_ERROR ${r.status} ${JSON.stringify(j.errors||j)}`);return j.result;
+          }
+          const deps=await api(`/scripts/${script}/deployments?per_page=3`);
+          const base=deps.deployments?.[0]?.versions?.[0]?.version_id;assert(base,'BASE_MISSING');
+          const v=await api(`/workers/${script}/versions/${base}?include=modules`);
+          console.log('BASE_VERSION='+base);
+          console.log('MAIN_MODULE='+v.main_module);
+          console.log('MODULES='+JSON.stringify(v.modules.map(m=>({name:m.name,content_type:m.content_type,size:m.content_base64?Buffer.from(m.content_base64,'base64').length:null,hasWithdraw:m.content_base64?Buffer.from(m.content_base64,'base64').toString('utf8').toLowerCase().includes('withdraw'):false,hasTracker:m.content_base64?Buffer.from(m.content_base64,'base64').toString('utf8').includes('tracker.js'):false}))));
+          console.log('ASSETS='+JSON.stringify(v.assets||null));
+          console.log('BINDINGS='+JSON.stringify(v.bindings||null));
+          console.log('PLACEMENT='+JSON.stringify(v.placement||null));
+          const settings=await api(`/scripts/${script}/settings`);
+          console.log('SETTINGS='+JSON.stringify(settings));
+          const served=await fetch('https://b46-visitor-monitor-collector.mccarey-supon.workers.dev/tracker.js?diag='+Date.now(),{headers:{'cache-control':'no-cache'}});
+          const text=await served.text();
+          console.log('SERVED_TRACKER='+JSON.stringify({status:served.status,length:text.length,withdrawCount:(text.match(/withdraw/gi)||[]).length,cache:served.headers.get('cache-control'),etag:served.headers.get('etag'),cfCache:served.headers.get('cf-cache-status')}));
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
