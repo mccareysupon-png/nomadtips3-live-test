@@ -39,6 +39,10 @@ jobs:
           const v=await api(`/workers/ball46-production/versions/${active}?include=modules`);
           const main=v.modules.find(m=>m.name===v.main_module);assert(main,'MAIN_MISSING');
           const source=Buffer.from(main.content_base64,'base64').toString('utf8');
+          const moduleTexts=v.modules.map(m=>({
+            name:m.name,
+            text:Buffer.from(m.content_base64||'', 'base64').toString('utf8')
+          }));
           const needles=['withdraw','Visitor measurement','Allow visitor measurement','How we use this','consent'];
           const found=[];
           for(const needle of needles){
@@ -49,6 +53,18 @@ jobs:
               found.push({where:'worker',needle,index:i,excerpt:source.slice(Math.max(0,i-1200),Math.min(source.length,i+2400))});
               pos=i+needle.length;
               if(found.filter(x=>x.needle===needle&&x.where==='worker').length>=10)break;
+            }
+          }
+          for(const mod of moduleTexts){
+            for(const needle of needles){
+              let pos=0;
+              while(true){
+                const i=mod.text.toLowerCase().indexOf(needle.toLowerCase(),pos);
+                if(i<0)break;
+                found.push({where:'module:'+mod.name,needle,index:i,excerpt:mod.text.slice(Math.max(0,i-1000),Math.min(mod.text.length,i+2200))});
+                pos=i+needle.length;
+                if(found.filter(x=>x.needle===needle&&x.where==='module:'+mod.name).length>=10)break;
+              }
             }
           }
           for(const origin of ['https://ball46.com','https://ball46-production.mccarey-supon.workers.dev']){
