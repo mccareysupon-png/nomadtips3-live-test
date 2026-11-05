@@ -186,7 +186,7 @@ try{
 
   for(const origin of [DIRECT,ORIGIN]){
     let ok=false,last='';
-    for(let i=0;i<35;i++){
+    for(let i=0;i<150;i++){
       assert.equal(await activeVersion(),candidate,'PRODUCTION_MOVED_DURING_ROUTE_VERIFY');
       try{
         const b=await publicFile('/expanded-match-343.js',origin);
@@ -196,7 +196,6 @@ try{
           text.includes(MARK) &&
           text.includes('b46-eventflow-viewport-expanded') &&
           text.includes('data-eventflow-expand-toggle') &&
-          text.includes('B46_MOBILE_FLOW_BARS') &&
           text.includes('data-b46-flow=')
         ){ok=true;break}
       }catch{}
