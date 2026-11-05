@@ -1,0 +1,44 @@
+name: Deploy BALL46 EventFlow Fullscreen Fix 20261105
+
+on:
+  push:
+    branches: [test/ball46-eventflow-fullscreen-fix-20261105]
+    paths:
+      - '.github/workflows/deploy-ball46-eventflow-fullscreen-fix-20261105.yml'
+      - 'deploy-assets/eventflow-fullscreen-fix-20261105/deploy.mjs'
+      - 'deploy-assets/eventflow-fullscreen-fix-20261105/patch-expanded-match.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ball46-production-deploy
+  cancel-in-progress: false
+
+jobs:
+  guarded-deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: test/ball46-eventflow-fullscreen-fix-20261105
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --ignore-scripts acorn@8 puppeteer-core@24
+      - name: Guarded Event Flow fullscreen production deploy
+        working-directory: deploy-assets/eventflow-fullscreen-fix-20261105
+        run: node deploy.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-eventflow-fullscreen-deploy-${{ github.run_id }}
+          path: deploy-assets/eventflow-fullscreen-fix-20261105/audit
+          retention-days: 30
+          if-no-files-found: warn
