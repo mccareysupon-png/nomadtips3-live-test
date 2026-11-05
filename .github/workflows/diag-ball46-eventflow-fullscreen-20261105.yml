@@ -118,6 +118,27 @@ jobs:
           });
           fs.writeFileSync('diagnostics/eventflow-fullscreen-20261105/audit/owners.json',JSON.stringify(owners,null,2));
           console.log('OWNERS',JSON.stringify(owners));
+          const resourceOwners=await page.evaluate(async()=>{
+            const urls=[
+              ...[...document.scripts].map(s=>s.src).filter(Boolean),
+              ...[...document.querySelectorAll('link[rel="stylesheet"]')].map(l=>l.href).filter(Boolean)
+            ];
+            const out=[];
+            for(const url of [...new Set(urls)]){
+              try{
+                const r=await fetch(url,{cache:'no-store'});
+                const t=await r.text();
+                if(/b46-eventflow-expand-toggle|data-eventflow-expand-toggle|b46-eventflow-viewport-expanded|b46-eventflow-viewport-lock/.test(t)){
+                  const keys=['b46-eventflow-expand-toggle','data-eventflow-expand-toggle','b46-eventflow-viewport-expanded','b46-eventflow-viewport-lock'];
+                  let at=-1;for(const k of keys){const i=t.indexOf(k);if(i>=0&&(at<0||i<at))at=i;}
+                  out.push({url,status:r.status,len:t.length,excerpt:t.slice(Math.max(0,at-4000),Math.min(t.length,at+12000))});
+                }
+              }catch(e){out.push({url,error:String(e)})}
+            }
+            return out;
+          });
+          fs.writeFileSync('diagnostics/eventflow-fullscreen-20261105/audit/resource-owners.json',JSON.stringify(resourceOwners,null,2));
+          console.log('RESOURCE_OWNERS',JSON.stringify(resourceOwners));
           await browser.close();
           })().catch(err=>{console.error(err);process.exit(1)});
           NODE
