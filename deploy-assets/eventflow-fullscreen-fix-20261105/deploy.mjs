@@ -113,15 +113,15 @@ async function verifyLiveBrowser(){
     await page.click('.expand-flow-card [data-eventflow-expand-toggle]');
     await page.waitForFunction(()=>document.body.classList.contains('b46-eventflow-viewport-lock'),{timeout:10000});
     await delay(300);
-    const expanded=await page.evaluate(()=>{const f=document.querySelector('.expand-flow-card.b46-eventflow-viewport-expanded'),r=f?.getBoundingClientRect();return{parentIsBody:f?.parentElement===document.body,x:r?.x,y:r?.y,w:r?.width,h:r?.height,vw:innerWidth,vh:innerHeight}});
-    assert(expanded.parentIsBody&&expanded.x<=1&&expanded.y<=1&&expanded.w>=expanded.vw-2&&expanded.h>=expanded.vh-2,'LIVE_FULLSCREEN_NOT_VIEWPORT');
+    const expanded=await page.evaluate(()=>{const f=document.querySelector('.expand-flow-card.b46-eventflow-viewport-expanded'),r=f?.getBoundingClientRect(),d=f?.closest('dialog.b46-eventflow-top-layer');return{parentIsDialog:Boolean(d),dialogOpen:Boolean(d?.open),x:r?.x,y:r?.y,w:r?.width,h:r?.height,vw:innerWidth,vh:innerHeight}});
+    assert(expanded.parentIsDialog&&expanded.dialogOpen&&expanded.x<=1&&expanded.y<=1&&expanded.w>=expanded.vw-2&&expanded.h>=expanded.vh-2,'LIVE_FULLSCREEN_NOT_VIEWPORT');
     for(let i=0;i<2;i++){await page.evaluate(()=>window.NOMAD343_EXPANDED_MATCH?.reload?.());await delay(900)}
-    const after=await page.evaluate(()=>({bodyLock:document.body.classList.contains('b46-eventflow-viewport-lock'),portal:Boolean(document.body.querySelector(':scope > .expand-flow-card.b46-eventflow-viewport-expanded')),button:Boolean(document.querySelector('.expand-flow-card [data-eventflow-expand-toggle]')),svg:Boolean(document.querySelector('.expand-flow-card .expand-flow-chart svg'))}));
+    const after=await page.evaluate(()=>({bodyLock:document.body.classList.contains('b46-eventflow-viewport-lock'),portal:Boolean(document.querySelector('dialog.b46-eventflow-top-layer[open] > .expand-flow-card.b46-eventflow-viewport-expanded')),button:Boolean(document.querySelector('.expand-flow-card [data-eventflow-expand-toggle]')),svg:Boolean(document.querySelector('.expand-flow-card .expand-flow-chart svg'))}));
     assert(after.bodyLock&&after.portal&&after.button&&after.svg,'LIVE_REFRESH_BROKE_FULLSCREEN');
     await page.keyboard.press('Escape');
     await page.waitForFunction(()=>!document.body.classList.contains('b46-eventflow-viewport-lock'),{timeout:10000});
-    const closed=await page.evaluate(()=>({restored:Boolean(document.querySelector('.match-expanded .expand-flow-card')),portal:Boolean(document.body.querySelector(':scope > .expand-flow-card.b46-eventflow-viewport-expanded')),locks:document.body.classList.contains('b46-eventflow-viewport-lock')||document.documentElement.classList.contains('b46-eventflow-viewport-lock')}));
-    assert(closed.restored&&!closed.portal&&!closed.locks,'LIVE_FULLSCREEN_CLEANUP_FAILED');
+    const closed=await page.evaluate(()=>({restored:Boolean(document.querySelector('.match-expanded .expand-flow-card')),portal:Boolean(document.querySelector('dialog.b46-eventflow-top-layer[open] > .expand-flow-card.b46-eventflow-viewport-expanded')),dialog:Boolean(document.querySelector('dialog.b46-eventflow-top-layer')),locks:document.body.classList.contains('b46-eventflow-viewport-lock')||document.documentElement.classList.contains('b46-eventflow-viewport-lock')}));
+    assert(closed.restored&&!closed.portal&&!closed.dialog&&!closed.locks,'LIVE_FULLSCREEN_CLEANUP_FAILED');
     assert.equal(errors.length,0,'LIVE_PAGE_ERRORS:'+errors.join('|'));
     return{expanded,after,closed};
   }finally{await browser.close()}
