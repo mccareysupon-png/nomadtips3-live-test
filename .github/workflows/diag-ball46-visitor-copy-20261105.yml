@@ -1,0 +1,71 @@
+name: Diagnose BALL46 Visitor Copy 20261105
+
+on:
+  push:
+    branches: [test/ball46-visitor-copy-20261105]
+    paths:
+      - '.github/workflows/diag-ball46-visitor-copy-20261105.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Inspect active Worker source and public HTML
+        shell: bash
+        run: |
+          node <<'NODE'
+          (async()=>{
+          const assert=require('assert/strict');
+          const account=process.env.CLOUDFLARE_ACCOUNT_ID,token=process.env.CLOUDFLARE_API_TOKEN;
+          const root=`https://api.cloudflare.com/client/v4/accounts/${account}/workers`;
+          async function api(path,options={}){
+            const r=await fetch(root+path,{...options,headers:{Authorization:`Bearer ${token}`,...(options.headers||{})}});
+            const j=await r.json();assert(r.ok&&j.success===true,JSON.stringify(j.errors||j));return j.result;
+          }
+          const deps=await api('/scripts/ball46-production/deployments?per_page=3');
+          const active=deps.deployments?.[0]?.versions?.[0]?.version_id;assert(active,'ACTIVE_MISSING');
+          const v=await api(`/workers/ball46-production/versions/${active}?include=modules`);
+          const main=v.modules.find(m=>m.name===v.main_module);assert(main,'MAIN_MISSING');
+          const source=Buffer.from(main.content_base64,'base64').toString('utf8');
+          const needles=['withdraw','Visitor measurement','Allow visitor measurement','How we use this','consent'];
+          const found=[];
+          for(const needle of needles){
+            let pos=0;
+            while(true){
+              const i=source.toLowerCase().indexOf(needle.toLowerCase(),pos);
+              if(i<0)break;
+              found.push({where:'worker',needle,index:i,excerpt:source.slice(Math.max(0,i-1200),Math.min(source.length,i+2400))});
+              pos=i+needle.length;
+              if(found.filter(x=>x.needle===needle&&x.where==='worker').length>=10)break;
+            }
+          }
+          for(const origin of ['https://ball46.com','https://ball46-production.mccarey-supon.workers.dev']){
+            const r=await fetch(origin+'/?visitorCopyDiag='+Date.now(),{headers:{'cache-control':'no-cache'}});
+            const html=await r.text();
+            for(const needle of needles){
+              let pos=0;
+              while(true){
+                const i=html.toLowerCase().indexOf(needle.toLowerCase(),pos);
+                if(i<0)break;
+                found.push({where:origin,needle,index:i,excerpt:html.slice(Math.max(0,i-800),Math.min(html.length,i+1800))});
+                pos=i+needle.length;
+                if(found.filter(x=>x.needle===needle&&x.where===origin).length>=10)break;
+              }
+            }
+          }
+          console.log('ACTIVE_VERSION='+active);
+          console.log('FOUND='+JSON.stringify(found));
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
