@@ -99,8 +99,10 @@ jobs:
           assert(expanded.rect.h>=expanded.viewport.h-2,'EXPANDED_HEIGHT_NOT_VIEWPORT');
           await page.screenshot({path:'diagnostics/eventflow-fullscreen-fix-20261105/expanded.png',fullPage:false});
 
-          await page.evaluate(()=>window.NOMAD343_EXPANDED_MATCH?.reload?.());
-          await new Promise(r=>setTimeout(r,1400));
+          for(let cycle=0;cycle<3;cycle++){
+            await page.evaluate(()=>window.NOMAD343_EXPANDED_MATCH?.reload?.());
+            await new Promise(r=>setTimeout(r,900));
+          }
           const afterReload=await page.evaluate(()=>{
             const flow=document.querySelector('.expand-flow-card.b46-eventflow-viewport-expanded');
             return {parentIsBody:flow?.parentElement===document.body,button:Boolean(flow?.querySelector('[data-eventflow-expand-toggle]')),svg:Boolean(flow?.querySelector('.expand-flow-chart svg'))};
@@ -134,6 +136,20 @@ jobs:
           assert(collapsed.restored,'COLLAPSED_CARD_NOT_RESTORED');
           assert(!collapsed.parentIsBody&&!collapsed.expanded&&!collapsed.htmlLock&&!collapsed.bodyLock,'COLLAPSE_STATE_STUCK');
           assert(collapsed.state==='normal','COLLAPSE_DATA_STATE_BAD');
+
+          for(let cycle=0;cycle<2;cycle++){
+            await page.click('.expand-flow-card [data-eventflow-expand-toggle]');
+            await page.waitForFunction(()=>document.body.classList.contains('b46-eventflow-viewport-lock'),{timeout:10000});
+            await new Promise(r=>setTimeout(r,250));
+            await page.click('.expand-flow-card [data-eventflow-expand-toggle]');
+            await page.waitForFunction(()=>!document.body.classList.contains('b46-eventflow-viewport-lock'),{timeout:10000});
+            const cycleState=await page.evaluate(()=>({
+              portal:Boolean(document.body.querySelector(':scope > .expand-flow-card.b46-eventflow-viewport-expanded')),
+              restored:Boolean(document.querySelector('.match-expanded .expand-flow-card')),
+              locks:document.body.classList.contains('b46-eventflow-viewport-lock')||document.documentElement.classList.contains('b46-eventflow-viewport-lock')
+            }));
+            assert(!cycleState.portal&&cycleState.restored&&!cycleState.locks,'REPEAT_TOGGLE_CLEANUP_FAILED_'+cycle);
+          }
 
           await page.click('.expand-flow-card [data-eventflow-expand-toggle]');
           await page.waitForFunction(()=>document.body.classList.contains('b46-eventflow-viewport-lock'),{timeout:10000});
