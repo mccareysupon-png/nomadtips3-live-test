@@ -1,0 +1,92 @@
+name: Test BALL46 Full Market Copy Hide 20261106
+
+on:
+  push:
+    branches: [test/ball46-fullmarket-copy-20261106]
+    paths:
+      - '.github/workflows/test-ball46-fullmarket-copy-hide-20261106.yml'
+      - 'deploy-assets/fullmarket-copy-hide-20261106/fullmarket-copy-hide.css'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  browser-test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: npm install --no-save --ignore-scripts puppeteer-core@24
+      - name: Validate Full Market public copy hide without Production write
+        shell: bash
+        run: |
+          node <<'NODE'
+          (async()=>{
+          const fs=require('fs'),assert=require('assert/strict'),puppeteer=require('puppeteer-core');
+          const css=fs.readFileSync('deploy-assets/fullmarket-copy-hide-20261106/fullmarket-copy-hide.css','utf8');
+          assert(css.includes('BALL46_FULLMARKET_PUBLIC_COPY_HIDE_20261106'));
+          const exe=['/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium','/usr/bin/chromium-browser'].find(fs.existsSync);assert(exe,'CHROME_MISSING');
+          const browser=await puppeteer.launch({executablePath:exe,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
+          const page=await browser.newPage();await page.setViewport({width:1268,height:760});
+          await page.goto('https://ball46.com/?fmbCopyTest='+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
+          await page.waitForSelector('.match-row[data-match-id]',{timeout:90000});await new Promise(r=>setTimeout(r,4500));
+          const rows=await page.$$('.match-row[data-match-id]');
+          let opened=false;
+          for(const row of rows.slice(0,12)){
+            await row.click();await new Promise(r=>setTimeout(r,1300));
+            if(await page.$('.expand-full-market-card .fmb-head')){opened=true;break}
+          }
+          assert(opened,'FULL_MARKET_NOT_OPENED');
+          const before=await page.evaluate(()=>({
+            head:document.querySelector('.expand-full-market-card .fmb-head span')?.textContent?.trim()||'',
+            bulk:document.querySelector('.expand-full-market-card .fmb-head > div > b')?.textContent?.trim()||'',
+            snapshot:document.querySelector('.expand-full-market-card .fmb-head > small')?.textContent?.trim()||'',
+            tabs:document.querySelectorAll('.expand-full-market-card [data-fmb-book]').length,
+            markets:document.querySelectorAll('.expand-full-market-card .fmb-market').length
+          }));
+          assert(/FULL MARKET · BOOKMAKERS/i.test(before.head),'PUBLIC_HEADING_MISSING_BEFORE');
+          assert(/BULK SNAPSHOT/i.test(before.bulk),'BULK_COPY_NOT_FOUND');
+          assert(/books in snapshot/i.test(before.snapshot),'SNAPSHOT_COPY_NOT_FOUND');
+          assert(before.tabs>0&&before.markets>0,'FULL_MARKET_DATA_MISSING_BEFORE');
+
+          await page.addStyleTag({content:css});
+          await new Promise(r=>setTimeout(r,100));
+          const after=await page.evaluate(()=>{
+            const heading=document.querySelector('.expand-full-market-card .fmb-head span');
+            const bulk=document.querySelector('.expand-full-market-card .fmb-head > div > b');
+            const snap=document.querySelector('.expand-full-market-card .fmb-head > small');
+            return {
+              head:heading?.textContent?.trim()||'',
+              headingDisplay:heading?getComputedStyle(heading).display:null,
+              bulkText:bulk?.textContent?.trim()||'',
+              bulkDisplay:bulk?getComputedStyle(bulk).display:null,
+              snapshotText:snap?.textContent?.trim()||'',
+              snapshotDisplay:snap?getComputedStyle(snap).display:null,
+              tabs:document.querySelectorAll('.expand-full-market-card [data-fmb-book]').length,
+              visibleTabs:[...document.querySelectorAll('.expand-full-market-card [data-fmb-book]')].filter(x=>getComputedStyle(x).display!=='none').length,
+              markets:document.querySelectorAll('.expand-full-market-card .fmb-market').length,
+              tables:document.querySelectorAll('.expand-full-market-card .fmb-market table').length
+            };
+          });
+          assert(after.bulkDisplay==='none','BULK_DIAGNOSTIC_STILL_VISIBLE');
+          assert(after.snapshotDisplay==='none','SNAPSHOT_DIAGNOSTIC_STILL_VISIBLE');
+          assert(after.headingDisplay!=='none'&&/FULL MARKET · BOOKMAKERS/i.test(after.head),'PUBLIC_HEADING_HIDDEN');
+          assert.equal(after.tabs,before.tabs,'BOOKMAKER_TAB_COUNT_CHANGED');
+          assert.equal(after.markets,before.markets,'MARKET_COUNT_CHANGED');
+          assert(after.visibleTabs>0&&after.tables>0,'FULL_MARKET_CONTENT_HIDDEN');
+          console.log('BEFORE='+JSON.stringify(before));
+          console.log('AFTER='+JSON.stringify(after));
+          console.log('BALL46_FULLMARKET_COPY_HIDE_TEST_PASS');
+          await page.screenshot({path:'fullmarket-copy-hide-test.png',fullPage:false});
+          await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-fullmarket-copy-hide-test-${{ github.run_id }}
+          path: fullmarket-copy-hide-test.png
+          retention-days: 7
