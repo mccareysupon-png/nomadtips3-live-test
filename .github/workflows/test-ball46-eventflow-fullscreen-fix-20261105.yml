@@ -1,0 +1,166 @@
+name: Test BALL46 EventFlow Fullscreen Fix 20261105
+
+on:
+  push:
+    branches: [test/ball46-eventflow-fullscreen-fix-20261105]
+    paths:
+      - '.github/workflows/test-ball46-eventflow-fullscreen-fix-20261105.yml'
+      - 'deploy-assets/eventflow-fullscreen-fix-20261105/patch-expanded-match.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  browser-test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --ignore-scripts puppeteer-core@24
+      - name: Build guarded patched owner
+        shell: bash
+        run: |
+          mkdir -p diagnostics/eventflow-fullscreen-fix-20261105
+          node deploy-assets/eventflow-fullscreen-fix-20261105/patch-expanded-match.mjs             --url "https://ball46.com/expanded-match-343.js?v=b46-mobile-event-flow-bars-20261102"             --output diagnostics/eventflow-fullscreen-fix-20261105/expanded-match-343.patched.js
+          node --check diagnostics/eventflow-fullscreen-fix-20261105/expanded-match-343.patched.js
+      - name: Validate fullscreen lifecycle in browser without Production write
+        shell: bash
+        run: |
+          node <<'NODE'
+          (async()=>{
+          const fs=require('fs');
+          const assert=require('assert/strict');
+          const puppeteer=require('puppeteer-core');
+          const patched=fs.readFileSync('diagnostics/eventflow-fullscreen-fix-20261105/expanded-match-343.patched.js','utf8');
+          assert(patched.includes('B46_EVENTFLOW_FULLSCREEN_PORTAL_FIX_20261105'));
+          const exe=['/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium','/usr/bin/chromium-browser'].find(fs.existsSync);
+          assert(exe,'CHROME_MISSING');
+          const browser=await puppeteer.launch({executablePath:exe,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
+          const page=await browser.newPage();
+          const errors=[];
+          page.on('pageerror',e=>errors.push(String(e.message||e)));
+          await page.setViewport({width:1628,height:889});
+          await page.setRequestInterception(true);
+          page.on('request',req=>{
+            const u=req.url();
+            if(/\/expanded-match-343\.js(?:\?|$)/.test(u)){
+              req.respond({status:200,contentType:'application/javascript; charset=utf-8',body:patched}).catch(()=>{});
+              return;
+            }
+            req.continue().catch(()=>{});
+          });
+
+          await page.goto('https://ball46.com/?eventFlowFixTest='+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
+          await page.waitForSelector('.match-row[data-match-id]',{timeout:90000});
+          await new Promise(r=>setTimeout(r,4000));
+
+          const rows=await page.$$eval('.match-row[data-match-id]',els=>els.filter(e=>e.getBoundingClientRect().height>0).slice(0,3).map(e=>e.dataset.matchId));
+          assert(rows.length>=1,'NO_MATCH_ROWS');
+
+          await page.click(`.match-row[data-match-id="${rows[0]}"]`);
+          await page.waitForSelector('.expand-flow-card [data-eventflow-expand-toggle]',{timeout:60000});
+          await new Promise(r=>setTimeout(r,600));
+
+          const initial=await page.evaluate(()=>{
+            const flow=document.querySelector('.expand-flow-card');
+            return {parent:flow?.parentElement?.className||'',bodyLock:document.body.classList.contains('b46-eventflow-viewport-lock')};
+          });
+          assert(!initial.bodyLock,'INITIAL_LOCK_STUCK');
+
+          await page.click('.expand-flow-card [data-eventflow-expand-toggle]');
+          await page.waitForFunction(()=>document.querySelector('.expand-flow-card')?.classList.contains('b46-eventflow-viewport-expanded'),{timeout:10000});
+          await new Promise(r=>setTimeout(r,350));
+
+          const expanded=await page.evaluate(()=>{
+            const flow=document.querySelector('.expand-flow-card.b46-eventflow-viewport-expanded');
+            const r=flow?.getBoundingClientRect();
+            const button=flow?.querySelector('[data-eventflow-expand-toggle]');
+            return {
+              exists:Boolean(flow),
+              parentIsBody:flow?.parentElement===document.body,
+              rect:r?{x:r.x,y:r.y,w:r.width,h:r.height}:null,
+              viewport:{w:innerWidth,h:innerHeight},
+              htmlLock:document.documentElement.classList.contains('b46-eventflow-viewport-lock'),
+              bodyLock:document.body.classList.contains('b46-eventflow-viewport-lock'),
+              pressed:button?.getAttribute('aria-pressed'),
+              label:button?.getAttribute('aria-label')
+            };
+          });
+          assert(expanded.exists,'EXPANDED_CARD_MISSING');
+          assert(expanded.parentIsBody,'EXPANDED_CARD_NOT_PORTALED_TO_BODY');
+          assert(expanded.htmlLock&&expanded.bodyLock,'VIEWPORT_LOCK_MISSING');
+          assert(expanded.pressed==='true','EXPAND_BUTTON_STATE_BAD');
+          assert(expanded.rect.x<=1&&expanded.rect.y<=1,'EXPANDED_NOT_AT_VIEWPORT_ORIGIN');
+          assert(expanded.rect.w>=expanded.viewport.w-2,'EXPANDED_WIDTH_NOT_VIEWPORT');
+          assert(expanded.rect.h>=expanded.viewport.h-2,'EXPANDED_HEIGHT_NOT_VIEWPORT');
+          await page.screenshot({path:'diagnostics/eventflow-fullscreen-fix-20261105/expanded.png',fullPage:false});
+
+          await page.evaluate(()=>window.NOMAD343_EXPANDED_MATCH?.reload?.());
+          await new Promise(r=>setTimeout(r,1400));
+          const afterReload=await page.evaluate(()=>{
+            const flow=document.querySelector('.expand-flow-card.b46-eventflow-viewport-expanded');
+            return {parentIsBody:flow?.parentElement===document.body,button:Boolean(flow?.querySelector('[data-eventflow-expand-toggle]')),svg:Boolean(flow?.querySelector('.expand-flow-chart svg'))};
+          });
+          assert(afterReload.parentIsBody&&afterReload.button&&afterReload.svg,'REFRESH_BROKE_FULLSCREEN_PORTAL');
+
+          await page.click('.expand-flow-card [data-eventflow-expand-toggle]');
+          await page.waitForFunction(()=>!document.body.classList.contains('b46-eventflow-viewport-lock'),{timeout:10000});
+          const collapsed=await page.evaluate(()=>{
+            const flow=document.querySelector('.match-expanded .expand-flow-card');
+            return {
+              restored:Boolean(flow),
+              parentIsBody:flow?.parentElement===document.body,
+              expanded:flow?.classList.contains('b46-eventflow-viewport-expanded'),
+              htmlLock:document.documentElement.classList.contains('b46-eventflow-viewport-lock'),
+              bodyLock:document.body.classList.contains('b46-eventflow-viewport-lock'),
+              state:flow?.dataset.eventflowViewport
+            };
+          });
+          assert(collapsed.restored,'COLLAPSED_CARD_NOT_RESTORED');
+          assert(!collapsed.parentIsBody&&!collapsed.expanded&&!collapsed.htmlLock&&!collapsed.bodyLock,'COLLAPSE_STATE_STUCK');
+          assert(collapsed.state==='normal','COLLAPSE_DATA_STATE_BAD');
+
+          await page.click('.expand-flow-card [data-eventflow-expand-toggle]');
+          await page.waitForFunction(()=>document.body.classList.contains('b46-eventflow-viewport-lock'),{timeout:10000});
+          await page.keyboard.press('Escape');
+          await page.waitForFunction(()=>!document.body.classList.contains('b46-eventflow-viewport-lock'),{timeout:10000});
+          const escaped=await page.evaluate(()=>({
+            portal:Boolean(document.body.querySelector(':scope > .expand-flow-card.b46-eventflow-viewport-expanded')),
+            htmlLock:document.documentElement.classList.contains('b46-eventflow-viewport-lock'),
+            bodyLock:document.body.classList.contains('b46-eventflow-viewport-lock'),
+            restored:Boolean(document.querySelector('.match-expanded .expand-flow-card'))
+          }));
+          assert(!escaped.portal&&!escaped.htmlLock&&!escaped.bodyLock&&escaped.restored,'ESCAPE_CLEANUP_FAILED');
+
+          if(rows[1]){
+            await page.click('.expand-flow-card [data-eventflow-expand-toggle]');
+            await page.waitForFunction(()=>document.body.classList.contains('b46-eventflow-viewport-lock'),{timeout:10000});
+            await page.evaluate(id=>window.NOMAD343_EXPANDED_MATCH?.open?.(id),rows[1]);
+            await page.waitForFunction(()=>!document.body.classList.contains('b46-eventflow-viewport-lock'),{timeout:10000});
+            await new Promise(r=>setTimeout(r,800));
+            const switched=await page.evaluate(()=>({
+              portal:Boolean(document.body.querySelector(':scope > .expand-flow-card.b46-eventflow-viewport-expanded')),
+              locks:document.body.classList.contains('b46-eventflow-viewport-lock')||document.documentElement.classList.contains('b46-eventflow-viewport-lock'),
+              expandedId:document.querySelector('.match-expanded')?.dataset.expandedMatch||null
+            }));
+            assert(!switched.portal&&!switched.locks,'MATCH_SWITCH_LEFT_FULLSCREEN_STUCK');
+            assert(switched.expandedId===rows[1],'MATCH_SWITCH_DID_NOT_OPEN_TARGET');
+          }
+
+          await page.screenshot({path:'diagnostics/eventflow-fullscreen-fix-20261105/final.png',fullPage:false});
+          assert.equal(errors.length,0,'PAGE_ERRORS:'+errors.join('|'));
+          fs.writeFileSync('diagnostics/eventflow-fullscreen-fix-20261105/result.json',JSON.stringify({ok:true,rows,initial,expanded,afterReload,collapsed,escaped,pageErrors:errors},null,2));
+          console.log('BALL46_EVENTFLOW_FULLSCREEN_TEST_PASS');
+          await browser.close();
+          })().catch(err=>{console.error(err);process.exit(1)});
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-eventflow-fullscreen-fix-test-${{ github.run_id }}
+          path: diagnostics/eventflow-fullscreen-fix-20261105
+          retention-days: 14
