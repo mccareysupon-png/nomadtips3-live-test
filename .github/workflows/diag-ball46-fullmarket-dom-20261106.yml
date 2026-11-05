@@ -1,0 +1,60 @@
+name: Diagnose BALL46 Full Market DOM 20261106
+
+on:
+  push:
+    branches: [test/ball46-fullmarket-copy-20261106]
+    paths:
+      - '.github/workflows/diag-ball46-fullmarket-dom-20261106.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: npm install --no-save --ignore-scripts puppeteer-core@24
+      - name: Inspect rendered Full Market labels
+        shell: bash
+        run: |
+          node <<'NODE'
+          (async()=>{
+          const fs=require('fs'),assert=require('assert/strict'),puppeteer=require('puppeteer-core');
+          const exe=['/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium','/usr/bin/chromium-browser'].find(fs.existsSync);assert(exe,'CHROME_MISSING');
+          const browser=await puppeteer.launch({executablePath:exe,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
+          const page=await browser.newPage();await page.setViewport({width:1268,height:760});
+          await page.goto('https://ball46.com/?fmbDom='+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
+          await page.waitForSelector('.match-row[data-match-id]',{timeout:90000});await new Promise(r=>setTimeout(r,4500));
+          const rows=await page.$$('.match-row[data-match-id]');
+          let opened=false;
+          for(const row of rows.slice(0,12)){
+            await row.click();await new Promise(r=>setTimeout(r,1400));
+            const has=await page.$('.expand-full-market-card .fmb-head,.expand-full-market-card [class*="fmb"]');
+            if(has){opened=true;break}
+          }
+          assert(opened,'FULL_MARKET_NOT_OPENED');
+          await new Promise(r=>setTimeout(r,1000));
+          const data=await page.evaluate(()=>{
+            const root=document.querySelector('.expand-full-market-card')||document.querySelector('.b46gn-full-market');
+            const all=root?[root,...root.querySelectorAll('*')]:[];
+            const hits=all.filter(el=>/BULK SNAPSHOT|CLICK REQUESTS|books in snapshot|in snapshot|snapshot · DEC/i.test((el.textContent||'').trim())).map(el=>{
+              const r=el.getBoundingClientRect(),s=getComputedStyle(el);
+              return {tag:el.tagName,id:el.id||'',cls:typeof el.className==='string'?el.className:'',text:(el.textContent||'').trim().slice(0,500),html:el.outerHTML.slice(0,1800),rect:{x:r.x,y:r.y,w:r.width,h:r.height},display:s.display,visibility:s.visibility};
+            });
+            return {root:root?.outerHTML.slice(0,12000)||'',hits};
+          });
+          console.log('FMB_DOM='+JSON.stringify(data));
+          await page.screenshot({path:'fullmarket-dom.png',fullPage:false});
+          await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-fullmarket-dom-${{ github.run_id }}
+          path: fullmarket-dom.png
+          retention-days: 7
