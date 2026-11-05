@@ -1,6 +1,10 @@
 name: Deploy BALL46 EventFlow Fullscreen Fix 20261105
 
 on:
+  push:
+    branches: [test/ball46-eventflow-fullscreen-fix-20261105]
+    paths:
+      - '.github/workflows/deploy-ball46-eventflow-fullscreen-fix-20261105.yml'
   workflow_dispatch:
 
 permissions:
