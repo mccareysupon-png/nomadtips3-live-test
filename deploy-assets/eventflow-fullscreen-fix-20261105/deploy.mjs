@@ -5,7 +5,7 @@ import { spawnSync } from 'node:child_process';
 import { parse } from 'acorn';
 import puppeteer from 'puppeteer-core';
 
-const MARK='B46_EVENTFLOW_FULLSCREEN_PORTAL_FIX_20261105';
+const MARK='B46_EVENTFLOW_FULLSCREEN_DIALOG_FIX_20261105B';
 const TARGET='__B46_EVENTFLOW_SIGNAL_JS_20261002__';
 const SCRIPT='ball46-production';
 const ORIGIN='https://ball46.com';
