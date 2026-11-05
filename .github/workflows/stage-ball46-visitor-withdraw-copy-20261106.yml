@@ -1,0 +1,117 @@
+name: Stage BALL46 Visitor Withdraw Copy 20261106
+
+on:
+  push:
+    branches: [test/ball46-visitor-copy-20261105]
+    paths:
+      - '.github/workflows/stage-ball46-visitor-withdraw-copy-20261106.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  stage:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Build inactive candidate from active visitor collector
+        shell: bash
+        run: |
+          mkdir -p audit
+          node <<'NODE'
+          (async()=>{
+          const fs=require('fs');
+          const assert=require('assert/strict');
+          const crypto=require('crypto');
+          const account=process.env.CLOUDFLARE_ACCOUNT_ID,token=process.env.CLOUDFLARE_API_TOKEN;
+          const script='b46-visitor-monitor-collector';
+          const root=`https://api.cloudflare.com/client/v4/accounts/${account}/workers`;
+          const sha=b=>crypto.createHash('sha256').update(b).digest('hex');
+          async function api(path,options={}){
+            const r=await fetch(root+path,{...options,headers:{Authorization:`Bearer ${token}`,...(options.headers||{})}});
+            const j=await r.json();assert(r.ok&&j.success===true,`CF_ERROR ${r.status} ${JSON.stringify(j.errors||j)}`);return j.result;
+          }
+          const deps=await api(`/scripts/${script}/deployments?per_page=3`);
+          const versions=deps.deployments?.[0]?.versions;
+          assert(versions?.length===1&&Number(versions[0].percentage)===100,'ACTIVE_NOT_SINGLE_VERSION');
+          const base=versions[0].version_id;
+          const current=await api(`/workers/${script}/versions/${base}?include=modules`);
+          assert(current.main_module&&current.modules?.length,'VERSION_MODULES_MISSING');
+          const main=current.modules.find(m=>m.name===current.main_module);assert(main,'MAIN_MISSING');
+          const source=Buffer.from(main.content_base64,'base64').toString('utf8');
+          const matches=[...source.matchAll(/withdraw/gi)].map(m=>({index:m.index,excerpt:source.slice(Math.max(0,m.index-220),Math.min(source.length,m.index+360))}));
+          fs.writeFileSync('audit/base-source.js',source);
+          fs.writeFileSync('audit/withdraw-matches.json',JSON.stringify(matches,null,2));
+          console.log('BASE_VERSION='+base);
+          console.log('WITHDRAW_COUNT='+matches.length);
+          console.log('WITHDRAW_MATCHES='+JSON.stringify(matches));
+
+          const a='Decline / withdraw', b='Measurement is on. You can withdraw at any time.';
+          assert.equal(source.split(a).length-1,1,'DECLINE_WITHDRAW_COUNT_CHANGED');
+          assert.equal(source.split(b).length-1,1,'STATUS_WITHDRAW_COUNT_CHANGED');
+          let patched=source.replace(a,'Decline').replace(b,'Measurement is on.');
+          const after=[...patched.matchAll(/withdraw/gi)].map(m=>({index:m.index,excerpt:patched.slice(Math.max(0,m.index-180),Math.min(patched.length,m.index+300))}));
+          fs.writeFileSync('audit/patched-source.js',patched);
+          fs.writeFileSync('audit/remaining-withdraw-matches.json',JSON.stringify(after,null,2));
+
+          const metadata={
+            main_module:current.main_module,
+            compatibility_date:current.compatibility_date,
+            compatibility_flags:current.compatibility_flags||[],
+            bindings:current.bindings,
+            annotations:{'workers/tag':'b46-visitor-copy-20261106','workers/message':'Stage consent copy: remove withdraw wording only'}
+          };
+          if(current.placement)metadata.placement=current.placement;
+          const form=new FormData();
+          form.append('metadata',new Blob([JSON.stringify(metadata)],{type:'application/json'}),'metadata.json');
+          for(const m of current.modules){
+            const bytes=m.name===current.main_module?Buffer.from(patched):Buffer.from(m.content_base64,'base64');
+            let type=m.content_type;
+            if(!type){
+              if(m.name===current.main_module||/\.m?js$/.test(m.name))type='application/javascript+module';
+              else if(m.name.endsWith('.txt'))type='text/plain';
+              else type='application/octet-stream';
+            }
+            form.append(m.name,new Blob([bytes],{type}),m.name);
+          }
+          const candidate=await api(`/scripts/${script}/versions`,{method:'POST',body:form});
+          assert(candidate?.id,'CANDIDATE_ID_MISSING');
+
+          const check=await api(`/workers/${script}/versions/${candidate.id}?include=modules`);
+          const cm=check.modules.find(m=>m.name===check.main_module);assert(cm,'CANDIDATE_MAIN_MISSING');
+          const candidateSource=Buffer.from(cm.content_base64,'base64').toString('utf8');
+          assert(candidateSource.includes('<button class="choice reject" type="button">Decline</button>'),'DECLINE_COPY_NOT_PATCHED');
+          assert(candidateSource.includes("permitted()?'Measurement is on.':'Visitor measurement is off until you accept.'"),'STATUS_COPY_NOT_PATCHED');
+          assert(!candidateSource.includes('Decline / withdraw'),'OLD_DECLINE_COPY_REMAINS');
+          assert(!candidateSource.includes('Measurement is on. You can withdraw at any time.'),'OLD_STATUS_COPY_REMAINS');
+          assert.equal(await (async()=>{const d=await api(`/scripts/${script}/deployments?per_page=3`);return d.deployments?.[0]?.versions?.[0]?.version_id})(),base,'PRODUCTION_CHANGED_DURING_STAGE');
+
+          fs.writeFileSync('audit/report.json',JSON.stringify({
+            script,baseVersion:base,candidateVersion:candidate.id,
+            beforeSha:sha(Buffer.from(source)),candidateSha:sha(Buffer.from(candidateSource)),
+            withdrawCountBefore:matches.length,withdrawCountAfter:after.length,
+            activated:false,
+            changes:[
+              {from:a,to:'Decline'},
+              {from:b,to:'Measurement is on.'}
+            ]
+          },null,2));
+          console.log('CANDIDATE_VERSION='+candidate.id);
+          console.log('WITHDRAW_REMAINING='+after.length);
+          console.log('STAGE_SUCCESS_NO_ACTIVATION');
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-visitor-withdraw-stage-${{ github.run_id }}
+          path: audit
+          retention-days: 14
