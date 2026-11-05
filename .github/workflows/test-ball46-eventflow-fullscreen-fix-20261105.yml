@@ -21,6 +21,7 @@ jobs:
         with:
           node-version: '22'
       - run: npm install --no-save --ignore-scripts puppeteer-core@24
+      - run: node --check deploy-assets/eventflow-fullscreen-fix-20261105/deploy.mjs
       - name: Build guarded patched owner
         shell: bash
         run: |
