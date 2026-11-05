@@ -1,0 +1,69 @@
+name: Diagnose BALL46 Visitor DOM 20261106
+
+on:
+  push:
+    branches: [test/ball46-visitor-copy-20261105]
+    paths:
+      - '.github/workflows/diag-ball46-visitor-dom-20261106.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --ignore-scripts puppeteer-core@24
+      - name: Inspect rendered visitor consent DOM
+        shell: bash
+        run: |
+          node <<'NODE'
+          (async()=>{
+          const fs=require('fs');
+          const assert=require('assert/strict');
+          const puppeteer=require('puppeteer-core');
+          const exe=['/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium','/usr/bin/chromium-browser'].find(fs.existsSync);
+          assert(exe,'CHROME_MISSING');
+          const browser=await puppeteer.launch({executablePath:exe,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
+          const page=await browser.newPage();
+          await page.setViewport({width:390,height:844});
+          await page.goto('https://ball46.com/?visitorDomDiag='+Date.now(),{waitUntil:'networkidle2',timeout:90000});
+          await new Promise(r=>setTimeout(r,3500));
+          const data=await page.evaluate(()=>{
+            const all=[...document.querySelectorAll('body *')];
+            const candidates=all.filter(el=>{
+              const t=(el.textContent||'').trim();
+              return /Allow visitor measurement|Visitor measurement|How we use this|withdraw/i.test(t);
+            }).slice(0,30);
+            return candidates.map(el=>{
+              const r=el.getBoundingClientRect();
+              const scripts=[...document.scripts].map(s=>({src:s.src||'',inline:(s.textContent||'').slice(0,500)}));
+              return {
+                tag:el.tagName,
+                id:el.id||'',
+                cls:typeof el.className==='string'?el.className:'',
+                text:(el.textContent||'').trim(),
+                html:el.outerHTML.slice(0,8000),
+                rect:{x:r.x,y:r.y,w:r.width,h:r.height},
+                parent:el.parentElement?.outerHTML?.slice(0,8000)||'',
+                scripts
+              };
+            });
+          });
+          console.log('VISITOR_DOM='+JSON.stringify(data));
+          await page.screenshot({path:'visitor-dom.png',fullPage:false});
+          await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-visitor-dom-${{ github.run_id }}
+          path: visitor-dom.png
+          retention-days: 7
