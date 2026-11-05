@@ -1,0 +1,42 @@
+name: Diagnose BALL46 Full Market Compact 20261106
+
+on:
+  push:
+    branches: [test/ball46-fullmarket-copy-20261106]
+    paths:
+      - '.github/workflows/diag-ball46-fullmarket-compact-20261106.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Compact source matches
+        shell: bash
+        run: |
+          node <<'NODE'
+          (async()=>{
+          const assert=require('assert/strict');
+          const a=process.env.CLOUDFLARE_ACCOUNT_ID,tok=process.env.CLOUDFLARE_API_TOKEN;
+          const root=`https://api.cloudflare.com/client/v4/accounts/${a}/workers`;
+          async function api(p){const r=await fetch(root+p,{headers:{Authorization:`Bearer ${tok}`}});const j=await r.json();assert(r.ok&&j.success);return j.result}
+          const d=await api('/scripts/ball46-production/deployments?per_page=3');
+          const id=d.deployments[0].versions[0].version_id;
+          const v=await api(`/workers/ball46-production/versions/${id}?include=modules`);
+          const m=v.modules.find(x=>x.name===v.main_module);const s=Buffer.from(m.content_base64,'base64').toString('utf8');
+          for(const n of ['BULK SNAPSHOT','CLICK REQUESTS','books in snapshot','in snapshot','snapshot · DEC']){
+            const all=[];let p=0;
+            while(true){const i=s.toLowerCase().indexOf(n.toLowerCase(),p);if(i<0)break;all.push({i,x:s.slice(Math.max(0,i-700),Math.min(s.length,i+1200))});p=i+n.length;if(all.length>=20)break}
+            console.log(n+'='+JSON.stringify(all));
+          }
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
