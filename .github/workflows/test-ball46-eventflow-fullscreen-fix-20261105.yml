@@ -36,7 +36,7 @@ jobs:
           const assert=require('assert/strict');
           const puppeteer=require('puppeteer-core');
           const patched=fs.readFileSync('diagnostics/eventflow-fullscreen-fix-20261105/expanded-match-343.patched.js','utf8');
-          assert(patched.includes('B46_EVENTFLOW_FULLSCREEN_PORTAL_FIX_20261105'));
+          assert(patched.includes('B46_EVENTFLOW_FULLSCREEN_DIALOG_FIX_20261105B'));
           const exe=['/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium','/usr/bin/chromium-browser'].find(fs.existsSync);
           assert(exe,'CHROME_MISSING');
           const browser=await puppeteer.launch({executablePath:exe,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
