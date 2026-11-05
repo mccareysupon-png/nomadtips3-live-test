@@ -111,6 +111,13 @@ jobs:
           console.log('BEFORE_BUTTONS',JSON.stringify(before.buttons));
           console.log('AFTER_BODY',JSON.stringify({bodyClass:after.bodyClass,htmlClass:after.htmlClass,bodyOverflow:after.bodyOverflow,htmlOverflow:after.htmlOverflow,fullscreenElement:after.fullscreenElement}));
           console.log('AFTER_NODES',JSON.stringify(after.nodes.slice(0,4)));
+          const owners=await page.evaluate(()=>{
+            const scriptMatches=[...document.scripts].map((s,i)=>({i,src:s.src||'',text:s.textContent||''})).filter(x=>/b46-eventflow-expand-toggle|b46-eventflow-viewport-expanded|data-eventflow-expand-toggle/.test(x.text)).map(x=>({i:x.i,src:x.src,text:x.text.slice(0,12000)}));
+            const styleMatches=[...document.querySelectorAll('style')].map((s,i)=>({i,id:s.id||'',text:s.textContent||''})).filter(x=>/b46-eventflow-expand-toggle|b46-eventflow-viewport-expanded|b46-eventflow-viewport-lock/.test(x.text)).map(x=>({i:x.i,id:x.id,text:x.text.slice(0,12000)}));
+            return {scriptMatches,styleMatches};
+          });
+          fs.writeFileSync('diagnostics/eventflow-fullscreen-20261105/audit/owners.json',JSON.stringify(owners,null,2));
+          console.log('OWNERS',JSON.stringify(owners));
           await browser.close();
           })().catch(err=>{console.error(err);process.exit(1)});
           NODE
