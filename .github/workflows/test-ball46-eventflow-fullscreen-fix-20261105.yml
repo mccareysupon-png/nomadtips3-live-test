@@ -81,7 +81,7 @@ jobs:
             const button=flow?.querySelector('[data-eventflow-expand-toggle]');
             return {
               exists:Boolean(flow),
-              parentIsBody:flow?.parentElement===document.body,
+              parentIsDialog:flow?.parentElement?.matches?.('dialog.b46-eventflow-top-layer')||false,
               rect:r?{x:r.x,y:r.y,w:r.width,h:r.height}:null,
               viewport:{w:innerWidth,h:innerHeight},
               htmlLock:document.documentElement.classList.contains('b46-eventflow-viewport-lock'),
@@ -91,7 +91,7 @@ jobs:
             };
           });
           assert(expanded.exists,'EXPANDED_CARD_MISSING');
-          assert(expanded.parentIsBody,'EXPANDED_CARD_NOT_PORTALED_TO_BODY');
+          assert(expanded.parentIsDialog,'EXPANDED_CARD_NOT_IN_TOP_LAYER');
           assert(expanded.htmlLock&&expanded.bodyLock,'VIEWPORT_LOCK_MISSING');
           assert(expanded.pressed==='true','EXPAND_BUTTON_STATE_BAD');
           assert(expanded.rect.x<=1&&expanded.rect.y<=1,'EXPANDED_NOT_AT_VIEWPORT_ORIGIN');
@@ -105,20 +105,20 @@ jobs:
           }
           const afterReload=await page.evaluate(()=>{
             const flow=document.querySelector('.expand-flow-card.b46-eventflow-viewport-expanded');
-            return {parentIsBody:flow?.parentElement===document.body,button:Boolean(flow?.querySelector('[data-eventflow-expand-toggle]')),svg:Boolean(flow?.querySelector('.expand-flow-chart svg'))};
+            return {parentIsDialog:flow?.parentElement?.matches?.('dialog.b46-eventflow-top-layer')||false,button:Boolean(flow?.querySelector('[data-eventflow-expand-toggle]')),svg:Boolean(flow?.querySelector('.expand-flow-chart svg'))};
           });
           console.log('AFTER_RELOAD',JSON.stringify(afterReload));
-          if(!(afterReload.parentIsBody&&afterReload.button&&afterReload.svg)){
+          if(!(afterReload.parentIsDialog&&afterReload.button&&afterReload.svg)){
             const detail=await page.evaluate(()=>({
               bodyLock:document.body.classList.contains('b46-eventflow-viewport-lock'),
               htmlLock:document.documentElement.classList.contains('b46-eventflow-viewport-lock'),
-              bodyFlow:[...document.body.children].filter(x=>x.matches?.('.expand-flow-card')).map(x=>({cls:x.className,state:x.dataset.eventflowViewport,html:x.innerHTML.slice(0,500)})),
+              bodyFlow:[...document.querySelectorAll('dialog.b46-eventflow-top-layer > .expand-flow-card')].map(x=>({cls:x.className,state:x.dataset.eventflowViewport,html:x.innerHTML.slice(0,500)})),
               nestedFlow:[...document.querySelectorAll('.match-expanded .expand-flow-card')].map(x=>({cls:x.className,state:x.dataset.eventflowViewport,html:x.innerHTML.slice(0,500)})),
               expandedHtml:document.querySelector('.match-expanded')?.innerHTML.slice(0,1500)||null
             }));
             console.log('AFTER_RELOAD_DETAIL',JSON.stringify(detail));
           }
-          assert(afterReload.parentIsBody&&afterReload.button&&afterReload.svg,'REFRESH_BROKE_FULLSCREEN_PORTAL');
+          assert(afterReload.parentIsDialog&&afterReload.button&&afterReload.svg,'REFRESH_BROKE_FULLSCREEN_PORTAL');
 
           await page.click('.expand-flow-card [data-eventflow-expand-toggle]');
           await page.waitForFunction(()=>!document.body.classList.contains('b46-eventflow-viewport-lock'),{timeout:10000});
@@ -126,7 +126,7 @@ jobs:
             const flow=document.querySelector('.match-expanded .expand-flow-card');
             return {
               restored:Boolean(flow),
-              parentIsBody:flow?.parentElement===document.body,
+              parentIsDialog:flow?.parentElement?.matches?.('dialog.b46-eventflow-top-layer')||false,
               expanded:flow?.classList.contains('b46-eventflow-viewport-expanded'),
               htmlLock:document.documentElement.classList.contains('b46-eventflow-viewport-lock'),
               bodyLock:document.body.classList.contains('b46-eventflow-viewport-lock'),
@@ -134,7 +134,7 @@ jobs:
             };
           });
           assert(collapsed.restored,'COLLAPSED_CARD_NOT_RESTORED');
-          assert(!collapsed.parentIsBody&&!collapsed.expanded&&!collapsed.htmlLock&&!collapsed.bodyLock,'COLLAPSE_STATE_STUCK');
+          assert(!collapsed.parentIsDialog&&!collapsed.expanded&&!collapsed.htmlLock&&!collapsed.bodyLock,'COLLAPSE_STATE_STUCK');
           assert(collapsed.state==='normal','COLLAPSE_DATA_STATE_BAD');
 
           for(let cycle=0;cycle<2;cycle++){
@@ -144,7 +144,7 @@ jobs:
             await page.click('.expand-flow-card [data-eventflow-expand-toggle]');
             await page.waitForFunction(()=>!document.body.classList.contains('b46-eventflow-viewport-lock'),{timeout:10000});
             const cycleState=await page.evaluate(()=>({
-              portal:Boolean(document.body.querySelector(':scope > .expand-flow-card.b46-eventflow-viewport-expanded')),
+              portal:Boolean(document.querySelector('dialog.b46-eventflow-top-layer[open] > .expand-flow-card.b46-eventflow-viewport-expanded')),
               restored:Boolean(document.querySelector('.match-expanded .expand-flow-card')),
               locks:document.body.classList.contains('b46-eventflow-viewport-lock')||document.documentElement.classList.contains('b46-eventflow-viewport-lock')
             }));
@@ -156,7 +156,7 @@ jobs:
           await page.keyboard.press('Escape');
           await page.waitForFunction(()=>!document.body.classList.contains('b46-eventflow-viewport-lock'),{timeout:10000});
           const escaped=await page.evaluate(()=>({
-            portal:Boolean(document.body.querySelector(':scope > .expand-flow-card.b46-eventflow-viewport-expanded')),
+            portal:Boolean(document.querySelector('dialog.b46-eventflow-top-layer[open] > .expand-flow-card.b46-eventflow-viewport-expanded')),
             htmlLock:document.documentElement.classList.contains('b46-eventflow-viewport-lock'),
             bodyLock:document.body.classList.contains('b46-eventflow-viewport-lock'),
             restored:Boolean(document.querySelector('.match-expanded .expand-flow-card'))
@@ -170,7 +170,7 @@ jobs:
             await page.waitForFunction(()=>!document.body.classList.contains('b46-eventflow-viewport-lock'),{timeout:10000});
             await new Promise(r=>setTimeout(r,800));
             const switched=await page.evaluate(()=>({
-              portal:Boolean(document.body.querySelector(':scope > .expand-flow-card.b46-eventflow-viewport-expanded')),
+              portal:Boolean(document.querySelector('dialog.b46-eventflow-top-layer[open] > .expand-flow-card.b46-eventflow-viewport-expanded')),
               locks:document.body.classList.contains('b46-eventflow-viewport-lock')||document.documentElement.classList.contains('b46-eventflow-viewport-lock'),
               expandedId:document.querySelector('.match-expanded')?.dataset.expandedMatch||null
             }));
