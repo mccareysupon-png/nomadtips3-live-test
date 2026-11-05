@@ -1,0 +1,74 @@
+name: Diagnose BALL46 Visitor Resource Owner 20261106
+
+on:
+  push:
+    branches: [test/ball46-visitor-copy-20261105]
+    paths:
+      - '.github/workflows/diag-ball46-visitor-resource-owner-20261106.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --ignore-scripts puppeteer-core@24
+      - name: Trace visitor measurement copy owner
+        shell: bash
+        run: |
+          node <<'NODE'
+          (async()=>{
+          const fs=require('fs');
+          const assert=require('assert/strict');
+          const puppeteer=require('puppeteer-core');
+          const exe=['/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium','/usr/bin/chromium-browser'].find(fs.existsSync);
+          assert(exe,'CHROME_MISSING');
+          const browser=await puppeteer.launch({executablePath:exe,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
+          const page=await browser.newPage();
+          const urls=new Set();
+          page.on('response',r=>{const u=r.url(); if(/^https?:/.test(u)) urls.add(u)});
+          await page.goto('https://ball46.com/?visitorOwnerDiag='+Date.now(),{waitUntil:'networkidle2',timeout:90000});
+          await new Promise(r=>setTimeout(r,3000));
+          const more=await page.evaluate(()=>[
+            ...[...document.scripts].map(s=>s.src).filter(Boolean),
+            ...[...document.querySelectorAll('link[href]')].map(l=>l.href).filter(Boolean)
+          ]);
+          more.forEach(u=>urls.add(u));
+          const needles=[
+            'sessions and active page views',
+            'public page ID expires after 30 days',
+            'Visitor measurement is off until',
+            'Allow visitor measurement',
+            'How we use this',
+            'withdraw'
+          ];
+          const hits=[];
+          for(const url of urls){
+            try{
+              const r=await fetch(url,{headers:{'cache-control':'no-cache'}});
+              const ct=r.headers.get('content-type')||'';
+              if(!/javascript|text|json|html|css/i.test(ct))continue;
+              const t=await r.text();
+              for(const n of needles){
+                const i=t.toLowerCase().indexOf(n.toLowerCase());
+                if(i>=0)hits.push({url,status:r.status,contentType:ct,needle:n,index:i,excerpt:t.slice(Math.max(0,i-1800),Math.min(t.length,i+4200))});
+              }
+            }catch{}
+          }
+          const html=await page.content();
+          for(const n of needles){
+            const i=html.toLowerCase().indexOf(n.toLowerCase());
+            if(i>=0)hits.push({url:'DOM_HTML',needle:n,index:i,excerpt:html.slice(Math.max(0,i-1800),Math.min(html.length,i+4200))});
+          }
+          console.log('RESOURCE_HITS='+JSON.stringify(hits));
+          console.log('RESOURCE_COUNT='+urls.size);
+          await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
