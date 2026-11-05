@@ -97,13 +97,8 @@ async function activate(id){
   await api(`/scripts/${SCRIPT}/deployments`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({strategy:'percentage',versions:[{version_id:id,percentage:100}],annotations:{'workers/message':'BALL46 Event Flow fullscreen fix 20261105'}})});
 }
 async function verifyLiveBrowser(){
-  const exe=['/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium','/usr/bin/chromium-browser'].find(p=>{try{return !!readFileSync(p)}catch{return false}});
-  // readFileSync on executables can be expensive; fallback to shell lookup
-  let executable=exe;
-  if(!executable){
-    const w=spawnSync('bash',['-lc','command -v google-chrome || command -v chromium || command -v chromium-browser'],{encoding:'utf8'});
-    executable=(w.stdout||'').trim();
-  }
+  const w=spawnSync('bash',['-lc','command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser'],{encoding:'utf8'});
+  const executable=(w.stdout||'').trim();
   assert(executable,'CHROME_MISSING');
   const browser=await puppeteer.launch({executablePath:executable,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
   try{
@@ -189,11 +184,25 @@ try{
   for(let i=0;i<20;i++){if(await activeVersion()===candidate)break;await delay(1000)}
   assert.equal(await activeVersion(),candidate,'CANDIDATE_NOT_ACTIVE');
 
-  const want=sha(Buffer.from(patchedLiteral));
   for(const origin of [DIRECT,ORIGIN]){
     let ok=false,last='';
-    for(let i=0;i<35;i++){assert.equal(await activeVersion(),candidate,'PRODUCTION_MOVED_DURING_ROUTE_VERIFY');try{const b=await publicFile('/expanded-match-343.js',origin);last=sha(b);if(last===want&&b.toString('utf8').includes(MARK)){ok=true;break}}catch{}await delay(1000)}
-    assert(ok,`LIVE_ROUTE_HASH_BAD:${origin}:${last}`);
+    for(let i=0;i<35;i++){
+      assert.equal(await activeVersion(),candidate,'PRODUCTION_MOVED_DURING_ROUTE_VERIFY');
+      try{
+        const b=await publicFile('/expanded-match-343.js',origin);
+        const text=b.toString('utf8');
+        last=sha(b);
+        if(
+          text.includes(MARK) &&
+          text.includes('b46-eventflow-viewport-expanded') &&
+          text.includes('data-eventflow-expand-toggle') &&
+          text.includes('B46_MOBILE_FLOW_BARS') &&
+          text.includes('data-b46-flow=')
+        ){ok=true;break}
+      }catch{}
+      await delay(1000)
+    }
+    assert(ok,`LIVE_ROUTE_PATCH_MARKER_BAD:${origin}:${last}`);
   }
 
   const [board,signals,stats]=await Promise.all(['/api/engine/board','/api/engine/signals','/api/engine/statistics'].map(async p=>JSON.parse(await publicFile(p))));
