@@ -1,0 +1,9 @@
+/* BALL46_FULLMARKET_PUBLIC_COPY_HIDE_20261106
+   Hide internal snapshot/request diagnostics from the public Full Market header.
+   Data, snapshot logic and bookmaker requests remain untouched. */
+.expand-full-market-card .fmb-head > div > b,
+.expand-full-market-card .fmb-head > small,
+.b46gn-full-market .fmb-head > div > b,
+.b46gn-full-market .fmb-head > small {
+  display: none !important;
+}
