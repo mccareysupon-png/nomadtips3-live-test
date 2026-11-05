@@ -114,7 +114,7 @@ async function verifyLiveBrowser(){
     await page.waitForFunction(()=>document.body.classList.contains('b46-eventflow-viewport-lock'),{timeout:10000});
     await delay(300);
     const expanded=await page.evaluate(()=>{const f=document.querySelector('.expand-flow-card.b46-eventflow-viewport-expanded'),r=f?.getBoundingClientRect(),d=f?.closest('dialog.b46-eventflow-top-layer');return{parentIsDialog:Boolean(d),dialogOpen:Boolean(d?.open),x:r?.x,y:r?.y,w:r?.width,h:r?.height,vw:innerWidth,vh:innerHeight}});
-    assert(expanded.parentIsDialog&&expanded.dialogOpen&&expanded.x<=1&&expanded.y<=1&&expanded.w>=expanded.vw-2&&expanded.h>=expanded.vh-2,'LIVE_FULLSCREEN_NOT_VIEWPORT');
+    console.log('LIVE_EXPANDED='+JSON.stringify(expanded));report.liveExpanded=expanded;save();assert(expanded.parentIsDialog&&expanded.dialogOpen&&expanded.x<=1&&expanded.y<=1&&expanded.w>=expanded.vw-2&&expanded.h>=expanded.vh-2,'LIVE_FULLSCREEN_NOT_VIEWPORT');
     for(let i=0;i<2;i++){await page.evaluate(()=>window.NOMAD343_EXPANDED_MATCH?.reload?.());await delay(900)}
     const after=await page.evaluate(()=>({bodyLock:document.body.classList.contains('b46-eventflow-viewport-lock'),portal:Boolean(document.querySelector('dialog.b46-eventflow-top-layer[open] > .expand-flow-card.b46-eventflow-viewport-expanded')),button:Boolean(document.querySelector('.expand-flow-card [data-eventflow-expand-toggle]')),svg:Boolean(document.querySelector('.expand-flow-card .expand-flow-chart svg'))}));
     assert(after.bodyLock&&after.portal&&after.button&&after.svg,'LIVE_REFRESH_BROKE_FULLSCREEN');
