@@ -1,0 +1,67 @@
+name: Diagnose BALL46 Visitor Script Owner 20261106
+
+on:
+  push:
+    branches: [test/ball46-visitor-copy-20261105]
+    paths:
+      - '.github/workflows/diag-ball46-visitor-script-owner-20261106.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --ignore-scripts puppeteer-core@24
+      - name: Inspect only loaded scripts and styles
+        shell: bash
+        run: |
+          node <<'NODE'
+          (async()=>{
+          const fs=require('fs');
+          const assert=require('assert/strict');
+          const puppeteer=require('puppeteer-core');
+          const exe=['/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium','/usr/bin/chromium-browser'].find(fs.existsSync);
+          assert(exe,'CHROME_MISSING');
+          const browser=await puppeteer.launch({executablePath:exe,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
+          const page=await browser.newPage();
+          await page.setViewport({width:390,height:844});
+          await page.goto('https://ball46.com/?visitorScriptDiag='+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
+          await new Promise(r=>setTimeout(r,5000));
+          const resources=await page.evaluate(()=>({
+            scripts:[...document.scripts].map(s=>s.src).filter(Boolean),
+            styles:[...document.querySelectorAll('link[rel="stylesheet"]')].map(l=>l.href).filter(Boolean)
+          }));
+          const needles=[
+            'sessions and active page views',
+            'public page ID expires after 30 days',
+            'Visitor measurement is off until',
+            'Allow visitor measurement',
+            'How we use this',
+            'withdraw'
+          ];
+          const hits=[];
+          for(const url of [...new Set([...resources.scripts,...resources.styles])]){
+            try{
+              const r=await fetch(url,{headers:{'cache-control':'no-cache'}});
+              const t=await r.text();
+              const matched=[];
+              for(const n of needles){
+                const i=t.toLowerCase().indexOf(n.toLowerCase());
+                if(i>=0)matched.push({needle:n,index:i,excerpt:t.slice(Math.max(0,i-1500),Math.min(t.length,i+4500))});
+              }
+              if(matched.length)hits.push({url,status:r.status,length:t.length,matched});
+            }catch(e){hits.push({url,error:String(e)})}
+          }
+          console.log('SCRIPT_STYLE_URLS='+JSON.stringify(resources));
+          console.log('SCRIPT_STYLE_HITS='+JSON.stringify(hits));
+          await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
