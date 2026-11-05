@@ -1,0 +1,89 @@
+/* B46_EVENTFLOW_FULLSCREEN_FIX_20261105 */
+:root {
+  --b46-eventflow-fullscreen-z: 2147483000;
+}
+
+html.b46-eventflow-fullscreen-lock,
+body.b46-eventflow-fullscreen-lock {
+  overflow: hidden !important;
+  overscroll-behavior: none !important;
+}
+
+.b46-eventflow-fullscreen-placeholder {
+  display: block;
+  width: 100%;
+  height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.expand-flow-card.b46-eventflow-fullscreen,
+[data-event-flow].b46-eventflow-fullscreen,
+.event-flow-card.b46-eventflow-fullscreen {
+  box-sizing: border-box !important;
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: var(--b46-eventflow-fullscreen-z) !important;
+  width: 100vw !important;
+  max-width: none !important;
+  height: 100vh !important;
+  height: 100dvh !important;
+  max-height: none !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+  overflow: hidden !important;
+  contain: none !important;
+  transform: none !important;
+  translate: none !important;
+  scale: none !important;
+  background: #061a14 !important;
+}
+
+.expand-flow-card.b46-eventflow-fullscreen:fullscreen,
+[data-event-flow].b46-eventflow-fullscreen:fullscreen,
+.event-flow-card.b46-eventflow-fullscreen:fullscreen {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  height: 100dvh !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+  overflow: hidden !important;
+  background: #061a14 !important;
+}
+
+.b46-eventflow-fullscreen .expand-flow-chart {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  height: calc(100vh - 86px) !important;
+  height: calc(100dvh - 86px) !important;
+  min-height: 260px !important;
+  max-height: none !important;
+}
+
+.b46-eventflow-fullscreen .expand-flow-chart > svg {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  max-height: none !important;
+}
+
+.b46-eventflow-fullscreen [data-b46-eventflow-fullscreen-button],
+.b46-eventflow-fullscreen .b46-eventflow-fullscreen-button {
+  position: relative;
+  z-index: calc(var(--b46-eventflow-fullscreen-z) + 1);
+}
+
+@media (max-width: 760px) {
+  .b46-eventflow-fullscreen .expand-flow-chart {
+    height: calc(100vh - 74px) !important;
+    height: calc(100dvh - 74px) !important;
+    min-height: 220px !important;
+  }
+}
