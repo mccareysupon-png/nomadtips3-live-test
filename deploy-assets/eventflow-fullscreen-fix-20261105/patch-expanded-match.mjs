@@ -37,7 +37,7 @@ const replaceOnce=(before,after,label)=>{
 
 replaceOnce(
   "let eventFlowViewportExpanded=false;\nlet eventFlowSavedScrollY=null;",
-  "let eventFlowViewportExpanded=false;\nlet eventFlowSavedScrollY=null;\nlet eventFlowPortalCard=null;\nlet eventFlowPortalPlaceholder=null;\nlet eventFlowPortalParent=null;\nlet eventFlowPortalNextSibling=null;\nconst B46_EVENTFLOW_FULLSCREEN_PORTAL_FIX_20261105=true;",
+  "let eventFlowViewportExpanded=false;\nlet eventFlowSavedScrollY=null;\nlet eventFlowPortalCard=null;\nlet eventFlowPortalPlaceholder=null;\nlet eventFlowPortalParent=null;\nlet eventFlowPortalNextSibling=null;\nlet eventFlowTopLayer=null;\nconst B46_EVENTFLOW_FULLSCREEN_PORTAL_FIX_20261105=true;",
   'state'
 );
 
@@ -47,31 +47,49 @@ replaceOnce(
   if(eventFlowPortalCard?.isConnected)return eventFlowPortalCard;
   return expandedEl?.querySelector('.expand-flow-card')||null
 }
+function ensureEventFlowTopLayerStyle(){
+  if(document.getElementById('b46-eventflow-top-layer-style-20261105'))return;
+  const style=document.createElement('style');style.id='b46-eventflow-top-layer-style-20261105';
+  style.textContent='dialog.b46-eventflow-top-layer{box-sizing:border-box!important;position:fixed!important;inset:0!important;width:100vw!important;max-width:none!important;height:100vh!important;height:100dvh!important;max-height:none!important;margin:0!important;padding:0!important;border:0!important;border-radius:0!important;overflow:hidden!important;background:#06120f!important;color:inherit!important}dialog.b46-eventflow-top-layer::backdrop{background:#06120f!important}dialog.b46-eventflow-top-layer>.expand-flow-card.b46-eventflow-viewport-expanded{box-sizing:border-box!important;position:relative!important;inset:auto!important;width:100%!important;max-width:none!important;height:100%!important;max-height:none!important;margin:0!important;border:0!important;border-radius:0!important;box-shadow:none!important}';
+  document.head.appendChild(style)
+}
 function portalEventFlowCard(){
-  const flow=currentEventFlowCard();if(!flow||flow===eventFlowPortalCard)return flow;
+  const flow=currentEventFlowCard();if(!flow)return null;
+  if(flow===eventFlowPortalCard&&eventFlowTopLayer?.isConnected)return flow;
   eventFlowPortalCard=flow;
   eventFlowPortalParent=flow.parentNode;
   eventFlowPortalNextSibling=flow.nextSibling;
   eventFlowPortalPlaceholder=document.createComment('b46-eventflow-portal');
   eventFlowPortalParent?.insertBefore(eventFlowPortalPlaceholder,flow);
-  document.body?.appendChild(flow);
+  ensureEventFlowTopLayerStyle();
+  const dialog=document.createElement('dialog');
+  dialog.className='b46-eventflow-top-layer';
+  dialog.setAttribute('aria-label','Event Flow fullscreen');
+  dialog.addEventListener('cancel',event=>{event.preventDefault();if(eventFlowViewportExpanded)setEventFlowViewportExpanded(false)});
+  document.body?.appendChild(dialog);
+  dialog.appendChild(flow);
+  eventFlowTopLayer=dialog;
+  try{if(typeof dialog.showModal==='function')dialog.showModal();else dialog.setAttribute('open','')}catch(error){console.warn('Event Flow top layer open failed',error);dialog.setAttribute('open','')}
   return flow
 }
 function restoreEventFlowCard(){
-  const flow=eventFlowPortalCard;if(!flow)return;
+  const flow=eventFlowPortalCard;
   try{
-    if(eventFlowPortalPlaceholder?.parentNode){
+    if(eventFlowTopLayer?.open&&typeof eventFlowTopLayer.close==='function')eventFlowTopLayer.close();
+    if(flow&&eventFlowPortalPlaceholder?.parentNode){
       eventFlowPortalPlaceholder.parentNode.insertBefore(flow,eventFlowPortalPlaceholder)
-    }else if(eventFlowPortalParent?.isConnected){
+    }else if(flow&&eventFlowPortalParent?.isConnected){
       if(eventFlowPortalNextSibling?.parentNode===eventFlowPortalParent)eventFlowPortalParent.insertBefore(flow,eventFlowPortalNextSibling);
       else eventFlowPortalParent.appendChild(flow)
     }
-  }catch(error){console.warn('Event Flow portal restore failed',error)}
+  }catch(error){console.warn('Event Flow top layer restore failed',error)}
   eventFlowPortalPlaceholder?.remove?.();
+  eventFlowTopLayer?.remove?.();
   eventFlowPortalCard=null;
   eventFlowPortalPlaceholder=null;
   eventFlowPortalParent=null;
-  eventFlowPortalNextSibling=null
+  eventFlowPortalNextSibling=null;
+  eventFlowTopLayer=null
 }
 function clearEventFlowViewportLock(){
   document.documentElement.classList.remove('b46-eventflow-viewport-lock');
