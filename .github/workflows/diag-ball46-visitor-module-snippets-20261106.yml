@@ -1,0 +1,49 @@
+name: Diagnose BALL46 Visitor Module Snippets 20261106
+
+on:
+  push:
+    branches: [test/ball46-visitor-copy-20261105]
+    paths:
+      - '.github/workflows/diag-ball46-visitor-module-snippets-20261106.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Read withdraw snippets from visitor modules
+        shell: bash
+        run: |
+          node <<'NODE'
+          (async()=>{
+          const assert=require('assert/strict');
+          const account=process.env.CLOUDFLARE_ACCOUNT_ID,token=process.env.CLOUDFLARE_API_TOKEN;
+          const root=`https://api.cloudflare.com/client/v4/accounts/${account}/workers`;
+          async function api(path,options={}){
+            const r=await fetch(root+path,{...options,headers:{Authorization:`Bearer ${token}`,...(options.headers||{})}});
+            const j=await r.json();assert(r.ok&&j.success===true,`CF_ERROR ${r.status} ${JSON.stringify(j.errors||j)}`);return j.result;
+          }
+          const deps=await api('/scripts/b46-visitor-monitor-collector/deployments?per_page=3');
+          const base=deps.deployments?.[0]?.versions?.[0]?.version_id;assert(base,'BASE_MISSING');
+          const v=await api(`/workers/b46-visitor-monitor-collector/versions/${base}?include=modules`);
+          const out=[];
+          for(const name of ['tracker-assets.mjs','presence.mjs']){
+            const m=v.modules.find(x=>x.name===name);assert(m,name+'_MISSING');
+            const t=Buffer.from(m.content_base64,'base64').toString('utf8');
+            const hits=[...t.matchAll(/withdraw/gi)].map(x=>({index:x.index,excerpt:t.slice(Math.max(0,x.index-500),Math.min(t.length,x.index+900))}));
+            out.push({name,count:hits.length,hits});
+          }
+          console.log('MODULE_WITHDRAW='+JSON.stringify(out));
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
