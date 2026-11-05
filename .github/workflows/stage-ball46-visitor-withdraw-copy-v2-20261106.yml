@@ -1,0 +1,139 @@
+name: Stage BALL46 Visitor Withdraw Copy V2 20261106
+
+on:
+  push:
+    branches: [test/ball46-visitor-copy-20261105]
+    paths:
+      - '.github/workflows/stage-ball46-visitor-withdraw-copy-v2-20261106.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  stage:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Build inactive collector candidate with UI copy only changed
+        shell: bash
+        run: |
+          mkdir -p audit
+          node <<'NODE'
+          (async()=>{
+          const fs=require('fs');
+          const assert=require('assert/strict');
+          const crypto=require('crypto');
+          const account=process.env.CLOUDFLARE_ACCOUNT_ID,token=process.env.CLOUDFLARE_API_TOKEN;
+          const script='b46-visitor-monitor-collector';
+          const root=`https://api.cloudflare.com/client/v4/accounts/${account}/workers`;
+          const sha=b=>crypto.createHash('sha256').update(b).digest('hex');
+          const canon=v=>JSON.stringify(v,(k,e)=>e&&typeof e==='object'&&!Array.isArray(e)?Object.fromEntries(Object.entries(e).sort(([a],[b])=>a.localeCompare(b))):e);
+          async function api(path,options={}){
+            const r=await fetch(root+path,{...options,headers:{Authorization:`Bearer ${token}`,...(options.headers||{})}});
+            const j=await r.json();assert(r.ok&&j.success===true,`CF_ERROR ${r.status} ${JSON.stringify(j.errors||j)}`);return j.result;
+          }
+          async function active(){
+            const d=await api(`/scripts/${script}/deployments?per_page=3`);
+            const v=d.deployments?.[0]?.versions;
+            assert(v?.length===1&&Number(v[0].percentage)===100,'ACTIVE_NOT_SINGLE_VERSION');
+            return v[0].version_id;
+          }
+
+          const base=await active();
+          const current=await api(`/workers/${script}/versions/${base}?include=modules`);
+          assert(current.main_module&&current.modules?.length,'VERSION_MODULES_MISSING');
+          const tracker=current.modules.find(m=>m.name==='tracker-assets.mjs');assert(tracker,'TRACKER_ASSETS_MISSING');
+          const source=Buffer.from(tracker.content_base64,'base64').toString('utf8');
+
+          const replacements=[
+            ['Decline / withdraw','Decline',2],
+            ['Measurement is on. You can withdraw at any time.','Measurement is on.',1],
+            ['Withdrawal stops heartbeats, removes browser IDs and sends a request to delete that ID\'s measurements.','Turning measurement off stops heartbeats, removes browser IDs and sends a request to delete that ID\'s measurements.',1]
+          ];
+
+          let patched=source;
+          for(const [from,to,count] of replacements){
+            assert.equal(patched.split(from).length-1,count,`COPY_COUNT_CHANGED:${from}`);
+            patched=patched.split(from).join(to);
+          }
+          assert.equal((patched.match(/withdraw/gi)||[]).length,0,'VISIBLE_WITHDRAW_REMAINS_IN_TRACKER_ASSETS');
+          assert(patched.includes("shadow.querySelector('.reject').addEventListener('click',()=>{revoke();panel.hidden=true;});"),'REVOKE_HANDLER_CHANGED');
+          assert(patched.includes("type:'revoke'"),'REVOKE_PAYLOAD_CHANGED');
+
+          fs.writeFileSync('audit/tracker-assets.before.mjs',source);
+          fs.writeFileSync('audit/tracker-assets.after.mjs',patched);
+
+          const settingsBefore=await api(`/scripts/${script}/settings`);
+          const metadata={
+            main_module:current.main_module,
+            compatibility_date:current.compatibility_date,
+            compatibility_flags:current.compatibility_flags||[],
+            bindings:current.bindings,
+            annotations:{'workers/tag':'b46-visitor-copy-no-withdraw-20261106','workers/message':'Stage visitor consent wording cleanup only'}
+          };
+          if(current.placement)metadata.placement=current.placement;
+
+          const form=new FormData();
+          form.append('metadata',new Blob([JSON.stringify(metadata)],{type:'application/json'}),'metadata.json');
+          for(const m of current.modules){
+            const bytes=m.name==='tracker-assets.mjs'?Buffer.from(patched):Buffer.from(m.content_base64,'base64');
+            let type=m.content_type;
+            if(!type){
+              if(m.name===current.main_module||/\.m?js$/.test(m.name))type='application/javascript+module';
+              else type='application/octet-stream';
+            }
+            form.append(m.name,new Blob([bytes],{type}),m.name);
+          }
+          const candidate=await api(`/scripts/${script}/versions`,{method:'POST',body:form});
+          assert(candidate?.id,'CANDIDATE_ID_MISSING');
+
+          const check=await api(`/workers/${script}/versions/${candidate.id}?include=modules`);
+          assert.equal(canon(check.bindings),canon(current.bindings),'CANDIDATE_BINDINGS_CHANGED');
+          assert.equal(check.modules.length,current.modules.length,'MODULE_COUNT_CHANGED');
+
+          for(const m of current.modules){
+            const cm=check.modules.find(x=>x.name===m.name);assert(cm,`MODULE_MISSING:${m.name}`);
+            const expected=m.name==='tracker-assets.mjs'?Buffer.from(patched):Buffer.from(m.content_base64,'base64');
+            assert.equal(sha(Buffer.from(cm.content_base64,'base64')),sha(expected),`MODULE_CHANGED_UNEXPECTEDLY:${m.name}`);
+          }
+          const candidateTracker=check.modules.find(m=>m.name==='tracker-assets.mjs');
+          const candidateText=Buffer.from(candidateTracker.content_base64,'base64').toString('utf8');
+          assert.equal((candidateText.match(/withdraw/gi)||[]).length,0,'CANDIDATE_VISIBLE_WITHDRAW_REMAINS');
+          assert(candidateText.includes('>Decline</button>'),'DECLINE_LABEL_MISSING');
+          assert(candidateText.includes("permitted()?'Measurement is on.':'Visitor measurement is off until you accept.'"),'STATUS_COPY_BAD');
+          assert(candidateText.includes('Turning measurement off stops heartbeats'),'PRIVACY_COPY_BAD');
+          assert.equal(await active(),base,'PRODUCTION_CHANGED_DURING_STAGE');
+          assert.equal(canon(await api(`/scripts/${script}/settings`)),canon(settingsBefore),'SETTINGS_CHANGED_DURING_STAGE');
+
+          const report={
+            script,baseVersion:base,candidateVersion:candidate.id,activated:false,
+            changedModule:'tracker-assets.mjs',
+            beforeSha:sha(Buffer.from(source)),afterSha:sha(Buffer.from(patched)),
+            visibleWithdrawBefore:(source.match(/withdraw/gi)||[]).length,
+            visibleWithdrawAfter:(patched.match(/withdraw/gi)||[]).length,
+            unchangedModules:current.modules.filter(m=>m.name!=='tracker-assets.mjs').map(m=>m.name),
+            bindingsUnchanged:true,settingsUnchanged:true,revokeLogicPreserved:true,
+            replacements:replacements.map(([from,to,count])=>({from,to,count}))
+          };
+          fs.writeFileSync('audit/report.json',JSON.stringify(report,null,2));
+          console.log('BASE_VERSION='+base);
+          console.log('CANDIDATE_VERSION='+candidate.id);
+          console.log('VISIBLE_WITHDRAW_BEFORE='+report.visibleWithdrawBefore);
+          console.log('VISIBLE_WITHDRAW_AFTER='+report.visibleWithdrawAfter);
+          console.log('STAGE_SUCCESS_NO_ACTIVATION');
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-visitor-withdraw-stage-v2-${{ github.run_id }}
+          path: audit
+          retention-days: 14
