@@ -1,0 +1,42 @@
+name: Diagnose BALL46 FMB Owner Minimal 20261106
+
+on:
+  push:
+    branches: [test/ball46-fullmarket-copy-20261106]
+    paths:
+      - '.github/workflows/diag-ball46-fmb-owner-min-20261106.yml'
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - shell: bash
+        run: |
+          node <<'NODE'
+          (async()=>{
+          const assert=require('assert/strict');
+          const a=process.env.CLOUDFLARE_ACCOUNT_ID,tok=process.env.CLOUDFLARE_API_TOKEN,root=`https://api.cloudflare.com/client/v4/accounts/${a}/workers`;
+          async function api(p){const r=await fetch(root+p,{headers:{Authorization:`Bearer ${tok}`}});const j=await r.json();assert(r.ok&&j.success);return j.result}
+          const d=await api('/scripts/ball46-production/deployments?per_page=3'),id=d.deployments[0].versions[0].version_id;
+          const v=await api(`/workers/ball46-production/versions/${id}?include=modules`);
+          for(const m of v.modules){
+            if(!m.content_base64)continue;
+            const s=Buffer.from(m.content_base64,'base64').toString('utf8'), low=s.toLowerCase();
+            const words=['bulk snapshot','click requests','books in snapshot','fmb-head','data-fmb-book','snapshot','request','books'];
+            const flags=Object.fromEntries(words.map(w=>[w,low.includes(w)]));
+            if(flags['fmb-head']||flags['data-fmb-book']||flags['click requests']||flags['books in snapshot']){
+              console.log('OWNER='+JSON.stringify({module:m.name,size:s.length,flags}));
+              for(const w of ['click requests','books in snapshot','request','books']){
+                const i=low.indexOf(w);if(i>=0)console.log('SNIP='+JSON.stringify({module:m.name,w,i,x:s.slice(Math.max(0,i-900),Math.min(s.length,i+1800))}));
+              }
+            }
+          }
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
