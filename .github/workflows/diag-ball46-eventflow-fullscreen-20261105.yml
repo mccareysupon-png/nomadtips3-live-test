@@ -139,6 +139,13 @@ jobs:
           });
           fs.writeFileSync('diagnostics/eventflow-fullscreen-20261105/audit/resource-owners.json',JSON.stringify(resourceOwners,null,2));
           console.log('RESOURCE_OWNERS',JSON.stringify(resourceOwners));
+          const exactOwner=await page.evaluate(async()=>{
+            const url='https://ball46.com/expanded-match-343.js?v=b46-mobile-event-flow-bars-20261102&_diag='+Date.now();
+            const r=await fetch(url,{cache:'no-store'});
+            return {status:r.status,text:await r.text()};
+          });
+          fs.writeFileSync('diagnostics/eventflow-fullscreen-20261105/audit/expanded-match-343.live.js',exactOwner.text);
+          fs.writeFileSync('diagnostics/eventflow-fullscreen-20261105/audit/expanded-match-owner-meta.json',JSON.stringify({status:exactOwner.status,length:exactOwner.text.length},null,2));
           await browser.close();
           })().catch(err=>{console.error(err);process.exit(1)});
           NODE
