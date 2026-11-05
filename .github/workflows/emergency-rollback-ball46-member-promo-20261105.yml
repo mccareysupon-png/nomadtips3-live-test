@@ -1,0 +1,66 @@
+name: Emergency Rollback BALL46 Member Promo 20261105
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/emergency-rollback-ball46-member-promo-20261105.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ball46-production-deploy
+  cancel-in-progress: false
+
+jobs:
+  rollback:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      SCRIPT: ball46-production
+      BAD_VERSION: 47c682ee-754b-41b2-be10-4c4d57fc0772
+      GOOD_VERSION: 23c2cff9-3431-4915-aaec-a1849a152262
+    steps:
+      - name: Roll back only the member-promo deployment
+        shell: bash
+        run: |
+          node <<'NODE'
+          const account=process.env.CLOUDFLARE_ACCOUNT_ID;
+          const token=process.env.CLOUDFLARE_API_TOKEN;
+          const script=process.env.SCRIPT;
+          const bad=process.env.BAD_VERSION;
+          const good=process.env.GOOD_VERSION;
+          const root=`https://api.cloudflare.com/client/v4/accounts/${account}/workers`;
+          async function api(path, options={}){
+            const r=await fetch(root+path,{...options,headers:{Authorization:`Bearer ${token}`,...(options.headers||{})}});
+            const j=await r.json();
+            if(!r.ok||j.success!==true) throw new Error(`CF_ERROR ${r.status} ${JSON.stringify(j.errors||[])}`);
+            return j.result;
+          }
+          async function active(){
+            const r=await api(`/scripts/${script}/deployments?per_page=3`);
+            const v=r.deployments?.[0]?.versions;
+            if(!v||v.length!==1||Number(v[0].percentage)!==100) throw new Error('PRODUCTION_NOT_SINGLE_VERSION');
+            return v[0].version_id;
+          }
+          const before=await active();
+          console.log('ACTIVE_BEFORE='+before);
+          if(before===good){
+            console.log('ALREADY_ROLLED_BACK');
+            process.exit(0);
+          }
+          if(before!==bad) throw new Error(`PRODUCTION_MOVED_REFUSE_ROLLBACK:${before}`);
+          await api(`/scripts/${script}/deployments`,{
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({strategy:'percentage',versions:[{version_id:good,percentage:100}],annotations:{'workers/message':'Emergency rollback member promo 20261105'}})
+          });
+          const after=await active();
+          console.log('ACTIVE_AFTER='+after);
+          if(after!==good) throw new Error('ROLLBACK_NOT_CONFIRMED');
+          console.log('ROLLBACK_SUCCESS');
+          NODE
