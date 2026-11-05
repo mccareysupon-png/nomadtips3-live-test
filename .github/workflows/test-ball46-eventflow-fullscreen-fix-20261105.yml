@@ -105,6 +105,17 @@ jobs:
             const flow=document.querySelector('.expand-flow-card.b46-eventflow-viewport-expanded');
             return {parentIsBody:flow?.parentElement===document.body,button:Boolean(flow?.querySelector('[data-eventflow-expand-toggle]')),svg:Boolean(flow?.querySelector('.expand-flow-chart svg'))};
           });
+          console.log('AFTER_RELOAD',JSON.stringify(afterReload));
+          if(!(afterReload.parentIsBody&&afterReload.button&&afterReload.svg)){
+            const detail=await page.evaluate(()=>({
+              bodyLock:document.body.classList.contains('b46-eventflow-viewport-lock'),
+              htmlLock:document.documentElement.classList.contains('b46-eventflow-viewport-lock'),
+              bodyFlow:[...document.body.children].filter(x=>x.matches?.('.expand-flow-card')).map(x=>({cls:x.className,state:x.dataset.eventflowViewport,html:x.innerHTML.slice(0,500)})),
+              nestedFlow:[...document.querySelectorAll('.match-expanded .expand-flow-card')].map(x=>({cls:x.className,state:x.dataset.eventflowViewport,html:x.innerHTML.slice(0,500)})),
+              expandedHtml:document.querySelector('.match-expanded')?.innerHTML.slice(0,1500)||null
+            }));
+            console.log('AFTER_RELOAD_DETAIL',JSON.stringify(detail));
+          }
           assert(afterReload.parentIsBody&&afterReload.button&&afterReload.svg,'REFRESH_BROKE_FULLSCREEN_PORTAL');
 
           await page.click('.expand-flow-card [data-eventflow-expand-toggle]');
