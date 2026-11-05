@@ -1,0 +1,117 @@
+name: Diagnose BALL46 EventFlow Fullscreen 20261105
+
+on:
+  push:
+    branches: [test/ball46-eventflow-fullscreen-fix-20261105]
+    paths:
+      - '.github/workflows/diag-ball46-eventflow-fullscreen-20261105.yml'
+      - 'diagnostics/eventflow-fullscreen-20261105/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --ignore-scripts puppeteer-core@24
+      - name: Inspect live Event Flow DOM and fullscreen behavior
+        shell: bash
+        run: |
+          mkdir -p diagnostics/eventflow-fullscreen-20261105/audit
+          node <<'NODE'
+          const fs=require('fs');
+          const puppeteer=require('puppeteer-core');
+          const {existsSync}=fs;
+          const exe=['/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium','/usr/bin/chromium-browser'].find(existsSync);
+          if(!exe) throw new Error('CHROME_MISSING');
+          const browser=await puppeteer.launch({executablePath:exe,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
+          const page=await browser.newPage();
+          await page.setViewport({width:1628,height:889});
+          await page.goto('https://ball46.com/?diagEventFlow='+Date.now(),{waitUntil:'networkidle2',timeout:90000});
+          await new Promise(r=>setTimeout(r,5000));
+          const snap=async label=>page.evaluate((label)=>{
+            const all=[...document.querySelectorAll('*')];
+            const texts=all.filter(el=>/EVENT\s*FLOW/i.test((el.textContent||'').trim())).slice(0,20);
+            const nodes=texts.map(el=>{
+              const chain=[];let n=el;
+              for(let i=0;i<7&&n;i++,n=n.parentElement){
+                const s=getComputedStyle(n),r=n.getBoundingClientRect();
+                chain.push({
+                  tag:n.tagName,
+                  id:n.id||'',
+                  cls:n.className||'',
+                  role:n.getAttribute('role'),
+                  aria:n.getAttribute('aria-label'),
+                  title:n.getAttribute('title'),
+                  data:Object.fromEntries([...n.attributes].filter(a=>a.name.startsWith('data-')).map(a=>[a.name,a.value])),
+                  rect:{x:r.x,y:r.y,w:r.width,h:r.height},
+                  style:{position:s.position,zIndex:s.zIndex,overflow:s.overflow,overflowX:s.overflowX,overflowY:s.overflowY,display:s.display,visibility:s.visibility}
+                });
+              }
+              return {text:(el.textContent||'').trim().slice(0,180),chain};
+            });
+            const buttons=[...document.querySelectorAll('button,[role="button"],a')].filter(el=>{
+              const hay=[el.textContent,el.getAttribute('aria-label'),el.getAttribute('title'),el.className,...[...el.attributes].filter(a=>a.name.startsWith('data-')).map(a=>a.value)].join(' ');
+              return /expand|full|zoom|maximi|event\s*flow/i.test(hay);
+            }).map(el=>{
+              const r=el.getBoundingClientRect();
+              return {tag:el.tagName,text:(el.textContent||'').trim().slice(0,120),cls:el.className||'',aria:el.getAttribute('aria-label'),title:el.getAttribute('title'),attrs:Object.fromEntries([...el.attributes].map(a=>[a.name,a.value])),rect:{x:r.x,y:r.y,w:r.width,h:r.height}};
+            });
+            return {
+              label,
+              bodyClass:document.body.className,
+              htmlClass:document.documentElement.className,
+              bodyOverflow:getComputedStyle(document.body).overflow,
+              htmlOverflow:getComputedStyle(document.documentElement).overflow,
+              viewport:{w:innerWidth,h:innerHeight,scrollW:document.documentElement.scrollWidth,scrollH:document.documentElement.scrollHeight},
+              fullscreenElement:document.fullscreenElement?.outerHTML?.slice(0,500)||null,
+              nodes,buttons
+            };
+          },label);
+          const before=await snap('before');
+          fs.writeFileSync('diagnostics/eventflow-fullscreen-20261105/audit/before.json',JSON.stringify(before,null,2));
+          await page.screenshot({path:'diagnostics/eventflow-fullscreen-20261105/audit/before.png',fullPage:false});
+          const candidate=await page.evaluate(()=>{
+            const els=[...document.querySelectorAll('button,[role="button"],a')];
+            const scored=els.map(el=>{
+              const hay=[el.textContent,el.getAttribute('aria-label'),el.getAttribute('title'),el.className,...[...el.attributes].filter(a=>a.name.startsWith('data-')).map(a=>a.value)].join(' ');
+              let score=0;
+              if(/full.?screen|maximi/i.test(hay))score+=10;
+              if(/expand|zoom/i.test(hay))score+=6;
+              const near=el.closest('.expand-card,.match-expanded,[class*="flow"],[class*="event"]');
+              if(near && /EVENT\s*FLOW/i.test(near.textContent||''))score+=8;
+              const r=el.getBoundingClientRect();
+              if(r.width>0&&r.height>0)score+=1;
+              return {el,score,hay};
+            }).filter(x=>x.score>0).sort((a,b)=>b.score-a.score)[0];
+            if(!scored)return null;
+            scored.el.setAttribute('data-diag-eventflow-candidate','1');
+            return {score:scored.score,hay:scored.hay.slice(0,400)};
+          });
+          fs.writeFileSync('diagnostics/eventflow-fullscreen-20261105/audit/candidate.json',JSON.stringify(candidate,null,2));
+          if(candidate){
+            await page.click('[data-diag-eventflow-candidate="1"]');
+            await new Promise(r=>setTimeout(r,1500));
+          }
+          const after=await snap('after');
+          fs.writeFileSync('diagnostics/eventflow-fullscreen-20261105/audit/after.json',JSON.stringify(after,null,2));
+          await page.screenshot({path:'diagnostics/eventflow-fullscreen-20261105/audit/after.png',fullPage:false});
+          console.log('CANDIDATE',candidate);
+          console.log('BEFORE_BUTTONS',JSON.stringify(before.buttons));
+          console.log('AFTER_BODY',JSON.stringify({bodyClass:after.bodyClass,htmlClass:after.htmlClass,bodyOverflow:after.bodyOverflow,htmlOverflow:after.htmlOverflow,fullscreenElement:after.fullscreenElement}));
+          console.log('AFTER_NODES',JSON.stringify(after.nodes.slice(0,4)));
+          await browser.close();
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-eventflow-fullscreen-diag-${{ github.run_id }}
+          path: diagnostics/eventflow-fullscreen-20261105/audit
+          retention-days: 7
