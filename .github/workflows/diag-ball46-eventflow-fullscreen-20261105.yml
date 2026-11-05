@@ -37,9 +37,11 @@ jobs:
           await page.setViewport({width:1628,height:889});
           await page.goto('https://ball46.com/?diagEventFlow='+Date.now(),{waitUntil:'networkidle2',timeout:90000});
           await new Promise(r=>setTimeout(r,5000));
+          const row=await page.$('.match-row[data-match-id]');
+          if(row){ await row.click(); await new Promise(r=>setTimeout(r,1800)); }
+          await page.waitForSelector('.expand-flow-card,[data-event-flow],.event-flow-card',{timeout:30000});
           const snap=async label=>page.evaluate((label)=>{
-            const all=[...document.querySelectorAll('*')];
-            const texts=all.filter(el=>/EVENT\s*FLOW/i.test((el.textContent||'').trim())).slice(0,20);
+            const texts=[...document.querySelectorAll('.expand-flow-card,[data-event-flow],.event-flow-card')].slice(0,10);
             const nodes=texts.map(el=>{
               const chain=[];let n=el;
               for(let i=0;i<7&&n;i++,n=n.parentElement){
@@ -80,7 +82,8 @@ jobs:
           fs.writeFileSync('diagnostics/eventflow-fullscreen-20261105/audit/before.json',JSON.stringify(before,null,2));
           await page.screenshot({path:'diagnostics/eventflow-fullscreen-20261105/audit/before.png',fullPage:false});
           const candidate=await page.evaluate(()=>{
-            const els=[...document.querySelectorAll('button,[role="button"],a')];
+            const flow=document.querySelector('.expand-flow-card,[data-event-flow],.event-flow-card');
+            const els=flow?[...flow.querySelectorAll('button,[role="button"],a')]:[];
             const scored=els.map(el=>{
               const hay=[el.textContent,el.getAttribute('aria-label'),el.getAttribute('title'),el.className,...[...el.attributes].filter(a=>a.name.startsWith('data-')).map(a=>a.value)].join(' ');
               let score=0;
