@@ -35,7 +35,7 @@ jobs:
           const script='b46-visitor-monitor-collector';
           const root=`https://api.cloudflare.com/client/v4/accounts/${account}/workers`;
           const sha=b=>crypto.createHash('sha256').update(b).digest('hex');
-          const canon=v=>JSON.stringify(v,(k,e)=>e&&typeof e==='object'&&!Array.isArray(e)?Object.fromEntries(Object.entries(e).sort(([a],[b])=>a.localeCompare(b))):e);
+          const canon=v=>JSON.stringify(v,(k,e)=>k==='annotations'?undefined:(e&&typeof e==='object'&&!Array.isArray(e)?Object.fromEntries(Object.entries(e).sort(([a],[b])=>a.localeCompare(b))):e));
           async function api(path,options={}){
             const r=await fetch(root+path,{...options,headers:{Authorization:`Bearer ${token}`,...(options.headers||{})}});
             const j=await r.json();assert(r.ok&&j.success===true,`CF_ERROR ${r.status} ${JSON.stringify(j.errors||j)}`);return j.result;
