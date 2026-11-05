@@ -1,0 +1,42 @@
+name: Diagnose BALL46 FMB Renderer 20261106
+
+on:
+  push:
+    branches: [test/ball46-fullmarket-copy-20261106]
+    paths:
+      - '.github/workflows/diag-ball46-fmb-renderer-20261106.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Locate FMB renderer source
+        shell: bash
+        run: |
+          node <<'NODE'
+          (async()=>{
+          const assert=require('assert/strict');
+          const a=process.env.CLOUDFLARE_ACCOUNT_ID,t=process.env.CLOUDFLARE_API_TOKEN;
+          const root=`https://api.cloudflare.com/client/v4/accounts/${a}/workers`;
+          async function api(p){const r=await fetch(root+p,{headers:{Authorization:`Bearer ${t}`}});const j=await r.json();assert(r.ok&&j.success);return j.result}
+          const d=await api('/scripts/ball46-production/deployments?per_page=3');const id=d.deployments[0].versions[0].version_id;
+          const v=await api(`/workers/ball46-production/versions/${id}?include=modules`);
+          for(const m of v.modules){
+            if(!m.content_base64)continue;
+            const s=Buffer.from(m.content_base64,'base64').toString('utf8');
+            for(const n of ['fmb-head','fmb-tabs','data-fmb-book','click requests','snapshot']){
+              let p=0,c=0;while(true){const i=s.toLowerCase().indexOf(n.toLowerCase(),p);if(i<0)break;console.log('H='+JSON.stringify({m:m.name,n,i,x:s.slice(Math.max(0,i-1100),Math.min(s.length,i+2400))}));p=i+n.length;if(++c>=20)break}
+            }
+          }
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
