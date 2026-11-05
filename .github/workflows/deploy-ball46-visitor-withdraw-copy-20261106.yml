@@ -1,0 +1,121 @@
+name: Deploy BALL46 Visitor Withdraw Copy 20261106
+
+on:
+  push:
+    branches: [test/ball46-visitor-copy-20261105]
+    paths:
+      - '.github/workflows/deploy-ball46-visitor-withdraw-copy-20261106.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      SCRIPT: b46-visitor-monitor-collector
+      EXPECTED_BASE: 2a18ffc3-6218-409d-ae82-98603549b134
+      CANDIDATE: d8f2a329-d32c-4bdc-82c2-65a8fcc9ede0
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Guarded visitor-copy deployment
+        shell: bash
+        run: |
+          node <<'NODE'
+          (async()=>{
+          const assert=require('assert/strict');
+          const crypto=require('crypto');
+          const account=process.env.CLOUDFLARE_ACCOUNT_ID,token=process.env.CLOUDFLARE_API_TOKEN;
+          const script=process.env.SCRIPT,base=process.env.EXPECTED_BASE,candidate=process.env.CANDIDATE;
+          const root=`https://api.cloudflare.com/client/v4/accounts/${account}/workers`;
+          const sha=b=>crypto.createHash('sha256').update(b).digest('hex');
+          const delay=ms=>new Promise(r=>setTimeout(r,ms));
+          const canon=v=>JSON.stringify(v,(k,e)=>k==='annotations'?undefined:(e&&typeof e==='object'&&!Array.isArray(e)?Object.fromEntries(Object.entries(e).sort(([a],[b])=>a.localeCompare(b))):e));
+          async function api(path,options={}){
+            const r=await fetch(root+path,{...options,headers:{Authorization:`Bearer ${token}`,...(options.headers||{})}});
+            const j=await r.json();assert(r.ok&&j.success===true,`CF_ERROR ${r.status} ${JSON.stringify(j.errors||j)}`);return j.result;
+          }
+          async function active(){
+            const d=await api(`/scripts/${script}/deployments?per_page=3`);
+            const v=d.deployments?.[0]?.versions;
+            assert(v?.length===1&&Number(v[0].percentage)===100,'ACTIVE_NOT_SINGLE_VERSION');
+            return v[0].version_id;
+          }
+          async function version(id){return api(`/workers/${script}/versions/${id}?include=modules`)}
+          async function activate(id,msg){
+            await api(`/scripts/${script}/deployments`,{
+              method:'POST',
+              headers:{'content-type':'application/json'},
+              body:JSON.stringify({strategy:'percentage',versions:[{version_id:id,percentage:100}],annotations:{'workers/message':msg}})
+            });
+          }
+
+          const before=await active();
+          assert.equal(before,base,`PRODUCTION_MOVED:${before}`);
+          const [bv,cv]=await Promise.all([version(base),version(candidate)]);
+          assert.equal(cv.modules.length,bv.modules.length,'MODULE_COUNT_CHANGED');
+          assert.equal(canon(cv.bindings),canon(bv.bindings),'BINDINGS_CHANGED');
+
+          for(const bm of bv.modules){
+            const cm=cv.modules.find(m=>m.name===bm.name);assert(cm,`CANDIDATE_MODULE_MISSING:${bm.name}`);
+            const b=Buffer.from(bm.content_base64,'base64'),c=Buffer.from(cm.content_base64,'base64');
+            if(bm.name==='tracker-assets.mjs'){
+              const t=c.toString('utf8');
+              assert.notEqual(sha(c),sha(b),'TRACKER_ASSETS_UNCHANGED');
+              assert.equal((t.match(/withdraw/gi)||[]).length,0,'WITHDRAW_REMAINS_IN_TRACKER_ASSETS');
+              assert(t.includes('>Decline</button>'),'DECLINE_LABEL_MISSING');
+              assert(t.includes("permitted()?'Measurement is on.':'Visitor measurement is off until you accept.'"),'STATUS_COPY_BAD');
+              assert(t.includes('Turning measurement off stops heartbeats'),'PRIVACY_COPY_BAD');
+              assert(t.includes("shadow.querySelector('.reject').addEventListener('click',()=>{revoke();panel.hidden=true;});"),'REVOKE_HANDLER_BAD');
+            }else{
+              assert.equal(sha(c),sha(b),`UNRELATED_MODULE_CHANGED:${bm.name}`);
+            }
+          }
+
+          await activate(candidate,'Visitor consent wording cleanup: remove withdraw from user-facing copy');
+          for(let i=0;i<20;i++){if(await active()===candidate)break;await delay(1000)}
+          assert.equal(await active(),candidate,'CANDIDATE_NOT_ACTIVE');
+
+          try{
+            let tracker='',privacy='';
+            for(let i=0;i<30;i++){
+              tracker=await (await fetch('https://b46-visitor-monitor-collector.mccarey-supon.workers.dev/tracker.js?release='+Date.now()+i,{headers:{'cache-control':'no-cache'}})).text();
+              privacy=await (await fetch('https://b46-visitor-monitor-collector.mccarey-supon.workers.dev/privacy?release='+Date.now()+i,{headers:{'cache-control':'no-cache'}})).text();
+              if(
+                !/withdraw/i.test(tracker) &&
+                tracker.includes('>Decline</button>') &&
+                tracker.includes('Measurement is on.') &&
+                privacy.includes('Turning measurement off stops heartbeats') &&
+                !/withdraw/i.test(privacy)
+              ) break;
+              await delay(1000);
+            }
+            assert(!/withdraw/i.test(tracker),'PUBLIC_TRACKER_WITHDRAW_REMAINS');
+            assert(tracker.includes('>Decline</button>'),'PUBLIC_TRACKER_DECLINE_BAD');
+            assert(tracker.includes('Measurement is on.'),'PUBLIC_TRACKER_STATUS_BAD');
+            assert(!/withdraw/i.test(privacy),'PUBLIC_PRIVACY_WITHDRAW_REMAINS');
+            assert(privacy.includes('Turning measurement off stops heartbeats'),'PUBLIC_PRIVACY_COPY_BAD');
+            assert.equal(await active(),candidate,'PRODUCTION_MOVED_AFTER_VERIFY');
+            console.log('BASE_VERSION='+base);
+            console.log('FINAL_PRODUCTION='+candidate);
+            console.log('PUBLIC_TRACKER_WITHDRAW_COUNT='+(tracker.match(/withdraw/gi)||[]).length);
+            console.log('PUBLIC_PRIVACY_WITHDRAW_COUNT='+(privacy.match(/withdraw/gi)||[]).length);
+            console.log('BALL46_VISITOR_COPY_DEPLOY_SUCCESS');
+          }catch(e){
+            if(await active()===candidate){
+              await activate(base,'Rollback visitor copy deployment after failed verification');
+              for(let i=0;i<20;i++){if(await active()===base)break;await delay(1000)}
+              assert.equal(await active(),base,'ROLLBACK_NOT_CONFIRMED');
+              console.log('ROLLBACK_CONFIRMED='+base);
+            }
+            throw e;
+          }
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
