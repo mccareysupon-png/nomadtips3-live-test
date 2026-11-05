@@ -1,0 +1,79 @@
+name: Diagnose BALL46 EventFlow Serving Owner 20261105
+
+on:
+  push:
+    branches: [test/ball46-eventflow-fullscreen-fix-20261105]
+    paths:
+      - '.github/workflows/diag-ball46-eventflow-serving-owner-20261105.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --ignore-scripts acorn@8
+      - name: Inspect current active Worker and served Event Flow owner
+        shell: bash
+        run: |
+          mkdir -p diagnostics/eventflow-serving-owner
+          node <<'NODE'
+          (async()=>{
+          const fs=require('fs');
+          const assert=require('assert/strict');
+          const account=process.env.CLOUDFLARE_ACCOUNT_ID,token=process.env.CLOUDFLARE_API_TOKEN;
+          const root=`https://api.cloudflare.com/client/v4/accounts/${account}/workers`;
+          async function api(path,options={}){
+            const r=await fetch(root+path,{...options,headers:{Authorization:`Bearer ${token}`,...(options.headers||{})}});
+            const j=await r.json();assert(r.ok&&j.success===true,JSON.stringify(j.errors||j));return j.result;
+          }
+          const deps=await api('/scripts/ball46-production/deployments?per_page=3');
+          const active=deps.deployments?.[0]?.versions?.[0]?.version_id;assert(active,'ACTIVE_MISSING');
+          const v=await api(`/workers/ball46-production/versions/${active}?include=modules`);
+          const main=v.modules.find(m=>m.name===v.main_module);assert(main,'MAIN_MISSING');
+          const source=Buffer.from(main.content_base64,'base64').toString('utf8');
+          fs.writeFileSync('diagnostics/eventflow-serving-owner/worker.js',source);
+
+          const module=v.modules.find(m=>m.name==='assets/expanded-match-343.js');
+          if(module)fs.writeFileSync('diagnostics/eventflow-serving-owner/asset-expanded-match-343.js',Buffer.from(module.content_base64,'base64'));
+
+          const needles=['__B46_EVENTFLOW_SIGNAL_JS_20261002__','expanded-match-343.js','B46_MOBILE_FLOW_BARS','data-b46-flow','b46-mobile-event-flow-bars-20261102'];
+          const snippets=[];
+          for(const needle of needles){
+            let start=0;
+            while(true){
+              const i=source.indexOf(needle,start);if(i<0)break;
+              snippets.push({needle,index:i,excerpt:source.slice(Math.max(0,i-3500),Math.min(source.length,i+8000))});
+              start=i+needle.length;
+              if(snippets.filter(x=>x.needle===needle).length>=12)break;
+            }
+          }
+          fs.writeFileSync('diagnostics/eventflow-serving-owner/snippets.json',JSON.stringify({active,moduleNames:v.modules.map(m=>m.name),snippets},null,2));
+
+          for(const origin of ['https://ball46-production.mccarey-supon.workers.dev','https://ball46.com']){
+            const u=origin+'/expanded-match-343.js?servingOwner='+Date.now();
+            const r=await fetch(u,{headers:{'cache-control':'no-cache'}});
+            const text=await r.text();
+            fs.writeFileSync('diagnostics/eventflow-serving-owner/'+(origin.includes('workers.dev')?'direct':'custom')+'.js',text);
+            console.log('SERVED',origin,r.status,text.length,text.includes('B46_MOBILE_FLOW_BARS'),text.includes('data-b46-flow='));
+          }
+          console.log('ACTIVE',active,'ASSET_MODULE',Boolean(module),module?.content_base64?Buffer.from(module.content_base64,'base64').length:0);
+          console.log('SNIPPET_COUNTS',JSON.stringify(Object.fromEntries(needles.map(n=>[n,snippets.filter(x=>x.needle===n).length]))));
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-eventflow-serving-owner-${{ github.run_id }}
+          path: diagnostics/eventflow-serving-owner
+          retention-days: 14
