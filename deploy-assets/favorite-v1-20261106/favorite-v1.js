@@ -41,7 +41,7 @@ function ensureStyle(){
   .b46-fav-btn[aria-pressed="true"]{color:#d8a820}
   .b46-fav-btn:focus-visible{outline:2px solid currentColor;outline-offset:2px}
   .b46-fav-slot{display:inline-flex;align-items:center;justify-content:center;margin-left:4px}
-  .b46-fav-filter{display:flex;align-items:center;justify-content:space-between;width:100%}
+  .b46-fav-filter{display:flex;align-items:center;justify-content:space-between;width:100%}\n  .match-row.b46-fav-hidden{display:none!important}
   .b46-fav-filter .b46-fav-filter-star{color:#d8a820;margin-right:6px}
   @media(max-width:760px){
     .b46-fav-btn{width:36px;height:36px;font-size:20px;border-radius:10px}
@@ -86,8 +86,7 @@ function updateCount(){
 function applyFilter(){
   const active=document.body.dataset.b46FavoriteOnly==='1';
   document.querySelectorAll('.match-row[data-match-id]').forEach(row=>{
-    if(active)row.style.display=isFav(rowId(row))?'':'none';
-    else if(row.style.display==='none')row.style.display='';
+    row.classList.toggle('b46-fav-hidden',active&&!isFav(rowId(row)));
   });
   document.querySelector('[data-b46-favorite-filter]')?.classList.toggle('active',active);
 }
