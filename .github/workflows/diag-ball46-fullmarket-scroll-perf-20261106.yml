@@ -1,0 +1,108 @@
+name: Diagnose BALL46 Full Market Scroll Perf 20261106
+
+on:
+  push:
+    branches: [test/ball46-fullmarket-copy-20261106]
+    paths:
+      - '.github/workflows/diag-ball46-fullmarket-scroll-perf-20261106.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  profile:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: npm install --no-save --ignore-scripts puppeteer-core@24
+      - name: Profile Full Market scroll and DOM
+        shell: bash
+        run: |
+          node <<'NODE'
+          (async()=>{
+          const fs=require('fs'),assert=require('assert/strict'),puppeteer=require('puppeteer-core');
+          const exe=['/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium','/usr/bin/chromium-browser'].find(fs.existsSync);assert(exe,'CHROME_MISSING');
+          const browser=await puppeteer.launch({executablePath:exe,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
+          const page=await browser.newPage();
+          await page.setViewport({width:390,height:844,isMobile:true,deviceScaleFactor:2});
+          const cdp=await page.target().createCDPSession();
+          await cdp.send('Performance.enable');
+          await page.goto('https://ball46.com/?fmbPerf='+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
+          await page.waitForSelector('.match-row[data-match-id]',{timeout:90000});await new Promise(r=>setTimeout(r,4500));
+          const rows=await page.$$('.match-row[data-match-id]');
+          let opened=false;
+          for(const row of rows.slice(0,12)){await row.click();await new Promise(r=>setTimeout(r,1200));if(await page.$('.expand-full-market-card .fmb-head')){opened=true;break}}
+          assert(opened,'FULL_MARKET_NOT_OPENED');
+          const structure=await page.evaluate(()=>{
+            const root=document.querySelector('.expand-full-market-card');
+            const nodes=root?[root,...root.querySelectorAll('*')]:[];
+            const styles=nodes.map(el=>{const s=getComputedStyle(el);return {
+              cls:typeof el.className==='string'?el.className:'',
+              tag:el.tagName,
+              position:s.position,
+              overflowX:s.overflowX,
+              overflowY:s.overflowY,
+              boxShadow:s.boxShadow,
+              filter:s.filter,
+              backdropFilter:s.backdropFilter,
+              transform:s.transform,
+              willChange:s.willChange,
+              contain:s.contain,
+              contentVisibility:s.contentVisibility
+            }});
+            const count=(fn)=>styles.filter(fn).length;
+            return {
+              totalNodes:nodes.length,
+              tabs:root?.querySelectorAll('[data-fmb-book]').length||0,
+              markets:root?.querySelectorAll('.fmb-market').length||0,
+              rows:root?.querySelectorAll('tr').length||0,
+              cells:root?.querySelectorAll('th,td').length||0,
+              svgs:root?.querySelectorAll('svg').length||0,
+              sticky:count(x=>x.position==='sticky'||x.position==='fixed'),
+              shadows:count(x=>x.boxShadow&&x.boxShadow!=='none'),
+              filters:count(x=>(x.filter&&x.filter!=='none')||(x.backdropFilter&&x.backdropFilter!=='none')),
+              transforms:count(x=>x.transform&&x.transform!=='none'),
+              willChange:count(x=>x.willChange&&x.willChange!=='auto'),
+              contained:count(x=>x.contain&&x.contain!=='none'),
+              contentVisibilityAuto:count(x=>x.contentVisibility==='auto'),
+              horizontalScrollers:count(x=>['auto','scroll'].includes(x.overflowX)),
+              verticalScrollers:count(x=>['auto','scroll'].includes(x.overflowY))
+            };
+          });
+
+          const before=(await cdp.send('Performance.getMetrics')).metrics;
+          await page.evaluate(async()=>{
+            const root=document.querySelector('.expand-full-market-card');
+            const top=root.getBoundingClientRect().top+scrollY;
+            const end=top+root.getBoundingClientRect().height-innerHeight;
+            for(let y=top;y<=end;y+=80){scrollTo(0,y);await new Promise(r=>requestAnimationFrame(()=>r()))}
+            for(let y=end;y>=top;y-=80){scrollTo(0,y);await new Promise(r=>requestAnimationFrame(()=>r()))}
+          });
+          const after=(await cdp.send('Performance.getMetrics')).metrics;
+          const map=a=>Object.fromEntries(a.map(x=>[x.name,x.value]));
+          const b=map(before),a=map(after);
+          const delta={};
+          for(const k of ['LayoutCount','RecalcStyleCount','LayoutDuration','RecalcStyleDuration','ScriptDuration','TaskDuration','JSHeapUsedSize','Nodes']){
+            delta[k]=(a[k]??0)-(b[k]??0);
+          }
+
+          const dynamic=await page.evaluate(async()=>{
+            const root=document.querySelector('.expand-full-market-card');
+            let mutations=0;
+            const mo=new MutationObserver(list=>{mutations+=list.length});
+            mo.observe(root,{subtree:true,childList:true,characterData:true,attributes:true});
+            const top=root.getBoundingClientRect().top+scrollY,end=top+Math.min(root.getBoundingClientRect().height,3000);
+            for(let y=top;y<=end;y+=100){scrollTo(0,y);await new Promise(r=>requestAnimationFrame(()=>r()))}
+            mo.disconnect();
+            return {mutations};
+          });
+          console.log('STRUCTURE='+JSON.stringify(structure));
+          console.log('PERF_DELTA='+JSON.stringify(delta));
+          console.log('DYNAMIC='+JSON.stringify(dynamic));
+          await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
