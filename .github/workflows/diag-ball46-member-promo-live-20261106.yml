@@ -37,6 +37,15 @@ jobs:
             console.log('ACTIVE_VERSION='+id);
             console.log('MAIN_MODULE='+cur.main_module);
             console.log('MODULES='+JSON.stringify(cur.modules.map(m=>({name:m.name,type:m.content_type,size:Buffer.from(m.content_base64,'base64').length,sha:sha(Buffer.from(m.content_base64,'base64'))}))));
+            const promo=cur.modules.find(m=>m.name==='member-promo-assets-20261104.txt');
+            assert(promo,'CURRENT_PROMO_BUNDLE_MISSING');
+            const promoText=Buffer.from(promo.content_base64,'base64').toString('utf8');
+            console.log('PROMO_BUNDLE_HEAD='+JSON.stringify(promoText.slice(0,800)));
+            for(const needle of ['MATCHDAY.','UPGRADED.','Explore membership','ball46-member-promo','/9j/','data:image','image/jpeg']){
+              const ix=promoText.indexOf(needle);
+              console.log('PROMO_NEEDLE_'+needle.replace(/[^A-Za-z0-9]/g,'_')+'='+ix);
+              if(ix>=0)console.log('PROMO_SNIP_'+needle.replace(/[^A-Za-z0-9]/g,'_')+'='+JSON.stringify(promoText.slice(Math.max(0,ix-300),ix+700)));
+            }
             const main=cur.modules.find(m=>m.name===cur.main_module);
             const src=Buffer.from(main.content_base64,'base64').toString('utf8');
             const needles=['B46_MEMBER_PROMO_20261103','ball46-member-promo-20261103a.jpg','b46-member-promo-20261103a.bin','data-asset='];
