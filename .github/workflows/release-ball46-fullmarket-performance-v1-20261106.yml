@@ -1,0 +1,35 @@
+name: Release BALL46 Full Market Performance V1 20261106
+
+on:
+  push:
+    branches: [test/ball46-fullmarket-copy-20261106]
+    paths:
+      - '.github/workflows/release-ball46-fullmarket-performance-v1-20261106.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ball46-production-deploy
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: test/ball46-fullmarket-copy-20261106
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --ignore-scripts puppeteer-core@24
+      - name: Run guarded Full Market Performance V1 release
+        working-directory: deploy-assets/fullmarket-performance-v1-20261106
+        run: node deploy.mjs
