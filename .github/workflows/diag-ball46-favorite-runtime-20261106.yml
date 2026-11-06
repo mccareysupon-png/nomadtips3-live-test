@@ -1,0 +1,82 @@
+name: Diagnose BALL46 Favorite Runtime 20261106
+
+on:
+  push:
+    branches: [test/ball46-favorite-analysis-20261106]
+    paths:
+      - '.github/workflows/diag-ball46-favorite-runtime-20261106.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: npm install --no-save --ignore-scripts puppeteer-core@24
+      - name: Inspect runtime favorite controls and storage
+        shell: bash
+        run: |
+          node <<'NODE'
+          (async()=>{
+          const fs=require('fs'),assert=require('assert/strict'),puppeteer=require('puppeteer-core');
+          const exe=['/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium','/usr/bin/chromium-browser'].find(fs.existsSync);assert(exe);
+          const browser=await puppeteer.launch({executablePath:exe,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
+          const page=await browser.newPage();await page.setViewport({width:1280,height:900});
+          await page.goto('https://ball46.com/?favRuntime='+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
+          await page.waitForSelector('.match-row[data-match-id]',{timeout:90000});await new Promise(r=>setTimeout(r,4500));
+
+          const before=await page.evaluate(()=>{
+            const storage={};
+            for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);storage[k]=localStorage.getItem(k)}
+            const session={};
+            for(let i=0;i<sessionStorage.length;i++){const k=sessionStorage.key(i);session[k]=sessionStorage.getItem(k)}
+            const els=[...document.querySelectorAll('button,a,[role="button"],[class*="star"],[class*="fav"],[data-favorite],[data-favourite]')];
+            const controls=els.filter(el=>{
+              const hay=[el.textContent,el.getAttribute('aria-label'),el.getAttribute('title'),el.className,
+                ...[...el.attributes].filter(a=>/fav|star/i.test(a.name)||/fav|star/i.test(a.value)).map(a=>a.name+'='+a.value)
+              ].join(' ');
+              return /favorite|favourite|star|★|☆|bookmark|watch/i.test(hay);
+            }).map(el=>{
+              const r=el.getBoundingClientRect();
+              return {tag:el.tagName,text:(el.textContent||'').trim(),cls:typeof el.className==='string'?el.className:'',aria:el.getAttribute('aria-label'),title:el.getAttribute('title'),attrs:Object.fromEntries([...el.attributes].map(a=>[a.name,a.value])),rect:{x:r.x,y:r.y,w:r.width,h:r.height},rowId:el.closest('.match-row[data-match-id]')?.getAttribute('data-match-id')||null};
+            });
+            return {storage,session,controls,bodyText:document.body.innerText.includes('Favorites')};
+          });
+          console.log('BEFORE='+JSON.stringify(before));
+
+          let clicked=null;
+          const idx=before.controls.findIndex(x=>x.rect.w>0&&x.rect.h>0&&x.rowId);
+          if(idx>=0){
+            const c=before.controls[idx];
+            clicked=c;
+            await page.evaluate((rowId,cls,aria,title)=>{
+              const row=document.querySelector('.match-row[data-match-id="'+CSS.escape(rowId)+'"]');
+              if(!row)return;
+              const candidates=[...row.querySelectorAll('button,a,[role="button"],[class*="star"],[class*="fav"]')];
+              const el=candidates.find(e=>{
+                const hay=[e.textContent,e.className,e.getAttribute('aria-label'),e.getAttribute('title')].join(' ');
+                return /favorite|favourite|star|★|☆|bookmark|watch/i.test(hay);
+              });
+              el?.click();
+            },c.rowId,c.cls,c.aria,c.title);
+            await new Promise(r=>setTimeout(r,400));
+          }
+
+          const after=await page.evaluate(()=>{
+            const storage={};
+            for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);storage[k]=localStorage.getItem(k)}
+            const session={};
+            for(let i=0;i<sessionStorage.length;i++){const k=sessionStorage.key(i);session[k]=sessionStorage.getItem(k)}
+            const rows=[...document.querySelectorAll('.match-row[data-match-id]')].slice(0,10).map((r,i)=>({i,id:r.getAttribute('data-match-id'),cls:r.className,text:(r.textContent||'').trim().slice(0,180)}));
+            return {storage,session,rows};
+          });
+          console.log('CLICKED='+JSON.stringify(clicked));
+          console.log('AFTER='+JSON.stringify(after));
+          await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
