@@ -1,4 +1,4 @@
-name: Test BALL46 Favorite V1.2 Isolated DOM 20261106
+name: Test BALL46 Favorite V1.1 Fixed Isolated DOM 20261106
 
 on:
   push:
@@ -27,7 +27,7 @@ jobs:
           (async()=>{
           const fs=require('fs'),assert=require('assert/strict'),puppeteer=require('puppeteer-core');
           const script=fs.readFileSync('deploy-assets/favorite-v1-20261106/favorite-v1.js','utf8');
-          assert(script.includes('BALL46_FAVORITE_V12_TEST_20261106'));
+          assert(script.includes('BALL46_FAVORITE_V11_FIXED_20261106'));
           const exe=['/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium','/usr/bin/chromium-browser'].find(fs.existsSync);assert(exe);
           const browser=await puppeteer.launch({executablePath:exe,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
 
@@ -56,7 +56,7 @@ jobs:
                   <div class="match-row" data-match-id="123"><div class="match-teams">Home Team - Away Team</div></div>
                   <div class="rail-card">MATCH STATUS<button class="filter" data-status-filter="all">All</button></div>
                 </body></html>`;
-            await page.goto('https://example.com/?favV12isolated='+surface+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
+            await page.goto('https://example.com/?favV11fixed='+surface+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
             await page.evaluate(html=>{document.open();document.write(html);document.close();},html);
             await new Promise(r=>setTimeout(r,80));
             await page.evaluate(()=>localStorage.removeItem('ball46_favorites_v1'));
@@ -104,7 +104,7 @@ jobs:
           const mobile=await run('mobile',{width:390,height:844,isMobile:true,deviceScaleFactor:2});
           console.log('PC='+JSON.stringify(pc));
           console.log('MOBILE='+JSON.stringify(mobile));
-          console.log('BALL46_FAVORITE_V12_ISOLATED_DOM_PASS');
+          console.log('BALL46_FAVORITE_V11_FIXED_ISOLATED_DOM_PASS');
           await browser.close();
           })().catch(e=>{console.error(e);process.exit(1)});
           NODE
