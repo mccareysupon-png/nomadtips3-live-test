@@ -1,0 +1,27 @@
+/* BALL46_FULLMARKET_PERFORMANCE_V1_20261106
+   Rendering-only optimization for Full Market.
+   No data/API/renderer logic changes. */
+
+.expand-full-market-card .fmb-market,
+.b46gn-full-market .fmb-market {
+  content-visibility: auto;
+  contain: layout paint style;
+  contain-intrinsic-size: auto 230px;
+}
+
+.expand-full-market-card .fmb-table-wrap,
+.b46gn-full-market .fmb-table-wrap {
+  contain: layout paint;
+}
+
+.expand-full-market-card .fmb-tabs,
+.b46gn-full-market .fmb-tabs {
+  contain: layout paint;
+}
+
+@media (max-width: 760px) {
+  .expand-full-market-card .fmb-market,
+  .b46gn-full-market .fmb-market {
+    box-shadow: none !important;
+  }
+}
