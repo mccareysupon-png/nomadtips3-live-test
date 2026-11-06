@@ -52,7 +52,7 @@ jobs:
           const VIEW_H=844;
           const metrics=async()=>Object.fromEntries((await cdp.send('Performance.getMetrics')).metrics.map(x=>[x.name,x.value]));
           const run=async()=>{
-            await page.evaluate(y=>scrollTo(0,Math.max(0,y-VIEW_H*.25)),bounds.first.top);
+            await page.evaluate((y,vh)=>scrollTo(0,Math.max(0,y-vh*.25)),bounds.first.top,VIEW_H);
             await new Promise(r=>setTimeout(r,250));
             const b=await metrics();
             const timing=await page.evaluate(async({start,end})=>{
