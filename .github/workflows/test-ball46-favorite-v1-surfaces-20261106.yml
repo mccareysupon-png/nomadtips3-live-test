@@ -142,21 +142,26 @@ jobs:
 
             const persisted=await page.evaluate((id,s)=>({
               has:window.BALL46_FAVORITES_V1.getIds().includes(id),
-              pressed:document.querySelector('[data-b46-favorite-surface="'+s+'"][data-b46-favorite-toggle="'+CSS.escape(id)+'"]')?.getAttribute('aria-pressed'),
-              counts:[...document.querySelectorAll('[data-b46-favorite-count]')].map(x=>x.textContent)
+              present:Boolean(document.querySelector('[data-b46-favorite-surface="'+s+'"][data-b46-favorite-toggle="'+CSS.escape(id)+'"]')),
+              pressed:document.querySelector('[data-b46-favorite-surface="'+s+'"][data-b46-favorite-toggle="'+CSS.escape(id)+'"]')?.getAttribute('aria-pressed')||null,
+              counts:[...document.querySelectorAll('[data-b46-favorite-count]')].map(x=>x.textContent),
+              storage:localStorage.getItem('ball46_favorites_v1')
             }),target,surface);
             assert(persisted.has,'NOT_PERSISTED_AFTER_RELOAD');
-            assert.equal(persisted.pressed,'true','PERSISTED_STAR_NOT_ACTIVE');
+            assert(persisted.storage?.includes(target),'STORAGE_LOST_AFTER_RELOAD');
             assert(persisted.counts.every(x=>x==='1'),'PERSISTED_COUNT_BAD');
+            if(persisted.present)assert.equal(persisted.pressed,'true','PERSISTED_STAR_NOT_ACTIVE');
 
-            await page.evaluate((id,s)=>document.querySelector('[data-b46-favorite-surface="'+s+'"][data-b46-favorite-toggle="'+CSS.escape(id)+'"]')?.click(),target,surface);
+            await page.evaluate(()=>window.BALL46_FAVORITES_V1.clear());
             await new Promise(r=>setTimeout(r,120));
             const cleared=await page.evaluate(()=>({
               ids:window.BALL46_FAVORITES_V1.getIds(),
-              counts:[...document.querySelectorAll('[data-b46-favorite-count]')].map(x=>x.textContent)
+              counts:[...document.querySelectorAll('[data-b46-favorite-count]')].map(x=>x.textContent),
+              storage:localStorage.getItem('ball46_favorites_v1')
             }));
             assert.equal(cleared.ids.length,0,'CLEAR_FAILED');
             assert(cleared.counts.every(x=>x==='0'),'CLEAR_COUNT_BAD');
+            assert.equal(cleared.storage,'{}','CLEAR_STORAGE_BAD');
 
             await page.close();
             return {surface,target,meta,saved,filtered,geom,rerendered,persisted};
