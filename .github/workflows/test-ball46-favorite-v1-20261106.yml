@@ -1,0 +1,142 @@
+name: Test BALL46 Favorite V1 20261106
+
+on:
+  push:
+    branches: [test/ball46-favorite-analysis-20261106]
+    paths:
+      - '.github/workflows/test-ball46-favorite-v1-20261106.yml'
+      - 'deploy-assets/favorite-v1-20261106/favorite-v1.js'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: npm install --no-save --ignore-scripts puppeteer-core@24
+      - name: Validate Favorite V1 on PC and mobile
+        shell: bash
+        run: |
+          node <<'NODE'
+          (async()=>{
+          const fs=require('fs'),assert=require('assert/strict'),puppeteer=require('puppeteer-core');
+          const script=fs.readFileSync('deploy-assets/favorite-v1-20261106/favorite-v1.js','utf8');
+          assert(script.includes('BALL46_FAVORITE_V1_TEST_20261106'));
+          const exe=['/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium','/usr/bin/chromium-browser'].find(fs.existsSync);assert(exe,'CHROME_MISSING');
+          const browser=await puppeteer.launch({executablePath:exe,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
+
+          async function runCase(name,viewport){
+            const page=await browser.newPage();await page.setViewport(viewport);
+            await page.goto('https://ball46.com/?favV1Test='+name+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
+            await page.waitForSelector('.match-row[data-match-id]',{timeout:90000});await new Promise(r=>setTimeout(r,4500));
+            await page.addScriptTag({content:script});await new Promise(r=>setTimeout(r,350));
+
+            const initial=await page.evaluate(()=>({
+              rows:document.querySelectorAll('.match-row[data-match-id]').length,
+              stars:document.querySelectorAll('[data-b46-favorite-toggle]').length,
+              filters:document.querySelectorAll('[data-b46-favorite-filter]').length,
+              count:document.querySelector('[data-b46-favorite-count]')?.textContent,
+              api:Boolean(window.BALL46_FAVORITES_V1)
+            }));
+            assert(initial.api,'FAVORITE_API_MISSING');
+            assert(initial.rows>0&&initial.stars===initial.rows,'STAR_COUNT_MISMATCH');
+            assert.equal(initial.filters,1,'FAVORITE_FILTER_COUNT_BAD');
+            assert.equal(initial.count,'0','INITIAL_FAVORITE_COUNT_BAD');
+
+            const target=await page.evaluate(()=>document.querySelector('.match-row[data-match-id]')?.getAttribute('data-match-id'));
+            assert(target,'TARGET_ROW_MISSING');
+            await page.click('[data-b46-favorite-toggle="'+target+'"]');
+            await new Promise(r=>setTimeout(r,150));
+            const saved=await page.evaluate(id=>({
+              pressed:document.querySelector('[data-b46-favorite-toggle="'+CSS.escape(id)+'"]')?.getAttribute('aria-pressed'),
+              text:document.querySelector('[data-b46-favorite-toggle="'+CSS.escape(id)+'"]')?.textContent,
+              count:document.querySelector('[data-b46-favorite-count]')?.textContent,
+              ids:window.BALL46_FAVORITES_V1.getIds(),
+              storage:localStorage.getItem('ball46_favorites_v1')
+            }),target);
+            assert.equal(saved.pressed,'true','STAR_NOT_ACTIVE');
+            assert.equal(saved.text,'★','STAR_GLYPH_BAD');
+            assert.equal(saved.count,'1','COUNT_NOT_UPDATED');
+            assert(saved.ids.includes(target),'FAVORITE_ID_NOT_IN_MEMORY');
+            assert(saved.storage?.includes(target),'FAVORITE_ID_NOT_PERSISTED');
+
+            await page.click('[data-b46-favorite-filter]');
+            await new Promise(r=>setTimeout(r,120));
+            const filtered=await page.evaluate(id=>({
+              active:document.body.dataset.b46FavoriteOnly,
+              visible:[...document.querySelectorAll('.match-row[data-match-id]')].filter(r=>getComputedStyle(r).display!=='none').map(r=>r.getAttribute('data-match-id')),
+              filterActive:document.querySelector('[data-b46-favorite-filter]')?.classList.contains('active')
+            }),target);
+            assert.equal(filtered.active,'1','FILTER_STATE_BAD');
+            assert.deepEqual(filtered.visible,[target],'FILTER_DID_NOT_LIMIT_TO_FAVORITE');
+            assert(filtered.filterActive,'FILTER_ACTIVE_CLASS_MISSING');
+
+            await page.click('[data-b46-favorite-filter]');
+            await new Promise(r=>setTimeout(r,100));
+            const allBack=await page.evaluate(()=>[...document.querySelectorAll('.match-row[data-match-id]')].filter(r=>getComputedStyle(r).display!=='none').length);
+            assert(allBack>1,'ALL_ROWS_NOT_RESTORED');
+
+            const width=await page.$eval('[data-b46-favorite-toggle="'+target+'"]',el=>el.getBoundingClientRect().width);
+            if(name==='mobile')assert(width>=35,'MOBILE_TOUCH_TARGET_TOO_SMALL');
+            else assert(width>=27,'PC_STAR_TARGET_TOO_SMALL');
+
+            // Simulate board re-render by replacing one row clone.
+            await page.evaluate(id=>{
+              const row=document.querySelector('.match-row[data-match-id="'+CSS.escape(id)+'"]');
+              if(!row)return;
+              const clone=row.cloneNode(true);
+              clone.querySelectorAll('[data-b46-favorite-toggle],.b46-fav-slot').forEach(x=>x.remove());
+              row.replaceWith(clone);
+            },target);
+            await new Promise(r=>setTimeout(r,180));
+            const rerendered=await page.evaluate(id=>({
+              exists:Boolean(document.querySelector('.match-row[data-match-id="'+CSS.escape(id)+'"] [data-b46-favorite-toggle]')),
+              pressed:document.querySelector('.match-row[data-match-id="'+CSS.escape(id)+'"] [data-b46-favorite-toggle]')?.getAttribute('aria-pressed'),
+              starCount:document.querySelectorAll('.match-row[data-match-id="'+CSS.escape(id)+'"] [data-b46-favorite-toggle]').length
+            }),target);
+            assert(rerendered.exists,'STAR_NOT_RESTORED_AFTER_RERENDER');
+            assert.equal(rerendered.pressed,'true','FAVORITE_STATE_LOST_AFTER_RERENDER');
+            assert.equal(rerendered.starCount,1,'DUPLICATE_STAR_AFTER_RERENDER');
+
+            // Reload page and re-inject test script: persistence must survive.
+            await page.reload({waitUntil:'domcontentloaded',timeout:90000});
+            await page.waitForSelector('.match-row[data-match-id]',{timeout:90000});await new Promise(r=>setTimeout(r,3500));
+            await page.addScriptTag({content:script});await new Promise(r=>setTimeout(r,250));
+            const persisted=await page.evaluate(id=>({
+              has:window.BALL46_FAVORITES_V1.getIds().includes(id),
+              pressed:document.querySelector('[data-b46-favorite-toggle="'+CSS.escape(id)+'"]')?.getAttribute('aria-pressed'),
+              count:document.querySelector('[data-b46-favorite-count]')?.textContent
+            }),target);
+            assert(persisted.has,'FAVORITE_NOT_PERSISTED_AFTER_RELOAD');
+            if(document.querySelector){} // keep script context simple
+            assert.equal(persisted.count,'1','PERSISTED_COUNT_BAD');
+
+            // Toggle off and cleanup.
+            const starExists=await page.$('[data-b46-favorite-toggle="'+target+'"]');
+            if(starExists)await page.click('[data-b46-favorite-toggle="'+target+'"]');
+            await new Promise(r=>setTimeout(r,120));
+            const cleared=await page.evaluate(()=>({
+              ids:window.BALL46_FAVORITES_V1.getIds(),
+              count:document.querySelector('[data-b46-favorite-count]')?.textContent
+            }));
+            assert.equal(cleared.ids.length,0,'FAVORITE_NOT_REMOVED');
+            assert.equal(cleared.count,'0','COUNT_NOT_CLEARED');
+
+            await page.close();
+            return {name,initial,saved,filtered,width,rerendered,persisted};
+          }
+
+          const pc=await runCase('pc',{width:1280,height:900,deviceScaleFactor:1});
+          const mobile=await runCase('mobile',{width:390,height:844,isMobile:true,deviceScaleFactor:2});
+          console.log('PC='+JSON.stringify(pc));
+          console.log('MOBILE='+JSON.stringify(mobile));
+          console.log('BALL46_FAVORITE_V1_TEST_PASS');
+          await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
