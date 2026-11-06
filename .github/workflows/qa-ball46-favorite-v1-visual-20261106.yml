@@ -37,6 +37,8 @@ jobs:
             await new Promise(r=>setTimeout(r,5000));
             await page.addScriptTag({content:script});
             await new Promise(r=>setTimeout(r,400));
+            await page.evaluate(()=>window.BALL46_FAVORITES_V1.clear());
+            await new Promise(r=>setTimeout(r,120));
 
             const before=await page.evaluate(name=>{
               const surface=name==='mobile'?'mobile':'desktop';
