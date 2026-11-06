@@ -1,0 +1,94 @@
+name: Test BALL46 Favorite V1.2 Click Isolation 20261106
+
+on:
+  push:
+    branches: [test/ball46-favorite-analysis-20261106]
+    paths:
+      - '.github/workflows/test-ball46-favorite-v12-click-isolation-20261106.yml'
+      - 'deploy-assets/favorite-v1-20261106/favorite-v1.js'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: npm install --no-save --ignore-scripts puppeteer-core@24
+      - name: Validate exact-star click isolation PC/mobile
+        shell: bash
+        run: |
+          node <<'NODE'
+          (async()=>{
+          const fs=require('fs'),assert=require('assert/strict'),puppeteer=require('puppeteer-core');
+          const script=fs.readFileSync('deploy-assets/favorite-v1-20261106/favorite-v1.js','utf8');
+          assert(script.includes('BALL46_FAVORITE_V12_TEST_20261106'));
+          const exe=['/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium','/usr/bin/chromium-browser'].find(fs.existsSync);assert(exe);
+          const browser=await puppeteer.launch({executablePath:exe,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
+
+          async function run(surface,viewport){
+            const page=await browser.newPage();await page.setViewport(viewport);
+            await page.goto('https://ball46.com/?favV12='+surface+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
+            await new Promise(r=>setTimeout(r,4800));
+            await page.addScriptTag({content:script});await new Promise(r=>setTimeout(r,350));
+            await page.evaluate(()=>window.BALL46_FAVORITES_V1.clear());await new Promise(r=>setTimeout(r,100));
+
+            const info=await page.evaluate(surface=>{
+              const star=document.querySelector('[data-b46-favorite-surface="'+surface+'"]');
+              const card=surface==='mobile'?star?.closest('.b46gn-card'):star?.closest('.match-row');
+              const sr=star?.getBoundingClientRect(),cr=card?.getBoundingClientRect();
+              return {
+                id:star?.getAttribute('data-b46-favorite-toggle'),
+                star:{x:sr?.x||0,y:sr?.y||0,w:sr?.width||0,h:sr?.height||0},
+                card:{x:cr?.x||0,y:cr?.y||0,w:cr?.width||0,h:cr?.height||0}
+              };
+            },surface);
+            assert(info.id,'STAR_MISSING');
+
+            // Attach independent bubble observer to detect card expansion click propagation.
+            await page.evaluate(surface=>{
+              const star=document.querySelector('[data-b46-favorite-surface="'+surface+'"]');
+              const card=surface==='mobile'?star.closest('.b46gn-card'):star.closest('.match-row');
+              window.__favCardBubble=0;
+              card.addEventListener('click',()=>window.__favCardBubble++,false);
+            },surface);
+
+            // Exact star click: favorite toggles, card click must not receive event.
+            await page.mouse.click(info.star.x+info.star.w/2,info.star.y+info.star.h/2);
+            await new Promise(r=>setTimeout(r,180));
+            const starResult=await page.evaluate((surface,id)=>({
+              pressed:document.querySelector('[data-b46-favorite-surface="'+surface+'"][data-b46-favorite-toggle="'+CSS.escape(id)+'"]')?.getAttribute('aria-pressed'),
+              bubble:window.__favCardBubble,
+              storage:localStorage.getItem('ball46_favorites_v1')
+            }),surface,info.id);
+            assert.equal(starResult.pressed,'true','STAR_DID_NOT_TOGGLE');
+            assert.equal(starResult.bubble,0,'STAR_CLICK_REACHED_CARD');
+            assert(starResult.storage?.includes(info.id),'STAR_NOT_SAVED');
+
+            // Reset bubble and click just outside star but still inside card.
+            await page.evaluate(()=>window.__favCardBubble=0);
+            const outsideX=Math.min(info.card.x+info.card.w-4,info.star.x+info.star.w+6);
+            const outsideY=info.star.y+info.star.h/2;
+            assert(outsideX>info.star.x+info.star.w,'OUTSIDE_POINT_NOT_OUTSIDE_STAR');
+            await page.mouse.click(outsideX,outsideY);
+            await new Promise(r=>setTimeout(r,150));
+            const missResult=await page.evaluate(()=>({bubble:window.__favCardBubble}));
+            assert(missResult.bubble>=1,'MISS_CLICK_DID_NOT_REACH_CARD');
+
+            await page.close();
+            return {surface,info,starResult,missResult,outsideX,outsideY};
+          }
+
+          const pc=await run('desktop',{width:1280,height:900,deviceScaleFactor:1});
+          const mobile=await run('mobile',{width:390,height:844,isMobile:true,deviceScaleFactor:2});
+          console.log('PC='+JSON.stringify(pc));
+          console.log('MOBILE='+JSON.stringify(mobile));
+          console.log('BALL46_FAVORITE_V12_CLICK_ISOLATION_PASS');
+          await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
