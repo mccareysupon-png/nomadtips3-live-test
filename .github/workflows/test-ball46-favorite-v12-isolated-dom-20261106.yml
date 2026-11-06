@@ -56,7 +56,7 @@ jobs:
                   <div class="match-row" data-match-id="123"><div class="match-teams">Home Team - Away Team</div></div>
                   <div class="rail-card">MATCH STATUS<button class="filter" data-status-filter="all">All</button></div>
                 </body></html>`;
-            await page.goto('https://ball46.com/?favV12isolated='+surface+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
+            await page.goto('https://example.com/?favV12isolated='+surface+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
             await page.evaluate(html=>{document.open();document.write(html);document.close();},html);
             await new Promise(r=>setTimeout(r,80));
             await page.addScriptTag({content:script});
