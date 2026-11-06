@@ -1,0 +1,40 @@
+name: Diagnose BALL46 Favorite V1.1 Mobile Position 20261106
+on:
+  push:
+    branches: [test/ball46-favorite-analysis-20261106]
+    paths: ['.github/workflows/diag-ball46-favorite-v11-mobile-position-20261106.yml']
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: npm install --no-save --ignore-scripts puppeteer-core@24
+      - shell: bash
+        run: |
+          node <<'NODE'
+          (async()=>{
+          const fs=require('fs'),assert=require('assert/strict'),puppeteer=require('puppeteer-core');
+          const script=fs.readFileSync('deploy-assets/favorite-v1-20261106/favorite-v1.js','utf8');
+          const exe=['/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium','/usr/bin/chromium-browser'].find(fs.existsSync);assert(exe);
+          const browser=await puppeteer.launch({executablePath:exe,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
+          const page=await browser.newPage();await page.setViewport({width:390,height:844,isMobile:true,deviceScaleFactor:2});
+          await page.goto('https://ball46.com/?favV11MobilePos='+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
+          await new Promise(r=>setTimeout(r,4800));
+          await page.addScriptTag({content:script});await new Promise(r=>setTimeout(r,350));
+          const g=await page.evaluate(()=>{
+            const card=document.querySelector('.b46gn-card[data-b46gn-fixture]');
+            const star=card?.querySelector('[data-b46-favorite-surface="mobile"]');
+            const kit=card?.querySelector('.b46gn-kit');
+            const name=card?.querySelector('.b46gn-team-name');
+            const cr=card?.getBoundingClientRect(),sr=star?.getBoundingClientRect(),kr=kit?.getBoundingClientRect(),nr=name?.getBoundingClientRect();
+            const cs=card?getComputedStyle(card):null;
+            return {theme:document.documentElement.dataset.theme,card:{x:cr?.x,y:cr?.y,w:cr?.width,h:cr?.height,padL:cs?.paddingLeft},star:{x:sr?.x,y:sr?.y,w:sr?.width,h:sr?.height,dx:(sr?.x||0)-(cr?.x||0)},kit:{x:kr?.x,y:kr?.y,w:kr?.width,h:kr?.height},name:{x:nr?.x,y:nr?.y,w:nr?.width,h:nr?.height}};
+          });
+          console.log('MOBILE_POS='+JSON.stringify(g));
+          await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
