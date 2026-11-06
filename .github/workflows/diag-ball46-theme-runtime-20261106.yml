@@ -1,0 +1,47 @@
+name: Diagnose BALL46 Theme Runtime 20261106
+
+on:
+  push:
+    branches: [test/ball46-favorite-analysis-20261106]
+    paths:
+      - '.github/workflows/diag-ball46-theme-runtime-20261106.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --ignore-scripts puppeteer-core@24
+      - shell: bash
+        run: |
+          node <<'NODE'
+          (async()=>{
+          const fs=require('fs'),assert=require('assert/strict'),puppeteer=require('puppeteer-core');
+          const exe=['/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium','/usr/bin/chromium-browser'].find(fs.existsSync);assert(exe);
+          const browser=await puppeteer.launch({executablePath:exe,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
+          for(const vp of [{name:'pc',width:1280,height:900},{name:'mobile',width:390,height:844,isMobile:true,deviceScaleFactor:2}]){
+            const page=await browser.newPage(); await page.setViewport(vp);
+            await page.goto('https://ball46.com/?themeDiag='+vp.name+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
+            await new Promise(r=>setTimeout(r,4500));
+            const d=await page.evaluate(()=>({
+              htmlClass:document.documentElement.className,
+              htmlData:{...document.documentElement.dataset},
+              bodyClass:document.body.className,
+              bodyData:{...document.body.dataset},
+              storage:Object.fromEntries([...Array(localStorage.length)].map((_,i)=>{const k=localStorage.key(i);return[k,localStorage.getItem(k)]})),
+              buttons:[...document.querySelectorAll('button,[role="button"]')].map(x=>({text:(x.textContent||'').trim(),aria:x.getAttribute('aria-label'),title:x.getAttribute('title'),cls:typeof x.className==='string'?x.className:''})).filter(x=>/theme|light|dark|mode|sun|moon/i.test([x.text,x.aria,x.title,x.cls].join(' '))).slice(0,20)
+            }));
+            console.log(vp.name.toUpperCase()+'='+JSON.stringify(d));
+            await page.close();
+          }
+          await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
