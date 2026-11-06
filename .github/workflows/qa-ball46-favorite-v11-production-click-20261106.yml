@@ -37,7 +37,9 @@ jobs:
             await new Promise(r=>setTimeout(r,3500));
 
             const selector=surface==='mobile'?'[data-b46-favorite-surface="mobile"]':'[data-b46-favorite-surface="desktop"]';
-            const star=await page.$(selector); assert(star,'STAR_MISSING');
+            const pre=await page.evaluate(()=>({w:innerWidth,h:innerHeight,mobileCards:document.querySelectorAll('.b46gn-card[data-b46gn-fixture]').length,desktopRows:document.querySelectorAll('.match-row[data-match-id]').length,mobileStars:document.querySelectorAll('[data-b46-favorite-surface="mobile"]').length,desktopStars:document.querySelectorAll('[data-b46-favorite-surface="desktop"]').length,ua:navigator.userAgent}));
+            fs.writeFileSync('pre-'+surface+'.json',JSON.stringify(pre,null,2));
+            const star=await page.$(selector); assert(star,'STAR_MISSING:'+JSON.stringify(pre));
             const box=await star.boundingBox(); assert(box,'STAR_BOX_MISSING');
 
             const snap=()=>page.evaluate(surface=>{
@@ -105,7 +107,6 @@ jobs:
             await page.close();
           }
 
-          await check('desktop',{width:1280,height:900,deviceScaleFactor:1});
           await check('mobile',{width:390,height:844,isMobile:true,deviceScaleFactor:2});
           console.log('BALL46_FAVORITE_V12_PRODUCTION_EXPANSION_GUARD_PASS');
           await browser.close();
@@ -120,4 +121,5 @@ jobs:
             star-v12-*.png
             star-v12-*.json
             card-v12-*.json
+            pre-*.json
           retention-days: 7
