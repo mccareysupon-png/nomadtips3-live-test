@@ -1,0 +1,115 @@
+name: QA BALL46 Favorite V1.1 Theme 20261106
+
+on:
+  push:
+    branches: [test/ball46-favorite-analysis-20261106]
+    paths:
+      - '.github/workflows/qa-ball46-favorite-v11-theme-20261106.yml'
+      - 'deploy-assets/favorite-v1-20261106/favorite-v1.js'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  qa:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: npm install --no-save --ignore-scripts puppeteer-core@24
+      - name: Validate V1.1 on PC/mobile light/dark
+        shell: bash
+        run: |
+          node <<'NODE'
+          (async()=>{
+          const fs=require('fs'),assert=require('assert/strict'),puppeteer=require('puppeteer-core');
+          const script=fs.readFileSync('deploy-assets/favorite-v1-20261106/favorite-v1.js','utf8');
+          const exe=['/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium','/usr/bin/chromium-browser'].find(fs.existsSync);assert(exe);
+          const browser=await puppeteer.launch({executablePath:exe,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
+
+          async function ensureTheme(page,want){
+            for(let i=0;i<3;i++){
+              const current=await page.evaluate(()=>document.documentElement.dataset.theme||'');
+              if(current===want)return;
+              const ok=await page.evaluate(()=>{const b=document.querySelector('.workspace-theme-btn');if(!b)return false;b.click();return true});
+              assert(ok,'THEME_BUTTON_MISSING');
+              await new Promise(r=>setTimeout(r,250));
+            }
+            assert.equal(await page.evaluate(()=>document.documentElement.dataset.theme),want,'THEME_SWITCH_FAILED');
+          }
+
+          async function run(name,viewport,wantTheme){
+            const page=await browser.newPage();await page.setViewport(viewport);
+            await page.goto('https://ball46.com/?favV11='+name+wantTheme+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
+            await new Promise(r=>setTimeout(r,4800));
+            await ensureTheme(page,wantTheme);
+            await page.addScriptTag({content:script});
+            await new Promise(r=>setTimeout(r,350));
+            await page.evaluate(()=>window.BALL46_FAVORITES_V1.clear());
+            await new Promise(r=>setTimeout(r,120));
+
+            const surface=name==='mobile'?'mobile':'desktop';
+            const target=await page.evaluate(surface=>surface==='mobile'
+              ?document.querySelector('.b46gn-card[data-b46gn-fixture]')?.getAttribute('data-b46gn-fixture')
+              :document.querySelector('.match-row[data-match-id]')?.getAttribute('data-match-id'),surface);
+            assert(target,'TARGET_MISSING');
+
+            const before=await page.evaluate((surface,id)=>{
+              const star=document.querySelector('[data-b46-favorite-surface="'+surface+'"][data-b46-favorite-toggle="'+CSS.escape(id)+'"]');
+              const card=surface==='mobile'?star?.closest('.b46gn-card'):star?.closest('.match-row');
+              const sr=star?.getBoundingClientRect(),cr=card?.getBoundingClientRect();
+              const cs=star?getComputedStyle(star):null;
+              const team=surface==='mobile'?card?.querySelector('.b46gn-team-name'):card?.querySelector('.teams-cell,.match-teams');
+              const tr=team?.getBoundingClientRect();
+              return {
+                theme:document.documentElement.dataset.theme,
+                glyph:star?.textContent,
+                pressed:star?.getAttribute('aria-pressed'),
+                star:{x:sr?.x||0,y:sr?.y||0,w:sr?.width||0,h:sr?.height||0},
+                card:{x:cr?.x||0,y:cr?.y||0,w:cr?.width||0,h:cr?.height||0},
+                team:{x:tr?.x||0,y:tr?.y||0,w:tr?.width||0,h:tr?.height||0},
+                color:cs?.color||'',
+                bg:cs?.backgroundColor||''
+              };
+            },surface,target);
+
+            assert.equal(before.theme,wantTheme,'THEME_BAD');
+            assert.equal(before.glyph,'☆','INACTIVE_GLYPH_BAD');
+            assert.equal(before.pressed,'false','INACTIVE_STATE_BAD');
+            assert(before.star.w>=35&&before.star.h>=35,'TOUCH_TARGET_BAD');
+            assert(before.star.x>=before.card.x-1,'STAR_OUTSIDE_LEFT');
+            assert(before.star.x+before.star.w <= before.team.x+2 || before.team.w===0,'STAR_OVERLAPS_TEAM');
+
+            await page.evaluate((surface,id)=>document.querySelector('[data-b46-favorite-surface="'+surface+'"][data-b46-favorite-toggle="'+CSS.escape(id)+'"]')?.click(),surface,target);
+            await new Promise(r=>setTimeout(r,120));
+            const active=await page.evaluate((surface,id)=>{
+              const star=document.querySelector('[data-b46-favorite-surface="'+surface+'"][data-b46-favorite-toggle="'+CSS.escape(id)+'"]');
+              return {glyph:star?.textContent,pressed:star?.getAttribute('aria-pressed'),color:getComputedStyle(star).color};
+            },surface,target);
+            assert.equal(active.glyph,'★','ACTIVE_GLYPH_BAD');
+            assert.equal(active.pressed,'true','ACTIVE_STATE_BAD');
+
+            await page.screenshot({path:'fav-v11-'+name+'-'+wantTheme+'.png',fullPage:false});
+            await page.close();
+            return {name,wantTheme,before,active};
+          }
+
+          const out=[];
+          out.push(await run('pc',{width:1280,height:900,deviceScaleFactor:1},'light'));
+          out.push(await run('pc',{width:1280,height:900,deviceScaleFactor:1},'dark'));
+          out.push(await run('mobile',{width:390,height:844,isMobile:true,deviceScaleFactor:2},'light'));
+          out.push(await run('mobile',{width:390,height:844,isMobile:true,deviceScaleFactor:2},'dark'));
+          console.log('RESULTS='+JSON.stringify(out));
+          console.log('BALL46_FAVORITE_V11_THEME_QA_PASS');
+          await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-favorite-v11-theme-${{ github.run_id }}
+          path: fav-v11-*.png
+          retention-days: 7
