@@ -114,7 +114,6 @@ jobs:
               count:document.querySelector('[data-b46-favorite-count]')?.textContent
             }),target);
             assert(persisted.has,'FAVORITE_NOT_PERSISTED_AFTER_RELOAD');
-            if(document.querySelector){} // keep script context simple
             assert.equal(persisted.count,'1','PERSISTED_COUNT_BAD');
 
             // Toggle off and cleanup.
