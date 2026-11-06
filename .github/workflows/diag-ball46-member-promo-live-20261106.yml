@@ -1,0 +1,55 @@
+name: Diag BALL46 Member Promo Live 20261106
+on:
+  push:
+    branches: [test/ball46-favorite-analysis-20261106]
+    paths:
+      - '.github/workflows/diag-ball46-member-promo-live-20261106.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  diag:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Inspect active Worker and public promo
+        run: |
+          node <<'NODE'
+          const assert=require('assert');
+          const crypto=require('crypto');
+          const account=process.env.CLOUDFLARE_ACCOUNT_ID,token=process.env.CLOUDFLARE_API_TOKEN;
+          const root='https://api.cloudflare.com/client/v4/accounts/'+account+'/workers';
+          const sha=b=>crypto.createHash('sha256').update(b).digest('hex');
+          async function api(path){
+            const r=await fetch(root+path,{headers:{Authorization:'Bearer '+token}});
+            const j=await r.json();assert(r.ok&&j.success,JSON.stringify(j.errors||j));return j.result;
+          }
+          (async()=>{
+            const d=await api('/scripts/ball46-production/deployments?per_page=3');
+            const v=d.deployments[0].versions; assert(v.length===1&&Number(v[0].percentage)===100);
+            const id=v[0].version_id;
+            const cur=await api('/workers/ball46-production/versions/'+id+'?include=modules');
+            console.log('ACTIVE_VERSION='+id);
+            console.log('MAIN_MODULE='+cur.main_module);
+            console.log('MODULES='+JSON.stringify(cur.modules.map(m=>({name:m.name,type:m.content_type,size:Buffer.from(m.content_base64,'base64').length,sha:sha(Buffer.from(m.content_base64,'base64'))}))));
+            const main=cur.modules.find(m=>m.name===cur.main_module);
+            const src=Buffer.from(main.content_base64,'base64').toString('utf8');
+            const needles=['B46_MEMBER_PROMO_20261103','ball46-member-promo-20261103a.jpg','b46-member-promo-20261103a.bin','data-asset='];
+            for(const n of needles)console.log('SOURCE_'+n.replace(/[^A-Za-z0-9]/g,'_')+'='+src.includes(n));
+            const matches=[...src.matchAll(/ball46-member-promo[^"'\\\s<>)]+/g)].map(m=>m[0]);
+            console.log('SOURCE_PROMO_MATCHES='+JSON.stringify([...new Set(matches)].slice(0,30)));
+            const u='https://ball46.com/ball46-member-promo-20261103a.jpg?diag='+Date.now();
+            const r=await fetch(u,{headers:{'cache-control':'no-cache'}});
+            const b=Buffer.from(await r.arrayBuffer());
+            console.log('PUBLIC_STATUS='+r.status);
+            console.log('PUBLIC_TYPE='+r.headers.get('content-type'));
+            console.log('PUBLIC_CACHE='+r.headers.get('cache-control'));
+            console.log('PUBLIC_BYTES='+b.length);
+            console.log('PUBLIC_SHA='+sha(b));
+          })().catch(e=>{console.error(e.stack||e);process.exit(1)});
+          NODE
