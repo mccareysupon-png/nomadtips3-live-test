@@ -1,0 +1,54 @@
+name: Diagnose BALL46 Favorite Analysis 20261106
+
+on:
+  push:
+    branches: [test/ball46-favorite-analysis-20261106]
+    paths:
+      - '.github/workflows/diag-ball46-favorite-analysis-20261106.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Inspect favorite/star implementation in active BALL46 Worker
+        shell: bash
+        run: |
+          node <<'NODE'
+          (async()=>{
+          const assert=require('assert/strict');
+          const a=process.env.CLOUDFLARE_ACCOUNT_ID,tok=process.env.CLOUDFLARE_API_TOKEN;
+          const root=`https://api.cloudflare.com/client/v4/accounts/${a}/workers`;
+          async function api(p){const r=await fetch(root+p,{headers:{Authorization:`Bearer ${tok}`}});const j=await r.json();assert(r.ok&&j.success);return j.result}
+          const d=await api('/scripts/ball46-production/deployments?per_page=3');
+          const active=d.deployments?.[0]?.versions?.[0]?.version_id;assert(active,'ACTIVE_MISSING');
+          const v=await api(`/workers/ball46-production/versions/${active}?include=modules`);
+          const needles=['favorite','favourite','favorites','star','★','☆','localStorage','sessionStorage','bookmark','watchlist','data-fav'];
+          const hits=[];
+          for(const m of v.modules||[]){
+            if(!m.content_base64)continue;
+            const s=Buffer.from(m.content_base64,'base64').toString('utf8');
+            const low=s.toLowerCase();
+            for(const n of needles){
+              let p=0,c=0,needle=n.toLowerCase();
+              while(true){
+                const i=low.indexOf(needle,p);if(i<0)break;
+                hits.push({module:m.name,needle:n,index:i,excerpt:s.slice(Math.max(0,i-1800),Math.min(s.length,i+4200))});
+                p=i+n.length;if(++c>=20)break;
+              }
+            }
+          }
+          console.log('ACTIVE_VERSION='+active);
+          console.log('HITS='+JSON.stringify(hits));
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
