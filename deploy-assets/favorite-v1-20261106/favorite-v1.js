@@ -44,7 +44,7 @@ function ensureStyle(){
   .b46-fav-filter{display:flex;align-items:center;justify-content:space-between;width:100%}\n  .match-row.b46-fav-hidden{display:none!important}
   .b46-fav-filter .b46-fav-filter-star{color:#d8a820;margin-right:6px}
   @media(max-width:760px){
-    .b46-fav-btn{width:36px;height:36px;font-size:20px;border-radius:10px}
+    .b46-fav-btn{width:36px!important;height:36px!important;min-width:36px!important;min-height:36px!important;max-width:36px!important;max-height:36px!important;font-size:20px;border-radius:10px;flex:0 0 36px!important}
     .b46-fav-slot{margin-left:2px}
   }`;
   document.head.appendChild(s);
