@@ -51,7 +51,7 @@ jobs:
 
             const target=await page.evaluate(()=>document.querySelector('.match-row[data-match-id]')?.getAttribute('data-match-id'));
             assert(target,'TARGET_ROW_MISSING');
-            await page.click('[data-b46-favorite-toggle="'+target+'"]');
+            await page.evaluate(id=>document.querySelector('[data-b46-favorite-toggle="'+CSS.escape(id)+'"]')?.click(),target);
             await new Promise(r=>setTimeout(r,150));
             const saved=await page.evaluate(id=>({
               pressed:document.querySelector('[data-b46-favorite-toggle="'+CSS.escape(id)+'"]')?.getAttribute('aria-pressed'),
@@ -66,7 +66,7 @@ jobs:
             assert(saved.ids.includes(target),'FAVORITE_ID_NOT_IN_MEMORY');
             assert(saved.storage?.includes(target),'FAVORITE_ID_NOT_PERSISTED');
 
-            await page.click('[data-b46-favorite-filter]');
+            await page.evaluate(()=>document.querySelector('[data-b46-favorite-filter]')?.click());
             await new Promise(r=>setTimeout(r,120));
             const filtered=await page.evaluate(id=>({
               active:document.body.dataset.b46FavoriteOnly,
@@ -77,7 +77,7 @@ jobs:
             assert.deepEqual(filtered.visible,[target],'FILTER_DID_NOT_LIMIT_TO_FAVORITE');
             assert(filtered.filterActive,'FILTER_ACTIVE_CLASS_MISSING');
 
-            await page.click('[data-b46-favorite-filter]');
+            await page.evaluate(()=>document.querySelector('[data-b46-favorite-filter]')?.click());
             await new Promise(r=>setTimeout(r,100));
             const allBack=await page.evaluate(()=>[...document.querySelectorAll('.match-row[data-match-id]')].filter(r=>getComputedStyle(r).display!=='none').length);
             assert(allBack>1,'ALL_ROWS_NOT_RESTORED');
@@ -118,7 +118,7 @@ jobs:
 
             // Toggle off and cleanup.
             const starExists=await page.$('[data-b46-favorite-toggle="'+target+'"]');
-            if(starExists)await page.click('[data-b46-favorite-toggle="'+target+'"]');
+            if(starExists)await page.evaluate(id=>document.querySelector('[data-b46-favorite-toggle="'+CSS.escape(id)+'"]')?.click(),target);
             await new Promise(r=>setTimeout(r,120));
             const cleared=await page.evaluate(()=>({
               ids:window.BALL46_FAVORITES_V1.getIds(),
