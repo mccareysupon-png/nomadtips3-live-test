@@ -39,7 +39,7 @@ jobs:
           await page.goto('https://ball46.com/?fmbPerfV1='+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
           await page.waitForSelector('.match-row[data-match-id]',{timeout:90000});
           await new Promise(r=>setTimeout(r,4500));
-          const ids=await page.$eval('.match-row[data-match-id]',els=>els.slice(0,12).map(e=>e.dataset.matchId).filter(Boolean));
+          const ids=await page.$eval('.match-row[data-match-id]',els=>[...els].slice(0,12).map(e=>e.dataset.matchId).filter(Boolean));
           let opened=false;
           for(const id of ids){
             await page.evaluate(mid=>document.querySelector('.match-row[data-match-id="'+CSS.escape(mid)+'"]')?.click(),id);
