@@ -135,7 +135,6 @@ function onClick(e){
 function stopStarPointer(e){
   const star=e.target.closest?.(STAR_SELECTOR);
   if(!star)return;
-  e.preventDefault();
   e.stopPropagation();
   e.stopImmediatePropagation();
 }
