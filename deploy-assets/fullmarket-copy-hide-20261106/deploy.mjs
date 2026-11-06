@@ -84,11 +84,12 @@ try{
   base=await active();
   const current=await version(base);
   const main=current.modules.find(m=>m.name===current.main_module);assert(main,'MAIN_MISSING');
-  const source=Buffer.from(main.content_base64,'base64').toString('utf8');
+  const indexAsset=current.modules.find(m=>m.name==='assets/index.html');assert(indexAsset,'INDEX_ASSET_MISSING');
+  const source=Buffer.from(indexAsset.content_base64,'base64').toString('utf8');
   assert(!source.includes(MARK),'PATCH_ALREADY_PRESENT');
 
-  const anchor='</body>';
-  assert.equal(source.split(anchor).length-1,1,'BODY_ANCHOR_CHANGED');
+  const anchor='</head>';
+  assert.equal(source.split(anchor).length-1,1,'INDEX_HEAD_ANCHOR_CHANGED');
   const style=`<style id="b46-fullmarket-copy-hide-20261106">${css}</style>`;
   const patched=source.replace(anchor,style+anchor);
 
@@ -96,13 +97,23 @@ try{
   const cronsBefore=await api(`/scripts/${SCRIPT}/schedules`);
   assert.equal(await active(),base,'PRODUCTION_MOVED_BEFORE_UPLOAD');
 
-  candidate=await upload(current,patched);
+  const metadata={main_module:current.main_module,compatibility_date:current.compatibility_date,compatibility_flags:current.compatibility_flags||[],bindings:current.bindings,keep_assets:true,assets:{config:current.assets?.config},annotations:{'workers/tag':MARK,'workers/message':'Hide Full Market internal snapshot diagnostics only'}};
+  if(current.placement)metadata.placement=current.placement;
+  const form=new FormData();
+  form.append('metadata',new Blob([JSON.stringify(metadata)],{type:'application/json'}),'metadata.json');
+  for(const m of current.modules){
+    const bytes=m.name==='assets/index.html'?Buffer.from(patched):Buffer.from(m.content_base64,'base64');
+    let type=m.content_type;
+    if(!type){if(m.name===current.main_module||/\.m?js$/.test(m.name))type='application/javascript+module';else if(m.name.endsWith('.html'))type='text/html';else if(m.name.endsWith('.css'))type='text/css';else type='application/octet-stream';}
+    form.append(m.name,new Blob([bytes],{type}),m.name);
+  }
+  const uploaded=await api(`/scripts/${SCRIPT}/versions`,{method:'POST',body:form});assert(uploaded?.id,'CANDIDATE_ID_MISSING');candidate=uploaded.id;
   const cv=await version(candidate);
   assert.equal(canon(cv.bindings),canon(current.bindings),'BINDINGS_CHANGED');
   assert.equal(cv.modules.length,current.modules.length,'MODULE_COUNT_CHANGED');
   for(const m of current.modules){
     const cm=cv.modules.find(x=>x.name===m.name);assert(cm,`MODULE_MISSING:${m.name}`);
-    if(m.name===current.main_module)assert.equal(sha(Buffer.from(cm.content_base64,'base64')),sha(Buffer.from(patched)),'MAIN_HASH_BAD');
+    if(m.name==='assets/index.html')assert.equal(sha(Buffer.from(cm.content_base64,'base64')),sha(Buffer.from(patched)),'INDEX_HASH_BAD');
     else assert.equal(sha(Buffer.from(cm.content_base64,'base64')),sha(Buffer.from(m.content_base64,'base64')),`UNRELATED_MODULE_CHANGED:${m.name}`);
   }
 
