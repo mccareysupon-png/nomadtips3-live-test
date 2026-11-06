@@ -1,4 +1,4 @@
-/* BALL46_FAVORITE_V12_TEST_20261106 */
+/* BALL46_FAVORITE_V11_FIXED_20261106 */
 (()=>{
 'use strict';
 const STORAGE_KEY='ball46_favorites_v1';
@@ -152,7 +152,7 @@ function boot(){
   document.addEventListener('keydown',onKeydown,true);
   const mo=new MutationObserver(()=>{clearTimeout(boot._t);boot._t=setTimeout(repaint,40)});
   mo.observe(document.body,{subtree:true,childList:true});
-  window.BALL46_FAVORITES_V1={version:'test-20261106',toggle,isFavorite:isFav,getIds:()=>[...favorites.keys()],repaint,clear:()=>{favorites.clear();save();repaint()}};
+  window.BALL46_FAVORITES_V1={version:'v1.1-fixed-20261106',toggle,isFavorite:isFav,getIds:()=>[...favorites.keys()],repaint,clear:()=>{favorites.clear();save();repaint()}};
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();
