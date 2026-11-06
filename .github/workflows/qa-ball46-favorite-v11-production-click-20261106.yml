@@ -73,6 +73,8 @@ jobs:
             await new Promise(r=>setTimeout(r,500));
 
             const afterStar=await snap(); assert(afterStar,'SNAP_AFTER_STAR_MISSING');
+            await page.screenshot({path:'star-v12-'+surface+'.png',fullPage:false});
+            fs.writeFileSync('star-v12-'+surface+'.json',JSON.stringify({before,afterStar},null,2));
             assert.equal(afterStar.glyph,'★','STAR_NOT_ACTIVE');
             assert.equal(afterStar.pressed,'true','STAR_NOT_PRESSED');
             assert(afterStar.storage&&afterStar.storage!=='{}','STORAGE_NOT_SAVED');
@@ -92,6 +94,7 @@ jobs:
             await page.mouse.click(clickX,clickY);
             await new Promise(r=>setTimeout(r,500));
             const afterCard=await snap();
+            fs.writeFileSync('card-v12-'+surface+'.json',JSON.stringify({before,afterStar,afterCard},null,2));
             const changed=
               afterCard.visibleDetails!==afterStar.visibleDetails ||
               afterCard.nodes.some((n,i)=>n.open!==afterStar.nodes[i]?.open || n.aria!==afterStar.nodes[i]?.aria || n.cls!==afterStar.nodes[i]?.cls || Math.abs(n.h-(afterStar.nodes[i]?.h??n.h))>3);
@@ -112,5 +115,9 @@ jobs:
         if: always()
         with:
           name: ball46-favorite-v12-prod-expansion-${{ github.run_id }}
-          path: prod-v12-*.png
+          path: |
+            prod-v12-*.png
+            star-v12-*.png
+            star-v12-*.json
+            card-v12-*.json
           retention-days: 7
