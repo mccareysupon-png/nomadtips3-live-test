@@ -6,6 +6,10 @@ const SCRIPT='ball46-production';
 const ORIGIN='https://ball46.com';
 const BUNDLE_MODULE='member-promo-assets-20261104.txt';
 const PUBLIC_IMAGE='/b46-member-promo-20261104.jpg';
+const OLD_IMAGE_VERSION='1';
+const NEW_IMAGE_VERSION='2';
+const OLD_IMAGE_REF=PUBLIC_IMAGE+'?v='+OLD_IMAGE_VERSION;
+const NEW_IMAGE_REF=PUBLIC_IMAGE+'?v='+NEW_IMAGE_VERSION;
 const IMAGE_PART_DIR='assets';
 const IMAGE_PART_PREFIX='ball46-member-promo-20261106.b64.part';
 const EXPECTED_IMAGE_SHA='af96ad4867d5239be8da13d3089cf8bc7424e9cce8f70a87be9df197b8a2580a';
@@ -61,6 +65,7 @@ function loadNewImage(){
 }
 async function publicImage(){
   const u=new URL(PUBLIC_IMAGE,ORIGIN);
+  u.searchParams.set('v',NEW_IMAGE_VERSION);
   u.searchParams.set('promoImageQa',Date.now());
   const r=await fetch(u,{headers:{'cache-control':'no-cache'},signal:AbortSignal.timeout(45000)});
   assert(r.ok,`PUBLIC_IMAGE_HTTP_${r.status}`);
@@ -87,10 +92,19 @@ try{
   assert.equal(String(imageAsset.sha),sha(oldImage),'PROMO_OLD_IMAGE_SHA_METADATA_BAD');
   assert.notEqual(sha(oldImage),EXPECTED_IMAGE_SHA,'NEW_IMAGE_EQUALS_OLD_IMAGE');
 
+  assert.equal(String(imageAsset.version),OLD_IMAGE_VERSION,'PROMO_IMAGE_VERSION_DRIFT');
+  assert(typeof bundle.head==='string','PROMO_HEAD_MISSING');
+  assert.equal(bundle.head.split(OLD_IMAGE_REF).length-1,1,'PROMO_HEAD_IMAGE_REF_COUNT_BAD');
+  const oldHead=bundle.head;
   const beforeSnapshot=bundle.assets.map(a=>({path:a.path,type:a.type,version:a.version,sha:a.sha,bytes:a.bytes}));
   imageAsset.base64=image.toString('base64');
+  imageAsset.version=NEW_IMAGE_VERSION;
   imageAsset.sha=EXPECTED_IMAGE_SHA;
   imageAsset.bytes=image.length;
+  bundle.head=bundle.head.replace(OLD_IMAGE_REF,NEW_IMAGE_REF);
+  assert(bundle.head.includes(NEW_IMAGE_REF),'PROMO_HEAD_NEW_IMAGE_REF_MISSING');
+  assert(!bundle.head.includes(OLD_IMAGE_REF),'PROMO_HEAD_OLD_IMAGE_REF_REMAINS');
+  assert.notEqual(bundle.head,oldHead,'PROMO_HEAD_NOT_CHANGED');
   const afterSnapshot=bundle.assets.map(a=>({path:a.path,type:a.type,version:a.version,sha:a.sha,bytes:a.bytes}));
   const changed=beforeSnapshot.map((x,i)=>JSON.stringify(x)!==JSON.stringify(afterSnapshot[i])?afterSnapshot[i].path:null).filter(Boolean);
   assert.deepEqual(changed,[PUBLIC_IMAGE],'ONLY_IMAGE_METADATA_MUST_CHANGE');
@@ -146,6 +160,10 @@ try{
   }
   assert.equal(sha(served),EXPECTED_IMAGE_SHA,'PUBLIC_IMAGE_HASH_MISMATCH');
   assert.equal(served.length,image.length,'PUBLIC_IMAGE_SIZE_MISMATCH');
+  const htmlResponse=await fetch(ORIGIN+'/?promoHtmlQa='+Date.now(),{headers:{'cache-control':'no-cache'},signal:AbortSignal.timeout(45000)});
+  assert(htmlResponse.ok,'PUBLIC_HTML_HTTP_'+htmlResponse.status);
+  const html=await htmlResponse.text();
+  assert(html.includes(NEW_IMAGE_REF),'PUBLIC_HTML_NEW_IMAGE_REF_MISSING');
   assert.equal(canon(await settings()),canon(settingsBefore),'SETTINGS_CHANGED');
   assert.equal(canon(await schedules()),canon(schedulesBefore),'SCHEDULES_CHANGED');
 
