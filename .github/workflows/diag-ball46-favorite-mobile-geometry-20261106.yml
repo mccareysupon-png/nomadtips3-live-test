@@ -1,0 +1,45 @@
+name: Diagnose BALL46 Favorite Mobile Geometry 20261106
+
+on:
+  push:
+    branches: [test/ball46-favorite-analysis-20261106]
+    paths:
+      - '.github/workflows/diag-ball46-favorite-mobile-geometry-20261106.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: npm install --no-save --ignore-scripts puppeteer-core@24
+      - shell: bash
+        run: |
+          node <<'NODE'
+          (async()=>{
+          const fs=require('fs'),assert=require('assert/strict'),puppeteer=require('puppeteer-core');
+          const script=fs.readFileSync('deploy-assets/favorite-v1-20261106/favorite-v1.js','utf8');
+          const exe=['/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium','/usr/bin/chromium-browser'].find(fs.existsSync);assert(exe);
+          const browser=await puppeteer.launch({executablePath:exe,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
+          const page=await browser.newPage();await page.setViewport({width:390,height:844,isMobile:true,deviceScaleFactor:2});
+          await page.goto('https://ball46.com/?favGeom='+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
+          await page.waitForSelector('.match-row[data-match-id]',{timeout:90000});await new Promise(r=>setTimeout(r,4500));
+          await page.addScriptTag({content:script});await new Promise(r=>setTimeout(r,300));
+          const g=await page.evaluate(()=>{
+            const b=document.querySelector('[data-b46-favorite-toggle]');
+            const chain=[];let n=b;
+            for(let i=0;i<7&&n;i++,n=n.parentElement){
+              const r=n.getBoundingClientRect(),s=getComputedStyle(n);
+              chain.push({tag:n.tagName,cls:typeof n.className==='string'?n.className:'',rect:{x:r.x,y:r.y,w:r.width,h:r.height},transform:s.transform,zoom:s.zoom,fontSize:s.fontSize,display:s.display,position:s.position,overflow:s.overflow});
+            }
+            return {innerWidth,devicePixelRatio,chain};
+          });
+          console.log('GEOM='+JSON.stringify(g));
+          await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
