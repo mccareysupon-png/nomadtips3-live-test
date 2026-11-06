@@ -1,12 +1,13 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 
 const SCRIPT='ball46-production';
 const ORIGIN='https://ball46.com';
 const IMAGE_MODULE='b46-member-promo-20261103a.bin';
 const PUBLIC_IMAGE='/ball46-member-promo-20261103a.jpg';
-const NEW_IMAGE='assets/ball46-member-promo-20261106.jpg';
+const IMAGE_PART_DIR='assets';
+const IMAGE_PART_PREFIX='ball46-member-promo-20261106.b64.part';
 const MARK='B46_MEMBER_PROMO_IMAGE_20261106';
 const account=process.env.CLOUDFLARE_ACCOUNT_ID;
 const token=process.env.CLOUDFLARE_API_TOKEN;
@@ -49,7 +50,11 @@ async function publicImage(){
 }
 
 try{
-  const image=readFileSync(NEW_IMAGE);
+  const parts=readdirSync(IMAGE_PART_DIR).filter(n=>n.startsWith(IMAGE_PART_PREFIX)).sort();
+  assert(parts.length>=2,'IMAGE_PARTS_MISSING');
+  const b64=parts.map(n=>readFileSync(IMAGE_PART_DIR+'/'+n,'utf8').trim()).join('');
+  const image=Buffer.from(b64,'base64');
+  assert.equal(image.toString('base64'),b64,'IMAGE_BASE64_CORRUPT');
   assert(image.length>20000,'NEW_IMAGE_TOO_SMALL');
   assert(image[0]===0xff&&image[1]===0xd8,'NEW_IMAGE_NOT_JPEG');
   const imageSha=sha(image);
