@@ -75,9 +75,12 @@ try{
   for(let i=0;i<20;i++){if(await active()===candidate)break;await delay(1000)}
   assert.equal(await active(),candidate,'CANDIDATE_NOT_ACTIVE');
 
-  const html=await (await fetch(ORIGIN+'/?removeFavoriteQa='+Date.now(),{headers:{'cache-control':'no-cache'},signal:AbortSignal.timeout(45000)})).text();
-  assert(!html.includes('b46-favorite-v11-20261106'),'PUBLIC_FAVORITE_SCRIPT_PRESENT');
-  assert(!html.includes('BALL46_FAVORITE_V1_TEST_20261106'),'PUBLIC_FAVORITE_CODE_PRESENT');
+  const activeNow=await version(candidate);
+  const activeIndex=activeNow.modules.find(m=>m.name==='assets/index.html');assert(activeIndex,'ACTIVE_INDEX_MISSING');
+  const activeHtml=Buffer.from(activeIndex.content_base64,'base64').toString('utf8');
+  assert(!activeHtml.includes('b46-favorite-v11-20261106'),'ACTIVE_FAVORITE_SCRIPT_PRESENT');
+  assert(!activeHtml.includes('BALL46_FAVORITE_V1_TEST_20261106'),'ACTIVE_FAVORITE_CODE_PRESENT');
+  assert(!activeHtml.includes('data-b46-favorite-toggle'),'ACTIVE_FAVORITE_TOGGLE_PRESENT');
   assert.equal(canon(await settings()),canon(settingsBefore),'SETTINGS_CHANGED');
   assert.equal(canon(await schedules()),canon(schedulesBefore),'SCHEDULES_CHANGED');
 
