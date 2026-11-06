@@ -1,4 +1,4 @@
-name: QA BALL46 Favorite V1.1 Production Click 20261106
+name: QA BALL46 Favorite V1.2 Production Expansion Guard 20261106
 
 on:
   push:
@@ -19,7 +19,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: {node-version: '22'}
       - run: npm install --no-save --ignore-scripts puppeteer-core@24
-      - name: Verify physical star click does not expand card
+      - name: Verify star does not expand real Production card
         shell: bash
         run: |
           node <<'NODE'
@@ -27,53 +27,90 @@ jobs:
           const fs=require('fs'),assert=require('assert/strict'),puppeteer=require('puppeteer-core');
           const exe=['/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium','/usr/bin/chromium-browser'].find(fs.existsSync);assert(exe);
           const browser=await puppeteer.launch({executablePath:exe,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
+
           async function check(surface,viewport){
-            const page=await browser.newPage();await page.setViewport(viewport);
-            await page.goto('https://ball46.com/?favV11prod='+surface+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
+            const page=await browser.newPage(); await page.setViewport(viewport);
+            await page.goto('https://ball46.com/?favV12qa='+surface+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
             await new Promise(r=>setTimeout(r,4500));
             await page.evaluate(()=>localStorage.removeItem('ball46_favorites_v1'));
             await page.reload({waitUntil:'domcontentloaded',timeout:90000});
             await new Promise(r=>setTimeout(r,3500));
+
             const selector=surface==='mobile'?'[data-b46-favorite-surface="mobile"]':'[data-b46-favorite-surface="desktop"]';
-            const star=await page.$(selector);assert(star,'STAR_MISSING');
-            const box=await star.boundingBox();assert(box,'STAR_BOX_MISSING');
-            const cardInfo=await page.evaluate(surface=>{
+            const star=await page.$(selector); assert(star,'STAR_MISSING');
+            const box=await star.boundingBox(); assert(box,'STAR_BOX_MISSING');
+
+            const snap=()=>page.evaluate(surface=>{
               const star=document.querySelector('[data-b46-favorite-surface="'+surface+'"]');
-              const card=surface==='mobile'?star.closest('.b46gn-card'):star.closest('.match-row');
-              window.__b46CardClicks=0;
-              card.addEventListener('click',()=>window.__b46CardClicks++,false);
-              const sr=star.getBoundingClientRect(), cr=card.getBoundingClientRect();
-              return {star:{x:sr.x,y:sr.y,w:sr.width,h:sr.height},card:{x:cr.x,y:cr.y,w:cr.width,h:cr.height}};
+              const card=surface==='mobile'?star?.closest('.b46gn-card'):star?.closest('.match-row');
+              if(!star||!card)return null;
+              const nodes=[]; let n=card;
+              for(let i=0;i<4&&n;i++,n=n.parentElement){
+                const r=n.getBoundingClientRect();
+                nodes.push({
+                  tag:n.tagName,
+                  cls:n.className,
+                  h:Math.round(r.height*10)/10,
+                  open:n.hasAttribute('open'),
+                  aria:n.getAttribute('aria-expanded')
+                });
+              }
+              const visibleDetails=[...document.querySelectorAll('.match-detail,.b46gn-detail,[data-expanded],[aria-expanded="true"]')]
+                .filter(el=>{const r=el.getBoundingClientRect(),s=getComputedStyle(el);return r.width>0&&r.height>0&&s.display!=='none'&&s.visibility!=='hidden'}).length;
+              return {
+                nodes,
+                visibleDetails,
+                glyph:star.textContent,
+                pressed:star.getAttribute('aria-pressed'),
+                storage:localStorage.getItem('ball46_favorites_v1'),
+                cardRect:(()=>{const r=card.getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height}})()
+              };
             },surface);
+
+            const before=await snap(); assert(before,'SNAP_BEFORE_MISSING');
+
             await page.mouse.click(box.x+box.width/2,box.y+box.height/2);
-            await new Promise(r=>setTimeout(r,180));
-            const exact=await page.evaluate(surface=>{
-              const star=document.querySelector('[data-b46-favorite-surface="'+surface+'"]');
-              return {glyph:star.textContent,pressed:star.getAttribute('aria-pressed'),clicks:window.__b46CardClicks,storage:localStorage.getItem('ball46_favorites_v1')};
-            },surface);
-            assert.equal(exact.glyph,'★','STAR_NOT_ACTIVE');
-            assert.equal(exact.pressed,'true','STAR_NOT_PRESSED');
-            assert.equal(exact.clicks,0,'STAR_CLICK_REACHED_CARD');
-            assert(exact.storage&&exact.storage!=='{}','STORAGE_NOT_SAVED');
-            await page.evaluate(()=>window.__b46CardClicks=0);
-            const missX=cardInfo.star.x+cardInfo.star.w+6, missY=cardInfo.star.y+cardInfo.star.h/2;
-            await page.mouse.click(missX,missY);
-            await new Promise(r=>setTimeout(r,120));
-            const miss=await page.evaluate(()=>window.__b46CardClicks);
-            assert(miss>=1,'MISS_CLICK_DID_NOT_REACH_CARD');
-            await page.screenshot({path:'prod-'+surface+'.png',fullPage:false});
-            console.log(surface+'='+JSON.stringify({exact,miss,cardInfo}));
+            await new Promise(r=>setTimeout(r,500));
+
+            const afterStar=await snap(); assert(afterStar,'SNAP_AFTER_STAR_MISSING');
+            assert.equal(afterStar.glyph,'★','STAR_NOT_ACTIVE');
+            assert.equal(afterStar.pressed,'true','STAR_NOT_PRESSED');
+            assert(afterStar.storage&&afterStar.storage!=='{}','STORAGE_NOT_SAVED');
+            assert.equal(afterStar.visibleDetails,before.visibleDetails,'STAR_CHANGED_VISIBLE_DETAILS');
+            assert.equal(afterStar.nodes.length,before.nodes.length,'STAR_CHANGED_ANCESTOR_CHAIN');
+            for(let i=0;i<before.nodes.length;i++){
+              assert.equal(afterStar.nodes[i].open,before.nodes[i].open,'STAR_CHANGED_OPEN_'+i);
+              assert.equal(afterStar.nodes[i].aria,before.nodes[i].aria,'STAR_CHANGED_ARIA_'+i);
+              assert.equal(afterStar.nodes[i].cls,before.nodes[i].cls,'STAR_CHANGED_CLASS_'+i);
+              assert(Math.abs(afterStar.nodes[i].h-before.nodes[i].h)<=3,'STAR_CHANGED_HEIGHT_'+i+':'+before.nodes[i].h+'->'+afterStar.nodes[i].h);
+            }
+
+            // Detector sanity check: ordinary card click should still reach the card interaction.
+            const r=afterStar.cardRect;
+            const clickX=r.x+Math.min(r.w-12,Math.max(50,r.w*0.72));
+            const clickY=r.y+Math.min(r.h-8,Math.max(12,r.h*0.5));
+            await page.mouse.click(clickX,clickY);
+            await new Promise(r=>setTimeout(r,500));
+            const afterCard=await snap();
+            const changed=
+              afterCard.visibleDetails!==afterStar.visibleDetails ||
+              afterCard.nodes.some((n,i)=>n.open!==afterStar.nodes[i]?.open || n.aria!==afterStar.nodes[i]?.aria || n.cls!==afterStar.nodes[i]?.cls || Math.abs(n.h-(afterStar.nodes[i]?.h??n.h))>3);
+            assert(changed,'CARD_CLICK_DID_NOT_SHOW_EXPANSION_SIGNAL');
+
+            await page.screenshot({path:'prod-v12-'+surface+'.png',fullPage:false});
+            console.log(surface+'='+JSON.stringify({before,afterStar,afterCard,changed}));
             await page.close();
           }
+
           await check('desktop',{width:1280,height:900,deviceScaleFactor:1});
           await check('mobile',{width:390,height:844,isMobile:true,deviceScaleFactor:2});
-          console.log('BALL46_FAVORITE_V11_PRODUCTION_CLICK_PASS');
+          console.log('BALL46_FAVORITE_V12_PRODUCTION_EXPANSION_GUARD_PASS');
           await browser.close();
           })().catch(e=>{console.error(e);process.exit(1)});
           NODE
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: ball46-favorite-v11-prod-click-${{ github.run_id }}
-          path: prod-*.png
+          name: ball46-favorite-v12-prod-expansion-${{ github.run_id }}
+          path: prod-v12-*.png
           retention-days: 7
