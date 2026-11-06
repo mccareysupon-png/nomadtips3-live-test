@@ -1,0 +1,63 @@
+name: Diagnose BALL46 Favorite Compact 20261106
+
+on:
+  push:
+    branches: [test/ball46-favorite-analysis-20261106]
+    paths:
+      - '.github/workflows/diag-ball46-favorite-compact-20261106.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - shell: bash
+        run: |
+          node <<'NODE'
+          (async()=>{
+          const assert=require('assert/strict');
+          const a=process.env.CLOUDFLARE_ACCOUNT_ID,tok=process.env.CLOUDFLARE_API_TOKEN;
+          const root=`https://api.cloudflare.com/client/v4/accounts/${a}/workers`;
+          async function api(p){const r=await fetch(root+p,{headers:{Authorization:`Bearer ${tok}`}});const j=await r.json();assert(r.ok&&j.success);return j.result}
+          const d=await api('/scripts/ball46-production/deployments?per_page=3');
+          const active=d.deployments?.[0]?.versions?.[0]?.version_id;assert(active);
+          const v=await api(`/workers/ball46-production/versions/${active}?include=modules`);
+          const patterns=[
+            /favorite/ig,/favourite/ig,/localStorage/ig,/sessionStorage/ig,
+            /data-[a-z0-9_-]*fav[a-z0-9_-]*/ig,
+            /class=["'][^"']*(?:fav|star)[^"']*/ig,
+            /aria-label=["'][^"']*(?:fav|star)[^"']*/ig,
+            /[★☆]/g
+          ];
+          const out=[];
+          for(const m of v.modules||[]){
+            if(!m.content_base64)continue;
+            const s=Buffer.from(m.content_base64,'base64').toString('utf8');
+            const hits=[];
+            for(const re of patterns){
+              re.lastIndex=0;let x,c=0;
+              while((x=re.exec(s))&&c<30){
+                hits.push({match:x[0],index:x.index,excerpt:s.slice(Math.max(0,x.index-900),Math.min(s.length,x.index+1800))});
+                c++;
+              }
+            }
+            if(hits.length)out.push({module:m.name,size:s.length,hits});
+          }
+          console.log('ACTIVE='+active);
+          console.log('FAVORITE_MODULES='+JSON.stringify(out.map(x=>({module:x.module,size:x.size,count:x.hits.length,matches:x.hits.map(h=>h.match)}))));
+          for(const x of out){
+            if(x.hits.some(h=>/favorite|favourite|localStorage|data-.*fav|aria-label=.*fav|★|☆/i.test(h.match))){
+              console.log('OWNER='+JSON.stringify({module:x.module,hits:x.hits.slice(0,24)}));
+            }
+          }
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
