@@ -1,0 +1,108 @@
+name: QA BALL46 Favorite V1 Visual 20261106
+
+on:
+  push:
+    branches: [test/ball46-favorite-analysis-20261106]
+    paths:
+      - '.github/workflows/qa-ball46-favorite-v1-visual-20261106.yml'
+      - 'deploy-assets/favorite-v1-20261106/favorite-v1.js'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  qa:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --ignore-scripts puppeteer-core@24
+      - name: Visual and interaction QA
+        shell: bash
+        run: |
+          node <<'NODE'
+          (async()=>{
+          const fs=require('fs'),assert=require('assert/strict'),puppeteer=require('puppeteer-core');
+          const script=fs.readFileSync('deploy-assets/favorite-v1-20261106/favorite-v1.js','utf8');
+          const exe=['/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium','/usr/bin/chromium-browser'].find(fs.existsSync);assert(exe);
+          const browser=await puppeteer.launch({executablePath:exe,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
+
+          async function qa(name,viewport){
+            const page=await browser.newPage(); await page.setViewport(viewport);
+            await page.goto('https://ball46.com/?favVisualQa='+name+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
+            await new Promise(r=>setTimeout(r,5000));
+            await page.addScriptTag({content:script});
+            await new Promise(r=>setTimeout(r,400));
+
+            const before=await page.evaluate(name=>{
+              const surface=name==='mobile'?'mobile':'desktop';
+              const star=document.querySelector('[data-b46-favorite-surface="'+surface+'"]');
+              const card=surface==='mobile'?star?.closest('.b46gn-card'):star?.closest('.match-row');
+              const filter=document.querySelector('[data-b46-favorite-filter="'+surface+'"]');
+              const sr=star?.getBoundingClientRect(),cr=card?.getBoundingClientRect(),fr=filter?.getBoundingClientRect();
+              return {
+                surface,
+                star:{x:sr?.x||0,y:sr?.y||0,w:sr?.width||0,h:sr?.height||0},
+                card:{x:cr?.x||0,y:cr?.y||0,w:cr?.width||0,h:cr?.height||0},
+                filter:{x:fr?.x||0,y:fr?.y||0,w:fr?.width||0,h:fr?.height||0},
+                nextVisible:surface==='mobile'?getComputedStyle(card.querySelector('.b46gn-next')).visibility:null,
+                targetId:star?.getAttribute('data-b46-favorite-toggle')||null
+              };
+            },name);
+            assert(before.targetId,'STAR_TARGET_MISSING');
+            assert(before.star.w>=35&&before.star.h>=35,'STAR_TOUCH_SIZE_BAD');
+
+            await page.evaluate(name=>{
+              const surface=name==='mobile'?'mobile':'desktop';
+              const star=document.querySelector('[data-b46-favorite-surface="'+surface+'"]');
+              const card=surface==='mobile'?star.closest('.b46gn-card'):star.closest('.match-row');
+              window.__B46_FAV_QA_CARD_CLICKED=0;
+              card.addEventListener('click',()=>window.__B46_FAV_QA_CARD_CLICKED++,false);
+            },name);
+
+            await page.evaluate(name=>document.querySelector('[data-b46-favorite-surface="'+(name==='mobile'?'mobile':'desktop')+'"]')?.click(),name);
+            await new Promise(r=>setTimeout(r,150));
+            const cardClicks=await page.evaluate(()=>window.__B46_FAV_QA_CARD_CLICKED);
+            assert.equal(cardClicks,0,'STAR_CLICK_BUBBLED_TO_MATCH_CARD');
+
+            const state=await page.evaluate((name,id)=>{
+              const surface=name==='mobile'?'mobile':'desktop';
+              const star=document.querySelector('[data-b46-favorite-surface="'+surface+'"][data-b46-favorite-toggle="'+CSS.escape(id)+'"]');
+              const filter=document.querySelector('[data-b46-favorite-filter="'+surface+'"]');
+              return {
+                pressed:star?.getAttribute('aria-pressed'),
+                glyph:star?.textContent,
+                filterVisible:Boolean(filter&&getComputedStyle(filter).display!=='none'),
+                storage:localStorage.getItem('ball46_favorites_v1')
+              };
+            },name,before.targetId);
+            assert.equal(state.pressed,'true','STAR_NOT_ACTIVE');
+            assert.equal(state.glyph,'★','STAR_GLYPH_BAD');
+            assert(state.filterVisible,'FILTER_NOT_VISIBLE');
+            assert(state.storage?.includes(before.targetId),'STORAGE_BAD');
+
+            await page.screenshot({path:'favorite-'+name+'.png',fullPage:false});
+            await page.close();
+            return {name,before,state,cardClicks};
+          }
+
+          const pc=await qa('pc',{width:1280,height:900,deviceScaleFactor:1});
+          const mobile=await qa('mobile',{width:390,height:844,isMobile:true,deviceScaleFactor:2});
+          console.log('PC_QA='+JSON.stringify(pc));
+          console.log('MOBILE_QA='+JSON.stringify(mobile));
+          console.log('BALL46_FAVORITE_V1_VISUAL_QA_PASS');
+          await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-favorite-v1-visual-${{ github.run_id }}
+          path: |
+            favorite-pc.png
+            favorite-mobile.png
+          retention-days: 7
