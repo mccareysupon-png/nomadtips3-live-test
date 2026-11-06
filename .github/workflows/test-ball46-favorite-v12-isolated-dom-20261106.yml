@@ -59,6 +59,7 @@ jobs:
             await page.goto('https://example.com/?favV12isolated='+surface+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
             await page.evaluate(html=>{document.open();document.write(html);document.close();},html);
             await new Promise(r=>setTimeout(r,80));
+            await page.evaluate(()=>localStorage.removeItem('ball46_favorites_v1'));
             await page.addScriptTag({content:script});
             await new Promise(r=>setTimeout(r,100));
 
