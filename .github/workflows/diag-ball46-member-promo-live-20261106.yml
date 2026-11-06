@@ -46,6 +46,14 @@ jobs:
               console.log('PROMO_NEEDLE_'+needle.replace(/[^A-Za-z0-9]/g,'_')+'='+ix);
               if(ix>=0)console.log('PROMO_SNIP_'+needle.replace(/[^A-Za-z0-9]/g,'_')+'='+JSON.stringify(promoText.slice(Math.max(0,ix-300),ix+700)));
             }
+            console.log('PROMO_ASSET_LIST='+JSON.stringify(JSON.parse(promoText).assets.map(a=>({path:a.path,type:a.type,version:a.version,bytes:a.bytes,sha:a.sha}))));
+            const index=cur.modules.find(m=>m.name==='assets/index.html');
+            const indexText=Buffer.from(index.content_base64,'base64').toString('utf8');
+            for(const needle of ['b46mp-','b46-member-promo','ball46-member-promo','Explore membership']){
+              const ix=indexText.indexOf(needle);
+              console.log('INDEX_NEEDLE_'+needle.replace(/[^A-Za-z0-9]/g,'_')+'='+ix);
+              if(ix>=0)console.log('INDEX_SNIP_'+needle.replace(/[^A-Za-z0-9]/g,'_')+'='+JSON.stringify(indexText.slice(Math.max(0,ix-500),ix+1200)));
+            }
             const main=cur.modules.find(m=>m.name===cur.main_module);
             const src=Buffer.from(main.content_base64,'base64').toString('utf8');
             const needles=['B46_MEMBER_PROMO_20261103','ball46-member-promo-20261103a.jpg','b46-member-promo-20261103a.bin','data-asset='];
