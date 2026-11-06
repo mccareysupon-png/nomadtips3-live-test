@@ -1,0 +1,52 @@
+name: Diagnose BALL46 Favorite Mobile DOM 20261106
+
+on:
+  push:
+    branches: [test/ball46-favorite-analysis-20261106]
+    paths:
+      - '.github/workflows/diag-ball46-favorite-mobile-dom-20261106.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: npm install --no-save --ignore-scripts puppeteer-core@24
+      - shell: bash
+        run: |
+          node <<'NODE'
+          (async()=>{
+          const fs=require('fs'),assert=require('assert/strict'),puppeteer=require('puppeteer-core');
+          const exe=['/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium','/usr/bin/chromium-browser'].find(fs.existsSync);assert(exe);
+          const browser=await puppeteer.launch({executablePath:exe,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
+          const page=await browser.newPage();await page.setViewport({width:390,height:844,isMobile:true,deviceScaleFactor:2});
+          await page.goto('https://ball46.com/?favMobileDom='+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
+          await new Promise(r=>setTimeout(r,5000));
+          const data=await page.evaluate(()=>{
+            const visible=el=>{const r=el.getBoundingClientRect(),s=getComputedStyle(el);return r.width>0&&r.height>0&&s.display!=='none'&&s.visibility!=='hidden'};
+            const nodes=[...document.querySelectorAll('[data-match-id],[data-fixture-id],[data-id],[class*="match"],[class*="fixture"],[class*="mobile"],[class*="b46gn"]')]
+              .filter(visible)
+              .slice(0,180)
+              .map(el=>{
+                const r=el.getBoundingClientRect();
+                return {
+                  tag:el.tagName,
+                  cls:typeof el.className==='string'?el.className:'',
+                  id:el.id||'',
+                  attrs:Object.fromEntries([...el.attributes].filter(a=>/match|fixture|id|mobile|b46gn/i.test(a.name)||/match|fixture/i.test(a.value)).map(a=>[a.name,a.value])),
+                  text:(el.textContent||'').trim().slice(0,240),
+                  rect:{x:r.x,y:r.y,w:r.width,h:r.height}
+                };
+              });
+            return {nodes,bodyClass:document.body.className,bodyData:{...document.body.dataset}};
+          });
+          console.log('MOBILE_DOM='+JSON.stringify(data));
+          await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
