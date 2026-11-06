@@ -9,6 +9,9 @@ const PUBLIC_IMAGE='/ball46-member-promo-20261103a.jpg';
 const IMAGE_PART_DIR='assets';
 const IMAGE_PART_PREFIX='ball46-member-promo-20261106.b64.part';
 const MARK='B46_MEMBER_PROMO_IMAGE_20261106';
+const EXPECTED_IMAGE_SHA='af96ad4867d5239be8da13d3089cf8bc7424e9cce8f70a87be9df197b8a2580a';
+const OLD_ASSET_ATTR='data-asset="/ball46-member-promo-20261103a.jpg"';
+const NEW_ASSET_ATTR='data-asset="/ball46-member-promo-20261103a.jpg?v=20261106"';
 const account=process.env.CLOUDFLARE_ACCOUNT_ID;
 const token=process.env.CLOUDFLARE_API_TOKEN;
 const root=`https://api.cloudflare.com/client/v4/accounts/${account}/workers`;
@@ -58,6 +61,7 @@ try{
   assert(image.length>20000,'NEW_IMAGE_TOO_SMALL');
   assert(image[0]===0xff&&image[1]===0xd8,'NEW_IMAGE_NOT_JPEG');
   const imageSha=sha(image);
+  assert.equal(imageSha,EXPECTED_IMAGE_SHA,'NEW_IMAGE_SHA_MISMATCH');
 
   base=await active();
   const current=await version(base);
@@ -81,10 +85,26 @@ try{
   };
   if(current.placement)metadata.placement=current.placement;
 
+  const patchedText=new Map();
+  let cacheBustCount=0;
+  for(const m of current.modules){
+    if(!(m.name===current.main_module || m.name.endsWith('.html')))continue;
+    const src=Buffer.from(m.content_base64,'base64').toString('utf8');
+    if(src.includes(NEW_ASSET_ATTR)){patchedText.set(m.name,src);continue;}
+    const count=src.split(OLD_ASSET_ATTR).length-1;
+    if(count){
+      assert(count<=2,`CACHE_BUST_ANCHOR_COUNT_DRIFT:${m.name}:${count}`);
+      const next=src.split(OLD_ASSET_ATTR).join(NEW_ASSET_ATTR);
+      patchedText.set(m.name,next);
+      cacheBustCount+=count;
+    }
+  }
+  assert(cacheBustCount>=1 || [...patchedText.values()].some(x=>x.includes(NEW_ASSET_ATTR)),'CACHE_BUST_ANCHOR_MISSING');
+
   const form=new FormData();
   form.append('metadata',new Blob([JSON.stringify(metadata)],{type:'application/json'}),'metadata.json');
   for(const m of current.modules){
-    const bytes=m.name===IMAGE_MODULE?image:Buffer.from(m.content_base64,'base64');
+    const bytes=m.name===IMAGE_MODULE?image:(patchedText.has(m.name)?Buffer.from(patchedText.get(m.name)):Buffer.from(m.content_base64,'base64'));
     form.append(m.name,new Blob([bytes],{type:typeFor(m,current.main_module)}),m.name);
   }
   const uploaded=await api(`/scripts/${SCRIPT}/versions`,{method:'POST',body:form});
@@ -97,6 +117,7 @@ try{
     const cm=cv.modules.find(x=>x.name===m.name);assert(cm,`MODULE_MISSING:${m.name}`);
     const got=Buffer.from(cm.content_base64,'base64');
     if(m.name===IMAGE_MODULE)assert.equal(sha(got),imageSha,'NEW_IMAGE_MODULE_HASH_BAD');
+    else if(patchedText.has(m.name))assert.equal(sha(got),sha(Buffer.from(patchedText.get(m.name))),`CACHE_BUST_MODULE_HASH_BAD:${m.name}`);
     else assert.equal(sha(got),sha(Buffer.from(m.content_base64,'base64')),`UNRELATED_MODULE_CHANGED:${m.name}`);
   }
 
@@ -124,6 +145,7 @@ try{
   console.log('OLD_IMAGE_SHA='+sha(oldBytes));
   console.log('NEW_IMAGE_SHA='+imageSha);
   console.log('PUBLIC_IMAGE_BYTES='+served.length);
+  console.log('CACHE_BUST_COUNT='+cacheBustCount);
   console.log('BALL46_MEMBER_PROMO_IMAGE_REPLACE_SUCCESS');
 }catch(e){
   console.error(e.stack||e);
