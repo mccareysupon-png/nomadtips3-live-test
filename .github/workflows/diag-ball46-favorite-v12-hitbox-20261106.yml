@@ -1,0 +1,54 @@
+name: Diagnose BALL46 Favorite V1.2 Hitbox 20261106
+on:
+  push:
+    branches: [test/ball46-favorite-analysis-20261106]
+    paths:
+      - '.github/workflows/diag-ball46-favorite-v12-hitbox-20261106.yml'
+permissions: {contents: read}
+jobs:
+  diag:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: npm install --no-save --ignore-scripts puppeteer-core@24
+      - shell: bash
+        run: |
+          node <<'NODE'
+          (async()=>{
+          const fs=require('fs'),assert=require('assert/strict'),puppeteer=require('puppeteer-core');
+          const script=fs.readFileSync('deploy-assets/favorite-v1-20261106/favorite-v1.js','utf8');
+          const exe=['/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium','/usr/bin/chromium-browser'].find(fs.existsSync);assert(exe);
+          const browser=await puppeteer.launch({executablePath:exe,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
+          const page=await browser.newPage();await page.setViewport({width:1000,height:700});
+          await page.goto('https://example.com/?diag='+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
+          const html=`<!doctype html><html data-theme="light"><head><style>
+          body{margin:0;padding:20px}.match-row{position:relative;width:700px;height:64px;border:1px solid #ccc}.match-teams{margin-left:45px}
+          .rail-card{margin-top:20px}.filter{display:block}</style></head><body>
+          <div class="match-row" data-match-id="123"><div class="match-teams">Home Team - Away Team</div></div>
+          <div class="rail-card">MATCH STATUS<button class="filter" data-status-filter="all">All</button></div></body></html>`;
+          await page.evaluate(html=>{document.open();document.write(html);document.close();},html);
+          await page.addScriptTag({content:script});await new Promise(r=>setTimeout(r,150));
+          const pre=await page.evaluate(()=>{
+            const star=document.querySelector('[data-b46-favorite-surface="desktop"]');
+            const r=star.getBoundingClientRect(),x=r.x+r.width/2,y=r.y+r.height/2;
+            const hit=document.elementFromPoint(x,y);
+            window.__cap=0;window.__bubble=0;window.__target=0;
+            document.addEventListener('click',()=>window.__cap++,true);
+            document.addEventListener('click',()=>window.__bubble++,false);
+            star.addEventListener('click',()=>window.__target++,false);
+            return {rect:{x:r.x,y:r.y,w:r.width,h:r.height},center:{x,y},hit:{tag:hit?.tagName,cls:hit?.className,text:hit?.textContent,attrs:hit?Object.fromEntries([...hit.attributes].map(a=>[a.name,a.value])):{}},pressed:star.getAttribute('aria-pressed')};
+          });
+          await page.mouse.click(pre.center.x,pre.center.y);
+          await new Promise(r=>setTimeout(r,120));
+          const post=await page.evaluate(()=>({pressed:document.querySelector('[data-b46-favorite-surface="desktop"]').getAttribute('aria-pressed'),cap:window.__cap,bubble:window.__bubble,target:window.__target,storage:localStorage.getItem('ball46_favorites_v1')}));
+          console.log('PRE='+JSON.stringify(pre));
+          console.log('POST='+JSON.stringify(post));
+          await page.evaluate(()=>document.querySelector('[data-b46-favorite-surface="desktop"]').click());
+          await new Promise(r=>setTimeout(r,80));
+          console.log('PROGRAMMATIC='+JSON.stringify(await page.evaluate(()=>({pressed:document.querySelector('[data-b46-favorite-surface="desktop"]').getAttribute('aria-pressed'),cap:window.__cap,bubble:window.__bubble,target:window.__target,storage:localStorage.getItem('ball46_favorites_v1')}))));
+          await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
