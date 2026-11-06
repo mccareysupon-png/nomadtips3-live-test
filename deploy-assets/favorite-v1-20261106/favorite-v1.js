@@ -36,7 +36,7 @@ function ensureStyle(){
   const s=document.createElement('style');s.id='b46-favorite-v1-style';
   s.textContent=`
   .match-row{position:relative}
-  .b46-fav-btn{appearance:none;border:0;background:transparent;color:#7e8b86;cursor:pointer;display:inline-grid;place-items:center;width:28px;height:28px;padding:0;border-radius:8px;font-size:18px;line-height:1;transition:color .12s ease,background-color .12s ease;flex:0 0 auto}
+  .b46-fav-btn{appearance:none;border:0;background:transparent;color:#7e8b86;cursor:pointer;display:inline-grid;place-items:center;width:36px!important;height:36px!important;min-width:36px!important;min-height:36px!important;max-width:36px!important;max-height:36px!important;padding:0;border-radius:9px;font-size:18px;line-height:1;transition:color .12s ease,background-color .12s ease;flex:0 0 36px!important}
   .b46-fav-btn:hover{background:rgba(255,255,255,.06)}
   .b46-fav-btn[aria-pressed="true"]{color:#d8a820}
   .b46-fav-btn:focus-visible{outline:2px solid currentColor;outline-offset:2px}
@@ -44,7 +44,7 @@ function ensureStyle(){
   .b46-fav-filter{display:flex;align-items:center;justify-content:space-between;width:100%}\n  .match-row.b46-fav-hidden{display:none!important}
   .b46-fav-filter .b46-fav-filter-star{color:#d8a820;margin-right:6px}
   @media(max-width:760px){
-    .b46-fav-btn{width:36px!important;height:36px!important;min-width:36px!important;min-height:36px!important;max-width:36px!important;max-height:36px!important;font-size:20px;border-radius:10px;flex:0 0 36px!important}
+    .b46-fav-btn{font-size:20px;border-radius:10px}
     .b46-fav-slot{margin-left:2px}
   }`;
   document.head.appendChild(s);
