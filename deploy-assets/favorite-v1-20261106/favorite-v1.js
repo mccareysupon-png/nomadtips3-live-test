@@ -137,7 +137,8 @@ function onKeydown(e){
 }
 function boot(){
   ensureStyle();load();repaint();
-  document.addEventListener('click',onClick,true);\n  document.addEventListener('keydown',onKeydown,true);
+  document.addEventListener('click',onClick,true);
+  document.addEventListener('keydown',onKeydown,true);
   const mo=new MutationObserver(()=>{clearTimeout(boot._t);boot._t=setTimeout(repaint,40)});
   mo.observe(document.body,{subtree:true,childList:true});
   window.BALL46_FAVORITES_V1={version:'test-20261106',toggle,isFavorite:isFav,getIds:()=>[...favorites.keys()],repaint,clear:()=>{favorites.clear();save();repaint()}};
