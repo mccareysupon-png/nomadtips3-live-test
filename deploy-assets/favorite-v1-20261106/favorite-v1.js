@@ -55,12 +55,20 @@ function ensureStyle(){
 }
 function rowId(row){return row?.getAttribute('data-match-id')||''}
 function mobileId(card){return card?.getAttribute('data-b46gn-fixture')||''}
+function bindStarPointerIsolation(el){
+  if(!el||el.dataset.b46PointerIsolation==='1')return;
+  el.dataset.b46PointerIsolation='1';
+  const stop=e=>{e.stopPropagation();e.stopImmediatePropagation()};
+  el.addEventListener('pointerdown',stop,false);
+  el.addEventListener('mousedown',stop,false);
+  el.addEventListener('touchstart',stop,{passive:true});
+}
 function ensureStar(row){
   if(!row||row.querySelector(STAR_SELECTOR))return;
   const id=rowId(row);if(!id)return;
   const slot=document.createElement('span');slot.className='b46-fav-slot';
   const btn=document.createElement('button');
-  btn.type='button';btn.className='b46-fav-btn';btn.dataset.b46FavoriteToggle=id;btn.dataset.b46FavoriteSurface='desktop';
+  btn.type='button';btn.className='b46-fav-btn';btn.dataset.b46FavoriteToggle=id;btn.dataset.b46FavoriteSurface='desktop';bindStarPointerIsolation(btn);
   slot.appendChild(btn);
   const target=row.querySelector('.match-score,.match-main,.match-meta,.match-teams')||row.firstElementChild||row;
   target.appendChild(slot);
@@ -75,6 +83,7 @@ function ensureMobileStar(card){
   star.dataset.b46FavoriteSurface='mobile';
   star.setAttribute('role','button');
   star.setAttribute('tabindex','0');
+  bindStarPointerIsolation(star);
   card.appendChild(star);
 }
 function ensureFilter(){
@@ -132,12 +141,6 @@ function onClick(e){
   const filter=e.target.closest?.('[data-b46-favorite-filter]');
   if(filter){e.preventDefault();e.stopPropagation();document.body.dataset.b46FavoriteOnly=document.body.dataset.b46FavoriteOnly==='1'?'0':'1';applyFilter()}
 }
-function stopStarPointer(e){
-  const star=e.target.closest?.(STAR_SELECTOR);
-  if(!star)return;
-  e.stopPropagation();
-  e.stopImmediatePropagation();
-}
 function onKeydown(e){
   if((e.key==='Enter'||e.key===' ')&&e.target?.matches?.('[data-b46-favorite-surface="mobile"]')){
     e.preventDefault();e.stopPropagation();toggle(e.target.dataset.b46FavoriteToggle);
@@ -145,9 +148,6 @@ function onKeydown(e){
 }
 function boot(){
   ensureStyle();load();repaint();
-  document.addEventListener('pointerdown',stopStarPointer,true);
-  document.addEventListener('mousedown',stopStarPointer,true);
-  document.addEventListener('touchstart',stopStarPointer,{capture:true,passive:false});
   document.addEventListener('click',onClick,true);
   document.addEventListener('keydown',onKeydown,true);
   const mo=new MutationObserver(()=>{clearTimeout(boot._t);boot._t=setTimeout(repaint,40)});
