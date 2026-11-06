@@ -1,0 +1,97 @@
+name: QA BALL46 Favorite V1.2 Screens 20261106
+
+on:
+  push:
+    branches: [test/ball46-favorite-analysis-20261106]
+    paths:
+      - '.github/workflows/qa-ball46-favorite-v12-screens-20261106.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  qa:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: npm install --no-save --ignore-scripts puppeteer-core@24
+      - name: Render BALL46 with V1.2 only
+        shell: bash
+        run: |
+          node <<'NODE'
+          (async()=>{
+          const fs=require('fs'),assert=require('assert/strict'),puppeteer=require('puppeteer-core');
+          const v12=fs.readFileSync('deploy-assets/favorite-v1-20261106/favorite-v1.js','utf8');
+          assert(v12.includes('BALL46_FAVORITE_V12_TEST_20261106'));
+          const prod=await fetch('https://ball46.com/?favV12screen='+Date.now(),{headers:{'user-agent':'Mozilla/5.0'}});
+          assert(prod.ok);
+          let html=await prod.text();
+          const start=html.indexOf('<script id="b46-favorite-v11-20261106">');
+          assert(start>=0,'V11_BLOCK_MISSING');
+          const end=html.indexOf('</script>',start);
+          assert(end>start,'V11_END_MISSING');
+          html=html.slice(0,start)+`<script id="b46-favorite-v12-test">\n${v12}</script>`+html.slice(end+9);
+
+          const exe=['/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium','/usr/bin/chromium-browser'].find(fs.existsSync);assert(exe);
+          const browser=await puppeteer.launch({executablePath:exe,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
+
+          async function run(name,viewport,theme){
+            const page=await browser.newPage();await page.setViewport(viewport);
+            await page.setRequestInterception(true);
+            page.on('request',req=>{
+              if(req.isNavigationRequest()&&req.frame()===page.mainFrame()){
+                req.respond({status:200,contentType:'text/html',body:html});
+              }else req.continue();
+            });
+            await page.goto('https://ball46.com/?favV12screen='+name+theme,{waitUntil:'domcontentloaded',timeout:90000});
+            await new Promise(r=>setTimeout(r,4500));
+            for(let i=0;i<3;i++){
+              const cur=await page.evaluate(()=>document.documentElement.dataset.theme||'');
+              if(cur===theme)break;
+              await page.evaluate(()=>document.querySelector('.workspace-theme-btn')?.click());
+              await new Promise(r=>setTimeout(r,200));
+            }
+            await page.evaluate(()=>localStorage.removeItem('ball46_favorites_v1'));
+            await page.reload({waitUntil:'domcontentloaded',timeout:90000});
+            await new Promise(r=>setTimeout(r,3500));
+            for(let i=0;i<3;i++){
+              const cur=await page.evaluate(()=>document.documentElement.dataset.theme||'');
+              if(cur===theme)break;
+              await page.evaluate(()=>document.querySelector('.workspace-theme-btn')?.click());
+              await new Promise(r=>setTimeout(r,200));
+            }
+            const surface=name==='mobile'?'mobile':'desktop';
+            const star=await page.$('[data-b46-favorite-surface="'+surface+'"]');
+            assert(star,'STAR_MISSING');
+            const box=await star.boundingBox();assert(box);
+            await page.mouse.click(box.x+box.width/2,box.y+box.height/2);
+            await new Promise(r=>setTimeout(r,150));
+            const state=await page.evaluate(surface=>{
+              const el=document.querySelector('[data-b46-favorite-surface="'+surface+'"]');
+              return {theme:document.documentElement.dataset.theme,glyph:el?.textContent,pressed:el?.getAttribute('aria-pressed')};
+            },surface);
+            assert.equal(state.glyph,'★');
+            assert.equal(state.pressed,'true');
+            await page.screenshot({path:`fav-v12-${name}-${theme}.png`,fullPage:false});
+            console.log(name+'-'+theme+'='+JSON.stringify(state));
+            await page.close();
+          }
+
+          await run('pc',{width:1280,height:900,deviceScaleFactor:1},'light');
+          await run('pc',{width:1280,height:900,deviceScaleFactor:1},'dark');
+          await run('mobile',{width:390,height:844,isMobile:true,deviceScaleFactor:2},'light');
+          await run('mobile',{width:390,height:844,isMobile:true,deviceScaleFactor:2},'dark');
+          console.log('BALL46_FAVORITE_V12_SCREEN_QA_PASS');
+          await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-favorite-v12-screens-${{ github.run_id }}
+          path: fav-v12-*.png
+          retention-days: 7
