@@ -1,4 +1,4 @@
-/* BALL46_FAVORITE_V11_FIXED_20261106 */
+/* BALL46_FAVORITE_V1_TEST_20261106 */
 (()=>{
 'use strict';
 const STORAGE_KEY='ball46_favorites_v1';
