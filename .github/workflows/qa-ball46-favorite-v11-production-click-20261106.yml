@@ -1,0 +1,79 @@
+name: QA BALL46 Favorite V1.1 Production Click 20261106
+
+on:
+  push:
+    branches: [test/ball46-favorite-analysis-20261106]
+    paths:
+      - '.github/workflows/qa-ball46-favorite-v11-production-click-20261106.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  qa:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: npm install --no-save --ignore-scripts puppeteer-core@24
+      - name: Verify physical star click does not expand card
+        shell: bash
+        run: |
+          node <<'NODE'
+          (async()=>{
+          const fs=require('fs'),assert=require('assert/strict'),puppeteer=require('puppeteer-core');
+          const exe=['/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium','/usr/bin/chromium-browser'].find(fs.existsSync);assert(exe);
+          const browser=await puppeteer.launch({executablePath:exe,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
+          async function check(surface,viewport){
+            const page=await browser.newPage();await page.setViewport(viewport);
+            await page.goto('https://ball46.com/?favV11prod='+surface+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
+            await new Promise(r=>setTimeout(r,4500));
+            await page.evaluate(()=>localStorage.removeItem('ball46_favorites_v1'));
+            await page.reload({waitUntil:'domcontentloaded',timeout:90000});
+            await new Promise(r=>setTimeout(r,3500));
+            const selector=surface==='mobile'?'[data-b46-favorite-surface="mobile"]':'[data-b46-favorite-surface="desktop"]';
+            const star=await page.$(selector);assert(star,'STAR_MISSING');
+            const box=await star.boundingBox();assert(box,'STAR_BOX_MISSING');
+            const cardInfo=await page.evaluate(surface=>{
+              const star=document.querySelector('[data-b46-favorite-surface="'+surface+'"]');
+              const card=surface==='mobile'?star.closest('.b46gn-card'):star.closest('.match-row');
+              window.__b46CardClicks=0;
+              card.addEventListener('click',()=>window.__b46CardClicks++,false);
+              const sr=star.getBoundingClientRect(), cr=card.getBoundingClientRect();
+              return {star:{x:sr.x,y:sr.y,w:sr.width,h:sr.height},card:{x:cr.x,y:cr.y,w:cr.width,h:cr.height}};
+            },surface);
+            await page.mouse.click(box.x+box.width/2,box.y+box.height/2);
+            await new Promise(r=>setTimeout(r,180));
+            const exact=await page.evaluate(surface=>{
+              const star=document.querySelector('[data-b46-favorite-surface="'+surface+'"]');
+              return {glyph:star.textContent,pressed:star.getAttribute('aria-pressed'),clicks:window.__b46CardClicks,storage:localStorage.getItem('ball46_favorites_v1')};
+            },surface);
+            assert.equal(exact.glyph,'★','STAR_NOT_ACTIVE');
+            assert.equal(exact.pressed,'true','STAR_NOT_PRESSED');
+            assert.equal(exact.clicks,0,'STAR_CLICK_REACHED_CARD');
+            assert(exact.storage&&exact.storage!=='{}','STORAGE_NOT_SAVED');
+            await page.evaluate(()=>window.__b46CardClicks=0);
+            const missX=cardInfo.star.x+cardInfo.star.w+6, missY=cardInfo.star.y+cardInfo.star.h/2;
+            await page.mouse.click(missX,missY);
+            await new Promise(r=>setTimeout(r,120));
+            const miss=await page.evaluate(()=>window.__b46CardClicks);
+            assert(miss>=1,'MISS_CLICK_DID_NOT_REACH_CARD');
+            await page.screenshot({path:'prod-'+surface+'.png',fullPage:false});
+            console.log(surface+'='+JSON.stringify({exact,miss,cardInfo}));
+            await page.close();
+          }
+          await check('desktop',{width:1280,height:900,deviceScaleFactor:1});
+          await check('mobile',{width:390,height:844,isMobile:true,deviceScaleFactor:2});
+          console.log('BALL46_FAVORITE_V11_PRODUCTION_CLICK_PASS');
+          await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-favorite-v11-prod-click-${{ github.run_id }}
+          path: prod-*.png
+          retention-days: 7
