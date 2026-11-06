@@ -47,9 +47,7 @@ function ensureStyle(){
   .b46-fav-btn[aria-pressed="true"]{color:var(--b46-fav-yellow)}
   .b46-fav-btn:focus-visible{outline:2px solid var(--b46-fav-focus);outline-offset:1px}
   .b46-fav-slot{position:absolute;left:1px;top:50%;transform:translateY(-50%);z-index:3;display:grid;place-items:center;width:36px;height:36px;margin:0}
-  .b46-fav-filter{display:flex;align-items:center;justify-content:space-between;width:100%}\n  .match-row.b46-fav-hidden,.b46gn-card.b46-fav-hidden{display:none!important}\n  .b46gn-card.b46-fav-mobile-ready{position:relative!important;padding-left:38px!important;box-sizing:border-box!important}\n  .b46gn-mobile-fav-btn{position:absolute!important;left:1px!important;right:auto!important;top:50%!important;transform:translateY(-50%)!important;z-index:5!important;width:36px!important;height:36px!important;min-width:36px!important;min-height:36px!important;display:grid!important;place-items:center!important;border:0!important;border-radius:8px!important;background:transparent!important;color:var(--b46-fav-yellow)!important;font-size:20px!important;line-height:1!important;cursor:pointer!important;box-sizing:border-box!important}\n  .b46gn-mobile-fav-btn:hover{background:var(--b46-fav-hover)!important}\n  .b46gn-mobile-fav-btn[aria-pressed="true"]{color:var(--b46-fav-yellow)!important}\n  .b46gn-mobile-fav-filter{appearance:none;border:1px solid rgba(120,150,140,.24);background:transparent;color:inherit;min-height:28px;padding:4px 8px;border-radius:8px;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:5px;cursor:pointer}\n  .b46gn-mobile-fav-filter.active{border-color:#d8a820;color:#d8a820}
-  .b46-fav-filter .b46-fav-filter-star{color:#d8a820;margin-right:6px}
-  @media(max-width:760px){
+  .b46gn-card.b46-fav-mobile-ready{position:relative!important;padding-left:38px!important;box-sizing:border-box!important}\n  .b46gn-mobile-fav-btn{position:absolute!important;left:1px!important;right:auto!important;top:50%!important;transform:translateY(-50%)!important;z-index:5!important;width:36px!important;height:36px!important;min-width:36px!important;min-height:36px!important;display:grid!important;place-items:center!important;border:0!important;border-radius:8px!important;background:transparent!important;color:var(--b46-fav-yellow)!important;font-size:20px!important;line-height:1!important;cursor:pointer!important;box-sizing:border-box!important}\n  .b46gn-mobile-fav-btn:hover{background:var(--b46-fav-hover)!important}\n  .b46gn-mobile-fav-btn[aria-pressed="true"]{color:var(--b46-fav-yellow)!important}\n  @media(max-width:760px){
     .b46-fav-btn,.b46gn-mobile-fav-btn{font-size:20px!important}
   }`;
   document.head.appendChild(s);
@@ -111,25 +109,10 @@ function ensureMobileStar(card){
   bindStarPointerIsolation(star);
   card.appendChild(star);
 }
-function ensureFilter(){
-  if(!document.querySelector('[data-b46-favorite-filter="desktop"]')){
-    const statusCard=[...document.querySelectorAll('.rail-card')].find(x=>/MATCH STATUS/i.test(x.textContent||''));
-    if(statusCard){
-      const btn=document.createElement('button');btn.className='filter b46-fav-filter';btn.type='button';btn.dataset.b46FavoriteFilter='desktop';
-      btn.innerHTML='<span><span class="b46-fav-filter-star">★</span>Favorites</span><b data-b46-favorite-count>0</b>';
-      const first=statusCard.querySelector('[data-status-filter]');
-      if(first?.nextSibling)statusCard.insertBefore(btn,first.nextSibling);else statusCard.appendChild(btn);
-    }
-  }
-  if(!document.querySelector('[data-b46-favorite-filter="mobile"]')){
-    const section=[...document.querySelectorAll('.b46gn-section')].find(x=>/All Matches/i.test(x.textContent||''));
-    if(section){
-      const btn=document.createElement('button');btn.type='button';btn.className='b46gn-mobile-fav-filter';btn.dataset.b46FavoriteFilter='mobile';
-      btn.innerHTML='<span>★ Favorites</span><b data-b46-favorite-count>0</b>';
-      const see=section.querySelector('.b46gn-seeall');
-      if(see)section.insertBefore(btn,see);else section.appendChild(btn);
-    }
-  }
+function cleanupLegacyFilter(){
+  try{delete document.body.dataset.b46FavoriteOnly}catch{}
+  document.querySelectorAll('.b46-fav-hidden').forEach(el=>el.classList.remove('b46-fav-hidden'));
+  document.querySelectorAll('[data-b46-favorite-filter]').forEach(el=>el.remove());
 }
 function paintControl(btn,fav){
   if(!btn)return;
@@ -146,25 +129,10 @@ function updateStars(){
     ensureMobileStar(card);paintControl(card.querySelector(STAR_SELECTOR),isFav(mobileId(card)));
   });
 }
-function updateCount(){
-  document.querySelectorAll('[data-b46-favorite-count]').forEach(el=>el.textContent=String(favorites.size));
-}
-function applyFilter(){
-  const active=document.body.dataset.b46FavoriteOnly==='1';
-  document.querySelectorAll(DESKTOP_ROW_SELECTOR).forEach(row=>{
-    row.classList.toggle('b46-fav-hidden',active&&!isFav(rowId(row)));
-  });
-  document.querySelectorAll(MOBILE_CARD_SELECTOR).forEach(card=>{
-    card.classList.toggle('b46-fav-hidden',active&&!isFav(mobileId(card)));
-  });
-  document.querySelectorAll('[data-b46-favorite-filter]').forEach(x=>x.classList.toggle('active',active));
-}
-function repaint(){ensureFilter();updateStars();updateCount();applyFilter()}
+function repaint(){cleanupLegacyFilter();updateStars()}
 function onClick(e){
   const star=e.target.closest?.(STAR_SELECTOR);
   if(star){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();toggle(star.dataset.b46FavoriteToggle);return}
-  const filter=e.target.closest?.('[data-b46-favorite-filter]');
-  if(filter){e.preventDefault();e.stopPropagation();document.body.dataset.b46FavoriteOnly=document.body.dataset.b46FavoriteOnly==='1'?'0':'1';applyFilter()}
 }
 function onKeydown(e){
   if((e.key==='Enter'||e.key===' ')&&e.target?.matches?.('[data-b46-favorite-surface="mobile"]')){
@@ -177,7 +145,7 @@ function boot(){
   document.addEventListener('keydown',onKeydown,true);
   const mo=new MutationObserver(()=>{clearTimeout(boot._t);boot._t=setTimeout(repaint,40)});
   mo.observe(document.body,{subtree:true,childList:true});
-  window.BALL46_FAVORITES_V1={version:'v1.2-window-capture-20261106',toggle,isFavorite:isFav,getIds:()=>[...favorites.keys()],repaint,clear:()=>{favorites.clear();save();repaint()}};
+  window.BALL46_FAVORITES_V1={version:'v1.3-stars-only-filter-removed-20261106',toggle,isFavorite:isFav,getIds:()=>[...favorites.keys()],repaint,clear:()=>{favorites.clear();save();repaint()}};
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();
