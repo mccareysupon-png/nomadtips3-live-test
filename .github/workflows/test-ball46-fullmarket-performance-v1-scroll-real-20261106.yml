@@ -1,0 +1,103 @@
+name: Test BALL46 Full Market Performance V1 Real Scroll 20261106
+
+on:
+  push:
+    branches: [test/ball46-fullmarket-copy-20261106]
+    paths:
+      - '.github/workflows/test-ball46-fullmarket-performance-v1-scroll-real-20261106.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  perf-test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: npm install --no-save --ignore-scripts puppeteer-core@24
+      - name: Real scroll comparison around Full Market
+        shell: bash
+        run: |
+          node <<'NODE'
+          (async()=>{
+          const fs=require('fs'),assert=require('assert/strict'),puppeteer=require('puppeteer-core');
+          const css=fs.readFileSync('deploy-assets/fullmarket-performance-v1-20261106/fullmarket-performance-v1.css','utf8');
+          const exe=['/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium','/usr/bin/chromium-browser'].find(fs.existsSync);assert(exe);
+          const browser=await puppeteer.launch({executablePath:exe,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
+          const page=await browser.newPage();await page.setViewport({width:390,height:844,isMobile:true,deviceScaleFactor:2});
+          const cdp=await page.target().createCDPSession();await cdp.send('Performance.enable');
+          await page.goto('https://ball46.com/?fmbPerfReal='+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
+          await page.waitForSelector('.match-row[data-match-id]',{timeout:90000});await new Promise(r=>setTimeout(r,4500));
+          const ids=await page.evaluate(()=>Array.from(document.querySelectorAll('.match-row[data-match-id]')).slice(0,12).map(e=>e.dataset.matchId).filter(Boolean));
+          let opened=false;
+          for(const id of ids){
+            await page.evaluate(mid=>document.querySelector('.match-row[data-match-id="'+CSS.escape(mid)+'"]')?.click(),id);
+            await new Promise(r=>setTimeout(r,1200));
+            if(await page.$('.expand-full-market-card .fmb-market')){opened=true;break}
+          }
+          assert(opened,'FULL_MARKET_NOT_OPENED');
+
+          const bounds=await page.evaluate(()=>{
+            const ms=[...document.querySelectorAll('.expand-full-market-card .fmb-market')];
+            const rects=ms.map(m=>{const r=m.getBoundingClientRect();return{top:r.top+scrollY,bottom:r.bottom+scrollY,height:r.height}});
+            return {count:ms.length,first:rects[0],last:rects[rects.length-1],docH:document.documentElement.scrollHeight};
+          });
+          assert(bounds.count===14,'MARKET_COUNT_BAD');
+          assert(bounds.first&&bounds.last,'MARKET_BOUNDS_MISSING');
+
+          const metrics=async()=>Object.fromEntries((await cdp.send('Performance.getMetrics')).metrics.map(x=>[x.name,x.value]));
+          const run=async()=>{
+            await page.evaluate(y=>scrollTo(0,Math.max(0,y-innerHeight*.25)),bounds.first.top);
+            await new Promise(r=>setTimeout(r,250));
+            const b=await metrics();
+            const timing=await page.evaluate(async({start,end})=>{
+              const samples=[];let last=performance.now();
+              for(let y=start;y<=end;y+=90){
+                scrollTo(0,y);
+                await new Promise(r=>requestAnimationFrame(t=>{samples.push(t-last);last=t;r()}));
+              }
+              for(let y=end;y>=start;y-=90){
+                scrollTo(0,y);
+                await new Promise(r=>requestAnimationFrame(t=>{samples.push(t-last);last=t;r()}));
+              }
+              const sorted=samples.slice().sort((a,b)=>a-b);
+              const avg=samples.reduce((a,b)=>a+b,0)/Math.max(1,samples.length);
+              const p95=sorted[Math.min(sorted.length-1,Math.floor(sorted.length*.95))]||0;
+              const over20=samples.filter(x=>x>20).length;
+              const over32=samples.filter(x=>x>32).length;
+              return {frames:samples.length,avg,p95,over20,over32};
+            },{start:Math.max(0,bounds.first.top-innerHeight*.25),end:Math.min(bounds.docH-innerHeight,bounds.last.bottom-innerHeight*.75)});
+            const a=await metrics(),delta={};
+            for(const k of ['LayoutCount','RecalcStyleCount','LayoutDuration','RecalcStyleDuration','ScriptDuration','TaskDuration'])delta[k]=(a[k]||0)-(b[k]||0);
+            return {timing,delta};
+          };
+
+          const before=await run();
+          await page.addStyleTag({content:css});await new Promise(r=>setTimeout(r,250));
+          const after=await run();
+
+          const structure=await page.evaluate(()=>({
+            tabs:document.querySelectorAll('.expand-full-market-card [data-fmb-book]').length,
+            markets:document.querySelectorAll('.expand-full-market-card .fmb-market').length,
+            tables:document.querySelectorAll('.expand-full-market-card .fmb-market table').length,
+            cv:getComputedStyle(document.querySelector('.expand-full-market-card .fmb-market')).contentVisibility,
+            contain:getComputedStyle(document.querySelector('.expand-full-market-card .fmb-market')).contain
+          }));
+          assert.deepEqual([structure.tabs,structure.markets,structure.tables],[19,14,14]);
+          assert.equal(structure.cv,'auto');assert(/layout/.test(structure.contain)&&/paint/.test(structure.contain));
+
+          const improvement={
+            avgFramePct:(before.timing.avg-after.timing.avg)/before.timing.avg*100,
+            p95FramePct:(before.timing.p95-after.timing.p95)/before.timing.p95*100,
+            taskPct:before.delta.TaskDuration?((before.delta.TaskDuration-after.delta.TaskDuration)/before.delta.TaskDuration*100):0,
+            layoutPct:before.delta.LayoutDuration?((before.delta.LayoutDuration-after.delta.LayoutDuration)/before.delta.LayoutDuration*100):0
+          };
+          console.log('REAL_SCROLL='+JSON.stringify({bounds,before,after,structure,improvement}));
+          console.log('BALL46_FULLMARKET_PERFORMANCE_V1_REAL_SCROLL_PASS');
+          await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
