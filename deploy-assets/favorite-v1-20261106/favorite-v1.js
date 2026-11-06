@@ -58,7 +58,7 @@ function ensureStar(row){
   const id=rowId(row);if(!id)return;
   const slot=document.createElement('span');slot.className='b46-fav-slot';
   const btn=document.createElement('button');
-  btn.type='button';btn.className='b46-fav-btn';btn.dataset.b46FavoriteToggle=id;
+  btn.type='button';btn.className='b46-fav-btn';btn.dataset.b46FavoriteToggle=id;btn.dataset.b46FavoriteSurface='desktop';
   slot.appendChild(btn);
   const target=row.querySelector('.match-score,.match-main,.match-meta,.match-teams')||row.firstElementChild||row;
   target.appendChild(slot);
