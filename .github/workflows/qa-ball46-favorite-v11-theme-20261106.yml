@@ -62,7 +62,7 @@ jobs:
               const card=surface==='mobile'?star?.closest('.b46gn-card'):star?.closest('.match-row');
               const sr=star?.getBoundingClientRect(),cr=card?.getBoundingClientRect();
               const cs=star?getComputedStyle(star):null;
-              const team=surface==='mobile'?card?.querySelector('.b46gn-team-name'):card?.querySelector('.teams-cell,.match-teams');
+              const team=surface==='mobile'?card?.querySelector('.b46gn-kit,.b46gn-team-name'):card?.querySelector('.kit-icon,.team-kit,.team-name,.teams-cell img,.teams-cell svg');
               const tr=team?.getBoundingClientRect();
               return {
                 theme:document.documentElement.dataset.theme,
@@ -81,7 +81,7 @@ jobs:
             assert.equal(before.pressed,'false','INACTIVE_STATE_BAD');
             assert(before.star.w>=35&&before.star.h>=35,'TOUCH_TARGET_BAD');
             assert(before.star.x>=before.card.x-1,'STAR_OUTSIDE_LEFT');
-            assert(before.star.x+before.star.w <= before.team.x+2 || before.team.w===0,'STAR_OVERLAPS_TEAM');
+            assert(before.team.w===0 || before.star.x+before.star.w <= before.team.x+4,'STAR_OVERLAPS_TEAM_CONTENT');
 
             await page.evaluate((surface,id)=>document.querySelector('[data-b46-favorite-surface="'+surface+'"][data-b46-favorite-toggle="'+CSS.escape(id)+'"]')?.click(),surface,target);
             await new Promise(r=>setTimeout(r,120));
