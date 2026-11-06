@@ -49,9 +49,10 @@ jobs:
           assert(bounds.count===14,'MARKET_COUNT_BAD');
           assert(bounds.first&&bounds.last,'MARKET_BOUNDS_MISSING');
 
+          const VIEW_H=844;
           const metrics=async()=>Object.fromEntries((await cdp.send('Performance.getMetrics')).metrics.map(x=>[x.name,x.value]));
           const run=async()=>{
-            await page.evaluate(y=>scrollTo(0,Math.max(0,y-innerHeight*.25)),bounds.first.top);
+            await page.evaluate(y=>scrollTo(0,Math.max(0,y-VIEW_H*.25)),bounds.first.top);
             await new Promise(r=>setTimeout(r,250));
             const b=await metrics();
             const timing=await page.evaluate(async({start,end})=>{
@@ -70,7 +71,7 @@ jobs:
               const over20=samples.filter(x=>x>20).length;
               const over32=samples.filter(x=>x>32).length;
               return {frames:samples.length,avg,p95,over20,over32};
-            },{start:Math.max(0,bounds.first.top-innerHeight*.25),end:Math.min(bounds.docH-innerHeight,bounds.last.bottom-innerHeight*.75)});
+            },{start:Math.max(0,bounds.first.top-VIEW_H*.25),end:Math.min(bounds.docH-VIEW_H,bounds.last.bottom-VIEW_H*.75)});
             const a=await metrics(),delta={};
             for(const k of ['LayoutCount','RecalcStyleCount','LayoutDuration','RecalcStyleDuration','ScriptDuration','TaskDuration'])delta[k]=(a[k]||0)-(b[k]||0);
             return {timing,delta};
