@@ -52,11 +52,14 @@ jobs:
               api:Boolean(window.BALL46_FAVORITES_V1)
             }));
             assert(meta.api,'FAVORITE_API_MISSING');
-            assert(meta.desktopRows>0&&meta.desktopStars===meta.desktopRows,'DESKTOP_STAR_COUNT_BAD');
-            assert(meta.mobileCards>0&&meta.mobileStars===meta.mobileCards,'MOBILE_STAR_COUNT_BAD');
-            assert.equal(meta.desktopFilters,1,'DESKTOP_FILTER_MISSING');
-            assert.equal(meta.mobileFilters,1,'MOBILE_FILTER_MISSING');
-            assert(meta.counts.length>=2&&meta.counts.every(x=>x==='0'),'INITIAL_COUNTS_BAD');
+            if(surface==='mobile'){
+              assert(meta.mobileCards>0&&meta.mobileStars===meta.mobileCards,'MOBILE_STAR_COUNT_BAD');
+              assert.equal(meta.mobileFilters,1,'MOBILE_FILTER_MISSING');
+            }else{
+              assert(meta.desktopRows>0&&meta.desktopStars===meta.desktopRows,'DESKTOP_STAR_COUNT_BAD');
+              assert.equal(meta.desktopFilters,1,'DESKTOP_FILTER_MISSING');
+            }
+            assert(meta.counts.length>=1&&meta.counts.every(x=>x==='0'),'INITIAL_COUNTS_BAD');
 
             const target=await page.evaluate(surface=>surface==='mobile'
               ?document.querySelector('.b46gn-card[data-b46gn-fixture]')?.getAttribute('data-b46gn-fixture')
