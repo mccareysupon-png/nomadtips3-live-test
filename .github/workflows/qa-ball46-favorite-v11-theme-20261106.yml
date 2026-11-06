@@ -81,7 +81,8 @@ jobs:
             assert.equal(before.pressed,'false','INACTIVE_STATE_BAD');
             assert(before.star.w>=35&&before.star.h>=35,'TOUCH_TARGET_BAD');
             assert(before.star.x>=before.card.x-1,'STAR_OUTSIDE_LEFT');
-            assert(before.team.w===0 || before.star.x+before.star.w <= before.team.x+4,'STAR_OVERLAPS_TEAM_CONTENT');
+            assert(before.star.x-before.card.x <= 4,'STAR_NOT_IN_LEFT_GUTTER');
+            assert(before.star.x+before.star.w <= before.card.x+48,'STAR_EXCEEDS_LEFT_GUTTER');
 
             await page.evaluate((surface,id)=>document.querySelector('[data-b46-favorite-surface="'+surface+'"][data-b46-favorite-toggle="'+CSS.escape(id)+'"]')?.click(),surface,target);
             await new Promise(r=>setTimeout(r,120));
