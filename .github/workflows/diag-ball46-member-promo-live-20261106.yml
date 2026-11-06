@@ -56,10 +56,14 @@ jobs:
             }
             const main=cur.modules.find(m=>m.name===cur.main_module);
             const src=Buffer.from(main.content_base64,'base64').toString('utf8');
-            const needles=['B46_MEMBER_PROMO_20261103','ball46-member-promo-20261103a.jpg','b46-member-promo-20261103a.bin','data-asset='];
+            const needles=['B46_MEMBER_PROMO_20261103','ball46-member-promo-20261103a.jpg','b46-member-promo-20261103a.bin','data-asset=','member-promo-assets-20261104','b46-member-promo-20261104.jpg','b46mp-','Explore membership'];
             for(const n of needles)console.log('SOURCE_'+n.replace(/[^A-Za-z0-9]/g,'_')+'='+src.includes(n));
             const matches=[...src.matchAll(/ball46-member-promo[^"'\\\s<>)]+/g)].map(m=>m[0]);
             console.log('SOURCE_PROMO_MATCHES='+JSON.stringify([...new Set(matches)].slice(0,30)));
+            for(const needle of ['member-promo-assets-20261104','b46-member-promo-20261104.jpg','b46mp-','Explore membership']){
+              const ix=src.indexOf(needle);
+              if(ix>=0)console.log('SOURCE_SNIP_'+needle.replace(/[^A-Za-z0-9]/g,'_')+'='+JSON.stringify(src.slice(Math.max(0,ix-800),ix+1800)));
+            }
             const u='https://ball46.com/ball46-member-promo-20261103a.jpg?diag='+Date.now();
             const r=await fetch(u,{headers:{'cache-control':'no-cache'}});
             const b=Buffer.from(await r.arrayBuffer());
