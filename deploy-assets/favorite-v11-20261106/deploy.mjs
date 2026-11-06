@@ -107,11 +107,17 @@ try{
   const current=await version(base);
   const index=current.modules.find(m=>m.name==='assets/index.html'); assert(index,'INDEX_MISSING');
   const src=Buffer.from(index.content_base64,'base64').toString('utf8');
-  assert(!src.includes(MARK),'PATCH_ALREADY_PRESENT');
-  assert.equal(src.split('</body>').length-1,1,'BODY_ANCHOR_CHANGED');
-
   const injected=`<script id="b46-favorite-v11-20261106">/* ${MARK} */\n${favJs}</script>`;
-  const patched=src.replace('</body>',injected+'</body>');
+  const start=src.indexOf('<script id="b46-favorite-v11-20261106">');
+  let patched;
+  if(start>=0){
+    const end=src.indexOf('</script>',start);
+    assert(end>start,'EXISTING_FAVORITE_END_MISSING');
+    patched=src.slice(0,start)+injected+src.slice(end+9);
+  }else{
+    assert.equal(src.split('</body>').length-1,1,'BODY_ANCHOR_CHANGED');
+    patched=src.replace('</body>',injected+'</body>');
+  }
 
   const settingsBefore=await api(`/scripts/${SCRIPT}/settings`);
   const cronsBefore=await api(`/scripts/${SCRIPT}/schedules`);
