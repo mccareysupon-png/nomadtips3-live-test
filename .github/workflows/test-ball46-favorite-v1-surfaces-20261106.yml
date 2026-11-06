@@ -1,0 +1,169 @@
+name: Test BALL46 Favorite V1 Surfaces 20261106
+
+on:
+  push:
+    branches: [test/ball46-favorite-analysis-20261106]
+    paths:
+      - '.github/workflows/test-ball46-favorite-v1-surfaces-20261106.yml'
+      - 'deploy-assets/favorite-v1-20261106/favorite-v1.js'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --ignore-scripts puppeteer-core@24
+      - name: Validate PC and mobile Favorite surfaces
+        shell: bash
+        run: |
+          node <<'NODE'
+          (async()=>{
+          const fs=require('fs'),assert=require('assert/strict'),puppeteer=require('puppeteer-core');
+          const script=fs.readFileSync('deploy-assets/favorite-v1-20261106/favorite-v1.js','utf8');
+          assert(script.includes('BALL46_FAVORITE_V1_TEST_20261106'));
+          const exe=['/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium','/usr/bin/chromium-browser'].find(fs.existsSync);
+          assert(exe,'CHROME_MISSING');
+          const browser=await puppeteer.launch({executablePath:exe,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
+
+          async function runSurface(surface,viewport){
+            const page=await browser.newPage();
+            await page.setViewport(viewport);
+            await page.goto('https://ball46.com/?favSurface='+surface+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
+            await new Promise(r=>setTimeout(r,5000));
+            await page.addScriptTag({content:script});
+            await new Promise(r=>setTimeout(r,400));
+
+            const meta=await page.evaluate(()=>({
+              desktopRows:document.querySelectorAll('.match-row[data-match-id]').length,
+              desktopStars:document.querySelectorAll('[data-b46-favorite-surface="desktop"]').length,
+              mobileCards:document.querySelectorAll('.b46gn-card[data-b46gn-fixture]').length,
+              mobileStars:document.querySelectorAll('[data-b46-favorite-surface="mobile"]').length,
+              desktopFilters:document.querySelectorAll('[data-b46-favorite-filter="desktop"]').length,
+              mobileFilters:document.querySelectorAll('[data-b46-favorite-filter="mobile"]').length,
+              counts:[...document.querySelectorAll('[data-b46-favorite-count]')].map(x=>x.textContent),
+              api:Boolean(window.BALL46_FAVORITES_V1)
+            }));
+            assert(meta.api,'FAVORITE_API_MISSING');
+            assert(meta.desktopRows>0&&meta.desktopStars===meta.desktopRows,'DESKTOP_STAR_COUNT_BAD');
+            assert(meta.mobileCards>0&&meta.mobileStars===meta.mobileCards,'MOBILE_STAR_COUNT_BAD');
+            assert.equal(meta.desktopFilters,1,'DESKTOP_FILTER_MISSING');
+            assert.equal(meta.mobileFilters,1,'MOBILE_FILTER_MISSING');
+            assert(meta.counts.length>=2&&meta.counts.every(x=>x==='0'),'INITIAL_COUNTS_BAD');
+
+            const target=await page.evaluate(surface=>surface==='mobile'
+              ?document.querySelector('.b46gn-card[data-b46gn-fixture]')?.getAttribute('data-b46gn-fixture')
+              :document.querySelector('.match-row[data-match-id]')?.getAttribute('data-match-id'),surface);
+            assert(target,'TARGET_MISSING');
+
+            const starSel=(id,s)=>'[data-b46-favorite-surface="'+s+'"][data-b46-favorite-toggle="'+CSS.escape(id)+'"]';
+            await page.evaluate((id,s)=>document.querySelector('[data-b46-favorite-surface="'+s+'"][data-b46-favorite-toggle="'+CSS.escape(id)+'"]')?.click(),target,surface);
+            await new Promise(r=>setTimeout(r,180));
+
+            const saved=await page.evaluate((id,s)=>({
+              pressed:document.querySelector('[data-b46-favorite-surface="'+s+'"][data-b46-favorite-toggle="'+CSS.escape(id)+'"]')?.getAttribute('aria-pressed'),
+              glyph:document.querySelector('[data-b46-favorite-surface="'+s+'"][data-b46-favorite-toggle="'+CSS.escape(id)+'"]')?.textContent,
+              ids:window.BALL46_FAVORITES_V1.getIds(),
+              storage:localStorage.getItem('ball46_favorites_v1'),
+              counts:[...document.querySelectorAll('[data-b46-favorite-count]')].map(x=>x.textContent)
+            }),target,surface);
+            assert.equal(saved.pressed,'true','STAR_NOT_ACTIVE');
+            assert.equal(saved.glyph,'★','GLYPH_BAD');
+            assert(saved.ids.includes(target),'MEMORY_MISSING_ID');
+            assert(saved.storage?.includes(target),'STORAGE_MISSING_ID');
+            assert(saved.counts.every(x=>x==='1'),'COUNT_NOT_ONE');
+
+            await page.evaluate(s=>document.querySelector('[data-b46-favorite-filter="'+s+'"]')?.click(),surface);
+            await new Promise(r=>setTimeout(r,150));
+            const filtered=await page.evaluate((id,s)=>{
+              const list=s==='mobile'
+                ?[...document.querySelectorAll('.b46gn-card[data-b46gn-fixture]')].map(x=>({id:x.getAttribute('data-b46gn-fixture'),display:getComputedStyle(x).display}))
+                :[...document.querySelectorAll('.match-row[data-match-id]')].map(x=>({id:x.getAttribute('data-match-id'),display:getComputedStyle(x).display}));
+              return {
+                active:document.body.dataset.b46FavoriteOnly,
+                visible:list.filter(x=>x.display!=='none').map(x=>x.id),
+                filterActive:document.querySelector('[data-b46-favorite-filter="'+s+'"]')?.classList.contains('active')
+              };
+            },target,surface);
+            assert.equal(filtered.active,'1','FILTER_STATE_BAD');
+            assert.deepEqual(filtered.visible,[target],'FILTER_VISIBLE_SET_BAD');
+            assert(filtered.filterActive,'FILTER_ACTIVE_CLASS_BAD');
+
+            await page.evaluate(s=>document.querySelector('[data-b46-favorite-filter="'+s+'"]')?.click(),surface);
+            await new Promise(r=>setTimeout(r,100));
+
+            const geom=await page.evaluate((id,s)=>{
+              const el=document.querySelector('[data-b46-favorite-surface="'+s+'"][data-b46-favorite-toggle="'+CSS.escape(id)+'"]');
+              const r=el?.getBoundingClientRect();
+              const parent=el?.parentElement;
+              const pr=parent?.getBoundingClientRect();
+              return {w:r?.width||0,h:r?.height||0,parentW:pr?.width||0,parentH:pr?.height||0};
+            },target,surface);
+            if(surface==='mobile'){
+              assert(geom.w>=35&&geom.h>=35,'MOBILE_TOUCH_TARGET_BAD');
+              assert(geom.parentW>0&&geom.parentH>0,'MOBILE_STAR_NOT_VISIBLE');
+            } else {
+              assert(geom.w>=35&&geom.h>=35,'PC_TOUCH_TARGET_BAD');
+            }
+
+            await page.evaluate((id,s)=>{
+              const node=s==='mobile'
+                ?document.querySelector('.b46gn-card[data-b46gn-fixture="'+CSS.escape(id)+'"]')
+                :document.querySelector('.match-row[data-match-id="'+CSS.escape(id)+'"]');
+              if(!node)return;
+              const clone=node.cloneNode(true);
+              clone.querySelectorAll('[data-b46-favorite-toggle],.b46-fav-slot').forEach(x=>x.remove());
+              clone.classList.remove('b46-fav-mobile-ready');
+              node.replaceWith(clone);
+            },target,surface);
+            await new Promise(r=>setTimeout(r,240));
+
+            const rerendered=await page.evaluate((id,s)=>{
+              const sel='[data-b46-favorite-surface="'+s+'"][data-b46-favorite-toggle="'+CSS.escape(id)+'"]';
+              return {count:document.querySelectorAll(sel).length,pressed:document.querySelector(sel)?.getAttribute('aria-pressed')};
+            },target,surface);
+            assert.equal(rerendered.count,1,'STAR_NOT_RESTORED_OR_DUPLICATED');
+            assert.equal(rerendered.pressed,'true','STATE_LOST_AFTER_RERENDER');
+
+            await page.reload({waitUntil:'domcontentloaded',timeout:90000});
+            await new Promise(r=>setTimeout(r,4500));
+            await page.addScriptTag({content:script});
+            await new Promise(r=>setTimeout(r,300));
+
+            const persisted=await page.evaluate((id,s)=>({
+              has:window.BALL46_FAVORITES_V1.getIds().includes(id),
+              pressed:document.querySelector('[data-b46-favorite-surface="'+s+'"][data-b46-favorite-toggle="'+CSS.escape(id)+'"]')?.getAttribute('aria-pressed'),
+              counts:[...document.querySelectorAll('[data-b46-favorite-count]')].map(x=>x.textContent)
+            }),target,surface);
+            assert(persisted.has,'NOT_PERSISTED_AFTER_RELOAD');
+            assert.equal(persisted.pressed,'true','PERSISTED_STAR_NOT_ACTIVE');
+            assert(persisted.counts.every(x=>x==='1'),'PERSISTED_COUNT_BAD');
+
+            await page.evaluate((id,s)=>document.querySelector('[data-b46-favorite-surface="'+s+'"][data-b46-favorite-toggle="'+CSS.escape(id)+'"]')?.click(),target,surface);
+            await new Promise(r=>setTimeout(r,120));
+            const cleared=await page.evaluate(()=>({
+              ids:window.BALL46_FAVORITES_V1.getIds(),
+              counts:[...document.querySelectorAll('[data-b46-favorite-count]')].map(x=>x.textContent)
+            }));
+            assert.equal(cleared.ids.length,0,'CLEAR_FAILED');
+            assert(cleared.counts.every(x=>x==='0'),'CLEAR_COUNT_BAD');
+
+            await page.close();
+            return {surface,target,meta,saved,filtered,geom,rerendered,persisted};
+          }
+
+          const pc=await runSurface('desktop',{width:1280,height:900,deviceScaleFactor:1});
+          const mobile=await runSurface('mobile',{width:390,height:844,isMobile:true,deviceScaleFactor:2});
+          console.log('PC='+JSON.stringify(pc));
+          console.log('MOBILE='+JSON.stringify(mobile));
+          console.log('BALL46_FAVORITE_V1_SURFACES_TEST_PASS');
+          await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
