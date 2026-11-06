@@ -42,6 +42,9 @@ async function qaSurface(browser,name,viewport,theme){
   try{
     await page.goto(ORIGIN+'/?favProdQa='+name+theme+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
     await delay(4800); await ensureTheme(page,theme); await delay(250);
+    await page.evaluate(()=>{try{localStorage.removeItem('ball46_favorites_v1')}catch{}});
+    await page.reload({waitUntil:'domcontentloaded',timeout:90000});
+    await delay(3800); await ensureTheme(page,theme); await delay(180);
     const out=await page.evaluate(name=>{
       const surface=name==='mobile'?'mobile':'desktop';
       const selector=surface==='mobile'?'.b46gn-card[data-b46gn-fixture]':'.match-row[data-match-id]';
