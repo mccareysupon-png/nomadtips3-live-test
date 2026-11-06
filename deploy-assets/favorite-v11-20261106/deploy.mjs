@@ -69,7 +69,7 @@ async function qaSurface(browser,name,viewport,theme){
     assert.equal(out.glyph,'☆','INACTIVE_GLYPH_BAD');
     assert.equal(out.pressed,'false','INACTIVE_STATE_BAD');
     assert.equal(out.starCount,out.rowCount,'STAR_COUNT_BAD');
-    assert(out.filter,'FILTER_MISSING');
+    assert.equal(out.filter,false,'FILTER_STILL_PRESENT');
     assert(out.w>=35&&out.h>=35,'TOUCH_TARGET_BAD');
     assert(out.x-out.nodeX<=4,'STAR_NOT_LEFT');
     await page.evaluate((name,id)=>{
@@ -85,7 +85,11 @@ async function qaSurface(browser,name,viewport,theme){
     assert.equal(activeState.glyph,'★','ACTIVE_GLYPH_BAD');
     assert.equal(activeState.pressed,'true','ACTIVE_STATE_BAD');
     assert(activeState.storage?.includes(out.id),'STORAGE_BAD');
-    return {out,activeState};
+    const legacy=await page.evaluate(()=>({favoriteOnly:document.body.dataset.b46FavoriteOnly||'',hidden:document.querySelectorAll('.b46-fav-hidden').length,filters:document.querySelectorAll('[data-b46-favorite-filter]').length}));
+    assert.equal(legacy.favoriteOnly,'','LEGACY_FAVORITE_STATE_PRESENT');
+    assert.equal(legacy.hidden,0,'LEGACY_HIDDEN_ROWS_PRESENT');
+    assert.equal(legacy.filters,0,'LEGACY_FILTER_PRESENT');
+    return {out,activeState,legacy};
   }finally{await page.close()}
 }
 async function browserQa(){
@@ -123,7 +127,7 @@ try{
   const cronsBefore=await api(`/scripts/${SCRIPT}/schedules`);
   assert.equal(await active(),base,'PRODUCTION_MOVED_BEFORE_UPLOAD');
 
-  const metadata={main_module:current.main_module,compatibility_date:current.compatibility_date,compatibility_flags:current.compatibility_flags||[],bindings:current.bindings,keep_assets:true,assets:{config:current.assets?.config},annotations:{'workers/tag':MARK,'workers/message':'Favorite V1.1 left-column light-dark PC-mobile'}};
+  const metadata={main_module:current.main_module,compatibility_date:current.compatibility_date,compatibility_flags:current.compatibility_flags||[],bindings:current.bindings,keep_assets:true,assets:{config:current.assets?.config},annotations:{'workers/tag':MARK,'workers/message':'Favorite stars only; filter removed PC-mobile'}};
   if(current.placement)metadata.placement=current.placement;
   const form=new FormData();
   form.append('metadata',new Blob([JSON.stringify(metadata)],{type:'application/json'}),'metadata.json');
@@ -148,7 +152,7 @@ try{
   assert.equal(canon(await api(`/scripts/${SCRIPT}/settings`)),canon(settingsBefore),'SETTINGS_CHANGED_BEFORE_ACTIVATE');
   assert.equal(canon(await api(`/scripts/${SCRIPT}/schedules`)),canon(cronsBefore),'CRONS_CHANGED_BEFORE_ACTIVATE');
 
-  await activate(candidate,'Deploy Favorite V1.1');
+  await activate(candidate,'Deploy Favorite stars-only filter removed');
   activated=true;
   for(let i=0;i<20;i++){if(await active()===candidate)break;await delay(1000)}
   assert.equal(await active(),candidate,'CANDIDATE_NOT_ACTIVE');
@@ -159,7 +163,7 @@ try{
   console.log('BASE_VERSION='+base);
   console.log('FINAL_PRODUCTION='+candidate);
   console.log('QA='+JSON.stringify(qa));
-  console.log('BALL46_FAVORITE_V11_DEPLOY_SUCCESS');
+  console.log('BALL46_FAVORITE_STARS_ONLY_DEPLOY_SUCCESS');
 }catch(e){
   console.error(e.stack);
   try{
