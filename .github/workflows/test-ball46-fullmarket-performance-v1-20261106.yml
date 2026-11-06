@@ -1,0 +1,131 @@
+name: Test BALL46 Full Market Performance V1 20261106
+
+on:
+  push:
+    branches: [test/ball46-fullmarket-copy-20261106]
+    paths:
+      - '.github/workflows/test-ball46-fullmarket-performance-v1-20261106.yml'
+      - 'deploy-assets/fullmarket-performance-v1-20261106/fullmarket-performance-v1.css'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  perf-test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: npm install --no-save --ignore-scripts puppeteer-core@24
+      - name: Compare Full Market scroll cost before and after V1 CSS
+        shell: bash
+        run: |
+          node <<'NODE'
+          (async()=>{
+          const fs=require('fs'),assert=require('assert/strict'),puppeteer=require('puppeteer-core');
+          const css=fs.readFileSync('deploy-assets/fullmarket-performance-v1-20261106/fullmarket-performance-v1.css','utf8');
+          assert(css.includes('BALL46_FULLMARKET_PERFORMANCE_V1_20261106'));
+          const exe=['/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium','/usr/bin/chromium-browser'].find(fs.existsSync);
+          assert(exe,'CHROME_MISSING');
+          const browser=await puppeteer.launch({executablePath:exe,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
+          const page=await browser.newPage();
+          await page.setViewport({width:390,height:844,isMobile:true,deviceScaleFactor:2});
+          const cdp=await page.target().createCDPSession();
+          await cdp.send('Performance.enable');
+
+          await page.goto('https://ball46.com/?fmbPerfV1='+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
+          await page.waitForSelector('.match-row[data-match-id]',{timeout:90000});
+          await new Promise(r=>setTimeout(r,4500));
+          const rows=await page.$$('.match-row[data-match-id]');
+          let opened=false;
+          for(const row of rows.slice(0,12)){
+            await row.click();
+            await new Promise(r=>setTimeout(r,1200));
+            if(await page.$('.expand-full-market-card .fmb-head')){opened=true;break}
+          }
+          assert(opened,'FULL_MARKET_NOT_OPENED');
+
+          const measure=async label=>{
+            const before=(await cdp.send('Performance.getMetrics')).metrics;
+            const map=a=>Object.fromEntries(a.map(x=>[x.name,x.value]));
+            const b=map(before);
+            const result=await page.evaluate(async()=>{
+              const root=document.querySelector('.expand-full-market-card');
+              if(!root)throw new Error('FULL_MARKET_ROOT_MISSING');
+              const top=root.getBoundingClientRect().top+scrollY;
+              const height=root.getBoundingClientRect().height;
+              const end=Math.max(top,top+height-innerHeight);
+              let frames=0;
+              const start=performance.now();
+              for(let y=top;y<=end;y+=70){
+                scrollTo(0,y);
+                await new Promise(r=>requestAnimationFrame(()=>{frames++;r()}));
+              }
+              for(let y=end;y>=top;y-=70){
+                scrollTo(0,y);
+                await new Promise(r=>requestAnimationFrame(()=>{frames++;r()}));
+              }
+              return {elapsed:performance.now()-start,frames,height};
+            });
+            const after=(await cdp.send('Performance.getMetrics')).metrics;
+            const a=map(after);
+            const delta={};
+            for(const k of ['LayoutCount','RecalcStyleCount','LayoutDuration','RecalcStyleDuration','ScriptDuration','TaskDuration']){
+              delta[k]=(a[k]??0)-(b[k]??0);
+            }
+            return {label,...result,delta};
+          };
+
+          const before=await measure('before');
+          const structureBefore=await page.evaluate(()=>({
+            tabs:document.querySelectorAll('.expand-full-market-card [data-fmb-book]').length,
+            markets:document.querySelectorAll('.expand-full-market-card .fmb-market').length,
+            tables:document.querySelectorAll('.expand-full-market-card .fmb-market table').length
+          }));
+
+          await page.addStyleTag({content:css});
+          await new Promise(r=>setTimeout(r,200));
+
+          const cssCheck=await page.evaluate(()=> {
+            const m=document.querySelector('.expand-full-market-card .fmb-market');
+            const t=document.querySelector('.expand-full-market-card .fmb-table-wrap');
+            if(!m||!t)return null;
+            const ms=getComputedStyle(m),ts=getComputedStyle(t);
+            return {
+              contentVisibility:ms.contentVisibility,
+              contain:ms.contain,
+              intrinsic:ms.containIntrinsicSize,
+              tableContain:ts.contain,
+              boxShadow:ms.boxShadow
+            };
+          });
+          assert(cssCheck,'CSS_TARGET_MISSING');
+          assert(cssCheck.contentVisibility==='auto','CONTENT_VISIBILITY_NOT_APPLIED');
+          assert(/layout/.test(cssCheck.contain)&&/paint/.test(cssCheck.contain),'MARKET_CONTAIN_NOT_APPLIED');
+          assert(/layout/.test(cssCheck.tableContain)&&/paint/.test(cssCheck.tableContain),'TABLE_CONTAIN_NOT_APPLIED');
+
+          const after=await measure('after');
+          const structureAfter=await page.evaluate(()=>({
+            tabs:document.querySelectorAll('.expand-full-market-card [data-fmb-book]').length,
+            markets:document.querySelectorAll('.expand-full-market-card .fmb-market').length,
+            tables:document.querySelectorAll('.expand-full-market-card .fmb-market table').length
+          }));
+          assert.deepEqual(structureAfter,structureBefore,'FULL_MARKET_STRUCTURE_CHANGED');
+
+          const summary={
+            before,after,cssCheck,structureBefore,structureAfter,
+            improvement:{
+              elapsedPct:before.elapsed?((before.elapsed-after.elapsed)/before.elapsed*100):0,
+              layoutDurationPct:before.delta.LayoutDuration?((before.delta.LayoutDuration-after.delta.LayoutDuration)/before.delta.LayoutDuration*100):0,
+              recalcStyleDurationPct:before.delta.RecalcStyleDuration?((before.delta.RecalcStyleDuration-after.delta.RecalcStyleDuration)/before.delta.RecalcStyleDuration*100):0,
+              taskDurationPct:before.delta.TaskDuration?((before.delta.TaskDuration-after.delta.TaskDuration)/before.delta.TaskDuration*100):0
+            }
+          };
+          console.log('PERF_V1='+JSON.stringify(summary));
+          console.log('BALL46_FULLMARKET_PERFORMANCE_V1_TEST_PASS');
+          await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
