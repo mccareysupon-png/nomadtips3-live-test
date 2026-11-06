@@ -1,0 +1,107 @@
+name: Test BALL46 Favorite V1.2 Isolated DOM 20261106
+
+on:
+  push:
+    branches: [test/ball46-favorite-analysis-20261106]
+    paths:
+      - '.github/workflows/test-ball46-favorite-v12-isolated-dom-20261106.yml'
+      - 'deploy-assets/favorite-v1-20261106/favorite-v1.js'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: npm install --no-save --ignore-scripts puppeteer-core@24
+      - name: Validate exact-star isolation with one Favorite implementation
+        shell: bash
+        run: |
+          node <<'NODE'
+          (async()=>{
+          const fs=require('fs'),assert=require('assert/strict'),puppeteer=require('puppeteer-core');
+          const script=fs.readFileSync('deploy-assets/favorite-v1-20261106/favorite-v1.js','utf8');
+          assert(script.includes('BALL46_FAVORITE_V12_TEST_20261106'));
+          const exe=['/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium','/usr/bin/chromium-browser'].find(fs.existsSync);assert(exe);
+          const browser=await puppeteer.launch({executablePath:exe,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
+
+          async function run(surface,viewport){
+            const page=await browser.newPage(); await page.setViewport(viewport);
+            const html=surface==='mobile'
+              ? `<!doctype html><html data-theme="dark"><head><style>
+                  body{margin:0;padding:20px;background:#071612}
+                  .b46gn-section{position:relative}
+                  .b46gn-card{position:relative;width:350px;height:120px;border:1px solid #345;margin:8px}
+                  .b46gn-team-name{margin-left:50px}
+                  .b46gn-next{position:absolute;right:8px;top:50%}
+                </style></head><body>
+                  <section class="b46gn-section"><span>All Matches</span><a class="b46gn-seeall">See all</a></section>
+                  <div class="b46gn-card" data-b46gn-fixture="123">
+                    <div class="b46gn-team-name">Home Team</div><div class="b46gn-team-name">Away Team</div>
+                    <span class="b46gn-next">›</span>
+                  </div>
+                </body></html>`
+              : `<!doctype html><html data-theme="light"><head><style>
+                  body{margin:0;padding:20px;background:#fff}
+                  .match-row{position:relative;width:700px;height:64px;border:1px solid #ccc}
+                  .match-teams{margin-left:45px}
+                  .rail-card{margin-top:20px}.filter{display:block}
+                </style></head><body>
+                  <div class="match-row" data-match-id="123"><div class="match-teams">Home Team - Away Team</div></div>
+                  <div class="rail-card">MATCH STATUS<button class="filter" data-status-filter="all">All</button></div>
+                </body></html>`;
+            await page.setContent(html,{waitUntil:'domcontentloaded'});
+            await page.addScriptTag({content:script});
+            await new Promise(r=>setTimeout(r,100));
+
+            await page.evaluate(surface=>{
+              const star=document.querySelector('[data-b46-favorite-surface="'+surface+'"]');
+              const card=surface==='mobile'?star.closest('.b46gn-card'):star.closest('.match-row');
+              window.__cardClicks=0;
+              card.addEventListener('click',()=>window.__cardClicks++,false);
+            },surface);
+
+            const info=await page.evaluate(surface=>{
+              const star=document.querySelector('[data-b46-favorite-surface="'+surface+'"]');
+              const card=surface==='mobile'?star.closest('.b46gn-card'):star.closest('.match-row');
+              const sr=star.getBoundingClientRect(),cr=card.getBoundingClientRect();
+              return {star:{x:sr.x,y:sr.y,w:sr.width,h:sr.height},card:{x:cr.x,y:cr.y,w:cr.width,h:cr.height}};
+            },surface);
+
+            await page.mouse.click(info.star.x+info.star.w/2,info.star.y+info.star.h/2);
+            await new Promise(r=>setTimeout(r,80));
+            const exact=await page.evaluate(surface=>({
+              pressed:document.querySelector('[data-b46-favorite-surface="'+surface+'"]').getAttribute('aria-pressed'),
+              clicks:window.__cardClicks,
+              storage:localStorage.getItem('ball46_favorites_v1')
+            }),surface);
+            assert.equal(exact.pressed,'true','EXACT_STAR_NOT_TOGGLED');
+            assert.equal(exact.clicks,0,'EXACT_STAR_PROPAGATED_TO_CARD');
+            assert(exact.storage?.includes('123'),'EXACT_STAR_NOT_SAVED');
+
+            await page.evaluate(()=>window.__cardClicks=0);
+            const x=info.star.x+info.star.w+6, y=info.star.y+info.star.h/2;
+            assert(x<info.card.x+info.card.w,'MISS_POINT_OUTSIDE_CARD');
+            await page.mouse.click(x,y);
+            await new Promise(r=>setTimeout(r,80));
+            const miss=await page.evaluate(()=>({clicks:window.__cardClicks}));
+            assert(miss.clicks>=1,'MISS_CLICK_NOT_RECEIVED_BY_CARD');
+
+            await page.close();
+            return {surface,exact,miss,info};
+          }
+
+          const pc=await run('desktop',{width:1000,height:700,deviceScaleFactor:1});
+          const mobile=await run('mobile',{width:390,height:844,isMobile:true,deviceScaleFactor:2});
+          console.log('PC='+JSON.stringify(pc));
+          console.log('MOBILE='+JSON.stringify(mobile));
+          console.log('BALL46_FAVORITE_V12_ISOLATED_DOM_PASS');
+          await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
