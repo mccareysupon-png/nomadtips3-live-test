@@ -1,4 +1,4 @@
-/* BALL46_FAVORITE_V1_TEST_20261106 */
+/* BALL46_FAVORITE_V12_TEST_20261106 */
 (()=>{
 'use strict';
 const STORAGE_KEY='ball46_favorites_v1';
@@ -132,6 +132,13 @@ function onClick(e){
   const filter=e.target.closest?.('[data-b46-favorite-filter]');
   if(filter){e.preventDefault();e.stopPropagation();document.body.dataset.b46FavoriteOnly=document.body.dataset.b46FavoriteOnly==='1'?'0':'1';applyFilter()}
 }
+function stopStarPointer(e){
+  const star=e.target.closest?.(STAR_SELECTOR);
+  if(!star)return;
+  e.preventDefault();
+  e.stopPropagation();
+  e.stopImmediatePropagation();
+}
 function onKeydown(e){
   if((e.key==='Enter'||e.key===' ')&&e.target?.matches?.('[data-b46-favorite-surface="mobile"]')){
     e.preventDefault();e.stopPropagation();toggle(e.target.dataset.b46FavoriteToggle);
@@ -139,6 +146,9 @@ function onKeydown(e){
 }
 function boot(){
   ensureStyle();load();repaint();
+  document.addEventListener('pointerdown',stopStarPointer,true);
+  document.addEventListener('mousedown',stopStarPointer,true);
+  document.addEventListener('touchstart',stopStarPointer,{capture:true,passive:false});
   document.addEventListener('click',onClick,true);
   document.addEventListener('keydown',onKeydown,true);
   const mo=new MutationObserver(()=>{clearTimeout(boot._t);boot._t=setTimeout(repaint,40)});
