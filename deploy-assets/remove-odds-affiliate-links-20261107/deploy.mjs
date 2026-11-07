@@ -38,14 +38,28 @@ try{
   const main=current.modules.find(m=>m.name===current.main_module)||current.modules.find(m=>m.name==='index.js');
   assert(main,'INDEX_MODULE_MISSING');
   const txt=Buffer.from(main.content_base64,'base64').toString('utf8');
-  const oldNeedle='return \`<a class="fmb-affiliate-odds" data-b46-affiliate-odds="\${esc(slug)}" href="\${esc(url)}" target="_blank" rel="sponsored noopener noreferrer" title="\${esc(label)} affiliate link · 18+ · Gamble responsibly">\${esc(text)}</a>\`';
-  const newNeedle='return esc(text)';
-  assert(txt.includes('function affiliatePriceHtml'),'AFFILIATE_RENDERER_MISSING');
-  assert(txt.includes(oldNeedle),'AFFILIATE_ANCHOR_RENDER_NOT_FOUND');
-  const patched=txt.replace(oldNeedle,newNeedle);
-  assert(!patched.includes(oldNeedle),'AFFILIATE_ANCHOR_RENDER_REMAINS');
-  assert(patched.includes('function affiliatePriceHtml'),'AFFILIATE_RENDERER_LOST');
-
+  const marker='B46_REMOVE_ODDS_AFFILIATE_LINKS_20261107';
+  assert(!txt.includes(marker),'PATCH_ALREADY_PRESENT');
+  const hook=`
+/* B46_REMOVE_ODDS_AFFILIATE_LINKS_20261107 */
+const __B46_REMOVE_ODDS_LINKS_ORIGINAL_NOSTORE__=noStoreUiAsset;
+noStoreUiAsset=async function(request,env){
+  const res=await __B46_REMOVE_ODDS_LINKS_ORIGINAL_NOSTORE__(request,env);
+  const path=new URL(request.url).pathname;
+  if(path!=='/full-market-bookmaker-343.js'||!res.ok)return res;
+  let source=await res.text();
+  const oldFn='function affiliatePriceHtml(v,slug){const text=String(v??\'—\').trim()||\'—\',url=AFFILIATE_URLS[slug];if(!url||text===\'—\'||!AFFILIATE_PRICE_RE.test(text))return esc(text);const label=slug===\'1xbet\'?\'1xBet\':slug===\'williamhill\'?\'William Hill\':\'Bookmaker\';return \`<a class="fmb-affiliate-odds" data-b46-affiliate-odds="\${esc(slug)}" href="\${esc(url)}" target="_blank" rel="sponsored noopener noreferrer" title="\${esc(label)} affiliate link · 18+ · Gamble responsibly">\${esc(text)}</a>\`}';
+  const newFn='function affiliatePriceHtml(v,slug){const text=String(v??\'—\').trim()||\'—\';return esc(text)}';
+  if(!source.includes(oldFn))throw new Error('FULL_MARKET_AFFILIATE_RENDER_DRIFT');
+  source=source.replace(oldFn,newFn);
+  const h=new Headers(res.headers);
+  h.delete('content-length');h.delete('etag');h.set('cache-control','no-store');
+  h.set('x-ball46-odds-links','removed-20261107');
+  return new Response(source,{status:res.status,statusText:res.statusText,headers:h});
+};
+`;
+  const patched=txt+"\n"+hook;
+  assert(patched.includes(marker),'PATCH_MARKER_MISSING');
   const settingsBefore=await settings();
   const schedulesBefore=await schedules();
   assert.equal(await active(),base,'PRODUCTION_MOVED_BEFORE_UPLOAD');
@@ -79,8 +93,7 @@ try{
     const got=Buffer.from(cm.content_base64,'base64');
     if(m.name===main.name){
       const t=got.toString('utf8');
-      assert(t.includes(newNeedle),'CANDIDATE_PLAIN_PRICE_RENDER_MISSING');
-      assert(!t.includes(oldNeedle),'CANDIDATE_LINK_RENDER_REMAINS');
+      assert(t.includes(marker),'CANDIDATE_PATCH_MARKER_MISSING');
     } else {
       assert.equal(got.toString('base64'),m.content_base64,`UNRELATED_MODULE_CHANGED:${m.name}`);
     }
@@ -97,8 +110,7 @@ try{
   const final=await version(candidate);
   const finalMain=final.modules.find(m=>m.name===main.name);
   const finalTxt=Buffer.from(finalMain.content_base64,'base64').toString('utf8');
-  assert(finalTxt.includes(newNeedle),'ACTIVE_PLAIN_PRICE_RENDER_MISSING');
-  assert(!finalTxt.includes(oldNeedle),'ACTIVE_LINK_RENDER_REMAINS');
+  assert(finalTxt.includes(marker),'ACTIVE_PATCH_MARKER_MISSING');
   assert.equal(canon(await settings()),canon(settingsBefore),'SETTINGS_CHANGED');
   assert.equal(canon(await schedules()),canon(schedulesBefore),'SCHEDULES_CHANGED');
 
