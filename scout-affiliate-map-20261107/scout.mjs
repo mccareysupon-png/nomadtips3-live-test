@@ -27,3 +27,12 @@ for(const m of ver.modules||[]){
     if(count>=12)break;
   }
 }
+
+for(const m of ver.modules||[]){
+  if(!/full-market-bookmaker-343\.js$/.test(m.name))continue;
+  const txt=Buffer.from(m.content_base64||'','base64').toString('utf8');
+  const i=txt.indexOf('AFFILIATE_URLS');
+  console.log('TARGET_MODULE='+m.name);
+  console.log('TARGET_INDEX='+i);
+  if(i>=0)console.log('TARGET_CONTEXT='+txt.slice(Math.max(0,i-500),Math.min(txt.length,i+10000)).replace(/\n/g,'\\n'));
+}
