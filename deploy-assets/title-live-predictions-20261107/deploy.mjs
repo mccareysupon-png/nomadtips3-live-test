@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 const SCRIPT='ball46-production';
 const OLD="BALL46 | Live Betting Tips, Football Scores &amp; Signals";
 const NEW="BALL46 | Live Predictions, Football Scores &amp; Signals";
+const OLD_GUARD="if(!h.includes('Live Betting Tips'))throw Error";
+const NEW_GUARD="if(!h.includes('Live Predictions'))throw Error";
 const account=process.env.CLOUDFLARE_ACCOUNT_ID;
 const token=process.env.CLOUDFLARE_API_TOKEN;
 const root=`https://api.cloudflare.com/client/v4/accounts/${account}/workers`;
@@ -42,10 +44,14 @@ try{
   assert(main,'INDEX_MODULE_MISSING');
   const txt=Buffer.from(main.content_base64,'base64').toString('utf8');
   assert.equal(txt.split(OLD).length-1,1,'OLD_TITLE_COUNT_NOT_ONE');
+  assert.equal(txt.split(OLD_GUARD).length-1,1,'OLD_GUARD_COUNT_NOT_ONE');
   assert.equal(txt.includes(NEW),false,'NEW_TITLE_ALREADY_PRESENT');
-  const patched=txt.replace(OLD,NEW);
+  assert.equal(txt.includes(NEW_GUARD),false,'NEW_GUARD_ALREADY_PRESENT');
+  const patched=txt.replace(OLD,NEW).replace(OLD_GUARD,NEW_GUARD);
   assert.equal(patched.split(NEW).length-1,1,'NEW_TITLE_COUNT_NOT_ONE');
+  assert.equal(patched.split(NEW_GUARD).length-1,1,'NEW_GUARD_COUNT_NOT_ONE');
   assert.equal(patched.includes(OLD),false,'OLD_TITLE_REMAINS');
+  assert.equal(patched.includes(OLD_GUARD),false,'OLD_GUARD_REMAINS');
 
   const settingsBefore=await settings();
   const schedulesBefore=await schedules();
@@ -81,7 +87,9 @@ try{
     if(m.name===main.name){
       const t=got.toString('utf8');
       assert(t.includes(NEW),'CANDIDATE_NEW_TITLE_MISSING');
+      assert(t.includes(NEW_GUARD),'CANDIDATE_NEW_GUARD_MISSING');
       assert(!t.includes(OLD),'CANDIDATE_OLD_TITLE_REMAINS');
+      assert(!t.includes(OLD_GUARD),'CANDIDATE_OLD_GUARD_REMAINS');
     } else {
       assert.equal(got.toString('base64'),m.content_base64,`UNRELATED_MODULE_CHANGED:${m.name}`);
     }
@@ -99,7 +107,9 @@ try{
   const finalMain=final.modules.find(m=>m.name===main.name);
   const finalTxt=Buffer.from(finalMain.content_base64,'base64').toString('utf8');
   assert(finalTxt.includes(NEW),'ACTIVE_NEW_TITLE_MISSING');
+  assert(finalTxt.includes(NEW_GUARD),'ACTIVE_NEW_GUARD_MISSING');
   assert(!finalTxt.includes(OLD),'ACTIVE_OLD_TITLE_REMAINS');
+  assert(!finalTxt.includes(OLD_GUARD),'ACTIVE_OLD_GUARD_REMAINS');
   assert.equal(canon(await settings()),canon(settingsBefore),'SETTINGS_CHANGED');
   assert.equal(canon(await schedules()),canon(schedulesBefore),'SCHEDULES_CHANGED');
 
