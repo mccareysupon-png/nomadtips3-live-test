@@ -33,3 +33,23 @@ for(const m of ver.modules||[]){
     if(count) console.log('COUNT:'+m.name+':'+n+'='+count);
   }
 }
+
+
+console.log('--- EXTERNAL_LINK_AUDIT ---');
+for(const m of ver.modules||[]){
+  const txt=Buffer.from(m.content_base64||'','base64').toString('utf8');
+  const re=/https?:\\/\\/[^"'\\s<>\\)]+/g;
+  const seen=new Set();
+  for(const match of txt.matchAll(re)){
+    const url=match[0];
+    if(seen.has(url))continue; seen.add(url);
+    if(/ball46\\.com|workers\\.dev|github|google|schema\\.org|w3\\.org|fonts|cloudflare/i.test(url))continue;
+    const i=match.index||0;
+    const ctx=txt.slice(Math.max(0,i-700),Math.min(txt.length,i+url.length+1200));
+    if(/book|odds|market|price|affiliate|bet365|1xbet|10bet|12bet|reffpa/i.test(ctx)){
+      console.log('EXT_MODULE='+m.name);
+      console.log('EXT_URL='+url);
+      console.log('EXT_CONTEXT='+ctx.replace(/\\n/g,'\\\\n'));
+    }
+  }
+}
