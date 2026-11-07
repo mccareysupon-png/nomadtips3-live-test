@@ -113,10 +113,24 @@ try{
   assert.equal(canon(await settings()),canon(settingsBefore),'SETTINGS_CHANGED');
   assert.equal(canon(await schedules()),canon(schedulesBefore),'SCHEDULES_CHANGED');
 
-  const r=await fetch('https://ball46.com/?titleQa='+Date.now(),{headers:{'cache-control':'no-cache'},signal:AbortSignal.timeout(45000)});
-  assert(r.ok,'PUBLIC_HTTP_'+r.status);
-  const html=await r.text();
-  assert(html.includes('BALL46 | Live Predictions, Football Scores &amp; Signals'),'PUBLIC_TITLE_NOT_UPDATED');
+  async function waitForPublicTitle(origin){
+    let lastStatus=0,lastTitle='';
+    for(let i=0;i<25;i++){
+      const u=origin+'/?titleQa='+Date.now()+'-'+i;
+      const r=await fetch(u,{headers:{'cache-control':'no-cache'},signal:AbortSignal.timeout(45000)});
+      lastStatus=r.status;
+      const html=await r.text();
+      const m=html.match(/<title[^>]*>([\\s\\S]*?)<\\/title>/i);
+      lastTitle=m?m[1]:'NO_TITLE';
+      if(r.ok&&html.includes('BALL46 | Live Predictions, Football Scores &amp; Signals')) return {status:r.status,title:lastTitle};
+      await delay(1000);
+    }
+    throw new Error('PUBLIC_TITLE_NOT_UPDATED:'+origin+':status='+lastStatus+':title='+lastTitle);
+  }
+  const direct=await waitForPublicTitle('https://ball46-production.mccarey-supon.workers.dev');
+  const custom=await waitForPublicTitle('https://ball46.com');
+  console.log('DIRECT_TITLE='+direct.title);
+  console.log('CUSTOM_TITLE='+custom.title);
 
   console.log('BASE_VERSION='+base);
   console.log('FINAL_PRODUCTION='+candidate);
