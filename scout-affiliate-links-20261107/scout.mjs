@@ -35,21 +35,23 @@ for(const m of ver.modules||[]){
 }
 
 
-console.log('--- EXTERNAL_LINK_AUDIT ---');
+
+
+console.log('--- EXTERNAL_LINK_AUDIT_V2 ---');
 for(const m of ver.modules||[]){
   const txt=Buffer.from(m.content_base64||'','base64').toString('utf8');
-  const re=/https?:\\/\\/[^"'\\s<>\\)]+/g;
-  const seen=new Set();
-  for(const match of txt.matchAll(re)){
-    const url=match[0];
-    if(seen.has(url))continue; seen.add(url);
-    if(/ball46\\.com|workers\\.dev|github|google|schema\\.org|w3\\.org|fonts|cloudflare/i.test(url))continue;
-    const i=match.index||0;
-    const ctx=txt.slice(Math.max(0,i-700),Math.min(txt.length,i+url.length+1200));
+  let p=0; const seen=new Set();
+  while(true){
+    const a=txt.indexOf('http',p); if(a<0)break;
+    let b=a; while(b<txt.length && !['"',"'"," ","\\n","\\r","<",">",")"].includes(txt[b])) b++;
+    const url=txt.slice(a,b); p=Math.max(b,a+4);
+    if(!url.startsWith('http')||seen.has(url))continue; seen.add(url);
+    if(/ball46\.com|workers\.dev|github|google|schema\.org|w3\.org|fonts|cloudflare/i.test(url))continue;
+    const ctx=txt.slice(Math.max(0,a-700),Math.min(txt.length,b+1200));
     if(/book|odds|market|price|affiliate|bet365|1xbet|10bet|12bet|reffpa/i.test(ctx)){
       console.log('EXT_MODULE='+m.name);
       console.log('EXT_URL='+url);
-      console.log('EXT_CONTEXT='+ctx.replace(/\\n/g,'\\\\n'));
+      console.log('EXT_CONTEXT='+ctx.replace(/\n/g,'\\n'));
     }
   }
 }
