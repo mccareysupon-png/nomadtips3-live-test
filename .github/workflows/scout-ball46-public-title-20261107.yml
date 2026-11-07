@@ -1,0 +1,22 @@
+name: Scout BALL46 Public Raw Title 20261107
+on:
+  push:
+    branches: [test/ball46-title-live-predictions-20261107]
+    paths:
+      - 'scout-public-title-20261107/READY'
+permissions:
+  contents: read
+jobs:
+  scout:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: test/ball46-title-live-predictions-20261107
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Inspect public raw title
+        working-directory: scout-public-title-20261107
+        run: node scout.mjs
