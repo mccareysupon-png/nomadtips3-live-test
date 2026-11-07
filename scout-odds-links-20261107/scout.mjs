@@ -48,3 +48,12 @@ for(const m of ver.modules||[]){
     }
   }
 }
+
+console.log('--- ODDS_LINK_FINAL_AUDIT ---');
+for(const m of ver.modules||[]){
+  const txt=Buffer.from(m.content_base64||'','base64').toString('utf8');
+  const mapNeedles=['const AFFILIATE_URLS=Object.freeze({','AFFILIATE_URLS=Object.freeze({'];
+  for(const mn of mapNeedles){const i=txt.indexOf(mn);if(i>=0){console.log('MAP_MODULE='+m.name);console.log('MAP_CONTEXT='+txt.slice(i,Math.min(txt.length,i+12000)).replace(/\n/g,'\\n'));}}
+  let p=0;
+  while(true){const i=txt.indexOf('AFFILIATE_URLS',p);if(i<0)break;const ctx=txt.slice(Math.max(0,i-2600),Math.min(txt.length,i+8000));if(/href|anchor|<a|createElement\(['\"]a['\"]\)|price|odds/i.test(ctx)){console.log('USAGE_MODULE='+m.name);console.log('USAGE_CONTEXT='+ctx.replace(/\n/g,'\\n'));}p=i+14;}
+}
