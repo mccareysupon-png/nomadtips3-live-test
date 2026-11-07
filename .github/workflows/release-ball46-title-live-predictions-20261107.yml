@@ -1,0 +1,28 @@
+name: Release BALL46 Title Live Predictions 20261107
+on:
+  push:
+    branches: [test/ball46-title-live-predictions-20261107]
+    paths:
+      - 'deploy-assets/title-live-predictions-20261107/READY'
+permissions:
+  contents: read
+concurrency:
+  group: ball46-production-deploy
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: test/ball46-title-live-predictions-20261107
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Change browser title only
+        working-directory: deploy-assets/title-live-predictions-20261107
+        run: node deploy.mjs
