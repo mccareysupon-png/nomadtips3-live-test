@@ -48,3 +48,11 @@ for(const m of ver.modules||[]){
     }
   }
 }
+
+console.log('--- STAT_RESULT_MINUTE_FOCUS ---');
+for(const m of ver.modules||[]){
+ const txt=Buffer.from(m.content_base64||'','base64').toString('utf8');
+ for(const n of ['sp-result','sp-results','entryClock','entryMinute','matchTime','b46-live-minute-mark','60\'','61\'']){
+  let p=0,c=0;while(true){const i=txt.indexOf(n,p);if(i<0)break;c++;const ctx=txt.slice(Math.max(0,i-2200),Math.min(txt.length,i+n.length+5200));if(/statistics|sp-result|entryClock|entryMinute|matchTime|live-minute/i.test(ctx)){console.log('FOCUS_MODULE='+m.name);console.log('FOCUS_NEEDLE='+n);console.log('FOCUS_CTX='+ctx.replace(/\n/g,'\\n'));}p=i+n.length;if(c>=20)break;}
+ }
+}
