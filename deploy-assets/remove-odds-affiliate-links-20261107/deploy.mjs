@@ -40,25 +40,24 @@ try{
   const txt=Buffer.from(main.content_base64,'base64').toString('utf8');
   const marker='B46_REMOVE_ODDS_AFFILIATE_LINKS_20261107';
   assert(!txt.includes(marker),'PATCH_ALREADY_PRESENT');
-  const hook=`
-/* B46_REMOVE_ODDS_AFFILIATE_LINKS_20261107 */
-const __B46_REMOVE_ODDS_LINKS_ORIGINAL_NOSTORE__=noStoreUiAsset;
-noStoreUiAsset=async function(request,env){
-  const res=await __B46_REMOVE_ODDS_LINKS_ORIGINAL_NOSTORE__(request,env);
-  const path=new URL(request.url).pathname;
-  if(path!=='/full-market-bookmaker-343.js'||!res.ok)return res;
-  let source=await res.text();
-  const oldFn='function affiliatePriceHtml(v,slug){const text=String(v??\'—\').trim()||\'—\',url=AFFILIATE_URLS[slug];if(!url||text===\'—\'||!AFFILIATE_PRICE_RE.test(text))return esc(text);const label=slug===\'1xbet\'?\'1xBet\':slug===\'williamhill\'?\'William Hill\':\'Bookmaker\';return \`<a class="fmb-affiliate-odds" data-b46-affiliate-odds="\${esc(slug)}" href="\${esc(url)}" target="_blank" rel="sponsored noopener noreferrer" title="\${esc(label)} affiliate link · 18+ · Gamble responsibly">\${esc(text)}</a>\`}';
-  const newFn='function affiliatePriceHtml(v,slug){const text=String(v??\'—\').trim()||\'—\';return esc(text)}';
-  if(!source.includes(oldFn))throw new Error('FULL_MARKET_AFFILIATE_RENDER_DRIFT');
-  source=source.replace(oldFn,newFn);
-  const h=new Headers(res.headers);
-  h.delete('content-length');h.delete('etag');h.set('cache-control','no-store');
-  h.set('x-ball46-odds-links','removed-20261107');
-  return new Response(source,{status:res.status,statusText:res.statusText,headers:h});
-};
-`;
-  const patched=txt+"\n"+hook;
+  const hook=[
+    '',
+    '/* '+marker+' */',
+    'const __b46OddsLinkOffOriginal=noStoreUiAsset;',
+    'noStoreUiAsset=async function(request,env){',
+    ' const res=await __b46OddsLinkOffOriginal(request,env);',
+    ' if(new URL(request.url).pathname!=="/full-market-bookmaker-343.js"||!res.ok)return res;',
+    ' let source=await res.text();',
+    ' const a=source.indexOf("function affiliatePriceHtml(v,slug){");',
+    ' const b=source.indexOf("function bookLabelHtml(b){",a);',
+    ' if(a<0||b<0)throw new Error("FULL_MARKET_AFFILIATE_RENDER_DRIFT");',
+    ' source=source.slice(0,a)+"function affiliatePriceHtml(v,slug){const text=String(v??\\\'—\\\').trim()||\\\'—\\\';return esc(text)}\\n"+source.slice(b);',
+    ' const h=new Headers(res.headers);h.delete("content-length");h.delete("etag");h.set("cache-control","no-store");h.set("x-ball46-odds-links","removed-20261107");',
+    ' return new Response(source,{status:res.status,statusText:res.statusText,headers:h});',
+    '};',
+    ''
+  ].join('\\n');
+  const patched=txt+hook;
   assert(patched.includes(marker),'PATCH_MARKER_MISSING');
   const settingsBefore=await settings();
   const schedulesBefore=await schedules();
