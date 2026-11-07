@@ -1,0 +1,25 @@
+name: Scout BALL46 Statistics Live Minute 20261107
+on:
+  push:
+    branches: [test/ball46-stat-live-minute-scout-20261107]
+    paths:
+      - 'scout-stat-live-minute-20261107/READY'
+permissions:
+  contents: read
+jobs:
+  scout:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: test/ball46-stat-live-minute-scout-20261107
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Inspect Statistics live minute styling
+        working-directory: scout-stat-live-minute-20261107
+        run: node scout.mjs
