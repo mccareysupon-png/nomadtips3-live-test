@@ -1,0 +1,21 @@
+name: Scout BALL46 Direct Public Odds Links 20261107
+on:
+  push:
+    branches: [test/ball46-odds-link-audit-20261107]
+    paths:
+      - 'scout-odds-links-20261107/DIRECT_READY'
+permissions:
+  contents: read
+jobs:
+  scout:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: test/ball46-odds-link-audit-20261107
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - working-directory: scout-odds-links-20261107
+        run: node direct-public.mjs
