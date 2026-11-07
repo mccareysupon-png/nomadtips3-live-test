@@ -38,27 +38,54 @@ try{
   const main=current.modules.find(m=>m.name===current.main_module)||current.modules.find(m=>m.name==='index.js');
   assert(main,'INDEX_MODULE_MISSING');
   const txt=Buffer.from(main.content_base64,'base64').toString('utf8');
+  const htmlModule=current.modules.find(m=>m.name==='assets/index.html');
+  assert(htmlModule,'INDEX_HTML_MODULE_MISSING');
+  const htmlTxt=Buffer.from(htmlModule.content_base64,'base64').toString('utf8');
   const marker='B46_REMOVE_ODDS_AFFILIATE_LINKS_20261107';
-  assert(!txt.includes(marker),'PATCH_ALREADY_PRESENT');
-  const hook=[
-    '',
-    '/* '+marker+' */',
-    'const __b46OddsLinkOffOriginal=noStoreUiAsset;',
-    'noStoreUiAsset=async function(request,env){',
-    ' const res=await __b46OddsLinkOffOriginal(request,env);',
-    ' if(new URL(request.url).pathname!=="/full-market-bookmaker-343.js"||!res.ok)return res;',
-    ' let source=await res.text();',
-    ' const a=source.indexOf("function affiliatePriceHtml(v,slug){");',
-    ' const b=source.indexOf("function bookLabelHtml(b){",a);',
-    ' if(a<0||b<0)throw new Error("FULL_MARKET_AFFILIATE_RENDER_DRIFT");',
-    ' source=source.slice(0,a)+"function affiliatePriceHtml(v,slug){const text=String(v??\\\'—\\\').trim()||\\\'—\\\';return esc(text)}\\n"+source.slice(b);',
-    ' const h=new Headers(res.headers);h.delete("content-length");h.delete("etag");h.set("cache-control","no-store");h.set("x-ball46-odds-links","removed-20261107");',
-    ' return new Response(source,{status:res.status,statusText:res.statusText,headers:h});',
-    '};',
-    ''
-  ].join('\\n');
-  const patched=txt+hook;
-  assert(patched.includes(marker),'PATCH_MARKER_MISSING');
+  assert(!htmlTxt.includes(marker),'PATCH_ALREADY_PRESENT');
+  const clientPatch=`
+<script id="b46-remove-odds-affiliate-links-20261107">
+/* B46_REMOVE_ODDS_AFFILIATE_LINKS_20261107 */
+(()=>{
+  'use strict';
+  const neutralize=root=>{
+    const scope=root&&root.querySelectorAll?root:document;
+    scope.querySelectorAll('a.fmb-affiliate-odds').forEach(a=>{
+      const span=document.createElement('span');
+      span.className='fmb-affiliate-odds-text';
+      span.textContent=a.textContent||'';
+      for(const attr of a.attributes){
+        if(attr.name==='href'||attr.name==='target'||attr.name==='rel'||attr.name==='title'||attr.name==='data-b46-affiliate-odds'||attr.name==='class')continue;
+        span.setAttribute(attr.name,attr.value);
+      }
+      a.replaceWith(span);
+    });
+  };
+  const start=()=>{
+    neutralize(document);
+    const mo=new MutationObserver(records=>{
+      for(const r of records){
+        for(const n of r.addedNodes){
+          if(n.nodeType!==1)continue;
+          if(n.matches?.('a.fmb-affiliate-odds')){
+            const span=document.createElement('span');
+            span.className='fmb-affiliate-odds-text';
+            span.textContent=n.textContent||'';
+            n.replaceWith(span);
+          }else neutralize(n);
+        }
+      }
+    });
+    mo.observe(document.body,{childList:true,subtree:true});
+  };
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});
+  else start();
+})();
+</script>`;
+  assert(htmlTxt.includes('</body>'),'INDEX_HTML_BODY_END_MISSING');
+  const patchedHtml=htmlTxt.replace('</body>',clientPatch+'\\n</body>');
+  const patched=txt;
+  assert(patchedHtml.includes(marker),'PATCH_MARKER_MISSING');
   const settingsBefore=await settings();
   const schedulesBefore=await schedules();
   assert.equal(await active(),base,'PRODUCTION_MOVED_BEFORE_UPLOAD');
@@ -77,7 +104,10 @@ try{
   const form=new FormData();
   form.append('metadata',new Blob([JSON.stringify(metadata)],{type:'application/json'}),'metadata.json');
   for(const m of current.modules){
-    const bytes=m.name===main.name?Buffer.from(patched):Buffer.from(m.content_base64,'base64');
+    let bytes;
+    if(m.name==='assets/index.html') bytes=Buffer.from(patchedHtml);
+    else if(m.name===main.name) bytes=Buffer.from(patched);
+    else bytes=Buffer.from(m.content_base64,'base64');
     form.append(m.name,new Blob([bytes],{type:typeFor(m,current.main_module)}),m.name);
   }
   const uploaded=await api(`/scripts/${SCRIPT}/versions`,{method:'POST',body:form});
@@ -90,7 +120,7 @@ try{
   for(const m of current.modules){
     const cm=cv.modules.find(x=>x.name===m.name); assert(cm,`MODULE_MISSING:${m.name}`);
     const got=Buffer.from(cm.content_base64,'base64');
-    if(m.name===main.name){
+    if(m.name==='assets/index.html'){
       const t=got.toString('utf8');
       assert(t.includes(marker),'CANDIDATE_PATCH_MARKER_MISSING');
     } else {
@@ -107,8 +137,8 @@ try{
   assert.equal(await active(),candidate,'CANDIDATE_NOT_ACTIVE');
 
   const final=await version(candidate);
-  const finalMain=final.modules.find(m=>m.name===main.name);
-  const finalTxt=Buffer.from(finalMain.content_base64,'base64').toString('utf8');
+  const finalHtml=final.modules.find(m=>m.name==='assets/index.html');
+  const finalTxt=Buffer.from(finalHtml.content_base64,'base64').toString('utf8');
   assert(finalTxt.includes(marker),'ACTIVE_PATCH_MARKER_MISSING');
   assert.equal(canon(await settings()),canon(settingsBefore),'SETTINGS_CHANGED');
   assert.equal(canon(await schedules()),canon(schedulesBefore),'SCHEDULES_CHANGED');
@@ -116,12 +146,12 @@ try{
   async function waitPublic(){
     let last='';
     for(let i=0;i<20;i++){
-      const r=await fetch('https://ball46.com/full-market-bookmaker-343.js?v=remove-links-'+Date.now()+'-'+i,{headers:{'cache-control':'no-cache'},signal:AbortSignal.timeout(45000)});
+      const r=await fetch('https://ball46.com/?removeOddsLinksQa='+Date.now()+'-'+i,{headers:{'cache-control':'no-cache'},signal:AbortSignal.timeout(45000)});
       last=await r.text();
-      if(r.ok && last.includes('function affiliatePriceHtml') && !last.includes('class="fmb-affiliate-odds"')) return true;
+      if(r.ok && last.includes(marker)) return true;
       await delay(1000);
     }
-    throw new Error('PUBLIC_FULL_MARKET_JS_STILL_HAS_AFFILIATE_ANCHOR');
+    throw new Error('PUBLIC_INDEX_PATCH_NOT_VISIBLE');
   }
   await waitPublic();
 
