@@ -34,3 +34,28 @@ for(const m of ver.modules||[]){
     }
   }
 }
+
+console.log('--- AFFILIATE_USAGE_ONLY ---');
+for(const m of ver.modules||[]){
+  const txt=Buffer.from(m.content_base64||'','base64').toString('utf8');
+  let p=0;
+  while(true){
+    const i=txt.indexOf('AFFILIATE_URLS',p); if(i<0)break;
+    console.log('USE_MODULE='+m.name);
+    console.log('USE_CONTEXT='+txt.slice(Math.max(0,i-2200),Math.min(txt.length,i+7000)).replace(/\n/g,'\\n'));
+    p=i+14;
+  }
+  for(const needle of ['affiliateUrl','bookUrl','bookHref','target="_blank"']){
+    let q=0;
+    while(true){
+      const i=txt.indexOf(needle,q); if(i<0)break;
+      const ctx=txt.slice(Math.max(0,i-1800),Math.min(txt.length,i+5000));
+      if(/AFFILIATE_URLS|bookmaker|full-market|odds/i.test(ctx)){
+        console.log('LINK_MODULE='+m.name);
+        console.log('LINK_NEEDLE='+needle);
+        console.log('LINK_CONTEXT='+ctx.replace(/\n/g,'\\n'));
+      }
+      q=i+needle.length;
+    }
+  }
+}
