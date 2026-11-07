@@ -28,3 +28,24 @@ if(tagged){
   const i=t.indexOf('BALL46 | Live Predictions');
   if(i>=0) console.log('CONTEXT='+t.slice(Math.max(0,i-220),i+420).replace(/\n/g,'\\n'));
 }
+
+const activeDep=(await api(`/scripts/${SCRIPT}/deployments?per_page=5`)).deployments?.[0]?.versions?.find(x=>Number(x.percentage)===100);
+if(activeDep&&tagged){
+  const bv=await api(`/workers/${SCRIPT}/versions/${activeDep.version_id}?include=modules`);
+  const cv=await api(`/workers/${SCRIPT}/versions/${tagged.id}?include=modules`);
+  const bm=bv.modules.find(m=>m.name===bv.main_module)||bv.modules.find(m=>m.name==='index.js');
+  const cm=cv.modules.find(m=>m.name===cv.main_module)||cv.modules.find(m=>m.name==='index.js');
+  const bb=Buffer.from(bm.content_base64,'base64');
+  const cb=Buffer.from(cm.content_base64,'base64');
+  console.log('ACTIVE_VERSION_NOW='+activeDep.version_id);
+  console.log('BASE_MAIN_LEN='+bb.length);
+  console.log('CAND_MAIN_LEN='+cb.length);
+  let p=0; while(p<bb.length&&p<cb.length&&bb[p]===cb[p])p++;
+  let bs=bb.length-1, cs=cb.length-1;
+  while(bs>=p&&cs>=p&&bb[bs]===cb[cs]){bs--;cs--;}
+  console.log('DIFF_PREFIX='+p);
+  console.log('DIFF_BASE_RANGE='+p+'..'+bs);
+  console.log('DIFF_CAND_RANGE='+p+'..'+cs);
+  console.log('BASE_DIFF='+bb.subarray(Math.max(0,p-220),Math.min(bb.length,bs+1+700)).toString('utf8').replace(/\n/g,'\\n'));
+  console.log('CAND_DIFF='+cb.subarray(Math.max(0,p-220),Math.min(cb.length,cs+1+700)).toString('utf8').replace(/\n/g,'\\n'));
+}
