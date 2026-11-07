@@ -120,8 +120,10 @@ try{
       const r=await fetch(u,{headers:{'cache-control':'no-cache'},signal:AbortSignal.timeout(45000)});
       lastStatus=r.status;
       const html=await r.text();
-      const m=html.match(/<title[^>]*>([\\s\\S]*?)<\\/title>/i);
-      lastTitle=m?m[1]:'NO_TITLE';
+      const a=html.toLowerCase().indexOf('<title');
+      const gt=a>=0?html.indexOf('>',a):-1;
+      const b=gt>=0?html.toLowerCase().indexOf('</title>',gt):-1;
+      lastTitle=(gt>=0&&b>gt)?html.slice(gt+1,b):'NO_TITLE';
       if(r.ok&&html.includes('BALL46 | Live Predictions, Football Scores &amp; Signals')) return {status:r.status,title:lastTitle};
       await delay(1000);
     }
