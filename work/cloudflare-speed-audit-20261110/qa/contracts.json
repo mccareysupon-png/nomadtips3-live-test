@@ -1,0 +1,72 @@
+{
+  "ok": true,
+  "cases": 16,
+  "productionWrites": 0,
+  "providerRequests": 0,
+  "results": [
+    {
+      "name": "verified body receives immutable cache; exact legacy query retained",
+      "ok": true
+    },
+    {
+      "name": "legacy URL never made cacheable",
+      "ok": true
+    },
+    {
+      "name": "wrong hash never made cacheable",
+      "ok": true
+    },
+    {
+      "name": "extra query never made cacheable",
+      "ok": true
+    },
+    {
+      "name": "duplicate hash never made cacheable",
+      "ok": true
+    },
+    {
+      "name": "API never made cacheable",
+      "ok": true
+    },
+    {
+      "name": "HEAD never made cacheable",
+      "ok": true
+    },
+    {
+      "name": "POST never made cacheable",
+      "ok": true
+    },
+    {
+      "name": "authorization never made cacheable",
+      "ok": true
+    },
+    {
+      "name": "set-cookie never made cacheable",
+      "ok": true
+    },
+    {
+      "name": "private JSON never made cacheable",
+      "ok": true
+    },
+    {
+      "name": "error response never made cacheable",
+      "ok": true
+    },
+    {
+      "name": "encoded response never made cacheable",
+      "ok": true
+    },
+    {
+      "name": "source drift never caches stale hash",
+      "ok": true
+    },
+    {
+      "name": "HTML changes only matching script/link attributes; order and inline code retained",
+      "ok": true
+    },
+    {
+      "name": "home HTML stays no-store; all non-home routes retain bytes and headers",
+      "ok": true
+    }
+  ]
+}

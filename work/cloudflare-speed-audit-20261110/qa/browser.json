@@ -1,0 +1,325 @@
+{
+  "ok": true,
+  "cases": 8,
+  "sourceFixture": "204233293",
+  "mode": "Captured public bytes and one recorded real fixture; local HTTP cache, no Production traffic change",
+  "productionWrites": 0,
+  "providerRequests": 0,
+  "staticBodiesUnchanged": true,
+  "signalInputsUnchanged": true,
+  "cacheValidation": "Real browser HTTP cache, no request interception",
+  "results": [
+    {
+      "label": "1366-dark",
+      "candidate": false,
+      "measurements": [
+        {
+          "phase": "cold",
+          "firstMatchMs": 389,
+          "fcpMs": 220,
+          "tbtMs": 38,
+          "staticOriginRequests": 45,
+          "apiPaths": [
+            "/api/engine/board",
+            "/api/engine/signals",
+            "/api/engine/statistics",
+            "/api/engine/statistics",
+            "/api/engine/statistics",
+            "/api/hub/snapshot",
+            "/api/prediction-vote"
+          ]
+        },
+        {
+          "phase": "return",
+          "firstMatchMs": 179,
+          "fcpMs": 168,
+          "tbtMs": 5,
+          "staticOriginRequests": 36,
+          "apiPaths": [
+            "/api/engine/board",
+            "/api/engine/signals",
+            "/api/engine/statistics",
+            "/api/engine/statistics",
+            "/api/engine/statistics",
+            "/api/hub/snapshot",
+            "/api/prediction-vote"
+          ]
+        }
+      ],
+      "errors": []
+    },
+    {
+      "label": "1366-dark",
+      "candidate": true,
+      "measurements": [
+        {
+          "phase": "cold",
+          "firstMatchMs": 394,
+          "fcpMs": 132,
+          "tbtMs": 9,
+          "staticOriginRequests": 45,
+          "apiPaths": [
+            "/api/engine/board",
+            "/api/engine/signals",
+            "/api/engine/statistics",
+            "/api/engine/statistics",
+            "/api/engine/statistics",
+            "/api/hub/snapshot",
+            "/api/prediction-vote"
+          ]
+        },
+        {
+          "phase": "return",
+          "firstMatchMs": 222,
+          "fcpMs": 152,
+          "tbtMs": 23,
+          "staticOriginRequests": 0,
+          "apiPaths": [
+            "/api/engine/board",
+            "/api/engine/signals",
+            "/api/engine/statistics",
+            "/api/engine/statistics",
+            "/api/engine/statistics",
+            "/api/hub/snapshot",
+            "/api/prediction-vote"
+          ]
+        }
+      ],
+      "errors": []
+    },
+    {
+      "label": "1366-light",
+      "candidate": false,
+      "measurements": [
+        {
+          "phase": "cold",
+          "firstMatchMs": 433,
+          "fcpMs": 160,
+          "tbtMs": 47,
+          "staticOriginRequests": 45,
+          "apiPaths": [
+            "/api/engine/board",
+            "/api/engine/signals",
+            "/api/engine/statistics",
+            "/api/engine/statistics",
+            "/api/engine/statistics",
+            "/api/hub/snapshot",
+            "/api/prediction-vote"
+          ]
+        },
+        {
+          "phase": "return",
+          "firstMatchMs": 359,
+          "fcpMs": 208,
+          "tbtMs": 48,
+          "staticOriginRequests": 36,
+          "apiPaths": [
+            "/api/engine/board",
+            "/api/engine/signals",
+            "/api/engine/statistics",
+            "/api/engine/statistics",
+            "/api/engine/statistics",
+            "/api/hub/snapshot",
+            "/api/prediction-vote"
+          ]
+        }
+      ],
+      "errors": []
+    },
+    {
+      "label": "1366-light",
+      "candidate": true,
+      "measurements": [
+        {
+          "phase": "cold",
+          "firstMatchMs": 379,
+          "fcpMs": 144,
+          "tbtMs": 15,
+          "staticOriginRequests": 45,
+          "apiPaths": [
+            "/api/engine/board",
+            "/api/engine/signals",
+            "/api/engine/statistics",
+            "/api/engine/statistics",
+            "/api/engine/statistics",
+            "/api/hub/snapshot",
+            "/api/prediction-vote"
+          ]
+        },
+        {
+          "phase": "return",
+          "firstMatchMs": 161,
+          "fcpMs": 152,
+          "tbtMs": 16,
+          "staticOriginRequests": 0,
+          "apiPaths": [
+            "/api/engine/board",
+            "/api/engine/signals",
+            "/api/engine/statistics",
+            "/api/engine/statistics",
+            "/api/engine/statistics",
+            "/api/hub/snapshot",
+            "/api/prediction-vote"
+          ]
+        }
+      ],
+      "errors": []
+    },
+    {
+      "label": "390-dark",
+      "candidate": false,
+      "measurements": [
+        {
+          "phase": "cold",
+          "firstMatchMs": 235,
+          "fcpMs": 88,
+          "tbtMs": 0,
+          "staticOriginRequests": 45,
+          "apiPaths": [
+            "/api/engine/board",
+            "/api/engine/signals",
+            "/api/engine/statistics",
+            "/api/engine/statistics",
+            "/api/engine/statistics",
+            "/api/hub/snapshot",
+            "/api/prediction-vote"
+          ]
+        },
+        {
+          "phase": "return",
+          "firstMatchMs": 108,
+          "fcpMs": 88,
+          "tbtMs": 0,
+          "staticOriginRequests": 36,
+          "apiPaths": [
+            "/api/engine/board",
+            "/api/engine/signals",
+            "/api/engine/statistics",
+            "/api/engine/statistics",
+            "/api/engine/statistics",
+            "/api/hub/snapshot",
+            "/api/prediction-vote"
+          ]
+        }
+      ],
+      "errors": []
+    },
+    {
+      "label": "390-dark",
+      "candidate": true,
+      "measurements": [
+        {
+          "phase": "cold",
+          "firstMatchMs": 228,
+          "fcpMs": 108,
+          "tbtMs": 0,
+          "staticOriginRequests": 45,
+          "apiPaths": [
+            "/api/engine/board",
+            "/api/engine/signals",
+            "/api/engine/statistics",
+            "/api/engine/statistics",
+            "/api/engine/statistics",
+            "/api/hub/snapshot",
+            "/api/prediction-vote"
+          ]
+        },
+        {
+          "phase": "return",
+          "firstMatchMs": 121,
+          "fcpMs": 56,
+          "tbtMs": 0,
+          "staticOriginRequests": 0,
+          "apiPaths": [
+            "/api/engine/board",
+            "/api/engine/signals",
+            "/api/engine/statistics",
+            "/api/engine/statistics",
+            "/api/engine/statistics",
+            "/api/hub/snapshot",
+            "/api/prediction-vote"
+          ]
+        }
+      ],
+      "errors": []
+    },
+    {
+      "label": "390-light",
+      "candidate": false,
+      "measurements": [
+        {
+          "phase": "cold",
+          "firstMatchMs": 225,
+          "fcpMs": 96,
+          "tbtMs": 0,
+          "staticOriginRequests": 45,
+          "apiPaths": [
+            "/api/engine/board",
+            "/api/engine/signals",
+            "/api/engine/statistics",
+            "/api/engine/statistics",
+            "/api/engine/statistics",
+            "/api/hub/snapshot",
+            "/api/prediction-vote"
+          ]
+        },
+        {
+          "phase": "return",
+          "firstMatchMs": 100,
+          "fcpMs": 88,
+          "tbtMs": 0,
+          "staticOriginRequests": 36,
+          "apiPaths": [
+            "/api/engine/board",
+            "/api/engine/signals",
+            "/api/engine/statistics",
+            "/api/engine/statistics",
+            "/api/engine/statistics",
+            "/api/hub/snapshot",
+            "/api/prediction-vote"
+          ]
+        }
+      ],
+      "errors": []
+    },
+    {
+      "label": "390-light",
+      "candidate": true,
+      "measurements": [
+        {
+          "phase": "cold",
+          "firstMatchMs": 283,
+          "fcpMs": 108,
+          "tbtMs": 0,
+          "staticOriginRequests": 45,
+          "apiPaths": [
+            "/api/engine/board",
+            "/api/engine/signals",
+            "/api/engine/statistics",
+            "/api/engine/statistics",
+            "/api/engine/statistics",
+            "/api/hub/snapshot",
+            "/api/prediction-vote"
+          ]
+        },
+        {
+          "phase": "return",
+          "firstMatchMs": 138,
+          "fcpMs": 56,
+          "tbtMs": 0,
+          "staticOriginRequests": 0,
+          "apiPaths": [
+            "/api/engine/board",
+            "/api/engine/signals",
+            "/api/engine/statistics",
+            "/api/engine/statistics",
+            "/api/engine/statistics",
+            "/api/hub/snapshot",
+            "/api/prediction-vote"
+          ]
+        }
+      ],
+      "errors": []
+    }
+  ]
+}
