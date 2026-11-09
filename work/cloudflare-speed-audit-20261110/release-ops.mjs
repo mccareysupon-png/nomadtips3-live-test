@@ -26,7 +26,8 @@ export async function json(name,value){await writeFile(DIR+'/'+name,JSON.stringi
 
 
 
-export function inlineSha(html){const values=[];function walk(n){if(n.tagName==='style'||n.tagName==='script'&&!(n.attrs||[]).some(a=>a.name==='src')){values.push([n.tagName,(n.childNodes||[]).map(c=>c.value||'').join('')])}for(const c of n.childNodes||[])walk(c);if(n.content)walk(n.content)}walk(htmlParse(html));return sha(JSON.stringify(values))}
+export function inlineBlocks(html){const values=[];function walk(n){if(n.tagName==='style'||n.tagName==='script'&&!(n.attrs||[]).some(a=>a.name==='src')){values.push({tag:n.tagName,id:(n.attrs||[]).find(a=>a.name==='id')?.value||'',text:(n.childNodes||[]).map(c=>c.value||'').join('')})}for(const c of n.childNodes||[])walk(c);if(n.content)walk(n.content)}walk(htmlParse(html));return values}
+export function inlineSha(html){return sha(JSON.stringify(inlineBlocks(html).map(b=>[b.tag,b.text])))}
 export async function ledgerSnapshot(){let cursor=null;const seen=new Set(),fingerprints={};let pages=0,total;
  do{assert(++pages<200,'LEDGER_PAGING_LIMIT');const q=new URLSearchParams({paged:'1',limit:'500'});if(cursor)q.set('cursor',cursor);const r=await get('https://ball46.com','/api/engine/statistics?'+q),j=JSON.parse(r.body);assert.equal(r.status,200,'LEDGER_READ_STATUS');assert(j.ok&&Array.isArray(j.rows),'LEDGER_READ_FAILED');total=j.ledgerTotal;
  for(const row of j.rows){if(row.status!=='SETTLED')continue;const fields=['id','fixtureId','status','result','market','pick','line','odds','bookmaker','entryMinute','entryScore','entryHome','entryAway','finalScore','finalHome','finalAway','settledAt','createdAt','stake','profit','unitProfit'];const value=Object.fromEntries(fields.filter(k=>k in row).map(k=>[k,row[k]]));assert(row.id,'LEDGER_ID_MISSING');fingerprints[String(row.id)]=sha(canon(value));}
