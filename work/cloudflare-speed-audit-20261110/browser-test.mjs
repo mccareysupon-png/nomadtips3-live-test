@@ -3,7 +3,7 @@ import {createServer} from 'node:http';
 import {createHash} from 'node:crypto';
 import {readFile,writeFile,mkdir} from 'node:fs/promises';
 import {chromium} from 'playwright';
-import {wrapStaticAssets} from './static-cache.mjs';
+import {wrapStaticAssets,rewriteStaticLinks} from './static-cache.mjs';
 const ROOT='work/cloudflare-speed-audit-20261110',sha=b=>createHash('sha256').update(b).digest('hex');
 const audit=JSON.parse(await readFile(ROOT+'/fresh/report.json')),manifest=JSON.parse(await readFile(ROOT+'/candidate/manifest.json')),html=await readFile(ROOT+'/fresh/index.html','utf8'),frozen=JSON.parse(await readFile('work/mobile-event-flow-restore-20261110/source/frozen-current-fixture.json'));
 const files=new Map(),fallbacks=new Map(),requests=[],results=[];let providerRequests=0;
@@ -21,6 +21,7 @@ for(let n=0;n<2;n++){const server=createServer(async(req,res)=>{try{const respon
 const browser=await chromium.launch({headless:true,args:['--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE 127.0.0.1']});
 try{for(const width of[1366,390])for(const theme of['dark','light'])for(let candidate=0;candidate<2;candidate++){
  const ctx=await browser.newContext({viewport:{width,height:1000},serviceWorkers:'block'}),p=await ctx.newPage(),errors=[];p.on('pageerror',e=>errors.push(e.message));p.on('request',r=>{if(/5dollar|goaloo|5usd/i.test(new URL(r.url()).hostname))providerRequests++});
+ const inline=await p.evaluate(({before,after})=>{const parser=new DOMParser(),a=parser.parseFromString(before,'text/html'),b=parser.parseFromString(after,'text/html'),read=d=>[...d.querySelectorAll('script:not([src]),style')].map(e=>e.textContent);return{before:read(a),after:read(b),addressed:b.querySelectorAll('script[src*="b46_static="],link[href*="b46_static="]').length}},{before:html,after:rewriteStaticLinks(html,manifest)});assert.deepEqual(inline.after,inline.before,'INLINE_CODE_OR_STYLE_CHANGED');assert.equal(inline.addressed,manifest.length);
  await ctx.addInitScript(({theme,epoch})=>{localStorage.setItem('nomad343_dashboard_theme_v1',theme);Date.now=()=>epoch;new PerformanceObserver(list=>{window.__speedLongTasks=(window.__speedLongTasks||[]).concat(list.getEntries().map(e=>e.duration))}).observe({type:'longtask',buffered:true})},{theme,epoch:frozen.epoch});
  const measurements=[];let signature;
  for(const phase of['cold','return']){requests.length=0;const start=performance.now();await p.goto('http://127.0.0.1:'+servers[candidate].address().port+'/?status=live',{waitUntil:'domcontentloaded',timeout:90000});await p.waitForFunction(()=>document.querySelector('.match-row[data-match-id]'),null,{timeout:60000});const firstMatchMs=Math.round(performance.now()-start);await p.waitForFunction(()=>window.NOMAD343_DASHBOARD_V2?.getSignals?.()?.length>0,null,{timeout:45000});await p.waitForLoadState('load');

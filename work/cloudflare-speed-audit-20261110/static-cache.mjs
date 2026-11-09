@@ -3,12 +3,16 @@ const PARAM='b46_static';
 const digest=async bytes=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)),x=>x.toString(16).padStart(2,'0')).join('');
 export function rewriteStaticLinks(html,manifest){
   const allowed=new Map(manifest.map(f=>[f.path,f.sha]));
-  return html.replace(/<(?:script|link)\b[^>]*>/gi,tag=>tag.replace(/(\s)(src|href)=(["'])([^"']+)\3/gi,(attr,space,name,quote,raw)=>{
+  return html.replace(/<!--[\s\S]*?-->|<(script|style)\b[^>]*>[\s\S]*?<\/\1\s*>|<link\b[^>]*>/gi,segment=>{
+    if(!/^<(?:script|link)\b/i.test(segment))return segment;
+    const end=segment.indexOf('>')+1;
+    return segment.slice(0,end).replace(/(\s)(src|href)=(["'])([^"']+)\3/gi,(attr,space,name,quote,raw)=>{
     let u;try{u=new URL(raw.replaceAll('&amp;','&'),'https://ball46.com')}catch{return attr}
     if(!['ball46.com','www.ball46.com'].includes(u.hostname)||u.searchParams.has(PARAM))return attr;
     const hash=allowed.get(u.pathname+u.search);
     return hash?space+name+'='+quote+raw+(raw.includes('?')?'&':'?')+PARAM+'='+hash+quote:attr;
-  }));
+    })+segment.slice(end);
+  });
 }
 export function wrapStaticAssets(previous,manifest){
   const allowed=new Map(manifest.map(f=>[f.path,f.sha]));
