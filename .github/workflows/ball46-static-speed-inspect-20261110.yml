@@ -1,0 +1,34 @@
+name: BALL46 static speed current-source READ ONLY
+on:
+  push:
+    branches: [codex/ball46-static-speed-20261110]
+    paths: ['work/cloudflare-speed-audit-20261110/inspect-request.json']
+permissions:
+  contents: write
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Read active Worker and public static assets only
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: node work/cloudflare-speed-audit-20261110/inspect.mjs
+      - name: Save source and public response evidence
+        if: always()
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add work/cloudflare-speed-audit-20261110/fresh
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Record static speed read-only baseline [skip ci]"
+          git push origin HEAD:codex/ball46-static-speed-20261110
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-static-speed-baseline
+          path: work/cloudflare-speed-audit-20261110/fresh/report.json
