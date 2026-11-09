@@ -1,6 +1,6 @@
 {
   "ok": false,
-  "error": "locator.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for getByRole('button', { name: 'Event Flow', exact: true })\n    - locator resolved to <button disabled type=\"button\" data-b46-section=\"flow\">Event Flow</button>\n  - attempting click action\n    2 × waiting for element to be visible, enabled and stable\n      - element is not stable\n    - retrying click action\n    - waiting 20ms\n    - waiting for element to be visible, enabled and stable\n    - element is not stable\n  2 × retrying click action\n      - waiting 100ms\n      - waiting for element to be visible, enabled and stable\n      - element is not enabled\n  55 × retrying click action\n       - waiting 500ms\n       - waiting for element to be visible, enabled and stable\n       - element is not enabled\n  - retrying click action\n    - waiting 500ms\n\n    at check (/home/runner/work/nomadtips3-live-test/nomadtips3-live-test/work/mobile-event-flow-restore-20261110/browser-test.mjs:23:176)\n    at async file:///home/runner/work/nomadtips3-live-test/nomadtips3-live-test/work/mobile-event-flow-restore-20261110/browser-test.mjs:39:70",
+  "error": "locator.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for getByRole('button', { name: 'Event Flow', exact: true })\n    - locator resolved to <button disabled type=\"button\" data-b46-section=\"flow\">Event Flow</button>\n  - attempting click action\n    2 × waiting for element to be visible, enabled and stable\n      - element is not stable\n    - retrying click action\n    - waiting 20ms\n    - waiting for element to be visible, enabled and stable\n    - element is not stable\n  2 × retrying click action\n      - waiting 100ms\n      - waiting for element to be visible, enabled and stable\n      - element is not enabled\n  55 × retrying click action\n       - waiting 500ms\n       - waiting for element to be visible, enabled and stable\n       - element is not enabled\n  - retrying click action\n    - waiting 500ms\n\n    at check (/home/runner/work/nomadtips3-live-test/nomadtips3-live-test/work/mobile-event-flow-restore-20261110/browser-test.mjs:24:176)\n    at async file:///home/runner/work/nomadtips3-live-test/nomadtips3-live-test/work/mobile-event-flow-restore-20261110/browser-test.mjs:40:70",
   "results": [
     {
       "label": "baseline-1366-dark",
@@ -21,14 +21,14 @@
       ],
       "apiCounts": {
         "/api/engine/board": 2,
-        "/api/engine/statistics": 3,
         "/api/hub/snapshot": 1,
+        "/api/engine/statistics": 3,
+        "/api/full-market/fixture-odds": 2,
         "/api/prediction-vote": 1,
-        "/api/engine/history": 1,
-        "/api/full-market/fixture-odds": 1
+        "/api/engine/history": 1
       },
       "providerAttempts": 0,
-      "isolatedUnrelatedReads": 5
+      "isolatedUnrelatedReads": 6
     },
     {
       "label": "baseline-1366-light",
@@ -49,14 +49,14 @@
       ],
       "apiCounts": {
         "/api/engine/board": 2,
-        "/api/engine/statistics": 3,
         "/api/hub/snapshot": 1,
+        "/api/engine/statistics": 3,
+        "/api/full-market/fixture-odds": 2,
         "/api/prediction-vote": 1,
-        "/api/engine/history": 1,
-        "/api/full-market/fixture-odds": 1
+        "/api/engine/history": 1
       },
       "providerAttempts": 0,
-      "isolatedUnrelatedReads": 5
+      "isolatedUnrelatedReads": 6
     }
   ]
 }
