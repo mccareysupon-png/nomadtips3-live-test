@@ -15,9 +15,9 @@
       "measurements": [
         {
           "phase": "cold",
-          "firstMatchMs": 406,
-          "fcpMs": 232,
-          "tbtMs": 68,
+          "firstMatchMs": 536,
+          "fcpMs": 264,
+          "tbtMs": 104,
           "staticOriginRequests": 45,
           "apiPaths": [
             "/api/engine/board",
@@ -31,9 +31,9 @@
         },
         {
           "phase": "return",
-          "firstMatchMs": 172,
-          "fcpMs": 168,
-          "tbtMs": 3,
+          "firstMatchMs": 300,
+          "fcpMs": 224,
+          "tbtMs": 36,
           "staticOriginRequests": 36,
           "apiPaths": [
             "/api/engine/board",
@@ -54,9 +54,9 @@
       "measurements": [
         {
           "phase": "cold",
-          "firstMatchMs": 348,
-          "fcpMs": 120,
-          "tbtMs": 20,
+          "firstMatchMs": 612,
+          "fcpMs": 260,
+          "tbtMs": 121,
           "staticOriginRequests": 45,
           "apiPaths": [
             "/api/engine/board",
@@ -70,9 +70,9 @@
         },
         {
           "phase": "return",
-          "firstMatchMs": 212,
-          "fcpMs": 152,
-          "tbtMs": 23,
+          "firstMatchMs": 312,
+          "fcpMs": 228,
+          "tbtMs": 68,
           "staticOriginRequests": 0,
           "apiPaths": [
             "/api/engine/board",
@@ -89,90 +89,90 @@
     },
     {
       "label": "1366-light",
+      "candidate": false,
+      "measurements": [
+        {
+          "phase": "cold",
+          "firstMatchMs": 529,
+          "fcpMs": 244,
+          "tbtMs": 102,
+          "staticOriginRequests": 45,
+          "apiPaths": [
+            "/api/engine/board",
+            "/api/engine/signals",
+            "/api/engine/statistics",
+            "/api/engine/statistics",
+            "/api/engine/statistics",
+            "/api/hub/snapshot",
+            "/api/prediction-vote"
+          ]
+        },
+        {
+          "phase": "return",
+          "firstMatchMs": 385,
+          "fcpMs": 220,
+          "tbtMs": 39,
+          "staticOriginRequests": 36,
+          "apiPaths": [
+            "/api/engine/board",
+            "/api/engine/signals",
+            "/api/engine/statistics",
+            "/api/engine/statistics",
+            "/api/engine/statistics",
+            "/api/hub/snapshot",
+            "/api/prediction-vote"
+          ]
+        }
+      ],
+      "errors": []
+    },
+    {
+      "label": "1366-light",
+      "candidate": true,
+      "measurements": [
+        {
+          "phase": "cold",
+          "firstMatchMs": 501,
+          "fcpMs": 268,
+          "tbtMs": 111,
+          "staticOriginRequests": 45,
+          "apiPaths": [
+            "/api/engine/board",
+            "/api/engine/signals",
+            "/api/engine/statistics",
+            "/api/engine/statistics",
+            "/api/engine/statistics",
+            "/api/hub/snapshot",
+            "/api/prediction-vote"
+          ]
+        },
+        {
+          "phase": "return",
+          "firstMatchMs": 307,
+          "fcpMs": 228,
+          "tbtMs": 79,
+          "staticOriginRequests": 0,
+          "apiPaths": [
+            "/api/engine/board",
+            "/api/engine/signals",
+            "/api/engine/statistics",
+            "/api/engine/statistics",
+            "/api/engine/statistics",
+            "/api/hub/snapshot",
+            "/api/prediction-vote"
+          ]
+        }
+      ],
+      "errors": []
+    },
+    {
+      "label": "390-dark",
       "candidate": false,
       "measurements": [
         {
           "phase": "cold",
           "firstMatchMs": 312,
-          "fcpMs": 112,
-          "tbtMs": 16,
-          "staticOriginRequests": 45,
-          "apiPaths": [
-            "/api/engine/board",
-            "/api/engine/signals",
-            "/api/engine/statistics",
-            "/api/engine/statistics",
-            "/api/engine/statistics",
-            "/api/hub/snapshot",
-            "/api/prediction-vote"
-          ]
-        },
-        {
-          "phase": "return",
-          "firstMatchMs": 215,
-          "fcpMs": 136,
-          "tbtMs": 0,
-          "staticOriginRequests": 36,
-          "apiPaths": [
-            "/api/engine/board",
-            "/api/engine/signals",
-            "/api/engine/statistics",
-            "/api/engine/statistics",
-            "/api/engine/statistics",
-            "/api/hub/snapshot",
-            "/api/prediction-vote"
-          ]
-        }
-      ],
-      "errors": []
-    },
-    {
-      "label": "1366-light",
-      "candidate": true,
-      "measurements": [
-        {
-          "phase": "cold",
-          "firstMatchMs": 388,
-          "fcpMs": 196,
-          "tbtMs": 31,
-          "staticOriginRequests": 45,
-          "apiPaths": [
-            "/api/engine/board",
-            "/api/engine/signals",
-            "/api/engine/statistics",
-            "/api/engine/statistics",
-            "/api/engine/statistics",
-            "/api/hub/snapshot",
-            "/api/prediction-vote"
-          ]
-        },
-        {
-          "phase": "return",
-          "firstMatchMs": 197,
-          "fcpMs": 152,
-          "tbtMs": 18,
-          "staticOriginRequests": 0,
-          "apiPaths": [
-            "/api/engine/board",
-            "/api/engine/signals",
-            "/api/engine/statistics",
-            "/api/engine/statistics",
-            "/api/engine/statistics",
-            "/api/hub/snapshot",
-            "/api/prediction-vote"
-          ]
-        }
-      ],
-      "errors": []
-    },
-    {
-      "label": "390-dark",
-      "candidate": false,
-      "measurements": [
-        {
-          "phase": "cold",
-          "firstMatchMs": 255,
-          "fcpMs": 120,
+          "fcpMs": 92,
           "tbtMs": 0,
           "staticOriginRequests": 45,
           "apiPaths": [
@@ -187,32 +187,32 @@
         },
         {
           "phase": "return",
-          "firstMatchMs": 128,
-          "fcpMs": 68,
-          "tbtMs": 0,
-          "staticOriginRequests": 36,
-          "apiPaths": [
-            "/api/engine/board",
-            "/api/engine/signals",
-            "/api/engine/statistics",
-            "/api/engine/statistics",
-            "/api/engine/statistics",
-            "/api/hub/snapshot",
-            "/api/prediction-vote"
-          ]
-        }
-      ],
-      "errors": []
-    },
-    {
-      "label": "390-dark",
-      "candidate": true,
-      "measurements": [
-        {
-          "phase": "cold",
-          "firstMatchMs": 249,
+          "firstMatchMs": 194,
           "fcpMs": 100,
           "tbtMs": 0,
+          "staticOriginRequests": 36,
+          "apiPaths": [
+            "/api/engine/board",
+            "/api/engine/signals",
+            "/api/engine/statistics",
+            "/api/engine/statistics",
+            "/api/engine/statistics",
+            "/api/hub/snapshot",
+            "/api/prediction-vote"
+          ]
+        }
+      ],
+      "errors": []
+    },
+    {
+      "label": "390-dark",
+      "candidate": true,
+      "measurements": [
+        {
+          "phase": "cold",
+          "firstMatchMs": 306,
+          "fcpMs": 116,
+          "tbtMs": 0,
           "staticOriginRequests": 45,
           "apiPaths": [
             "/api/engine/board",
@@ -226,8 +226,8 @@
         },
         {
           "phase": "return",
-          "firstMatchMs": 137,
-          "fcpMs": 52,
+          "firstMatchMs": 129,
+          "fcpMs": 108,
           "tbtMs": 0,
           "staticOriginRequests": 0,
           "apiPaths": [
@@ -249,8 +249,8 @@
       "measurements": [
         {
           "phase": "cold",
-          "firstMatchMs": 230,
-          "fcpMs": 96,
+          "firstMatchMs": 290,
+          "fcpMs": 84,
           "tbtMs": 0,
           "staticOriginRequests": 45,
           "apiPaths": [
@@ -288,8 +288,8 @@
       "measurements": [
         {
           "phase": "cold",
-          "firstMatchMs": 244,
-          "fcpMs": 136,
+          "firstMatchMs": 280,
+          "fcpMs": 100,
           "tbtMs": 0,
           "staticOriginRequests": 45,
           "apiPaths": [
@@ -304,8 +304,8 @@
         },
         {
           "phase": "return",
-          "firstMatchMs": 133,
-          "fcpMs": 52,
+          "firstMatchMs": 123,
+          "fcpMs": 104,
           "tbtMs": 0,
           "staticOriginRequests": 0,
           "apiPaths": [

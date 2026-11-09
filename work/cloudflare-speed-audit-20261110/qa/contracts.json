@@ -1,6 +1,6 @@
 {
   "ok": true,
-  "cases": 18,
+  "cases": 19,
   "productionWrites": 0,
   "providerRequests": 0,
   "results": [
@@ -70,6 +70,10 @@
     },
     {
       "name": "HTML changes only matching script/link attributes; order and inline code retained",
+      "ok": true
+    },
+    {
+      "name": "HTML-like strings inside scripts, styles and comments remain byte-identical",
       "ok": true
     },
     {
