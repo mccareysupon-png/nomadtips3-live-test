@@ -1,0 +1,70 @@
+{
+  "phase": "activate",
+  "run": "42720731422",
+  "commit": "8bc30f3095a5acde0989ec2d6d83b7a0d008da2a",
+  "at": "2026-11-09T23:30:16.128Z",
+  "worker": "ball46-production",
+  "writes": [
+    {
+      "path": "/workers/scripts/ball46-production/deployments",
+      "method": "POST"
+    }
+  ],
+  "base": "e41be683-e67f-4023-9492-2b114203f0d7",
+  "candidate": "c9e86292-6ed9-4788-98de-1b363f478d74",
+  "healthBefore": {
+    "engine": {
+      "status": 200,
+      "ok": true,
+      "version": "nomad343-engine-v5-best19-referee",
+      "revision": "343-best19-referee-20260918"
+    },
+    "hub": {
+      "status": 200,
+      "cacheOnly": true,
+      "fixtureCount": 1884,
+      "fetchedAt": 1794267023910,
+      "liveFetchedAt": 1794267023910
+    },
+    "ownerConfiguredSeconds": 10,
+    "effectiveSeconds": 10,
+    "configuredField": "bulkSpeedV3.configuredSeconds"
+  },
+  "ledgerPreactivation": {
+    "preserved": 14322,
+    "currentSettled": 14324,
+    "total": 14605
+  },
+  "deployment": {
+    "id": "55a84a6c-755e-4ff3-96c7-3923fae67080"
+  },
+  "activated": true,
+  "healthAfter": {
+    "engine": {
+      "status": 200,
+      "ok": true,
+      "version": "nomad343-engine-v5-best19-referee",
+      "revision": "343-best19-referee-20260918"
+    },
+    "hub": {
+      "status": 200,
+      "cacheOnly": true,
+      "fixtureCount": 1884,
+      "fetchedAt": 1794267054718,
+      "liveFetchedAt": 1794267054718
+    },
+    "ownerConfiguredSeconds": 10,
+    "effectiveSeconds": 30,
+    "configuredField": "bulkSpeedV3.configuredSeconds"
+  },
+  "ledgerAfter": {
+    "preserved": 14322,
+    "currentSettled": 14324,
+    "total": 14605
+  },
+  "ok": true,
+  "active": {
+    "version": "c9e86292-6ed9-4788-98de-1b363f478d74",
+    "deployment": "55a84a6c-755e-4ff3-96c7-3923fae67080"
+  }
+}
