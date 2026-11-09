@@ -1,6 +1,6 @@
 {
   "ok": true,
-  "cases": 16,
+  "cases": 18,
   "productionWrites": 0,
   "providerRequests": 0,
   "results": [
@@ -58,6 +58,14 @@
     },
     {
       "name": "source drift never caches stale hash",
+      "ok": true
+    },
+    {
+      "name": "explicit private response is preserved",
+      "ok": true
+    },
+    {
+      "name": "vary on identity or wildcard never becomes public",
       "ok": true
     },
     {
