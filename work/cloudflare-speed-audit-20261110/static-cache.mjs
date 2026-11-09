@@ -19,7 +19,7 @@ export function wrapStaticAssets(previous,manifest){
     const addressed=request.method==='GET'&&values.length===1&&allowed.get(cleanPath)===wanted;
     const delegated=addressed?new Request(new URL(cleanPath,u.origin),request):request;
     const response=await previous.fetch(delegated,env,ctx);
-    if(addressed&&request.method==='GET'&&response.status===200&&!request.headers.has('authorization')&&!response.headers.has('set-cookie')&&/^(?:text\/css|(?:application|text)\/javascript)(?:;|$)/i.test(response.headers.get('content-type')||'')&&!response.headers.has('content-encoding')){
+    if(addressed&&response.status===200&&!request.headers.has('authorization')&&!response.headers.has('set-cookie')&&!/\bprivate\b/i.test(response.headers.get('cache-control')||'')&&!/(?:^|,)\s*(?:\*|cookie|authorization)\s*(?:,|$)/i.test(response.headers.get('vary')||'')&&/^(?:text\/css|(?:application|text)\/javascript)(?:;|$)/i.test(response.headers.get('content-type')||'')&&!response.headers.has('content-encoding')){
       const bytes=await response.arrayBuffer(),headers=new Headers(response.headers);
       if(await digest(bytes)===wanted){headers.set('cache-control','public, max-age=31536000, immutable');headers.delete('pragma');headers.delete('expires');headers.set('x-ball46-static-cache','content-sha256');}
       else headers.set('cache-control','no-store');
