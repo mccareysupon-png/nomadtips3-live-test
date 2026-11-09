@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
+import {readFile,writeFile,mkdir} from 'node:fs/promises';
+import {rewriteStaticLinks} from './static-cache.mjs';
+const ROOT='work/cloudflare-speed-audit-20261110',sha=b=>createHash('sha256').update(b).digest('hex');
+const audit=JSON.parse(await readFile(ROOT+'/fresh/report.json')),main=await readFile(ROOT+'/fresh/index.mjs','utf8'),html=await readFile(ROOT+'/fresh/index.html','utf8');
+assert(audit.ok&&audit.productionWrites===0);assert.equal(sha(main),audit.modules.find(m=>m.name===audit.main).sha);assert.equal(sha(html),audit.root.sha);
+const manifest=audit.files.filter(f=>f.status===200&&!f.headers['cache-control']?.includes('immutable')).map(({path,sha,bytes})=>({path,sha,bytes}));
+assert.equal(manifest.length,44);assert(manifest.every(f=>/\.(?:js|css)(?:\?|$)/.test(f.path)&&!f.path.startsWith('/api/')));
+const anchor='export default{...__b46MemberPromoPrevious,async fetch(request,env,ctx){';assert.equal(main.split(anchor).length,2,'CURRENT_EXPORT_CHANGED');
+const prefix='import {wrapStaticAssets as __b46WrapStaticSpeed} from "./static-speed-cache-20261110.mjs";\n';
+const suffix='\nexport default __b46WrapStaticSpeed(__b46StaticSpeedBase,'+JSON.stringify(manifest)+');\n';
+const candidate=prefix+main.replace(anchor,'const __b46StaticSpeedBase={...__b46MemberPromoPrevious,async fetch(request,env,ctx){')+suffix;
+assert.equal(candidate.slice(prefix.length,-suffix.length).replace('const __b46StaticSpeedBase={...__b46MemberPromoPrevious,async fetch(request,env,ctx){',anchor),main,'UNRELATED_CODE_CHANGED');
+await mkdir(ROOT+'/candidate',{recursive:true});await writeFile(ROOT+'/candidate/index.mjs',candidate);await writeFile(ROOT+'/candidate/static-speed-cache-20261110.mjs',await readFile(ROOT+'/static-cache.mjs'));await writeFile(ROOT+'/candidate/manifest.json',JSON.stringify(manifest,null,2));await writeFile(ROOT+'/candidate/index.html',rewriteStaticLinks(html,manifest));
+const proof={ok:true,base:audit.active,mainBeforeSha:sha(main),mainAfterSha:sha(candidate),changedExistingModules:[audit.main],otherExistingModulesUnchanged:audit.modules.length-1,newModules:['static-speed-cache-20261110.mjs'],assetBodiesChanged:0,cacheableFiles:manifest.length,decodedBytes:manifest.reduce((n,f)=>n+f.bytes,0),htmlBytesAdded:Buffer.byteLength(rewriteStaticLinks(html,manifest))-Buffer.byteLength(html),pollingChanged:false,apiCodeChanged:false,productionWrites:0};
+await writeFile(ROOT+'/candidate/boundary.json',JSON.stringify(proof,null,2));console.log(JSON.stringify(proof));
