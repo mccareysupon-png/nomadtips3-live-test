@@ -1,0 +1,91 @@
+{
+  "ok": false,
+  "phase": "candidate",
+  "error": "locator.waitFor: Error: strict mode violation: locator('#b46gn-detail .featured-card[data-featured]') resolved to 2 elements:\n    1) <section data-featured=\"\" data-pv8-fixture=\"203618830\" class=\"side-card featured-card\">…</section> aka getByLabel('Match details', { exact: true }).getByText('FEATURED MATCHParaguay Division ProfesionalHTHOMESportivo Luqueno1-0AWAY2 de')\n    2) <div data-featured=\"\" class=\"side-card featured-card\">…</div> aka locator('#b46-suite-stats > .side-card')\n\nCall log:\n  - waiting for locator('#b46gn-detail .featured-card[data-featured]') to be visible\n\n    at /home/runner/work/nomadtips3-live-test/nomadtips3-live-test/work/cloudflare-speed-audit-20261110/release-browser.mjs:25:112",
+  "results": [
+    {
+      "ok": true,
+      "width": 1366,
+      "theme": "dark",
+      "state": {
+        "width": 1366,
+        "theme": "dark",
+        "fixture": {
+          "id": "203618830",
+          "home": "Sportivo Luqueno",
+          "away": "2 de Mayo",
+          "goals": {
+            "home": 1,
+            "away": 0,
+            "halfHome": 1,
+            "halfAway": 0
+          },
+          "minute": null
+        },
+        "score": "1-0",
+        "cardText": "FEATURED MATCHParaguay Division ProfesionalHTHOMESportivo Luqueno1-0AWAY2 de MayoHALF-TIMEHT 1–0CORNERS1–1CARDS H · A1 Yellow / 0 Red · 1 Yellow / 0 RedODDS AGE4mSIGNAL WATCHSTANDBYWaiting for signal conditions2Shots on target31Shots off target11Corners135Attacks8515Dangerous attacks4050%Possession50%RECENT EVENTS40'corner · away37'yellow_card · away34'yellow_card · home16'goal · home8'corner · home",
+        "addressed": 44,
+        "pollScript": "https://c9e86292-ball46-production.mccarey-supon.workers.dev/dashboard-v2-stage3-featured-facts-20261013a.js?v=b46-screen-refresh-5s-20261104",
+        "overflow": false,
+        "promo": {
+          "present": true,
+          "url": "/b46-member-athlete-20261109.webp?v=1",
+          "width": 1672,
+          "height": 941
+        },
+        "rows": 5
+      },
+      "cacheReadGapsMs": [
+        4569,
+        5199
+      ],
+      "providerAttempts": 0,
+      "providerAndUnrelatedReadsSuppressed": 15,
+      "pageErrors": [],
+      "failedResources": [],
+      "ownServerWrites": 0
+    },
+    {
+      "ok": true,
+      "width": 1366,
+      "theme": "light",
+      "state": {
+        "width": 1366,
+        "theme": "light",
+        "fixture": {
+          "id": "203618830",
+          "home": "Sportivo Luqueno",
+          "away": "2 de Mayo",
+          "goals": {
+            "home": 1,
+            "away": 0,
+            "halfHome": 1,
+            "halfAway": 0
+          },
+          "minute": null
+        },
+        "score": "1-0",
+        "cardText": "FEATURED MATCHParaguay Division ProfesionalHTHOMESportivo Luqueno1-0AWAY2 de MayoHALF-TIMEHT 1–0CORNERS1–1CARDS H · A1 Yellow / 0 Red · 1 Yellow / 0 RedODDS AGE4mSIGNAL WATCHSTANDBYWaiting for signal conditions2Shots on target31Shots off target11Corners135Attacks8515Dangerous attacks4050%Possession50%RECENT EVENTS40'corner · away37'yellow_card · away34'yellow_card · home16'goal · home8'corner · home",
+        "addressed": 44,
+        "pollScript": "https://c9e86292-ball46-production.mccarey-supon.workers.dev/dashboard-v2-stage3-featured-facts-20261013a.js?v=b46-screen-refresh-5s-20261104",
+        "overflow": false,
+        "promo": {
+          "present": true,
+          "url": "/b46-member-athlete-20261109.webp?v=1",
+          "width": 1672,
+          "height": 941
+        },
+        "rows": 5
+      },
+      "cacheReadGapsMs": [
+        5763,
+        5241
+      ],
+      "providerAttempts": 0,
+      "providerAndUnrelatedReadsSuppressed": 13,
+      "pageErrors": [],
+      "failedResources": [],
+      "ownServerWrites": 0
+    }
+  ]
+}
