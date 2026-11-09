@@ -26,8 +26,8 @@ jobs:
           node work/cloudflare-speed-audit-20261110/prepare.mjs
           node --check work/cloudflare-speed-audit-20261110/candidate/index.mjs
           node work/cloudflare-speed-audit-20261110/contracts.mjs
-      - name: Fresh Production health and source then non-traffic Worker Preview
-        run: node work/cloudflare-speed-audit-20261110/release.mjs stage
+      - name: Verify existing non-traffic Worker Preview against each actual source page
+        run: node work/cloudflare-speed-audit-20261110/release.mjs verify
       - name: Save scoped Preview evidence only
         if: always()
         run: |
