@@ -1,7 +1,19 @@
 {
   "ok": false,
-  "error": "AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:\n+ actual - expected\n\n+ []\n- [\n-   '204233293-ft_ah-mw9tbbsz'\n- ]\n\n    at check (file:///home/runner/work/nomadtips3-live-test/nomadtips3-live-test/work/mobile-event-flow-restore-20261110/browser-test.mjs:27:292)\n    at async file:///home/runner/work/nomadtips3-live-test/nomadtips3-live-test/work/mobile-event-flow-restore-20261110/browser-test.mjs:41:231",
+  "error": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\n180 !== 184\n\n    at check (file:///home/runner/work/nomadtips3-live-test/nomadtips3-live-test/work/mobile-event-flow-restore-20261110/browser-test.mjs:29:48)\n    at async file:///home/runner/work/nomadtips3-live-test/nomadtips3-live-test/work/mobile-event-flow-restore-20261110/browser-test.mjs:46:302",
   "results": [
+    {
+      "label": "real-signal-contract-dark",
+      "ok": true,
+      "signals": 1,
+      "upstreamRequests": 0
+    },
+    {
+      "label": "real-signal-contract-light",
+      "ok": true,
+      "signals": 1,
+      "upstreamRequests": 0
+    },
     {
       "label": "baseline-390-dark",
       "width": 390,
@@ -21,12 +33,11 @@
       ],
       "apiCounts": {
         "/api/engine/board": 2,
-        "/api/hub/snapshot": 1,
         "/api/engine/statistics": 3,
+        "/api/hub/snapshot": 1,
         "/api/prediction-vote": 1,
         "/api/engine/history": 1,
-        "/api/full-market/fixture-odds": 2,
-        "/api/engine/signals": 1
+        "/api/full-market/fixture-odds": 2
       },
       "providerAttempts": 0,
       "isolatedUnrelatedReads": 6
@@ -50,14 +61,14 @@
       ],
       "apiCounts": {
         "/api/engine/board": 2,
-        "/api/engine/statistics": 3,
         "/api/hub/snapshot": 1,
+        "/api/engine/statistics": 3,
+        "/api/full-market/fixture-odds": 2,
         "/api/prediction-vote": 1,
-        "/api/engine/history": 1,
-        "/api/full-market/fixture-odds": 1
+        "/api/engine/history": 1
       },
       "providerAttempts": 0,
-      "isolatedUnrelatedReads": 5
+      "isolatedUnrelatedReads": 6
     },
     {
       "label": "baseline-1366-light",
@@ -78,14 +89,14 @@
       ],
       "apiCounts": {
         "/api/engine/board": 2,
-        "/api/engine/statistics": 3,
         "/api/hub/snapshot": 1,
+        "/api/engine/statistics": 3,
+        "/api/full-market/fixture-odds": 2,
         "/api/prediction-vote": 1,
-        "/api/engine/history": 1,
-        "/api/full-market/fixture-odds": 1
+        "/api/engine/history": 1
       },
       "providerAttempts": 0,
-      "isolatedUnrelatedReads": 5
+      "isolatedUnrelatedReads": 6
     },
     {
       "label": "candidate-1366-dark",
@@ -106,14 +117,14 @@
       ],
       "apiCounts": {
         "/api/engine/board": 2,
-        "/api/engine/statistics": 3,
         "/api/hub/snapshot": 1,
+        "/api/engine/statistics": 3,
+        "/api/full-market/fixture-odds": 2,
         "/api/prediction-vote": 1,
-        "/api/engine/history": 1,
-        "/api/full-market/fixture-odds": 1
+        "/api/engine/history": 1
       },
       "providerAttempts": 0,
-      "isolatedUnrelatedReads": 5
+      "isolatedUnrelatedReads": 6
     },
     {
       "label": "candidate-1366-light",
