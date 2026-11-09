@@ -27,9 +27,18 @@ Contract tests cover content hashes, source drift, legacy paths, duplicate/unkno
 
 Browser tests use captured real public asset bytes and a recorded real fixture/signal snapshot. PC 1366px and mobile 390px, dark/light, baseline/candidate, cold/return navigations are compared. Screenshots and test JSON are attached to the Actions run. Native browser HTTP caching is tested without request interception. API calls are answered locally and compared by path/count; provider calls are zero. This verifies preservation of the recorded display, not live provider accuracy or backend health.
 
-Initial browser run passed all eight cases. Return-navigation JS/CSS origin requests fell from 36 to zero in every PC/mobile/theme case. Nine of the original 45 resources were already fresh in the browser cache. The 44 newly content-addressed resources total 724,230 decoded bytes, not compressed bytes saved on the wire. Some baseline responses can revalidate with 304, so request reduction is the strongest proven benefit.
+Final run [42718053274](https://github.com/mccareysupon-png/nomadtips3-live-test/actions/runs/42718053274) passed **27 cases: 19 contract cases and 8 browser cases**, including both cold and return navigations in each browser case. Browser DOM parsing confirms every inline script/style body remains byte-identical. Return-navigation JS/CSS origin requests fell from 36 to zero in every PC/mobile/theme case. Nine of the original 45 resources were already fresh in the browser cache. The 44 newly content-addressed resources total 724,230 decoded bytes, not compressed bytes saved on the wire. Some baseline responses can revalidate with 304, so request reduction is the strongest proven benefit.
 
-Initial laboratory first-match times were mixed: cold 225–433ms before versus 228–394ms after; return 100–359ms before versus 121–222ms after. These are single local fixture samples, not Production speed measurements or a reliable percentage gain. This patch does not establish a faster cold first visit. FCP and a long-task-based blocking estimate are recorded; no INP/LCP claim is made.
+Final laboratory first-match times were mixed:
+
+| Case | Cold before → after | Return before → after |
+| --- | --- | --- |
+| PC dark | 536 → 612 ms | 300 → 312 ms |
+| PC light | 529 → 501 ms | 385 → 307 ms |
+| Mobile dark | 312 → 306 ms | 194 → 129 ms |
+| Mobile light | 290 → 280 ms | 180 → 123 ms |
+
+These are single local fixture samples, not Production speed measurements or a reliable percentage gain. The PC dark case regressed in this sample, so elapsed-time improvement is not established across every condition. This patch does not establish a faster cold first visit. The consistent proven benefit is eliminating repeat JS/CSS origin requests. FCP and a long-task-based blocking estimate are recorded; no INP/LCP claim is made.
 
 Frontend deferral and HTML-wrapper consolidation are deliberately not implemented without dependency profiles and measured evidence. No Engine, Signal formula, odds, Ledger, Settlement, Member, Stripe, theme or live update behavior is changed.
 
