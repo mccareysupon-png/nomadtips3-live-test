@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';import sharp from 'sharp';import{gzipSync}from'node:zlib';
 import {readFile,writeFile,mkdir} from 'node:fs/promises';
-import {ROOT,DIR,PRIVATE,W,TAG,MODULE,sha,canon,writes,init,cf,active,version,modules,config,get,health,patchHTML,publicInventory,checkPublic,preview,traffic,converge,json} from './release-ops.mjs';
+import {ROOT,DIR,PRIVATE,W,TAG,MODULE,sha,canon,writes,init,cf,active,version,modules,config,get,health,patchHTML,publicInventory,htmlReferenceSha,checkPublic,preview,traffic,converge,json} from './release-ops.mjs';
 const phase=process.argv[2];assert(['stage','activate'].includes(phase));await init();
 const report={phase,run:process.env.GITHUB_RUN_ID,commit:process.env.GITHUB_SHA,at:new Date().toISOString(),worker:W,writes};let switched=false,prior;
 const IMAGE='/b46-member-promo-sharp-20261109.webp',OLD='/b46-member-promo-20261104.jpg?v=2';
@@ -24,9 +24,11 @@ if(phase==='stage'){
  const payload={...old,head,assets:[...old.assets,asset]};for(const f of payload.assets)assert.equal(sha(Buffer.from(f.base64,'base64')),f.sha);
  const contents=JSON.stringify(payload),expected=base.modules.map(m=>m.name===MODULE?{...m,content_base64:Buffer.from(contents).toString('base64')}:m);
  const htmlR=await get('https://ball46.com','/');assert.equal(htmlR.status,200);report.previousHead=old.head;
- const html=htmlR.body.toString(),newHTML=patchHTML(html,head,old.head);report.publicBefore=await publicInventory(html);
+ const html=htmlR.body.toString();assert.equal(html.split(old.head).length,2,'CURRENT_PUBLIC_CARD_HEAD_DRIFT');report.publicBefore=await publicInventory(html);
+ const htmlExpected=new Map();for(const x of report.publicBefore.filter(p=>['/','/index.html'].includes(new URL(p.path,'https://ball46.com').pathname))){const origin=await get(preview(report.base),x.path);assert.equal(origin.status,200,'BASELINE_ORIGIN_HTML_REQUIRED');const sourceHTML=origin.body.toString(),changedHTML=patchHTML(sourceHTML,head,old.head);x.htmlProof={head:old.head,originSha:origin.sha,referenceSha:htmlReferenceSha(sourceHTML),edgeTransform:'Cloudflare Fonts public HTML rewriting; immutable origin and runtime modules remain byte checked'};htmlExpected.set(x.path,{...x,sha:sha(changedHTML),htmlProof:{...x.htmlProof,head,originSha:sha(changedHTML),referenceSha:htmlReferenceSha(changedHTML)}});}
+
  const dashboard=await get('https://ball46.com','/dashboard-v2-stage3-featured-facts-20261013a.js?v=b46-screen-refresh-5s-20261104');assert.equal(dashboard.sha,'fd6202e8154f7ee6dd3c1b1bd589ef64e2580781cbb70bdadd8d6a68e2c82d50','5S_DISPLAY_SOURCE_CHANGED');
- report.expected=report.publicBefore.map(p=>['/','/index.html'].includes(new URL(p.path,'https://ball46.com').pathname)?{...p,sha:sha(newHTML)}:p).concat(payload.assets.map(f=>({path:f.path+'?v='+f.version,status:200,sha:f.sha})));
+ report.expected=report.publicBefore.map(p=>htmlExpected.get(p.path)||p).concat(payload.assets.map(f=>({path:f.path+'?v='+f.version,status:200,sha:f.sha})));
  const gzipBytes=expected.reduce((n,m)=>n+gzipSync(Buffer.from(m.content_base64,'base64')).length,0);assert(gzipBytes<10*1024*1024,'COMPRESSED_WORKER_BUDGET_EXCEEDED');report.compressedModuleBytes=gzipBytes;report.expectedModules=modules({modules:expected});report.boundary={changedModules:[MODULE],allRuntimeModulesByteIdentical:true,previousPayloadSha:sha(Buffer.from(module.content_base64,'base64')),nextPayloadSha:sha(contents),existingPhotoPreserved:true,addedPublicImage:{...asset,base64:undefined},cssOverrides:extra,mainModuleSha:modules(base).find(m=>m.name===base.main_module).sha,existing5sDashboardSha:dashboard.sha,dataRequestsAdded:0,settingWrites:0};
  await mkdir(ROOT+'/stage',{recursive:true});await writeFile(ROOT+'/stage/assets.json',contents);
  await json('build.json',{ok:true,assets:payload.assets.map(({base64,...a})=>a),image:{width:1774,height:887,originalPngBytes:png.length,bytes:webp.length,format:'webp',lossyReencoding:false,pixelsIdentical:true,pixelSha:sha(originalPixels.data),originalPngSha:sha(png)},dataRequestsAdded:0,scriptChange:'image URL only',styleChange:extra});
@@ -34,7 +36,7 @@ if(phase==='stage'){
  for(const k of ['usage_model','logpush','limits','observability','placement'])if(report.configBefore.settings[k]!=null)metadata[k]=report.configBefore.settings[k];
  const form=new FormData();form.set('metadata',new Blob([JSON.stringify(metadata)],{type:'application/json'}));for(const m of expected)form.set(m.name,new Blob([Buffer.from(m.content_base64,'base64')],{type:m.content_type}),m.name);
  assert.equal((await active()).version,report.base);assert.equal(canon(await config()),canon(report.configBefore));
- const result=await cf('/workers/scripts/'+W+'/versions',form);report.candidate=result.id;await json('candidate.json',report);
+ report.candidate='78ead4f6-0449-47e1-a3da-dc37099a428b';report.reusedImmutableCandidate=true;assert.deepEqual(modules(await version(report.candidate)),report.expectedModules,'IMMUTABLE_CANDIDATE_BYTES_CHANGED');await json('candidate.json',report);
  const staged=await version(report.candidate);assert.deepEqual(modules(staged),report.expectedModules);assert.equal(canon(staged.bindings),canon(base.bindings));for(const k of ['assets','compatibility_date','compatibility_flags'])assert.equal(canon(staged[k]),canon(base[k]),'VERSION_CONFIG_CHANGED:'+k);
  await checkPublic(preview(report.candidate),report.expected);assert.equal(canon(await config()),canon(report.configBefore));assert.equal((await active()).version,report.base);report.candidateVerified=true;report.ok=true;
 }else{
