@@ -1,0 +1,43 @@
+name: BALL46 mobile bars restoration TEST ONLY
+on:
+  push:
+    branches: [codex/ball46-mobile-bars-restore-20261110]
+    paths: ['work/mobile-event-flow-restore-20261110/test-request.json']
+permissions:
+  contents: write
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Build reversible mobile guard over audited current source
+        run: |
+          node work/mobile-event-flow-restore-20261110/prepare.mjs
+          node --check work/mobile-event-flow-restore-20261110/candidate/index.mjs
+          node --check work/mobile-event-flow-restore-20261110/candidate/expanded-match-343.js
+      - name: Install browser test tools
+        run: |
+          npm install --no-save --package-lock=false --prefix work/mobile-event-flow-restore-20261110 acorn@8.15.0 playwright@1.56.1
+          cd work/mobile-event-flow-restore-20261110 && npx playwright install --with-deps chromium
+      - name: Current-origin browser-only regression tests PC and mobile
+        run: node work/mobile-event-flow-restore-20261110/browser-test.mjs
+      - name: Save test evidence without any Production mutation
+        if: always()
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add work/mobile-event-flow-restore-20261110/qa/*.json work/mobile-event-flow-restore-20261110/candidate/boundary.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Record mobile bar restoration test-only evidence [skip ci]"
+          git push origin HEAD:codex/ball46-mobile-bars-restore-20261110
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mobile-bars-restoration-preview-proof
+          path: |
+            work/mobile-event-flow-restore-20261110/qa
+            work/mobile-event-flow-restore-20261110/candidate/boundary.json
