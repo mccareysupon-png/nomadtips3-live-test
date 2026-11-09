@@ -1,0 +1,4 @@
+import{readFile}from'node:fs/promises';import{DIR,init,active,traffic,converge,json}from'./release-ops.mjs';
+await init();let a;try{a=JSON.parse(await readFile(DIR+'/activation.json'))}catch{process.exit(0)}if(!a.activated)process.exit(0);
+try{const p=JSON.parse(await readFile(DIR+'/candidate.json')),now=await active();if(now.version===p.base){await json('automatic-rollback.json',{ok:true,alreadyRestored:true,active:now});process.exit(0)}if(now.version!==p.candidate)throw Error('CONCURRENT_DEPLOY_NO_RESTORE');
+const deployment=await traffic(p.base,p.candidate,'Automatic immediate rollback after portrait verification failure');await converge(p.base,p.publicBefore);await json('automatic-rollback.json',{ok:true,base:p.base,candidate:p.candidate,deployment,active:await active()});console.log('RESTORED_IMMEDIATE_BASELINE');}catch(e){await json('automatic-rollback.json',{ok:false,error:e.message});throw e}
