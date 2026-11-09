@@ -1,7 +1,36 @@
 {
   "ok": false,
-  "error": "locator.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for getByRole('button', { name: 'Event Flow', exact: true })\n    - locator resolved to <button disabled type=\"button\" data-b46-section=\"flow\">Event Flow</button>\n  - attempting click action\n    2 × waiting for element to be visible, enabled and stable\n      - element is not stable\n    - retrying click action\n    - waiting 20ms\n    - waiting for element to be visible, enabled and stable\n    - element is not stable\n  2 × retrying click action\n      - waiting 100ms\n      - waiting for element to be visible, enabled and stable\n      - element is not enabled\n  55 × retrying click action\n       - waiting 500ms\n       - waiting for element to be visible, enabled and stable\n       - element is not enabled\n  - retrying click action\n    - waiting 500ms\n\n    at check (/home/runner/work/nomadtips3-live-test/nomadtips3-live-test/work/mobile-event-flow-restore-20261110/browser-test.mjs:24:176)\n    at async file:///home/runner/work/nomadtips3-live-test/nomadtips3-live-test/work/mobile-event-flow-restore-20261110/browser-test.mjs:40:70",
+  "error": "AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:\n+ actual - expected\n\n+ []\n- [\n-   '204233293-ft_ah-mw9tbbsz'\n- ]\n\n    at check (file:///home/runner/work/nomadtips3-live-test/nomadtips3-live-test/work/mobile-event-flow-restore-20261110/browser-test.mjs:27:292)\n    at async file:///home/runner/work/nomadtips3-live-test/nomadtips3-live-test/work/mobile-event-flow-restore-20261110/browser-test.mjs:41:231",
   "results": [
+    {
+      "label": "baseline-390-dark",
+      "width": 390,
+      "storedTheme": "dark",
+      "actualTheme": "dark",
+      "ok": true,
+      "bars": 0,
+      "paths": [
+        {
+          "class": "expand-flow-line home",
+          "d": "M 36.0 22.0 L 39.3 103.4 L 42.6 134.2 L 45.9 157.3 L 49.2 173.1 L 52.5 189.6 L 55.8 204.6 L 59.1 183.6 L 62.4 187.6 L 65.7 178.6 L 69.0 184.1 L 72.3 179.6 L 75.6 200.1 L 78.9 188.6 L 82.2 177.3 L 85.6 133.7 L 88.9 124.7 L 92.2 121.5 L 95.5 135.7 L 98.8 142.0 L 102.1 163.5 L 105.4 159.3 L 108.7 164.8 L 112.0 167.8 L 115.3 168.8 L 118.6 178.3 L 121.9 209.4 L 125.2 217.1 L 128.5 213.9 L 131.8 212.1 L 135.1 141.2 L 138.4 136.2 L 141.7 133.0 L 145.0 178.3 L 148.3 150.0 L 151.6 147.3 L 154.9 137.5 L 158.2 150.3 L 161.5 155.3 L 164.8 155.5 L 168.1 174.3 L 171.4 179.1 L 174.7 176.3 L 178.0 143.0 L 181.3 173.6 L 184.7 179.6 L 184.7 250.0 L 188.0 186.1 L 191.3 164.8 L 191.3 245.2 L 194.6 242.2 L 197.9 244.4 L 201.2 241.2 L 204.5 239.4 L 207.8 233.4 L 211.1 225.4 L 214.4 234.7 L 217.7 233.4 L 221.0 231.7 L 224.3 226.9 L 227.6 225.2 L 230.9 225.2 L 234.2 192.6 L 237.5 196.1 L 240.8 180.8 L 244.1 188.8 L 247.4 199.6 L 250.7 166.3 L 254.0 172.1 L 257.3 191.8 L 260.6 180.8 L 263.9 179.6 L 267.2 175.1 L 270.5 179.8 L 273.8 177.1 L 277.1 182.1 L 280.4 168.3 L 283.8 177.3 L 287.1 185.8 L 290.4 182.8 L 293.7 192.1 L 297.0 218.6 L 300.3 223.4 L 303.6 231.9 L 306.9 207.1 L 310.2 196.1 L 313.5 196.1 L 316.8 199.6 L 320.1 186.8 L 323.4 182.6 L 326.7 162.0 L 330.0 93.1"
+        },
+        {
+          "class": "expand-flow-line away",
+          "d": "M 36.0 270.0 L 39.3 191.1 L 42.6 160.3 L 45.9 137.2 L 49.2 121.5 L 52.5 104.9 L 55.8 89.9 L 59.1 110.9 L 62.4 106.9 L 65.7 115.9 L 69.0 110.4 L 72.3 114.9 L 75.6 94.4 L 78.9 105.9 L 82.2 117.2 L 85.6 160.8 L 88.9 169.8 L 92.2 173.1 L 95.5 158.8 L 98.8 152.5 L 102.1 131.0 L 105.4 135.2 L 108.7 129.7 L 112.0 126.7 L 115.3 125.7 L 118.6 116.2 L 121.9 85.1 L 125.2 77.4 L 128.5 80.6 L 131.8 82.4 L 135.1 153.3 L 138.4 158.3 L 141.7 161.5 L 145.0 116.2 L 148.3 144.5 L 151.6 147.3 L 154.9 157.0 L 158.2 144.2 L 161.5 139.2 L 164.8 139.0 L 168.1 120.2 L 171.4 115.4 L 174.7 118.2 L 178.0 151.5 L 181.3 120.9 L 184.7 114.9 L 184.7 44.5 L 188.0 108.4 L 191.3 129.7 L 191.3 49.3 L 194.6 52.3 L 197.9 50.1 L 201.2 53.3 L 204.5 55.1 L 207.8 61.1 L 211.1 69.1 L 214.4 59.8 L 217.7 61.1 L 221.0 62.8 L 224.3 67.6 L 227.6 69.3 L 230.9 69.3 L 234.2 101.9 L 237.5 98.4 L 240.8 113.7 L 244.1 105.7 L 247.4 94.9 L 250.7 128.2 L 254.0 122.5 L 257.3 102.7 L 260.6 113.7 L 263.9 114.9 L 267.2 119.4 L 270.5 114.7 L 273.8 117.4 L 277.1 112.4 L 280.4 126.2 L 283.8 117.2 L 287.1 108.7 L 290.4 111.7 L 293.7 102.4 L 297.0 75.9 L 300.3 71.1 L 303.6 62.6 L 306.9 87.4 L 310.2 98.4 L 313.5 98.4 L 316.8 94.9 L 320.1 107.7 L 323.4 111.9 L 326.7 132.5 L 330.0 201.4"
+        }
+      ],
+      "apiCounts": {
+        "/api/engine/board": 2,
+        "/api/hub/snapshot": 1,
+        "/api/engine/statistics": 3,
+        "/api/prediction-vote": 1,
+        "/api/engine/history": 1,
+        "/api/full-market/fixture-odds": 2,
+        "/api/engine/signals": 1
+      },
+      "providerAttempts": 0,
+      "isolatedUnrelatedReads": 6
+    },
     {
       "label": "baseline-1366-dark",
       "width": 1366,
@@ -21,14 +50,14 @@
       ],
       "apiCounts": {
         "/api/engine/board": 2,
-        "/api/hub/snapshot": 1,
         "/api/engine/statistics": 3,
-        "/api/full-market/fixture-odds": 2,
+        "/api/hub/snapshot": 1,
         "/api/prediction-vote": 1,
-        "/api/engine/history": 1
+        "/api/engine/history": 1,
+        "/api/full-market/fixture-odds": 1
       },
       "providerAttempts": 0,
-      "isolatedUnrelatedReads": 6
+      "isolatedUnrelatedReads": 5
     },
     {
       "label": "baseline-1366-light",
@@ -49,14 +78,70 @@
       ],
       "apiCounts": {
         "/api/engine/board": 2,
-        "/api/hub/snapshot": 1,
         "/api/engine/statistics": 3,
-        "/api/full-market/fixture-odds": 2,
+        "/api/hub/snapshot": 1,
         "/api/prediction-vote": 1,
-        "/api/engine/history": 1
+        "/api/engine/history": 1,
+        "/api/full-market/fixture-odds": 1
       },
       "providerAttempts": 0,
-      "isolatedUnrelatedReads": 6
+      "isolatedUnrelatedReads": 5
+    },
+    {
+      "label": "candidate-1366-dark",
+      "width": 1366,
+      "storedTheme": "dark",
+      "actualTheme": "dark",
+      "ok": true,
+      "bars": 0,
+      "paths": [
+        {
+          "class": "expand-flow-line home",
+          "d": "M 42.0 14.0 L 52.6 75.7 L 63.1 99.1 L 73.7 116.5 L 84.2 128.5 L 94.8 141.0 L 105.4 152.4 L 115.9 136.5 L 126.5 139.5 L 137.1 132.7 L 147.6 136.9 L 158.2 133.4 L 168.7 149.0 L 179.3 140.3 L 189.9 131.7 L 200.4 98.7 L 211.0 91.9 L 221.6 89.4 L 232.1 100.2 L 242.7 105.0 L 253.2 121.3 L 263.8 118.1 L 274.4 122.2 L 284.9 124.5 L 295.5 125.3 L 306.0 132.5 L 316.6 156.0 L 327.2 161.9 L 337.7 159.5 L 348.3 158.1 L 358.9 104.4 L 369.4 100.6 L 380.0 98.1 L 390.5 132.5 L 401.1 111.0 L 411.7 108.9 L 422.2 101.5 L 432.8 111.2 L 443.3 115.0 L 453.9 115.2 L 464.5 129.5 L 475.0 133.1 L 485.6 131.0 L 496.2 105.7 L 506.7 128.9 L 517.3 133.4 L 517.3 186.8 L 527.8 138.4 L 538.4 122.2 L 538.4 183.2 L 549.0 180.9 L 559.5 182.6 L 570.1 180.2 L 580.7 178.8 L 591.2 174.3 L 601.8 168.2 L 612.3 175.2 L 622.9 174.3 L 633.5 172.9 L 644.0 169.3 L 654.6 168.0 L 665.1 168.0 L 675.7 143.3 L 686.3 146.0 L 696.8 134.4 L 707.4 140.5 L 718.0 148.6 L 728.5 123.4 L 739.1 127.7 L 749.6 142.8 L 760.2 134.4 L 770.8 133.4 L 781.3 130.0 L 791.9 133.6 L 802.4 131.5 L 813.0 135.3 L 823.6 124.9 L 834.1 131.7 L 844.7 138.2 L 855.3 135.9 L 865.8 142.9 L 876.4 163.1 L 886.9 166.7 L 897.5 173.1 L 908.1 154.3 L 918.6 146.0 L 929.2 146.0 L 939.8 148.6 L 950.3 139.0 L 960.9 135.7 L 971.4 120.2 L 982.0 67.9"
+        },
+        {
+          "class": "expand-flow-line away",
+          "d": "M 42.0 202.0 L 52.6 142.2 L 63.1 118.8 L 73.7 101.4 L 84.2 89.4 L 94.8 76.9 L 105.4 65.5 L 115.9 81.4 L 126.5 78.4 L 137.1 85.2 L 147.6 81.0 L 158.2 84.5 L 168.7 68.9 L 179.3 77.6 L 189.9 86.2 L 200.4 119.2 L 211.0 126.0 L 221.6 128.5 L 232.1 117.7 L 242.7 112.9 L 253.2 96.6 L 263.8 99.8 L 274.4 95.7 L 284.9 93.4 L 295.5 92.6 L 306.0 85.4 L 316.6 61.9 L 327.2 56.0 L 337.7 58.4 L 348.3 59.8 L 358.9 113.5 L 369.4 117.3 L 380.0 119.8 L 390.5 85.4 L 401.1 106.9 L 411.7 108.9 L 422.2 116.4 L 432.8 106.7 L 443.3 102.9 L 453.9 102.7 L 464.5 88.4 L 475.0 84.8 L 485.6 86.9 L 496.2 112.2 L 506.7 89.0 L 517.3 84.5 L 517.3 31.1 L 527.8 79.5 L 538.4 95.7 L 538.4 34.7 L 549.0 37.0 L 559.5 35.3 L 570.1 37.7 L 580.7 39.1 L 591.2 43.6 L 601.8 49.7 L 612.3 42.7 L 622.9 43.6 L 633.5 45.0 L 644.0 48.6 L 654.6 49.9 L 665.1 49.9 L 675.7 74.6 L 686.3 71.9 L 696.8 83.5 L 707.4 77.4 L 718.0 69.3 L 728.5 94.5 L 739.1 90.1 L 749.6 75.1 L 760.2 83.5 L 770.8 84.5 L 781.3 87.9 L 791.9 84.3 L 802.4 86.4 L 813.0 82.6 L 823.6 93.0 L 834.1 86.2 L 844.7 79.7 L 855.3 82.0 L 865.8 75.0 L 876.4 54.8 L 886.9 51.2 L 897.5 44.8 L 908.1 63.6 L 918.6 71.9 L 929.2 71.9 L 939.8 69.3 L 950.3 78.9 L 960.9 82.2 L 971.4 97.7 L 982.0 150.0"
+        }
+      ],
+      "apiCounts": {
+        "/api/engine/board": 2,
+        "/api/engine/statistics": 3,
+        "/api/hub/snapshot": 1,
+        "/api/prediction-vote": 1,
+        "/api/engine/history": 1,
+        "/api/full-market/fixture-odds": 1
+      },
+      "providerAttempts": 0,
+      "isolatedUnrelatedReads": 5
+    },
+    {
+      "label": "candidate-1366-light",
+      "width": 1366,
+      "storedTheme": "light",
+      "actualTheme": "light",
+      "ok": true,
+      "bars": 0,
+      "paths": [
+        {
+          "class": "expand-flow-line home",
+          "d": "M 42.0 14.0 L 52.6 75.7 L 63.1 99.1 L 73.7 116.5 L 84.2 128.5 L 94.8 141.0 L 105.4 152.4 L 115.9 136.5 L 126.5 139.5 L 137.1 132.7 L 147.6 136.9 L 158.2 133.4 L 168.7 149.0 L 179.3 140.3 L 189.9 131.7 L 200.4 98.7 L 211.0 91.9 L 221.6 89.4 L 232.1 100.2 L 242.7 105.0 L 253.2 121.3 L 263.8 118.1 L 274.4 122.2 L 284.9 124.5 L 295.5 125.3 L 306.0 132.5 L 316.6 156.0 L 327.2 161.9 L 337.7 159.5 L 348.3 158.1 L 358.9 104.4 L 369.4 100.6 L 380.0 98.1 L 390.5 132.5 L 401.1 111.0 L 411.7 108.9 L 422.2 101.5 L 432.8 111.2 L 443.3 115.0 L 453.9 115.2 L 464.5 129.5 L 475.0 133.1 L 485.6 131.0 L 496.2 105.7 L 506.7 128.9 L 517.3 133.4 L 517.3 186.8 L 527.8 138.4 L 538.4 122.2 L 538.4 183.2 L 549.0 180.9 L 559.5 182.6 L 570.1 180.2 L 580.7 178.8 L 591.2 174.3 L 601.8 168.2 L 612.3 175.2 L 622.9 174.3 L 633.5 172.9 L 644.0 169.3 L 654.6 168.0 L 665.1 168.0 L 675.7 143.3 L 686.3 146.0 L 696.8 134.4 L 707.4 140.5 L 718.0 148.6 L 728.5 123.4 L 739.1 127.7 L 749.6 142.8 L 760.2 134.4 L 770.8 133.4 L 781.3 130.0 L 791.9 133.6 L 802.4 131.5 L 813.0 135.3 L 823.6 124.9 L 834.1 131.7 L 844.7 138.2 L 855.3 135.9 L 865.8 142.9 L 876.4 163.1 L 886.9 166.7 L 897.5 173.1 L 908.1 154.3 L 918.6 146.0 L 929.2 146.0 L 939.8 148.6 L 950.3 139.0 L 960.9 135.7 L 971.4 120.2 L 982.0 67.9"
+        },
+        {
+          "class": "expand-flow-line away",
+          "d": "M 42.0 202.0 L 52.6 142.2 L 63.1 118.8 L 73.7 101.4 L 84.2 89.4 L 94.8 76.9 L 105.4 65.5 L 115.9 81.4 L 126.5 78.4 L 137.1 85.2 L 147.6 81.0 L 158.2 84.5 L 168.7 68.9 L 179.3 77.6 L 189.9 86.2 L 200.4 119.2 L 211.0 126.0 L 221.6 128.5 L 232.1 117.7 L 242.7 112.9 L 253.2 96.6 L 263.8 99.8 L 274.4 95.7 L 284.9 93.4 L 295.5 92.6 L 306.0 85.4 L 316.6 61.9 L 327.2 56.0 L 337.7 58.4 L 348.3 59.8 L 358.9 113.5 L 369.4 117.3 L 380.0 119.8 L 390.5 85.4 L 401.1 106.9 L 411.7 108.9 L 422.2 116.4 L 432.8 106.7 L 443.3 102.9 L 453.9 102.7 L 464.5 88.4 L 475.0 84.8 L 485.6 86.9 L 496.2 112.2 L 506.7 89.0 L 517.3 84.5 L 517.3 31.1 L 527.8 79.5 L 538.4 95.7 L 538.4 34.7 L 549.0 37.0 L 559.5 35.3 L 570.1 37.7 L 580.7 39.1 L 591.2 43.6 L 601.8 49.7 L 612.3 42.7 L 622.9 43.6 L 633.5 45.0 L 644.0 48.6 L 654.6 49.9 L 665.1 49.9 L 675.7 74.6 L 686.3 71.9 L 696.8 83.5 L 707.4 77.4 L 718.0 69.3 L 728.5 94.5 L 739.1 90.1 L 749.6 75.1 L 760.2 83.5 L 770.8 84.5 L 781.3 87.9 L 791.9 84.3 L 802.4 86.4 L 813.0 82.6 L 823.6 93.0 L 834.1 86.2 L 844.7 79.7 L 855.3 82.0 L 865.8 75.0 L 876.4 54.8 L 886.9 51.2 L 897.5 44.8 L 908.1 63.6 L 918.6 71.9 L 929.2 71.9 L 939.8 69.3 L 950.3 78.9 L 960.9 82.2 L 971.4 97.7 L 982.0 150.0"
+        }
+      ],
+      "apiCounts": {
+        "/api/engine/board": 2,
+        "/api/engine/statistics": 3,
+        "/api/hub/snapshot": 1,
+        "/api/prediction-vote": 1,
+        "/api/engine/history": 1,
+        "/api/full-market/fixture-odds": 1
+      },
+      "providerAttempts": 0,
+      "isolatedUnrelatedReads": 5
     }
   ]
 }
