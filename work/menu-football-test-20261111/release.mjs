@@ -22,6 +22,7 @@ try{if(phase==='stage'){
  const next=await version(report.candidate);assert.deepEqual(modules(next),report.expectedModules);await preserve(next,base);await checkPublic(preview(report.candidate),report.expected);assert.deepEqual(await active(),report.before);assert.equal(sha(canon(await config())),report.configFingerprint);
  report.ok=true;report.candidateVerified=true;await json('candidate.json',report);await json('candidate-summary.json',{ok:true,base:report.base,candidate:report.candidate,modules:expected.length,newModules:0,unchangedModules:expected.length-1,paths:report.expected.length,protectedSettled:report.ledgerBefore.count});
 }else{
+ if(phase==='rollback'){try{await readFile(DIR+'/activation-intent.json')}catch{console.log('NO_ACTIVATION_NO_ROLLBACK_REQUIRED');process.exit(0)}}
  const p=JSON.parse(await readFile(DIR+'/candidate.json'));report.base=p.base;report.candidate=p.candidate;
  if(phase==='rollback'){
   let intent;try{intent=JSON.parse(await readFile(DIR+'/activation-intent.json'))}catch{process.exit(0)}assert(intent.run===process.env.GITHUB_RUN_ID&&intent.candidate===p.candidate);
