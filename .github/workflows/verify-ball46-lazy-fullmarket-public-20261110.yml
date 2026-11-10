@@ -1,0 +1,16 @@
+name: Verify BALL46 Lazy Full Market Public Source 20261110
+on:
+  push:
+    branches: [test/ball46-fullmarket-lazy-prod-20261110]
+    paths: ['fullmarket-lazy-prod-20261110/VERIFY_PUBLIC_READY']
+permissions: {contents: read}
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: test/ball46-fullmarket-lazy-prod-20261110}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: node fullmarket-lazy-prod-20261110/verify-public.mjs
