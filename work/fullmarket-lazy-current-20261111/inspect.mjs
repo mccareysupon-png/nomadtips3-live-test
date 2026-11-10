@@ -1,0 +1,7 @@
+import{mkdir,writeFile}from'node:fs/promises';import{createHash}from'node:crypto';
+const D='work/fullmarket-lazy-current-20261111/source',A='62cb0db544160e6591342abd6b4f35cc',W='ball46-production',sha=b=>createHash('sha256').update(b).digest('hex');await mkdir(D,{recursive:true});
+async function cf(p){const r=await fetch('https://api.cloudflare.com/client/v4/accounts/'+A+p,{headers:{authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN}}),j=await r.json();if(!j.success)throw Error('CF_READ_'+r.status);return j.result}
+const d=(await cf('/workers/scripts/'+W+'/deployments?per_page=1')).deployments[0],id=d.versions[0].version_id,v=await cf('/workers/workers/'+W+'/versions/'+id+'?include=modules');
+const report={productionWrites:0,run:process.env.GITHUB_RUN_ID,active:{version:id,deployment:d.id},main:v.main_module,modules:[],matches:[]};
+for(const m of v.modules){const b=Buffer.from(m.content_base64,'base64'),s=b.toString();report.modules.push({name:m.name,sha:sha(b),bytes:b.length});if(m.name===v.main_module)await writeFile(D+'/active-main.mjs',b);for(const marker of ['B46_FULLMARKET_INSPECT_CACHE_20261110','networkMode','full-market-bookmaker-343.js']){let i=s.indexOf(marker);if(i>=0)report.matches.push({module:m.name,marker,excerpt:s.slice(Math.max(0,i-200),i+800)})}}
+await writeFile(D+'/report.json',JSON.stringify(report,null,2));console.log(JSON.stringify({active:report.active,matches:report.matches,productionWrites:0}));

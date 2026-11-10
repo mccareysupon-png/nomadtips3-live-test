@@ -1,0 +1,26 @@
+name: BALL46 Full Market fresh source READ ONLY
+on:
+  push:
+    branches: [test/ball46-fullmarket-fresh-20261111]
+    paths: ['work/fullmarket-lazy-current-20261111/inspect-request.json']
+permissions:
+  contents: write
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Read active modules only
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: node work/fullmarket-lazy-current-20261111/inspect.mjs
+      - name: Save source evidence
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add work/fullmarket-lazy-current-20261111/source
+          git commit -m "Record actual active Worker source for isolated Full Market test [skip ci]"
+          git push origin HEAD:test/ball46-fullmarket-fresh-20261111
