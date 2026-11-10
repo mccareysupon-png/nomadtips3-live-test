@@ -1,0 +1,40 @@
+{
+  "ok": true,
+  "checks": 5,
+  "productionRequests": 0,
+  "storageWrites": 0,
+  "providerRequests": 0,
+  "results": [
+    {
+      "rows": 0,
+      "pages": 1,
+      "allIdsAndTotalsEqual": true,
+      "maxStorageListRows": 0
+    },
+    {
+      "rows": 500,
+      "pages": 1,
+      "allIdsAndTotalsEqual": true,
+      "maxStorageListRows": 500
+    },
+    {
+      "rows": 501,
+      "pages": 2,
+      "allIdsAndTotalsEqual": true,
+      "maxStorageListRows": 501
+    },
+    {
+      "rows": 2000,
+      "pages": 4,
+      "allIdsAndTotalsEqual": true,
+      "maxStorageListRows": 501
+    },
+    {
+      "rows": 5000,
+      "pages": 10,
+      "allIdsAndTotalsEqual": true,
+      "maxStorageListRows": 501
+    }
+  ],
+  "limit": "Actual recorded Engine read methods with mock storage; no live heap measurement or scan execution."
+}

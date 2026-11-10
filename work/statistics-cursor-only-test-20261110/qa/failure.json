@@ -1,23 +1,15 @@
 {
-  "error": "AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:\n+ actual - expected\n\n+ [\n+   {\n+     status: 404,\n+     url: 'http://127.0.0.1:33135/cdn-cgi/challenge-platform/scripts/precursor/main.js?ray=a5836284ff954cba'\n+   },\n+   {\n+     status: 404,\n+     url: 'http://127.0.0.1:33135/live-prediction-343.js?v=b46-monitor-20261030'\n+   },\n+   {\n+     status: 404,\n+     url: 'http://127.0.0.1:33135/cdn-cgi/challenge-platform/scripts/precursor/main.js?ray=a5836284ff954cba'\n+   },\n+   {\n+     status: 404,\n+     url: 'http://127.0.0.1:33135/live-prediction-343.js?v=b46-monitor-20261030'\n+   }\n+ ]\n- []\n\n    at file:///home/runner/work/nomadtips3-live-test/nomadtips3-live-test/work/statistics-cursor-only-test-20261110/browser-test.mjs:14:90",
+  "error": "AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:\n+ actual - expected\n\n+ [\n+   {\n+     status: 404,\n+     url: 'http://127.0.0.1:35777/live-prediction-343.js?v=b46-monitor-20261030'\n+   },\n+   {\n+     status: 404,\n+     url: 'http://127.0.0.1:35777/live-prediction-343.js?v=b46-monitor-20261030'\n+   }\n+ ]\n- []\n\n    at file:///home/runner/work/nomadtips3-live-test/nomadtips3-live-test/work/statistics-cursor-only-test-20261110/browser-test.mjs:14:90",
   "width": 1366,
   "theme": "dark",
   "errors": [],
   "failed": [
     {
-      "url": "http://127.0.0.1:33135/cdn-cgi/challenge-platform/scripts/precursor/main.js?ray=a5836284ff954cba",
+      "url": "http://127.0.0.1:35777/live-prediction-343.js?v=b46-monitor-20261030",
       "status": 404
     },
     {
-      "url": "http://127.0.0.1:33135/live-prediction-343.js?v=b46-monitor-20261030",
-      "status": 404
-    },
-    {
-      "url": "http://127.0.0.1:33135/cdn-cgi/challenge-platform/scripts/precursor/main.js?ray=a5836284ff954cba",
-      "status": 404
-    },
-    {
-      "url": "http://127.0.0.1:33135/live-prediction-343.js?v=b46-monitor-20261030",
+      "url": "http://127.0.0.1:35777/live-prediction-343.js?v=b46-monitor-20261030",
       "status": 404
     }
   ],
