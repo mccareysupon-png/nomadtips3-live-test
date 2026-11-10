@@ -1,0 +1,37 @@
+name: BALL46 fresh Lazy Full Market TEST ONLY
+on:
+  push:
+    branches: [test/ball46-fullmarket-fresh-20261111]
+    paths: ['work/fullmarket-lazy-current-20261111/test-request.json']
+permissions:
+  contents: write
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    env:
+      B46_COMPONENT_ONLY: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --prefix work/fullmarket-lazy-current-20261111 --no-save --package-lock=false playwright@1.56.1
+      - name: Reproduce actual Production source and build narrow patch
+        run: node work/fullmarket-lazy-current-20261111/build.mjs
+      - name: Desktop and mobile isolated interaction and zero request QA
+        env:
+          PLAYWRIGHT_EXECUTABLE_PATH: /usr/bin/google-chrome
+        run: node work/fullmarket-lazy-current-20261111/qa.mjs
+      - name: Save results only without any Cloudflare credentials or deployment
+        if: always()
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add work/fullmarket-lazy-current-20261111/qa/*.json work/fullmarket-lazy-current-20261111/build-proof.json
+          git commit -m "Record isolated Lazy Full Market test results [skip ci]"
+          git push origin HEAD:test/ball46-fullmarket-fresh-20261111
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lazy-fullmarket-test-only
+          path: work/fullmarket-lazy-current-20261111/qa
