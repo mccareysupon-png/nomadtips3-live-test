@@ -20,6 +20,8 @@ jobs:
           cd work/statistics-cursor-only-test-20261110 && npx playwright install --with-deps chromium
       - name: Cursor completeness fault cache and coalescing tests
         run: node work/statistics-cursor-only-test-20261110/core-test.mjs
+      - name: Actual recorded Engine pagination contract with mock storage
+        run: node work/statistics-cursor-only-test-20261110/engine-contract-test.mjs
       - name: Recorded score and synthetic ledger UI PC mobile dark light
         run: node work/statistics-cursor-only-test-20261110/browser-test.mjs
       - name: Save isolated test reports only
