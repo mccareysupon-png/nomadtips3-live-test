@@ -45,3 +45,19 @@ for(const url of [
   console.log('BODY='+body.slice(0,2500).replace(/\s+/g,' '));
  }catch(e){console.log('URLERR='+url+' '+e.message)}
 }
+
+console.log('--- AUTH_FOCUS ---');
+for(const m of ver.modules||[]){
+ const t=Buffer.from(m.content_base64||'','base64').toString('utf8');
+ for(const needle of ['Ball46 Member Login','/api/member/session','/api/member/login','/api/member/logout','/member/login','memberLogin','membership','email']){
+   let p=0,c=0;
+   while(true){
+    const i=t.indexOf(needle,p); if(i<0)break;
+    const ctx=t.slice(Math.max(0,i-1200),Math.min(t.length,i+needle.length+3500)).replace(/\s+/g,' ');
+    console.log('AUTH_MODULE='+m.name);
+    console.log('AUTH_NEEDLE='+needle);
+    console.log('AUTH_CTX='+ctx);
+    p=i+needle.length; if(++c>=8)break;
+   }
+ }
+}
