@@ -1,0 +1,1406 @@
+
+/* Dashboard V2 presentation-only tune: no data/API side effects. */
+.desktop-signal{display:inline}.mobile-clock,.mobile-signal{display:none}
+
+/* Desktop/laptop: only the center match board scrolls.
+   The outer center column must NOT clip expanded cards; the inner board owns the scroll. */
+@media(min-width:761px){
+  .main-board{
+    min-width:0;
+    height:calc(100vh - 158px);
+    height:calc(100dvh - 158px);
+    min-height:420px;
+    display:grid;
+    grid-template-rows:auto minmax(0,1fr);
+    overflow:visible;
+    position:relative;
+  }
+  .main-board>.board-toolbar{
+    min-width:0;
+    margin-bottom:10px;
+    position:relative;
+    z-index:2;
+  }
+  .main-board>.board-sections{
+    min-width:0;
+    min-height:0;
+    height:100%;
+    align-content:start;
+    grid-auto-rows:max-content;
+    overflow-x:hidden;
+    overflow-y:scroll;
+    overscroll-behavior:contain;
+    scrollbar-gutter:stable;
+    scrollbar-width:auto;
+    scrollbar-color:#8f9994 #e2e7e4;
+    padding:2px 8px 14px 2px;
+    position:relative;
+    z-index:1;
+    background:transparent;
+  }
+  .main-board>.board-sections::-webkit-scrollbar{width:11px}
+  .main-board>.board-sections::-webkit-scrollbar-track{background:#e2e7e4;border-radius:999px}
+  .main-board>.board-sections::-webkit-scrollbar-thumb{background:#8f9994;border:2px solid #e2e7e4;border-radius:999px;min-height:44px}
+  .main-board>.board-sections::-webkit-scrollbar-thumb:hover{background:#737e78}
+
+  html[data-theme="dark"] .main-board>.board-sections{
+    scrollbar-color:#3d4541 #111613;
+  }
+  html[data-theme="dark"] .main-board>.board-sections::-webkit-scrollbar-track{background:#111613}
+  html[data-theme="dark"] .main-board>.board-sections::-webkit-scrollbar-thumb{background:#3d4541;border-color:#111613}
+  html[data-theme="dark"] .main-board>.board-sections::-webkit-scrollbar-thumb:hover{background:#535d57}
+}
+
+@media(max-width:760px){
+  .score-cell>small:not(.half-score){display:none!important}
+  .signal-cell:before{content:none!important;display:none!important}
+  .signal-cell{display:flex!important;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:var(--text);min-width:0}
+  .desktop-signal{display:none!important}
+  .mobile-clock{display:block;font-size:11.5px;font-weight:600;line-height:1.15;color:var(--text);white-space:nowrap}
+  .mobile-signal{display:block;font-size:9.5px;font-weight:600;line-height:1.15;color:var(--muted);white-space:nowrap}
+  .signal-cell.locked .mobile-signal{color:var(--green)}
+
+  /* Mobile stays natural page-scroll: no nested vertical scroller. */
+  .main-board{height:auto;min-height:0;display:block;overflow:visible}
+  .main-board>.board-sections{height:auto;max-height:none;overflow:visible;padding-right:0;scrollbar-gutter:auto;align-content:normal;grid-auto-rows:auto}
+}
+
+/* Ball46 summary market-card containment.
+   Layout only: preserve odds values, formatter, bindings, APIs and JS renderers unchanged. */
+@media(min-width:901px){
+  .match-row{
+    grid-template-columns:minmax(0,1fr) 64px 118px 118px 118px 72px;
+  }
+  .market-cell{min-width:0}
+}
+
+@media(min-width:761px) and (max-width:900px){
+  .match-row{
+    grid-template-columns:minmax(0,1fr) 58px 118px 118px 118px 64px;
+    gap:4px;
+  }
+  .market-cell{min-width:0}
+}
+
+/* Ball46 master content rails.
+   Presentation only: align Page 1 content to the Page 1 header/logo on both left and right. */
+.dash-shell{
+  padding-left:clamp(10px,1.6vw,24px);
+  padding-right:clamp(10px,1.6vw,24px);
+}
+@media(max-width:760px){
+  .dash-shell{
+    padding-left:8px;
+    padding-right:8px;
+  }
+}
+
+/* BALL46 HORIZONTAL CARD BALANCE 20260928 */
+.desktop-team-score{display:none}
+@media (min-width:761px){
+  .match-row{grid-template-columns:minmax(0,29fr) minmax(0,14fr) minmax(0,14fr) minmax(0,14fr) minmax(0,13fr) minmax(0,16fr)!important;gap:6px!important}
+  .match-row .teams-cell{min-width:0;height:42px;display:grid;grid-template-columns:minmax(0,1fr) 30px;grid-template-rows:repeat(2,minmax(0,1fr));column-gap:8px;align-items:center}
+  .match-row .teams-cell>b{min-width:0;margin:0;line-height:1.15;align-self:center}
+  .match-row .teams-cell>.desktop-team-score{display:block;min-width:0;margin:0;text-align:center;font-size:16px;font-weight:900;line-height:1;align-self:center}
+  .match-row .teams-cell>b:nth-of-type(1){grid-column:1;grid-row:1}.match-row .teams-cell>.desktop-team-score:nth-of-type(1){grid-column:2;grid-row:1}
+  .match-row .teams-cell>b:nth-of-type(2){grid-column:1;grid-row:2}.match-row .teams-cell>.desktop-team-score:nth-of-type(2){grid-column:2;grid-row:2}
+  .match-row .score-cell{min-width:0;height:42px;display:grid;grid-template-rows:repeat(2,minmax(0,1fr));align-items:center;justify-items:center;text-align:center;position:relative;padding-left:6px;border-left:1px solid var(--line)}
+  .match-row .score-cell>strong{display:none!important}
+  .match-row .score-cell>small:not(.half-score){grid-row:1 / span 2;align-self:center;margin:0;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;font-size:9px;font-weight:900;line-height:1.05}
+  .match-row .score-cell:has(.half-score)>small:not(.half-score){grid-row:1;align-self:end;padding-bottom:2px}
+  .match-row .score-cell>.half-score{grid-row:2;align-self:start;margin:0;padding-top:2px;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;font-size:8px;line-height:1.05}
+  .match-row .market-cell,.match-row .signal-cell.prediction-live{min-width:0}
+  .match-row .signal-cell.prediction-live{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:0 5px 0 8px;border-left:1px solid var(--line)}
+  .match-row .signal-cell.prediction-live .pred-main{display:block;width:100%;white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;text-align:center;font-size:8px;line-height:1.18}
+  .match-row .signal-cell.prediction-live .pred-sub{display:block;width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;font-size:7px;line-height:1.05}
+}
+@media (min-width:761px) and (max-width:980px){
+  .match-row{grid-template-columns:minmax(0,30fr) minmax(0,15fr) minmax(0,14fr) minmax(0,14fr) minmax(0,12fr) minmax(0,15fr)!important;gap:4px!important}
+  .match-row .teams-cell{grid-template-columns:minmax(0,1fr) 26px;column-gap:6px}.match-row .teams-cell>.desktop-team-score{font-size:15px}
+  .match-row .score-cell{padding-left:4px}.match-row .score-cell>small:not(.half-score){font-size:8px}.match-row .score-cell>.half-score{font-size:7px}.match-row .signal-cell.prediction-live{padding-left:6px}
+}
+/* BALL46_SCOREBAR_DETAILS_20260929 — presentation only; keep existing score/time row in place. */
+@media(min-width:761px){
+  .workspace-scorebar-slot{height:120px!important;min-height:120px!important;max-height:120px!important}
+  .workspace-scorebar-grid{height:118px!important}
+  .workspace-scorebar-cell{height:118px!important}
+  .workspace-scorebar-details{display:grid;grid-template-columns:minmax(0,1fr) 26px minmax(0,1fr);align-items:center;gap:3px;margin-top:3px;padding-top:3px;border-top:1px solid rgba(255,255,255,.22);font-size:8px;line-height:1.05;white-space:nowrap;min-width:0}
+  .workspace-scorebar-details>span{min-width:0;overflow:hidden;text-overflow:ellipsis}
+  .workspace-scorebar-detail-entry,.workspace-scorebar-detail-current{display:flex;flex-direction:column;gap:1px}
+  .workspace-scorebar-detail-current{text-align:right;align-items:flex-end}
+  .workspace-scorebar-details i{font-style:normal;font-size:7px;font-weight:800;letter-spacing:.35px;opacity:.78}
+  .workspace-scorebar-details b{font-size:8px;font-weight:900;color:#fff;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+  .workspace-scorebar-detail-minute{text-align:center;font-weight:900;font-size:8px;color:#fff}
+}
+/* BALL46_SCOREBAR_IMAGES_20260929 — presentation only; no data/API/renderer changes. */
+@media(min-width:761px){
+  .workspace-scorebar-cell.workspace-scorebar-signal-result.outcome-win{
+    background-image:linear-gradient(90deg,rgba(3,35,20,.86) 0%,rgba(4,45,27,.67) 48%,rgba(1,18,12,.34) 100%),url("scorebar-win-20261002c.webp")!important;
+    background-size:cover!important;background-position:72% center!important;background-repeat:no-repeat!important;
+  }
+  .workspace-scorebar-cell.workspace-scorebar-signal-result.outcome-loss{
+    background-image:linear-gradient(90deg,rgba(58,3,5,.87) 0%,rgba(74,4,7,.67) 48%,rgba(24,0,1,.34) 100%),url("scorebar-loss-20260929a.webp")!important;
+    background-size:cover!important;background-position:72% center!important;background-repeat:no-repeat!important;
+  }
+  .workspace-scorebar-cell.workspace-scorebar-signal-result.outcome-draw{
+    background-image:linear-gradient(90deg,rgba(8,21,33,.87) 0%,rgba(15,32,47,.67) 48%,rgba(3,10,17,.34) 100%),url("scorebar-draw-20260929a.webp")!important;
+    background-size:cover!important;background-position:72% center!important;background-repeat:no-repeat!important;
+  }
+  .workspace-scorebar-cell.workspace-scorebar-pending{
+    background-image:linear-gradient(90deg,rgba(10,29,18,.88) 0%,rgba(26,43,24,.69) 48%,rgba(8,14,8,.36) 100%),url("scorebar-pending-20260929a.webp")!important;
+    background-size:cover!important;background-position:72% center!important;background-repeat:no-repeat!important;
+  }
+}
+
+/* BALL46_SCOREBAR_DIVIDER_CAMOUFLAGE_20260929 */
+@media(min-width:761px){
+  .workspace-scorebar-grid>.workspace-scorebar-cell:not(:last-child){
+    border-right-color:transparent!important;
+  }
+}
+
+/* B46_SCOREBAR_NO_OVERLAY_20261002 — image only, no gradient/overlay; dividers 100% transparent */
+@media(min-width:761px){
+  .workspace-scorebar-cell.workspace-scorebar-signal-result.outcome-win{background-image:url("scorebar-win-20261002c.webp")!important;background-size:cover!important;background-position:72% center!important;background-repeat:no-repeat!important}
+  .workspace-scorebar-cell.workspace-scorebar-signal-result.outcome-loss{background-image:url("scorebar-loss-20260929a.webp")!important;background-size:cover!important;background-position:72% center!important;background-repeat:no-repeat!important}
+  .workspace-scorebar-cell.workspace-scorebar-signal-result.outcome-draw{background-image:url("scorebar-draw-20260929a.webp")!important;background-size:cover!important;background-position:72% center!important;background-repeat:no-repeat!important}
+  .workspace-scorebar-cell.workspace-scorebar-pending{background-image:url("scorebar-pending-20260929a.webp")!important;background-size:cover!important;background-position:72% center!important;background-repeat:no-repeat!important}
+  .workspace-scorebar-details{border-top-color:transparent!important}
+  .workspace-scorebar-grid>.workspace-scorebar-cell:not(:last-child){border-right-color:transparent!important}
+}
+
+/* B46_SCOREBAR_TEXT_SHADOW_ALL_20261002 */
+@media(min-width:761px){.workspace-scorebar-cell.workspace-scorebar-signal-result,.workspace-scorebar-cell.workspace-scorebar-signal-result *,.workspace-scorebar-cell.workspace-scorebar-pending,.workspace-scorebar-cell.workspace-scorebar-pending *{text-shadow:0 1px 2px rgba(0,0,0,.95),0 0 6px rgba(0,0,0,.55)!important}}
+
+/* B46_WIN_ROUTE_REFRESH_20261002 */
+
+/* B46_WIN_VISIBLE_FORCE_20261002 — WIN presentation only; no overlay/gradient */
+.workspace-scorebar-cell.workspace-scorebar-signal-result.outcome-win{background:transparent url('/scorebar-win-20261002c.webp') 72% 50%/cover no-repeat!important;background-color:transparent!important;background-blend-mode:normal!important;}
+.workspace-scorebar-cell.workspace-scorebar-signal-result.outcome-win::before,.workspace-scorebar-cell.workspace-scorebar-signal-result.outcome-win::after{background:none!important;background-image:none!important;}
+
+/* B46_DECORATIVE_BORDER_CLEANUP_20261002: ornamental frames only; scorebar and data geometry preserved */
+.rail-card:not(.workspace-scorebar-slot),
+.side-card:not(.workspace-scorebar-slot),
+.status-section,
+.workspace-stable-head,
+.sp-workspace-head,
+.sp-view-card,
+.sp-stat-panel,
+.sp-stat-hero,
+.sp-kpis,
+.sp-trend,
+.sp-filters,
+.sp-results,
+.sp-toolbar,
+.sp-kpi { border-color: transparent !important; }
+.status-head,
+.sp-results-head { border-bottom-color: color-mix(in srgb, var(--line) 35%, transparent) !important; }
+.league-block + .league-block { border-top-color: color-mix(in srgb, var(--line) 35%, transparent) !important; }
+.match-row { border-bottom-color: color-mix(in srgb, var(--line) 35%, transparent) !important; }
+
+/* B46_CLEAN_MENU_SURFACES_20261003: menu/content decoration only; data, focus and active indicators retained */
+body .workspace.singlepage > .left-rail .rail-card :is(.filter,.filter.active,.league-filter,.league-filter.active,.workspace-nav-row,.workspace-nav-row.active):not(:focus-visible),
+body .workspace.singlepage > .left-rail :is(.filter,.league-filter,.workspace-nav-row) b,
+body .workspace.singlepage > .left-rail .workspace-brand-card > .workspace-brand-meta[data-workspace-odds-slot],
+body .workspace.singlepage > .left-rail .workspace-brand-meta[data-workspace-odds-slot] .odds-format-menu,
+body .workspace.singlepage .workspace-theme-btn:not(:focus-visible),
+body .workspace.singlepage .search-box:not(:focus-within),
+body .workspace.singlepage .local-time,
+body .workspace.singlepage .board-loading,
+body .workspace.singlepage .board-empty,
+body .workspace.singlepage .status-head,
+body .workspace.singlepage .status-head > b,
+body .workspace.singlepage .workspace-view-head,
+body .workspace.singlepage .card-title,
+body .workspace.singlepage .feature-facts,
+body .workspace.singlepage .feature-signal,
+body .workspace.singlepage .feature-events,
+body .workspace.singlepage .event-item,
+body .workspace.singlepage .overview-foot,
+body .workspace.singlepage .show-more,
+body .workspace.singlepage .show-more button:not(:focus-visible),
+body .workspace.singlepage .sp-results-head,
+body .workspace.singlepage .sp-table th,
+body .workspace.singlepage .sp-table td,
+body .workspace.singlepage .sp-pager,
+body .workspace.singlepage .sp-filter-chip:not(:focus-visible),
+body .workspace.singlepage .sp-page:not(:focus-visible),
+body .workspace.singlepage .b46-perf-head,
+body .workspace.singlepage .b46-perf-kpis,
+body .workspace.singlepage .b46-perf-kpi,
+body .workspace.singlepage .b46-perf-range,
+body .workspace.singlepage .b46-perf-mode,
+body .workspace.singlepage .b46-perf-toolbar,
+body .workspace.singlepage .b46-perf-foot,
+body .b46-mobile-workspace-nav,
+body .b46-mobile-workspace-nav button:not(:focus-visible) { border-color: transparent !important; }
+body .workspace.singlepage .league-block,
+body .workspace.singlepage .match-row { border-top-color: transparent !important; border-bottom-color: transparent !important; }
+body .workspace.singlepage .match-row .score-cell,
+body .workspace.singlepage .match-row .signal-cell.prediction-live { border-left-color: transparent !important; }
+body .workspace.singlepage .match-row .market-cell::before,
+body .workspace.singlepage .match-row .signal-cell::after { background-color: transparent !important; }
+body .workspace.singlepage .feature-signal-divider { background-color: transparent !important; }
+body .workspace.singlepage .feature-facts { background-color: var(--panel-2) !important; }
+body .workspace.singlepage .rail-title,
+body .workspace.singlepage .status-head,
+body .workspace.singlepage .league-head,
+body .workspace.singlepage .card-title,
+body .workspace.singlepage .workspace-stable-head,
+body .workspace.singlepage .workspace-view-head,
+body .workspace.singlepage .sp-stat-hero,
+body .workspace.singlepage .sp-results-head,
+body .workspace.singlepage .b46-perf-head {
+  background-image: linear-gradient(110deg, color-mix(in srgb, var(--panel-2) 78%, var(--panel)), var(--panel) 76%) !important;
+}
+body .workspace.singlepage .sp-table tbody tr:nth-child(even):not(:hover) {
+  background-color: color-mix(in srgb, var(--panel-2) 65%, var(--panel)) !important;
+}
+body .workspace.singlepage .rail-card:not(.workspace-scorebar-slot),
+body .workspace.singlepage .side-card:not(.workspace-scorebar-slot),
+body .workspace.singlepage .status-section,
+body .workspace.singlepage .workspace-stable-head,
+body .workspace.singlepage .workspace-view-head,
+body .workspace.singlepage .sp-stat-hero,
+body .workspace.singlepage .sp-kpis,
+body .workspace.singlepage .sp-trend,
+body .workspace.singlepage .sp-filters,
+body .workspace.singlepage .sp-results,
+body .workspace.singlepage .search-box:not(:focus-within),
+body .workspace.singlepage .b46-perf-chart-wrap { box-shadow: none !important; }
+
+/* B46_MATCH_CLOCK_COLORS_20261003: match-card clock text only */
+body .workspace.singlepage .match-row .b46-clock-live-label { color: #cc2035 !important; }
+body .workspace.singlepage .match-row .b46-clock-minute { color: #087d42 !important; }
+body .workspace.singlepage .match-row .b46-clock-separator { color: var(--muted) !important; }
+html[data-theme="dark"] body .workspace.singlepage .match-row .b46-clock-live-label { color: #ff6374 !important; }
+html[data-theme="dark"] body .workspace.singlepage .match-row .b46-clock-minute { color: #43c77d !important; }
+
+/* B46_HEADER_LOGO_130_PERCENT_20261003: scale only the existing header wordmark; reserve its full layout size */
+body .workspace.singlepage > .left-rail .workspace-brand[aria-label="Ball46"] { zoom: 1.3 !important; }
+
+/* B46_THEME_TOGGLE_STANDARD_20261003: aligned transparent controls in the existing odds row below the logo */
+body .workspace.singlepage > .left-rail .workspace-brand-card {
+  display: block !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+}
+body .workspace.singlepage > .left-rail .workspace-brand-card > .workspace-brand-meta[data-workspace-odds-slot] {
+  height: 28px !important;
+  min-height: 28px !important;
+  max-height: 28px !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
+  background-color: transparent !important;
+}
+body .workspace.singlepage > .left-rail .workspace-brand-card > .workspace-brand-meta[data-workspace-odds-slot] .odds-format-control {
+  flex: 0 1 auto !important;
+  width: auto !important;
+  min-width: 0 !important;
+  height: 28px !important;
+  min-height: 28px !important;
+}
+body .workspace.singlepage > .left-rail .workspace-brand-card > .workspace-brand-meta[data-workspace-odds-slot] .odds-format-button[data-odds-format-button] {
+  width: auto !important;
+  height: 28px !important;
+  min-height: 28px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  color: var(--text) !important;
+  font-family: Arial, sans-serif !important;
+  font-size: 7px !important;
+  font-weight: 800 !important;
+  line-height: 1 !important;
+  letter-spacing: 0 !important;
+  white-space: nowrap !important;
+}
+body .workspace.singlepage > .left-rail .workspace-theme-btn[data-theme-toggle] {
+  width: 48px !important;
+  flex: 0 0 48px !important;
+  height: 28px !important;
+  padding: 0 6px !important;
+  border: 0 !important;
+  border-radius: 5px !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  color: var(--text) !important;
+  font-family: Arial, sans-serif !important;
+  font-size: 7px !important;
+  font-weight: 800 !important;
+  line-height: 1 !important;
+  letter-spacing: 0 !important;
+  white-space: nowrap !important;
+  box-shadow: none !important;
+}
+body .workspace.singlepage > .left-rail .workspace-theme-btn[data-theme-toggle]:hover {
+  color: var(--green) !important;
+  background-color: transparent !important;
+}
+body .workspace.singlepage > .left-rail .workspace-theme-btn[data-theme-toggle]:focus-visible, body .workspace.singlepage > .left-rail .workspace-brand-card > .workspace-brand-meta[data-workspace-odds-slot] .odds-format-button[data-odds-format-button]:focus-visible {
+  outline: 2px solid var(--green) !important;
+  outline-offset: 2px !important;
+}
+
+@media (max-width: 760px) {
+  body .workspace.singlepage > .left-rail .workspace-theme-btn[data-theme-toggle], body .workspace.singlepage > .left-rail .workspace-brand-card > .workspace-brand-meta[data-workspace-odds-slot] .odds-format-button[data-odds-format-button] { font-size: 6.5px !important; }
+}
+
+/* B46_MAIN_CARDS_SQUARE_20261003: main card corners only; controls and data graphics retain their shapes */
+body .workspace.singlepage :is(.rail-card,.side-card,.status-section,.workspace-stable-head,.workspace-view-head,.workspace-scorebar-slot,.sp-stat-hero,.sp-kpis,.sp-trend,.sp-filters,.sp-results,.board-loading,.board-empty,.match-row) { border-radius: 0 !important; }
+
+/* B46_MATCH_STATUS_DUOTONE_SVG_20261003: authored vector masks; native status controls, counts and handlers stay intact */
+body .workspace.singlepage > .left-rail .rail-card > :is(button[data-status-filter],button[data-workspace-view="signal"]) { --b46-status-tone: var(--muted); }
+body .workspace.singlepage > .left-rail .rail-card > :is(button[data-status-filter],button[data-workspace-view="signal"]) > span { gap: 6px !important; }
+body .workspace.singlepage > .left-rail .rail-card > :is(button[data-status-filter],button[data-workspace-view="signal"]) > span > i { display: none !important; }
+body .workspace.singlepage > .left-rail .rail-card > :is(button[data-status-filter],button[data-workspace-view="signal"]) > span::before { content: ""; }
+body .workspace.singlepage > .left-rail .rail-card > :is(button[data-status-filter],button[data-workspace-view="signal"]) > span::before,body .b46-mobile-workspace-nav > button[data-b46-mobile-view="signal"] > .b46-mobile-nav-icon {
+  display: block !important;
+  width: 16px !important;
+  height: 16px !important;
+  flex: 0 0 16px !important;
+  border-radius: 0 !important;
+  background-color: var(--b46-status-tone, var(--amber)) !important;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  opacity: .82;
+  pointer-events: none;
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+body .workspace.singlepage > .left-rail .rail-card > :is(button[data-status-filter],button[data-workspace-view="signal"])[data-status-filter="all"] > span::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%229%22%20fill%3D%22black%22%20fill-opacity%3D%22.2%22%2F%3E%3Cpath%20d%3D%22m12%208%203.8%202.8-1.4%204.5H9.6l-1.4-4.5Z%22%20fill%3D%22black%22%20fill-opacity%3D%22.75%22%2F%3E%3Cpath%20d%3D%22M12%203v5m8.5%201.8-4.7%201m1.5%208.5-3-4M6.7%2019.3l3-4M3.5%209.8l4.7%201%22%2F%3E%3C%2Fsvg%3E") !important; mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%229%22%20fill%3D%22black%22%20fill-opacity%3D%22.2%22%2F%3E%3Cpath%20d%3D%22m12%208%203.8%202.8-1.4%204.5H9.6l-1.4-4.5Z%22%20fill%3D%22black%22%20fill-opacity%3D%22.75%22%2F%3E%3Cpath%20d%3D%22M12%203v5m8.5%201.8-4.7%201m1.5%208.5-3-4M6.7%2019.3l3-4M3.5%209.8l4.7%201%22%2F%3E%3C%2Fsvg%3E") !important; }
+body .workspace.singlepage > .left-rail .rail-card > :is(button[data-status-filter],button[data-workspace-view="signal"])[data-status-filter="live"] > span::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%223.5%22%20y%3D%227%22%20width%3D%2217%22%20height%3D%2213.5%22%20rx%3D%222.5%22%20fill%3D%22black%22%20fill-opacity%3D%22.2%22%2F%3E%3Cpath%20d%3D%22m8%203%204%204%204-4M6.5%2014h2l1.8-3.5%203%207%201.8-3.5h2.4%22%2F%3E%3C%2Fsvg%3E") !important; mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%223.5%22%20y%3D%227%22%20width%3D%2217%22%20height%3D%2213.5%22%20rx%3D%222.5%22%20fill%3D%22black%22%20fill-opacity%3D%22.2%22%2F%3E%3Cpath%20d%3D%22m8%203%204%204%204-4M6.5%2014h2l1.8-3.5%203%207%201.8-3.5h2.4%22%2F%3E%3C%2Fsvg%3E") !important; }
+body .workspace.singlepage > .left-rail .rail-card > :is(button[data-status-filter],button[data-workspace-view="signal"])[data-workspace-view="signal"] > span::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%228.7%22%20fill%3D%22black%22%20fill-opacity%3D%22.2%22%2F%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%224.7%22%20stroke-opacity%3D%22.5%22%2F%3E%3Cpath%20d%3D%22M12%203.3V12l6.2-6.2M3.3%2012H12v8.7%22%20stroke-opacity%3D%22.6%22%2F%3E%3Ccircle%20cx%3D%2216.1%22%20cy%3D%227.9%22%20r%3D%221.4%22%20fill%3D%22black%22%20stroke%3D%22none%22%2F%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%221%22%20fill%3D%22black%22%20stroke%3D%22none%22%2F%3E%3C%2Fsvg%3E") !important; mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%228.7%22%20fill%3D%22black%22%20fill-opacity%3D%22.2%22%2F%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%224.7%22%20stroke-opacity%3D%22.5%22%2F%3E%3Cpath%20d%3D%22M12%203.3V12l6.2-6.2M3.3%2012H12v8.7%22%20stroke-opacity%3D%22.6%22%2F%3E%3Ccircle%20cx%3D%2216.1%22%20cy%3D%227.9%22%20r%3D%221.4%22%20fill%3D%22black%22%20stroke%3D%22none%22%2F%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%221%22%20fill%3D%22black%22%20stroke%3D%22none%22%2F%3E%3C%2Fsvg%3E") !important; }
+body .workspace.singlepage > .left-rail .rail-card > :is(button[data-status-filter],button[data-workspace-view="signal"])[data-status-filter="scheduled"] > span::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M17.5%2010V7a2%202%200%200%200-2-2H5a2%202%200%200%200-2%202v12a2%202%200%200%200%202%202h6M3%2010h14.5M7%203v4m6-4v4%22%2F%3E%3Cpath%20d%3D%22M4%2011h8v8H4Z%22%20fill%3D%22black%22%20fill-opacity%3D%22.2%22%20stroke%3D%22none%22%2F%3E%3Ccircle%20cx%3D%2217.5%22%20cy%3D%2217.5%22%20r%3D%224.5%22%20fill%3D%22black%22%20fill-opacity%3D%22.2%22%2F%3E%3Cpath%20d%3D%22M17.5%2015v2.5l1.8%201.1M7%2014h2%22%2F%3E%3C%2Fsvg%3E") !important; mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M17.5%2010V7a2%202%200%200%200-2-2H5a2%202%200%200%200-2%202v12a2%202%200%200%200%202%202h6M3%2010h14.5M7%203v4m6-4v4%22%2F%3E%3Cpath%20d%3D%22M4%2011h8v8H4Z%22%20fill%3D%22black%22%20fill-opacity%3D%22.2%22%20stroke%3D%22none%22%2F%3E%3Ccircle%20cx%3D%2217.5%22%20cy%3D%2217.5%22%20r%3D%224.5%22%20fill%3D%22black%22%20fill-opacity%3D%22.2%22%2F%3E%3Cpath%20d%3D%22M17.5%2015v2.5l1.8%201.1M7%2014h2%22%2F%3E%3C%2Fsvg%3E") !important; }
+body .workspace.singlepage > .left-rail .rail-card > :is(button[data-status-filter],button[data-workspace-view="signal"])[data-status-filter="unknown"] > span::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M5%203.5h14M5%2020.5h14M6.5%204c0%204.6%201.2%205.8%205.5%208-4.3%202.2-5.5%203.4-5.5%208h11c0-4.6-1.2-5.8-5.5-8%204.3-2.2%205.5-3.4%205.5-8Z%22%20fill%3D%22black%22%20fill-opacity%3D%22.2%22%2F%3E%3Cpath%20d%3D%22m9%207%203%202.2L15%207m-6%2010%203-2.2%203%202.2%22%20fill%3D%22black%22%20fill-opacity%3D%22.7%22%20stroke%3D%22none%22%2F%3E%3C%2Fsvg%3E") !important; mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M5%203.5h14M5%2020.5h14M6.5%204c0%204.6%201.2%205.8%205.5%208-4.3%202.2-5.5%203.4-5.5%208h11c0-4.6-1.2-5.8-5.5-8%204.3-2.2%205.5-3.4%205.5-8Z%22%20fill%3D%22black%22%20fill-opacity%3D%22.2%22%2F%3E%3Cpath%20d%3D%22m9%207%203%202.2L15%207m-6%2010%203-2.2%203%202.2%22%20fill%3D%22black%22%20fill-opacity%3D%22.7%22%20stroke%3D%22none%22%2F%3E%3C%2Fsvg%3E") !important; }
+body .workspace.singlepage > .left-rail .rail-card > :is(button[data-status-filter],button[data-workspace-view="signal"])[data-status-filter="finished"] > span::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M4.5%2021V3M5%204h15v11H5%22%20fill%3D%22black%22%20fill-opacity%3D%22.2%22%2F%3E%3Cpath%20d%3D%22M5%204h5v3.7H5zm10%200h5v3.7h-5zm-5%203.7h5v3.6h-5zM5%2011.3h5V15H5zm10%200h5V15h-5z%22%20fill%3D%22black%22%20fill-opacity%3D%22.9%22%20stroke%3D%22none%22%2F%3E%3C%2Fsvg%3E") !important; mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M4.5%2021V3M5%204h15v11H5%22%20fill%3D%22black%22%20fill-opacity%3D%22.2%22%2F%3E%3Cpath%20d%3D%22M5%204h5v3.7H5zm10%200h5v3.7h-5zm-5%203.7h5v3.6h-5zM5%2011.3h5V15H5zm10%200h5V15h-5z%22%20fill%3D%22black%22%20fill-opacity%3D%22.9%22%20stroke%3D%22none%22%2F%3E%3C%2Fsvg%3E") !important; }
+body .b46-mobile-workspace-nav > button[data-b46-mobile-view="signal"] > .b46-mobile-nav-icon { -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%228.7%22%20fill%3D%22black%22%20fill-opacity%3D%22.2%22%2F%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%224.7%22%20stroke-opacity%3D%22.5%22%2F%3E%3Cpath%20d%3D%22M12%203.3V12l6.2-6.2M3.3%2012H12v8.7%22%20stroke-opacity%3D%22.6%22%2F%3E%3Ccircle%20cx%3D%2216.1%22%20cy%3D%227.9%22%20r%3D%221.4%22%20fill%3D%22black%22%20stroke%3D%22none%22%2F%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%221%22%20fill%3D%22black%22%20stroke%3D%22none%22%2F%3E%3C%2Fsvg%3E") !important; mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%228.7%22%20fill%3D%22black%22%20fill-opacity%3D%22.2%22%2F%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%224.7%22%20stroke-opacity%3D%22.5%22%2F%3E%3Cpath%20d%3D%22M12%203.3V12l6.2-6.2M3.3%2012H12v8.7%22%20stroke-opacity%3D%22.6%22%2F%3E%3Ccircle%20cx%3D%2216.1%22%20cy%3D%227.9%22%20r%3D%221.4%22%20fill%3D%22black%22%20stroke%3D%22none%22%2F%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%221%22%20fill%3D%22black%22%20stroke%3D%22none%22%2F%3E%3C%2Fsvg%3E") !important; }
+body .workspace.singlepage > .left-rail .rail-card > :is(button[data-status-filter],button[data-workspace-view="signal"])[data-status-filter="live"] { --b46-status-tone: var(--red); }
+body .workspace.singlepage > .left-rail .rail-card > :is(button[data-status-filter],button[data-workspace-view="signal"])[data-workspace-view="signal"],body .b46-mobile-workspace-nav > button[data-b46-mobile-view="signal"] { --b46-status-tone: var(--amber); }
+body .workspace.singlepage > .left-rail .rail-card > :is(button[data-status-filter],button[data-workspace-view="signal"]).active { --b46-status-tone: var(--green); }
+body .workspace.singlepage > .left-rail .rail-card > :is(button[data-status-filter],button[data-workspace-view="signal"])[data-status-filter="live"].active { --b46-status-tone: var(--red); }
+body .workspace.singlepage > .left-rail .rail-card > :is(button[data-status-filter],button[data-workspace-view="signal"])[data-workspace-view="signal"].active { --b46-status-tone: var(--amber); }
+body .workspace.singlepage > .left-rail .rail-card > :is(button[data-status-filter],button[data-workspace-view="signal"]).active > span::before,body .b46-mobile-workspace-nav > button[data-b46-mobile-view="signal"].active > .b46-mobile-nav-icon { opacity: 1 !important; }
+body .workspace.singlepage > .left-rail .rail-card > :is(button[data-status-filter],button[data-workspace-view="signal"]).active > b { color: inherit !important; }
+@media (hover: hover) and (pointer: fine) {
+  body .workspace.singlepage > .left-rail .rail-card > :is(button[data-status-filter],button[data-workspace-view="signal"]):hover { background-image: linear-gradient(100deg, color-mix(in srgb, var(--green) 7%, transparent), transparent) !important; }
+  body .workspace.singlepage > .left-rail .rail-card > :is(button[data-status-filter],button[data-workspace-view="signal"]):hover > span::before,body .b46-mobile-workspace-nav > button[data-b46-mobile-view="signal"]:hover > .b46-mobile-nav-icon { opacity: 1 !important; transform: scale(1.04); }
+}
+body .workspace.singlepage > .left-rail .rail-card > :is(button[data-status-filter],button[data-workspace-view="signal"]):active > span::before,body .b46-mobile-workspace-nav > button[data-b46-mobile-view="signal"]:active > .b46-mobile-nav-icon { opacity: 1 !important; transform: scale(.94); }
+@media (prefers-reduced-motion: reduce) {
+  body .workspace.singlepage > .left-rail .rail-card > :is(button[data-status-filter],button[data-workspace-view="signal"]) > span::before,body .b46-mobile-workspace-nav > button[data-b46-mobile-view="signal"] > .b46-mobile-nav-icon { transition: none; transform: none !important; }
+}
+
+/* B46_STATISTICS_V2_DUOTONE_SVG_20261003: approved SVGs only; native labels, counts, routes and statistics remain intact */
+body .workspace.singlepage > .left-rail .workspace-stats-card .workspace-nav-grid > button[data-stat-market] > span > i { display: none !important; }
+body .workspace.singlepage > .left-rail .workspace-stats-card .workspace-nav-grid > button[data-stat-market] > span::before {
+  content: "";
+  display: block;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  border-radius: 0;
+  background-color: var(--muted);
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  opacity: .82;
+  pointer-events: none;
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+body .workspace.singlepage > .left-rail .workspace-stats-card .workspace-nav-grid > button[data-stat-market][data-stat-market="all"] > span::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%229%22%20fill%3D%22black%22%20fill-opacity%3D%22.2%22%2F%3E%3Cpath%20d%3D%22m12%208%203.8%202.8-1.4%204.5H9.6l-1.4-4.5Z%22%20fill%3D%22black%22%20fill-opacity%3D%22.75%22%2F%3E%3Cpath%20d%3D%22M12%203v5m8.5%201.8-4.7%201m1.5%208.5-3-4M6.7%2019.3l3-4M3.5%209.8l4.7%201%22%2F%3E%3C%2Fsvg%3E"); mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%229%22%20fill%3D%22black%22%20fill-opacity%3D%22.2%22%2F%3E%3Cpath%20d%3D%22m12%208%203.8%202.8-1.4%204.5H9.6l-1.4-4.5Z%22%20fill%3D%22black%22%20fill-opacity%3D%22.75%22%2F%3E%3Cpath%20d%3D%22M12%203v5m8.5%201.8-4.7%201m1.5%208.5-3-4M6.7%2019.3l3-4M3.5%209.8l4.7%201%22%2F%3E%3C%2Fsvg%3E"); }
+body .workspace.singlepage > .left-rail .workspace-stats-card .workspace-nav-grid > button[data-stat-market][data-stat-market="1x2"] > span::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%222.5%22%20y%3D%225.5%22%20width%3D%2219%22%20height%3D%2213%22%20rx%3D%221.5%22%20fill%3D%22black%22%20fill-opacity%3D%22.2%22%2F%3E%3Cpath%20d%3D%22M9%206v12m6-12v12%22%20stroke-opacity%3D%22.55%22%2F%3E%3Cpath%20d%3D%22m4.5%2010%201.5-1v6m-1.2%200h2.4m3.3-5.5%203%205m0-5-3%205m6.7-4.3c0-2%203.2-2%203.2%200%200%201.4-3.2%202.1-3.2%204.3h3.2%22%2F%3E%3C%2Fsvg%3E"); mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%222.5%22%20y%3D%225.5%22%20width%3D%2219%22%20height%3D%2213%22%20rx%3D%221.5%22%20fill%3D%22black%22%20fill-opacity%3D%22.2%22%2F%3E%3Cpath%20d%3D%22M9%206v12m6-12v12%22%20stroke-opacity%3D%22.55%22%2F%3E%3Cpath%20d%3D%22m4.5%2010%201.5-1v6m-1.2%200h2.4m3.3-5.5%203%205m0-5-3%205m6.7-4.3c0-2%203.2-2%203.2%200%200%201.4-3.2%202.1-3.2%204.3h3.2%22%2F%3E%3C%2Fsvg%3E"); }
+body .workspace.singlepage > .left-rail .workspace-stats-card .workspace-nav-grid > button[data-stat-market][data-stat-market="ah"] > span::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M12%203v18m-4%200h8M4.5%206.5h15%22%2F%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%226.5%22%20r%3D%221.8%22%20fill%3D%22black%22%20fill-opacity%3D%22.55%22%2F%3E%3Cpath%20d%3D%22m5.5%207-3%207h6Zm13%200-3%207h6Z%22%20stroke-opacity%3D%22.7%22%2F%3E%3Cpath%20d%3D%22M2.5%2014h6a3%203%200%200%201-6%200Zm13%200h6a3%203%200%200%201-6%200Z%22%20fill%3D%22black%22%20fill-opacity%3D%22.25%22%2F%3E%3C%2Fsvg%3E"); mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M12%203v18m-4%200h8M4.5%206.5h15%22%2F%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%226.5%22%20r%3D%221.8%22%20fill%3D%22black%22%20fill-opacity%3D%22.55%22%2F%3E%3Cpath%20d%3D%22m5.5%207-3%207h6Zm13%200-3%207h6Z%22%20stroke-opacity%3D%22.7%22%2F%3E%3Cpath%20d%3D%22M2.5%2014h6a3%203%200%200%201-6%200Zm13%200h6a3%203%200%200%201-6%200Z%22%20fill%3D%22black%22%20fill-opacity%3D%22.25%22%2F%3E%3C%2Fsvg%3E"); }
+body .workspace.singlepage > .left-rail .workspace-stats-card .workspace-nav-grid > button[data-stat-market][data-stat-market="ou"] > span::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%223%22%20y%3D%223%22%20width%3D%228%22%20height%3D%2218%22%20rx%3D%221.5%22%20fill%3D%22black%22%20fill-opacity%3D%22.18%22%20stroke%3D%22none%22%2F%3E%3Crect%20x%3D%2213%22%20y%3D%223%22%20width%3D%228%22%20height%3D%2218%22%20rx%3D%221.5%22%20fill%3D%22black%22%20fill-opacity%3D%22.32%22%20stroke%3D%22none%22%2F%3E%3Cpath%20d%3D%22M7%2018V6m-3%203%203-3%203%203m7-3v12m-3-3%203%203%203-3%22%2F%3E%3C%2Fsvg%3E"); mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%223%22%20y%3D%223%22%20width%3D%228%22%20height%3D%2218%22%20rx%3D%221.5%22%20fill%3D%22black%22%20fill-opacity%3D%22.18%22%20stroke%3D%22none%22%2F%3E%3Crect%20x%3D%2213%22%20y%3D%223%22%20width%3D%228%22%20height%3D%2218%22%20rx%3D%221.5%22%20fill%3D%22black%22%20fill-opacity%3D%22.32%22%20stroke%3D%22none%22%2F%3E%3Cpath%20d%3D%22M7%2018V6m-3%203%203-3%203%203m7-3v12m-3-3%203%203%203-3%22%2F%3E%3C%2Fsvg%3E"); }
+body .workspace.singlepage > .left-rail .workspace-stats-card .workspace-nav-grid > button[data-stat-market][data-stat-market="btts"] > span::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M2.5%2018V6.5h6V18Zm13%200V6.5h6V18Z%22%20fill%3D%22black%22%20fill-opacity%3D%22.2%22%2F%3E%3Cpath%20d%3D%22M5.5%207v10m13-10v10M3%2010.5h5m8%200h5M3%2014h5m8%200h5%22%20stroke-opacity%3D%22.4%22%2F%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212.5%22%20r%3D%222.2%22%20fill%3D%22black%22%20fill-opacity%3D%22.7%22%20stroke%3D%22none%22%2F%3E%3Cpath%20d%3D%22M2.5%2020h19%22%20stroke-opacity%3D%22.5%22%2F%3E%3C%2Fsvg%3E"); mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M2.5%2018V6.5h6V18Zm13%200V6.5h6V18Z%22%20fill%3D%22black%22%20fill-opacity%3D%22.2%22%2F%3E%3Cpath%20d%3D%22M5.5%207v10m13-10v10M3%2010.5h5m8%200h5M3%2014h5m8%200h5%22%20stroke-opacity%3D%22.4%22%2F%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212.5%22%20r%3D%222.2%22%20fill%3D%22black%22%20fill-opacity%3D%22.7%22%20stroke%3D%22none%22%2F%3E%3Cpath%20d%3D%22M2.5%2020h19%22%20stroke-opacity%3D%22.5%22%2F%3E%3C%2Fsvg%3E"); }
+body .workspace.singlepage > .left-rail .workspace-stats-card .workspace-nav-grid > button[data-stat-market][data-stat-market="corners"] > span::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M7%2021V3.5l11%204.7L7%2013%22%20fill%3D%22black%22%20fill-opacity%3D%22.24%22%2F%3E%3Cpath%20d%3D%22M3%2021h18M3%2016v5h5m-1-5a5%205%200%200%201%205%205%22%20stroke-opacity%3D%22.6%22%2F%3E%3C%2Fsvg%3E"); mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M7%2021V3.5l11%204.7L7%2013%22%20fill%3D%22black%22%20fill-opacity%3D%22.24%22%2F%3E%3Cpath%20d%3D%22M3%2021h18M3%2016v5h5m-1-5a5%205%200%200%201%205%205%22%20stroke-opacity%3D%22.6%22%2F%3E%3C%2Fsvg%3E"); }
+body .workspace.singlepage > .left-rail .workspace-stats-card .workspace-nav-grid > button[data-stat-market][data-stat-market="cards"] > span::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%224%22%20y%3D%223%22%20width%3D%2211%22%20height%3D%2215%22%20rx%3D%221.5%22%20transform%3D%22rotate(-12%209.5%2010.5)%22%20fill%3D%22black%22%20fill-opacity%3D%22.18%22%2F%3E%3Crect%20x%3D%229%22%20y%3D%226%22%20width%3D%2211%22%20height%3D%2215%22%20rx%3D%221.5%22%20fill%3D%22black%22%20fill-opacity%3D%22.55%22%2F%3E%3Cpath%20d%3D%22M12%2010h5%22%20stroke-opacity%3D%22.5%22%2F%3E%3C%2Fsvg%3E"); mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%224%22%20y%3D%223%22%20width%3D%2211%22%20height%3D%2215%22%20rx%3D%221.5%22%20transform%3D%22rotate(-12%209.5%2010.5)%22%20fill%3D%22black%22%20fill-opacity%3D%22.18%22%2F%3E%3Crect%20x%3D%229%22%20y%3D%226%22%20width%3D%2211%22%20height%3D%2215%22%20rx%3D%221.5%22%20fill%3D%22black%22%20fill-opacity%3D%22.55%22%2F%3E%3Cpath%20d%3D%22M12%2010h5%22%20stroke-opacity%3D%22.5%22%2F%3E%3C%2Fsvg%3E"); }
+body .workspace.singlepage > .left-rail .workspace-stats-card .workspace-nav-grid > button[data-stat-market][data-stat-market="other"] > span::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%229%22%20fill%3D%22black%22%20fill-opacity%3D%22.2%22%2F%3E%3Cg%20fill%3D%22black%22%20stroke%3D%22none%22%3E%3Ccircle%20cx%3D%227.2%22%20cy%3D%2212%22%20r%3D%221.3%22%2F%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%221.3%22%2F%3E%3Ccircle%20cx%3D%2216.8%22%20cy%3D%2212%22%20r%3D%221.3%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E"); mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%229%22%20fill%3D%22black%22%20fill-opacity%3D%22.2%22%2F%3E%3Cg%20fill%3D%22black%22%20stroke%3D%22none%22%3E%3Ccircle%20cx%3D%227.2%22%20cy%3D%2212%22%20r%3D%221.3%22%2F%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%221.3%22%2F%3E%3Ccircle%20cx%3D%2216.8%22%20cy%3D%2212%22%20r%3D%221.3%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E"); }
+body .workspace.singlepage > .left-rail .workspace-stats-card .workspace-nav-grid > button[data-stat-market]:hover > span::before { opacity: 1; transform: scale(1.04); }
+body .workspace.singlepage > .left-rail .workspace-stats-card .workspace-nav-grid > button[data-stat-market].active > span::before { opacity: 1; background-color: currentColor; }
+body .workspace.singlepage > .left-rail .workspace-stats-card .workspace-nav-grid > button[data-stat-market]:active > span::before { opacity: 1; transform: scale(.94); }
+@media (prefers-reduced-motion: reduce) { body .workspace.singlepage > .left-rail .workspace-stats-card .workspace-nav-grid > button[data-stat-market] > span::before { transition: none; } }
+
+
+/* B46_TOPCARDS_CLEAN_UI_20261004: presentation-only redesign for the 6 settled + 4 pending scorebar cards. No data, polling, status, settlement, or workspace behavior changes. */
+.workspace-scorebar-grid{
+  height:100px!important;
+  display:grid!important;
+  grid-template-columns:repeat(10,minmax(136px,1fr))!important;
+  gap:8px!important;
+  overflow-x:auto!important;
+  overflow-y:hidden!important;
+  padding:3px 2px 7px!important;
+  scrollbar-width:thin;
+  scrollbar-color:rgba(148,163,184,.28) transparent;
+}
+.workspace-scorebar-grid::-webkit-scrollbar{height:4px}
+.workspace-scorebar-grid::-webkit-scrollbar-track{background:transparent}
+.workspace-scorebar-grid::-webkit-scrollbar-thumb{background:rgba(148,163,184,.25);border-radius:999px}
+.workspace-scorebar-cell{
+  --b46-card-accent:#64748b;
+  --b46-card-glow:rgba(100,116,139,.14);
+  position:relative!important;
+  box-sizing:border-box!important;
+  height:90px!important;
+  min-height:90px!important;
+  padding:9px 10px 8px!important;
+  border:1px solid rgba(148,163,184,.14)!important;
+  border-radius:11px!important;
+  background:#111922!important;
+  background-image:linear-gradient(145deg,rgba(255,255,255,.025),rgba(255,255,255,0) 52%)!important;
+  color:#f1f5f9!important;
+  box-shadow:0 0 0 1px var(--b46-card-glow),0 7px 20px rgba(0,0,0,.16)!important;
+  text-align:left!important;
+  overflow:hidden!important;
+  isolation:isolate;
+}
+.workspace-scorebar-grid>.workspace-scorebar-cell:not(:last-child){border-right:1px solid rgba(148,163,184,.14)!important}
+.workspace-scorebar-cell::before{
+  content:"";
+  position:absolute;
+  z-index:2;
+  top:-1px;
+  left:10px;
+  right:10px;
+  height:2px;
+  border-radius:999px;
+  background:var(--b46-card-accent);
+  box-shadow:0 0 10px var(--b46-card-glow),0 0 4px var(--b46-card-accent);
+  opacity:.9;
+  pointer-events:none;
+}
+.workspace-scorebar-cell.workspace-scorebar-signal-result.outcome-win{
+  --b46-card-accent:#22c55e;
+  --b46-card-glow:rgba(34,197,94,.16);
+  background:#111922!important;
+  background-image:linear-gradient(145deg,rgba(34,197,94,.055),rgba(17,25,34,0) 58%)!important;
+}
+.workspace-scorebar-cell.workspace-scorebar-signal-result.outcome-loss{
+  --b46-card-accent:#ef4444;
+  --b46-card-glow:rgba(239,68,68,.15);
+  background:#111922!important;
+  background-image:linear-gradient(145deg,rgba(239,68,68,.05),rgba(17,25,34,0) 58%)!important;
+}
+.workspace-scorebar-cell.workspace-scorebar-signal-result.outcome-draw{
+  --b46-card-accent:#94a3b8;
+  --b46-card-glow:rgba(148,163,184,.14);
+  background:#111922!important;
+  background-image:linear-gradient(145deg,rgba(148,163,184,.045),rgba(17,25,34,0) 58%)!important;
+}
+.workspace-scorebar-cell.workspace-scorebar-pending{
+  --b46-card-accent:#f59e0b;
+  --b46-card-glow:rgba(245,158,11,.15);
+  background:#111922!important;
+  background-image:linear-gradient(145deg,rgba(245,158,11,.052),rgba(17,25,34,0) 58%)!important;
+}
+.workspace-scorebar-cell.workspace-scorebar-signal-result,
+.workspace-scorebar-cell.workspace-scorebar-signal-result *,
+.workspace-scorebar-cell.workspace-scorebar-pending,
+.workspace-scorebar-cell.workspace-scorebar-pending *{text-shadow:none!important}
+.workspace-scorebar-cell:hover{
+  transform:translateY(-1px);
+  border-color:rgba(148,163,184,.24)!important;
+  box-shadow:0 0 0 1px var(--b46-card-glow),0 10px 24px rgba(0,0,0,.2)!important;
+}
+.workspace-scorebar-meta{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:6px!important;
+  margin:0 0 5px!important;
+  min-width:0!important;
+  color:#94a3b8!important;
+  font-size:8px!important;
+  font-weight:800!important;
+  line-height:1.1!important;
+  letter-spacing:.02em!important;
+  white-space:nowrap!important;
+}
+.workspace-scorebar-meta i{
+  min-width:0!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  color:var(--b46-card-accent)!important;
+  font-size:8px!important;
+  font-style:normal!important;
+  font-weight:900!important;
+  letter-spacing:.025em!important;
+}
+.workspace-scorebar-meta b{
+  flex:0 0 auto!important;
+  color:#f8fafc!important;
+  font-size:12px!important;
+  font-weight:800!important;
+  line-height:1!important;
+}
+.workspace-scorebar-match,
+.workspace-scorebar-cell.workspace-scorebar-pending .workspace-scorebar-match{
+  display:block!important;
+  margin:0 0 5px!important;
+  color:#f1f5f9!important;
+  font-size:10px!important;
+  font-weight:750!important;
+  line-height:1.2!important;
+  letter-spacing:-.01em!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+.workspace-scorebar-pick,
+.workspace-scorebar-cell.workspace-scorebar-pending .workspace-scorebar-pick{
+  display:flex!important;
+  flex-direction:row!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:7px!important;
+  min-width:0!important;
+  line-height:1.1!important;
+}
+.workspace-scorebar-pick strong,
+.workspace-scorebar-pick em,
+.workspace-scorebar-cell.workspace-scorebar-pending .workspace-scorebar-pick strong,
+.workspace-scorebar-cell.workspace-scorebar-pending .workspace-scorebar-pick em{
+  min-width:0!important;
+  font-size:8px!important;
+  line-height:1.1!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+.workspace-scorebar-pick strong,
+.workspace-scorebar-cell.workspace-scorebar-pending .workspace-scorebar-pick strong{
+  flex:1 1 auto!important;
+  color:#cbd5e1!important;
+  font-weight:750!important;
+}
+.workspace-scorebar-pick em,
+.workspace-scorebar-cell.workspace-scorebar-pending .workspace-scorebar-pick em{
+  flex:0 1 auto!important;
+  color:#f8fafc!important;
+  font-style:normal!important;
+  font-weight:800!important;
+}
+.workspace-scorebar-details{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) 24px minmax(0,1fr)!important;
+  align-items:center!important;
+  gap:4px!important;
+  margin-top:6px!important;
+  padding-top:5px!important;
+  border-top:1px solid rgba(148,163,184,.11)!important;
+  color:#94a3b8!important;
+  font-size:7px!important;
+  line-height:1!important;
+  white-space:nowrap!important;
+  min-width:0!important;
+}
+.workspace-scorebar-details>span{min-width:0!important;overflow:hidden!important;text-overflow:ellipsis!important}
+.workspace-scorebar-details i{font-style:normal!important;font-size:6.5px!important;font-weight:750!important;letter-spacing:.04em!important;opacity:.72!important}
+.workspace-scorebar-details b{display:block!important;margin-top:1px!important;color:#e2e8f0!important;font-size:7.5px!important;font-weight:800!important;overflow:hidden!important;text-overflow:ellipsis!important;max-width:100%!important}
+.workspace-scorebar-detail-minute{color:#64748b!important;text-align:center!important;font-size:7px!important;font-weight:800!important}
+.workspace-scorebar-cell.placeholder{
+  opacity:.52!important;
+  display:flex!important;
+  flex-direction:column!important;
+  justify-content:center!important;
+  background:#111922!important;
+}
+@media(max-width:900px){
+  .workspace-scorebar-grid{grid-template-columns:repeat(10,minmax(132px,1fr))!important;gap:7px!important;height:96px!important}
+  .workspace-scorebar-cell{height:86px!important;min-height:86px!important;padding:8px 9px 7px!important}
+  .workspace-scorebar-match{font-size:9.5px!important}
+}
+
+
+/* B46_TOPCARDS_TYPE_STABLE_20261004: outrank later legacy 7px workspace rule for populated cards only. */
+.workspace-scorebar-cell.workspace-scorebar-signal-result .workspace-scorebar-match,
+.workspace-scorebar-cell.workspace-scorebar-pending .workspace-scorebar-match{
+  font-size:9.5px!important;
+  font-weight:750!important;
+  line-height:1.2!important;
+  color:#f1f5f9!important;
+  text-shadow:none!important;
+}
+
+
+/* B46_MATCH_CARD_THEME_CONTRAST_20261004: presentation-only match-card contrast; geometry, active state, data and behavior untouched. */
+body .workspace.singlepage .match-row:not(.active) {
+  background: #E5EBE8 !important;
+  border-top-color: #C8D2CD !important;
+  border-bottom-color: #C8D2CD !important;
+}
+@media (hover:hover) and (pointer:fine) {
+  body .workspace.singlepage .match-row:not(.active):hover {
+    background: #DFE7E3 !important;
+    border-top-color: #BAC8C1 !important;
+    border-bottom-color: #BAC8C1 !important;
+  }
+}
+html[data-theme="dark"] body .workspace.singlepage .match-row:not(.active) {
+  background: #030605 !important;
+  border-top-color: #17221D !important;
+  border-bottom-color: #17221D !important;
+}
+@media (hover:hover) and (pointer:fine) {
+  html[data-theme="dark"] body .workspace.singlepage .match-row:not(.active):hover {
+    background: #07100C !important;
+    border-top-color: #24372E !important;
+    border-bottom-color: #24372E !important;
+  }
+}
+
+
+/* B46_MATCH_CARD_ACTIVE_DARK_GLOW_20261004: dark selected card stays black; green edge/glow only. */
+html[data-theme="dark"] body .workspace.singlepage .match-row.active {
+  background: #030605 !important;
+  border-top-color: #2ACF83 !important;
+  border-bottom-color: #2ACF83 !important;
+  box-shadow: 0 0 0 1px rgba(42,207,131,.22), 0 0 14px rgba(42,207,131,.16) !important;
+}
+
+
+/* B46_MATCH_EXPANDED_OUTLINE_20261004: continue the selected-match green edge around its expanded panel without changing geometry. */
+html[data-theme="dark"] body .workspace.singlepage .match-row[aria-expanded="true"] + .match-expanded {
+  box-shadow: inset 0 0 0 1px rgba(42,207,131,.34), 0 0 14px rgba(42,207,131,.10) !important;
+}
+
+
+/* B46_EXPANDED_UNIFIED_GREEN_FRAME_20261004: green means expanded only; one continuous 1px #2ACF83 frame around row + expanded content. */
+html[data-theme="dark"] body .workspace.singlepage .match-row.active:not([aria-expanded="true"]) {
+  background: #030605 !important;
+  border-top-color: #17221D !important;
+  border-bottom-color: #17221D !important;
+  box-shadow: none !important;
+}
+html[data-theme="dark"] body .workspace.singlepage .match-row[aria-expanded="true"] {
+  background: #030605 !important;
+  border-top-color: #2ACF83 !important;
+  border-bottom-color: transparent !important;
+  box-shadow: inset 1px 0 0 #2ACF83, inset -1px 0 0 #2ACF83, inset 0 1px 0 #2ACF83, 0 0 14px rgba(42,207,131,.14) !important;
+}
+html[data-theme="dark"] body .workspace.singlepage .match-row[aria-expanded="true"] + .match-expanded {
+  box-shadow: inset 1px 0 0 #2ACF83, inset -1px 0 0 #2ACF83, inset 0 -1px 0 #2ACF83, 0 8px 14px rgba(42,207,131,.10) !important;
+}
+
+
+/* B46_TEN_CARD_RESPONSIVE_FINAL_20261005: presentation only. Keep all 10 existing signal/result cards, distribute them across the available viewport, remove the horizontal scrolling rail, and keep status labels readable. */
+html body [data-workspace-scorebar-slot]{
+  display:block!important;
+  visibility:visible!important;
+  opacity:1!important;
+  width:100%!important;
+  max-width:100%!important;
+  height:auto!important;
+  min-height:0!important;
+  max-height:none!important;
+  overflow:visible!important;
+  background:transparent!important;
+  background-image:none!important;
+  border:0!important;
+  box-shadow:none!important;
+}
+html body [data-workspace-scorebar-slot] .workspace-scorebar-grid{
+  display:grid!important;
+  grid-template-columns:repeat(10,minmax(0,1fr))!important;
+  grid-auto-flow:row!important;
+  grid-auto-rows:90px!important;
+  align-items:stretch!important;
+  justify-content:stretch!important;
+  gap:8px!important;
+  width:100%!important;
+  max-width:100%!important;
+  height:auto!important;
+  min-height:0!important;
+  max-height:none!important;
+  overflow:visible!important;
+  overflow-x:visible!important;
+  overflow-y:visible!important;
+  padding:3px 2px 7px!important;
+  scrollbar-width:none!important;
+}
+html body [data-workspace-scorebar-slot] .workspace-scorebar-grid::-webkit-scrollbar{display:none!important;width:0!important;height:0!important}
+html body [data-workspace-scorebar-slot] .workspace-scorebar-cell{
+  box-sizing:border-box!important;
+  width:auto!important;
+  min-width:0!important;
+  height:90px!important;
+  min-height:90px!important;
+  max-height:90px!important;
+}
+html body [data-workspace-scorebar-slot] .workspace-scorebar-cell .workspace-scorebar-meta i{
+  color:#fff!important;
+  font-weight:900!important;
+  opacity:1!important;
+}
+@media(max-width:1180px){
+  html body [data-workspace-scorebar-slot] .workspace-scorebar-grid{display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;grid-auto-flow:row!important}
+}
+@media(max-width:760px){
+  html body [data-workspace-scorebar-slot]{display:block!important;width:100%!important;max-width:100%!important;height:auto!important;min-height:0!important;max-height:none!important;overflow:visible!important}
+  html body [data-workspace-scorebar-slot] .workspace-scorebar-grid{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;grid-auto-flow:row!important;gap:7px!important;width:100%!important;max-width:100%!important;overflow:visible!important}
+}
+
+
+/* B46_REMOVE_LOSS_PENDING_TOP_ACCENT_20261005: remove only the remaining top accent line from LOSS and PENDING cards. */
+html body [data-workspace-scorebar-slot] .workspace-scorebar-cell.workspace-scorebar-signal-result.outcome-loss::before,
+html body [data-workspace-scorebar-slot] .workspace-scorebar-cell.workspace-scorebar-pending::before{
+  content:none!important;
+  display:none!important;
+  height:0!important;
+  background:none!important;
+  background-image:none!important;
+  box-shadow:none!important;
+  opacity:0!important;
+}
+
+
+/* B46_CARD_HEIGHT_DRAW_ACCENT_FINAL_20261005: 1) add ~5% card height so bottom details stay inside; 2) remove DRAW top accent line. Presentation only. */
+html body [data-workspace-scorebar-slot] .workspace-scorebar-grid{
+  grid-auto-rows:95px!important;
+}
+html body [data-workspace-scorebar-slot] .workspace-scorebar-cell{
+  height:95px!important;
+  min-height:95px!important;
+  max-height:95px!important;
+}
+html body [data-workspace-scorebar-slot] .workspace-scorebar-cell.workspace-scorebar-signal-result.outcome-draw::before{
+  content:none!important;
+  display:none!important;
+  height:0!important;
+  background:none!important;
+  background-image:none!important;
+  box-shadow:none!important;
+  opacity:0!important;
+}
+
+/* B46_LEFT_RAIL_TRANSPARENT_20261005: presentation-only left navigation cleanup */
+body .workspace.singlepage > .left-rail,
+body .workspace.singlepage > .left-rail > .rail-card,
+body .workspace.singlepage > .left-rail .rail-card {
+  background-color: transparent !important;
+  background-image: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+body .workspace.singlepage > .left-rail .rail-card::before,
+body .workspace.singlepage > .left-rail .rail-card::after {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+body .workspace.singlepage > .left-rail .rail-card > :is(button,a,[role="button"]) {
+  background-color: transparent !important;
+  background-image: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+@media (hover: hover) and (pointer: fine) {
+  body .workspace.singlepage > .left-rail .rail-card > :is(button,a,[role="button"]):not(.active):hover {
+    background-color: color-mix(in srgb, currentColor 4%, transparent) !important;
+    background-image: none !important;
+    box-shadow: none !important;
+  }
+}
+body .workspace.singlepage > .left-rail .rail-card > :is(button,a,[role="button"]).active {
+  background-color: color-mix(in srgb, var(--green) 9%, transparent) !important;
+  background-image: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+/* B46_LEFT_RAIL_FULL_TRANSPARENT_20261005: presentation-only left navigation cleanup */
+body .workspace.singlepage > .left-rail,
+body .workspace.singlepage > .left-rail > .rail-card,
+body .workspace.singlepage > .left-rail .rail-card {
+  background-color: transparent !important;
+  background-image: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+body .workspace.singlepage > .left-rail .rail-card::before,
+body .workspace.singlepage > .left-rail .rail-card::after {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+body .workspace.singlepage > .left-rail .rail-card > :is(button,a,[role="button"]) {
+  background-color: transparent !important;
+  background-image: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+@media (hover: hover) and (pointer: fine) {
+  body .workspace.singlepage > .left-rail .rail-card > :is(button,a,[role="button"]):not(.active):hover {
+    background-color: color-mix(in srgb, currentColor 4%, transparent) !important;
+    background-image: none !important;
+    box-shadow: none !important;
+  }
+}
+body .workspace.singlepage > .left-rail .rail-card > :is(button,a,[role="button"]).active {
+  background-color: color-mix(in srgb, var(--green) 9%, transparent) !important;
+  background-image: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+/* B46_LEFT_RAIL_FULL_TRANSPARENT_20261005: remove remaining group/menu surfaces; short section dividers only */
+body .workspace.singlepage > .left-rail > :not(.workspace-brand-card),
+body .workspace.singlepage > .left-rail :is(.rail-card,.workspace-stats-card,.workspace-nav-grid,.filter,.league-filter,.workspace-nav-row) {
+  background-color: transparent !important;
+  background-image: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+body .workspace.singlepage > .left-rail .rail-card > :is(button,a,[role="button"]),
+body .workspace.singlepage > .left-rail :is(.filter,.league-filter,.workspace-nav-row),
+body .workspace.singlepage > .left-rail .workspace-nav-grid > button {
+  background-color: transparent !important;
+  background-image: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+body .workspace.singlepage > .left-rail .rail-card > :is(button,a,[role="button"]):is(:hover,.active),
+body .workspace.singlepage > .left-rail :is(.filter,.league-filter,.workspace-nav-row):is(:hover,.active),
+body .workspace.singlepage > .left-rail .workspace-nav-grid > button:is(:hover,.active) {
+  background-color: transparent !important;
+  background-image: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+body .workspace.singlepage > .left-rail :is(.rail-title,.league-head) {
+  background-color: transparent !important;
+  background-image: linear-gradient(90deg, color-mix(in srgb, var(--text) 20%, transparent), color-mix(in srgb, var(--text) 20%, transparent)) !important;
+  background-repeat: no-repeat !important;
+  background-position: 14px 100% !important;
+  background-size: 48px 1px !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+/* B46_LEFT_RAIL_BADGES_TRANSPARENT_20261005: presentation-only left navigation cleanup */
+body .workspace.singlepage > .left-rail,
+body .workspace.singlepage > .left-rail > .rail-card,
+body .workspace.singlepage > .left-rail .rail-card {
+  background-color: transparent !important;
+  background-image: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+body .workspace.singlepage > .left-rail .rail-card::before,
+body .workspace.singlepage > .left-rail .rail-card::after {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+body .workspace.singlepage > .left-rail .rail-card > :is(button,a,[role="button"]) {
+  background-color: transparent !important;
+  background-image: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+@media (hover: hover) and (pointer: fine) {
+  body .workspace.singlepage > .left-rail .rail-card > :is(button,a,[role="button"]):not(.active):hover {
+    background-color: color-mix(in srgb, currentColor 4%, transparent) !important;
+    background-image: none !important;
+    box-shadow: none !important;
+  }
+}
+body .workspace.singlepage > .left-rail .rail-card > :is(button,a,[role="button"]).active {
+  background-color: color-mix(in srgb, var(--green) 9%, transparent) !important;
+  background-image: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+/* B46_LEFT_RAIL_BADGES_TRANSPARENT_20261005: remove remaining numeric badge and active-row surfaces; keep icons intact */
+body .workspace.singlepage > .left-rail > :not(.workspace-brand-card),
+body .workspace.singlepage > .left-rail :is(.rail-card,.workspace-stats-card,.workspace-nav-grid,.filter,.league-filter,.workspace-nav-row) {
+  background-color: transparent !important;
+  background-image: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+body .workspace.singlepage > .left-rail .rail-card > :is(button,a,[role="button"]),
+body .workspace.singlepage > .left-rail :is(.filter,.league-filter,.workspace-nav-row),
+body .workspace.singlepage > .left-rail .workspace-nav-grid > button,
+body .workspace.singlepage > .left-rail .rail-card > :is(button,a,[role="button"]):is(:hover,.active),
+body .workspace.singlepage > .left-rail :is(.filter,.league-filter,.workspace-nav-row):is(:hover,.active),
+body .workspace.singlepage > .left-rail .workspace-nav-grid > button:is(:hover,.active) {
+  background-color: transparent !important;
+  background-image: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+body .workspace.singlepage > .left-rail :is(.filter,.league-filter,.workspace-nav-row) > b,
+body .workspace.singlepage > .left-rail .rail-card > :is(button,a,[role="button"]) > b,
+body .workspace.singlepage > .left-rail .workspace-nav-grid > button > b {
+  background: transparent !important;
+  background-image: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+body .workspace.singlepage > .left-rail .rail-card > :is(button,a,[role="button"])::before,
+body .workspace.singlepage > .left-rail .rail-card > :is(button,a,[role="button"])::after,
+body .workspace.singlepage > .left-rail :is(.filter,.league-filter,.workspace-nav-row)::before,
+body .workspace.singlepage > .left-rail :is(.filter,.league-filter,.workspace-nav-row)::after {
+  background: transparent !important;
+  background-image: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+body .workspace.singlepage > .left-rail :is(.rail-title,.league-head) {
+  background-color: transparent !important;
+  background-image: linear-gradient(90deg, color-mix(in srgb, var(--text) 20%, transparent), color-mix(in srgb, var(--text) 20%, transparent)) !important;
+  background-repeat: no-repeat !important;
+  background-position: 14px 100% !important;
+  background-size: 48px 1px !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+/* B46_LEFT_RAIL_TEXT_STATE_20261005: presentation-only left navigation cleanup */
+body .workspace.singlepage > .left-rail,
+body .workspace.singlepage > .left-rail > .rail-card,
+body .workspace.singlepage > .left-rail .rail-card {
+  background-color: transparent !important;
+  background-image: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+body .workspace.singlepage > .left-rail .rail-card::before,
+body .workspace.singlepage > .left-rail .rail-card::after {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+body .workspace.singlepage > .left-rail .rail-card > :is(button,a,[role="button"]) {
+  background-color: transparent !important;
+  background-image: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+@media (hover: hover) and (pointer: fine) {
+  body .workspace.singlepage > .left-rail .rail-card > :is(button,a,[role="button"]):not(.active):hover {
+    background-color: color-mix(in srgb, currentColor 4%, transparent) !important;
+    background-image: none !important;
+    box-shadow: none !important;
+  }
+}
+body .workspace.singlepage > .left-rail .rail-card > :is(button,a,[role="button"]).active {
+  background-color: color-mix(in srgb, var(--green) 9%, transparent) !important;
+  background-image: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+/* B46_LEFT_RAIL_TEXT_STATE_20261005: hover = green text only; active = green only; no card hover surface */
+body .workspace.singlepage > .left-rail > :not(.workspace-brand-card),
+body .workspace.singlepage > .left-rail :is(.rail-card,.workspace-stats-card,.workspace-nav-grid,.filter,.league-filter,.workspace-nav-row),
+body .workspace.singlepage > .left-rail :is(.rail-card,.workspace-stats-card,.workspace-nav-grid):hover {
+  background-color: transparent !important;
+  background-image: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+body .workspace.singlepage > .left-rail .rail-card > :is(button,a,[role="button"]),
+body .workspace.singlepage > .left-rail :is(.filter,.league-filter,.workspace-nav-row),
+body .workspace.singlepage > .left-rail .workspace-nav-grid > button,
+body .workspace.singlepage > .left-rail .rail-card > :is(button,a,[role="button"]):is(:hover,.active),
+body .workspace.singlepage > .left-rail :is(.filter,.league-filter,.workspace-nav-row):is(:hover,.active),
+body .workspace.singlepage > .left-rail .workspace-nav-grid > button:is(:hover,.active) {
+  background-color: transparent !important;
+  background-image: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+body .workspace.singlepage > .left-rail :is(.filter,.league-filter,.workspace-nav-row) > b,
+body .workspace.singlepage > .left-rail .rail-card > :is(button,a,[role="button"]) > b,
+body .workspace.singlepage > .left-rail .workspace-nav-grid > button > b {
+  background: transparent !important;
+  background-image: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+@media (hover: hover) and (pointer: fine) {
+  body .workspace.singlepage > .left-rail .rail-card > :is(button,a,[role="button"]):hover,
+  body .workspace.singlepage > .left-rail :is(.filter,.league-filter,.workspace-nav-row):hover,
+  body .workspace.singlepage > .left-rail .workspace-nav-grid > button:hover {
+    color: var(--green) !important;
+    background-color: transparent !important;
+    background-image: none !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+  }
+  body .workspace.singlepage > .left-rail .rail-card > :is(button,a,[role="button"]):hover > :is(span,b,strong,small),
+  body .workspace.singlepage > .left-rail :is(.filter,.league-filter,.workspace-nav-row):hover > :is(span,b,strong,small),
+  body .workspace.singlepage > .left-rail .workspace-nav-grid > button:hover > :is(span,b,strong,small) {
+    color: var(--green) !important;
+  }
+}
+body .workspace.singlepage > .left-rail .rail-card > :is(button,a,[role="button"]).active,
+body .workspace.singlepage > .left-rail :is(.filter,.league-filter,.workspace-nav-row).active,
+body .workspace.singlepage > .left-rail .workspace-nav-grid > button.active {
+  color: var(--green) !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+body .workspace.singlepage > .left-rail .rail-card > :is(button,a,[role="button"]).active > :is(span,b,strong,small),
+body .workspace.singlepage > .left-rail :is(.filter,.league-filter,.workspace-nav-row).active > :is(span,b,strong,small),
+body .workspace.singlepage > .left-rail .workspace-nav-grid > button.active > :is(span,b,strong,small) {
+  color: var(--green) !important;
+}
+body .workspace.singlepage > .left-rail .rail-card > :is(button[data-status-filter],button[data-workspace-view="signal"]).active {
+  --b46-status-tone: var(--green) !important;
+}
+@media (hover: hover) and (pointer: fine) {
+  body .workspace.singlepage > .left-rail .rail-card > :is(button[data-status-filter],button[data-workspace-view="signal"]):hover > span::before,
+  body .workspace.singlepage > .left-rail .workspace-stats-card .workspace-nav-grid > button[data-stat-market]:hover > span::before {
+    transform: none !important;
+    opacity: .82 !important;
+  }
+}
+body .workspace.singlepage > .left-rail .rail-card > :is(button[data-status-filter],button[data-workspace-view="signal"]):active > span::before,
+body .workspace.singlepage > .left-rail .workspace-stats-card .workspace-nav-grid > button[data-stat-market]:active > span::before {
+  transform: none !important;
+}
+body .workspace.singlepage > .left-rail :is(.rail-title,.league-head) {
+  background-color: transparent !important;
+  background-image: linear-gradient(90deg, color-mix(in srgb, var(--text) 20%, transparent), color-mix(in srgb, var(--text) 20%, transparent)) !important;
+  background-repeat: no-repeat !important;
+  background-position: 14px 100% !important;
+  background-size: 48px 1px !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+\n\n\n\n\n\n
+
+
+
+/* B46_SIGNAL_TICKER_LOOP_20261007 START */
+/* B46_SIGNAL_TICKER_LOOP_20261007
+   Stock-style ticker with no legacy scorebar card DOM.
+   The viewport is fixed to its column; the absolute track cannot widen the page.
+   100% transparent background, one aligned line, item width equals content width. */
+
+@keyframes b46SignalTickerFlow2{
+  from{transform:translate3d(0,0,0)}
+  to{transform:translate3d(var(--b46-ticker-shift),0,0)}
+}
+
+@media (min-width:761px){
+  body .workspace.singlepage [data-workspace-scorebar-slot],
+  body .workspace.singlepage .workspace-scorebar-slot{
+    position:relative!important;
+    display:block!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:100%!important;
+    height:32px!important;
+    min-height:32px!important;
+    max-height:32px!important;
+    margin:0!important;
+    padding:0!important;
+    overflow:hidden!important;
+    box-sizing:border-box!important;
+    contain:inline-size paint!important;
+    border:0!important;
+    outline:0!important;
+    border-radius:0!important;
+    box-shadow:none!important;
+    filter:none!important;
+    background:transparent!important;
+    background-color:transparent!important;
+    background-image:none!important;
+  }
+
+  body .workspace.singlepage .b46-signal-ticker{
+    position:relative!important;
+    display:block!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:100%!important;
+    height:32px!important;
+    min-height:32px!important;
+    max-height:32px!important;
+    margin:0!important;
+    padding:0!important;
+    overflow:hidden!important;
+    box-sizing:border-box!important;
+    border:0!important;
+    outline:0!important;
+    box-shadow:none!important;
+    filter:none!important;
+    background:transparent!important;
+    background-color:transparent!important;
+    background-image:none!important;
+  }
+
+  body .workspace.singlepage .b46-ticker-track{
+    position:absolute!important;
+    left:0!important;
+    top:0!important;
+    display:flex!important;
+    align-items:center!important;
+    width:max-content!important;
+    min-width:max-content!important;
+    max-width:none!important;
+    height:32px!important;
+    min-height:32px!important;
+    max-height:32px!important;
+    margin:0!important;
+    padding:0!important;
+    gap:0!important;
+    white-space:nowrap!important;
+    will-change:transform!important;
+    transform:translate3d(0,0,0);
+    border:0!important;
+    outline:0!important;
+    box-shadow:none!important;
+    filter:none!important;
+    background:transparent!important;
+    background-color:transparent!important;
+    background-image:none!important;
+  }
+
+  body .workspace.singlepage .b46-ticker-track.is-flowing{
+    animation-name:b46SignalTickerFlow2!important;
+    animation-duration:var(--b46-ticker-duration,28s)!important;
+    animation-timing-function:linear!important;
+    animation-delay:0s!important;
+    animation-iteration-count:infinite!important;
+    animation-direction:normal!important;
+    animation-fill-mode:none!important;
+    animation-play-state:running!important;
+  }
+
+  body .workspace.singlepage .b46-signal-ticker:hover .b46-ticker-track.is-flowing,
+  body .workspace.singlepage .b46-signal-ticker:focus-within .b46-ticker-track.is-flowing{
+    animation-play-state:paused!important;
+  }
+
+  body .workspace.singlepage .b46-ticker-group{
+    display:flex!important;
+    flex:0 0 auto!important;
+    align-items:center!important;
+    width:max-content!important;
+    min-width:max-content!important;
+    max-width:none!important;
+    height:32px!important;
+    min-height:32px!important;
+    max-height:32px!important;
+    margin:0!important;
+    padding:0!important;
+    gap:0!important;
+    white-space:nowrap!important;
+    border:0!important;
+    outline:0!important;
+    box-shadow:none!important;
+    filter:none!important;
+    background:transparent!important;
+    background-color:transparent!important;
+    background-image:none!important;
+  }
+
+  body .workspace.singlepage .b46-ticker-item{
+    display:inline-flex!important;
+    flex:0 0 auto!important;
+    align-items:center!important;
+    width:max-content!important;
+    min-width:max-content!important;
+    max-width:none!important;
+    height:32px!important;
+    min-height:32px!important;
+    max-height:32px!important;
+    margin:0!important;
+    padding:0!important;
+    gap:6px!important;
+    box-sizing:border-box!important;
+    overflow:visible!important;
+    white-space:nowrap!important;
+    vertical-align:middle!important;
+    border:0!important;
+    outline:0!important;
+    border-radius:0!important;
+    box-shadow:none!important;
+    filter:none!important;
+    text-shadow:none!important;
+    background:transparent!important;
+    background-color:transparent!important;
+    background-image:none!important;
+    color:var(--text,#e8edf2)!important;
+    font-family:inherit!important;
+    font-size:11px!important;
+    line-height:32px!important;
+  }
+
+  body .workspace.singlepage .b46-ticker-item::before{
+    content:none!important;
+    display:none!important;
+  }
+
+  body .workspace.singlepage .b46-ticker-item::after{
+    content:"│"!important;
+    display:inline-block!important;
+    flex:0 0 auto!important;
+    width:auto!important;
+    height:32px!important;
+    margin:0 12px!important;
+    padding:0!important;
+    color:var(--muted,#7f8a96)!important;
+    opacity:.72!important;
+    font-family:inherit!important;
+    font-size:11px!important;
+    font-weight:700!important;
+    line-height:32px!important;
+    vertical-align:middle!important;
+    border:0!important;
+    box-shadow:none!important;
+    filter:none!important;
+    background:transparent!important;
+    background-color:transparent!important;
+    background-image:none!important;
+  }
+
+  body .workspace.singlepage .b46-ticker-item > *{
+    display:inline-block!important;
+    flex:0 0 auto!important;
+    width:auto!important;
+    min-width:0!important;
+    max-width:none!important;
+    height:32px!important;
+    margin:0!important;
+    padding:0!important;
+    overflow:visible!important;
+    white-space:nowrap!important;
+    vertical-align:middle!important;
+    border:0!important;
+    outline:0!important;
+    box-shadow:none!important;
+    filter:none!important;
+    text-shadow:none!important;
+    background:transparent!important;
+    background-color:transparent!important;
+    background-image:none!important;
+    font-family:inherit!important;
+    font-size:11px!important;
+    line-height:32px!important;
+  }
+
+  body .workspace.singlepage .b46-ticker-status{
+    font-weight:900!important;
+    letter-spacing:.02em!important;
+  }
+
+  body .workspace.singlepage .b46-ticker-item.is-win .b46-ticker-status{color:#22c55e!important}
+  body .workspace.singlepage .b46-ticker-item.is-loss .b46-ticker-status{color:#ef4444!important}
+  body .workspace.singlepage .b46-ticker-item.is-draw .b46-ticker-status{color:#98a2b3!important}
+  body .workspace.singlepage .b46-ticker-item.is-pending .b46-ticker-status{color:#ffffff!important}
+
+  body .workspace.singlepage .b46-ticker-minute,
+  body .workspace.singlepage .b46-ticker-sep,
+  body .workspace.singlepage .b46-ticker-market{
+    color:var(--muted,#9aa4af)!important;
+  }
+
+  body .workspace.singlepage .b46-ticker-score,
+  body .workspace.singlepage .b46-ticker-match,
+  body .workspace.singlepage .b46-ticker-pick{
+    color:var(--text,#e8edf2)!important;
+  }
+
+  body .workspace.singlepage .b46-ticker-score{font-weight:800!important}
+  body .workspace.singlepage .b46-ticker-match{font-weight:700!important}
+  body .workspace.singlepage .b46-ticker-market{font-weight:800!important}
+  body .workspace.singlepage .b46-ticker-pick{font-weight:700!important}
+}
+/* END B46_SIGNAL_TICKER_LOOP_20261007 */
+
+
+/* B46_TOPCARDS_PREMIUM_TYPE_20261013: typography only for the scorebar cards below search. No card geometry/color/border/background/data changes. */
+.workspace-scorebar-grid .workspace-scorebar-cell,
+.workspace-scorebar-grid .workspace-scorebar-cell *{
+  font-family:"IBM Plex Sans","IBM Plex Sans Thai",Inter,Arial,sans-serif!important;
+}
+.workspace-scorebar-grid .workspace-scorebar-meta{
+  font-size:8px!important;
+  font-weight:700!important;
+  letter-spacing:.045em!important;
+  line-height:1.1!important;
+}
+.workspace-scorebar-grid .workspace-scorebar-meta i{
+  font-size:8px!important;
+  font-weight:800!important;
+  letter-spacing:.06em!important;
+  line-height:1.1!important;
+}
+.workspace-scorebar-grid .workspace-scorebar-meta b{
+  font-size:12px!important;
+  font-weight:750!important;
+  letter-spacing:-.01em!important;
+  line-height:1!important;
+  font-variant-numeric:tabular-nums lining-nums!important;
+}
+.workspace-scorebar-grid .workspace-scorebar-cell.workspace-scorebar-signal-result .workspace-scorebar-match,
+.workspace-scorebar-grid .workspace-scorebar-cell.workspace-scorebar-pending .workspace-scorebar-match,
+.workspace-scorebar-grid .workspace-scorebar-match{
+  font-size:9.5px!important;
+  font-weight:650!important;
+  letter-spacing:-.012em!important;
+  line-height:1.2!important;
+}
+.workspace-scorebar-grid .workspace-scorebar-pick strong{
+  font-size:8px!important;
+  font-weight:600!important;
+  letter-spacing:0!important;
+  line-height:1.1!important;
+}
+.workspace-scorebar-grid .workspace-scorebar-pick em{
+  font-size:8px!important;
+  font-weight:700!important;
+  letter-spacing:-.005em!important;
+  line-height:1.1!important;
+  font-variant-numeric:tabular-nums lining-nums!important;
+}
+.workspace-scorebar-grid .workspace-scorebar-details{
+  font-size:7px!important;
+  font-weight:600!important;
+  letter-spacing:.02em!important;
+  line-height:1!important;
+}
+.workspace-scorebar-grid .workspace-scorebar-details i{
+  font-size:6.5px!important;
+  font-weight:650!important;
+  letter-spacing:.065em!important;
+  line-height:1!important;
+}
+.workspace-scorebar-grid .workspace-scorebar-details b{
+  font-size:7.5px!important;
+  font-weight:700!important;
+  letter-spacing:-.005em!important;
+  line-height:1!important;
+  font-variant-numeric:tabular-nums lining-nums!important;
+}
+
+
+/* B46_SCOREBOARD_VIEWPORT_FIT_20261021: viewport containers only; match cards remain unchanged. */
+@media(min-width:761px){
+  .workspace.singlepage .workspace-panel[data-workspace-panel="live"] .live-stage-grid{
+    --b46-scoreboard-top:18px;--b46-scoreboard-bottom:12px;
+    height:calc(100vh - var(--b46-scoreboard-top) - var(--b46-scoreboard-bottom));
+    height:calc(100dvh - var(--b46-scoreboard-top) - var(--b46-scoreboard-bottom));
+    min-height:0;grid-template-rows:minmax(0,1fr);
+  }
+  .workspace.singlepage .workspace-panel[data-workspace-panel="live"] .live-stage-grid>.main-board{height:100%;min-height:0}
+  .workspace.singlepage .workspace-panel[data-workspace-panel="live"] .live-stage-grid>.right-rail{top:var(--b46-scoreboard-top);max-height:100%;min-height:0}
+}

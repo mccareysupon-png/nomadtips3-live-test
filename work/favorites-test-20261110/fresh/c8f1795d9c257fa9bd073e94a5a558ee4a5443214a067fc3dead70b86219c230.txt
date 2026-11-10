@@ -1,0 +1,15 @@
+/* Ball46 Signal shared-view controls · uses the existing Live board/card shell. */
+.signal-market-toolbar{display:none;align-items:center;gap:6px;margin:0 0 8px;padding:0 1px;min-height:30px;overflow-x:auto;scrollbar-width:none}
+.signal-market-toolbar::-webkit-scrollbar{display:none}
+body[data-workspace-view="signal"] .signal-market-toolbar{display:flex}
+.signal-market-label{flex:0 0 auto;margin-right:2px;color:var(--muted);font-size:7px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
+.signal-market-chip{flex:0 0 auto;display:inline-flex;align-items:center;gap:5px;height:27px;padding:0 9px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--muted);font-size:8px;font-weight:850;letter-spacing:.025em;cursor:pointer;white-space:nowrap}
+.signal-market-chip b{min-width:12px;color:inherit;font-size:7px;font-variant-numeric:tabular-nums;text-align:center}
+.signal-market-chip:hover{border-color:var(--line-strong);color:var(--text)}
+.signal-market-chip.active{border-color:color-mix(in srgb,var(--green) 44%,var(--line));background:color-mix(in srgb,var(--green) 8%,var(--panel));color:var(--green-strong)}
+body[data-workspace-view="signal"] [data-status-filter].active{background:transparent;color:inherit}
+@media(max-width:760px){.signal-market-toolbar{gap:5px;margin:0 -2px 7px;padding:0 2px;min-height:29px}.signal-market-label{font-size:6px}.signal-market-chip{height:26px;padding:0 8px;border-radius:7px;font-size:7.5px}.signal-market-chip b{font-size:6.5px}}
+
+/* BALL46_SIGNAL_TOOLBAR_CLEANUP_20260923 — presentation only */
+.signal-market-toolbar,
+body[data-workspace-view="signal"] .signal-market-toolbar{display:none!important}

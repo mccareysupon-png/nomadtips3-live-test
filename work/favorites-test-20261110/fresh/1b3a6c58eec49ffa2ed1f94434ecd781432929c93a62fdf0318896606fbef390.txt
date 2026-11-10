@@ -1,0 +1,170 @@
+/* Ball46 3.43 · classic mobile workspace menu
+   Presentation only. Desktop, odds, engine, API, polling and signal logic are untouched. */
+
+.b46-mobile-workspace-nav{display:none}
+
+@media(max-width:760px){
+  body{padding-bottom:calc(70px + env(safe-area-inset-bottom,0px))}
+
+  /* Keep the compact brand, then show only the submenu for the active workspace. */
+  .workspace.singlepage>.left-rail{gap:6px;margin-bottom:8px}
+  .workspace.singlepage>.left-rail>.workspace-brand-card{margin-bottom:0!important}
+  .workspace.singlepage>.left-rail>.leagues-card{display:none!important}
+
+  .b46-mobile-status-menu,
+  .workspace.singlepage>.left-rail>.workspace-stats-card{
+    width:100%;
+    min-height:0!important;
+    border:1px solid var(--line);
+    border-radius:10px;
+    box-shadow:none;
+    background:var(--panel);
+  }
+
+  .b46-mobile-status-menu .rail-title,
+  .workspace.singlepage>.left-rail>.workspace-stats-card .rail-title{display:none!important}
+
+  /* Live submenu: old-style compact tabs, horizontal only inside the menu. */
+  .b46-mobile-status-menu{
+    display:flex!important;
+    align-items:center;
+    gap:5px;
+    padding:5px;
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    overscroll-behavior-x:contain;
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:none;
+  }
+  .b46-mobile-status-menu::-webkit-scrollbar{display:none}
+  .b46-mobile-status-menu .filter,
+  .b46-mobile-status-menu .workspace-nav-row{
+    flex:0 0 auto;
+    width:auto!important;
+    min-width:72px;
+    height:38px!important;
+    min-height:38px!important;
+    max-height:38px!important;
+    margin:0;
+    padding:0 10px!important;
+    border:1px solid var(--line)!important;
+    border-radius:8px;
+    background:var(--panel-2);
+    color:var(--muted);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:5px;
+    text-align:center;
+    font-size:10px;
+    font-weight:800;
+    white-space:nowrap;
+  }
+  .b46-mobile-status-menu .filter span,
+  .b46-mobile-status-menu .workspace-nav-row span{display:flex;align-items:center;gap:5px;font-size:10px}
+  .b46-mobile-status-menu .filter span i{display:none}
+  .b46-mobile-status-menu .filter b,
+  .b46-mobile-status-menu .workspace-nav-row b{display:none!important}
+  .b46-mobile-status-menu .filter.active{
+    border-color:color-mix(in srgb,var(--green) 35%,var(--line))!important;
+    background:var(--green-soft);
+    color:var(--green);
+  }
+  .b46-mobile-status-menu [data-workspace-view="signal"]{display:none!important}
+
+  /* Statistics market submenu: one clean swipeable row instead of an 8-button block. */
+  .workspace.singlepage>.left-rail>.workspace-stats-card .workspace-nav-grid{
+    display:flex!important;
+    grid-template-columns:none!important;
+    gap:5px;
+    padding:5px;
+    overflow-x:auto;
+    overflow-y:hidden;
+    overscroll-behavior-x:contain;
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:none;
+  }
+  .workspace.singlepage>.left-rail>.workspace-stats-card .workspace-nav-grid::-webkit-scrollbar{display:none}
+  .workspace.singlepage>.left-rail>.workspace-stats-card .workspace-nav-row{
+    flex:0 0 auto;
+    width:auto!important;
+    min-width:64px;
+    height:38px!important;
+    min-height:38px!important;
+    max-height:38px!important;
+    padding:0 10px!important;
+    border:1px solid var(--line)!important;
+    border-radius:8px;
+    background:var(--panel-2);
+    color:var(--muted);
+    justify-content:center;
+    font-size:10px;
+    font-weight:850;
+    white-space:nowrap;
+  }
+  .workspace.singlepage>.left-rail>.workspace-stats-card .workspace-nav-row.active{
+    border-color:var(--nav)!important;
+    background:var(--nav);
+    color:#fff;
+  }
+  .workspace.singlepage>.left-rail>.workspace-stats-card .workspace-nav-row b,
+  .workspace.singlepage>.left-rail>.workspace-stats-card .workspace-nav-mark{display:none!important}
+
+  body[data-workspace-view="live"] .workspace.singlepage>.left-rail>.workspace-stats-card{display:none!important}
+  body[data-workspace-view="signal"] .b46-mobile-status-menu,
+  body[data-workspace-view="signal"] .workspace.singlepage>.left-rail>.workspace-stats-card{display:none!important}
+  body[data-workspace-view="statistics"] .b46-mobile-status-menu{display:none!important}
+
+  /* Classic mobile bottom navigation. This never appears on PC. */
+  .b46-mobile-workspace-nav{
+    position:fixed;
+    left:0;
+    right:0;
+    bottom:0;
+    z-index:180;
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:6px;
+    min-height:58px;
+    padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px));
+    border-top:1px solid var(--line);
+    background:color-mix(in srgb,var(--panel) 97%,transparent);
+    box-shadow:0 -8px 24px rgba(28,54,40,.08);
+    backdrop-filter:blur(12px);
+  }
+  .b46-mobile-workspace-nav button{
+    min-width:0;
+    min-height:46px;
+    padding:0 6px;
+    border:1px solid transparent;
+    border-radius:10px;
+    background:transparent;
+    color:var(--muted);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:3px;
+    cursor:pointer;
+    font-size:10px;
+    line-height:1.05;
+    font-weight:850;
+    letter-spacing:.01em;
+  }
+  .b46-mobile-workspace-nav button .b46-mobile-nav-icon{
+    width:6px;
+    height:6px;
+    border-radius:50%;
+    background:currentColor;
+    opacity:.65;
+  }
+  .b46-mobile-workspace-nav button.active{
+    border-color:color-mix(in srgb,var(--green) 24%,var(--line));
+    background:var(--green-soft);
+    color:var(--green);
+  }
+  .b46-mobile-workspace-nav button.active .b46-mobile-nav-icon{opacity:1}
+
+  /* Give the first content block breathing room without changing match-card geometry. */
+  .dash-heading{margin-bottom:9px}
+}
