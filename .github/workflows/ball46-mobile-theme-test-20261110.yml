@@ -1,0 +1,45 @@
+name: BALL46 mobile theme preference TEST ONLY
+on:
+  push:
+    branches: [codex/ball46-favorites-test-20261110]
+    paths: ['work/mobile-theme-fix-test-20261110/request.json']
+permissions:
+  contents: write
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Prepare isolated browser
+        run: |
+          npm install --no-save --package-lock=false --prefix work/mobile-theme-fix-test-20261110 playwright@1.56.1
+          if command -v google-chrome >/dev/null; then
+            google-chrome --version
+            echo "PLAYWRIGHT_EXECUTABLE_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
+          else
+            cd work/mobile-theme-fix-test-20261110 && npx playwright install --with-deps chromium
+          fi
+      - name: Prepare existing cursor-only fixture and capture public static script only
+        run: |
+          node work/statistics-cursor-only-test-20261110/core-test.mjs
+          node work/statistics-cursor-only-test-20261110/capture-static.mjs
+      - name: Theme layout reload toggle and resize tests across mobile and desktop
+        run: node work/mobile-theme-fix-test-20261110/browser-test.mjs
+      - name: Save scoped browser evidence
+        if: always()
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add work/mobile-theme-fix-test-20261110/qa/*.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Record isolated mobile theme preference checks [skip ci]"
+          git push origin HEAD:codex/ball46-favorites-test-20261110
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-mobile-theme-test-proof
+          path: work/mobile-theme-fix-test-20261110/qa
