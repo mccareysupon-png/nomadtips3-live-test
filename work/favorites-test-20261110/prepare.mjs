@@ -9,6 +9,7 @@ d=replace(d,"return fixtures.filter(f=>{if(signalView", "return fixtures.filter(
 d=replace(d,"!signalView&&statusFilter!=='all'", "!signalView&&!window.B46_FAVORITES?.active&&statusFilter!=='all'",'Favorites independent of prior status');
 d=replace(d,'<div class="teams-cell"><b>','<div class="teams-cell">${window.B46_FAVORITES?.star(id)||\'\'}<b>','One icon before team pair');
 d=replace(d,'function start(){initControls();',"function start(){document.addEventListener('ball46:favorites-change',()=>{if(window.B46_FAVORITES?.active){statusFilter='all';leagueFilter='all';renderBoard();window.__BALL46_GREEN_NOIR?.refresh?.()}});initControls();",'Local Favorites filter repaint only; toggling elsewhere preserves row nodes');
+d=replace(d,'getFixture:id=>',"setLocalStatus:value=>{statusFilter=['all','live','scheduled','unknown','finished'].includes(value)?value:'all';leagueFilter='all';syncWorkspaceMode();renderLeagueFilters();renderBoard()},getFixture:id=>",'Restore status locally without history writes or network requests');
 // Empty-state strings occur more than once; replace the identical presentation literal only.
 d=d.replaceAll("'No matches match the current filters.'","(window.B46_FAVORITES?.active?'No saved matches in the current feed. Tap a star to follow a match.':'No matches match the current filters.')");
 let w=workspace;
@@ -16,6 +17,7 @@ w=replace(w,"const q=new URLSearchParams(location.search),view=q.get('view')","c
 // The comma declaration continues after view; retain the existing variables.
 w=w.replace("const unusedView=view,signalMarket=",'const signalMarket=');
 w=replace(w,'const q=new URLSearchParams();if(state.view',"const q=new URLSearchParams();if(state.view==='live'&&window.B46_FAVORITES?.active)q.set('favorites','1');if(state.view",'Preserve Favorites in existing history routing');
+w=replace(w,"if(state.view==='live'&&status!=='all')setTimeout(()=>document.querySelector(`[data-status-filter=\"${CSS.escape(status)}\"]`)?.click(),0)","if(state.view==='live')window.NOMAD343_DASHBOARD_V2?.setLocalStatus?.(status)",'Back and forward restore filters without delayed synthetic navigation');
 let out=html;const script=/((<script\b[^>]*\bsrc=["']))([^"']+)(["'][^>]*>[\s\S]*?<\/script>)/gi;
 out=out.replace(script,(full,a,b,url,end)=>{const path=new URL(url.replaceAll('&amp;','&'),'https://ball46.com').pathname;if(path==='/dashboard-v2-stage3-featured-facts-20261013a.js')return'<script src="/favorites.js" defer></script>'+a+'/favorites-dashboard.js'+end;if(path==='/singlepage-workspace-343.js')return a+'/favorites-workspace.js'+end;return full});
 let nativeMatch=[...out.matchAll(/<script\s+id="b46gn-mobile-real-board-runtime-20261018">([\s\S]*?)<\/script>/g)];assert.equal(nativeMatch.length,1);let native=nativeMatch[0][1];
