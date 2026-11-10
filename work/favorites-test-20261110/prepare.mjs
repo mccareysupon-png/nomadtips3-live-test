@@ -8,7 +8,7 @@ let d=dashboard;
 d=replace(d,"return fixtures.filter(f=>{if(signalView", "return fixtures.filter(f=>{if(!signalView&&window.B46_FAVORITES?.active&&!window.B46_FAVORITES.has(fixtureKey(f)))return false;if(signalView",'Favorites current data filter');
 d=replace(d,"!signalView&&statusFilter!=='all'", "!signalView&&!window.B46_FAVORITES?.active&&statusFilter!=='all'",'Favorites independent of prior status');
 d=replace(d,'<div class="teams-cell"><b>','<div class="teams-cell">${window.B46_FAVORITES?.star(id)||\'\'}<b>','One icon before team pair');
-d=replace(d,'function start(){initControls();',"function start(){document.addEventListener('ball46:favorites-change',()=>{if(window.B46_FAVORITES?.active){statusFilter='all';leagueFilter='all'}renderBoard();window.__BALL46_GREEN_NOIR?.refresh?.()});initControls();",'Local repaint without reload or fetch');
+d=replace(d,'function start(){initControls();',"function start(){document.addEventListener('ball46:favorites-change',()=>{if(window.B46_FAVORITES?.active){statusFilter='all';leagueFilter='all';renderBoard();window.__BALL46_GREEN_NOIR?.refresh?.()}});initControls();",'Local Favorites filter repaint only; toggling elsewhere preserves row nodes');
 // Empty-state strings occur more than once; replace the identical presentation literal only.
 d=d.replaceAll("'No matches match the current filters.'","(window.B46_FAVORITES?.active?'No saved matches in the current feed. Tap a star to follow a match.':'No matches match the current filters.')");
 let w=workspace;
@@ -24,6 +24,7 @@ native=replace(native,"function status(){return", "function status(){if(window.B
 native=replace(native,'return `<button type="button" class="b46gn-card"','return `<div class="b46gn-fixture-wrap" data-b46gn-fixture="${esc(f.id)}">${window.B46_FAVORITES?.star(String(f.id))||\'\'}<button type="button" class="b46gn-card"','Native sibling star; no nested buttons');
 native=replace(native,'class="b46gn-card" data-b46gn-fixture=','class="b46gn-card" data-b46gn-openfixture=','Retain one fixture key on wrapper');
 native=replace(native,'</span></button>`;}','</span></button></div>`;}','Close native sibling wrapper');
+native=replace(native,'existing.replaceChildren(...desired.childNodes);',"{const before=existing.querySelector(':scope > [data-b46-favorite]'),after=desired.querySelector(':scope > [data-b46-favorite]');if(before&&after&&before.dataset.b46Favorite===after.dataset.b46Favorite)after.replaceWith(before)}existing.replaceChildren(...desired.childNodes);",'Retain native star node across cached score updates');
 out=out.replace(nativeMatch[0][1],()=>native).replace('</head>','<link rel="stylesheet" href="/favorites.css"></head>');
 for(const m of out.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/gi))if(!m[1].includes('ld+json')&&m[2].trim())new Script(m[2]);
 assert(out.includes('/favorites.js')&&out.includes('/favorites-dashboard.js')&&out.includes('/favorites-workspace.js'));
