@@ -1,0 +1,19 @@
+name: Scout BALL46 Full Market Performance 20261110
+on:
+  push:
+    branches: [test/ball46-fullmarket-performance-audit-20261110]
+    paths: ['scout-fullmarket-performance-20261110/READY']
+permissions: {contents: read}
+jobs:
+  scout:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: test/ball46-fullmarket-performance-audit-20261110}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: node scout-fullmarket-performance-20261110/scout.mjs
