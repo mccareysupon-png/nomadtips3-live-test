@@ -1,0 +1,16 @@
+name: Scout BALL46 Member Page Context 20261110
+on:
+  push:
+    branches: [test/ball46-member-audit-20261110]
+    paths: ['scout-member-audit-20261110/PAGECHECK_READY']
+permissions: {contents: read}
+jobs:
+  scout:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: test/ball46-member-audit-20261110}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: node scout-member-audit-20261110/pagecheck.mjs
