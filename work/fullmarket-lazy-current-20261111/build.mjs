@@ -1,5 +1,6 @@
 import assert from'node:assert/strict';import{readFile,writeFile}from'node:fs/promises';import{createHash}from'node:crypto';
 const D='work/fullmarket-lazy-current-20261111',sha=s=>createHash('sha256').update(s).digest('hex'),main=await readFile(D+'/source/active-main.mjs','utf8'),production=await readFile(D+'/production-bookmaker.js','utf8'),raw=await readFile(D+'/verified-raw.js','utf8');
+assert.equal(sha(main),'ad8b6a732f9f4494dc95adb364c396e1ac3af006d2897425179a80c7255e34ec','ACTIVE_MAIN_HASH_DRIFT');
 const start=main.indexOf('/* B46_BETSSON_AFFILIATE_20261005 */'),end=main.indexOf('/* B46_MOBILE_V3_',start),factory=main.slice(start,end);
 const run=async code=>(await(await(new Function(code+';return __b46BetssonBookmakerAsset'))()(new Request('https://ball46.com/full-market-bookmaker-343.js'),{ASSETS:{fetch:async()=>new Response(raw)}})).text());
 assert.equal(await run(factory),production,'LOCAL_RAW_NOT_IDENTICAL_TO_ACTUAL_PRODUCTION');
