@@ -1,0 +1,16 @@
+name: Scout BALL46 Board Volume 20261110
+on:
+  push:
+    branches: [test/ball46-board-volume-audit-20261110]
+    paths: ['board-volume-audit-20261110/READY']
+permissions: {contents: read}
+jobs:
+  scout:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: test/ball46-board-volume-audit-20261110}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: node board-volume-audit-20261110/audit.mjs
