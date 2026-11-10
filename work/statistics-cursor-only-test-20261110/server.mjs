@@ -13,4 +13,4 @@ export async function start(){const audit=JSON.parse(await readFile(F+'/fresh/re
  if(f){res.setHeader('content-type',f.type||'text/javascript');return res.end(f.body)}
  if(/\.(webp|png|jpg|jpeg|svg|woff2?|ico)$/.test(u.pathname)||u.pathname.startsWith('/cf-fonts/')){res.writeHead(302,{location:'https://ball46.com'+u.pathname+u.search});return res.end()}
  res.statusCode=404;res.end('Missing isolated preview asset');
- }catch(e){res.statusCode=500;res.end(String(e.message))}});await new Promise(r=>server.listen(0,'127.0.0.1',r));return{server,url:'http://127.0.0.1:'+server.address().port,snapshot,rows,requests};}
+ }catch(e){res.statusCode=500;res.end(String(e.message))}});await new Promise(r=>server.listen(0,'127.0.0.1',r));return{server,url:'http://127.0.0.1:'+server.address().port,snapshot,rows,requests,mobileDarkOnly:html.includes('<=760px: dark-only mobile shell.')&&html.includes("root.setAttribute('data-theme','dark')")};}

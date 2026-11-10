@@ -17,7 +17,12 @@ jobs:
       - name: Install isolated browser tools
         run: |
           npm install --no-save --package-lock=false --prefix work/statistics-cursor-only-test-20261110 playwright@1.56.1
-          cd work/statistics-cursor-only-test-20261110 && npx playwright install --with-deps chromium
+          if command -v google-chrome >/dev/null; then
+            google-chrome --version
+            echo "PLAYWRIGHT_EXECUTABLE_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
+          else
+            cd work/statistics-cursor-only-test-20261110 && npx playwright install --with-deps chromium
+          fi
       - name: Cursor completeness fault cache and coalescing tests
         run: node work/statistics-cursor-only-test-20261110/core-test.mjs
       - name: Actual recorded Engine pagination contract with mock storage
