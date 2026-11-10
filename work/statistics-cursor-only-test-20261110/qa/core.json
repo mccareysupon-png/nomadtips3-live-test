@@ -1,0 +1,92 @@
+{
+  "ok": true,
+  "checks": 19,
+  "productionRequests": 0,
+  "providerRequests": 0,
+  "results": [
+    {
+      "name": "Complete cursor dataset 0",
+      "ok": true,
+      "pages": 1
+    },
+    {
+      "name": "Complete cursor dataset 1",
+      "ok": true,
+      "pages": 1
+    },
+    {
+      "name": "Complete cursor dataset 499",
+      "ok": true,
+      "pages": 1
+    },
+    {
+      "name": "Complete cursor dataset 500",
+      "ok": true,
+      "pages": 1
+    },
+    {
+      "name": "Complete cursor dataset 501",
+      "ok": true,
+      "pages": 2
+    },
+    {
+      "name": "Complete cursor dataset 2000",
+      "ok": true,
+      "pages": 4
+    },
+    {
+      "name": "Complete cursor dataset 5000",
+      "ok": true,
+      "pages": 10
+    },
+    {
+      "name": "Complete cursor dataset 15000",
+      "ok": true,
+      "pages": 30
+    },
+    {
+      "name": "Reject safely: http",
+      "ok": true
+    },
+    {
+      "name": "Reject safely: timeout",
+      "ok": true
+    },
+    {
+      "name": "Reject safely: malformed",
+      "ok": true
+    },
+    {
+      "name": "Reject safely: changed",
+      "ok": true
+    },
+    {
+      "name": "Reject safely: cycle",
+      "ok": true
+    },
+    {
+      "name": "Reject safely: duplicate",
+      "ok": true
+    },
+    {
+      "name": "Reject safely: missing",
+      "ok": true
+    },
+    {
+      "name": "Reject safely: wrongCounts",
+      "ok": true
+    },
+    {
+      "name": "Reject safely: emptyMore",
+      "ok": true
+    },
+    {
+      "name": "Coalesced concurrent loads, cached reload and immutable snapshot",
+      "ok": true
+    },
+    {
+      "name": "Reject source drift",
+      "ok": true
+    }
+  ]
+}
