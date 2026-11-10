@@ -3,13 +3,13 @@
   "runtimeRequests": 0,
   "providerRequests": 0,
   "source": "Existing Cloudflare Workers logs only; temporary query, not saved",
-  "at": "2026-11-10T09:44:26.897Z",
+  "at": "2026-11-10T09:46:19.879Z",
   "query": {
     "queryId": "ball46-memory-diagnosis-20261110",
     "view": "events",
     "timeframe": {
-      "from": 1794301580000,
-      "to": 1794301630000
+      "from": 1794301595000,
+      "to": 1794301608000
     },
     "parameters": {
       "filters": [
@@ -38,720 +38,19 @@
   ],
   "events": [
     {
-      "timestamp": 1794301626200,
-      "metadata": {
-        "service": "nomadtips3-engine-343",
-        "origin": "fetch",
-        "trigger": "GET /statistics",
-        "message": "GET [URL omitted]",
-        "type": "cf-worker-event",
-        "level": "info",
-        "requestId": "ce464dc94e465f6927cf5daf8d023d6d"
-      },
-      "workers": {
-        "scriptName": "nomadtips3-engine-343",
-        "outcome": "ok",
-        "cpuTimeMs": 1,
-        "wallTimeMs": 691,
-        "eventType": "fetch"
-      },
-      "workerKeys": [
-        "truncated",
-        "event",
-        "scriptName",
-        "scriptVersion",
-        "eventType",
-        "executionModel",
-        "outcome",
-        "wallTimeMs",
-        "cpuTimeMs"
-      ]
-    },
-    {
-      "timestamp": 1794301625899,
-      "metadata": {
-        "service": "nomadtips3-engine-343",
-        "origin": "fetch",
-        "trigger": "GET /board",
-        "message": "GET [URL omitted]",
-        "type": "cf-worker-event",
-        "level": "info",
-        "requestId": "829ecda33a5a646889e87c70227123da"
-      },
-      "workers": {
-        "scriptName": "nomadtips3-engine-343",
-        "outcome": "ok",
-        "cpuTimeMs": 1,
-        "wallTimeMs": 394,
-        "eventType": "fetch"
-      },
-      "workerKeys": [
-        "truncated",
-        "event",
-        "scriptName",
-        "scriptVersion",
-        "eventType",
-        "executionModel",
-        "outcome",
-        "wallTimeMs",
-        "cpuTimeMs"
-      ]
-    },
-    {
-      "timestamp": 1794301625808,
-      "metadata": {
-        "service": "nomadtips3-engine-343",
-        "origin": "fetch",
-        "trigger": "GET /statistics",
-        "message": "GET [URL omitted]",
-        "type": "cf-worker-event",
-        "level": "info",
-        "requestId": "7737391428e2eab778200ac6102fa6d3"
-      },
-      "workers": {
-        "scriptName": "nomadtips3-engine-343",
-        "outcome": "ok",
-        "cpuTimeMs": 183,
-        "wallTimeMs": 535,
-        "eventType": "fetch"
-      },
-      "workerKeys": [
-        "truncated",
-        "event",
-        "scriptName",
-        "scriptVersion",
-        "durableObjectId",
-        "eventType",
-        "entrypoint",
-        "executionModel",
-        "outcome",
-        "wallTimeMs",
-        "cpuTimeMs"
-      ]
-    },
-    {
-      "timestamp": 1794301625808,
-      "metadata": {
-        "service": "nomadtips3-engine-343",
-        "origin": "fetch",
-        "trigger": "GET /board",
-        "message": "GET [URL omitted]",
-        "type": "cf-worker-event",
-        "level": "info",
-        "requestId": "36c0cdf666ce1e54101b2668a56be673"
-      },
-      "workers": {
-        "scriptName": "nomadtips3-engine-343",
-        "outcome": "ok",
-        "cpuTimeMs": 128,
-        "wallTimeMs": 873,
-        "eventType": "fetch"
-      },
-      "workerKeys": [
-        "truncated",
-        "event",
-        "scriptName",
-        "scriptVersion",
-        "durableObjectId",
-        "eventType",
-        "entrypoint",
-        "executionModel",
-        "outcome",
-        "wallTimeMs",
-        "cpuTimeMs"
-      ]
-    },
-    {
-      "timestamp": 1794301622068,
-      "metadata": {
-        "service": "nomadtips3-engine-343",
-        "origin": "fetch",
-        "trigger": "GET /statistics",
-        "message": "GET [URL omitted]",
-        "type": "cf-worker-event",
-        "level": "info",
-        "requestId": "f728aeb41b3fe54d02e60ed8d8f020f0"
-      },
-      "workers": {
-        "scriptName": "nomadtips3-engine-343",
-        "outcome": "ok",
-        "cpuTimeMs": 1,
-        "wallTimeMs": 527,
-        "eventType": "fetch"
-      },
-      "workerKeys": [
-        "truncated",
-        "event",
-        "scriptName",
-        "scriptVersion",
-        "eventType",
-        "executionModel",
-        "outcome",
-        "wallTimeMs",
-        "cpuTimeMs"
-      ]
-    },
-    {
-      "timestamp": 1794301621788,
-      "metadata": {
-        "service": "nomadtips3-engine-343",
-        "origin": "fetch",
-        "trigger": "GET /statistics",
-        "message": "GET [URL omitted]",
-        "type": "cf-worker-event",
-        "level": "info",
-        "requestId": "fa241de10b27454a6167e7bfd2adaae6"
-      },
-      "workers": {
-        "scriptName": "nomadtips3-engine-343",
-        "outcome": "ok",
-        "cpuTimeMs": 177,
-        "wallTimeMs": 526,
-        "eventType": "fetch"
-      },
-      "workerKeys": [
-        "truncated",
-        "event",
-        "scriptName",
-        "scriptVersion",
-        "durableObjectId",
-        "eventType",
-        "entrypoint",
-        "executionModel",
-        "outcome",
-        "wallTimeMs",
-        "cpuTimeMs"
-      ]
-    },
-    {
-      "timestamp": 1794301618956,
-      "metadata": {
-        "service": "nomadtips3-engine-343",
-        "origin": "scheduled",
-        "trigger": "* * * * *",
-        "message": "* * * * *",
-        "type": "cf-worker-event",
-        "level": "info",
-        "requestId": "93d3b2c92e0016625fa1d51c539579ec"
-      },
-      "workers": {
-        "scriptName": "nomadtips3-engine-343",
-        "outcome": "ok",
-        "cpuTimeMs": 0,
-        "wallTimeMs": 4586,
-        "eventType": "scheduled"
-      },
-      "workerKeys": [
-        "truncated",
-        "scriptName",
-        "scriptVersion",
-        "eventType",
-        "entrypoint",
-        "executionModel",
-        "event",
-        "outcome",
-        "wallTimeMs",
-        "cpuTimeMs"
-      ]
-    },
-    {
-      "timestamp": 1794301618708,
-      "metadata": {
-        "service": "nomadtips3-engine-343",
-        "origin": "fetch",
-        "trigger": "POST /scan",
-        "message": "POST [URL omitted]",
-        "type": "cf-worker-event",
-        "level": "info",
-        "requestId": "a6683e4a2301d6068f099298e3f95860"
-      },
-      "workers": {
-        "scriptName": "nomadtips3-engine-343",
-        "outcome": "ok",
-        "cpuTimeMs": 2,
-        "wallTimeMs": 4370,
-        "eventType": "fetch"
-      },
-      "workerKeys": [
-        "truncated",
-        "scriptName",
-        "scriptVersion",
-        "durableObjectId",
-        "eventType",
-        "entrypoint",
-        "executionModel",
-        "event",
-        "outcome",
-        "wallTimeMs",
-        "cpuTimeMs"
-      ]
-    },
-    {
-      "timestamp": 1794301618708,
-      "metadata": {
-        "service": "nomadtips3-engine-343",
-        "origin": "fetch",
-        "trigger": "GET /board",
-        "message": "GET [URL omitted]",
-        "type": "cf-worker-event",
-        "level": "info",
-        "requestId": "cf67594547e2c0515cad7f0558973551"
-      },
-      "workers": {
-        "scriptName": "nomadtips3-engine-343",
-        "outcome": "ok",
-        "cpuTimeMs": 410,
-        "wallTimeMs": 3065,
-        "eventType": "fetch"
-      },
-      "workerKeys": [
-        "truncated",
-        "scriptName",
-        "scriptVersion",
-        "durableObjectId",
-        "eventType",
-        "entrypoint",
-        "executionModel",
-        "event",
-        "outcome",
-        "wallTimeMs",
-        "cpuTimeMs"
-      ]
-    },
-    {
-      "timestamp": 1794301616062,
-      "metadata": {
-        "service": "nomadtips3-engine-343",
-        "origin": "fetch",
-        "trigger": "GET /board",
-        "message": "GET [URL omitted]",
-        "type": "cf-worker-event",
-        "level": "info",
-        "requestId": "224183869a6e8c97f7a47fafa798646a"
-      },
-      "workers": {
-        "scriptName": "nomadtips3-engine-343",
-        "outcome": "ok",
-        "cpuTimeMs": 0,
-        "wallTimeMs": 403,
-        "eventType": "fetch"
-      },
-      "workerKeys": [
-        "truncated",
-        "scriptName",
-        "scriptVersion",
-        "eventType",
-        "executionModel",
-        "event",
-        "outcome",
-        "wallTimeMs",
-        "cpuTimeMs"
-      ]
-    },
-    {
-      "timestamp": 1794301614117,
-      "metadata": {
-        "service": "nomadtips3-engine-343",
-        "origin": "fetch",
-        "trigger": "GET /statistics",
-        "message": "GET [URL omitted]",
-        "type": "cf-worker-event",
-        "level": "info",
-        "requestId": "20c362f283270d4d954ba8d0ee5e0353"
-      },
-      "workers": {
-        "scriptName": "nomadtips3-engine-343",
-        "outcome": "ok",
-        "cpuTimeMs": 0,
-        "wallTimeMs": 2762,
-        "eventType": "fetch"
-      },
-      "workerKeys": [
-        "truncated",
-        "event",
-        "scriptName",
-        "scriptVersion",
-        "eventType",
-        "executionModel",
-        "outcome",
-        "wallTimeMs",
-        "cpuTimeMs"
-      ]
-    },
-    {
-      "timestamp": 1794301612727,
-      "metadata": {
-        "service": "nomadtips3-engine-343",
-        "origin": "fetch",
-        "trigger": "GET /statistics",
-        "message": "GET [URL omitted]",
-        "type": "cf-worker-event",
-        "level": "info",
-        "requestId": "b3216a312f301e2b35e6aae770fec224"
-      },
-      "workers": {
-        "scriptName": "nomadtips3-engine-343",
-        "outcome": "ok",
-        "cpuTimeMs": 1997,
-        "wallTimeMs": 9428,
-        "eventType": "fetch"
-      },
-      "workerKeys": [
-        "truncated",
-        "event",
-        "scriptName",
-        "scriptVersion",
-        "durableObjectId",
-        "eventType",
-        "entrypoint",
-        "executionModel",
-        "outcome",
-        "wallTimeMs",
-        "cpuTimeMs"
-      ]
-    },
-    {
-      "timestamp": 1794301611023,
-      "metadata": {
-        "service": "nomadtips3-engine-343",
-        "origin": "fetch",
-        "trigger": "GET /statistics",
-        "message": "GET [URL omitted]",
-        "type": "cf-worker-event",
-        "level": "info",
-        "requestId": "11e5596b1b2f18358d010278e59a85c8"
-      },
-      "workers": {
-        "scriptName": "nomadtips3-engine-343",
-        "outcome": "ok",
-        "cpuTimeMs": 1,
-        "wallTimeMs": 524,
-        "eventType": "fetch"
-      },
-      "workerKeys": [
-        "truncated",
-        "event",
-        "scriptName",
-        "scriptVersion",
-        "eventType",
-        "executionModel",
-        "outcome",
-        "wallTimeMs",
-        "cpuTimeMs"
-      ]
-    },
-    {
-      "timestamp": 1794301610647,
-      "metadata": {
-        "service": "nomadtips3-engine-343",
-        "origin": "fetch",
-        "trigger": "GET /board",
-        "message": "GET [URL omitted]",
-        "type": "cf-worker-event",
-        "level": "info",
-        "requestId": "b5f664c885a57406eee7f452a1e3037e"
-      },
-      "workers": {
-        "scriptName": "nomadtips3-engine-343",
-        "outcome": "ok",
-        "cpuTimeMs": 1,
-        "wallTimeMs": 382,
-        "eventType": "fetch"
-      },
-      "workerKeys": [
-        "truncated",
-        "event",
-        "scriptName",
-        "scriptVersion",
-        "eventType",
-        "executionModel",
-        "outcome",
-        "wallTimeMs",
-        "cpuTimeMs"
-      ]
-    },
-    {
-      "timestamp": 1794301610582,
-      "metadata": {
-        "service": "nomadtips3-engine-343",
-        "origin": "fetch",
-        "trigger": "GET /statistics",
-        "message": "GET [URL omitted]",
-        "type": "cf-worker-event",
-        "level": "info",
-        "requestId": "e7bfeb8150743009c567d9fdf9858a7f"
-      },
-      "workers": {
-        "scriptName": "nomadtips3-engine-343",
-        "outcome": "ok",
-        "cpuTimeMs": 192,
-        "wallTimeMs": 516,
-        "eventType": "fetch"
-      },
-      "workerKeys": [
-        "truncated",
-        "event",
-        "scriptName",
-        "scriptVersion",
-        "durableObjectId",
-        "eventType",
-        "entrypoint",
-        "executionModel",
-        "outcome",
-        "wallTimeMs",
-        "cpuTimeMs"
-      ]
-    },
-    {
-      "timestamp": 1794301610582,
-      "metadata": {
-        "service": "nomadtips3-engine-343",
-        "origin": "fetch",
-        "trigger": "GET /board",
-        "message": "GET [URL omitted]",
-        "type": "cf-worker-event",
-        "level": "info",
-        "requestId": "eb2c0d82c44877f9405648b6b737c35c"
-      },
-      "workers": {
-        "scriptName": "nomadtips3-engine-343",
-        "outcome": "ok",
-        "cpuTimeMs": 109,
-        "wallTimeMs": 940,
-        "eventType": "fetch"
-      },
-      "workerKeys": [
-        "truncated",
-        "event",
-        "scriptName",
-        "scriptVersion",
-        "durableObjectId",
-        "eventType",
-        "entrypoint",
-        "executionModel",
-        "outcome",
-        "wallTimeMs",
-        "cpuTimeMs"
-      ]
-    },
-    {
-      "timestamp": 1794301610502,
-      "metadata": {
-        "service": "nomadtips3-engine-343",
-        "origin": "fetch",
-        "trigger": "GET /signals",
-        "message": "GET [URL omitted]",
-        "type": "cf-worker-event",
-        "level": "info",
-        "requestId": "b80bdf1604c1cd17f1f6a85d68b5898a"
-      },
-      "workers": {
-        "scriptName": "nomadtips3-engine-343",
-        "outcome": "ok",
-        "cpuTimeMs": 0,
-        "wallTimeMs": 237,
-        "eventType": "fetch"
-      },
-      "workerKeys": [
-        "truncated",
-        "event",
-        "scriptName",
-        "scriptVersion",
-        "eventType",
-        "executionModel",
-        "outcome",
-        "wallTimeMs",
-        "cpuTimeMs"
-      ]
-    },
-    {
-      "timestamp": 1794301610305,
-      "metadata": {
-        "service": "nomadtips3-engine-343",
-        "origin": "fetch",
-        "trigger": "GET /signals",
-        "message": "GET [URL omitted]",
-        "type": "cf-worker-event",
-        "level": "info",
-        "requestId": "643159cf7c844b285b0b8e1c1ef60f44"
-      },
-      "workers": {
-        "scriptName": "nomadtips3-engine-343",
-        "outcome": "ok",
-        "cpuTimeMs": 6,
-        "wallTimeMs": 6,
-        "eventType": "fetch"
-      },
-      "workerKeys": [
-        "truncated",
-        "event",
-        "scriptName",
-        "scriptVersion",
-        "durableObjectId",
-        "eventType",
-        "entrypoint",
-        "executionModel",
-        "outcome",
-        "wallTimeMs",
-        "cpuTimeMs"
-      ]
-    },
-    {
-      "timestamp": 1794301609521,
-      "metadata": {
-        "service": "nomadtips3-engine-343",
-        "origin": "fetch",
-        "trigger": "GET /board",
-        "message": "GET [URL omitted]",
-        "type": "cf-worker-event",
-        "level": "info",
-        "requestId": "a2385b4593a3be4f1baeb0886e63d0d3"
-      },
-      "workers": {
-        "scriptName": "nomadtips3-engine-343",
-        "outcome": "ok",
-        "cpuTimeMs": 1,
-        "wallTimeMs": 392,
-        "eventType": "fetch"
-      },
-      "workerKeys": [
-        "truncated",
-        "event",
-        "scriptName",
-        "scriptVersion",
-        "eventType",
-        "executionModel",
-        "outcome",
-        "wallTimeMs",
-        "cpuTimeMs"
-      ]
-    },
-    {
-      "timestamp": 1794301609384,
-      "metadata": {
-        "service": "nomadtips3-engine-343",
-        "origin": "fetch",
-        "trigger": "GET /history",
-        "message": "GET [URL omitted]",
-        "type": "cf-worker-event",
-        "level": "info",
-        "requestId": "8342338f63d2567d9c761e9bfde32be8"
-      },
-      "workers": {
-        "scriptName": "nomadtips3-engine-343",
-        "outcome": "ok",
-        "cpuTimeMs": 1,
-        "wallTimeMs": 251,
-        "eventType": "fetch"
-      },
-      "workerKeys": [
-        "truncated",
-        "event",
-        "scriptName",
-        "scriptVersion",
-        "eventType",
-        "executionModel",
-        "outcome",
-        "wallTimeMs",
-        "cpuTimeMs"
-      ]
-    },
-    {
-      "timestamp": 1794301609167,
-      "metadata": {
-        "service": "nomadtips3-engine-343",
-        "origin": "fetch",
-        "trigger": "GET /board",
-        "message": "GET [URL omitted]",
-        "type": "cf-worker-event",
-        "level": "info",
-        "requestId": "47678025224e8a2c99fc8fa9ba13b2b9"
-      },
-      "workers": {
-        "scriptName": "nomadtips3-engine-343",
-        "outcome": "ok",
-        "cpuTimeMs": 113,
-        "wallTimeMs": 883,
-        "eventType": "fetch"
-      },
-      "workerKeys": [
-        "truncated",
-        "event",
-        "scriptName",
-        "scriptVersion",
-        "durableObjectId",
-        "eventType",
-        "entrypoint",
-        "executionModel",
-        "outcome",
-        "wallTimeMs",
-        "cpuTimeMs"
-      ]
-    },
-    {
-      "timestamp": 1794301609153,
-      "metadata": {
-        "service": "nomadtips3-engine-343",
-        "origin": "fetch",
-        "trigger": "GET /history",
-        "message": "GET [URL omitted]",
-        "type": "cf-worker-event",
-        "level": "info",
-        "requestId": "76ee5bb4b275d8d49f21b2c919667b90"
-      },
-      "workers": {
-        "scriptName": "nomadtips3-engine-343",
-        "outcome": "ok",
-        "cpuTimeMs": 9,
-        "wallTimeMs": 21,
-        "eventType": "fetch"
-      },
-      "workerKeys": [
-        "truncated",
-        "event",
-        "scriptName",
-        "scriptVersion",
-        "durableObjectId",
-        "eventType",
-        "entrypoint",
-        "executionModel",
-        "outcome",
-        "wallTimeMs",
-        "cpuTimeMs"
-      ]
-    },
-    {
-      "timestamp": 1794301608127,
-      "metadata": {
-        "service": "nomadtips3-engine-343",
-        "origin": "fetch",
-        "trigger": "GET /statistics",
-        "message": "GET [URL omitted]",
-        "type": "cf-worker-event",
-        "level": "info",
-        "requestId": "ea13958eb2a2e65da0fe7c244b5b6770"
-      },
-      "workers": {
-        "scriptName": "nomadtips3-engine-343",
-        "outcome": "ok",
-        "cpuTimeMs": 1,
-        "wallTimeMs": 356,
-        "eventType": "fetch"
-      },
-      "workerKeys": [
-        "truncated",
-        "event",
-        "scriptName",
-        "scriptVersion",
-        "eventType",
-        "executionModel",
-        "outcome",
-        "wallTimeMs",
-        "cpuTimeMs"
-      ]
-    },
-    {
       "timestamp": 1794301607636,
+      "queryShape": {
+        "path": "/statistics",
+        "paged": "1",
+        "cursorPresent": true,
+        "limit": null,
+        "fixtureIdPresent": false
+      },
+      "durableObjectId": "973982f84255bf7bc2c5fdabb18a8d82e4a909a5168706a3bcc66b0b0b4f3f9d",
+      "entrypoint": "Nomad343Engine",
+      "scriptVersion": {
+        "id": "02e09215-02b1-47fb-b1cf-9423f50c7ce9"
+      },
       "metadata": {
         "service": "nomadtips3-engine-343",
         "origin": "fetch",
@@ -784,6 +83,16 @@
     },
     {
       "timestamp": 1794301607361,
+      "queryShape": {
+        "path": "/statistics",
+        "paged": "1",
+        "cursorPresent": false,
+        "limit": "1",
+        "fixtureIdPresent": false
+      },
+      "scriptVersion": {
+        "id": "02e09215-02b1-47fb-b1cf-9423f50c7ce9"
+      },
       "metadata": {
         "service": "nomadtips3-engine-343",
         "origin": "fetch",
@@ -814,6 +123,16 @@
     },
     {
       "timestamp": 1794301607312,
+      "queryShape": {
+        "path": "/statistics",
+        "paged": "1",
+        "cursorPresent": true,
+        "limit": null,
+        "fixtureIdPresent": false
+      },
+      "scriptVersion": {
+        "id": "02e09215-02b1-47fb-b1cf-9423f50c7ce9"
+      },
       "metadata": {
         "service": "nomadtips3-engine-343",
         "origin": "fetch",
@@ -844,6 +163,16 @@
     },
     {
       "timestamp": 1794301606922,
+      "queryShape": {
+        "path": "/board",
+        "paged": null,
+        "cursorPresent": false,
+        "limit": null,
+        "fixtureIdPresent": false
+      },
+      "scriptVersion": {
+        "id": "02e09215-02b1-47fb-b1cf-9423f50c7ce9"
+      },
       "metadata": {
         "service": "nomadtips3-engine-343",
         "origin": "fetch",
@@ -874,6 +203,18 @@
     },
     {
       "timestamp": 1794301606764,
+      "queryShape": {
+        "path": "/statistics",
+        "paged": "1",
+        "cursorPresent": false,
+        "limit": "1",
+        "fixtureIdPresent": false
+      },
+      "durableObjectId": "973982f84255bf7bc2c5fdabb18a8d82e4a909a5168706a3bcc66b0b0b4f3f9d",
+      "entrypoint": "Nomad343Engine",
+      "scriptVersion": {
+        "id": "02e09215-02b1-47fb-b1cf-9423f50c7ce9"
+      },
       "metadata": {
         "service": "nomadtips3-engine-343",
         "origin": "fetch",
@@ -906,6 +247,18 @@
     },
     {
       "timestamp": 1794301606764,
+      "queryShape": {
+        "path": "/statistics",
+        "paged": "1",
+        "cursorPresent": true,
+        "limit": null,
+        "fixtureIdPresent": false
+      },
+      "durableObjectId": "973982f84255bf7bc2c5fdabb18a8d82e4a909a5168706a3bcc66b0b0b4f3f9d",
+      "entrypoint": "Nomad343Engine",
+      "scriptVersion": {
+        "id": "02e09215-02b1-47fb-b1cf-9423f50c7ce9"
+      },
       "metadata": {
         "service": "nomadtips3-engine-343",
         "origin": "fetch",
@@ -938,6 +291,18 @@
     },
     {
       "timestamp": 1794301606764,
+      "queryShape": {
+        "path": "/board",
+        "paged": null,
+        "cursorPresent": false,
+        "limit": null,
+        "fixtureIdPresent": false
+      },
+      "durableObjectId": "973982f84255bf7bc2c5fdabb18a8d82e4a909a5168706a3bcc66b0b0b4f3f9d",
+      "entrypoint": "Nomad343Engine",
+      "scriptVersion": {
+        "id": "02e09215-02b1-47fb-b1cf-9423f50c7ce9"
+      },
       "metadata": {
         "service": "nomadtips3-engine-343",
         "origin": "fetch",
@@ -970,6 +335,16 @@
     },
     {
       "timestamp": 1794301606022,
+      "queryShape": {
+        "path": "/statistics",
+        "paged": "1",
+        "cursorPresent": true,
+        "limit": null,
+        "fixtureIdPresent": false
+      },
+      "scriptVersion": {
+        "id": "02e09215-02b1-47fb-b1cf-9423f50c7ce9"
+      },
       "metadata": {
         "service": "nomadtips3-engine-343",
         "origin": "fetch",
@@ -1000,6 +375,18 @@
     },
     {
       "timestamp": 1794301605625,
+      "queryShape": {
+        "path": "/statistics",
+        "paged": "1",
+        "cursorPresent": true,
+        "limit": null,
+        "fixtureIdPresent": false
+      },
+      "durableObjectId": "973982f84255bf7bc2c5fdabb18a8d82e4a909a5168706a3bcc66b0b0b4f3f9d",
+      "entrypoint": "Nomad343Engine",
+      "scriptVersion": {
+        "id": "02e09215-02b1-47fb-b1cf-9423f50c7ce9"
+      },
       "metadata": {
         "service": "nomadtips3-engine-343",
         "origin": "fetch",
@@ -1032,6 +419,16 @@
     },
     {
       "timestamp": 1794301605337,
+      "queryShape": {
+        "path": "/statistics",
+        "paged": "1",
+        "cursorPresent": false,
+        "limit": null,
+        "fixtureIdPresent": false
+      },
+      "scriptVersion": {
+        "id": "02e09215-02b1-47fb-b1cf-9423f50c7ce9"
+      },
       "metadata": {
         "service": "nomadtips3-engine-343",
         "origin": "fetch",
@@ -1062,6 +459,18 @@
     },
     {
       "timestamp": 1794301604993,
+      "queryShape": {
+        "path": "/statistics",
+        "paged": "1",
+        "cursorPresent": false,
+        "limit": null,
+        "fixtureIdPresent": false
+      },
+      "durableObjectId": "973982f84255bf7bc2c5fdabb18a8d82e4a909a5168706a3bcc66b0b0b4f3f9d",
+      "entrypoint": "Nomad343Engine",
+      "scriptVersion": {
+        "id": "02e09215-02b1-47fb-b1cf-9423f50c7ce9"
+      },
       "metadata": {
         "service": "nomadtips3-engine-343",
         "origin": "fetch",
@@ -1094,6 +503,16 @@
     },
     {
       "timestamp": 1794301604320,
+      "queryShape": {
+        "path": "/statistics",
+        "paged": null,
+        "cursorPresent": false,
+        "limit": null,
+        "fixtureIdPresent": false
+      },
+      "scriptVersion": {
+        "id": "02e09215-02b1-47fb-b1cf-9423f50c7ce9"
+      },
       "metadata": {
         "service": "nomadtips3-engine-343",
         "origin": "fetch",
@@ -1125,6 +544,16 @@
     },
     {
       "timestamp": 1794301604320,
+      "queryShape": {
+        "path": "/statistics",
+        "paged": null,
+        "cursorPresent": false,
+        "limit": null,
+        "fixtureIdPresent": false
+      },
+      "scriptVersion": {
+        "id": "02e09215-02b1-47fb-b1cf-9423f50c7ce9"
+      },
       "metadata": {
         "service": "nomadtips3-engine-343",
         "origin": "fetch",
@@ -1150,6 +579,16 @@
     },
     {
       "timestamp": 1794301604226,
+      "queryShape": {
+        "path": "/board",
+        "paged": null,
+        "cursorPresent": false,
+        "limit": null,
+        "fixtureIdPresent": false
+      },
+      "scriptVersion": {
+        "id": "02e09215-02b1-47fb-b1cf-9423f50c7ce9"
+      },
       "metadata": {
         "service": "nomadtips3-engine-343",
         "origin": "fetch",
@@ -1181,6 +620,16 @@
     },
     {
       "timestamp": 1794301604226,
+      "queryShape": {
+        "path": "/history",
+        "paged": null,
+        "cursorPresent": false,
+        "limit": null,
+        "fixtureIdPresent": true
+      },
+      "scriptVersion": {
+        "id": "02e09215-02b1-47fb-b1cf-9423f50c7ce9"
+      },
       "metadata": {
         "service": "nomadtips3-engine-343",
         "origin": "fetch",
@@ -1212,6 +661,16 @@
     },
     {
       "timestamp": 1794301604226,
+      "queryShape": {
+        "path": "/board",
+        "paged": null,
+        "cursorPresent": false,
+        "limit": null,
+        "fixtureIdPresent": false
+      },
+      "scriptVersion": {
+        "id": "02e09215-02b1-47fb-b1cf-9423f50c7ce9"
+      },
       "metadata": {
         "service": "nomadtips3-engine-343",
         "origin": "fetch",
@@ -1237,6 +696,16 @@
     },
     {
       "timestamp": 1794301604226,
+      "queryShape": {
+        "path": "/history",
+        "paged": null,
+        "cursorPresent": false,
+        "limit": null,
+        "fixtureIdPresent": true
+      },
+      "scriptVersion": {
+        "id": "02e09215-02b1-47fb-b1cf-9423f50c7ce9"
+      },
       "metadata": {
         "service": "nomadtips3-engine-343",
         "origin": "fetch",
@@ -1262,6 +731,16 @@
     },
     {
       "timestamp": 1794301604225,
+      "queryShape": {
+        "path": "/board",
+        "paged": null,
+        "cursorPresent": false,
+        "limit": null,
+        "fixtureIdPresent": false
+      },
+      "scriptVersion": {
+        "id": "02e09215-02b1-47fb-b1cf-9423f50c7ce9"
+      },
       "metadata": {
         "service": "nomadtips3-engine-343",
         "origin": "fetch",
@@ -1293,6 +772,16 @@
     },
     {
       "timestamp": 1794301604225,
+      "queryShape": {
+        "path": "/signals",
+        "paged": null,
+        "cursorPresent": false,
+        "limit": null,
+        "fixtureIdPresent": false
+      },
+      "scriptVersion": {
+        "id": "02e09215-02b1-47fb-b1cf-9423f50c7ce9"
+      },
       "metadata": {
         "service": "nomadtips3-engine-343",
         "origin": "fetch",
@@ -1324,6 +813,16 @@
     },
     {
       "timestamp": 1794301604225,
+      "queryShape": {
+        "path": "/board",
+        "paged": null,
+        "cursorPresent": false,
+        "limit": null,
+        "fixtureIdPresent": false
+      },
+      "scriptVersion": {
+        "id": "02e09215-02b1-47fb-b1cf-9423f50c7ce9"
+      },
       "metadata": {
         "service": "nomadtips3-engine-343",
         "origin": "fetch",
@@ -1349,6 +848,16 @@
     },
     {
       "timestamp": 1794301604225,
+      "queryShape": {
+        "path": "/signals",
+        "paged": null,
+        "cursorPresent": false,
+        "limit": null,
+        "fixtureIdPresent": false
+      },
+      "scriptVersion": {
+        "id": "02e09215-02b1-47fb-b1cf-9423f50c7ce9"
+      },
       "metadata": {
         "service": "nomadtips3-engine-343",
         "origin": "fetch",
@@ -1374,6 +883,18 @@
     },
     {
       "timestamp": 1794301603026,
+      "queryShape": {
+        "path": "/statistics",
+        "paged": null,
+        "cursorPresent": false,
+        "limit": null,
+        "fixtureIdPresent": false
+      },
+      "durableObjectId": "973982f84255bf7bc2c5fdabb18a8d82e4a909a5168706a3bcc66b0b0b4f3f9d",
+      "entrypoint": "Nomad343Engine",
+      "scriptVersion": {
+        "id": "02e09215-02b1-47fb-b1cf-9423f50c7ce9"
+      },
       "metadata": {
         "service": "nomadtips3-engine-343",
         "origin": "fetch",
@@ -1407,6 +928,18 @@
     },
     {
       "timestamp": 1794301603026,
+      "queryShape": {
+        "path": "/board",
+        "paged": null,
+        "cursorPresent": false,
+        "limit": null,
+        "fixtureIdPresent": false
+      },
+      "durableObjectId": "973982f84255bf7bc2c5fdabb18a8d82e4a909a5168706a3bcc66b0b0b4f3f9d",
+      "entrypoint": "Nomad343Engine",
+      "scriptVersion": {
+        "id": "02e09215-02b1-47fb-b1cf-9423f50c7ce9"
+      },
       "metadata": {
         "service": "nomadtips3-engine-343",
         "origin": "fetch",
@@ -1440,6 +973,18 @@
     },
     {
       "timestamp": 1794301603026,
+      "queryShape": {
+        "path": "/signals",
+        "paged": null,
+        "cursorPresent": false,
+        "limit": null,
+        "fixtureIdPresent": false
+      },
+      "durableObjectId": "973982f84255bf7bc2c5fdabb18a8d82e4a909a5168706a3bcc66b0b0b4f3f9d",
+      "entrypoint": "Nomad343Engine",
+      "scriptVersion": {
+        "id": "02e09215-02b1-47fb-b1cf-9423f50c7ce9"
+      },
       "metadata": {
         "service": "nomadtips3-engine-343",
         "origin": "fetch",
@@ -1473,6 +1018,18 @@
     },
     {
       "timestamp": 1794301603026,
+      "queryShape": {
+        "path": "/signals",
+        "paged": null,
+        "cursorPresent": false,
+        "limit": null,
+        "fixtureIdPresent": false
+      },
+      "durableObjectId": "973982f84255bf7bc2c5fdabb18a8d82e4a909a5168706a3bcc66b0b0b4f3f9d",
+      "entrypoint": "Nomad343Engine",
+      "scriptVersion": {
+        "id": "02e09215-02b1-47fb-b1cf-9423f50c7ce9"
+      },
       "metadata": {
         "service": "nomadtips3-engine-343",
         "origin": "fetch",
@@ -1500,6 +1057,18 @@
     },
     {
       "timestamp": 1794301603026,
+      "queryShape": {
+        "path": "/history",
+        "paged": null,
+        "cursorPresent": false,
+        "limit": null,
+        "fixtureIdPresent": true
+      },
+      "durableObjectId": "973982f84255bf7bc2c5fdabb18a8d82e4a909a5168706a3bcc66b0b0b4f3f9d",
+      "entrypoint": "Nomad343Engine",
+      "scriptVersion": {
+        "id": "02e09215-02b1-47fb-b1cf-9423f50c7ce9"
+      },
       "metadata": {
         "service": "nomadtips3-engine-343",
         "origin": "fetch",
@@ -1533,6 +1102,18 @@
     },
     {
       "timestamp": 1794301603026,
+      "queryShape": {
+        "path": "/board",
+        "paged": null,
+        "cursorPresent": false,
+        "limit": null,
+        "fixtureIdPresent": false
+      },
+      "durableObjectId": "973982f84255bf7bc2c5fdabb18a8d82e4a909a5168706a3bcc66b0b0b4f3f9d",
+      "entrypoint": "Nomad343Engine",
+      "scriptVersion": {
+        "id": "02e09215-02b1-47fb-b1cf-9423f50c7ce9"
+      },
       "metadata": {
         "service": "nomadtips3-engine-343",
         "origin": "fetch",
@@ -1563,7 +1144,663 @@
         "wallTimeMs",
         "cpuTimeMs"
       ]
+    },
+    {
+      "timestamp": 1794301603026,
+      "queryShape": {
+        "path": "/board",
+        "paged": null,
+        "cursorPresent": false,
+        "limit": null,
+        "fixtureIdPresent": false
+      },
+      "durableObjectId": "973982f84255bf7bc2c5fdabb18a8d82e4a909a5168706a3bcc66b0b0b4f3f9d",
+      "entrypoint": "Nomad343Engine",
+      "scriptVersion": {
+        "id": "02e09215-02b1-47fb-b1cf-9423f50c7ce9"
+      },
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "GET /board",
+        "error": "GET [URL omitted]",
+        "message": "GET [URL omitted]",
+        "type": "cf-worker-event",
+        "level": "error",
+        "requestId": "63c23b55e0a0879a04f4e9f3fea8b63b"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "outcome": "exceededMemory",
+        "cpuTimeMs": 0,
+        "wallTimeMs": 42,
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "event",
+        "scriptName",
+        "scriptVersion",
+        "durableObjectId",
+        "eventType",
+        "entrypoint",
+        "executionModel",
+        "outcome",
+        "wallTimeMs",
+        "cpuTimeMs"
+      ]
+    },
+    {
+      "timestamp": 1794301602929,
+      "queryShape": {
+        "path": "/statistics",
+        "paged": null,
+        "cursorPresent": false,
+        "limit": null,
+        "fixtureIdPresent": false
+      },
+      "durableObjectId": "973982f84255bf7bc2c5fdabb18a8d82e4a909a5168706a3bcc66b0b0b4f3f9d",
+      "entrypoint": "Nomad343Engine",
+      "scriptVersion": {
+        "id": "02e09215-02b1-47fb-b1cf-9423f50c7ce9"
+      },
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "GET /statistics",
+        "error": "Durable Object's isolate exceeded its memory limit and was reset.",
+        "message": "Durable Object's isolate exceeded its memory limit and was reset.",
+        "type": "cf-worker",
+        "level": "error",
+        "requestId": "3b04f1bd0926645d1e90c8800f50aebd"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "scriptName",
+        "scriptVersion",
+        "durableObjectId",
+        "eventType",
+        "entrypoint",
+        "executionModel",
+        "event"
+      ]
+    },
+    {
+      "timestamp": 1794301602929,
+      "queryShape": {
+        "path": "/board",
+        "paged": null,
+        "cursorPresent": false,
+        "limit": null,
+        "fixtureIdPresent": false
+      },
+      "durableObjectId": "973982f84255bf7bc2c5fdabb18a8d82e4a909a5168706a3bcc66b0b0b4f3f9d",
+      "entrypoint": "Nomad343Engine",
+      "scriptVersion": {
+        "id": "02e09215-02b1-47fb-b1cf-9423f50c7ce9"
+      },
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "GET /board",
+        "error": "Durable Object's isolate exceeded its memory limit and was reset.",
+        "message": "Durable Object's isolate exceeded its memory limit and was reset.",
+        "type": "cf-worker",
+        "level": "error",
+        "requestId": "cf6eb5b2a0e7b7e4d09472261fe80135"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "scriptName",
+        "scriptVersion",
+        "durableObjectId",
+        "eventType",
+        "entrypoint",
+        "executionModel",
+        "event"
+      ]
+    },
+    {
+      "timestamp": 1794301602929,
+      "queryShape": {
+        "path": "/history",
+        "paged": null,
+        "cursorPresent": false,
+        "limit": null,
+        "fixtureIdPresent": true
+      },
+      "durableObjectId": "973982f84255bf7bc2c5fdabb18a8d82e4a909a5168706a3bcc66b0b0b4f3f9d",
+      "entrypoint": "Nomad343Engine",
+      "scriptVersion": {
+        "id": "02e09215-02b1-47fb-b1cf-9423f50c7ce9"
+      },
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "GET /history",
+        "error": "Durable Object's isolate exceeded its memory limit and was reset.",
+        "message": "Durable Object's isolate exceeded its memory limit and was reset.",
+        "type": "cf-worker",
+        "level": "error",
+        "requestId": "9731fcfc15a87023e7630b7ba7748c89"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "scriptName",
+        "scriptVersion",
+        "durableObjectId",
+        "eventType",
+        "entrypoint",
+        "executionModel",
+        "event"
+      ]
+    },
+    {
+      "timestamp": 1794301602929,
+      "queryShape": {
+        "path": "/board",
+        "paged": null,
+        "cursorPresent": false,
+        "limit": null,
+        "fixtureIdPresent": false
+      },
+      "durableObjectId": "973982f84255bf7bc2c5fdabb18a8d82e4a909a5168706a3bcc66b0b0b4f3f9d",
+      "entrypoint": "Nomad343Engine",
+      "scriptVersion": {
+        "id": "02e09215-02b1-47fb-b1cf-9423f50c7ce9"
+      },
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "GET /board",
+        "error": "Durable Object's isolate exceeded its memory limit and was reset.",
+        "message": "Durable Object's isolate exceeded its memory limit and was reset.",
+        "type": "cf-worker",
+        "level": "error",
+        "requestId": "e2a6e2ceea245d76a582af92f4807f3f"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "scriptName",
+        "scriptVersion",
+        "durableObjectId",
+        "eventType",
+        "entrypoint",
+        "executionModel",
+        "event"
+      ]
+    },
+    {
+      "timestamp": 1794301602929,
+      "queryShape": {
+        "path": "/board",
+        "paged": null,
+        "cursorPresent": false,
+        "limit": null,
+        "fixtureIdPresent": false
+      },
+      "durableObjectId": "973982f84255bf7bc2c5fdabb18a8d82e4a909a5168706a3bcc66b0b0b4f3f9d",
+      "entrypoint": "Nomad343Engine",
+      "scriptVersion": {
+        "id": "02e09215-02b1-47fb-b1cf-9423f50c7ce9"
+      },
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "GET /board",
+        "error": "Durable Object's isolate exceeded its memory limit and was reset.",
+        "message": "Durable Object's isolate exceeded its memory limit and was reset.",
+        "type": "cf-worker",
+        "level": "error",
+        "requestId": "63c23b55e0a0879a04f4e9f3fea8b63b"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "scriptName",
+        "scriptVersion",
+        "durableObjectId",
+        "eventType",
+        "entrypoint",
+        "executionModel",
+        "event"
+      ]
+    },
+    {
+      "timestamp": 1794301602929,
+      "queryShape": {
+        "path": "/signals",
+        "paged": null,
+        "cursorPresent": false,
+        "limit": null,
+        "fixtureIdPresent": false
+      },
+      "durableObjectId": "973982f84255bf7bc2c5fdabb18a8d82e4a909a5168706a3bcc66b0b0b4f3f9d",
+      "entrypoint": "Nomad343Engine",
+      "scriptVersion": {
+        "id": "02e09215-02b1-47fb-b1cf-9423f50c7ce9"
+      },
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "GET /signals",
+        "error": "Durable Object's isolate exceeded its memory limit and was reset.",
+        "message": "Durable Object's isolate exceeded its memory limit and was reset.",
+        "type": "cf-worker",
+        "level": "error",
+        "requestId": "b8499796d5ea7635310f2a09af17b681"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "scriptName",
+        "scriptVersion",
+        "durableObjectId",
+        "eventType",
+        "entrypoint",
+        "executionModel",
+        "event"
+      ]
+    },
+    {
+      "timestamp": 1794301601213,
+      "queryShape": {
+        "path": "/board",
+        "paged": null,
+        "cursorPresent": false,
+        "limit": null,
+        "fixtureIdPresent": false
+      },
+      "scriptVersion": {
+        "id": "02e09215-02b1-47fb-b1cf-9423f50c7ce9"
+      },
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "GET /board",
+        "error": "GET [URL omitted]",
+        "message": "GET [URL omitted]",
+        "type": "cf-worker-event",
+        "level": "error",
+        "requestId": "b17b667aa83404a139bb387bbf266e20"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "outcome": "exceededMemory",
+        "cpuTimeMs": 1,
+        "wallTimeMs": 372,
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "event",
+        "scriptName",
+        "scriptVersion",
+        "eventType",
+        "executionModel",
+        "outcome",
+        "wallTimeMs",
+        "cpuTimeMs"
+      ]
+    },
+    {
+      "timestamp": 1794301601079,
+      "queryShape": {
+        "path": "/signals",
+        "paged": null,
+        "cursorPresent": false,
+        "limit": null,
+        "fixtureIdPresent": false
+      },
+      "scriptVersion": {
+        "id": "02e09215-02b1-47fb-b1cf-9423f50c7ce9"
+      },
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "GET /signals",
+        "message": "GET [URL omitted]",
+        "type": "cf-worker-event",
+        "level": "info",
+        "requestId": "6972a9866aed1834654893b03e9ecedb"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "outcome": "ok",
+        "cpuTimeMs": 1,
+        "wallTimeMs": 239,
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "event",
+        "scriptName",
+        "scriptVersion",
+        "eventType",
+        "executionModel",
+        "outcome",
+        "wallTimeMs",
+        "cpuTimeMs"
+      ]
+    },
+    {
+      "timestamp": 1794301600870,
+      "queryShape": {
+        "path": "/signals",
+        "paged": null,
+        "cursorPresent": false,
+        "limit": null,
+        "fixtureIdPresent": false
+      },
+      "durableObjectId": "973982f84255bf7bc2c5fdabb18a8d82e4a909a5168706a3bcc66b0b0b4f3f9d",
+      "entrypoint": "Nomad343Engine",
+      "scriptVersion": {
+        "id": "02e09215-02b1-47fb-b1cf-9423f50c7ce9"
+      },
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "GET /signals",
+        "message": "GET [URL omitted]",
+        "type": "cf-worker-event",
+        "level": "info",
+        "requestId": "2e17a0c31c5c041317edcf891967d17d"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "outcome": "ok",
+        "cpuTimeMs": 8,
+        "wallTimeMs": 9,
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "event",
+        "scriptName",
+        "scriptVersion",
+        "durableObjectId",
+        "eventType",
+        "entrypoint",
+        "executionModel",
+        "outcome",
+        "wallTimeMs",
+        "cpuTimeMs"
+      ]
+    },
+    {
+      "timestamp": 1794301600623,
+      "queryShape": {
+        "path": "/board",
+        "paged": null,
+        "cursorPresent": false,
+        "limit": null,
+        "fixtureIdPresent": false
+      },
+      "scriptVersion": {
+        "id": "02e09215-02b1-47fb-b1cf-9423f50c7ce9"
+      },
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "GET /board",
+        "message": "GET [URL omitted]",
+        "type": "cf-worker-event",
+        "level": "info",
+        "requestId": "2ddea09f9e5c64f9e93f9740c7542849"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "outcome": "ok",
+        "cpuTimeMs": 1,
+        "wallTimeMs": 193,
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "event",
+        "scriptName",
+        "scriptVersion",
+        "eventType",
+        "executionModel",
+        "outcome",
+        "wallTimeMs",
+        "cpuTimeMs"
+      ]
+    },
+    {
+      "timestamp": 1794301600450,
+      "queryShape": {
+        "path": "/board",
+        "paged": null,
+        "cursorPresent": false,
+        "limit": null,
+        "fixtureIdPresent": false
+      },
+      "durableObjectId": "973982f84255bf7bc2c5fdabb18a8d82e4a909a5168706a3bcc66b0b0b4f3f9d",
+      "entrypoint": "Nomad343Engine",
+      "scriptVersion": {
+        "id": "02e09215-02b1-47fb-b1cf-9423f50c7ce9"
+      },
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "GET /board",
+        "message": "GET [URL omitted]",
+        "type": "cf-worker-event",
+        "level": "info",
+        "requestId": "de651e295c056fabf544bdd8072d1169"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "outcome": "ok",
+        "cpuTimeMs": 124,
+        "wallTimeMs": 382,
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "event",
+        "scriptName",
+        "scriptVersion",
+        "durableObjectId",
+        "eventType",
+        "entrypoint",
+        "executionModel",
+        "outcome",
+        "wallTimeMs",
+        "cpuTimeMs"
+      ]
+    },
+    {
+      "timestamp": 1794301596185,
+      "queryShape": {
+        "path": "/statistics",
+        "paged": "1",
+        "cursorPresent": false,
+        "limit": "1",
+        "fixtureIdPresent": false
+      },
+      "scriptVersion": {
+        "id": "02e09215-02b1-47fb-b1cf-9423f50c7ce9"
+      },
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "GET /statistics",
+        "message": "GET [URL omitted]",
+        "type": "cf-worker-event",
+        "level": "info",
+        "requestId": "28a85fa72d9b220e62bea67341a7a4d0"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "outcome": "ok",
+        "cpuTimeMs": 1,
+        "wallTimeMs": 685,
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "event",
+        "scriptName",
+        "scriptVersion",
+        "eventType",
+        "executionModel",
+        "outcome",
+        "wallTimeMs",
+        "cpuTimeMs"
+      ]
+    },
+    {
+      "timestamp": 1794301595889,
+      "queryShape": {
+        "path": "/board",
+        "paged": null,
+        "cursorPresent": false,
+        "limit": null,
+        "fixtureIdPresent": false
+      },
+      "scriptVersion": {
+        "id": "02e09215-02b1-47fb-b1cf-9423f50c7ce9"
+      },
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "GET /board",
+        "message": "GET [URL omitted]",
+        "type": "cf-worker-event",
+        "level": "info",
+        "requestId": "ddad6a688d58e59fb4fc840d16bcb06e"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "outcome": "ok",
+        "cpuTimeMs": 1,
+        "wallTimeMs": 403,
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "event",
+        "scriptName",
+        "scriptVersion",
+        "eventType",
+        "executionModel",
+        "outcome",
+        "wallTimeMs",
+        "cpuTimeMs"
+      ]
+    },
+    {
+      "timestamp": 1794301595780,
+      "queryShape": {
+        "path": "/statistics",
+        "paged": "1",
+        "cursorPresent": false,
+        "limit": "1",
+        "fixtureIdPresent": false
+      },
+      "durableObjectId": "973982f84255bf7bc2c5fdabb18a8d82e4a909a5168706a3bcc66b0b0b4f3f9d",
+      "entrypoint": "Nomad343Engine",
+      "scriptVersion": {
+        "id": "02e09215-02b1-47fb-b1cf-9423f50c7ce9"
+      },
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "GET /statistics",
+        "message": "GET [URL omitted]",
+        "type": "cf-worker-event",
+        "level": "info",
+        "requestId": "c28dc359f27daea6c135be51bfe1d825"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "outcome": "ok",
+        "cpuTimeMs": 177,
+        "wallTimeMs": 701,
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "event",
+        "scriptName",
+        "scriptVersion",
+        "durableObjectId",
+        "eventType",
+        "entrypoint",
+        "executionModel",
+        "outcome",
+        "wallTimeMs",
+        "cpuTimeMs"
+      ]
+    },
+    {
+      "timestamp": 1794301595780,
+      "queryShape": {
+        "path": "/board",
+        "paged": null,
+        "cursorPresent": false,
+        "limit": null,
+        "fixtureIdPresent": false
+      },
+      "durableObjectId": "973982f84255bf7bc2c5fdabb18a8d82e4a909a5168706a3bcc66b0b0b4f3f9d",
+      "entrypoint": "Nomad343Engine",
+      "scriptVersion": {
+        "id": "02e09215-02b1-47fb-b1cf-9423f50c7ce9"
+      },
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "GET /board",
+        "message": "GET [URL omitted]",
+        "type": "cf-worker-event",
+        "level": "info",
+        "requestId": "b0aaa33bf0d69832fcb571b406d434fa"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "outcome": "ok",
+        "cpuTimeMs": 148,
+        "wallTimeMs": 1171,
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "event",
+        "scriptName",
+        "scriptVersion",
+        "durableObjectId",
+        "eventType",
+        "entrypoint",
+        "executionModel",
+        "outcome",
+        "wallTimeMs",
+        "cpuTimeMs"
+      ]
     }
   ],
-  "count": 50
+  "count": 43
 }
