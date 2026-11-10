@@ -7,7 +7,7 @@ const host=phase==='candidate'?preview(build.candidate):'https://ball46.com',res
 try{for(const width of[1366,390])for(const theme of['dark','light']){
  const context=await browser.newContext({viewport:{width,height:1000},serviceWorkers:'block'}),p=await context.newPage(),errors=[],failed=[],snapshots=[],writes=[];let providers=0,suppressed=0;
  await context.addInitScript(t=>localStorage.setItem('nomad343_dashboard_theme_v1',t),theme);
- p.on('pageerror',e=>errors.push(e.message));p.on('response',r=>{const u=new URL(r.url());if(u.hostname===new URL(host).hostname&&r.status()>=400&&!u.pathname.startsWith('/cdn-cgi/'))failed.push({path:u.pathname,status:r.status()})});
+ p.on('pageerror',e=>errors.push(e.message));p.on('response',async r=>{const u=new URL(r.url());if(u.hostname===new URL(host).hostname&&r.status()>=400&&!u.pathname.startsWith('/cdn-cgi/')){const item={path:u.pathname,status:r.status()};failed.push(item);try{const text=await r.text();item.legacyExceptionMarker=text.includes('B46_V13_CANDIDATE_ONLY_WORKER_EXCEPTION');item.errorLine=text.split('\n').find(s=>/Error[: ]|Exception|timed? ?out/i.test(s))?.replace(/https?:\/\/\S+/g,'[URL omitted]').replace(/Bearer\s+\S+/gi,'Bearer [omitted]').slice(0,220)}catch{item.bodyUnavailable=true}}});
  await context.route('**/*',async route=>{const req=route.request(),u=new URL(req.url());
   if(/5dollarfootballapi|goaloo/i.test(u.hostname)){providers++;return route.abort()}
   if(!['GET','HEAD'].includes(req.method())){if(u.pathname.startsWith('/cdn-cgi/')||/cloudflareinsights|google|analytics|visitor-monitor/.test(u.hostname))return route.fulfill({status:204,body:''});writes.push({path:u.pathname,method:req.method()});return route.abort()}
