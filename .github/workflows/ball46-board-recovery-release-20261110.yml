@@ -1,0 +1,60 @@
+name: BALL46 approved board recovery guarded release
+on:
+  push:
+    branches: [codex/ball46-favorites-test-20261110]
+    paths: ['work/board-error-recovery-20261110/release-request.json']
+permissions:
+  contents: write
+concurrency:
+  group: ball46-production-deploy
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install isolated verification tools
+        run: |
+          npm install --no-save --package-lock=false --prefix work/board-error-recovery-20261110 parse5@7.3.0 playwright@1.56.1
+          cd work/board-error-recovery-20261110 && npx playwright install --with-deps chromium
+      - name: Re-run controlled recovery tests
+        run: node work/board-error-recovery-20261110/test.mjs
+      - name: Read latest Production and build only the approved function
+        run: node work/board-error-recovery-20261110/verify-current.mjs
+      - name: Verify baseline and upload zero-traffic candidate
+        run: node work/board-error-recovery-20261110/release.mjs stage
+      - name: Verify real Preview scores PC mobile dark light
+        run: node work/board-error-recovery-20261110/release-browser.mjs candidate
+      - name: Activate only verified board recovery
+        run: node work/board-error-recovery-20261110/release.mjs activate
+      - name: Verify Production scores PC mobile dark light
+        run: node work/board-error-recovery-20261110/release-browser.mjs production
+      - name: Final version health configuration and records
+        run: node work/board-error-recovery-20261110/release.mjs finish
+      - name: Restore immediate baseline after activation failure
+        if: failure()
+        run: node work/board-error-recovery-20261110/release.mjs rollback
+      - name: Save scoped release evidence
+        if: always()
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add work/board-error-recovery-20261110/release-audit/*.json work/board-error-recovery-20261110/stage/report.json work/board-error-recovery-20261110/test-results.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Record approved board recovery release and preservation [skip ci]"
+          git push origin HEAD:codex/ball46-favorites-test-20261110
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-board-recovery-production-proof
+          path: |
+            work/board-error-recovery-20261110/release-audit
+            work/board-error-recovery-20261110/stage/report.json
+            work/board-error-recovery-20261110/test-results.json
