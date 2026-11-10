@@ -1,0 +1,16 @@
+name: Verify BALL46 Full Market Lazy Preview 20261110
+on:
+  push:
+    branches: [test/ball46-fullmarket-lazy-ui-20261110]
+    paths: ['fullmarket-lazy-preview-20261110/VERIFY_READY']
+permissions: {contents: read}
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: test/ball46-fullmarket-lazy-ui-20261110}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: node fullmarket-lazy-preview-20261110/verify.mjs
