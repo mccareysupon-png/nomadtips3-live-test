@@ -1,0 +1,75 @@
+{
+  "at": "2026-11-10T09:41:30.200Z",
+  "run": "42792801032",
+  "productionWrites": 0,
+  "providerRequests": 0,
+  "runtimeRequests": 0,
+  "website": {
+    "version": "c9e86292-6ed9-4788-98de-1b363f478d74",
+    "deployment": "ef0efc15-3b9b-4df5-aa7f-cec95d87df92"
+  },
+  "engineBinding": {
+    "name": "ENGINE",
+    "service": "nomadtips3-engine-343",
+    "environment": "production"
+  },
+  "engine": {
+    "version": "02e09215-02b1-47fb-b1cf-9423f50c7ce9",
+    "deployment": "77b9e330-7dde-4350-9178-20aea667cd1d"
+  },
+  "engineMain": "index-bulk-recovery.js",
+  "modules": [
+    {
+      "name": "index-bulk-recovery.js",
+      "type": "application/javascript+module",
+      "bytes": 118775,
+      "sha": "30aef0bb9c4be48a40c4bf38bf113b40ca1fd2d384187eefc275829c43e8ba56"
+    }
+  ],
+  "bindings": [
+    {
+      "class_name": "Nomad343Engine",
+      "name": "ENGINE",
+      "namespace_id": "7404dc5f593a4fbeaebae44cad6ae7da",
+      "type": "durable_object_namespace"
+    },
+    {
+      "environment": "production",
+      "name": "FULL_MARKET",
+      "service": "nomadtips3-full-market-343-ball46",
+      "type": "service"
+    },
+    {
+      "environment": "production",
+      "name": "HUB",
+      "service": "nomadtips3-5usd-hub-343",
+      "type": "service"
+    }
+  ],
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1,
+    "redact_query_string": false,
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 1,
+      "persist": true,
+      "invocation_logs": true
+    },
+    "traces": {
+      "enabled": false,
+      "persist": true,
+      "head_sampling_rate": 1
+    }
+  },
+  "compatibilityDate": "2026-09-09",
+  "websiteAfter": {
+    "version": "c9e86292-6ed9-4788-98de-1b363f478d74",
+    "deployment": "ef0efc15-3b9b-4df5-aa7f-cec95d87df92"
+  },
+  "engineAfter": {
+    "version": "02e09215-02b1-47fb-b1cf-9423f50c7ce9",
+    "deployment": "77b9e330-7dde-4350-9178-20aea667cd1d"
+  },
+  "ok": true
+}
