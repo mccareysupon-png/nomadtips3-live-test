@@ -1,0 +1,1569 @@
+{
+  "productionWrites": 0,
+  "runtimeRequests": 0,
+  "providerRequests": 0,
+  "source": "Existing Cloudflare Workers logs only; temporary query, not saved",
+  "at": "2026-11-10T09:44:26.897Z",
+  "query": {
+    "queryId": "ball46-memory-diagnosis-20261110",
+    "view": "events",
+    "timeframe": {
+      "from": 1794301580000,
+      "to": 1794301630000
+    },
+    "parameters": {
+      "filters": [
+        {
+          "key": "$metadata.service",
+          "operation": "eq",
+          "type": "string",
+          "value": "nomadtips3-engine-343"
+        }
+      ],
+      "limit": 100
+    }
+  },
+  "status": 200,
+  "success": true,
+  "resultKeys": [
+    "run",
+    "events",
+    "statistics"
+  ],
+  "eventsContainerKeys": [
+    "events",
+    "fields",
+    "count",
+    "series"
+  ],
+  "events": [
+    {
+      "timestamp": 1794301626200,
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "GET /statistics",
+        "message": "GET [URL omitted]",
+        "type": "cf-worker-event",
+        "level": "info",
+        "requestId": "ce464dc94e465f6927cf5daf8d023d6d"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "outcome": "ok",
+        "cpuTimeMs": 1,
+        "wallTimeMs": 691,
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "event",
+        "scriptName",
+        "scriptVersion",
+        "eventType",
+        "executionModel",
+        "outcome",
+        "wallTimeMs",
+        "cpuTimeMs"
+      ]
+    },
+    {
+      "timestamp": 1794301625899,
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "GET /board",
+        "message": "GET [URL omitted]",
+        "type": "cf-worker-event",
+        "level": "info",
+        "requestId": "829ecda33a5a646889e87c70227123da"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "outcome": "ok",
+        "cpuTimeMs": 1,
+        "wallTimeMs": 394,
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "event",
+        "scriptName",
+        "scriptVersion",
+        "eventType",
+        "executionModel",
+        "outcome",
+        "wallTimeMs",
+        "cpuTimeMs"
+      ]
+    },
+    {
+      "timestamp": 1794301625808,
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "GET /statistics",
+        "message": "GET [URL omitted]",
+        "type": "cf-worker-event",
+        "level": "info",
+        "requestId": "7737391428e2eab778200ac6102fa6d3"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "outcome": "ok",
+        "cpuTimeMs": 183,
+        "wallTimeMs": 535,
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "event",
+        "scriptName",
+        "scriptVersion",
+        "durableObjectId",
+        "eventType",
+        "entrypoint",
+        "executionModel",
+        "outcome",
+        "wallTimeMs",
+        "cpuTimeMs"
+      ]
+    },
+    {
+      "timestamp": 1794301625808,
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "GET /board",
+        "message": "GET [URL omitted]",
+        "type": "cf-worker-event",
+        "level": "info",
+        "requestId": "36c0cdf666ce1e54101b2668a56be673"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "outcome": "ok",
+        "cpuTimeMs": 128,
+        "wallTimeMs": 873,
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "event",
+        "scriptName",
+        "scriptVersion",
+        "durableObjectId",
+        "eventType",
+        "entrypoint",
+        "executionModel",
+        "outcome",
+        "wallTimeMs",
+        "cpuTimeMs"
+      ]
+    },
+    {
+      "timestamp": 1794301622068,
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "GET /statistics",
+        "message": "GET [URL omitted]",
+        "type": "cf-worker-event",
+        "level": "info",
+        "requestId": "f728aeb41b3fe54d02e60ed8d8f020f0"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "outcome": "ok",
+        "cpuTimeMs": 1,
+        "wallTimeMs": 527,
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "event",
+        "scriptName",
+        "scriptVersion",
+        "eventType",
+        "executionModel",
+        "outcome",
+        "wallTimeMs",
+        "cpuTimeMs"
+      ]
+    },
+    {
+      "timestamp": 1794301621788,
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "GET /statistics",
+        "message": "GET [URL omitted]",
+        "type": "cf-worker-event",
+        "level": "info",
+        "requestId": "fa241de10b27454a6167e7bfd2adaae6"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "outcome": "ok",
+        "cpuTimeMs": 177,
+        "wallTimeMs": 526,
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "event",
+        "scriptName",
+        "scriptVersion",
+        "durableObjectId",
+        "eventType",
+        "entrypoint",
+        "executionModel",
+        "outcome",
+        "wallTimeMs",
+        "cpuTimeMs"
+      ]
+    },
+    {
+      "timestamp": 1794301618956,
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "scheduled",
+        "trigger": "* * * * *",
+        "message": "* * * * *",
+        "type": "cf-worker-event",
+        "level": "info",
+        "requestId": "93d3b2c92e0016625fa1d51c539579ec"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "outcome": "ok",
+        "cpuTimeMs": 0,
+        "wallTimeMs": 4586,
+        "eventType": "scheduled"
+      },
+      "workerKeys": [
+        "truncated",
+        "scriptName",
+        "scriptVersion",
+        "eventType",
+        "entrypoint",
+        "executionModel",
+        "event",
+        "outcome",
+        "wallTimeMs",
+        "cpuTimeMs"
+      ]
+    },
+    {
+      "timestamp": 1794301618708,
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "POST /scan",
+        "message": "POST [URL omitted]",
+        "type": "cf-worker-event",
+        "level": "info",
+        "requestId": "a6683e4a2301d6068f099298e3f95860"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "outcome": "ok",
+        "cpuTimeMs": 2,
+        "wallTimeMs": 4370,
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "scriptName",
+        "scriptVersion",
+        "durableObjectId",
+        "eventType",
+        "entrypoint",
+        "executionModel",
+        "event",
+        "outcome",
+        "wallTimeMs",
+        "cpuTimeMs"
+      ]
+    },
+    {
+      "timestamp": 1794301618708,
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "GET /board",
+        "message": "GET [URL omitted]",
+        "type": "cf-worker-event",
+        "level": "info",
+        "requestId": "cf67594547e2c0515cad7f0558973551"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "outcome": "ok",
+        "cpuTimeMs": 410,
+        "wallTimeMs": 3065,
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "scriptName",
+        "scriptVersion",
+        "durableObjectId",
+        "eventType",
+        "entrypoint",
+        "executionModel",
+        "event",
+        "outcome",
+        "wallTimeMs",
+        "cpuTimeMs"
+      ]
+    },
+    {
+      "timestamp": 1794301616062,
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "GET /board",
+        "message": "GET [URL omitted]",
+        "type": "cf-worker-event",
+        "level": "info",
+        "requestId": "224183869a6e8c97f7a47fafa798646a"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "outcome": "ok",
+        "cpuTimeMs": 0,
+        "wallTimeMs": 403,
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "scriptName",
+        "scriptVersion",
+        "eventType",
+        "executionModel",
+        "event",
+        "outcome",
+        "wallTimeMs",
+        "cpuTimeMs"
+      ]
+    },
+    {
+      "timestamp": 1794301614117,
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "GET /statistics",
+        "message": "GET [URL omitted]",
+        "type": "cf-worker-event",
+        "level": "info",
+        "requestId": "20c362f283270d4d954ba8d0ee5e0353"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "outcome": "ok",
+        "cpuTimeMs": 0,
+        "wallTimeMs": 2762,
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "event",
+        "scriptName",
+        "scriptVersion",
+        "eventType",
+        "executionModel",
+        "outcome",
+        "wallTimeMs",
+        "cpuTimeMs"
+      ]
+    },
+    {
+      "timestamp": 1794301612727,
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "GET /statistics",
+        "message": "GET [URL omitted]",
+        "type": "cf-worker-event",
+        "level": "info",
+        "requestId": "b3216a312f301e2b35e6aae770fec224"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "outcome": "ok",
+        "cpuTimeMs": 1997,
+        "wallTimeMs": 9428,
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "event",
+        "scriptName",
+        "scriptVersion",
+        "durableObjectId",
+        "eventType",
+        "entrypoint",
+        "executionModel",
+        "outcome",
+        "wallTimeMs",
+        "cpuTimeMs"
+      ]
+    },
+    {
+      "timestamp": 1794301611023,
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "GET /statistics",
+        "message": "GET [URL omitted]",
+        "type": "cf-worker-event",
+        "level": "info",
+        "requestId": "11e5596b1b2f18358d010278e59a85c8"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "outcome": "ok",
+        "cpuTimeMs": 1,
+        "wallTimeMs": 524,
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "event",
+        "scriptName",
+        "scriptVersion",
+        "eventType",
+        "executionModel",
+        "outcome",
+        "wallTimeMs",
+        "cpuTimeMs"
+      ]
+    },
+    {
+      "timestamp": 1794301610647,
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "GET /board",
+        "message": "GET [URL omitted]",
+        "type": "cf-worker-event",
+        "level": "info",
+        "requestId": "b5f664c885a57406eee7f452a1e3037e"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "outcome": "ok",
+        "cpuTimeMs": 1,
+        "wallTimeMs": 382,
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "event",
+        "scriptName",
+        "scriptVersion",
+        "eventType",
+        "executionModel",
+        "outcome",
+        "wallTimeMs",
+        "cpuTimeMs"
+      ]
+    },
+    {
+      "timestamp": 1794301610582,
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "GET /statistics",
+        "message": "GET [URL omitted]",
+        "type": "cf-worker-event",
+        "level": "info",
+        "requestId": "e7bfeb8150743009c567d9fdf9858a7f"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "outcome": "ok",
+        "cpuTimeMs": 192,
+        "wallTimeMs": 516,
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "event",
+        "scriptName",
+        "scriptVersion",
+        "durableObjectId",
+        "eventType",
+        "entrypoint",
+        "executionModel",
+        "outcome",
+        "wallTimeMs",
+        "cpuTimeMs"
+      ]
+    },
+    {
+      "timestamp": 1794301610582,
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "GET /board",
+        "message": "GET [URL omitted]",
+        "type": "cf-worker-event",
+        "level": "info",
+        "requestId": "eb2c0d82c44877f9405648b6b737c35c"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "outcome": "ok",
+        "cpuTimeMs": 109,
+        "wallTimeMs": 940,
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "event",
+        "scriptName",
+        "scriptVersion",
+        "durableObjectId",
+        "eventType",
+        "entrypoint",
+        "executionModel",
+        "outcome",
+        "wallTimeMs",
+        "cpuTimeMs"
+      ]
+    },
+    {
+      "timestamp": 1794301610502,
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "GET /signals",
+        "message": "GET [URL omitted]",
+        "type": "cf-worker-event",
+        "level": "info",
+        "requestId": "b80bdf1604c1cd17f1f6a85d68b5898a"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "outcome": "ok",
+        "cpuTimeMs": 0,
+        "wallTimeMs": 237,
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "event",
+        "scriptName",
+        "scriptVersion",
+        "eventType",
+        "executionModel",
+        "outcome",
+        "wallTimeMs",
+        "cpuTimeMs"
+      ]
+    },
+    {
+      "timestamp": 1794301610305,
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "GET /signals",
+        "message": "GET [URL omitted]",
+        "type": "cf-worker-event",
+        "level": "info",
+        "requestId": "643159cf7c844b285b0b8e1c1ef60f44"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "outcome": "ok",
+        "cpuTimeMs": 6,
+        "wallTimeMs": 6,
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "event",
+        "scriptName",
+        "scriptVersion",
+        "durableObjectId",
+        "eventType",
+        "entrypoint",
+        "executionModel",
+        "outcome",
+        "wallTimeMs",
+        "cpuTimeMs"
+      ]
+    },
+    {
+      "timestamp": 1794301609521,
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "GET /board",
+        "message": "GET [URL omitted]",
+        "type": "cf-worker-event",
+        "level": "info",
+        "requestId": "a2385b4593a3be4f1baeb0886e63d0d3"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "outcome": "ok",
+        "cpuTimeMs": 1,
+        "wallTimeMs": 392,
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "event",
+        "scriptName",
+        "scriptVersion",
+        "eventType",
+        "executionModel",
+        "outcome",
+        "wallTimeMs",
+        "cpuTimeMs"
+      ]
+    },
+    {
+      "timestamp": 1794301609384,
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "GET /history",
+        "message": "GET [URL omitted]",
+        "type": "cf-worker-event",
+        "level": "info",
+        "requestId": "8342338f63d2567d9c761e9bfde32be8"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "outcome": "ok",
+        "cpuTimeMs": 1,
+        "wallTimeMs": 251,
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "event",
+        "scriptName",
+        "scriptVersion",
+        "eventType",
+        "executionModel",
+        "outcome",
+        "wallTimeMs",
+        "cpuTimeMs"
+      ]
+    },
+    {
+      "timestamp": 1794301609167,
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "GET /board",
+        "message": "GET [URL omitted]",
+        "type": "cf-worker-event",
+        "level": "info",
+        "requestId": "47678025224e8a2c99fc8fa9ba13b2b9"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "outcome": "ok",
+        "cpuTimeMs": 113,
+        "wallTimeMs": 883,
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "event",
+        "scriptName",
+        "scriptVersion",
+        "durableObjectId",
+        "eventType",
+        "entrypoint",
+        "executionModel",
+        "outcome",
+        "wallTimeMs",
+        "cpuTimeMs"
+      ]
+    },
+    {
+      "timestamp": 1794301609153,
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "GET /history",
+        "message": "GET [URL omitted]",
+        "type": "cf-worker-event",
+        "level": "info",
+        "requestId": "76ee5bb4b275d8d49f21b2c919667b90"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "outcome": "ok",
+        "cpuTimeMs": 9,
+        "wallTimeMs": 21,
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "event",
+        "scriptName",
+        "scriptVersion",
+        "durableObjectId",
+        "eventType",
+        "entrypoint",
+        "executionModel",
+        "outcome",
+        "wallTimeMs",
+        "cpuTimeMs"
+      ]
+    },
+    {
+      "timestamp": 1794301608127,
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "GET /statistics",
+        "message": "GET [URL omitted]",
+        "type": "cf-worker-event",
+        "level": "info",
+        "requestId": "ea13958eb2a2e65da0fe7c244b5b6770"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "outcome": "ok",
+        "cpuTimeMs": 1,
+        "wallTimeMs": 356,
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "event",
+        "scriptName",
+        "scriptVersion",
+        "eventType",
+        "executionModel",
+        "outcome",
+        "wallTimeMs",
+        "cpuTimeMs"
+      ]
+    },
+    {
+      "timestamp": 1794301607636,
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "GET /statistics",
+        "message": "GET [URL omitted]",
+        "type": "cf-worker-event",
+        "level": "info",
+        "requestId": "9b8e60487e23d3be3a49ced075ef8ddc"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "outcome": "ok",
+        "cpuTimeMs": 93,
+        "wallTimeMs": 352,
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "event",
+        "scriptName",
+        "scriptVersion",
+        "durableObjectId",
+        "eventType",
+        "entrypoint",
+        "executionModel",
+        "outcome",
+        "wallTimeMs",
+        "cpuTimeMs"
+      ]
+    },
+    {
+      "timestamp": 1794301607361,
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "GET /statistics",
+        "message": "GET [URL omitted]",
+        "type": "cf-worker-event",
+        "level": "info",
+        "requestId": "cf1e2e99d5d8eaad47bbd506f7cf49d6"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "outcome": "ok",
+        "cpuTimeMs": 1,
+        "wallTimeMs": 586,
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "event",
+        "scriptName",
+        "scriptVersion",
+        "eventType",
+        "executionModel",
+        "outcome",
+        "wallTimeMs",
+        "cpuTimeMs"
+      ]
+    },
+    {
+      "timestamp": 1794301607312,
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "GET /statistics",
+        "message": "GET [URL omitted]",
+        "type": "cf-worker-event",
+        "level": "info",
+        "requestId": "fd6f129971502113367787b5a0a4ad03"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "outcome": "ok",
+        "cpuTimeMs": 1,
+        "wallTimeMs": 699,
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "event",
+        "scriptName",
+        "scriptVersion",
+        "eventType",
+        "executionModel",
+        "outcome",
+        "wallTimeMs",
+        "cpuTimeMs"
+      ]
+    },
+    {
+      "timestamp": 1794301606922,
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "GET /board",
+        "message": "GET [URL omitted]",
+        "type": "cf-worker-event",
+        "level": "info",
+        "requestId": "7940cc5f90aa6bf9b727134aaf436124"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "outcome": "ok",
+        "cpuTimeMs": 1,
+        "wallTimeMs": 393,
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "event",
+        "scriptName",
+        "scriptVersion",
+        "eventType",
+        "executionModel",
+        "outcome",
+        "wallTimeMs",
+        "cpuTimeMs"
+      ]
+    },
+    {
+      "timestamp": 1794301606764,
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "GET /statistics",
+        "message": "GET [URL omitted]",
+        "type": "cf-worker-event",
+        "level": "info",
+        "requestId": "24abb2f9a11772b1db48b54ac2cb27bc"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "outcome": "ok",
+        "cpuTimeMs": 203,
+        "wallTimeMs": 711,
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "event",
+        "scriptName",
+        "scriptVersion",
+        "durableObjectId",
+        "eventType",
+        "entrypoint",
+        "executionModel",
+        "outcome",
+        "wallTimeMs",
+        "cpuTimeMs"
+      ]
+    },
+    {
+      "timestamp": 1794301606764,
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "GET /statistics",
+        "message": "GET [URL omitted]",
+        "type": "cf-worker-event",
+        "level": "info",
+        "requestId": "73ef5fe6e07f955b7885c48cd4eb9f28"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "outcome": "ok",
+        "cpuTimeMs": 110,
+        "wallTimeMs": 624,
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "event",
+        "scriptName",
+        "scriptVersion",
+        "durableObjectId",
+        "eventType",
+        "entrypoint",
+        "executionModel",
+        "outcome",
+        "wallTimeMs",
+        "cpuTimeMs"
+      ]
+    },
+    {
+      "timestamp": 1794301606764,
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "GET /board",
+        "message": "GET [URL omitted]",
+        "type": "cf-worker-event",
+        "level": "info",
+        "requestId": "e6c918f5787c941060df5efcf0fb405b"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "outcome": "ok",
+        "cpuTimeMs": 125,
+        "wallTimeMs": 1015,
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "event",
+        "scriptName",
+        "scriptVersion",
+        "durableObjectId",
+        "eventType",
+        "entrypoint",
+        "executionModel",
+        "outcome",
+        "wallTimeMs",
+        "cpuTimeMs"
+      ]
+    },
+    {
+      "timestamp": 1794301606022,
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "GET /statistics",
+        "message": "GET [URL omitted]",
+        "type": "cf-worker-event",
+        "level": "info",
+        "requestId": "f6b065bdd28e76bf7c2bf3de0c5c6d36"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "outcome": "ok",
+        "cpuTimeMs": 0,
+        "wallTimeMs": 380,
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "event",
+        "scriptName",
+        "scriptVersion",
+        "eventType",
+        "executionModel",
+        "outcome",
+        "wallTimeMs",
+        "cpuTimeMs"
+      ]
+    },
+    {
+      "timestamp": 1794301605625,
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "GET /statistics",
+        "message": "GET [URL omitted]",
+        "type": "cf-worker-event",
+        "level": "info",
+        "requestId": "6037c707193134e2a1276e74a1c177a9"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "outcome": "ok",
+        "cpuTimeMs": 102,
+        "wallTimeMs": 375,
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "event",
+        "scriptName",
+        "scriptVersion",
+        "durableObjectId",
+        "eventType",
+        "entrypoint",
+        "executionModel",
+        "outcome",
+        "wallTimeMs",
+        "cpuTimeMs"
+      ]
+    },
+    {
+      "timestamp": 1794301605337,
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "GET /statistics",
+        "message": "GET [URL omitted]",
+        "type": "cf-worker-event",
+        "level": "info",
+        "requestId": "31425e56b73ae9eb44ad339bf69a3283"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "outcome": "ok",
+        "cpuTimeMs": 1,
+        "wallTimeMs": 879,
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "event",
+        "scriptName",
+        "scriptVersion",
+        "eventType",
+        "executionModel",
+        "outcome",
+        "wallTimeMs",
+        "cpuTimeMs"
+      ]
+    },
+    {
+      "timestamp": 1794301604993,
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "GET /statistics",
+        "message": "GET [URL omitted]",
+        "type": "cf-worker-event",
+        "level": "info",
+        "requestId": "fcebeabfc9d1ffe2d5b309049dc6e1f5"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "outcome": "ok",
+        "cpuTimeMs": 259,
+        "wallTimeMs": 861,
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "event",
+        "scriptName",
+        "scriptVersion",
+        "durableObjectId",
+        "eventType",
+        "entrypoint",
+        "executionModel",
+        "outcome",
+        "wallTimeMs",
+        "cpuTimeMs"
+      ]
+    },
+    {
+      "timestamp": 1794301604320,
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "GET /statistics",
+        "error": "GET [URL omitted]",
+        "message": "GET [URL omitted]",
+        "type": "cf-worker-event",
+        "level": "error",
+        "requestId": "a9e4d368af147eaa5eec9fcbf000c32e"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "outcome": "exception",
+        "cpuTimeMs": 1,
+        "wallTimeMs": 2690,
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "event",
+        "scriptName",
+        "scriptVersion",
+        "eventType",
+        "executionModel",
+        "outcome",
+        "wallTimeMs",
+        "cpuTimeMs"
+      ]
+    },
+    {
+      "timestamp": 1794301604320,
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "GET /statistics",
+        "error": "Durable Object's isolate exceeded its memory limit and was reset.",
+        "message": "Durable Object's isolate exceeded its memory limit and was reset.",
+        "type": "cf-worker",
+        "level": "error",
+        "requestId": "a9e4d368af147eaa5eec9fcbf000c32e"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "scriptName",
+        "scriptVersion",
+        "eventType",
+        "executionModel",
+        "event"
+      ]
+    },
+    {
+      "timestamp": 1794301604226,
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "GET /board",
+        "error": "GET [URL omitted]",
+        "message": "GET [URL omitted]",
+        "type": "cf-worker-event",
+        "level": "error",
+        "requestId": "64d2e2a1f83c3ef28a882f74d4ea8e5b"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "outcome": "exception",
+        "cpuTimeMs": 0,
+        "wallTimeMs": 1794,
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "event",
+        "scriptName",
+        "scriptVersion",
+        "eventType",
+        "executionModel",
+        "outcome",
+        "wallTimeMs",
+        "cpuTimeMs"
+      ]
+    },
+    {
+      "timestamp": 1794301604226,
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "GET /history",
+        "error": "GET [URL omitted]",
+        "message": "GET [URL omitted]",
+        "type": "cf-worker-event",
+        "level": "error",
+        "requestId": "16002f6c29c0a9d8afce76bebe8ccee2"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "outcome": "exception",
+        "cpuTimeMs": 0,
+        "wallTimeMs": 1973,
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "event",
+        "scriptName",
+        "scriptVersion",
+        "eventType",
+        "executionModel",
+        "outcome",
+        "wallTimeMs",
+        "cpuTimeMs"
+      ]
+    },
+    {
+      "timestamp": 1794301604226,
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "GET /board",
+        "error": "Durable Object's isolate exceeded its memory limit and was reset.",
+        "message": "Durable Object's isolate exceeded its memory limit and was reset.",
+        "type": "cf-worker",
+        "level": "error",
+        "requestId": "64d2e2a1f83c3ef28a882f74d4ea8e5b"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "scriptName",
+        "scriptVersion",
+        "eventType",
+        "executionModel",
+        "event"
+      ]
+    },
+    {
+      "timestamp": 1794301604226,
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "GET /history",
+        "error": "Durable Object's isolate exceeded its memory limit and was reset.",
+        "message": "Durable Object's isolate exceeded its memory limit and was reset.",
+        "type": "cf-worker",
+        "level": "error",
+        "requestId": "16002f6c29c0a9d8afce76bebe8ccee2"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "scriptName",
+        "scriptVersion",
+        "eventType",
+        "executionModel",
+        "event"
+      ]
+    },
+    {
+      "timestamp": 1794301604225,
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "GET /board",
+        "error": "GET [URL omitted]",
+        "message": "GET [URL omitted]",
+        "type": "cf-worker-event",
+        "level": "error",
+        "requestId": "8f5a6980c9875405ab2e8a9beb90ff78"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "outcome": "exception",
+        "cpuTimeMs": 0,
+        "wallTimeMs": 1971,
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "event",
+        "scriptName",
+        "scriptVersion",
+        "eventType",
+        "executionModel",
+        "outcome",
+        "wallTimeMs",
+        "cpuTimeMs"
+      ]
+    },
+    {
+      "timestamp": 1794301604225,
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "GET /signals",
+        "error": "GET [URL omitted]",
+        "message": "GET [URL omitted]",
+        "type": "cf-worker-event",
+        "level": "error",
+        "requestId": "8bf1885154f8f5ca2c24d96322ba3bd4"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "outcome": "exception",
+        "cpuTimeMs": 0,
+        "wallTimeMs": 1794,
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "event",
+        "scriptName",
+        "scriptVersion",
+        "eventType",
+        "executionModel",
+        "outcome",
+        "wallTimeMs",
+        "cpuTimeMs"
+      ]
+    },
+    {
+      "timestamp": 1794301604225,
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "GET /board",
+        "error": "Durable Object's isolate exceeded its memory limit and was reset.",
+        "message": "Durable Object's isolate exceeded its memory limit and was reset.",
+        "type": "cf-worker",
+        "level": "error",
+        "requestId": "8f5a6980c9875405ab2e8a9beb90ff78"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "scriptName",
+        "scriptVersion",
+        "eventType",
+        "executionModel",
+        "event"
+      ]
+    },
+    {
+      "timestamp": 1794301604225,
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "GET /signals",
+        "error": "Durable Object's isolate exceeded its memory limit and was reset.",
+        "message": "Durable Object's isolate exceeded its memory limit and was reset.",
+        "type": "cf-worker",
+        "level": "error",
+        "requestId": "8bf1885154f8f5ca2c24d96322ba3bd4"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "scriptName",
+        "scriptVersion",
+        "eventType",
+        "executionModel",
+        "event"
+      ]
+    },
+    {
+      "timestamp": 1794301603026,
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "GET /statistics",
+        "error": "GET [URL omitted]",
+        "message": "GET [URL omitted]",
+        "type": "cf-worker-event",
+        "level": "error",
+        "requestId": "3b04f1bd0926645d1e90c8800f50aebd"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "outcome": "exceededMemory",
+        "cpuTimeMs": 1918,
+        "wallTimeMs": 2453,
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "event",
+        "scriptName",
+        "scriptVersion",
+        "durableObjectId",
+        "eventType",
+        "entrypoint",
+        "executionModel",
+        "outcome",
+        "wallTimeMs",
+        "cpuTimeMs"
+      ]
+    },
+    {
+      "timestamp": 1794301603026,
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "GET /board",
+        "error": "GET [URL omitted]",
+        "message": "GET [URL omitted]",
+        "type": "cf-worker-event",
+        "level": "error",
+        "requestId": "cf6eb5b2a0e7b7e4d09472261fe80135"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "outcome": "exceededMemory",
+        "cpuTimeMs": 97,
+        "wallTimeMs": 3239,
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "event",
+        "scriptName",
+        "scriptVersion",
+        "durableObjectId",
+        "eventType",
+        "entrypoint",
+        "executionModel",
+        "outcome",
+        "wallTimeMs",
+        "cpuTimeMs"
+      ]
+    },
+    {
+      "timestamp": 1794301603026,
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "GET /signals",
+        "error": "GET [URL omitted]",
+        "message": "GET [URL omitted]",
+        "type": "cf-worker-event",
+        "level": "error",
+        "requestId": "b8499796d5ea7635310f2a09af17b681"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "outcome": "exceededMemory",
+        "cpuTimeMs": 0,
+        "wallTimeMs": 43,
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "event",
+        "scriptName",
+        "scriptVersion",
+        "durableObjectId",
+        "eventType",
+        "entrypoint",
+        "executionModel",
+        "outcome",
+        "wallTimeMs",
+        "cpuTimeMs"
+      ]
+    },
+    {
+      "timestamp": 1794301603026,
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "GET /signals",
+        "error": "Durable Object's isolate exceeded its memory limit and was reset.",
+        "message": "Durable Object's isolate exceeded its memory limit and was reset.",
+        "type": "cf-worker",
+        "level": "error",
+        "requestId": "b8499796d5ea7635310f2a09af17b681"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "scriptName",
+        "scriptVersion",
+        "durableObjectId",
+        "eventType",
+        "entrypoint",
+        "executionModel",
+        "event"
+      ]
+    },
+    {
+      "timestamp": 1794301603026,
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "GET /history",
+        "error": "GET [URL omitted]",
+        "message": "GET [URL omitted]",
+        "type": "cf-worker-event",
+        "level": "error",
+        "requestId": "9731fcfc15a87023e7630b7ba7748c89"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "outcome": "exceededMemory",
+        "cpuTimeMs": 0,
+        "wallTimeMs": 43,
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "event",
+        "scriptName",
+        "scriptVersion",
+        "durableObjectId",
+        "eventType",
+        "entrypoint",
+        "executionModel",
+        "outcome",
+        "wallTimeMs",
+        "cpuTimeMs"
+      ]
+    },
+    {
+      "timestamp": 1794301603026,
+      "metadata": {
+        "service": "nomadtips3-engine-343",
+        "origin": "fetch",
+        "trigger": "GET /board",
+        "error": "GET [URL omitted]",
+        "message": "GET [URL omitted]",
+        "type": "cf-worker-event",
+        "level": "error",
+        "requestId": "e2a6e2ceea245d76a582af92f4807f3f"
+      },
+      "workers": {
+        "scriptName": "nomadtips3-engine-343",
+        "outcome": "exceededMemory",
+        "cpuTimeMs": 0,
+        "wallTimeMs": 43,
+        "eventType": "fetch"
+      },
+      "workerKeys": [
+        "truncated",
+        "event",
+        "scriptName",
+        "scriptVersion",
+        "durableObjectId",
+        "eventType",
+        "entrypoint",
+        "executionModel",
+        "outcome",
+        "wallTimeMs",
+        "cpuTimeMs"
+      ]
+    }
+  ],
+  "count": 50
+}
