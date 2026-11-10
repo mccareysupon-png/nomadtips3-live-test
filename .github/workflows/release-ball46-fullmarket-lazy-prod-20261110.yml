@@ -1,0 +1,25 @@
+name: Release BALL46 Full Market Lazy On Demand 20261110
+on:
+  push:
+    branches: [test/ball46-fullmarket-lazy-prod-20261110]
+    paths: ['fullmarket-lazy-prod-20261110/RELEASE_READY']
+permissions: {contents: read}
+concurrency:
+  group: ball46-production-deploy
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: test/ball46-fullmarket-lazy-prod-20261110}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: node fullmarket-lazy-prod-20261110/deploy.mjs
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+      - run: npx playwright install --with-deps chromium
+      - run: node fullmarket-lazy-prod-20261110/browser-verify.mjs
