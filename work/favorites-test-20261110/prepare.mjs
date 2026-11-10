@@ -1,0 +1,28 @@
+import assert from'node:assert/strict';import{readFile,writeFile,mkdir}from'node:fs/promises';import{createHash}from'node:crypto';
+const ROOT='work/favorites-test-20261110',sha=b=>createHash('sha256').update(b).digest('hex');await mkdir(ROOT+'/candidate',{recursive:true});
+const audit=JSON.parse(await readFile(ROOT+'/fresh/report.json')),html=await readFile(ROOT+'/fresh/index.html','utf8');assert(audit.ok);assert.equal(audit.active.version,'c9e86292-6ed9-4788-98de-1b363f478d74','SOURCE_CHANGED_REVIEW_REQUIRED');
+const find=name=>{const f=audit.files.find(f=>new URL(f.path,'https://ball46.com').pathname===name);assert(f);return f},dashboardFile=find('/dashboard-v2-stage3-featured-facts-20261013a.js'),workspaceFile=find('/singlepage-workspace-343.js');
+const dashboard=await readFile(ROOT+'/fresh/'+sha(dashboardFile.path)+'.txt','utf8'),workspace=await readFile(ROOT+'/fresh/'+sha(workspaceFile.path)+'.txt','utf8');assert.equal(sha(dashboard),dashboardFile.sha);assert.equal(sha(workspace),workspaceFile.sha);
+let changes=[];function replace(s,before,after,name){assert.equal(s.split(before).length,2,'UNIQUE_ANCHOR:'+name);changes.push({name,before,after});return s.replace(before,after)}
+let d=dashboard;
+d=replace(d,"return fixtures.filter(f=>{if(signalView", "return fixtures.filter(f=>{if(!signalView&&window.B46_FAVORITES?.active&&!window.B46_FAVORITES.has(fixtureKey(f)))return false;if(signalView",'Favorites current data filter');
+d=replace(d,"!signalView&&statusFilter!=='all'", "!signalView&&!window.B46_FAVORITES?.active&&statusFilter!=='all'",'Favorites independent of prior status');
+d=replace(d,'<div class="teams-cell"><b>','<div class="teams-cell">${window.B46_FAVORITES?.star(id)||\'\'}<b>','One icon before team pair');
+d=replace(d,'function start(){initControls();',"function start(){document.addEventListener('ball46:favorites-change',()=>{if(window.B46_FAVORITES?.active){statusFilter='all';leagueFilter='all'}renderBoard();window.__BALL46_GREEN_NOIR?.refresh?.()});initControls();",'Local repaint without reload or fetch');
+// Empty-state strings occur more than once; replace the identical presentation literal only.
+d=d.replaceAll("'No matches match the current filters.'","(window.B46_FAVORITES?.active?'No saved matches in the current feed. Tap a star to follow a match.':'No matches match the current filters.')");
+let w=workspace;
+w=replace(w,"const q=new URLSearchParams(location.search),view=q.get('view')","const q=new URLSearchParams(location.search),view=q.get('view');window.B46_FAVORITES?.setRoute(q.get('favorites')==='1'&&(!view||view==='live'));const unusedView=view",'Read Favorites on refresh and browser history');
+// The comma declaration continues after view; retain the existing variables.
+w=w.replace("const unusedView=view,signalMarket=",'const signalMarket=');
+w=replace(w,'const q=new URLSearchParams();if(state.view',"const q=new URLSearchParams();if(state.view==='live'&&window.B46_FAVORITES?.active)q.set('favorites','1');if(state.view",'Preserve Favorites in existing history routing');
+let out=html;const script=/((<script\b[^>]*\bsrc=["']))([^"']+)(["'][^>]*>[\s\S]*?<\/script>)/gi;
+out=out.replace(script,(full,a,b,url,end)=>{const path=new URL(url.replaceAll('&amp;','&'),'https://ball46.com').pathname;if(path==='/dashboard-v2-stage3-featured-facts-20261013a.js')return'<script src="/favorites.js" defer></script>'+a+'/favorites-dashboard.js'+end;if(path==='/singlepage-workspace-343.js')return a+'/favorites-workspace.js'+end;return full});
+let nativeMatch=[...out.matchAll(/<script\s+id="b46gn-mobile-real-board-runtime-20261018">([\s\S]*?)<\/script>/g)];assert.equal(nativeMatch.length,1);let native=nativeMatch[0][1];
+native=replace(native,'return `<button type="button" class="b46gn-card"','return `<div class="b46gn-fixture-wrap" data-b46gn-fixture="${esc(f.id)}">${window.B46_FAVORITES?.star(String(f.id))||\'\'}<button type="button" class="b46gn-card"','Native sibling star; no nested buttons');
+native=replace(native,'class="b46gn-card" data-b46gn-fixture=','class="b46gn-card" data-b46gn-openfixture=','Retain one fixture key on wrapper');
+native=replace(native,'</span></button>`;}','</span></button></div>`;}','Close native sibling wrapper');
+out=out.replace(nativeMatch[0][1],native).replace('</head>','<link rel="stylesheet" href="/favorites.css"></head>');
+assert(out.includes('/favorites.js')&&out.includes('/favorites-dashboard.js')&&out.includes('/favorites-workspace.js'));
+await writeFile(ROOT+'/candidate/dashboard.js',d);await writeFile(ROOT+'/candidate/workspace.js',w);await writeFile(ROOT+'/candidate/index.html',out);await writeFile(ROOT+'/candidate/boundary.json',JSON.stringify({ok:true,base:audit.active,mode:'TEST ONLY; browser files, no Worker upload',dashboardBefore:sha(dashboard),workspaceBefore:sha(workspace),dashboardAfter:sha(d),workspaceAfter:sha(w),nativeBefore:sha(nativeMatch[0][1]),nativeAfter:sha(native),pollingConstantsUnchanged:true,fetchCodeChanged:false,productionWrites:0,changes:changes.map(x=>x.name)},null,2));
+console.log('FAVORITES_CANDIDATE_PREPARED');
