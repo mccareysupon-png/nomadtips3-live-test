@@ -1,0 +1,94 @@
+{
+  "at": "2026-11-10T22:55:30.913Z",
+  "run": "42918910000",
+  "productionWrites": 0,
+  "securityWrites": 0,
+  "checks": [
+    {
+      "path": "/settings/security_level",
+      "status": 403,
+      "success": false,
+      "result": null,
+      "errors": [
+        {
+          "code": 9109,
+          "message": "Unauthorized to access requested resource"
+        }
+      ]
+    },
+    {
+      "path": "/settings/browser_check",
+      "status": 403,
+      "success": false,
+      "result": null,
+      "errors": [
+        {
+          "code": 9109,
+          "message": "Unauthorized to access requested resource"
+        }
+      ]
+    },
+    {
+      "path": "/rulesets/phases/http_request_firewall_custom/entrypoint",
+      "status": 403,
+      "success": false,
+      "result": null,
+      "errors": [
+        {
+          "code": 10000,
+          "message": "Authentication error",
+          "documentation_url": "https://developers.cloudflare.com/api/resources/rulesets/subresources/phases/methods/get"
+        }
+      ]
+    },
+    {
+      "path": "/rulesets/phases/http_request_sbfm/entrypoint",
+      "status": 403,
+      "success": false,
+      "result": null,
+      "errors": [
+        {
+          "code": 10000,
+          "message": "Authentication error",
+          "documentation_url": "https://developers.cloudflare.com/api/resources/rulesets/subresources/phases/methods/get"
+        }
+      ]
+    },
+    {
+      "path": "/bot_management",
+      "status": 403,
+      "success": false,
+      "result": null,
+      "errors": [
+        {
+          "code": 10000,
+          "message": "Authentication error",
+          "documentation_url": "https://developers.cloudflare.com/api/resources/bot_management/methods/get"
+        }
+      ]
+    }
+  ],
+  "zoneLookup": {
+    "status": 200,
+    "success": true,
+    "errors": []
+  },
+  "zone": {
+    "id": "d491ee30b7a87a6c37e6a4dacf00ae8d",
+    "name": "ball46.com"
+  },
+  "active": [
+    {
+      "version_id": "bf5f0cbc-54eb-4a15-b50f-5d898e2dd56d",
+      "percentage": 100
+    }
+  ],
+  "publicHealth": {
+    "code": "CLOUDFLARE_CHALLENGE",
+    "path": "/api/engine/health",
+    "status": 403,
+    "contentType": "text/html; charset=UTF-8",
+    "cfMitigated": "challenge",
+    "cfRay": "a588a5341de2d240-ORD"
+  }
+}
