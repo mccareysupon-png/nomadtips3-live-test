@@ -1,0 +1,24 @@
+name: Screenshot BALL46 Full Market Lazy Preview 20261110
+on:
+  push:
+    branches: [test/ball46-fullmarket-lazy-ui-20261110]
+    paths: ['fullmarket-lazy-preview-20261110/SCREENSHOT_READY']
+permissions: {contents: read}
+jobs:
+  screenshot:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: test/ball46-fullmarket-lazy-ui-20261110}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+      - run: npx playwright install --with-deps chromium
+      - run: node fullmarket-lazy-preview-20261110/screenshot.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ball46-fullmarket-lazy-preview-screenshots
+          path: |
+            fullmarket-lazy-preview-20261110/01-card-bookmakers-only.png
+            fullmarket-lazy-preview-20261110/02-card-bookmaker-prices.png
