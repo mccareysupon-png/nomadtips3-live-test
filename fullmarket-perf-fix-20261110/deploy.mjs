@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
+
 const SCRIPT='ball46-production';
 const account=process.env.CLOUDFLARE_ACCOUNT_ID;
 const token=process.env.CLOUDFLARE_API_TOKEN;
 const root=`https://api.cloudflare.com/client/v4/accounts/${account}/workers`;
 const delay=ms=>new Promise(r=>setTimeout(r,ms));
 const canon=v=>JSON.stringify(v,(k,e)=>k==='annotations'?undefined:(e&&typeof e==='object'&&!Array.isArray(e)?Object.fromEntries(Object.entries(e).sort(([a],[b])=>a.localeCompare(b))):e));
+
 async function api(path,options={}){
   assert(account&&token,'CLOUDFLARE_AUTH_MISSING');
   const r=await fetch(root+path,{...options,headers:{Authorization:`Bearer ${token}`,...(options.headers||{})},signal:AbortSignal.timeout(60000)});
@@ -31,28 +33,13 @@ function typeFor(m,main){
   if(m.name.endsWith('.html'))return 'text/html';
   return 'application/octet-stream';
 }
-let base=null,candidate=null,activated=false;
-try{
-  base=await active();
-  const current=await version(base);
-  const settingsBefore=await settings();
-  const schedulesBefore=await schedules();
 
-  const needle='function inspectFixture(f){const books=extractBooks(f),byBook=new Map();for(const b of books)byBook.set(b.slug,b.data?collectMarkets(b.data):new Map());return{books,byBook,found:books.filter(b=>b.found).map(b=>b.slug),markets:[...new Set([...byBook.values()].flatMap(m=>[...m.keys()]))]}}';
-  const renderNeedle="function renderBookHtml(f,slug='bet365'){const info=inspectFixture(f),";
-  const renderCallNeedle='panel.innerHTML=renderBookHtml(fixture,active);';
-  const marker='B46_FULLMARKET_INSPECT_CACHE_20261110';
+const sourceInspect="function inspectFixture(f){const books=extractBooks(f),byBook=new Map();for(const b of books)byBook.set(b.slug,b.data?collectMarkets(b.data):new Map());return{books,byBook,found:books.filter(b=>b.found).map(b=>b.slug),markets:[...new Set([...byBook.values()].flatMap(m=>[...m.keys()]))]}}";
+const sourceRender="function renderBookHtml(f,slug='bet365'){const info=inspectFixture(f),";
+const sourceCall="panel.innerHTML=renderBookHtml(fixture,active);";
+const perfMarker='B46_FULLMARKET_INSPECT_CACHE_20261110';
 
-  const candidates=(current.modules||[]).filter(m=>{
-    const t=Buffer.from(m.content_base64||'','base64').toString('utf8');
-    return t.includes(needle)&&t.includes(renderNeedle)&&t.includes(renderCallNeedle);
-  });
-  assert.equal(candidates.length,1,'FULLMARKET_TARGET_NOT_UNIQUE:'+candidates.map(x=>x.name).join(','));
-  const target=candidates[0];
-  const src=Buffer.from(target.content_base64,'base64').toString('utf8');
-  assert(!src.includes(marker),'PATCH_ALREADY_PRESENT');
-
-  const inspectPatch=`const inspectFixtureCache=new WeakMap();/* ${marker} */
+const sourceInspectPatched=`const inspectFixtureCache=new WeakMap();/* ${perfMarker} */
 function inspectFixture(f){
   if(f&&typeof f==='object'){const cached=inspectFixtureCache.get(f);if(cached)return cached}
   const books=extractBooks(f),byBook=new Map();
@@ -62,18 +49,63 @@ function inspectFixture(f){
   return out
 }`;
 
-  let patched=src.replace(needle,inspectPatch);
-  patched=patched.replace(renderNeedle,"function renderBookHtml(f,slug='bet365',prepared=null){const info=prepared||inspectFixture(f),");
-  patched=patched.replace(renderCallNeedle,'panel.innerHTML=renderBookHtml(fixture,active,info);');
+async function probePublic(expectPatched=false){
+  const r=await fetch('https://ball46.com/full-market-bookmaker-343.js?perfqa='+Date.now(),{headers:{'cache-control':'no-cache'},signal:AbortSignal.timeout(45000)});
+  const t=await r.text();
+  assert(r.ok,'PUBLIC_FULLMARKET_HTTP_'+r.status);
+  if(expectPatched){
+    assert(t.includes(perfMarker),'PUBLIC_PATCH_MARKER_MISSING');
+    assert(t.includes("function renderBookHtml(f,slug='bet365',prepared=null){const info=prepared||inspectFixture(f),"),'PUBLIC_PREPARED_RENDERER_MISSING');
+    assert(t.includes('panel.innerHTML=renderBookHtml(fixture,active,info);'),'PUBLIC_PREPARED_CALL_MISSING');
+    assert(t.includes("if(!host)return"),'PUBLIC_CLOSED_GUARD_MISSING');
+    assert(t.includes("networkMode:'NONE'"),'PUBLIC_NETWORK_MODE_CHANGED');
+  }else{
+    assert(t.includes(sourceInspect),'PUBLIC_INSPECT_PATTERN_DRIFT');
+    assert(t.includes(sourceRender),'PUBLIC_RENDER_PATTERN_DRIFT');
+    assert(t.includes(sourceCall),'PUBLIC_RENDER_CALL_PATTERN_DRIFT');
+    assert(!t.includes(perfMarker),'PUBLIC_ALREADY_PATCHED');
+  }
+  return t;
+}
 
-  assert(patched.includes(marker),'MARKER_MISSING');
-  assert.equal((patched.match(/B46_FULLMARKET_INSPECT_CACHE_20261110/g)||[]).length,1,'MARKER_COUNT_BAD');
-  assert(!patched.includes(needle),'OLD_INSPECT_REMAINS');
-  assert(!patched.includes(renderCallNeedle),'OLD_RENDER_CALL_REMAINS');
-  assert(patched.includes("function renderBookHtml(f,slug='bet365',prepared=null){const info=prepared||inspectFixture(f),"),'PREPARED_RENDERER_MISSING');
-  assert(patched.includes('panel.innerHTML=renderBookHtml(fixture,active,info);'),'PREPARED_RENDER_CALL_MISSING');
-  assert(patched.includes("if(!host)return"),'FULLMARKET_CLOSED_GUARD_MISSING');
-  assert(patched.includes("networkMode:'NONE'"),'BULK_ONLY_MODE_MISSING');
+let base=null,candidate=null,activated=false;
+try{
+  await probePublic(false);
+
+  base=await active();
+  const current=await version(base);
+  const settingsBefore=await settings();
+  const schedulesBefore=await schedules();
+
+  const main=current.modules.find(m=>m.name===current.main_module)||current.modules.find(m=>m.name==='index.js');
+  assert(main,'MAIN_MODULE_MISSING');
+  const src=Buffer.from(main.content_base64,'base64').toString('utf8');
+
+  const routeAnchor="if (request.method === \"GET\" && url.pathname === \"/full-market-bookmaker-343.js\") return __b46BetssonBookmakerAsset(request, env);";
+  const fnAnchor="async function __b46BetssonBookmakerAsset(request,env){";
+  const injectAnchor="  addMap('BOOK_LOGO_URLS',__B46_BETSSON_LOGO__);";
+  assert(src.includes(routeAnchor),'FULLMARKET_ROUTE_ANCHOR_MISSING');
+  assert(src.includes(fnAnchor),'FULLMARKET_ASSET_FUNCTION_MISSING');
+  assert(src.includes(injectAnchor),'FULLMARKET_TRANSFORM_ANCHOR_MISSING');
+  assert(!src.includes(perfMarker),'PATCH_ALREADY_PRESENT');
+
+  const injection=`
+  /* ${perfMarker}: browser-side Full Market performance patch.
+     Preserve all data, bookmaker tabs and network behavior; remove duplicate market parsing only. */
+  if(!source.includes(${JSON.stringify(sourceInspect)}))throw new Error('B46_FULLMARKET_INSPECT_PATTERN_DRIFT');
+  if(!source.includes(${JSON.stringify(sourceRender)}))throw new Error('B46_FULLMARKET_RENDER_PATTERN_DRIFT');
+  if(!source.includes(${JSON.stringify(sourceCall)}))throw new Error('B46_FULLMARKET_RENDER_CALL_PATTERN_DRIFT');
+  source=source.replace(${JSON.stringify(sourceInspect)},${JSON.stringify(sourceInspectPatched)});
+  source=source.replace(${JSON.stringify(sourceRender)},${JSON.stringify("function renderBookHtml(f,slug='bet365',prepared=null){const info=prepared||inspectFixture(f),")});
+  source=source.replace(${JSON.stringify(sourceCall)},${JSON.stringify("panel.innerHTML=renderBookHtml(fixture,active,info);")});
+  if(!source.includes(${JSON.stringify(perfMarker)}))throw new Error('B46_FULLMARKET_PERF_PATCH_FAILED');
+`;
+
+  const patched=src.replace(injectAnchor,injectAnchor+injection);
+  assert(patched.includes(perfMarker),'MAIN_PATCH_MARKER_MISSING');
+  assert.equal((patched.match(/B46_FULLMARKET_INSPECT_CACHE_20261110/g)||[]).length>=1,true,'MAIN_MARKER_COUNT_BAD');
+  assert(patched.includes(routeAnchor),'ROUTE_CHANGED');
+  assert(patched.includes(fnAnchor),'ASSET_FUNCTION_CHANGED');
 
   assert.equal(await active(),base,'PRODUCTION_MOVED_BEFORE_UPLOAD');
 
@@ -84,21 +116,21 @@ function inspectFixture(f){
     bindings:current.bindings,
     keep_assets:true,
     assets:{config:current.assets?.config},
-    annotations:{'workers/tag':'B46_FULLMARKET_PERF_20261110','workers/message':'Full Market: cache parsed fixture markets; avoid duplicate inspect/render parse'}
+    annotations:{'workers/tag':'B46_FULLMARKET_PERF_20261110','workers/message':'Full Market performance: reuse parsed fixture markets; avoid duplicate inspect pass'}
   };
   if(current.placement)metadata.placement=current.placement;
 
   const form=new FormData();
   form.append('metadata',new Blob([JSON.stringify(metadata)],{type:'application/json'}),'metadata.json');
   for(const m of current.modules){
-    const bytes=m.name===target.name?Buffer.from(patched):Buffer.from(m.content_base64,'base64');
+    const bytes=m.name===main.name?Buffer.from(patched):Buffer.from(m.content_base64,'base64');
     form.append(m.name,new Blob([bytes],{type:typeFor(m,current.main_module)}),m.name);
   }
 
   const uploaded=await api(`/scripts/${SCRIPT}/versions`,{method:'POST',body:form});
-  candidate=uploaded?.id; assert(candidate,'CANDIDATE_ID_MISSING');
-  const cv=await version(candidate);
+  candidate=uploaded?.id;assert(candidate,'CANDIDATE_ID_MISSING');
 
+  const cv=await version(candidate);
   assert.equal(canon(cv.bindings),canon(current.bindings),'BINDINGS_CHANGED');
   assert.equal(cv.modules.length,current.modules.length,'MODULE_COUNT_CHANGED');
 
@@ -106,8 +138,10 @@ function inspectFixture(f){
   for(const m of current.modules){
     const cm=cv.modules.find(x=>x.name===m.name);assert(cm,`MODULE_MISSING:${m.name}`);
     const got=Buffer.from(cm.content_base64,'base64').toString('base64');
-    if(m.name===target.name){
-      assert(Buffer.from(cm.content_base64,'base64').toString('utf8').includes(marker),'CANDIDATE_PATCH_MISSING');
+    if(m.name===main.name){
+      const txt=Buffer.from(cm.content_base64,'base64').toString('utf8');
+      assert(txt.includes(perfMarker),'CANDIDATE_PATCH_MISSING');
+      assert(txt.includes(routeAnchor),'CANDIDATE_ROUTE_MISSING');
       if(got!==m.content_base64)changed++;
     }else{
       assert.equal(got,m.content_base64,`UNRELATED_MODULE_CHANGED:${m.name}`);
@@ -124,21 +158,21 @@ function inspectFixture(f){
   for(let i=0;i<25;i++){if(await active()===candidate)break;await delay(1000)}
   assert.equal(await active(),candidate,'CANDIDATE_NOT_ACTIVE');
 
+  await probePublic(true);
+
   const final=await version(candidate);
-  const fm=final.modules.find(m=>m.name===target.name);
+  const fm=final.modules.find(m=>m.name===main.name);
   const ft=Buffer.from(fm.content_base64,'base64').toString('utf8');
-  assert(ft.includes(marker),'ACTIVE_PATCH_MISSING');
-  assert(ft.includes("function renderBookHtml(f,slug='bet365',prepared=null){const info=prepared||inspectFixture(f),"),'ACTIVE_PREPARED_RENDERER_MISSING');
-  assert(ft.includes('panel.innerHTML=renderBookHtml(fixture,active,info);'),'ACTIVE_PREPARED_CALL_MISSING');
-  assert(ft.includes("if(!host)return"),'ACTIVE_CLOSED_GUARD_MISSING');
-  assert(ft.includes("networkMode:'NONE'"),'ACTIVE_BULK_ONLY_MODE_MISSING');
+  assert(ft.includes(perfMarker),'ACTIVE_MAIN_PATCH_MISSING');
+  assert(ft.includes(routeAnchor),'ACTIVE_ROUTE_MISSING');
   assert.equal(canon(await settings()),canon(settingsBefore),'SETTINGS_CHANGED');
   assert.equal(canon(await schedules()),canon(schedulesBefore),'SCHEDULES_CHANGED');
 
   console.log('BASE_VERSION='+base);
-  console.log('TARGET_MODULE='+target.name);
+  console.log('TARGET_MODULE='+main.name);
   console.log('FINAL_PRODUCTION='+candidate);
   console.log('CHANGED_MODULES=1');
+  console.log('PUBLIC_FULLMARKET_PATCHED=1');
   console.log('INSPECT_CACHE=1');
   console.log('DUPLICATE_INSPECT_REMOVED=1');
   console.log('CLOSED_GUARD_PRESERVED=1');
