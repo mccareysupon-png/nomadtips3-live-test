@@ -67,6 +67,8 @@ const DESIRED_OLD="  const desiredRows=[...template.content.querySelectorAll('[d
 const DESIRED_NEW="  const desiredRows=[...template.content.querySelectorAll('[data-match-id]')];desiredRows.forEach(b46PinPaint);";
 const BIND_OLD="function bindStableMatchRow(el){prepareLiveDisplayClock(el);if(!el||el.dataset.b46StableBound==='1')return;el.dataset.b46StableBound='1';const choose=()=>{selectedId=el.dataset.matchId;renderBoard();renderFeatured()};el.addEventListener('click',choose);el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();choose()}})}";
 const BIND_NEW="function bindStableMatchRow(el){prepareLiveDisplayClock(el);if(!el)return;b46PinPaint(el);if(el.dataset.b46StableBound==='1')return;el.dataset.b46StableBound='1';const choose=e=>{if(e?.target?.closest?.('[data-b46-pin-v2]'))return;selectedId=el.dataset.matchId;renderBoard();renderFeatured()};el.addEventListener('click',choose);el.addEventListener('keydown',e=>{if(e.target?.closest?.('[data-b46-pin-v2]'))return;if(e.key==='Enter'||e.key===' '){e.preventDefault();choose(e)}})}";
+const BIND_OLD_FALLBACK="function bindStableMatchRow(el){if(!el||el.dataset.b46StableBound==='1')return;el.dataset.b46StableBound='1';const choose=()=>{selectedId=el.dataset.matchId;renderBoard();renderFeatured()};el.addEventListener('click',choose);el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();choose()}})}";
+const BIND_NEW_FALLBACK="function bindStableMatchRow(el){if(!el)return;b46PinPaint(el);if(el.dataset.b46StableBound==='1')return;el.dataset.b46StableBound='1';const choose=e=>{if(e?.target?.closest?.('[data-b46-pin-v2]'))return;selectedId=el.dataset.matchId;renderBoard();renderFeatured()};el.addEventListener('click',choose);el.addEventListener('keydown',e=>{if(e.target?.closest?.('[data-b46-pin-v2]'))return;if(e.key==='Enter'||e.key===' '){e.preventDefault();choose(e)}})}";
 
 function patchDash(src,escaped=false){
   if(src.includes('B46_PIN_V2_FRESH_20261111'))return src;
@@ -75,7 +77,7 @@ function patchDash(src,escaped=false){
   src=one(src,x(RENDER_OLD),x(RENDER_NEW),'PIN_RENDER');
   src=one(src,x(NORMAL_OLD),x(NORMAL_NEW),'PIN_NORMAL');
   src=one(src,x(DESIRED_OLD),x(DESIRED_NEW),'PIN_DESIRED');
-  src=one(src,x(BIND_OLD),x(BIND_NEW),'PIN_BIND');
+  src=one(src,x(escaped?BIND_OLD_FALLBACK:BIND_OLD),x(escaped?BIND_NEW_FALLBACK:BIND_NEW),'PIN_BIND');
   return src;
 }
 
