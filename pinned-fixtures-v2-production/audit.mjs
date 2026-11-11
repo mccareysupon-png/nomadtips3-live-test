@@ -69,6 +69,13 @@ for(const needle of [
   const i=mainText.indexOf(needle);
   if(i>=0)console.log('ROUTE_CONTEXT='+JSON.stringify({needle,context:mainText.slice(Math.max(0,i-1800),Math.min(mainText.length,i+5200))}));
 }
+for(const needle of ['screen-refresh-5s-20261104.txt','__b46V13PristineIndex']){
+  let from=0,n=0;
+  while((from=mainText.indexOf(needle,from))>=0&&n<8){
+    console.log('ALIAS_CONTEXT='+JSON.stringify({needle,n,context:mainText.slice(Math.max(0,from-900),Math.min(mainText.length,from+2600))}));
+    from+=needle.length;n++;
+  }
+}
 for(const marker of [
   'B46_FULLMARKET_DARK10_YELLOW_DOT_20261111',
   'B46_FULLMARKET_COMPACT_LAZY_ONDEMAND_20261111',
