@@ -6,7 +6,7 @@
 (()=> {
   'use strict';
   const PREVIEW='B46_FULLMARKET_COMPACT_LAZY_UI_PREVIEW_20261111';
-  const HEADING='Select a bookmaker to view prices.';
+  const HEADING='Select a bookmaker to view the latest odds.';
 
   function setCollapsed(host,panel,buttons){
     host.dataset.b46LazyBook='';
