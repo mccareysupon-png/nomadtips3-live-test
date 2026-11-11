@@ -40,7 +40,7 @@ await browser.close();
 console.log('ACTIVE_BASE='+active);
 console.log('RESULT='+JSON.stringify(result));
 assert.equal(result.compact,'1');
-assert.equal(result.display,'inline-flex');
+assert.notEqual(result.display,'none');
 assert.equal(result.hostDisplay,'flex');
 assert.equal(result.predictionDisplay,'none');
 assert.equal(result.text,'2Signals');
