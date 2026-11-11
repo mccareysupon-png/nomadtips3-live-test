@@ -52,14 +52,14 @@ const oldChoose="function chooseBook(button){const expanded=button.closest('.mat
 const newChoose="function chooseBook(button){const expanded=button.closest('.match-expanded'),fixture=expanded?._nomadFixture;if(!expanded||!fixture)return;const id=fixtureId(fixture),saved=state.get(id)||{},clicked=String(button.dataset.fmbBook||''),slug=saved.active===clicked?'':clicked;state.set(id,{...saved,active:slug});const host=expanded.querySelector('[data-full-market-card]');if(host)host.dataset.panelSig='';update(expanded,fixture)}";
 
 const patchBlock=
-"\n  /* B46_FULLMARKET_COMPACT_LAZY_ONDEMAND_20261111: tested compact Full Market UI.\\n"+
-"     Instruction moves into the heading; lower panel has no box until a bookmaker is selected.\\n"+
-"     Reuses existing bulk snapshot only; no added API request. */\\n"+
-"  if(!source.includes("+JSON.stringify(oldUpdate)+"))throw new Error('B46_COMPACT_UPDATE_PATTERN_DRIFT');\\n"+
-"  if(!source.includes("+JSON.stringify(oldChoose)+"))throw new Error('B46_COMPACT_CHOOSE_PATTERN_DRIFT');\\n"+
-"  source=source.replace("+JSON.stringify(oldUpdate)+","+JSON.stringify(newUpdate)+");\\n"+
-"  source=source.replace("+JSON.stringify(oldChoose)+","+JSON.stringify(newChoose)+");\\n"+
-"  source='/* B46_FULLMARKET_COMPACT_LAZY_ONDEMAND_20261111 */\\\\n'+source;\\n";
+"\n  /* B46_FULLMARKET_COMPACT_LAZY_ONDEMAND_20261111: tested compact Full Market UI.\n"+
+"     Instruction moves into the heading; lower panel has no box until a bookmaker is selected.\n"+
+"     Reuses existing bulk snapshot only; no added API request. */\n"+
+"  if(!source.includes("+JSON.stringify(oldUpdate)+"))throw new Error('B46_COMPACT_UPDATE_PATTERN_DRIFT');\n"+
+"  if(!source.includes("+JSON.stringify(oldChoose)+"))throw new Error('B46_COMPACT_CHOOSE_PATTERN_DRIFT');\n"+
+"  source=source.replace("+JSON.stringify(oldUpdate)+","+JSON.stringify(newUpdate)+");\n"+
+"  source=source.replace("+JSON.stringify(oldChoose)+","+JSON.stringify(newChoose)+");\n"+
+"  source='/* B46_FULLMARKET_COMPACT_LAZY_ONDEMAND_20261111 */\\n'+source;\n";
 
 async function publicCheck(expectCompact){
   let last='';
