@@ -102,15 +102,15 @@ try{
 
     // Measure left-center position and keep the control below modal overlays.
     {
-      const sample=cards.nth(1),star=sample.locator('[data-b46-pin-mobile]'),name=sample.locator('.b46gn-team-name').first();
-      const [cb,sb,nb]=await Promise.all([sample.boundingBox(),star.boundingBox(),name.boundingBox()]);
-      if(!cb||!sb||!nb)throw new Error('STRESS_MOBILE_POSITION_BOX_MISSING');
-      const cardCy=cb.y+cb.height/2,starCy=sb.y+sb.height/2;
-      if(Math.abs(cardCy-starCy)>3)throw new Error('STRESS_MOBILE_STAR_NOT_CENTERED_'+JSON.stringify({cardCy,starCy}));
-      if(sb.x<cb.x||sb.x+sb.width>nb.x-8)throw new Error('STRESS_MOBILE_STAR_OVERLAP_'+JSON.stringify({card:cb,star:sb,name:nb}));
-      const z=Number(await star.evaluate(el=>getComputedStyle(el).zIndex)||0);
-      if(z>1)throw new Error('STRESS_MOBILE_STAR_Z_'+z);
-      console.log('POSITION_MOBILE_PASS=1 '+JSON.stringify({cardCenter:cardCy,starCenter:starCy,gap:nb.x-(sb.x+sb.width),z}));
+      const sample=cards.nth(1),body=sample.locator('.b46gn-cardbody'),star=sample.locator('[data-b46-pin-mobile]'),kit=sample.locator('.b46gn-team img').first();
+      const [bb,sb,kb]=await Promise.all([body.boundingBox(),star.boundingBox(),kit.boundingBox()]);
+      if(!bb||!sb||!kb)throw new Error('STRESS_MOBILE_POSITION_BOX_MISSING');
+      const bodyCy=bb.y+bb.height/2,starCy=sb.y+sb.height/2;
+      if(Math.abs(bodyCy-starCy)>3)throw new Error('STRESS_MOBILE_STAR_NOT_BODY_CENTERED_'+JSON.stringify({bodyCy,starCy}));
+      if(sb.x<bb.x||sb.x+sb.width>kb.x-4)throw new Error('STRESS_MOBILE_STAR_ICON_OVERLAP_'+JSON.stringify({body:bb,star:sb,kit:kb}));
+      const z=await star.evaluate(el=>getComputedStyle(el).zIndex);
+      if(z!=='auto')throw new Error('STRESS_MOBILE_STAR_Z_'+z);
+      console.log('POSITION_MOBILE_PASS=1 '+JSON.stringify({bodyCenter:bodyCy,starCenter:starCy,gap:kb.x-(sb.x+sb.width),z}));
     }
 
     for(const id of [ids[7],ids[4],ids[1]]){
