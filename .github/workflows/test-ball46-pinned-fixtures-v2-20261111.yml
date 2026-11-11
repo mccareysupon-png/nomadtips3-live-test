@@ -72,6 +72,21 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - name: Run fresh V2 browser tests
         run: node pinned-fixtures-v2/test.mjs
+      - name: Build stress harness from the same fresh V2 patcher
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          src=Path('pinned-fixtures-v2/test.mjs').read_text()
+          marker="const browser=await chromium.launch({headless:true});"
+          assert marker in src
+          prefix=src.split(marker,1)[0]
+          tail=Path('pinned-fixtures-v2/stress-tail.mjs').read_text()
+          Path('pinned-fixtures-v2/stress.mjs').write_text(prefix+tail)
+          PY
+          node --check pinned-fixtures-v2/stress.mjs
+          ! grep -q "ball46_favorites_v1" pinned-fixtures-v2/stress.mjs
+      - name: Run expanded and multi-pin stress tests
+        run: node pinned-fixtures-v2/stress.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
