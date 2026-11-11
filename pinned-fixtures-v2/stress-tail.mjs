@@ -31,17 +31,23 @@ try{
     const pinnedBox=await page.locator('.match-row[data-match-id="'+expected[0]+'"]').boundingBox();
     if(Math.abs(pinnedBox.width-baseBox.width)>2||Math.abs(pinnedBox.height-baseBox.height)>2)throw new Error('STRESS_DESKTOP_GEOMETRY');
 
-    // Reload persistence.
+    // Reload persistence. Live fixture ordering may legitimately change during reload,
+    // so verify stored pin state + visible pinned priority instead of frozen fixture positions.
     await page.reload({waitUntil:'domcontentloaded',timeout:90000});
     await page.waitForFunction(()=>window.BALL46_PIN_V2_TEST?.getIds?.().length===3,null,{timeout:90000});
     await page.waitForSelector('[data-board-sections] .match-row[data-match-id]',{state:'visible',timeout:90000});
     await page.waitForTimeout(300);
     rows=page.locator('[data-board-sections] .match-row[data-match-id]');
-    const reloadTop=await rows.evaluateAll(ns=>ns.slice(0,3).map(n=>n.dataset.matchId));
-    if(JSON.stringify(reloadTop)!==JSON.stringify(expected))throw new Error('STRESS_DESKTOP_RELOAD_ORDER_'+JSON.stringify({reloadTop,expected}));
+    const storedAfter=await page.evaluate(()=>window.BALL46_PIN_V2_TEST.getIds());
+    for(const id of expected){if(!storedAfter.includes(id))throw new Error('STRESS_DESKTOP_RELOAD_STORAGE_'+id)}
+    const visibleIds=await rows.evaluateAll(ns=>ns.map(n=>n.dataset.matchId));
+    const visiblePinned=await page.locator('.b46-pin-v2-section .match-row[data-match-id]').evaluateAll(ns=>ns.map(n=>n.dataset.matchId));
+    const survivingStored=visibleIds.filter(id=>storedAfter.includes(id));
+    if(!visiblePinned.length)throw new Error('STRESS_DESKTOP_RELOAD_NO_VISIBLE_PINNED');
+    if(JSON.stringify(visiblePinned)!==JSON.stringify(survivingStored))throw new Error('STRESS_DESKTOP_RELOAD_PRIORITY_'+JSON.stringify({visiblePinned,survivingStored,storedAfter}));
 
-    // Open one pinned card, verify Event Flow + Full Market stay attached.
-    const openId=expected[0];
+    // Open one currently visible pinned card, verify Event Flow + Full Market stay attached.
+    const openId=visiblePinned[0];
     await page.locator('.match-row[data-match-id="'+openId+'"]').evaluate(el=>el.click());
     const expanded=page.locator('.match-expanded[data-expanded-match]').last();
     await expanded.waitFor({state:'attached',timeout:15000});
@@ -50,7 +56,8 @@ try{
     await expanded.locator('.expand-flow-card').waitFor({state:'attached',timeout:15000});
     const topBeforeExtra=await rows.first().getAttribute('data-match-id');
 
-    const extraId=ids[8];
+    const extraId=visibleIds.find(id=>!storedAfter.includes(id));
+    if(!extraId)throw new Error('STRESS_NO_UNPINNED_EXTRA');
     const extraStar=page.locator('.match-row[data-match-id="'+extraId+'"] [data-b46-pin-v2]');
     await extraStar.click({force:true});
     await page.waitForTimeout(250);
