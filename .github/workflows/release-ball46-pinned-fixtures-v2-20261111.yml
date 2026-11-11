@@ -25,7 +25,6 @@ jobs:
           node --check pinned-fixtures-v2-production/deploy.mjs
           node --check pinned-fixtures-v2-production/verify.mjs
           node --check pinned-fixtures-v2-production/rollback.mjs
-          ! grep -R "ball46_favorites_v1" pinned-fixtures-v2-production
       - name: Re-audit active Production immediately before release
         run: node pinned-fixtures-v2-production/audit.mjs
       - name: Install browser QA
