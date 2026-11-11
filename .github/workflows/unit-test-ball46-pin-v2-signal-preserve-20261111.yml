@@ -1,0 +1,20 @@
+name: Unit Test BALL46 Pin V2 Signal Preserve 20261111
+on:
+  push:
+    branches: [test/ball46-pin-v2-signal-preserve-20261111]
+    paths: ['pinned-fixtures-v2-production/SIGNAL_UNIT_TEST_READY']
+permissions: {contents: read}
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: test/ball46-pin-v2-signal-preserve-20261111}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: npm install --no-save --package-lock=false jsdom@27.0.1
+      - run: node pinned-fixtures-v2-production/signal-preserve-unit-test.mjs
