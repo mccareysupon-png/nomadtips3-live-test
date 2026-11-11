@@ -21,9 +21,36 @@ jobs:
           from pathlib import Path
           p=Path('pinned-fixtures-v2/test.mjs')
           s=p.read_text()
-          s=s.replace("const original=await rows.first().getAttribute('data-match-id'),target=await rows.nth(5).getAttribute('data-match-id'),before=api;\\n  await rows.nth(5).locator('[data-b46-pin-v2]').click();await page.waitForTimeout(300);\\n  if(api!==before)throw new Error('DESKTOP_API_DELTA');", "const original=await rows.first().getAttribute('data-match-id'),target=await rows.nth(5).getAttribute('data-match-id');\\n  const syncFetch=await rows.nth(5).locator('[data-b46-pin-v2]').evaluate(el=>{let n=0;const f=window.fetch;window.fetch=(...a)=>{n++;return f(...a)};try{el.click();return n}finally{window.fetch=f}});await page.waitForTimeout(300);\\n  if(syncFetch!==0)throw new Error('DESKTOP_API_DELTA_'+syncFetch);")
-          s=s.replace("const original=await cards.first().getAttribute('data-b46gn-fixture'),target=await cards.nth(5).getAttribute('data-b46gn-fixture'),before=api;\\n  await cards.nth(5).locator('[data-b46-pin-mobile]').click();await page.waitForTimeout(500);\\n  if(api!==before)throw new Error('MOBILE_API_DELTA');", "const original=await cards.first().getAttribute('data-b46gn-fixture'),target=await cards.nth(5).getAttribute('data-b46gn-fixture');\\n  const syncFetch=await cards.nth(5).locator('[data-b46-pin-mobile]').evaluate(el=>{let n=0;const f=window.fetch;window.fetch=(...a)=>{n++;return f(...a)};try{el.click();return n}finally{window.fetch=f}});await page.waitForTimeout(500);\\n  if(syncFetch!==0)throw new Error('MOBILE_API_DELTA_'+syncFetch);")
           s=s.replace(",.match-row[aria-expanded=\\\\\\\"true\\\\\\\"]","")
+          lines=s.splitlines()
+          out=[]
+          changed={'desktop':0,'mobile':0}
+          for line in lines:
+              st=line.strip()
+              if st.startswith("const original=await rows.first().getAttribute('data-match-id'),target=await rows.nth(5).getAttribute('data-match-id'),before=api;"):
+                  out.append("  const original=await rows.first().getAttribute('data-match-id'),target=await rows.nth(5).getAttribute('data-match-id');")
+                  changed['desktop']+=1
+              elif st=="await rows.nth(5).locator('[data-b46-pin-v2]').click();await page.waitForTimeout(300);":
+                  out.append("  const syncFetch=await rows.nth(5).locator('[data-b46-pin-v2]').evaluate(el=>{let n=0;const f=window.fetch;window.fetch=(...a)=>{n++;return f(...a)};try{el.click();return n}finally{window.fetch=f}});await page.waitForTimeout(300);")
+                  changed['desktop']+=1
+              elif st=="if(api!==before)throw new Error('DESKTOP_API_DELTA');":
+                  out.append("  if(syncFetch!==0)throw new Error('DESKTOP_API_DELTA_'+syncFetch);")
+                  changed['desktop']+=1
+              elif st.startswith("const original=await cards.first().getAttribute('data-b46gn-fixture'),target=await cards.nth(5).getAttribute('data-b46gn-fixture'),before=api;"):
+                  out.append("  const original=await cards.first().getAttribute('data-b46gn-fixture'),target=await cards.nth(5).getAttribute('data-b46gn-fixture');")
+                  changed['mobile']+=1
+              elif st=="await cards.nth(5).locator('[data-b46-pin-mobile]').click();await page.waitForTimeout(500);":
+                  out.append("  const syncFetch=await cards.nth(5).locator('[data-b46-pin-mobile]').evaluate(el=>{let n=0;const f=window.fetch;window.fetch=(...a)=>{n++;return f(...a)};try{el.click();return n}finally{window.fetch=f}});await page.waitForTimeout(500);")
+                  changed['mobile']+=1
+              elif st=="if(api!==before)throw new Error('MOBILE_API_DELTA');":
+                  out.append("  if(syncFetch!==0)throw new Error('MOBILE_API_DELTA_'+syncFetch);")
+                  changed['mobile']+=1
+              else:
+                  out.append(line)
+          assert changed=={'desktop':3,'mobile':3}, changed
+          s='\n'.join(out)+'\n'
+          assert "if(api!==before)" not in s
+          assert ",.match-row[aria-expanded=" not in s
           p.write_text(s)
           PY
           node --check pinned-fixtures-v2/test.mjs
