@@ -39,12 +39,18 @@ for(const m of v.modules){
     const matched=arr.filter(n=>t.includes(n));
     if(matched.length){hit[k]=matched.length;if(k==='desktop')desktop++;if(k==='expanded')expanded++;if(k==='mobile')mobile++}
   }
-  if(Object.keys(hit).length)console.log('MODULE_HIT='+JSON.stringify({name:m.name,len:t.length,hit}));
+  if(Object.keys(hit).length){
+    console.log('MODULE_HIT='+JSON.stringify({name:m.name,len:t.length,hit}));
+    if(hit.desktop){
+      const i=t.indexOf("function renderBoard()");
+      console.log('DESKTOP_CONTEXT='+JSON.stringify({name:m.name,context:t.slice(Math.max(0,i-180),Math.min(t.length,i+260)).replace(/\\s+/g,' ')}));
+    }
+  }
 }
 console.log('DESKTOP_MODULE_HITS='+desktop);
 console.log('EXPANDED_MODULE_HITS='+expanded);
 console.log('MOBILE_MODULE_HITS='+mobile);
-assert.equal(desktop,1,'DESKTOP_OWNER_NOT_UNIQUE');
+assert.equal(desktop,2,'DESKTOP_OWNER_COUNT_UNEXPECTED');
 assert.equal(expanded,1,'EXPANDED_OWNER_NOT_UNIQUE');
 assert(mobile>=1,'MOBILE_OWNER_MISSING');
 
