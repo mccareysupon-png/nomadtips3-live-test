@@ -78,6 +78,16 @@ jobs:
           assert "padding-left:32px!important" in s
           assert "left:6px;right:auto;top:50%;transform:translateY(-50%)" in s
           assert "z-index:1;left:12px;right:auto;top:50%;transform:translateY(-50%)" in s
+          # Mobile star belongs to the two-team body, not the whole card/header.
+          append_old="c.appendChild(s)"
+          append_new="(c.querySelector('.b46gn-cardbody')||c).appendChild(s)"
+          assert s.count(append_old)==1, s.count(append_old)
+          s=s.replace(append_old,append_new)
+          mobile_body_old="#b46gn-cards .b46gn-card{position:relative!important}#b46gn-cards .b46-pin-v2-mobile{position:absolute;z-index:1;left:12px;right:auto;top:50%;transform:translateY(-50%);width:24px;height:24px;"
+          mobile_body_new="#b46gn-cards .b46gn-cardbody{position:relative!important}#b46gn-cards .b46-pin-v2-mobile{position:absolute;z-index:auto;left:8px;right:auto;top:50%;transform:translateY(-50%);width:22px;height:22px;"
+          assert s.count(mobile_body_old)==1, s.count(mobile_body_old)
+          s=s.replace(mobile_body_old,mobile_body_new)
+          assert "z-index:auto;left:8px;right:auto;top:50%;transform:translateY(-50%)" in s
           # Current Expanded Match controller uses document capture. Add a narrow V2 guard there,
           # instead of legacy-style global pointer traps.
           install_anchor="async function install(page){"
