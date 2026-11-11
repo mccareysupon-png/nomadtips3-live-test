@@ -59,6 +59,16 @@ assert(mobile>=1,'MOBILE_OWNER_MISSING');
 const main=v.modules.find(m=>m.name===v.main_module)||v.modules.find(m=>m.name==='index.js');
 assert(main,'MAIN_MISSING');
 const mainText=Buffer.from(main.content_base64,'base64').toString('utf8');
+for(const needle of [
+  'dashboard-v2-stage3-featured-facts-20261013a.js',
+  'expanded-match-343.js',
+  'assets/index.html',
+  "pathname==='/'",
+  'new URL(request.url)'
+]){
+  const i=mainText.indexOf(needle);
+  if(i>=0)console.log('ROUTE_CONTEXT='+JSON.stringify({needle,context:mainText.slice(Math.max(0,i-1800),Math.min(mainText.length,i+5200))}));
+}
 for(const marker of [
   'B46_FULLMARKET_DARK10_YELLOW_DOT_20261111',
   'B46_FULLMARKET_COMPACT_LAZY_ONDEMAND_20261111',
