@@ -76,6 +76,13 @@ for(const needle of ['screen-refresh-5s-20261104.txt','__b46V13PristineIndex']){
     from+=needle.length;n++;
   }
 }
+for(const needle of ['__b46Screen5Script']){
+  let from=0,n=0;
+  while((from=mainText.indexOf(needle,from))>=0&&n<12){
+    console.log('SCREEN_ALIAS_CONTEXT='+JSON.stringify({n,context:mainText.slice(Math.max(0,from-1100),Math.min(mainText.length,from+3200))}));
+    from+=needle.length;n++;
+  }
+}
 for(const marker of [
   'B46_FULLMARKET_DARK10_YELLOW_DOT_20261111',
   'B46_FULLMARKET_COMPACT_LAZY_ONDEMAND_20261111',
