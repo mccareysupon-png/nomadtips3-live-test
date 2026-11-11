@@ -1,0 +1,19 @@
+name: Fast Test Pin V2 Signal Badge Source Patch 20261111
+on:
+  push:
+    branches: [test/ball46-pinned-fixtures-v2-20261111]
+    paths: ['pinned-fixtures-v2/SIGNAL_FIX_FAST_READY']
+permissions: {contents: read}
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: test/ball46-pinned-fixtures-v2-20261111}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: node pinned-fixtures-v2/signal-badge-fast-test.mjs
