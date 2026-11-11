@@ -11,6 +11,8 @@ function patchDash(src){
   assert.equal(n,1,'PINNED_RENDER_ANCHOR_COUNT_'+n);
   const out=src.replace(old,neu);
   assert(out.includes('const pinnedGroups=groupByLeague(pinned)'),'GROUPED_PIN_RENDER_MISSING');
+  try{new Function(out)}catch(e){console.log('PATCH_PARSE_ERROR='+e.message);throw e}
+  console.log('PATCHED_DASH_PASS=1 len='+out.length);
   return out;
 }
 
@@ -19,7 +21,8 @@ async function installPatch(page){
     const req=route.request(),u=new URL(req.url());
     if(u.hostname==='ball46.com'&&u.pathname===DASH&&u.searchParams.get('v')===VERSION){
       const r=await route.fetch();
-      const src=patchDash(await r.text());
+      const raw=await r.text();console.log('DASH_ROUTE_HIT=1 status='+r.status()+' len='+raw.length+' url='+req.url());
+      const src=patchDash(raw);
       return route.fulfill({response:r,body:src,headers:{...r.headers(),'cache-control':'no-store'}});
     }
     return route.continue();
@@ -49,8 +52,11 @@ async function findSignalRow(page){
 async function desktop(browser){
   const ctx=await browser.newContext({viewport:{width:1440,height:1000}});
   const page=await ctx.newPage();await installPatch(page);
-  await page.goto('https://ball46.com/?signal-pin-grouped-test=desktop-'+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
-  await page.waitForFunction(()=>window.BALL46_PIN_V2?.version==='fresh-v2-20261111',null,{timeout:90000});
+  page.on('pageerror',e=>console.log('DESKTOP_PAGEERROR='+e.message));
+  page.on('console',m=>{if(m.type()==='error')console.log('DESKTOP_CONSOLE_ERROR='+m.text())});
+  const nav=await page.goto('https://ball46.com/?signal-pin-grouped-test=desktop-'+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});console.log('DESKTOP_NAV_STATUS='+(nav?.status()||0));
+  for(let i=0;i<40;i++){if(await page.evaluate(()=>window.BALL46_PIN_V2?.version==='fresh-v2-20261111'))break;await page.waitForTimeout(250)}
+  const boot=await page.evaluate(()=>({pin:window.BALL46_PIN_V2?.version||null,scripts:[...document.scripts].map(s=>s.src||s.id).filter(Boolean).slice(-30),body:document.body?.innerText?.slice(0,500)||''}));console.log('DESKTOP_BOOT='+JSON.stringify(boot));assert.equal(boot.pin,'fresh-v2-20261111','DESKTOP_PIN_V2_NOT_BOOTED');
   await page.evaluate(()=>window.BALL46_PIN_V2.clear());
   const found=await findSignalRow(page);
   const sel='.match-row[data-match-id="'+found.id+'"]';
@@ -96,8 +102,10 @@ async function desktop(browser){
 async function mobile(browser){
   const ctx=await browser.newContext({...devices['Pixel 7']});
   const page=await ctx.newPage();await installPatch(page);
-  await page.goto('https://ball46.com/?signal-pin-grouped-test=mobile-'+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
-  await page.waitForFunction(()=>window.BALL46_PIN_V2?.version==='fresh-v2-20261111',null,{timeout:90000});
+  page.on('pageerror',e=>console.log('MOBILE_PAGEERROR='+e.message));
+  const nav=await page.goto('https://ball46.com/?signal-pin-grouped-test=mobile-'+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});console.log('MOBILE_NAV_STATUS='+(nav?.status()||0));
+  for(let i=0;i<40;i++){if(await page.evaluate(()=>window.BALL46_PIN_V2?.version==='fresh-v2-20261111'))break;await page.waitForTimeout(250)}
+  const boot=await page.evaluate(()=>({pin:window.BALL46_PIN_V2?.version||null,scripts:[...document.scripts].map(s=>s.src||s.id).filter(Boolean).slice(-30)}));console.log('MOBILE_BOOT='+JSON.stringify(boot));assert.equal(boot.pin,'fresh-v2-20261111','MOBILE_PIN_V2_NOT_BOOTED');
   await page.evaluate(()=>window.BALL46_PIN_V2.clear());
   const found=await findSignalRow(page);
   const card='#b46gn-cards [data-b46gn-fixture="'+found.id+'"]';
