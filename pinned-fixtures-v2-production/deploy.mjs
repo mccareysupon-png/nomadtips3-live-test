@@ -144,13 +144,13 @@ async function publicCheck(expectNew){
   for(let i=0;i<25;i++){
     const q=Date.now()+'-'+i;
     const [dr,hr,er]=await Promise.all([
-      fetch('https://ball46.com/dashboard-v2-stage3-featured-facts-20261013a.js?pinv2='+q,{headers:{'cache-control':'no-cache'},signal:AbortSignal.timeout(45000)}),
+      fetch('https://ball46.com/dashboard-v2-stage3-featured-facts-20261013a.js?v=b46-screen-refresh-5s-20261104&pinv2='+q,{headers:{'cache-control':'no-cache'},signal:AbortSignal.timeout(45000)}),
       fetch('https://ball46.com/?pinv2-source='+q,{headers:{'cache-control':'no-cache'},signal:AbortSignal.timeout(45000)}),
       fetch('https://ball46.com/expanded-match-343.js?pinv2='+q,{headers:{'cache-control':'no-cache'},signal:AbortSignal.timeout(45000)})
     ]);
     const [d,h,e]=await Promise.all([dr.text(),hr.text(),er.text()]);
-    last={d:d.length,h:h.length,e:e.length};
-    const has=d.includes('B46_PIN_V2_FRESH_20261111')&&h.includes('B46_PIN_V2_MOBILE_20261111')&&e.includes('B46_PIN_V2_EXPANDED_GUARD_20261111');
+    last={d:d.length,h:h.length,e:e.length,hasD:d.includes('B46_PIN_V2_FRESH_20261111'),hasH:h.includes('B46_PIN_V2_MOBILE_20261111'),hasE:e.includes('B46_PIN_V2_EXPANDED_GUARD_20261111')};
+    const has=last.hasD&&last.hasH&&last.hasE;
     const preserved=d.includes('B46_SCREEN_REFRESH_5S_20261104')||d.includes('renderBoard');
     if(dr.ok&&hr.ok&&er.ok&&preserved&&(expectNew?has:!has))return;
     await delay(1000);
