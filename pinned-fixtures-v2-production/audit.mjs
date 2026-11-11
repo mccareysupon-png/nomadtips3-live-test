@@ -44,6 +44,8 @@ for(const m of v.modules){
     if(hit.desktop){
       const i=t.indexOf("function renderBoard()");
       console.log('DESKTOP_CONTEXT='+JSON.stringify({name:m.name,context:t.slice(Math.max(0,i-180),Math.min(t.length,i+260)).replace(/\\s+/g,' ')}));
+      const bi=t.indexOf("function bindStableMatchRow");
+      console.log('BIND_CONTEXT='+JSON.stringify({name:m.name,context:bi>=0?t.slice(Math.max(0,bi-120),Math.min(t.length,bi+760)):null}));
     }
   }
 }
