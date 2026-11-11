@@ -56,11 +56,16 @@ jobs:
           helper_repl="\"function b46PinHas(id){return b46Pins.has(String(id||''))}\"+\"function b46PinNativeOrder(rows){const out=[];for(const key of ['live','scheduled','unknown','finished']){const all=rows.filter(f=>classify(f)===key);for(const [,list] of groupByLeague(all))out.push(...list)}return out}\"+"
           assert s.count(helper_anchor)==1, s.count(helper_anchor)
           s=s.replace(helper_anchor,helper_repl)
+          freeze_anchor="\"function b46PinExpanded(){return !!document.querySelector('.match-expanded[data-expanded-match]')}\"+"
+          freeze_repl=freeze_anchor+"\"let b46PinFrozen=null;function b46PinRenderHas(id){id=String(id||'');if(b46PinExpanded()){if(!b46PinFrozen){b46PinFrozen=new Set([...document.querySelectorAll('.b46-pin-v2-section .match-row[data-match-id]')].map(r=>String(r.dataset.matchId||'')).filter(Boolean))}return b46PinFrozen.has(id)}b46PinFrozen=null;return b46PinHas(id)}\"+"
+          assert s.count(freeze_anchor)==1, s.count(freeze_anchor)
+          s=s.replace(freeze_anchor,freeze_repl)
           render_old="const rows=visibleRows(),pinOK=!b46PinExpanded(),pinned=pinOK?rows.filter(f=>b46PinHas(fixtureKey(f))):[],normal=pinOK?rows.filter(f=>!b46PinHas(fixtureKey(f))):rows"
-          render_new="const rows=visibleRows(),nativeOrder=b46PinNativeOrder(rows),pinOK=!b46PinExpanded(),pinned=pinOK?nativeOrder.filter(f=>b46PinHas(fixtureKey(f))):[],normal=pinOK?rows.filter(f=>!b46PinHas(fixtureKey(f))):rows"
+          render_new="const rows=visibleRows(),nativeOrder=b46PinNativeOrder(rows),pinned=nativeOrder.filter(f=>b46PinRenderHas(fixtureKey(f))),normal=rows.filter(f=>!b46PinRenderHas(fixtureKey(f)))"
           assert s.count(render_old)==1, s.count(render_old)
           s=s.replace(render_old,render_new)
           assert "b46PinNativeOrder(rows)" in s
+          assert "b46PinRenderHas" in s
           # Current Expanded Match controller uses document capture. Add a narrow V2 guard there,
           # instead of legacy-style global pointer traps.
           install_anchor="async function install(page){"
