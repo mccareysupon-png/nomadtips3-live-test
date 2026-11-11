@@ -7,7 +7,7 @@ const d=await api('/scripts/'+SCRIPT+'/deployments?per_page=5');
 const id=d.deployments?.[0]?.versions?.[0]?.version_id;assert(id);
 const v=await api('/workers/'+SCRIPT+'/versions/'+id+'?include=modules');
 console.log('ACTIVE='+id);
-const needles=['b46-league-market-signal-count','function apply','MutationObserver','data-b46-market-compact'];
+const needles=['let badge=host.querySelector',"observer=new MutationObserver(schedule)",'function schedule(){if(queued)return'];
 for(const m of v.modules){
   let t='';try{t=Buffer.from(m.content_base64,'base64').toString('utf8')}catch{}
   for(const needle of needles){
