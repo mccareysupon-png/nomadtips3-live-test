@@ -12,11 +12,14 @@ const checks={
   usesExistingApi:src.includes('window.NOMAD343_FULL_MARKET_BOOKMAKER'),
   onDemandRender:src.includes('api.renderBookHtml(fixture,slug)'),
   instructionMovedToHead:src.includes('head.textContent=HEADING'),
-  instructionText:src.includes('Select a bookmaker to view prices.'),
+  instructionText:src.includes('Select a bookmaker to view the latest odds.'),
   emptyPanelRemoved:src.includes("panel.innerHTML=''")&&src.includes('panel.hidden=true'),
   lowerPanelHiddenCss:css.includes('display:none!important')&&css.includes('height:0!important'),
   panelReopensOnSelection:src.includes('panel.hidden=false'),
   collapseSame:src.includes('host.dataset.b46LazyBook===slug'),
+  darken10:css.includes('background:rgba(0,0,0,.10)'),
+  yellowLiveDot:css.includes('background:#f6c945')&&css.includes('b46-fmb-live-dot'),
+  premium90:css.includes('font-size:90%')&&css.includes('font-weight:700'),
   noLegacyEmptyBox:!src.includes('b46-lazy-empty')
 };
 
