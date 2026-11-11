@@ -61,6 +61,30 @@ jobs:
           assert s.count(render_old)==1, s.count(render_old)
           s=s.replace(render_old,render_new)
           assert "b46PinNativeOrder(rows)" in s
+          # Current Expanded Match controller uses document capture. Add a narrow V2 guard there,
+          # instead of legacy-style global pointer traps.
+          install_anchor="async function install(page){"
+          expanded_fn="""function patchExpanded(src){
+  if(src.includes('B46_PIN_V2_EXPANDED_GUARD_TEST_20261111'))return src;
+  src=one(src,
+    "document.addEventListener('click',e=>{if(handleMobileFlowSelect(e))return;",
+    "document.addEventListener('click',e=>{/* B46_PIN_V2_EXPANDED_GUARD_TEST_20261111 */if(e.target.closest?.('[data-b46-pin-v2]'))return;if(handleMobileFlowSelect(e))return;",
+    'EXPANDED_CLICK_GUARD');
+  src=one(src,
+    "document.addEventListener('keydown',e=>{if(e.key==='Escape'",
+    "document.addEventListener('keydown',e=>{if(e.target.closest?.('[data-b46-pin-v2]'))return;if(e.key==='Escape'",
+    'EXPANDED_KEY_GUARD');
+  return src;
+}
+
+"""
+          assert s.count(install_anchor)==1, s.count(install_anchor)
+          s=s.replace(install_anchor,expanded_fn+install_anchor)
+          dash_route="  await page.route(u=>u.hostname==='ball46.com'&&u.pathname===DASH,async route=>{const r=await route.fetch();await route.fulfill({response:r,body:patchDash(await r.text())})});"
+          expanded_route="  await page.route(u=>u.hostname==='ball46.com'&&u.pathname==='/expanded-match-343.js',async route=>{const r=await route.fetch();await route.fulfill({response:r,body:patchExpanded(await r.text())})});"
+          assert s.count(dash_route)==1, s.count(dash_route)
+          s=s.replace(dash_route,dash_route+"\n"+expanded_route)
+          assert "B46_PIN_V2_EXPANDED_GUARD_TEST_20261111" in s
           # Fresh mobile bridge: use the same shared pin state.
           s=s.replace("window.BALL46_PINNED_V2_TEST?.isPinned?.(x.id)","window.BALL46_PIN_V2_TEST?.isPinned?.(x.id)")
           # Patch the *runtime HTML patcher* so Green Noir's own schedule() is explicitly woken on pin changes.
