@@ -124,8 +124,8 @@ function patchHtml(html){
 @media(max-width:760px){
  #b46gn-cards .b46gn-cardbody{position:relative!important}
  #b46gn-cards .b46gn-team{padding-left:28px!important;box-sizing:border-box}
- #b46gn-cards .b46-pin-v2-mobile{position:absolute;z-index:auto;left:8px;right:auto;top:50%;transform:translateY(-50%);width:22px;height:22px;display:grid;place-items:center;border-radius:50%;font:700 18px/1 Arial,sans-serif;color:#d4a900;background:rgba(4,18,16,.58);cursor:pointer;user-select:none;touch-action:manipulation}
- #b46gn-cards .b46-pin-v2-mobile[data-on="1"]{color:#f2c94c;text-shadow:0 0 8px rgba(242,201,76,.28)}
+ #b46gn-cards .b46-pin-v2-mobile{position:absolute;z-index:12;left:6px;right:auto;top:50%;transform:translateY(-50%);width:30px;height:30px;display:grid;place-items:center;border-radius:50%;font:700 19px/1 Arial,sans-serif;color:#31D4A3;background:rgba(4,18,16,.72);cursor:pointer;user-select:none;touch-action:manipulation;pointer-events:auto!important;-webkit-tap-highlight-color:transparent}
+ #b46gn-cards .b46-pin-v2-mobile[data-on="1"]{color:#31D4A3;text-shadow:0 0 8px rgba(49,212,163,.32)}
 }
 </style>`;
   const runtime=String.raw`<script id="b46-pin-v2-mobile-runtime">(()=>{'use strict';/* B46_PIN_V2_MOBILE_RUNTIME_20261111 */
