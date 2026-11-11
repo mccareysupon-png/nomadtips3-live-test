@@ -1,0 +1,28 @@
+name: BALL46 SEO Runtime Read-Only Audit 20261111
+on:
+  push:
+    branches: [test/ball46-seo-ai-discovery-20261111]
+    paths:
+      - 'isolated-labs/ball46-seo-ai-discovery-20261111/AUDIT_READY'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: test/ball46-seo-ai-discovery-20261111
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate read-only audit source
+        run: |
+          node --check isolated-labs/ball46-seo-ai-discovery-20261111/seo-runtime-audit.mjs
+          ! grep -E "method:[[:space:]]*['\"](POST|PUT|PATCH|DELETE)" isolated-labs/ball46-seo-ai-discovery-20261111/seo-runtime-audit.mjs
+      - name: Inspect live Production SEO metadata using GET only
+        run: node isolated-labs/ball46-seo-ai-discovery-20261111/seo-runtime-audit.mjs
