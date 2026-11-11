@@ -51,6 +51,16 @@ jobs:
           s='\n'.join(out)+'\n'
           s=s.replace("  if(await cards.first().getAttribute('data-b46gn-fixture')!==target)throw new Error('MOBILE_NOT_TOP');",
             "  console.log('MOBILE_DIAG='+JSON.stringify(await page.evaluate(target=>({target,pinned:window.BALL46_PIN_V2_TEST?.isPinned?.(target),pins:window.BALL46_PIN_V2_TEST?.getIds?.(),native:[...document.querySelectorAll('[data-board-sections] .match-row[data-match-id]')].slice(0,8).map(x=>({id:x.dataset.matchId,kind:x.dataset.b46Kind,section:x.closest('[data-status-section]')?.dataset.statusSection})),cards:[...document.querySelectorAll('#b46gn-cards [data-b46gn-fixture]')].slice(0,8).map(x=>x.dataset.b46gnFixture)})),target));\n  if(await cards.first().getAttribute('data-b46gn-fixture')!==target)throw new Error('MOBILE_NOT_TOP');")
+          # Keep pinned fixtures in BALL46's native visible order (status -> league -> row), not raw fixture-source order.
+          helper_anchor="\"function b46PinHas(id){return b46Pins.has(String(id||''))}\"+"
+          helper_repl="\"function b46PinHas(id){return b46Pins.has(String(id||''))}\"+\"function b46PinNativeOrder(rows){const out=[];for(const key of ['live','scheduled','unknown','finished']){const all=rows.filter(f=>classify(f)===key);for(const [,list] of groupByLeague(all))out.push(...list)}return out}\"+"
+          assert s.count(helper_anchor)==1, s.count(helper_anchor)
+          s=s.replace(helper_anchor,helper_repl)
+          render_old="const rows=visibleRows(),pinOK=!b46PinExpanded(),pinned=pinOK?rows.filter(f=>b46PinHas(fixtureKey(f))):[],normal=pinOK?rows.filter(f=>!b46PinHas(fixtureKey(f))):rows"
+          render_new="const rows=visibleRows(),nativeOrder=b46PinNativeOrder(rows),pinOK=!b46PinExpanded(),pinned=pinOK?nativeOrder.filter(f=>b46PinHas(fixtureKey(f))):[],normal=pinOK?rows.filter(f=>!b46PinHas(fixtureKey(f))):rows"
+          assert s.count(render_old)==1, s.count(render_old)
+          s=s.replace(render_old,render_new)
+          assert "b46PinNativeOrder(rows)" in s
           # Fresh mobile bridge: use the same shared pin state.
           s=s.replace("window.BALL46_PINNED_V2_TEST?.isPinned?.(x.id)","window.BALL46_PIN_V2_TEST?.isPinned?.(x.id)")
           # Patch the *runtime HTML patcher* so Green Noir's own schedule() is explicitly woken on pin changes.
