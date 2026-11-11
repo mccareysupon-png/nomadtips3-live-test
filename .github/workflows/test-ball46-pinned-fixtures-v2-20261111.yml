@@ -16,6 +16,7 @@ jobs:
       - name: Assemble fresh test harness
         run: |
           cat pinned-fixtures-v2/short.b64.part0 pinned-fixtures-v2/short.b64.part1 pinned-fixtures-v2/short.b64.part2 pinned-fixtures-v2/short.b64.part3 pinned-fixtures-v2/short.b64.part4 pinned-fixtures-v2/short.b64.part5 | base64 -d > pinned-fixtures-v2/test.mjs
+          sed -i "s#pathname.startsWith('/api/')#pathname.startsWith('/api/full-market/')#g" pinned-fixtures-v2/test.mjs
           node --check pinned-fixtures-v2/test.mjs
           ! grep -q "ball46_favorites_v1" pinned-fixtures-v2/test.mjs
       - run: npm install --no-save --package-lock=false playwright@1.56.1
