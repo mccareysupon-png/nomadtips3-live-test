@@ -11,13 +11,13 @@ const checks={
   noApiLiteral:!src.includes('/api/'),
   usesExistingApi:src.includes('window.NOMAD343_FULL_MARKET_BOOKMAKER'),
   onDemandRender:src.includes('api.renderBookHtml(fixture,slug)'),
-  instructionMovedToHead:src.includes("head.textContent=HEADING"),
-  instructionText:src.includes("Select a bookmaker to view prices."),
+  instructionMovedToHead:src.includes('head.textContent=HEADING'),
+  instructionText:src.includes('Select a bookmaker to view prices.'),
   emptyPanelRemoved:src.includes("panel.innerHTML=''")&&src.includes('panel.hidden=true'),
   lowerPanelHiddenCss:css.includes('display:none!important')&&css.includes('height:0!important'),
   panelReopensOnSelection:src.includes('panel.hidden=false'),
   collapseSame:src.includes('host.dataset.b46LazyBook===slug'),
-  noInstructionInsidePanel:!src.includes("panel.innerHTML='<div class=\\"b46-lazy-empty\\">"),
+  noLegacyEmptyBox:!src.includes('b46-lazy-empty')
 };
 
 console.log(JSON.stringify(checks));
