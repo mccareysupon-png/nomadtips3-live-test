@@ -12,7 +12,7 @@ let src=Buffer.from(mod.content_base64,'base64').toString('utf8');
 
 assert(src.includes('B46_PIN_V2_FRESH_20261111'),'PIN_V2_MISSING');
 assert(src.includes('<section class="status-section b46-pin-v2-section" data-status-section="pinned">'),'PINNED_SECTION_MISSING');
-assert(src.includes('<section class="league-block">'+pinned.map(rowHtml).join('')+'</section>'),'PINNED_BLOCK_SHAPE_DRIFT');
+assert(src.includes("<section class=\"league-block\">'+pinned.map(rowHtml).join('')+'</section>"),'PINNED_BLOCK_SHAPE_DRIFT');
 assert(!src.includes('B46_PIN_V2_SIGNAL_BADGE_FIX_TEST_20261111'),'FIX_ALREADY_PRESENT');
 
 const anchor="function b46PinPaint(row){if(!row)return;";
