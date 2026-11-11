@@ -1,0 +1,24 @@
+name: Diagnose Pin V2 Signal Indicator Test 20261111
+on:
+  push:
+    branches: [test/ball46-pinned-fixtures-v2-20261111]
+    paths: ['pinned-fixtures-v2/SIGNAL_DIAG_READY']
+permissions: {contents: read}
+jobs:
+  diag:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: test/ball46-pinned-fixtures-v2-20261111}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+      - run: npx playwright install --with-deps chromium
+      - run: node pinned-fixtures-v2/signal-pin-diagnose.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pin-v2-signal-diag-${{ github.run_id }}
+          path: pinned-fixtures-v2/signal-pin-after.png
+          retention-days: 7
