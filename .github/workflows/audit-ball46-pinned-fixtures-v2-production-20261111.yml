@@ -1,0 +1,19 @@
+name: Audit BALL46 Pinned Fixtures V2 Production Owners 20261111
+on:
+  push:
+    branches: [release/ball46-pinned-fixtures-v2-20261111]
+    paths: ['pinned-fixtures-v2-production/AUDIT_READY']
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: release/ball46-pinned-fixtures-v2-20261111}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: node pinned-fixtures-v2-production/audit.mjs
