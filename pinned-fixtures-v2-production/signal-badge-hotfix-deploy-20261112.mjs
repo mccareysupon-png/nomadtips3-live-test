@@ -18,7 +18,6 @@ async function activate(id,msg){return api('/scripts/'+SCRIPT+'/deployments',{me
 function typeFor(m,main){if(m.content_type)return m.content_type;if(m.name===main||/\.m?js$/.test(m.name))return'application/javascript+module';if(m.name.endsWith('.html'))return'text/html';if(m.name.endsWith('.css'))return'text/css';return'application/octet-stream'}
 function patchSource(src){
   assert(src.includes('B46_PIN_V2_FRESH_20261111'),'PIN_V2_BASE_MISSING');
-  assert(src.includes('B46_PIN_V2_MOBILE_TAP_GREEN_20261112'),'MOBILE_HOTFIX_MISSING');
   assert(!src.includes(MARKER),'SIGNAL_FIX_ALREADY_PRESENT');
   const anchor="function b46PinPaint(row){if(!row)return;";
   assert.equal(src.split(anchor).length-1,1,'PIN_PAINT_ANCHOR_COUNT');
@@ -33,6 +32,8 @@ let candidate='',activated=false;
 try{
   assert.equal(await active(),EXPECT_CURRENT,'ACTIVE_VERSION_DRIFT');
   const current=await version(EXPECT_CURRENT),settingsBefore=await settings(),schedulesBefore=await schedules();
+  const html=current.modules.find(m=>m.name==='assets/index.html');assert(html,'HTML_MODULE_MISSING');
+  const htmlSrc=Buffer.from(html.content_base64,'base64').toString('utf8');assert(htmlSrc.includes('B46_PIN_V2_MOBILE_TAP_GREEN_20261112'),'MOBILE_HOTFIX_MISSING');
   const mod=current.modules.find(m=>m.name===TARGET_MODULE);assert(mod,'TARGET_MODULE_MISSING');
   const src=Buffer.from(mod.content_base64,'base64').toString('utf8');
   const patched=patchSource(src);
