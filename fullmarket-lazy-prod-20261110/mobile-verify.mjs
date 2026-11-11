@@ -3,7 +3,7 @@ const browser=await chromium.launch({headless:true});
 const ctx=await browser.newContext({...devices['Pixel 7']});
 const page=await ctx.newPage();
 const calls=[];page.on('request',r=>{if(new URL(r.url()).pathname.startsWith('/api/full-market/'))calls.push(r.url())});
-await page.goto('https://ball46.com/?mobilelazyqa='+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
+await page.goto('https://ball46.com/?compactmobileqa='+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
 await page.waitForSelector('[data-board-sections] .match-row[data-match-id]',{state:'attached',timeout:90000});
 await page.waitForTimeout(2500);
 
@@ -25,16 +25,26 @@ if(await mobileCards.count()){
   }
 }
 if(!expanded)throw new Error('MOBILE_NO_EXPANDED_FULLMARKET');
-const panel=expanded.locator('[data-fmb-panel]');
+
+const host=expanded.locator('[data-full-market-card]');
+const head=((await host.locator('.fmb-head').textContent())||'').trim();
+if(head!=='Select a bookmaker to view prices.')throw new Error('MOBILE_HEAD_TEXT_'+JSON.stringify(head));
+
+const panel=host.locator('[data-fmb-panel]');
 if(await panel.locator('.fmb-market,table').count())throw new Error('MOBILE_TABLE_RENDERED_BEFORE_CLICK');
-const hint=(await panel.textContent())||'';if(!hint.includes('Select a bookmaker'))throw new Error('MOBILE_HINT_MISSING');
-const btn=expanded.locator('[data-fmb-book].has-data').first();
+if(await panel.isVisible().catch(()=>false))throw new Error('MOBILE_EMPTY_PANEL_VISIBLE');
+
+const btn=host.locator('[data-fmb-book].has-data').first();
 if(!await btn.count())throw new Error('MOBILE_NO_BOOK_WITH_DATA');
-const before=calls.length;await btn.evaluate(el=>el.click());
+const before=calls.length;
+await btn.evaluate(el=>el.click());
 await panel.locator('.fmb-market,table').first().waitFor({state:'attached',timeout:15000});
+await page.waitForFunction(()=>{const p=document.querySelector('.match-expanded [data-fmb-panel]');return p&&getComputedStyle(p).display!=='none'},null,{timeout:10000});
 await page.waitForTimeout(500);
-const after=calls.length;if(after!==before)throw new Error('MOBILE_CLICK_ADDED_FULLMARKET_API_CALL');
-await btn.evaluate(el=>el.click());await page.waitForTimeout(250);
+const after=calls.length;
+if(after!==before)throw new Error('MOBILE_CLICK_ADDED_FULLMARKET_API_CALL');
+await btn.evaluate(el=>el.click());
+await page.waitForFunction(()=>{const p=document.querySelector('.match-expanded [data-fmb-panel]');return p&&getComputedStyle(p).display==='none'},null,{timeout:10000});
 if(await panel.locator('.fmb-market,table').count())throw new Error('MOBILE_SAME_BOOK_DID_NOT_COLLAPSE');
 console.log('MOBILE_PASS=1 FULLMARKET_API_DELTA_ON_CLICK='+(after-before));
 await browser.close();
