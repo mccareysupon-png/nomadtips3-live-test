@@ -64,18 +64,18 @@ jobs:
           # Current Expanded Match controller uses document capture. Add a narrow V2 guard there,
           # instead of legacy-style global pointer traps.
           install_anchor="async function install(page){"
-          expanded_fn=("function patchExpanded(src){\\n"
-            "  if(src.includes('B46_PIN_V2_EXPANDED_GUARD_TEST_20261111'))return src;\\n"
-            "  src=one(src,\\n"
-            "    \"document.addEventListener('click',e=>{if(handleMobileFlowSelect(e))return;\",\\n"
-            "    \"document.addEventListener('click',e=>{/* B46_PIN_V2_EXPANDED_GUARD_TEST_20261111 */if(e.target.closest?.('[data-b46-pin-v2]'))return;if(handleMobileFlowSelect(e))return;\",\\n"
-            "    'EXPANDED_CLICK_GUARD');\\n"
-            "  src=one(src,\\n"
-            "    \"document.addEventListener('keydown',e=>{if(e.key==='Escape'\",\\n"
-            "    \"document.addEventListener('keydown',e=>{if(e.target.closest?.('[data-b46-pin-v2]'))return;if(e.key==='Escape'\",\\n"
-            "    'EXPANDED_KEY_GUARD');\\n"
-            "  return src;\\n"
-            "}\\n\\n")
+          expanded_fn=("function patchExpanded(src){\n"
+            "  if(src.includes('B46_PIN_V2_EXPANDED_GUARD_TEST_20261111'))return src;\n"
+            "  src=one(src,\n"
+            "    \"document.addEventListener('click',e=>{if(handleMobileFlowSelect(e))return;\",\n"
+            "    \"document.addEventListener('click',e=>{/* B46_PIN_V2_EXPANDED_GUARD_TEST_20261111 */if(e.target.closest?.('[data-b46-pin-v2]'))return;if(handleMobileFlowSelect(e))return;\",\n"
+            "    'EXPANDED_CLICK_GUARD');\n"
+            "  src=one(src,\n"
+            "    \"document.addEventListener('keydown',e=>{if(e.key==='Escape'\",\n"
+            "    \"document.addEventListener('keydown',e=>{if(e.target.closest?.('[data-b46-pin-v2]'))return;if(e.key==='Escape'\",\n"
+            "    'EXPANDED_KEY_GUARD');\n"
+            "  return src;\n"
+            "}\n\n")
           assert s.count(install_anchor)==1, s.count(install_anchor)
           s=s.replace(install_anchor,expanded_fn+install_anchor)
           dash_route="  await page.route(u=>u.hostname==='ball46.com'&&u.pathname===DASH,async route=>{const r=await route.fetch();await route.fulfill({response:r,body:patchDash(await r.text())})});"
