@@ -1,0 +1,24 @@
+name: Test BALL46 Pin V2 Mobile Star 20261112
+on:
+  push:
+    branches: [test/ball46-pin-v2-mobile-fix-20261112]
+    paths: ['pinned-fixtures-v2-production/MOBILE_STAR_TEST_READY']
+permissions: {contents: read}
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: test/ball46-pin-v2-mobile-fix-20261112}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+      - run: npx playwright install chromium
+      - run: node pinned-fixtures-v2-production/mobile-star-test.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mobile-star-test-${{ github.run_id }}
+          path: pinned-fixtures-v2-production/mobile-star-test.png
+          retention-days: 7
