@@ -51,14 +51,17 @@ jobs:
           s='\n'.join(out)+'\n'
           s=s.replace("  if(await cards.first().getAttribute('data-b46gn-fixture')!==target)throw new Error('MOBILE_NOT_TOP');",
             "  console.log('MOBILE_DIAG='+JSON.stringify(await page.evaluate(target=>({target,pinned:window.BALL46_PIN_V2_TEST?.isPinned?.(target),pins:window.BALL46_PIN_V2_TEST?.getIds?.(),native:[...document.querySelectorAll('[data-board-sections] .match-row[data-match-id]')].slice(0,8).map(x=>({id:x.dataset.matchId,kind:x.dataset.b46Kind,section:x.closest('[data-status-section]')?.dataset.statusSection})),cards:[...document.querySelectorAll('#b46gn-cards [data-b46gn-fixture]')].slice(0,8).map(x=>x.dataset.b46gnFixture)})),target));\n  if(await cards.first().getAttribute('data-b46gn-fixture')!==target)throw new Error('MOBILE_NOT_TOP');")
-          # Fresh mobile bridge: use the same shared pin state and explicitly wake the Green Noir renderer.
+          # Fresh mobile bridge: use the same shared pin state.
           s=s.replace("window.BALL46_PINNED_V2_TEST?.isPinned?.(x.id)","window.BALL46_PIN_V2_TEST?.isPinned?.(x.id)")
+          # Patch the *runtime HTML patcher* so Green Noir's own schedule() is explicitly woken on pin changes.
+          insert_anchor="    'MOBILE_SIG');\n\n  const style="
           mobile_anchor="const search=$('[data-search]');search?.addEventListener('input',schedule);const paneObs=new MutationObserver(schedule);paneObs.observe(document.body,{attributes:true,attributeFilter:['data-workspace-view']});"
           mobile_repl="const search=$('[data-search]');search?.addEventListener('input',schedule);document.addEventListener('ball46:pin-v2-test',schedule);const paneObs=new MutationObserver(schedule);paneObs.observe(document.body,{attributes:true,attributeFilter:['data-workspace-view']});"
-          assert s.count(mobile_anchor)==1, s.count(mobile_anchor)
-          s=s.replace(mobile_anchor,mobile_repl)
+          injected="    'MOBILE_SIG');\n  html=one(html,\n    "+repr(mobile_anchor)+",\n    "+repr(mobile_repl)+",\n    'MOBILE_WAKE');\n\n  const style="
+          assert s.count(insert_anchor)==1, s.count(insert_anchor)
+          s=s.replace(insert_anchor,injected)
           assert "BALL46_PINNED_V2_TEST" not in s
-          assert "document.addEventListener('ball46:pin-v2-test',schedule)" in s
+          assert "'MOBILE_WAKE'" in s
           assert "if(api!==before)" not in s
           assert ",.match-row[aria-expanded=" not in s
           p.write_text(s)
