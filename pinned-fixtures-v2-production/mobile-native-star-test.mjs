@@ -44,6 +44,18 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   return html;
 }
 
+const SCRIPT='ball46-production';
+const account=process.env.CLOUDFLARE_ACCOUNT_ID,token=process.env.CLOUDFLARE_API_TOKEN;
+assert(account&&token,'CF_ENV_MISSING');
+const root='https://api.cloudflare.com/client/v4/accounts/'+account+'/workers';
+async function cf(path){const r=await fetch(root+path,{headers:{Authorization:'Bearer '+token},signal:AbortSignal.timeout(60000)});const j=await r.json();assert(r.ok&&j.success===true,'CF_API_ERROR');return j.result}
+const dep=await cf('/scripts/'+SCRIPT+'/deployments?per_page=5');
+const active=dep.deployments?.[0]?.versions?.[0]?.version_id;
+const ver=await cf('/workers/'+SCRIPT+'/versions/'+active+'?include=modules');
+const asset=ver.modules.find(m=>m.name==='assets/index.html');assert(asset,'ACTIVE_ASSET_MISSING');
+const activeHtml=Buffer.from(asset.content_base64,'base64').toString('utf8');
+console.log('ACTIVE_SOURCE_VERSION='+active);
+
 const browser=await chromium.launch({headless:true});
 const ctx=await browser.newContext({...devices['Pixel 7']});
 const page=await ctx.newPage();
@@ -51,9 +63,8 @@ const page=await ctx.newPage();
 await page.route('**/*',async route=>{
   const u=new URL(route.request().url());
   if(u.hostname==='ball46.com'&&(u.pathname==='/'||u.pathname==='/index.html')){
-    const r=await route.fetch();
-    const body=patch(await r.text());
-    return route.fulfill({response:r,body,headers:{...r.headers(),'cache-control':'no-store'}});
+    const body=patch(activeHtml);
+    return route.fulfill({status:200,contentType:'text/html',body,headers:{'cache-control':'no-store'}});
   }
   return route.continue();
 });
