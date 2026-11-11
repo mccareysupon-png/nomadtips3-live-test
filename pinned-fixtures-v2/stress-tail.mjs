@@ -16,6 +16,19 @@ try{
     const expected=[ids[1],ids[4],ids[7]];
     const baseBox=await rows.nth(1).boundingBox();
 
+    // Measure the left-center action rail before interaction.
+    {
+      const sample=rows.nth(1),star=sample.locator('[data-b46-pin-v2]'),kit=sample.locator('.teams-cell .team-kit-icon').first();
+      const [rb,sb,kb]=await Promise.all([sample.boundingBox(),star.boundingBox(),kit.boundingBox()]);
+      if(!rb||!sb||!kb)throw new Error('STRESS_DESKTOP_POSITION_BOX_MISSING');
+      const rowCy=rb.y+rb.height/2,starCy=sb.y+sb.height/2;
+      if(Math.abs(rowCy-starCy)>2)throw new Error('STRESS_DESKTOP_STAR_NOT_CENTERED_'+JSON.stringify({rowCy,starCy}));
+      if(sb.x<rb.x||sb.x+sb.width>kb.x-4)throw new Error('STRESS_DESKTOP_STAR_OVERLAP_'+JSON.stringify({row:rb,star:sb,kit:kb}));
+      const z=Number(await star.evaluate(el=>getComputedStyle(el).zIndex)||0);
+      if(z>2)throw new Error('STRESS_DESKTOP_STAR_Z_'+z);
+      console.log('POSITION_DESKTOP_PASS=1 '+JSON.stringify({rowCenter:rowCy,starCenter:starCy,gap:kb.x-(sb.x+sb.width),z}));
+    }
+
     // Pin in reverse click order; displayed pinned block must preserve native match order.
     for(const id of [ids[7],ids[4],ids[1]]){
       const ok=await page.evaluate(id=>window.BALL46_PIN_V2_TEST.toggle(id),id);
@@ -86,6 +99,19 @@ try{
     if(ids.length<9)throw new Error('STRESS_MOBILE_TOO_FEW_'+ids.length);
     const expected=[ids[1],ids[4],ids[7]];
     const baseBox=await cards.nth(1).boundingBox();
+
+    // Measure left-center position and keep the control below modal overlays.
+    {
+      const sample=cards.nth(1),star=sample.locator('[data-b46-pin-mobile]'),name=sample.locator('.b46gn-team-name').first();
+      const [cb,sb,nb]=await Promise.all([sample.boundingBox(),star.boundingBox(),name.boundingBox()]);
+      if(!cb||!sb||!nb)throw new Error('STRESS_MOBILE_POSITION_BOX_MISSING');
+      const cardCy=cb.y+cb.height/2,starCy=sb.y+sb.height/2;
+      if(Math.abs(cardCy-starCy)>3)throw new Error('STRESS_MOBILE_STAR_NOT_CENTERED_'+JSON.stringify({cardCy,starCy}));
+      if(sb.x<cb.x||sb.x+sb.width>nb.x-8)throw new Error('STRESS_MOBILE_STAR_OVERLAP_'+JSON.stringify({card:cb,star:sb,name:nb}));
+      const z=Number(await star.evaluate(el=>getComputedStyle(el).zIndex)||0);
+      if(z>1)throw new Error('STRESS_MOBILE_STAR_Z_'+z);
+      console.log('POSITION_MOBILE_PASS=1 '+JSON.stringify({cardCenter:cardCy,starCenter:starCy,gap:nb.x-(sb.x+sb.width),z}));
+    }
 
     for(const id of [ids[7],ids[4],ids[1]]){
       await page.evaluate(id=>window.BALL46_PIN_V2_TEST.toggle(id),id);
