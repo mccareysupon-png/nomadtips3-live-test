@@ -1,0 +1,16 @@
+name: Inspect BALL46 Public Signal Badge HTML 20261111
+on:
+  push:
+    branches: [test/ball46-pin-v2-signal-preserve-20261111]
+    paths: ['pinned-fixtures-v2-production/PUBLIC_SIGNAL_HTML_READY']
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: test/ball46-pin-v2-signal-preserve-20261111}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: node pinned-fixtures-v2-production/inspect-public-signal-html.mjs
