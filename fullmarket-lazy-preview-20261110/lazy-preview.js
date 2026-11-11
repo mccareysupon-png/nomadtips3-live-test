@@ -1,35 +1,41 @@
-/* BALL46 Full Market Lazy UI Preview 20261110
+/* BALL46 Full Market Compact Lazy UI Preview 20261111
    Preview only. No Production deploy.
-   Goal: expand card shows bookmaker buttons only; render prices after user chooses a bookmaker.
+   Goal: move the instruction into the Full Market heading and remove the empty lower panel until a bookmaker is selected.
    No extra API calls; uses existing fixture snapshot and existing Full Market module.
 */
 (()=> {
   'use strict';
-  const PREVIEW='B46_FULLMARKET_LAZY_UI_PREVIEW_20261110';
-  const state=new WeakMap();
+  const PREVIEW='B46_FULLMARKET_COMPACT_LAZY_UI_PREVIEW_20261111';
+  const HEADING='Select a bookmaker to view prices.';
+
+  function setCollapsed(host,panel,buttons){
+    host.dataset.b46LazyBook='';
+    host.classList.add('b46-lazy-collapsed');
+    panel.innerHTML='';
+    panel.hidden=true;
+    for(const b of buttons){
+      b.classList.remove('active');
+      b.setAttribute('aria-pressed','false');
+    }
+  }
 
   function decorateHost(host){
     if(!host||host.dataset.b46LazyPreview==='1') return;
     host.dataset.b46LazyPreview='1';
 
+    const head=host.querySelector('.fmb-head');
     const panel=host.querySelector('[data-fmb-panel]');
     const tabs=host.querySelector('[data-fmb-tabs]');
-    if(!panel||!tabs) return;
+    if(!head||!panel||!tabs) return;
 
     const buttons=[...tabs.querySelectorAll('[data-fmb-book]')];
     if(!buttons.length) return;
 
-    const current={panelHtml:panel.innerHTML, active:null, initialized:false};
-    state.set(host,current);
+    // Replace "FULL MARKET · BOOKMAKERS" with the instruction.
+    head.textContent=HEADING;
 
-    // Preview behavior: collapse initial table content.
-    panel.innerHTML='<div class="b46-lazy-empty">Select a bookmaker to view prices.</div>';
-    host.dataset.b46LazyBook='';
-
-    for(const btn of buttons){
-      btn.classList.remove('active');
-      btn.setAttribute('aria-pressed','false');
-    }
+    // Initial state: there is no lower content area at all.
+    setCollapsed(host,panel,buttons);
 
     tabs.addEventListener('click',ev=>{
       const btn=ev.target.closest?.('[data-fmb-book]');
@@ -41,27 +47,26 @@
       const api=window.NOMAD343_FULL_MARKET_BOOKMAKER;
       const expanded=host.closest('.match-expanded');
       const fixture=expanded?._nomadFixture;
+      if(!api||!fixture||!slug)return;
 
-      if(!api||!fixture)return;
-
-      // Clicking same bookmaker collapses panel again.
+      // Clicking the selected bookmaker again returns to the compact state.
       if(host.dataset.b46LazyBook===slug){
-        host.dataset.b46LazyBook='';
-        panel.innerHTML='<div class="b46-lazy-empty">Select a bookmaker to view prices.</div>';
-        for(const b of buttons){b.classList.remove('active');b.setAttribute('aria-pressed','false')}
+        setCollapsed(host,panel,buttons);
         return;
       }
 
       host.dataset.b46LazyBook=slug;
+      host.classList.remove('b46-lazy-collapsed');
+      panel.hidden=false;
+
       for(const b of buttons){
         const on=String(b.dataset.fmbBook||'')===slug;
         b.classList.toggle('active',on);
         b.setAttribute('aria-pressed',on?'true':'false');
       }
 
-      // Render on demand from the fixture already in memory. No network call.
-      const html=api.renderBookHtml(fixture,slug);
-      panel.innerHTML=html;
+      // Render on demand from data already in memory. No network call.
+      panel.innerHTML=api.renderBookHtml(fixture,slug);
     },true);
   }
 
