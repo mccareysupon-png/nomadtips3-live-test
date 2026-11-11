@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 
 const SCRIPT='ball46-production';
 const EXPECT_CURRENT='c85192bf-be65-49b3-bfbb-8b3fca96b3e3';
@@ -215,6 +216,7 @@ try{
 
   const uploaded=await api('/scripts/'+SCRIPT+'/versions',{method:'POST',body:form});
   candidate=uploaded?.id;assert(candidate,'CANDIDATE_MISSING');
+  fs.writeFileSync('pinned-fixtures-v2-production/release-state.json',JSON.stringify({base:EXPECT_CURRENT,candidate,script:SCRIPT},null,2));
 
   const cv=await version(candidate);
   assert.equal(canon(cv.bindings),canon(current.bindings),'BINDINGS_CHANGED');
