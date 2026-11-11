@@ -66,6 +66,17 @@ jobs:
           s=s.replace(render_old,render_new)
           assert "b46PinNativeOrder(rows)" in s
           assert "b46PinRenderHas" in s
+          # Reposition Pin V2 control to the trailing control area: never beside team crest/name.
+          desktop_css_old=".b46-pin-v2-star{position:absolute;z-index:8;left:3px;top:4px;width:24px;height:24px;"
+          desktop_css_new=".b46-pin-v2-star{position:absolute;z-index:8;left:auto;right:10px;top:50%;transform:translateY(-50%);width:28px;height:28px;"
+          assert s.count(desktop_css_old)==1, s.count(desktop_css_old)
+          s=s.replace(desktop_css_old,desktop_css_new)
+          mobile_css_old="#b46gn-cards .b46-pin-v2-mobile{position:absolute;z-index:9;right:32px;top:8px;width:30px;height:30px;"
+          mobile_css_new="#b46gn-cards .b46-pin-v2-mobile{position:absolute;z-index:9;right:34px;top:50%;transform:translateY(-50%);width:28px;height:28px;"
+          assert s.count(mobile_css_old)==1, s.count(mobile_css_old)
+          s=s.replace(mobile_css_old,mobile_css_new)
+          assert "left:auto;right:10px;top:50%;transform:translateY(-50%)" in s
+          assert "right:34px;top:50%;transform:translateY(-50%)" in s
           # Current Expanded Match controller uses document capture. Add a narrow V2 guard there,
           # instead of legacy-style global pointer traps.
           install_anchor="async function install(page){"
