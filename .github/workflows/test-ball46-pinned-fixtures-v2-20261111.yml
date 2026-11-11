@@ -17,6 +17,14 @@ jobs:
         run: |
           cat pinned-fixtures-v2/short.b64.part0 pinned-fixtures-v2/short.b64.part1 pinned-fixtures-v2/short.b64.part2 pinned-fixtures-v2/short.b64.part3 pinned-fixtures-v2/short.b64.part4 pinned-fixtures-v2/short.b64.part5 | base64 -d > pinned-fixtures-v2/test.mjs
           sed -i "s#pathname.startsWith('/api/')#pathname.startsWith('/api/full-market/')#g" pinned-fixtures-v2/test.mjs
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('pinned-fixtures-v2/test.mjs')
+          s=p.read_text()
+          s=s.replace("const original=await rows.first().getAttribute('data-match-id'),target=await rows.nth(5).getAttribute('data-match-id'),before=api;\\n  await rows.nth(5).locator('[data-b46-pin-v2]').click();await page.waitForTimeout(300);\\n  if(api!==before)throw new Error('DESKTOP_API_DELTA');", "const original=await rows.first().getAttribute('data-match-id'),target=await rows.nth(5).getAttribute('data-match-id');\\n  const syncFetch=await rows.nth(5).locator('[data-b46-pin-v2]').evaluate(el=>{let n=0;const f=window.fetch;window.fetch=(...a)=>{n++;return f(...a)};try{el.click();return n}finally{window.fetch=f}});await page.waitForTimeout(300);\\n  if(syncFetch!==0)throw new Error('DESKTOP_API_DELTA_'+syncFetch);")
+          s=s.replace("const original=await cards.first().getAttribute('data-b46gn-fixture'),target=await cards.nth(5).getAttribute('data-b46gn-fixture'),before=api;\\n  await cards.nth(5).locator('[data-b46-pin-mobile]').click();await page.waitForTimeout(500);\\n  if(api!==before)throw new Error('MOBILE_API_DELTA');", "const original=await cards.first().getAttribute('data-b46gn-fixture'),target=await cards.nth(5).getAttribute('data-b46gn-fixture');\\n  const syncFetch=await cards.nth(5).locator('[data-b46-pin-mobile]').evaluate(el=>{let n=0;const f=window.fetch;window.fetch=(...a)=>{n++;return f(...a)};try{el.click();return n}finally{window.fetch=f}});await page.waitForTimeout(500);\\n  if(syncFetch!==0)throw new Error('MOBILE_API_DELTA_'+syncFetch);")
+          p.write_text(s)
+          PY
           node --check pinned-fixtures-v2/test.mjs
           ! grep -q "ball46_favorites_v1" pinned-fixtures-v2/test.mjs
       - run: npm install --no-save --package-lock=false playwright@1.56.1
