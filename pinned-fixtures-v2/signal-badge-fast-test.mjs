@@ -27,7 +27,7 @@ assert(patched.includes("const host=row?.querySelector?.('.signal-inline-stack[d
 assert(patched.includes("host.querySelector(':scope > .b46-league-market-signal-count')"),'BADGE_REUSE_MISSING');
 assert(patched.includes("badge.innerHTML='<i aria-hidden=\"true\"></i><b></b><span></span>'"),'BADGE_GEOMETRY_DRIFT');
 assert(patched.includes("b46PinSignalBadge(row);"),'PIN_PAINT_CALL_MISSING');
-assert(!patched.includes("fetch(" + "'/api" ),'UNEXPECTED_API_LITERAL');
+assert(!helper.includes('fetch('),'UNEXPECTED_FETCH_IN_HELPER');
 
 for(const marker of [
  'B46_PIN_V2_FRESH_20261111',
