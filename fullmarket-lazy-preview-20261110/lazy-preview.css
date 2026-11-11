@@ -1,11 +1,12 @@
-/* BALL46 Full Market Lazy UI Preview 20261110 */
-.b46-lazy-empty{
-  min-height:72px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  padding:18px;
-  text-align:center;
-  opacity:.72;
-  font-weight:700;
+/* BALL46 Full Market Compact Lazy UI Preview 20261111 */
+[data-b46-lazy-preview="1"].b46-lazy-collapsed [data-fmb-panel]{
+  display:none!important;
+  min-height:0!important;
+  height:0!important;
+  margin:0!important;
+  padding:0!important;
+  border:0!important;
+}
+[data-b46-lazy-preview="1"] .fmb-head{
+  white-space:normal;
 }
