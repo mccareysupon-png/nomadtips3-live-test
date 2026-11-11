@@ -1,0 +1,16 @@
+name: Audit BALL46 Full Market Current Patterns 20261111
+on:
+  push:
+    branches: [test/ball46-fullmarket-lazy-ui-20261110]
+    paths: ['fullmarket-lazy-preview-20261110/PATTERN_AUDIT_READY']
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: test/ball46-fullmarket-lazy-ui-20261110}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: node fullmarket-lazy-preview-20261110/public-pattern-audit.mjs
