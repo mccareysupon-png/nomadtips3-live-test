@@ -11,10 +11,10 @@ const av=dep.deployments?.[0]?.versions;assert(av?.length===1&&Number(av[0].perc
 const id=av[0].version_id;
 const v=await api('/workers/'+SCRIPT+'/versions/'+id+'?include=modules');
 console.log('ACTIVE='+id);
-for(const name of ['screen-refresh-5s-20261104.txt','index.js']){
+for(const name of ['screen-refresh-5s-20261104.txt','assets/index.html','index.js']){
  const m=v.modules.find(x=>x.name===name);if(!m)continue;
  const t=Buffer.from(m.content_base64,'base64').toString('utf8');
- const terms=['signalCount','signal-count','signal-badge','signalBadge','data-signal','signal-pill','signalsMap','loadSignals','signalRows','signal'];
+ const terms=['signalCount','signal-count','signal-badge','signalBadge','data-signal','signal-pill','signalsMap','loadSignals','signalRows','signal','function cardHtml','function visibleRows','b46gn-signal'];
  for(const term of terms){
    let from=0,n=0;
    while((from=t.indexOf(term,from))>=0&&n<20){
