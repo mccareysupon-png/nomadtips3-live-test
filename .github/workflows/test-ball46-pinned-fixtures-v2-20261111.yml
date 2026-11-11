@@ -49,6 +49,8 @@ jobs:
                   out.append(line)
           assert changed=={'desktop':3,'mobile':3}, changed
           s='\n'.join(out)+'\n'
+          s=s.replace("  if(await cards.first().getAttribute('data-b46gn-fixture')!==target)throw new Error('MOBILE_NOT_TOP');",
+            "  console.log('MOBILE_DIAG='+JSON.stringify(await page.evaluate(target=>({target,pinned:window.BALL46_PIN_V2_TEST?.isPinned?.(target),pins:window.BALL46_PIN_V2_TEST?.getIds?.(),native:[...document.querySelectorAll('[data-board-sections] .match-row[data-match-id]')].slice(0,8).map(x=>({id:x.dataset.matchId,kind:x.dataset.b46Kind,section:x.closest('[data-status-section]')?.dataset.statusSection})),cards:[...document.querySelectorAll('#b46gn-cards [data-b46gn-fixture]')].slice(0,8).map(x=>x.dataset.b46gnFixture)})),target));\n  if(await cards.first().getAttribute('data-b46gn-fixture')!==target)throw new Error('MOBILE_NOT_TOP');")
           assert "if(api!==before)" not in s
           assert ",.match-row[aria-expanded=" not in s
           p.write_text(s)
