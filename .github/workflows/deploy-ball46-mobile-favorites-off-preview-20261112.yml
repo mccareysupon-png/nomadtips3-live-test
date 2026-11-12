@@ -28,6 +28,12 @@ jobs:
           node pinned-fixtures-v2-production/mobile-favorites-off-stage-20261112.mjs --selftest
       - name: Snapshot current production modules with GET only (no changes)
         run: node pinned-fixtures-v2-production/mobile-favorites-off-readonly-source-20261112.mjs tmp-mobile-favorites-current
+      - name: Install browser for real live HTML capture
+        run: |
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install chromium
+      - name: Capture current browser-delivered BALL46 HTML by GET only
+        run: node pinned-fixtures-v2-production/mobile-favorites-off-capture-browser-20261112.mjs tmp-mobile-favorites-current/live-browser-root.html
       - name: Build independent stage Worker with no production bindings or routes
         run: |
           node pinned-fixtures-v2-production/mobile-favorites-off-build-preview-20261112.mjs tmp-mobile-favorites-current tmp-mobile-favorites-preview-build
