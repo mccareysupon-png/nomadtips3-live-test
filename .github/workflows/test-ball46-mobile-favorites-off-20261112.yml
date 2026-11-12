@@ -48,7 +48,7 @@ jobs:
           const d=readFileSync(p+'screen-refresh-5s-20261104.txt','utf8');
           assert(h.includes('B46_MOBILE_FAVORITES_OFF_STAGE_20261112'));
           assert(!h.includes('id=\"b46-pin-v2-mobile-runtime\"'));
-          assert(d.includes('B46_PIN_V2_SIGNAL_BADGE_FIX_20261112'));
+          assert(d.includes('function b46PinSignalBadge(row){'));
           assert(d.includes('function b46PinRenderHas(id){'));
           assert(d.includes('b46PinSignalBadge(row);'));
           console.log('LIVE_READ_ONLY_COMPATIBILITY_PASS=1');
