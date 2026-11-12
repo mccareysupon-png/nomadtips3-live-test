@@ -30,10 +30,12 @@ export function patchDashboard(source) {
     'function b46PinPaint(row){if(matchMedia(\'(max-width:760px)\').matches){b46PinSignalBadge(row);row?.querySelector(\'[data-b46-pin-v2]\')?.remove();return;}',
     'PIN_PAINT_GUARD'
   );
+  const toggles = source.match(/function b46PinToggle\([^)]*\)\{/g);
+  assert.equal(toggles?.length, 1, 'PIN_TOGGLE_SIGNATURE_COUNT_' + (toggles?.length || 0));
   source = once(
     source,
-    'function b46PinToggle(id){',
-    'function b46PinToggle(id){if(matchMedia(\'(max-width:760px)\').matches)return false;',
+    toggles[0],
+    toggles[0] + 'if(matchMedia(\'(max-width:760px)\').matches)return false;',
     'PIN_TOGGLE_GUARD'
   );
   assert(source.includes('b46PinSignalBadge(row);'), 'SIGNAL_BADGE_REMOVED');
