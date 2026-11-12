@@ -31,6 +31,7 @@ for (const name of required) {
   const m=version.modules?.find(m=>m.name===name);
   assert(m?.content_base64, 'REQUIRED_SOURCE_MISSING_'+name);
   const content=Buffer.from(m.content_base64,'base64').toString('utf8');
+  if (name==='screen-refresh-5s-20261104.txt') { const signatures=[...content.matchAll(/function\s+b46Pin[A-Za-z0-9_]*\s*\([^)]*\)\s*\{/g)].map(x=>x[0]);console.log('PIN_FUNCTION_SIGNATURES='+JSON.stringify(signatures.slice(0,32))); }
   assert(content.length>0, 'SOURCE_EMPTY_'+name);
   if (name==='assets/index.html') assert(content.includes('B46_PIN_V2_MOBILE_20261111'),'MOBILE_PIN_BASE_MISSING');
   else assert(content.includes('B46_PIN_V2_FRESH_20261111'),'PIN_BASE_MISSING_'+name);
