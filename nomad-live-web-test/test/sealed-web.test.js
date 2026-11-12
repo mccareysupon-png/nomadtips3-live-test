@@ -278,3 +278,14 @@ test('open mode forwards non-API requests to the static asset binding',async()=>
   assert.equal(forwardedUrl,request.url);
   assert.equal(bindingCalls,0);
 });
+
+
+test('TEST home carries the BALL46 top promo with local responsive asset and exact destination',()=>{
+  const home=readFileSync(join(frontend,'index.html'),'utf8');
+  assert.match(home,/class="ball46-top-promo"/);
+  assert.match(home,/href="https:\/\/ball46\.com\/"/);
+  assert.match(home,/src="assets\/ball46-top-banner\.webp"/);
+  assert.equal(existsSync(join(frontend,'assets','ball46-top-banner.webp')),true);
+  assert.equal((home.match(/class="ball46-top-promo"/g)||[]).length,1);
+  assert.ok(home.indexOf('ball46-top-promo')<home.indexOf('<section class="hero">'),'BALL46 promo must stay above the NOMAD hero');
+});
