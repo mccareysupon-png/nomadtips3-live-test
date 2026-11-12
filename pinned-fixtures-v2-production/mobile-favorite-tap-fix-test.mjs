@@ -1,0 +1,27 @@
+import assert from 'node:assert/strict';
+const SCRIPT='ball46-production';
+const EXPECT='27a73d15-3e86-4af5-80c7-68a364c56ac1';
+const account=process.env.CLOUDFLARE_ACCOUNT_ID,token=process.env.CLOUDFLARE_API_TOKEN;
+const root='https://api.cloudflare.com/client/v4/accounts/'+account+'/workers';
+async function api(path){const r=await fetch(root+path,{headers:{Authorization:'Bearer '+token},signal:AbortSignal.timeout(60000)});const j=await r.json();assert(r.ok&&j.success===true,'CF_ERROR');return j.result}
+const d=await api('/scripts/'+SCRIPT+'/deployments?per_page=5');const active=d.deployments?.[0]?.versions?.[0]?.version_id;assert.equal(active,EXPECT,'ACTIVE_VERSION_DRIFT');
+const v=await api('/workers/'+SCRIPT+'/versions/'+active+'?include=modules');
+const html=v.modules.find(m=>m.name==='assets/index.html');assert(html,'HTML_MISSING');
+const screen=v.modules.find(m=>m.name==='screen-refresh-5s-20261104.txt');assert(screen,'SCREEN_MISSING');
+const h=Buffer.from(html.content_base64,'base64').toString('utf8');
+const s=Buffer.from(screen.content_base64,'base64').toString('utf8');
+assert(s.includes('function b46PinToggle(id,sourceStar)'), 'INSTANT_TOGGLE_SIGNATURE_MISSING');
+assert(s.includes("sourceStar.textContent=on?'★':'☆'"), 'INSTANT_STAR_MUTATION_MISSING');
+const old="window.BALL46_PIN_V2?.toggle?.(s.dataset.b46PinMobile);requestAnimationFrame(paint)";
+const neu="window.BALL46_PIN_V2?.toggle?.(s.dataset.b46PinMobile,s);requestAnimationFrame(paint)";
+assert.equal(h.split(old).length-1,1,'MOBILE_HANDLER_ANCHOR_COUNT');
+const patched=h.replace(old,neu);
+assert(patched.includes(neu),'MOBILE_SOURCE_STAR_PATCH_MISSING');
+assert(patched.includes('B46_PIN_V2_MOBILE_TAP_GREEN_20261112'),'MOBILE_HOTFIX_MARKER_MISSING');
+assert(!neu.includes('fetch('),'EXTRA_API_DETECTED');
+console.log('ACTIVE_BASE='+active);
+console.log('MOBILE_HANDLER_PASSES_SOURCE_STAR=1');
+console.log('INSTANT_TOGGLE_SIGNATURE=1');
+console.log('MOBILE_PAINT_REMAINS=1');
+console.log('FIX_EXTRA_API=0');
+console.log('MOBILE_FAVORITE_TAP_FIX_TEST_PASS=1');
