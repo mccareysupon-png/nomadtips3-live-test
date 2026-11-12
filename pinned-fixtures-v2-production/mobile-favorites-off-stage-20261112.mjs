@@ -26,8 +26,8 @@ export function patchDashboard(source) {
   );
   source = once(
     source,
-    'function b46PinPaint(row){if(!row)return;b46PinSignalBadge(row);',
-    'function b46PinPaint(row){if(!row)return;b46PinSignalBadge(row);if(matchMedia(\'(max-width:760px)\').matches){row.querySelector(\'[data-b46-pin-v2]\')?.remove();return;}',
+    'function b46PinPaint(row){',
+    'function b46PinPaint(row){if(matchMedia(\'(max-width:760px)\').matches){b46PinSignalBadge(row);row?.querySelector(\'[data-b46-pin-v2]\')?.remove();return;}',
     'PIN_PAINT_GUARD'
   );
   source = once(
