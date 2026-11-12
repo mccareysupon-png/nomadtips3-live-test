@@ -1,0 +1,29 @@
+name: BALL46 membership banners read-only preflight
+on:
+  push:
+    branches: [codex/ball46-member-banners-20261112]
+    paths: ['work/statistics-member-sidebar-test-20261112/audit-request.json']
+permissions:
+  contents: write
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Read active modules and configuration only
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: node work/statistics-member-sidebar-test-20261112/production-audit.mjs
+      - name: Preserve sanitized baseline evidence
+        if: always()
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add work/statistics-member-sidebar-test-20261112/deploy-audit/*.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Record membership banner read-only preflight [skip ci]"
+          git push origin HEAD:codex/ball46-member-banners-20261112
