@@ -93,7 +93,7 @@ function selfTest() {
   assert.equal(patchDashboard(patched), patched, 'DASH_NOT_IDEMPOTENT');
   assert.equal(patchMobileHtml(mobile), mobile, 'HTML_NOT_IDEMPOTENT');
   assert(patched.includes("if(matchMedia('(max-width:760px)').matches)return false;"), 'NO_MOBILE_DISABLE');
-  assert(patched.includes("row.querySelector('[data-b46-pin-v2]')?.remove();return;"), 'NO_MOBILE_STAR_REMOVE');
+  assert(patched.includes("row?.querySelector('[data-b46-pin-v2]')?.remove();return;"), 'NO_MOBILE_STAR_REMOVE');
   assert(patched.includes("b46PinSignalBadge(row);"), 'SIGNAL_BADGE_CHANGED');
   assert(mobile.includes(MOBILE_SORT_NEW) && mobile.includes(MOBILE_SIG_NEW), 'MOBILE_NATIVE_ORDER_MISSING');
   assert(!mobile.includes('setInterval(()=>{},30)') && !mobile.includes("document.addEventListener('ball46:pin-v2',schedule)"), 'MOBILE_PIN_LOOP_REMAINS');
