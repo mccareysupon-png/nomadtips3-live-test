@@ -7,7 +7,7 @@ import {patchMobileHtml,patchDashboard,MARK} from './mobile-favorites-off-stage-
 const srcDir=process.argv[2]||'tmp-mobile-favorites-current';
 const outDir=process.argv[3]||'tmp-mobile-favorites-preview-build';
 assert.notEqual(srcDir,outDir,'SOURCE_AND_OUTPUT_SAME');
-const htmlBase=readFileSync(join(srcDir,'assets/index.html'),'utf8');
+const htmlBase=readFileSync(join(srcDir,'live-browser-root.html'),'utf8');
 const dashBase=readFileSync(join(srcDir,'screen-refresh-5s-20261104.txt'),'utf8');
 const fallbackBase=readFileSync(join(srcDir,'index.js'),'utf8');
 assert(!htmlBase.includes(MARK)&&!dashBase.includes(MARK),'LIVE_ALREADY_PATCHED');
