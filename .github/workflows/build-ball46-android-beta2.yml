@@ -1,0 +1,58 @@
+name: Build BALL46 Android Beta2 - Test Only
+
+on:
+  push:
+    branches: [test/ball46-android-beta2-safearea-favorites-20261113]
+    paths:
+      - '.github/workflows/build-ball46-android-beta2.yml'
+      - 'ball46-android-app/app/src/main/java/com/ball46/app/MainActivity.java'
+      - 'ball46-android-app/app/build.gradle'
+      - 'ball46-android-app/README.md'
+
+permissions:
+  contents: read
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      ANDROID_HOME: /usr/local/lib/android/sdk
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Verify Beta2 scope and fixes
+        run: |
+          grep -q "WindowInsets.Type.systemBars()" ball46-android-app/app/src/main/java/com/ball46/app/MainActivity.java
+          grep -q "b46-android-beta2-no-mobile-favorites" ball46-android-app/app/src/main/java/com/ball46/app/MainActivity.java
+          grep -q "versionName '1.0.0-beta2'" ball46-android-app/app/build.gradle
+
+      - name: Install Android SDK packages
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-35" "build-tools;35.0.0"
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+
+      - name: Build APK
+        run: gradle -p ball46-android-app :app:assembleDebug --no-daemon
+
+      - name: Prepare test APK
+        run: |
+          cp ball46-android-app/app/build/outputs/apk/debug/app-debug.apk BALL46-Android-v1.0.0-beta2.apk
+          test -s BALL46-Android-v1.0.0-beta2.apk
+          unzip -l BALL46-Android-v1.0.0-beta2.apk | grep -q classes.dex
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BALL46-Android-v1.0.0-beta2-test
+          path: BALL46-Android-v1.0.0-beta2.apk
+          retention-days: 30
