@@ -1,0 +1,17 @@
+name: Diagnose Actual Live HTML vs Worker Stage 20261112
+on:
+  push:
+    branches: [test/ball46-mobile-favorites-off-20261112]
+    paths: ['.github/workflows/diagnose-ball46-stage-actual-html-20261112.yml']
+permissions: {contents: read}
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+      - run: npx playwright install chromium
+      - run: node pinned-fixtures-v2-production/mobile-favorites-off-diagnose-live-html-20261112.mjs
