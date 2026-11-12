@@ -1,0 +1,26 @@
+name: Deploy BALL46 Mobile Favorite Tap Fix 20261112
+on:
+  push:
+    branches: [test/ball46-pin-v2-mobile-fix-20261112]
+    paths: ['pinned-fixtures-v2-production/MOBILE_SOURCE_STAR_DEPLOY_READY']
+permissions: {contents: read}
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: test/ball46-pin-v2-mobile-fix-20261112}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Guarded mobile Favorite tap deploy
+        run: node pinned-fixtures-v2-production/mobile-source-star-hotfix-deploy.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mobile-source-star-production-${{ github.run_id }}
+          path: pinned-fixtures-v2-production/mobile-source-star-hotfix-state.json
+          retention-days: 7
