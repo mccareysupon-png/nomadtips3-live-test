@@ -1,0 +1,65 @@
+name: Verify BALL46 Mobile Favorites OFF Stage In Browser
+on:
+  push:
+    branches: [test/ball46-mobile-favorites-off-20261112]
+    paths: ['.github/workflows/qa-ball46-mobile-favorites-off-stage-20261112.yml']
+permissions: {contents: read}
+jobs:
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+      - run: npx playwright install --with-deps chromium
+      - name: Real browser mobile and desktop stage checks
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import {chromium,devices} from 'playwright';
+          import {mkdirSync} from 'node:fs';
+          const base='https://ball46-mobile-favorites-stage-20261112.mccarey-supon.workers.dev/';
+          mkdirSync('tmp-stage-qa',{recursive:true});
+          const browser=await chromium.launch({headless:true});
+          const mobileCtx=await browser.newContext({...devices['Pixel 7']});
+          const mobile=await mobileCtx.newPage();
+          const errs=[];
+          mobile.on('pageerror',e=>errs.push(String(e).slice(0,220)));
+          const r=await mobile.goto(base+'?browserqa='+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
+          assert.equal(r.status(),200,'MOBILE_PREVIEW_HTTP');
+          await mobile.waitForTimeout(6000);
+          const m=await mobile.evaluate(()=>{
+            const ui=window.BALL46_PIN_V2;
+            const cardCount=document.querySelectorAll('#b46gn-cards [data-b46gn-fixture]').length;
+            const visible=[...document.querySelectorAll('[data-b46-pin-mobile],.b46-pin-v2-mobile,.b46-pin-v2-star')].filter(el=>getComputedStyle(el).display!=='none'&&el.getBoundingClientRect().width>0).length;
+            const toggled=ui?.toggle?.('__stage_fake_id__');
+            return {cardCount,visible,apiLoaded:!!ui,toggleResult:toggled??null,htmlMarker:document.documentElement.outerHTML.includes('B46_MOBILE_FAVORITES_OFF_STAGE_20261112')};
+          });
+          console.log('MOBILE='+JSON.stringify(m));
+          assert(m.htmlMarker,'MOBILE_MARKER_NOT_VISIBLE');
+          assert.equal(m.visible,0,'MOBILE_FAVORITE_STAR_VISIBLE');
+          if(m.apiLoaded)assert.equal(m.toggleResult,false,'MOBILE_TOGGLE_NOT_DISABLED');
+          await mobile.screenshot({path:'tmp-stage-qa/mobile.png',fullPage:false});
+          const pcCtx=await browser.newContext({viewport:{width:1365,height:900}});
+          const pc=await pcCtx.newPage();
+          const d=await pc.goto(base+'?browserqa='+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
+          assert.equal(d.status(),200,'PC_PREVIEW_HTTP');
+          await pc.waitForTimeout(6000);
+          const desktop=await pc.evaluate(()=>({cardRows:document.querySelectorAll('.match-row[data-match-id]').length,desktopStars:document.querySelectorAll('.b46-pin-v2-star').length,apiLoaded:!!window.BALL46_PIN_V2,htmlMarker:document.documentElement.outerHTML.includes('B46_MOBILE_FAVORITES_OFF_STAGE_20261112')}));
+          console.log('DESKTOP='+JSON.stringify(desktop));
+          assert(desktop.htmlMarker,'PC_MARKER_MISSING');
+          await pc.screenshot({path:'tmp-stage-qa/desktop.png',fullPage:false});
+          console.log('MOBILE_PAGE_ERRORS='+JSON.stringify(errs.slice(0,10)));
+          console.log('STAGE_BROWSER_QA_PASS=1');
+          console.log('PRODUCTION_DEPLOY=0');
+          await browser.close();
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-mobile-favorites-off-stage-screenshots
+          path: tmp-stage-qa/*.png
+          if-no-files-found: ignore
+          retention-days: 7
