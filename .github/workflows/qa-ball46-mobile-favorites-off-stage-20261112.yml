@@ -39,6 +39,8 @@ jobs:
           });
           console.log('MOBILE='+JSON.stringify(m));
           assert(m.htmlMarker,'MOBILE_MARKER_NOT_VISIBLE');
+          assert(m.cardCount>0,'MOBILE_MATCH_CARDS_DID_NOT_RENDER');
+          assert(m.apiLoaded,'MOBILE_PIN_API_MISSING');
           assert.equal(m.visible,0,'MOBILE_FAVORITE_STAR_VISIBLE');
           if(m.apiLoaded)assert.equal(m.toggleResult,false,'MOBILE_TOGGLE_NOT_DISABLED');
           await mobile.screenshot({path:'tmp-stage-qa/mobile.png',fullPage:false});
@@ -50,6 +52,8 @@ jobs:
           const desktop=await pc.evaluate(()=>({cardRows:document.querySelectorAll('.match-row[data-match-id]').length,desktopStars:document.querySelectorAll('.b46-pin-v2-star').length,apiLoaded:!!window.BALL46_PIN_V2,htmlMarker:document.documentElement.outerHTML.includes('B46_MOBILE_FAVORITES_OFF_STAGE_20261112')}));
           console.log('DESKTOP='+JSON.stringify(desktop));
           assert(desktop.htmlMarker,'PC_MARKER_MISSING');
+          assert(desktop.cardRows>0,'DESKTOP_MATCH_ROWS_DID_NOT_RENDER');
+          assert(desktop.apiLoaded,'DESKTOP_PIN_API_MISSING');
           await pc.screenshot({path:'tmp-stage-qa/desktop.png',fullPage:false});
           console.log('MOBILE_PAGE_ERRORS='+JSON.stringify(errs.slice(0,10)));
           console.log('STAGE_BROWSER_QA_PASS=1');
