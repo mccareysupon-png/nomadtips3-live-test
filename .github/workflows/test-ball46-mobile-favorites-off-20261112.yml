@@ -1,0 +1,60 @@
+name: Test BALL46 Mobile Favorites OFF (Read Only) 20261112
+on:
+  push:
+    branches: [test/ball46-mobile-favorites-off-20261112]
+    paths:
+      - 'pinned-fixtures-v2-production/mobile-favorites-off-*.mjs'
+      - '.github/workflows/test-ball46-mobile-favorites-off-20261112.yml'
+permissions: {contents: read}
+jobs:
+  local-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Verify patch script syntax
+        run: |
+          node --check pinned-fixtures-v2-production/mobile-favorites-off-stage-20261112.mjs
+          node --check pinned-fixtures-v2-production/mobile-favorites-off-readonly-source-20261112.mjs
+      - name: Offline unit tests (no production access)
+        run: node pinned-fixtures-v2-production/mobile-favorites-off-stage-20261112.mjs --selftest
+  read-only-current-source:
+    needs: local-tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Fetch live Worker modules with GET only (local temporary files)
+        run: node pinned-fixtures-v2-production/mobile-favorites-off-readonly-source-20261112.mjs tmp-mobile-favorites-current
+      - name: Produce non-deployed test candidate
+        run: node pinned-fixtures-v2-production/mobile-favorites-off-stage-20261112.mjs --source-dir tmp-mobile-favorites-current --out-dir tmp-mobile-favorites-candidate
+      - name: Verify changed modules and retain PC features
+        run: |
+          node --input-type=module -e "
+          import assert from 'node:assert/strict';
+          import {readFileSync} from 'node:fs';
+          const p='tmp-mobile-favorites-candidate/';
+          const m=JSON.parse(readFileSync(p+'mobile-favorites-off-manifest.json','utf8'));
+          assert.equal(m.mode,'TEST_ONLY_NO_DEPLOY');
+          assert.deepEqual(m.changedModules,['index.js','screen-refresh-5s-20261104.txt','assets/index.html']);
+          const h=readFileSync(p+'assets/index.html','utf8');
+          const d=readFileSync(p+'screen-refresh-5s-20261104.txt','utf8');
+          assert(h.includes('B46_MOBILE_FAVORITES_OFF_STAGE_20261112'));
+          assert(!h.includes('id=\"b46-pin-v2-mobile-runtime\"'));
+          assert(d.includes('B46_PIN_V2_SIGNAL_BADGE_FIX_20261112'));
+          assert(d.includes('function b46PinRenderHas(id){'));
+          assert(d.includes('b46PinSignalBadge(row);'));
+          console.log('LIVE_READ_ONLY_COMPATIBILITY_PASS=1');
+          console.log('MOBILE_FAVORITES_OFF_TEST_CANDIDATE=1');
+          console.log('DESKTOP_SIGNAL_BADGE_RETAINED=1');
+          console.log('PRODUCTION_DEPLOY=0');
+          "
+      - name: Do not publish Worker modules or activate a version
+        run: echo 'READ_ONLY_STAGE_VALIDATION_COMPLETE'
