@@ -1,0 +1,57 @@
+name: BALL46 approved membership banners guarded deploy
+on:
+  push:
+    branches: [codex/ball46-member-banners-20261112]
+    paths: ['work/statistics-member-sidebar-test-20261112/release-request.json']
+permissions:
+  contents: write
+concurrency:
+  group: ball46-production-deploy
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install isolated validation tools
+        run: |
+          npm install --no-save --package-lock=false --prefix work/statistics-member-sidebar-test-20261112 acorn@8.15.0 parse5@7.3.0 playwright@1.56.1
+          if command -v google-chrome >/dev/null; then
+            echo "PLAYWRIGHT_EXECUTABLE_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
+          else
+            cd work/statistics-member-sidebar-test-20261112 && npx playwright install --with-deps chromium
+          fi
+      - name: Preserve fresh baseline and stage one existing payload only
+        run: node work/statistics-member-sidebar-test-20261112/release.mjs stage
+      - name: Preview desktop mobile guard both themes all eight markets
+        run: node work/statistics-member-sidebar-test-20261112/release-browser.mjs candidate
+      - name: Activate only after preservation and preview gates
+        run: node work/statistics-member-sidebar-test-20261112/release.mjs activate
+      - name: Production desktop mobile guard both themes all markets
+        run: node work/statistics-member-sidebar-test-20261112/release-browser.mjs production
+      - name: Final version and health verification
+        run: node work/statistics-member-sidebar-test-20261112/release.mjs finish
+      - name: Restore immediate baseline on post-activation failure
+        if: failure()
+        run: node work/statistics-member-sidebar-test-20261112/release.mjs rollback
+      - name: Preserve sanitized release evidence
+        if: always()
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add work/statistics-member-sidebar-test-20261112/release-audit/*.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Record membership banner deployment evidence [skip ci]"
+          git push origin HEAD:codex/ball46-member-banners-20261112
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-membership-banners-proof
+          path: work/statistics-member-sidebar-test-20261112/release-audit

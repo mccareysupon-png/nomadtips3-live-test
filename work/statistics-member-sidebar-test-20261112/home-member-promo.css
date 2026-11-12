@@ -1,0 +1,11 @@
+/* Local homepage experiment: membership artwork after LIVE MATCH MONITOR. */
+.b46-home-member-promo{display:none}
+@media(min-width:1024px){
+ body[data-workspace-view="live"] .right-rail>.b46-home-member-promo{display:block;margin:0;padding:0;min-width:0;width:100%}
+ .b46-home-member-promo>a{display:block;overflow:hidden;border-radius:16px;background:#06271c;box-shadow:0 8px 24px #0003;text-decoration:none;transition:box-shadow .2s ease}
+ .b46-home-member-promo img{display:block;width:100%;height:auto;aspect-ratio:1/3;object-fit:contain}
+ .b46-home-member-promo>a:hover{box-shadow:0 10px 28px #08975a40}
+ .b46-home-member-promo>a:focus-visible{outline:3px solid #43efa1;outline-offset:4px}
+ html[data-theme="light"] .b46-home-member-promo>a{background:#effaf3;box-shadow:0 8px 24px #123c2526}
+}
+@media(prefers-reduced-motion:reduce){.b46-home-member-promo>a{transition:none}}
