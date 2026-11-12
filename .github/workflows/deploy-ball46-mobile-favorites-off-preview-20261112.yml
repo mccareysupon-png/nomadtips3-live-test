@@ -1,0 +1,108 @@
+name: Deploy Isolated BALL46 Mobile Favorites OFF Preview 20261112
+on:
+  push:
+    branches: [test/ball46-mobile-favorites-off-20261112]
+    paths: ['.github/workflows/deploy-ball46-mobile-favorites-off-preview-20261112.yml']
+permissions: {contents: read}
+concurrency:
+  group: ball46-mobile-favorites-off-stage-only
+  cancel-in-progress: false
+jobs:
+  preview:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      PREVIEW_URL: https://ball46-mobile-favorites-stage-20261112.mccarey-supon.workers.dev
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: test/ball46-mobile-favorites-off-20261112}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Validate local stage patch and reject incompatible source
+        run: |
+          node --check pinned-fixtures-v2-production/mobile-favorites-off-stage-20261112.mjs
+          node --check pinned-fixtures-v2-production/mobile-favorites-off-build-preview-20261112.mjs
+          node --check pinned-fixtures-v2-production/mobile-favorites-off-readonly-source-20261112.mjs
+          node pinned-fixtures-v2-production/mobile-favorites-off-stage-20261112.mjs --selftest
+      - name: Snapshot current production modules with GET only (no changes)
+        run: node pinned-fixtures-v2-production/mobile-favorites-off-readonly-source-20261112.mjs tmp-mobile-favorites-current
+      - name: Build independent stage Worker with no production bindings or routes
+        run: |
+          node pinned-fixtures-v2-production/mobile-favorites-off-build-preview-20261112.mjs tmp-mobile-favorites-current tmp-mobile-favorites-preview-build
+          node --check tmp-mobile-favorites-preview-build/index.mjs
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import {readFileSync} from 'node:fs';
+          const c=JSON.parse(readFileSync('tmp-mobile-favorites-preview-build/wrangler.jsonc','utf8'));
+          const m=JSON.parse(readFileSync('tmp-mobile-favorites-preview-build/manifest.json','utf8'));
+          assert.equal(c.name,'ball46-mobile-favorites-stage-20261112');
+          assert.equal(c.workers_dev,true);
+          assert.deepEqual(c.routes,[]);
+          assert.deepEqual(c.triggers.crons,[]);
+          assert.deepEqual(m.bindings,[]);
+          assert.deepEqual(m.allowedMethods,['GET','HEAD','OPTIONS']);
+          console.log('ISOLATED_TEST_TARGET_VERIFIED=1');
+          NODE
+      - name: Verify stage target is not an existing unsafe Worker
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          const a=process.env.CLOUDFLARE_ACCOUNT_ID,t=process.env.CLOUDFLARE_API_TOKEN,n='ball46-mobile-favorites-stage-20261112';
+          assert(a&&t,'MISSING_CLOUDFLARE_DEPLOY_CREDENTIALS');
+          const r=await fetch('https://api.cloudflare.com/client/v4/accounts/'+a+'/workers/scripts/'+n+'/settings',{headers:{Authorization:'Bearer '+t}});
+          if(r.status===404){console.log('NEW_STAGE_SCRIPT=1');process.exit(0)}
+          const j=await r.json().catch(()=>null);
+          assert(r.ok&&j?.success===true,'EXISTING_STAGE_IDENTITY_UNVERIFIED');
+          assert(!(j.result?.bindings||[]).length,'EXISTING_STAGE_BINDINGS_UNSAFE');
+          assert(!(j.result?.routes||[]).length,'EXISTING_STAGE_ROUTES_UNSAFE');
+          console.log('STAGE_WORKER_ALREADY_ISOLATED=1');
+          NODE
+      - name: Deploy isolated test worker - never ball46-production
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: '4.46.0'
+          command: deploy --config tmp-mobile-favorites-preview-build/wrangler.jsonc
+      - name: Verify stage-only URL and reject write requests
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          const root=process.env.PREVIEW_URL;
+          async function retry(url,options) {
+            let last;
+            for(let i=0;i<10;i++) {
+              try {const r=await fetch(url,options);if(r.ok||r.status===405)return r;last=Error('HTTP_'+r.status)}
+              catch(e){last=e}
+              await new Promise(r=>setTimeout(r,1500));
+            }
+            throw last;
+          }
+          const html=await retry(root+'/?stagecheck='+Date.now());
+          const h=await html.text();
+          assert.equal(html.headers.get('x-ball46-stage'),'mobile-favorites-off');
+          assert(h.includes('B46_MOBILE_FAVORITES_OFF_STAGE_20261112'));
+          assert(!h.includes('id="b46-pin-v2-mobile-runtime"'));
+          assert(!h.includes('window.BALL46_PIN_V2?.isPinned?.(x.id)'));
+          const js=await retry(root+'/dashboard-v2-stage3-featured-facts-20261013a.js?stagecheck='+Date.now());
+          const d=await js.text();
+          assert.equal(js.headers.get('x-ball46-stage'),'mobile-favorites-off');
+          assert(d.includes('B46_MOBILE_FAVORITES_OFF_STAGE_20261112'));
+          assert(d.includes('function b46PinSignalBadge(row){'));
+          const blocked=await fetch(root+'/api/engine/board',{method:'POST'});
+          assert.equal(blocked.status,405);
+          console.log('STAGE_PREVIEW_URL='+root);
+          console.log('STAGE_PREVIEW_HTTP_CHECK=PASS');
+          console.log('STAGE_POST_BLOCKED=PASS');
+          console.log('PRODUCTION_DEPLOY=0');
+          NODE
+      - name: Upload stage manifest (no runtime secret)
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-mobile-favorites-off-stage-manifest
+          path: tmp-mobile-favorites-preview-build/manifest.json
+          if-no-files-found: ignore
+          retention-days: 7
