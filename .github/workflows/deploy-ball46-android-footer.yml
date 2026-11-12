@@ -1,0 +1,24 @@
+name: Deploy BALL46 Android Footer CTA
+on:
+  push:
+    branches: [test/ball46-pin-v2-mobile-fix-20261112]
+    paths: ['ball46-android-app/ANDROID_FOOTER_DEPLOY_READY']
+permissions: {contents: read}
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: node ball46-android-app/deploy-footer-cta.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-android-footer-${{ github.run_id }}
+          path: ball46-android-app/footer-deploy-state.json
+          retention-days: 7
