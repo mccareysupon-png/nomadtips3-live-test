@@ -4,7 +4,6 @@ on:
   push:
     branches: [test/ball46-pin-v2-mobile-fix-20261112]
     paths:
-      - 'ball46-android-app/**'
       - 'ball46-android-app/BUILD_ANDROID_BETA1_READY'
 
 permissions:
@@ -14,6 +13,9 @@ jobs:
   build:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    env:
+      ANDROID_HOME: /usr/local/lib/android/sdk
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
     steps:
       - uses: actions/checkout@v4
 
@@ -22,10 +24,10 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - uses: android-actions/setup-android@v3
-
-      - name: Install Android SDK
-        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - name: Install Android SDK packages
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-35" "build-tools;35.0.0"
 
       - uses: gradle/actions/setup-gradle@v4
         with:
@@ -48,4 +50,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release view ball46-android-v1.0.0-beta1 >/dev/null 2>&1 && gh release delete ball46-android-v1.0.0-beta1 -y --cleanup-tag || true
-          gh release create ball46-android-v1.0.0-beta1 BALL46-Android-v1.0.0-beta1.apk             --title "BALL46 Android v1.0.0 Beta 1"             --notes "Direct-install Android WebView beta for BALL46. Opens ball46.com and BALL46 subdomains inside the app. External links open in the device browser."
+          gh release create ball46-android-v1.0.0-beta1 BALL46-Android-v1.0.0-beta1.apk \
+            --title "BALL46 Android v1.0.0 Beta 1" \
+            --notes "Direct-install Android WebView beta for BALL46. Opens ball46.com and BALL46 subdomains inside the app. External links open in the device browser."
