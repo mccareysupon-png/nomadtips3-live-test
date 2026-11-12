@@ -4,11 +4,12 @@ function artwork(image){const light=document.documentElement.dataset.theme==='li
 function sync(){queued=false;const monitor=document.querySelector('.right-rail>.b46-match-monitor');
 const existing=document.querySelector('.b46-home-member-promo');
 if(!desktop.matches||document.body.dataset.workspaceView!=='live'){existing?.remove();return}
-if(!monitor)return;if(existing){artwork(existing.querySelector('img'));return}
+if(!monitor)return;if(existing){artwork(existing.querySelector('img'));if(monitor.nextElementSibling!==existing)monitor.after(existing);return}
 const promo=document.createElement('aside');promo.className='b46-home-member-promo';promo.setAttribute('aria-label','BALL46 membership');
 const link=document.createElement('a');link.href='https://member.ball46.com/pricing';link.target='_blank';link.rel='noopener';link.setAttribute('aria-label','Join BALL46 membership (opens in a new tab)');
 const image=document.createElement('img');image.width=724;image.height=2172;image.decoding='async';artwork(image);
 link.append(image);promo.append(link);monitor.after(promo)}
 function schedule(){if(queued)return;queued=true;requestAnimationFrame(sync)}
-function boot(){const rail=document.querySelector('.right-rail');if(rail)new MutationObserver(schedule).observe(rail,{childList:true});new MutationObserver(schedule).observe(document.body,{attributes:true,attributeFilter:['data-workspace-view']});new MutationObserver(schedule).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});desktop.addEventListener('change',schedule);sync()}
+function boot(){const stage=document.querySelector('.workspace-stage')||document.body;new MutationObserver(schedule).observe(stage,{childList:true,subtree:true});new MutationObserver(schedule).observe(document.body,{attributes:true,attributeFilter:['data-workspace-view']});new MutationObserver(schedule).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});desktop.addEventListener('change',schedule);sync()}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();})();
+
