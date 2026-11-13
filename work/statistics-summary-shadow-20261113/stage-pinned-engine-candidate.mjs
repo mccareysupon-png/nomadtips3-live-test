@@ -16,7 +16,7 @@ let baseline=null,candidate=null,zeroDeployment=null;
 async function api(method,path,body){
   const write=method!=='GET';
   if(write){
-    const allowed=path==='/workers/scripts/'+W+'/versions'||path==='/workers/scripts/'+W+'/deployments';
+    const basePath=path.split('?')[0];const allowed=basePath==='/workers/scripts/'+W+'/versions'||basePath==='/workers/scripts/'+W+'/deployments';
     assert(allowed,'CONTROL_WRITE_DENIED:'+method+':'+path);
     report.controlWrites.push({method,path});
   }
@@ -130,6 +130,7 @@ try{
   assert.equal(webBefore.versions[0].version_id,website.active,'WEBSITE_ACTIVE_DRIFT');
   report.before={engineDeployment:before.id,engineVersion:baseline,websiteDeployment:webBefore.id,websiteVersion:website.active};
 
+  const versions=await api('GET','/workers/scripts/'+W+'/versions?per_page=1');const latestUploaded=versions.items?.[0]?.id;assert.equal(latestUploaded,baseline,'LATEST_UPLOADED_NOT_BASELINE_STOP');report.latestUploaded=latestUploaded;
   const v=await getVersion(baseline),settings=await api('GET','/workers/scripts/'+W+'/settings'),schedules=await api('GET','/workers/scripts/'+W+'/schedules'),subdomain=await api('GET','/workers/scripts/'+W+'/subdomain');
   const currentMain=v.modules.find(m=>m.name===v.main_module);assert(currentMain,'MAIN_MODULE_MISSING');
   assert.equal(sha(Buffer.from(currentMain.content_base64,'base64')),engine.sha,'ENGINE_CAPTURE_SHA_DRIFT');
@@ -138,7 +139,7 @@ try{
   report.baseMainSha=engine.sha;report.candidateMainSha=sha(patched);assert.notEqual(report.baseMainSha,report.candidateMainSha,'PATCH_NOOP');
 
   const nextModules=v.modules.map(m=>m.name===v.main_module?{...m,content_base64:patched.toString('base64')}:m);
-  const bindings=v.bindings.map(b=>b.type==='secret_text'?{name:b.name,type:b.type,version_id:'latest'}:b);
+  const bindings=v.bindings.map(b=>b.type==='secret_text'?{name:b.name,type:'inherit',version_id:'latest'}:b);
   const metadata={main_module:v.main_module,compatibility_date:v.compatibility_date,compatibility_flags:v.compatibility_flags||[],bindings};
   if(v.assets)metadata.assets=v.assets;
   for(const k of ['usage_model','logpush','limits','observability','placement'])if(settings.settings?.[k]!=null)metadata[k]=settings.settings[k];
@@ -146,7 +147,7 @@ try{
   const form=new FormData();form.set('metadata',new Blob([JSON.stringify(metadata)],{type:'application/json'}));
   for(const m of nextModules)form.set(m.name,new Blob([Buffer.from(m.content_base64,'base64')],{type:m.content_type}),m.name);
 
-  const made=await api('POST','/workers/scripts/'+W+'/versions',form);candidate=made.id;report.candidate=candidate;
+  const made=await api('POST','/workers/scripts/'+W+'/versions?bindings_inherit=strict',form);candidate=made.id;report.candidate=candidate;
   assert(candidate&&candidate!==baseline,'CANDIDATE_VERSION_INVALID');
   const cv=await getVersion(candidate),cm=cv.modules.find(m=>m.name===cv.main_module);
   assert.equal(sha(Buffer.from(cm.content_base64,'base64')),report.candidateMainSha,'CANDIDATE_MAIN_HASH');
