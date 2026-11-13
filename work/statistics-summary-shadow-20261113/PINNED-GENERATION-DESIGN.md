@@ -42,3 +42,5 @@ Probe direct Engine workers.dev availability read-only before another 0% candida
 Final real-data smoke uses direct Engine workers.dev with version override; reuse exact inactive candidate; restore baseline after 0% test.
 
 Hosted isolation QA: separate Worker + separate Durable Object, import recorded real Ledger snapshot, no scan/Cron/provider, disable workers.dev after test.
+
+Retry hosted isolation after workers.dev readiness polling; reuse only empty isolated DO and import in 3k chunks.
