@@ -10,6 +10,13 @@ export async function prepareUiReplay(){
  const input=JSON.parse(await readFile(D+'/reference/ui-proof/qa/verified-full-ledger.json')),audit=JSON.parse(await readFile(D+'/reference/ui-proof/qa/live-ledger.json'));assert(audit.ok);assert.equal(input.rows.length,audit.rows);assert.equal(audit.engineVersion,current.workers.find(x=>x.worker==='nomadtips3-engine-343').active);
  const resources=new Map();
  for(const f of capture.files){const body=await readFile(R+'/files/'+f.file);assert.equal(sha(body),f.sha,'CAPTURE_CORRUPT');resources.set(new URL(f.path,'https://test.invalid').pathname,{...f,body});}
+ // This existing script is inserted dynamically by the current page, so it is
+ // not present in the initial <script src> inventory. Capture the static script
+ // for BOTH replays; never fall back to any production /api/ request.
+ const extraStatic=[];
+ if(!resources.has('/live-prediction-343.js')){
+  const r=await fetch(new URL('/live-prediction-343.js',capture.origin),{redirect:'error',signal:AbortSignal.timeout(10000)});assert.equal(r.status,200,'DYNAMIC_STATIC_ASSET_HTTP');const body=Buffer.from(await r.arrayBuffer()),type=r.headers.get('content-type')||'';assert(/javascript/.test(type),'DYNAMIC_STATIC_ASSET_TYPE');resources.set('/live-prediction-343.js',{body,type});extraStatic.push({path:'/live-prediction-343.js',sha:sha(body),bytes:body.length});
+ }
  const originalHtml=await readFile(R+'/index.html','utf8');assert.equal(sha(originalHtml),capture.htmlSha);
  const get=name=>{const f=resources.get(name);assert(f,'MISSING_'+name);return f.body.toString();};
  const workspace=get('/singlepage-workspace-343.js'),dashboard=get('/dashboard-v2-stage3-featured-facts-20261013a.js'),sync=get('/ui-sync-fixes-343-v2.js');
@@ -31,7 +38,7 @@ export async function prepareUiReplay(){
  const summaryMarkets=Object.fromEntries(Object.keys(input.meta.byMarket).map(key=>[key,{kind:registry.definitions[key]?.kind,label:registry.definitions[key]?.label}]));
  const summary={ok:true,mode:'TEST_PREVIEW',stale:true,asOf:input.asOf,ledgerTotal:input.meta.ledgerTotal,total:input.meta.settledTotal,byMarket:input.meta.byMarket,markets:summaryMarkets,marketCounts,daily,settledDays,recentSettled};
  assert(Buffer.byteLength(JSON.stringify(summary))<24000,'SUMMARY_NOT_SMALL');
- const boundary={ok:true,active:capture.active,mainSha:capture.mainSha,ledgerRows:input.rows.length,summaryBytes:Buffer.byteLength(JSON.stringify(summary)),changes:patched.changes,patchedAssets:['/singlepage-workspace-343.js','/dashboard-v2-stage3-featured-facts-20261013a.js','/ui-sync-fixes-343-v2.js'],unchangedAssets:capture.files.length-3,cssUnchanged:true,liveScorePollingUnchanged:true,engineSignalCodeUnchanged:true,mode:'TEST_REPLAY_ONLY; no Production route or summary-writer activation'};
+ const boundary={ok:true,active:capture.active,mainSha:capture.mainSha,ledgerRows:input.rows.length,summaryBytes:Buffer.byteLength(JSON.stringify(summary)),changes:patched.changes,patchedAssets:['/singlepage-workspace-343.js','/dashboard-v2-stage3-featured-facts-20261013a.js','/ui-sync-fixes-343-v2.js'],unchangedAssets:capture.files.length-3,extraStatic,cssUnchanged:true,liveScorePollingUnchanged:true,engineSignalCodeUnchanged:true,mode:'TEST_REPLAY_ONLY; no Production route or summary-writer activation'};
  await mkdir(D+'/qa/ui',{recursive:true});await writeFile(D+'/qa/ui/boundary.json',JSON.stringify(boundary,null,2));await writeFile(D+'/qa/ui/summary.json',JSON.stringify(summary));
  await writeFile(D+'/qa/ui/workspace.js',patched.workspace);await writeFile(D+'/qa/ui/dashboard.js',patched.dashboard);await writeFile(D+'/qa/ui/sync.js',patched.sync);await writeFile(D+'/qa/ui/index.html',patched.html);
  return {capture,resources,input,settled,originalHtml,patched,summary,boundary,formulas,registry,dailyAt};
