@@ -8,3 +8,5 @@ const sizes=rows.map(r=>Buffer.byteLength(JSON.stringify(r)));let max=0;for(let 
 assert(max<8*1024*1024,'PAGE_TOO_LARGE');
 assert.equal(Math.ceil(rows.length/2000),8);
 console.log(JSON.stringify({ok:true,rows:rows.length,pages:Math.ceil(rows.length/2000),maxRawPageBytes:max,productionWrites:0}));
+
+// QA trigger
