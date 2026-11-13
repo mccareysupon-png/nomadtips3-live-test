@@ -28,6 +28,9 @@ for(const worker of ['nomadtips3-engine-343','ball46-production']) {
     await writeFile(D+'/source/'+asset.path.slice(1),b);
    }
   }
+  if(!row.assets.some(x=>x.path==='/longterm-performance-343.js')) {
+   console.log('ASSET_DISCOVERY '+JSON.stringify({worker,active,sha:row.sha,modules:v.modules.map(x=>({name:x.name,type:x.content_type})),references:bytes.toString('utf8').match(/.{0,90}longterm-performance.{0,180}/g)?.slice(0,8)}));
+  }
   for(const path of ['/longterm-performance-343.js','/singlepage-workspace-343.js'])assert.equal(row.assets.filter(x=>x.path===path).length,1,'ASSET_MAPPING_STOP_'+path);
  }
  const after=(await cf('/workers/scripts/'+worker+'/deployments?per_page=1')).deployments[0];
