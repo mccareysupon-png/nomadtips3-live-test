@@ -31,7 +31,7 @@ export class StatisticsSummary extends DurableObject {
   const u=new URL(request.url);if(request.method!=='GET'||!['/summary','/history'].includes(u.pathname))return new Response('Not found',{status:404});
   try{
    if(u.pathname==='/history'&&u.searchParams.get('cursor')?.startsWith('snap1:'))return Response.json(await this.store.page(u.searchParams.get('cursor'),Number(u.searchParams.get('limit')||2000)),{headers:{'cache-control':'no-store'}});
-   if(Date.now()-this.checkedAt>=5000||!this.saved){try{await this.refresh()}catch(error){this.failed=true;this.checkedAt=Date.now();const old=await this.store.active();if(!this.saved&&old)this.saved={...old.summary,stale:true,historySnapshotId:old.id};}}
+   if(Date.now()-this.checkedAt>=5000||(!this.saved&&!this.checkedAt)){try{await this.refresh()}catch(error){this.failed=true;this.checkedAt=Date.now();const old=await this.store.active();if(!this.saved&&old)this.saved={...old.summary,stale:true,historySnapshotId:old.id};}}
    if(!this.saved)return Response.json({ok:false,error:'SUMMARY_NOT_READY'},{status:503,headers:{'cache-control':'no-store','retry-after':'5'}});
    if(u.pathname==='/summary')return Response.json({...this.saved,stale:this.failed||this.saved.stale||Date.now()-this.saved.asOf>90000||this.saved.daily.tk!==formulas.sportDay(Date.now())},{headers:{'cache-control':'no-store'}});
    const m=await this.store.active();if(!m||m.expiresAt<=Date.now())return Response.json({ok:false,error:'HISTORY_NOT_READY'},{status:503,headers:{'retry-after':'5','cache-control':'no-store'}});

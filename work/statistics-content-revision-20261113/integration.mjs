@@ -18,6 +18,7 @@ export async function integrated(){
  const importRows=async part=>{const r=await engine.fetch('https://local.test/__qa/import',{method:'POST',body:JSON.stringify(part)});assert.equal(r.status,200);return r.json()};
  const get=async(path)=>{const r=await summary.fetch('https://local.test'+path);assert.equal(r.status,200,'SUMMARY_HTTP_'+r.status+':'+await r.clone().text());return r.json()};
  const reset=()=>summary.fetch('https://local.test/__qa/check');
+ fail=true;const coldReads=sourceReads;for(let i=0;i<3;i++){const r=await summary.fetch('https://cold.local.test/summary');assert.equal(r.status,503)}assert.equal(sourceReads-coldReads,1);fail=false;results.push('Cold source outage has a shared five-second cooldown, no request burst');
  for(let i=0;i<rows.length;i+=500)await importRows(rows.slice(i,i+500));
  const health=async()=> (await engine.fetch('https://local.test/ledger-health')).json();
  const baseline=await health();assert.equal(baseline.ledgerTotal,rows.length);for(const k of ['settledTotal','pending','unresolved','win','loss','push','halfWin','halfLoss'])assert.equal(baseline[k],input.meta[k],'RECORDED_'+k);assert.deepEqual(baseline.byMarket,input.meta.byMarket);
