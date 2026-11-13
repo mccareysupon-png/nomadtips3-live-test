@@ -1,0 +1,64 @@
+name: BALL46 combined summary and PC banners guarded release
+on:
+  push:
+    branches: [test/ball46-statistics-summary-shadow-20261113]
+    paths: ['.github/workflows/ball46-combined-release-20261113.yml','work/statistics-summary-shadow-20261113/resume-combined.mjs','work/statistics-summary-shadow-20261113/hosted-browser-test.mjs','work/statistics-summary-shadow-20261113/activate-combined.mjs']
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: ball46-combined-release-20261113
+  cancel-in-progress: false
+jobs:
+  verify-and-release:
+    if: contains(github.event.head_commit.message, '[hosted-resume]')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_ACCOUNT_ID: '62cb0db544160e6591342abd6b4f35cc'
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@v4
+        with:
+          name: ball46-statistics-shadow-proof
+          run-id: 43383309841
+          github-token: ${{ github.token }}
+          path: work/statistics-summary-shadow-20261113
+      - uses: actions/download-artifact@v4
+        with:
+          name: ball46-statistics-shadow-proof
+          run-id: 43373832113
+          github-token: ${{ github.token }}
+          path: work/statistics-summary-shadow-20261113/reference/ui-proof
+      - name: Install isolated browser dependencies
+        run: |
+          npm install --no-save --package-lock=false --no-audit --no-fund parse5
+          npm install --prefix work/statistics-summary-shadow-20261113/.runtime --no-save --package-lock=false --no-audit --no-fund playwright@1.56.1
+          work/statistics-summary-shadow-20261113/.runtime/node_modules/.bin/playwright install --with-deps chromium
+      - name: Rebuild exact staged payload without uploads
+        run: |
+          node work/statistics-summary-shadow-20261113/build-summary-formulas.mjs
+          node work/statistics-summary-shadow-20261113/build-combined.mjs
+          node work/statistics-summary-shadow-20261113/resume-combined.mjs
+      - name: Verify hosted candidate PC and mobile with real scores and complete statistics
+        run: node work/statistics-summary-shadow-20261113/hosted-browser-test.mjs
+      - name: Activate only owner-approved candidate after all gates pass
+        if: contains(github.event.head_commit.message, '[combined-activate]')
+        run: node work/statistics-summary-shadow-20261113/activate-combined.mjs
+      - name: Verify live Production PC and mobile after activation
+        if: contains(github.event.head_commit.message, '[combined-activate]')
+        env:
+          B46_HOSTED_PRODUCTION: '1'
+        run: node work/statistics-summary-shadow-20261113/hosted-browser-test.mjs
+      - name: Restore immediate baseline if post-activation checks fail
+        if: failure() && contains(github.event.head_commit.message, '[combined-activate]')
+        run: node work/statistics-summary-shadow-20261113/rollback-combined.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-combined-release-proof
+          path: work/statistics-summary-shadow-20261113/qa/combined
