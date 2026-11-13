@@ -24,3 +24,5 @@ Production remains untouched until real-data PC/mobile tests pass.
 QA progression: run full summary-service and PC/mobile replay before any stage.
 
 Current Website drift detected; refresh UI capture before further browser QA.
+
+QA uses current Website capture plus recorded full Ledger dataset.
