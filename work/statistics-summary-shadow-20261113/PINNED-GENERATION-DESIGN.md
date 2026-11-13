@@ -20,3 +20,5 @@ Why this is safer than removing SOURCE_CHANGED:
 - writers are not locked during the reader.
 
 Production remains untouched until real-data PC/mobile tests pass.
+
+QA progression: run full summary-service and PC/mobile replay before any stage.
