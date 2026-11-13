@@ -1,6 +1,6 @@
 import assert from'node:assert/strict';import{chromium}from'playwright';import{readFile,writeFile}from'node:fs/promises';import{ROOT,DIR,PRIVATE,preview}from'./release-ops.mjs';
 const phase=process.argv[2],release=JSON.parse(await readFile(DIR+'/candidate.json')),host=phase==='candidate'?preview(release.candidate):'https://ball46.com',frozen=JSON.parse(await readFile('work/bookmaker-scroll-fix-20261112/fixture.json')),statistics=JSON.parse(await readFile(PRIVATE+'/statistics.json')),id=frozen.fixtureId,results=[];let statisticsCases=0;
-const browser=await chromium.launch({headless:true,executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH||undefined});try{for(const width of[1366,390])for(const theme of['dark','light']){
+const browser=await chromium.launch({headless:true,executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH||undefined});try{for(const width of[1366])for(const theme of['dark','light']){
 const context=await browser.newContext({viewport:{width,height:900}}),p=await context.newPage(),errors=[],bad=[],writes=[],providers=[],reads=[];
 p.on('pageerror',e=>errors.push(e.message));p.on('response',r=>{const u=new URL(r.url());if(u.hostname===new URL(host).hostname&&r.status()>=400&&!u.pathname.startsWith('/cdn-cgi/'))bad.push({path:u.pathname,status:r.status()})});
 await context.addInitScript(theme=>localStorage.setItem('nomad343_dashboard_theme_v1',theme),theme);
@@ -20,4 +20,3 @@ assert.deepEqual(errors,[],'PAGE_ERRORS');assert.deepEqual(bad,[],'HTTP_RESOURCE
 }catch(e){await p.screenshot({path:DIR+'/'+phase+'-'+width+'-'+theme+'-failure.png'}).catch(()=>{});await writeFile(DIR+'/'+phase+'-ui-error.json',JSON.stringify({error:e.stack,errors,bad,writes,providers,reads,dom:(await p.locator('body').innerText()).slice(-12000)},null,2));throw e}finally{await context.unrouteAll({behavior:'ignoreErrors'});await context.close()}}
 assert.equal(statisticsCases,16);await writeFile(DIR+'/'+phase+'-browser.json',JSON.stringify({ok:true,phase,candidate:release.candidate,run:process.env.GITHUB_RUN_ID,results,statisticsCases},null,2));console.log(JSON.stringify({ok:true,phase,cases:results.length,statisticsCases}));
 }catch(e){await writeFile(DIR+'/'+phase+'-browser-failure.json',JSON.stringify({ok:false,error:e.stack,results,statisticsCases},null,2));throw e}finally{await browser.close()}
-

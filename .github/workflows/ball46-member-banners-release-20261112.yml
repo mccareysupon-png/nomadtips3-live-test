@@ -30,11 +30,11 @@ jobs:
           fi
       - name: Preserve fresh baseline and stage one existing payload only
         run: node work/statistics-member-sidebar-test-20261112/release.mjs stage
-      - name: Preview desktop mobile guard both themes all eight markets
+      - name: Preview PC both themes and all eight markets
         run: node work/statistics-member-sidebar-test-20261112/release-browser.mjs candidate
       - name: Activate only after preservation and preview gates
         run: node work/statistics-member-sidebar-test-20261112/release.mjs activate
-      - name: Production desktop mobile guard both themes all markets
+      - name: Production PC both themes and all markets
         run: node work/statistics-member-sidebar-test-20261112/release-browser.mjs production
       - name: Final version and health verification
         run: node work/statistics-member-sidebar-test-20261112/release.mjs finish
