@@ -11,15 +11,16 @@ export class StatisticsSummary extends DurableObject {
   if(path!=='/ledger-health'&&!/^\/statistics\?/.test(path))throw Error('READ_PATH_DENIED');
   const u=new URL(path,'https://engine.internal');if(u.pathname==='/statistics'&&(u.searchParams.get('paged')!=='1'||!u.searchParams.get('cursor')?.startsWith('stat:v2:row:')))throw Error('UNSAFE_CURSOR');
   const r=await this.env.ENGINE.fetch(new Request(u,{signal:AbortSignal.timeout(15000)}));
-  if(!r.ok)throw Error('ENGINE_HTTP_'+r.status);
-  const body=await r.text();if(body.length>12*1024*1024)throw Error('PAGE_SIZE_LIMIT');const data=JSON.parse(body);if(data.ok!==true)throw Error('ENGINE_NOT_OK');return data;
+  const body=await r.text();if(body.length>12*1024*1024)throw Error('PAGE_SIZE_LIMIT');const data=JSON.parse(body);
+  if(r.status===409&&data?.error==='STATISTICS_GENERATION_CHANGED'){const error=Error('STATISTICS_GENERATION_CHANGED');error.code='STATISTICS_GENERATION_CHANGED';throw error}
+  if(!r.ok)throw Error('ENGINE_HTTP_'+r.status);if(data.ok!==true)throw Error('ENGINE_NOT_OK');return data;
  }
  async refresh(){
   if(this.pending)return this.pending;
   this.pending=(async()=>{
    const meta=await this.read('/ledger-health');
    if(!this.saved||this.saved.signature!==generation(meta)||this.saved.data.daily.tk!==formulas.sportDay(Date.now())){
-    const next=await reduceBounded(path=>this.read(path),formulas,registry);await this.ctx.storage.put('summary-v1',next);this.saved=next;
+    let next,last;for(let attempt=0;attempt<3;attempt++){try{next=await reduceBounded(path=>this.read(path),formulas,registry);break}catch(error){last=error;if(error?.code!=='STATISTICS_GENERATION_CHANGED'&&error?.message!=='SOURCE_CHANGED')throw error}}if(!next)throw last;await this.ctx.storage.put('summary-v1',next);this.saved=next;
    }
    this.checkedAt=Date.now();this.failed=false;
   })();
