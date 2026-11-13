@@ -31,13 +31,19 @@ jobs:
           github-token: ${{ github.token }}
           path: work/statistics-summary-shadow-20261113/reference/live-proof
       - name: Reuse captured existing UI and recorded complete Ledger for browser QA
-        if: contains(github.event.head_commit.message, '[ui-qa]') || contains(github.event.head_commit.message, '[summary-service-test]')
+        if: contains(github.event.head_commit.message, '[ui-qa]') || contains(github.event.head_commit.message, '[summary-service-test]') || contains(github.event.head_commit.message, '[pinned-engine-test]')
         uses: actions/download-artifact@v4
         with:
           name: ball46-statistics-shadow-proof
           run-id: 43373832113
           github-token: ${{ github.token }}
           path: work/statistics-summary-shadow-20261113/reference/ui-proof
+      - name: Build pinned-generation Engine candidate from exact captured source
+        if: contains(github.event.head_commit.message, '[pinned-engine-test]')
+        run: node work/statistics-summary-shadow-20261113/build-pinned-engine-candidate.mjs
+      - name: Verify pinned generation and 2k page size against recorded real Ledger
+        if: contains(github.event.head_commit.message, '[pinned-engine-test]')
+        run: node work/statistics-summary-shadow-20261113/pinned-real-ledger-test.mjs
       - name: Verify isolated bounded service on complete recorded current Ledger
         if: contains(github.event.head_commit.message, '[summary-service-test]')
         run: |
