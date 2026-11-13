@@ -1,0 +1,39 @@
+/* Test candidate: banner presentation only. No script, data or API changes. */
+.b46-stat-member-top .b46-member-cta{
+ background-image:none;
+ background-color:#ead66b;
+ transition:background-color .18s ease,color .18s ease,box-shadow .18s ease;
+}
+.b46-stat-member-top>a:hover .b46-member-cta{
+ background-image:none;
+ background-color:#7af7b3;
+}
+@media(min-width:1024px){
+ html[data-theme="light"] .b46-stat-member-top>a{
+  background:#edf8f1;
+  color:#153e2b;
+  box-shadow:0 6px 20px #143f2714,inset 0 0 0 1px #cee5d7;
+ }
+ html[data-theme="light"] .b46-stat-member-top .b46-member-art{
+  opacity:.44;
+  filter:saturate(.65) brightness(1.5);
+ }
+ html[data-theme="light"] .b46-stat-member-top>a::before{
+  background:linear-gradient(90deg,#f6fcf8f5 0%,#edf8f1ed 40%,#e8f6ed8c 72%,#f1faf4dc 100%);
+ }
+ html[data-theme="light"] .b46-stat-member-top .b46-member-wordmark{color:#163d2b}
+ html[data-theme="light"] .b46-stat-member-top .b46-member-wordmark b{color:#0b9653}
+ html[data-theme="light"] .b46-stat-member-top .b46-member-kicker{color:#48735a}
+ html[data-theme="light"] .b46-stat-member-top .b46-member-heading{color:#153e2b;text-shadow:none}
+ html[data-theme="light"] .b46-stat-member-top .b46-member-sub{color:#397352}
+ html[data-theme="light"] .b46-stat-member-top .b46-member-url{color:#48735a}
+ html[data-theme="light"] .b46-stat-member-top .b46-member-person img{filter:drop-shadow(0 3px 8px #193d2526)}
+ html[data-theme="light"] .b46-stat-member-top .b46-member-cta{
+  background-image:none;background-color:#176540;color:#fff;
+  box-shadow:0 3px 10px #155d3429;
+ }
+ html[data-theme="light"] .b46-stat-member-top>a:hover{box-shadow:0 8px 24px #145f3424,inset 0 0 0 1px #bddcc8}
+ html[data-theme="light"] .b46-stat-member-top>a:hover .b46-member-cta{background-image:none;background-color:#0f7d48;color:#fff}
+ html[data-theme="light"] .b46-stat-member-top>a:focus-visible{outline-color:#0b7d46}
+}
+@media(prefers-reduced-motion:reduce){.b46-stat-member-top .b46-member-cta{transition:none}}
