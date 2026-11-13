@@ -10,13 +10,13 @@ export async function reduceBounded(read,formulas,registry,{now=Date.now(),budge
  const tk=formulas.sportDay(now),yk=formulas.prev(tk),daily={today:formulas.bucket(),yesterday:formulas.bucket(),tk,yk};
  const marketCounts={all:0,'1x2':0,ah:0,ou:0,btts:0,corners:0,cards:0,other:0};
  const actual={ledgerTotal:0,settledTotal:0,pending:0,unresolved:0,win:0,loss:0,push:0,halfWin:0,halfLoss:0},byMarket={};
- const recentSettled=[];let firstDay=null,lastDay=null,pages=0,maxPageRows=0,cursor='stat:v2:row:\uffff';const seenCursors=new Set();
+ const recentSettled=[];let firstDay=null,lastDay=null,pages=0,maxPageRows=0,cursor='stat:v2:row:\uffff';const seenCursors=new Set();const pinned=String(before.updatedAt);
  const bangkok=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit'});
  for(;;){
   check(Date.now()-started<budgetMs,'SUMMARY_TIME_BUDGET');check(pages<256,'SUMMARY_PAGE_BUDGET');
   check(!seenCursors.has(cursor),'CURSOR_LOOP');seenCursors.add(cursor);
-  const page=await read('/statistics?'+new URLSearchParams({paged:'1',cursor}));pages++;
-  check(generation(page)===sig,'SOURCE_CHANGED');check(Array.isArray(page.rows)&&page.rows.length<=500,'UNBOUNDED_PAGE');maxPageRows=Math.max(maxPageRows,page.rows.length);
+  const page=await read('/statistics?'+new URLSearchParams({paged:'1',cursor,limit:'2000',generation:pinned}));pages++;
+  check(String(page.statisticsGeneration??page.ledgerUpdatedAt)===pinned,'SOURCE_CHANGED');check(generation(page)===sig,'SOURCE_CHANGED');check(Array.isArray(page.rows)&&page.rows.length<=2000,'UNBOUNDED_PAGE');maxPageRows=Math.max(maxPageRows,page.rows.length);
   for(const row of page.rows){
    check(typeof row.id==='string'&&row.id.length>0,'ROW_ID');actual.ledgerTotal++;marketCounts.all++;
    const family=registry.familyOf(row);check(Object.hasOwn(marketCounts,family)&&family!=='all','MARKET_FAMILY');marketCounts[family]++;
