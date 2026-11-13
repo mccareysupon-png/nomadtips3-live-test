@@ -19,22 +19,24 @@ async function loadSummary(){
  try{return await summaryLoading}catch(error){if(summaryCache)return summaryCache;throw error}finally{summaryLoading=null}
 }
 function cancelDetails(){detailsController?.abort();detailsController=null;loading=null}
+async function readAllRetry(signal){let last;for(let attempt=0;attempt<3;attempt++){try{return await readAll(signal)}catch(error){last=error;if(error?.code!=='STATISTICS_GENERATION_CHANGED')throw error;if(signal?.aborted)throw error;await new Promise(r=>setTimeout(r,40*(attempt+1)))}}throw last}
 async function load({details=false}={}) {
  if(!details&&!statisticsOpen()){loadSummary().catch(()=>{});if(cached)return cached;throw Error('DETAILS_NOT_OPEN')}
  if(cached&&Date.now()-loadedAt<CACHE_MS)return cached;
  if(loading)return loading;
  const controller=new AbortController();detailsController=controller;const timeout=setTimeout(()=>controller.abort(),90000);
- const request=readAll(controller.signal).then(data=>{if(controller.signal.aborted)throw new DOMException('View closed','AbortError');cached=data;loadedAt=Date.now();document.dispatchEvent(new CustomEvent('ball46:statistics-snapshot',{detail:data}));return data;});loading=request;
+ const request=readAllRetry(controller.signal).then(data=>{if(controller.signal.aborted)throw new DOMException('View closed','AbortError');cached=data;loadedAt=Date.now();document.dispatchEvent(new CustomEvent('ball46:statistics-snapshot',{detail:data}));return data;});loading=request;
  try{return await request}finally{clearTimeout(timeout);if(loading===request)loading=null;if(detailsController===controller)detailsController=null}
 }
 `;
  w=w.slice(0,begin)+loader+w.slice(end);changes.push('Replace shared loader with summary/detail split and owned cancellation');
  w=replace(w,'async function page(params = {}) {','async function page(params = {}, signal) {','Thread one detail abort signal');
  w=replace(w,'signal:AbortSignal.timeout(30000)','signal:signal||AbortSignal.timeout(30000)','Cancel detail fetch when leaving Statistics');
+ w=replace(w,"const data = await response.json();\n  if (!response.ok || data?.ok !== true || !Array.isArray(data.rows)) {","const data = await response.json();\n  if(response.status===409&&data?.error==='STATISTICS_GENERATION_CHANGED'){const error=new Error('Statistics changed during pagination; retrying');error.code='STATISTICS_GENERATION_CHANGED';throw error}\n  if (!response.ok || data?.ok !== true || !Array.isArray(data.rows)) {",'Treat generation conflict as retryable, not corrupt data');
  w=replace(w,'async function readAll() {','async function readAll(signal) {','Keep complete cursor-reader validation');
- w=replace(w,'let first = await page();',"let first = await page({cursor:'stat:v2:row:\\uffff'},signal);",'Initial bounded read-only page; never invoke scan from a viewer');
+ w=replace(w,'let first = await page();',"let first = await page({cursor:'stat:v2:row:\\uffff',limit:'2000'},signal);",'Initial bounded read-only page; never invoke scan from a viewer');
  w=replace(w,'await page({limit:String(first.ledgerTotal)})','await page({limit:String(first.ledgerTotal)},signal)','Preserve compatibility signature');
- w=replace(w,'await page({cursor})','await page({cursor},signal)','Bounded continuation');
+ w=replace(w,'await page({cursor})',"await page({cursor,limit:'2000',generation:String(first.statisticsGeneration??first.ledgerUpdatedAt)},signal)",'Pinned generation on every continuation');
  w=replace(w,'Object.freeze({load, outcome, isSettled, counts, rate, getSnapshot:()=>cached, getSnapshotAt:()=>loadedAt})','Object.freeze({load,loadSummary,cancelDetails,outcome,isSettled,counts,rate,getSummary:()=>summaryCache,getSnapshot:()=>cached,getSnapshotAt:()=>cached?.preview?Number(cached.ledgerUpdatedAt):loadedAt})','Expose separate summary; never fake a full snapshot');
  w=replace(w,"statsLoading:false,statsLoadedAt:0","statsLoading:false,statsLoadedAt:0,statsRequest:0",'Own view request generation');
  w=replace(w,'function stopStatistics(){}','function stopStatistics(){state.statsRequest++;state.statsLoading=false;window.BALL46_STATISTICS_DATA.cancelDetails()}','Cancel only Statistics details, not live board/Signals');
