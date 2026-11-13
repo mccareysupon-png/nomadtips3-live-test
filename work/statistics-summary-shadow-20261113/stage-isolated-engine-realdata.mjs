@@ -23,8 +23,8 @@ async function cf(method,path,body){
 async function active(worker){
  const x=await cf('GET','/workers/scripts/'+worker+'/deployments?per_page=1');assert(x.deployments?.length,'NO_DEPLOYMENT:'+worker);const d=x.deployments[0];assert(d.versions.length===1&&Number(d.versions[0].percentage)===100,'SPLIT_TRAFFIC:'+worker);return {version:d.versions[0].version_id,deployment:d.id};
 }
-async function fetchJson(url,opts={}){
- const r=await fetch(url,{...opts,signal:AbortSignal.timeout(45000)}),text=await r.text();let data;try{data=JSON.parse(text)}catch{data={sample:text.slice(0,180)}};return{status:r.status,data};
+async function fetchJson(url,opts={},timeoutMs=45000){
+ const r=await fetch(url,{...opts,signal:AbortSignal.timeout(timeoutMs)}),text=await r.text();let data;try{data=JSON.parse(text)}catch{data={sample:text.slice(0,180)}};return{status:r.status,data};
 }
 function counts(rows){
  const c={ledgerTotal:rows.length,settledTotal:0,pending:0,unresolved:0,win:0,loss:0,push:0,halfWin:0,halfLoss:0,byMarket:{}};
@@ -33,7 +33,7 @@ function counts(rows){
 try{
  const beforeEngine=await active(PROD_ENGINE),beforeWeb=await active(WEBSITE);report.productionBefore={engine:beforeEngine,website:beforeWeb};
  const source=JSON.parse(await readFile(D+'/source/active.json'));assert.equal(beforeEngine.version,source.workers.find(x=>x.worker===PROD_ENGINE).active,'PROD_ENGINE_DRIFT');assert.equal(beforeWeb.version,source.workers.find(x=>x.worker===WEBSITE).active,'PROD_WEBSITE_DRIFT');
- const scripts=await cf('GET','/workers/scripts');assert(!scripts.some(x=>x.id===S),'ISOLATED_WORKER_EXISTS_STOP');
+ const scripts=await cf('GET','/workers/scripts');const exists=scripts.some(x=>x.id===S);report.reusedWorker=exists;if(exists){assert.deepEqual(await cf('GET','/workers/scripts/'+S+'/schedules'),{schedules:[]},'EXISTING_ISOLATED_CRON');const d=(await cf('GET','/workers/domains')).filter(x=>x.service===S);assert.deepEqual(d,[],'EXISTING_ISOLATED_DOMAIN')}
  const input=JSON.parse(await readFile(D+'/reference/ui-proof/qa/verified-full-ledger.json','utf8'));assert(Array.isArray(input.rows)&&input.rows.length>14000,'REAL_LEDGER_SNAPSHOT_MISSING');
  const expected=counts(input.rows);assert.equal(expected.ledgerTotal,input.meta.ledgerTotal,'SNAPSHOT_META_TOTAL');assert.equal(expected.settledTotal,input.meta.settledTotal,'SNAPSHOT_META_SETTLED');
 
@@ -47,18 +47,18 @@ try{
  assert(!code.includes('allowed = ["/health"'),'FIREWALL_NOT_APPLIED');
  const prodVersion=await cf('GET','/workers/workers/'+PROD_ENGINE+'/versions/'+beforeEngine.version+'?include=modules');
  const token='iso-'+randomUUID()+'-'+randomUUID();
- const metadata={main_module:'index.mjs',compatibility_date:prodVersion.compatibility_date,compatibility_flags:prodVersion.compatibility_flags||[],bindings:[{type:'plain_text',name:'FIVEDOLLAR_API_KEY',text:token},{type:'durable_object_namespace',name:'ENGINE',class_name:'Nomad343Engine'}],migrations:{new_tag:'b46-stat-engine-isolated-v1',new_sqlite_classes:['Nomad343Engine']},observability:{enabled:true},annotations:{'workers/tag':'B46_STAT_ENGINE_ISOLATED_20261113','workers/message':'Isolated hosted statistics Engine candidate; recorded real Ledger only; no routes/Cron/provider access'}};
+ const metadata={main_module:'index.mjs',compatibility_date:prodVersion.compatibility_date,compatibility_flags:prodVersion.compatibility_flags||[],bindings:[{type:'plain_text',name:'FIVEDOLLAR_API_KEY',text:token},{type:'durable_object_namespace',name:'ENGINE',class_name:'Nomad343Engine'}],observability:{enabled:true},annotations:{'workers/tag':'B46_STAT_ENGINE_ISOLATED_20261113','workers/message':'Isolated hosted statistics Engine candidate; recorded real Ledger only; no routes/Cron/provider access'}};if(!exists)metadata.migrations={new_tag:'b46-stat-engine-isolated-v1',new_sqlite_classes:['Nomad343Engine']};
  const form=new FormData();form.set('metadata',new Blob([JSON.stringify(metadata)],{type:'application/json'}));form.set('index.mjs',new Blob([code],{type:'application/javascript+module'}),'index.mjs');
  await cf('PUT','/workers/scripts/'+S,form);created=true;
  await cf('POST','/workers/scripts/'+S+'/subdomain',{enabled:true,previews_enabled:false});subdomainTouched=true;
  assert.deepEqual(await cf('GET','/workers/scripts/'+S+'/schedules'),{schedules:[]},'ISOLATED_CRON_NOT_EMPTY');
  const domains=(await cf('GET','/workers/domains')).filter(x=>x.service===S);assert.deepEqual(domains,[],'ISOLATED_CUSTOM_DOMAIN');
  const base='https://'+S+'.mccarey-supon.workers.dev';
-
+ let ready=null;for(let i=0;i<30;i++){ready=await fetchJson(base+'/ledger-health');if(ready.status===200&&ready.data?.ok===true)break;await new Promise(r=>setTimeout(r,1000))}assert.equal(ready?.status,200,'ISOLATED_WORKERS_DEV_NOT_READY:'+JSON.stringify(ready?.data));assert.equal(ready.data.ledgerTotal,0,'ISOLATED_LEDGER_NOT_EMPTY_STOP');
  const blocked=await fetchJson(base+'/scan',{method:'POST'});assert.equal(blocked.status,404,'SCAN_NOT_BLOCKED');
- const chunks=[];for(let i=0;i<input.rows.length;i+=7500)chunks.push(input.rows.slice(i,i+7500));
+ const chunks=[];for(let i=0;i<input.rows.length;i+=3000)chunks.push(input.rows.slice(i,i+3000));
  let inserted=0,updated=0;
- for(const rows of chunks){const r=await fetchJson(base+'/ledger-import',{method:'POST',headers:{'content-type':'application/json','x-settlement-token':token},body:JSON.stringify({rows})});assert.equal(r.status,200,'IMPORT_HTTP_'+r.status+':'+JSON.stringify(r.data));assert.equal(r.data.ok,true,'IMPORT_NOT_OK');inserted+=Number(r.data.inserted||0);updated+=Number(r.data.updated||0);}
+ for(const rows of chunks){const r=await fetchJson(base+'/ledger-import',{method:'POST',headers:{'content-type':'application/json','x-settlement-token':token},body:JSON.stringify({rows})},120000);assert.equal(r.status,200,'IMPORT_HTTP_'+r.status+':'+JSON.stringify(r.data));assert.equal(r.data.ok,true,'IMPORT_NOT_OK');inserted+=Number(r.data.inserted||0);updated+=Number(r.data.updated||0);}
  assert.equal(inserted,input.rows.length,'IMPORT_INSERT_COUNT');assert.equal(updated,0,'IMPORT_UNEXPECTED_UPDATE');
  const health=await fetchJson(base+'/ledger-health');assert.equal(health.status,200);assert.equal(health.data.ledgerTotal,input.rows.length);assert.equal(health.data.settledTotal,input.meta.settledTotal);
  const generation=String(health.data.updatedAt);assert(generation&&generation!=='undefined','GENERATION_MISSING');
