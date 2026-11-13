@@ -45,8 +45,9 @@ try{
  const schedOld='ctx.waitUntil(stub(env).fetch("https://engine.internal/scan", { method: "POST" }));';
  assert.equal(code.split(schedOld).length,2,'SCHEDULE_SOURCE_DRIFT');code=code.replace(schedOld,'return; /* isolated candidate: scheduler disabled */');
  assert(!code.includes('allowed = ["/health"'),'FIREWALL_NOT_APPLIED');
+ const prodVersion=await cf('GET','/workers/workers/'+PROD_ENGINE+'/versions/'+beforeEngine.version+'?include=modules');
  const token='iso-'+randomUUID()+'-'+randomUUID();
- const metadata={main_module:'index.mjs',compatibility_date:'2026-09-09',bindings:[{type:'plain_text',name:'FIVEDOLLAR_API_KEY',text:token},{type:'durable_object_namespace',name:'ENGINE',class_name:'Nomad343Engine'}],migrations:{new_tag:'b46-stat-engine-isolated-v1',new_sqlite_classes:['Nomad343Engine']},observability:{enabled:true},annotations:{'workers/tag':'B46_STAT_ENGINE_ISOLATED_20261113','workers/message':'Isolated hosted statistics Engine candidate; recorded real Ledger only; no routes/Cron/provider access'}};
+ const metadata={main_module:'index.mjs',compatibility_date:prodVersion.compatibility_date,compatibility_flags:prodVersion.compatibility_flags||[],bindings:[{type:'plain_text',name:'FIVEDOLLAR_API_KEY',text:token},{type:'durable_object_namespace',name:'ENGINE',class_name:'Nomad343Engine'}],migrations:{new_tag:'b46-stat-engine-isolated-v1',new_sqlite_classes:['Nomad343Engine']},observability:{enabled:true},annotations:{'workers/tag':'B46_STAT_ENGINE_ISOLATED_20261113','workers/message':'Isolated hosted statistics Engine candidate; recorded real Ledger only; no routes/Cron/provider access'}};
  const form=new FormData();form.set('metadata',new Blob([JSON.stringify(metadata)],{type:'application/json'}));form.set('index.mjs',new Blob([code],{type:'application/javascript+module'}),'index.mjs');
  await cf('PUT','/workers/scripts/'+S,form);created=true;
  await cf('POST','/workers/scripts/'+S+'/subdomain',{enabled:true,previews_enabled:false});subdomainTouched=true;
