@@ -23,6 +23,10 @@ jobs:
           node work/statistics-summary-shadow-20261113/test.mjs
           node work/statistics-summary-shadow-20261113/ordered-test.mjs
           node work/statistics-summary-shadow-20261113/writer-test.mjs
+      - name: Install isolated local runtime test dependencies
+        run: npm install --prefix work/statistics-summary-shadow-20261113/.runtime --no-save --package-lock=false --no-audit --no-fund miniflare esbuild
+      - name: Test actual storage transactions in local workerd
+        run: node work/statistics-summary-shadow-20261113/runtime-test.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -32,3 +36,4 @@ jobs:
             work/statistics-summary-shadow-20261113/qa/results.json
             work/statistics-summary-shadow-20261113/qa/ordered.json
             work/statistics-summary-shadow-20261113/qa/writer.json
+            work/statistics-summary-shadow-20261113/qa/runtime.json
