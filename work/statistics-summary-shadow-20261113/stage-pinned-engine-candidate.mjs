@@ -71,7 +71,8 @@ function counters(rows){
 }
 const overrideHeader=id=>W+'="'+id+'"';
 async function readCandidate(path){
-  const r=await fetch('https://ball46-production.mccarey-supon.workers.dev'+path,{
+  const directPath=path.startsWith('/api/engine/')?path.slice('/api/engine'.length):path;
+  const r=await fetch('https://nomadtips3-engine-343.mccarey-supon.workers.dev'+directPath,{
     headers:{'cache-control':'no-store','Cloudflare-Workers-Version-Overrides':overrideHeader(candidate)},
     redirect:'error',
     signal:AbortSignal.timeout(30000)
