@@ -38,3 +38,5 @@ Retry inactive Engine candidate using explicit baseline version inheritance thro
 Final smoke retry reuses exact inactive candidate by SHA and validates binding shape before 0% override test.
 
 Probe direct Engine workers.dev availability read-only before another 0% candidate smoke.
+
+Final real-data smoke uses direct Engine workers.dev with version override; reuse exact inactive candidate; restore baseline after 0% test.
