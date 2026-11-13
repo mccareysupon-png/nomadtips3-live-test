@@ -43,6 +43,21 @@ migration/backfill mechanism.
 
 ## Required before real use — not yet implemented
 
+Update 12:25 Bangkok: one strictly read-only real Ledger audit passed, 14,998
+rows in 30 bounded pages, 32 runtime GETs including before/after Ledger metadata.
+Nonempty-cursor routes were verified against actual inherited Engine handlers
+to skip scan/sync/provider calls. Full global counts, raw-market settled counts,
+financial net/stake and weighted win rate matched in one stable generation.
+Audit run: 43371896543. No retries, Production writes or added provider calls.
+
+The captured minimal Ledger is reused for consumer tests; future test runs do
+not repeat the live audit unless deliberately marked with [ledger-audit-once].
+`summary-reader.mjs` provides a small read-only TEST_PREVIEW contract and fails
+closed by default. `lazy-client.mjs` coalesces summary reads, fetches history only
+on explicit opening, cancels closed details and retains marked-stale last-good
+totals on error. These contracts are not installed into Website routes or UI.
+History server queries/indexes are still required; client tests use fixture pages.
+
 1. Verify the test-storage adapter in Cloudflare runtime, then review an Engine
    integration candidate. Current Production Ledger does NOT supply the new
    monotonic revision contract. Never invent revisions from timestamps. No hook
@@ -51,9 +66,9 @@ migration/backfill mechanism.
    reconcile before publishing. Existing `meta.updatedAt` changes on sync even
    without row changes, so it is not alone a suitable durable change sequence.
    A paged full scan on each browser visit is not the final design.
-3. Match actual Ledger totals, raw markets, daily buckets and financial values,
-   including aliases/repairs/deletions. Audit needs one consistent source
-   generation. Counts verification is deliberately NOT Production readiness.
+3. Global counts/raw markets/net/stake were matched against a stable real Ledger.
+   Still verify daily buckets and ongoing aliases/repairs/deletions during
+   realtime catch-up. Snapshot parity alone is NOT Production readiness.
 4. Preserve homepage's existing half-result/day semantics. Its old card counts
    half-wins as a win while statistics uses half credit. Do not silently unify.
 5. Ordered chart metrics (daily OHLC, maximum drawdown, peak and recovery) cannot
