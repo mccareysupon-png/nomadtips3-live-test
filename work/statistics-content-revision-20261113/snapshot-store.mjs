@@ -49,16 +49,24 @@ export class SnapshotStore{
    await this.storage.transaction(async txn=>{await txn.put(P+'manifest:'+id,manifest);await txn.put(ACTIVE,id);});return manifest;
   }catch(error){await this.removePrefix(P+'index:'+id+':');throw error;}
  }
- async page(cursor,limit=2000){
+ async encodedPage(cursor,limit=2000){
   check(Number.isSafeInteger(limit)&&limit>=1&&limit<=2000,'INVALID_PAGE_LIMIT');const parsed=/^snap1:([a-f0-9-]{36}):(\d+)$/.exec(cursor);check(parsed,'INVALID_SNAPSHOT_CURSOR');
   const id=parsed[1],offset=Number(parsed[2]),m=await this.storage.get(P+'manifest:'+id);if(!m||m.expiresAt<=this.clock()){const e=Error('STATISTICS_SNAPSHOT_EXPIRED');e.status=410;throw e;}
-  check(Number.isSafeInteger(offset)&&offset>=0&&offset<=m.rowCount,'INVALID_SNAPSHOT_OFFSET');let end=Math.min(m.rowCount,offset+limit);const rows=[];let payloadBytes=2;
+  check(Number.isSafeInteger(offset)&&offset>=0&&offset<=m.rowCount,'INVALID_SNAPSHOT_OFFSET');let end=Math.min(m.rowCount,offset+limit);const parts=[];let returned=0,payloadBytes=2;
   const wanted=[];
   for(const block of m.index){if(block.end<=offset||block.start>=end)continue;const refs=await this.storage.get(P+'index:'+id+':'+block.part);check(Array.isArray(refs),'SNAPSHOT_INDEX_MISSING');for(const r of refs)if(r.start+r.count>offset&&r.start<end)wanted.push(r);}
   // At most 32 bounded chunks in a native multi-get, never the complete Ledger.
-  batches:for(let i=0;i<wanted.length;i+=32){const refs=wanted.slice(i,i+32),values=await this.storage.get(refs.map(r=>P+'blob:'+r.hash),{noCache:true});for(const r of refs){const text=values.get(P+'blob:'+r.hash);check(typeof text==='string','SNAPSHOT_BLOB_MISSING');const size=bytes(text);if(rows.length&&payloadBytes+size>6*1024*1024){end=offset+rows.length;break batches}payloadBytes+=size;const part=JSON.parse(text);check(part.length===r.count,'SNAPSHOT_CHUNK_COUNT');rows.push(...part.slice(Math.max(0,offset-r.start),Math.min(part.length,end-r.start)));}}
-  check(rows.length===end-offset,'INCOMPLETE_SNAPSHOT_PAGE');
-  return {...m.metadata,ok:true,rows,returned:rows.length,ledgerTotal:m.rowCount,total:m.summary.total,statisticsGeneration:String(m.revision),statisticsContentRevision:m.revision,statisticsSnapshotId:m.id,statisticsSnapshotAsOf:m.sourceAsOf,ledgerUpdatedAt:m.sourceAsOf,statisticsPagination:'IMMUTABLE_HISTORY_SNAPSHOT_V1',nextCursor:end<m.rowCount?'snap1:'+m.id+':'+end:null,hasMore:end<m.rowCount,stale:this.clock()-m.sourceAsOf>90000};
+  batches:for(let i=0;i<wanted.length;i+=32){const refs=wanted.slice(i,i+32),values=await this.storage.get(refs.map(r=>P+'blob:'+r.hash),{noCache:true});for(const r of refs){const text=values.get(P+'blob:'+r.hash);check(typeof text==='string','SNAPSHOT_BLOB_MISSING');check(await digest(text)===r.hash,'SNAPSHOT_BLOB_HASH');const size=bytes(text);if(returned&&payloadBytes+size>6*1024*1024){end=offset+returned;break batches}payloadBytes+=size;
+   const lo=Math.max(0,offset-r.start),hi=Math.min(r.count,end-r.start);if(lo===0&&hi===r.count)parts.push(text.slice(1,-1));else{const part=JSON.parse(text);check(part.length===r.count,'SNAPSHOT_CHUNK_COUNT');parts.push(JSON.stringify(part.slice(lo,hi)).slice(1,-1));}returned+=hi-lo;}}
+  check(returned===end-offset,'INCOMPLETE_SNAPSHOT_PAGE');
+  return {parts,metadata:{...m.metadata,ok:true,returned,ledgerTotal:m.rowCount,total:m.summary.total,statisticsGeneration:String(m.revision),statisticsContentRevision:m.revision,statisticsSnapshotId:m.id,statisticsSnapshotAsOf:m.sourceAsOf,ledgerUpdatedAt:m.sourceAsOf,statisticsPagination:'IMMUTABLE_HISTORY_SNAPSHOT_V1',nextCursor:end<m.rowCount?'snap1:'+m.id+':'+end:null,hasMore:end<m.rowCount,stale:this.clock()-m.sourceAsOf>90000}};
+ }
+ async page(cursor,limit=2000){const {parts,metadata}=await this.encodedPage(cursor,limit);return {...metadata,rows:JSON.parse('['+parts.join(',')+']')};}
+ async response(cursor,limit=2000){
+  const {parts,metadata}=await this.encodedPage(cursor,limit),encoder=new TextEncoder();let index=-1;
+  // Only the two boundary chunks need parsing; complete chunks retain exact JSON.
+  const body=new ReadableStream({pull(controller){if(index===-1){controller.enqueue(encoder.encode(JSON.stringify(metadata).slice(0,-1)+',"rows":['));index=0;return}if(index<parts.length){controller.enqueue(encoder.encode((index?',':'')+parts[index++]));return}controller.enqueue(encoder.encode(']}'));controller.close()}});
+  return new Response(body,{headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store'}});
  }
  firstCursor(m){return 'snap1:'+m.id+':0';}
 }
