@@ -8,9 +8,10 @@ export function connectExistingUi({html,workspace,dashboard,sync}){
  const loader=`/* B46_SUMMARY_FIRST_TEST_20261113: no history until Statistics is opened. */
 let summaryCache=null,summaryAt=0,summaryLoading=null,detailsController=null;
 function statisticsOpen(){const view=document.body?.dataset?.workspaceView;return view?view==='statistics':new URLSearchParams(location.search).get('view')==='statistics'}
+function summaryDayNow(){const p=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',hourCycle:'h23'}).formatToParts(new Date()).filter(x=>x.type!=='literal').map(x=>[x.type,x.value]));const day=p.year+'-'+p.month+'-'+p.day;return Number(p.hour)<6?new Date(Date.parse(day+'T00:00:00Z')-86400000).toISOString().slice(0,10):day}
 async function loadSummary(){
  if(document.visibilityState==='hidden')return summaryCache;
- if(summaryCache&&Date.now()-summaryAt<10000)return summaryCache;
+ if(summaryCache&&summaryCache.daily.tk===summaryDayNow()&&Date.now()-summaryAt<10000)return summaryCache;
  if(summaryLoading)return summaryLoading;
  summaryLoading=(async()=>{const r=await fetch('/api/statistics/summary',{cache:'no-store',credentials:'same-origin',signal:AbortSignal.timeout(12000)});const data=await r.json();
  if(!r.ok||data?.ok!==true||!Number.isSafeInteger(data.ledgerTotal)||!data.daily||!data.marketCounts||!Array.isArray(data.recentSettled)||data.recentSettled.length>4||!Number.isFinite(data.asOf))throw Error('SUMMARY_UNAVAILABLE');
@@ -46,7 +47,7 @@ async function load({details=false}={}) {
  let d=replace(dashboard,'const j=await window.BALL46_STATISTICS_DATA.load();settledSignalRows=j.rows.slice()','const j=await window.BALL46_STATISTICS_DATA.loadSummary();settledSignalRows=j.recentSettled.slice()','Existing scorebar gets only its four displayed settled results');
  const old="const r=await fetch('/api/engine/statistics?paged=1&limit=1&_='+Date.now(),{cache:'no-store',credentials:'same-origin',signal:AbortSignal.timeout(12000)});const j=await r.json();if(!r.ok||j?.ok!==true)";
  const s=replace(sync,old,"const j=await window.BALL46_STATISTICS_DATA.loadSummary();if(j?.ok!==true)",'Existing menu polling shares small summary request');
- const consume=`function consumeSummary(data){try{if(data!==window.BALL46_STATISTICS_DATA?.getSummary?.()||data?.ok!==true||!validBucket(data.daily?.today)||!validBucket(data.daily?.yesterday)||data.daily.tk!==sportDay(data.asOf))return;lastGood=data.daily;verifiedAt=data.asOf;sourceMode=data.mode==='LIVE_SUMMARY'&&!data.stale?'snapshot':'cache';render(lastGood);cacheWrite();clearTimeout(ageTimer);ageTimer=setTimeout(()=>{const r=document.getElementById(ID);if(r&&lastGood)freshness(r)},Math.max(1000,verifiedAt+STALE_MS-Date.now()+1))}catch(e){console.warn('B46 summary skipped',e?.message||e)}}
+ const consume=`function consumeSummary(data){try{if(data!==window.BALL46_STATISTICS_DATA?.getSummary?.()||data?.ok!==true||!validBucket(data.daily?.today)||!validBucket(data.daily?.yesterday)||data.daily.tk!==sportDay(Date.now()))return;lastGood=data.daily;verifiedAt=data.asOf;sourceMode=data.mode==='LIVE_SUMMARY'&&!data.stale?'snapshot':'cache';render(lastGood);cacheWrite();clearTimeout(ageTimer);ageTimer=setTimeout(()=>{const r=document.getElementById(ID);if(r&&lastGood)freshness(r)},Math.max(1000,verifiedAt+STALE_MS-Date.now()+1))}catch(e){console.warn('B46 summary skipped',e?.message||e)}}
 `;
  let h=replace(html,"function boot(){document.addEventListener('ball46:statistics-snapshot',e=>consume(e.detail));",consume+"function boot(){document.addEventListener('ball46:statistics-summary',e=>consumeSummary(e.detail));document.addEventListener('ball46:statistics-snapshot',e=>consume(e.detail));",'Existing daily performance card consumes server aggregate');
  h=replace(h,'restoreCache();consume(window.BALL46_STATISTICS_DATA?.getSnapshot?.());if(!lastGood)showWaiting();','restoreCache();consumeSummary(window.BALL46_STATISTICS_DATA?.getSummary?.());consume(window.BALL46_STATISTICS_DATA?.getSnapshot?.());if(!lastGood)showWaiting();','Mount cached summary without changing card markup');

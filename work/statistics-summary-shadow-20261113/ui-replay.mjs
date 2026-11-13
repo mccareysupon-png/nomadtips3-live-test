@@ -20,9 +20,12 @@ export async function prepareUiReplay(){
  const marketCounts={all:input.rows.length,'1x2':0,ah:0,ou:0,btts:0,corners:0,cards:0,other:0};for(const row of input.rows)marketCounts[registry.familyOf(row)]++;
  const dailyScript=[...originalHtml.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/gi)].map(x=>x[2]).find(x=>x.includes("const CACHE_KEY='b46:daily-performance:shared:v1'"));assert(dailyScript,'DAILY_SOURCE_DRIFT');
  const fnStart=dailyScript.indexOf('function parts('),fnEnd=dailyScript.indexOf('function dateLabel(');assert(fnStart>0&&fnEnd>fnStart);
- const helper="const TZ='Europe/London',CUT=6;const sharedFormatter=new Intl.DateTimeFormat('en-GB',{timeZone:TZ,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',hourCycle:'h23'});"+dailyScript.slice(fnStart,fnEnd)+';return {aggregate,rate,avgOdds};';
+ const helper="const TZ='Europe/London',CUT=6;const sharedFormatter=new Intl.DateTimeFormat('en-GB',{timeZone:TZ,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',hourCycle:'h23'});"+dailyScript.slice(fnStart,fnEnd)+';return {aggregate,rate,avgOdds,sportDay,prev,createdStamp,outcome,isPending,bucket,addSettled,addOdds};';
  class RecordedDate extends Date{static now(){return input.asOf;}}
  const formulas=new Function('Date',helper)(RecordedDate),daily=formulas.aggregate(input.rows);
+ const dailyIndex=new Map();for(const r of input.rows){const at=formulas.createdStamp(r);if(at===null)continue;const day=formulas.sportDay(at);let b=dailyIndex.get(day);if(!b){b={all:formulas.bucket(),settled:formulas.bucket()};dailyIndex.set(day,b);}const o=formulas.outcome(r);if(o){formulas.addSettled(b.all,r,o);formulas.addSettled(b.settled,r,o);}else if(formulas.isPending(r)){b.all.pending++;formulas.addOdds(b.all,r);}}
+ const dailyAt=now=>{const tk=formulas.sportDay(now),yk=formulas.prev(tk);return{today:dailyIndex.get(tk)?.all||formulas.bucket(),yesterday:dailyIndex.get(yk)?.settled||formulas.bucket(),tk,yk};};
+ const rolloverChecks=[];for(const stamp of ['2026-11-13T05:59:59Z','2026-11-13T06:00:00Z','2026-03-29T05:00:00Z','2026-10-25T06:00:00Z']){const at=Date.parse(stamp);class TestDate extends Date{static now(){return at;}}const reference=new Function('Date',helper)(TestDate).aggregate(input.rows);assert.deepEqual(dailyAt(at),reference,'DAILY_ROLLOVER:'+stamp);rolloverChecks.push({stamp,day:reference.tk,ok:true});}await writeFile(D+'/qa/calendar-checks.json',JSON.stringify(rolloverChecks,null,2));
  const dates=settled.map(r=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(Number(r.settledAt??r.createdAt)))).sort();const settledDays=dates.length?Math.max(1,Math.round((Date.parse(dates.at(-1))-Date.parse(dates[0]))/86400000)+1):null;
  const recentSettled=settled.slice().sort((a,b)=>Number(b.settledAt??b.createdAt)-Number(a.settledAt??a.createdAt)).slice(0,4).map(r=>Object.fromEntries(['id','status','result','settledAt','createdAt','fixtureId','home','away','league','finalScore','market','marketLabel','selection','line','selectionLine','odds'].filter(k=>r[k]!==undefined).map(k=>[k,r[k]])));
  const summaryMarkets=Object.fromEntries(Object.keys(input.meta.byMarket).map(key=>[key,{kind:registry.definitions[key]?.kind,label:registry.definitions[key]?.label}]));
@@ -31,10 +34,10 @@ export async function prepareUiReplay(){
  const boundary={ok:true,active:capture.active,mainSha:capture.mainSha,ledgerRows:input.rows.length,summaryBytes:Buffer.byteLength(JSON.stringify(summary)),changes:patched.changes,patchedAssets:['/singlepage-workspace-343.js','/dashboard-v2-stage3-featured-facts-20261013a.js','/ui-sync-fixes-343-v2.js'],unchangedAssets:capture.files.length-3,cssUnchanged:true,liveScorePollingUnchanged:true,engineSignalCodeUnchanged:true,mode:'TEST_REPLAY_ONLY; no Production route or summary-writer activation'};
  await mkdir(D+'/qa/ui',{recursive:true});await writeFile(D+'/qa/ui/boundary.json',JSON.stringify(boundary,null,2));await writeFile(D+'/qa/ui/summary.json',JSON.stringify(summary));
  await writeFile(D+'/qa/ui/workspace.js',patched.workspace);await writeFile(D+'/qa/ui/dashboard.js',patched.dashboard);await writeFile(D+'/qa/ui/sync.js',patched.sync);await writeFile(D+'/qa/ui/index.html',patched.html);
- return {capture,resources,input,settled,originalHtml,patched,summary,boundary,formulas,registry};
+ return {capture,resources,input,settled,originalHtml,patched,summary,boundary,formulas,registry,dailyAt};
 }
 export async function startUiReplay(prepared,{candidate=true}={}){
- const {capture,resources,input,settled,originalHtml,patched,summary,registry}=prepared,requests=[],errors=[],staticReads=[];let origin='',failSummary=false,delayPages=0;
+ const {capture,resources,input,settled,originalHtml,patched,summary,registry,dailyAt}=prepared,requests=[],errors=[],staticReads=[];let origin='',failSummary=false,delayPages=0,calendarNow=input.asOf;
  const fixtureMap=new Map();for(const r of input.rows){if(!r.fixtureId||fixtureMap.has(String(r.fixtureId)))continue;fixtureMap.set(String(r.fixtureId),{fixtureId:String(r.fixtureId),league:r.league,home:r.home,away:r.away,status:r.mirrorStatus||'unknown',boardState:r.mirrorStatus||'unknown',goals:r.mirrorScore??r.finalScore??r.entryScore,minute:r.mirrorMinute??r.entryMinute,corners:r.mirrorCorners??r.finalCorners??r.entryCorners,cards:r.mirrorCards??r.finalCards??r.entryCards,recordedAt:r.mirrorUpdatedAt??r.createdAt});if(fixtureMap.size>=100)break;}
  const board={ok:true,version:'RECORDED_UI_REPLAY',fixtures:[...fixtureMap.values()],stale:true,hubFetchedAt:input.asOf,fetchedAt:input.asOf,cacheOnly:true,externalRequestsAdded:0};
  const meta={ok:true,preview:true,version:'recorded-engine-ledger',statisticsPagination:'CURSOR_NO_TOTAL_CAP_V1',ledgerTotal:input.meta.ledgerTotal,total:input.meta.settledTotal,pending:input.meta.pending,unresolved:input.meta.unresolved,win:input.meta.win,loss:input.meta.loss,push:input.meta.push,halfWin:input.meta.halfWin,halfLoss:input.meta.halfLoss,byMarket:input.meta.byMarket,ledgerUpdatedAt:input.asOf};
@@ -43,7 +46,7 @@ export async function startUiReplay(prepared,{candidate=true}={}){
   const u=new URL(req.url,'http://127.0.0.1');if(req.method!=='GET'){res.writeHead(405);return res.end();}
   if(u.pathname.startsWith('/api/')){
    const row={path:u.pathname,query:u.search,at:Date.now()};requests.push(row);let data;
-   if(u.pathname==='/api/statistics/summary'){if(failSummary){res.writeHead(503,{'content-type':'application/json'});return res.end('{"ok":false,"error":"TEST_FAILURE"}');}data=summary;}
+   if(u.pathname==='/api/statistics/summary'){if(failSummary){res.writeHead(503,{'content-type':'application/json'});return res.end('{"ok":false,"error":"TEST_FAILURE"}');}data={...summary,daily:dailyAt(calendarNow)};}
    else if(u.pathname==='/api/engine/statistics'){
     if(delayPages)await new Promise(r=>setTimeout(r,delayPages));const cursor=u.searchParams.get('cursor'),paged=u.searchParams.get('paged')==='1'||cursor!==null;const offset=cursor?Number(cursor.replace('replay:','')):0;assert(Number.isSafeInteger(offset)&&offset>=0);const rows=paged?input.rows.slice(offset,offset+500):input.rows;data={...meta,rows,returned:rows.length,nextCursor:paged&&offset+500<input.rows.length?'replay:'+(offset+500):null,hasMore:paged&&offset+500<input.rows.length};row.returned=rows.length;
    }else if(['/api/engine/board','/api/hub/snapshot'].includes(u.pathname))data=board;
@@ -62,5 +65,5 @@ export async function startUiReplay(prepared,{candidate=true}={}){
   errors.push({path:u.pathname,status:404});res.writeHead(404);res.end('Not captured; external network disabled');
  }catch(e){errors.push({error:e.message,path:req.url});res.writeHead(500,{'content-type':'text/plain'});res.end(e.message);}});
  await new Promise(r=>server.listen(0,'127.0.0.1',r));origin='http://127.0.0.1:'+server.address().port;
- return {origin,requests,errors,staticReads,setSummaryFailure:value=>{failSummary=value;},setPageDelay:ms=>{delayPages=ms;},close:()=>new Promise(r=>server.close(r)),fixtureMap,board};
+ return {origin,requests,errors,staticReads,setSummaryFailure:value=>{failSummary=value;},setPageDelay:ms=>{delayPages=ms;},setCalendar:ms=>{calendarNow=ms;},close:()=>new Promise(r=>server.close(r)),fixtureMap,board};
 }
