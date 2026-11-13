@@ -3,7 +3,7 @@ import {writeFile} from 'node:fs/promises';
 import {SnapshotStore} from './snapshot-store.mjs';
 class Storage{
  constructor(){this.map=new Map();this.writes=0}
- async get(k){return structuredClone(this.map.get(k))}
+ async get(k){return Array.isArray(k)?new Map(k.filter(x=>this.map.has(x)).map(x=>[x,structuredClone(this.map.get(x))])):structuredClone(this.map.get(k))}
  async put(k,v){for(const[a,b]of typeof k==='string'?[[k,v]]:Object.entries(k)){this.map.set(a,structuredClone(b));this.writes++}}
  async delete(k){for(const key of Array.isArray(k)?k:[k])this.map.delete(key)}
  async list({prefix='',start='',limit=Infinity}){return new Map([...this.map].sort(([a],[b])=>a.localeCompare(b)).filter(([k])=>k.startsWith(prefix)&&k>=start).slice(0,limit))}

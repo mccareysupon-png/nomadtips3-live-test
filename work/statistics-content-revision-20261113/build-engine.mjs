@@ -9,8 +9,8 @@ async function latest(name){try{return await readFile(UP+'/'+name,'utf8')}catch(
 const upstream=await latest('build-pinned-engine-candidate.mjs');assert(upstream.includes("const D='"+UP+"';"));
 await writeFile(D+'/qa/upstream-builder.mjs',upstream.replace("const D='"+UP+"';","const D='"+D+"';"));
 await import(pathToFileURL(resolve(D+'/qa/upstream-builder.mjs')));
-let s=await readFile(D+'/qa/pinned-engine-candidate.js','utf8');
-const changes=[];function one(a,b,label){assert.equal(s.split(a).length,2,'CONTENT_SOURCE_DRIFT:'+label);s=s.replace(a,()=>b);changes.push(label)}
+let s=await readFile(D+'/qa/pinned-engine-candidate.js','utf8');const pinnedSource=s;
+const changes=[],inverse=[];function one(a,b,label){assert.equal(s.split(a).length,2,'CONTENT_SOURCE_DRIFT:'+label);s=s.replace(a,()=>b);changes.push(label);inverse.push([a,b])}
 const helper=(await readFile(D+'/content-revision.mjs','utf8')).replace(/^export /gm,'');
 s=helper+'\n'+s;
 one('if (Object.keys(writes).length) await this.ctx.storage.put(writes);',`if (Object.keys(writes).length) await b46StatsTransaction(this.ctx.storage,async txn=>{await txn.put(writes);await txn.put(STAT_LEDGER_META_KEY,{...meta,byMarket:{...meta.byMarket},updatedAt:at});});`,'Atomic upsert chunk: accepted rows + counters + revision');
@@ -27,6 +27,7 @@ one('if (String(after.updatedAt) !== String(before.updatedAt))','if (pinned && a
 one('statisticsGeneration: after.updatedAt }, { status: 409 }','statisticsGeneration: String(after.contentRevision) }, { status: 409 }','Post-read conflict metadata');
 one('return Response.json({ ...result, statisticsGeneration: before.updatedAt });','return Response.json({ ...result, statisticsGeneration: String(before.contentRevision) });','Content generation response');
 assert(!s.includes('statisticsGeneration: meta.updatedAt'));assert.equal((s.match(/b46StatsTransaction\(this\.ctx\.storage/g)||[]).length,3,'UNAUDITED_LEDGER_WRITER');
+let restored=s;for(const [a,b]of [...inverse].reverse()){assert.equal(restored.split(b).length,2,'INVERSE_PATCH_AMBIGUOUS');restored=restored.replace(b,()=>a)}assert.equal(restored,helper+'\n'+pinnedSource,'UNRELATED_ENGINE_BYTES_CHANGED');
 await writeFile(D+'/qa/engine-candidate.js',s);
 const hash=b=>createHash('sha256').update(b).digest('hex');
 const report={ok:true,baseTestCommit:'fa8ac7b2884b2bc514e274abc81e6a7c7a82a1f7',sourceEngineSha:hash(await readFile('work/engine-memory-diagnosis-20261113/source/nomadtips3-engine-343.js')),candidateSha:hash(s),changes,ledgerWriterPaths:3,sourceTimestampsPreserved:true,formulaChanges:0,productionWrites:0};
