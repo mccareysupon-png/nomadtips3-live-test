@@ -32,3 +32,5 @@ Current membership banners are preserved byte-for-byte; final QA patches Statist
 Authorized real-data smoke: inactive Engine version only; temporary 0% deployment for override testing; restore baseline after test.
 
 Retry inactive candidate after strict secret-binding inheritance correction.
+
+Retry inactive Engine candidate using explicit baseline version inheritance through Workers Beta Versions API.
