@@ -30,14 +30,27 @@ jobs:
           run-id: 43371896543
           github-token: ${{ github.token }}
           path: work/statistics-summary-shadow-20261113/reference/live-proof
-      - name: Reuse captured existing UI and recorded complete Ledger for browser QA
+      - name: Reuse current captured UI for browser QA
+        if: contains(github.event.head_commit.message, '[ui-qa]') || contains(github.event.head_commit.message, '[summary-service-test]') || contains(github.event.head_commit.message, '[pinned-engine-test]')
+        uses: actions/download-artifact@v4
+        with:
+          name: ball46-statistics-shadow-proof
+          run-id: 43399899623
+          github-token: ${{ github.token }}
+          path: work/statistics-summary-shadow-20261113/reference/ui-proof
+      - name: Reuse recorded complete Ledger only
         if: contains(github.event.head_commit.message, '[ui-qa]') || contains(github.event.head_commit.message, '[summary-service-test]') || contains(github.event.head_commit.message, '[pinned-engine-test]')
         uses: actions/download-artifact@v4
         with:
           name: ball46-statistics-shadow-proof
           run-id: 43373832113
           github-token: ${{ github.token }}
-          path: work/statistics-summary-shadow-20261113/reference/ui-proof
+          path: work/statistics-summary-shadow-20261113/reference/ledger-proof
+      - name: Pair current UI with recorded full Ledger for deterministic QA
+        if: contains(github.event.head_commit.message, '[ui-qa]') || contains(github.event.head_commit.message, '[summary-service-test]') || contains(github.event.head_commit.message, '[pinned-engine-test]')
+        run: |
+          cp work/statistics-summary-shadow-20261113/reference/ledger-proof/qa/verified-full-ledger.json work/statistics-summary-shadow-20261113/reference/ui-proof/qa/
+          cp work/statistics-summary-shadow-20261113/reference/ledger-proof/qa/live-ledger.json work/statistics-summary-shadow-20261113/reference/ui-proof/qa/
       - name: Build pinned-generation Engine candidate from exact captured source
         if: contains(github.event.head_commit.message, '[pinned-engine-test]')
         run: node work/statistics-summary-shadow-20261113/build-pinned-engine-candidate.mjs
