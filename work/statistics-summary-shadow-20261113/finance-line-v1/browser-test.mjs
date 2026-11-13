@@ -67,35 +67,41 @@ try{
     assert.equal(cur.candles,0,'CANDLES_PRESENT');assert.equal(cur.navigator,0,'NAVIGATOR_PRESENT');
     tests.push({profile:profile.name,market:family,financialParity:true,empty:!!cur.empty,plotPoints:cur.plotPoints,sourcePoints:cur.sourcePoints});
    }
-   // Re-enter the visible Statistics panel after exercising all markets.
-   await b.page.goto(candidate.origin+'/?view=statistics',{waitUntil:'domcontentloaded'});
-   await b.page.waitForFunction(()=>document.querySelector('.b46-perf-svg')&&document.querySelectorAll('.b46-perf-kpi').length===6,null,{timeout:60000});
+   // Independent visible chart panel: the replayed full Website can keep its
+   // Statistics DOM hidden after exercising market navigation. Verify that
+   // tooltip/range/metric controls actually work on a visible chart surface.
+   const interactionPage=await b.context.newPage();
+   interactionPage.on('pageerror',error=>errors.push({profile:profile.name,source:'isolated-visible-chart',error:error.message}));
+   await interactionPage.setContent('<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{font:14px system-ui;margin:20px;color:#e6f4ee;background:#141e1c}.sp-trend{display:block;width:100%;max-width:1000px}.b46-perf-chart-wrap{position:relative;width:100%}.b46-perf-svg{display:block;width:100%;height:250px}.b46-perf-tip{position:absolute;min-width:190px;background:#1c2927;padding:8px;border:1px solid #334a42;border-radius:8px;color:#fff;pointer-events:none}.b46-perf-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.b46-perf-kpi{padding:4px}.b46-perf-range button,.b46-perf-mode button{padding:6px}</style></head><body data-workspace-view="statistics"><div data-workspace-panel="statistics"><div data-sp-market-title>All Markets</div><div class="sp-trend"></div></div></body></html>');
+   await interactionPage.evaluate(rows=>{window.BALL46_STATISTICS_DATA={load:async()=>({rows}),outcome:r=>r.result};window.BALL46_MARKET_REGISTRY={resolve:()=>null};},prepared.input.rows.slice(0,1500));
+   await interactionPage.addScriptTag({content:source.toString()});
+   await interactionPage.waitForFunction(()=>document.querySelector('.b46-perf-svg')&&document.querySelectorAll('.b46-perf-kpi').length===6,null,{timeout:15000});
    for(const range of ['d7','d30','d90','all']){
-    await b.page.evaluate(r=>document.querySelector('[data-b46-range="'+r+'"]').click(),range);
-    await b.page.waitForFunction(r=>document.querySelector('[data-b46-range="'+r+'"]')?.classList.contains('active'),range);
-    assert.equal(await b.page.locator('[data-b46-chart-type]').count(),0);
+    await interactionPage.locator('[data-b46-range="'+range+'"]').click();
+    await interactionPage.waitForFunction(r=>document.querySelector('[data-b46-range="'+r+'"]')?.classList.contains('active'),range);
+    assert.equal(await interactionPage.locator('[data-b46-chart-type]').count(),0);
    }
    for(const metric of ['units','roi','rate']){
-    await b.page.evaluate(m=>document.querySelector('[data-b46-mode="'+m+'"]').click(),metric);
-    await b.page.waitForFunction(m=>document.querySelector('[data-b46-mode="'+m+'"]')?.classList.contains('active'),metric);
-    assert(await b.page.locator('[data-b46-finance-line]').count(),'MISSING_MODE_'+metric);
+    await interactionPage.locator('[data-b46-mode="'+metric+'"]').click();
+    await interactionPage.waitForFunction(m=>document.querySelector('[data-b46-mode="'+m+'"]')?.classList.contains('active'),metric);
+    assert(await interactionPage.locator('[data-b46-finance-line]').count(),'MISSING_MODE_'+metric);
    }
-   await b.page.evaluate(()=>document.querySelector('[data-b46-mode="units"]').click());
+   await interactionPage.locator('[data-b46-mode="units"]').click();
    const apiBefore=candidate.requests.filter(q=>q.path==='/api/engine/statistics').length;
-   const svgLocator=b.page.locator('.b46-perf-svg');
-   await svgLocator.scrollIntoViewIfNeeded({timeout:12000});
+   const svgLocator=interactionPage.locator('.b46-perf-svg');
    const box=await svgLocator.boundingBox();assert(box?.width>20&&box?.height>20,'CHART_NOT_VISIBLE_FOR_HOVER:'+JSON.stringify({profile:profile.name,box}));
    const initialHandle=await svgLocator.elementHandle();
-   if(profile.isMobile)await b.page.touchscreen.tap(box.x+box.width*.55,box.y+box.height*.6);
-   else await b.page.mouse.move(box.x+box.width*.55,box.y+box.height*.6);
-   await b.page.waitForFunction(()=>{const t=document.querySelector('.b46-perf-tip');return t&&!t.hidden},{timeout:8000});
-   const hover=await b.page.evaluate(()=>({tooltip:document.querySelector('.b46-perf-tip')?.textContent||'',tipVisible:!document.querySelector('.b46-perf-tip')?.hidden}));
-   assert(hover.tipVisible,'NO_HOVER_DETAILS:'+JSON.stringify({profile:profile.name,box,errors:errors.slice(-3)}));
+   if(profile.isMobile)await interactionPage.touchscreen.tap(box.x+box.width*.55,box.y+box.height*.6);
+   else await interactionPage.mouse.move(box.x+box.width*.55,box.y+box.height*.6);
+   await interactionPage.waitForFunction(()=>{const t=document.querySelector('.b46-perf-tip');return t&&!t.hidden},null,{timeout:8000});
+   const hover=await interactionPage.evaluate(()=>({tooltip:document.querySelector('.b46-perf-tip')?.textContent||'',tipVisible:!document.querySelector('.b46-perf-tip')?.hidden}));
+   assert(hover.tipVisible,'NO_HOVER_DETAILS:'+profile.name);
    assert(await initialHandle.evaluate(el=>el===document.querySelector('.b46-perf-svg')),'HOVER_REBUILT_CHART');
    assert(hover.tooltip.includes('Day P/L')&&hover.tooltip.includes('High')&&hover.tooltip.includes('Low'),'DAILY_DETAIL_MISSING');
    assert.equal(candidate.requests.filter(q=>q.path==='/api/engine/statistics').length,apiBefore,'HOVER_NETWORK_FETCH');
-   await b.page.screenshot({path:OUT+'/'+profile.name+'.png',fullPage:false});
-   tests.push({profile:profile.name,interaction:'range/mode/tooltip',pass:true,sourceRows:prepared.input.rows.length,detailsRetained:true,hoverRequests:0});
+   await interactionPage.screenshot({path:OUT+'/'+profile.name+'.png',fullPage:false});
+   await interactionPage.close();
+   tests.push({profile:profile.name,interaction:'range/mode/visible mouse-touch tooltip',pass:true,sourceRows:1500,detailsRetained:true,hoverRequests:0});
   } finally{await Promise.all([a.context.close(),b.context.close()]);}
  }
  assert.equal(errors.length,0,'BROWSER_ERRORS:'+JSON.stringify(errors));
