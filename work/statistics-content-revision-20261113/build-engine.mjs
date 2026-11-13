@@ -1,0 +1,33 @@
+import assert from 'node:assert/strict';
+import {readFile,writeFile,mkdir} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
+import {pathToFileURL} from 'node:url';
+import {resolve} from 'node:path';
+const D='work/statistics-content-revision-20261113',UP='work/statistics-summary-shadow-20261113';
+await mkdir(D+'/qa',{recursive:true});
+async function latest(name){try{return await readFile(UP+'/'+name,'utf8')}catch(e){if(e.code!=='ENOENT')throw e;return readFile(D+'/upstream/'+name,'utf8')}}
+const upstream=await latest('build-pinned-engine-candidate.mjs');assert(upstream.includes("const D='"+UP+"';"));
+await writeFile(D+'/qa/upstream-builder.mjs',upstream.replace("const D='"+UP+"';","const D='"+D+"';"));
+await import(pathToFileURL(resolve(D+'/qa/upstream-builder.mjs')));
+let s=await readFile(D+'/qa/pinned-engine-candidate.js','utf8');
+const changes=[];function one(a,b,label){assert.equal(s.split(a).length,2,'CONTENT_SOURCE_DRIFT:'+label);s=s.replace(a,()=>b);changes.push(label)}
+const helper=(await readFile(D+'/content-revision.mjs','utf8')).replace(/^export /gm,'');
+s=helper+'\n'+s;
+one('if (Object.keys(writes).length) await this.ctx.storage.put(writes);',`if (Object.keys(writes).length) await b46StatsTransaction(this.ctx.storage,async txn=>{await txn.put(writes);await txn.put(STAT_LEDGER_META_KEY,{...meta,byMarket:{...meta.byMarket},updatedAt:at});});`,'Atomic upsert chunk: accepted rows + counters + revision');
+one('try{return await this.ctx.storage.transaction(async txn=>{','try{return await b46StatsTransaction(this.ctx.storage,async txn=>{','Named archive/delete uses same revision transaction');
+one('async __b46RestoreNamedRepair(journalKey,aliasKey){return this.ctx.storage.transaction(async txn=>{','async __b46RestoreNamedRepair(journalKey,aliasKey){return b46StatsTransaction(this.ctx.storage,async txn=>{','Named restore uses same revision transaction');
+one('const meta = pinnedMeta || normalizeLedgerMeta(await this.ctx.storage.get(STAT_LEDGER_META_KEY));','const meta = pinnedMeta || await b46StatsReadMetadata(this.ctx.storage,normalizeLedgerMeta);','Atomic metadata read');
+one('statisticsGeneration: meta.updatedAt, statisticsPagination: "CURSOR_PINNED_GENERATION_V1"','statisticsGeneration: String(meta.contentRevision), statisticsContentRevision: meta.contentRevision, statisticsGenerationType: "CONTENT_REVISION_V1", statisticsPagination: "CURSOR_PINNED_CONTENT_V2"','Separate content revision from source freshness');
+one('const m = normalizeLedgerMeta(await this.ctx.storage.get(STAT_LEDGER_META_KEY));\n      return Response.json({ ok: true, version: STAT_LEDGER_VERSION, retention: "LONG_TERM_NO_APPLICATION_EXPIRY", ...m, duplicateReconciliation:', 'const m = await b46StatsReadMetadata(this.ctx.storage,normalizeLedgerMeta);\n      return Response.json({ ok: true, version: STAT_LEDGER_VERSION, retention: "LONG_TERM_NO_APPLICATION_EXPIRY", ...m, statisticsGeneration:String(m.contentRevision), statisticsGenerationType:"CONTENT_REVISION_V1", duplicateReconciliation:','Health exposes content revision without modifying source-age');
+one('const before = normalizeLedgerMeta(await this.ctx.storage.get(STAT_LEDGER_META_KEY));','const before = await b46StatsReadMetadata(this.ctx.storage,normalizeLedgerMeta);\n      const pinned = expectedGeneration !== null || u.searchParams.get("consistency") === "content-v1";','Revision-aware opt-in; old clients retain default route');
+one('String(before.updatedAt) !== String(expectedGeneration)','String(before.contentRevision) !== String(expectedGeneration)','Stale-cursor revision fence');
+one('statisticsGeneration: before.updatedAt }, { status: 409 }','statisticsGeneration: String(before.contentRevision) }, { status: 409 }','Conflict exposes current revision');
+one('const after = normalizeLedgerMeta(await this.ctx.storage.get(STAT_LEDGER_META_KEY));','const after = await b46StatsReadMetadata(this.ctx.storage,normalizeLedgerMeta);','Post-read revision fence');
+one('if (String(after.updatedAt) !== String(before.updatedAt))','if (pinned && after.contentRevision !== before.contentRevision)','No-op freshness updates never invalidate pinned content');
+one('statisticsGeneration: after.updatedAt }, { status: 409 }','statisticsGeneration: String(after.contentRevision) }, { status: 409 }','Post-read conflict metadata');
+one('return Response.json({ ...result, statisticsGeneration: before.updatedAt });','return Response.json({ ...result, statisticsGeneration: String(before.contentRevision) });','Content generation response');
+assert(!s.includes('statisticsGeneration: meta.updatedAt'));assert.equal((s.match(/b46StatsTransaction\(this\.ctx\.storage/g)||[]).length,3,'UNAUDITED_LEDGER_WRITER');
+await writeFile(D+'/qa/engine-candidate.js',s);
+const hash=b=>createHash('sha256').update(b).digest('hex');
+const report={ok:true,baseTestCommit:'fa8ac7b2884b2bc514e274abc81e6a7c7a82a1f7',sourceEngineSha:hash(await readFile('work/engine-memory-diagnosis-20261113/source/nomadtips3-engine-343.js')),candidateSha:hash(s),changes,ledgerWriterPaths:3,sourceTimestampsPreserved:true,formulaChanges:0,productionWrites:0};
+await writeFile(D+'/qa/build.json',JSON.stringify(report,null,2));console.log('CONTENT_ENGINE_BUILD '+JSON.stringify(report));
