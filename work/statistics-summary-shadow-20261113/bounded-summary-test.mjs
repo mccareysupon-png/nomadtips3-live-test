@@ -11,11 +11,11 @@ function reader({drift=false,fail=false,oversize=false,repeat=false}={}){
   if(path==='/ledger-health')return {...input.meta,updatedAt:input.asOf+(drift&&pages?1:0)};
   const u=new URL(path,'https://test.invalid');assert.equal(u.pathname,'/statistics');assert.equal(u.searchParams.get('paged'),'1');const c=u.searchParams.get('cursor');assert(c.startsWith('stat:v2:row:'));
   const offset=c==='stat:v2:row:\uffff'?0:Number(c.slice('stat:v2:row:'.length));pages++;
-  const size=oversize?501:500,rows=input.rows.slice(offset,offset+size),hasMore=offset+size<input.rows.length;
+  assert.equal(u.searchParams.get('limit'),'2000');assert.equal(u.searchParams.get('generation'),String(input.asOf));const size=oversize?2001:2000,rows=input.rows.slice(offset,offset+size),hasMore=offset+size<input.rows.length;
   return {...input.meta,total:input.meta.settledTotal,ledgerUpdatedAt:input.asOf,rows,hasMore,nextCursor:hasMore?(repeat?c:'stat:v2:row:'+(offset+size)):null};
  };
 }
-const result=await reduceBounded(reader(),formulas,registry,{now:input.asOf});assert.equal(result.data.ledgerTotal,input.rows.length);assert.equal(result.proof.maxPageRows,500);assert.equal(result.proof.pages,Math.ceil(input.rows.length/500));checks++;
+const result=await reduceBounded(reader(),formulas,registry,{now:input.asOf});assert.equal(result.data.ledgerTotal,input.rows.length);assert.equal(result.proof.maxPageRows,2000);assert.equal(result.proof.pages,Math.ceil(input.rows.length/2000));checks++;
 // Independent current frontend aggregate, with only Date.now injected.
 const now=Date.now;Date.now=()=>input.asOf;let expected;try{expected=formulas.aggregate(input.rows)}finally{Date.now=now}
 assert.deepEqual(result.data.daily,expected);checks++;
