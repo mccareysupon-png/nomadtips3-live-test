@@ -1,0 +1,45 @@
+import assert from 'node:assert/strict';
+import {createRequire} from 'node:module';
+import {resolve} from 'node:path';
+import {writeFile} from 'node:fs/promises';
+import {prepareUiReplay,startUiReplay} from '../statistics-summary-shadow-20261113/ui-replay.mjs';
+import {connectExistingUi} from './ui-patch.mjs';
+import {integrated} from './integration.mjs';
+const D='work/statistics-content-revision-20261113',require=createRequire(resolve('work/statistics-summary-shadow-20261113/.runtime/resolve.cjs')),{chromium}=require('playwright');
+const runtime=await integrated();await runtime.reset();const summary=await runtime.get('/summary'),first=await runtime.get('/history');
+let all=[...first.rows],cursor=first.nextCursor;while(cursor){const p=await runtime.get('/history?'+new URLSearchParams({cursor}));all.push(...p.rows);cursor=p.nextCursor}
+const prepared=await prepareUiReplay(),resource=name=>prepared.resources.get(name).body.toString();
+prepared.patched=connectExistingUi({html:prepared.originalHtml,workspace:resource('/singlepage-workspace-343.js'),dashboard:resource('/dashboard-v2-stage3-featured-facts-20261013a.js'),sync:resource('/ui-sync-fixes-343-v2.js')});
+prepared.input={...prepared.input,rows:all,meta:await runtime.health(),asOf:summary.asOf};prepared.settled=all.filter(r=>r.status==='SETTLED');prepared.summary=summary;
+prepared.dailyAt=()=>summary.daily;
+const baseline=await startUiReplay(prepared,{candidate:false}),candidate=await startUiReplay(prepared,{candidate:true}),browser=await chromium.launch({headless:true});
+const results=[],failures=[],errors=[],metrics=[],profiles=[{name:'pc-dark',width:1440,height:1000,theme:'dark'},{name:'pc-light',width:1440,height:1000,theme:'light'},{name:'mobile-dark',width:390,height:844,theme:'dark'},{name:'mobile-light',width:390,height:844,theme:'light'}];
+async function session(profile,server,isCandidate){
+ const context=await browser.newContext({viewport:{width:profile.width,height:profile.height},isMobile:profile.width<500,hasTouch:profile.width<500});
+ await context.addInitScript(theme=>localStorage.setItem('nomad343_dashboard_theme_v1',theme),profile.theme);
+ const page=await context.newPage(),requests=[];page.on('pageerror',e=>errors.push({profile:profile.name,candidate:isCandidate,error:e.message}));
+ await page.route('**/*',async route=>{const u=new URL(route.request().url());if(u.origin!==server.origin)return route.abort();if(isCandidate&&u.pathname.startsWith('/api/statistics/')){requests.push(u.pathname);const path=u.pathname.replace('/api/statistics',''),r=await runtime.summary.fetch('https://local.test'+path+u.search);return route.fulfill({status:r.status,headers:{'content-type':'application/json','cache-control':'no-store'},body:await r.text()})}return route.continue()});
+ // Workerd Response has a numeric status, unlike Playwright APIResponse.
+ return {page,context,requests};
+}
+const waitStats=async page=>{await page.waitForFunction(n=>window.BALL46_STATISTICS_DATA?.getSnapshot?.()?.ledgerRows?.length===n&&document.querySelector('[data-sp-table-body] tr'),all.length,{timeout:90000});await page.waitForFunction(()=>document.querySelector('.b46-perf-svg')||document.querySelector('.b46-perf-empty'),null,{timeout:20000})};
+const values=page=>page.evaluate(()=>({kpis:Object.fromEntries([...document.querySelectorAll('[data-sp-kpi]')].map(e=>[e.dataset.spKpi,e.textContent])),financial:[...document.querySelectorAll('.b46-perf-kpi b')].map(e=>e.textContent),recordCount:document.querySelector('[data-sp-record-count]')?.textContent,rows:[...document.querySelectorAll('[data-sp-table-body] tr')].slice(0,3).map(e=>e.textContent.replace(/\s+/g,' ').trim()),width:innerWidth}));
+try{
+ for(const profile of profiles){const b=await session(profile,baseline,false),c=await session(profile,candidate,true);try{
+  const start=performance.now();await c.page.goto(candidate.origin+'/',{waitUntil:'domcontentloaded'});await c.page.waitForFunction(()=>window.BALL46_STATISTICS_DATA?.getSummary?.()?.ok,{timeout:30000});const homeMs=performance.now()-start;assert.equal(c.requests.filter(x=>x.endsWith('/history')).length,0);results.push({profile:profile.name,test:'Homepage uses compact actual Summary; no unopened history',ok:true});
+  const before=performance.now();await b.page.goto(baseline.origin+'/?view=statistics',{waitUntil:'domcontentloaded'});await waitStats(b.page);const baselineMs=performance.now()-before;
+  const after=performance.now();await c.page.goto(candidate.origin+'/?view=statistics',{waitUntil:'domcontentloaded'});await waitStats(c.page);const candidateMs=performance.now()-after;
+  for(const family of ['all','1x2','ah','ou','btts','corners','cards','other']){
+   for(const p of [b.page,c.page]){await p.evaluate(m=>document.querySelector('[data-stat-market="'+m+'"]').click(),family);await p.waitForFunction(()=>document.querySelector('.b46-perf-title h3')?.textContent===document.querySelector('[data-sp-market-title]')?.textContent)}
+   assert.deepEqual(await values(c.page),await values(b.page),'MARKET_PARITY:'+profile.name+':'+family);results.push({profile:profile.name,test:'Unchanged market/formula/table '+family,ok:true});
+  }
+  const initialRequests=c.requests.filter(x=>x.endsWith('/history')).length;await runtime.reset();await c.page.clock.setFixedTime(new Date(Date.now()+11000));await c.page.evaluate(async()=>{const api=window.BALL46_STATISTICS_DATA;window.__same=api.getSnapshot();await api.load({details:true});if(api.getSnapshot()!==window.__same)throw Error('NOOP_REPLACED_SNAPSHOT')});assert.equal(c.requests.filter(x=>x.endsWith('/history')).length,initialRequests);results.push({profile:profile.name,test:'No-op freshness poll keeps browser snapshot and adds zero history requests',ok:true});
+  await c.page.evaluate(()=>document.querySelector('[data-stat-market="all"]').click());await c.page.screenshot({path:D+'/qa/'+profile.name+'.png',fullPage:false});
+  const client=await c.context.newCDPSession(c.page);await client.send('Performance.enable');const perf=await client.send('Performance.getMetrics');const heap=perf.metrics.find(x=>x.name==='JSHeapUsedSize')?.value;
+  metrics.push({profile:profile.name,homeSummaryReadyMs:homeMs,baselineStatsReadyMs:baselineMs,candidateStatsReadyMs:candidateMs,percentFaster:(baselineMs-candidateMs)/baselineMs*100,browserHeapBytes:heap,historyRequests:initialRequests,limit:'Unthrottled CI Chromium, recorded data; not a field mobile measurement'});
+ }catch(error){failures.push({profile:profile.name,error:String(error.stack||error)});await c.page.screenshot({path:D+'/qa/'+profile.name+'-failure.png'}).catch(()=>{})}finally{await b.context.close();await c.context.close()}}
+ assert.equal(errors.length,0,'BROWSER_ERRORS');assert.equal(failures.length,0,'BROWSER_FAILURES');
+}catch(error){failures.push({error:String(error.stack||error)})}finally{
+ const report={ok:failures.length===0,checks:results.length,results,failures,errors,metrics,sourceMetrics:runtime.metrics(),productionWrites:0,providerRequests:0,currentWebsiteVersion:prepared.capture.active,unchangedCss:true,unchangedFinancialAsset:true,limitations:['Recorded real Ledger, not current live source','Local workerd runtime; hosted namespace migration and rollout not authorized','Baseline legacy full response uses identical frozen data; no field-network speed claim']};await writeFile(D+'/qa/browser.json',JSON.stringify(report,null,2));console.log('INTEGRATED_BROWSER '+JSON.stringify({ok:report.ok,checks:report.checks,failures,errors,metrics}));await browser.close();await baseline.close();await candidate.close();await runtime.dispose();if(!report.ok)process.exitCode=1;
+}
+
