@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {patchMenu} from './menu-single-owner.mjs';
 import {connectExistingUi as base} from '../statistics-summary-shadow-20261113/ui-patch.mjs';
 export function connectExistingUi(input){
  const p=base(input);let w=p.workspace;const changes=[];
@@ -10,5 +11,5 @@ export function connectExistingUi(input){
  one("if(response.status===409&&data?.error==='STATISTICS_GENERATION_CHANGED')","if((response.status===409&&data?.error==='STATISTICS_GENERATION_CHANGED')||(response.status===410&&data?.error==='STATISTICS_SNAPSHOT_EXPIRED'))",'Bounded restart for expired snapshot');
  one("if(ticket!==state.statsRequest||state.view!=='statistics')return;state.rows=","if(ticket!==state.statsRequest||state.view!=='statistics')return;if(state.statsLoaded&&state.rows===(j.ledgerRows||j.rows)){state.statsLoadedAt=Date.now();return}state.rows=",'No redundant Statistics DOM work after identical dataset');
  one("getSnapshotAt:()=>cached?.preview?Number(cached.ledgerUpdatedAt):loadedAt","getSnapshotAt:()=>cached?Number(cached.statisticsSnapshotAsOf??cached.ledgerUpdatedAt):0",'Keep source age separate from browser read time');
- return {...p,workspace:w,changes:[...p.changes,...changes]};
+ return {...p,workspace:w,sync:patchMenu(p.sync),changes:[...p.changes,...changes]};
 }

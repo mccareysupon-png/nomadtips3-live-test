@@ -7,6 +7,7 @@ permissions:
   contents: read
 jobs:
   menu-only:
+    if: contains(github.event.head_commit.message, '[menu-only]')
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:

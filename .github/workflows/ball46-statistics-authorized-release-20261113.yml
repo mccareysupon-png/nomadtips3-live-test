@@ -39,6 +39,8 @@ jobs:
           node work/statistics-summary-shadow-20261113/build-summary-formulas.mjs
           node work/statistics-content-revision-20261113/build-engine.mjs
           node work/statistics-content-revision-20261113/prepare-summary.mjs
+          node work/statistics-content-revision-20261113/menu-single-owner-test.mjs
+          node work/statistics-content-revision-20261113/engine-reader-test.mjs
           npm install --prefix work/statistics-summary-shadow-20261113/.runtime --no-save --package-lock=false --no-audit --no-fund esbuild playwright@1.56.1
           work/statistics-summary-shadow-20261113/.runtime/node_modules/.bin/playwright install --with-deps chromium
       - name: Stage and verify isolated hosted candidate before Production changes
