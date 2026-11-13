@@ -1,5 +1,5 @@
 // Control-plane GET only. No Worker invocation, scan, provider request, or deploy.
-import {mkdir,writeFile} from 'node:fs/promises';
+import {mkdir,writeFile,readFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import assert from 'node:assert/strict';
 const D='work/statistics-summary-shadow-20261113', A='62cb0db544160e6591342abd6b4f35cc';
@@ -28,20 +28,17 @@ for(const worker of ['nomadtips3-engine-343','ball46-production']) {
     await writeFile(D+'/source/'+asset.path.split('?')[0].slice(1),b);
    }
   }
-  // Base assets may be string literals embedded in the main bundle rather than
-  // entries in overlay JSON modules. Decode data only; never evaluate the Worker.
+  // The base ASSETS binding is external to Worker modules. Verify the recorded
+  // reference bytes against the current main bundle's exact asset manifest.
+  // This proves reference identity, NOT a public-URL delivery/route test.
   if(!row.assets.some(x=>x.path.split('?')[0]==='/longterm-performance-343.js')) {
-   const expected='822f3d9d271a948d6b862eb7732f8797dcedbcc743cd63f3094f217b537b22bf';
-   const matches=new Map();
-   for(const m of v.modules) {
-    const text=Buffer.from(m.content_base64,'base64').toString('utf8');
-    for(const token of text.matchAll(/"(?:[^"\\]|\\.)*"/g)) {
-     let value;try{value=JSON.parse(token[0])}catch{continue}
-     if(value.length<1000)continue;
-     for(const b of [Buffer.from(value),Buffer.from(value,'base64')])if(sha(b)===expected)matches.set(sha(b),{b,module:m.name});
-    }
-   }
-   if(matches.size===1){const {b,module}=matches.values().next().value;row.assets.push({module,path:'/longterm-performance-343.js',sha:sha(b),encoding:'embedded-literal'});await writeFile(D+'/source/longterm-performance-343.js',b);}
+   const normalized=bytes.toString('utf8').replaceAll('\\"','"');
+   const refs=[...normalized.matchAll(/"path":"(\/longterm-performance-343\.js(?:\?[^" ]*)?)","sha":"([a-f0-9]{64})","bytes":(\d+)/g)];
+   assert.equal(refs.length,1,'FINANCIAL_MANIFEST_AMBIGUOUS');
+   const b=await readFile(D+'/reference/longterm-performance-343.js');
+   assert.equal(sha(b),refs[0][2],'FINANCIAL_MANIFEST_HASH_DRIFT');assert.equal(b.length,Number(refs[0][3]),'FINANCIAL_SIZE_DRIFT');
+   row.assets.push({module:'ASSETS via active main manifest',path:refs[0][1],sha:sha(b),verification:'LOCAL_REFERENCE_MATCHES_ACTIVE_MANIFEST_NOT_URL_DELIVERY'});
+   await writeFile(D+'/source/longterm-performance-343.js',b);
   }
   if(!row.assets.some(x=>x.path.split('?')[0]==='/longterm-performance-343.js')) {
    console.log('ASSET_DISCOVERY '+JSON.stringify({worker,active,sha:row.sha,modules:v.modules.map(x=>({name:x.name,type:x.content_type})),references:bytes.toString('utf8').match(/.{0,90}longterm-performance.{0,180}/g)?.slice(0,8)}));

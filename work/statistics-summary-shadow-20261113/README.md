@@ -21,8 +21,16 @@ shadow namespace and bounded by affected cells, not all history.
 The count reference is extracted from hash-verified Engine functions. Financial
 reference tests extract the existing longterm-performance settlement function.
 Fresh-source CI reads current Cloudflare versions and asset payloads using GET
-only; an Engine hash drift or ambiguous mapping stops the job. No Engine route,
+only; the external base financial reference is matched by exact hash and byte
+length against the ACTIVE main module's manifest. This is not a public-URL
+delivery test. An Engine hash drift or ambiguous mapping stops the job. No Engine route,
 provider endpoint, scan, Cron, traffic or configuration is changed.
+
+`ordered-blocks.mjs` composes bounded chronological blocks for net, stake, ROI,
+peak, maximum drawdown and best recovery. Corrections rebuild the affected block
+and merge summaries rather than reducing daily net and losing intra-day peaks.
+Eight further tests compare the existing financial function on generated rows,
+including 15,000-row composition, corrections and order/generation rejection.
 
 ## Required before real use — not yet implemented
 
@@ -40,9 +48,9 @@ provider endpoint, scan, Cron, traffic or configuration is changed.
 4. Preserve homepage's existing half-result/day semantics. Its old card counts
    half-wins as a win while statistics uses half credit. Do not silently unify.
 5. Ordered chart metrics (daily OHLC, maximum drawdown, peak and recovery) cannot
-   be derived from daily net alone. Maintain bounded ordered block summaries or
-   recompute only affected indexed blocks in the test implementation; compare
-   their full output before replacing the existing chart. No chart change here.
+   be derived from daily net alone. The bounded composition is implemented;
+   still connect actual chronological indexes/tie order, day OHLC boundaries and
+   block invalidation after date changes. No chart change here.
 6. Add a read-only summary contract with source revision and freshness. Keep the
    last verified snapshot on failure, marked stale; never present partial/zero
    data as complete. Then adapt homepage/market totals to that small response.
