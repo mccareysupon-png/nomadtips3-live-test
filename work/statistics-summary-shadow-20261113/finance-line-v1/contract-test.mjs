@@ -54,3 +54,5 @@ const output={ok:true,rows:rows.length,modes:res,statisticalFormulasIdentical:tr
 await mkdir(D+'/qa/finance-line-v1',{recursive:true});
 await writeFile(D+'/qa/finance-line-v1/contract.json',JSON.stringify(output,null,2));
 console.log('FINANCE_LINE_QA '+JSON.stringify(output));
+
+// Trigger deterministic TEST-only formula and browser verification.
