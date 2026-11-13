@@ -152,13 +152,19 @@ try{
   for(const k of ['limits','placement','cache_options'])if(v[k]!=null)body[k]=v[k];
   if(v.exports)body.exports=v.exports;
   if(v.containers)body.containers=v.containers;
-  const reuse=String(process.env.B46_EXISTING_ENGINE_CANDIDATE||'').trim();
+  const requestedReuse=String(process.env.B46_EXISTING_ENGINE_CANDIDATE||'').trim();
+  let reuse=requestedReuse;
+  if(!reuse&&latestUploaded&&latestUploaded!==baseline){
+    try{const lv=await getVersion(latestUploaded),lm=lv.modules.find(m=>m.name===lv.main_module);if(lm&&sha(Buffer.from(lm.content_base64,'base64'))===report.candidateMainSha){reuse=latestUploaded;report.autoReuseLatest=true}}catch{}
+  }
   if(reuse){candidate=reuse;report.reusedCandidate=true}else{const made=await api('POST','/workers/workers/'+W+'/versions',body);candidate=made.id;report.reusedCandidate=false}
   report.candidate=candidate;
   assert(candidate&&candidate!==baseline,'CANDIDATE_VERSION_INVALID');
   const cv=await getVersion(candidate),cm=cv.modules.find(m=>m.name===cv.main_module);
   assert.equal(sha(Buffer.from(cm.content_base64,'base64')),report.candidateMainSha,'CANDIDATE_MAIN_HASH');
   assert.deepEqual(cv.modules.filter(m=>m.name!==cv.main_module).map(m=>[m.name,m.content_type,sha(Buffer.from(m.content_base64,'base64'))]).sort(),v.modules.filter(m=>m.name!==v.main_module).map(m=>[m.name,m.content_type,sha(Buffer.from(m.content_base64,'base64'))]).sort(),'NON_MAIN_MODULE_DRIFT');
+  const bindingShape=x=>(x||[]).map(b=>[b.name,b.type==='inherit'||b.type==='secret_text'?'secret':b.type,b.class_name||null,b.script_name||null,b.service||null,b.namespace_id||null]).sort((a,b)=>String(a[0]).localeCompare(String(b[0])));
+  assert.deepEqual(bindingShape(cv.bindings),bindingShape(v.bindings),'CANDIDATE_BINDING_SHAPE_DRIFT');
   report.uploadedInactive=true;
   let d=await latestDeployment();assert(d.versions.length===1&&d.versions[0].version_id===baseline,'UPLOAD_ACTIVATED_TRAFFIC_STOP');
 
