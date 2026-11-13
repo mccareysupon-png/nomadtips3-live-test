@@ -47,7 +47,7 @@ const samples=candidate.financeSamples(series,480);
 assert(samples.length<=480,'DECIMATION_BUDGET');
 assert.equal(samples[0].sourceIndex,0);
 assert.equal(samples.at(-1).sourceIndex,series.length-1);
-assert.deepEqual([...samples].map(p=>p.sourceIndex).sort((a,b)=>a-b),samples.map(p=>p.sourceIndex),'SAMPLE_ORDER');
+for(let i=1;i<samples.length;i++)assert(samples[i-1].sourceIndex<samples[i].sourceIndex,'SAMPLE_ORDER_'+i);
 assert(samples.some(p=>p.value===Math.min(...series.map(p=>p.value))),'GLOBAL_MIN_LOST');
 assert(samples.some(p=>p.value===Math.max(...series.map(p=>p.value))),'GLOBAL_MAX_LOST');
 const output={ok:true,rows:rows.length,modes:res,statisticalFormulasIdentical:true,fullFinancialParity:true,sourceBytes:Buffer.byteLength(old),candidateBytes:Buffer.byteLength(code),sourceGzip:gzipSync(old).length,candidateGzip:gzipSync(code).length,scope:'TEST_SOURCE_ONLY',productionWrites:0,providerRequests:0};
