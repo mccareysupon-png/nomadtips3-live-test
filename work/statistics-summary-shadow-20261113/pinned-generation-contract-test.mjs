@@ -25,3 +25,5 @@ for(const n of [0,1,500,2000,2001,15003]){const r=await run(n);assert.equal(r.co
 const conflict=await run(15003,3);assert.equal(conflict.conflict,true);assert(conflict.pages<=3);
 assert.equal(pageLimit('999999'),500);assert.equal(pageLimit('2000'),2000);
 console.log(JSON.stringify({ok:true,rows:15003,pagesAt2000:Math.ceil(15003/2000),conflictDetected:true,productionWrites:0}));
+
+// trigger contract workflow
