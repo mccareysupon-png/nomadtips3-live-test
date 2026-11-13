@@ -19,6 +19,6 @@ export default {...original,async fetch(request,env,ctx){
  html=html.replace(patch.htmlDelta.before,()=>patch.htmlDelta.after);
  for(const f of patch.files){const re=new RegExp('(["\\\'])('+f.path.replaceAll('.','\\.')+')([^"\\\']*)(["\\\'])','g');html=html.replace(re,(_,a,path,q,z)=>a+path+q+(q.includes('?')?'&':'?')+'b46='+TAG+z);}
  html=html.replace('</head>',patch.head+'</head>');
- const headers=new Headers(response.headers);headers.delete('content-length');headers.delete('etag');headers.set('cache-control','no-store');
+ const headers=new Headers(response.headers);headers.delete('content-length');headers.delete('content-encoding');headers.delete('etag');headers.set('cache-control','no-store');
  return new Response(html,{status:response.status,headers});
 }};
