@@ -1,0 +1,24 @@
+name: BALL46 Statistics safe recovery tests (no deploy)
+on:
+  push:
+    branches: [fix/ball46-statistics-safe-recovery-20261114]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  safe-regression:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax checks (no Cloudflare credentials)
+        run: |
+          node --check work/statistics-content-revision-20261113/menu-cache-bust.mjs
+          node --check work/statistics-content-revision-20261113/menu-release.mjs
+          node --check work/statistics-content-revision-20261113/release-stage.mjs
+          node --check work/statistics-content-revision-20261113/release-activate.mjs
+      - name: Regression test for JS versioned URLs
+        run: node work/statistics-content-revision-20261113/menu-cache-bust-test.mjs
