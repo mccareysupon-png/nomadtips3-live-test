@@ -82,13 +82,16 @@ try{
    }
    await b.page.evaluate(()=>document.querySelector('[data-b46-mode="units"]').click());
    const apiBefore=candidate.requests.filter(q=>q.path==='/api/engine/statistics').length;
-   const hover=await b.page.evaluate(async()=>{
-     const el=document.querySelector('.b46-perf-svg'),rect=el.getBoundingClientRect();
-     el.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,clientX:rect.left+rect.width*.55,clientY:rect.top+rect.height*.6}));
-     await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
-     return {sameElement:document.querySelector('.b46-perf-svg')===el,tooltip:document.querySelector('.b46-perf-tip')?.textContent||'',tipVisible:!document.querySelector('.b46-perf-tip')?.hidden};
-   });
-   assert(hover.sameElement,'HOVER_REBUILT_CHART');assert(hover.tipVisible,'NO_HOVER_DETAILS');
+   const svgLocator=b.page.locator('.b46-perf-svg');
+   await svgLocator.scrollIntoViewIfNeeded({timeout:12000});
+   const box=await svgLocator.boundingBox();assert(box?.width>20&&box?.height>20,'CHART_NOT_VISIBLE_FOR_HOVER:'+JSON.stringify({profile:profile.name,box}));
+   const initialHandle=await svgLocator.elementHandle();
+   if(profile.isMobile)await b.page.touchscreen.tap(box.x+box.width*.55,box.y+box.height*.6);
+   else await b.page.mouse.move(box.x+box.width*.55,box.y+box.height*.6);
+   await b.page.waitForFunction(()=>{const t=document.querySelector('.b46-perf-tip');return t&&!t.hidden},{timeout:8000});
+   const hover=await b.page.evaluate(()=>({tooltip:document.querySelector('.b46-perf-tip')?.textContent||'',tipVisible:!document.querySelector('.b46-perf-tip')?.hidden}));
+   assert(hover.tipVisible,'NO_HOVER_DETAILS:'+JSON.stringify({profile:profile.name,box,errors:errors.slice(-3)}));
+   assert(await initialHandle.evaluate(el=>el===document.querySelector('.b46-perf-svg')),'HOVER_REBUILT_CHART');
    assert(hover.tooltip.includes('Day P/L')&&hover.tooltip.includes('High')&&hover.tooltip.includes('Low'),'DAILY_DETAIL_MISSING');
    assert.equal(candidate.requests.filter(q=>q.path==='/api/engine/statistics').length,apiBefore,'HOVER_NETWORK_FETCH');
    await b.page.screenshot({path:OUT+'/'+profile.name+'.png',fullPage:false});
