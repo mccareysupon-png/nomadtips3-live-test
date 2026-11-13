@@ -1,0 +1,17 @@
+name: BALL46 pinned statistics cursor contract
+on:
+  push:
+    branches: [test/ball46-statistics-summary-shadow-20261113]
+    paths:
+      - 'work/statistics-summary-shadow-20261113/pinned-generation-contract-test.mjs'
+      - 'work/statistics-summary-shadow-20261113/PINNED-GENERATION-DESIGN.md'
+permissions: {contents: read}
+jobs:
+  contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: node work/statistics-summary-shadow-20261113/pinned-generation-contract-test.mjs
