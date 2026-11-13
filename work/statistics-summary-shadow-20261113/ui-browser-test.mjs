@@ -1,0 +1,48 @@
+import assert from 'node:assert/strict';
+import {createRequire} from 'node:module';
+import {resolve} from 'node:path';
+import {mkdir,writeFile} from 'node:fs/promises';
+import {prepareUiReplay,startUiReplay} from './ui-replay.mjs';
+const D='work/statistics-summary-shadow-20261113',require=createRequire(resolve(D+'/.runtime/resolve.cjs')),{chromium}=require('playwright');
+const prepared=await prepareUiReplay(),baseline=await startUiReplay(prepared,{candidate:false}),candidate=await startUiReplay(prepared,{candidate:true});
+const browser=await chromium.launch({headless:true}),results=[],failures=[],pageErrors=[],blocked=[];
+const families=['all','1x2','ah','ou','btts','corners','cards','other'];
+const profiles=[{name:'pc-dark',viewport:{width:1440,height:1000},theme:'dark'},{name:'pc-light',viewport:{width:1440,height:1000},theme:'light'},{name:'mobile-dark',viewport:{width:390,height:844},isMobile:true,hasTouch:true,theme:'dark'},{name:'mobile-light',viewport:{width:390,height:844},isMobile:true,hasTouch:true,theme:'light'}];
+async function setup(profile,server){const context=await browser.newContext({viewport:profile.viewport,isMobile:!!profile.isMobile,hasTouch:!!profile.hasTouch});await context.addInitScript(theme=>localStorage.setItem('nomad343_dashboard_theme_v1',theme),profile.theme);const page=await context.newPage();page.on('pageerror',error=>pageErrors.push({profile:profile.name,server:server===candidate?'candidate':'baseline',error:error.message}));await page.route('**/*',route=>{const u=new URL(route.request().url());if(u.origin===server.origin)return route.continue();blocked.push({host:u.hostname,path:u.pathname});return route.abort();});return {page,context};}
+async function daily(page){await page.waitForFunction(()=>{const root=document.querySelector('#ball46-daily-performance');return root&&root.querySelector('[data-b46-stat="today-win"]')?.textContent!=='—'&&document.documentElement.dataset.b46OrbitDone==='1';},null,{timeout:45000});return page.evaluate(()=>{const r=document.querySelector('#ball46-daily-performance');return {values:Object.fromEntries([...r.querySelectorAll('[data-b46-stat],[data-b46-rate],[data-b46-avg-odds],[data-b46-total]')].map(e=>[[...e.attributes].find(a=>/^data-b46-(stat|rate|avg-odds|total)$/.test(a.name)).value,e.textContent])),state:r.dataset.b46PerformanceState,theme:document.documentElement.dataset.theme,width:innerWidth,style:{background:getComputedStyle(r).backgroundImage,color:getComputedStyle(r).color,borderRadius:getComputedStyle(r).borderRadius},rect:{width:r.getBoundingClientRect().width,height:r.getBoundingClientRect().height}};});}
+async function statsReady(page){await page.waitForFunction(n=>window.BALL46_STATISTICS_DATA?.getSnapshot?.()?.ledgerRows?.length===n&&document.querySelector('[data-sp-table-body] tr'),prepared.input.rows.length,{timeout:60000});await page.waitForFunction(()=>document.querySelector('.b46-perf-svg')||document.querySelector('.b46-perf-empty'),null,{timeout:15000});}
+async function readStats(page){return page.evaluate(()=>({kpis:Object.fromEntries([...document.querySelectorAll('[data-sp-kpi]')].map(e=>[e.dataset.spKpi,e.textContent])),financial:[...document.querySelectorAll('.b46-perf-kpi b')].map(e=>e.textContent),recordCount:document.querySelector('[data-sp-record-count]')?.textContent,rows:[...document.querySelectorAll('[data-sp-table-body] tr')].slice(0,3).map(e=>e.textContent.replace(/\s+/g,' ').trim()),head:[...document.querySelectorAll('[data-sp-table-body]')][0]?.closest('table')?.querySelector('thead')?.textContent.replace(/\s+/g,' ').trim(),style:{background:getComputedStyle(document.querySelector('.sp-stat-header')||document.querySelector('[data-workspace-panel="statistics"]')).backgroundColor,color:getComputedStyle(document.querySelector('[data-workspace-panel="statistics"]')).color},width:innerWidth}));}
+try{
+ for(const profile of profiles){
+  const first=candidate.requests.length,b=await setup(profile,baseline),c=await setup(profile,candidate);
+  try{
+   await Promise.all([b.page.goto(baseline.origin+'/',{waitUntil:'domcontentloaded'}),c.page.goto(candidate.origin+'/',{waitUntil:'domcontentloaded'})]);
+   const [before,after]=await Promise.all([daily(b.page),daily(c.page)]);assert.equal(after.width,profile.viewport.width);assert.equal(after.theme,profile.theme);assert.deepEqual(after.values,before.values,'DAILY_VALUE_PARITY');assert.deepEqual(after.style,before.style,'HOME_THEME_DRIFT');
+   const unopened=candidate.requests.slice(first).filter(r=>r.path==='/api/engine/statistics');assert.equal(unopened.length,0,'UNOPENED_HISTORY_FETCH');assert(candidate.requests.slice(first).some(r=>r.path==='/api/statistics/summary'));
+   await c.page.screenshot({path:D+'/qa/ui/'+profile.name+'-home.png',fullPage:false});
+   results.push({profile:profile.name,test:'existing homepage daily/scorebar summary; no unopened history',pass:true,historyRequests:0,summaryBytes:prepared.boundary.summaryBytes,width:after.width,theme:after.theme});
+   await Promise.all([b.page.goto(baseline.origin+'/?view=statistics',{waitUntil:'domcontentloaded'}),c.page.goto(candidate.origin+'/?view=statistics',{waitUntil:'domcontentloaded'})]);await Promise.all([statsReady(b.page),statsReady(c.page)]);
+   for(const market of families){
+    // Invoke the existing navigation control/handler. Direct route entry was
+    // exercised above; this also covers hidden sidebar controls on mobile.
+    await Promise.all([b.page.evaluate(m=>document.querySelector('[data-stat-market="'+m+'"]').click(),market),c.page.evaluate(m=>document.querySelector('[data-stat-market="'+m+'"]').click(),market)]);
+    await Promise.all([b.page.waitForFunction(m=>new URLSearchParams(location.search).get('market')===(m==='all'?null:m),market),c.page.waitForFunction(m=>new URLSearchParams(location.search).get('market')===(m==='all'?null:m),market)]);
+    await Promise.all([b.page.waitForFunction(()=>document.querySelector('.b46-perf-title h3')?.textContent===document.querySelector('[data-sp-market-title]')?.textContent),c.page.waitForFunction(()=>document.querySelector('.b46-perf-title h3')?.textContent===document.querySelector('[data-sp-market-title]')?.textContent)]);
+    const a=await readStats(b.page),z=await readStats(c.page);assert.deepEqual(z,a,'STATISTICS_PARITY:'+profile.name+':'+market);results.push({profile:profile.name,test:'existing Statistics market '+market,pass:true,records:z.recordCount,width:z.width});
+   }
+   await c.page.evaluate(()=>document.querySelector('[data-stat-market="all"]').click());await c.page.waitForFunction(()=>document.querySelector('.b46-perf-title h3')?.textContent===document.querySelector('[data-sp-market-title]')?.textContent);await c.page.screenshot({path:D+'/qa/ui/'+profile.name+'-statistics.png',fullPage:false});
+   const detailRequests=candidate.requests.slice(first).filter(r=>r.path==='/api/engine/statistics');assert(detailRequests.length>0);assert(detailRequests.every(r=>new URLSearchParams(r.query).get('paged')==='1'&&r.returned<=500),'UNBOUNDED_DETAIL_READ');
+   results.push({profile:profile.name,test:'complete Ledger through bounded pages; existing table and chart unchanged',pass:true,rows:prepared.input.rows.length,pages:detailRequests.length,maxPageRows:Math.max(...detailRequests.map(r=>r.returned))});
+   if(profile.name==='pc-dark'){
+    candidate.setSummaryFailure(true);await c.page.goto(candidate.origin+'/',{waitUntil:'domcontentloaded'});const saved=await daily(c.page);assert.equal(saved.state,'saved');assert.deepEqual(saved.values,after.values);candidate.setSummaryFailure(false);results.push({profile:profile.name,test:'summary outage retains saved totals without all-ledger fallback',pass:true});
+   }
+  }catch(error){failures.push({profile:profile.name,error:String(error.stack||error)});await c.page.screenshot({path:D+'/qa/ui/'+profile.name+'-failure.png',fullPage:false}).catch(()=>{});await writeFile(D+'/qa/ui/'+profile.name+'-failure.html',await c.page.content());}
+  finally{await b.context.close();await c.context.close();}
+ }
+ assert.equal(pageErrors.length,0,'PAGE_ERRORS:'+JSON.stringify(pageErrors));assert.equal(failures.length,0,'UI_FAILURES:'+JSON.stringify(failures));
+}catch(error){if(!failures.length)failures.push({error:String(error.stack||error)});}
+finally{
+ const report={ok:failures.length===0,checks:results.length,results,failures,pageErrors,boundary:prepared.boundary,staticReads:[...baseline.staticReads,...candidate.staticReads],replayErrors:[...baseline.errors,...candidate.errors],blockedExternalHosts:[...new Set(blocked.map(x=>x.host))],productionWrites:0,providerRequests:0,productionDataApiRequests:0,limitations:['Recorded full Ledger and derived board fields, not live scores','Mobile sidebar handlers tested programmatically; native menu hit targets not certified','No Production summary writer/route activation; no live heap claim']};
+ await writeFile(D+'/qa/ui/browser.json',JSON.stringify(report,null,2));console.log('EXISTING_UI_QA '+JSON.stringify({ok:report.ok,checks:report.checks,failures:report.failures,pageErrors:report.pageErrors,boundary:report.boundary}));
+ await browser.close();await baseline.close();await candidate.close();if(!report.ok)process.exitCode=1;
+}
