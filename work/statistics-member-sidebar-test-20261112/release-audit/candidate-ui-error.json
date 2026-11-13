@@ -1,7 +1,16 @@
 {
-  "error": "page.waitForFunction: Timeout 30000ms exceeded.\n    at /home/runner/work/nomadtips3-live-test/nomadtips3-live-test/work/statistics-member-sidebar-test-20261112/release-browser.mjs:14:172",
+  "error": "AssertionError [ERR_ASSERTION]: HTTP_RESOURCE_ERRORS\n+ actual - expected\n\n+ [\n+   {\n+     path: '/api/engine/board',\n+     status: 599\n+   },\n+   {\n+     path: '/api/engine/statistics',\n+     status: 599\n+   }\n+ ]\n- []\n\n    at file:///home/runner/work/nomadtips3-live-test/nomadtips3-live-test/work/statistics-member-sidebar-test-20261112/release-browser.mjs:19:50",
   "errors": [],
-  "bad": [],
+  "bad": [
+    {
+      "path": "/api/engine/board",
+      "status": 599
+    },
+    {
+      "path": "/api/engine/statistics",
+      "status": 599
+    }
+  ],
   "writes": [],
   "providers": [],
   "reads": [
@@ -9,30 +18,19 @@
     "/api/engine/statistics",
     "/api/engine/statistics",
     "/api/hub/snapshot",
-    "/api/prediction-vote",
-    "/api/engine/statistics",
-    "/api/engine/board",
-    "/api/hub/snapshot",
-    "/api/engine/statistics",
-    "/api/engine/statistics",
-    "/api/engine/statistics",
-    "/api/engine/statistics",
-    "/api/engine/statistics",
-    "/api/prediction-vote",
-    "/api/engine/statistics",
-    "/api/engine/statistics",
     "/api/engine/signals",
-    "/api/engine/statistics",
-    "/api/engine/statistics",
-    "/api/hub/snapshot",
     "/api/hub/snapshot",
     "/api/hub/snapshot",
     "/api/engine/statistics",
+    "/api/hub/snapshot",
     "/api/hub/snapshot",
     "/api/hub/snapshot",
     "/api/engine/board",
-    "/api/hub/snapshot",
+    "/api/engine/statistics",
+    "/api/prediction-vote",
+    "/api/engine/board",
+    "/api/engine/statistics",
     "/api/engine/statistics"
   ],
-  "dom": "ball\n46\nODDS · DEC ▾\nLight\nMEMBER\nMATCH STATUS\nAll matches\n1\nLive\n1\nSignal\n1\nUpcoming\n0\nWaiting\n0\nFinished\n0\nSTATISTICS\nTotal\n500\n1X2\n0\nAH\n0\nO/U\n4688\nBTTS\n0\nCorners\n2495\nCards\n0\nOther\n0\nLEAGUES\nColombia Primera B\n1\nball46\nMEMBERSHIP\nGET CLOSER TO THE GAME.\nBECOME A BALL46 MEMBER\nJOIN NOW\n→\nball46.com\nball\n46\n\nTHE GAME. THE DATA. THE EDGE.\n\nIndependent football data, live match information and market analysis presented with transparent recorded outcomes.\n\nball46.com\nPRODUCT\nLive\nSignals\nStatistics\nMember\nINFORMATION\nInformation Center\nAbout Us\nUser Guide\nMethodology\nCONNECT WITH US\nBall46 Team\njay@ball46.com\nLINE\nPrivacy Policy\nTerms of Service\nDisclaimer\nAffiliate Disclosure\nResponsible Gambling\nCookie Policy\n© 2026 Ball46 Team. All rights reserved.\n\nInformation and entertainment purposes only. Ball46 does not accept bets, process gambling transactions, hold customer funds, or guarantee outcomes.\n\n\\n"
+  "dom": "ball46\nLOADING MATCH DATA\nball46\nSTATISTICS V2\nPerformance & Results\nConnecting to statistics\nball\n46\n\nTHE GAME. THE DATA. THE EDGE.\n\nIndependent football data, live match information and market analysis presented with transparent recorded outcomes.\n\nball46.com\nPRODUCT\nLive\nSignals\nStatistics\nMember\nINFORMATION\nInformation Center\nAbout Us\nUser Guide\nMethodology\nCONNECT WITH US\nBall46 Team\njay@ball46.com\nLINE\nPrivacy Policy\nTerms of Service\nDisclaimer\nAffiliate Disclosure\nResponsible Gambling\nCookie Policy\n© 2026 Ball46 Team. All rights reserved.\n\nInformation and entertainment purposes only. Ball46 does not accept bets, process gambling transactions, hold customer funds, or guarantee outcomes.\n\n\\n"
 }
