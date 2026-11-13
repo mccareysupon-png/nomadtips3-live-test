@@ -44,3 +44,5 @@ Final real-data smoke uses direct Engine workers.dev with version override; reus
 Hosted isolation QA: separate Worker + separate Durable Object, import recorded real Ledger snapshot, no scan/Cron/provider, disable workers.dev after test.
 
 Retry hosted isolation after workers.dev readiness polling; reuse only empty isolated DO and import in 3k chunks.
+
+Additional isolated hosted QA: mutate cloned Ledger between page one and continuation, require 409, then retry fresh generation; record if no-op sync changes ledgerUpdatedAt. No Production release.
