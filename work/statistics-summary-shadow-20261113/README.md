@@ -32,10 +32,19 @@ and merge summaries rather than reducing daily net and losing intra-day peaks.
 Eight further tests compare the existing financial function on generated rows,
 including 15,000-row composition, corrections and order/generation rejection.
 
+`test-ledger-adapter.mjs` connects the recorded Engine writer to ISOLATED TEST
+STORAGE. Source-row writes/deletes, a persistent monotonic source clock, compact
+fingerprints and shadow deltas commit together. Identical totals with changing
+live score mirrors do not trigger another projection write. Eight writer
+contract tests exercise insert/settlement/correction, failure/retry,
+deletion/restore and changed-key rejection using actual recorded writer methods.
+This adapter is explicitly NOT installed in Production and is not a production
+migration/backfill mechanism.
+
 ## Required before real use — not yet implemented
 
-1. Connect an isolated test-storage adapter to the serialized Ledger writer's
-   accepted old/new changes. Current Ledger does NOT supply the projection's
+1. Verify the test-storage adapter in Cloudflare runtime, then review an Engine
+   integration candidate. Current Production Ledger does NOT supply the new
    monotonic revision contract. Never invent revisions from timestamps. No hook
    is installed in Engine, and no existing Ledger rows are modified.
 2. Bootstrap a stable generation and capture concurrent writes without gaps;
