@@ -14,6 +14,7 @@ try{for(const width of [1366,390])for(const theme of ['dark','light']){
   // Image-layout QA is isolated from statistics data. This fixture exists only
   // in the test browser; no fixture or route override is shipped to the Worker.
   if(u.pathname==='/api/engine/statistics'){intercepted++;return route.fulfill({json:visualStatistics})}
+  if(u.pathname==='/api/prediction-vote'&&req.method()==='GET')return route.fulfill({json:{ok:false,error:'VISUAL_QA_READ_ISOLATED'}});
   if(u.pathname.startsWith('/api/statistics/'))summaryCalls.push(u.pathname);
   if(!['GET','HEAD'].includes(req.method())){if(!/cdn-cgi|analytics|visitor-monitor/.test(u.href))writes.push(u.pathname);return route.fulfill({status:204,body:''})}
   if(u.origin!==host&&!['ball46.com','www.ball46.com'].includes(u.hostname))return route.fulfill({status:204,body:''});return route.continue();
@@ -32,5 +33,5 @@ try{for(const width of [1366,390])for(const theme of ['dark','light']){
   assert.equal(await page.evaluate(()=>innerWidth),width);results.push({width,theme,ok:true,statisticsVisualFixtureRequests:intercepted,statisticsDataRequestsForwarded:0});
  }catch(e){await page.screenshot({path:O+'/'+phase+'-'+width+'-'+theme+'-failure.png'});await writeFile(O+'/'+phase+'-browser-error.json',JSON.stringify({error:String(e.stack),errors,bad,providers,writes,summaryCalls,dom:(await page.locator('body').innerText()).slice(-5000)},null,2));throw e}finally{await ctx.close()}
 }assert.deepEqual(errors,[]);assert.deepEqual(bad,[]);assert.deepEqual(providers,[]);assert.deepEqual(writes,[]);assert.deepEqual(summaryCalls,[]);assert.equal(statsVisualCases,16);
-const report={ok:true,phase,candidate:release.candidate,profiles:results.length,statsVisualCases,results,pageErrors:errors,statisticsDataRequestsForwarded:0,newSummaryRequests:0,providerRequests:0,limit:'Visual fixtures in test browser only; no Statistics system tests or deployed data changes. Chromium mobile emulation.'};await writeFile(O+'/'+phase+'-browser.json',JSON.stringify(report,null,2));console.log('IMAGES_BROWSER '+JSON.stringify(report));
+const report={ok:true,phase,candidate:release.candidate,profiles:results.length,statsVisualCases,results,pageErrors:errors,statisticsDataRequestsForwarded:0,unrelatedVoteReadsForwarded:0,newSummaryRequests:0,providerRequests:0,limit:'Visual fixtures in test browser only; unrelated vote reads isolated. No Statistics/vote system tests or deployed data changes. Chromium mobile emulation.'};await writeFile(O+'/'+phase+'-browser.json',JSON.stringify(report,null,2));console.log('IMAGES_BROWSER '+JSON.stringify(report));
 }finally{await browser.close()}

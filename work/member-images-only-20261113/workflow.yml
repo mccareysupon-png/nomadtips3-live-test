@@ -26,7 +26,7 @@ jobs:
           npm install --prefix work/member-images-only-20261113/.runtime --no-save --package-lock=false --no-audit --no-fund playwright@1.56.1
           work/member-images-only-20261113/.runtime/node_modules/.bin/playwright install --with-deps chromium
       - name: Stage only existing image payload from fresh active Production
-        run: node work/member-images-only-20261113/release.mjs stage
+        run: node work/member-images-only-20261113/release.mjs restage
       - name: Check image placement and mobile exclusion without Statistics API reads
         run: node work/member-images-only-20261113/browser.mjs candidate
       - name: Activate only after unchanged-module and visual gates pass
