@@ -18,7 +18,7 @@ for(const x of ['data-b46-finance-line','financeSamples(','requestAnimationFrame
 const run=t=>{
  const script=t.replace(/\}\)\(\);\s*$/, "window.__test={stats,chartHtml,financeSamples:typeof financeSamples==='function'?financeSamples:null,setMetric:v=>metric=v};})();");
  assert.notEqual(script,t,'END_OF_SOURCE_DRIFT');
- const window={innerWidth:390,BALL46_STATISTICS_DATA:{outcome:r=>r.result},BALL46_MARKET_REGISTRY:{resolve:()=>null}};
+ const window={innerWidth:390,addEventListener(){},BALL46_STATISTICS_DATA:{outcome:r=>r.result},BALL46_MARKET_REGISTRY:{resolve:()=>null}};
  const document={readyState:'loading',addEventListener(){}};
  const ctx=createContext({window,document,navigator:{language:'en-GB'},Intl,Date,URLSearchParams,console});
  new Script(script).runInContext(ctx);
