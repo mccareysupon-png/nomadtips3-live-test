@@ -43,6 +43,7 @@ jobs:
         run: |
           node work/statistics-summary-shadow-20261113/build-summary-formulas.mjs
           node work/statistics-summary-shadow-20261113/bounded-summary-test.mjs
+          node work/statistics-summary-shadow-20261113/build-combined.mjs
       - name: Run isolated projection and actual-source contracts
         run: |
           node work/statistics-summary-shadow-20261113/test.mjs
@@ -54,6 +55,9 @@ jobs:
         run: npm install --prefix work/statistics-summary-shadow-20261113/.runtime --no-save --package-lock=false --no-audit --no-fund miniflare esbuild playwright@1.56.1
       - name: Test actual storage transactions in local workerd
         run: node work/statistics-summary-shadow-20261113/runtime-test.mjs
+      - name: Test isolated shared summary service and four banner assets
+        if: contains(github.event.head_commit.message, '[summary-service-test]')
+        run: node work/statistics-summary-shadow-20261113/service-runtime-test.mjs
       - name: One authorized read-only Ledger audit, no scan and no retries
         if: contains(github.event.head_commit.message, '[ledger-audit-once]')
         env:
@@ -71,6 +75,9 @@ jobs:
       - name: Test existing PC and mobile UI against the same recorded Ledger
         if: contains(github.event.head_commit.message, '[ui-qa]') || contains(github.event.head_commit.message, '[summary-service-test]')
         run: node work/statistics-summary-shadow-20261113/ui-browser-test.mjs
+      - name: Test combined PC banners and mobile exclusion
+        if: contains(github.event.head_commit.message, '[summary-service-test]')
+        run: node work/statistics-summary-shadow-20261113/combined-browser-test.mjs
       - name: Save successful UI evidence to test branch only
         if: success() && contains(github.event.head_commit.message, '[ui-qa]')
         run: |
@@ -100,3 +107,6 @@ jobs:
 
             work/statistics-summary-shadow-20261113/qa/deploy-preflight.json
             work/statistics-summary-shadow-20261113/qa/bounded-summary.json
+
+            work/statistics-summary-shadow-20261113/qa/service-runtime.json
+            work/statistics-summary-shadow-20261113/qa/combined

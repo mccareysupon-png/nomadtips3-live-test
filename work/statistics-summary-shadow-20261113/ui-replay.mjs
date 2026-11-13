@@ -21,6 +21,11 @@ export async function prepareUiReplay(){
  const get=name=>{const f=resources.get(name);assert(f,'MISSING_'+name);return f.body.toString();};
  const workspace=get('/singlepage-workspace-343.js'),dashboard=get('/dashboard-v2-stage3-featured-facts-20261013a.js'),sync=get('/ui-sync-fixes-343-v2.js');
  const patched=connectExistingUi({html:originalHtml,workspace,dashboard,sync});for(const js of [patched.workspace,patched.dashboard,patched.sync])new Script(js);
+ if(process.env.B46_COMBINED_UI==='1'){
+  const release=JSON.parse(await readFile(D+'/summary-release-payload.txt')),media=JSON.parse(await readFile(D+'/summary-media.txt'));
+  assert.equal(release.baseVersion,capture.active);patched.html=patched.html.replace('</head>',release.head+'</head>');
+  for(const asset of media)resources.set(asset.path,{type:asset.type,body:Buffer.from(asset.base64,'base64')});
+ }
  for(const m of patched.html.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/gi))if(!m[1].includes('ld+json')&&m[2].trim())new Script(m[2]);
  const registryContext={window:{}};runInNewContext(get('/market-registry-343.js'),registryContext);const registry=registryContext.window.BALL46_MARKET_REGISTRY;
  const settled=input.rows.filter(r=>String(r.status||'').toUpperCase()==='SETTLED'&&['WIN','LOSS','PUSH','HALF_WIN','HALF_LOSS'].includes(r.result));assert.equal(settled.length,input.meta.settledTotal);
