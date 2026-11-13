@@ -115,7 +115,7 @@ function tipMarkup(p,idx,total){if(metric==='units'&&Number.isFinite(p?.open)){c
  if(!svg||!tip||!line||!dot||!chartGeometry||!currentPoints.length)return;
  const g=chartGeometry.geo,min=chartGeometry.min,max=chartGeometry.max;
  let frame=0,pending=null,lastIndex=-1;
- const hide=()=>{if(frame)cancelAnimationFrame(frame);frame=0;pending=null;line.hidden=true;dot.hidden=true;tip.hidden=true;lastIndex=-1};
+ const hide=e=>{if(e?.pointerType==='touch')return;if(frame)cancelAnimationFrame(frame);frame=0;pending=null;line.hidden=true;dot.hidden=true;tip.hidden=true;lastIndex=-1};
  const paint=()=>{
   frame=0;if(!pending||!svg.isConnected)return;
   const rect=svg.getBoundingClientRect();if(!rect.width||!rect.height)return;
