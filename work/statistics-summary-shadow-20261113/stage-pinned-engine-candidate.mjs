@@ -71,7 +71,7 @@ function counters(rows){
 }
 const overrideHeader=id=>W+'="'+id+'"';
 async function readCandidate(path){
-  const r=await fetch('https://ball46.com'+path,{
+  const r=await fetch('https://ball46-production.mccarey-supon.workers.dev'+path,{
     headers:{'cache-control':'no-store','Cloudflare-Workers-Version-Overrides':overrideHeader(candidate)},
     redirect:'error',
     signal:AbortSignal.timeout(30000)
@@ -152,7 +152,9 @@ try{
   for(const k of ['limits','placement','cache_options'])if(v[k]!=null)body[k]=v[k];
   if(v.exports)body.exports=v.exports;
   if(v.containers)body.containers=v.containers;
-  const made=await api('POST','/workers/workers/'+W+'/versions',body);candidate=made.id;report.candidate=candidate;
+  const reuse=String(process.env.B46_EXISTING_ENGINE_CANDIDATE||'').trim();
+  if(reuse){candidate=reuse;report.reusedCandidate=true}else{const made=await api('POST','/workers/workers/'+W+'/versions',body);candidate=made.id;report.reusedCandidate=false}
+  report.candidate=candidate;
   assert(candidate&&candidate!==baseline,'CANDIDATE_VERSION_INVALID');
   const cv=await getVersion(candidate),cm=cv.modules.find(m=>m.name===cv.main_module);
   assert.equal(sha(Buffer.from(cm.content_base64,'base64')),report.candidateMainSha,'CANDIDATE_MAIN_HASH');
