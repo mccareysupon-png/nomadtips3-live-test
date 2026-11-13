@@ -33,6 +33,8 @@ async function snapshot(page){return page.evaluate(()=>({
  theme:document.documentElement.dataset.theme,
  areaBg:getComputedStyle(document.querySelector('.sp-trend')).backgroundColor,
  graph:!!document.querySelector('[data-b46-finance-line]'),
+ hasSvg:!!document.querySelector('.b46-perf-svg'),
+ empty:document.querySelector('.b46-perf-empty')?.textContent?.trim()||null,
  candles:document.querySelectorAll('[data-b46-chart-type],[data-b46-candle-mode]').length,
  navigator:document.querySelectorAll('[data-b46-unit-nav]').length,
  svgWidth:document.querySelector('.b46-perf-svg')?.getBoundingClientRect().width,
@@ -55,9 +57,15 @@ try{
     assert.equal(cur.recordCount,old.recordCount,'RESULT_RECORD_COUNT_DRIFT');
     assert.equal(cur.theme,old.theme,'THEME_DRIFT');
     assert.equal(cur.areaBg,old.areaBg,'SURFACE_COLOR_DRIFT');
-    assert(cur.graph,'FINANCE_LINE_MISSING:'+JSON.stringify({profile:profile.name,market:family,overrides:overrides.length,chartHead:cur.chartHead,errors:errors.slice(-4)}));assert.equal(cur.candles,0,'CANDLES_PRESENT');assert.equal(cur.navigator,0,'NAVIGATOR_PRESENT');
-    assert(cur.plotPoints<= (profile.isMobile?480:900),'LINE_TOO_DENSE');
-    tests.push({profile:profile.name,market:family,financialParity:true,plotPoints:cur.plotPoints,sourcePoints:cur.sourcePoints});
+    if(old.hasSvg){
+      assert(cur.graph,'FINANCE_LINE_MISSING:'+JSON.stringify({profile:profile.name,market:family,overrides:overrides.length,chartHead:cur.chartHead,errors:errors.slice(-4)}));
+      assert(cur.plotPoints>0&&cur.plotPoints<= (profile.isMobile?480:900),'LINE_TOO_DENSE');
+    }else{
+      assert(old.empty&&cur.empty&&cur.empty===old.empty,'EMPTY_STATE_DRIFT:'+profile.name+':'+family);
+      assert(!cur.hasSvg,'EMPTY_MARKET_SHOULD_NOT_DRAW');
+    }
+    assert.equal(cur.candles,0,'CANDLES_PRESENT');assert.equal(cur.navigator,0,'NAVIGATOR_PRESENT');
+    tests.push({profile:profile.name,market:family,financialParity:true,empty:!!cur.empty,plotPoints:cur.plotPoints,sourcePoints:cur.sourcePoints});
    }
    await b.page.evaluate(()=>document.querySelector('[data-stat-market="all"]').click());
    await b.page.waitForFunction(()=>new URLSearchParams(location.search).get('market')===null);
