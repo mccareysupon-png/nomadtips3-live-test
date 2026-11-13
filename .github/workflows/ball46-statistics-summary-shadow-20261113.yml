@@ -40,7 +40,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: ball46-statistics-shadow-proof
-          run-id: 43399899623
+          run-id: 43424707239
           github-token: ${{ github.token }}
           path: work/statistics-summary-shadow-20261113/reference/ui-proof
       - name: Reuse recorded complete Ledger only
