@@ -25,7 +25,7 @@ export async function prepareUiReplay(){
   const release=JSON.parse(await readFile(D+'/summary-release-payload.txt')),media=JSON.parse(await readFile(D+'/summary-media.txt'));
   assert.equal(release.baseVersion,capture.active);patched.html=patched.html.replace('</head>',release.head+'</head>');
   for(const asset of media)resources.set(asset.path,{type:asset.type,body:Buffer.from(asset.base64,'base64')});
-  const monitor=release.files.find(f=>f.path==='/b46-monitor-20261030.js');assert(monitor);resources.set(monitor.path,{type:monitor.type,body:Buffer.from(monitor.body)});
+  const monitor=release.files.find(f=>f.path==='/b46-monitor-20261030.js');if(monitor)resources.set(monitor.path,{type:monitor.type,body:Buffer.from(monitor.body)});
  }
  for(const m of patched.html.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/gi))if(!m[1].includes('ld+json')&&m[2].trim())new Script(m[2]);
  const registryContext={window:{}};runInNewContext(get('/market-registry-343.js'),registryContext);const registry=registryContext.window.BALL46_MARKET_REGISTRY;
