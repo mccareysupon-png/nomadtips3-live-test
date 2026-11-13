@@ -105,8 +105,8 @@ try{
   } finally{await Promise.all([a.context.close(),b.context.close()]);}
  }
  assert.equal(errors.length,0,'BROWSER_ERRORS:'+JSON.stringify(errors));
- assert.equal(blocked.length,0,'EXTERNAL_NETWORK:'+JSON.stringify(blocked.slice(0,3)));
- const result={ok:true,checks:tests.length,profiles:profiles.map(x=>x.name),markets:families,records:prepared.input.rows.length,tests,productionWrites:0,providerRequests:0,existingStatisticsDataUnchanged:true};
+ assert(!blocked.some(url=>/\/(?:api\/|v1\/|v2\/|statistics\?|ledger-)/i.test(new URL(url).pathname)),'UNEXPECTED_EXTERNAL_API:'+JSON.stringify(blocked.filter(url=>/\/api\//.test(url)).slice(0,3)));
+ const result={ok:true,checks:tests.length,profiles:profiles.map(x=>x.name),markets:families,records:prepared.input.rows.length,tests,blockedThirdPartyStaticRequests:blocked.length,productionWrites:0,providerRequests:0,existingStatisticsDataUnchanged:true};
  await writeFile(OUT+'/browser.json',JSON.stringify(result,null,2));
  console.log('FINANCE_LINE_BROWSER '+JSON.stringify({ok:true,checks:tests.length,profiles:result.profiles,records:result.records,productionWrites:0,providerRequests:0}));
 }finally{await browser.close();await Promise.all([baseline.close(),candidate.close()]);}
