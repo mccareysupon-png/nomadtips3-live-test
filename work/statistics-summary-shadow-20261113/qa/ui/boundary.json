@@ -1,6 +1,6 @@
 {
   "ok": true,
-  "active": "5667e67f-5854-439e-9e2b-b387b7787d90",
+  "active": "3ae01f77-9205-4e4b-a46c-3d710aff1602",
   "mainSha": "b00db749dd43565ccf5cabca37dcd93ab2b8dae8fcb50f3209617154a722deb3",
   "ledgerRows": 14998,
   "summaryBytes": 3075,
@@ -8,10 +8,11 @@
     "Replace shared loader with summary/detail split and owned cancellation",
     "Thread one detail abort signal",
     "Cancel detail fetch when leaving Statistics",
+    "Treat generation conflict as retryable, not corrupt data",
     "Keep complete cursor-reader validation",
-    "Initial bounded page",
+    "Initial bounded read-only page; never invoke scan from a viewer",
     "Preserve compatibility signature",
-    "Bounded continuation",
+    "Pinned generation on every continuation",
     "Expose separate summary; never fake a full snapshot",
     "Own view request generation",
     "Cancel only Statistics details, not live board/Signals",
@@ -31,7 +32,7 @@
     "/dashboard-v2-stage3-featured-facts-20261013a.js",
     "/ui-sync-fixes-343-v2.js"
   ],
-  "unchangedAssets": 53,
+  "unchangedAssets": 55,
   "extraStatic": [
     {
       "path": "/live-prediction-343.js",

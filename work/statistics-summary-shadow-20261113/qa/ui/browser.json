@@ -314,7 +314,7 @@
   "pageErrors": [],
   "boundary": {
     "ok": true,
-    "active": "5667e67f-5854-439e-9e2b-b387b7787d90",
+    "active": "3ae01f77-9205-4e4b-a46c-3d710aff1602",
     "mainSha": "b00db749dd43565ccf5cabca37dcd93ab2b8dae8fcb50f3209617154a722deb3",
     "ledgerRows": 14998,
     "summaryBytes": 3075,
@@ -322,10 +322,11 @@
       "Replace shared loader with summary/detail split and owned cancellation",
       "Thread one detail abort signal",
       "Cancel detail fetch when leaving Statistics",
+      "Treat generation conflict as retryable, not corrupt data",
       "Keep complete cursor-reader validation",
-      "Initial bounded page",
+      "Initial bounded read-only page; never invoke scan from a viewer",
       "Preserve compatibility signature",
-      "Bounded continuation",
+      "Pinned generation on every continuation",
       "Expose separate summary; never fake a full snapshot",
       "Own view request generation",
       "Cancel only Statistics details, not live board/Signals",
@@ -345,7 +346,7 @@
       "/dashboard-v2-stage3-featured-facts-20261013a.js",
       "/ui-sync-fixes-343-v2.js"
     ],
-    "unchangedAssets": 53,
+    "unchangedAssets": 55,
     "extraStatic": [
       {
         "path": "/live-prediction-343.js",
@@ -368,14 +369,6 @@
       "status": 200
     },
     {
-      "path": "/b46-kit-purple-20261030.webp",
-      "status": 200
-    },
-    {
-      "path": "/b46-kit-yellow-20261030.webp",
-      "status": 200
-    },
-    {
       "path": "/b46-kit-black-20261030.webp",
       "status": 200
     },
@@ -388,51 +381,7 @@
       "status": 200
     },
     {
-      "path": "/b46-kit-graphite-20261030.webp",
-      "status": 200
-    },
-    {
-      "path": "/b46-kit-teal-20261030.webp",
-      "status": 200
-    },
-    {
-      "path": "/b46-kit-ivory-20261030.webp",
-      "status": 200
-    },
-    {
-      "path": "/b46-kit-pink-20261030.webp",
-      "status": 200
-    },
-    {
-      "path": "/b46-kit-gold-20261030.webp",
-      "status": 200
-    },
-    {
-      "path": "/b46-kit-lime-20261030.webp",
-      "status": 200
-    },
-    {
-      "path": "/b46-kit-copper-20261030.webp",
-      "status": 200
-    },
-    {
-      "path": "/b46-kit-silver-sash-20261030.webp",
-      "status": 200
-    },
-    {
-      "path": "/b46-kit-violet-20261030.webp",
-      "status": 200
-    },
-    {
-      "path": "/b46-kit-navy-20261030.webp",
-      "status": 200
-    },
-    {
-      "path": "/b46-kit-coral-20261030.webp",
-      "status": 200
-    },
-    {
-      "path": "/b46-kit-azure-stripe-20261030.webp",
+      "path": "/b46-kit-purple-20261030.webp",
       "status": 200
     },
     {
@@ -440,31 +389,35 @@
       "status": 200
     },
     {
+      "path": "/b46-member-home-dark-20261112.webp",
+      "status": 200
+    },
+    {
+      "path": "/b46-kit-ivory-20261030.webp",
+      "status": 200
+    },
+    {
       "path": "/b46-kit-burgundy-20261030.webp",
       "status": 200
     },
     {
-      "path": "/b46-kit-purple-20261030.webp",
+      "path": "/b46-kit-silver-sash-20261030.webp",
       "status": 200
     },
     {
-      "path": "/b46-kit-blue-20261030.webp",
+      "path": "/b46-kit-graphite-20261030.webp",
       "status": 200
     },
     {
-      "path": "/b46-kit-black-20261030.webp",
+      "path": "/b46-kit-pink-20261030.webp",
       "status": 200
     },
     {
-      "path": "/b46-kit-white-20261030.webp",
+      "path": "/b46-kit-navy-20261030.webp",
       "status": 200
     },
     {
-      "path": "/b46-kit-green-20261030.webp",
-      "status": 200
-    },
-    {
-      "path": "/b46-kit-red-20261030.webp",
+      "path": "/b46-kit-lime-20261030.webp",
       "status": 200
     },
     {
@@ -480,31 +433,51 @@
       "status": 200
     },
     {
-      "path": "/b46-kit-pink-20261030.webp",
-      "status": 200
-    },
-    {
-      "path": "/b46-kit-navy-20261030.webp",
-      "status": 200
-    },
-    {
-      "path": "/b46-kit-burgundy-20261030.webp",
-      "status": 200
-    },
-    {
       "path": "/b46-kit-copper-20261030.webp",
       "status": 200
     },
     {
-      "path": "/b46-kit-coral-20261030.webp",
+      "path": "/b46-kit-yellow-20261030.webp",
       "status": 200
     },
     {
-      "path": "/b46-kit-lime-20261030.webp",
+      "path": "/b46-stat-art-ah-20261030.webp",
       "status": 200
     },
     {
-      "path": "/b46-kit-silver-sash-20261030.webp",
+      "path": "/b46-stat-art-ou-20261030.webp",
+      "status": 200
+    },
+    {
+      "path": "/b46-stat-art-btts-20261030.webp",
+      "status": 200
+    },
+    {
+      "path": "/b46-stat-art-corners-20261030.webp",
+      "status": 200
+    },
+    {
+      "path": "/b46-member-home-light-20261112.webp",
+      "status": 200
+    },
+    {
+      "path": "/b46-kit-blue-20261030.webp",
+      "status": 200
+    },
+    {
+      "path": "/b46-kit-white-20261030.webp",
+      "status": 200
+    },
+    {
+      "path": "/b46-kit-purple-20261030.webp",
+      "status": 200
+    },
+    {
+      "path": "/b46-kit-red-20261030.webp",
+      "status": 200
+    },
+    {
+      "path": "/b46-kit-black-20261030.webp",
       "status": 200
     },
     {
@@ -512,15 +485,75 @@
       "status": 200
     },
     {
+      "path": "/b46-member-home-dark-20261112.webp",
+      "status": 200
+    },
+    {
+      "path": "/b46-kit-silver-sash-20261030.webp",
+      "status": 200
+    },
+    {
+      "path": "/b46-kit-gold-20261030.webp",
+      "status": 200
+    },
+    {
+      "path": "/b46-kit-graphite-20261030.webp",
+      "status": 200
+    },
+    {
+      "path": "/b46-kit-pink-20261030.webp",
+      "status": 200
+    },
+    {
+      "path": "/b46-kit-burgundy-20261030.webp",
+      "status": 200
+    },
+    {
+      "path": "/b46-kit-ivory-20261030.webp",
+      "status": 200
+    },
+    {
+      "path": "/b46-kit-navy-20261030.webp",
+      "status": 200
+    },
+    {
+      "path": "/b46-kit-sky-20261030.webp",
+      "status": 200
+    },
+    {
+      "path": "/b46-kit-orange-20261030.webp",
+      "status": 200
+    },
+    {
+      "path": "/b46-kit-yellow-20261030.webp",
+      "status": 200
+    },
+    {
+      "path": "/b46-kit-copper-20261030.webp",
+      "status": 200
+    },
+    {
+      "path": "/b46-kit-violet-20261030.webp",
+      "status": 200
+    },
+    {
+      "path": "/b46-kit-coral-20261030.webp",
+      "status": 200
+    },
+    {
       "path": "/b46-kit-azure-stripe-20261030.webp",
       "status": 200
     },
     {
-      "path": "/b46-stat-art-1x2-20261030.webp",
+      "path": "/b46-kit-lime-20261030.webp",
       "status": 200
     },
     {
-      "path": "/b46-stat-art-ah-20261030.webp",
+      "path": "/b46-kit-teal-20261030.webp",
+      "status": 200
+    },
+    {
+      "path": "/b46-stat-art-1x2-20261030.webp",
       "status": 200
     },
     {
@@ -541,6 +574,10 @@
     },
     {
       "path": "/b46-stat-art-other-20261030.webp",
+      "status": 200
+    },
+    {
+      "path": "/b46-member-home-light-20261112.webp",
       "status": 200
     }
   ],
