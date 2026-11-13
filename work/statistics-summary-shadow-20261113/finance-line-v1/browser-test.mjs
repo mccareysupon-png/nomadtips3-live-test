@@ -15,14 +15,14 @@ const baseline=await startUiReplay({...prepared,resources:new Map(prepared.resou
 const candidate=await startUiReplay({...prepared,resources:patched},{candidate:true});
 const browser=await chromium.launch({headless:true});
 const profiles=[{name:'pc-dark',viewport:{width:1440,height:900},theme:'dark'},{name:'pc-light',viewport:{width:1440,height:900},theme:'light'},{name:'mobile-dark',viewport:{width:390,height:844},theme:'dark',isMobile:true,hasTouch:true},{name:'mobile-light',viewport:{width:390,height:844},theme:'light',isMobile:true,hasTouch:true}];
-const families=['all','1x2','ah','ou','btts','corners','cards','other'],tests=[],errors=[],blocked=[];
+const families=['all','1x2','ah','ou','btts','corners','cards','other'],tests=[],errors=[],blocked=[],overrides=[];
 async function pageFor(profile,server){
  const context=await browser.newContext({viewport:profile.viewport,isMobile:!!profile.isMobile,hasTouch:!!profile.hasTouch});
  await context.addInitScript(theme=>localStorage.setItem('nomad343_dashboard_theme_v1',theme),profile.theme);
  const page=await context.newPage();
  await page.clock.setFixedTime(new Date(prepared.input.asOf));
  page.on('pageerror',error=>errors.push({profile:profile.name,error:error.message}));
- await page.route('**/*',route=>new URL(route.request().url()).origin===server.origin?route.continue():(blocked.push(route.request().url()),route.abort()));
+ await page.route('**/*',route=>{const u=new URL(route.request().url());if(server===candidate&&u.origin===server.origin&&u.pathname==='/longterm-performance-343.js'){overrides.push(u.pathname);return route.fulfill({status:200,contentType:'application/javascript; charset=utf-8',body:source})}if(u.origin===server.origin)return route.continue();blocked.push(route.request().url());return route.abort();});
  await page.goto(server.origin+'/?view=statistics',{waitUntil:'domcontentloaded'});
  await page.waitForFunction(()=>document.querySelector('.b46-perf-svg')&&document.querySelectorAll('.b46-perf-kpi').length===6,null,{timeout:60000});
  return {page,context};
@@ -37,7 +37,8 @@ async function snapshot(page){return page.evaluate(()=>({
  navigator:document.querySelectorAll('[data-b46-unit-nav]').length,
  svgWidth:document.querySelector('.b46-perf-svg')?.getBoundingClientRect().width,
  sourcePoints:Number(document.querySelector('[data-b46-source-points]')?.dataset.b46SourcePoints||0),
- plotPoints:Number(document.querySelector('[data-b46-plot-points]')?.dataset.b46PlotPoints||0)
+ plotPoints:Number(document.querySelector('[data-b46-plot-points]')?.dataset.b46PlotPoints||0),
+ chartHead:document.querySelector('.b46-perf-svg')?.outerHTML?.slice(0,300)||null
 }));}
 try{
  await mkdir(OUT,{recursive:true});
@@ -54,7 +55,7 @@ try{
     assert.equal(cur.recordCount,old.recordCount,'RESULT_RECORD_COUNT_DRIFT');
     assert.equal(cur.theme,old.theme,'THEME_DRIFT');
     assert.equal(cur.areaBg,old.areaBg,'SURFACE_COLOR_DRIFT');
-    assert(cur.graph,'FINANCE_LINE_MISSING');assert.equal(cur.candles,0,'CANDLES_PRESENT');assert.equal(cur.navigator,0,'NAVIGATOR_PRESENT');
+    assert(cur.graph,'FINANCE_LINE_MISSING:'+JSON.stringify({profile:profile.name,market:family,overrides:overrides.length,chartHead:cur.chartHead,errors:errors.slice(-4)}));assert.equal(cur.candles,0,'CANDLES_PRESENT');assert.equal(cur.navigator,0,'NAVIGATOR_PRESENT');
     assert(cur.plotPoints<= (profile.isMobile?480:900),'LINE_TOO_DENSE');
     tests.push({profile:profile.name,market:family,financialParity:true,plotPoints:cur.plotPoints,sourcePoints:cur.sourcePoints});
    }
