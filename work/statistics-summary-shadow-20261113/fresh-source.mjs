@@ -28,6 +28,21 @@ for(const worker of ['nomadtips3-engine-343','ball46-production']) {
     await writeFile(D+'/source/'+asset.path.split('?')[0].slice(1),b);
    }
   }
+  // Base assets may be string literals embedded in the main bundle rather than
+  // entries in overlay JSON modules. Decode data only; never evaluate the Worker.
+  if(!row.assets.some(x=>x.path.split('?')[0]==='/longterm-performance-343.js')) {
+   const expected='822f3d9d271a948d6b862eb7732f8797dcedbcc743cd63f3094f217b537b22bf';
+   const matches=new Map();
+   for(const m of v.modules) {
+    const text=Buffer.from(m.content_base64,'base64').toString('utf8');
+    for(const token of text.matchAll(/"(?:[^"\\]|\\.)*"/g)) {
+     let value;try{value=JSON.parse(token[0])}catch{continue}
+     if(value.length<1000)continue;
+     for(const b of [Buffer.from(value),Buffer.from(value,'base64')])if(sha(b)===expected)matches.set(sha(b),{b,module:m.name});
+    }
+   }
+   if(matches.size===1){const {b,module}=matches.values().next().value;row.assets.push({module,path:'/longterm-performance-343.js',sha:sha(b),encoding:'embedded-literal'});await writeFile(D+'/source/longterm-performance-343.js',b);}
+  }
   if(!row.assets.some(x=>x.path.split('?')[0]==='/longterm-performance-343.js')) {
    console.log('ASSET_DISCOVERY '+JSON.stringify({worker,active,sha:row.sha,modules:v.modules.map(x=>({name:x.name,type:x.content_type})),references:bytes.toString('utf8').match(/.{0,90}longterm-performance.{0,180}/g)?.slice(0,8)}));
   }
