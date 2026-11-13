@@ -39,7 +39,7 @@ try{
   const staged=new Map();const result=await fn({get:async k=>structuredClone(staged.has(k)?staged.get(k):data.get(k)),put:async(k,v)=>{for(const [key,value]of typeof k==='string'?[[k,v]]:Object.entries(k))staged.set(key,structuredClone(value));}});for(const [k,v]of staged)data.set(k,v);return result;
  }};
  const generation=base.active+':'+before.updatedAt,shadow=new ShadowSummary(storage,'actual-ledger-audit');await shadow.initialize({engineVersion:base.active,engineSha:base.sha,generation});
- const ids=new Set(),cursors=new Set(),compact=[],digest=createHash('sha256');let cursor='stat:v2:row:\uffff',referenceNet=0,referenceStake=0;
+ const ids=new Set(),cursors=new Set(),compact=[],full=[],digest=createHash('sha256');let cursor='stat:v2:row:\uffff',referenceNet=0,referenceStake=0;
  const financialSource=await readFile(D+'/source/longterm-performance-343.js','utf8'),s=financialSource.match(/function settlement\(r\)\{[^\n]+/);assert(s,'FINANCIAL_SOURCE_DRIFT');
  const settle=new Function('outcome','num',s[0]+';return settlement')(r=>String(r.result||'').toUpperCase(),v=>v==null||v===''?null:Number.isFinite(Number(v))?Number(v):null);
  for(let n=0;n<64;n++){
@@ -48,6 +48,7 @@ try{
   assert.equal(signature(page),signature(before),'SOURCE_CHANGED_STOP_NO_RETRY');
   assert(Array.isArray(page.rows)&&page.rows.length<=500,'UNBOUNDED_PAGE');
   for(const row of page.rows){
+   if(process.env.B46_FULL_SNAPSHOT==='1')full.push(row);
    assert(row.id&&!ids.has(String(row.id)),'DUPLICATE_OR_MISSING_ID');ids.add(String(row.id));
    const r={id:String(row.id),market:row.market,status:row.status,result:row.result,odds:row.odds,createdAt:row.createdAt,settledAt:row.settledAt};
    await shadow.apply({id:r.id,revision:1,row:r});compact.push(r);digest.update(JSON.stringify(r)+'\n');report.rows++;
@@ -66,5 +67,6 @@ try{
  report.ok=true;report.summary=sum;report.byMarket=before.byMarket;report.ledgerUpdatedAt=before.updatedAt;report.ledgerDigest=digest.digest('hex');report.finishedAt=new Date().toISOString();report.limit='One stable read-only Ledger pass. No source writer installed, no realtime catch-up proof, no UI switch or Production heap claim.';
  // Minimal public football-ledger fields only. No account data, scores, keys, bindings or owner information.
  await writeFile(D+'/qa/verified-compact-ledger.json',JSON.stringify({generation,rows:compact}));
+ if(process.env.B46_FULL_SNAPSHOT==='1')await writeFile(D+'/qa/verified-full-ledger.json',JSON.stringify({generation,asOf:before.updatedAt,meta:before,rows:full,mode:'RECORDED_TEST_DATA'}));
 }catch(e){report.error=String(e.message||e);report.limit='Stopped immediately. No retries or changes; incomplete data is not verified/published.';process.exitCode=1;}
 await writeFile(D+'/qa/live-ledger.json',JSON.stringify(report,null,2));console.log('LEDGER_AUDIT '+JSON.stringify(report));
