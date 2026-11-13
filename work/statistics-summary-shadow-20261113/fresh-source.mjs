@@ -23,15 +23,15 @@ for(const worker of ['nomadtips3-engine-343','ball46-production']) {
   for(const m of v.modules) {
    if(m.content_type!=='text/plain')continue;
    let j;try{j=JSON.parse(Buffer.from(m.content_base64,'base64'))}catch{continue}
-   for(const asset of j.assets||[]) if(['/longterm-performance-343.js','/singlepage-workspace-343.js'].includes(asset.path)) {
+   for(const asset of j.assets||[]) if(asset.path?.split('?')[0]==='/longterm-performance-343.js'||asset.path==='/singlepage-workspace-343.js') {
     const b=Buffer.from(asset.base64,'base64');row.assets.push({module:m.name,path:asset.path,sha:sha(b)});
-    await writeFile(D+'/source/'+asset.path.slice(1),b);
+    await writeFile(D+'/source/'+asset.path.split('?')[0].slice(1),b);
    }
   }
-  if(!row.assets.some(x=>x.path==='/longterm-performance-343.js')) {
+  if(!row.assets.some(x=>x.path.split('?')[0]==='/longterm-performance-343.js')) {
    console.log('ASSET_DISCOVERY '+JSON.stringify({worker,active,sha:row.sha,modules:v.modules.map(x=>({name:x.name,type:x.content_type})),references:bytes.toString('utf8').match(/.{0,90}longterm-performance.{0,180}/g)?.slice(0,8)}));
   }
-  for(const path of ['/longterm-performance-343.js','/singlepage-workspace-343.js'])assert.equal(row.assets.filter(x=>x.path===path).length,1,'ASSET_MAPPING_STOP_'+path);
+  for(const path of ['/longterm-performance-343.js','/singlepage-workspace-343.js'])assert.equal(row.assets.filter(x=>x.path.split('?')[0]===path).length,1,'ASSET_MAPPING_STOP_'+path);
  }
  const after=(await cf('/workers/scripts/'+worker+'/deployments?per_page=1')).deployments[0];
  assert.equal(after.id,d.id,'ACTIVE_CHANGED_DURING_CAPTURE');report.workers.push(row);
