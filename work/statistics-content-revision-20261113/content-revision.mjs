@@ -16,14 +16,14 @@ function b46StatsContent(key,value){
 export async function b46StatsTransaction(storage,operation){
  return storage.transaction(async raw=>{
   const originals=new Map();
-  async function remember(key){if((key===B46_STATS_META_KEY||key.startsWith(B46_STATS_ROW_PREFIX))&&!originals.has(key))originals.set(key,await raw.get(key));}
+  async function remember(names){const keys=[...new Set(names)].filter(key=>(key===B46_STATS_META_KEY||key.startsWith(B46_STATS_ROW_PREFIX))&&!originals.has(key));for(let i=0;i<keys.length;i+=128){const part=keys.slice(i,i+128),values=await raw.get(part);for(const key of part)originals.set(key,values.get(key));}}
   const txn=new Proxy(raw,{get(target,key){
-   if(key==='put')return async(k,v)=>{const entries=typeof k==='string'?[[k,v]]:Object.entries(k);for(const [name]of entries){if(name===B46_STATS_REVISION_KEY)throw Error('REVISION_KEY_RESERVED');await remember(name);}return raw.put(k,v);};
-   if(key==='delete')return async k=>{for(const name of Array.isArray(k)?k:[k]){if(name===B46_STATS_REVISION_KEY)throw Error('REVISION_KEY_RESERVED');await remember(name);}return raw.delete(k);};
+   if(key==='put')return async(k,v)=>{const names=typeof k==='string'?[k]:Object.keys(k);if(names.includes(B46_STATS_REVISION_KEY))throw Error('REVISION_KEY_RESERVED');await remember(names);return raw.put(k,v);};
+   if(key==='delete')return async k=>{const names=Array.isArray(k)?k:[k];if(names.includes(B46_STATS_REVISION_KEY))throw Error('REVISION_KEY_RESERVED');await remember(names);return raw.delete(k);};
    const value=Reflect.get(target,key,target);return typeof value==='function'?value.bind(target):value;
   }});
   const result=await operation(txn);let changed=false;
-  for(const [key,value]of originals)if(b46StatsContent(key,value)!==b46StatsContent(key,await raw.get(key))){changed=true;break;}
+  const keys=[...originals.keys()];for(let i=0;i<keys.length&&!changed;i+=128){const part=keys.slice(i,i+128),values=await raw.get(part);for(const key of part)if(b46StatsContent(key,originals.get(key))!==b46StatsContent(key,values.get(key))){changed=true;break;}}
   if(changed){const old=Number(await raw.get(B46_STATS_REVISION_KEY)||0);if(!Number.isSafeInteger(old)||old<0||old===Number.MAX_SAFE_INTEGER)throw Error('CONTENT_REVISION_EXHAUSTED');await raw.put(B46_STATS_REVISION_KEY,old+1);}
   return result;
  });
