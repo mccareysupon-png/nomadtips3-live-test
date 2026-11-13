@@ -36,3 +36,5 @@ Retry inactive candidate after strict secret-binding inheritance correction.
 Retry inactive Engine candidate using explicit baseline version inheritance through Workers Beta Versions API.
 
 Final smoke retry reuses exact inactive candidate by SHA and validates binding shape before 0% override test.
+
+Probe direct Engine workers.dev availability read-only before another 0% candidate smoke.
