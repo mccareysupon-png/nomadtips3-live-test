@@ -9,7 +9,7 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -26,7 +26,29 @@ jobs:
       - name: Production read-only safety and size preflight
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        run: node work/statistics-content-revision-20261113/release-preflight.mjs
+        run: B46_STAGE_ONLY=1 node work/statistics-content-revision-20261113/release-preflight.mjs
+      - uses: actions/download-artifact@v4
+        with:
+          name: ball46-statistics-shadow-proof
+          run-id: 43373832113
+          github-token: ${{ github.token }}
+          path: work/statistics-content-revision-20261113/reference
+      - name: Build verified release source and install browser checks
+        run: |
+          cp work/statistics-content-revision-20261113/reference/qa/verified-full-ledger.json work/statistics-summary-shadow-20261113/reference/ui-proof/qa/verified-full-ledger.json
+          node work/statistics-summary-shadow-20261113/build-summary-formulas.mjs
+          node work/statistics-content-revision-20261113/build-engine.mjs
+          node work/statistics-content-revision-20261113/prepare-summary.mjs
+          npm install --prefix work/statistics-summary-shadow-20261113/.runtime --no-save --package-lock=false --no-audit --no-fund esbuild playwright@1.56.1
+          work/statistics-summary-shadow-20261113/.runtime/node_modules/.bin/playwright install --with-deps chromium
+      - name: Stage and verify isolated hosted candidate before Production changes
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: node work/statistics-content-revision-20261113/release-stage.mjs
+      - name: Activate authorized release with automatic rollback on verification failure
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: node work/statistics-content-revision-20261113/release-activate.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
