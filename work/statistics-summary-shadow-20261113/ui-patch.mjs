@@ -32,7 +32,7 @@ async function load({details=false}={}) {
  w=replace(w,'async function page(params = {}) {','async function page(params = {}, signal) {','Thread one detail abort signal');
  w=replace(w,'signal:AbortSignal.timeout(30000)','signal:signal||AbortSignal.timeout(30000)','Cancel detail fetch when leaving Statistics');
  w=replace(w,'async function readAll() {','async function readAll(signal) {','Keep complete cursor-reader validation');
- w=replace(w,'let first = await page();','let first = await page({},signal);','Initial bounded page');
+ w=replace(w,'let first = await page();',"let first = await page({cursor:'stat:v2:row:\\uffff'},signal);",'Initial bounded read-only page; never invoke scan from a viewer');
  w=replace(w,'await page({limit:String(first.ledgerTotal)})','await page({limit:String(first.ledgerTotal)},signal)','Preserve compatibility signature');
  w=replace(w,'await page({cursor})','await page({cursor},signal)','Bounded continuation');
  w=replace(w,'Object.freeze({load, outcome, isSettled, counts, rate, getSnapshot:()=>cached, getSnapshotAt:()=>loadedAt})','Object.freeze({load,loadSummary,cancelDetails,outcome,isSettled,counts,rate,getSummary:()=>summaryCache,getSnapshot:()=>cached,getSnapshotAt:()=>cached?.preview?Number(cached.ledgerUpdatedAt):loadedAt})','Expose separate summary; never fake a full snapshot');

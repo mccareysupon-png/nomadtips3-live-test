@@ -12,9 +12,10 @@ try{for(const width of [1440,390])for(const theme of ['dark','light']){
  page.on('pageerror',e=>errors.push(e.message));await page.route('**/*',r=>new URL(r.request().url()).origin===server.origin?r.continue():r.abort());
  await page.goto(server.origin+'/?status=live',{waitUntil:'domcontentloaded'});await page.locator('.match-row').first().waitFor({state:'attached',timeout:45000});
  if(width>=1024){
+  await page.waitForFunction(()=>document.documentElement.dataset.b46OrbitDone==='1',null,{timeout:30000});
   const home=page.locator('.right-rail>.b46-match-monitor+.b46-home-member-promo');await home.waitFor({state:'visible',timeout:30000});
   await page.waitForFunction(()=>{const i=document.querySelector('.b46-home-member-promo img');return i?.complete&&i.naturalWidth>0});
-  const info=await home.evaluate(e=>({href:e.querySelector('a').href,src:e.querySelector('img').src,width:e.getBoundingClientRect().width,previous:e.previousElementSibling.className}));assert.equal(info.href,'https://member.ball46.com/pricing');assert(info.src.includes('home-'+theme));assert(info.previous.includes('b46-match-monitor'));results.push({width,theme,check:'Home placement, artwork and membership link',ok:true});
+  const info=await page.evaluate(()=>{const e=document.querySelector('.right-rail>.b46-match-monitor+.b46-home-member-promo');return e?{href:e.querySelector('a').href,src:e.querySelector('img').src,width:e.getBoundingClientRect().width,previous:e.previousElementSibling.className}:null});assert(info,'BANNER_NOT_AFTER_MONITOR_AFTER_APP_READY');assert.equal(info.href,'https://member.ball46.com/pricing');assert(info.src.includes('home-'+theme));assert(info.previous.includes('b46-match-monitor'),JSON.stringify(info));results.push({width,theme,check:'Home placement, artwork and membership link',ok:true});
   await home.screenshot({path:D+'/qa/combined/home-'+theme+'.png'});
  }else assert.equal(await page.locator('.b46-home-member-promo').count(),0);
  assert.equal(server.requests.filter(r=>r.path==='/api/engine/statistics').length,0,'HISTORY_BEFORE_OPEN');
