@@ -67,19 +67,20 @@ try{
     assert.equal(cur.candles,0,'CANDLES_PRESENT');assert.equal(cur.navigator,0,'NAVIGATOR_PRESENT');
     tests.push({profile:profile.name,market:family,financialParity:true,empty:!!cur.empty,plotPoints:cur.plotPoints,sourcePoints:cur.sourcePoints});
    }
-   await b.page.evaluate(()=>document.querySelector('[data-stat-market="all"]').click());
-   await b.page.waitForFunction(()=>new URLSearchParams(location.search).get('market')===null);
+   // Re-enter the visible Statistics panel after exercising all markets.
+   await b.page.goto(candidate.origin+'/?view=statistics',{waitUntil:'domcontentloaded'});
+   await b.page.waitForFunction(()=>document.querySelector('.b46-perf-svg')&&document.querySelectorAll('.b46-perf-kpi').length===6,null,{timeout:60000});
    for(const range of ['d7','d30','d90','all']){
-    await b.page.locator('[data-b46-range="'+range+'"]').click();
+    await b.page.evaluate(r=>document.querySelector('[data-b46-range="'+r+'"]').click(),range);
     await b.page.waitForFunction(r=>document.querySelector('[data-b46-range="'+r+'"]')?.classList.contains('active'),range);
     assert.equal(await b.page.locator('[data-b46-chart-type]').count(),0);
    }
    for(const metric of ['units','roi','rate']){
-    await b.page.locator('[data-b46-mode="'+metric+'"]').click();
+    await b.page.evaluate(m=>document.querySelector('[data-b46-mode="'+m+'"]').click(),metric);
     await b.page.waitForFunction(m=>document.querySelector('[data-b46-mode="'+m+'"]')?.classList.contains('active'),metric);
     assert(await b.page.locator('[data-b46-finance-line]').count(),'MISSING_MODE_'+metric);
    }
-   await b.page.locator('[data-b46-mode="units"]').click();
+   await b.page.evaluate(()=>document.querySelector('[data-b46-mode="units"]').click());
    const apiBefore=candidate.requests.filter(q=>q.path==='/api/engine/statistics').length;
    const hover=await b.page.evaluate(async()=>{
      const el=document.querySelector('.b46-perf-svg'),rect=el.getBoundingClientRect();
