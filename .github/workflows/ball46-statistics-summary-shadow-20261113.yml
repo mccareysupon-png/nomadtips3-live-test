@@ -97,6 +97,12 @@ jobs:
       - name: Test combined PC banners and mobile exclusion
         if: contains(github.event.head_commit.message, '[summary-service-test]')
         run: node work/statistics-summary-shadow-20261113/combined-browser-test.mjs
+      - name: Create inactive Engine candidate, smoke real data at 0 percent, restore baseline
+        if: contains(github.event.head_commit.message, '[engine-candidate-realdata]')
+        env:
+          CLOUDFLARE_ACCOUNT_ID: '62cb0db544160e6591342abd6b4f35cc'
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: node work/statistics-summary-shadow-20261113/stage-pinned-engine-candidate.mjs
       - name: Prepare inactive combined candidate only after all tests pass
         if: contains(github.event.head_commit.message, '[combined-stage]')
         env:
@@ -137,3 +143,4 @@ jobs:
 
             work/statistics-summary-shadow-20261113/qa/service-runtime.json
             work/statistics-summary-shadow-20261113/qa/combined
+            work/statistics-summary-shadow-20261113/qa/engine-candidate
