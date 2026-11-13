@@ -40,3 +40,5 @@ Final smoke retry reuses exact inactive candidate by SHA and validates binding s
 Probe direct Engine workers.dev availability read-only before another 0% candidate smoke.
 
 Final real-data smoke uses direct Engine workers.dev with version override; reuse exact inactive candidate; restore baseline after 0% test.
+
+Hosted isolation QA: separate Worker + separate Durable Object, import recorded real Ledger snapshot, no scan/Cron/provider, disable workers.dev after test.
