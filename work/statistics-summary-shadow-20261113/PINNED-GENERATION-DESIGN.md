@@ -34,3 +34,5 @@ Authorized real-data smoke: inactive Engine version only; temporary 0% deploymen
 Retry inactive candidate after strict secret-binding inheritance correction.
 
 Retry inactive Engine candidate using explicit baseline version inheritance through Workers Beta Versions API.
+
+Final smoke retry reuses exact inactive candidate by SHA and validates binding shape before 0% override test.
