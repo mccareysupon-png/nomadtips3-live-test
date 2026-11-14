@@ -1,0 +1,45 @@
+name: Statistics runtime QA only (no deployment)
+on:
+  push:
+    branches: [test/ball46-statistics-runtime-isolated-20261114]
+    paths:
+      - '.github/workflows/statistics-runtime-qa-only-20261114.yml'
+      - 'work/statistics-read-model-v2-20261114/**'
+permissions:
+  contents: read
+concurrency:
+  group: statistics-runtime-qa-only-20261114
+  cancel-in-progress: false
+jobs:
+  isolated-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install test runtime only
+        run: npm install --prefix work/statistics-read-model-v2-20261114/.runtime --no-audit --no-fund miniflare@4.20260730.0
+      - name: Capture current public cached data (GET only)
+        run: node work/statistics-read-model-v2-20261114/capture-ci-input.mjs
+      - name: Revision and browser data contracts
+        run: |
+          node --test --test-isolation=none work/statistics-read-model-v2-20261114/revision-performance-test.mjs work/statistics-read-model-v2-20261114/browser-runtime-test.mjs
+          node work/statistics-read-model-v2-20261114/fast-client-test.mjs
+      - name: Original financial formula parity on fresh real rows
+        run: node work/statistics-read-model-v2-20261114/live-parity-test.mjs
+      - name: Actual Workerd SQLite Durable Object integration
+        run: node work/statistics-read-model-v2-20261114/runtime-integration-test.mjs
+      - name: Preserve only compact QA results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: statistics-runtime-qa-only
+          path: |
+            work/statistics-read-model-v2-20261114/qa/live-parity-result.json
+            work/statistics-read-model-v2-20261114/qa/runtime-integration-result.json
+          if-no-files-found: ignore
+          retention-days: 7
