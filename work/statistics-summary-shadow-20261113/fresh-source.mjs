@@ -34,10 +34,24 @@ for(const worker of ['nomadtips3-engine-343','ball46-production']) {
   if(!row.assets.some(x=>x.path.split('?')[0]==='/longterm-performance-343.js')) {
    const normalized=bytes.toString('utf8').replaceAll('\\"','"');
    const refs=[...normalized.matchAll(/"path":"(\/longterm-performance-343\.js(?:\?[^" ]*)?)","sha":"([a-f0-9]{64})","bytes":(\d+)/g)];
-   assert.equal(refs.length,1,'FINANCIAL_MANIFEST_AMBIGUOUS');
-   const b=await readFile(D+'/reference/longterm-performance-343.js');
-   assert.equal(sha(b),refs[0][2],'FINANCIAL_MANIFEST_HASH_DRIFT');assert.equal(b.length,Number(refs[0][3]),'FINANCIAL_SIZE_DRIFT');
-   row.assets.push({module:'ASSETS via active main manifest',path:refs[0][1],sha:sha(b),verification:'LOCAL_REFERENCE_MATCHES_ACTIVE_MANIFEST_NOT_URL_DELIVERY'});
+   const b=await readFile(D+'/reference/longterm-performance-343.js');let path,verification;
+   if(refs.length===1){
+    assert.equal(sha(b),refs[0][2],'FINANCIAL_MANIFEST_HASH_DRIFT');assert.equal(b.length,Number(refs[0][3]),'FINANCIAL_SIZE_DRIFT');
+    path=refs[0][1];verification='LOCAL_REFERENCE_MATCHES_ACTIVE_MANIFEST_NOT_URL_DELIVERY';
+   }else{
+    // A wrapper may hide the old manifest; insist that ACTUAL static bytes
+    // equal the pinned financial reference instead of assuming identity.
+    const enabled=await cf('/workers/scripts/'+worker+'/subdomain');assert.equal(enabled.enabled,true,'STATIC_REFERENCE_SUBDOMAIN_DISABLED');
+    const sub=(await cf('/workers/subdomain')).subdomain;assert(/^[a-z0-9-]+$/.test(sub),'STATIC_REFERENCE_BAD_SUBDOMAIN');
+    path='/longterm-performance-343.js';
+    const res=await fetch('https://'+worker+'.'+sub+'.workers.dev'+path,{redirect:'error',signal:AbortSignal.timeout(20000)});
+    assert.equal(res.status,200,'STATIC_REFERENCE_HTTP_'+res.status);
+    const served=Buffer.from(await res.arrayBuffer());
+    assert.equal(sha(served),sha(b),'FINANCIAL_STATIC_HASH_DRIFT');
+    assert.equal(served.length,b.length,'FINANCIAL_STATIC_SIZE_DRIFT');
+    verification='CURRENT_STATIC_DELIVERY_MATCHES_PINNED_FINANCIAL_REFERENCE';
+   }
+   row.assets.push({module:verification,path,sha:sha(b),verification});
    await writeFile(D+'/source/longterm-performance-343.js',b);
   }
   if(!row.assets.some(x=>x.path.split('?')[0]==='/longterm-performance-343.js')) {
