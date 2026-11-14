@@ -1,0 +1,28 @@
+name: Finance line chart design preview ONLY
+on:
+  push:
+    branches: [test/ball46-statistics-runtime-isolated-20261114]
+    paths: ['.github/workflows/statistics-line-design-preview-20261114.yml', 'work/statistics-finance-line-preview-20261114/**']
+permissions:
+  contents: read
+jobs:
+  static-design-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --prefix work/statistics-read-model-v2-20261114/.runtime --no-audit --no-fund playwright@1.65.1
+      - run: work/statistics-read-model-v2-20261114/.runtime/node_modules/.bin/playwright install --with-deps chromium
+      - name: Local static PC/mobile dark/light and interaction QA
+        run: node work/statistics-finance-line-preview-20261114/browser-test.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: statistics-finance-line-design-preview
+          path: work/statistics-finance-line-preview-20261114/qa/
+          retention-days: 7
