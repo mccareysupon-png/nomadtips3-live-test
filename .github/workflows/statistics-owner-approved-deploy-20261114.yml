@@ -1,0 +1,55 @@
+name: BALL46 owner-approved exact Statistics deployment
+on:
+  push:
+    branches: [test/ball46-statistics-runtime-isolated-20261114]
+    paths: ['.github/workflows/statistics-owner-approved-deploy-20261114.yml', 'work/statistics-authorized-rollout-20261114/**']
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: ball46-statistics-production-approved
+  cancel-in-progress: false
+jobs:
+  guarded-deploy:
+    if: contains(github.event.head_commit.message, '[owner-approved-statistics-deploy-20261114]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Public read-only availability gate before any mutation
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          for(const path of ['/','/api/engine/health','/api/hub/snapshot']){
+            const r=await fetch('https://ball46.com'+path,{signal:AbortSignal.timeout(30000)});
+            console.log('PUBLIC_PREFLIGHT',path,r.status);
+            assert.equal(r.status,200,'PUBLIC_PREFLIGHT_BLOCKED_NO_PRODUCTION_WRITES');
+          }
+          NODE
+      - uses: actions/download-artifact@v4
+        with:
+          name: statistics-offline-release-package-DO-NOT-DEPLOY
+          run-id: 43601875192
+          github-token: ${{ github.token }}
+          path: release-artifact
+      - name: Install verification browser tools
+        run: npm install --prefix work/statistics-read-model-v2-20261114/.runtime --no-audit --no-fund playwright@1.65.1 parse5@8.0.0
+      - name: Install Chromium
+        run: work/statistics-read-model-v2-20261114/.runtime/node_modules/.bin/playwright install --with-deps chromium
+      - name: Exact package rollout with automatic rollback
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: node work/statistics-authorized-rollout-20261114/deploy-approved-package.mjs
+      - name: Preserve deployment audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: statistics-owner-approved-deployment-audit
+          path: work/statistics-release-package-20261114/deployment-audit/
+          if-no-files-found: ignore
+          retention-days: 14
