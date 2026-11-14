@@ -49,7 +49,8 @@ export class PinnedSourceReader{
    const after=await this.read('/ledger-health');check(after.contentRevision===revision,'SOURCE_CHANGED');
    const meta={...head,total:head.settledTotal};verifyCompleteLedger(rows,meta);
    const derivedAt=this.clock(),result=await this.publisher.ingest(rows,meta);
-   await this.store.storage.put(OBSERVED,{revision:result.contentRevision,at:after.updatedAt,sourceRevision:revision,expiresAt:nextExpiry(rows,derivedAt),sourceError:null});
+   const publishedSource=await this.read('/ledger-health');check(publishedSource.contentRevision===revision,'SOURCE_CHANGED');
+   await this.store.storage.put(OBSERVED,{revision:result.contentRevision,at:publishedSource.updatedAt,sourceRevision:revision,expiresAt:nextExpiry(rows,derivedAt),sourceError:null});
    return{ok:true,...result,sourceRevision:revision,sourcePages:pages};
   }catch(e){error=e;if(e.message!=='SOURCE_CHANGED')break}
   const active=await this.store.active();if(active){const old=await this.store.storage.get(OBSERVED);await this.store.storage.put(OBSERVED,{...old,revision:active.contentRevision,at:old?.at??dateMs(active.asOf),sourceError:String(error.message||error)})}

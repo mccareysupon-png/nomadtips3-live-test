@@ -6,7 +6,7 @@
  function acceptSummary(value){
   if(!value?.ok||!Number.isSafeInteger(value.contentRevision)||value.marketCounts?.all!==value.ledgerTotal)throw Error('UNVERIFIED_SUMMARY');
   if(summary&&value.contentRevision<summary.contentRevision)throw Error('REGRESSION_SUMMARY');
-  summary=value;summaryAt=Date.now();document.dispatchEvent(new CustomEvent('ball46:statistics-fast-summary',{detail:value}));return value;
+  summary=value;summaryAt=Date.now();document.body.dataset.b46StatsSourceStale=String(!!value.stale);document.dispatchEvent(new CustomEvent('ball46:statistics-fast-summary',{detail:value}));return value;
  }
  async function getSummary(force=false){
   if(!force&&summary&&Date.now()-summaryAt<5000)return summary;

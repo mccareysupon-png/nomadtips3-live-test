@@ -78,7 +78,7 @@ export function patchActualStatistics(workspace){
 "  if(ticket!==stageTicket||state.view!=='statistics')return;",
 "  stageView=data;state.rows=data.rows;state.statisticsTotal=stageSummary.ledgerTotal;state.statsLoaded=true;state.statsLoadedAt=Date.now();stagePaint();return;",
 " }throw Error('Stage revision changed during view')",
-" }catch(e){if(ticket!==stageTicket)return;const el=$('[data-sp-feed-state]');if(el)el.textContent='Staging Statistics unavailable · '+String(e.message||e);document.body.dataset.b46StageReady='error';}",
+" }catch(e){if(ticket!==stageTicket)return;const el=$('[data-sp-feed-state]');if(el)el.textContent='Statistics incomplete or unavailable · '+String(e.message||e);document.body.dataset.b46StageReady='error';}",
 " finally{if(ticket===stageTicket)state.statsLoading=false}",
 "}"
 ].join('\n'),'Connect actual Statistics UI to summary and on-demand view');
