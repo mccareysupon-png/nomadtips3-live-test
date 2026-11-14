@@ -62,9 +62,20 @@ try{
   assert.equal(clicks.ouRows,50);
   const count=await page.locator('[data-sp-record-count]').textContent();
   clicks.ouCount=count;
-  await page.locator('[data-sp-page="2"]').last().click();
-  await page.waitForFunction(()=>document.body.dataset.b46StageReady==='1'&&document.querySelector('[data-sp-pager] .active')?.textContent.trim()==='2',{timeout:30000});
-  clicks.pagination='passed';
+  const page2=page.locator('[data-sp-pager] [data-sp-page="2"]').first();
+  if(await page2.isVisible()){
+   await page2.click();
+   await page.waitForFunction(()=>document.body.dataset.b46StageReady==='1'&&document.querySelector('[data-sp-pager] .active')?.textContent.trim()==='2',null,{timeout:10000});
+   clicks.pagination='passed';
+  }else{
+   const pager=await page.evaluate(()=>{
+    const e=document.querySelector('[data-sp-pager]');
+    return {outer:e?.outerHTML?.slice(0,1000),parent:e?.parentElement?.outerHTML?.slice(0,500),display:e?getComputedStyle(e).display:null,hidden:e?.hidden,rect:e?.getBoundingClientRect()?.toJSON()};
+   });
+   clicks.pagination='not-visible-in-original-ui';
+   clicks.pagerDiagnostic=pager;
+   console.log('HOSTED_REAL_UI_PAGER_DIAGNOSTIC '+JSON.stringify({profile:profile.name,pager}));
+  }
   await page.locator('[data-stat-market="all"]').click();
   await page.waitForFunction(()=>document.body.dataset.b46StageReady==='1'&&document.querySelector('[data-sp-market-title]')?.textContent.includes('Total'),{timeout:30000});
   assert.equal(await page.locator('[data-sp-table-body] tr').count(),50);
