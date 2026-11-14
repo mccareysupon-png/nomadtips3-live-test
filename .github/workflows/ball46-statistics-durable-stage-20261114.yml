@@ -28,6 +28,8 @@ jobs:
           node --check work/statistics-read-model-v2-20261114/persisted-read-test.mjs
           node --check work/statistics-read-model-v2-20261114/persisted-preview-server.mjs
           node --check work/statistics-read-model-v2-20261114/persisted-browser.mjs
+          node --check work/statistics-read-model-v2-20261114/durable-worker-harness.mjs
+          node --check work/statistics-read-model-v2-20261114/actual-do-test.mjs
       - name: Reuse 14998 previously recorded real Ledger rows (never query Production Ledger)
         uses: actions/download-artifact@v4
         with:
@@ -50,8 +52,10 @@ jobs:
           node --max-old-space-size=4096 work/statistics-read-model-v2-20261114/persisted-read-test.mjs
       - name: Install Playwright for independent PC/mobile Chromium staging
         run: |
-          npm install --prefix work/statistics-summary-shadow-20261113/.runtime --no-save --package-lock=false --no-audit --no-fund playwright@1.56.1
+          npm install --prefix work/statistics-summary-shadow-20261113/.runtime --no-save --package-lock=false --no-audit --no-fund playwright@1.56.1 miniflare esbuild
           work/statistics-summary-shadow-20261113/.runtime/node_modules/.bin/playwright install --with-deps chromium
+      - name: Test actual isolated SQLite Durable Object API and revision race
+        run: node --max-old-space-size=4096 work/statistics-read-model-v2-20261114/actual-do-test.mjs
       - name: Real browser flow over persisted 50-row API (PC/mobile, dark/light)
         run: |
           mkdir -p work/statistics-read-model-v2-20261114/qa
