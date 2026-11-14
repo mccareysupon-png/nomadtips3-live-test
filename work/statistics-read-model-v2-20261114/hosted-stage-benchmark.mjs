@@ -65,6 +65,8 @@ try{
   assert.equal(state.tableRows,50,'NATIVE_TABLE_NOT_FIRST_50');
   assert(state.tableFields>=8,'NATIVE_TABLE_COLUMNS_MISSING');
   assert(state.cssLoaded>0,'ORIGINAL_STYLESHEETS_MISSING');
+  assert(!(await page.locator('[data-workspace-panel="statistics"] .b46-stats-loader').isVisible()),'LOADING_SKELETON_STUCK_AFTER_SUCCESS');
+  assert((await page.locator('[data-sp-kpi="total"]').textContent())!=='—','ORIGINAL_KPI_NOT_PAINTED');
   assert(state.feed.includes('Staging snapshot'),'NATIVE_STATUS_NOT_UPDATED');
   assert.equal(state.revision,String(stage.revision));
   assert.equal(state.menuCount,String(stage.sourceRows));
@@ -101,6 +103,7 @@ try{
   await page.waitForFunction(()=>document.body.dataset.b46StageReady==='1'&&document.querySelector('[data-sp-market-title]')?.textContent.includes('Total'),{timeout:30000});
   assert.equal(await page.locator('[data-sp-table-body] tr').count(),50);
   await page.screenshot({path:D+'/qa/hosted-real-ui-'+profile.name+'.png',fullPage:false,timeout:10000});
+  await page.screenshot({path:D+'/qa/hosted-real-ui-'+profile.name+'-full.png',fullPage:true,timeout:20000});
   profiles.push({profile:profile.name,width:profile.width,remoteNetwork:true,network4gSimulation:profile.throttle,wallMs,readyMarkMs:state.markMs,statsCalls:net.filter(x=>x.status===200),tableRows:state.tableRows,tableColumns:state.tableFields,menuCount:state.menuCount,cssLoaded:state.cssLoaded,resources:state.resources.slice(0,6),actions:clicks,consoleErrors:consoleErrors.slice(0,4)});
   console.log('HOSTED_REAL_UI_PROFILE '+JSON.stringify({profile:profile.name,wallMs,readyMarkMs:state.markMs,api:net.map(x=>x.path).slice(0,10),columns:state.tableFields,clicks}));
   await context.close();
