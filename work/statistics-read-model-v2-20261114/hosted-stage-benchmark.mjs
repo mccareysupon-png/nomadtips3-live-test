@@ -32,7 +32,13 @@ try{
   }
   const started=performance.now(),response=await page.goto(config.origin+'/?view=statistics',{waitUntil:'domcontentloaded',timeout:40000});
   assert.equal(response.status(),200);
-  await page.waitForFunction(()=>document.body.dataset.b46StageReady==='1',{timeout:60000});
+  try{await page.waitForFunction(()=>document.body.dataset.b46StageReady==='1',null,{timeout:25000})}
+  catch(err){
+   const diag=await page.evaluate(()=>({ready:document.body?.dataset.b46StageReady||null,view:document.body?.dataset.workspaceView||null,feed:document.querySelector('[data-sp-feed-state]')?.textContent?.slice(0,220),scripts:[...document.scripts].map(s=>s.src).filter(Boolean).slice(0,30),statPanel:!!document.querySelector('[data-workspace-panel="statistics"]'),workspaceApi:!!window.BALL46_STATISTICS_DATA,hasNav:!!document.querySelector('[data-stat-market="all"]'),errors:document.querySelector('.sp-empty')?.textContent?.slice(0,200)})).catch(e=>({error:String(e)}));
+   console.log('HOSTED_NATIVE_STAGE_DIAGNOSTIC '+JSON.stringify({profile:profile.name,diag,network:net.slice(0,25),console:consoleErrors.slice(0,12),scriptErrors:errors.slice(0,12),blocked:blocked.slice(0,16)}));
+   await page.screenshot({path:D+'/qa/hosted-failure-'+profile.name+'.png',fullPage:false}).catch(()=>{});
+   throw err;
+  }
   const wallMs=performance.now()-started;
   const state=await page.evaluate(()=>{
    const panel=document.querySelector('[data-workspace-panel="statistics"]');
