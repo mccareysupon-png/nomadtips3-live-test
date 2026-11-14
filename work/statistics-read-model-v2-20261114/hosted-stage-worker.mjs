@@ -86,7 +86,7 @@ export default {async fetch(request,env,ctx){
  }
  if(!/^\/[a-zA-Z0-9_./-]+\.(?:m?js|css|png|webp|avif|svg|jpe?g|gif|woff2?|ttf|ico|txt)$/.test(u.pathname)||u.pathname.includes('..'))return send(404,{ok:false,error:'STAGING_STATIC_ONLY'});
  const src=new URL(u.pathname+u.search,staticOrigin);
- const res=await fetch(src.toString(),{method:'GET',redirect:'error',signal:AbortSignal.timeout(12000)});
+ const res=await env.STATIC_SOURCE.fetch(new Request(src.toString(),{method:'GET'}));
  if(!res.ok)return send(502,{ok:false,error:'STAGING_STATIC_SOURCE_'+res.status});
  const h=new Headers(res.headers);for(const key of ['content-length','content-encoding','etag','set-cookie','access-control-allow-origin'])h.delete(key);h.set('cache-control','public,max-age=300');h.set('x-robots-tag','noindex,nofollow');
  return new Response(res.body,{status:200,headers:h});
