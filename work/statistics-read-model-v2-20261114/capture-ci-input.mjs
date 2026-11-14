@@ -8,10 +8,11 @@ await mkdir(new URL('live-base/',dir),{recursive:true});
 async function get(path){const r=await fetch(origin+path,{signal:AbortSignal.timeout(30000)});assert.equal(r.status,200,'QA_GET_FAILED:'+path);return r.text()}
 const html=await get('/');await writeFile(new URL('live-base/index.html',dir),html);
 const refs=[...html.matchAll(/<script[^>]+src="([^"]+)"/g)].map(m=>m[1]);
-for(const [name,file,hash]of [['singlepage-workspace-343.js','workspace.js','4957e9d547e5c468d45aa5ce7436fbe7510e740dcf20177ecf5cff4f51dcf8ed'],['longterm-performance-343.js','performance.js','822f3d9d271a948d6b862eb7732f8797dcedbcc743cd63f3094f217b537b22bf'],['market-registry-343.js','registry.js','cf07987a442c6d8bfc4a19cd6035afb4d43a06ca3a2bc60ed2cc801e4babf126']]){
+for(const [name,file,hash]of [['dashboard-v2-stage3-featured-facts-20261013a.js','scorebar.js','6d5f2fa340a3257687840d0ff29152ffd6f6cac26367cd900ae2a8989b47c973'],['singlepage-workspace-343.js','workspace.js','4957e9d547e5c468d45aa5ce7436fbe7510e740dcf20177ecf5cff4f51dcf8ed'],['longterm-performance-343.js','performance.js','822f3d9d271a948d6b862eb7732f8797dcedbcc743cd63f3094f217b537b22bf'],['market-registry-343.js','registry.js','cf07987a442c6d8bfc4a19cd6035afb4d43a06ca3a2bc60ed2cc801e4babf126']]){
  const ref=refs.find(p=>new URL(p,origin).pathname==='/'+name);assert(ref,'ACTIVE_ASSET_MISSING:'+name);
  const source=await get(new URL(ref,origin).pathname+new URL(ref,origin).search);assert.equal(sha(source),hash,'ACTIVE_SOURCE_DRIFT:'+name);await writeFile(new URL('live-base/'+file,dir),source);
 }
+for(const [path,file] of [['/api/hub/snapshot','hub.json'],['/api/engine/signals','signals.json']])await writeFile(new URL('live-base/'+file,dir),await get(path));
 let captured;
 for(let attempt=0;attempt<3;attempt++){
  const c={rows:[],started:new Date().toISOString(),first:null,last:null,pages:0};let cursor='stat:v2:row:\uffff';const cursors=new Set();

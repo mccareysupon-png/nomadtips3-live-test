@@ -22,12 +22,14 @@ jobs:
         with:
           node-version: '24'
       - name: Install test runtime only
-        run: npm install --prefix work/statistics-read-model-v2-20261114/.runtime --no-audit --no-fund miniflare@4.20260730.0 esbuild@0.28.2
+        run: npm install --prefix work/statistics-read-model-v2-20261114/.runtime --no-audit --no-fund miniflare@4.20260730.0 esbuild@0.28.2 playwright@1.65.1
+      - name: Install isolated Chromium test browser
+        run: work/statistics-read-model-v2-20261114/.runtime/node_modules/.bin/playwright install --with-deps chromium
       - name: Capture current public cached data (GET only)
         run: node work/statistics-read-model-v2-20261114/capture-ci-input.mjs
       - name: Revision and browser data contracts
         run: |
-          node --test --test-isolation=none work/statistics-read-model-v2-20261114/revision-performance-test.mjs work/statistics-read-model-v2-20261114/browser-runtime-test.mjs
+          node --test --test-isolation=none work/statistics-read-model-v2-20261114/revision-performance-test.mjs work/statistics-read-model-v2-20261114/browser-runtime-test.mjs work/statistics-read-model-v2-20261114/homepage-adapter-test.mjs
           node work/statistics-read-model-v2-20261114/fast-client-test.mjs
       - name: Original financial formula parity on fresh real rows
         run: node work/statistics-read-model-v2-20261114/live-parity-test.mjs
@@ -35,6 +37,8 @@ jobs:
         run: node work/statistics-read-model-v2-20261114/runtime-integration-test.mjs
       - name: Actual Engine to read-model pinned live-update integration
         run: node work/statistics-read-model-v2-20261114/pinned-feed-runtime-test.mjs
+      - name: Same-input original versus candidate PC and mobile UI
+        run: node work/statistics-read-model-v2-20261114/browser-integration-test.mjs
       - name: Preserve only compact QA results
         if: always()
         uses: actions/upload-artifact@v4
@@ -45,5 +49,7 @@ jobs:
             work/statistics-read-model-v2-20261114/qa/runtime-integration-result.json
             work/statistics-read-model-v2-20261114/qa/pinned-feed-runtime-result.json
             work/statistics-read-model-v2-20261114/qa/engine-test-build.json
+            work/statistics-read-model-v2-20261114/qa/browser-integration-result.json
+            work/statistics-read-model-v2-20261114/qa/browser-*.png
           if-no-files-found: ignore
           retention-days: 7

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {patchHomepageStatistics,patchScorebarStatistics} from './homepage-statistics-adapter.mjs';
 import {readFile,writeFile,mkdir} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
@@ -98,7 +99,9 @@ const finance=capture.files.find(f=>new URL(f.path,'https://test.invalid').pathn
 const financeBody=await readFile(DIR+'/files/'+finance.file);assert.equal(sha(financeBody),finance.sha,'PERFORMANCE_CAPTURE_HASH_DRIFT');await writeFile(OUT+'/real-performance.txt',patchActualPerformance(financeBody.toString()));
 const html=await readFile(DIR+'/index.html','utf8');assert.equal(sha(html),capture.htmlSha);
 const stageCss='<style id="b46-stage-content-visibility">body[data-workspace-view="statistics"] [data-workspace-panel="statistics"] .sp-stats-content{display:block!important}.b46-stage-mobile-market-nav{display:none}@media(max-width:680px){.b46-stage-mobile-market-nav{display:flex!important;gap:6px;overflow-x:auto;margin:7px 4px;padding:4px 0 10px;scrollbar-width:thin}.b46-stage-mobile-market-nav button{background:#172820;color:#d7e9dd;border:1px solid #395f4a;border-radius:8px;font:12px system-ui;padding:8px 10px;white-space:nowrap}.b46-stage-mobile-market-nav button.active{background:#236e4a;color:white}}</style>';
-const decorated=html.replace('</head>','<meta name="robots" content="noindex,nofollow">'+stageCss+'<style id="b46-stage-watermark">body::before{content:"STATISTICS STAGING · NOT PRODUCTION";position:fixed;bottom:3px;right:4px;padding:4px 7px;z-index:2147483647;background:#243e32;color:#cefde7;font:10px system-ui;pointer-events:none}</style></head>');
+const dash=capture.files.find(f=>new URL(f.path,'https://test.invalid').pathname==='/dashboard-v2-stage3-featured-facts-20261013a.js');assert(dash,'DASHBOARD_CAPTURE_MISSING');
+const dashBody=await readFile(DIR+'/files/'+dash.file);assert.equal(sha(dashBody),dash.sha,'DASHBOARD_CAPTURE_DRIFT');await writeFile(OUT+'/real-scorebar.txt',patchScorebarStatistics(dashBody.toString()));
+const decorated=patchHomepageStatistics(html).replace('</head>','<meta name="robots" content="noindex,nofollow">'+stageCss+'<style id="b46-stage-watermark">body::before{content:"STATISTICS STAGING · NOT PRODUCTION";position:fixed;bottom:3px;right:4px;padding:4px 7px;z-index:2147483647;background:#243e32;color:#cefde7;font:10px system-ui;pointer-events:none}</style></head>');
 assert.notEqual(decorated,html);await writeFile(OUT+'/real-index.html',decorated);
 console.log('ACTUAL_UI_PATCH '+JSON.stringify({ok:true,originalHtmlSha:capture.htmlSha,originalWorkspaceSha:entry.sha,htmlBytes:Buffer.byteLength(decorated),patchedWorkspaceBytes:Buffer.byteLength(patched),cssUnchanged:true}));
 

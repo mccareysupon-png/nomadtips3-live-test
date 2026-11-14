@@ -4,9 +4,10 @@ import {readFile,writeFile} from 'node:fs/promises';
 import {createRequire} from 'node:module';
 import {fileURLToPath} from 'node:url';
 import {buildEngineTest} from './build-current-engine-test.mjs';
+import {buildCurrentFormulas} from './build-current-formulas.mjs';
 import {projectLedgerRow} from './persisted-read-store.mjs';
 const require=createRequire(new URL('./.runtime/package.json',import.meta.url)),{Miniflare}=require('miniflare'),{build}=require('esbuild');
-const dir=fileURLToPath(new URL('./',import.meta.url));await buildEngineTest();
+const dir=fileURLToPath(new URL('./',import.meta.url));await buildEngineTest();await buildCurrentFormulas();
 const engineCode=`import {Nomad343Engine} from './qa/engine-candidate.js';
 export class IsolatedEngine extends Nomad343Engine{
  async scanIfDue(){throw Error('PROVIDER_SCAN_FORBIDDEN')}
@@ -16,9 +17,10 @@ export default{fetch(request,env){return env.LEDGER.get(env.LEDGER.idFromName('i
 const registry=await readFile(new URL('./qa/live-base/registry.js',import.meta.url),'utf8');
 await writeFile(new URL('./qa/current-registry.mjs',import.meta.url),'const window={};\n'+registry+'\nexport const registry=window.BALL46_MARKET_REGISTRY;');
 const summaryCode=`import {DurableObject} from 'cloudflare:workers';
+import {formulas} from './qa/current-formulas.mjs';
 import {PersistedReadStore} from './persisted-read-store.mjs';import {PinnedSourceReader} from './pinned-source-reader.mjs';import {registry} from './qa/current-registry.mjs';
 export class IsolatedSummary extends DurableObject{
- constructor(ctx,env){super(ctx,env);this.store=new PersistedReadStore(ctx.storage);this.reader=new PinnedSourceReader(this.store,env.ENGINE,{registry,budgetMs:120000})}
+ constructor(ctx,env){super(ctx,env);this.store=new PersistedReadStore(ctx.storage);this.reader=new PinnedSourceReader(this.store,env.ENGINE,{registry,formulas,budgetMs:120000})}
  async fetch(request){const u=new URL(request.url);if(u.pathname==='/__qa/refresh'){try{return Response.json(await this.reader.refresh())}catch(e){return Response.json({ok:false,error:e.message},{status:503})}}
  if(u.pathname==='/summary')return Response.json(await this.store.summary());
  const out=await this.store.view({revision:Number(u.searchParams.get('revision')),page:Number(u.searchParams.get('page')||1)});return Response.json(out,{status:out.status||200});}
@@ -45,6 +47,7 @@ try{
  // Model partition is verified against the pure current Production registry.
  const {default:vm}=await import('node:vm');vm.runInNewContext(registry,rc);for(const row of rows)counts[rc.window.BALL46_MARKET_REGISTRY.familyOf(row)]++;
  assert.deepEqual(s.marketCounts,counts);checks.push('All eight market counters agree with current Production registry');
+ const {formulas}=await import('./qa/current-formulas.mjs');assert.deepEqual(s.daily,formulas.aggregate(rows));assert.equal(s.recentSettled.length,4);checks.push('Homepage Today/Yesterday and recent four results match exact original formulas');
  const oldRevision=s.contentRevision,originalPage=await get('/view?revision='+oldRevision);assert.equal(originalPage.rows.length,50);
  const oldSource=(await health()).contentRevision,beforePages=pages;await insert(rows.slice(0,1));assert.equal((await health()).contentRevision,oldSource);r=await refresh();assert.equal(r.status,200);assert.equal((await get('/summary')).contentRevision,oldRevision);assert.equal(pages,beforePages);checks.push('No-op real Engine sync changes neither revision nor history-read count');
  const example=rows.find(r=>r.status==='SETTLED'),mutation={...example,id:'qa-only-new-signal',createdAt:Date.now(),settledAt:Date.now()};await insert([mutation]);

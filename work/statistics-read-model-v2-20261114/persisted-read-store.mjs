@@ -1,6 +1,6 @@
 // STAGING ONLY. Durable derived rows/indexes, immutable by content revision.
 // Never bind to Engine's storage; never call providers, Cron or Production endpoints.
-import {createReadModel,familyOf,selectionOf,dateMs} from './read-model.mjs';
+import {createReadModel,familyOf,selectionOf,dateMs,isSettled} from './read-model.mjs';
 const P='b46:stat:read-v2:',ACTIVE=P+'active';
 const guard=(ok,msg)=>{if(!ok)throw Error(msg)};
 const groupKey=(market,variant,filter)=>JSON.stringify([market,variant,filter]);
@@ -79,7 +79,8 @@ export class PersistedReadStore{
    view.curve=curve;view.curveFinal=y;
    await this.put(storageKey(contentRevision,'view',name),view);
   }
-  let summary={...model.summary,groupCounts};
+  const recentSettled=rows.filter(isSettled).sort((a,b)=>dateMs(b.settledAt??b.createdAt)-dateMs(a.settledAt??a.createdAt)).slice(0,4).map(projectLedgerRow);
+  let summary={...model.summary,groupCounts,recentSettled};
   if(formulas?.aggregate){const daily=formulas.aggregate(rows);guard(daily&&daily.today&&daily.yesterday,'INVALID_DAILY_FORMULA');summary={...summary,daily};}
   const manifest={generationKey:prefix+'manifest',contentRevision,asOf,sourceFingerprint,sourceRows:rows.length,views:names.length,pages:pageCount,storedProjectedBytes:transferred,summary,createdAt:Date.now()};
   // Only one active revision can be published; transaction also protects
