@@ -65,6 +65,7 @@ export function patchActualStatistics(workspace){
 " const visible=$('[data-workspace-panel=\"statistics\"] .sp-stats-content');if(visible)visible.style.setProperty('display','block','important');",
 " renderStatNav();renderVariants();renderStatHeader();renderKpis();renderGraph();renderFilters();renderTable(stageView.rows);stageMobileNav();",
 " const st=$('[data-sp-feed-state]');if(st)st.textContent='Staging snapshot · '+stageView.totalRows+' records · '+stageSummary.pending+' pending';",
+" const loader=$('[data-workspace-panel=\"statistics\"] .b46-stats-loader');if(loader){loader.hidden=true;loader.style.display='none';loader.setAttribute('aria-busy','false')}",
 " document.body.dataset.b46StageReady='1';document.body.dataset.b46StageRevision=String(stageSummary.contentRevision);",
 " performance.mark('b46-real-ui-statistics-ready');",
 "}",
