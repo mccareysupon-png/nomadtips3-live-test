@@ -22,7 +22,7 @@ jobs:
         with:
           node-version: '24'
       - name: Install test runtime only
-        run: npm install --prefix work/statistics-read-model-v2-20261114/.runtime --no-audit --no-fund miniflare@4.20260730.0
+        run: npm install --prefix work/statistics-read-model-v2-20261114/.runtime --no-audit --no-fund miniflare@4.20260730.0 esbuild@0.28.2
       - name: Capture current public cached data (GET only)
         run: node work/statistics-read-model-v2-20261114/capture-ci-input.mjs
       - name: Revision and browser data contracts
@@ -33,6 +33,8 @@ jobs:
         run: node work/statistics-read-model-v2-20261114/live-parity-test.mjs
       - name: Actual Workerd SQLite Durable Object integration
         run: node work/statistics-read-model-v2-20261114/runtime-integration-test.mjs
+      - name: Actual Engine to read-model pinned live-update integration
+        run: node work/statistics-read-model-v2-20261114/pinned-feed-runtime-test.mjs
       - name: Preserve only compact QA results
         if: always()
         uses: actions/upload-artifact@v4
@@ -41,5 +43,7 @@ jobs:
           path: |
             work/statistics-read-model-v2-20261114/qa/live-parity-result.json
             work/statistics-read-model-v2-20261114/qa/runtime-integration-result.json
+            work/statistics-read-model-v2-20261114/qa/pinned-feed-runtime-result.json
+            work/statistics-read-model-v2-20261114/qa/engine-test-build.json
           if-no-files-found: ignore
           retention-days: 7

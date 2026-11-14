@@ -98,7 +98,7 @@ export class PersistedReadStore{
   const observed=await this.storage.get(P+'observed');
   const verifiedAt=observed?.revision===m.contentRevision?observed.at:dateMs(m.asOf);
   const ageMs=Math.max(0,this.clock()-verifiedAt);
-  return{...m.summary,ok:true,contentRevision:m.contentRevision,asOf:m.asOf,verifiedAt,ageMs,stale:ageMs>this.maxAgeMs};
+  return{...m.summary,ok:true,contentRevision:m.contentRevision,asOf:m.asOf,verifiedAt,ageMs,stale:!!observed?.sourceError||ageMs>this.maxAgeMs};
  }
  async view({market='all',variant='all',filter='all',page=1,limit=50,rangeDays='all',metric='units',revision}={}){
   const m=await this.active();if(!m)return{status:503,error:'SUMMARY_NOT_READY'};
@@ -122,6 +122,6 @@ export class PersistedReadStore{
   const observed=await this.storage.get(P+'observed');
   const verifiedAt=observed?.revision===m.contentRevision?observed.at:dateMs(m.asOf);
   const ageMs=Math.max(0,this.clock()-verifiedAt);
-  return{ok:true,status:200,performance,metric,verifiedAt,ageMs,stale:ageMs>this.maxAgeMs,contentRevision:r,asOf:m.asOf,market,variant,filter,page,pageSize:50,totalRows:meta.totalRows,pages:meta.pages,metrics:meta.metrics,chart:meta.charts[String(rangeDays)],curve:meta.curve,curveFinal:meta.curveFinal,rangeDays,rows};
+  return{ok:true,status:200,performance,metric,verifiedAt,ageMs,stale:!!observed?.sourceError||ageMs>this.maxAgeMs,contentRevision:r,asOf:m.asOf,market,variant,filter,page,pageSize:50,totalRows:meta.totalRows,pages:meta.pages,metrics:meta.metrics,chart:meta.charts[String(rangeDays)],curve:meta.curve,curveFinal:meta.curveFinal,rangeDays,rows};
  }
 }
