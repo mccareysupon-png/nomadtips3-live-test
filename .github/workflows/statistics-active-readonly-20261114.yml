@@ -1,0 +1,27 @@
+name: Statistics Active identity READ ONLY
+on:
+  push:
+    branches: [test/ball46-statistics-runtime-isolated-20261114]
+    paths: ['.github/workflows/statistics-active-readonly-20261114.yml', 'qa-readonly/statistics-active.mjs']
+permissions:
+  contents: read
+jobs:
+  read-active:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: GET only Active versions and preservation metadata
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: node qa-readonly/statistics-active.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: statistics-active-readonly
+          path: qa-readonly/result/active.json
+          retention-days: 7
