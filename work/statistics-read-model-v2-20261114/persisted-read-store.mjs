@@ -15,7 +15,7 @@ function groupsFor(rows,registry){
  guard(seen.size<=10000,'TOO_MANY_VIEW_KEYS');return [...seen];
 }
 export class PersistedReadStore{
- constructor(storage,{clock=()=>Date.now(),maxAgeMs=120000}={}){this.storage=storage;this.building=null;this.clock=clock;this.maxAgeMs=maxAgeMs;this.queue=Promise.resolve();}
+ constructor(storage,{clock=()=>Date.now(),maxAgeMs=120000,retentionGraceMs=120000}={}){this.storage=storage;this.building=null;this.clock=clock;this.maxAgeMs=maxAgeMs;this.retentionGraceMs=retentionGraceMs;this.queue=Promise.resolve();}
  async put(key,value){guard(new TextEncoder().encode(JSON.stringify(value)).length<=128*1024,'DERIVED_VALUE_TOO_LARGE');return this.storage.put(key,value)}
  async active(){
   const ptr=await this.storage.get(ACTIVE);
@@ -40,7 +40,8 @@ export class PersistedReadStore{
   const names=groupsFor(rows,registry);let transferred=0,pageCount=0;const groupCounts={};
   const prefix=P+contentRevision+':';
   // No active pointer is written until *all* pages and view metrics are complete.
-  // Stale abandoned revisions remain unreachable; GC is a separate safe operation.
+  // Mark derived builds so abandoned partial generations can expire safely.
+  await this.put(prefix+'build',{createdAt:this.clock()});
   for(const name of names){
    const [market,variant,filter]=JSON.parse(name);
    const q={market,variant,filter,page:1,limit:50,rangeDays:'all'};
@@ -82,7 +83,7 @@ export class PersistedReadStore{
   const recentSettled=rows.filter(isSettled).sort((a,b)=>dateMs(b.settledAt??b.createdAt)-dateMs(a.settledAt??a.createdAt)).slice(0,4).map(projectLedgerRow);
   let summary={...model.summary,groupCounts,recentSettled};
   if(formulas?.aggregate){const daily=formulas.aggregate(rows);guard(daily&&daily.today&&daily.yesterday,'INVALID_DAILY_FORMULA');summary={...summary,daily};}
-  const manifest={generationKey:prefix+'manifest',contentRevision,asOf,sourceFingerprint,sourceRows:rows.length,views:names.length,pages:pageCount,storedProjectedBytes:transferred,summary,createdAt:Date.now()};
+  const manifest={generationKey:prefix+'manifest',contentRevision,asOf,sourceFingerprint,sourceRows:rows.length,views:names.length,pages:pageCount,storedProjectedBytes:transferred,summary,createdAt:this.clock()};
   // Only one active revision can be published; transaction also protects
   // against a concurrent higher-revision writer in another instance.
   await this.storage.transaction(async txn=>{
@@ -91,7 +92,30 @@ export class PersistedReadStore{
    await txn.put(manifest.generationKey,manifest);
    await txn.put(ACTIVE,manifest.generationKey);
   });
+  // Cleanup failure must not invalidate an already committed complete summary.
+  try{await this.pruneDerived(previous?.contentRevision)}catch(e){this.cleanupError=String(e.message||e)}
   return manifest;
+ }
+ async pruneDerived(previousRevision){
+  const current=await this.active();if(!current)return;
+  const eligible=new Map();let startAfter;
+  for(;;){
+   const entries=await this.storage.list({prefix:P,limit:32,...(startAfter?{startAfter}:{})});
+   if(!entries.size)break;
+   const remove=[];
+   for(const [key] of entries){
+    startAfter=key;const match=/^(\d+):/.exec(key.slice(P.length));if(!match)continue;
+    const revision=Number(match[1]);
+    if(revision>=current.contentRevision||revision===previousRevision)continue;
+    if(!eligible.has(revision)){
+     const meta=await this.storage.get(P+revision+':manifest')||await this.storage.get(P+revision+':build');
+     // Unknown old partial writes have no safe age evidence; preserve them.
+     eligible.set(revision,!!meta&&this.clock()-meta.createdAt>=this.retentionGraceMs);
+    }
+    if(eligible.get(revision))remove.push(key);
+   }
+   if(remove.length)await this.storage.delete(remove);
+  }
  }
  async summary(){
   const m=await this.active();

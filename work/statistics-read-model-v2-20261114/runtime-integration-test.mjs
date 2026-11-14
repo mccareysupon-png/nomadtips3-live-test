@@ -8,8 +8,9 @@ const clean=s=>s.replace(/^import .*?;\r?\n/gm,'');
 const model=await readFile(new URL('./read-model.mjs',import.meta.url),'utf8'),store=clean(await readFile(new URL('./persisted-read-store.mjs',import.meta.url),'utf8'));
 const worker=`import {DurableObject} from 'cloudflare:workers';\n${model}\n${store}\n
 export class ReviewStatisticsDO extends DurableObject{
- constructor(ctx,env){super(ctx,env);this.store=new PersistedReadStore(ctx.storage)}
+ constructor(ctx,env){super(ctx,env);this.ctx=ctx;this.store=new PersistedReadStore(ctx.storage,{retentionGraceMs:0})}
  async fetch(request){const u=new URL(request.url);if(u.pathname==='/__qa/publish'){const b=await request.json();try{return Response.json(await this.store.publish(b.rows,{contentRevision:b.revision,asOf:b.asOf}))}catch(e){return Response.json({error:e.message},{status:409})}}
+ if(u.pathname==='/__qa/retention')return Response.json({old:!!(await this.ctx.storage.get('b46:stat:read-v2:1:manifest')),previous:!!(await this.ctx.storage.get('b46:stat:read-v2:2:manifest')),current:!!(await this.ctx.storage.get('b46:stat:read-v2:3:manifest'))});
  if(u.pathname==='/summary')return Response.json(await this.store.summary());
  const r=await this.store.view({revision:Number(u.searchParams.get('revision')),rangeDays:Number(u.searchParams.get('days')||7),metric:u.searchParams.get('metric')||'units'});return Response.json(r,{status:r.status||200});
  }}
@@ -21,5 +22,6 @@ try{
  assert.equal((await post(rows,1)).status,200);let v=await(await w.fetch('https://test.invalid/view?revision=1&days=7')).json();assert(v.ok&&v.rows.length===50&&v.performance.unitPoints.length>0);
  const roi=await(await w.fetch('https://test.invalid/view?revision=1&days=7&metric=roi')).json();assert.equal(roi.performance.roiPoints.length,roi.performance.priced);
  assert.equal((await post(rows.slice(1),2)).status,200);assert.equal((await w.fetch('https://test.invalid/view?revision=1')).status,409);assert.equal((await(await w.fetch('https://test.invalid/summary')).json()).contentRevision,2);assert.equal(outbound,0);
- const result={ok:true,runtime:'Miniflare SQLite Durable Object',sourceRows:rows.length,checks:6,outbound,productionWrites:0};await writeFile(new URL('./qa/runtime-integration-result.json',import.meta.url),JSON.stringify(result,null,2));console.log(result);
+ assert.equal((await post(rows.slice(2),3)).status,200);assert.deepEqual(await(await w.fetch('https://test.invalid/__qa/retention')).json(),{old:false,previous:true,current:true});
+ const result={ok:true,runtime:'Miniflare SQLite Durable Object',sourceRows:rows.length,checks:8,outbound,productionWrites:0};await writeFile(new URL('./qa/runtime-integration-result.json',import.meta.url),JSON.stringify(result,null,2));console.log(result);
 }finally{await mf.dispose()}

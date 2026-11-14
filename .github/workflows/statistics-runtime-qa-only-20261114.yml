@@ -29,7 +29,7 @@ jobs:
         run: node work/statistics-read-model-v2-20261114/capture-ci-input.mjs
       - name: Revision and browser data contracts
         run: |
-          node --test --test-isolation=none work/statistics-read-model-v2-20261114/revision-performance-test.mjs work/statistics-read-model-v2-20261114/browser-runtime-test.mjs work/statistics-read-model-v2-20261114/homepage-adapter-test.mjs
+          node --test --test-isolation=none work/statistics-read-model-v2-20261114/revision-performance-test.mjs work/statistics-read-model-v2-20261114/browser-runtime-test.mjs work/statistics-read-model-v2-20261114/homepage-adapter-test.mjs work/statistics-read-model-v2-20261114/retention-test.mjs
           node work/statistics-read-model-v2-20261114/fast-client-test.mjs
       - name: Original financial formula parity on fresh real rows
         run: node work/statistics-read-model-v2-20261114/live-parity-test.mjs
