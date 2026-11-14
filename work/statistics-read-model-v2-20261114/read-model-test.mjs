@@ -32,6 +32,15 @@ test('Chart aggregates never change exact all-history net and preserve within-da
  for(const market of ['all','1x2','ah','ou','corners']){const data=model.query({market,rangeDays:'all'});assert(data.chart.every(x=>x.low<=x.close&&x.close<=x.high&&x.low<=x.open&&x.open<=x.high));if(data.chart.length)assert(Math.abs(data.chart.at(-1).close-data.metrics.net)<1e-6);}
 });
 test('Visible chart range does not alter complete market KPI and total count',()=>{const a=model.query({market:'ou',rangeDays:'all'}),b=model.query({market:'ou',rangeDays:30}),c=model.query({market:'ou',rangeDays:90});assert.equal(a.totalRows,b.totalRows);assert.equal(a.totalRows,c.totalRows);assert.deepEqual(a.metrics,b.metrics);assert.deepEqual(a.metrics,c.metrics);assert(b.chart.length<=c.chart.length&&c.chart.length<=a.chart.length)});
+test('30/90D financial chart restarts from zero without changing global statistics',()=>{
+ for(const days of [30,90]){
+  const v=model.query({rangeDays:days}),cut=Date.now()-days*86400000;
+  const filtered=rows.filter(r=>r.status==='SETTLED'&&dateMs(r.settledAt??r.createdAt)>=cut&&['WIN','LOSS','PUSH','HALF_WIN','HALF_LOSS'].includes(r.result));
+  const reference=filtered.reduce((z,r)=>z+(financial(r).priced?financial(r).profit:0),0);
+  assert(Math.abs((v.chart.at(-1)?.close||0)-reference)<1e-6);
+  assert.equal(v.metrics.ledgerTotal,rows.length);
+ }
+});
 test('Only the first 50 rows are transferred; subsequent pages retain original rows',()=>{const first=model.query(),second=model.query({page:2});assert.equal(first.rows.length,50);assert.equal(second.rows.length,50);assert(!first.rows.some(r=>second.rows.some(s=>s.id===r.id)));assert.equal(first.totalRows,rows.length);stats.completeResponseBytes=Buffer.byteLength(JSON.stringify(rows));stats.firstPageBytes=Buffer.byteLength(JSON.stringify(first));stats.transferReduction=1-stats.firstPageBytes/stats.completeResponseBytes;assert(stats.transferReduction>.90)});
 test('No partial snapshot or duplicate source can be published',()=>{assert.throws(()=>createReadModel([rows[0],rows[0]],{contentRevision:1}),/DUPLICATE/);assert.throws(()=>createReadModel(rows,{contentRevision:-1}),/REVISION/);assert.throws(()=>model.query({limit:101}),/PAGINATION/)});
 test('Immutable model does not depend on subsequent source array changes',()=>{const old=s.ledgerTotal;const removed=rows.pop();try{assert.equal(model.summary.ledgerTotal,old);assert.equal(model.query().totalRows,old)}finally{rows.push(removed)}});
