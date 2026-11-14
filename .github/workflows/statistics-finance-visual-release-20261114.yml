@@ -1,0 +1,36 @@
+name: BALL46 Finance chart VISUAL ONLY approved release
+on:
+  push:
+    branches: [test/ball46-statistics-runtime-isolated-20261114]
+    paths: ['.github/workflows/statistics-finance-visual-release-20261114.yml', 'work/statistics-finance-visual-release-20261114/**']
+permissions:
+  contents: read
+concurrency:
+  group: ball46-production-safe-visual-release
+  cancel-in-progress: false
+jobs:
+  visual-only:
+    if: contains(github.event.head_commit.message, '[owner-approved-finance-visual]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install browser verification tools
+        run: npm install --prefix work/statistics-read-model-v2-20261114/.runtime --no-audit --no-fund playwright@1.65.1 parse5@8.0.0
+      - run: work/statistics-read-model-v2-20261114/.runtime/node_modules/.bin/playwright install --with-deps chromium
+      - name: Deploy visual patch only after live candidate QA; rollback on failure
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: node work/statistics-finance-visual-release-20261114/deploy-visual.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: finance-visual-release-audit
+          path: work/statistics-finance-visual-release-20261114/audit/
+          if-no-files-found: ignore
+          retention-days: 14
