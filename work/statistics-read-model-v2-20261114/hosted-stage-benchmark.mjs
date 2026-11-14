@@ -39,6 +39,18 @@ try{
    await page.screenshot({path:D+'/qa/hosted-failure-'+profile.name+'.png',fullPage:false}).catch(()=>{});
    throw err;
   }
+  if(profile.name==='pc-ordinary-wan'){
+   const loadingDom=await page.evaluate(()=>{
+    const root=document.querySelector('[data-workspace-panel="statistics"]')||document;
+    const labels=[...root.querySelectorAll('*')].filter(e=>e.children.length===0&&/Loading statistics|Preparing recorded results|PREPARING VIEW/i.test(e.textContent||''));
+    return labels.slice(0,8).map(e=>{
+     const ancestry=[];let n=e;
+     for(let i=0;n&&i<6;i++,n=n.parentElement)ancestry.push({tag:n.tagName,cls:String(n.className||''),id:n.id||'',attributes:[...n.attributes].filter(x=>x.name.startsWith('data-')).map(x=>[x.name,x.value]),display:getComputedStyle(n).display,rect:{w:n.getBoundingClientRect().width,h:n.getBoundingClientRect().height},outer:n.outerHTML.slice(0,300)});
+     return {text:e.textContent?.trim().slice(0,110),ancestry};
+    });
+   });
+   console.log('HOSTED_NATIVE_LOADING_DOM '+JSON.stringify(loadingDom));
+  }
   const wallMs=performance.now()-started;
   const state=await page.evaluate(()=>{
    const panel=document.querySelector('[data-workspace-panel="statistics"]');
