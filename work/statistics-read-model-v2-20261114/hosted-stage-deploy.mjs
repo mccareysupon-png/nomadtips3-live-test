@@ -34,7 +34,7 @@ assert.deepEqual(required.marketCounts,local.summary.marketCounts);
 const require=createRequire(resolve(U+'/.runtime/resolve.cjs')),{build}=require('esbuild');
 await build({entryPoints:[R+'/hosted-stage-worker.mjs'],bundle:true,format:'esm',platform:'browser',external:['cloudflare:*'],loader:{'.txt':'text','.html':'text'},outfile:R+'/qa/hosted-worker.mjs'});
 const bundle=await readFile(R+'/qa/hosted-worker.mjs');
-const meta={main_module:'index.mjs',compatibility_date:'2026-08-06',bindings:[{type:'durable_object_namespace',name:'READ_MODEL',class_name:'StageReadDO'},{type:'plain_text',name:'STAGE_TOKEN',text:auth},{type:'plain_text',name:'STAGE_ID',text:stage}],migrations:{new_tag:'stage-'+process.env.GITHUB_RUN_ID,new_sqlite_classes:['StageReadDO']}};
+const meta={main_module:'index.mjs',compatibility_date:'2026-08-06',bindings:[{type:'durable_object_namespace',name:'READ_MODEL',class_name:'StageReadDO'},{type:'plain_text',name:'STAGE_TOKEN',text:auth},{type:'plain_text',name:'STAGE_ID',text:stage},{type:'service',name:'STATIC_SOURCE',service:'ball46-production'}],migrations:{new_tag:'stage-'+process.env.GITHUB_RUN_ID,new_sqlite_classes:['StageReadDO']}};
 const form=new FormData();form.set('metadata',new Blob([JSON.stringify(meta)],{type:'application/json'}));form.set('index.mjs',new Blob([bundle],{type:'application/javascript+module'}),'index.mjs');
 await cf('PUT','/workers/scripts/'+stage,form);
 await cf('POST','/workers/scripts/'+stage+'/subdomain',{enabled:true,previews_enabled:false});
