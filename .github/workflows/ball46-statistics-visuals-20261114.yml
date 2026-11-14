@@ -20,6 +20,7 @@ jobs:
           work/statistics-visual-release-20261114/.runtime/node_modules/.bin/playwright install --with-deps chromium
       - name: Fresh source, isolated candidate, visual QA and guarded activation
         env:
+          B46_VISUAL_CANDIDATE: 474dce9c-f809-4a8b-abda-2ada8063b9ef
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: node work/statistics-visual-release-20261114/release.mjs
       - uses: actions/upload-artifact@v4
