@@ -18,7 +18,7 @@ try{
   const readyMs=performance.now()-start;
   assert.equal(await p.locator('#history tr').count(),50);assert((await p.locator('#count').textContent()).includes('14,998'));
   assert((await p.locator('#state').textContent()).includes('revision 42'));
-  await p.locator('[data-market="ou"]').click();await p.waitForFunction(()=>document.body.dataset.ready==='1'&&document.querySelector('#count').textContent.includes('4,773'));
+  await p.locator('[data-market="ou"]').click();await p.waitForFunction(expected=>document.body.dataset.ready==='1'&&document.querySelector('#count').textContent.includes(expected),model.summary.marketCounts.ou.toLocaleString('en-US'));
   assert((await p.locator('#count').textContent()).includes(String(model.summary.marketCounts.ou.toLocaleString('en-US'))));
   await p.locator('#next').click();await p.waitForFunction(()=>document.body.dataset.ready==='1'&&document.querySelector('#pagerStatus').textContent.startsWith('Page 2'));
   assert.equal(await p.locator('#history tr').count(),50);
