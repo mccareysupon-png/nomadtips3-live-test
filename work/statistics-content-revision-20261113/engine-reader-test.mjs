@@ -1,6 +1,0 @@
-import assert from 'node:assert/strict';import {readEngine} from './engine-reader.mjs';
-const path='/statistics?'+new URLSearchParams({paged:'1',cursor:'stat:v2:row:abc',limit:'2000',generation:'7',consistency:'content-v1'}),calls=[];
-const owner={env:{ENGINE:{fetch:async request=>{const u=new URL(request.url);calls.push(u);return u.searchParams.get('limit')==='2000'?new Response('Resource limit',{status:500}):Response.json({ok:true,rows:[{id:'r'}],statisticsContentRevision:7})}}}};assert.equal((await readEngine(owner,path)).rows.length,1);assert.equal(calls.length,2);for(const u of calls){assert.equal(u.searchParams.get('cursor'),'stat:v2:row:abc');assert.equal(u.searchParams.get('generation'),'7');assert.equal(u.searchParams.get('consistency'),'content-v1')}await readEngine(owner,path);assert.equal(calls.length,3);assert.equal(calls[2].searchParams.get('limit'),'500');
-for(const code of[409,429]){let n=0;await assert.rejects(()=>readEngine({env:{ENGINE:{fetch:async()=>{n++;return new Response('',{status:code})}}}},path),code===409?/SOURCE_CHANGED/:/ENGINE_HTTP_429/);assert.equal(n,1)}
-await assert.rejects(()=>readEngine(owner,'/scan'),/READ_PATH_DENIED/);console.log('ENGINE_READER_TEST '+JSON.stringify({ok:true,checks:5,sameCursorAndRevision:true,no429Retry:true,providerRequests:0}));
-

@@ -5,7 +5,7 @@ const P='b46:stat:read-v2:',ACTIVE=P+'active';
 const guard=(ok,msg)=>{if(!ok)throw Error(msg)};
 const groupKey=(market,variant,filter)=>JSON.stringify([market,variant,filter]);
 const storageKey=(rev,kind,group='',page=null)=>P+rev+':'+kind+':'+encodeURIComponent(group)+(page===null?'':':'+page);
-const projection=r=>Object.fromEntries(['id','fixtureId','home','away','league','market','marketLabel','providerMarket','period','selection','pick','line','selectionLine','odds','bookmaker','selectedBookmaker','referee','createdAt','settledAt','status','result','settlementSource','entryMinute','signalEntryMinute','entryScore','entryCorners','entryCards','finalScore','finalCorners','finalCards','mirrorMinute','mirrorScore','scoreAt','minute'].filter(k=>r?.[k]!==undefined).map(k=>[k,r[k]]));
+export const projectLedgerRow=r=>Object.fromEntries(['id','fixtureId','home','away','league','market','marketLabel','providerMarket','period','selection','pick','line','selectionLine','odds','bookmaker','selectedBookmaker','referee','createdAt','settledAt','status','displayStatus','mirrorStatus','mirrorUpdatedAt','result','settlement','outcome','settlementSource','entryMinute','signalEntryMinute','entryScore','entryCorners','entryCards','finalScore','finalCorners','finalCards','mirrorMinute','mirrorScore','scoreAt','minute'].filter(k=>r?.[k]!==undefined).map(k=>[k,r[k]]));
 function groupsFor(rows,registry){
  const seen=new Set(['all','1x2','ah','ou','btts','corners','cards','other'].map(m=>groupKey(m,'all','all')));
  for(const row of rows){
@@ -15,7 +15,8 @@ function groupsFor(rows,registry){
  guard(seen.size<=10000,'TOO_MANY_VIEW_KEYS');return [...seen];
 }
 export class PersistedReadStore{
- constructor(storage){this.storage=storage;this.building=null;}
+ constructor(storage,{clock=()=>Date.now(),maxAgeMs=120000}={}){this.storage=storage;this.building=null;this.clock=clock;this.maxAgeMs=maxAgeMs;this.queue=Promise.resolve();}
+ async put(key,value){guard(new TextEncoder().encode(JSON.stringify(value)).length<=128*1024,'DERIVED_VALUE_TOO_LARGE');return this.storage.put(key,value)}
  async active(){
   const ptr=await this.storage.get(ACTIVE);
   if(!ptr)return null;
@@ -23,12 +24,14 @@ export class PersistedReadStore{
   guard(manifest&&manifest.generationKey===ptr,'ACTIVE_MANIFEST_MISSING');
   return manifest;
  }
- async publish(rows,{contentRevision,asOf,registry,formulas}={}){
-  if(this.building)return this.building;
-  const work=this.publishUnlocked(rows,{contentRevision,asOf,registry,formulas});this.building=work;
+ async publish(rows,{contentRevision,asOf,registry,formulas,sourceFingerprint}={}){
+  // Serialize distinct revisions; a later revision must never receive an earlier build.
+  const input=structuredClone(rows.map(projectLedgerRow)),opts={contentRevision,asOf,registry,formulas,sourceFingerprint};
+  const work=this.queue.catch(()=>{}).then(()=>this.publishUnlocked(input,opts));
+  this.queue=work;this.building=work;
   try{return await work}finally{if(this.building===work)this.building=null}
  }
- async publishUnlocked(rows,{contentRevision,asOf,registry,formulas}){
+ async publishUnlocked(rows,{contentRevision,asOf,registry,formulas,sourceFingerprint}){
   guard(Number.isSafeInteger(contentRevision)&&contentRevision>=0,'INVALID_SOURCE_REVISION');
   guard(Array.isArray(rows)&&rows.length<=100000,'SOURCE_ROW_BUDGET');
   const previous=await this.active();
@@ -44,17 +47,27 @@ export class PersistedReadStore{
    const initial=model.query(q);groupCounts[name]=initial.totalRows;
    const trendRows=[];let running=0;const view={
     contentRevision,totalRows:initial.totalRows,metrics:initial.metrics,
-    charts:{all:initial.chart,30:model.query({...q,rangeDays:30}).chart,90:model.query({...q,rangeDays:90}).chart},
+    charts:{},performance:{},
     pages:initial.pages,market,variant,filter
    };
-   await this.storage.put(storageKey(contentRevision,'view',name),view);
+   for(const rangeDays of ['all',7,30,90]){
+    const v=model.query({...q,rangeDays}),p=v.performance;
+    view.charts[String(rangeDays)]=v.chart;
+    const meta={...p,roiPoints:[],ratePoints:[],chunks:{}};
+    for(const metric of ['roiPoints','ratePoints']){
+     const chunks=Math.ceil(p[metric].length/250);meta.chunks[metric]=chunks;
+     for(let i=0;i<chunks;i++)await this.put(storageKey(contentRevision,'performance',name+':'+rangeDays+':'+metric,i),p[metric].slice(i*250,(i+1)*250));
+    }
+    view.performance[String(rangeDays)]=meta;
+   }
+   await this.put(storageKey(contentRevision,'view',name),view);
    for(let page=1;page<=initial.pages;page++){
     const pageData=page===1?initial:model.query({...q,page});
-    const projected=pageData.rows.map(projection);for(const row of projected)trendRows.push({result:row.result,status:row.status});
+    const projected=pageData.rows.map(projectLedgerRow);for(const row of projected)trendRows.push({result:row.result,status:row.status});
     guard(projected.length<=50,'PAGE_TOO_LARGE');
-    const encoded=JSON.stringify(projected);guard(encoded.length<1900000,'PAGE_STORAGE_LIMIT');
+    const encoded=JSON.stringify(projected);guard(new TextEncoder().encode(encoded).length<=128*1024,'PAGE_STORAGE_LIMIT');
     transferred+=encoded.length;
-    await this.storage.put(storageKey(contentRevision,'page',name,page),projected);
+    await this.put(storageKey(contentRevision,'page',name,page),projected);
     pageCount++;
    }
    // Original Statistics graph is outcome units (+1,+0.5,-1,-0.5,0), not bookmaker-price P/L.
@@ -64,11 +77,11 @@ export class PersistedReadStore{
    const stride=Math.max(1,Math.ceil(chronological.length/384));let y=0;
    for(let i=0;i<chronological.length;i++){y+=weights[chronological[i].result]??0;if(i%stride===0||i===chronological.length-1)curve.push({index:i,y});}
    view.curve=curve;view.curveFinal=y;
-   await this.storage.put(storageKey(contentRevision,'view',name),view);
+   await this.put(storageKey(contentRevision,'view',name),view);
   }
   let summary={...model.summary,groupCounts};
   if(formulas?.aggregate){const daily=formulas.aggregate(rows);guard(daily&&daily.today&&daily.yesterday,'INVALID_DAILY_FORMULA');summary={...summary,daily};}
-  const manifest={generationKey:prefix+'manifest',contentRevision,asOf,sourceRows:rows.length,views:names.length,pages:pageCount,storedProjectedBytes:transferred,summary,createdAt:Date.now()};
+  const manifest={generationKey:prefix+'manifest',contentRevision,asOf,sourceFingerprint,sourceRows:rows.length,views:names.length,pages:pageCount,storedProjectedBytes:transferred,summary,createdAt:Date.now()};
   // Only one active revision can be published; transaction also protects
   // against a concurrent higher-revision writer in another instance.
   await this.storage.transaction(async txn=>{
@@ -82,18 +95,33 @@ export class PersistedReadStore{
  async summary(){
   const m=await this.active();
   if(!m)return{ok:false,error:'SUMMARY_NOT_READY'};
-  return{...m.summary,ok:true,contentRevision:m.contentRevision,asOf:m.asOf,stale:false};
+  const observed=await this.storage.get(P+'observed');
+  const verifiedAt=observed?.revision===m.contentRevision?observed.at:dateMs(m.asOf);
+  const ageMs=Math.max(0,this.clock()-verifiedAt);
+  return{...m.summary,ok:true,contentRevision:m.contentRevision,asOf:m.asOf,verifiedAt,ageMs,stale:ageMs>this.maxAgeMs};
  }
- async view({market='all',variant='all',filter='all',page=1,limit=50,rangeDays='all',revision}={}){
+ async view({market='all',variant='all',filter='all',page=1,limit=50,rangeDays='all',metric='units',revision}={}){
   const m=await this.active();if(!m)return{status:503,error:'SUMMARY_NOT_READY'};
   const r=Number(revision);
   if(!Number.isSafeInteger(r)||r!==m.contentRevision)return{status:409,error:'REVISION_CHANGED',currentRevision:m.contentRevision};
-  if(!Number.isSafeInteger(page)||page<1||limit!==50||!['all',30,90].includes(rangeDays))return{status:400,error:'INVALID_VIEW_REQUEST'};
+  if(!Number.isSafeInteger(page)||page<1||limit!==50||!['all',7,30,90].includes(rangeDays)||!['units','roi','rate'].includes(metric))return{status:400,error:'INVALID_VIEW_REQUEST'};
   const group=groupKey(market,variant,filter),meta=await this.storage.get(storageKey(r,'view',group));
   if(!meta)return{status:400,error:'INVALID_MARKET_VARIANT_FILTER'};
+  if(!meta.performance?.[String(rangeDays)])return{status:503,error:'READ_MODEL_REBUILD_REQUIRED'};
   if(page>meta.pages)return{status:400,error:'PAGE_OUT_OF_RANGE'};
   const rows=await this.storage.get(storageKey(r,'page',group,page));
   guard(Array.isArray(rows)&&rows.length<=50,'PERSISTED_PAGE_MISSING');
-  return{ok:true,status:200,contentRevision:r,asOf:m.asOf,market,variant,filter,page,pageSize:50,totalRows:meta.totalRows,pages:meta.pages,metrics:meta.metrics,chart:meta.charts[String(rangeDays)],curve:meta.curve,curveFinal:meta.curveFinal,rangeDays,rows};
+  const performance=structuredClone(meta.performance[String(rangeDays)]);
+  if(metric!=='units'){
+   const field=metric==='roi'?'roiPoints':'ratePoints',points=[];
+   for(let i=0;i<performance.chunks[field];i++){
+    const chunk=await this.storage.get(storageKey(r,'performance',group+':'+rangeDays+':'+field,i));guard(Array.isArray(chunk),'PERFORMANCE_CHUNK_MISSING');points.push(...chunk);
+   }
+   performance[field]=points;
+  }
+  const observed=await this.storage.get(P+'observed');
+  const verifiedAt=observed?.revision===m.contentRevision?observed.at:dateMs(m.asOf);
+  const ageMs=Math.max(0,this.clock()-verifiedAt);
+  return{ok:true,status:200,performance,metric,verifiedAt,ageMs,stale:ageMs>this.maxAgeMs,contentRevision:r,asOf:m.asOf,market,variant,filter,page,pageSize:50,totalRows:meta.totalRows,pages:meta.pages,metrics:meta.metrics,chart:meta.charts[String(rangeDays)],curve:meta.curve,curveFinal:meta.curveFinal,rangeDays,rows};
  }
 }

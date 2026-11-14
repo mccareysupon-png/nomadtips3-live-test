@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import {readFile,writeFile,mkdir} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
+import {fileURLToPath} from 'node:url';
+import {resolve} from 'node:path';
+const browserRuntime=await readFile(new URL('./fast-browser-runtime.js',import.meta.url),'utf8');
 const DIR='work/statistics-summary-shadow-20261113/qa/ui-capture',OUT='work/statistics-read-model-v2-20261114/qa';
 const sha=b=>createHash('sha256').update(b).digest('hex');
 function once(source,before,after,label){assert.equal(source.split(before).length,2,'CURRENT_UI_DRIFT:'+label);return source.replace(before,()=>after)}
@@ -32,7 +35,7 @@ export function patchActualStatistics(workspace){
  w=region(w,'function renderKpis(rows){','function renderVariants(){',[
 "function renderKpis(){",
 " const m=stageView?.metrics;if(!m)return;",
-" const vals={total:m.settledTotal,unsettled:m.pending+m.unresolved,win:m.win+m.halfWin,loss:m.loss+m.halfLoss,push:m.push,rate:m.winRate==null?'—':m.winRate.toFixed(1)+'%',odds:m.avgOdds==null?'—':m.avgOdds.toFixed(2)};",
+" const vals={total:m.settledTotal,unsettled:m.pending+m.unresolved,'settled-days':stageSummary.settledDays,win:m.win+m.halfWin,loss:m.loss+m.halfLoss,push:m.push,rate:m.winRate==null?'—':m.winRate.toFixed(1)+'%',odds:m.avgOdds==null?'—':m.avgOdds.toFixed(2)};",
 " const titles={win:'WIN + HALF_WIN',loss:'LOSS + HALF_LOSS',rate:'(WIN + 0.5 × HALF_WIN) ÷ (WIN + LOSS + HALF_WIN + HALF_LOSS)'};",
 " for(const [k,v] of Object.entries(vals)){const el=$('[data-sp-kpi=\"'+k+'\"]');if(el){el.textContent=v;if(titles[k])el.title=titles[k]}}",
 "}",
@@ -49,31 +52,23 @@ export function patchActualStatistics(workspace){
  w=region(w,'function renderStats(){',"document.addEventListener('ball46:statistics-snapshot'",[
 "/* B46_ACTUAL_STATISTICS_STAGE: original markup and CSS, revision-pinned materialized read model. */",
 "let stageSummary=null,stageView=null,stageTicket=0;",
+"document.addEventListener('ball46:statistics-fast-refresh',()=>{if(state.view==='statistics')stageRefresh()});",
 "function renderStats(){return stageRefresh()}",
 "function loadStatistics(){return stageRefresh()}",
-"function stageMobileNav(){",
-" const panel=$('[data-workspace-panel=\"statistics\"]');if(!panel)return;",
-" let nav=panel.querySelector('[data-stage-mobile-markets]');",
-" if(window.innerWidth>680){if(nav)nav.hidden=true;return}",
-" if(!nav){nav=document.createElement('nav');nav.dataset.stageMobileMarkets='1';nav.setAttribute('aria-label','Statistics market filters');nav.className='b46-stage-mobile-market-nav';const content=panel.querySelector('.sp-stats-content');panel.insertBefore(nav,content||panel.firstChild)}",
-" nav.hidden=false;",
-" nav.innerHTML=MARKETS.map(m=>'<button type=\"button\" data-stage-select=\"'+m.id+'\" class=\"'+(state.market===m.id?'active':'')+'\">'+m.label+' · '+(stageSummary?.marketCounts?.[m.id]??0)+'</button>').join('');",
-" nav.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>setView('statistics',{market:b.dataset.stageSelect})));",
-"}",
 "function stagePaint(){",
 " if(!stageView||!stageSummary)return;",
 " const visible=$('[data-workspace-panel=\"statistics\"] .sp-stats-content');if(visible)visible.style.setProperty('display','block','important');",
-" renderStatNav();renderVariants();renderStatHeader();renderKpis();renderGraph();renderFilters();renderTable(stageView.rows);stageMobileNav();",
-" const st=$('[data-sp-feed-state]');if(st)st.textContent='Staging snapshot · '+stageView.totalRows+' records · '+stageSummary.pending+' pending';",
+" renderStatNav();renderVariants();renderStatHeader();renderKpis();renderGraph();renderFilters();renderTable(stageView.rows);window.BALL46_STATISTICS_FAST.acceptSummary(stageSummary);document.dispatchEvent(new CustomEvent('ball46:statistics-fast',{detail:{summary:stageSummary,view:stageView}}));",
+" const st=$('[data-sp-feed-state]');if(st)st.textContent='Updated · '+stageView.totalRows+' records · '+stageSummary.pending+' pending'+(stageSummary.stale?' · LAST VERIFIED DATA':'');",
 " const loader=$('[data-workspace-panel=\"statistics\"] .b46-stats-loader');if(loader){loader.hidden=true;loader.style.display='none';loader.setAttribute('aria-busy','false')}",
-" document.body.dataset.b46StageReady='1';document.body.dataset.b46StageRevision=String(stageSummary.contentRevision);",
+" document.body.dataset.b46StageReady='1';document.body.dataset.b46StageRevision=String(stageSummary.contentRevision);document.body.dataset.b46StatsSourceStale=String(!!stageSummary.stale);",
 " performance.mark('b46-real-ui-statistics-ready');",
 "}",
 "async function stageRefresh(){",
 " if(state.view!=='statistics')return;",
 " const ticket=++stageTicket;state.statsLoading=true;document.body.dataset.b46StageReady='0';",
 " try{for(let attempt=0;attempt<2;attempt++){",
-"  if(!stageSummary||attempt){const r=await fetch('/api/statistics/fast-summary',{cache:'no-store'});if(!r.ok)throw Error('Stage summary HTTP '+r.status);const data=await r.json();if(!data.ok||data.marketCounts?.all!==data.ledgerTotal||!Number.isSafeInteger(data.contentRevision))throw Error('Stage summary mismatch');stageSummary=data}",
+"  {const r=await fetch('/api/statistics/fast-summary',{cache:'no-store'});if(!r.ok)throw Error('Stage summary HTTP '+r.status);const data=await r.json();if(!data.ok||data.marketCounts?.all!==data.ledgerTotal||!Number.isSafeInteger(data.contentRevision))throw Error('Stage summary mismatch');stageSummary=data}",
 "  if(ticket!==stageTicket||state.view!=='statistics')return;",
 "  const q=new URLSearchParams({market:state.market,variant:state.variant,filter:state.filter,page:String(state.page),limit:'50',rangeDays:'all',revision:String(stageSummary.contentRevision)});",
 "  const r=await fetch('/api/statistics/fast-view?'+q,{cache:'no-store'});if(r.status===409){stageSummary=null;continue}",
@@ -87,17 +82,38 @@ export function patchActualStatistics(workspace){
 "}"
 ].join('\n'),'Connect actual Statistics UI to summary and on-demand view');
  w=region(w,"document.addEventListener('ball46:statistics-snapshot'","function init(){","/* No legacy full-history snapshot listener on stage. */",'Prevent old loader overwriting remote view');
+ w=once(w,"const boot=()=>{ensureCard();const api=window.BALL46_STATISTICS_DATA;if(api?.load)api.load().then(paint).catch(()=>{})};","const boot=()=>{ensureCard()};",'Do not boot hidden KPI full history');
  assert(w.includes('B46_ACTUAL_STATISTICS_STAGE'));
- return w;
+ return browserRuntime+'\n'+w;
 }
+if(process.argv[1]&&fileURLToPath(import.meta.url)===resolve(process.argv[1])){
 await mkdir(OUT,{recursive:true});
 const capture=JSON.parse(await readFile(DIR+'/capture.json','utf8'));
+assert(process.env.B46_VERIFIED_BASE_VERSION&&capture.activeVersion===process.env.B46_VERIFIED_BASE_VERSION,'VERIFIED_ACTIVE_BASE_REQUIRED');
 const entry=capture.files.find(f=>new URL(f.path,'https://test.invalid').pathname==='/singlepage-workspace-343.js');
 assert(entry,'WORKSPACE_CAPTURE_MISSING');
 const body=await readFile(DIR+'/files/'+entry.file);assert.equal(sha(body),entry.sha,'CAPTURE_HASH_DRIFT');
 const patched=patchActualStatistics(body.toString());await writeFile(OUT+'/real-workspace.txt',patched);
+const finance=capture.files.find(f=>new URL(f.path,'https://test.invalid').pathname==='/longterm-performance-343.js');assert(finance,'PERFORMANCE_CAPTURE_MISSING');
+const financeBody=await readFile(DIR+'/files/'+finance.file);assert.equal(sha(financeBody),finance.sha,'PERFORMANCE_CAPTURE_HASH_DRIFT');await writeFile(OUT+'/real-performance.txt',patchActualPerformance(financeBody.toString()));
 const html=await readFile(DIR+'/index.html','utf8');assert.equal(sha(html),capture.htmlSha);
 const stageCss='<style id="b46-stage-content-visibility">body[data-workspace-view="statistics"] [data-workspace-panel="statistics"] .sp-stats-content{display:block!important}.b46-stage-mobile-market-nav{display:none}@media(max-width:680px){.b46-stage-mobile-market-nav{display:flex!important;gap:6px;overflow-x:auto;margin:7px 4px;padding:4px 0 10px;scrollbar-width:thin}.b46-stage-mobile-market-nav button{background:#172820;color:#d7e9dd;border:1px solid #395f4a;border-radius:8px;font:12px system-ui;padding:8px 10px;white-space:nowrap}.b46-stage-mobile-market-nav button.active{background:#236e4a;color:white}}</style>';
 const decorated=html.replace('</head>','<meta name="robots" content="noindex,nofollow">'+stageCss+'<style id="b46-stage-watermark">body::before{content:"STATISTICS STAGING · NOT PRODUCTION";position:fixed;bottom:3px;right:4px;padding:4px 7px;z-index:2147483647;background:#243e32;color:#cefde7;font:10px system-ui;pointer-events:none}</style></head>');
 assert.notEqual(decorated,html);await writeFile(OUT+'/real-index.html',decorated);
 console.log('ACTUAL_UI_PATCH '+JSON.stringify({ok:true,originalHtmlSha:capture.htmlSha,originalWorkspaceSha:entry.sha,htmlBytes:Buffer.byteLength(decorated),patchedWorkspaceBytes:Buffer.byteLength(patched),cssUnchanged:true}));
+
+}
+
+export function patchActualPerformance(source){
+ let s=source;
+ s=region(s,'function filteredRows(){','function currentTitle(){',
+ "function filteredRows(){return []}\nfunction stats(){return fastPerformance||{rows:0,wins:0,losses:0,pushes:0,priced:0,net:0,stake:0,roi:null,avgOdds:null,maxDD:0,peak:0,bestRun:0,unitPoints:[],roiPoints:[],ratePoints:[]}}",'Use verified range metrics');
+ s=once(s,'let loading=null;',"let loading=null;let fastPerformance=null;let fastSeq=0;",'Range request state');
+ s=once(s,'function dailyUnitPoints(points){',"function dailyUnitPoints(points){if(points.every(p=>p.dayKey))return points;",'Preserve exact precomputed daily OHLC');
+ s=once(s,"range=b.dataset.b46Range||'all';b46UnitView={start:null,count:null,total:0};render()", "range=b.dataset.b46Range||'all';b46UnitView={start:null,count:null,total:0};load()",'Lazy selected range');
+ s=once(s,"metric=b.dataset.b46Mode||'units';render()", "metric=b.dataset.b46Mode||'units';load()",'Lazy selected metric');
+ s=region(s,'async function load(){','function active(){',
+ `async function load(){const ticket=++fastSeq;try{const f=routeFilter(),result=await window.BALL46_STATISTICS_FAST.open({...f,page:1,rangeDays:RANGE_DAYS[range]||'all',metric});if(ticket!==fastSeq||!active())return;if(String(result.summary.contentRevision)!==document.body.dataset.b46StageRevision){document.dispatchEvent(new CustomEvent('ball46:statistics-fast-refresh'));return}fastPerformance=result.view.performance;render();document.dispatchEvent(new CustomEvent('ball46:statistics-fast-chart-ready'))}catch(err){console.warn('[Ball46 performance]',err);const card=ensureCard();if(!fastPerformance&&card)card.querySelector('[data-b46-perf-shell]').textContent='Long-term performance temporarily unavailable.'}}\n`,'Remove legacy full-history chart load');
+ s=region(s,"document.addEventListener('ball46:statistics-snapshot'",'function refreshSoon(){',"document.addEventListener('ball46:statistics-fast',e=>{if(!active())return;if(range==='all'&&metric==='units'){fastPerformance=e.detail.view.performance;render();document.dispatchEvent(new CustomEvent('ball46:statistics-fast-chart-ready'))}else load()});\n",'Subscribe only to verified derived updates');
+ return s;
+}

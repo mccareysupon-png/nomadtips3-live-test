@@ -1,9 +1,0 @@
-document.addEventListener('DOMContentLoaded',()=>{
-  document.querySelectorAll('.day-tab').forEach(btn=>{
-    btn.addEventListener('click',()=>{
-      requestAnimationFrame(()=>requestAnimationFrame(()=>{
-        window.scrollTo({top:0,left:0,behavior:'smooth'});
-      }));
-    });
-  });
-});

@@ -1,6 +1,0 @@
-{
-  "ok": false,
-  "phase": "shadow",
-  "error": "AssertionError [ERR_ASSERTION]: UNEXPLAINED_RESOURCE_OR_API_FAILURE\n+ actual - expected\n\n+ [\n+   {\n+     bodyReadError: 'response.text: Target page, context or browser has been closed',\n+     path: '/api/engine/signals',\n+     status: 599,\n+     url: '/api/engine/signals?_=1793833143277'\n+   },\n+   {\n+     body: '{\"ok\":false,\"error\":\"VOTE_TEMPORARILY_UNAVAILABLE\"}',\n+     path: '/api/prediction-vote',\n+     status: 503,\n+     url: '/api/prediction-vote?fixtureId=204054299'\n+   }\n+ ]\n- []\n\n    at file:///home/runner/work/nomadtips3-live-test/nomadtips3-live-test/work/member-promo-sharp-20261104/release-browser.mjs:57:36",
-  "results": []
-}
