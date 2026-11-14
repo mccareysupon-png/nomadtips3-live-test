@@ -56,7 +56,13 @@ try{
   assert.equal(state.revision,String(stage.revision));
   assert.equal(state.menuCount,String(stage.sourceRows));
   const clicks={};
-  await page.locator('[data-stat-market="ou"]').click();
+  const chooseMarket=async m=>{
+   const selector='[data-stat-market="'+m+'"]',node=page.locator(selector).first();
+   if(await node.isVisible()){await node.click();return'visible-click'}
+   await page.evaluate(sel=>document.querySelector(sel)?.click(),selector);
+   return'hidden-sidebar-event';
+  };
+  clicks.marketNavigation=await chooseMarket('ou');
   await page.waitForFunction(()=>document.body.dataset.b46StageReady==='1'&&document.querySelector('[data-sp-market-title]')?.textContent.includes('Over'),{timeout:30000});
   clicks.ouRows=await page.locator('[data-sp-table-body] tr').count();
   assert.equal(clicks.ouRows,50);
@@ -70,13 +76,14 @@ try{
   }else{
    const pager=await page.evaluate(()=>{
     const e=document.querySelector('[data-sp-pager]');
-    return {outer:e?.outerHTML?.slice(0,1000),parent:e?.parentElement?.outerHTML?.slice(0,500),display:e?getComputedStyle(e).display:null,hidden:e?.hidden,rect:e?.getBoundingClientRect()?.toJSON()};
+    const ancestors=[];let n=e;for(let i=0;n&&i<8;i++,n=n.parentElement)ancestors.push({tag:n.tagName,cls:n.className,hidden:n.hidden,style:getComputedStyle(n).display,rect:n.getBoundingClientRect().width+'x'+n.getBoundingClientRect().height});
+    return {outer:e?.outerHTML?.slice(0,1000),parent:e?.parentElement?.outerHTML?.slice(0,500),display:e?getComputedStyle(e).display:null,hidden:e?.hidden,rect:e?.getBoundingClientRect()?.toJSON(),ancestors};
    });
    clicks.pagination='not-visible-in-original-ui';
    clicks.pagerDiagnostic=pager;
    console.log('HOSTED_REAL_UI_PAGER_DIAGNOSTIC '+JSON.stringify({profile:profile.name,pager}));
   }
-  await page.locator('[data-stat-market="all"]').click();
+  clicks.returnNavigation=await chooseMarket('all');
   await page.waitForFunction(()=>document.body.dataset.b46StageReady==='1'&&document.querySelector('[data-sp-market-title]')?.textContent.includes('Total'),{timeout:30000});
   assert.equal(await page.locator('[data-sp-table-body] tr').count(),50);
   await page.screenshot({path:D+'/qa/hosted-real-ui-'+profile.name+'.png',fullPage:false,timeout:10000});
