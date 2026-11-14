@@ -60,6 +60,10 @@ jobs:
           work/statistics-summary-shadow-20261113/.runtime/node_modules/.bin/playwright install --with-deps chromium
       - name: Re-run recorded-data Engine / Summary / actual Website PC and Mobile parity
         run: node work/statistics-content-revision-20261113/browser.mjs
+      - name: Verify responsive first-page read-model UI in isolated Chromium
+        run: |
+          mkdir -p work/statistics-read-model-v2-20261114/qa
+          node work/statistics-read-model-v2-20261114/preview-browser.mjs
       - name: Upload test evidence only (NO deployment steps)
         if: always()
         uses: actions/upload-artifact@v4
