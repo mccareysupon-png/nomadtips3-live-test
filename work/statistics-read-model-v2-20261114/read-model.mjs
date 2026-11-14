@@ -31,7 +31,7 @@ export function createReadModel(source,{contentRevision,asOf,registry=null,now=D
  const marketCounts=Object.fromEntries(GROUPS.map(k=>[k,k==='all'?rows.length:views.get(key(k))?.metrics.ledgerTotal||0]));
  if(Object.values(marketCounts).slice(1).reduce((a,b)=>a+b,0)!==rows.length)throw Error('MARKET_PARTITION_MISMATCH');
  const summary=Object.freeze({ok:true,contentRevision,asOf,ledgerTotal:rows.length,marketCounts,...global.metrics});
- function query({market='all',variant='all',filter='all',page=1,limit=50,rangeDays=null}={}){
+ function query({market='all',variant='all',filter='all',page=1,limit=50,rangeDays='all'}={}){
   if(!GROUPS.includes(market))throw Error('INVALID_MARKET');
   if(!Number.isSafeInteger(page)||page<1||!Number.isSafeInteger(limit)||limit<1||limit>100)throw Error('INVALID_PAGINATION');
   if(!['all',30,90].includes(rangeDays))throw Error('INVALID_RANGE');
