@@ -46,9 +46,10 @@ try{
    const table=document.querySelectorAll('[data-sp-table-body] tr');
    const marks=performance.getEntriesByName('b46-real-ui-statistics-ready');
    const requests=performance.getEntriesByType('resource').filter(r=>r.name.includes('/api/statistics/')).map(r=>({name:new URL(r.name).pathname,duration:r.duration,transferSize:r.transferSize,decodedBodySize:r.decodedBodySize}));
-   return {markMs:marks.at(-1)?.startTime??null,panelPresent:!!panel,panelVisible:!!panel&&!panel.hidden,tableRows:table.length,tableFields:table[0]?.children.length||0,menuCount:nav?.textContent,marketTitle:document.querySelector('[data-sp-market-title]')?.textContent||'',feed:document.querySelector('[data-sp-feed-state]')?.textContent||'',revision:document.body.dataset.b46StageRevision,cssLoaded:[...document.styleSheets].length,resources:requests};
+   const body=document.querySelector('[data-workspace-panel="statistics"] .sp-stats-content');const results=body?.querySelector('.sp-results');
+   return {markMs:marks.at(-1)?.startTime??null,panelPresent:!!panel,panelVisible:!!panel&&!panel.hidden,bodyVisible:!!body&&getComputedStyle(body).display!=='none'&&body.getBoundingClientRect().height>0,resultsVisible:!!results&&results.getBoundingClientRect().height>0,tableRows:table.length,tableFields:table[0]?.children.length||0,menuCount:nav?.textContent,marketTitle:document.querySelector('[data-sp-market-title]')?.textContent||'',feed:document.querySelector('[data-sp-feed-state]')?.textContent||'',revision:document.body.dataset.b46StageRevision,cssLoaded:[...document.styleSheets].length,resources:requests};
   });
-  assert(state.panelPresent&&state.panelVisible,'CURRENT_STATISTICS_PANEL_NOT_VISIBLE');
+  assert(state.panelPresent&&state.panelVisible&&state.bodyVisible&&state.resultsVisible,'CURRENT_STATISTICS_CONTENT_NOT_VISIBLE:'+JSON.stringify(state).slice(0,500));
   assert.equal(state.tableRows,50,'NATIVE_TABLE_NOT_FIRST_50');
   assert(state.tableFields>=8,'NATIVE_TABLE_COLUMNS_MISSING');
   assert(state.cssLoaded>0,'ORIGINAL_STYLESHEETS_MISSING');
@@ -57,6 +58,7 @@ try{
   assert.equal(state.menuCount,String(stage.sourceRows));
   const clicks={};
   const chooseMarket=async m=>{
+   const mobile=page.locator('[data-stage-mobile-markets] [data-stage-select="'+m+'"]');if(await mobile.count()&&await mobile.isVisible()){await mobile.click();return'visible-mobile-market-chip'}
    const selector='[data-stat-market="'+m+'"]',node=page.locator(selector).first();
    if(await node.isVisible()){await node.click();return'visible-click'}
    await page.evaluate(sel=>document.querySelector(sel)?.click(),selector);
@@ -65,7 +67,7 @@ try{
   clicks.marketNavigation=await chooseMarket('ou');
   await page.waitForFunction(()=>document.body.dataset.b46StageReady==='1'&&document.querySelector('[data-sp-market-title]')?.textContent.includes('Over'),{timeout:30000});
   clicks.ouRows=await page.locator('[data-sp-table-body] tr').count();
-  assert.equal(clicks.ouRows,50);
+  assert.equal(clicks.ouRows,50);assert(await page.locator('.sp-stats-content').isVisible(),'STATS_CONTENT_NOT_VISIBLE_AFTER_MARKET');
   const count=await page.locator('[data-sp-record-count]').textContent();
   clicks.ouCount=count;
   const page2=page.locator('[data-sp-pager] [data-sp-page="2"]').first();
