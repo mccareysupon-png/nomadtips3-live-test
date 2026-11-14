@@ -5,7 +5,7 @@ import {createReadModel,financial,selectionOf,familyOf,dateMs} from './read-mode
 import {formulas,registry} from '../statistics-summary-shadow-20261113/generated-summary-formulas.mjs';
 const U='work/statistics-summary-shadow-20261113',D='work/statistics-read-model-v2-20261114';
 const recorded=JSON.parse(await readFile(U+'/reference/ui-proof/qa/verified-full-ledger.json','utf8'));
-const financeText=await readFile(U+'/reference/longterm-performance-343.js','utf8');const formulaLine=financeText.match(/function settlement\\(r\\)\\{[^\\n]+/);assert(formulaLine,'REFERENCE_FORMULA_MISSING');const financialReference=new Function('outcome','num',formulaLine[0]+';return settlement')(r=>String(r.result||'').toUpperCase(),v=>v==null||v===''?null:Number.isFinite(Number(v))?Number(v):null);
+const financeText=await readFile(U+'/reference/longterm-performance-343.js','utf8');const formulaLine=financeText.match(/function settlement\(r\)\{[^\n]+/);assert(formulaLine,'REFERENCE_FORMULA_MISSING');const financialReference=new Function('outcome','num',formulaLine[0]+';return settlement')(r=>String(r.result||'').toUpperCase(),v=>v==null||v===''?null:Number.isFinite(Number(v))?Number(v):null);
 const rows=recorded.rows,proofs=[],stats={ok:false,sourceRows:rows.length,providerRequests:0,productionWrites:0};
 function test(name,fn){fn();proofs.push(name)}
 const st=performance.now(),model=createReadModel(rows,{contentRevision:17,asOf:recorded.asOf,registry,now:Date.now()});
