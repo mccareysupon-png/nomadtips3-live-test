@@ -51,9 +51,18 @@ export function patchActualStatistics(workspace){
 "let stageSummary=null,stageView=null,stageTicket=0;",
 "function renderStats(){return stageRefresh()}",
 "function loadStatistics(){return stageRefresh()}",
+"function stageMobileNav(){",
+" const panel=$('[data-workspace-panel=\"statistics\"]');if(!panel)return;",
+" let nav=panel.querySelector('[data-stage-mobile-markets]');",
+" if(window.innerWidth>680){if(nav)nav.hidden=true;return}",
+" if(!nav){nav=document.createElement('nav');nav.dataset.stageMobileMarkets='1';nav.setAttribute('aria-label','Statistics market filters');nav.className='b46-stage-mobile-market-nav';const content=panel.querySelector('.sp-stats-content');panel.insertBefore(nav,content||panel.firstChild)}",
+" nav.hidden=false;",
+" nav.innerHTML=MARKETS.map(m=>'<button type=\"button\" data-stage-select=\"'+m.id+'\" class=\"'+(state.market===m.id?'active':'')+'\">'+m.label+' · '+(stageSummary?.marketCounts?.[m.id]??0)+'</button>').join('');",
+" nav.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>setView('statistics',{market:b.dataset.stageSelect})));",
+"}",
 "function stagePaint(){",
 " if(!stageView||!stageSummary)return;",
-" renderStatNav();renderVariants();renderStatHeader();renderKpis();renderGraph();renderFilters();renderTable(stageView.rows);",
+" renderStatNav();renderVariants();renderStatHeader();renderKpis();renderGraph();renderFilters();renderTable(stageView.rows);stageMobileNav();",
 " const st=$('[data-sp-feed-state]');if(st)st.textContent='Staging snapshot · '+stageView.totalRows+' records · '+stageSummary.pending+' pending';",
 " document.body.dataset.b46StageReady='1';document.body.dataset.b46StageRevision=String(stageSummary.contentRevision);",
 " performance.mark('b46-real-ui-statistics-ready');",
@@ -86,6 +95,7 @@ assert(entry,'WORKSPACE_CAPTURE_MISSING');
 const body=await readFile(DIR+'/files/'+entry.file);assert.equal(sha(body),entry.sha,'CAPTURE_HASH_DRIFT');
 const patched=patchActualStatistics(body.toString());await writeFile(OUT+'/real-workspace.txt',patched);
 const html=await readFile(DIR+'/index.html','utf8');assert.equal(sha(html),capture.htmlSha);
-const decorated=html.replace('</head>','<meta name="robots" content="noindex,nofollow"><style id="b46-stage-watermark">body::before{content:"STATISTICS STAGING · NOT PRODUCTION";position:fixed;bottom:3px;right:4px;padding:4px 7px;z-index:2147483647;background:#243e32;color:#cefde7;font:10px system-ui;pointer-events:none}</style></head>');
+const stageCss='<style id="b46-stage-content-visibility">body[data-workspace-view="statistics"] [data-workspace-panel="statistics"] .sp-stats-content{display:block!important}.b46-stage-mobile-market-nav{display:none}@media(max-width:680px){.b46-stage-mobile-market-nav{display:flex!important;gap:6px;overflow-x:auto;margin:7px 4px;padding:4px 0 10px;scrollbar-width:thin}.b46-stage-mobile-market-nav button{background:#172820;color:#d7e9dd;border:1px solid #395f4a;border-radius:8px;font:12px system-ui;padding:8px 10px;white-space:nowrap}.b46-stage-mobile-market-nav button.active{background:#236e4a;color:white}}</style>';
+const decorated=html.replace('</head>','<meta name="robots" content="noindex,nofollow">'+stageCss+'<style id="b46-stage-watermark">body::before{content:"STATISTICS STAGING · NOT PRODUCTION";position:fixed;bottom:3px;right:4px;padding:4px 7px;z-index:2147483647;background:#243e32;color:#cefde7;font:10px system-ui;pointer-events:none}</style></head>');
 assert.notEqual(decorated,html);await writeFile(OUT+'/real-index.html',decorated);
 console.log('ACTUAL_UI_PATCH '+JSON.stringify({ok:true,originalHtmlSha:capture.htmlSha,originalWorkspaceSha:entry.sha,htmlBytes:Buffer.byteLength(decorated),patchedWorkspaceBytes:Buffer.byteLength(patched),cssUnchanged:true}));
