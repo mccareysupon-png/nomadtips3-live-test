@@ -1,0 +1,26 @@
+/* Statistics Result live clock only. Settled result pills remain untouched. */
+html:root:has(#b46-statistics-visual-release-20261029) body[data-workspace-view="statistics"] .workspace.singlepage .sp-stats-content
+.sp-results[data-b46-stat-columns] .b46-sc-result.b46-sc-live{
+ --b46sc-live-clock-red:#ff5364;
+ --b46sc-green:var(--b46sc-live-clock-red);
+ --b46sc-pill:transparent;
+ color:var(--b46sc-live-clock-red)!important;
+ background:transparent!important;
+ background-image:none!important;
+ border-color:transparent!important;
+ box-shadow:none!important;
+}
+html:root[data-theme="light"]:has(#b46-statistics-visual-release-20261029) body[data-workspace-view="statistics"] .workspace.singlepage .sp-stats-content
+.sp-results[data-b46-stat-columns] .b46-sc-result.b46-sc-live{
+ --b46sc-live-clock-red:#cf2238;
+}
+html:root:has(#b46-statistics-visual-release-20261029) body[data-workspace-view="statistics"] .workspace.singlepage .sp-stats-content
+.sp-results[data-b46-stat-columns] .b46-sc-result.b46-sc-live > span,
+html:root:has(#b46-statistics-visual-release-20261029) body[data-workspace-view="statistics"] .workspace.singlepage .sp-stats-content
+.sp-results[data-b46-stat-columns] .b46-sc-result.b46-sc-live .b46-sc-mark{
+ color:var(--b46sc-live-clock-red)!important;
+}
+html:root:has(#b46-statistics-visual-release-20261029) body[data-workspace-view="statistics"] .workspace.singlepage .sp-stats-content
+.sp-results[data-b46-stat-columns] .b46-sc-result.b46-sc-live .b46-sc-dot{
+ background:var(--b46sc-live-clock-red)!important;
+}
