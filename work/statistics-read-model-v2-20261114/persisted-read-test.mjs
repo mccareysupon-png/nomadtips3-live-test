@@ -1,0 +1,54 @@
+import assert from 'node:assert/strict';
+import {readFile,writeFile,mkdir} from 'node:fs/promises';
+import {performance} from 'node:perf_hooks';
+import {PersistedReadStore} from './persisted-read-store.mjs';
+import {TestDurableStorage} from './test-storage.mjs';
+import {financial,familyOf} from './read-model.mjs';
+import {formulas,registry} from '../statistics-summary-shadow-20261113/generated-summary-formulas.mjs';
+const D='work/statistics-read-model-v2-20261114',recorded=JSON.parse(await readFile('work/statistics-summary-shadow-20261113/reference/ui-proof/qa/verified-full-ledger.json','utf8'));
+const rows=recorded.rows,storage=new TestDurableStorage(),store=new PersistedReadStore(storage);
+const begin=performance.now(),first=await store.publish(rows,{contentRevision:100,asOf:recorded.asOf,registry,formulas}),publishMs=performance.now()-begin;
+assert.equal(first.sourceRows,rows.length);
+assert.equal(first.contentRevision,100);
+assert.equal(first.summary.ledgerTotal,rows.length);
+assert.deepEqual(first.summary.daily,formulas.aggregate(rows));
+assert.equal(first.summary.marketCounts.all,rows.length);
+for(const k of ['win','loss','push','halfWin','halfLoss','settledTotal','pending','unresolved'])assert.equal(first.summary[k],recorded.meta[k],k);
+const restarted=new PersistedReadStore(storage),summary=await restarted.summary();assert(summary.ok);assert.equal(summary.contentRevision,100);assert.equal(summary.ledgerTotal,rows.length);
+const views=[];let pageBytes=0,reads=[];
+for(const market of ['all','1x2','ah','ou','btts','corners','cards','other']){
+ const before=storage.reads,one=await restarted.view({revision:100,market}),delta=storage.reads-before;
+ assert(one.ok);assert.equal(one.rows.length,Math.min(50,first.summary.marketCounts[market]));
+ assert.equal(one.totalRows,first.summary.marketCounts[market]);
+ assert.equal(one.metrics.ledgerTotal,one.totalRows);
+ assert(delta<=4,'READ_APPLIED_FULL_LEDGER');
+ assert(one.rows.every(r=>r.id&&r.market&&r.status));
+ pageBytes=Math.max(pageBytes,Buffer.byteLength(JSON.stringify(one)));reads.push(delta);
+ views.push({market,count:one.totalRows,pageBytes:Buffer.byteLength(JSON.stringify(one)),reads:delta});
+}
+for(const rangeDays of [30,90]){
+ const v=await restarted.view({revision:100,rangeDays});
+ assert(v.ok);assert(Array.isArray(v.chart));assert.equal(v.totalRows,rows.length);
+ const subset=rows.filter(r=>r.status==='SETTLED'&&['WIN','LOSS','PUSH','HALF_WIN','HALF_LOSS'].includes(r.result)&&Number(r.settledAt??r.createdAt)>=recorded.asOf-rangeDays*86400000);
+ const net=subset.reduce((n,r)=>n+(financial(r).priced?financial(r).profit:0),0);
+ assert(Math.abs((v.chart.at(-1)?.close||0)-net)<1e-5,'CHART_RANGE_MISMATCH:'+rangeDays);
+}
+const allFirst=await restarted.view({revision:100}),allSecond=await restarted.view({revision:100,page:2});
+assert.equal(allFirst.rows.length,50);assert.equal(allSecond.rows.length,50);
+assert.equal(new Set([...allFirst.rows,...allSecond.rows].map(x=>x.id)).size,100);
+assert.deepEqual(await restarted.view({revision:100,market:'other',page:1,rangeDays:90}).then(x=>x.rows.length),Math.min(50,summary.marketCounts.other));
+assert.equal((await restarted.view({revision:99})).status,409);
+assert.equal((await restarted.view({revision:100,page:999999})).status,400);
+const copy=rows.slice(0,1000),t2=performance.now(),second=await store.publish(copy,{contentRevision:101,asOf:recorded.asOf+1,registry,formulas}),rebuildMs=performance.now()-t2;
+assert.equal((await restarted.summary()).contentRevision,101);
+assert.equal((await restarted.view({revision:100})).status,409);
+assert.equal((await restarted.view({revision:101})).totalRows,1000);
+assert.notEqual(first.generationKey,second.generationKey);
+const at=storage.writes;storage.failAfter=at+7;
+await assert.rejects(()=>store.publish(rows,{contentRevision:102,asOf:recorded.asOf+2,registry,formulas}),/STORAGE_WRITE_TEST_FAULT/);
+storage.failAfter=Infinity;
+assert.equal((await restarted.summary()).contentRevision,101);
+assert.equal((await restarted.view({revision:101})).totalRows,1000);
+await assert.rejects(()=>store.publish(copy,{contentRevision:101,asOf:recorded.asOf+2,registry,formulas}),/NON_MONOTONIC/);
+const report={ok:true,checks:21,recordedRows:rows.length,publishMs,rebuildMs,viewReadMax:Math.max(...reads),storedPageCount:first.pages,groups:first.views,storedProjectionBytes:first.storedProjectedBytes,fullPayloadBytes:Buffer.byteLength(JSON.stringify(rows)),firstPageBytes:Buffer.byteLength(JSON.stringify(allFirst)),maxViewBytes:pageBytes,viewCases:views,productionWrites:0,providerRequests:0,validation:['exact ledger meta and every market family','original London daily formulas','30/90 day financial net','restart persistence','revision conflict 409','previous generation unchanged on simulated write failure','no read of full Ledger for view']};
+await mkdir(D+'/qa',{recursive:true});await writeFile(D+'/qa/persisted-stage.json',JSON.stringify(report,null,2));console.log('PERSISTED_STATISTICS_STAGE '+JSON.stringify(report));
