@@ -7,7 +7,7 @@ const groupKey=(market,variant,filter)=>JSON.stringify([market,variant,filter]);
 const storageKey=(rev,kind,group='',page=null)=>P+rev+':'+kind+':'+encodeURIComponent(group)+(page===null?'':':'+page);
 const projection=r=>Object.fromEntries(['id','fixtureId','home','away','league','market','marketLabel','providerMarket','period','selection','line','selectionLine','odds','bookmaker','createdAt','settledAt','status','result','entryScore','finalScore','finalCorners','finalCards'].filter(k=>r?.[k]!==undefined).map(k=>[k,r[k]]));
 function groupsFor(rows,registry){
- const seen=new Set([groupKey('all','all','all')]);
+ const seen=new Set(['all','1x2','ah','ou','btts','corners','cards','other'].map(m=>groupKey(m,'all','all')));
  for(const row of rows){
   const m=familyOf(row,registry),v=registry?.resolve?.(row)?.key||'other',f=selectionOf(row);
   for(const key of [groupKey(m,'all','all'),groupKey(m,v,'all'),groupKey(m,'all',f),groupKey(m,v,f)])seen.add(key);
