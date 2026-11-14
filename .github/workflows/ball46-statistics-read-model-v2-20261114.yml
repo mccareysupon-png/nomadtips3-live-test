@@ -1,0 +1,61 @@
+name: BALL46 Statistics read model V2 — isolated test only
+on:
+  push:
+    branches: [test/ball46-statistics-read-model-v2-20261114]
+    paths:
+      - 'work/statistics-read-model-v2-20261114/**'
+      - '.github/workflows/ball46-statistics-read-model-v2-20261114.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  read-model-and-browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Pin current source via Cloudflare control plane GET only
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: node work/statistics-summary-shadow-20261113/fresh-source.mjs
+      - name: Load verified, previously recorded ledger (NO Production Ledger reads)
+        uses: actions/download-artifact@v4
+        with:
+          name: ball46-statistics-shadow-proof
+          run-id: 43373832113
+          github-token: ${{ github.token }}
+          path: work/statistics-summary-shadow-20261113/reference/ui-proof
+      - name: Capture read-only existing Website assets and build untouched formula reference
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          node work/statistics-summary-shadow-20261113/capture-ui.mjs
+          cp -r work/statistics-summary-shadow-20261113/qa/ui-capture/. work/statistics-summary-shadow-20261113/reference/ui-proof/qa/ui-capture/
+          node work/statistics-summary-shadow-20261113/build-summary-formulas.mjs
+      - name: Verify formula parity, precomputed market indexes and first 50-row transfer
+        run: node work/statistics-read-model-v2-20261114/read-model-test.mjs
+      - name: Verify prior immutable snapshot and monotonic revision contracts
+        run: |
+          node work/statistics-content-revision-20261113/build-engine.mjs
+          node work/statistics-content-revision-20261113/prepare-summary.mjs
+          node work/statistics-content-revision-20261113/revision-test.mjs
+          node work/statistics-content-revision-20261113/snapshot-test.mjs
+      - name: Install isolated local browser runtime
+        run: |
+          npm install --prefix work/statistics-summary-shadow-20261113/.runtime --no-save --package-lock=false --no-audit --no-fund miniflare esbuild playwright@1.56.1
+          work/statistics-summary-shadow-20261113/.runtime/node_modules/.bin/playwright install --with-deps chromium
+      - name: Re-run recorded-data Engine / Summary / actual Website PC and Mobile parity
+        run: node work/statistics-content-revision-20261113/browser.mjs
+      - name: Upload test evidence only (NO deployment steps)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-statistics-read-model-v2-proof
+          path: |
+            work/statistics-read-model-v2-20261114/qa/
+            work/statistics-content-revision-20261113/qa/
+            work/statistics-summary-shadow-20261113/source/active.json
