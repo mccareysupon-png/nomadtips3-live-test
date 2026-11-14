@@ -23,6 +23,8 @@ jobs:
         run: |
           node --check work/statistics-read-model-v2-20261114/read-model.mjs
           node --check work/statistics-read-model-v2-20261114/read-model-test.mjs
+          node --check work/statistics-read-model-v2-20261114/fast-client.mjs
+          node --check work/statistics-read-model-v2-20261114/fast-client-test.mjs
       - name: Pin current source via Cloudflare control plane GET only
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -42,7 +44,9 @@ jobs:
           cp -r work/statistics-summary-shadow-20261113/qa/ui-capture/. work/statistics-summary-shadow-20261113/reference/ui-proof/qa/ui-capture/
           node work/statistics-summary-shadow-20261113/build-summary-formulas.mjs
       - name: Verify formula parity, precomputed market indexes and first 50-row transfer
-        run: node work/statistics-read-model-v2-20261114/read-model-test.mjs
+        run: |
+          node work/statistics-read-model-v2-20261114/read-model-test.mjs
+          node work/statistics-read-model-v2-20261114/fast-client-test.mjs
       - name: Verify prior immutable snapshot and monotonic revision contracts
         run: |
           node work/statistics-content-revision-20261113/build-engine.mjs
