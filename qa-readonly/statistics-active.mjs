@@ -12,4 +12,9 @@ for(const w of ['ball46-production','nomadtips3-engine-343']){
  out.workers[w]={version,deployment:d.id,main:v.main_module,assets:v.assets,modules,bindings:(settings.bindings||[]).map(b=>({name:b.name,type:b.type,service:b.service,class_name:b.class_name})),configurationSha:sha(JSON.stringify(settings)),cron};
  const after=(await get(p+'/deployments?per_page=1')).deployments[0];assert(after.versions.length===1&&after.versions[0].version_id===version,'CONCURRENT_DEPLOY');
 }
+assert.equal(out.workers['ball46-production'].version,'488bb408-fec7-4620-aa63-5e1078904d33','WEBSITE_NOT_BASELINE');
+assert.equal(out.workers['nomadtips3-engine-343'].version,'02e09215-02b1-47fb-b1cf-9423f50c7ce9','ENGINE_ROLLBACK_NOT_CONFIRMED');
+out.publicChecks=[];
+for(const path of ['/','/api/engine/health','/api/hub/snapshot']){const r=await fetch('https://ball46.com'+path,{signal:AbortSignal.timeout(30000)});assert.equal(r.status,200,'RESTORED_PUBLIC_HTTP:'+path);let data;if(path.startsWith('/api/')){data=await r.json();assert(data.ok===true,'RESTORED_API_NOT_OK:'+path)}else await r.arrayBuffer();if(path==='/api/hub/snapshot')assert(data.cacheOnly===true&&data.externalRequestsAdded===0&&!data.stale,'RESTORED_HUB_HEALTH');out.publicChecks.push({path,status:r.status,ok:data?.ok,cacheOnly:data?.cacheOnly,stale:data?.stale});}
+console.log('ROLLBACK_CONFIRMED',JSON.stringify({website:out.workers['ball46-production'].version,engine:out.workers['nomadtips3-engine-343'].version,publicChecks:out.publicChecks}));
 await mkdir('qa-readonly/result',{recursive:true});await writeFile('qa-readonly/result/active.json',JSON.stringify(out,null,2));console.log('ACTIVE_PRODUCTION_READONLY',JSON.stringify(out));
