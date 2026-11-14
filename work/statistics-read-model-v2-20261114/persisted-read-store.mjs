@@ -5,7 +5,7 @@ const P='b46:stat:read-v2:',ACTIVE=P+'active';
 const guard=(ok,msg)=>{if(!ok)throw Error(msg)};
 const groupKey=(market,variant,filter)=>JSON.stringify([market,variant,filter]);
 const storageKey=(rev,kind,group='',page=null)=>P+rev+':'+kind+':'+encodeURIComponent(group)+(page===null?'':':'+page);
-const projection=r=>Object.fromEntries(['id','fixtureId','home','away','league','market','marketLabel','providerMarket','period','selection','line','selectionLine','odds','bookmaker','createdAt','settledAt','status','result','entryScore','finalScore','finalCorners','finalCards'].filter(k=>r?.[k]!==undefined).map(k=>[k,r[k]]));
+const projection=r=>Object.fromEntries(['id','fixtureId','home','away','league','market','marketLabel','providerMarket','period','selection','pick','line','selectionLine','odds','bookmaker','selectedBookmaker','referee','createdAt','settledAt','status','result','settlementSource','entryMinute','signalEntryMinute','entryScore','entryCorners','entryCards','finalScore','finalCorners','finalCards','mirrorMinute','mirrorScore','scoreAt','minute'].filter(k=>r?.[k]!==undefined).map(k=>[k,r[k]]));
 function groupsFor(rows,registry){
  const seen=new Set(['all','1x2','ah','ou','btts','corners','cards','other'].map(m=>groupKey(m,'all','all')));
  for(const row of rows){
@@ -34,14 +34,15 @@ export class PersistedReadStore{
   const previous=await this.active();
   guard(!previous||contentRevision>previous.contentRevision,'NON_MONOTONIC_REVISION');
   const model=createReadModel(rows,{contentRevision,asOf,registry,now:asOf});
-  const names=groupsFor(rows,registry);let transferred=0,pageCount=0;
+  const names=groupsFor(rows,registry);let transferred=0,pageCount=0;const groupCounts={};
   const prefix=P+contentRevision+':';
   // No active pointer is written until *all* pages and view metrics are complete.
   // Stale abandoned revisions remain unreachable; GC is a separate safe operation.
   for(const name of names){
    const [market,variant,filter]=JSON.parse(name);
    const q={market,variant,filter,page:1,limit:50,rangeDays:'all'};
-   const initial=model.query(q),view={
+   const initial=model.query(q);groupCounts[name]=initial.totalRows;
+   const trendRows=[];let running=0;const view={
     contentRevision,totalRows:initial.totalRows,metrics:initial.metrics,
     charts:{all:initial.chart,30:model.query({...q,rangeDays:30}).chart,90:model.query({...q,rangeDays:90}).chart},
     pages:initial.pages,market,variant,filter
@@ -49,15 +50,23 @@ export class PersistedReadStore{
    await this.storage.put(storageKey(contentRevision,'view',name),view);
    for(let page=1;page<=initial.pages;page++){
     const pageData=page===1?initial:model.query({...q,page});
-    const projected=pageData.rows.map(projection);
+    const projected=pageData.rows.map(projection);for(const row of projected)trendRows.push({result:row.result,status:row.status});
     guard(projected.length<=50,'PAGE_TOO_LARGE');
     const encoded=JSON.stringify(projected);guard(encoded.length<1900000,'PAGE_STORAGE_LIMIT');
     transferred+=encoded.length;
     await this.storage.put(storageKey(contentRevision,'page',name,page),projected);
     pageCount++;
    }
+   // Original Statistics graph is outcome units (+1,+0.5,-1,-0.5,0), not bookmaker-price P/L.
+   // Precompute outside page requests; sample only display coordinates, never total metrics.
+   const weights={WIN:1,HALF_WIN:0.5,LOSS:-1,HALF_LOSS:-0.5,PUSH:0};
+   const curve=[];const chronological=trendRows.reverse().filter(r=>r.status==='SETTLED');
+   const stride=Math.max(1,Math.ceil(chronological.length/384));let y=0;
+   for(let i=0;i<chronological.length;i++){y+=weights[chronological[i].result]??0;if(i%stride===0||i===chronological.length-1)curve.push({index:i,y});}
+   view.curve=curve;view.curveFinal=y;
+   await this.storage.put(storageKey(contentRevision,'view',name),view);
   }
-  let summary={...model.summary};
+  let summary={...model.summary,groupCounts};
   if(formulas?.aggregate){const daily=formulas.aggregate(rows);guard(daily&&daily.today&&daily.yesterday,'INVALID_DAILY_FORMULA');summary={...summary,daily};}
   const manifest={generationKey:prefix+'manifest',contentRevision,asOf,sourceRows:rows.length,views:names.length,pages:pageCount,storedProjectedBytes:transferred,summary,createdAt:Date.now()};
   // Only one active revision can be published; transaction also protects
@@ -85,6 +94,6 @@ export class PersistedReadStore{
   if(page>meta.pages)return{status:400,error:'PAGE_OUT_OF_RANGE'};
   const rows=await this.storage.get(storageKey(r,'page',group,page));
   guard(Array.isArray(rows)&&rows.length<=50,'PERSISTED_PAGE_MISSING');
-  return{ok:true,status:200,contentRevision:r,asOf:m.asOf,market,variant,filter,page,pageSize:50,totalRows:meta.totalRows,pages:meta.pages,metrics:meta.metrics,chart:meta.charts[String(rangeDays)],rangeDays,rows};
+  return{ok:true,status:200,contentRevision:r,asOf:m.asOf,market,variant,filter,page,pageSize:50,totalRows:meta.totalRows,pages:meta.pages,metrics:meta.metrics,chart:meta.charts[String(rangeDays)],curve:meta.curve,curveFinal:meta.curveFinal,rangeDays,rows};
  }
 }
