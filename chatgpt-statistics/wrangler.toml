@@ -1,0 +1,14 @@
+name = "ball46-chat-statistics"
+main = "src/worker.mjs"
+compatibility_date = "2026-11-15"
+workers_dev = true
+
+# Deploy only with --env staging; never add routes or custom domains.
+[env.staging]
+name = "ball46-chat-statistics-staging"
+workers_dev = true
+
+[[env.staging.d1_databases]]
+binding = "DB"
+database_name = "ball46-chat-statistics-staging-db"
+database_id = "REPLACE_WITH_SEPARATE_STAGING_D1_ID"
