@@ -21,7 +21,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - name: Safety checks: never edit the Production Worker
+      - name: 'Safety checks: never edit the Production Worker'
         working-directory: chatgpt-statistics-ui
         run: |
           set -euo pipefail
