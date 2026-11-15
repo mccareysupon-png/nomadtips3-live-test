@@ -1,0 +1,28 @@
+name: B46 Chat statistics actual UI read-only connectivity probe
+on:
+  push:
+    branches: [chatgpt/ball46-statistics-ui-v1]
+    paths: ['.github/workflows/ball46-chat-real-ui-readonly-probe.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Read-only examine actual BALL46 UI entry and renderer (NO WRITES)
+        run: |
+          set -euo pipefail
+          for P in / /longterm-performance-343.js "/api/engine/statistics?paged=1&limit=1"; do
+            echo "READ_ONLY_REQUEST: $P"
+            URL="https://ball46.com$P"
+            STATUS=$(curl -sS --max-time 20 --location --output /tmp/b46_probe_out --write-out "%{http_code}" -H "Accept: */*" "$URL" || echo "CURL_ERROR")
+            SIZE=$(wc -c </tmp/b46_probe_out || echo 0)
+            echo "RESULT path=$P status=$STATUS bytes=$SIZE"
+            if [ "$P" = "/longterm-performance-343.js" ]; then
+              if grep -Fq 'f46-card' /tmp/b46_probe_out; then echo 'FINANCE_RENDERER_MARKER=present'; fi
+              if grep -Fq 'f46-line' /tmp/b46_probe_out; then echo 'FINANCE_CHART_LINE_MARKER=present'; fi
+            fi
+          done
+          echo "No Production writes, no credentials or real ledger content printed."
