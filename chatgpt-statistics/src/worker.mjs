@@ -34,10 +34,12 @@ export default {
       }
       if (request.method === 'POST' && url.pathname === '/admin/ingest') {
         const auth = request.headers.get('authorization') || '';
-        if (!secretMatches(auth, `Bearer ${env.STAGING_WRITE_TOKEN || ''}`)) return json({ ok: false, error: 'UNAUTHORIZED' }, 401);
+        if (!env.STAGING_WRITE_TOKEN || !secretMatches(auth, `Bearer ${env.STAGING_WRITE_TOKEN}`)) return json({ ok: false, error: 'UNAUTHORIZED' }, 401);
         const len = Number(request.headers.get('content-length') || 0);
         if (len > 256000) return json({ ok: false, error: 'BATCH_TOO_LARGE' }, 413);
-        const body = await request.json();
+        const rawBody = await request.text();
+        if (rawBody.length > 256000) return json({ ok: false, error: 'BATCH_TOO_LARGE' }, 413);
+        const body = JSON.parse(rawBody);
         if (!body || body.source !== 'BALL46_PRODUCTION_READ_ONLY' || !Array.isArray(body.rows) || body.rows.length < 1 || body.rows.length > 100)
           return json({ ok: false, error: 'INVALID_BATCH' }, 400);
         const seen = new Set(), normalized = [];
