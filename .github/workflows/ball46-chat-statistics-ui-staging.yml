@@ -46,3 +46,17 @@ jobs:
           fi
           npx --yes wrangler@4 deploy --config wrangler.toml
           echo "Deployed ONLY isolated worker ball46-chat-statistics-ui-staging-20261115"
+      - name: Verify live STAGING URL and updated 1px chart (never Production)
+        working-directory: chatgpt-statistics-ui
+        run: |
+          set -euo pipefail
+          URL="https://ball46-chat-statistics-ui-staging-20261115.mccarey-supon.workers.dev/"
+          echo "Checking staging HTTP response at $URL"
+          curl --fail-with-body --silent --show-error --location --retry 4 --retry-all-errors --retry-delay 3 --connect-timeout 10 --max-time 30 \
+            --dump-header /tmp/b46-chat-stage-headers.txt \
+            --output /tmp/b46-chat-stage-response.html "$URL"
+          grep -Fi 'content-type: text/html' /tmp/b46-chat-stage-headers.txt
+          grep -Fq 'B46-STAT-UI-01' /tmp/b46-chat-stage-response.html
+          grep -Fq 'stroke-width:1;vector-effect:non-scaling-stroke;shape-rendering:geometricPrecision' /tmp/b46-chat-stage-response.html
+          echo "STAGING URL VERIFIED: HTTP OK, current preview marker and thin 1px chart present."
+
