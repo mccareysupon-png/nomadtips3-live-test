@@ -1,0 +1,10 @@
+# B46-STAT-UI-01: Only an isolated workers.dev preview, never production.
+name = "ball46-chat-statistics-ui-staging-20261115"
+main = "worker.mjs"
+compatibility_date = "2026-11-15"
+workers_dev = true
+
+[[rules]]
+type = "Text"
+globs = ["**/*.html"]
+fallthrough = true
