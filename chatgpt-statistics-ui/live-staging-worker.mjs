@@ -27,12 +27,20 @@ export default {
     const accept = request.headers.get('accept');
     const headers = new Headers();
     if(accept) headers.set('accept',accept.slice(0,256));
-    const upstream = await fetch(originURL.toString(),{
-      method:request.method,
-      headers,
-      redirect:'manual',
+    // Some real Statistics reads transiently return 599 on the original site.
+    // Staging may retry the SAME GET only; no writes, no historical calculation.
+    const readOnce = () => fetch(originURL.toString(), {
+      method:request.method,headers,redirect:'manual',
       cf:{cacheTtl:0,cacheEverything:false}
     });
+    let upstream = await readOnce();
+    if (u.pathname === '/api/engine/statistics' && [502,503,504,599].includes(upstream.status)) {
+      for (let attempt=0; attempt<2 && [502,503,504,599].includes(upstream.status); attempt++) {
+        try { await upstream.body?.cancel(); } catch {}
+        await new Promise(resolve => setTimeout(resolve, 250 * (attempt+1)));
+        upstream = await readOnce();
+      }
+    }
     const h = new Headers(upstream.headers);
     for(const x of ['set-cookie','content-length','content-encoding','etag','content-security-policy','content-security-policy-report-only','access-control-allow-origin','transfer-encoding']) h.delete(x);
     Object.entries(baseHeaders).forEach(([k,v])=>h.set(k,v));
