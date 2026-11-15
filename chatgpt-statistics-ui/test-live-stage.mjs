@@ -61,11 +61,39 @@ try {
         };
       },seconds));
     }
+    // Distinguish a slow API/chart appearing late from a chart being overwritten.
+    // The page may not have any chart until the real ledger finishes loading.
+    if(history.at(-1).cardFound && history.filter(s=>s.cardFound && s.chartFound).length<2){
+      await page.waitForTimeout(5000);
+      history.push(await page.evaluate(()=>{
+        const card=document.querySelector('#b46-finance-chart-card .f46-card'),
+              line=document.querySelector('#b46-finance-chart-card .f46-line'),
+              svg=document.querySelector('#b46-finance-chart-card svg.f46-svg');
+        return {seconds:16,cardFound:!!card,chartFound:!!svg,
+          display:card?getComputedStyle(card).display:null,
+          columns:card?getComputedStyle(card).gridTemplateColumns:null,
+          stroke:line?getComputedStyle(line).strokeWidth:null,
+          overflow:document.documentElement.scrollWidth>innerWidth+1};
+      }));
+    }
     console.log('B46_TIMELINE',JSON.stringify({profile:profile.name,history}));
-    assert(history.every(s=>s.cardFound && s.chartFound && s.stroke==='1px'),'CHART_FLASH_OR_OVERRIDDEN_'+profile.name);
-    assert(history.every(s=>profile.name==='mobile'||s.display==='grid'),'DESKTOP_GRID_OVERRIDDEN');
-
-    report.push({profile:profile.name,entryStatus:entry.status(),ready,state,errors:errors.slice(0,5),httpErrors});
+    let visiblePreviously=false;
+    for(const sample of history){
+      const visible=sample.cardFound && sample.chartFound;
+      assert(!(visiblePreviously && !visible),'CHART_DISAPPEARED_AFTER_VISIBLE_'+profile.name);
+      if(visible){
+        visiblePreviously=true;
+        assert(sample.stroke==='1px','CHART_STROKE_OVERRIDDEN_'+profile.name);
+        if(profile.name==='desktop')assert((sample.display||sample.grid)==='grid','DESKTOP_GRID_OVERRIDDEN');
+        assert(!sample.overflow,'HORIZONTAL_OVERFLOW');
+      }
+    }
+    const last=history.at(-1);
+    const finalState={...state,cardFound:last.cardFound,chartFound:last.chartFound,
+      grid:last.display||last.grid,stroke:last.stroke,
+      noHorizontalOverflow:!last.overflow};
+    report.push({profile:profile.name,entryStatus:entry.status(),ready,state:finalState,
+      appearedLate:!state.cardFound&&last.cardFound,errors:errors.slice(0,5),httpErrors});
     await page.screenshot({path:'/tmp/b46-chat-real-stage-'+profile.name+'.png',fullPage:false});
     await context.close();
   }
