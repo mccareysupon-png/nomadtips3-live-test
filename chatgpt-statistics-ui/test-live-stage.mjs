@@ -15,8 +15,15 @@ try {
     const entry=await page.goto(base+'/?view=statistics',{waitUntil:'domcontentloaded',timeout:45000});
     assert(entry?.status()===200,profile.name+':STAGE_HTML_NOT_200:'+entry?.status());
     // UI may take seconds to receive real ledger from Production read-only APIs.
-    const ready=await page.locator('#b46-finance-chart-card .f46-card').waitFor({state:'visible',timeout:60000})
-      .then(()=>true).catch(()=>false);
+    let ready=false,loadAttempts=0;
+    for(let attempt=0;attempt<3;attempt++){
+      loadAttempts=attempt+1;
+      ready=await page.locator('#b46-finance-chart-card .f46-card')
+        .waitFor({state:'visible',timeout:20000}).then(()=>true).catch(()=>false);
+      if(ready)break;
+      if(attempt<2)await page.reload({waitUntil:'domcontentloaded',timeout:45000});
+    }
+    console.log('B46_CHART_READY_ATTEMPTS',JSON.stringify({profile:profile.name,ready,loadAttempts}));
     const state=await page.evaluate(() => {
       const host=document.querySelector('#b46-finance-chart-card');
       const card=host?.querySelector('.f46-card');
