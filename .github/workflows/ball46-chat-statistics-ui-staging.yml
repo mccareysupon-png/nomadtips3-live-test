@@ -36,13 +36,13 @@ jobs:
       - name: Deploy separate workers.dev preview (never ball46-production)
         working-directory: chatgpt-statistics-ui
         env:
-          CLOUDFLARE_API_TOKEN: ${{{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: "62cb0db544160e6591342abd6b4f35cc"
         run: |
           set -euo pipefail
           if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
-            echo "STAGING NOT DEPLOYED: CLOUDFLARE_API_TOKEN missing; no production or staging writes"
-            exit 0
+            echo "STAGING DEPLOY BLOCKED: CLOUDFLARE_API_TOKEN missing; no production or staging writes" >&2
+            exit 1
           fi
           npx --yes wrangler@4 deploy --config wrangler.toml
           echo "Deployed ONLY isolated worker ball46-chat-statistics-ui-staging-20261115"
