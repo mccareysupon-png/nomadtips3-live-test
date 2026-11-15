@@ -32,6 +32,32 @@ try {
         noHorizontalOverflow:document.documentElement.scrollWidth<=innerWidth+1
       };
     });
+
+    // Regression: visible at first paint is NOT enough; detect the old UI overwriting later.
+    const history=[{seconds:0,...state}];
+    for(const seconds of [2,5,11]){
+      await page.waitForTimeout(seconds===2?2000:seconds===5?3000:6000);
+      history.push(await page.evaluate(seconds=>{
+        const host=document.querySelector('#b46-finance-chart-card');
+        const card=host?.querySelector('.f46-card');
+        const line=host?.querySelector('.f46-line');
+        const svg=host?.querySelector('svg.f46-svg');
+        return {seconds,cardFound:!!card,chartFound:!!svg,
+          visible:!!card && !!card.getClientRects().length,
+          display:card?getComputedStyle(card).display:null,
+          columns:card?getComputedStyle(card).gridTemplateColumns:null,
+          stroke:line?getComputedStyle(line).strokeWidth:null,
+          css:!!document.querySelector('link[data-b46-staging-overlay]'),
+          styleCount:document.querySelectorAll('head style').length,
+          chartNodes:document.querySelectorAll('#b46-finance-chart-card').length,
+          overflow:document.documentElement.scrollWidth>innerWidth+1
+        };
+      },seconds));
+    }
+    console.log('B46_TIMELINE',JSON.stringify({profile:profile.name,history}));
+    assert(history.every(s=>s.cardFound && s.chartFound && s.stroke==='1px'),'CHART_FLASH_OR_OVERRIDDEN_'+profile.name);
+    assert(history.every(s=>profile.name==='mobile'||s.display==='grid'),'DESKTOP_GRID_OVERRIDDEN');
+
     report.push({profile:profile.name,entryStatus:entry.status(),ready,state,errors:errors.slice(0,5),httpErrors});
     await page.screenshot({path:'/tmp/b46-chat-real-stage-'+profile.name+'.png',fullPage:false});
     await context.close();
