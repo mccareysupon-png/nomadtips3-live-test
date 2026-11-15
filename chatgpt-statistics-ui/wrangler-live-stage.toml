@@ -1,0 +1,11 @@
+# B46-STAT-UI-01: Real-current-frontend visual QA, isolated no custom routes.
+# Always a NEW staging Worker; no overwrite of existing preview or Production.
+name = "ball46-chat-statistics-live-ui-test-20261115"
+main = "live-staging-worker.mjs"
+compatibility_date = "2026-11-15"
+workers_dev = true
+
+[[rules]]
+type = "Text"
+globs = ["**/live-staging-overlay.css"]
+fallthrough = true
