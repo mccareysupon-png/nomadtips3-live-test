@@ -41,7 +41,7 @@ try {
     });
 
     // Regression: visible at first paint is NOT enough; detect the old UI overwriting later.
-    const history=[{seconds:0,...state}];
+    const history=[{seconds:0,...state,display:state.grid}];
     for(const seconds of [2,5,11]){
       await page.waitForTimeout(seconds===2?2000:seconds===5?3000:6000);
       history.push(await page.evaluate(seconds=>{
