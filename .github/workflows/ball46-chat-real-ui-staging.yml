@@ -1,0 +1,77 @@
+name: B46 Chat actual Statistics UI - current frontend staging ONLY
+on:
+  push:
+    branches: [chatgpt/ball46-statistics-ui-v1]
+    paths:
+      - 'chatgpt-statistics-ui/live-staging-*'
+      - 'chatgpt-statistics-ui/wrangler-live-stage.toml'
+      - 'chatgpt-statistics-ui/test-live-stage.mjs'
+      - '.github/workflows/ball46-chat-real-ui-staging.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  current-ui-staging-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Safety checks: never edit the Production Worker
+        working-directory: chatgpt-statistics-ui
+        run: |
+          set -euo pipefail
+          node --check live-staging-worker.mjs
+          node --check test-live-stage.mjs
+          test -s live-staging-overlay.css
+          grep -Fx 'name = "ball46-chat-statistics-live-ui-test-20261115"' wrangler-live-stage.toml
+          grep -Fx 'workers_dev = true' wrangler-live-stage.toml
+          if grep -Ein '(^|[[:space:]])(route|routes|zone_id|zone_name)[[:space:]]*=' wrangler-live-stage.toml; then
+            echo 'ABORT: custom domain/routes prohibited in this staging'; exit 1
+          fi
+          if grep -Fq 'ball46-production' wrangler-live-stage.toml; then
+            echo 'ABORT: cannot target Production'; exit 1
+          fi
+      - name: Deploy isolated read-only real frontend staging
+        working-directory: chatgpt-statistics-ui
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: '62cb0db544160e6591342abd6b4f35cc'
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo 'Missing staging deploy credential'; exit 1; }
+          npx --yes wrangler@4 deploy --config wrangler-live-stage.toml
+      - name: Probe real site copy, CSS and current renderer only
+        run: |
+          set -euo pipefail
+          BASE="https://ball46-chat-statistics-live-ui-test-20261115.mccarey-supon.workers.dev"
+          for path in /_b46_ui_health /_b46_ui_overlay.css "/?view=statistics" /longterm-performance-343.js; do
+            HTTP=$(curl --fail-with-body -sSL --retry 4 --retry-all-errors --retry-delay 2 --max-time 35 -o /tmp/b46_current_ui_response --write-out "%{http_code}" "$BASE$path")
+            echo "STAGING_RESPONSE path=$path http=$HTTP bytes=$(wc -c </tmp/b46_current_ui_response)"
+            test "$HTTP" = "200"
+            case "$path" in
+              /_b46_ui_overlay.css) grep -Fq 'stroke-width:1px!important' /tmp/b46_current_ui_response ;;
+              "/?view=statistics") grep -Fq '/_b46_ui_overlay.css' /tmp/b46_current_ui_response ;;
+              /longterm-performance-343.js) grep -Fq 'f46-card' /tmp/b46_current_ui_response ;;
+            esac
+          done
+          echo 'STAGING_REAL_PAGE_HTTP_AND_LATEST_RENDERER=PASS'
+      - name: Install Chromium for real UI validation
+        working-directory: chatgpt-statistics-ui
+        run: |
+          npm install --prefix .runtime --no-audit --no-fund playwright@1.65.1
+          .runtime/node_modules/.bin/playwright install --with-deps chromium
+      - name: Confirm REAL chart card and 1px line on desktop and mobile
+        working-directory: chatgpt-statistics-ui
+        run: node test-live-stage.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: b46-chat-real-ui-stage-browser
+          path: /tmp/b46-chat-real-stage-*.png
+          if-no-files-found: ignore
+          retention-days: 7
