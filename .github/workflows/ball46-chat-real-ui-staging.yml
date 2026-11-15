@@ -56,7 +56,7 @@ jobs:
             case "$path" in
               /_b46_ui_overlay.css) grep -Fq 'stroke-width:1px!important' /tmp/b46_current_ui_response ;;
               "/?view=statistics") grep -Fq '/_b46_ui_overlay.css' /tmp/b46_current_ui_response ;;
-              /longterm-performance-343.js) grep -Fq 'f46-card' /tmp/b46_current_ui_response ;;
+              /longterm-performance-343.js) grep -Fq 'f46-card' /tmp/b46_current_ui_response; grep -Fq 'B46-STAT-UI-01' /tmp/b46_current_ui_response ;;
             esac
           done
           echo 'STAGING_REAL_PAGE_HTTP_AND_LATEST_RENDERER=PASS'
