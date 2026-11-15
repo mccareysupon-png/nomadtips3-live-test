@@ -50,6 +50,31 @@ export default {
       const dest=new URL(location,ORIGIN);
       if(dest.origin===ORIGIN){h.set('location',u.origin+dest.pathname+dest.search+dest.hash);}
     }
+    // A scope-limited staging-only patch of the CURRENT chart module's own CSS:
+    // style element from the renderer is appended after our HTML stylesheet on load.
+    // Make its final CSS include the thin-line, 50/50 layout so later paints cannot
+    // restore the old full-width geometry. The executable loader/render logic stays unchanged.
+    if(request.method==='GET' && upstream.ok && u.pathname==='/longterm-performance-343.js'){
+      const source=await upstream.text();
+      const begin='const f46CSS=',end=';let f46Geo=';
+      const a=source.indexOf(begin),b=source.indexOf(end,a+begin.length);
+      let patched=source;
+      let status='NOT_PATCHED_SOURCE_DRIFT';
+      if(a>=0 && b>a && source.indexOf(begin,a+begin.length)===-1){
+        try{
+          const originalCSS=JSON.parse(source.slice(a+begin.length,b));
+          if(typeof originalCSS==='string' && originalCSS.includes('.f46-line')){
+            patched=source.slice(0,a+begin.length)
+                +JSON.stringify(originalCSS+'\n'+css)
+                +source.slice(b);
+            status='CURRENT_RENDERER_CSS_PATCHED';
+          }
+        }catch{}
+      }
+      h.set('content-type','application/javascript; charset=UTF-8');
+      h.set('x-b46-renderer-css',status);
+      return new Response(patched,{status:upstream.status,headers:h});
+    }
     const ct=upstream.headers.get('content-type')||'';
     if (request.method==='GET' && upstream.ok && ct.includes('text/html')){
       const original = await upstream.text();
