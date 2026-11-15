@@ -10,6 +10,9 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: b46-statistics-real-ui-staging
+  cancel-in-progress: true
 jobs:
   current-ui-staging-only:
     runs-on: ubuntu-latest
