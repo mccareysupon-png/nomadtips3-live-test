@@ -64,6 +64,7 @@ assert.equal(graph.summary.priced,5);
 assert.equal(graph.summary.roi,10);
 assert.equal(graph.summary.maxDD,1);
 assert.equal(graph.summary.avgOdds,(2+3+1.8)/3);
+assert.equal(graph.summary.settledDays,2,'Bangkok settled calendar span must match original');
 assert.equal(graph.series.units.length,2);
 assert.equal(graph.series.units[0].value,0.5);
 assert.equal(graph.series.units[1].value,0.5);
@@ -79,6 +80,7 @@ const unpriced=buildVerifiedGraph([
 assert.equal(unpriced.summary.rows,2);
 assert.equal(unpriced.summary.stake,1);
 assert.equal(unpriced.summary.net,-1);
+assert.equal(unpriced.summary.settledDays,1);
 assert.equal(unpriced.series.units.length,1);
 assert.throws(()=>verifyChartSourceContract('other'),/CHART_SOURCE_MISSING/);
 console.log('B46_STAGING_GRAPH_FORMULA_UNIT=PASS',{cases:22,source:'CURRENT_CHART_FORMULA',productionWrites:0});
