@@ -1,4 +1,5 @@
 name: B46 Production PREDEPLOY current version and frontend safety audit READ ONLY
+# Post-V1-activation-attempt safety check 2026-11-16: confirm Production 100% active and bindings unchanged.
 # V1 production deployment authorization: read-only preflight recheck on 2026-11-16; no writes.
 on:
   push:
