@@ -27,7 +27,7 @@ try{
     await page.waitForFunction(ready,null,{timeout:170000});
     if(!profile.isMobile){
     await page.waitForFunction(()=>document.querySelectorAll('#b46-finance-chart-card .b46-stage-summary-item').length===8 &&
-      getComputedStyle(document.querySelector('.b46v23-strip')).display==='none',
+      (()=>{const strip=document.querySelector('.b46v23-strip');return strip?getComputedStyle(strip).display==='none':false})(),
       null,{timeout:15000});
     }
     const coldMs=Date.now()-started;
@@ -45,7 +45,7 @@ try{
         loaderPatched:false,
         loadingAnimationHidden:getComputedStyle(document.querySelector('.b46-stats-loader')).display==='none',
         summary:{ready:!!document.querySelector('.sp-stats-content.b46-stage-summary-ready'),
-          hiddenTop:getComputedStyle(document.querySelector('.b46v23-strip')).display==='none',
+          hiddenTop:(()=>{const strip=document.querySelector('.b46v23-strip');return strip?getComputedStyle(strip).display==='none':false})(),
           count:document.querySelectorAll('#b46-finance-chart-card .b46-stage-summary-item').length,
           keys:[...document.querySelectorAll('#b46-finance-chart-card .b46-stage-summary-item')].map(x=>x.dataset.key),
           originalDetailsHidden:getComputedStyle(document.querySelector('#b46-finance-chart-card .f46-details')).display==='none',
@@ -83,7 +83,7 @@ try{
     await page.waitForFunction(ready,null,{timeout:30000});
     if(!profile.isMobile){
     await page.waitForFunction(()=>document.querySelectorAll('#b46-finance-chart-card .b46-stage-summary-item').length===8 &&
-      getComputedStyle(document.querySelector('.b46v23-strip')).display==='none',
+      (()=>{const strip=document.querySelector('.b46v23-strip');return strip?getComputedStyle(strip).display==='none':false})(),
       null,{timeout:12000});
     }
     const warmMs=Date.now()-warmStart;
@@ -94,7 +94,7 @@ try{
         graphVisible:!!document.querySelector('#b46-finance-chart-card svg.f46-svg')?.getClientRects().length,
         loadingAnimationHidden:getComputedStyle(document.querySelector('.b46-stats-loader')).display==='none',
         summaryCount:document.querySelectorAll('#b46-finance-chart-card .b46-stage-summary-item').length,
-        topStripHidden:getComputedStyle(document.querySelector('.b46v23-strip')).display==='none'};
+        topStripHidden:(()=>{const strip=document.querySelector('.b46v23-strip');return strip?getComputedStyle(strip).display==='none':false})()};
     });
     await page.screenshot({path:'/tmp/b46-staging-cache-'+profile.name+'.png',fullPage:false});
     console.log('B46_STAGE_TIMING='+JSON.stringify({profile:profile.name,coldMs,warmMs,coldLedger:cold.ledgerTotal,warmLedger:warm.ledgerTotal,
