@@ -50,17 +50,10 @@ try{
       assert.equal(nums.length,2);
       assert(Math.abs(nums[0]-nums[1])<4,'DESKTOP_50_50_COLUMNS_MISSING');
     }
-    await page.waitForFunction(()=>new Promise(resolve=>{
-      try{
-        const req=indexedDB.open('b46-staging-statistics-v1',1);
-        req.onsuccess=()=>{const db=req.result,tx=db.transaction('records','readonly');
-          const get=tx.objectStore('records').get('meta');
-          get.onsuccess=()=>{const v=get.result;db.close();resolve(Boolean(v?.schema===1&&v?.totalPages>0&&v?.savedAt))};
-          get.onerror=()=>{db.close();resolve(false)};
-        };
-        req.onerror=()=>resolve(false);
-      }catch{resolve(false)}
-    }),null,{timeout:45000}).catch(()=>false);
+    // The fast source is staging KV. Do not open IndexedDB in the test: opening
+    // a non-existent database at version 1 accidentally creates an empty one
+    // without the records object store and interferes with browser-side migration.
+    await page.waitForTimeout(300);
     const warmStart=Date.now();
     await page.reload({waitUntil:'domcontentloaded',timeout:45000});
     await page.waitForFunction(ready,null,{timeout:30000});
@@ -72,6 +65,8 @@ try{
         graphVisible:!!document.querySelector('#b46-finance-chart-card svg.f46-svg')?.getClientRects().length};
     });
     await page.screenshot({path:'/tmp/b46-staging-cache-'+profile.name+'.png',fullPage:false});
+    console.log('B46_STAGE_TIMING='+JSON.stringify({profile:profile.name,coldMs,warmMs,coldLedger:cold.ledgerTotal,warmLedger:warm.ledgerTotal,
+      warmStale:warm.stale,warmVisible:warm.graphVisible,pageErrors:errors,statHttp:networkStatuses.length}));
     assert(warm.graphVisible&&warm.rows===warm.ledgerTotal,profile.name+':BAD_WARM_RENDER');
     assert(warmMs<=15000,profile.name+':WARM_TOO_SLOW_'+warmMs);
     assert.equal(errors.length,0,profile.name+':PAGE_JS_ERRORS:'+JSON.stringify(errors));
