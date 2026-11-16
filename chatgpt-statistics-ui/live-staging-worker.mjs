@@ -35,6 +35,26 @@ export default {
         !/^\/[a-zA-Z0-9_./-]+\.(?:js|css|svg|png|gif|woff2?|ico|jpeg|jpg|webp|json|html|txt|map)$/.test(u.pathname))
       return json({ok:false,error:'STAGING_PATH_NOT_ALLOWED'},404);
     if (!env.B46_PRODUCTION_READ) return json({ok:false,error:'STAGING_SERVICE_BINDING_MISSING'},503);
+    // Staging-only, prevalidated compressed full-source snapshot. Never expose to Production.
+    // Root unpaged API was unstable; the browser validates this complete saved payload again.
+    if(request.method==='GET' && u.pathname==='/api/engine/statistics' && !u.searchParams.has('paged')){
+      if(!env.B46_STAGE_STATS_KV)return json({ok:false,error:'STAGE_SNAPSHOT_STORAGE_MISSING'},503);
+      try{
+        const entry=await env.B46_STAGE_STATS_KV.get('verified-full-gzip-v1','arrayBuffer');
+        const metadata=await env.B46_STAGE_STATS_KV.get('verified-full-meta-v1','json');
+        if(!entry||!metadata?.savedAt||!metadata?.ledgerTotal||
+           Date.now()-Number(metadata.savedAt)>86400000)
+          return json({ok:false,error:'STAGE_SNAPSHOT_NOT_READY'},503);
+        return new Response(entry,{status:200,headers:{
+          ...baseHeaders,'content-type':'application/json; charset=UTF-8',
+          'content-encoding':'gzip','vary':'Accept-Encoding',
+          'x-b46-stage-snapshot':'VERIFIED_SAVED','x-b46-stage-snapshot-at':String(metadata.savedAt),
+          'x-b46-read-path':'STAGING_KV'
+        }});
+      }catch(error){
+        return json({ok:false,error:'STAGE_SNAPSHOT_READ_FAILED'},503);
+      }
+    }
     // Static/public GET routes only. No request bodies, credentials, cookies or authorization forwarded.
     const originURL = new URL(u.pathname + u.search,ORIGIN);
     const accept = request.headers.get('accept');

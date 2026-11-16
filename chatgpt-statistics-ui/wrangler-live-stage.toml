@@ -14,3 +14,8 @@ fallthrough = true
 [[services]]
 binding = "B46_PRODUCTION_READ"
 service = "ball46-production"
+
+# Staging-only verified public Ledger snapshot: never bind Production KV.
+[[kv_namespaces]]
+binding = "B46_STAGE_STATS_KV"
+id = "f144dc8b6525477984067f7ab5762924"

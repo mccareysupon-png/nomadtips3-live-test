@@ -60,7 +60,7 @@ try{
         };
         req.onerror=()=>resolve(false);
       }catch{resolve(false)}
-    }),null,{timeout:60000});
+    }),null,{timeout:45000}).catch(()=>false);
     const warmStart=Date.now();
     await page.reload({waitUntil:'domcontentloaded',timeout:45000});
     await page.waitForFunction(ready,null,{timeout:30000});
