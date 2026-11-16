@@ -102,6 +102,47 @@ try{
     assert.equal(early.net,graph.summary.net,
       profile.name+':FAST_CHART_NET_NOT_VERIFIED');
     console.log('B46_FAST_FIRST_PAINT='+JSON.stringify({profile:profile.name,...early}));
+    assert.equal(early.oldTrendVisible,false,profile.name+':OLD_TREND_FLASHES_DURING_FAST_PAINT');
+    const fastUI=await page.evaluate(()=>{
+      const boxes=[...document.querySelectorAll('#b46-stage-fast-preview .b46-fast-stat')];
+      const visible=boxes.filter(el=>getComputedStyle(el).display!=='none');
+      return {
+        keys:visible.map(el=>el.dataset.key),
+        items:visible.map(el=>({key:el.dataset.key,value:el.querySelector('b')?.textContent?.trim()})),
+        outcomeCounts:[...document.querySelectorAll('#b46-stage-fast-preview .b46-fast-outcomes-track span')]
+          .map(el=>Number(el.dataset.count)),
+        outcomesVisible:(()=>{const el=document.querySelector('#b46-stage-fast-preview .b46-fast-outcomes');
+          return !!el&&getComputedStyle(el).display!=='none'})(),
+        statsOverflow:(()=>{const el=document.querySelector('#b46-stage-fast-preview .b46-fast-stats');
+          return !!el&&el.scrollWidth>el.clientWidth+2})()
+      };
+    });
+    assert(!fastUI.statsOverflow,profile.name+':FAST_KPI_GRID_OVERFLOW');
+    if(!profile.isMobile){
+      assert.deepEqual(fastUI.keys,
+        ['roi','rate','odds','days','unsettled','wpl','stake','drawdown'],
+        'DESKTOP_FAST_8_KPI_KEYS');
+      assert.equal(fastUI.outcomesVisible,true,profile.name+':FAST_OUTCOMES_HIDDEN');
+      assert.deepEqual(fastUI.outcomeCounts,
+        [head.win+head.halfWin,head.push,head.loss+head.halfLoss],
+        profile.name+':FAST_OUTCOMES_COUNTS_DRIFT');
+      assert.equal(fastUI.outcomeCounts.reduce((a,b)=>a+b,0),head.total,
+        profile.name+':FAST_OUTCOME_SETTLED_DRIFT');
+      assert.equal(fastUI.items.find(i=>i.key==='days')?.value,
+        String(graph.summary.settledDays),profile.name+':FAST_SETTLED_DAYS_WRONG');
+      assert.equal(fastUI.items.find(i=>i.key==='odds')?.value,
+        Number(graph.summary.avgOdds).toFixed(2),profile.name+':FAST_ODDS_WRONG');
+      assert.equal(fastUI.items.find(i=>i.key==='unsettled')?.value,
+        (head.pending+head.unresolved).toLocaleString('en-US'),profile.name+':FAST_PENDING_WRONG');
+    }else{
+      assert.deepEqual(fastUI.keys.slice().sort(),
+        ['roi','rate','settled','drawdown'].sort(),profile.name+':MOBILE_FAST_KPI_DRIFT');
+      assert.equal(fastUI.outcomesVisible,false,profile.name+':MOBILE_OUTCOME_BAR_UNREQUESTED');
+    }
+    console.log('B46_FAST_8_KPI_PARITY='+JSON.stringify({
+      profile:profile.name,fields:fastUI.items,outcomeCounts:fastUI.outcomeCounts,
+      outcomesVisible:fastUI.outcomesVisible,stageOnly:true}));
+
     // Initial Statistics view must not read the 16k-row historical Ledger.
     await page.waitForTimeout(1200);
     const lazyJs=await context.request.get(base+'/singlepage-workspace-343.js');
@@ -174,6 +215,11 @@ try{
           })()}};
     });
     assert.equal(cold.fullRows,cold.ledgerTotal,profile.name+':INVALID_LEDGER');
+    if(!profile.isMobile){
+      const nativeDays=await page.evaluate(()=>document.querySelector('[data-sp-kpi="settled-days"]')?.textContent?.trim());
+      assert.equal(nativeDays,String(graph.summary.settledDays),
+        profile.name+':FAST_SETTLED_DAYS_DIFFER_FROM_NATIVE_'+nativeDays);
+    }
     // The existing full-ledger renderer is the parity oracle: verify chart index
     // point count and final P/L without altering the native DOM or formulas.
     const parity=await page.evaluate(()=>({
