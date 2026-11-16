@@ -2,6 +2,7 @@
 // Verified gzip binary fast source guard and cursor fallback (staging-only release 2026-11-16).
 // STAGING: single-page revision check before any 33-page historical refresh; no Production mutation.
 // GET-only mirror of current public site, scoped CSS + verified loader-recovery patch only.
+// Stage-only KPI right-card consolidation and balanced net typography (QA enabled).
 // No Production writes, no secrets forwarded, and no Production Cloudflare Worker mutation.
 import css from './live-staging-overlay.css';
 import {patchCurrentStatisticsLoader} from './statistics-loader-staging-patch.mjs';
