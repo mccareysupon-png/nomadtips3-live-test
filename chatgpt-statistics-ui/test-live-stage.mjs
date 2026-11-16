@@ -42,8 +42,8 @@ try {
 
     // Regression: visible at first paint is NOT enough; detect the old UI overwriting later.
     const history=[{seconds:0,...state,display:state.grid}];
-    for(const seconds of [2,5,11]){
-      await page.waitForTimeout(seconds===2?2000:seconds===5?3000:6000);
+    for(const seconds of [2,5,11,30]){
+      await page.waitForTimeout(seconds===2?2000:seconds===5?3000:seconds===11?6000:19000);
       history.push(await page.evaluate(seconds=>{
         const host=document.querySelector('#b46-finance-chart-card');
         const card=host?.querySelector('.f46-card');
@@ -57,7 +57,14 @@ try {
           css:!!document.querySelector('link[data-b46-staging-overlay]'),
           styleCount:document.querySelectorAll('head style').length,
           chartNodes:document.querySelectorAll('#b46-finance-chart-card').length,
-          overflow:document.documentElement.scrollWidth>innerWidth+1
+          overflow:document.documentElement.scrollWidth>innerWidth+1,
+          cardBorder:getComputedStyle(card).borderTopWidth,
+          headingBorder:getComputedStyle(host.querySelector('.f46-heading')).borderTopWidth,
+          overviewBorder:getComputedStyle(host.querySelector('.f46-overview')).borderTopWidth,
+          gradient:getComputedStyle(card).backgroundImage,
+          shadow:getComputedStyle(card).boxShadow,
+          plateGradient:getComputedStyle(card,'::before').backgroundImage,
+          plateShadow:getComputedStyle(card,'::before').boxShadow
         };
       },seconds));
     }
@@ -86,6 +93,14 @@ try {
         assert(sample.stroke==='1px','CHART_STROKE_OVERRIDDEN_'+profile.name);
         if(profile.name==='desktop')assert((sample.display||sample.grid)==='grid','DESKTOP_GRID_OVERRIDDEN');
         assert(!sample.overflow,'HORIZONTAL_OVERFLOW');
+        if(sample.seconds>0){
+          assert(sample.cardBorder==='0px' && sample.headingBorder==='0px' && sample.overviewBorder==='0px',
+            'CARD_BORDER_STILL_VISIBLE_'+profile.name+'_'+sample.seconds);
+          assert(profile.name==='desktop'
+            ? sample.plateGradient.includes('gradient') && sample.plateShadow!=='none'
+            : sample.gradient.includes('gradient') && sample.shadow!=='none',
+            'V2_GRADIENT_OR_DEPTH_MISSING_'+profile.name+'_'+sample.seconds);
+        }
       }
     }
     const last=history.at(-1);
@@ -94,7 +109,7 @@ try {
       noHorizontalOverflow:!last.overflow};
     report.push({profile:profile.name,entryStatus:entry.status(),ready,state:finalState,
       appearedLate:!state.cardFound&&last.cardFound,errors:errors.slice(0,5),httpErrors});
-    await page.screenshot({path:'/tmp/b46-chat-real-stage-'+profile.name+'.png',fullPage:false});
+    await page.locator('#b46-finance-chart-card .f46-card').screenshot({path:'/tmp/b46-chat-real-stage-'+profile.name+'.png',timeout:20000});
     await context.close();
   }
 } finally {await browser.close()}
@@ -103,6 +118,12 @@ const desktop=report.find(x=>x.profile==='desktop'),mobile=report.find(x=>x.prof
 assert(desktop.state.stageCss && mobile.state.stageCss,'STAGING_CSS_NOT_INJECTED');
 assert(desktop.state.cardFound && mobile.state.cardFound,'REAL_STATISTICS_CARD_NOT_VISIBLE');
 assert(desktop.state.grid==='grid','REAL_DESKTOP_CHART_NOT_GRID');
+assert(mobile.state.grid==='block','REAL_MOBILE_LAYOUT_NOT_STACKED');
+const widths=(desktop.state.columns||'').split(/\s+/).map(parseFloat);
+assert(widths.length===2 && widths.every(Number.isFinite) && Math.abs(widths[0]-widths[1])<2,
+  'DESKTOP_COLUMNS_NOT_50_50');
 assert(desktop.state.stroke==='1px','REAL_CHART_STROKE_NOT_1PX');
 assert(desktop.state.noHorizontalOverflow && mobile.state.noHorizontalOverflow,'HORIZONTAL_OVERFLOW');
+assert(desktop.errors.length===0 && mobile.errors.length===0,
+  'JAVASCRIPT_PAGE_ERRORS:'+JSON.stringify({desktop:desktop.errors,mobile:mobile.errors}));
 console.log('REAL_STAGING_BROWSER_QA=PASS');
