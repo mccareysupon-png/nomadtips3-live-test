@@ -111,7 +111,8 @@ export async function verifyBrowser(host,label,auditDir){
   await page.goto(host+'/?view=statistics&market=ah',{waitUntil:'domcontentloaded',timeout:60000});
   await page.waitForFunction(()=>{
     const d=window.BALL46_STATISTICS_DATA?.getSnapshot?.();
-    return !!window.__B46_FAST_DETAILS_REQUESTED&&d?.ledgerRows?.length===d.ledgerTotal&&
+    if(!d||!Array.isArray(d.ledgerRows))return false;
+    return !!window.__B46_FAST_DETAILS_REQUESTED&&d.ledgerRows.length===d.ledgerTotal&&
       !!document.querySelector('#b46-finance-chart-card svg.f46-svg')?.getClientRects().length;
   },null,{timeout:100000});
   assert.equal(await page.locator('#b46-fast-v1-preview').count(),0,label+':FILTERED_ALL_MARKET_GRAPH_SHOWN');
