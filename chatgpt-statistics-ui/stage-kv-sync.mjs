@@ -3,6 +3,7 @@
 import {createHash} from 'node:crypto';
 import {gzipSync} from 'node:zlib';
 import {createCompactSummary} from './compact-summary-stage.mjs';
+import {buildVerifiedGraph,verifyChartSourceContract} from './chart-series-stage.mjs';
 const ACCOUNT='62cb0db544160e6591342abd6b4f35cc';
 const NAMESPACE='f144dc8b6525477984067f7ab5762924';
 const BASE='https://api.cloudflare.com/client/v4/accounts/'+ACCOUNT+'/storage/kv/namespaces/'+NAMESPACE;
@@ -111,10 +112,19 @@ export async function execute(){
   if(!token)throw Error('NO_CLOUDFLARE_CREDENTIAL');
   let before=null;
   try{before=await apiGet(META,token)}catch(e){throw Error('CANNOT_READ_CURRENT_STAGE_POINTER_'+e.message)}
-  // Fast path: an unchanged revision is verified with just ONE cursor page.
+  // Guard graph formulas against current source drift before accepting fast path.
+  const chartSourceResp=await fetch('https://www.ball46.com/longterm-performance-343.js',{
+    signal:AbortSignal.timeout(20000)});
+  if(!chartSourceResp.ok)throw Error('CHART_SOURCE_HTTP_'+chartSourceResp.status);
+  const chartSource=await chartSourceResp.text();
+  verifyChartSourceContract(chartSource);
+  const chartSourceSha=createHash('sha256').update(chartSource).digest('hex');
+  // Fast path: unchanged aggregation + confirmed same chart formula/source.
   const latest=await readPage();
-  if(before?.schema===2&&before.key&&before.summaryKey&&
+  if(before?.schema===2&&before.key&&before.summaryKey&&before.chartKey&&
      /^verified-head-v1-[0-9a-f]{32}$/.test(before.summaryKey)&&
+     /^verified-chart-v1-[0-9a-f]{32}$/.test(before.chartKey)&&
+     before.chartSourceSha===chartSourceSha&&
      before.sourceSignature===signature(latest)){
     await apiPut(META,JSON.stringify({...before,checkedAt:Date.now()}),
       'application/json',token);
@@ -130,6 +140,14 @@ export async function execute(){
   if(!snapshot)throw lastError||Error('SOURCE_CHANGED');
   // Fast-path projection is derived ONLY after the complete Ledger passes verification.
   const compact=createCompactSummary(snapshot,verifyRows);
+  const graph=buildVerifiedGraph(snapshot.rows,snapshot.snapshotSavedAt);
+  if(graph.result.summary.rows!==snapshot.total||
+     graph.result.summary.wins!==snapshot.win+snapshot.halfWin||
+     graph.result.summary.losses!==snapshot.loss+snapshot.halfLoss||
+     graph.result.summary.pushes!==snapshot.push)
+    throw Error('CHART_COUNTS_MISMATCH_SOURCE');
+  const chartSha=createHash('sha256').update(graph.body).digest('hex');
+  const chartKey='verified-chart-v1-'+chartSha.slice(0,32);
   const summarySha=createHash('sha256').update(compact.body).digest('hex');
   const summaryKey='verified-head-v1-'+summarySha.slice(0,32);
   const raw=Buffer.from(JSON.stringify(snapshot),'utf8');
@@ -140,12 +158,14 @@ export async function execute(){
   const meta={schema:2,key,savedAt:snapshot.snapshotSavedAt,checkedAt:Date.now(),
     sourceSignature:signature(snapshot),ledgerTotal:snapshot.ledgerTotal,
     summaryKey,summaryBytes:compact.bytes,summarySha256:summarySha,
+    chartKey,chartBytes:graph.bytes,chartSha256:chartSha,chartSourceSha,
     settled:snapshot.total,rawBytes:raw.length,gzipBytes:gz.length,sha256:sha,
     previousKeys:[before?.key,...(before?.previousKeys||[])].filter(x=>typeof x==='string'&&x.startsWith('verified-full-gzip-v2-')&&x!==key).slice(0,2),
     source:'PUBLIC_PRODUCTION_READ_ONLY',target:'STAGING_KV_ONLY'};
   // Versioned immutable body first, stable manifest POINTER LAST. Failed builds keep old pointer.
   await apiPut(key,gz,'application/octet-stream',token);
   await apiPut(summaryKey,compact.body,'application/json',token);
+  await apiPut(chartKey,graph.body,'application/json',token);
   // Check that the newly published immutable body can be read before moving the pointer.
   const readback=await apiGet(key,token,'arrayBuffer');
   if(!readback||createHash('sha256').update(Buffer.from(readback)).digest('hex')!==sha)
@@ -153,9 +173,12 @@ export async function execute(){
   const headReadback=await apiGet(summaryKey,token,'arrayBuffer');
   if(!headReadback||createHash('sha256').update(Buffer.from(headReadback)).digest('hex')!==summarySha)
     throw Error('KV_COMPACT_READBACK_HASH_MISMATCH');
+  const graphReadback=await apiGet(chartKey,token,'arrayBuffer');
+  if(!graphReadback||createHash('sha256').update(Buffer.from(graphReadback)).digest('hex')!==chartSha)
+    throw Error('KV_GRAPH_READBACK_HASH_MISMATCH');
   await apiPut(META,JSON.stringify(meta),'application/json',token);
   console.log('B46_STAGE_SYNC='+JSON.stringify({mode:'PUBLISHED',ledgerTotal:meta.ledgerTotal,
-    bytes:meta.gzipBytes,summaryBytes:meta.summaryBytes,key:meta.key,
+    bytes:meta.gzipBytes,summaryBytes:meta.summaryBytes,chartBytes:meta.chartBytes,key:meta.key,
     sourceSignature:meta.sourceSignature,stageOnly:true}));
   // Retain 3 complete versions; garbage collection failure is non-fatal.
   try{
