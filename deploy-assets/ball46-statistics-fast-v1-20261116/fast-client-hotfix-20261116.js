@@ -339,7 +339,9 @@ const begin=async()=>{
 // Finance renderer emits this event after replacing its native card HTML.
 // Reconcile immediately to prevent a frame containing an obsolete overlay.
 document.addEventListener('ball46:finance-line-ready',()=>{
- if(nativeReady()) {
+ // A failed fast snapshot has no preview. Preserve its 'unavailable' status
+ // for diagnostics/failover instead of mislabeling the recovered renderer.
+ if(nativeReady()&&preview) {
    diag.nativeReadyMs=Math.round(performance.now()-START);
    diag.status='native-ready';
    cleanup();
