@@ -39,6 +39,7 @@ try{
   assert(src.includes('<section class="sp-kpis" data-b46-relocated-source="1" hidden aria-hidden="true" style="display:none!important">'),
     c.name+':NON_VISUAL_SOURCE_NOT_PRESERVED');
   assert(src.includes('id="b46-moved-top-kpis-no-flash-20261117"'),c.name+':EARLY_NO_FLASH_RULE_MISSING');
+  assert(src.includes('id="b46-relocated-strip-no-flash-20261117"'),c.name+':HEAD_WRAPPER_OBSERVER_MISSING');
   const early=await page.evaluate(()=>{
     const el=document.querySelector('.sp-kpis');
     const grid=document.querySelector('.b46v23-strip-grid');
@@ -68,6 +69,7 @@ try{
     oldSettledDays:document.querySelectorAll('[data-b46-settled-days-kpi]').length,
     legacyVisible:(()=>{const el=document.querySelector('.sp-kpis');return !!el?.getClientRects().length&&getComputedStyle(el).display!=='none'})(),
     stripGridVisible:(()=>{const el=document.querySelector('.b46v23-strip-grid');return !!el?.getClientRects().length&&getComputedStyle(el).display!=='none'})(),
+    stripWrapperVisible:(()=>{const el=document.querySelector('.b46v23-strip');return !!el?.getClientRects().length&&getComputedStyle(el).display!=='none'})(),
     reappeared:window.__B46_KPI_REAPPEAR_COUNT,
     financeCardCount:document.querySelectorAll('#b46-finance-chart-card').length,
     financialMetrics:chart?.querySelectorAll('.b46-fast-stat,.f46-metrics>div').length||0,
@@ -77,7 +79,7 @@ try{
    };
   });
   assert(state.legacyRow===1&&state.legacyKpis>=7&&
-    !state.legacyVisible&&!state.stripGridVisible,
+    !state.legacyVisible&&!state.stripGridVisible&&!state.stripWrapperVisible,
     c.name+':MOVED_BAR_VISIBLE_OR_DATA_SOURCE_LOST_'+JSON.stringify(state));
   assert(state.financeCardCount===1&&state.financialMetrics>=4,c.name+':NEW_FINANCE_CARD_LOST');
   assert(!state.overflow,c.name+':HORIZONTAL_OVERFLOW');
@@ -94,10 +96,11 @@ try{
    const after=await page.evaluate(()=>{
       const el=document.querySelector('.sp-kpis'),grid=document.querySelector('.b46v23-strip-grid');
       return {oldVisible:!!el?.getClientRects().length,gridVisible:!!grid?.getClientRects().length,
+        wrapperVisible:!!document.querySelector('.b46v23-strip')?.getClientRects().length,
         desktopTiles:document.querySelectorAll('#b46-finance-chart-card .b46-stage-summary-item').length,
         outcomes:document.querySelectorAll('#b46-finance-chart-card .b46-stage-outcomes-segment').length};
     });
-    assert(!after.oldVisible&&!after.gridVisible&&after.desktopTiles===8&&after.outcomes===3,
+    assert(!after.oldVisible&&!after.gridVisible&&!after.wrapperVisible&&after.desktopTiles===8&&after.outcomes===3,
       'HISTORY_TAKEOVER_LOST_RELOCATED_KPIS_'+JSON.stringify(after));
    assert.equal(errors.length,0,'NATIVE_TAKEOVER_SCRIPT_ERRORS');
   }
