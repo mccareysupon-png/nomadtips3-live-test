@@ -3,3 +3,5 @@ Owner requested removal of two obsolete UI elements. Exact Production baseline i
 Read-only source test: 43890094870 PASS (13,734 bytes old animation removed).
 Read-only browser simulation: 43890803581 PASS PC Total, PC 1X2, mobile, no old frames or missing native graph.
 Phase 1: create inactive Worker candidate and compare all 52 modules, Engine, Ledger, Snapshot services and real browser. DO NOT ACTIVATE Production during phase 1.
+
+Phase 2: owner-authorized activation after inactive candidate a4348c3d-e77c-483d-99b8-43edc05e8c75 passed real Cloudflare/browser QA in GitHub Actions 43892782677. Recheck exact active baseline, upload and test inactive copy again, activate only after passing all checks; auto rollback on any live QA failure. Remove only obsolete loader and old statistics UI source.
