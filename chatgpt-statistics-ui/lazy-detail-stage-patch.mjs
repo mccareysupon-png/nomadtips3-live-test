@@ -1,0 +1,37 @@
+// STAGING ONLY. Defer historical Ledger until a user explicitly requests detail.
+// Always patch CURRENT live JS only after strict anchor validation; fail open
+// to native behavior if the source has drifted.
+export const LAZY_STATS_MARKER='B46_STAGE_LAZY_DETAILS_V1_20261116';
+export function patchStageLazyStatistics(source){
+  if(typeof source!=='string')return {source,status:'INVALID_SOURCE'};
+  if(source.includes(LAZY_STATS_MARKER))return {source,status:'ALREADY_PATCHED'};
+  const start='function startStatistics(){if(state.statsLoaded&&Date.now()-state.statsLoadedAt<STAT_CACHE_MS){';
+  const anchor="document.addEventListener('ball46:statistics-snapshot',e=>{state.rows=Array.isArray(e.detail.ledgerRows)";
+  if(source.split(start).length!==2||source.split(anchor).length!==2)
+    return {source,status:'SOURCE_DRIFT_NO_LAZY_BOOT'};
+  const gate="function startStatistics(){if(!window.__B46_STAGE_DETAILS_REQUESTED)return;"+
+    "if(state.statsLoaded&&Date.now()-state.statsLoadedAt<STAT_CACHE_MS){";
+  const inject=String.raw`
+// B46_STAGE_LAZY_DETAILS_V1_20261116
+// Explicit detail request is the ONLY trigger for historical Ledger here.
+window.__B46_STAGE_LOAD_DETAILS=()=>{
+  if(window.__B46_STAGE_DETAILS_REQUESTED)return;
+  window.__B46_STAGE_DETAILS_REQUESTED=true;
+  if(state.view==='statistics')loadStatistics();
+  document.dispatchEvent(new CustomEvent('ball46:workspace-view',{detail:{view:'statistics'}}));
+};
+`;
+  return {source:source.replace(start,gate).replace(anchor,inject+anchor),
+    status:'STAGING_LAZY_DETAILS_PATCHED'};
+}
+export function patchStageLazyChart(source){
+  if(typeof source!=='string')return {source,status:'INVALID_SOURCE'};
+  if(source.includes(LAZY_STATS_MARKER))return {source,status:'ALREADY_PATCHED'};
+  const before='async function load(){if(rowsCache.length&&Date.now()-loadedAt<CACHE_MS){';
+  if(source.split(before).length!==2)return{source,status:'SOURCE_DRIFT_NO_CHART_LOAD'};
+  return {source:source.replace(before,
+    'async function load(){/* '+LAZY_STATS_MARKER+' */'+
+    'if(!window.__B46_STAGE_DETAILS_REQUESTED)return;'+
+    'if(rowsCache.length&&Date.now()-loadedAt<CACHE_MS){'),
+    status:'STAGING_LAZY_CHART_PATCHED'};
+}
