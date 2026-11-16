@@ -1,0 +1,49 @@
+name: BALL46 remove obsolete Statistics UI — gated candidate and Production
+on:
+  push:
+    branches: [chatgpt/ball46-statistics-ui-v1]
+    paths:
+      - '.github/workflows/b46-remove-obsolete-stats-ui-release-20261116.yml'
+      - 'deploy-assets/ball46-statistics-fast-v1-20261116/remove-obsolete-stats-ui.mjs'
+      - 'deploy-assets/ball46-statistics-fast-v1-20261116/deploy-remove-obsolete-ui-20261116.mjs'
+      - 'deploy-assets/ball46-statistics-fast-v1-20261116/verify-remove-obsolete-ui-browser.mjs'
+      - 'deploy-assets/ball46-statistics-fast-v1-20261116/REMOVE_OLD_UI_PHASE.txt'
+permissions: {contents: read}
+concurrency: {group: ball46-production-deploy, cancel-in-progress: false}
+jobs:
+  candidate-and-release:
+    if: contains(github.event.head_commit.message, '[b46-remove-old-ui-candidate]') || contains(github.event.head_commit.message, '[b46-remove-old-ui-activate]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      B46_REMOVE_OLD_UI_APPROVED: 'YES'
+      B46_REMOVE_OLD_UI_MODE: ${{ contains(github.event.head_commit.message, '[b46-remove-old-ui-activate]') && 'activate' || 'candidate' }}
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - name: Exact source-only mutation scope and syntax
+        run: |
+          set -euo pipefail
+          ROOT=deploy-assets/ball46-statistics-fast-v1-20261116
+          node --check "$ROOT/remove-obsolete-stats-ui.mjs"
+          node --check "$ROOT/deploy-remove-obsolete-ui-20261116.mjs"
+          node --check "$ROOT/verify-remove-obsolete-ui-browser.mjs"
+          grep -Fq "EXPECTED='2c585c34-177b-458a-848a-25353aa19830'" "$ROOT/deploy-remove-obsolete-ui-20261116.mjs"
+          grep -Fq "MODULE='statistics-menu-entry-20261114.mjs'" "$ROOT/deploy-remove-obsolete-ui-20261116.mjs"
+          test -n "$CLOUDFLARE_API_TOKEN"
+      - name: Install headless Chromium
+        run: |
+          npm install --prefix deploy-assets/ball46-statistics-fast-v1-20261116/.runtime --no-audit --no-fund playwright@1.65.1
+          deploy-assets/ball46-statistics-fast-v1-20261116/.runtime/node_modules/.bin/playwright install --with-deps chromium
+      - name: Verify every existing Worker module and run browser QA on inactive candidate before any activation
+        run: node deploy-assets/ball46-statistics-fast-v1-20261116/deploy-remove-obsolete-ui-20261116.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: b46-remove-old-ui-deploy-audit
+          path: deploy-assets/ball46-statistics-fast-v1-20261116/remove-old-ui-release-audit/
+          if-no-files-found: ignore
+          retention-days: 21
