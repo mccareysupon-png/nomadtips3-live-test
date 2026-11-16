@@ -248,7 +248,7 @@ const begin=async()=>{
    // all-markets graph. Resume the original full renderer immediately.
    if(document.body?.dataset.workspaceView==='statistics'&&!validRoute()){
      diag.status='filtered-deeplink-fallback';
-     window.__B46_FAST_LOAD_DETAILS?.();
+     triggerNativeFallback();
      return;
    }
    mount();
@@ -257,10 +257,10 @@ const begin=async()=>{
 document.addEventListener('ball46:workspace-view',()=>{if(preview&&!validRoute())cleanup();else mount()});
 document.addEventListener('click',e=>{
  if(e.target?.closest?.('[data-stat-market],[data-sp-filter],[data-sp-variant]')){
-   window.__B46_FAST_LOAD_DETAILS?.();cleanup();diag.status='filter-selected';
+   triggerNativeFallback();cleanup();diag.status='filter-selected';
  }
 },true);
-window.addEventListener('popstate',()=>{if(!validRoute()){window.__B46_FAST_LOAD_DETAILS?.();cleanup()}else mount()});
+window.addEventListener('popstate',()=>{if(!validRoute()){triggerNativeFallback();cleanup()}else mount()});
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',begin,{once:true});
 else begin();
 })();
