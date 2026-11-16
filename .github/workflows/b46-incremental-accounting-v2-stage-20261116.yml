@@ -1,0 +1,21 @@
+name: BALL46 V2 accountant last-balance incremental tests STAGING ONLY
+on:
+  push:
+    branches: [chatgpt/ball46-statistics-ui-v1]
+    paths:
+      - 'chatgpt-statistics-ui/incremental-accounting-v2-stage.mjs'
+      - 'chatgpt-statistics-ui/test-incremental-accounting-v2-stage.mjs'
+      - '.github/workflows/b46-incremental-accounting-v2-stage-20261116.yml'
+permissions: {contents: read}
+jobs:
+  settlement-unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - name: Verify only last balance plus new SETTLED events (zero Production writes)
+        run: |
+          node --check chatgpt-statistics-ui/incremental-accounting-v2-stage.mjs
+          node chatgpt-statistics-ui/test-incremental-accounting-v2-stage.mjs
