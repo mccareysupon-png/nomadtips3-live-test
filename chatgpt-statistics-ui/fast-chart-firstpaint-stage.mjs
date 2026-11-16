@@ -90,6 +90,7 @@ function styleOnce(){
  '#b46-stage-fast-preview .b46-fast-stat small{display:block;color:#92b8a6;font-size:10px}',
  '#b46-stage-fast-preview .b46-fast-stat b{display:block;font-size:14px;margin-top:4px;overflow-wrap:anywhere}',
  '#b46-stage-fast-preview .b46-fast-stat[data-key="wpl"] b{font-size:10px;letter-spacing:-.2px}',
+ '#b46-stage-fast-preview .b46-fast-mobile-settled{display:none}',
  '#b46-stage-fast-preview .b46-fast-outcomes{margin-top:13px;padding:12px;background:#152a22;border-radius:10px}',
  '#b46-stage-fast-preview .b46-fast-outcomes-track{display:flex;height:11px;overflow:hidden;border-radius:7px;margin-top:9px}',
  '#b46-stage-fast-preview .b46-fast-outcomes-track span{flex-basis:0;min-width:0}',
@@ -97,7 +98,7 @@ function styleOnce(){
  '#b46-stage-fast-preview .b46-fast-foot{font-size:10px;color:#9bb8a9;margin-top:12px}',
  '#b46-stage-fast-preview .b46-fast-details{border:1px solid #336e57;background:#1a3b2e;color:#cff7df;cursor:pointer;border-radius:8px;padding:10px 14px;font-size:12px;font-weight:700;margin-top:12px}',
  '@media(min-width:851px) and (max-width:1320px){#b46-stage-fast-preview .b46-fast-stats{grid-template-columns:repeat(3,minmax(0,1fr))}}',
- '@media(max-width:850px){#b46-stage-fast-preview .b46-fast-columns{grid-template-columns:1fr}#b46-stage-fast-preview .b46-fast-chart{height:150px}#b46-stage-fast-preview .b46-fast-stats{grid-template-columns:repeat(2,minmax(0,1fr))}#b46-stage-fast-preview .b46-fast-outcomes{display:none}#b46-stage-fast-preview .b46-fast-stat:not([data-key="roi"]):not([data-key="rate"]):not([data-key="settled"]):not([data-key="drawdown"]){display:none}}'
+ '@media(max-width:850px){#b46-stage-fast-preview .b46-fast-columns{grid-template-columns:1fr}#b46-stage-fast-preview .b46-fast-chart{height:150px}#b46-stage-fast-preview .b46-fast-stats{grid-template-columns:repeat(2,minmax(0,1fr))}#b46-stage-fast-preview .b46-fast-outcomes{display:none}#b46-stage-fast-preview .b46-fast-stat:not([data-key="roi"]):not([data-key="rate"]):not([data-key="settled"]):not([data-key="drawdown"]){display:none}#b46-stage-fast-preview .b46-fast-mobile-settled{display:block;order:3}#b46-stage-fast-preview .b46-fast-stat[data-key="drawdown"]{order:4}}'
  ].join('');
  document.head.appendChild(style);
 }
@@ -145,6 +146,13 @@ function mount(){
    const strong=document.createElement('b');strong.textContent=value;
    cell.append(small,strong);stats.appendChild(cell);
  }
+ const mobileSettled=document.createElement('div');
+ mobileSettled.className='b46-fast-stat b46-fast-mobile-settled';
+ mobileSettled.dataset.key='settled';
+ const mobileSettledLabel=document.createElement('small');mobileSettledLabel.textContent='SETTLED';
+ const mobileSettledNumber=document.createElement('b');mobileSettledNumber.textContent=head.total.toLocaleString('en-US');
+ mobileSettled.append(mobileSettledLabel,mobileSettledNumber);
+ stats.appendChild(mobileSettled);
  const outcomes=document.createElement('section');outcomes.className='b46-fast-outcomes';
  outcomes.setAttribute('aria-label','Signal Outcomes verified snapshot');
  const heading=document.createElement('div');heading.className='b46-fast-kicker';
