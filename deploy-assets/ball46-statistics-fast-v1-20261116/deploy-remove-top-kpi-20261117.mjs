@@ -63,12 +63,20 @@ async function version(worker,id){
  throw Error('CANDIDATE_VERSION_MISSING');
 }
 async function asset(host,path){
- const res=await fetch(new URL(path,host),{redirect:'error',
-  headers:{'cache-control':'no-cache'},signal:AbortSignal.timeout(60000)});
- const buf=Buffer.from(await res.arrayBuffer());
- assert.equal(res.status,200,'HTTP_'+res.status+'_'+host+path);
- assert(buf.length>0,'EMPTY_'+path);
- return buf;
+ const isInactive=/^https:\/\/[a-f0-9]{8}-ball46-production\.mccarey-supon\.workers\.dev$/.test(host);
+ for(let attempt=0;attempt<(isInactive?24:1);attempt++){
+  const res=await fetch(new URL(path,host),{redirect:'error',
+   headers:{'cache-control':'no-cache'},signal:AbortSignal.timeout(60000)});
+  const buf=Buffer.from(await res.arrayBuffer());
+  if(res.status===200&&buf.length)return buf;
+  // A newly uploaded Cloudflare inactive version can transiently serve HTTP500
+  // during edge propagation. Never mask other errors or any live Production HTTP.
+  if(!(isInactive&&res.status===500&&attempt<23))
+   throw Error('HTTP_'+res.status+'_'+host+path+'_BODY_'+buf.toString().slice(0,240));
+  console.warn('B46_TOP_KPI_INACTIVE_EDGE_RETRY='+JSON.stringify({attempt:attempt+1,path,status:res.status}));
+  await new Promise(resolve=>setTimeout(resolve,2000));
+ }
+ throw Error('ASSET_RETRY_EXHAUSTED_'+host+path);
 }
 async function fingerprint(host){
  const out={};
