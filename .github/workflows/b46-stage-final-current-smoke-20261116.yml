@@ -1,0 +1,61 @@
+name: B46 stage current verified KV snapshot final PC mobile smoke
+on:
+  push:
+    branches: [chatgpt/ball46-statistics-ui-v1]
+    paths: ['.github/workflows/b46-stage-final-current-smoke-20261116.yml']
+permissions: {contents: read}
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - name: Install Chromium
+        run: |
+          npm install --prefix /tmp/b46-final-smoke --no-fund --no-audit playwright@1.65.1
+          /tmp/b46-final-smoke/node_modules/.bin/playwright install --with-deps chromium
+      - name: Verify current immutable stage snapshot, chart visible, old loader hidden
+        run: |
+          node <<'NODE'
+          const {chromium}=require('/tmp/b46-final-smoke/node_modules/playwright');
+          const root='https://ball46-chat-statistics-live-ui-test-20261115.mccarey-supon.workers.dev';
+          (async()=>{
+            const metaResp=await fetch(root+'/_b46_stage_stats_meta',{signal:AbortSignal.timeout(20000)});
+            const meta=await metaResp.json();
+            if(!metaResp.ok||!meta?.ok||!meta.immutable||meta.ledgerTotal<16077)throw Error('STAGE_MANIFEST_UNAVAILABLE');
+            const browser=await chromium.launch({headless:true});
+            const results=await Promise.all([{name:'PC',width:1366},{name:'MOBILE',width:390}].map(async profile=>{
+              const ctx=await browser.newContext({viewport:{width:profile.width,height:844},timezoneId:'Asia/Bangkok'});
+              const page=await ctx.newPage(),jsErrors=[],api=[];
+              page.on('pageerror',e=>jsErrors.push(e.message.slice(0,160)));
+              page.on('response',r=>{if(new URL(r.url()).pathname==='/api/engine/statistics')api.push({code:r.status(),marker:r.headers()['x-b46-stage-snapshot']||null})});
+              const start=Date.now();
+              const response=await page.goto(root+'/?view=statistics',{waitUntil:'domcontentloaded',timeout:45000});
+              await page.waitForFunction(expected=>{
+                const d=window.BALL46_STATISTICS_DATA?.getSnapshot?.();
+                const svg=document.querySelector('#b46-finance-chart-card svg.f46-svg');
+                return d?.ledgerTotal===expected&&d?.ledgerRows?.length===expected &&
+                    d.stale===true&&!!svg?.getClientRects().length;
+              },meta.ledgerTotal,{timeout:45000});
+              const state=await page.evaluate(()=>{
+                const snap=window.BALL46_STATISTICS_DATA.getSnapshot();
+                return {rows:snap.ledgerRows.length,ledgerTotal:snap.ledgerTotal,
+                  savedAt:snap.snapshotSavedAt,loaderHidden:getComputedStyle(document.querySelector('.b46-stats-loader')).display==='none',
+                  nativeView:document.body.dataset.workspaceView,
+                  currentRecordLabel:document.querySelector('[data-sp-record-count]')?.textContent?.trim(),
+                  savedLabel:document.querySelector('[data-sp-feed-state]')?.textContent?.trim()?.slice(0,80),
+                  chart:!!document.querySelector('#b46-finance-chart-card svg.f46-svg')?.getClientRects().length};
+              });
+              const ms=Date.now()-start;
+              const pass=response.status()===200&&state.rows===meta.ledgerTotal&&state.loaderHidden&&state.chart
+                &&ms<=20000&&!jsErrors.length&&api.some(x=>x.code===200&&x.marker?.startsWith('VERIFIED'));
+              console.log('B46_STAGE_FINAL_SMOKE='+JSON.stringify({profile:profile.name,pass,ms,meta:{ledgerTotal:meta.ledgerTotal,savedAt:meta.savedAt},state,api,jsErrors}));
+              await ctx.close();
+              return pass;
+            }));
+            await browser.close();
+            if(results.some(x=>!x)){console.error('B46_STAGE_FINAL_SMOKE=FAIL');process.exitCode=1}
+            else console.log('B46_STAGE_FINAL_SMOKE=PASS_PC_MOBILE_LIVE_KV');
+          })().catch(e=>{console.error('B46_STAGE_FINAL_SMOKE_FATAL='+String(e));process.exitCode=1});
+          NODE
