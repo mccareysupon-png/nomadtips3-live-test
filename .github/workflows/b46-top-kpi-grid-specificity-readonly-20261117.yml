@@ -1,0 +1,18 @@
+name: B46 reconstructed old KPI grid specificity READ ONLY
+on:
+  push:
+    branches: [chatgpt/ball46-statistics-ui-v1]
+    paths: ['.github/workflows/b46-top-kpi-grid-specificity-readonly-20261117.yml']
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: |
+          npm install --prefix deploy-assets/ball46-statistics-fast-v1-20261116/.runtime --no-audit --no-fund playwright@1.65.1
+          deploy-assets/ball46-statistics-fast-v1-20261116/.runtime/node_modules/.bin/playwright install --with-deps chromium
+      - run: node deploy-assets/ball46-statistics-fast-v1-20261116/diag-moved-top-grid.mjs
