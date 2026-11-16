@@ -33,6 +33,26 @@ try{
     console.log('B46_COMPACT_HEAD_HTTP='+JSON.stringify({
       profile:profile.name,bytes:rawHead.length,ms:Date.now()-fastStart,
       ledgerTotal:head.ledgerTotal,settled:head.total,stageOnly:true}));
+    const graphStart=Date.now();
+    const graphResponse=await context.request.get(base+'/_b46_stage_stats_chart',{timeout:20000});
+    assert.equal(graphResponse.status(),200,profile.name+':VERIFIED_GRAPH_NOT_READY');
+    const graphBytes=await graphResponse.body();
+    const graph=JSON.parse(graphBytes.toString('utf8'));
+    assert(graph.ok===true&&graph.schema===1&&graph.market==='all'&&graph.range==='all',
+      profile.name+':GRAPH_CONTRACT_FAILED');
+    assert.equal(graph.summary.rows,head.total,profile.name+':GRAPH_SETTLED_COUNT_DRIFT');
+    assert.equal(graph.summary.wins,head.win+head.halfWin,profile.name+':GRAPH_WINS_DRIFT');
+    assert.equal(graph.summary.losses,head.loss+head.halfLoss,profile.name+':GRAPH_LOSSES_DRIFT');
+    assert.equal(graph.summary.pushes,head.push,profile.name+':GRAPH_PUSH_DRIFT');
+    assert.equal(graph.asOf,head.snapshotSavedAt,profile.name+':GRAPH_HEAD_TIMESTAMP_DRIFT');
+    for(const key of ['units','roi','rate']){
+      assert(Array.isArray(graph.series[key])&&graph.series[key].length>0,
+        profile.name+':GRAPH_'+key+'_EMPTY');
+    }
+    assert(!Object.hasOwn(graph,'rows'),profile.name+':GRAPH_HISTORY_LEAK');
+    console.log('B46_VERIFIED_GRAPH_HTTP='+JSON.stringify({
+      profile:profile.name,bytes:graphBytes.length,ms:Date.now()-graphStart,
+      unitsPoints:graph.series.units.length,net:graph.summary.net,stageOnly:true}));
     const started=Date.now(),resp=await page.goto(base+'/?view=statistics',{waitUntil:'domcontentloaded',timeout:45000});
     assert.equal(resp?.status(),200,profile.name+':STAGE_ENTRY_NOT_200');
     const ready=()=> {
@@ -85,6 +105,24 @@ try{
           })()}};
     });
     assert.equal(cold.fullRows,cold.ledgerTotal,profile.name+':INVALID_LEDGER');
+    // The existing full-ledger renderer is the parity oracle: verify chart index
+    // point count and final P/L without altering the native DOM or formulas.
+    const parity=await page.evaluate(()=>({
+      value:document.querySelector('#b46-finance-chart-card [data-f46-value]')?.textContent?.trim(),
+      metric:document.querySelector('#b46-finance-chart-card [data-b46-mode].active')?.getAttribute('data-b46-mode'),
+      range:document.querySelector('#b46-finance-chart-card [data-b46-range].active')?.getAttribute('data-b46-range'),
+      title:document.querySelector('[data-sp-market-title]')?.textContent?.trim()
+    }));
+    assert.equal(parity.metric,'units',profile.name+':GRAPH_METRIC_NOT_DEFAULT_UNITS');
+    assert.equal(parity.range,'all',profile.name+':GRAPH_RANGE_NOT_DEFAULT_ALL');
+    assert.equal(cold.chartPoints,graph.series.units.length,profile.name+':GRAPH_POINT_COUNT_DRIFT');
+    const nativeNet=Number(String(parity.value||'').replaceAll(',','').replace(/[^0-9.+-]/g,''));
+    assert(Number.isFinite(nativeNet),profile.name+':GRAPH_NATIVE_NET_UNREADABLE_'+parity.value);
+    assert(Math.abs(nativeNet-graph.summary.net)<0.011,
+      profile.name+':GRAPH_NET_MISMATCH_'+nativeNet+'_VS_'+graph.summary.net);
+    console.log('B46_GRAPH_NATIVE_PARITY='+JSON.stringify({
+      profile:profile.name,points:cold.chartPoints,nativeNet,precomputedNet:graph.summary.net,
+      metric:parity.metric,range:parity.range,pass:true}));
     assert(cold.ledgerTotal>1000,profile.name+':LEDGER_TOO_SMALL');
     assert(cold.loadingAnimationHidden,profile.name+':LOADING_OVERLAY_STILL_VISIBLE');
     if(!profile.isMobile){
