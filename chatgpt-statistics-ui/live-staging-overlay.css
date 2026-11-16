@@ -177,3 +177,6 @@ html body #b46-finance-chart-card .f46-line{
 html.b46-stage-saved-ready body[data-workspace-view="statistics"] .sp-stats-content {
   display:block!important;
 }
+
+/* STAGING ONLY: verified-snapshot panel display has an inline-important override
+   because the original readiness CSS has greater specificity. No changes to Production. */
