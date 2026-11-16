@@ -205,6 +205,13 @@ const begin=async()=>{
    if(!h.ok||!g.ok)throw Error('FAST_STAGE_HTTP_'+h.status+'_'+g.status);
    [head,graph]=await Promise.all([h.json(),g.json()]);
    if(!validData(head,graph))throw Error('FAST_STAGE_COUNT_MISMATCH');
+   // A direct link to AH/OU/corners or a filtered route cannot use the
+   // all-markets graph. Resume the original full renderer immediately.
+   if(document.body?.dataset.workspaceView==='statistics'&&!validRoute()){
+     diag.status='filtered-deeplink-fallback';
+     window.__B46_STAGE_LOAD_DETAILS?.();
+     return;
+   }
    mount();
  }catch(e){diag.status='unavailable';diag.error=String(e.message||e).slice(0,120);window.__B46_STAGE_LOAD_DETAILS?.()}
 };
