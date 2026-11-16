@@ -1,0 +1,24 @@
+name: B46 Statistics Loader staging-only unit gate
+on:
+  push:
+    branches: [chatgpt/ball46-statistics-ui-v1]
+    paths:
+      - 'chatgpt-statistics-ui/statistics-loader-staging-patch.mjs'
+      - 'chatgpt-statistics-ui/test-statistics-loader-patch.mjs'
+      - '.github/workflows/b46-staging-loader-unit-20261116.yml'
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - name: Syntax and real-source staging loader regression (NO DEPLOY)
+        working-directory: chatgpt-statistics-ui
+        run: |
+          node --check statistics-loader-staging-patch.mjs
+          node --check test-statistics-loader-patch.mjs
+          node test-statistics-loader-patch.mjs
