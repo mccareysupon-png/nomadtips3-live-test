@@ -1,0 +1,54 @@
+name: BALL46 V2 homepage zero-ledger-load STAGING browser audit
+on:
+  push:
+    branches: [chatgpt/ball46-statistics-ui-v1]
+    paths: ['.github/workflows/b46-v2-homepage-no-ledger-browser-20261116.yml']
+permissions: {contents: read}
+jobs:
+  browser-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - name: Install isolated browser
+        run: |
+          npm install --prefix /tmp/b46-home-qa --no-audit --no-fund playwright@1.65.1
+          /tmp/b46-home-qa/node_modules/.bin/playwright install --with-deps chromium
+      - name: Inspect homepage load before touching detailed history
+        run: |
+          node <<'NODE'
+          const {chromium}=require('/tmp/b46-home-qa/node_modules/playwright');
+          (async()=>{
+            const browser=await chromium.launch();
+            const base='https://ball46-chat-statistics-live-ui-test-20261115.mccarey-supon.workers.dev';
+            const page=await browser.newPage({viewport:{width:1366,height:900}});
+            const api=[],errors=[];
+            page.on('pageerror',e=>errors.push(e.message.slice(0,200)));
+            page.on('response',r=>{if(new URL(r.url()).pathname==='/api/engine/statistics')api.push({status:r.status(),url:r.url().slice(0,170)})});
+            await page.addInitScript(()=>{
+              const old=window.fetch;window.__B46_CALLERS=[];
+              window.fetch=function(input,...args){
+                const url=typeof input==='string'?input:String(input?.url||'');
+                if(url.includes('/api/engine/statistics'))window.__B46_CALLERS.push({
+                  url:url.slice(0,140),stack:new Error('ACCOUNTING_RECOUNT').stack?.slice(0,900)});
+                return old.call(this,input,...args);
+              };
+            });
+            const r=await page.goto(base+'/',{waitUntil:'domcontentloaded',timeout:60000});
+            await page.waitForTimeout(13500);
+            const state=await page.evaluate(()=>({view:document.body?.dataset.workspaceView,
+              mainBoard:!!document.querySelector('.main-board')?.getClientRects().length,
+              homeDaily:document.querySelector('#ball46-daily-performance')?.textContent?.slice(0,420),
+              dailyCounts:[...document.querySelectorAll('#ball46-daily-performance [data-b46-stat]')].map(e=>e.textContent.trim()).slice(0,8),
+              fetchCallers:window.__B46_CALLERS?.slice(0,4),
+              statsPatched:typeof window.__B46_STAGE_LOAD_DETAILS}));
+            console.log('B46_V2_STAGE_HOME='+JSON.stringify({
+              http:r.status(),statsApiRequests:api.length,statsApi:api.slice(0,5),
+              errors,dom:state,productionWrites:0}));
+            await browser.close();
+            if(r.status()!==200||errors.length)throw Error('STAGE_HOME_ERROR');
+            if(api.length)throw Error('STAGE_HOME_HISTORICAL_LEDGER_RECOUNT_'+api.length);
+            console.log('B46_V2_HOME_NO_LEDGER=PASS');
+          })().catch(e=>{console.error('B46_V2_HOME_NO_LEDGER_FAILED='+String(e));process.exitCode=1});
+          NODE
