@@ -16,3 +16,5 @@ Candidate 5: original direct API 599 skip, stable content-signature excluding le
 Owner-approved activation after successful robust Candidate b3874a45-94f1-47ca-b0d7-44d40292b3aa run 43872558038: PC/mobile native 33 cursor pages, 0 JS errors, AH/503 passed. Build fresh inactive Candidate; activate only after all repeated checks and roll back to 828ddb27 if live checks fail.
 
 Candidate retry after AH deep-link helper race guard; verify PC/mobile, AH, 503. Production activation remains blocked unless all pass.
+
+Owner-authorized V1 activation after passing candidate e3461033-0d78-4e18-b0d9-f797a1a7b4fc on run 43874612274 (PC/mobile, AH, 503). Preserve exact Production baseline, retest inactive candidate, activate 100% only on PASS; auto rollback on live regression.
