@@ -1,0 +1,24 @@
+name: B46 native finance chart insertion and production lazy anchor READ ONLY
+on:
+  push:
+    branches: [chatgpt/ball46-statistics-ui-v1]
+    paths: ['.github/workflows/b46-fast-v1-source-anchor-readonly.yml']
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          node <<'NODE'
+          (async()=>{
+          for(const path of ['/longterm-performance-343.js','/singlepage-workspace-343.js']){
+            const resp=await fetch('https://www.ball46.com'+path,{signal:AbortSignal.timeout(20000)});
+            if(!resp.ok)throw Error('STATUS_'+resp.status);
+            const s=await resp.text();
+            const terms=['function ensureCard()', 'function active()', 'async function load()','function startStatistics()', 'function renderStats()', 'const CACHE_MS', 'function page('];
+            for(const term of terms) {
+              const i=s.indexOf(term);if(i>=0)console.log('B46_V1_ANCHOR='+JSON.stringify({path,term,context:s.slice(i,i+2500)}));
+            }
+          }
+          })().catch(e=>{console.error(String(e));process.exitCode=1})
+          NODE
