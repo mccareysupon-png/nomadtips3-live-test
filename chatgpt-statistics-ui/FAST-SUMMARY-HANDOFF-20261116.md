@@ -12,7 +12,7 @@
 - Staging build 2026-11-16 GitHub Actions run `43849014107`: PASS, 16,082 original Ledger rows, 15,799 settled, 283 pending, original full gzip 4,739,337 bytes, compact verified JSON **577 bytes**.
 - Existing staging renderer still needs the full Ledger for chart and details: browser QA run `43849100208` PASSED, PC cold 10,787ms / warm 8,738ms; mobile cold 8,776ms / warm 8,610ms.
 - Production previously took ~25,731ms in release run `43844344540` (34 statistics API requests). These timings are different runs and **not a controlled A/B performance result**.
-- New compact endpoint smoke test run: `43849608229`. Verify its conclusion before claiming endpoint HTTP PASS.
+- New compact endpoint browser smoke test run `43849608229`: PASS on PC/mobile; original-source 577-byte JSON responded in **355ms on desktop** and **127ms on mobile** in that test. Full chart remained slower: PC cold 12,276ms / warm 11,147ms; mobile cold 10,914ms / warm 11,056ms. No JavaScript errors, one or two historical API reads across reloads. Timings are single-run observations, not guaranteed user speeds.
 
 ## Known limitation / next executable task
 **Fast compact endpoint is not yet the main data source for the actual Statistics renderer.** The new 577-byte payload proves headline aggregation can be served without the full Ledger, but it does NOT yet carry all canonical daily P/L, ROI, chart, and filtered-row details. Do not draw a financial graph from invented/approximate values.
