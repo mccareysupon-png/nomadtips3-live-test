@@ -1,0 +1,81 @@
+name: B46 staging live refresh after saved snapshot with injected 599
+on:
+  push:
+    branches: [chatgpt/ball46-statistics-ui-v1]
+    paths: ['.github/workflows/b46-staging-live-refresh-599-browser-20261116.yml']
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  test-live-refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - name: Install Chromium
+        run: |
+          npm install --prefix /tmp/b46-599-refresh --no-audit --no-fund playwright@1.65.1
+          /tmp/b46-599-refresh/node_modules/.bin/playwright install --with-deps chromium
+      - name: Verify saved graph remains visible through injected 599 and eventually refreshes
+        run: |
+          node <<'NODE'
+          const {chromium}=require('/tmp/b46-599-refresh/node_modules/playwright');
+          const base='https://ball46-chat-statistics-live-ui-test-20261115.mccarey-supon.workers.dev/?view=statistics';
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const profiles=[{name:'pc',width:1366},{name:'mobile',width:390}];
+            async function run(profile){
+              const ctx=await browser.newContext({viewport:{width:profile.width,height:844},timezoneId:'Asia/Bangkok'});
+              const page=await ctx.newPage(),errors=[],responses=[];
+              let injected=false,pages=0;
+              page.on('pageerror',e=>errors.push(e.message.slice(0,230)));
+              await page.route('**/api/engine/statistics**',async route=>{
+                const u=new URL(route.request().url);
+                if(u.searchParams.has('paged')){
+                  pages++;
+                  if(!injected){
+                    injected=true;
+                    await route.fulfill({status:599,contentType:'text/plain',body:'STAGING_TEST_INJECTED_599'});
+                    return;
+                  }
+                }
+                await route.continue();
+              });
+              page.on('response',r=>{
+                if(new URL(r.url()).pathname==='/api/engine/statistics')responses.push({status:r.status(),cached:r.headers()['x-b46-stage-snapshot']=== 'VERIFIED_SAVED'})
+              });
+              const started=Date.now();
+              await page.goto(base,{waitUntil:'domcontentloaded',timeout:45000});
+              await page.waitForFunction(()=>{
+                const d=window.BALL46_STATISTICS_DATA?.getSnapshot?.();
+                const graph=document.querySelector('#b46-finance-chart-card svg.f46-svg');
+                return d?.stale===true&&d?.ok===true&&d.ledgerRows?.length===d.ledgerTotal && !!graph?.getClientRects().length;
+              },null,{timeout:45000});
+              const firstMs=Date.now()-started;
+              const stale=await page.evaluate(()=>{
+                const d=window.BALL46_STATISTICS_DATA.getSnapshot();
+                return{ledgerTotal:d.ledgerTotal,stale:d.stale,display:document.querySelector('[data-sp-feed-state]')?.textContent?.slice(0,90)};
+              });
+              console.log('B46_REFRESH_START='+JSON.stringify({profile:profile.name,firstMs,stale}));
+              const refreshed=await page.waitForFunction(()=>{
+                const d=window.BALL46_STATISTICS_DATA?.getSnapshot?.();
+                return d?.ok===true&&d?.stale!==true&&d?.ledgerRows?.length===d.ledgerTotal&&
+                    !!document.querySelector('#b46-finance-chart-card svg.f46-svg')?.getClientRects().length;
+              },null,{timeout:140000}).then(()=>true).catch(()=>false);
+              const end=await page.evaluate(()=>{
+                const d=window.BALL46_STATISTICS_DATA?.getSnapshot?.();
+                return{ledgerTotal:d?.ledgerTotal,settled:d?.total,rows:d?.ledgerRows?.length,stale:d?.stale,
+                  graphVisible:!!document.querySelector('#b46-finance-chart-card svg.f46-svg')?.getClientRects().length,
+                  state:document.querySelector('[data-sp-feed-state]')?.textContent?.slice(0,90)};
+              });
+              console.log('B46_REFRESH_RESULT='+JSON.stringify({profile:profile.name,firstMs,elapsedMs:Date.now()-started,
+                injected599:injected,pages,refreshed,end,http:responses.reduce((a,x)=>(a[x.status]=(a[x.status]||0)+1,a),{}),errors}));
+              await ctx.close();
+              return !!(refreshed&&injected&&pages>=2&&!errors.length&&end.graphVisible);
+            }
+            const results=await Promise.all(profiles.map(run));
+            await browser.close();
+            if(results.some(x=>!x)){console.log('B46_REFRESH_TEST=FAILED');process.exitCode=1}
+            else console.log('B46_REFRESH_TEST=PASS_PC_MOBILE');
+          })().catch(e=>{console.error('B46_REFRESH_FATAL='+String(e));process.exitCode=1});
+          NODE
