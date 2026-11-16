@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import {readFile,mkdir,writeFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import {gzipSync} from 'node:zlib';
-import {spawn} from 'node:child_process';
+import {spawn,execFileSync} from 'node:child_process';
 import {verifyBrowser} from './verify-fast-browser.mjs';
 import {removeMovedKpiStripFromMenu,PATCH_TAG} from './remove-moved-kpi-strip.mjs';
 
@@ -112,6 +112,8 @@ function checkCleanHtml(body){
    'HIDDEN_INTERNAL_METRICS_SOURCE_MISSING');
  assert(body.includes('id="b46-moved-top-kpis-no-flash-20261117"'),
    'NO_FLASH_HEAD_STYLE_MISSING');
+ assert(body.includes('id="b46-relocated-strip-no-flash-20261117"'),
+   'DYNAMIC_WRAPPER_SUPPRESSION_MISSING');
  assert(body.includes('data-sp-kpi="total"'),'METRICS_SOURCE_UNEXPECTEDLY_DELETED');
  assert(!body.includes('id="b46-statistics-visuals-20261114-runtime"'),
    'PREVIOUS_ANIMATION_REAPPEARED');
@@ -163,6 +165,7 @@ try{
  const changed=removeMovedKpiStripFromMenu(source);
  assert(changed.source.includes(PATCH_TAG),'TOP_KPI_SOURCE_NOT_PATCHED');
  await writeFile(audit+'/statistics-menu-entry-revised.mjs',changed.source);
+ execFileSync(process.execPath,['--check',audit+'/statistics-menu-entry-revised.mjs']);
  const revisedHash=hash(Buffer.from(changed.source));
  assert.notEqual(revisedHash,moduleDigest(original),'MENU_UNCHANGED');
  const oldHtml=(await asset(DIRECT,'/?view=statistics')).toString();
