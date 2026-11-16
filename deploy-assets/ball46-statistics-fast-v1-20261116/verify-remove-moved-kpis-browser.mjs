@@ -36,14 +36,19 @@ try{
   const response=await page.goto(host+c.path,{waitUntil:'domcontentloaded',timeout:55000});
   assert.equal(response?.status(),200,c.name+':HTTP_FAIL');
   const src=await response.text();
-  assert(!src.includes('<section class="sp-kpis">'),c.name+':SOURCE_HAS_REMOVED_ROW');
-  assert(!src.includes('data-sp-kpi="total"'),c.name+':SOURCE_HAS_SETTLED_LEGACY_CARD');
-  const early=await page.evaluate(()=>({
-    row:document.querySelectorAll('.sp-kpis').length,
-    cards:document.querySelectorAll('.sp-kpis .sp-kpi').length,
-    settledDays:document.querySelectorAll('[data-b46-settled-days-kpi]').length
-  }));
-  assert.equal(early.row+early.cards+early.settledDays,0,c.name+':ROW_VISIBLE_AT_DOM_READY');
+  assert(src.includes('<section class="sp-kpis" data-b46-relocated-source="1" hidden aria-hidden="true" style="display:none!important">'),
+    c.name+':NON_VISUAL_SOURCE_NOT_PRESERVED');
+  assert(src.includes('id="b46-moved-top-kpis-no-flash-20261117"'),c.name+':EARLY_NO_FLASH_RULE_MISSING');
+  const early=await page.evaluate(()=>{
+    const el=document.querySelector('.sp-kpis');
+    const grid=document.querySelector('.b46v23-strip-grid');
+    return {count:document.querySelectorAll('.sp-kpis').length,hidden:el?.hidden,
+      display:el?getComputedStyle(el).display:null,
+      rowRects:el?.getClientRects().length||0,
+      gridRects:grid?.getClientRects().length||0};
+  });
+  assert(early.count===1&&early.hidden===true&&early.display==='none'&&
+    early.rowRects===0&&early.gridRects===0,c.name+':OLD_KPI_STRIP_VISIBLE_AT_DOM_READY');
   if(c.filtered){
    await page.waitForFunction(()=>{
     const d=window.BALL46_STATISTICS_DATA?.getSnapshot?.();
@@ -61,6 +66,8 @@ try{
     legacyRow:document.querySelectorAll('.sp-kpis').length,
     legacyKpis:document.querySelectorAll('.sp-kpis .sp-kpi').length,
     oldSettledDays:document.querySelectorAll('[data-b46-settled-days-kpi]').length,
+    legacyVisible:(()=>{const el=document.querySelector('.sp-kpis');return !!el?.getClientRects().length&&getComputedStyle(el).display!=='none'})(),
+    stripGridVisible:(()=>{const el=document.querySelector('.b46v23-strip-grid');return !!el?.getClientRects().length&&getComputedStyle(el).display!=='none'})(),
     reappeared:window.__B46_KPI_REAPPEAR_COUNT,
     financeCardCount:document.querySelectorAll('#b46-finance-chart-card').length,
     financialMetrics:chart?.querySelectorAll('.b46-fast-stat,.f46-metrics>div').length||0,
@@ -69,8 +76,9 @@ try{
     overflow:document.documentElement.scrollWidth>innerWidth+2
    };
   });
-  assert(state.legacyRow===0&&state.legacyKpis===0&&state.oldSettledDays===0&&
-    state.reappeared===0,c.name+':MOVED_BAR_REAPPEARED_'+JSON.stringify(state));
+  assert(state.legacyRow===1&&state.legacyKpis>=7&&
+    !state.legacyVisible&&!state.stripGridVisible,
+    c.name+':MOVED_BAR_VISIBLE_OR_DATA_SOURCE_LOST_'+JSON.stringify(state));
   assert(state.financeCardCount===1&&state.financialMetrics>=4,c.name+':NEW_FINANCE_CARD_LOST');
   assert(!state.overflow,c.name+':HORIZONTAL_OVERFLOW');
   assert.equal(errors.length,0,c.name+':JS_ERRORS_'+JSON.stringify(errors));
@@ -83,8 +91,14 @@ try{
        !!document.querySelector('#b46-finance-chart-card svg.f46-svg')?.getClientRects().length &&
        !document.querySelector('#b46-fast-v1-preview');
    },null,{timeout:115000});
-   assert.equal(await page.locator('.sp-kpis,[data-b46-settled-days-kpi]').count(),0,
-      'OLD_BAR_RETURNED_AFTER_NATIVE_TAKEOVER');
+   const after=await page.evaluate(()=>{
+      const el=document.querySelector('.sp-kpis'),grid=document.querySelector('.b46v23-strip-grid');
+      return {oldVisible:!!el?.getClientRects().length,gridVisible:!!grid?.getClientRects().length,
+        desktopTiles:document.querySelectorAll('#b46-finance-chart-card .b46-stage-summary-item').length,
+        outcomes:document.querySelectorAll('#b46-finance-chart-card .b46-stage-outcomes-segment').length};
+    });
+    assert(!after.oldVisible&&!after.gridVisible&&after.desktopTiles===8&&after.outcomes===3,
+      'HISTORY_TAKEOVER_LOST_RELOCATED_KPIS_'+JSON.stringify(after));
    assert.equal(errors.length,0,'NATIVE_TAKEOVER_SCRIPT_ERRORS');
   }
   console.log('B46_TOP_KPI_QA='+JSON.stringify({profile:c.name,result:'PASS',
