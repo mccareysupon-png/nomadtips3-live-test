@@ -1,0 +1,54 @@
+name: B46 stage graph visibility after saved snapshot CSS fix READ ONLY
+on:
+  push:
+    branches: [chatgpt/ball46-statistics-ui-v1]
+    paths: ['.github/workflows/b46-staging-graph-visibility-after-fix-20261116.yml']
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - name: Install Chromium
+        run: |
+          npm install --prefix /tmp/b46inspect --no-audit --no-fund playwright@1.65.1
+          /tmp/b46inspect/node_modules/.bin/playwright install --with-deps chromium
+      - name: Measure actual CSS state, chart and source, cold and warm, PC/mobile
+        run: |
+          node <<'NODE'
+          const {chromium}=require('/tmp/b46inspect/node_modules/playwright');
+          const base='https://ball46-chat-statistics-live-ui-test-20261115.mccarey-supon.workers.dev/?view=statistics';
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            for(const profile of [{name:'pc',width:1366},{name:'mobile',width:390}]){
+              const context=await browser.newContext({viewport:{width:profile.width,height:844}});
+              const page=await context.newPage();
+              const responses=[];
+              page.on('response',r=>{if(new URL(r.url()).pathname==='/api/engine/statistics')responses.push({status:r.status(),cache:r.headers()['x-b46-stage-snapshot']||null})});
+              for(const phase of ['cold','reload']){
+                const start=Date.now();
+                if(phase==='cold')await page.goto(base,{waitUntil:'domcontentloaded',timeout:40000});
+                else await page.reload({waitUntil:'domcontentloaded',timeout:40000});
+                for(const sec of [0,1,2,3,5,8,12,16,25]){
+                  const elapsed=Date.now()-start;if(sec*1000>elapsed)await page.waitForTimeout(sec*1000-elapsed);
+                  const d=await page.evaluate(()=>{
+                    const s=window.BALL46_STATISTICS_DATA?.getSnapshot?.(),chart=document.querySelector('#b46-finance-chart-card svg.f46-svg'),
+                    panel=document.querySelector('.sp-stats-content');
+                    return {data:!!s,rows:s?.ledgerRows?.length||0,stale:s?.stale,graph:!!chart,visible:!!chart?.getClientRects().length,
+                      class:document.documentElement.className.slice(0,130),workspace:document.body?.dataset.workspaceView,
+                      panelDisplay:panel?getComputedStyle(panel).display:null,scopeCSS:!!document.querySelector('[data-b46-staging-overlay]'),
+                      stylesheetCount:document.styleSheets.length,stagingMarker:!!document.querySelector('[data-b46-staging-overlay]'),
+                      feed:document.querySelector('[data-sp-feed-state]')?.textContent?.slice(0,80)};
+                  }).catch(e=>({error:e.message}));
+                  console.log('B46_VIS_AFTER_FIX='+JSON.stringify({profile:profile.name,phase,sec,elapsed:Date.now()-start,state:d,requests:responses.length,latest:responses.slice(-1)}));
+                  if(d.visible&&sec>=3)break;
+                }
+                if(phase==='cold')await page.waitForTimeout(4000);
+              }
+              await context.close();
+            }
+            await browser.close();
+          })().catch(e=>{console.error('B46_VIS_FATAL='+String(e));process.exitCode=1});
+          NODE
