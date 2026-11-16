@@ -1,0 +1,82 @@
+name: BALL46 chart ON/OFF causality browser QA - READ ONLY
+on:
+  push:
+    branches: [chatgpt/ball46-statistics-ui-v1]
+    paths: ['.github/workflows/b46-chart-causality-readonly-20261116.yml']
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  chart-ab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install isolated browser
+        run: |
+          npm install --prefix /tmp/b46-chartqa --no-save --no-audit --no-fund playwright@1.65.1
+          /tmp/b46-chartqa/node_modules/.bin/playwright install --with-deps chromium
+      - name: Compare same Production page with/without chart module; NO WRITE, NO DEPLOY
+        run: |
+          cat >/tmp/b46-chart-ab.cjs <<'NODE'
+          const {chromium}=require('/tmp/b46-chartqa/node_modules/playwright');
+          const base='https://www.ball46.com/?view=statistics';
+          const tests=[
+            {name:'PC_CHART_ON',width:1366,chart:true},
+            {name:'PC_CHART_OFF',width:1366,chart:false},
+            {name:'MOBILE_CHART_ON',width:390,chart:true},
+            {name:'MOBILE_CHART_OFF',width:390,chart:false}
+          ];
+          function pathname(url){try{return new URL(url).pathname}catch{return String(url).slice(0,75)}}
+          (async()=>{
+            console.log('AB_READ_ONLY_BEGIN',{base});
+            const browser=await chromium.launch({headless:true});
+            await Promise.all(tests.map(async test=>{
+              const context=await browser.newContext({viewport:{width:test.width,height:844},timezoneId:'Asia/Bangkok'});
+              const page=await context.newPage();
+              const stats=[],fail=[],pageErrors=[],responseCodes=[],chartScript=[];
+              if(!test.chart)await page.route('**/longterm-performance-343.js*',async route=>{chartScript.push('BLOCKED_CLIENT_SIDE_ONLY');await route.fulfill({status:200,contentType:'application/javascript',body:'/* CHART MODULE NEUTRALIZED IN TEST BROWSER ONLY; NO SERVER CHANGE */'})});
+              page.on('pageerror',e=>pageErrors.push(e.message.slice(0,220)));
+              page.on('requestfailed',r=>{if(fail.length<12)fail.push({path:pathname(r.url()),reason:r.failure()?.errorText})});
+              page.on('response',r=>{const p=pathname(r.url());if(p==='/api/engine/statistics')stats.push(r.status());if(p==='/longterm-performance-343.js')chartScript.push(r.status());if(r.status()>=400&&responseCodes.length<20)responseCodes.push({path:p,status:r.status()})});
+              const started=Date.now();let htmlStatus=null;
+              try{htmlStatus=(await page.goto(base,{waitUntil:'domcontentloaded',timeout:45000}))?.status()}catch(e){htmlStatus='ERROR '+String(e.message).slice(0,180)}
+              for(const mark of [0,10,25,45]){
+                const elapsed=Date.now()-started;
+                if(mark*1000>elapsed)await page.waitForTimeout(mark*1000-elapsed);
+                const ui=await page.evaluate(()=>{
+                  const grab=s=>document.querySelector(s);
+                  const snap=window.BALL46_STATISTICS_DATA?.getSnapshot?.();
+                  const el=grab('#b46-finance-chart-card'), trend=grab('.sp-trend');
+                  return {
+                    title:document.title,
+                    view:document.body?.dataset?.workspaceView||null,
+                    statsLabel:grab('[data-sp-record-count]')?.textContent?.trim()?.slice(0,90)||null,
+                    statsTableRows:document.querySelectorAll('table tbody tr,.sp-results tbody tr,[data-sp-result-row]').length,
+                    chartRoot:!!el,trendFound:!!trend,graphFound:!!grab('.b46-perf-svg,.f46-svg'),
+                    incomplete:document.body?.innerText?.includes('Long-term performance data is incomplete')||false,
+                    chartText:el?.innerText?.slice(0,100)||trend?.innerText?.slice(0,100)||null,
+                    snapshotOK:snap?.ok===true,ledgerRows:Array.isArray(snap?.ledgerRows)?snap.ledgerRows.length:null,
+                    ledgerTotal:Number.isFinite(snap?.ledgerTotal)?snap.ledgerTotal:null,
+                    domNodes:document.querySelectorAll('*').length,spinners:document.querySelectorAll('.spinner,[aria-busy="true"],.loading').length
+                  }
+                }).catch(e=>({error:String(e).slice(0,180)}));
+                console.log('B46_AB_SAMPLE='+JSON.stringify({test:test.name,mark,ms:Date.now()-started,htmlStatus,ui,apiStatistics:{total:stats.length,status200:stats.filter(s=>s===200).length,status599:stats.filter(s=>s===599).length}}));
+              }
+              console.log('B46_AB_NETWORK='+JSON.stringify({test:test.name,htmlStatus,statisticsStatuses:stats,chartScript,errors:pageErrors,failed:fail,responseErrors:responseCodes}));
+              await page.screenshot({path:'/tmp/b46-chart-'+test.name+'.png',fullPage:false}).catch(()=>{});
+              await context.close();
+            }));
+            await browser.close();
+            console.log('B46_AB_DONE_NO_PRODUCTION_WRITES');
+          })().catch(e=>{console.error('B46_AB_FATAL '+String(e));process.exitCode=1});
+          NODE
+          node /tmp/b46-chart-ab.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: b46-chart-ab-test-browser-20261116
+          path: /tmp/b46-chart-*.png
+          retention-days: 7
+          if-no-files-found: ignore
