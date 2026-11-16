@@ -1,0 +1,30 @@
+name: B46 statistics settled days and strip read-only source audit
+on:
+  push:
+    branches: [chatgpt/ball46-statistics-ui-v1]
+    paths: ['.github/workflows/b46-stat-days-source-audit-20261116.yml']
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Inspect live public statistics formula, read only
+        run: |
+          node <<'NODE'
+          (async()=>{
+            const u='https://www.ball46.com/singlepage-workspace-343.js';
+            const resp=await fetch(u,{signal:AbortSignal.timeout(20000)});
+            if(!resp.ok)throw Error('SOURCE_HTTP_'+resp.status);
+            const src=await resp.text();
+            const terms=['const settledDays=rows=>','function settledDays(','SETTLED DAYS','b46v23-strip-grid','B46_SETTLED_DAYS_KPI_V1','function outcomeWeight(','function renderStats(','function renderKpis('];
+            console.log('STATS_SOURCE_META='+JSON.stringify({status:resp.status,bytes:src.length}));
+            for(const term of terms){
+              let pos=src.indexOf(term),count=0;
+              while(pos>=0&&count++<3){
+                console.log('STATS_SOURCE_CONTEXT='+JSON.stringify({term,position:pos,text:src.slice(Math.max(0,pos-350),Math.min(src.length,pos+4300))}));
+                pos=src.indexOf(term,pos+term.length);
+              }
+            }
+          })().catch(e=>{console.log('STATS_SOURCE_AUDIT_FAILED='+e.message);process.exitCode=1});
+          NODE
