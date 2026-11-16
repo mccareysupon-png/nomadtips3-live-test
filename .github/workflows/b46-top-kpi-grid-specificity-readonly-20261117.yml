@@ -16,3 +16,4 @@ jobs:
           npm install --prefix deploy-assets/ball46-statistics-fast-v1-20261116/.runtime --no-audit --no-fund playwright@1.65.1
           deploy-assets/ball46-statistics-fast-v1-20261116/.runtime/node_modules/.bin/playwright install --with-deps chromium
       - run: node deploy-assets/ball46-statistics-fast-v1-20261116/diag-moved-top-grid.mjs
+# Read-only rerun against updated inactive version 49327f2a.
