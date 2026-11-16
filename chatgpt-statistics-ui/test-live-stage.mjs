@@ -16,6 +16,19 @@ try{
     const page=await context.newPage(),errors=[],networkStatuses=[];
     page.on('pageerror',e=>errors.push(e.message.slice(0,200)));
     page.on('response',r=>{if(new URL(r.url()).pathname==='/api/engine/statistics')networkStatuses.push(r.status())});
+    // Browser-test-only instrumentation of the ORIGINAL renderer. No staging
+    // or Production module is written or deployed by this interception.
+    await page.route('**/longterm-performance-343.js*',async route=>{
+      const response=await route.fetch();
+      const original=await response.text();
+      const anchor='function chartHtml(s){const points=f46Points(s);';
+      assert(original.includes(anchor),profile.name+':NATIVE_CHART_SOURCE_DRIFT');
+      const instrumentation=anchor+
+        'window.__B46_NATIVE_QA_POINTS=points.map(p=>({date:p.date,value:p.value}));'+
+        'window.__B46_NATIVE_QA_METRIC=metric;';
+      await route.fulfill({response,body:original.replace(anchor,instrumentation)});
+    });
+
     // Read the tiny immutable verified head independently of the heavy Ledger.
     // Strictly test parity, do not use this read to replace native formulas.
     const fastStart=Date.now();
@@ -148,6 +161,29 @@ try{
     assert(Number.isFinite(nativeNet),profile.name+':GRAPH_NATIVE_NET_UNREADABLE_'+parity.value);
     assert(Math.abs(nativeNet-graph.summary.net)<0.011,
       profile.name+':GRAPH_NET_MISMATCH_'+nativeNet+'_VS_'+graph.summary.net);
+    // Strict day-by-day parity with the unmodified live financial formula.
+    async function compareChart(mode){
+      if(mode!=='units'){
+        await page.locator('#b46-finance-chart-card [data-b46-mode="'+mode+'"]').click();
+        await page.waitForFunction(m=>window.__B46_NATIVE_QA_METRIC===m,mode,{timeout:3000});
+      }
+      const native=await page.evaluate(()=>window.__B46_NATIVE_QA_POINTS);
+      const expected=graph.series[mode];
+      assert(Array.isArray(native),profile.name+':NO_NATIVE_QA_POINTS_'+mode);
+      assert.equal(native.length,expected.length,profile.name+':GRAPH_DAYS_DRIFT_'+mode);
+      for(let i=0;i<expected.length;i++){
+        assert.equal(native[i].date,expected[i].date,profile.name+':GRAPH_DATE_DRIFT_'+mode+'_'+i);
+        assert(Math.abs(native[i].value-expected[i].value)<1e-8,
+          profile.name+':GRAPH_VALUE_DRIFT_'+mode+'_'+i);
+      }
+      console.log('B46_NATIVE_DAILY_PARITY='+JSON.stringify({profile:profile.name,mode,
+        days:native.length,exactDates:true,valuesWithin1e8:true}));
+    }
+    await compareChart('units');
+    await compareChart('roi');
+    await compareChart('rate');
+    await page.locator('#b46-finance-chart-card [data-b46-mode="units"]').click();
+    await page.waitForFunction(()=>window.__B46_NATIVE_QA_METRIC==='units',{timeout:3000});
     console.log('B46_GRAPH_NATIVE_PARITY='+JSON.stringify({
       profile:profile.name,points:cold.chartPoints,nativeNet,precomputedNet:graph.summary.net,
       metric:parity.metric,range:parity.range,pass:true}));
