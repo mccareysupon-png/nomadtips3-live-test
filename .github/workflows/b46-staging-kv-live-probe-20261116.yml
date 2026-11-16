@@ -1,0 +1,26 @@
+name: B46 STAGING precomputed snapshot direct HTTP parity probe
+on:
+  push:
+    branches: [chatgpt/ball46-statistics-ui-v1]
+    paths: ['.github/workflows/b46-staging-kv-live-probe-20261116.yml']
+permissions: {contents: read}
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Verify staging gzip HTTP body decompresses to fully validated records
+        run: |
+          node <<'NODE'
+          const stage='https://ball46-chat-statistics-live-ui-test-20261115.mccarey-supon.workers.dev';
+          (async()=>{
+            const started=Date.now();
+            const r=await fetch(stage+'/api/engine/statistics?_='+Date.now(),{signal:AbortSignal.timeout(35000)});
+            console.log('STAGE_SNAPSHOT_HTTP='+JSON.stringify({code:r.status,type:r.headers.get('content-type'),encoding:r.headers.get('content-encoding'),marker:r.headers.get('x-b46-stage-snapshot'),age:r.headers.get('x-b46-stage-snapshot-at'),timeMs:Date.now()-started}));
+            if(!r.ok)throw Error('STAGING_CACHE_NOT_AVAILABLE_'+r.status);
+            const d=await r.json();
+            console.log('STAGE_SNAPSHOT_VALID='+JSON.stringify({ok:d.ok,stale:d.stale,version:d.statisticsLedgerVersion,ledgerTotal:d.ledgerTotal,rows:d.rows?.length,total:d.total,more:d.hasMore,cursor:d.nextCursor||null,ageSeconds:Math.round((Date.now()-d.snapshotSavedAt)/1000),totalMs:Date.now()-started}));
+            if(d.ok!==true||d.hasMore||d.rows?.length!==d.ledgerTotal||d.rows?.length<15000||!d.stale)throw Error('STAGE_SNAPSHOT_INVALID');
+            console.log('STAGE_SNAPSHOT_CACHE_HTTP=PASS');
+          })().catch(e=>{console.error('STAGE_SNAPSHOT_CACHE_HTTP=FAIL '+String(e));process.exitCode=1});
+          NODE
