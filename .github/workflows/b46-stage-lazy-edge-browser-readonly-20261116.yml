@@ -1,0 +1,78 @@
+name: B46 stage lazy read-only filtered and failover browser QA
+on:
+  push:
+    branches: [chatgpt/ball46-statistics-ui-v1]
+    paths: ['.github/workflows/b46-stage-lazy-edge-browser-readonly-20261116.yml']
+permissions: {contents: read}
+jobs:
+  browser-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - name: Prepare isolated Chromium test environment
+        run: |
+          npm install --prefix /tmp/b46-edgeqa --no-save --no-audit --no-fund playwright@1.65.1
+          /tmp/b46-edgeqa/node_modules/.bin/playwright install --with-deps chromium
+      - name: Validate deep links and snapshot outage fallback; no writes
+        run: |
+          node <<'NODE'
+          const assert=require('node:assert/strict');
+          const {chromium}=require('/tmp/b46-edgeqa/node_modules/playwright');
+          const base='https://ball46-chat-statistics-live-ui-test-20261115.mccarey-supon.workers.dev';
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            let failed=0;
+            try{
+              for(const test of [
+                {name:'DIRECT_AH_FILTER',path:'/?view=statistics&market=ah'},
+                {name:'GRAPH_503_FALLBACK',path:'/?view=statistics',dropChart:true},
+                {name:'MARKET_CLICK_FALLBACK',path:'/?view=statistics',clickMarket:true}
+              ]){
+                const ctx=await browser.newContext({viewport:{width:1366,height:900},timezoneId:'Asia/Bangkok'});
+                const page=await ctx.newPage();
+                const errors=[],api=[];
+                page.on('pageerror',e=>errors.push(e.message.slice(0,220)));
+                page.on('response',r=>{if(new URL(r.url()).pathname==='/api/engine/statistics')api.push(r.status())});
+                if(test.dropChart){
+                  await page.route('**/_b46_stage_stats_chart*',route=>route.fulfill({status:503,
+                    contentType:'application/json',body:'{"ok":false,"error":"INJECTED_TEST_ONLY"}'}));
+                }
+                const t0=Date.now();
+                const entry=await page.goto(base+test.path,{waitUntil:'domcontentloaded',timeout:45000});
+                assert.equal(entry?.status(),200,test.name+':ENTRY_HTTP');
+                if(test.clickMarket){
+                  await page.waitForFunction(()=>window.__B46_FAST_CHART_DIAG?.status==='fast-preview-visible',
+                    null,{timeout:18000});
+                  await page.locator('[data-stat-market="ah"]').first().click();
+                }
+                await page.waitForFunction(()=>window.__B46_STAGE_DETAILS_REQUESTED===true,null,{timeout:18000});
+                await page.waitForFunction(()=>{
+                  const d=window.BALL46_STATISTICS_DATA?.getSnapshot?.();
+                  return d?.ok===true && d.ledgerRows?.length===d.ledgerTotal &&
+                    document.querySelector('#b46-finance-chart-card svg.f46-svg')?.getClientRects().length>0;
+                },null,{timeout:110000});
+                const data=await page.evaluate(()=>{
+                  const d=window.BALL46_STATISTICS_DATA.getSnapshot();
+                  const chart=document.querySelector('#b46-finance-chart-card svg.f46-svg');
+                  return {route:new URL(location.href).searchParams.get('market')||'all',
+                    status:window.__B46_FAST_CHART_DIAG?.status||null,
+                    requested:!!window.__B46_STAGE_DETAILS_REQUESTED,
+                    ledgerTotal:d.ledgerTotal,fullRows:d.ledgerRows.length,
+                    chartVisible:!!chart?.getClientRects().length,
+                    previewVisible:!!document.querySelector('#b46-stage-fast-preview')?.getClientRects().length,
+                    overflow:document.documentElement.scrollWidth>innerWidth+1};
+                });
+                if(test.name!=='GRAPH_503_FALLBACK')assert.equal(data.route,'ah',test.name+':MARKET_NOT_AH');
+                assert(!data.previewVisible,test.name+':STALE_PREVIEW_VISIBLE');
+                assert(!data.overflow,test.name+':HORIZONTAL_OVERFLOW');
+                assert(data.chartVisible && data.fullRows===data.ledgerTotal,test.name+':NATIVE_NOT_READY');
+                assert(api.length>0,test.name+':NO_FULL_LEDGER_AFTER_FALLBACK');
+                assert.equal(errors.length,0,test.name+':JAVASCRIPT_ERRORS:'+JSON.stringify(errors));
+                console.log('B46_STAGE_LAZY_EDGE='+JSON.stringify({test:test.name,pass:true,elapsedMs:Date.now()-t0,data,
+                  apiRequests:api.length,http599:api.filter(s=>s===599).length,errors,productionWrites:0}));
+                await ctx.close();
+              }
+            }finally{await browser.close()}
+            console.log('B46_STAGE_LAZY_EDGES=PASS_READ_ONLY');
+          })().catch(e=>{console.error('B46_STAGE_LAZY_EDGES_FAILED='+String(e));process.exitCode=1});
+          NODE
