@@ -1,0 +1,30 @@
+name: B46 ledger upsert and meta aggregate source exact READ ONLY
+on:
+  push:
+    branches: [chatgpt/ball46-statistics-ui-v1]
+    paths: ['.github/workflows/b46-incremental-ledger-upsert-exact-audit-20261116.yml']
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - run: |
+          node <<'NODE'
+          (async()=>{
+           const api='https://api.cloudflare.com/client/v4/accounts/62cb0db544160e6591342abd6b4f35cc';
+           const h={authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN};
+           const req=async p=>{const r=await fetch(api+p,{headers:h});const j=await r.json();if(!r.ok||!j.success)throw Error('CF_'+r.status);return j.result};
+           const d=await req('/workers/scripts/nomadtips3-engine-343/deployments?per_page=1');
+           const id=d.deployments[0].versions[0].version_id;
+           const w=await req('/workers/workers/nomadtips3-engine-343/versions/'+id+'?include=modules');
+           const src=Buffer.from(w.modules[0].content_base64,'base64').toString('utf8');
+           const terms=['async upsertLedgerRows(', 'normalizeLedgerMeta(', 'aggregateLedger','STAT_LEDGER_META_KEY','async syncStatisticsLedger(', 'async statisticsLedgerResponse(', 'async latestLedgerRows('];
+           for(const term of terms){
+            const i=src.indexOf(term);if(i<0)continue;
+            console.log('B46_LEDGER_METHOD='+JSON.stringify({term,pos:i,source:src.slice(Math.max(0,i-100),i+(term.includes('upsert')?9000:term.includes('syncStatistics')?4500:3500))}));
+           }
+          })().catch(e=>{console.error('B46_LEDGER_METHOD_AUDIT_FAILED='+String(e));process.exitCode=1})
+          NODE
