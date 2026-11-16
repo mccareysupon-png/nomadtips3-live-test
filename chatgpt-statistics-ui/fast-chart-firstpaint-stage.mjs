@@ -204,6 +204,11 @@ function mount(){
  foot.textContent='Saved verified snapshot · Open detailed history when needed';
  preview.append(kicker,cols,foot);
  // Reuse the EXISTING finance/performance card slot. Never add a second card.
+ // Native Stats hides .sp-stats-content with an inline important declaration
+ // until the entire Ledger arrives. Expose only the VERIFIED fast view.
+ const content=panel.querySelector('.sp-stats-content');
+ if(!content){diag.status='stats-content-anchor-missing';triggerNativeFallback();return}
+ content.style.setProperty('display','block','important');
  const nativeHost=panel.querySelector('.sp-trend');
  if(!nativeHost){diag.status='native-card-anchor-missing';triggerNativeFallback();return}
  nativeHost.id='b46-finance-chart-card';
