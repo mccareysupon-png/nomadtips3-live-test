@@ -1,0 +1,26 @@
+name: B46 staging loader direct HTTP probe READ ONLY
+on:
+  push:
+    branches: [chatgpt/ball46-statistics-ui-v1]
+    paths: ['.github/workflows/b46-staging-loader-direct-probe-20261116.yml']
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Inspect deployed staging read-only loader
+        run: |
+          set -u
+          BASE='https://ball46-chat-statistics-live-ui-test-20261115.mccarey-supon.workers.dev'
+          for path in /_b46_ui_health /singlepage-workspace-343.js '/?view=statistics' /longterm-performance-343.js; do
+            file=/tmp/b46stage-result
+            STATUS=$(curl -sS -L --max-time 25 -o "$file" -w '%{http_code}' "$BASE$path") || STATUS=ERR
+            echo "STAGE_CHECK path=$path status=$STATUS bytes=$(wc -c <"$file" 2>/dev/null || echo 0)"
+            if [ "$path" = /singlepage-workspace-343.js ]; then
+              grep -Fo 'B46_STAGE_LOADER_RECOVERY_V1_20261116' "$file" | wc -l | xargs echo STAGE_PATCH_MARKER_COUNT=
+              head -c 70 "$file" | tr '\n' ' ' | xargs echo STAGE_JS_PREFIX=
+            fi
+          done
+          echo 'STAGE_CHECK_NO_PRODUCTION_WRITES'
