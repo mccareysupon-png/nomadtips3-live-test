@@ -159,8 +159,16 @@ try{
 
     // Initial Statistics view must not read the 16k-row historical Ledger.
     await page.waitForTimeout(1200);
-    const lazyJs=await context.request.get(base+'/singlepage-workspace-343.js');
-    const lazyChart=await context.request.get(base+'/longterm-performance-343.js');
+    // Read-only diagnostics should not fail the chart QA solely because the
+    // edge resets a separate diagnostic GET. The real browser JS remains tested.
+    const diagGet=async path=>{
+      for(let i=0;i<3;i++){
+        try{return await context.request.get(base+path,{timeout:18000})}
+        catch(e){if(i===2)throw e;await new Promise(resolve=>setTimeout(resolve,400*(i+1)))}
+      }
+    };
+    const lazyJs=await diagGet('/singlepage-workspace-343.js');
+    const lazyChart=await diagGet('/longterm-performance-343.js');
     const fetchTraces=await page.evaluate(()=>window.__B46_EARLY_FETCHES||[]);
     console.log('B46_LAZY_BOOT_DIAG='+JSON.stringify({
       profile:profile.name,apiCount:networkStatuses.length,apiStatuses:networkStatuses,
