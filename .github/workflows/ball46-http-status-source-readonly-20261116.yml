@@ -1,0 +1,59 @@
+name: BALL46 HTTP 5xx request source audit READ ONLY
+on:
+  push:
+    branches: [chatgpt/ball46-statistics-ui-v1]
+    paths: ['.github/workflows/ball46-http-status-source-readonly-20261116.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Read-only Cloudflare zone aggregate 5xx by requestSource
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+        run: |
+          cat >/tmp/b46-sources.cjs <<'NODE'
+          const token=process.env.CLOUDFLARE_API_TOKEN||'';
+          let zone=process.env.CLOUDFLARE_ZONE_ID||'';
+          if(!token){console.log('CF_SOURCE_AUDIT=UNAVAILABLE_NO_TOKEN');process.exit(0)}
+          async function getZone(){
+            if(zone)return zone;
+            try{
+              const resp=await fetch('https://api.cloudflare.com/client/v4/zones?name=ball46.com&per_page=3',{headers:{Authorization:'Bearer '+token},signal:AbortSignal.timeout(15000)});
+              const js=await resp.json();
+              if(resp.ok && js.success){return js.result?.find(z=>z.name==='ball46.com')?.id||''}
+              console.log('CF_ZONE_LOOKUP='+resp.status);
+            }catch(e){console.log('CF_ZONE_LOOKUP=ERROR '+e.name)}
+            return '';
+          }
+          async function audit(tag,minutes){
+            const start=new Date(Date.now()-minutes*60000).toISOString(),end=new Date().toISOString();
+            const query='query($zoneTag:string,$start:Time,$end:Time,$status:Int){viewer{zones(filter:{zoneTag:$zoneTag}){httpRequestsAdaptiveGroups(limit:100,filter:{datetime_geq:$start,datetime_lt:$end,edgeResponseStatus:$status}){count dimensions{requestSource edgeResponseStatus}}}}}';
+            for(const status of [504,599,503]){
+              const resp=await fetch('https://api.cloudflare.com/client/v4/graphql',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({query,variables:{zoneTag:zone,start,end,status}}),signal:AbortSignal.timeout(25000)});
+              const js=await resp.json();
+              if(!resp.ok||js.errors?.length){
+                console.log('CF_SOURCE_ERROR='+JSON.stringify({window:tag,status,http:resp.status,errors:(js.errors||[]).map(e=>String(e.message).slice(0,180)).slice(0,3)}));
+                continue;
+              }
+              const items=js.data?.viewer?.zones?.[0]?.httpRequestsAdaptiveGroups||[];
+              console.log('CF_SOURCE_COUNTS='+JSON.stringify({window:tag,status,counts:items.map(x=>({requestSource:x.dimensions?.requestSource||'unknown',count:x.count})),sampled:true}));
+            }
+          }
+          (async()=>{
+            zone=await getZone();
+            if(!zone){console.log('CF_SOURCE_AUDIT=UNAVAILABLE_ZONE_NOT_AUTHORIZED');return}
+            console.log('CF_SOURCE_AUDIT=START');
+            await audit('last24h',1440);
+            await audit('last60m',60);
+            console.log('CF_SOURCE_AUDIT=END_NO_WRITES');
+          })().catch(e=>console.log('CF_SOURCE_AUDIT=ERROR '+e.message.slice(0,150)));
+          NODE
+          node /tmp/b46-sources.cjs
