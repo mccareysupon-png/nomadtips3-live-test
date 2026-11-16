@@ -102,6 +102,20 @@ try{
     assert.equal(early.net,graph.summary.net,
       profile.name+':FAST_CHART_NET_NOT_VERIFIED');
     console.log('B46_FAST_FIRST_PAINT='+JSON.stringify({profile:profile.name,...early}));
+    if(!early.visible){
+      const tree=await page.evaluate(()=>{
+        const nodes=[];let node=document.querySelector('#b46-stage-fast-preview');
+        for(let i=0;node&&i<12;i++,node=node.parentElement){
+          const c=getComputedStyle(node),r=node.getBoundingClientRect();
+          nodes.push({tag:node.tagName,id:node.id,cls:node.className?.toString().slice(0,90),
+            hidden:node.hidden,display:c.display,visibility:c.visibility,opacity:c.opacity,
+            rect:[r.x,r.y,r.width,r.height],position:c.position});
+        }
+        return nodes;
+      });
+      console.log('B46_NATIVE_SLOT_VISIBILITY_DIAG='+JSON.stringify({profile:profile.name,tree}));
+    }
+
     assert.equal(early.oldTrendVisible,false,profile.name+':OLD_TREND_FLASHES_DURING_FAST_PAINT');
     const fastUI=await page.evaluate(()=>{
       const boxes=[...document.querySelectorAll('#b46-stage-fast-preview .b46-fast-stat')];
