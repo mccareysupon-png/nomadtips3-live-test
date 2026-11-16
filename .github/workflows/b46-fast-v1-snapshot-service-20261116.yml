@@ -1,0 +1,115 @@
+name: BALL46 V1 isolated production fast-snapshot service (NO SITE CUTOVER)
+on:
+  push:
+    branches: [chatgpt/ball46-statistics-ui-v1]
+    paths:
+      - '.github/workflows/b46-fast-v1-snapshot-service-20261116.yml'
+      - 'deploy-assets/ball46-statistics-fast-v1-20261116/snapshot-worker.mjs'
+      - 'deploy-assets/ball46-statistics-fast-v1-20261116/graph-core.mjs'
+      - 'deploy-assets/ball46-statistics-fast-v1-20261116/seed.mjs'
+permissions: {contents: read}
+concurrency: {group: b46-fast-v1-production-auxiliary-snapshot, cancel-in-progress: false}
+jobs:
+  isolated-snapshot-service:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: '62cb0db544160e6591342abd6b4f35cc'
+      B46_FAST_WORKER_NAME: 'b46-stats-fast-v1-snapshot-20261116'
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - name: Safety scan of isolated V1 Worker code
+        run: |
+          set -euo pipefail
+          node --check deploy-assets/ball46-statistics-fast-v1-20261116/snapshot-worker.mjs
+          node --check deploy-assets/ball46-statistics-fast-v1-20261116/graph-core.mjs
+          node --check deploy-assets/ball46-statistics-fast-v1-20261116/seed.mjs
+          test "$B46_FAST_WORKER_NAME" = 'b46-stats-fast-v1-snapshot-20261116'
+          test "$B46_FAST_WORKER_NAME" != 'ball46-production'
+          test -n "$CLOUDFLARE_API_TOKEN"
+          grep -Fq "STATS_META='b46-fast-v1-current'" deploy-assets/ball46-statistics-fast-v1-20261116/snapshot-worker.mjs
+      - name: Create or reuse ONLY dedicated V1 cache namespace
+        id: kv
+        run: |
+          node <<'NODE'
+          const fs=require('node:fs');
+          const api='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+'/storage/kv/namespaces';
+          const name='ball46-fast-v1-readcache-production-20261116';
+          const h={Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN,'Content-Type':'application/json'};
+          (async()=>{
+           const r=await fetch(api+'?per_page=100',{headers:h,signal:AbortSignal.timeout(25000)});
+           const j=await r.json();if(!r.ok||!j.success||!Array.isArray(j.result))throw Error('KV_LIST_DENIED_'+r.status);
+           let existing=j.result.find(x=>x.title===name),created=false;
+           if(!existing){
+             const p=await fetch(api,{method:'POST',headers:h,body:JSON.stringify({title:name}),signal:AbortSignal.timeout(25000)});
+             const result=await p.json();if(!p.ok||!result.success||!result.result?.id)throw Error('KV_CREATE_DENIED_'+p.status);
+             existing=result.result;created=true;
+           }
+           if(!/^[a-f0-9]{32}$/.test(existing.id))throw Error('INVALID_KV_ID');
+           fs.appendFileSync(process.env.GITHUB_OUTPUT,'id='+existing.id+'\n');
+           console.log('B46_FAST_V1_KV='+JSON.stringify({title:name,id:existing.id,created,
+             dedicatedOnly:true,existingSiteKVUntouched:true}));
+          })().catch(e=>{console.error('B46_FAST_V1_KV_ERROR='+e);process.exitCode=1});
+          NODE
+      - name: Deploy independent scheduled snapshot Worker with isolated KV
+        working-directory: deploy-assets/ball46-statistics-fast-v1-20261116
+        env:
+          B46_FAST_V1_NAMESPACE_ID: ${{ steps.kv.outputs.id }}
+        run: |
+          set -euo pipefail
+          cat >wrangler-generated.toml <<EOF
+          name = "b46-stats-fast-v1-snapshot-20261116"
+          main = "snapshot-worker.mjs"
+          compatibility_date = "2026-11-16"
+          workers_dev = true
+          [triggers]
+          crons = ["*/5 * * * *"]
+          [[services]]
+          binding = "B46_PRODUCTION_READ"
+          service = "ball46-production"
+          [[kv_namespaces]]
+          binding = "B46_FAST_KV"
+          id = "${B46_FAST_V1_NAMESPACE_ID}"
+          EOF
+          grep -Fx 'name = "b46-stats-fast-v1-snapshot-20261116"' wrangler-generated.toml
+          grep -Fx 'crons = ["*/5 * * * *"]' wrangler-generated.toml
+          grep -Fx 'service = "ball46-production"' wrangler-generated.toml
+          if grep -Eq '(^|[[:space:]])(route|routes|zone_id|zone_name)[[:space:]]*=' wrangler-generated.toml; then
+            echo 'ABORT: must never bind to Production domain'; exit 1
+          fi
+          npx --yes wrangler@4 deploy --config wrangler-generated.toml
+      - name: Seed immutable head and chart into ONLY new dedicated KV
+        env:
+          B46_FAST_V1_NAMESPACE_ID: ${{ steps.kv.outputs.id }}
+        run: |
+          node deploy-assets/ball46-statistics-fast-v1-20261116/seed.mjs
+      - name: Readback from live dedicated Worker; verify freshness, schedule
+        run: |
+          node <<'NODE'
+          const base='https://b46-stats-fast-v1-snapshot-20261116.mccarey-supon.workers.dev';
+          (async()=>{
+            let head=null,chart=null;
+            for(let attempt=0;attempt<6;attempt++){
+              const [h,g]=await Promise.all([fetch(base+'/head'),fetch(base+'/chart')]);
+              if(h.ok&&g.ok){head=await h.json();chart=await g.json();break}
+              await new Promise(resolve=>setTimeout(resolve,2000));
+            }
+            if(head?.ok!==true||chart?.ok!==true)throw Error('FAST_SERVICE_NOT_READY');
+            if(head.schema!==1||chart.schema!==1||head.total!==chart.summary?.rows||
+               chart.market!=='all'||chart.range!=='all'||head.snapshotSavedAt!==chart.asOf||
+               chart.series.units.length<20||Date.now()-head.snapshotSavedAt>180000)
+              throw Error('FAST_SNAPSHOT_PARITY_FAILED');
+            const check=await fetch('https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+
+              '/workers/scripts/b46-stats-fast-v1-snapshot-20261116/schedules',
+              {headers:{Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN}});
+            const cron=await check.json();
+            if(!check.ok||!cron.success)throw Error('FAST_CRON_SCHEDULE_UNCONFIRMED');
+            console.log('B46_FAST_V1_AUX_READY='+JSON.stringify({ok:true,ledgerTotal:head.ledgerTotal,
+              settled:head.total,asOf:head.snapshotSavedAt,graphDays:chart.series.units.length,
+              crons:cron.result,prodSiteWorkerChanged:false}));
+          })().catch(e=>{console.error('B46_FAST_V1_AUX_FAILED='+String(e));process.exitCode=1});
+          NODE
