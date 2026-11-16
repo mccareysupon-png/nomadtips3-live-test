@@ -16,6 +16,23 @@ try{
     const page=await context.newPage(),errors=[],networkStatuses=[];
     page.on('pageerror',e=>errors.push(e.message.slice(0,200)));
     page.on('response',r=>{if(new URL(r.url()).pathname==='/api/engine/statistics')networkStatuses.push(r.status())});
+    // Read the tiny immutable verified head independently of the heavy Ledger.
+    // Strictly test parity, do not use this read to replace native formulas.
+    const fastStart=Date.now();
+    const compactResponse=await context.request.get(base+'/_b46_stage_stats_summary',{timeout:20000});
+    assert.equal(compactResponse.status(),200,profile.name+':COMPACT_HEAD_NOT_READY');
+    const rawHead=await compactResponse.body();
+    const head=JSON.parse(rawHead.toString('utf8'));
+    assert(head.ok===true&&head.schema===1&&head.mode==='AGGREGATES_ONLY_NOT_HISTORY',
+      profile.name+':COMPACT_HEAD_INVALID');
+    assert(!Object.hasOwn(head,'rows'),profile.name+':COMPACT_HEAD_LEAKS_ROWS');
+    assert(head.ledgerTotal>1000&&head.total<=head.ledgerTotal,profile.name+':COMPACT_HEAD_COUNT_INVALID');
+    assert.equal(head.total,head.win+head.loss+head.push+head.halfWin+head.halfLoss,
+      profile.name+':COMPACT_HEAD_RESULT_PARITY');
+    assert(rawHead.length<128*1024,profile.name+':COMPACT_HEAD_TOO_LARGE');
+    console.log('B46_COMPACT_HEAD_HTTP='+JSON.stringify({
+      profile:profile.name,bytes:rawHead.length,ms:Date.now()-fastStart,
+      ledgerTotal:head.ledgerTotal,settled:head.total,stageOnly:true}));
     const started=Date.now(),resp=await page.goto(base+'/?view=statistics',{waitUntil:'domcontentloaded',timeout:45000});
     assert.equal(resp?.status(),200,profile.name+':STAGE_ENTRY_NOT_200');
     const ready=()=> {
