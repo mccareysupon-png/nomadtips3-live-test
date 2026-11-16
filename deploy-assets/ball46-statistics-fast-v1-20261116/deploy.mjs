@@ -122,7 +122,8 @@ async function ensureCandidate(made,base){
   assert.equal(made.main_module,ENTRY,'CANDIDATE_MAIN_WRONG');
   const expectedBindings=[...base.bindings,{name:'B46_FAST_SNAPSHOT',type:'service',
     service:SNAPSHOT_SERVICE,environment:'production'}];
-  assert.equal(canonical(made.bindings),canonical(expectedBindings),'UNAPPROVED_BINDING_DRIFT');
+  const byName=b=>canonical([...b].sort((a,c)=>a.name.localeCompare(c.name)));
+  assert.equal(byName(made.bindings),byName(expectedBindings),'UNAPPROVED_BINDING_DRIFT');
   assert.equal(canonical(made.assets?.config),canonical(base.assets?.config),'ASSET_CONFIG_DRIFT');
   assert.equal(made.compatibility_date,base.compatibility_date,'COMPATIBILITY_DRIFT');
   assert.equal(canonical(made.compatibility_flags||[]),canonical(base.compatibility_flags||[]),'FLAGS_DRIFT');
@@ -147,7 +148,7 @@ async function rollback(error){
   process.exitCode=1;
 }
 try{
-  assert.equal(process.env.B46_APPROVED_DESKTOP_UI,'YES','OWNER_APPROVAL_MISSING');
+  assert.equal(process.env.B46_APPROVED_FAST_V1,'YES','OWNER_APPROVAL_MISSING');
   const js=await readFile(DIR+'/fast-client.js','utf8');
   const patch=await readFile(DIR+'/prod-lazy-patch.mjs','utf8');
   assert(js.includes('SIGNAL OUTCOMES')&&js.includes('b46-fast-v1-preview'),'FAST_UI_MISSING');
@@ -187,6 +188,13 @@ try{
   const form=new FormData();
   form.set('metadata',new Blob([JSON.stringify(meta)],{type:'application/json'}));
   for(const m of all)form.set(m.name,new Blob([Buffer.from(m.content_base64,'base64')],{type:m.content_type}),m.name);
+  const snapshotWorker=await active(SNAPSHOT_SERVICE);
+  report.snapshotWorkerBefore=snapshotWorker;
+  const auxHead=JSON.parse(await asset('https://'+SNAPSHOT_SERVICE+'.mccarey-supon.workers.dev','/head'));
+  const auxGraph=JSON.parse(await asset('https://'+SNAPSHOT_SERVICE+'.mccarey-supon.workers.dev','/chart'));
+  assert(auxHead.ok&&auxGraph.ok&&auxHead.total===auxGraph.summary.rows &&
+    auxHead.snapshotSavedAt===auxGraph.asOf,'SNAPSHOT_SERVICE_UNVERIFIED');
+  assert(Date.now()-auxHead.snapshotSavedAt<60*60*1000,'SNAPSHOT_SERVICE_TOO_OLD');
   assert.deepEqual(await active(),report.before,'ACTIVE_VERSION_CHANGED_BEFORE_UPLOAD');
   assert.deepEqual(await active(ENGINE),engineBefore,'ENGINE_VERSION_CHANGED_BEFORE_UPLOAD');
   report.stage='upload-INACTIVE-preview';await save();
@@ -211,8 +219,17 @@ try{
   assert.deepEqual(await existingAssets(report.preview),report.beforeAssets,'OTHER_PREVIEW_ASSETS_CHANGED');
   report.candidateBrowser=await verifyBrowser(report.preview,'preview',audit);
   await save();
+  if(process.env.B46_V1_MODE==='candidate'){
+    report.stage='CANDIDATE_VERIFIED_INACTIVE';report.ok=true;await save();
+    console.log('B46_FAST_V1_CANDIDATE_VERIFIED='+JSON.stringify({
+      baseId,candidateId,preview:report.preview,checks:report.candidateBrowser,
+      productionChanged:false,rollbackPoint:baseId}));
+    process.exit(0);
+  }
+  assert.equal(process.env.B46_V1_MODE,'activate','MISSING_ACTIVATION_MODE');
   assert.deepEqual(await active(),report.before,'CONCURRENT_PRODUCTION_DEPLOY_STOP');
   assert.deepEqual(await active(ENGINE),engineBefore,'CONCURRENT_ENGINE_DEPLOY_STOP');
+  assert.deepEqual(await active(SNAPSHOT_SERVICE),snapshotWorker,'CONCURRENT_SNAPSHOT_SERVICE_DEPLOY_STOP');
   assert.deepEqual(await existingAssets(DIRECT),report.beforeAssets,'PRODUCTION_STATIC_ASSET_DRIFT');
   report.stage='ACTIVATE';await save();
   await cf('POST','/workers/scripts/'+WORKER+'/deployments',{strategy:'percentage',
@@ -234,6 +251,7 @@ try{
   assert.deepEqual(await existingAssets(DIRECT),report.beforeAssets,'OTHER_LIVE_ASSETS_CHANGED');
   report.liveBrowser=await verifyBrowser(DIRECT,'live',audit);
   assert.deepEqual(await active(ENGINE),engineBefore,'ENGINE_ACTIVE_VERSION_CHANGED');
+  assert.deepEqual(await active(SNAPSHOT_SERVICE),snapshotWorker,'SNAPSHOT_SERVICE_ACTIVE_VERSION_CHANGED');
   await ensureCandidate(await version(WORKER,(await active()).id),base);
   report.after=await active();report.stage='VERIFIED-LIVE';report.ok=true;await save();
   console.log('B46_PRODUCTION_UI_RELEASE_SUCCESS='+JSON.stringify({
