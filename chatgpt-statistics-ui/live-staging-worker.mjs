@@ -30,6 +30,35 @@ export default {
     if (u.pathname === '/_b46_ui_overlay.css') return new Response(request.method==='HEAD'?null:css,{
       headers:{...baseHeaders,'content-type':'text/css; charset=UTF-8','x-b46-overlay':stamp}
     });
+    // STAGING ONLY: O(1) compact original-source aggregates, never full historical rows.
+    // The manifest is published only after full + compact immutable blobs pass hash readback.
+    if(u.pathname==='/_b46_stage_stats_summary'){
+      if(!env.B46_STAGE_STATS_KV)return json({ok:false,error:'STAGE_KV_MISSING'},503);
+      try{
+        const meta=await env.B46_STAGE_STATS_KV.get('verified-full-meta-v1','json');
+        if(meta?.schema!==2||!/^verified-head-v1-[0-9a-f]{32}$/.test(meta.summaryKey||'')||
+           !Number.isFinite(Number(meta.savedAt))||
+           Date.now()-Number(meta.checkedAt||meta.savedAt)>259200000)
+          return json({ok:false,error:'STAGE_COMPACT_NOT_READY'},503);
+        const raw=await env.B46_STAGE_STATS_KV.get(meta.summaryKey,'text');
+        if(!raw)return json({ok:false,error:'STAGE_COMPACT_KV_NOT_VISIBLE'},503);
+        const head=JSON.parse(raw);
+        if(head?.ok!==true||head.schema!==1||
+           head.mode!=='AGGREGATES_ONLY_NOT_HISTORY'||
+           Number(head.snapshotSavedAt)!==Number(meta.savedAt)||
+           head.ledgerTotal!==meta.ledgerTotal||
+           !Number.isSafeInteger(head.total)||head.total<0||
+           head.total>head.ledgerTotal||Object.hasOwn(head,'rows'))
+          return json({ok:false,error:'STAGE_COMPACT_SOURCE_MISMATCH'},503);
+        return new Response(request.method==='HEAD'?null:raw,{status:200,headers:{
+          ...baseHeaders,'content-type':'application/json; charset=UTF-8',
+          'x-b46-read-path':'STAGING_VERIFIED_COMPACT_KV',
+          'x-b46-snapshot-at':String(meta.savedAt)
+        }});
+      }catch(error){
+        return json({ok:false,error:'STAGE_COMPACT_READ_FAILED'},503);
+      }
+    }
     // Read-only public status for staged immutable snapshots. No Production/KV writes.
     if(u.pathname==='/_b46_stage_stats_meta'){
       if(!env.B46_STAGE_STATS_KV)return json({ok:false,error:'STAGE_KV_MISSING'},503);
