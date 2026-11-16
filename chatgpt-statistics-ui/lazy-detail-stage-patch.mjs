@@ -12,7 +12,8 @@ export function patchStageLazyStatistics(source){
      source.split(dataLoad).length!==2)
     return {source,status:'SOURCE_DRIFT_NO_LAZY_BOOT'};
   const deferredDataLoad="async function load(){\n"+
-    "  if(!window.__B46_STAGE_DETAILS_REQUESTED && (document.body?.dataset.workspaceView==='statistics' || new URLSearchParams(location.search).get('view')==='statistics')) {\n"+
+    "  // All views: never scan old Ledger on homepage or Statistics first paint.\n"+
+    "  if(!window.__B46_STAGE_DETAILS_REQUESTED) {\n"+
     "    return await new Promise(resolve=>document.addEventListener('b46:stage-details-requested',()=>resolve(load()),{once:true}));\n"+
     "  }\n"+
     "  if(cached){";
