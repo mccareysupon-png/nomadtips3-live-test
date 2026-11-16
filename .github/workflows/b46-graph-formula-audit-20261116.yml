@@ -1,0 +1,39 @@
+name: B46 graph formula public source audit - STAGING READ ONLY
+on:
+  push:
+    branches: [chatgpt/ball46-statistics-ui-v1]
+    paths: ['.github/workflows/b46-graph-formula-audit-20261116.yml']
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Inspect CURRENT public chart formulas, without writes or deployment
+        shell: bash
+        run: |
+          node <<'NODE'
+          const origin='https://www.ball46.com';
+          const requested=['/longterm-performance-343.js','/singlepage-workspace-343.js'];
+          const needles=['function stats(','function settlement(','function filteredRows(',
+            'function marketKey(','function marketDef(','function selectionKey(',
+            'function dateMs(','function bangkokDayKey(','function dailyUnitPoints(',
+            'function getPoints(','function f46Points(','function f46Date(','function chartHtml(',
+            'function renderGraph(','function renderKpis(','const RANGE_DAYS','const MARKET_NAMES'];
+          (async()=>{
+            for(const path of requested){
+              const r=await fetch(origin+path,{signal:AbortSignal.timeout(25000)});
+              const src=await r.text();
+              console.log('B46_SOURCE_META='+JSON.stringify({path,status:r.status,bytes:src.length}));
+              if(!r.ok||src.length<2000)throw Error('SOURCE_UNAVAILABLE_'+path);
+              for(const term of needles){
+                const pos=src.indexOf(term);
+                if(pos<0)continue;
+                const next=src.slice(pos+term.length).search(/\n(?:async )?function [a-zA-Z_$][\w$]*\(|\n(?:const|let) [A-Za-z_$][\w$]*\s*=/);
+                const text=src.slice(pos,Math.min(src.length,pos+(next<0?1800:next+term.length),pos+7000));
+                console.log('B46_SOURCE_FUNC='+JSON.stringify({path,term,pos,text}));
+              }
+            }
+          })().catch(e=>{console.error('B46_SOURCE_AUDIT_FAIL='+e.message);process.exitCode=1});
+          NODE
