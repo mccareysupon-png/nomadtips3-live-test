@@ -1,0 +1,30 @@
+name: B46 homepage daily-statistics aggregate path READ ONLY
+on:
+  push:
+    branches: [chatgpt/ball46-statistics-ui-v1]
+    paths: ['.github/workflows/b46-homepage-daily-recount-source-audit-20261116.yml']
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: Inspect full exact standalone Daily Performance script and callsites only
+        run: |
+          node <<'NODE'
+          (async()=>{
+           const base='https://api.cloudflare.com/client/v4/accounts/62cb0db544160e6591342abd6b4f35cc';
+           const h={authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN};
+           const get=async p=>{const r=await fetch(base+p,{headers:h});const v=await r.json();if(!r.ok||!v.success)throw Error('CF_FETCH_'+r.status);return v.result};
+           const d=await get('/workers/scripts/ball46-production/deployments?per_page=1');
+           const id=d.deployments[0].versions[0].version_id,w=await get('/workers/workers/ball46-production/versions/'+id+'?include=modules');
+           const m=w.modules.find(x=>x.name==='index.js'),s=Buffer.from(m.content_base64,'base64').toString('utf8');
+           const start=s.lastIndexOf('(()=>{',s.indexOf('B46 Daily Performance refresh skipped:'));
+           const end=s.indexOf('})();',s.indexOf('B46 Daily Performance refresh skipped:'));
+           console.log('B46_HOME_DAILY_SOURCE='+JSON.stringify({id,start,end,len:end-start,text:s.slice(Math.max(0,start),Math.min(s.length,end+5)).slice(-16000)}));
+           const terms=['function aggregate(rows)','function render(data)','function render(x)','function ensure()','const REFRESH','B46 Daily Performance'];
+           for(const term of terms){const i=s.lastIndexOf(term,s.indexOf('B46 Daily Performance refresh skipped:'));if(i>=0)console.log('B46_HOME_DAILY_ANCHOR='+JSON.stringify({term,pos:i,near:s.slice(Math.max(0,i-160),i+2000)}))}
+          })().catch(e=>{console.error('B46_HOME_DAILY_AUDIT_FAILED='+String(e));process.exitCode=1})
+          NODE
