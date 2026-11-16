@@ -88,10 +88,15 @@ function styleOnce(){
  '#b46-stage-fast-preview .b46-fast-stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}',
  '#b46-stage-fast-preview .b46-fast-stat{padding:10px;background:#172b24;border-radius:8px}',
  '#b46-stage-fast-preview .b46-fast-stat small{display:block;color:#92b8a6;font-size:10px}',
- '#b46-stage-fast-preview .b46-fast-stat b{display:block;font-size:15px;margin-top:4px}',
+ '#b46-stage-fast-preview .b46-fast-stat b{display:block;font-size:14px;margin-top:4px;overflow-wrap:anywhere}',
+ '#b46-stage-fast-preview .b46-fast-stat[data-key="wpl"] b{font-size:10px;letter-spacing:-.2px}',
+ '#b46-stage-fast-preview .b46-fast-outcomes{margin-top:13px;padding:12px;background:#152a22;border-radius:10px}',
+ '#b46-stage-fast-preview .b46-fast-outcomes-track{display:flex;height:11px;overflow:hidden;border-radius:7px;margin-top:9px}',
+ '#b46-stage-fast-preview .b46-fast-outcomes-track span{flex-basis:0;min-width:0}',
+ '#b46-stage-fast-preview .b46-fast-outcomes-legend{display:flex;justify-content:space-between;gap:8px;margin-top:7px;color:#aacbb9;font-size:10px}',
  '#b46-stage-fast-preview .b46-fast-foot{font-size:10px;color:#9bb8a9;margin-top:12px}',
  '#b46-stage-fast-preview .b46-fast-details{border:1px solid #336e57;background:#1a3b2e;color:#cff7df;cursor:pointer;border-radius:8px;padding:10px 14px;font-size:12px;font-weight:700;margin-top:12px}',
- '@media(max-width:850px){#b46-stage-fast-preview .b46-fast-columns{grid-template-columns:1fr}#b46-stage-fast-preview .b46-fast-chart{height:150px}}'
+ '@media(max-width:850px){#b46-stage-fast-preview .b46-fast-columns{grid-template-columns:1fr}#b46-stage-fast-preview .b46-fast-chart{height:150px}#b46-stage-fast-preview .b46-fast-outcomes{display:none}#b46-stage-fast-preview .b46-fast-stat:not([data-key="roi"]):not([data-key="rate"]):not([data-key="settled"]):not([data-key="drawdown"]){display:none}}'
  ].join('');
  document.head.appendChild(style);
 }
@@ -120,16 +125,40 @@ function mount(){
  const stats=document.createElement('div');stats.className='b46-fast-stats';
  const wl=head.win+head.loss+head.halfWin+head.halfLoss;
  const rate=wl?(head.win+head.halfWin*.5)/wl*100:null;
- const pairs=[['ROI',graph.summary.roi==null?'—':fmt(graph.summary.roi,1)+'%'],
-  ['WIN RATE',rate==null?'—':fmt(rate,1)+'%'],
-  ['SETTLED',head.total.toLocaleString('en-US')],
-  ['MAX DRAWDOWN','-'+fmt(graph.summary.maxDD)+' U']];
- for(const [name,value] of pairs){
+ const w=head.win+head.halfWin,p=head.push,l=head.loss+head.halfLoss;
+ const days=graph.summary.settledDays;
+ const pairs=[
+  ['ROI','roi',graph.summary.roi==null?'—':fmt(graph.summary.roi,1)+'%'],
+  ['WIN RATE','rate',rate==null?'—':fmt(rate,1)+'%'],
+  ['AVG ODDS','odds',graph.summary.avgOdds==null?'—':fmt(graph.summary.avgOdds)],
+  ['SETTLED DAYS','days',days==null?'—':String(days)],
+  ['UNSETTLED','unsettled',(head.pending+head.unresolved).toLocaleString('en-US')],
+  ['W · P · L','wpl',[w,p,l].map(n=>n.toLocaleString('en-US')).join(' · ')],
+  ['STAKE','stake',fmt(graph.summary.stake,0)+' U'],
+  ['MAX DRAWDOWN','drawdown',graph.summary.maxDD?'-'+fmt(graph.summary.maxDD)+' U':'0.00 U']
+ ];
+ for(const [name,key,value] of pairs){
    const cell=document.createElement('div');cell.className='b46-fast-stat';
+   cell.dataset.key=key;
    const small=document.createElement('small');small.textContent=name;
    const strong=document.createElement('b');strong.textContent=value;
    cell.append(small,strong);stats.appendChild(cell);
  }
+ const outcomes=document.createElement('section');outcomes.className='b46-fast-outcomes';
+ outcomes.setAttribute('aria-label','Signal Outcomes verified snapshot');
+ const heading=document.createElement('div');heading.className='b46-fast-kicker';
+ heading.textContent='SIGNAL OUTCOMES · ALL TIME';
+ const track=document.createElement('div');track.className='b46-fast-outcomes-track';
+ const legend=document.createElement('div');legend.className='b46-fast-outcomes-legend';
+ for(const [key,count,color] of [['win',w,'#39d19a'],['push',p,'#e5bc72'],['loss',l,'#ee777f']]){
+   const segment=document.createElement('span');
+   segment.dataset.result=key;segment.dataset.count=String(count);
+   segment.style.flexGrow=String(count);segment.style.backgroundColor=color;
+   track.appendChild(segment);
+   const item=document.createElement('span');item.textContent=key.toUpperCase()+' '+(count/head.total*100).toFixed(1)+'%';
+   legend.appendChild(item);
+ }
+ outcomes.append(heading,track,legend);
  const details=document.createElement('button');details.className='b46-fast-details';
  details.type='button';details.textContent='Load detailed history';
  details.addEventListener('click',()=>{
@@ -138,7 +167,7 @@ function mount(){
    if(typeof window.__B46_STAGE_LOAD_DETAILS==='function')window.__B46_STAGE_LOAD_DETAILS();
    else void window.BALL46_STATISTICS_DATA?.load?.();
  });
- right.append(label,net,stats,details);
+ right.append(label,net,stats,outcomes,details);
  cols.append(left,right);
  const foot=document.createElement('div');foot.className='b46-fast-foot';
  foot.textContent='Saved verified snapshot · Open detailed history when needed';
