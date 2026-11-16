@@ -1,7 +1,8 @@
-// BALL46 B46-STAT-UI-01 real-page visual staging.
-// GET-only mirror of the CURRENT PUBLIC ball46.com frontend; only cosmetic scoped CSS added.
+// BALL46 B46-STAT-UI-01 current frontend STAGING ONLY.
+// GET-only mirror of current public site, scoped CSS + verified loader-recovery patch only.
 // No Production writes, no secrets forwarded, and no Production Cloudflare Worker mutation.
 import css from './live-staging-overlay.css';
+import {patchCurrentStatisticsLoader} from './statistics-loader-staging-patch.mjs';
 const ORIGIN = 'https://ball46.com';
 const stamp = 'B46-STAT-UI-01-real-ui-v1';
 const json = (data,status=200) => new Response(JSON.stringify(data),{
@@ -27,20 +28,12 @@ export default {
     const accept = request.headers.get('accept');
     const headers = new Headers();
     if(accept) headers.set('accept',accept.slice(0,256));
-    // Some real Statistics reads transiently return 599 on the original site.
-    // Staging may retry the SAME GET only; no writes, no historical calculation.
-    const readOnce = () => fetch(originURL.toString(), {
+    // Stats page requests now retry the failed cursor page in the staging browser.
+    // Avoid nested edge+browser retries and inadvertent extra origin traffic.
+    const upstream = await fetch(originURL.toString(), {
       method:request.method,headers,redirect:'manual',
       cf:{cacheTtl:0,cacheEverything:false}
     });
-    let upstream = await readOnce();
-    if (u.pathname === '/api/engine/statistics' && [502,503,504,599].includes(upstream.status)) {
-      for (let attempt=0; attempt<2 && [502,503,504,599].includes(upstream.status); attempt++) {
-        try { await upstream.body?.cancel(); } catch {}
-        await new Promise(resolve => setTimeout(resolve, 250 * (attempt+1)));
-        upstream = await readOnce();
-      }
-    }
     const h = new Headers(upstream.headers);
     for(const x of ['set-cookie','content-length','content-encoding','etag','content-security-policy','content-security-policy-report-only','access-control-allow-origin','transfer-encoding']) h.delete(x);
     Object.entries(baseHeaders).forEach(([k,v])=>h.set(k,v));
@@ -49,6 +42,15 @@ export default {
     if(location){
       const dest=new URL(location,ORIGIN);
       if(dest.origin===ORIGIN){h.set('location',u.origin+dest.pathname+dest.search+dest.hash);}
+    }
+    // Surgical patch: the CURRENT external Statistics Loader, not a past Work tree.
+    // No settlement/formula/market/Engine changes. Source drift leaves file untouched.
+    if(request.method==='GET' && upstream.ok && u.pathname==='/singlepage-workspace-343.js'){
+      const original=await upstream.text();
+      const patched=patchCurrentStatisticsLoader(original);
+      h.set('content-type','application/javascript; charset=UTF-8');
+      h.set('x-b46-staging-loader',patched.status);
+      return new Response(patched.source,{status:upstream.status,headers:h});
     }
     // A scope-limited staging-only patch of the CURRENT chart module's own CSS:
     // style element from the renderer is appended after our HTML stylesheet on load.
