@@ -1,0 +1,51 @@
+name: BALL46 STAGING loading overlay after verified snapshot diagnosis
+on:
+  push:
+    branches: [chatgpt/ball46-statistics-ui-v1]
+    paths: ['.github/workflows/b46-staging-loading-overlay-diag-20261116.yml']
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - name: Install isolated Chromium
+        run: |
+          npm install --prefix /tmp/b46-overlay-diag --no-audit --no-fund playwright@1.65.1
+          /tmp/b46-overlay-diag/node_modules/.bin/playwright install --with-deps chromium
+      - name: Identify exact loading overlay DOM/CSS at full verified saved ledger
+        run: |
+          node <<'NODE'
+          const {chromium}=require('/tmp/b46-overlay-diag/node_modules/playwright');
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const page=await browser.newPage({viewport:{width:1366,height:900}});
+            await page.goto('https://ball46-chat-statistics-live-ui-test-20261115.mccarey-supon.workers.dev/?view=statistics',{waitUntil:'domcontentloaded',timeout:45000});
+            await page.waitForFunction(()=>window.BALL46_STATISTICS_DATA?.getSnapshot?.()?.ledgerRows?.length>15000,null,{timeout:45000});
+            const out=await page.evaluate(()=>{
+              const terms=['Loading statistics','Preparing recorded results','PREPARING VIEW','The view will appear'];
+              const textNodes=[];
+              const walk=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
+              while(walk.nextNode()&&textNodes.length<100){
+                const n=walk.currentNode,s=(n.nodeValue||'').trim();
+                if(terms.some(t=>s.includes(t))){
+                  const e=n.parentElement,anc=[];let p=e;
+                  while(p&&anc.length<7){const c=getComputedStyle(p),r=p.getBoundingClientRect();anc.push({
+                    tag:p.tagName,id:p.id,cls:String(p.className||'').slice(0,180),style:p.getAttribute('style')?.slice(0,140),
+                    display:c.display,visibility:c.visibility,opacity:c.opacity,rects:p.getClientRects().length,
+                    x:Math.round(r.x),y:Math.round(r.y),w:Math.round(r.width),h:Math.round(r.height)
+                  });p=p.parentElement;}
+                  textNodes.push({text:s.slice(0,100),chain:anc});
+                }
+              }
+              const ids=[...document.querySelectorAll('[class*="loading"],[id*="loading"],[class*="skeleton"],[class*="placeholder"],[data-b46-stat],.sp-stats-loading')]
+                  .slice(0,35).map(e=>({tag:e.tagName,id:e.id,cls:String(e.className||'').slice(0,100),style:getComputedStyle(e).display,html:e.outerHTML.slice(0,230)}));
+              const snap=window.BALL46_STATISTICS_DATA.getSnapshot(),content=document.querySelector('.sp-stats-content');
+              return{ledgerTotal:snap.ledgerTotal,stale:snap.stale,rows:snap.ledgerRows.length,contentDisplay:getComputedStyle(content).display,rootClass:document.documentElement.className,textNodes,ids};
+            });
+            console.log('B46_LOADING_OVERLAY_DIAG='+JSON.stringify(out));
+            await browser.close();
+          })().catch(e=>{console.error('B46_LOADING_OVERLAY_DIAG_ERROR='+String(e));process.exitCode=1})
+          NODE
