@@ -99,8 +99,12 @@ function inspectModules(got,base,replacement){
 }
 function checkCleanHtml(body){
  assert(body.includes('B46_STATISTICS_FAST_V1_OWNER_APPROVED_20261116'),'FAST_V1_INJECTION_MISSING');
- assert(!body.includes('<section class="sp-kpis">'),'OLD_TOP_KPI_STRIP_STILL_IN_HTML');
- assert(!body.includes('data-sp-kpi="total"'),'OLD_KPI_FIELDS_STILL_IN_HTML');
+ assert(!body.includes('<section class="sp-kpis">'),'VISIBLE_OLD_TOP_STRIP_STILL_IN_HTML');
+ assert(body.includes('<section class="sp-kpis" data-b46-relocated-source="1" hidden aria-hidden="true" style="display:none!important">'),
+   'HIDDEN_INTERNAL_METRICS_SOURCE_MISSING');
+ assert(body.includes('id="b46-moved-top-kpis-no-flash-20261117"'),
+   'NO_FLASH_HEAD_STYLE_MISSING');
+ assert(body.includes('data-sp-kpi="total"'),'METRICS_SOURCE_UNEXPECTEDLY_DELETED');
  assert(!body.includes('id="b46-statistics-visuals-20261114-runtime"'),
    'PREVIOUS_ANIMATION_REAPPEARED');
  assert(body.includes('id="b46-stats-v1-no-legacy-firstpaint-20261116"'),
