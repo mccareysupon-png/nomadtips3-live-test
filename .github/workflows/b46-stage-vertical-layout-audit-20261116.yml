@@ -1,0 +1,51 @@
+name: B46 staging right card and market filter vertical gap inspection READ ONLY
+on:
+  push:
+    branches: [chatgpt/ball46-statistics-ui-v1]
+    paths: ['.github/workflows/b46-stage-vertical-layout-audit-20261116.yml']
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - name: Install Chromium
+        run: |
+          npm install --prefix /tmp/b46-gap-audit --no-fund --no-audit playwright@1.65.1
+          /tmp/b46-gap-audit/node_modules/.bin/playwright install --with-deps chromium
+      - name: Inspect desktop market filter gap + summary card source
+        run: |
+          node <<'NODE'
+          const {chromium}=require('/tmp/b46-gap-audit/node_modules/playwright');
+          (async()=>{
+            const b=await chromium.launch({headless:true}),p=await b.newPage({viewport:{width:1640,height:950},deviceScaleFactor:1});
+            await p.goto('https://ball46-chat-statistics-live-ui-test-20261115.mccarey-supon.workers.dev/?view=statistics',{waitUntil:'domcontentloaded',timeout:45000});
+            await p.waitForFunction(()=>document.querySelectorAll('.b46-stage-summary-item').length===8,null,{timeout:50000});
+            const d=await p.evaluate(()=>{
+              const sel=['.sp-stats-content','.b46v23-strip','.f46-overview','#b46-finance-chart-card',
+                '#b46-finance-chart-card .f46-card','#b46-finance-chart-card .f46-overview',
+                '#b46-finance-chart-card .b46-stage-summary-grid','#b46-finance-chart-card .f46-value',
+                '[class*="market-filter"]','[class*="marketFilter"]','[class*="market-filter"]'];
+              const elements=sel.flatMap(s=>[...document.querySelectorAll(s)].slice(0,3).map(e=>{
+                const r=e.getBoundingClientRect(),c=getComputedStyle(e);
+                return{selector:s,tag:e.tagName,id:e.id,cls:String(e.className).slice(0,140),text:e.textContent?.trim().slice(0,100),
+                  top:Math.round(r.top),bottom:Math.round(r.bottom),height:Math.round(r.height),marginTop:c.marginTop,marginBottom:c.marginBottom,
+                  paddingTop:c.paddingTop,paddingBottom:c.paddingBottom,display:c.display,gap:c.gap,position:c.position,gridRows:c.gridTemplateRows,
+                  parent:e.parentElement?.className};
+              }));
+              const market=[...document.querySelectorAll('body *')].filter(e=>e.children.length===0 && /MARKET FILTER/i.test(e.textContent||'')).slice(0,3).map(e=>{
+                const chain=[];let p=e;for(let i=0;i<7&&p;i++,p=p.parentElement){
+                  const r=p.getBoundingClientRect(),c=getComputedStyle(p);
+                  chain.push({tag:p.tagName,id:p.id,cls:String(p.className).slice(0,160),top:Math.round(r.top),bottom:Math.round(r.bottom),h:Math.round(r.height),
+                    marginTop:c.marginTop,marginBottom:c.marginBottom,gap:c.gap,paddingTop:c.paddingTop,display:c.display});
+                }return chain;
+              });
+              const overview=document.querySelector('#b46-finance-chart-card .f46-overview');
+              return{elements,market,overviewHTML:overview?.outerHTML.slice(0,2500)};
+            });
+            console.log('B46_STAGE_VERTICAL_AUDIT='+JSON.stringify(d));
+            await b.close();
+          })().catch(e=>{console.error('B46_STAGE_VERTICAL_AUDIT_FAILED='+String(e));process.exitCode=1});
+          NODE
