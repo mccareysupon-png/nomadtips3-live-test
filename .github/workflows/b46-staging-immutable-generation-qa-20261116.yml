@@ -1,0 +1,95 @@
+name: B46 STAGING new immutable generation and transient 599 browser QA
+on:
+  push:
+    branches: [chatgpt/ball46-statistics-ui-v1]
+    paths: ['.github/workflows/b46-staging-immutable-generation-qa-20261116.yml']
+permissions: {contents: read}
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - name: Install Chromium
+        run: |
+          npm install --prefix /tmp/b46-immutable-qa --no-audit --no-fund playwright@1.65.1
+          /tmp/b46-immutable-qa/node_modules/.bin/playwright install --with-deps chromium
+      - name: Simulate new verified generation, one 599, subsequent recovery; NO Production writes
+        run: |
+          node <<'NODE'
+          const {chromium}=require('/tmp/b46-immutable-qa/node_modules/playwright');
+          const {gunzipSync,gzipSync}=require('node:zlib');
+          const base='https://ball46-chat-statistics-live-ui-test-20261115.mccarey-supon.workers.dev';
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            let failures=0;
+            for(const profile of [{name:'PC',width:1366},{name:'MOBILE',width:390}]){
+              const ctx=await browser.newContext({viewport:{width:profile.width,height:844},timezoneId:'Asia/Bangkok'});
+              const page=await ctx.newPage(),errors=[];
+              let phase='initial',rootCalls=0,metaCalls=0,paged=0,head=null,sample=null,newBlob=null;
+              page.on('pageerror',e=>errors.push(e.message.slice(0,180)));
+              await page.route('**/singlepage-workspace-343.js*',async route=>{
+                const res=await route.fetch(),txt=await res.text();
+                const m='window.BALL46_STATISTICS_DATA = Object.freeze(';
+                await route.fulfill({response:res,body:txt.includes(m)?txt.replace(m,
+                  'window.__B46_QA_REFRESH=b46RefreshFull;'+String.fromCharCode(10)+m):txt});
+              });
+              await page.route('**/_b46_stage_stats_meta*',async route=>{
+                metaCalls++;
+                if(phase==='initial')return route.continue();
+                return route.fulfill({status:200,contentType:'application/json',
+                  body:JSON.stringify({ok:true,savedAt:head.snapshotSavedAt+1234567,ledgerTotal:head.ledgerTotal+1,ready:true})});
+              });
+              await page.route('**/api/engine/statistics*',async route=>{
+                const url=new URL(route.request().url());
+                if(url.searchParams.has('paged')){paged++;return route.continue()}
+                rootCalls++;
+                if(phase==='fail')return route.fulfill({status:599,contentType:'text/plain',body:'INJECTED_599'});
+                if(phase==='new')return route.fulfill({status:200,contentType:'application/octet-stream',
+                  headers:{'x-b46-stage-snapshot':'VERIFIED_SAVED'},body:newBlob});
+                return route.continue();
+              });
+              await page.goto(base+'/?view=statistics',{waitUntil:'domcontentloaded',timeout:45000});
+              await page.waitForFunction(()=>{const d=window.BALL46_STATISTICS_DATA?.getSnapshot?.();
+                return d?.ok===true&&d?.ledgerRows?.length===d.ledgerTotal&&
+                  !!document.querySelector('#b46-finance-chart-card svg.f46-svg')?.getClientRects().length;
+              },null,{timeout:60000});
+              head=await page.evaluate(()=>{
+                const d=window.BALL46_STATISTICS_DATA.getSnapshot();
+                return{ledgerTotal:d.ledgerTotal,pending:d.pending,snapshotSavedAt:d.snapshotSavedAt};
+              });
+              // Capture the already verified source strictly inside the test runner,
+              // add one PENDING row to simulate a source change. No backend mutations.
+              const raw=await (await fetch(base+'/api/engine/statistics?stage_qa=1')).arrayBuffer();
+              const d=JSON.parse(gunzipSync(Buffer.from(raw)).toString('utf8'));
+              const pending=d.rows.find(r=>r.status==='PENDING');
+              if(!pending)throw Error('PENDING_TEST_FIXTURE_MISSING');
+              d.rows.push({...pending,id:'B46-QA-NEW-PENDING-'+profile.name,createdAt:Date.now()});
+              d.ledgerTotal+=1;d.pending+=1;d.snapshotSavedAt=head.snapshotSavedAt+1234567;
+              newBlob=gzipSync(Buffer.from(JSON.stringify(d)),{level:3});
+              phase='fail';
+              const failed=await page.evaluate(async()=>{
+                const before=window.BALL46_STATISTICS_DATA.getSnapshot();
+                const after=await window.__B46_QA_REFRESH();
+                return{same:before===after,visible:!!document.querySelector('#b46-finance-chart-card svg.f46-svg')?.getClientRects().length};
+              });
+              phase='new';
+              const recovered=await page.evaluate(async()=>{
+                const result=await window.__B46_QA_REFRESH();
+                return{ledgerTotal:result.ledgerTotal,pending:result.pending,rows:result.ledgerRows?.length,
+                  stale:result.stale,visible:!!document.querySelector('#b46-finance-chart-card svg.f46-svg')?.getClientRects().length,
+                  loaderHidden:getComputedStyle(document.querySelector('.b46-stats-loader')).display==='none'};
+              });
+              const pass=failed.same&&failed.visible&&recovered.ledgerTotal===head.ledgerTotal+1&&
+                recovered.pending===head.pending+1&&recovered.rows===recovered.ledgerTotal&&
+                recovered.visible&&recovered.loaderHidden&&metaCalls===2&&rootCalls===3&&paged===0&&errors.length===0;
+              console.log('B46_IMMUTABLE_QA='+JSON.stringify({profile:profile.name,pass,head,failed,recovered,metaCalls,rootCalls,paged,errors}));
+              if(!pass)failures++;
+              await ctx.close();
+            }
+            await browser.close();
+            if(failures){console.log('B46_IMMUTABLE_QA_OVERALL=FAIL');process.exitCode=1}
+            else console.log('B46_IMMUTABLE_QA_OVERALL=PASS_PC_MOBILE');
+          })().catch(e=>{console.error('B46_IMMUTABLE_QA_FATAL='+String(e));process.exitCode=1});
+          NODE
