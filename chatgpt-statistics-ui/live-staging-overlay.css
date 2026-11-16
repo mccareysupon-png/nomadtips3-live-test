@@ -202,6 +202,8 @@ html.b46-stage-data-ready body[data-workspace-view="statistics"] .workspace-pane
 }
 
 
+/* Desktop-only summary consolidation; preserve mobile original. */
+@media (min-width:851px) {
 /* BALL46 V3 — Statistics top KPI strip condensed into the right-hand card.
    STAGING ONLY. No values or settlement calculations are touched. */
 html body[data-workspace-view="statistics"] .sp-stats-content.b46-stage-summary-ready > .b46v23-strip {
@@ -263,6 +265,8 @@ html body #b46-finance-chart-card .f46-value {
   line-height:1.18!important;
   letter-spacing:-.45px!important;
 }
+
+}
 @media (min-width:851px) {
   html body #b46-finance-chart-card.b46-stage-summary-ready .f46-overview {
     grid-row:1 / 5!important;
@@ -279,25 +283,5 @@ html body #b46-finance-chart-card .f46-value {
   html body #b46-finance-chart-card .b46-stage-summary-item {
     min-height:48px;
     padding:8px 9px;
-  }
-}
-@media (max-width:850px) {
-  html body #b46-finance-chart-card .b46-stage-summary-grid {
-    grid-template-columns:repeat(2,minmax(0,1fr));
-    gap:8px;
-    margin-top:15px;
-  }
-  html body #b46-finance-chart-card .b46-stage-summary-item {
-    min-height:54px;
-    padding:10px 11px;
-  }
-  html body #b46-finance-chart-card .b46-stage-summary-number {
-    font-size:14px;
-  }
-  html body #b46-finance-chart-card .b46-stage-summary-item[data-key="wpl"] .b46-stage-summary-number {
-    font-size:clamp(10.5px,2.65vw,13px);
-  }
-  html body #b46-finance-chart-card .f46-value {
-    font-size:21px!important;
   }
 }

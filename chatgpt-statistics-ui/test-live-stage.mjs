@@ -25,9 +25,11 @@ try{
          && data.ledgerRows.length===data.ledgerTotal && !!chart?.getClientRects().length;
     };
     await page.waitForFunction(ready,null,{timeout:170000});
+    if(!profile.isMobile){
     await page.waitForFunction(()=>document.querySelectorAll('#b46-finance-chart-card .b46-stage-summary-item').length===8 &&
       getComputedStyle(document.querySelector('.b46v23-strip')).display==='none',
       null,{timeout:15000});
+    }
     const coldMs=Date.now()-started;
     const cold=await page.evaluate(()=>{
       const data=window.BALL46_STATISTICS_DATA.getSnapshot();
@@ -53,11 +55,16 @@ try{
     assert.equal(cold.fullRows,cold.ledgerTotal,profile.name+':INVALID_LEDGER');
     assert(cold.ledgerTotal>1000,profile.name+':LEDGER_TOO_SMALL');
     assert(cold.loadingAnimationHidden,profile.name+':LOADING_OVERLAY_STILL_VISIBLE');
+    if(!profile.isMobile){
     assert(cold.summary.ready&&cold.summary.hiddenTop&&cold.summary.originalDetailsHidden,profile.name+':DUPLICATE_STRIP_VISIBLE');
     assert.equal(cold.summary.count,8,profile.name+':SUMMARY_8_FIELDS_REQUIRED');
     assert.deepEqual(cold.summary.keys,['roi','rate','odds','days','unsettled','wpl','stake','drawdown'],profile.name+':SUMMARY_ORDER');
     assert(!cold.summary.gridOverflow,profile.name+':SUMMARY_GRID_OVERFLOW');
     assert(parseFloat(cold.summary.profitFont)<=23,profile.name+':MAIN_PROFIT_TOO_LARGE');
+    }else{
+      assert.equal(cold.summary.count,0,profile.name+':MOBILE_SUMMARY_SHOULD_NOT_EXIST');
+      assert(!cold.summary.ready,profile.name+':MOBILE_LAYOUT_CHANGED');
+    }
     assert(cold.chartPoints>0,profile.name+':CHART_EMPTY');
     assert.equal(cold.chartStroke,'1px',profile.name+':CHART_STROKE_DRIFT');
     assert(!cold.horizontalOverflow,profile.name+':HORIZONTAL_OVERFLOW');
@@ -74,9 +81,11 @@ try{
     const warmStart=Date.now();
     await page.reload({waitUntil:'domcontentloaded',timeout:45000});
     await page.waitForFunction(ready,null,{timeout:30000});
+    if(!profile.isMobile){
     await page.waitForFunction(()=>document.querySelectorAll('#b46-finance-chart-card .b46-stage-summary-item').length===8 &&
       getComputedStyle(document.querySelector('.b46v23-strip')).display==='none',
       null,{timeout:12000});
+    }
     const warmMs=Date.now()-warmStart;
     const warm=await page.evaluate(()=>{
       const d=window.BALL46_STATISTICS_DATA.getSnapshot();
@@ -92,8 +101,13 @@ try{
       warmStale:warm.stale,warmVisible:warm.graphVisible,pageErrors:errors,statHttp:networkStatuses.length}));
     assert(warm.graphVisible&&warm.rows===warm.ledgerTotal,profile.name+':BAD_WARM_RENDER');
     assert(warm.loadingAnimationHidden,profile.name+':LOADING_OVERLAY_REAPPEARED');
+    if(!profile.isMobile){
     assert.equal(warm.summaryCount,8,profile.name+':SUMMARY_DID_NOT_REAPPEAR');
     assert(warm.topStripHidden,profile.name+':TOP_STRIP_REAPPEARED');
+    }else{
+      assert.equal(warm.summaryCount,0,profile.name+':MOBILE_SUMMARY_ON_RELOAD');
+      assert(!warm.topStripHidden,profile.name+':ORIGINAL_MOBILE_STRIP_HIDDEN');
+    }
     assert(warmMs<=15000,profile.name+':WARM_TOO_SLOW_'+warmMs);
     assert.equal(errors.length,0,profile.name+':PAGE_JS_ERRORS:'+JSON.stringify(errors));
     const result={profile:profile.name,firstLoadMs:coldMs,reloadMs:warmMs,

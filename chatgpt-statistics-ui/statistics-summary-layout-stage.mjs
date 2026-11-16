@@ -16,6 +16,16 @@ export const stageSummaryScript = String.raw`(() => {
   const labelOf = value => String(value || '').replace(/\s+/g,' ').trim().toUpperCase();
   function sync(){
     if(document.body?.dataset.workspaceView!=='statistics')return;
+    // Desktop only. Mobile uses the original top strip and overview without relocation.
+    if(!window.matchMedia('(min-width: 851px)').matches){
+      const panel=document.querySelector('.sp-stats-content');
+      const chart=panel?.querySelector('#b46-finance-chart-card');
+      chart?.querySelector('.b46-stage-summary-grid')?.remove();
+      chart?.classList.remove('b46-stage-summary-ready');
+      panel?.classList.remove('b46-stage-summary-ready');
+      lastOverview=null; lastFingerprint='';
+      return;
+    }
     const panel=document.querySelector('.sp-stats-content');
     const chart=panel?.querySelector('#b46-finance-chart-card');
     const overview=chart?.querySelector('.f46-overview');
@@ -87,6 +97,7 @@ export const stageSummaryScript = String.raw`(() => {
     });
     observer.observe(document.body,{childList:true,characterData:true,subtree:true});
     document.addEventListener('ball46:statistics-snapshot',schedule);
+    window.addEventListener('resize',schedule,{passive:true});
     setInterval(()=>{if(document.visibilityState==='visible')schedule()},2500);
     schedule();
   };
