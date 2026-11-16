@@ -1,4 +1,6 @@
 name: B46 stage lazy read-only filtered and failover browser QA
+# Re-check after queued native fallback synchronization; never mutates a Worker.
+
 on:
   push:
     branches: [chatgpt/ball46-statistics-ui-v1]
