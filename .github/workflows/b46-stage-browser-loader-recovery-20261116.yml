@@ -1,0 +1,91 @@
+name: B46 staging loader patched live-browser recovery QA (NO Production writes)
+on:
+  push:
+    branches: [chatgpt/ball46-statistics-ui-v1]
+    paths: ['.github/workflows/b46-stage-browser-loader-recovery-20261116.yml']
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  staging-browser-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 11
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - name: Install Chromium in isolated runner
+        run: |
+          npm install --prefix /tmp/b46stageqa --no-audit --no-fund playwright@1.65.1
+          /tmp/b46stageqa/node_modules/.bin/playwright install --with-deps chromium
+      - name: Verify patched loader against current public UI, simulate 599, retain full ledger
+        run: |
+          node --input-type=module - <<'NODE'
+          import assert from 'node:assert/strict';
+          import {createRequire} from 'node:module';
+          import {patchCurrentStatisticsLoader,STAGE_LOADER_MARKER} from './chatgpt-statistics-ui/statistics-loader-staging-patch.mjs';
+          const require=createRequire(import.meta.url);
+          const {chromium}=require('/tmp/b46stageqa/node_modules/playwright');
+          const r=await fetch('https://www.ball46.com/singlepage-workspace-343.js',{signal:AbortSignal.timeout(20000)});
+          assert.equal(r.status,200);
+          const patched=patchCurrentStatisticsLoader(await r.text());
+          assert.equal(patched.status,'CURRENT_LOADER_PATCHED');
+          assert(patched.source.includes(STAGE_LOADER_MARKER));
+          const browser=await chromium.launch({headless:true});
+          let failed=0;
+          try{
+            for(const profile of [{name:'pc',width:1366,height:900},{name:'mobile',width:390,height:844}]){
+              const ctx=await browser.newContext({viewport:{width:profile.width,height:profile.height},timezoneId:'Asia/Bangkok'});
+              const page=await ctx.newPage(),errors=[],statuses=[];
+              let injected=false,force599=false;
+              page.on('pageerror',e=>errors.push(String(e.message).slice(0,250)));
+              page.on('response',r=>{if(new URL(r.url()).pathname==='/api/engine/statistics')statuses.push(r.status())});
+              await page.route('**/singlepage-workspace-343.js*',async route=>route.fulfill({status:200,contentType:'application/javascript',body:patched.source,headers:{'cache-control':'no-store'}}));
+              await page.route('**/api/engine/statistics*',async route=>{
+                const query=new URL(route.request().url()).searchParams;
+                if(!query.has('paged')) {errors.push('UNPAGED_STAT_REQUEST');return route.abort()}
+                if(force599 || (!injected && query.get('paged')==='1')){
+                  injected=true;
+                  return route.fulfill({status:599,contentType:'text/plain',body:'TEST_INJECTED_599'});
+                }
+                return route.continue();
+              });
+              const t0=Date.now();
+              const entry=await page.goto('https://www.ball46.com/?view=statistics',{waitUntil:'domcontentloaded',timeout:45000});
+              const isReady=await page.waitForFunction(()=>{
+                const a=window.BALL46_STATISTICS_DATA?.getSnapshot?.();
+                return a?.ok===true&&Array.isArray(a.ledgerRows)&&a.ledgerRows.length===a.ledgerTotal
+                    &&!a.hasMore&&Number(document.querySelector('[data-sp-record-count]')?.textContent?.replace(/[^0-9]/g,''))===a.ledgerTotal;
+              },null,{timeout:125000}).then(()=>true).catch(()=>false);
+              const state=await page.evaluate(()=>{
+                const s=window.BALL46_STATISTICS_DATA?.getSnapshot?.();
+                return{ledgerTotal:s?.ledgerTotal||null,rows:s?.ledgerRows?.length||null,
+                  recordLabel:document.querySelector('[data-sp-record-count]')?.textContent?.trim()||null,
+                  chartVisible:!!document.querySelector('#b46-finance-chart-card svg.f46-svg')?.getClientRects().length,
+                  mode:document.body?.dataset.workspaceView,ready:document.readyState};
+              });
+              let fallback=null;
+              if(isReady){
+                await page.waitForTimeout(10500);
+                force599=true;
+                fallback=await page.evaluate(async()=>{
+                  const prev=window.BALL46_STATISTICS_DATA.getSnapshot();
+                  const r=await window.BALL46_STATISTICS_DATA.load();
+                  return{same:r===prev,ledgerTotal:r?.ledgerTotal,valid:r?.ledgerRows?.length===r?.ledgerTotal};
+                }).catch(e=>({error:String(e)}));
+              }
+              console.log('B46_STAGE_BROWSER_RESULT='+JSON.stringify({profile:profile.name,entry:entry?.status(),timeMs:Date.now()-t0,ready:isReady,first599Injected:injected,snapshot:state,fallback,statisticsRequests:statuses.length,statusCounts:statuses.reduce((o,s)=>(o[s]=(o[s]||0)+1,o),{}),pageErrors:errors}));
+              await page.screenshot({path:'/tmp/b46-staging-loader-'+profile.name+'.png',fullPage:false}).catch(()=>{});
+              if(!isReady||!injected||!fallback?.same||!fallback.valid||errors.length)failed++;
+              await ctx.close();
+            }
+          }finally{await browser.close()}
+          assert.equal(failed,0,'REAL_PAGE_RECOVERY_NOT_VERIFIED');
+          console.log('B46_STAGE_BROWSER_RECOVERY_QA=PASS');
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: b46-loader-recovery-staging-pc-mobile
+          path: /tmp/b46-staging-loader-*.png
+          if-no-files-found: ignore
+          retention-days: 7
