@@ -1,0 +1,50 @@
+name: BALL46 remove moved top KPI strip owner-approved Candidate and Production
+on:
+  push:
+    branches: [chatgpt/ball46-statistics-ui-v1]
+    paths:
+      - '.github/workflows/b46-remove-moved-top-kpi-strip-20261117.yml'
+      - 'deploy-assets/ball46-statistics-fast-v1-20261116/remove-moved-kpi-strip.mjs'
+      - 'deploy-assets/ball46-statistics-fast-v1-20261116/deploy-remove-top-kpi-20261117.mjs'
+      - 'deploy-assets/ball46-statistics-fast-v1-20261116/verify-remove-moved-kpis-browser.mjs'
+      - 'deploy-assets/ball46-statistics-fast-v1-20261116/REMOVE_TOP_KPI_PHASE.txt'
+permissions: {contents: read}
+concurrency: {group: ball46-production-deploy, cancel-in-progress: false}
+jobs:
+  original-source-top-kpi-removal:
+    if: contains(github.event.head_commit.message, '[b46-top-kpi-candidate]') || contains(github.event.head_commit.message, '[b46-top-kpi-activate]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      B46_TOP_KPI_APPROVED: 'YES'
+      B46_TOP_KPI_MODE: ${{ contains(github.event.head_commit.message, '[b46-top-kpi-activate]') && 'activate' || 'candidate' }}
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - name: Strict before-mutation source tests
+        run: |
+          set -euo pipefail
+          ROOT=deploy-assets/ball46-statistics-fast-v1-20261116
+          node --check "$ROOT/remove-moved-kpi-strip.mjs"
+          node --check "$ROOT/deploy-remove-top-kpi-20261117.mjs"
+          node --check "$ROOT/verify-remove-moved-kpis-browser.mjs"
+          grep -Fq "EXPECTED='183f194b-0354-4366-8bca-9b17ca6458b0'" "$ROOT/deploy-remove-top-kpi-20261117.mjs"
+          grep -Fq "MODULE='statistics-menu-entry-20261114.mjs'" "$ROOT/deploy-remove-top-kpi-20261117.mjs"
+          grep -Fq "B46_REMOVE_MOVED_TOP_KPIS_SOURCE_20261117" "$ROOT/remove-moved-kpi-strip.mjs"
+          test -n "$CLOUDFLARE_API_TOKEN"
+      - name: Install isolated Chromium
+        run: |
+          npm install --prefix deploy-assets/ball46-statistics-fast-v1-20261116/.runtime --no-audit --no-fund playwright@1.65.1
+          deploy-assets/ball46-statistics-fast-v1-20261116/.runtime/node_modules/.bin/playwright install --with-deps chromium
+      - name: Verify one-module source mutation, browser at DOM-ready and native handoff, activate only on pass
+        run: node deploy-assets/ball46-statistics-fast-v1-20261116/deploy-remove-top-kpi-20261117.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-top-kpi-removal-audit
+          path: deploy-assets/ball46-statistics-fast-v1-20261116/remove-top-kpis-release-audit/
+          if-no-files-found: ignore
+          retention-days: 21
