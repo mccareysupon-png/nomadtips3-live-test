@@ -43,12 +43,12 @@ export function seedFromLatestVerified(source){
  if(graph.summary.rows!==source.total||graph.summary.wins!==source.win+source.halfWin||
     graph.summary.losses!==source.loss+source.halfLoss||graph.summary.pushes!==source.push)
   throw Error('LATEST_GRAPH_COUNTERS_INCONSISTENT');
- let oddsSum=0,oddsCount=0,minDay=Infinity,maxDate=0;
- for(const row of rows){
-  if(!settled(row))continue;
+ let oddsSum=0,oddsCount=0,minDay=Infinity,maxDate=0,previousNet=0,trough=0;
+ for(const row of rows.filter(settled).slice().sort((a,b)=>dateMs(a.settledAt??a.createdAt)-dateMs(b.settledAt??b.createdAt))){
   const ms=dateMs(row.settledAt??row.createdAt);if(ms<=0)throw Error('SETTLED_DATE_MISSING');
   minDay=Math.min(minDay,dayNumber(ms));maxDate=Math.max(maxDate,ms);
   const odds=num(row.odds);if(odds!==null&&odds>1){oddsSum+=odds;oddsCount++}
+  const p=payout(row);if(p.priced){previousNet+=p.profit;trough=Math.min(trough,previousNet)}
  }
  return {
   schema:2,mode:'LATEST_VERIFIED_BALANCE_PLUS_NEW_SETTLEMENTS',
@@ -57,7 +57,7 @@ export function seedFromLatestVerified(source){
    halfWin:source.halfWin,halfLoss:source.halfLoss},
   summary:{...graph.summary},series:structuredClone(graph.series),
   _finance:{oddsSum,oddsCount,firstDay:Number.isFinite(minDay)?minDay:null,
-    lastSettledAt:maxDate,lastAppliedId:null},
+    lastSettledAt:maxDate,lastAppliedId:null,trough},
   updatedAt:Number(source.snapshotSavedAt||Date.now()),
   sourceRevision:source.statisticsContentRevision||null,
   bootstrapLedgerCount:rows.length,historicalRowsRetained:0
@@ -119,8 +119,8 @@ export function applyLedgerTransition(balance,oldRow,newRow,{at=Date.now()}={}){
   sum.priced++;sum.stake+=p.stake;sum.net+=p.profit;
   sum.peak=Math.max(sum.peak,sum.net);
   sum.maxDD=Math.max(sum.maxDD,sum.peak-sum.net);
-  sum.bestRun=Math.max(sum.bestRun,sum.net-sum.trough);
-  sum.trough=Math.min(sum.trough,sum.net);
+  state._finance.trough=Math.min(state._finance.trough,sum.net);
+  sum.bestRun=Math.max(sum.bestRun,sum.net-state._finance.trough);
   sum.roi=sum.stake?sum.net/sum.stake*100:null;
   putDay(state.series.units,ms,sum.net);
   putDay(state.series.roi,ms,sum.roi);
