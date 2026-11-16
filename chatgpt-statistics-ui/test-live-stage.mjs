@@ -37,10 +37,12 @@ try{
         chartLayout:style.display,columns:style.gridTemplateColumns,
         horizontalOverflow:document.documentElement.scrollWidth>innerWidth+1,
         stageMarker:!!document.querySelector('[data-b46-staging-overlay]'),
-        loaderPatched:false};
+        loaderPatched:false,
+        loadingAnimationHidden:getComputedStyle(document.querySelector('.b46-stats-loader')).display==='none'};
     });
     assert.equal(cold.fullRows,cold.ledgerTotal,profile.name+':INVALID_LEDGER');
     assert(cold.ledgerTotal>1000,profile.name+':LEDGER_TOO_SMALL');
+    assert(cold.loadingAnimationHidden,profile.name+':LOADING_OVERLAY_STILL_VISIBLE');
     assert(cold.chartPoints>0,profile.name+':CHART_EMPTY');
     assert.equal(cold.chartStroke,'1px',profile.name+':CHART_STROKE_DRIFT');
     assert(!cold.horizontalOverflow,profile.name+':HORIZONTAL_OVERFLOW');
@@ -62,12 +64,14 @@ try{
       const d=window.BALL46_STATISTICS_DATA.getSnapshot();
       return{ledgerTotal:d.ledgerTotal,rows:d.ledgerRows.length,stale:!!d.stale,
         tableLabel:document.querySelector('[data-sp-feed-state]')?.textContent?.trim(),
-        graphVisible:!!document.querySelector('#b46-finance-chart-card svg.f46-svg')?.getClientRects().length};
+        graphVisible:!!document.querySelector('#b46-finance-chart-card svg.f46-svg')?.getClientRects().length,
+        loadingAnimationHidden:getComputedStyle(document.querySelector('.b46-stats-loader')).display==='none'};
     });
     await page.screenshot({path:'/tmp/b46-staging-cache-'+profile.name+'.png',fullPage:false});
     console.log('B46_STAGE_TIMING='+JSON.stringify({profile:profile.name,coldMs,warmMs,coldLedger:cold.ledgerTotal,warmLedger:warm.ledgerTotal,
       warmStale:warm.stale,warmVisible:warm.graphVisible,pageErrors:errors,statHttp:networkStatuses.length}));
     assert(warm.graphVisible&&warm.rows===warm.ledgerTotal,profile.name+':BAD_WARM_RENDER');
+    assert(warm.loadingAnimationHidden,profile.name+':LOADING_OVERLAY_REAPPEARED');
     assert(warmMs<=15000,profile.name+':WARM_TOO_SLOW_'+warmMs);
     assert.equal(errors.length,0,profile.name+':PAGE_JS_ERRORS:'+JSON.stringify(errors));
     const result={profile:profile.name,firstLoadMs:coldMs,reloadMs:warmMs,

@@ -180,3 +180,23 @@ html.b46-stage-saved-ready body[data-workspace-view="statistics"] .sp-stats-cont
 
 /* STAGING ONLY: verified-snapshot panel display has an inline-important override
    because the original readiness CSS has greater specificity. No changes to Production. */
+
+/* STAGING ONLY — remove the large indefinitely-running skeleton and orbital animation
+   on the Statistics view. Preserve a small NON-ANIMATED status until validated results arrive. */
+html body[data-workspace-view="statistics"] .b46-stats-loader {
+  display: none !important;
+}
+html:not(.b46-stage-data-ready) body[data-workspace-view="statistics"] .workspace-panel::before {
+  content: "Loading statistics…";
+  display: block;
+  margin: 14px 20px;
+  padding: 12px 16px;
+  border-radius: 9px;
+  color: #496b58;
+  background: #ecf4ee;
+  font: 500 13px/1.4 system-ui, sans-serif;
+}
+html.b46-stage-data-ready body[data-workspace-view="statistics"] .workspace-panel::before {
+  content: none !important;
+  display: none !important;
+}
