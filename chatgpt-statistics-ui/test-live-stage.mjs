@@ -14,6 +14,18 @@ try{
     const context=await browser.newContext({viewport:{width:profile.width,height:profile.height},
       timezoneId:'Asia/Bangkok',isMobile:profile.isMobile,hasTouch:profile.isMobile});
     const page=await context.newPage(),errors=[],networkStatuses=[];
+    await page.addInitScript(()=>{
+      const original=window.fetch;
+      window.fetch=function(input,...args){
+        const url=typeof input==='string'?input:String(input?.url||'');
+        if(url.includes('/api/engine/statistics')){
+          (window.__B46_EARLY_FETCHES||(window.__B46_EARLY_FETCHES=[])).push({
+            url:url.slice(0,150),trace:String(new Error('B46_FETCH_CALLER').stack||'').slice(0,1400)
+          });
+        }
+        return original.call(this,input,...args);
+      };
+    });
     page.on('pageerror',e=>errors.push(e.message.slice(0,200)));
     page.on('response',r=>{if(new URL(r.url()).pathname==='/api/engine/statistics')networkStatuses.push(r.status())});
     // Browser-test-only instrumentation of the ORIGINAL renderer. No staging
@@ -92,6 +104,14 @@ try{
     console.log('B46_FAST_FIRST_PAINT='+JSON.stringify({profile:profile.name,...early}));
     // Initial Statistics view must not read the 16k-row historical Ledger.
     await page.waitForTimeout(1200);
+    const lazyJs=await context.request.get(base+'/singlepage-workspace-343.js');
+    const lazyChart=await context.request.get(base+'/longterm-performance-343.js');
+    const fetchTraces=await page.evaluate(()=>window.__B46_EARLY_FETCHES||[]);
+    console.log('B46_LAZY_BOOT_DIAG='+JSON.stringify({
+      profile:profile.name,apiCount:networkStatuses.length,apiStatuses:networkStatuses,
+      statsPatch:lazyJs.headers()['x-b46-staging-lazy'],
+      chartPatch:lazyChart.headers()['x-b46-staging-chart-lazy'],
+      callers:fetchTraces.slice(0,6)}));
     assert.equal(networkStatuses.length,0,profile.name+':FULL_LEDGER_WAS_LOADED_BEFORE_HISTORY_REQUEST');
     assert(await page.locator('#b46-stage-fast-preview .b46-fast-details').isVisible(),
       profile.name+':DETAIL_REQUEST_BUTTON_NOT_VISIBLE');
