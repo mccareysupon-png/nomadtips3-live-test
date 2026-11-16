@@ -1,0 +1,24 @@
+name: B46 obsolete stats animation removal browser simulation READ ONLY
+on:
+  push:
+    branches: [chatgpt/ball46-statistics-ui-v1]
+    paths: ['.github/workflows/b46-obsolete-ui-browser-sim-readonly-20261116.yml']
+permissions: {contents: read}
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - name: Static verification
+        run: |
+          node --check deploy-assets/ball46-statistics-fast-v1-20261116/remove-obsolete-stats-ui.mjs
+          node --check deploy-assets/ball46-statistics-fast-v1-20261116/verify-remove-obsolete-ui-browser.mjs
+      - name: Isolated Chromium
+        run: |
+          npm install --prefix deploy-assets/ball46-statistics-fast-v1-20261116/.runtime --no-audit --no-fund playwright@1.65.1
+          deploy-assets/ball46-statistics-fast-v1-20261116/.runtime/node_modules/.bin/playwright install --with-deps chromium
+      - name: Simulate exact HTML after legacy source removal, without writes
+        run: node deploy-assets/ball46-statistics-fast-v1-20261116/verify-remove-obsolete-ui-browser.mjs
