@@ -1,0 +1,6 @@
+BALL46 remove obsolete top statistics eight KPI card strip, 2026-11-17.
+Owner reports duplicate SETTLED, UNSETTLED, WIN, LOSS, PUSH, WIN RATE, AVG ODDS, SETTLED DAYS shown above finance card while loading. These values were moved into the verified finance KPI cards.
+Exact active baseline: 183f194b-0354-4366-8bca-9b17ca6458b0.
+Read-only source test 43980954737 PASSED; legacy 7-card HTML is in <section class="sp-kpis">, and 8th settled-days added from native JS only if legacy row exists. Permanent deletion from HTML sanitizer, not just CSS hiding.
+Only target Worker module statistics-menu-entry-20261114.mjs; preserve all other Worker modules, Engine, Ledger, payout formulas, snapshot provider and already approved UI.
+This phase: build inactive candidate, test PC Total, 1X2, AH, mobile, history takeover and no transient reappearance; DO NOT ACTIVATE yet.
