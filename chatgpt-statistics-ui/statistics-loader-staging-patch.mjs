@@ -62,7 +62,7 @@ export function patchCurrentStatisticsLoader(source){
   const jsonStage=`  // B46_STAGE_GZIP_VERIFIED: staging KV stores validated public Ledger as GZIP binary.
   // Native DecompressionStream makes the network transfer 4.7 MB, not 58 MB.
   let data;
-  if(response.ok && response.headers.get('x-b46-stage-snapshot')==='VERIFIED_SAVED'){
+  if(response.ok && ['VERIFIED_SAVED','VERIFIED_PREVIOUS'].includes(response.headers.get('x-b46-stage-snapshot'))){
     if(typeof DecompressionStream==='undefined')throw new Error('STAGE_GZIP_UNSUPPORTED');
     const raw=await response.arrayBuffer();
     data=await new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream('gzip'))).json();

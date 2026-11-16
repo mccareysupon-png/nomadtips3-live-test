@@ -25,6 +25,16 @@ export default {
     if (u.pathname === '/_b46_ui_overlay.css') return new Response(request.method==='HEAD'?null:css,{
       headers:{...baseHeaders,'content-type':'text/css; charset=UTF-8','x-b46-overlay':stamp}
     });
+    // Read-only public status for staged immutable snapshots. No Production/KV writes.
+    if(u.pathname==='/_b46_stage_stats_meta'){
+      if(!env.B46_STAGE_STATS_KV)return json({ok:false,error:'STAGE_KV_MISSING'},503);
+      const meta=await env.B46_STAGE_STATS_KV.get('verified-full-meta-v1','json');
+      if(!meta?.savedAt||!Number.isFinite(Number(meta.ledgerTotal)))
+        return json({ok:false,error:'STAGE_SNAPSHOT_UNAVAILABLE'},503);
+      return json({ok:true,savedAt:meta.savedAt,checkedAt:meta.checkedAt||meta.savedAt,
+        ledgerTotal:meta.ledgerTotal,sourceSignature:meta.sourceSignature||null,
+        immutable:meta.schema===2,ready:!!meta.key});
+    }
     if (u.pathname.startsWith('/_b46_')) return json({ok:false,error:'NOT_FOUND'},404);
     // GET/HEAD-only. Do not expose internal Production GET routes through this mirror.
     const publicApi = new Set([
@@ -58,7 +68,7 @@ export default {
           }
         }
         if(!entry||!metadata?.savedAt||!metadata?.ledgerTotal||
-           Date.now()-Number(metadata.savedAt)>259200000)
+           Date.now()-Number(metadata.checkedAt||metadata.savedAt)>259200000)
           return json({ok:false,error:'STAGE_SNAPSHOT_NOT_READY'},503);
         return new Response(entry,{status:200,headers:{
           ...baseHeaders,'content-type':'application/octet-stream',
