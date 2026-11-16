@@ -13,7 +13,13 @@ export async function verifyBrowser(host,label,auditDir){
     {name:'mobile',width:390,height:844,isMobile:true}]){
    const context=await browser.newContext({viewport:{width:profile.width,height:profile.height},
       timezoneId:'Asia/Bangkok',isMobile:profile.isMobile,hasTouch:profile.isMobile});
-   const page=await context.newPage(),errors=[],api=[];
+   const page=await context.newPage(),errors=[],api=[],apiStatuses=[],badRequests=[],warnings=[];
+   page.on('response',res=>{
+     const u=new URL(res.url());
+     if(u.pathname==='/api/engine/statistics')apiStatuses.push({status:res.status(),url:u.pathname+u.search.slice(0,70)});
+   });
+   page.on('requestfailed',req=>badRequests.push({url:new URL(req.url()).pathname,failure:req.failure()}));
+   page.on('console',msg=>{if(['warning','error'].includes(msg.type()))warnings.push(msg.text().slice(0,160))});
    page.on('pageerror',e=>errors.push(e.message.slice(0,190)));
    page.on('request',r=>{if(new URL(r.url()).pathname===statusUrl)api.push(r.method())});
    const start=Date.now(),response=await page.goto(host+'/?view=statistics',{waitUntil:'domcontentloaded',timeout:65000});
@@ -65,12 +71,34 @@ export async function verifyBrowser(host,label,auditDir){
        label+':FAST_SUMMARY_COUNTS_DIFFER');
    }
    await page.locator('#b46-fast-v1-preview .b46-fast-details').click();
-   await page.waitForFunction(()=>{
-     const d=window.BALL46_STATISTICS_DATA?.getSnapshot?.();
-     const chart=document.querySelector('#b46-finance-chart-card svg.f46-svg');
-     return d?.ok===true&&d.ledgerRows?.length===d.ledgerTotal&&
-       !!chart?.getClientRects().length;
-   },null,{timeout:120000});
+   try{
+     await page.waitForFunction(()=>{
+       const d=window.BALL46_STATISTICS_DATA?.getSnapshot?.();
+       const chart=document.querySelector('#b46-finance-chart-card svg.f46-svg');
+       return !!(d?.ok===true&&d.ledgerRows?.length===d.ledgerTotal&&
+         chart?.getClientRects().length);
+     },null,{timeout:65000});
+   }catch(e){
+     const dom=await page.evaluate(()=>{
+       const data=window.BALL46_STATISTICS_DATA?.getSnapshot?.();
+       const card=document.querySelector('#b46-finance-chart-card');
+       const shell=card?.querySelector('[data-b46-perf-shell]');
+       const cnt=document.querySelector('.sp-stats-content');
+       return{detailRequested:window.__B46_FAST_DETAILS_REQUESTED,
+         diag:window.__B46_FAST_V1_DIAG,
+         data: data?{ok:data.ok,total:data.total,ledgerTotal:data.ledgerTotal,
+           length:data.ledgerRows?.length,stale:data.stale,hasMore:data.hasMore}:null,
+         nativeSvg:!!card?.querySelector('svg.f46-svg'),
+         rootHtml:card?.outerHTML.slice(0,450),
+         shellHtml:shell?.innerHTML.slice(0,450),
+         workspaceView:document.body?.dataset?.workspaceView,
+         contentDisplay:cnt?getComputedStyle(cnt).display:null,
+         feedState:document.querySelector('[data-sp-feed-state]')?.textContent?.slice(0,130)};
+     });
+     console.log('B46_FAST_V1_NATIVE_TIMEOUT_DIAG='+JSON.stringify({profile:profile.name,dom,
+       apiStatuses:apiStatuses.slice(-40),errors,failures:badRequests.slice(-12),warnings:warnings.slice(-12)}));
+     throw e;
+   }
    await page.waitForFunction(()=>!document.querySelector('#b46-fast-v1-preview'),null,{timeout:10000});
    const native=await page.evaluate(()=>({
      rowCount:window.BALL46_STATISTICS_DATA.getSnapshot().ledgerRows.length,
