@@ -1,0 +1,43 @@
+name: B46 ledger delta API and settlement write scan READ ONLY
+on:
+  push:
+    branches: [chatgpt/ball46-statistics-ui-v1]
+    paths: ['.github/workflows/b46-incremental-engine-endpoint-audit-20261116.yml']
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: Inspect engine source only, no writes
+        run: |
+          node <<'NODE'
+          (async()=>{
+            const base='https://api.cloudflare.com/client/v4/accounts/62cb0db544160e6591342abd6b4f35cc';
+            const h={authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN};
+            async function get(path){const r=await fetch(base+path,{headers:h,signal:AbortSignal.timeout(30000)});
+             const v=await r.json();if(!r.ok||!v.success)throw Error('CF_'+r.status);return v.result}
+            const q=await get('/workers/scripts/nomadtips3-engine-343/deployments?per_page=1');
+            const id=q.deployments[0].versions[0].version_id;
+            const w=await get('/workers/workers/nomadtips3-engine-343/versions/'+id+'?include=modules');
+            const m=w.modules.find(x=>/javascript/.test(x.content_type)),src=Buffer.from(m.content_base64,'base64').toString('utf8');
+            console.log('B46_ENGINE_META='+JSON.stringify({version:id,bytes:src.length,name:m.name}));
+            const keys=['statisticsLedgerVersion','statisticsPagination','ledgerUpdatedAt','/statistics','getStatistics','nextCursor','cursorToken','createdAt','settledAt','statisticsContentRevision','KV_LEDGER','signalLedger','ledgerRows','status === "SETTLED"'];
+            for(const term of keys){
+              const hits=[];let pos=0;
+              while((pos=src.indexOf(term,pos))>=0&&hits.length<6){
+                hits.push({pos,snippet:src.slice(Math.max(0,pos-260),pos+1150)});pos+=term.length;
+              }
+              if(hits.length)console.log('B46_ENGINE_HITS='+JSON.stringify({term,hits}));
+            }
+            const resp=await fetch('https://www.ball46.com/api/engine/statistics?paged=1&limit=1',{signal:AbortSignal.timeout(25000)});
+            const data=await resp.json();
+            console.log('B46_STATS_PAGE_INFO='+JSON.stringify({
+              status:resp.status,pageSize:data.rows?.length,keys:data.statisticsPagination,
+              head:data.rows?.slice(0,1).map(x=>Object.keys(x)),first:data.rows?.[0]?.id,
+              last:data.rows?.at(-1)?.id,total:data.ledgerTotal
+            }));
+          })().catch(e=>{console.error('B46_ENGINE_AUDIT_FAILED='+String(e));process.exitCode=1})
+          NODE
