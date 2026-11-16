@@ -53,6 +53,25 @@ export function patchCurrentStatisticsLoader(source){
   }
   const prefix=source.slice(0,pageStart),suffix=source.slice(ownerEnd);
   let block=replacementPage+source.slice(directStart,ownerEnd);
+  const directAt=block.indexOf('async function directAll() {');
+  const directEnd=block.indexOf('\\nasync function readAll() {',directAt);
+  if(directAt<0||directEnd<directAt)return {source,status:'SOURCE_DRIFT_DIRECT_LAYOUT'};
+  let direct=block.slice(directAt,directEnd);
+  const jsonOld='  const data = await response.json();';
+  if(!direct.includes(jsonOld))return {source,status:'SOURCE_DRIFT_GZIP_READER'};
+  const jsonStage=`  // B46_STAGE_GZIP_VERIFIED: staging KV stores validated public Ledger as GZIP binary.
+  // Native DecompressionStream makes the network transfer 4.7 MB, not 58 MB.
+  let data;
+  if(response.ok && response.headers.get('x-b46-stage-snapshot')==='VERIFIED_SAVED'){
+    if(typeof DecompressionStream==='undefined')throw new Error('STAGE_GZIP_UNSUPPORTED');
+    const raw=await response.arrayBuffer();
+    data=await new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream('gzip'))).json();
+  }else{
+    if(!response.ok)throw new Error('Statistics direct HTTP '+response.status);
+    data=await response.json();
+  }`;
+  direct=direct.replace(jsonOld,jsonStage);
+  block=block.slice(0,directAt)+direct+block.slice(directEnd);
   const skip=`  try { return await directAll(); } catch (error) { console.warn('Statistics direct read fallback', error?.message || error); }`;
   if(!block.includes(skip))return {source,status:'SOURCE_DRIFT_DIRECT_FALLBACK'};
   block=block.replace(skip,`  // STAGING: Unpaged endpoint fails intermittently with non-JSON 599. Read cursor pages directly.`);

@@ -46,8 +46,8 @@ export default {
            Date.now()-Number(metadata.savedAt)>86400000)
           return json({ok:false,error:'STAGE_SNAPSHOT_NOT_READY'},503);
         return new Response(entry,{status:200,headers:{
-          ...baseHeaders,'content-type':'application/json; charset=UTF-8',
-          'content-encoding':'gzip','vary':'Accept-Encoding',
+          ...baseHeaders,'content-type':'application/octet-stream',
+          'vary':'Accept-Encoding',
           'x-b46-stage-snapshot':'VERIFIED_SAVED','x-b46-stage-snapshot-at':String(metadata.savedAt),
           'x-b46-read-path':'STAGING_KV'
         }});

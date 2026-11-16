@@ -18,7 +18,9 @@ jobs:
             const r=await fetch(stage+'/api/engine/statistics?_='+Date.now(),{signal:AbortSignal.timeout(35000)});
             console.log('STAGE_SNAPSHOT_HTTP='+JSON.stringify({code:r.status,type:r.headers.get('content-type'),encoding:r.headers.get('content-encoding'),marker:r.headers.get('x-b46-stage-snapshot'),age:r.headers.get('x-b46-stage-snapshot-at'),timeMs:Date.now()-started}));
             if(!r.ok)throw Error('STAGING_CACHE_NOT_AVAILABLE_'+r.status);
-            const d=await r.json();
+            const bytes=Buffer.from(await r.arrayBuffer());
+            const {gunzipSync}=require('node:zlib');
+            const d=JSON.parse(gunzipSync(bytes).toString('utf8'));
             console.log('STAGE_SNAPSHOT_VALID='+JSON.stringify({ok:d.ok,stale:d.stale,version:d.statisticsLedgerVersion,ledgerTotal:d.ledgerTotal,rows:d.rows?.length,total:d.total,more:d.hasMore,cursor:d.nextCursor||null,ageSeconds:Math.round((Date.now()-d.snapshotSavedAt)/1000),totalMs:Date.now()-started}));
             if(d.ok!==true||d.hasMore||d.rows?.length!==d.ledgerTotal||d.rows?.length<15000||!d.stale)throw Error('STAGE_SNAPSHOT_INVALID');
             console.log('STAGE_SNAPSHOT_CACHE_HTTP=PASS');

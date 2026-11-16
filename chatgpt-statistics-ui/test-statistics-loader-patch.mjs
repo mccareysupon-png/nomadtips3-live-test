@@ -9,6 +9,8 @@ const original=await response.text();
 const patched=patchCurrentStatisticsLoader(original);
 assert.equal(patched.status,'CURRENT_LOADER_PATCHED','REFUSE_UNMATCHED_CURRENT_CODE');
 assert(patched.source.includes(STAGE_LOADER_MARKER));
+assert(patched.source.includes('B46_STAGE_GZIP_VERIFIED'));
+assert(patched.source.includes("new DecompressionStream('gzip')"));
 assert.equal(original.includes(STAGE_LOADER_MARKER),false);
 assert.equal(patched.source.includes("Statistics changed during pagination; refresh required"),true);
 assert.equal(patched.source.includes('Statistics pending/unresolved disagrees with ledger'),true);
