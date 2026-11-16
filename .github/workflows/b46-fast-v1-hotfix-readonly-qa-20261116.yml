@@ -1,0 +1,30 @@
+name: BALL46 fast V1 hotfix front-end browser QA READ ONLY
+on:
+  push:
+    branches: [chatgpt/ball46-statistics-ui-v1]
+    paths:
+      - '.github/workflows/b46-fast-v1-hotfix-readonly-qa-20261116.yml'
+permissions: {contents: read}
+jobs:
+  browser-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 11
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - name: Syntax check and install isolated Chromium
+        run: |
+          node --check deploy-assets/ball46-statistics-fast-v1-20261116/fast-client-hotfix-20261116.js
+          node --check deploy-assets/ball46-statistics-fast-v1-20261116/hotfix-readonly-qa.mjs
+          npm install --prefix deploy-assets/ball46-statistics-fast-v1-20261116/.runtime --no-audit --no-fund playwright@1.65.1
+          deploy-assets/ball46-statistics-fast-v1-20261116/.runtime/node_modules/.bin/playwright install --with-deps chromium
+      - name: Run live-site JavaScript substitution safely (no Worker writes)
+        run: node deploy-assets/ball46-statistics-fast-v1-20261116/hotfix-readonly-qa.mjs
+      - name: Save visual QA evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-v1-hotfix-readonly-visual
+          path: deploy-assets/ball46-statistics-fast-v1-20261116/hotfix-audit/
+          if-no-files-found: ignore
