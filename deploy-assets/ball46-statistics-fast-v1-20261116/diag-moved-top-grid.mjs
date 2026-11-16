@@ -1,7 +1,7 @@
 import {createRequire} from 'node:module';
 const require=createRequire(new URL('./.runtime/package.json',import.meta.url));
 const {chromium}=require('playwright');
-const host='https://0bfe2d9f-ball46-production.mccarey-supon.workers.dev';
+const host='https://49327f2a-ball46-production.mccarey-supon.workers.dev';
 const browser=await chromium.launch({headless:true});
 try{
  const p=await browser.newPage({viewport:{width:1366,height:900}});
