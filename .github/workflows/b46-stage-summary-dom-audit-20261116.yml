@@ -1,0 +1,47 @@
+name: B46 staging stats cards DOM layout audit READ ONLY
+on:
+  push:
+    branches: [chatgpt/ball46-statistics-ui-v1]
+    paths: ['.github/workflows/b46-stage-summary-dom-audit-20261116.yml']
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - name: Install Chromium
+        run: |
+          npm install --prefix /tmp/b46-summary-inspect --no-audit --no-fund playwright@1.65.1
+          /tmp/b46-summary-inspect/node_modules/.bin/playwright install --with-deps chromium
+      - name: Inspect current real staging card labels and DOM ancestors, no writes
+        run: |
+          node <<'NODE'
+          const {chromium}=require('/tmp/b46-summary-inspect/node_modules/playwright');
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const page=await browser.newPage({viewport:{width:1640,height:900}});
+            await page.goto('https://ball46-chat-statistics-live-ui-test-20261115.mccarey-supon.workers.dev/?view=statistics',{waitUntil:'domcontentloaded',timeout:45000});
+            await page.waitForFunction(()=>window.BALL46_STATISTICS_DATA?.getSnapshot?.()?.ledgerRows?.length>15000,null,{timeout:45000});
+            const details=await page.evaluate(()=>{
+              const el=document.querySelector('#b46-finance-chart-card'),card=el?.querySelector('.f46-card');
+              const summary=[];
+              for(const item of document.querySelectorAll('body *')){
+                if(item.children.length>0)continue;
+                const txt=(item.textContent||'').trim();
+                if(!/^(SETTLED|UNSETTLED|WIN|LOSS|PUSH|WIN RATE|AVG ODDS|SETTLED DAYS|ROI|NET|STAKE|W · P · L|MAX DRAWDOWN)$/i.test(txt))continue;
+                const p=item.parentElement,pp=p?.parentElement,rect=p?.getBoundingClientRect();
+                summary.push({label:txt,html:p?.outerHTML.slice(0,550),parentTag:p?.tagName,parentClass:p?.className,grandTag:pp?.tagName,grandClass:pp?.className,
+                  grandHTML:pp?.outerHTML.slice(0,180),rect:{x:rect?.x,y:rect?.y,w:rect?.width,h:rect?.height}});
+                if(summary.length>=40)break;
+              }
+              const chain=[];let p=el;
+              while(p&&chain.length<7){chain.push({id:p.id,tag:p.tagName,cls:String(p.className).slice(0,140),directKids:[...p.children].slice(0,20).map(x=>({tag:x.tagName,cls:x.className,id:x.id,txt:x.textContent?.trim().slice(0,75)}))});p=p.parentElement}
+              return{summary,cardHTML:card?.outerHTML.slice(0,10000),chartParentChain:chain,
+                topLists:[...document.querySelectorAll('[class*=summary],[class*=metric],[class*=stat]')].filter(x=>x.getBoundingClientRect().y<100).slice(0,40).map(x=>({cls:x.className,id:x.id,txt:x.textContent?.trim().slice(0,110)}))};
+            });
+            console.log('B46_SUMMARY_DOM='+JSON.stringify(details));
+            await browser.close();
+          })().catch(e=>{console.error('B46_SUMMARY_AUDIT_FAILED='+String(e));process.exitCode=1});
+          NODE
