@@ -1,0 +1,28 @@
+name: BALL46 V1 Production visual regression DOM READ ONLY
+on:
+  push:
+    branches: [chatgpt/ball46-statistics-ui-v1]
+    paths:
+      - '.github/workflows/b46-fast-v1-regression-audit-20261116.yml'
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - name: Install isolated Chromium
+        run: |
+          npm install --prefix deploy-assets/ball46-statistics-fast-v1-20261116/.runtime --no-audit --no-fund playwright@1.65.1
+          deploy-assets/ball46-statistics-fast-v1-20261116/.runtime/node_modules/.bin/playwright install --with-deps chromium
+      - name: Read DOM/Sources from live Production, do not write or deploy
+        run: node chatgpt-statistics-ui/inspect-prod-regressions-20261116.mjs
+      - name: Save evidence screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-v1-readonly-regression-screenshots
+          path: b46-audit-*.png
+          if-no-files-found: ignore
