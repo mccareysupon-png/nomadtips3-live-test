@@ -1,0 +1,30 @@
+name: BALL46 statistics pagination size check READ ONLY
+on:
+  push:
+    branches: [chatgpt/ball46-statistics-ui-v1]
+    paths: ['.github/workflows/b46-statistics-pagination-limits-readonly-20261116.yml']
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - name: Verify accepted page size without mutation
+        run: |
+          node - <<'NODE'
+          const base='https://www.ball46.com/api/engine/statistics';
+          (async()=>{
+            for(const limit of ['1','500','2000']){
+              try{
+                const u=new URL(base);u.searchParams.set('paged','1');u.searchParams.set('limit',limit);
+                const started=Date.now(),r=await fetch(u,{headers:{Accept:'application/json'},signal:AbortSignal.timeout(25000)}),raw=await r.text();
+                let j;try{j=JSON.parse(raw)}catch{j=null}
+                console.log('B46_PAGINATION_READONLY='+JSON.stringify({limit,http:r.status,bytes:raw.length,elapsedMs:Date.now()-started,contentType:r.headers.get('content-type'),parseOK:!!j,ok:j?.ok??null,rows:Array.isArray(j?.rows)?j.rows.length:null,returned:j?.returned??null,hasMore:j?.hasMore??null,ledgerTotal:j?.ledgerTotal??null,hasNextCursor:!!j?.nextCursor,hasPagination:!!j?.statisticsPagination}))
+              }catch(e){console.log('B46_PAGINATION_READONLY='+JSON.stringify({limit,error:e.name}))}
+            }
+            console.log('B46_PAGINATION_READONLY_NO_WRITES');
+          })();
+          NODE
