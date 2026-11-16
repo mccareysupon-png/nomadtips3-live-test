@@ -12,3 +12,5 @@ Candidate 4: Cloudflare new version visibility delay bounded retry; do not activ
 Owner-approved activation V1: candidate 6a1b4b35-39cc-4d0d-aec9-21ae64962b8b passed PC/mobile, native history, AH and 503. Validate fresh inactive candidate again, then 100% activate with automatic rollback on failed live QA.
 
 Candidate 5: original direct API 599 skip, stable content-signature excluding ledgerUpdatedAt sync clock, bounded verified cursor-page/whole-ledger retry; require source syntax/parity QA; no Production activation until pass.
+
+Owner-approved activation after successful robust Candidate b3874a45-94f1-47ca-b0d7-44d40292b3aa run 43872558038: PC/mobile native 33 cursor pages, 0 JS errors, AH/503 passed. Build fresh inactive Candidate; activate only after all repeated checks and roll back to 828ddb27 if live checks fail.
