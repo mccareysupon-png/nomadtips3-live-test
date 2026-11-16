@@ -45,6 +45,16 @@ jobs:
                     null,{timeout:18000});
                   await page.locator('[data-stat-market="ah"]').first().click();
                 }
+                if(test.dropChart){
+                  await page.waitForTimeout(1800);
+                  console.log('B46_503_DIAG='+JSON.stringify(await page.evaluate(()=>({
+                    diag:window.__B46_FAST_CHART_DIAG||null,
+                    helperType:typeof window.__B46_STAGE_LOAD_DETAILS,
+                    detailsFlag:window.__B46_STAGE_DETAILS_REQUESTED,
+                    view:document.body?.dataset?.workspaceView,
+                    scripts:[...document.querySelectorAll('script[src]')].filter(x=>/stage|workspace-343|fast_graph/.test(x.src)).map(x=>x.src.slice(0,140))
+                  }))));
+                }
                 await page.waitForFunction(()=>window.__B46_STAGE_DETAILS_REQUESTED===true,null,{timeout:18000});
                 await page.waitForFunction(()=>{
                   const d=window.BALL46_STATISTICS_DATA?.getSnapshot?.();
