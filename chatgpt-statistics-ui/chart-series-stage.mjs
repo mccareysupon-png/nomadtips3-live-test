@@ -38,7 +38,7 @@ function settlement(r){
 export function verifyChartSourceContract(source){
   if(typeof source!=='string'||source.length<10000)throw Error('CHART_SOURCE_MISSING');
   for(const anchor of [
-    "function settlement(r){const o=outcome(r),odds=num(r);",
+    "function settlement(r){const o=outcome(r),odds=num(r?.odds);",
     "return{profit:(odds-1)/2,stake:1,priced:true}",
     "maxDD=Math.max(maxDD,peak-net)",
     "const wl=wins+losses;ratePoints.push(",
