@@ -40,3 +40,27 @@ No Production deploy, merge, Engine, Ledger, source formula, WAF, or Production 
 
 ## Later full snapshot (10:58 UTC)
 Stage-only build run 43853519318 PASSED: same overall Ledger count of 16,082, but TWO records moved from PENDING to WIN (settled 15,799 to 15,801; pending 283 to 281; WIN 6,615 to 6,617). Net chart changed from +1,358.82U to +1,360.64U legitimately. The existing aggregate signature DOES detect this transition. Historical odds/date corrections with unchanged aggregates remain a separate possible edge case; they were not observed in this transition.
+
+
+## Final staging lazy-first-paint validation — 16 November 2026, 18:58 Thai time
+
+STAGING ONLY. No Production, Engine, Ledger, WAF, original settlement rules, or Production KV writes.
+
+- The original Statistics shared data-loader now waits for an explicit history/filter request before downloading the historical Ledger. First paint uses saved verified tiny summary and financial chart data. The full original renderer takes over after an explicit detailed-history request.
+- Source build run 43860391616 PASSED: 16,085 Ledger rows, 15,801 settled, 284 pending; W/P/L inclusive of HALF outcomes = 7,558 / 2,789 / 5,454. Immutable full gzip 4,740,387 bytes; verified summary 577 bytes; verified graph 7,557 bytes, 48 daily points.
+- Added exact Bangkok calendar SETTLED DAYS span to the precomputed graph, using the same native source rule. Browser verified 48 days; net +1,360.64 U, ROI 8.6%, Win Rate 54.5%, Avg Odds 1.96, Stake 15,801 U, Max DD -66.99 U.
+- First paint shows all EIGHT owner-approved desktop KPI fields and colored outcome bar; mobile fast preview shows four metrics without PC-only outcome bar. No old trend flash or overflow observed.
+- Staging browser run 43862255578 PASSED PC/mobile: 136ms PC and 55ms mobile after fast-preview script start (NOT end-to-end navigation); original Statistics API requests BEFORE detail click = ZERO; exact day-by-day native financial chart parity and no JS errors. After user clicks history, original full renderer still takes 9.7s PC / 8.8s mobile on that run.
+- Read-only failure-mode run 43862298769 PASSED three cases: direct deep-link AH loads native correct market, injected fast chart HTTP503 resumes native full loader, and AH market click resumes the native renderer. All 16,085 rows complete; no preview overlap/overflow, JS errors, or Production writes.
+- Fallback race discovered and fixed: fast snapshot 503 could arrive before the workspace's lazy-history helper initialized; bounded retry now waits for helper registration.
+- Current staging URL: https://ball46-chat-statistics-live-ui-test-20261115.mccarey-supon.workers.dev/?view=statistics
+- Build evidence: https://github.com/mccareysupon-png/nomadtips3-live-test/actions/runs/43860391616
+- PC/mobile evidence: https://github.com/mccareysupon-png/nomadtips3-live-test/actions/runs/43862255578
+- Deep links / 503 evidence: https://github.com/mccareysupon-png/nomadtips3-live-test/actions/runs/43862298769
+
+RELEASE BLOCKERS:
+1. Speed first paint is a STAGING preview, not integrated into original native Statistics card. Protect approved desktop 8-value design and existing Production mobile UI.
+2. No automated fresh incremental snapshot feed yet; staging KV builder runs on GitHub Workflow events and does not continuously update. Historical same-count odds/date corrections require complete revalidation. Freshness indicator and source revision are mandatory for production readiness.
+3. Filtered market/variant views and 7D/30D/90D still use original full-ledger read; exact filtered precomputation and detail pagination are future work.
+4. Full Ledger is still slow after pressing history. Do not claim overall speed fixed, nor compare first-paint latency to old 25.7-second full-load benchmark as if equivalent.
+5. Production active Worker/version and bindings must be re-verified; prior reported version 828ddb27-bec4-47f8-a41f-fc7469b0152a and rollback point 98be2d5a-b5f6-4226-8ee0-3f7270b03533. No Production deployment without distinct owner approval.
