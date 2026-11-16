@@ -1,0 +1,37 @@
+name: B46 exact legacy stats source boundaries READ ONLY
+on:
+  push:
+    branches: [chatgpt/ball46-statistics-ui-v1]
+    paths: ['.github/workflows/b46-exact-legacy-boundaries-20261116.yml']
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - run: |
+          node <<'NODE'
+          (async()=>{
+          const base='https://api.cloudflare.com/client/v4/accounts/62cb0db544160e6591342abd6b4f35cc';
+          const headers={authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN};
+          const d=await(await fetch(base+'/workers/scripts/ball46-production/deployments?per_page=1',{headers})).json();
+          const id=d.result.deployments[0].versions[0].version_id;
+          const result=await(await fetch(base+'/workers/workers/ball46-production/versions/'+id+'?include=modules',{headers})).json();
+          const mod=result.result.modules.find(m=>m.name==='statistics-menu-entry-20261114.mjs');
+          if(!mod)throw Error('NO_MENU_MODULE');
+          const str=Buffer.from(mod.content_base64,'base64').toString('utf8');
+          const keys=['const B46_VISUAL_STYLE=','const B46_VISUAL_SCRIPT=','return new Response(html.replace(','html.replace(\'</head>\'','B46_VISUAL_SCRIPT'];
+          console.log('BOUNDARY_META='+JSON.stringify({id,len:str.length,
+            indices:keys.map(x=>({term:x,pos:str.indexOf(x)})),beforeStyle:str.slice(0,str.indexOf('const B46_VISUAL_STYLE=')),
+            afterStyleHead:str.slice(str.indexOf('const B46_VISUAL_STYLE='),str.indexOf('const B46_VISUAL_STYLE=')+120),
+            afterScriptTail:str.slice(-600)}));
+          const src=await(await fetch('https://www.ball46.com/?view=statistics',{headers:{'cache-control':'no-cache'}})).text();
+          const headings=['b46-statistics-no-old-flash-20261022','b46-statistics-ready-20261022','b46-statistics-visuals-20261114','b46-statistics-visuals-20261114-runtime','b46-statistics-visual-release-20261029','b46-statistics-card-20261116.js'];
+          console.log('HTML_BOUNDARY_META='+JSON.stringify(headings.map(term=>{
+             const i=src.indexOf('id="'+term+'"'),j=src.indexOf('id="'+term+'"',i+1);
+             return {term,start:i,next:j,context:i<0?'':src.slice(Math.max(i-80,0),i+150)}
+          })));
+          })().catch(e=>{console.error('BOUNDARY_FAIL='+String(e));process.exitCode=1});
+          NODE
