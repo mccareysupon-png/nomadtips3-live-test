@@ -1,6 +1,6 @@
 // BALL46 statistics metric layout — STAGING ONLY.
 // Values are read from the EXISTING summary strip; no calculations, no API calls.
-export const stageSummaryScript = String.raw\`(() => {
+export const stageSummaryScript = String.raw`(() => {
   'use strict';
   const specs = [
     ['ROI','roi'],
@@ -13,7 +13,7 @@ export const stageSummaryScript = String.raw\`(() => {
     ['MAX DRAWDOWN','drawdown']
   ];
   let lastOverview=null, lastFingerprint='', pending=false;
-  const labelOf = value => String(value || '').replace(/\\s+/g,' ').trim().toUpperCase();
+  const labelOf = value => String(value || '').replace(/\s+/g,' ').trim().toUpperCase();
   function sync(){
     if(document.body?.dataset.workspaceView!=='statistics')return;
     const panel=document.querySelector('.sp-stats-content');
@@ -92,4 +92,4 @@ export const stageSummaryScript = String.raw\`(() => {
   };
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});
   else start();
-})();\`;
+})();`;
