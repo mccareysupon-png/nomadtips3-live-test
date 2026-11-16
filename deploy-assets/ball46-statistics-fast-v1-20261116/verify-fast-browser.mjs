@@ -119,6 +119,25 @@ export async function verifyBrowser(host,label,auditDir){
   assert.equal(errors.length,0,label+':FILTERED_JS_ERRORS');
   output.push({profile:'filtered-AH',fallback:'native',pass:true});
   await context.close();
+  // A stale/missing Production snapshot must never leave a blank Stats view.
+  const fallbackCtx=await browser.newContext({viewport:{width:1366,height:900},timezoneId:'Asia/Bangkok'});
+  const fallbackPage=await fallbackCtx.newPage(),fallbackErrors=[];
+  fallbackPage.on('pageerror',e=>fallbackErrors.push(e.message));
+  await fallbackPage.route('**/b46-fast-v1/chart*',route=>route.fulfill({
+    status:503,contentType:'application/json',body:'{"ok":false,"error":"INJECTED_BROWSER_QA_ONLY"}'}));
+  await fallbackPage.goto(host+'/?view=statistics',{waitUntil:'domcontentloaded',timeout:60000});
+  await fallbackPage.waitForFunction(()=>{
+    const d=window.BALL46_STATISTICS_DATA?.getSnapshot?.();
+    if(!d||!Array.isArray(d.ledgerRows))return false;
+    return window.__B46_FAST_V1_DIAG?.status==='unavailable'&&
+      !!window.__B46_FAST_DETAILS_REQUESTED&&d.ledgerRows.length===d.ledgerTotal&&
+      !!document.querySelector('#b46-finance-chart-card svg.f46-svg')?.getClientRects().length;
+  },null,{timeout:110000});
+  assert.equal(await fallbackPage.locator('#b46-fast-v1-preview').count(),0,
+    label+':SNAPSHOT_503_LEFT_FAKE_PREVIEW');
+  assert.equal(fallbackErrors.length,0,label+':SNAPSHOT_503_SCRIPT_ERRORS');
+  output.push({profile:'graph-503',fallback:'verified-native',pass:true});
+  await fallbackCtx.close();
   return {host,label,checks:output};
  }finally{await browser.close()}
 }
