@@ -85,8 +85,8 @@ function styleOnce(){
  '#b46-stage-fast-preview .b46-fast-kicker{color:#85aa9b;font-size:10px;font-weight:700;letter-spacing:.09em}',
  '#b46-stage-fast-preview .b46-fast-chart{height:185px;min-width:0}',
  '#b46-stage-fast-preview .b46-fast-net{font-size:clamp(22px,2.1vw,29px);font-weight:800;color:#47d49f;margin:10px 0 14px}',
- '#b46-stage-fast-preview .b46-fast-stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}',
- '#b46-stage-fast-preview .b46-fast-stat{padding:10px;background:#172b24;border-radius:8px}',
+ '#b46-stage-fast-preview .b46-fast-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}',
+ '#b46-stage-fast-preview .b46-fast-stat{padding:8px;min-width:0;background:#172b24;border-radius:8px}',
  '#b46-stage-fast-preview .b46-fast-stat small{display:block;color:#92b8a6;font-size:10px}',
  '#b46-stage-fast-preview .b46-fast-stat b{display:block;font-size:14px;margin-top:4px;overflow-wrap:anywhere}',
  '#b46-stage-fast-preview .b46-fast-stat[data-key="wpl"] b{font-size:10px;letter-spacing:-.2px}',
@@ -96,7 +96,8 @@ function styleOnce(){
  '#b46-stage-fast-preview .b46-fast-outcomes-legend{display:flex;justify-content:space-between;gap:8px;margin-top:7px;color:#aacbb9;font-size:10px}',
  '#b46-stage-fast-preview .b46-fast-foot{font-size:10px;color:#9bb8a9;margin-top:12px}',
  '#b46-stage-fast-preview .b46-fast-details{border:1px solid #336e57;background:#1a3b2e;color:#cff7df;cursor:pointer;border-radius:8px;padding:10px 14px;font-size:12px;font-weight:700;margin-top:12px}',
- '@media(max-width:850px){#b46-stage-fast-preview .b46-fast-columns{grid-template-columns:1fr}#b46-stage-fast-preview .b46-fast-chart{height:150px}#b46-stage-fast-preview .b46-fast-outcomes{display:none}#b46-stage-fast-preview .b46-fast-stat:not([data-key="roi"]):not([data-key="rate"]):not([data-key="settled"]):not([data-key="drawdown"]){display:none}}'
+ '@media(min-width:851px) and (max-width:1320px){#b46-stage-fast-preview .b46-fast-stats{grid-template-columns:repeat(3,minmax(0,1fr))}}',
+ '@media(max-width:850px){#b46-stage-fast-preview .b46-fast-columns{grid-template-columns:1fr}#b46-stage-fast-preview .b46-fast-chart{height:150px}#b46-stage-fast-preview .b46-fast-stats{grid-template-columns:repeat(2,minmax(0,1fr))}#b46-stage-fast-preview .b46-fast-outcomes{display:none}#b46-stage-fast-preview .b46-fast-stat:not([data-key="roi"]):not([data-key="rate"]):not([data-key="settled"]):not([data-key="drawdown"]){display:none}}'
  ].join('');
  document.head.appendChild(style);
 }
