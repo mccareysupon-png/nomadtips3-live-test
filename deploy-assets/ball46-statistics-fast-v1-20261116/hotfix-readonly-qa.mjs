@@ -127,6 +127,25 @@ try{
   console.log('B46_HOTFIX_MOBILE='+JSON.stringify({ok:true,fastMs:m.diag.fastPaintMs,legacy:m.legacy}));
   await mobile.page.screenshot({path:new URL('./hotfix-audit/mobile-fast.png',root).pathname,fullPage:false});
   await mobile.ctx.close();
+  const recovered=await makeContext('snapshot503');
+  await recovered.page.route('**/b46-fast-v1/chart*',route=>route.fulfill({
+    status:503,contentType:'application/json',body:'{"ok":false,"error":"QA_SIMULATED_503"}'}));
+  await recovered.page.goto(base+'/?view=statistics',{waitUntil:'domcontentloaded',timeout:65000});
+  await recovered.page.waitForFunction(()=>{
+    const d=window.BALL46_STATISTICS_DATA?.getSnapshot?.();
+    return window.__B46_FAST_V1_DIAG?.status==='unavailable' &&
+      !!window.__B46_FAST_DETAILS_REQUESTED &&
+      d?.ok===true&&d.ledgerRows?.length===d.ledgerTotal &&
+      !!document.querySelector('#b46-finance-chart-card svg.f46-svg')?.getClientRects().length;
+  },null,{timeout:110000});
+  const fallback=await state(recovered.page);
+  assert(!fallback.previewVisible&&!fallback.legacy.visible&&!fallback.duplicateGraph,
+    'SNAPSHOT503_FALLBACK_OVERLAP');
+  assert.equal(recovered.errors.length,0,'SNAPSHOT503_SCRIPT_ERROR_'+recovered.errors.join(';'));
+  console.log('B46_HOTFIX_503='+JSON.stringify({ok:true,status:fallback.diag.status,
+    native:fallback.nativeVisible,apiCalls:recovered.api.length,errors:recovered.errors}));
+  await recovered.page.screenshot({path:new URL('./hotfix-audit/snapshot503-native.png',root).pathname,fullPage:false});
+  await recovered.ctx.close();
   console.log('B46_HOTFIX_READONLY_PASS='+JSON.stringify({elapsedMs:Date.now()-now,
     scriptsReplaced:scripts,networkWrites:0,productionWorkerChanged:false}));
 }finally{await browser.close()}
