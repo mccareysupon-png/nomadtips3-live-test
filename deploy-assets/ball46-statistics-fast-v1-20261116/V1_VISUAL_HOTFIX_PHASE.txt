@@ -1,0 +1,5 @@
+BALL46 V1 visual regression repair, 16 Nov 2026.
+Approved scope: eliminate legacy statistics skeleton overlap and fill empty filtered-market desktop overview using values already computed by native chart.
+Source: current Production V1; no Engine, Ledger, original KV, settlement formula, mobile KPI design or unrelated Worker modules changed.
+Read-only live browser test: 43883228628 PASSED Total, native handoff, same-session market change, 1X2, AH and mobile with no JS errors.
+Candidate-only phase: must prove inactive version with exactly one JavaScript module changed and preserve rollback point d2fe6c5e-5602-40f9-9b6f-d4d8674de638.
