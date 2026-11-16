@@ -1,0 +1,27 @@
+name: B46 staging KV storage capability check READ ONLY
+on:
+  push:
+    branches: [chatgpt/ball46-statistics-ui-v1]
+    paths: ['.github/workflows/b46-staging-kv-capability-readonly.yml']
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Read-only capability probe, no KV modification
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          node <<'NODE'
+          (async()=>{
+            if(!process.env.CLOUDFLARE_API_TOKEN){console.log('B46_KV_READ_PERMITTED=false NO_TOKEN');return}
+            const url='https://api.cloudflare.com/client/v4/accounts/62cb0db544160e6591342abd6b4f35cc/storage/kv/namespaces?per_page=1';
+            try{
+              const r=await fetch(url,{headers:{Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN},signal:AbortSignal.timeout(15000)}),
+                    j=await r.json();
+              console.log('B46_KV_CAPABILITY='+JSON.stringify({http:r.status,ok:j.success,accountKVReadable:r.ok&&j.success,errors:j.errors?.map(x=>({code:x.code,message:String(x.message).slice(0,130)}))||[]}));
+            }catch(e){console.log('B46_KV_CAPABILITY_ERROR='+e.name)}
+            console.log('B46_KV_READONLY_NO_WRITES');
+          })();
+          NODE
