@@ -1,0 +1,48 @@
+name: BALL46 staging css hidden rule source investigation
+on:
+  push:
+    branches: [chatgpt/ball46-statistics-ui-v1]
+    paths: ['.github/workflows/b46-hidden-css-source-audit-20261116.yml']
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - name: Install Chromium
+        run: |
+          npm install --prefix /tmp/b46css --no-audit --no-fund playwright@1.65.1
+          /tmp/b46css/node_modules/.bin/playwright install --with-deps chromium
+      - name: Inspect matching CSS and inline style on verified full saved snapshot
+        run: |
+          node <<'NODE'
+          const {chromium}=require('/tmp/b46css/node_modules/playwright');
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const page=await browser.newPage({viewport:{width:1366,height:900}});
+            await page.goto('https://ball46-chat-statistics-live-ui-test-20261115.mccarey-supon.workers.dev/?view=statistics',{waitUntil:'domcontentloaded',timeout:45000});
+            await page.waitForFunction(()=>document.documentElement.classList.contains('b46-stage-saved-ready'),null,{timeout:30000});
+            const r=await page.evaluate(()=>{
+              const panel=document.querySelector('.sp-stats-content'),selector='html.b46-stage-saved-ready body[data-workspace-view="statistics"] .sp-stats-content';
+              const matched=[],errors=[];for(const sheet of document.styleSheets){
+                try{
+                  for(const rule of sheet.cssRules){
+                    if(rule.cssText?.includes('sp-stats-content') && matched.length<45)matched.push({text:rule.cssText.slice(0,500),href:sheet.href||'inline'});
+                  }
+                }catch(e){if(errors.length<3)errors.push(String(e).slice(0,100))}
+              }
+              const link=document.querySelector('link[data-b46-staging-overlay]');
+              return {panel:panel?.outerHTML.slice(0,220),style:panel?.getAttribute('style'),cssText:panel?.style.cssText,
+                inlineDisplay:panel?.style.getPropertyValue('display'),inlinePriority:panel?.style.getPropertyPriority('display'),
+                computed:getComputedStyle(panel).display,selectorMatched:!!panel?.matches(selector),
+                htmlClass:document.documentElement.className,bodyAttr:document.body.getAttribute('data-workspace-view'),
+                linkFound:!!link,href:link?.href,linkRules:link?.sheet?.cssRules?.length||0,
+                stagingRules:matched.filter(x=>x.text.includes('b46-stage-saved-ready')),
+                rules:matched.slice(-20),errors};
+            });
+            console.log('B46_DISPLAY_ROOT_CAUSE='+JSON.stringify(r));
+            await browser.close();
+          })().catch(e=>{console.error('B46_DISPLAY_ERROR='+String(e));process.exitCode=1})
+          NODE
