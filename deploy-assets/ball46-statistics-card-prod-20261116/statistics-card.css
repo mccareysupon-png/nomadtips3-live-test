@@ -1,0 +1,420 @@
+/* BALL46 LIVE: statistics presentation only, desktop >= 851px. No API or ledger modifications. */
+@media (min-width:851px){
+/* B46-STAT-UI-01 — Real BALL46 statistics UI staging visual-only overlay.
+   Scoped to the existing finance-chart card. No Engine/Ledger/API/calculation changes.
+   Uses CURRENT public BALL46 frontend at request time, not an older git tree. */
+@media (min-width: 851px) {
+html body #b46-finance-chart-card .f46-card {
+  display:grid!important; grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
+  grid-template-rows:auto auto minmax(0,1fr) auto!important; align-items:stretch;
+  gap:0 16px!important; background:transparent!important;border:0!important;
+  box-shadow:none!important; overflow:visible!important;border-radius:0!important;
+}
+html body #b46-finance-chart-card .f46-heading {
+  grid-column:1!important;grid-row:1!important;min-width:0;
+  background:var(--f46-bg)!important;border:1px solid var(--f46-border)!important;
+  border-bottom:0!important;border-radius:13px 13px 0 0!important;
+  padding:18px 18px 4px!important;
+}
+html body #b46-finance-chart-card .f46-controls {
+  grid-column:1!important;grid-row:2!important;min-width:0;
+  margin:0!important;padding:8px 13px 10px!important;
+  background:var(--f46-bg)!important;border:1px solid var(--f46-border)!important;
+  border-top:0!important;border-bottom:0!important;gap:5px!important;
+}
+html body #b46-finance-chart-card .f46-plot {
+  grid-column:1!important;grid-row:3!important;min-width:0;
+  margin:0!important;padding:5px 10px 0!important;
+  height:224px!important;background:var(--f46-bg)!important;
+  border-left:1px solid var(--f46-border)!important;
+  border-right:1px solid var(--f46-border)!important;
+}
+html body #b46-finance-chart-card .f46-foot {
+  grid-column:1!important;grid-row:4!important;
+  margin:0!important;padding:8px 17px 16px!important;
+  background:var(--f46-bg)!important;border:1px solid var(--f46-border)!important;
+  border-top:0!important;border-radius:0 0 13px 13px!important;
+}
+html body #b46-finance-chart-card .f46-overview {
+  grid-column:2!important;grid-row:1 / 4!important;align-self:stretch;
+  display:flex!important;flex-direction:column!important;justify-content:space-between!important;
+  align-items:stretch!important;gap:18px!important;min-width:0;
+  margin:0!important;padding:20px 20px 14px!important;
+  background:var(--f46-bg)!important;border:1px solid var(--f46-border)!important;
+  border-bottom:0!important;border-radius:13px 13px 0 0!important;
+}
+html body #b46-finance-chart-card .f46-details {
+  grid-column:2!important;grid-row:4!important;min-width:0;
+  padding:14px 20px 16px!important;margin:0!important;flex-wrap:wrap!important;
+  background:var(--f46-bg)!important;border:1px solid var(--f46-border)!important;
+  border-top:0!important;border-radius:0 0 13px 13px!important;
+}
+}
+html body #b46-finance-chart-card .f46-value {
+  font-size:clamp(22px,2.3vw,27px)!important;line-height:1.18!important;letter-spacing:-.5px!important;
+}
+html body #b46-finance-chart-card .f46-heading h3 {font-size:14px!important;}
+html body #b46-finance-chart-card .f46-metrics{gap:12px!important;}
+html body #b46-finance-chart-card .f46-metrics span{font-size:9px!important;}
+html body #b46-finance-chart-card .f46-metrics b{font-size:14px!important;}
+html body #b46-finance-chart-card .f46-controls button{font-size:10px!important;padding:6px 8px!important;}
+html body #b46-finance-chart-card .f46-axis{font-size:9px!important;}
+html body #b46-finance-chart-card .f46-line{
+  stroke-width:1px!important;vector-effect:non-scaling-stroke!important;
+  shape-rendering:geometricPrecision!important;stroke-linecap:round!important;
+}
+html body #b46-finance-chart-card .f46-dot{stroke-width:1px!important;}
+@media (max-width: 850px) {
+  html body #b46-finance-chart-card .f46-card{display:block!important;}
+  html body #b46-finance-chart-card .f46-plot{height:185px!important;}
+  html body #b46-finance-chart-card .f46-heading{padding:16px 16px 0!important;}
+  html body #b46-finance-chart-card .f46-overview{padding:13px 16px!important;}
+  html body #b46-finance-chart-card .f46-details{padding:12px 16px!important;}
+  html body #b46-finance-chart-card .f46-controls{gap:6px!important;flex-wrap:wrap!important;}
+}
+
+
+/* B46-STAT-UI-02 — Deep Graphite Teal, borderless elevated card surfaces. STAGING ONLY. */
+html body #b46-finance-chart-card .f46-card {
+  position:relative!important;
+  isolation:isolate!important;
+  border:0!important;
+  outline:0!important;
+}
+@media (min-width:851px) {
+  html body #b46-finance-chart-card .f46-card{
+    --b46-v2-card-gap:16px;
+    background:transparent!important;
+    box-shadow:none!important;
+    border-radius:0!important;
+    overflow:visible!important;
+  }
+  html body #b46-finance-chart-card .f46-card::before,
+  html body #b46-finance-chart-card .f46-card::after{
+    content:""!important;
+    display:block!important;
+    pointer-events:none!important;
+    position:absolute!important;
+    z-index:0!important;
+    top:0!important;
+    bottom:0!important;
+    width:calc((100% - var(--b46-v2-card-gap)) / 2)!important;
+    border:0!important;
+    outline:0!important;
+    border-radius:17px!important;
+    box-shadow:0 18px 40px rgba(0,0,0,.22),
+               0 5px 12px rgba(0,0,0,.10),
+               inset 0 1px 0 rgba(255,255,255,.045)!important;
+  }
+  html body #b46-finance-chart-card .f46-card::before{
+    left:0!important;
+    background:
+      radial-gradient(120% 80% at 0% 0%,rgba(36,137,112,.14) 0%,transparent 55%),
+      linear-gradient(150deg,#162b27 0%,#101f1d 44%,#091513 100%)!important;
+  }
+  html body #b46-finance-chart-card .f46-card::after{
+    right:0!important;
+    background:
+      radial-gradient(105% 95% at 100% 0%,rgba(26,120,104,.12) 0%,transparent 52%),
+      linear-gradient(155deg,#142823 0%,#0d1c1a 55%,#091412 100%)!important;
+  }
+  html body #b46-finance-chart-card .f46-card > *{
+    position:relative!important;
+    z-index:1!important;
+  }
+}
+html body #b46-finance-chart-card .f46-card .f46-heading,
+html body #b46-finance-chart-card .f46-card .f46-controls,
+html body #b46-finance-chart-card .f46-card .f46-plot,
+html body #b46-finance-chart-card .f46-card .f46-foot,
+html body #b46-finance-chart-card .f46-card .f46-overview,
+html body #b46-finance-chart-card .f46-card .f46-details{
+  background:transparent!important;
+  background-image:none!important;
+  border:0!important;
+  outline:0!important;
+  box-shadow:none!important;
+  border-radius:0!important;
+}
+html body #b46-finance-chart-card .f46-card .f46-metrics > *{
+  border:0!important;
+  border-radius:11px!important;
+  background:linear-gradient(155deg,rgba(45,90,77,.24),rgba(9,24,20,.18))!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.035),0 7px 15px rgba(0,0,0,.07)!important;
+}
+html body #b46-finance-chart-card .f46-card .f46-controls button{
+  border:0!important;
+  border-radius:9px!important;
+  transition:background-color .16s ease,color .16s ease,box-shadow .16s ease!important;
+}
+html body #b46-finance-chart-card .f46-card .f46-controls button[aria-pressed="true"],
+html body #b46-finance-chart-card .f46-card .f46-controls button.active{
+  background:linear-gradient(180deg,rgba(41,100,80,.38),rgba(14,51,40,.28))!important;
+  box-shadow:0 5px 13px rgba(0,0,0,.12),inset 0 1px 0 rgba(255,255,255,.045)!important;
+}
+html body #b46-finance-chart-card .f46-line{
+  stroke-width:1px!important;
+  vector-effect:non-scaling-stroke!important;
+  shape-rendering:geometricPrecision!important;
+}
+@media (max-width:850px) {
+  html body #b46-finance-chart-card .f46-card{
+    display:block!important;
+    background:
+      radial-gradient(95% 70% at 0% 0%,rgba(34,135,108,.14) 0%,transparent 55%),
+      linear-gradient(155deg,#162a26 0%,#0f1f1c 55%,#091412 100%)!important;
+    border:0!important;
+    border-radius:16px!important;
+    box-shadow:0 14px 35px rgba(0,0,0,.21),
+               0 4px 11px rgba(0,0,0,.09),
+               inset 0 1px 0 rgba(255,255,255,.045)!important;
+    overflow:hidden!important;
+  }
+  html body #b46-finance-chart-card .f46-card::before,
+  html body #b46-finance-chart-card .f46-card::after{display:none!important;content:none!important;}
+}
+
+/* Desktop-only summary consolidation; preserve mobile original. */
+@media (min-width:851px) {
+/* BALL46 V3 — Statistics top KPI strip condensed into the right-hand card.
+   STAGING ONLY. No values or settlement calculations are touched. */
+html body[data-workspace-view="statistics"] .sp-stats-content.b46-stage-summary-ready > .b46v23-strip {
+  display:none!important;
+}
+html body #b46-finance-chart-card.b46-stage-summary-ready .f46-metrics,
+html body #b46-finance-chart-card.b46-stage-summary-ready .f46-details {
+  display:none!important;
+}
+html body #b46-finance-chart-card .b46-stage-summary-grid {
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:9px;
+  width:100%;
+  margin-top:auto;
+  align-content:end;
+  min-width:0;
+}
+html body #b46-finance-chart-card .b46-stage-summary-item {
+  min-width:0;
+  min-height:58px;
+  padding:11px 12px 10px;
+  border:1px solid rgba(92,168,143,.075);
+  border-radius:10px;
+  background:linear-gradient(152deg,rgba(47,100,83,.21),rgba(8,25,21,.15));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.035);
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  gap:5px;
+}
+html body #b46-finance-chart-card .b46-stage-summary-label {
+  display:block;
+  font-size:9px;
+  font-weight:750;
+  letter-spacing:.045em;
+  line-height:1.1;
+  color:#8faea0;
+}
+html body #b46-finance-chart-card .b46-stage-summary-number {
+  display:block;
+  color:#f1f7f3;
+  font-size:15px;
+  font-weight:750;
+  letter-spacing:-.28px;
+  line-height:1.2;
+  font-variant-numeric:tabular-nums;
+  white-space:nowrap;
+}
+html body #b46-finance-chart-card .b46-stage-summary-item[data-tone="green"] .b46-stage-summary-number {color:#37d49a;}
+html body #b46-finance-chart-card .b46-stage-summary-item[data-tone="red"] .b46-stage-summary-number {color:#fb7278;}
+html body #b46-finance-chart-card .b46-stage-summary-item[data-tone="yellow"] .b46-stage-summary-number {color:#eec779;}
+html body #b46-finance-chart-card .b46-stage-summary-item[data-key="wpl"] .b46-stage-summary-number {
+  font-size:clamp(11px,1.0vw,13px);
+  letter-spacing:-.42px;
+}
+html body #b46-finance-chart-card .f46-value {
+  font-size:clamp(19px,1.9vw,23px)!important;
+  line-height:1.18!important;
+  letter-spacing:-.45px!important;
+}
+
+}
+@media (min-width:851px) {
+  html body #b46-finance-chart-card.b46-stage-summary-ready .f46-overview {
+    grid-row:1 / 5!important;
+    justify-content:space-between!important;
+    gap:20px!important;
+    padding:20px 20px 20px!important;
+  }
+}
+@media (min-width:851px) and (max-width:1320px) {
+  html body #b46-finance-chart-card .b46-stage-summary-grid {
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:7px;
+  }
+  html body #b46-finance-chart-card .b46-stage-summary-item {
+    min-height:48px;
+    padding:8px 9px;
+  }
+}
+
+
+/* B46 STAGING PC — Visual outcome composition and exact Market Filter alignment.
+   Build only from existing verified WIN/PUSH/LOSS values; mobile stays untouched. */
+@media (min-width:851px) {
+  /* The old sp-trend/shell min-heights (430px / 428px) left ~66px invisible
+     below the actual 364px finance card. Use the REAL rendered card height. */
+  html body[data-workspace-view="statistics"]
+    .sp-stats-content.b46-stage-summary-ready #b46-finance-chart-card {
+      min-height:0!important;
+      height:auto!important;
+      overflow:visible!important;
+      margin-bottom:16px!important;
+  }
+  html body[data-workspace-view="statistics"]
+    .sp-stats-content.b46-stage-summary-ready #b46-finance-chart-card .b46-perf-shell {
+      min-height:0!important;
+      height:auto!important;
+      overflow:visible!important;
+  }
+  html body #b46-finance-chart-card.b46-stage-summary-ready .f46-overview {
+    justify-content:space-between!important;
+    gap:12px!important;
+    padding:17px 19px 17px!important;
+  }
+  html body #b46-finance-chart-card.b46-stage-summary-ready .b46-stage-summary-grid {
+    margin-top:0!important;
+    flex-shrink:0;
+  }
+  html body #b46-finance-chart-card .b46-stage-outcomes {
+    display:flex;
+    flex-direction:column;
+    gap:9px;
+    width:100%;
+    min-width:0;
+    flex:0 0 auto;
+    padding:13px 13px 11px;
+    margin:0;
+    border-radius:13px;
+    border:1px solid rgba(84,161,137,.16);
+    background:linear-gradient(155deg,rgba(46,107,87,.20),rgba(11,33,28,.12) 62%,rgba(9,25,21,.1));
+    box-shadow:0 10px 20px rgba(0,0,0,.095),
+      inset 0 1px 0 rgba(170,247,213,.055);
+  }
+  html body #b46-finance-chart-card .b46-stage-outcomes-heading {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    line-height:1.15;
+  }
+  html body #b46-finance-chart-card .b46-stage-outcomes-heading strong {
+    color:#a0bdb0;
+    letter-spacing:.095em;
+    font-size:9px;
+    font-weight:750;
+  }
+  html body #b46-finance-chart-card .b46-stage-outcomes-heading span {
+    color:#708d7f;
+    font-size:9px;
+    font-weight:650;
+    white-space:nowrap;
+  }
+  html body #b46-finance-chart-card .b46-stage-outcomes-track {
+    display:flex;
+    width:100%;
+    height:12px;
+    min-height:12px;
+    gap:2px;
+    padding:2px;
+    border-radius:10px;
+    overflow:hidden;
+    background:rgba(1,12,9,.60);
+    box-shadow:0 1px 4px rgba(0,0,0,.24) inset,0 1px 0 rgba(255,255,255,.025);
+  }
+  html body #b46-finance-chart-card .b46-stage-outcomes-segment {
+    display:block;
+    flex-basis:0;
+    flex-shrink:1;
+    min-width:0;
+    height:100%;
+    border-radius:2px;
+    opacity:.98;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.19),0 0 10px rgba(0,0,0,.05);
+  }
+  html body #b46-finance-chart-card .b46-stage-outcomes-segment[data-result="win"] {
+    background:linear-gradient(180deg,#55dfab,#2aa77b);
+  }
+  html body #b46-finance-chart-card .b46-stage-outcomes-segment[data-result="push"] {
+    background:linear-gradient(180deg,#efd18a,#bc9555);
+  }
+  html body #b46-finance-chart-card .b46-stage-outcomes-segment[data-result="loss"] {
+    background:linear-gradient(180deg,#f28a8e,#cc5c67);
+  }
+  html body #b46-finance-chart-card .b46-stage-outcomes-legend {
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:7px;
+  }
+  html body #b46-finance-chart-card .b46-stage-outcomes-legend-item {
+    display:flex;
+    gap:5px;
+    align-items:center;
+    min-width:0;
+    color:#a5bcb1;
+    font-size:10px;
+    line-height:1.15;
+    white-space:nowrap;
+  }
+  html body #b46-finance-chart-card .b46-stage-outcomes-legend-item b {
+    margin-left:auto;
+    font-size:10px;
+    font-weight:750;
+    color:#d5e8dc;
+    font-variant-numeric:tabular-nums;
+  }
+  html body #b46-finance-chart-card .b46-stage-outcomes-legend-dot {
+    display:inline-block;
+    width:7px;
+    height:7px;
+    min-width:7px;
+    border-radius:50%;
+    box-shadow:0 0 0 2px rgba(255,255,255,.025);
+    background:#55dfab;
+  }
+  html body #b46-finance-chart-card .b46-stage-outcomes-legend-item[data-result="push"] .b46-stage-outcomes-legend-dot {background:#e1bd76;}
+  html body #b46-finance-chart-card .b46-stage-outcomes-legend-item[data-result="loss"] .b46-stage-outcomes-legend-dot {background:#ec787f;}
+  html body #b46-finance-chart-card .b46-stage-summary-item {
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.055),0 7px 16px rgba(0,0,0,.09);
+    background:linear-gradient(155deg,rgba(44,99,83,.23),rgba(8,25,21,.16) 92%);
+  }
+}
+@media (min-width:851px) and (max-width:1320px) {
+  html body #b46-finance-chart-card .b46-stage-outcomes {
+    gap:7px;
+    padding:9px 10px 8px;
+  }
+  html body #b46-finance-chart-card .b46-stage-outcomes-legend-item,
+  html body #b46-finance-chart-card .b46-stage-outcomes-legend-item b {
+    font-size:9px;
+  }
+  html body #b46-finance-chart-card.b46-stage-summary-ready .f46-overview{
+    gap:9px!important;
+    padding:13px!important;
+  }
+}
+
+
+/* B46 STAGING desktop WPL full-text narrow-column guard: preserve ALL digits,
+   never ellipsize, prevent overlap in the four-column 1366px card. */
+@media (min-width:851px) and (max-width:1500px) {
+  html body #b46-finance-chart-card.b46-stage-summary-ready
+    .b46-stage-summary-item[data-key="wpl"] .b46-stage-summary-number {
+      font-size:9.7px!important;
+      letter-spacing:-.55px!important;
+      white-space:nowrap!important;
+      text-overflow:clip!important;
+    }
+}
+
+}
