@@ -7,8 +7,15 @@ export function patchStageLazyStatistics(source){
   if(source.includes(LAZY_STATS_MARKER))return {source,status:'ALREADY_PATCHED'};
   const start='function startStatistics(){if(state.statsLoaded&&Date.now()-state.statsLoadedAt<STAT_CACHE_MS){';
   const anchor="document.addEventListener('ball46:statistics-snapshot',e=>{state.rows=Array.isArray(e.detail.ledgerRows)";
-  if(source.split(start).length!==2||source.split(anchor).length!==2)
+  const dataLoad='async function load(){\n  if(cached){';
+  if(source.split(start).length!==2||source.split(anchor).length!==2||
+     source.split(dataLoad).length!==2)
     return {source,status:'SOURCE_DRIFT_NO_LAZY_BOOT'};
+  const deferredDataLoad="async function load(){\n"+
+    "  if(!window.__B46_STAGE_DETAILS_REQUESTED && (document.body?.dataset.workspaceView==='statistics' || new URLSearchParams(location.search).get('view')==='statistics')) {\n"+
+    "    return await new Promise(resolve=>document.addEventListener('b46:stage-details-requested',()=>resolve(load()),{once:true}));\n"+
+    "  }\n"+
+    "  if(cached){";
   const gate="function startStatistics(){if(!window.__B46_STAGE_DETAILS_REQUESTED)return;"+
     "if(state.statsLoaded&&Date.now()-state.statsLoadedAt<STAT_CACHE_MS){";
   const inject=String.raw`
@@ -17,11 +24,12 @@ export function patchStageLazyStatistics(source){
 window.__B46_STAGE_LOAD_DETAILS=()=>{
   if(window.__B46_STAGE_DETAILS_REQUESTED)return;
   window.__B46_STAGE_DETAILS_REQUESTED=true;
+  document.dispatchEvent(new CustomEvent('b46:stage-details-requested'));
   if(state.view==='statistics')loadStatistics();
   document.dispatchEvent(new CustomEvent('ball46:workspace-view',{detail:{view:'statistics'}}));
 };
 `;
-  return {source:source.replace(start,gate).replace(anchor,inject+anchor),
+  return {source:source.replace(dataLoad,deferredDataLoad).replace(start,gate).replace(anchor,inject+anchor),
     status:'STAGING_LAZY_DETAILS_PATCHED'};
 }
 export function patchStageLazyChart(source){
