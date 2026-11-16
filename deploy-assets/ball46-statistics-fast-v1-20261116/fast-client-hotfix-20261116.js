@@ -33,9 +33,10 @@ function enhanceFilteredMarket(){
  if(!window.matchMedia('(min-width:851px)').matches)return;
  if(document.body?.dataset.workspaceView!=='statistics')return;
  const q=new URLSearchParams(location.search);
+ const selectedMarket=$('[data-stat-market].active')?.dataset.statMarket||q.get('market')||'all';
  const card=$('#b46-finance-chart-card');
  if(!card)return;
- if(['all',''].includes(q.get('market')||'all')){
+ if(['all',''].includes(selectedMarket)){
    card.classList.remove('b46-v1-market-enhanced');
    card.querySelectorAll('.b46-v1-market-outcomes,.b46-v1-market-detail-grid').forEach(e=>e.remove());
    return;
@@ -54,6 +55,7 @@ function enhanceFilteredMarket(){
  const settled=Number(settledCell?.querySelector('b')?.textContent?.replace(/,/g,''));
  if(wplValues.length!==3||wplValues.some(v=>!Number.isSafeInteger(v)||v<0)||
     wplValues.reduce((a,v)=>a+v,0)!==settled||!settled||!stake||!maxDD)return;
+ styleOnce();
  const signature=[wpl,settled,stake,maxDD].join('|');
  if(card.dataset.b46V1MarketSignature===signature &&
    overview.querySelector('.b46-v1-market-outcomes')&&
@@ -92,7 +94,8 @@ function enhanceFilteredMarket(){
 }
 function validRoute(){
  const q=new URLSearchParams(location.search);
- return document.body?.dataset.workspaceView==='statistics' &&
+ const active=$('[data-stat-market].active')?.dataset.statMarket;
+ return document.body?.dataset.workspaceView==='statistics' && (!active||active==='all') &&
    ['all',''].includes(q.get('market')||'all') &&
    ['all',''].includes(q.get('variant')||'all') &&
    ['all',''].includes(q.get('filter')||'all');
@@ -362,12 +365,11 @@ document.addEventListener('click',e=>{
  }
 },true);
 window.addEventListener('popstate',()=>{if(!validRoute()){triggerNativeFallback();cleanup()}else mount()});
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{
- begin();
- queueMicrotask(enhanceFilteredMarket);
-},{once:true});
-else queueMicrotask(enhanceFilteredMarket);
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{}, {once:true});
-
-else begin();
+if(document.readyState==='loading'){
+ document.addEventListener('DOMContentLoaded',()=>{
+   begin();queueMicrotask(enhanceFilteredMarket);
+ },{once:true});
+}else{
+ begin();queueMicrotask(enhanceFilteredMarket);
+}
 })();
