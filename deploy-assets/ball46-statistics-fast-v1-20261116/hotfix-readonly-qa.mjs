@@ -8,7 +8,8 @@ const {chromium}=require('playwright');
 const root=new URL('./',import.meta.url);
 const patch=await readFile(new URL('./fast-client-hotfix-20261116.js',root),'utf8');
 await mkdir(new URL('./hotfix-audit/',root),{recursive:true});
-const base='https://ball46-production.mccarey-supon.workers.dev';
+const base=process.env.B46_HOTFIX_TEST_HOST||'https://ball46-production.mccarey-supon.workers.dev';
+const substitute=process.env.B46_HOTFIX_TEST_REAL!=='1';
 const browser=await chromium.launch({headless:true});
 const scripts=[];
 async function makeContext(name,width=1366,height=900,isMobile=false){
@@ -17,7 +18,7 @@ async function makeContext(name,width=1366,height=900,isMobile=false){
   const page=await ctx.newPage(),errors=[],api=[];
   page.on('pageerror',e=>errors.push(e.message.slice(0,160)));
   page.on('response',r=>{if(new URL(r.url()).pathname==='/api/engine/statistics')api.push(r.status())});
-  await page.route('**/b46-statistics-fast-v1-20261116.js*',route=>{
+  if(substitute)await page.route('**/b46-statistics-fast-v1-20261116.js*',route=>{
     scripts.push(name);
     return route.fulfill({status:200,contentType:'application/javascript; charset=utf-8',body:patch});
   });
@@ -54,7 +55,7 @@ try{
   await total.page.waitForFunction(()=>window.__B46_FAST_V1_DIAG?.status==='fast-preview-visible',null,{timeout:20000});
   await total.page.waitForTimeout(400);
   const t=await state(total.page);
-  assert.equal(scripts.filter(x=>x==='total').length,1,'FAST_SCRIPT_NOT_REPLACED');
+  if(substitute)assert.equal(scripts.filter(x=>x==='total').length,1,'FAST_SCRIPT_NOT_REPLACED');
   assert(t.previewVisible&&t.nativeCardCount===1&&!t.legacy.visible,'LEGACY_LOADER_VISIBLE_WITH_VERIFIED_TOTAL');
   assert(!t.duplicateGraph&&!t.overflow,'TOTAL_DUPLICATE_OR_OVERFLOW');
   assert.equal(total.api.length,0,'TOTAL_EARLY_LEDGER_FETCH');
@@ -65,6 +66,31 @@ try{
   await total.page.waitForTimeout(1200);
   const stable=await state(total.page);
   assert(!stable.legacy.visible&&stable.previewVisible,'OLD_LOADER_REAPPEARED_AFTER_FAST_PAINT');
+  // Clicking "Load detailed history" must hand over the same card to the
+  // original renderer without one frame showing an old loader + fast chart.
+  await total.page.locator('#b46-fast-v1-preview .b46-fast-details').click();
+  await total.page.waitForFunction(()=>{
+    const d=window.BALL46_STATISTICS_DATA?.getSnapshot?.();
+    return d?.ok===true && d.ledgerRows?.length===d.ledgerTotal &&
+      !!document.querySelector('#b46-finance-chart-card svg.f46-svg')?.getClientRects().length &&
+      !document.querySelector('#b46-fast-v1-preview');
+  },null,{timeout:85000});
+  const native=await state(total.page);
+  assert(native.nativeVisible&&!native.previewVisible&&!native.legacy.visible&&!native.duplicateGraph,
+    'NATIVE_TAKEOVER_LEGACY_OR_FAST_OVERLAP');
+  assert.equal(total.errors.length,0,'TOTAL_NATIVE_SCRIPT_ERRORS_'+JSON.stringify(total.errors));
+  console.log('B46_HOTFIX_NATIVE_HANDOFF='+JSON.stringify({ok:true,nativeCardCount:native.nativeCardCount,
+    legacyVisible:native.legacy.visible,apiCalls:total.api.length,errors:total.errors}));
+  await total.page.screenshot({path:new URL('./hotfix-audit/total-native-after-click.png',root).pathname,fullPage:false});
+  // Same-session market change must use current native W/P/L, not Total's cache.
+  await total.page.locator('[data-stat-market="1x2"]').first().click();
+  await total.page.waitForFunction(()=>!!document.querySelector('#b46-finance-chart-card .b46-v1-market-outcomes') &&
+    !!document.querySelector('#b46-finance-chart-card svg.f46-svg')?.getClientRects().length,null,{timeout:25000});
+  const changed=await state(total.page);
+  assert(changed.marketPanel.present&&!changed.previewVisible&&!changed.duplicateGraph,
+    'MARKET_NAVIGATION_FAST_OVERLAP');
+  console.log('B46_HOTFIX_MARKET_NAV='+JSON.stringify({ok:true,market:changed.bodyMarket,
+    counts:changed.marketPanel.outcomes,cardVisible:changed.nativeVisible}));
   await total.ctx.close();
   for(const test of [{name:'1x2',path:'/?view=statistics&market=1x2'},
                      {name:'ah',path:'/?view=statistics&market=ah'}]){
