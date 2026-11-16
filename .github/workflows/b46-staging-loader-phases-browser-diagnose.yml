@@ -1,0 +1,57 @@
+name: B46 stage stats browser phase timings READ ONLY
+on:
+  push:
+    branches: [chatgpt/ball46-statistics-ui-v1]
+    paths: ['.github/workflows/b46-staging-loader-phases-browser-diagnose.yml']
+permissions: {contents: read}
+jobs:
+  investigate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - name: Install Chromium
+        run: |
+          npm install --prefix /tmp/b46-phases --no-fund --no-audit playwright@1.65.1
+          /tmp/b46-phases/node_modules/.bin/playwright install --with-deps chromium
+      - name: Live stage PC cold and repeat phases, no mutations
+        run: |
+          node <<'NODE'
+          const {chromium}=require('/tmp/b46-phases/node_modules/playwright');
+          const stage='https://ball46-chat-statistics-live-ui-test-20261115.mccarey-supon.workers.dev';
+          (async()=>{
+            const browser=await chromium.launch({headless:true}),ctx=await browser.newContext({viewport:{width:1366,height:900},timezoneId:'Asia/Bangkok'});
+            const page=await ctx.newPage(),events=[],warnings=[];
+            page.on('pageerror',e=>warnings.push({type:'page',message:e.message.slice(0,180)}));
+            page.on('console',m=>{if(['error','warning'].includes(m.type())&&warnings.length<16)warnings.push({type:m.type(),message:m.text().slice(0,180)})});
+            page.on('response',r=>{const p=new URL(r.url()).pathname;if(p==='/singlepage-workspace-343.js'||p==='/api/engine/statistics'){
+              if(events.length<100)events.push({path:p,code:r.status(),size:r.headers()['content-length'],loader:r.headers()['x-b46-staging-loader'],cache:r.headers()['x-b46-stage-snapshot']})}});
+            async function state(phase,t){
+              const obj=await page.evaluate(()=>{
+                const api=window.BALL46_STATISTICS_DATA,d=api?.getSnapshot?.();
+                const root=document.querySelector('#b46-finance-chart-card'),svg=root?.querySelector('svg.f46-svg');
+                return{api:!!api,loaded:!!d,ok:d?.ok,rows:d?.ledgerRows?.length||0,total:d?.ledgerTotal||0,stale:d?.stale,
+                  chart:!!svg,visible:!!svg?.getClientRects()?.length,
+                  record:document.querySelector('[data-sp-record-count]')?.textContent?.trim(),
+                  feed:document.querySelector('[data-sp-feed-state]')?.textContent?.trim()?.slice(0,100),
+                  bodyView:document.body?.dataset.workspaceView,ready:document.readyState,htmlTitle:document.title};
+              }).catch(e=>({evaluateError:String(e).slice(0,100)}));
+              console.log('B46_PHASE='+JSON.stringify({phase,sec:t,state:obj,net:{total:events.length,api:events.filter(x=>x.path==='/api/engine/statistics').length,last:events.slice(-3)},errors:warnings.slice(-5)}));
+              return obj;
+            }
+            for(const phase of ['cold','reload']){
+              const started=Date.now();
+              const r=phase==='cold'?await page.goto(stage+'/?view=statistics',{waitUntil:'domcontentloaded',timeout:45000}):await page.reload({waitUntil:'domcontentloaded',timeout:45000});
+              console.log('B46_NAV='+JSON.stringify({phase,http:r?.status(),url:page.url()}));
+              for(const t of [0,1,3,6,10,18,30,45]){
+                const elapsed=Date.now()-started;if(t*1000>elapsed)await page.waitForTimeout(t*1000-elapsed);
+                const s=await state(phase,t);
+                if(s.chart&&s.rows>=15000&&s.visible&&t>=3)break;
+              }
+              if(phase==='cold'){await page.waitForTimeout(5000);}
+            }
+            console.log('B46_PHASE_EVENTS='+JSON.stringify({requests:events.slice(0,5),statuses:events.reduce((a,x)=>(a[x.code]=(a[x.code]||0)+1,a),{}),warnings}));
+            await browser.close();console.log('B46_PHASE_TEST_DONE');
+          })().catch(e=>{console.error('B46_PHASE_FATAL='+String(e));process.exitCode=1});
+          NODE
