@@ -134,15 +134,33 @@ export async function verifyBrowser(host,label,auditDir){
   }
   // A filtered deep link must bypass precomputed all-market graph.
   const context=await browser.newContext({viewport:{width:1366,height:900},timezoneId:'Asia/Bangkok'});
-  const page=await context.newPage(),errors=[];
+  const page=await context.newPage(),errors=[],ahApi=[],ahWarnings=[];
   page.on('pageerror',e=>errors.push(e.message));
+  page.on('response',res=>{if(new URL(res.url()).pathname==='/api/engine/statistics')ahApi.push(res.status())});
+  page.on('console',msg=>{if(['warning','error'].includes(msg.type()))ahWarnings.push(msg.text().slice(0,170))});
   await page.goto(host+'/?view=statistics&market=ah',{waitUntil:'domcontentloaded',timeout:60000});
-  await page.waitForFunction(()=>{
-    const d=window.BALL46_STATISTICS_DATA?.getSnapshot?.();
-    if(!d||!Array.isArray(d.ledgerRows))return false;
-    return !!window.__B46_FAST_DETAILS_REQUESTED&&d.ledgerRows.length===d.ledgerTotal&&
-      !!document.querySelector('#b46-finance-chart-card svg.f46-svg')?.getClientRects().length;
-  },null,{timeout:100000});
+  try{
+    await page.waitForFunction(()=>{
+      const d=window.BALL46_STATISTICS_DATA?.getSnapshot?.();
+      if(!d||!Array.isArray(d.ledgerRows))return false;
+      return !!window.__B46_FAST_DETAILS_REQUESTED&&d.ledgerRows.length===d.ledgerTotal&&
+        !!document.querySelector('#b46-finance-chart-card svg.f46-svg')?.getClientRects().length;
+    },null,{timeout:100000});
+  }catch(err){
+    const state=await page.evaluate(()=>{
+      const d=window.BALL46_STATISTICS_DATA?.getSnapshot?.();
+      const sel=document.querySelector('[data-stat-market].active');
+      return {route:location.search,view:document.body?.dataset.workspaceView,
+        activeMarket:sel?.dataset.statMarket,requested:!!window.__B46_FAST_DETAILS_REQUESTED,
+        helper:typeof window.__B46_FAST_LOAD_DETAILS,diag:window.__B46_FAST_V1_DIAG,
+        data:d?{total:d.total,ledgerTotal:d.ledgerTotal,rows:d.ledgerRows?.length}:null,
+        financeCardVisible:!!document.querySelector('#b46-finance-chart-card svg.f46-svg')?.getClientRects().length,
+        feed:document.querySelector('[data-sp-feed-state]')?.textContent?.slice(0,140)};
+    });
+    console.log('B46_FAST_V1_AH_TIMEOUT_DIAG='+JSON.stringify({state,api:ahApi.slice(-50),
+       errors:errors.slice(-15),warnings:ahWarnings.slice(-15)}));
+    throw err;
+  }
   assert.equal(await page.locator('#b46-fast-v1-preview').count(),0,label+':FILTERED_ALL_MARKET_GRAPH_SHOWN');
   assert.equal(errors.length,0,label+':FILTERED_JS_ERRORS');
   output.push({profile:'filtered-AH',fallback:'native',pass:true});
