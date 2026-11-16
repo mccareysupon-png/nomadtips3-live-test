@@ -25,6 +25,8 @@ assert.equal(patchCurrentStatisticsLoader('unrelated.js').status,'SOURCE_DRIFT_M
 const indexed=patchIndexedStatisticsCache(patched.source);
 assert.equal(indexed.status,'VERIFIED_INDEXED_CACHE_PATCHED');
 assert(indexed.source.includes(B46_CACHE_MARKER));
+assert(indexed.source.includes('b46-stage-saved-ready'));
+assert(indexed.source.includes('data.ledgerRows.length===data.ledgerTotal'));
 assert.equal(patchIndexedStatisticsCache(indexed.source).status,'ALREADY_PATCHED');
 assert.equal(patchIndexedStatisticsCache('other code').status,'SOURCE_DRIFT_LOAD');
 new vm.Script(indexed.source,{filename:'staging-indexed-cached.js'});
