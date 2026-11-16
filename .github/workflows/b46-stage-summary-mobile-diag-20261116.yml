@@ -1,0 +1,49 @@
+name: BALL46 staging mobile summary DOM diagnostic READ ONLY
+on:
+  push:
+    branches: [chatgpt/ball46-statistics-ui-v1]
+    paths: ['.github/workflows/b46-stage-summary-mobile-diag-20261116.yml']
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - name: Install Chromium
+        run: |
+          npm install --prefix /tmp/b46-mobile-inspect --no-fund --no-audit playwright@1.65.1
+          /tmp/b46-mobile-inspect/node_modules/.bin/playwright install --with-deps chromium
+      - name: Read mobile viewport summary strip, target card and script status
+        run: |
+          node <<'NODE'
+          const {chromium}=require('/tmp/b46-mobile-inspect/node_modules/playwright');
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            for(const width of [390,600]){
+              const context=await browser.newContext({viewport:{width,height:844},isMobile:true,hasTouch:true});
+              const page=await context.newPage(),errors=[],responses=[];
+              page.on('pageerror',e=>errors.push(String(e.message).slice(0,180)));
+              page.on('response',r=>{if(new URL(r.url()).pathname==='/_b46_stats_summary.js')responses.push({status:r.status(),contentType:r.headers()['content-type']})});
+              await page.goto('https://ball46-chat-statistics-live-ui-test-20261115.mccarey-supon.workers.dev/?view=statistics',{waitUntil:'domcontentloaded',timeout:45000});
+              await page.waitForFunction(()=>window.BALL46_STATISTICS_DATA?.getSnapshot?.()?.ledgerRows?.length>15000,null,{timeout:45000});
+              await page.waitForTimeout(3500);
+              const state=await page.evaluate(()=>{
+                const sp=document.querySelector('.sp-stats-content'),strip=sp?.querySelector('.b46v23-strip'),source=strip?.querySelector('.b46v23-strip-grid');
+                const overview=sp?.querySelector('#b46-finance-chart-card .f46-overview');
+                const a=[...source?.querySelectorAll('.b46v23-micro-card')||[]].map(x=>({label:x.querySelector('.b46v23-label')?.textContent?.trim(),value:x.querySelector('.b46v23-value')?.textContent?.trim()}));
+                const snapshot=window.BALL46_STATISTICS_DATA?.getSnapshot?.();
+                return {view:document.body?.dataset.workspaceView,hasSP:!!sp,strip:!!strip,source:!!source,over:!!overview,
+                  snap:{ok:snapshot?.ok,hasMore:snapshot?.hasMore,total:snapshot?.ledgerTotal,rows:snapshot?.ledgerRows?.length},
+                  labels:a,grid:overview?.querySelectorAll('.b46-stage-summary-item').length||0,
+                  script:!!document.querySelector('[data-b46-stage-summary-script]'),
+                  summaryClass:sp?.className,cardClass:sp?.querySelector('#b46-finance-chart-card')?.className,
+                  stripDisplay:strip?getComputedStyle(strip).display:null,screen:innerWidth};
+              });
+              console.log('B46_MOBILE_SUMMARY_DIAG='+JSON.stringify({width,responses,errors,state}));
+              await context.close();
+            }
+            await browser.close();
+          })().catch(e=>{console.error('B46_MOBILE_DIAG_FATAL='+String(e));process.exitCode=1});
+          NODE
