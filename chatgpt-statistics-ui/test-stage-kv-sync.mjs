@@ -1,0 +1,24 @@
+import assert from 'node:assert/strict';
+import {buildSnapshot,verifyRows,signature} from './stage-kv-sync.mjs';
+const a={id:'a',status:'SETTLED',result:'WIN'};
+const b={id:'b',status:'SETTLED',result:'LOSS'};
+const c={id:'c',status:'PENDING',result:''};
+const row={ok:true,ledgerTotal:3,total:2,pending:1,unresolved:0,win:1,loss:1,push:0,halfWin:0,halfLoss:0,ledgerUpdatedAt:'v1'};
+const page1={...row,rows:[a,b],nextCursor:'next',hasMore:true};
+const page2={...row,rows:[c],nextCursor:null,hasMore:false};
+const calls=[];
+const good=await buildSnapshot(async cursor=>{calls.push(cursor||'HEAD');return cursor==='next'?page2:page1});
+assert.equal(calls.length,3,'must re-read head after last page');
+assert.equal(good.rows.length,3);
+assert.equal(good.stale,true);assert.equal(good.hasMore,false);
+assert.equal(verifyRows(row,[a,b,c]),true);
+assert.equal(signature(good),signature(row));
+await assert.rejects(buildSnapshot(async cursor=>cursor?{...page2,ledgerUpdatedAt:'v2'}:page1),/REVISION_CHANGED_DURING_PAGES/);
+let count=0;
+await assert.rejects(buildSnapshot(async cursor=>{
+  count++;return count===3?{...page1,ledgerUpdatedAt:'v2'}:cursor?page2:page1;
+}),/REVISION_CHANGED_AFTER_FULL_READ/);
+assert.throws(()=>verifyRows(row,[a,b,b]),/MISSING_OR_DUPLICATE_ID/);
+assert.throws(()=>verifyRows(row,[a,b]),/LEDGER_LENGTH_MISMATCH/);
+assert.throws(()=>verifyRows({...row,win:2},[a,b,c]),/SETTLEMENT_COUNT_MISMATCH_win/);
+console.log('B46_STAGING_SYNC_UNIT=PASS',{tests:7,noProductionWrites:true});
