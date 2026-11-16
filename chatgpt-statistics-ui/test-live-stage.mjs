@@ -88,7 +88,7 @@ try{
       ...window.__B46_FAST_CHART_DIAG,
       visible:!!document.querySelector('#b46-stage-fast-preview')?.getClientRects().length,
       bodyView:document.body?.dataset.workspaceView,
-      oldTrendVisible:(()=>{const e=document.querySelector('.sp-trend');return !!(e?.getClientRects().length&&getComputedStyle(e).visibility!=='hidden'&&getComputedStyle(e).display!=='none')})(),
+      oldTrendVisible:(()=>{const e=document.querySelector('.sp-trend');return !!(e?.getClientRects().length&&getComputedStyle(e).visibility!=='hidden'&&getComputedStyle(e).display!=='none'&&!e.classList.contains('b46-fast-paint-host'))})(),
       overflow:document.documentElement.scrollWidth>innerWidth+1,
       previewRight:document.querySelector('#b46-stage-fast-preview')?.getBoundingClientRect().right||null,
       viewport:innerWidth,
