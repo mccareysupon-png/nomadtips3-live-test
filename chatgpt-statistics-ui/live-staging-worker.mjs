@@ -214,8 +214,16 @@ export default {
     const ct=upstream.headers.get('content-type')||'';
     if (request.method==='GET' && upstream.ok && ct.includes('text/html')){
       const original = await upstream.text();
+      // Production already injects its own fast client. Never run two competing
+      // preview clients on STAGING: the Production one has a separate cache API
+      // and would falsely fall back to loading the entire historical Ledger.
+      const productionClient='<script defer src="/b46-statistics-fast-v1-20261116.js"></script>';
+      const duplicateCount=original.split(productionClient).length-1;
+      if(duplicateCount>1)return json({ok:false,error:'DUPLICATE_PROD_FAST_CLIENT_SOURCE'},503);
+      const isolated=original.replace(productionClient,'');
       const inject = '<meta name="robots" content="noindex,nofollow"><link rel="stylesheet" href="/_b46_ui_overlay.css?v=20261116-summary" data-b46-staging-overlay="1"><script defer src="/_b46_stats_summary.js?v=20261116" data-b46-stage-summary-script="1"></script><script defer src="/_b46_fast_graph.js?v=20261116-chart" data-b46-stage-fast-script="1"></script>';
-      const html = original.includes('</head>') ? original.replace('</head>',inject+'</head>') : original;
+      const html = isolated.includes('</head>') ? isolated.replace('</head>',inject+'</head>') : isolated;
+      h.set('x-b46-stage-duplicate-prod-client',duplicateCount?'SUPPRESSED':'ABSENT');
       h.set('content-type','text/html; charset=UTF-8');
       h.set('x-b46-overlay',original.includes('</head>')?stamp:'INJECTION_ANCHOR_MISSING');
       return new Response(html,{status:upstream.status,headers:h});
