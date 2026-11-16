@@ -54,7 +54,7 @@ export function patchCurrentStatisticsLoader(source){
   const prefix=source.slice(0,pageStart),suffix=source.slice(ownerEnd);
   let block=replacementPage+source.slice(directStart,ownerEnd);
   const directAt=block.indexOf('async function directAll() {');
-  const directEnd=block.indexOf('\\nasync function readAll() {',directAt);
+  const directEnd=block.indexOf('\nasync function readAll() {',directAt);
   if(directAt<0||directEnd<directAt)return {source,status:'SOURCE_DRIFT_DIRECT_LAYOUT'};
   let direct=block.slice(directAt,directEnd);
   const jsonOld='  const data = await response.json();';
