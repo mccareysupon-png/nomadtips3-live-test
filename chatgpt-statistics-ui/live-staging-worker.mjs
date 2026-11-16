@@ -3,6 +3,7 @@
 // No Production writes, no secrets forwarded, and no Production Cloudflare Worker mutation.
 import css from './live-staging-overlay.css';
 import {patchCurrentStatisticsLoader} from './statistics-loader-staging-patch.mjs';
+import {patchIndexedStatisticsCache} from './indexed-stats-stage.mjs';
 const ORIGIN = 'https://www.ball46.com';
 const stamp = 'B46-STAT-UI-01-real-ui-v1';
 const json = (data,status=200) => new Response(JSON.stringify(data),{
@@ -60,7 +61,8 @@ export default {
     // No settlement/formula/market/Engine changes. Source drift leaves file untouched.
     if(request.method==='GET' && upstream.ok && u.pathname==='/singlepage-workspace-343.js'){
       const original=await upstream.text();
-      const patched=patchCurrentStatisticsLoader(original);
+      const recovered=patchCurrentStatisticsLoader(original);
+      const patched=recovered.status==='CURRENT_LOADER_PATCHED'?patchIndexedStatisticsCache(recovered.source):recovered;
       h.set('content-type','application/javascript; charset=UTF-8');
       h.set('x-b46-staging-loader',patched.status);
       h.set('x-b46-read-path','SERVICE_BINDING');

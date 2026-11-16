@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import {patchCurrentStatisticsLoader,STAGE_LOADER_MARKER} from './statistics-loader-staging-patch.mjs';
+import {patchIndexedStatisticsCache,B46_CACHE_MARKER} from './indexed-stats-stage.mjs';
 
 const response=await fetch('https://www.ball46.com/singlepage-workspace-343.js',{signal:AbortSignal.timeout(25000)});
 assert.equal(response.status,200,'CURRENT_SOURCE_GET');
@@ -19,6 +20,13 @@ const result2=patchCurrentStatisticsLoader(patched.source);
 assert.equal(result2.status,'ALREADY_PATCHED');
 assert.equal(result2.source,patched.source);
 assert.equal(patchCurrentStatisticsLoader('unrelated.js').status,'SOURCE_DRIFT_MISSING_OWNER');
+const indexed=patchIndexedStatisticsCache(patched.source);
+assert.equal(indexed.status,'VERIFIED_INDEXED_CACHE_PATCHED');
+assert(indexed.source.includes(B46_CACHE_MARKER));
+assert.equal(patchIndexedStatisticsCache(indexed.source).status,'ALREADY_PATCHED');
+assert.equal(patchIndexedStatisticsCache('other code').status,'SOURCE_DRIFT_LOAD');
+new vm.Script(indexed.source,{filename:'staging-indexed-cached.js'});
+
 
 const end=patched.source.indexOf('})();',patched.source.indexOf('window.BALL46_STATISTICS_DATA = Object.freeze('));
 assert(end>0,'OWNER_CLOSURE_MISSING');
