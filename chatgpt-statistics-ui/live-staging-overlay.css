@@ -285,3 +285,149 @@ html body #b46-finance-chart-card .f46-value {
     padding:8px 9px;
   }
 }
+
+
+/* B46 STAGING PC — Visual outcome composition and exact Market Filter alignment.
+   Build only from existing verified WIN/PUSH/LOSS values; mobile stays untouched. */
+@media (min-width:851px) {
+  /* The old sp-trend/shell min-heights (430px / 428px) left ~66px invisible
+     below the actual 364px finance card. Use the REAL rendered card height. */
+  html body[data-workspace-view="statistics"]
+    .sp-stats-content.b46-stage-summary-ready #b46-finance-chart-card {
+      min-height:0!important;
+      height:auto!important;
+      overflow:visible!important;
+      margin-bottom:16px!important;
+  }
+  html body[data-workspace-view="statistics"]
+    .sp-stats-content.b46-stage-summary-ready #b46-finance-chart-card .b46-perf-shell {
+      min-height:0!important;
+      height:auto!important;
+      overflow:visible!important;
+  }
+  html body #b46-finance-chart-card.b46-stage-summary-ready .f46-overview {
+    justify-content:space-between!important;
+    gap:12px!important;
+    padding:17px 19px 17px!important;
+  }
+  html body #b46-finance-chart-card.b46-stage-summary-ready .b46-stage-summary-grid {
+    margin-top:0!important;
+    flex-shrink:0;
+  }
+  html body #b46-finance-chart-card .b46-stage-outcomes {
+    display:flex;
+    flex-direction:column;
+    gap:9px;
+    width:100%;
+    min-width:0;
+    flex:0 0 auto;
+    padding:13px 13px 11px;
+    margin:0;
+    border-radius:13px;
+    border:1px solid rgba(84,161,137,.16);
+    background:linear-gradient(155deg,rgba(46,107,87,.20),rgba(11,33,28,.12) 62%,rgba(9,25,21,.1));
+    box-shadow:0 10px 20px rgba(0,0,0,.095),
+      inset 0 1px 0 rgba(170,247,213,.055);
+  }
+  html body #b46-finance-chart-card .b46-stage-outcomes-heading {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    line-height:1.15;
+  }
+  html body #b46-finance-chart-card .b46-stage-outcomes-heading strong {
+    color:#a0bdb0;
+    letter-spacing:.095em;
+    font-size:9px;
+    font-weight:750;
+  }
+  html body #b46-finance-chart-card .b46-stage-outcomes-heading span {
+    color:#708d7f;
+    font-size:9px;
+    font-weight:650;
+    white-space:nowrap;
+  }
+  html body #b46-finance-chart-card .b46-stage-outcomes-track {
+    display:flex;
+    width:100%;
+    height:12px;
+    min-height:12px;
+    gap:2px;
+    padding:2px;
+    border-radius:10px;
+    overflow:hidden;
+    background:rgba(1,12,9,.60);
+    box-shadow:0 1px 4px rgba(0,0,0,.24) inset,0 1px 0 rgba(255,255,255,.025);
+  }
+  html body #b46-finance-chart-card .b46-stage-outcomes-segment {
+    display:block;
+    flex-basis:0;
+    flex-shrink:1;
+    min-width:0;
+    height:100%;
+    border-radius:2px;
+    opacity:.98;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.19),0 0 10px rgba(0,0,0,.05);
+  }
+  html body #b46-finance-chart-card .b46-stage-outcomes-segment[data-result="win"] {
+    background:linear-gradient(180deg,#55dfab,#2aa77b);
+  }
+  html body #b46-finance-chart-card .b46-stage-outcomes-segment[data-result="push"] {
+    background:linear-gradient(180deg,#efd18a,#bc9555);
+  }
+  html body #b46-finance-chart-card .b46-stage-outcomes-segment[data-result="loss"] {
+    background:linear-gradient(180deg,#f28a8e,#cc5c67);
+  }
+  html body #b46-finance-chart-card .b46-stage-outcomes-legend {
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:7px;
+  }
+  html body #b46-finance-chart-card .b46-stage-outcomes-legend-item {
+    display:flex;
+    gap:5px;
+    align-items:center;
+    min-width:0;
+    color:#a5bcb1;
+    font-size:10px;
+    line-height:1.15;
+    white-space:nowrap;
+  }
+  html body #b46-finance-chart-card .b46-stage-outcomes-legend-item b {
+    margin-left:auto;
+    font-size:10px;
+    font-weight:750;
+    color:#d5e8dc;
+    font-variant-numeric:tabular-nums;
+  }
+  html body #b46-finance-chart-card .b46-stage-outcomes-legend-dot {
+    display:inline-block;
+    width:7px;
+    height:7px;
+    min-width:7px;
+    border-radius:50%;
+    box-shadow:0 0 0 2px rgba(255,255,255,.025);
+    background:#55dfab;
+  }
+  html body #b46-finance-chart-card .b46-stage-outcomes-legend-item[data-result="push"] .b46-stage-outcomes-legend-dot {background:#e1bd76;}
+  html body #b46-finance-chart-card .b46-stage-outcomes-legend-item[data-result="loss"] .b46-stage-outcomes-legend-dot {background:#ec787f;}
+  html body #b46-finance-chart-card .b46-stage-summary-item {
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.055),0 7px 16px rgba(0,0,0,.09);
+    background:linear-gradient(155deg,rgba(44,99,83,.23),rgba(8,25,21,.16) 92%);
+  }
+}
+@media (min-width:851px) and (max-width:1320px) {
+  html body #b46-finance-chart-card .b46-stage-outcomes {
+    gap:7px;
+    padding:9px 10px 8px;
+  }
+  html body #b46-finance-chart-card .b46-stage-outcomes-legend-item,
+  html body #b46-finance-chart-card .b46-stage-outcomes-legend-item b {
+    font-size:9px;
+  }
+  html body #b46-finance-chart-card.b46-stage-summary-ready .f46-overview{
+    gap:9px!important;
+    padding:13px!important;
+  }
+}

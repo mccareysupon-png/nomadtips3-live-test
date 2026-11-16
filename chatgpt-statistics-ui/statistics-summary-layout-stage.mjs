@@ -120,6 +120,7 @@ export const stageSummaryScript = String.raw`(() => {
       const segment=document.createElement('span');
       segment.className='b46-stage-outcomes-segment';
       segment.dataset.result=outcome.key;
+      segment.dataset.count=String(outcome.count);
       segment.style.flexGrow=String(outcome.count);
       segment.title=outcome.label+' · '+outcome.count.toLocaleString('en-US')+' · '+(outcome.count/outcomeTotal*100).toFixed(1)+'%';
       track.appendChild(segment);
