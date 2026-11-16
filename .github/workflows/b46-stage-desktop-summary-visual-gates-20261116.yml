@@ -1,0 +1,73 @@
+name: BALL46 staging desktop dimension and layout responsive gates
+on:
+  push:
+    branches: [chatgpt/ball46-statistics-ui-v1]
+    paths: ['.github/workflows/b46-stage-desktop-summary-visual-gates-20261116.yml']
+permissions: {contents: read}
+jobs:
+  visual-gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - name: Install Chromium
+        run: |
+          npm install --prefix /tmp/b46-visual --no-audit --no-fund playwright@1.65.1
+          /tmp/b46-visual/node_modules/.bin/playwright install --with-deps chromium
+      - name: Verify PC card outcomes and no overlap at 1024 1366 1640 widths
+        run: |
+          node <<'NODE'
+          const {chromium}=require('/tmp/b46-visual/node_modules/playwright');
+          (async()=>{
+            const b=await chromium.launch({headless:true});
+            let fail=0;
+            for(const width of [1024,1366,1640]){
+              const ctx=await b.newContext({viewport:{width,height:900},deviceScaleFactor:1});
+              const p=await ctx.newPage(),js=[];
+              p.on('pageerror',e=>js.push(e.message.slice(0,160)));
+              await p.goto('https://ball46-chat-statistics-live-ui-test-20261115.mccarey-supon.workers.dev/?view=statistics',{waitUntil:'domcontentloaded',timeout:45000});
+              await p.waitForFunction(()=>document.querySelectorAll('#b46-finance-chart-card .b46-stage-summary-item').length===8 &&
+                document.querySelectorAll('#b46-finance-chart-card .b46-stage-outcomes-segment').length===3,null,{timeout:60000});
+              const d=await p.evaluate(()=>{
+                const r=e=>{const x=e?.getBoundingClientRect();return x?{top:x.top,bottom:x.bottom,left:x.left,right:x.right,width:x.width,height:x.height}:null};
+                const overview=document.querySelector('#b46-finance-chart-card .f46-overview'),
+                  header=overview?.firstElementChild,
+                  outcome=overview?.querySelector('.b46-stage-outcomes'),
+                  grid=overview?.querySelector('.b46-stage-summary-grid'),
+                  card=document.querySelector('#b46-finance-chart-card .f46-card'),
+                  chart=document.querySelector('#b46-finance-chart-card'),
+                  filter=[...document.querySelectorAll('.sp-stats-content > .sp-filters')].find(x=>getComputedStyle(x).display!=='none');
+                const counters=[...grid?.querySelectorAll('.b46-stage-summary-item')||[]];
+                const segments=[...outcome?.querySelectorAll('.b46-stage-outcomes-segment')||[]];
+                return{overview:r(overview),header:r(header),outcome:r(outcome),grid:r(grid),card:r(card),chart:r(chart),filter:r(filter),
+                  columns:getComputedStyle(grid).gridTemplateColumns,count:counters.length,
+                  outcomesCount:segments.map(x=>Number(x.dataset.count)),metricOverflow:counters.some(x=>x.scrollWidth>x.clientWidth+2),
+                  outcomeOverflow:outcome?.scrollWidth>outcome?.clientWidth+2,
+                  horizontalOverflow:document.documentElement.scrollWidth>innerWidth+2,
+                  graphVisible:!!document.querySelector('#b46-finance-chart-card svg.f46-svg')?.getClientRects().length,
+                  profitFont:getComputedStyle(document.querySelector('#b46-finance-chart-card .f46-value')).fontSize};
+              });
+              const pass=d.count===8&&d.outcomesCount.length===3&&
+                d.outcomesCount.reduce((a,b)=>a+b,0)===15795 &&
+                d.header.bottom<=d.outcome.top+2 && d.outcome.bottom<=d.grid.top+2 &&
+                d.grid.bottom<=d.overview.bottom+2 && d.chart.bottom<=d.filter.top &&
+                d.filter.top-d.card.bottom<=29 && !d.horizontalOverflow &&
+                !d.metricOverflow&&!d.outcomeOverflow &&d.graphVisible&&js.length===0;
+              console.log('B46_DESKTOP_VISUAL_GATE='+JSON.stringify({width,pass,detail:d,jsErrors:js}));
+              await p.screenshot({path:'/tmp/b46-desktop-summary-'+width+'.png',fullPage:false});
+              if(!pass)fail++;
+              await ctx.close();
+            }
+            await b.close();
+            if(fail)throw Error('B46_STAGE_PC_LAYOUT_GATE_FAILED_'+fail);
+            console.log('B46_STAGE_PC_LAYOUT_GATE=PASS_1024_1366_1640');
+          })().catch(e=>{console.error('B46_STAGE_PC_LAYOUT_ERROR='+String(e));process.exitCode=1});
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: b46-staging-desktop-dimensional-summary-1024-1366-1640
+          path: /tmp/b46-desktop-summary-*.png
+          retention-days: 7
+          if-no-files-found: ignore
