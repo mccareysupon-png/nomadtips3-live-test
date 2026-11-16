@@ -1,0 +1,26 @@
+name: B46 read-only source revision fields audit
+on:
+  push:
+    branches: [chatgpt/ball46-statistics-ui-v1]
+    paths: ['.github/workflows/b46-staging-source-revision-audit-20261116.yml']
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Read first cursor response twice; compare metadata-only fields
+        run: |
+          node <<'NODE'
+          const base='https://www.ball46.com/api/engine/statistics?paged=1&_=';
+          (async()=>{
+            for(let i=0;i<3;i++){
+              try{
+                const r=await fetch(base+Date.now(),{signal:AbortSignal.timeout(25000)}),d=await r.json();
+                const fields=Object.fromEntries(Object.entries(d).filter(([k,v])=>/revision|version|generat|hash|checksum|updated|total|count|pending|unresolved|win|loss|push|more|cursor|status/i.test(k)).map(([k,v])=>[k,typeof v==='object'?JSON.stringify(v).slice(0,220):String(v).slice(0,130)]));
+                console.log('B46_REVISION_METADATA='+JSON.stringify({i,http:r.status,keys:Object.keys(d),fields,rows:d.rows?.length,firstRowKeys:Object.keys(d.rows?.[0]||{}).slice(0,36)}));
+              }catch(e){console.log('B46_REVISION_METADATA_ERROR='+String(e).slice(0,140))}
+              await new Promise(x=>setTimeout(x,4000));
+            }
+          })();
+          NODE
