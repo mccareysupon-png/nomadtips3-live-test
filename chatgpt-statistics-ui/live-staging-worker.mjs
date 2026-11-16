@@ -42,15 +42,29 @@ export default {
     if(request.method==='GET' && u.pathname==='/api/engine/statistics' && !u.searchParams.has('paged')){
       if(!env.B46_STAGE_STATS_KV)return json({ok:false,error:'STAGE_SNAPSHOT_STORAGE_MISSING'},503);
       try{
-        const entry=await env.B46_STAGE_STATS_KV.get('verified-full-gzip-v1','arrayBuffer');
         const metadata=await env.B46_STAGE_STATS_KV.get('verified-full-meta-v1','json');
+        const candidate=metadata?.schema===2 && typeof metadata.key==='string' &&
+             /^verified-full-gzip-v2-[0-9a-f]{32}$/.test(metadata.key)
+             ? metadata.key : 'verified-full-gzip-v1';
+        let entry=await env.B46_STAGE_STATS_KV.get(candidate,'arrayBuffer');
+        let fallbackUsed=false;
+        // Cloudflare KV is eventually consistent across PoPs. A new manifest can be
+        // visible before its new immutable blob; serve a previously verified version.
+        if(!entry && metadata?.schema===2 && Array.isArray(metadata.previousKeys)){
+          for(const previous of metadata.previousKeys.slice(0,2)){
+            if(!/^verified-full-gzip-v2-[0-9a-f]{32}$/.test(previous))continue;
+            entry=await env.B46_STAGE_STATS_KV.get(previous,'arrayBuffer');
+            if(entry){fallbackUsed=true;break}
+          }
+        }
         if(!entry||!metadata?.savedAt||!metadata?.ledgerTotal||
-           Date.now()-Number(metadata.savedAt)>86400000)
+           Date.now()-Number(metadata.savedAt)>259200000)
           return json({ok:false,error:'STAGE_SNAPSHOT_NOT_READY'},503);
         return new Response(entry,{status:200,headers:{
           ...baseHeaders,'content-type':'application/octet-stream',
           'vary':'Accept-Encoding',
-          'x-b46-stage-snapshot':'VERIFIED_SAVED','x-b46-stage-snapshot-at':String(metadata.savedAt),
+          'x-b46-stage-snapshot':fallbackUsed?'VERIFIED_PREVIOUS':'VERIFIED_SAVED',
+          'x-b46-stage-snapshot-at':String(metadata.savedAt),
           'x-b46-read-path':'STAGING_KV'
         }});
       }catch(error){

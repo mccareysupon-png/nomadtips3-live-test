@@ -3,7 +3,10 @@ name: B46 precompute full verified statistics snapshot to STAGING KV only
 on:
   push:
     branches: [chatgpt/ball46-statistics-ui-v1]
-    paths: ['.github/workflows/b46-staging-kv-snapshot-build-20261116.yml']
+    paths:
+      - '.github/workflows/b46-staging-kv-snapshot-build-20261116.yml'
+      - 'chatgpt-statistics-ui/stage-kv-sync.mjs'
+      - 'chatgpt-statistics-ui/.stage-snapshot-trigger.txt'
   workflow_dispatch:
 permissions: {contents: read}
 concurrency: {group: b46-stage-stats-kv-build, cancel-in-progress: false}
@@ -12,84 +15,18 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 9
     steps:
-      - name: Read complete public paged Ledger, verify all counts, gzip and write ONLY staging KV
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Validate staging-only generation and settlement source contract
+        run: |
+          node --check chatgpt-statistics-ui/stage-kv-sync.mjs
+          node chatgpt-statistics-ui/test-stage-kv-sync.mjs
+      - name: Read public source and atomically update ONLY STAGING KV
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
-          node <<'NODE'
-          const {gzipSync}=require('node:zlib'),{createHash}=require('node:crypto');
-          const namespace='f144dc8b6525477984067f7ab5762924',
-                acct='62cb0db544160e6591342abd6b4f35cc',
-                base='https://api.cloudflare.com/client/v4/accounts/'+acct+'/storage/kv/namespaces/'+namespace+'/values/',
-                api='https://www.ball46.com/api/engine/statistics';
-          const names={WIN:'win',LOSS:'loss',PUSH:'push',HALF_WIN:'halfWin',HALF_LOSS:'halfLoss'};
-          const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-          const signature=j=>JSON.stringify([j.ledgerTotal,j.total,j.pending,j.unresolved,j.win,j.loss,j.push,j.halfWin,j.halfLoss,j.ledgerUpdatedAt]);
-          const outcome=row=>String(row?.result||row?.settlement||row?.outcome||'').trim().toUpperCase();
-          const settled=row=>['WIN','LOSS','PUSH','HALF_WIN','HALF_LOSS'].includes(outcome(row)) &&
-              (!row.status||String(row.status).toUpperCase()==='SETTLED');
-          async function page(cursor){
-            let error;
-            for(let attempt=0;attempt<3;attempt++){
-              try{
-                const u=new URL(api),q=u.searchParams;
-                q.set('paged','1');if(cursor)q.set('cursor',cursor);q.set('_',String(Date.now()+attempt));
-                const r=await fetch(u,{signal:AbortSignal.timeout(20000),headers:{accept:'application/json'}});
-                if(!r.ok){error=Error('SOURCE_HTTP_'+r.status);if(attempt<2&&[502,503,504,599].includes(r.status)){await sleep(250*(attempt+1));continue}throw error}
-                if(!(r.headers.get('content-type')||'').includes('application/json'))throw Error('NON_JSON_SOURCE');
-                const j=await r.json();if(j.ok!==true||!Array.isArray(j.rows))throw Error('INVALID_PAGE');
-                return j;
-              }catch(e){error=e;if(attempt===2)break;await sleep(250*(attempt+1))}
-            }
-            throw error;
-          }
-          async function readVerified(){
-            let first=await page(),current=first,seen=new Set(),cursors=new Set(),all=[];
-            while(true){
-              if(signature(current)!==signature(first))throw Error('SOURCE_CHANGED_DURING_PAGINATION');
-              for(const row of current.rows){
-                if(!row?.id||seen.has(String(row.id)))throw Error('DUPLICATE_OR_MISSING_SIGNAL_ID');
-                seen.add(String(row.id));all.push(row);
-              }
-              if(!current.nextCursor){if(current.hasMore)throw Error('MISSING_CURSOR');break}
-              if(!current.rows.length||cursors.has(current.nextCursor))throw Error('CURSOR_NOT_ADVANCING');
-              cursors.add(current.nextCursor);
-              current=await page(current.nextCursor);
-              if(cursors.size>150)throw Error('UNBOUNDED_PAGES');
-            }
-            if(all.length!==first.ledgerTotal)throw Error('LEDGER_LENGTH_MISMATCH');
-            const done=all.filter(settled),counts=Object.fromEntries(Object.keys(names).map(k=>[k,0]));
-            for(const row of done)counts[outcome(row)]++;
-            if(done.length!==first.total)throw Error('SETTLED_LENGTH_MISMATCH');
-            for(const [key,field] of Object.entries(names))if(counts[key]!==first[field])throw Error('SOURCE_COUNT_MISMATCH_'+field);
-            if(all.filter(r=>r.status==='PENDING').length!==first.pending||
-               all.filter(r=>r.status==='UNRESOLVED').length!==first.unresolved)throw Error('PENDING_COUNT_MISMATCH');
-            return {...first,rows:all,returned:all.length,nextCursor:null,hasMore:false,
-                snapshotSavedAt:Date.now(),snapshotMode:'B46_STAGING_VERIFIED_PUBLIC_LEDGER_V1',stale:true};
-          }
-          async function put(key,body,type){
-            const r=await fetch(base+key,{method:'PUT',
-              headers:{Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN,'Content-Type':type},
-              body,signal:AbortSignal.timeout(45000)});
-            const j=await r.json();
-            if(!r.ok||!j.success)throw Error('STAGING_KV_WRITE_FAILED_'+key+'_'+r.status+':'+JSON.stringify(j.errors?.map(e=>e.code)));
-          }
-          (async()=>{
-            if(!process.env.CLOUDFLARE_API_TOKEN)throw Error('KV_TOKEN_MISSING');
-            let snapshot=null;
-            for(let attempt=0;attempt<2;attempt++){
-              try{snapshot=await readVerified();break}
-              catch(e){console.log('B46_STAGE_SNAPSHOT_ATTEMPT='+JSON.stringify({attempt:attempt+1,error:e.message}));if(attempt===1)throw e}
-            }
-            const raw=Buffer.from(JSON.stringify(snapshot)),zipped=gzipSync(raw,{level:6});
-            if(zipped.length>24000000)throw Error('KV_TOO_LARGE');
-            const hash=createHash('sha256').update(zipped).digest('hex');
-            const metadata={savedAt:snapshot.snapshotSavedAt,ledgerTotal:snapshot.ledgerTotal,
-              settled:snapshot.total,rawBytes:raw.length,gzipBytes:zipped.length,sha256:hash,
-              source:'read-only public Production',target:'STAGING_KV_ONLY'};
-            console.log('B46_STAGE_VERIFIED_SOURCE='+JSON.stringify(metadata));
-            await put('verified-full-gzip-v1',zipped,'application/octet-stream');
-            await put('verified-full-meta-v1',JSON.stringify(metadata),'application/json');
-            console.log('B46_STAGE_KV_WRITE=SUCCESS_NO_PRODUCTION_MUTATIONS');
-          })().catch(e=>{console.error('B46_STAGE_BUILD_FAILED='+String(e));process.exitCode=1});
-          NODE
+          node chatgpt-statistics-ui/stage-kv-sync.mjs
