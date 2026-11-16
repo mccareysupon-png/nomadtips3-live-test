@@ -221,6 +221,7 @@ function mount(){
    nativeShell.setAttribute('data-b46-perf-shell','');
    nativeHost.replaceChildren(nativeShell);
  }
+ nativeShell.style.setProperty('display','block','important');
  nativeShell.replaceChildren(preview);
  document.documentElement.classList.add('b46-fast-v1-preview');
  diag.status='fast-preview-visible';diag.fastPaintMs=Math.round(performance.now()-START);
