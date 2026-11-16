@@ -10,3 +10,5 @@ Candidate 3: log Ledger/native DOM when the full-history transition does not fin
 Candidate 4: Cloudflare new version visibility delay bounded retry; do not activate.
 
 Owner-approved activation V1: candidate 6a1b4b35-39cc-4d0d-aec9-21ae64962b8b passed PC/mobile, native history, AH and 503. Validate fresh inactive candidate again, then 100% activate with automatic rollback on failed live QA.
+
+Candidate 5: original direct API 599 skip, stable content-signature excluding ledgerUpdatedAt sync clock, bounded verified cursor-page/whole-ledger retry; require source syntax/parity QA; no Production activation until pass.
