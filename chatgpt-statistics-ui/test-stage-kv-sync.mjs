@@ -41,3 +41,44 @@ const big=createCompactSummary({...good,byMarket:{AH:{note:'x'.repeat(140000)}}}
 assert.equal(big.summary.marketDetailsDeferred,true);
 assert(!Object.hasOwn(big.summary,'byMarket'));
 console.log('B46_STAGING_COMPACT_HEAD=PASS',{bytes:fast.bytes,noProductionWrites:true});
+
+
+import {buildVerifiedGraph,verifyChartSourceContract} from './chart-series-stage.mjs';
+// Regression against the original P/L, ROI, win-credit and Bangkok-day behavior.
+const fixture=[
+ {id:'g1',status:'SETTLED',result:'WIN',odds:2,settledAt:'2026-11-15T01:00:00Z'},
+ {id:'g2',status:'SETTLED',result:'HALF_LOSS',settledAt:'2026-11-15T02:00:00Z'},
+ {id:'g3',status:'SETTLED',result:'HALF_WIN',odds:3,settledAt:'2026-11-16T04:00:00Z'},
+ {id:'g4',status:'SETTLED',result:'PUSH',odds:1.8,settledAt:'2026-11-16T05:00:00Z'},
+ {id:'g5',status:'SETTLED',result:'LOSS',settledAt:'2026-11-16T06:00:00Z'},
+ {id:'g6',status:'PENDING',result:'',settledAt:'2026-11-16T07:00:00Z'}
+];
+const graph=buildVerifiedGraph(fixture,Date.parse('2026-11-16T08:00:00Z')).result;
+assert.equal(graph.summary.rows,5);
+assert.equal(graph.summary.wins,2);
+assert.equal(graph.summary.losses,2);
+assert.equal(graph.summary.pushes,1);
+assert.equal(graph.summary.net,0.5);
+assert.equal(graph.summary.stake,5);
+assert.equal(graph.summary.priced,5);
+assert.equal(graph.summary.roi,10);
+assert.equal(graph.summary.maxDD,1);
+assert.equal(graph.summary.avgOdds,(2+3+1.8)/3);
+assert.equal(graph.series.units.length,2);
+assert.equal(graph.series.units[0].value,0.5);
+assert.equal(graph.series.units[1].value,0.5);
+assert.equal(graph.series.roi[1].value,10);
+assert.equal(graph.series.rate.at(-1).value,37.5);
+assert.equal(graph.range,'all');
+assert.equal(graph.market,'all');
+assert(!Object.hasOwn(graph,'rows'));
+const unpriced=buildVerifiedGraph([
+ {id:'p',status:'SETTLED',result:'WIN',odds:null,settledAt:'2026-11-16T01:00:00Z'},
+ {id:'q',status:'SETTLED',result:'LOSS',settledAt:'2026-11-16T02:00:00Z'}
+],Date.parse('2026-11-16T08:00:00Z')).result;
+assert.equal(unpriced.summary.rows,2);
+assert.equal(unpriced.summary.stake,1);
+assert.equal(unpriced.summary.net,-1);
+assert.equal(unpriced.series.units.length,1);
+assert.throws(()=>verifyChartSourceContract('other'),/CHART_SOURCE_MISSING/);
+console.log('B46_STAGING_GRAPH_FORMULA_UNIT=PASS',{cases:22,source:'CURRENT_CHART_FORMULA',productionWrites:0});
