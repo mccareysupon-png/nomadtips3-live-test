@@ -1,0 +1,50 @@
+name: B46 Stats loader failure trace READ ONLY
+on:
+  push:
+    branches: [chatgpt/ball46-statistics-ui-v1]
+    paths: ['.github/workflows/b46-statistics-loader-failure-readonly-20261116.yml']
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  trace:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - name: Install playwright
+        run: |
+          npm install --prefix /tmp/b46trace --no-fund --no-audit playwright@1.65.1
+          /tmp/b46trace/node_modules/.bin/playwright install --with-deps chromium
+      - name: Public website read-only load and contract trace
+        run: |
+          cat >/tmp/b46trace.cjs <<'NODE'
+          const {chromium}=require('/tmp/b46trace/node_modules/playwright');
+          async function run(name,width,browser){
+            const ctx=await browser.newContext({viewport:{width,height:844},timezoneId:'Asia/Bangkok'});
+            const page=await ctx.newPage();
+            const errors=[],responses=[],requests=[],finished=[];
+            page.on('console',msg=>{if(['warning','error'].includes(msg.type())&&errors.length<30)errors.push({type:msg.type(),text:msg.text().slice(0,270)})});
+            page.on('pageerror',err=>errors.push({type:'PAGE_ERROR',text:err.message.slice(0,270)}));
+            page.on('request',req=>{if(new URL(req.url()).pathname==='/api/engine/statistics'&&requests.length<100){const u=new URL(req.url());requests.push({queryKeys:[...u.searchParams.keys()],page:u.searchParams.get('page'),paged:u.searchParams.get('paged'),limit:u.searchParams.get('limit'),cursorUsed:u.searchParams.has('cursor'),generationUsed:u.searchParams.has('generation')})}});
+            page.on('response',resp=>{
+              if(new URL(resp.url()).pathname!=='/api/engine/statistics')return;
+              const record={status:resp.status(),urlPath:'/api/engine/statistics',contentType:resp.headers()['content-type']||null};
+              responses.push(record);
+              if((resp.status()!==200||responses.filter(x=>x.status===200).length<=2)&&responses.length<=8){
+                finished.push(resp.json().then(data=>{
+                  const keys=Object.keys(data||{});
+                  record.shape={ok:data.ok,keys:keys.slice(0,32),ledgerTotal:data.ledgerTotal,statisticsLedgerVersion:data.statisticsLedgerVersion,statisticsGeneration:data.statisticsGeneration,settlementRevision:data.settlementRevision,version:data.version,rowCount:Array.isArray(data.rows)?data.rows.length:null,ledgerRowCount:Array.isArray(data.ledgerRows)?data.ledgerRows.length:null,hasMore:data.hasMore||data.more||null,cursorPresent:!!data.nextCursor,err:data.error||null};
+                }).catch(e=>record.readError=e.name))
+              }
+            });
+            const entry=await page.goto('https://www.ball46.com/?view=statistics',{waitUntil:'domcontentloaded',timeout:45000});
+            await page.waitForTimeout(48000);
+            const state=await page.evaluate(()=>{const data=window.BALL46_STATISTICS_DATA;let snap=null;try{snap=data?.getSnapshot?.()}catch(e){return{snapshotError:e.message}}return{dataApi:!!data,apiKeys:data?Object.keys(data).slice(0,15):[],snapOK:snap?.ok,keys:snap?Object.keys(snap).slice(0,15):[],rows:Array.isArray(snap?.ledgerRows)?snap.ledgerRows.length:null,menu:document.querySelector('[data-sp-record-count]')?.textContent?.trim(),errorNotice:document.body.innerText.includes('temporarily unavailable'),ready:document.readyState}});
+            await Promise.allSettled(finished);
+            console.log('B46_LOADER_TRACE='+JSON.stringify({name,html:entry?.status(),requestsCount:requests.length,requestsFirst:requests.slice(0,6),requestsLast:requests.slice(-4),responses:responses.slice(0,10),errors,state}));
+            await ctx.close();
+          }
+          (async()=>{const browser=await chromium.launch({headless:true});await Promise.all([run('PC',1366,browser),run('MOBILE',390,browser)]);await browser.close();console.log('B46_READONLY_DONE')})().catch(e=>{console.error('B46_TRACE_FATAL='+String(e));process.exitCode=1});
+          NODE
+          node /tmp/b46trace.cjs
