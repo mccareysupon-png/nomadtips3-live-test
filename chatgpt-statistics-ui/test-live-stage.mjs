@@ -55,6 +55,24 @@ try{
       unitsPoints:graph.series.units.length,net:graph.summary.net,stageOnly:true}));
     const started=Date.now(),resp=await page.goto(base+'/?view=statistics',{waitUntil:'domcontentloaded',timeout:45000});
     assert.equal(resp?.status(),200,profile.name+':STAGE_ENTRY_NOT_200');
+    await page.waitForFunction(()=>{
+      const x=window.__B46_FAST_CHART_DIAG;
+      return x?.status==='fast-preview-visible' || x?.status==='native-ready';
+    },null,{timeout:10000});
+    const early=await page.evaluate(()=>({
+      ...window.__B46_FAST_CHART_DIAG,
+      visible:!!document.querySelector('#b46-stage-fast-preview')?.getClientRects().length,
+      bodyView:document.body?.dataset.workspaceView,
+      nativeAlready:!!document.querySelector('#b46-finance-chart-card svg.f46-svg')?.getClientRects().length
+    }));
+    assert(early.fastPaintMs>0&&early.fastPaintMs<7500,
+      profile.name+':FAST_FIRST_PAINT_TOO_SLOW_'+early.fastPaintMs);
+    assert.equal(early.pointCount,graph.series.units.length,
+      profile.name+':FAST_CHART_POINTS_NOT_VERIFIED');
+    assert.equal(early.net,graph.summary.net,
+      profile.name+':FAST_CHART_NET_NOT_VERIFIED');
+    console.log('B46_FAST_FIRST_PAINT='+JSON.stringify({profile:profile.name,...early}));
+
     const ready=()=> {
       const data=window.BALL46_STATISTICS_DATA?.getSnapshot?.();
       const chart=document.querySelector('#b46-finance-chart-card svg.f46-svg');
@@ -70,6 +88,11 @@ try{
       null,{timeout:15000});
     }
     const coldMs=Date.now()-started;
+    await page.waitForFunction(()=>!document.querySelector('#b46-stage-fast-preview'),null,{timeout:5000});
+    const fastDiag=await page.evaluate(()=>window.__B46_FAST_CHART_DIAG||{});
+    assert.equal(fastDiag.status,'native-ready',profile.name+':FAST_PREVIEW_NOT_REPLACED');
+    assert(fastDiag.nativeReadyMs>=fastDiag.fastPaintMs,profile.name+':FAST_TIMING_INVALID');
+
     const cold=await page.evaluate(()=>{
       const data=window.BALL46_STATISTICS_DATA.getSnapshot();
       const chart=document.querySelector('#b46-finance-chart-card svg.f46-svg');
