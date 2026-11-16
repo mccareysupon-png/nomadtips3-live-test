@@ -1,5 +1,6 @@
 // BALL46 B46-STAT-UI-01 current frontend STAGING ONLY.
 // Verified gzip binary fast source guard and cursor fallback (staging-only release 2026-11-16).
+// STAGING: single-page revision check before any 33-page historical refresh; no Production mutation.
 // GET-only mirror of current public site, scoped CSS + verified loader-recovery patch only.
 // No Production writes, no secrets forwarded, and no Production Cloudflare Worker mutation.
 import css from './live-staging-overlay.css';
