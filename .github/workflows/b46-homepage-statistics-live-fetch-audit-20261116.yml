@@ -1,0 +1,43 @@
+name: BALL46 homepage live Ledger fetch trace READ ONLY
+on:
+  push:
+    branches: [chatgpt/ball46-statistics-ui-v1]
+    paths: ['.github/workflows/b46-homepage-statistics-live-fetch-audit-20261116.yml']
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - name: Install Playwright Chromium only
+        run: |
+          npm install --prefix /tmp/b46-homepage --no-save --no-audit --no-fund playwright@1.65.1
+          /tmp/b46-homepage/node_modules/.bin/playwright install --with-deps chromium
+      - name: Trace current homepage historical read without writes
+        run: |
+          node <<'NODE'
+          const {chromium}=require('/tmp/b46-homepage/node_modules/playwright');
+          (async()=>{
+           const browser=await chromium.launch();
+           const page=await browser.newPage({viewport:{width:1366,height:900}});
+           const api=[],errors=[];
+           page.on('pageerror',e=>errors.push(String(e.message).slice(0,180)));
+           page.on('response',r=>{if(new URL(r.url()).pathname==='/api/engine/statistics')api.push({status:r.status(),bytes:r.headers()['content-length']||null,url:r.url().slice(0,120)})});
+           await page.addInitScript(()=>{
+             const old=window.fetch;
+             window.__B46_HOMEPAGE_FETCH_TRACE=[];
+             window.fetch=function(input,...options){
+               const url=typeof input==='string'?input:String(input?.url||'');
+               if(url.includes('/api/engine/statistics'))window.__B46_HOMEPAGE_FETCH_TRACE.push({url:url.slice(0,150),stack:new Error('STAT_CALL').stack?.slice(0,750)});
+               return old.call(this,input,...options);
+             };
+           });
+           await page.goto('https://www.ball46.com/',{waitUntil:'domcontentloaded',timeout:60000});
+           await page.waitForTimeout(13000);
+           const traces=await page.evaluate(()=>window.__B46_HOMEPAGE_FETCH_TRACE);
+           console.log('B46_HOME_LEDGER_TRACE='+JSON.stringify({api:api.length,first:api.slice(0,7),last:api.slice(-5),callers:traces.slice(0,7),pageErrors:errors}));
+           await browser.close();
+          })().catch(e=>{console.error('B46_HOME_LEDGER_TRACE_FAILED='+String(e));process.exitCode=1});
+          NODE
