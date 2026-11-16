@@ -10,8 +10,13 @@ const META='verified-full-meta-v1';
 const RESULTS={WIN:'win',LOSS:'loss',PUSH:'push',HALF_WIN:'halfWin',HALF_LOSS:'halfLoss'};
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 export function signature(x){
+  // ledgerUpdatedAt is a SYNC clock; it changes even when Ledger content does not.
+  // Stage consistency check uses aggregate counts, market totals and schema/formula revision.
+  const markets=x.byMarket&&typeof x.byMarket==='object'
+    ? Object.keys(x.byMarket).sort().map(key=>[key,x.byMarket[key]]) : [];
   return JSON.stringify([x.ledgerTotal,x.total,x.pending,x.unresolved,x.win,x.loss,
-    x.push,x.halfWin,x.halfLoss,x.ledgerUpdatedAt]);
+    x.push,x.halfWin,x.halfLoss,x.version,x.settlementRevision,
+    x.statisticsLedgerVersion,x.statisticsContentRevision||null,markets]);
 }
 const outcome=r=>String(r?.result||r?.settlement||r?.outcome||'').trim().toUpperCase();
 const isSettled=r=>Object.hasOwn(RESULTS,outcome(r))&&
@@ -108,7 +113,7 @@ export async function execute(){
   // Fast path: an unchanged revision is verified with just ONE cursor page.
   const latest=await readPage();
   if(before?.schema===2&&before.key&&before.sourceSignature===signature(latest)){
-    await apiPut(META,JSON.stringify({...before,savedAt:Date.now(),checkedAt:Date.now()}),
+    await apiPut(META,JSON.stringify({...before,checkedAt:Date.now()}),
       'application/json',token);
     console.log('B46_STAGE_SYNC='+JSON.stringify({mode:'UNCHANGED',ledgerTotal:latest.ledgerTotal,sourceSignature:signature(latest),stageOnly:true}));
     return {changed:false,ledgerTotal:latest.ledgerTotal};

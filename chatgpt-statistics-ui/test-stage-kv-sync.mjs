@@ -13,10 +13,11 @@ assert.equal(good.rows.length,3);
 assert.equal(good.stale,true);assert.equal(good.hasMore,false);
 assert.equal(verifyRows(row,[a,b,c]),true);
 assert.equal(signature(good),signature(row));
-await assert.rejects(buildSnapshot(async cursor=>cursor?{...page2,ledgerUpdatedAt:'v2'}:page1),/REVISION_CHANGED_DURING_PAGES/);
+assert.equal(signature({...row,ledgerUpdatedAt:100}),signature({...row,ledgerUpdatedAt:200}));
+await assert.rejects(buildSnapshot(async cursor=>cursor?{...page2,total:3}:page1),/REVISION_CHANGED_DURING_PAGES/);
 let count=0;
 await assert.rejects(buildSnapshot(async cursor=>{
-  count++;return count===3?{...page1,ledgerUpdatedAt:'v2'}:cursor?page2:page1;
+  count++;return count===3?{...page1,pending:2}:cursor?page2:page1;
 }),/REVISION_CHANGED_AFTER_FULL_READ/);
 assert.throws(()=>verifyRows(row,[a,b,b]),/MISSING_OR_DUPLICATE_ID/);
 assert.throws(()=>verifyRows(row,[a,b]),/LEDGER_LENGTH_MISMATCH/);
