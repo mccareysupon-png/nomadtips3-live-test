@@ -33,7 +33,7 @@ jobs:
           node --check "$ROOT/verify-remove-moved-kpis-browser.mjs"
           grep -Fq "EXPECTED='183f194b-0354-4366-8bca-9b17ca6458b0'" "$ROOT/deploy-remove-top-kpi-20261117.mjs"
           grep -Fq "MODULE='statistics-menu-entry-20261114.mjs'" "$ROOT/deploy-remove-top-kpi-20261117.mjs"
-          grep -Fq "B46_REMOVE_MOVED_TOP_KPIS_SOURCE_20261117" "$ROOT/remove-moved-kpi-strip.mjs"
+          grep -Fq "B46_HIDE_MOVED_TOP_KPI_SOURCE_20261117" "$ROOT/remove-moved-kpi-strip.mjs"
           test -n "$CLOUDFLARE_API_TOKEN"
       - name: Install isolated Chromium
         run: |
