@@ -1,0 +1,35 @@
+name: B46 identify active statistics loader file READ ONLY
+on:
+  push:
+    branches: [chatgpt/ball46-statistics-ui-v1]
+    paths: ['.github/workflows/b46-find-loader-file-readonly-20261116.yml']
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Inspect current public scripts; no writes
+        run: |
+          node - <<'NODE'
+          (async()=>{
+            const origin='https://www.ball46.com';
+            const h=await (await fetch(origin+'/?view=statistics',{signal:AbortSignal.timeout(20000)})).text();
+            const srcs=[...h.matchAll(/<script\b[^>]*\bsrc\s*=\s*["']([^"']+)["']/gi)].map(x=>x[1]);
+            console.log('SCRIPTS='+JSON.stringify(srcs));
+            for(const src of srcs){
+              const u=new URL(src,origin);
+              if(u.hostname!=='www.ball46.com'&&u.hostname!=='ball46.com')continue;
+              if(!/stat|work|source|ledger|app|sync|loader|dashboard/i.test(u.pathname))continue;
+              try{
+                const r=await fetch(u,{signal:AbortSignal.timeout(20000)}),s=await r.text();
+                const needles=['Statistics direct read fallback','BALL46_STATISTICS_DATA','STATISTICS_GENERATION','statistics-snapshot','Statistics changed during pagination','B46_V13_CA'];
+                console.log('CHECK='+JSON.stringify({path:u.pathname,http:r.status,bytes:s.length,matches:needles.filter(x=>s.includes(x))}));
+                for(const needle of needles){
+                  const n=s.indexOf(needle);if(n>=0)console.log('SNIP='+JSON.stringify({path:u.pathname,needle,offset:n,txt:s.slice(Math.max(0,n-3200),Math.min(s.length,n+4000))}));
+                }
+              }catch(e){console.log('SCRIPT_FAIL='+JSON.stringify({path:u.pathname,error:String(e).slice(0,100)}))}
+            }
+          })().catch(e=>console.log('INSPECT_FAIL='+String(e)));
+          NODE
