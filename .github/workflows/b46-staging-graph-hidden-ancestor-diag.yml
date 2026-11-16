@@ -1,0 +1,45 @@
+name: B46 stage visible graph ancestor diagnosis READ ONLY
+on:
+  push:
+    branches: [chatgpt/ball46-statistics-ui-v1]
+    paths: ['.github/workflows/b46-staging-graph-hidden-ancestor-diag.yml']
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - name: Install Chromium
+        run: |
+          npm install --prefix /tmp/b46visible --no-fund --no-audit playwright@1.65.1
+          /tmp/b46visible/node_modules/.bin/playwright install --with-deps chromium
+      - name: Capture verified snapshot chart CSS chain at three and thirty seconds
+        run: |
+          node <<'NODE'
+          const {chromium}=require('/tmp/b46visible/node_modules/playwright');
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const page=await browser.newPage({viewport:{width:1366,height:900}});
+            await page.goto('https://ball46-chat-statistics-live-ui-test-20261115.mccarey-supon.workers.dev/?view=statistics',{waitUntil:'domcontentloaded',timeout:45000});
+            for(const second of [3,8,30]){
+              await page.waitForTimeout(second===3?3000:second===8?5000:22000);
+              const state=await page.evaluate(()=>{
+                const e=document.querySelector('#b46-finance-chart-card svg.f46-svg'),d=window.BALL46_STATISTICS_DATA?.getSnapshot?.();
+                const chain=[];let el=e;
+                while(el&&chain.length<15){
+                  const c=getComputedStyle(el),r=el.getBoundingClientRect();
+                  chain.push({tag:el.tagName,id:el.id,cls:String(el.className?.baseVal||el.className||'').slice(0,90),hidden:el.hidden,
+                    display:c.display,visibility:c.visibility,opacity:c.opacity,contentVisibility:c.contentVisibility,
+                    rects:el.getClientRects().length,w:Math.round(r.width),h:Math.round(r.height),parent:el.parentElement?.tagName||null});
+                  el=el.parentElement;
+                }
+                return{view:document.body?.dataset.workspaceView,ledger:d?.ledgerTotal,stale:d?.stale,
+                  chart:!!e,chain,section:document.querySelector('.sp-trend')?.outerHTML.slice(0,300)};
+              });
+              console.log('B46_GRAPH_VISIBILITY='+JSON.stringify({second,state}));
+            }
+            await browser.close();
+          })().catch(e=>{console.error('B46_GRAPH_VISIBILITY_FATAL='+String(e));process.exitCode=1});
+          NODE
