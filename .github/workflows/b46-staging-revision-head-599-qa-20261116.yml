@@ -33,7 +33,7 @@ jobs:
                 const marker='window.BALL46_STATISTICS_DATA = Object.freeze(';
                 if(text.includes(marker) && text.includes('snapshot unchanged; skipped full historical refresh')){
                   sourcePatched=true;
-                  await route.fulfill({status:200,contentType:'application/javascript',body:text.replace(marker,'window.__B46_STAGE_QA_REFRESH=b46RefreshFull;\\n'+marker)});
+                  await route.fulfill({status:200,contentType:'application/javascript',body:text.replace(marker,'window.__B46_STAGE_QA_REFRESH=b46RefreshFull;'+String.fromCharCode(10)+marker)});
                 }else await route.fulfill({response:res,body:text});
               });
               await page.route('**/api/engine/statistics**',async route=>{
