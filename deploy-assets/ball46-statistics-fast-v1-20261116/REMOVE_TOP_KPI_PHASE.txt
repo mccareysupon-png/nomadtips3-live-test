@@ -4,3 +4,5 @@ Exact active baseline: 183f194b-0354-4366-8bca-9b17ca6458b0.
 Read-only source test 43980954737 PASSED; legacy 7-card HTML is in <section class="sp-kpis">, and 8th settled-days added from native JS only if legacy row exists. Permanent deletion from HTML sanitizer, not just CSS hiding.
 Only target Worker module statistics-menu-entry-20261114.mjs; preserve all other Worker modules, Engine, Ledger, payout formulas, snapshot provider and already approved UI.
 This phase: build inactive candidate, test PC Total, 1X2, AH, mobile, history takeover and no transient reappearance; DO NOT ACTIVATE yet.
+
+Candidate correction: first attempt 43981456018 aborted before activation because fully deleting KPI DOM caused old finance summary card to lose its 8 metrics. All Production remained unchanged. Preserve legacy KPI DOM strictly as a hidden data source; add HTML-head no-flash CSS and inline hidden/aria-hidden, keeping it visually absent at every paint. Browser QA must require all 8 relocated finance tiles and 3 outcomes after loading native history. Still inactive Candidate only.
