@@ -30,6 +30,35 @@ export default {
     if (u.pathname === '/_b46_ui_overlay.css') return new Response(request.method==='HEAD'?null:css,{
       headers:{...baseHeaders,'content-type':'text/css; charset=UTF-8','x-b46-overlay':stamp}
     });
+    // STAGING ONLY: exact all-market / all-time graph built once from full verified Ledger.
+    // Other market/range/filter selections MUST keep using the original renderer.
+    if(u.pathname==='/_b46_stage_stats_chart'){
+      if(!env.B46_STAGE_STATS_KV)return json({ok:false,error:'STAGE_KV_MISSING'},503);
+      try{
+        const meta=await env.B46_STAGE_STATS_KV.get('verified-full-meta-v1','json');
+        if(meta?.schema!==2||!/^verified-chart-v1-[0-9a-f]{32}$/.test(meta.chartKey||'')||
+           !Number.isFinite(Number(meta.savedAt))||
+           Date.now()-Number(meta.checkedAt||meta.savedAt)>259200000)
+          return json({ok:false,error:'STAGE_GRAPH_NOT_READY'},503);
+        const raw=await env.B46_STAGE_STATS_KV.get(meta.chartKey,'text');
+        if(!raw)return json({ok:false,error:'STAGE_GRAPH_KV_NOT_VISIBLE'},503);
+        const g=JSON.parse(raw);
+        if(g?.ok!==true||g.schema!==1||g.source!=='VERIFIED_FULL_LEDGER_ONLY'||
+           g.market!=='all'||g.range!=='all'||g.variant!=='all'||g.filter!=='all'||
+           g.asOf!==meta.savedAt||g.summary?.rows!==meta.settled||
+           !Array.isArray(g.series?.units)||!Array.isArray(g.series?.roi)||
+           !Array.isArray(g.series?.rate)||
+           Object.hasOwn(g,'rows'))
+          return json({ok:false,error:'STAGE_GRAPH_SOURCE_MISMATCH'},503);
+        return new Response(request.method==='HEAD'?null:raw,{status:200,headers:{
+          ...baseHeaders,'content-type':'application/json; charset=UTF-8',
+          'x-b46-read-path':'STAGING_VERIFIED_GRAPH_KV',
+          'x-b46-snapshot-at':String(meta.savedAt)
+        }});
+      }catch(error){
+        return json({ok:false,error:'STAGE_GRAPH_READ_FAILED'},503);
+      }
+    }
     // STAGING ONLY: O(1) compact original-source aggregates, never full historical rows.
     // The manifest is published only after full + compact immutable blobs pass hash readback.
     if(u.pathname==='/_b46_stage_stats_summary'){
