@@ -1,0 +1,36 @@
+name: B46 Statistics top eight old KPI source READ ONLY
+on:
+  push:
+    branches: [chatgpt/ball46-statistics-ui-v1]
+    paths: ['.github/workflows/b46-top-eight-kpi-source-audit-20261117.yml']
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Read production index and scripts without writes
+        run: |
+          node <<'NODE'
+          (async()=>{
+           const urls=['https://www.ball46.com/?view=statistics',
+             'https://www.ball46.com/singlepage-workspace-343.js',
+             'https://www.ball46.com/longterm-performance-343.js'];
+           const tokens=['Current sample','Awaiting settlement','Winning signals','Losing signals',
+             'Neutral results','Push excluded','Recorded entry','First → latest settlement',
+             'SETTLED DAYS','sp-kpi','sp-stats-content','sp-stats-summary','b46-fast-v1-preview'];
+           for(const url of urls){
+            const res=await fetch(url,{headers:{'cache-control':'no-cache'},signal:AbortSignal.timeout(40000)});
+            const source=await res.text();
+            console.log('B46_KPI_AUDIT_URL='+JSON.stringify({path:new URL(url).pathname,bytes:source.length,http:res.status}));
+            for(const token of tokens){
+             let i=source.indexOf(token),count=0;
+             while(i>=0&&count<2){
+              console.log('B46_KPI_AUDIT_HIT='+JSON.stringify({path:new URL(url).pathname,token,offset:i,
+                context:source.slice(Math.max(i-1100,0),Math.min(i+1700,source.length))}));
+              count++;i=source.indexOf(token,i+token.length);
+             }
+            }
+           }
+          })().catch(e=>{console.error('B46_KPI_AUDIT_FAILED='+e);process.exitCode=1});
+          NODE
