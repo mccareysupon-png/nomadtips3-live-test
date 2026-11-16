@@ -1,0 +1,55 @@
+name: BALL46 FAST V1 owner approved candidate and conditional Production release
+on:
+  push:
+    branches: [chatgpt/ball46-statistics-ui-v1]
+    paths:
+      - 'deploy-assets/ball46-statistics-fast-v1-20261116/**'
+      - '.github/workflows/b46-fast-v1-production-20261116.yml'
+permissions: {contents: read}
+concurrency:
+  group: ball46-production-deploy
+  cancel-in-progress: false
+jobs:
+  validated-fast-v1:
+    if: contains(github.event.head_commit.message, '[owner-approved-ball46-fast-v1-candidate]') || contains(github.event.head_commit.message, '[owner-approved-ball46-fast-v1-activate]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 24
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      B46_APPROVED_FAST_V1: 'YES'
+      B46_V1_MODE: ${{ contains(github.event.head_commit.message, '[owner-approved-ball46-fast-v1-activate]') && 'activate' || 'candidate' }}
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - name: Strict V1 release input and scope validation
+        run: |
+          set -euo pipefail
+          ROOT="deploy-assets/ball46-statistics-fast-v1-20261116"
+          node --check "$ROOT/deploy.mjs"
+          node --check "$ROOT/verify-fast-browser.mjs"
+          node --check "$ROOT/prod-lazy-patch.mjs"
+          node --check "$ROOT/fast-client.js"
+          node --check "$ROOT/snapshot-worker.mjs"
+          test "$B46_APPROVED_FAST_V1" = 'YES'
+          test "$B46_V1_MODE" = 'candidate' -o "$B46_V1_MODE" = 'activate'
+          grep -Fq "EXPECTED='828ddb27-bec4-47f8-a41f-fc7469b0152a'" "$ROOT/deploy.mjs"
+          grep -Fq "SNAPSHOT_SERVICE='b46-stats-fast-v1-snapshot-20261116'" "$ROOT/deploy.mjs"
+          grep -Fq "CANDIDATE_VERIFIED_INACTIVE" "$ROOT/deploy.mjs"
+          if grep -Eq 'nomadtips3-engine-343.*versions' "$ROOT/snapshot-worker.mjs"; then
+            echo 'ABORT: engine version writes are forbidden'; exit 1
+          fi
+      - name: Install isolated headless Chromium for inactive and live QA
+        run: |
+          npm install --prefix deploy-assets/ball46-statistics-fast-v1-20261116/.runtime --no-audit --no-fund playwright@1.65.1
+          deploy-assets/ball46-statistics-fast-v1-20261116/.runtime/node_modules/.bin/playwright install --with-deps chromium
+      - name: Immutable current Production baseline to inactive candidate to QA; activate only in activation mode
+        run: node deploy-assets/ball46-statistics-fast-v1-20261116/deploy.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-fast-v1-audit-artifacts
+          path: deploy-assets/ball46-statistics-fast-v1-20261116/audit/
+          if-no-files-found: ignore
+          retention-days: 21
