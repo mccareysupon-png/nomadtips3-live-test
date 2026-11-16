@@ -9,6 +9,7 @@ import {patchCurrentStatisticsLoader} from './statistics-loader-staging-patch.mj
 import {patchIndexedStatisticsCache} from './indexed-stats-stage.mjs';
 import {stageSummaryScript} from './statistics-summary-layout-stage.mjs';
 import {stageFastChartScript} from './fast-chart-firstpaint-stage.mjs';
+import {patchStageLazyStatistics,patchStageLazyChart} from './lazy-detail-stage-patch.mjs';
 const ORIGIN = 'https://www.ball46.com';
 const stamp = 'B46-STAT-UI-01-real-ui-v1';
 const json = (data,status=200) => new Response(JSON.stringify(data),{
@@ -176,10 +177,12 @@ export default {
       const original=await upstream.text();
       const recovered=patchCurrentStatisticsLoader(original);
       const patched=recovered.status==='CURRENT_LOADER_PATCHED'?patchIndexedStatisticsCache(recovered.source):recovered;
+      const lazy=patchStageLazyStatistics(patched.source);
       h.set('content-type','application/javascript; charset=UTF-8');
       h.set('x-b46-staging-loader',patched.status);
+      h.set('x-b46-staging-lazy',lazy.status);
       h.set('x-b46-read-path','SERVICE_BINDING');
-      return new Response(patched.source,{status:upstream.status,headers:h});
+      return new Response(lazy.source,{status:upstream.status,headers:h});
     }
     // A scope-limited staging-only patch of the CURRENT chart module's own CSS:
     // style element from the renderer is appended after our HTML stylesheet on load.
@@ -202,9 +205,11 @@ export default {
           }
         }catch{}
       }
+      const lazy=patchStageLazyChart(patched);
       h.set('content-type','application/javascript; charset=UTF-8');
       h.set('x-b46-renderer-css',status);
-      return new Response(patched,{status:upstream.status,headers:h});
+      h.set('x-b46-staging-chart-lazy',lazy.status);
+      return new Response(lazy.source,{status:upstream.status,headers:h});
     }
     const ct=upstream.headers.get('content-type')||'';
     if (request.method==='GET' && upstream.ok && ct.includes('text/html')){
