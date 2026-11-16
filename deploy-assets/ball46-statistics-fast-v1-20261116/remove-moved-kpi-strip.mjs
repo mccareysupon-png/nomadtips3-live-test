@@ -12,6 +12,33 @@ export function removeMovedKpiStripFromMenu(moduleSource){
  const old=sanitizeStatsPage.toString();
  if(moduleSource.split(old).length!==2)throw Error('CURRENT_MENU_SANITIZER_SOURCE_DRIFT');
  if(old.split(' return clean;').length!==2)throw Error('SANITIZER_RETURN_ANCHOR_DRIFT');
+ const observerJS=[
+  "(()=>{",
+  " 'use strict';",
+  " const selector='.workspace-panel[data-workspace-panel=\"statistics\"] .b46v23-strip';",
+  " function seal(el){",
+  "   if(el.dataset.b46RelocatedSuppressed==='1')return;",
+  "   el.dataset.b46RelocatedSuppressed='1';",
+  "   el.style.setProperty('display','none','important');",
+  "   el.style.setProperty('height','0','important');",
+  "   el.style.setProperty('overflow','hidden','important');",
+  "   el.setAttribute('aria-hidden','true');",
+  "   el.tabIndex=-1;",
+  " }",
+  " function scan(node){",
+  "   if(node.nodeType!==1)return;",
+  "   if(node.matches?.(selector))seal(node);",
+  "   node.querySelectorAll?.(selector).forEach(seal);",
+  " }",
+  " const observer=new MutationObserver(records=>{",
+  "   for(const r of records)for(const node of r.addedNodes)scan(node);",
+  " });",
+  " observer.observe(document.documentElement,{childList:true,subtree:true});",
+  " if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>scan(document.documentElement),{once:true});",
+  " else scan(document.documentElement);",
+  "})();"
+ ].join('\n');
+ const observerTag='<script id="b46-relocated-strip-no-flash-20261117">'+observerJS+'</script>';
  const replacement=[
   " // B46_HIDE_MOVED_TOP_KPI_SOURCE_20261117",
   " const tag='<section class=\"sp-kpis\">';",
@@ -30,7 +57,8 @@ export function removeMovedKpiStripFromMenu(moduleSource){
   " if(!hidden.includes('</head>'))throw Error('HEAD_ANCHOR_MISSING');",
   " const guard='<style id=\"b46-moved-top-kpis-no-flash-20261117\">.workspace-panel[data-workspace-panel=\"statistics\"] .sp-kpis{display:none!important;height:0!important;margin:0!important;padding:0!important}html body .workspace.singlepage .workspace-panel[data-workspace-panel=\"statistics\"] .sp-stats-content.sp-stats-content>.b46v23-strip.b46v23-strip{display:none!important;max-height:0!important;height:0!important;overflow:hidden!important;margin:0!important;padding:0!important}html body .workspace.singlepage .workspace-panel[data-workspace-panel=\"statistics\"] .sp-stats-content.sp-stats-content .b46v23-strip-grid{display:none!important;max-height:0!important;overflow:hidden!important}</style>';",
   " if(hidden.includes('id=\"b46-moved-top-kpis-no-flash-20261117\"'))throw Error('DUPLICATE_GUARD');",
-  " return hidden.replace('</head>',guard+'</head>');"
+  " const noFlashObserver="+JSON.stringify(observerTag)+";",
+  " return hidden.replace('</head>',guard+noFlashObserver+'</head>');"
  ].join('\n');
  const rewritten=moduleSource.replace(old,old.replace(' return clean;',replacement));
  if(rewritten===moduleSource||!rewritten.includes(PATCH_TAG))
