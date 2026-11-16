@@ -1,0 +1,30 @@
+name: B46 inspect current statistics loader anchors READ ONLY
+on:
+  push:
+    branches: [chatgpt/ball46-statistics-ui-v1]
+    paths: ['.github/workflows/b46-staging-loader-anchor-inspect-20261116.yml']
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Read actual current public page, inspect loader only
+        run: |
+          node - <<'NODE'
+          (async()=>{
+            const r=await fetch('https://www.ball46.com/?view=statistics',{signal:AbortSignal.timeout(25000)}),s=await r.text();
+            console.log('PAGE_HTTP='+r.status+' SIZE='+s.length);
+            const needles=['Statistics direct read fallback','BALL46_STATISTICS_DATA','Statistics changed during pagination','statistics-snapshot','STATISTICS_SOURCE_CHANGED','ledgerUpdatedAt','function getSnapshot','async function load','api/engine/statistics','B46_V13_CA'];
+            for(const needle of needles){
+              let i=s.indexOf(needle),n=0;
+              while(i>=0&&n++<4){
+                const start=Math.max(0,i-3800),end=Math.min(s.length,i+4200);
+                const section=s.slice(start,end);
+                console.log('ANCHOR '+needle+' #'+n+' pos='+i+' CODE='+JSON.stringify(section));
+                i=s.indexOf(needle,i+needle.length);
+              }
+            }
+          })().catch(e=>console.error('INSPECT_ERROR='+String(e)));
+          NODE
