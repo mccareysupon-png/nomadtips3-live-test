@@ -63,8 +63,13 @@ try{
       ...window.__B46_FAST_CHART_DIAG,
       visible:!!document.querySelector('#b46-stage-fast-preview')?.getClientRects().length,
       bodyView:document.body?.dataset.workspaceView,
+      oldTrendVisible:(()=>{const e=document.querySelector('.sp-trend');return !!(e?.getClientRects().length&&getComputedStyle(e).visibility!=='hidden'&&getComputedStyle(e).display!=='none')})(),
+      overflow:document.documentElement.scrollWidth>innerWidth+1,
+      previewRight:document.querySelector('#b46-stage-fast-preview')?.getBoundingClientRect().right||null,
+      viewport:innerWidth,
       nativeAlready:!!document.querySelector('#b46-finance-chart-card svg.f46-svg')?.getClientRects().length
     }));
+    assert(!early.overflow,profile.name+':FAST_PREVIEW_HORIZONTAL_OVERFLOW');
     assert(early.fastPaintMs>0&&early.fastPaintMs<7500,
       profile.name+':FAST_FIRST_PAINT_TOO_SLOW_'+early.fastPaintMs);
     assert.equal(early.pointCount,graph.series.units.length,
