@@ -3,7 +3,7 @@
 // No Production writes, no secrets forwarded, and no Production Cloudflare Worker mutation.
 import css from './live-staging-overlay.css';
 import {patchCurrentStatisticsLoader} from './statistics-loader-staging-patch.mjs';
-const ORIGIN = 'https://ball46.com';
+const ORIGIN = 'https://www.ball46.com';
 const stamp = 'B46-STAT-UI-01-real-ui-v1';
 const json = (data,status=200) => new Response(JSON.stringify(data),{
   status,headers:{'content-type':'application/json; charset=UTF-8','cache-control':'no-store','x-robots-tag':'noindex, nofollow'}
