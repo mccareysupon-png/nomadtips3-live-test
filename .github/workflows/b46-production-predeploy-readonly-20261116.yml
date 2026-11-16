@@ -1,0 +1,78 @@
+name: B46 Production PREDEPLOY current version and frontend safety audit READ ONLY
+on:
+  push:
+    branches: [chatgpt/ball46-statistics-ui-v1]
+    paths: ['.github/workflows/b46-production-predeploy-readonly-20261116.yml']
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Read active current Production worker, assets config, scripts and body hooks; NO writes
+        run: |
+          node <<'NODE'
+          const crypto=require('node:crypto');
+          const account=process.env.CLOUDFLARE_ACCOUNT_ID,token=process.env.CLOUDFLARE_API_TOKEN;
+          const api='https://api.cloudflare.com/client/v4/accounts/'+account+'/workers';
+          const sha=s=>crypto.createHash('sha256').update(s).digest('hex');
+          async function get(path){
+            const r=await fetch(api+path,{headers:{Authorization:'Bearer '+token},signal:AbortSignal.timeout(35000)});
+            const j=await r.json();
+            if(!r.ok||!j.success)throw Error('CLOUDFLARE_READ_FAILED_'+path+'_'+r.status+'_'+JSON.stringify(j.errors?.map(x=>x.code)));
+            return j.result;
+          }
+          (async()=>{
+            if(!account||!token)throw Error('CREDENTIAL_NOT_PRESENT');
+            const script='ball46-production';
+            const deployments=await get('/scripts/'+script+'/deployments?per_page=4');
+            const versions=deployments.deployments?.[0]?.versions||[];
+            if(versions.length!==1||versions[0].percentage!==100)throw Error('PRODUCTION_TRAFFIC_SPLIT');
+            const id=versions[0].version_id;
+            const [v,settings,crons]=await Promise.all([
+              get('/workers/'+script+'/versions/'+id+'?include=modules'),
+              get('/scripts/'+script+'/settings'),
+              get('/scripts/'+script+'/schedules')
+            ]);
+            const map=new Map(v.modules.map(x=>[x.name,x]));
+            const decoded=key=>map.get(key)?.content_base64?
+              Buffer.from(map.get(key).content_base64,'base64').toString('utf8'):null;
+            const main=decoded(v.main_module);
+            const html=decoded('assets/index.html');
+            const cssKeys=v.modules.filter(x=>/\.(?:css|js|html)$/.test(x.name)).map(x=>x.name);
+            const files=['assets/singlepage-workspace-343.js','assets/longterm-performance-343.js',
+              'assets/index.html','assets/statistics-next.html'];
+            const inspected=files.map(name=>({name,exists:!!map.get(name),bytes:map.get(name)?.content_base64?Buffer.from(map.get(name).content_base64,'base64').length:null,
+              sha:map.get(name)?.content_base64?sha(Buffer.from(map.get(name).content_base64,'base64')):null}));
+            const path='https://ball46-production.mccarey-supon.workers.dev/?view=statistics';
+            const page=await fetch(path,{signal:AbortSignal.timeout(25000)});
+            const body=await page.text();
+            console.log('B46_PREDEPLOY_VERSION='+JSON.stringify({
+              activeVersion:id,created:v.created_on,mainModule:v.main_module,
+              mainSha:main?sha(main):null,indexSha:html?sha(html):null,htmlLength:html?.length,
+              versionBindings:v.bindings,settingsBindingCount:settings.bindings?.length,
+              compatibilityDate:v.compatibility_date,assetConfig:v.assets?.config,
+              crons:Array.isArray(crons)?crons:crons.schedules,
+              assetCount:v.modules.length,files:inspected,
+              htmlHasCloseBody:html?.includes('</body>'),
+              htmlHasStageAssets:html?.includes('_b46_stats_summary.js'),
+              htmlUsesStatsView:html?.includes('singlepage-workspace-343.js'),
+              publicPageHttp:page.status,publicPageLength:body.length,
+              publicPageHasWorkspace:body.includes('singlepage-workspace-343.js')}));
+            const longterm=decoded('assets/longterm-performance-343.js');
+            const workspace=decoded('assets/singlepage-workspace-343.js');
+            console.log('B46_PREDEPLOY_ANCHORS='+JSON.stringify({
+              scriptHasFetch:main?.includes('fetch('),
+              indexEnd:html?.slice(-320),
+              statsCard:!!longterm?.includes('f46-card'),
+              workspaceHasMainView:!!workspace?.includes('data-workspace-view'),
+              currentHomePageScriptCount:(html?.match(/<script/gi)||[]).length,
+              assetCSSCount:cssKeys.length,
+              sourceExpectedSelectors:['b46-finance-chart-card','b46v23-strip','sp-stats-content','sp-filters'].map(x=>({s:x,asset:cssKeys.filter(n=>decoded(n)?.includes(x)).slice(0,7)}))
+            }));
+            console.log('B46_PREDEPLOY_READONLY_COMPLETE');
+          })().catch(e=>{console.error('B46_PREDEPLOY_ERROR='+e.message);process.exitCode=1});
+          NODE
