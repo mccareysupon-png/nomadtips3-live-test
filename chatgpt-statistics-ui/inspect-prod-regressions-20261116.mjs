@@ -4,6 +4,7 @@ const {chromium}=require('playwright');
 const base='https://ball46-production.mccarey-supon.workers.dev';
 const terms=['Loading statistics','Preparing recorded results','Your game. In numbers.','Waiting for verified results'];
 const inspect=()=>{
+  const terms=['Loading statistics','Preparing recorded results','Your game. In numbers.','Waiting for verified results'];
   const $=s=>document.querySelector(s);
   const rect=e=>{const r=e?.getBoundingClientRect();return r?{x:Math.round(r.x),y:Math.round(r.y),w:Math.round(r.width),h:Math.round(r.height)}:null};
   const css=e=>e?{display:getComputedStyle(e).display,visibility:getComputedStyle(e).visibility,opacity:getComputedStyle(e).opacity}:null;
