@@ -99,7 +99,9 @@ function styleOnce(){
  const style=document.createElement('style');
  style.id='b46-stage-fast-style';
  style.textContent=[
- '#b46-stage-fast-preview{box-sizing:border-box;padding:15px;margin:12px 0 16px;color:#e9f5ee;background:#0e1916;border:1px solid #29443b;border-radius:13px;box-shadow:0 10px 25px rgba(0,0,0,.08);font-family:inherit}',
+ '#b46-stage-fast-preview{box-sizing:border-box;padding:15px;margin:0;color:#e9f5ee;background:#0e1916;border:1px solid #29443b;border-radius:13px;box-shadow:0 10px 25px rgba(0,0,0,.08);font-family:inherit}',
+ 'html.b46-stage-fast-preview body[data-workspace-view="statistics"] .sp-stats-content{display:block!important;visibility:visible!important}',
+ 'html.b46-stage-fast-preview body[data-workspace-view="statistics"] .sp-trend.b46-fast-paint-host{display:block!important;visibility:visible!important;height:auto!important;min-height:0!important}',
  '#b46-stage-fast-preview *{box-sizing:border-box}',
  '#b46-stage-fast-preview .b46-fast-columns{display:grid;grid-template-columns:1fr 1fr;gap:18px}',
  '#b46-stage-fast-preview .b46-fast-kicker{color:#85aa9b;font-size:10px;font-weight:700;letter-spacing:.09em}',
@@ -201,9 +203,20 @@ function mount(){
  const foot=document.createElement('div');foot.className='b46-fast-foot';
  foot.textContent='Saved verified snapshot · Open detailed history when needed';
  preview.append(kicker,cols,foot);
- const content=panel.querySelector('.sp-stats-content');
- if(content)panel.insertBefore(preview,content);
- else panel.appendChild(preview);
+ // Reuse the EXISTING finance/performance card slot. Never add a second card.
+ const nativeHost=panel.querySelector('.sp-trend');
+ if(!nativeHost){diag.status='native-card-anchor-missing';triggerNativeFallback();return}
+ nativeHost.id='b46-finance-chart-card';
+ nativeHost.dataset.f46Visual='1';
+ nativeHost.classList.add('b46-perf-card','b46-fast-paint-host');
+ let nativeShell=nativeHost.querySelector('[data-b46-perf-shell]');
+ if(!nativeShell){
+   nativeShell=document.createElement('div');
+   nativeShell.className='b46-perf-shell';
+   nativeShell.setAttribute('data-b46-perf-shell','');
+   nativeHost.replaceChildren(nativeShell);
+ }
+ nativeShell.replaceChildren(preview);
  document.documentElement.classList.add('b46-stage-fast-preview');
  diag.status='fast-preview-visible';diag.fastPaintMs=Math.round(performance.now()-START);
  diag.pointCount=graph.series.units.length;diag.net=graph.summary.net;
