@@ -1,0 +1,38 @@
+name: B46 staging chart root excess height audit READ ONLY
+on:
+  push:
+    branches: [chatgpt/ball46-statistics-ui-v1]
+    paths: ['.github/workflows/b46-stage-chart-root-height-audit-20261116.yml']
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - name: Install Chromium
+        run: |
+          npm install --prefix /tmp/b46-chart-root --no-fund --no-audit playwright@1.65.1
+          /tmp/b46-chart-root/node_modules/.bin/playwright install --with-deps chromium
+      - name: Inspect f46 parent wrappers chart section computed box
+        run: |
+          node <<'NODE'
+          const {chromium}=require('/tmp/b46-chart-root/node_modules/playwright');
+          (async()=>{
+            const b=await chromium.launch({headless:true}),p=await b.newPage({viewport:{width:1640,height:950}});
+            await p.goto('https://ball46-chat-statistics-live-ui-test-20261115.mccarey-supon.workers.dev/?view=statistics',{waitUntil:'domcontentloaded',timeout:45000});
+            await p.waitForFunction(()=>document.querySelectorAll('.b46-stage-summary-item').length===8,null,{timeout:45000});
+            const x=await p.evaluate(()=>{
+              const root=document.querySelector('#b46-finance-chart-card'),card=root.querySelector('.f46-card'),next=document.querySelector('.sp-filters');
+              const data=[],measure=(e)=>{
+                const s=getComputedStyle(e),r=e.getBoundingClientRect();return {tag:e.tagName,id:e.id,cls:String(e.className).slice(0,90),
+                  h:Math.round(r.height),top:Math.round(r.top),bottom:Math.round(r.bottom),minHeight:s.minHeight,height:s.height,maxHeight:s.maxHeight,
+                  padding:s.padding,margin:s.margin,gap:s.gap,display:s.display,overflow:s.overflow,position:s.position,children:e.children.length}};
+              let cur=card;while(cur&&cur!==document.body){data.push(measure(cur));cur=cur.parentElement}
+              return {ancestors:data,chartChildren:[...root.children].map(measure),shellChildren:[...root.querySelector('.b46-perf-shell')?.children||[]].map(measure),
+                siblings:[...root.parentElement.children].slice(0,9).map(measure),filter:measure(next)};
+            });
+            console.log('B46_CHART_ROOT_GAP_AUDIT='+JSON.stringify(x));await b.close();
+          })().catch(e=>{console.error('B46_CHART_ROOT_GAP_FAILED='+String(e));process.exitCode=1});
+          NODE
