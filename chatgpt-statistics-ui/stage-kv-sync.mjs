@@ -9,6 +9,9 @@ const NAMESPACE='f144dc8b6525477984067f7ab5762924';
 const BASE='https://api.cloudflare.com/client/v4/accounts/'+ACCOUNT+'/storage/kv/namespaces/'+NAMESPACE;
 const SOURCE='https://www.ball46.com/api/engine/statistics';
 const META='verified-full-meta-v1';
+// Counts alone cannot reveal corrections to odds/dates within historical rows.
+// Force a full staging-only reconciliation on the next build at least hourly.
+const MAX_FULL_RECHECK_MS=60*60*1000;
 const RESULTS={WIN:'win',LOSS:'loss',PUSH:'push',HALF_WIN:'halfWin',HALF_LOSS:'halfLoss'};
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 export function signature(x){
@@ -125,6 +128,7 @@ export async function execute(){
      /^verified-head-v1-[0-9a-f]{32}$/.test(before.summaryKey)&&
      /^verified-chart-v1-[0-9a-f]{32}$/.test(before.chartKey)&&
      before.chartSourceSha===chartSourceSha&&
+     Date.now()-Number(before.fullVerifiedAt||before.savedAt||0)<MAX_FULL_RECHECK_MS&&
      before.sourceSignature===signature(latest)){
     await apiPut(META,JSON.stringify({...before,checkedAt:Date.now()}),
       'application/json',token);
@@ -155,7 +159,8 @@ export async function execute(){
   if(gz.length>24000000)throw Error('STAGE_KV_MAX_24MB');
   const sha=createHash('sha256').update(gz).digest('hex');
   const key='verified-full-gzip-v2-'+sha.slice(0,32);
-  const meta={schema:2,key,savedAt:snapshot.snapshotSavedAt,checkedAt:Date.now(),
+  const meta={schema:2,key,savedAt:snapshot.snapshotSavedAt,
+    fullVerifiedAt:snapshot.snapshotSavedAt,checkedAt:Date.now(),
     sourceSignature:signature(snapshot),ledgerTotal:snapshot.ledgerTotal,
     summaryKey,summaryBytes:compact.bytes,summarySha256:summarySha,
     chartKey,chartBytes:graph.bytes,chartSha256:chartSha,chartSourceSha,
