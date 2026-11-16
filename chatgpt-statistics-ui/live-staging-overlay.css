@@ -431,3 +431,16 @@ html body #b46-finance-chart-card .f46-value {
     padding:13px!important;
   }
 }
+
+
+/* B46 STAGING desktop WPL full-text narrow-column guard: preserve ALL digits,
+   never ellipsize, prevent overlap in the four-column 1366px card. */
+@media (min-width:851px) and (max-width:1500px) {
+  html body #b46-finance-chart-card.b46-stage-summary-ready
+    .b46-stage-summary-item[data-key="wpl"] .b46-stage-summary-number {
+      font-size:9.7px!important;
+      letter-spacing:-.55px!important;
+      white-space:nowrap!important;
+      text-overflow:clip!important;
+    }
+}
