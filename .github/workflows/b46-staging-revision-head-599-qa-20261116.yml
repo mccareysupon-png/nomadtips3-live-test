@@ -1,0 +1,81 @@
+name: B46 STAGING first-page revision shortcut with 599 QA (no deploy)
+on:
+  push:
+    branches: [chatgpt/ball46-statistics-ui-v1]
+    paths: ['.github/workflows/b46-staging-revision-head-599-qa-20261116.yml']
+permissions: {contents: read}
+jobs:
+  revision-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - name: Install Chromium
+        run: |
+          npm install --prefix /tmp/b46-head-qa --no-fund --no-audit playwright@1.65.1
+          /tmp/b46-head-qa/node_modules/.bin/playwright install --with-deps chromium
+      - name: Verify initial complete Staging ledger and two-request bounded 599 revision check
+        run: |
+          node <<'NODE'
+          const {chromium}=require('/tmp/b46-head-qa/node_modules/playwright');
+          const base='https://ball46-chat-statistics-live-ui-test-20261115.mccarey-supon.workers.dev';
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            let failures=0;
+            for(const profile of [{name:'pc',width:1366},{name:'mobile',width:390}]){
+              const ctx=await browser.newContext({viewport:{width:profile.width,height:844},timezoneId:'Asia/Bangkok'});
+              const page=await ctx.newPage(),errors=[];
+              let sourcePatched=false,head=null,injected=false,pageCalls=0,otherCalls=0;
+              page.on('pageerror',e=>errors.push(e.message.slice(0,220)));
+              await page.route('**/singlepage-workspace-343.js*',async route=>{
+                const res=await route.fetch(),text=await res.text();
+                const marker='window.BALL46_STATISTICS_DATA = Object.freeze(';
+                if(text.includes(marker) && text.includes('snapshot unchanged; skipped full historical refresh')){
+                  sourcePatched=true;
+                  await route.fulfill({status:200,contentType:'application/javascript',body:text.replace(marker,'window.__B46_STAGE_QA_REFRESH=b46RefreshFull;\\n'+marker)});
+                }else await route.fulfill({response:res,body:text});
+              });
+              await page.route('**/api/engine/statistics**',async route=>{
+                const u=new URL(route.request().url());
+                if(head&&u.searchParams.has('paged')){
+                  pageCalls++;
+                  if(!injected){injected=true;await route.fulfill({status:599,contentType:'text/plain',body:'QA_599'});return}
+                  const sample={...head,ok:true,rows:head.rows.slice(0,1),returned:1,hasMore:true,nextCursor:'QA_STOP_IF_CLIENT_MISTAKENLY_PAGINATES'};
+                  await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(sample)});
+                  return;
+                }
+                otherCalls++;
+                await route.continue();
+              });
+              await page.goto(base+'/?view=statistics',{waitUntil:'domcontentloaded',timeout:45000});
+              await page.waitForFunction(()=>{
+                const d=window.BALL46_STATISTICS_DATA?.getSnapshot?.();
+                return d?.ok===true&&d.stale===true&&d.ledgerRows?.length===d.ledgerTotal&&
+                  !!document.querySelector('#b46-finance-chart-card svg.f46-svg')?.getClientRects().length;
+              },null,{timeout:45000});
+              head=await page.evaluate(()=>{
+                const d=window.BALL46_STATISTICS_DATA.getSnapshot();
+                return{ok:d.ok,total:d.total,ledgerTotal:d.ledgerTotal,pending:d.pending,
+                  unresolved:d.unresolved,win:d.win,loss:d.loss,push:d.push,
+                  halfWin:d.halfWin,halfLoss:d.halfLoss,ledgerUpdatedAt:d.ledgerUpdatedAt,
+                  rows:d.ledgerRows.slice(0,1)};
+              });
+              const result=await page.evaluate(async()=>{
+                const old=window.BALL46_STATISTICS_DATA.getSnapshot();
+                if(typeof window.__B46_STAGE_QA_REFRESH!=='function')return{missingHook:true};
+                const updated=await window.__B46_STAGE_QA_REFRESH();
+                return{same:old===updated,stillVerified:updated.ledgerRows.length===updated.ledgerTotal,
+                    stale:updated.stale===true,graphVisible:!!document.querySelector('#b46-finance-chart-card svg.f46-svg')?.getClientRects().length};
+              });
+              const pass=sourcePatched&&injected&&pageCalls===2&&result.same&&result.stillVerified&&result.graphVisible&&errors.length===0;
+              console.log('B46_HEAD_QA='+JSON.stringify({profile:profile.name,pass,sourcePatched,pageCalls,otherCalls,
+                injected599:injected,ledgerTotal:head.ledgerTotal,result,errors}));
+              if(!pass)failures++;
+              await ctx.close();
+            }
+            await browser.close();
+            if(failures){console.log('B46_HEAD_QA_OVERALL=FAIL');process.exitCode=1}
+            else console.log('B46_HEAD_QA_OVERALL=PASS_PC_MOBILE_599_SKIPS_FULL_HISTORY');
+          })().catch(e=>{console.error('B46_HEAD_QA_FATAL='+String(e));process.exitCode=1});
+          NODE
