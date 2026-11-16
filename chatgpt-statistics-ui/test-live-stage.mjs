@@ -90,6 +90,14 @@ try{
     assert.equal(early.net,graph.summary.net,
       profile.name+':FAST_CHART_NET_NOT_VERIFIED');
     console.log('B46_FAST_FIRST_PAINT='+JSON.stringify({profile:profile.name,...early}));
+    // Initial Statistics view must not read the 16k-row historical Ledger.
+    await page.waitForTimeout(1200);
+    assert.equal(networkStatuses.length,0,profile.name+':FULL_LEDGER_WAS_LOADED_BEFORE_HISTORY_REQUEST');
+    assert(await page.locator('#b46-stage-fast-preview .b46-fast-details').isVisible(),
+      profile.name+':DETAIL_REQUEST_BUTTON_NOT_VISIBLE');
+    await page.locator('#b46-stage-fast-preview .b46-fast-details').click();
+    console.log('B46_LAZY_HISTORY_REQUEST='+JSON.stringify({profile:profile.name,
+      apiBeforeClick:0,fastPaintMs:early.fastPaintMs,clicked:true}));
 
     const ready=()=> {
       const data=window.BALL46_STATISTICS_DATA?.getSnapshot?.();
@@ -223,6 +231,8 @@ try{
     await page.waitForTimeout(300);
     const warmStart=Date.now();
     await page.reload({waitUntil:'domcontentloaded',timeout:45000});
+    await page.waitForFunction(()=>window.__B46_FAST_CHART_DIAG?.status==='fast-preview-visible',null,{timeout:10000});
+    await page.locator('#b46-stage-fast-preview .b46-fast-details').click();
     await page.waitForFunction(ready,null,{timeout:30000});
     if(!profile.isMobile){
     await page.waitForFunction(()=>document.querySelectorAll('#b46-finance-chart-card .b46-stage-outcomes-segment').length===3 &&
