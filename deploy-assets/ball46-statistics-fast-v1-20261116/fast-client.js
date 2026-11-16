@@ -254,7 +254,17 @@ const begin=async()=>{
    mount();
  }catch(e){diag.status='unavailable';diag.error=String(e.message||e).slice(0,120);triggerNativeFallback()}
 };
-document.addEventListener('ball46:workspace-view',()=>{if(preview&&!validRoute())cleanup();else mount()});
+document.addEventListener('ball46:workspace-view',()=>{
+ // The router can announce an AH deep link before the fast index is fetched.
+ // Always resume the native market renderer, even if the helper is not yet loaded.
+ if(document.body?.dataset.workspaceView==='statistics'&&!validRoute()){
+   triggerNativeFallback();
+   if(preview)cleanup();
+   return;
+ }
+ if(preview&&!validRoute())cleanup();
+ else mount();
+});
 document.addEventListener('click',e=>{
  if(e.target?.closest?.('[data-stat-market],[data-sp-filter],[data-sp-variant]')){
    triggerNativeFallback();cleanup();diag.status='filter-selected';
