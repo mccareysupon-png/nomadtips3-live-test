@@ -104,10 +104,14 @@ export function buildVerifiedGraph(rows, snapshotSavedAt){
   // settlement in Asia/Bangkok, including results that have no priced odds.
   const dayNos=settled.map(r=>dateMs(r?.settledAt??r?.createdAt))
     .filter(ms=>ms>0).map(ms=>{
-      const key=bangkokDayKey(ms);
-      const parts=String(key).split(/[-/]/).map(Number);
-      return parts.length===3&&parts.every(Number.isFinite)
-        ?Math.floor(Date.UTC(parts[0],parts[1]-1,parts[2])/86400000):null;
+      try {
+        const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok',
+          year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(ms));
+        const o={};
+        for(const part of parts)if(part.type!=='literal')o[part.type]=Number(part.value);
+        if(!o.year||!o.month||!o.day)return null;
+        return Math.floor(Date.UTC(o.year,o.month-1,o.day)/86400000);
+      }catch{return Math.floor(ms/86400000)}
     }).filter(Number.isFinite);
   const settledDays=dayNos.length
     ?Math.max(1,Math.max(...dayNos)-Math.min(...dayNos)+1):null;
