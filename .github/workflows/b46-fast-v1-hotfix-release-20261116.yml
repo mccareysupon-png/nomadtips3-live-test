@@ -1,0 +1,53 @@
+name: BALL46 V1 visual regression hotfix gated Candidate and Production rollout
+on:
+  push:
+    branches: [chatgpt/ball46-statistics-ui-v1]
+    paths:
+      - '.github/workflows/b46-fast-v1-hotfix-release-20261116.yml'
+      - 'deploy-assets/ball46-statistics-fast-v1-20261116/fast-client-hotfix-20261116.js'
+      - 'deploy-assets/ball46-statistics-fast-v1-20261116/deploy-hotfix-20261116.mjs'
+      - 'deploy-assets/ball46-statistics-fast-v1-20261116/hotfix-readonly-qa.mjs'
+      - 'deploy-assets/ball46-statistics-fast-v1-20261116/V1_VISUAL_HOTFIX_PHASE.txt'
+permissions: {contents: read}
+concurrency: {group: ball46-production-deploy, cancel-in-progress: false}
+jobs:
+  visual-hotfix:
+    if: contains(github.event.head_commit.message, '[owner-approved-b46-v1-hotfix-candidate]') || contains(github.event.head_commit.message, '[owner-approved-b46-v1-hotfix-activate]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 28
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      B46_HOTFIX_APPROVED: 'YES'
+      B46_HOTFIX_MODE: ${{ contains(github.event.head_commit.message, '[owner-approved-b46-v1-hotfix-activate]') && 'activate' || 'candidate' }}
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - name: Strict static input guards
+        run: |
+          set -euo pipefail
+          DIR=deploy-assets/ball46-statistics-fast-v1-20261116
+          node --check "$DIR/fast-client-hotfix-20261116.js"
+          node --check "$DIR/deploy-hotfix-20261116.mjs"
+          node --check "$DIR/hotfix-readonly-qa.mjs"
+          grep -Fq "EXPECTED='d2fe6c5e-5602-40f9-9b6f-d4d8674de638'" "$DIR/deploy-hotfix-20261116.mjs"
+          grep -Fq "SCRIPT_MODULE='statistics-fast-v1-js-20261116.txt'" "$DIR/deploy-hotfix-20261116.mjs"
+          grep -Fq ".b46-stats-loader{display:none" "$DIR/fast-client-hotfix-20261116.js"
+          grep -Fq "enhanceFilteredMarket" "$DIR/fast-client-hotfix-20261116.js"
+      - name: Install isolated Chromium
+        run: |
+          npm install --prefix deploy-assets/ball46-statistics-fast-v1-20261116/.runtime --no-audit --no-fund playwright@1.65.1
+          deploy-assets/ball46-statistics-fast-v1-20261116/.runtime/node_modules/.bin/playwright install --with-deps chromium
+      - name: Current exact Worker to INACTIVE version; compare every module; browser QA; optional activation
+        run: node deploy-assets/ball46-statistics-fast-v1-20261116/deploy-hotfix-20261116.mjs
+      - name: Save release and screenshot evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-v1-visual-hotfix-release
+          path: |
+            deploy-assets/ball46-statistics-fast-v1-20261116/hotfix-release-audit/
+            deploy-assets/ball46-statistics-fast-v1-20261116/hotfix-audit/
+          if-no-files-found: ignore
+          retention-days: 21
