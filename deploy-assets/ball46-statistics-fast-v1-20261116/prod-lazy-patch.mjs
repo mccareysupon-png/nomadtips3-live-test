@@ -18,20 +18,20 @@ export function patchProdStatistics(source){
  "  // canonical cursor pages. No change to the payout/count verification rules.";
  const originalPage="async function page(params = {}) {";
  const resilientPage="async function pageOnce(params = {}) {";
- const recoverPage="async function page(params = {}) {\\n"+
- "  let last;\\n"+
- "  for(let attempt=0;attempt<3;attempt++){\\n"+
- "    try{return await pageOnce(params)}\\n"+
- "    catch(e){\\n"+
- "      last=e;const msg=String(e?.message||e);\\n"+
- "      if(!(/Statistics feed unavailable|Statistics HTTP|Failed to fetch|Unexpected token|timeout|aborted/i.test(msg)||\\n"+
- "        ['SyntaxError','TimeoutError','AbortError','TypeError'].includes(e?.name)))throw e;\\n"+
- "      if(attempt===2)break;\\n"+
- "      await new Promise(resolve=>setTimeout(resolve,250*(attempt+1)));\\n"+
- "    }\\n"+
- "  }\\n"+
- "  throw last||Error('Statistics page failed');\\n"+
- "}\\n";
+ const recoverPage="async function page(params = {}) {\n"+
+ "  let last;\n"+
+ "  for(let attempt=0;attempt<3;attempt++){\n"+
+ "    try{return await pageOnce(params)}\n"+
+ "    catch(e){\n"+
+ "      last=e;const msg=String(e?.message||e);\n"+
+ "      if(!(/Statistics feed unavailable|Statistics HTTP|Failed to fetch|Unexpected token|timeout|aborted/i.test(msg)||\n"+
+ "        ['SyntaxError','TimeoutError','AbortError','TypeError'].includes(e?.name)))throw e;\n"+
+ "      if(attempt===2)break;\n"+
+ "      await new Promise(resolve=>setTimeout(resolve,250*(attempt+1)));\n"+
+ "    }\n"+
+ "  }\n"+
+ "  throw last||Error('Statistics page failed');\n"+
+ "}\n";
   const originalRead="async function readAll() {";
  const resilientRead="async function readAllOnce() {";
  const recoverAfter="async function readAll() {\n"+
