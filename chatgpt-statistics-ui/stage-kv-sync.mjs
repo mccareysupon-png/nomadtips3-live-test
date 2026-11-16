@@ -2,6 +2,7 @@
 // No writes to ball46-production, source Ledger, market calculations, WAF, or Production KV.
 import {createHash} from 'node:crypto';
 import {gzipSync} from 'node:zlib';
+import {createCompactSummary} from './compact-summary-stage.mjs';
 const ACCOUNT='62cb0db544160e6591342abd6b4f35cc';
 const NAMESPACE='f144dc8b6525477984067f7ab5762924';
 const BASE='https://api.cloudflare.com/client/v4/accounts/'+ACCOUNT+'/storage/kv/namespaces/'+NAMESPACE;
@@ -112,7 +113,9 @@ export async function execute(){
   try{before=await apiGet(META,token)}catch(e){throw Error('CANNOT_READ_CURRENT_STAGE_POINTER_'+e.message)}
   // Fast path: an unchanged revision is verified with just ONE cursor page.
   const latest=await readPage();
-  if(before?.schema===2&&before.key&&before.sourceSignature===signature(latest)){
+  if(before?.schema===2&&before.key&&before.summaryKey&&
+     /^verified-head-v1-[0-9a-f]{32}$/.test(before.summaryKey)&&
+     before.sourceSignature===signature(latest)){
     await apiPut(META,JSON.stringify({...before,checkedAt:Date.now()}),
       'application/json',token);
     console.log('B46_STAGE_SYNC='+JSON.stringify({mode:'UNCHANGED',ledgerTotal:latest.ledgerTotal,sourceSignature:signature(latest),stageOnly:true}));
@@ -125,6 +128,10 @@ export async function execute(){
     catch(e){lastError=e;console.log('B46_STAGE_SYNC_RETRY='+JSON.stringify({attempt:attempt+1,error:e.message}));}
   }
   if(!snapshot)throw lastError||Error('SOURCE_CHANGED');
+  // Fast-path projection is derived ONLY after the complete Ledger passes verification.
+  const compact=createCompactSummary(snapshot,verifyRows);
+  const summarySha=createHash('sha256').update(compact.body).digest('hex');
+  const summaryKey='verified-head-v1-'+summarySha.slice(0,32);
   const raw=Buffer.from(JSON.stringify(snapshot),'utf8');
   const gz=gzipSync(raw,{level:6});
   if(gz.length>24000000)throw Error('STAGE_KV_MAX_24MB');
@@ -132,18 +139,24 @@ export async function execute(){
   const key='verified-full-gzip-v2-'+sha.slice(0,32);
   const meta={schema:2,key,savedAt:snapshot.snapshotSavedAt,checkedAt:Date.now(),
     sourceSignature:signature(snapshot),ledgerTotal:snapshot.ledgerTotal,
+    summaryKey,summaryBytes:compact.bytes,summarySha256:summarySha,
     settled:snapshot.total,rawBytes:raw.length,gzipBytes:gz.length,sha256:sha,
     previousKeys:[before?.key,...(before?.previousKeys||[])].filter(x=>typeof x==='string'&&x.startsWith('verified-full-gzip-v2-')&&x!==key).slice(0,2),
     source:'PUBLIC_PRODUCTION_READ_ONLY',target:'STAGING_KV_ONLY'};
   // Versioned immutable body first, stable manifest POINTER LAST. Failed builds keep old pointer.
   await apiPut(key,gz,'application/octet-stream',token);
+  await apiPut(summaryKey,compact.body,'application/json',token);
   // Check that the newly published immutable body can be read before moving the pointer.
   const readback=await apiGet(key,token,'arrayBuffer');
   if(!readback||createHash('sha256').update(Buffer.from(readback)).digest('hex')!==sha)
     throw Error('KV_READBACK_HASH_MISMATCH');
+  const headReadback=await apiGet(summaryKey,token,'arrayBuffer');
+  if(!headReadback||createHash('sha256').update(Buffer.from(headReadback)).digest('hex')!==summarySha)
+    throw Error('KV_COMPACT_READBACK_HASH_MISMATCH');
   await apiPut(META,JSON.stringify(meta),'application/json',token);
   console.log('B46_STAGE_SYNC='+JSON.stringify({mode:'PUBLISHED',ledgerTotal:meta.ledgerTotal,
-    bytes:meta.gzipBytes,key:meta.key,sourceSignature:meta.sourceSignature,stageOnly:true}));
+    bytes:meta.gzipBytes,summaryBytes:meta.summaryBytes,key:meta.key,
+    sourceSignature:meta.sourceSignature,stageOnly:true}));
   // Retain 3 complete versions; garbage collection failure is non-fatal.
   try{
     const q=new URL(BASE+'/keys');q.searchParams.set('prefix','verified-full-gzip-v2-');q.searchParams.set('limit','1000');
