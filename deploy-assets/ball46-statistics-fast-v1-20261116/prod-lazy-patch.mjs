@@ -16,7 +16,23 @@ export function patchProdStatistics(source){
  const originalDirect="  try { return await directAll(); } catch (error) { console.warn('Statistics direct read fallback', error?.message || error); }";
  const directSafe="  // The unpaged /api/engine/statistics endpoint can answer 599/non-JSON; use the \n"+
  "  // canonical cursor pages. No change to the payout/count verification rules.";
- const originalRead="async function readAll() {";
+ const originalPage="async function page(params = {}) {";
+ const resilientPage="async function pageOnce(params = {}) {";
+ const recoverPage="async function page(params = {}) {\\n"+
+ "  let last;\\n"+
+ "  for(let attempt=0;attempt<3;attempt++){\\n"+
+ "    try{return await pageOnce(params)}\\n"+
+ "    catch(e){\\n"+
+ "      last=e;const msg=String(e?.message||e);\\n"+
+ "      if(!(/Statistics feed unavailable|Statistics HTTP|Failed to fetch|Unexpected token|timeout|aborted/i.test(msg)||\\n"+
+ "        ['SyntaxError','TimeoutError','AbortError','TypeError'].includes(e?.name)))throw e;\\n"+
+ "      if(attempt===2)break;\\n"+
+ "      await new Promise(resolve=>setTimeout(resolve,250*(attempt+1)));\\n"+
+ "    }\\n"+
+ "  }\\n"+
+ "  throw last||Error('Statistics page failed');\\n"+
+ "}\\n";
+  const originalRead="async function readAll() {";
  const resilientRead="async function readAllOnce() {";
  const recoverAfter="async function readAll() {\n"+
  "  let failure;\n"+
@@ -35,7 +51,7 @@ export function patchProdStatistics(source){
  const dataLoad='async function load() {\n  if (cached && Date.now() - loadedAt < CACHE_MS) return cached;';
  const start='function startStatistics(){if(state.statsLoaded&&Date.now()-state.statsLoadedAt<STAT_CACHE_MS){';
  const anchor="document.addEventListener('ball46:statistics-snapshot',e=>{state.rows=Array.isArray(e.detail.ledgerRows)";
- if([dataLoad,start,anchor,nativeSignature,originalDirect,originalRead].some(x=>source.split(x).length!==2))
+ if([dataLoad,start,anchor,nativeSignature,originalDirect,originalRead,originalPage].some(x=>source.split(x).length!==2))
    return {source,status:'SOURCE_ANCHOR_DRIFT'};
  const deferred="async function load() {\n"+
    "  if(!window.__B46_FAST_DETAILS_REQUESTED && (document.body?.dataset.workspaceView==='statistics'||new URLSearchParams(location.search).get('view')==='statistics')) {\n"+
@@ -57,6 +73,7 @@ window.__B46_FAST_LOAD_DETAILS=()=>{
  return {source:source.replace(nativeSignature,stableSignature)
    .replace(originalDirect,directSafe)
    .replace(originalRead,resilientRead)
+   .replace(originalPage,recoverPage+resilientPage)
    .replace(dataLoad,recoverAfter+deferred)
    .replace(start,gated).replace(anchor,injected+anchor),
    status:'PATCHED_FULL_LEDGER_LAZY'};
