@@ -31,8 +31,9 @@ assert(indexed.source.includes('/_b46_stage_stats_meta'));
 assert(indexed.source.includes('b46EnsurePeriodicManifestPoll'));
 
 
-assert(indexed.source.includes('if(signature(liveHead)===signature(cached))'));
-assert(indexed.source.includes('snapshot unchanged; skipped full historical refresh'));
+assert(indexed.source.includes("fetch('/_b46_stage_stats_meta'"));
+assert(indexed.source.includes('unchanged immutable snapshot, no historical reload'));
+assert(indexed.source.includes('NEW_SNAPSHOT_INCOMPLETE'));
 
 assert(indexed.source.includes('indexedDB.open(B46_STAGE_DB,2)'));
 assert(indexed.source.includes('},60000)'));
