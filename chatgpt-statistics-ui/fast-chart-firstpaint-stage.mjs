@@ -9,6 +9,26 @@ const diag={status:'pending',startedAt:Date.now(),stageOnly:true};
 window.__B46_FAST_CHART_DIAG=diag;
 let head=null,graph=null,preview=null,interval=null;
 const ns='http://www.w3.org/2000/svg';
+// The real workspace script may initialize AFTER an immediately failing
+// snapshot fetch. Do not lose the fallback event because its helper was absent.
+let fallbackQueued=false;
+function triggerNativeFallback(){
+ if(fallbackQueued)return;
+ fallbackQueued=true;
+ let attempts=0;
+ const poll=()=>{
+   if(typeof window.__B46_STAGE_LOAD_DETAILS==='function'){
+     diag.fallbackTriggered=true;
+     diag.fallbackPolls=attempts;
+     window.__B46_STAGE_LOAD_DETAILS();
+     return;
+   }
+   if(++attempts<100){setTimeout(poll,100);return}
+   diag.fallbackTriggerMissing=true;
+   // Safety: do not fabricate chart/history if the native module is missing.
+ };
+ poll();
+}
 function validRoute(){
  const q=new URLSearchParams(location.search);
  return document.body?.dataset.workspaceView==='statistics' &&
@@ -213,7 +233,7 @@ const begin=async()=>{
      return;
    }
    mount();
- }catch(e){diag.status='unavailable';diag.error=String(e.message||e).slice(0,120);window.__B46_STAGE_LOAD_DETAILS?.()}
+ }catch(e){diag.status='unavailable';diag.error=String(e.message||e).slice(0,120);triggerNativeFallback()}
 };
 document.addEventListener('ball46:workspace-view',()=>{if(preview&&!validRoute())cleanup();else mount()});
 document.addEventListener('click',e=>{
