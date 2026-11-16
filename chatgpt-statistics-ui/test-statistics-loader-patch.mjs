@@ -26,6 +26,9 @@ const indexed=patchIndexedStatisticsCache(patched.source);
 assert.equal(indexed.status,'VERIFIED_INDEXED_CACHE_PATCHED');
 assert(indexed.source.includes(B46_CACHE_MARKER));
 assert(indexed.source.includes('b46-stage-saved-ready'));
+assert(indexed.source.includes('if(signature(liveHead)===signature(cached))'));
+assert(indexed.source.includes('snapshot unchanged; skipped full historical refresh'));
+
 assert(indexed.source.includes('indexedDB.open(B46_STAGE_DB,2)'));
 assert(indexed.source.includes('},60000)'));
 
