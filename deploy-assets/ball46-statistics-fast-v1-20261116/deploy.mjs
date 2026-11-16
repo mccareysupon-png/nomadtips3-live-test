@@ -51,7 +51,20 @@ async function active(worker=WORKER){
   assert(d?.versions?.length===1&&Number(d.versions[0].percentage)===100,'SPLIT_TRAFFIC_'+worker);
   return {id:d.versions[0].version_id,deploymentId:d.id};
 }
-const version=(worker,id)=>cf('GET','/workers/workers/'+worker+'/versions/'+id+'?include=modules');
+async function version(worker,id){
+  let lastError;
+  // Cloudflare may return 10071 (version not found) immediately after a
+  // successful inactive version upload, before it propagates to read APIs.
+  for(let attempt=0;attempt<12;attempt++){
+    try{return await cf('GET','/workers/workers/'+worker+'/versions/'+id+'?include=modules')}
+    catch(e){
+      lastError=e;
+      if(!String(e).includes('10071')||attempt===11)throw e;
+      await new Promise(resolve=>setTimeout(resolve,1500));
+    }
+  }
+  throw lastError||Error('VERSION_PROPAGATION_UNAVAILABLE');
+}
 const moduleHashes=v=>v.modules.map(m=>({name:m.name,type:m.content_type,hash:digest(Buffer.from(m.content_base64,'base64'))}))
   .sort((a,b)=>a.name.localeCompare(b.name));
 async function asset(host,path){
