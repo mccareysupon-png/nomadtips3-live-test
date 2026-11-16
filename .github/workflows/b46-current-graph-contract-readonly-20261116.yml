@@ -1,0 +1,30 @@
+name: B46 chart current source anchors READ ONLY
+on:
+  push:
+    branches: [chatgpt/ball46-statistics-ui-v1]
+    paths: ['.github/workflows/b46-current-graph-contract-readonly-20261116.yml']
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Current source only
+        run: |
+          node <<'NODE'
+          (async()=>{
+          for(const path of ['/longterm-performance-343.js','/singlepage-workspace-343.js']){
+            const r=await fetch('https://www.ball46.com'+path,{signal:AbortSignal.timeout(20000)}),src=await r.text();
+            const keys=path.includes('longterm')?['async function load','function render','function load','function f46','BALL46_STATISTICS_DATA','let f46','getSnapshot','fetch(']:['async function page','async function readAll','async function load','function renderStatistics','loadStatistics','ball46:statistics-snapshot'];
+            console.log('GRAPH_SOURCE_META='+JSON.stringify({path,status:r.status,bytes:src.length}));
+            for(const k of keys){
+              let pos=src.indexOf(k),n=0;
+              while(pos>=0&&n++<2){
+                const end=Math.min(src.length,pos+(path.includes('longterm')?2600:1800));
+                console.log('GRAPH_SOURCE_SEGMENT='+JSON.stringify({path,key:k,ordinal:n,text:src.slice(Math.max(0,pos-150),end)}));
+                pos=src.indexOf(k,pos+k.length);
+              }
+            }
+          }
+          })().catch(e=>console.log('GRAPH_INSPECT_FAIL='+String(e)));
+          NODE
