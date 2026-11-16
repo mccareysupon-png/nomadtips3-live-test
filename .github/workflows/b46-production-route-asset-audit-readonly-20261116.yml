@@ -1,0 +1,50 @@
+name: B46 production current script asset routing inspect READ ONLY
+on:
+  push:
+    branches: [chatgpt/ball46-statistics-ui-v1]
+    paths: ['.github/workflows/b46-production-route-asset-audit-readonly-20261116.yml']
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Read active version source safe anchor snippets without mutation
+        run: |
+          node <<'NODE'
+          const t=process.env.CLOUDFLARE_API_TOKEN,a=process.env.CLOUDFLARE_ACCOUNT_ID,root='https://api.cloudflare.com/client/v4/accounts/'+a+'/workers';
+          async function get(path){const r=await fetch(root+path,{headers:{Authorization:'Bearer '+t},signal:AbortSignal.timeout(25000)});const j=await r.json();if(!r.ok||!j.success)throw Error(path+':'+r.status);return j.result}
+          (async()=>{
+            const dep=await get('/scripts/ball46-production/deployments?per_page=1'),id=dep.deployments[0].versions[0].version_id;
+            const v=await get('/workers/ball46-production/versions/'+id+'?include=modules');
+            const modules=v.modules.map(m=>({name:m.name,size:m.content_base64?Buffer.from(m.content_base64,'base64').length:null,contentType:m.content_type}));
+            const main=v.modules.find(m=>m.name===v.main_module),code=Buffer.from(main.content_base64,'base64').toString('utf8'),
+                  asset=v.modules.find(m=>m.name==='assets/index.html'),index=Buffer.from(asset.content_base64,'base64').toString('utf8');
+            console.log('B46_ACTIVE_ROUTE_META='+JSON.stringify({id,main:v.main_module,mainBytes:code.length,indexBytes:index.length,modules,
+                indexHasHeadClose:index.includes('</head>'),indexHasBodyClose:index.includes('</body>'),cssCount:(index.match(/\.css/g)||[]).length}));
+            const needles=['ASSETS.fetch','env.ASSETS','HTMLRewriter','text/html','index.html','data-workspace-view','b46v23-strip',
+              'new Response','async fetch(','return fetch(','request.url','fetch(request'];
+            for(const needle of needles){
+              let pos=code.indexOf(needle),count=0;
+              while(pos>=0&&count++<3){
+                console.log('B46_ACTIVE_CODE_ANCHOR='+JSON.stringify({key:needle,position:pos,
+                  text:code.slice(Math.max(0,pos-250),Math.min(code.length,pos+800))}));
+                pos=code.indexOf(needle,pos+needle.length);
+              }
+            }
+            for(const origin of ['https://ball46-production.mccarey-supon.workers.dev','https://www.ball46.com']){
+              for(const path of ['/','/index.html','/singlepage-workspace-343.js','/longterm-performance-343.js']){
+                try{
+                  const r=await fetch(origin+path,{signal:AbortSignal.timeout(25000),headers:{accept:path.endsWith('.js')?'application/javascript':'text/html'}});
+                  const buf=Buffer.from(await r.arrayBuffer());
+                  console.log('B46_PUBLIC_ROUTE_STATUS='+JSON.stringify({origin,path,status:r.status,bytes:buf.length,
+                    type:r.headers.get('content-type'),containsIndexPrefix:path==='/'?buf.toString('utf8').includes(index.slice(0,250)):null}));
+                }catch(e){console.log('B46_PUBLIC_ROUTE_STATUS='+JSON.stringify({origin,path,error:e.name}))}
+              }
+            }
+            console.log('B46_ACTIVE_ROUTE_AUDIT_COMPLETE');
+          })().catch(e=>{console.error('B46_ACTIVE_ROUTE_AUDIT_ERROR='+e.message);process.exitCode=1});
+          NODE
