@@ -1,0 +1,33 @@
+name: B46 STAGING-only statistics KV namespace provisioning
+on:
+  push:
+    branches: [chatgpt/ball46-statistics-ui-v1]
+    paths: ['.github/workflows/b46-staging-snapshot-kv-setup-20261116.yml']
+permissions: {contents: read}
+jobs:
+  setup-staging-kv-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Ensure one staging-only KV namespace; never modify production data
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          node <<'NODE'
+          const base='https://api.cloudflare.com/client/v4/accounts/62cb0db544160e6591342abd6b4f35cc/storage/kv/namespaces';
+          const title='ball46-chat-stats-readcache-stage-20261116';
+          const headers={Authorization:'Bearer '+(process.env.CLOUDFLARE_API_TOKEN||''),'Content-Type':'application/json'};
+          (async()=>{
+            if(!process.env.CLOUDFLARE_API_TOKEN){console.log('B46_STAGE_KV=NO_TOKEN');process.exitCode=1;return}
+            const listResp=await fetch(base+'?per_page=100',{headers,signal:AbortSignal.timeout(20000)});
+            const list=await listResp.json();
+            if(!list.success){console.log('B46_STAGE_KV=LIST_DENIED '+JSON.stringify(list.errors?.map(e=>e.code)));process.exitCode=1;return}
+            let match=(list.result||[]).find(n=>n.title===title);
+            if(match){console.log('B46_STAGE_KV='+JSON.stringify({ok:true,created:false,title,id:match.id}));return}
+            const resp=await fetch(base,{method:'POST',headers,body:JSON.stringify({title}),signal:AbortSignal.timeout(20000)});
+            const out=await resp.json();
+            if(!resp.ok||!out.success||!out.result?.id){console.log('B46_STAGE_KV=CREATE_DENIED '+JSON.stringify({http:resp.status,errors:out.errors?.map(e=>({code:e.code,message:String(e.message).slice(0,130)}))}));process.exitCode=1;return}
+            console.log('B46_STAGE_KV='+JSON.stringify({ok:true,created:true,title,id:out.result.id}));
+            console.log('B46_STAGE_KV_NO_PROD_DATA_WRITES');
+          })().catch(e=>{console.log('B46_STAGE_KV=ERROR '+String(e));process.exitCode=1});
+          NODE
