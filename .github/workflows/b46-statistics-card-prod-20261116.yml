@@ -1,0 +1,49 @@
+name: BALL46 Owner Approved Statistics Desktop Production Release
+on:
+  push:
+    branches: [chatgpt/ball46-statistics-ui-v1]
+    paths:
+      - 'deploy-assets/ball46-statistics-card-prod-20261116/**'
+      - '.github/workflows/b46-statistics-card-prod-20261116.yml'
+permissions: {contents: read}
+concurrency:
+  group: ball46-production-deploy
+  cancel-in-progress: false
+jobs:
+  owner-approved-desktop-stats:
+    if: contains(github.event.head_commit.message, '[owner-approved-statistics-card-production]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 23
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      B46_APPROVED_DESKTOP_UI: 'YES'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Validate strict owner approved CSS and JavaScript scope
+        run: |
+          set -euo pipefail
+          node --check deploy-assets/ball46-statistics-card-prod-20261116/deploy.mjs
+          node --check deploy-assets/ball46-statistics-card-prod-20261116/verify-browser.mjs
+          node --check deploy-assets/ball46-statistics-card-prod-20261116/statistics-card.js
+          grep -q 'min-width:851px' deploy-assets/ball46-statistics-card-prod-20261116/statistics-card.css
+          if grep -q 'b46-stats-loader' deploy-assets/ball46-statistics-card-prod-20261116/statistics-card.css; then
+            echo "ABORT: invalid scope of desktop-only visual release"; exit 1
+          fi
+      - name: Install isolated Chromium browser QA
+        run: |
+          npm install --prefix deploy-assets/ball46-statistics-card-prod-20261116/.runtime --no-audit --no-fund playwright@1.65.1
+          deploy-assets/ball46-statistics-card-prod-20261116/.runtime/node_modules/.bin/playwright install --with-deps chromium
+      - name: Upload inactive Candidate, verify browser, activate, verify Production, rollback if needed
+        run: node deploy-assets/ball46-statistics-card-prod-20261116/deploy.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-statistics-desktop-production-rollback-audit
+          path: deploy-assets/ball46-statistics-card-prod-20261116/audit/
+          if-no-files-found: ignore
+          retention-days: 21
