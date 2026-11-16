@@ -25,6 +25,9 @@ try{
          && data.ledgerRows.length===data.ledgerTotal && !!chart?.getClientRects().length;
     };
     await page.waitForFunction(ready,null,{timeout:170000});
+    await page.waitForFunction(()=>document.querySelectorAll('#b46-finance-chart-card .b46-stage-summary-item').length===8 &&
+      getComputedStyle(document.querySelector('.b46v23-strip')).display==='none',
+      null,{timeout:15000});
     const coldMs=Date.now()-started;
     const cold=await page.evaluate(()=>{
       const data=window.BALL46_STATISTICS_DATA.getSnapshot();
@@ -38,11 +41,23 @@ try{
         horizontalOverflow:document.documentElement.scrollWidth>innerWidth+1,
         stageMarker:!!document.querySelector('[data-b46-staging-overlay]'),
         loaderPatched:false,
-        loadingAnimationHidden:getComputedStyle(document.querySelector('.b46-stats-loader')).display==='none'};
+        loadingAnimationHidden:getComputedStyle(document.querySelector('.b46-stats-loader')).display==='none',
+        summary:{ready:!!document.querySelector('.sp-stats-content.b46-stage-summary-ready'),
+          hiddenTop:getComputedStyle(document.querySelector('.b46v23-strip')).display==='none',
+          count:document.querySelectorAll('#b46-finance-chart-card .b46-stage-summary-item').length,
+          keys:[...document.querySelectorAll('#b46-finance-chart-card .b46-stage-summary-item')].map(x=>x.dataset.key),
+          originalDetailsHidden:getComputedStyle(document.querySelector('#b46-finance-chart-card .f46-details')).display==='none',
+          profitFont:getComputedStyle(document.querySelector('#b46-finance-chart-card .f46-value')).fontSize,
+          gridOverflow:(()=>{const g=document.querySelector('.b46-stage-summary-grid');return g?.scrollWidth>g?.clientWidth+2})()}};
     });
     assert.equal(cold.fullRows,cold.ledgerTotal,profile.name+':INVALID_LEDGER');
     assert(cold.ledgerTotal>1000,profile.name+':LEDGER_TOO_SMALL');
     assert(cold.loadingAnimationHidden,profile.name+':LOADING_OVERLAY_STILL_VISIBLE');
+    assert(cold.summary.ready&&cold.summary.hiddenTop&&cold.summary.originalDetailsHidden,profile.name+':DUPLICATE_STRIP_VISIBLE');
+    assert.equal(cold.summary.count,8,profile.name+':SUMMARY_8_FIELDS_REQUIRED');
+    assert.deepEqual(cold.summary.keys,['roi','rate','odds','days','unsettled','wpl','stake','drawdown'],profile.name+':SUMMARY_ORDER');
+    assert(!cold.summary.gridOverflow,profile.name+':SUMMARY_GRID_OVERFLOW');
+    assert(parseFloat(cold.summary.profitFont)<=23,profile.name+':MAIN_PROFIT_TOO_LARGE');
     assert(cold.chartPoints>0,profile.name+':CHART_EMPTY');
     assert.equal(cold.chartStroke,'1px',profile.name+':CHART_STROKE_DRIFT');
     assert(!cold.horizontalOverflow,profile.name+':HORIZONTAL_OVERFLOW');
@@ -59,19 +74,26 @@ try{
     const warmStart=Date.now();
     await page.reload({waitUntil:'domcontentloaded',timeout:45000});
     await page.waitForFunction(ready,null,{timeout:30000});
+    await page.waitForFunction(()=>document.querySelectorAll('#b46-finance-chart-card .b46-stage-summary-item').length===8 &&
+      getComputedStyle(document.querySelector('.b46v23-strip')).display==='none',
+      null,{timeout:12000});
     const warmMs=Date.now()-warmStart;
     const warm=await page.evaluate(()=>{
       const d=window.BALL46_STATISTICS_DATA.getSnapshot();
       return{ledgerTotal:d.ledgerTotal,rows:d.ledgerRows.length,stale:!!d.stale,
         tableLabel:document.querySelector('[data-sp-feed-state]')?.textContent?.trim(),
         graphVisible:!!document.querySelector('#b46-finance-chart-card svg.f46-svg')?.getClientRects().length,
-        loadingAnimationHidden:getComputedStyle(document.querySelector('.b46-stats-loader')).display==='none'};
+        loadingAnimationHidden:getComputedStyle(document.querySelector('.b46-stats-loader')).display==='none',
+        summaryCount:document.querySelectorAll('#b46-finance-chart-card .b46-stage-summary-item').length,
+        topStripHidden:getComputedStyle(document.querySelector('.b46v23-strip')).display==='none'};
     });
     await page.screenshot({path:'/tmp/b46-staging-cache-'+profile.name+'.png',fullPage:false});
     console.log('B46_STAGE_TIMING='+JSON.stringify({profile:profile.name,coldMs,warmMs,coldLedger:cold.ledgerTotal,warmLedger:warm.ledgerTotal,
       warmStale:warm.stale,warmVisible:warm.graphVisible,pageErrors:errors,statHttp:networkStatuses.length}));
     assert(warm.graphVisible&&warm.rows===warm.ledgerTotal,profile.name+':BAD_WARM_RENDER');
     assert(warm.loadingAnimationHidden,profile.name+':LOADING_OVERLAY_REAPPEARED');
+    assert.equal(warm.summaryCount,8,profile.name+':SUMMARY_DID_NOT_REAPPEAR');
+    assert(warm.topStripHidden,profile.name+':TOP_STRIP_REAPPEARED');
     assert(warmMs<=15000,profile.name+':WARM_TOO_SLOW_'+warmMs);
     assert.equal(errors.length,0,profile.name+':PAGE_JS_ERRORS:'+JSON.stringify(errors));
     const result={profile:profile.name,firstLoadMs:coldMs,reloadMs:warmMs,

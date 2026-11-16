@@ -6,6 +6,7 @@
 import css from './live-staging-overlay.css';
 import {patchCurrentStatisticsLoader} from './statistics-loader-staging-patch.mjs';
 import {patchIndexedStatisticsCache} from './indexed-stats-stage.mjs';
+import {stageSummaryScript} from './statistics-summary-layout-stage.mjs';
 const ORIGIN = 'https://www.ball46.com';
 const stamp = 'B46-STAT-UI-01-real-ui-v1';
 const json = (data,status=200) => new Response(JSON.stringify(data),{
@@ -22,6 +23,9 @@ export default {
     const u = new URL(request.url);
     if (!['GET','HEAD'].includes(request.method)) return json({ok:false,error:'READ_ONLY_STAGING'},405);
     if (u.pathname === '/_b46_ui_health') return json({ok:true,mode:'real-frontend-read-only',stamp,origin:'ball46.com',productionWrites:0,overlay:'live-staging-overlay.css'});
+    if (u.pathname === '/_b46_stats_summary.js') return new Response(request.method==='HEAD'?null:stageSummaryScript,{
+      headers:{...baseHeaders,'content-type':'application/javascript; charset=UTF-8','x-b46-summary':'STAGING_ONLY'}
+    });
     if (u.pathname === '/_b46_ui_overlay.css') return new Response(request.method==='HEAD'?null:css,{
       headers:{...baseHeaders,'content-type':'text/css; charset=UTF-8','x-b46-overlay':stamp}
     });
@@ -142,7 +146,7 @@ export default {
     const ct=upstream.headers.get('content-type')||'';
     if (request.method==='GET' && upstream.ok && ct.includes('text/html')){
       const original = await upstream.text();
-      const inject = '<meta name="robots" content="noindex,nofollow"><link rel="stylesheet" href="/_b46_ui_overlay.css?v=20261115" data-b46-staging-overlay="1">';
+      const inject = '<meta name="robots" content="noindex,nofollow"><link rel="stylesheet" href="/_b46_ui_overlay.css?v=20261116-summary" data-b46-staging-overlay="1"><script defer src="/_b46_stats_summary.js?v=20261116" data-b46-stage-summary-script="1"></script>';
       const html = original.includes('</head>') ? original.replace('</head>',inject+'</head>') : original;
       h.set('content-type','text/html; charset=UTF-8');
       h.set('x-b46-overlay',original.includes('</head>')?stamp:'INJECTION_ANCHOR_MISSING');

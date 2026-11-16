@@ -200,3 +200,104 @@ html.b46-stage-data-ready body[data-workspace-view="statistics"] .workspace-pane
   content: none !important;
   display: none !important;
 }
+
+
+/* BALL46 V3 — Statistics top KPI strip condensed into the right-hand card.
+   STAGING ONLY. No values or settlement calculations are touched. */
+html body[data-workspace-view="statistics"] .sp-stats-content.b46-stage-summary-ready > .b46v23-strip {
+  display:none!important;
+}
+html body #b46-finance-chart-card.b46-stage-summary-ready .f46-metrics,
+html body #b46-finance-chart-card.b46-stage-summary-ready .f46-details {
+  display:none!important;
+}
+html body #b46-finance-chart-card .b46-stage-summary-grid {
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:9px;
+  width:100%;
+  margin-top:auto;
+  align-content:end;
+  min-width:0;
+}
+html body #b46-finance-chart-card .b46-stage-summary-item {
+  min-width:0;
+  min-height:58px;
+  padding:11px 12px 10px;
+  border:1px solid rgba(92,168,143,.075);
+  border-radius:10px;
+  background:linear-gradient(152deg,rgba(47,100,83,.21),rgba(8,25,21,.15));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.035);
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  gap:5px;
+}
+html body #b46-finance-chart-card .b46-stage-summary-label {
+  display:block;
+  font-size:9px;
+  font-weight:750;
+  letter-spacing:.045em;
+  line-height:1.1;
+  color:#8faea0;
+}
+html body #b46-finance-chart-card .b46-stage-summary-number {
+  display:block;
+  color:#f1f7f3;
+  font-size:15px;
+  font-weight:750;
+  letter-spacing:-.28px;
+  line-height:1.2;
+  font-variant-numeric:tabular-nums;
+  white-space:nowrap;
+}
+html body #b46-finance-chart-card .b46-stage-summary-item[data-tone="green"] .b46-stage-summary-number {color:#37d49a;}
+html body #b46-finance-chart-card .b46-stage-summary-item[data-tone="red"] .b46-stage-summary-number {color:#fb7278;}
+html body #b46-finance-chart-card .b46-stage-summary-item[data-tone="yellow"] .b46-stage-summary-number {color:#eec779;}
+html body #b46-finance-chart-card .b46-stage-summary-item[data-key="wpl"] .b46-stage-summary-number {
+  font-size:clamp(11px,1.0vw,13px);
+  letter-spacing:-.42px;
+}
+html body #b46-finance-chart-card .f46-value {
+  font-size:clamp(19px,1.9vw,23px)!important;
+  line-height:1.18!important;
+  letter-spacing:-.45px!important;
+}
+@media (min-width:851px) {
+  html body #b46-finance-chart-card.b46-stage-summary-ready .f46-overview {
+    grid-row:1 / 5!important;
+    justify-content:space-between!important;
+    gap:20px!important;
+    padding:20px 20px 20px!important;
+  }
+}
+@media (min-width:851px) and (max-width:1320px) {
+  html body #b46-finance-chart-card .b46-stage-summary-grid {
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:7px;
+  }
+  html body #b46-finance-chart-card .b46-stage-summary-item {
+    min-height:48px;
+    padding:8px 9px;
+  }
+}
+@media (max-width:850px) {
+  html body #b46-finance-chart-card .b46-stage-summary-grid {
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:8px;
+    margin-top:15px;
+  }
+  html body #b46-finance-chart-card .b46-stage-summary-item {
+    min-height:54px;
+    padding:10px 11px;
+  }
+  html body #b46-finance-chart-card .b46-stage-summary-number {
+    font-size:14px;
+  }
+  html body #b46-finance-chart-card .b46-stage-summary-item[data-key="wpl"] .b46-stage-summary-number {
+    font-size:clamp(10.5px,2.65vw,13px);
+  }
+  html body #b46-finance-chart-card .f46-value {
+    font-size:21px!important;
+  }
+}
