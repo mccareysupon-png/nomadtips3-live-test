@@ -90,6 +90,7 @@ function styleOnce(){
  '#b46-stage-fast-preview .b46-fast-stat small{display:block;color:#92b8a6;font-size:10px}',
  '#b46-stage-fast-preview .b46-fast-stat b{display:block;font-size:15px;margin-top:4px}',
  '#b46-stage-fast-preview .b46-fast-foot{font-size:10px;color:#9bb8a9;margin-top:12px}',
+ '#b46-stage-fast-preview .b46-fast-details{border:1px solid #336e57;background:#1a3b2e;color:#cff7df;cursor:pointer;border-radius:8px;padding:10px 14px;font-size:12px;font-weight:700;margin-top:12px}',
  '@media(max-width:850px){#b46-stage-fast-preview .b46-fast-columns{grid-template-columns:1fr}#b46-stage-fast-preview .b46-fast-chart{height:150px}}'
  ].join('');
  document.head.appendChild(style);
@@ -129,10 +130,18 @@ function mount(){
    const strong=document.createElement('b');strong.textContent=value;
    cell.append(small,strong);stats.appendChild(cell);
  }
- right.append(label,net,stats);
+ const details=document.createElement('button');details.className='b46-fast-details';
+ details.type='button';details.textContent='Load detailed history';
+ details.addEventListener('click',()=>{
+   diag.status='details-requested';
+   details.disabled=true;details.textContent='Loading detailed history…';
+   if(typeof window.__B46_STAGE_LOAD_DETAILS==='function')window.__B46_STAGE_LOAD_DETAILS();
+   else void window.BALL46_STATISTICS_DATA?.load?.();
+ });
+ right.append(label,net,stats,details);
  cols.append(left,right);
  const foot=document.createElement('div');foot.className='b46-fast-foot';
- foot.textContent='Saved snapshot · Detailed history and live verification loading separately';
+ foot.textContent='Saved verified snapshot · Open detailed history when needed';
  preview.append(kicker,cols,foot);
  const content=panel.querySelector('.sp-stats-content');
  if(content)panel.insertBefore(preview,content);
@@ -159,15 +168,15 @@ const begin=async()=>{
    [head,graph]=await Promise.all([h.json(),g.json()]);
    if(!validData(head,graph))throw Error('FAST_STAGE_COUNT_MISMATCH');
    mount();
- }catch(e){diag.status='unavailable';diag.error=String(e.message||e).slice(0,120)}
+ }catch(e){diag.status='unavailable';diag.error=String(e.message||e).slice(0,120);window.__B46_STAGE_LOAD_DETAILS?.()}
 };
 document.addEventListener('ball46:workspace-view',()=>{if(preview&&!validRoute())cleanup();else mount()});
 document.addEventListener('click',e=>{
  if(e.target?.closest?.('[data-stat-market],[data-sp-filter],[data-sp-variant]')){
-   cleanup();diag.status='filter-selected';
+   window.__B46_STAGE_LOAD_DETAILS?.();cleanup();diag.status='filter-selected';
  }
 },true);
-window.addEventListener('popstate',()=>{if(!validRoute())cleanup();else mount()});
+window.addEventListener('popstate',()=>{if(!validRoute()){window.__B46_STAGE_LOAD_DETAILS?.();cleanup()}else mount()});
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',begin,{once:true});
 else begin();
 })();`;
