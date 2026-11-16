@@ -100,8 +100,20 @@ export function buildVerifiedGraph(rows, snapshotSavedAt){
     return [...days.values()];
   };
   const series={units:unitDays,roi:compressDays(roiPoints),rate:compressDays(ratePoints)};
+  // Preserve B46_SETTLED_DAYS_KPI_V1: calendar span, first through latest
+  // settlement in Asia/Bangkok, including results that have no priced odds.
+  const dayNos=settled.map(r=>dateMs(r?.settledAt??r?.createdAt))
+    .filter(ms=>ms>0).map(ms=>{
+      const key=bangkokDayKey(ms);
+      const parts=String(key).split(/[-/]/).map(Number);
+      return parts.length===3&&parts.every(Number.isFinite)
+        ?Math.floor(Date.UTC(parts[0],parts[1]-1,parts[2])/86400000):null;
+    }).filter(Number.isFinite);
+  const settledDays=dayNos.length
+    ?Math.max(1,Math.max(...dayNos)-Math.min(...dayNos)+1):null;
   const summary={rows:settled.length,wins,losses,pushes,priced,net,stake,
     roi:stake?net/stake*100:null,avgOdds:oddsN?oddsSum/oddsN:null,
+    settledDays,
     maxDD,peak,bestRun};
   const result={schema:GRAPH_SCHEMA,ok:true,market:'all',variant:'all',
     filter:'all',range:'all',asOf:snapshotSavedAt,
