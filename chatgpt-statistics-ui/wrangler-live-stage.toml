@@ -9,3 +9,8 @@ workers_dev = true
 type = "Text"
 globs = ["**/live-staging-overlay.css"]
 fallthrough = true
+
+# Internal GET-only staging read of CURRENT Production Worker, never a Production deploy.
+[[services]]
+binding = "B46_PRODUCTION_READ"
+service = "ball46-production"

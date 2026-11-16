@@ -36,8 +36,13 @@ jobs:
           if grep -Ein '(^|[[:space:]])(route|routes|zone_id|zone_name)[[:space:]]*=' wrangler-live-stage.toml; then
             echo 'ABORT: custom domain/routes prohibited in this staging'; exit 1
           fi
-          if grep -Fq 'ball46-production' wrangler-live-stage.toml; then
-            echo 'ABORT: cannot target Production'; exit 1
+          # The staging-only GET service binding is approved. It never deploys the downstream Worker.
+          grep -Fx 'binding = "B46_PRODUCTION_READ"' wrangler-live-stage.toml
+          grep -Fx 'service = "ball46-production"' wrangler-live-stage.toml
+          grep -Fq 'STAGING_API_NOT_ALLOWED' live-staging-worker.mjs
+          grep -Fq 'B46_PRODUCTION_READ.fetch' live-staging-worker.mjs
+          if grep -Eq 'name[[:space:]]*=[[:space:]]*"ball46-production"' wrangler-live-stage.toml; then
+            echo 'ABORT: must never deploy as Production'; exit 1
           fi
       - name: Deploy isolated read-only real frontend staging
         working-directory: chatgpt-statistics-ui

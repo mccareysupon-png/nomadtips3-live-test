@@ -15,7 +15,7 @@ const baseHeaders = {
   'x-content-type-options':'nosniff'
 };
 export default {
-  async fetch(request) {
+  async fetch(request, env) {
     const u = new URL(request.url);
     if (!['GET','HEAD'].includes(request.method)) return json({ok:false,error:'READ_ONLY_STAGING'},405);
     if (u.pathname === '/_b46_ui_health') return json({ok:true,mode:'real-frontend-read-only',stamp,origin:'ball46.com',productionWrites:0,overlay:'live-staging-overlay.css'});
@@ -23,6 +23,17 @@ export default {
       headers:{...baseHeaders,'content-type':'text/css; charset=UTF-8','x-b46-overlay':stamp}
     });
     if (u.pathname.startsWith('/_b46_')) return json({ok:false,error:'NOT_FOUND'},404);
+    // GET/HEAD-only. Do not expose internal Production GET routes through this mirror.
+    const publicApi = new Set([
+      '/api/engine/statistics','/api/engine/board','/api/engine/signals','/api/engine/health',
+      '/api/hub/snapshot','/api/hub/health','/api/prediction-vote'
+    ]);
+    if (u.pathname.startsWith('/api/') && !publicApi.has(u.pathname))
+      return json({ok:false,error:'STAGING_API_NOT_ALLOWED'},404);
+    if (!u.pathname.startsWith('/api/') && u.pathname!=='/' &&
+        !/^\/[a-zA-Z0-9_./-]+\.(?:js|css|svg|png|gif|woff2?|ico|jpeg|jpg|webp|json|html|txt|map)$/.test(u.pathname))
+      return json({ok:false,error:'STAGING_PATH_NOT_ALLOWED'},404);
+    if (!env.B46_PRODUCTION_READ) return json({ok:false,error:'STAGING_SERVICE_BINDING_MISSING'},503);
     // Static/public GET routes only. No request bodies, credentials, cookies or authorization forwarded.
     const originURL = new URL(u.pathname + u.search,ORIGIN);
     const accept = request.headers.get('accept');
@@ -30,13 +41,15 @@ export default {
     if(accept) headers.set('accept',accept.slice(0,256));
     // Stats page requests now retry the failed cursor page in the staging browser.
     // Avoid nested edge+browser retries and inadvertent extra origin traffic.
-    const upstream = await fetch(originURL.toString(), {
-      method:request.method,headers,redirect:'manual',
-      cf:{cacheTtl:0,cacheEverything:false}
-    });
+    // Same-account Service Binding: no web-edge WAF/challenge between staging and target.
+    // This binds ONLY the staging Worker and never changes ball46-production.
+    const upstream = await env.B46_PRODUCTION_READ.fetch(new Request(originURL.toString(), {
+      method:request.method,headers,redirect:'manual'
+    }));
     const h = new Headers(upstream.headers);
     for(const x of ['set-cookie','content-length','content-encoding','etag','content-security-policy','content-security-policy-report-only','access-control-allow-origin','transfer-encoding']) h.delete(x);
     Object.entries(baseHeaders).forEach(([k,v])=>h.set(k,v));
+    h.set('x-b46-read-path','SERVICE_BINDING');
     // Prevent accidental redirects to a Production URL when viewing the staging site.
     const location=h.get('location');
     if(location){
@@ -50,6 +63,7 @@ export default {
       const patched=patchCurrentStatisticsLoader(original);
       h.set('content-type','application/javascript; charset=UTF-8');
       h.set('x-b46-staging-loader',patched.status);
+      h.set('x-b46-read-path','SERVICE_BINDING');
       return new Response(patched.source,{status:upstream.status,headers:h});
     }
     // A scope-limited staging-only patch of the CURRENT chart module's own CSS:
