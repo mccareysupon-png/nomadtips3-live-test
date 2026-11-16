@@ -1,0 +1,26 @@
+name: BALL46 V2 one-time last-verified running-balance seed STAGING ONLY
+on:
+  push:
+    branches: [chatgpt/ball46-statistics-ui-v1]
+    paths:
+      - '.github/workflows/b46-v2-running-balance-bootstrap-stage-20261116.yml'
+  workflow_dispatch:
+permissions: {contents: read}
+concurrency: {group: b46-stage-v2-one-time-seed, cancel-in-progress: false}
+jobs:
+  seed-once:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - name: Verify exact current settlement formulas and running-balance parity
+        run: |
+          node --check chatgpt-statistics-ui/bootstrap-running-account-v2-stage.mjs
+          node chatgpt-statistics-ui/test-incremental-accounting-v2-stage.mjs
+      - name: Seed last verified totals ONCE into STAGING KV only, no new Production state
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: node chatgpt-statistics-ui/bootstrap-running-account-v2-stage.mjs
