@@ -28,7 +28,7 @@ export function removeMovedKpiStripFromMenu(moduleSource){
   " const nonVisual='<section class=\"sp-kpis\" data-b46-relocated-source=\"1\" hidden aria-hidden=\"true\" style=\"display:none!important\">';",
   " const hidden=clean.replace(tag,nonVisual);",
   " if(!hidden.includes('</head>'))throw Error('HEAD_ANCHOR_MISSING');",
-  " const guard='<style id=\"b46-moved-top-kpis-no-flash-20261117\">.workspace-panel[data-workspace-panel=\"statistics\"] .sp-kpis,.workspace-panel[data-workspace-panel=\"statistics\"] .b46v23-strip-grid{display:none!important;height:0!important;margin:0!important;padding:0!important}</style>';",
+  " const guard='<style id=\"b46-moved-top-kpis-no-flash-20261117\">.workspace-panel[data-workspace-panel=\"statistics\"] .sp-kpis{display:none!important;height:0!important;margin:0!important;padding:0!important}html body .workspace.singlepage .workspace-panel[data-workspace-panel=\"statistics\"] .sp-stats-content.sp-stats-content>.b46v23-strip.b46v23-strip{display:none!important;max-height:0!important;height:0!important;overflow:hidden!important;margin:0!important;padding:0!important}html body .workspace.singlepage .workspace-panel[data-workspace-panel=\"statistics\"] .sp-stats-content.sp-stats-content .b46v23-strip-grid{display:none!important;max-height:0!important;overflow:hidden!important}</style>';",
   " if(hidden.includes('id=\"b46-moved-top-kpis-no-flash-20261117\"'))throw Error('DUPLICATE_GUARD');",
   " return hidden.replace('</head>',guard+'</head>');"
  ].join('\n');
