@@ -1,10 +1,88 @@
-name: Retired B46 receiver bootstrap (disabled)
+name: B46 one-time approved private Receiver audit deployment
 on:
+  push:
+    branches: [chatgpt/ball46-new-ledger-clean-v1]
+    paths: ['.github/workflows/b46-prod-receiver-handshake.yml']
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: b46-prod-receiver-only
+  cancel-in-progress: false
 jobs:
-  retired:
+  receiver:
     runs-on: ubuntu-latest
+    timeout-minutes: 7
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
     steps:
-      - run: echo "Retired bootstrap; no Cloudflare calls or deployment."
+      - uses: actions/checkout@v4
+        with:
+          ref: ca109e089dbad64e838a113fa0c32dbee0748e51
+          persist-credentials: false
+      - name: Validate approved source then upload and activate only Receiver with inherited bindings
+        working-directory: chatgpt-statistics-ui
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = ca109e089dbad64e838a113fa0c32dbee0748e51
+          test "$(git hash-object shadow-production-receiver.mjs)" = 11d294a56be06d9b706c03d3b8a25c8c078b20b2
+          node --check shadow-production-receiver.mjs
+          node --input-type=module <<'JS'
+          import worker from './shadow-production-receiver.mjs';
+          const env={SHADOW_HEALTH_TOKEN:'local-only',SHADOW_STORE:{idFromName:n=>n,get:()=>({fetch:()=>{throw Error('unexpected storage read in rejected request')}})}};
+          for(const token of [null,'wrong']){
+            const r=await worker.fetch(new Request('https://shadow.internal/audit-snapshot',{headers:token?{authorization:'Bearer '+token}:{}}),env);
+            if(r.status!==403)throw Error('LOCAL_AUTH_REJECTION_FAILED');
+          }
+          console.log('LOCAL_NO_TOKEN_AND_WRONG_TOKEN_403=true');
+          JS
+          npx --yes esbuild@0.25.12 shadow-production-receiver.mjs --bundle --format=esm --platform=neutral --target=es2022 --outfile="$RUNNER_TEMP/receiver.mjs"
+          node --check "$RUNNER_TEMP/receiver.mjs"
+          node --input-type=module <<'JS'
+          import {readFileSync} from 'node:fs';
+          import {createHash} from 'node:crypto';
+          const root='https://api.cloudflare.com/client/v4/accounts/62cb0db544160e6591342abd6b4f35cc';
+          const receiver='ball46-shadow-receiver-production',engine='nomadtips3-engine-343',site='ball46-production';
+          const old='9fc95e75-4833-429e-b119-0051b3a3d316',engineOld='db65134e-a12d-4084-937e-3ce6e986c251',siteOld='f5d9cf21-4b41-46da-bdd8-a841fa733d82';
+          const headers={authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN,'content-type':'application/json'};
+          const api=async(p,method='GET',body)=>{
+            if(method!=='GET'&&!(method==='POST'&&(p==='/workers/workers/'+receiver+'/versions?deploy=false'||p==='/workers/scripts/'+receiver+'/deployments')))throw Error('WRITE_GUARD');
+            const r=await fetch(root+p,{method,headers,body:body===undefined?undefined:JSON.stringify(body),signal:AbortSignal.timeout(30000)});
+            const j=await r.json();if(!r.ok||!j.success)throw Error('CF_'+method+'_'+r.status+'_'+(j.errors??[]).map(e=>e.code).join('_'));return j.result;
+          };
+          const active=async n=>(await api('/workers/scripts/'+n+'/deployments?per_page=1')).deployments?.[0]?.versions;
+          const equal=(a,id)=>a?.length===1&&a[0].version_id===id&&Number(a[0].percentage)===100;
+          const ensure=async(n,id)=>{if(!equal(await active(n),id))throw Error('ACTIVE_VERSION_DRIFT_'+n)};
+          const privateCheck=async()=>{const s=await api('/workers/scripts/'+receiver+'/subdomain');if(s.enabled!==false||s.previews_enabled===true)throw Error('RECEIVER_PUBLIC')};
+          const version=id=>api('/workers/workers/'+receiver+'/versions/'+id+'?include=modules');
+          const hash=b=>createHash('sha256').update(b).digest('hex');
+          const match=(a,b)=>{if(a.length!==b.length)throw Error('BINDING_COUNT_DRIFT');for(const x of a){const y=b.find(z=>z.name===x.name);if(!y||y.type!==x.type)throw Error('BINDING_TYPE_DRIFT');for(const k of ['service','class_name','namespace_id','script_name','environment','text'])if(x.type!=='secret_text'&&x[k]!==undefined&&x[k]!==y[k])throw Error('BINDING_RESOURCE_DRIFT')}};
+          const checks=async id=>{await ensure(engine,engineOld);await ensure(site,siteOld);await ensure(receiver,id);await privateCheck()};
+          const assign=id=>api('/workers/scripts/'+receiver+'/deployments','POST',{strategy:'percentage',versions:[{version_id:id,percentage:100}],annotations:{'workers/message':'Approved ca109e0 read-only audit endpoint only'}});
+          const wait=async id=>{for(let i=0;i<15;i++){if(equal(await active(receiver),id))return;await new Promise(r=>setTimeout(r,2000))}throw Error('RECEIVER_ACTIVE_VERSION_NOT_CONFIRMED')};
+          await checks(old);
+          const v=await version(old),settings=await api('/workers/scripts/'+receiver+'/settings');
+          if(v.modules?.length!==1||v.main_module!==v.modules[0].name||hash(Buffer.from(v.modules[0].content_base64,'base64'))!=='8a89725df42baa5bb921dca160c27b3b2fb8cb5c4a524b6ef94c7c16d88e499f')throw Error('OLD_RECEIVER_HASH_DRIFT');
+          const bindings=v.bindings??[];
+          if(!bindings.some(x=>x.name==='SHADOW_HEALTH_TOKEN'&&x.type==='secret_text')||!bindings.some(x=>x.name==='SHADOW_STORE'&&x.type==='durable_object_namespace'&&x.class_name==='ShadowProductionStore'))throw Error('RECEIVER_BINDINGS_UNEXPECTED');
+          const candidate=readFileSync(process.env.RUNNER_TEMP+'/receiver.mjs');
+          const payload={main_module:v.main_module,modules:[{name:v.main_module,content_type:v.modules[0].content_type,content_base64:candidate.toString('base64')}],bindings:bindings.map(b=>({name:b.name,type:'inherit',version_id:old})),compatibility_date:v.compatibility_date,compatibility_flags:settings.compatibility_flags??[],annotations:{'workers/message':'ca109e0 read-only audit endpoint'}};
+          if(v.usage_model)payload.usage_model=v.usage_model;
+          if(v.migration_tag)payload.migration_tag=v.migration_tag;
+          const up=await api('/workers/workers/'+receiver+'/versions?deploy=false','POST',payload);
+          const id=up.id;if(!id||id===old)throw Error('INVALID_NEW_RECEIVER_VERSION');
+          const next=await version(id);
+          if(next.modules?.length!==1||hash(Buffer.from(next.modules[0].content_base64,'base64'))!==hash(candidate))throw Error('UPLOADED_RECEIVER_HASH_DRIFT');
+          match(bindings,next.bindings??[]);
+          await checks(old);
+          console.log('RECEIVER_CANDIDATE_VERIFIED='+JSON.stringify({id,rollback:old,source:'ca109e0',sha256:hash(candidate),secretInherited:true}));
+          let attempted=false;
+          try{
+            attempted=true;await assign(id);await wait(id);await checks(id);
+            console.log('RECEIVER_DEPLOYED='+JSON.stringify({id,rollback:old,engine:engineOld,website:siteOld,private:true,secretInherited:true,traffic:100}));
+          }catch(e){
+            if(attempted&&equal(await active(receiver),id)){await assign(old);await wait(old);console.log('RECEIVER_ROLLBACK_CONFIRMED='+old)}
+            throw e;
+          }
+          JS
