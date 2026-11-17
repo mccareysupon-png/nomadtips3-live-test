@@ -12,7 +12,7 @@ export class ShadowProductionStore {
   try{
    if(path==='/state'&&req.method==='GET')return reply({ok:true,queue:await store.get('inbox:state')??state0(),book:await store.get('composite:state')??null,alarmScheduled:(await store.getAlarm())!==null});
    if(path==='/audit-snapshot'&&req.method==='GET'){
-    if(!this.env.SHADOW_HEALTH_TOKEN||req.headers.get('authorization')!=='Bearer '+this.env.SHADOW_HEALTH_TOKEN)return reply({ok:false},403);
+    if(!this.env.AUDIT_READ_TOKEN||req.headers.get('authorization')!=='Bearer '+this.env.AUDIT_READ_TOKEN)return reply({ok:false},403);
     if(req.headers.get('x-audit-object')==='inbox'){
      const q=await store.get('inbox:state')??state0();
      return reply({total_received:q.received,duplicate_count:q.duplicates,pending_retry_queue:q.pending});
@@ -87,7 +87,7 @@ export default {async fetch(req,env){
  const inbox=env.SHADOW_STORE.get(env.SHADOW_STORE.idFromName('inbox-v1'));
  if(u.pathname==='/audit-snapshot'){
   if(req.method!=='GET')return reply({ok:false},405);
-  if(!env.SHADOW_HEALTH_TOKEN||req.headers.get('authorization')!=='Bearer '+env.SHADOW_HEALTH_TOKEN)return reply({ok:false},403);
+  if(!env.AUDIT_READ_TOKEN||req.headers.get('authorization')!=='Bearer '+env.AUDIT_READ_TOKEN)return reply({ok:false},403);
   const book=env.SHADOW_STORE.get(env.SHADOW_STORE.idFromName('book-v1'));
   const auth=req.headers.get('authorization');
   const [a,b]=await Promise.all([inbox.fetch('https://store.internal/audit-snapshot',{headers:{authorization:auth,'x-audit-object':'inbox'}}),book.fetch('https://store.internal/audit-snapshot',{headers:{authorization:auth,'x-audit-object':'book'}})]);
