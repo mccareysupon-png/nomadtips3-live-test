@@ -1,0 +1,61 @@
+name: B46 verify previously persisted shadow probe (staging only)
+on:
+  push:
+    branches: [chatgpt/ball46-new-ledger-clean-v1]
+    paths: ['.github/workflows/b46-shadow-final-readback.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: b46-shadow-isolated-persistence-probe
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: '62cb0db544160e6591342abd6b4f35cc'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Read same durable object after prior replay without importing new rows
+        working-directory: chatgpt-statistics-ui
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > wrangler-shadow-probe.toml <<'CONF'
+          name = "ball46-shadow-persistence-probe-20261117"
+          main = "shadow-real-persistence-probe.mjs"
+          compatibility_date = "2026-11-17"
+          workers_dev = true
+          [vars]
+          PROBE_GENERATION = "two"
+          [[services]]
+          binding = "PRODUCTION_READ"
+          service = "ball46-production"
+          [[durable_objects.bindings]]
+          name = "PROBE_BOOK"
+          class_name = "ShadowPersistenceProbe"
+          [[migrations]]
+          tag = "probe-v1"
+          new_sqlite_classes = ["ShadowPersistenceProbe"]
+          CONF
+          TOKEN=$(openssl rand -hex 32)
+          echo "::add-mask::$TOKEN"
+          printf '%s' "$TOKEN" | npx --yes wrangler@4 secret put PROBE_TOKEN --config wrangler-shadow-probe.toml
+          BASE="https://ball46-shadow-persistence-probe-20261117.mccarey-supon.workers.dev"
+          for i in $(seq 1 20); do
+            code=$(curl -sS --max-time 20 -o /tmp/shadow-final-readback.json -w '%{http_code}' -H "Authorization: Bearer $TOKEN" "$BASE/state?run=440600811651" || true)
+            echo "READBACK_HTTP=$code attempt=$i"
+            if [ "$code" = "200" ]; then
+              node -e 'const d=require("/tmp/shadow-final-readback.json");console.log("DURABLE_FINAL_READBACK="+JSON.stringify(d));if(!d.ok||d.generation!=="two"||d.pending!==0||d.book.total!==5||d.sourceSequenceVerified!==false||["WIN","LOSS","PUSH","HALF_WIN","HALF_LOSS"].reduce((n,k)=>n+d.book[k],0)!==5)throw Error("READBACK_BALANCE_MISMATCH")'
+              exit 0
+            fi
+            sleep 3
+          done
+          exit 1
