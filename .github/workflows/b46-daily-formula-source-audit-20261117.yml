@@ -1,0 +1,28 @@
+name: B46 exact homepage daily calculation source READ ONLY
+on:
+  push:
+    branches: [chatgpt/ball46-statistics-ui-v1]
+    paths: ['.github/workflows/b46-daily-formula-source-audit-20261117.yml']
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: Inspect active current homepage day counting with no writes
+        run: |
+          node <<'NODE'
+          (async()=>{
+            const root='https://api.cloudflare.com/client/v4/accounts/62cb0db544160e6591342abd6b4f35cc',h={authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN};
+            const json=async p=>{const r=await fetch(root+p,{headers:h});const d=await r.json();if(!r.ok||!d.success)throw Error('CF_'+r.status);return d.result};
+            const id=(await json('/workers/scripts/ball46-production/deployments?per_page=1')).deployments[0].versions[0].version_id;
+            const v=await json('/workers/workers/ball46-production/versions/'+id+'?include=modules');
+            const source=Buffer.from(v.modules.find(m=>m.name==='index.js').content_base64,'base64').toString();
+            const ref=source.indexOf("const ID='ball46-daily-performance'");
+            if(ref<0)throw Error('HOMEPAGE_DAILY_SOURCE_MISSING');
+            const fragment=source.slice(ref,ref+6000);
+            console.log('B46_DAILY_SOURCE_EXACT='+JSON.stringify({id,at:ref,text:fragment}));
+          })().catch(e=>{console.error('B46_DAILY_AUDIT_ERR='+e);process.exitCode=1});
+          NODE
