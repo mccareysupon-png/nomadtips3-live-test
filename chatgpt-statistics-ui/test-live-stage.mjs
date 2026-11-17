@@ -231,7 +231,7 @@ try{
         horizontalOverflow:document.documentElement.scrollWidth>innerWidth+1,
         stageMarker:!!document.querySelector('[data-b46-staging-overlay]'),
         loaderPatched:false,
-        loadingAnimationHidden:getComputedStyle(document.querySelector('.b46-stats-loader')).display==='none',
+        loadingAnimationHidden:(!document.querySelector('.b46-stats-loader')||getComputedStyle(document.querySelector('.b46-stats-loader')).display==='none'),
         summary:{ready:!!document.querySelector('.sp-stats-content.b46-stage-summary-ready'),
           hiddenTop:(()=>{const strip=document.querySelector('.b46v23-strip');return strip?getComputedStyle(strip).display==='none':false})(),
           count:document.querySelectorAll('#b46-finance-chart-card .b46-stage-summary-item').length,
@@ -352,7 +352,7 @@ try{
       return{ledgerTotal:d.ledgerTotal,rows:d.ledgerRows.length,stale:!!d.stale,
         tableLabel:document.querySelector('[data-sp-feed-state]')?.textContent?.trim(),
         graphVisible:!!document.querySelector('#b46-finance-chart-card svg.f46-svg')?.getClientRects().length,
-        loadingAnimationHidden:getComputedStyle(document.querySelector('.b46-stats-loader')).display==='none',
+        loadingAnimationHidden:(!document.querySelector('.b46-stats-loader')||getComputedStyle(document.querySelector('.b46-stats-loader')).display==='none'),
         summaryCount:document.querySelectorAll('#b46-finance-chart-card .b46-stage-summary-item').length,
         outcomeSegments:document.querySelectorAll('#b46-finance-chart-card .b46-stage-outcomes-segment').length,
         topStripHidden:(()=>{const strip=document.querySelector('.b46v23-strip');return strip?getComputedStyle(strip).display==='none':false})()};
