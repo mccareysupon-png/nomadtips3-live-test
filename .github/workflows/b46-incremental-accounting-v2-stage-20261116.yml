@@ -5,6 +5,8 @@ on:
     paths:
       - 'chatgpt-statistics-ui/incremental-accounting-v2-stage.mjs'
       - 'chatgpt-statistics-ui/test-incremental-accounting-v2-stage.mjs'
+      - 'chatgpt-statistics-ui/daily-summary-stage.mjs'
+      - 'chatgpt-statistics-ui/test-daily-summary-stage.mjs'
       - '.github/workflows/b46-incremental-accounting-v2-stage-20261116.yml'
 permissions: {contents: read}
 jobs:
@@ -19,3 +21,4 @@ jobs:
         run: |
           node --check chatgpt-statistics-ui/incremental-accounting-v2-stage.mjs
           node chatgpt-statistics-ui/test-incremental-accounting-v2-stage.mjs
+          node chatgpt-statistics-ui/test-daily-summary-stage.mjs
