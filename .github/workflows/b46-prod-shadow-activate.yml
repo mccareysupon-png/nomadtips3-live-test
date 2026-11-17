@@ -69,7 +69,16 @@ jobs:
           console.log('PRODUCTION_PRE_DEPLOY_GATE='+JSON.stringify({engine:old,traffic:100,backupHash:legacyHash,receiver:rv,verifiedHandshakeVersion:checked,legacyRead:before,websiteVersion:webOld}));
           const source=Buffer.from(baseline.modules[0].content_base64,'base64').toString('utf8'),p=prepareHook(source);
           if(!p.legacyExact||!p.outsideExact||hash(p.source)!==candidateHash||p.source.split('\n').length-source.split('\n').length!==22)throw Error('AUDITED_22_LINE_DIFF_MISMATCH');
-          if(!/this\.env\s*=\s*env\b/.test(source))throw Error('REAL_ENGINE_ENV_NOT_CONFIRMED');
+          const end=source.indexOf('async upsertLedgerRows(');
+          const start=source.lastIndexOf('constructor(',end);
+          if(start<0)throw Error('REAL_ENGINE_CONSTRUCTOR_NOT_FOUND');
+          const ctor=source.slice(start,end);
+          const params=ctor.match(/constructor\(([^)]*)\)/)?.[1]?.split(',').map(x=>x.trim())??[];
+          const envArg=params[1];
+          const escapeRe=s=>s.replace(/[.*+?^{}()|[\]\\]/g,'\\          if(!/this\.env\s*=\s*env\b/.test(source))throw Error('REAL_ENGINE_ENV_NOT_CONFIRMED');');
+          const assigned=!!envArg&&/^[A-Za-z_$][\w$]*$/.test(envArg)&&new RegExp('this\\.env\\s*=\\s*'+escapeRe(envArg)+'\\b').test(ctor);
+          console.log('ENGINE_ENV_CHECK='+JSON.stringify({params,assigned,constructorMentionsEnv:ctor.includes('this.env'),constructorMentionsSuper:ctor.includes('super(')}));
+          if(!assigned)throw Error('REAL_ENGINE_ENV_NOT_CONFIRMED');
           const settings=await api('/workers/scripts/'+engine+'/settings');
           const payload={main_module:baseline.main_module,modules:[{name:baseline.main_module,content_type:baseline.modules[0].content_type,content_base64:Buffer.from(p.source).toString('base64')}],bindings:tested.map(b=>({name:b.name,type:'inherit',version_id:checked})),compatibility_date:baseline.compatibility_date,compatibility_flags:settings.compatibility_flags??[],annotations:{'workers/message':'B46 audited 22-line Shadow Write only'}};
           if(baseline.usage_model)payload.usage_model=baseline.usage_model;
