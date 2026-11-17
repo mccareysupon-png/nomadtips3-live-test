@@ -13,6 +13,7 @@ const META='verified-full-meta-v1';
 // Force a full staging-only reconciliation on the next build at least hourly.
 const MAX_FULL_RECHECK_MS=60*60*1000;
 const GRAPH_BUILD_REVISION='daily-kpi-v2-20261116';
+const HEAD_BUILD_REVISION='daily-home-london-v1-20261117';
 const RESULTS={WIN:'win',LOSS:'loss',PUSH:'push',HALF_WIN:'halfWin',HALF_LOSS:'halfLoss'};
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 export function signature(x){
@@ -130,6 +131,7 @@ export async function execute(){
      /^verified-chart-v1-[0-9a-f]{32}$/.test(before.chartKey)&&
      before.chartSourceSha===chartSourceSha&&
      before.graphBuildRevision===GRAPH_BUILD_REVISION&&
+     before.headBuildRevision===HEAD_BUILD_REVISION&&
      Date.now()-Number(before.fullVerifiedAt||before.savedAt||0)<MAX_FULL_RECHECK_MS&&
      before.sourceSignature===signature(latest)){
     await apiPut(META,JSON.stringify({...before,checkedAt:Date.now()}),
@@ -167,6 +169,7 @@ export async function execute(){
     summaryKey,summaryBytes:compact.bytes,summarySha256:summarySha,
     chartKey,chartBytes:graph.bytes,chartSha256:chartSha,chartSourceSha,
     graphBuildRevision:GRAPH_BUILD_REVISION,
+    headBuildRevision:HEAD_BUILD_REVISION,
     settled:snapshot.total,rawBytes:raw.length,gzipBytes:gz.length,sha256:sha,
     previousKeys:[before?.key,...(before?.previousKeys||[])].filter(x=>typeof x==='string'&&x.startsWith('verified-full-gzip-v2-')&&x!==key).slice(0,2),
     source:'PUBLIC_PRODUCTION_READ_ONLY',target:'STAGING_KV_ONLY'};
