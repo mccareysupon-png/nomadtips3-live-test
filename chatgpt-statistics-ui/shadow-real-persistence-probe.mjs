@@ -62,6 +62,44 @@ export default {async fetch(req,env){
    // Stop before delivery to simulate a receiver outage; queue is durable.
    return response({ok:true,source:'REAL_ARCHIVED_ROWS_NOT_LIVE_EVENTS',queued:distinct.size});
   }
+  if(req.method==='POST'&&u.pathname==='/gap-probe'){
+   // Deliberately omit two real archived signals from a fresh isolated test book.
+   // Recover known IDs from the authoritative source, never invent a commit sequence.
+   const fetchPage=async cursor=>{
+    const endpoint=new URL('https://www.ball46.com/api/engine/statistics?paged=1');
+    if(cursor)endpoint.searchParams.set('cursor',cursor);
+    const r=await env.PRODUCTION_READ.fetch(endpoint.toString(),{method:'GET',headers:{accept:'application/json'}});
+    if(!r.ok)throw Error('SOURCE_HTTP_'+r.status);
+    const d=await r.json();if(!d.ok||!Array.isArray(d.rows))throw Error('SOURCE_INVALID');return d;
+   };
+   const initial=await rpc(book,'/state');
+   if(initial.balance.total!==0)throw Error('FRESH_PROBE_BOOK_REQUIRED');
+   const first=await fetchPage(null),selected=new Map();
+   for(const raw of first.rows){const row=normalized(raw);if(row&&!selected.has(row.id))selected.set(row.id,row);if(selected.size===5)break}
+   if(selected.size!==5)throw Error('FIVE_ARCHIVED_ROWS_REQUIRED');
+   for(const row of [...selected.values()].slice(0,3))await rpc(book,'/post',row);
+   const before=(await rpc(book,'/state')).balance.total;
+   if(before!==3)throw Error('GAP_SETUP_FAILED');
+   const found=new Map();let cursor=null,pages=0;const seen=new Set();
+   do{
+    const d=await fetchPage(cursor);pages++;
+    for(const raw of d.rows){const row=normalized(raw);if(row&&selected.has(row.id))found.set(row.id,row)}
+    if(found.size===5)break;
+    cursor=d.nextCursor??null;
+    if(cursor&&seen.has(cursor))throw Error('SOURCE_CURSOR_REPEAT');
+    if(cursor)seen.add(cursor);
+   }while(cursor&&pages<3);
+   if(found.size!==5)throw Error('SOURCE_TARGETS_NOT_FOUND');
+   let recovered=0,duplicate=0;
+   for(const [id,row] of found){
+    if(JSON.stringify(row)!==JSON.stringify(selected.get(id)))throw Error('SOURCE_CHANGED_DURING_PROBE');
+    const ack=await rpc(book,'/post',row);
+    if(ack.duplicate)duplicate++;else recovered++;
+   }
+   const final=(await rpc(book,'/state')).balance;
+   if(recovered!==2||duplicate!==3||final.total!==5)throw Error('GAP_RECOVERY_MISMATCH');
+   return response({ok:true,before,recovered,duplicate,final,pages,source:'REAL_ARCHIVE_ID_LOOKUP',sourceSequenceVerified:false});
+  }
   if(req.method==='POST'&&u.pathname==='/recover'){
    const {rows}=await rpc(queue,'/pending');let duplicate=0;
    for(const row of rows){await rpc(book,'/post',row);const again=await rpc(book,'/post',row);if(again.duplicate)duplicate++;await rpc(queue,'/ack',row)}
