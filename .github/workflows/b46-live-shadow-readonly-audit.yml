@@ -48,6 +48,18 @@ jobs:
                 const next=d.nextCursor??null;if(next===cursor){cursor=null;break}cursor=next;
               }while(cursor&&pages<8);
               const ordered=[...rows.values()].sort((a,b)=>Number(b.settledAt)-Number(a.settledAt));
+              const summarize=items=>{
+                let w=0,l=0,pnl=0,unknown=0;
+                for(const r of items){
+                  if(['WIN','HALF_WIN'].includes(r.result)){w++;const o=Number(r.odds);if(r.odds==null||!Number.isFinite(o)||o<1)unknown++;else pnl+=(o-1)*(r.result==='HALF_WIN'?0.5:1);}
+                  if(['LOSS','HALF_LOSS'].includes(r.result)){l++;pnl-=r.result==='HALF_LOSS'?0.5:1;}
+                }
+                return {count:items.length,pnl:unknown?null:Math.round(pnl*1e8)/1e8,winRate:w+l?w/(w+l)*100:0,latest:items.slice(0,5).map(r=>({idHash:qaId(r.id),settled_at:Number(r.settledAt),market_type:r.market??null,odds:r.odds??null,result:r.result}))};
+              };
+              const baseline=summarize(ordered.filter(r=>Number(r.settledAt)<=Date.parse('2026-11-17T23:26:57.974Z')));
+              const current=summarize(ordered.filter(r=>Number(r.settledAt)>=actual));
+              result('LEGACY_AUDIT_TOTALS',{baseline,current,archiveExhausted:!cursor,pnlUnit:'1 unit per signal; decimal odds; PUSH excluded from win rate'});
+              require('node:fs').writeFileSync(process.env.RUNNER_TEMP+'/b46-legacy-audit.json',JSON.stringify({baseline,current,archiveExhausted:!cursor}));
               result('LEGACY_SETTLEMENT_AUDIT',{checkedAt:iso(Date.now()),cutoff:iso(cutoff),activation:iso(actual),source,pages,scanned,archiveExhausted:!cursor,matched:ordered.length,fixtures:new Set(ordered.map(r=>r.fixtureId).filter(Boolean)).size,latest:ordered.slice(0,5).map(r=>({idHash:qaId(r.id),fixtureHash:r.fixtureId?qaId(r.fixtureId):null,settledAt:iso(Number(r.settledAt)),result:r.result,market:r.market??null,odds:r.odds??null,afterActualDeploy:Number(r.settledAt)>=actual}))});
             }catch(e){result('LEGACY_READ_ERROR',e.message)}
             try{
@@ -75,4 +87,55 @@ jobs:
               }catch(e){result('OBS_READ_ERROR',{name,error:e.message})}
             }
           })().catch(e=>{console.error('AUDIT_FAILED='+String(e.message).slice(0,120));process.exitCode=1});
+          JS
+      - name: Read authenticated private Receiver snapshot through remote service binding (no deployment)
+        env:
+          CLOUDFLARE_ACCOUNT_ID: '62cb0db544160e6591342abd6b4f35cc'
+          B46_AUDIT_TOKEN: ${{ secrets.SHADOW_HEALTH_TOKEN || secrets.B46_SHADOW_HEALTH_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${B46_AUDIT_TOKEN:-}" ]; then
+            echo 'RECEIVER_AUDIT_BLOCKED=EXISTING_HEALTH_TOKEN_NOT_AVAILABLE_IN_ACTIONS'
+            exit 0
+          fi
+          mkdir -p "$RUNNER_TEMP/b46-private-read"
+          cd "$RUNNER_TEMP/b46-private-read"
+          npm install --no-save --no-package-lock --ignore-scripts wrangler@4.92.0
+          cat > wrangler.json <<'JSON'
+          {"name":"b46-private-audit-local","compatibility_date":"2026-11-17","workers_dev":false,"preview_urls":false,"services":[{"binding":"RECEIVER","service":"ball46-shadow-receiver-production","remote":true}]}
+          JSON
+          node --input-type=module <<'JS'
+          import {getPlatformProxy} from 'wrangler';
+          import {createHash} from 'node:crypto';
+          import {readFileSync} from 'node:fs';
+          const hash=s=>createHash('sha256').update(String(s)).digest('hex').slice(0,16);
+          const base='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID;
+          const headers={authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN};
+          const res=await fetch(base+'/workers/scripts/ball46-shadow-receiver-production/deployments?per_page=1',{headers,signal:AbortSignal.timeout(20000)});
+          const dep=await res.json();
+          if(!res.ok||!dep.success)throw Error('RECEIVER_DEPLOYMENT_READ_FAILED');
+          const versions=dep.result?.deployments?.[0]?.versions??[];
+          if(versions.length!==1||Number(versions[0].percentage)!==100||versions[0].version_id==='9fc95e75-4833-429e-b119-0051b3a3d316'){
+            console.log('RECEIVER_AUDIT_BLOCKED=RECEIVER_SNAPSHOT_DEPLOYMENT_NOT_CONFIRMED');process.exit(0);
+          }
+          const proxy=await getPlatformProxy({configPath:'wrangler.json',remoteBindings:true,persist:false});
+          try{
+            const url='https://shadow.internal/audit-snapshot';
+            const missing=await proxy.env.RECEIVER.fetch(url,{method:'GET'});
+            console.log('RECEIVER_AUTH_MISSING_HTTP='+missing.status);
+            if(missing.status!==403)throw Error('NO_TOKEN_EXPECTED_403');
+            const good=await proxy.env.RECEIVER.fetch(url,{method:'GET',headers:{authorization:'Bearer '+process.env.B46_AUDIT_TOKEN}});
+            console.log('RECEIVER_AUTH_VALID_HTTP='+good.status);
+            if(good.status!==200)throw Error('VALID_TOKEN_EXPECTED_200');
+            const data=await good.json();
+            if(data.readOnly!==true||!data.inbox||!data.book||!Array.isArray(data.book.recent_5_signals))throw Error('UNEXPECTED_SNAPSHOT_SCHEMA');
+            const book={settled_count:data.book.settled_count,total_pnl:data.book.total_pnl,win_rate:data.book.win_rate,recent_5_signals:data.book.recent_5_signals.map(r=>({idHash:hash(r.signal_id),settled_at:r.settled_at,market_type:r.market_type,odds:r.odds,result:r.result}))};
+            console.log('RECEIVER_AUDIT_SNAPSHOT='+JSON.stringify({inbox:data.inbox,book,readOnly:true}));
+            let legacy;try{legacy=JSON.parse(readFileSync(process.env.RUNNER_TEMP+'/b46-legacy-audit.json','utf8'))}catch{}
+            if(legacy){
+              const compare=rows=>rows.map(a=>{const b=book.recent_5_signals.find(x=>x.idHash===a.idHash);return {legacy:a,receiver:b??null,match:!!b&&a.market_type===b.market_type&&Number(a.odds)===Number(b.odds)&&a.odds!=null&&b.odds!=null&&a.result===b.result&&a.settled_at===b.settled_at};});
+              console.log('RECEIVER_AUDIT_COMPARISON='+JSON.stringify({baseline:legacy.baseline,current:legacy.current,receiverCount:book.settled_count,baselineRecent:compare(legacy.baseline.latest),currentRecent:compare(legacy.current.latest),note:'Receiver snapshot is cumulative; historical cohort equality not proven if later signals exist; legacy scan is bounded and reads are not atomic.'}));
+            }
+          }finally{await proxy.dispose()}
           JS
