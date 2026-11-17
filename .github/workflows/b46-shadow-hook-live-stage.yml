@@ -1,0 +1,101 @@
+name: B46 actual ledger hook isolated staging replay
+on:
+  push:
+    branches: [chatgpt/ball46-new-ledger-clean-v1]
+    paths: ['.github/workflows/b46-shadow-hook-live-stage.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: b46-shadow-hook-private-stage
+  cancel-in-progress: false
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: '62cb0db544160e6591342abd6b4f35cc'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Obtain deployed source privately and verify reversible patch
+        working-directory: chatgpt-statistics-ui
+        run: |
+          node --input-type=module <<'NODE'
+          import {createHash} from 'node:crypto';
+          import {writeFileSync} from 'node:fs';
+          import {prepareHook} from './shadow-hook-candidate-stage.mjs';
+          const api='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID;
+          const headers={authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN};
+          const get=async path=>{const r=await fetch(api+path,{headers,signal:AbortSignal.timeout(20000)});const d=await r.json();if(!r.ok||!d.success)throw Error('CF_READ_'+r.status);return d.result};
+          const d=await get('/workers/scripts/nomadtips3-engine-343/deployments?per_page=1');
+          const versions=d.deployments?.[0]?.versions;if(versions?.length!==1)throw Error('SINGLE_ACTIVE_VERSION_REQUIRED');
+          const version=versions[0].version_id;
+          const w=await get('/workers/workers/nomadtips3-engine-343/versions/'+version+'?include=modules');
+          const modules=(w.modules??[]).filter(m=>typeof m.content_base64==='string');if(modules.length!==1)throw Error('SINGLE_MODULE_REQUIRED');
+          const source=Buffer.from(modules[0].content_base64,'base64').toString('utf8');
+          const hash=createHash('sha256').update(source).digest('hex');
+          if(hash!=='30aef0bb9c4be48a40c4bf38bf113b40ca1fd2d384187eefc275829c43e8ba56')throw Error('PRODUCTION_BASELINE_CHANGED');
+          const p=prepareHook(source);if(!p.legacyExact||!p.outsideExact)throw Error('LEGACY_DIFF_FAILED');
+          // Expose only the isolated method for the test harness; no call to original Worker entrypoints.
+          const wrapper='\nexport function b46StageRun(ctx,env,rows){ const runner={ctx,env,'+p.patchedMethod+'}; return runner.__b46UpsertLedgerUnlocked(rows); }\n';
+          writeFileSync('private-engine-stage.generated.mjs',p.source+wrapper,{mode:0o600});
+          console.log('SOURCE_DIFF_PASS=true version='+version);
+          NODE
+          node --check private-engine-stage.generated.mjs
+          node --check shadow-hook-live-stage.mjs
+      - name: Deploy separate authenticated staging-only worker
+        working-directory: chatgpt-statistics-ui
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > wrangler-hook-stage.toml <<'CONF'
+          name = "ball46-shadow-hook-stage-20261117"
+          main = "shadow-hook-live-stage.mjs"
+          compatibility_date = "2026-11-17"
+          workers_dev = true
+          preview_urls = false
+          [[services]]
+          binding = "PRODUCTION_READ"
+          service = "ball46-production"
+          [[durable_objects.bindings]]
+          name = "HOOK_STAGE"
+          class_name = "HookStage"
+          [[migrations]]
+          tag = "hook-v1"
+          new_sqlite_classes = ["HookStage"]
+          CONF
+          grep -Fx 'name = "ball46-shadow-hook-stage-20261117"' wrangler-hook-stage.toml
+          if grep -E '^(route|routes|zone_id|zone_name|crons)[[:space:]]*=' wrangler-hook-stage.toml; then exit 1; fi
+          # New worker deployment can hit API propagation error; retry only staging target.
+          npx --yes wrangler@4 deploy --config wrangler-hook-stage.toml || { sleep 5; npx --yes wrangler@4 deploy --config wrangler-hook-stage.toml; }
+          TOKEN=$(openssl rand -hex 32)
+          echo "::add-mask::$TOKEN"
+          printf '%s' "$TOKEN" | npx --yes wrangler@4 secret put PROBE_TOKEN --config wrangler-hook-stage.toml
+          BASE="https://ball46-shadow-hook-stage-20261117.mccarey-supon.workers.dev"
+          RUN="${GITHUB_RUN_ID}${GITHUB_RUN_ATTEMPT}"
+          READY=false
+          sleep 5
+          for i in $(seq 1 15); do
+            code=$(curl -sS --max-time 20 -o /tmp/hook-ready.json -w '%{http_code}' -H "Authorization: Bearer $TOKEN" "$BASE/ready?run=$RUN" || true)
+            if [ "$code" = 200 ]; then READY=true; break; fi
+            sleep 3
+          done
+          test "$READY" = true
+          for i in $(seq 1 8); do
+            CODE=$(curl -sS --max-time 90 -o /tmp/hook-result.json -w '%{http_code}' -X POST -H "Authorization: Bearer $TOKEN" "$BASE/test?run=$RUN")
+            echo "HOOK_TEST_HTTP=$CODE"
+            if [ "$CODE" != 403 ]; then break; fi
+            sleep 3
+          done
+          node -e 'const d=require("/tmp/hook-result.json");if(!d.ok){console.log("HOOK_SAFE_ERROR="+String(d.error||"UNKNOWN").replace(/[^a-zA-Z0-9_: .-]/g,"").slice(0,140));process.exit(1)}if(d.normal!==2||d.legacyAfter500!==3||d.receiverAfter500!==2||d.recovered!==3||d.liveProductionHook!==false)throw Error("HOOK_ASSERT_FAILED");console.log("HOOK_REAL_STAGE="+JSON.stringify(d))'
+          test "$CODE" = 200
+      - name: Remove generated private source
+        if: always()
+        working-directory: chatgpt-statistics-ui
+        run: rm -f private-engine-stage.generated.mjs
