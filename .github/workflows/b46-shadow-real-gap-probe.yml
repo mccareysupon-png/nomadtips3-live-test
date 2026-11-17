@@ -1,0 +1,64 @@
+name: B46 real archive ID gap recovery (staging only)
+on:
+  push:
+    branches: [chatgpt/ball46-new-ledger-clean-v1]
+    paths: ['.github/workflows/b46-shadow-real-gap-probe.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: b46-shadow-isolated-persistence-probe
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: '62cb0db544160e6591342abd6b4f35cc'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Deploy staging probe and recover two omitted real archived signals
+        working-directory: chatgpt-statistics-ui
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > wrangler-shadow-probe.toml <<'CONF'
+          name = "ball46-shadow-persistence-probe-20261117"
+          main = "shadow-real-persistence-probe.mjs"
+          compatibility_date = "2026-11-17"
+          workers_dev = true
+          [vars]
+          PROBE_GENERATION = "two"
+          [[services]]
+          binding = "PRODUCTION_READ"
+          service = "ball46-production"
+          [[durable_objects.bindings]]
+          name = "PROBE_BOOK"
+          class_name = "ShadowPersistenceProbe"
+          [[migrations]]
+          tag = "probe-v1"
+          new_sqlite_classes = ["ShadowPersistenceProbe"]
+          CONF
+          node --check shadow-real-persistence-probe.mjs
+          grep -Fx 'name = "ball46-shadow-persistence-probe-20261117"' wrangler-shadow-probe.toml
+          npx --yes wrangler@4 deploy --config wrangler-shadow-probe.toml
+          TOKEN=$(openssl rand -hex 32)
+          echo "::add-mask::$TOKEN"
+          printf '%s' "$TOKEN" | npx --yes wrangler@4 secret put PROBE_TOKEN --config wrangler-shadow-probe.toml
+          BASE="https://ball46-shadow-persistence-probe-20261117.mccarey-supon.workers.dev"
+          RUN="${GITHUB_RUN_ID}${GITHUB_RUN_ATTEMPT}"
+          READY=false
+          for i in $(seq 1 20); do
+            code=$(curl -sS --max-time 20 -o /tmp/ready.json -w '%{http_code}' -H "Authorization: Bearer $TOKEN" "$BASE/state?run=$RUN" || true)
+            if [ "$code" = "200" ]; then READY=true; break; fi
+            sleep 3
+          done
+          test "$READY" = true
+          curl -sS --fail-with-body --max-time 60 -X POST -H "Authorization: Bearer $TOKEN" "$BASE/gap-probe?run=$RUN" > /tmp/gap.json
+          node -e 'const d=require("/tmp/gap.json");console.log("REAL_ARCHIVE_GAP="+JSON.stringify(d));if(!d.ok||d.before!==3||d.recovered!==2||d.duplicate!==3||d.final.total!==5||d.sourceSequenceVerified!==false)throw Error("GAP_FAILED")'
