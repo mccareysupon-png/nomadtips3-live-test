@@ -132,6 +132,8 @@ function mount(){
  styleOnce();
  preview=document.createElement('section');
  preview.id='b46-stage-fast-preview';
+ // Reveal only the verified fast preview; the old native readiness guard hides its parent.
+ preview.style.setProperty('visibility','visible','important');
  preview.setAttribute('aria-label','Saved verified statistics first paint');
  const kicker=document.createElement('div');
  kicker.className='b46-fast-kicker';kicker.textContent='LONG-TERM PERFORMANCE · SAVED VERIFIED SNAPSHOT';
@@ -209,11 +211,13 @@ function mount(){
  const content=panel.querySelector('.sp-stats-content');
  if(!content){diag.status='stats-content-anchor-missing';triggerNativeFallback();return}
  content.style.setProperty('display','block','important');
+ content.style.setProperty('visibility','visible','important');
  const nativeHost=panel.querySelector('.sp-trend');
  if(!nativeHost){diag.status='native-card-anchor-missing';triggerNativeFallback();return}
  nativeHost.id='b46-finance-chart-card';
  nativeHost.dataset.f46Visual='1';
  nativeHost.classList.add('b46-perf-card','b46-fast-paint-host');
+ nativeHost.style.setProperty('visibility','visible','important');
  let nativeShell=nativeHost.querySelector('[data-b46-perf-shell]');
  if(!nativeShell){
    nativeShell=document.createElement('div');
@@ -222,6 +226,7 @@ function mount(){
    nativeHost.replaceChildren(nativeShell);
  }
  nativeShell.style.setProperty('display','block','important');
+ nativeShell.style.setProperty('visibility','visible','important');
  nativeShell.replaceChildren(preview);
  document.documentElement.classList.add('b46-stage-fast-preview');
  diag.status='fast-preview-visible';diag.fastPaintMs=Math.round(performance.now()-START);
