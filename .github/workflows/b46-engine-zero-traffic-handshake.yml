@@ -16,7 +16,7 @@ jobs:
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
     steps:
-      - name: Upload inactive Engine version with unchanged legacy module and test direct health only
+      - name: Direct health-only Engine version override with original 100 percent traffic and restore
         run: |
           node <<'JS'
           const {createHash,randomBytes}=require('node:crypto');
@@ -76,23 +76,50 @@ jobs:
             }
             if(cb.find(b=>b.name==='B46_SHADOW_RECEIVER')?.service!==receiver||cb.find(b=>b.name==='B46_SHADOW_HEALTH_TOKEN')?.type!=='secret_text')throw Error('CANDIDATE_BINDING_FAILED');
             console.log('ENGINE_BINDING_CANDIDATE='+JSON.stringify({version:id,legacyExact:true,receiver,secretConfigured:true,liveVersion:old,liveTrafficChanged:false,versionUrlCount:candidate.urls?.length??0}));
-            // Public version URLs are not available for most Workers implementing Durable Objects.
-            // No deploy or routing changes are permitted before the direct handshake gate.
-            const url=(candidate.urls??[]).find(x=>typeof x==='string'&&x.startsWith('https://')&&x.includes(engine));
-            if(!url){console.log('DIRECT_HANDSHAKE_BLOCKED=NO_VERSION_URL_FOR_DURABLE_OBJECT_WORKER');return}
-            // Re-key receiver health only after a preview endpoint exists; no ledger or signal change.
-            await api('/workers/scripts/'+receiver+'/secrets','PUT',{name:'SHADOW_HEALTH_TOKEN',type:'secret_text',text:token});
-            let passed=false;
-            for(let i=0;i<15;i++){
-              const response=await fetch(new URL('/__b46_shadow_health',url),{headers:{authorization:'Bearer '+token},signal:AbortSignal.timeout(15000)});
-              const d=await response.json().catch(()=>null),h=d?.health;
-              if(response.status===200&&d?.proof===proof&&d.receiverStatus===200&&h?.ok&&h.environment==='production'&&h.queue.received===0&&h.queue.pending===0&&h.book===null&&h.readOnly){
-                console.log('DIRECT_ENGINE_PREVIEW_HANDSHAKE='+JSON.stringify({status:200,version:id,receiverStatus:200,received:0,pending:0,book:null,readOnly:true,activeEngineVersion:old}));passed=true;break
+            // Cloudflare version overrides: put the health-only candidate at 0% of traffic.
+            // Original live version remains at 100%. Restore the single-version assignment in finally.
+            const route='/workers/scripts/'+engine+'/deployments';
+            const originalAssignment=[{version_id:old,percentage:100}];
+            const split=[...originalAssignment,{version_id:id,percentage:0}];
+            const eq=(a,b)=>a?.length===b.length&&b.every(x=>a.some(y=>y.version_id===x.version_id&&Number(y.percentage)===x.percentage));
+            const put=versions=>api(route,'POST',{strategy:'percentage',versions,annotations:{'workers/message':'B46 health-only smoke test; original live version 100%'}});
+            const current=async()=> (await deployment(engine))?.versions;
+            let allocationAttempted=false,passed=false;
+            try{
+              if(!eq(await current(),originalAssignment))throw Error('ENGINE_ASSIGNMENT_DRIFT');
+              // Rotate the private receiver health token only, with the matching token on the candidate.
+              await api('/workers/scripts/'+receiver+'/secrets','PUT',{name:'SHADOW_HEALTH_TOKEN',type:'secret_text',text:token});
+              const newReceiver=await deployment(receiver);
+              if(newReceiver?.versions?.length!==1)throw Error('RECEIVER_ASSIGNMENT_DRIFT');
+              const receiverVersion=await ver(receiver,newReceiver.versions[0].version_id);
+              if(receiverVersion.modules?.length!==1||hash(receiverVersion.modules[0])!==hash(rcv.modules[0]))throw Error('RECEIVER_SOURCE_CHANGED');
+              if(!eq(await current(),originalAssignment))throw Error('ENGINE_ASSIGNMENT_DRIFT_AFTER_SECRET');
+              allocationAttempted=true;
+              await put(split);
+              if(!eq(await current(),split))throw Error('ZERO_PERCENT_ASSIGNMENT_NOT_VERIFIED');
+              console.log('HEALTH_ONLY_TRAFFIC_ASSIGNMENT='+JSON.stringify({original:100,candidate:0,hook:false,candidateVersion:id}));
+              const url='https://'+engine+'.mccarey-supon.workers.dev/__b46_shadow_health';
+              const override=engine+'="'+id+'"';
+              for(let i=0;i<20;i++){
+                const response=await fetch(url,{headers:{authorization:'Bearer '+token,'Cloudflare-Workers-Version-Overrides':override,'cache-control':'no-cache'},signal:AbortSignal.timeout(15000)});
+                const d=await response.json().catch(()=>null),h=d?.health;
+                if(response.status===200&&d?.proof===proof&&d.receiverStatus===200&&h?.ok&&h.environment==='production'&&h.queue.received===0&&h.queue.pending===0&&h.book===null&&h.readOnly){
+                  const unauth=await fetch(url,{headers:{'Cloudflare-Workers-Version-Overrides':override,'cache-control':'no-cache'},signal:AbortSignal.timeout(15000)});
+                  if(unauth.status!==403)throw Error('HEALTH_AUTH_NEGATIVE_TEST_FAILED');
+                  console.log('DIRECT_ENGINE_HANDSHAKE='+JSON.stringify({status:200,version:id,receiverStatus:200,unauthenticatedStatus:403,received:0,pending:0,book:null,readOnly:true,originalTraffic:100,candidateTraffic:0}));passed=true;break
+                }
+                console.log('HANDSHAKE_ATTEMPT_STATUS='+response.status);await sleep(3000)
               }
-              console.log('HANDSHAKE_ATTEMPT_STATUS='+response.status);await sleep(3000)
+            }finally{
+              if(allocationAttempted){
+                const now=await current();
+                if(eq(now,split))await put(originalAssignment);
+                else if(!eq(now,originalAssignment))throw Error('CONCURRENT_ENGINE_CHANGE_DO_NOT_OVERWRITE');
+              }
+              await one(engine,old);await one(website,websiteOld);
+              console.log('ENGINE_ORIGINAL_100_PERCENT_RESTORED=true');
             }
-            await one(engine,old);await one(website,websiteOld);
-            if(!passed)throw Error('DIRECT_ENGINE_PREVIEW_HANDSHAKE_NOT_VERIFIED');
+            if(!passed)throw Error('DIRECT_ENGINE_HANDSHAKE_NOT_VERIFIED');
             console.log('SHADOW_HOOK_DEPLOYED=false');
           })().catch(e=>{console.error(String(e.message).slice(0,160));process.exitCode=1});
           JS
