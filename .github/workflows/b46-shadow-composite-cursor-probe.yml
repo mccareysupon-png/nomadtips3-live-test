@@ -60,5 +60,10 @@ jobs:
             sleep 3
           done
           test "$READY" = true
-          curl -sS --fail-with-body --max-time 60 -X POST -H "Authorization: Bearer $TOKEN" "$BASE/cursor-probe?run=$RUN" > /tmp/gap.json
+          CODE=$(curl -sS --max-time 60 -o /tmp/gap.json -w '%{http_code}' -X POST -H "Authorization: Bearer $TOKEN" "$BASE/cursor-probe?run=$RUN")
+          echo "CURSOR_PROBE_HTTP=$CODE"
+          if [ "$CODE" != "200" ]; then
+            node -e 'try{const d=require("/tmp/gap.json");console.log("CURSOR_PROBE_ERROR="+String(d.error||"UNKNOWN").replace(/[^a-zA-Z0-9_: .-]/g,"").slice(0,120))}catch{console.log("CURSOR_PROBE_NON_JSON_ERROR")}'
+            exit 1
+          fi
           node -e 'const d=require("/tmp/gap.json");const a=d.rounds;if(!d.ok||a[0].total!==4||a[1].total!==9||a[2].total!==10||a[2].late!==1||a[2].duplicates!==9||d.sourceCommitSequenceVerified!==false)throw Error("COMPOSITE_CURSOR_FAILED");console.log("REAL_COMPOSITE_CURSOR="+JSON.stringify({ok:d.ok,rounds:a.map(({cursor,...rest})=>({...rest,time:cursor.settled_at})),realSameTimestamp:d.realSameTimestamp,sourceCommitSequenceVerified:false}))'
