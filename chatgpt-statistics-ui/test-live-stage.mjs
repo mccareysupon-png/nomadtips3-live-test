@@ -176,8 +176,25 @@ try{
       chartPatch:lazyChart.headers()['x-b46-staging-chart-lazy'],
       callers:fetchTraces.slice(0,6)}));
     assert.equal(networkStatuses.length,0,profile.name+':FULL_LEDGER_WAS_LOADED_BEFORE_HISTORY_REQUEST');
-    assert(await page.locator('#b46-stage-fast-preview .b46-fast-details').isVisible(),
-      profile.name+':DETAIL_REQUEST_BUTTON_NOT_VISIBLE');
+    const detailVisible=await page.locator('#b46-stage-fast-preview .b46-fast-details').isVisible();
+    if(!detailVisible){
+      const state=await page.evaluate(()=>{
+        const preview=document.querySelector('#b46-stage-fast-preview'),btn=preview?.querySelector('.b46-fast-details'),
+          native=document.querySelector('#b46-finance-chart-card');
+        const css=e=>e?{display:getComputedStyle(e).display,visibility:getComputedStyle(e).visibility,
+          rect:[e.getBoundingClientRect().x,e.getBoundingClientRect().y,
+            e.getBoundingClientRect().width,e.getBoundingClientRect().height]}:null;
+        const data=window.BALL46_STATISTICS_DATA?.getSnapshot?.();
+        return {status:window.__B46_FAST_CHART_DIAG,preview:css(preview),button:css(btn),
+          previewConnected:!!preview?.isConnected,buttonCount:document.querySelectorAll('.b46-fast-details').length,
+          native:css(native),nativeGraph:!!native?.querySelector('svg.f46-svg')?.getClientRects().length,
+          data:data?{ok:data.ok,rows:data.ledgerRows?.length,ledgerTotal:data.ledgerTotal}:null,
+          detailsRequested:!!window.__B46_FAST_DETAILS_REQUESTED};
+      });
+      console.log('B46_FAST_DETAILS_MISSING_DIAG='+JSON.stringify({profile:profile.name,...state}));
+      await page.screenshot({path:'/tmp/b46-fast-details-missing-'+profile.name+'.png',fullPage:false});
+    }
+    assert(detailVisible,profile.name+':DETAIL_REQUEST_BUTTON_NOT_VISIBLE');
     await page.locator('#b46-stage-fast-preview .b46-fast-details').click();
     console.log('B46_LAZY_HISTORY_REQUEST='+JSON.stringify({profile:profile.name,
       apiBeforeClick:0,fastPaintMs:early.fastPaintMs,clicked:true}));
