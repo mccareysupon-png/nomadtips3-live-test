@@ -91,12 +91,12 @@ jobs:
       - name: Read authenticated private Receiver snapshot through remote service binding (no deployment)
         env:
           CLOUDFLARE_ACCOUNT_ID: '62cb0db544160e6591342abd6b4f35cc'
-          B46_AUDIT_TOKEN: ${{ secrets.SHADOW_HEALTH_TOKEN || secrets.B46_SHADOW_HEALTH_TOKEN }}
+          B46_AUDIT_TOKEN: ${{ secrets.AUDIT_READ_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
           if [ -z "${B46_AUDIT_TOKEN:-}" ]; then
-            echo 'RECEIVER_AUDIT_BLOCKED=EXISTING_HEALTH_TOKEN_NOT_AVAILABLE_IN_ACTIONS'
+            echo 'RECEIVER_AUDIT_BLOCKED=AUDIT_READ_TOKEN_NOT_AVAILABLE_IN_ACTIONS'
             exit 0
           fi
           mkdir -p "$RUNNER_TEMP/b46-private-read"
@@ -116,7 +116,7 @@ jobs:
           const dep=await res.json();
           if(!res.ok||!dep.success)throw Error('RECEIVER_DEPLOYMENT_READ_FAILED');
           const versions=dep.result?.deployments?.[0]?.versions??[];
-          if(versions.length!==1||Number(versions[0].percentage)!==100||versions[0].version_id==='9fc95e75-4833-429e-b119-0051b3a3d316'){
+          if(versions.length!==1||Number(versions[0].percentage)!==100||['9fc95e75-4833-429e-b119-0051b3a3d316','7a576455-14b3-401f-80e6-f6dd70f76dc1'].includes(versions[0].version_id)){
             console.log('RECEIVER_AUDIT_BLOCKED=RECEIVER_SNAPSHOT_DEPLOYMENT_NOT_CONFIRMED');process.exit(0);
           }
           const proxy=await getPlatformProxy({configPath:'wrangler.json',remoteBindings:true,persist:false});
@@ -125,6 +125,9 @@ jobs:
             const missing=await proxy.env.RECEIVER.fetch(url,{method:'GET'});
             console.log('RECEIVER_AUTH_MISSING_HTTP='+missing.status);
             if(missing.status!==403)throw Error('NO_TOKEN_EXPECTED_403');
+            const wrong=await proxy.env.RECEIVER.fetch(url,{method:'GET',headers:{authorization:'Bearer invalid-audit-token'}});
+            console.log('RECEIVER_AUTH_WRONG_HTTP='+wrong.status);
+            if(wrong.status!==403)throw Error('WRONG_TOKEN_EXPECTED_403');
             const good=await proxy.env.RECEIVER.fetch(url,{method:'GET',headers:{authorization:'Bearer '+process.env.B46_AUDIT_TOKEN}});
             console.log('RECEIVER_AUTH_VALID_HTTP='+good.status);
             if(good.status!==200)throw Error('VALID_TOKEN_EXPECTED_200');
