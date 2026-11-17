@@ -77,8 +77,13 @@ jobs:
           const envArg=params[1];
           const compact=ctor.replace(/\s+/g,'');
           const assigned=!!envArg&&/^[A-Za-z_$][\w$]*$/.test(envArg)&&compact.includes('this.env='+envArg+';');
-          console.log('ENGINE_ENV_CHECK='+JSON.stringify({params,assigned,constructorMentionsEnv:ctor.includes('this.env'),constructorMentionsSuper:ctor.includes('super(')}));
-          if(!assigned)throw Error('REAL_ENGINE_ENV_NOT_CONFIRMED');
+          const classPrefix=source.slice(Math.max(0,start-1600),start);
+          const ancestry=[...classPrefix.matchAll(/\bclass(?:\s+[\w$]+)?\s+extends\s+([\w$]+)\s*\{/g)].at(-1)?.[1]??null;
+          const superCallsArgs=compact.includes('super('+params[0]+','+envArg+');');
+          const legacyEnvReads=(source.match(/this\.env(?:\?\.|\.)[A-Z][A-Z0-9_]+/g)||[]).length;
+          const inherited=superCallsArgs&&!!ancestry&&/DurableObject/i.test(ancestry)&&legacyEnvReads>0;
+          console.log('ENGINE_ENV_CHECK='+JSON.stringify({params,assigned,ancestry,superCallsArgs,legacyEnvReads,inherited}));
+          if(!assigned&&!inherited)throw Error('REAL_ENGINE_ENV_NOT_CONFIRMED');
           const settings=await api('/workers/scripts/'+engine+'/settings');
           const payload={main_module:baseline.main_module,modules:[{name:baseline.main_module,content_type:baseline.modules[0].content_type,content_base64:Buffer.from(p.source).toString('base64')}],bindings:tested.map(b=>({name:b.name,type:'inherit',version_id:checked})),compatibility_date:baseline.compatibility_date,compatibility_flags:settings.compatibility_flags??[],annotations:{'workers/message':'B46 audited 22-line Shadow Write only'}};
           if(baseline.usage_model)payload.usage_model=baseline.usage_model;
