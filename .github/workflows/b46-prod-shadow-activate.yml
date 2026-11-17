@@ -1,0 +1,103 @@
+name: B46 approved production Shadow Write only
+on:
+  push:
+    branches: [chatgpt/ball46-new-ledger-clean-v1]
+    paths: ['.github/workflows/b46-prod-shadow-activate.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: b46-engine-production-controlled-gate
+  cancel-in-progress: false
+jobs:
+  activate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify exact backup and handshake version, upload only audited hook, activate with rollback
+        working-directory: chatgpt-statistics-ui
+        run: |
+          node --input-type=module <<'JS'
+          import {createHash} from 'node:crypto';
+          import {prepareHook} from './shadow-hook-candidate-stage.mjs';
+          const root='https://api.cloudflare.com/client/v4/accounts/62cb0db544160e6591342abd6b4f35cc';
+          const engine='nomadtips3-engine-343',receiver='ball46-shadow-receiver-production',website='ball46-production';
+          const old='02e09215-02b1-47fb-b1cf-9423f50c7ce9',checked='03c31275-7a1a-4da1-be43-0c5d3b4d7e4c',rv='9fc95e75-4833-429e-b119-0051b3a3d316',webOld='f5d9cf21-4b41-46da-bdd8-a841fa733d82';
+          const legacyHash='30aef0bb9c4be48a40c4bf38bf113b40ca1fd2d384187eefc275829c43e8ba56',candidateHash='1b65e85d37fafa8541ea32516c7683b02670703433b008a09d35a0b5d6c89eb9';
+          const hash=x=>createHash('sha256').update(x).digest('hex'),modHash=m=>hash(Buffer.from(m.content_base64,'base64'));
+          const headers={authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN,'content-type':'application/json'};
+          const api=async(p,method='GET',body)=>{
+            const r=await fetch(root+p,{method,headers,body:body===undefined?undefined:JSON.stringify(body),signal:AbortSignal.timeout(30000)});
+            const j=await r.json();if(!r.ok||!j.success)throw Error('CF_'+method+'_'+r.status+'_'+(j.errors??[]).map(x=>x.code).join('_'));return j.result;
+          };
+          const deploy=async n=>(await api('/workers/scripts/'+n+'/deployments?per_page=1')).deployments?.[0];
+          const version=(n,id)=>api('/workers/workers/'+n+'/versions/'+id+'?include=modules');
+          const isOne=(d,id)=>d?.versions?.length===1&&d.versions[0].version_id===id&&Number(d.versions[0].percentage)===100;
+          const ensure=async(n,id)=>{if(!isOne(await deploy(n),id))throw Error('ACTIVE_VERSION_DRIFT_'+n)};
+          const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+          const waitActive=async(n,id)=>{for(let i=0;i<20;i++){if(isOne(await deploy(n),id))return;await sleep(2000)}throw Error('ACTIVE_VERSION_NOT_CONFIRMED_'+n)};
+          const assign=id=>api('/workers/scripts/'+engine+'/deployments','POST',{strategy:'percentage',versions:[{version_id:id,percentage:100}],annotations:{'workers/message':'B46 approved Shadow Write only; legacy reads unchanged'}});
+          const checkBindings=(oldBindings,next)=>{
+            for(const b of oldBindings){
+              const x=next.find(v=>v.name===b.name);if(!x||x.type!==b.type)throw Error('BINDING_TYPE_DRIFT_'+b.name);
+              for(const k of ['service','class_name','namespace_id','script_name','environment','text'])if(b.type!=='secret_text'&&b[k]!==undefined&&x[k]!==b[k])throw Error('BINDING_RESOURCE_DRIFT_'+b.name);
+            }
+          };
+          const readWebsite=async()=>{
+            const res=await fetch('https://www.ball46.com/api/engine/statistics?paged=1',{headers:{accept:'application/json','cache-control':'no-cache'},signal:AbortSignal.timeout(25000)});
+            const d=await res.json().catch(()=>null);
+            if(!res.ok||!d?.ok||!Array.isArray(d.rows))throw Error('LEGACY_READ_NOT_OK_'+res.status);
+            return {http:res.status,source:d.statisticsSource??null,rows:d.rows.length};
+          };
+          await ensure(engine,old);await ensure(receiver,rv);await ensure(website,webOld);
+          const baseline=await version(engine,old),test=await version(engine,checked),rcv=await version(receiver,rv);
+          if(baseline.modules?.length!==1||modHash(baseline.modules[0])!==legacyHash||baseline.main_module!==baseline.modules[0].name)throw Error('BACKUP_HASH_MISMATCH');
+          const testLegacy=test.modules?.find(m=>m.name===baseline.main_module);
+          if(!testLegacy||modHash(testLegacy)!==legacyHash||!test.modules?.some(m=>m.name==='shadow-health-only.mjs'))throw Error('HANDSHAKE_VERSION_MISMATCH');
+          if(rcv.modules?.length!==1||modHash(rcv.modules[0])!=='8a89725df42baa5bb921dca160c27b3b2fb8cb5c4a524b6ef94c7c16d88e499f')throw Error('RECEIVER_HASH_DRIFT');
+          const rsub=await api('/workers/scripts/'+receiver+'/subdomain');if(rsub.enabled!==false||rsub.previews_enabled===true)throw Error('RECEIVER_PUBLIC');
+          const oldBindings=baseline.bindings??[],tested=test.bindings??[];
+          if(oldBindings.length!==4||tested.length!==6)throw Error('BASELINE_BINDING_COUNTS');
+          checkBindings(oldBindings,tested);
+          if(tested.find(b=>b.name==='B46_SHADOW_RECEIVER')?.service!==receiver||tested.find(b=>b.name==='B46_SHADOW_HEALTH_TOKEN')?.type!=='secret_text')throw Error('HANDSHAKE_BINDING_MISMATCH');
+          const before=await readWebsite();
+          console.log('PRODUCTION_PRE_DEPLOY_GATE='+JSON.stringify({engine:old,traffic:100,backupHash:legacyHash,receiver:rv,verifiedHandshakeVersion:checked,legacyRead:before,websiteVersion:webOld}));
+          const source=Buffer.from(baseline.modules[0].content_base64,'base64').toString('utf8'),p=prepareHook(source);
+          if(!p.legacyExact||!p.outsideExact||hash(p.source)!==candidateHash||p.source.split('\n').length-source.split('\n').length!==22)throw Error('AUDITED_22_LINE_DIFF_MISMATCH');
+          if(!/this\.env\s*=\s*env\b/.test(source))throw Error('REAL_ENGINE_ENV_NOT_CONFIRMED');
+          const settings=await api('/workers/scripts/'+engine+'/settings');
+          const payload={main_module:baseline.main_module,modules:[{name:baseline.main_module,content_type:baseline.modules[0].content_type,content_base64:Buffer.from(p.source).toString('base64')}],bindings:tested.map(b=>({name:b.name,type:'inherit',version_id:checked})),compatibility_date:baseline.compatibility_date,compatibility_flags:settings.compatibility_flags??[],annotations:{'workers/message':'B46 audited 22-line Shadow Write only'}};
+          if(baseline.usage_model)payload.usage_model=baseline.usage_model;
+          if(baseline.migration_tag)payload.migration_tag=baseline.migration_tag;
+          const up=await api('/workers/workers/'+engine+'/versions?deploy=false','POST',payload),id=up.id;
+          if(!id||id===old)throw Error('INVALID_NEW_VERSION');
+          const v=await version(engine,id);
+          if(v.modules?.length!==1||modHash(v.modules[0])!==candidateHash)throw Error('UPLOADED_HASH_MISMATCH');
+          if(v.bindings?.length!==6)throw Error('UPLOADED_BINDING_COUNT_MISMATCH');
+          checkBindings(tested,v.bindings);
+          await ensure(engine,old);await ensure(receiver,rv);await ensure(website,webOld);
+          console.log('SHADOW_CANDIDATE_VERIFIED='+JSON.stringify({id,sha256:candidateHash,addedLines:22,removed:0,legacyExact:true,receiver,rollbackVersion:old}));
+          let attempted=false;
+          try{
+            attempted=true;
+            await assign(id);
+            await waitActive(engine,id);
+            let after;
+            for(let i=0;i<5;i++){try{after=await readWebsite();break}catch(e){if(i===4)throw e;await sleep(3000)}}
+            if(before.source!==after.source)throw Error('LEGACY_READ_SOURCE_CHANGED');
+            await ensure(engine,id);await ensure(website,webOld);await ensure(receiver,rv);
+            console.log('SHADOW_WRITE_ACTIVE='+JSON.stringify({engineVersion:id,traffic:100,receiver,legacyRead:after,websiteVersion:webOld,sourceUnchanged:true,rollbackVersion:old,liveEventsVerified:false}));
+          }catch(e){
+            if(attempted){
+              const current=await deploy(engine);
+              if(isOne(current,id)){await assign(old);await waitActive(engine,old);console.log('ROLLBACK_CONFIRMED='+old)}
+              else if(!isOne(current,old))console.log('ROLLBACK_BLOCKED_CONCURRENT_STATE_REQUIRES_MANUAL_CHECK');
+            }
+            throw e;
+          }
+          JS
