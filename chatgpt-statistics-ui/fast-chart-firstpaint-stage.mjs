@@ -195,10 +195,16 @@ function mount(){
  const details=document.createElement('button');details.className='b46-fast-details';
  details.type='button';details.textContent='Load detailed history';
  details.addEventListener('click',()=>{
-   diag.status='details-requested';
-   details.disabled=true;details.textContent='Loading detailed history…';
-   if(typeof window.__B46_STAGE_LOAD_DETAILS==='function')window.__B46_STAGE_LOAD_DETAILS();
-   else void window.BALL46_STATISTICS_DATA?.load?.();
+   // A historical list is RAW archived text/numbers, not a command to replay
+   // all past settlements into the financial graph.
+   if(typeof window.__B46_STAGE_OPEN_ARCHIVE==='function'){
+     diag.status='paged-history-requested';
+     window.__B46_STAGE_OPEN_ARCHIVE(preview,details);
+   }else{
+     diag.status='archive-component-unavailable-native-fallback';
+     details.disabled=true;details.textContent='Opening original history…';
+     triggerNativeFallback();
+   }
  });
  right.append(label,net,stats,outcomes,details);
  cols.append(left,right);
