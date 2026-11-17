@@ -1,0 +1,25 @@
+name: B46 seven-market accounting and live engine market keys READ ONLY
+on:
+  push:
+    branches: [chatgpt/ball46-statistics-ui-v1]
+    paths: ['chatgpt-statistics-ui/market-accounting-stage.mjs','chatgpt-statistics-ui/test-market-accounting-stage.mjs','.github/workflows/b46-stage-seven-market-tests.yml']
+permissions: {contents: read}
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node chatgpt-statistics-ui/test-market-accounting-stage.mjs
+      - name: Read real engine market schema (no writes)
+        run: |
+          node --input-type=module <<'NODE'
+          const r=await fetch('https://www.ball46.com/api/engine/statistics?paged=1&limit=1',{signal:AbortSignal.timeout(25000)});
+          if(!r.ok)throw Error('ENGINE_READ_'+r.status);
+          const s=await r.json();
+          if(!s.byMarket||typeof s.byMarket!=='object')throw Error('ENGINE_MARKET_SCHEMA_MISSING');
+          console.log('B46_LIVE_MARKET_KEYS='+JSON.stringify({keys:Object.keys(s.byMarket),rowMarket:s.rows?.[0]?.market??null}));
+          NODE
