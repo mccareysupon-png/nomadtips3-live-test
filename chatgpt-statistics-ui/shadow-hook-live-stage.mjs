@@ -22,6 +22,12 @@ export class HookStage {
     const rows=await this.ctx.storage.list({prefix:'stat:v2:row:'});
     return reply({legacy:rows.size,newBook:(await this.ctx.storage.get('composite:state'))??null});
    }
+   if(path==='/recover-row'){
+    const {id}=await req.json();const entries=await this.ctx.storage.list({prefix:'stat:v2:row:'});
+    const row=[...entries.values()].find(x=>String(x.id)===String(id));
+    if(!row||row.status!=='SETTLED')throw Error('LEGACY_RECOVERY_ROW_NOT_FOUND');
+    return reply({signal_id:row.id,result:row.result,market_type:row.market,odds:row.odds,settled_at:row.settledAt});
+   }
    if(path==='/legacy'){
     const {rows,run,fail}=await req.json();
     const target=this.env.HOOK_STAGE.get(this.env.HOOK_STAGE.idFromName('receiver:'+run));
@@ -57,7 +63,7 @@ export default {async fetch(req,env){
   const second=await rpc(receiver,'/state');
   if(!failed.ok||failed.legacy!==3||failed.scheduled!==1||second.newBook?.total!==2)throw Error('FAILURE_ISOLATION_FAILED');
   // Recovery of the deliberately omitted known ID from authoritative archived input.
-  const missed=rows[2];await rpc(receiver,'/settled',{events:[{signal_id:missed.id,result:missed.result,market_type:missed.market,odds:missed.odds,settled_at:missed.settledAt}]});
+  const missed=await rpc(legacy,'/recover-row',{id:rows[2].id});await rpc(receiver,'/settled',{events:[missed]});await rpc(receiver,'/settled',{events:[missed]});
   const final=await rpc(receiver,'/state');
   if(final.newBook?.total!==3)throw Error('RECOVERY_FAILED');
   return reply({ok:true,normal:normal.legacy,legacyAfter500:failed.legacy,receiverAfter500:second.newBook.total,recovered:final.newBook.total,source:'ACTUAL_ENGINE_METHOD_REPLAY_REAL_ARCHIVE',liveProductionHook:false});
