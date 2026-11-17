@@ -4,6 +4,7 @@ name = "ball46-chat-statistics-live-ui-test-20261115"
 main = "live-staging-worker.mjs"
 compatibility_date = "2026-11-15"
 workers_dev = true
+compatibility_flags = ["nodejs_compat"]
 
 [[rules]]
 type = "Text"
@@ -19,3 +20,11 @@ service = "ball46-production"
 [[kv_namespaces]]
 binding = "B46_STAGE_STATS_KV"
 id = "f144dc8b6525477984067f7ab5762924"
+
+[[durable_objects.bindings]]
+name = "B46_NEW_BOOK"
+class_name = "StageAccountingBook"
+
+[[migrations]]
+tag = "new-book-v1"
+new_sqlite_classes = ["StageAccountingBook"]
