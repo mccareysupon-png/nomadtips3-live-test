@@ -4,6 +4,8 @@ import {createHash} from 'node:crypto';
 import {gzipSync} from 'node:zlib';
 import {createCompactSummary} from './compact-summary-stage.mjs';
 import {buildVerifiedGraph,verifyChartSourceContract} from './chart-series-stage.mjs';
+import {seedMarketAccounts,marketSnapshot} from './market-accounting-stage.mjs';
+import {marketGroup,MARKET_GROUPS} from './market-groups-stage.mjs';
 const ACCOUNT='62cb0db544160e6591342abd6b4f35cc';
 const NAMESPACE='f144dc8b6525477984067f7ab5762924';
 const BASE='https://api.cloudflare.com/client/v4/accounts/'+ACCOUNT+'/storage/kv/namespaces/'+NAMESPACE;
@@ -130,7 +132,7 @@ export async function execute(){
      /^verified-head-v1-[0-9a-f]{32}$/.test(before.summaryKey)&&
      /^verified-chart-v1-[0-9a-f]{32}$/.test(before.chartKey)&&
      before.chartSourceSha===chartSourceSha&&
-     before.graphBuildRevision===GRAPH_BUILD_REVISION&&
+     before.graphBuildRevision===GRAPH_BUILD_REVISION&&before.marketAccountingRevision==='seven-market-v1'&&
      before.headBuildRevision===HEAD_BUILD_REVISION&&
      Date.now()-Number(before.fullVerifiedAt||before.savedAt||0)<MAX_FULL_RECHECK_MS&&
      before.sourceSignature===signature(latest)){
@@ -154,6 +156,19 @@ export async function execute(){
      graph.result.summary.losses!==snapshot.loss+snapshot.halfLoss||
      graph.result.summary.pushes!==snapshot.push)
     throw Error('CHART_COUNTS_MISMATCH_SOURCE');
+  // Isolated staging projection: seven groups seeded only from verified live Ledger.
+  const groupedRows=snapshot.rows.map(row=>({...row,market:marketGroup(row.market)}));
+  const marketBook=seedMarketAccounts({...snapshot,rows:groupedRows});
+  const marketView=marketSnapshot(marketBook);
+  for(const group of MARKET_GROUPS){
+    if(!marketView.byMarket[group])marketView.byMarket[group]=marketSnapshot(seedMarketAccounts({ok:true,rows:[],ledgerTotal:0,total:0,pending:0,unresolved:0,win:0,loss:0,push:0,halfWin:0,halfLoss:0,snapshotSavedAt:snapshot.snapshotSavedAt})).all;
+  }
+  for(const field of Object.keys(marketBook.all.stats))
+    if(Object.values(marketView.byMarket).reduce((n,a)=>n+a[field],0)!==snapshot[field])
+      throw Error('STAGING_MARKET_TOTAL_MISMATCH_'+field);
+  const marketBody=JSON.stringify(marketView);
+  const marketSha=createHash('sha256').update(marketBody).digest('hex');
+  const marketKey='verified-markets-v1-'+marketSha.slice(0,32);
   const chartSha=createHash('sha256').update(graph.body).digest('hex');
   const chartKey='verified-chart-v1-'+chartSha.slice(0,32);
   const summarySha=createHash('sha256').update(compact.body).digest('hex');
@@ -170,6 +185,7 @@ export async function execute(){
     chartKey,chartBytes:graph.bytes,chartSha256:chartSha,chartSourceSha,
     graphBuildRevision:GRAPH_BUILD_REVISION,
     headBuildRevision:HEAD_BUILD_REVISION,
+    marketAccountingRevision:'seven-market-v1',marketKey,marketSha256:marketSha,
     settled:snapshot.total,rawBytes:raw.length,gzipBytes:gz.length,sha256:sha,
     previousKeys:[before?.key,...(before?.previousKeys||[])].filter(x=>typeof x==='string'&&x.startsWith('verified-full-gzip-v2-')&&x!==key).slice(0,2),
     source:'PUBLIC_PRODUCTION_READ_ONLY',target:'STAGING_KV_ONLY'};
@@ -187,6 +203,10 @@ export async function execute(){
   const graphReadback=await apiGet(chartKey,token,'arrayBuffer');
   if(!graphReadback||createHash('sha256').update(Buffer.from(graphReadback)).digest('hex')!==chartSha)
     throw Error('KV_GRAPH_READBACK_HASH_MISMATCH');
+  await apiPut(marketKey,marketBody,'application/json',token);
+  const marketReadback=await apiGet(marketKey,token,'arrayBuffer');
+  if(!marketReadback||createHash('sha256').update(Buffer.from(marketReadback)).digest('hex')!==marketSha)
+    throw Error('KV_MARKET_READBACK_HASH_MISMATCH');
   await apiPut(META,JSON.stringify(meta),'application/json',token);
   console.log('B46_STAGE_SYNC='+JSON.stringify({mode:'PUBLISHED',ledgerTotal:meta.ledgerTotal,
     bytes:meta.gzipBytes,summaryBytes:meta.summaryBytes,chartBytes:meta.chartBytes,key:meta.key,
