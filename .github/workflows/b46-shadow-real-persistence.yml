@@ -54,7 +54,7 @@ jobs:
           printf '%s' "$TOKEN" | npx --yes wrangler@4 secret put PROBE_TOKEN --config wrangler-shadow-probe.toml
           BASE="https://ball46-shadow-persistence-probe-20261117.mccarey-supon.workers.dev"
           probe() {
-            curl --silent --show-error --fail --max-time 45 --retry 2 --retry-all-errors -X "$1" -H "Authorization: Bearer $TOKEN" "$BASE/$2?run=$GITHUB_RUN_ID"
+            curl --silent --show-error --fail --max-time 45 --retry 2 --retry-all-errors -X "$1" -H "Authorization: Bearer $TOKEN" "$BASE/$2?run=${GITHUB_RUN_ID}${GITHUB_RUN_ATTEMPT}"
           }
           probe POST import > /tmp/shadow-import.json
           node -e 'const d=require("/tmp/shadow-import.json");if(!d.ok||d.queued!==5)throw Error("IMPORT_FAILED");console.log("REAL_ARCHIVED_ROWS_QUEUED=5")'
@@ -62,7 +62,12 @@ jobs:
           node -e 'const d=require("/tmp/shadow-before.json");if(d.generation!=="one"||d.pending!==5||d.book.total!==0)throw Error("QUEUE_BEFORE_FAILED");console.log("DURABLE_QUEUE_BEFORE=PASS")'
           sed -i 's/PROBE_GENERATION = "one"/PROBE_GENERATION = "two"/' wrangler-shadow-probe.toml
           npx --yes wrangler@4 deploy --config wrangler-shadow-probe.toml
-          probe GET state > /tmp/shadow-after.json
+          for i in $(seq 1 15); do
+            probe GET state > /tmp/shadow-after.json
+            node -e 'const d=require("/tmp/shadow-after.json");console.log("AFTER_VERSION_READ="+JSON.stringify(d))'
+            if node -e 'const d=require("/tmp/shadow-after.json");process.exit(d.generation==="two"?0:1)'; then break; fi
+            sleep 2
+          done
           node -e 'const d=require("/tmp/shadow-after.json");if(d.generation!=="two"||d.pending!==5||d.book.total!==0)throw Error("REDEPLOY_QUEUE_FAILED");console.log("DURABLE_QUEUE_AFTER_NEW_WORKER_VERSION=PASS")'
           probe POST recover > /tmp/shadow-recover.json
           node -e 'const d=require("/tmp/shadow-recover.json");if(!d.ok||d.processed!==5||d.duplicate!==5)throw Error("RECOVERY_FAILED");console.log("REPLAY_AND_DEDUP_5=PASS")'
