@@ -1,0 +1,70 @@
+name: B46 isolated shadow persistence REAL staging
+on:
+  push:
+    branches: [chatgpt/ball46-new-ledger-clean-v1]
+    paths: ['.github/workflows/b46-shadow-real-persistence.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: b46-shadow-isolated-persistence-probe
+  cancel-in-progress: false
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: '62cb0db544160e6591342abd6b4f35cc'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Isolated staging deploy and durable storage readback
+        working-directory: chatgpt-statistics-ui
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check shadow-real-persistence-probe.mjs
+          test -n "$CLOUDFLARE_API_TOKEN"
+          cat > wrangler-shadow-probe.toml <<'CONF'
+          name = "ball46-shadow-persistence-probe-20261117"
+          main = "shadow-real-persistence-probe.mjs"
+          compatibility_date = "2026-11-17"
+          workers_dev = true
+          [vars]
+          PROBE_GENERATION = "one"
+          [[services]]
+          binding = "PRODUCTION_READ"
+          service = "ball46-production"
+          [[durable_objects.bindings]]
+          name = "PROBE_BOOK"
+          class_name = "ShadowPersistenceProbe"
+          [[migrations]]
+          tag = "probe-v1"
+          new_sqlite_classes = ["ShadowPersistenceProbe"]
+          CONF
+          grep -Fx 'name = "ball46-shadow-persistence-probe-20261117"' wrangler-shadow-probe.toml
+          npx --yes wrangler@4 deploy --config wrangler-shadow-probe.toml
+          TOKEN=$(openssl rand -hex 32)
+          echo "::add-mask::$TOKEN"
+          printf '%s' "$TOKEN" | npx --yes wrangler@4 secret put PROBE_TOKEN --config wrangler-shadow-probe.toml
+          BASE="https://ball46-shadow-persistence-probe-20261117.mccarey-supon.workers.dev"
+          probe() {
+            curl --silent --show-error --fail --max-time 45 --retry 2 --retry-all-errors -X "$1" -H "Authorization: Bearer $TOKEN" "$BASE/$2?run=$GITHUB_RUN_ID"
+          }
+          probe POST import > /tmp/shadow-import.json
+          node -e 'const d=require("/tmp/shadow-import.json");if(!d.ok||d.queued!==5)throw Error("IMPORT_FAILED");console.log("REAL_ARCHIVED_ROWS_QUEUED=5")'
+          probe GET state > /tmp/shadow-before.json
+          node -e 'const d=require("/tmp/shadow-before.json");if(d.generation!=="one"||d.pending!==5||d.book.total!==0)throw Error("QUEUE_BEFORE_FAILED");console.log("DURABLE_QUEUE_BEFORE=PASS")'
+          sed -i 's/PROBE_GENERATION = "one"/PROBE_GENERATION = "two"/' wrangler-shadow-probe.toml
+          npx --yes wrangler@4 deploy --config wrangler-shadow-probe.toml
+          probe GET state > /tmp/shadow-after.json
+          node -e 'const d=require("/tmp/shadow-after.json");if(d.generation!=="two"||d.pending!==5||d.book.total!==0)throw Error("REDEPLOY_QUEUE_FAILED");console.log("DURABLE_QUEUE_AFTER_NEW_WORKER_VERSION=PASS")'
+          probe POST recover > /tmp/shadow-recover.json
+          node -e 'const d=require("/tmp/shadow-recover.json");if(!d.ok||d.processed!==5||d.duplicate!==5)throw Error("RECOVERY_FAILED");console.log("REPLAY_AND_DEDUP_5=PASS")'
+          probe GET state > /tmp/shadow-final.json
+          node -e 'const d=require("/tmp/shadow-final.json");if(d.pending!==0||d.book.total!==5||d.sourceSequenceVerified!==false)throw Error("BALANCE_FAILED");console.log("FINAL_DURABLE_PROBE="+JSON.stringify(d))'
