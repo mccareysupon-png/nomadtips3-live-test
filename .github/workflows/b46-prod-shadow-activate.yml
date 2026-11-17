@@ -75,8 +75,8 @@ jobs:
           const ctor=source.slice(start,end);
           const params=ctor.match(/constructor\(([^)]*)\)/)?.[1]?.split(',').map(x=>x.trim())??[];
           const envArg=params[1];
-          const escapeRe=s=>s.replace(/[.*+?^{}()|[\]\\]/g,'\\          if(!/this\.env\s*=\s*env\b/.test(source))throw Error('REAL_ENGINE_ENV_NOT_CONFIRMED');');
-          const assigned=!!envArg&&/^[A-Za-z_$][\w$]*$/.test(envArg)&&new RegExp('this\\.env\\s*=\\s*'+escapeRe(envArg)+'\\b').test(ctor);
+          const compact=ctor.replace(/\s+/g,'');
+          const assigned=!!envArg&&/^[A-Za-z_$][\w$]*$/.test(envArg)&&compact.includes('this.env='+envArg+';');
           console.log('ENGINE_ENV_CHECK='+JSON.stringify({params,assigned,constructorMentionsEnv:ctor.includes('this.env'),constructorMentionsSuper:ctor.includes('super(')}));
           if(!assigned)throw Error('REAL_ENGINE_ENV_NOT_CONFIRMED');
           const settings=await api('/workers/scripts/'+engine+'/settings');
