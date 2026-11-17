@@ -12,6 +12,7 @@ permissions: {contents: read}
 concurrency: {group: b46-stage-stats-kv-build, cancel-in-progress: false}
 jobs:
   read-only-ledger-build:
+    if: ${{ false }} # Retired legacy full-history builder; retained for rollback.
     runs-on: ubuntu-latest
     timeout-minutes: 9
     steps:
