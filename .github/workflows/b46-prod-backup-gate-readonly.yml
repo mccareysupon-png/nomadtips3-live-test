@@ -1,0 +1,64 @@
+name: B46 production encrypted backup and receiver gate (READ ONLY)
+on:
+  push:
+    branches: [chatgpt/ball46-new-ledger-clean-v1]
+    paths: ['.github/workflows/b46-prod-backup-gate-readonly.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: Read current deployed versions and encrypt all available source modules
+        run: |
+          umask 077
+          mkdir -p backup
+          node <<'NODE'
+          const crypto=require('node:crypto'),{gzipSync}=require('node:zlib'),fs=require('node:fs');
+          const publicKey="-----BEGIN PUBLIC KEY-----\nMIIBojANBgkqhkiG9w0BAQEFAAOCAY8AMIIBigKCAYEAs4NpScQqbOEmOW8za9ZZ\nlE8DiIJ9Rgw/qDJQ0WV2mW0cLB2zkTdSb/mbCVb+21f7Spl+B/u5sTGUX5XKUsJv\nBGTaOmRCASX+aqAGNFGNGFTh7OODDYrylZ9WdRJ66puQokczTz1pWAJvAlZUl3Yz\n/4Ui1keAsh4gxDa9PUGPAaNxPw+mNc/YQ8iuSEesABrEoXKL3MtZCJp9h/gtXeaq\nBtSUMGSslrhClvnkz34lhjO3PgBa3w+JTaV6lW22wKDibmCGV2Of9rWBrLa35R41\n0f54D/aHYVsSgDkoIQaJ6hdOfZqqTBjvP3uIG5p71eL8hmr28NTxIRDNBpYWemYO\n9mRFBVSn8zyiZwa30vKP20r/q8Aw8sBZD70Ia9x10roN+CYRFVT7d8mW3kc6j8/w\nW8vaGBUxq+LA29EIoJuYN7bNGm5qcX4NjjFH+44NIArib7qjC1/eSUd7LlYBic5N\nNBzy+O670XfunUtSS3b1ck4Y34ANBv/cJ7sxdOIiq3NzAgMBAAE=\n-----END PUBLIC KEY-----";
+          const base='https://api.cloudflare.com/client/v4/accounts/62cb0db544160e6591342abd6b4f35cc';
+          const headers={authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN};
+          const get=async path=>{const r=await fetch(base+path,{headers,signal:AbortSignal.timeout(25000)});const j=await r.json();if(!r.ok||!j.success)throw Error('CF_READ_'+r.status);return j.result};
+          const sha=b=>crypto.createHash('sha256').update(b).digest('hex');
+          (async()=>{
+            const capturedAt=new Date().toISOString(),snapshots=[],manifest=[];
+            for(const name of ['nomadtips3-engine-343','ball46-production']){
+              const d=await get('/workers/scripts/'+name+'/deployments?per_page=1');
+              const active=d.deployments?.[0]?.versions;
+              if(!Array.isArray(active)||active.length!==1||!active[0].version_id)throw Error('SINGLE_ACTIVE_VERSION_REQUIRED_'+name);
+              const version=active[0].version_id,w=await get('/workers/workers/'+name+'/versions/'+version+'?include=modules');
+              if(!Array.isArray(w.modules)||!w.modules.length||w.modules.some(m=>typeof m.content_base64!=='string'))throw Error('MODULE_BYTES_UNAVAILABLE_'+name);
+              const settings=await get('/workers/scripts/'+name+'/settings');
+              const bindings=Array.isArray(settings.bindings)?settings.bindings:[];
+              snapshots.push({name,version,activeDeployment:d.deployments[0],versionResponse:w,settings});
+              manifest.push({name,version,modules:w.modules.map(m=>({name:m.name,bytes:Buffer.from(m.content_base64,'base64').length,sha256:sha(Buffer.from(m.content_base64,'base64'))})),bindings:bindings.map(b=>({name:b.name,type:b.type,service:b.type==='service'?b.service:undefined,environment:b.type==='service'?b.environment:undefined}))});
+            }
+            const plain=Buffer.from(JSON.stringify({capturedAt,snapshots})),packed=gzipSync(plain);
+            const key=crypto.randomBytes(32),iv=crypto.randomBytes(12),cipher=crypto.createCipheriv('aes-256-gcm',key,iv);
+            const payload=Buffer.concat([cipher.update(packed),cipher.final()]),tag=cipher.getAuthTag();
+            const wrapped=crypto.publicEncrypt({key:publicKey,oaepHash:'sha256',padding:crypto.constants.RSA_PKCS1_OAEP_PADDING},key);
+            const envelope={format:'B46-backup-v1',capturedAt,compression:'gzip',encryption:'AES-256-GCM+RSA-OAEP-SHA256',plaintextSha256:sha(plain),wrappedKey:wrapped.toString('base64'),iv:iv.toString('base64'),tag:tag.toString('base64'),payload:payload.toString('base64')};
+            const roundTrip=crypto.createDecipheriv('aes-256-gcm',key,iv);roundTrip.setAuthTag(tag);if(!Buffer.concat([roundTrip.update(payload),roundTrip.final()]).equals(packed))throw Error('BACKUP_ENCRYPTION_CHECK_FAILED');
+            const filename='ball46-prod-'+capturedAt.replace(/[:.]/g,'-')+'.encrypted.json',bytes=Buffer.from(JSON.stringify(envelope));
+            fs.writeFileSync('backup/'+filename,bytes,{mode:0o600});
+            fs.writeFileSync('backup/manifest.json',JSON.stringify({capturedAt,filename,backupSha256:sha(bytes),plaintextSha256:sha(plain),workers:manifest},null,2));
+            console.log('BACKUP_MANIFEST='+JSON.stringify({capturedAt,filename,backupSha256:sha(bytes),plaintextSha256:sha(plain),workers:manifest.map(({bindings,...m})=>({...m,bindingCount:bindings.length}))}));
+            const engine=manifest.find(m=>m.name==='nomadtips3-engine-343'),b=engine.bindings.find(b=>b.name==='B46_SHADOW_RECEIVER');
+            const target=b?.service??null;
+            console.log('PRODUCTION_RECEIVER_GATE='+JSON.stringify({bindingPresent:!!b,bindingType:b?.type??null,target,environment:b?.environment??null,stagingTarget:!!target&&/stage|test|probe/i.test(target),handshake:'NOT_RUN_NO_VERIFIED_PRODUCTION_ENDPOINT',deploymentAuthorized:false}));
+            try{
+              const scripts=await get('/workers/scripts');
+              if(Array.isArray(scripts))console.log('SHADOW_WORKERS='+JSON.stringify(scripts.map(s=>s.id).filter(n=>typeof n==='string'&&/shadow|accounting|ledger/i.test(n))));
+            }catch{console.log('SHADOW_WORKER_LIST_UNAVAILABLE')}
+          })().catch(e=>{console.error('SAFE_BACKUP_ERROR='+String(e.message).replace(/[^a-zA-Z0-9_: .-]/g,'').slice(0,150));process.exitCode=1});
+          NODE
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ball46-production-encrypted-backup
+          path: backup/
+          retention-days: 90
+          if-no-files-found: error
