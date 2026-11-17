@@ -1,0 +1,36 @@
+name: B46 Shadow baseline fingerprint (READ ONLY)
+on:
+  push:
+    branches: [chatgpt/ball46-new-ledger-clean-v1]
+    paths: ['.github/workflows/b46-shadow-baseline-readonly.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: Verify deployed engine version and source fingerprint without publishing source
+        run: |
+          node <<'NODE'
+          const {createHash}=require('node:crypto');
+          (async()=>{
+            if(!process.env.CLOUDFLARE_API_TOKEN)throw Error('MISSING_READ_CREDENTIAL');
+            const base='https://api.cloudflare.com/client/v4/accounts/62cb0db544160e6591342abd6b4f35cc';
+            const headers={authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN};
+            const get=async path=>{const r=await fetch(base+path,{headers,signal:AbortSignal.timeout(20000)});const j=await r.json();if(!r.ok||!j.success)throw Error('CLOUDFLARE_READ_'+r.status);return j.result};
+            const d=await get('/workers/scripts/nomadtips3-engine-343/deployments?per_page=1');
+            const versions=d.deployments?.[0]?.versions;
+            if(!Array.isArray(versions)||versions.length!==1||!versions[0].version_id)throw Error('SINGLE_ACTIVE_VERSION_REQUIRED');
+            const version=versions[0].version_id;
+            const w=await get('/workers/workers/nomadtips3-engine-343/versions/'+version+'?include=modules');
+            const modules=(w.modules||[]).filter(m=>typeof m.content_base64==='string');
+            if(!modules.length)throw Error('NO_READABLE_MODULES');
+            const anchors=modules.filter(m=>Buffer.from(m.content_base64,'base64').toString('utf8').includes('__b46UpsertLedgerUnlocked'));
+            if(anchors.length!==1)throw Error('CANONICAL_ANCHOR_MISSING_OR_AMBIGUOUS');
+            console.log(JSON.stringify({version,modules:modules.map(m=>({name:m.name,bytes:Buffer.from(m.content_base64,'base64').length,sha256:createHash('sha256').update(Buffer.from(m.content_base64,'base64')).digest('hex')})),canonicalModule:anchors[0].name,readOnly:true}));
+          })().catch(e=>{console.error(String(e));process.exitCode=1});
+          NODE
