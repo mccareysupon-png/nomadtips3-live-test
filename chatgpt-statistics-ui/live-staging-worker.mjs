@@ -10,6 +10,7 @@ import {patchIndexedStatisticsCache} from './indexed-stats-stage.mjs';
 import {stageSummaryScript} from './statistics-summary-layout-stage.mjs';
 import {stageFastChartScript} from './fast-chart-firstpaint-stage.mjs';
 import {stageDailyHomeScript} from './daily-homepage-stage.mjs';
+import {stageArchiveHistoryScript} from './archive-history-client-stage.mjs';
 import {patchStageLazyStatistics,patchStageLazyChart} from './lazy-detail-stage-patch.mjs';
 const ORIGIN = 'https://www.ball46.com';
 const stamp = 'B46-STAT-UI-01-real-ui-v1';
@@ -29,6 +30,9 @@ export default {
     if (u.pathname === '/_b46_ui_health') return json({ok:true,mode:'real-frontend-read-only',stamp,origin:'ball46.com',productionWrites:0,overlay:'live-staging-overlay.css'});
     if (u.pathname === '/_b46_fast_graph.js') return new Response(request.method==='HEAD'?null:stageFastChartScript,{
       headers:{...baseHeaders,'content-type':'application/javascript; charset=UTF-8','x-b46-fast-chart':'STAGING_ONLY'}
+    });
+    if (u.pathname === '/_b46_stage_archive.js') return new Response(request.method==='HEAD'?null:stageArchiveHistoryScript,{
+      headers:{...baseHeaders,'content-type':'application/javascript; charset=UTF-8','x-b46-archive':'PAGED_SETTLED_RECORDS_ONLY'}
     });
     if (u.pathname === '/_b46_stage_daily_home.js') return new Response(request.method==='HEAD'?null:stageDailyHomeScript,{
       headers:{...baseHeaders,'content-type':'application/javascript; charset=UTF-8','x-b46-daily':'VERIFIED_SAVED_ONLY'}
@@ -225,7 +229,7 @@ export default {
       const duplicateCount=original.split(productionClient).length-1;
       if(duplicateCount>1)return json({ok:false,error:'DUPLICATE_PROD_FAST_CLIENT_SOURCE'},503);
       const isolated=original.replace(productionClient,'');
-      const inject = '<meta name="robots" content="noindex,nofollow"><link rel="stylesheet" href="/_b46_ui_overlay.css?v=20261116-summary" data-b46-staging-overlay="1"><script defer src="/_b46_stats_summary.js?v=20261116" data-b46-stage-summary-script="1"></script><script defer src="/_b46_fast_graph.js?v=20261116-chart" data-b46-stage-fast-script="1"></script><script defer src="/_b46_stage_daily_home.js?v=20261117-daily" data-b46-stage-daily="1"></script>';
+      const inject = '<meta name="robots" content="noindex,nofollow"><link rel="stylesheet" href="/_b46_ui_overlay.css?v=20261116-summary" data-b46-staging-overlay="1"><script defer src="/_b46_stats_summary.js?v=20261116" data-b46-stage-summary-script="1"></script><script defer src="/_b46_fast_graph.js?v=20261116-chart" data-b46-stage-fast-script="1"></script><script defer src="/_b46_stage_daily_home.js?v=20261117-daily" data-b46-stage-daily="1"></script><script defer src="/_b46_stage_archive.js?v=20261117-v2" data-b46-stage-archive="1"></script>';
       const html = isolated.includes('</head>') ? isolated.replace('</head>',inject+'</head>') : isolated;
       h.set('x-b46-stage-duplicate-prod-client',duplicateCount?'SUPPRESSED':'ABSENT');
       h.set('content-type','text/html; charset=UTF-8');
