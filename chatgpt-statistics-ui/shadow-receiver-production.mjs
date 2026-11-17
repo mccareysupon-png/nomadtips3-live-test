@@ -2,7 +2,7 @@
 // Private Worker: service binding is the trust boundary for POST /settled.
 // Health requires a separate secret; health never creates a ledger entry.
 import {normalizeRow,compareCursor} from './shadow-composite-cursor-stage.mjs';
-import {apply,display} from './clean-statistics-book.mjs';
+import {apply} from './clean-statistics-book.mjs';
 const response=(data,status=200)=>Response.json(data,{status,headers:{'cache-control':'no-store'}});
 const zero=()=>({win:0,loss:0,push:0,halfWin:0,halfLoss:0,net:0,stake:0});
 const digest=async x=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(x))))).map(b=>b.toString(16).padStart(2,'0')).join('');
@@ -34,7 +34,7 @@ export class ProductionShadowInbox {
      if(!old){await tx.put('journal:'+id,event);await tx.put('pending:'+id,event);}
     }
     // Schedule only after queue rows are transactionally written; in same transaction.
-    await tx.setAlarm(Date.now()+1000);
+    if((await tx.getAlarm())===null)await tx.setAlarm(Date.now()+1000);
    });
    return response({ok:true,accepted:events.length});
   }catch(e){return response({ok:false,error:'SHADOW_INBOX_REJECTED'},503)}
