@@ -1,0 +1,78 @@
+name: B46 live Shadow settlement audit (READ ONLY)
+on:
+  push:
+    branches: [chatgpt/ball46-new-ledger-clean-v1]
+    paths: ['.github/workflows/b46-live-shadow-readonly-audit.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: Read legacy ledger, deployed versions, receiver namespace and logs; no writes
+        run: |
+          node <<'JS'
+          const {createHash}=require('node:crypto');
+          const cutoff=Date.parse('2026-11-17T21:32:00+07:00'),actual=Date.parse('2026-11-17T21:32:15.056+07:00');
+          const base='https://api.cloudflare.com/client/v4/accounts/62cb0db544160e6591342abd6b4f35cc';
+          const headers={authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN};
+          const qaId=s=>createHash('sha256').update(String(s)).digest('hex').slice(0,16);
+          const get=async path=>{const r=await fetch(base+path,{headers,signal:AbortSignal.timeout(20000)});const j=await r.json();if(!r.ok||!j.success)throw Error('CF_READ_'+r.status+'_'+(j.errors??[]).map(e=>e.code).join('_'));return j};
+          const result=(key,value)=>console.log(key+'='+JSON.stringify(value));
+          const iso=t=>new Date(t).toISOString();
+          (async()=>{
+            const names=['nomadtips3-engine-343','ball46-shadow-receiver-production','ball46-production'];
+            const state={};
+            for(const name of names){
+              try{
+                const d=(await get('/workers/scripts/'+name+'/deployments?per_page=1')).result;
+                const s=(await get('/workers/scripts/'+name+'/settings')).result;
+                state[name]={active:d.deployments?.[0]?.versions,observability:s.observability??null,shadowBinding:s.bindings?.find(b=>b.name==='B46_SHADOW_RECEIVER')?.service??null};
+              }catch(e){state[name]={error:e.message}}
+            }
+            result('AUDIT_DEPLOYMENT',state);
+            try{
+              let cursor=null,pages=0,scanned=0,source=null;const rows=new Map();
+              // Archive is sorted by createdAt, not settlement time. Bound to 8 pages, never claim exhaustive absence.
+              do{
+                const u=new URL('https://www.ball46.com/api/engine/statistics');
+                u.searchParams.set('paged','1');if(cursor)u.searchParams.set('cursor',cursor);
+                const res=await fetch(u,{headers:{accept:'application/json','cache-control':'no-cache'},signal:AbortSignal.timeout(25000)});
+                const d=await res.json().catch(()=>null);if(!res.ok||!d?.ok||!Array.isArray(d.rows))throw Error('LEGACY_HTTP_'+res.status);
+                pages++;scanned+=d.rows.length;source=d.statisticsSource;
+                for(const row of d.rows)if(row?.id&&row.status==='SETTLED'&&['WIN','HALF_WIN','LOSS','HALF_LOSS','PUSH'].includes(row.result)&&Number(row.settledAt)>=cutoff)rows.set(String(row.id),row);
+                const next=d.nextCursor??null;if(next===cursor){cursor=null;break}cursor=next;
+              }while(cursor&&pages<8);
+              const ordered=[...rows.values()].sort((a,b)=>Number(b.settledAt)-Number(a.settledAt));
+              result('LEGACY_SETTLEMENT_AUDIT',{checkedAt:iso(Date.now()),cutoff:iso(cutoff),activation:iso(actual),source,pages,scanned,archiveExhausted:!cursor,matched:ordered.length,fixtures:new Set(ordered.map(r=>r.fixtureId).filter(Boolean)).size,latest:ordered.slice(0,5).map(r=>({idHash:qaId(r.id),fixtureHash:r.fixtureId?qaId(r.fixtureId):null,settledAt:iso(Number(r.settledAt)),result:r.result,market:r.market??null,odds:r.odds??null,afterActualDeploy:Number(r.settledAt)>=actual}))});
+            }catch(e){result('LEGACY_READ_ERROR',e.message)}
+            try{
+              const ns=(await get('/workers/durable_objects/namespaces?per_page=100')).result;
+              const targets=ns.filter(n=>n.script==='ball46-shadow-receiver-production'&&n.class==='ShadowProductionStore');
+              const output=[];
+              for(const target of targets){
+                const o=await get('/workers/durable_objects/namespaces/'+encodeURIComponent(target.id)+'/objects?limit=100');
+                output.push({class:target.class,sqlite:target.use_sqlite,objects:o.result?.length??0,withStoredData:(o.result??[]).filter(x=>x.hasStoredData===true).length,metadataOnly:true});
+              }
+              result('RECEIVER_NAMESPACE_METADATA',{namespaces:output,individualRowsReadable:false,pendingReadable:false,duplicateReadable:false});
+            }catch(e){result('RECEIVER_METADATA_ERROR',e.message)}
+            for(const name of names.slice(0,2)){
+              try{
+                // Observability query is a dry read; POST is used only for query parameters.
+                const q={queryId:'b46-shadow-readonly-'+name,timeframe:{from:cutoff,to:Date.now()},dry:true,view:'events',limit:200,parameters:{datasets:['cloudflare-workers'],filters:[{key:'$workers.scriptName',operation:'eq',type:'string',value:name}],filterCombination:'and'}};
+                const res=await fetch(base+'/workers/observability/telemetry/query',{method:'POST',headers:{...headers,'content-type':'application/json'},body:JSON.stringify(q),signal:AbortSignal.timeout(25000)});
+                const d=await res.json();if(!res.ok||d.success===false)throw Error('OBS_HTTP_'+res.status+'_'+(d.errors??[]).map(x=>x.code).join('_'));
+                const root=d.result??d;
+                const list=Array.isArray(root.events)?root.events:Array.isArray(root.events?.events)?root.events.events:null;
+                if(!list){result('OBS_LOG_SHAPE',{name,keys:Object.keys(root),eventsKeys:Object.keys(root.events??{})});continue}
+                let shadowErrors=0,failedInvocations=0,settledCalls=0,alarmEvents=0;
+                for(const event of list){const s=JSON.stringify(event);if(/SHADOW_DROP_RECOVERY|SHADOW_COLLECTION_FAILED|SHADOW_SCHEDULE_FAILED|SHADOW_RECEIVER_ERROR/.test(s))shadowErrors++;const o=event.$workers?.outcome??event.outcome;if(o&&o!=='ok')failedInvocations++;if(/shadow\.internal\/settled|store\.internal\/enqueue/.test(s))settledCalls++;if(event.$workers?.eventType==='alarm')alarmEvents++}
+                result('OBS_READ',{name,returned:list.length,shadowErrors,failedInvocations,settledCalls,alarmEvents,limit:200,absenceIsNotProof:list.length===0||list.length>=200});
+              }catch(e){result('OBS_READ_ERROR',{name,error:e.message})}
+            }
+          })().catch(e=>{console.error('AUDIT_FAILED='+String(e.message).slice(0,120));process.exitCode=1});
+          JS
