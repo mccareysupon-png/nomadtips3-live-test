@@ -1,0 +1,22 @@
+{
+  "target": "nomadtips3-engine-343",
+  "mode": "SHADOW_WRITE_ONLY",
+  "expected_active_version": "02e09215-02b1-47fb-b1cf-9423f50c7ce9",
+  "expected_source_sha256": "30aef0bb9c4be48a40c4bf38bf113b40ca1fd2d384187eefc275829c43e8ba56",
+  "append_binding": {
+    "type": "service",
+    "name": "B46_SHADOW_RECEIVER",
+    "service": "ball46-shadow-receiver-production"
+  },
+  "preserve_all_existing_bindings": true,
+  "read_source": "UNCHANGED",
+  "production_activation": "BLOCKED_UNTIL_VERIFIED",
+  "required_before_engine_activation": [
+    "Exact receiver code staged successfully",
+    "Private receiver authenticated health",
+    "Verify actual engine binding using inactive version or other non-mutating method",
+    "Confirm durable source-side recovery if receiver or entire service binding unavailable",
+    "Verify rollback version and complete backup"
+  ],
+  "secrets": "No secret values in Git; /settled uses internal service binding, /health requires token"
+}
