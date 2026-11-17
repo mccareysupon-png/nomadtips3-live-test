@@ -97,7 +97,8 @@ async function page(session){
 }
 async function nextBatch(session){
  if(session.busy)return;
- session.busy=true;session.more.disabled=true;
+ session.busy=true;session.more.hidden=false;session.more.disabled=true;
+ session.more.textContent='Loading archived results…';
  window.__B46_STAGE_ARCHIVE_DIAG.status='page-loading';
  try{
   const target=session.shown+50;
@@ -115,11 +116,24 @@ async function nextBatch(session){
     ' of '+(session.total??'?').toLocaleString('en-US')+
     ' settled records · Archived details only · Graph unchanged';
   session.more.hidden=session.offset>=session.buffer.length&&!session.cursor;
+  session.more.textContent='Show 50 more results';
   window.__B46_STAGE_ARCHIVE_DIAG.status='history-visible';
   window.__B46_STAGE_ARCHIVE_DIAG.shown=session.shown;
  }catch(e){
   const reason=String(e.message||e);
-  session.status.textContent='History unavailable: '+reason.slice(0,120);
+  if(reason==='HISTORY_SOURCE_CHANGED_REFRESH_TO_CONTINUE'||reason==='HISTORY_CURSOR_LOOP'){
+   session.tbody.replaceChildren();session.shown=0;session.loaded=false;session.offset=0;
+   session.buffer=[];session.cursor=null;session.sourceSig=null;session.total=0;
+   session.seen.clear();session.visited.clear();
+   window.__B46_STAGE_ARCHIVE_DIAG.shown=0;
+   window.__B46_STAGE_ARCHIVE_DIAG.buffered=0;
+   session.status.textContent='Archived results changed. Reload the first 50 results to continue.';
+   session.more.textContent='Reload archived results';
+  }else{
+   session.status.textContent='History unavailable. Retry to continue from the current page.';
+   session.more.textContent='Retry archived results';
+  }
+  session.more.hidden=false;
   window.__B46_STAGE_ARCHIVE_DIAG.status='failed';
   window.__B46_STAGE_ARCHIVE_DIAG.error=reason.slice(0,150);
  }finally{session.busy=false;session.more.disabled=false}
