@@ -1,5 +1,6 @@
 // BALL46 STAGING ONLY: original-source aggregate projection for fast first paint.
 // Never recompute payouts/ROI, alter results, or publish partial Ledger.
+import {createDailySummary} from './daily-summary-stage.mjs';
 export const COMPACT_SUMMARY_SCHEMA = 1;
 const FIELDS = ['win','loss','push','halfWin','halfLoss'];
 const NON_NEGATIVE = ['ledgerTotal','total','pending','unresolved',...FIELDS];
@@ -35,6 +36,10 @@ export function createCompactSummary(snapshot, verifyRows){
     if(Buffer.byteLength(market,'utf8')<=64*1024)summary.byMarket=snapshot.byMarket;
     else summary.marketDetailsDeferred=true;
   }
+  // Preserve homepage WIN/LOSS/PENDING cards from the verified closing balance.
+  // This is the exact original London 06:00 createdAt calculation, run once
+  // at snapshot build; never re-run the 16k-event loop in the browser.
+  summary.daily=createDailySummary(snapshot.rows,snapshot.snapshotSavedAt);
   const body=JSON.stringify(summary);
   if(Buffer.byteLength(body,'utf8')>MAX_BYTES)throw Error('COMPACT_SUMMARY_TOO_LARGE');
   return {summary,body,bytes:Buffer.byteLength(body,'utf8')};
