@@ -1,0 +1,98 @@
+name: B46 direct Engine binding preview handshake (NO SHADOW HOOK ACTIVATION)
+on:
+  push:
+    branches: [chatgpt/ball46-new-ledger-clean-v1]
+    paths: ['.github/workflows/b46-engine-zero-traffic-handshake.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: b46-engine-production-controlled-gate
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: Upload inactive Engine version with unchanged legacy module and test direct health only
+        run: |
+          node <<'JS'
+          const {createHash,randomBytes}=require('node:crypto');
+          const root='https://api.cloudflare.com/client/v4/accounts/62cb0db544160e6591342abd6b4f35cc';
+          const engine='nomadtips3-engine-343', receiver='ball46-shadow-receiver-production', website='ball46-production';
+          const old='02e09215-02b1-47fb-b1cf-9423f50c7ce9', receiverOld='0eec3379-7241-449c-8bd8-83d9e10e6881', websiteOld='f5d9cf21-4b41-46da-bdd8-a841fa733d82';
+          const legacyHash='30aef0bb9c4be48a40c4bf38bf113b40ca1fd2d384187eefc275829c43e8ba56';
+          const hash=m=>createHash('sha256').update(Buffer.from(m.content_base64,'base64')).digest('hex');
+          const headers={authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN,'content-type':'application/json'};
+          const api=async (path,method='GET',body)=>{
+            const r=await fetch(root+path,{method,headers,body:body===undefined?undefined:JSON.stringify(body),signal:AbortSignal.timeout(30000)});
+            const j=await r.json();
+            if(!r.ok||!j.success)throw Error('CF_'+method+'_'+r.status+'_'+(j.errors??[]).map(x=>x.code).join('_'));
+            return j.result;
+          };
+          const deployment=async name=>(await api('/workers/scripts/'+name+'/deployments?per_page=1')).deployments?.[0];
+          const one=async(name,id)=>{const d=await deployment(name),v=d?.versions;if(v?.length!==1||v[0].version_id!==id||Number(v[0].percentage)!==100)throw Error('ACTIVE_VERSION_DRIFT_'+name);return d};
+          const ver=async(n,id)=>api('/workers/workers/'+n+'/versions/'+id+'?include=modules');
+          const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+          (async()=>{
+            await one(engine,old);await one(website,websiteOld);await one(receiver,receiverOld);
+            const rsub=await api('/workers/scripts/'+receiver+'/subdomain');if(rsub.enabled||rsub.previews_enabled)throw Error('RECEIVER_NOT_PRIVATE');
+            const baseline=await ver(engine,old),rcv=await ver(receiver,receiverOld);
+            if(baseline.modules?.length!==1||hash(baseline.modules[0])!==legacyHash||baseline.main_module!==baseline.modules[0].name)throw Error('BASELINE_SOURCE_DRIFT');
+            if(rcv.modules?.length!==1||hash(rcv.modules[0])!=='8a89725df42baa5bb921dca160c27b3b2fb8cb5c4a524b6ef94c7c16d88e499f')throw Error('RECEIVER_SOURCE_DRIFT');
+            const bindings=baseline.bindings??[];
+            if(bindings.length!==4||bindings.some(b=>b.name==='B46_SHADOW_RECEIVER')||!bindings.some(b=>b.name==='ENGINE'&&b.type==='durable_object_namespace'))throw Error('BASELINE_BINDINGS_DRIFT');
+            const token=randomBytes(32).toString('hex'),proof=randomBytes(12).toString('hex');
+            console.log('::add-mask::'+token);
+            const wrapper=[
+             'import original from "./'+baseline.main_module+'";',
+             'export * from "./'+baseline.main_module+'";',
+             'export default {...original, async fetch(req,env,ctx){',
+             ' const url=new URL(req.url);',
+             ' if(url.pathname!=="/__b46_shadow_health") return original.fetch(req,env,ctx);',
+             ' if(req.method!=="GET"||!env.B46_SHADOW_HEALTH_TOKEN||req.headers.get("authorization")!=="Bearer "+env.B46_SHADOW_HEALTH_TOKEN)return Response.json({ok:false},{status:403});',
+             ' const res=await env.B46_SHADOW_RECEIVER.fetch("https://shadow.internal/health",{headers:{authorization:"Bearer "+env.B46_SHADOW_HEALTH_TOKEN}});',
+             ' const h=await res.json();',
+             ' return Response.json({proof:"'+proof+'",receiverStatus:res.status,health:h},{status:res.ok?200:503,headers:{"cache-control":"no-store"}});',
+             '}};'
+            ].join('\n');
+            const config=await api('/workers/scripts/'+engine+'/settings');
+            const payload={main_module:'shadow-health-only.mjs',modules:[...baseline.modules.map(({name,content_type,content_base64})=>({name,content_type,content_base64})),{name:'shadow-health-only.mjs',content_type:'application/javascript+module',content_base64:Buffer.from(wrapper).toString('base64')}],bindings:[...bindings.map(b=>({name:b.name,type:'inherit',version_id:old})),{name:'B46_SHADOW_RECEIVER',type:'service',service:receiver},{name:'B46_SHADOW_HEALTH_TOKEN',type:'secret_text',text:token}],compatibility_date:baseline.compatibility_date,compatibility_flags:config.compatibility_flags??[],annotations:{'workers/message':'B46 private health-only binding candidate; no shadow writes; no live traffic'}};
+            if(baseline.usage_model)payload.usage_model=baseline.usage_model;
+            if(baseline.migration_tag)payload.migration_tag=baseline.migration_tag;
+            // Upload a version only: never a code overwrite or traffic deployment.
+            const uploaded=await api('/workers/workers/'+engine+'/versions?deploy=false','POST',payload);
+            const id=uploaded.id;if(!id||id===old)throw Error('INVALID_CANDIDATE_ID');
+            await one(engine,old);
+            const candidate=await ver(engine,id);
+            const actual=candidate.modules?.find(m=>m.name===baseline.main_module);
+            if(!actual||hash(actual)!==legacyHash)throw Error('LEGACY_MODULE_CHANGED');
+            const cb=candidate.bindings??[];
+            for(const b of bindings){
+              const next=cb.find(x=>x.name===b.name);if(!next||next.type!==b.type)throw Error('INHERITED_BINDING_MISMATCH_'+b.name);
+              for(const key of ['service','class_name','namespace_id','script_name','environment'])if(b[key]!==undefined&&next[key]!==b[key])throw Error('INHERITED_RESOURCE_MISMATCH_'+b.name);
+            }
+            if(cb.find(b=>b.name==='B46_SHADOW_RECEIVER')?.service!==receiver||cb.find(b=>b.name==='B46_SHADOW_HEALTH_TOKEN')?.type!=='secret_text')throw Error('CANDIDATE_BINDING_FAILED');
+            console.log('ENGINE_BINDING_CANDIDATE='+JSON.stringify({version:id,legacyExact:true,receiver,secretConfigured:true,liveVersion:old,liveTrafficChanged:false,versionUrlCount:candidate.urls?.length??0}));
+            // Public version URLs are not available for most Workers implementing Durable Objects.
+            // No deploy or routing changes are permitted before the direct handshake gate.
+            const url=(candidate.urls??[]).find(x=>typeof x==='string'&&x.startsWith('https://')&&x.includes(engine));
+            if(!url){console.log('DIRECT_HANDSHAKE_BLOCKED=NO_VERSION_URL_FOR_DURABLE_OBJECT_WORKER');return}
+            // Re-key receiver health only after a preview endpoint exists; no ledger or signal change.
+            await api('/workers/scripts/'+receiver+'/secrets','PUT',{name:'SHADOW_HEALTH_TOKEN',type:'secret_text',text:token});
+            let passed=false;
+            for(let i=0;i<15;i++){
+              const response=await fetch(new URL('/__b46_shadow_health',url),{headers:{authorization:'Bearer '+token},signal:AbortSignal.timeout(15000)});
+              const d=await response.json().catch(()=>null),h=d?.health;
+              if(response.status===200&&d?.proof===proof&&d.receiverStatus===200&&h?.ok&&h.environment==='production'&&h.queue.received===0&&h.queue.pending===0&&h.book===null&&h.readOnly){
+                console.log('DIRECT_ENGINE_PREVIEW_HANDSHAKE='+JSON.stringify({status:200,version:id,receiverStatus:200,received:0,pending:0,book:null,readOnly:true,activeEngineVersion:old}));passed=true;break
+              }
+              console.log('HANDSHAKE_ATTEMPT_STATUS='+response.status);await sleep(3000)
+            }
+            await one(engine,old);await one(website,websiteOld);
+            if(!passed)throw Error('DIRECT_ENGINE_PREVIEW_HANDSHAKE_NOT_VERIFIED');
+            console.log('SHADOW_HOOK_DEPLOYED=false');
+          })().catch(e=>{console.error(String(e.message).slice(0,160));process.exitCode=1});
+          JS
