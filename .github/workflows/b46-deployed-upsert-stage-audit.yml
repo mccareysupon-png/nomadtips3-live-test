@@ -1,0 +1,42 @@
+name: B46 deployed 343 upsert structure audit READ ONLY
+on:
+  push:
+    branches: [chatgpt/ball46-statistics-ui-v1]
+    paths: ['.github/workflows/b46-deployed-upsert-stage-audit.yml']
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: Inspect deployed engine source without changing it
+        run: |
+          node <<'NODE'
+          (async()=>{
+            if(!process.env.CLOUDFLARE_API_TOKEN)throw Error('MISSING_READ_CREDENTIAL');
+            const base='https://api.cloudflare.com/client/v4/accounts/62cb0db544160e6591342abd6b4f35cc';
+            const headers={authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN};
+            const get=async path=>{const r=await fetch(base+path,{headers,signal:AbortSignal.timeout(20000)});const j=await r.json();if(!r.ok||!j.success)throw Error('CLOUDFLARE_READ_'+r.status);return j.result};
+            const deployments=await get('/workers/scripts/nomadtips3-engine-343/deployments?per_page=1');
+            const version=deployments.deployments?.[0]?.versions?.[0]?.version_id;
+            if(!version)throw Error('NO_DEPLOYED_VERSION');
+            const worker=await get('/workers/workers/nomadtips3-engine-343/versions/'+version+'?include=modules');
+            const module=worker.modules?.find(x=>/javascript/.test(x.content_type||'')&&x.content_base64);
+            if(!module)throw Error('NO_JAVASCRIPT_MODULE');
+            const source=Buffer.from(module.content_base64,'base64').toString('utf8');
+            const targets=['async upsertLedgerRows(', 'async syncStatisticsLedger(', 'normalizeLedgerMeta(', 'async statisticsLedgerResponse('];
+            const findings=targets.map(name=>{
+              const start=source.indexOf(name);
+              if(start<0)return{name,found:false};
+              const window=source.slice(start,start+18000);
+              const lines=window.split('\n').slice(0,160);
+              return{name,found:true,position:start,
+                storageOperations:lines.map((line,i)=>({line:i+1,operation:/\.put\(|\.get\(|\.delete\(|transaction\(|aggregateLedger|revision|updatedAt|statisticsContentRevision/.exec(line)?.[0]})).filter(x=>x.operation).slice(0,40),
+                calls:targets.filter(t=>t!==name&&window.includes(t))};
+            });
+            console.log('B46_DEPLOYED_UPSERT_AUDIT='+JSON.stringify({worker:'nomadtips3-engine-343',version,sourceBytes:source.length,findings}));
+          })().catch(e=>{console.error('B46_DEPLOYED_UPSERT_AUDIT_ERROR='+String(e));process.exitCode=1});
+          NODE
