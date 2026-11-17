@@ -11,6 +11,27 @@ export class ShadowProductionStore {
   const store=this.ctx.storage,path=new URL(req.url).pathname;
   try{
    if(path==='/state'&&req.method==='GET')return reply({ok:true,queue:await store.get('inbox:state')??state0(),book:await store.get('composite:state')??null,alarmScheduled:(await store.getAlarm())!==null});
+   if(path==='/audit-snapshot'&&req.method==='GET'){
+    if(!this.env.SHADOW_HEALTH_TOKEN||req.headers.get('authorization')!=='Bearer '+this.env.SHADOW_HEALTH_TOKEN)return reply({ok:false},403);
+    if(req.headers.get('x-audit-object')==='inbox'){
+     const q=await store.get('inbox:state')??state0();
+     return reply({total_received:q.received,duplicate_count:q.duplicates,pending_retry_queue:q.pending});
+    }
+    if(req.headers.get('x-audit-object')!=='book')return reply({ok:false},400);
+    const prefix='composite:receipt:',recent=[];let cursor,settled_count=0,total_pnl=0,w=0,l=0,unknownOdds=0;
+    do{
+     const rows=await store.list({prefix,limit:500,...(cursor?{startAfter:cursor}:{})});
+     if(!rows.size)break;
+     for(const [key,raw] of rows){
+      cursor=key;const r=normalizeRow(raw);settled_count++;
+      if(r.result==='WIN'||r.result==='HALF_WIN'){w++;const odds=Number(r.odds);if(r.odds===null||!Number.isFinite(odds)||odds<1)unknownOdds++;else total_pnl+=(odds-1)*(r.result==='HALF_WIN'?0.5:1);}
+      if(r.result==='LOSS'||r.result==='HALF_LOSS'){l++;total_pnl-=r.result==='HALF_LOSS'?0.5:1;}
+      recent.push(r);recent.sort((a,b)=>b.settled_at-a.settled_at||a.signal_id.localeCompare(b.signal_id));if(recent.length>5)recent.pop();
+     }
+     if(rows.size<500)break;
+    }while(true);
+    return reply({settled_count,recent_5_signals:recent,total_pnl:unknownOdds?null:Math.round(total_pnl*1e8)/1e8,win_rate:w+l?w/(w+l)*100:0});
+   }
    if(req.method!=='POST')return reply({ok:false},405);
    if(path==='/book-post'){
     const row=await req.json();
@@ -64,6 +85,16 @@ export default {async fetch(req,env){
  const u=new URL(req.url);
  if(u.hostname!=='shadow.internal')return reply({ok:false},403);
  const inbox=env.SHADOW_STORE.get(env.SHADOW_STORE.idFromName('inbox-v1'));
+ if(u.pathname==='/audit-snapshot'){
+  if(req.method!=='GET')return reply({ok:false},405);
+  if(!env.SHADOW_HEALTH_TOKEN||req.headers.get('authorization')!=='Bearer '+env.SHADOW_HEALTH_TOKEN)return reply({ok:false},403);
+  const book=env.SHADOW_STORE.get(env.SHADOW_STORE.idFromName('book-v1'));
+  const auth=req.headers.get('authorization');
+  const [a,b]=await Promise.all([inbox.fetch('https://store.internal/audit-snapshot',{headers:{authorization:auth,'x-audit-object':'inbox'}}),book.fetch('https://store.internal/audit-snapshot',{headers:{authorization:auth,'x-audit-object':'book'}})]);
+  if(!a.ok||!b.ok)return reply({ok:false},503);
+  return reply({inbox:await a.json(),book:await b.json(),readOnly:true});
+ }
+
  if(u.pathname==='/health'&&req.method==='GET'){
   if(!env.SHADOW_HEALTH_TOKEN||req.headers.get('authorization')!=='Bearer '+env.SHADOW_HEALTH_TOKEN)return reply({ok:false,error:'AUTH_REJECTED'},403);
   const book=env.SHADOW_STORE.get(env.SHADOW_STORE.idFromName('book-v1'));
