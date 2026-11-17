@@ -29,6 +29,7 @@ export async function persistStatisticsChunk(storage,writes,existing){
 }
 
 export function patchStatisticsWriter(source){
+ throw Error('UNSAFE_SHARED_TRANSACTION_PATCH_DISABLED_USE_ISOLATED_SHADOW');
  const start='async __b46UpsertLedgerUnlocked(sourceRows, fixtureMap = null) {';
  const end='async syncStatisticsLedger(finalFixture = null) {';
  const anchor='if (Object.keys(writes).length) await this.ctx.storage.put(writes);';
