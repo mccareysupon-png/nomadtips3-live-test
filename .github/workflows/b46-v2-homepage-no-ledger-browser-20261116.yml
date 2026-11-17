@@ -42,14 +42,19 @@ jobs:
               homeDaily:document.querySelector('#ball46-daily-performance')?.textContent?.slice(0,420),
               dailyCounts:[...document.querySelectorAll('#ball46-daily-performance [data-b46-stat]')].map(e=>e.textContent.trim()).slice(0,8),
               fetchCallers:window.__B46_CALLERS?.slice(0,4),
-              statsPatched:typeof window.__B46_STAGE_LOAD_DETAILS}));
+              statsPatched:typeof window.__B46_STAGE_LOAD_DETAILS,
+              savedDailyDiag:window.__B46_HOME_DAILY_DIAG||null}));
             console.log('B46_V2_STAGE_HOME='+JSON.stringify({
               http:r.status(),statsApiRequests:api.length,statsApi:api.slice(0,5),
               errors,dom:state,productionWrites:0}));
             await browser.close();
             if(r.status()!==200||errors.length)throw Error('STAGE_HOME_ERROR');
             if(api.length)throw Error('STAGE_HOME_HISTORICAL_LEDGER_RECOUNT_'+api.length);
-            console.log('B46_V2_HOME_NO_LEDGER=PASS');
+            if(state.savedDailyDiag?.status!=='saved-daily-visible')
+              throw Error('STAGE_DAILY_SUMMARY_NOT_MATERIALIZED_'+JSON.stringify(state.savedDailyDiag));
+            if(state.dailyCounts.some(x=>x==='—'))
+              throw Error('STAGE_DAILY_STATS_STILL_PLACEHOLDERS_'+JSON.stringify(state.dailyCounts));
+            console.log('B46_V2_HOME_NO_LEDGER_AND_DAILY_HEAD=PASS');
           })().catch(e=>{console.error('B46_V2_HOME_NO_LEDGER_FAILED='+String(e));process.exitCode=1});
           NODE
 
