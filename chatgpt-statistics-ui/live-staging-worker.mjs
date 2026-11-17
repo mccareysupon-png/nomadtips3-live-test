@@ -4,6 +4,7 @@
 // GET-only mirror of current public site, scoped CSS + verified loader-recovery patch only.
 // Stage-only KPI right-card consolidation and balanced net typography (QA enabled).
 // No Production writes, no secrets forwarded, and no Production Cloudflare Worker mutation.
+export {StageAccountingBook} from './stage-accounting-do.mjs';
 import css from './live-staging-overlay.css';
 import {patchCurrentStatisticsLoader} from './statistics-loader-staging-patch.mjs';
 import {patchIndexedStatisticsCache} from './indexed-stats-stage.mjs';
@@ -27,6 +28,12 @@ export default {
   async fetch(request, env) {
     const u = new URL(request.url);
     if (!['GET','HEAD'].includes(request.method)) return json({ok:false,error:'READ_ONLY_STAGING'},405);
+    if(u.pathname==='/_b46_new_book'){
+      const stub=env.B46_NEW_BOOK.get(env.B46_NEW_BOOK.idFromName('stage-only-v1'));
+      const seed=await stub.fetch('https://book.internal/seed',{method:'POST'});
+      if(!seed.ok)return json({ok:false,error:'OPENING_BALANCE_FAILED'},503);
+      return stub.fetch('https://book.internal/balance');
+    }
     if (u.pathname === '/_b46_ui_health') return json({ok:true,mode:'real-frontend-read-only',stamp,origin:'ball46.com',productionWrites:0,overlay:'live-staging-overlay.css'});
     if (u.pathname === '/_b46_fast_graph.js') return new Response(request.method==='HEAD'?null:stageFastChartScript,{
       headers:{...baseHeaders,'content-type':'application/javascript; charset=UTF-8','x-b46-fast-chart':'STAGING_ONLY'}
