@@ -1,104 +1,10 @@
-name: B46 private production receiver and read-only handshake (NO ENGINE DEPLOY)
+name: Retired B46 receiver bootstrap (disabled)
 on:
-  push:
-    branches: [chatgpt/ball46-new-ledger-clean-v1]
-    paths: ['.github/workflows/b46-prod-receiver-handshake.yml']
   workflow_dispatch:
 permissions:
   contents: read
-concurrency:
-  group: b46-prod-receiver-only
-  cancel-in-progress: false
 jobs:
-  receiver:
+  retired:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
-    env:
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      CLOUDFLARE_ACCOUNT_ID: '62cb0db544160e6591342abd6b4f35cc'
     steps:
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-      - name: Create only private receiver and separate read-only handshake bridge
-        working-directory: chatgpt-statistics-ui
-        run: |
-          set -euo pipefail
-          cat > wrangler-shadow-prod-receiver.toml <<'CONF'
-          name = "ball46-shadow-receiver-production"
-          main = "shadow-production-receiver.mjs"
-          compatibility_date = "2026-11-17"
-          workers_dev = false
-          preview_urls = false
-          [vars]
-          SHADOW_ENV = "production"
-          [[durable_objects.bindings]]
-          name = "SHADOW_STORE"
-          class_name = "ShadowProductionStore"
-          [[migrations]]
-          tag = "prod-shadow-v1"
-          new_sqlite_classes = ["ShadowProductionStore"]
-          CONF
-          cat > shadow-prod-health-bridge.generated.mjs <<'JS'
-          export default {async fetch(req,env){
-            const u=new URL(req.url);
-            if(req.method!=='GET'||u.pathname!=='/health'||!env.BRIDGE_TOKEN||req.headers.get('authorization')!=='Bearer '+env.BRIDGE_TOKEN)return Response.json({ok:false},{status:403});
-            const bad=await env.B46_SHADOW_RECEIVER.fetch('https://shadow.internal/health');
-            const good=await env.B46_SHADOW_RECEIVER.fetch('https://shadow.internal/health',{headers:{authorization:'Bearer '+env.RECEIVER_HEALTH_TOKEN}});
-            const health=await good.json();
-            return Response.json({deniedWithoutToken:bad.status,receiverStatus:good.status,health},{status:good.ok&&bad.status===403?200:503});
-          }};
-          JS
-          cat > wrangler-shadow-prod-health-bridge.toml <<'CONF'
-          name = "ball46-shadow-prod-health-bridge-20261117"
-          main = "shadow-prod-health-bridge.generated.mjs"
-          compatibility_date = "2026-11-17"
-          workers_dev = true
-          preview_urls = false
-          [[services]]
-          binding = "B46_SHADOW_RECEIVER"
-          service = "ball46-shadow-receiver-production"
-          CONF
-          node --check shadow-production-receiver.mjs
-          grep -Fx 'name = "ball46-shadow-receiver-production"' wrangler-shadow-prod-receiver.toml
-          grep -Fx 'workers_dev = false' wrangler-shadow-prod-receiver.toml
-          grep -Fx 'name = "ball46-shadow-prod-health-bridge-20261117"' wrangler-shadow-prod-health-bridge.toml
-          npx --yes wrangler@4 deploy --config wrangler-shadow-prod-receiver.toml
-          RECEIVER_TOKEN=$(openssl rand -hex 32)
-          BRIDGE_TOKEN=$(openssl rand -hex 32)
-          echo "::add-mask::$RECEIVER_TOKEN"
-          echo "::add-mask::$BRIDGE_TOKEN"
-          printf '%s' "$RECEIVER_TOKEN" | npx --yes wrangler@4 secret put SHADOW_HEALTH_TOKEN --config wrangler-shadow-prod-receiver.toml
-          npx --yes wrangler@4 deploy --config wrangler-shadow-prod-health-bridge.toml || { sleep 5; npx --yes wrangler@4 deploy --config wrangler-shadow-prod-health-bridge.toml; }
-          printf '%s' "$RECEIVER_TOKEN" | npx --yes wrangler@4 secret put RECEIVER_HEALTH_TOKEN --config wrangler-shadow-prod-health-bridge.toml
-          printf '%s' "$BRIDGE_TOKEN" | npx --yes wrangler@4 secret put BRIDGE_TOKEN --config wrangler-shadow-prod-health-bridge.toml
-          BASE="https://ball46-shadow-prod-health-bridge-20261117.mccarey-supon.workers.dev"
-          sleep 5
-          OK=false
-          for i in $(seq 1 15); do
-            code=$(curl -sS --max-time 20 -o /tmp/b46-health.json -w '%{http_code}' -H "Authorization: Bearer $BRIDGE_TOKEN" "$BASE/health" || true)
-            echo "HEALTH_BRIDGE_HTTP=$code"
-            if [ "$code" = 200 ] && node -e 'const d=require("/tmp/b46-health.json");const h=d.health;process.exit(d.deniedWithoutToken===403&&d.receiverStatus===200&&h.ok&&h.environment==="production"&&h.readOnly&&h.queue.received===0&&h.queue.pending===0&&h.book===null?0:1)'; then OK=true; break; fi
-            sleep 3
-          done
-          test "$OK" = true
-          node -e 'console.log("PRODUCTION_RECEIVER_HANDSHAKE="+JSON.stringify(require("/tmp/b46-health.json")))'
-          node <<'NODE'
-          const base='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID;
-          const headers={authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN};
-          async function get(path){const r=await fetch(base+path,{headers});const d=await r.json();if(!r.ok||!d.success)throw Error('CF_READ_'+r.status);return d.result}
-          (async()=>{
-            const sub=await get('/workers/scripts/ball46-shadow-receiver-production/subdomain');
-            if(sub.enabled!==false||sub.previews_enabled===true)throw Error('RECEIVER_PUBLIC_ENDPOINT_ENABLED');
-            const settings=await get('/workers/scripts/ball46-shadow-prod-health-bridge-20261117/settings');
-            const b=settings.bindings?.find(b=>b.name==='B46_SHADOW_RECEIVER');
-            if(b?.type!=='service'||b.service!=='ball46-shadow-receiver-production')throw Error('BRIDGE_BINDING_MISMATCH');
-            const active=await get('/workers/scripts/nomadtips3-engine-343/deployments?per_page=1');
-            const v=active.deployments?.[0]?.versions;
-            const engine=await get('/workers/scripts/nomadtips3-engine-343/settings');
-            console.log('PRODUCTION_GATE='+JSON.stringify({receiverPrivate:true,bridgeBindingVerified:true,actualEngineBindingPresent:engine.bindings?.some(b=>b.name==='B46_SHADOW_RECEIVER')??false,engineVersion:v?.[0]?.version_id,engineNotDeployed:v?.length===1&&v[0].version_id==='02e09215-02b1-47fb-b1cf-9423f50c7ce9',websiteChanged:false}));
-          })().catch(e=>{console.error(String(e.message));process.exitCode=1});
-          NODE
+      - run: echo "Retired bootstrap; no Cloudflare calls or deployment."
