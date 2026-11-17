@@ -2,7 +2,7 @@
 // net is fixed-point micro-units. Opening balance must be verified externally.
 export function contribution(row){if(!row||row.status!=="SETTLED")return {win:0,loss:0,push:0,halfWin:0,halfLoss:0,net:0,stake:0};const map={WIN:"win",LOSS:"loss",PUSH:"push",HALF_WIN:"halfWin",HALF_LOSS:"halfLoss"};const k=map[row.result];if(!k)throw Error("invalid result");const odds=Number(row.odds);if((k==="win"||k==="halfWin")&&(!Number.isFinite(odds)||odds<=1))throw Error("invalid odds");return {win:0,loss:0,push:0,halfWin:0,halfLoss:0,[k]:1,net:k==="win"?Math.round((odds-1)*1e6):k==="halfWin"?Math.round((odds-1)*5e5):k==="loss"?-1e6:k==="halfLoss"?-5e5:0,stake:1}}
 export function apply(balance,oldRow,newRow){const a=contribution(oldRow),b=contribution(newRow),next={...balance};for(const k of Object.keys(a)){next[k]=(next[k]??0)+b[k]-a[k];if(!Number.isSafeInteger(next[k])||(k!=="net"&&next[k]<0))throw Error("invalid balance "+k)}return next}
-export function display(b){const win=b.win+b.halfWin,loss=b.loss+b.halfLoss;return {...b,wins:win,losses:loss,total:win+loss+b.push,netProfit:b.net/1e6,winRate:win+loss?(b.win+b.halfWin*.5)/(win+loss)*100:0,roi:b.stake?b.net/1e6/b.stake*100:0}}
+export function display(b){const win=b.win+b.halfWin,loss=b.loss+b.halfLoss;return {...b,wins:win,losses:loss,total:win+loss+b.push,netProfit:b.net/1e6,winRate:win+loss?win/(win+loss)*100:0,roi:b.stake?b.net/1e6/b.stake*100:0}}
 
 export class CleanStatisticsBook {
  constructor(ctx){this.storage=ctx.storage}
