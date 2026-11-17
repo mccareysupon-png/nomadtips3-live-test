@@ -1,0 +1,24 @@
+name: B46 STAGING canonical settlement bridge tests
+on:
+  push:
+    branches: [chatgpt/ball46-statistics-ui-v1]
+    paths:
+      - 'chatgpt-statistics-ui/canonical-settlement-bridge-stage.mjs'
+      - 'chatgpt-statistics-ui/incremental-accounting-v2-stage.mjs'
+      - 'chatgpt-statistics-ui/test-canonical-settlement-bridge-stage.mjs'
+      - '.github/workflows/b46-stage-canonical-bridge-tests.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check chatgpt-statistics-ui/canonical-settlement-bridge-stage.mjs
+      - run: node chatgpt-statistics-ui/test-canonical-settlement-bridge-stage.mjs
+      - run: node chatgpt-statistics-ui/test-incremental-accounting-v2-stage.mjs
