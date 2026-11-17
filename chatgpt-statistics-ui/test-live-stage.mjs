@@ -254,7 +254,17 @@ try{
           })()}};
     });
     assert.equal(cold.fullRows,cold.ledgerTotal,profile.name+':INVALID_LEDGER');
-    if(!profile.isMobile){
+    // Live settlement can advance while the immutable verified snapshot remains
+    // at the last accounted checkpoint. Compare exact financial values ONLY
+    // when both are from the same settled+total count; never mask same-count
+    // historical corrections, which still require a full parity check.
+    const sourceAdvanced=cold.ledgerTotal!==head.ledgerTotal||cold.settled!==head.total;
+    if(sourceAdvanced)console.log('B46_SOURCE_ADVANCED_AFTER_SAVED_SNAPSHOT='+JSON.stringify({
+      profile:profile.name,snapshot:{ledgerTotal:head.ledgerTotal,settled:head.total},
+      current:{ledgerTotal:cold.ledgerTotal,settled:cold.settled},
+      status:'EXPECTED_LIVE_ADVANCE_COMPARE_ON_NEXT_VERIFIED_SNAPSHOT'
+    }));
+    if(!sourceAdvanced&&!profile.isMobile){
       const nativeDays=await page.evaluate(()=>document.querySelector('[data-sp-kpi="settled-days"]')?.textContent?.trim());
       assert.equal(nativeDays,String(graph.summary.settledDays),
         profile.name+':FAST_SETTLED_DAYS_DIFFER_FROM_NATIVE_'+nativeDays);
@@ -269,10 +279,10 @@ try{
     }));
     assert.equal(parity.metric,'units',profile.name+':GRAPH_METRIC_NOT_DEFAULT_UNITS');
     assert.equal(parity.range,'all',profile.name+':GRAPH_RANGE_NOT_DEFAULT_ALL');
-    assert.equal(cold.chartPoints,graph.series.units.length,profile.name+':GRAPH_POINT_COUNT_DRIFT');
+    if(!sourceAdvanced)assert.equal(cold.chartPoints,graph.series.units.length,profile.name+':GRAPH_POINT_COUNT_DRIFT');
     const nativeNet=Number(String(parity.value||'').replaceAll(',','').replace(/[^0-9.+-]/g,''));
     assert(Number.isFinite(nativeNet),profile.name+':GRAPH_NATIVE_NET_UNREADABLE_'+parity.value);
-    assert(Math.abs(nativeNet-graph.summary.net)<0.011,
+    if(!sourceAdvanced)assert(Math.abs(nativeNet-graph.summary.net)<0.011,
       profile.name+':GRAPH_NET_MISMATCH_'+nativeNet+'_VS_'+graph.summary.net);
     // Strict day-by-day parity with the unmodified live financial formula.
     async function compareChart(mode){
@@ -292,9 +302,11 @@ try{
       console.log('B46_NATIVE_DAILY_PARITY='+JSON.stringify({profile:profile.name,mode,
         days:native.length,exactDates:true,valuesWithin1e8:true}));
     }
-    await compareChart('units');
-    await compareChart('roi');
-    await compareChart('rate');
+    if(!sourceAdvanced){
+      await compareChart('units');
+      await compareChart('roi');
+      await compareChart('rate');
+    }
     await page.locator('#b46-finance-chart-card [data-b46-mode="units"]').click();
     await page.waitForFunction(()=>window.__B46_NATIVE_QA_METRIC==='units',{timeout:3000});
     console.log('B46_GRAPH_NATIVE_PARITY='+JSON.stringify({
