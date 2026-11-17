@@ -1,0 +1,55 @@
+name: B46 final candidate diff (strictly READ ONLY)
+on:
+  push:
+    branches: [chatgpt/ball46-new-ledger-clean-v1]
+    paths: ['.github/workflows/b46-shadow-final-diff-readonly.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Apply candidate in memory, check syntax and unchanged legacy source
+        run: |
+          node --input-type=module <<'NODE'
+          import {createHash} from 'node:crypto';
+          import {writeFileSync,mkdtempSync,rmSync} from 'node:fs';
+          import {tmpdir} from 'node:os';
+          import {join} from 'node:path';
+          import {execFileSync,spawnSync} from 'node:child_process';
+          import {prepareHook} from './chatgpt-statistics-ui/shadow-hook-candidate-stage.mjs';
+          const api='https://api.cloudflare.com/client/v4/accounts/62cb0db544160e6591342abd6b4f35cc';
+          const headers={authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN};
+          const get=async path=>{const r=await fetch(api+path,{headers,signal:AbortSignal.timeout(20000)});const j=await r.json();if(!r.ok||!j.success)throw Error('CF_READ_'+r.status);return j.result};
+          const d=await get('/workers/scripts/nomadtips3-engine-343/deployments?per_page=1');
+          const v=d.deployments?.[0]?.versions;if(v?.length!==1)throw Error('SINGLE_ACTIVE_VERSION_REQUIRED');
+          const version=v[0].version_id;
+          const w=await get('/workers/workers/nomadtips3-engine-343/versions/'+version+'?include=modules');
+          const modules=(w.modules||[]).filter(m=>typeof m.content_base64==='string').map(m=>({name:m.name,source:Buffer.from(m.content_base64,'base64').toString('utf8')}));
+          const found=modules.filter(m=>m.source.includes('async __b46UpsertLedgerUnlocked('));if(found.length!==1)throw Error('ANCHOR_MISSING');
+          const {name,source}=found[0];const candidate=prepareHook(source);
+          const tmp=mkdtempSync(join(tmpdir(),'b46-hook-'));
+          try{
+            const file=join(tmp,'candidate.mjs');writeFileSync(file,candidate.source,{mode:0o600});
+            const baseline=join(tmp,'baseline.mjs');writeFileSync(baseline,source,{mode:0o600});
+            const diff=spawnSync('diff',['-U0','--label','a/production-engine.mjs','--label','b/shadow-hook-candidate.mjs',baseline,file],{encoding:'utf8'});
+            if(diff.status!==1||!diff.stdout)throw Error('DIFF_FAILED');
+            const lines=diff.stdout.trimEnd().split('\n');
+            if(lines.some(line=>line.startsWith('-')&&!line.startsWith('---')))throw Error('UNEXPECTED_SOURCE_REMOVAL');
+            console.log('B46_FINAL_DIFF_BEGIN');
+            console.log(diff.stdout.trimEnd());
+            console.log('B46_FINAL_DIFF_END');
+
+            const checked=await import('node:child_process').then(({spawnSync})=>spawnSync(process.execPath,['--check',file],{stdio:'ignore'}));
+            if(checked.status!==0)throw Error('CANDIDATE_SYNTAX_FAILED');
+          }finally{rmSync(tmp,{recursive:true,force:true})}
+          const sequenceNames=[...new Set((source.match(/\b(?:settled_seq|settledSeq|settlementSequence|last_settled_seq)\b/g)||[]))];
+          console.log('B46_HOOK_DRY_RUN='+JSON.stringify({version,name,baselineSha256:createHash('sha256').update(source).digest('hex'),candidateSha256:createHash('sha256').update(candidate.source).digest('hex'),legacyExact:candidate.legacyExact,outsideExact:candidate.outsideExact,syntax:true,sequenceNames,sourceSequenceVerified:false,receiverBound:false,productionChanged:false}));
+          NODE
