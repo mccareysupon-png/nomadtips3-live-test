@@ -81,7 +81,7 @@ function checkAdvanced(data,rows,c){
 const query=c=>new URLSearchParams(c).toString();
 function mockStorage(){
  const m=new Map();let target=m,alarm=null;
- const x={get:async k=>structuredClone(target.get(k)),put:async(k,v)=>{target.set(k,structuredClone(v))},delete:async k=>target.delete(k),list:async(o={})=>new Map([...target].filter(([k])=>k.startsWith(o.prefix??'')&&(!o.startAfter||k>o.startAfter)).sort(([a],[b])=>a<b?-1:a>b?1:0).slice(0,o.limit??1000).map(([k,v])=>[k,structuredClone(v)])),transaction:async fn=>{const draft=new Map(m);target=draft;try{const v=await fn(x);m.clear();for(const [k,v] of draft)m.set(k,v);return v}finally{target=m}},getAlarm:async()=>alarm,setAlarm:async n=>{alarm=n}};return x;
+ const x={get:async k=>Array.isArray(k)?new Map(k.filter(x=>target.has(x)).map(x=>[x,structuredClone(target.get(x))])):structuredClone(target.get(k)),put:async(k,v)=>{target.set(k,structuredClone(v))},delete:async k=>target.delete(k),list:async(o={})=>new Map([...target].filter(([k])=>k.startsWith(o.prefix??'')&&(!o.startAfter||k>o.startAfter)).sort(([a],[b])=>a<b?-1:a>b?1:0).slice(0,o.limit??1000).map(([k,v])=>[k,structuredClone(v)])),transaction:async fn=>{const draft=new Map(m);target=draft;try{const v=await fn(x);m.clear();for(const [k,v] of draft)m.set(k,v);return v}finally{target=m}},getAlarm:async()=>alarm,setAlarm:async n=>{alarm=n}};return x;
 }
 async function result(r){return {status:r.status,data:await r.json()}}
 async function local(){
@@ -134,10 +134,27 @@ async function local(){
  const complete=await syncPendingFirstPage(projectStore,{now:stamp+61000,fetcher:page(sourcePending)});
  assert.equal(complete.complete,true);assert.equal(pageCalls,2);
  const exact=await result(await projectionHandle(projectStore,env,req('/projection-pending-v1')));assert.equal(exact.status,200);assert.equal(exact.data.total,sourcePending.length);assert.equal(exact.data.live,true);assert.equal(exact.data.coverageVerified,true);
+ const readCached=path=>book.fetch(req(path)).then(result);
+ const cachePath='/projection-pending-v1?offset=0&limit=50';
+ const c1=await readCached(cachePath),c2=await readCached(cachePath);
+ assert.equal(c1.status,200);assert.equal(c1.data.cacheHit,false);assert.equal(c2.data.cacheHit,true);assert.deepEqual(c1.data.rows,c2.data.rows);
+ const otherPage=await readCached('/projection-pending-v1?offset=50&limit=50');assert.equal(otherPage.data.cacheHit,false);
+ const restarted=new ShadowProductionStore({storage:bookStore,waitUntil:()=>{}},env);
+ const cold=await result(await restarted.fetch(req(cachePath)));assert.equal(cold.data.cacheHit,false);assert.deepEqual(cold.data.rows,c1.data.rows);
+ const cacheEntry=book.pendingCache.get(JSON.stringify(['all',0,50]));cacheEntry.at-=6000;
+ assert.equal((await readCached(cachePath)).data.cacheHit,false);
+ // Update freshness without changing row generation; a RAM hit must not reuse coverage.
+ const syncKey='projection:v2:pending-sync',oldSync=await projectStore.get(syncKey);
+ await projectStore.put(syncKey,{...oldSync,complete:false,reason:'LOCAL_CACHE_FRESHNESS_TEST'});
+ const fresh=await readCached(cachePath);assert.equal(fresh.data.cacheHit,true);assert.equal(fresh.data.coverageVerified,false);assert.equal(fresh.data.coverageReason,'LOCAL_CACHE_FRESHNESS_TEST');
+ await projectStore.put(syncKey,oldSync);
  const post=row=>resultFromBook(book,req('/book-post',row));
  const p=raw.find(r=>r.status==='PENDING');assert(p,'NO_REAL_PENDING_FOR_LOCAL_TEST');
  const settled={...p,status:'SETTLED',result:'WIN',odds:2.06,settledAt:Date.now()+12345};
  let r=await post(normalizeRow(settled));assert.equal(r.status,200);assert.equal((await graph('all')).status,503);
+ const afterCache=await readCached(cachePath);assert.equal(afterCache.status,200);assert.equal(afterCache.data.cacheHit,false);assert.equal(afterCache.data.total,sourcePending.length-1);assert(!afterCache.data.rows.some(x=>x.id===p.id));
+ assert.equal((await readCached(cachePath)).data.cacheHit,true);
+ console.log('LOCAL_PENDING_CACHE_PASS='+JSON.stringify({warmHit:true,coldRestart:true,ttlExpiry:true,queryIsolation:true,coverageRechecked:true,settlementInvalidation:true,productionWrites:0}));
  const removedImmediately=await result(await projectionHandle(projectStore,env,req('/projection-pending-snapshot-v1')));assert.equal(removedImmediately.data.total,sourcePending.length-1);
  const removedLive=await result(await projectionHandle(projectStore,env,req('/projection-pending-v1')));
  assert.equal(removedLive.status,200);assert.equal(removedLive.data.total,sourcePending.length-1);assert.equal(removedLive.data.coverageVerified,false);
