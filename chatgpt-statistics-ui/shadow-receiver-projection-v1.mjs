@@ -270,7 +270,7 @@ export async function projectionAlarm(store,env,{pendingFetcher=fetch}={}){
  await store.setAlarm(Date.now()+delay);
 }
 export async function isProjection(store){return !!(await store.get(stateKey))}
-export async function projectionHandle(store,env,req){
+export async function projectionHandle(store,env,req,pendingCache=null){
  const u=new URL(req.url),p=u.pathname;
  if(p==='/projection-seed-v1'&&req.method==='POST')return seed(store,env,await req.json());
  if(p==='/projection-wake-v1'&&req.method==='POST'){
@@ -299,19 +299,41 @@ export async function projectionHandle(store,env,req){
   return json({...g,generation:s.generation,sequence:s.sequence,readOnly:true});
  }
  if(p==='/projection-pending-v1'||p==='/projection-pending-snapshot-v1'){
-  const live=p==='/projection-pending-v1',sync=await store.get(pfx+'pending-sync')??null;
-  // Serve the maintained local index, NOT an upstream request or a full-source completeness gate.
-  // The last verified full seed and current source coverage are separate from HTTP availability.
-  const local=await store.get(pfx+'pending-index');
-  if(!Array.isArray(local))return json({ok:false,error:'PENDING_INDEX_NOT_READY'},503);
-  const book=await store.get('composite:state');
-  const coverageVerified=!!(sync?.complete&&sync.bookSequence===revision(book)&&Number.isFinite(sync.verifiedAt)&&Date.now()-sync.verifiedAt<=90000);
-  const idx=local.filter(r=>market==='all'||marketGroup(r.market)===market).sort((a,b)=>b.createdAt-a.createdAt||a.id.localeCompare(b.id));
+  const live=p==='/projection-pending-v1';
   const offset=Number(u.searchParams.get('offset')??0),limit=Number(u.searchParams.get('limit')??50);
   if(!Number.isSafeInteger(offset)||offset<0||!Number.isSafeInteger(limit)||limit<1||limit>50)return json({ok:false},400);
-  const rows=[];for(const v of idx.slice(offset,offset+limit)){const row=await store.get(pfx+'pending:'+v.id);if(!row)throw Error('MISSING_PENDING_METADATA');rows.push(row)}
-  const current=await store.get(stateKey);if(current.generation!==s.generation)return json({ok:false,error:'GENERATION_CHANGED'},409);
-  return json({ok:true,readOnly:true,live,source:live?'RECEIVER_PENDING_STATE':'SNAPSHOT_PLUS_OBSERVED_FIRST_PAGE_MINUS_BOOK_SETTLEMENTS',readMode:'DURABLE_OBJECT_STATE_ONLY',coverageVerified,coverageReason:coverageVerified?null:(sync?.reason??'FULL_SOURCE_COVERAGE_NOT_VERIFIED'),lastBackgroundCheckAt:sync?.checkedAt??null,expectedSourcePending:sync?.expectedPending??null,indexPending:local.filter(x=>x.status==='PENDING').length,verifiedAt:sync?.verifiedAt??s.pendingVerifiedAt,generation:s.generation,total:idx.length,pending:idx.filter(x=>x.status==='PENDING').length,unresolved:idx.filter(x=>x.status==='UNRESOLVED').length,rows,next:offset+limit<idx.length?offset+limit:null});
+  // Cache only row payloads, never freshness or Book sequence. Validate against a
+  // consistent durable transaction on EVERY request, including warm hits.
+  // Settlement/open/metadata writes advance generation in the same transaction.
+  const cacheKey=JSON.stringify([market,offset,limit]),now=Date.now();
+  const hit=pendingCache?.get(cacheKey);
+  const outcome=await store.transaction(async tx=>{
+   const meta=await tx.get([stateKey,pfx+'pending-sync','composite:state',pfx+'pending-index']);
+   const state=meta.get(stateKey),sync=meta.get(pfx+'pending-sync')??null,book=meta.get('composite:state'),local=meta.get(pfx+'pending-index');
+   if(state?.status!=='loaded'||!Array.isArray(local))return {error:'PENDING_INDEX_NOT_READY'};
+   const seq=revision(book);
+   const coverageVerified=!!(sync?.complete&&sync.bookSequence===seq&&Number.isFinite(sync.verifiedAt)&&now-sync.verifiedAt<=90000);
+   const cacheHit=!!(hit&&hit.generation===state.generation&&hit.sequence===seq&&now>=hit.at&&now-hit.at<5000);
+   let page;
+   if(cacheHit){page=hit.page}
+   else{
+    const idx=local.filter(r=>market==='all'||marketGroup(r.market)===market).sort((a,b)=>b.createdAt-a.createdAt||a.id.localeCompare(b.id));
+    const keys=idx.slice(offset,offset+limit).map(v=>pfx+'pending:'+v.id);
+    const records=keys.length?await tx.get(keys):new Map();
+    const rows=keys.map(k=>{const row=records.get(k);if(!row)throw Error('MISSING_PENDING_METADATA');return row});
+    page={total:idx.length,pending:idx.filter(x=>x.status==='PENDING').length,unresolved:idx.filter(x=>x.status==='UNRESOLVED').length,rows,next:offset+limit<idx.length?offset+limit:null};
+   }
+   return {cacheHit,page,generation:state.generation,sequence:seq,coverageVerified,coverageReason:coverageVerified?null:(sync?.reason??'FULL_SOURCE_COVERAGE_NOT_VERIFIED'),lastBackgroundCheckAt:sync?.checkedAt??null,expectedSourcePending:sync?.expectedPending??null,indexPending:local.filter(x=>x.status==='PENDING').length,verifiedAt:sync?.verifiedAt??state.pendingVerifiedAt};
+  });
+  if(outcome.error)return json({ok:false,error:outcome.error},503);
+  const {page,cacheHit,generation,sequence,...fresh}=outcome;
+  if(pendingCache&&!cacheHit){
+   // Bounded per-DO cache. Eviction/restart is always a normal cold read.
+   pendingCache.delete(cacheKey);
+   if(pendingCache.size>=24)pendingCache.delete(pendingCache.keys().next().value);
+   pendingCache.set(cacheKey,{generation,sequence,at:now,page});
+  }
+  return json({ok:true,readOnly:true,live,source:live?'RECEIVER_PENDING_STATE':'SNAPSHOT_PLUS_OBSERVED_FIRST_PAGE_MINUS_BOOK_SETTLEMENTS',readMode:'DURABLE_OBJECT_STATE_ONLY',generation,...fresh,...page,cacheHit});
  }
  return json({ok:false},404);
 }
