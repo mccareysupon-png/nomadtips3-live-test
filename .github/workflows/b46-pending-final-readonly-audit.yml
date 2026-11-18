@@ -15,7 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 1ad375b88131911a0e4036fc509cd4849cba663c
+          ref: 90b083ee292cbfb32f72bc0fdd763bb2b1aa0437
           persist-credentials: false
       - name: Verify live Worker versions (GET only)
         run: |
@@ -62,3 +62,16 @@ jobs:
           sleep 130
           node chatgpt-statistics-ui/shadow-pending-final-audit.mjs | tee "$RUNNER_TEMP/pending-repeat.log"
           grep -q '^FINAL_PENDING_ACCEPTANCE=' "$RUNNER_TEMP/pending-repeat.log"
+      - name: Compare both audit windows and require forward-moving background sync
+        if: ${{ !cancelled() && steps.pending_first.outcome == 'success' }}
+        shell: bash
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {readFileSync} from 'node:fs';
+          const read=name=>JSON.parse(readFileSync(process.env.RUNNER_TEMP+'/'+name,'utf8').split('\n').find(x=>x.startsWith('FINAL_PENDING_ACCEPTANCE=')).slice('FINAL_PENDING_ACCEPTANCE='.length));
+          const a=read('pending-final.log'),b=read('pending-repeat.log');
+          const syncAdvanceMs=b.sync.checkedAt-a.sync.checkedAt;
+          assert(a.observedReadiness&&b.observedReadiness&&syncAdvanceMs>0&&b.settled>=a.settled);
+          console.log('PENDING_STABILITY_VERIFICATION='+JSON.stringify({observedReady:true,auditWindows:2,first:a.time,last:b.time,syncAdvanceMs,historyExact:a.historyExact&&b.historyExact,pendingExact:a.snapshotExact&&b.snapshotExact,liveReads:a.liveTiming.samples+b.liveTiming.samples,liveMaxMs:Math.max(a.liveTiming.max,b.liveTiming.max),bookSequenceDelta:b.sequence-a.sequence,settledDelta:b.settled-a.settled,pendingDelta:b.total-a.total,sourceCoverageVerified:a.sourceCoverageVerified&&b.sourceCoverageVerified,cutoverReady:a.cutoverReady&&b.cutoverReady,scope:'TWO_OBSERVED_WINDOWS_NOT_EXHAUSTIVE_FUTURE_COVERAGE'}));
+          JS
