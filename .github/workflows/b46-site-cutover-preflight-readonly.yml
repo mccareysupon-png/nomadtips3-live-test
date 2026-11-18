@@ -1,0 +1,48 @@
+name: B46 website cut-over preflight (READ ONLY)
+on:
+  push:
+    branches: [chatgpt/ball46-new-ledger-clean-v1]
+    paths: ['.github/workflows/b46-site-cutover-preflight-readonly.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  preflight:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 048cb18ec1f2adf79d33ff07f0d5725d85df5ccb
+          persist-credentials: false
+      - name: Validate inactive statistics-only adapter
+        run: node chatgpt-statistics-ui/shadow-site-cutover-preflight-test.mjs
+      - name: Inspect actual Cloudflare routes and live release contract without writes
+        run: |
+          node --input-type=module <<'JS'
+          import {createHmac} from 'node:crypto';
+          const root='https://api.cloudflare.com/client/v4',account='62cb0db544160e6591342abd6b4f35cc',headers={authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN};
+          async function get(path){const r=await fetch(root+path,{method:'GET',headers,signal:AbortSignal.timeout(20000)}),d=await r.json();if(!r.ok||!d.success)throw Error('CF_READ_'+r.status);return d.result}
+          const prefix='/accounts/'+account;
+          for(const [name,expected] of Object.entries({'ball46-production':'f5d9cf21-4b41-46da-bdd8-a841fa733d82','nomadtips3-engine-343':'db65134e-a12d-4084-937e-3ce6e986c251','ball46-shadow-receiver-production':'c04ec442-b6af-47f4-859c-a29fabc6f37b'})){
+           const v=(await get(prefix+'/workers/scripts/'+name+'/deployments?per_page=1')).deployments[0].versions;
+           if(v.length!==1||v[0].percentage!==100||v[0].version_id!==expected)throw Error('ACTIVE_VERSION_DRIFT_'+name);
+           const d=await get(prefix+'/workers/workers/'+name+'/versions/'+expected+'?include=modules');
+           const entry=d.modules?.find(x=>x.name===d.main_module);
+           const code=entry?.content_base64?Buffer.from(entry.content_base64,'base64').toString():'';
+           console.log('CUTOVER_ACTIVE_CONTRACT='+JSON.stringify({name,id:expected,main:d.main_module,modules:d.modules?.length,services:(d.bindings??[]).filter(x=>x.type==='service').map(x=>({name:x.name,service:x.service,entrypoint:x.entrypoint??null})),fastHead:code.includes('/b46-fast-v1/head'),fastChart:code.includes('/b46-fast-v1/chart'),marketReader:code.includes('MarketStatisticsReader')}));
+          }
+          try{
+           const zones=await get('/zones?name=ball46.com&account.id='+account);
+           if(zones.length!==1)throw Error('ZONE_NOT_UNIQUE');
+           const r=await get('/zones/'+zones[0].id+'/workers/routes');
+           console.log('CUTOVER_ROUTES='+JSON.stringify(r.map(x=>({pattern:x.pattern,script:x.script??null}))));
+          }catch(e){console.log('CUTOVER_ROUTE_INVENTORY_UNAVAILABLE='+e.message)}
+          const key=createHmac('sha256',process.env.CLOUDFLARE_API_TOKEN).update('ball46/receiver/https-audit/v1/20261118').digest('hex');console.log('::add-mask::'+key);
+          const base='https://ball46-shadow-receiver-production.mccarey-supon.workers.dev';
+          const audit=async p=>{const r=await fetch(base+p,{method:'GET',headers:{authorization:'Bearer '+key,accept:'application/json','user-agent':'Mozilla/5.0 B46-Site-Preflight'},signal:AbortSignal.timeout(20000)});return {http:r.status,data:await r.json()}};
+          const s=await audit('/audit-projection-status-v1'),p=await audit('/audit-projection-pending-v1?limit=1'),g=await audit('/audit-projection-graph-v1');
+          console.log('CUTOVER_GATE='+JSON.stringify({status:s.http,graph:g.http,pending:p.http,settled:s.data.bookAggregate?.total,pendingTotal:p.data.total,graphReady:s.data.graphReady,pendingReadReady:s.data.pendingReadReady,coverageVerified:p.data.coverageVerified,sourceCoverageReason:p.data.coverageReason,cutoverReady:!!(s.data.graphReady&&s.data.pendingLiveReady&&p.data.coverageVerified),productionWrites:0,activated:false}));
+          JS
