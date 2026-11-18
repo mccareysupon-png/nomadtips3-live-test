@@ -43,11 +43,18 @@ try{
   }catch(e){console.log('HISTORY_AUTOLOAD_DIAG='+JSON.stringify({mobile,error:String(e.message).slice(0,250),history:history.length,graph:graph.length,errors,state:await p.evaluate(()=>({view:document.body?.dataset.workspaceView,requested:window.__B46_FAST_DETAILS_REQUESTED,firstFetch:window.__historyStageFetch?.[0],snapshot:window.BALL46_STATISTICS_DATA?.getSnapshot?.()?.ledgerTotal,table:[...document.querySelectorAll('table')].map(t=>({rows:t.rows.length,text:t.textContent.slice(0,230)})),body:document.body.innerText.slice(-1200)})).catch(()=>null)}));await p.screenshot({path:out+'/failure.png'}).catch(()=>{});throw e}
   finally{await ctx.close()}
  }
- // No auto history on live homepage.
- const ctx=await b.newContext({serviceWorkers:'block'}),p=await ctx.newPage(),calls=[];
- p.on('request',r=>{if(new URL(r.url()).pathname==='/api/engine/statistics')calls.push(r.url())});
- await ctx.route('**/longterm-performance-343.js*',route=>route.fulfill({status:200,contentType:'application/javascript',body:code}));await ctx.route('**/singlepage-workspace-343.js*',route=>route.fulfill({status:200,contentType:'application/javascript',body:workspaceCode}));
- await p.goto(host+'/',{waitUntil:'domcontentloaded',timeout:60000});await p.waitForFunction(()=>document.body?.dataset.workspaceView==='live');await p.waitForTimeout(1000);
- assert.equal(calls.length,0,'LIVE_HISTORY_LEAK');await ctx.close();
+ // Compare existing homepage traffic to patched homepage instead of assuming zero.
+ async function homepage(patched){
+  const ctx=await b.newContext({serviceWorkers:'block'}),p=await ctx.newPage(),calls=[],graph=[];
+  p.on('request',r=>{const u=new URL(r.url());if(u.pathname==='/api/engine/statistics')calls.push({path:u.pathname,query:[...u.searchParams.entries()].filter(([k])=>!['t','_','ts','cacheBust'].includes(k)).sort()});if(u.pathname==='/b46-receiver-v1/graph')graph.push(u.search)});
+  if(patched){await ctx.route('**/longterm-performance-343.js*',route=>route.fulfill({status:200,contentType:'application/javascript',body:code}));await ctx.route('**/singlepage-workspace-343.js*',route=>route.fulfill({status:200,contentType:'application/javascript',body:workspaceCode}));}
+  await p.goto(host+'/',{waitUntil:'domcontentloaded',timeout:60000});await p.waitForFunction(()=>document.body?.dataset.workspaceView==='live');await p.waitForTimeout(3500);
+  const flags=await p.evaluate(()=>({requested:!!window.__B46_FAST_DETAILS_REQUESTED,queued:!!window.__B46_HISTORY_AUTOLOAD_QUEUED,view:document.body?.dataset.workspaceView}));
+  await ctx.close();return {calls,graph,flags};
+ }
+ const baseline=await homepage(false),patched=await homepage(true);console.log('HISTORY_HOME_PARITY='+JSON.stringify({baseline,patched}));
+ assert.equal(patched.flags.view,'live');assert.equal(patched.flags.queued,false,'LIVE_AUTOLOAD_SCHEDULED');
+ assert.equal(patched.flags.requested,baseline.flags.requested,'LIVE_AUTOLOAD_REQUESTED');assert.equal(patched.graph.length,baseline.graph.length,'LIVE_GRAPH_LEAK');
+ assert(patched.calls.length<=baseline.calls.length,'LIVE_NEW_HISTORY_REQUEST');for(const call of patched.calls)assert(baseline.calls.some(x=>JSON.stringify(x)===JSON.stringify(call)),'LIVE_NEW_HISTORY_QUERY');
  console.log('HISTORY_AUTOLOAD_STAGE_COMPLETE='+JSON.stringify({pc:true,mobile:true,liveUnchanged:true,productionDeploy:false}));
 }finally{await b.close()}
