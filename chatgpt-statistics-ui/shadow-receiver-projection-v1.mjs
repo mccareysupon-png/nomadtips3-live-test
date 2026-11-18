@@ -35,7 +35,7 @@ export async function journalAccepted(tx,prior,next,bookState){
  // Remove the active pending index entry in the SAME Book transaction.
  // Preserve the full record for graph metadata and audit.
  const p=await tx.get(pfx+'pending:'+next.signal_id);
- if(p){
+ if(p&&(await tx.get(stateKey))?.status==='loaded'){
   const idx=await tx.get(pfx+'pending-index')??[],filtered=idx.filter(x=>x.id!==next.signal_id);
   if(filtered.length!==idx.length){
    await tx.put(pfx+'pending-index',filtered);
@@ -212,7 +212,7 @@ export async function syncPendingFirstPage(store,{now=Date.now(),fetcher=fetch}=
   });
  }catch(e){return fail(String(e.message).slice(0,100))}
 }
-export async function projectionAlarm(store,env){
+export async function projectionAlarm(store,env,{pendingFetcher=fetch}={}){
  const s=await store.get(stateKey);if(!s||s.status!=='loaded')return;
  let delay=30000;
  try{
@@ -226,7 +226,7 @@ export async function projectionAlarm(store,env){
   await store.transaction(async tx=>{const v=await tx.get(stateKey);if(v){v.lastError=String(e.message).slice(0,100);await tx.put(stateKey,v)}});delay=30000;
  }
  // Throttled and independent of the graph journal. No historical scan.
- try{await syncPendingFirstPage(store)}catch{}
+ try{await syncPendingFirstPage(store,{fetcher:pendingFetcher})}catch{}
  await store.setAlarm(Date.now()+delay);
 }
 export async function isProjection(store){return !!(await store.get(stateKey))}
