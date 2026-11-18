@@ -8,7 +8,7 @@ import {readFullBook,compare,auditCredential} from './shadow-seed-audit.mjs';
 import {normalizeRow} from './shadow-composite-cursor-stage.mjs';
 import {marketGroup,MARKET_GROUPS} from './market-groups-stage.mjs';
 import {buildVerifiedGraph} from '../deploy-assets/ball46-statistics-fast-v1-20261116/graph-core.mjs';
-import {projectionHandle,projectionAlarm,projectionConstants,syncPendingFirstPage} from './shadow-receiver-projection-v1.mjs';
+import {projectionHandle,projectionAlarm,projectionConstants,syncPendingFirstPage,nativeSelection} from './shadow-receiver-projection-v1.mjs';
 const endpoint='https://ball46-shadow-receiver-production.mccarey-supon.workers.dev',groups=['all',...MARKET_GROUPS];
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
 const key=auditCredential();console.log('::add-mask::'+key);
@@ -32,7 +32,7 @@ function prepare(snapshot){
   if(r.status!=='SETTLED'){pending.push(r);continue}
   const n=normalizeRow(r),day=projectionConstants.dayKey(n.settled_at);
   if(!days.has(day))days.set(day,[]);
-  days.get(day).push({id:n.signal_id,createdAt:Number(r.createdAt),settledAt:n.settled_at,market:n.market_type,result:n.result,status:'SETTLED',odds:n.odds==null?null:Number(n.odds),_rank:rank});
+  days.get(day).push({id:n.signal_id,createdAt:Number(r.createdAt),settledAt:n.settled_at,market:n.market_type,result:n.result,status:'SETTLED',odds:n.odds==null?null:Number(n.odds),selection:nativeSelection(r),_rank:rank});
  }
  const sorted=[...days].sort(([a],[b])=>a.localeCompare(b)),chunks=[];
  for(let i=0;i<pending.length;i+=50)chunks.push(pending.slice(i,i+50));
@@ -62,6 +62,23 @@ function compareGraph(data,rows,market){
  assert.deepEqual(data.counts,a.raw_counts);near(data.win_rate,a.win_rate,market+':book_win_rate');
  return {market,count:a.total,pnl:a.total_pnl,winRate:a.win_rate,graphPoints:data.series.units.length};
 }
+function advancedCases(rows){
+ const sets=new Map();
+ for(const r of rows)if(r.status==='SETTLED'&&/^(ft|ht)_[a-z0-9_]+$/.test(r.market)){
+  const market=marketGroup(r.market),variant=String(r.market),filter=nativeSelection(r);
+  for(const config of [{market,variant,filter:'all'},{market,variant:'all',filter},{market,variant,filter}])sets.set(JSON.stringify(config),config);
+ }
+ const cases=[...sets.values()].map(x=>({...x,range:'all'}));
+ for(const range of ['d7','d30','d90'])for(const market of groups)cases.push({market,variant:'all',filter:'all',range});
+ for(const range of ['d7','d30','d90'])for(const config of sets.values())if(config.variant!=='all'&&config.filter!=='all')cases.push({...config,range});
+ return cases;
+}
+function checkAdvanced(data,rows,c){
+ const cutoff=({d7:7,d30:30,d90:90}[c.range]??0)*86400000;
+ const subset=rows.filter(r=>(c.market==='all'||marketGroup(r.market)===c.market)&&(c.variant==='all'||r.market===c.variant)&&(c.filter==='all'||nativeSelection(r)===c.filter)&&(!cutoff||Number(r.settledAt??r.createdAt)>=data.asOf-cutoff));
+ compareGraph(data,subset,'all');
+}
+const query=c=>new URLSearchParams(c).toString();
 function mockStorage(){
  const m=new Map();let target=m,alarm=null;
  const x={get:async k=>structuredClone(target.get(k)),put:async(k,v)=>{target.set(k,structuredClone(v))},delete:async k=>target.delete(k),list:async(o={})=>new Map([...target].filter(([k])=>k.startsWith(o.prefix??'')&&(!o.startAfter||k>o.startAfter)).sort(([a],[b])=>a<b?-1:a>b?1:0).slice(0,o.limit??1000).map(([k,v])=>[k,structuredClone(v)])),transaction:async fn=>{const draft=new Map(m);target=draft;try{const v=await fn(x);m.clear();for(const [k,v] of draft)m.set(k,v);return v}finally{target=m}},getAlarm:async()=>alarm,setAlarm:async n=>{alarm=n}};return x;
@@ -135,8 +152,12 @@ async function local(){
  const html=await worker.fetch(new Request(protectedGet,{headers:{authorization:'Bearer '+env.AUDIT_TOKEN}}),env);assert.equal(html.status,502);assert.match(html.headers.get('content-type'),/application\/json/);assert.equal((await html.json()).error,'PROJECTION_UPSTREAM_NON_JSON');env.SHADOW_STORE.get=oldGet;
  assert.equal((await worker.fetch(new Request(protectedGet,{headers:{authorization:'Bearer '+env.AUDIT_TOKEN}}),env)).status,200);
  assert.equal((await worker.fetch(new Request('https://ball46-shadow-receiver-production.mccarey-supon.workers.dev/projection-seed-v1',{method:'POST',headers:{authorization:'Bearer '+env.AUDIT_TOKEN},body:'{}'}),env)).status,403);
+ let testedFilters=0;
+ for(const c of advancedCases(raw)){
+  const x=await result(await projectionHandle(projectStore,env,req('/projection-graph-v1?'+query(c))));assert.equal(x.status,200,query(c));checkAdvanced(x.data,raw,c);testedFilters++;
+ }
  const invalid=await result(await projectionHandle(projectStore,env,req('/projection-graph-v1?variant=ht')));assert.equal(invalid.status,400);
- console.log('LOCAL_DURABLE_PROJECTION_PASS='+JSON.stringify({baseline:snapshot.book.totals.total,days:prepared.days.length,markets:7,sourceGraphParity:true,pendingSnapshot:pending.data.total,correction:true,duplicate:true,stale:true,newMarkets:7,protectedRoutes:true,pendingLiveGate:true,pendingFirstPageOnly:true,atomicPendingRemoval:true,jsonRouteGuard:true,advancedFilterFailClosed:true,productionWrites:0}));
+ console.log('LOCAL_DURABLE_PROJECTION_PASS='+JSON.stringify({baseline:snapshot.book.totals.total,days:prepared.days.length,markets:7,sourceGraphParity:true,pendingSnapshot:pending.data.total,correction:true,duplicate:true,stale:true,newMarkets:7,protectedRoutes:true,pendingLiveGate:true,pendingFirstPageOnly:true,atomicPendingRemoval:true,jsonRouteGuard:true,advancedFilterFailClosed:true,advancedCases:testedFilters,productionWrites:0}));
 }
 async function resultFromBook(book,request){return result(await book.fetch(request))}
 async function seedProduction(){
@@ -166,6 +187,13 @@ async function auditProduction(){
   if(drift){if(attempt<4){await wait(1000);continue}throw Error('GRAPH_GENERATION_CHANGED')}
   const end=await get('/audit-projection-status-v1');
   if(end.status!==200||!end.data.graphReady||end.data.bookSequence!==snapshot.sequence){if(attempt<4){await wait(1000);continue}throw Error('BOOK_UPDATED_DURING_AUDIT')}
+  let advancedCount=0,advancedDrift=false;
+  for(const c of advancedCases(snapshot.source.rawRows)){
+   const x=await get('/audit-projection-graph-v1?'+query(c));
+   if(x.status!==200||x.data.sequence!==snapshot.sequence){advancedDrift=true;break}
+   checkAdvanced(x.data,snapshot.source.rawRows,c);advancedCount++;
+  }
+  if(advancedDrift){if(attempt<4){await wait(1000);continue}throw Error('ADVANCED_GENERATION_CHANGED')}
   const pendingLive=await get('/audit-projection-pending-v1');assert([200,503].includes(pendingLive.status));
   const invalid=await get('/audit-projection-graph-v1?variant=ht');assert.equal(invalid.status,400);
   const pendingRows=[],generations=new Set();let reported=0;
@@ -177,7 +205,7 @@ async function auditProduction(){
   for(const id of sp.keys())if(!seen.has(id))missingIds++;
   const after=await get('/audit-projection-status-v1');assert.equal(after.status,200);
   if(after.data.bookSequence!==snapshot.sequence){if(attempt<4){await wait(1000);continue}throw Error('BOOK_UPDATED_DURING_PENDING_AUDIT')}
-  console.log('PRODUCTION_PROJECTION_AUDIT='+JSON.stringify({settled:snapshot.book.totals.total,pnl:snapshot.book.totals.total_pnl,winRate:snapshot.book.totals.win_rate,historyExact:true,sourceHash:snapshot.source.hash,bookHash:snapshot.book.hash,sequence:snapshot.sequence,graphs:data,timings,pending:{source:sourcePending.length,snapshot:reported,exactMetadata:exact,missingIds,extra,liveReady:pendingLive.status===200&&pendingLive.data.live===true&&exact===sourcePending.length&&missingIds===0&&extra===0,liveHttp:pendingLive.status,pendingSync:status.data.pendingSync,verifiedAt:status.data.projection.pendingVerifiedAt},advancedFilters:{supported:false,unexpectedVariantHttp:invalid.status},auth:{missing:missing.status,wrong:wrong.status,valid:200},websiteSourceChanged:false,cutoverReady:false}));
+  console.log('PRODUCTION_PROJECTION_AUDIT='+JSON.stringify({settled:snapshot.book.totals.total,pnl:snapshot.book.totals.total_pnl,winRate:snapshot.book.totals.win_rate,historyExact:true,sourceHash:snapshot.source.hash,bookHash:snapshot.book.hash,sequence:snapshot.sequence,graphs:data,timings,pending:{source:sourcePending.length,snapshot:reported,exactMetadata:exact,missingIds,extra,liveReady:pendingLive.status===200&&pendingLive.data.live===true&&exact===sourcePending.length&&missingIds===0&&extra===0,liveHttp:pendingLive.status,pendingSync:status.data.pendingSync,verifiedAt:status.data.projection.pendingVerifiedAt},advancedFilters:{supported:true,verifiedCases:advancedCount,unexpectedVariantHttp:invalid.status},auth:{missing:missing.status,wrong:wrong.status,valid:200},websiteSourceChanged:false,cutoverReady:false}));
   return;
  }
 }
