@@ -11,7 +11,36 @@ const hex=s=>typeof s==='string'&&/^[a-f0-9]{64}$/.test(s);
 const json=(d,status=200)=>Response.json(d,{status,headers:{'cache-control':'no-store'}});
 const hash=async x=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(x))))).map(y=>y.toString(16).padStart(2,'0')).join('');
 const same=(a,b)=>a.signal_id===b.signal_id&&a.settled_at===b.settled_at&&a.result===b.result&&a.market_type===b.market_type&&(a.odds===b.odds||a.odds!=null&&b.odds!=null&&Number(a.odds)===Number(b.odds));
-const compact=(raw,rank)=>{const n=normalizeRow(raw),createdAt=Number(raw.createdAt);if(!Number.isSafeInteger(createdAt)||createdAt<=0||!Number.isSafeInteger(rank)||rank<0)throw Error('ORDER_METADATA_REQUIRED');return {id:n.signal_id,createdAt,settledAt:n.settled_at,market:n.market_type,result:n.result,status:'SETTLED',odds:n.odds==null?null:Number(n.odds),_rank:rank}};
+// Exact Selection normalization from deployed singlepage-workspace/longterm-performance.
+export function nativeSelection(r){const x=String(r?.selection||r?.pick||'').trim().toUpperCase();if(x.includes('HOME'))return 'home';if(x.includes('AWAY'))return 'away';if(x.includes('DRAW')||x==='X')return 'draw';if(x.includes('OVER'))return 'over';if(x.includes('UNDER'))return 'under';if(x==='YES'||x.includes('BTTS YES'))return 'yes';if(x==='NO'||x.includes('BTTS NO'))return 'no';return x.toLowerCase().replace(/[^a-z0-9]+/g,'_')||'other'}
+const rangeDays={all:0,d7:7,d30:30,d90:90};
+const filterKey=(market,variant,selection)=>JSON.stringify([market,variant,selection]);
+const matching=(r,m,v,f)=>(m==='all'||marketGroup(r.market)===m)&&(v==='all'||r.market===v)&&(f==='all'||nativeSelection(r)===f);
+function advancedDaily(rows){
+ const bins=new Map;
+ for(const r of rows)for(const market of ['all',marketGroup(r.market)])for(const variant of ['all',r.market])for(const filter of ['all',nativeSelection(r)]){
+  const k=filterKey(market,variant,filter);if(!bins.has(k))bins.set(k,new Map);bins.get(k).set(r.id,r);
+ }
+ return Object.fromEntries([...bins].map(([k,v])=>[k,oneDay(v)]));
+}
+async function filteredGraph(store,s,market,variant,filter,range,at){
+ const cutoff=rangeDays[range]?at-rangeDays[range]*86400000:0, boundary=cutoff?dayKey(cutoff):null;
+ const days=new Map, key=filterKey(market,variant,filter);
+ // Only precomputed daily summaries, plus one partial boundary day; no full receipt scans.
+ for(const d of s.days){
+  if(boundary&&d<boundary)continue;
+  if(d===boundary){
+   const rows=(await store.get(pfx+'day:'+d)??[]).filter(r=>r.settledAt>=cutoff&&matching(r,market,variant,filter));
+   if(rows.length)days.set(d,oneDay(new Map(rows.map(r=>[r.id,r]))));
+  }else{
+   const index=await store.get(pfx+'advanced:'+d);
+   if(!index)throw Error('ADVANCED_INDEX_MISSING');
+   if(index[key]?.rows)days.set(d,index[key]);
+  }
+ }
+ return {...fold(days,at),source:'RECEIVER_DURABLE_MARKET_BOOK',market,variant,filter,range};
+}
+const compact=(raw,rank)=>{const n=normalizeRow(raw),createdAt=Number(raw.createdAt);if(!Number.isSafeInteger(createdAt)||createdAt<=0||!Number.isSafeInteger(rank)||rank<0)throw Error('ORDER_METADATA_REQUIRED');return {id:n.signal_id,createdAt,settledAt:n.settled_at,market:n.market_type,result:n.result,status:'SETTLED',odds:n.odds==null?null:Number(n.odds),selection:nativeSelection(raw),_rank:rank}};
 function daily(rows){
  const bins=Object.fromEntries(groups.map(k=>[k,new Map()]));
  for(const r of rows){if(bins.all.has(r.id))throw Error('DUPLICATE_DAY_ID');bins.all.set(r.id,r);bins[marketGroup(r.market)].set(r.id,r)}
@@ -84,7 +113,7 @@ async function seed(store,env,input){
    const rows=input.rows.map(r=>compact(r,r._rank));
    if(new TextEncoder().encode(JSON.stringify(rows)).length>1500000)throw Error('DAY_BUCKET_TOO_LARGE');
    if(rows.some(r=>dayKey(r.settledAt)!==d.day))throw Error('DAY_MISMATCH');
-   await tx.put(pfx+'day:'+d.day,rows);await tx.put(pfx+'daily:'+d.day,daily(rows));s.nextDay++;await tx.put(stateKey,s);return json({ok:true,state:stateView(s)});
+   await tx.put(pfx+'day:'+d.day,rows);await tx.put(pfx+'daily:'+d.day,daily(rows));await tx.put(pfx+'advanced:'+d.day,advancedDaily(rows));s.nextDay++;await tx.put(stateKey,s);return json({ok:true,state:stateView(s)});
   });
  }
  if(action==='pending'){
@@ -160,7 +189,7 @@ async function applyEvent(store,event){
   dest.push(r);
   for(const [d,rows] of affected){
    if(new TextEncoder().encode(JSON.stringify(rows)).length>1500000)throw Error('DAY_BUCKET_TOO_LARGE');
-   await tx.put(pfx+'day:'+d,rows);days[d]=daily(rows);await tx.put(pfx+'daily:'+d,days[d]);
+   await tx.put(pfx+'day:'+d,rows);days[d]=daily(rows);await tx.put(pfx+'daily:'+d,days[d]);await tx.put(pfx+'advanced:'+d,advancedDaily(rows));
   }
   const graphs=materialize(days,event.at);
   const current=await tx.get(graphsKey);const prevCount=current.all.summary.rows;
@@ -246,13 +275,17 @@ export async function projectionHandle(store,env,req){
  if(s?.status!=='loaded')return json({ok:false,error:'PROJECTION_NOT_READY'},503);
  const market=u.searchParams.get('market')??'all';
  if(!groups.includes(market))return json({ok:false,error:'MARKET_INVALID'},400);
- if(['variant','filter','range'].some(k=>u.searchParams.has(k)&&u.searchParams.get(k)!=='all'))return json({ok:false,error:'ADVANCED_FILTER_NOT_VERIFIED'},400);
+ const variant=u.searchParams.get('variant')??'all',filter=u.searchParams.get('filter')??'all',range=u.searchParams.get('range')??'all';
+ if(!Object.hasOwn(rangeDays,range)||!(/^(all|(?:ft|ht)_[a-z0-9_]{1,64})$/.test(variant))||!(/^[a-z0-9_]{1,64}$/.test(filter)))return json({ok:false,error:'INVALID_ADVANCED_FILTER'},400);
+ const advanced=variant!=='all'||filter!=='all'||range!=='all';
+ if(advanced&&p!=='/projection-graph-v1')return json({ok:false,error:'FILTER_GRAPH_ONLY'},400);
  if(p==='/projection-graph-v1'){
   const j=await readJournal(store);if(s.lastError||s.sequence!==j.sequence)return json({ok:false,error:'PROJECTION_CATCHING_UP'},503);
   const graphs=await store.get(graphsKey);invariant(graphs,j.aggregate);
+  const g=advanced?await filteredGraph(store,s,market,variant,filter,range,Date.now()):graphs[market];
   // Recheck generation: a concurrent event must not pair a new graph with an old state.
   const a=await store.get(stateKey);if(a.generation!==s.generation||a.sequence!==s.sequence)return json({ok:false,error:'GENERATION_CHANGED'},409);
-  return json({...graphs[market],generation:s.generation,sequence:s.sequence,readOnly:true});
+  return json({...g,generation:s.generation,sequence:s.sequence,readOnly:true});
  }
  if(p==='/projection-pending-v1'||p==='/projection-pending-snapshot-v1'){
   const live=p==='/projection-pending-v1',sync=await store.get(pfx+'pending-sync')??null;
