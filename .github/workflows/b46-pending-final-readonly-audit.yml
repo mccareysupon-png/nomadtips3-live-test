@@ -48,12 +48,14 @@ jobs:
           console.log('ENGINE_SHADOW_EVENT_CONTRACT='+JSON.stringify({version:id,bindings:(d.result.bindings??[]).filter(x=>x.name==='B46_SHADOW_RECEIVER').map(x=>({name:x.name,type:x.type,service:x.service})),routes:[...routes],senderSites:plumbing,openRouteObserved:[...routes].some(x=>/pending|open|created/i.test(x)),readOnly:true}));
           JS
       - name: Compare every Pending ID and metadata, measure authenticated page and live read latency
+        id: pending_first
         shell: bash
         run: |
           set -euo pipefail
           node chatgpt-statistics-ui/shadow-pending-final-audit.mjs | tee "$RUNNER_TEMP/pending-final.log"
           grep -q '^FINAL_PENDING_ACCEPTANCE=' "$RUNNER_TEMP/pending-final.log"
       - name: Repeat independent read-only acceptance after two background sync cycles
+        if: ${{ !cancelled() && (steps.pending_first.outcome == 'success' || steps.pending_first.outcome == 'failure') }}
         shell: bash
         run: |
           set -euo pipefail
