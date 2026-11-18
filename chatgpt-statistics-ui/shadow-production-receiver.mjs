@@ -134,6 +134,7 @@ export class ShadowProductionStore {
    if(path==='/projection-journal-v1'&&req.method==='GET')return journalRead(store,new URL(req.url));
    if(path.startsWith('/projection-'))return projectionHandle(store,this.env,req);
    if(path==='/statistics-summary-v1'&&req.method==='GET'){
+    if(new URL(req.url).searchParams.get('projection')==='journal')return journalRead(store,new URL(req.url));
     // Constant-size read of materialized balance; never scan receipts.
     const data=await store.get('composite:state'),seed=await store.get(seedMarker);
     if(seed?.status!=='loaded'||!data||data.pnl_schema!==1||data.unknown_pnl!==0)return reply({ok:false,error:'BOOK_NOT_READY'},503);
@@ -275,7 +276,7 @@ export default {async fetch(req,env){
   if(u.hostname!=='ball46-shadow-receiver-production.mccarey-supon.workers.dev'||req.method!=='GET'||!await authorized(req,env.AUDIT_TOKEN))return reply({ok:false},403);
   const book=env.SHADOW_STORE.get(env.SHADOW_STORE.idFromName('book-v1'));
   // External audit can read the sequence/aggregate, but not the full private journal.
-  return book.fetch('https://store.internal/projection-journal-v1');
+  return book.fetch(new Request('https://store.internal/statistics-summary-v1?projection=journal',{method:'GET'}));
  }
  if(u.pathname==='/projection-seed-v1'){
   if(u.hostname!=='ball46-shadow-receiver-production.mccarey-supon.workers.dev'||req.method!=='POST'||!await authorized(req,env.PROJECTION_SEED_TOKEN))return reply({ok:false},403);
