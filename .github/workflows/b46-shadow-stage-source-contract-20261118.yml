@@ -1,4 +1,4 @@
-name: B46 advanced statistics filter contract (READ ONLY)
+name: B46 production read contract and Pending filter inspection (READ ONLY)
 on:
   push:
     branches: [chatgpt/ball46-new-ledger-clean-v1]
@@ -9,11 +9,37 @@ permissions:
 jobs:
   inspect:
     runs-on: ubuntu-24.04
-    timeout-minutes: 3
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 80f25a1d9e5e3d7f2875f428bab938007dcb4c1d
+          ref: 9422bf7c51e674930da3110503231c7745ab41d6
           persist-credentials: false
-      - name: Inspect native advanced filter contracts with read-only asset requests
+      - name: Verify deployed filter definitions
         run: node chatgpt-statistics-ui/shadow-advanced-filter-contract.mjs
+      - name: Inspect actual history route and supported query fields, no mutation
+        run: |
+          node --input-type=module <<'JS'
+          const base='https://api.cloudflare.com/client/v4/accounts/62cb0db544160e6591342abd6b4f35cc';
+          async function get(p){const r=await fetch(base+p,{headers:{authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN},signal:AbortSignal.timeout(25000)});const d=await r.json();if(!r.ok||!d.success)throw Error('CF_'+r.status);return d.result}
+          for(const name of ['nomadtips3-engine-343','ball46-production','ball46-shadow-receiver-production']){
+           const d=await get('/workers/scripts/'+name+'/deployments?per_page=1'),id=d.deployments[0].versions[0].version_id;
+           console.log('ACTIVE_VERSION='+JSON.stringify({name,id}));
+           if(name!=='nomadtips3-engine-343')continue;
+           const v=await get('/workers/workers/'+name+'/versions/'+id+'?include=modules');
+           for(const m of v.modules??[]){
+            if(!m.content_base64||!/javascript|ecmascript|module/.test(m.content_type??''))continue;
+            const code=Buffer.from(m.content_base64,'base64').toString('utf8');
+            const matches=[...code.matchAll(/(?:pathname\s*===\s*["']\/statistics["']|async\s+statistics\s*\(|(?:async\s+)?function\s+[A-Za-z_$][\w$]*(?:Ledger|Statistics|Pagination)[\w$]*\s*\()/g)];
+            for(const x of matches.slice(0,18)){
+             const part=code.slice(Math.max(0,x.index-100),x.index+1500);
+             if(/(?:token|secret|api.?key)\s*[:=]\s*["'][^"']+/i.test(part))continue;
+             console.log('HISTORY_IMPLEMENTATION='+JSON.stringify({match:x[0],excerpt:part}));
+            }
+           }
+          }
+          JS
+      - name: Check full history versus candidate Pending-only filters
+        run: node chatgpt-statistics-ui/shadow-pending-source-contract.mjs
