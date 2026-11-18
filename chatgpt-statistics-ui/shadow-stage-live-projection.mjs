@@ -8,7 +8,7 @@ const t=r=>Number(r.settledAt??r.settled_at);
 const num=v=>v==null||v===''||typeof v==='boolean'||!Number.isFinite(Number(v))?null:Number(v);
 const cmp=(a,b)=>t(a)-t(b)||Number(b.createdAt)-Number(a.createdAt)||a._rank-b._rank;
 const fresh=()=>({counts:Object.fromEntries(R.map(k=>[k,0])),rows:0,priced:0,net:0,peak:0,trough:0,dd:0,best:0,oddsSum:0,oddsN:0,first:0,lastRate:0,lastPriced:0});
-function oneDay(rows){
+export function oneDay(rows){
  const d=fresh();
  for(const r of [...rows.values()].sort(cmp)){
   const o=r.result;if(!R.includes(o))throw Error('BAD_RESULT');
@@ -20,7 +20,7 @@ function oneDay(rows){
  }
  return d;
 }
-function fold(days,at){
+export function fold(days,at){
  const counts=Object.fromEntries(R.map(k=>[k,0])),series={units:[],roi:[],rate:[]};
  let net=0,peak=0,trough=0,maxDD=0,bestRun=0,priced=0,oddsSum=0,oddsN=0,rows=0,first=null,last=null;
  for(const [k,d] of [...days].sort(([a],[b])=>a.localeCompare(b))){
