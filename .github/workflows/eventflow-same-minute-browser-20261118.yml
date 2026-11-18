@@ -1,0 +1,38 @@
+name: Event Flow browser replay (test only)
+on:
+  push:
+    branches: [test/ball46-eventflow-same-minute-20261118]
+    paths: ['.github/workflows/eventflow-same-minute-browser-20261118.yml']
+permissions:
+  contents: read
+jobs:
+  browser-replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build isolated candidate from current public source
+        run: |
+          mkdir -p qa-output
+          curl --fail --silent --show-error --max-time 35 "https://ball46.com/expanded-match-343.js?b46_browser_qa=${GITHUB_RUN_ID}" -o qa-output/expanded-match-343.original.js
+          node qa/eventflow-same-minute-20261118/patch.mjs qa-output/expanded-match-343.original.js qa-output/expanded-match-343.candidate.js
+          node --check qa-output/expanded-match-343.candidate.js
+          curl --fail --silent --show-error --max-time 35 "https://ball46.com/?b46_browser_qa=${GITHUB_RUN_ID}" -o /tmp/b46page.html
+      - name: Install isolated browser test dependency
+        run: |
+          npm install --prefix "$RUNNER_TEMP/b46qa" --no-save --no-package-lock puppeteer-core
+          echo "PUPPETEER_ENTRY=$(node -p "require.resolve('puppeteer-core',{paths:['$RUNNER_TEMP/b46qa']})")" >> "$GITHUB_ENV"
+          echo "CHROME_PATH=$(command -v google-chrome || command -v chromium)" >> "$GITHUB_ENV"
+      - name: Test current production presentation against candidate SVG
+        run: node qa/eventflow-same-minute-20261118/browser.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eventflow-browser-test-only
+          path: |
+            qa-output/expanded-match-343.candidate.js
+            qa-output/expanded-match-343.candidate.js.report.json
+            qa-output/eventflow-browser-preview.html
+            qa-output/browser-report.json
+            qa-output/desktop-*.png
+          retention-days: 7
