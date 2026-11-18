@@ -29,9 +29,19 @@ async function active(){
 async function version(id){const v=await api('/workers/'+prod+'/versions/'+id+'?include=modules');assert(v.main_module&&v.modules?.length,'VERSION_MODULES_MISSING');return v}
 async function schedules(){const r=await api('/scripts/'+prod+'/schedules');const e=Array.isArray(r)?r:r.schedules;assert(Array.isArray(e),'SCHEDULES_MISSING');return e.map(x=>x.cron).sort()}
 async function pub(path,base=origin){
- const u=new URL(path,base);u.searchParams.set('b46QA',process.env.GITHUB_RUN_ID+'-'+Date.now());
- const r=await fetch(u,{headers:{'Cache-Control':'no-cache'},signal:AbortSignal.timeout(45000)});
- assert(r.ok,'PUBLIC_HTTP '+u.pathname+' '+r.status);return Buffer.from(await r.arrayBuffer());
+ let last;
+ for(let attempt=0;attempt<3;attempt++){
+  const u=new URL(path,base);u.searchParams.set('b46QA',process.env.GITHUB_RUN_ID+'-'+Date.now());
+  try{
+   const r=await fetch(u,{headers:{'Cache-Control':'no-cache'},signal:AbortSignal.timeout(45000)});
+   if(r.ok)return Buffer.from(await r.arrayBuffer());
+   last=new Error('PUBLIC_HTTP '+u.pathname+' '+r.status);
+   if(![429,500,502,503,504,522,524,599].includes(r.status))throw last;
+  }catch(e){last=e}
+  console.log('PUBLIC_READ_RETRY '+u.pathname+' '+(attempt+1)+' '+String(last));
+  if(attempt<2)await delay(2000*(attempt+1));
+ }
+ throw last;
 }
 function literals(s){
  const m=new Map();
