@@ -15,7 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ea88572eb77bd13a05a6ef16c642532cfd02c0b8
+          ref: 1dc1faf6644bffa2ca98bb1eef2c2e27126b0729
           persist-credentials: false
       - name: Verify live Worker versions (GET only)
         run: |
@@ -26,6 +26,26 @@ jobs:
            if(!r.ok||!d.success||a?.length!==1||a[0].version_id!==id||a[0].percentage!==100)throw Error('ACTIVE_VERSION_DRIFT_'+name);
            console.log('PENDING_ACTIVE_VERSION='+JSON.stringify({name,id,traffic:100}));
           }
+          JS
+      - name: Inspect active Engine Shadow Write producer contract (GET only)
+        run: |
+          node --input-type=module <<'JS'
+          const root='https://api.cloudflare.com/client/v4/accounts/62cb0db544160e6591342abd6b4f35cc';
+          const id='db65134e-a12d-4084-937e-3ce6e986c251';
+          const r=await fetch(root+'/workers/workers/nomadtips3-engine-343/versions/'+id+'?include=modules',{headers:{authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN},signal:AbortSignal.timeout(25000)});
+          const d=await r.json();if(!r.ok||!d.success)throw Error('ENGINE_READ_CONTRACT_HTTP_'+r.status);
+          const routes=new Set(),plumbing=[];
+          for(const m of d.result.modules??[]){
+           if(!m.content_base64)continue;
+           const code=Buffer.from(m.content_base64,'base64').toString('utf8');
+           for(const x of code.matchAll(/https?:\/\/shadow\.internal\/[A-Za-z0-9_/-]+/g))routes.add(new URL(x[0]).pathname);
+           for(const x of code.matchAll(/\bB46_SHADOW_RECEIVER\b/g)){
+            const region=code.slice(Math.max(0,x.index-280),x.index+500);
+            const tokens=[...new Set(region.match(/\b(?:SETTLED|PENDING|UNRESOLVED|WIN|LOSS|HALF_WIN|HALF_LOSS|PUSH|settledAt|createdAt|settled_at|signal_id|waitUntil|fetch|POST|GET|settlement|result)\b/g)??[])];
+            plumbing.push({tokens,route:[...region.matchAll(/https?:\/\/shadow\.internal\/[A-Za-z0-9_/-]+/g)].map(v=>new URL(v[0]).pathname)});
+           }
+          }
+          console.log('ENGINE_SHADOW_EVENT_CONTRACT='+JSON.stringify({version:id,bindings:(d.result.bindings??[]).filter(x=>x.name==='B46_SHADOW_RECEIVER').map(x=>({name:x.name,type:x.type,service:x.service})),routes:[...routes],senderSites:plumbing,openRouteObserved:[...routes].some(x=>/pending|open|created/i.test(x)),readOnly:true}));
           JS
       - name: Compare every Pending ID and metadata, measure authenticated page and live read latency
         shell: bash
