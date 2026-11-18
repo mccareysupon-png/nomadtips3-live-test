@@ -60,19 +60,23 @@ try{
   page.on('request',r=>{const p=new URL(r.url()).pathname;if(p==='/api/engine/statistics')history.push({detailAllowed});if(p===graphPath)calls.push(r.url())});
   await ctx.route('**/*',async route=>{
    const req=route.request(),u=new URL(req.url());if(!['GET','HEAD'].includes(req.method()))return route.abort();
-   if(u.origin!==host)return route.continue();
-   if(u.pathname===chartPath)return route.fulfill({status:200,contentType:'application/javascript',body:chart});
-   if(u.pathname===workspacePath)return route.fulfill({status:200,contentType:'application/javascript',body:work.source});
+   if(!['www.ball46.com','ball46.com'].includes(u.hostname))return route.continue();
+   if(u.pathname===chartPath){console.log('SIDEBAR_INTERCEPT_CHART');return route.fulfill({status:200,contentType:'application/javascript',body:chart})}
+   if(u.pathname===workspacePath){console.log('SIDEBAR_INTERCEPT_WORKSPACE');return route.fulfill({status:200,contentType:'application/javascript',body:work.source})}
    if(u.pathname===graphPath){
     const res=await route.fetch();if(res.status()!==200)return route.fulfill({response:res});
     const d=await res.json();if(simulate){d.sidebarWinRates=nextRates;d.sequence=Math.max(d.sequence,seq)+1}else{d.sidebarWinRates=real}
-    return route.fulfill({response:res,json:d});
+    return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(d)});
    }
    return route.continue();
   });
   const first=performance.now();
   assert.equal((await page.goto(host+'/?view=statistics',{waitUntil:'domcontentloaded',timeout:60000}))?.status(),200);
-  await page.waitForFunction(()=>document.querySelector('#b46-finance-chart-card')?.dataset.b46StatisticsSource==='receiver'&&!!document.querySelector('[data-b46-win-rate]'),null,{timeout:25000});
+  try{await page.waitForFunction(()=>document.querySelector('#b46-finance-chart-card')?.dataset.b46StatisticsSource==='receiver'&&!!document.querySelector('[data-b46-win-rate]'),null,{timeout:25000});}catch(e){
+   console.log('SIDEBAR_BROWSER_DIAG='+JSON.stringify({mobile,url:page.url(),errors,calls,history,dom:await page.evaluate(()=>({view:document.body?.dataset.workspaceView,chart:document.querySelector('#b46-finance-chart-card')?.dataset,patch:typeof window.__B46_SIDEBAR_WINRATES,nodes:[...document.querySelectorAll('[data-stat-market]')].map(b=>({m:b.dataset.statMarket,text:b.textContent,rate:b.querySelector('b')?.dataset})),scripts:[...document.scripts].map(x=>x.src).filter(x=>/longterm|singlepage|fast-v1/.test(x))}))}));
+   await page.screenshot({path:out+'/diagnostic.png'}).catch(()=>{});
+   throw e;
+  }
   const firstMs=Math.round(performance.now()-first);
   const actual=await hasRate(page);assert.deepEqual(actual,expected,'SIDEBAR_VALUES');
   assert.equal(history.length,0,'EARLY_HISTORY');
