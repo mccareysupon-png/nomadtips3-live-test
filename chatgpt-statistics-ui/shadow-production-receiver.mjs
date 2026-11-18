@@ -129,6 +129,14 @@ export class ShadowProductionStore {
  async fetch(req){
   const store=this.ctx.storage,path=new URL(req.url).pathname;
   try{
+   if(path==='/statistics-summary-v1'&&req.method==='GET'){
+    // Constant-size read of materialized balance; never scan receipts.
+    const data=await store.get('composite:state'),seed=await store.get(seedMarker);
+    if(seed?.status!=='loaded'||!data||data.pnl_schema!==1||data.unknown_pnl!==0)return reply({ok:false,error:'BOOK_NOT_READY'},503);
+    const raw_counts=Object.fromEntries(results.map(k=>[k,data[k]]));
+    if(results.some(k=>!Number.isSafeInteger(raw_counts[k])||raw_counts[k]<0)||results.reduce((n,k)=>n+raw_counts[k],0)!==data.total||!Number.isFinite(data.total_pnl))return reply({ok:false,error:'BOOK_INVARIANT'},503);
+    return reply({schema:1,ok:true,source:'RECEIVER_BOOK',scope:'SETTLED_TOTALS_ONLY',readOnly:true,total:data.total,raw_counts,total_pnl:data.total_pnl,win_rate:data.winRate,roi:data.total?data.total_pnl/data.total*100:0,latest_settled_at:data.cursor?.settled_at??null,corrections:data.corrections??0});
+   }
    if(path==='/audit-book-page-v1'&&req.method==='GET')return auditBookPage(store,new URL(req.url));
    if(path==='/seed-history-v1'&&req.method==='POST')return seedHistorical(store,await req.json());
    if(path==='/state'&&req.method==='GET')return reply({ok:true,queue:await store.get('inbox:state')??state0(),book:await store.get('composite:state')??null,alarmScheduled:(await store.getAlarm())!==null});
@@ -252,6 +260,10 @@ export default {async fetch(req,env){
   if(!await authorized(req,env.AUDIT_TOKEN))return reply({ok:false},403);
   return readAuditSnapshot(env,u);
  }
+ if(u.pathname==='/audit-statistics-summary-v1'){
+  if(u.hostname!=='ball46-shadow-receiver-production.mccarey-supon.workers.dev'||req.method!=='GET'||!await authorized(req,env.AUDIT_TOKEN))return reply({ok:false},403);
+  return readStatisticsSummary(env);
+ }
  if(u.pathname==='/audit-book-page-v1'){
   if(u.hostname!=='ball46-shadow-receiver-production.mccarey-supon.workers.dev'||req.method!=='GET'||!await authorized(req,env.AUDIT_TOKEN))return reply({ok:false},403);
   const book=env.SHADOW_STORE.get(env.SHADOW_STORE.idFromName('book-v1'));
@@ -298,5 +310,19 @@ export class AuditReader extends WorkerEntrypoint {
   if(u.hostname!=='shadow.internal'||u.pathname!=='/audit-snapshot')return reply({ok:false},403);
   if(req.method!=='GET')return reply({ok:false},405);
   return readAuditSnapshot(this.env,u);
+ }
+}
+
+// Website-only future service binding; no browser credential or public default route.
+async function readStatisticsSummary(env){
+ const book=env.SHADOW_STORE.get(env.SHADOW_STORE.idFromName('book-v1'));
+ return book.fetch('https://store.internal/statistics-summary-v1');
+}
+export class StatisticsReader extends WorkerEntrypoint {
+ async fetch(req){
+  const u=new URL(req.url);
+  if(u.hostname!=='shadow.internal'||u.pathname!=='/statistics-summary-v1')return reply({ok:false},403);
+  if(req.method!=='GET')return reply({ok:false},405);
+  return readStatisticsSummary(this.env);
  }
 }
