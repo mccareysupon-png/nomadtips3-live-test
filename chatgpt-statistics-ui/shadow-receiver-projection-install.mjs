@@ -115,22 +115,32 @@ async function local(){
  for(const market of groups){const r=await graph(market);assert.equal(r.status,200);compareGraph(r.data,raw,market)}
  const pending=await result(await projectionHandle(projectStore,env,req('/projection-pending-snapshot-v1')));
  assert.equal(pending.data.total,snapshot.source.other.PENDING+snapshot.source.other.UNRESOLVED);assert.equal(pending.data.live,false);
- const live=await result(await projectionHandle(projectStore,env,req('/projection-pending-v1')));assert.equal(live.status,503);
+ const savedFetch=globalThis.fetch;let hotPathFetches=0;
+ try{
+  globalThis.fetch=async()=>{hotPathFetches++;throw Error('LIVE_READ_NETWORK_FORBIDDEN')};
+  const live=await result(await projectionHandle(projectStore,env,req('/projection-pending-v1')));
+  assert.equal(live.status,200);assert.equal(live.data.source,'RECEIVER_PENDING_STATE');assert.equal(live.data.coverageVerified,false);
+  assert.deepEqual(live.data.rows,pending.data.rows);
+ }finally{globalThis.fetch=savedFetch}
+ assert.equal(hotPathFetches,0);
  // Exactly one request per sync; incomplete page never certifies the live set.
  const sourcePending=raw.filter(x=>['PENDING','UNRESOLVED'].includes(x.status));
  let pageCalls=0;const page=rows=>async url=>{assert.equal(String(url),'https://www.ball46.com/api/engine/statistics?paged=1');pageCalls++;return Response.json({ok:true,statisticsSource:'LEDGER_V2_ONLY',rows,total:t.total,pending:snapshot.source.other.PENDING,unresolved:snapshot.source.other.UNRESOLVED})};
  const stamp=Date.now();
  const incomplete=await syncPendingFirstPage(projectStore,{now:stamp,fetcher:page([])});
- assert.equal(incomplete.complete,false);assert.equal(incomplete.firstPagePending,0);assert.equal((await result(await projectionHandle(projectStore,env,req('/projection-pending-v1')))).status,503);
+ assert.equal(incomplete.complete,false);assert.equal(incomplete.firstPagePending,0);
+ const incompleteRead=await result(await projectionHandle(projectStore,env,req('/projection-pending-v1')));
+ assert.equal(incompleteRead.status,200);assert.equal(incompleteRead.data.coverageVerified,false);assert.equal(incompleteRead.data.total,sourcePending.length);
  const complete=await syncPendingFirstPage(projectStore,{now:stamp+61000,fetcher:page(sourcePending)});
  assert.equal(complete.complete,true);assert.equal(pageCalls,2);
- const exact=await result(await projectionHandle(projectStore,env,req('/projection-pending-v1')));assert.equal(exact.status,200);assert.equal(exact.data.total,sourcePending.length);assert.equal(exact.data.live,true);
+ const exact=await result(await projectionHandle(projectStore,env,req('/projection-pending-v1')));assert.equal(exact.status,200);assert.equal(exact.data.total,sourcePending.length);assert.equal(exact.data.live,true);assert.equal(exact.data.coverageVerified,true);
  const post=row=>resultFromBook(book,req('/book-post',row));
  const p=raw.find(r=>r.status==='PENDING');assert(p,'NO_REAL_PENDING_FOR_LOCAL_TEST');
  const settled={...p,status:'SETTLED',result:'WIN',odds:2.06,settledAt:Date.now()+12345};
  let r=await post(normalizeRow(settled));assert.equal(r.status,200);assert.equal((await graph('all')).status,503);
  const removedImmediately=await result(await projectionHandle(projectStore,env,req('/projection-pending-snapshot-v1')));assert.equal(removedImmediately.data.total,sourcePending.length-1);
- assert.equal((await result(await projectionHandle(projectStore,env,req('/projection-pending-v1')))).status,503);
+ const removedLive=await result(await projectionHandle(projectStore,env,req('/projection-pending-v1')));
+ assert.equal(removedLive.status,200);assert.equal(removedLive.data.total,sourcePending.length-1);assert.equal(removedLive.data.coverageVerified,false);
  await projectionAlarm(projectStore,env,{pendingFetcher:async()=>{throw Error('LOCAL_PENDING_SYNC_DISABLED')}});
  raw[raw.findIndex(x=>x.id===p.id)]=settled;
  for(const k of groups)compareGraph((await graph(k)).data,raw,k);
@@ -165,6 +175,18 @@ async function local(){
   const x=await result(await projectionHandle(projectStore,env,req('/projection-graph-v1?'+query(c))));assert.equal(x.status,200,query(c));checkAdvanced(x.data,raw,c);testedFilters++;
  }
  const invalid=await result(await projectionHandle(projectStore,env,req('/projection-graph-v1?variant=ht')));assert.equal(invalid.status,400);
+ // Verify a new open observed only by the background updater; no synthetic production writes.
+ const newOpen={...sourcePending[0],id:'LOCAL-PENDING-ONLY-OPEN',createdAt:Date.now(),status:'PENDING',market:'ft_ah'};
+ const b=await bookStore.get('composite:state');
+ const openSync=await syncPendingFirstPage(projectStore,{now:Date.now()+180000,fetcher:async url=>{assert.equal(url,'https://www.ball46.com/api/engine/statistics?paged=1');return Response.json({ok:true,statisticsSource:'LEDGER_V2_ONLY',rows:[newOpen],total:b.total,pending:sourcePending.length,unresolved:0})}});
+ assert.equal(openSync.complete,false);
+ const openRead=await result(await projectionHandle(projectStore,env,req('/projection-pending-v1')));
+ assert.equal(openRead.status,200);assert(openRead.data.rows.some(x=>x.id===newOpen.id));assert.equal(openRead.data.total,sourcePending.length);
+ const finalOpen={...newOpen,status:'SETTLED',result:'WIN',odds:2,settledAt:Date.now()+190000};
+ assert.equal((await post(normalizeRow(finalOpen))).status,200);
+ const closedRead=await result(await projectionHandle(projectStore,env,req('/projection-pending-v1')));
+ assert.equal(closedRead.status,200);assert.equal(closedRead.data.total,sourcePending.length-1);assert(!closedRead.data.rows.some(x=>x.id===newOpen.id));
+ console.log('LOCAL_PENDING_STATE_ONLY_PASS='+JSON.stringify({hotPathFetches,partialSourceHTTP:200,backgroundNewOpen:true,atomicSettlementRemoval:true,coverageFlagPreserved:true,productionWrites:0}));
  console.log('LOCAL_DURABLE_PROJECTION_PASS='+JSON.stringify({baseline:snapshot.book.totals.total,days:prepared.days.length,markets:7,sourceGraphParity:true,pendingSnapshot:pending.data.total,correction:true,duplicate:true,stale:true,newMarkets:7,protectedRoutes:true,pendingLiveGate:true,pendingFirstPageOnly:true,atomicPendingRemoval:true,jsonRouteGuard:true,advancedFilterFailClosed:true,advancedCases:testedFilters,productionWrites:0}));
 }
 async function resultFromBook(book,request){return result(await book.fetch(request))}
