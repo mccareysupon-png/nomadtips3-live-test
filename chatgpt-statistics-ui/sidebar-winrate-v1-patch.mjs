@@ -26,7 +26,7 @@ const b46SidebarAliases={all:'all',ah:'AH','1x2':'1X2',ou:'O/U',btts:'BTTS',corn
 let b46SidebarState=null,b46SidebarSeq=-1;
 const b46SidebarNode=button=>button.querySelector(__COUNT_SELECTOR__);
 function b46PaintSidebar(){
- const nodes=$$('[data-stat-market]');
+ const nodes=document.querySelectorAll('[data-stat-market]');
  for(const b of nodes){
   const name=b46SidebarAliases[b.dataset.statMarket],el=b46SidebarNode(b);
   if(!el||!name)continue;
