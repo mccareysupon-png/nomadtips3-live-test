@@ -1,0 +1,41 @@
+name: B46 authorized settled statistics cutover (website only)
+on:
+  push:
+    branches: [chatgpt/ball46-new-ledger-clean-v1]
+    paths: ['.github/workflows/b46-site-graph-cutover-20261118.yml']
+permissions:
+  contents: read
+concurrency:
+  group: b46-site-graph-cutover
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: f599793b098a2c7f69b20bb07d1234c1b7f64cf4
+          persist-credentials: false
+      - name: Validate code and install Chromium
+        run: |
+          node --check chatgpt-statistics-ui/shadow-site-graph-cutover.mjs
+          node --check chatgpt-statistics-ui/shadow-site-graph-cutover-patch.mjs
+          node --check chatgpt-statistics-ui/shadow-site-graph-cutover-browser.mjs
+          node --check chatgpt-statistics-ui/shadow-site-graph-cutover-release.mjs
+          npm install --prefix chatgpt-statistics-ui/.runtime --no-audit --no-fund playwright@1.55.0
+          chatgpt-statistics-ui/.runtime/node_modules/.bin/playwright install chromium --only-shell
+      - name: Upload exact production graph candidate, qualify and switch website only
+        run: node chatgpt-statistics-ui/shadow-site-graph-cutover-release.mjs
+      - name: Retain QA screenshots and version evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: b46-website-cutover-evidence
+          path: |
+            ${{ runner.temp }}/b46-cutover-browser/*.png
+            ${{ runner.temp }}/b46-site-release/candidate.json
+          if-no-files-found: ignore
+          retention-days: 7
