@@ -1,0 +1,59 @@
+name: TOTAL isolated Worker deployment
+on:
+  push:
+    branches: [test/ball46-total-single-renderer-20261119]
+    paths: ['.github/workflows/total-test-worker-20261119.yml']
+permissions:
+  contents: read
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build previously tested candidate from exact sources
+        run: |
+          mkdir -p candidate
+          curl -fsS --max-time 35 'https://ball46.com/longterm-performance-343.js?v=daily-date-axis-v9-20261012&b46_static=822f3d9d271a948d6b862eb7732f8797dcedbcc743cd63f3094f217b537b22bf&b46_finance=22409caa83fa0671' -o candidate/finance.original.js
+          curl -fsS --max-time 35 'https://ball46.com/b46-statistics-card-20261116.js' -o candidate/visual.original.js
+          node qa/total-single-renderer-20261119/patch.mjs candidate
+      - name: Install browser
+        run: |
+          npm install --prefix "$RUNNER_TEMP/b46qa" --no-save --no-package-lock puppeteer-core
+          echo "PUPPETEER_ENTRY=$(node -p "require.resolve('puppeteer-core',{paths:['$RUNNER_TEMP/b46qa']})")" >> "$GITHUB_ENV"
+          echo "CHROME_PATH=$(command -v google-chrome || command -v chromium)" >> "$GITHUB_ENV"
+      - name: Deploy isolated snapshot Worker
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: node qa/total-single-renderer-20261119/deploy-test-worker.mjs
+      - name: Capture actual Worker browser screenshot
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import assert from 'node:assert/strict';
+          import {pathToFileURL} from 'node:url';
+          const puppeteer=(await import(pathToFileURL(process.env.PUPPETEER_ENTRY).href)).default;
+          const report=JSON.parse(fs.readFileSync('candidate/worker-report.json','utf8'));
+          const browser=await puppeteer.launch({executablePath:process.env.CHROME_PATH,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
+          try{
+            const page=await browser.newPage();await page.setViewport({width:1440,height:850});
+            const errors=[];page.on('pageerror',e=>errors.push(String(e)));
+            await page.goto(report.url,{waitUntil:'load',timeout:30000});
+            await page.waitForSelector('#b46-finance-chart-card[data-b46-total-owner="receiver"] .b46-stage-summary-grid',{timeout:12000});
+            const first=await page.evaluate(()=>{window.__initial=document.querySelector('.f46-overview');return{tiles:[...document.querySelectorAll('.b46-stage-summary-item')].map(e=>[e.dataset.key,e.querySelector('strong').textContent]),oldVisible:!!document.querySelector('.f46-metrics')?.getBoundingClientRect().width}});
+            await new Promise(r=>setTimeout(r,16000));
+            const later=await page.evaluate(()=>({same:window.__initial===document.querySelector('.f46-overview'),oldVisible:!!document.querySelector('.f46-metrics')?.getBoundingClientRect().width,outcomes:[...document.querySelectorAll('.b46-stage-outcomes-segment')].map(e=>[e.dataset.result,Number(e.dataset.count)])}));
+            await page.screenshot({path:'candidate/TOTAL-worker.png'});
+            console.log('TOTAL_WORKER_BROWSER '+JSON.stringify({first,later,errors}));
+            assert.equal(first.tiles.length,8);assert(!first.oldVisible&&!later.oldVisible);assert(later.same);assert.deepEqual(errors,[]);assert.deepEqual(Object.fromEntries(later.outcomes),{win:report.summary.wins,push:report.summary.pushes,loss:report.summary.losses});
+          }finally{await browser.close()}
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: total-test-worker-evidence
+          path: |
+            candidate/worker-report.json
+            candidate/TOTAL-worker.png
+          retention-days: 7
