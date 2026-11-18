@@ -1,0 +1,41 @@
+name: B46 Receiver binding and projection root cause (READ ONLY)
+on:
+  push:
+    branches: [chatgpt/ball46-new-ledger-clean-v1]
+    paths: ['.github/workflows/b46-receiver-binding-root-cause.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: Inspect active module exports and bindings, direct and inactive service responses
+        run: |
+          node --input-type=module <<'JS'
+          import {createHmac} from 'node:crypto';
+          import assert from 'node:assert/strict';
+          const token=process.env.CLOUDFLARE_API_TOKEN,root='https://api.cloudflare.com/client/v4/accounts/62cb0db544160e6591342abd6b4f35cc',headers={authorization:'Bearer '+token};
+          const receiver='ball46-shadow-receiver-production',site='ball46-production',engine='nomadtips3-engine-343',candidate='01f044ab-5597-4982-8832-4196b97c8106';
+          async function cf(p){const r=await fetch(root+p,{headers,signal:AbortSignal.timeout(25000)}),d=await r.json();assert(r.ok&&d.success,'CF_READ_'+r.status);return d.result}
+          const active=async n=>(await cf('/workers/scripts/'+n+'/deployments?per_page=1')).deployments[0].versions;
+          for(const n of [receiver,site,engine])console.log('ROOT_ACTIVE='+JSON.stringify({name:n,versions:await active(n)}));
+          const id=(await active(receiver))[0].version_id,v=await cf('/workers/workers/'+receiver+'/versions/'+id+'?include=modules');
+          const code=Buffer.from(v.modules.find(x=>x.name===v.main_module).content_base64,'base64').toString();
+          const binding=v.bindings.filter(x=>x.type==='durable_object_namespace').map(x=>({name:x.name,class_name:x.class_name,namespace_id:x.namespace_id??null,script_name:x.script_name??null}));
+          const exports=code.slice(-1800);
+          console.log('ROOT_RECEIVER_CONTRACT='+JSON.stringify({id,main:v.main_module,binding,usesShadowStore:code.includes('env.SHADOW_STORE.get('),usesBookId:code.includes('idFromName("book-v1")')||code.includes("idFromName('book-v1')"),exportsReader:/\bMarketStatisticsReader\b/.test(exports),exportsBook:/\bShadowProductionStore\b/.test(exports),entrypointUsesEnv:/projectionRead\(this\.env/.test(code)}));
+          const cv=await cf('/workers/workers/'+site+'/versions/'+candidate+'?include=modules');
+          console.log('ROOT_SITE_BINDING='+JSON.stringify(cv.bindings.filter(x=>x.name==='B46_MARKET_READER').map(x=>({name:x.name,type:x.type,service:x.service,environment:x.environment,entrypoint:x.entrypoint}))));
+          const key=createHmac('sha256',token).update('ball46/receiver/https-audit/v1/20261118').digest('hex'),probe=createHmac('sha256',token).update('ball46/site/binding-preflight/v1/20261118').digest('hex');console.log('::add-mask::'+key);console.log('::add-mask::'+probe);
+          const base='https://'+receiver+'.mccarey-supon.workers.dev',preview='https://'+candidate.slice(0,8)+'-'+site+'.mccarey-supon.workers.dev';
+          async function read(host,path,credential){const start=Date.now(),r=await fetch(host+path,{headers:{authorization:'Bearer '+credential,accept:'application/json','user-agent':'Mozilla/5.0 B46-RootCause'},signal:AbortSignal.timeout(25000)}),body=await r.text();let d=null;try{d=JSON.parse(body)}catch{};return {http:r.status,ms:Date.now()-start,json:!!d,data:d}}
+          for(let i=0;i<3;i++){
+           const s=await read(base,'/audit-projection-status-v1',key),g=await read(base,'/audit-projection-graph-v1',key),p=await read(base,'/audit-projection-pending-v1?limit=1',key),c=await read(preview,'/_b46/internal/receiver-preflight-v1',probe);
+           console.log('ROOT_READ='+JSON.stringify({attempt:i+1,status:s.http,graph:g.http,graphError:g.data?.error??null,pending:p.http,pendingError:p.data?.error??null,bookSequence:s.data?.bookSequence,projectionSequence:s.data?.projection?.sequence,lastError:s.data?.projection?.lastError,graphReady:s.data?.graphReady,lastAppliedAt:s.data?.projection?.lastAppliedAt,bookTotal:s.data?.bookAggregate?.total,graphTotal:g.data?.summary?.rows,service:c.http,serviceError:c.data?.error??null,serviceTotal:c.data?.settled,coverageVerified:p.data?.coverageVerified}));
+           if(i<2)await new Promise(r=>setTimeout(r,10000));
+          }
+          JS
