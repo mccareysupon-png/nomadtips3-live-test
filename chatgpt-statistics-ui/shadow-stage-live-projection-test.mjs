@@ -5,6 +5,7 @@ import {fileURLToPath} from 'node:url';
 import {performance} from 'node:perf_hooks';
 import {buildStage} from './shadow-cutover-stage-adapter.mjs';
 import {createProjection} from './shadow-stage-live-projection.mjs';
+import {createStageReadApi} from './shadow-stage-read-api.mjs';
 import {summarize} from './shadow-seed-snapshot.mjs';
 import {marketGroup,MARKET_GROUPS} from './market-groups-stage.mjs';
 import {buildVerifiedGraph} from '../deploy-assets/ball46-statistics-fast-v1-20261116/graph-core.mjs';
@@ -57,6 +58,20 @@ const hist=projection.historyPage({limit:50});assert.equal(hist.total,bookState.
 for(const r of hist.rows){assert.deepEqual(projection.detail(r.id),r);assert.equal(r.status,'SETTLED')}
 for(const group of MARKET_GROUPS){const v=projection.historyPage({market:group});assert.equal(v.total,projection.readGraph(group).summary.rows);assert(v.rows.every(r=>marketGroup(r.market)===group))}
 console.log('STAGE_PENDING_DETAIL_PARITY='+JSON.stringify({pending:pending.pending,pendingUnique:pendingIds.length,archive:hist.total,firstPage:hist.rows.length,detailFields:hist.rows.length?Object.keys(hist.rows[0]).length:0,graphUnchanged:true,pendingSource:'VERIFIED_LEGACY_SNAPSHOT',productionWrites:0}));
+const api=createStageReadApi(projection);
+const sizes={},times={};
+for(const market of all){
+ const q='market='+encodeURIComponent(market);
+ for(const k of ['head','graph','pending','history']){
+  const now=performance.now(),x=api('/_stage/read/'+k,q+'&limit=50'),ms=performance.now()-now;
+  assert.equal(x.status,200);sizes[k]=Math.max(sizes[k]??0,Buffer.byteLength(JSON.stringify(x.body)));times[k]=Math.max(times[k]??0,ms);
+  if(k==='pending'||k==='history')assert(x.body.rows.length<=50);
+ }
+}
+const detail=api('/_stage/read/detail','id='+encodeURIComponent(hist.rows[0].id));assert.deepEqual(detail.body.row,hist.rows[0]);
+assert.equal(api('/_stage/read/graph','','POST').status,405);
+assert.equal(api('/_stage/read/history','limit=101').status,400);
+console.log('STAGE_READ_API='+JSON.stringify({markets:all.length,maxBytes:sizes,maxLocalMs:times,fullHistoryResponses:0,detailExact:true,firstPageLimit:50}));
 const map={AH:'ft_ah','1X2':'ft_1x2','O/U':'ft_over',Corners:'ft_corners_over',BTTS:'ft_btts',Cards:'ft_cards_over',Other:'special_test'};
 const meta=Object.entries(map).map(([group,market],i)=>({id:'STAGE-ONLY-'+i,market,createdAt:replay.at+100+i,status:'PENDING',home:'Stage team A',away:'Stage team B',league:'STAGING TEST ONLY',selection:'Over',line:2.5,odds:2.06}));
 const newPending={rows:[...replay.next.pending,...replay.next.unresolved,...meta],pending:pending.pending+meta.length,unresolved:replay.next.unresolved.length,verifiedAt:Date.now()+200};
