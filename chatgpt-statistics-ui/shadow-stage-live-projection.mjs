@@ -8,9 +8,9 @@ const t=r=>Number(r.settledAt??r.settled_at);
 const num=v=>v==null||v===''||typeof v==='boolean'||!Number.isFinite(Number(v))?null:Number(v);
 const cmp=(a,b)=>t(a)-t(b)||Number(b.createdAt)-Number(a.createdAt)||a._rank-b._rank;
 const fresh=()=>({counts:Object.fromEntries(R.map(k=>[k,0])),rows:0,priced:0,net:0,peak:0,trough:0,dd:0,best:0,oddsSum:0,oddsN:0,first:0,lastRate:0,lastPriced:0});
-export function oneDay(rows){
+export function oneDay(rows,compare=cmp){
  const d=fresh();
- for(const r of [...rows.values()].sort(cmp)){
+ for(const r of [...rows.values()].sort(compare)){
   const o=r.result;if(!R.includes(o))throw Error('BAD_RESULT');
   const ts=t(r),odds=num(r.odds);d.first||=ts;d.lastRate=ts;d.counts[o]++;d.rows++;
   if(odds!==null&&odds>1){d.oddsN++;d.oddsSum+=odds}
