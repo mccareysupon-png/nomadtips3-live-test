@@ -47,7 +47,8 @@ function sidebarDisplay(){
   const style=document.createElement('style');
   style.textContent='[data-stat-market][data-isolated-rate-ready] b{display:none!important} [data-stat-market] .'+cls+'{font-family:inherit;font-size:10px;font-weight:800;line-height:1.2;white-space:nowrap;margin-left:auto;flex-shrink:0;font-variant-numeric:tabular-nums} @media(max-width:850px){[data-stat-market] .'+cls+'{font-size:8px}}';
   document.head.append(style);
-  function fallback(){for(const b of document.querySelectorAll(selector)){b.removeAttribute('data-isolated-rate-ready');b.querySelector('.'+cls)?.remove()}}
+  const previousDisplay=new WeakMap();
+  function fallback(){for(const b of document.querySelectorAll(selector)){const original=b.querySelector('b'),prev=original&&previousDisplay.get(original);if(prev){if(prev.value)original.style.setProperty('display',prev.value,prev.priority);else original.style.removeProperty('display');previousDisplay.delete(original)}b.removeAttribute('data-isolated-rate-ready');b.querySelector('.'+cls)?.remove()}}
   document.addEventListener('b46:isolated-sidebar-rate',event=>{
    try{
     const d=event.detail,v=d?.rates;
@@ -63,6 +64,9 @@ function sidebarDisplay(){
      el.textContent=value===null?'—':value.toFixed(2)+'%';
      el.title='All-time Win Rate · excludes PUSH';
      el.style.color=rounded===null?'#91aa9b':rounded>50?'#22c55e':rounded<50?'#f87171':'#facc15';
+     // Native CSS uses !important for count display. Preserve its inline style exactly.
+     if(!previousDisplay.has(original))previousDisplay.set(original,{value:original.style.getPropertyValue('display'),priority:original.style.getPropertyPriority('display')});
+     original.style.setProperty('display','none','important');
      b.setAttribute('data-isolated-rate-ready','1');
     }
    }catch{try{fallback()}catch{}}
