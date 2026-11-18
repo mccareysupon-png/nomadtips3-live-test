@@ -20,7 +20,7 @@ assert(graphs,'COHERENT_PRODUCTION_READ_UNAVAILABLE');
 const real=sidebarWinRates(graphs);assert(validSidebar(real));const expected=Object.fromEntries(SIDEBAR_MARKETS.map(m=>[m,real[m].rate===null?'—':real[m].rate.toFixed(2)+'%']));
 console.log('SIDEBAR_STAGE_SOURCE='+JSON.stringify({sequence:seq,settled:real.all.settled,rates:expected,readOnly:true}));
 const fixture=structuredClone(graphs);
-const old=fixture.AH.counts;old.HALF_WIN++;fixture.AH.summary.rows++;fixture.all.counts.HALF_WIN++;fixture.all.summary.rows++;
+const old=fixture.AH.counts;old.HALF_WIN+=4;fixture.AH.summary.rows+=4;fixture.all.counts.HALF_WIN+=4;fixture.all.summary.rows+=4;
 const nextRates=sidebarWinRates(fixture);assert(nextRates.AH.rate>real.AH.rate);assert(nextRates.all.rate>real.all.rate);
 const zero=Object.fromEntries(SIDEBAR_MARKETS.map(m=>[m,{counts:{WIN:0,LOSS:0,HALF_WIN:0,HALF_LOSS:0,PUSH:0},summary:{rows:0}}]));
 zero.AH.counts.PUSH=zero.all.counts.PUSH=2;zero.AH.summary.rows=zero.all.summary.rows=2;assert.equal(sidebarWinRates(zero).AH.rate,null);
@@ -65,7 +65,7 @@ try{
    if(u.pathname===workspacePath)return route.fulfill({status:200,contentType:'application/javascript',body:work.source});
    if(u.pathname===graphPath){
     const res=await route.fetch();if(res.status()!==200)return route.fulfill({response:res});
-    const d=await res.json();if(simulate){d.sidebarWinRates=nextRates;d.sequence=seq+1}else{d.sidebarWinRates=real}
+    const d=await res.json();if(simulate){d.sidebarWinRates=nextRates;d.sequence=Math.max(d.sequence,seq)+1}else{d.sidebarWinRates=real}
     return route.fulfill({response:res,json:d});
    }
    return route.continue();
