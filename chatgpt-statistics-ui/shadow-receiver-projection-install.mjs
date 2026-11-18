@@ -19,10 +19,10 @@ async function get(path,auth=key){
 async function coherentSnapshot(useJournal){
  for(let attempt=1;attempt<=4;attempt++){
   const j0=useJournal?await get('/audit-projection-journal-v1'):null;
-  if(j0&&j0.status!==200)throw Error('JOURNAL_PREFLIGHT_'+j0.status);
+  if(j0&&(j0.status!==200||!Number.isSafeInteger(j0.data.sequence)||!j0.data.aggregate))throw Error('JOURNAL_PREFLIGHT_'+j0.status);
   const source=await collect({includeRaw:true}),book=await readFullBook(key);
   const j1=useJournal?await get('/audit-projection-journal-v1'):null;
-  if(j1&&j1.status!==200)throw Error('JOURNAL_PREFLIGHT_'+j1.status);
+  if(j1&&(j1.status!==200||!Number.isSafeInteger(j1.data.sequence)||!j1.data.aggregate))throw Error('JOURNAL_PREFLIGHT_'+j1.status);
   if(compare(source,book).exact&&(!j0||j0.data.sequence===j1.data.sequence&&j1.data.aggregate.total===book.totals.total&&j1.data.aggregate.total_pnl===book.totals.total_pnl)){
    return {source,book,sequence:j1?.data.sequence??0};
   }
@@ -84,6 +84,10 @@ async function local(){
  const t=snapshot.book.totals,cursor=snapshot.book.rows.reduce((a,b)=>!a||b.settled_at>a.settled_at||b.settled_at===a.settled_at&&b.signal_id>a.signal_id?b:a,null);
  await bookStore.put('composite:state',{...t.raw_counts,total:t.total,total_pnl:t.total_pnl,winRate:t.win_rate,pnl_units:Math.round(t.total_pnl*1e8),unknown_pnl:0,pnl_schema:1,corrections:0,cursor:{signal_id:cursor.signal_id,settled_at:cursor.settled_at}});
  const req=(path,body)=>new Request('https://store.internal'+path,body?{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)}:undefined);
+ const journalURL='https://ball46-shadow-receiver-production.mccarey-supon.workers.dev/audit-projection-journal-v1';
+ const unseeded=await worker.fetch(new Request(journalURL,{headers:{authorization:'Bearer '+env.AUDIT_TOKEN}}),env);
+ assert.equal(unseeded.status,200);const jd=await unseeded.json();assert.equal(jd.sequence,0);assert.equal(jd.aggregate.total,t.total);assert.deepEqual(jd.events,[]);
+ assert.equal((await worker.fetch(new Request(journalURL),env)).status,403);
  const send=async body=>result(await projectionHandle(projectStore,env,req('/projection-seed-v1',body)));
  const seed=await seedWith(send,prepared);
  const graph=market=>projectionHandle(projectStore,env,req('/projection-graph-v1?market='+encodeURIComponent(market))).then(result);
