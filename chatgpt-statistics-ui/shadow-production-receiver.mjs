@@ -1,7 +1,7 @@
 import {WorkerEntrypoint} from 'cloudflare:workers';
 // Shadow-only receiver. No public route, no reads by the existing website.
 // Production health is read-only; ingestion is authorized by private service binding.
-// No seed or cutover. Newer revisions are applied atomically; same-time conflicts remain quarantined.
+// Historical seed is isolated and checkpointed. No cutover. Newer revisions are applied atomically.
 import {normalizeRow,compareCursor} from './shadow-composite-cursor-stage.mjs';
 const reply=(d,s=200)=>Response.json(d,{status:s,headers:{'cache-control':'no-store'}});
 const digest=async value=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(value))))).map(b=>b.toString(16).padStart(2,'0')).join('');
@@ -33,31 +33,88 @@ async function ensureAggregate(tx,s){
  if(total!==s.total||results.some(k=>counts[k]!==s[k]))throw Error('EXISTING_BOOK_AGGREGATE_DRIFT');
  s.pnl_schema=1;s.corrections=s.corrections??0;
 }
+const newBook=()=>({cursor:null,WIN:0,LOSS:0,PUSH:0,HALF_WIN:0,HALF_LOSS:0,total:0,winRate:0});
+async function applyRevision(tx,s,row){
+ const key='composite:receipt:'+row.signal_id,old=await tx.get(key),prior=old?normalizeRow(old):null;
+ if(prior){
+  if(row.settled_at<prior.settled_at)return {stale:true,duplicate:false,corrected:false};
+  if(sameRow(prior,row))return {duplicate:true,corrected:false};
+  if(row.settled_at===prior.settled_at)throw Error('CORRECTION_REQUIRES_EXPLICIT_HANDLING');
+ }
+ await ensureAggregate(tx,s);
+ if(prior){
+  if(s[prior.result]<1)throw Error('OLD_COUNT_UNDERFLOW');
+  s[prior.result]--;changePnl(s,prior,-1);s.corrections=(s.corrections??0)+1;
+  await tx.put('composite:revision:'+prior.signal_id+':'+prior.settled_at,prior);
+ }else s.total++;
+ s[row.result]++;changePnl(s,row,1);
+ if(s.unknown_pnl<0||!Number.isSafeInteger(s.pnl_units)||results.reduce((n,k)=>n+s[k],0)!==s.total)throw Error('BOOK_AGGREGATE_INVARIANT');
+ const w=s.WIN+s.HALF_WIN,l=s.LOSS+s.HALF_LOSS;s.winRate=w+l?w/(w+l)*100:0;
+ s.total_pnl=s.unknown_pnl?null:s.pnl_units/100000000;
+ if(!s.cursor||compareCursor(row,s.cursor)>0)s.cursor={settled_at:row.settled_at,signal_id:row.signal_id};
+ await tx.put(key,row);
+ return {duplicate:false,corrected:!!prior,stale:false};
+}
 async function postRevision(storage,raw){
  const row=normalizeRow(raw);
  return storage.transaction(async tx=>{
-  const key='composite:receipt:'+row.signal_id,old=await tx.get(key),prior=old?normalizeRow(old):null;
-  const s=await tx.get('composite:state')??{cursor:null,WIN:0,LOSS:0,PUSH:0,HALF_WIN:0,HALF_LOSS:0,total:0,winRate:0};
-  if(prior){
-   if(row.settled_at<prior.settled_at)return {stale:true,duplicate:false,corrected:false};
-   if(sameRow(prior,row))return {duplicate:true,corrected:false};
-   if(row.settled_at===prior.settled_at)throw Error('CORRECTION_REQUIRES_EXPLICIT_HANDLING');
-  }
-  await ensureAggregate(tx,s);
-  if(prior){
-   if(s[prior.result]<1)throw Error('OLD_COUNT_UNDERFLOW');
-   s[prior.result]--;changePnl(s,prior,-1);s.corrections=(s.corrections??0)+1;
-   // Preserve prior revision, keyed by its original settlement time.
-   await tx.put('composite:revision:'+prior.signal_id+':'+prior.settled_at,prior);
-  }else s.total++;
-  s[row.result]++;changePnl(s,row,1);
-  if(s.unknown_pnl<0||!Number.isSafeInteger(s.pnl_units)||results.reduce((n,k)=>n+s[k],0)!==s.total)throw Error('BOOK_AGGREGATE_INVARIANT');
-  const w=s.WIN+s.HALF_WIN,l=s.LOSS+s.HALF_LOSS;s.winRate=w+l?w/(w+l)*100:0;
-  s.total_pnl=s.unknown_pnl?null:s.pnl_units/100000000;
-  if(!s.cursor||compareCursor(row,s.cursor)>0)s.cursor={settled_at:row.settled_at,signal_id:row.signal_id};
-  await tx.put(key,row);await tx.put('composite:state',s);
-  return {duplicate:false,corrected:!!prior,stale:false};
+  const s=await tx.get('composite:state')??newBook();
+  const r=await applyRevision(tx,s,row);
+  if(!r.duplicate&&!r.stale)await tx.put('composite:state',s);
+  return r;
  });
+}
+const seedMarker='composite:historical-seed:20261118-v1';
+const hex64=s=>typeof s==='string'&&/^[a-f0-9]{64}$/.test(s);
+const canonicalSeed=r=>({signal_id:r.signal_id,settled_at:r.settled_at,result:r.result,market_type:r.market_type,odds:r.odds==null?null:Number(r.odds)});
+const seedView=s=>s?{snapshot_hash:s.manifest.hash,source_signature:s.manifest.sourceSignature,source_revision:s.manifest.sourceRevision,cutoff:s.manifest.cutoff,expected:s.manifest.total,next_batch:s.next,batches:s.manifest.batchHashes.length,processed:s.processed,inserted:s.inserted,already_present:s.already,superseded:s.stale,corrected:s.corrected,status:s.status,completed_at:s.completedAt??null}:null;
+async function seedHistorical(store,input){
+ if(input?.action==='begin'){
+  const m=input.manifest;
+  if(!m||!hex64(m.hash)||!hex64(m.sourceSignature)||typeof m.sourceRevision!=='string'||!Number.isSafeInteger(m.cutoff)||m.cutoff<=0||m.cutoff>Date.now()+1000||!Number.isSafeInteger(m.total)||m.total<1000||m.total>50000||m.batchSize!==100||!Array.isArray(m.batchHashes)||m.batchHashes.length!==Math.ceil(m.total/100)||m.batchHashes.some(h=>!hex64(h)))return reply({ok:false,error:'SEED_MANIFEST_INVALID'},400);
+  const mh=await digest(m);
+  return store.transaction(async tx=>{
+   const prev=await tx.get(seedMarker);
+   if(prev)return reply(prev.manifestHash===mh?{ok:true,seed:seedView(prev)}:{ok:false,error:'DIFFERENT_SNAPSHOT_ALREADY_REGISTERED'},prev.manifestHash===mh?200:409);
+   const state=await tx.get('composite:state');
+   if(!state||state.pnl_schema!==1||state.total<121||state.unknown_pnl!==0)return reply({ok:false,error:'LIVE_BOOK_NOT_READY'},409);
+   const record={manifest:m,manifestHash:mh,status:'loading',next:0,processed:0,inserted:0,already:0,stale:0,corrected:0,lastId:null};
+   await tx.put(seedMarker,record);return reply({ok:true,seed:seedView(record)});
+  });
+ }
+ if(input?.action!=='batch'||!hex64(input.snapshot_hash)||!Number.isSafeInteger(input.index)||input.index<0||!Array.isArray(input.rows)||!input.rows.length||input.rows.length>100)return reply({ok:false,error:'SEED_BATCH_INVALID'},400);
+ const rows=input.rows.map(r=>canonicalSeed(normalizeRow(r)));
+ if(rows.some((r,i)=>r.odds!==null&&!Number.isFinite(r.odds)||i>0&&rows[i-1].signal_id>=r.signal_id))return reply({ok:false,error:'SEED_BATCH_ORDER_OR_ODDS'},400);
+ const bh=await digest(rows);
+ return store.transaction(async tx=>{
+  const rec=await tx.get(seedMarker);
+  if(!rec||rec.manifest.hash!==input.snapshot_hash||rec.manifest.batchHashes[input.index]!==bh)return reply({ok:false,error:'SEED_BATCH_HASH_MISMATCH'},409);
+  if(input.index<rec.next)return reply({ok:true,already_processed:true,seed:seedView(rec)});
+  if(rec.status!=='loading'||input.index!==rec.next||rows.length!==Math.min(100,rec.manifest.total-rec.processed)||rows[0].signal_id<=(rec.lastId??'')||rows.some(r=>r.settled_at>rec.manifest.cutoff))return reply({ok:false,error:'SEED_CHECKPOINT_MISMATCH'},409);
+  const state=await tx.get('composite:state');
+  if(!state||state.pnl_schema!==1||state.unknown_pnl!==0)throw Error('SEED_BOOK_STATE_INVALID');
+  for(const row of rows){
+   const r=await applyRevision(tx,state,row);
+   if(r.stale)rec.stale++;else if(r.duplicate)rec.already++;else if(r.corrected)rec.corrected++;else rec.inserted++;
+  }
+  rec.lastId=rows[rows.length-1].signal_id;rec.processed+=rows.length;rec.next++;
+  if(rec.processed===rec.manifest.total){rec.status='loaded';rec.completedAt=Date.now();}
+  if(rec.inserted+rec.already+rec.stale+rec.corrected!==rec.processed||state.unknown_pnl!==0)throw Error('SEED_TOTAL_INVARIANT');
+  await tx.put('composite:state',state);await tx.put(seedMarker,rec);
+  return reply({ok:true,seed:seedView(rec)});
+ });
+}
+async function auditBookPage(store,url){
+ const cursor=url.searchParams.get('cursor')??'';
+ if(cursor.length>512)return reply({ok:false},400);
+ const s=await store.get('composite:state');
+ const version=x=>x?JSON.stringify([x.total,x.corrections??0,x.pnl_units??null,x.unknown_pnl??null]):null;
+ const rows=await store.list({prefix:'composite:receipt:',limit:500,...(cursor?{startAfter:'composite:receipt:'+cursor}:{})});
+ const out=[...rows.values()].map(r=>canonicalSeed(normalizeRow(r)));
+ const after=await store.get('composite:state');
+ if(version(s)!==version(after))return reply({ok:false,error:'BOOK_CHANGED_DURING_PAGE'},409);
+ const seed=seedView(await store.get(seedMarker));
+ return reply({ok:true,readOnly:true,version:version(after),rows:out,next_cursor:out.length===500?out[out.length-1].signal_id:null,aggregate:after?{total:after.total,total_pnl:after.total_pnl??null,win_rate:after.winRate,raw_counts:Object.fromEntries(results.map(k=>[k,after[k]])),corrections:after.corrections??0}:null,seed});
 }
 const replayId='quarantine-replay-20261118-v1';
 async function authorized(req,expected){
@@ -72,6 +129,8 @@ export class ShadowProductionStore {
  async fetch(req){
   const store=this.ctx.storage,path=new URL(req.url).pathname;
   try{
+   if(path==='/audit-book-page-v1'&&req.method==='GET')return auditBookPage(store,new URL(req.url));
+   if(path==='/seed-history-v1'&&req.method==='POST')return seedHistorical(store,await req.json());
    if(path==='/state'&&req.method==='GET')return reply({ok:true,queue:await store.get('inbox:state')??state0(),book:await store.get('composite:state')??null,alarmScheduled:(await store.getAlarm())!==null});
    if(path==='/audit-snapshot'&&req.method==='GET'){
     // Only the private Durable Object binding can reach this handler.
@@ -192,6 +251,17 @@ export default {async fetch(req,env){
   if(u.hostname!=='ball46-shadow-receiver-production.mccarey-supon.workers.dev'||req.method!=='GET')return reply({ok:false},403);
   if(!await authorized(req,env.AUDIT_TOKEN))return reply({ok:false},403);
   return readAuditSnapshot(env,u);
+ }
+ if(u.pathname==='/audit-book-page-v1'){
+  if(u.hostname!=='ball46-shadow-receiver-production.mccarey-supon.workers.dev'||req.method!=='GET'||!await authorized(req,env.AUDIT_TOKEN))return reply({ok:false},403);
+  const book=env.SHADOW_STORE.get(env.SHADOW_STORE.idFromName('book-v1'));
+  const q=new URLSearchParams();if(u.searchParams.has('cursor'))q.set('cursor',u.searchParams.get('cursor'));
+  return book.fetch('https://store.internal/audit-book-page-v1?'+q);
+ }
+ if(u.pathname==='/seed-history-v1'){
+  if(u.hostname!=='ball46-shadow-receiver-production.mccarey-supon.workers.dev'||req.method!=='POST'||!await authorized(req,env.SEED_TOKEN))return reply({ok:false},403);
+  const book=env.SHADOW_STORE.get(env.SHADOW_STORE.idFromName('book-v1'));
+  return book.fetch('https://store.internal/seed-history-v1',req);
  }
  if(u.pathname==='/replay-quarantined-v1'){
   if(u.hostname!=='ball46-shadow-receiver-production.mccarey-supon.workers.dev'||req.method!=='POST'||!await authorized(req,env.REPLAY_TOKEN))return reply({ok:false},403);
