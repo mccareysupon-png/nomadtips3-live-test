@@ -109,7 +109,9 @@ async function metadataFor(next){
  const r=await fetch(url,{headers:{accept:'application/json','cache-control':'no-cache','user-agent':'Mozilla/5.0 B46-Receiver-Projection'},signal:AbortSignal.timeout(15000)});
  const d=await r.json();if(!r.ok||!d?.ok||d.statisticsSource!=='LEDGER_V2_ONLY'||!Array.isArray(d.rows))throw Error('METADATA_SOURCE_UNAVAILABLE');
  const row=d.rows.find(x=>String(x.id)===next.signal_id&&x.status==='SETTLED');
- if(!row||!same(normalizeRow(row),next))throw Error('METADATA_NOT_VERIFIED');
+ if(!row)throw Error('METADATA_NOT_VERIFIED');
+ const latest=normalizeRow(row);
+ if(latest.settled_at<next.settled_at||latest.settled_at===next.settled_at&&!same(latest,next))throw Error('METADATA_NOT_VERIFIED');
  return row;
 }
 async function applyEvent(store,event){
@@ -157,7 +159,9 @@ export async function projectionAlarm(store,env){
   const j=await readJournal(env,s.sequence);
   for(const e of j.events)await applyEvent(store,e);
   const after=await store.get(stateKey);
-  if(after.sequence===j.sequence){const graphs=await store.get(graphsKey);invariant(graphs,j.aggregate)}else delay=1000;
+  if(after.sequence===j.sequence){const graphs=await store.get(graphsKey);invariant(graphs,j.aggregate);
+   if(after.lastError)await store.transaction(async tx=>{const v=await tx.get(stateKey);if(v.sequence===after.sequence){v.lastError=null;await tx.put(stateKey,v)}});
+  }else delay=1000;
  }catch(e){
   await store.transaction(async tx=>{const v=await tx.get(stateKey);if(v){v.lastError=String(e.message).slice(0,100);await tx.put(stateKey,v)}});delay=30000;
  }
