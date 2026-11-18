@@ -53,24 +53,25 @@ const profile=async (routeMarket,market,mobile=false,interactive=false)=>{
   assert.equal(historic.length,0,market+':HISTORY_RECOUNT_ATTEMPT');
   assert(replaced.count>0);assert.equal(errors.length,0,JSON.stringify(errors));
   if(interactive){
-   await page.locator('[data-stage-pending]').click();
+   const tap=async loc=>{await loc.evaluate(el=>el.scrollIntoView({block:'center',inline:'nearest'}));await loc.click({timeout:12000})};
+   await tap(page.locator('[data-stage-pending]'));
    const p=projection.pendingPage({market});
    await page.waitForFunction(n=>document.querySelectorAll('[data-stage-records="pending"] tr').length===n,p.rows.length,{timeout:12000});
    if(p.rows.length){
-    await page.locator('[data-stage-records="pending"] tr').first().click();
+    await tap(page.locator('[data-stage-records="pending"] tr').first());
     const d=page.locator('[data-stage-match-detail]');await d.waitFor({timeout:12000});
     assert.deepEqual(JSON.parse(await d.textContent()),JSON.parse(JSON.stringify(p.rows[0])));
    }
-   await page.locator('#b46-fast-v1-preview .b46-fast-details:not([data-stage-pending])').first().click();
+   await tap(page.locator('#b46-fast-v1-preview .b46-fast-details:not([data-stage-pending])').first());
    const h=projection.historyPage({market});
    await page.waitForFunction(n=>document.querySelectorAll('[data-stage-records="history"] tr').length===n,h.rows.length,{timeout:12000});
    if(h.rows.length){
-    await page.locator('[data-stage-records="history"] tr').first().click();
+    await tap(page.locator('[data-stage-records="history"] tr').first());
     const d=page.locator('[data-stage-match-detail]');await d.waitFor({timeout:12000});
     assert.deepEqual(JSON.parse(await d.textContent()),JSON.parse(JSON.stringify(h.rows[0])));
    }
    if(h.next!=null){
-    await page.locator('[data-stage-records="history"] button').click();
+    await tap(page.locator('[data-stage-records="history"] button'));
     await page.waitForFunction(n=>document.querySelectorAll('[data-stage-records="history"] tr').length===n,Math.min(h.total,100),{timeout:12000});
    }
    assert.equal(historic.length,0);
