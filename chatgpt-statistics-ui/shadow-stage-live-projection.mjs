@@ -40,7 +40,7 @@ function fold(days,at){
  return {schema:1,ok:true,asOf:at,source:'STAGING_INCREMENTAL_BOOK',counts,win_rate:wins+losses?wins/(wins+losses)*100:0,summary:{rows,wins,losses,pushes,priced,net,stake:priced,roi:priced?net/priced*100:null,avgOdds:oddsN?oddsSum/oddsN:null,settledDays:first?Math.round((Date.parse(last)-Date.parse(first))/86400000)+1:null,maxDD,peak,bestRun},series};
 }
 const publicRow=r=>{const {_rank,...v}=r;return v};
-const normalize=(r,rank)=>({...r,id:id(r),market:String(r.market??r.market_type??''),settledAt:t(r),_rank:rank});
+const normalize=(r,rank)=>({...r,id:id(r),market:String(r.market??r.market_type??''),...(r.status==='SETTLED'?{settledAt:t(r)}:{}),_rank:rank});
 const rowOrder=(a,b)=>Number(b.createdAt)-Number(a.createdAt)||a._rank-b._rank;
 function insertSorted(a,r){let l=0,h=a.length;while(l<h){const m=(l+h)>>1;if(rowOrder(a[m],r)<=0)l=m+1;else h=m}a.splice(l,0,r)}
 export function createProjection(raw,{sequence=0,at=Date.now()}={}){
