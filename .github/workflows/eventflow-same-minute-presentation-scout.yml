@@ -1,0 +1,22 @@
+name: Event Flow presentation source scout (read only)
+on:
+  push:
+    branches: [test/ball46-eventflow-same-minute-20261118]
+    paths: ['.github/workflows/eventflow-same-minute-presentation-scout.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Inspect actual public inline presentation
+        run: |
+          curl --fail --silent --show-error --max-time 35 "https://ball46.com/?b46_presentation_scout=${GITHUB_RUN_ID}" -o /tmp/b46.html
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const s=fs.readFileSync('/tmp/b46.html','utf8');
+          for(const m of s.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)){
+            if(/b46-eventflow-signal-annotation|data-signal-minute/.test(m[2]))console.log('PRESENTATION_BEGIN\n'+m[2]+'\nPRESENTATION_END');
+          }
+          NODE
