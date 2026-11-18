@@ -127,14 +127,14 @@ async function authorized(req,expected){
  let diff=0;for(let i=0;i<aa.length;i++)diff|=aa[i]^bb[i];return diff===0;
 }
 export class ShadowProductionStore {
- constructor(ctx,env){this.ctx=ctx;this.env=env}
+ constructor(ctx,env){this.ctx=ctx;this.env=env;this.pendingCache=new Map()}
  async fetch(req){
   const store=this.ctx.storage,path=new URL(req.url).pathname;
   try{
    // Exact private projection read routes are GET-only, seed/wake are POST-only.
    if(path==='/projection-journal-v1'||['/projection-status-v1','/projection-graph-v1','/projection-pending-v1','/projection-pending-snapshot-v1'].includes(path)){
     if(req.method!=='GET')return reply({ok:false,error:'BOOK_PROJECTION_METHOD_NOT_ALLOWED',receivedMethod:req.method,expectedMethod:'GET'},405);
-    return path==='/projection-journal-v1'?journalRead(store,new URL(req.url)):projectionHandle(store,this.env,req);
+    return path==='/projection-journal-v1'?journalRead(store,new URL(req.url)):projectionHandle(store,this.env,req,this.pendingCache);
    }
    if(path==='/projection-seed-v1'||path==='/projection-wake-v1'){
     if(req.method!=='POST')return reply({ok:false,error:'BOOK_PROJECTION_METHOD_NOT_ALLOWED',receivedMethod:req.method,expectedMethod:'POST'},405);
