@@ -1,0 +1,27 @@
+name: B46 sidebar visual hotfix — staging only
+on:
+  push:
+    branches: [chatgpt/ball46-new-ledger-clean-v1]
+    paths: ['.github/workflows/b46-sidebar-visual-hotfix-stage.yml']
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: a010ff06d415d7f12d32cc8cac2ccbcde6d0e03b
+          persist-credentials: false
+      - run: |
+          npm install --prefix chatgpt-statistics-ui/.runtime --no-audit --no-fund playwright@1.55.0
+          chatgpt-statistics-ui/.runtime/node_modules/.bin/playwright install chromium --only-shell
+          node chatgpt-statistics-ui/sidebar-winrate-visual-hotfix-test.mjs
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() }}
+        with:
+          name: sidebar-visual-hotfix-screenshots
+          path: ${{ runner.temp }}/sidebar-visual-hotfix/*.png
+          if-no-files-found: ignore
+          retention-days: 14
