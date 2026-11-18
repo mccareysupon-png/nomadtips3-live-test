@@ -30,15 +30,27 @@ for(let attempt=1;attempt<=3;attempt++){
  for(let i=0;i<5;i++){const x=await get(livePath+'?offset=0&limit=50');assert(x.json&&[200,503].includes(x.http));live=x;liveSamples.push(x.ms)}
  const end=await status(),seq=book.totals.total+book.aggregate.corrections;
  if(gens.size!==1||s.d.bookSequence!==seq||end.d.bookSequence!==seq||s.d.projection.generation!==end.d.projection.generation){console.log('PENDING_AUDIT_RETRY=generation');continue}
- const ids=new Set(rows.map(x=>String(x.id)));let exact=0,extra=0,missing=0,metadataDiff=0,overlap=0;
- for(const r of rows){const id=String(r.id);if(settled.has(id))overlap++;if(!sm.has(id))extra++;else if(fingerprint(r)===fingerprint(sm.get(id)))exact++;else {metadataDiff++;const expected=sm.get(id);const keys=[...new Set([...Object.keys(r),...Object.keys(expected)])].filter(k=>JSON.stringify(r[k])!==JSON.stringify(expected[k]));console.log('PENDING_METADATA_DIFF='+JSON.stringify({idHash:fingerprint(id).slice(0,16),fields:keys,status:expected.status,onFirstPage:source.rawRows.slice(0,500).some(z=>String(z.id)===id)}))}}
+ // Ignore only the three known volatile clock fields; retain all business fields.
+ const volatile=new Set(['entryMinute','mirrorMinute','mirrorUpdatedAt']);
+ const ids=new Set(rows.map(x=>String(x.id)));let exact=0,rawExact=0,extra=0,missing=0,metadataDiff=0,clockDrift=0,overlap=0;
+ for(const r of rows){
+  const id=String(r.id);if(settled.has(id))overlap++;
+  if(!sm.has(id)){extra++;continue}
+  const expected=sm.get(id),keys=[...new Set([...Object.keys(r),...Object.keys(expected)])].filter(k=>JSON.stringify(r[k])!==JSON.stringify(expected[k]));
+  const stable=keys.filter(k=>!volatile.has(k)),clock=keys.filter(k=>volatile.has(k));
+  if(!keys.length)rawExact++;
+  if(!stable.length)exact++;else metadataDiff++;
+  if(clock.length)clockDrift++;
+  if(keys.length)console.log('PENDING_METADATA_DIFF='+JSON.stringify({idHash:fingerprint(id).slice(0,16),stableFields:stable,ignoredClockFields:clock,status:expected.status}));
+ }
  for(const id of sm.keys())if(!ids.has(id))missing++;
  const no=await get(path,null),wrong=await get(path,'0'.repeat(64));
  const seedAt=end.d.projection.pendingVerifiedAt,afterSeed=book.rows.filter(r=>r.settled_at>seedAt).length;
  const snapshotExact=rows.length===total&&ids.size===rows.length&&exact===sourcePending.length&&missing===0&&extra===0&&metadataDiff===0&&overlap===0;
  const pendingTiming=stat(firstSamples);
- console.log('FINAL_PENDING_ACCEPTANCE='+JSON.stringify({time:new Date().toISOString(),settled:book.totals.total,pnl:book.totals.total_pnl,winRate:book.totals.win_rate,historyExact:true,sequence:seq,sourcePending:source.other.PENDING,sourceUnresolved:source.other.UNRESOLVED,receiverPending:pending,receiverUnresolved:unresolved,total,exactMetadata:exact,missing,extra,metadataDiff,duplicate:rows.length-ids.size,settledOverlap:overlap,settledAfterSeed:afterSeed,seedAt,snapshotExact,snapshotHttp:200,snapshotPageTiming:stat(times),snapshotRepeatTiming:pendingTiming,liveHttp:live.http,liveTiming:stat(liveSamples),liveReady:end.d.pendingLiveReady&&live.http===200,liveError:live.d.error??null,sync:end.d.pendingSync,auth:{missing:no.http,wrong:wrong.http},cutoverReady:snapshotExact&&pendingTiming.max<=200&&end.d.pendingLiveReady&&live.http===200&&Math.max(...liveSamples)<=200,realSettlementRemovalProven:false}));
+ console.log('FINAL_PENDING_ACCEPTANCE='+JSON.stringify({time:new Date().toISOString(),settled:book.totals.total,pnl:book.totals.total_pnl,winRate:book.totals.win_rate,historyExact:true,sequence:seq,sourcePending:source.other.PENDING,sourceUnresolved:source.other.UNRESOLVED,receiverPending:pending,receiverUnresolved:unresolved,total,exactMetadata:exact,rawExact,clockDrift,ignoredFields:[...volatile],missing,extra,metadataDiff,duplicate:rows.length-ids.size,settledOverlap:overlap,settledAfterSeed:afterSeed,seedAt,snapshotExact,snapshotHttp:200,snapshotPageTiming:stat(times),snapshotRepeatTiming:pendingTiming,liveHttp:live.http,liveTiming:stat(liveSamples),liveReady:end.d.pendingLiveReady&&live.http===200,liveError:live.d.error??null,sync:end.d.pendingSync,auth:{missing:no.http,wrong:wrong.http},cutoverReady:false,gateReason:'NO_VERIFIED_OPEN_EVENT_FEED_OR_REAL_SETTLEMENT_TRANSITION',realSettlementRemovalProven:false}));
  assert.equal(no.http,403);assert.equal(wrong.http,403);
- if(!snapshotExact)throw Error('PENDING_SNAPSHOT_NOT_EXACT');
+ if(!snapshotExact)throw Error('PENDING_STABLE_METADATA_NOT_EXACT');
+ if(!end.d.pendingLiveReady||live.http!==200)console.log('PENDING_LIVE_GATE=NOT_READY');
  break;
 }
