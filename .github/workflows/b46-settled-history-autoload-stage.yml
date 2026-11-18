@@ -1,0 +1,28 @@
+name: B46 restore settled history autoload — staging only
+on:
+  push:
+    branches: [chatgpt/ball46-new-ledger-clean-v1]
+    paths: ['.github/workflows/b46-settled-history-autoload-stage.yml']
+permissions:
+  contents: read
+jobs:
+  stage:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 1d50bf7193f86c184f5f1660d182ce8bcc55c64b
+          persist-credentials: false
+      - run: |
+          node --check chatgpt-statistics-ui/settled-history-autoload-v1.mjs
+          npm install --prefix chatgpt-statistics-ui/.runtime --no-audit --no-fund playwright@1.55.0
+          chatgpt-statistics-ui/.runtime/node_modules/.bin/playwright install chromium --only-shell
+          node chatgpt-statistics-ui/settled-history-autoload-v1-test.mjs
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() }}
+        with:
+          name: settled-history-autoload-stage-screenshots
+          path: ${{ runner.temp }}/settled-history-stage/*.png
+          if-no-files-found: ignore
+          retention-days: 14
