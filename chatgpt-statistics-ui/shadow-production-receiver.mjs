@@ -19,12 +19,15 @@ export class ShadowProductionStore {
      return reply({total_received:q.received,duplicate_count:q.duplicates,pending_retry_queue:q.pending});
     }
     if(req.headers.get('x-audit-object')!=='book')return reply({ok:false},400);
+    const range=new URL(req.url).searchParams;
+    const from=range.has('from')?Number(range.get('from')):0,until=range.has('until')?Number(range.get('until')):Number.MAX_SAFE_INTEGER;
+    if(!Number.isSafeInteger(from)||!Number.isSafeInteger(until)||from<0||until<from)return reply({ok:false},400);
     const prefix='composite:receipt:',recent=[];let cursor,settled_count=0,total_pnl=0,w=0,l=0,unknownOdds=0;
     do{
      const rows=await store.list({prefix,limit:500,...(cursor?{startAfter:cursor}:{})});
      if(!rows.size)break;
      for(const [key,raw] of rows){
-      cursor=key;const r=normalizeRow(raw);settled_count++;
+      cursor=key;const r=normalizeRow(raw);if(r.settled_at<from||r.settled_at>until)continue;settled_count++;
       if(r.result==='WIN'||r.result==='HALF_WIN'){w++;const odds=Number(r.odds);if(r.odds===null||!Number.isFinite(odds)||odds<1)unknownOdds++;else total_pnl+=(odds-1)*(r.result==='HALF_WIN'?0.5:1);}
       if(r.result==='LOSS'||r.result==='HALF_LOSS'){l++;total_pnl-=r.result==='HALF_LOSS'?0.5:1;}
       recent.push(r);recent.sort((a,b)=>b.settled_at-a.settled_at||a.signal_id.localeCompare(b.signal_id));if(recent.length>5)recent.pop();
@@ -84,8 +87,17 @@ export class ShadowProductionStore {
 }
 export default {async fetch(req,env){
  const u=new URL(req.url);
+ if(u.pathname==='/audit-snapshot'){
+  if(u.hostname!=='ball46-shadow-receiver-production.mccarey-supon.workers.dev'||req.method!=='GET')return reply({ok:false},403);
+  const supplied=req.headers.get('authorization')??'',expected=env.AUDIT_TOKEN;
+  if(typeof expected!=='string'||expected.length!==64||supplied.length!==71)return reply({ok:false},403);
+  const aa=new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(supplied)));
+  const bb=new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode('Bearer '+expected)));
+  let diff=0;for(let i=0;i<aa.length;i++)diff|=aa[i]^bb[i];
+  if(diff!==0)return reply({ok:false},403);
+  return readAuditSnapshot(env,u);
+ }
  if(u.hostname!=='shadow.internal')return reply({ok:false},403);
- if(u.pathname==='/audit-snapshot')return reply({ok:false},403);
  const inbox=env.SHADOW_STORE.get(env.SHADOW_STORE.idFromName('inbox-v1'));
  if(u.pathname==='/health'&&req.method==='GET'){
   if(!env.SHADOW_HEALTH_TOKEN||req.headers.get('authorization')!=='Bearer '+env.SHADOW_HEALTH_TOKEN)return reply({ok:false,error:'AUTH_REJECTED'},403);
@@ -98,18 +110,22 @@ export default {async fetch(req,env){
  return reply({ok:false},404);
 }};
 
-// Named entrypoint is reachable only by a Cloudflare Service Binding targeting it.
-// The default HTTP entrypoint always rejects this path, even if a public route is added later.
+// Internal named binding stays private. The HTTPS route separately checks its own audit-only credential.
+async function readAuditSnapshot(env,u){
+  const range=new URLSearchParams();
+  for(const k of ['from','until'])if(u.searchParams.has(k))range.set(k,u.searchParams.get(k));
+  const query=range.toString();
+  const inbox=env.SHADOW_STORE.get(env.SHADOW_STORE.idFromName('inbox-v1'));
+  const book=env.SHADOW_STORE.get(env.SHADOW_STORE.idFromName('book-v1'));
+  const [a,b]=await Promise.all([inbox.fetch('https://store.internal/audit-snapshot',{headers:{'x-audit-object':'inbox'}}),book.fetch('https://store.internal/audit-snapshot'+(query?'?'+query:''),{headers:{'x-audit-object':'book'}})]);
+  if(!a.ok||!b.ok)return reply({ok:false},b.status===400?400:503);
+  return reply({inbox:await a.json(),book:await b.json(),readOnly:true});
+}
 export class AuditReader extends WorkerEntrypoint {
  async fetch(req){
   const u=new URL(req.url);
   if(u.hostname!=='shadow.internal'||u.pathname!=='/audit-snapshot')return reply({ok:false},403);
   if(req.method!=='GET')return reply({ok:false},405);
-  const env=this.env;
-  const inbox=env.SHADOW_STORE.get(env.SHADOW_STORE.idFromName('inbox-v1'));
-  const book=env.SHADOW_STORE.get(env.SHADOW_STORE.idFromName('book-v1'));
-  const [a,b]=await Promise.all([inbox.fetch('https://store.internal/audit-snapshot',{headers:{'x-audit-object':'inbox'}}),book.fetch('https://store.internal/audit-snapshot',{headers:{'x-audit-object':'book'}})]);
-  if(!a.ok||!b.ok)return reply({ok:false},503);
-  return reply({inbox:await a.json(),book:await b.json(),readOnly:true});
+  return readAuditSnapshot(this.env,u);
  }
 }
