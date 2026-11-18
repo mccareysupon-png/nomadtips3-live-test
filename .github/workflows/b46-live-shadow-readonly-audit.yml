@@ -56,10 +56,12 @@ jobs:
                 }
                 return {count:items.length,pnl:unknown?null:Math.round(pnl*1e8)/1e8,winRate:w+l?w/(w+l)*100:0,latest:items.slice(0,5).map(r=>({idHash:qaId(r.id),settled_at:Number(r.settledAt),market_type:r.market??null,odds:r.odds??null,result:r.result}))};
               };
-              const baseline=summarize(ordered.filter(r=>Number(r.settledAt)<=Date.parse('2026-11-17T23:26:57.974Z')));
-              const current=summarize(ordered.filter(r=>Number(r.settledAt)>=actual));
+              const baselineUntil=Date.parse('2026-11-18T00:08:25.185Z');
+              const baseline=summarize(ordered.filter(r=>Number(r.settledAt)>=actual&&Number(r.settledAt)<=baselineUntil));
+              const currentUntil=Date.now();
+              const current=summarize(ordered.filter(r=>Number(r.settledAt)>=actual&&Number(r.settledAt)<=currentUntil));
               result('LEGACY_AUDIT_TOTALS',{baseline,current,archiveExhausted:!cursor,pnlUnit:'1 unit per signal; decimal odds; PUSH excluded from win rate'});
-              require('node:fs').writeFileSync(process.env.RUNNER_TEMP+'/b46-legacy-audit.json',JSON.stringify({baseline,current,archiveExhausted:!cursor}));
+              require('node:fs').writeFileSync(process.env.RUNNER_TEMP+'/b46-legacy-audit.json',JSON.stringify({baseline,current,baselineUntil,currentUntil,actual,archiveExhausted:!cursor}));
               result('LEGACY_SETTLEMENT_AUDIT',{checkedAt:iso(Date.now()),cutoff:iso(cutoff),activation:iso(actual),source,pages,scanned,archiveExhausted:!cursor,matched:ordered.length,fixtures:new Set(ordered.map(r=>r.fixtureId).filter(Boolean)).size,latest:ordered.slice(0,5).map(r=>({idHash:qaId(r.id),fixtureHash:r.fixtureId?qaId(r.fixtureId):null,settledAt:iso(Number(r.settledAt)),result:r.result,market:r.market??null,odds:r.odds??null,afterActualDeploy:Number(r.settledAt)>=actual}))});
             }catch(e){result('LEGACY_READ_ERROR',e.message)}
             try{
@@ -88,58 +90,34 @@ jobs:
             }
           })().catch(e=>{console.error('AUDIT_FAILED='+String(e.message).slice(0,120));process.exitCode=1});
           JS
-      - name: Read private named Receiver Service Binding (no production deployment)
-        env:
-          CLOUDFLARE_ACCOUNT_ID: '62cb0db544160e6591342abd6b4f35cc'
+      - name: Audit authenticated HTTPS Receiver snapshot (read only)
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p "$RUNNER_TEMP/b46-private-read"
-          cd "$RUNNER_TEMP/b46-private-read"
-          npm install --no-save --no-package-lock --ignore-scripts wrangler@4.92.0
-          cat > wrangler.json <<'JSON'
-          {"name":"b46-private-audit-local","compatibility_date":"2026-11-17","workers_dev":false,"preview_urls":false,"services":[{"binding":"RECEIVER","service":"ball46-shadow-receiver-production","entrypoint":"AuditReader","remote":true},{"binding":"RECEIVER_DEFAULT","service":"ball46-shadow-receiver-production","remote":true}]}
-          JSON
           node --input-type=module <<'JS'
-          import {getPlatformProxy} from 'wrangler';
-          import {createHash} from 'node:crypto';
+          import {createHmac,createHash} from 'node:crypto';
           import {readFileSync} from 'node:fs';
+          const key=createHmac('sha256',process.env.CLOUDFLARE_API_TOKEN).update('ball46/receiver/https-audit/v1/20261118').digest('hex');
+          console.log('::add-mask::'+key);
+          const base='https://ball46-shadow-receiver-production.mccarey-supon.workers.dev/audit-snapshot';
           const hash=s=>createHash('sha256').update(String(s)).digest('hex').slice(0,16);
-          const base='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID;
-          const headers={authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN};
-          const res=await fetch(base+'/workers/scripts/ball46-shadow-receiver-production/deployments?per_page=1',{headers,signal:AbortSignal.timeout(20000)});
-          const dep=await res.json();
-          if(!res.ok||!dep.success)throw Error('RECEIVER_DEPLOYMENT_READ_FAILED');
-          const versions=dep.result?.deployments?.[0]?.versions??[];
-          if(versions.length!==1||Number(versions[0].percentage)!==100||versions[0].version_id!=='d57d189b-e5f0-4695-b4d9-8e6d4725cd2b'){
-            throw Error('RECEIVER_SNAPSHOT_DEPLOYMENT_NOT_CONFIRMED');
+          const request=(url,token)=>fetch(url,{method:'GET',redirect:'manual',headers:{'user-agent':'Mozilla/5.0 B46-Audit',...(token?{authorization:'Bearer '+token}:{})},signal:AbortSignal.timeout(20000)});
+          const missing=await request(base),wrong=await request(base,'0'.repeat(64));
+          console.log('RECEIVER_AUTH_MISSING_HTTP='+missing.status);console.log('RECEIVER_AUTH_WRONG_HTTP='+wrong.status);
+          if(missing.status!==403||wrong.status!==403)throw Error('AUTH_REJECTION_FAILED');
+          let legacy;try{legacy=JSON.parse(readFileSync(process.env.RUNNER_TEMP+'/b46-legacy-audit.json','utf8'))}catch{}
+          const read=async(from,until)=>{
+            const u=new URL(base);if(from!=null)u.searchParams.set('from',String(from));if(until!=null)u.searchParams.set('until',String(until));
+            const r=await request(u,key);console.log('RECEIVER_AUTH_VALID_HTTP='+r.status);
+            if(r.status!==200)throw Error('AUTH_ACCEPTANCE_FAILED');
+            const d=await r.json();if(d.readOnly!==true||!d.inbox||!d.book||!Array.isArray(d.book.recent_5_signals))throw Error('UNEXPECTED_SNAPSHOT_SCHEMA');
+            return {inbox:d.inbox,book:{settled_count:d.book.settled_count,total_pnl:d.book.total_pnl,win_rate:d.book.win_rate,recent_5_signals:d.book.recent_5_signals.map(r=>({idHash:hash(r.signal_id),settled_at:r.settled_at,market_type:r.market_type,odds:r.odds,result:r.result}))},readOnly:true};
+          };
+          const current=await read(legacy?.actual,legacy?.currentUntil);
+          console.log('RECEIVER_AUDIT_SNAPSHOT='+JSON.stringify(current));
+          if(legacy){
+            const baseline=await read(legacy.actual,legacy.baselineUntil);
+            const compare=(l,r)=>({legacy:l,receiver:r.book,matched:l.latest.map(a=>{const b=r.book.recent_5_signals.find(x=>x.idHash===a.idHash);return {legacy:a,receiver:b??null,match:!!b&&a.market_type===b.market_type&&a.odds!=null&&b.odds!=null&&Number(a.odds)===Number(b.odds)&&a.result===b.result&&a.settled_at===b.settled_at}}),countMatch:l.count===r.book.settled_count,pnlMatch:l.pnl!=null&&r.book.total_pnl!=null&&Math.abs(l.pnl-r.book.total_pnl)<1e-8,winRateMatch:l.winRate!=null&&r.book.win_rate!=null&&Math.abs(l.winRate-r.book.win_rate)<1e-8});
+            console.log('RECEIVER_AUDIT_COMPARISON='+JSON.stringify({baseline:compare(legacy.baseline,baseline),current:compare(legacy.current,current),inbox:current.inbox,baselineUntil:legacy.baselineUntil,currentUntil:legacy.currentUntil,archiveExhausted:legacy.archiveExhausted,note:'Inbox counters cumulative; both book comparisons filtered to matching source settlement time window; not atomic; bounded legacy scan.'}));
           }
-          const sr=await fetch(base+'/workers/scripts/ball46-shadow-receiver-production/subdomain',{headers,signal:AbortSignal.timeout(20000)});
-          const sub=await sr.json();
-          if(!sr.ok||!sub.success||sub.result?.enabled!==false||sub.result?.previews_enabled===true)throw Error('RECEIVER_PUBLIC_EXPOSURE');
-          console.log('RECEIVER_PUBLIC_SUBDOMAIN_DISABLED=true');
-          try{
-            const external=await fetch('https://ball46-shadow-receiver-production.mccarey-supon.workers.dev/audit-snapshot',{method:'GET',redirect:'manual',signal:AbortSignal.timeout(10000)});
-            console.log('RECEIVER_PUBLIC_HTTP='+external.status);
-            if(external.status===200)throw Error('UNEXPECTED_PUBLIC_200');
-          }catch(e){if(e.message==='UNEXPECTED_PUBLIC_200')throw e;console.log('RECEIVER_PUBLIC_UNREACHABLE=true')}
-          const proxy=await getPlatformProxy({configPath:'wrangler.json',remoteBindings:true,persist:false});
-          try{
-            const url='https://shadow.internal/audit-snapshot';
-            const denied=await proxy.env.RECEIVER_DEFAULT.fetch(url,{method:'GET'});
-            console.log('RECEIVER_DEFAULT_HTTP='+denied.status);
-            if(denied.status!==403)throw Error('DEFAULT_ENTRYPOINT_EXPECTED_403');
-            const good=await proxy.env.RECEIVER.fetch(url,{method:'GET'});
-            console.log('RECEIVER_PRIVATE_HTTP='+good.status);
-            if(good.status!==200)throw Error('PRIVATE_ENTRYPOINT_EXPECTED_200');
-            const data=await good.json();
-            if(data.readOnly!==true||!data.inbox||!data.book||!Array.isArray(data.book.recent_5_signals))throw Error('UNEXPECTED_SNAPSHOT_SCHEMA');
-            const book={settled_count:data.book.settled_count,total_pnl:data.book.total_pnl,win_rate:data.book.win_rate,recent_5_signals:data.book.recent_5_signals.map(r=>({idHash:hash(r.signal_id),settled_at:r.settled_at,market_type:r.market_type,odds:r.odds,result:r.result}))};
-            console.log('RECEIVER_AUDIT_SNAPSHOT='+JSON.stringify({inbox:data.inbox,book,readOnly:true}));
-            let legacy;try{legacy=JSON.parse(readFileSync(process.env.RUNNER_TEMP+'/b46-legacy-audit.json','utf8'))}catch{}
-            if(legacy){
-              const compare=rows=>rows.map(a=>{const b=book.recent_5_signals.find(x=>x.idHash===a.idHash);return {legacy:a,receiver:b??null,match:!!b&&a.market_type===b.market_type&&Number(a.odds)===Number(b.odds)&&a.odds!=null&&b.odds!=null&&a.result===b.result&&a.settled_at===b.settled_at};});
-              console.log('RECEIVER_AUDIT_COMPARISON='+JSON.stringify({baseline:legacy.baseline,current:legacy.current,receiverCount:book.settled_count,baselineRecent:compare(legacy.baseline.latest),currentRecent:compare(legacy.current.latest),note:'Receiver snapshot is cumulative; historical cohort equality not proven if later signals exist; legacy scan is bounded and reads are not atomic.'}));
-            }
-          }finally{await proxy.dispose()}
           JS
