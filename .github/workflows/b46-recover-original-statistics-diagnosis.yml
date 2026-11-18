@@ -1,0 +1,28 @@
+name: B46 recover original statistics — read-only exact source diagnosis
+on:
+  push:
+    branches: [chatgpt/ball46-new-ledger-clean-v1]
+    paths: ['.github/workflows/b46-recover-original-statistics-diagnosis.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - run: |
+          node --input-type=module <<'JS'
+          const host='https://www.ball46.com';
+          for(const path of ['/singlepage-workspace-343.js','/longterm-performance-343.js']){
+           const r=await fetch(host+path,{headers:{'cache-control':'no-cache','user-agent':'Mozilla/5.0 B46-Recovery'}});
+           const s=await r.text();
+           console.log('SOURCE_STATUS='+JSON.stringify({path,status:r.status,length:s.length}));
+           const terms=path.includes('workspace')?['function marketCounts','function renderStatNav','function renderTable','function startStatistics','async function loadStatistics','window.__B46_FAST_LOAD_DETAILS=','async function readAllOnce','async function load()','function setView','function filteredRows','function pageOnce','function normalize','function renderStats']:['function b46Legacy','function render(force','function active()'];
+           for(const term of terms){let i=s.indexOf(term);if(i>=0){let j=s.indexOf('\nfunction ',i+1);if(j<0||j-i>6500)j=i+3500;console.log('SOURCE_EXACT='+JSON.stringify({term,code:s.slice(i,j)}))}}
+          }
+          for(const path of ['/b46-receiver-v1/graph?market=all&variant=all&filter=all&range=all','/api/engine/statistics?paged=1']){
+           const t=Date.now(),r=await fetch(host+path,{headers:{'cache-control':'no-cache','user-agent':'Mozilla/5.0 B46-Recovery'},signal:AbortSignal.timeout(25000)});
+           let d;try{d=await r.json()}catch{}
+           console.log('DATA_CHECK='+JSON.stringify({path,status:r.status,ms:Date.now()-t,keys:Object.keys(d??{}),summary:d?.summary,counts:d?.counts,ledgerTotal:d?.ledgerTotal,total:d?.total,byMarket:d?.byMarket,rows:d?.rows?.length,ledgerRows:d?.ledgerRows?.length,next:!!d?.nextCursor,sequence:d?.sequence,ok:d?.ok}));
+          }
+          JS
