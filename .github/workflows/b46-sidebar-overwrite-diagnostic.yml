@@ -1,0 +1,45 @@
+name: B46 sidebar overwrite diagnosis (read-only)
+on:
+  push:
+    branches: [chatgpt/ball46-new-ledger-clean-v1]
+    paths: ['.github/workflows/b46-sidebar-overwrite-diagnostic.yml']
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: Identify actual active version and count writers
+        run: |
+          npm install --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium --only-shell
+          node --input-type=module <<'JS'
+          import {chromium} from 'playwright';
+          const host='https://www.ball46.com',root='https://api.cloudflare.com/client/v4/accounts/62cb0db544160e6591342abd6b4f35cc';
+          const r=await fetch(root+'/workers/scripts/ball46-production/deployments?per_page=1',{headers:{authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN}}),d=await r.json();
+          console.log('SIDEBAR_ACTIVE='+JSON.stringify(d.result?.deployments?.[0]?.versions));
+          const b=await chromium.launch(),p=await b.newPage({viewport:{width:1612,height:856}});const scripts=new Map(),errors=[];
+          p.on('pageerror',e=>errors.push(e.message));
+          p.on('response',async r=>{if(r.request().resourceType()==='script')try{scripts.set(r.url(),await r.text())}catch{}});
+          await p.addInitScript(()=>{
+           window.__b46writes=[];
+           const td=Object.getOwnPropertyDescriptor(Node.prototype,'textContent');
+           Object.defineProperty(Node.prototype,'textContent',{...td,set:function(v){if(this.nodeType===1&&this.matches?.('[data-stat-market] b')){let trace=String(new Error().stack).slice(0,800);if(window.__b46writes.length<160)window.__b46writes.push({m:this.closest('[data-stat-market]')?.dataset.statMarket,v:String(v),old:td.get.call(this),trace})}return td.set.call(this,v)}});
+          });
+          try{
+           await p.goto(host+'/?view=statistics',{waitUntil:'domcontentloaded'});
+           for(const delay of [2000,5000,10000,16000]){
+            await p.waitForTimeout(delay);
+            console.log('SIDEBAR_DIAG_STATE='+JSON.stringify(await p.evaluate(()=>({time:Date.now(),view:document.body.dataset.workspaceView,chart:document.querySelector('#b46-finance-chart-card')?.dataset,sidebar:[...document.querySelectorAll('[data-stat-market] b')].map(x=>({m:x.closest('[data-stat-market]').dataset.statMarket,text:x.textContent,data:x.dataset,color:getComputedStyle(x).color})),writes:window.__b46writes.splice(0)}))));
+           }
+           for(const [url,s] of scripts){
+            for(const term of ['b46Display','b46Zero','data-b46-display','data-b46-zero','function renderStatNav','function b46PaintSidebar','__B46_FAST_LOAD_DETAILS']){
+             const i=s.indexOf(term);if(i>=0)console.log('SIDEBAR_WRITER='+JSON.stringify({url,term,code:s.slice(Math.max(0,i-750),i+1400)}));
+            }
+           }
+           console.log('SIDEBAR_ERRORS='+JSON.stringify(errors));
+          }finally{await b.close()}
+          JS
