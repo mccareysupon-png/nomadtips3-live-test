@@ -132,17 +132,31 @@ try{
  assert.equal(canonical(await schedules()),canonical(crons),'CRONS_CHANGED');
  const browser=await puppeteer.launch({executablePath:process.env.CHROME_PATH,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
  try{
-  const page=await browser.newPage();await page.setViewport({width:1440,height:900});await page.setCacheEnabled(false);
-  const errors=[];page.on('pageerror',e=>errors.push(String(e)));
-  const response=await page.goto(origin+'/?b46ProdQA='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});assert(response.ok(),'PRODUCTION_PAGE_HTTP');
-  await page.waitForSelector('.match-row[data-match-id]',{timeout:45000});
-  const src=await page.evaluate(()=>[...document.scripts].find(s=>s.src.includes('expanded-match-343.js'))?.src||'');
-  assert(src.includes(newCache),'BROWSER_STALE_SCRIPT');
-  const matches=await page.$$eval('.match-row[data-match-id]',rows=>rows.length);
-  assert(matches>0,'NO_MATCH_ROWS');
-  await page.screenshot({path:'qa-output/production-page.png'});
-  report.browser={pageLoaded:true,matchRows:matches,script:src,pageErrors:errors};
-  // The exact current production asset is replayed separately in an isolated browser fixture.
+  let browserPass=false;
+  for(let attempt=0;attempt<4;attempt++){
+   assert.equal(await active(),candidate,'PRODUCTION_MOVED_DURING_BROWSER_CHECK');
+   const page=await browser.newPage();await page.setViewport({width:1440,height:900});await page.setCacheEnabled(false);await page.setBypassServiceWorker(true);
+   const errors=[],assetReads=[];page.on('pageerror',e=>errors.push(String(e)));
+   page.on('response',res=>{if(new URL(res.url()).pathname==='/expanded-match-343.js'){assetReads.push((async()=>{try{return {url:res.url(),status:res.status(),hash:sha(await res.buffer())}}catch(e){return {url:res.url(),status:res.status(),error:String(e)}}})())}});
+   try{
+    const nav=attempt===3?origin+'/':origin+'/?b46QA='+process.env.GITHUB_RUN_ID+'-'+Date.now();
+    const response=await page.goto(nav,{waitUntil:'domcontentloaded',timeout:45000});assert(response?.ok(),'PRODUCTION_PAGE_HTTP');
+    await page.waitForSelector('.match-row[data-match-id]',{timeout:30000});
+    await page.waitForFunction(()=>[...document.scripts].some(s=>s.src&&new URL(s.src).pathname==='/expanded-match-343.js'),{timeout:10000});
+    await delay(1200);
+    const scripts=await page.evaluate(()=>[...document.scripts].filter(s=>s.src&&new URL(s.src).pathname==='/expanded-match-343.js').map(s=>s.src));
+    const loaded=await Promise.all(assetReads);
+    const matches=await page.$$eval('.match-row[data-match-id]',rows=>rows.length);
+    const details={attempt:attempt+1,url:nav,scripts,loaded,matchRows:matches,pageErrors:errors};
+    console.log('BROWSER_VERIFICATION '+JSON.stringify(details));report.browserAttempts=[...(report.browserAttempts||[]),details];save();
+    if(scripts.length===1&&scripts[0].includes(newCache)&&loaded.some(x=>x.status===200&&x.hash===test.candidateHash&&x.url.includes(newCache))&&matches>0){
+     await page.screenshot({path:'qa-output/production-page.png'});report.browser={pageLoaded:true,matchRows:matches,script:scripts[0],assetHash:test.candidateHash,pageErrors:errors};browserPass=true;break;
+    }
+   }catch(e){console.log('BROWSER_VERIFICATION_RETRY '+String(e))}
+   finally{await page.close()}
+   await delay(3500);
+  }
+  assert(browserPass,'BROWSER_STALE_SCRIPT_OR_ASSET_BYTES');
   const pageHtml=(await pub('/')).toString('utf8');fs.writeFileSync('/tmp/b46page.html',pageHtml);
  }finally{await browser.close()}
  const replay=spawnSync(process.execPath,['qa/eventflow-same-minute-20261118/browser.mjs'],{encoding:'utf8',timeout:90000});
