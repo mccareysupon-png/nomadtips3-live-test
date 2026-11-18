@@ -12,7 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 7aeaf2c2d2fbdf6291cb6fc2436e2c13e27c872f
+          ref: b1359bae2dd26527069cad3087c440dd63a730d7
           persist-credentials: false
       - run: |
           node --check chatgpt-statistics-ui/settled-history-autoload-v1.mjs
