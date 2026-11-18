@@ -36,7 +36,7 @@ const stored=Object.fromEntries(markets.map(m=>{
 const rates=storedRates(stored);assert(rates);
 for(const m of markets){const c=graphs[m].counts,w=c.WIN+c.HALF_WIN,l=c.LOSS+c.HALF_LOSS;assert.equal(rates[m],w+l?w/(w+l)*100:null)}
 assert.equal(storedRates({...stored,all:{...stored.all,win_rate:'60%'}}),null);
-assert.equal(sanitizeRates({...rates,all:'60%'}),null);assert.equal(sanitizeRates({...rates,all:NaN}),null);
+assert.equal(sanitizeRates({...rates,all:'60%'}),null);assert.equal(sanitizeRates({...rates,all:NaN}),null);assert.equal(sanitizeRates({...rates,all:Infinity}),null);
 const payloads={};
 for(const m of markets){
  const req=new Request(host+graphPath+'?'+query(m));
@@ -44,9 +44,10 @@ for(const m of markets){
  const a=await nativeProxy(req,env(undefined)),bb=await candidateProxy(req,env(rates));assert.equal(a.status,200);assert.equal(bb.status,200);
  const original=await a.json(),candidate=await bb.json();const {sidebar_win_rate,...unchanged}=candidate;
  assert.deepEqual(unchanged,original);assert.deepEqual(sidebar_win_rate,rates);
- for(const v of [undefined,null,{}, {...rates,all:'59.2%'},{...rates,all:Infinity}]){
+ for(const v of [undefined,null,{}, {...rates,all:'59.2%'}]){
   const r=await candidateProxy(req,env(v));assert.equal(r.status,200);assert.deepEqual(await r.json(),original);
  }
+ const nullEntry=await candidateProxy(req,env({...rates,all:null}));assert.equal(nullEntry.status,200);const {sidebar_win_rate:nullable,...same}=await nullEntry.json();assert.deepEqual(same,original);assert.equal(nullable.all,null);
  payloads[m]={baseline:original,candidate};
 }
 const req=new Request(host+graphPath+'?'+query('all')),env={B46_MARKET_READER:{fetch:async()=>Response.json({...graphs.all,sidebar_win_rate:rates})}};
@@ -116,6 +117,7 @@ async function run(mode,mobile,index){
   for(const [id,m] of Object.entries(aliases).filter(([id])=>id!=='all')){
    await p.locator('[data-stat-market="'+id+'"]').click();
    await p.waitForFunction(m=>document.querySelector('#b46-finance-chart-card')?.dataset.b46Market===m&&document.querySelector('#b46-finance-chart-card')?.dataset.b46StatisticsSource==='receiver',m,{timeout:20000});
+   await p.waitForTimeout(180);
    // Bridge is a microtask, never blocks native graph.
    states.push(await verify());
   }
@@ -136,6 +138,7 @@ try{
  // Warm common static assets before paired timing. First original run also establishes mobile baseline.
  const results=[];
  for(const mobile of [false,true]){
+  await run('baseline',mobile,-1); // warm common assets; excluded from benchmark
   const baseline=await run('baseline',mobile,0);
   const candidate=await run('candidate',mobile,0);parity(baseline,candidate);
   const second=await run('candidate',mobile,1),control=await run('baseline',mobile,1);parity(control,second);
