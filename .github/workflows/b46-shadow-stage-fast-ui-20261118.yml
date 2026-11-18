@@ -1,0 +1,30 @@
+name: B46 isolated staging fast market UI QA (READ ONLY)
+on:
+  push:
+    branches: [chatgpt/ball46-new-ledger-clean-v1]
+    paths: ['.github/workflows/b46-shadow-stage-fast-ui-20261118.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: b46-shadow-stage-fast-ui-readonly
+  cancel-in-progress: false
+jobs:
+  staging:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: af44d4b603a6cac1adb1dde8c5faecefb40a7f2c
+          persist-credentials: false
+      - name: Read-only Pending source capability check
+        run: node chatgpt-statistics-ui/shadow-stage-pending-probe.mjs
+      - name: Install isolated Chromium runtime
+        run: |
+          npm install --prefix chatgpt-statistics-ui/.runtime --no-audit --no-fund playwright@1.55.0
+          chatgpt-statistics-ui/.runtime/node_modules/.bin/playwright install chromium --only-shell
+      - name: Check fast markets, bounded lists, detail parity and local live update using real UI assets
+        run: node chatgpt-statistics-ui/shadow-stage-fast-ui-test.mjs
