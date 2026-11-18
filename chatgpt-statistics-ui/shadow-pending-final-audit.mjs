@@ -31,7 +31,7 @@ for(let attempt=1;attempt<=3;attempt++){
  const end=await status(),seq=book.totals.total+book.aggregate.corrections;
  if(gens.size!==1||s.d.bookSequence!==seq||end.d.bookSequence!==seq||s.d.projection.generation!==end.d.projection.generation){console.log('PENDING_AUDIT_RETRY=generation');continue}
  const ids=new Set(rows.map(x=>String(x.id)));let exact=0,extra=0,missing=0,metadataDiff=0,overlap=0;
- for(const r of rows){const id=String(r.id);if(settled.has(id))overlap++;if(!sm.has(id))extra++;else if(fingerprint(r)===fingerprint(sm.get(id)))exact++;else metadataDiff++}
+ for(const r of rows){const id=String(r.id);if(settled.has(id))overlap++;if(!sm.has(id))extra++;else if(fingerprint(r)===fingerprint(sm.get(id)))exact++;else {metadataDiff++;const expected=sm.get(id);const keys=[...new Set([...Object.keys(r),...Object.keys(expected)])].filter(k=>JSON.stringify(r[k])!==JSON.stringify(expected[k]));console.log('PENDING_METADATA_DIFF='+JSON.stringify({idHash:fingerprint(id).slice(0,16),fields:keys,status:expected.status,onFirstPage:source.rawRows.slice(0,500).some(z=>String(z.id)===id)}))}}
  for(const id of sm.keys())if(!ids.has(id))missing++;
  const no=await get(path,null),wrong=await get(path,'0'.repeat(64));
  const seedAt=end.d.projection.pendingVerifiedAt,afterSeed=book.rows.filter(r=>r.settled_at>seedAt).length;
