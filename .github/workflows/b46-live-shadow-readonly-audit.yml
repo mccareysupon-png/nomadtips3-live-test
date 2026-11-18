@@ -47,7 +47,7 @@ jobs:
                 for(const row of d.rows)if(row?.id&&row.status==='SETTLED'&&['WIN','HALF_WIN','LOSS','HALF_LOSS','PUSH'].includes(row.result)&&Number(row.settledAt)>=cutoff)rows.set(String(row.id),row);
                 const next=d.nextCursor??null;if(next===cursor){cursor=null;break}cursor=next;
               }while(cursor&&pages<8);
-              const ordered=[...rows.values()].sort((a,b)=>Number(b.settledAt)-Number(a.settledAt));
+              const ordered=[...rows.values()].sort((a,b)=>Number(b.settledAt)-Number(a.settledAt)||(String(a.id)<String(b.id)?1:String(a.id)>String(b.id)?-1:0));
               const summarize=items=>{
                 let w=0,l=0,pnl=0,unknown=0;
                 for(const r of items){
@@ -57,11 +57,12 @@ jobs:
                 return {count:items.length,pnl:unknown?null:Math.round(pnl*1e8)/1e8,winRate:w+l?w/(w+l)*100:0,latest:items.slice(0,5).map(r=>({idHash:qaId(r.id),settled_at:Number(r.settledAt),market_type:r.market??null,odds:r.odds??null,result:r.result}))};
               };
               const baselineUntil=Date.parse('2026-11-18T00:08:25.185Z');
-              const baseline=summarize(ordered.filter(r=>Number(r.settledAt)>=actual&&Number(r.settledAt)<=baselineUntil));
+              const baselineRows=ordered.filter(r=>Number(r.settledAt)>=actual&&Number(r.settledAt)<=baselineUntil);
+              const baseline=summarize(baselineRows);
               const currentUntil=Date.now();
               const current=summarize(ordered.filter(r=>Number(r.settledAt)>=actual&&Number(r.settledAt)<=currentUntil));
               result('LEGACY_AUDIT_TOTALS',{baseline,current,archiveExhausted:!cursor,pnlUnit:'1 unit per signal; decimal odds; PUSH excluded from win rate'});
-              require('node:fs').writeFileSync(process.env.RUNNER_TEMP+'/b46-legacy-audit.json',JSON.stringify({baseline,current,baselineUntil,currentUntil,actual,archiveExhausted:!cursor}));
+              require('node:fs').writeFileSync(process.env.RUNNER_TEMP+'/b46-legacy-audit.json',JSON.stringify({baseline,current,baselineUntil,currentUntil,actual,archiveExhausted:!cursor,baselineRows:baselineRows.map(r=>({signal_id:String(r.id),settled_at:Number(r.settledAt),market_type:r.market??null,odds:r.odds??null,result:r.result}))}));
               result('LEGACY_SETTLEMENT_AUDIT',{checkedAt:iso(Date.now()),cutoff:iso(cutoff),activation:iso(actual),source,pages,scanned,archiveExhausted:!cursor,matched:ordered.length,fixtures:new Set(ordered.map(r=>r.fixtureId).filter(Boolean)).size,latest:ordered.slice(0,5).map(r=>({idHash:qaId(r.id),fixtureHash:r.fixtureId?qaId(r.fixtureId):null,settledAt:iso(Number(r.settledAt)),result:r.result,market:r.market??null,odds:r.odds??null,afterActualDeploy:Number(r.settledAt)>=actual}))});
             }catch(e){result('LEGACY_READ_ERROR',e.message)}
             try{
@@ -106,18 +107,39 @@ jobs:
           console.log('RECEIVER_AUTH_MISSING_HTTP='+missing.status);console.log('RECEIVER_AUTH_WRONG_HTTP='+wrong.status);
           if(missing.status!==403||wrong.status!==403)throw Error('AUTH_REJECTION_FAILED');
           let legacy;try{legacy=JSON.parse(readFileSync(process.env.RUNNER_TEMP+'/b46-legacy-audit.json','utf8'))}catch{}
-          const read=async(from,until)=>{
-            const u=new URL(base);if(from!=null)u.searchParams.set('from',String(from));if(until!=null)u.searchParams.set('until',String(until));
-            const r=await request(u,key);console.log('RECEIVER_AUTH_VALID_HTTP='+r.status);
-            if(r.status!==200)throw Error('AUTH_ACCEPTANCE_FAILED');
-            const d=await r.json();if(d.readOnly!==true||!d.inbox||!d.book||!Array.isArray(d.book.recent_5_signals))throw Error('UNEXPECTED_SNAPSHOT_SCHEMA');
-            return {inbox:d.inbox,book:{settled_count:d.book.settled_count,total_pnl:d.book.total_pnl,win_rate:d.book.win_rate,recent_5_signals:d.book.recent_5_signals.map(r=>({idHash:hash(r.signal_id),settled_at:r.settled_at,market_type:r.market_type,odds:r.odds,result:r.result}))},readOnly:true};
-          };
-          const current=await read(legacy?.actual,legacy?.currentUntil);
-          console.log('RECEIVER_AUDIT_SNAPSHOT='+JSON.stringify(current));
-          if(legacy){
-            const baseline=await read(legacy.actual,legacy.baselineUntil);
-            const compare=(l,r)=>({legacy:l,receiver:r.book,matched:l.latest.map(a=>{const b=r.book.recent_5_signals.find(x=>x.idHash===a.idHash);return {legacy:a,receiver:b??null,match:!!b&&a.market_type===b.market_type&&a.odds!=null&&b.odds!=null&&Number(a.odds)===Number(b.odds)&&a.result===b.result&&a.settled_at===b.settled_at}}),countMatch:l.count===r.book.settled_count,pnlMatch:l.pnl!=null&&r.book.total_pnl!=null&&Math.abs(l.pnl-r.book.total_pnl)<1e-8,winRateMatch:l.winRate!=null&&r.book.win_rate!=null&&Math.abs(l.winRate-r.book.win_rate)<1e-8});
-            console.log('RECEIVER_AUDIT_COMPARISON='+JSON.stringify({baseline:compare(legacy.baseline,baseline),current:compare(legacy.current,current),inbox:current.inbox,baselineUntil:legacy.baselineUntil,currentUntil:legacy.currentUntil,archiveExhausted:legacy.archiveExhausted,note:'Inbox counters cumulative; both book comparisons filtered to matching source settlement time window; not atomic; bounded legacy scan.'}));
+          if(!legacy||!Array.isArray(legacy.baselineRows))throw Error('LEGACY_BASELINE_ROWS_UNAVAILABLE');
+          const u=new URL(base);u.searchParams.set('from',String(legacy.actual));u.searchParams.set('until',String(legacy.baselineUntil));u.searchParams.set('detail','1');
+          const res=await request(u,key);console.log('RECEIVER_AUTH_VALID_HTTP='+res.status);
+          if(res.status!==200)throw Error('AUDIT_DETAIL_HTTP_'+res.status);
+          const data=await res.json();
+          if(data.readOnly!==true||!data.inbox||!Array.isArray(data.book?.audit_rows)||!data.book.raw_counts)throw Error('DETAIL_SCHEMA_INVALID');
+          const a=legacy.baselineRows,b=data.book.audit_rows;
+          const cmp=(a,b)=>b.settled_at-a.settled_at||(a.signal_id<b.signal_id?1:a.signal_id>b.signal_id?-1:0);
+          const pnl=r=>{if(!r)return null;if(r.result==='PUSH')return 0;if(r.result==='LOSS')return -1;if(r.result==='HALF_LOSS')return -0.5;const n=Number(r.odds);if(r.odds==null||!Number.isFinite(n)||n<1)return null;if(r.result==='WIN')return n-1;if(r.result==='HALF_WIN')return (n-1)/2;return null};
+          const round=n=>n==null?null:Math.round(n*1e8)/1e8;
+          const stats=rows=>{const raw_counts={WIN:0,LOSS:0,HALF_WIN:0,HALF_LOSS:0,PUSH:0};let total=0,unknown=0;for(const r of rows){if(!(r.result in raw_counts))throw Error('UNKNOWN_RESULT');raw_counts[r.result]++;const p=pnl(r);if(p===null)unknown++;else total+=p}const w=raw_counts.WIN+raw_counts.HALF_WIN,l=raw_counts.LOSS+raw_counts.HALF_LOSS;return {count:rows.length,raw_counts,pnl:unknown?null:round(total),win_rate:w+l?w/(w+l)*100:0}};
+          const ma=new Map(a.map(r=>[r.signal_id,r])),mb=new Map(b.map(r=>[r.signal_id,r]));
+          if(ma.size!==a.length||mb.size!==b.length||b.length!==data.book.settled_count)throw Error('DETAIL_COUNT_OR_ID_DUPLICATION');
+          const sa=stats(a),sb=stats(b);
+          for(const k of Object.keys(sb.raw_counts))if(sb.raw_counts[k]!==data.book.raw_counts[k])throw Error('RECEIVER_RAW_COUNT_INCONSISTENCY');
+          if(sb.pnl!==data.book.total_pnl||Math.abs(sb.win_rate-data.book.win_rate)>1e-8)throw Error('RECEIVER_SUMMARY_INCONSISTENCY');
+          const view=r=>r?{result:r.result,odds:r.odds,market_type:r.market_type,settled_at:r.settled_at,pnl:round(pnl(r))}:null;
+          let resultDiff=0,pnlDiff=0,missing=0,extra=0,delta=0,unknownDelta=0,metadataDiff=0;const differences=[];
+          for(const id of new Set([...ma.keys(),...mb.keys()])){
+            const l=ma.get(id),r=mb.get(id),lp=pnl(l),rp=pnl(r);
+            if(!l)extra++;if(!r)missing++;
+            const rd=!!l&&!!r&&l.result!==r.result,pd=!!l&&!!r&&(lp==null||rp==null?lp!==rp:Math.abs(lp-rp)>1e-8);
+            if(rd)resultDiff++;if(pd)pnlDiff++;
+            if(l&&r&&(l.market_type!==r.market_type||l.settled_at!==r.settled_at||String(l.odds)!==String(r.odds)))metadataDiff++;
+            const d=(l&&lp===null)||(r&&rp===null)?null:round((rp??0)-(lp??0));
+            if(d===null)unknownDelta++;else delta+=d;
+            if(!l||!r||rd||pd){const item={signal_id:id,idHash:hash(id),reason:!l?'RECEIVER_ONLY':!r?'LEGACY_ONLY':rd&&pd?'RESULT_AND_PNL':rd?'RESULT':'PNL',legacy:view(l),receiver:view(r),delta:d};differences.push(item);console.log('DEEP_DIFF_ITEM='+JSON.stringify(item))}
           }
+          const top=rows=>[...rows].sort(cmp).slice(0,5);
+          const ta=top(a),tb=top(b),stored=data.book.recent_5_signals;
+          const topMatch=ta.map((l,i)=>({rank:i+1,legacy:{idHash:hash(l.signal_id),...view(l)},receiver:tb[i]?{idHash:hash(tb[i].signal_id),...view(tb[i])}:null,match:tb[i]?.signal_id===l.signal_id&&JSON.stringify(view(l))===JSON.stringify(view(tb[i]))}));
+          if(stored.length!==tb.length||stored.some((r,i)=>r.signal_id!==tb[i].signal_id))throw Error('COMPOSITE_CURSOR_INCONSISTENT');
+          console.log('DEEP_DIFF_RAW_COUNTS='+JSON.stringify({legacy:sa,receiver:sb}));
+          console.log('DEEP_DIFF_TOP5='+JSON.stringify(topMatch));
+          console.log('DEEP_DIFF_SUMMARY='+JSON.stringify({legacyCount:a.length,receiverCount:b.length,matchingIds:a.length-missing,missing,extra,resultDiff,pnlDiff,metadataDiff,mismatchRows:differences.length,delta:unknownDelta?null:round(delta),summaryDelta:sa.pnl==null||sb.pnl==null?null:round(sb.pnl-sa.pnl),inbox:data.inbox,baselineUntil:legacy.baselineUntil,archiveExhausted:legacy.archiveExhausted}));
           JS
