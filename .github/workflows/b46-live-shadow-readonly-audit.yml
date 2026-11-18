@@ -103,9 +103,9 @@ jobs:
           const base='https://ball46-shadow-receiver-production.mccarey-supon.workers.dev/audit-snapshot';
           const hash=s=>createHash('sha256').update(String(s)).digest('hex').slice(0,16);
           const request=(url,token)=>fetch(url,{method:'GET',redirect:'manual',headers:{'user-agent':'Mozilla/5.0 B46-Audit',...(token?{authorization:'Bearer '+token}:{})},signal:AbortSignal.timeout(20000)});
-          const missing=await request(base),wrong=await request(base,'0'.repeat(64));
-          console.log('RECEIVER_AUTH_MISSING_HTTP='+missing.status);console.log('RECEIVER_AUTH_WRONG_HTTP='+wrong.status);
-          if(missing.status!==403||wrong.status!==403)throw Error('AUTH_REJECTION_FAILED');
+          const noToken=await request(base),wrong=await request(base,'0'.repeat(64));
+          console.log('RECEIVER_AUTH_MISSING_HTTP='+noToken.status);console.log('RECEIVER_AUTH_WRONG_HTTP='+wrong.status);
+          if(noToken.status!==403||wrong.status!==403)throw Error('AUTH_REJECTION_FAILED');
           let legacy;try{legacy=JSON.parse(readFileSync(process.env.RUNNER_TEMP+'/b46-legacy-audit.json','utf8'))}catch{}
           if(!legacy||!Array.isArray(legacy.baselineRows))throw Error('LEGACY_BASELINE_ROWS_UNAVAILABLE');
           const u=new URL(base);u.searchParams.set('from',String(legacy.actual));u.searchParams.set('until',String(legacy.baselineUntil));u.searchParams.set('detail','1');
