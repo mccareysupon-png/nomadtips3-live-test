@@ -1,0 +1,56 @@
+name: B46 final cutover safety gate (READ ONLY)
+on:
+  push:
+    branches: [chatgpt/ball46-new-ledger-clean-v1]
+    paths: ['.github/workflows/b46-final-cutover-gate-20261118.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ROUTES_TOKEN: ${{ secrets.CLOUDFLARE_ROUTES_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 554570d83782cad98e63bcfb5b35bfba834a87d0
+          persist-credentials: false
+      - name: Verify actual release versions, all market timings, service binding and security settings
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {createHmac} from 'node:crypto';
+          const token=process.env.CLOUDFLARE_API_TOKEN,root='https://api.cloudflare.com/client/v4',account='62cb0db544160e6591342abd6b4f35cc';
+          async function cf(path,credential=token){const r=await fetch(root+path,{headers:{authorization:'Bearer '+credential},signal:AbortSignal.timeout(20000)}),d=await r.json();if(!r.ok||!d.success)throw Error('CF_READ_'+r.status);return d.result}
+          const active={};
+          for(const [name,id] of Object.entries({'ball46-production':'f5d9cf21-4b41-46da-bdd8-a841fa733d82','nomadtips3-engine-343':'db65134e-a12d-4084-937e-3ce6e986c251','ball46-shadow-receiver-production':'4af23d2f-8ff8-4ecb-bf5e-691bbfbb5d7d'})){
+            const v=(await cf('/accounts/'+account+'/workers/scripts/'+name+'/deployments?per_page=1')).deployments[0].versions;
+            assert(v.length===1&&v[0].percentage===100&&v[0].version_id===id,'ACTIVE_VERSION_DRIFT_'+name);active[name]=id;
+          }
+          console.log('FINAL_ACTIVE='+JSON.stringify(active));
+          const key=createHmac('sha256',token).update('ball46/receiver/https-audit/v1/20261118').digest('hex'),probe=createHmac('sha256',token).update('ball46/site/binding-preflight/v1/20261118').digest('hex');
+          console.log('::add-mask::'+key);console.log('::add-mask::'+probe);
+          const base='https://ball46-shadow-receiver-production.mccarey-supon.workers.dev';
+          async function read(host,path,k){const t=performance.now(),r=await fetch(host+path,{headers:{accept:'application/json','cache-control':'no-cache','user-agent':'Mozilla/5.0 B46-CutoverGate',...(k?{authorization:'Bearer '+k}:{})},signal:AbortSignal.timeout(25000),redirect:'manual'}),body=await r.text();let d;try{d=JSON.parse(body)}catch{}return {http:r.status,ms:Math.round(performance.now()-t),d}}
+          const status=await read(base,'/audit-projection-status-v1',key),pending=await read(base,'/audit-projection-pending-v1?limit=1',key);
+          const timings=[];
+          for(const m of ['all','AH','1X2','O/U','Corners','BTTS','Cards','Other']){
+            const samples=[];let total=null,seq=null;
+            for(let i=0;i<3;i++){const r=await read(base,'/audit-projection-graph-v1?market='+encodeURIComponent(m),key);samples.push({http:r.http,ms:r.ms,ok:r.d?.ok===true});total=r.d?.summary?.rows??null;seq=r.d?.sequence??null}
+            timings.push({market:m,samples,total,sequence:seq,maxMs:Math.max(...samples.map(x=>x.ms)),pass:samples.every(x=>x.http===200&&x.ok&&x.ms<200)});
+          }
+          const end=await read(base,'/audit-projection-status-v1',key);
+          const sb=await read('https://01f044ab-ball46-production.mccarey-supon.workers.dev','/_b46/internal/receiver-preflight-v1',probe);
+          const publicHead=await read('https://www.ball46.com','/b46-fast-v1/head');
+          let security={verified:false};
+          try{const z=await cf('/zones?name=ball46.com&account.id='+account,process.env.CLOUDFLARE_ROUTES_TOKEN||token);assert(z.length===1);const b=await cf('/zones/'+z[0].id+'/bot_management',process.env.CLOUDFLARE_ROUTES_TOKEN||token);security={verified:true,fightMode:b.fight_mode??null}}catch(e){security={verified:false,error:String(e.message)}}
+          console.log('FINAL_BOT_STATUS='+JSON.stringify(security));
+          console.log('FINAL_CUTOVER_PREFLIGHT='+JSON.stringify({status:status.http,graphReady:end.d?.graphReady,bookSequence:end.d?.bookSequence,projectionSequence:end.d?.projection?.sequence,lastError:end.d?.projection?.lastError,settled:end.d?.bookAggregate?.total,pnl:end.d?.bookAggregate?.total_pnl,winRate:end.d?.bookAggregate?.win_rate,pendingHttp:pending.http,pending:pending.d?.total,pendingCoverage:pending.d?.coverageVerified,coverageReason:pending.d?.coverageReason,marketTimings:timings,allMarketsUnder200:timings.every(x=>x.pass),serviceHttp:sb.http,serviceTotal:sb.d?.settled,serviceError:sb.d?.error??null,publicHeadHttp:publicHead.http,sourceChanged:false,eligible:!!(end.d?.graphReady&&end.d?.pendingLiveReady&&pending.d?.coverageVerified&&timings.every(x=>x.pass)&&sb.http===200&&status.d?.bookSequence===end.d?.bookSequence),cloudflareWrites:0}));
+          JS
+      - name: Full source parity and live Pending acceptance
+        if: ${{ !cancelled() }}
+        run: |
+          node chatgpt-statistics-ui/shadow-pending-final-audit.mjs
