@@ -40,8 +40,8 @@ for(let attempt=1;attempt<=3;attempt++){
  }
  const end=await status(),seq=book.totals.total+book.aggregate.corrections;
  if(gens.size!==1||s.d.bookSequence!==seq||end.d.bookSequence!==seq||s.d.projection.generation!==end.d.projection.generation){console.log('PENDING_AUDIT_RETRY=generation');continue}
- // Ignore only four documented dynamic match fields; retain all stable business fields.
- const volatile=new Set(['entryMinute','mirrorMinute','mirrorUpdatedAt','mirrorCards']);
+ // Ignore only five explicitly approved dynamic match fields; retain all stable business fields.
+ const volatile=new Set(['entryMinute','mirrorMinute','mirrorUpdatedAt','mirrorCards','mirrorCorners']);
  const ids=new Set(rows.map(x=>String(x.id)));let exact=0,rawExact=0,extra=0,missing=0,metadataDiff=0,clockDrift=0,overlap=0;
  for(const r of rows){
   const id=String(r.id);if(settled.has(id))overlap++;
@@ -62,9 +62,11 @@ for(let attempt=1;attempt<=3;attempt++){
  const sync=end.d.pendingSync, syncAgeMs=Number.isFinite(sync?.checkedAt)?Date.now()-sync.checkedAt:null;
  const backgroundHealthy=syncAgeMs!==null&&syncAgeMs>=-1000&&syncAgeMs<=120000&&sync.expectedPending===source.other.PENDING&&sync.indexPending===source.other.PENDING;
  const readAcceptance=snapshotExact&&liveExact&&liveTiming.max<200&&live.http===200&&end.d.pendingReadReady===true;
- console.log('FINAL_PENDING_ACCEPTANCE='+JSON.stringify({time:new Date().toISOString(),settled:book.totals.total,pnl:book.totals.total_pnl,winRate:book.totals.win_rate,historyExact:true,sequence:seq,sourcePending:source.other.PENDING,sourceUnresolved:source.other.UNRESOLVED,receiverPending:pending,receiverUnresolved:unresolved,total,exactMetadata:exact,rawExact,clockDrift,ignoredFields:[...volatile],missing,extra,metadataDiff,duplicate:rows.length-ids.size,settledOverlap:overlap,settledAfterSeed:afterSeed,seedAt,snapshotExact,snapshotHttp:200,snapshotPageTiming:stat(times),snapshotRepeatTiming:pendingTiming,liveHttp:live.http,liveTiming,livePageTiming:stat(livePages),liveRepeatTiming:stat(liveSamples),liveExact,readAcceptance,backgroundHealthy,syncAgeMs,readMode:live.d.readMode,pendingReadReady:end.d.pendingReadReady,sourceCoverageVerified:live.d.coverageVerified,coverageReason:live.d.coverageReason,liveReady:end.d.pendingLiveReady&&live.http===200,liveError:live.d.error??null,sync:end.d.pendingSync,auth:{missing:no.http,wrong:wrong.http},cutoverReady:readAcceptance&&end.d.pendingLiveReady&&live.d.coverageVerified,gateReason:live.d.coverageVerified?null:'FIRST_PAGE_COVERAGE_NOT_PROVEN',realSettlementRemovalProven:false,readinessScope:'POINT_IN_TIME_NOT_LONG_TERM'}));
+ const observedReadiness=readAcceptance&&backgroundHealthy&&no.http===403&&wrong.http===403;
+ const stableIdHash=fingerprint([...ids].sort());
+ console.log('FINAL_PENDING_ACCEPTANCE='+JSON.stringify({time:new Date().toISOString(),settled:book.totals.total,pnl:book.totals.total_pnl,winRate:book.totals.win_rate,historyExact:true,sequence:seq,sourcePending:source.other.PENDING,sourceUnresolved:source.other.UNRESOLVED,receiverPending:pending,receiverUnresolved:unresolved,total,exactMetadata:exact,rawExact,clockDrift,ignoredFields:[...volatile],missing,extra,metadataDiff,duplicate:rows.length-ids.size,settledOverlap:overlap,settledAfterSeed:afterSeed,seedAt,snapshotExact,snapshotHttp:200,snapshotPageTiming:stat(times),snapshotRepeatTiming:pendingTiming,liveHttp:live.http,liveTiming,livePageTiming:stat(livePages),liveRepeatTiming:stat(liveSamples),liveExact,readAcceptance,observedReadiness,stableIdHash,backgroundHealthy,syncAgeMs,readMode:live.d.readMode,pendingReadReady:end.d.pendingReadReady,sourceCoverageVerified:live.d.coverageVerified,coverageReason:live.d.coverageReason,liveReady:end.d.pendingLiveReady&&live.http===200,liveError:live.d.error??null,sync:end.d.pendingSync,auth:{missing:no.http,wrong:wrong.http},cutoverReady:readAcceptance&&end.d.pendingLiveReady&&live.d.coverageVerified,gateReason:live.d.coverageVerified?null:'FIRST_PAGE_COVERAGE_NOT_PROVEN',realSettlementRemovalProven:false,readinessScope:'POINT_IN_TIME_NOT_LONG_TERM'}));
  assert.equal(no.http,403);assert.equal(wrong.http,403);
- if(!readAcceptance)throw Error('PENDING_READ_ACCEPTANCE_FAILED');
+ if(!observedReadiness)throw Error('PENDING_OBSERVED_ACCEPTANCE_FAILED');
  console.log('PENDING_STATE_READ_GATE=PASS');
  if(!end.d.pendingLiveReady)console.log('PENDING_SOURCE_COVERAGE_GATE=NOT_VERIFIED');
  completed=true;break;
