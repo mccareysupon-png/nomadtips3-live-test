@@ -1,0 +1,29 @@
+name: B46 Sidebar Win Rate V1 — isolated staging only
+on:
+  push:
+    branches: [chatgpt/ball46-new-ledger-clean-v1]
+    paths: ['.github/workflows/b46-sidebar-winrate-staging.yml']
+permissions:
+  contents: read
+jobs:
+  staging:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fc3fa5e0b47c27b0de09f2f9ee4d60578c2f7ada
+          persist-credentials: false
+      - name: Install Chromium
+        run: |
+          npm install --prefix chatgpt-statistics-ui/.runtime --no-audit --no-fund playwright@1.55.0
+          chatgpt-statistics-ui/.runtime/node_modules/.bin/playwright install chromium --only-shell
+      - name: Local receiver read-only QA and isolated real browser UI checks
+        run: node chatgpt-statistics-ui/sidebar-winrate-v1-test.mjs
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() }}
+        with:
+          name: sidebar-winrate-staging-screenshots
+          path: ${{ runner.temp }}/sidebar-winrate-qa/*.png
+          if-no-files-found: ignore
+          retention-days: 14
