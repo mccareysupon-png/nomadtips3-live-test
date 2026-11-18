@@ -1,0 +1,36 @@
+name: B46 owner-requested restore original counts and history
+on:
+  push:
+    branches: [chatgpt/ball46-new-ledger-clean-v1]
+    paths: ['.github/workflows/b46-restore-original-history-v1.yml']
+permissions:
+  contents: read
+concurrency:
+  group: b46-history-restore-production
+  cancel-in-progress: false
+jobs:
+  restore:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: b06222db8c8519abc239bc57ff3a97a54b51a48e
+          persist-credentials: false
+      - name: Prepare and validate source
+        run: |
+          node --check chatgpt-statistics-ui/restore-original-history-v1.mjs
+          node --check chatgpt-statistics-ui/restore-original-history-v1-release.mjs
+          npm install --prefix chatgpt-statistics-ui/.runtime --no-audit --no-fund playwright@1.55.0
+          chatgpt-statistics-ui/.runtime/node_modules/.bin/playwright install chromium --only-shell
+      - name: Verify candidate and recover original UI or rollback
+        run: node chatgpt-statistics-ui/restore-original-history-v1-release.mjs
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() }}
+        with:
+          name: restore-original-history-evidence
+          path: ${{ runner.temp }}/restore-original-history/
+          if-no-files-found: ignore
+          retention-days: 14
