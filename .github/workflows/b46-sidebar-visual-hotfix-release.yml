@@ -1,0 +1,35 @@
+name: B46 approved sidebar visual repair — website only
+on:
+  push:
+    branches: [chatgpt/ball46-new-ledger-clean-v1]
+    paths: ['.github/workflows/b46-sidebar-visual-hotfix-release.yml']
+permissions:
+  contents: read
+concurrency:
+  group: b46-sidebar-visual-production
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 0060bf63c40a6dfab452d8b0246043e058d2e785
+          persist-credentials: false
+      - name: Prepare browser testing
+        run: |
+          node --check chatgpt-statistics-ui/sidebar-winrate-visual-hotfix-release.mjs
+          npm install --prefix chatgpt-statistics-ui/.runtime --no-audit --no-fund playwright@1.55.0
+          chatgpt-statistics-ui/.runtime/node_modules/.bin/playwright install chromium --only-shell
+      - name: Verify candidate, deploy frontend hotfix, confirm actual rendered percentages or rollback
+        run: node chatgpt-statistics-ui/sidebar-winrate-visual-hotfix-release.mjs
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() }}
+        with:
+          name: sidebar-visual-hotfix-production-evidence
+          path: ${{ runner.temp }}/sidebar-visual-release/
+          if-no-files-found: ignore
+          retention-days: 14
