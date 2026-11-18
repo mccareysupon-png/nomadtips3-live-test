@@ -17,3 +17,11 @@ export function patchHistoryAutoload(s){
   }
  `);
 }
+
+ // The sidebar replacement string swallowed one dollar in the original $$ selector.
+ // renderStatNav was throwing before native renderStats could run on snapshot events.
+export function patchHistoryWorkspace(s){
+ const anchor="function renderStatNav(){$('[data-stat-market]').forEach(";
+ if(s.split(anchor).length!==2)throw Error('HISTORY_NAV_ANCHOR_DRIFT');
+ return s.replace(anchor,()=> "function renderStatNav(){document.querySelectorAll('[data-stat-market]').forEach(");
+}
