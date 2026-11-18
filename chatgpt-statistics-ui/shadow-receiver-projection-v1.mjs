@@ -63,6 +63,7 @@ async function seed(store,env,input){
    if(input.index<s.nextDay)return json({ok:true,state:stateView(s)});
    if(s.status!=='loading'||input.index!==s.nextDay)return json({ok:false,error:'DAY_ORDER'},409);
    const rows=input.rows.map(r=>compact(r,r._rank));
+   if(new TextEncoder().encode(JSON.stringify(rows)).length>1500000)throw Error('DAY_BUCKET_TOO_LARGE');
    if(rows.some(r=>dayKey(r.settledAt)!==d.day))throw Error('DAY_MISMATCH');
    await tx.put(pfx+'day:'+d.day,rows);await tx.put(pfx+'daily:'+d.day,daily(rows));s.nextDay++;await tx.put(stateKey,s);return json({ok:true,state:stateView(s)});
   });
@@ -133,8 +134,11 @@ async function applyEvent(store,event){
   }
   if(!meta||String(meta.id)!==next.signal_id)throw Error('META_NOT_FOUND');
   const r=compact({...meta,...next,id:next.signal_id,settledAt:next.settled_at,market:next.market_type,result:next.result,odds:next.odds},meta._rank??Number.MAX_SAFE_INTEGER-event.seq);
-  const dest=affected.get(target);if(dest.some(x=>x.id===r.id))throw Error('EVENT_DUPLICATE_ID');dest.push(r);
+  const dest=affected.get(target);if(dest.some(x=>x.id===r.id))throw Error('EVENT_DUPLICATE_ID');
+  if(meta._rank==null&&dest.some(x=>x.settledAt===r.settledAt&&x.createdAt===r.createdAt))throw Error('EXACT_TIE_ORDER_METADATA_REQUIRED');
+  dest.push(r);
   for(const [d,rows] of affected){
+   if(new TextEncoder().encode(JSON.stringify(rows)).length>1500000)throw Error('DAY_BUCKET_TOO_LARGE');
    await tx.put(pfx+'day:'+d,rows);days[d]=daily(rows);await tx.put(pfx+'daily:'+d,days[d]);
   }
   const graphs=materialize(days,event.at);
