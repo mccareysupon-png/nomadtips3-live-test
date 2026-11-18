@@ -1,0 +1,35 @@
+name: B46 approved automatic settled history restore — website only
+on:
+  push:
+    branches: [chatgpt/ball46-new-ledger-clean-v1]
+    paths: ['.github/workflows/b46-settled-history-autoload-release.yml']
+permissions:
+  contents: read
+concurrency:
+  group: b46-history-autoload-production
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 14
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 990c5477224cd4da27f197cb8a5acd115216b675
+          persist-credentials: false
+      - name: Prepare browser testing
+        run: |
+          node --check chatgpt-statistics-ui/settled-history-autoload-v1-release.mjs
+          npm install --prefix chatgpt-statistics-ui/.runtime --no-audit --no-fund playwright@1.55.0
+          chatgpt-statistics-ui/.runtime/node_modules/.bin/playwright install chromium --only-shell
+      - name: Verify inactive candidate, activate, verify history and rollback if needed
+        run: node chatgpt-statistics-ui/settled-history-autoload-v1-release.mjs
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() }}
+        with:
+          name: settled-history-release-evidence
+          path: ${{ runner.temp }}/settled-history-release/
+          if-no-files-found: ignore
+          retention-days: 14
