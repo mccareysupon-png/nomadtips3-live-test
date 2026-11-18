@@ -8,7 +8,7 @@ import {readFullBook,compare,auditCredential} from './shadow-seed-audit.mjs';
 import {normalizeRow} from './shadow-composite-cursor-stage.mjs';
 import {marketGroup,MARKET_GROUPS} from './market-groups-stage.mjs';
 import {buildVerifiedGraph} from '../deploy-assets/ball46-statistics-fast-v1-20261116/graph-core.mjs';
-import {projectionHandle,projectionAlarm,projectionConstants,syncPendingFirstPage,nativeSelection} from './shadow-receiver-projection-v1.mjs';
+import {projectionHandle,projectionAlarm,projectionConstants,syncPendingFirstPage,nativeSelection,receiverOrder} from './shadow-receiver-projection-v1.mjs';
 const endpoint='https://ball46-shadow-receiver-production.mccarey-supon.workers.dev',groups=['all',...MARKET_GROUPS];
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
 const key=auditCredential();console.log('::add-mask::'+key);
@@ -175,6 +175,22 @@ async function local(){
   const x=await result(await projectionHandle(projectStore,env,req('/projection-graph-v1?'+query(c))));assert.equal(x.status,200,query(c));checkAdvanced(x.data,raw,c);testedFilters++;
  }
  const invalid=await result(await projectionHandle(projectStore,env,req('/projection-graph-v1?variant=ht')));assert.equal(invalid.status,400);
+ // Two newly accepted rows share createdAt and settledAt; deliver opposite native order.
+ // Verify daily and filtered graph metrics, not just totals. No synthetic production writes.
+ const tieCreated=Date.now()+200000,tieSettled=Date.now()+210000;
+ const tieRows=[{id:'LOCAL-TIE-A',status:'SETTLED',market:'ft_ah',selection:'home',createdAt:tieCreated,settledAt:tieSettled,result:'LOSS',odds:2},{id:'LOCAL-TIE-Z',status:'SETTLED',market:'ft_ah',selection:'home',createdAt:tieCreated,settledAt:tieSettled,result:'WIN',odds:2.3}];
+ assert.deepEqual([...tieRows].sort(receiverOrder).map(x=>x.id),['LOCAL-TIE-Z','LOCAL-TIE-A']);
+ const nativeSource=[...raw,...tieRows].sort((a,b)=>Number(b.createdAt)-Number(a.createdAt)||(String(a.id)<String(b.id)?1:String(a.id)>String(b.id)?-1:0));
+ const oldFetch=globalThis.fetch;
+ try{
+  globalThis.fetch=async()=>Response.json({ok:true,statisticsSource:'LEDGER_V2_ONLY',rows:tieRows});
+  for(const r of tieRows)assert.equal((await post(normalizeRow(r))).status,200);
+  await projectionAlarm(projectStore,env,{pendingFetcher:async()=>{throw Error('LOCAL_PENDING_SYNC_DISABLED')}});
+ }finally{globalThis.fetch=oldFetch}
+ for(const k of groups){const r=await graph(k);assert.equal(r.status,200);compareGraph(r.data,nativeSource,k)}
+ const tieFilter=await result(await projectionHandle(projectStore,env,req('/projection-graph-v1?market=AH&variant=ft_ah&filter=home')));
+ assert.equal(tieFilter.status,200);checkAdvanced(tieFilter.data,nativeSource,{market:'AH',variant:'ft_ah',filter:'home',range:'all'});
+ console.log('LOCAL_EXACT_TIE_ORDER_PASS='+JSON.stringify({reversedDelivery:true,canonicalDescendingId:true,allMarketGraphs:true,advancedFilter:true,productionWrites:0}));
  // Verify a new open observed only by the background updater; no synthetic production writes.
  const newOpen={...sourcePending[0],id:'LOCAL-PENDING-ONLY-OPEN',createdAt:Date.now(),status:'PENDING',market:'ft_ah'};
  const b=await bookStore.get('composite:state');
