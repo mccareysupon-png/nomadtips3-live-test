@@ -44,7 +44,7 @@ const normalize=(r,rank)=>({...r,id:id(r),market:String(r.market??r.market_type?
 const rowOrder=(a,b)=>Number(b.createdAt)-Number(a.createdAt)||a._rank-b._rank;
 function insertSorted(a,r){let l=0,h=a.length;while(l<h){const m=(l+h)>>1;if(rowOrder(a[m],r)<=0)l=m+1;else h=m}a.splice(l,0,r)}
 export function createProjection(raw,{sequence=0,at=Date.now()}={}){
- const records=new Map(),unsettled=new Map(),archive=[],buckets=new Map(K.map(k=>[k,new Map()])),days=new Map(K.map(k=>[k,new Map()])),graphs=new Map;
+ const records=new Map(),unsettled=new Map(),archive=[],marketArchives=new Map(MARKET_GROUPS.map(k=>[k,[]])),buckets=new Map(K.map(k=>[k,new Map()])),days=new Map(K.map(k=>[k,new Map()])),graphs=new Map;
  let rank=0,seq=sequence,generation=1,lastAt=at,ready=true,work={rows:0,buckets:0};
  const addBucket=(r,dirty,remove=false)=>{
   const d=day(t(r));for(const key of ['all',group(r)]){
@@ -65,10 +65,10 @@ export function createProjection(raw,{sequence=0,at=Date.now()}={}){
  const dirty=new Set;
  for(const rawRow of raw){
   const r=normalize(rawRow,rank++);if(!r.id||records.has(r.id))throw Error('DUPLICATE_BASELINE_ID');records.set(r.id,r);
-  if(r.status==='SETTLED'){if(!Number.isSafeInteger(r.settledAt)||r.settledAt<=0)throw Error('BAD_SETTLED_AT');archive.push(r);addBucket(r,dirty)}
+  if(r.status==='SETTLED'){if(!Number.isSafeInteger(r.settledAt)||r.settledAt<=0)throw Error('BAD_SETTLED_AT');archive.push(r);marketArchives.get(group(r)).push(r);addBucket(r,dirty)}
   else if(['PENDING','UNRESOLVED'].includes(r.status))unsettled.set(r.id,r);else throw Error('UNKNOWN_STATUS');
  }
- archive.sort(rowOrder);recalc(dirty);
+ archive.sort(rowOrder);for(const a of marketArchives.values())a.sort(rowOrder);recalc(dirty);
  for(const k of K)if(!graphs.has(k))graphs.set(k,fold(days.get(k),lastAt));
  function apply(event,metadata){
   if(!ready)throw Error('PROJECTION_NOT_READY');if(event.seq<=seq)return {duplicate:true,seq};
@@ -83,8 +83,8 @@ export function createProjection(raw,{sequence=0,at=Date.now()}={}){
   if(prior&&t(next)<=t(prior))throw Error('STALE_BOOK_REVISION');
   const r=normalize({...base,id:k,status:'SETTLED',result:next.result,market:next.market_type,odds:next.odds,settledAt:t(next)},old?._rank??rank++);
   const changes=new Set;
-  if(old?.status==='SETTLED'){addBucket(old,changes,true);const i=archive.indexOf(old);if(i<0)throw Error('ARCHIVE_INDEX_DRIFT');archive.splice(i,1)}
-  unsettled.delete(k);records.set(k,r);insertSorted(archive,r);addBucket(r,changes);seq=event.seq;generation++;lastAt=Math.max(lastAt,Number(event.at)||Date.now());recalc(changes);
+  if(old?.status==='SETTLED'){addBucket(old,changes,true);const i=archive.indexOf(old);if(i<0)throw Error('ARCHIVE_INDEX_DRIFT');archive.splice(i,1);const a=marketArchives.get(group(old)),j=a.indexOf(old);if(j<0)throw Error('MARKET_ARCHIVE_INDEX_DRIFT');a.splice(j,1)}
+  unsettled.delete(k);records.set(k,r);insertSorted(archive,r);insertSorted(marketArchives.get(group(r)),r);addBucket(r,changes);seq=event.seq;generation++;lastAt=Math.max(lastAt,Number(event.at)||Date.now());recalc(changes);
   return {seq,generation,...work};
  }
  // A pending generation is accepted only after complete upstream IDs/counts are verified.
@@ -100,7 +100,7 @@ export function createProjection(raw,{sequence=0,at=Date.now()}={}){
  }
  const readGraph=(k='all')=>{if(!ready||!graphs.has(k))throw Error('GRAPH_NOT_READY');return {...graphs.get(k),asOf:lastAt,generation,sequence:seq}};
  function pendingPage({market='all',offset=0,limit=50}={}){if(!ready||!K.includes(market)||!Number.isInteger(offset)||offset<0||!Number.isInteger(limit)||limit<1||limit>100)throw Error('BAD_PAGE');const all=[...unsettled.values()].filter(r=>market==='all'||group(r)===market).sort(rowOrder);return {generation,total:all.length,pending:all.filter(r=>r.status==='PENDING').length,unresolved:all.filter(r=>r.status==='UNRESOLVED').length,rows:all.slice(offset,offset+limit).map(publicRow),next:offset+limit<all.length?offset+limit:null}}
- function historyPage({market='all',offset=0,limit=50,expectedGeneration=generation}={}){if(!ready||expectedGeneration!==generation||!K.includes(market)||!Number.isInteger(offset)||offset<0||!Number.isInteger(limit)||limit<1||limit>100)throw Error('HISTORY_GENERATION_OR_PAGE');const selected=market==='all'?archive:archive.filter(r=>group(r)===market);return {generation,total:selected.length,rows:selected.slice(offset,offset+limit).map(publicRow),next:offset+limit<selected.length?offset+limit:null}}
+ function historyPage({market='all',offset=0,limit=50,expectedGeneration=generation}={}){if(!ready||expectedGeneration!==generation||!K.includes(market)||!Number.isInteger(offset)||offset<0||!Number.isInteger(limit)||limit<1||limit>100)throw Error('HISTORY_GENERATION_OR_PAGE');const selected=market==='all'?archive:marketArchives.get(market);return {generation,total:selected.length,rows:selected.slice(offset,offset+limit).map(publicRow),next:offset+limit<selected.length?offset+limit:null}}
  return {apply,refreshPending,readGraph,pendingPage,historyPage,detail:k=>records.has(k)?publicRow(records.get(k)):null,status:()=>({ready,sequence:seq,generation,asOf:lastAt,work,records:records.size})};
 }
 // Future Book transaction hook: accepted revision + outbox in SAME transaction.
