@@ -16,25 +16,29 @@ export class ShadowProductionStore {
     // Only the private Durable Object binding can reach this handler.
     if(req.headers.get('x-audit-object')==='inbox'){
      const q=await store.get('inbox:state')??state0();
-     return reply({total_received:q.received,duplicate_count:q.duplicates,pending_retry_queue:q.pending});
+     return reply({total_received:q.received,duplicate_count:q.duplicates,pending_retry_queue:q.pending,delivered:q.delivered,quarantined:q.quarantined});
     }
     if(req.headers.get('x-audit-object')!=='book')return reply({ok:false},400);
     const range=new URL(req.url).searchParams;
     const from=range.has('from')?Number(range.get('from')):0,until=range.has('until')?Number(range.get('until')):Number.MAX_SAFE_INTEGER;
     if(!Number.isSafeInteger(from)||!Number.isSafeInteger(until)||from<0||until<from)return reply({ok:false},400);
+    const detail=range.get('detail')==='1';
+    if(detail&&(!range.has('from')||!range.has('until')||until-from>86400000))return reply({ok:false},400);
+    const raw_counts={WIN:0,LOSS:0,HALF_WIN:0,HALF_LOSS:0,PUSH:0},audit_rows=[];
     const prefix='composite:receipt:',recent=[];let cursor,settled_count=0,total_pnl=0,w=0,l=0,unknownOdds=0;
     do{
      const rows=await store.list({prefix,limit:500,...(cursor?{startAfter:cursor}:{})});
      if(!rows.size)break;
      for(const [key,raw] of rows){
-      cursor=key;const r=normalizeRow(raw);if(r.settled_at<from||r.settled_at>until)continue;settled_count++;
+      cursor=key;const r=normalizeRow(raw);if(r.settled_at<from||r.settled_at>until)continue;settled_count++;raw_counts[r.result]++;
+      if(detail){if(audit_rows.length>=2000)return reply({ok:false,error:'AUDIT_WINDOW_TOO_LARGE'},413);audit_rows.push(r);}
       if(r.result==='WIN'||r.result==='HALF_WIN'){w++;const odds=Number(r.odds);if(r.odds===null||!Number.isFinite(odds)||odds<1)unknownOdds++;else total_pnl+=(odds-1)*(r.result==='HALF_WIN'?0.5:1);}
       if(r.result==='LOSS'||r.result==='HALF_LOSS'){l++;total_pnl-=r.result==='HALF_LOSS'?0.5:1;}
-      recent.push(r);recent.sort((a,b)=>b.settled_at-a.settled_at||a.signal_id.localeCompare(b.signal_id));if(recent.length>5)recent.pop();
+      recent.push(r);recent.sort((a,b)=>b.settled_at-a.settled_at||(a.signal_id<b.signal_id?1:a.signal_id>b.signal_id?-1:0));if(recent.length>5)recent.pop();
      }
      if(rows.size<500)break;
     }while(true);
-    return reply({settled_count,recent_5_signals:recent,total_pnl:unknownOdds?null:Math.round(total_pnl*1e8)/1e8,win_rate:w+l?w/(w+l)*100:0});
+    return reply({settled_count,recent_5_signals:recent,raw_counts,...(detail?{audit_rows}:{}),total_pnl:unknownOdds?null:Math.round(total_pnl*1e8)/1e8,win_rate:w+l?w/(w+l)*100:0});
    }
    if(req.method!=='POST')return reply({ok:false},405);
    if(path==='/book-post'){
@@ -113,12 +117,12 @@ export default {async fetch(req,env){
 // Internal named binding stays private. The HTTPS route separately checks its own audit-only credential.
 async function readAuditSnapshot(env,u){
   const range=new URLSearchParams();
-  for(const k of ['from','until'])if(u.searchParams.has(k))range.set(k,u.searchParams.get(k));
+  for(const k of ['from','until','detail'])if(u.searchParams.has(k))range.set(k,u.searchParams.get(k));
   const query=range.toString();
   const inbox=env.SHADOW_STORE.get(env.SHADOW_STORE.idFromName('inbox-v1'));
   const book=env.SHADOW_STORE.get(env.SHADOW_STORE.idFromName('book-v1'));
   const [a,b]=await Promise.all([inbox.fetch('https://store.internal/audit-snapshot',{headers:{'x-audit-object':'inbox'}}),book.fetch('https://store.internal/audit-snapshot'+(query?'?'+query:''),{headers:{'x-audit-object':'book'}})]);
-  if(!a.ok||!b.ok)return reply({ok:false},b.status===400?400:503);
+  if(!a.ok||!b.ok)return reply({ok:false},[400,413].includes(b.status)?b.status:503);
   return reply({inbox:await a.json(),book:await b.json(),readOnly:true});
 }
 export class AuditReader extends WorkerEntrypoint {
