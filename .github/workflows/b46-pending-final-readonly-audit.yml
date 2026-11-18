@@ -1,0 +1,35 @@
+name: B46 final Pending acceptance (READ ONLY)
+on:
+  push:
+    branches: [chatgpt/ball46-new-ledger-clean-v1]
+    paths: ['.github/workflows/b46-pending-final-readonly-audit.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 7889718653d49d74ee00b2cec988f15e71b58d06
+          persist-credentials: false
+      - name: Verify live Worker versions (GET only)
+        run: |
+          node --input-type=module <<'JS'
+          const root='https://api.cloudflare.com/client/v4/accounts/62cb0db544160e6591342abd6b4f35cc';
+          for(const [name,id] of Object.entries({'nomadtips3-engine-343':'db65134e-a12d-4084-937e-3ce6e986c251','ball46-production':'f5d9cf21-4b41-46da-bdd8-a841fa733d82','ball46-shadow-receiver-production':'50c48daf-b96f-47ec-af74-9157085ee24f'})){
+           const r=await fetch(root+'/workers/scripts/'+name+'/deployments?per_page=1',{headers:{authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN},signal:AbortSignal.timeout(25000)}),d=await r.json(),a=d.result?.deployments?.[0]?.versions;
+           if(!r.ok||!d.success||a?.length!==1||a[0].version_id!==id||a[0].percentage!==100)throw Error('ACTIVE_VERSION_DRIFT_'+name);
+           console.log('PENDING_ACTIVE_VERSION='+JSON.stringify({name,id,traffic:100}));
+          }
+          JS
+      - name: Compare every Pending ID and metadata, measure authenticated page and live read latency
+        shell: bash
+        run: |
+          set -euo pipefail
+          node chatgpt-statistics-ui/shadow-pending-final-audit.mjs | tee "$RUNNER_TEMP/pending-final.log"
+          grep -q '^FINAL_PENDING_ACCEPTANCE=' "$RUNNER_TEMP/pending-final.log"
