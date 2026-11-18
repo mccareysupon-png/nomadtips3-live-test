@@ -145,7 +145,7 @@ jobs:
           JS
       - uses: actions/checkout@v4
         with:
-          ref: 9e5cbf0016853f72f0f488033ed5f152ec611cb1
+          ref: bc5ba2d478cfd2a5e1beffb3a14342d888705b68
           persist-credentials: false
-      - name: Verify complete stable legacy history before seed (read only)
-        run: node chatgpt-statistics-ui/shadow-seed-snapshot.mjs
+      - name: Reconcile every settled historical signal and accumulated balance after seed (read only)
+        run: node chatgpt-statistics-ui/shadow-seed-audit.mjs
