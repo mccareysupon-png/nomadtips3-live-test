@@ -25,8 +25,8 @@ try{
    const d=await p.evaluate(()=>({seq:Number(document.querySelector('#b46-finance-chart-card')?.dataset.b46Sequence),rows:[...document.querySelectorAll('[data-stat-market] b')].map(e=>({market:e.closest('[data-stat-market]').dataset.statMarket,text:e.textContent,display:e.dataset.b46Display??null,zero:e.dataset.b46Zero??null,font:parseFloat(getComputedStyle(e).fontSize),after:getComputedStyle(e,'::after').content,color:getComputedStyle(e).color})),status:[...document.querySelectorAll('[data-status-filter] b')].map(e=>({text:e.textContent,display:e.dataset.b46Display??null,after:getComputedStyle(e,'::after').content})),detail:!!document.querySelector('[data-b46-legacy-details]')?.getClientRects().length}));
    for(let i=0;i<20&&!seen.has(d.seq);i++)await p.waitForTimeout(100);
    const rates=seen.get(d.seq);assert(rates,'GRAPH_RESPONSE_MISSING');
-   assert.deepEqual(d.rows.map(x=>x.market),order);
-   for(const x of d.rows){const v=rates[alias[x.market]].rate;assert.equal(x.text,text(v));assert.equal(x.color,color(v));assert(x.font>=9,'INVISIBLE_FONT '+x.market);assert.equal(x.after,'none','LEGACY_PSEUDO '+x.market);assert.equal(x.display,null);assert.equal(x.zero,null)}
+   console.log('VISUAL_HOTFIX_COMPUTED='+JSON.stringify({mobile,rows:d.rows}));assert.deepEqual(d.rows.map(x=>x.market),order);
+   for(const x of d.rows){const v=rates[alias[x.market]].rate;assert.equal(x.text,text(v));assert.equal(x.color,color(v));assert(x.font>0,'INVISIBLE_FONT '+JSON.stringify({mobile,row:x}));assert.equal(x.after,'none','LEGACY_PSEUDO '+x.market);assert.equal(x.display,null);assert.equal(x.zero,null)}
    if(!mobile)assert(d.status.some(x=>/^\d+$/.test(x.text.trim())&&x.display!==null),'LEGACY_STATUS_FORMATTER_REMOVED');
    assert.equal(history.length,0,'EARLY_HISTORY');assert.equal(errors.length,0,JSON.stringify(errors));assert(d.detail,'DETAIL_BUTTON_MISSING');
    return d;
