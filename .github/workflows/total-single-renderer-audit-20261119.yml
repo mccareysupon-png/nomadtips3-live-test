@@ -1,0 +1,26 @@
+name: BALL46 TOTAL card writers audit (read only)
+on:
+  push:
+    branches: [test/ball46-total-single-renderer-20261119]
+    paths: ['.github/workflows/total-single-renderer-audit-20261119.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install browser test dependency
+        run: |
+          npm install --prefix "$RUNNER_TEMP/b46qa" --no-save --no-package-lock puppeteer-core
+          echo "PUPPETEER_ENTRY=$(node -p "require.resolve('puppeteer-core',{paths:['$RUNNER_TEMP/b46qa']})")" >> "$GITHUB_ENV"
+          echo "CHROME_PATH=$(command -v google-chrome || command -v chromium)" >> "$GITHUB_ENV"
+      - name: Read production UI and record render ownership
+        run: node qa/total-single-renderer-20261119/scout.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: total-card-readonly-audit
+          path: audit/
+          retention-days: 5
