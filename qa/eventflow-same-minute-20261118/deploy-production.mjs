@@ -52,46 +52,55 @@ async function backend(){
  }return out;
 }
 async function activate(id,message){await api('/scripts/'+prod+'/deployments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({strategy:'percentage',versions:[{version_id:id,percentage:100}],annotations:{'workers/message':message}})})}
-async function upload(v,source){
+async function upload(v,source,ownerModule){
  const md={main_module:v.main_module,compatibility_date:v.compatibility_date,compatibility_flags:v.compatibility_flags||[],bindings:v.bindings,keep_assets:true,annotations:{'workers/tag':newCache,'workers/message':'Event Flow same-minute cards only'}};
  if(v.assets?.config)md.assets={config:v.assets.config};
  if(v.placement)md.placement=v.placement;
  const f=new FormData();f.append('metadata',new Blob([JSON.stringify(md)],{type:'application/json'}),'metadata.json');
- for(const m of v.modules){const bytes=m.name===v.main_module?Buffer.from(source):Buffer.from(m.content_base64,'base64');const type=m.content_type||(m.name===v.main_module||/\.m?js$/.test(m.name)?'application/javascript+module':m.name.endsWith('.bin')?'application/octet-stream':m.name.endsWith('.txt')?'text/plain':null);assert(type,'UNKNOWN_MODULE_TYPE '+m.name);f.append(m.name,new Blob([bytes],{type}),m.name)}
+ for(const m of v.modules){const bytes=m.name===ownerModule?Buffer.from(source):Buffer.from(m.content_base64,'base64');const type=m.content_type||(m.name===v.main_module||/\.m?js$/.test(m.name)?'application/javascript+module':m.name.endsWith('.bin')?'application/octet-stream':m.name.endsWith('.txt')?'text/plain':null);assert(type,'UNKNOWN_MODULE_TYPE '+m.name);f.append(m.name,new Blob([bytes],{type}),m.name)}
  const r=await api('/scripts/'+prod+'/versions',{method:'POST',body:f});assert(r.id,'NO_VERSION_ID');return r.id;
 }
 let base,candidate,activationAttempted=false;
 try{
  base=await active();report.rollbackVersion=base;save();console.log('PRODUCTION_ROLLBACK_POINT '+base);
- const current=await version(base), main=current.modules.find(m=>m.name===current.main_module);assert(main,'MAIN_MISSING');
+ const current=await version(base), ownerModule='index.js', main=current.modules.find(m=>m.name===ownerModule);assert(main,'EVENTFLOW_OWNER_MODULE_MISSING');
  const source=Buffer.from(main.content_base64,'base64').toString('utf8');
  const before=literals(source),hit=before.get(target);assert(hit,'TARGET_LITERAL_MISSING');
  const publicBefore=await pub('/expanded-match-343.js');
- assert.equal(sha(publicBefore),sha(Buffer.from(hit.value)),'ACTIVE_LITERAL_PUBLIC_HASH_MISMATCH');
+ assert.equal(sha(publicBefore),'eb4937cb82f438840da33ccbd303c42aa4536ade80dfb9634f56a104d7e41076','ACTIVE_PUBLIC_ASSET_DRIFT');
  const test=JSON.parse(fs.readFileSync('qa-output/expanded-match-343.candidate.js.report.json','utf8'));
  const patched=fs.readFileSync('qa-output/expanded-match-343.candidate.js','utf8');
  assert.equal(test.originalHash,sha(publicBefore),'PRODUCTION_SOURCE_DRIFT');
  assert.equal(test.candidateHash,sha(patched),'TEST_CANDIDATE_HASH_MISMATCH');
  assert.equal(test.candidateHash,'42a650f0a8313f1f21114171bef07cbe76831ad08bd35e969ab198ff601f198e','NOT_THE_TESTED_WORKER_CANDIDATE');
- let out=source.slice(0,hit.start)+JSON.stringify(patched)+source.slice(hit.end);
+ const needle='function signalMarkers(rows,points,current,w,h,pad){';
+ const boundary='/* EVENT FLOW Mobile V2:';
+ function block(x){const a=x.indexOf(needle),b=x.indexOf(boundary,a);assert(a>=0&&b>a&&x.indexOf(needle,a+1)===-1,'RENDERER_BLOCK_NOT_UNIQUE');return {a,b,text:x.slice(a,b)}}
+ const p0=block(publicBefore.toString()),p1=block(patched),embedded=block(hit.value);
+ const ast=x=>JSON.stringify(parse(x,{ecmaVersion:'latest'}),(k,v)=>['start','end','raw'].includes(k)?undefined:v);
+ assert.equal(ast(embedded.text),ast(p0.text),'EMBEDDED_RENDERER_SEMANTIC_DRIFT');
+ const patchedLiteral=hit.value.slice(0,embedded.a)+p1.text+hit.value.slice(embedded.b);
+ assert.equal(ast(block(patchedLiteral).text),ast(p1.text));
+ console.log('EXACT_RENDERER_OWNER_VERIFIED '+ownerModule+' '+target);
+ let out=source.slice(0,hit.start)+JSON.stringify(patchedLiteral)+source.slice(hit.end);
  const originalHtml=(await pub('/')).toString('utf8');
  assert(originalHtml.includes('expanded-match-343.js?v='+oldCache),'LIVE_SCRIPT_CACHE_VERSION_DRIFT');
  assert.equal(out.split(oldCache).length-1,1,'CACHE_BUST_ANCHOR_NOT_UNIQUE');
  out=out.replace(oldCache,newCache);
  const after=literals(out);
  assert.equal(after.size,before.size,'LITERAL_COUNT_CHANGED');
- for(const [k,v] of before){const expected=k===target?patched:v.value.replace(oldCache,newCache);assert.equal(after.get(k)?.value,expected,'UNRELATED_LITERAL_CHANGE '+k)}
+ for(const [k,v] of before){const expected=k===target?patchedLiteral:v.value.replace(oldCache,newCache);assert.equal(after.get(k)?.value,expected,'UNRELATED_LITERAL_CHANGE '+k)}
  const settings=sha(canonical(await api('/scripts/'+prod+'/settings'))),crons=await schedules(),backendBefore=await backend();
  report.baseline={settings,crons,backend:backendBefore,originalHash:test.originalHash,candidateHash:test.candidateHash,modules:manifest(current)};save();
  assert.equal(await active(),base,'PRODUCTION_MOVED_BEFORE_UPLOAD');
- candidate=await upload(current,out);report.candidateVersion=candidate;save();console.log('CANDIDATE_UPLOADED '+candidate);
+ candidate=await upload(current,out,ownerModule);report.candidateVersion=candidate;save();console.log('CANDIDATE_UPLOADED '+candidate);
  const cv=await version(candidate);
  assert.equal(canonical(cv.bindings),canonical(current.bindings),'BINDINGS_CHANGED');
  assert.equal(canonical(cv.assets?.config),canonical(current.assets?.config),'ASSETS_CHANGED');
  assert.equal(cv.compatibility_date,current.compatibility_date);
  assert.equal(canonical(cv.compatibility_flags||[]),canonical(current.compatibility_flags||[]));
  assert.equal(cv.main_module,current.main_module);
- const expected=manifest(current).map(m=>m.name===current.main_module?{...m,hash:sha(out)}:m);
+ const expected=manifest(current).map(m=>m.name===ownerModule?{...m,hash:sha(out)}:m);
  assert.deepEqual(manifest(cv),expected,'UNRELATED_MODULE_CHANGE');
  assert.equal(await active(),base,'PRODUCTION_MOVED_BEFORE_ACTIVATION');
  assert.equal(sha(canonical(await api('/scripts/'+prod+'/settings'))),settings,'SETTINGS_MOVED');
