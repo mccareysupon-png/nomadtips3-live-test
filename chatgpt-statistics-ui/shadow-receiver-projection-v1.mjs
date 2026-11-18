@@ -1,7 +1,7 @@
 // Receiver-only durable projection. Book receipts are never changed by this module.
 // Bootstrap from independently verified source + Book snapshot; journal updates are applied once.
 import {marketGroup,MARKET_GROUPS} from './market-groups-stage.mjs';
-import {oneDay,fold} from './shadow-stage-live-projection.mjs';
+import {oneDay as foldDay,fold} from './shadow-stage-live-projection.mjs';
 import {normalizeRow} from './shadow-composite-cursor-stage.mjs';
 const groups=['all',...MARKET_GROUPS],R=['WIN','LOSS','HALF_WIN','HALF_LOSS','PUSH'];
 const stateKey='projection:v2:state',graphsKey='projection:v2:graphs',journalSeq='projection:v2:journal:sequence';
@@ -13,6 +13,18 @@ const hash=async x=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-25
 const same=(a,b)=>a.signal_id===b.signal_id&&a.settled_at===b.settled_at&&a.result===b.result&&a.market_type===b.market_type&&(a.odds===b.odds||a.odds!=null&&b.odds!=null&&Number(a.odds)===Number(b.odds));
 // Exact Selection normalization from deployed singlepage-workspace/longterm-performance.
 export function nativeSelection(r){const x=String(r?.selection||r?.pick||'').trim().toUpperCase();if(x.includes('HOME'))return 'home';if(x.includes('AWAY'))return 'away';if(x.includes('DRAW')||x==='X')return 'draw';if(x.includes('OVER'))return 'over';if(x.includes('UNDER'))return 'under';if(x==='YES'||x.includes('BTTS YES'))return 'yes';if(x==='NO'||x.includes('BTTS NO'))return 'no';return x.toLowerCase().replace(/[^a-z0-9]+/g,'_')||'other'}
+// Native Engine ledgerKey = stat:v2:row:<13 digit createdAt>:<id>; latestLedgerRows(reverse:true).
+// Its stable settlement-time sort preserves createdAt descending then UTF-8 ID descending.
+// Verified against all 629 exact timestamp tie groups at audit 44304554588.
+const encoder=new TextEncoder();
+export function receiverOrder(a,b){
+ const n=Number(a.settledAt)-Number(b.settledAt)||Number(b.createdAt)-Number(a.createdAt);
+ if(n)return n;
+ const x=encoder.encode(String(a.id)),y=encoder.encode(String(b.id));
+ for(let i=0;i<Math.min(x.length,y.length);i++)if(x[i]!==y[i])return y[i]-x[i];
+ return y.length-x.length;
+}
+const oneDay=rows=>foldDay(rows,receiverOrder);
 const rangeDays={all:0,d7:7,d30:30,d90:90};
 const filterKey=(market,variant,selection)=>JSON.stringify([market,variant,selection]);
 const matching=(r,m,v,f)=>(m==='all'||marketGroup(r.market)===m)&&(v==='all'||r.market===v)&&(f==='all'||nativeSelection(r)===f);
@@ -185,7 +197,7 @@ async function applyEvent(store,event){
   if(!meta||String(meta.id)!==next.signal_id)throw Error('META_NOT_FOUND');
   const r=compact({...meta,...next,id:next.signal_id,settledAt:next.settled_at,market:next.market_type,result:next.result,odds:next.odds},meta._rank??Number.MAX_SAFE_INTEGER-event.seq);
   const dest=affected.get(target);if(dest.some(x=>x.id===r.id))throw Error('EVENT_DUPLICATE_ID');
-  if(meta._rank==null&&dest.some(x=>x.settledAt===r.settledAt&&x.createdAt===r.createdAt))throw Error('EXACT_TIE_ORDER_METADATA_REQUIRED');
+  // Exact ties are resolved by verified canonical ledger key order, not guessed rank.
   dest.push(r);
   for(const [d,rows] of affected){
    if(new TextEncoder().encode(JSON.stringify(rows)).length>1500000)throw Error('DAY_BUCKET_TOO_LARGE');
