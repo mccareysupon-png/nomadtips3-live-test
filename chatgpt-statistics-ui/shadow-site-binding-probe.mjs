@@ -21,7 +21,7 @@ export function withReceiverProbe(original){
    const n=a.projection?.generation;
    if(!a.graphReady||!b.graphReady||!a.pendingReadReady||!b.pendingReadReady||!Number.isSafeInteger(n)||n!==b.projection?.generation||n!==g.generation||n!==p.generation||a.bookSequence!==b.bookSequence||a.bookSequence!==g.sequence)return reply({ok:false,error:'RECEIVER_GENERATION_CHANGED'},409);
    const total=b.bookAggregate?.total,pnl=b.bookAggregate?.total_pnl;
-   if(!Number.isSafeInteger(total)||total<16105||!Number.isFinite(pnl)||g.summary?.rows!==total||Math.abs(g.summary.net-pnl)>1e-7||!Number.isSafeInteger(p.total)||p.total!==p.pending+p.unresolved||p.readMode!=='DURABLE_OBJECT_STATE_ONLY')return reply({ok:false,error:'RECEIVER_PARITY_FAILED'},503);
+   if(!Number.isSafeInteger(total)||total<16105||!Number.isFinite(pnl)||g.summary?.rows!==total||!Number.isFinite(g.summary?.net)||Math.abs(g.summary.net-pnl)>1e-7||!Number.isSafeInteger(p.total)||p.total!==p.pending+p.unresolved||p.readMode!=='DURABLE_OBJECT_STATE_ONLY')return reply({ok:false,error:'RECEIVER_PARITY_FAILED'},503);
    return reply({ok:true,source:'B46_MARKET_READER',settled:total,pnl,winRate:b.bookAggregate.win_rate,pending:p.pending,unresolved:p.unresolved,generation:n,sequence:g.sequence,coverageVerified:!!p.coverageVerified,cutoverReady:!!(p.coverageVerified&&b.pendingLiveReady),publicSourceChanged:false});
   }catch{return reply({ok:false,error:'RECEIVER_PROBE_UNAVAILABLE'},503)}
  }};
