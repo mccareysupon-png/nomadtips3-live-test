@@ -1,0 +1,27 @@
+name: B46 market navigation diagnosis — read only
+on:
+  push:
+    branches: [chatgpt/ball46-new-ledger-clean-v1]
+    paths: ['.github/workflows/b46-diagnose-market-navigation-20261119.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 7ab2df6749300f352f6bd25f72e333d59e785851
+          persist-credentials: false
+      - run: |
+          npm install --prefix chatgpt-statistics-ui/.runtime --no-audit --no-fund playwright@1.55.0
+          chatgpt-statistics-ui/.runtime/node_modules/.bin/playwright install chromium --only-shell
+          node chatgpt-statistics-ui/diagnose-market-navigation-20261119.mjs
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() }}
+        with:
+          name: market-navigation-readonly-screenshots
+          path: ${{ runner.temp }}/market-diagnosis/
+          if-no-files-found: ignore
+          retention-days: 7
