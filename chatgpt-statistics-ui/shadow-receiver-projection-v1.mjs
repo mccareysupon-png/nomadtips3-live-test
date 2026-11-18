@@ -4,8 +4,8 @@ import {marketGroup,MARKET_GROUPS} from './market-groups-stage.mjs';
 import {oneDay,fold} from './shadow-stage-live-projection.mjs';
 import {normalizeRow} from './shadow-composite-cursor-stage.mjs';
 const groups=['all',...MARKET_GROUPS],R=['WIN','LOSS','HALF_WIN','HALF_LOSS','PUSH'];
-const stateKey='projection:v1:state',graphsKey='projection:v1:graphs',journalSeq='projection:v1:journal:sequence';
-const pfx='projection:v1:',journalKey=n=>pfx+'journal:event:'+String(n).padStart(16,'0');
+const stateKey='projection:v2:state',graphsKey='projection:v2:graphs',journalSeq='projection:v2:journal:sequence';
+const pfx='projection:v2:',journalKey=n=>pfx+'journal:event:'+String(n).padStart(16,'0');
 const dayKey=t=>new Date(Number(t)+25200000).toISOString().slice(0,10);
 const hex=s=>typeof s==='string'&&/^[a-f0-9]{64}$/.test(s);
 const json=(d,status=200)=>Response.json(d,{status,headers:{'cache-control':'no-store'}});
@@ -26,32 +26,39 @@ function invariant(g,expected){
  if(groups.slice(1).reduce((n,k)=>n+g[k].summary.rows,0)!==a.summary.rows)throw Error('PROJECTION_MARKET_COUNT_DRIFT');
 }
 function validDay(d){return typeof d==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(d)}
-export async function journalAccepted(tx,prior,next){
- const seq=(await tx.get(journalSeq)??0)+1;if(!Number.isSafeInteger(seq))throw Error('PROJECTION_SEQUENCE_OVERFLOW');
+// Absolute monotonic Book revision: accepted unique settlements + accepted corrections.
+const revision=s=>{const n=s?.total+(s?.corrections??0);if(!Number.isSafeInteger(n)||n<0)throw Error('INVALID_BOOK_REVISION');return n};
+export async function journalAccepted(tx,prior,next,bookState){
+ const seq=revision(bookState),stored=await tx.get(journalSeq);
+ if(stored!==undefined&&stored!==null&&stored>=seq)throw Error('PROJECTION_SEQUENCE_REGRESSION');
  await tx.put(journalKey(seq),{seq,previous:prior??null,next,at:Date.now()});await tx.put(journalSeq,seq);
+}
+// Direct local storage access: no fetch, service binding, or HTTP Journal API.
+async function readJournal(store,after=null){
+ return store.transaction(async tx=>{
+  const s=await tx.get('composite:state');
+  if(!s||s.pnl_schema!==1)throw Error('BOOK_NOT_READY');
+  const seq=revision(s);
+  if(after!==null&&(!Number.isSafeInteger(after)||after<0||after>seq))throw Error('JOURNAL_CURSOR_INVALID');
+  const events=[];
+  if(after!==null)for(let i=after+1;i<=Math.min(seq,after+25);i++){
+   const e=await tx.get(journalKey(i));if(!e||e.seq!==i)throw Error('JOURNAL_GAP');events.push(e);
+  }
+  return {ok:true,sequence:seq,aggregate:{total:s.total,total_pnl:s.total_pnl,win_rate:s.winRate,raw_counts:Object.fromEntries(R.map(k=>[k,s[k]])),corrections:s.corrections??0},events};
+ });
 }
 export async function journalRead(store,u){
  const after=u.searchParams.has('after')?Number(u.searchParams.get('after')):null;
- if(after!==null&&(!Number.isSafeInteger(after)||after<0))return json({ok:false},400);
- return store.transaction(async tx=>{
-  const seq=await tx.get(journalSeq)??0,s=await tx.get('composite:state');
-  if(!s||s.pnl_schema!==1)return json({ok:false,error:'BOOK_NOT_READY'},503);
-  if(after!==null&&after>seq)return json({ok:false,error:'JOURNAL_CURSOR_AHEAD'},409);
-  const events=[];
-  if(after!==null)for(let i=after+1;i<=Math.min(seq,after+25);i++){const e=await tx.get(journalKey(i));if(!e||e.seq!==i)return json({ok:false,error:'JOURNAL_GAP'},503);events.push(e)}
-  return json({ok:true,sequence:seq,aggregate:{total:s.total,total_pnl:s.total_pnl,win_rate:s.winRate,raw_counts:Object.fromEntries(R.map(k=>[k,s[k]])),corrections:s.corrections??0},events});
- });
+ try{return json(await readJournal(store,after))}catch(e){return json({ok:false,error:String(e.message).slice(0,80)},503)}
 }
-const bookOf=env=>env.SHADOW_STORE.get(env.SHADOW_STORE.idFromName('book-v1'));
-async function readJournal(env,after){const u='https://store.internal/statistics-summary-v1?projection=journal'+(after==null?'':'&after='+after);const r=await bookOf(env).fetch(new Request(u,{method:'GET'}));const j=await r.json();if(!r.ok||!j.ok||!Number.isSafeInteger(j.sequence)||!j.aggregate||!Array.isArray(j.events))throw Error('JOURNAL_SCHEMA_OR_HTTP_'+r.status);return j}
 const stateView=s=>s?{status:s.status,sequence:s.sequence,generation:s.generation,seedDays:s.nextDay,totalDays:s.manifest.days.length,pendingChunks:s.nextPending,pendingExpected:s.manifest.pending+s.manifest.unresolved,sourceHash:s.manifest.sourceHash,lastAppliedAt:s.lastAppliedAt??null,pendingVerifiedAt:s.pendingVerifiedAt??null,pendingLive:false,pendingSource:'LEGACY_VERIFIED_SNAPSHOT_NO_COMPLETE_DELTA_FEED',lastError:s.lastError??null}:null;
 async function seed(store,env,input){
  const action=input?.action;
  if(action==='begin'){
   const m=input.manifest;
   if(!m||!hex(m.sourceHash)||!hex(m.sourceSignature)||!Number.isSafeInteger(m.sequence)||m.sequence<0||!Number.isSafeInteger(m.asOf)||m.asOf<=0||m.asOf>Date.now()+1000||!Number.isSafeInteger(m.expected?.total)||m.expected.total<16074||!Array.isArray(m.days)||m.days.length<1||m.days.length>730||m.days.some((x,i)=>!validDay(x.day)||!hex(x.hash)||!Number.isSafeInteger(x.count)||x.count<1||i&&x.day<=m.days[i-1].day)||m.days.reduce((n,x)=>n+x.count,0)!==m.expected.total||!Number.isSafeInteger(m.pending)||m.pending<0||!Number.isSafeInteger(m.unresolved)||m.unresolved<0||!Array.isArray(m.pendingHashes)||m.pendingHashes.some(x=>!hex(x))||m.pendingHashes.length!==Math.ceil((m.pending+m.unresolved)/50))return json({ok:false,error:'MANIFEST'},400);
-  const h=await hash(m),j=await readJournal(env);
-  if(m.sequence>j.sequence)return json({ok:false,error:'SEQUENCE_AHEAD'},409);
+  const h=await hash(m),j=await readJournal(store);
+  if(m.sequence!==m.expected.total+(m.corrections??0)||m.sequence>j.sequence)return json({ok:false,error:'SEQUENCE_AHEAD_OR_MANIFEST_REVISION'},409);
   return store.transaction(async tx=>{const old=await tx.get(stateKey);if(old)return json({ok:old.hash===h,state:stateView(old)},old.hash===h?200:409);
    const s={status:'loading',manifest:m,hash:h,sequence:m.sequence,generation:0,nextDay:0,nextPending:0,pendingVerifiedAt:m.asOf};await tx.put(stateKey,s);return json({ok:true,state:stateView(s)})});
  }
@@ -156,7 +163,7 @@ export async function projectionAlarm(store,env){
  const s=await store.get(stateKey);if(!s||s.status!=='loaded')return;
  let delay=30000;
  try{
-  const j=await readJournal(env,s.sequence);
+  const j=await readJournal(store,s.sequence);
   for(const e of j.events)await applyEvent(store,e);
   const after=await store.get(stateKey);
   if(after.sequence===j.sequence){const graphs=await store.get(graphsKey);invariant(graphs,j.aggregate);
@@ -178,14 +185,14 @@ export async function projectionHandle(store,env,req){
  if(req.method!=='GET')return json({ok:false},405);
  const s=await store.get(stateKey);
  if(p==='/projection-status-v1'){
-  const j=await readJournal(env);return json({ok:true,readOnly:true,projection:stateView(s),bookSequence:j.sequence,bookAggregate:j.aggregate,graphReady:s?.status==='loaded'&&!s.lastError&&s.sequence===j.sequence,pendingLiveReady:false});
+  const j=await readJournal(store);return json({ok:true,readOnly:true,projection:stateView(s),bookSequence:j.sequence,bookAggregate:j.aggregate,graphReady:s?.status==='loaded'&&!s.lastError&&s.sequence===j.sequence,pendingLiveReady:false});
  }
  if(s?.status!=='loaded')return json({ok:false,error:'PROJECTION_NOT_READY'},503);
  const market=u.searchParams.get('market')??'all';
  if(!groups.includes(market))return json({ok:false,error:'MARKET_INVALID'},400);
  if(['variant','filter','range'].some(k=>u.searchParams.has(k)&&u.searchParams.get(k)!=='all'))return json({ok:false,error:'ADVANCED_FILTER_NOT_VERIFIED'},400);
  if(p==='/projection-graph-v1'){
-  const j=await readJournal(env);if(s.lastError||s.sequence!==j.sequence)return json({ok:false,error:'PROJECTION_CATCHING_UP'},503);
+  const j=await readJournal(store);if(s.lastError||s.sequence!==j.sequence)return json({ok:false,error:'PROJECTION_CATCHING_UP'},503);
   const graphs=await store.get(graphsKey);invariant(graphs,j.aggregate);
   // Recheck generation: a concurrent event must not pair a new graph with an old state.
   const a=await store.get(stateKey);if(a.generation!==s.generation||a.sequence!==s.sequence)return json({ok:false,error:'GENERATION_CHANGED'},409);
