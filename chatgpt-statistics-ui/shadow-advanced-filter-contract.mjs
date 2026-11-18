@@ -16,6 +16,7 @@ for(const path of urls){
   anchors[name]=sliced.slice(0,stop>0?stop:1100);
  }
  const ranges=s.match(/(?:const|let|var)\s+RANGE_DAYS\s*=\s*\{[^}]{1,400}\}/)?.[0]??null;
- summary.push({path,controls,anchors,ranges});
+ const scriptUrls=path.startsWith('/?')?[...s.matchAll(/<script[^>]+src=["']([^"']+)["']/gi)].map(x=>x[1]).filter(x=>/market|registry|statistics|workspace|performance/i.test(x)):[];
+ summary.push({path,controls,anchors,ranges,scriptUrls});
 }
 console.log('ADVANCED_FILTER_SOURCE_CONTRACT='+JSON.stringify(summary));
