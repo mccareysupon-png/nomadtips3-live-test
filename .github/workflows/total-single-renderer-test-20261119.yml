@@ -1,0 +1,34 @@
+name: TOTAL single renderer candidate (test only)
+on:
+  push:
+    branches: [test/ball46-total-single-renderer-20261119]
+    paths: ['.github/workflows/total-single-renderer-test-20261119.yml']
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare browser
+        run: |
+          npm install --no-save --ignore-scripts puppeteer-core
+          echo "PUPPETEER_ENTRY=$(node -p "require.resolve('puppeteer-core')")" >> "$GITHUB_ENV"
+          echo "CHROME_PATH=$(command -v google-chrome || command -v chromium)" >> "$GITHUB_ENV"
+      - name: Prepare exact source candidate
+        run: |
+          mkdir -p candidate
+          curl -fsS --max-time 35 'https://ball46.com/longterm-performance-343.js?v=daily-date-axis-v9-20261012&b46_static=822f3d9d271a948d6b862eb7732f8797dcedbcc743cd63f3094f217b537b22bf&b46_finance=22409caa83fa0671' -o candidate/finance.original.js
+          curl -fsS --max-time 35 'https://ball46.com/b46-statistics-card-20261116.js' -o candidate/visual.original.js
+          node qa/total-single-renderer-20261119/patch.mjs candidate
+          node --check candidate/finance.test.js
+          node --check candidate/visual.test.js
+      - name: Test in isolated browser (no deploy)
+        run: node qa/total-single-renderer-20261119/test.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: total-single-renderer-test
+          path: candidate/
+          retention-days: 7
