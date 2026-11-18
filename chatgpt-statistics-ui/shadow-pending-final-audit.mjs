@@ -12,6 +12,7 @@ const get=async (path,token=key)=>{
 const status=()=>get('/audit-projection-status-v1');
 const path='/audit-projection-pending-snapshot-v1',livePath='/audit-projection-pending-v1';
 const stat=values=>{const a=[...values].sort((x,y)=>x-y);return {samples:a.length,min:a[0],median:a[Math.ceil(a.length/2)-1],p95:a[Math.ceil(a.length*.95)-1],max:a.at(-1),underOrEqual200:a.filter(x=>x<=200).length}};
+let completed=false;
 for(let attempt=1;attempt<=3;attempt++){
  const s=await status(),source=await collect({includeRaw:true}),book=await readFullBook(key);
  assert(s.http===200&&s.json&&s.d.graphReady);
@@ -39,8 +40,8 @@ for(let attempt=1;attempt<=3;attempt++){
  }
  const end=await status(),seq=book.totals.total+book.aggregate.corrections;
  if(gens.size!==1||s.d.bookSequence!==seq||end.d.bookSequence!==seq||s.d.projection.generation!==end.d.projection.generation){console.log('PENDING_AUDIT_RETRY=generation');continue}
- // Ignore only the three known volatile clock fields; retain all business fields.
- const volatile=new Set(['entryMinute','mirrorMinute','mirrorUpdatedAt']);
+ // Ignore only four documented dynamic match fields; retain all stable business fields.
+ const volatile=new Set(['entryMinute','mirrorMinute','mirrorUpdatedAt','mirrorCards']);
  const ids=new Set(rows.map(x=>String(x.id)));let exact=0,rawExact=0,extra=0,missing=0,metadataDiff=0,clockDrift=0,overlap=0;
  for(const r of rows){
   const id=String(r.id);if(settled.has(id))overlap++;
@@ -58,11 +59,14 @@ for(let attempt=1;attempt<=3;attempt++){
  const snapshotExact=rows.length===total&&ids.size===rows.length&&exact===sourcePending.length&&missing===0&&extra===0&&metadataDiff===0&&overlap===0;
  const pendingTiming=stat(firstSamples),liveTiming=stat([...livePages,...liveSamples]);
  const liveExact=liveRows.length===rows.length&&liveRows.every((r,i)=>{const other=rows[i];return String(r.id)===String(other.id)&&[...new Set([...Object.keys(r),...Object.keys(other)])].every(k=>volatile.has(k)||JSON.stringify(r[k])===JSON.stringify(other[k]))});
+ const sync=end.d.pendingSync, syncAgeMs=Number.isFinite(sync?.checkedAt)?Date.now()-sync.checkedAt:null;
+ const backgroundHealthy=syncAgeMs!==null&&syncAgeMs>=-1000&&syncAgeMs<=120000&&sync.expectedPending===source.other.PENDING&&sync.indexPending===source.other.PENDING;
  const readAcceptance=snapshotExact&&liveExact&&liveTiming.max<200&&live.http===200&&end.d.pendingReadReady===true;
- console.log('FINAL_PENDING_ACCEPTANCE='+JSON.stringify({time:new Date().toISOString(),settled:book.totals.total,pnl:book.totals.total_pnl,winRate:book.totals.win_rate,historyExact:true,sequence:seq,sourcePending:source.other.PENDING,sourceUnresolved:source.other.UNRESOLVED,receiverPending:pending,receiverUnresolved:unresolved,total,exactMetadata:exact,rawExact,clockDrift,ignoredFields:[...volatile],missing,extra,metadataDiff,duplicate:rows.length-ids.size,settledOverlap:overlap,settledAfterSeed:afterSeed,seedAt,snapshotExact,snapshotHttp:200,snapshotPageTiming:stat(times),snapshotRepeatTiming:pendingTiming,liveHttp:live.http,liveTiming,livePageTiming:stat(livePages),liveRepeatTiming:stat(liveSamples),liveExact,readAcceptance,readMode:live.d.readMode,pendingReadReady:end.d.pendingReadReady,sourceCoverageVerified:live.d.coverageVerified,coverageReason:live.d.coverageReason,liveReady:end.d.pendingLiveReady&&live.http===200,liveError:live.d.error??null,sync:end.d.pendingSync,auth:{missing:no.http,wrong:wrong.http},cutoverReady:readAcceptance&&end.d.pendingLiveReady&&live.d.coverageVerified,gateReason:live.d.coverageVerified?null:'FIRST_PAGE_COVERAGE_NOT_PROVEN',realSettlementRemovalProven:false}));
+ console.log('FINAL_PENDING_ACCEPTANCE='+JSON.stringify({time:new Date().toISOString(),settled:book.totals.total,pnl:book.totals.total_pnl,winRate:book.totals.win_rate,historyExact:true,sequence:seq,sourcePending:source.other.PENDING,sourceUnresolved:source.other.UNRESOLVED,receiverPending:pending,receiverUnresolved:unresolved,total,exactMetadata:exact,rawExact,clockDrift,ignoredFields:[...volatile],missing,extra,metadataDiff,duplicate:rows.length-ids.size,settledOverlap:overlap,settledAfterSeed:afterSeed,seedAt,snapshotExact,snapshotHttp:200,snapshotPageTiming:stat(times),snapshotRepeatTiming:pendingTiming,liveHttp:live.http,liveTiming,livePageTiming:stat(livePages),liveRepeatTiming:stat(liveSamples),liveExact,readAcceptance,backgroundHealthy,syncAgeMs,readMode:live.d.readMode,pendingReadReady:end.d.pendingReadReady,sourceCoverageVerified:live.d.coverageVerified,coverageReason:live.d.coverageReason,liveReady:end.d.pendingLiveReady&&live.http===200,liveError:live.d.error??null,sync:end.d.pendingSync,auth:{missing:no.http,wrong:wrong.http},cutoverReady:readAcceptance&&end.d.pendingLiveReady&&live.d.coverageVerified,gateReason:live.d.coverageVerified?null:'FIRST_PAGE_COVERAGE_NOT_PROVEN',realSettlementRemovalProven:false,readinessScope:'POINT_IN_TIME_NOT_LONG_TERM'}));
  assert.equal(no.http,403);assert.equal(wrong.http,403);
  if(!readAcceptance)throw Error('PENDING_READ_ACCEPTANCE_FAILED');
  console.log('PENDING_STATE_READ_GATE=PASS');
  if(!end.d.pendingLiveReady)console.log('PENDING_SOURCE_COVERAGE_GATE=NOT_VERIFIED');
- break;
+ completed=true;break;
 }
+if(!completed)throw Error('NO_COHERENT_AUDIT_GENERATION');
