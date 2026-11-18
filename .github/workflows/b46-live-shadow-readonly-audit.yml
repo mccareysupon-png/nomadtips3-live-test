@@ -88,22 +88,17 @@ jobs:
             }
           })().catch(e=>{console.error('AUDIT_FAILED='+String(e.message).slice(0,120));process.exitCode=1});
           JS
-      - name: Read authenticated private Receiver snapshot through remote service binding (no deployment)
+      - name: Read private named Receiver Service Binding (no production deployment)
         env:
           CLOUDFLARE_ACCOUNT_ID: '62cb0db544160e6591342abd6b4f35cc'
-          B46_AUDIT_TOKEN: ${{ secrets.AUDIT_READ_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
-          if [ -z "${B46_AUDIT_TOKEN:-}" ]; then
-            echo 'RECEIVER_AUDIT_BLOCKED=AUDIT_READ_TOKEN_NOT_AVAILABLE_IN_ACTIONS'
-            exit 0
-          fi
           mkdir -p "$RUNNER_TEMP/b46-private-read"
           cd "$RUNNER_TEMP/b46-private-read"
           npm install --no-save --no-package-lock --ignore-scripts wrangler@4.92.0
           cat > wrangler.json <<'JSON'
-          {"name":"b46-private-audit-local","compatibility_date":"2026-11-17","workers_dev":false,"preview_urls":false,"services":[{"binding":"RECEIVER","service":"ball46-shadow-receiver-production","remote":true}]}
+          {"name":"b46-private-audit-local","compatibility_date":"2026-11-17","workers_dev":false,"preview_urls":false,"services":[{"binding":"RECEIVER","service":"ball46-shadow-receiver-production","entrypoint":"AuditReader","remote":true},{"binding":"RECEIVER_DEFAULT","service":"ball46-shadow-receiver-production","remote":true}]}
           JSON
           node --input-type=module <<'JS'
           import {getPlatformProxy} from 'wrangler';
@@ -116,21 +111,27 @@ jobs:
           const dep=await res.json();
           if(!res.ok||!dep.success)throw Error('RECEIVER_DEPLOYMENT_READ_FAILED');
           const versions=dep.result?.deployments?.[0]?.versions??[];
-          if(versions.length!==1||Number(versions[0].percentage)!==100||['9fc95e75-4833-429e-b119-0051b3a3d316','7a576455-14b3-401f-80e6-f6dd70f76dc1'].includes(versions[0].version_id)){
-            console.log('RECEIVER_AUDIT_BLOCKED=RECEIVER_SNAPSHOT_DEPLOYMENT_NOT_CONFIRMED');process.exit(0);
+          if(versions.length!==1||Number(versions[0].percentage)!==100||versions[0].version_id!=='d57d189b-e5f0-4695-b4d9-8e6d4725cd2b'){
+            throw Error('RECEIVER_SNAPSHOT_DEPLOYMENT_NOT_CONFIRMED');
           }
+          const sr=await fetch(base+'/workers/scripts/ball46-shadow-receiver-production/subdomain',{headers,signal:AbortSignal.timeout(20000)});
+          const sub=await sr.json();
+          if(!sr.ok||!sub.success||sub.result?.enabled!==false||sub.result?.previews_enabled===true)throw Error('RECEIVER_PUBLIC_EXPOSURE');
+          console.log('RECEIVER_PUBLIC_SUBDOMAIN_DISABLED=true');
+          try{
+            const external=await fetch('https://ball46-shadow-receiver-production.mccarey-supon.workers.dev/audit-snapshot',{method:'GET',redirect:'manual',signal:AbortSignal.timeout(10000)});
+            console.log('RECEIVER_PUBLIC_HTTP='+external.status);
+            if(external.status===200)throw Error('UNEXPECTED_PUBLIC_200');
+          }catch(e){if(e.message==='UNEXPECTED_PUBLIC_200')throw e;console.log('RECEIVER_PUBLIC_UNREACHABLE=true')}
           const proxy=await getPlatformProxy({configPath:'wrangler.json',remoteBindings:true,persist:false});
           try{
             const url='https://shadow.internal/audit-snapshot';
-            const missing=await proxy.env.RECEIVER.fetch(url,{method:'GET'});
-            console.log('RECEIVER_AUTH_MISSING_HTTP='+missing.status);
-            if(missing.status!==403)throw Error('NO_TOKEN_EXPECTED_403');
-            const wrong=await proxy.env.RECEIVER.fetch(url,{method:'GET',headers:{authorization:'Bearer invalid-audit-token'}});
-            console.log('RECEIVER_AUTH_WRONG_HTTP='+wrong.status);
-            if(wrong.status!==403)throw Error('WRONG_TOKEN_EXPECTED_403');
-            const good=await proxy.env.RECEIVER.fetch(url,{method:'GET',headers:{authorization:'Bearer '+process.env.B46_AUDIT_TOKEN}});
-            console.log('RECEIVER_AUTH_VALID_HTTP='+good.status);
-            if(good.status!==200)throw Error('VALID_TOKEN_EXPECTED_200');
+            const denied=await proxy.env.RECEIVER_DEFAULT.fetch(url,{method:'GET'});
+            console.log('RECEIVER_DEFAULT_HTTP='+denied.status);
+            if(denied.status!==403)throw Error('DEFAULT_ENTRYPOINT_EXPECTED_403');
+            const good=await proxy.env.RECEIVER.fetch(url,{method:'GET'});
+            console.log('RECEIVER_PRIVATE_HTTP='+good.status);
+            if(good.status!==200)throw Error('PRIVATE_ENTRYPOINT_EXPECTED_200');
             const data=await good.json();
             if(data.readOnly!==true||!data.inbox||!data.book||!Array.isArray(data.book.recent_5_signals))throw Error('UNEXPECTED_SNAPSHOT_SCHEMA');
             const book={settled_count:data.book.settled_count,total_pnl:data.book.total_pnl,win_rate:data.book.win_rate,recent_5_signals:data.book.recent_5_signals.map(r=>({idHash:hash(r.signal_id),settled_at:r.settled_at,market_type:r.market_type,odds:r.odds,result:r.result}))};
