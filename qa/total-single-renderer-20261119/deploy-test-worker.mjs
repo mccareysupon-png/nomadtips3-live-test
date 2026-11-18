@@ -27,7 +27,7 @@ const sub=await api('/subdomain');assert(sub.subdomain);
 const list=await api('/scripts');assert(Array.isArray(list));assert(!list.some(w=>w.id===name),'TEST_WORKER_ALREADY_EXISTS');
 assert(name!==prod&&name.startsWith('ball46-total-test-'));
 const f=new FormData();
-f.append('metadata',new Blob([JSON.stringify({main_module:'worker.mjs',compatibility_date:'2026-11-19',bindings:[]})],{type:'application/json'}),'metadata.json');
+f.append('metadata',new Blob([JSON.stringify({main_module:'worker.mjs',compatibility_date:'2026-11-18',bindings:[]})],{type:'application/json'}),'metadata.json');
 f.append('worker.mjs',new Blob([source],{type:'application/javascript+module'}),'worker.mjs');
 await api('/scripts/'+name,{method:'PUT',body:f});
 await api('/scripts/'+name+'/subdomain',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled:true,previews_enabled:false})});
