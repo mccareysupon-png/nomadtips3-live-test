@@ -1,0 +1,16 @@
+# PRODUCTION TARGET MANIFEST — not a standalone Wrangler release bundle.
+# Never run wrangler deploy against this incomplete manifest until CI has
+# materialized ALL active modules, assets, bindings and settings.
+# The pre-cutover binding-only release uses the version API with strict inheritance.
+name = "ball46-production"
+account_id = "62cb0db544160e6591342abd6b4f35cc"
+# Deliberately missing local main file: fail closed rather than deploy staging code.
+main = ".production-release-not-materialized/receiver-binding-preflight.mjs"
+[env.production]
+name = "ball46-production"
+[[env.production.services]]
+binding = "B46_MARKET_READER"
+service = "ball46-shadow-receiver-production"
+entrypoint = "MarketStatisticsReader"
+# Existing production routes stay under Cloudflare management; no wildcard route.
+# All pre-existing bindings must be inherited from the verified active version.
