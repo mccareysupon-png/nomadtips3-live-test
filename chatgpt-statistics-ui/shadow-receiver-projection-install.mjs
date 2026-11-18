@@ -8,7 +8,7 @@ import {readFullBook,compare,auditCredential} from './shadow-seed-audit.mjs';
 import {normalizeRow} from './shadow-composite-cursor-stage.mjs';
 import {marketGroup,MARKET_GROUPS} from './market-groups-stage.mjs';
 import {buildVerifiedGraph} from '../deploy-assets/ball46-statistics-fast-v1-20261116/graph-core.mjs';
-import {projectionHandle,projectionAlarm,projectionConstants} from './shadow-receiver-projection-v1.mjs';
+import {projectionHandle,projectionAlarm,projectionConstants,syncPendingFirstPage} from './shadow-receiver-projection-v1.mjs';
 const endpoint='https://ball46-shadow-receiver-production.mccarey-supon.workers.dev',groups=['all',...MARKET_GROUPS];
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
 const key=auditCredential();console.log('::add-mask::'+key);
@@ -91,18 +91,29 @@ async function local(){
  const pending=await result(await projectionHandle(projectStore,env,req('/projection-pending-snapshot-v1')));
  assert.equal(pending.data.total,snapshot.source.other.PENDING+snapshot.source.other.UNRESOLVED);assert.equal(pending.data.live,false);
  const live=await result(await projectionHandle(projectStore,env,req('/projection-pending-v1')));assert.equal(live.status,503);
+ // Exactly one request per sync; incomplete page never certifies the live set.
+ const sourcePending=raw.filter(x=>['PENDING','UNRESOLVED'].includes(x.status));
+ let pageCalls=0;const page=rows=>async url=>{assert.equal(String(url),'https://www.ball46.com/api/engine/statistics?paged=1');pageCalls++;return Response.json({ok:true,statisticsSource:'LEDGER_V2_ONLY',rows,total:t.total,pending:snapshot.source.other.PENDING,unresolved:snapshot.source.other.UNRESOLVED})};
+ const stamp=Date.now();
+ const incomplete=await syncPendingFirstPage(projectStore,{now:stamp,fetcher:page([])});
+ assert.equal(incomplete.complete,false);assert.equal(incomplete.firstPagePending,0);assert.equal((await result(await projectionHandle(projectStore,env,req('/projection-pending-v1')))).status,503);
+ const complete=await syncPendingFirstPage(projectStore,{now:stamp+61000,fetcher:page(sourcePending)});
+ assert.equal(complete.complete,true);assert.equal(pageCalls,2);
+ const exact=await result(await projectionHandle(projectStore,env,req('/projection-pending-v1')));assert.equal(exact.status,200);assert.equal(exact.data.total,sourcePending.length);assert.equal(exact.data.live,true);
  const post=row=>resultFromBook(book,req('/book-post',row));
  const p=raw.find(r=>r.status==='PENDING');assert(p,'NO_REAL_PENDING_FOR_LOCAL_TEST');
  const settled={...p,status:'SETTLED',result:'WIN',odds:2.06,settledAt:Date.now()+12345};
  let r=await post(normalizeRow(settled));assert.equal(r.status,200);assert.equal((await graph('all')).status,503);
- await projectionAlarm(projectStore,env);
+ const removedImmediately=await result(await projectionHandle(projectStore,env,req('/projection-pending-snapshot-v1')));assert.equal(removedImmediately.data.total,sourcePending.length-1);
+ assert.equal((await result(await projectionHandle(projectStore,env,req('/projection-pending-v1')))).status,503);
+ await projectionAlarm(projectStore,env,{pendingFetcher:async()=>{throw Error('LOCAL_PENDING_SYNC_DISABLED')}});
  raw[raw.findIndex(x=>x.id===p.id)]=settled;
  for(const k of groups)compareGraph((await graph(k)).data,raw,k);
  const before=await bookStore.get(projectionConstants.journalSeq);assert.equal(before,snapshot.sequence+1);
  r=await post(normalizeRow(settled));assert.equal(r.data.duplicate,true);assert.equal(await bookStore.get(projectionConstants.journalSeq),before);
  const correction={...settled,result:'HALF_LOSS',settledAt:settled.settledAt+86400000};
  r=await post(normalizeRow(correction));assert.equal(r.data.corrected,true);
- await projectionAlarm(projectStore,env);raw[raw.findIndex(x=>x.id===p.id)]=correction;
+ await projectionAlarm(projectStore,env,{pendingFetcher:async()=>{throw Error('LOCAL_PENDING_SYNC_DISABLED')}});raw[raw.findIndex(x=>x.id===p.id)]=correction;
  for(const k of groups)compareGraph((await graph(k)).data,raw,k);
  const stale=await post(normalizeRow(settled));assert.equal(stale.data.stale,true);
  assert.equal(await bookStore.get(projectionConstants.journalSeq),snapshot.sequence+2);
@@ -114,15 +125,18 @@ async function local(){
  try{
   globalThis.fetch=async url=>{assert(String(url).startsWith('https://www.ball46.com/api/engine/statistics?paged=1'));return Response.json({ok:true,statisticsSource:'LEDGER_V2_ONLY',rows:newRows})};
   for(const row of newRows){assert.equal((await post(normalizeRow(row))).status,200);raw.unshift(row)}
-  await projectionAlarm(projectStore,env);
+  await projectionAlarm(projectStore,env,{pendingFetcher:async()=>{throw Error('LOCAL_PENDING_SYNC_DISABLED')}});
  }finally{globalThis.fetch=realFetch}
  for(const k of groups)compareGraph((await graph(k)).data,raw,k);
  const protectedGet='https://ball46-shadow-receiver-production.mccarey-supon.workers.dev/audit-projection-graph-v1';
  assert.equal((await worker.fetch(new Request(protectedGet),env)).status,403);
+ const unknown=await worker.fetch(new Request('https://ball46-shadow-receiver-production.mccarey-supon.workers.dev/audit-projection-unknown'),env);assert.equal(unknown.status,404);assert.match(unknown.headers.get('content-type'),/application\/json/);
+ const oldGet=env.SHADOW_STORE.get;env.SHADOW_STORE.get=()=>({fetch:async()=>new Response('<html>test</html>',{status:502,headers:{'content-type':'text/html'}})});
+ const html=await worker.fetch(new Request(protectedGet,{headers:{authorization:'Bearer '+env.AUDIT_TOKEN}}),env);assert.equal(html.status,502);assert.match(html.headers.get('content-type'),/application\/json/);assert.equal((await html.json()).error,'PROJECTION_UPSTREAM_NON_JSON');env.SHADOW_STORE.get=oldGet;
  assert.equal((await worker.fetch(new Request(protectedGet,{headers:{authorization:'Bearer '+env.AUDIT_TOKEN}}),env)).status,200);
  assert.equal((await worker.fetch(new Request('https://ball46-shadow-receiver-production.mccarey-supon.workers.dev/projection-seed-v1',{method:'POST',headers:{authorization:'Bearer '+env.AUDIT_TOKEN},body:'{}'}),env)).status,403);
  const invalid=await result(await projectionHandle(projectStore,env,req('/projection-graph-v1?variant=ht')));assert.equal(invalid.status,400);
- console.log('LOCAL_DURABLE_PROJECTION_PASS='+JSON.stringify({baseline:snapshot.book.totals.total,days:prepared.days.length,markets:7,sourceGraphParity:true,pendingSnapshot:pending.data.total,correction:true,duplicate:true,stale:true,newMarkets:7,protectedRoutes:true,pendingLiveGate:true,advancedFilterFailClosed:true,productionWrites:0}));
+ console.log('LOCAL_DURABLE_PROJECTION_PASS='+JSON.stringify({baseline:snapshot.book.totals.total,days:prepared.days.length,markets:7,sourceGraphParity:true,pendingSnapshot:pending.data.total,correction:true,duplicate:true,stale:true,newMarkets:7,protectedRoutes:true,pendingLiveGate:true,pendingFirstPageOnly:true,atomicPendingRemoval:true,jsonRouteGuard:true,advancedFilterFailClosed:true,productionWrites:0}));
 }
 async function resultFromBook(book,request){return result(await book.fetch(request))}
 async function seedProduction(){
@@ -152,7 +166,7 @@ async function auditProduction(){
   if(drift){if(attempt<4){await wait(1000);continue}throw Error('GRAPH_GENERATION_CHANGED')}
   const end=await get('/audit-projection-status-v1');
   if(end.status!==200||!end.data.graphReady||end.data.bookSequence!==snapshot.sequence){if(attempt<4){await wait(1000);continue}throw Error('BOOK_UPDATED_DURING_AUDIT')}
-  const pendingLive=await get('/audit-projection-pending-v1');assert.equal(pendingLive.status,503);
+  const pendingLive=await get('/audit-projection-pending-v1');assert([200,503].includes(pendingLive.status));
   const invalid=await get('/audit-projection-graph-v1?variant=ht');assert.equal(invalid.status,400);
   const pendingRows=[],generations=new Set();let reported=0;
   for(let off=0;off!==null;){const x=await get('/audit-projection-pending-snapshot-v1?offset='+off+'&limit=50');assert.equal(x.status,200);assert.equal(x.data.live,false);generations.add(x.data.generation);reported=x.data.total;pendingRows.push(...x.data.rows);off=x.data.next}
@@ -163,7 +177,7 @@ async function auditProduction(){
   for(const id of sp.keys())if(!seen.has(id))missingIds++;
   const after=await get('/audit-projection-status-v1');assert.equal(after.status,200);
   if(after.data.bookSequence!==snapshot.sequence){if(attempt<4){await wait(1000);continue}throw Error('BOOK_UPDATED_DURING_PENDING_AUDIT')}
-  console.log('PRODUCTION_PROJECTION_AUDIT='+JSON.stringify({settled:snapshot.book.totals.total,pnl:snapshot.book.totals.total_pnl,winRate:snapshot.book.totals.win_rate,historyExact:true,sourceHash:snapshot.source.hash,bookHash:snapshot.book.hash,sequence:snapshot.sequence,graphs:data,timings,pending:{source:sourcePending.length,snapshot:reported,exactMetadata:exact,missingIds,extra,liveReady:false,liveHttp:pendingLive.status,verifiedAt:status.data.projection.pendingVerifiedAt},advancedFilters:{supported:false,unexpectedVariantHttp:invalid.status},auth:{missing:missing.status,wrong:wrong.status,valid:200},websiteSourceChanged:false,cutoverReady:false}));
+  console.log('PRODUCTION_PROJECTION_AUDIT='+JSON.stringify({settled:snapshot.book.totals.total,pnl:snapshot.book.totals.total_pnl,winRate:snapshot.book.totals.win_rate,historyExact:true,sourceHash:snapshot.source.hash,bookHash:snapshot.book.hash,sequence:snapshot.sequence,graphs:data,timings,pending:{source:sourcePending.length,snapshot:reported,exactMetadata:exact,missingIds,extra,liveReady:pendingLive.status===200&&pendingLive.data.live===true&&exact===sourcePending.length&&missingIds===0&&extra===0,liveHttp:pendingLive.status,pendingSync:status.data.pendingSync,verifiedAt:status.data.projection.pendingVerifiedAt},advancedFilters:{supported:false,unexpectedVariantHttp:invalid.status},auth:{missing:missing.status,wrong:wrong.status,valid:200},websiteSourceChanged:false,cutoverReady:false}));
   return;
  }
 }
