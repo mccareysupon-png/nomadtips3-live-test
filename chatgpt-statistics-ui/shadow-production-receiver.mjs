@@ -54,7 +54,7 @@ async function applyRevision(tx,s,row){
  s.total_pnl=s.unknown_pnl?null:s.pnl_units/100000000;
  if(!s.cursor||compareCursor(row,s.cursor)>0)s.cursor={settled_at:row.settled_at,signal_id:row.signal_id};
  await tx.put(key,row);
- await journalAccepted(tx,prior,row);
+ await journalAccepted(tx,prior,row,s);
  return {duplicate:false,corrected:!!prior,stale:false};
 }
 async function postRevision(storage,raw){
@@ -186,11 +186,9 @@ export class ShadowProductionStore {
     try{
      const result=await postRevision(store,row);
      if(!result.duplicate&&!result.stale){
-      // Durable journal is authoritative; an unavailable projector cannot block settlement ingestion.
-      try{
-       const notify=this.env.SHADOW_STORE.get(this.env.SHADOW_STORE.idFromName('projection-v1')).fetch('https://store.internal/projection-wake-v1',{method:'POST'}).catch(()=>{});
-       if(typeof this.ctx.waitUntil==='function')this.ctx.waitUntil(notify);else void notify;
-      }catch{}
+      // Projection is in Book storage under a separate v2 key prefix.
+      // The original receipt transaction does not depend on projection processing.
+      try{if(await isProjection(store)){const alarm=await store.getAlarm();if(alarm===null||alarm>Date.now()+1000)await store.setAlarm(Date.now()+250)}}catch{}
      }
      return reply({ok:true,...result})
     }
@@ -276,11 +274,11 @@ export default {async fetch(req,env){
   if(u.hostname!=='ball46-shadow-receiver-production.mccarey-supon.workers.dev'||req.method!=='GET'||!await authorized(req,env.AUDIT_TOKEN))return reply({ok:false},403);
   const book=env.SHADOW_STORE.get(env.SHADOW_STORE.idFromName('book-v1'));
   // External audit can read the sequence/aggregate, but not the full private journal.
-  return book.fetch(new Request('https://store.internal/statistics-summary-v1?projection=journal',{method:'GET'}));
+  return book.fetch(new Request('https://store.internal/projection-journal-v1',{method:'GET'}));
  }
  if(u.pathname==='/projection-seed-v1'){
   if(u.hostname!=='ball46-shadow-receiver-production.mccarey-supon.workers.dev'||req.method!=='POST'||!await authorized(req,env.PROJECTION_SEED_TOKEN))return reply({ok:false},403);
-  const project=env.SHADOW_STORE.get(env.SHADOW_STORE.idFromName('projection-v1'));
+  const project=env.SHADOW_STORE.get(env.SHADOW_STORE.idFromName('book-v1'));
   return project.fetch('https://store.internal/projection-seed-v1',req);
  }
  const routes={'/audit-projection-status-v1':'/projection-status-v1','/audit-projection-graph-v1':'/projection-graph-v1','/audit-projection-pending-v1':'/projection-pending-v1','/audit-projection-pending-snapshot-v1':'/projection-pending-snapshot-v1'};
@@ -361,8 +359,8 @@ export class StatisticsReader extends WorkerEntrypoint {
 }
 
 async function projectionRead(env,path,search){
- const project=env.SHADOW_STORE.get(env.SHADOW_STORE.idFromName('projection-v1'));
- return project.fetch('https://store.internal'+path+search);
+ const project=env.SHADOW_STORE.get(env.SHADOW_STORE.idFromName('book-v1'));
+ return project.fetch(new Request('https://store.internal'+path+search,{method:'GET'}));
 }
 export class MarketStatisticsReader extends WorkerEntrypoint {
  async fetch(req){
