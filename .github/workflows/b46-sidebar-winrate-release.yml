@@ -1,48 +1,10 @@
-name: B46 owner-approved Sidebar Win Rate release
+name: Retired B46 Sidebar Win Rate release (disabled)
 on:
-  push:
-    branches: [chatgpt/ball46-new-ledger-clean-v1]
-    paths: ['.github/workflows/b46-sidebar-winrate-release.yml']
+  workflow_dispatch:
 permissions:
   contents: read
-concurrency:
-  group: b46-sidebar-winrate-production
-  cancel-in-progress: false
 jobs:
-  release:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 12
-    env:
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  retired:
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: 62bb48f5718ef5d3bc3258a959f1dc0207949b87
-          persist-credentials: false
-      - name: Build exact baseline and stage-tested additive receiver patch
-        working-directory: chatgpt-statistics-ui
-        run: |
-          set -euo pipefail
-          node --check sidebar-winrate-v1-release.mjs
-          node --check sidebar-winrate-v1-patch.mjs
-          npx --yes esbuild@0.25.12 shadow-production-receiver.mjs --bundle --format=esm --platform=neutral --target=es2022 --external:cloudflare:workers --outfile="$RUNNER_TEMP/sidebar-receiver-baseline.mjs"
-          node --input-type=module <<'JS'
-          import {readFile,writeFile} from 'node:fs/promises';
-          import {patchProjection} from './sidebar-winrate-v1-patch.mjs';
-          const p='shadow-receiver-projection-v1.mjs';
-          await writeFile(p,patchProjection(await readFile(p,'utf8')));
-          JS
-          npx --yes esbuild@0.25.12 shadow-production-receiver.mjs --bundle --format=esm --platform=neutral --target=es2022 --external:cloudflare:workers --outfile="$RUNNER_TEMP/sidebar-receiver.mjs"
-          node --check "$RUNNER_TEMP/sidebar-receiver.mjs"
-          git restore -- shadow-receiver-projection-v1.mjs
-          npm install --prefix .runtime --no-audit --no-fund playwright@1.55.0
-          .runtime/node_modules/.bin/playwright install chromium --only-shell
-      - name: Upload candidates, verify Receiver and real browser UI, activate site or rollback
-        run: node chatgpt-statistics-ui/sidebar-winrate-v1-release.mjs
-      - uses: actions/upload-artifact@v4
-        if: ${{ always() }}
-        with:
-          name: sidebar-winrate-production-evidence
-          path: ${{ runner.temp }}/sidebar-release/
-          if-no-files-found: ignore
-          retention-days: 14
+      - run: echo 'Retired one-time release; no Cloudflare calls or deployment.'
