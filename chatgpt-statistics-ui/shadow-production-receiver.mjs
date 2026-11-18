@@ -1,11 +1,72 @@
 import {WorkerEntrypoint} from 'cloudflare:workers';
 // Shadow-only receiver. No public route, no reads by the existing website.
 // Production health is read-only; ingestion is authorized by private service binding.
-// No seed or cutover. Conflicting corrections are preserved for reconciliation.
-import {normalizeRow,postComposite} from './shadow-composite-cursor-stage.mjs';
+// No seed or cutover. Newer revisions are applied atomically; same-time conflicts remain quarantined.
+import {normalizeRow,compareCursor} from './shadow-composite-cursor-stage.mjs';
 const reply=(d,s=200)=>Response.json(d,{status:s,headers:{'cache-control':'no-store'}});
 const digest=async value=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(value))))).map(b=>b.toString(16).padStart(2,'0')).join('');
 const state0=()=>({received:0,pending:0,duplicates:0,delivered:0,quarantined:0});
+// P&L fixed-point units (1e-8). Bootstrap only the existing receiver aggregate, never source data.
+const results=['WIN','LOSS','HALF_WIN','HALF_LOSS','PUSH'];
+const sameRow=(a,b)=>a.signal_id===b.signal_id&&a.settled_at===b.settled_at&&a.result===b.result&&a.market_type===b.market_type&&(a.odds===b.odds||(a.odds!=null&&b.odds!=null&&String(a.odds)===String(b.odds)));
+const pnlUnits=r=>{
+ if(r.result==='LOSS')return -100000000;
+ if(r.result==='HALF_LOSS')return -50000000;
+ if(r.result==='PUSH')return 0;
+ const n=Number(r.odds);
+ if(r.odds==null||!Number.isFinite(n)||n<1)return null;
+ const v=Math.round((n-1)*(r.result==='HALF_WIN'?0.5:1)*100000000);
+ if(!Number.isSafeInteger(v))throw Error('PNL_OUT_OF_RANGE');
+ return v;
+};
+const changePnl=(s,r,sign)=>{const p=pnlUnits(r);if(p===null)s.unknown_pnl+=sign;else s.pnl_units+=sign*p;};
+async function ensureAggregate(tx,s){
+ if(s.pnl_schema===1)return;
+ const counts={WIN:0,LOSS:0,HALF_WIN:0,HALF_LOSS:0,PUSH:0};
+ let total=0,cursor;
+ s.pnl_units=0;s.unknown_pnl=0;
+ do{
+  const rows=await tx.list({prefix:'composite:receipt:',limit:500,...(cursor?{startAfter:cursor}:{})});
+  for(const [k,raw] of rows){cursor=k;const r=normalizeRow(raw);counts[r.result]++;total++;changePnl(s,r,1);}
+  if(rows.size<500)break;
+ }while(true);
+ if(total!==s.total||results.some(k=>counts[k]!==s[k]))throw Error('EXISTING_BOOK_AGGREGATE_DRIFT');
+ s.pnl_schema=1;s.corrections=s.corrections??0;
+}
+async function postRevision(storage,raw){
+ const row=normalizeRow(raw);
+ return storage.transaction(async tx=>{
+  const key='composite:receipt:'+row.signal_id,old=await tx.get(key),prior=old?normalizeRow(old):null;
+  const s=await tx.get('composite:state')??{cursor:null,WIN:0,LOSS:0,PUSH:0,HALF_WIN:0,HALF_LOSS:0,total:0,winRate:0};
+  if(prior){
+   if(row.settled_at<prior.settled_at)return {stale:true,duplicate:false,corrected:false};
+   if(sameRow(prior,row))return {duplicate:true,corrected:false};
+   if(row.settled_at===prior.settled_at)throw Error('CORRECTION_REQUIRES_EXPLICIT_HANDLING');
+  }
+  await ensureAggregate(tx,s);
+  if(prior){
+   if(s[prior.result]<1)throw Error('OLD_COUNT_UNDERFLOW');
+   s[prior.result]--;changePnl(s,prior,-1);s.corrections=(s.corrections??0)+1;
+   // Preserve prior revision, keyed by its original settlement time.
+   await tx.put('composite:revision:'+prior.signal_id+':'+prior.settled_at,prior);
+  }else s.total++;
+  s[row.result]++;changePnl(s,row,1);
+  if(s.unknown_pnl<0||!Number.isSafeInteger(s.pnl_units)||results.reduce((n,k)=>n+s[k],0)!==s.total)throw Error('BOOK_AGGREGATE_INVARIANT');
+  const w=s.WIN+s.HALF_WIN,l=s.LOSS+s.HALF_LOSS;s.winRate=w+l?w/(w+l)*100:0;
+  s.total_pnl=s.unknown_pnl?null:s.pnl_units/100000000;
+  if(!s.cursor||compareCursor(row,s.cursor)>0)s.cursor={settled_at:row.settled_at,signal_id:row.signal_id};
+  await tx.put(key,row);await tx.put('composite:state',s);
+  return {duplicate:false,corrected:!!prior,stale:false};
+ });
+}
+const replayId='quarantine-replay-20261118-v1';
+async function authorized(req,expected){
+ const supplied=req.headers.get('authorization')??'';
+ if(typeof expected!=='string'||expected.length!==64||supplied.length!==71)return false;
+ const aa=new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(supplied)));
+ const bb=new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode('Bearer '+expected)));
+ let diff=0;for(let i=0;i<aa.length;i++)diff|=aa[i]^bb[i];return diff===0;
+}
 export class ShadowProductionStore {
  constructor(ctx,env){this.ctx=ctx;this.env=env}
  async fetch(req){
@@ -16,7 +77,13 @@ export class ShadowProductionStore {
     // Only the private Durable Object binding can reach this handler.
     if(req.headers.get('x-audit-object')==='inbox'){
      const q=await store.get('inbox:state')??state0();
-     return reply({total_received:q.received,duplicate_count:q.duplicates,pending_retry_queue:q.pending,delivered:q.delivered,quarantined:q.quarantined});
+     const info={total_received:q.received,duplicate_count:q.duplicates,pending_retry_queue:q.pending,delivered:q.delivered,quarantined:q.quarantined,stale_ignored:q.stale_ignored??0,stale_delivered:q.stale_delivered??0,corrections_delivered:q.corrections_delivered??0};
+     if(new URL(req.url).searchParams.get('quarantine')==='1'){
+      const rows=await store.list({prefix:'inbox:quarantine:',limit:100});
+      info.quarantine_rows=[...rows.values()].map(e=>({fingerprint:e.fingerprint,row:normalizeRow(e.row)}));
+      info.replay=await store.get('inbox:replay:'+replayId)??null;
+     }
+     return reply(info);
     }
     if(req.headers.get('x-audit-object')!=='book')return reply({ok:false},400);
     const range=new URL(req.url).searchParams;
@@ -38,13 +105,37 @@ export class ShadowProductionStore {
      }
      if(rows.size<500)break;
     }while(true);
-    return reply({settled_count,recent_5_signals:recent,raw_counts,...(detail?{audit_rows}:{}),total_pnl:unknownOdds?null:Math.round(total_pnl*1e8)/1e8,win_rate:w+l?w/(w+l)*100:0});
+    const aggregate=await store.get('composite:state');
+    return reply({settled_count,recent_5_signals:recent,raw_counts,...(detail?{audit_rows}:{}),aggregate:aggregate?{total:aggregate.total,total_pnl:aggregate.total_pnl??null,win_rate:aggregate.winRate,raw_counts:Object.fromEntries(results.map(k=>[k,aggregate[k]])),corrections:aggregate.corrections??0,pnl_schema:aggregate.pnl_schema??0}:null,total_pnl:unknownOdds?null:Math.round(total_pnl*1e8)/1e8,win_rate:w+l?w/(w+l)*100:0});
    }
    if(req.method!=='POST')return reply({ok:false},405);
    if(path==='/book-post'){
     const row=await req.json();
-    try{const result=await postComposite(store,row);return reply({ok:true,duplicate:result.duplicate})}
+    try{const result=await postRevision(store,row);return reply({ok:true,...result})}
     catch(e){if(e.message==='CORRECTION_REQUIRES_EXPLICIT_HANDLING')return reply({ok:false,error:'CORRECTION_CONFLICT'},409);throw e}
+   }
+   if(path==='/replay-quarantined-v1'){
+    const body=await req.json(),ids=body?.fingerprints;
+    if(!Array.isArray(ids)||ids.length!==9||new Set(ids).size!==9||ids.some(x=>typeof x!=='string'||!/^[a-f0-9]{64}$/.test(x)))return reply({ok:false},400);
+    const outcome=await store.transaction(async tx=>{
+     const marker='inbox:replay:'+replayId,done=await tx.get(marker);
+     if(done)return {ok:true,already:true,...done};
+     const q=await tx.get('inbox:state')??state0(),entries=await tx.list({prefix:'inbox:quarantine:',limit:10});
+     if(q.quarantined!==9||entries.size!==9||ids.some(x=>!entries.has('inbox:quarantine:'+x)))return {ok:false,error:'QUARANTINE_DRIFT'};
+     for(const fp of ids){
+      const key='inbox:quarantine:'+fp,event=entries.get(key);
+      if(event.fingerprint!==fp)throw Error('QUARANTINE_FINGERPRINT_DRIFT');
+      const p='inbox:pending:replay-v1:'+fp;
+      if(await tx.get(p))throw Error('REPLAY_PENDING_COLLISION');
+      await tx.put('inbox:replay-archive:'+fp,event);await tx.put(p,event);await tx.delete(key);
+     }
+     q.quarantined-=9;q.pending+=9;await tx.put('inbox:state',q);
+     const record={requeued:9,operation:replayId,at:Date.now()};await tx.put(marker,record);
+     return {ok:true,already:false,...record};
+    });
+    if(!outcome.ok)return reply(outcome,409);
+    const state=await store.get('inbox:state');if(state.pending&&(await store.getAlarm())===null)await store.setAlarm(Date.now()+1000);
+    return reply(outcome);
    }
    if(path!=='/enqueue')return reply({ok:false},404);
    const {events}=await req.json();
@@ -55,6 +146,12 @@ export class ShadowProductionStore {
     for(const event of inputs){
      const key='inbox:seen:'+event.fingerprint;
      if(await tx.get(key)){state.duplicates++;continue}
+     const latestKey='inbox:latest:'+event.row.signal_id,latest=await tx.get(latestKey);
+     if(latest&&event.row.settled_at<latest.settled_at){
+      state.stale_ignored=(state.stale_ignored??0)+1;await tx.put(key,true);continue;
+     }
+     if(!latest||event.row.settled_at>latest.settled_at)await tx.put(latestKey,event.row);
+     // The Book's persisted receipt remains authoritative for pre-upgrade IDs and same-time conflicts.
      state.received++;state.pending++;
      const queueKey='inbox:pending:'+String(state.received).padStart(16,'0');
      await tx.put(queueKey,event);await tx.put(key,true);
@@ -79,7 +176,7 @@ export class ShadowProductionStore {
       if(!await tx.get(key))return;
       const state=await tx.get('inbox:state');state.pending--;
       if(res.status===409){state.quarantined++;await tx.put('inbox:quarantine:'+event.fingerprint,event)}
-      else state.delivered++;
+      else {state.delivered++;if(result.corrected)state.corrections_delivered=(state.corrections_delivered??0)+1;if(result.stale)state.stale_delivered=(state.stale_delivered??0)+1;}
       await tx.delete(key);await tx.put('inbox:state',state);
      });
     }catch{retry=true;break}
@@ -93,13 +190,13 @@ export default {async fetch(req,env){
  const u=new URL(req.url);
  if(u.pathname==='/audit-snapshot'){
   if(u.hostname!=='ball46-shadow-receiver-production.mccarey-supon.workers.dev'||req.method!=='GET')return reply({ok:false},403);
-  const supplied=req.headers.get('authorization')??'',expected=env.AUDIT_TOKEN;
-  if(typeof expected!=='string'||expected.length!==64||supplied.length!==71)return reply({ok:false},403);
-  const aa=new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(supplied)));
-  const bb=new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode('Bearer '+expected)));
-  let diff=0;for(let i=0;i<aa.length;i++)diff|=aa[i]^bb[i];
-  if(diff!==0)return reply({ok:false},403);
+  if(!await authorized(req,env.AUDIT_TOKEN))return reply({ok:false},403);
   return readAuditSnapshot(env,u);
+ }
+ if(u.pathname==='/replay-quarantined-v1'){
+  if(u.hostname!=='ball46-shadow-receiver-production.mccarey-supon.workers.dev'||req.method!=='POST'||!await authorized(req,env.REPLAY_TOKEN))return reply({ok:false},403);
+  const inbox=env.SHADOW_STORE.get(env.SHADOW_STORE.idFromName('inbox-v1'));
+  return inbox.fetch('https://store.internal/replay-quarantined-v1',req);
  }
  if(u.hostname!=='shadow.internal')return reply({ok:false},403);
  const inbox=env.SHADOW_STORE.get(env.SHADOW_STORE.idFromName('inbox-v1'));
@@ -121,7 +218,7 @@ async function readAuditSnapshot(env,u){
   const query=range.toString();
   const inbox=env.SHADOW_STORE.get(env.SHADOW_STORE.idFromName('inbox-v1'));
   const book=env.SHADOW_STORE.get(env.SHADOW_STORE.idFromName('book-v1'));
-  const [a,b]=await Promise.all([inbox.fetch('https://store.internal/audit-snapshot',{headers:{'x-audit-object':'inbox'}}),book.fetch('https://store.internal/audit-snapshot'+(query?'?'+query:''),{headers:{'x-audit-object':'book'}})]);
+  const [a,b]=await Promise.all([inbox.fetch('https://store.internal/audit-snapshot'+(u.searchParams.get('quarantine')==='1'?'?quarantine=1':''),{headers:{'x-audit-object':'inbox'}}),book.fetch('https://store.internal/audit-snapshot'+(query?'?'+query:''),{headers:{'x-audit-object':'book'}})]);
   if(!a.ok||!b.ok)return reply({ok:false},[400,413].includes(b.status)?b.status:503);
   return reply({inbox:await a.json(),book:await b.json(),readOnly:true});
 }
