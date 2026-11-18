@@ -1,3 +1,4 @@
+import {WorkerEntrypoint} from 'cloudflare:workers';
 // Shadow-only receiver. No public route, no reads by the existing website.
 // Production health is read-only; ingestion is authorized by private service binding.
 // No seed or cutover. Conflicting corrections are preserved for reconciliation.
@@ -12,7 +13,7 @@ export class ShadowProductionStore {
   try{
    if(path==='/state'&&req.method==='GET')return reply({ok:true,queue:await store.get('inbox:state')??state0(),book:await store.get('composite:state')??null,alarmScheduled:(await store.getAlarm())!==null});
    if(path==='/audit-snapshot'&&req.method==='GET'){
-    if(!this.env.AUDIT_READ_TOKEN||req.headers.get('authorization')!=='Bearer '+this.env.AUDIT_READ_TOKEN)return reply({ok:false},403);
+    // Only the private Durable Object binding can reach this handler.
     if(req.headers.get('x-audit-object')==='inbox'){
      const q=await store.get('inbox:state')??state0();
      return reply({total_received:q.received,duplicate_count:q.duplicates,pending_retry_queue:q.pending});
@@ -84,17 +85,8 @@ export class ShadowProductionStore {
 export default {async fetch(req,env){
  const u=new URL(req.url);
  if(u.hostname!=='shadow.internal')return reply({ok:false},403);
+ if(u.pathname==='/audit-snapshot')return reply({ok:false},403);
  const inbox=env.SHADOW_STORE.get(env.SHADOW_STORE.idFromName('inbox-v1'));
- if(u.pathname==='/audit-snapshot'){
-  if(req.method!=='GET')return reply({ok:false},405);
-  if(!env.AUDIT_READ_TOKEN||req.headers.get('authorization')!=='Bearer '+env.AUDIT_READ_TOKEN)return reply({ok:false},403);
-  const book=env.SHADOW_STORE.get(env.SHADOW_STORE.idFromName('book-v1'));
-  const auth=req.headers.get('authorization');
-  const [a,b]=await Promise.all([inbox.fetch('https://store.internal/audit-snapshot',{headers:{authorization:auth,'x-audit-object':'inbox'}}),book.fetch('https://store.internal/audit-snapshot',{headers:{authorization:auth,'x-audit-object':'book'}})]);
-  if(!a.ok||!b.ok)return reply({ok:false},503);
-  return reply({inbox:await a.json(),book:await b.json(),readOnly:true});
- }
-
  if(u.pathname==='/health'&&req.method==='GET'){
   if(!env.SHADOW_HEALTH_TOKEN||req.headers.get('authorization')!=='Bearer '+env.SHADOW_HEALTH_TOKEN)return reply({ok:false,error:'AUTH_REJECTED'},403);
   const book=env.SHADOW_STORE.get(env.SHADOW_STORE.idFromName('book-v1'));
@@ -105,3 +97,19 @@ export default {async fetch(req,env){
  if(u.pathname==='/settled'&&req.method==='POST')return inbox.fetch('https://store.internal/enqueue',req);
  return reply({ok:false},404);
 }};
+
+// Named entrypoint is reachable only by a Cloudflare Service Binding targeting it.
+// The default HTTP entrypoint always rejects this path, even if a public route is added later.
+export class AuditReader extends WorkerEntrypoint {
+ async fetch(req){
+  const u=new URL(req.url);
+  if(u.hostname!=='shadow.internal'||u.pathname!=='/audit-snapshot')return reply({ok:false},403);
+  if(req.method!=='GET')return reply({ok:false},405);
+  const env=this.env;
+  const inbox=env.SHADOW_STORE.get(env.SHADOW_STORE.idFromName('inbox-v1'));
+  const book=env.SHADOW_STORE.get(env.SHADOW_STORE.idFromName('book-v1'));
+  const [a,b]=await Promise.all([inbox.fetch('https://store.internal/audit-snapshot',{headers:{'x-audit-object':'inbox'}}),book.fetch('https://store.internal/audit-snapshot',{headers:{'x-audit-object':'book'}})]);
+  if(!a.ok||!b.ok)return reply({ok:false},503);
+  return reply({inbox:await a.json(),book:await b.json(),readOnly:true});
+ }
+}
