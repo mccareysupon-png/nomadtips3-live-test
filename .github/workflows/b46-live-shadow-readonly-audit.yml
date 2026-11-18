@@ -145,12 +145,14 @@ jobs:
           JS
       - uses: actions/checkout@v4
         with:
-          ref: 0893c903b4ed2e153dc433a04669ca55899c366e
+          ref: c2def1f67493285a1555cd5a6baa8346810678d0
           persist-credentials: false
       - name: Reconcile every settled historical signal and accumulated balance after seed (read only)
         run: node chatgpt-statistics-ui/shadow-seed-audit.mjs
       - name: Verify live website contract and Receiver read performance before cutover
         run: node chatgpt-statistics-ui/shadow-cutover-preflight.mjs
+      - name: Verify isolated Book event hook and incremental market graph, Pending and details read paths
+        run: node chatgpt-statistics-ui/shadow-stage-live-projection-test.mjs
       - name: Install isolated browser test runtime
         run: |
           npm install --prefix chatgpt-statistics-ui/.runtime --no-audit --no-fund playwright@1.55.0
