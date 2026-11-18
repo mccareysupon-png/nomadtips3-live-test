@@ -268,24 +268,29 @@ export class ShadowProductionStore {
   if(pending.size)await store.setAlarm(Date.now()+(retry?30000:1000));
  }
 }
+// Never forward an HTML error page as a Receiver API response.
+async function projectionJson(request){
+ try{
+  const r=await request();
+  if(!(r.headers.get('content-type')??'').toLowerCase().includes('application/json'))return reply({ok:false,error:'PROJECTION_UPSTREAM_NON_JSON',upstreamStatus:r.status},502);
+  const data=await r.json();return reply(data,r.status);
+ }catch{return reply({ok:false,error:'PROJECTION_READ_UNAVAILABLE'},503)}
+}
+const projectionRoutes=Object.freeze({'/audit-projection-journal-v1':'/projection-journal-v1','/audit-projection-status-v1':'/projection-status-v1','/audit-projection-graph-v1':'/projection-graph-v1','/audit-projection-pending-v1':'/projection-pending-v1','/audit-projection-pending-snapshot-v1':'/projection-pending-snapshot-v1'});
 export default {async fetch(req,env){
  const u=new URL(req.url);
- if(u.pathname==='/audit-projection-journal-v1'){
-  if(u.hostname!=='ball46-shadow-receiver-production.mccarey-supon.workers.dev'||req.method!=='GET'||!await authorized(req,env.AUDIT_TOKEN))return reply({ok:false},403);
-  const book=env.SHADOW_STORE.get(env.SHADOW_STORE.idFromName('book-v1'));
-  // External audit can read the sequence/aggregate, but not the full private journal.
-  return book.fetch(new Request('https://store.internal/projection-journal-v1',{method:'GET'}));
- }
  if(u.pathname==='/projection-seed-v1'){
   if(u.hostname!=='ball46-shadow-receiver-production.mccarey-supon.workers.dev'||req.method!=='POST'||!await authorized(req,env.PROJECTION_SEED_TOKEN))return reply({ok:false},403);
   const project=env.SHADOW_STORE.get(env.SHADOW_STORE.idFromName('book-v1'));
-  return project.fetch('https://store.internal/projection-seed-v1',req);
+  return projectionJson(()=>project.fetch(new Request('https://store.internal/projection-seed-v1',req)));
  }
- const routes={'/audit-projection-status-v1':'/projection-status-v1','/audit-projection-graph-v1':'/projection-graph-v1','/audit-projection-pending-v1':'/projection-pending-v1','/audit-projection-pending-snapshot-v1':'/projection-pending-snapshot-v1'};
- if(Object.hasOwn(routes,u.pathname)){
+ if(Object.hasOwn(projectionRoutes,u.pathname)){
   if(u.hostname!=='ball46-shadow-receiver-production.mccarey-supon.workers.dev'||req.method!=='GET'||!await authorized(req,env.AUDIT_TOKEN))return reply({ok:false},403);
-  return projectionRead(env,routes[u.pathname],u.search);
+  return projectionJson(()=>projectionRead(env,projectionRoutes[u.pathname],u.pathname==='/audit-projection-journal-v1'?'':u.search));
  }
+ // Explicit API namespace: unknown paths cannot reach a page or SPA.
+ if(u.pathname.startsWith('/audit-projection-')||u.pathname.startsWith('/projection-'))return reply({ok:false,error:'API_ROUTE_NOT_FOUND'},404);
+
  if(u.pathname==='/audit-snapshot'){
   if(u.hostname!=='ball46-shadow-receiver-production.mccarey-supon.workers.dev'||req.method!=='GET')return reply({ok:false},403);
   if(!await authorized(req,env.AUDIT_TOKEN))return reply({ok:false},403);
@@ -367,6 +372,6 @@ export class MarketStatisticsReader extends WorkerEntrypoint {
   const u=new URL(req.url);
   if(u.hostname!=='shadow.internal'||!['/projection-status-v1','/projection-graph-v1','/projection-pending-v1'].includes(u.pathname))return reply({ok:false},403);
   if(req.method!=='GET')return reply({ok:false},405);
-  return projectionRead(this.env,u.pathname,u.search);
+  return projectionJson(()=>projectionRead(this.env,u.pathname,u.search));
  }
 }
