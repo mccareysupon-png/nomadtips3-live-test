@@ -1,0 +1,31 @@
+name: B46 exact website cutover contract (READ ONLY)
+on:
+  push:
+    branches: [chatgpt/ball46-new-ledger-clean-v1]
+    paths: ['.github/workflows/b46-site-cutover-contract.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          const host='https://ball46-production.mccarey-supon.workers.dev',token=process.env.CLOUDFLARE_API_TOKEN;
+          const get=async path=>{const r=await fetch(host+path,{headers:{'user-agent':'Mozilla/5.0 B46-CutoverContract',accept:'*/*'},signal:AbortSignal.timeout(25000)});assert(r.ok,path+' '+r.status);return r.text()};
+          const h=JSON.parse(await get('/b46-fast-v1/head'));
+          console.log('SITE_LEGACY_HEAD='+JSON.stringify({keys:Object.keys(h),total:h.total,pending:h.pending,unresolved:h.unresolved,byMarket:h.byMarket}));
+          for(const [path,anchors] of [['/longterm-performance-343.js',['function routeFilter','function filteredRows','function render','function dailyUnitPoints','function f46Points','function load()']],['/singlepage-workspace-343.js',['function routeFilter','function applyStatistics','function renderStatistics','function startStatistics','data-sp-filter','data-sp-variant']],['/b46-statistics-fast-v1-20261116.js',['function validRoute','const begin=','document.addEventListener(\'ball46:finance-line-ready\'']]]){
+            const s=await get(path);for(const a of anchors){const n=s.indexOf(a);if(n>=0)console.log('SITE_ANCHOR='+JSON.stringify({path,anchor:a,text:s.slice(n,n+(a==='function render'?3500:1800))}))}
+          }
+          const root='https://api.cloudflare.com/client/v4/accounts/62cb0db544160e6591342abd6b4f35cc';
+          for(const name of ['ball46-production','ball46-shadow-receiver-production','nomadtips3-engine-343']){
+            const r=await fetch(root+'/workers/scripts/'+name+'/deployments?per_page=1',{headers:{authorization:'Bearer '+token}}),d=await r.json();assert(r.ok&&d.success);
+            const v=d.result.deployments[0].versions[0];console.log('SITE_ACTUAL='+JSON.stringify({name,id:v.version_id,percentage:v.percentage}));
+          }
+          JS
