@@ -1,4 +1,4 @@
-name: B46 source contract inventory (READ ONLY)
+name: B46 advanced statistics filter contract (READ ONLY)
 on:
   push:
     branches: [chatgpt/ball46-new-ledger-clean-v1]
@@ -9,35 +9,11 @@ permissions:
 jobs:
   inspect:
     runs-on: ubuntu-24.04
-    timeout-minutes: 7
-    env:
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    timeout-minutes: 3
     steps:
-      - name: Inspect active scripts for existing read route capabilities without printing source or credentials
-        run: |
-          node --input-type=module <<'JS'
-          const base='https://api.cloudflare.com/client/v4/accounts/62cb0db544160e6591342abd6b4f35cc';
-          const headers={authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN};
-          async function get(path){const r=await fetch(base+path,{headers,signal:AbortSignal.timeout(20000)});const j=await r.json();if(!r.ok||!j.success)throw Error('CF_READ_'+r.status);return j.result}
-          for(const name of ['nomadtips3-engine-343','ball46-production','ball46-shadow-receiver-production']){
-           const d=await get('/workers/scripts/'+name+'/deployments?per_page=1'),vs=d.deployments?.[0]?.versions;
-           if(vs?.length!==1||vs[0].percentage!==100)throw Error('ACTIVE_VERSION_NOT_SINGLE');
-           const v=await get('/workers/workers/'+name+'/versions/'+vs[0].version_id+'?include=modules');
-           const s=await get('/workers/scripts/'+name+'/settings');
-           const routeSet=new Set(),paramSet=new Set(),features=new Set();
-           for(const m of v.modules??[]){
-            if(!m.content_base64||!/javascript|ecmascript|module/.test(m.content_type??''))continue;
-            const code=Buffer.from(m.content_base64,'base64').toString('utf8');
-            for(const x of code.matchAll(/["'](\/[A-Za-z0-9_./-]*(?:pending|statistic|ledger|signal|snapshot)[A-Za-z0-9_./-]*)["']/gi))if(x[1].length<100)routeSet.add(x[1]);
-            for(const x of code.matchAll(/searchParams\.(?:get|has)\(["']([A-Za-z0-9_-]{1,64})["']\)/g))paramSet.add(x[1]);
-            for(const x of ['statisticsContentRevision','settlementRevision','statisticsLedgerVersion','pendingOnly','listPending','pendingRows','sinceRevision','updatedAt','createdAt','nextCursor'])if(code.includes(x))features.add(x);
-           }
-           console.log('SOURCE_CONTRACT='+JSON.stringify({name,version:vs[0].version_id,moduleCount:v.modules?.length,bindings:(v.bindings??[]).map(x=>({name:x.name,type:x.type})),routes:[...routeSet].sort().slice(0,100),params:[...paramSet].sort(),features:[...features],limits:s.limits??null}));
-          }
-          JS
       - uses: actions/checkout@v4
         with:
-          ref: 31aa81f291f51aeb7d16be4eee6097f99d387f67
+          ref: 80f25a1d9e5e3d7f2875f428bab938007dcb4c1d
           persist-credentials: false
-      - name: Match existing source Pending IDs to verified legacy ledger
-        run: node chatgpt-statistics-ui/shadow-pending-source-contract.mjs
+      - name: Inspect native advanced filter contracts with read-only asset requests
+        run: node chatgpt-statistics-ui/shadow-advanced-filter-contract.mjs
