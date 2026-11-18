@@ -43,7 +43,7 @@ export async function journalRead(store,u){
  });
 }
 const bookOf=env=>env.SHADOW_STORE.get(env.SHADOW_STORE.idFromName('book-v1'));
-async function readJournal(env,after){const r=await bookOf(env).fetch('https://store.internal/projection-journal-v1'+(after==null?'':'?after='+after));const j=await r.json();if(!r.ok||!j.ok)throw Error('JOURNAL_HTTP_'+r.status);return j}
+async function readJournal(env,after){const u='https://store.internal/statistics-summary-v1?projection=journal'+(after==null?'':'&after='+after);const r=await bookOf(env).fetch(new Request(u,{method:'GET'}));const j=await r.json();if(!r.ok||!j.ok||!Number.isSafeInteger(j.sequence)||!j.aggregate||!Array.isArray(j.events))throw Error('JOURNAL_SCHEMA_OR_HTTP_'+r.status);return j}
 const stateView=s=>s?{status:s.status,sequence:s.sequence,generation:s.generation,seedDays:s.nextDay,totalDays:s.manifest.days.length,pendingChunks:s.nextPending,pendingExpected:s.manifest.pending+s.manifest.unresolved,sourceHash:s.manifest.sourceHash,lastAppliedAt:s.lastAppliedAt??null,pendingVerifiedAt:s.pendingVerifiedAt??null,pendingLive:false,pendingSource:'LEGACY_VERIFIED_SNAPSHOT_NO_COMPLETE_DELTA_FEED',lastError:s.lastError??null}:null;
 async function seed(store,env,input){
  const action=input?.action;
