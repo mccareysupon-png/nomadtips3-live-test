@@ -1,0 +1,39 @@
+name: B46 exact tie-order source verification (READ ONLY)
+on:
+  push:
+    branches: [chatgpt/ball46-new-ledger-clean-v1]
+    paths: ['.github/workflows/b46-receiver-tie-source-order.yml']
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 9266a71b918208adedcd7fde8d7e6374ca7f7495
+          persist-credentials: false
+      - run: |
+          node --input-type=module <<'JS'
+          import {collect} from './chatgpt-statistics-ui/shadow-seed-snapshot.mjs';
+          const root='https://api.cloudflare.com/client/v4/accounts/62cb0db544160e6591342abd6b4f35cc',token=process.env.CLOUDFLARE_API_TOKEN;
+          const r=await fetch(root+'/workers/workers/nomadtips3-engine-343/versions/db65134e-a12d-4084-937e-3ce6e986c251?include=modules',{headers:{authorization:'Bearer '+token},signal:AbortSignal.timeout(25000)});
+          const d=await r.json();if(!r.ok||!d.success)throw Error('ENGINE_READ');
+          const code=Buffer.from(d.result.modules[0].content_base64,'base64').toString();
+          const snippets=[];
+          for(const re of [/\b(?:function\s+\w*stat\w*ledger\w*|(?:async\s+)?statisticsLedgerResponse)\s*\(/gi,/\bSTAT_LEDGER_PREFIX\b/g]){
+           for(const m of code.matchAll(re)){const t=code.slice(Math.max(0,m.index-90),m.index+600);if(!snippets.includes(t))snippets.push(t)}
+          }
+          console.log('TIE_SOURCE_CODE='+JSON.stringify(snippets.slice(0,18)));
+          const source=await collect({includeRaw:true}),rows=source.rawRows,groups=new Map;
+          for(const [i,x] of rows.entries())if(x.status==='SETTLED'){
+           const k=String(x.settledAt)+'|'+String(x.createdAt);
+           if(!groups.has(k))groups.set(k,[]);groups.get(k).push({i,id:String(x.id),settledAt:Number(x.settledAt)});
+          }
+          const ties=[...groups.values()].filter(a=>a.length>1),recent=ties.filter(a=>a[0].settledAt>1794992969767);
+          const comp=(a,b)=>a.id<b.id?-1:a.id>b.id?1:0;
+          console.log('TIE_SOURCE_RANK='+JSON.stringify({rows:rows.length,tieGroups:ties.length,lexAsc:ties.filter(a=>a.every((v,i)=>!i||comp(a[i-1],v)<0)).length,lexDesc:ties.filter(a=>a.every((v,i)=>!i||comp(a[i-1],v)>0)).length,recentGroups:recent.map(a=>({size:a.length,allFirstPage:a.every(x=>x.i<500),pagePositions:a.map(x=>x.i),asc:a.every((v,i)=>!i||comp(a[i-1],v)<0),desc:a.every((v,i)=>!i||comp(a[i-1],v)>0)})).slice(-25)}));
+          JS
