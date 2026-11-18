@@ -1,0 +1,37 @@
+name: B46 sidebar visual layer diagnosis (GET only)
+on:
+  push:
+    branches: [chatgpt/ball46-new-ledger-clean-v1]
+    paths: ['.github/workflows/b46-sidebar-render-layer-diagnostic.yml']
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - run: |
+          npm install --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium --only-shell
+          node --input-type=module <<'JS'
+          import {chromium} from 'playwright';
+          const b=await chromium.launch(),p=await b.newPage({viewport:{width:1612,height:856}});
+          try{
+           await p.goto('https://www.ball46.com/?view=statistics',{waitUntil:'domcontentloaded'});
+           await p.waitForFunction(()=>document.querySelector('#b46-finance-chart-card')?.dataset.b46StatisticsSource==='receiver');
+           await p.waitForTimeout(1000);
+           const d=await p.evaluate(()=>{
+            const nodes=[...document.querySelectorAll('[data-stat-market] b')].map(e=>{const s=getComputedStyle(e),a=getComputedStyle(e,'::after'),before=getComputedStyle(e,'::before');return {market:e.closest('[data-stat-market]').dataset.statMarket,text:e.textContent,display:e.dataset.b46Display,font:s.fontSize,after:{content:a.content,font:a.fontSize,display:a.display},before:{content:before.content,font:before.fontSize,display:before.display}}});
+            const snippets=[];
+            for(const x of document.querySelectorAll('script:not([src]),style')){
+             const s=x.textContent;for(const term of ['b46Display','b46Zero','data-b46-display','data-b46-zero']){const i=s.indexOf(term);if(i>=0)snippets.push({tag:x.tagName,id:x.id,term,code:s.slice(Math.max(0,i-800),i+1600)})}
+            }
+            const rules=[];for(const ss of document.styleSheets)try{for(const r of ss.cssRules)if(/b46-display|b46-zero/.test(r.cssText))rules.push(r.cssText.slice(0,1800))}catch{}
+            return {nodes,snippets,rules,history:{button:!!document.querySelector('[data-b46-legacy-details]'),buttonVisible:!!document.querySelector('[data-b46-legacy-details]')?.getClientRects().length,requested:!!window.__B46_FAST_DETAILS_REQUESTED,table:document.body.innerText.includes('Waiting for settled results')}};
+           });
+           console.log('VISUAL_DIAG='+JSON.stringify(d));
+           // Browser only: prove visible result by removing the legacy pseudo count attributes.
+           const proof=await p.evaluate(()=>{for(const el of document.querySelectorAll('[data-stat-market] b')){delete el.dataset.b46Display;delete el.dataset.b46Zero;}return [...document.querySelectorAll('[data-stat-market] b')].map(e=>({text:e.textContent,font:getComputedStyle(e).fontSize,after:getComputedStyle(e,'::after').content}))});
+           console.log('VISUAL_PROOF='+JSON.stringify(proof));
+          }finally{await b.close()}
+          JS
