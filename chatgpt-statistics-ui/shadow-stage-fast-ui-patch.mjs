@@ -88,6 +88,15 @@ export function patchStageFastUI(input){
    graph={...g,variant:'all',filter:'all',range:'all'};
    if(!validData(head,graph))throw Error('STAGE_GRAPH_HEAD_MISMATCH');
    cleanup();mount();lastKey=stamp;
+   // Scope the override strictly to a successfully verified Statistics card.
+   // The legacy match-data loader is no longer responsible for this card.
+   if(preview?.isConnected){
+    if(!document.getElementById('b46-stage-interaction-css')){
+     const style=document.createElement('style');style.id='b46-stage-interaction-css';
+     style.textContent='html.b46-fast-v1-preview body[data-workspace-view="statistics"] #b46-data-orbit-loading{display:none!important;pointer-events:none!important} @media(max-width:850px){#b46-fast-v1-preview{padding-bottom:32px;max-width:100%} #b46-fast-v1-preview button,#b46-fast-v1-preview tr{scroll-margin-block:100px} #b46-fast-v1-preview [data-stage-records]{max-width:100%;overflow-x:auto}}';
+     document.head.append(style);
+    }
+   }
    diag.generation=h.generation;diag.market=key;diag.revisionSequence=g.sequence;
   }catch(e){diag.status='stage-read-unavailable';diag.error=String(e.message||e);/* no production mutation; keep last verified view */}
   finally{running=false}
