@@ -1,0 +1,47 @@
+name: BALL46 guarded Production Event Flow deployment
+on:
+  push:
+    branches: [test/ball46-eventflow-same-minute-20261118]
+    paths: ['.github/workflows/eventflow-same-minute-production-20261118.yml']
+permissions:
+  contents: read
+concurrency:
+  group: ball46-production-eventflow-deploy
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build exact previously verified candidate
+        run: |
+          mkdir -p qa-output
+          curl --fail --silent --show-error --max-time 35 "https://ball46.com/expanded-match-343.js?b46_prod_qa=${GITHUB_RUN_ID}" -o qa-output/expanded-match-343.original.js
+          node qa/eventflow-same-minute-20261118/patch.mjs qa-output/expanded-match-343.original.js qa-output/expanded-match-343.candidate.js
+          node --check qa-output/expanded-match-343.candidate.js
+          curl --fail --silent --show-error --max-time 35 "https://ball46.com/?b46_prod_qa=${GITHUB_RUN_ID}" -o /tmp/b46page.html
+      - name: Install audit dependencies
+        run: |
+          npm install --prefix "$RUNNER_TEMP/b46qa" --no-save --no-package-lock puppeteer-core acorn
+          echo "PUPPETEER_ENTRY=$(node -p "require.resolve('puppeteer-core',{paths:['$RUNNER_TEMP/b46qa']})")" >> "$GITHUB_ENV"
+          echo "ACORN_ENTRY=$(node -p "require.resolve('acorn',{paths:['$RUNNER_TEMP/b46qa']})")" >> "$GITHUB_ENV"
+          echo "CHROME_PATH=$(command -v google-chrome || command -v chromium)" >> "$GITHUB_ENV"
+      - name: Preflight exact production presentation replay
+        run: node qa/eventflow-same-minute-20261118/browser.mjs
+      - name: Guarded production deployment and verification
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: node qa/eventflow-same-minute-20261118/deploy-production.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eventflow-production-verification
+          path: |
+            qa-output/production-report.json
+            qa-output/production-page.png
+            qa-output/browser-report.json
+            qa-output/desktop-*.png
+            qa-output/expanded-match-343.candidate.js.report.json
+          retention-days: 14
