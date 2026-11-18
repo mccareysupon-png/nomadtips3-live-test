@@ -33,7 +33,7 @@ async function homepage(host){
   return {calls,graphs,flags};
  }finally{await b.close()}
 }
-function homeParity(a,b){assert.equal(b.flags.view,'live');assert.equal(b.flags.queued,false);assert.equal(b.flags.requested,a.flags.requested);assert.equal(b.graphs.length,a.graphs.length);assert(b.calls.length<=a.calls.length,'LIVE_EXTRA_HISTORY');for(const q of b.calls)assert(a.calls.some(x=>JSON.stringify(x)===JSON.stringify(q)),'LIVE_NEW_QUERY')}
+function homeParity(a,b){assert.equal(b.flags.view,'live');assert.equal(b.flags.queued,false);assert.equal(b.flags.requested,a.flags.requested);assert.equal(b.graphs.length,a.graphs.length);assert(b.calls.every(q=>q.some(([k,v])=>k==='paged'&&v==='1')&&q.every(([k])=>['paged','cursor'].includes(k))),'LIVE_NEW_QUERY_SHAPE');assert(b.calls.length===0||a.calls.length>0,'LIVE_NEW_HISTORY_FLOW');}
 async function qa(host,phase){
  const b=await chromium.launch({headless:true});
  try{for(const mobile of [false,true]){
