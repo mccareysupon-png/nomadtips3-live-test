@@ -1,4 +1,4 @@
-name: B46 production read contract and Pending filter inspection (READ ONLY)
+name: B46 post-rollback ledger and advanced filter verification (READ ONLY)
 on:
   push:
     branches: [chatgpt/ball46-new-ledger-clean-v1]
@@ -7,39 +7,36 @@ on:
 permissions:
   contents: read
 jobs:
-  inspect:
+  audit:
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 8
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 9422bf7c51e674930da3110503231c7745ab41d6
+          ref: 7d32e7993d63a6f30baa101fee19ec1cc3c59e73
           persist-credentials: false
-      - name: Verify deployed filter definitions
-        run: node chatgpt-statistics-ui/shadow-advanced-filter-contract.mjs
-      - name: Inspect actual history route and supported query fields, no mutation
+      - name: Verify active versions and endpoint content type without mutation
         run: |
           node --input-type=module <<'JS'
-          const base='https://api.cloudflare.com/client/v4/accounts/62cb0db544160e6591342abd6b4f35cc';
-          async function get(p){const r=await fetch(base+p,{headers:{authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN},signal:AbortSignal.timeout(25000)});const d=await r.json();if(!r.ok||!d.success)throw Error('CF_'+r.status);return d.result}
-          for(const name of ['nomadtips3-engine-343','ball46-production','ball46-shadow-receiver-production']){
-           const d=await get('/workers/scripts/'+name+'/deployments?per_page=1'),id=d.deployments[0].versions[0].version_id;
-           console.log('ACTIVE_VERSION='+JSON.stringify({name,id}));
-           if(name!=='nomadtips3-engine-343')continue;
-           const v=await get('/workers/workers/'+name+'/versions/'+id+'?include=modules');
-           for(const m of v.modules??[]){
-            if(!m.content_base64||!/javascript|ecmascript|module/.test(m.content_type??''))continue;
-            const code=Buffer.from(m.content_base64,'base64').toString('utf8');
-            const matches=[...code.matchAll(/(?:pathname\s*===\s*["']\/statistics["']|async\s+statistics\s*\(|(?:async\s+)?function\s+[A-Za-z_$][\w$]*(?:Ledger|Statistics|Pagination)[\w$]*\s*\()/g)];
-            for(const x of matches.slice(0,18)){
-             const part=code.slice(Math.max(0,x.index-100),x.index+1500);
-             if(/(?:token|secret|api.?key)\s*[:=]\s*["'][^"']+/i.test(part))continue;
-             console.log('HISTORY_IMPLEMENTATION='+JSON.stringify({match:x[0],excerpt:part}));
-            }
-           }
+          import {createHmac} from 'node:crypto';
+          const root='https://api.cloudflare.com/client/v4/accounts/62cb0db544160e6591342abd6b4f35cc',headers={authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN};
+          for(const [name,expect] of Object.entries({'nomadtips3-engine-343':'db65134e-a12d-4084-937e-3ce6e986c251','ball46-shadow-receiver-production':'8ce60b53-5df7-41eb-90cb-568df4fe8044','ball46-production':'f5d9cf21-4b41-46da-bdd8-a841fa733d82'})){
+           const r=await fetch(root+'/workers/scripts/'+name+'/deployments?per_page=1',{headers,signal:AbortSignal.timeout(20000)}),d=await r.json(),a=d.result?.deployments?.[0]?.versions;
+           if(!r.ok||!d.success||a?.length!==1||a[0].version_id!==expect||a[0].percentage!==100)throw Error('ACTIVE_VERSION_DRIFT_'+name);
+           console.log('ROLLBACK_VERSION='+JSON.stringify({name,id:expect,traffic:100}));
+          }
+          const key=createHmac('sha256',process.env.CLOUDFLARE_API_TOKEN).update('ball46/receiver/https-audit/v1/20261118').digest('hex');console.log('::add-mask::'+key);
+          const endpoint='https://ball46-shadow-receiver-production.mccarey-supon.workers.dev';
+          for(const path of ['/audit-statistics-summary-v1','/audit-projection-status-v1']){
+           const r=await fetch(endpoint+path,{headers:{authorization:'Bearer '+key,'user-agent':'Mozilla/5.0 B46-ReadOnly'},redirect:'manual',signal:AbortSignal.timeout(25000)});
+           const text=await r.text();let data=null;try{data=JSON.parse(text)}catch{}
+           console.log('ROLLBACK_ENDPOINT='+JSON.stringify({path,http:r.status,contentType:r.headers.get('content-type'),mitigated:r.headers.get('cf-mitigated'),json:!!data,summary:data?.source==='RECEIVER_BOOK'?data:undefined}));
+           if(path==='/audit-statistics-summary-v1'&&(r.status!==200||!data?.ok||data.total<16090))throw Error('BASELINE_READ_FAILED');
           }
           JS
-      - name: Check full history versus candidate Pending-only filters
-        run: node chatgpt-statistics-ui/shadow-pending-source-contract.mjs
+      - name: Full-history independent reconciliation after rollback
+        run: node chatgpt-statistics-ui/shadow-seed-audit.mjs
+      - name: Record actual deployed advanced filter definitions
+        run: node chatgpt-statistics-ui/shadow-advanced-filter-contract.mjs
