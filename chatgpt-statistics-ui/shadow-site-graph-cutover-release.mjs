@@ -62,20 +62,18 @@ try{
  assert(subdomain.enabled===true&&subdomain.previews_enabled===true,'INACTIVE_PREVIEW_UNAVAILABLE');
  const bindings=base.bindings??[];assert(!bindings.some(x=>x.name==='B46_MARKET_READER'),'BINDING_ALREADY_EXISTS');
  const originalLiveHash=await pristine(DIRECT);await health(DIRECT);
- const edits=[['/longterm-performance-343.js',patchChart],['/singlepage-workspace-343.js',patchWorkspace],['/b46-statistics-fast-v1-20261116.js',patchFastClient]],patchModules=[],paths=[];
- for(const [i,[p,patch]] of edits.entries()){
+ const edits=[['/longterm-performance-343.js',patchChart,'patchChart'],['/singlepage-workspace-343.js',patchWorkspace,'patchWorkspace'],['/b46-statistics-fast-v1-20261116.js',patchFastClient,'patchFastClient']],paths=[];
+ for(const [p,patch,name] of edits){
   const r=await http(DIRECT,p);assert(r.status===200&&r.body.length>1000,'SOURCE_READ_'+p);
   const old=r.body.toString('utf8'),next=patch(old);assert.notEqual(old,next);new Function(next);
-  const name='b46-cutover-patched-'+i+'.mjs',module='export default '+JSON.stringify(next)+';\n';
-  patchModules.push({name,content_type:'application/javascript+module',content_base64:Buffer.from(module).toString('base64')});
   paths.push({path:p,name,hash:hash(Buffer.from(next)),baseHash:hash(r.body)});
   await writeFile(audit+'/'+p.slice(1),next);
  }
- const proxyName='b46-site-graph-cutover-20261118.mjs',wrapper='b46-site-graph-entry-20261118.mjs';
- const proxy=await readFile(new URL('./shadow-site-graph-cutover.mjs',import.meta.url),'utf8');
- const wrapperCode='import orig from "./'+base.main_module+'";\nexport * from "./'+base.main_module+'";\nimport {withGraphCutover} from "./'+proxyName+'";\n'+paths.map((p,i)=>'import a'+i+' from "./'+p.name+'";').join('\n')+'\nexport default withGraphCutover(orig,{'+paths.map((p,i)=>JSON.stringify(p.path)+':a'+i).join(',')+'});\n';
- const added=[...patchModules,{name:proxyName,content_type:'application/javascript+module',content_base64:Buffer.from(proxy).toString('base64')},{name:wrapper,content_type:'application/javascript+module',content_base64:Buffer.from(wrapperCode).toString('base64')}];
- const modules=[...base.modules,...added];assert(modules.reduce((n,m)=>n+gzipSync(Buffer.from(m.content_base64,'base64')).length,0)<10*1024*1024-100*1024,'WORKER_SIZE_LIMIT');
+ const proxyName='b46-site-graph-cutover-20261118.mjs',patchName='b46-site-graph-patch-20261118.mjs',wrapper='b46-site-graph-entry-20261118.mjs';
+ const proxy=await readFile(new URL('./shadow-site-graph-cutover.mjs',import.meta.url),'utf8'),patch=await readFile(new URL('./shadow-site-graph-cutover-patch.mjs',import.meta.url),'utf8');
+ const wrapperCode='import orig from "./'+base.main_module+'";\nexport * from "./'+base.main_module+'";\nimport {withGraphCutover} from "./'+proxyName+'";\nimport {patchChart,patchWorkspace,patchFastClient} from "./'+patchName+'";\nexport default withGraphCutover(orig,{'+paths.map(p=>JSON.stringify(p.path)+':'+p.name).join(',')+'});\n';
+ const added=[{name:patchName,content_type:'application/javascript+module',content_base64:Buffer.from(patch).toString('base64')},{name:proxyName,content_type:'application/javascript+module',content_base64:Buffer.from(proxy).toString('base64')},{name:wrapper,content_type:'application/javascript+module',content_base64:Buffer.from(wrapperCode).toString('base64')}];
+ const modules=[...base.modules,...added],compressed=modules.reduce((n,m)=>n+gzipSync(Buffer.from(m.content_base64,'base64')).length,0);console.log('CUTOVER_SIZE='+JSON.stringify({compressed,limit:10*1024*1024,addedModules:added.length}));assert(compressed<10*1024*1024-100*1024,'WORKER_SIZE_LIMIT');
  const newBinding={name:'B46_MARKET_READER',type:'service',service:RECEIVER,environment:'production',entrypoint:'MarketStatisticsReader'};
  const meta={main_module:wrapper,compatibility_date:base.compatibility_date,compatibility_flags:base.compatibility_flags??[],bindings:[...bindings.map(b=>b.type==='secret_text'?{name:b.name,type:'inherit',version_id:BASE}:b),newBinding],keep_assets:true,annotations:{'workers/message':'Settled statistics graph cutover; keep all base assets/bindings and original history routes'}};
  if(base.assets?.config)meta.assets={config:base.assets.config};
