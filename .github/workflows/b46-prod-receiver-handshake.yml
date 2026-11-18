@@ -1,103 +1,10 @@
-name: B46 approved Receiver durable graph projection (NO SITE CUTOVER)
+name: Retired B46 receiver bootstrap (disabled)
 on:
-  push:
-    branches: [chatgpt/ball46-new-ledger-clean-v1]
-    paths: ['.github/workflows/b46-prod-receiver-handshake.yml']
   workflow_dispatch:
 permissions:
   contents: read
-concurrency:
-  group: b46-prod-receiver-only
-  cancel-in-progress: false
 jobs:
-  receiver:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 20
-    env:
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  retired:
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: 6a669f65051d79df7a7ba017f8682533b9b0023b
-          persist-credentials: false
-      - name: Verify local durable projection and production data parity BEFORE any deployment
-        working-directory: chatgpt-statistics-ui
-        shell: bash
-        run: |
-          set -euo pipefail
-          test "$(git rev-parse HEAD)" = 6a669f65051d79df7a7ba017f8682533b9b0023b
-          test "$(git hash-object shadow-production-receiver.mjs)" = 230fe67c4d4e593806a16e0cf83ac82b8ef8e827
-          node --check shadow-production-receiver.mjs
-          node --check shadow-receiver-projection-v1.mjs
-          node shadow-receiver-projection-install.mjs local
-          npx --yes esbuild@0.25.12 shadow-production-receiver.mjs --bundle --format=esm --platform=neutral --target=es2022 --external:cloudflare:workers --outfile="$RUNNER_TEMP/receiver.mjs"
-          node --check "$RUNNER_TEMP/receiver.mjs"
-      - name: Deploy only Receiver; validate auth and seed separate durable projection; never switch website
-        working-directory: chatgpt-statistics-ui
-        shell: bash
-        run: |
-          set -euo pipefail
-          node --input-type=module <<'JS'
-          import {readFileSync} from 'node:fs';
-          import {createHash,createHmac,randomBytes} from 'node:crypto';
-          import {execFileSync} from 'node:child_process';
-          const receiver='ball46-shadow-receiver-production',engine='nomadtips3-engine-343',site='ball46-production';
-          const old='8ce60b53-5df7-41eb-90cb-568df4fe8044',engineOld='db65134e-a12d-4084-937e-3ce6e986c251',siteOld='f5d9cf21-4b41-46da-bdd8-a841fa733d82';
-          const root='https://api.cloudflare.com/client/v4/accounts/62cb0db544160e6591342abd6b4f35cc',headers={authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN,'content-type':'application/json'};
-          const key=createHmac('sha256',process.env.CLOUDFLARE_API_TOKEN).update('ball46/receiver/https-audit/v1/20261118').digest('hex'),seedKey=randomBytes(32).toString('hex');
-          console.log('::add-mask::'+key);console.log('::add-mask::'+seedKey);
-          const api=async(p,method='GET',body)=>{
-           if(method!=='GET'&&!(method==='POST'&&(p==='/workers/workers/'+receiver+'/versions?deploy=false'||p==='/workers/scripts/'+receiver+'/deployments')))throw Error('WRITE_SCOPE');
-           const r=await fetch(root+p,{method,headers,body:body===undefined?undefined:JSON.stringify(body),signal:AbortSignal.timeout(30000)}),j=await r.json();if(!r.ok||!j.success)throw Error('CF_'+method+'_'+r.status+'_'+(j.errors??[]).map(e=>e.code).join('_'));return j.result;
-          };
-          const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-          const active=async n=>(await api('/workers/scripts/'+n+'/deployments?per_page=1')).deployments?.[0]?.versions;
-          const equal=(a,id)=>a?.length===1&&a[0].version_id===id&&Number(a[0].percentage)===100;
-          const ensure=async(n,id)=>{if(!equal(await active(n),id))throw Error('ACTIVE_VERSION_DRIFT_'+n)};
-          const checks=async id=>{await ensure(engine,engineOld);await ensure(site,siteOld);await ensure(receiver,id);const d=await api('/workers/scripts/'+receiver+'/subdomain');if(d.enabled!==true||d.previews_enabled===true)throw Error('RECEIVER_ROUTE_DRIFT')};
-          const version=id=>api('/workers/workers/'+receiver+'/versions/'+id+'?include=modules');
-          const hash=b=>createHash('sha256').update(b).digest('hex');
-          const assign=id=>api('/workers/scripts/'+receiver+'/deployments','POST',{strategy:'percentage',versions:[{version_id:id,percentage:100}],annotations:{'workers/message':'Receiver durable market projection; no site/engine change'}});
-          const waitActive=async id=>{for(let i=0;i<15;i++){if(equal(await active(receiver),id))return;await sleep(2000)}throw Error('ACTIVE_VERSION_NOT_CONFIRMED')};
-          const base='https://ball46-shadow-receiver-production.mccarey-supon.workers.dev';
-          const get=async (path,token=key)=>{const r=await fetch(base+path,{headers:{'user-agent':'Mozilla/5.0 B46-Projection-QA',...(token?{authorization:'Bearer '+token}:{})},redirect:'manual',signal:AbortSignal.timeout(25000)});return {status:r.status,data:await r.json()}};
-          await checks(old);
-          const before=await get('/audit-statistics-summary-v1');
-          if(before.status!==200||!before.data.ok||before.data.total<16074)throw Error('LIVE_BOOK_NOT_READY');
-          const v=await version(old),settings=await api('/workers/scripts/'+receiver+'/settings');
-          if(v.modules?.length!==1||v.main_module!==v.modules[0].name)throw Error('MODULE_SHAPE_DRIFT');
-          const bindings=v.bindings??[];
-          for(const type of ['AUDIT_TOKEN','SHADOW_HEALTH_TOKEN','SEED_TOKEN','REPLAY_TOKEN'])if(!bindings.some(x=>x.name===type&&x.type==='secret_text'))throw Error('EXISTING_SECRET_BINDING_DRIFT');
-          if(bindings.some(x=>x.name==='PROJECTION_SEED_TOKEN')||!bindings.some(x=>x.name==='SHADOW_STORE'&&x.type==='durable_object_namespace'&&x.class_name==='ShadowProductionStore'))throw Error('NAMESPACE_OR_PROJECTION_BINDING_DRIFT');
-          const candidate=readFileSync(process.env.RUNNER_TEMP+'/receiver.mjs');
-          const payload={main_module:v.main_module,modules:[{name:v.main_module,content_type:v.modules[0].content_type,content_base64:candidate.toString('base64')}],bindings:[...bindings.map(b=>({name:b.name,type:'inherit',version_id:old})),{name:'PROJECTION_SEED_TOKEN',type:'secret_text',text:seedKey}],compatibility_date:v.compatibility_date,compatibility_flags:settings.compatibility_flags??[],annotations:{'workers/message':'Separate durable graph projector and accepted-settlement outbox; original Book retained'}};
-          if(v.usage_model)payload.usage_model=v.usage_model;if(v.migration_tag)payload.migration_tag=v.migration_tag;
-          const up=await api('/workers/workers/'+receiver+'/versions?deploy=false','POST',payload),id=up.id;if(!id||id===old)throw Error('INVALID_CANDIDATE');
-          const next=await version(id);if(next.modules?.length!==1||hash(Buffer.from(next.modules[0].content_base64,'base64'))!==hash(candidate))throw Error('UPLOADED_HASH_DRIFT');
-          if((next.bindings??[]).length!==bindings.length+1||!next.bindings.some(x=>x.name==='PROJECTION_SEED_TOKEN'&&x.type==='secret_text'))throw Error('PROJECTION_BINDING_DRIFT');
-          for(const x of bindings){const y=next.bindings.find(z=>z.name===x.name);if(!y||y.type!==x.type)throw Error('BINDING_TYPE_DRIFT');for(const k of ['service','class_name','namespace_id','script_name','environment','text'])if(x.type!=='secret_text'&&x[k]!==undefined&&x[k]!==y[k])throw Error('BINDING_RESOURCE_DRIFT')}
-          console.log('PROJECTION_CANDIDATE_VERIFIED='+JSON.stringify({id,rollback:old,source:'6a669f6',sha256:hash(candidate),existingBindingsPreserved:true}));
-          await checks(old);
-          try{
-           await assign(id);await waitActive(id);await checks(id);
-           let j,a,bad,graph,passed=false;
-           for(let i=1;i<=8;i++){
-            [j,a,bad,graph]=await Promise.all([get('/audit-projection-status-v1'),get('/audit-statistics-summary-v1'),get('/audit-projection-status-v1',null),get('/audit-projection-graph-v1')]);
-            console.log('PROJECTION_ACTIVATION_GATE='+JSON.stringify({attempt:i,journal:j.status,journalError:j.data?.error??null,journalSequence:j.data?.bookSequence??null,journalTotal:j.data?.bookAggregate?.total??null,summary:a.status,summaryError:a.data?.error??null,before:before.data.total,after:a.data?.total??null,unauth:bad.status,unseededGraph:graph.status,graphError:graph.data?.error??null}));
-            if(bad.status===200||graph.status===200)throw Error('UNEXPECTED_UNAUTHORIZED_OR_UNSEEDED_READ');
-            if(j.status===200&&Number.isSafeInteger(j.data.bookSequence)&&j.data.bookSequence===j.data.bookAggregate?.total+j.data.bookAggregate?.corrections&&j.data.bookAggregate?.total===a.data.total&&j.data.graphReady===false&&a.status===200&&a.data.total>=before.data.total&&bad.status===403&&graph.status===503){passed=true;break}
-            if(i<8)await sleep(3000);
-           }
-           if(!passed)throw Error('NEW_RECEIVER_GATE_FAILED_WITH_DIAGNOSTICS');
-           console.log('PROJECTION_RECEIVER_DEPLOYED='+JSON.stringify({id,rollback:old,engine:engineOld,website:siteOld,bookBefore:before.data.total,bookAfter:a.data.total,sequence:j.data.bookSequence,oldSecretsPreserved:true,graphGate:graph.status,websiteSourceChanged:false}));
-          }catch(e){if(equal(await active(receiver),id)){await assign(old);await waitActive(old);console.log('PROJECTION_RECEIVER_ROLLBACK='+old)}throw e}
-          // No rollback of data after bootstrap starts. If projection fails, its reads fail closed;
-          // continue accepting settlement into the original Book and preserve the journal.
-          try{
-           execFileSync(process.execPath,['shadow-receiver-projection-install.mjs','seed'],{stdio:'inherit',env:{...process.env,PROJECTION_SEED_TOKEN:seedKey},timeout:360000});
-           await checks(id);
-          }catch(e){await checks(id);console.log('PROJECTION_SEED_BLOCKED_OR_PARTIAL=true');throw e}
-          JS
-      - name: Independent full-history and seven-market Production read audit
-        working-directory: chatgpt-statistics-ui
-        run: node shadow-receiver-projection-install.mjs audit
+      - run: echo "Retired bootstrap; no Cloudflare calls or deployment."
