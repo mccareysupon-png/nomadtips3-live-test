@@ -9,7 +9,7 @@ permissions:
 jobs:
   audit:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 15
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
     steps:
@@ -143,3 +143,9 @@ jobs:
           console.log('DEEP_DIFF_TOP5='+JSON.stringify(topMatch));
           console.log('DEEP_DIFF_SUMMARY='+JSON.stringify({legacyCount:a.length,receiverCount:b.length,matchingIds:a.length-missing,missing,extra,resultDiff,pnlDiff,metadataDiff,mismatchRows:differences.length,delta:unknownDelta?null:round(delta),summaryDelta:sa.pnl==null||sb.pnl==null?null:round(sb.pnl-sa.pnl),inbox:data.inbox,baselineUntil:legacy.baselineUntil,archiveExhausted:legacy.archiveExhausted}));
           JS
+      - uses: actions/checkout@v4
+        with:
+          ref: 9e5cbf0016853f72f0f488033ed5f152ec611cb1
+          persist-credentials: false
+      - name: Verify complete stable legacy history before seed (read only)
+        run: node chatgpt-statistics-ui/shadow-seed-snapshot.mjs
