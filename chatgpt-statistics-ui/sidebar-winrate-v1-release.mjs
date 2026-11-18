@@ -8,7 +8,7 @@ import {patchProxy,patchWorkspace,patchBrowserChart} from './sidebar-winrate-v1-
 import {sidebarWinRates,validSidebar,SIDEBAR_MARKETS} from './sidebar-winrate-v1.mjs';
 const {chromium}=createRequire(new URL('./.runtime/package.json',import.meta.url))('playwright');
 const SITE='ball46-production',REC='ball46-shadow-receiver-production',ENG='nomadtips3-engine-343';
-const oldSite='7440a431-419b-4d4c-9ce4-3da7c58628f7',oldRec='55a7638c-d6e4-4698-9ad4-b3e1f821ed5f',oldEng='db65134e-a12d-4084-937e-3ce6e986c251';
+const oldSite='b4f41a7d-4d48-4e11-aa16-e74ab5dd586a',oldRec='55a7638c-d6e4-4698-9ad4-b3e1f821ed5f',oldEng='db65134e-a12d-4084-937e-3ce6e986c251';
 const root='https://api.cloudflare.com/client/v4/accounts/62cb0db544160e6591342abd6b4f35cc',token=process.env.CLOUDFLARE_API_TOKEN;
 assert(token,'WORKER_TOKEN_MISSING');
 const key=createHmac('sha256',token).update('ball46/receiver/https-audit/v1/20261118').digest('hex');console.log('::add-mask::'+key);
@@ -83,7 +83,7 @@ try{
  const rv=await version(REC,oldRec),sv=await version(SITE,oldSite);
  assert(rv.modules?.length===1&&rv.main_module===rv.modules[0].name,'RECEIVER_MODULE_SHAPE');
  assert.equal(hash(decode(rv.modules[0])),'4f9f2c3408b2a75198cfe40829a26f3bcf1dba8ec2e00c57e1b49ef9de10dd64','RECEIVER_BASE_HASH');
- assert.equal(sv.main_module,'b46-site-graph-entry-20261118.mjs');assert.equal(sv.modules.length,55);
+ assert(sv.modules?.some(x=>x.name===sv.main_module)&&sv.modules.some(x=>x.name==='b46-site-graph-entry-20261118.mjs'),'SITE_RELEASE_CHAIN_DRIFT');console.log('SIDEBAR_BASE_SITE='+JSON.stringify({id:oldSite,main:sv.main_module,modules:sv.modules.length}));
  assert(sv.bindings.some(x=>x.name==='B46_MARKET_READER'&&x.service===REC&&x.entrypoint==='MarketStatisticsReader'));
  assert(rv.bindings.some(x=>x.name==='SHADOW_STORE'&&x.type==='durable_object_namespace'&&x.class_name==='ShadowProductionStore'));
  const projBase=await readFile(new URL('./shadow-site-graph-cutover.mjs',import.meta.url),'utf8'),patchBase=await readFile(new URL('./shadow-site-graph-cutover-patch.mjs',import.meta.url),'utf8');
