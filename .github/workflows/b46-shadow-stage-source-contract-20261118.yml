@@ -15,7 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 7d32e7993d63a6f30baa101fee19ec1cc3c59e73
+          ref: f5dc0890c004c7d39fcd3e0d3885edaeaeff691f
           persist-credentials: false
       - name: Verify active versions and endpoint content type without mutation
         run: |
@@ -40,3 +40,5 @@ jobs:
         run: node chatgpt-statistics-ui/shadow-seed-audit.mjs
       - name: Record actual deployed advanced filter definitions
         run: node chatgpt-statistics-ui/shadow-advanced-filter-contract.mjs
+      - name: Match actual native variant registry to canonical ledger rows
+        run: node chatgpt-statistics-ui/shadow-native-filter-verify.mjs
