@@ -31,7 +31,7 @@ async function page(cursor){
  if(d.statisticsSource!=='LEDGER_V2_ONLY')throw Error('SOURCE_NOT_CANONICAL_LEDGER');
  return d;
 }
-async function collectOnce(){
+async function collectOnce(includeRaw=false){
  const first=await page(),sig=signature(first),raw=[],seen=new Set(),cursors=new Set();let d=first,pages=0;
  while(true){
   if(signature(d)!==sig)throw Error('SOURCE_REVISION_CHANGED');
@@ -52,10 +52,10 @@ async function collectOnce(){
  if(!Number.isSafeInteger(first.ledgerTotal)||raw.length!==first.ledgerTotal||totals.total!==first.total||other.PENDING!==first.pending||other.UNRESOLVED!==first.unresolved||keys.some(k=>totals.raw_counts[k]!==first[fields[k]]))throw Error('SOURCE_TOTAL_MISMATCH_'+JSON.stringify({ledger:raw.length,expected:first.ledgerTotal,total:totals.total,expectedSettled:first.total,other,expectedPending:first.pending,expectedUnresolved:first.unresolved}));
  const latest=await page();if(signature(latest)!==sig)throw Error('SOURCE_REVISION_CHANGED');
  const cutoff=Date.now();if(settled.some(r=>r.settled_at>cutoff))throw Error('FUTURE_SETTLEMENT');
- return {cutoff,sourceSignature:fingerprint(sig),sourceRevision:String(first.statisticsContentRevision??first.settlementRevision??first.statisticsLedgerVersion??first.version??''),ledgerTotal:raw.length,other,pages,totals,hash:fingerprint(settled),rows:settled};
+ return {cutoff,sourceSignature:fingerprint(sig),sourceRevision:String(first.statisticsContentRevision??first.settlementRevision??first.statisticsLedgerVersion??first.version??''),ledgerTotal:raw.length,other,pages,totals,hash:fingerprint(settled),rows:settled,...(includeRaw?{rawRows:raw,head:Object.fromEntries(Object.entries(first).filter(([k])=>!['rows','nextCursor','hasMore'].includes(k)))}:{})};
 }
-export async function collect(){
- for(let attempt=1;attempt<=4;attempt++){try{return await collectOnce()}catch(e){if(!String(e.message).includes('SOURCE_REVISION_CHANGED')||attempt===4)throw e;console.log('SNAPSHOT_RETRY='+attempt);await new Promise(r=>setTimeout(r,1000));}}
+export async function collect({includeRaw=false}={}){
+ for(let attempt=1;attempt<=4;attempt++){try{return await collectOnce(includeRaw)}catch(e){if(!String(e.message).includes('SOURCE_REVISION_CHANGED')||attempt===4)throw e;console.log('SNAPSHOT_RETRY='+attempt);await new Promise(r=>setTimeout(r,1000));}}
 }
 if(process.argv[1]?.endsWith('/shadow-seed-snapshot.mjs')){
  const d=await collect();const {rows,...meta}=d;
