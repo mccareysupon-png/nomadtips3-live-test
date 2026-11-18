@@ -19,7 +19,7 @@ export function patchWorkspace(s){
  const e=s.indexOf('\nfunction ',i+1);if(e<0)throw Error('SIDEBAR_NAV_END');
  const native=s.slice(i,e);
  const selectors=[...native.matchAll(/\.querySelector\((['"])([^'"]+)\1\)/g)].map(m=>m[2]);
- const countSelector=selectors.find(x=>/count/i.test(x));
+ const countSelector=native.match(/const count=b\.querySelector\((['"])([^'"]+)\1\)/)?.[2]??selectors.find(x=>/count/i.test(x));
  if(!countSelector)throw Error('SIDEBAR_COUNT_SELECTOR_NOT_FOUND '+native.slice(0,900));
  const pre=String.raw`
 const b46SidebarAliases={all:'all',ah:'AH','1x2':'1X2',ou:'O/U',btts:'BTTS',corners:'Corners',cards:'Cards',other:'Other'};
