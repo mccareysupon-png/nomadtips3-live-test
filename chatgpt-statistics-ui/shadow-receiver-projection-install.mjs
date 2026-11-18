@@ -90,7 +90,10 @@ async function local(){
  src=src.replace("import {WorkerEntrypoint} from 'cloudflare:workers';","class WorkerEntrypoint {}");
  const temp=new URL('./.projection-local-only.mjs',import.meta.url);await writeFile(temp,src);
  let ShadowProductionStore,worker;try{({ShadowProductionStore,default:worker}=await import(temp.href))}finally{await unlink(temp)}
- const objects={},env={AUDIT_TOKEN:'a'.repeat(64),PROJECTION_SEED_TOKEN:'b'.repeat(64),SHADOW_STORE:{idFromName:n=>n,get:n=>({fetch:(url,init)=>objects[n].fetch(new Request(url,init))})}};
+ const forwarded=[];
+ const objects={},env={AUDIT_TOKEN:'a'.repeat(64),PROJECTION_SEED_TOKEN:'b'.repeat(64),SHADOW_STORE:{idFromName:n=>n,get:n=>({fetch:(url,init)=>{
+  const r=new Request(url,init);forwarded.push({path:new URL(r.url).pathname,method:r.method,string:typeof url==='string',explicit:init?.method??null});return objects[n].fetch(r);
+ }})}};
  const book=objects['book-v1']=new ShadowProductionStore({storage:bookStore,waitUntil:()=>{}},env);
 
  for(const r of snapshot.book.rows)await bookStore.put('composite:receipt:'+r.signal_id,r);
@@ -101,6 +104,11 @@ async function local(){
  const unseeded=await worker.fetch(new Request(statusURL,{headers:{authorization:'Bearer '+env.AUDIT_TOKEN}}),env);
  assert.equal(unseeded.status,200);const jd=await unseeded.json();assert.equal(jd.bookSequence,snapshot.sequence);assert.equal(jd.bookAggregate.total,t.total);assert.equal(jd.graphReady,false);
  assert.equal((await worker.fetch(new Request(statusURL),env)).status,403);
+ assert.deepEqual(forwarded.at(-1),{path:'/projection-status-v1',method:'GET',string:true,explicit:'GET'});
+ const wrongMethod=await book.fetch(req('/projection-status-v1',{}));assert.equal(wrongMethod.status,405);assert.equal((await wrongMethod.json()).receivedMethod,'POST');
+ const wrongSeed=await book.fetch(req('/projection-seed-v1'));assert.equal(wrongSeed.status,405);assert.equal((await wrongSeed.json()).expectedMethod,'POST');
+ assert.equal((await worker.fetch(new Request(statusURL,{method:'POST',headers:{authorization:'Bearer '+env.AUDIT_TOKEN}}),env)).status,403);
+ console.log('LOCAL_METHOD_CONTRACT_PASS='+JSON.stringify({audit:'GET',bookRead:'GET',seed:'POST',wrongMethodRejected:true,explicitUrlInit:true}));
  const send=async body=>result(await projectionHandle(projectStore,env,req('/projection-seed-v1',body)));
  const seed=await seedWith(send,prepared);
  const graph=market=>projectionHandle(projectStore,env,req('/projection-graph-v1?market='+encodeURIComponent(market))).then(result);
