@@ -1,0 +1,37 @@
+name: BALL46 current Worker module scout (read only)
+on:
+  push:
+    branches: [test/ball46-eventflow-same-minute-20261118]
+    paths: ['.github/workflows/eventflow-production-module-scout-20261118.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: Read active version and locate exact public asset
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import crypto from 'node:crypto';
+          const account=process.env.CLOUDFLARE_ACCOUNT_ID,token=process.env.CLOUDFLARE_API_TOKEN;
+          const root='https://api.cloudflare.com/client/v4/accounts/'+account+'/workers';
+          async function get(p){const r=await fetch(root+p,{headers:{Authorization:'Bearer '+token}});const j=await r.json();assert(r.ok&&j.success);return j.result;}
+          const sha=b=>crypto.createHash('sha256').update(b).digest('hex');
+          const d=await get('/scripts/ball46-production/deployments?per_page=1'),id=d.deployments[0].versions[0].version_id;
+          const v=await get('/workers/ball46-production/versions/'+id+'?include=modules');
+          const r=await fetch('https://ball46.com/expanded-match-343.js?scout='+Date.now(),{headers:{'Cache-Control':'no-cache'}});assert(r.ok);const asset=Buffer.from(await r.arrayBuffer());
+          console.log('ACTIVE '+id+' MAIN '+v.main_module+' PUBLIC_HASH '+sha(asset));
+          for(const m of v.modules){
+            const b=Buffer.from(m.content_base64,'base64'),s=b.toString('utf8'),anchors=['function signalMarkers(rows,points,current,w,h,pad){','expanded-match-343.js','b46-mobile-bars-fresh-20261112'];
+            const detail={name:m.name,type:m.content_type,size:b.length,hash:sha(b),exact:sha(b)===sha(asset),anchors:anchors.map(a=>({a,count:s.split(a).length-1}))};
+            if(anchors.some(a=>s.includes(a))){
+              detail.snippets=anchors.flatMap(a=>{const i=s.indexOf(a);if(i<0)return [];return [s.slice(Math.max(0,i-140),i+100)]});
+            }
+            console.log('MODULE '+JSON.stringify(detail));
+          }
+          NODE
