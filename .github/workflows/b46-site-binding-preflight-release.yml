@@ -1,48 +1,10 @@
-name: B46 authorized production service binding only (NO CUTOVER)
+name: Retired B46 binding-only release (disabled)
 on:
-  push:
-    branches: [chatgpt/ball46-new-ledger-clean-v1]
-    paths: ['.github/workflows/b46-site-binding-preflight-release.yml']
+  workflow_dispatch:
 permissions:
   contents: read
-concurrency:
-  group: b46-site-binding-only
-  cancel-in-progress: false
 jobs:
-  binding:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 12
-    env:
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      CLOUDFLARE_ROUTES_TOKEN: ${{ secrets.CLOUDFLARE_ROUTES_TOKEN }}
+  retired:
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: 585c328fca3de9958c2153530515eb7a755789eb
-          persist-credentials: false
-      - name: Local authenticated wrapper and delegation tests
-        working-directory: chatgpt-statistics-ui
-        run: |
-          node --check shadow-site-binding-release.mjs
-          node --check shadow-site-binding-probe.mjs
-          node --input-type=module <<'JS'
-          import assert from 'node:assert/strict';
-          import {withReceiverProbe} from './shadow-site-binding-probe.mjs';
-          const key='a'.repeat(64),host='https://www.ball46.com',path='/_b46/internal/receiver-preflight-v1';
-          const a={ok:true,graphReady:true,pendingReadReady:true,pendingLiveReady:false,projection:{generation:8},bookSequence:16116,bookAggregate:{total:16105,total_pnl:1372.4,win_rate:58}};
-          const g={ok:true,generation:8,sequence:16116,summary:{rows:16105,net:1372.4}};
-          const p={ok:true,generation:8,pending:289,unresolved:0,total:289,readMode:'DURABLE_OBJECT_STATE_ONLY',coverageVerified:false};
-          let delegated=0,calls=0;
-          const w=withReceiverProbe({fetch:async()=>{delegated++;return new Response('unchanged',{status:202})}});
-          const env={B46_SITE_PROBE_TOKEN:key,B46_MARKET_READER:{fetch:async r=>{calls++;assert.equal(r.method,'GET');assert.equal(r.headers.get('authorization'),null);const q=new URL(r.url);assert.equal(q.hostname,'shadow.internal');return Response.json(q.pathname.endsWith('status-v1')?a:q.pathname.endsWith('graph-v1')?g:p)}}};
-          for(const part of ['/','/api/engine/signals','/b46-fast-v1/head','/b46-fast-v1/chart'])assert.equal((await w.fetch(new Request(host+part),env)).status,202);
-          assert.equal(delegated,4);assert.equal(calls,0);
-          assert.equal((await w.fetch(new Request(host+path),env)).status,403);
-          assert.equal((await w.fetch(new Request(host+path,{headers:{authorization:'Bearer '+'b'.repeat(64)}}),env)).status,403);
-          assert.equal(calls,0);
-          const r=await w.fetch(new Request(host+path,{headers:{authorization:'Bearer '+key}}),env);assert.equal(r.status,200);
-          const d=await r.json();assert.equal(d.settled,16105);assert.equal(d.pending,289);assert.equal(d.cutoverReady,false);assert.equal(d.publicSourceChanged,false);assert.equal(calls,4);
-          console.log('SITE_BINDING_LOCAL_PASS='+JSON.stringify({delegation:true,protectedRead:true,coverageFlagPreserved:true,publicSourceChanged:false}));
-          JS
-      - name: Verify production parity and deploy only additive binding with inactive QA and rollback
-        run: node chatgpt-statistics-ui/shadow-site-binding-release.mjs
+      - run: echo 'Retired release; no deployment or Cloudflare writes.'
