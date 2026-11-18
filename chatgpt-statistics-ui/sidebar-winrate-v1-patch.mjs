@@ -31,8 +31,12 @@ function b46PaintSidebar(){
   const name=b46SidebarAliases[b.dataset.statMarket],el=b46SidebarNode(b);
   if(!el||!name)continue;
   const value=b46SidebarState?.[name]?.rate;
-  el.textContent=Number.isFinite(value)?value.toFixed(2)+'%':'—';
-  el.dataset.b46WinRate='1';el.title='All-time win rate';
+  const finite=Number.isFinite(value),rounded=finite?Number(value.toFixed(2)):null;
+  const tone=rounded===null?'neutral':rounded>50?'positive':rounded<50?'negative':'midpoint';
+  const color={positive:'#22c55e',midpoint:'#facc15',negative:'#f87171',neutral:'#91aa9b'}[tone];
+  el.textContent=finite?value.toFixed(2)+'%':'—';
+  el.dataset.b46WinRate='1';el.dataset.b46WinRateTone=tone;
+  el.style.setProperty('color',color,'important');el.title='All-time win rate';
  }
 }
 window.__B46_SIDEBAR_WINRATES=(v,seq)=>{
