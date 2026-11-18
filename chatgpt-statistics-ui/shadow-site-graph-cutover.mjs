@@ -23,8 +23,15 @@ export function withGraphCutover(original,assets){
  return {...original,async fetch(req,env,ctx){
   const u=new URL(req.url);
   if(u.pathname==='/b46-receiver-v1/graph')return receiverGraph(req,env);
-  if((req.method==='GET'||req.method==='HEAD')&&Object.hasOwn(assets,u.pathname)){
-   return new Response(req.method==='HEAD'?null:assets[u.pathname],{headers:{...headers,'content-type':'application/javascript; charset=utf-8'}});
+  if(req.method==='GET'&&Object.hasOwn(assets,u.pathname)){
+   const res=await original.fetch(req,env,ctx);
+   if(res.status!==200)return res;
+   try{
+    const code=assets[u.pathname](await res.text()),h=new Headers(res.headers);
+    for(const k of ['content-length','content-encoding','etag','last-modified'])h.delete(k);
+    h.set('cache-control','no-store, max-age=0');h.set('content-type','application/javascript; charset=utf-8');h.set('x-b46-graph-cutover','PATCHED');
+    return new Response(code,{status:200,headers:h});
+   }catch{return new Response('/* Statistics script unavailable; release gate must rollback. */',{status:503,headers:{...headers,'content-type':'application/javascript; charset=utf-8'}})}
   }
   return original.fetch(req,env,ctx);
  }};
