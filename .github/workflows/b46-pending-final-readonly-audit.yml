@@ -15,7 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 7889718653d49d74ee00b2cec988f15e71b58d06
+          ref: ea88572eb77bd13a05a6ef16c642532cfd02c0b8
           persist-credentials: false
       - name: Verify live Worker versions (GET only)
         run: |
