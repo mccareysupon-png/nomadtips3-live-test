@@ -1,10 +1,173 @@
-name: Retired B46 receiver bootstrap (disabled)
+name: B46 one-time approved private Receiver audit deployment
 on:
+  push:
+    branches: [chatgpt/ball46-new-ledger-clean-v1]
+    paths: ['.github/workflows/b46-prod-receiver-handshake.yml']
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: b46-prod-receiver-only
+  cancel-in-progress: false
 jobs:
-  retired:
+  receiver:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
     steps:
-      - run: echo "Retired bootstrap; no Cloudflare calls or deployment."
+      - uses: actions/checkout@v4
+        with:
+          ref: 338875d80c8939ebe290bd2562ee2c5cbd72b4fb
+          persist-credentials: false
+      - name: Validate approved source then upload and activate only Receiver with inherited bindings
+        working-directory: chatgpt-statistics-ui
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = 338875d80c8939ebe290bd2562ee2c5cbd72b4fb
+          test "$(git hash-object shadow-production-receiver.mjs)" = 7e6ca789f0835671c6623256604b547483e52ce5
+          node --check shadow-production-receiver.mjs
+          npx --yes esbuild@0.25.12 shadow-production-receiver.mjs --bundle --format=esm --platform=neutral --target=es2022 --external:cloudflare:workers --outfile="$RUNNER_TEMP/receiver.mjs"
+          node --check "$RUNNER_TEMP/receiver.mjs"
+          node --input-type=module <<'JS'
+          import {readFileSync} from 'node:fs';
+          const source=readFileSync(process.env.RUNNER_TEMP+'/receiver.mjs','utf8').replace(/import\s*\{\s*WorkerEntrypoint\s*\}\s*from\s*["']cloudflare:workers["'];?/, 'class WorkerEntrypoint { constructor(ctx,env) {this.env=env;} }');
+          if(source.includes('from "cloudflare:workers"')||source.includes("from 'cloudflare:workers'"))throw Error('LOCAL_RUNTIME_STUB_FAILED');
+          const {default:worker,AuditReader}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
+          for(const host of ['shadow.internal','example.com']){
+            const r=await worker.fetch(new Request('https://'+host+'/audit-snapshot'),{});
+            if(r.status!==403)throw Error('DEFAULT_ENTRYPOINT_MUST_DENY');
+          }
+          const env={SHADOW_STORE:{idFromName:n=>n,get:n=>({fetch:async(url,init)=>{if(new URL(url).pathname!=='/audit-snapshot'||init.headers['x-audit-object']!==(n==='inbox-v1'?'inbox':'book'))throw Error('UNEXPECTED_STORAGE_CALL');return Response.json(n==='inbox-v1'?{total_received:0,duplicate_count:0,pending_retry_queue:0}:{settled_count:0,recent_5_signals:[],total_pnl:0,win_rate:0})}})}};
+          const reader=new AuditReader({},env);
+          const r=await reader.fetch(new Request('https://shadow.internal/audit-snapshot'));
+          if(r.status!==200||!(await r.json()).readOnly)throw Error('PRIVATE_ENTRYPOINT_TEST_FAILED');
+          if((await reader.fetch(new Request('https://shadow.internal/audit-snapshot',{method:'POST'}))).status!==405)throw Error('PRIVATE_POST_MUST_DENY');
+          const {ShadowProductionStore}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
+          const rows=new Map([['composite:receipt:a',{signal_id:'a',settled_at:100,result:'WIN',market_type:'ft_ah',odds:2}],['composite:receipt:z',{signal_id:'z',settled_at:100,result:'HALF_LOSS',market_type:'ft_ah',odds:2}]]);
+          const obj=new ShadowProductionStore({storage:{list:async()=>rows,get:async()=>null}},{});
+          const detail=await obj.fetch(new Request('https://store.internal/audit-snapshot?from=1&until=1000&detail=1',{headers:{'x-audit-object':'book'}}));
+          const d=await detail.json();
+          if(detail.status!==200||d.recent_5_signals[0].signal_id!=='z'||d.raw_counts.WIN!==1||d.raw_counts.HALF_LOSS!==1||d.audit_rows.length!==2||d.total_pnl!==0.5)throw Error('LOCAL_DEEP_DIFF_TEST_FAILED');
+          const makeStore=()=>{const m=new Map();let alarm=null;const x={get:async k=>structuredClone(m.get(k)),put:async(k,v)=>{m.set(k,structuredClone(v))},delete:async k=>m.delete(k),list:async(o={})=>new Map([...m].filter(([k])=>k.startsWith(o.prefix??'')&&(!o.startAfter||k>o.startAfter)).sort(([a],[b])=>a.localeCompare(b)).slice(0,o.limit??1000).map(([k,v])=>[k,structuredClone(v)])),getAlarm:async()=>alarm,setAlarm:async n=>{alarm=n},transaction:async fn=>fn(x)};return x};
+          const bookStore=makeStore(),inboxStore=makeStore();
+          const objects={};
+          const liveEnv={AUDIT_TOKEN:'a'.repeat(64),REPLAY_TOKEN:'b'.repeat(64),SHADOW_STORE:{idFromName:n=>n,get:n=>({fetch:async(url,init)=>objects[n].fetch(new Request(url,init))})}};
+          objects['book-v1']=new ShadowProductionStore({storage:bookStore},liveEnv);
+          objects['inbox-v1']=new ShadowProductionStore({storage:inboxStore},liveEnv);
+          const book=objects['book-v1'],inbox=objects['inbox-v1'];
+          const mk=(id,time,result,odds=2.06)=>({signal_id:id,settled_at:time,result,market_type:'ft_over',odds});
+          const post=(obj,path,body)=>obj.fetch(new Request('https://store.internal'+path,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)}));
+          const assert=(v,m)=>{if(!v)throw Error(m)};
+          const first=mk('a',100,'WIN'),correct=mk('a',200,'HALF_LOSS');
+          await bookStore.put('composite:receipt:a',first);
+          await bookStore.put('composite:state',{cursor:{signal_id:'a',settled_at:100},WIN:1,LOSS:0,HALF_WIN:0,HALF_LOSS:0,PUSH:0,total:1,winRate:100});
+          let r1=await post(book,'/book-post',correct);assert(r1.ok&&(await r1.json()).corrected,'LOCAL_CORRECTION_FAILED');
+          let state=await bookStore.get('composite:state');
+          assert(state.total===1&&state.WIN===0&&state.HALF_LOSS===1&&state.total_pnl===-0.5&&state.winRate===0&&state.corrections===1,'LOCAL_REVERSAL_FAILED');
+          assert((await (await post(book,'/book-post',correct)).json()).duplicate,'LOCAL_RETRY_NOT_IDEMPOTENT');
+          assert((await (await post(book,'/book-post',first)).json()).stale,'LOCAL_STALE_ACCEPTED');
+          assert((await post(book,'/book-post',mk('a',200,'WIN'))).status===409,'LOCAL_EQUAL_TIME_CONFLICT_NOT_QUARANTINED');
+          assert((await bookStore.get('composite:state')).total_pnl===-0.5,'LOCAL_RETRY_CHANGED_PNL');
+          assert((await bookStore.get('composite:revision:a:100')).result==='WIN','LOCAL_REVISION_NOT_PRESERVED');
+          const events=Array.from({length:9},(_,i)=>({row:mk('q'+i,300+i,'PUSH'),fingerprint:String(i+1).padStart(64,'0')}));
+          for(const e of events)await inboxStore.put('inbox:quarantine:'+e.fingerprint,e);
+          await inboxStore.put('inbox:state',{received:9,pending:0,duplicates:0,delivered:0,quarantined:9});
+          const url='https://ball46-shadow-receiver-production.mccarey-supon.workers.dev/replay-quarantined-v1';
+          for(const token of [null,'a'.repeat(64)]){const r=await worker.fetch(new Request(url,{method:'POST',headers:token?{authorization:'Bearer '+token}:{},body:'{}'}),liveEnv);assert(r.status===403,'LOCAL_REPLAY_AUTH_FAILED')}
+          let replay=await post(inbox,'/replay-quarantined-v1',{fingerprints:events.map(e=>e.fingerprint)});
+          assert(replay.ok&&(await replay.json()).requeued===9,'LOCAL_REPLAY_FAILED');
+          replay=await post(inbox,'/replay-quarantined-v1',{fingerprints:events.map(e=>e.fingerprint)});
+          assert(replay.ok&&(await replay.json()).already,'LOCAL_REPLAY_NOT_IDEMPOTENT');
+          await inbox.alarm();const q=await inboxStore.get('inbox:state');
+          assert(q.pending===0&&q.quarantined===0&&q.received===9&&q.delivered===9,'LOCAL_REPLAY_QUEUE_INVARIANT');
+          console.log('LOCAL_UPSERT_REVERSAL_STALE_RETRY_QUARANTINE_REPLAY_PASS=true');
+
+          JS
+          node --input-type=module <<'JS'
+          import {readFileSync} from 'node:fs';
+          import {createHash,createHmac,randomBytes} from 'node:crypto';
+          const replayKey=randomBytes(32).toString('hex');console.log('::add-mask::'+replayKey);
+          const auditKey=createHmac('sha256',process.env.CLOUDFLARE_API_TOKEN).update('ball46/receiver/https-audit/v1/20261118').digest('hex');console.log('::add-mask::'+auditKey);
+          const root='https://api.cloudflare.com/client/v4/accounts/62cb0db544160e6591342abd6b4f35cc';
+          const receiver='ball46-shadow-receiver-production',engine='nomadtips3-engine-343',site='ball46-production';
+          const old='34166c52-1ca4-4791-92f4-b437b6d14c9a',engineOld='db65134e-a12d-4084-937e-3ce6e986c251',siteOld='f5d9cf21-4b41-46da-bdd8-a841fa733d82';
+          const headers={authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN,'content-type':'application/json'};
+          const api=async(p,method='GET',body)=>{
+            if(method!=='GET'&&!(method==='POST'&&(p==='/workers/workers/'+receiver+'/versions?deploy=false'||p==='/workers/scripts/'+receiver+'/deployments')))throw Error('WRITE_GUARD');
+            const r=await fetch(root+p,{method,headers,body:body===undefined?undefined:JSON.stringify(body),signal:AbortSignal.timeout(30000)});
+            const j=await r.json();if(!r.ok||!j.success)throw Error('CF_'+method+'_'+r.status+'_'+(j.errors??[]).map(e=>e.code).join('_'));return j.result;
+          };
+          const active=async n=>(await api('/workers/scripts/'+n+'/deployments?per_page=1')).deployments?.[0]?.versions;
+          const equal=(a,id)=>a?.length===1&&a[0].version_id===id&&Number(a[0].percentage)===100;
+          const ensure=async(n,id)=>{if(!equal(await active(n),id))throw Error('ACTIVE_VERSION_DRIFT_'+n)};
+          const privateCheck=async()=>{const s=await api('/workers/scripts/'+receiver+'/subdomain');if(s.enabled!==true||s.previews_enabled===true)throw Error('RECEIVER_SUBDOMAIN_DRIFT')};
+          const version=id=>api('/workers/workers/'+receiver+'/versions/'+id+'?include=modules');
+          const hash=b=>createHash('sha256').update(b).digest('hex');
+          const match=(a,b)=>{if(a.length!==b.length)throw Error('BINDING_COUNT_DRIFT');for(const x of a){const y=b.find(z=>z.name===x.name);if(!y||y.type!==x.type)throw Error('BINDING_TYPE_DRIFT');for(const k of ['service','class_name','namespace_id','script_name','environment','text'])if(x.type!=='secret_text'&&x[k]!==undefined&&x[k]!==y[k])throw Error('BINDING_RESOURCE_DRIFT')}};
+          const checks=async id=>{await ensure(engine,engineOld);await ensure(site,siteOld);await ensure(receiver,id);await privateCheck()};
+          const assign=id=>api('/workers/scripts/'+receiver+'/deployments','POST',{strategy:'percentage',versions:[{version_id:id,percentage:100}],annotations:{'workers/message':'Approved 338875d revision upsert and one-time replay only'}});
+          const wait=async id=>{for(let i=0;i<15;i++){if(equal(await active(receiver),id))return;await new Promise(r=>setTimeout(r,2000))}throw Error('RECEIVER_ACTIVE_VERSION_NOT_CONFIRMED')};
+          await checks(old);
+          const v=await version(old),settings=await api('/workers/scripts/'+receiver+'/settings');
+          if(v.modules?.length!==1||v.main_module!==v.modules[0].name||hash(Buffer.from(v.modules[0].content_base64,'base64'))!=='2178d3b756e129362613215fcf55a427984b3699302e5e4e1c5c9fd7caed467f')throw Error('OLD_RECEIVER_HASH_DRIFT');
+          const bindings=v.bindings??[];
+          if(bindings.some(x=>x.name==='REPLAY_TOKEN'))throw Error('REPLAY_SECRET_ALREADY_PRESENT');
+          if(!bindings.some(x=>x.name==='AUDIT_TOKEN'&&x.type==='secret_text'))throw Error('AUDIT_BINDING_MISSING');
+          if(!bindings.some(x=>x.name==='SHADOW_HEALTH_TOKEN'&&x.type==='secret_text')||!bindings.some(x=>x.name==='SHADOW_STORE'&&x.type==='durable_object_namespace'&&x.class_name==='ShadowProductionStore'))throw Error('RECEIVER_BINDINGS_UNEXPECTED');
+          const candidate=readFileSync(process.env.RUNNER_TEMP+'/receiver.mjs');
+          const payload={main_module:v.main_module,modules:[{name:v.main_module,content_type:v.modules[0].content_type,content_base64:candidate.toString('base64')}],bindings:[...bindings.map(b=>({name:b.name,type:'inherit',version_id:old})),{name:'REPLAY_TOKEN',type:'secret_text',text:replayKey}],compatibility_date:v.compatibility_date,compatibility_flags:settings.compatibility_flags??[],annotations:{'workers/message':'338875d revision upsert and one-time replay'}};
+          if(v.usage_model)payload.usage_model=v.usage_model;
+          if(v.migration_tag)payload.migration_tag=v.migration_tag;
+          const up=await api('/workers/workers/'+receiver+'/versions?deploy=false','POST',payload);
+          const id=up.id;if(!id||id===old)throw Error('INVALID_NEW_RECEIVER_VERSION');
+          const next=await version(id);
+          if(next.modules?.length!==1||hash(Buffer.from(next.modules[0].content_base64,'base64'))!==hash(candidate))throw Error('UPLOADED_RECEIVER_HASH_DRIFT');
+          if(!(next.bindings??[]).some(x=>x.name==='REPLAY_TOKEN'&&x.type==='secret_text'))throw Error('REPLAY_BINDING_NOT_VERIFIED');
+          match(bindings,(next.bindings??[]).filter(x=>x.name!=='REPLAY_TOKEN'));
+          await checks(old);
+          console.log('RECEIVER_CANDIDATE_VERIFIED='+JSON.stringify({id,rollback:old,source:'338875d',sha256:hash(candidate),secretInherited:true}));
+          let attempted=false;
+          try{
+            attempted=true;await assign(id);await wait(id);await checks(id);
+            console.log('RECEIVER_DEPLOYED='+JSON.stringify({id,rollback:old,engine:engineOld,website:siteOld,authenticatedHttps:true,secretInherited:true,traffic:100}));
+          }catch(e){
+            if(attempted&&equal(await active(receiver),id)){await assign(old);await wait(old);console.log('RECEIVER_ROLLBACK_CONFIRMED='+old)}
+            throw e;
+          }
+          // No rollback to the first-in-wins version after replay starts: that would lose correction handling.
+          const endpoint='https://ball46-shadow-receiver-production.mccarey-supon.workers.dev';
+          const auditUrl=new URL(endpoint+'/audit-snapshot');
+          auditUrl.searchParams.set('quarantine','1');
+          auditUrl.searchParams.set('detail','1');
+          auditUrl.searchParams.set('from',String(Date.parse('2026-11-17T21:32:00+07:00')));
+          auditUrl.searchParams.set('until',String(Date.now()));
+          const read=async()=>{const r=await fetch(auditUrl,{headers:{authorization:'Bearer '+auditKey,'user-agent':'Mozilla/5.0 B46-Audit'},redirect:'manual',signal:AbortSignal.timeout(20000)});if(r.status!==200)throw Error('PREFLIGHT_AUDIT_HTTP_'+r.status);const d=await r.json();if(!d.readOnly||!Array.isArray(d.inbox?.quarantine_rows)||!Array.isArray(d.book?.audit_rows))throw Error('PREFLIGHT_SCHEMA');return d};
+          const before=await read(),quarantine=before.inbox.quarantine_rows;
+          if(before.inbox.quarantined!==9||quarantine.length!==9||before.inbox.replay)throw Error('REPLAY_REQUIRES_EXACT_NINE_UNREPLAYED');
+          const latest=new Map(before.book.audit_rows.map(x=>[x.signal_id,x]));
+          for(const e of quarantine){const old=latest.get(e.row.signal_id);if(!old)throw Error('QUARANTINE_UNKNOWN_SIGNAL');if(e.row.settled_at>old.settled_at)latest.set(e.row.signal_id,e.row);else if(e.row.settled_at===old.settled_at&&(e.row.result!==old.result||Number(e.row.odds)!==Number(old.odds)||e.row.market_type!==old.market_type))throw Error('SAME_TIME_CONFLICT_STOP');}
+          const source=new Map(),ids=new Set(quarantine.map(e=>e.row.signal_id));let cursor=null;
+          for(let i=0;i<8;i++){
+            const u=new URL('https://www.ball46.com/api/engine/statistics');u.searchParams.set('paged','1');if(cursor)u.searchParams.set('cursor',cursor);
+            const r=await fetch(u,{headers:{accept:'application/json','cache-control':'no-cache'},signal:AbortSignal.timeout(25000)});const d=await r.json();
+            if(!r.ok||!d.ok||!Array.isArray(d.rows))throw Error('LEGACY_REPLAY_PREFLIGHT_FAILED');
+            for(const x of d.rows)if(ids.has(String(x.id))&&x.status==='SETTLED')source.set(String(x.id),x);
+            if(source.size===ids.size||!d.nextCursor||cursor===d.nextCursor)break;cursor=d.nextCursor;
+          }
+          for(const id of ids){const a=source.get(id),b=latest.get(id);if(!a||a.result!==b.result||Number(a.settledAt)!==b.settled_at||String(a.market??'')!==b.market_type||String(a.odds??'')!==String(b.odds??''))throw Error('QUARANTINE_SOURCE_REVISION_MISMATCH_'+id)}
+          console.log('REPLAY_PREFLIGHT='+JSON.stringify({quarantine:quarantine.length,verifiedSignalIds:ids.size,pending:before.inbox.pending_retry_queue}));
+          const replayUrl=endpoint+'/replay-quarantined-v1';
+          const send=async token=>fetch(replayUrl,{method:'POST',headers:{'content-type':'application/json','user-agent':'Mozilla/5.0 B46-Replay',...(token?{authorization:'Bearer '+token}:{})},body:JSON.stringify({fingerprints:quarantine.map(e=>e.fingerprint)}),redirect:'manual',signal:AbortSignal.timeout(20000)});
+          const no=await send(null),wrong=await send(auditKey);
+          if(no.status!==403||wrong.status!==403)throw Error('REPLAY_AUTH_GATE_FAILED');
+          const rr=await send(replayKey),rd=await rr.json();if(rr.status!==200||!rd.ok||rd.requeued!==9)throw Error('REPLAY_HTTP_'+rr.status);
+          console.log('REPLAY_ACCEPTED='+JSON.stringify(rd));
+          let after;
+          for(let i=0;i<30;i++){after=await read();if(after.inbox.pending_retry_queue===0)break;await new Promise(r=>setTimeout(r,2000))}
+          console.log('REPLAY_FINAL='+JSON.stringify({inbox:{...after.inbox,quarantine_rows:undefined},aggregate:after.book.aggregate}));
+          if(after.inbox.pending_retry_queue!==0||after.inbox.quarantined!==0||after.inbox.replay?.requeued!==9)throw Error('REPLAY_NOT_DRAINED');
+          await checks(id);
+          console.log('REPLAY_COMPLETE=true');
+          JS
