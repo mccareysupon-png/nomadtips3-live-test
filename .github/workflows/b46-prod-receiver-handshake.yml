@@ -1,10 +1,115 @@
-name: Retired B46 receiver bootstrap (disabled)
+name: B46 one-time approved private Receiver audit deployment
 on:
+  push:
+    branches: [chatgpt/ball46-new-ledger-clean-v1]
+    paths: ['.github/workflows/b46-prod-receiver-handshake.yml']
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: b46-prod-receiver-only
+  cancel-in-progress: false
 jobs:
-  retired:
+  receiver:
     runs-on: ubuntu-latest
+    timeout-minutes: 7
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
     steps:
-      - run: echo "Retired bootstrap; no Cloudflare calls or deployment."
+      - uses: actions/checkout@v4
+        with:
+          ref: fcc71aab7e0ba92c5985017aa37c90627c18e3a1
+          persist-credentials: false
+      - name: Validate approved source then upload and activate only Receiver with inherited bindings
+        working-directory: chatgpt-statistics-ui
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = fcc71aab7e0ba92c5985017aa37c90627c18e3a1
+          test "$(git hash-object shadow-production-receiver.mjs)" = e1efe8a3320eb6e0b449943584795763b3f57af4
+          node --check shadow-production-receiver.mjs
+          npx --yes esbuild@0.25.12 shadow-production-receiver.mjs --bundle --format=esm --platform=neutral --target=es2022 --external:cloudflare:workers --outfile="$RUNNER_TEMP/receiver.mjs"
+          node --check "$RUNNER_TEMP/receiver.mjs"
+          node --input-type=module <<'JS'
+          import {readFileSync} from 'node:fs';
+          const source=readFileSync(process.env.RUNNER_TEMP+'/receiver.mjs','utf8').replace(/import\s*\{\s*WorkerEntrypoint\s*\}\s*from\s*["']cloudflare:workers["'];?/, 'class WorkerEntrypoint { constructor(ctx,env) {this.env=env;} }');
+          if(source.includes('from "cloudflare:workers"')||source.includes("from 'cloudflare:workers'"))throw Error('LOCAL_RUNTIME_STUB_FAILED');
+          const {default:worker,AuditReader}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
+          for(const host of ['shadow.internal','example.com','ball46-shadow-receiver-production.mccarey-supon.workers.dev']){
+            const r=await worker.fetch(new Request('https://'+host+'/audit-snapshot'),{});
+            if(r.status!==403)throw Error('DEFAULT_ENTRYPOINT_MUST_DENY');
+          }
+          const env={SHADOW_STORE:{idFromName:n=>n,get:n=>({fetch:async(url,init)=>{if(new URL(url).pathname!=='/audit-snapshot'||init.headers['x-audit-object']!==(n==='inbox-v1'?'inbox':'book'))throw Error('UNEXPECTED_STORAGE_CALL');return Response.json(n==='inbox-v1'?{total_received:0,duplicate_count:0,pending_retry_queue:0}:{settled_count:0,recent_5_signals:[],total_pnl:0,win_rate:0})}})}};
+          const reader=new AuditReader({},env);
+          const r=await reader.fetch(new Request('https://shadow.internal/audit-snapshot'));
+          if(r.status!==200||!(await r.json()).readOnly)throw Error('PRIVATE_ENTRYPOINT_TEST_FAILED');
+          if((await reader.fetch(new Request('https://shadow.internal/audit-snapshot',{method:'POST'}))).status!==405)throw Error('PRIVATE_POST_MUST_DENY');
+          const key='a'.repeat(64), publicEnv={...env,AUDIT_TOKEN:key},publicUrl='https://ball46-shadow-receiver-production.mccarey-supon.workers.dev/audit-snapshot';
+          for(const h of [{},{authorization:'Bearer '+'b'.repeat(64)}]){
+            if((await worker.fetch(new Request(publicUrl,{headers:h}),publicEnv)).status!==403)throw Error('LOCAL_HTTPS_REJECTION_FAILED');
+          }
+          if((await worker.fetch(new Request(publicUrl,{headers:{authorization:'Bearer '+key}}),publicEnv)).status!==200)throw Error('LOCAL_HTTPS_200_FAILED');
+          if((await worker.fetch(new Request(publicUrl.replace('/audit-snapshot','/settled')),publicEnv)).status!==403)throw Error('LOCAL_PUBLIC_INGESTION_DENIAL_FAILED');
+          console.log('LOCAL_HTTPS_403_200_AND_PRIVATE_200=true');
+          JS
+          node --input-type=module <<'JS'
+          import {readFileSync} from 'node:fs';
+          import {createHash,createHmac} from 'node:crypto';
+          if(!process.env.CLOUDFLARE_API_TOKEN)throw Error('CF_AUTH_MISSING');
+          const auditKey=createHmac('sha256',process.env.CLOUDFLARE_API_TOKEN).update('ball46/receiver/https-audit/v1/20261118').digest('hex');
+          console.log('::add-mask::'+auditKey);
+          const root='https://api.cloudflare.com/client/v4/accounts/62cb0db544160e6591342abd6b4f35cc';
+          const receiver='ball46-shadow-receiver-production',engine='nomadtips3-engine-343',site='ball46-production';
+          const old='d57d189b-e5f0-4695-b4d9-8e6d4725cd2b',engineOld='db65134e-a12d-4084-937e-3ce6e986c251',siteOld='f5d9cf21-4b41-46da-bdd8-a841fa733d82';
+          const headers={authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN,'content-type':'application/json'};
+          const api=async(p,method='GET',body)=>{
+            if(method!=='GET'&&!(method==='POST'&&(p==='/workers/workers/'+receiver+'/versions?deploy=false'||p==='/workers/scripts/'+receiver+'/deployments'||p==='/workers/scripts/'+receiver+'/subdomain')))throw Error('WRITE_GUARD');
+            const r=await fetch(root+p,{method,headers,body:body===undefined?undefined:JSON.stringify(body),signal:AbortSignal.timeout(30000)});
+            const j=await r.json();if(!r.ok||!j.success)throw Error('CF_'+method+'_'+r.status+'_'+(j.errors??[]).map(e=>e.code).join('_'));return j.result;
+          };
+          const active=async n=>(await api('/workers/scripts/'+n+'/deployments?per_page=1')).deployments?.[0]?.versions;
+          const equal=(a,id)=>a?.length===1&&a[0].version_id===id&&Number(a[0].percentage)===100;
+          const ensure=async(n,id)=>{if(!equal(await active(n),id))throw Error('ACTIVE_VERSION_DRIFT_'+n)};
+          const routeCheck=async enabled=>{const s=await api('/workers/scripts/'+receiver+'/subdomain');if(s.enabled!==enabled||s.previews_enabled===true)throw Error('RECEIVER_ROUTE_DRIFT')};
+          const setRoute=enabled=>api('/workers/scripts/'+receiver+'/subdomain','POST',{enabled,previews_enabled:false});
+          const version=id=>api('/workers/workers/'+receiver+'/versions/'+id+'?include=modules');
+          const hash=b=>createHash('sha256').update(b).digest('hex');
+          const match=(a,b)=>{if(a.length!==b.length)throw Error('BINDING_COUNT_DRIFT');for(const x of a){const y=b.find(z=>z.name===x.name);if(!y||y.type!==x.type)throw Error('BINDING_TYPE_DRIFT');for(const k of ['service','class_name','namespace_id','script_name','environment','text'])if(x.type!=='secret_text'&&x[k]!==undefined&&x[k]!==y[k])throw Error('BINDING_RESOURCE_DRIFT')}};
+          const checks=async id=>{await ensure(engine,engineOld);await ensure(site,siteOld);await ensure(receiver,id);await routeCheck(false)};
+          const assign=id=>api('/workers/scripts/'+receiver+'/deployments','POST',{strategy:'percentage',versions:[{version_id:id,percentage:100}],annotations:{'workers/message':'Approved fcc71aa read-only audit endpoint only'}});
+          const wait=async id=>{for(let i=0;i<15;i++){if(equal(await active(receiver),id))return;await new Promise(r=>setTimeout(r,2000))}throw Error('RECEIVER_ACTIVE_VERSION_NOT_CONFIRMED')};
+          await checks(old);
+          const v=await version(old),settings=await api('/workers/scripts/'+receiver+'/settings');
+          if(v.modules?.length!==1||v.main_module!==v.modules[0].name||hash(Buffer.from(v.modules[0].content_base64,'base64'))!=='e6426068767f7e0e02000f0e8e089ac1bb04352ddfed75872aa823da6bff2bda')throw Error('OLD_RECEIVER_HASH_DRIFT');
+          const bindings=v.bindings??[];
+          if(bindings.some(b=>b.name==='AUDIT_TOKEN'))throw Error('AUDIT_TOKEN_ALREADY_EXISTS');
+          if(!bindings.some(x=>x.name==='SHADOW_HEALTH_TOKEN'&&x.type==='secret_text')||!bindings.some(x=>x.name==='SHADOW_STORE'&&x.type==='durable_object_namespace'&&x.class_name==='ShadowProductionStore'))throw Error('RECEIVER_BINDINGS_UNEXPECTED');
+          const candidate=readFileSync(process.env.RUNNER_TEMP+'/receiver.mjs');
+          const payload={main_module:v.main_module,modules:[{name:v.main_module,content_type:v.modules[0].content_type,content_base64:candidate.toString('base64')}],bindings:[...bindings.map(b=>({name:b.name,type:'inherit',version_id:old})),{name:'AUDIT_TOKEN',type:'secret_text',text:auditKey}],compatibility_date:v.compatibility_date,compatibility_flags:settings.compatibility_flags??[],annotations:{'workers/message':'fcc71aa read-only audit endpoint'}};
+          if(v.usage_model)payload.usage_model=v.usage_model;
+          if(v.migration_tag)payload.migration_tag=v.migration_tag;
+          const up=await api('/workers/workers/'+receiver+'/versions?deploy=false','POST',payload);
+          const id=up.id;if(!id||id===old)throw Error('INVALID_NEW_RECEIVER_VERSION');
+          const next=await version(id);
+          if(next.modules?.length!==1||hash(Buffer.from(next.modules[0].content_base64,'base64'))!==hash(candidate))throw Error('UPLOADED_RECEIVER_HASH_DRIFT');
+          if(!(next.bindings??[]).some(b=>b.name==='AUDIT_TOKEN'&&b.type==='secret_text'))throw Error('AUDIT_BINDING_NOT_VERIFIED');
+          match(bindings,(next.bindings??[]).filter(b=>b.name!=='AUDIT_TOKEN'));
+          await checks(old);
+          console.log('RECEIVER_CANDIDATE_VERIFIED='+JSON.stringify({id,rollback:old,source:'fcc71aa',sha256:hash(candidate),secretInherited:true}));
+          let attempted=false;
+          try{
+            attempted=true;await assign(id);await wait(id);await checks(id);
+            await setRoute(true);await routeCheck(true);
+            const u='https://ball46-shadow-receiver-production.mccarey-supon.workers.dev/audit-snapshot';
+            const request=async(url,token)=>fetch(url,{method:'GET',redirect:'manual',headers:{'user-agent':'Mozilla/5.0 B46-Audit',...(token?{authorization:'Bearer '+token}:{})},signal:AbortSignal.timeout(20000)});
+            let bad,wrong,good,ingest;
+            for(let i=0;i<6;i++){bad=await request(u);wrong=await request(u,'0'.repeat(64));good=await request(u,auditKey);ingest=await request(u.replace('/audit-snapshot','/settled'));if(bad.status===403&&wrong.status===403&&good.status===200&&ingest.status===403)break;await new Promise(r=>setTimeout(r,2000))}
+            console.log('PRODUCTION_HTTPS_AUTH='+JSON.stringify({missing:bad.status,wrong:wrong.status,valid:good.status,publicIngestionGet:ingest.status}));
+            if(bad.status!==403||wrong.status!==403||good.status!==200||ingest.status!==403||!(await good.json()).readOnly)throw Error('PRODUCTION_HTTPS_GATE_FAILED');
+            await ensure(engine,engineOld);await ensure(site,siteOld);await ensure(receiver,id);await routeCheck(true);
+            console.log('RECEIVER_DEPLOYED='+JSON.stringify({id,rollback:old,engine:engineOld,website:siteOld,authenticatedHttps:true,secretInherited:true,traffic:100}));
+          }catch(e){
+            if(attempted&&equal(await active(receiver),id)){try{await setRoute(false);await routeCheck(false)}finally{await assign(old);await wait(old)}console.log('RECEIVER_ROLLBACK_CONFIRMED='+old)}
+            throw e;
+          }
+          JS
