@@ -131,8 +131,16 @@ export class ShadowProductionStore {
  async fetch(req){
   const store=this.ctx.storage,path=new URL(req.url).pathname;
   try{
-   if(path==='/projection-journal-v1'&&req.method==='GET')return journalRead(store,new URL(req.url));
-   if(path.startsWith('/projection-'))return projectionHandle(store,this.env,req);
+   // Exact private projection read routes are GET-only, seed/wake are POST-only.
+   if(path==='/projection-journal-v1'||['/projection-status-v1','/projection-graph-v1','/projection-pending-v1','/projection-pending-snapshot-v1'].includes(path)){
+    if(req.method!=='GET')return reply({ok:false,error:'BOOK_PROJECTION_METHOD_NOT_ALLOWED',receivedMethod:req.method,expectedMethod:'GET'},405);
+    return path==='/projection-journal-v1'?journalRead(store,new URL(req.url)):projectionHandle(store,this.env,req);
+   }
+   if(path==='/projection-seed-v1'||path==='/projection-wake-v1'){
+    if(req.method!=='POST')return reply({ok:false,error:'BOOK_PROJECTION_METHOD_NOT_ALLOWED',receivedMethod:req.method,expectedMethod:'POST'},405);
+    return projectionHandle(store,this.env,req);
+   }
+   if(path.startsWith('/projection-'))return reply({ok:false,error:'BOOK_PROJECTION_ROUTE_NOT_FOUND'},404);
    if(path==='/statistics-summary-v1'&&req.method==='GET'){
     if(new URL(req.url).searchParams.get('projection')==='journal')return journalRead(store,new URL(req.url));
     // Constant-size read of materialized balance; never scan receipts.
@@ -273,7 +281,7 @@ async function projectionJson(request){
  try{
   const r=await request();
   if(!(r.headers.get('content-type')??'').toLowerCase().includes('application/json'))return reply({ok:false,error:'PROJECTION_UPSTREAM_NON_JSON',upstreamStatus:r.status},502);
-  const data=await r.json();return reply(data,r.status);
+  const data=await r.json();return reply(r.status===405?{...data,error:data.error??'PROJECTION_UPSTREAM_405',layer:'BOOK_FETCH',expectedMethod:data.expectedMethod??null}:data,r.status);
  }catch{return reply({ok:false,error:'PROJECTION_READ_UNAVAILABLE'},503)}
 }
 const projectionRoutes=Object.freeze({'/audit-projection-journal-v1':'/projection-journal-v1','/audit-projection-status-v1':'/projection-status-v1','/audit-projection-graph-v1':'/projection-graph-v1','/audit-projection-pending-v1':'/projection-pending-v1','/audit-projection-pending-snapshot-v1':'/projection-pending-snapshot-v1'});
@@ -282,7 +290,8 @@ export default {async fetch(req,env){
  if(u.pathname==='/projection-seed-v1'){
   if(u.hostname!=='ball46-shadow-receiver-production.mccarey-supon.workers.dev'||req.method!=='POST'||!await authorized(req,env.PROJECTION_SEED_TOKEN))return reply({ok:false},403);
   const project=env.SHADOW_STORE.get(env.SHADOW_STORE.idFromName('book-v1'));
-  return projectionJson(()=>project.fetch(new Request('https://store.internal/projection-seed-v1',req)));
+  const body=await req.text();
+  return projectionJson(()=>project.fetch('https://store.internal/projection-seed-v1',{method:'POST',headers:{'content-type':'application/json'},body}));
  }
  if(Object.hasOwn(projectionRoutes,u.pathname)){
   if(u.hostname!=='ball46-shadow-receiver-production.mccarey-supon.workers.dev'||req.method!=='GET'||!await authorized(req,env.AUDIT_TOKEN))return reply({ok:false},403);
@@ -365,7 +374,8 @@ export class StatisticsReader extends WorkerEntrypoint {
 
 async function projectionRead(env,path,search){
  const project=env.SHADOW_STORE.get(env.SHADOW_STORE.idFromName('book-v1'));
- return project.fetch(new Request('https://store.internal'+path+search,{method:'GET'}));
+ // Use the same URL-string overload as the working statistics-summary read.
+ return project.fetch('https://store.internal'+path+search,{method:'GET',headers:{accept:'application/json'}});
 }
 export class MarketStatisticsReader extends WorkerEntrypoint {
  async fetch(req){
