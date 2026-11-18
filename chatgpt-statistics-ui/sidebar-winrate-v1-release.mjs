@@ -30,12 +30,13 @@ async function waitActive(n,id){for(let i=0;i<15;i++){if(await active(n)===id)re
 async function http(host,path,k){const t=performance.now(),r=await fetch(host+path,{headers:{'user-agent':'Mozilla/5.0 B46-SidebarRelease','cache-control':'no-cache',...(k?{authorization:'Bearer '+k}:{})},redirect:'manual',signal:AbortSignal.timeout(25000)}),body=Buffer.from(await r.arrayBuffer());let d=null;try{d=JSON.parse(body.toString())}catch{}return {status:r.status,body,d,ms:Math.round(performance.now()-t),source:r.headers.get('x-b46-statistics-source')}}
 const q=(m='all',v='all',f='all',r='all')=>new URLSearchParams({market:m,variant:v,filter:f,range:r});
 async function inspectGraphs(host,reader=false,withSidebar=true){
- for(let attempt=0;attempt<6;attempt++){
+ for(let attempt=0;attempt<(withSidebar?24:6);attempt++){
   const rs=await Promise.all(SIDEBAR_MARKETS.map(async m=>[m,await http(host,(reader?'/audit-projection-graph-v1':graph)+'?'+q(m),reader?key:undefined)]));
   const seq=rs[0][1].d?.sequence;
   if(!rs.every(([m,r])=>r.status===200&&r.d?.ok&&r.d.market===m&&r.d.sequence===seq)){await sleep(1000);continue}
   const gs=Object.fromEntries(rs.map(([m,r])=>[m,r.d])),rates=sidebarWinRates(gs);
-  if(withSidebar)for(const [m,r] of rs){assert(validSidebar(r.d.sidebarWinRates),'MISSING_SIDEBAR_'+m);assert.deepEqual(r.d.sidebarWinRates,rates,'SIDEBAR_RATE_PARITY_'+m);assert(Buffer.byteLength(JSON.stringify({sidebarWinRates:r.d.sidebarWinRates}))<1024)}
+  if(withSidebar&&rs.some(([m,r])=>!validSidebar(r.d.sidebarWinRates))){console.log('SIDEBAR_PROPAGATION_WAIT='+JSON.stringify({host,attempt:attempt+1,missing:rs.filter(([m,r])=>!validSidebar(r.d.sidebarWinRates)).map(([m])=>m)}));await sleep(2500);continue}
+  if(withSidebar)for(const [m,r] of rs){assert.deepEqual(r.d.sidebarWinRates,rates,'SIDEBAR_RATE_PARITY_'+m);assert(Buffer.byteLength(JSON.stringify({sidebarWinRates:r.d.sidebarWinRates}))<1024)}
   const result={host,sequence:seq,settled:gs.all.summary.rows,rates,ms:Object.fromEntries(rs.map(([m,r])=>[m,r.ms]))};console.log('SIDEBAR_GRAPH_PASS='+JSON.stringify(result));return result;
  }throw Error('COHERENT_GRAPH_READ_FAILED_'+host);
 }
@@ -100,7 +101,7 @@ try{
  const payload={main_module:rv.main_module,modules:[mod(rv.main_module,rb,rv.modules[0].content_type)],bindings:rv.bindings.map(x=>({name:x.name,type:'inherit',version_id:oldRec})),compatibility_date:rv.compatibility_date,compatibility_flags:rs.compatibility_flags??[],annotations:{'workers/message':'Sidebar Win Rate additive graph summary only'}};
  if(rv.usage_model)payload.usage_model=rv.usage_model;if(rv.migration_tag)payload.migration_tag=rv.migration_tag;
  await guard(oldRec,oldSite);
- newRec=(await cf('/workers/workers/'+REC+'/versions?deploy=false','POST',payload)).id;assert(newRec&&newRec!==oldRec);
+ newRec='571103b5-12ce-402b-8720-3e154f89634d';assert(newRec&&newRec!==oldRec);
  const rn=await version(REC,newRec);assert.equal(hash(decode(rn.modules[0])),hash(rb));sameBindings(rv.bindings,rn.bindings);
  console.log('SIDEBAR_RECEIVER_CANDIDATE='+JSON.stringify({id:newRec,rollback:oldRec}));
  // Prepare website version before activating Receiver. No duplicate large assets.
@@ -116,7 +117,7 @@ try{
  if(sv.assets?.config)meta.assets={config:sv.assets.config};
  for(const k of ['usage_model','logpush','limits','observability','placement','tail_consumers'])if(ss[k]!=null)meta[k]=ss[k];
  const form=new FormData;form.set('metadata',new Blob([JSON.stringify(meta)],{type:'application/json'}));for(const x of modules)form.set(x.name,new Blob([decode(x)],{type:x.content_type}),x.name);
- await guard(oldRec,oldSite);newSite=(await cf('/workers/scripts/'+SITE+'/versions?bindings_inherit=strict','POST',form)).id;assert(newSite&&newSite!==oldSite);
+ await guard(oldRec,oldSite);newSite='416e70e3-de42-46c8-9fe9-193648c3dc95';assert(newSite&&newSite!==oldSite);
  const sn=await version(SITE,newSite);assert.equal(sn.modules.length,modules.length);assert.equal(sn.main_module,sv.main_module);assert.equal(canon(sn.assets?.config),canon(sv.assets?.config));sameBindings(sv.bindings,sn.bindings);
  for(const m of modules){const n=sn.modules.find(x=>x.name===m.name);assert(n&&hash(decode(n))===hash(decode(m)),'MODULE_CHANGED_'+m.name)}
  const preview='https://'+newSite.slice(0,8)+'-'+SITE+'.mccarey-supon.workers.dev';
@@ -134,7 +135,16 @@ try{
  assert.equal(hash((await http(preview,workspacePath)).body),hash(Buffer.from(work)));assert.equal(hash((await http(preview,otherPath)).body),hash(beforeOther.body));
  await inspectGraphs(preview,false,true);await qa(preview,'candidate');await guard(newRec,oldSite);
  await assign(SITE,newSite);await waitActive(SITE,newSite);await guard(newRec,newSite);
- const live=await inspectGraphs(pub,false,true);await qa(pub,'production');await guard(newRec,newSite);
+ const live=await inspectGraphs(pub,false,true);
+ // Public CDN propagation is separate from active deployment status. Verify exact
+ // served script bytes before browser acceptance, not an immediate mixed-edge read.
+ for(let i=0;i<24;i++){
+  const [c,w]=await Promise.all([http(pub,chartPath),http(pub,workspacePath)]);
+  if(c.status===200&&w.status===200&&hash(c.body)===hash(Buffer.from(chart))&&hash(w.body)===hash(Buffer.from(work)))break;
+  if(i===23)throw Error('PUBLIC_STATIC_PROPAGATION_FAILED');
+  await sleep(2500);
+ }
+ await qa(pub,'production');await guard(newRec,newSite);
  assert.equal(hash((await http(siteHost,otherPath)).body),hash(beforeOther.body));
  console.log('SIDEBAR_PRODUCTION_SUCCESS='+JSON.stringify({site:newSite,receiver:newRec,engine:oldEng,rollbackSite:oldSite,rollbackReceiver:oldRec,...live,production:true,additionalSidebarRequests:0,bookReset:false,routeWrites:0}));
 }catch(e){
