@@ -230,9 +230,8 @@ export async function syncPendingFirstPage(store,{now=Date.now(),fetcher=fetch}=
     if(JSON.stringify(previousRow)!==JSON.stringify(row)){changed=true;await tx.put(pfx+'pending:'+id,row)}
     idx.set(id,{id,market:String(row.market),createdAt:Number(row.createdAt),status:row.status});
    }
-   // Do not drop an absent ID merely because it is not on page one.
-   // Only a complete source set justifies removing missing IDs.
-   if(allVisible&&!conflict)for(const id of idx.keys())if(!seen.has(id)){idx.delete(id);changed=true}
+   // First-page refresh only merges observed open rows. Removal belongs to accepted Book settlements.
+   // Absence from an upstream page is not a settlement event.
    const entries=[...idx.values()],complete=allVisible&&!conflict&&entries.filter(x=>x.status==='PENDING').length===d.pending&&entries.filter(x=>x.status==='UNRESOLVED').length===d.unresolved;
    const sync={checkedAt:now,verifiedAt:complete?now:previous?.verifiedAt??null,complete,bookSequence:before.sequence,expectedPending:d.pending,expectedUnresolved:d.unresolved,firstPagePending:incoming.filter(x=>x.status==='PENDING').length,indexPending:entries.filter(x=>x.status==='PENDING').length,reason:complete?null:'FIRST_PAGE_COVERAGE_NOT_PROVEN'};
    await tx.put(pfx+'pending-index',entries);await tx.put(syncKey,sync);
@@ -270,7 +269,7 @@ export async function projectionHandle(store,env,req){
  const s=await store.get(stateKey);
  if(p==='/projection-status-v1'){
   const j=await readJournal(store),sync=await store.get(pfx+'pending-sync')??null;const pendingLiveReady=!!(sync?.complete&&sync.bookSequence===j.sequence&&Date.now()-sync.verifiedAt<=90000);
-  return json({ok:true,readOnly:true,projection:stateView(s),bookSequence:j.sequence,bookAggregate:j.aggregate,graphReady:s?.status==='loaded'&&!s.lastError&&s.sequence===j.sequence,pendingLiveReady,pendingSync:sync});
+  return json({ok:true,readOnly:true,projection:stateView(s),bookSequence:j.sequence,bookAggregate:j.aggregate,graphReady:s?.status==='loaded'&&!s.lastError&&s.sequence===j.sequence,pendingReadReady:s?.status==='loaded'&&Array.isArray(await store.get(pfx+'pending-index')),pendingLiveReady,pendingSync:sync});
  }
  if(s?.status!=='loaded')return json({ok:false,error:'PROJECTION_NOT_READY'},503);
  const market=u.searchParams.get('market')??'all';
@@ -289,16 +288,18 @@ export async function projectionHandle(store,env,req){
  }
  if(p==='/projection-pending-v1'||p==='/projection-pending-snapshot-v1'){
   const live=p==='/projection-pending-v1',sync=await store.get(pfx+'pending-sync')??null;
-  if(live){
-   const j=await readJournal(store);
-   if(!sync?.complete||sync.bookSequence!==j.sequence||Date.now()-sync.verifiedAt>90000)return json({ok:false,error:'COMPLETE_PENDING_LIVE_SOURCE_UNAVAILABLE',pendingLiveReady:false,lastVerifiedAt:sync?.verifiedAt??s.pendingVerifiedAt},503);
-  }
-  const idx=(await store.get(pfx+'pending-index')??[]).filter(r=>market==='all'||marketGroup(r.market)===market).sort((a,b)=>b.createdAt-a.createdAt||a.id.localeCompare(b.id));
+  // Serve the maintained local index, NOT an upstream request or a full-source completeness gate.
+  // The last verified full seed and current source coverage are separate from HTTP availability.
+  const local=await store.get(pfx+'pending-index');
+  if(!Array.isArray(local))return json({ok:false,error:'PENDING_INDEX_NOT_READY'},503);
+  const book=await store.get('composite:state');
+  const coverageVerified=!!(sync?.complete&&sync.bookSequence===revision(book)&&Number.isFinite(sync.verifiedAt)&&Date.now()-sync.verifiedAt<=90000);
+  const idx=local.filter(r=>market==='all'||marketGroup(r.market)===market).sort((a,b)=>b.createdAt-a.createdAt||a.id.localeCompare(b.id));
   const offset=Number(u.searchParams.get('offset')??0),limit=Number(u.searchParams.get('limit')??50);
   if(!Number.isSafeInteger(offset)||offset<0||!Number.isSafeInteger(limit)||limit<1||limit>50)return json({ok:false},400);
   const rows=[];for(const v of idx.slice(offset,offset+limit)){const row=await store.get(pfx+'pending:'+v.id);if(!row)throw Error('MISSING_PENDING_METADATA');rows.push(row)}
   const current=await store.get(stateKey);if(current.generation!==s.generation)return json({ok:false,error:'GENERATION_CHANGED'},409);
-  return json({ok:true,readOnly:true,live,source:live?'VERIFIED_COMPLETE_FIRST_PAGE':'SNAPSHOT_PLUS_OBSERVED_FIRST_PAGE_MINUS_BOOK_SETTLEMENTS',verifiedAt:sync?.verifiedAt??s.pendingVerifiedAt,generation:s.generation,total:idx.length,pending:idx.filter(x=>x.status==='PENDING').length,unresolved:idx.filter(x=>x.status==='UNRESOLVED').length,rows,next:offset+limit<idx.length?offset+limit:null});
+  return json({ok:true,readOnly:true,live,source:live?'RECEIVER_PENDING_STATE':'SNAPSHOT_PLUS_OBSERVED_FIRST_PAGE_MINUS_BOOK_SETTLEMENTS',readMode:'DURABLE_OBJECT_STATE_ONLY',coverageVerified,coverageReason:coverageVerified?null:(sync?.reason??'FULL_SOURCE_COVERAGE_NOT_VERIFIED'),lastBackgroundCheckAt:sync?.checkedAt??null,expectedSourcePending:sync?.expectedPending??null,indexPending:local.filter(x=>x.status==='PENDING').length,verifiedAt:sync?.verifiedAt??s.pendingVerifiedAt,generation:s.generation,total:idx.length,pending:idx.filter(x=>x.status==='PENDING').length,unresolved:idx.filter(x=>x.status==='UNRESOLVED').length,rows,next:offset+limit<idx.length?offset+limit:null});
  }
  return json({ok:false},404);
 }
