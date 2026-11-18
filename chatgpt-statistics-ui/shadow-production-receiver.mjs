@@ -3,6 +3,7 @@ import {WorkerEntrypoint} from 'cloudflare:workers';
 // Production health is read-only; ingestion is authorized by private service binding.
 // Historical seed is isolated and checkpointed. No cutover. Newer revisions are applied atomically.
 import {normalizeRow,compareCursor} from './shadow-composite-cursor-stage.mjs';
+import {journalAccepted,journalRead,projectionHandle,projectionAlarm,isProjection} from './shadow-receiver-projection-v1.mjs';
 const reply=(d,s=200)=>Response.json(d,{status:s,headers:{'cache-control':'no-store'}});
 const digest=async value=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(value))))).map(b=>b.toString(16).padStart(2,'0')).join('');
 const state0=()=>({received:0,pending:0,duplicates:0,delivered:0,quarantined:0});
@@ -53,6 +54,7 @@ async function applyRevision(tx,s,row){
  s.total_pnl=s.unknown_pnl?null:s.pnl_units/100000000;
  if(!s.cursor||compareCursor(row,s.cursor)>0)s.cursor={settled_at:row.settled_at,signal_id:row.signal_id};
  await tx.put(key,row);
+ await journalAccepted(tx,prior,row);
  return {duplicate:false,corrected:!!prior,stale:false};
 }
 async function postRevision(storage,raw){
@@ -129,6 +131,8 @@ export class ShadowProductionStore {
  async fetch(req){
   const store=this.ctx.storage,path=new URL(req.url).pathname;
   try{
+   if(path==='/projection-journal-v1'&&req.method==='GET')return journalRead(store,new URL(req.url));
+   if(path.startsWith('/projection-'))return projectionHandle(store,this.env,req);
    if(path==='/statistics-summary-v1'&&req.method==='GET'){
     // Constant-size read of materialized balance; never scan receipts.
     const data=await store.get('composite:state'),seed=await store.get(seedMarker);
@@ -178,7 +182,17 @@ export class ShadowProductionStore {
    if(req.method!=='POST')return reply({ok:false},405);
    if(path==='/book-post'){
     const row=await req.json();
-    try{const result=await postRevision(store,row);return reply({ok:true,...result})}
+    try{
+     const result=await postRevision(store,row);
+     if(!result.duplicate&&!result.stale){
+      // Durable journal is authoritative; an unavailable projector cannot block settlement ingestion.
+      try{
+       const notify=this.env.SHADOW_STORE.get(this.env.SHADOW_STORE.idFromName('projection-v1')).fetch('https://store.internal/projection-wake-v1',{method:'POST'}).catch(()=>{});
+       if(typeof this.ctx.waitUntil==='function')this.ctx.waitUntil(notify);else void notify;
+      }catch{}
+     }
+     return reply({ok:true,...result})
+    }
     catch(e){if(e.message==='CORRECTION_REQUIRES_EXPLICIT_HANDLING')return reply({ok:false,error:'CORRECTION_CONFLICT'},409);throw e}
    }
    if(path==='/replay-quarantined-v1'){
@@ -231,7 +245,9 @@ export class ShadowProductionStore {
   }catch(e){console.error('SHADOW_RECEIVER_ERROR',String(e.message).slice(0,100));return reply({ok:false,error:'SHADOW_STORAGE_OR_VALIDATION_ERROR'},503)}
  }
  async alarm(){
-  const store=this.ctx.storage,book=this.env.SHADOW_STORE.get(this.env.SHADOW_STORE.idFromName('book-v1'));
+  const store=this.ctx.storage;
+  if(await isProjection(store))return projectionAlarm(store,this.env);
+  const book=this.env.SHADOW_STORE.get(this.env.SHADOW_STORE.idFromName('book-v1'));
   let retry=false;
   try{
    for(const [key,event] of await store.list({prefix:'inbox:pending:',limit:25})){
@@ -255,6 +271,22 @@ export class ShadowProductionStore {
 }
 export default {async fetch(req,env){
  const u=new URL(req.url);
+ if(u.pathname==='/audit-projection-journal-v1'){
+  if(u.hostname!=='ball46-shadow-receiver-production.mccarey-supon.workers.dev'||req.method!=='GET'||!await authorized(req,env.AUDIT_TOKEN))return reply({ok:false},403);
+  const book=env.SHADOW_STORE.get(env.SHADOW_STORE.idFromName('book-v1'));
+  // External audit can read the sequence/aggregate, but not the full private journal.
+  return book.fetch('https://store.internal/projection-journal-v1');
+ }
+ if(u.pathname==='/projection-seed-v1'){
+  if(u.hostname!=='ball46-shadow-receiver-production.mccarey-supon.workers.dev'||req.method!=='POST'||!await authorized(req,env.PROJECTION_SEED_TOKEN))return reply({ok:false},403);
+  const project=env.SHADOW_STORE.get(env.SHADOW_STORE.idFromName('projection-v1'));
+  return project.fetch('https://store.internal/projection-seed-v1',req);
+ }
+ const routes={'/audit-projection-status-v1':'/projection-status-v1','/audit-projection-graph-v1':'/projection-graph-v1','/audit-projection-pending-v1':'/projection-pending-v1','/audit-projection-pending-snapshot-v1':'/projection-pending-snapshot-v1'};
+ if(Object.hasOwn(routes,u.pathname)){
+  if(u.hostname!=='ball46-shadow-receiver-production.mccarey-supon.workers.dev'||req.method!=='GET'||!await authorized(req,env.AUDIT_TOKEN))return reply({ok:false},403);
+  return projectionRead(env,routes[u.pathname],u.search);
+ }
  if(u.pathname==='/audit-snapshot'){
   if(u.hostname!=='ball46-shadow-receiver-production.mccarey-supon.workers.dev'||req.method!=='GET')return reply({ok:false},403);
   if(!await authorized(req,env.AUDIT_TOKEN))return reply({ok:false},403);
@@ -324,5 +356,18 @@ export class StatisticsReader extends WorkerEntrypoint {
   if(u.hostname!=='shadow.internal'||u.pathname!=='/statistics-summary-v1')return reply({ok:false},403);
   if(req.method!=='GET')return reply({ok:false},405);
   return readStatisticsSummary(this.env);
+ }
+}
+
+async function projectionRead(env,path,search){
+ const project=env.SHADOW_STORE.get(env.SHADOW_STORE.idFromName('projection-v1'));
+ return project.fetch('https://store.internal'+path+search);
+}
+export class MarketStatisticsReader extends WorkerEntrypoint {
+ async fetch(req){
+  const u=new URL(req.url);
+  if(u.hostname!=='shadow.internal'||!['/projection-status-v1','/projection-graph-v1','/projection-pending-v1'].includes(u.pathname))return reply({ok:false},403);
+  if(req.method!=='GET')return reply({ok:false},405);
+  return projectionRead(this.env,u.pathname,u.search);
  }
 }
