@@ -41,7 +41,7 @@ async function siteHealth(host){
  for(const p of ['/b46-fast-v1/head','/b46-fast-v1/chart']){const r=await http(host,p);assert(r.status===200&&r.type.includes('application/json')&&r.data?.ok,'LEGACY_SOURCE_HTTP_'+p+'_'+r.status)}
 }
 async function probe(host){
- for(let i=0;i<12;i++){
+ for(let i=0;i<4;i++){
   const a=await http(RECV,'/audit-statistics-summary-v1',auditKey),p=await http(host,PROBE,probeKey),b=await http(RECV,'/audit-statistics-summary-v1',auditKey);
   if(a.status===200&&p.status===200&&b.status===200&&p.type.includes('application/json')&&p.data?.ok&&a.data?.total===b.data?.total&&p.data.settled===b.data.total&&Math.abs(p.data.pnl-b.data.total_pnl)<1e-7&&p.data.publicSourceChanged===false){
    const unauth=await http(host,PROBE),wrong=await http(host,PROBE,'0'.repeat(64));
@@ -62,6 +62,9 @@ try{
   assert(z.length===1);const routes=await cf('/zones/'+z[0].id+'/workers/routes','GET',undefined,routeToken);
   console.log('SITE_ROUTE_READ='+JSON.stringify({http:200,routes:routes.map(x=>({pattern:x.pattern,script:x.script??null})),routeEditVerified:false}));
  }catch(e){console.log('SITE_ROUTE_READ_LIMIT='+JSON.stringify({error:String(e.message),routeEditVerified:false,routeWrites:0}))}
+ for(const path of ['/audit-projection-status-v1','/audit-projection-graph-v1','/audit-projection-pending-v1?limit=1']){
+  const r=await http(RECV,path,auditKey);console.log('SITE_DIRECT_RECEIVER_CONTROL='+JSON.stringify({path,http:r.status,ok:r.data?.ok??null}));assert(r.status===200&&r.data?.ok,'DIRECT_RECEIVER_NOT_READY');
+ }
  const src=await collect({includeRaw:true}),book=await readFullBook(auditKey);
  assert(compare(src,book).exact,'CANONICAL_BOOK_PARITY_FAILED');
  console.log('SITE_BASELINE_PARITY='+JSON.stringify({settled:book.totals.total,pending:src.other.PENDING,exact:true}));
@@ -94,6 +97,7 @@ try{
  console.log('SITE_BINDING_CANDIDATE='+JSON.stringify({candidate,rollback:EXPECTED,unchangedModules:52,addedModules:2,existingBindingsRetained:bindings.length,assetsRetained:true,routeWrites:0}));
  const preview='https://'+candidate.slice(0,8)+'-'+SITE+'.mccarey-supon.workers.dev';
  await probe(preview);assert.deepEqual(await fingerprints(preview),staticHashes,'PREVIEW_STATIC_DRIFT');await siteHealth(preview);
+ if(process.env.B46_BINDING_DIAGNOSTIC_ONLY==='1'){console.log('SITE_BINDING_DIAGNOSTIC_PASS='+JSON.stringify({candidate,activated:false}));process.exit(0)}
  await guard(EXPECTED);
  await assign(candidate);activated=true;await waitActive(candidate);await guard(candidate);
  const live=await probe(DIRECT);await probe(PUBLIC);assert.deepEqual(await fingerprints(DIRECT),staticHashes,'LIVE_STATIC_DRIFT');await siteHealth(DIRECT);await siteHealth(PUBLIC);await guard(candidate);
