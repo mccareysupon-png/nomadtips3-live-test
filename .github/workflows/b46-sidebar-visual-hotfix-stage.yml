@@ -12,7 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: a010ff06d415d7f12d32cc8cac2ccbcde6d0e03b
+          ref: 87b786c0a4d1fc2e9cf3c3fbb6e3b999f893b521
           persist-credentials: false
       - run: |
           npm install --prefix chatgpt-statistics-ui/.runtime --no-audit --no-fund playwright@1.55.0
