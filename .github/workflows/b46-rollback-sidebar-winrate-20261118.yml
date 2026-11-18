@@ -1,58 +1,10 @@
-name: B46 owner-approved rollback to pre-Win-Rate versions
+name: Retired B46 sidebar rollback (disabled)
 on:
-  push:
-    branches: [chatgpt/ball46-new-ledger-clean-v1]
-    paths: ['.github/workflows/b46-rollback-sidebar-winrate-20261118.yml']
+  workflow_dispatch:
 permissions:
   contents: read
-concurrency:
-  group: b46-sidebar-rollback
-  cancel-in-progress: false
 jobs:
-  rollback:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    env:
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  retired:
+    runs-on: ubuntu-latest
     steps:
-      - name: Restore exact pre-sidebar website and Receiver; verify active versions and read-only graph
-        run: |
-          node --input-type=module <<'JS'
-          import assert from 'node:assert/strict';
-          const site='ball46-production',rec='ball46-shadow-receiver-production',eng='nomadtips3-engine-343';
-          const fromSite='24506262-2590-493f-aace-2932057458d2',toSite='b4f41a7d-4d48-4e11-aa16-e74ab5dd586a',fromRec='571103b5-12ce-402b-8720-3e154f89634d',toRec='55a7638c-d6e4-4698-9ad4-b3e1f821ed5f',engine='db65134e-a12d-4084-937e-3ce6e986c251';
-          const root='https://api.cloudflare.com/client/v4/accounts/62cb0db544160e6591342abd6b4f35cc',token=process.env.CLOUDFLARE_API_TOKEN;
-          assert(token);
-          const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-          async function cf(p,method='GET',body){
-           if(method!=='GET')assert(method==='POST'&&['/workers/scripts/'+site+'/deployments','/workers/scripts/'+rec+'/deployments'].includes(p),'WRITE_SCOPE');
-           const r=await fetch(root+p,{method,headers:{authorization:'Bearer '+token,'content-type':'application/json'},body:body===undefined?undefined:JSON.stringify(body),signal:AbortSignal.timeout(30000)}),j=await r.json();
-           if(!r.ok||!j.success)throw Error('CF_'+method+'_'+r.status+'_'+(j.errors??[]).map(x=>x.code).join('_'));return j.result;
-          }
-          async function active(n){const v=(await cf('/workers/scripts/'+n+'/deployments?per_page=1')).deployments[0].versions;assert(v.length===1&&Number(v[0].percentage)===100,'TRAFFIC_DRIFT_'+n);return v[0].version_id}
-          async function state(){return {site:await active(site),receiver:await active(rec),engine:await active(eng)}}
-          async function assign(n,id){await cf('/workers/scripts/'+n+'/deployments','POST',{strategy:'percentage',versions:[{version_id:id,percentage:100}],...(n===rec?{code_update_strategy:{mode:'immediate'}}:{}),annotations:{'workers/message':'Owner-requested rollback before sidebar Win Rate; retain graph and all database state'}});for(let i=0;i<15;i++){if(await active(n)===id)return;await sleep(1000)}throw Error('ACTIVE_NOT_CONFIRMED_'+n)}
-          async function graph(){const r=await fetch('https://www.ball46.com/b46-receiver-v1/graph?market=all&variant=all&filter=all&range=all',{headers:{'cache-control':'no-cache','user-agent':'Mozilla/5.0 B46-OwnerRollback'},signal:AbortSignal.timeout(15000)});if(!r.ok)return null;const d=await r.json();return {source:d.source,rows:d.summary?.rows,seq:d.sequence,hasSidebar:Object.hasOwn(d,'sidebarWinRates')}}
-          const before=await state();console.log('ROLLBACK_BEFORE='+JSON.stringify(before));
-          assert([fromSite,toSite].includes(before.site)&&[fromRec,toRec].includes(before.receiver)&&before.engine===engine,'UNEXPECTED_CONCURRENT_DEPLOYMENT_STOP');
-          let g0;try{g0=await graph()}catch{};console.log('ROLLBACK_DATA_BEFORE='+JSON.stringify(g0??null));
-          // Website first: old website is compatible with both Receiver versions.
-          await cf('/workers/workers/'+site+'/versions/'+toSite);
-          await cf('/workers/workers/'+rec+'/versions/'+toRec);
-          if(before.site!==toSite){assert.equal(await active(site),fromSite);await assign(site,toSite)}
-          assert.equal(await active(site),toSite);assert.equal(await active(eng),engine);
-          if(before.receiver!==toRec){assert.equal(await active(rec),fromRec);await assign(rec,toRec)}
-          const after=await state();assert.deepEqual(after,{site:toSite,receiver:toRec,engine});
-          console.log('ROLLBACK_ACTIVE_SUCCESS='+JSON.stringify({...after,traffic:100,dbReset:false,routeWrites:0}));
-          // Confirm served scripts reverted; do not restore the faulty build on verification failure.
-          let verified=false,last=null;
-          for(let i=0;i<18;i++){
-           try{
-            const r=await fetch('https://www.ball46.com/singlepage-workspace-343.js',{headers:{'cache-control':'no-cache','user-agent':'Mozilla/5.0 B46-OwnerRollback'},signal:AbortSignal.timeout(15000)}),s=await r.text(),g=await graph();last={status:r.status,oldCountRenderer:s.includes('function renderStatNav(){const c=marketCounts()'),winRateHook:s.includes('__B46_SIDEBAR_WINRATES'),graph:g};
-            if(r.ok&&last.oldCountRenderer&&!last.winRateHook&&g?.source==='RECEIVER'&&!g.hasSidebar&&Number.isFinite(g.rows)&&(!g0?.rows||g.rows>=g0.rows)){verified=true;break}
-           }catch(e){last={error:String(e.message).slice(0,150)}}
-           await sleep(2200);
-          }
-          console.log('ROLLBACK_PUBLIC_CHECK='+JSON.stringify({verified,...last}));
-          assert(verified,'PUBLIC_PROPAGATION_OR_GRAPH_NOT_CONFIRMED');
-          JS
+      - run: echo 'Retired one-time rollback; no deployment.'
