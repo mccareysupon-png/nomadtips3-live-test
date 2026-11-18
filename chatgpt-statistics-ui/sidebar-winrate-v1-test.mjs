@@ -54,6 +54,12 @@ const hasRate=page=>page.evaluate(({selector,aliases})=>Object.fromEntries([...d
 const colorFor=v=>v===null?'rgb(145, 170, 155)':Number(v.toFixed(2))>50?'rgb(34, 197, 94)':Number(v.toFixed(2))<50?'rgb(248, 113, 113)':'rgb(250, 204, 21)';
 const readColors=page=>page.evaluate(({selector,aliases})=>Object.fromEntries([...document.querySelectorAll('[data-stat-market]')].filter(b=>aliases[b.dataset.statMarket]&&b.querySelector(selector)).map(b=>[aliases[b.dataset.statMarket],getComputedStyle(b.querySelector(selector)).color])),{selector:work.countSelector,aliases});
 const expectedColors=rates=>Object.fromEntries(SIDEBAR_MARKETS.map(m=>[m,colorFor(rates[m].rate)]));
+const assertOrder=async page=>{
+ const order=await page.evaluate(()=>[...document.querySelectorAll('[data-stat-market]')].map(b=>b.dataset.statMarket));
+ assert(order.length>=8&&order.length%8===0,'SIDEBAR_NODE_COUNT '+JSON.stringify(order));
+ for(let i=0;i<order.length;i+=8)assert.deepEqual(order.slice(i,i+8),['all','1x2','ah','ou','corners','btts','cards','other'],'SIDEBAR_MARKET_ORDER');
+ return order;
+};
 const results=[];
 try{
  for(const mobile of [false,true]){
@@ -81,7 +87,7 @@ try{
    throw e;
   }
   const firstMs=Math.round(performance.now()-first);
-  const actual=await hasRate(page);assert.deepEqual(actual,expected,'SIDEBAR_VALUES');assert.deepEqual(await readColors(page),expectedColors(real),'SIDEBAR_LIVE_COLORS');
+  const actual=await hasRate(page);assert.deepEqual(actual,expected,'SIDEBAR_VALUES');assert.deepEqual(await readColors(page),expectedColors(real),'SIDEBAR_LIVE_COLORS');await assertOrder(page);
   assert.equal(history.length,0,'EARLY_HISTORY');
   const original=await page.evaluate(()=>({net:document.querySelector('#b46-finance-chart-card')?.dataset.b46Net,view:document.body.dataset.workspaceView,overflow:document.documentElement.scrollWidth>innerWidth+2}));
   assert.equal(original.view,'statistics');assert(!original.overflow);
@@ -91,7 +97,7 @@ try{
    for(const [routeMarket,m] of [['ah','AH'],['corners','Corners'],['1x2','1X2']]){
     await page.locator('[data-stat-market="'+routeMarket+'"]').first().click();
     await page.waitForFunction(m=>{const c=document.querySelector('#b46-finance-chart-card');return c?.dataset.b46StatisticsSource==='receiver'&&c.dataset.b46Market===m},m,{timeout:20000});
-    assert.deepEqual(await hasRate(page),expected);assert.deepEqual(await readColors(page),expectedColors(real));assert.equal(history.length,0);
+    assert.deepEqual(await hasRate(page),expected);assert.deepEqual(await readColors(page),expectedColors(real));await assertOrder(page);assert.equal(history.length,0);
    }
    await page.locator('[data-b46-range="d7"]').click();await page.waitForFunction(()=>document.querySelector('#b46-finance-chart-card')?.dataset.b46Range==='d7');assert.deepEqual(await hasRate(page),expected);
    await page.locator('[data-b46-mode="rate"]').click();assert.deepEqual(await hasRate(page),expected);
@@ -114,6 +120,7 @@ try{
   assert.deepEqual(await readColors(page),expectedColors(boundary),'SIDEBAR_BOUNDARY_COLORS');
   assert.deepEqual(await hasRate(page),Object.fromEntries(SIDEBAR_MARKETS.map(m=>[m,cases[m]===null?'—':cases[m].toFixed(2)+'%'])));
   assert.equal(calls.length,beforeBoundary,'COLOR_UPDATE_NETWORK');
+  console.log('SIDEBAR_ORDER_PASS='+JSON.stringify({mobile,order:await assertOrder(page)}));
   console.log('SIDEBAR_COLOR_PASS='+JSON.stringify({mobile,colors:await readColors(page),threshold:50,rounded:true,noRequests:true}));
   assert.equal(errors.length,0,JSON.stringify(errors));assert.equal(history.length,0);
   const row={mobile,firstMs,markets:8,graphRequests:calls.length,additionalSidebarRequests:0,historyRequests:history.length,jsErrors:errors.length};results.push(row);console.log('SIDEBAR_STAGE_BROWSER='+JSON.stringify(row));await ctx.close();
