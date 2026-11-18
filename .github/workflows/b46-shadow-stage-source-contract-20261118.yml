@@ -9,7 +9,7 @@ permissions:
 jobs:
   inspect:
     runs-on: ubuntu-24.04
-    timeout-minutes: 3
+    timeout-minutes: 7
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
     steps:
@@ -35,3 +35,9 @@ jobs:
            console.log('SOURCE_CONTRACT='+JSON.stringify({name,version:vs[0].version_id,moduleCount:v.modules?.length,bindings:(v.bindings??[]).map(x=>({name:x.name,type:x.type})),routes:[...routeSet].sort().slice(0,100),params:[...paramSet].sort(),features:[...features],limits:s.limits??null}));
           }
           JS
+      - uses: actions/checkout@v4
+        with:
+          ref: 31aa81f291f51aeb7d16be4eee6097f99d387f67
+          persist-credentials: false
+      - name: Match existing source Pending IDs to verified legacy ledger
+        run: node chatgpt-statistics-ui/shadow-pending-source-contract.mjs
