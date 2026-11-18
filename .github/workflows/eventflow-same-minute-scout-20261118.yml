@@ -1,0 +1,31 @@
+name: Event Flow same-minute test source scout (read only)
+on:
+  push:
+    branches: [test/ball46-eventflow-same-minute-20261118]
+    paths: ['.github/workflows/eventflow-same-minute-scout-20261118.yml']
+permissions:
+  contents: read
+jobs:
+  scout:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Retrieve public frontend asset and identify renderer
+        run: |
+          mkdir -p audit
+          curl --fail --silent --show-error --max-time 35 -H 'Cache-Control: no-cache' "https://ball46.com/expanded-match-343.js?b46_test_scout=${GITHUB_RUN_ID}" -o audit/expanded-match-343.js
+          node --check audit/expanded-match-343.js
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import crypto from 'node:crypto';
+          const s=fs.readFileSync('audit/expanded-match-343.js','utf8');
+          console.log('SOURCE_SHA256='+crypto.createHash('sha256').update(s).digest('hex'));
+          const a=s.indexOf('function signalMarkers('), b=s.indexOf('function renderFlow(',a);
+          if(a<0||b<a)throw Error('RENDERER_ANCHOR_NOT_FOUND');
+          console.log('SIGNAL_RENDERER_BEGIN\n'+s.slice(a,b)+'\nSIGNAL_RENDERER_END');
+          NODE
+      - uses: actions/upload-artifact@v4
+        with:
+          name: eventflow-current-public-source
+          path: audit/
+          retention-days: 3
