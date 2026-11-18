@@ -32,6 +32,18 @@ export async function journalAccepted(tx,prior,next,bookState){
  const seq=revision(bookState),stored=await tx.get(journalSeq);
  if(stored!==undefined&&stored!==null&&stored>=seq)throw Error('PROJECTION_SEQUENCE_REGRESSION');
  await tx.put(journalKey(seq),{seq,previous:prior??null,next,at:Date.now()});await tx.put(journalSeq,seq);
+ // Remove the active pending index entry in the SAME Book transaction.
+ // Preserve the full record for graph metadata and audit.
+ const p=await tx.get(pfx+'pending:'+next.signal_id);
+ if(p){
+  const idx=await tx.get(pfx+'pending-index')??[],filtered=idx.filter(x=>x.id!==next.signal_id);
+  if(filtered.length!==idx.length){
+   await tx.put(pfx+'pending-index',filtered);
+   const ps=await tx.get(pfx+'pending-sync')??{};
+   await tx.put(pfx+'pending-sync',{...ps,complete:false,reason:'BOOK_CHANGED_SINCE_SOURCE_VERIFICATION'});
+   const state=await tx.get(stateKey);if(state){state.generation++;await tx.put(stateKey,state)}
+  }
+ }
 }
 // Direct local storage access: no fetch, service binding, or HTTP Journal API.
 async function readJournal(store,after=null){
@@ -159,6 +171,47 @@ async function applyEvent(store,event){
   await tx.put(pfx+'daily-index',days);await tx.put(graphsKey,graphs);await tx.put(stateKey,s);
  });
 }
+// Only the first existing ledger page is fetched here; never the 33-page history.
+export async function syncPendingFirstPage(store,{now=Date.now(),fetcher=fetch}={}){
+ const syncKey=pfx+'pending-sync',previous=await store.get(syncKey);
+ if(previous?.checkedAt&&now-previous.checkedAt<60000)return previous;
+ const fail=async reason=>{
+  const value={checkedAt:now,verifiedAt:previous?.verifiedAt??null,complete:false,reason};
+  await store.put(syncKey,value);return value;
+ };
+ try{
+  const before=await readJournal(store);
+  const url='https://www.ball46.com/api/engine/statistics?paged=1';
+  const response=await fetcher(url,{headers:{accept:'application/json','cache-control':'no-cache','user-agent':'Mozilla/5.0 B46-Receiver-Projection'},signal:AbortSignal.timeout(15000)});
+  if(!response.ok||!(response.headers.get('content-type')??'').includes('application/json'))return fail('FIRST_PAGE_NON_JSON_OR_HTTP');
+  const d=await response.json();
+  if(!d?.ok||d.statisticsSource!=='LEDGER_V2_ONLY'||!Array.isArray(d.rows)||d.rows.length>500||!Number.isSafeInteger(d.pending)||!Number.isSafeInteger(d.unresolved)||!Number.isSafeInteger(d.total))return fail('FIRST_PAGE_SCHEMA');
+  const incoming=d.rows.filter(x=>['PENDING','UNRESOLVED'].includes(x.status)),seen=new Set();
+  for(const row of incoming){if(!row.id||seen.has(String(row.id))||!Number.isSafeInteger(Number(row.createdAt))||Number(row.createdAt)<=0)throw Error('FIRST_PAGE_PENDING_INVALID');seen.add(String(row.id))}
+  const allVisible=incoming.filter(r=>r.status==='PENDING').length===d.pending&&incoming.filter(r=>r.status==='UNRESOLVED').length===d.unresolved;
+  return await store.transaction(async tx=>{
+   const b=await tx.get('composite:state'),state=await tx.get(stateKey);
+   if(!state||state.status!=='loaded'||revision(b)!==before.sequence||d.total!==b.total)return {checkedAt:now,complete:false,reason:'SOURCE_BOOK_REVISION_CHANGED'};
+   const old=await tx.get(pfx+'pending-index')??[],idx=new Map(old.map(x=>[x.id,x]));
+   let changed=false,conflict=false;
+   for(const row of incoming){
+    const id=String(row.id);
+    if(await tx.get('composite:receipt:'+id)){conflict=true;continue}
+    const previousRow=await tx.get(pfx+'pending:'+id);
+    if(JSON.stringify(previousRow)!==JSON.stringify(row)){changed=true;await tx.put(pfx+'pending:'+id,row)}
+    idx.set(id,{id,market:String(row.market),createdAt:Number(row.createdAt),status:row.status});
+   }
+   // Do not drop an absent ID merely because it is not on page one.
+   // Only a complete source set justifies removing missing IDs.
+   if(allVisible&&!conflict)for(const id of idx.keys())if(!seen.has(id)){idx.delete(id);changed=true}
+   const entries=[...idx.values()],complete=allVisible&&!conflict&&entries.filter(x=>x.status==='PENDING').length===d.pending&&entries.filter(x=>x.status==='UNRESOLVED').length===d.unresolved;
+   const sync={checkedAt:now,verifiedAt:complete?now:previous?.verifiedAt??null,complete,bookSequence:before.sequence,expectedPending:d.pending,expectedUnresolved:d.unresolved,firstPagePending:incoming.filter(x=>x.status==='PENDING').length,indexPending:entries.filter(x=>x.status==='PENDING').length,reason:complete?null:'FIRST_PAGE_COVERAGE_NOT_PROVEN'};
+   await tx.put(pfx+'pending-index',entries);await tx.put(syncKey,sync);
+   if(changed){state.generation++;await tx.put(stateKey,state)}
+   return sync;
+  });
+ }catch(e){return fail(String(e.message).slice(0,100))}
+}
 export async function projectionAlarm(store,env){
  const s=await store.get(stateKey);if(!s||s.status!=='loaded')return;
  let delay=30000;
@@ -172,6 +225,8 @@ export async function projectionAlarm(store,env){
  }catch(e){
   await store.transaction(async tx=>{const v=await tx.get(stateKey);if(v){v.lastError=String(e.message).slice(0,100);await tx.put(stateKey,v)}});delay=30000;
  }
+ // Throttled and independent of the graph journal. No historical scan.
+ try{await syncPendingFirstPage(store)}catch{}
  await store.setAlarm(Date.now()+delay);
 }
 export async function isProjection(store){return !!(await store.get(stateKey))}
@@ -185,7 +240,8 @@ export async function projectionHandle(store,env,req){
  if(req.method!=='GET')return json({ok:false},405);
  const s=await store.get(stateKey);
  if(p==='/projection-status-v1'){
-  const j=await readJournal(store);return json({ok:true,readOnly:true,projection:stateView(s),bookSequence:j.sequence,bookAggregate:j.aggregate,graphReady:s?.status==='loaded'&&!s.lastError&&s.sequence===j.sequence,pendingLiveReady:false});
+  const j=await readJournal(store),sync=await store.get(pfx+'pending-sync')??null;const pendingLiveReady=!!(sync?.complete&&sync.bookSequence===j.sequence&&Date.now()-sync.verifiedAt<=90000);
+  return json({ok:true,readOnly:true,projection:stateView(s),bookSequence:j.sequence,bookAggregate:j.aggregate,graphReady:s?.status==='loaded'&&!s.lastError&&s.sequence===j.sequence,pendingLiveReady,pendingSync:sync});
  }
  if(s?.status!=='loaded')return json({ok:false,error:'PROJECTION_NOT_READY'},503);
  const market=u.searchParams.get('market')??'all';
@@ -198,18 +254,18 @@ export async function projectionHandle(store,env,req){
   const a=await store.get(stateKey);if(a.generation!==s.generation||a.sequence!==s.sequence)return json({ok:false,error:'GENERATION_CHANGED'},409);
   return json({...graphs[market],generation:s.generation,sequence:s.sequence,readOnly:true});
  }
- if(p==='/projection-pending-v1'){
-  // Complete live delta feed is NOT available. Auditors may examine the explicitly labelled
-  // last verified snapshot minus observed Book settlements. Never present it as live.
-  return json({ok:false,error:'COMPLETE_PENDING_LIVE_SOURCE_UNAVAILABLE',pendingLiveReady:false,lastVerifiedAt:s.pendingVerifiedAt},503);
- }
- if(p==='/projection-pending-snapshot-v1'){
+ if(p==='/projection-pending-v1'||p==='/projection-pending-snapshot-v1'){
+  const live=p==='/projection-pending-v1',sync=await store.get(pfx+'pending-sync')??null;
+  if(live){
+   const j=await readJournal(store);
+   if(!sync?.complete||sync.bookSequence!==j.sequence||Date.now()-sync.verifiedAt>90000)return json({ok:false,error:'COMPLETE_PENDING_LIVE_SOURCE_UNAVAILABLE',pendingLiveReady:false,lastVerifiedAt:sync?.verifiedAt??s.pendingVerifiedAt},503);
+  }
   const idx=(await store.get(pfx+'pending-index')??[]).filter(r=>market==='all'||marketGroup(r.market)===market).sort((a,b)=>b.createdAt-a.createdAt||a.id.localeCompare(b.id));
   const offset=Number(u.searchParams.get('offset')??0),limit=Number(u.searchParams.get('limit')??50);
   if(!Number.isSafeInteger(offset)||offset<0||!Number.isSafeInteger(limit)||limit<1||limit>50)return json({ok:false},400);
   const rows=[];for(const v of idx.slice(offset,offset+limit)){const row=await store.get(pfx+'pending:'+v.id);if(!row)throw Error('MISSING_PENDING_METADATA');rows.push(row)}
   const current=await store.get(stateKey);if(current.generation!==s.generation)return json({ok:false,error:'GENERATION_CHANGED'},409);
-  return json({ok:true,readOnly:true,live:false,source:'VERIFIED_SNAPSHOT_MINUS_BOOK_SETTLEMENTS',verifiedAt:s.pendingVerifiedAt,generation:s.generation,total:idx.length,pending:idx.filter(x=>x.status==='PENDING').length,unresolved:idx.filter(x=>x.status==='UNRESOLVED').length,rows,next:offset+limit<idx.length?offset+limit:null});
+  return json({ok:true,readOnly:true,live,source:live?'VERIFIED_COMPLETE_FIRST_PAGE':'SNAPSHOT_PLUS_OBSERVED_FIRST_PAGE_MINUS_BOOK_SETTLEMENTS',verifiedAt:sync?.verifiedAt??s.pendingVerifiedAt,generation:s.generation,total:idx.length,pending:idx.filter(x=>x.status==='PENDING').length,unresolved:idx.filter(x=>x.status==='UNRESOLVED').length,rows,next:offset+limit<idx.length?offset+limit:null});
  }
  return json({ok:false},404);
 }
