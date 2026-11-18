@@ -26,6 +26,13 @@ const b46SidebarAliases={all:'all',ah:'AH','1x2':'1X2',ou:'O/U',btts:'BTTS',corn
 let b46SidebarState=null,b46SidebarSeq=-1;
 const b46SidebarNode=button=>button.querySelector(__COUNT_SELECTOR__);
 function b46PaintSidebar(){
+ // Move existing nodes, preserving native click handlers and active classes.
+ for(const corner of document.querySelectorAll('[data-stat-market="corners"]')){
+  const parent=corner.parentElement;
+  if(!parent)continue;
+  const ou=[...parent.children].find(node=>node.dataset?.statMarket==='ou');
+  if(ou&&ou.nextElementSibling!==corner)parent.insertBefore(corner,ou.nextElementSibling);
+ }
  const nodes=document.querySelectorAll('[data-stat-market]');
  for(const b of nodes){
   const name=b46SidebarAliases[b.dataset.statMarket],el=b46SidebarNode(b);
