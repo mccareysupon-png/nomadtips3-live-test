@@ -51,6 +51,9 @@ console.log('SIDEBAR_STAGE_NATIVE_ANCHOR='+JSON.stringify({selector:work.countSe
 const browser=await chromium.launch({headless:true});
 const aliases={all:'all',ah:'AH','1x2':'1X2',ou:'O/U',btts:'BTTS',corners:'Corners',cards:'Cards',other:'Other'};
 const hasRate=page=>page.evaluate(({selector,aliases})=>Object.fromEntries([...document.querySelectorAll('[data-stat-market]')].filter(b=>aliases[b.dataset.statMarket]&&b.querySelector(selector)).map(b=>[aliases[b.dataset.statMarket],b.querySelector(selector).textContent.trim()])),{selector:work.countSelector,aliases});
+const colorFor=v=>v===null?'rgb(145, 170, 155)':Number(v.toFixed(2))>50?'rgb(34, 197, 94)':Number(v.toFixed(2))<50?'rgb(248, 113, 113)':'rgb(250, 204, 21)';
+const readColors=page=>page.evaluate(({selector,aliases})=>Object.fromEntries([...document.querySelectorAll('[data-stat-market]')].filter(b=>aliases[b.dataset.statMarket]&&b.querySelector(selector)).map(b=>[aliases[b.dataset.statMarket],getComputedStyle(b.querySelector(selector)).color])),{selector:work.countSelector,aliases});
+const expectedColors=rates=>Object.fromEntries(SIDEBAR_MARKETS.map(m=>[m,colorFor(rates[m].rate)]));
 const results=[];
 try{
  for(const mobile of [false,true]){
@@ -78,7 +81,7 @@ try{
    throw e;
   }
   const firstMs=Math.round(performance.now()-first);
-  const actual=await hasRate(page);assert.deepEqual(actual,expected,'SIDEBAR_VALUES');
+  const actual=await hasRate(page);assert.deepEqual(actual,expected,'SIDEBAR_VALUES');assert.deepEqual(await readColors(page),expectedColors(real),'SIDEBAR_LIVE_COLORS');
   assert.equal(history.length,0,'EARLY_HISTORY');
   const original=await page.evaluate(()=>({net:document.querySelector('#b46-finance-chart-card')?.dataset.b46Net,view:document.body.dataset.workspaceView,overflow:document.documentElement.scrollWidth>innerWidth+2}));
   assert.equal(original.view,'statistics');assert(!original.overflow);
@@ -88,7 +91,7 @@ try{
    for(const [routeMarket,m] of [['ah','AH'],['corners','Corners'],['1x2','1X2']]){
     await page.locator('[data-stat-market="'+routeMarket+'"]').first().click();
     await page.waitForFunction(m=>{const c=document.querySelector('#b46-finance-chart-card');return c?.dataset.b46StatisticsSource==='receiver'&&c.dataset.b46Market===m},m,{timeout:20000});
-    assert.deepEqual(await hasRate(page),expected);assert.equal(history.length,0);
+    assert.deepEqual(await hasRate(page),expected);assert.deepEqual(await readColors(page),expectedColors(real));assert.equal(history.length,0);
    }
    await page.locator('[data-b46-range="d7"]').click();await page.waitForFunction(()=>document.querySelector('#b46-finance-chart-card')?.dataset.b46Range==='d7');assert.deepEqual(await hasRate(page),expected);
    await page.locator('[data-b46-mode="rate"]').click();assert.deepEqual(await hasRate(page),expected);
@@ -101,6 +104,17 @@ try{
    await page.evaluate(({real,seq})=>window.__B46_SIDEBAR_WINRATES(real,seq),{real,seq});assert.deepEqual(await hasRate(page),expectedNext);
    simulate=false;
   }
+  // Local-only boundary fixtures: verify actual computed colors on PC/mobile,
+  // including values that round to the displayed midpoint and 0% vs missing.
+  const boundary=structuredClone(real);
+  const cases={all:50,AH:50.001,'1X2':49.999,'O/U':50.01,BTTS:0,Corners:49.99,Cards:100,Other:null};
+  for(const m of SIDEBAR_MARKETS)boundary[m].rate=cases[m];
+  const beforeBoundary=calls.length;
+  await page.evaluate(({boundary})=>window.__B46_SIDEBAR_WINRATES(boundary,Number.MAX_SAFE_INTEGER),{boundary});
+  assert.deepEqual(await readColors(page),expectedColors(boundary),'SIDEBAR_BOUNDARY_COLORS');
+  assert.deepEqual(await hasRate(page),Object.fromEntries(SIDEBAR_MARKETS.map(m=>[m,cases[m]===null?'—':cases[m].toFixed(2)+'%'])));
+  assert.equal(calls.length,beforeBoundary,'COLOR_UPDATE_NETWORK');
+  console.log('SIDEBAR_COLOR_PASS='+JSON.stringify({mobile,colors:await readColors(page),threshold:50,rounded:true,noRequests:true}));
   assert.equal(errors.length,0,JSON.stringify(errors));assert.equal(history.length,0);
   const row={mobile,firstMs,markets:8,graphRequests:calls.length,additionalSidebarRequests:0,historyRequests:history.length,jsErrors:errors.length};results.push(row);console.log('SIDEBAR_STAGE_BROWSER='+JSON.stringify(row));await ctx.close();
  }
