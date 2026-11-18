@@ -1,0 +1,44 @@
+name: Event Flow same-minute candidate QA (no deployment)
+on:
+  push:
+    branches: [test/ball46-eventflow-same-minute-20261118]
+    paths:
+      - '.github/workflows/eventflow-same-minute-test-20261118.yml'
+      - 'qa/eventflow-same-minute-20261118/**'
+permissions:
+  contents: read
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download current public source and test isolated candidate
+        run: |
+          mkdir -p qa-output
+          curl --fail --silent --show-error --max-time 35 -H 'Cache-Control: no-cache' "https://ball46.com/expanded-match-343.js?b46_test_qa=${GITHUB_RUN_ID}" -o qa-output/expanded-match-343.original.js
+          node qa/eventflow-same-minute-20261118/patch.mjs qa-output/expanded-match-343.original.js qa-output/expanded-match-343.candidate.js
+          node --check qa-output/expanded-match-343.candidate.js
+      - name: Check page presentation hooks (read only)
+        run: |
+          curl --fail --silent --show-error --max-time 35 "https://ball46.com/?b46_test_qa=${GITHUB_RUN_ID}" -o /tmp/b46page.html
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const html=fs.readFileSync('/tmp/b46page.html','utf8');
+          for(const m of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)){
+            const body=m[2];
+            if(/b46-eventflow-signal-annotation|data-signal-minute|signalMarkers/.test(body)){
+              console.log('INLINE_PRESENTATION_HOOK '+body.length);
+              for(const p of body.matchAll(/b46-eventflow-signal-annotation|data-signal-minute/g)){console.log(body.slice(Math.max(0,p.index-140),p.index+200));}
+            }
+            if(/src=/.test(m[1])&&/eventflow|expanded-match|signal/i.test(m[1]))console.log('SCRIPT '+m[1]);
+          }
+          NODE
+      - uses: actions/upload-artifact@v4
+        with:
+          name: eventflow-same-minute-candidate-test-only
+          path: |
+            qa-output/expanded-match-343.candidate.js
+            qa-output/expanded-match-343.candidate.js.report.json
+            qa-output/expanded-match-343.candidate.js.preview.html
+          retention-days: 7
