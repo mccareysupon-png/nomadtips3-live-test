@@ -16,15 +16,11 @@ async function get(path,auth=key){
  const start=performance.now(),r=await fetch(endpoint+path,{headers:{'user-agent':'Mozilla/5.0 B46-Projection-QA',...(auth?{authorization:'Bearer '+auth}:{})},redirect:'manual',signal:AbortSignal.timeout(25000)}),text=await r.text();
  return {status:r.status,data:JSON.parse(text),bytes:Buffer.byteLength(text),ms:Math.round(performance.now()-start)};
 }
-async function coherentSnapshot(useJournal){
+async function coherentSnapshot(){
  for(let attempt=1;attempt<=4;attempt++){
-  const j0=useJournal?await get('/audit-projection-journal-v1'):null;
-  if(j0&&(j0.status!==200||!Number.isSafeInteger(j0.data.sequence)||!j0.data.aggregate))throw Error('JOURNAL_PREFLIGHT_'+j0.status);
   const source=await collect({includeRaw:true}),book=await readFullBook(key);
-  const j1=useJournal?await get('/audit-projection-journal-v1'):null;
-  if(j1&&(j1.status!==200||!Number.isSafeInteger(j1.data.sequence)||!j1.data.aggregate))throw Error('JOURNAL_PREFLIGHT_'+j1.status);
-  if(compare(source,book).exact&&(!j0||j0.data.sequence===j1.data.sequence&&j1.data.aggregate.total===book.totals.total&&j1.data.aggregate.total_pnl===book.totals.total_pnl)){
-   return {source,book,sequence:j1?.data.sequence??0};
+  if(compare(source,book).exact&&Number.isSafeInteger(book.aggregate?.corrections)&&book.aggregate.corrections>=0){
+   return {source,book,sequence:book.totals.total+book.aggregate.corrections};
   }
   if(attempt<4)await wait(1000);
  }
@@ -40,7 +36,7 @@ function prepare(snapshot){
  }
  const sorted=[...days].sort(([a],[b])=>a.localeCompare(b)),chunks=[];
  for(let i=0;i<pending.length;i+=50)chunks.push(pending.slice(i,i+50));
- const manifest={sourceHash:source.hash,sourceSignature:source.sourceSignature,sequence,asOf:source.cutoff,expected:book.totals,pending:source.other.PENDING,unresolved:source.other.UNRESOLVED,days:sorted.map(([day,rows])=>({day,count:rows.length,hash:fingerprint(rows)})),pendingHashes:chunks.map(fingerprint)};
+ const manifest={sourceHash:source.hash,sourceSignature:source.sourceSignature,sequence,corrections:book.aggregate.corrections,asOf:source.cutoff,expected:book.totals,pending:source.other.PENDING,unresolved:source.other.UNRESOLVED,days:sorted.map(([day,rows])=>({day,count:rows.length,hash:fingerprint(rows)})),pendingHashes:chunks.map(fingerprint)};
  for(const [,rows] of sorted)if(Buffer.byteLength(JSON.stringify(rows))>1500000)throw Error('DAY_STORAGE_LIMIT');
  return {manifest,manifestHash:fingerprint(manifest),days:sorted,chunks};
 }
@@ -72,22 +68,22 @@ function mockStorage(){
 }
 async function result(r){return {status:r.status,data:await r.json()}}
 async function local(){
- const snapshot=await coherentSnapshot(false),prepared=prepare(snapshot),raw=[...snapshot.source.rawRows],bookStore=mockStorage(),projectStore=mockStorage();
+ const snapshot=await coherentSnapshot(false),prepared=prepare(snapshot),raw=[...snapshot.source.rawRows],bookStore=mockStorage(),projectStore=bookStore;
  let src=await readFile(new URL('./shadow-production-receiver.mjs',import.meta.url),'utf8');
  src=src.replace("import {WorkerEntrypoint} from 'cloudflare:workers';","class WorkerEntrypoint {}");
  const temp=new URL('./.projection-local-only.mjs',import.meta.url);await writeFile(temp,src);
  let ShadowProductionStore,worker;try{({ShadowProductionStore,default:worker}=await import(temp.href))}finally{await unlink(temp)}
  const objects={},env={AUDIT_TOKEN:'a'.repeat(64),PROJECTION_SEED_TOKEN:'b'.repeat(64),SHADOW_STORE:{idFromName:n=>n,get:n=>({fetch:(url,init)=>objects[n].fetch(new Request(url,init))})}};
  const book=objects['book-v1']=new ShadowProductionStore({storage:bookStore,waitUntil:()=>{}},env);
- objects['projection-v1']=new ShadowProductionStore({storage:projectStore},env);
+
  for(const r of snapshot.book.rows)await bookStore.put('composite:receipt:'+r.signal_id,r);
  const t=snapshot.book.totals,cursor=snapshot.book.rows.reduce((a,b)=>!a||b.settled_at>a.settled_at||b.settled_at===a.settled_at&&b.signal_id>a.signal_id?b:a,null);
- await bookStore.put('composite:state',{...t.raw_counts,total:t.total,total_pnl:t.total_pnl,winRate:t.win_rate,pnl_units:Math.round(t.total_pnl*1e8),unknown_pnl:0,pnl_schema:1,corrections:0,cursor:{signal_id:cursor.signal_id,settled_at:cursor.settled_at}});
+ await bookStore.put('composite:state',{...t.raw_counts,total:t.total,total_pnl:t.total_pnl,winRate:t.win_rate,pnl_units:Math.round(t.total_pnl*1e8),unknown_pnl:0,pnl_schema:1,corrections:snapshot.book.aggregate.corrections,cursor:{signal_id:cursor.signal_id,settled_at:cursor.settled_at}});
  const req=(path,body)=>new Request('https://store.internal'+path,body?{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)}:undefined);
- const journalURL='https://ball46-shadow-receiver-production.mccarey-supon.workers.dev/audit-projection-journal-v1';
- const unseeded=await worker.fetch(new Request(journalURL,{headers:{authorization:'Bearer '+env.AUDIT_TOKEN}}),env);
- assert.equal(unseeded.status,200);const jd=await unseeded.json();assert.equal(jd.sequence,0);assert.equal(jd.aggregate.total,t.total);assert.deepEqual(jd.events,[]);
- assert.equal((await worker.fetch(new Request(journalURL),env)).status,403);
+ const statusURL='https://ball46-shadow-receiver-production.mccarey-supon.workers.dev/audit-projection-status-v1';
+ const unseeded=await worker.fetch(new Request(statusURL,{headers:{authorization:'Bearer '+env.AUDIT_TOKEN}}),env);
+ assert.equal(unseeded.status,200);const jd=await unseeded.json();assert.equal(jd.bookSequence,snapshot.sequence);assert.equal(jd.bookAggregate.total,t.total);assert.equal(jd.graphReady,false);
+ assert.equal((await worker.fetch(new Request(statusURL),env)).status,403);
  const send=async body=>result(await projectionHandle(projectStore,env,req('/projection-seed-v1',body)));
  const seed=await seedWith(send,prepared);
  const graph=market=>projectionHandle(projectStore,env,req('/projection-graph-v1?market='+encodeURIComponent(market))).then(result);
@@ -102,14 +98,14 @@ async function local(){
  await projectionAlarm(projectStore,env);
  raw[raw.findIndex(x=>x.id===p.id)]=settled;
  for(const k of groups)compareGraph((await graph(k)).data,raw,k);
- const before=await bookStore.get(projectionConstants.journalSeq);assert.equal(before,1);
+ const before=await bookStore.get(projectionConstants.journalSeq);assert.equal(before,snapshot.sequence+1);
  r=await post(normalizeRow(settled));assert.equal(r.data.duplicate,true);assert.equal(await bookStore.get(projectionConstants.journalSeq),before);
  const correction={...settled,result:'HALF_LOSS',settledAt:settled.settledAt+86400000};
  r=await post(normalizeRow(correction));assert.equal(r.data.corrected,true);
  await projectionAlarm(projectStore,env);raw[raw.findIndex(x=>x.id===p.id)]=correction;
  for(const k of groups)compareGraph((await graph(k)).data,raw,k);
  const stale=await post(normalizeRow(settled));assert.equal(stale.data.stale,true);
- assert.equal(await bookStore.get(projectionConstants.journalSeq),2);
+ assert.equal(await bookStore.get(projectionConstants.journalSeq),snapshot.sequence+2);
  const pendingAfter=await result(await projectionHandle(projectStore,env,req('/projection-pending-snapshot-v1')));
  assert.equal(pendingAfter.data.total,pending.data.total-1);
  // New synthetic events only in local mock. Metadata fetch is intercepted, not sent to production.
@@ -165,8 +161,8 @@ async function auditProduction(){
   let exact=0,missingIds=0,extra=0;const seen=new Set();
   for(const r of pendingRows){seen.add(String(r.id));if(!sp.has(String(r.id)))extra++;else if(fingerprint(r)===fingerprint(sp.get(String(r.id))))exact++}
   for(const id of sp.keys())if(!seen.has(id))missingIds++;
-  const after=await get('/audit-projection-journal-v1');assert.equal(after.status,200);
-  if(after.data.sequence!==snapshot.sequence){if(attempt<4){await wait(1000);continue}throw Error('BOOK_UPDATED_DURING_PENDING_AUDIT')}
+  const after=await get('/audit-projection-status-v1');assert.equal(after.status,200);
+  if(after.data.bookSequence!==snapshot.sequence){if(attempt<4){await wait(1000);continue}throw Error('BOOK_UPDATED_DURING_PENDING_AUDIT')}
   console.log('PRODUCTION_PROJECTION_AUDIT='+JSON.stringify({settled:snapshot.book.totals.total,pnl:snapshot.book.totals.total_pnl,winRate:snapshot.book.totals.win_rate,historyExact:true,sourceHash:snapshot.source.hash,bookHash:snapshot.book.hash,sequence:snapshot.sequence,graphs:data,timings,pending:{source:sourcePending.length,snapshot:reported,exactMetadata:exact,missingIds,extra,liveReady:false,liveHttp:pendingLive.status,verifiedAt:status.data.projection.pendingVerifiedAt},advancedFilters:{supported:false,unexpectedVariantHttp:invalid.status},auth:{missing:missing.status,wrong:wrong.status,valid:200},websiteSourceChanged:false,cutoverReady:false}));
   return;
  }
