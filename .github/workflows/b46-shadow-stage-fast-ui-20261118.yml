@@ -18,7 +18,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: af44d4b603a6cac1adb1dde8c5faecefb40a7f2c
+          ref: 7b040332f958856c2493312a452e0a535833d29f
           persist-credentials: false
       - name: Read-only Pending source capability check
         run: node chatgpt-statistics-ui/shadow-stage-pending-probe.mjs
