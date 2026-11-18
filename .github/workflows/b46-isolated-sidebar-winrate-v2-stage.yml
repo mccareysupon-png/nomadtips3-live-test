@@ -12,7 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ea4a7c91d3c70609fa0f52e0d75cb170412d7e02
+          ref: 3eab7633e6fbd0fb826d2c8369cd5a34da5556b2
           persist-credentials: false
       - run: |
           node --check chatgpt-statistics-ui/sidebar-rate-isolated-v2.mjs
