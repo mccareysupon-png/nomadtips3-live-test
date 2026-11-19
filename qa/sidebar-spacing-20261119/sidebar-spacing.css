@@ -1,0 +1,6 @@
+/* Desktop only: stable spacing between adjacent cards, without changing row size or colors. */
+@media (min-width:768px) {
+  html:root[data-theme] body .workspace.singlepage > aside.left-rail[data-b46-sidebar="1"] :is([data-b46-sidebar-row],button[data-league-filter]) + :is([data-b46-sidebar-row],button[data-league-filter]) {
+    margin-block-start:4px!important;
+  }
+}
