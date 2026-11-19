@@ -1,0 +1,18 @@
+/* Desktop only: remembered match filters are not the current statistics page.
+   Never remove active classes: the board uses them to remember its filter.
+   Genuine hover remains independent; selected market retains its existing V2 surface. */
+@media (min-width:768px) {
+  html:root[data-theme] body[data-workspace-view="statistics"] .workspace.singlepage > aside.left-rail[data-b46-sidebar="1"] :is([data-status-filter],[data-league-filter],[data-b46-sidebar-row="status-signal"]):is([data-status-filter],[data-league-filter],[data-b46-sidebar-row="status-signal"]):is([data-status-filter],[data-league-filter],[data-b46-sidebar-row="status-signal"]):is([data-status-filter],[data-league-filter],[data-b46-sidebar-row="status-signal"]):is(.active,[aria-current="page"],[aria-pressed="true"]):not(:hover) {
+    background:transparent!important;
+    box-shadow:none!important;
+    transform:none!important;
+  }
+  html:root[data-theme] body[data-workspace-view="statistics"] .workspace.singlepage > aside.left-rail[data-b46-sidebar="1"] :is([data-status-filter],[data-league-filter],[data-b46-sidebar-row="status-signal"]):is([data-status-filter],[data-league-filter],[data-b46-sidebar-row="status-signal"]):is([data-status-filter],[data-league-filter],[data-b46-sidebar-row="status-signal"]):is([data-status-filter],[data-league-filter],[data-b46-sidebar-row="status-signal"]):is(.active,[aria-current="page"],[aria-pressed="true"]):hover {
+    background:var(--b46-depth-hover-bg)!important;
+    box-shadow:var(--b46-depth-hover-shadow)!important;
+    transform:translateY(-1px)!important;
+  }
+  @media(prefers-reduced-motion:reduce) {
+    html:root[data-theme] body[data-workspace-view="statistics"] .workspace.singlepage > aside.left-rail[data-b46-sidebar="1"] :is([data-status-filter],[data-league-filter],[data-b46-sidebar-row="status-signal"]):is([data-status-filter],[data-league-filter],[data-b46-sidebar-row="status-signal"]):is([data-status-filter],[data-league-filter],[data-b46-sidebar-row="status-signal"]):is([data-status-filter],[data-league-filter],[data-b46-sidebar-row="status-signal"]):hover {transform:none!important}
+  }
+}
