@@ -5,7 +5,7 @@ import {BRIDGE_SOURCE} from './b46-sidebar-monitor-client-source-20261119.mjs';
 const keys=['all','1x2','ah','ou','btts','corners','cards','other'];
 const pagePaths=new Set(['/','/index','/index.html','/statistics','/statistics.html','/statistics-next.html']);
 const scriptPath='/b46-sidebar-monitor-client-20261119.js';
-const CSS='[data-stat-market] > b,[data-stat-market] b{visibility:hidden!important}[data-stat-market]{position:relative!important}[data-stat-market] > span.b46-rate-snapshot-v2{position:absolute!important;inset-inline-end:10px!important;top:50%!important;transform:translateY(-50%)!important;pointer-events:none!important;visibility:visible!important;display:block!important;font-size:10px!important;font-weight:700!important;font-family:Inter,Arial,sans-serif!important;font-variant-numeric:tabular-nums!important;white-space:nowrap!important;line-height:1.2!important}';
+const CSS='.b46-rate-snapshot-v2{display:none!important}@media (min-width:1024px){.left-rail [data-stat-market] > b,.left-rail [data-stat-market] b{visibility:hidden!important}.left-rail [data-stat-market]{position:relative!important}.left-rail [data-stat-market] > span.b46-rate-snapshot-v2{position:absolute!important;inset-inline-end:10px!important;top:50%!important;transform:translateY(-50%)!important;pointer-events:none!important;visibility:visible!important;display:block!important;font-size:10px!important;font-weight:700!important;font-family:Inter,Arial,sans-serif!important;font-variant-numeric:tabular-nums!important;white-space:nowrap!important;line-height:1.2!important}}';
 const valid=s=>s&&Number.isSafeInteger(s.sequence)&&s.sequence>=0&&s.rates&&Object.keys(s.rates).length===8&&keys.every(k=>Object.hasOwn(s.rates,k)&&(s.rates[k]===null||typeof s.rates[k]==='number'&&Number.isFinite(s.rates[k])&&s.rates[k]>=0&&s.rates[k]<=100));
 const pause=ms=>new Promise(r=>setTimeout(()=>r(null),ms));
 async function read(env,path){const r=await env.B46_SIDEBAR_MONITOR.fetch(new Request('https://monitor.internal'+path));if(!r.ok)return null;const d=await r.json();return valid(d.snapshot)?d.snapshot:null}
@@ -19,6 +19,8 @@ function mark(k,s){
 export default {...original,async fetch(req,env,ctx){
  const u=new URL(req.url);
  if(u.pathname===scriptPath&&['GET','HEAD'].includes(req.method))return new Response(req.method==='HEAD'?null:BRIDGE_SOURCE,{headers:{'content-type':'application/javascript; charset=utf-8','cache-control':'public, max-age=86400','x-content-type-options':'nosniff'}});
+ // Preserve the entire native mobile response, including graph API and navigation drawer.
+ if(req.headers.get('sec-ch-ua-mobile')==='?1'||/Android|iPhone|iPad|iPod|Mobile|IEMobile|Opera Mini/i.test(req.headers.get('user-agent')||''))return original.fetch(req,env,ctx);
  const graph=req.method==='GET'&&u.pathname==='/b46-receiver-v1/graph';
  const page=req.method==='GET'&&pagePaths.has(u.pathname);
  const cached=graph||page?read(env,'/cached').catch(()=>null):Promise.resolve(null);
@@ -43,5 +45,5 @@ export default {...original,async fetch(req,env,ctx){
  const s=await Promise.race([cached,pause(25)]);
  const h=new Headers(res.headers);for(const k of ['content-length','content-encoding','etag','last-modified'])h.delete(k);
  h.set('cache-control','no-store');
- return new HTMLRewriter().on('head',{element(e){e.prepend('<script src="'+scriptPath+'"></script>',{html:true});e.append('<style id="b46-css-only-mask">'+CSS+'</style>',{html:true})}}).on('[data-stat-market]',{element(e){const k=e.getAttribute('data-stat-market');if(keys.includes(k))e.append(mark(k,valid(s)?s:null),{html:true})}}).transform(new Response(res.body,{status:res.status,statusText:res.statusText,headers:h}));
+ return new HTMLRewriter().on('head',{element(e){e.prepend('<script src="'+scriptPath+'"></script>',{html:true});e.append('<style id="b46-css-only-mask">'+CSS+'</style>',{html:true})}}).on('.left-rail [data-stat-market]',{element(e){const k=e.getAttribute('data-stat-market');if(keys.includes(k))e.append(mark(k,valid(s)?s:null),{html:true})}}).transform(new Response(res.body,{status:res.status,statusText:res.statusText,headers:h}));
 }};
