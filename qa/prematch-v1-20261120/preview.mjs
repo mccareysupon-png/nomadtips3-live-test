@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {pathToFileURL} from 'node:url';
-const name='ball46-prematch-ui-test-v2-20261120',prod='ball46-production',origin='https://ball46.com';
+const name='ball46-prematch-ui-test-v3-20261120',prod='ball46-production',origin='https://ball46.com';
 assert(name.startsWith('ball46-prematch-ui-test-')&&name!==prod);
 const {CLOUDFLARE_ACCOUNT_ID:account,CLOUDFLARE_API_TOKEN:token}=process.env;
 assert(account&&token);
@@ -81,8 +81,8 @@ try{
    const out=await q.evaluate(()=>{
     const a=document.querySelector('[data-b46-sidebar-row="status-signal"]'),b=document.querySelector('[data-pm="status-prematch"]'),c=document.querySelector('[data-pm-upcoming="1"]');
     const r=[...document.querySelectorAll('.pm-pick')].map(x=>{const d=x.getBoundingClientRect();return {top:d.top,bottom:d.bottom,width:d.width,height:d.height}});
-    const icons=[...document.querySelectorAll('[data-pm] .pm-native-icon')].map(x=>{const r=x.getBoundingClientRect();return {w:r.width,h:r.height,visible:getComputedStyle(x).visibility!=='hidden',viewBox:x.getAttribute('viewBox'),shape:x.children.length}});return {icons,order:a.nextElementSibling===b&&b.nextElementSibling===c,stat:[...document.querySelectorAll('.pm-stat-group [data-pm]')].map(e=>e.textContent.trim()),active:b.classList.contains('active'),title:document.querySelector('#pm-title').textContent,overlap:r[0].bottom>r[1].top,picks:r,overflow:document.documentElement.scrollWidth>innerWidth};
-   });assert(out.icons.length===4&&out.icons.every(i=>i.w>0&&i.h>0&&i.visible&&i.shape>0)&&out.order&&out.active&&!out.overlap&&!out.overflow&&out.picks.every(x=>x.height>0)&&out.stat.length===3,JSON.stringify(out));
+    const icons=[...document.querySelectorAll('[data-pm] .pm-native-icon')].map(x=>{const r=x.getBoundingClientRect(),key=x.closest('[data-pm]').dataset.pm,refkey={'status-prematch':'status-signal','prematch-stat-all':'stat-all','prematch-stat-1x2':'stat-1x2','prematch-stat-btts':'stat-btts'}[key],ref=document.querySelector('[data-b46-sidebar-row="'+refkey+'"] svg'),rr=ref?.getBoundingClientRect(),visible=getComputedStyle(x).visibility!=='hidden'&&r.width>0&&r.height>0,refVisible=!!ref&&getComputedStyle(ref).visibility!=='hidden'&&rr.width>0&&rr.height>0;return {key,w:r.width,h:r.height,visible,refVisible,refWidth:rr?.width??null,viewBox:x.getAttribute('viewBox'),shape:x.children.length}});return {icons,order:a.nextElementSibling===b&&b.nextElementSibling===c,stat:[...document.querySelectorAll('.pm-stat-group [data-pm]')].map(e=>e.textContent.trim()),active:b.classList.contains('active'),title:document.querySelector('#pm-title').textContent,overlap:r[0].bottom>r[1].top,picks:r,overflow:document.documentElement.scrollWidth>innerWidth};
+   });assert(out.icons.length===4&&out.icons.every(i=>i.shape>0&&(device==='pc'?i.visible:i.visible===i.refVisible))&&out.order&&out.active&&!out.overlap&&!out.overflow&&out.picks.every(x=>x.height>0)&&out.stat.length===3,JSON.stringify(out));
    await q.screenshot({path:'evidence/'+device+'-'+theme+'.png',fullPage:true});
    await q.evaluate(()=>document.querySelector('[data-pm="prematch-stat-btts"]').click());assert.equal(await q.$eval('#pm-title',e=>e.textContent),'Pre-Match Statistics · BTTS');assert.equal(await q.$eval('#pm-empty',e=>e.hidden),false);
    cases.push({device,theme,...out});console.log('UI_CASE_PASS',JSON.stringify(cases.at(-1)));
