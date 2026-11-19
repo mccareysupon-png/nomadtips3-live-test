@@ -1,12 +1,13 @@
 // Mask only the original sidebar number; never touch scripts, data, DOM nodes or click handlers.
 import {snapshot} from './snapshot.mjs';
 const baseCSS='[data-stat-market] > b, [data-stat-market] b { visibility: hidden !important; }';
-const rules=Object.entries(snapshot.rates).map(([key,v])=>{
- const text=v===null?'—':v.toFixed(2)+'%';
- const tone=v===null?'inherit':v>50?'#168b57':v<50?'#d54b60':'#ba8b20';
- return '[data-stat-market="'+key+'"]{position:relative!important;}[data-stat-market="'+key+'"]::after{content:'+JSON.stringify(text)+'!important;position:absolute!important;inset-inline-end:10px!important;top:50%!important;transform:translateY(-50%)!important;pointer-events:none!important;visibility:visible!important;display:block!important;font-size:11px!important;font-weight:700!important;font-variant-numeric:tabular-nums!important;white-space:nowrap!important;color:'+tone+'!important;}';
-}).join('\n');
+const rules='[data-stat-market]{position:relative!important;}[data-stat-market] > span.b46-rate-snapshot-v2{position:absolute!important;inset-inline-end:10px!important;top:50%!important;transform:translateY(-50%)!important;pointer-events:none!important;visibility:visible!important;display:block!important;font-size:11px!important;font-weight:700!important;font-variant-numeric:tabular-nums!important;white-space:nowrap!important;line-height:1.2!important;}';
 export const maskCSS=baseCSS+'\n'+rules;
+function label(key){
+ if(!Object.hasOwn(snapshot.rates,key))return '';
+ const v=snapshot.rates[key],text=v===null?'—':v.toFixed(2)+'%',tone=v===null?'inherit':v>50?'#168b57':v<50?'#d54b60':'#ba8b20';
+ return '<span class="b46-rate-snapshot-v2" data-b46-rate-snapshot="'+key+'" title="Receiver snapshot" style="color:'+tone+'!important">'+text+'</span>';
+}
 const name='ball46-sidebar-css-rate-test-20261119',origin='https://ball46.com';
 const paths=new Set(['/api/engine/statistics','/api/engine/board','/api/engine/signals','/api/engine/health','/api/hub/snapshot','/api/hub/health','/api/prediction-vote','/b46-receiver-v1/graph']);
 const pagePaths=new Set(['/','/index','/index.html','/statistics','/statistics.html','/statistics-next.html']);
@@ -28,5 +29,5 @@ export default {async fetch(req,env){
  const response=new Response(req.method==='HEAD'?null:upstream.body,{status:upstream.status,headers:h});
  if(req.method!=='GET'||!upstream.ok||!enabled||!pagePaths.has(u.pathname)||!h.get('content-type')?.includes('text/html'))return response;
  for(const k of ['content-length','content-encoding','etag','last-modified'])h.delete(k);
- return new HTMLRewriter().on('head',{element(el){el.append('<meta name="b46-winrate-mode" content="receiver-snapshot"><style id="b46-css-only-mask">'+maskCSS+'</style>',{html:true})}}).transform(new Response(response.body,{status:response.status,headers:h}));
+ return new HTMLRewriter().on('head',{element(el){el.append('<meta name="b46-winrate-mode" content="receiver-snapshot"><style id="b46-css-only-mask">'+maskCSS+'</style>',{html:true})}}).on('[data-stat-market]',{element(el){const html=label(el.getAttribute('data-stat-market'));if(html)el.append(html,{html:true})}}).transform(new Response(response.body,{status:response.status,headers:h}));
 }};
