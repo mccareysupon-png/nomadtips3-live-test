@@ -27,7 +27,7 @@ try{
  console.log('EXACT_APPROVED_ASSETS '+JSON.stringify(report.assetHashes));
  report.preflight=await browserCheck(built,true);save();console.log('REAL_SPA_PREFLIGHT_PASS');
  assert.equal(await active(),base,'PRODUCTION_MOVED_BEFORE_UPLOAD');
- candidate=await upload(current,built.add);report.candidateVersion=candidate;save();console.log('CANDIDATE_UPLOADED '+candidate);
+ candidate='7577bc65-30f8-4ef5-8d9d-4e3983d8b4f1';report.candidateVersion=candidate;save();console.log('STAGED_CANDIDATE_REVERIFY '+candidate);
  const cv=await version(candidate);assert.equal(canonical(cv.bindings),canonical(current.bindings),'BINDINGS_CHANGED');assert.equal(canonical(cv.assets?.config),canonical(current.assets?.config),'ASSETS_CHANGED');assert.equal(cv.compatibility_date,current.compatibility_date);assert.equal(canonical(cv.compatibility_flags||[]),canonical(current.compatibility_flags||[]));assert.equal(cv.main_module,entry);
  const expected=[...manifest(current),...Object.entries(built.add).map(([name,text])=>({name,hash:sha(text)}))].sort((a,b)=>a.name.localeCompare(b.name));assert.deepEqual(manifest(cv),expected,'UNRELATED_MODULE_CHANGE');
  assert.equal(await active(),base,'PRODUCTION_MOVED_BEFORE_ACTIVATION');assert.equal(sha(canonical(await api('/scripts/'+prod+'/settings'))),settings,'SETTINGS_MOVED');assert.equal(canonical(await schedules()),canonical(crons),'CRONS_MOVED');
