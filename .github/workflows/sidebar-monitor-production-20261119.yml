@@ -1,0 +1,63 @@
+name: BALL46 owner approved sidebar monitor gated production release
+on:
+  push:
+    branches: [release/ball46-sidebar-monitor-20261119]
+    paths: ['.github/workflows/sidebar-monitor-production-20261119.yml']
+permissions:
+  contents: read
+concurrency:
+  group: ball46-sidebar-monitor-production
+  cancel-in-progress: false
+jobs:
+  release:
+    if: github.ref == 'refs/heads/release/ball46-sidebar-monitor-20261119'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test monitor cache and browser client
+        run: |
+          node qa/sidebar-monitor-live-20261119/test.mjs
+          node --check qa/sidebar-monitor-live-20261119/production-release.mjs
+          node --check qa/sidebar-monitor-live-20261119/production-client.js
+          npm install --prefix qa/sidebar-monitor-live-20261119/.runtime --no-fund --no-audit playwright@1.55.0
+          qa/sidebar-monitor-live-20261119/.runtime/node_modules/.bin/playwright install chromium --only-shell
+      - name: Deploy private dedicated read-only monitor cache
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          cat > qa/sidebar-monitor-live-20261119/wrangler-private.toml <<'EOF'
+          name = "ball46-sidebar-monitor-cache-20261119"
+          main = "private-cache-worker.mjs"
+          compatibility_date = "2026-11-19"
+          workers_dev = false
+          preview_urls = false
+          [[services]]
+          binding = "B46_MARKET_READER"
+          service = "ball46-shadow-receiver-production"
+          entrypoint = "MarketStatisticsReader"
+          [[durable_objects.bindings]]
+          name = "B46_MONITOR_CACHE"
+          class_name = "MonitorRateCache"
+          [[migrations]]
+          tag = "v1"
+          new_sqlite_classes = ["MonitorRateCache"]
+          EOF
+          npx --yes wrangler@4.50.0 deploy --config qa/sidebar-monitor-live-20261119/wrangler-private.toml --name ball46-sidebar-monitor-cache-20261119
+      - name: Upload inactive site version, gate and conditionally activate
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: node qa/sidebar-monitor-live-20261119/production-release.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sidebar-production-evidence
+          path: ${{ runner.temp }}/sidebar-production-proof
+          if-no-files-found: ignore
