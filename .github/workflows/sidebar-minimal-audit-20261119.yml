@@ -1,0 +1,18 @@
+name: BALL46 sidebar minimal audit
+on:
+  push:
+    branches: [test/ball46-sidebar-minimal-20261119]
+    paths: ['.github/workflows/sidebar-minimal-audit-20261119.yml']
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          npm install --prefix "$RUNNER_TEMP/b46qa" --no-save --no-package-lock puppeteer-core
+          echo "PUPPETEER_ENTRY=$(node -p "require.resolve('puppeteer-core',{paths:['$RUNNER_TEMP/b46qa']})")" >> "$GITHUB_ENV"
+          echo "CHROME_PATH=$(command -v google-chrome || command -v chromium)" >> "$GITHUB_ENV"
+      - run: node qa/sidebar-minimal-20261119/scout.mjs
