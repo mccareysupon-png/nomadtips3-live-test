@@ -21,7 +21,29 @@ export async function browserCheck({assets,candidateHtml},intercept){
   }
   await waitMarket('all');
   for(const [id,key]of markets){
-   if(id!=='all'){await p.click('button[data-stat-market="'+id+'"]');await waitMarket(key)}
+   if(id!=='all'){
+    await p.click('button[data-stat-market="'+id+'"]');
+    // Empty markets may intentionally show no graph. Confirm the exact live receiver result,
+    // and require a correct route, no stale market data and no fabricated populated statistics.
+    const graphUrl=new URL('/b46-receiver-v1/graph',origin);
+    for(const [k,v]of Object.entries({market:id,variant:'all',filter:'all',range:'all'}))graphUrl.searchParams.set(k,v);
+    const gr=await fetch(graphUrl,{headers:{'Cache-Control':'no-cache'},signal:AbortSignal.timeout(15000)});
+    const raw=gr.ok?await gr.json():null;
+    const empty=raw?.ok===true&&raw.source==='RECEIVER'&&raw.summary?.rows===0&&raw.summary?.wins===0&&raw.summary?.pushes===0&&raw.summary?.losses===0;
+    if(empty){
+     await p.waitForFunction(m=>document.body.dataset.workspaceView==='statistics'&&new URL(location.href).searchParams.get('market')===m,{timeout:10000},id);
+     await new Promise(r=>setTimeout(r,1600));
+     for(const theme of ['light','dark']){
+      await p.evaluate(t=>{document.documentElement.dataset.theme=t},theme);
+      const v=await p.evaluate(()=>{const c=document.querySelector('#b46-finance-chart-card'),o=c?.querySelector('.f46-overview');return {theme:document.documentElement.dataset.theme,market:c?.dataset.b46Market||null,rows:Number(c?.dataset.b46Settled||0),rate:[...(o?.querySelectorAll('[data-b46-rate-tone]')||[])].filter(e=>e.getClientRects().length&&getComputedStyle(e).visibility!=='hidden').map(e=>({text:e.textContent.trim(),tone:e.dataset.b46RateTone,color:getComputedStyle(e).color})),sidebar:[...document.querySelectorAll('button[data-b46-sidebar-row^="stat-"]')].length}});
+      assert.equal(v.theme,theme);assert.equal(v.rows,0,'EMPTY_MARKET_HAS_ROWS '+id);assert(!v.market||v.market===key,'STALE_EMPTY_MARKET '+id);assert.equal(v.sidebar,8);
+      for(const item of v.rate)assert.equal(item.tone,'neutral','EMPTY_MARKET_RATE '+id);
+      records.push({id,...v,empty:true});console.log((intercept?'PRECHECK_EMPTY':'LIVE_CHECK_EMPTY')+' '+JSON.stringify({id,theme,receiverRows:0,rate:v.rate}));
+     }
+     continue;
+    }
+    await waitMarket(key);
+   }
    for(const theme of ['light','dark']){
     await p.evaluate(t=>{document.documentElement.dataset.theme=t},theme);
     const v=await p.evaluate(()=>{const c=document.querySelector('#b46-finance-chart-card'),o=c.querySelector('.f46-overview');
