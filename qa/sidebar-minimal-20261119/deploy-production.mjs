@@ -1,5 +1,6 @@
 import fs from 'node:fs';import assert from 'node:assert/strict';import crypto from 'node:crypto';
 import {checkReplay,checkReal} from './production-browser.mjs';
+import {mobilePalette} from './mobile-palette.mjs';
 const account=process.env.CLOUDFLARE_ACCOUNT_ID,token=process.env.CLOUDFLARE_API_TOKEN;
 assert(account&&token);
 const root='https://api.cloudflare.com/client/v4/accounts/'+account+'/workers',prod='ball46-production',origin='https://ball46.com',direct='https://ball46-production.mccarey-supon.workers.dev',test='https://ball46-sidebar-minimal-test-v2-20261119.mccarey-supon.workers.dev';
@@ -27,6 +28,7 @@ try{
  const html=await pub('/index.html?view=statistics');assert(!html.includes(cssPath),'ALREADY_RELEASED');
  const columnHash=sha(await pub('/b46-statistics-columns-20261102.js'));
  console.log('APPROVED_EXACT_CSS '+sha(css));
+ const originalHash=sha(css);css+=await mobilePalette();report.approvedCssSha=originalHash;report.finalCssSha=sha(css);fs.writeFileSync('evidence/final-sidebar.css',css);save();console.log('MOBILE_CORRECTED_CSS '+sha(css));
  const source='import original from '+JSON.stringify('./'+v.main_module)+';\nexport * from '+JSON.stringify('./'+v.main_module)+';\nconst css='+JSON.stringify(css)+';\nconst path='+JSON.stringify(cssPath)+';\nexport default {...original,async fetch(request,env,ctx){const u=new URL(request.url);if(u.pathname===path&&["GET","HEAD"].includes(request.method))return new Response(request.method==="HEAD"?null:css,{headers:{"Content-Type":"text/css; charset=utf-8","Cache-Control":"public,max-age=86400","X-Content-Type-Options":"nosniff"}});const res=await original.fetch(request,env,ctx);if(request.method!=="GET"||!["/","/index.html","/statistics.html"].includes(u.pathname)||res.status!==200||!res.headers.get("content-type")?.includes("text/html"))return res;return new HTMLRewriter().on("head",{element(e){e.append("<link rel=\\"stylesheet\\" href=\\""+path+"\\">",{html:true})}}).transform(res)}};\n';
  fs.writeFileSync('evidence/candidate-entry.mjs',source);
  const baselineSettings=await settings(),crons=await schedules();report.backendBefore=await health();
