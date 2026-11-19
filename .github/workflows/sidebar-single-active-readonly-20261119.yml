@@ -1,0 +1,99 @@
+name: BALL46 Sidebar single-active regression (read-only)
+on:
+  push:
+    branches: [test/ball46-sidebar-single-active-20261119]
+    paths: ['.github/workflows/sidebar-single-active-readonly-20261119.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser:
+    if: github.ref == 'refs/heads/test/ball46-sidebar-single-active-20261119'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install isolated browser
+        run: |
+          npm install --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium --only-shell
+      - name: Verify the entire desktop sidebar without remote writes
+        run: |
+          mkdir -p evidence
+          cat > sidebar-qa.mjs <<'EOF'
+          import { chromium } from 'playwright';
+          import { writeFile } from 'node:fs/promises';
+          import assert from 'node:assert/strict';
+          const browser = await chromium.launch({headless:true});
+          const context = await browser.newContext({viewport:{width:1440,height:950},serviceWorkers:'block'});
+          await context.route('**/*', r=>['GET','HEAD'].includes(r.request().method())?r.continue():r.abort());
+          const page = await context.newPage();
+          const errors=[],checks=[],failures=[];
+          page.on('pageerror', e=>errors.push(e.message));
+          const matchLabels=['All matches','Live','Signal','Upcoming','Waiting','Finished'];
+          const marketKeys=['all','1x2','ah','ou','btts','corners','cards','other'];
+          const matches=matchLabels.map(label=>({id:'match:'+label,locator:page.locator('.left-rail button,.left-rail a,.left-rail [role="button"]').filter({hasText:new RegExp('^[^A-Za-z]*'+label+'(?:\\s*[0-9,.]+)?\\s*$','i')})}));
+          const markets=marketKeys.map(key=>({id:'stat:'+key,locator:page.locator('.left-rail [data-stat-market="'+key+'"]')}));
+          const rows=[...matches,...markets];
+          async function sample(){
+            const states=[];
+            for(const r of rows){
+              assert.equal(await r.locator.count(),1,'NAV_SELECTOR '+r.id);
+              const state=await r.locator.evaluate(e=>{
+                const c=getComputedStyle(e), a=e.getAttribute('aria-current');
+                return {active:e.classList.contains('active')||e.classList.contains('is-active')||a==='page'||a==='true'||e.getAttribute('aria-selected')==='true',className:e.className,ariaCurrent:a,visible:e.getBoundingClientRect().width>0,style:[c.backgroundColor,c.backgroundImage,c.boxShadow,c.borderColor,c.color],html:e.outerHTML.slice(0,500)};
+              });
+              states.push({id:r.id,...state});
+            }
+            return {url:page.url(),view:await page.locator('body').getAttribute('data-workspace-view'),states};
+          }
+          async function verify(row,kind){
+            await page.mouse.move(1400,25);
+            await page.waitForTimeout(500);
+            const s=await sample();
+            const active=s.states.filter(x=>x.active).map(x=>x.id);
+            const key=row.id.split(':')[1];
+            const routeOK=row.id.startsWith('stat:')?s.view==='statistics'&&((new URL(s.url).searchParams.get('market')||'all')===key):s.view!=='statistics';
+            const ok=active.length===1&&active[0]===row.id&&routeOK;
+            checks.push({kind,expected:row.id,active,view:s.view,url:s.url,ok});
+            if(!ok){failures.push({kind,expected:row.id,active,view:s.view});await page.screenshot({path:'evidence/failure-'+checks.length+'.png'});}
+            console.log('SIDEBAR_CHECK '+JSON.stringify(checks.at(-1)));
+          }
+          try{
+            await page.goto('https://ball46.com/index.html',{waitUntil:'domcontentloaded',timeout:45000});
+            await page.locator('.left-rail [data-stat-market="all"]').waitFor({state:'visible',timeout:30000});
+            const first=await sample();
+            await writeFile('evidence/baseline.json',JSON.stringify(first,null,2));
+            // Alternate groups so a retained selection from either group is exposed.
+            // All 14 destinations are covered; no repeated stress traffic or private API writes.
+            const order=[matches[0],markets[0],matches[1],markets[1],matches[2],markets[2],matches[3],markets[3],matches[4],markets[4],matches[5],markets[5],markets[6],markets[7],matches[0],matches[1],markets[1]];
+            for(const row of order){
+              await row.locator.click({timeout:20000});
+              await verify(row,'click');
+            }
+            const current=markets[1],hover=matches[1];
+            await hover.locator.hover();
+            const hovered=await sample(),active=hovered.states.filter(x=>x.active).map(x=>x.id);
+            const styleEqual=JSON.stringify(hovered.states.find(x=>x.id===current.id)?.style)===JSON.stringify(hovered.states.find(x=>x.id===hover.id)?.style);
+            if(active.length!==1||active[0]!==current.id||styleEqual)failures.push({kind:'hover',active,styleEqual});
+            await verify(current,'pointer-leave');
+            await page.reload({waitUntil:'domcontentloaded',timeout:45000});
+            await page.locator('.left-rail [data-stat-market="1x2"]').waitFor({state:'visible',timeout:30000});
+            await verify(current,'reload');
+          }catch(e){failures.push({kind:'blocked',error:e.message});}
+          finally{
+            await writeFile('evidence/report.json',JSON.stringify({checks,failures,errors,productionWrites:0},null,2));
+            console.log('SIDEBAR_REPORT '+JSON.stringify({checks,failures,errors}));
+            await browser.close();
+          }
+          assert.equal(failures.length,0,'SIDEBAR_REGRESSION_OR_QA_BLOCKED');
+          assert.equal(errors.length,0,'BROWSER_ERRORS');
+          EOF
+          node sidebar-qa.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sidebar-single-active-readonly
+          path: evidence/
