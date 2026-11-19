@@ -28,16 +28,16 @@ try{
  const proof={mode:'ISOLATED_SIDEBAR_LEAGUES',depthSha:sha(assets['/sidebar-depth.css']),cssSha:sha(css),jsSha:sha(js),productionBefore:before};
  const files={'/':{body:page,type:'text/html'},'/index.html':{body:page,type:'text/html'},'/leagues-toggle.css':{body:css,type:'text/css'},'/leagues-toggle.js':{body:js,type:'application/javascript'},'/health':{body:JSON.stringify(proof),type:'application/json'}};for(const [k,v]of Object.entries(assets))files[k]={body:v,type:'text/css'};
  const worker='const files='+JSON.stringify(files)+';\nexport default {async fetch(req){const p=new URL(req.url).pathname,f=files[p];if(!["GET","HEAD"].includes(req.method)||!f)return new Response("Test only",{status:404});return new Response(req.method==="HEAD"?null:f.body,{headers:{"Content-Type":f.type+"; charset=utf-8","Cache-Control":"no-store","X-Robots-Tag":"noindex, nofollow","X-Content-Type-Options":"nosniff"}})}};';
- assert(name!==prod&&name.startsWith('ball46-sidebar-leagues-test-'));const all=await api('/scripts');assert(!all.some(w=>w.id===name),'WORKER_EXISTS');const sub=await api('/subdomain');const url='https://'+name+'.'+sub.subdomain+'.workers.dev';
+ assert(name!==prod&&name.startsWith('ball46-sidebar-leagues-test-'));const all=await api('/scripts');const existing=all.some(w=>w.id===name);const sub=await api('/subdomain');const url='https://'+name+'.'+sub.subdomain+'.workers.dev';
  const form=new FormData();form.append('metadata',new Blob([JSON.stringify({main_module:'worker.mjs',compatibility_date:'2026-11-18',bindings:[]})],{type:'application/json'}),'metadata.json');form.append('worker.mjs',new Blob([worker],{type:'application/javascript+module'}),'worker.mjs');
- await api('/scripts/'+name,{method:'PUT',body:form});await api('/scripts/'+name+'/subdomain',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled:true,previews_enabled:false})});
+ if(!existing){await api('/scripts/'+name,{method:'PUT',body:form});await api('/scripts/'+name+'/subdomain',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled:true,previews_enabled:false})});}else console.log('VERIFY_EXISTING_TEST_WORKER');
  for(const [path,item] of Object.entries(files))await get(url,path,t=>t===item.body);
  const q=await b.newPage();await q.setViewport({width:1440,height:1000});await q.setCacheEnabled(false);
  async function nav(theme){for(let i=0;i<16;i++){try{const r=await q.goto(url+'/?theme='+theme+'&qa='+process.env.GITHUB_RUN_ID+'-'+i,{waitUntil:'domcontentloaded',timeout:15000});assert(r?.ok());await q.waitForSelector(btn,{timeout:8000});await q.waitForFunction(()=>[...document.styleSheets].some(s=>s.href?.includes('/leagues-toggle.css')),{timeout:6000});return}catch(e){console.log('NAV_RETRY '+i+' '+e.message);await sleep(1000)}}throw Error('PREVIEW_NAV_FAILED')}
  await nav('dark');
  let baseline;
  for(const theme of ['dark','light']){
- await q.evaluate(t=>document.documentElement.dataset.theme=t,theme);
+ await nav(theme);await q.evaluate(t=>document.documentElement.dataset.theme=t,theme);
  if((await state(q)).expanded==='false'){await q.$eval(btn,e=>e.click());await wait(q,true)}
  // Actual snapshot menu click retains selected league on collapsing and expanding.
  await q.$eval(list+' [data-league-filter]',e=>e.click());await sleep(220);const a=await state(q);assert(a.selected.length===1&&a.count>0);
