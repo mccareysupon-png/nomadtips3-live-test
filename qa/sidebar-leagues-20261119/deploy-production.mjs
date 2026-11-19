@@ -1,0 +1,53 @@
+import fs from 'node:fs';import assert from 'node:assert/strict';import crypto from 'node:crypto';
+import {check} from './production-browser.mjs';
+const account=process.env.CLOUDFLARE_ACCOUNT_ID,token=process.env.CLOUDFLARE_API_TOKEN;
+assert(account&&token);
+const root='https://api.cloudflare.com/client/v4/accounts/'+account+'/workers',prod='ball46-production',origin='https://ball46.com',direct='https://ball46-production.mccarey-supon.workers.dev',test='https://ball46-sidebar-leagues-test-20261119.mccarey-supon.workers.dev';
+const tag='b46-sidebar-leagues-20261119-v1',entry='sidebar-leagues-entry-20261119-v1.mjs';
+const paths={depth:'/b46-sidebar-depth-20261119-v2.css',css:'/'+tag+'.css',js:'/'+tag+'.js'};
+let depth,css,js;
+const sha=x=>crypto.createHash('sha256').update(x).digest('hex');
+const canonical=x=>JSON.stringify(x,(k,v)=>v&&typeof v==='object'&&!Array.isArray(v)?Object.fromEntries(Object.entries(v).sort(([a],[b])=>a.localeCompare(b))):v);
+const delay=ms=>new Promise(r=>setTimeout(r,ms));fs.mkdirSync('evidence',{recursive:true});
+const report={scope:'Approved desktop sidebar V2 depth and LEAGUES collapse only',result:'INITIAL'};const save=()=>fs.writeFileSync('evidence/production-report.json',JSON.stringify(report,null,2));
+async function api(path,opts={}){const r=await fetch(root+path,{...opts,headers:{Authorization:'Bearer '+token,...opts.headers},signal:AbortSignal.timeout(60000)});const j=await r.json();assert(r.ok&&j.success,'CF '+path+' '+r.status+' '+JSON.stringify(j.errors||[]));return j.result}
+async function active(){const d=await api('/scripts/'+prod+'/deployments?per_page=1');const v=d.deployments[0].versions;assert(v.length===1&&Number(v[0].percentage)===100);return v[0].version_id}
+async function version(id){const v=await api('/workers/'+prod+'/versions/'+id+'?include=modules');assert(v.main_module&&v.modules?.length);return v}
+async function schedules(){const d=await api('/scripts/'+prod+'/schedules');return (Array.isArray(d)?d:d.schedules).map(x=>x.cron).sort()}
+async function settings(){const s=await api('/scripts/'+prod+'/settings');const omit=new Set(['annotations','modified_on','created_on','updated_on','last_deployed_from','last_deployed_at','etag','version_id','deployment_id','tag','version']);return Object.fromEntries(Object.entries(s).filter(([k])=>!omit.has(k)).map(([k,v])=>[k,sha(canonical(v))]))}
+async function pub(path,base=origin){let last;for(let i=0;i<3;i++){try{const u=new URL(path,base);if(!u.pathname.startsWith('/b46-receiver-v1/'))u.searchParams.set('b46QA',process.env.GITHUB_RUN_ID+'-'+Date.now());const r=await fetch(u,{headers:{'Cache-Control':'no-cache'},signal:AbortSignal.timeout(30000)});if(r.ok)return await r.text();last=Error('HTTP '+u.pathname+' '+r.status)}catch(e){last=e}console.log('READ_RETRY '+path+' '+String(last));await delay(1000)}throw last}
+async function health(){const out={};for(const [k,p]of [['engine','/api/engine/health'],['market','/api/full-market/health'],['board','/api/engine/board'],['signals','/api/engine/signals'],['graph','/b46-receiver-v1/graph?market=all&variant=all&filter=all&range=all']]){const j=JSON.parse(await pub(p));if(k==='signals')assert(Array.isArray(j.signals));else assert(j.ok===true,'HEALTH '+k);if(k==='board')assert(Array.isArray(j.fixtures));if(k==='graph')assert(j.source==='RECEIVER'&&j.summary.rows===j.summary.wins+j.summary.pushes+j.summary.losses);out[k]={ok:true,...(j.summary?{rows:j.summary.rows,sequence:j.sequence}:{}),...(Array.isArray(j.fixtures)?{count:j.fixtures.length}:{}),...(Array.isArray(j.signals)?{count:j.signals.length}:{})}}return out}
+const manifest=v=>v.modules.map(m=>({name:m.name,hash:sha(Buffer.from(m.content_base64,'base64'))})).sort((a,b)=>a.name.localeCompare(b.name));
+async function activate(id,msg){await api('/scripts/'+prod+'/deployments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({strategy:'percentage',versions:[{version_id:id,percentage:100}],annotations:{'workers/message':msg}})})}
+async function upload(v,source){const md={main_module:entry,compatibility_date:v.compatibility_date,compatibility_flags:v.compatibility_flags||[],bindings:v.bindings,keep_assets:true,annotations:{'workers/tag':tag,'workers/message':'Approved desktop sidebar depth and leagues only'}};if(v.assets?.config)md.assets={config:v.assets.config};if(v.placement)md.placement=v.placement;const f=new FormData();f.append('metadata',new Blob([JSON.stringify(md)],{type:'application/json'}),'metadata.json');for(const m of v.modules){assert(m.name!==entry);const type=m.content_type||(/\.m?js$/.test(m.name)?'application/javascript+module':m.name.endsWith('.bin')?'application/octet-stream':m.name.endsWith('.txt')?'text/plain':null);assert(type,'MODULE_TYPE '+m.name);f.append(m.name,new Blob([Buffer.from(m.content_base64,'base64')],{type}),m.name)}f.append(entry,new Blob([source],{type:'application/javascript+module'}),entry);return (await api('/scripts/'+prod+'/versions',{method:'POST',body:f})).id}
+let base,candidate,attempt=false;
+try{
+ base=await active();report.rollback=base;save();console.log('ROLLBACK_POINT '+base);
+ const v=await version(base),h=JSON.parse(await pub('/health',test));
+ assert.equal(h.mode,'ISOLATED_SIDEBAR_LEAGUES');
+ depth=await pub('/sidebar-depth.css',test);css=await pub('/leagues-toggle.css',test);js=await pub('/leagues-toggle.js',test);
+ assert.equal(sha(depth),'3acac63ff9d099f45beef6db159efca5b05b90d86b09ec5d816b1cdd1f2b6a8e');assert.equal(sha(css),'df5067f712872fb453432b1d0151f4d740a6b6cd7965ab5f59a797b1c9529477');assert.equal(sha(js),'223ac87b985fa04efdf68e4efab8e6140a76611b42dbecf92ee01dfa42d30771');
+ assert.equal(h.depthSha,sha(depth));assert.equal(h.cssSha,sha(css));assert.equal(h.jsSha,sha(js));
+ const html=await pub('/index.html?view=statistics');assert(Object.values(paths).every(p=>!html.includes(p)),'ALREADY_RELEASED');
+ const preservedPaths=['/b46-sidebar-colors-20261119-v1.css','/b46-sidebar-monitor-client-colors-20261119-v1.js','/b46-statistics-columns-20261102.js'];
+ const preserved={};for(const p of preservedPaths)preserved[p]=sha(await pub(p));
+ assert.equal(preserved[preservedPaths[0]],'591e0b481f261fde65d7f531f8dd6b0e7c2bf172396660c47935f8eb8c49a388');
+ const assets={[paths.depth]:depth,[paths.css]:css,[paths.js]:js};
+ for(const [p,t]of Object.entries(assets))fs.writeFileSync('evidence/'+p.slice(1),t);
+ console.log('APPROVED_EXACT_ASSETS '+JSON.stringify(Object.fromEntries(Object.entries(assets).map(([p,t])=>[p,sha(t)]))));
+ const source='import original from '+JSON.stringify('./'+v.main_module)+';\nexport * from '+JSON.stringify('./'+v.main_module)+';\nconst assets='+JSON.stringify(assets)+';\nconst paths='+JSON.stringify(paths)+';\nexport default {...original,async fetch(request,env,ctx){const u=new URL(request.url);if(Object.hasOwn(assets,u.pathname)&&["GET","HEAD"].includes(request.method))return new Response(request.method==="HEAD"?null:assets[u.pathname],{headers:{"Content-Type":(u.pathname.endsWith(".css")?"text/css":"application/javascript")+"; charset=utf-8","Cache-Control":"public,max-age=86400","X-Content-Type-Options":"nosniff"}});const res=await original.fetch(request,env,ctx);if(request.method!=="GET"||!["/","/index.html","/statistics.html"].includes(u.pathname)||res.status!==200||!res.headers.get("content-type")?.includes("text/html"))return res;return new HTMLRewriter().on("head",{element(e){e.append("<link rel=\\"stylesheet\\" href=\\""+paths.depth+"\\"><link rel=\\"stylesheet\\" href=\\""+paths.css+"\\"><script defer src=\\""+paths.js+"\\"></script>",{html:true})}}).transform(res)}};\n';
+ fs.writeFileSync('evidence/candidate-entry.mjs',source);
+ const baselineSettings=await settings(),crons=await schedules();report.backendBefore=await health();
+ const pre=await check({depth,css,js,paths,preflight:true});assert.equal(pre.length,4);report.preflight=pre;save();console.log('PREFLIGHT_PASS '+pre.length);
+ assert.equal(await active(),base);assert.deepEqual(await settings(),baselineSettings);assert.deepEqual(await schedules(),crons);
+ candidate=await upload(v,source);assert(candidate);report.candidate=candidate;save();console.log('STAGED '+candidate);
+ const cv=await version(candidate);assert.equal(cv.main_module,entry);assert.equal(canonical(cv.bindings),canonical(v.bindings));assert.equal(canonical(cv.assets?.config),canonical(v.assets?.config));assert.equal(cv.compatibility_date,v.compatibility_date);assert.equal(canonical(cv.compatibility_flags||[]),canonical(v.compatibility_flags||[]));assert.equal(canonical(cv.placement),canonical(v.placement));
+ assert.deepEqual(manifest(cv),[...manifest(v),{name:entry,hash:sha(source)}].sort((a,b)=>a.name.localeCompare(b.name)));
+ assert.equal(await active(),base);assert.deepEqual(await settings(),baselineSettings,'SETTINGS_DRIFT_BEFORE_ACTIVATE');assert.deepEqual(await schedules(),crons);
+ attempt=true;await activate(candidate,'Approved desktop sidebar depth V2 and LEAGUES collapse');
+ let good=false;for(let i=0;i<20;i++){try{const checks=await Promise.all(Object.entries(assets).flatMap(([p,t])=>[pub(p).then(x=>x===t),pub(p,direct).then(x=>x===t)]));const liveHtml=await pub('/index.html?view=statistics');if(await active()===candidate&&checks.every(Boolean)&&Object.values(paths).every(p=>liveHtml.includes(p))){good=true;break}}catch(e){console.log('PROPAGATION '+String(e))}await delay(1500)}assert(good,'LIVE_ASSET');console.log('LIVE_EXACT_ASSETS_PASS');
+ for(const [p,h]of Object.entries(preserved))assert.equal(sha(await pub(p)),h,'UNRELATED_ASSET_DRIFT '+p);
+ report.backendAfter=await health();const live=await check({depth,css,js,paths,preflight:false});assert.equal(live.length,4);report.live=live;save();
+ assert.equal(await active(),candidate);assert.deepEqual(await settings(),baselineSettings,'SETTINGS_DRIFT_AFTER_ACTIVATE');assert.deepEqual(await schedules(),crons);
+ report.result='SUCCESS';report.active=candidate;save();console.log('PRODUCTION_LEAGUES_PASS '+JSON.stringify({version:candidate,rollback:base,cases:live.length,preflight:pre.length,depthSha:sha(depth),jsSha:sha(js),backend:report.backendAfter,cssSha:sha(css)}));
+}catch(e){report.result='FAIL';report.error=String(e);console.error(e.stack);if(attempt&&base&&candidate){try{if(await active()===candidate){await activate(base,'Rollback desktop depth and leagues QA failure');for(let i=0;i<20&&await active()!==base;i++)await delay(1000)}report.rollbackConfirmed=await active()===base}catch(rb){report.rollbackError=String(rb)}}save();console.log('PRODUCTION_LEAGUES_STOP '+JSON.stringify({base,candidate,error:report.error,rollbackConfirmed:report.rollbackConfirmed,rollbackError:report.rollbackError}));process.exitCode=1}
