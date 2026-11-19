@@ -1,0 +1,104 @@
+name: B46 monitor Win Rate mask - isolated Worker only
+on:
+  push:
+    branches: [test/ball46-monitor-mask-overlay-20261119]
+    paths: ['.github/workflows/b46-monitor-mask-preview-20261119.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  stage:
+    if: github.ref == 'refs/heads/test/ball46-monitor-mask-overlay-20261119'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate patch and read-only Worker
+        run: |
+          node --check work/monitor-mask-20261119/worker.mjs
+          node --input-type=module <<'EOF'
+          import assert from 'node:assert/strict';
+          import worker,{patchChart,monitorOverlay} from './work/monitor-mask-20261119/worker.mjs';
+          const a="b46GraphKey=key;b46Last=Date.now();b46FailedAt=0;renderFromStats(b46GraphData,'receiver');";
+          const src="async function f(){const g={};"+a+"}";
+          const patched=patchChart(src);assert.equal(patched.status,'OVERLAY_ONLY');new Function(patched.source);
+          assert.equal(patchChart('other').status,'SOURCE_DRIFT');
+          assert.equal(patchChart(src+src).source,src+src);
+          assert(!/\bfetch\s*\(|XMLHttpRequest|setInterval/.test(monitorOverlay.toString()));
+          let calls=0;
+          const env={B46_PRODUCTION_READ:{fetch:async()=>{calls++;return new Response(src)}}};
+          assert.equal((await worker.fetch(new Request('https://test.invalid/api/engine/statistics',{method:'POST'}),env)).status,405);
+          assert.equal((await worker.fetch(new Request('https://test.invalid/api/private'),env)).status,404);
+          assert.equal(calls,0);
+          const r=await worker.fetch(new Request('https://test.invalid/longterm-performance-343.js'),env);
+          assert.equal(r.headers.get('x-b46-monitor-overlay'),'OVERLAY_ONLY');assert.equal(calls,1);
+          console.log('LOCAL_CONTRACT_PASS');
+          EOF
+      - name: Create dedicated Worker config with no routes or cron
+        run: |
+          cat > work/monitor-mask-20261119/wrangler.toml <<'EOF'
+          name = "ball46-monitor-mask-test-20261119"
+          main = "worker.mjs"
+          compatibility_date = "2026-11-19"
+          workers_dev = true
+          preview_urls = false
+          [[services]]
+          binding = "B46_PRODUCTION_READ"
+          service = "ball46-production"
+          EOF
+      - name: Deploy only named staging Worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: 62cb0db544160e6591342abd6b4f35cc
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN"
+          npx --yes wrangler@4.50.0 deploy --config work/monitor-mask-20261119/wrangler.toml --name ball46-monitor-mask-test-20261119
+      - name: Verify staged source and health
+        run: |
+          node --input-type=module <<'EOF'
+          import assert from 'node:assert/strict';
+          const origin='https://ball46-monitor-mask-test-20261119.mccarey-supon.workers.dev';
+          const h=await fetch(origin+'/_overlay_health');assert.equal(h.status,200);assert.equal((await h.json()).mode,'monitor-mask-preview');
+          const r=await fetch(origin+'/longterm-performance-343.js',{signal:AbortSignal.timeout(30000)});
+          assert.equal(r.status,200);assert.equal(r.headers.get('x-b46-monitor-overlay'),'OVERLAY_ONLY');new Function(await r.text());
+          const denied=await fetch(origin+'/_overlay_health',{method:'POST'});assert.equal(denied.status,405);
+          console.log('STAGED_WORKER_SOURCE_PASS '+origin);
+          EOF
+      - name: Browser read-only verification
+        run: |
+          npm install --prefix work/monitor-mask-20261119/.runtime --no-audit --no-fund playwright@1.55.0
+          work/monitor-mask-20261119/.runtime/node_modules/.bin/playwright install chromium --only-shell
+          mkdir -p "$RUNNER_TEMP/monitor-overlay-proof"
+          node --input-type=module <<'EOF'
+          import assert from 'node:assert/strict';
+          import {createRequire} from 'node:module';
+          const {chromium}=createRequire(process.cwd()+'/work/monitor-mask-20261119/.runtime/package.json')('playwright');
+          const origin='https://ball46-monitor-mask-test-20261119.mccarey-supon.workers.dev',out=process.env.RUNNER_TEMP+'/monitor-overlay-proof';
+          const browser=await chromium.launch({headless:true});
+          try{
+           for(const mobile of [false,true]){
+            const c=await browser.newContext({viewport:{width:mobile?390:1366,height:mobile?844:900},isMobile:mobile,hasTouch:mobile,serviceWorkers:'block'});
+            await c.route('**/*',r=>['GET','HEAD'].includes(r.request().method())?r.continue():r.abort());
+            const p=await c.newPage(),errors=[],requests=[];p.on('pageerror',e=>errors.push(e.message));p.on('request',r=>{if(new URL(r.url()).pathname.includes('graph'))requests.push(r.url())});
+            await p.goto(origin+'/?view=statistics',{waitUntil:'domcontentloaded',timeout:60000});
+            await p.waitForFunction(()=>document.querySelectorAll('[data-stat-market] .b46-monitor-rate-mask-v1').length>=8,null,{timeout:40000});
+            const inspect=()=>p.evaluate(()=>[...document.querySelectorAll('[data-stat-market]')].map(b=>({key:b.dataset.statMarket,original:b.querySelector('b')?.textContent,hidden:getComputedStyle(b.querySelector('b')).display==='none',rate:b.querySelector('.b46-monitor-rate-mask-v1')?.textContent})));
+            const first=await inspect();assert(first.length>=8&&first.every(x=>x.hidden&&x.rate));assert(first.some(x=>x.rate.endsWith('%')));
+            await p.screenshot({path:out+'/'+(mobile?'mobile':'pc')+'.png',fullPage:true});
+            console.log('BROWSER_FIRST='+JSON.stringify({mobile,first,requests:requests.length,errors}));
+            assert.equal(errors.length,0);
+            await c.close();
+           }
+          }finally{await browser.close()}
+          EOF
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: monitor-overlay-proof
+          path: ${{ runner.temp }}/monitor-overlay-proof
+          if-no-files-found: ignore
