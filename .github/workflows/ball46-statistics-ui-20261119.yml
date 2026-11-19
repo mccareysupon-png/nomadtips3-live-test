@@ -21,10 +21,10 @@ jobs:
           node-version: 22
       - name: Install isolated QA tools
         run: |
-          npm install --prefix /tmp/b46qa acorn puppeteer
+          npm install --prefix /tmp/b46qa acorn puppeteer-core
           echo "ACORN_ENTRY=$(node -p "require.resolve('acorn',{paths:['/tmp/b46qa']})")" >> "$GITHUB_ENV"
-          echo "PUPPETEER_ENTRY=$(node -p "require.resolve('puppeteer',{paths:['/tmp/b46qa']})")" >> "$GITHUB_ENV"
-          echo "CHROME_PATH=$(node -e "console.log(require('/tmp/b46qa/node_modules/puppeteer').executablePath())")" >> "$GITHUB_ENV"
+          echo "PUPPETEER_ENTRY=$(node -p "require.resolve('puppeteer-core',{paths:['/tmp/b46qa']})")" >> "$GITHUB_ENV"
+          echo "CHROME_PATH=$(command -v google-chrome || command -v chromium)" >> "$GITHUB_ENV"
       - name: Guarded production release
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
