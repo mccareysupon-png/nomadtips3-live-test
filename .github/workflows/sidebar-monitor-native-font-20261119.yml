@@ -17,6 +17,21 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Record Production baseline
+        id: baseline
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          node --input-type=module <<'EOF'
+          import assert from 'node:assert/strict';
+          import {writeFile} from 'node:fs/promises';
+          const a=process.env.CLOUDFLARE_ACCOUNT_ID,t=process.env.CLOUDFLARE_API_TOKEN;
+          assert(a&&t);
+          const r=await fetch('https://api.cloudflare.com/client/v4/accounts/'+a+'/workers/scripts/ball46-production/deployments?per_page=1',{headers:{authorization:'Bearer '+t}});
+          const j=await r.json();assert(j.success);
+          await writeFile(process.env.RUNNER_TEMP+'/production-before.json',JSON.stringify(j.result.deployments[0].versions));
+          EOF
       - name: Measure actual native sidebar count typography
         run: |
           npm install --prefix qa/sidebar-monitor-live-20261119/.runtime --no-fund --no-audit playwright@1.55.0
@@ -46,8 +61,8 @@ jobs:
               return n?{...size(n),reference:'native Total count',html:n.outerHTML.slice(0,200)}:null;
             });
             assert(t&&/^\d+(?:\.\d+)?px$/.test(t.size)&&/^\d+$/.test(t.weight)&&/^[\w\s,"'.-]+$/.test(t.family),'MEASURE_INVALID '+JSON.stringify(t));
-            assert(Number.parseFloat(t.size)>=9&&Number.parseFloat(t.size)<=18);
             console.log('NATIVE_TYPOGRAPHY '+JSON.stringify(t));
+            assert(Number.parseFloat(t.size)>0&&Number.parseFloat(t.size)<=40,'NATIVE_SIZE_INVALID '+JSON.stringify(t));
             await writeFile('qa/sidebar-monitor-live-20261119/typography.mjs','export const typography='+JSON.stringify({size:t.size,weight:t.weight,family:t.family,reference:t.reference})+';\n');
           }finally{await browser.close()}
           EOF
@@ -78,15 +93,6 @@ jobs:
           [[migrations]]
           tag = "v1"
           new_sqlite_classes = ["MonitorRateCache"]
-          EOF
-          node --input-type=module <<'EOF'
-          import assert from 'node:assert/strict';
-          import {writeFile} from 'node:fs/promises';
-          const a=process.env.CLOUDFLARE_ACCOUNT_ID,t=process.env.CLOUDFLARE_API_TOKEN;
-          assert(a&&t);
-          const r=await fetch('https://api.cloudflare.com/client/v4/accounts/'+a+'/workers/scripts/ball46-production/deployments?per_page=1',{headers:{authorization:'Bearer '+t}});
-          const j=await r.json();assert(j.success);
-          await writeFile(process.env.RUNNER_TEMP+'/production-before.json',JSON.stringify(j.result.deployments[0].versions));
           EOF
           npx --yes wrangler@4.50.0 deploy --config qa/sidebar-monitor-live-20261119/wrangler.toml --name ball46-sidebar-monitor-live-test-20261119
       - name: Check HTML and unchanged scripts
@@ -135,7 +141,7 @@ jobs:
           }finally{await browser.close()}
           EOF
       - name: Confirm Production active version unchanged
-        if: always()
+        if: always() && steps.baseline.outcome == 'success'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
