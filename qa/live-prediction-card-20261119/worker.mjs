@@ -10,13 +10,7 @@ export function patchHtml(s){
  s=exact(s,badgeFrom,badgeTo,'desktop-badge');
  s=exact(s,"f.signalCount+' signal'","f.signalCount+(f.signalCount===1?' Prediction':' Predictions')",'mobile-badge');
  s=exact(s,'content:"ACTIVE SIGNALS"','content:"ACTIVE PREDICTIONS"','featured-css');
- // Restrict heading replacement to the existing league-market header script.
- let headings=0;
- s=s.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi,chunk=>{
-  if(!chunk.includes('b46-league-market-heading')||!chunk.includes('OVER / UNDER'))return chunk;
-  return chunk.replace(/(['"])SIGNAL\1/g,(m,q)=>{headings++;return q+'LIVE PREDICTION'+q});
- });
- if(!headings)throw Error('RENDER_SOURCE_DRIFT league-heading');
+ s=exact(s,"s.dataset.market='signal';s.textContent='SIGNAL'","s.dataset.market='signal';s.textContent='LIVE PREDICTION'",'league-heading');
  return s;
 }
 export function patchDashboard(s){
