@@ -9,8 +9,18 @@ function update(root){
  const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
  const list=[];while(walker.nextNode())list.push(walker.currentNode);
  for(const n of list){
-  const e=n.parentElement;if(!e||excluded(e)||e.closest('script,style,textarea,template'))continue;
+  const e=n.parentElement;if(!e||e.closest('script,style,textarea,template'))continue;
   const t=n.nodeValue.trim();
+  // Exact labels unique to the Featured Match panel; never rename data keys.
+  if(t==='FEATURED SIGNAL'||t==='ACTIVE SIGNALS'){
+   n.nodeValue=n.nodeValue.replace(t,t==='FEATURED SIGNAL'?'FEATURED LIVE PREDICTION':'ACTIVE PREDICTIONS');continue;
+  }
+  if(/^Signal\s+\d+(?:\+\d+)?\s*['’′]$/i.test(t)){
+   let p=e,inside=false;
+   for(let i=0;p&&i<12;i++,p=p.parentElement){if(p.textContent.length<12000&&/ACTIVE (?:SIGNALS|PREDICTIONS)/.test(p.textContent)&&/MATCH FACTS/.test(p.textContent)){inside=true;break}}
+   if(inside){n.nodeValue=n.nodeValue.replace(/Signal/i,'Prediction');continue}
+  }
+  if(excluded(e))continue;
   if(t==='SIGNAL'){
    let p=e;let found=false;
    for(let i=0;p&&i<4;i++,p=p.parentElement){if(/OVER\s*\/\s*UNDER/i.test(p.textContent)&&p.textContent.length<1000){found=true;break}}
@@ -33,7 +43,7 @@ const reply=(v,status=200)=>Response.json(v,{status,headers:{'cache-control':'no
 export default {async fetch(req,env){
  const u=new URL(req.url);
  if(!['GET','HEAD'].includes(req.method))return reply({error:'READ_ONLY'},405);
- if(u.pathname==='/_prediction_test_health')return reply({ok:true,name,scope:'MAIN_CARD_ONLY'});
+ if(u.pathname==='/_prediction_test_health')return reply({ok:true,name,scope:'MAIN_CARD_AND_FEATURED'});
  if(u.pathname==='/_prediction-card-test.js')return new Response(req.method==='HEAD'?null:client,{headers:{'content-type':'application/javascript; charset=utf-8','cache-control':'no-store','x-robots-tag':'noindex, nofollow'}});
  if(!pages.has(u.pathname)&&!apis.has(u.pathname)&&!(/^\/[a-zA-Z0-9_./-]+\.(js|mjs|css|svg|png|gif|woff2?|ico|jpe?g|webp|json|html|txt|map|avif)$/i.test(u.pathname)&&!/^\/(?:api|b46-receiver-v1|admin|internal)\//.test(u.pathname)))return reply({error:'PATH_NOT_ALLOWED'},404);
  const headers=new Headers();for(const k of ['accept','accept-language','user-agent']){const v=req.headers.get(k);if(v)headers.set(k,v.slice(0,512))}
