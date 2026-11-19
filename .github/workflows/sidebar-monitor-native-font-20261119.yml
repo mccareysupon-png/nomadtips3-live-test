@@ -45,20 +45,14 @@ jobs:
           try{
             const p=await browser.newPage({viewport:{width:1440,height:950},serviceWorkers:'block'});
             await p.goto('https://ball46-sidebar-monitor-live-test-20261119.mccarey-supon.workers.dev/index.html?view=statistics&b46_mask=0',{waitUntil:'domcontentloaded',timeout:60000});
-            await p.waitForFunction(()=>document.querySelectorAll('[data-stat-market] b').length===8,null,{timeout:35000});
+            await p.waitForFunction(()=>{const n=document.querySelector('[data-filter-count="all"]');return n&&Number((n.dataset.b46Display||n.textContent).replace(/,/g,''))>0},null,{timeout:45000});
             const t=await p.evaluate(()=>{
-              const size=e=>{const s=getComputedStyle(e);return {size:s.fontSize,weight:s.fontWeight,family:s.fontFamily}};
-              const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
-              let node;while(node=walker.nextNode()){
-                if(node.textContent.trim().toLowerCase()!=='all matches')continue;
-                let e=node.parentElement;
-                for(let i=0;e&&i<5;i++,e=e.parentElement){
-                  const n=[...e.querySelectorAll('b,strong,span,small')].find(x=>/^\d[\d,]*$/.test(x.textContent.trim())&&x.getClientRects().length);
-                  if(n)return {...size(n),reference:'All matches',html:n.outerHTML.slice(0,200)};
-                }
-              }
-              const n=document.querySelector('[data-stat-market="all"] b');
-              return n?{...size(n),reference:'native Total count',html:n.outerHTML.slice(0,200)}:null;
+              const n=document.querySelector('[data-filter-count="all"]');
+              if(!n)return null;
+              const info=pseudo=>{const c=getComputedStyle(n,pseudo||null);return {size:c.fontSize,weight:c.fontWeight,family:c.fontFamily,content:c.content,pseudo:pseudo||'element'}};
+              const variants=[info('::after'),info('::before'),info(null)];
+              const visible=variants.find(x=>parseFloat(x.size)>0&&(x.pseudo==='element'||!['none','normal','""'].includes(x.content)));
+              return visible?{...visible,reference:'All matches',html:n.outerHTML.slice(0,200),variants}:null;
             });
             assert(t&&/^\d+(?:\.\d+)?px$/.test(t.size)&&/^\d+$/.test(t.weight)&&/^[\w\s,"'.-]+$/.test(t.family),'MEASURE_INVALID '+JSON.stringify(t));
             console.log('NATIVE_TYPOGRAPHY '+JSON.stringify(t));
