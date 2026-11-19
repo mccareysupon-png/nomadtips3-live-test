@@ -1,0 +1,30 @@
+name: BALL46 mobile visible Sidebar verify only
+on:
+  push:
+    branches: [release/ball46-sidebar-monitor-20261119]
+    paths: ['.github/workflows/sidebar-monitor-mobile-verify-20261119.yml']
+permissions:
+  contents: read
+jobs:
+  mobile:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser
+        run: |
+          npm install --prefix qa/sidebar-monitor-live-20261119/.runtime --no-fund --no-audit playwright@1.55.0
+          qa/sidebar-monitor-live-20261119/.runtime/node_modules/.bin/playwright install chromium --only-shell
+      - name: Mobile candidate read-only check
+        run: node qa/sidebar-monitor-live-20261119/mobile-qa.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sidebar-mobile-proof
+          path: ${{ runner.temp }}/sidebar-mobile-proof
+          if-no-files-found: ignore
