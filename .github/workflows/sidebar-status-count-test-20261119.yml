@@ -1,0 +1,30 @@
+name: BALL46 minimal sidebar MATCH STATUS exception test
+on:
+  push:
+    branches: [test/ball46-sidebar-minimal-20261119]
+    paths: ['.github/workflows/sidebar-status-count-test-20261119.yml']
+permissions:
+  contents: read
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          npm install --prefix "$RUNNER_TEMP/b46qa" --no-save --no-package-lock puppeteer-core
+          echo "PUPPETEER_ENTRY=$(node -p "require.resolve('puppeteer-core',{paths:['$RUNNER_TEMP/b46qa']})")" >> "$GITHUB_ENV"
+          echo "CHROME_PATH=$(command -v google-chrome || command -v chromium)" >> "$GITHUB_ENV"
+      - name: Check all menus and deploy isolated preview v2
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          node --check qa/sidebar-minimal-20261119/test-status-count.mjs
+          node qa/sidebar-minimal-20261119/test-status-count.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sidebar-status-count-test-evidence
+          path: evidence/
+          retention-days: 7
