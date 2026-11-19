@@ -7,6 +7,8 @@ function exact(s,a,b,id){
 }
 const badgeFrom="label=n===1?'Signal':'Signals'",badgeTo="label=n===1?'Prediction':'Predictions'";
 export function patchHtml(s){
+ s=exact(s,'<i class="workspace-nav-mark signal"></i>Signal</span>','<i class="workspace-nav-mark signal"></i>Live Predictions</span>','desktop-sidebar-label');
+ s=exact(s,'data-b46m-page="signal">'+String.fromCharCode(36)+"{svg('trend')}"+'<span>Signals</span>','data-b46m-page="signal">'+String.fromCharCode(36)+"{svg('trend')}"+'<span>Live Predictions</span>','mobile-drawer-label');
  s=exact(s,badgeFrom,badgeTo,'desktop-badge');
  s=exact(s,"f.signalCount+' signal'","f.signalCount+(f.signalCount===1?' Prediction':' Predictions')",'mobile-badge');
  s=exact(s,'content:"ACTIVE SIGNALS"','content:"ACTIVE PREDICTIONS"','featured-css');
@@ -27,7 +29,7 @@ const reply=(v,status=200)=>Response.json(v,{status,headers:{'cache-control':'no
 export default {async fetch(req,env){
  const u=new URL(req.url);
  if(!['GET','HEAD'].includes(req.method))return reply({error:'READ_ONLY'},405);
- if(u.pathname==='/_prediction_test_health')return reply({ok:true,name,scope:'SHARED_RENDERER_SOURCE',overlay:false,featuredLabel:'ACTIVE PREDICTIONS'});
+ if(u.pathname==='/_prediction_test_health')return reply({ok:true,name,scope:'SHARED_RENDERER_SOURCE',overlay:false,featuredLabel:'ACTIVE PREDICTIONS',sidebarLabel:'Live Predictions'});
  if(!pages.has(u.pathname)&&!apis.has(u.pathname)&&!(/^\/[a-zA-Z0-9_./-]+\.(js|mjs|css|svg|png|gif|woff2?|ico|jpe?g|webp|json|html|txt|map|avif)$/i.test(u.pathname)&&!/^\/(?:api|b46-receiver-v1|admin|internal)\//.test(u.pathname)))return reply({error:'PATH_NOT_ALLOWED'},404);
  const headers=new Headers();for(const k of ['accept','accept-language','user-agent']){const v=req.headers.get(k);if(v)headers.set(k,v.slice(0,512))}
  const dest=new URL(u.pathname+u.search,origin);
