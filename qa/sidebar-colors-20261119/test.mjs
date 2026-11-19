@@ -1,0 +1,77 @@
+import fs from 'node:fs';import assert from 'node:assert/strict';import crypto from 'node:crypto';import {pathToFileURL} from 'node:url';
+const prod='ball46-production',name='ball46-sidebar-colors-test-20261119',origin='https://ball46.com',ratePath='/b46-sidebar-monitor-client-20261119.js';
+const account=process.env.CLOUDFLARE_ACCOUNT_ID,token=process.env.CLOUDFLARE_API_TOKEN;assert(account&&token);const root='https://api.cloudflare.com/client/v4/accounts/'+account+'/workers';
+const sha=x=>crypto.createHash('sha256').update(x).digest('hex');
+async function api(path,opts={}){const r=await fetch(root+path,{...opts,headers:{Authorization:'Bearer '+token,...opts.headers},signal:AbortSignal.timeout(45000)});const j=await r.json();assert(r.ok&&j.success,'CF '+path+' '+r.status);return j.result}
+async function active(){return (await api('/scripts/'+prod+'/deployments?per_page=1')).deployments[0].versions}
+const before=await active();console.log('PRODUCTION_BEFORE '+JSON.stringify(before));fs.mkdirSync('evidence',{recursive:true});
+const css=fs.readFileSync('qa/sidebar-colors-20261119/sidebar-colors.css','utf8');
+const r=await fetch(origin+ratePath,{signal:AbortSignal.timeout(20000)});assert(r.ok);const source=await r.text();
+const old="el.style.setProperty('color',v===null?'inherit':v>50?'#168b57':v<50?'#d54b60':'#ba8b20','important');";
+const next="el.style.setProperty('color',v===null?'var(--b46-sidebar-rate-empty,#9aa79f)':v>50?'var(--b46-sidebar-rate-up,#18b06f)':v<50?'var(--b46-sidebar-rate-down,#f05b6b)':'var(--b46-sidebar-rate-flat,#d9a63a)','important');";
+assert.equal(source.split(old).length,2,'RATE_OWNER_DRIFT');const patched=source.replace(old,next);
+const hook=" document.addEventListener('DOMContentLoaded',()=>{if(last)paint(last)},{once:true});";
+assert.equal(patched.split(hook).length,2,'PAINT_HOOK_DRIFT');const instrumented=patched.replace(hook," window.__qaPaint=paint;\n"+hook);
+fs.writeFileSync('evidence/approved-rate-client.js',patched);console.log('RATE_SOURCE '+sha(source)+' PATCHED '+sha(patched));
+const puppeteer=(await import(pathToFileURL(process.env.PUPPETEER_ENTRY).href)).default;
+const b=await puppeteer.launch({executablePath:process.env.CHROME_PATH,headless:true,protocolTimeout:45000,args:['--no-sandbox','--disable-dev-shm-usage','--disable-background-timer-throttling','--disable-renderer-backgrounding']});
+const status=['all','live','signal','scheduled','unknown','finished'],keys=['all','1x2','ah','ou','btts','corners','cards','other'];
+const rates={all:58.12,'1x2':49.35,ah:60.26,ou:59.13,btts:null,corners:61.39,cards:null,other:null};
+const palette={dark:{normal:'rgb(184, 205, 191)',zero:'rgb(126, 148, 136)',active:'rgb(52, 210, 126)',up:'rgb(24, 176, 111)',flat:'rgb(217, 166, 58)',down:'rgb(240, 91, 107)',empty:'rgb(154, 167, 159)'},light:{normal:'rgb(62, 91, 76)',zero:'rgb(122, 139, 130)',active:'rgb(15, 143, 90)',up:'rgb(14, 140, 87)',flat:'rgb(185, 133, 20)',down:'rgb(204, 64, 81)',empty:'rgb(111, 125, 117)'}};
+const tone=v=>v===null?'empty':v>50?'up':v<50?'down':'flat';
+const cases=[];
+try{
+ const p=await b.newPage();await p.setViewport({width:1440,height:1000});await p.setCacheEnabled(false);
+ await p.goto(origin+'/index.html?view=statistics&market=all&b46QA='+process.env.GITHUB_RUN_ID,{waitUntil:'domcontentloaded',timeout:45000});
+ await p.waitForSelector('aside.left-rail[data-b46-sidebar="1"] [data-league-filter]',{timeout:30000});await p.waitForSelector('[data-b46-rate-snapshot="all"]',{timeout:15000});
+ // Collect public rendered markup and actual styles, not private user data.
+ const snap=await p.evaluate(()=>{const a=document.querySelector('aside.left-rail[data-b46-sidebar="1"]');return {side:a.outerHTML,css:[...document.styleSheets].map(s=>{try{return [...s.cssRules].map(r=>r.cssText).join('\n')}catch{return ''}}).join('\n'),rootClass:document.documentElement.className}});
+ await p.close();
+ const baseCss=snap.css.replace(/@import[^;]+;/gi,'');
+ const side=snap.side.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi,'').replace(/\son\w+="[^"]*"/gi,'');
+ const baseHtml='<!doctype html><html data-theme="dark"><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>'+baseCss+'</style></head><body data-workspace-view="live"><main class="dash-shell"><section class="workspace singlepage">'+side+'</section></main></body></html>';
+ let previewSide,seq=1000000;
+ for(const [device,width,height]of [['pc',1440,1000],['mobile',390,844]]){
+ const q=await b.newPage();await q.setViewport({width,height,isMobile:device==='mobile',hasTouch:device==='mobile'});
+ await q.setContent(baseHtml,{waitUntil:'domcontentloaded'});await q.evaluate(cls=>{document.documentElement.className=cls;for(const e of document.querySelectorAll('[data-b46-rate-snapshot]'))delete e.dataset.b46MonitorSequence},snap.rootClass);
+ const c=await q.createCDPSession();await c.send('DOM.enable');await c.send('CSS.enable');const d=await c.send('DOM.getDocument');const selector='aside.left-rail .b46-mobile-status-menu button[data-b46-sidebar-row^="status-"]';const nodes=(await c.send('DOM.querySelectorAll',{nodeId:d.root.nodeId,selector})).nodeIds;assert.equal(nodes.length,6);
+ const force=async v=>{for(const nodeId of nodes)await c.send('CSS.forcePseudoState',{nodeId,forcedPseudoClasses:v})};
+ const config=async(theme,mode)=>q.evaluate(({theme,mode})=>{document.documentElement.dataset.theme=theme;document.body.dataset.workspaceView='live';for(const e of document.querySelectorAll('aside.left-rail [data-b46-sidebar-row],aside.left-rail [data-league-filter]')){e.classList.toggle('active',mode==='active');e.removeAttribute('aria-pressed');e.removeAttribute('aria-current')}},{theme,mode});
+ const inspect=()=>q.evaluate(()=>{const a=document.querySelector('aside.left-rail');const cc=e=>e?getComputedStyle(e).color:null;return {counts:[...a.querySelectorAll('.b46-mobile-status-menu button[data-b46-sidebar-row^="status-"]')].map(e=>{const b=e.querySelector(':scope>b'),z=b.getAttribute('data-b46-zero');const color=cc(b);b.setAttribute('data-b46-zero','1');const zero=cc(b);b.setAttribute('data-b46-zero','0');const nonzero=cc(b);if(z===null)b.removeAttribute('data-b46-zero');else b.setAttribute('data-b46-zero',z);return {key:e.dataset.b46SidebarRow,color,zero,nonzero,text:b.textContent,name:cc(e.querySelector(':scope>span:first-child')),bg:getComputedStyle(e).backgroundColor}}),rates:[...a.querySelectorAll('[data-b46-rate-snapshot]')].map(e=>({key:e.dataset.b46RateSnapshot,color:cc(e),text:e.textContent})),leagues:[...a.querySelectorAll('[data-league-filter]')].map(e=>({name:cc(e.querySelector('.league-label')),count:cc(e.querySelector(':scope>b')),text:e.textContent,bg:getComputedStyle(e).backgroundColor}))}});
+ const original={};for(const theme of ['dark','light']){await config(theme,'normal');original[theme]={normal:await inspect()};await force(['hover']);original[theme].hover=await inspect();await force([]);await config(theme,'active');original[theme].active=await inspect()}
+ await q.addStyleTag({content:css});await q.addScriptTag({content:instrumented});
+ for(const theme of ['dark','light']){
+ await config(theme,'normal');await force([]);await q.evaluate(({rates,sequence})=>window.__qaPaint({rates,sequence}),{rates,sequence:++seq});
+ for(const mode of ['normal','hover','active']){
+ await config(theme,mode);await force(mode==='hover'?['hover']:[]);
+ const now=await inspect(),orig=original[theme][mode],pal=palette[theme];
+ assert.equal(now.counts.length,6);assert.equal(now.rates.length,8);
+ for(let i=0;i<now.counts.length;i++){const x=now.counts[i],o=orig.counts[i];assert.equal(x.text,o.text);assert.equal(x.name,o.name,'NAME '+device+' '+theme+' '+mode+' '+x.key);assert.equal(x.bg,o.bg);assert.equal(x.zero,mode==='normal'?pal.zero:pal.active,'ZERO '+theme+' '+mode+' '+x.key);assert.equal(x.nonzero,mode==='normal'?pal.normal:pal.active,'COUNT '+theme+' '+mode+' '+x.key)}
+ for(const x of now.rates){assert.equal(x.color,pal[tone(rates[x.key])],'RATE '+device+' '+theme+' '+mode+' '+x.key);assert.equal(x.text,rates[x.key]===null?'—':rates[x.key].toFixed(2)+'%')}
+ assert.deepEqual(now.leagues,orig.leagues,'LEAGUE_CHANGED');
+ cases.push({device,theme,mode,status:6,rates:8,leagues:now.leagues.length});console.log('COLOR_CASE_PASS '+JSON.stringify(cases.at(-1)));
+ }
+ // Check exact boundary values and refresh while active, without changing the real ledger.
+ await q.evaluate(({rates,sequence})=>window.__qaPaint({rates,sequence}),{rates:{...rates,all:50,'1x2':50.01,ah:49.99},sequence:++seq});
+ const edge=await inspect();for(const [k,v]of [['all',palette[theme].flat],['1x2',palette[theme].up],['ah',palette[theme].down]])assert.equal(edge.rates.find(x=>x.key===k).color,v,'THRESHOLD '+theme+' '+k);
+ console.log('BOUNDARY_PASS '+device+' '+theme);
+ }
+ await force([]);await config('dark','normal');await q.evaluate(({rates,sequence})=>{window.__qaPaint({rates,sequence});document.querySelector('[data-b46-sidebar-row="status-live"]').classList.add('active')},{rates,sequence:++seq});
+ if(device==='pc'){previewSide=await q.evaluate(()=>{const a=document.querySelector('aside.left-rail').cloneNode(true);a.querySelectorAll('a').forEach(e=>{e.removeAttribute('href');e.removeAttribute('target')});return a.outerHTML})}
+ await q.close();
+ }
+ assert.equal(cases.length,12);
+ // Isolated interactive preview: only public static UI snapshot and the tested palette; no production bindings.
+ const previewCss='html,body{margin:0;min-height:100%;font-family:Inter,Arial,sans-serif}body{padding:12px;background:#13271e;color:#edf4ef}html[data-theme="light"] body{background:#edf3ef;color:#21352d}.qa-head{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px;font-size:12px}.qa-head button{background:transparent;color:inherit;border:1px solid #779387;border-radius:7px;padding:8px;cursor:pointer}.qa-shell .dash-shell,.qa-shell .workspace.singlepage{display:block!important;position:relative!important;margin:0!important;padding:0!important;width:100%!important;max-width:none!important;min-width:0!important}.qa-shell .workspace.singlepage > aside.left-rail{display:block!important;position:relative!important;width:268px!important;max-width:100%!important;min-width:0!important;height:calc(100vh - 98px)!important;max-height:none!important;overflow-y:auto!important;visibility:visible!important;transform:none!important;inset:auto!important}.qa-shell .left-rail button,.qa-shell .left-rail a{cursor:pointer}';
+ const page='<!doctype html><html data-theme="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>BALL46 · Numeric colors test</title><link rel="stylesheet" href="/base.css"><link rel="stylesheet" href="/preview.css"><link rel="stylesheet" href="/sidebar-colors.css"></head><body data-workspace-view="live"><div class="qa-head"><strong>BALL46 · COLOR TEST</strong><button id="theme">Light / Dark</button><span>Snapshot · compare number colors; no live records.</span></div><div class="qa-shell"><main class="dash-shell"><section class="workspace singlepage">'+previewSide+'</section></main></div><script>const root=document.documentElement;root.dataset.theme=new URLSearchParams(location.search).get("theme")==="light"?"light":"dark";document.querySelector("#theme").onclick=()=>root.dataset.theme=root.dataset.theme==="dark"?"light":"dark";const rows=[...document.querySelectorAll("aside [data-b46-sidebar-row],aside button[data-league-filter],aside a[data-b46-member-entry=rail]")];for(const e of rows)e.addEventListener("click",ev=>{ev.preventDefault();for(const r of rows)r.classList.remove("active");e.classList.add("active");document.body.dataset.workspaceView=e.hasAttribute("data-stat-market")?"statistics":e.dataset.workspaceView==="signal"?"signal":"live"});</script></body></html>';
+ const proof={mode:'ISOLATED_SIDEBAR_COLORS',cssSha:sha(css),rateSourceSha:sha(source),patchedRateSha:sha(patched),cases:cases.length,productionBefore:before};
+ const files={'/':{body:page,type:'text/html'},'/index.html':{body:page,type:'text/html'},'/base.css':{body:baseCss,type:'text/css'},'/preview.css':{body:previewCss,type:'text/css'},'/sidebar-colors.css':{body:css,type:'text/css'},'/rate-client.js':{body:patched,type:'application/javascript'},'/health':{body:JSON.stringify(proof),type:'application/json'}};
+ const worker='const files='+JSON.stringify(files)+';\nexport default {async fetch(req){const p=new URL(req.url).pathname,f=files[p];if(!["GET","HEAD"].includes(req.method)||!f)return new Response("Test only",{status:404});return new Response(req.method==="HEAD"?null:f.body,{headers:{"Content-Type":f.type+"; charset=utf-8","Cache-Control":"no-store","X-Robots-Tag":"noindex, nofollow","X-Content-Type-Options":"nosniff"}})}};';
+ assert(name!==prod&&name.startsWith('ball46-sidebar-colors-test-'));const list=await api('/scripts');assert(!list.some(w=>w.id===name),'WORKER_EXISTS');const sub=await api('/subdomain');const url='https://'+name+'.'+sub.subdomain+'.workers.dev';
+ const form=new FormData();form.append('metadata',new Blob([JSON.stringify({main_module:'worker.mjs',compatibility_date:'2026-11-18',bindings:[]})],{type:'application/json'}),'metadata.json');form.append('worker.mjs',new Blob([worker],{type:'application/javascript+module'}),'worker.mjs');
+ await api('/scripts/'+name,{method:'PUT',body:form});await api('/scripts/'+name+'/subdomain',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled:true,previews_enabled:false})});
+ let ready=false;for(let i=0;i<25;i++){try{const r=await fetch(url+'/health');if(r.ok&&(await r.json()).cssSha===sha(css)){ready=true;break}}catch{}await new Promise(r=>setTimeout(r,1000))}assert(ready);
+ assert.equal(sha(await (await fetch(url+'/rate-client.js')).text()),sha(patched));assert.equal(sha(await (await fetch(url+'/sidebar-colors.css')).text()),sha(css));
+ for(const [device,width,height]of [['pc',1100,1000],['mobile',390,844]]){const q=await b.newPage();await q.setViewport({width,height,isMobile:device==='mobile',hasTouch:device==='mobile'});await q.goto(url,{waitUntil:'domcontentloaded',timeout:30000});await q.waitForSelector('[data-b46-rate-snapshot="all"]',{visible:true,timeout:15000});for(const theme of ['dark','light']){await q.evaluate(t=>{document.documentElement.dataset.theme=t;document.querySelector('[data-b46-sidebar-row="status-live"]').click()},theme);const check=await q.evaluate(()=>({count:getComputedStyle(document.querySelector('[data-b46-sidebar-row="status-live"]>b')).color,up:getComputedStyle(document.querySelector('[data-b46-rate-snapshot="all"]')).color,down:getComputedStyle(document.querySelector('[data-b46-rate-snapshot="1x2"]')).color}));assert.deepEqual(check,{count:palette[theme].active,up:palette[theme].up,down:palette[theme].down});await q.screenshot({path:'evidence/'+device+'-'+theme+'.png'})}await q.close()}
+ assert.deepEqual(await active(),before,'PRODUCTION_CHANGED');fs.writeFileSync('evidence/report.json',JSON.stringify({url,proof,cases,productionUnchanged:true},null,2));console.log('SIDEBAR_COLORS_PASS '+JSON.stringify({url,cases:cases.length,boundaries:4,productionUnchanged:true,cssSha:sha(css),rateSourceSha:sha(source),patchedRateSha:sha(patched)}));
+}finally{await b.close()}
