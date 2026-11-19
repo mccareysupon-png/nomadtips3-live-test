@@ -1,0 +1,28 @@
+name: BALL46 current production statistics scout
+on:
+  push:
+    branches: [test/ball46-total-single-renderer-20261119]
+    paths: ['.github/workflows/statistics-production-scout-20261119.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install parser
+        run: |
+          npm install --prefix "$RUNNER_TEMP/b46qa" --no-save --no-package-lock acorn
+          echo "ACORN_ENTRY=$(node -p "require.resolve('acorn',{paths:['$RUNNER_TEMP/b46qa']})")" >> "$GITHUB_ENV"
+      - name: Identify current exact owners (read only)
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: node qa/total-single-renderer-20261119/production-scout.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: statistics-production-owner-audit
+          path: audit/
+          retention-days: 3
