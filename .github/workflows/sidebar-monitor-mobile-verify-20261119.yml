@@ -20,7 +20,7 @@ jobs:
         run: |
           npm install --prefix qa/sidebar-monitor-live-20261119/.runtime --no-fund --no-audit playwright@1.55.0
           qa/sidebar-monitor-live-20261119/.runtime/node_modules/.bin/playwright install chromium --only-shell
-      - name: Mobile candidate read-only check
+      - name: Actual mobile drawer read-only check
         run: node qa/sidebar-monitor-live-20261119/mobile-qa.mjs
       - uses: actions/upload-artifact@v4
         if: always()
