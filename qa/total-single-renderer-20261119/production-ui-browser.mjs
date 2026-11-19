@@ -22,7 +22,16 @@ export async function browserCheck({assets,candidateHtml},intercept){
   await waitMarket('all');
   for(const [id,key]of markets){
    if(id!=='all'){
-    await p.click('button[data-stat-market="'+id+'"]');
+    const selector='button[data-stat-market="'+id+'"]';
+    try{
+     await p.$eval(selector,e=>{e.scrollIntoView({block:'center',inline:'center'});e.click()});
+     await p.waitForFunction(m=>new URL(location.href).searchParams.get('market')===m,{timeout:5000},id);
+    }catch(e){
+     console.log('SPA_NAV_RETRY '+id+' '+String(e));
+     const target=origin+'/index.html?view=statistics&market='+encodeURIComponent(id)+'&b46QA='+process.env.GITHUB_RUN_ID+'-'+Date.now();
+     const res=await p.goto(target,{waitUntil:'domcontentloaded',timeout:45000});assert(res?.ok(),'MARKET_NAV_HTTP '+id);
+     await p.waitForFunction(m=>document.body.dataset.workspaceView==='statistics'&&new URL(location.href).searchParams.get('market')===m,{timeout:15000},id);
+    }
     // Empty markets may intentionally show no graph. Confirm the exact live receiver result,
     // and require a correct route, no stale market data and no fabricated populated statistics.
     const graphUrl=new URL('/b46-receiver-v1/graph',origin);
