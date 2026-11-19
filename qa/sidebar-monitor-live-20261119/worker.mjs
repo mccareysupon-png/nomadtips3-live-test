@@ -6,7 +6,7 @@ const monitorScript='<script data-b46-monitor-bridge="1">;('+browserBridge.toStr
 const delay=ms=>new Promise(resolve=>setTimeout(()=>resolve(null),ms));
 const cache=env=>env.B46_MONITOR_CACHE.getByName('receiver-rates-v1');
 const baseCSS='[data-stat-market] > b, [data-stat-market] b { visibility: hidden !important; }';
-const rules='[data-stat-market]{position:relative!important;}[data-stat-market] > span.b46-rate-snapshot-v2{position:absolute!important;inset-inline-end:10px!important;top:50%!important;transform:translateY(-50%)!important;pointer-events:none!important;visibility:visible!important;display:block!important;font-size:11px!important;font-weight:700!important;font-variant-numeric:tabular-nums!important;white-space:nowrap!important;line-height:1.2!important;}';
+const rules='[data-stat-market]{position:relative!important;}[data-stat-market] > span.b46-rate-snapshot-v2{position:absolute!important;inset-inline-end:10px!important;top:50%!important;transform:translateY(-50%)!important;pointer-events:none!important;visibility:visible!important;display:block!important;font-size:10px!important;font-weight:600!important;font-variant-numeric:tabular-nums!important;white-space:nowrap!important;line-height:1.2!important;}';
 export const maskCSS=baseCSS+'\n'+rules;
 function label(key){
  if(!Object.hasOwn(snapshot.rates,key))return '';
