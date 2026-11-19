@@ -1,0 +1,26 @@
+name: BALL46 read-only upstream settings audit
+on:
+  push:
+    branches: [test/ball46-sidebar-spacing-20261119]
+    paths: ['.github/workflows/detection-upstream-audit-20261119.yml']
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Check settings aliases without logging any values
+        run: |
+          node --input-type=module <<'NODE'
+          for (const host of ['https://nomadtips3-engine-343.mccarey-supon.workers.dev','https://nomadtips3-5usd-hub-343.mccarey-supon.workers.dev']) {
+            for (const p of ['/settings','/api/settings','/api/engine/settings']){
+              try{
+                const r=await fetch(host+p,{redirect:'manual',signal:AbortSignal.timeout(10000)});
+                const t=await r.text();let json=false,numbers=0,ruleKeys=0;
+                try{const j=JSON.parse(t);json=true;function walk(x){if(typeof x==='number')numbers++;else if(x&&typeof x==='object')for(const [k,v]of Object.entries(x)){if(/threshold|condition|rule|criteria|min|max|odds|market|setting|config/i.test(k))ruleKeys++;walk(v)}}walk(j)}catch{}
+                console.log('UPSTREAM_AUDIT '+JSON.stringify({host,path:p,status:r.status,json,numbers,ruleKeys}))
+              }catch(e){console.log('UPSTREAM_AUDIT '+JSON.stringify({host,path:p,status:0,error:e.name}))}
+            }
+          }
+          NODE
