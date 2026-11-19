@@ -1,0 +1,23 @@
+name: BALL46 owner-approved detection page closure
+on:
+  push:
+    branches: [test/ball46-sidebar-spacing-20261119]
+    paths: ['.github/workflows/detection-private-production-20261119.yml']
+concurrency:
+  group: ball46-production-deploy
+  cancel-in-progress: false
+permissions:
+  contents: read
+jobs:
+  close:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Close detection page and verify public denial
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          node --check qa/detection-private-20261119/close.mjs
+          node qa/detection-private-20261119/close.mjs
