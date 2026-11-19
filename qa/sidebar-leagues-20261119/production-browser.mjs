@@ -23,12 +23,13 @@ try{
  }
  await nav();await wait(p,true);
  for(const theme of ['dark','light']){
-  await p.evaluate(t=>document.documentElement.dataset.theme=t,theme);
+  await p.evaluate(t=>document.documentElement.dataset.theme=t,theme);await sleep(450);
+  await p.evaluate(t=>document.documentElement.dataset.theme=t,theme);await sleep(350);
   const a=await state(p);assert(a.count>0&&a.toggleCount===1&&a.controls);
   const sample='[data-b46-sidebar-row="stat-all"]';
-  const style=await p.evaluate(sel=>{const e=document.querySelector(sel),s=getComputedStyle(e);return{bg:s.backgroundColor,shadow:s.boxShadow,rate:getComputedStyle(e.querySelector('[data-b46-rate-snapshot]')).color,active:e.classList.contains('active')}},sample);
+  const style=await p.evaluate(sel=>{const e=document.querySelector(sel),s=getComputedStyle(e);return{theme:document.documentElement.dataset.theme,bg:s.backgroundColor,shadow:s.boxShadow,rate:getComputedStyle(e.querySelector('[data-b46-rate-snapshot]')).color,active:e.classList.contains('active')}},sample);
   const expected=theme==='dark'?'rgba(80, 145, 105, 0.22)':'rgba(65, 120, 85, 0.18)';
-  assert(style.active,'ACTIVE_TOTAL_MISSING');assert.equal(style.bg,device==='pc'?expected:'rgba(0, 0, 0, 0)','DEPTH '+device+' '+theme);if(device==='pc')assert.notEqual(style.shadow,'none');
+  assert.equal(style.theme,theme,'THEME_DRIFT');assert(style.active,'ACTIVE_TOTAL_MISSING');assert.equal(style.bg,device==='pc'?expected:'rgba(0, 0, 0, 0)','DEPTH '+device+' '+theme);if(device==='pc')assert.notEqual(style.shadow,'none');
   if(device==='pc'){
    assert(a.button!=='none'&&a.list!=='none');
    await p.$eval(btn,e=>e.click());await wait(p,false);const c=await state(p);assert(c.list==='none'&&c.height===0&&c.cardHeight<a.cardHeight);assert(c.controls&&c.toggleCount===1);assert.deepEqual(c.selected,a.selected);
