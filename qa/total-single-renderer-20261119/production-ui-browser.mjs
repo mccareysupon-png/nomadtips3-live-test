@@ -26,7 +26,7 @@ export async function browserCheck({assets,candidateHtml},intercept){
     // Empty markets may intentionally show no graph. Confirm the exact live receiver result,
     // and require a correct route, no stale market data and no fabricated populated statistics.
     const graphUrl=new URL('/b46-receiver-v1/graph',origin);
-    for(const [k,v]of Object.entries({market:id,variant:'all',filter:'all',range:'all'}))graphUrl.searchParams.set(k,v);
+    for(const [k,v]of Object.entries({market:key,variant:'all',filter:'all',range:'all'}))graphUrl.searchParams.set(k,v);
     const gr=await fetch(graphUrl,{headers:{'Cache-Control':'no-cache'},signal:AbortSignal.timeout(15000)});
     const raw=gr.ok?await gr.json():null;
     const empty=raw?.ok===true&&raw.source==='RECEIVER'&&raw.summary?.rows===0&&raw.summary?.wins===0&&raw.summary?.pushes===0&&raw.summary?.losses===0;
