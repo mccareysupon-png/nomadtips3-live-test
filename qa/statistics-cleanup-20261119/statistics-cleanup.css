@@ -1,0 +1,24 @@
+/* Statistics only; keep the title/filter DOM for routing; do not render its redundant hero. */
+html[data-theme] body[data-workspace-view="statistics"] .workspace.singlepage .sp-stats-content .sp-stat-hero {
+  display:none!important;
+}
+/* Desktop table and mobile history. Only live-clock result badges. */
+html[data-theme="dark"] body[data-workspace-view="statistics"] {--b46-stat-live-red:#ff6779;}
+html[data-theme="light"] body[data-workspace-view="statistics"] {--b46-stat-live-red:#c73649;}
+html[data-theme] body[data-workspace-view="statistics"] .workspace.singlepage .b46-sc-result.b46-sc-live {
+  color:var(--b46-stat-live-red)!important;
+  background:transparent!important;
+  background-image:none!important;
+  border-color:transparent!important;
+  box-shadow:none!important;
+  text-shadow:none!important;
+}
+html[data-theme] body[data-workspace-view="statistics"] .workspace.singlepage .b46-sc-result.b46-sc-live :is(.b46-sc-minute,.b46-sc-mark) {
+  color:var(--b46-stat-live-red)!important;
+  text-shadow:none!important;
+}
+html[data-theme] body[data-workspace-view="statistics"] .workspace.singlepage .b46-sc-result.b46-sc-live .b46-sc-dot {
+  color:var(--b46-stat-live-red)!important;
+  background:var(--b46-stat-live-red)!important;
+  box-shadow:none!important;
+}
