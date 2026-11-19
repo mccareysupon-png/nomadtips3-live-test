@@ -69,8 +69,8 @@ jobs:
               console.log('MAIN_CARD_OBSERVED '+JSON.stringify({mobile,...observed}));
               // Check singular/plural independently using a local DOM fixture; never submit synthetic data remotely.
               await p.evaluate(()=>{const f=document.createElement('section');f.id='qa-wording-fixture';f.innerHTML='<div>OVER / UNDER <span>SIGNAL</span></div><div>1 Signal</div><div>2 Signals</div><div>3 Signals</div><div class="featured"><span>FEATURED SIGNAL</span><span>MATCH FACTS</span><span>ACTIVE SIGNALS</span><span>Signal 56′</span><span>1 Signal</span></div>';document.body.append(f)});
-              await p.waitForFunction(()=>document.querySelector('#qa-wording-fixture')?.textContent.includes('3 Predictions'));
-              const test=await p.locator('#qa-wording-fixture').innerText();assert(test.includes('1 Prediction')&&test.includes('2 Predictions')&&test.includes('3 Predictions')&&test.includes('1 Signal')&&test.includes('FEATURED LIVE PREDICTION')&&test.includes('ACTIVE PREDICTIONS')&&test.includes('Prediction 56′'));
+              await p.waitForFunction(()=>{const t=document.querySelector('#qa-wording-fixture')?.textContent||'';return t.includes('3 Predictions')&&t.includes('FEATURED LIVE PREDICTION')&&t.includes('Prediction 56′')});
+              const test=await p.locator('#qa-wording-fixture').textContent(); console.log('FIXTURE_WORDING '+JSON.stringify(test));assert(test.includes('1 Prediction')&&test.includes('2 Predictions')&&test.includes('3 Predictions')&&test.includes('1 Signal')&&test.includes('FEATURED LIVE PREDICTION')&&test.includes('ACTIVE PREDICTIONS')&&test.includes('Prediction 56′'));
               await p.locator('#qa-wording-fixture').evaluate(e=>e.remove());
               assert.deepEqual(errors,[]);
               await p.screenshot({path:process.env.RUNNER_TEMP+'/prediction-proof/'+(mobile?'mobile':'pc')+'.png',fullPage:false});
@@ -98,3 +98,5 @@ jobs:
           name: prediction-card-proof
           path: ${{ runner.temp }}/prediction-proof
           if-no-files-found: ignore
+
+# Featured wording retry 20261119
