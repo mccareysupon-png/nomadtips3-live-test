@@ -1,17 +1,19 @@
 // Mask only the original sidebar number; never touch scripts, data, DOM nodes or click handlers.
 import {snapshot} from './snapshot.mjs';
+import {typography} from './typography.mjs';
+const fontCSS='font-size:'+typography.size+'!important;font-weight:'+typography.weight+'!important;font-family:'+typography.family+'!important;';
 import {browserBridge,valid} from './monitor.mjs';
 export {MonitorRateCache} from './monitor.mjs';
 const monitorScript='<script data-b46-monitor-bridge="1">;('+browserBridge.toString()+')();</script>';
 const delay=ms=>new Promise(resolve=>setTimeout(()=>resolve(null),ms));
 const cache=env=>env.B46_MONITOR_CACHE.getByName('receiver-rates-v1');
 const baseCSS='[data-stat-market] > b, [data-stat-market] b { visibility: hidden !important; }';
-const rules='[data-stat-market]{position:relative!important;}[data-stat-market] > span.b46-rate-snapshot-v2{position:absolute!important;inset-inline-end:10px!important;top:50%!important;transform:translateY(-50%)!important;pointer-events:none!important;visibility:visible!important;display:block!important;font-size:10px!important;font-weight:600!important;font-variant-numeric:tabular-nums!important;white-space:nowrap!important;line-height:1.2!important;}';
+const rules='[data-stat-market]{position:relative!important;}[data-stat-market] > span.b46-rate-snapshot-v2{position:absolute!important;inset-inline-end:10px!important;top:50%!important;transform:translateY(-50%)!important;pointer-events:none!important;visibility:visible!important;display:block!important;'+fontCSS+'font-variant-numeric:tabular-nums!important;white-space:nowrap!important;line-height:1.2!important;}';
 export const maskCSS=baseCSS+'\n'+rules;
 function label(key){
  if(!Object.hasOwn(snapshot.rates,key))return '';
  const v=snapshot.rates[key],text=v===null?'—':v.toFixed(2)+'%',tone=v===null?'inherit':v>50?'#168b57':v<50?'#d54b60':'#ba8b20';
- return '<span class="b46-rate-snapshot-v2" data-b46-rate-snapshot="'+key+'" title="Opening snapshot; waiting for native graph refresh" style="color:'+tone+'!important">'+text+'</span>';
+ return '<span class="b46-rate-snapshot-v2" data-b46-rate-snapshot="'+key+'" title="Opening snapshot; waiting for native graph refresh" style="color:'+tone+'!important;'+fontCSS.replace(/"/g,'&quot;')+'">'+text+'</span>';
 }
 const name='ball46-sidebar-monitor-live-test-20261119',origin='https://ball46.com';
 const paths=new Set(['/api/engine/statistics','/api/engine/board','/api/engine/signals','/api/engine/health','/api/hub/snapshot','/api/hub/health','/api/prediction-vote','/b46-receiver-v1/graph']);
@@ -22,7 +24,7 @@ export default {async fetch(req,env,ctx){
  if(!['GET','HEAD'].includes(req.method))return reply({ok:false,error:'READ_ONLY'},405);
  if(u.pathname==='/_mask_health'){
  let current=null;try{const r=await cache(env).fetch('https://monitor.internal/cached');current=await r.json()}catch{}
- return reply({ok:true,name,mode:'LIVE_MONITOR_TEST',selector:maskCSS,snapshot,current,extraBrowserDataRequests:0});
+ return reply({ok:true,name,mode:'LIVE_MONITOR_TEST',selector:maskCSS,typography,snapshot,current,extraBrowserDataRequests:0});
  }
  if(!pagePaths.has(u.pathname)&&!paths.has(u.pathname)&&!( /^\/[a-zA-Z0-9_./-]+\.(js|mjs|css|svg|png|gif|woff2?|ico|jpe?g|webp|json|html|txt|map|avif)$/i.test(u.pathname)&&!/^\/(?:api|b46-receiver-v1|admin|internal)\//.test(u.pathname)))return reply({ok:false,error:'PATH_NOT_ALLOWED'},404);
  const enabled=u.searchParams.get('b46_mask')!=='0';
