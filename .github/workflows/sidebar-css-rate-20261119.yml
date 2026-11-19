@@ -54,7 +54,7 @@ jobs:
           const h=JSON.parse(await read('/_mask_health'));assert.equal(h.mode,'CSS_RATE_SNAPSHOT');assert.equal(Object.keys(h.snapshot.rates).length,8);
           const clean=await read('/index.html?view=statistics&b46_mask=0'),masked=await read('/index.html?view=statistics');
           const tag='<style id="b46-css-only-mask">'+h.selector+'</style>';
-          assert(!clean.includes(tag));assert(masked.includes(tag));
+          assert(!clean.includes(tag));assert(masked.includes(tag));assert.equal((masked.match(/data-b46-rate-snapshot=/g)||[]).length,8,'STATIC_LABEL_COVERAGE');
           const scripts=s=>[...s.matchAll(/<script\b[^>]*>[\s\S]*?<\/script>/gi)].map(m=>m[0]);
           assert.deepEqual(scripts(masked),scripts(clean),'HTML_SCRIPT_DRIFT');
           for(const p of ['/singlepage-workspace-343.js','/longterm-performance-343.js']){
@@ -87,7 +87,7 @@ jobs:
              await p.waitForFunction(()=>document.querySelectorAll('[data-stat-market] b').length>=8,null,{timeout:35000});
              await p.waitForFunction(()=>[...document.querySelectorAll('[data-sp-table-body] tr')].some(r=>r.cells.length>=4),null,{timeout:90000});
              let checked=0;
-             const labels=await p.evaluate(()=>[...document.querySelectorAll('[data-stat-market]')].map(b=>({market:b.dataset.statMarket,label:getComputedStyle(b,'::after').content,hidden:getComputedStyle(b.querySelector('b')).visibility==='hidden'})));assert.equal(labels.length,8);for(const l of labels){assert.equal(l.label,JSON.stringify(rateLabels[l.market]),'WR_LABEL '+l.market);assert(l.hidden)};console.log('ALL_8_RATE_LABELS '+JSON.stringify({mobile,labels}));
+             const labels=await p.evaluate(()=>[...document.querySelectorAll('[data-stat-market]')].map(b=>({market:b.dataset.statMarket,label:b.querySelector('.b46-rate-snapshot-v2')?.textContent,shown:!!b.querySelector('.b46-rate-snapshot-v2')?.getClientRects().length,hidden:getComputedStyle(b.querySelector('b')).visibility==='hidden'})));assert.equal(labels.length,8);for(const l of labels){assert.equal(l.label,rateLabels[l.market],'WR_LABEL '+l.market);assert(l.hidden);if(!mobile)assert(l.shown,'WR_LABEL_NOT_VISIBLE '+l.market)};console.log('ALL_8_RATE_LABELS '+JSON.stringify({mobile,labels}));
              for(const market of ['all','1x2','ah','ou','corners','btts','cards','other']){
               const b=p.locator('[data-stat-market="'+market+'"]').first();
               if(!await b.isVisible()){console.log('MARKET_NOT_VISIBLE '+market+' '+mobile);continue}
