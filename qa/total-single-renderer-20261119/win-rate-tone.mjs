@@ -20,14 +20,15 @@ export function patchRate({finance,visual,fast}){
  fast=fast.replaceAll("else strong.textContent=value;","else strong.textContent=value;if(key==='rate')strong.dataset.b46RateTone=b46RateTone(value);");
  return {finance,visual,fast};
 }
+export function patchNativeHtml(html){return once(html,"if(['WIN','WIN RATE'].includes(label))tone='green';","if(label==='WIN')tone='green';else if(label==='WIN RATE'){const n=/^\\d+(?:\\.\\d+)?%$/.test(value)?parseFloat(value):NaN;tone=Number.isFinite(n)?n>50?'green':n===50?'yellow':'red':'white';}")}
 export const rateCSS=String.raw`
 /* WIN RATE only: compare the actual displayed percentage. Same semantic palette as W D L. */
-html[data-theme] body[data-workspace-view="statistics"] #b46-finance-chart-card [data-b46-rate-tone="green"],
+html[data-theme] body[data-workspace-view="statistics"] #b46-finance-chart-card[data-f46-visual] .f46-overview [data-b46-rate-tone="green"],
 html[data-theme] body[data-workspace-view="statistics"] #b46-fast-v1-preview [data-b46-rate-tone="green"]{color:var(--b46-wdl-win)!important}
-html[data-theme] body[data-workspace-view="statistics"] #b46-finance-chart-card [data-b46-rate-tone="yellow"],
+html[data-theme] body[data-workspace-view="statistics"] #b46-finance-chart-card[data-f46-visual] .f46-overview [data-b46-rate-tone="yellow"],
 html[data-theme] body[data-workspace-view="statistics"] #b46-fast-v1-preview [data-b46-rate-tone="yellow"]{color:var(--b46-wdl-draw)!important}
-html[data-theme] body[data-workspace-view="statistics"] #b46-finance-chart-card [data-b46-rate-tone="red"],
+html[data-theme] body[data-workspace-view="statistics"] #b46-finance-chart-card[data-f46-visual] .f46-overview [data-b46-rate-tone="red"],
 html[data-theme] body[data-workspace-view="statistics"] #b46-fast-v1-preview [data-b46-rate-tone="red"]{color:var(--b46-wdl-loss)!important}
-html[data-theme] body[data-workspace-view="statistics"] #b46-finance-chart-card [data-b46-rate-tone="neutral"],
+html[data-theme] body[data-workspace-view="statistics"] #b46-finance-chart-card[data-f46-visual] .f46-overview [data-b46-rate-tone="neutral"],
 html[data-theme] body[data-workspace-view="statistics"] #b46-fast-v1-preview [data-b46-rate-tone="neutral"]{color:var(--f46-muted,#91aea0)!important}
 `;
