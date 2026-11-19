@@ -1,0 +1,30 @@
+name: BALL46 shared card renderer read-only inspection
+on:
+  push:
+    branches: [test/ball46-live-prediction-card-20261119]
+    paths: ['.github/workflows/inspect-prediction-renderer-20261119.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Read public active frontend only
+        run: |
+          node --input-type=module <<'EOF'
+          const base='https://ball46-production.mccarey-supon.workers.dev';
+          const read=async p=>{const r=await fetch(base+p,{signal:AbortSignal.timeout(30000)});if(!r.ok)throw Error(p+' '+r.status);return r.text()};
+          const html=await read('/index.html');
+          const files=[...new Set([...html.matchAll(/<script[^>]+src=["']([^"']+)["']/gi)].map(m=>new URL(m[1],base)).filter(u=>u.origin===base||u.hostname==='ball46.com').map(u=>u.pathname+u.search))];
+          console.log('FILES '+JSON.stringify(files));
+          for(const p of ['/index.html',...files]){
+            const s=p==='/index.html'?html:await read(p).catch(e=>{console.log(String(e));return ''});
+            for(const re of [/FEATURED SIGNAL/gi,/ACTIVE SIGNALS/gi,/data-inline-signal-count/gi,/OVER\s*\/\s*UNDER/gi,/\bSignal\s*['"`]/g,/\bSignals\b/g]){
+              let count=0;for(const m of s.matchAll(re)){if(count++>=12)break;console.log('MATCH '+JSON.stringify({p,needle:m[0],i:m.index,context:s.slice(Math.max(0,m.index-350),m.index+420)}))}
+            }
+          }
+          EOF
