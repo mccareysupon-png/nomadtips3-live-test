@@ -11,14 +11,17 @@ function update(root){
  for(const n of list){
   const e=n.parentElement;if(!e||e.closest('script,style,textarea,template'))continue;
   const t=n.nodeValue.trim();
-  // Exact labels unique to the Featured Match panel; never rename data keys.
-  if(t==='FEATURED SIGNAL'||t==='ACTIVE SIGNALS'){
-   n.nodeValue=n.nodeValue.replace(t,t==='FEATURED SIGNAL'?'FEATURED LIVE PREDICTION':'ACTIVE PREDICTIONS');continue;
+  // Featured panel text only. Match visible words regardless of CSS capitalization.
+  if(/^featured signal$/i.test(t)||/^active signals$/i.test(t)){
+   const v=/^featured/i.test(t)?'FEATURED LIVE PREDICTION':'ACTIVE PREDICTIONS';
+   if(n.nodeValue!==n.nodeValue.replace(t,v))n.nodeValue=n.nodeValue.replace(t,v);continue;
   }
-  if(/^Signal\s+\d+(?:\+\d+)?\s*['’′]$/i.test(t)){
-   let p=e,inside=false;
-   for(let i=0;p&&i<12;i++,p=p.parentElement){if(p.textContent.length<12000&&/ACTIVE (?:SIGNALS|PREDICTIONS)/.test(p.textContent)&&/MATCH FACTS/.test(p.textContent)){inside=true;break}}
-   if(inside){n.nodeValue=n.nodeValue.replace(/Signal/i,'Prediction');continue}
+  if(/^Signal(?:\s+\d+(?:\+\d+)?)?\s*['’′]?\s*$/i.test(t)){
+   let p=e,inside=!!e.closest('[class*="featured" i],[id*="featured" i]');
+   for(let i=0;!inside&&p&&i<12;i++,p=p.parentElement){
+    if(p.textContent.length<12000&&/ACTIVE\s*(?:SIGNALS|PREDICTIONS)/i.test(p.textContent)&&/MATCH\s*FACTS/i.test(p.textContent))inside=true;
+   }
+   if(inside&&t!=='SIGNAL'){n.nodeValue=n.nodeValue.replace(/Signal/i,'Prediction');continue}
   }
   if(excluded(e))continue;
   if(t==='SIGNAL'){
