@@ -1,0 +1,142 @@
+name: BALL46 CSS mask - verify deployed Worker
+on:
+  push:
+    branches: [test/ball46-sidebar-css-only-20261119]
+    paths: ['.github/workflows/sidebar-css-only-verify-20261119.yml']
+permissions:
+  contents: read
+jobs:
+  stage:
+    if: github.ref == 'refs/heads/test/ball46-sidebar-css-only-20261119'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Read Production baseline without deploying
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          node --check qa/sidebar-css-only-20261119/worker.mjs
+          cat > qa/sidebar-css-only-20261119/wrangler.toml <<'EOF'
+          name = "ball46-sidebar-css-only-test-20261119"
+          main = "worker.mjs"
+          compatibility_date = "2026-11-19"
+          workers_dev = true
+          preview_urls = false
+          [[services]]
+          binding = "B46_PRODUCTION_READ"
+          service = "ball46-production"
+          EOF
+          node --input-type=module <<'EOF'
+          import assert from 'node:assert/strict';
+          import {writeFile} from 'node:fs/promises';
+          const a=process.env.CLOUDFLARE_ACCOUNT_ID,t=process.env.CLOUDFLARE_API_TOKEN;
+          assert(a&&t);
+          const r=await fetch('https://api.cloudflare.com/client/v4/accounts/'+a+'/workers/scripts/ball46-production/deployments?per_page=1',{headers:{authorization:'Bearer '+t}});
+          const j=await r.json();assert(j.success);
+          await writeFile(process.env.RUNNER_TEMP+'/production-before.json',JSON.stringify(j.result.deployments[0].versions));
+          EOF
+      - name: Check HTML and unchanged scripts
+        run: |
+          node --input-type=module <<'EOF'
+          import assert from 'node:assert/strict';
+          import {createHash} from 'node:crypto';
+          const base='https://ball46-sidebar-css-only-test-20261119.mccarey-supon.workers.dev';
+          const read=async p=>{let status=0;for(let i=0;i<12;i++){const r=await fetch(base+p,{signal:AbortSignal.timeout(40000)});status=r.status;if(status===200)return r.text();await new Promise(resolve=>setTimeout(resolve,2000))}assert.equal(status,200,p)};
+          const h=JSON.parse(await read('/_mask_health'));assert.equal(h.mode,'CSS_ONLY');
+          const clean=await read('/index.html?view=statistics&b46_mask=0'),masked=await read('/index.html?view=statistics');
+          const tag='<style id="b46-css-only-mask">'+h.selector+'</style>';
+          assert(!clean.includes(tag));assert(masked.includes(tag));
+          const scripts=s=>[...s.matchAll(/<script\b[^>]*>[\s\S]*?<\/script>/gi)].map(m=>m[0]);
+          assert.deepEqual(scripts(masked),scripts(clean),'HTML_SCRIPT_DRIFT');
+          for(const p of ['/singlepage-workspace-343.js','/longterm-performance-343.js']){
+            const a=await read(p+'?b46_mask=0'),b=await read(p);
+            assert.equal(createHash('sha256').update(a).digest('hex'),createHash('sha256').update(b).digest('hex'),'SCRIPT_DRIFT');
+          }
+          assert.equal((await fetch(base+'/_mask_health',{method:'POST'})).status,405);
+          console.log('CSS_MASK_SOURCE_PASS '+base);
+          EOF
+      - name: Browser check rows and native DOM
+        run: |
+          npm install --prefix qa/sidebar-css-only-20261119/.runtime --no-fund --no-audit playwright@1.55.0
+          qa/sidebar-css-only-20261119/.runtime/node_modules/.bin/playwright install chromium --only-shell
+          mkdir -p "$RUNNER_TEMP/css-mask-proof"
+          node --input-type=module <<'EOF'
+          import assert from 'node:assert/strict';
+          import {createRequire} from 'node:module';
+          const {chromium}=createRequire(process.cwd()+'/qa/sidebar-css-only-20261119/.runtime/package.json')('playwright');
+          const origin='https://ball46-sidebar-css-only-test-20261119.mccarey-supon.workers.dev',out=process.env.RUNNER_TEMP+'/css-mask-proof';
+          const browser=await chromium.launch({headless:true});
+          try{
+           for(const mobile of [false,true]){
+            const c=await browser.newContext({viewport:{width:mobile?390:1440,height:mobile?844:950},isMobile:mobile,hasTouch:mobile,serviceWorkers:'block'});
+            await c.route('**/*',r=>['GET','HEAD'].includes(r.request().method())?r.continue():r.abort());
+            const p=await c.newPage(),errors=[],net=[];
+            p.on('pageerror',e=>errors.push(e.message));p.on('response',r=>{const q=new URL(r.url());if(q.pathname.includes('/api/')||q.pathname.includes('/b46-receiver-v1/'))net.push({path:q.pathname,status:r.status()})});
+            try{
+             await p.goto(origin+'/index.html?view=statistics',{waitUntil:'domcontentloaded',timeout:60000});
+             await p.waitForFunction(()=>document.querySelectorAll('[data-stat-market] b').length>=8,null,{timeout:35000});
+             await p.waitForFunction(()=>[...document.querySelectorAll('[data-sp-table-body] tr')].some(r=>r.cells.length>=4),null,{timeout:90000});
+             let checked=0;
+             for(const market of ['all','1x2','ah','ou','corners','btts','cards','other']){
+              const b=p.locator('[data-stat-market="'+market+'"]').first();
+              if(!await b.isVisible()){console.log('MARKET_NOT_VISIBLE '+market+' '+mobile);continue}
+              await b.click();
+              await p.waitForTimeout(500);
+              const result=await p.evaluate(m=>{
+               const style=document.getElementById('b46-css-only-mask');
+               if(!style)throw Error('MASK_MISSING');
+               const nav=()=>[...document.querySelectorAll('[data-stat-market] b')];
+               const rows=()=>[...document.querySelectorAll('[data-sp-table-body] tr')].filter(r=>r.cells.length>=4);
+               const chart=document.querySelector('#b46-finance-chart-card'),nodes=rows(),nums=nav();
+               const prev=style.disabled;style.disabled=true;
+               const before={counts:nums.map(n=>n.textContent),rows:nodes.map(r=>({text:r.textContent,visible:!!r.getClientRects().length})),graph:chart?.textContent};
+               style.disabled=false;
+               const after={counts:nav().map(n=>n.textContent),rows:rows().map(r=>({text:r.textContent,visible:!!r.getClientRects().length})),graph:document.querySelector('#b46-finance-chart-card')?.textContent};
+               const mask=nav().every(n=>getComputedStyle(n).visibility==='hidden'),sameRows=nodes.every((r,i)=>rows()[i]===r),sameNumbers=nums.every((n,i)=>nav()[i]===n);
+               style.disabled=prev;
+               return {market:m,before,after,mask,sameRows,sameNumbers,active:document.querySelector('[data-stat-market].active')?.dataset.statMarket};
+              },market);
+              assert.deepEqual(result.after,result.before,'DATA_OR_RENDER_CHANGED '+market);
+              assert(result.mask&&result.sameRows&&result.sameNumbers,'MASK_OR_IDENTITY '+market);
+              assert.equal(result.active,market,'NAVIGATION '+market);
+              checked++;
+              console.log('MARKET_MASK_PASS '+JSON.stringify({mobile,market,rows:result.before.rows.length,counts:result.before.counts,mask:result.mask}));
+              if(market==='all'||market==='ah')await p.screenshot({path:out+'/'+(mobile?'mobile':'pc')+'-'+market+'.png',fullPage:true});
+             }
+             assert.equal(checked,8,'MARKET_COVERAGE');assert.equal(errors.length,0,JSON.stringify(errors));
+            }catch(e){
+             console.log('BROWSER_FAILURE '+JSON.stringify({mobile,error:e.message,url:p.url(),errors,net:net.slice(-30),dom:await p.evaluate(()=>({title:document.title,body:document.body?.innerText?.slice(0,600),nav:document.querySelectorAll('[data-stat-market]').length,rows:document.querySelectorAll('[data-sp-table-body] tr').length,mask:!!document.getElementById('b46-css-only-mask')}))}));
+             await p.screenshot({path:out+'/'+(mobile?'mobile':'pc')+'-failure.png',fullPage:true}).catch(()=>{});
+             throw e;
+            }finally{await c.close()}
+           }
+          }finally{await browser.close()}
+          EOF
+      - name: Confirm Production active version unchanged
+        if: always()
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          node --input-type=module <<'EOF'
+          import assert from 'node:assert/strict';
+          import {readFile} from 'node:fs/promises';
+          const a=process.env.CLOUDFLARE_ACCOUNT_ID,t=process.env.CLOUDFLARE_API_TOKEN;
+          const r=await fetch('https://api.cloudflare.com/client/v4/accounts/'+a+'/workers/scripts/ball46-production/deployments?per_page=1',{headers:{authorization:'Bearer '+t}});
+          const j=await r.json();assert(j.success);
+          assert.deepEqual(j.result.deployments[0].versions,JSON.parse(await readFile(process.env.RUNNER_TEMP+'/production-before.json','utf8')));
+          console.log('PRODUCTION_UNCHANGED');
+          EOF
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: css-mask-proof
+          path: ${{ runner.temp }}/css-mask-proof
+          if-no-files-found: ignore
