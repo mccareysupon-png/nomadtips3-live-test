@@ -24,8 +24,12 @@ try{
   const rows=()=>[...side.querySelectorAll('[data-b46-sidebar-row]')];
   const old=rows().map(e=>[e.dataset.b46SidebarRow,e.textContent.trim()]);
   const locate=k=>side.querySelector('[data-b46-sidebar-row="'+k+'"]');
-  const signal=locate('status-signal'),upcoming=locate('status-upcoming'),other=locate('stat-other'),all=locate('stat-all');
-  if(!signal||!upcoming||!other||!all)throw Error('NATIVE_ROW_MISSING');
+  const signal=locate('status-signal'),other=locate('stat-other');
+  const exactLabel=(e)=>e?.querySelector(':scope > span:first-child')?.textContent.trim()||'';
+  const upcoming=locate('status-upcoming')||rows().find(e=>/^upcoming$/i.test(exactLabel(e)))||signal?.nextElementSibling;
+  const all=locate('stat-all')||rows().find(e=>e.dataset.b46SidebarRow.startsWith('stat-')&&/^all matches$/i.test(exactLabel(e)));
+  if(!signal||!upcoming||!other||!all||!/^upcoming/i.test(upcoming.textContent.trim())||signal.nextElementSibling!==upcoming)throw Error('NATIVE_ROW_MISSING '+JSON.stringify(old));
+  upcoming.dataset.pmUpcoming='1';
   function make(src,key,label,count){
    const e=src.cloneNode(false);e.removeAttribute('id');for(const a of [...e.attributes])if(a.name.startsWith('data-')||a.name.startsWith('aria-')||a.name.startsWith('on')||a.name==='href')e.removeAttribute(a.name);
    e.classList.remove('active');e.classList.add('prematch-preview-row');e.setAttribute('type','button');e.dataset.b46SidebarRow=key;e.dataset.pm=key;
@@ -64,7 +68,7 @@ try{
    await q.evaluate(t=>document.documentElement.dataset.theme=t,theme);
    await q.evaluate(()=>document.querySelector('[data-pm="status-prematch"]').click());
    const out=await q.evaluate(()=>{
-    const a=document.querySelector('[data-b46-sidebar-row="status-signal"]'),b=document.querySelector('[data-pm="status-prematch"]'),c=document.querySelector('[data-b46-sidebar-row="status-upcoming"]');
+    const a=document.querySelector('[data-b46-sidebar-row="status-signal"]'),b=document.querySelector('[data-pm="status-prematch"]'),c=document.querySelector('[data-pm-upcoming="1"]');
     const r=[...document.querySelectorAll('.pm-pick')].map(x=>{const d=x.getBoundingClientRect();return {top:d.top,bottom:d.bottom,width:d.width,height:d.height}});
     return {order:a.nextElementSibling===b&&b.nextElementSibling===c,stat:[...document.querySelectorAll('.pm-stat-group [data-pm]')].map(e=>e.textContent.trim()),active:b.classList.contains('active'),title:document.querySelector('#pm-title').textContent,overlap:r[0].bottom>r[1].top,picks:r,overflow:document.documentElement.scrollWidth>innerWidth};
    });assert(out.order&&out.active&&!out.overlap&&!out.overflow&&out.picks.every(x=>x.height>0)&&out.stat.length===3,JSON.stringify(out));
