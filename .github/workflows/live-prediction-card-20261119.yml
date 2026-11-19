@@ -53,7 +53,7 @@ jobs:
           const {chromium,devices}=createRequire(process.cwd()+'/qa/live-prediction-card-20261119/.runtime/package.json')('playwright');
           const base='https://ball46-live-prediction-card-test-20261119.mccarey-supon.workers.dev';
           let health;for(let i=0;i<15;i++){try{const r=await fetch(base+'/_prediction_test_health');if(r.ok){health=await r.json();break}}catch{}await new Promise(r=>setTimeout(r,2000))}
-          assert.equal(health?.scope,'MAIN_CARD_ONLY');
+          assert.equal(health?.scope,'MAIN_CARD_AND_FEATURED');
           const script=await fetch(base+'/_prediction-card-test.js');assert(script.ok);new Function(await script.text());
           assert.equal((await fetch(base+'/_prediction_test_health',{method:'POST'})).status,405);
           const browser=await chromium.launch({headless:true});
@@ -63,13 +63,14 @@ jobs:
             await p.route('**/*',r=>['GET','HEAD'].includes(r.request().method())?r.continue():r.abort());
             try{
               await p.goto(base+'/',{waitUntil:'domcontentloaded',timeout:60000});
-              await p.waitForFunction(()=>[...document.querySelectorAll('body *')].some(e=>e.childElementCount===0&&e.textContent.trim()==='LIVE PREDICTION'&&e.getClientRects().length),null,{timeout:90000});
+              await p.waitForFunction(()=>document.body.innerText.length>100,null,{timeout:90000});
+              await p.waitForTimeout(8000);
               const observed=await p.evaluate(()=>({headers:[...document.querySelectorAll('body *')].filter(e=>e.childElementCount===0&&e.textContent.trim()==='LIVE PREDICTION'&&e.getClientRects().length).length,badges:[...document.querySelectorAll('body *')].filter(e=>e.childElementCount===0&&/^(?:[•·]\\s*)?\\d+\\s+Predictions?$/.test(e.textContent.trim())&&e.getClientRects().length).map(e=>e.textContent.trim())}));
               console.log('MAIN_CARD_OBSERVED '+JSON.stringify({mobile,...observed}));
               // Check singular/plural independently using a local DOM fixture; never submit synthetic data remotely.
-              await p.evaluate(()=>{const f=document.createElement('section');f.id='qa-wording-fixture';f.innerHTML='<div>OVER / UNDER <span>SIGNAL</span></div><div>1 Signal</div><div>2 Signals</div><div>3 Signals</div><div class="featured"><span>1 Signal</span></div>';document.body.append(f)});
+              await p.evaluate(()=>{const f=document.createElement('section');f.id='qa-wording-fixture';f.innerHTML='<div>OVER / UNDER <span>SIGNAL</span></div><div>1 Signal</div><div>2 Signals</div><div>3 Signals</div><div class="featured"><span>FEATURED SIGNAL</span><span>MATCH FACTS</span><span>ACTIVE SIGNALS</span><span>Signal 56′</span><span>1 Signal</span></div>';document.body.append(f)});
               await p.waitForFunction(()=>document.querySelector('#qa-wording-fixture')?.textContent.includes('3 Predictions'));
-              const test=await p.locator('#qa-wording-fixture').innerText();assert(test.includes('1 Prediction')&&test.includes('2 Predictions')&&test.includes('3 Predictions')&&test.includes('1 Signal'));
+              const test=await p.locator('#qa-wording-fixture').innerText();assert(test.includes('1 Prediction')&&test.includes('2 Predictions')&&test.includes('3 Predictions')&&test.includes('1 Signal')&&test.includes('FEATURED LIVE PREDICTION')&&test.includes('ACTIVE PREDICTIONS')&&test.includes('Prediction 56′'));
               await p.locator('#qa-wording-fixture').evaluate(e=>e.remove());
               assert.deepEqual(errors,[]);
               await p.screenshot({path:process.env.RUNNER_TEMP+'/prediction-proof/'+(mobile?'mobile':'pc')+'.png',fullPage:false});
