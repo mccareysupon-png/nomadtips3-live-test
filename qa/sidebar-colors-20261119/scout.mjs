@@ -1,0 +1,7 @@
+import {pathToFileURL} from 'node:url';
+const puppeteer=(await import(pathToFileURL(process.env.PUPPETEER_ENTRY).href)).default;
+const b=await puppeteer.launch({executablePath:process.env.CHROME_PATH,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
+try{const p=await b.newPage();await p.goto('https://ball46.com/index.html?view=statistics&market=all',{waitUntil:'domcontentloaded',timeout:45000});await p.waitForSelector('[data-b46-rate-snapshot="all"]',{timeout:30000});await new Promise(r=>setTimeout(r,1800));
+const j=await p.evaluate(()=>{const rate=[...document.querySelectorAll('[data-b46-rate-snapshot]')].map(e=>e.outerHTML);const scripts=[...document.scripts].map(e=>({src:e.src,inline:e.src?'':e.textContent}));return {rate,scripts:scripts.map(s=>s.src?{src:s.src}:{matches:s.inline.includes('b46-rate-snapshot')?s.inline.slice(Math.max(0,s.inline.indexOf('b46-rate-snapshot')-800),s.inline.indexOf('b46-rate-snapshot')+2500):''}).filter(x=>x.src||x.matches)}});
+console.log('RATES '+JSON.stringify(j.rate));for(const s of j.scripts){if(s.matches)console.log('INLINE '+s.matches);if(!s.src||!s.src.startsWith('https://ball46.com/'))continue;const r=await fetch(s.src,{signal:AbortSignal.timeout(15000)}).catch(()=>null);if(!r?.ok)continue;const t=await r.text();if(t.includes('b46-rate-snapshot')){const matches=[...t.matchAll(/b46-rate-snapshot|rgb\(22,\s*139,\s*87\)|#168b57/gi)].slice(0,15).map(m=>t.slice(Math.max(0,m.index-400),m.index+650));console.log('RATE_SOURCE '+JSON.stringify({url:s.src,matches}));}}
+}finally{await b.close()}
