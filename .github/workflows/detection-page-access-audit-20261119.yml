@@ -1,0 +1,24 @@
+name: BALL46 anonymous page access audit
+on:
+  push:
+    branches: [test/ball46-sidebar-spacing-20261119]
+    paths: ['.github/workflows/detection-page-access-audit-20261119.yml']
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Anonymous HTTP read only, never log response content
+        run: |
+          node --input-type=module <<'NODE'
+          import crypto from 'node:crypto';
+          for(const path of ['/detection-test.html','/detection-test.html?audit='+process.env.GITHUB_RUN_ID]){
+            try{
+              const r=await fetch('https://ball46.com'+path,{redirect:'manual',headers:{'Cache-Control':'no-cache'},signal:AbortSignal.timeout(15000)});
+              const t=await r.text();
+              console.log('AUDIT '+JSON.stringify({path:path.split('?')[0],status:r.status,contentType:r.headers.get('content-type'),bytes:Buffer.byteLength(t),sha256:crypto.createHash('sha256').update(t).digest('hex'),html:/<html[\s>]/i.test(t),loginGate:/<input[^>]+type=["']?password/i.test(t),ruleMarkers:/\b(?:BTTS|detection|threshold|conditions?|criteria)\b/i.test(t),redirect:!!r.headers.get('location')}));
+            }catch(e){console.log('AUDIT_ERROR '+e.name)}
+          }
+          NODE
