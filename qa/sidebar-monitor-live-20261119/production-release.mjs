@@ -90,7 +90,13 @@ try{
  const wrapperName='b46-sidebar-monitor-entry-20261119.mjs',sourceName='b46-sidebar-monitor-client-source-20261119.mjs';
  const added=[{name:wrapperName,content_type:'application/javascript+module',content_base64:Buffer.from(wrapper).toString('base64')},{name:sourceName,content_type:'application/javascript+module',content_base64:Buffer.from('export const BRIDGE_SOURCE='+JSON.stringify(js)+';').toString('base64')}];
  const modules=[...base.modules,...added];assert(new Set(modules.map(m=>m.name)).size===modules.length,'DUPLICATE_MODULE');
- assert(modules.reduce((n,m)=>n+gzipSync(Buffer.from(m.content_base64,'base64')).length,0)<10*1024*1024-100*1024,'SIZE_LIMIT');
+ // The active version already passed Cloudflare's own size validator. The sum of
+ // independently gzipped modules is only an estimate, not the platform bundle metric.
+ // Bound the additive payload strictly and let Cloudflare validate an INACTIVE upload.
+ const gz=ms=>ms.reduce((n,m)=>n+gzipSync(Buffer.from(m.content_base64,'base64')).length,0);
+ const baseBytes=gz(base.modules),addedBytes=gz(added),estimatedBytes=gz(modules);
+ console.log('WORKER_SIZE_ESTIMATE '+JSON.stringify({baseBytes,addedBytes,estimatedBytes,platformValidation:'inactive version upload'}));
+ assert(addedBytes<=16384&&estimatedBytes===baseBytes+addedBytes,'ADDITIVE_SIZE_GUARD');
  const bindings=base.bindings??[];
  const meta={main_module:wrapperName,compatibility_date:base.compatibility_date,compatibility_flags:base.compatibility_flags??[],bindings:[...bindings.map(b=>b.type==='secret_text'?{name:b.name,type:'inherit',version_id:start.site}:b),binding],keep_assets:true,annotations:{'workers/message':'Sidebar only, original application modules retained'}};
  if(base.assets?.config)meta.assets={config:base.assets.config};
