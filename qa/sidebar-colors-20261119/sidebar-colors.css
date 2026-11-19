@@ -1,0 +1,14 @@
+/* Only sidebar numeric display: no changes to navigation or data. */
+html:root[data-theme="dark"] body .workspace.singlepage > aside.left-rail[data-b46-sidebar="1"] {
+  --b46-count-normal:#b8cdbf;--b46-count-zero:#7e9488;--b46-count-active:#34d27e;
+  --b46-sidebar-rate-up:#18b06f;--b46-sidebar-rate-flat:#d9a63a;--b46-sidebar-rate-down:#f05b6b;--b46-sidebar-rate-empty:#9aa79f;
+}
+html:root[data-theme="light"] body .workspace.singlepage > aside.left-rail[data-b46-sidebar="1"] {
+  --b46-count-normal:#3e5b4c;--b46-count-zero:#7a8b82;--b46-count-active:#0f8f5a;
+  --b46-sidebar-rate-up:#0e8c57;--b46-sidebar-rate-flat:#b98514;--b46-sidebar-rate-down:#cc4051;--b46-sidebar-rate-empty:#6f7d75;
+}
+html:root[data-theme] body .workspace.singlepage > aside.left-rail[data-b46-sidebar="1"] .b46-mobile-status-menu button[data-b46-sidebar-row^="status-"][data-b46-sidebar-row][data-b46-sidebar-row][data-b46-sidebar-row] > b {color:var(--b46-count-normal)!important}
+html:root[data-theme] body .workspace.singlepage > aside.left-rail[data-b46-sidebar="1"] .b46-mobile-status-menu button[data-b46-sidebar-row^="status-"][data-b46-sidebar-row][data-b46-sidebar-row][data-b46-sidebar-row] > b[data-b46-zero="1"] {color:var(--b46-count-zero)!important}
+html:root[data-theme] body .workspace.singlepage > aside.left-rail[data-b46-sidebar="1"] .b46-mobile-status-menu button[data-b46-sidebar-row^="status-"][data-b46-sidebar-row][data-b46-sidebar-row][data-b46-sidebar-row]:hover > b,
+html:root[data-theme] body .workspace.singlepage > aside.left-rail[data-b46-sidebar="1"] .b46-mobile-status-menu button[data-workspace-view="signal"][data-b46-sidebar-row^="status-"][data-b46-sidebar-row][data-b46-sidebar-row]:is(.active,[aria-current="page"],[aria-pressed="true"]) > b,
+html:root[data-theme] body:is([data-workspace-view="live"],:not([data-workspace-view])) .workspace.singlepage > aside.left-rail[data-b46-sidebar="1"] .b46-mobile-status-menu button[data-status-filter][data-b46-sidebar-row^="status-"][data-b46-sidebar-row][data-b46-sidebar-row]:is(.active,[aria-current="page"],[aria-pressed="true"]) > b {color:var(--b46-count-active)!important}
