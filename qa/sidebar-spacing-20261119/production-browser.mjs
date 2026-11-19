@@ -29,7 +29,7 @@ async function actual(p){
  for(const theme of ['dark','light']){
  await p.evaluate(t=>document.documentElement.dataset.theme=t,theme);await sleep(500);await off(p);
  for(const [first,second] of [['status-live','stat-ah'],['status-all','stat-all'],['status-signal','stat-1x2'],['status-scheduled','stat-ou']]){
- const choose=async key=>{const sel='[data-b46-sidebar-row="'+key+'"]';const expected=key.startsWith('stat-')?'statistics':key==='status-signal'?'signal':'live';for(let i=0;i<3;i++){await p.$eval(sel,e=>e.click());await off(p);try{await p.waitForFunction((sel,view)=>document.body.dataset.workspaceView===view&&document.querySelector(sel)?.classList.contains('active'),{timeout:5000},sel,expected);break}catch(e){if(i===2)throw e;console.log('NAV_RETRY '+key)}}await sleep(350);console.log('NAV '+key+' '+JSON.stringify(await p.evaluate(()=>({view:document.body.dataset.workspaceView,url:location.href,theme:document.documentElement.dataset.theme}))))};
+ const choose=async key=>{const sel='[data-b46-sidebar-row="'+key+'"]';const expected=key.startsWith('stat-')?'statistics':key==='status-signal'?'signal':'live';for(let i=0;i<3;i++){await p.$eval(sel,e=>e.click());await off(p);try{await p.waitForFunction((sel,view)=>document.body.dataset.workspaceView===view&&document.querySelector(sel)?.classList.contains('active'),{timeout:5000},sel,expected);break}catch(e){if(i===2)throw e;console.log('NAV_RETRY '+key)}}await sleep(650);console.log('NAV '+key+' '+JSON.stringify(await p.evaluate(()=>({view:document.body.dataset.workspaceView,url:location.href,theme:document.documentElement.dataset.theme}))))};
  await choose(first);let rows=await inspect(p);only(rows,first,palette[theme].active);
  await choose(second);rows=await inspect(p);only(rows,second,palette[theme].active);
  const route=await p.evaluate(()=>({view:document.body.dataset.workspaceView,market:new URL(location.href).searchParams.get('market')||'all'}));assert.equal(route.view,'statistics');assert.equal(route.market,second.slice(5));
@@ -49,7 +49,17 @@ try{
  await p.waitForSelector(scope+' [data-league-filter]',{timeout:30000});
  await p.waitForFunction(()=>[...document.styleSheets].some(s=>s.href?.includes('b46-sidebar-depth-20261119-v2.css')),{timeout:15000});
  if(preflight){await p.addStyleTag({content:spacing});await p.addStyleTag({content:routeCSS})}
- else await p.waitForFunction(paths=>Object.values(paths).every(path=>[...document.styleSheets].some(s=>s.href&&new URL(s.href).pathname===path)),{timeout:20000},paths);
+ else {
+  let loaded=false;
+  for(let i=0;i<4;i++){
+   try{
+    await p.waitForFunction(paths=>Object.values(paths).every(path=>[...document.styleSheets].some(s=>{try{return s.href&&new URL(s.href).pathname===path&&s.cssRules.length>0&&[...s.cssRules].some(r=>r.cssText.includes('min-width'));}catch{return false}})),{timeout:10000},paths);
+    loaded=true;break;
+   }catch(e){console.log('CSS_LOAD_RETRY '+i);await p.reload({waitUntil:'domcontentloaded',timeout:45000});await p.waitForSelector(scope+' [data-league-filter]',{timeout:30000})}
+  }
+  assert(loaded,'LIVE_CSS_RULES_NOT_LOADED');
+  console.log('LIVE_CSSOM '+JSON.stringify(await p.evaluate(paths=>[...document.styleSheets].filter(s=>s.href&&Object.values(paths).includes(new URL(s.href).pathname)).map(s=>({href:s.href,rules:s.cssRules.length,css:[...s.cssRules].map(r=>r.cssText).join('').slice(0,180)})),paths)));
+ }
  const result=await actual(p);
  await p.$eval(all,e=>e.click());await p.waitForFunction(()=>document.body.dataset.workspaceView==='live',{timeout:12000});await off(p);
  const before=gap(await inspect(p),'status-all','status-live');assert(before>=4,'IDLE_GAP');
