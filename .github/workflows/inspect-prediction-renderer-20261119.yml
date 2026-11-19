@@ -16,15 +16,15 @@ jobs:
       - name: Read public active frontend only
         run: |
           node --input-type=module <<'EOF'
-          const base='https://ball46-production.mccarey-supon.workers.dev';
+          const base='https://ball46-live-prediction-card-test-20261119.mccarey-supon.workers.dev';
           const read=async p=>{const r=await fetch(base+p,{signal:AbortSignal.timeout(30000)});if(!r.ok)throw Error(p+' '+r.status);return r.text()};
           const html=await read('/index.html');
           const files=[...new Set([...html.matchAll(/<script[^>]+src=["']([^"']+)["']/gi)].map(m=>new URL(m[1],base)).filter(u=>u.origin===base||u.hostname==='ball46.com').map(u=>u.pathname+u.search))];
           console.log('FILES '+JSON.stringify(files));
           for(const p of ['/index.html',...files]){
             const s=p==='/index.html'?html:await read(p).catch(e=>{console.log(String(e));return ''});
-            for(const re of [/OVER \/ UNDER/g,/league-market-signal-count/g]){
-              let count=0;for(const m of s.matchAll(re)){if(count++>=15)break;console.log('MATCH '+JSON.stringify({p,needle:m[0],i:m.index,context:s.slice(Math.max(0,m.index-450),m.index+4800)}))}
+            for(const re of [/data-workspace-view=["']signal/g,/data-b46m-page=["']signal/g,/data-b46-mobile-view=["']signal/g,/>Signals?</gi,/aria-label=["']Signals?["']/gi]){
+              let count=0;for(const m of s.matchAll(re)){if(count++>=15)break;console.log('MATCH '+JSON.stringify({p,needle:m[0],i:m.index,context:s.slice(Math.max(0,m.index-400),m.index+400)}))}
             }
           }
           EOF
