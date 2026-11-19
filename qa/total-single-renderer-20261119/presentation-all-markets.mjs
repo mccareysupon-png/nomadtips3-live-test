@@ -11,12 +11,12 @@ body[data-workspace-view="statistics"] [data-b46-wdl="win"] {color:var(--b46-wdl
 body[data-workspace-view="statistics"] [data-b46-wdl="draw"] {color:var(--b46-wdl-draw)!important}
 body[data-workspace-view="statistics"] [data-b46-wdl="loss"] {color:var(--b46-wdl-loss)!important}
 body[data-workspace-view="statistics"] [data-b46-wdl] {display:inline!important;font:inherit!important;letter-spacing:inherit!important;white-space:nowrap}
-body[data-workspace-view="statistics"] :is(.b46-stage-outcomes-segment,.b46-stage-outcomes-legend-dot,.b46-v1-market-track>span,.b46-fast-outcomes-track>span)[data-result="win"],
-body[data-workspace-view="statistics"] .b46-stage-outcomes-legend-item[data-result="win"] i {background:var(--b46-wdl-win)!important}
-body[data-workspace-view="statistics"] :is(.b46-stage-outcomes-segment,.b46-stage-outcomes-legend-dot,.b46-v1-market-track>span,.b46-fast-outcomes-track>span)[data-result="push"],
-body[data-workspace-view="statistics"] .b46-stage-outcomes-legend-item[data-result="push"] i {background:var(--b46-wdl-draw)!important}
-body[data-workspace-view="statistics"] :is(.b46-stage-outcomes-segment,.b46-stage-outcomes-legend-dot,.b46-v1-market-track>span,.b46-fast-outcomes-track>span)[data-result="loss"],
-body[data-workspace-view="statistics"] .b46-stage-outcomes-legend-item[data-result="loss"] i {background:var(--b46-wdl-loss)!important}
+html[data-theme] body[data-workspace-view="statistics"] #b46-finance-chart-card[data-f46-visual] :is(.b46-stage-outcomes-segment,.b46-stage-outcomes-legend-dot,.b46-v1-market-track>span,.b46-fast-outcomes-track>span)[data-result="win"],
+html[data-theme] body[data-workspace-view="statistics"] #b46-finance-chart-card[data-f46-visual] .b46-stage-outcomes-legend-item[data-result="win"] i {background:var(--b46-wdl-win)!important}
+html[data-theme] body[data-workspace-view="statistics"] #b46-finance-chart-card[data-f46-visual] :is(.b46-stage-outcomes-segment,.b46-stage-outcomes-legend-dot,.b46-v1-market-track>span,.b46-fast-outcomes-track>span)[data-result="push"],
+html[data-theme] body[data-workspace-view="statistics"] #b46-finance-chart-card[data-f46-visual] .b46-stage-outcomes-legend-item[data-result="push"] i {background:var(--b46-wdl-draw)!important}
+html[data-theme] body[data-workspace-view="statistics"] #b46-finance-chart-card[data-f46-visual] :is(.b46-stage-outcomes-segment,.b46-stage-outcomes-legend-dot,.b46-v1-market-track>span,.b46-fast-outcomes-track>span)[data-result="loss"],
+html[data-theme] body[data-workspace-view="statistics"] #b46-finance-chart-card[data-f46-visual] .b46-stage-outcomes-legend-item[data-result="loss"] i {background:var(--b46-wdl-loss)!important}
 `;
 const domHelper=String.raw`function b46WdlText(el,value){
  const m=String(value).match(/^([\d,]+)\s*·\s*([\d,]+)\s*·\s*([\d,]+)$/);
