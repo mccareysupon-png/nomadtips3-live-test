@@ -62,7 +62,7 @@ jobs:
           const {chromium,devices}=createRequire(process.cwd()+'/qa/live-prediction-card-20261119/.runtime/package.json')('playwright');
           const base='https://ball46-live-prediction-card-test-20261119.mccarey-supon.workers.dev';
           let health;for(let i=0;i<15;i++){try{const r=await fetch(base+'/_prediction_test_health');if(r.ok){health=await r.json();break}}catch{}await new Promise(r=>setTimeout(r,2000))}
-          assert.equal(health?.scope,'SHARED_RENDERER_SOURCE');assert.equal(health.overlay,false);
+          assert.equal(health?.scope,'SHARED_RENDERER_SOURCE');assert.equal(health.overlay,false);assert.equal(health.featuredLabel,'ACTIVE PREDICTIONS');
           const html=await fetch(base+'/index.html');assert.equal(html.status,200);const hs=await html.text();assert(!hs.includes('/_prediction-card-test.js')&&hs.includes('content:"ACTIVE PREDICTIONS"'));const href=[...hs.matchAll(/<script[^>]+src=["']([^"']+)["']/gi)].map(m=>m[1]).find(x=>x.includes('dashboard-v2-stage3-featured-facts-20261013a.js'));assert(href);const u=new URL(href,base);const script=await fetch(base+u.pathname+u.search);assert(script.ok);new Function(await script.text());
           assert.equal((await fetch(base+'/_prediction_test_health',{method:'POST'})).status,405);
           const browser=await chromium.launch({headless:true});
@@ -79,6 +79,7 @@ jobs:
               const proof=await p.evaluate(()=>({view:document.body.dataset.workspaceView,rows:document.querySelectorAll('[data-match-id]').length,desktop:[...document.querySelectorAll('.b46-league-market-signal-count')].map(e=>e.textContent),mobile:[...document.querySelectorAll('.b46gn-live')].map(e=>e.textContent).filter(t=>/prediction|signal/i.test(t)),heading:document.querySelector('[data-featured-kicker]')?.textContent,featured:document.querySelector('[data-featured-signal]')?.textContent,pseudo:document.querySelector('[data-featured-signal]')?getComputedStyle(document.querySelector('[data-featured-signal]'),'::before').content:null}));
               console.log('REAL_RENDERER_PROOF '+JSON.stringify(proof));
               assert(proof.rows>0,'NO_REAL_BOARD_ROWS');
+              assert.equal(proof.pseudo,'"ACTIVE PREDICTIONS"','FEATURED_CSS_COMPUTED');
               assert(!proof.desktop.some(t=>/signals?/i.test(t))&&!proof.mobile.some(t=>/signals?/i.test(t)),'OLD_BADGE');
               if(proof.featured&&/Prediction/i.test(proof.featured)){assert(!/Signal /i.test(proof.featured));assert.equal(proof.heading,'FEATURED LIVE PREDICTION');}
               if(!proof.desktop.length&&!proof.mobile.length)console.log('NO_ACTIVE_SIGNAL_SAMPLE_YET');
