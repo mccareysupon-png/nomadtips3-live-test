@@ -28,7 +28,7 @@ jobs:
           import {patchHtml,patchDashboard} from './qa/live-prediction-card-20261119/worker.mjs';
           const base='https://ball46-production.mccarey-supon.workers.dev';
           const get=async p=>{const r=await fetch(base+p);assert(r.ok,p);return r.text()};
-          const html=await get('/index.html');const href=[...html.matchAll(/<script[^>]+src=["']([^"']+)["']/gi)].map(m=>m[1]).find(x=>x.includes('/dashboard-v2-stage3-featured-facts-20261013a.js'));assert(href,'DASHBOARD_SCRIPT_NOT_FOUND');const u=new URL(href,base);console.log('ACTUAL_DASHBOARD '+u.pathname+u.search);const js=await get(u.pathname+u.search);
+          const html=await get('/index.html');const href=[...html.matchAll(/<script[^>]+src=["']([^"']+)["']/gi)].map(m=>m[1]).find(x=>x.includes('dashboard-v2-stage3-featured-facts-20261013a.js'));assert(href,'DASHBOARD_SCRIPT_NOT_FOUND');const u=new URL(href,base);console.log('ACTUAL_DASHBOARD '+u.pathname+u.search);const js=await get(u.pathname+u.search);
           const a=patchHtml(html),b=patchDashboard(js);assert(a.includes('ACTIVE PREDICTIONS')&&a.includes('LIVE PREDICTION')&&a.includes("f.signalCount===1?' Prediction':' Predictions'"));assert(b.includes("hasSignals?'FEATURED LIVE PREDICTION':'FEATURED MATCH'"));new Function(b);
           console.log('SOURCE_RENDERER_PREFLIGHT_PASS');
           EOF
@@ -63,7 +63,7 @@ jobs:
           const base='https://ball46-live-prediction-card-test-20261119.mccarey-supon.workers.dev';
           let health;for(let i=0;i<15;i++){try{const r=await fetch(base+'/_prediction_test_health');if(r.ok){health=await r.json();break}}catch{}await new Promise(r=>setTimeout(r,2000))}
           assert.equal(health?.scope,'SHARED_RENDERER_SOURCE');assert.equal(health.overlay,false);
-          const html=await fetch(base+'/index.html');assert.equal(html.status,200);const hs=await html.text();assert(!hs.includes('/_prediction-card-test.js')&&hs.includes('content:"ACTIVE PREDICTIONS"'));const href=[...hs.matchAll(/<script[^>]+src=["']([^"']+)["']/gi)].map(m=>m[1]).find(x=>x.includes('/dashboard-v2-stage3-featured-facts-20261013a.js'));assert(href);const u=new URL(href,base);const script=await fetch(base+u.pathname+u.search);assert(script.ok);new Function(await script.text());
+          const html=await fetch(base+'/index.html');assert.equal(html.status,200);const hs=await html.text();assert(!hs.includes('/_prediction-card-test.js')&&hs.includes('content:"ACTIVE PREDICTIONS"'));const href=[...hs.matchAll(/<script[^>]+src=["']([^"']+)["']/gi)].map(m=>m[1]).find(x=>x.includes('dashboard-v2-stage3-featured-facts-20261013a.js'));assert(href);const u=new URL(href,base);const script=await fetch(base+u.pathname+u.search);assert(script.ok);new Function(await script.text());
           assert.equal((await fetch(base+'/_prediction_test_health',{method:'POST'})).status,405);
           const browser=await chromium.launch({headless:true});
           try{for(const mobile of [false,true]){
