@@ -1,0 +1,38 @@
+name: BALL46 guarded statistics UI production deploy 20261119
+on:
+  push:
+    branches: [test/ball46-total-single-renderer-20261119]
+    paths:
+      - .github/workflows/ball46-statistics-ui-20261119.yml
+  workflow_dispatch:
+concurrency:
+  group: ball46-production-deploy
+  cancel-in-progress: false
+permissions:
+  contents: read
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install isolated QA tools
+        run: |
+          npm install --prefix /tmp/b46qa acorn puppeteer
+          echo "ACORN_ENTRY=$(node -p "require.resolve('acorn',{paths:['/tmp/b46qa']})")" >> "$GITHUB_ENV"
+          echo "PUPPETEER_ENTRY=$(node -p "require.resolve('puppeteer',{paths:['/tmp/b46qa']})")" >> "$GITHUB_ENV"
+          echo "CHROME_PATH=$(node -e "console.log(require('/tmp/b46qa/node_modules/puppeteer').executablePath())")" >> "$GITHUB_ENV"
+      - name: Guarded production release
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: node qa/total-single-renderer-20261119/deploy-production-ui.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-statistics-ui-production-report
+          path: qa-output/
+          if-no-files-found: warn
