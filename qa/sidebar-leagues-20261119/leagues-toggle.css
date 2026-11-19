@@ -1,0 +1,20 @@
+/* Desktop LEAGUES only. The existing list and selected filter stay in the DOM. */
+.b46-leagues-toggle {display:none!important}
+@media (min-width:768px) {
+  aside.left-rail[data-b46-sidebar="1"] [data-league-card] > .rail-title:has(> .b46-leagues-toggle) {
+    display:flex!important;align-items:center;justify-content:space-between;gap:8px;
+  }
+  html[data-theme="dark"] aside.left-rail[data-b46-sidebar="1"] {--b46-league-toggle-bg:#203b2e;--b46-league-toggle-color:#42cf8d;--b46-league-toggle-shadow:0 2px 5px rgba(0,0,0,.22)}
+  html[data-theme="light"] aside.left-rail[data-b46-sidebar="1"] {--b46-league-toggle-bg:#d9e9df;--b46-league-toggle-color:#087c4c;--b46-league-toggle-shadow:0 2px 5px rgba(24,54,36,.14)}
+  aside.left-rail[data-b46-sidebar="1"] [data-league-card] > .rail-title > .b46-leagues-toggle {
+    display:inline-flex!important;align-items:center;justify-content:center;flex:0 0 28px;width:28px;height:28px;padding:0;margin:0;border:0!important;border-radius:7px;
+    background:var(--b46-league-toggle-bg)!important;color:var(--b46-league-toggle-color)!important;box-shadow:var(--b46-league-toggle-shadow)!important;cursor:pointer;
+  }
+  .b46-leagues-toggle:focus-visible {outline:2px solid currentColor;outline-offset:2px}
+  .b46-leagues-toggle svg {width:16px;height:16px;transition:transform 160ms ease;transform:rotate(180deg);}
+  .b46-leagues-toggle[aria-expanded="false"] svg {transform:none}
+  aside.left-rail[data-b46-sidebar="1"] [data-league-card][data-b46-leagues-collapsed="1"] > [data-league-filters] {display:none!important}
+  aside.left-rail[data-b46-sidebar="1"] [data-league-card][data-b46-leagues-collapsed="0"] > [data-league-filters] {animation:b46-leagues-reveal 160ms ease-out}
+  @keyframes b46-leagues-reveal {from{opacity:0;transform:translateY(-3px)}to{opacity:1;transform:translateY(0)}}
+  @media(prefers-reduced-motion:reduce){.b46-leagues-toggle svg{transition:none}aside.left-rail[data-b46-sidebar="1"] [data-league-card] > [data-league-filters]{animation:none!important}}
+}
