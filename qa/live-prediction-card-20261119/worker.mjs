@@ -11,6 +11,8 @@ export function patchHtml(s){
  s=exact(s,"f.signalCount+' signal'","f.signalCount+(f.signalCount===1?' Prediction':' Predictions')",'mobile-badge');
  s=exact(s,'content:"ACTIVE SIGNALS"','content:"ACTIVE PREDICTIONS"','featured-css');
  s=exact(s,"s.dataset.market='signal';s.textContent='SIGNAL'","s.dataset.market='signal';s.textContent='LIVE PREDICTION'",'league-heading');
+ const css='<style id="b46-featured-prediction-label-test">html body :is(#b46gn-detail#b46gn-detail#b46gn-detail,.live-stage-grid > .right-rail) .featured-card[data-featured] .feature-signal::before{content:"ACTIVE PREDICTIONS"!important}</style>';
+ s=exact(s,'</body>',css+'</body>','featured-css-final');
  return s;
 }
 export function patchDashboard(s){
@@ -25,7 +27,7 @@ const reply=(v,status=200)=>Response.json(v,{status,headers:{'cache-control':'no
 export default {async fetch(req,env){
  const u=new URL(req.url);
  if(!['GET','HEAD'].includes(req.method))return reply({error:'READ_ONLY'},405);
- if(u.pathname==='/_prediction_test_health')return reply({ok:true,name,scope:'SHARED_RENDERER_SOURCE',overlay:false});
+ if(u.pathname==='/_prediction_test_health')return reply({ok:true,name,scope:'SHARED_RENDERER_SOURCE',overlay:false,featuredLabel:'ACTIVE PREDICTIONS'});
  if(!pages.has(u.pathname)&&!apis.has(u.pathname)&&!(/^\/[a-zA-Z0-9_./-]+\.(js|mjs|css|svg|png|gif|woff2?|ico|jpe?g|webp|json|html|txt|map|avif)$/i.test(u.pathname)&&!/^\/(?:api|b46-receiver-v1|admin|internal)\//.test(u.pathname)))return reply({error:'PATH_NOT_ALLOWED'},404);
  const headers=new Headers();for(const k of ['accept','accept-language','user-agent']){const v=req.headers.get(k);if(v)headers.set(k,v.slice(0,512))}
  const dest=new URL(u.pathname+u.search,origin);
