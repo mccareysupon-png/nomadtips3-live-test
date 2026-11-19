@@ -1,0 +1,46 @@
+/* Light surfaces for ALL statistics markets. No layout, results, data or Dark Mode changes. */
+html[data-theme="light"] body[data-workspace-view="statistics"] #b46-finance-chart-card[data-f46-visual]{
+  --f46-bg:#fff;--f46-ink:#21352d;--f46-muted:#526d61;--f46-border:#dae7df;
+  --f46-grid:#dce7e0;--f46-green:#087c50;--f46-red:#c73649;--f46-button:#e4f1e9;
+}
+html[data-theme="light"] body[data-workspace-view="statistics"] #b46-finance-chart-card[data-f46-visual] .f46-card{
+  background:#fff!important;color:var(--f46-ink)!important;border-color:var(--f46-border)!important;
+}
+html[data-theme="light"] body[data-workspace-view="statistics"] #b46-finance-chart-card[data-f46-visual] .f46-card::before,
+html[data-theme="light"] body[data-workspace-view="statistics"] #b46-finance-chart-card[data-f46-visual] .f46-card::after{
+  background:linear-gradient(145deg,#fff,#f1f8f4)!important;border-color:#dcebe2!important;
+  box-shadow:0 2px 12px rgba(30,73,49,.055)!important;
+}
+html[data-theme="light"] body[data-workspace-view="statistics"] #b46-finance-chart-card[data-f46-visual] .f46-overview{
+  background:linear-gradient(135deg,#fff 0%,#f1f8f4 100%)!important;
+  color:var(--f46-ink)!important;border-color:#dcebe2!important;
+  box-shadow:0 2px 12px rgba(30,73,49,.055)!important;
+}
+html[data-theme="light"] body[data-workspace-view="statistics"] #b46-finance-chart-card[data-f46-visual] :is(.f46-heading,.f46-controls,.f46-plot,.f46-foot,.f46-details){
+  background:transparent!important;color:var(--f46-muted)!important;border-color:var(--f46-border)!important;
+}
+html[data-theme="light"] body[data-workspace-view="statistics"] #b46-finance-chart-card[data-f46-visual] :is(.f46-heading small,.f46-caption,.f46-meta,.f46-details,.f46-foot,.f46-controls button,.f46-metrics span,.b46-stage-summary-label,.b46-stage-outcomes-heading,.b46-stage-outcomes-heading span,.b46-stage-outcomes-legend-item,.b46-v1-market-outcomes-title span,.b46-v1-market-legend,.b46-v1-market-detail small){
+  color:var(--f46-muted)!important;
+}
+html[data-theme="light"] body[data-workspace-view="statistics"] #b46-finance-chart-card[data-f46-visual] :is(.f46-heading h3,.f46-metrics b,.f46-details b,.b46-stage-summary-number,.b46-stage-outcomes-heading strong,.b46-stage-outcomes-legend-item b,.b46-v1-market-outcomes-title strong,.b46-v1-market-detail b){
+  color:var(--f46-ink)!important;
+}
+html[data-theme="light"] body[data-workspace-view="statistics"] #b46-finance-chart-card[data-f46-visual] .f46-controls button.active{
+  background:var(--f46-button)!important;color:var(--f46-green)!important;
+}
+html[data-theme="light"] body[data-workspace-view="statistics"] #b46-finance-chart-card[data-f46-visual] .f46-value{color:var(--f46-accent)!important;}
+html[data-theme="light"] body[data-workspace-view="statistics"] #b46-finance-chart-card[data-f46-visual] .f46-grid{stroke:var(--f46-grid)!important;}
+html[data-theme="light"] body[data-workspace-view="statistics"] #b46-finance-chart-card[data-f46-visual] .f46-axis{fill:var(--f46-muted)!important;}
+html[data-theme="light"] body[data-workspace-view="statistics"] #b46-finance-chart-card[data-f46-visual] .f46-line{stroke:var(--f46-accent)!important;}
+html[data-theme="light"] body[data-workspace-view="statistics"] #b46-finance-chart-card[data-f46-visual] .f46-tip{background:#fff!important;color:var(--f46-muted)!important;border-color:var(--f46-border)!important;}
+html[data-theme="light"] body[data-workspace-view="statistics"] #b46-finance-chart-card[data-f46-visual] :is(.b46-stage-outcomes,.b46-stage-summary-item,.b46-v1-market-outcomes,.b46-v1-market-detail,.f46-metrics>div){
+  background:linear-gradient(150deg,#fff,#f0f7f3)!important;
+  color:var(--f46-ink)!important;border-color:#d8e7de!important;box-shadow:0 1px 3px rgba(34,70,48,.04)!important;
+}
+html[data-theme="light"] body[data-workspace-view="statistics"] #b46-finance-chart-card[data-f46-visual] :is(.b46-stage-outcomes-track,.b46-v1-market-track){background:#e3ece6!important;border-color:#d8e6dd!important;}
+html[data-theme="light"] body[data-workspace-view="statistics"] #b46-finance-chart-card[data-f46-visual] .b46-stage-summary-item[data-tone="green"] .b46-stage-summary-number,
+html[data-theme="light"] body[data-workspace-view="statistics"] #b46-finance-chart-card[data-f46-visual] .b46-v1-market-detail[data-key="roi"] b{color:#087c50!important;}
+html[data-theme="light"] body[data-workspace-view="statistics"] #b46-finance-chart-card[data-f46-visual] .b46-stage-summary-item[data-tone="amber"] .b46-stage-summary-number{color:#87570a!important;}
+html[data-theme="light"] body[data-workspace-view="statistics"] #b46-finance-chart-card[data-f46-visual] .b46-stage-summary-item[data-tone="red"] .b46-stage-summary-number,
+html[data-theme="light"] body[data-workspace-view="statistics"] #b46-finance-chart-card[data-f46-visual] .b46-v1-market-detail[data-key="drawdown"] b{color:#c73649!important;}
+/* WDL descendants keep their semantic colors via the existing wdl.css. */
