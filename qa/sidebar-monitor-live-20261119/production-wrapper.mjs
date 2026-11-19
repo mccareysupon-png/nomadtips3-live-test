@@ -19,17 +19,28 @@ function mark(k,s){
 export default {...original,async fetch(req,env,ctx){
  const u=new URL(req.url);
  if(u.pathname===scriptPath&&['GET','HEAD'].includes(req.method))return new Response(req.method==='HEAD'?null:BRIDGE_SOURCE,{headers:{'content-type':'application/javascript; charset=utf-8','cache-control':'public, max-age=86400','x-content-type-options':'nosniff'}});
+ const graph=req.method==='GET'&&u.pathname==='/b46-receiver-v1/graph';
+ const page=req.method==='GET'&&pagePaths.has(u.pathname);
+ const cached=graph||page?read(env,'/cached').catch(()=>null):Promise.resolve(null);
  const res=await original.fetch(req,env,ctx);
  if(req.method!=='GET'||!res.ok)return res;
- if(u.pathname==='/b46-receiver-v1/graph'){
+ if(graph){
   const h=new Headers(res.headers);
-  const job=(async()=>{const d=await res.clone().json();if(!d.ok||!Number.isSafeInteger(d.sequence)||d.sequence<0)return null;const v=await read(env,'/refresh?sequence='+d.sequence);return valid(v)&&v.sequence>=d.sequence?v:null})().catch(()=>null);
-  ctx.waitUntil(job);const s=await Promise.race([job,pause(350)]);
+  const native=res.clone().json().catch(()=>null);
+  const job=(async()=>{
+   const d=await native;
+   if(!d?.ok||!Number.isSafeInteger(d.sequence)||d.sequence<0)return null;
+   const current=await cached;
+   if(valid(current)&&current.sequence>=d.sequence)return current;
+   const v=await read(env,'/refresh?sequence='+d.sequence);
+   return valid(v)&&v.sequence>=d.sequence?v:null;
+  })().catch(()=>null);
+  ctx.waitUntil(job);const s=await Promise.race([job,pause(25)]);
   if(!valid(s))return res;
   h.set('x-b46-monitor-rates',JSON.stringify(s));return new Response(res.body,{status:res.status,statusText:res.statusText,headers:h});
  }
  if(!pagePaths.has(u.pathname)||!res.headers.get('content-type')?.includes('text/html'))return res;
- const s=await Promise.race([read(env,'/cached').catch(()=>null),pause(120)]);
+ const s=await Promise.race([cached,pause(25)]);
  const h=new Headers(res.headers);for(const k of ['content-length','content-encoding','etag','last-modified'])h.delete(k);
  h.set('cache-control','no-store');
  return new HTMLRewriter().on('head',{element(e){e.prepend('<script src="'+scriptPath+'"></script>',{html:true});e.append('<style id="b46-css-only-mask">'+CSS+'</style>',{html:true})}}).on('[data-stat-market]',{element(e){const k=e.getAttribute('data-stat-market');if(keys.includes(k))e.append(mark(k,valid(s)?s:null),{html:true})}}).transform(new Response(res.body,{status:res.status,statusText:res.statusText,headers:h}));
