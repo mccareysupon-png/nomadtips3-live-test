@@ -27,7 +27,7 @@ jobs:
           const browser=await chromium.launch();
           const rules=new Map();
           try{
-            for(const mobile of [false,true]){
+            for(const mobile of [false]){
               const p=await browser.newPage(mobile?{...devices['iPhone 13'],serviceWorkers:'block'}:{viewport:{width:1440,height:950},serviceWorkers:'block'});
               await p.addInitScript(()=>localStorage.setItem('nomad343_dashboard_theme_v1','dark'));
               await p.route('**/*',r=>['GET','HEAD'].includes(r.request().method())?r.continue():r.abort());
@@ -60,7 +60,7 @@ jobs:
           }finally{await browser.close()}
           assert([...rules.values()].includes('odds')&&[...rules.values()].includes('header'),'SOURCE_SELECTORS_NOT_CONFIRMED');
           const colors={row:'background:linear-gradient(135deg,#24443e,#192f2b)!important;border-color:#31544b!important',header:'background:#25453e!important;border-color:#375b52!important',odds:'background:linear-gradient(135deg,#294b43,#1c3530)!important;border-color:#365b51!important;box-shadow:inset 0 0 0 1px #365b51!important'};
-          const css=[...rules].map(([s,t])=>'html:root[data-theme="dark"] body '+s+'{'+colors[t]+'}').join('\n');
+          const css=[...rules].map(([s,t])=>'@media (min-width: 1024px) {html:root[data-theme="dark"] body '+s+'{'+colors[t]+'}}').join('\n');
           await writeFile('premium-qa/palette.json',JSON.stringify({css,rules:[...rules]}));
           EOF
       - name: Deploy only isolated CSS test worker
@@ -97,7 +97,7 @@ jobs:
           EOF
           node --check premium-qa/worker.mjs
           npx --yes wrangler@4.50.0 deploy --config premium-qa/wrangler.toml --name ball46-premium-match-colors-test-20261120
-      - name: Verify PC and mobile dark and light
+      - name: Verify PC dark and light
         run: |
           node --input-type=module <<'EOF'
           import {chromium,devices} from 'playwright';
@@ -106,7 +106,7 @@ jobs:
           let h;for(let i=0;i<15;i++){try{const r=await fetch(base+'/_premium_health');if(r.ok){h=await r.json();break}}catch{}await new Promise(r=>setTimeout(r,2000))}
           assert.equal(h?.scope,'TEST_ONLY_CSS');
           const browser=await chromium.launch();
-          try{for(const mobile of [false,true])for(const theme of ['dark','light']){
+          try{for(const mobile of [false])for(const theme of ['dark','light']){
             const p=await browser.newPage(mobile?{...devices['iPhone 13'],serviceWorkers:'block'}:{viewport:{width:1440,height:950},serviceWorkers:'block'});
             await p.addInitScript(t=>localStorage.setItem('nomad343_dashboard_theme_v1',t),theme);
             await p.route('**/*',r=>['GET','HEAD'].includes(r.request().method())?r.continue():r.abort());
