@@ -1,0 +1,33 @@
+name: Diagnose first real mouse wheel movement
+on:
+  push:
+    branches: [test/ball46-sticky-membership-20261120]
+    paths: ['.github/workflows/sticky-first-wheel-inspect-20261120.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm install --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium --only-shell
+          node <<'EOF'
+          const {chromium}=require('playwright');
+          (async()=>{const b=await chromium.launch();try{
+          for(const [label,host] of Object.entries({production:'https://ball46.com',test:'https://ball46-sticky-membership-test-20261120.mccarey-supon.workers.dev'})){
+          for(const view of ['statistics','live']){
+          const p=await b.newPage({viewport:{width:1440,height:950},serviceWorkers:'block'});
+          await p.route('**/*',r=>['GET','HEAD'].includes(r.request().method())?r.continue():r.abort());
+          await p.addInitScript(()=>{window.__wheelLogs=[];document.addEventListener('scroll',e=>{const x=e.target===document?document.scrollingElement:e.target;window.__wheelLogs.push({type:'scroll',ms:performance.now(),tag:x.tagName,cls:x.className,top:x.scrollTop,left:x.scrollLeft})},true);document.addEventListener('wheel',e=>window.__wheelLogs.push({type:'wheel',target:e.target?.className,dy:e.deltaY,dx:e.deltaX,ms:performance.now()}),true);try{new PerformanceObserver(l=>{for(const e of l.getEntries())window.__wheelLogs.push({type:'layoutshift',value:e.value,recent:e.hadRecentInput,ms:e.startTime,sources:e.sources?.map(s=>({cls:s.node?.className,prev:s.previousRect,curr:s.currentRect}))})}).observe({type:'layout-shift',buffered:true})}catch{}});
+          await p.goto(host+'/index.html?view='+view,{waitUntil:'domcontentloaded'});await p.waitForTimeout(4200);
+          const get=()=>p.evaluate(()=>{const sels=['html','body','.workspace.singlepage','.workspace-stage','[data-workspace-panel="statistics"]','.left-rail','.b46-sidebar-outside-scroll','.right-rail','.main-board','.board-sections','.b46-stat-member-top','#b46-finance-chart-card','.sp-stats-content','.sp-results','.sp-table-wrap'];const els=Object.fromEntries(sels.map(sel=>{const e=document.querySelector(sel);if(!e)return [sel,null];const r=e.getBoundingClientRect(),s=getComputedStyle(e);return [sel,{x:r.x,y:r.y,w:r.width,h:r.height,st:e.scrollTop,sh:e.scrollHeight,ch:e.clientHeight,cw:e.clientWidth,overflow:s.overflow,position:s.position,top:s.top,margin:s.margin,padding:s.padding,scrollbarGutter:s.scrollbarGutter,display:s.display}]}));return {y:scrollY,x:scrollX,iw:innerWidth,cw:document.documentElement.clientWidth,els}});
+          const before=await get();await p.mouse.move(750,450);await p.mouse.wheel(0,100);await p.waitForTimeout(450);const first=await get();await p.mouse.wheel(0,100);await p.waitForTimeout(450);const second=await get();await p.mouse.move(120,450);await p.mouse.wheel(0,100);await p.waitForTimeout(450);const side=await get();
+          console.log('FIRST_WHEEL '+JSON.stringify({label,view,before,first,second,side,events:await p.evaluate(()=>window.__wheelLogs.slice(-35))}));await p.close();
+          }}
+          }finally{await b.close()}})().catch(e=>{console.error(e);process.exit(1)})
+          EOF
