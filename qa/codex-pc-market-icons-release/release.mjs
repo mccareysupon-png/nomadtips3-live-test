@@ -131,6 +131,10 @@ async function verifyOriginalScripts(origin) {
   assert.deepEqual(results, originalHashes, 'Existing statistics scripts differ');
 }
 
+function verifyProductionResponse() {
+  return retry(() => Promise.all([verifyHtml(live), verifyAssets(live), verifyOriginalScripts(live)]), 24, 2300);
+}
+
 async function browserQA(origin, phase) {
   const browser = await chromium.launch({ headless: true });
   const selector = '#b46-finance-chart-card .f46-overview > div:first-child:has(> .f46-value):visible';
@@ -192,6 +196,14 @@ const [base, settings, subdomain] = await Promise.all([
   version(baseline), cloudflare(`/scripts/${site}/settings`), cloudflare(`/scripts/${site}/subdomain`),
 ]);
 assert(base.main_module && base.modules?.length, 'Production version has no modules');
+if (base.modules.some(module => module.name === entry)) {
+  await verifyProductionResponse();
+  await browserQA(live, 'production');
+  await expectActive(baseline);
+  await writeFile(out + '/production.json', JSON.stringify({ worker: site, active: baseline, annotation }));
+  console.log('Existing production deployment verified', baseline);
+  process.exit(0);
+}
 assert(subdomain.enabled && subdomain.previews_enabled, 'Inactive Worker version previews are unavailable');
 
 const entrySource = (await readFile(new URL('./entry.mjs', import.meta.url), 'utf8'))
@@ -262,8 +274,7 @@ try {
   await expectActive(baseline);
   await assign(candidate, annotation);
   await retry(() => expectActive(candidate), 12, 1500);
-  await retry(() => verifyHtml(live), 22, 2300);
-  await Promise.all([verifyAssets(live), verifyOriginalScripts(live)]);
+  await verifyProductionResponse();
   await browserQA(live, 'production');
   await expectActive(candidate);
   await writeFile(out + '/production.json', JSON.stringify({ worker: site, baseline, active: candidate, annotation }));
