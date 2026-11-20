@@ -1,0 +1,25 @@
+import fs from 'node:fs';import assert from 'node:assert/strict';
+const root='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+'/workers';
+async function cf(p){const r=await fetch(root+p,{headers:{Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN},signal:AbortSignal.timeout(25000)});const j=await r.json();if(!r.ok||!j.success)throw Error('CF '+r.status+' '+p);return j.result}
+const names=['ball46-form-history-v1','ball46-result-native-proxy-20261018','nomadtips3-engine-343','nomadtips3-5usd-hub-343','nomadtips3-5usd-hub-343-stable-canary','nomadtips3-343-auto-engine','nomadtips3-343-central-cache','nomadtips3-343-central-cache-canary','nomadtips3-343-full-market-central-canary','nomadtips3-343-full-market-v4-canary','nomadtips3-341-5usd-staged','nomadtips3-full-market-343-ball46','nomadtips3-live-engine','nomadtips3-live-engine-5dollar','nomadtips3-live-engine-5usd-shadow','nomadtips3-odds-display-343','nomadtips3-rich-odds-343','nomadtips3-s8-sidecar','nomadtips3-shot-sidecar-342','b46-statistics-probe-43437243604','b46-statistics-probe-43524197645','b46-statistics-probe-43528150264','b46-statistics-probe-43528606985','ball46-statistics-engine-candidate-20261113','ball46-statistics-engine-mutation-20261113','ball46-shadow-hook-stage-20261117'];
+const out=[];let i=0;
+async function check(n){
+ try{const ver=(await cf('/scripts/'+n+'/deployments?per_page=1')).deployments[0].versions[0].version_id;
+ const v=await cf('/workers/'+n+'/versions/'+ver+'?include=modules');
+ let sched;try{const raw=await cf('/scripts/'+n+'/schedules');sched=Array.isArray(raw)?raw.map(x=>x.cron):Array.isArray(raw?.schedules)?raw.schedules.map(x=>x.cron):{keys:Object.keys(raw??{})}}catch(e){sched={error:e.message}}
+ let sub;try{const raw=await cf('/scripts/'+n+'/subdomain');sub=Boolean(raw.enabled)}catch(e){sub=null}
+ const bindings=(v.resources?.bindings??v.bindings??[]);const flags=Array.isArray(bindings)?bindings.filter(b=>b.type==='plain_text'&&/^(?:FIVEUSD_NATIVE_MODE|FIVEUSD_SHADOW_LEGACY_DISABLED|FIVEUSD_GLOBAL_REQUEST_BUDGET_PER_60S|HUB_ONLY|BULK_HUB_ONLY|DIRECT_PROVIDER_ENABLED|PROVIDER_ENABLED|ENABLE_PROVIDER|LIVE_ENABLED|ENGINE_ENABLED|HISTORY_ENABLED|.*PAUSED)$/.test(b.name)).map(b=>({name:b.name,value:/^(?:true|false|0|1|[0-9]{1,3}|on|off|enabled|disabled|shadow|hub|bulk)$/i.test(String(b.text??b.value))?String(b.text??b.value):'not-simple'})):[];
+ const modules=[];for(const m of v.modules??[]){if(!m.content_base64||!/\.(?:m?js)$/.test(m.name))continue;const s=Buffer.from(m.content_base64,'base64').toString();const ls=s.split('\n');const selected=ls.map((l,i)=>/async (?:scheduled|alarm|fetch)\s*\(|setAlarm\(|FIVEDOLLAR_API_KEY|FIVEUSD_API_KEY|5dollarfootballapi\.com|\/v1\/(?:leagues|teams)\/|history.*(?:path|route)|(?:path|pathname).*history|HUB_ONLY|DIRECT_PROVIDER|providerJson\(|fetchJson\(/i.test(l)?i:-1).filter(i=>i>=0);
+ // Output only controlled structural facts for all workers. Excerpts limited
+ // to the dedicated history Worker (never show literal credential or payload).
+ const paths=[...s.matchAll(/(?:pathname|path|p)\s*===\s*['"]([\/][a-zA-Z0-9/_-]{1,70})['"]/g)].map(x=>x[1]);
+ const functions=[...s.matchAll(/(?:async\s+function\s+|async\s+)([A-Za-z_]\w*)\s*\(/g)].map(x=>x[1]).filter(x=>/fetch|refresh|sync|alarm|schedul|history|provider|seed|backfill/i.test(x));
+ modules.push({module:m.name,providerHost:/api\.5dollarfootballapi\.com/.test(s),scheduled:/\basync scheduled\s*\(/.test(s),alarm:/\basync alarm\s*\(/.test(s),setAlarm:/\.setAlarm\s*\(/.test(s),paths:[...new Set(paths)].slice(0,60),functions:[...new Set(functions)].slice(0,50),matches:selected.length,...(n==='ball46-form-history-v1'?{excerpts:selected.slice(0,45).map(k=>({line:k+1,code:ls.slice(Math.max(0,k-1),k+2).join('\n').slice(0,900).replace(/(?:fb_live_|fb_test_)[A-Za-z0-9_-]+/g,'[REDACTED]').replace(/[A-Za-z0-9+/_-]{70,}/g,'[REDACTED]').replace(/(authorization\s*:\s*)[^,\n]+/gi,'$1[REDACTED]')}))}:{})});
+ }
+ return {name:n,version:ver,schedules:sched,workersDev:sub,flags,modules};
+ }catch(e){return {name:n,error:String(e.message)}}
+}
+await Promise.all(Array.from({length:5},async()=>{while(i<names.length)out.push(await check(names[i++]))}));
+out.sort((a,b)=>a.name.localeCompare(b.name));fs.mkdirSync('evidence',{recursive:true});fs.writeFileSync('evidence/account-details.json',JSON.stringify(out,null,2));
+for(const x of out){console.log('CALLER_DETAILS '+JSON.stringify(x))}
+const r=await fetch('https://nomadtips3-5usd-hub-343.mccarey-supon.workers.dev/health',{signal:AbortSignal.timeout(12000)});const j=await r.json();const outHealth={ok:j.ok,ageMs:j.ageMs,lastError:j.lastError,lastRateLimitAt:j.lastRateLimitAt,retryAfterSec:j.retryAfterSec,estimatedBulkRequestsPerMinute:j.estimatedBulkRequestsPerMinute,providerRequestBudget:j.providerRequestBudget,providerRequestCount:j.providerRequestCount,bulkSpeedV3:j.bulkSpeedV3,liveCount:j.counts?.live,control:j.control};console.log('HUB_READONLY_HEALTH '+JSON.stringify(outHealth));
