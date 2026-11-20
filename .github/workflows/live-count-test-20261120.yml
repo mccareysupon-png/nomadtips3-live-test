@@ -1,0 +1,80 @@
+name: BALL46 active prediction startup test only
+on:
+  push:
+    branches: [test/ball46-live-count-startup-20261120]
+    paths: ['.github/workflows/live-count-test-20261120.yml']
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Deploy isolated test only
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          node --check qa/live-count-startup-20261120/worker.mjs
+          cat > qa/live-count-startup-20261120/wrangler.toml <<'EOF'
+          name = "ball46-live-count-startup-test-20261120"
+          main = "worker.mjs"
+          compatibility_date = "2026-11-20"
+          workers_dev = true
+          preview_urls = false
+          [[services]]
+          binding = "B46_PRODUCTION_READ"
+          service = "ball46-production"
+          EOF
+          node --input-type=module <<'EOF'
+          import assert from 'node:assert/strict';import {writeFile} from 'node:fs/promises';
+          const r=await fetch('https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+'/workers/scripts/ball46-production/deployments?per_page=1',{headers:{authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN}});const j=await r.json();assert(j.success);await writeFile(process.env.RUNNER_TEMP+'/prod-before.json',JSON.stringify(j.result.deployments[0].versions));
+          EOF
+          for attempt in 1 2 3; do
+            if npx --yes wrangler@4.50.0 deploy --config qa/live-count-startup-20261120/wrangler.toml --name ball46-live-count-startup-test-20261120; then break; fi
+            if [ "$attempt" = 3 ]; then exit 1; fi
+            sleep 5
+          done
+      - name: Verify prediction priority and count equality PC and mobile
+        run: |
+          npm install --prefix qa/live-count-startup-20261120/.runtime --no-audit --no-fund playwright@1.55.0
+          qa/live-count-startup-20261120/.runtime/node_modules/.bin/playwright install chromium --only-shell
+          node --input-type=module <<'EOF'
+          import assert from 'node:assert/strict';import {createRequire} from 'node:module';
+          const {chromium,devices}=createRequire(process.cwd()+'/qa/live-count-startup-20261120/.runtime/package.json')('playwright');
+          const base='https://ball46-live-count-startup-test-20261120.mccarey-supon.workers.dev';
+          let health;for(let i=0;i<15;i++){try{const r=await fetch(base+'/_live_count_health');if(r.ok){health=await r.json();break}}catch{}await new Promise(r=>setTimeout(r,2000))}
+          assert.equal(health?.scope,'TEST_ONLY_SIGNAL_STARTUP');assert.equal(health?.revision,'SIGNAL_STARTUP_V1');assert.equal((await fetch(base+'/_live_count_health',{method:'POST'})).status,405);
+          const browser=await chromium.launch();try{for(const mobile of [false,true]){
+          for(const slowBoard of [false,true]){
+          const p=await browser.newPage(mobile?{...devices['iPhone 13'],serviceWorkers:'block'}:{viewport:{width:1440,height:950},serviceWorkers:'block'});
+          const events=[];const start=Date.now();let firstRows=null;
+          p.on('request',r=>{const path=new URL(r.url()).pathname;if(path.startsWith('/api/'))events.push({type:'request',path,ms:Date.now()-start})});
+          p.on('response',async r=>{const path=new URL(r.url()).pathname;if(path==='/api/engine/signals'){try{const j=await r.json();if(j.ok&&Array.isArray(j.signals)&&firstRows===null)firstRows=j.signals.map(s=>String(s.id));}catch{} }});
+          await p.addInitScript(()=>{window.__qaSignalEvents=[];window.addEventListener('ball46:signals-snapshot',e=>window.__qaSignalEvents.push({time:performance.now(),ids:e.detail.signals.map(s=>String(s.id)),badge:document.querySelector('[data-workspace-signal-count]')?.textContent,boardRows:document.querySelectorAll('[data-board-sections] [data-match-id]').length}));});
+          await p.route('**/*',async r=>{const req=r.request(),path=new URL(req.url()).pathname;if(!['GET','HEAD'].includes(req.method()))return r.abort();if(slowBoard&&path==='/api/engine/board')await new Promise(x=>setTimeout(x,1800));return r.continue()});
+          await p.goto(base+'/index.html',{waitUntil:'domcontentloaded',timeout:60000});
+          for(const path of ['/dashboard-v2-stage3-featured-facts-20261013a.js?v=b46-screen-refresh-5s-20261104','/singlepage-workspace-343.js']){const res=await p.request.get(base+path);assert.equal(res.status(),200);new Function(await res.text())}
+          await p.waitForFunction(()=>window.__qaSignalEvents.length>0&&window.NOMAD343_DASHBOARD_V2?.mode==='SIGNALS_BOARD_PARALLEL',null,{timeout:30000});
+          await p.waitForFunction(()=>document.querySelectorAll('[data-board-sections] [data-match-id]').length>0,null,{timeout:30000});
+          const proof=await p.evaluate(()=>({first:window.__qaSignalEvents[0],count:document.querySelector('[data-workspace-signal-count]')?.textContent,ids:window.NOMAD343_DASHBOARD_V2.getSignals().map(s=>String(s.id)),mode:window.NOMAD343_DASHBOARD_V2.mode,rows:document.querySelectorAll('[data-board-sections] [data-match-id]').length,nav:performance.getEntriesByType('navigation')[0]?.responseStart}));
+          const signals=events.filter(e=>e.path==='/api/engine/signals'),board=events.filter(e=>e.path==='/api/engine/board'),history=events.filter(e=>e.path==='/api/engine/statistics');
+          console.log('SIGNAL_STARTUP_PROOF '+JSON.stringify({mobile,slowBoard,...proof,signals,board,history,responseIds:firstRows}));
+          assert(firstRows!==null,'NO_REAL_SIGNAL_RESPONSE');assert.deepEqual(proof.ids.slice().sort(),firstRows.slice().sort());assert.equal(Number(proof.count),firstRows.length);assert.equal(Number(proof.first.badge),firstRows.length);assert.equal(signals.length,1,'DUPLICATE_SIGNAL_FETCH');assert(signals[0].ms<=board[0].ms+100,'SIGNAL_NOT_PARALLEL');assert(!history.some(e=>e.ms<signals[0].ms),'HISTORY_BEFORE_SIGNAL');if(slowBoard)assert.equal(proof.first.boardRows,0,'BADGE_WAITED_FOR_BOARD');
+          assert(proof.rows>0);await p.close();
+          }} }finally{await browser.close()}
+          EOF
+      - name: Confirm Production unchanged
+        if: always()
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          node --input-type=module <<'EOF'
+          import assert from 'node:assert/strict';import {readFile} from 'node:fs/promises';
+          const before=await readFile(process.env.RUNNER_TEMP+'/prod-before.json','utf8');const r=await fetch('https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+'/workers/scripts/ball46-production/deployments?per_page=1',{headers:{authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN}});const j=await r.json();assert(j.success);assert.deepEqual(j.result.deployments[0].versions,JSON.parse(before));console.log('PRODUCTION_UNCHANGED')
+          EOF
