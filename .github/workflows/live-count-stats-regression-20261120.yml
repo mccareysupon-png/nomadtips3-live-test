@@ -1,0 +1,46 @@
+name: Compare statistics startup read-only
+on:
+  push:
+    branches: [test/ball46-live-count-startup-20261120]
+    paths: ['.github/workflows/live-count-stats-regression-20261120.yml']
+permissions:
+  contents: read
+jobs:
+  compare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm install --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium --only-shell
+          node <<'EOF'
+          const {chromium,devices}=require('playwright');
+          const hosts={production:'https://ball46.com',test:'https://ball46-live-count-startup-test-20261120.mccarey-supon.workers.dev'};
+          (async()=>{const b=await chromium.launch();try{
+           for(const mobile of [false,true]){
+            await Promise.all(Object.entries(hosts).map(async ([label,host])=>{
+             const p=await b.newPage(mobile?{...devices['iPhone 13'],serviceWorkers:'block'}:{viewport:{width:1440,height:950},serviceWorkers:'block'});
+             let t=Date.now(),requests=[];
+             p.on('request',r=>{const u=new URL(r.url());if(/\/api\/engine\/statistics|\/b46-receiver-v1\/graph/.test(u.pathname))requests.push({ms:Date.now()-t,path:u.pathname})});
+             await p.route('**/*',r=>['GET','HEAD'].includes(r.request().method())?r.continue():r.abort());
+             try{
+              await p.goto(host+'/index.html?view=statistics',{waitUntil:'domcontentloaded',timeout:60000});
+              await p.waitForFunction(()=>{const c=document.querySelector('#b46-finance-chart-card');return c&&c.getBoundingClientRect().height>0&&((c.querySelector('.f46-card')?.getBoundingClientRect().height||0)>0||(c.querySelector('.b46-fast-details')?.getBoundingClientRect().height||0)>0)},null,{timeout:90000});
+              const stageMs=Date.now()-t;
+              const initial=await p.evaluate(()=>({text:document.querySelector('#b46-finance-chart-card')?.innerText.slice(0,900),detailsButton:!!document.querySelector('.b46-fast-details'),fast:window.__B46_FAST_V1_DIAG?.status}));
+              const initialRequests=requests.slice();
+              const detailStart=Date.now();
+              if(await p.locator('.b46-fast-details').count()){await p.locator('.b46-fast-details').first().evaluate(e=>e.click());}
+              await p.waitForFunction(()=>[...document.querySelectorAll('[data-sp-table-body] tr')].some(r=>r.cells.length>=4),null,{timeout:90000});
+              const detailMs=Date.now()-detailStart;
+              const native=await p.evaluate(()=>({rows:[...document.querySelectorAll('[data-sp-table-body] tr')].filter(r=>r.cells.length>=4).length,card:document.querySelector('#b46-finance-chart-card')?.innerText.slice(0,1200)}));
+              console.log('REGRESSION '+JSON.stringify({label,mobile,stageMs,detailMs,initial,native,initialRequests,historyRequests:requests.filter(r=>r.path==='/api/engine/statistics').length}));
+             }catch(e){console.log('REGRESSION_ERROR '+JSON.stringify({label,mobile,error:e.message,requests}));}
+             finally{await p.close()}
+            }));
+           }
+          }finally{await b.close()}})().catch(e=>{console.error(e);process.exit(1)})
+          EOF
