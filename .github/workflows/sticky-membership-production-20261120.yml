@@ -20,7 +20,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Prepare and validate frozen CSS release
+      - name: Prepare and validate frozen CSS release and route propagation
         run: |
           node --check qa/sticky-membership-release-20261120/wrapper.mjs
           node --check qa/sticky-membership-release-20261120/release.mjs
