@@ -1,0 +1,35 @@
+name: Read-only inspect stats numeric rendering source
+on:
+  push:
+    branches: [test/ball46-stats-number-format-20261120]
+    paths: ['.github/workflows/stats-number-inspect-20261120.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm install --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium --only-shell
+          node <<'EOF'
+          const {chromium,devices}=require('playwright');
+          (async()=>{const b=await chromium.launch();try{for(const mobile of [false,true]){
+          const p=await b.newPage(mobile?{...devices['iPhone 13'],serviceWorkers:'block'}:{viewport:{width:1920,height:1000},serviceWorkers:'block'});
+          await p.route('**/*',r=>['GET','HEAD'].includes(r.request().method())?r.continue():r.abort());
+          await p.goto('https://ball46-production.mccarey-supon.workers.dev/index.html?view=statistics',{waitUntil:'domcontentloaded'});
+          await p.waitForFunction(()=>[...document.querySelectorAll('[data-sp-table-body] tr')].some(r=>r.cells.length>=4),null,{timeout:60000});
+          await p.waitForTimeout(3000);
+          const a=await p.evaluate(()=>({scripts:[...document.scripts].filter(e=>e.src).map(e=>e.src),card:document.querySelector('#b46-finance-chart-card .f46-card')?.outerHTML.slice(0,25000)}));
+          console.log('NUM_DOM '+JSON.stringify({mobile,...a}));
+          if(!mobile){
+            const urls=a.scripts.filter(x=>/performance|statistics|workspace|stage|finance/i.test(x));
+            for(const u of urls){const res=await p.request.get(u);const t=await res.text();const pats=[/toFixed\(2\)/g,/Cumulative Units/gi,/UNITS USED/gi,/W · D · L/gi,/SETTLED DAYS/gi,/f46-value/g,/b46-v1-market-detail/g];for(const re of pats){let n=0;for(const m of t.matchAll(re)){if(++n>10)break;console.log('NUM_SOURCE '+JSON.stringify({url:u,pattern:re.source,context:t.slice(Math.max(0,m.index-320),m.index+430)}))}}}
+          }
+          await p.close()
+          }}finally{await b.close()}})().catch(e=>{console.error(e);process.exit(1)})
+          EOF
