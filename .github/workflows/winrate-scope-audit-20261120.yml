@@ -13,7 +13,18 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: |
+      - env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          node --input-type=module <<'CF'
+          const account=process.env.CLOUDFLARE_ACCOUNT_ID;
+          const host='https://api.cloudflare.com/client/v4/accounts/'+account+'/workers';
+          async function get(path){const r=await fetch(host+path,{headers:{authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN}});const j=await r.json();if(!r.ok||!j.success)throw Error('CF_READ_'+r.status);return j.result}
+          for(const site of ['ball46-sidebar-monitor-cache-20261119','ball46-production']){
+            try{const active=(await get('/scripts/'+site+'/deployments?per_page=1')).deployments[0].versions;const v=await get('/workers/'+site+'/versions/'+active[0].version_id+'?include=modules');for(const m of v.modules){if(!m.content_type?.includes('javascript'))continue;const src=Buffer.from(m.content_base64,'base64').toString();const matches=[];for(const q of src.matchAll(/x-b46-monitor-rates|function\s+\w*(?:rate|Rate|winrate|WinRate)\w*\s*\(|(?:halfWin|HALF_WIN|half_win)\s*\*\s*(?:0?\.5)|(?:win|wins)\s*\+\s*(?:halfWin|half_win)/g)){const frag=src.slice(Math.max(0,q.index-150),q.index+240);if(matches.length<20&&!matches.includes(frag))matches.push(frag)}if(matches.length)console.log('MONITOR_SOURCE '+JSON.stringify({site,module:m.name,matches}))}}catch(e){console.log('CF_READ_ERROR '+JSON.stringify({site,error:e.message}))}
+          }
+          CF
           npm install --no-audit --no-fund playwright@1.55.0
           npx playwright install chromium --only-shell
           node <<'EOF'
@@ -26,7 +37,7 @@ jobs:
             await p.goto(host+'/index.html?view=statistics',{waitUntil:'domcontentloaded'});await p.waitForFunction(()=>document.querySelector('#b46-finance-chart-card')?.getBoundingClientRect().height>200,null,{timeout:45000});await p.waitForTimeout(2200);
             const d=await p.evaluate(()=>({sidebar:document.querySelector('.left-rail')?.innerText?.slice(0,3500),summary:document.querySelector('#b46-finance-chart-card')?.innerText?.slice(0,2400),rateNodes:[...document.querySelectorAll('.left-rail *, #b46-finance-chart-card *')].filter(e=>e.children.length===0&&/^\d{1,3}\.\d+%$/.test(e.textContent.trim())).slice(0,25).map(e=>({text:e.textContent,html:e.parentElement.outerHTML.slice(0,700)})),scripts:[...document.scripts].map(s=>s.src).filter(Boolean)}));console.log('DOM_PROOF '+JSON.stringify(d));
             const html=await p.content();const snippets=[];for(const m of html.matchAll(/b46.monitor.rates|monitorRates|sidebarMonitor|b46SidebarMonitor/gi)){let t=html.slice(Math.max(0,m.index-220),m.index+350);if(!snippets.includes(t)&&snippets.length<8)snippets.push(t)}console.log('HTML_HINTS '+JSON.stringify(snippets));
-            for(const path of ['/b46-sidebar-monitor-client-20261119.js','/longterm-performance-343.js','/b46-statistics-fast-v1-20261116.js','/singlepage-workspace-343.js']){
+            for(const path of ['/b46-sidebar-monitor-client-colors-20261119-v1.js','/longterm-performance-343.js','/b46-statistics-fast-v1-20261116.js','/singlepage-workspace-343.js']){
               const r=await p.request.get(host+path);const s=await r.text();let snippets=[];for(const m of s.matchAll(/winRate|win_rate|winrate|winPct|monitorRates|x-b46-monitor-rates|half.?win|half.?loss|\/api\/engine\/statistics|\/b46-receiver-v1\/graph/gi)){const z=s.slice(Math.max(0,m.index-100),m.index+160);if(snippets.length<32&&!snippets.includes(z))snippets.push(z)}console.log('SOURCE_PROOF '+JSON.stringify({path,status:r.status(),length:s.length,snippets}))
             }
           }finally{await b.close()}})().catch(e=>{console.error(e);process.exit(1)})
