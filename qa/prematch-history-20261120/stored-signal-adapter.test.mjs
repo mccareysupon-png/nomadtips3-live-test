@@ -65,3 +65,19 @@ test('three-match shadow both markets and independent missing-input counters',()
  for(const market of ['btts','oneX2']){assert.equal(r.diagnostics[market].PASSED,1);assert.equal(r.diagnostics[market].NO_STORED_BET365_PRICE,1);assert.equal(r.diagnostics[market].INSUFFICIENT_HISTORY,1);assert.equal(Object.values(r.diagnostics[market]).reduce((a,b)=>a+b,0),3)}
  assert.equal(r.published,0);
 });
+
+test('probability available without Bet365 and matches result with Bet365',()=>{
+ const q={...f,id:990,teams:{home:{id:5},away:{id:6}}};
+ const missing={...q,storedBet365:undefined};
+ const a=dryRunStored(db,[q],300),b=dryRunStored(db,[missing],300);
+ for(const market of ['btts','oneX2']){
+ const x=a.rows[0][market],y=b.rows[0][market];assert.deepEqual(x.metrics.sides.map(s=>s.model),y.metrics.sides.map(s=>s.model));assert.equal(y.signal,'NO_SIGNAL');assert.equal(y.reason,'NO_STORED_BET365_PRICE');assert.ok(y.metrics.sides.every(s=>s.price===null&&s.edge===null&&s.ev===null));assert.deepEqual(b.probability[market],{computed:1,passed:1,below:0,waitingOdds:1});
+ }
+ assert.equal(b.published,0);
+});
+test('without odds, model probability below threshold is still counted before price gate',()=>{
+ const samples=Array.from({length:6},(_,i)=>({id:400+i,league:{id:1},teams:{home:{id:i<3?7:8},away:{id:4000+i}},kickoff_ts:100+i,status:'finished',status_code:'full',goals:[{home:1,away:1},{home:1,away:0},{home:0,away:1},{home:1,away:1},{home:1,away:0},{home:0,away:1}][i]}));
+ ingest(db,samples,200);
+ const q={...f,id:991,teams:{home:{id:7},away:{id:8}},storedBet365:undefined};const a=dryRunStored(db,[q],300);
+ assert.equal(a.rows[0].btts.reason,'PROBABILITY_BELOW');assert.equal(a.probability.btts.below,1);assert.equal(a.diagnostics.missingInputs.bttsOdds,1);assert.equal(a.rows[0].oneX2.reason,'NO_STORED_BET365_PRICE');assert.equal(a.probability.oneX2.waitingOdds,1);assert.equal(a.published,0);
+});
