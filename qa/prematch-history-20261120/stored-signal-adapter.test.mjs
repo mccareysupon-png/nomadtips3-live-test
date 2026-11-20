@@ -76,7 +76,7 @@ test('probability available without Bet365 and matches result with Bet365',()=>{
  assert.equal(b.published,0);
 });
 test('without odds, model probability below threshold is still counted before price gate',()=>{
- const samples=Array.from({length:6},(_,i)=>({id:400+i,league:{id:1},teams:{home:{id:i<3?7:8},away:{id:4000+i}},kickoff_ts:100+i,status:'finished',status_code:'full',goals:[{home:1,away:1},{home:1,away:0},{home:0,away:1},{home:1,away:1},{home:1,away:0},{home:0,away:1}][i]}));
+ const samples=Array.from({length:6},(_,i)=>({id:400+i,league:{id:1},teams:{home:{id:i<3?7:8},away:{id:4000+i}},kickoff_ts:100+i,status:'finished',status_code:'full',goals:[{home:1,away:1},{home:1,away:0},{home:0,away:1},{home:1,away:1},{home:2,away:2},{home:0,away:1}][i]}));
  ingest(db,samples,200);
  const q={...f,id:991,teams:{home:{id:7},away:{id:8}},storedBet365:undefined};const a=dryRunStored(db,[q],300);
  assert.equal(a.rows[0].btts.reason,'PROBABILITY_BELOW');assert.equal(a.probability.btts.below,1);assert.equal(a.diagnostics.missingInputs.bttsOdds,1);assert.equal(a.rows[0].oneX2.reason,'NO_STORED_BET365_PRICE');assert.equal(a.probability.oneX2.waitingOdds,1);assert.equal(a.published,0);
