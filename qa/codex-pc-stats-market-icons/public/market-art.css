@@ -1,0 +1,60 @@
+/* Decorative artwork in the statistics summary header. */
+body[data-workspace-view="statistics"] #b46-finance-chart-card .f46-overview > div:first-child:has(> .f46-value) {
+  --market-image-width: clamp(108px, 32%, 216px);
+  position: relative;
+  box-sizing: border-box;
+  padding-inline-end: calc(var(--market-image-width) + 12px);
+}
+
+body[data-workspace-view="statistics"] #b46-finance-chart-card .f46-overview > div:first-child:has(> .f46-value)::after {
+  content: "";
+  position: absolute;
+  inset-block-start: 50%;
+  inset-inline-end: 0;
+  inline-size: var(--market-image-width);
+  aspect-ratio: 3 / 1;
+  background-image: var(--market-image, url("./icons/total.webp"));
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+html[data-theme="light"] body[data-workspace-view="statistics"] #b46-finance-chart-card .f46-overview > div:first-child:has(> .f46-value)::after {
+  filter: drop-shadow(0 1px 1.5px rgb(19 53 39 / 20%));
+}
+
+body:has(.left-rail [data-stat-market="1x2"].active) {
+  --market-image: url("./icons/1x2.webp");
+}
+
+body:has(.left-rail [data-stat-market="ah"].active) {
+  --market-image: url("./icons/asian-handicap.webp");
+}
+
+body:has(.left-rail [data-stat-market="ou"].active) {
+  --market-image: url("./icons/over-under.webp");
+}
+
+body:has(.left-rail [data-stat-market="btts"].active) {
+  --market-image: url("./icons/both-teams-to-score.webp");
+}
+
+body:has(.left-rail [data-stat-market="corners"].active) {
+  --market-image: url("./icons/corners.webp");
+}
+
+body:has(.left-rail [data-stat-market="cards"].active) {
+  --market-image: url("./icons/cards.webp");
+}
+
+body:has(.left-rail [data-stat-market="other"].active) {
+  --market-image: url("./icons/other.webp");
+}
+
+@media (max-width: 420px) {
+  body[data-workspace-view="statistics"] #b46-finance-chart-card .f46-overview > div:first-child:has(> .f46-value) {
+    --market-image-width: 90px;
+  }
+}
