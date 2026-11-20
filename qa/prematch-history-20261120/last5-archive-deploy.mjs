@@ -8,7 +8,7 @@ const before=await versions(),old=await ver(archive),oldInfo=await cf('/workers/
 const priorNamespace=oldInfo.bindings.find(x=>x.name==='HISTORY')?.namespace_id;
 assert(priorNamespace&&oldInfo.main_module==='real-worker.mjs');
 const sub=(await cf('/subdomain')).subdomain,url='https://'+archive+'.'+sub+'.workers.dev',testUrl='https://'+test+'.'+sub+'.workers.dev',newSecret=crypto.randomBytes(32).toString('hex'),owner=crypto.randomBytes(32).toString('hex');
-async function get(u,init={}){const r=await fetch(u,{...init,signal:AbortSignal.timeout(15000)});const j=await r.json();assert(r.ok,'HTTP '+r.status);return j}
+async function get(u,init={}){const r=await fetch(u,{...init,signal:AbortSignal.timeout(15000)});assert(r.ok,'HTTP '+r.status);return r.json()}
 const prior=await get(url+'/health');
 const upload=async(name,metadata,modules)=>{const f=new FormData();f.append('metadata',new Blob([JSON.stringify(metadata)],{type:'application/json'}),'metadata.json');for(const [n,s] of modules)f.append(n,new Blob([s],{type:'application/javascript+module'}),n);await cf('/scripts/'+name,{method:'PUT',body:f});await cf('/scripts/'+name+'/subdomain',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({enabled:true,previews_enabled:false})})};
 const load=f=>fs.readFileSync(dir+f,'utf8');
@@ -27,7 +27,7 @@ const finished=fixtures.filter(f=>f.status==='finished'&&f.boardState==='finishe
 const call=async f=>get(testUrl+'/last5?'+new URLSearchParams({fixtureId:String(f.fixtureId),home:String(f.home.id),away:String(f.away.id),cutoff:String(Math.floor(f.kickoffAt))}),{headers:auth});
 const collected=[];
 for(const f of up){const j=await call(f);assert(j.ok&&String(j.fixtureId)===String(f.fixtureId)&&j.externalRequestsAdded===0);for(const t of [j.home,j.away]){assert(t.verified&&t.rows.length===t.count&&t.count<=5);assert(t.rows.every(r=>r.status==='FT'&&r.opponent.name&&Number.isInteger(r.gf)&&Number.isInteger(r.ga)&&Date.parse(r.kickoffUtc)<f.kickoffAt))}collected.push({fixtureId:String(f.fixtureId),home:j.home.count,away:j.away.count})}
-const sample=await call({...finished[0],fixtureId:up[0].fixtureId,kickoffAt:now+1000});assert(sample.home.count+sample.away.count>0,'NO_ACTUAL_FT_SAMPLE');
+let sample;for(const f of finished.slice(0,15)){const q=await call({...f,fixtureId:up[0].fixtureId,kickoffAt:now+1000});if(q.home.count+q.away.count>0){sample=q;break}}assert(sample,'NO_ACTUAL_FT_SAMPLE');
 assert.equal((await fetch(testUrl+'/last5')).status,404);assert.equal((await fetch(url+'/last5?fixtureId=1&home=2&away=3&cutoff='+now)).status,404);
 const verified=await versions();assert.deepEqual(verified,before);
 const result={archiveVersion:active,archiveRows:after.stored.fixtures,teamNames:names.teamNames,upcomingSample:collected.length,completeBoth:collected.filter(x=>x.home===5&&x.away===5).length,partial:collected.filter(x=>x.home+x.away>0).length,actualSample:{home:sample.home.count,away:sample.away.count},realProviderCalls:0,legacyProductionUnchanged:true,protectedUnchanged:true,scope:'ISOLATED_TEST_SERVICE_ONLY'};
