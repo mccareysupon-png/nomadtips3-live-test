@@ -81,6 +81,7 @@ export class RealHistory extends DurableObject{
 export default {async fetch(req,env){
  const p=new URL(req.url).pathname,stub=env.HISTORY.get(env.HISTORY.idFromName('real-isolated-v1'));
  if(req.method==='GET'&&['/','/health'].includes(p))return stub.fetch('https://history.internal/health');
+ if(req.method==='GET'&&p==='/audit-version')return Response.json({auditVersion:'REAL_SQL_MATCH_V1'});
  if(req.method==='GET'&&p==='/backfill')return stub.fetch('https://history.internal/backfill');
  if(req.method==='POST'&&['/bootstrap','/prepare-backfill','/audit-real'].includes(p)&&env.BOOTSTRAP_SECRET&&req.headers.get('Authorization')==='Bearer '+env.BOOTSTRAP_SECRET)return stub.fetch('https://history.internal'+p,{method:'POST'});
  return new Response('Not found',{status:404});
