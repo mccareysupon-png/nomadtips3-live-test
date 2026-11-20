@@ -1,0 +1,30 @@
+name: Membership placement inspection read only
+on:
+  push:
+    branches: [test/ball46-membership-visual-v2-20261120]
+    paths: ['.github/workflows/membership-visual-inspect-20261120.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm install --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium --only-shell
+          node <<'EOF'
+          const {chromium,devices}=require('playwright');
+          (async()=>{const b=await chromium.launch();try{await Promise.all([false,true].map(async mobile=>{
+          const p=await b.newPage(mobile?{...devices['iPhone 13'],serviceWorkers:'block'}:{viewport:{width:1440,height:950},serviceWorkers:'block'});
+          await p.route('**/*',r=>['GET','HEAD'].includes(r.request().method())?r.continue():r.abort());
+          for(const view of ['live','statistics','signal']){
+          await p.goto('https://ball46.com/index.html?view='+view,{waitUntil:'domcontentloaded'});await p.waitForTimeout(3500);
+          const d=await p.evaluate(()=>{const desc=e=>{const s=getComputedStyle(e),r=e.getBoundingClientRect();return {tag:e.tagName,id:e.id,cls:e.className,rect:[r.x,r.y,r.width,r.height],display:s.display,position:s.position,background:s.backgroundImage}};return {promos:[...document.querySelectorAll('a[href*="member.ball46"],a[href*="member2.ball46"],[class*="member-promo"],[class*="stat-member"],[class*="b46mp-"],img[src*="member-"]')].filter(x=>!['SCRIPT','STYLE'].includes(x.tagName)).slice(0,50).map(e=>({html:e.outerHTML.slice(0,1000),chain:[e,e.parentElement,e.parentElement?.parentElement].filter(Boolean).map(desc)})),theme:document.documentElement.dataset.theme,scripts:[...document.scripts].map(x=>x.src).filter(x=>/member|promo|mobile/i.test(x))}});
+          console.log('MEMBERSHIP_PLACEMENT '+JSON.stringify({mobile,view,...d}));
+          }await p.close();
+          }));}finally{await b.close()}})().catch(e=>{console.error(e);process.exit(1)})
+          EOF
