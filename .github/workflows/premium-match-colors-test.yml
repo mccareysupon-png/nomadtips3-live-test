@@ -8,6 +8,7 @@ concurrency:
   cancel-in-progress: true
 permissions:
   contents: read
+  statuses: write
 jobs:
   stage:
     if: github.ref == 'refs/heads/test/ball46-premium-match-colors-20261120'
@@ -18,6 +19,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Publish test status
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api --method POST repos/${{ github.repository }}/statuses/${{ github.sha }} -f state=pending -f context=ball46-premium-worker -f description='Reading reference palette and testing Worker' -f target_url=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
       - name: Discover actual match palette and create CSS only
         run: |
           npm install --no-audit --no-fund playwright@1.55.0
@@ -129,3 +134,14 @@ jobs:
           name: premium-match-proof
           path: ${{ runner.temp }}/premium-proof
           if-no-files-found: ignore
+
+      - name: Publish final Worker verification status
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          state=failure
+          if [ "$JOB_STATUS" = success ]; then state=success; fi
+          if [ "$JOB_STATUS" = cancelled ]; then state=error; fi
+          gh api --method POST repos/${{ github.repository }}/statuses/${{ github.sha }} -f state="$state" -f context=ball46-premium-worker -f description="Worker verification: $JOB_STATUS" -f target_url=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
