@@ -1,0 +1,34 @@
+name: BALL46 inspect native Pre-Match anchors on full-site QA
+on:
+  push:
+    branches: [test/ball46-premium-match-colors-20261120]
+    paths: ['.github/workflows/ball46-prematch-native-ui-inspect.yml']
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          npm install --no-save --no-package-lock playwright@1.55.0
+          npx playwright install chromium --only-shell
+      - run: |
+          node --input-type=module <<'JS'
+          import {chromium} from 'playwright';
+          const browser=await chromium.launch();
+          const p=await browser.newPage({viewport:{width:1440,height:960}});
+          await p.goto('https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev',{waitUntil:'domcontentloaded',timeout:60000});
+          await p.waitForSelector('[data-b46-sidebar-row="status-signal"]',{timeout:30000});
+          await p.waitForTimeout(1000);
+          const o=await p.evaluate(()=>{
+            const select=s=>document.querySelector(s),clip=e=>e?.outerHTML.slice(0,2000),rows=[...document.querySelectorAll('[data-b46-sidebar-row]')].map(e=>({key:e.dataset.b46SidebarRow,html:e.outerHTML.slice(0,700),parent:e.parentElement?.className}));
+            const states=['status-signal','status-upcoming','stat-all','stat-1x2','stat-btts','stat-other'].map(k=>({k,html:clip(select('[data-b46-sidebar-row="'+k+'"]'))}));
+            const sig=select('[data-b46-sidebar-row="status-signal"]');
+            const relevant=[...document.querySelectorAll('.workspace,.dash-shell,aside.left-rail,main,[data-workspace-view],.f46-overview,.f46-card')].slice(0,35).map(e=>({tag:e.tagName,cls:e.className,id:e.id,attrs:[...e.attributes].filter(a=>a.name.startsWith('data-')).map(a=>[a.name,a.value]).slice(0,8),display:getComputedStyle(e).display,visible:e.getBoundingClientRect().width>50,html:e.outerHTML.slice(0,350)}));
+            const scripts=[...document.scripts].map(x=>({src:x.src||null,length:x.textContent.length})).slice(0,12);
+            return {url:location.href,title:document.title,rows,states,signalParent:clip(sig?.parentElement),relevant,scripts,bodyAttrs:[...document.body.attributes].map(a=>[a.name,a.value])};
+          });
+          console.log('NATIVE_INSPECT '+JSON.stringify(o));
+          await browser.close();
+          JS
