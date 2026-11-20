@@ -1,0 +1,54 @@
+name: "[Codex PC] Ball46 statistics market icons preview"
+
+on:
+  push:
+    branches:
+      - codex-pc/ball46-stats-market-icons
+    paths:
+      - qa/codex-pc-stats-market-icons/**
+      - .github/workflows/codex-pc-stats-market-icons-preview.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ball46-codex-pc-stats-market-icons-preview
+  cancel-in-progress: false
+
+jobs:
+  deploy-preview:
+    if: github.ref == 'refs/heads/codex-pc/ball46-stats-market-icons'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check preview target
+        working-directory: qa/codex-pc-stats-market-icons
+        run: |
+          node --check worker.mjs
+          node -e "const c = JSON.parse(require('node:fs').readFileSync('wrangler.jsonc')); require('node:assert/strict')(c.name === 'ball46-codex-pc-stats-market-icons-preview' && c.workers_dev && !c.routes && !c.route)"
+      - name: Deploy Codex PC test Worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: '4.50.0'
+          workingDirectory: qa/codex-pc-stats-market-icons
+          command: deploy --config wrangler.jsonc --name ball46-codex-pc-stats-market-icons-preview
+      - name: Check test URL and icon files
+        env:
+          PREVIEW_ORIGIN: https://ball46-codex-pc-stats-market-icons-preview.mccarey-supon.workers.dev
+        run: |
+          curl --fail --silent --show-error --retry 8 --retry-all-errors --retry-delay 3 "$PREVIEW_ORIGIN/_codex-pc-market-icons/health" |
+            jq --exit-status '.name == "ball46-codex-pc-stats-market-icons-preview" and .scope == "test"'
+          preview_html="$(curl --fail --silent --show-error --location "$PREVIEW_ORIGIN/index.html?view=statistics")"
+          grep -Fq 'id="codex-pc-market-icons-preview"' <<< "$preview_html"
+          for icon in total 1x2 asian-handicap over-under both-teams-to-score corners cards other; do
+            curl --fail --silent --show-error --head "$PREVIEW_ORIGIN/_codex-pc-market-icons/icons/$icon.webp" |
+              tr -d '\r' | grep -iFx 'content-type: image/webp'
+          done

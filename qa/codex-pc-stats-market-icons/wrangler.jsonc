@@ -1,10 +1,19 @@
 {
   "$schema": "https://raw.githubusercontent.com/cloudflare/workers-sdk/main/packages/wrangler/config-schema.json",
   "name": "ball46-codex-pc-stats-market-icons-preview",
+  "main": "./worker.mjs",
   "compatibility_date": "2026-11-20",
   "workers_dev": true,
   "preview_urls": false,
   "assets": {
-    "directory": "./public"
-  }
+    "directory": "./public",
+    "binding": "ASSETS",
+    "run_worker_first": true
+  },
+  "services": [
+    {
+      "binding": "B46_PRODUCTION_READ",
+      "service": "ball46-production"
+    }
+  ]
 }
