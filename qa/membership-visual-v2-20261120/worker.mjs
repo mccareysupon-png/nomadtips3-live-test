@@ -1,11 +1,11 @@
 const name='ball46-membership-visual-v2-test-20261120';
 const pages=new Set(['/','/index','/index.html','/statistics','/statistics.html','/statistics-next.html']);
 const apis=new Set(['/api/engine/statistics','/api/engine/board','/api/engine/signals','/api/engine/health','/api/hub/snapshot','/api/hub/health','/api/prediction-vote','/b46-receiver-v1/graph','/b46-sidebar-monitor-client-20261119.js']);
-export const css="<style id=\"b46-mobile-stat-card-align-v14\">\n@media(max-width:760px){\nhtml:root body [data-workspace-panel=\"statistics\"] > .b46-exact-mobile{box-sizing:border-box!important;inline-size:auto!important;max-inline-size:none!important;margin-inline:6px!important}\nhtml:root body [data-workspace-panel=\"statistics\"] .workspace-view-head{box-sizing:border-box!important;inline-size:auto!important;max-inline-size:none!important;margin-inline:6px!important;border-radius:11px!important}\n}\n</style>";
+export const css="<style id=\"b46-mobile-stat-card-align-v15\">\n@media(max-width:760px){\nhtml:root body [data-workspace-panel=\"statistics\"] > .b46-exact-mobile{box-sizing:border-box!important;inline-size:auto!important;max-inline-size:none!important;margin-inline:6px!important}\nhtml:root body[data-workspace-view=\"statistics\"] [data-workspace-panel=\"statistics\"] .workspace-view-head.workspace-view-head{box-sizing:border-box!important;width:calc(100% - 12px)!important;inline-size:calc(100% - 12px)!important;max-width:calc(100% - 12px)!important;max-inline-size:calc(100% - 12px)!important;min-width:0!important;min-inline-size:0!important;margin-inline:6px!important;border-radius:11px!important}\n}\n</style>";
 export default {async fetch(req,env){
  const u=new URL(req.url);
  if(!['GET','HEAD'].includes(req.method))return Response.json({error:'READ_ONLY'},{status:405});
- if(u.pathname==='/_membership_visual_health')return Response.json({ok:true,name,scope:'TEST_ONLY_MEMBERSHIP_VISUAL',revision:'MEMBERSHIP_MOBILE_ALIGN_V14'});
+ if(u.pathname==='/_membership_visual_health')return Response.json({ok:true,name,scope:'TEST_ONLY_MEMBERSHIP_VISUAL',revision:'MEMBERSHIP_MOBILE_ALIGN_V15'});
  if(!pages.has(u.pathname)&&!apis.has(u.pathname)&&!(/^\/[a-zA-Z0-9_./-]+\.(js|mjs|css|svg|png|gif|woff2?|ico|jpe?g|webp|json|html|txt|map|avif)$/i.test(u.pathname)&&!/^\/(?:api|b46-receiver-v1|admin|internal)\//.test(u.pathname)))return Response.json({error:'PATH_NOT_ALLOWED'},{status:404});
  const headers=new Headers();for(const k of ['accept','accept-language','user-agent','sec-ch-ua-mobile']){const v=req.headers.get(k);if(v)headers.set(k,v.slice(0,512))}
  const r=await env.B46_PRODUCTION_READ.fetch(new Request(new URL(u.pathname+u.search,'https://ball46.com'),{method:req.method,headers,redirect:'manual'}));
