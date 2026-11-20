@@ -1,0 +1,7 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {mergeStoredPrematch} from './stored-prematch-feed.mjs';
+// Synthetic objects are confined to unit tests; never sent to Worker or archive.
+const now=1000;const fixture={id:1,status:'scheduled',kickoff_ts:2000,teams:{home:{id:2},away:{id:3}}};
+test('reject expired and retain absent odds',()=>{const r=mergeStoredPrematch([], [fixture,{...fixture,id:2,kickoff_ts:999}],now);assert.equal(r.stats.stored,1);assert.equal(r.stats.rejected,1);assert.equal(r.fixtures[0].storedBet365,undefined)});
+test('retain real-shaped existing odds when later list omits them; deduplicate ID',()=>{const f={...fixture,storedBet365:{bookmaker:'bet365',observed:900,prices:{BTTS_YES:1.9,BTTS_NO:2}}};const r=mergeStoredPrematch([f],[fixture],now);assert.equal(r.stats.stored,1);assert.equal(r.stats.bttsPrices,1);assert.equal(r.stats.oneX2Prices,0)});
+test('reject unverified bookmaker, invalid and future odds',()=>{for(const o of [{bookmaker:'other',observed:900,prices:{BTTS_YES:2}},{bookmaker:'bet365',observed:1001,prices:{BTTS_YES:2}},{bookmaker:'bet365',observed:900,prices:{BTTS_YES:0}}]){const r=mergeStoredPrematch([],[{...fixture,storedBet365:o}],now);assert.equal(r.fixtures[0].storedBet365,undefined)}});
+test('refuse identity conflicts',()=>{const r=mergeStoredPrematch([fixture],[{...fixture,teams:{home:{id:9},away:{id:3}}}],now);assert.equal(r.stats.conflicts,1);assert.equal(r.fixtures[0].teams.home.id,2)});
