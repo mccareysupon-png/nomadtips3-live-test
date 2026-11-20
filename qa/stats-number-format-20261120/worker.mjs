@@ -5,7 +5,7 @@ const apis=new Set(['/api/engine/statistics','/api/engine/board','/api/engine/si
 const finance='/longterm-performance-343.js';
 function replaceExact(s,a,b){if(!s.includes(a))throw Error('FORMAT_SOURCE_DRIFT '+a);return s.replaceAll(a,b)}
 export function patchFinance(s){
- const fixed='function b46DisplayFixed(v,d){return v.toFixed(d).replace(/^(-?\d+)(?=\.|$)/,m=>m.replace(/\B(?=(\d{3})+(?!\d))/g,","))}\n';
+ const fixed=String.raw`function b46DisplayFixed(v,d){const p=v.toFixed(d).split(".");p[0]=p[0].replace(/\B(?=(\d{3})+(?!\d))/g,",");return p.join(".")}`+'\n';
  s=replaceExact(s,'function valueText(v){',fixed+'function valueText(v){');
  s=replaceExact(s,'\x24{v.toFixed(2)}U','\x24{b46DisplayFixed(v,2)}U');
  s=replaceExact(s,'s.wins+\x27 · \x27+s.pushes+\x27 · \x27+s.losses',"[s.wins,s.pushes,s.losses].map(n=>n.toLocaleString('en-US')).join(' · ')");
