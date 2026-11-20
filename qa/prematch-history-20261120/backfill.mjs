@@ -52,6 +52,8 @@ export async function processLeaguePage(db,{scope,league,now,centralGateway}){
  if(!r||!['pending','retry'].includes(r.state))return {state:r?.state??'missing',requests:0};
  if(r.not_before>now)return {state:'cooldown',requests:0};
  const update=(state,page,req,notBefore=0)=>db.exec('UPDATE league_seed_v2 SET state=?,next_page=?,requests=requests+?,not_before=? WHERE scope=? AND league_id=?',state,page,req,notBefore,r.scope,r.league_id);
+ // Persist intent before awaiting the gateway: a crash or overlapping dispatch must not re-send silently.
+ update('in_flight_review',r.next_page,0);
  let v;try{v=await centralGateway(leaguePath(r))}catch{update('review_transport',r.next_page,0);return {state:'review_transport',requests:0}}
  if(v?.state==='deferred_budget'){update('retry',r.next_page,0,now+60);return {state:'deferred_budget',requests:0}}
  if(v?.status===429){const delay=Number(v.retryAfter);update('retry',r.next_page,1,now+(Number.isFinite(delay)&&delay>0?Math.ceil(delay):60));return {state:'deferred_429',requests:1}}
