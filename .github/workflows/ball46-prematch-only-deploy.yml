@@ -17,6 +17,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - run: node --test qa/prematch-history-20261120/evaluate-btts-signal.test.mjs qa/prematch-history-20261120/evaluate-1x2-signal.test.mjs qa/prematch-history-20261120/stored-signal-adapter.test.mjs
       - name: Deploy isolated daily archive and verify existing cycle
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
