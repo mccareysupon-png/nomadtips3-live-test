@@ -1,0 +1,15 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {evaluate1x2Signal} from './evaluate-1x2-signal.mjs';
+const team=(gf,ga,id)=>Array.from({length:10},(_,i)=>({fixtureId:id+i,kickoff:100+i,gf,ga}));
+const base={homeLast10:team(2,0,1),awayLast10:team(0,2,21),odds:{bookmaker:'bet365',home:1.85,draw:3.4,away:4.2,observed:290},asOf:300,kickoff:400};
+const cfg={enabled:true};
+test('HOME_WIN and normalized market',()=>{const r=evaluate1x2Signal(base,cfg);assert.equal(r.signal,'HOME_WIN');assert.equal(r.metrics.sides[0].model,1);assert.ok(Math.abs(r.metrics.sides.reduce((x,s)=>x+s.market,0)-1)<1e-12)});
+test('AWAY_WIN',()=>assert.equal(evaluate1x2Signal({...base,homeLast10:team(0,2,1),awayLast10:team(2,0,21),odds:{...base.odds,away:2.1}},cfg).signal,'AWAY_WIN'));
+test('DRAW',()=>assert.equal(evaluate1x2Signal({...base,homeLast10:team(1,1,1),awayLast10:team(0,0,21)},cfg).signal,'DRAW'));
+test('owner OFF',()=>assert.equal(evaluate1x2Signal(base).reason,'OWNER_OFF'));
+test('side-specific price range',()=>assert.equal(evaluate1x2Signal(base,{...cfg,priceRanges:{HOME_WIN:[2,3]}}).signal,'NO_SIGNAL'));
+test('incomplete data',()=>assert.equal(evaluate1x2Signal({...base,homeLast10:base.homeLast10.slice(1)},cfg).reason,'INVALID_OR_INCOMPLETE_HISTORY'));
+test('invalid odds',()=>assert.equal(evaluate1x2Signal({...base,odds:{...base.odds,draw:null}},cfg).reason,'INVALID_BET365_ODDS'));
+test('kickoff guard',()=>assert.equal(evaluate1x2Signal({...base,asOf:400},cfg).reason,'INVALID_PREMATCH_TIME'));
+test('recent form reversal',()=>{const h=team(3,0,1).map((x,i)=>i<5?x:{...x,gf:0,ga:2});const a=team(0,3,21).map((x,i)=>i<5?x:{...x,gf:2,ga:0});const r=evaluate1x2Signal({...base,homeLast10:h,awayLast10:a},{...cfg,minProbability:.4,minEdge:0,minEV:0,priceRanges:{HOME_WIN:[1.6,3.5]},maxRecentRateDrop:.2});assert.equal(r.metrics.sides[0].formGuard,false);assert.equal(r.signal,'NO_SIGNAL')});
+test('goal difference guard',()=>{const h=team(1,0,1).map((x,i)=>i===0?{...x,gf:0,ga:20}:x);const r=evaluate1x2Signal({...base,homeLast10:h},cfg);assert.equal(r.metrics.sides[0].formGuard,false);assert.equal(r.signal,'NO_SIGNAL')});
+test('statistical probabilities sum to one',()=>{const h=team(2,0,1).map((x,i)=>i%3===0?{...x,gf:0,ga:0}:x);const r=evaluate1x2Signal({...base,homeLast10:h},cfg);assert.ok(Math.abs(r.metrics.sides.reduce((s,x)=>s+x.model,0)-1)<1e-12)});
