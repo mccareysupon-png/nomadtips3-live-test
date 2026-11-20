@@ -82,6 +82,10 @@ export async function executeJohnStep(db,{key,now,centralGateway}){
  const t=rows(db,'SELECT * FROM john_tasks WHERE task_key=?',key)[0];
  if(!t||!['pending','retry'].includes(t.state))return {state:t?.state??'missing',requests:0};
  if(t.not_before>now)return {state:'cooldown',requests:0};
+ if(t.kind==='unknown'){
+  const fid=id(t.path.split('/').pop()),r=rows(db,'SELECT * FROM john_unknown WHERE fixture_id=?',fid)[0],last=rows(db,'SELECT status FROM result_version WHERE fixture_id=? ORDER BY observed DESC LIMIT 1',fid)[0];
+  if(!r||r.state==='resolved'||last?.status==='finished'||t.cycle!==dailyPlan(now).cycle||r.last_cycle===t.cycle){db.exec('UPDATE john_tasks SET state=? WHERE task_key=?','superseded',key);return {state:'superseded',requests:0}}
+ }
  const set=(state,p=t.next_page,attempts=0,notBefore=0)=>db.exec('UPDATE john_tasks SET state=?,next_page=?,attempts=attempts+?,not_before=? WHERE task_key=?',state,p,attempts,notBefore,key);
  const u=new URL(t.path,'https://history.invalid');if(t.kind!=='unknown')u.searchParams.set('page',String(t.next_page));
  const path=u.pathname+u.search;

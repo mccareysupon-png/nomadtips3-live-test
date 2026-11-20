@@ -1,6 +1,8 @@
 import {DurableObject} from 'cloudflare:workers';
 import {init,ingest,coverage,totals,dailyPlan,normalize} from './history.mjs';
 import {initBackfill,planBackfill} from './backfill.mjs';
+import {initJohn,prepareDay,prepareCatalog,observeUnresolved,prepareUnknown,johnSummary,nextCutoff} from './john-sync.mjs';
+const SYNC_POLICY='JOHN_LOCAL_PLAN_V3';
 const H='https://hub.internal/snapshot';
 const epoch=()=>Math.floor(Date.now()/1000);
 export function adapt(f){
@@ -14,14 +16,14 @@ export function adapt(f){
  const v={id:f.fixtureId,league:{id:f.league?.id},teams:{home:{id:f.home?.id},away:{id:f.away?.id}},kickoff_ts:k,status:f.status,status_code:f.status==='finished'?'full':null,goals:{home:f.goals?.home,away:f.goals?.away}};
  return normalize(v)?v:null;
 }
-function nextAlarm(now){let t=now+86400;let next=dailyPlan(t).cutoff;if(next<=now)next=dailyPlan(t+7200).cutoff;return next*1000}
+function nextAlarm(now){return nextCutoff(now)*1000}
 export class RealHistory extends DurableObject{
- constructor(ctx,env){super(ctx,env);this.db={exec:(q,...a)=>ctx.storage.sql.exec(q,...a),transaction:f=>ctx.storage.transactionSync(f)};init(this.db);initBackfill(this.db);this.busy=null}
+ constructor(ctx,env){super(ctx,env);this.db={exec:(q,...a)=>ctx.storage.sql.exec(q,...a),transaction:f=>ctx.storage.transactionSync(f)};init(this.db);initBackfill(this.db);initJohn(this.db);this.busy=null}
  async run(){
   if(this.busy)return this.busy;
   this.busy=(async()=>{
    const now=epoch(),cycle=dailyPlan(now).cycle,prev=await this.ctx.storage.get('report');
-   if(prev?.cycle===cycle&&prev?.state==='ok')return prev;
+   if(prev?.cycle===cycle&&prev?.state==='ok'&&prev.syncPolicy===SYNC_POLICY)return prev;
    const r=await this.env.SOURCE_HUB.fetch(H,{method:'GET'});if(!r.ok)throw Error('HUB_HTTP_'+r.status);
    const j=await r.json();
    if(j.ok!==true||j.cacheOnly!==true||Number(j.externalRequestsAdded)!==0||j.stale===true||!Array.isArray(j.fixtures)||!j.fixtures.length||j.fixtures.length>15000)throw Error('CACHE_CONTRACT');
@@ -30,6 +32,7 @@ export class RealHistory extends DurableObject{
    for(const f of j.fixtures){if(f.boardState==='finished'||f.boardState==='unknown'){seen++;const code=String(f.statusCode??'missing').replace(/[^a-zA-Z0-9_ -]/g,'?').slice(0,60);codes[code]=(codes[code]||0)+1;const v=adapt(f);if(v)a.push(v)}}
    if(!a.some(f=>f.status==='finished'))throw Error('NO_VALID_FINISHED rows='+seen+' codes='+JSON.stringify(codes));
    const stats=ingest(this.db,a,now),t=totals(this.db);
+   prepareDay(this.db,now);prepareCatalog(this.db,'initial-v3',now-180*86400);observeUnresolved(this.db,j.fixtures,now);prepareUnknown(this.db,now);
    let upcoming=0,eligible=0,homeCovered=0,awayCovered=0,oneOrMore=0;const teams=new Set(),covered=new Set();
    for(const f of j.fixtures){if(f.boardState!=='scheduled'||f.status!=='scheduled')continue;
     const k=Number.isFinite(f.kickoffAt)?Math.floor(f.kickoffAt/1000):Math.floor(Date.parse(f.kickoffUtc)/1000);
@@ -39,7 +42,7 @@ export class RealHistory extends DurableObject{
     const hc=coverage(this.db,h,k,now),ac=coverage(this.db,a,k,now);
     if(hc.complete){homeCovered++;covered.add(h)}if(ac.complete){awayCovered++;covered.add(a)}if(hc.complete&&ac.complete)eligible++;if(hc.count||ac.count)oneOrMore++;
    }
-   const report={mode:'REAL_HUB_CACHE_ONLY_TEST',state:'ok',cycle,observedAt:new Date(now*1000).toISOString(),sourceRows:j.fixtures.length,sourceFinishedOrUnknown:seen,accepted:a.length,excluded:seen-a.length,statusCodes:codes,ingest:stats,stored:t,upcoming,upcomingTeams:teams.size,teamsWith10:covered.size,homeCovered,awayCovered,eligible,upcomingWithAnyHistory:oneOrMore,externalRequestsAdded:0,backfillComplete:false,nextAlarmAt:new Date(nextAlarm(now)).toISOString()};
+   const report={syncPolicy:SYNC_POLICY,sync:johnSummary(this.db),mode:'REAL_HUB_CACHE_ONLY_TEST',state:'ok',cycle,observedAt:new Date(now*1000).toISOString(),sourceRows:j.fixtures.length,sourceFinishedOrUnknown:seen,accepted:a.length,excluded:seen-a.length,statusCodes:codes,ingest:stats,stored:t,upcoming,upcomingTeams:teams.size,teamsWith10:covered.size,homeCovered,awayCovered,eligible,upcomingWithAnyHistory:oneOrMore,externalRequestsAdded:0,backfillComplete:false,nextAlarmAt:new Date(nextAlarm(now)).toISOString()};
    const plan=planBackfill(this.db,j.fixtures,now,cycle);await this.ctx.storage.put('backfillPlan',{...plan,cycle,observedAt:report.observedAt});
    await this.ctx.storage.put('report',report);return report;
   })().finally(()=>this.busy=null);return this.busy
