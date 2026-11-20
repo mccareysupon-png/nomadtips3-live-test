@@ -38,3 +38,5 @@ jobs:
           name: ui-batch-production-proof
           path: ${{ runner.temp }}/ui-batch-production-proof
           if-no-files-found: ignore
+
+# Retry after verified rollback; bounded edge propagation check.
