@@ -48,7 +48,7 @@ jobs:
           const {chromium,devices}=createRequire(process.cwd()+'/qa/stats-roi-color-20261120/.runtime/package.json')('playwright');
           const base='https://ball46-stats-roi-color-test-20261120.mccarey-supon.workers.dev';
           let health;for(let i=0;i<15;i++){try{const r=await fetch(base+'/_stats_roi_health');if(r.ok){health=await r.json();break}}catch{}await new Promise(r=>setTimeout(r,2000))}
-          assert.equal(health?.scope,'TEST_ONLY_ROI_COLOR');assert.equal(health?.revision,'ROI_TONE_V1');assert.equal((await fetch(base+'/_stats_roi_health',{method:'POST'})).status,405);
+          assert.equal(health?.scope,'TEST_ONLY_ROI_COLOR');assert.equal(health?.revision,'ROI_TONE_V2');assert.equal((await fetch(base+'/_stats_roi_health',{method:'POST'})).status,405);
           const browser=await chromium.launch();try{await Promise.all(['wide-dark','desktop-light','mobile-dark','mobile-light'].map(async mode=>{const mobile=mode.startsWith('mobile'),theme=mode.endsWith('dark')?'dark':'light';
           const p=await browser.newPage(mobile?{...devices['iPhone 13'],serviceWorkers:'block'}:{viewport:{width:mode.startsWith('wide')?1920:1440,height:950},serviceWorkers:'block'});
           await p.addInitScript(t=>localStorage.setItem('nomad343_dashboard_theme_v1',t),theme);
