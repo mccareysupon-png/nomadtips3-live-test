@@ -1,0 +1,31 @@
+name: Inspect canonical win rate source read only
+on:
+  push:
+    branches: [test/ball46-winrate-canonical-20261120]
+    paths: ['.github/workflows/winrate-canonical-inspect.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          node --input-type=module <<'EOF'
+          const host='https://ball46.com',root='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+'/workers';
+          async function get(path){const r=await fetch(root+path,{headers:{authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN}});const j=await r.json();if(!j.success)throw Error('CF_READ '+r.status);return j.result}
+          for(const site of ['ball46-shadow-receiver-production','ball46-sidebar-monitor-cache-20261119']){
+            const id=(await get('/scripts/'+site+'/deployments?per_page=1')).deployments[0].versions[0].version_id;
+            const v=await get('/workers/'+site+'/versions/'+id+'?include=modules');
+            for(const m of v.modules){if(!m.content_type.includes('javascript'))continue;const s=Buffer.from(m.content_base64,'base64').toString();const hits=[...s.matchAll(/winCredits|winRate|win_rate|ratePoints|HALF_WIN.{0,20}(?:0\.5|\.5)|function readRates|summary\.wins|series\.rate/gi)].slice(0,45).map(x=>s.slice(Math.max(0,x.index-180),x.index+320));if(hits.length)console.log('MODULE '+JSON.stringify({site,id,name:m.name,hits}))}
+          }
+          for(const path of ['/longterm-performance-343.js','/b46-statistics-fast-v1-20261116.js','/singlepage-workspace-343.js','/b46-sidebar-monitor-client-colors-20261119-v1.js','/b46-statistics-card-20261116.js']){
+            const s=await (await fetch(host+path)).text();
+            const hits=[...s.matchAll(/winCredits|winRate|win_rate|ratePoints|summary\.rate|summary\.wins|halfWin\s*\*\s*\.5|HALF_WIN\s*\*\s*\.5|function rate\(|function paint\(|series\.rate|WIN RATE/gi)].slice(0,50).map(x=>s.slice(Math.max(0,x.index-120),x.index+230));console.log('JS '+JSON.stringify({path,hits}))
+          }
+          const r=await fetch(host+'/b46-receiver-v1/graph?market=all&variant=all&filter=all&range=all');const g=await r.json();
+          console.log('GRAPH '+JSON.stringify({header:r.headers.get('x-b46-monitor-rates'),summary:g.summary,counts:g.counts,series:Object.fromEntries(Object.entries(g.series).map(([k,v])=>[k,{length:v.length,first:v[0],last:v.at(-1)}]))}))
+          EOF
