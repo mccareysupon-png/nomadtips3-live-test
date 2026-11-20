@@ -3,7 +3,16 @@
 const integer=s=>/^[1-9]\d{0,15}$/.test(String(s))&&Number.isSafeInteger(Number(s))?Number(s):null;
 export function parseHistoryPath(path,now){
  if(typeof path!=='string'||path.length>420||!path.startsWith('/v1/'))throw Error('INVALID_HISTORY_PATH');
- const u=new URL(path,'https://history.invalid'),m=/^\/v1\/leagues\/([1-9]\d{0,15})\/fixtures$/.exec(u.pathname),daily=u.pathname==='/v1/fixtures';
+ const u=new URL(path,'https://history.invalid');
+ if(u.origin!=='https://history.invalid'||u.hash)throw Error('INVALID_HISTORY_PATH');
+ const single=/^\/v1\/fixtures\/([1-9]\d{0,15})$/.exec(u.pathname);
+ if(single&&integer(single[1])&&!u.search)return {path:u.pathname,kind:'unknown',fixture:integer(single[1])};
+ if(u.pathname==='/v1/leagues'){
+  const q=u.searchParams,pg=integer(q.get('page')),since=integer(q.get('active_since'));
+  if([...q.keys()].sort().join(',')!=='active_since,include,page,per_page'||q.get('include')!=='seasons'||q.get('per_page')!=='100'||!pg||pg>200||!since||since>now)throw Error('INVALID_CATALOG_QUERY');
+  return {path:u.pathname+'?'+new URLSearchParams({include:'seasons',active_since:String(since),per_page:'100',page:String(pg)}),kind:'catalog',page:pg};
+ }
+ const m=/^\/v1\/leagues\/([1-9]\d{0,15})\/fixtures$/.exec(u.pathname),daily=u.pathname==='/v1/fixtures';
  if(u.origin!=='https://history.invalid'||u.hash||(!daily&&!m)||(m&&!integer(m[1])))throw Error('INVALID_HISTORY_PATH');
  const q=u.searchParams,keys=[...q.keys()].sort().join(','),s=q.get('season'),start=integer(q.get('start_time')),end=integer(q.get('end_time')),page=integer(q.get('page'));
  const seasonal=!!m&&/^(?:\d{4}|\d{2}\/\d{2}|\d{4}\/\d{2}|\d{4}\/\d{4})$/.test(s??'')&&keys==='page,per_page,season,status';
@@ -11,7 +20,7 @@ export function parseHistoryPath(path,now){
  if((!seasonal&&!window)||q.get('status')!=='finished'||q.get('per_page')!=='100'||!page||page>200)throw Error('INVALID_HISTORY_PARAMETERS');
  const params={status:'finished',per_page:'100',page:String(page)};
  if(seasonal)params.season=s;else{params.start_time=String(start);params.end_time=String(end)}
- return {path:u.pathname+'?'+new URLSearchParams(params),league:m?integer(m[1]):null,page};
+ return {path:u.pathname+'?'+new URLSearchParams(params),kind:daily?'daily':'league',league:m?integer(m[1]):null,page};
 }
 // This pure decision is called WITHIN a shared atomic reservation transaction,
 // not on a separately cached health response. Unknown/stale quota => zero calls.
@@ -47,7 +56,7 @@ export function makeHistoryGateway({authorize,reserve,call,observe,failed,clock=
    // Merges are unresolved, no automatic redirect and no unbounded follow-up.
    if(status!==200)return Response.json({status,state:status===301?'league_moved_review':'provider_error'});
    let body;try{body=await response.json()}catch{return Response.json({status:502,state:'invalid_json'})}
-   if(body?.success!==1||!Array.isArray(body.data)||body.data.length>100||body.pagination?.page!==p.page||typeof body.pagination?.has_more!=='boolean')return Response.json({status:502,state:'invalid_payload'});
+   if(body?.success!==1||(p.kind==='unknown'?(!body.data||Array.isArray(body.data)||integer(body.data.id)!==p.fixture):(!Array.isArray(body.data)||body.data.length>100||body.pagination?.page!==p.page||typeof body.pagination?.has_more!=='boolean')))return Response.json({status:502,state:'invalid_payload'});
    // Existing consumer checks fixture IDs, status, kickoff window and scores.
    return Response.json({status,body});
   }catch{return Response.json({state:'deferred_budget',reason:'GATEWAY_FAIL_CLOSED'})}finally{busy=false}
