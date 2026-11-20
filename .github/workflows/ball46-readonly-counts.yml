@@ -16,3 +16,5 @@ jobs:
       - run: node qa/prematch-history-20261120/readonly-distribution.mjs
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
+# Read current probability-first runtime status only.
