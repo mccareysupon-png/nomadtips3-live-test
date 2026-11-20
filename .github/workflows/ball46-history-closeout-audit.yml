@@ -1,0 +1,23 @@
+name: BALL46 final caller path closeout audit
+on:
+  push:
+    branches: [test/ball46-prematch-v1-20261120]
+    paths: ['.github/workflows/ball46-history-closeout-audit.yml']
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read exact active caller paths, scheduler, and invocation analytics
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: node qa/prematch-history-20261120/closeout-audit.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: closeout-audit
+          path: evidence/
