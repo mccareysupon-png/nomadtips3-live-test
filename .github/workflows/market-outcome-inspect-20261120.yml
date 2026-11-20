@@ -1,0 +1,40 @@
+name: Read-only inspect all-market outcome bar renderers
+on:
+  push:
+    branches: [test/ball46-market-outcome-bar-20261120]
+    paths: ['.github/workflows/market-outcome-inspect-20261120.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm install --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium --only-shell
+          node <<'EOF'
+          const {chromium,devices}=require('playwright');
+          (async()=>{const b=await chromium.launch();try{for(const mobile of [false,true]){
+          const p=await b.newPage(mobile?{...devices['iPhone 13'],serviceWorkers:'block'}:{viewport:{width:1920,height:1000},serviceWorkers:'block'});
+          await p.route('**/*',r=>['GET','HEAD'].includes(r.request().method())?r.continue():r.abort());
+          await p.goto('https://ball46-production.mccarey-supon.workers.dev/index.html?view=statistics',{waitUntil:'domcontentloaded'});
+          await p.waitForFunction(()=>[...document.querySelectorAll('[data-sp-table-body] tr')].some(r=>r.cells.length>=4),null,{timeout:60000});
+          await p.waitForTimeout(3000);
+          for(const market of ['all','1x2','ah','ou','btts','corners','cards','other']){
+            await p.locator('[data-stat-market="'+market+'"]').first().evaluate(e=>e.click());await p.waitForTimeout(2300);
+            const a=await p.evaluate(()=>{const c=document.querySelector('#b46-finance-chart-card');return {overview:c?.querySelector('.f46-overview')?.outerHTML.slice(0,16000),kpis:c?.querySelector('.b46-perf-kpis')?.outerHTML,theme:document.documentElement.dataset.theme}});
+            console.log('MARKET_DOM '+JSON.stringify({mobile,market,...a}));
+          }
+          if(!mobile)for(const path of ['/longterm-performance-343.js','/b46-statistics-fast-v1-20261116.js','/b46-statistics-card-20261116.js']){
+            const s=await(await p.request.get('https://ball46-production.mccarey-supon.workers.dev'+path)).text();
+            const start=path.includes('fast')?s.indexOf('function enhanceFilteredMarket'):path.includes('longterm')?s.indexOf('function b46TotalMarkup'):s.indexOf('function sync()');
+            if(start>=0)console.log('MARKET_SOURCE '+JSON.stringify({path,code:s.slice(start,start+18000)}));
+            for(const re of [/\.b46-stage-outcomes[^{}]*\{[^}]*\}/g,/\.b46-v1-market-outcomes[^{}]*\{[^}]*\}/g]){const matches=[...s.matchAll(re)].map(x=>x[0]);if(matches.length)console.log('MARKET_CSS '+JSON.stringify({path,matches:matches.slice(0,60)}))}
+          }
+          await p.close()
+          }}finally{await b.close()}})().catch(e=>{console.error(e);process.exit(1)})
+          EOF
