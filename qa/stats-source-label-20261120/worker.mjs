@@ -1,11 +1,11 @@
 const name='ball46-stats-source-label-test-20261120';
 const pages=new Set(['/','/index','/index.html','/statistics','/statistics.html','/statistics-next.html']);
 const apis=new Set(['/api/engine/statistics','/api/engine/board','/api/engine/signals','/api/engine/health','/api/hub/snapshot','/api/hub/health','/api/prediction-vote','/b46-receiver-v1/graph','/b46-sidebar-monitor-client-20261119.js']);
-export const css='<style id="b46-stats-source-label-20261120">@layer b46StatsSourceMask{small.sp-result-source{display:none!important}}html:root body small.sp-result-source.sp-result-source.sp-result-source{display:none!important}</style>';
+export const css='<style id="b46-stats-source-label-20261120">@layer b46StatsSourceMask{small.sp-result-source,small.b46-sc-source{display:none!important}}html:root body small.sp-result-source.sp-result-source.sp-result-source,html:root body small.b46-sc-source.b46-sc-source.b46-sc-source{display:none!important}</style>';
 export default {async fetch(req,env){
  const u=new URL(req.url);
  if(!['GET','HEAD'].includes(req.method))return Response.json({error:'READ_ONLY'},{status:405});
- if(u.pathname==='/_stats_source_health')return Response.json({ok:true,name,scope:'TEST_ONLY_RESULT_SOURCE_LABEL',revision:'SOURCE_MASK_LAYER_V2'});
+ if(u.pathname==='/_stats_source_health')return Response.json({ok:true,name,scope:'TEST_ONLY_RESULT_SOURCE_LABEL',revision:'SOURCE_MASK_DESKTOP_MOBILE_V3'});
  if(!pages.has(u.pathname)&&!apis.has(u.pathname)&&!(/^\/[a-zA-Z0-9_./-]+\.(js|mjs|css|svg|png|gif|woff2?|ico|jpe?g|webp|json|html|txt|map|avif)$/i.test(u.pathname)&&!/^\/(?:api|b46-receiver-v1|admin|internal)\//.test(u.pathname)))return Response.json({error:'PATH_NOT_ALLOWED'},{status:404});
  const headers=new Headers();for(const k of ['accept','accept-language','user-agent','sec-ch-ua-mobile']){const v=req.headers.get(k);if(v)headers.set(k,v.slice(0,512))}
  const r=await env.B46_PRODUCTION_READ.fetch(new Request(new URL(u.pathname+u.search,'https://ball46.com'),{method:req.method,headers,redirect:'manual'}));
