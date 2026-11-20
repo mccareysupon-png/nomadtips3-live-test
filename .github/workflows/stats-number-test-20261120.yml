@@ -34,7 +34,11 @@ jobs:
           import assert from 'node:assert/strict';import {writeFile} from 'node:fs/promises';
           const r=await fetch('https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+'/workers/scripts/ball46-production/deployments?per_page=1',{headers:{authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN}});const j=await r.json();assert(j.success);await writeFile(process.env.RUNNER_TEMP+'/prod-before.json',JSON.stringify(j.result.deployments[0].versions));
           EOF
-          npx --yes wrangler@4.50.0 deploy --config qa/stats-number-format-20261120/wrangler.toml --name ball46-stats-number-format-test-20261120
+          for attempt in 1 2 3; do
+            if npx --yes wrangler@4.50.0 deploy --config qa/stats-number-format-20261120/wrangler.toml --name ball46-stats-number-format-test-20261120; then break; fi
+            if [ "$attempt" = 3 ]; then exit 1; fi
+            sleep 5
+          done
       - name: Verify all eight markets desktop and mobile
         run: |
           npm install --prefix qa/stats-number-format-20261120/.runtime --no-audit --no-fund playwright@1.55.0
