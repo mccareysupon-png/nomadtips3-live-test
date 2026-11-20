@@ -109,6 +109,7 @@ jobs:
           const scope='html:root[data-theme="dark"] body ';
           const specificity='#b46-premium-specificity#b46-premium-specificity#b46-premium-specificity,';
           const rule=(sel,decl)=>scope+':is('+specificity+sel+'){'+decl+'}';
+          const selectedRule=(sel,decl)=>'html:root[data-theme="dark"] body[data-b46-premium-interacted="1"] :is('+specificity+sel+'){'+decl+'}';
           const row='[data-match-id].match-row',cell=row+' .market-cell';
           const hoverTint='linear-gradient(rgba(255,255,255,.035),rgba(255,255,255,.035)), '+v.backgroundImage;
           const activeTint=hoverTint;
@@ -117,12 +118,15 @@ jobs:
           const clearLegacy='filter:none!important;transform:none!important;translate:none!important;scale:none!important;rotate:none!important;animation:none!important;transition:none!important;';
           const visual=(state,image,shadow)=>clearLegacy+'--b46-premium-state:'+state+'!important;background-image:'+image+'!important;box-shadow:'+shadow+'!important;';
           const declarations=rules.map(([sel])=>rule(sel,'background-color:'+v.backgroundColor+'!important;background-image:'+v.backgroundImage+'!important')).join('\n');
-          const normal=rule(row+','+cell,clearLegacy+'--b46-premium-state:normal!important');
+          const normal=rule(row+','+cell,clearLegacy+'box-shadow:none!important;--b46-premium-state:normal!important');
           const hover=rule(row+':not(.active):hover:not(:active)',visual('hover',hoverTint,hoverShadow))+
-            rule(row+':not(.active) .market-cell:hover',visual('hover',hoverTint,hoverShadow));
-          const active=rule(row+'.active,'+row+':active',visual('active',activeTint,activeShadow))+
-            rule(row+'.active .market-cell:hover',clearLegacy+'background-image:'+v.backgroundImage+'!important;box-shadow:none!important;--b46-premium-state:normal!important');
+            rule(row+':not(.active) .market-cell:hover',visual('hover',hoverTint,hoverShadow))+
+            'html:root[data-theme="dark"] body:not([data-b46-premium-interacted="1"]) :is('+specificity+row+'.active:hover:not(:active)){'+visual('hover',hoverTint,hoverShadow)+'}';
+          const active=selectedRule(row+'.active',visual('active',activeTint,activeShadow))+
+            selectedRule(row+'.active .market-cell:hover',visual('active',activeTint,activeShadow));
           const css='@layer b46PremiumMatch{@media (min-width:1024px){'+declarations+normal+active+'}@media (min-width:1024px) and (hover:hover) and (pointer:fine){'+hover+'}}';
+          const activationScript='(()=>{if(window.__b46PremiumUserAction)return;window.__b46PremiumUserAction=true;const mark=e=>{if(!e.isTrusted||!matchMedia("(min-width:1024px)").matches)return;const target=e.target;if(!(target instanceof Element)||!target.closest("[data-match-id].match-row"))return;document.body?.setAttribute("data-b46-premium-interacted","1")};document.addEventListener("pointerdown",mark,true);document.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" ")mark(e)},true)})();';
+          reference.activationScript=activationScript;
           reference.hoverTint=hoverTint;reference.activeTint=activeTint;reference.hoverShadow=hoverShadow;reference.activeShadow=activeShadow;
           await writeFile('premium-qa/palette.json',JSON.stringify({css,rules,reference}));
           EOF
@@ -136,7 +140,7 @@ jobs:
           export default {async fetch(req,env){
             const u=new URL(req.url);
             if(!['GET','HEAD'].includes(req.method))return new Response('READ_ONLY',{status:405});
-            if(u.pathname==='/_premium_health')return Response.json({ok:true,scope:'TEST_ONLY_CSS',revision:'STAT_CARD_FLAT_RIGHT_V11',...palette});
+            if(u.pathname==='/_premium_health')return Response.json({ok:true,scope:'TEST_ONLY_CSS',revision:'STAT_CARD_DEFAULT_NORMAL_V12',...palette});
             if(/^\/(admin|internal)(\/|$)/i.test(u.pathname))return new Response('Forbidden',{status:403});
             const headers=new Headers();for(const k of ['accept','accept-language','user-agent','sec-ch-ua-mobile']){const v=req.headers.get(k);if(v)headers.set(k,v);}
             const r=await env.B46_PRODUCTION_READ.fetch(new Request(new URL(u.pathname+u.search,'https://ball46.com'),{method:req.method,headers,redirect:'manual'}));
@@ -145,7 +149,7 @@ jobs:
             if(req.method!=='GET'||!r.ok||!['/','/index','/index.html'].includes(u.pathname)||!h.get('content-type')?.includes('text/html'))return new Response(req.method==='HEAD'?null:r.body,{status:r.status,headers:h});
             for(const k of ['content-length','content-encoding','etag','last-modified'])h.delete(k);
             h.set('cache-control','no-store');
-            return new HTMLRewriter().on('head',{element(e){e.prepend('<style id="b46-premium-match-test">'+palette.css+'</style>',{html:true})}}).transform(new Response(r.body,{status:r.status,headers:h}));
+            return new HTMLRewriter().on('head',{element(e){e.prepend('<style id="b46-premium-match-test">'+palette.css+'</style><script id="b46-premium-user-action-test">'+palette.reference.activationScript+'</script>',{html:true})}}).transform(new Response(r.body,{status:r.status,headers:h}));
           }};
           EOF
           cat > premium-qa/wrangler.toml <<'EOF'
@@ -166,8 +170,8 @@ jobs:
           import {chromium,devices} from 'playwright';
           import assert from 'node:assert/strict';
           const base='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev';
-          let h;for(let i=0;i<15;i++){try{const r=await fetch(base+'/_premium_health');if(r.ok){const candidate=await r.json();if(candidate.revision==='STAT_CARD_FLAT_RIGHT_V11'){h=candidate;break}}}catch{}await new Promise(r=>setTimeout(r,2000))}
-          assert.equal(h?.scope,'TEST_ONLY_CSS');assert.equal(h?.revision,'STAT_CARD_FLAT_RIGHT_V11');
+          let h;for(let i=0;i<15;i++){try{const r=await fetch(base+'/_premium_health');if(r.ok){const candidate=await r.json();if(candidate.revision==='STAT_CARD_DEFAULT_NORMAL_V12'){h=candidate;break}}}catch{}await new Promise(r=>setTimeout(r,2000))}
+          assert.equal(h?.scope,'TEST_ONLY_CSS');assert.equal(h?.revision,'STAT_CARD_DEFAULT_NORMAL_V12');
           const browser=await chromium.launch();
           try{for(const mobile of [false])for(const theme of ['dark','light']){
             const p=await browser.newPage(mobile?{...devices['iPhone 13'],serviceWorkers:'block'}:{viewport:{width:1440,height:950},serviceWorkers:'block'});
@@ -189,6 +193,24 @@ jobs:
               return {applied,original,theme:document.documentElement.dataset.theme};
             },{rules:h.rules,theme,activeSelectors:h.reference.activeSelectors});
             console.log('COMPUTED_PROOF',JSON.stringify(proof));await p.screenshot({path:process.env.RUNNER_TEMP+'/premium-proof/actual-'+theme+'.png'});assert(proof);assert.equal(proof.theme,theme);
+            if(theme==='dark'){
+              const initialState=await p.evaluate(()=>{
+                const rows=[...document.querySelectorAll('[data-match-id].match-row')].filter(e=>e.getBoundingClientRect().width>100);
+                const orig=[...rows.filter(e=>e.classList.contains('active'))];
+                const rowStyle=e=>({id:e.dataset.matchId,bg:getComputedStyle(e).backgroundImage,shadow:getComputedStyle(e).boxShadow,state:getComputedStyle(e).getPropertyValue('--b46-premium-state').trim()});
+                return {interacted:document.body.hasAttribute('data-b46-premium-interacted'),selected:orig.map(rowStyle),normal:rows.filter(e=>!e.classList.contains('active')).slice(0,2).map(rowStyle),scriptPresent:!!document.getElementById('b46-premium-user-action-test')};
+              });
+              console.log('INITIAL_ACTIVE_SAFETY',JSON.stringify(initialState));
+              assert(initialState.scriptPresent,'TRACKING_SCRIPT_MISSING');
+              assert(!initialState.interacted,'UNEXPECTED_INITIAL_USER_ACTION');
+              assert(initialState.selected.length>0,'NATIVE_DEFAULT_ACTIVE_NOT_FOUND');
+              for(const x of [...initialState.selected,...initialState.normal]){
+                assert.equal(x.state,'normal','DEFAULT_CARD_BECAME_ACTIVE');
+                assert.equal(x.bg,h.reference.cum.backgroundImage,'DEFAULT_CARD_NOT_NORMAL_GRADIENT');
+                assert.equal(x.shadow,'none','DEFAULT_CARD_HAS_GLOW');
+              }
+              await p.screenshot({path:process.env.RUNNER_TEMP+'/premium-proof/initial-no-active.png'});
+            }
             const refs={row:h.reference.cum,header:h.reference.outcome,odds:h.reference.rate};
             for(let i=0;i<proof.applied.length;i++){const x=proof.applied[i],o=proof.original[i];assert.equal(x.w,o.w);assert.equal(x.h,o.h);if(theme==='dark'){assert.equal(x.bg,refs[x.type].backgroundImage);assert.equal(x.color,refs[x.type].backgroundColor);assert.equal(x.border,o.border)}else assert.deepEqual(x,o)}
             console.log('PALETTE_PASS',JSON.stringify({mobile,theme,proof}));
@@ -211,6 +233,7 @@ jobs:
               await chosen.click({position:{x:100,y:30}});
               await p.mouse.move(0,0);
               await p.waitForFunction(id=>[...document.querySelectorAll('[data-match-id].match-row.active')].some(e=>e.dataset.matchId===id),id,{timeout:8000});
+              const didClick=await p.evaluate(()=>document.body.getAttribute('data-b46-premium-interacted'));assert.equal(didClick,'1','CLICK_DID_NOT_ENABLE_ACTIVE');
               const active=await read();assert.equal(active.bg,hover.bg);assert(active.bg.includes('linear-gradient(90deg'));assert(active.bg.endsWith(h.reference.flatRightColor+' 50%, '+h.reference.flatRightColor+' 100%)'));assert.equal(active.shadow,'none');assert.equal(hover.shadow,'none');console.log('ACTIVE_PROOF',JSON.stringify({active,expected:expected.active}));assert(active.active);check(active,'active');assert.equal(hover.w,active.w);assert.equal(hover.h,active.h);
               await chosen.hover({position:{x:100,y:30}});
               const stillActive=await read();check(stillActive,'active');
