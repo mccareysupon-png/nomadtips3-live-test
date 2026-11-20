@@ -3,6 +3,7 @@
 import {lastMatches} from './history.mjs';
 import {evaluateBttsSignal} from './evaluate-btts-signal.mjs';
 import {evaluate1x2Signal} from './evaluate-1x2-signal.mjs';
+import {evaluateMarket1x2,MARKET_1X2_VERSION} from './market-1x2.mjs';
 const id=x=>/^[1-9]\d*$/.test(String(x??''))&&Number.isSafeInteger(Number(x));
 const price=x=>typeof x==='number'&&Number.isFinite(x)&&x>1;
 const no=reason=>({signal:'NO_SIGNAL',reason,metrics:null});
@@ -22,6 +23,7 @@ export function adaptStoredFixture(db,f,now){
 export const BASELINE_SHADOW=Object.freeze({version:'shadow-baseline-10',minHistory:10,btts:{minProbability:.60,minEdge:.05,minEV:.05},oneX2:{minProbability:.60,minEdge:.05,minEV:.05}});
 export const ACCUMULATION_SHADOW=Object.freeze({version:'shadow-accumulation-5',minHistory:5,btts:{minProbability:.57,minEdge:.03,minEV:.03},oneX2:{minProbabilityBySide:{HOME_WIN:.50,DRAW:.33,AWAY_WIN:.50},minEdge:.03,minEV:.03,priceRanges:{HOME_WIN:[1.60,3.50],DRAW:[2.90,4.20],AWAY_WIN:[1.60,3.50]}}});
 export const TRIAL_SHADOW=Object.freeze({version:'shadow-trial-3',minHistory:3,btts:{...ACCUMULATION_SHADOW.btts,minEdge:.01,minEV:.01},oneX2:{...ACCUMULATION_SHADOW.oneX2,minEdge:.01,minEV:.01}});
+export const MARKET_SHADOW=Object.freeze({...TRIAL_SHADOW,version:'shadow-market-1x2-v1',oneX2:{...TRIAL_SHADOW.oneX2,method:MARKET_1X2_VERSION,priorWeight:6,calibrated:false}});
 const gates=()=>({INSUFFICIENT_HISTORY:0,NO_STORED_BET365_PRICE:0,PROBABILITY_BELOW:0,PRICE_RANGE:0,FORM_GUARD:0,EDGE_EV_BELOW:0,OTHER:0,PASSED:0});
 export function rejectionStage(result,config,market){
  if(result.signal!=='NO_SIGNAL')return 'PASSED';
@@ -50,7 +52,11 @@ export function dryRunStored(db,fixtures,now,limit=10,profile=TRIAL_SHADOW){
  return r;
  };
  const btts=run('btts',evaluateBttsSignal,a.btts);
- const oneX2=run('oneX2',evaluate1x2Signal,a.oneX2);
+ let oneX2;
+ if(profile.oneX2.method===MARKET_1X2_VERSION){
+  oneX2=a.oneX2?evaluateMarket1x2(a.oneX2,profile.oneX2):no('NO_STORED_BET365_PRICE');
+  if(oneX2.metrics?.sides?.length){probability.oneX2.computed++;if(oneX2.metrics.sides.some(x=>x.probabilityPassed))probability.oneX2.passed++;else probability.oneX2.below++}
+ }else oneX2=run('oneX2',evaluate1x2Signal,a.oneX2);
  for(const [market,result] of [['btts',btts],['oneX2',oneX2]]){diagnostics[market][rejectionStage(result,profile[market],market)]++;const o=outcomes[market];o[result.signal]++;o.reasons[result.reason]=(o.reasons[result.reason]??0)+1}
  rows.push({fixtureId:a.fixtureId,home:a.home,away:a.away,homeCount:a.homeCount,awayCount:a.awayCount,btts,oneX2});
  }
