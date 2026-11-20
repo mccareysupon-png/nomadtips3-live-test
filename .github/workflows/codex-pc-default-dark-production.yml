@@ -1,0 +1,48 @@
+name: "[Codex PC] Ball46 Dark Mode default"
+
+on:
+  push:
+    branches:
+      - codex-pc/release-ball46-default-dark
+    paths:
+      - .github/workflows/codex-pc-default-dark-production.yml
+      - qa/codex-pc-default-dark-release/**
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ball46-production-ui-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: github.ref == 'refs/heads/codex-pc/release-ball46-default-dark'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Prepare browser and check release files
+        run: |
+          node --check qa/codex-pc-default-dark-release/entry.mjs
+          node --check qa/codex-pc-default-dark-release/patch.mjs
+          node --check qa/codex-pc-default-dark-release/release.mjs
+          node --check qa/codex-pc-default-dark-release/verify.mjs
+          npm install --prefix "$RUNNER_TEMP/codex-pc-theme-runtime" --no-package-lock --no-audit --no-fund playwright@1.55.0
+          "$RUNNER_TEMP/codex-pc-theme-runtime/node_modules/.bin/playwright" install chromium --only-shell
+      - name: Check inactive version and release dark default
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: node qa/codex-pc-default-dark-release/release.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: codex-pc-default-dark-production-evidence
+          path: ${{ runner.temp }}/codex-pc-default-dark-production-proof
+          if-no-files-found: ignore
