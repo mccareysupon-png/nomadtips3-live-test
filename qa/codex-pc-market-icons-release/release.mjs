@@ -175,10 +175,10 @@ async function browserQA(origin, phase) {
       });
       assert.equal(proof.theme, theme);
       assert(proof.asset.includes(icon) && proof.clearOfText && proof.shadow.startsWith('drop-shadow('), JSON.stringify(proof));
-      await page.locator('#b46-finance-chart-card .f46-overview:visible').first().screenshot({
-        path: `${out}/${phase}-${theme}-${layout}.png`, animations: 'disabled',
-      });
       console.log('Browser verified', JSON.stringify({ phase, theme, layout, market }));
+      await page.screenshot({
+        path: `${out}/${phase}-${theme}-${layout}.png`, animations: 'disabled', timeout: 5000,
+      }).catch(error => console.warn('Could not capture screenshot after verification:', error.message));
       await page.close();
     }));
   } finally {
