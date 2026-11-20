@@ -1,0 +1,33 @@
+name: BALL46 win rate read-only audit
+on:
+  push:
+    branches: [audit/ball46-winrate-scope-20261120]
+    paths: ['.github/workflows/winrate-scope-audit-20261120.yml']
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm install --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium --only-shell
+          node <<'EOF'
+          const {chromium}=require('playwright');
+          const host='https://ball46.com';
+          (async()=>{const b=await chromium.launch();try{
+            const p=await b.newPage({viewport:{width:1440,height:950},serviceWorkers:'block'});
+            await p.route('**/*',r=>['GET','HEAD'].includes(r.request().method())?r.continue():r.abort());
+            const seen=new Set();p.on('response',async r=>{try{const u=new URL(r.url());if(u.hostname!=='ball46.com'||!(/\/api\/|\/b46-receiver-v1\//.test(u.pathname)))return;const key=u.pathname+u.search;if(seen.has(key))return;seen.add(key);const h=r.headers();const pick={};for(const k of Object.keys(h))if(/monitor|rates|snapshot/.test(k))pick[k]=h[k];const v=await r.json();const rows=[];function walk(o,path,depth){if(!o||typeof o!=='object'||depth>5||Array.isArray(o)||rows.length>50)return;for(const [k,val] of Object.entries(o)){if(/^(win|wins|loss|losses|push|draw|settled|total|win.?rate|half.?win|half.?loss|w|l|d|sequence|scope|market|period|as.?of|cutoff|updated.?at|count)$/i.test(k)&&['string','number','boolean'].includes(typeof val))rows.push([path+'.'+k,val]);if(typeof val==='object')walk(val,path+'.'+k,depth+1)}}walk(v,'$',0);console.log('API_OBSERVED '+JSON.stringify({key,status:r.status(),headers:pick,keys:Object.keys(v).slice(0,30),rows}))}catch{}})
+            await p.goto(host+'/index.html?view=statistics',{waitUntil:'domcontentloaded'});await p.waitForFunction(()=>document.querySelector('#b46-finance-chart-card')?.getBoundingClientRect().height>200,null,{timeout:45000});await p.waitForTimeout(2200);
+            const d=await p.evaluate(()=>({sidebar:document.querySelector('.left-rail')?.innerText?.slice(0,3500),summary:document.querySelector('#b46-finance-chart-card')?.innerText?.slice(0,2400),rateNodes:[...document.querySelectorAll('.left-rail *, #b46-finance-chart-card *')].filter(e=>e.children.length===0&&/^\d{1,3}\.\d+%$/.test(e.textContent.trim())).slice(0,25).map(e=>({text:e.textContent,html:e.parentElement.outerHTML.slice(0,700)})),scripts:[...document.scripts].map(s=>s.src).filter(Boolean)}));console.log('DOM_PROOF '+JSON.stringify(d));
+            const html=await p.content();const snippets=[];for(const m of html.matchAll(/b46.monitor.rates|monitorRates|sidebarMonitor|b46SidebarMonitor/gi)){let t=html.slice(Math.max(0,m.index-220),m.index+350);if(!snippets.includes(t)&&snippets.length<8)snippets.push(t)}console.log('HTML_HINTS '+JSON.stringify(snippets));
+            for(const path of ['/b46-sidebar-monitor-client-20261119.js','/longterm-performance-343.js','/b46-statistics-fast-v1-20261116.js','/singlepage-workspace-343.js']){
+              const r=await p.request.get(host+path);const s=await r.text();let snippets=[];for(const m of s.matchAll(/winRate|win_rate|winrate|winPct|monitorRates|x-b46-monitor-rates|half.?win|half.?loss|\/api\/engine\/statistics|\/b46-receiver-v1\/graph/gi)){const z=s.slice(Math.max(0,m.index-100),m.index+160);if(snippets.length<32&&!snippets.includes(z))snippets.push(z)}console.log('SOURCE_PROOF '+JSON.stringify({path,status:r.status(),length:s.length,snippets}))
+            }
+          }finally{await b.close()}})().catch(e=>{console.error(e);process.exit(1)})
+          EOF
