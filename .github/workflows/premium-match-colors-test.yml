@@ -36,17 +36,17 @@ jobs:
               const data=await p.evaluate(()=>{
                 const rows=[...document.querySelectorAll('[data-match-id]')].filter(e=>e.getBoundingClientRect().width>100);
                 const out=[];
-                const cls=e=>[...e.classList].find(c=>/match|league|odds|market|b46gn|price/i.test(c)&&!/active|selected|hover|live$|row-selected/i.test(c));
-                const collect=(e,scope)=>{
-                  const r=e.getBoundingClientRect(),s=getComputedStyle(e),rgb=s.backgroundColor.match(/\d+/g)?.map(Number),c=cls(e);
-                  if(!c||!rgb||r.width<40||r.height<18||rgb[1]<rgb[0]+9||rgb[1]<rgb[2]+4||rgb[1]>145||rgb[1]<55||rgb[3]===0)return;
-                  const type=scope==='header'?'header':scope==='row'?'row':'odds';
-                  out.push({selector:(scope==='header'?'':scope==='row'?'[data-match-id]':'[data-match-id] ') +'.'+CSS.escape(c),type,color:s.backgroundColor});
-                };
+                const cls=e=>[...e.classList].find(c=>/odds|market|price|league|cell/i.test(c)&&!/active|selected|hover|badge|signal|prediction/i.test(c));
                 for(const row of rows.slice(0,12)){
-                  collect(row,'row');
-                  for(const e of row.querySelectorAll('*'))if(/odds|market|price/i.test(e.className?.toString()||'')&&!/badge|signal|prediction/i.test(e.className?.toString()||''))collect(e,'odds');
-                  let a=row.parentElement;for(let i=0;a&&i<4;i++,a=a.parentElement)for(const e of a.children)if(/league.*(head|bar|title)|(?:head|bar).*league/i.test(e.className?.toString()||''))collect(e,'header');
+                  out.push({selector:'[data-match-id]',type:'row',color:getComputedStyle(row).background});
+                  for(const e of row.querySelectorAll('*')){
+                    const b=e.getBoundingClientRect(),s=getComputedStyle(e),c=cls(e);
+                    if(!c||b.width<55||b.height<20||b.width>row.getBoundingClientRect().width*.6||e.querySelectorAll('*').length<1)continue;
+                    if(!/odds|market|price|cell/i.test(c)||/badge|signal|prediction/i.test(c))continue;
+                    if(s.backgroundImage==='none'&&['rgba(0, 0, 0, 0)','transparent'].includes(s.backgroundColor))continue;
+                    out.push({selector:'[data-match-id] .'+CSS.escape(c),type:'odds',color:s.background});
+                  }
+                  let a=row.parentElement;for(let i=0;a&&i<4;i++,a=a.parentElement)for(const e of a.children)if(e.matches('.league-head'))out.push({selector:'.league-head',type:'header',color:getComputedStyle(e).background});
                 }
                 return {theme:document.documentElement.dataset.theme,rows:rows.length,out};
               });
