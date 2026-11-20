@@ -1,0 +1,30 @@
+name: Inspect horizontal membership banner on every view
+on:
+  push:
+    branches: [test/ball46-sticky-membership-20261120]
+    paths: ['.github/workflows/sticky-membership-horizontal-20261120.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm install --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium --only-shell
+          node <<'EOF'
+          const {chromium}=require('playwright');
+          (async()=>{const b=await chromium.launch();try{
+          const p=await b.newPage({viewport:{width:1920,height:1080},serviceWorkers:'block'});
+          await p.route('**/*',r=>['GET','HEAD'].includes(r.request().method())?r.continue():r.abort());
+          for(const view of ['live','statistics','signal']){
+          await p.goto('https://ball46.com/index.html?view='+view,{waitUntil:'domcontentloaded'});await p.waitForTimeout(2500);
+          const d=await p.evaluate(()=>{const desc=e=>{const s=getComputedStyle(e);return {tag:e.tagName,id:e.id,cls:typeof e.className==='string'?e.className:'',rect:e.getBoundingClientRect().toJSON(),position:s.position,overflow:s.overflow,display:s.display,z:s.zIndex,scrollHeight:e.scrollHeight,clientHeight:e.clientHeight}};const els=[...document.querySelectorAll('[class*="b46mp"],[class*="promo"],[id*="promo"],iframe,a[href*="member.ball46"],a[href*="member2.ball46"],img[src*="member"],[class*="banner"]')].filter(e=>!['SCRIPT','STYLE'].includes(e.tagName));return els.slice(0,35).map(e=>({html:e.outerHTML.slice(0,1100),chain:[e,e.parentElement,e.parentElement?.parentElement,e.parentElement?.parentElement?.parentElement,e.parentElement?.parentElement?.parentElement?.parentElement].filter(Boolean).map(desc)}))});
+          console.log('BANNER '+JSON.stringify({view,d,frames:p.frames().map(f=>f.url())}));
+          }await p.close();
+          }finally{await b.close()}})().catch(e=>{console.error(e);process.exit(1)})
+          EOF
