@@ -1,0 +1,26 @@
+name: BALL46 step 7 coverage and seed verification
+on:
+  push:
+    branches: [test/ball46-prematch-v1-20261120]
+    paths: ['.github/workflows/ball46-step7-verify.yml']
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test qa/prematch-history-20261120/*.test.mjs
+      - name: Read real test archive coverage without provider traffic
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          const base='https://ball46-prematch-history-real-test-20261120.mccarey-supon.workers.dev';
+          const read=async path=>{const r=await fetch(base+path,{signal:AbortSignal.timeout(15000),headers:{'cache-control':'no-cache'}});assert(r.ok);return r.json()};
+          const h=await read('/health'),p=await read('/backfill');
+          console.log('STEP7_REAL_COVERAGE '+JSON.stringify({observedAt:h.observedAt,stored:h.stored,upcoming:h.upcoming,teams:h.upcomingTeams,teamsWith10:h.teamsWith10,eligible:h.eligible,homeCovered:h.homeCovered,awayCovered:h.awayCovered,backfillRequests:p.backfillRequests,queueEntries:p.queueEntries,gateway:p.gateway,additionalProviderRequests:0}));
+          JS
