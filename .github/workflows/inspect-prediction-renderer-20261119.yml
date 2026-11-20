@@ -23,8 +23,8 @@ jobs:
           console.log('FILES '+JSON.stringify(files));
           for(const p of ['/index.html',...files]){
             const s=p==='/index.html'?html:await read(p).catch(e=>{console.log(String(e));return ''});
-            for(const re of [/data-workspace-view=["']signal/g,/data-b46m-page=["']signal/g,/data-b46-mobile-view=["']signal/g,/>Signals?</gi,/aria-label=["']Signals?["']/gi]){
-              let count=0;for(const m of s.matchAll(re)){if(count++>=15)break;console.log('MATCH '+JSON.stringify({p,needle:m[0],i:m.index,context:s.slice(Math.max(0,m.index-400),m.index+400)}))}
+            for(const re of [/Explore membership/gi,/MATCHDAY\./gi,/data-b46-member-entry=["']rail/gi]){
+              let count=0;for(const m of s.matchAll(re)){if(count++>=15)break;console.log('MATCH '+JSON.stringify({p,needle:m[0],i:m.index,context:s.slice(Math.max(0,m.index-1200),m.index+1600)}))}
             }
           }
           EOF
