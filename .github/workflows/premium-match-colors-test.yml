@@ -60,7 +60,7 @@ jobs:
           }finally{await browser.close()}
           assert([...rules.values()].includes('odds')&&[...rules.values()].includes('header'),'SOURCE_SELECTORS_NOT_CONFIRMED');
           const colors={row:'background:linear-gradient(135deg,#24443e,#192f2b)!important;border-color:#31544b!important',header:'background:#25453e!important;border-color:#375b52!important',odds:'background:linear-gradient(135deg,#294b43,#1c3530)!important;border-color:#365b51!important;box-shadow:inset 0 0 0 1px #365b51!important'};
-          const css=[...rules].map(([s,t])=>'@media (min-width: 1024px) {html:root[data-theme="dark"] body '+s+'{'+colors[t]+'}}').join('\n');
+          const css=[...rules].map(([s,t])=>'@media (min-width: 1024px) {html:root[data-theme="dark"] body :is(#b46-premium-specificity#b46-premium-specificity#b46-premium-specificity,'+s+')'+'{'+colors[t]+'}}').join('\n');
           await writeFile('premium-qa/palette.json',JSON.stringify({css,rules:[...rules]}));
           EOF
       - name: Deploy only isolated CSS test worker
@@ -82,7 +82,7 @@ jobs:
             if(req.method!=='GET'||!r.ok||!['/','/index','/index.html'].includes(u.pathname)||!h.get('content-type')?.includes('text/html'))return new Response(req.method==='HEAD'?null:r.body,{status:r.status,headers:h});
             for(const k of ['content-length','content-encoding','etag','last-modified'])h.delete(k);
             h.set('cache-control','no-store');
-            return new HTMLRewriter().on('head',{element(e){e.append('<style id="b46-premium-match-test">'+palette.css+'</style>',{html:true})}}).transform(new Response(r.body,{status:r.status,headers:h}));
+            return new HTMLRewriter().on('body',{element(e){e.append('<style id="b46-premium-match-test">'+palette.css+'</style>',{html:true})}}).transform(new Response(r.body,{status:r.status,headers:h}));
           }};
           EOF
           cat > premium-qa/wrangler.toml <<'EOF'
@@ -122,7 +122,7 @@ jobs:
               style.disabled=false;
               return {before,original,theme:document.documentElement.dataset.theme};
             },{rules:h.rules,theme});
-            assert(proof);assert.equal(proof.theme,theme);assert.equal(proof.before.w,proof.original.w);assert.equal(proof.before.h,proof.original.h);
+            console.log('COMPUTED_PROOF',JSON.stringify(proof));assert(proof);assert.equal(proof.theme,theme);assert.equal(proof.before.w,proof.original.w);assert.equal(proof.before.h,proof.original.h);
             if(theme==='dark')assert(proof.before.bg.includes('linear-gradient')&&proof.before.bg!==proof.original.bg);else assert.equal(proof.before.bg,proof.original.bg);
             console.log('PALETTE_PASS',JSON.stringify({mobile,theme,proof}));
             await p.screenshot({path:process.env.RUNNER_TEMP+'/premium-proof/after-'+mobile+'-'+theme+'.png'});
