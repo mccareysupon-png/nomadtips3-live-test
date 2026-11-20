@@ -21,16 +21,30 @@ export function adaptStoredFixture(db,f,now){
 // These profiles apply exclusively to read-only shadow tests. Owner issuance remains OFF.
 export const BASELINE_SHADOW=Object.freeze({version:'shadow-baseline-10',minHistory:10,btts:{minProbability:.60,minEdge:.05,minEV:.05},oneX2:{minProbability:.60,minEdge:.05,minEV:.05}});
 export const ACCUMULATION_SHADOW=Object.freeze({version:'shadow-accumulation-5',minHistory:5,btts:{minProbability:.57,minEdge:.03,minEV:.03},oneX2:{minProbabilityBySide:{HOME_WIN:.50,DRAW:.33,AWAY_WIN:.50},minEdge:.03,minEV:.03,priceRanges:{HOME_WIN:[1.60,3.50],DRAW:[2.90,4.20],AWAY_WIN:[1.60,3.50]}}});
-export function dryRunStored(db,fixtures,now,limit=10,profile=ACCUMULATION_SHADOW){
- const rows=[],seen=new Set(),outcomes={btts:{BTTS_YES:0,BTTS_NO:0,NO_SIGNAL:0,reasons:{}},oneX2:{HOME_WIN:0,DRAW:0,AWAY_WIN:0,NO_SIGNAL:0,reasons:{}}},counts={upcoming:0,historyComplete:0,bttsPrices:0,oneX2Prices:0,bothReady:0};
+export const TRIAL_SHADOW=Object.freeze({version:'shadow-trial-3',minHistory:3,btts:{...ACCUMULATION_SHADOW.btts,minEdge:.01,minEV:.01},oneX2:{...ACCUMULATION_SHADOW.oneX2,minEdge:.01,minEV:.01}});
+const gates=()=>({INSUFFICIENT_HISTORY:0,NO_STORED_BET365_PRICE:0,PROBABILITY_BELOW:0,PRICE_RANGE:0,FORM_GUARD:0,EDGE_EV_BELOW:0,OTHER:0,PASSED:0});
+export function rejectionStage(result,config,market){
+ if(result.signal!=='NO_SIGNAL')return 'PASSED';
+ if(['INSUFFICIENT_HISTORY','NO_STORED_BET365_PRICE'].includes(result.reason))return result.reason;
+ if(!result.metrics?.sides?.length)return 'OTHER';
+ let sides=result.metrics.sides.filter(x=>x.model>=(config.minProbabilityBySide?.[x.signal]??config.minProbability));
+ if(!sides.length)return 'PROBABILITY_BELOW';
+ sides=sides.filter(x=>{const [min,max]=market==='btts'?[config.minPrice??1.5,config.maxPrice??10]:(config.priceRanges?.[x.signal]??(x.signal==='DRAW'?[2.9,4.2]:[1.6,3.5]));return x.price>=min&&x.price<=max});
+ if(!sides.length)return 'PRICE_RANGE';
+ sides=sides.filter(x=>x.formGuard!==false);if(!sides.length)return 'FORM_GUARD';
+ return sides.some(x=>x.edge>=config.minEdge&&x.ev>=config.minEV)?'OTHER':'EDGE_EV_BELOW';
+}
+export function dryRunStored(db,fixtures,now,limit=10,profile=TRIAL_SHADOW){
+ const rows=[],seen=new Set(),diagnostics={btts:gates(),oneX2:gates(),missingInputs:{history:0,bttsOdds:0,oneX2Odds:0}},outcomes={btts:{BTTS_YES:0,BTTS_NO:0,NO_SIGNAL:0,reasons:{}},oneX2:{HOME_WIN:0,DRAW:0,AWAY_WIN:0,NO_SIGNAL:0,reasons:{}}},counts={upcoming:0,historyComplete:0,bttsPrices:0,oneX2Prices:0,bothReady:0};
  for(const f of fixtures){const a=adaptStoredFixture(db,f,now);if(!a||seen.has(a.fixtureId))continue;seen.add(a.fixtureId);counts.upcoming++;
  const complete=a.homeCount>=profile.minHistory&&a.awayCount>=profile.minHistory;if(complete)counts.historyComplete++;if(a.btts)counts.bttsPrices++;if(a.oneX2)counts.oneX2Prices++;if(complete&&a.btts&&a.oneX2)counts.bothReady++;
+ if(!complete)diagnostics.missingInputs.history++;if(!a.btts)diagnostics.missingInputs.bttsOdds++;if(!a.oneX2)diagnostics.missingInputs.oneX2Odds++;
  const reason=!complete?'INSUFFICIENT_HISTORY':'NO_STORED_BET365_PRICE';
  const btts=complete&&a.btts?evaluateBttsSignal(a.btts,{...profile.btts,minHistory:profile.minHistory,enabled:true}):no(reason);
  const oneX2=complete&&a.oneX2?evaluate1x2Signal(a.oneX2,{...profile.oneX2,minHistory:profile.minHistory,enabled:true}):no(reason);
- for(const [market,result] of [['btts',btts],['oneX2',oneX2]]){const o=outcomes[market];o[result.signal]++;o.reasons[result.reason]=(o.reasons[result.reason]??0)+1}
+ for(const [market,result] of [['btts',btts],['oneX2',oneX2]]){diagnostics[market][rejectionStage(result,profile[market],market)]++;const o=outcomes[market];o[result.signal]++;o.reasons[result.reason]=(o.reasons[result.reason]??0)+1}
  rows.push({fixtureId:a.fixtureId,home:a.home,away:a.away,homeCount:a.homeCount,awayCount:a.awayCount,btts,oneX2});
  }
  rows.sort((a,b)=>Number(!!b.btts.metrics&&!!b.oneX2.metrics)-Number(!!a.btts.metrics&&!!a.oneX2.metrics));
- return {mode:'READ_ONLY_SHADOW',profile,counts,outcomes,rows:rows.slice(0,limit),providerCalls:0,published:0,state:counts.bothReady>=5?'DRY_RUN_COMPLETE':'REAL_INPUT_INCOMPLETE'};
+ return {mode:'READ_ONLY_SHADOW',profile,counts,outcomes,diagnostics,rows:rows.slice(0,limit),providerCalls:0,published:0,state:counts.bothReady>=5?'DRY_RUN_COMPLETE':'REAL_INPUT_INCOMPLETE'};
 }
