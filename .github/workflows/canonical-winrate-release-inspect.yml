@@ -1,0 +1,28 @@
+name: Inspect canonical production graph path (read only)
+on:
+  push:
+    branches: [release/ball46-canonical-winrate-20261120]
+    paths: ['.github/workflows/canonical-winrate-release-inspect.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          node --input-type=module <<'EOF'
+          const root='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+'/workers';
+          async function cf(p){const r=await fetch(root+p,{headers:{authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN}});const j=await r.json();if(!j.success)throw Error('CF '+r.status);return j.result}
+          for(const site of ['ball46-production','ball46-shadow-receiver-production']){
+            const active=(await cf('/scripts/'+site+'/deployments?per_page=1')).deployments[0].versions;console.log('ACTIVE '+JSON.stringify({site,active}));
+            const v=await cf('/workers/'+site+'/versions/'+active[0].version_id+'?include=modules');
+            for(const m of v.modules){if(!m.content_type.includes('javascript'))continue;const s=Buffer.from(m.content_base64,'base64').toString();const needles=site==='ball46-production'?['/b46-receiver-v1/graph','projection-graph-v1','graphCache','series.rate']:['const g = advanced ?','const g = await','async function projectionHandle','class ShadowProductionStore','class MarketStatisticsReader'];
+              const hits=[];for(const q of needles){let from=0,count=0;while(count<8){const i=s.indexOf(q,from);if(i<0)break;from=i+q.length;count++;hits.push({q,code:s.slice(Math.max(0,i-250),i+1100)})}}if(hits.length)console.log('SOURCE '+JSON.stringify({site,module:m.name,hits}))}
+          }
+          const path='/b46-receiver-v1/graph?market=all&variant=all&filter=all&range=all';
+          for(const host of ['https://ball46.com','https://ball46-production.mccarey-supon.workers.dev','https://ball46-winrate-canonical-test-20261120.mccarey-supon.workers.dev']){const r=await fetch(host+path,{headers:{'cache-control':'no-cache'}});const g=await r.json();console.log('GRAPH '+JSON.stringify({host,status:r.status,seq:g.sequence,counts:g.counts,summary:g.summary,win_rate:g.win_rate,last:g.series?.rate?.at(-1),cache:r.headers.get('cf-cache-status'),age:r.headers.get('age'),reason:r.headers.get('x-b46-canonical-rate-reason')}))}
+          EOF
