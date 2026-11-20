@@ -8,19 +8,23 @@ export function evaluate1x2Signal(input,options={}){
  const valid=a=>Array.isArray(a)&&a.length>=cfg.minHistory&&a.length<=10&&a.every(x=>x?.fixtureId!=null&&Number.isSafeInteger(x.gf)&&x.gf>=0&&Number.isSafeInteger(x.ga)&&x.ga>=0)&&new Set(a.map(x=>String(x.fixtureId))).size===a.length;
  if(!valid(input?.homeLast10)||!valid(input?.awayLast10))return no('INVALID_OR_INCOMPLETE_HISTORY');
  const now=input.asOf,kickoff=input.kickoff,odds=input.odds;
- if(odds?.bookmaker!=='bet365'||![odds.home,odds.draw,odds.away].every(x=>typeof x==='number'&&Number.isFinite(x)&&x>1))return no('INVALID_BET365_ODDS');
- if(!Number.isSafeInteger(now)||!Number.isSafeInteger(kickoff)||now>=kickoff||!Number.isSafeInteger(odds.observed)||odds.observed>now||odds.observed>=kickoff)return no('INVALID_PREMATCH_TIME');
+ if(!Number.isSafeInteger(now)||!Number.isSafeInteger(kickoff)||now>=kickoff)return no('INVALID_PREMATCH_TIME');
  if([...input.homeLast10,...input.awayLast10].some(x=>!Number.isSafeInteger(x.kickoff)||x.kickoff>=now))return no('INVALID_HISTORY_TIME');
  const form=a=>({w:a.filter(x=>x.gf>x.ga).length/a.length,d:a.filter(x=>x.gf===x.ga).length/a.length,l:a.filter(x=>x.gf<x.ga).length/a.length,gf:a.reduce((s,x)=>s+x.gf,0)/a.length,ga:a.reduce((s,x)=>s+x.ga,0)/a.length,gd:a.reduce((s,x)=>s+x.gf-x.ga,0)/a.length});
  const recent=a=>form([...a].sort((a,b)=>b.kickoff-a.kickoff||String(b.fixtureId).localeCompare(String(a.fixtureId))).slice(0,5));
  const h=form(input.homeLast10),a=form(input.awayLast10),hr=recent(input.homeLast10),ar=recent(input.awayLast10);
  const probs=(h,a)=>[(h.w+a.l)/2,(h.d+a.d)/2,(a.w+h.l)/2];
- const p=probs(h,a),rp=probs(hr,ar),prices=[odds.home,odds.draw,odds.away],total=prices.reduce((s,x)=>s+1/x,0);
- const sides=keys.map((signal,i)=>{const price=prices[i],implied=1/price,market=implied/total,edge=p[i]-market,ev=p[i]*price-1,[min,max]=cfg.priceRanges[signal];
+ const p=probs(h,a),rp=probs(hr,ar);
+ const estimates=keys.map((signal,i)=>{
  const gd=i===0?h.gd-a.gd:i===2?a.gd-h.gd:null,recentGd=i===0?hr.gd-ar.gd:i===2?ar.gd-hr.gd:null;
  const selectedForm=i===0?h:a,selectedRecent=i===0?hr:ar;
  const guard=(gd===null||gd>=cfg.minGoalDifference&&recentGd>=cfg.minRecentGoalDifference&&selectedForm.gd>=0&&selectedRecent.gd>=0)&&rp[i]+cfg.maxRecentRateDrop>=p[i]-1e-12;
- return {signal,model:p[i],recentModel:rp[i],price,implied,market,edge,ev,goalDifferenceEdge:gd,recentGoalDifferenceEdge:recentGd,formGuard:guard,passed:guard&&price>=min&&price<=max&&p[i]>=(cfg.minProbabilityBySide?.[signal]??cfg.minProbability)&&edge>=cfg.minEdge&&ev>=cfg.minEV}});
+ return {signal,model:p[i],recentModel:rp[i],probabilityPassed:p[i]>=(cfg.minProbabilityBySide?.[signal]??cfg.minProbability),price:null,implied:null,market:null,edge:null,ev:null,goalDifferenceEdge:gd,recentGoalDifferenceEdge:recentGd,formGuard:guard,passed:false}});
+ const estimate={home:h,away:a,homeRecent5:hr,awayRecent5:ar,overround:null,sides:estimates};
+ if(odds?.bookmaker!=='bet365'||![odds.home,odds.draw,odds.away].every(x=>typeof x==='number'&&Number.isFinite(x)&&x>1))return no('INVALID_BET365_ODDS',estimate);
+ if(!Number.isSafeInteger(odds.observed)||odds.observed<=0||odds.observed>now||odds.observed>=kickoff)return no('INVALID_PREMATCH_TIME',estimate);
+ const prices=[odds.home,odds.draw,odds.away],total=prices.reduce((s,x)=>s+1/x,0);
+ const sides=estimates.map((s,i)=>{const price=prices[i],implied=1/price,market=implied/total,edge=s.model-market,ev=s.model*price-1,[min,max]=cfg.priceRanges[s.signal];return {...s,price,implied,market,edge,ev,passed:s.probabilityPassed&&s.formGuard&&price>=min&&price<=max&&edge>=cfg.minEdge&&ev>=cfg.minEV}});
  const metrics={home:h,away:a,homeRecent5:hr,awayRecent5:ar,overround:total-1,sides};
  if(!cfg.enabled)return no('OWNER_OFF',metrics);
  const best=sides.filter(x=>x.passed).sort((a,b)=>b.ev-a.ev||b.edge-a.edge||keys.indexOf(a.signal)-keys.indexOf(b.signal))[0];
