@@ -1,0 +1,30 @@
+name: Membership compare neighboring statistics cards read only
+on:
+  push:
+    branches: [test/ball46-membership-visual-v2-20261120]
+    paths: ['.github/workflows/membership-card-reference-20261120.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm install --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium --only-shell
+          node <<'EOF'
+          const {chromium,devices}=require('playwright');
+          (async()=>{const browser=await chromium.launch();try{await Promise.all(['desktop-dark','desktop-light','mobile-dark','mobile-light'].map(async mode=>{
+          const mobile=mode.startsWith('mobile'),theme=mode.endsWith('dark')?'dark':'light';
+          const p=await browser.newPage(mobile?{...devices['iPhone 13'],serviceWorkers:'block'}:{viewport:{width:1440,height:950},serviceWorkers:'block'});
+          await p.addInitScript(t=>localStorage.setItem('nomad343_dashboard_theme_v1',t),theme);
+          await p.route('**/*',r=>['GET','HEAD'].includes(r.request().method())?r.continue():r.abort());
+          await p.goto('https://ball46-membership-visual-v2-test-20261120.mccarey-supon.workers.dev/index.html?view=statistics',{waitUntil:'domcontentloaded'});await p.waitForTimeout(4000);
+          const d=await p.evaluate(()=>{const panel=document.querySelector('[data-workspace-panel="statistics"]');const describe=e=>{const s=getComputedStyle(e),r=e.getBoundingClientRect();return {tag:e.tagName,cls:e.className,id:e.id,rect:[r.x,r.y,r.width,r.height],radius:s.borderRadius,border:s.border,shadow:s.boxShadow,background:s.backgroundColor,text:e.innerText?.slice(0,80)}};return [...panel.querySelectorAll('*')].filter(e=>{const r=e.getBoundingClientRect(),s=getComputedStyle(e);return r.width>120&&r.height>45&&r.y<1000&&s.display!=='none'&&(parseFloat(s.borderTopLeftRadius)>0||s.boxShadow!=='none')}).map(describe).slice(0,30)});
+          console.log('CARD_REFERENCE '+JSON.stringify({mode,d}));await p.close();
+          }))}finally{await browser.close()}})().catch(e=>{console.error(e);process.exit(1)})
+          EOF
