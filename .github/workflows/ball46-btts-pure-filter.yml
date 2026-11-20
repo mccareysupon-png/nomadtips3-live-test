@@ -1,4 +1,4 @@
-name: BALL46 pure BTTS filter test
+name: BALL46 pure BTTS and 1X2 filter test
 on:
   push:
     branches: [test/ball46-prematch-v1-20261120]
@@ -13,4 +13,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: node --test qa/prematch-history-20261120/evaluate-btts-signal.test.mjs
+      - run: node --test qa/prematch-history-20261120/evaluate-btts-signal.test.mjs qa/prematch-history-20261120/evaluate-1x2-signal.test.mjs
+      - run: node qa/prematch-history-20261120/compare-pure-signals.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: prematch-pure-real-comparison
+          path: evidence/
