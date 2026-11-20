@@ -1,11 +1,11 @@
 // Pure 1X2 evaluator. All inputs supplied by caller; no network or storage.
-export const DEFAULT_1X2=Object.freeze({enabled:false,minProbability:0.60,minEdge:0.05,minEV:0.05, minGoalDifference:0,minRecentGoalDifference:0,maxRecentRateDrop:0.20,priceRanges:{HOME_WIN:[1.6,3.5],DRAW:[2.9,4.2],AWAY_WIN:[1.6,3.5]}});
+export const DEFAULT_1X2=Object.freeze({enabled:false,minHistory:10,minProbability:0.60,minEdge:0.05,minEV:0.05, minGoalDifference:0,minRecentGoalDifference:0,maxRecentRateDrop:0.20,priceRanges:{HOME_WIN:[1.6,3.5],DRAW:[2.9,4.2],AWAY_WIN:[1.6,3.5]}});
 export function evaluate1x2Signal(input,options={}){
  const cfg={...DEFAULT_1X2,...options,priceRanges:{...DEFAULT_1X2.priceRanges,...options.priceRanges}};
  const no=(reason,metrics=null)=>({signal:'NO_SIGNAL',reason,metrics});
  const keys=['HOME_WIN','DRAW','AWAY_WIN'];
- if(typeof cfg.enabled!=='boolean'||![cfg.minProbability,cfg.minEdge,cfg.minEV,cfg.minGoalDifference,cfg.minRecentGoalDifference,cfg.maxRecentRateDrop].every(Number.isFinite)||cfg.minProbability<0||cfg.minProbability>1||cfg.minEdge<0||cfg.minEdge>1||cfg.minEV<0||cfg.maxRecentRateDrop<0||cfg.maxRecentRateDrop>1||keys.some(k=>!Array.isArray(cfg.priceRanges[k])||cfg.priceRanges[k].length!==2||!cfg.priceRanges[k].every(Number.isFinite)||cfg.priceRanges[k][0]<=1||cfg.priceRanges[k][1]<cfg.priceRanges[k][0]))return no('INVALID_CONFIG');
- const valid=a=>Array.isArray(a)&&a.length===10&&a.every(x=>x?.fixtureId!=null&&Number.isSafeInteger(x.gf)&&x.gf>=0&&Number.isSafeInteger(x.ga)&&x.ga>=0)&&new Set(a.map(x=>String(x.fixtureId))).size===10;
+ if(typeof cfg.enabled!=='boolean'||!Number.isInteger(cfg.minHistory)||cfg.minHistory<5||cfg.minHistory>10||(cfg.minProbabilityBySide!=null&&(typeof cfg.minProbabilityBySide!=='object'||keys.some(k=>!Number.isFinite(cfg.minProbabilityBySide[k])||cfg.minProbabilityBySide[k]<0||cfg.minProbabilityBySide[k]>1)))||![cfg.minProbability,cfg.minEdge,cfg.minEV,cfg.minGoalDifference,cfg.minRecentGoalDifference,cfg.maxRecentRateDrop].every(Number.isFinite)||cfg.minProbability<0||cfg.minProbability>1||cfg.minEdge<0||cfg.minEdge>1||cfg.minEV<0||cfg.maxRecentRateDrop<0||cfg.maxRecentRateDrop>1||keys.some(k=>!Array.isArray(cfg.priceRanges[k])||cfg.priceRanges[k].length!==2||!cfg.priceRanges[k].every(Number.isFinite)||cfg.priceRanges[k][0]<=1||cfg.priceRanges[k][1]<cfg.priceRanges[k][0]))return no('INVALID_CONFIG');
+ const valid=a=>Array.isArray(a)&&a.length>=cfg.minHistory&&a.length<=10&&a.every(x=>x?.fixtureId!=null&&Number.isSafeInteger(x.gf)&&x.gf>=0&&Number.isSafeInteger(x.ga)&&x.ga>=0)&&new Set(a.map(x=>String(x.fixtureId))).size===a.length;
  if(!valid(input?.homeLast10)||!valid(input?.awayLast10))return no('INVALID_OR_INCOMPLETE_HISTORY');
  const now=input.asOf,kickoff=input.kickoff,odds=input.odds;
  if(odds?.bookmaker!=='bet365'||![odds.home,odds.draw,odds.away].every(x=>typeof x==='number'&&Number.isFinite(x)&&x>1))return no('INVALID_BET365_ODDS');
@@ -20,7 +20,7 @@ export function evaluate1x2Signal(input,options={}){
  const gd=i===0?h.gd-a.gd:i===2?a.gd-h.gd:null,recentGd=i===0?hr.gd-ar.gd:i===2?ar.gd-hr.gd:null;
  const selectedForm=i===0?h:a,selectedRecent=i===0?hr:ar;
  const guard=(gd===null||gd>=cfg.minGoalDifference&&recentGd>=cfg.minRecentGoalDifference&&selectedForm.gd>=0&&selectedRecent.gd>=0)&&rp[i]+cfg.maxRecentRateDrop>=p[i]-1e-12;
- return {signal,model:p[i],recentModel:rp[i],price,implied,market,edge,ev,goalDifferenceEdge:gd,recentGoalDifferenceEdge:recentGd,formGuard:guard,passed:guard&&price>=min&&price<=max&&p[i]>=cfg.minProbability&&edge>=cfg.minEdge&&ev>=cfg.minEV}});
+ return {signal,model:p[i],recentModel:rp[i],price,implied,market,edge,ev,goalDifferenceEdge:gd,recentGoalDifferenceEdge:recentGd,formGuard:guard,passed:guard&&price>=min&&price<=max&&p[i]>=(cfg.minProbabilityBySide?.[signal]??cfg.minProbability)&&edge>=cfg.minEdge&&ev>=cfg.minEV}});
  const metrics={home:h,away:a,homeRecent5:hr,awayRecent5:ar,overround:total-1,sides};
  if(!cfg.enabled)return no('OWNER_OFF',metrics);
  const best=sides.filter(x=>x.passed).sort((a,b)=>b.ev-a.ev||b.edge-a.edge||keys.indexOf(a.signal)-keys.indexOf(b.signal))[0];
