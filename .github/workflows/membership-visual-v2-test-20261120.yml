@@ -19,106 +19,6 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
-          python -m pip install --quiet pillow
-          python <<'PY'
-          from PIL import Image
-          from pathlib import Path
-          import base64, hashlib, io, json
-          p=Path('qa/membership-visual-v2-20261120')
-          raw=base64.b64decode(''.join(f.read_text() for f in sorted(p.glob('source-*.b64'))))
-          assert hashlib.sha256(raw).hexdigest()=='9d8d2fb96812a12584f5ec7efca28ba296981005166fc4862dc272bf47bc8e97'
-          im=Image.open(io.BytesIO(raw)).convert('RGB')
-          assert im.size==(2048,682)
-          assets={}
-          def clean_edges(source):
-              # Replace only the perimeter pixels; preserve the entire interior and dimensions.
-              w,h=source.size
-              n=4
-              out=source.copy()
-              out.paste(source.crop((0,n,w,n+1)).resize((w,n)),(0,0))
-              out.paste(source.crop((0,h-n-1,w,h-n)).resize((w,n)),(0,h-n))
-              out.paste(out.crop((n,0,n+1,h)).resize((n,h)),(0,0))
-              out.paste(out.crop((w-n-1,0,w-n,h)).resize((n,h)),(w-n,0))
-              assert out.crop((n,n,w-n,h-n)).tobytes()==source.crop((n,n,w-n,h-n)).tobytes()
-              assert out.size==source.size
-              return out
-          def save(name,source):
-              f=io.BytesIO();source.save(f,'WEBP',lossless=True,method=6)
-              data=f.getvalue()
-              assert Image.open(io.BytesIO(data)).convert('RGB').tobytes()==source.tobytes()
-              assets[name]=base64.b64encode(data).decode()
-          def color_label(source,kind,theme):
-              out=source.copy()
-              x0,y0,x1,y1=(49,60,160,78) if kind=='mobile' else (84,94,224,115)
-              dark_bg=kind!='light'
-              target=(255,220,25) if theme=='dark' else ((255,154,35) if kind=='mobile' else (199,85,0))
-              count=0
-              for y in range(y0,y1):
-                  for x in range(x0,x1):
-                      old=source.getpixel((x,y))
-                      # Estimate the local canvas from the rows immediately outside the label.
-                      t=(y-y0+1)/(y1-y0+1)
-                      up=source.getpixel((x,y0-1)); down=source.getpixel((x,y1))
-                      bg=tuple(round(u*(1-t)+d*t) for u,d in zip(up,down))
-                      if dark_bg:
-                          alpha=max(0,min(1,(old[0]-bg[0]-10)/max(1,232-bg[0]-10)))
-                      else:
-                          alpha=max(0,min(1,(bg[1]-old[1]-10)/max(1,bg[1]-48-10)))
-                      if alpha>.025:
-                          fg=(232,231,151) if dark_bg else (18,48,32)
-                          new=tuple(max(0,min(255,round(v+alpha*(d-f)))) for v,d,f in zip(old,target,fg))
-                          out.putpixel((x,y),new)
-                          count+=new!=old
-              assert count>300
-              assert out.size==source.size
-              assert out.crop((0,0,source.width,y0)).tobytes()==source.crop((0,0,source.width,y0)).tobytes()
-              assert out.crop((0,y1,source.width,source.height)).tobytes()==source.crop((0,y1,source.width,source.height)).tobytes()
-              assert out.crop((0,y0,x0,y1)).tobytes()==source.crop((0,y0,x0,y1)).tobytes()
-              assert out.crop((x1,y0,source.width,y1)).tobytes()==source.crop((x1,y0,source.width,y1)).tobytes()
-              print('LABEL_COLOR_VERIFIED',kind,theme,target,count)
-              return out
-          for name,box in [('dark',(48,78,2000,223)),('light',(48,269,2000,419)),('mobile',(632,469,1417,654))]:
-              source=im.crop(box)
-              clean=clean_edges(source)
-              if name=='mobile':
-                  for theme in ['dark','light']:
-                      save('label-mobile-'+theme+'-v12.webp',color_label(clean,'mobile',theme))
-                  continue
-              clean=color_label(clean,name,name)
-              save('label-'+name+'-v12.webp',clean)
-              print('FLAT_EDGE_VERIFIED',name,clean.size)
-              if name!='mobile':
-                  parts=[clean.crop((x0,0,x1,clean.height)) for x0,x1 in [(0,962),(962,1122),(1122,1952)]]
-                  assembled=Image.new('RGB',clean.size)
-                  x=0
-                  for label,crop in zip(['left','middle','right'],parts):
-                      save('label-'+name+'-'+label+'-v12.webp',crop)
-                      assembled.paste(crop,(x,0));x+=crop.width
-                  assert assembled.tobytes()==clean.tobytes()
-                  # Recolor only green button pixels, preserving text, texture and edge antialiasing.
-                  yellow=clean.copy()
-                  roi=(1679,38 if name=='dark' else 41,1915,102 if name=='dark' else 106)
-                  count=0
-                  for py in range(roi[1],roi[3]):
-                      for px in range(roi[0],roi[2]):
-                          red,green,blue=clean.getpixel((px,py))
-                          d=max(0,green-red)
-                          weight=min(1,max(0,(green-55)/65))*min(1,max(0,(d-20)/45))
-                          if weight>0:
-                              new=(min(255,round(red+1.10*d*weight)),green,max(0,round(blue-.75*d*weight)))
-                              yellow.putpixel((px,py),new)
-                              count+=new!=(red,green,blue)
-                  assert count>8000
-                  assert yellow.crop((0,0,1679,clean.height)).tobytes()==clean.crop((0,0,1679,clean.height)).tobytes()
-                  assert yellow.crop((1915,0,1952,clean.height)).tobytes()==clean.crop((1915,0,1952,clean.height)).tobytes()
-                  assert yellow.crop((1679,0,1915,roi[1])).tobytes()==clean.crop((1679,0,1915,roi[1])).tobytes()
-                  assert yellow.crop((1679,roi[3],1915,clean.height)).tobytes()==clean.crop((1679,roi[3],1915,clean.height)).tobytes()
-                  save('label-hover-'+name+'-v12.webp',yellow)
-                  save('label-hover-'+name+'-right-v12.webp',yellow.crop((1122,0,1952,clean.height)))
-                  print('HOVER_PIXELS_VERIFIED',name,count)
-
-          (p/'assets.mjs').write_text('export default '+json.dumps(assets,separators=(',',':'))+';\n')
-          PY
           node --check qa/membership-visual-v2-20261120/worker.mjs
           cat > qa/membership-visual-v2-20261120/wrangler.toml <<'EOF'
           name = "ball46-membership-visual-v2-test-20261120"
@@ -139,7 +39,7 @@ jobs:
             if [ "$attempt" = 3 ]; then exit 1; fi
             sleep 5
           done
-      - name: Verify desktop sticky membership and unchanged mobile
+      - name: Verify mobile card alignment and desktop unchanged
         run: |
           npm install --prefix qa/membership-visual-v2-20261120/.runtime --no-audit --no-fund playwright@1.55.0
           qa/membership-visual-v2-20261120/.runtime/node_modules/.bin/playwright install chromium --only-shell
@@ -148,38 +48,39 @@ jobs:
           const {chromium,devices}=createRequire(process.cwd()+'/qa/membership-visual-v2-20261120/.runtime/package.json')('playwright');
           const base='https://ball46-membership-visual-v2-test-20261120.mccarey-supon.workers.dev';
           let health;for(let i=0;i<15;i++){try{const r=await fetch(base+'/_membership_visual_health');if(r.ok){health=await r.json();break}}catch{}await new Promise(r=>setTimeout(r,2000))}
-          assert.equal(health?.scope,'TEST_ONLY_MEMBERSHIP_VISUAL');assert.equal(health?.revision,'MEMBERSHIP_HISTORY_MASK_V13');assert.equal((await fetch(base+'/_membership_visual_health',{method:'POST'})).status,405);
+          assert.equal(health?.scope,'TEST_ONLY_MEMBERSHIP_VISUAL');assert.equal(health?.revision,'MEMBERSHIP_MOBILE_ALIGN_V14');assert.equal((await fetch(base+'/_membership_visual_health',{method:'POST'})).status,405);
           const browser=await chromium.launch();try{
-          for(const mode of ['desktop-dark','desktop-light','wide-dark','wide-light','mobile-dark','mobile-light']){
-          const mobile=mode.startsWith('mobile'),theme=mode.endsWith('dark')?'dark':'light',wide=mode.startsWith('wide');
-          const p=await browser.newPage(mobile?{...devices['iPhone 13'],serviceWorkers:'block'}:{viewport:{width:wide?1920:1440,height:950},serviceWorkers:'block'});
-          await p.addInitScript(t=>localStorage.setItem('nomad343_dashboard_theme_v1',t),theme);
-          await p.route('**/*',r=>['GET','HEAD'].includes(r.request().method())?r.continue():r.abort());
-          await p.goto(base+'/index.html?view=statistics',{waitUntil:'domcontentloaded',timeout:60000});
-          const sel=mobile?'.b46-exact-mobile>a':'.b46-stat-member-top>a.b46-exact-link';
-          await p.locator(sel).waitFor({state:'visible',timeout:30000});
-          if(mobile)await p.locator(sel+' img').evaluate(e=>e.decode());
-          else await p.locator(sel+' .b46-exact-art').evaluate(async e=>{await Promise.all([...e.children].map(async x=>{const u=getComputedStyle(x).backgroundImage.match(/url\("([^"]+)"\)/)?.[1];if(!u)throw Error('MISSING_ART');for(let attempt=0;attempt<3;attempt++){const i=new Image();i.src=u;try{await i.decode();return}catch(err){if(attempt===2)throw err;await new Promise(r=>setTimeout(r,500))}}}))});
-          await p.waitForFunction(({sel,radius})=>getComputedStyle(document.querySelector(sel)).borderRadius===radius,{sel,radius:mobile?'11px':theme==='dark'?'12px':'14px'},{timeout:10000});
-          const maskProof=await p.evaluate(()=>{const panel=document.querySelector('[data-workspace-panel="statistics"]');return [...panel.querySelectorAll('button,[role="button"],.b46-fast-details')].filter(e=>/^load detailed history$/i.test(e.textContent.trim())||e.classList.contains('b46-fast-details')).map(e=>({text:e.textContent.trim(),tag:e.tagName,cls:e.className,display:getComputedStyle(e).display,hidden:e.getBoundingClientRect().height===0}))});console.log('HISTORY_MASK_PROOF '+JSON.stringify({mode,controls:maskProof}));assert(maskProof.every(e=>e.hidden&&e.display==='none'),'HISTORY_CONTROL_VISIBLE');
-          const proof=await p.locator(sel).evaluate(e=>{const r=e.getBoundingClientRect(),im=e.querySelector('img'),art=e.querySelector('.b46-exact-art');return {href:e.href,theme:document.documentElement.dataset.theme,rect:[r.x,r.y,r.width,r.height],position:getComputedStyle(e.parentElement).position,radius:getComputedStyle(e).borderRadius,border:getComputedStyle(e).borderTopWidth,parentBorder:getComputedStyle(e.parentElement).borderTopWidth,shadow:getComputedStyle(e).boxShadow,src:im?.src,natural:im?[im.naturalWidth,im.naturalHeight]:null,parts:art?[...art.children].map(x=>({w:x.getBoundingClientRect().width,h:x.getBoundingClientRect().height,bg:getComputedStyle(x).backgroundImage})):null}});
-          console.log('EXACT_SIZE_PROOF '+JSON.stringify({mode,...proof}));assert.equal(proof.href,'https://member.ball46.com/pricing');assert.equal(proof.theme,theme);assert.equal(proof.radius,mobile?'11px':theme==='dark'?'12px':'14px');assert.equal(proof.border,'0px');assert.equal(proof.parentBorder,'0px');const shadowMatch=proof.shadow.match(/^rgba\(0, 0, 0, ([\d.]+)\) 0px 2px 6px 0px$/);assert(shadowMatch&&Math.abs(Number(shadowMatch[1])-(theme==='dark'?.09:.045))<=.004,'SINGLE_SUBTLE_SHADOW');
-          if(mobile){assert.equal(proof.position,'static');assert(proof.src.endsWith('label-mobile-'+theme+'-v12.webp'));assert(Math.abs(proof.rect[3]-proof.rect[2]*185/785)<1);assert.equal(await p.locator('.b46-stat-member-top:visible').count(),0);}
-          else{assert.equal(proof.position,'sticky');assert.equal(proof.rect[3],90);assert.equal(proof.parts.length,3);assert(proof.parts.every(x=>x.h===90&&x.bg.includes(theme)));assert(Math.abs(proof.parts.reduce((n,x)=>n+x.w,0)-proof.rect[2])<1);assert(Math.abs(proof.parts[0].w-962*90/(theme==='dark'?145:150))<1);assert(Math.abs(proof.parts[2].w-830*90/(theme==='dark'?145:150))<1);
-          const details=p.locator('.b46-fast-details');if(await details.count())await details.first().evaluate(e=>e.click());await p.waitForFunction(()=>{const e=document.querySelector('[data-workspace-panel="statistics"]');return e.scrollHeight>e.clientHeight+750},null,{timeout:90000});await p.mouse.move(750,450);await p.mouse.wheel(0,650);await p.waitForTimeout(450);const after=await p.locator(sel).evaluate(e=>({y:e.getBoundingClientRect().y,root:scrollY,scroll:e.closest('[data-workspace-panel]').scrollTop}));assert(after.scroll>100&&after.root===0&&Math.abs(after.y-proof.rect[1])<2,'STICKY_REGRESSION')}
-          if(!mobile){
-          const right=p.locator(sel+' .b46-exact-right');
-          await p.locator(sel).hover({position:{x:50,y:30}});
-          await p.waitForFunction(({sel,theme})=>getComputedStyle(document.querySelector(sel+' .b46-exact-right')).backgroundImage.includes('label-hover-'+theme+'-right-v12.webp'),{sel,theme});
-          const hoverUrl=await right.evaluate(e=>getComputedStyle(e).backgroundImage.match(/url\("([^"]+)"\)/)[1]);
-          await right.evaluate(async(e,u)=>{const i=new Image();i.src=u;await i.decode()},hoverUrl);
-          const hoverShot=await p.locator(sel).screenshot({type:'jpeg',quality:85});console.log('HOVER_PREVIEW '+mode+' '+hoverShot.toString('base64'));
-          await p.mouse.move(5,5);
-          await p.waitForFunction(({sel,theme})=>getComputedStyle(document.querySelector(sel+' .b46-exact-right')).backgroundImage.includes('label-'+theme+'-right-v12.webp'),{sel,theme});
-          console.log('HOVER_PASS '+mode);
+          const prod='https://ball46.com';
+          for(const [width,height,theme] of [[320,720,'dark'],[360,800,'light'],[390,844,'dark'],[390,844,'light'],[430,932,'dark'],[430,932,'light'],[1440,950,'dark'],[1440,950,'light']]){
+            const mobile=width<=760,mode=width+'-'+theme;
+            const context=mobile?{...devices['iPhone 13'],viewport:{width,height},screen:{width,height},serviceWorkers:'block'}:{viewport:{width,height},serviceWorkers:'block'};
+            const measure=async(host)=>{const p=await browser.newPage(context);try{
+              await p.addInitScript(t=>localStorage.setItem('nomad343_dashboard_theme_v1',t),theme);
+              await p.route('**/*',r=>['GET','HEAD'].includes(r.request().method())?r.continue():r.abort());
+              await p.goto(host+'/index.html?view=statistics',{waitUntil:'domcontentloaded',timeout:60000});
+              const link=mobile?'.b46-exact-mobile>a':'.b46-stat-member-top>a.b46-exact-link';
+              await p.locator(link).waitFor({state:'visible',timeout:30000});
+              await p.waitForFunction(()=>document.querySelector('#b46-finance-chart-card')?.getBoundingClientRect().height>0,null,{timeout:60000});
+              if(mobile)await p.locator(link+' img').evaluate(e=>e.decode());
+              const result=await p.evaluate(({link,mobile})=>{const panel=document.querySelector('[data-workspace-panel="statistics"]');const rect=e=>{if(!e)return null;const r=e.getBoundingClientRect(),s=getComputedStyle(e);return {x:r.x,right:r.right,w:r.width,h:r.height,y:r.y,radius:s.borderRadius,border:s.borderTopWidth,shadow:s.boxShadow,display:s.display,position:s.position,margin:s.margin}};return {theme:document.documentElement.dataset.theme,viewport:innerWidth,docWidth:document.documentElement.scrollWidth,marker:!!document.querySelector('#b46-mobile-stat-card-align-v14'),baseMarkers:document.querySelectorAll('#b46-membership-label-v12').length,panel:rect(panel),banner:rect(panel.querySelector(link)),head:rect(panel.querySelector('.workspace-view-head')),graph:rect(panel.querySelector('#b46-finance-chart-card')),graphInner:rect(panel.querySelector('.f46-card')),results:rect(panel.querySelector('.sp-results')),hiddenHistory:[...panel.querySelectorAll('button.b46-fast-details')].every(e=>getComputedStyle(e).display==='none'),image:mobile?panel.querySelector(link+' img')?.getAttribute('src'):null,href:panel.querySelector(link)?.href,groups:[...panel.querySelectorAll('[class*="summary"],[class*="stats"],[class*="metric"]')].filter(e=>{let r=e.getBoundingClientRect();return r.width>=innerWidth*.7&&r.height>15&&r.height<400}).slice(0,12).map(e=>({class:e.className,...rect(e)}))}},{link,mobile});
+              if(host===base&&mobile){const shot=await p.screenshot({type:'jpeg',quality:65});console.log('MOBILE_ALIGN_PREVIEW '+mode+' '+shot.toString('base64'))}
+              return result;
+            }finally{await p.close()}};
+            const old=await measure(prod),now=await measure(base);
+            console.log('ALIGN_PROOF '+JSON.stringify({mode,old,now}));
+            assert.equal(now.marker,true);assert.equal(now.baseMarkers,1);assert.equal(now.theme,theme);assert.equal(now.href,old.href);assert(now.hiddenHistory);
+            if(mobile){
+              assert(now.head&&now.graph&&now.banner,'MISSING_CARD');
+              for(const item of [now.head,now.banner]){assert(Math.abs(item.x-now.graph.x)<=1&&Math.abs(item.right-now.graph.right)<=1,'MOBILE_EDGES '+JSON.stringify({mode,item,graph:now.graph}));assert.equal(item.radius,'11px')}
+              assert.equal(now.banner.border,'0px');assert.equal(now.image,old.image);assert(Math.abs(now.banner.h-now.banner.w*185/785)<1);assert(now.docWidth<=now.viewport+1,'HORIZONTAL_OVERFLOW');
+              assert(Math.abs(now.graph.w-old.graph.w)<=1&&Math.abs(now.graph.x-old.graph.x)<=1,'GRAPH_CHANGED');
+            }else{
+              for(const k of ['banner','graph']){assert(Math.abs(now[k].x-old[k].x)<1&&Math.abs(now[k].w-old[k].w)<1&&Math.abs(now[k].h-old[k].h)<1,'PC_CHANGED '+k);assert.equal(now[k].radius,old[k].radius)}
+              assert.equal(now.banner.position,old.banner.position);
+            }
+            console.log('ALIGN_PASS '+mode);
           }
-          const shot=await p.locator(sel).screenshot({type:'jpeg',quality:85});console.log('SIZE_PREVIEW '+mode+' '+shot.toString('base64'));await p.close();
-          }}finally{await browser.close()}
+          }finally{await browser.close()}
           EOF
       - name: Confirm Production unchanged
         if: always()
