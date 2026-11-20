@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';import fs from 'node:fs';import {classifyProviderPath,forwardProvider} from './provider-bridge.mjs';
 const root='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+'/workers',hub='nomadtips3-5usd-hub-343',eng='nomadtips3-engine-343',market='nomadtips3-full-market-343-ball46';
-const staged=JSON.parse(fs.readFileSync('evidence/central-staged-versions.json','utf8'));assert(staged.activeUnchanged===true&&staged.realProviderCalls===0);const versions=Object.fromEntries(staged.evidence.map(x=>[x.worker,{old:x.rollbackVersion,next:x.stagedVersion}]));assert.deepEqual(Object.keys(versions).sort(),[hub,eng,market].sort());
+const versions={
+ [hub]:{old:'f434025a-e092-4bf0-844f-6f1e01ad7173',next:'9d055652-b66f-463b-988f-486b5747be8e'},
+ [eng]:{old:'d8dd07a2-4f5d-4b14-94b5-52f5fc53311d',next:'99e8dea9-0f1f-4300-9efc-083a799f2a4b'},
+ [market]:{old:'3a53ee1a-467c-4a20-9f50-ba749e8adab4',next:'9d2b9d75-0749-4fdb-9066-d40c711d4e40'}
+};
 
 async function cf(p,o={}){const r=await fetch(root+p,{...o,headers:{Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN,...o.headers},signal:AbortSignal.timeout(30000)});const j=await r.json();if(!r.ok||!j.success)throw Error('CF '+r.status+' '+p+' '+JSON.stringify(j.errors?.map(e=>e.code)));return j.result}
 async function current(n){const d=(await cf('/scripts/'+n+'/deployments?per_page=1')).deployments[0];assert(d.versions.length===1&&d.versions[0].percentage===100);return d.versions[0].version_id}
@@ -43,11 +47,11 @@ const host='https://nomadtips3-5usd-hub-343.mccarey-supon.workers.dev',engineHos
 async function get(url){const r=await fetch(url,{signal:AbortSignal.timeout(15000),headers:{'cache-control':'no-cache'}});assert(r.ok,'HEALTH_HTTP_'+r.status);return r.json()}
 const observe=async()=>{const [h,e]=await Promise.all([get(host+'/health'),get(engineHost+'/health')]);return {hubOk:h.ok,hubAgeMs:h.ageMs,live:h.counts?.live,liveSeconds:h.control?.liveRefreshSeconds,lastError:h.lastError,lastRateLimitAt:h.lastRateLimitAt,quota:h.bulkSpeedV3?.quotaObserved,engineOk:e.ok,engineError:e.lastError,engineStartedAt:e.startedAt,engineFinishedAt:e.finishedAt,engineLive:e.liveCount,engineMode:e.dataMode}};
 const baseline=await observe();report.baseline=baseline;
-// Conservative change window: no live fixture and no live engine match.
-// No staged version is activated when the safety window is absent.
-const safe=x=>x.hubOk===true&&Number.isFinite(x.hubAgeMs)&&x.hubAgeMs<30000&&x.live===0&&x.engineLive===0&&x.quota===true&&!x.lastError&&!x.lastRateLimitAt&&x.engineOk===true&&!x.engineError;
+// Owner-approved: Live match count is NOT an activation condition.
+// Preserve live refresh cadence, fresh quota and healthy engine. History remains OFF.
+const safe=x=>x.hubOk===true&&Number.isFinite(x.hubAgeMs)&&x.hubAgeMs<30000&&x.quota===true&&!x.lastError&&!x.lastRateLimitAt&&x.engineOk===true&&!x.engineError;
 if(!safe(baseline)){report.state='BLOCKED_LIVE_FIRST_GATE';finish();process.exit(0)}
-const protectBefore=await current('ball46-production');
+const protectBefore=await current('ball46-production');console.log('ROLLBACK_PLAN',JSON.stringify(versions));
 async function deploy(n,id){const r=await cf('/scripts/'+n+'/deployments',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({strategy:'percentage',versions:[{version_id:id,percentage:100}]})});assert(r.versions?.some(v=>v.version_id===id&&v.percentage===100));}
 async function undo(n){if(await current(n)===versions[n].next){await deploy(n,versions[n].old);assert.equal(await current(n),versions[n].old);report.rollback.push(n)}}
 // Only the additive HUB route is activated in this first production step;

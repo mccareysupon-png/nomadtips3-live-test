@@ -17,7 +17,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Compare exact old/new transport, activate additive HUB only if Live idle
+      - name: Compare exact old/new transport, activate additive HUB with healthy Live, regardless of match count
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -29,3 +29,5 @@ jobs:
           path: evidence/
 
 # Parse the actual full-market array across lines before live-first gate.
+
+# Owner-approved: remove zero-live condition; history remains hard OFF.
