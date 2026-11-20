@@ -1,11 +1,10 @@
-name: BALL46 isolated prematch store deployment
+name: BALL46 isolated prematch daily archive deploy
 on:
   push:
     branches: [test/ball46-prematch-v1-20261120]
     paths: ['.github/workflows/ball46-prematch-only-deploy.yml']
 permissions:
   contents: read
-  actions: read
 concurrency:
   group: ball46-prematch-only-test
   cancel-in-progress: false
@@ -18,18 +17,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - uses: actions/download-artifact@v4
-        with:
-          name: real-finished-history
-          path: evidence/history
-          run-id: 44723780062
-          github-token: ${{ github.token }}
-      - name: Deploy isolated store and persist actual results
+      - name: Deploy isolated daily archive and verify existing cycle
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
         run: node qa/prematch-history-20261120/prematch-only-deploy.mjs
-
-# Verify read-only preview deployment 2026-11-20.
-
-# Recheck preview route after propagation.
