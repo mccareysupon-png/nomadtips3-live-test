@@ -18,7 +18,8 @@ export function evaluate1x2Signal(input,options={}){
  const p=probs(h,a),rp=probs(hr,ar),prices=[odds.home,odds.draw,odds.away],total=prices.reduce((s,x)=>s+1/x,0);
  const sides=keys.map((signal,i)=>{const price=prices[i],implied=1/price,market=implied/total,edge=p[i]-market,ev=p[i]*price-1,[min,max]=cfg.priceRanges[signal];
  const gd=i===0?h.gd-a.gd:i===2?a.gd-h.gd:null,recentGd=i===0?hr.gd-ar.gd:i===2?ar.gd-hr.gd:null;
- const guard=(gd===null||gd>=cfg.minGoalDifference&&recentGd>=cfg.minRecentGoalDifference)&&rp[i]+cfg.maxRecentRateDrop>=p[i]-1e-12;
+ const selectedForm=i===0?h:a,selectedRecent=i===0?hr:ar;
+ const guard=(gd===null||gd>=cfg.minGoalDifference&&recentGd>=cfg.minRecentGoalDifference&&selectedForm.gd>=0&&selectedRecent.gd>=0)&&rp[i]+cfg.maxRecentRateDrop>=p[i]-1e-12;
  return {signal,model:p[i],recentModel:rp[i],price,implied,market,edge,ev,goalDifferenceEdge:gd,recentGoalDifferenceEdge:recentGd,formGuard:guard,passed:guard&&price>=min&&price<=max&&p[i]>=cfg.minProbability&&edge>=cfg.minEdge&&ev>=cfg.minEV}});
  const metrics={home:h,away:a,homeRecent5:hr,awayRecent5:ar,overround:total-1,sides};
  if(!cfg.enabled)return no('OWNER_OFF',metrics);
