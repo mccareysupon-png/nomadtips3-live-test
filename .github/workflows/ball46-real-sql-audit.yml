@@ -1,0 +1,27 @@
+name: BALL46 real cache to SQLite read-only audit
+on:
+  push:
+    branches: [test/ball46-prematch-v1-20261120]
+    paths: ['.github/workflows/ball46-real-sql-audit.yml']
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test qa/prematch-history-20261120/*.test.mjs
+      - name: Verify real rows using a protected read-only endpoint on isolated Worker
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: node qa/prematch-history-20261120/audit-deploy.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: real-sql-audit
+          path: evidence/

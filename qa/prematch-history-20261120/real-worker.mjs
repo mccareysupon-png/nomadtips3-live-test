@@ -2,6 +2,7 @@ import {DurableObject} from 'cloudflare:workers';
 import {init,ingest,coverage,totals,dailyPlan,normalize} from './history.mjs';
 import {initBackfill,planBackfill} from './backfill.mjs';
 import {initJohn,prepareDay,prepareCatalog,observeUnresolved,prepareUnknown,johnSummary,nextCutoff} from './john-sync.mjs';
+import {auditHistory} from './audit-history.mjs';
 const SYNC_POLICY='JOHN_LOCAL_PLAN_V3';
 const H='https://hub.internal/snapshot';
 const epoch=()=>Math.floor(Date.now()/1000);
@@ -53,6 +54,9 @@ export class RealHistory extends DurableObject{
  }
  async fetch(req){
   const path=new URL(req.url).pathname;
+  if(req.method==='POST'&&path==='/audit-real'){
+   try{const r=await this.env.SOURCE_HUB.fetch(H,{method:'GET'});if(!r.ok)throw Error('HUB_HTTP_'+r.status);const j=await r.json();const report=await this.ctx.storage.get('report');return Response.json(await auditHistory(this.db,j,adapt,report,epoch()),{headers:{'Cache-Control':'no-store'}})}catch(e){return Response.json({error:String(e.message).slice(0,200)},{status:502})}
+  }
   if(req.method==='POST'&&path==='/bootstrap'){
    try{const report=await this.run();await this.ctx.storage.setAlarm(nextAlarm(epoch()));return Response.json(report)}catch(e){return Response.json({error:String(e.message).slice(0,400)},{status:502})}
   }
@@ -78,6 +82,6 @@ export default {async fetch(req,env){
  const p=new URL(req.url).pathname,stub=env.HISTORY.get(env.HISTORY.idFromName('real-isolated-v1'));
  if(req.method==='GET'&&['/','/health'].includes(p))return stub.fetch('https://history.internal/health');
  if(req.method==='GET'&&p==='/backfill')return stub.fetch('https://history.internal/backfill');
- if(req.method==='POST'&&['/bootstrap','/prepare-backfill'].includes(p)&&env.BOOTSTRAP_SECRET&&req.headers.get('Authorization')==='Bearer '+env.BOOTSTRAP_SECRET)return stub.fetch('https://history.internal'+p,{method:'POST'});
+ if(req.method==='POST'&&['/bootstrap','/prepare-backfill','/audit-real'].includes(p)&&env.BOOTSTRAP_SECRET&&req.headers.get('Authorization')==='Bearer '+env.BOOTSTRAP_SECRET)return stub.fetch('https://history.internal'+p,{method:'POST'});
  return new Response('Not found',{status:404});
 }};
