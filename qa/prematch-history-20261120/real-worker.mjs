@@ -58,6 +58,16 @@ export class RealHistory extends DurableObject{
  async fetch(req){
   const path=new URL(req.url).pathname;
   if(req.method==='GET'&&path==='/last5'){try{return Response.json(archiveLast5(this.db,validateLast5(new URL(req.url),epoch()),epoch()),{headers:{'cache-control':'no-store'}})}catch{return Response.json({ok:false,error:'INVALID_HISTORY_REQUEST'},{status:400})}}
+  if(req.method==='POST'&&path==='/import-history-page'){
+   if(this.busy||this.seedBusy)return Response.json({state:'BUSY'},{status:409});
+   this.seedBusy=true;
+   try{
+    const data=await req.json(),now=epoch();
+    if(!Array.isArray(data.rows)||!data.rows.length||data.rows.length>100||data.rows.some(f=>!normalize(f)||f.status!=='finished'||f.kickoff_ts>=now||/abandon|cancel|award|walkover|extra.time|penalt|suspend|postpon/i.test(String(f.status_reason??''))))throw Error('INVALID_FINISHED_PAGE');
+    const out=ingest(this.db,data.rows,now);rememberNames(this.db,data.rows,now);
+    return Response.json({ok:true,ingest:out,stored:totals(this.db)});
+   }catch(e){return Response.json({state:'REVIEW_REQUIRED',error:String(e.message).slice(0,160)},{status:400})}finally{this.seedBusy=false}
+  }
   if(req.method==='POST'&&['/seed-history-page','/coverage10'].includes(path)){
    if(this.busy||this.seedBusy)return Response.json({state:'BUSY',requests:0},{status:409});
    this.seedBusy=true;
@@ -103,6 +113,6 @@ export default {async fetch(req,env){
  if(req.method==='GET'&&p==='/last5-version')return Response.json({version:'LAST5_ARCHIVE_V1'});
  if(req.method==='GET'&&p==='/audit-version')return Response.json({auditVersion:'REAL_SQL_MATCH_V1'});
  if(req.method==='GET'&&p==='/backfill')return stub.fetch('https://history.internal/backfill');
- if(req.method==='POST'&&['/bootstrap','/prepare-backfill','/audit-real','/refresh-names','/seed-history-page','/coverage10'].includes(p)&&env.BOOTSTRAP_SECRET&&req.headers.get('Authorization')==='Bearer '+env.BOOTSTRAP_SECRET)return stub.fetch('https://history.internal'+p,{method:'POST'});
+ if(req.method==='POST'&&['/bootstrap','/prepare-backfill','/audit-real','/refresh-names','/seed-history-page','/coverage10','/import-history-page'].includes(p)&&env.BOOTSTRAP_SECRET&&req.headers.get('Authorization')==='Bearer '+env.BOOTSTRAP_SECRET)return stub.fetch(new Request('https://history.internal'+p,req));
  return new Response('Not found',{status:404});
 }};
