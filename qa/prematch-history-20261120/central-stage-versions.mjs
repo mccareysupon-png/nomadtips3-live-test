@@ -26,7 +26,7 @@ try{
   if(n===engine)bindings.push(secret('PROVIDER_BRIDGE_SECRET',keys.B46_REFEREE_BRIDGE_SECRET));
   if(n===market){assert(!bindings.some(b=>b.name==='HUB'));bindings.push({name:'HUB',type:'service',service:hub,environment:'production'},secret('PROVIDER_BRIDGE_SECRET',keys.B46_MARKET_BRIDGE_SECRET))}
   const meta={main_module:v.main_module,modules:mods,bindings,compatibility_date:v.compatibility_date,compatibility_flags:settings.compatibility_flags??[],usage_model:v.usage_model??settings.usage_model,annotations:{'workers/message':'BALL46 central migration candidate; history hard OFF; DO NOT DEPLOY until cutover gate passes'}};
-  stage.push({name:n,id,meta,oldBindingNames:oldBindings.map(b=>b.name),folder});
+  stage.push({name:n,id,meta,oldBindings,folder});
  }
  // Exercise the exact transformed HUB and real transport wrapper entry path without network.
  const h=stage[0],mod=await import(pathToFileURL(path.join(h.folder,h.meta.main_module)).href),policyMod=await import(pathToFileURL(path.join(h.folder,'speed-policy.mjs')).href);
@@ -51,10 +51,16 @@ try{
   const v=await cf('/workers/'+a.name+'/versions?deploy=false',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(a.meta)});
   assert(typeof v.id==='string'&&v.id!==a.id);assert.deepEqual(await active(),before,'ACTIVE_DEPLOYMENT_CHANGED');
   console.log('STAGED_UPLOAD_ACCEPTED',JSON.stringify({worker:a.name,version:v.id,rollback:a.id}));
-  let check;for(let i=0;i<12;i++){try{check=await cf('/workers/'+a.name+'/versions/'+v.id+'?include=modules');break}catch(e){if(!String(e.message).startsWith('CF 404 '))throw e;await new Promise(r=>setTimeout(r,1500))}}
-  assert(check?.id===v.id,'STAGED_VERSION_NOT_VISIBLE');
-  const names=(check.bindings??[]).map(x=>x.name);
-  assert(a.oldBindingNames.every(x=>names.includes(x))&&a.meta.bindings.every(x=>names.includes(x)),'BINDINGS_INCOMPLETE');
+  let check,ready=false,names=[];for(let i=0;i<20;i++){try{
+   check=await cf('/workers/'+a.name+'/versions/'+v.id+'?include=modules');
+   const returned=check.bindings??[],m=new Map(returned.map(b=>[b.name,b]));names=[...m.keys()];
+   const oldOk=a.oldBindings.every(b=>{const q=m.get(b.name);return q?.type===b.type&&['namespace_id','class_name','service','environment','entrypoint','text'].every(k=>b[k]===undefined||q[k]===b[k])});
+   const newOk=a.meta.bindings.filter(b=>b.type!=='inherit').every(b=>{const q=m.get(b.name);return q?.type===b.type&&(b.type!=='service'||q.service===b.service)});
+   const modulesOk=a.meta.modules.every(b=>check.modules?.some(x=>x.name===b.name&&x.content_base64===b.content_base64));
+   if(check.id===v.id&&oldOk&&newOk&&modulesOk&&check.main_module===a.meta.main_module&&check.compatibility_date===a.meta.compatibility_date){ready=true;break}
+  }catch(e){if(!String(e.message).startsWith('CF 404 '))throw e}
+  await new Promise(r=>setTimeout(r,1500))}
+  assert(ready,'STAGED_BINDING_OR_MODULE_NOT_VERIFIED '+a.name+' names='+names.join(','));
   const item={worker:a.name,rollbackVersion:a.id,stagedVersion:v.id,bindingNames:names,active:false};evidence.push(item);console.log('STAGED_VERSION',JSON.stringify(item));
  }
  await fs.mkdir('evidence',{recursive:true});await fs.writeFile('evidence/central-staged-versions.json',JSON.stringify({evidence,activeUnchanged:true,realProviderCalls:0,historyHardOff:true},null,2));
