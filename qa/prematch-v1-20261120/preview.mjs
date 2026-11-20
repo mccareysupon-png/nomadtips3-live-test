@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {pathToFileURL} from 'node:url';
-const name='ball46-prematch-ui-test-v4-20261120',prod='ball46-production',origin='https://ball46.com';
+const name='ball46-prematch-ui-test-v5-20261120',prod='ball46-production',origin='https://ball46.com';
 assert(name.startsWith('ball46-prematch-ui-test-')&&name!==prod);
 const {CLOUDFLARE_ACCOUNT_ID:account,CLOUDFLARE_API_TOKEN:token}=process.env;
 assert(account&&token);
