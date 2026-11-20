@@ -1,0 +1,33 @@
+name: Inspect unnecessary home history loads
+on:
+  push:
+    branches: [test/ball46-live-count-startup-20261120]
+    paths: ['.github/workflows/live-count-history-20261120.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm install --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium --only-shell
+          node <<'EOF'
+          const {chromium}=require('playwright');
+          (async()=>{const b=await chromium.launch();try{
+          const p=await b.newPage({viewport:{width:1440,height:950},serviceWorkers:'block'});
+          await p.route('**/*',r=>['GET','HEAD'].includes(r.request().method())?r.continue():r.abort());
+          await p.addInitScript(()=>{const native=window.fetch;window.__b46Traces=[];window.fetch=function(input,...rest){const u=typeof input==='string'?input:input?.url||'';if(/\/api\/engine\/(statistics|signals)/.test(u)&&!u.includes('cursor='))window.__b46Traces.push({u,ms:performance.now(),stack:new Error().stack});return native.call(this,input,...rest)}});
+          await p.goto('https://ball46.com/',{waitUntil:'domcontentloaded'});await p.waitForTimeout(6500);
+          console.log('TRACE_HISTORY '+JSON.stringify(await p.evaluate(()=>window.__b46Traces)));
+          const scripts=await p.evaluate(()=>[...document.scripts].map(x=>x.src).filter(Boolean));
+          for(const u of scripts.filter(x=>/dashboard-v2|singlepage-workspace|ui-sync|longterm-performance/.test(x))){
+            const s=await(await p.request.get(u)).text();
+            for(const re of [/function renderWorkspaceScorebar\(/g,/settledSignalRows/g,/BALL46_STATISTICS_DATA\??\.\s*load/g,/function page\(/g,/function signature\(/g,/function loadSignals\(/g,/function startSignalLoopAfterBoard\(/g,/function start\(\)\{initControls/g]){let n=0;for(const m of s.matchAll(re)){if(++n>14)break;console.log('HISTORY_HIT '+JSON.stringify({path:new URL(u).pathname,term:m[0],context:s.slice(Math.max(0,m.index-230),m.index+2300)}))}}
+          }
+          }finally{await b.close()}})().catch(e=>{console.error(e);process.exit(1)})
+          EOF
