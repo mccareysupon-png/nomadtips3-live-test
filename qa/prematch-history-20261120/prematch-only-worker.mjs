@@ -1,5 +1,6 @@
 import {DurableObject} from 'cloudflare:workers';
 import {init,ingest,normalize,totals,coverage,dailyPlan,pathFor} from './history.mjs';
+import {evaluate,defaultConfig} from './prematch-bot.mjs';
 const json=x=>Response.json(x,{headers:{'cache-control':'no-store'}});
 export class PrematchStore extends DurableObject{
  constructor(ctx,env){super(ctx,env);this.db={exec:(q,...a)=>ctx.storage.sql.exec(q,...a),transaction:f=>ctx.storage.transactionSync(f)};init(this.db)}
@@ -11,6 +12,19 @@ export class PrematchStore extends DurableObject{
  const saved=await this.ctx.storage.get('previewSelections');
  return json({system:'BALL46_PREMATCH_ONLY',stored:totals(this.db),teams:teams.size,teamsWith10:[...teams.values()].filter(n=>n>=10).length,results:rows.slice(0,50),selection:saved??null});
  }
+ if(path==='/bot-state'&&req.method==='GET')return json({config:await this.ctx.storage.get('botConfig')??defaultConfig,lastRun:await this.ctx.storage.get('botRun')??null,inputs:(await this.ctx.storage.get('botFixtures')??[]).length,networkCalls:0});
+ if(path==='/bot-input'&&req.method==='POST'){const j=await req.json();if(!Array.isArray(j.fixtures)||j.fixtures.length>1000)return new Response('Invalid fixtures',{status:400});await this.ctx.storage.put('botFixtures',j.fixtures);return json({stored:j.fixtures.length})}
+ if(path==='/bot-switch'&&req.method==='POST'){const j=await req.json();if(typeof j.enabled!=='boolean')return new Response('Invalid switch',{status:400});const cfg=await this.ctx.storage.get('botConfig')??defaultConfig;await this.ctx.storage.put('botConfig',{...cfg,enabled:j.enabled});return json({enabled:j.enabled})}
+ if(path==='/bot-run'&&req.method==='POST'){
+ const cfg=await this.ctx.storage.get('botConfig')??defaultConfig;
+ const fixtures=await this.ctx.storage.get('botFixtures')??[];
+ const rows=[];for(const f of fixtures){const k=f.kickoff_ts,h=Number(f.teams?.home?.id),a=Number(f.teams?.away?.id);if(f.status!=='scheduled'||!Number.isSafeInteger(k)||k<=now||![h,a].every(n=>Number.isSafeInteger(n)&&n>0)||h===a)continue;
+ const hc=coverage(this.db,h,k,now),ac=coverage(this.db,a,k,now);rows.push(evaluate(f,hc.matches,ac.matches,f.storedBet365??null,cfg,now))}
+ const out={system:'BALL46_PREMATCH_ONLY',rows,published:0,ruleState:cfg.enabled?'LEDGER_NOT_CONNECTED':'OWNER_OFF',checkedAt:now,networkCalls:0,qualified:rows.filter(x=>x.candidates?.length).length};
+ // The independent ledger is not installed yet; never publish transient candidates as locked predictions.
+ for(const row of out.rows)row.picks=[];
+ await this.ctx.storage.put('botRun',{checkedAt:now,inputs:fixtures.length,checked:rows.length,complete:rows.filter(x=>x.homeCount===10&&x.awayCount===10).length,qualified:out.qualified,networkCalls:0});
+ await this.ctx.storage.put('previewSelections',out);return json(out)}
  if(path==='/daily-state'&&req.method==='GET')return json({stored:totals(this.db),daily:await this.ctx.storage.get('dailyImport')??null});
  if(path==='/daily-init'&&req.method==='POST'){
  const old=await this.ctx.storage.get('dailyImport');
@@ -59,4 +73,4 @@ const html=`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="vie
 const el=id=>document.getElementById(id);function cell(tr,v){const td=document.createElement('td');td.textContent=v;tr.append(td)}
 async function load(){try{const r=await fetch('/preview-data',{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);const d=await r.json();el('status').textContent='Connected to independent Pre-Match archive';el('cards').replaceChildren();for(const [label,value] of [['Finished results',d.stored.finished||0],['Teams in archive',d.teams],['Teams with 10+',d.teamsWith10],['Published picks',d.selection?.published??0]]){const c=document.createElement('div');c.className='card';c.textContent=label;const b=document.createElement('b');b.textContent=value;c.append(b);el('cards').append(c)}el('selection').textContent=d.selection?'Candidates: '+d.selection.rows.length+' · '+d.selection.ruleState:'No upcoming fixtures submitted yet. Initial league backfill and selection rules are pending.';el('selection').className='warn';el('results').replaceChildren();for(const x of d.results){const tr=document.createElement('tr');for(const v of [x.fixture_id,new Date(x.kickoff*1000).toISOString().slice(0,16).replace('T',' '),x.home_id,x.hg+' : '+x.ag,x.away_id,x.league_id])cell(tr,v);el('results').append(tr)}}catch(e){el('status').textContent='Load failed: '+e.message}}load();
 </script></html>`;
-export default {async scheduled(event,env){const hour=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',hour:'2-digit',hourCycle:'h23'}).format(new Date(event.scheduledTime));if(hour!=='06')return;const stub=env.STORE.get(env.STORE.idFromName('prematch-only-v1'));const r=await stub.fetch('https://prematch.internal/daily-run',{method:'POST'});console.log('PREMATCH_DAILY '+await r.text())},async fetch(req,env){const p=new URL(req.url).pathname;if(req.method==='GET'&&p==='/preview')return new Response(html,{headers:{'content-type':'text/html;charset=utf-8','cache-control':'no-store','x-robots-tag':'noindex,nofollow'}});if(req.method==='GET'&&p==='/preview-data')return env.STORE.get(env.STORE.idFromName('prematch-only-v1')).fetch(req);if(!env.OWNER_SECRET||req.headers.get('Authorization')!=='Bearer '+env.OWNER_SECRET)return new Response('Not found',{status:404});return env.STORE.get(env.STORE.idFromName('prematch-only-v1')).fetch(req)}};
+export default {async scheduled(event,env){const hour=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',hour:'2-digit',hourCycle:'h23'}).format(new Date(event.scheduledTime));const stub=env.STORE.get(env.STORE.idFromName('prematch-only-v1'));if(event.cron==='*/15 * * * *'){const r=await stub.fetch('https://prematch.internal/bot-run',{method:'POST'});console.log('PREMATCH_BOT '+r.status);return}if(hour!=='06')return;const r=await stub.fetch('https://prematch.internal/daily-run',{method:'POST'});console.log('PREMATCH_DAILY '+await r.text())},async fetch(req,env){const p=new URL(req.url).pathname;if(req.method==='GET'&&p==='/preview')return new Response(html,{headers:{'content-type':'text/html;charset=utf-8','cache-control':'no-store','x-robots-tag':'noindex,nofollow'}});if(req.method==='GET'&&p==='/preview-data')return env.STORE.get(env.STORE.idFromName('prematch-only-v1')).fetch(req);if(!env.OWNER_SECRET||req.headers.get('Authorization')!=='Bearer '+env.OWNER_SECRET)return new Response('Not found',{status:404});return env.STORE.get(env.STORE.idFromName('prematch-only-v1')).fetch(req)}};
