@@ -1,0 +1,25 @@
+name: Verify newest ledger slice and boot guard
+on:
+  push:
+    branches: [test/ball46-live-count-startup-20261120]
+    paths: ['.github/workflows/live-count-slice-20261120.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          node --input-type=module <<'EOF'
+          const base='https://ball46-production.mccarey-supon.workers.dev';
+          const s=await(await fetch(base+'/singlepage-workspace-343.js?v=b46-statistics-columns-20261102&b46_static=4957e9d547e5c468d45aa5ce7436fbe7510e740dcf20177ecf5cff4f51dcf8ed')).text();
+          console.log('BOOT_LINES '+JSON.stringify(s.split('\n').slice(358,400).join('\n')));
+          const q=await(await fetch(base+'/api/engine/statistics?paged=1&limit=8')).text(),j=JSON.parse(q);
+          console.log('SLICE '+JSON.stringify({bytes:q.length,total:j.total,returned:j.returned,pagination:j.statisticsPagination,nextCursor:j.nextCursor,rows:j.rows?.map(x=>({status:x.status,result:x.result,settledAt:x.settledAt,createdAt:x.createdAt,id:x.id}))}));
+          const h=await(await fetch(base+'/index.html')).text();
+          console.log('HTML_LOADER '+JSON.stringify([...h.matchAll(/(?:BALL46_STATISTICS_DATA|statistics-snapshot|history-restore-progress)/g)].map(m=>h.slice(Math.max(0,m.index-140),m.index+220)).slice(0,35)));
+          EOF
