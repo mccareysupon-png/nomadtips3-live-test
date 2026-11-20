@@ -60,6 +60,28 @@ jobs:
                       save('flat-'+name+'-'+label+'-v10.webp',crop)
                       assembled.paste(crop,(x,0));x+=crop.width
                   assert assembled.tobytes()==clean.tobytes()
+                  # Recolor only green button pixels, preserving text, texture and edge antialiasing.
+                  yellow=clean.copy()
+                  roi=(1679,38 if name=='dark' else 41,1915,102 if name=='dark' else 106)
+                  count=0
+                  for py in range(roi[1],roi[3]):
+                      for px in range(roi[0],roi[2]):
+                          red,green,blue=clean.getpixel((px,py))
+                          d=max(0,green-red)
+                          weight=min(1,max(0,(green-55)/65))*min(1,max(0,(d-20)/45))
+                          if weight>0:
+                              new=(min(255,round(red+1.10*d*weight)),green,max(0,round(blue-.75*d*weight)))
+                              yellow.putpixel((px,py),new)
+                              count+=new!=(red,green,blue)
+                  assert count>8000
+                  assert yellow.crop((0,0,1679,clean.height)).tobytes()==clean.crop((0,0,1679,clean.height)).tobytes()
+                  assert yellow.crop((1915,0,1952,clean.height)).tobytes()==clean.crop((1915,0,1952,clean.height)).tobytes()
+                  assert yellow.crop((1679,0,1915,roi[1])).tobytes()==clean.crop((1679,0,1915,roi[1])).tobytes()
+                  assert yellow.crop((1679,roi[3],1915,clean.height)).tobytes()==clean.crop((1679,roi[3],1915,clean.height)).tobytes()
+                  save('hover-'+name+'-v11.webp',yellow)
+                  save('hover-'+name+'-right-v11.webp',yellow.crop((1122,0,1952,clean.height)))
+                  print('HOVER_PIXELS_VERIFIED',name,count)
+
           (p/'assets.mjs').write_text('export default '+json.dumps(assets,separators=(',',':'))+';\n')
           PY
           node --check qa/membership-visual-v2-20261120/worker.mjs
@@ -91,7 +113,7 @@ jobs:
           const {chromium,devices}=createRequire(process.cwd()+'/qa/membership-visual-v2-20261120/.runtime/package.json')('playwright');
           const base='https://ball46-membership-visual-v2-test-20261120.mccarey-supon.workers.dev';
           let health;for(let i=0;i<15;i++){try{const r=await fetch(base+'/_membership_visual_health');if(r.ok){health=await r.json();break}}catch{}await new Promise(r=>setTimeout(r,2000))}
-          assert.equal(health?.scope,'TEST_ONLY_MEMBERSHIP_VISUAL');assert.equal(health?.revision,'MEMBERSHIP_FLAT_V10');assert.equal((await fetch(base+'/_membership_visual_health',{method:'POST'})).status,405);
+          assert.equal(health?.scope,'TEST_ONLY_MEMBERSHIP_VISUAL');assert.equal(health?.revision,'MEMBERSHIP_HOVER_V11');assert.equal((await fetch(base+'/_membership_visual_health',{method:'POST'})).status,405);
           const browser=await chromium.launch();try{
           for(const mode of ['desktop-dark','desktop-light','wide-dark','wide-light','mobile-dark','mobile-light']){
           const mobile=mode.startsWith('mobile'),theme=mode.endsWith('dark')?'dark':'light',wide=mode.startsWith('wide');
@@ -109,6 +131,17 @@ jobs:
           if(mobile){assert.equal(proof.position,'static');assert(proof.src.endsWith('flat-mobile-v10.webp'));assert(Math.abs(proof.rect[3]-proof.rect[2]*185/785)<1);assert.equal(await p.locator('.b46-stat-member-top:visible').count(),0);}
           else{assert.equal(proof.position,'sticky');assert.equal(proof.rect[3],90);assert.equal(proof.parts.length,3);assert(proof.parts.every(x=>x.h===90&&x.bg.includes(theme)));assert(Math.abs(proof.parts.reduce((n,x)=>n+x.w,0)-proof.rect[2])<1);assert(Math.abs(proof.parts[0].w-962*90/(theme==='dark'?145:150))<1);assert(Math.abs(proof.parts[2].w-830*90/(theme==='dark'?145:150))<1);
           const details=p.locator('.b46-fast-details');if(await details.count())await details.first().evaluate(e=>e.click());await p.waitForFunction(()=>{const e=document.querySelector('[data-workspace-panel="statistics"]');return e.scrollHeight>e.clientHeight+750},null,{timeout:90000});await p.mouse.move(750,450);await p.mouse.wheel(0,650);await p.waitForTimeout(450);const after=await p.locator(sel).evaluate(e=>({y:e.getBoundingClientRect().y,root:scrollY,scroll:e.closest('[data-workspace-panel]').scrollTop}));assert(after.scroll>100&&after.root===0&&Math.abs(after.y-proof.rect[1])<2,'STICKY_REGRESSION')}
+          if(!mobile){
+          const right=p.locator(sel+' .b46-exact-right');
+          await p.locator(sel).hover({position:{x:50,y:30}});
+          await p.waitForFunction(({sel,theme})=>getComputedStyle(document.querySelector(sel+' .b46-exact-right')).backgroundImage.includes('hover-'+theme+'-right-v11.webp'),{sel,theme});
+          const hoverUrl=await right.evaluate(e=>getComputedStyle(e).backgroundImage.match(/url\("([^"]+)"\)/)[1]);
+          await right.evaluate(async(e,u)=>{const i=new Image();i.src=u;await i.decode()},hoverUrl);
+          const hoverShot=await p.locator(sel).screenshot({type:'jpeg',quality:85});console.log('HOVER_PREVIEW '+mode+' '+hoverShot.toString('base64'));
+          await p.mouse.move(5,5);
+          await p.waitForFunction(({sel,theme})=>getComputedStyle(document.querySelector(sel+' .b46-exact-right')).backgroundImage.includes('flat-'+theme+'-right-v10.webp'),{sel,theme});
+          console.log('HOVER_PASS '+mode);
+          }
           const shot=await p.locator(sel).screenshot({type:'jpeg',quality:85});console.log('SIZE_PREVIEW '+mode+' '+shot.toString('base64'));await p.close();
           }}finally{await browser.close()}
           EOF
