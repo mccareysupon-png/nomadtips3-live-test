@@ -6,7 +6,7 @@ const e=(reason,status=429)=>Object.assign(Error(reason),{status,bulkSpeedContro
 const fresh=(q,at)=>q?.limit===40&&q.source==='5USD_RESPONSE_HEADERS'&&q.scope==='ACCOUNT_ALL_KEYS'&&q.resetAt>at&&q.observedAt<=at&&at-q.observedAt<=15000;
 function count(t,at){return t.pending.filter(x=>x.startedAt>at-60000)}
 export class HistoryAuthority{
- constructor(policy,{clock=Date.now,enabled=false,coordinated=false}={}){this.policy=policy;this.clock=clock;this.enabled=enabled;this.coordinated=coordinated;this.uncertain=false}
+ constructor(policy,{clock=Date.now,enabled=false,coordinated=false,persistentSwitch=false}={}){this.policy=policy;this.clock=clock;this.enabled=enabled;this.coordinated=coordinated;this.persistentSwitch=persistentSwitch;this.uncertain=false}
  // Shared state used by all three transports. Do not use the public health estimate.
  async reserve({kind,path,decision=decideHistoryQuota}){
   if(!['PREMATCH_HISTORY','RICH_ODDS'].includes(kind))throw e('UNSUPPORTED_KIND',400);
@@ -14,6 +14,7 @@ export class HistoryAuthority{
   if(this.uncertain||this.policy.faulted)return {allowed:false,reason:'TELEMETRY_UNAVAILABLE'};
   return this.policy.storage.transaction(async tx=>{
    const at=this.clock(),t=await this.policy.telemetry(tx),q=t.provider,c=await this.policy.rawControl(tx);
+   if(kind==='PREMATCH_HISTORY'&&this.persistentSwitch){const m=await tx.get('liveFirstHistoryMode');if(m?.enabled!==true||m?.scope!=='ISOLATED_SHADOW_ONLY')return {allowed:false,reason:'HISTORY_SWITCH_OFF'};}
    t.pending=count(t,at);
    if(Math.max(t.backoffUntil||0,this.policy.memoryBackoffUntil||0)>at)return {allowed:false,reason:'PROVIDER_COOLDOWN'};
    if(t.accelerationBlockedStatus)return {allowed:false,reason:'PROVIDER_ACCESS_ERROR'};

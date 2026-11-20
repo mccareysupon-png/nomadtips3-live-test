@@ -1,0 +1,33 @@
+import fs from 'node:fs';import assert from 'node:assert/strict';import crypto from 'node:crypto';
+const name='ball46-live-first-shadow-test-20261120',hub='nomadtips3-5usd-hub-343',base='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+'/workers';
+async function cf(p,options={}){const r=await fetch(base+p,{...options,headers:{Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN,...options.headers},signal:AbortSignal.timeout(35000)});const j=await r.json();assert(r.ok&&j.success,'CF '+r.status+' '+p);return j.result}
+const protectedNames=['ball46-production','nomadtips3-engine-343','nomadtips3-full-market-343-ball46',hub];
+async function versions(){return Object.fromEntries(await Promise.all(protectedNames.map(async n=>[n,(await cf('/scripts/'+n+'/deployments?per_page=1')).deployments[0].versions])))}
+const before=await versions(),v=await cf('/workers/'+hub+'/versions/'+before[hub][0].version_id+'?include=modules');
+const mod=v.modules.find(m=>m.name==='speed-policy.mjs');assert(mod?.content_base64,'ACTIVE_HUB_POLICY_MISSING');
+const keys=Object.fromEntries(['SHADOW_OWNER_SECRET','HISTORY_TEST_SECRET','REFEREE_TEST_SECRET','MARKET_TEST_SECRET'].map(k=>[k,crypto.randomBytes(32).toString('hex')]));
+const existing=(await cf('/scripts')).some(x=>x.id===name);assert(!protectedNames.includes(name)&&name==='ball46-live-first-shadow-test-20261120');
+const form=new FormData(),dir='qa/prematch-history-20261120/';
+form.append('metadata',new Blob([JSON.stringify({main_module:'live-first-shadow-worker.mjs',compatibility_date:'2026-11-19',bindings:[{name:'SHADOW',type:'durable_object_namespace',class_name:'LiveFirstShadow'},...Object.entries(keys).map(([name,text])=>({name,type:'secret_text',text}))],...(!existing?{migrations:{new_tag:'v1',new_sqlite_classes:['LiveFirstShadow']}}:{})})],{type:'application/json'}),'metadata.json');
+for(const f of ['live-first-shadow-worker.mjs','hub-history-authority.mjs','history-gateway.mjs','provider-bridge.mjs'])form.append(f,new Blob([fs.readFileSync(dir+f,'utf8')],{type:'application/javascript+module'}),f);
+form.append('speed-policy.mjs',new Blob([Buffer.from(mod.content_base64,'base64')],{type:'application/javascript+module'}),'speed-policy.mjs');
+await cf('/scripts/'+name,{method:'PUT',body:form});await cf('/scripts/'+name+'/subdomain',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({enabled:true,previews_enabled:false})});
+const sub=await cf('/subdomain'),url='https://'+name+'.'+sub.subdomain+'.workers.dev',run='shadow-'+crypto.randomBytes(8).toString('hex');
+const request=async(p,body,secret=keys.SHADOW_OWNER_SECRET)=>{const r=await fetch(url+p+'?run='+run,{method:body===undefined?'GET':'POST',headers:{authorization:'Bearer '+secret,'content-type':'application/json'},...(body===undefined?{}:{body:JSON.stringify(body)}),signal:AbortSignal.timeout(20000)});let j;try{j=await r.json()}catch{j={error:'NON_JSON'}}return {http:r.status,...j}};
+let ready=false;for(let i=0;i<15;i++){try{const r=await request('/version');if(r.version==='LIVE_FIRST_SHADOW_V1'){ready=true;break}}catch{}await new Promise(r=>setTimeout(r,1500))}assert(ready,'SHADOW_NOT_READY');
+const hist=(key=keys.HISTORY_TEST_SECRET)=>request('/__private/provider/v1',{kind:'history',path:'/v1/leagues/8273/fixtures?status=finished&season=26%2F27&per_page=100&page=1'},key);
+const ref=()=>request('/__private/provider/v1',{kind:'referee',path:'/v1/fixtures/123/odds/history?market=corner&bookmaker=bet365&per_page=500'},keys.REFEREE_TEST_SECRET);
+const market=()=>request('/__private/provider/v1',{kind:'fullmarket',path:'/v1/fixtures/123/odds?bookmakers=bet365,pinnacle'},keys.MARKET_TEST_SECRET);
+const status=()=>request('/status'),live=()=>request('/live',{}),advance=ms=>request('/advance',{ms}),mode=enabled=>request('/mode',{enabled});
+let checks=0;const eq=(a,b)=>{assert.equal(a,b);checks++};
+eq((await status()).mode,false);eq((await hist()).reason,'HISTORY_SWITCH_OFF');eq((await hist(keys.REFEREE_TEST_SECRET)).http,404);eq((await status()).calls.history,0);
+eq((await live()).ok,true);eq((await ref()).http,200);eq((await market()).http,200);
+eq((await mode(true)).enabled,true);eq((await request('/hold',{})).ok,true);eq((await hist()).reason,'LIVE_PRIORITY');eq((await request('/release',{})).ok,true);
+eq((await hist()).status,200);eq((await hist()).reason,'HISTORY_PACE');eq((await status()).calls.history,1);
+await advance(61000);eq((await live()).ok,true);
+const race=await Promise.all([hist(),hist(),hist()]);eq(race.filter(x=>x.status===200).length,1);eq((await status()).calls.history,2);
+eq((await mode(false)).enabled,false);await advance(61000);eq((await live()).ok,true);eq((await ref()).http,200);eq((await market()).http,200);eq((await hist()).reason,'HISTORY_SWITCH_OFF');eq((await status()).calls.history,2);
+eq((await mode(true)).enabled,true);await advance(61000);eq((await live()).ok,true);await request('/reply',{status:429});eq((await hist()).status,429);eq((await hist()).reason,'PROVIDER_COOLDOWN');eq((await status()).calls.history,3);await mode(false);await advance(121000);await request('/reply',{status:200});eq((await live()).ok,true);eq((await hist()).reason,'HISTORY_SWITCH_OFF');
+const last=await status();eq(last.pending,0);eq(last.realProviderCalls,0);eq(last.mode,false);eq(last.calls.history,3);
+const after=await versions(),same=JSON.stringify(before)===JSON.stringify(after);assert(same,'PROTECTED_CHANGED_DURING_TEST');
+console.log('LIVE_FIRST_SHADOW_READY',JSON.stringify({url,checks,scope:'DEPLOYED_ISOLATED_MOCK_ONLY',liveFirst:true,independentKillSwitch:true,concurrentHistorySingleRequest:true,provider429Shared:true,refereeAndMarketWhileOff:true,finalMode:'OFF',mockCounts:last.calls,realProviderCalls:0,protectedUnchanged:true,baseHubVersion:before[hub][0].version_id}));
