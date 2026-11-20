@@ -1,0 +1,97 @@
+name: BALL46 isolated canonical win rate test
+on:
+  push:
+    branches: [test/ball46-winrate-canonical-20261120]
+    paths: ['.github/workflows/winrate-canonical-test.yml']
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify receiver daily fold correction in isolation and deploy only test frontend
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          node --check qa/winrate-canonical-20261120/worker.mjs
+          node --input-type=module <<'EOF'
+          import assert from 'node:assert/strict';
+          import {writeFile} from 'node:fs/promises';
+          import {canonicalSource} from './qa/winrate-canonical-20261120/worker.mjs';
+          const root='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+'/workers';
+          async function cf(p){const r=await fetch(root+p,{headers:{authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN}});const j=await r.json();assert(j.success);return j.result}
+          const active=async s=>(await cf('/scripts/'+s+'/deployments?per_page=1')).deployments[0].versions;
+          const names=['ball46-production','ball46-shadow-receiver-production','nomadtips3-engine-343','ball46-sidebar-monitor-cache-20261119'];
+          const before=Object.fromEntries(await Promise.all(names.map(async n=>[n,await active(n)])));
+          await writeFile(process.env.RUNNER_TEMP+'/before.json',JSON.stringify(before));
+          const v=await cf('/workers/ball46-shadow-receiver-production/versions/'+before['ball46-shadow-receiver-production'][0].version_id+'?include=modules');
+          const src=Buffer.from(v.modules.find(m=>m.name==='shadow-production-receiver.js').content_base64,'base64').toString();
+          const begin=src.indexOf('function fold(days, at) {'),end=src.indexOf('\n// shadow-receiver-projection-v1.mjs',begin);
+          assert(begin>=0&&end>begin);
+          const original=src.slice(begin,end).trim();
+          const old='(counts.WIN + counts.HALF_WIN * 0.5) / wl * 100',replacement='(counts.WIN + counts.HALF_WIN) / wl * 100';
+          assert.equal(original.split(old).length,2);
+          const corrected=original.replace(old,replacement);
+          const R=['WIN','LOSS','HALF_WIN','HALF_LOSS','PUSH'];
+          const run=f=>new Function('R',f+';return fold')(R);
+          const day=(counts,ts,net)=>({counts:Object.fromEntries(R.map(k=>[k,counts[k]||0])),rows:Object.values(counts).reduce((a,b)=>a+b,0),priced:Object.values(counts).reduce((a,b)=>a+b,0),net,peak:Math.max(0,net),trough:Math.min(0,net),dd:Math.max(0,-net),best:Math.max(0,net),oddsSum:0,oddsN:0,lastPriced:ts,lastRate:ts});
+          const fixtures=new Map([['2026-11-18',day({WIN:1,HALF_WIN:1,LOSS:1,PUSH:2},1795000000000,1)],['2026-11-19',day({HALF_LOSS:1,HALF_WIN:2},1795100000000,.5)],['2026-11-20',day({PUSH:3},1795180000000,0)]]);
+          const oldGraph=run(original)(fixtures,1795180000000),newGraph=run(corrected)(fixtures,1795180000000);
+          assert.deepEqual(newGraph.summary,oldGraph.summary);assert.deepEqual(newGraph.counts,oldGraph.counts);assert.deepEqual(newGraph.series.units,oldGraph.series.units);assert.deepEqual(newGraph.series.roi,oldGraph.series.roi);assert.deepEqual(newGraph.series.rate.map(p=>p.value),[2/3*100,4/6*100,4/6*100]);assert.equal(newGraph.series.rate.at(-1).value,newGraph.win_rate);
+          console.log('DAILY_FOLD_UNIT_PASS',JSON.stringify({old:oldGraph.series.rate,new:newGraph.series.rate,net:newGraph.summary.net}));
+          for(const p of ['/longterm-performance-343.js','/b46-statistics-fast-v1-20261116.js','/singlepage-workspace-343.js']){const r=await fetch('https://ball46.com'+p);assert(r.ok);const s=canonicalSource(p,await r.text());new Function(s);console.log('SOURCE_PASS '+p)}
+          EOF
+          cat > qa/winrate-canonical-20261120/wrangler.toml <<'EOF'
+          name = "ball46-winrate-canonical-test-20261120"
+          main = "worker.mjs"
+          compatibility_date = "2026-11-20"
+          workers_dev = true
+          preview_urls = false
+          [[services]]
+          binding = "B46_PRODUCTION_READ"
+          service = "ball46-production"
+          EOF
+          npx --yes wrangler@4.50.0 deploy --config qa/winrate-canonical-20261120/wrangler.toml --name ball46-winrate-canonical-test-20261120
+      - name: Verify actual live snapshot current rate and monitor, no API changes
+        run: |
+          npm install --prefix qa/winrate-canonical-20261120/.runtime --no-audit --no-fund playwright@1.55.0
+          qa/winrate-canonical-20261120/.runtime/node_modules/.bin/playwright install chromium --only-shell
+          node --input-type=module <<'EOF'
+          import assert from 'node:assert/strict';import {createRequire} from 'node:module';
+          const {chromium,devices}=createRequire(process.cwd()+'/qa/winrate-canonical-20261120/.runtime/package.json')('playwright');
+          const base='https://ball46-winrate-canonical-test-20261120.mccarey-supon.workers.dev';
+          let ready=false;for(let i=0;i<15;i++){try{const r=await fetch(base+'/_winrate_canonical_health');const d=await r.json();if(d.revision==='CANONICAL_WINRATE_TEST_V1'){ready=true;break}}catch{}await new Promise(r=>setTimeout(r,2500))}assert(ready);
+          const b=await chromium.launch();try{
+          for(const mobile of [false,true]){
+            const p=await b.newPage(mobile?{...devices['iPhone 13'],serviceWorkers:'block'}:{viewport:{width:1440,height:950},serviceWorkers:'block'});
+            const graphs=[];p.on('response',async r=>{try{if(new URL(r.url()).pathname==='/b46-receiver-v1/graph'&&r.ok())graphs.push(await r.json())}catch{}});
+            await p.route('**/*',r=>['GET','HEAD'].includes(r.request().method())?r.continue():r.abort());
+            await p.goto(base+'/index.html?view=statistics',{waitUntil:'domcontentloaded'});
+            await p.waitForFunction(()=>document.querySelector('#b46-finance-chart-card [data-key="rate"] strong')?.textContent?.includes('%'),null,{timeout:60000});
+            const rate=await p.locator('#b46-finance-chart-card [data-key="rate"] strong').first().innerText();
+            const g=graphs.find(x=>x.market==='all'&&x.range==='all');assert(g,'MISSING_GRAPH');const expected=g.summary.wins/(g.summary.wins+g.summary.losses)*100;assert(Math.abs(parseFloat(rate)-expected)<.051,'RATE '+rate+' '+expected);
+            const sidebar=await p.locator('.left-rail').innerText();const monitor=sidebar.match(/Total\s*\n\s*(\d+(?:\.\d+)?)%/);
+            if(monitor)assert(Math.abs(Number(monitor[1])-expected)<.1,'MONITOR_DRIFT');
+            console.log('CURRENT_RATE_PASS '+JSON.stringify({mobile,rate,expected,sequence:g.sequence,monitor:monitor?.[1]??null,legacyChartLast:g.series.rate.at(-1)?.value}));
+            await p.close();
+          }
+          }finally{await b.close()}
+          EOF
+      - name: Confirm all production deployments unchanged
+        if: always()
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          node --input-type=module <<'EOF'
+          import assert from 'node:assert/strict';import {readFile} from 'node:fs/promises';
+          const before=JSON.parse(await readFile(process.env.RUNNER_TEMP+'/before.json','utf8'));
+          for(const [name,version] of Object.entries(before)){const r=await fetch('https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+'/workers/scripts/'+name+'/deployments?per_page=1',{headers:{authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN}});const j=await r.json();assert(j.success);assert.deepEqual(j.result.deployments[0].versions,version,name)}
+          console.log('ALL_PRODUCTION_UNCHANGED');
+          EOF
