@@ -48,7 +48,7 @@ jobs:
           const {chromium,devices}=createRequire(process.cwd()+'/qa/sticky-membership-20261120/.runtime/package.json')('playwright');
           const base='https://ball46-sticky-membership-test-20261120.mccarey-supon.workers.dev';
           let health;for(let i=0;i<15;i++){try{const r=await fetch(base+'/_sticky_membership_health');if(r.ok){health=await r.json();break}}catch{}await new Promise(r=>setTimeout(r,2000))}
-          assert.equal(health?.scope,'TEST_ONLY_STICKY_MEMBERSHIP');assert.equal(health?.revision,'STICKY_MEMBERSHIP_V4');assert.equal((await fetch(base+'/_sticky_membership_health',{method:'POST'})).status,405);
+          assert.equal(health?.scope,'TEST_ONLY_STICKY_MEMBERSHIP');assert.equal(health?.revision,'STICKY_MEMBERSHIP_V5');assert.equal((await fetch(base+'/_sticky_membership_health',{method:'POST'})).status,405);
           const browser=await chromium.launch();try{
           for(const mode of ['desktop-dark','desktop-light','wide-dark','mobile-dark','mobile-light']){
             const mobile=mode.startsWith('mobile'),theme=mode.endsWith('dark')?'dark':'light';
