@@ -1,0 +1,34 @@
+name: Read-only statistics filter DOM inspection
+on:
+  push:
+    branches: [test/ball46-stats-clean-filters-20261120]
+    paths: ['.github/workflows/stats-clean-inspect-20261120.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm install --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium --only-shell
+          node <<'EOF'
+          const {chromium,devices}=require('playwright');
+          (async()=>{const browser=await chromium.launch();try{for(const mobile of [false,true]){
+          const p=await browser.newPage(mobile?{...devices['iPhone 13'],serviceWorkers:'block'}:{viewport:{width:1440,height:950},serviceWorkers:'block'});
+          await p.route('**/*',r=>['GET','HEAD'].includes(r.request().method())?r.continue():r.abort());
+          await p.goto('https://ball46-production.mccarey-supon.workers.dev/index.html?view=statistics',{waitUntil:'domcontentloaded'});
+          await p.waitForFunction(()=>[...document.querySelectorAll('[data-sp-table-body] tr')].some(r=>r.cells.length>=4),null,{timeout:90000});
+          for(const market of ['all','1x2']){
+          if(!mobile)await p.locator('[data-stat-market="'+market+'"]').first().click();
+          else if(market!=='all'){await p.locator('[data-b46m-open]').click();await p.locator('#b46m-drawer [data-b46m-market="'+market+'"]').first().click()}
+          await p.waitForTimeout(2200);
+          const info=await p.evaluate(()=>[...document.querySelectorAll('body *')].filter(e=>e.children.length===0&&['MARKET TYPE','MARKET FILTER','Engine registry','Refine current view'].includes(e.textContent.trim())).map(e=>({label:e.textContent,ancestors:[e.parentElement,e.parentElement.parentElement,e.parentElement.parentElement.parentElement].map(x=>({tag:x.tagName,id:x.id,cls:x.className,attrs:[...x.attributes].map(a=>[a.name,a.value]),html:x.outerHTML.slice(0,3500),display:getComputedStyle(x).display}))})));
+          console.log('FILTER_DOM '+JSON.stringify({mobile,market,info}));
+          }await p.close()
+          }}finally{await browser.close()}})().catch(e=>{console.error(e);process.exit(1)})
+          EOF
