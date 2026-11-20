@@ -22,7 +22,7 @@ const health=await(await fetch(url+'/health')).json();assert.deepEqual(health,re
 const again=await(await fetch(url+'/bootstrap',{method:'POST',headers:{Authorization:'Bearer '+secret}})).json();assert.deepEqual(again,report,'SAME_CYCLE_REPLAY');
 assert.equal((await fetch(url+'/bootstrap',{method:'POST'})).status,404);
 let plan;for(let i=0;i<5;i++){const r=await fetch(url+'/prepare-backfill',{method:'POST',headers:{Authorization:'Bearer '+secret},signal:AbortSignal.timeout(45000)});let j;try{j=await r.json()}catch{await new Promise(x=>setTimeout(x,1500));continue}if(!r.ok)throw Error('PLAN_FAILED '+JSON.stringify(j));plan=j;break}
-assert(plan?.gateway==='NOT_CONNECTED'&&plan.backfillRequests===0&&plan.queueEntries>=0,'PLAN_UNVERIFIED');
-assert.deepEqual(await(await fetch(url+'/backfill')).json(),plan);assert.equal((await fetch(url+'/prepare-backfill',{method:'POST'})).status,404);
+assert(plan?.policy==='JOHN_ONCE_PER_LEAGUE_SEASON_V2'&&plan.gateway==='NOT_CONNECTED'&&plan.backfillRequests===0&&plan.queueEntries===0&&plan.legacyDailyQueue==='DISABLED','PLAN_UNVERIFIED');
+let read;for(let i=0;i<10;i++){try{const r=await fetch(url+'/backfill',{headers:{'Cache-Control':'no-cache'}});if(r.ok){const j=await r.json();if(j.policy===plan.policy){read=j;break}}}catch{}await new Promise(r=>setTimeout(r,1000))}assert.deepEqual(read,plan);assert.equal((await fetch(url+'/prepare-backfill',{method:'POST'})).status,404);
 console.log('REAL_BACKFILL_QUEUE',JSON.stringify(plan));
 assert.deepEqual(await versions(),before,'PROTECTED_CHANGED_DURING_CHECK');fs.mkdirSync('evidence',{recursive:true});fs.writeFileSync('evidence/real-history.json',JSON.stringify({url,report,protectedUnchanged:true},null,2));console.log('REAL_HISTORY_READY',JSON.stringify({url,report,protectedUnchanged:true}));

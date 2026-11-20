@@ -1,14 +1,17 @@
 // Test-only gateway candidate. Must run inside the same central HUB quota authority as live/rich.
 // Never connect this to an independent API key or a second live poller.
 const integer=s=>/^[1-9]\d{0,15}$/.test(String(s))&&Number.isSafeInteger(Number(s))?Number(s):null;
-const allowed=['status','start_time','end_time','order','per_page','page'];
 export function parseHistoryPath(path,now){
- if(typeof path!=='string'||path.length>420||!path.startsWith('/v1/leagues/'))throw Error('INVALID_HISTORY_PATH');
- const u=new URL(path,'https://history.invalid'),m=/^\/v1\/leagues\/([1-9]\d{0,15})\/fixtures$/.exec(u.pathname);
- if(u.origin!=='https://history.invalid'||u.hash||!m||!integer(m[1])||[...u.searchParams.keys()].sort().join(',')!==[...allowed].sort().join(','))throw Error('INVALID_HISTORY_PATH');
- const q=u.searchParams,start=integer(q.get('start_time')),end=integer(q.get('end_time')),page=integer(q.get('page'));
- if(q.get('status')!=='finished'||q.get('order')!=='desc'||q.get('per_page')!=='100'||!start||!end||end<=start||end-start>365*86400||end>now||!page||page>200)throw Error('INVALID_HISTORY_PARAMETERS');
- return {path:u.pathname+'?'+new URLSearchParams({status:'finished',start_time:String(start),end_time:String(end),order:'desc',per_page:'100',page:String(page)}),league:integer(m[1]),page};
+ if(typeof path!=='string'||path.length>420||!path.startsWith('/v1/'))throw Error('INVALID_HISTORY_PATH');
+ const u=new URL(path,'https://history.invalid'),m=/^\/v1\/leagues\/([1-9]\d{0,15})\/fixtures$/.exec(u.pathname),daily=u.pathname==='/v1/fixtures';
+ if(u.origin!=='https://history.invalid'||u.hash||(!daily&&!m)||(m&&!integer(m[1])))throw Error('INVALID_HISTORY_PATH');
+ const q=u.searchParams,keys=[...q.keys()].sort().join(','),s=q.get('season'),start=integer(q.get('start_time')),end=integer(q.get('end_time')),page=integer(q.get('page'));
+ const seasonal=!!m&&/^(?:\d{4}|\d{2}\/\d{2}|\d{4}\/\d{2}|\d{4}\/\d{4})$/.test(s??'')&&keys==='page,per_page,season,status';
+ const window=keys==='end_time,page,per_page,start_time,status'&&start&&end&&end>start&&end<=now&&(!daily||end-start<=86400);
+ if((!seasonal&&!window)||q.get('status')!=='finished'||q.get('per_page')!=='100'||!page||page>200)throw Error('INVALID_HISTORY_PARAMETERS');
+ const params={status:'finished',per_page:'100',page:String(page)};
+ if(seasonal)params.season=s;else{params.start_time=String(start);params.end_time=String(end)}
+ return {path:u.pathname+'?'+new URLSearchParams(params),league:m?integer(m[1]):null,page};
 }
 // This pure decision is called WITHIN a shared atomic reservation transaction,
 // not on a separately cached health response. Unknown/stale quota => zero calls.

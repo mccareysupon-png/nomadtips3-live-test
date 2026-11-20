@@ -16,7 +16,7 @@ jobs:
           node-version: '22'
       - run: |
           node --check qa/prematch-history-20261120/real-worker.mjs
-          node --test qa/prematch-history-20261120/history.test.mjs qa/prematch-history-20261120/backfill.test.mjs
+          node --test qa/prematch-history-20261120/*.test.mjs
       - name: Deploy isolated cache-only history connector
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -32,3 +32,5 @@ jobs:
 # Retry only the existing isolated connector, retaining its SQLite namespace and logging non-JSON status.
 
 # Phase 2B: build league backfill queue, no live gateway calls.
+
+# John one-time league-season plan V2; legacy daily queue disabled.

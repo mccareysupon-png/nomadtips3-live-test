@@ -56,14 +56,14 @@ export class RealHistory extends DurableObject{
   if(req.method==='POST'&&path==='/prepare-backfill'){
    try{
     const now=epoch(),cycle=dailyPlan(now).cycle;
-    const prev=await this.ctx.storage.get('backfillPlan');if(prev?.cycle===cycle)return Response.json(prev);
+    const prev=await this.ctx.storage.get('backfillPlan');if(prev?.cycle===cycle&&prev?.policy==='JOHN_ONCE_PER_LEAGUE_SEASON_V2')return Response.json(prev);
     const r=await this.env.SOURCE_HUB.fetch(H,{method:'GET'});if(!r.ok)throw Error('HUB_HTTP');
     const j=await r.json();if(j.ok!==true||j.cacheOnly!==true||Number(j.externalRequestsAdded)!==0||j.stale===true||!Array.isArray(j.fixtures)||!j.fixtures.length||j.fixtures.length>15000||!Number.isFinite(Number(j.ageMs))||Number(j.ageMs)<0||Number(j.ageMs)>3600000)throw Error('CACHE_CONTRACT');
     const plan={...planBackfill(this.db,j.fixtures,now,cycle),cycle,observedAt:new Date(now*1000).toISOString()};
     await this.ctx.storage.put('backfillPlan',plan);return Response.json(plan);
    }catch(e){return Response.json({error:String(e.message).slice(0,200)},{status:502})}
   }
-  if(req.method==='GET'&&path==='/backfill'){return Response.json(await this.ctx.storage.get('backfillPlan')??{state:'uninitialized'},{headers:{'Cache-Control':'no-store','X-Robots-Tag':'noindex, nofollow'}})}
+  if(req.method==='GET'&&path==='/backfill'){const plan=await this.ctx.storage.get('backfillPlan');return Response.json(plan?.policy==='JOHN_ONCE_PER_LEAGUE_SEASON_V2'?plan:{state:'uninitialized',legacyDailyQueue:'DISABLED'},{headers:{'Cache-Control':'no-store','X-Robots-Tag':'noindex, nofollow'}})}
   if(req.method==='GET'&&path==='/health'){
    const r=await this.ctx.storage.get('report');return Response.json(r??{mode:'REAL_HUB_CACHE_ONLY_TEST',state:'uninitialized'},{headers:{'Cache-Control':'no-store','X-Robots-Tag':'noindex, nofollow'}});
   }
