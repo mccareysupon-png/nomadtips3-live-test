@@ -3,15 +3,15 @@ const name='ball46-prematch-only-test-20261120',root='https://api.cloudflare.com
 const token=process.env.CLOUDFLARE_API_TOKEN;assert(token&&process.env.FIVEDOLLAR_API_KEY);
 const secret=crypto.createHmac('sha256',token).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
 async function cf(p,options={}){const r=await fetch(root+p,{...options,headers:{authorization:'Bearer '+token,...options.headers},signal:AbortSignal.timeout(30000)});const j=await r.json();assert(r.ok&&j.success,'CF '+r.status+' '+p);return j.result}
-const existing=(await cf('/scripts')).some(x=>x.id===name);
+const existing=(await cf('/scripts')).some(x=>x.id===name);assert(existing,'EXPECTED_EXISTING_TEST_WORKER');
+const host='https://'+name+'.'+(await cf('/subdomain')).subdomain+'.workers.dev';
+async function req(path){const r=await fetch(host+path,{headers:{authorization:'Bearer '+secret},signal:AbortSignal.timeout(15000)});assert(r.ok,'HTTP '+r.status+' '+path);return r.json()}
+const protectedNames=['ball46-production','nomadtips3-engine-343','nomadtips3-5usd-hub-343'];async function versions(){return await Promise.all(protectedNames.map(async n=>(await cf('/scripts/'+n+'/deployments?per_page=1')).deployments[0].versions))}
+const protectedBefore=await versions();const prior=await req('/daily-state');const priorSummary=await req('/merge-summary');assert(prior.stored.finished>=485);
 const f=new FormData();f.append('metadata',new Blob([JSON.stringify({main_module:'prematch-only-worker.mjs',compatibility_date:'2026-11-20',bindings:[{name:'STORE',type:'durable_object_namespace',class_name:'PrematchStore'},{name:'OWNER_SECRET',type:'secret_text',text:secret},{name:'FIVEDOLLAR_API_KEY',type:'secret_text',text:process.env.FIVEDOLLAR_API_KEY}],...(!existing?{migrations:{new_tag:'v1',new_sqlite_classes:['PrematchStore']}}:{})})],{type:'application/json'}),'metadata.json');
 for(const file of ['prematch-only-worker.mjs','history.mjs','prematch-bot.mjs','stored-signal-adapter.mjs','evaluate-btts-signal.mjs','evaluate-1x2-signal.mjs'])f.append(file,new Blob([fs.readFileSync('qa/prematch-history-20261120/'+file)],{type:'application/javascript+module'}),file);
 await cf('/scripts/'+name,{method:'PUT',body:f});await cf('/scripts/'+name+'/subdomain',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({enabled:true,previews_enabled:false})});
-const host='https://'+name+'.'+(await cf('/subdomain')).subdomain+'.workers.dev';
-async function req(path,rows){const r=await fetch(host+path,{method:rows?'POST':'GET',headers:{authorization:'Bearer '+secret,'content-type':'application/json'},...(rows?{body:JSON.stringify({rows})}:{}),signal:AbortSignal.timeout(15000)});assert(r.ok,'HTTP '+r.status);return r.json()}
-let h;for(let i=0;i<12;i++){try{h=await req('/health');if(h.system==='BALL46_PREMATCH_ONLY')break}catch{}await new Promise(r=>setTimeout(r,1000))}assert(h?.system==='BALL46_PREMATCH_ONLY');
-const before=await req('/daily-state');
-let report,lastError;for(let i=0;i<45;i++){try{report=await req('/dry-run');if(report.mode==='READ_ONLY_SHADOW')break;lastError='Unexpected mode: '+String(report?.mode)}catch(e){lastError=String(e.message)}console.log('DRY_RUN_PROPAGATION',i+1,lastError);await new Promise(r=>setTimeout(r,2000))}
-assert.equal(report?.mode,'READ_ONLY_SHADOW',lastError);assert.equal(report.providerCalls,0);assert.equal(report.published,0);
-assert.deepEqual(await req('/daily-state'),before);
-console.log('STORED_ADAPTER_DRY_RUN '+JSON.stringify(report));
+let report,lastError;for(let i=0;i<50;i++){try{report=await req('/shadow-compare');if(report.mode==='SHADOW_CONFIG_COMPARISON_V1'&&report.accumulation?.profile?.version==='shadow-accumulation-5')break;lastError='Unexpected mode or profile'}catch(e){lastError=String(e.message)}console.log('SHADOW_PROPAGATION',i+1,lastError);await new Promise(r=>setTimeout(r,2000))}
+assert.equal(report?.mode,'SHADOW_CONFIG_COMPARISON_V1',lastError);assert.equal(report.providerCalls,0);assert.equal(report.published,0);assert.equal(report.baseline.profile.minHistory,10);assert.equal(report.accumulation.profile.minHistory,5);
+const direct=await req('/dry-run');assert.equal(direct.profile.version,'shadow-accumulation-5');assert.deepEqual(await req('/daily-state'),prior);assert.deepEqual(await req('/merge-summary'),priorSummary);assert.deepEqual(await versions(),protectedBefore);
+fs.mkdirSync('evidence',{recursive:true});fs.writeFileSync('evidence/shadow-config-comparison.json',JSON.stringify(report,null,2));console.log('SHADOW_CONFIG_RESULT '+JSON.stringify(report));console.log('SHADOW_CONFIG_VERIFIED',JSON.stringify({archiveUnchanged:true,protectedUnchanged:true,providerCalls:0,published:0}));
