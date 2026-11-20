@@ -46,21 +46,32 @@ jobs:
             const total=p.locator('[data-stat-market="all"]');
             if(await total.count()&&await total.first().isVisible())await total.first().click().catch(()=>{});
             await p.waitForFunction(()=>[...document.querySelectorAll('body *')].some(e=>e.childElementCount===0&&e.textContent.trim().toUpperCase()==='CUMULATIVE UNITS'&&e.getBoundingClientRect().width>0),null,{timeout:60000}).catch(()=>{});
+            await p.waitForTimeout(6500);
             reference=await p.evaluate(()=>{
-              const vis=e=>e.getBoundingClientRect().width>0&&e.getBoundingClientRect().height>0;
-              const leaf=[...document.querySelectorAll('body *')].find(e=>e.childElementCount===0&&e.textContent.trim().toUpperCase()==='CUMULATIVE UNITS'&&vis(e));
-              const surface=e=>{const s=getComputedStyle(e),r=e.getBoundingClientRect();return {className:String(e.className),backgroundColor:s.backgroundColor,backgroundImage:s.backgroundImage,borderColor:s.borderTopColor,boxShadow:s.boxShadow,width:r.width,height:r.height,text:e.innerText?.slice(0,180)}};
-              const chain=[];for(let e=leaf;e&&e!==document.body;e=e.parentElement)chain.push(surface(e));
-              const cum=chain.find(x=>x.width>300&&x.height>130&&x.backgroundImage.includes('gradient')&&/CUMULATIVE UNITS/i.test(x.text));
-              return {theme:document.documentElement.dataset.theme,cum,chain,body:document.body.innerText.slice(0,1200),url:location.href};
+              const card=[...document.querySelectorAll('.f46-overview')].find(e=>e.getBoundingClientRect().width>0&&/CUMULATIVE UNITS/i.test(e.innerText));
+              if(!card)return {error:'EXACT_CARD_NOT_FOUND'};
+              const get=(e,p=null)=>{const s=getComputedStyle(e,p);return {backgroundColor:s.backgroundColor,backgroundImage:s.backgroundImage,backgroundBlendMode:s.backgroundBlendMode,backgroundSize:s.backgroundSize,backgroundPosition:s.backgroundPosition,borderColor:s.borderTopColor,boxShadow:s.boxShadow,content:s.content,display:s.display,opacity:s.opacity}};
+              const sourceRules=[];const crawl=(rules,origin)=>{for(const r of rules){if(r.selectorText&&/f46-overview/.test(r.selectorText)&&/background|shadow|border-color/i.test(r.style?.cssText||''))sourceRules.push({selector:r.selectorText,css:r.style.cssText,origin});if(r.cssRules)try{crawl(r.cssRules,origin)}catch{}}};
+              for(const sheet of document.styleSheets)try{crawl(sheet.cssRules,sheet.href||sheet.ownerNode?.id||'inline')}catch{}
+              return {theme:document.documentElement.dataset.theme,selector:'.f46-overview',actual:get(card),before:get(card,'::before'),after:get(card,'::after'),sourceRules,cardHTML:card.outerHTML.slice(0,450),width:card.offsetWidth,height:card.offsetHeight};
             });
-            console.log('EXACT_STATS_REFERENCE',JSON.stringify(reference));
-            assert.equal(reference.theme,'dark');assert(reference.cum,'CUMULATIVE_UNITS_GRADIENT_NOT_FOUND');
+            console.log('EXACT_CARD_ONLY',JSON.stringify(reference));
+            assert.equal(reference.theme,'dark');
             await p.screenshot({path:process.env.RUNNER_TEMP+'/premium-proof/stats-reference.png'});
+            const valid=v=>v&&v.backgroundImage.includes('gradient');
+            let v=valid(reference.actual)?reference.actual:valid(reference.before)&&reference.before.content!=='none'?reference.before:valid(reference.after)&&reference.after.content!=='none'?reference.after:null;
+            if(!v){
+              const src=reference.sourceRules.filter(r=>/gradient/i.test(r.css)&&!/light|::before|::after/.test(r.selector)&&/dark/.test(r.selector));
+              for(const rule of src.reverse()){
+                const decl=await p.evaluate(css=>{const e=document.createElement('div');e.style.cssText=css;return {backgroundImage:e.style.backgroundImage,backgroundColor:e.style.backgroundColor,borderColor:e.style.borderTopColor||e.style.borderColor}},rule.css);
+                if(decl.backgroundImage?.includes('gradient')&&!decl.backgroundImage.includes('var(')){v={...reference.actual,...decl,sourceSelector:rule.selector};break}
+              }
+            }
+            assert(v,'NO_GRADIENT_ON_CUMULATIVE_UNITS_CARD_ONLY');
+            reference.cum=v;reference.outcome=v;reference.rate=v;
           }finally{await browser.close()}
-          reference.outcome=reference.cum;reference.rate=reference.cum;
           const v=reference.cum;
-          const css='@layer b46PremiumMatch{@media (min-width:1024px){'+rules.map(([sel])=>'html:root[data-theme="dark"] body :is(#b46-premium-specificity#b46-premium-specificity#b46-premium-specificity,'+sel+'){background-color:'+v.backgroundColor+'!important;background-image:'+v.backgroundImage+'!important;border-color:'+v.borderColor+'!important}').join('\n')+'}}';
+          const css='@layer b46PremiumMatch{@media (min-width:1024px){'+rules.map(([sel])=>'html:root[data-theme="dark"] body :is(#b46-premium-specificity#b46-premium-specificity#b46-premium-specificity,'+sel+'){background-color:'+v.backgroundColor+'!important;background-image:'+v.backgroundImage+'!important}').join('\n')+'}}';
           await writeFile('premium-qa/palette.json',JSON.stringify({css,rules,reference}));
           EOF
       - name: Deploy only isolated CSS test worker
@@ -73,7 +84,7 @@ jobs:
           export default {async fetch(req,env){
             const u=new URL(req.url);
             if(!['GET','HEAD'].includes(req.method))return new Response('READ_ONLY',{status:405});
-            if(u.pathname==='/_premium_health')return Response.json({ok:true,scope:'TEST_ONLY_CSS',revision:'STAT_CARD_EXACT_V4',...palette});
+            if(u.pathname==='/_premium_health')return Response.json({ok:true,scope:'TEST_ONLY_CSS',revision:'STAT_CARD_EXACT_V5',...palette});
             if(/^\/(admin|internal)(\/|$)/i.test(u.pathname))return new Response('Forbidden',{status:403});
             const headers=new Headers();for(const k of ['accept','accept-language','user-agent','sec-ch-ua-mobile']){const v=req.headers.get(k);if(v)headers.set(k,v);}
             const r=await env.B46_PRODUCTION_READ.fetch(new Request(new URL(u.pathname+u.search,'https://ball46.com'),{method:req.method,headers,redirect:'manual'}));
@@ -103,8 +114,8 @@ jobs:
           import {chromium,devices} from 'playwright';
           import assert from 'node:assert/strict';
           const base='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev';
-          let h;for(let i=0;i<15;i++){try{const r=await fetch(base+'/_premium_health');if(r.ok){const candidate=await r.json();if(candidate.revision==='STAT_CARD_EXACT_V4'){h=candidate;break}}}catch{}await new Promise(r=>setTimeout(r,2000))}
-          assert.equal(h?.scope,'TEST_ONLY_CSS');assert.equal(h?.revision,'STAT_CARD_EXACT_V4');
+          let h;for(let i=0;i<15;i++){try{const r=await fetch(base+'/_premium_health');if(r.ok){const candidate=await r.json();if(candidate.revision==='STAT_CARD_EXACT_V5'){h=candidate;break}}}catch{}await new Promise(r=>setTimeout(r,2000))}
+          assert.equal(h?.scope,'TEST_ONLY_CSS');assert.equal(h?.revision,'STAT_CARD_EXACT_V5');
           const browser=await chromium.launch();
           try{for(const mobile of [false])for(const theme of ['dark','light']){
             const p=await browser.newPage(mobile?{...devices['iPhone 13'],serviceWorkers:'block'}:{viewport:{width:1440,height:950},serviceWorkers:'block'});
@@ -126,7 +137,7 @@ jobs:
             },{rules:h.rules,theme});
             console.log('COMPUTED_PROOF',JSON.stringify(proof));await p.screenshot({path:process.env.RUNNER_TEMP+'/premium-proof/actual-'+theme+'.png'});assert(proof);assert.equal(proof.theme,theme);
             const refs={row:h.reference.cum,header:h.reference.outcome,odds:h.reference.rate};
-            for(let i=0;i<proof.applied.length;i++){const x=proof.applied[i],o=proof.original[i];assert.equal(x.w,o.w);assert.equal(x.h,o.h);if(theme==='dark'){assert.equal(x.bg,refs[x.type].backgroundImage);assert.equal(x.color,refs[x.type].backgroundColor);assert.equal(x.border,refs[x.type].borderColor)}else assert.deepEqual(x,o)}
+            for(let i=0;i<proof.applied.length;i++){const x=proof.applied[i],o=proof.original[i];assert.equal(x.w,o.w);assert.equal(x.h,o.h);if(theme==='dark'){assert.equal(x.bg,refs[x.type].backgroundImage);assert.equal(x.color,refs[x.type].backgroundColor);assert.equal(x.border,o.border)}else assert.deepEqual(x,o)}
             console.log('PALETTE_PASS',JSON.stringify({mobile,theme,proof}));
             await p.screenshot({path:process.env.RUNNER_TEMP+'/premium-proof/after-'+mobile+'-'+theme+'.png'});
             await p.close();
