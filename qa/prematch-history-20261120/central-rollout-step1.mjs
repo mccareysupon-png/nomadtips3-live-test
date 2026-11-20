@@ -13,8 +13,10 @@ const moduleWith=(v,marker)=>{const m=v.modules.find(z=>z.content_base64&&Buffer
 const extract=(s,marker)=>{const a=s.indexOf(marker),b=s.indexOf('\n}',a);assert(a>=0&&b>a);return s.slice(a,b+2)};
 const e=documents[eng],m=documents[market];
 const oldE=moduleWith(e.old,'async function fetchVerifiedCornerOnly('),newE=moduleWith(e.next,'async function fetchVerifiedCornerOnly('),oldM=moduleWith(m.old,'async function providerRequest(fixtureId, key) {'),newM=moduleWith(m.next,'async function providerRequest(fixtureId, key, env) {');
-const line=oldM.split('\n').find(x=>/\bBOOKMAKERS\s*=/.test(x));assert(line,'BOOKMAKERS_NOT_FOUND');
-const books=[...line.matchAll(/["']([a-z0-9_-]+)["']/g)].map(x=>x[1]);assert(books.length>0,'BOOKMAKERS_EMPTY');
+const decl=oldM.match(/\bBOOKMAKERS\s*=\s*(?:Object\.freeze\(\s*)?\[([\s\S]{0,4000}?)\]/);
+const books=decl?[...decl[1].matchAll(/["']([A-Za-z0-9_-]+)["']/g)].map(x=>x[1]):[];
+if(!books.length){const i=oldM.search(/\bBOOKMAKERS\s*=/);const preview=oldM.slice(i,i+240).replace(/[^a-zA-Z0-9_.()[\],;:=\s"'-]/g,'?');console.log('BOOKMAKER_DECLARATION',preview)}
+assert(books.length>0,'BOOKMAKERS_EMPTY');
 const testPath='/v1/fixtures/123/odds?bookmakers='+books.join(',');
 assert(classifyProviderPath('fullmarket',testPath,Math.floor(Date.now()/1000)));console.log('EXACT_BOOKMAKERS',JSON.stringify(books));
 const oldEF=extract(oldE,'async function fetchVerifiedCornerOnly('),newEF=extract(newE,'async function fetchVerifiedCornerOnly('),oldMF=extract(oldM,'async function providerRequest(fixtureId, key) {'),newMF=extract(newM,'async function providerRequest(fixtureId, key, env) {');
