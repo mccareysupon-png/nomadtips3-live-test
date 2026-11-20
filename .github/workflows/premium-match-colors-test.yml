@@ -137,10 +137,13 @@ jobs:
         run: |
           cat > premium-qa/worker.mjs <<'EOF'
           import palette from './palette.json';
+          import {prematchClientScript,prematchStyles} from './prematch-client.mjs';
           export default {async fetch(req,env){
             const u=new URL(req.url);
             if(!['GET','HEAD'].includes(req.method))return new Response('READ_ONLY',{status:405});
-            if(u.pathname==='/_premium_health')return Response.json({ok:true,scope:'TEST_ONLY_CSS',revision:'STAT_CARD_DEFAULT_NORMAL_V12',...palette});
+            if(u.pathname==='/_premium_health')return Response.json({ok:true,scope:'TEST_ONLY_CSS',revision:'STAT_CARD_DEFAULT_NORMAL_V12',prematchNative:true,...palette});
+            if(u.pathname==='/__b46_prematch_client.js')return new Response(prematchClientScript,{headers:{'content-type':'application/javascript; charset=utf-8','cache-control':'no-store','x-robots-tag':'noindex,nofollow'}});
+            if(u.pathname==='/__b46_prematch_data')return env.PREMATCH_STORE.fetch('https://prematch.internal/preview-data');
             if(/^\/(admin|internal)(\/|$)/i.test(u.pathname))return new Response('Forbidden',{status:403});
             const headers=new Headers();for(const k of ['accept','accept-language','user-agent','sec-ch-ua-mobile']){const v=req.headers.get(k);if(v)headers.set(k,v);}
             const r=await env.B46_PRODUCTION_READ.fetch(new Request(new URL(u.pathname+u.search,'https://ball46.com'),{method:req.method,headers,redirect:'manual'}));
@@ -149,7 +152,8 @@ jobs:
             if(req.method!=='GET'||!r.ok||!['/','/index','/index.html'].includes(u.pathname)||!h.get('content-type')?.includes('text/html'))return new Response(req.method==='HEAD'?null:r.body,{status:r.status,headers:h});
             for(const k of ['content-length','content-encoding','etag','last-modified'])h.delete(k);
             h.set('cache-control','no-store');
-            return new HTMLRewriter().on('head',{element(e){e.prepend('<style id="b46-premium-match-test">'+palette.css+'</style><script id="b46-premium-user-action-test">'+palette.reference.activationScript+'</script>',{html:true})}}).transform(new Response(r.body,{status:r.status,headers:h}));
+            const pmStyles=prematchStyles+'#b46-prematch-panel{--b46pm-gradient:'+palette.reference.cum.backgroundImage+';--b46pm-bg:'+palette.reference.cum.backgroundColor+'}';
+            return new HTMLRewriter().on('head',{element(e){e.prepend('<style id="b46-premium-match-test">'+palette.css+'</style><style id="b46-prematch-native-styles">'+pmStyles+'</style><script id="b46-premium-user-action-test">'+palette.reference.activationScript+'</script>',{html:true})}}).on('body',{element(e){e.append('<script defer src="/__b46_prematch_client.js"></script>',{html:true})}}).transform(new Response(r.body,{status:r.status,headers:h}));
           }};
           EOF
           cat > premium-qa/wrangler.toml <<'EOF'
@@ -161,8 +165,13 @@ jobs:
           [[services]]
           binding = "B46_PRODUCTION_READ"
           service = "ball46-production"
+          [[services]]
+          binding = "PREMATCH_STORE"
+          service = "ball46-prematch-only-test-20261120"
           EOF
+          cp qa/prematch-native-ui-20261121/prematch-client.mjs premium-qa/prematch-client.mjs
           node --check premium-qa/worker.mjs
+          node --check premium-qa/prematch-client.mjs
           npx --yes wrangler@4.50.0 deploy --config premium-qa/wrangler.toml --name ball46-premium-match-colors-test-20261120
       - name: Verify PC dark and light
         run: |
