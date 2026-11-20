@@ -1,7 +1,7 @@
 import {DurableObject} from 'cloudflare:workers';
 import {init,ingest,normalize,totals,coverage,dailyPlan,pathFor} from './history.mjs';
 import {evaluate,defaultConfig} from './prematch-bot.mjs';
-import {dryRunStored} from './stored-signal-adapter.mjs';
+import {dryRunStored,BASELINE_SHADOW,ACCUMULATION_SHADOW} from './stored-signal-adapter.mjs';
 const json=x=>Response.json(x,{headers:{'cache-control':'no-store'}});
 export class PrematchStore extends DurableObject{
  constructor(ctx,env){super(ctx,env);this.db={exec:(q,...a)=>ctx.storage.sql.exec(q,...a),transaction:f=>ctx.storage.transactionSync(f)};init(this.db)}
@@ -20,6 +20,13 @@ export class PrematchStore extends DurableObject{
  this.db.transaction(()=>{for(const r of j.rows){const old=Array.from(this.db.exec('SELECT * FROM result_version WHERE fixture_id=? ORDER BY observed DESC LIMIT 1',r.fixture_id))[0];if(old){if(['league_id','kickoff','home_id','away_id','status','hg','ag'].every(k=>old[k]===r[k]))stats.duplicate++;else stats.conflict++;continue}this.db.exec('INSERT INTO result_version VALUES(?,?,?,?,?,?,?,?,?)',r.fixture_id,r.observed,r.league_id,r.kickoff,r.home_id,r.away_id,r.status,r.hg,r.ag);stats.added++}});
  return json({stats,stored:totals(this.db)})}
  if(path==='/merge-summary'&&req.method==='GET'){const rows=Array.from(this.db.exec("WITH latest AS (SELECT r.* FROM result_version r WHERE r.status='finished' AND r.observed=(SELECT MAX(v.observed) FROM result_version v WHERE v.fixture_id=r.fixture_id)), tr AS (SELECT home_id AS team FROM latest UNION ALL SELECT away_id AS team FROM latest), tc AS (SELECT team,COUNT(*) AS n FROM tr GROUP BY team) SELECT n,COUNT(*) AS teams FROM tc GROUP BY n ORDER BY n"));return json({stored:totals(this.db),distribution:rows,teams:rows.reduce((s,r)=>s+r.teams,0),teamsWith10:rows.filter(r=>r.n>=10).reduce((s,r)=>s+r.teams,0)})}
+ if(path==='/shadow-compare'&&req.method==='GET'){
+ const fixtures=await this.ctx.storage.get('botFixtures')??[];
+ const prefix="WITH latest AS (SELECT r.* FROM result_version r WHERE r.status='finished' AND r.observed=(SELECT MAX(v.observed) FROM result_version v WHERE v.fixture_id=r.fixture_id)), tr AS (SELECT home_id AS team,league_id FROM latest UNION ALL SELECT away_id AS team,league_id FROM latest), tc AS (SELECT team,COUNT(*) AS n FROM tr GROUP BY team) ";
+ const distribution=Array.from(this.db.exec(prefix+"SELECT n,COUNT(*) AS teams FROM tc GROUP BY n ORDER BY n"));
+ const leagues=Array.from(this.db.exec(prefix+"SELECT league_id,COUNT(*) AS fixtures FROM latest GROUP BY league_id ORDER BY fixtures DESC,league_id"));
+ const most=Array.from(this.db.exec(prefix+"SELECT tc.team,tc.n,tr.league_id,COUNT(*) AS league_matches FROM tc JOIN tr ON tr.team=tc.team WHERE tc.n=(SELECT MAX(n) FROM tc) AND tc.n>1 GROUP BY tc.team,tc.n,tr.league_id ORDER BY tc.team,tr.league_id LIMIT 100"));
+ return json({mode:'SHADOW_CONFIG_COMPARISON_V1',stored:totals(this.db),inputCount:fixtures.length,coverage:{distribution,maximum:distribution.at(-1)?.n??0,teamsWith5:distribution.filter(x=>x.n>=5).reduce((s,x)=>s+x.teams,0),teamsWith10:distribution.filter(x=>x.n>=10).reduce((s,x)=>s+x.teams,0),leagueCount:leagues.length,topLeagues:leagues.slice(0,10),mostHistoricalTeams:most},baseline:dryRunStored(this.db,fixtures,now,10,BASELINE_SHADOW),accumulation:dryRunStored(this.db,fixtures,now,10,ACCUMULATION_SHADOW),storage:{fixtures:'Durable Object botFixtures',history:'SQLite result_version',odds:'botFixtures[].storedBet365',output:'read-only; no publication'},providerCalls:0,published:0})}
  if(path==='/dry-run'&&req.method==='GET'){const fixtures=await this.ctx.storage.get('botFixtures')??[];return json({stored:totals(this.db),inputCount:fixtures.length,...dryRunStored(this.db,fixtures,now)})}
  if(path==='/bot-state'&&req.method==='GET')return json({config:await this.ctx.storage.get('botConfig')??defaultConfig,lastRun:await this.ctx.storage.get('botRun')??null,inputs:(await this.ctx.storage.get('botFixtures')??[]).length,networkCalls:0});
  if(path==='/bot-input'&&req.method==='POST'){const j=await req.json();if(!Array.isArray(j.fixtures)||j.fixtures.length>1000)return new Response('Invalid fixtures',{status:400});await this.ctx.storage.put('botFixtures',j.fixtures);return json({stored:j.fixtures.length})}
