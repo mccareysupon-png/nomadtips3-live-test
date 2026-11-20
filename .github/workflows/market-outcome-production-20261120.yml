@@ -1,0 +1,39 @@
+name: BALL46 owner-approved unified market outcome bars production release
+on:
+  push:
+    branches: [release/ball46-market-outcome-bar-20261120]
+    paths: ['.github/workflows/market-outcome-production-20261120.yml']
+permissions:
+  contents: read
+concurrency:
+  group: ball46-production-ui-release
+  cancel-in-progress: false
+jobs:
+  release:
+    if: github.ref == 'refs/heads/release/ball46-market-outcome-bar-20261120'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Prepare and validate frozen CSS release
+        run: |
+          node --check qa/market-outcome-release-20261120/wrapper.mjs
+          node --check qa/market-outcome-release-20261120/release.mjs
+          npm install --prefix qa/market-outcome-release-20261120/.runtime --no-fund --no-audit playwright@1.55.0
+          qa/market-outcome-release-20261120/.runtime/node_modules/.bin/playwright install chromium --only-shell
+      - name: Preview checks, Production deploy, and rollback gate
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: node qa/market-outcome-release-20261120/release.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: market-outcome-production-proof
+          path: ${{ runner.temp }}/market-outcome-production-proof
+          if-no-files-found: ignore
