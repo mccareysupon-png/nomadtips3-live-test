@@ -62,7 +62,7 @@ jobs:
           const {chromium,devices}=createRequire(process.cwd()+'/qa/live-prediction-card-20261119/.runtime/package.json')('playwright');
           const base='https://ball46-live-prediction-card-test-20261119.mccarey-supon.workers.dev';
           let health;for(let i=0;i<15;i++){try{const r=await fetch(base+'/_prediction_test_health');if(r.ok){health=await r.json();break}}catch{}await new Promise(r=>setTimeout(r,2000))}
-          assert.equal(health?.scope,'SHARED_RENDERER_SOURCE');assert.equal(health.overlay,false);assert.equal(health.featuredLabel,'ACTIVE PREDICTIONS');assert.equal(health.sidebarLabel,'Live Predictions');assert.equal(health.memberCtaStyle,'GOLD_DARK_ORANGE_LIGHT_20261120');
+          assert.equal(health?.scope,'SHARED_RENDERER_SOURCE');assert.equal(health.overlay,false);assert.equal(health.featuredLabel,'ACTIVE PREDICTIONS');assert.equal(health.sidebarLabel,'Live Predictions');assert.equal(health.memberCtaStyle,'GOLD_ORANGE_SOFT_HOVER_20261120');
           const html=await fetch(base+'/index.html');assert.equal(html.status,200);const hs=await html.text();assert(!hs.includes('/_prediction-card-test.js')&&hs.includes('content:"ACTIVE PREDICTIONS"'));const href=[...hs.matchAll(/<script[^>]+src=["']([^"']+)["']/gi)].map(m=>m[1]).find(x=>x.includes('dashboard-v2-stage3-featured-facts-20261013a.js'));assert(href);const u=new URL(href,base);const script=await fetch(base+u.pathname+u.search);assert(script.ok);new Function(await script.text());
           assert.equal((await fetch(base+'/_prediction_test_health',{method:'POST'})).status,405);
           const browser=await chromium.launch({headless:true});
@@ -79,6 +79,11 @@ jobs:
               console.log('MEMBER_CTA_PROOF '+JSON.stringify(proof));
               assert.equal(proof.theme,theme);assert.equal(proof.href,'https://member.ball46.com/pricing');assert.equal(proof.text,'Explore membership');assert(proof.background.includes(theme==='dark'?'255, 218, 86':'187, 75, 5'),'CTA_COMPUTED_GRADIENT');assert(proof.shadow!=='none');
               await p.locator('.right-rail > .b46mp-card').screenshot({path:process.env.RUNNER_TEMP+'/prediction-proof/member-cta-'+theme+'.png'});
+              await c.hover();
+              await p.waitForFunction(({theme})=>{const e=document.querySelector('.right-rail > .b46mp-card .b46mp-cta');return e&&getComputedStyle(e).filter===(theme==='dark'?'brightness(1.07)':'brightness(1.08)')},{theme},{timeout:5000});
+              const hover=await c.evaluate(e=>{const s=getComputedStyle(e);return {filter:s.filter,transform:s.transform,shadow:s.boxShadow,width:e.getBoundingClientRect().width,height:e.getBoundingClientRect().height}});
+              console.log('MEMBER_CTA_HOVER_PROOF '+JSON.stringify({theme,...hover}));assert.equal(hover.transform,'none');assert.equal(hover.width,proof.width);assert.equal(hover.height,proof.height);assert.notEqual(hover.shadow,proof.shadow);
+              await p.locator('.right-rail > .b46mp-card').screenshot({path:process.env.RUNNER_TEMP+'/prediction-proof/member-cta-'+theme+'-hover.png'});
             }finally{await p.close()}
           }
           for(const mobile of [false,true]){
