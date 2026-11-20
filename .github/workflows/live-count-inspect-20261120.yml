@@ -1,0 +1,40 @@
+name: Read-only measure prediction badge startup
+on:
+  push:
+    branches: [test/ball46-live-count-startup-20261120]
+    paths: ['.github/workflows/live-count-inspect-20261120.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm install --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium --only-shell
+          node <<'EOF'
+          const {chromium,devices}=require('playwright');
+          (async()=>{const browser=await chromium.launch();try{
+          await Promise.all([false,true].map(async mobile=>{
+          const p=await browser.newPage(mobile?{...devices['iPhone 13'],serviceWorkers:'block'}:{viewport:{width:1440,height:950},serviceWorkers:'block'});
+          const start=Date.now(),events=[];
+          p.on('request',r=>{if(['fetch','xhr'].includes(r.resourceType()))events.push({type:'request',ms:Date.now()-start,path:new URL(r.url()).pathname+new URL(r.url()).search.slice(0,160)})});
+          p.on('response',async r=>{if(['fetch','xhr'].includes(r.request().resourceType())){const e={type:'response',ms:Date.now()-start,path:new URL(r.url()).pathname,status:r.status()};try{const t=await r.text();e.bytes=t.length;const j=JSON.parse(t);e.keys=Object.keys(j);e.summary=Object.fromEntries(Object.entries(j).filter(([k,v])=>/signal|prediction|count|asof|updated|saved|snapshot/i.test(k)&&(typeof v==='number'||typeof v==='string'||Array.isArray(v))).map(([k,v])=>[k,Array.isArray(v)?{length:v.length,firstKeys:Object.keys(v[0]||{})}:v]));}catch{} events.push(e)}});
+          p.on('pageerror',e=>events.push({type:'error',ms:Date.now()-start,error:e.message}));
+          await p.route('**/*',r=>['GET','HEAD'].includes(r.request().method())?r.continue():r.abort());
+          await p.addInitScript(()=>{window.__badgeTrace=[];let last='';const inspect=()=>{const els=[...document.querySelectorAll('a,button,[role=button]')].filter(e=>e.textContent.trim().length<100&&/Live Predictions/i.test(e.textContent));const now=JSON.stringify(els.map(e=>({text:e.textContent.trim(),html:e.outerHTML.slice(0,1600)})));if(now!==last){last=now;window.__badgeTrace.push({ms:Math.round(performance.now()),items:JSON.parse(now)})}};new MutationObserver(inspect).observe(document,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['class','hidden','style']});});
+          const resp=await p.goto('https://ball46.com/',{waitUntil:'domcontentloaded',timeout:60000});console.log('DOC '+JSON.stringify({mobile,status:resp.status(),ms:Date.now()-start}));
+          await p.waitForTimeout(16000);
+          const observation=await p.evaluate(()=>({trace:window.__badgeTrace,scripts:[...document.scripts].map(x=>x.src).filter(Boolean),timings:performance.getEntriesByType('navigation').map(t=>({ttfb:t.responseStart,dom:t.domContentLoadedEventEnd,load:t.loadEventEnd})),storage:Object.keys(localStorage),globals:Object.keys(window).filter(k=>/b46|nomad|signal|prediction/i.test(k)).slice(0,100)}));
+          console.log('STARTUP '+JSON.stringify({mobile,...observation,events}));
+          if(!mobile){
+            const html=await resp.text();const re=/live predictions|data-[a-z0-9-]*(?:signal|prediction)[a-z0-9-]*|\/api\/(?:engine|hub)\/[a-z0-9/-]+/gi;let n=0;for(const m of html.matchAll(re)){if(++n>55)break;console.log('HTML_HIT '+JSON.stringify({term:m[0],context:html.slice(Math.max(0,m.index-250),m.index+350)}))}
+            for(const u of observation.scripts.filter(x=>/workspace|dashboard-v2|live-prediction|ui-sync|sidebar|route-guard/.test(x))){const r=await p.request.get(u);const code=await r.text();const patterns=[/data-[a-z-]*(?:signal|prediction)[a-z-]*(?:count|badge)/gi, /\/api\/(?:engine|hub)\/[a-z0-9/-]+/gi,/function\s+\w*(?:Signal|Prediction|Badge|Count)\w*\s*\([^)]*\)/gi,/live predictions/gi];for(const re of patterns){let n=0;for(const m of code.matchAll(re)){if(++n>15)break;console.log('JS_HIT '+JSON.stringify({path:new URL(u).pathname,term:m[0],context:code.slice(Math.max(0,m.index-400),m.index+650)}))}}}
+          }
+          await p.close()}));
+          }finally{await browser.close()}})().catch(e=>{console.error(e);process.exit(1)})
+          EOF
