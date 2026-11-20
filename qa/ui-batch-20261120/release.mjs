@@ -37,7 +37,7 @@ async function preflight(host,mobile=false,patched=false){
  const href=[...h.matchAll(/<script[^>]+src=["']([^"']+)["']/gi)].map(m=>m[1]).find(x=>x.includes(dashboard.slice(1)));assert(href,'DASHBOARD_NOT_FOUND');
  const d=new URL(href,host),j=await asset(host,d.pathname+d.search,mobile);
  const html=patched?h:patch.patchHtml(h),js=patched?j:patch.patchDashboard(j);
- assert(html.includes('>Live Predictions</span>')&&html.includes('b46-member-promo-cta-test-20261120')&&html.includes('brightness(1.08)')&&html.includes('content:"ACTIVE PREDICTIONS"'),'HTML_UI_PATCH');
+ const marks=['>Live Predictions</span>','b46-member-promo-cta-test-20261120','brightness(1.08)','content:"ACTIVE PREDICTIONS"'];assert(marks.every(m=>html.includes(m)),'HTML_UI_PATCH '+JSON.stringify({host,mobile,matched:marks.map(m=>html.includes(m))}));
  assert(js.includes("hasSignals?'FEATURED LIVE PREDICTION':'FEATURED MATCH'")&&js.includes("label=n===1?'Prediction':'Predictions'"),'DASHBOARD_UI_PATCH');
  new Function(js);console.log('SOURCE_PREFLIGHT '+JSON.stringify({host,mobile,patched}));
 }
@@ -111,7 +111,9 @@ try{
  let ready=false;for(let i=0;i<15;i++){try{await preflight(preview,false,true);ready=true;break}catch(e){if(i===14)throw e;await wait(1500)}}assert(ready,'PREVIEW_NOT_READY');
  await preflight(preview,true,true);await sameAssets(preview,expected);await graphParity(preview);await browserQA(preview,'candidate');
  await guard(start.site);await assign(candidate);await waitActive(candidate);await guard(candidate);
- await preflight(direct,false,true);await preflight(direct,true,true);await sameAssets(direct,expected);await browserQA(publicSite,'production');await guard(candidate);
+ // Cloudflare's deployment record can become visible before globally served routes refresh.
+ let propagated=false;for(let i=0;i<20;i++){await guard(candidate);try{await preflight(direct,false,true);await preflight(direct,true,true);await preflight(publicSite,false,true);propagated=true;break}catch(e){console.log('EDGE_PROPAGATION_CHECK '+JSON.stringify({attempt:i+1,reason:String(e.message).slice(0,350)}));if(i===19)throw e;await wait(2500)}}assert(propagated,'EDGE_PROPAGATION_TIMEOUT');
+ await sameAssets(direct,expected);await browserQA(publicSite,'production');await guard(candidate);
  console.log('PRODUCTION_RELEASE_PASS '+JSON.stringify({active:candidate,rollback:start.site,engine:start.engine,receiver:start.receiver}));
 }catch(e){
  console.log('RELEASE_STOP '+JSON.stringify({message:String(e.message).slice(0,600),candidate}));
