@@ -11,7 +11,7 @@ const host='https://'+name+'.'+(await cf('/subdomain')).subdomain+'.workers.dev'
 async function req(path,rows){const r=await fetch(host+path,{method:rows?'POST':'GET',headers:{authorization:'Bearer '+secret,'content-type':'application/json'},...(rows?{body:JSON.stringify({rows})}:{}),signal:AbortSignal.timeout(15000)});assert(r.ok,'HTTP '+r.status);return r.json()}
 let h;for(let i=0;i<12;i++){try{h=await req('/health');if(h.system==='BALL46_PREMATCH_ONLY')break}catch{}await new Promise(r=>setTimeout(r,1000))}assert(h?.system==='BALL46_PREMATCH_ONLY');
 const before=await req('/daily-state');
-let report;for(let i=0;i<15;i++){try{report=await req('/dry-run');if(report.mode==='READ_ONLY_SHADOW')break}catch{}await new Promise(r=>setTimeout(r,1500))}
-assert.equal(report?.mode,'READ_ONLY_SHADOW');assert.equal(report.providerCalls,0);assert.equal(report.published,0);
+let report,lastError;for(let i=0;i<45;i++){try{report=await req('/dry-run');if(report.mode==='READ_ONLY_SHADOW')break;lastError='Unexpected mode: '+String(report?.mode)}catch(e){lastError=String(e.message)}console.log('DRY_RUN_PROPAGATION',i+1,lastError);await new Promise(r=>setTimeout(r,2000))}
+assert.equal(report?.mode,'READ_ONLY_SHADOW',lastError);assert.equal(report.providerCalls,0);assert.equal(report.published,0);
 assert.deepEqual(await req('/daily-state'),before);
 console.log('STORED_ADAPTER_DRY_RUN '+JSON.stringify(report));
