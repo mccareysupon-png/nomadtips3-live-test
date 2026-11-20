@@ -44,20 +44,21 @@ jobs:
           const {chromium,devices}=createRequire(process.cwd()+'/qa/stats-clean-filters-20261120/.runtime/package.json')('playwright');
           const base='https://ball46-stats-clean-filters-test-20261120.mccarey-supon.workers.dev';
           let health;for(let i=0;i<15;i++){try{const r=await fetch(base+'/_stats_clean_health');if(r.ok){health=await r.json();break}}catch{}await new Promise(r=>setTimeout(r,2000))}
-          assert.equal(health?.scope,'TEST_ONLY_CSS_FILTER_CARDS');assert.equal(health?.gap,12);assert.equal((await fetch(base+'/_stats_clean_health',{method:'POST'})).status,405);
-          const browser=await chromium.launch();try{for(const mobile of [false,true]){
-          const p=await browser.newPage(mobile?{...devices['iPhone 13'],serviceWorkers:'block'}:{viewport:{width:1440,height:950},serviceWorkers:'block'});
+          assert.equal(health?.scope,'TEST_ONLY_CSS_FILTER_CARDS');assert.equal(health?.gap,12);assert.equal(health?.revision,'VISIBLE_CARD_GAP_V2');assert.equal((await fetch(base+'/_stats_clean_health',{method:'POST'})).status,405);
+          const browser=await chromium.launch();try{await Promise.all(['wide-dark','desktop-light','mobile-dark','mobile-light'].map(async mode=>{const mobile=mode.startsWith('mobile'),theme=mode.endsWith('dark')?'dark':'light';
+          const p=await browser.newPage(mobile?{...devices['iPhone 13'],serviceWorkers:'block'}:{viewport:{width:mode.startsWith('wide')?1920:1440,height:950},serviceWorkers:'block'});
+          await p.addInitScript(t=>localStorage.setItem('nomad343_dashboard_theme_v1',t),theme);
           await p.route('**/*',r=>['GET','HEAD'].includes(r.request().method())?r.continue():r.abort());
           await p.goto(base+'/index.html?view=statistics',{waitUntil:'domcontentloaded'});
           await p.waitForFunction(()=>[...document.querySelectorAll('[data-sp-table-body] tr')].some(r=>r.cells.length>=4),null,{timeout:90000});
           for(const market of ['all','1x2','ah','ou','btts','corners','cards','other']){
           if(!mobile)await p.locator('[data-stat-market="'+market+'"]').first().click();
           else if(market!=='all'){await p.locator('[data-stat-market="'+market+'"]').first().evaluate(e=>e.click())}
-          await p.waitForFunction(m=>document.querySelector('[data-stat-market].active')?.dataset.statMarket===m&&document.querySelector('#b46-finance-chart-card')?.getBoundingClientRect().height>0&&document.querySelector('.sp-results')?.getBoundingClientRect().height>0,market,{timeout:15000});await p.waitForTimeout(1400);
-          const proof=await p.evaluate(()=>({filters:[...document.querySelectorAll('.sp-stats-content > section.sp-filters')].map(e=>({display:getComputedStyle(e).display,rects:e.getClientRects().length})),graph:!!document.querySelector('#b46-finance-chart-card'),gap:document.querySelector('.sp-results').getBoundingClientRect().top-document.querySelector('#b46-finance-chart-card').getBoundingClientRect().bottom,rows:[...document.querySelectorAll('[data-sp-table-body] tr')].filter(r=>r.cells.length>=4).length,active:document.querySelector('[data-stat-market].active')?.dataset.statMarket}));
-          console.log('FILTER_HIDE_PASS '+JSON.stringify({mobile,market,...proof}));assert.equal(proof.filters.length,2);assert(proof.filters.every(x=>x.display==='none'&&x.rects===0),'FILTER_STILL_VISIBLE');assert(proof.graph,'STATS_GRAPH_MISSING');assert.equal(proof.active,market);assert(Math.abs(proof.gap-12)<=1,'GRAPH_HISTORY_GAP');
+          await p.waitForFunction(m=>document.querySelector('[data-stat-market].active')?.dataset.statMarket===m&&document.querySelector('#b46-finance-chart-card')?.getBoundingClientRect().height>0&&document.querySelector('.sp-results')?.getBoundingClientRect().height>0,market,{timeout:15000});await p.waitForFunction(()=>document.querySelector('#b46-finance-chart-card .f46-card')?.getBoundingClientRect().height>0,null,{timeout:20000});await p.waitForTimeout(2000);
+          const proof=await p.evaluate(()=>({filters:[...document.querySelectorAll('.sp-stats-content > section.sp-filters')].map(e=>({display:getComputedStyle(e).display,rects:e.getClientRects().length})),graph:!!document.querySelector('#b46-finance-chart-card'),gap:document.querySelector('.sp-results').getBoundingClientRect().top-document.querySelector('#b46-finance-chart-card .f46-card').getBoundingClientRect().bottom,outerGap:document.querySelector('.sp-results').getBoundingClientRect().top-document.querySelector('#b46-finance-chart-card').getBoundingClientRect().bottom,graphHeight:document.querySelector('#b46-finance-chart-card').getBoundingClientRect().height,visibleHeight:document.querySelector('#b46-finance-chart-card .f46-card').getBoundingClientRect().height,theme:document.documentElement.dataset.theme,rows:[...document.querySelectorAll('[data-sp-table-body] tr')].filter(r=>r.cells.length>=4).length,active:document.querySelector('[data-stat-market].active')?.dataset.statMarket}));
+          console.log('FILTER_HIDE_PASS '+JSON.stringify({mode,mobile,market,...proof}));assert.equal(proof.filters.length,2);assert(proof.filters.every(x=>x.display==='none'&&x.rects===0),'FILTER_STILL_VISIBLE');assert(proof.graph,'STATS_GRAPH_MISSING');assert.equal(proof.active,market);assert(Math.abs(proof.gap-12)<=2.5,'VISIBLE_GRAPH_HISTORY_GAP '+mode+' '+market+' '+proof.gap);assert(proof.graphHeight-proof.visibleHeight<=2.5,'INVISIBLE_RESERVED_HEIGHT');
           }await p.close()
-          }}finally{await browser.close()}
+          }))}finally{await browser.close()}
           EOF
       - name: Confirm Production unchanged
         if: always()
