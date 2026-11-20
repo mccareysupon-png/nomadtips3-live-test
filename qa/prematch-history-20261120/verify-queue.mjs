@@ -1,0 +1,9 @@
+import fs from 'node:fs';import assert from 'node:assert/strict';
+const url='https://ball46-prematch-history-real-test-20261120.mccarey-supon.workers.dev',root='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+'/workers';
+async function read(p){const r=await fetch(root+p,{headers:{Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN},signal:AbortSignal.timeout(30000)});const j=await r.json();assert(r.ok&&j.success);return j.result}
+const protectedNames=['ball46-production','nomadtips3-engine-343','nomadtips3-5usd-hub-343'];const versions={};for(const n of protectedNames)versions[n]=(await read('/scripts/'+n+'/deployments?per_page=1')).deployments[0].versions;
+const old={'ball46-production':'fc0995b4-29fa-4d76-8df9-eb837d723691','nomadtips3-engine-343':'d8dd07a2-4f5d-4b14-94b5-52f5fc53311d','nomadtips3-5usd-hub-343':'f434025a-e092-4bf0-844f-6f1e01ad7173'};
+let plan;for(let i=0;i<8;i++){const r=await fetch(url+'/backfill',{signal:AbortSignal.timeout(12000),headers:{'Cache-Control':'no-cache'}});const t=await r.text();try{plan=JSON.parse(t)}catch{}if(r.ok&&plan?.gateway==='NOT_CONNECTED')break;console.log('PLAN_READ',JSON.stringify({status:r.status,body:t.slice(0,140)}));await new Promise(r=>setTimeout(r,1000))}
+assert(plan?.gateway==='NOT_CONNECTED'&&plan.backfillRequests===0&&plan.queueEntries>0,'PLAN_UNVERIFIED');
+const health=await(await fetch(url+'/health')).json();assert(health.state==='ok'&&health.stored.finished>=474&&health.externalRequestsAdded===0);assert.equal((await fetch(url+'/prepare-backfill',{method:'POST'})).status,404);
+const unchanged=Object.keys(old).every(n=>versions[n].length===1&&versions[n][0].version_id===old[n]);const evidence={url,plan,health,versions,protectedVersionsMatchBeforeDeployment:unchanged};fs.mkdirSync('evidence',{recursive:true});fs.writeFileSync('evidence/backfill-verify.json',JSON.stringify(evidence,null,2));console.log('BACKFILL_VERIFIED',JSON.stringify(evidence));
