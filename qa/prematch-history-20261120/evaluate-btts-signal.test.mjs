@@ -1,0 +1,14 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {evaluateBttsSignal} from './evaluate-btts-signal.mjs';
+const make=(gf,ga,base)=>Array.from({length:10},(_,i)=>({fixtureId:base+i,kickoff:100+i,gf,ga}));
+const base={homeLast10:make(2,1,1),awayLast10:make(1,2,21),odds:{bookmaker:'bet365',yes:1.85,no:2.1,observed:290},asOf:300,kickoff:400};
+const cfg={enabled:true};
+test('YES; exact market and model',()=>{const r=evaluateBttsSignal(base,cfg);assert.equal(r.signal,'BTTS_YES');assert.equal(r.metrics.home.btts,1);assert.equal(r.metrics.home.blank,0);assert.equal(r.metrics.sides[0].model,1);assert.ok(Math.abs(r.metrics.sides[0].market-(1/1.85)/(1/1.85+1/2.1))<1e-12)});
+test('NO on blanks',()=>{const r=evaluateBttsSignal({...base,homeLast10:make(0,1,1),awayLast10:make(0,1,21)},cfg);assert.equal(r.signal,'BTTS_NO');assert.equal(r.metrics.home.blank,1)});
+test('owner OFF',()=>assert.equal(evaluateBttsSignal(base).reason,'OWNER_OFF'));
+test('range gate',()=>assert.equal(evaluateBttsSignal(base,{...cfg,maxPrice:1.7}).signal,'NO_SIGNAL'));
+test('missing history',()=>assert.equal(evaluateBttsSignal({...base,homeLast10:base.homeLast10.slice(1)},cfg).reason,'INVALID_OR_INCOMPLETE_HISTORY'));
+test('duplicate history',()=>assert.equal(evaluateBttsSignal({...base,homeLast10:Array(10).fill(base.homeLast10[0])},cfg).reason,'INVALID_OR_INCOMPLETE_HISTORY'));
+test('missing price',()=>assert.equal(evaluateBttsSignal({...base,odds:{...base.odds,no:null}},cfg).reason,'INVALID_BET365_ODDS'));
+test('post kickoff',()=>assert.equal(evaluateBttsSignal({...base,asOf:400},cfg).reason,'INVALID_PREMATCH_TIME'));
+test('future history',()=>assert.equal(evaluateBttsSignal({...base,homeLast10:[...base.homeLast10.slice(1),{fixtureId:99,kickoff:301,gf:2,ga:1}]},cfg).reason,'INVALID_HISTORY_TIME'));
+test('balanced data fails probability and edge',()=>{const team=(id)=>Array.from({length:10},(_,i)=>({fixtureId:id+i,kickoff:100+i,gf:i%2,ga:i%2}));assert.equal(evaluateBttsSignal({...base,homeLast10:team(1),awayLast10:team(21),odds:{...base.odds,yes:2,no:2}},cfg).signal,'NO_SIGNAL')});
