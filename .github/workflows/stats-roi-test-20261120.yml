@@ -1,0 +1,80 @@
+name: BALL46 ROI sign colors test only
+on:
+  push:
+    branches: [test/ball46-stats-roi-color-20261120]
+    paths: ['.github/workflows/stats-roi-test-20261120.yml']
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Deploy isolated test only
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          node --check qa/stats-roi-color-20261120/worker.mjs
+          cat > qa/stats-roi-color-20261120/wrangler.toml <<'EOF'
+          name = "ball46-stats-roi-color-test-20261120"
+          main = "worker.mjs"
+          compatibility_date = "2026-11-20"
+          workers_dev = true
+          preview_urls = false
+          [[services]]
+          binding = "B46_PRODUCTION_READ"
+          service = "ball46-production"
+          EOF
+          node --input-type=module <<'EOF'
+          import assert from 'node:assert/strict';import {writeFile} from 'node:fs/promises';
+          const r=await fetch('https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+'/workers/scripts/ball46-production/deployments?per_page=1',{headers:{authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN}});const j=await r.json();assert(j.success);await writeFile(process.env.RUNNER_TEMP+'/prod-before.json',JSON.stringify(j.result.deployments[0].versions));
+          EOF
+          for attempt in 1 2 3; do
+            if npx --yes wrangler@4.50.0 deploy --config qa/stats-roi-color-20261120/wrangler.toml --name ball46-stats-roi-color-test-20261120; then break; fi
+            if [ "$attempt" = 3 ]; then exit 1; fi
+            sleep 5
+          done
+      - name: Verify all eight markets desktop and mobile
+        run: |
+          npm install --prefix qa/stats-roi-color-20261120/.runtime --no-audit --no-fund playwright@1.55.0
+          qa/stats-roi-color-20261120/.runtime/node_modules/.bin/playwright install chromium --only-shell
+          node --input-type=module <<'EOF'
+          import assert from 'node:assert/strict';import {createRequire} from 'node:module';
+          const {chromium,devices}=createRequire(process.cwd()+'/qa/stats-roi-color-20261120/.runtime/package.json')('playwright');
+          const base='https://ball46-stats-roi-color-test-20261120.mccarey-supon.workers.dev';
+          let health;for(let i=0;i<15;i++){try{const r=await fetch(base+'/_stats_roi_health');if(r.ok){health=await r.json();break}}catch{}await new Promise(r=>setTimeout(r,2000))}
+          assert.equal(health?.scope,'TEST_ONLY_ROI_COLOR');assert.equal(health?.revision,'ROI_TONE_V1');assert.equal((await fetch(base+'/_stats_roi_health',{method:'POST'})).status,405);
+          const browser=await chromium.launch();try{await Promise.all(['wide-dark','desktop-light','mobile-dark','mobile-light'].map(async mode=>{const mobile=mode.startsWith('mobile'),theme=mode.endsWith('dark')?'dark':'light';
+          const p=await browser.newPage(mobile?{...devices['iPhone 13'],serviceWorkers:'block'}:{viewport:{width:mode.startsWith('wide')?1920:1440,height:950},serviceWorkers:'block'});
+          await p.addInitScript(t=>localStorage.setItem('nomad343_dashboard_theme_v1',t),theme);
+          await p.route('**/*',r=>['GET','HEAD'].includes(r.request().method())?r.continue():r.abort());
+          const errors=[];p.on('pageerror',e=>errors.push(e.message));
+          await p.goto(base+'/index.html?view=statistics',{waitUntil:'domcontentloaded'});
+          for(const path of ['/longterm-performance-343.js','/b46-statistics-card-20261116.js','/b46-statistics-fast-v1-20261116.js']){
+            const src=await p.request.get(base+path);assert.equal(src.status(),200);const js=await src.text();new Function(js);const helper=js.match(/function b46RoiTone\(v\)\{[^\n]+\}/)?.[0];assert(helper,'ROI_HELPER_MISSING');const tone=new Function(helper+';return b46RoiTone')();assert.deepEqual(['2.8%','-2.8%','0%','0.0%','-0.0%','—'].map(tone),['green','red','yellow','yellow','yellow','neutral']);
+          }
+          await p.waitForFunction(()=>[...document.querySelectorAll('[data-sp-table-body] tr')].some(r=>r.cells.length>=4),null,{timeout:90000});
+          for(const market of ['all','1x2','ah','ou','btts','corners','cards','other','all']){
+          if(!mobile)await p.locator('[data-stat-market="'+market+'"]').first().click();
+          else{await p.locator('[data-stat-market="'+market+'"]').first().evaluate(e=>e.click())}
+          await p.waitForFunction(m=>document.querySelector('[data-stat-market].active')?.dataset.statMarket===m&&document.querySelector('#b46-finance-chart-card')?.getBoundingClientRect().height>0&&document.querySelector('.sp-results')?.getBoundingClientRect().height>0,market,{timeout:15000});await p.waitForFunction(()=>document.querySelector('#b46-finance-chart-card .f46-card')?.getBoundingClientRect().height>0,null,{timeout:20000});await p.waitForTimeout(2000);
+          const proof=await p.evaluate(()=>{const c=document.querySelector('#b46-finance-chart-card');const items=[...c.querySelectorAll('.f46-metrics > div,.b46-stage-summary-item,.b46-v1-market-detail')].filter(e=>e.querySelector('span,small')?.textContent.trim()==='ROI').map(e=>{const v=e.querySelector('b,strong');return {value:v?.textContent.trim(),tone:v?.dataset.b46RoiTone,color:v?getComputedStyle(v).color:null,visible:!!v?.getClientRects().length}});return {active:document.querySelector('[data-stat-market].active')?.dataset.statMarket,theme:document.documentElement.dataset.theme,items}});
+          console.log('ROI_PROOF '+JSON.stringify({mode,market,...proof}));assert.equal(proof.active,market);const visible=proof.items.filter(x=>x.visible);assert(visible.length>0,'ROI_NOT_VISIBLE');for(const x of visible){const n=parseFloat(x.value),tone=Number.isNaN(n)?'neutral':n>0?'green':n<0?'red':'yellow';assert.equal(x.tone,tone,'WRONG_ROI_TONE');if(tone!=='neutral'){const palette=proof.theme==='dark'?{green:'rgb(85, 214, 161)',red:'rgb(255, 114, 126)',yellow:'rgb(245, 206, 87)'}:{green:'rgb(8, 124, 80)',red:'rgb(180, 35, 54)',yellow:'rgb(148, 98, 0)'};assert.equal(x.color,palette[tone],'WRONG_ROI_PAINT')}}
+          }await p.close()
+          }))}finally{await browser.close()}
+          EOF
+      - name: Confirm Production unchanged
+        if: always()
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          node --input-type=module <<'EOF'
+          import assert from 'node:assert/strict';import {readFile} from 'node:fs/promises';
+          const before=await readFile(process.env.RUNNER_TEMP+'/prod-before.json','utf8');const r=await fetch('https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+'/workers/scripts/ball46-production/deployments?per_page=1',{headers:{authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN}});const j=await r.json();assert(j.success);assert.deepEqual(j.result.deployments[0].versions,JSON.parse(before));console.log('PRODUCTION_UNCHANGED')
+          EOF
