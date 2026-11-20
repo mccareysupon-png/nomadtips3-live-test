@@ -48,7 +48,7 @@ jobs:
           const {chromium,devices}=createRequire(process.cwd()+'/qa/sticky-membership-20261120/.runtime/package.json')('playwright');
           const base='https://ball46-sticky-membership-test-20261120.mccarey-supon.workers.dev';
           let health;for(let i=0;i<15;i++){try{const r=await fetch(base+'/_sticky_membership_health');if(r.ok){health=await r.json();break}}catch{}await new Promise(r=>setTimeout(r,2000))}
-          assert.equal(health?.scope,'TEST_ONLY_STICKY_MEMBERSHIP');assert.equal(health?.revision,'STICKY_MEMBERSHIP_V3');assert.equal((await fetch(base+'/_sticky_membership_health',{method:'POST'})).status,405);
+          assert.equal(health?.scope,'TEST_ONLY_STICKY_MEMBERSHIP');assert.equal(health?.revision,'STICKY_MEMBERSHIP_V4');assert.equal((await fetch(base+'/_sticky_membership_health',{method:'POST'})).status,405);
           const browser=await chromium.launch();try{
           for(const mode of ['desktop-dark','desktop-light','wide-dark','mobile-dark','mobile-light']){
             const mobile=mode.startsWith('mobile'),theme=mode.endsWith('dark')?'dark':'light';
@@ -57,15 +57,23 @@ jobs:
             await p.route('**/*',r=>['GET','HEAD'].includes(r.request().method())?r.continue():r.abort());
             await p.goto(base+'/index.html?view=statistics',{waitUntil:'domcontentloaded',timeout:60000});
             await p.waitForFunction(()=>document.querySelector('#b46-finance-chart-card')?.getBoundingClientRect().height>0,null,{timeout:60000});
-            const get=()=>p.evaluate(()=>{const e=document.querySelector('[data-workspace-panel="statistics"] > .b46-stat-member-top');if(!e)return null;const r=e.getBoundingClientRect(),s=getComputedStyle(e),a=e.querySelector('a'),mask=getComputedStyle(e,'::before'),rail=document.querySelector('.left-rail'),bar=document.querySelector('.b46-sidebar-outside-scroll');return {railY:rail?.getBoundingClientRect().y,barY:bar?.getBoundingClientRect().y,mask:{bg:mask.backgroundColor,top:mask.top,position:mask.position,bodyBG:getComputedStyle(document.body).backgroundColor,htmlBG:getComputedStyle(document.documentElement).backgroundColor,hit:e.contains(document.elementFromPoint(r.left+r.width/2,4))},y:r.y,x:r.x,w:r.width,h:r.height,pos:s.position,z:s.zIndex,top:s.top,href:a?.href,display:s.display,viewport:innerHeight,scroll:scrollY,docH:document.documentElement.scrollHeight,hit:r.height>0&&e.contains(document.elementFromPoint(Math.min(innerWidth-1,r.right-30),r.top+r.height/2))}});
-            const before=await get();
+            const get=()=>p.evaluate(()=>{const panel=document.querySelector('[data-workspace-panel="statistics"]'),e=panel?.querySelector(':scope > .b46-stat-member-top');if(!e)return null;const r=e.getBoundingClientRect(),pr=panel.getBoundingClientRect(),s=getComputedStyle(e),mask=getComputedStyle(e,'::before'),rail=document.querySelector('.left-rail'),bar=document.querySelector('.b46-sidebar-outside-scroll'),outside=document.elementFromPoint(r.left+r.width/2,Math.max(1,pr.top-4));return {railY:rail?.getBoundingClientRect().y,barY:bar?.getBoundingClientRect().y,mask:{bg:mask.backgroundColor,top:mask.top,bodyBG:getComputedStyle(document.body).backgroundColor,clipped:!panel.contains(outside)},panel:{y:pr.y,h:pr.height,scroll:panel.scrollTop,max:panel.scrollHeight-panel.clientHeight,overflow:getComputedStyle(panel).overflowY},y:r.y,x:r.x,w:r.width,h:r.height,pos:s.position,top:s.top,href:e.querySelector('a')?.href,rootScroll:scrollY,hit:e.contains(document.elementFromPoint(r.left+r.width/2,r.top+r.height/2))}});
+            const initial=await get();
             if(!mobile){
-              assert(before&&before.h>0&&before.w>500,'BANNER_MISSING');assert.equal(before.pos,'sticky');assert(before.href.includes('member.ball46.com'));
+              assert(initial&&initial.h===90&&initial.w>500,'BANNER_MISSING');assert.equal(initial.pos,'sticky');assert(initial.href.includes('member.ball46.com'));
               await p.mouse.move(750,450);await p.mouse.wheel(0,100);await p.waitForTimeout(500);
-              const after=await get();assert(after.scroll>=90,'PAGE_NOT_SCROLLABLE');assert(Math.abs(after.y-before.y)<=1,'BANNER_FIRST_WHEEL_JUMP '+JSON.stringify(after));assert(Math.abs(after.railY-before.railY)<=1,'SIDEBAR_FIRST_WHEEL_JUMP '+JSON.stringify(after));assert(Math.abs(after.barY-before.barY)<=1,'OUTSIDE_SCROLLBAR_JUMP');assert(after.mask.position==='absolute'&&after.mask.top==='-18px'&&after.mask.bg!=='rgba(0, 0, 0, 0)'&&after.mask.hit,'TOP_CONTENT_MASK_MISSING '+JSON.stringify(after.mask));assert(Math.abs(after.w-before.w)<=1&&Math.abs(after.h-before.h)<=1,'BANNER_DIMENSIONS_CHANGED');assert(after.hit,'BANNER_OCCLUDED');
-              await p.mouse.wheel(0,650);await p.waitForTimeout(500);const deeper=await get();assert(deeper.scroll>after.scroll,'DEEP_SCROLL_MISSING');assert(Math.abs(deeper.y-before.y)<=1,'BANNER_LOST_WHILE_SCROLLING');assert(deeper.mask.hit,'SCROLLED_CONTENT_LEAKS_ABOVE_BANNER');
+              const early=await get();console.log('EARLY_WHEEL '+JSON.stringify({mode,initial,early}));assert.equal(early.rootScroll,0,'ROOT_SCROLL_EARLY');assert(Math.abs(early.y-initial.y)<=1,'EARLY_BANNER_SHIFT');assert(Math.abs(early.railY-initial.railY)<=1,'EARLY_RAIL_SHIFT');
+              const details=p.locator('.b46-fast-details');if(await details.count())await details.first().evaluate(e=>e.click());
+              await p.waitForFunction(()=>[...document.querySelectorAll('[data-sp-table-body] tr')].some(e=>e.cells.length>=4),null,{timeout:90000});
+              await p.waitForFunction(()=>{const e=document.querySelector('[data-workspace-panel="statistics"]');return e.scrollHeight>e.clientHeight+750},null,{timeout:60000});
+              await p.evaluate(()=>{document.querySelector('[data-workspace-panel="statistics"]').scrollTop=0;window.scrollTo(0,0)});await p.waitForTimeout(350);
+              const before=await get();
+              await p.mouse.move(750,450);await p.mouse.wheel(0,100);await p.waitForTimeout(500);
+              const after=await get();console.log('FIRST_WHEEL_PROOF '+JSON.stringify({mode,before,after}));
+              assert(after.panel.scroll>=90,'INNER_SCROLL_MISSING');assert.equal(after.rootScroll,0,'ROOT_SCROLL_MOVED');assert(Math.abs(after.y-before.y)<=1,'BANNER_FIRST_WHEEL_JUMP');assert(Math.abs(after.railY-before.railY)<=1,'SIDEBAR_FIRST_WHEEL_JUMP');assert(Math.abs(after.barY-before.barY)<=1,'OUTSIDE_SCROLLBAR_JUMP');assert(after.mask.clipped&&after.mask.bg===after.mask.bodyBG,'TOP_CONTENT_MASK_MISSING');assert(Math.abs(after.w-before.w)<=1&&Math.abs(after.h-before.h)<=1,'BANNER_DIMENSIONS_CHANGED');assert(after.hit,'BANNER_OCCLUDED');
+              await p.mouse.wheel(0,650);await p.waitForTimeout(500);const deeper=await get();assert(deeper.panel.scroll>after.panel.scroll,'DEEP_SCROLL_MISSING');assert(Math.abs(deeper.y-before.y)<=1,'BANNER_LOST_WHILE_SCROLLING');assert(deeper.mask.clipped,'SCROLLED_CONTENT_LEAKS_ABOVE_BANNER');
               console.log('STICKY_PROOF '+JSON.stringify({mode,before,after,deeper}));
-            }else{assert(!before||before.pos!=='sticky','MOBILE_STICKY_LEAK');console.log('STICKY_PROOF '+JSON.stringify({mode,before}));}
+            }else{assert(!initial||initial.pos!=='sticky','MOBILE_STICKY_LEAK');const overflow=await p.locator('[data-workspace-panel="statistics"]').evaluate(e=>getComputedStyle(e).overflowY);assert(overflow!=='auto'&&overflow!=='scroll','MOBILE_INNER_SCROLL_LEAK');console.log('STICKY_PROOF '+JSON.stringify({mode,initial,overflow}));}
             await p.close();
           }
           }finally{await browser.close()}
