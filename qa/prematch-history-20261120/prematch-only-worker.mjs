@@ -7,10 +7,10 @@ export class PrematchStore extends DurableObject{
  async fetch(req){
  const path=new URL(req.url).pathname,now=Math.floor(Date.now()/1000);
  if(path==='/preview-data'&&req.method==='GET'){
- const rows=Array.from(this.db.exec("SELECT r.* FROM result_version r WHERE r.status='finished' AND r.observed=(SELECT MAX(v.observed) FROM result_version v WHERE v.fixture_id=r.fixture_id) ORDER BY r.kickoff DESC LIMIT 500"));
- const teams=new Map();for(const row of rows){for(const id of [row.home_id,row.away_id])teams.set(id,(teams.get(id)||0)+1)}
+ const rows=Array.from(this.db.exec("SELECT r.* FROM result_version r WHERE r.status='finished' AND r.observed=(SELECT MAX(v.observed) FROM result_version v WHERE v.fixture_id=r.fixture_id) ORDER BY r.kickoff DESC LIMIT 50"));
+ const allTeams=Array.from(this.db.exec("WITH latest AS (SELECT r.* FROM result_version r WHERE r.status='finished' AND r.observed=(SELECT MAX(v.observed) FROM result_version v WHERE v.fixture_id=r.fixture_id)), team_rows AS (SELECT home_id AS team FROM latest UNION ALL SELECT away_id AS team FROM latest) SELECT team,COUNT(*) AS matches FROM team_rows GROUP BY team"));
  const saved=await this.ctx.storage.get('previewSelections');
- return json({system:'BALL46_PREMATCH_ONLY',stored:totals(this.db),teams:teams.size,teamsWith10:[...teams.values()].filter(n=>n>=10).length,results:rows.slice(0,50),selection:saved??null});
+ return json({system:'BALL46_PREMATCH_ONLY',stored:totals(this.db),teams:allTeams.length,teamsWith10:allTeams.filter(n=>n.matches>=10).length,results:rows,selection:saved??null});
  }
  if(path==='/bot-state'&&req.method==='GET')return json({config:await this.ctx.storage.get('botConfig')??defaultConfig,lastRun:await this.ctx.storage.get('botRun')??null,inputs:(await this.ctx.storage.get('botFixtures')??[]).length,networkCalls:0});
  if(path==='/bot-input'&&req.method==='POST'){const j=await req.json();if(!Array.isArray(j.fixtures)||j.fixtures.length>1000)return new Response('Invalid fixtures',{status:400});await this.ctx.storage.put('botFixtures',j.fixtures);return json({stored:j.fixtures.length})}
@@ -18,12 +18,14 @@ export class PrematchStore extends DurableObject{
  if(path==='/bot-run'&&req.method==='POST'){
  const cfg=await this.ctx.storage.get('botConfig')??defaultConfig;
  const fixtures=await this.ctx.storage.get('botFixtures')??[];
+ const archiveTeams=Array.from(this.db.exec("WITH latest AS (SELECT r.* FROM result_version r WHERE r.status='finished' AND r.observed=(SELECT MAX(v.observed) FROM result_version v WHERE v.fixture_id=r.fixture_id)), team_rows AS (SELECT home_id AS team FROM latest UNION ALL SELECT away_id AS team FROM latest) SELECT team,COUNT(*) AS matches FROM team_rows GROUP BY team ORDER BY matches DESC,team"));
+ const coverageReport={finished:Number(totals(this.db).finished??0),teams:archiveTeams.length,ready:archiveTeams.filter(x=>x.matches>=10).length,insufficient:archiveTeams.filter(x=>x.matches<10).length,maximum:archiveTeams[0]?.matches??0};
  const rows=[];for(const f of fixtures){const k=f.kickoff_ts,h=Number(f.teams?.home?.id),a=Number(f.teams?.away?.id);if(f.status!=='scheduled'||!Number.isSafeInteger(k)||k<=now||![h,a].every(n=>Number.isSafeInteger(n)&&n>0)||h===a)continue;
  const hc=coverage(this.db,h,k,now),ac=coverage(this.db,a,k,now);rows.push(evaluate(f,hc.matches,ac.matches,f.storedBet365??null,cfg,now))}
- const out={system:'BALL46_PREMATCH_ONLY',rows,published:0,ruleState:cfg.enabled?'LEDGER_NOT_CONNECTED':'OWNER_OFF',checkedAt:now,networkCalls:0,qualified:rows.filter(x=>x.candidates?.length).length};
+ const out={system:'BALL46_PREMATCH_ONLY',rows,published:0,ruleState:cfg.enabled?'LEDGER_NOT_CONNECTED':'OWNER_OFF',checkedAt:now,networkCalls:0,archiveCoverage:coverageReport,qualified:rows.filter(x=>x.candidates?.length).length};
  // The independent ledger is not installed yet; never publish transient candidates as locked predictions.
  for(const row of out.rows)row.picks=[];
- await this.ctx.storage.put('botRun',{checkedAt:now,inputs:fixtures.length,checked:rows.length,complete:rows.filter(x=>x.homeCount===10&&x.awayCount===10).length,qualified:out.qualified,networkCalls:0});
+ await this.ctx.storage.put('botRun',{checkedAt:now,inputs:fixtures.length,checked:rows.length,archiveCoverage:coverageReport,complete:rows.filter(x=>x.homeCount===10&&x.awayCount===10).length,qualified:out.qualified,networkCalls:0});
  await this.ctx.storage.put('previewSelections',out);return json(out)}
  if(path==='/daily-state'&&req.method==='GET')return json({stored:totals(this.db),daily:await this.ctx.storage.get('dailyImport')??null});
  if(path==='/daily-init'&&req.method==='POST'){
