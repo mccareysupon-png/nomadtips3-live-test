@@ -1,4 +1,4 @@
-import test from 'node:test';import assert from 'node:assert/strict';import {DatabaseSync} from 'node:sqlite';import {init,ingest} from './history.mjs';import {dryRunStored,BASELINE_SHADOW,ACCUMULATION_SHADOW} from './stored-signal-adapter.mjs';
+import test from 'node:test';import assert from 'node:assert/strict';import {DatabaseSync} from 'node:sqlite';import {init,ingest} from './history.mjs';import {dryRunStored,BASELINE_SHADOW,ACCUMULATION_SHADOW,TRIAL_SHADOW,rejectionStage} from './stored-signal-adapter.mjs';
 import {evaluateBttsSignal} from './evaluate-btts-signal.mjs';import {evaluate1x2Signal} from './evaluate-1x2-signal.mjs';
 // Synthetic contract test only. Actual archive is tested independently.
 const sql=new DatabaseSync(':memory:');const db={exec:(q,...a)=>{const s=sql.prepare(q);return /^\s*SELECT/i.test(q)?s.all(...a):(s.run(...a),[])},transaction:f=>{sql.exec('BEGIN');try{const r=f();sql.exec('COMMIT');return r}catch(e){sql.exec('ROLLBACK');throw e}}};init(db);
@@ -33,4 +33,35 @@ test('actual SQLite contract selects five and never pads or publishes; zero pric
  assert.equal(base.rows[0].btts.reason,'INSUFFICIENT_HISTORY');assert.equal(next.rows[0].homeCount,5);assert.equal(next.rows[0].awayCount,5);assert.equal(next.counts.bothReady,1);assert.equal(next.rows[0].btts.signal,'BTTS_YES');assert.equal(next.rows[0].oneX2.signal,'HOME_WIN');assert.equal(next.published,0);
  const z=structuredClone(q);for(const k of Object.keys(z.storedBet365.prices))z.storedBet365.prices[k]=0;const blocked=dryRunStored(db,[z],300);
  assert.equal(blocked.rows[0].btts.reason,'NO_STORED_BET365_PRICE');assert.equal(blocked.rows[0].oneX2.reason,'NO_STORED_BET365_PRICE');assert.equal(blocked.outcomes.btts.NO_SIGNAL,1);assert.equal(blocked.outcomes.oneX2.NO_SIGNAL,1);
+});
+
+test('trial accepts exactly three real rows and rejects two',()=>{
+ const q=input5([[2,1],[2,1],[2,1]],[[1,2],[1,2],[1,2]],{yes:1.85,no:2.1});
+ const cfg={...TRIAL_SHADOW.btts,minHistory:3,enabled:true};
+ assert.equal(evaluateBttsSignal(q,cfg).signal,'BTTS_YES');
+ assert.equal(evaluateBttsSignal({...q,homeLast10:q.homeLast10.slice(1)},cfg).reason,'INVALID_OR_INCOMPLETE_HISTORY');
+ assert.equal(evaluateBttsSignal(q,bcfg).reason,'INVALID_OR_INCOMPLETE_HISTORY');
+});
+test('trial rejection counter classifies first failed stage without double counting',()=>{
+ const cfg=TRIAL_SHADOW.btts, mk=(sides)=>({signal:'NO_SIGNAL',reason:'FILTERS_NOT_MET',metrics:{sides}});
+ const row={signal:'BTTS_YES',model:.6,price:1.9,edge:.06,ev:.14};
+ assert.equal(rejectionStage(mk([{...row,model:.5}]),cfg,'btts'),'PROBABILITY_BELOW');
+ assert.equal(rejectionStage(mk([{...row,price:1.3}]),cfg,'btts'),'PRICE_RANGE');
+ assert.equal(rejectionStage(mk([{...row,edge:.005}]),cfg,'btts'),'EDGE_EV_BELOW');
+ assert.equal(rejectionStage(mk([{...row,ev:.005}]),cfg,'btts'),'EDGE_EV_BELOW');
+ assert.equal(rejectionStage({signal:'NO_SIGNAL',reason:'NO_STORED_BET365_PRICE'},cfg,'btts'),'NO_STORED_BET365_PRICE');
+ assert.equal(rejectionStage({signal:'NO_SIGNAL',reason:'INSUFFICIENT_HISTORY'},cfg,'btts'),'INSUFFICIENT_HISTORY');
+ assert.equal(rejectionStage({signal:'BTTS_YES'},cfg,'btts'),'PASSED');
+});
+test('three-match shadow both markets and independent missing-input counters',()=>{
+ const samples=Array.from({length:6},(_,i)=>({id:300+i,league:{id:1},teams:{home:{id:i<3?5:6},away:{id:3000+i}},kickoff_ts:100+i,status:'finished',status_code:'full',goals:{home:i<3?3:1,away:i<3?1:2}}));
+ ingest(db,samples,200);
+ const q={...f,id:997,teams:{home:{id:5},away:{id:6}}};
+ const base=dryRunStored(db,[q],300,10,ACCUMULATION_SHADOW),next=dryRunStored(db,[q],300);
+ assert.equal(base.diagnostics.btts.INSUFFICIENT_HISTORY,1);assert.equal(next.profile.minHistory,3);assert.equal(next.diagnostics.btts.PASSED,1);assert.equal(next.diagnostics.oneX2.PASSED,1);
+ const missing={...q,id:996,storedBet365:undefined},short={...missing,id:995,teams:{home:{id:5},away:{id:3000}}};
+ const r=dryRunStored(db,[q,missing,short],300);
+ assert.deepEqual(r.diagnostics.missingInputs,{history:1,bttsOdds:2,oneX2Odds:2});
+ for(const market of ['btts','oneX2']){assert.equal(r.diagnostics[market].PASSED,1);assert.equal(r.diagnostics[market].NO_STORED_BET365_PRICE,1);assert.equal(r.diagnostics[market].INSUFFICIENT_HISTORY,1);assert.equal(Object.values(r.diagnostics[market]).reduce((a,b)=>a+b,0),3)}
+ assert.equal(r.published,0);
 });
