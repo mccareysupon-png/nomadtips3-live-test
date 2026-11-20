@@ -17,7 +17,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: node --test qa/prematch-history-20261120/evaluate-btts-signal.test.mjs qa/prematch-history-20261120/evaluate-1x2-signal.test.mjs qa/prematch-history-20261120/stored-signal-adapter.test.mjs qa/prematch-history-20261120/stored-prematch-feed.test.mjs
+      - run: node --test qa/prematch-history-20261120/evaluate-btts-signal.test.mjs qa/prematch-history-20261120/evaluate-1x2-signal.test.mjs qa/prematch-history-20261120/stored-signal-adapter.test.mjs qa/prematch-history-20261120/stored-prematch-feed.test.mjs qa/prematch-history-20261120/market-1x2.test.mjs
       - name: Deploy isolated daily archive and verify existing cycle
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -44,3 +44,5 @@ jobs:
 # Verify temporary three-match shadow thresholds and filter diagnostics.
 
 # Verify probability-first evaluation without odds on the isolated test Worker.
+
+# Deploy market-anchored 1X2 experimental profile only to isolated test.
