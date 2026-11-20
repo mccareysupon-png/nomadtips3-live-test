@@ -52,7 +52,7 @@ const baseline=await observe();report.baseline=baseline;
 const safe=x=>x.hubOk===true&&Number.isFinite(x.hubAgeMs)&&x.hubAgeMs<30000&&x.quota===true&&!x.lastError&&!x.lastRateLimitAt&&x.engineOk===true&&!x.engineError;
 if(!safe(baseline)){report.state='BLOCKED_LIVE_FIRST_GATE';finish();process.exit(0)}
 const protectBefore=await current('ball46-production');console.log('ROLLBACK_PLAN',JSON.stringify(versions));
-async function deploy(n,id){const r=await cf('/scripts/'+n+'/deployments',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({strategy:'percentage',versions:[{version_id:id,percentage:100}]})});assert(r.versions?.some(v=>v.version_id===id&&v.percentage===100));}
+async function deploy(n,id){await cf('/scripts/'+n+'/deployments',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({strategy:'percentage',versions:[{version_id:id,percentage:100}]})});for(let i=0;i<12;i++){if(await current(n)===id)return;await new Promise(r=>setTimeout(r,1000))}throw Error('DEPLOYMENT_NOT_CONFIRMED '+n);}
 async function undo(n){if(await current(n)===versions[n].next){await deploy(n,versions[n].old);assert.equal(await current(n),versions[n].old);report.rollback.push(n)}}
 // Only the additive HUB route is activated in this first production step;
 // live client versions remain inactive until real auth and runtime verification.
