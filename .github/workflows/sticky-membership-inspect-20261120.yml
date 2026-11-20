@@ -1,0 +1,33 @@
+name: Inspect membership sticky geometry read only
+on:
+  push:
+    branches: [test/ball46-sticky-membership-20261120]
+    paths: ['.github/workflows/sticky-membership-inspect-20261120.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm install --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium --only-shell
+          node <<'EOF'
+          const {chromium,devices}=require('playwright');
+          (async()=>{const b=await chromium.launch();try{
+          await Promise.all([false,true].map(async mobile=>{
+          const p=await b.newPage(mobile?{...devices['iPhone 13'],serviceWorkers:'block'}:{viewport:{width:1920,height:1080},serviceWorkers:'block'});
+          await p.route('**/*',r=>['GET','HEAD'].includes(r.request().method())?r.continue():r.abort());
+          await p.goto('https://ball46.com/',{waitUntil:'domcontentloaded'});await p.waitForTimeout(3500);
+          const data=await p.evaluate(()=>{const es=[...document.querySelectorAll('body *')].filter(e=>e.children.length===0&&/GET CLOSER TO THE GAME|BECOME A BALL46 MEMBER|JOIN NOW/i.test(e.textContent.trim())&&e.textContent.trim().length<150);
+          const describe=e=>{const s=getComputedStyle(e),r=e.getBoundingClientRect();return {tag:e.tagName,id:e.id,cls:typeof e.className==='string'?e.className:'',attrs:[...e.attributes].map(a=>[a.name,a.value.slice(0,220)]),rect:r.toJSON(),position:s.position,overflow:s.overflow,overflowY:s.overflowY,z:s.zIndex,display:s.display,top:s.top,scrollHeight:e.scrollHeight,clientHeight:e.clientHeight,background:s.backgroundColor}};
+          return {matches:es.slice(0,8).map(e=>{let a=[];for(let x=e;x;x=x.parentElement)a.push(describe(x));return a}),promo:[...document.querySelectorAll('[class*="promo"],[id*="promo"],[class*="membership"],[id*="membership"]')].filter(e=>e.tagName!=='STYLE'&&e.tagName!=='SCRIPT').slice(0,25).map(describe),scrolls:[...document.querySelectorAll('body *')].filter(e=>e.clientHeight>60&&e.scrollHeight>e.clientHeight+50&&/auto|scroll/.test(getComputedStyle(e).overflowY)).slice(0,15).map(describe)}});
+          console.log('PROMO_INSPECT '+JSON.stringify({mobile,...data}));
+          if(!mobile){const html=await(await p.request.get('https://ball46.com/')).text();const x=html.indexOf('id="b46-member-promo-cta-test-20261120"');console.log('PROMO_STYLE '+JSON.stringify(html.slice(Math.max(0,x-100),x+6000)))}
+          await p.close()}))
+          }finally{await b.close()}})().catch(e=>{console.error(e);process.exit(1)})
+          EOF
