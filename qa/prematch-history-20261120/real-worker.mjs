@@ -113,6 +113,7 @@ export default {async fetch(req,env){
  if(req.method==='GET'&&p==='/last5-version')return Response.json({version:'LAST5_ARCHIVE_V1'});
  if(req.method==='GET'&&p==='/audit-version')return Response.json({auditVersion:'REAL_SQL_MATCH_V1'});
  if(req.method==='GET'&&p==='/backfill')return stub.fetch('https://history.internal/backfill');
+ if(req.method==='POST'&&['/import-history-page','/coverage10'].includes(p)&&env.HISTORY_IMPORT_SECRET&&req.headers.get('Authorization')==='Bearer '+env.HISTORY_IMPORT_SECRET)return stub.fetch(new Request('https://history.internal'+p,req));
  if(req.method==='POST'&&['/bootstrap','/prepare-backfill','/audit-real','/refresh-names','/seed-history-page','/coverage10','/import-history-page'].includes(p)&&env.BOOTSTRAP_SECRET&&req.headers.get('Authorization')==='Bearer '+env.BOOTSTRAP_SECRET)return stub.fetch(new Request('https://history.internal'+p,req));
  return new Response('Not found',{status:404});
 }};
