@@ -1,0 +1,76 @@
+name: BALL46 Total outcome bar border mask test only
+on:
+  push:
+    branches: [test/ball46-total-outcome-border-20261120]
+    paths: ['.github/workflows/total-outcome-test-20261120.yml']
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Deploy isolated test only
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          node --check qa/total-outcome-border-20261120/worker.mjs
+          cat > qa/total-outcome-border-20261120/wrangler.toml <<'EOF'
+          name = "ball46-total-outcome-border-test-20261120"
+          main = "worker.mjs"
+          compatibility_date = "2026-11-20"
+          workers_dev = true
+          preview_urls = false
+          [[services]]
+          binding = "B46_PRODUCTION_READ"
+          service = "ball46-production"
+          EOF
+          node --input-type=module <<'EOF'
+          import assert from 'node:assert/strict';import {writeFile} from 'node:fs/promises';
+          const r=await fetch('https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+'/workers/scripts/ball46-production/deployments?per_page=1',{headers:{authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN}});const j=await r.json();assert(j.success);await writeFile(process.env.RUNNER_TEMP+'/prod-before.json',JSON.stringify(j.result.deployments[0].versions));
+          EOF
+          for attempt in 1 2 3; do
+            if npx --yes wrangler@4.50.0 deploy --config qa/total-outcome-border-20261120/wrangler.toml --name ball46-total-outcome-border-test-20261120; then break; fi
+            if [ "$attempt" = 3 ]; then exit 1; fi
+            sleep 5
+          done
+      - name: Verify all eight markets desktop and mobile
+        run: |
+          npm install --prefix qa/total-outcome-border-20261120/.runtime --no-audit --no-fund playwright@1.55.0
+          qa/total-outcome-border-20261120/.runtime/node_modules/.bin/playwright install chromium --only-shell
+          node --input-type=module <<'EOF'
+          import assert from 'node:assert/strict';import {createRequire} from 'node:module';
+          const {chromium,devices}=createRequire(process.cwd()+'/qa/total-outcome-border-20261120/.runtime/package.json')('playwright');
+          const base='https://ball46-total-outcome-border-test-20261120.mccarey-supon.workers.dev';
+          let health;for(let i=0;i<15;i++){try{const r=await fetch(base+'/_total_outcome_health');if(r.ok){health=await r.json();break}}catch{}await new Promise(r=>setTimeout(r,2000))}
+          assert.equal(health?.scope,'TEST_ONLY_TOTAL_OUTCOME_BORDER');assert.equal(health?.revision,'OUTCOME_BORDER_V2');assert.equal((await fetch(base+'/_total_outcome_health',{method:'POST'})).status,405);
+          const browser=await chromium.launch();try{await Promise.all(['wide-dark','desktop-light','mobile-dark','mobile-light'].map(async mode=>{const mobile=mode.startsWith('mobile'),theme=mode.endsWith('dark')?'dark':'light';
+          const p=await browser.newPage(mobile?{...devices['iPhone 13'],serviceWorkers:'block'}:{viewport:{width:mode.startsWith('wide')?1920:1440,height:950},serviceWorkers:'block'});
+          await p.addInitScript(t=>localStorage.setItem('nomad343_dashboard_theme_v1',t),theme);
+          await p.route('**/*',r=>['GET','HEAD'].includes(r.request().method())?r.continue():r.abort());
+          await p.goto(base+'/index.html?view=statistics',{waitUntil:'domcontentloaded'});
+          await p.waitForFunction(()=>[...document.querySelectorAll('[data-sp-table-body] tr')].some(r=>r.cells.length>=4),null,{timeout:90000});
+          for(const market of ['all','1x2','ah','ou','btts','corners','cards','other','all']){
+          if(!mobile)await p.locator('[data-stat-market="'+market+'"]').first().click();
+          else{await p.locator('[data-stat-market="'+market+'"]').first().evaluate(e=>e.click())}
+          await p.waitForFunction(m=>document.querySelector('[data-stat-market].active')?.dataset.statMarket===m&&document.querySelector('#b46-finance-chart-card')?.getBoundingClientRect().height>0&&document.querySelector('.sp-results')?.getBoundingClientRect().height>0,market,{timeout:15000});await p.waitForFunction(()=>document.querySelector('#b46-finance-chart-card .f46-card')?.getBoundingClientRect().height>0,null,{timeout:20000});await p.waitForTimeout(2000);
+          const proof=await p.evaluate(()=>{const c=document.querySelector('#b46-finance-chart-card');const tracks=[...c.querySelectorAll('.b46-stage-outcomes-track')].map(e=>{const s=getComputedStyle(e);return {visible:!!e.getClientRects().length,shadow:s.boxShadow,bg:s.backgroundColor,outline:s.outlineStyle,border:s.borderTopColor,padding:s.padding,gap:s.gap,segments:[...e.querySelectorAll('.b46-stage-outcomes-segment')].map(x=>{const t=getComputedStyle(x);return {result:x.dataset.result,count:x.dataset.count,width:x.getBoundingClientRect().width,shadow:t.boxShadow,bg:t.backgroundColor,outline:t.outlineStyle,border:t.borderTopColor}})}});return {active:document.querySelector('[data-stat-market].active')?.dataset.statMarket,style:!!document.getElementById('b46-total-outcome-border-20261120'),tracks,otherBars:c.querySelectorAll('.b46-v1-market-outcomes-track').length}});
+          console.log('OUTCOME_PROOF '+JSON.stringify({mode,market,...proof}));assert.equal(proof.active,market);assert(proof.style,'STYLE_MISSING');if(market==='all'&&!mobile){assert(proof.tracks.some(t=>t.visible),'TOTAL_BAR_MISSING');for(const t of proof.tracks.filter(t=>t.visible)){assert.equal(t.shadow,'none');assert.equal(t.bg,'rgba(0, 0, 0, 0)');assert.equal(t.outline,'none');assert.equal(t.padding,'2px');assert.equal(t.gap,'2px');assert.equal(t.segments.length,3);for(const x of t.segments){assert.equal(x.shadow,'none');assert.equal(x.outline,'none');assert(x.bg!=='rgba(0, 0, 0, 0)');assert(Number(x.count)>0&&x.width>0)}}}if(market!=='all')assert(!proof.tracks.some(t=>t.visible),'TOTAL_BAR_LEAK');
+          }await p.close()
+          }))}finally{await browser.close()}
+          EOF
+      - name: Confirm Production unchanged
+        if: always()
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          node --input-type=module <<'EOF'
+          import assert from 'node:assert/strict';import {readFile} from 'node:fs/promises';
+          const before=await readFile(process.env.RUNNER_TEMP+'/prod-before.json','utf8');const r=await fetch('https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+'/workers/scripts/ball46-production/deployments?per_page=1',{headers:{authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN}});const j=await r.json();assert(j.success);assert.deepEqual(j.result.deployments[0].versions,JSON.parse(before));console.log('PRODUCTION_UNCHANGED')
+          EOF
