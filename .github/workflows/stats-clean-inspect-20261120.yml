@@ -1,4 +1,4 @@
-name: Read-only statistics filter DOM inspection
+name: Read-only inspect visible graph card boundaries
 on:
   push:
     branches: [test/ball46-stats-clean-filters-20261120]
@@ -8,7 +8,7 @@ permissions:
 jobs:
   inspect:
     runs-on: ubuntu-24.04
-    timeout-minutes: 6
+    timeout-minutes: 5
     steps:
       - uses: actions/setup-node@v4
         with:
@@ -18,17 +18,16 @@ jobs:
           npx playwright install chromium --only-shell
           node <<'EOF'
           const {chromium,devices}=require('playwright');
-          (async()=>{const browser=await chromium.launch();try{for(const mobile of [false,true]){
-          const p=await browser.newPage(mobile?{...devices['iPhone 13'],serviceWorkers:'block'}:{viewport:{width:1440,height:950},serviceWorkers:'block'});
+          (async()=>{const browser=await chromium.launch();try{
+          for(const mode of ['wide','desktop','mobile']){
+          const mobile=mode==='mobile';
+          const p=await browser.newPage(mobile?{...devices['iPhone 13'],serviceWorkers:'block'}:{viewport:{width:mode==='wide'?1920:1440,height:1000},serviceWorkers:'block'});
           await p.route('**/*',r=>['GET','HEAD'].includes(r.request().method())?r.continue():r.abort());
           await p.goto('https://ball46-stats-clean-filters-test-20261120.mccarey-supon.workers.dev/index.html?view=statistics',{waitUntil:'domcontentloaded'});
-          await p.waitForFunction(()=>[...document.querySelectorAll('[data-sp-table-body] tr')].some(r=>r.cells.length>=4),null,{timeout:90000});
-          for(const market of ['all','1x2','ah','ou','btts','corners','cards','other']){
-          if(!mobile)await p.locator('[data-stat-market="'+market+'"]').first().click();
-          else if(market!=='all'){await p.locator('[data-b46m-open]').click();await p.locator('#b46m-drawer [data-b46m-market="'+market+'"]').first().click()}
-          await p.waitForTimeout(2200);
-          const info=await p.evaluate(()=>{const c=document.querySelector('.sp-stats-content');const x=e=>{const r=e.getBoundingClientRect(),s=getComputedStyle(e);return {tag:e.tagName,id:e.id,cls:e.className,top:Math.round(r.top),bottom:Math.round(r.bottom),height:Math.round(r.height),display:s.display,margin:s.margin,padding:s.padding,gap:s.gap,position:s.position,minHeight:s.minHeight}};return {content:x(c),children:[...c.children].map(x),graph:x(document.querySelector('#b46-finance-chart-card')),results:x(document.querySelector('.sp-results'))}}); 
-          console.log('GAP_DOM '+JSON.stringify({mobile,market,info}));
-          }await p.close()
+          await p.waitForFunction(()=>[...document.querySelectorAll('[data-sp-table-body] tr')].some(r=>r.cells.length>=4),null,{timeout:60000});
+          await p.locator('[data-stat-market="1x2"]').first().evaluate(e=>e.click());
+          await p.waitForTimeout(4500);
+          const v=await p.evaluate(()=>{const g=document.querySelector('#b46-finance-chart-card'),res=document.querySelector('.sp-results');const a=e=>{const r=e.getBoundingClientRect(),s=getComputedStyle(e);return {tag:e.tagName,id:e.id,cls:typeof e.className==='string'?e.className:'svg',t:Math.round(r.top),b:Math.round(r.bottom),h:Math.round(r.height),w:Math.round(r.width),display:s.display,margin:s.margin,padding:s.padding,gap:s.gap,position:s.position,height:s.height,min:s.minHeight,bg:s.backgroundColor,shadow:s.boxShadow.slice(0,70)}};return {g:a(g),res:a(res),children:[...g.querySelectorAll('*')].filter(e=>{const r=e.getBoundingClientRect();return r.height>20&&r.width>120&&e.tagName!=='path'&&e.tagName!=='svg'}).slice(0,65).map(a)}});
+          console.log('VISIBLE_GAP '+JSON.stringify({mode,...v}));await p.close();
           }}finally{await browser.close()}})().catch(e=>{console.error(e);process.exit(1)})
           EOF
