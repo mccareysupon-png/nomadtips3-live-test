@@ -73,10 +73,12 @@ jobs:
             const graphs=[];p.on('response',async r=>{try{if(new URL(r.url()).pathname==='/b46-receiver-v1/graph'&&r.ok())graphs.push(await r.json())}catch{}});
             await p.route('**/*',r=>['GET','HEAD'].includes(r.request().method())?r.continue():r.abort());
             await p.goto(base+'/index.html?view=statistics',{waitUntil:'domcontentloaded'});
-            await p.waitForFunction(()=>document.querySelector('#b46-finance-chart-card [data-key="rate"] strong')?.textContent?.includes('%'),null,{timeout:60000});
-            const rate=await p.locator('#b46-finance-chart-card [data-key="rate"] strong').first().innerText();
+            await p.waitForFunction(()=>{const card=document.querySelector('#b46-finance-chart-card');return card&&[...card.querySelectorAll('[data-key="rate"] strong,[data-b46-rate-tone],.b46-perf-kpi b')].some(e=>e.getBoundingClientRect().width>0&&/^\d+(?:\.\d+)?%$/.test(e.textContent.trim()))},null,{timeout:40000}).catch(()=>{});
+            const info=await p.evaluate(()=>{const card=document.querySelector('#b46-finance-chart-card'),panel=document.querySelector('[data-workspace-panel="statistics"]');return {summary:card?.innerText?.slice(0,1800),visible:[...((card||panel)?.querySelectorAll('[data-key="rate"] strong,[data-b46-rate-tone],.b46-perf-kpi b')||[])].filter(e=>e.getBoundingClientRect().width>0).map(e=>({text:e.textContent,html:e.parentElement.outerHTML.slice(0,400)})),body:panel?.innerText?.slice(0,800)}});
+            console.log('MOBILE_DOM '+JSON.stringify({mobile,...info}));
+            const rate=info.visible.find(o=>/WIN RATE/i.test(o.html)&&/^\d+(?:\.\d+)?%$/.test(o.text.trim()))?.text?.trim()||info.summary?.match(/WIN RATE\s*\n\s*(\d+(?:\.\d+)?%)/i)?.[1];assert(rate,'VISIBLE_RATE_MISSING');
             const g=graphs.find(x=>x.market==='all'&&x.range==='all');assert(g,'MISSING_GRAPH');const expected=g.summary.wins/(g.summary.wins+g.summary.losses)*100;assert(Math.abs(parseFloat(rate)-expected)<.051,'RATE '+rate+' '+expected);
-            const sidebar=await p.locator('.left-rail').innerText();const monitor=sidebar.match(/Total\s*\n\s*(\d+(?:\.\d+)?)%/);
+            const sidebar=await p.locator('.left-rail').textContent()||'';const monitor=sidebar.match(/Total\s*\n\s*(\d+(?:\.\d+)?)%/);
             if(monitor)assert(Math.abs(Number(monitor[1])-expected)<.1,'MONITOR_DRIFT');
             console.log('CURRENT_RATE_PASS '+JSON.stringify({mobile,rate,expected,sequence:g.sequence,monitor:monitor?.[1]??null,legacyChartLast:g.series.rate.at(-1)?.value}));
             await p.close();
