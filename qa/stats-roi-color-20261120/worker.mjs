@@ -18,12 +18,12 @@ export function patchRoi(s,path){
  }
  return s;
 }
-export const css='<style id="b46-stats-roi-color-20261120">html:root body [data-b46-roi-tone="green"][data-b46-roi-tone]{color:#087c50!important}html:root body [data-b46-roi-tone="red"][data-b46-roi-tone]{color:#b42336!important}html:root body [data-b46-roi-tone="yellow"][data-b46-roi-tone]{color:#946200!important}html:root[data-theme="dark"] body [data-b46-roi-tone="green"][data-b46-roi-tone]{color:#55d6a1!important}html:root[data-theme="dark"] body [data-b46-roi-tone="red"][data-b46-roi-tone]{color:#ff727e!important}html:root[data-theme="dark"] body [data-b46-roi-tone="yellow"][data-b46-roi-tone]{color:#f5ce57!important}</style>';
+export const css='<style id="b46-stats-roi-color-20261120">@layer b46RoiPalette{html:root body [data-b46-roi-tone="green"][data-b46-roi-tone]{color:#087c50!important}html:root body [data-b46-roi-tone="red"][data-b46-roi-tone]{color:#b42336!important}html:root body [data-b46-roi-tone="yellow"][data-b46-roi-tone]{color:#946200!important}html:root[data-theme="dark"] body [data-b46-roi-tone="green"][data-b46-roi-tone]{color:#55d6a1!important}html:root[data-theme="dark"] body [data-b46-roi-tone="red"][data-b46-roi-tone]{color:#ff727e!important}html:root[data-theme="dark"] body [data-b46-roi-tone="yellow"][data-b46-roi-tone]{color:#f5ce57!important}}</style>';
 
 export default {async fetch(req,env){
  const u=new URL(req.url);
  if(!['GET','HEAD'].includes(req.method))return Response.json({error:'READ_ONLY'},{status:405});
- if(u.pathname==='/_stats_roi_health')return Response.json({ok:true,name,scope:'TEST_ONLY_ROI_COLOR',revision:'ROI_TONE_V1'});
+ if(u.pathname==='/_stats_roi_health')return Response.json({ok:true,name,scope:'TEST_ONLY_ROI_COLOR',revision:'ROI_TONE_V2'});
  if(!pages.has(u.pathname)&&!apis.has(u.pathname)&&!(/^\/[a-zA-Z0-9_./-]+\.(js|mjs|css|svg|png|gif|woff2?|ico|jpe?g|webp|json|html|txt|map|avif)$/i.test(u.pathname)&&!/^\/(?:api|b46-receiver-v1|admin|internal)\//.test(u.pathname)))return Response.json({error:'PATH_NOT_ALLOWED'},{status:404});
  const headers=new Headers();for(const k of ['accept','accept-language','user-agent','sec-ch-ua-mobile']){const v=req.headers.get(k);if(v)headers.set(k,v.slice(0,512))}
  const r=await env.B46_PRODUCTION_READ.fetch(new Request(new URL(u.pathname+u.search,'https://ball46.com'),{method:req.method,headers,redirect:'manual'}));
