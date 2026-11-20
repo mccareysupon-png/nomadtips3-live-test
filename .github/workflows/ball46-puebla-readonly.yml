@@ -26,7 +26,7 @@ jobs:
           python - <<'PY'
           import json,pathlib,re
           rows=[];names={};hits=[]
-          pattern=re.compile(r'gimnasia|trist[aá]n\s*su[aá]rez',re.I)
+          pattern=re.compile(r'gharaf[ah]|al[-\s]*arabi',re.I)
           def visit(x):
             if isinstance(x,list):
               for v in x: visit(v)
