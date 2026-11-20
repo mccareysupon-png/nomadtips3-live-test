@@ -22,13 +22,15 @@ async function inspect(n){
  }
  return out;
 }
-for(let i=0;i<known.length;i+=5){const group=await Promise.all(known.slice(i,i+5).map(async n=>{try{return await inspect(n)}catch(e){return{name:n,error:String(e.message).slice(0,150)}}}));results.push(...group)}
+const inventory=[...new Set([...known,...scripts.map(x=>x.id).filter(Boolean)])];
+for(let i=0;i<inventory.length;i+=5){const group=await Promise.all(inventory.slice(i,i+5).map(async n=>{try{return await inspect(n)}catch(e){return{name:n,error:String(e.message).slice(0,150)}}}));results.push(...group)}
 // Inspect all service-binding dependencies without invoking any worker routes.
 const inbound=[];const failures=[];
 for(let i=0;i<scripts.length;i+=10){await Promise.all(scripts.slice(i,i+10).map(async x=>{const n=x.id;try{if(!n)return;const s=await cf('/scripts/'+n+'/settings');for(const b of s.bindings??[])if(b.type==='service'&&known.includes(b.service))inbound.push({from:n,to:b.service,binding:b.name})}catch{failures.push(n)}}))}
 const health=async n=>{const r=await fetch('https://'+n+'.mccarey-supon.workers.dev/health',{signal:AbortSignal.timeout(15000)});assert(r.ok);const j=await r.json();return {ok:j.ok,ageMs:j.ageMs,live:j.counts?.live??j.liveCount,seconds:j.control?.liveRefreshSeconds,lastError:j.lastError,quotaObserved:j.bulkSpeedV3?.quotaObserved,refereeRequests:j.refereeRequests,refereeErrors:j.refereeErrors,bulkSpeedFields:Object.keys(j.bulkSpeedV3??{}),engineFinishedAt:j.finishedAt}};
 const h=await health(hub),e=await health(eng);
 const concise=results.map(x=>({name:x.name,schedules:x.schedules,error:x.error,versions:x.versions?.map(v=>({id:v.id,modulesReadable:v.modulesReadable,keyBindings:v.keyBindings,providerMention:v.providerMention,flags:v.flags,services:v.services,bridgeReferences:v.evidence.filter(z=>z.kind==='BRIDGE').length}))}));
-const report={workers:scripts.length,inspected:results.length,failed:failures,legacy:concise,inbound,health:{hub:h,engine:e},realProviderRequestsAdded:0};
+const unresolved=results.filter(x=>x.error||!x.versions?.length||x.versions.some(v=>!v.modulesReadable||(x.name!==hub&&(v.providerMention||v.keyBindings.length)))).map(x=>x.name);
+const report={workers:scripts.length,inspected:results.length,failed:failures,unresolved,accountCoordination:'NOT_PROVEN',historyActivationAllowed:false,legacy:concise,inbound,health:{hub:h,engine:e},realProviderRequestsAdded:0};
 fs.mkdirSync('evidence',{recursive:true});fs.writeFileSync('evidence/legacy-account-gate.json',JSON.stringify({...report,details:results},null,2));
 console.log('LEGACY_ACCOUNT_GATE '+JSON.stringify(report));
