@@ -16,3 +16,5 @@ jobs:
           node-version: '22'
       - name: Test history, queue and mock quota gateway
         run: node --test qa/prematch-history-20261120/*.test.mjs
+
+# End-to-end integration against simulated shared quota and provider; no API keys.
