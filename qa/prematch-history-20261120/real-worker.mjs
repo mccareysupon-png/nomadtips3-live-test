@@ -4,6 +4,7 @@ import {initBackfill,planBackfill} from './backfill.mjs';
 import {initJohn,prepareDay,prepareCatalog,observeUnresolved,prepareUnknown,johnSummary,nextCutoff} from './john-sync.mjs';
 import {auditHistory} from './audit-history.mjs';
 import {initNames,rememberNames,validateLast5,archiveLast5} from './last5-archive.mjs';
+import {seedFromSnapshot,upcomingCoverage} from './step7-runtime.mjs';
 const SYNC_POLICY='JOHN_LOCAL_PLAN_V3';
 const H='https://hub.internal/snapshot';
 const epoch=()=>Math.floor(Date.now()/1000);
@@ -22,6 +23,7 @@ function nextAlarm(now){return nextCutoff(now)*1000}
 export class RealHistory extends DurableObject{
  constructor(ctx,env){super(ctx,env);this.db={exec:(q,...a)=>ctx.storage.sql.exec(q,...a),transaction:f=>ctx.storage.transactionSync(f)};init(this.db);initBackfill(this.db);initJohn(this.db);initNames(this.db);this.busy=null}
  async run(){
+  if(this.seedBusy)throw Error('SEED_IN_PROGRESS');
   if(this.busy)return this.busy;
   this.busy=(async()=>{
    const now=epoch(),cycle=dailyPlan(now).cycle,prev=await this.ctx.storage.get('report');
@@ -56,6 +58,17 @@ export class RealHistory extends DurableObject{
  async fetch(req){
   const path=new URL(req.url).pathname;
   if(req.method==='GET'&&path==='/last5'){try{return Response.json(archiveLast5(this.db,validateLast5(new URL(req.url),epoch()),epoch()),{headers:{'cache-control':'no-store'}})}catch{return Response.json({ok:false,error:'INVALID_HISTORY_REQUEST'},{status:400})}}
+  if(req.method==='POST'&&['/seed-history-page','/coverage10'].includes(path)){
+   if(this.busy||this.seedBusy)return Response.json({state:'BUSY',requests:0},{status:409});
+   this.seedBusy=true;
+   try{
+    const r=await this.env.SOURCE_HUB.fetch(H,{method:'GET'});if(!r.ok)throw Error('HUB_HTTP');
+    const j=await r.json(),now=epoch();
+    if(j.ok!==true||j.cacheOnly!==true||j.externalRequestsAdded!==0||j.stale!==false||!Number.isFinite(j.ageMs)||j.ageMs>30000||!Array.isArray(j.fixtures))throw Error('CACHE_CONTRACT');
+    const out=path==='/coverage10'?upcomingCoverage(this.db,j.fixtures,now):await seedFromSnapshot(this.db,this.env,j,now);
+    return Response.json(out,{headers:{'cache-control':'no-store'}});
+   }catch(e){return Response.json({state:'REVIEW_REQUIRED',error:String(e.message).slice(0,160)},{status:502})}finally{this.seedBusy=false}
+  }
   if(req.method==='POST'&&path==='/refresh-names'){
    try{const r=await this.env.SOURCE_HUB.fetch(H,{method:'GET'}),j=await r.json();if(!r.ok||j.ok!==true||j.cacheOnly!==true||j.externalRequestsAdded!==0||j.stale||!Array.isArray(j.fixtures)||j.fixtures.length>15000)throw Error('CACHE_CONTRACT');const now=epoch(),count=rememberNames(this.db,j.fixtures,now);return Response.json({ok:true,teamNames:count,stored:totals(this.db),externalRequestsAdded:0})}catch(e){return Response.json({ok:false,error:String(e.message).slice(0,160)},{status:502})}
   }
@@ -90,6 +103,6 @@ export default {async fetch(req,env){
  if(req.method==='GET'&&p==='/last5-version')return Response.json({version:'LAST5_ARCHIVE_V1'});
  if(req.method==='GET'&&p==='/audit-version')return Response.json({auditVersion:'REAL_SQL_MATCH_V1'});
  if(req.method==='GET'&&p==='/backfill')return stub.fetch('https://history.internal/backfill');
- if(req.method==='POST'&&['/bootstrap','/prepare-backfill','/audit-real','/refresh-names'].includes(p)&&env.BOOTSTRAP_SECRET&&req.headers.get('Authorization')==='Bearer '+env.BOOTSTRAP_SECRET)return stub.fetch('https://history.internal'+p,{method:'POST'});
+ if(req.method==='POST'&&['/bootstrap','/prepare-backfill','/audit-real','/refresh-names','/seed-history-page','/coverage10'].includes(p)&&env.BOOTSTRAP_SECRET&&req.headers.get('Authorization')==='Bearer '+env.BOOTSTRAP_SECRET)return stub.fetch('https://history.internal'+p,{method:'POST'});
  return new Response('Not found',{status:404});
 }};
