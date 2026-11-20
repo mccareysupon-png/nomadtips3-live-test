@@ -1,0 +1,10 @@
+import original from './__ORIGINAL_MAIN__';
+export * from './__ORIGINAL_MAIN__';
+export const css='<style id="b46-sticky-membership-20261120">@media(min-width:761px){@layer b46StickyMembership{html:root body[data-workspace-view="statistics"] .workspace.singlepage > .left-rail{top:18px!important;overscroll-behavior-y:contain}html:root body[data-workspace-view="statistics"] [data-workspace-panel="statistics"]{max-height:calc(100dvh - 30px)!important;min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior-y:contain;scrollbar-width:none;scroll-padding-top:104px}html:root body[data-workspace-view="statistics"] [data-workspace-panel="statistics"]::-webkit-scrollbar{width:0;height:0}html:root body [data-workspace-panel="statistics"] > .b46-stat-member-top{position:sticky!important;top:0!important;z-index:30!important;align-self:start!important;isolation:isolate;--b46-banner-mask:#f2f7f4}html:root[data-theme="dark"] body [data-workspace-panel="statistics"] > .b46-stat-member-top{--b46-banner-mask:var(--bg,var(--page-bg,#101417))}html:root body [data-workspace-panel="statistics"] > .b46-stat-member-top::before{content:"";position:absolute;inset:0;z-index:-1;background:var(--b46-banner-mask);pointer-events:auto}}}</style>';
+const pages=new Set(['/','/index','/index.html','/statistics','/statistics.html','/statistics-next.html']);
+export default {...original,async fetch(req,env,ctx){
+ const r=await original.fetch(req,env,ctx);
+ if(req.method!=='GET'||!r.ok||!pages.has(new URL(req.url).pathname)||!r.headers.get('content-type')?.includes('text/html'))return r;
+ const h=new Headers(r.headers);for(const k of ['content-length','content-encoding','etag','last-modified'])h.delete(k);h.set('cache-control','no-store');
+ return new HTMLRewriter().on('head',{element(e){e.append(css,{html:true})}}).transform(new Response(r.body,{status:r.status,statusText:r.statusText,headers:h}));
+}};
