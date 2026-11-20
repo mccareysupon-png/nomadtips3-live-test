@@ -1,0 +1,6 @@
+import assert from 'node:assert/strict';
+const root='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+'/workers';
+async function cf(p){const r=await fetch(root+p,{headers:{Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN},signal:AbortSignal.timeout(20000)});const j=await r.json();assert(r.ok&&j.success);return j.result}
+const names=['ball46-production','nomadtips3-5usd-hub-343','nomadtips3-engine-343','nomadtips3-full-market-343-ball46'];
+for(const n of names){const d=await cf('/scripts/'+n+'/deployments?per_page=3');console.log('ACTUAL_DEPLOYMENT '+JSON.stringify({name:n,deployment:d.deployments.slice(0,3).map(x=>({id:x.id,versions:x.versions,created_on:x.created_on,strategy:x.strategy}))}))}
+for(const n of names.slice(1,3)){const r=await fetch('https://'+n+'.mccarey-supon.workers.dev/health',{signal:AbortSignal.timeout(15000)});const j=await r.json();console.log('ACTUAL_HEALTH '+JSON.stringify({name:n,status:r.status,ok:j.ok,ageMs:j.ageMs,live:j.counts?.live??j.liveCount,seconds:j.control?.liveRefreshSeconds,lastError:j.lastError,lastRateLimitAt:j.lastRateLimitAt,quota:j.bulkSpeedV3?.quotaObserved,engineFinishedAt:j.finishedAt,engineStartedAt:j.startedAt}))}
