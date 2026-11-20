@@ -1,32 +1,26 @@
-import fs from 'node:fs';
-import assert from 'node:assert/strict';
-import {DatabaseSync} from 'node:sqlite';
-import {init,ingest,normalize,totals,dailyPlan,pathFor} from './history.mjs';
-assert(process.env.FIVEDOLLAR_API_KEY,'NO_APPROVED_KEY');
-assert(process.env.GITHUB_RUN_ATTEMPT==='1','NO_AUTOMATIC_REPLAY');
-fs.mkdirSync('evidence/history',{recursive:true});
-const sql=new DatabaseSync('evidence/history/results.sqlite');
-const db={exec:(q,...a)=>{const s=sql.prepare(q);return /^\s*SELECT/i.test(q)?s.all(...a):(s.run(...a),[])},transaction:f=>{sql.exec('BEGIN');try{const r=f();sql.exec('COMMIT');return r}catch(e){sql.exec('ROLLBACK');throw e}}};
-init(db);
-const now=Math.floor(Date.now()/1000),window=dailyPlan(now).windows.find(w=>w.kind==='daily');
-const report={window,requests:0,pages:[],state:'IN_PROGRESS',source:'5USD_DIRECT_FINISHED',stored:totals(db)};
-function save(){report.stored=totals(db);fs.writeFileSync('evidence/history/report.json',JSON.stringify(report,null,2));console.log('DIRECT_HISTORY '+JSON.stringify(report))}
-try{
- for(let p=1;p<=5;p++){
-  report.requests++;
-  const r=await fetch('https://api.5dollarfootballapi.com'+pathFor(window,p),{headers:{authorization:'Bearer '+process.env.FIVEDOLLAR_API_KEY,accept:'application/json'},redirect:'manual',signal:AbortSignal.timeout(20000)});
-  const rawRemaining=r.headers.get('x-ratelimit-remaining'),remaining=rawRemaining===null?null:Number(rawRemaining);
-  if(!r.ok){report.state='HTTP_'+r.status;break}
-  const j=await r.json();
-  assert(j.success===1&&Array.isArray(j.data)&&j.data.length<=100&&j.pagination?.page===p&&typeof j.pagination.has_more==='boolean','INVALID_RESPONSE');
-  const valid=j.data.filter(f=>{const n=normalize(f);return n?.status==='finished'&&n.k>=window.start&&n.k<window.end});
-  fs.writeFileSync('evidence/history/page-'+p+'.json',JSON.stringify(j.data));
-  const stats=ingest(db,valid,now,{start:window.start,end:window.end});
-  report.pages.push({page:p,received:j.data.length,accepted:valid.length,remaining,more:j.pagination.has_more,stats});
-  report.state=j.pagination.has_more?'PARTIAL':'DAILY_WINDOW_COMPLETE';save();
-  if(!j.pagination.has_more)break;
-  if(!Number.isInteger(remaining)||remaining<=25){report.state='PAUSED_HEADROOM';break}
-  await new Promise(r=>setTimeout(r,2000));
- }
-}catch(e){report.state='REVIEW_REQUIRED';report.error=String(e.message).slice(0,200)}
-finally{save();sql.close()}
+// Pre-match only. John: one bulk finished window per day, paginate only when required.
+// No network access on import; one explicit page invocation per externally approved job.
+// Permanent archive remains the single target. No live or per-team requests.
+import {dailyPlan,pathFor,normalize} from './history.mjs';
+export function finishedRequest(now, page=1, kind='daily', windowIndex=0){
+ const windows=dailyPlan(now).windows.filter(w=>w.kind===kind);
+ const w=windows[windowIndex];if(!w)throw Error('INVALID_WINDOW');
+ return {window:w,page,path:pathFor(w,page)};
+}
+export function seasonRequest(league,season,page=1){
+ if(!Number.isSafeInteger(league)||league<=0||typeof season!=='string'||!/^\d{2,4}(\/\d{2,4})?$/.test(season)||!Number.isSafeInteger(page)||page<1)throw Error('CONFIRMED_LEAGUE_SEASON_REQUIRED');
+ return {league,season,page,path:'/v1/leagues/'+league+'/fixtures?'+new URLSearchParams({season,status:'finished',per_page:'100',page:String(page)})};
+}
+export function validatePage(body,plan,now){
+ if(body?.success!==1||!Array.isArray(body.data)||body.data.length>100||body.pagination?.page!==plan.page||typeof body.pagination.has_more!=='boolean'||(body.pagination.has_more&&!body.data.length))throw Error('INVALID_PROVIDER_PAGE');
+ const rows=body.data.filter(f=>{const n=normalize(f);return n?.status==='finished'&&n.k<now&&(!plan.league||n.league===plan.league)&&(!plan.window||(n.k>=plan.window.start&&n.k<plan.window.end))});
+ return {rows,rejected:body.data.length-rows.length,nextPage:body.pagination.has_more?plan.page+1:null};
+}
+export async function importOnePage(plan,{fetchApprovedPage,storePage,now}){
+ if(typeof fetchApprovedPage!=='function'||typeof storePage!=='function'||!Number.isSafeInteger(now))throw Error('EXPLICIT_TRANSPORT_REQUIRED');
+ const r=await fetchApprovedPage(plan.path);
+ if(r.status!==200)throw Error('PROVIDER_HTTP_'+r.status);
+ const parsed=validatePage(r.body,plan,now);
+ if(parsed.rows.length)await storePage(parsed.rows);
+ return {received:parsed.rows.length+parsed.rejected,accepted:parsed.rows.length,rejected:parsed.rejected,nextPage:parsed.nextPage,requests:1};
+}
