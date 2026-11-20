@@ -20,6 +20,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           node --check qa/winrate-canonical-20261120/worker.mjs
+          node --check qa/winrate-canonical-20261120/rate-clone.mjs
           node --input-type=module <<'EOF'
           import assert from 'node:assert/strict';
           import {writeFile} from 'node:fs/promises';
@@ -56,8 +57,28 @@ jobs:
           [[services]]
           binding = "B46_PRODUCTION_READ"
           service = "ball46-production"
+          [[durable_objects.bindings]]
+          name = "B46_RATE_CLONE"
+          class_name = "CanonicalRateClone"
+          [[durable_objects.bindings]]
+          name = "B46_BOOK_READ"
+          class_name = "ShadowProductionStore"
+          script_name = "ball46-shadow-receiver-production"
+          [[migrations]]
+          tag = "canonical-rate-clone-v1"
+          new_sqlite_classes = ["CanonicalRateClone"]
           EOF
           npx --yes wrangler@4.50.0 deploy --config qa/winrate-canonical-20261120/wrangler.toml --name ball46-winrate-canonical-test-20261120
+          export CLONE_TOKEN=$(openssl rand -hex 32)
+          echo "::add-mask::$CLONE_TOKEN"
+          printf '%s' "$CLONE_TOKEN" | npx --yes wrangler@4.50.0 secret put B46_CLONE_TOKEN --config qa/winrate-canonical-20261120/wrangler.toml --name ball46-winrate-canonical-test-20261120
+          node --input-type=module <<'EOF'
+          import assert from 'node:assert/strict';
+          const base='https://ball46-winrate-canonical-test-20261120.mccarey-supon.workers.dev';
+          let d;for(let i=0;i<10;i++){const r=await fetch(base+'/_seed_rate_clone',{method:'POST',headers:{authorization:'Bearer '+process.env.CLONE_TOKEN},signal:AbortSignal.timeout(120000)});if(r.status===403||r.status===405){await new Promise(r=>setTimeout(r,2000));continue}d=await r.json();assert(r.ok&&d.ok,'ISOLATED_SEED '+JSON.stringify(d));break}assert(d?.ok,'SEED_NOT_READY');console.log('REAL_DAILY_CLONE '+JSON.stringify(d));
+          const samples=[['all','all'],['AH','all'],['1X2','all'],['O/U','all'],['Corners','all'],['BTTS','all'],['Cards','all'],['Other','all'],['all','d7'],['all','d30'],['all','d90']];
+          for(const [market,range] of samples){const q=new URLSearchParams({market,variant:'all',filter:'all',range});const r=await fetch(base+'/b46-receiver-v1/graph?'+q);const g=await r.json();assert(r.ok&&g.ok);assert.equal(r.headers.get('x-b46-canonical-rate-state'),'verified','GRAPH_CLONE '+market+' '+range+' '+r.headers.get('x-b46-canonical-rate-reason'));const w=g.summary.wins,l=g.summary.losses;assert.equal(g.series.rate.at(-1)?.value??null,w+l?w/(w+l)*100:g.series.rate.length?0:null);console.log('REAL_GRAPH_PASS '+JSON.stringify({market,range,sequence:g.sequence,points:g.series.rate.length,winRate:g.win_rate}));}
+          EOF
       - name: Verify actual live snapshot current rate and monitor, no API changes
         run: |
           npm install --prefix qa/winrate-canonical-20261120/.runtime --no-audit --no-fund playwright@1.55.0
@@ -66,7 +87,7 @@ jobs:
           import assert from 'node:assert/strict';import {createRequire} from 'node:module';
           const {chromium,devices}=createRequire(process.cwd()+'/qa/winrate-canonical-20261120/.runtime/package.json')('playwright');
           const base='https://ball46-winrate-canonical-test-20261120.mccarey-supon.workers.dev';
-          let ready=false;for(let i=0;i<15;i++){try{const r=await fetch(base+'/_winrate_canonical_health');const d=await r.json();if(d.revision==='CANONICAL_WINRATE_TEST_V1'){ready=true;break}}catch{}await new Promise(r=>setTimeout(r,2500))}assert(ready);
+          let ready=false;for(let i=0;i<15;i++){try{const r=await fetch(base+'/_winrate_canonical_health');const d=await r.json();if(d.revision==='CANONICAL_WINRATE_TEST_V2'){ready=true;break}}catch{}await new Promise(r=>setTimeout(r,2500))}assert(ready);
           const b=await chromium.launch();try{
           for(const mobile of [false,true]){
             const p=await b.newPage(mobile?{...devices['iPhone 13'],serviceWorkers:'block'}:{viewport:{width:1440,height:950},serviceWorkers:'block'});
@@ -77,10 +98,10 @@ jobs:
             const info=await p.evaluate(()=>{const card=document.querySelector('#b46-finance-chart-card'),panel=document.querySelector('[data-workspace-panel="statistics"]');return {summary:card?.innerText?.slice(0,1800),visible:[...((card||panel)?.querySelectorAll('[data-key="rate"] strong,[data-b46-rate-tone],.b46-perf-kpi b')||[])].filter(e=>e.getBoundingClientRect().width>0).map(e=>({text:e.textContent,html:e.parentElement.outerHTML.slice(0,400)})),body:panel?.innerText?.slice(0,800)}});
             console.log('MOBILE_DOM '+JSON.stringify({mobile,...info}));
             const rate=info.visible.find(o=>/WIN RATE/i.test(o.html)&&/^\d+(?:\.\d+)?%$/.test(o.text.trim()))?.text?.trim()||info.summary?.match(/WIN RATE\s*\n\s*(\d+(?:\.\d+)?%)/i)?.[1];assert(rate,'VISIBLE_RATE_MISSING');
-            const g=graphs.find(x=>x.market==='all'&&x.range==='all');assert(g,'MISSING_GRAPH');const expected=g.summary.wins/(g.summary.wins+g.summary.losses)*100;assert(Math.abs(parseFloat(rate)-expected)<.051,'RATE '+rate+' '+expected);
+            const g=graphs.find(x=>x.market==='all'&&x.range==='all');assert(g,'MISSING_GRAPH');const expected=g.summary.wins/(g.summary.wins+g.summary.losses)*100;assert(Math.abs(parseFloat(rate)-expected)<.051,'RATE '+rate+' '+expected);assert(Math.abs(g.series.rate.at(-1).value-expected)<1e-8,'CHART_LAST_RATE');
             const sidebar=await p.locator('.left-rail').textContent()||'';const monitor=sidebar.match(/Total\s*\n\s*(\d+(?:\.\d+)?)%/);
             if(monitor)assert(Math.abs(Number(monitor[1])-expected)<.1,'MONITOR_DRIFT');
-            console.log('CURRENT_RATE_PASS '+JSON.stringify({mobile,rate,expected,sequence:g.sequence,monitor:monitor?.[1]??null,legacyChartLast:g.series.rate.at(-1)?.value}));
+            console.log('CURRENT_RATE_PASS '+JSON.stringify({mobile,rate,expected,sequence:g.sequence,monitor:monitor?.[1]??null,canonicalChartLast:g.series.rate.at(-1)?.value}));
             await p.close();
           }
           }finally{await b.close()}
