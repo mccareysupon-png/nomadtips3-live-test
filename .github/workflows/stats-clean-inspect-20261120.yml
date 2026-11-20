@@ -21,14 +21,14 @@ jobs:
           (async()=>{const browser=await chromium.launch();try{for(const mobile of [false,true]){
           const p=await browser.newPage(mobile?{...devices['iPhone 13'],serviceWorkers:'block'}:{viewport:{width:1440,height:950},serviceWorkers:'block'});
           await p.route('**/*',r=>['GET','HEAD'].includes(r.request().method())?r.continue():r.abort());
-          await p.goto('https://ball46-production.mccarey-supon.workers.dev/index.html?view=statistics',{waitUntil:'domcontentloaded'});
+          await p.goto('https://ball46-stats-clean-filters-test-20261120.mccarey-supon.workers.dev/index.html?view=statistics',{waitUntil:'domcontentloaded'});
           await p.waitForFunction(()=>[...document.querySelectorAll('[data-sp-table-body] tr')].some(r=>r.cells.length>=4),null,{timeout:90000});
-          for(const market of ['all','1x2']){
+          for(const market of ['all','1x2','ah','ou','btts','corners','cards','other']){
           if(!mobile)await p.locator('[data-stat-market="'+market+'"]').first().click();
           else if(market!=='all'){await p.locator('[data-b46m-open]').click();await p.locator('#b46m-drawer [data-b46m-market="'+market+'"]').first().click()}
           await p.waitForTimeout(2200);
-          const info=await p.evaluate(()=>[...document.querySelectorAll('body *')].filter(e=>e.children.length===0&&['MARKET TYPE','MARKET FILTER','Engine registry','Refine current view'].includes(e.textContent.trim())).map(e=>({label:e.textContent,ancestors:[e.parentElement,e.parentElement.parentElement,e.parentElement.parentElement.parentElement].map(x=>({tag:x.tagName,id:x.id,cls:x.className,attrs:[...x.attributes].map(a=>[a.name,a.value]),html:x.outerHTML.slice(0,3500),display:getComputedStyle(x).display}))})));
-          console.log('FILTER_DOM '+JSON.stringify({mobile,market,info}));
+          const info=await p.evaluate(()=>{const c=document.querySelector('.sp-stats-content');const x=e=>{const r=e.getBoundingClientRect(),s=getComputedStyle(e);return {tag:e.tagName,id:e.id,cls:e.className,top:Math.round(r.top),bottom:Math.round(r.bottom),height:Math.round(r.height),display:s.display,margin:s.margin,padding:s.padding,gap:s.gap,position:s.position,minHeight:s.minHeight}};return {content:x(c),children:[...c.children].map(x),graph:x(document.querySelector('#b46-finance-chart-card')),results:x(document.querySelector('.sp-results'))}}); 
+          console.log('GAP_DOM '+JSON.stringify({mobile,market,info}));
           }await p.close()
           }}finally{await browser.close()}})().catch(e=>{console.error(e);process.exit(1)})
           EOF
