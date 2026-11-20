@@ -1,5 +1,6 @@
 import {DurableObject} from 'cloudflare:workers';
 import {init,ingest,coverage,totals,dailyPlan,normalize} from './history.mjs';
+import {initBackfill,planBackfill} from './backfill.mjs';
 const H='https://hub.internal/snapshot';
 const epoch=()=>Math.floor(Date.now()/1000);
 export function adapt(f){
@@ -15,7 +16,7 @@ export function adapt(f){
 }
 function nextAlarm(now){let t=now+86400;let next=dailyPlan(t).cutoff;if(next<=now)next=dailyPlan(t+7200).cutoff;return next*1000}
 export class RealHistory extends DurableObject{
- constructor(ctx,env){super(ctx,env);this.db={exec:(q,...a)=>ctx.storage.sql.exec(q,...a),transaction:f=>ctx.storage.transactionSync(f)};init(this.db);this.busy=null}
+ constructor(ctx,env){super(ctx,env);this.db={exec:(q,...a)=>ctx.storage.sql.exec(q,...a),transaction:f=>ctx.storage.transactionSync(f)};init(this.db);initBackfill(this.db);this.busy=null}
  async run(){
   if(this.busy)return this.busy;
   this.busy=(async()=>{
@@ -39,6 +40,7 @@ export class RealHistory extends DurableObject{
     if(hc.complete){homeCovered++;covered.add(h)}if(ac.complete){awayCovered++;covered.add(a)}if(hc.complete&&ac.complete)eligible++;if(hc.count||ac.count)oneOrMore++;
    }
    const report={mode:'REAL_HUB_CACHE_ONLY_TEST',state:'ok',cycle,observedAt:new Date(now*1000).toISOString(),sourceRows:j.fixtures.length,sourceFinishedOrUnknown:seen,accepted:a.length,excluded:seen-a.length,statusCodes:codes,ingest:stats,stored:t,upcoming,upcomingTeams:teams.size,teamsWith10:covered.size,homeCovered,awayCovered,eligible,upcomingWithAnyHistory:oneOrMore,externalRequestsAdded:0,backfillComplete:false,nextAlarmAt:new Date(nextAlarm(now)).toISOString()};
+   const plan=planBackfill(this.db,j.fixtures,now,cycle);await this.ctx.storage.put('backfillPlan',{...plan,cycle,observedAt:report.observedAt});
    await this.ctx.storage.put('report',report);return report;
   })().finally(()=>this.busy=null);return this.busy
  }
@@ -51,6 +53,17 @@ export class RealHistory extends DurableObject{
   if(req.method==='POST'&&path==='/bootstrap'){
    try{const report=await this.run();await this.ctx.storage.setAlarm(nextAlarm(epoch()));return Response.json(report)}catch(e){return Response.json({error:String(e.message).slice(0,400)},{status:502})}
   }
+  if(req.method==='POST'&&path==='/prepare-backfill'){
+   try{
+    const now=epoch(),cycle=dailyPlan(now).cycle;
+    const prev=await this.ctx.storage.get('backfillPlan');if(prev?.cycle===cycle)return Response.json(prev);
+    const r=await this.env.SOURCE_HUB.fetch(H,{method:'GET'});if(!r.ok)throw Error('HUB_HTTP');
+    const j=await r.json();if(j.ok!==true||j.cacheOnly!==true||Number(j.externalRequestsAdded)!==0||j.stale===true||!Array.isArray(j.fixtures)||!j.fixtures.length||j.fixtures.length>15000||!Number.isFinite(Number(j.ageMs))||Number(j.ageMs)<0||Number(j.ageMs)>3600000)throw Error('CACHE_CONTRACT');
+    const plan={...planBackfill(this.db,j.fixtures,now,cycle),cycle,observedAt:new Date(now*1000).toISOString()};
+    await this.ctx.storage.put('backfillPlan',plan);return Response.json(plan);
+   }catch(e){return Response.json({error:String(e.message).slice(0,200)},{status:502})}
+  }
+  if(req.method==='GET'&&path==='/backfill'){return Response.json(await this.ctx.storage.get('backfillPlan')??{state:'uninitialized'},{headers:{'Cache-Control':'no-store','X-Robots-Tag':'noindex, nofollow'}})}
   if(req.method==='GET'&&path==='/health'){
    const r=await this.ctx.storage.get('report');return Response.json(r??{mode:'REAL_HUB_CACHE_ONLY_TEST',state:'uninitialized'},{headers:{'Cache-Control':'no-store','X-Robots-Tag':'noindex, nofollow'}});
   }
@@ -61,6 +74,7 @@ export class RealHistory extends DurableObject{
 export default {async fetch(req,env){
  const p=new URL(req.url).pathname,stub=env.HISTORY.get(env.HISTORY.idFromName('real-isolated-v1'));
  if(req.method==='GET'&&['/','/health'].includes(p))return stub.fetch('https://history.internal/health');
- if(req.method==='POST'&&p==='/bootstrap'&&env.BOOTSTRAP_SECRET&&req.headers.get('Authorization')==='Bearer '+env.BOOTSTRAP_SECRET)return stub.fetch('https://history.internal/bootstrap',{method:'POST'});
+ if(req.method==='GET'&&p==='/backfill')return stub.fetch('https://history.internal/backfill');
+ if(req.method==='POST'&&['/bootstrap','/prepare-backfill'].includes(p)&&env.BOOTSTRAP_SECRET&&req.headers.get('Authorization')==='Bearer '+env.BOOTSTRAP_SECRET)return stub.fetch('https://history.internal'+p,{method:'POST'});
  return new Response('Not found',{status:404});
 }};

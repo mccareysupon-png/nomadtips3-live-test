@@ -11,7 +11,7 @@ const existing=(await api('/scripts')).some(w=>w.id===name);assert(name==='ball4
 const secret=crypto.randomBytes(32).toString('hex');const form=new FormData(),dir='qa/prematch-history-20261120/';
 const bindings=[{name:'HISTORY',type:'durable_object_namespace',class_name:'RealHistory'},{name:'SOURCE_HUB',type:'service',service:hub,environment:'production'},{name:'BOOTSTRAP_SECRET',type:'secret_text',text:secret}];
 form.append('metadata',new Blob([JSON.stringify({main_module:'real-worker.mjs',compatibility_date:'2026-11-19',bindings,...(!existing?{migrations:{new_tag:'v1',new_sqlite_classes:['RealHistory']}}:{})})],{type:'application/json'}),'metadata.json');
-for(const f of ['real-worker.mjs','history.mjs'])form.append(f,new Blob([fs.readFileSync(dir+f,'utf8')],{type:'application/javascript+module'}),f);
+for(const f of ['real-worker.mjs','history.mjs','backfill.mjs'])form.append(f,new Blob([fs.readFileSync(dir+f,'utf8')],{type:'application/javascript+module'}),f);
 await api('/scripts/'+name,{method:'PUT',body:form});await api('/scripts/'+name+'/subdomain',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled:true,previews_enabled:false})});
 const sub=await api('/subdomain'),url='https://'+name+'.'+sub.subdomain+'.workers.dev';
 let first;for(let i=0;i<12;i++){try{const r=await fetch(url+'/health',{signal:AbortSignal.timeout(10000)});if(r.ok){first=await r.json();break}}catch{}await new Promise(r=>setTimeout(r,1000))}
@@ -21,4 +21,8 @@ assert(report?.state==='ok'&&report.stored.finished>0&&report.externalRequestsAd
 const health=await(await fetch(url+'/health')).json();assert.deepEqual(health,report);
 const again=await(await fetch(url+'/bootstrap',{method:'POST',headers:{Authorization:'Bearer '+secret}})).json();assert.deepEqual(again,report,'SAME_CYCLE_REPLAY');
 assert.equal((await fetch(url+'/bootstrap',{method:'POST'})).status,404);
+let plan;for(let i=0;i<5;i++){const r=await fetch(url+'/prepare-backfill',{method:'POST',headers:{Authorization:'Bearer '+secret},signal:AbortSignal.timeout(45000)});let j;try{j=await r.json()}catch{await new Promise(x=>setTimeout(x,1500));continue}if(!r.ok)throw Error('PLAN_FAILED '+JSON.stringify(j));plan=j;break}
+assert(plan?.gateway==='NOT_CONNECTED'&&plan.backfillRequests===0&&plan.queueEntries>=0,'PLAN_UNVERIFIED');
+assert.deepEqual(await(await fetch(url+'/backfill')).json(),plan);assert.equal((await fetch(url+'/prepare-backfill',{method:'POST'})).status,404);
+console.log('REAL_BACKFILL_QUEUE',JSON.stringify(plan));
 assert.deepEqual(await versions(),before,'PROTECTED_CHANGED_DURING_CHECK');fs.mkdirSync('evidence',{recursive:true});fs.writeFileSync('evidence/real-history.json',JSON.stringify({url,report,protectedUnchanged:true},null,2));console.log('REAL_HISTORY_READY',JSON.stringify({url,report,protectedUnchanged:true}));
