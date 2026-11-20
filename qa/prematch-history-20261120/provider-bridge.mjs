@@ -15,7 +15,7 @@ export function classifyProviderPath(kind,path,now){
  if(kind==='referee'){
   if(!m[2]||keys!=='bookmaker,market,per_page'||q.get('bookmaker')!=='bet365'||q.get('per_page')!=='500'||!/^corners?(?:[_-][a-z0-9]+){0,5}$/i.test(q.get('market')??''))throw Error('invalid_referee');
  }else if(kind==='fullmarket'){
-  if(m[2]||keys!=='bookmakers'||!/^([a-z0-9-]+)(,[a-z0-9-]+){0,12}$/.test(q.get('bookmakers')??''))throw Error('invalid_fullmarket');
+  if(m[2]||keys!=='bookmakers'||!/^([A-Za-z0-9_-]{1,40})(,[A-Za-z0-9_-]{1,40}){0,39}$/.test(q.get('bookmakers')??''))throw Error('invalid_fullmarket');
  }else throw Error('invalid_kind');
  return u.pathname+u.search;
 }

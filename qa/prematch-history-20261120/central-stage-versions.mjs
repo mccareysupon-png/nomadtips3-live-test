@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';import os from 'node:os';import path from 'node:path';import crypto from 'node:crypto';import assert from 'node:assert/strict';import {spawnSync} from 'node:child_process';import {pathToFileURL} from 'node:url';
 import {patchHub,patchEngine,patchMarket} from './central-transforms.mjs';
+import {classifyProviderPath} from './provider-bridge.mjs';
 const root='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+'/workers';
 async function cf(p,o={}){const r=await fetch(root+p,{...o,headers:{Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN,...o.headers},signal:AbortSignal.timeout(35000)});const j=await r.json();if(!r.ok||!j.success)throw Error('CF '+r.status+' '+p+' '+JSON.stringify(j.errors?.map(x=>({code:x.code,message:String(x.message).slice(0,180)}))));return j.result}
 const hub='nomadtips3-5usd-hub-343',engine='nomadtips3-engine-343',market='nomadtips3-full-market-343-ball46',names=[hub,engine,market],protectedNames=['ball46-production',...names];
@@ -10,12 +11,14 @@ const keys=Object.fromEntries(['B46_HISTORY_BRIDGE_SECRET','B46_REFEREE_BRIDGE_S
 const source=async f=>fs.readFile(new URL(f,dir),'utf8');
 const newModule=async n=>({name:n,content_type:'application/javascript+module',content_base64:Buffer.from(await source(n)).toString('base64')});
 const shared=await Promise.all(['provider-bridge.mjs','history-gateway.mjs'].map(newModule));
-const stage=[];
+const stage=[];let actualBooks;
 try{
  for(const n of names){const id=before[n][0].version_id,v=await cf('/workers/'+n+'/versions/'+id+'?include=modules'),settings=await cf('/scripts/'+n+'/settings');
   const wanted=n===hub?'const bulkSpeedV3Default=wrapHub(index_viewer_safe_default);':n===engine?'async function fetchVerifiedCornerOnly(':'async function providerRequest(fixtureId, key) {';
   const mods=v.modules.map(m=>({name:m.name,content_type:m.content_type,content_base64:m.content_base64}));const match=mods.filter(m=>Buffer.from(m.content_base64,'base64').toString().includes(wanted));assert.equal(match.length,1,'ACTIVE_SOURCE_ANCHOR_MISSING');
-  const old=Buffer.from(match[0].content_base64,'base64').toString();const patched=(n===hub?patchHub:n===engine?patchEngine:patchMarket)(old);
+  const old=Buffer.from(match[0].content_base64,'base64').toString();
+  if(n===market){const decl=old.match(/\bBOOKMAKERS\s*=\s*(?:Object\.freeze\(\s*)?\[([\s\S]{0,4000}?)\]/);actualBooks=decl?[...decl[1].matchAll(/["']([A-Za-z0-9_-]+)["']/g)].map(x=>x[1]):[];assert(actualBooks.length>0,'ACTUAL_BOOKMAKERS_NOT_FOUND');console.log('EXACT_BOOKMAKERS',JSON.stringify(actualBooks));assert(classifyProviderPath('fullmarket','/v1/fixtures/123/odds?bookmakers='+actualBooks.join(','),Math.floor(Date.now()/1000)))}
+  const patched=(n===hub?patchHub:n===engine?patchEngine:patchMarket)(old);
   match[0].content_base64=Buffer.from(patched).toString('base64');mods.push(...shared);if(n===hub)mods.push(await newModule('central-actor.mjs'));
   const folder=path.join(tmp,n);await fs.mkdir(folder);await fs.writeFile(path.join(folder,'package.json'),'{"type":"module"}');
   for(const m of mods){assert(!m.name.includes('/')&&!m.name.includes('..'));await fs.writeFile(path.join(folder,m.name),Buffer.from(m.content_base64,'base64'));if(/\.(m?js)$/.test(m.name)){const c=spawnSync(process.execPath,['--check',path.join(folder,m.name)],{encoding:'utf8'});assert(c.status===0,'SYNTAX_CHECK_FAILED '+m.name)}}
@@ -41,7 +44,7 @@ try{
  assert.equal((await send('referee','/v1/fixtures/123/odds/history?market=corner&bookmaker=bet365&per_page=500',keys.B46_MARKET_BRIDGE_SECRET)).status,404);
  assert.equal((await send('referee','/v1/fixtures/123/odds/history?market=corner&bookmaker=bet365&per_page=500',keys.B46_REFEREE_BRIDGE_SECRET,'public.invalid')).status,404);
  assert.equal((await send('referee','/v1/fixtures/123/odds/history?market=corner&bookmaker=bet365&per_page=500',keys.B46_REFEREE_BRIDGE_SECRET)).status,200);
- assert.equal((await send('fullmarket','/v1/fixtures/123/odds?bookmakers=bet365,pinnacle',keys.B46_MARKET_BRIDGE_SECRET)).status,200);assert.equal(calls,2);
+ assert.equal((await send('fullmarket','/v1/fixtures/123/odds?bookmakers='+actualBooks.join(','),keys.B46_MARKET_BRIDGE_SECRET)).status,200);assert.equal(calls,2);
  const t=await policy.telemetry();assert(t.requests.some(x=>x.kind==='REFEREE')&&t.requests.some(x=>x.kind==='FULLMARKET')&&t.pending.length===0);
  globalThis.fetch=net;
  assert.deepEqual(await active(),before,'PRODUCTION_CHANGED_BEFORE_STAGE');console.log('STAGE_SHADOW_PASS',JSON.stringify({mockCalls:calls,realProviderCalls:0,historyHardOff:true,protectedUnchanged:true}));

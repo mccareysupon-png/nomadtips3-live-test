@@ -20,6 +20,11 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: node qa/prematch-history-20261120/central-stage-versions.mjs
+      - name: Verify transport parity and attempt additive HUB only if no Live matches
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: node qa/prematch-history-20261120/central-rollout-step1.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:

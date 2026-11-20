@@ -1,10 +1,7 @@
 import assert from 'node:assert/strict';import fs from 'node:fs';import {classifyProviderPath,forwardProvider} from './provider-bridge.mjs';
 const root='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+'/workers',hub='nomadtips3-5usd-hub-343',eng='nomadtips3-engine-343',market='nomadtips3-full-market-343-ball46';
-const versions={
- [hub]:{old:'f434025a-e092-4bf0-844f-6f1e01ad7173',next:'c096bd99-5cf4-46ab-8107-9ca0df623765'},
- [eng]:{old:'d8dd07a2-4f5d-4b14-94b5-52f5fc53311d',next:'2f5e07ec-390b-468a-93cf-ce5d21e915b4'},
- [market]:{old:'3a53ee1a-467c-4a20-9f50-ba749e8adab4',next:'923ed7a0-2f62-484d-b48e-2ad6489dad2e'}
-};
+const staged=JSON.parse(fs.readFileSync('evidence/central-staged-versions.json','utf8'));assert(staged.activeUnchanged===true&&staged.realProviderCalls===0);const versions=Object.fromEntries(staged.evidence.map(x=>[x.worker,{old:x.rollbackVersion,next:x.stagedVersion}]));assert.deepEqual(Object.keys(versions).sort(),[hub,eng,market].sort());
+
 async function cf(p,o={}){const r=await fetch(root+p,{...o,headers:{Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN,...o.headers},signal:AbortSignal.timeout(30000)});const j=await r.json();if(!r.ok||!j.success)throw Error('CF '+r.status+' '+p+' '+JSON.stringify(j.errors?.map(e=>e.code)));return j.result}
 async function current(n){const d=(await cf('/scripts/'+n+'/deployments?per_page=1')).deployments[0];assert(d.versions.length===1&&d.versions[0].percentage===100);return d.versions[0].version_id}
 const documents={};let checks=0;
@@ -18,7 +15,7 @@ const books=decl?[...decl[1].matchAll(/["']([A-Za-z0-9_-]+)["']/g)].map(x=>x[1])
 if(!books.length){const i=oldM.search(/\bBOOKMAKERS\s*=/);const preview=oldM.slice(i,i+240).replace(/[^a-zA-Z0-9_.()[\],;:=\s"'-]/g,'?');console.log('BOOKMAKER_DECLARATION',preview)}
 assert(books.length>0,'BOOKMAKERS_EMPTY');
 const testPath='/v1/fixtures/123/odds?bookmakers='+books.join(',');
-assert(classifyProviderPath('fullmarket',testPath,Math.floor(Date.now()/1000)));console.log('EXACT_BOOKMAKERS',JSON.stringify(books));
+console.log('EXACT_BOOKMAKERS',JSON.stringify(books));assert(classifyProviderPath('fullmarket',testPath,Math.floor(Date.now()/1000)));
 const oldEF=extract(oldE,'async function fetchVerifiedCornerOnly('),newEF=extract(newE,'async function fetchVerifiedCornerOnly('),oldMF=extract(oldM,'async function providerRequest(fixtureId, key) {'),newMF=extract(newM,'async function providerRequest(fixtureId, key, env) {');
 const beforeE=oldEF.split('\n').filter(x=>!x.includes('const response=await fetch(url,')).join('\n'),afterE=newEF.split('\n').filter(x=>!x.includes('const response=await forwardProvider(')).join('\n');assert.equal(beforeE,afterE);
 const beforeM=oldMF.split('\n').filter(x=>!x.includes('const r = await fetch(url,')).join('\n');
