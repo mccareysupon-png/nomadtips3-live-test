@@ -1,4 +1,4 @@
-name: Read-only inspect visible graph card boundaries
+name: Read-only statistics paint and stacking inspection
 on:
   push:
     branches: [test/ball46-stats-clean-filters-20261120]
@@ -17,17 +17,12 @@ jobs:
           npm install --no-audit --no-fund playwright@1.55.0
           npx playwright install chromium --only-shell
           node <<'EOF'
-          const {chromium,devices}=require('playwright');
-          (async()=>{const browser=await chromium.launch();try{
-          for(const mode of ['wide','desktop','mobile']){
-          const mobile=mode==='mobile';
-          const p=await browser.newPage(mobile?{...devices['iPhone 13'],serviceWorkers:'block'}:{viewport:{width:mode==='wide'?1920:1440,height:1000},serviceWorkers:'block'});
-          await p.route('**/*',r=>['GET','HEAD'].includes(r.request().method())?r.continue():r.abort());
-          await p.goto('https://ball46-stats-clean-filters-test-20261120.mccarey-supon.workers.dev/index.html?view=statistics',{waitUntil:'domcontentloaded'});
-          await p.waitForFunction(()=>[...document.querySelectorAll('[data-sp-table-body] tr')].some(r=>r.cells.length>=4),null,{timeout:60000});
-          await p.locator('[data-stat-market="1x2"]').first().evaluate(e=>e.click());
-          await p.waitForTimeout(4500);
-          const v=await p.evaluate(()=>{const g=document.querySelector('#b46-finance-chart-card'),res=document.querySelector('.sp-results');const a=e=>{const r=e.getBoundingClientRect(),s=getComputedStyle(e);return {tag:e.tagName,id:e.id,cls:typeof e.className==='string'?e.className:'svg',t:Math.round(r.top),b:Math.round(r.bottom),h:Math.round(r.height),w:Math.round(r.width),display:s.display,margin:s.margin,padding:s.padding,gap:s.gap,position:s.position,height:s.height,min:s.minHeight,bg:s.backgroundColor,shadow:s.boxShadow.slice(0,70)}};return {g:a(g),res:a(res),children:[...g.querySelectorAll('*')].filter(e=>{const r=e.getBoundingClientRect();return r.height>20&&r.width>120&&e.tagName!=='path'&&e.tagName!=='svg'}).slice(0,65).map(a)}});
-          console.log('VISIBLE_GAP '+JSON.stringify({mode,...v}));await p.close();
-          }}finally{await browser.close()}})().catch(e=>{console.error(e);process.exit(1)})
+          const {chromium}=require('playwright');
+          (async()=>{const b=await chromium.launch();try{const p=await b.newPage({viewport:{width:1920,height:1000},serviceWorkers:'block'});await p.addInitScript(()=>localStorage.setItem('nomad343_dashboard_theme_v1','dark'));await p.route('**/*',r=>['GET','HEAD'].includes(r.request().method())?r.continue():r.abort());await p.goto('https://ball46-stats-clean-filters-test-20261120.mccarey-supon.workers.dev/index.html?view=statistics',{waitUntil:'domcontentloaded'});await p.waitForFunction(()=>document.querySelector('#b46-finance-chart-card .f46-card')?.getBoundingClientRect().height>0,null,{timeout:60000});
+          for(const market of ['all','1x2','ah','ou','btts','corners','cards','other']){
+          await p.locator('[data-stat-market="'+market+'"]').first().click();await p.waitForTimeout(2800);
+          const v=await p.evaluate(()=>{const g=document.querySelector('#b46-finance-chart-card'),f=g.querySelector('.f46-card'),res=document.querySelector('.sp-results');const info=(e,pseudo)=>{const s=getComputedStyle(e,pseudo),r=e.getBoundingClientRect();return {cls:e.className,pseudo:pseudo||'',t:r.top,b:r.bottom,position:s.position,z:s.zIndex,overflow:s.overflow,transform:s.transform,shadow:s.boxShadow,filter:s.filter,bg:s.background,content:s.content,inset:s.inset,radius:s.borderRadius,clip:s.clipPath,pointer:s.pointerEvents}};const els=[g,g.querySelector('.b46-perf-shell'),f,...f.children,res,...Array.from(res.children).slice(0,2),g.parentElement];return {gap:res.getBoundingClientRect().top-f.getBoundingClientRect().bottom,els:els.filter(Boolean).flatMap(e=>[info(e),info(e,'::before'),info(e,'::after')]).filter(x=>!x.pseudo||x.content!=='none'&&x.content!=='normal'),hit:[-5,0,5,12,20,24,28,35].map(n=>({n,stack:document.elementsFromPoint(f.getBoundingClientRect().left+100,f.getBoundingClientRect().bottom+n).slice(0,5).map(e=>String(e.className))}))}});
+          console.log('PAINT '+JSON.stringify({market,...v}));
+          if(market==='all'||market==='1x2'){const clip=await p.evaluate(()=>{const r=document.querySelector('#b46-finance-chart-card .f46-card').getBoundingClientRect();return {x:r.left,y:r.bottom-80,width:r.width,height:155}});const jpg=await p.screenshot({type:'jpeg',quality:70,clip});console.log('CROP '+market+' '+jpg.toString('base64'))}
+          }await p.close()}finally{await b.close()}})().catch(e=>{console.error(e);process.exit(1)})
           EOF
