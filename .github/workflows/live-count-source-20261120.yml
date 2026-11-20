@@ -1,0 +1,31 @@
+name: Inspect startup scheduling and history callers
+on:
+  push:
+    branches: [test/ball46-live-count-startup-20261120]
+    paths: ['.github/workflows/live-count-source-20261120.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          node --input-type=module <<'EOF'
+          const base='https://ball46-production.mccarey-supon.workers.dev';
+          for(const [path,patterns] of [
+           ['/dashboard-v2-stage3-featured-facts-20261013a.js',[/SIGNAL_AFTER_BOARD_MS/g,/SCOREBAR_STATS_AFTER_BOARD_MS/g,/SIGNALS_API/g,/STATISTICS_API/g,/async function load\w*/g,/startLiveDisplayLoop\(\)/g]],
+           ['/singlepage-workspace-343.js',[/BALL46_STATISTICS_DATA\??\.\s*load/g,/loadStats\(/g,/loadStatistics\(/g,/__B46_FAST_LOAD_DETAILS/g,/function setView\(/g]],
+           ['/ui-sync-fixes-343-v2.js',[/BALL46_STATISTICS_DATA/g,/STAT_API/g,/loadStats\(/g,/loadStatistics\(/g]],
+           ['/b46-statistics-fast-v1-20261116.js',[/__B46_FAST_LOAD_DETAILS/g,/BALL46_STATISTICS_DATA/g]],
+           ['/index.html',[/BALL46_STATISTICS_DATA\??\.\s*load/g,/\/api\/engine\/statistics/g,/__B46_FAST_LOAD_DETAILS/g]]
+          ]){
+            const r=await fetch(base+path),s=await r.text();console.log('SOURCE_STATUS '+JSON.stringify({path,status:r.status,bytes:s.length}));
+            for(const re of patterns){let n=0;for(const m of s.matchAll(re)){if(++n>20)break;console.log('SCHED '+JSON.stringify({path,term:m[0],context:s.slice(Math.max(0,m.index-480),m.index+1200)}))}}
+            if(path.includes('dashboard'))console.log('DASH_TAIL '+JSON.stringify(s.slice(-14000)));
+          }
+          const r=await fetch(base+'/api/engine/board'),j=await r.json();console.log('BOARD_COUNTS '+JSON.stringify({status:r.status,counts:j.counts,fixtureKeys:Object.keys(j.fixtures?.[0]||{}),signalFields:j.fixtures?.filter(f=>Object.keys(f).some(k=>/signal/i.test(k))).slice(0,1).map(f=>Object.fromEntries(Object.entries(f).filter(([k])=>/signal/i.test(k))))}));
+          EOF
