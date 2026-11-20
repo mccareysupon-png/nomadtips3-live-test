@@ -1,5 +1,5 @@
 import {DurableObject} from 'cloudflare:workers';
-import {init,ingest,normalize,totals,coverage} from './history.mjs';
+import {init,ingest,normalize,totals,coverage,dailyPlan,pathFor} from './history.mjs';
 const json=x=>Response.json(x,{headers:{'cache-control':'no-store'}});
 export class PrematchStore extends DurableObject{
  constructor(ctx,env){super(ctx,env);this.db={exec:(q,...a)=>ctx.storage.sql.exec(q,...a),transaction:f=>ctx.storage.transactionSync(f)};init(this.db)}
@@ -11,6 +11,33 @@ export class PrematchStore extends DurableObject{
  const saved=await this.ctx.storage.get('previewSelections');
  return json({system:'BALL46_PREMATCH_ONLY',stored:totals(this.db),teams:teams.size,teamsWith10:[...teams.values()].filter(n=>n>=10).length,results:rows.slice(0,50),selection:saved??null});
  }
+ if(path==='/daily-state'&&req.method==='GET')return json({stored:totals(this.db),daily:await this.ctx.storage.get('dailyImport')??null});
+ if(path==='/daily-init'&&req.method==='POST'){
+ const old=await this.ctx.storage.get('dailyImport');
+ if(!old){const seed={cycle:'1795154400',state:'complete',source:'verified_import_run_44723780062',requests:2,accepted:113};const n=Number(totals(this.db).finished);if(n<113)return new Response('Missing verified import',{status:409});await this.ctx.storage.put('dailyImport',seed)}
+ return json({daily:await this.ctx.storage.get('dailyImport'),stored:totals(this.db)})}
+ if(path==='/daily-run'&&req.method==='POST'){
+ const plan=dailyPlan(now);const old=await this.ctx.storage.get('dailyImport');
+ if(old?.cycle===plan.cycle)return json({state:'already_recorded',daily:old,stored:totals(this.db)});
+ if(!old||!this.env.FIVEDOLLAR_API_KEY)return new Response('Not initialized',{status:409});
+ const state={cycle:plan.cycle,state:'in_progress',requests:0,accepted:0,added:0};
+ await this.ctx.storage.put('dailyImport',state);
+ try{
+ for(const w of plan.windows.filter(w=>w.kind==='daily')){
+  let p=1;for(;;){
+   state.requests++;await this.ctx.storage.put('dailyImport',state);
+   const r=await fetch('https://api.5dollarfootballapi.com'+pathFor(w,p),{headers:{authorization:'Bearer '+this.env.FIVEDOLLAR_API_KEY,accept:'application/json'},redirect:'manual',signal:AbortSignal.timeout(20000)});
+   if(!r.ok)throw Error('PROVIDER_HTTP_'+r.status);
+   const b=await r.json();if(b.success!==1||!Array.isArray(b.data)||b.data.length>100||b.pagination?.page!==p||typeof b.pagination.has_more!=='boolean'||(b.pagination.has_more&&!b.data.length))throw Error('INVALID_PROVIDER_PAGE');
+   const rows=b.data.filter(f=>{const n=normalize(f);return n?.status==='finished'&&n.k>=w.start&&n.k<w.end&&n.k<now});
+   const stats=ingest(this.db,rows,now,{start:w.start,end:w.end});state.accepted+=rows.length;state.added+=stats.added;state.rejected=(state.rejected||0)+b.data.length-rows.length;await this.ctx.storage.put('dailyImport',state);
+   if(!b.pagination.has_more)break;
+   const head=r.headers.get('x-ratelimit-remaining');if(head===null||!Number.isFinite(Number(head))||Number(head)<=20)throw Error('SAFE_QUOTA_STOP');p++;
+  }
+ }
+ state.state='complete';
+ }catch(e){state.state='review_required';state.reason=String(e.message).slice(0,120)}
+ await this.ctx.storage.put('dailyImport',state);return json({daily:state,stored:totals(this.db)})}
  if(path==='/health')return json({system:'BALL46_PREMATCH_ONLY',stored:totals(this.db),liveBindings:0});
  if(path==='/import'&&req.method==='POST'){const j=await req.json();if(!Array.isArray(j.rows)||j.rows.length>100||j.rows.some(f=>normalize(f)?.status!=='finished'||f.kickoff_ts>=now))return new Response('Invalid rows',{status:400});return json({ok:true,stats:ingest(this.db,j.rows,now),stored:totals(this.db)})}
  if(path==='/select'&&req.method==='POST'){
@@ -32,4 +59,4 @@ const html=`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="vie
 const el=id=>document.getElementById(id);function cell(tr,v){const td=document.createElement('td');td.textContent=v;tr.append(td)}
 async function load(){try{const r=await fetch('/preview-data',{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);const d=await r.json();el('status').textContent='Connected to independent Pre-Match archive';el('cards').replaceChildren();for(const [label,value] of [['Finished results',d.stored.finished||0],['Teams in archive',d.teams],['Teams with 10+',d.teamsWith10],['Published picks',d.selection?.published??0]]){const c=document.createElement('div');c.className='card';c.textContent=label;const b=document.createElement('b');b.textContent=value;c.append(b);el('cards').append(c)}el('selection').textContent=d.selection?'Candidates: '+d.selection.rows.length+' · '+d.selection.ruleState:'No upcoming fixtures submitted yet. Initial league backfill and selection rules are pending.';el('selection').className='warn';el('results').replaceChildren();for(const x of d.results){const tr=document.createElement('tr');for(const v of [x.fixture_id,new Date(x.kickoff*1000).toISOString().slice(0,16).replace('T',' '),x.home_id,x.hg+' : '+x.ag,x.away_id,x.league_id])cell(tr,v);el('results').append(tr)}}catch(e){el('status').textContent='Load failed: '+e.message}}load();
 </script></html>`;
-export default {async fetch(req,env){const p=new URL(req.url).pathname;if(req.method==='GET'&&p==='/preview')return new Response(html,{headers:{'content-type':'text/html;charset=utf-8','cache-control':'no-store','x-robots-tag':'noindex,nofollow'}});if(req.method==='GET'&&p==='/preview-data')return env.STORE.get(env.STORE.idFromName('prematch-only-v1')).fetch(req);if(!env.OWNER_SECRET||req.headers.get('Authorization')!=='Bearer '+env.OWNER_SECRET)return new Response('Not found',{status:404});return env.STORE.get(env.STORE.idFromName('prematch-only-v1')).fetch(req)}};
+export default {async scheduled(event,env){const hour=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',hour:'2-digit',hourCycle:'h23'}).format(new Date(event.scheduledTime));if(hour!=='06')return;const stub=env.STORE.get(env.STORE.idFromName('prematch-only-v1'));const r=await stub.fetch('https://prematch.internal/daily-run',{method:'POST'});console.log('PREMATCH_DAILY '+await r.text())},async fetch(req,env){const p=new URL(req.url).pathname;if(req.method==='GET'&&p==='/preview')return new Response(html,{headers:{'content-type':'text/html;charset=utf-8','cache-control':'no-store','x-robots-tag':'noindex,nofollow'}});if(req.method==='GET'&&p==='/preview-data')return env.STORE.get(env.STORE.idFromName('prematch-only-v1')).fetch(req);if(!env.OWNER_SECRET||req.headers.get('Authorization')!=='Bearer '+env.OWNER_SECRET)return new Response('Not found',{status:404});return env.STORE.get(env.STORE.idFromName('prematch-only-v1')).fetch(req)}};
