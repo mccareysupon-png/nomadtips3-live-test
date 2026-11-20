@@ -19,7 +19,7 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
-          python -m pip install --quiet pillow numpy opencv-python-headless
+          python -m pip install --quiet pillow
           python <<'PY'
           from PIL import Image
           from pathlib import Path
@@ -30,42 +30,13 @@ jobs:
           im=Image.open(io.BytesIO(raw)).convert('RGB')
           assert im.size==(2048,682)
           assets={}
-          def encode(name,box):
+          for name,box in [('dark',(48,78,2000,223)),('light',(48,269,2000,419)),('mobile',(632,469,1417,654))]:
               crop=im.crop(box)
-              f=io.BytesIO(); crop.save(f,'WEBP',quality=88,method=6)
+              f=io.BytesIO();crop.save(f,'WEBP',lossless=True,method=6)
               data=f.getvalue()
-              assets[name+'.webp']=base64.b64encode(data).decode()
-              print('ASSET',name,crop.size,len(data))
-          for theme,y0,y1 in [('dark',78,223),('light',269,419)]:
-              encode(theme,(48,y0,2000,y1))
-              encode(theme+'-left',(48,y0,1050,y1))
-              encode(theme+'-right',(1110,y0,2000,y1))
-          import numpy as np, cv2
-          a=np.array(im.crop((1430,270,1718,418)))
-          R,G,B=a.astype(np.int16).transpose(2,0,1)
-          mask=np.full(a.shape[:2],cv2.GC_PR_BGD,np.uint8)
-          mask[(G<177)|(R>G+9)]=cv2.GC_PR_FGD
-          mask[(G<135)|(R>G+25)]=cv2.GC_FGD
-          mask[(G>223)&(G>=R+4)&(B>190)]=cv2.GC_BGD
-          mask[:,:2]=cv2.GC_BGD
-          mask[:,-2:]=cv2.GC_BGD
-          cv2.setNumThreads(1)
-          cv2.setRNGSeed(46)
-          cv2.grabCut(a,mask,None,np.zeros((1,65),np.float64),np.zeros((1,65),np.float64),5,cv2.GC_INIT_WITH_MASK)
-          n,labels,stats,_=cv2.connectedComponentsWithStats((mask%2).astype(np.uint8),8)
-          solid=(labels==(1+np.argmax(stats[1:,cv2.CC_STAT_AREA]))).astype(np.uint8)
-          contours,_=cv2.findContours(solid,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
-          cv2.drawContours(solid,contours,-1,1,cv2.FILLED)
-          alpha=cv2.GaussianBlur(solid.astype(np.float32),(3,3),0.65)
-          bg=np.array([232,247,238],np.float32)
-          rgb=np.clip((a.astype(np.float32)-bg*(1-alpha[:,:,None]))/np.maximum(alpha[:,:,None],.09),0,255)
-          rgba=np.dstack((rgb,np.round(alpha*255))).astype(np.uint8)
-          cut=Image.fromarray(rgba)
-          f=io.BytesIO();cut.save(f,'WEBP',quality=94,method=6,exact=True)
-          assets['presenter-cutout-v4.webp']=base64.b64encode(f.getvalue()).decode()
-          assert cut.getpixel((0,0))[3]==0
-          assert np.mean(alpha<.01)>.20 and np.mean(alpha>.99)>.20
-          print('TRANSPARENT_PRESENTER',cut.size,len(f.getvalue()),'opaque_fraction',float(np.mean(alpha>.99)))
+              assert Image.open(io.BytesIO(data)).convert('RGB').tobytes()==crop.tobytes()
+              assets['exact-'+name+'-v5.webp']=base64.b64encode(data).decode()
+              print('EXACT_ASSET',name,crop.size,len(data))
           (p/'assets.mjs').write_text('export default '+json.dumps(assets,separators=(',',':'))+';\n')
           PY
           node --check qa/membership-visual-v2-20261120/worker.mjs
@@ -97,26 +68,23 @@ jobs:
           const {chromium,devices}=createRequire(process.cwd()+'/qa/membership-visual-v2-20261120/.runtime/package.json')('playwright');
           const base='https://ball46-membership-visual-v2-test-20261120.mccarey-supon.workers.dev';
           let health;for(let i=0;i<15;i++){try{const r=await fetch(base+'/_membership_visual_health');if(r.ok){health=await r.json();break}}catch{}await new Promise(r=>setTimeout(r,2000))}
-          assert.equal(health?.scope,'TEST_ONLY_MEMBERSHIP_VISUAL');assert.equal(health?.revision,'MEMBERSHIP_COLOR_V4');assert.equal((await fetch(base+'/_membership_visual_health',{method:'POST'})).status,405);
+          assert.equal(health?.scope,'TEST_ONLY_MEMBERSHIP_VISUAL');assert.equal(health?.revision,'MEMBERSHIP_EXACT_V5');assert.equal((await fetch(base+'/_membership_visual_health',{method:'POST'})).status,405);
           const browser=await chromium.launch();try{
           for(const mode of ['desktop-dark','desktop-light','wide-dark','wide-light','mobile-dark','mobile-light']){
           const mobile=mode.startsWith('mobile'),theme=mode.endsWith('dark')?'dark':'light',wide=mode.startsWith('wide');
           const p=await browser.newPage(mobile?{...devices['iPhone 13'],serviceWorkers:'block'}:{viewport:{width:wide?1920:1440,height:950},serviceWorkers:'block'});
-          const errors=[];p.on('pageerror',e=>errors.push(e.message));await p.addInitScript(t=>localStorage.setItem('nomad343_dashboard_theme_v1',t),theme);
+          await p.addInitScript(t=>localStorage.setItem('nomad343_dashboard_theme_v1',t),theme);
           await p.route('**/*',r=>['GET','HEAD'].includes(r.request().method())?r.continue():r.abort());
           await p.goto(base+'/index.html?view=statistics',{waitUntil:'domcontentloaded',timeout:60000});
-          const sel=mobile?'.b46-membership-v3-mobile>a':'.b46-stat-member-top>a.b46-membership-v3-link';
-          await p.locator(sel).waitFor({state:'visible',timeout:30000});
-          const proof=await p.locator(sel).evaluate(e=>{const r=e.getBoundingClientRect(),person=e.querySelector('.b46v3-person'),cta=e.querySelector('.b46v3-cta'),copy=e.querySelector('.b46v3-copy');return {x:r.x,y:r.y,w:r.width,h:r.height,href:e.href,theme:document.documentElement.dataset.theme,bg:getComputedStyle(person).backgroundImage,position:getComputedStyle(e.parentElement).position,cta:cta.getBoundingClientRect().toJSON(),copy:copy.getBoundingClientRect().toJSON(),native:e.querySelector('.b46v3-head').textContent,overflow:e.scrollWidth>e.clientWidth+2}});
-          console.log('NATIVE_PROOF '+JSON.stringify({mode,...proof,errors}));assert.equal(proof.href,'https://member.ball46.com/pricing');assert.equal(proof.theme,theme);assert.equal(proof.native,'Get closer to the game.');assert(!proof.overflow);assert(proof.cta.right<=proof.x+proof.w+1&&proof.copy.right<=proof.cta.left+1);assert(proof.bg.includes('presenter-cutout-v4.webp'));const url=proof.bg.match(/url\("([^"]+)"\)/)[1];const img=await p.request.get(url);assert.equal(img.status(),200);assert(img.headers()['content-type'].includes('image/webp'));
-          if(mobile){assert(proof.w>300&&proof.h<100&&proof.position==='static');assert.equal(await p.locator('.b46-stat-member-top:visible').count(),0);}
-          else{assert.equal(proof.h,90);assert.equal(proof.position,'sticky');
-          const d=p.locator('.b46-fast-details');if(await d.count())await d.first().evaluate(e=>e.click());await p.waitForFunction(()=>{const e=document.querySelector('[data-workspace-panel="statistics"]');return e.scrollHeight>e.clientHeight+750},null,{timeout:90000});await p.mouse.move(750,450);await p.mouse.wheel(0,650);await p.waitForTimeout(450);
-          const after=await p.locator(sel).evaluate(e=>({y:e.getBoundingClientRect().y,root:scrollY,scroll:e.closest('[data-workspace-panel]').scrollTop}));assert(after.scroll>100&&after.root===0&&Math.abs(after.y-proof.y)<2,'STICKY_REGRESSION');}
-          const shot=await p.locator(sel).screenshot({type:'jpeg',quality:72});console.log('BANNER_PREVIEW '+mode+' '+shot.toString('base64'));
-          await p.goto(base+'/',{waitUntil:'domcontentloaded'});await p.waitForTimeout(2000);assert.equal(await p.locator('.b46-membership-v3-mobile:visible,.b46-membership-v3-link:visible').count(),0,'HOME_LEAK');if(!mobile)assert(await p.locator('.b46mp-card').count());await p.close();
-          }
-          }finally{await browser.close()}
+          const sel=mobile?'.b46-exact-mobile>a':'.b46-stat-member-top>a.b46-exact-link';
+          await p.locator(sel+' img:visible').waitFor({state:'visible',timeout:30000});
+          await p.locator(sel+' img:visible').evaluate(e=>e.decode());
+          const proof=await p.locator(sel).evaluate(e=>{const r=e.getBoundingClientRect(),im=[...e.querySelectorAll('img')].find(x=>x.getBoundingClientRect().height>0),ir=im.getBoundingClientRect(),s=getComputedStyle(im);return {href:e.href,theme:document.documentElement.dataset.theme,src:im.src,natural:[im.naturalWidth,im.naturalHeight],rect:[r.x,r.y,r.width,r.height],image:[ir.x,ir.y,ir.width,ir.height],fit:s.objectFit,filter:s.filter,position:getComputedStyle(e.parentElement).position,extra:e.querySelectorAll('span').length}});
+          const expected=mobile?'mobile':theme;assert(proof.src.endsWith('exact-'+expected+'-v5.webp'));assert.equal(proof.href,'https://member.ball46.com/pricing');assert.equal(proof.theme,theme);assert.equal(proof.extra,0);assert.equal(proof.filter,'none');assert(Math.abs(proof.image[2]/proof.image[3]-proof.natural[0]/proof.natural[1])<.02,'DISTORTION');assert(Math.abs(proof.rect[2]-proof.image[2])<1&&Math.abs(proof.rect[3]-proof.image[3])<1,'GAP');
+          if(mobile){assert.equal(proof.position,'static');assert.equal(await p.locator('.b46-stat-member-top:visible').count(),0);}
+          else{assert.equal(proof.position,'sticky');const details=p.locator('.b46-fast-details');if(await details.count())await details.first().evaluate(e=>e.click());await p.waitForFunction(()=>{const e=document.querySelector('[data-workspace-panel="statistics"]');return e.scrollHeight>e.clientHeight+750},null,{timeout:90000});await p.mouse.move(750,450);await p.mouse.wheel(0,650);await p.waitForTimeout(450);const after=await p.locator(sel).evaluate(e=>({y:e.getBoundingClientRect().y,root:scrollY,scroll:e.closest('[data-workspace-panel]').scrollTop}));assert(after.scroll>100&&after.root===0&&Math.abs(after.y-proof.rect[1])<2,'STICKY_REGRESSION')}
+          console.log('EXACT_PROOF '+JSON.stringify({mode,...proof}));const shot=await p.locator(sel).screenshot({type:'png'});console.log('EXACT_PREVIEW '+mode+' '+shot.toString('base64'));await p.close();
+          }}finally{await browser.close()}
           EOF
       - name: Confirm Production unchanged
         if: always()
