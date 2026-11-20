@@ -1,0 +1,51 @@
+name: BALL46 Puebla pair archive audit
+on:
+  push:
+    branches: [test/ball46-prematch-v1-20261120]
+    paths: ['.github/workflows/ball46-puebla-readonly.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: real-finished-history
+          run-id: 44723780062
+          github-token: ${{ github.token }}
+          path: daily
+      - uses: actions/download-artifact@v4
+        with:
+          name: verified-archive-merge
+          run-id: 44741440475
+          github-token: ${{ github.token }}
+          path: merged
+      - run: |
+          python - <<'PY'
+          import json,pathlib,re
+          rows=[];names={};hits=[]
+          pattern=re.compile(r'puebla|san\s*luis',re.I)
+          def visit(x):
+            if isinstance(x,list):
+              for v in x: visit(v)
+            elif isinstance(x,dict):
+              if 'id' in x and isinstance(x.get('name'),str):
+                names[str(x['id'])]=x['name']
+              if 'fixture_id' in x and 'home_id' in x and 'away_id' in x:
+                rows.append((str(x['fixture_id']),str(x['home_id']),str(x['away_id'])))
+              elif isinstance(x.get('teams'),dict) and 'id' in x:
+                h=x['teams'].get('home',{}); a=x['teams'].get('away',{})
+                if h.get('id') and a.get('id'):
+                  rows.append((str(x['id']),str(h['id']),str(a['id'])))
+              for v in x.values(): visit(v)
+          for folder in ['daily','merged']:
+            for f in pathlib.Path(folder).rglob('*.json'):
+              try:
+                j=json.loads(f.read_text());print('ARTIFACT_FILE',str(f));visit(j)
+              except Exception as e: print(type(e).__name__)
+          unique=set(rows)
+          matches={i:n for i,n in names.items() if pattern.search(n)}
+          print('PAIR_ARCHIVE_AUDIT '+json.dumps({'namedTeams':len(names),'uniqueFixtures':len(unique),'matchingNames':[{'id':i,'name':n,'fixtures':sum(i in (h,a) for _,h,a in unique)} for i,n in matches.items()]},ensure_ascii=False))
+          PY
