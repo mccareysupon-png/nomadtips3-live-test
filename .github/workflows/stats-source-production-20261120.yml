@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   release:
-    if: github.ref == 'refs/heads/release/ball46-stats-source-20261120'
+    if: github.ref == 'refs/heads/release/ball46-stats-source-label-20261120'
     runs-on: ubuntu-24.04
     timeout-minutes: 18
     steps:
