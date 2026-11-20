@@ -1,6 +1,7 @@
 import {DurableObject} from 'cloudflare:workers';
 import {init,ingest,normalize,totals,coverage,dailyPlan,pathFor} from './history.mjs';
 import {evaluate,defaultConfig} from './prematch-bot.mjs';
+import {dryRunStored} from './stored-signal-adapter.mjs';
 const json=x=>Response.json(x,{headers:{'cache-control':'no-store'}});
 export class PrematchStore extends DurableObject{
  constructor(ctx,env){super(ctx,env);this.db={exec:(q,...a)=>ctx.storage.sql.exec(q,...a),transaction:f=>ctx.storage.transactionSync(f)};init(this.db)}
@@ -12,6 +13,7 @@ export class PrematchStore extends DurableObject{
  const saved=await this.ctx.storage.get('previewSelections');
  return json({system:'BALL46_PREMATCH_ONLY',stored:totals(this.db),teams:allTeams.length,teamsWith10:allTeams.filter(n=>n.matches>=10).length,results:rows,selection:saved??null});
  }
+ if(path==='/dry-run'&&req.method==='GET'){const fixtures=await this.ctx.storage.get('botFixtures')??[];return json({stored:totals(this.db),inputCount:fixtures.length,...dryRunStored(this.db,fixtures,now)})}
  if(path==='/bot-state'&&req.method==='GET')return json({config:await this.ctx.storage.get('botConfig')??defaultConfig,lastRun:await this.ctx.storage.get('botRun')??null,inputs:(await this.ctx.storage.get('botFixtures')??[]).length,networkCalls:0});
  if(path==='/bot-input'&&req.method==='POST'){const j=await req.json();if(!Array.isArray(j.fixtures)||j.fixtures.length>1000)return new Response('Invalid fixtures',{status:400});await this.ctx.storage.put('botFixtures',j.fixtures);return json({stored:j.fixtures.length})}
  if(path==='/bot-switch'&&req.method==='POST'){const j=await req.json();if(typeof j.enabled!=='boolean')return new Response('Invalid switch',{status:400});const cfg=await this.ctx.storage.get('botConfig')??defaultConfig;await this.ctx.storage.put('botConfig',{...cfg,enabled:j.enabled});return json({enabled:j.enabled})}
