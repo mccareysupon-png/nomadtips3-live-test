@@ -1,0 +1,37 @@
+name: Read-only inspect ROI rendering paths
+on:
+  push:
+    branches: [test/ball46-stats-roi-color-20261120]
+    paths: ['.github/workflows/stats-roi-inspect-20261120.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm install --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium --only-shell
+          node <<'EOF'
+          const {chromium,devices}=require('playwright');
+          (async()=>{const b=await chromium.launch();try{for(const mobile of [false,true]){
+          const p=await b.newPage(mobile?{...devices['iPhone 13'],serviceWorkers:'block'}:{viewport:{width:1920,height:1000},serviceWorkers:'block'});
+          await p.route('**/*',r=>['GET','HEAD'].includes(r.request().method())?r.continue():r.abort());
+          await p.goto('https://ball46-production.mccarey-supon.workers.dev/index.html?view=statistics',{waitUntil:'domcontentloaded'});
+          await p.waitForFunction(()=>[...document.querySelectorAll('[data-sp-table-body] tr')].some(r=>r.cells.length>=4),null,{timeout:60000});
+          await p.waitForTimeout(3000);
+          const a=await p.evaluate(()=>({scripts:[...document.scripts].filter(e=>e.src).map(e=>e.src)}));
+          for(const market of ['all','1x2','ah','btts']){
+           await p.locator('[data-stat-market="'+market+'"]').first().evaluate(e=>e.click());await p.waitForTimeout(2800);
+           console.log('ROI_DOM '+JSON.stringify({mobile,market,items:await p.evaluate(()=>[...document.querySelectorAll('#b46-finance-chart-card div,#b46-finance-chart-card section,#b46-finance-chart-card span,#b46-finance-chart-card small')].filter(e=>e.children.length===0&&e.textContent.trim()==='ROI'&&!e.closest('button')).map(e=>({html:e.parentElement.outerHTML,display:getComputedStyle(e.parentElement).display,color:getComputedStyle(e.parentElement.querySelector('b,strong')||e).color,visible:!!e.getClientRects().length})))}));
+          }
+          if(!mobile)for(const u of a.scripts.filter(x=>/longterm-performance|statistics-card|statistics-fast/.test(x))){
+            const t=await(await p.request.get(u)).text();for(const re of [/function b46RateTone/g,/b46RateTone\(v\[1\]\)/g,/class="f46-metrics"/g,/const tiles=/g,/strong\.textContent=value/g,/key==='rate'/g,/key === 'rate'/g,/data-b46-rate-tone/g,/roi.*?tone/gi,/function b46TotalPending/g]){let n=0;for(const m of t.matchAll(re)){if(++n>8)break;console.log('ROI_SOURCE '+JSON.stringify({p:u.split('?')[0],pattern:re.source,context:t.slice(Math.max(0,m.index-240),m.index+600)}))}}
+          }
+          await p.close()
+          }}finally{await b.close()}})().catch(e=>{console.error(e);process.exit(1)})
+          EOF
