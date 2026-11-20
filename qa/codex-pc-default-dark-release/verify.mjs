@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
+import { marker } from './patch.mjs';
 
 const key = 'nomad343_dashboard_theme_v1';
+
+export class ThemeResponsePending extends Error {}
 
 export async function verifyTheme({ chromium, devices }, origin, intercept) {
   const desktop = { viewport: { width: 1440, height: 950 } };
@@ -70,6 +73,11 @@ export async function verifyTheme({ chromium, devices }, origin, intercept) {
 
         const response = await page.goto(origin + path, { waitUntil: 'domcontentloaded', timeout: 40000 });
         assert(response?.ok() && new URL(page.url()).origin === origin, name + ': wrong response origin');
+        const source = await response.text();
+        if (!source.includes(marker)) {
+          throw new ThemeResponsePending(name + ': browser received the previous HTML version');
+        }
+        assert(/<html\b[^>]*\bdata-theme="dark"/i.test(source), name + ': Dark is missing from the opening HTML');
         const expected = saved ?? 'dark';
         await page.waitForFunction(theme => (
           document.documentElement.dataset.theme === theme &&
@@ -79,7 +87,9 @@ export async function verifyTheme({ chromium, devices }, origin, intercept) {
         const appearance = await state(page);
         assert.equal(appearance.theme, expected, name);
         assert.equal(appearance.saved, saved ?? null, name + ': startup stored a preference');
-        if (!saved) assert(!appearance.history.includes('light'), name + ': briefly switched to Light');
+        if (!saved) {
+          assert(!appearance.history.includes('light'), name + ': unexpected theme history ' + appearance.history.join(' → '));
+        }
 
         if (toggle) {
           await page.locator('[data-theme-toggle]:visible').first().click();

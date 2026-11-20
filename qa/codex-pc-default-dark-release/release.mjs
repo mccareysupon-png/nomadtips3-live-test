@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { dashboardPath, marker, patchDashboard, patchHtml } from './patch.mjs';
-import { verifyTheme } from './verify.mjs';
+import { ThemeResponsePending, verifyTheme } from './verify.mjs';
 
 const { CLOUDFLARE_API_TOKEN: token, CLOUDFLARE_ACCOUNT_ID: account, RUNNER_TEMP: scratch } = process.env;
 assert(token && account && scratch, 'Cloudflare credentials and runner directory are required');
@@ -20,12 +20,12 @@ const playwright = createRequire(scratch + '/codex-pc-theme-runtime/package.json
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 await mkdir(out, { recursive: true });
 
-async function retry(action, attempts, delay) {
+async function retry(action, attempts, delay, shouldRetry = () => true) {
   for (let attempt = 1; ; attempt++) {
     try {
       return await action();
     } catch (error) {
-      if (attempt >= attempts) throw error;
+      if (attempt >= attempts || !shouldRetry(error)) throw error;
       await new Promise(resolve => setTimeout(resolve, delay));
     }
   }
@@ -115,9 +115,15 @@ async function verifyResponse(origin) {
 
 async function recordProduction(id) {
   await retry(() => verifyResponse(live), 24, 2300);
-  const tests = await verifyTheme(playwright, live);
-  const apex = (await read('https://ball46.com', '/')).toString();
-  assert(apex.includes(marker) && /<html\b[^>]*\bdata-theme="dark"/i.test(apex), 'Apex website did not receive Dark startup');
+  const tests = await retry(() => verifyTheme(playwright, live), 6, 3000, error => {
+    if (!(error instanceof ThemeResponsePending)) return false;
+    console.log('Waiting for new HTML to reach every browser:', error.message);
+    return true;
+  });
+  await retry(async () => {
+    const apex = (await read('https://ball46.com', '/')).toString();
+    assert(apex.includes(marker) && /<html\b[^>]*\bdata-theme="dark"/i.test(apex), 'Apex website did not receive Dark startup');
+  }, 18, 2300);
   await expectActive(id);
   await writeFile(out + '/production.json', JSON.stringify({ worker: site, baseline, active: id, tests }, null, 2));
   console.log('Production default Dark verified', id);
