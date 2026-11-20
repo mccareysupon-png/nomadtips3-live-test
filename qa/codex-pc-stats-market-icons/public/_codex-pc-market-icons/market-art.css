@@ -17,12 +17,13 @@ body[data-workspace-view="statistics"] #b46-finance-chart-card .f46-overview > d
   background-size: contain;
   background-position: center;
   background-repeat: no-repeat;
+  filter: drop-shadow(0 2px 2px rgb(0 0 0 / 48%));
   pointer-events: none;
   transform: translateY(-50%);
 }
 
 html[data-theme="light"] body[data-workspace-view="statistics"] #b46-finance-chart-card .f46-overview > div:first-child:has(> .f46-value)::after {
-  filter: drop-shadow(0 1px 1.5px rgb(19 53 39 / 20%));
+  filter: drop-shadow(0 2px 2px rgb(19 53 39 / 24%));
 }
 
 body:has(.left-rail [data-stat-market="1x2"].active) {
