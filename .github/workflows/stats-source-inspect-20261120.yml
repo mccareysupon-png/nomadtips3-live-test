@@ -1,0 +1,31 @@
+name: Read-only inspect source labels in statistics
+on:
+  push:
+    branches: [test/ball46-stats-source-label-20261120]
+    paths: ['.github/workflows/stats-source-inspect-20261120.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm install --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium --only-shell
+          node <<'EOF'
+          const {chromium,devices}=require('playwright');
+          (async()=>{const b=await chromium.launch();try{for(const mobile of [false,true]){
+          const p=await b.newPage(mobile?{...devices['iPhone 13'],serviceWorkers:'block'}:{viewport:{width:1920,height:1000},serviceWorkers:'block'});
+          await p.route('**/*',r=>['GET','HEAD'].includes(r.request().method())?r.continue():r.abort());
+          await p.goto('https://ball46-production.mccarey-supon.workers.dev/index.html?view=statistics',{waitUntil:'domcontentloaded'});
+          await p.waitForFunction(()=>[...document.querySelectorAll('[data-sp-table-body] tr')].some(r=>r.cells.length>=4),null,{timeout:60000});
+          await p.waitForTimeout(3000);
+          const a=await p.evaluate(()=>[...document.querySelectorAll('[data-sp-table-body] *')].filter(e=>e.children.length===0&&/SOURCE\s*1/i.test(e.textContent)).slice(0,12).map(e=>({html:e.outerHTML,parent:e.parentElement.outerHTML.slice(0,2800)})));
+          console.log('SOURCE_DOM '+JSON.stringify({mobile,a}));
+          await p.close()
+          }}finally{await b.close()}})().catch(e=>{console.error(e);process.exit(1)})
+          EOF
