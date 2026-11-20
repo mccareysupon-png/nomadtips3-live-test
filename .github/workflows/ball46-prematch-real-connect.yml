@@ -28,3 +28,5 @@ jobs:
           name: real-history-evidence
           path: evidence/
           retention-days: 7
+
+# Retry only the existing isolated connector, retaining its SQLite namespace and logging non-JSON status.
