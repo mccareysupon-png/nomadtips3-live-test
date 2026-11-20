@@ -50,7 +50,9 @@ try{
  for(const a of stage){
   const v=await cf('/workers/'+a.name+'/versions?deploy=false',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(a.meta)});
   assert(typeof v.id==='string'&&v.id!==a.id);assert.deepEqual(await active(),before,'ACTIVE_DEPLOYMENT_CHANGED');
-  const check=await cf('/workers/'+a.name+'/versions/'+v.id+'?include=modules');
+  console.log('STAGED_UPLOAD_ACCEPTED',JSON.stringify({worker:a.name,version:v.id,rollback:a.id}));
+  let check;for(let i=0;i<12;i++){try{check=await cf('/workers/'+a.name+'/versions/'+v.id+'?include=modules');break}catch(e){if(!String(e.message).startsWith('CF 404 '))throw e;await new Promise(r=>setTimeout(r,1500))}}
+  assert(check?.id===v.id,'STAGED_VERSION_NOT_VISIBLE');
   const names=(check.bindings??[]).map(x=>x.name);
   assert(a.oldBindingNames.every(x=>names.includes(x))&&a.meta.bindings.every(x=>names.includes(x)),'BINDINGS_INCOMPLETE');
   const item={worker:a.name,rollbackVersion:a.id,stagedVersion:v.id,bindingNames:names,active:false};evidence.push(item);console.log('STAGED_VERSION',JSON.stringify(item));
