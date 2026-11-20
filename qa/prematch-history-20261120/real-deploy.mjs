@@ -11,7 +11,7 @@ const existing=(await api('/scripts')).some(w=>w.id===name);assert(name==='ball4
 const secret=crypto.randomBytes(32).toString('hex');const form=new FormData(),dir='qa/prematch-history-20261120/';
 const bindings=[{name:'HISTORY',type:'durable_object_namespace',class_name:'RealHistory'},{name:'SOURCE_HUB',type:'service',service:hub,environment:'production'},{name:'BOOTSTRAP_SECRET',type:'secret_text',text:secret}];
 form.append('metadata',new Blob([JSON.stringify({main_module:'real-worker.mjs',compatibility_date:'2026-11-19',bindings,...(!existing?{migrations:{new_tag:'v1',new_sqlite_classes:['RealHistory']}}:{})})],{type:'application/json'}),'metadata.json');
-for(const f of ['real-worker.mjs','history.mjs','backfill.mjs','john-sync.mjs'])form.append(f,new Blob([fs.readFileSync(dir+f,'utf8')],{type:'application/javascript+module'}),f);
+for(const f of ['real-worker.mjs','history.mjs','backfill.mjs','john-sync.mjs','audit-history.mjs','last5-archive.mjs'])form.append(f,new Blob([fs.readFileSync(dir+f,'utf8')],{type:'application/javascript+module'}),f);
 await api('/scripts/'+name,{method:'PUT',body:form});await api('/scripts/'+name+'/subdomain',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled:true,previews_enabled:false})});
 const sub=await api('/subdomain'),url='https://'+name+'.'+sub.subdomain+'.workers.dev';
 let first;for(let i=0;i<12;i++){try{const r=await fetch(url+'/health',{signal:AbortSignal.timeout(10000)});if(r.ok){first=await r.json();break}}catch{}await new Promise(r=>setTimeout(r,1000))}
