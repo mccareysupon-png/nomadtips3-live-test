@@ -16,3 +16,5 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: node qa/prematch-history-20261120/actual-deployment-check.mjs
+
+# Handoff 2026-11-20: refresh read-only deployment and health evidence.
