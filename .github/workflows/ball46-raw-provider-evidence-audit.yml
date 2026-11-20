@@ -1,0 +1,72 @@
+name: BALL46 stored raw provider evidence audit
+on:
+  push:
+    branches: [test/ball46-prematch-v1-20261120]
+    paths: ['.github/workflows/ball46-raw-provider-evidence-audit.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: real-finished-history
+          run-id: 44723780062
+          github-token: ${{ github.token }}
+          path: daily
+      - uses: actions/download-artifact@v4
+        with:
+          name: verified-archive-merge
+          run-id: 44741440475
+          github-token: ${{ github.token }}
+          path: merged
+      - uses: actions/download-artifact@v4
+        with:
+          name: one-shot-real-history
+          run-id: 44691834051
+          github-token: ${{ github.token }}
+          path: diagnostic
+      - run: |
+          python - <<'PY'
+          import json,pathlib,collections,re,unicodedata,datetime
+          def canon(s): return re.sub(r'[^a-z0-9]+','',unicodedata.normalize('NFKD',str(s)).encode('ascii','ignore').decode().lower())
+          raw=[]; pages=[];paths=collections.Counter(); name_by_id={}; conflicts=[]; markets=collections.Counter()
+          def scan(x,p=''):
+            if isinstance(x,dict):
+              for k,v in x.items():
+                path=p+'.'+k if p else k
+                if re.search(r'bet.?365|odds|price|bookmaker|market|prediction|probability|form|last.?[0-9]|history|h2h',k,re.I): paths[path]+=1
+                scan(v,path)
+            elif isinstance(x,list):
+              for v in x: scan(v,p+'[]')
+            elif isinstance(x,str) and re.search(r'bet.?365',x,re.I): markets[p]+=1
+          for f in sorted(pathlib.Path('daily').rglob('page-*.json')):
+            b=json.loads(f.read_text())
+            if isinstance(b,list): data=b
+            else: data=b.get('data',b.get('body',{}).get('data',[]))
+            assert isinstance(data,list) and data
+            pages.append({'file':f.name,'rootKeys':list(b) if isinstance(b,dict) else [],'pagination':b.get('pagination') if isinstance(b,dict) else None,'rows':len(data),'statuses':dict(collections.Counter(str(r.get('status')) for r in data))})
+            raw.extend(data)
+          assert len(raw)==113,len(raw)
+          for r in raw:
+            scan(r)
+            for side in ('home','away'):
+              t=r.get('teams',{}).get(side,{})
+              i=str(t.get('id')); n=t.get('name')
+              if i!='None' and n:
+                if i in name_by_id and canon(name_by_id[i])!=canon(n): conflicts.append({'id':i,'names':[name_by_id[i],n]})
+                name_by_id[i]=n
+          arc=json.loads(next(pathlib.Path('merged').rglob('archive-merge.json')).read_text())['source']['rows']
+          ids_raw={str(r['id']) for r in raw};ids_arc={str(r['fixture_id']) for r in arc};all_ids=ids_raw|ids_arc
+          team_counts=collections.Counter()
+          for r in {str(x['id']):x for x in raw if str(x['id']) not in ids_arc}.values():
+            for side in ('home','away'): team_counts[str(r['teams'][side]['id'])]+=1
+          for r in arc:
+            team_counts.update([str(r['home_id']),str(r['away_id'])])
+          diag=[{'file':str(f),'keys':list(json.loads(f.read_text()))} for f in pathlib.Path('diagnostic').rglob('*.json')]
+          targets=['Puebla U21','Atletico San Luis U21','Gimnasia y Tiro','Tristan Suarez','Al Gharafa','Al-Arabi Doha']
+          matches={n:[{'id':i,'name':v,'unionHistory':team_counts[i]} for i,v in name_by_id.items() if canon(n)==canon(v) or canon(n) in canon(v) or canon(v) in canon(n)] for n in targets}
+          print('RAW_PROVIDER_AUDIT '+json.dumps({'pages':pages,'rawRows':len(raw),'rawFixtureIDs':len(ids_raw),'fixtureKeys':sorted(set(k for r in raw for k in r)),'teamKeys':sorted(set(k for r in raw for t in r['teams'].values() if isinstance(t,dict) for k in t)),'rawNamedTeamIDs':len(name_by_id),'rawTeamIdConflicts':conflicts,'rawOddsOrHistoryFields':dict(paths),'bet365StringPaths':dict(markets),'cacheNormalizedRows':len(arc),'cacheNormalizedFields':sorted(set(k for r in arc for k in r)),'overlap':len(ids_raw&ids_arc),'unionFixtures':len(all_ids),'unionTeams':len(team_counts),'maxHistory':max(team_counts.values()),'teamsWith3':sum(v>=3 for v in team_counts.values()),'teamMatches':matches,'diagnosticFiles':diag},ensure_ascii=False))
+          PY
