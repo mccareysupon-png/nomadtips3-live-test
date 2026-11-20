@@ -2,7 +2,7 @@ import {DurableObject} from 'cloudflare:workers';
 import {init,ingest,normalize,totals,coverage,dailyPlan,pathFor} from './history.mjs';
 import {mergeStoredPrematch} from './stored-prematch-feed.mjs';
 import {dryRunStored,BASELINE_SHADOW,ACCUMULATION_SHADOW,TRIAL_SHADOW} from './stored-signal-adapter.mjs';
-const AUTO_PROFILE_VERSION='auto-shadow-trial-3-v1';
+const AUTO_PROFILE_VERSION='auto-shadow-probability-first-v2';
 const json=x=>Response.json(x,{headers:{'cache-control':'no-store'}});
 export class PrematchStore extends DurableObject{
  constructor(ctx,env){super(ctx,env);this.db={exec:(q,...a)=>ctx.storage.sql.exec(q,...a),transaction:f=>ctx.storage.transactionSync(f)};init(this.db)}
@@ -35,7 +35,7 @@ export class PrematchStore extends DurableObject{
  const old=await this.ctx.storage.get('botFixtures')??[];let merged;try{merged=mergeStoredPrematch(old,j.fixtures,now)}catch(e){return json({error:String(e.message),stored:old.length})}
  if(j.fixtures.length&&merged.stats.accepted===0)return json({error:'NO_VALID_STORED_FIXTURES',stored:old.length,stats:merged.stats});
  if(j.fixtures.length){await this.ctx.storage.put('botFixtures',merged.fixtures);await this.ctx.storage.put('botFeedState',{at:now,source:path,stats:merged.stats,providerCalls:0})}
- const shadow=dryRunStored(this.db,merged.fixtures,now,1000,TRIAL_SHADOW);return json({system:'BALL46_PREMATCH_ONLY',stored:merged.stats.stored,feed:merged.stats,rows:shadow.rows.map(x=>({...x,picks:[]})),counts:shadow.counts,diagnostics:shadow.diagnostics,published:0,ruleState:'READ_ONLY_SHADOW',networkCalls:0});
+ const shadow=dryRunStored(this.db,merged.fixtures,now,1000,TRIAL_SHADOW);return json({system:'BALL46_PREMATCH_ONLY',stored:merged.stats.stored,feed:merged.stats,rows:shadow.rows.map(x=>({...x,picks:[]})),counts:shadow.counts,probability:shadow.probability,diagnostics:shadow.diagnostics,published:0,ruleState:'READ_ONLY_SHADOW',networkCalls:0});
  }
  if(path==='/bot-switch'&&req.method==='POST')return new Response('Publication disabled in test shadow',{status:409});
  if(path==='/bot-run'&&req.method==='POST'){
@@ -45,7 +45,7 @@ export class PrematchStore extends DurableObject{
  const archiveCoverage={finished:Number(totals(this.db).finished??0),teams:archiveTeams.length,ready:archiveTeams.filter(x=>x.matches>=3).length,insufficient:archiveTeams.filter(x=>x.matches<3).length,maximum:archiveTeams[0]?.matches??0};
  const rows=report.rows.map(r=>({...r,picks:[]}));
  const out={...report,rows,system:'BALL46_PREMATCH_ONLY',ruleState:'READ_ONLY_SHADOW',autoVersion:AUTO_PROFILE_VERSION,checkedAt:now,networkCalls:0,archiveCoverage,qualified:rows.filter(x=>x.btts.signal!=='NO_SIGNAL'||x.oneX2.signal!=='NO_SIGNAL').length};
- await this.ctx.storage.put('botRun',{checkedAt:now,inputs:fixtures.length,checked:report.counts.upcoming,archiveCoverage,complete:report.counts.historyComplete,qualified:out.qualified,networkCalls:0,mode:out.mode,profile:report.profile,counts:report.counts,outcomes:report.outcomes,diagnostics:report.diagnostics,autoVersion:AUTO_PROFILE_VERSION,published:0});await this.ctx.storage.put('previewSelections',out);return json(out)}
+ await this.ctx.storage.put('botRun',{checkedAt:now,inputs:fixtures.length,checked:report.counts.upcoming,archiveCoverage,complete:report.counts.historyComplete,qualified:out.qualified,networkCalls:0,mode:out.mode,profile:report.profile,counts:report.counts,outcomes:report.outcomes,probability:report.probability,diagnostics:report.diagnostics,autoVersion:AUTO_PROFILE_VERSION,published:0});await this.ctx.storage.put('previewSelections',out);return json(out)}
  if(path==='/daily-state'&&req.method==='GET')return json({stored:totals(this.db),daily:await this.ctx.storage.get('dailyImport')??null});
  if(path==='/daily-init'&&req.method==='POST'){
  const old=await this.ctx.storage.get('dailyImport');
