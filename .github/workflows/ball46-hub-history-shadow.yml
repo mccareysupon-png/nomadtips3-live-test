@@ -15,7 +15,9 @@ jobs:
         with:
           node-version: '22'
       - name: Existing history contract tests
-        run: node --test qa/prematch-history-20261120/*.test.mjs
+        run: |
+          node --check qa/prematch-history-20261120/hub-clone-patch.mjs
+          node --test qa/prematch-history-20261120/*.test.mjs
       - name: Run isolated copy of actual HUB with mock transport
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
