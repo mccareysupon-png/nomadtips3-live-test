@@ -1,0 +1,72 @@
+name: BALL46 Pre-Match TEST theme navigation diagnostic
+on:
+  push:
+    branches: [test/ball46-premium-match-colors-20261120]
+    paths: ['.github/workflows/ball46-prematch-theme-route-diagnostic.yml']
+permissions: { contents: read }
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          npm install --no-save --no-package-lock playwright@1.55.0
+          npx playwright install chromium --only-shell
+      - name: Diagnose real theme click with Pre-Match open, desktop and mobile
+        run: |
+          node --input-type=module <<'JS'
+          import { chromium,devices } from 'playwright';
+          const browser=await chromium.launch();
+          const base='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev';
+          try{
+            for(const mobile of [false,true]){
+              const p=await browser.newPage(mobile?{...devices['iPhone 13'],serviceWorkers:'block'}:{viewport:{width:1440,height:920},serviceWorkers:'block'});
+              const errs=[];p.on('pageerror',e=>errs.push(String(e.message).slice(0,220)));
+              await p.addInitScript(()=>localStorage.setItem('nomad343_dashboard_theme_v1','dark'));
+              await p.goto(base+'/?b46pm=all&b46pmPeriod=all&themeRouteDiagnostic=1',{waitUntil:'domcontentloaded',timeout:60000});
+              await p.waitForFunction(()=>document.body.dataset.b46PrematchView==='1'&&!!document.querySelector('#b46-prematch-panel .b46pm-performance'),null,{timeout:20000});
+              const examine=()=>p.evaluate(()=>{
+                const shape=()=>({
+                  url:location.href,pathname:location.pathname,search:location.search,hash:location.hash,
+                  theme:document.documentElement.dataset.theme,storageTheme:localStorage.getItem('nomad343_dashboard_theme_v1'),
+                  mode:document.body.dataset.b46PrematchView,visible:!!document.querySelector('#b46-prematch-panel:not([hidden])'),
+                  preMatchCount:document.querySelectorAll('[data-b46-prematch-route]').length,
+                  sidebarCount:document.querySelectorAll('aside.left-rail').length,
+                  mainCount:document.querySelectorAll('section.workspace.singlepage').length,
+                  nativeView:document.querySelector('[data-workspace-heading]')?.textContent,
+                  activePreMatch:[...document.querySelectorAll('[data-b46-prematch-route].active')].map(x=>x.dataset.b46PrematchRoute),
+                  pageScripts:[...document.scripts].map(x=>x.src).filter(x=>x.includes('prematch')).slice(0,10)
+                });
+                const items=[...document.querySelectorAll('button,[role="button"],input[type="checkbox"],select')];
+                const clickable=items.filter(e=>{
+                  const a=[e.outerHTML.slice(0,420),e.ariaLabel,e.getAttribute('title'),e.textContent?.slice(0,120)].join(' ').toLowerCase();
+                  return /theme|dark|light|สว่าง|มืด|mode|sun|moon|appearance|สี/.test(a);
+                }).slice(0,30).map(e=>({html:e.outerHTML.slice(0,450),visible:!!e.getClientRects().length,label:e.getAttribute('aria-label'),text:e.textContent?.trim().slice(0,75),title:e.getAttribute('title')}));
+                return {shape:shape(),clickable};
+              });
+              const before=await examine();console.log('PREMATCH_THEME_DIAG_BEFORE '+JSON.stringify({mobile,...before}));
+              const candidates=[
+                '[data-theme-toggle]','[data-b46-theme-toggle]','[data-theme-switch]','[data-theme]',
+                'button[aria-label*="theme" i]','button[title*="theme" i]',
+                'button[aria-label*="light" i]','button[title*="light" i]',
+                'button[aria-label*="mode" i]','button[title*="mode" i]',
+                '.theme-toggle','button.theme-btn','[data-b46m-theme]'
+              ];
+              let clicked=null;
+              for(const c of candidates){const nodes=p.locator(c);for(let i=0;i<Math.min(await nodes.count(),5);i++){
+                const node=nodes.nth(i);if(await node.isVisible().catch(()=>false)){
+                  try{const tag=await node.evaluate(x=>x.outerHTML.slice(0,450));await node.click({timeout:2500});clicked={selector:c,index:i,html:tag};break}catch(e){console.log('THEME_DIAG_CLICK_ERROR '+JSON.stringify({selector:c,error:String(e).slice(0,220)}))}
+                }
+              }if(clicked)break}
+              }
+              if(!clicked){console.log('PREMATCH_THEME_DIAG_NO_BUTTON '+JSON.stringify({mobile}));await p.close();continue;}
+              await p.waitForTimeout(750);
+              const after=await examine();
+              console.log('PREMATCH_THEME_DIAG_AFTER '+JSON.stringify({mobile,clicked,...after,errors:errs}));
+              if(after.shape.theme!=='light')console.log('PREMATCH_THEME_DIAG_NOT_LIGHT '+JSON.stringify({mobile,clicked}));
+              // Do not assert: this diagnostic must report the actual regression.
+              await p.close();
+            }
+          }finally{await browser.close()}
+          JS
