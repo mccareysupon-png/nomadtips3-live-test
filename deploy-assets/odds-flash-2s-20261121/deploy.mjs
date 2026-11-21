@@ -147,6 +147,9 @@ async function browserCheck(origin,label,p,full=false){
       const sleep=t=>new Promise(resolve=>setTimeout(resolve,t));
       // Wait for the already-running DOM monitor to record this price, not by adding API requests.
       await sleep(300);
+      // Seed the native DOM observer on this exact quote before simulating a movement.
+      el.setAttribute('data-nomad-odds-raw',value.toFixed(2));
+      await sleep(220);
       const initial=snapshot(),upVal=Number((value+.07).toFixed(2));
       el.setAttribute('data-nomad-odds-raw',upVal.toFixed(2));el.textContent=upVal.toFixed(2);
       await sleep(120);
@@ -168,6 +171,7 @@ async function browserCheck(origin,label,p,full=false){
       const clearedDown=snapshot();
       return {initial,up,upStill,clearedUp,samePrice,down,downStill,clearedDown};
     });
+    console.log('ODDS_CANDIDATE_BROWSER_DIAGNOSTICS '+label+' '+JSON.stringify({initial,sampled}));
     assert(!sampled.error,'BAD_PRICE_FOR_QA');
     assert.equal(sampled.up.move,'up','UP_FLASH_NOT_TRIGGERED');
     assert(sampled.up.arrow.includes('↑'),'UP_ARROW_MISSING');
