@@ -1,0 +1,31 @@
+name: Inspect mobile native navigation for Pre-Match
+on:
+  push:
+    branches: [test/ball46-premium-match-colors-20261120]
+    paths: ['.github/workflows/ball46-prematch-mobile-nav-inspect.yml']
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          npm install --no-save --no-package-lock playwright@1.55.0
+          npx playwright install chromium --only-shell
+      - run: |
+          node --input-type=module <<'JS'
+          import {chromium,devices} from 'playwright';
+          const b=await chromium.launch();
+          const p=await b.newPage({...devices['iPhone 13'],serviceWorkers:'block'});
+          await p.goto('https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev',{waitUntil:'domcontentloaded'});
+          await p.waitForSelector('[data-b46-prematch-route="predictions"]',{state:'attached',timeout:15000});
+          const d=await p.evaluate(()=>{
+           const visible=e=>{const r=e.getBoundingClientRect();const s=getComputedStyle(e);return r.width>0&&r.height>0&&s.visibility!=='hidden'&&s.display!=='none'};
+           const elems=[...document.querySelectorAll('button,a,[role="button"],nav,aside')].filter(e=>visible(e)).slice(0,120).map(e=>({tag:e.tagName,id:e.id,className:e.className,txt:e.textContent?.trim().slice(0,70),html:e.outerHTML.slice(0,380)}));
+           const row=document.querySelector('[data-b46-prematch-route="predictions"]');let e=row;const chain=[];while(e&&e!==document.body){const s=getComputedStyle(e);const r=e.getBoundingClientRect();chain.push({tag:e.tagName,id:e.id,cls:e.className,display:s.display,visibility:s.visibility,rect:[r.x,r.y,r.width,r.height],data:[...e.attributes].filter(a=>a.name.startsWith('data-')).map(a=>[a.name,a.value])});e=e.parentElement;}
+           return {elems,chain,bodyAttrs:[...document.body.attributes].map(a=>[a.name,a.value])};
+          });
+          console.log('MOBILE_NAV_INSPECT '+JSON.stringify(d));
+          await b.close();
+          JS
