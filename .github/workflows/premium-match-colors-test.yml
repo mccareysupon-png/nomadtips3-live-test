@@ -159,6 +159,14 @@ jobs:
             if(u.pathname==='/_premium_health')return Response.json({ok:true,scope:'TEST_ONLY_CSS',revision:'PREMIUM_LEAGUE_SOLID_V14',prematchNative:true,oddsMovement:'DOM_PRICES_V1',oddsMovementStyle:oddsMovementStyles,oddsMovementScript:oddsMovementScript,...palette});
             if(u.pathname==='/__b46_prematch_client.js')return new Response(prematchClientScript,{headers:{'content-type':'application/javascript; charset=utf-8','cache-control':'no-store','x-robots-tag':'noindex,nofollow'}});
             if(u.pathname==='/__b46_prematch_data')return env.PREMATCH_STORE.fetch('https://prematch.internal/preview-data');
+            // Separate TEST-ONLY Receiver service. No production or provider calls.
+            if(u.pathname==='/__b46_prematch_graph'){
+              const market=u.searchParams.get('market'),range=u.searchParams.get('range'),variant=u.searchParams.get('variant'),filter=u.searchParams.get('filter');
+              if(market!=='1X2'||variant!=='all'||filter!=='all'||!['all','d7','d30','d90'].includes(range))return Response.json({ok:false,error:'INVALID_PREMATCH_GRAPH_QUERY'},{status:400});
+              const upstream=await env.PREMATCH_PERF_RECEIVER.fetch(new Request('https://prematch-performance.test/graph?'+u.searchParams,{method:'GET'}));
+              const headers=new Headers(upstream.headers);headers.set('cache-control','no-store');headers.set('x-robots-tag','noindex, nofollow');
+              return new Response(req.method==='HEAD'?null:upstream.body,{status:upstream.status,headers});
+            }
             if(/^\/(admin|internal)(\/|$)/i.test(u.pathname))return new Response('Forbidden',{status:403});
             const headers=new Headers();for(const k of ['accept','accept-language','user-agent','sec-ch-ua-mobile']){const v=req.headers.get(k);if(v)headers.set(k,v);}
             const r=await env.B46_PRODUCTION_READ.fetch(new Request(new URL(u.pathname+u.search,'https://ball46.com'),{method:req.method,headers,redirect:'manual'}));
@@ -183,6 +191,9 @@ jobs:
           [[services]]
           binding = "PREMATCH_STORE"
           service = "ball46-prematch-only-test-20261120"
+          [[services]]
+          binding = "PREMATCH_PERF_RECEIVER"
+          service = "ball46-prematch-performance-test-20261121"
           EOF
           cp qa/prematch-native-ui-20261121/prematch-client.mjs premium-qa/prematch-client.mjs
           cp qa/odds-movement-20261121/odds-movement.mjs premium-qa/odds-movement.mjs
