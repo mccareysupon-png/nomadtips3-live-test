@@ -49,3 +49,4 @@ jobs:
             jq -e '.name == "ball46-codex-pc-favorite-stars-preview" and .scope == "test"'
           curl -fsS --retry 5 --retry-all-errors "$PREVIEW/index.html?view=signal&signalMarket=ah" -o "$RUNNER_TEMP/favorite-stars-test.html"
           grep -Fq 'id="codex-pc-favorite-stars"' "$RUNNER_TEMP/favorite-stars-test.html"
+          grep -Fq 'id="codex-pc-mobile-footer"' "$RUNNER_TEMP/favorite-stars-test.html"

@@ -1,4 +1,5 @@
-import styles from './favorite-stars.css';
+import favoriteStars from './favorite-stars.css';
+import mobileFooter from './mobile-footer.css';
 
 const name = 'ball46-codex-pc-favorite-stars-preview';
 const origin = 'https://ball46.com';
@@ -58,7 +59,8 @@ export default {
 
     return new HTMLRewriter().on('head', {
       element(head) {
-        head.append('<style id="codex-pc-favorite-stars">' + styles + '</style>', { html: true });
+        head.append('<style id="codex-pc-favorite-stars">' + favoriteStars + '</style>', { html: true });
+        head.append('<style id="codex-pc-mobile-footer">' + mobileFooter + '</style>', { html: true });
       },
     }).transform(response);
   },

@@ -1,0 +1,32 @@
+@media (max-width: 760px) {
+  html[data-b46gn="1"] #b46-site-footer-v1 {
+    --footer-text: currentColor;
+    --footer-muted: #acbec4;
+    --footer-dim: #8b9eaa;
+    --footer-accent: #20d39b;
+    --footer-surface: #11262a;
+    --footer-line: #49696640;
+    background: transparent;
+    color: inherit;
+  }
+
+  html[data-b46gn="1"][data-theme="light"] #b46-site-footer-v1 {
+    --footer-muted: var(--b46m-muted, #496a56);
+    --footer-dim: var(--b46m-muted, #496a56);
+    --footer-accent: var(--b46m-green, #087c4f);
+    --footer-surface: #eaf4ed;
+    --footer-line: var(--b46m-line, #d3e3d8);
+  }
+
+  html[data-b46gn="1"] #b46-site-footer-v1::before {
+    background: var(--footer-line);
+  }
+
+  html[data-b46gn="1"] #b46-site-footer-v1 .b46f-email-symbol {
+    background: color-mix(in srgb, var(--footer-accent) 10%, transparent);
+  }
+
+  html[data-b46gn="1"] #b46-site-footer-v1 .b46f-social {
+    color: var(--footer-muted);
+  }
+}
