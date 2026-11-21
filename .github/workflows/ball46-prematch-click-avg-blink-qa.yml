@@ -25,7 +25,7 @@ jobs:
             const [r,js,css]=await Promise.all([fetch(url,{cache:'no-store'}),fetch(base+'/__b46_prematch_client.js',{cache:'no-store'}),fetch(base)]);
             if(r.ok&&js.ok&&css.ok){
               data=await r.json();src=await js.text();styles=await css.text();
-              if(src.includes('const avgOdds=items=>')&&src.includes("e.target?.closest?.('#b46-prematch-panel')")&&src.includes('b46pm-minute-mark')&&src.includes("window.addEventListener('click'"))break;
+              if(src.includes('const avgOdds=items=>')&&src.includes("e.target?.closest?.('#b46-prematch-panel')")&&src.includes('b46pm-minute-mark')&&src.includes("window.addEventListener('click'")&&src.includes('function clearNativeActive()'))break;
             }
             await new Promise(r=>setTimeout(r,2200));
           }
@@ -33,6 +33,7 @@ jobs:
           assert(src.includes('const avgOdds=items=>'),'AVG_ODDS_NOT_DEPLOYED');
           assert(src.includes('b46pm-minute-mark'),'APOSTROPHE_ONLY_BLINK_NOT_DEPLOYED');
           assert(src.includes("window.addEventListener('click'"),'WINDOW_CAPTURE_SHIELD_NOT_DEPLOYED');
+          assert(src.includes('function clearNativeActive()'),'NATIVE_ACTIVE_EXCLUSIVITY_NOT_DEPLOYED');
           assert.equal(data.testLedger?.mode,'TEST_ONLY');
           const expected=rows=>{const n=rows.map(x=>Number(x.price)).filter(x=>Number.isFinite(x)&&x>1);return n.length?(n.reduce((a,b)=>a+b,0)/n.length).toFixed(2):'—'};
           const allAvg=expected(data.testLedger.rows),w=data.dailyBook.window;
@@ -62,6 +63,21 @@ jobs:
               });
               assert.equal(new Map(metrics.cards).get('AVG ODDS'),allAvg,'TOTAL_AVG_ODDS_WRONG');
               assert.equal(new Map(metrics.day).get('AVG ODDS TODAY'),todayAvg,'TODAY_AVG_ODDS_WRONG');
+              // Only one sidebar item may be active in the visible navigation context.
+              // Test each Pre-Match sub-route and then return to predictions for click QA.
+              for(const route of ['predictions','all','1x2','btts','predictions']){
+                 const target=(mobile?'#b46m-drawer':'aside.left-rail')+' [data-b46-prematch-route="'+route+'"]';
+                 await p.locator(target).evaluate(e=>e.click());
+                 await p.waitForFunction(selector=>document.querySelector(selector)?.classList.contains('active'),target,{timeout:8000});
+                 await p.waitForTimeout(120);
+                 const active=await p.evaluate(isMobile=>{
+                   const root=document.querySelector(isMobile?'#b46m-drawer':'aside.left-rail');
+                   const activeNodes=[...root.querySelectorAll('[data-b46-sidebar-row],.b46m-item')].filter(n=>n.classList.contains('active')||n.getAttribute('aria-current')==='page');
+                   return activeNodes.map(n=>({route:n.dataset.b46PrematchRoute||null,name:(n.textContent||'').trim().slice(0,40)}));
+                 },mobile);
+                 assert.deepEqual(active.map(x=>x.route),[route],'DUPLICATE_ACTIVE '+JSON.stringify({mobile,theme,route,active}));
+                 console.log('PREMATCH_SINGLE_ACTIVE_PASS '+JSON.stringify({mobile,theme,route,active}));
+              }
               const selections=['.b46pm-title','.b46pm-daybar','.b46pm-daybar-cell','.b46pm-card','.b46pm-label','.b46pm-value','.b46pm-list-head','.b46pm-match','.b46pm-meta','.b46pm-teams','.b46pm-pick','.b46pm-details'];
               const clickProof=[];
               for(const sel of selections){
