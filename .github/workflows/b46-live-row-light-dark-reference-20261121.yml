@@ -1,0 +1,41 @@
+name: BALL46 current LIVE row exact light dark palette READ ONLY
+on:
+  push:
+    branches: [test/ball46-premium-match-colors-20261120]
+    paths: ['.github/workflows/b46-live-row-light-dark-reference-20261121.yml']
+permissions: {contents: read}
+jobs:
+  palette:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          npm install --no-save --no-package-lock playwright@1.55.0
+          npx playwright install chromium --only-shell
+      - name: Read native LIVE .match-row computed palette in both themes
+        run: |
+          node --input-type=module <<'JS'
+          import {chromium,devices} from 'playwright';
+          const b=await chromium.launch();
+          const base='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev';
+          try{
+            for(const mobile of [false,true])for(const theme of ['dark','light']){
+              const p=await b.newPage(mobile?{...devices['iPhone 13'],serviceWorkers:'block'}:{viewport:{width:1440,height:950},serviceWorkers:'block'});
+              await p.addInitScript(t=>localStorage.setItem('nomad343_dashboard_theme_v1',t),theme);
+              await p.goto(base+'/?nativePaletteAudit=1',{waitUntil:'domcontentloaded',timeout:60000});
+              await p.waitForFunction(()=>document.querySelectorAll('.workspace-stage .match-row[data-match-id]').length>2,null,{timeout:20000});
+              const v=await p.evaluate(()=>{
+                const row=document.querySelector('.workspace-stage .match-row[data-match-id]');
+                const s=getComputedStyle(row),r=row.getBoundingClientRect();
+                return {theme:document.documentElement.dataset.theme,rect:{w:r.width,h:r.height},css:{
+                  backgroundImage:s.backgroundImage,backgroundColor:s.backgroundColor,border:s.border,borderRadius:s.borderRadius,boxShadow:s.boxShadow,
+                  color:s.color,padding:s.padding,gap:s.gap,gridTemplateColumns:s.gridTemplateColumns,fontSize:s.fontSize,fontWeight:s.fontWeight,
+                  minHeight:s.minHeight,maxHeight:s.maxHeight,display:s.display
+                }};
+              });
+              console.log('B46_NATIVE_LIVE_ROW_PALETTE '+JSON.stringify({mobile,theme,v}));
+              await p.close();
+            }
+          }finally{await b.close()}
+          JS
