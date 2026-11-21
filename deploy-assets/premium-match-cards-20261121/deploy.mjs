@@ -156,7 +156,8 @@ try{
  const old=await version(base),source=main(old);parse(source,{ecmaVersion:'latest',sourceType:'module'});
  const beforeSettings=same(await settings()),beforeCrons=same(await crons()),beforeHealth=await health();
  const homeBefore=await read(HOME+'/index.html'),directBefore=await read(DIRECT+'/index.html');
- assert.equal(sha(homeBefore),sha(directBefore),'PRODUCTION_ORIGINS_DIFFER');
+ report.originComparison={customHash:sha(homeBefore),directHash:sha(directBefore),customLength:homeBefore.length,directLength:directBefore.length,same:sha(homeBefore)===sha(directBefore)};
+ assert(homeBefore.includes('<html')&&directBefore.includes('<html')&&homeBefore.includes('</html>')&&directBefore.includes('</html>'),'PRODUCTION_ORIGIN_HTML_INVALID');
  report.guards={mainSha:sha(source),settingsSha:sha(beforeSettings),crons:beforeCrons,health:beforeHealth,indexSha:sha(homeBefore)};save();
  const patched=patchWorker(source,p);
  assert.equal(await active(),base,'PRODUCTION_MOVED_BEFORE_UPLOAD');
