@@ -1,0 +1,109 @@
+name: BALL46 Premium Pre-Match horizontal cards and jerseys TEST QA
+on:
+  push:
+    branches: [test/ball46-premium-match-colors-20261120]
+    paths:
+      - '.github/workflows/b46-prematch-premium-cards-qa-20261121.yml'
+      - 'qa/prematch-native-ui-20261121/prematch-client.mjs'
+permissions: {contents: read}
+jobs:
+  premium-cards:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          npm install --no-save --no-package-lock playwright@1.55.0
+          npx playwright install chromium --only-shell
+      - name: Test compact rows, original shirts, real metrics, accordion and mobile themes
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {chromium,devices} from 'playwright';
+          const base='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev';
+          for(let i=0;i<70;i++){
+            const res=await fetch(base+'/__b46_prematch_client.js?ver=premium-horizontal',{cache:'no-store',signal:AbortSignal.timeout(16000)});
+            if(res.ok&&(await res.text()).includes('B46_PM_PREMIUM_HORIZONTAL_V1'))break;
+            if(i===69)throw Error('PREMIUM_HORIZONTAL_REVISION_NOT_DEPLOYED');
+            await new Promise(r=>setTimeout(r,1700));
+          }
+          const sourceRes=await fetch(base+'/__b46_prematch_data',{cache:'no-store',signal:AbortSignal.timeout(19000)});
+          assert(sourceRes.ok);const source=await sourceRes.json();
+          assert.equal(source.testLedger.mode,'TEST_ONLY');assert.equal(source.dailyBook.providerCalls,0);
+          const knownRows=source.testLedger.rows;assert(knownRows.length>=4);
+          const b=await chromium.launch();
+          try{
+            for(const mobile of [false,true])for(const theme of ['dark','light']){
+              const page=await b.newPage(mobile?{...devices['iPhone 13'],serviceWorkers:'block'}:{viewport:{width:1440,height:900},serviceWorkers:'block'});
+              const errors=[];page.on('pageerror',err=>errors.push(String(err.message)));
+              await page.addInitScript(t=>localStorage.setItem('nomad343_dashboard_theme_v1',t),theme);
+              await page.goto(base+'/?b46pm=predictions&premiumCardsQA=1',{waitUntil:'domcontentloaded',timeout:60000});
+              await page.waitForFunction(()=>document.querySelectorAll('#b46-prematch-panel .b46pm-premium-match').length>=4,null,{timeout:20000});
+              const details=await page.evaluate(()=>{
+                const panel=document.querySelector('#b46-prematch-panel');
+                return [...panel.querySelectorAll('.b46pm-premium-match')].map(row=>{
+                  const summary=row.querySelector('.b46pm-premium-summary');
+                  const r=summary.getBoundingClientRect();
+                  const jerseys=[...row.querySelectorAll('.b46pm-premium-shirt')].map(img=>({src:img.getAttribute('src'),set:img.dataset.b46PmJerseySet,width:img.getBoundingClientRect().width}));
+                  const pick=row.querySelector('.b46pm-premium-pick');
+                  const metrics=[...row.querySelectorAll('.b46pm-premium-quick-metric')].map(n=>n.textContent);
+                  return {fixture:row.dataset.b46PmJerseyFixture,height:r.height,width:r.width,
+                    numberOfColumns:summary.children.length,jerseys,teams:[...row.querySelectorAll('.b46pm-premium-team-name')].map(x=>x.textContent),
+                    pick:pick?.textContent,metrics,league:row.querySelector('.b46pm-premium-league')?.textContent,
+                    expanded:row.querySelector('button[data-b46-pm-expand]')?.getAttribute('aria-expanded'),
+                    detailHidden:row.querySelector('.b46pm-premium-expanded')?.hidden};
+                });
+              });
+              assert.equal(details.length,knownRows.length,'MISSING_PREMATCH_ROWS');
+              for(const row of details){
+                assert(row.fixture,'MISSING_FIXTURE_ID');
+                assert.equal(row.numberOfColumns,6,'NOT_SIX_COLUMN_PREMIUM_ROW');
+                assert.equal(row.jerseys.length,2,'NO_HOME_AWAY_SHIRTS');
+                assert(row.jerseys.every(x=>x.src?.startsWith('data:image/svg+xml;charset=UTF-8,')&&Number(x.set)>=1&&Number(x.set)<=12),'MUST_REUSE_BALL46_12_KIT_COLLECTION');
+                assert.notEqual(row.jerseys[0].src,row.jerseys[1].src,'SHIRTS_MUST_BE_DISTINCT_HOME_AWAY');
+                assert(row.height>63&&row.height<(mobile?152:110),'COMPACT_ROW_HEIGHT_INVALID '+JSON.stringify({mobile,theme,row:row.height}));
+                assert.equal(row.expanded,'false');assert.equal(row.detailHidden,true);
+                assert(row.pick?.length>2,'PREDICTION_MISSING');
+                assert.equal(row.teams.length,2,'CLUB_NAMES_MISSING');
+                const sourceRow=knownRows.find(x=>String(x.fixture_id)===row.fixture);
+                assert(sourceRow,'SHOWN_UNKNOWN_FIXTURE');
+                assert.deepEqual(row.teams,[sourceRow.home,sourceRow.away],'SOURCE_TEAM_NAMES_CHANGED');
+                assert(row.pick.includes(Number(sourceRow.price).toFixed(2)),'ODDS_NOT_LOCKED_SOURCE');
+                if(!sourceRow.league)assert.equal(row.league,undefined,'INVENTED_COMPETITION');
+              }
+              // One accordion at a time, no navigation, and preserved open state
+              // when switching the Today / All time stats display.
+              const first=page.locator('#b46-prematch-panel .b46pm-premium-match').first();
+              const second=page.locator('#b46-prematch-panel .b46pm-premium-match').nth(1);
+              const firstButton=first.locator('button[data-b46-pm-expand]');
+              const secondButton=second.locator('button[data-b46-pm-expand]');
+              await firstButton.click();
+              assert.equal(await firstButton.getAttribute('aria-expanded'),'true');
+              assert.equal(await first.locator('.b46pm-premium-expanded:visible').count(),1);
+              assert.equal(await page.locator('#b46-prematch-panel .b46pm-premium-expanded:visible').count(),1);
+              const beforeURL=new URL(page.url());
+              await page.locator('#b46-prematch-panel [data-b46-pm-period="all"]').first().click();
+              assert.equal(await page.locator('#b46-prematch-panel .b46pm-premium-match').first().locator('button[data-b46-pm-expand]').getAttribute('aria-expanded'),'true','EXPANSION_NOT_PRESERVED_ON_DATA_REDRAW');
+              await secondButton.click();
+              assert.equal(await page.locator('#b46-prematch-panel .b46pm-premium-expanded:visible').count(),1);
+              assert.equal(await firstButton.getAttribute('aria-expanded'),'false');
+              assert.equal(await secondButton.getAttribute('aria-expanded'),'true');
+              await secondButton.click();
+              assert.equal(await page.locator('#b46-prematch-panel .b46pm-premium-expanded:visible').count(),0);
+              assert.equal(new URL(page.url()).searchParams.get('b46pm'),'predictions','EXPAND_NAVIGATED_AWAY');
+              assert.equal(new URL(page.url()).hostname,beforeURL.hostname,'ESCAPED_TEST_ORIGIN');
+              // Back to the original Today snapshot, no ledger write.
+              await page.locator('#b46-prematch-panel [data-b46-pm-period="today"]').first().click();
+              assert.equal(await page.locator('#b46-prematch-panel .b46pm-stat').count(),9);
+              const jerseyBefore=details.map(row=>row.jerseys.map(j=>j.src));
+              await page.reload({waitUntil:'domcontentloaded',timeout:60000});
+              await page.waitForFunction(count=>document.querySelectorAll('#b46-prematch-panel .b46pm-premium-match').length===count,knownRows.length,{timeout:18000});
+              const jerseysAfter=await page.locator('#b46-prematch-panel .b46pm-premium-match').evaluateAll(rows=>rows.map(r=>[...r.querySelectorAll('.b46pm-premium-shirt')].map(x=>x.getAttribute('src'))));
+              assert.deepEqual(jerseysAfter,jerseyBefore,'JERSEYS_CHANGED_AFTER_REFRESH');
+              assert.equal(await page.locator('#b46-prematch-panel .b46pm-performance').count(),0,'SHOULD_NOT_COPY_LONGTERM_STATS_TO_PREDICTIONS');
+              assert.deepEqual(errors,[],'PAGE_SCRIPT_ERRORS');
+              console.log('PREMATCH_PREMIUM_CARDS_PASS '+JSON.stringify({mobile,theme,matches:details.length,height:details[0].height,jerseyPairs:12,expandedOnce:true,subsequentOpenClosesPrevious:true,stableOnRefresh:true,zeroProductionEdits:true}));
+              await page.close();
+            }
+          }finally{await b.close()}
+          JS
