@@ -132,9 +132,17 @@ async function browserCheck(origin,label,p,full=false){
    assert(initial.priorPremium,'PREEXISTING_PREMIUM_CARD_STYLES_LOST');
    if(cfg.name==='pc-dark'){
     await pg.waitForFunction(()=>[...document.querySelectorAll('[data-match-id].match-row .market-cell .b46-v3-quote strong[data-nomad-odds-raw]')].some(e=>e.getBoundingClientRect().width>0&&Number(e.getAttribute('data-nomad-odds-raw'))>1),null,{timeout:60000});
-    const quote=pg.locator('[data-match-id].match-row .market-cell .b46-v3-quote strong[data-nomad-odds-raw]:visible').first();
-    await quote.scrollIntoViewIfNeeded();
-    const sampled=await quote.evaluate(async el=>{
+    const sampled=await pg.evaluate(async ()=>{
+      // A private, short-lived, DOM-only fixture avoids races with live rows
+      // that the existing BALL46 frontend legitimately replaces during updates.
+      const fixture=document.createElement('div');
+      fixture.className='match-row';
+      fixture.setAttribute('data-match-id','B46_ODDS_QA_FIXTURE_2S');
+      fixture.style.cssText='position:fixed;top:-120px;left:-120px;width:120px;height:48px;pointer-events:none;';
+      fixture.innerHTML='<div class="market-cell market-cell-1x2" title="QA · local DOM only"><div class="b46-v3-quote" data-side="H"><strong data-b46-align="1x2-H" data-nomad-odds-raw="1.90">1.90</strong></div></div>';
+      document.body.append(fixture);
+      const el=fixture.querySelector('strong');
+      try{
       const stats=window.__b46OddsMovementStats;
       const q=el.closest('.b46-v3-quote'),cell=el.closest('.market-cell');
       const raw=el.getAttribute('data-nomad-odds-raw');
@@ -170,6 +178,7 @@ async function browserCheck(origin,label,p,full=false){
       await sleep(1400);
       const clearedDown=snapshot();
       return {initial,up,upStill,clearedUp,samePrice,down,downStill,clearedDown};
+      }finally{fixture.remove();}
     });
     console.log('ODDS_CANDIDATE_BROWSER_DIAGNOSTICS '+label+' '+JSON.stringify({initial,sampled}));
     assert(!sampled.error,'BAD_PRICE_FOR_QA');
