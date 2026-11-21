@@ -1,0 +1,41 @@
+name: BALL46 Odds V3 TEST-only readback
+on:
+  push:
+    branches:
+      - test/ball46-odds-v3-center-20261121
+    paths:
+      - '.github/workflows/ball46-odds-v3-test-readback-20261121.yml'
+permissions:
+  contents: read
+jobs:
+  readback-test-worker:
+    if: github.ref == 'refs/heads/test/ball46-odds-v3-center-20261121'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Inspect TEST Worker only, no deployment
+        shell: bash
+        run: |
+          curl --fail --silent --show-error --max-time 30 --header 'Cache-Control: no-cache' 'https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev/_premium_health' > /tmp/odds-health.json
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const h=JSON.parse(fs.readFileSync('/tmp/odds-health.json','utf8'));
+          if(h.ok!==true || h.scope!=='TEST_ONLY_CSS') throw new Error('NOT_APPROVED_TEST_WORKER');
+          const css=String(h.oddsMovementStyle||'');
+          const js=String(h.oddsMovementScript||'');
+          const result={
+            target:'ball46-premium-match-colors-test-20261120',
+            revision:h.revision,
+            oddsMovement:h.oddsMovement,
+            quotePositionRelative:/position:relative\s*!important/i.test(css),
+            arrowCentered:/(?:top:\s*50%\s*!important)/i.test(css),
+            arrowUsingOldVariable:/--b46-odds-arrow-y/.test(css),
+            radius6:/border-radius:\s*6px\s*!important/i.test(css),
+            gap3:/3px/.test(css),
+            sixSecondDuration:/6000|6\s*\*\s*1000/.test(js),
+            cssLength:css.length,
+            jsLength:js.length
+          };
+          console.log('TEST_ONLY_READBACK',JSON.stringify(result));
+          if(!css || !js) throw new Error('ODDS_MOVEMENT_MISSING');
+          NODE
