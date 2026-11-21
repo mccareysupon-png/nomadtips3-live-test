@@ -57,11 +57,17 @@ export default {
     });
     if (!inject) return response;
 
-    return new HTMLRewriter().on('head', {
-      element(head) {
-        head.append('<style id="codex-pc-right-sidebar">' + styles + '</style>', { html: true });
-        head.append('<script id="codex-pc-right-sidebar-view">' + presentation + '</script>', { html: true });
-      },
-    }).transform(response);
+    // Use the preview assets once when the upstream page already includes the sidebar release.
+    const removeExisting = { element(element) { element.remove(); } };
+    return new HTMLRewriter()
+      .on('style#codex-pc-right-sidebar', removeExisting)
+      .on('script#codex-pc-right-sidebar-view', removeExisting)
+      .on('head', {
+        element(head) {
+          head.append('<style id="codex-pc-right-sidebar">' + styles + '</style>', { html: true });
+          head.append('<script id="codex-pc-right-sidebar-view">' + presentation + '</script>', { html: true });
+        },
+      })
+      .transform(response);
   },
 };

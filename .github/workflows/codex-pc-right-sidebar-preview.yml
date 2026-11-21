@@ -49,10 +49,24 @@ jobs:
           curl -fsS --retry 8 --retry-all-errors --retry-delay 2 "$PREVIEW/_codex-pc-right-sidebar/health" |
             jq -e '.name == "ball46-codex-pc-right-sidebar-preview" and .scope == "test"'
           page="$RUNNER_TEMP/right-sidebar-test.html"
+          verify_assets() {
+            node --input-type=module - "$page" <<'JS'
+          import { readFileSync } from 'node:fs';
+          const html = readFileSync(process.argv[2], 'utf8');
+          for (const [tag, id, file] of [
+            ['style', 'codex-pc-right-sidebar', 'right-sidebar.css'],
+            ['script', 'codex-pc-right-sidebar-view', 'right-sidebar.js.txt'],
+          ]) {
+            const open = '<' + tag + ' id="' + id + '">';
+            const body = readFileSync(file, 'utf8');
+            if (html.split(open).length !== 2 || !html.includes(open + body + '</' + tag + '>')) {
+              process.exitCode = 1;
+            }
+          }
+          JS
+          }
           for attempt in {1..10}; do
-            if curl -fsS --max-time 10 "$PREVIEW/index.html?status=live" -o "$page" &&
-              grep -Fq 'id="codex-pc-right-sidebar"' "$page" &&
-              grep -Fq 'id="codex-pc-right-sidebar-view"' "$page"; then
+            if curl -fsS --max-time 10 "$PREVIEW/index.html?status=live" -o "$page" && verify_assets; then
               exit 0
             fi
             sleep 2

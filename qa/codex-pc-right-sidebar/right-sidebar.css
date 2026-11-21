@@ -37,15 +37,22 @@
     }
 
     .workspace.singlepage .right-rail > .b46mp-card[data-b46mp-theme="dark"] .b46mp-photo {
-      filter: brightness(0.88) contrast(1.05) !important;
+      filter: brightness(0.99) contrast(1.09) saturate(0.96) !important;
     }
 
     .workspace.singlepage .right-rail > .b46mp-card[data-b46mp-theme="dark"]::before {
-      background: linear-gradient(90deg, #0b1911 35%, rgba(11, 25, 17, 0.4) 75%, rgba(11, 25, 17, 0.15) 100%) !important;
+      background: linear-gradient(
+        90deg,
+        #0b1911 35%,
+        rgb(11 25 17 / 0.92) 46%,
+        rgb(11 25 17 / 0.45) 60%,
+        rgb(11 25 17 / 0.08) 73%,
+        rgb(11 25 17 / 0.04) 100%
+      ) !important;
     }
 
     .workspace.singlepage .right-rail > .b46mp-card[data-b46mp-theme="dark"]::after {
-      background: linear-gradient(0deg, #0b1911, rgba(11, 25, 17, 0.38) 20%, transparent 52%) !important;
+      background: linear-gradient(0deg, #0b1911, rgb(11 25 17 / 0.46) 16%, transparent 43%) !important;
       box-shadow: none !important;
     }
 
