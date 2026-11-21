@@ -24,7 +24,7 @@ jobs:
             for(let i=0;i<80;i++){
               const r=await fetch(base+'/__b46_prematch_client.js?version=theme-route',{cache:'no-store'});
               const t=r.ok?await r.text():'';
-              if(t.includes('Theme toggles change appearance only'))break;
+              if(t.includes('Theme toggles change appearance only')&&t.includes('B46_PM_TEST_SHELL_NO_PRODUCTION_FLASH_V1'))break;
               if(i===79)throw Error('TEST_WORKER_NOT_UPDATED_WITH_THEME_GUARD');
               await new Promise(res=>setTimeout(res,2000));
             }
@@ -51,6 +51,8 @@ jobs:
                   url:location.href,pathname:location.pathname,search:location.search,hash:location.hash,
                   theme:document.documentElement.dataset.theme,storageTheme:localStorage.getItem('nomad343_dashboard_theme_v1'),
                   mode:document.body.dataset.b46PrematchView,visible:!!document.querySelector('#b46-prematch-panel:not([hidden])'),
+                  testBoot:document.documentElement.dataset.b46PmBoot,
+                  productionDisplay:getComputedStyle(document.querySelector('section.workspace.singlepage>.workspace-stage')).display,
                   preMatchCount:document.querySelectorAll('[data-b46-prematch-route]').length,
                   sidebarCount:document.querySelectorAll('aside.left-rail').length,
                   mainCount:document.querySelectorAll('section.workspace.singlepage').length,
@@ -80,6 +82,8 @@ jobs:
               const assertScene=(v,theme,label)=>{
                 assert.equal(v.shape.theme,theme,label+'_THEME');
                 assert.equal(v.shape.mode,'1',label+'_MODE');
+                assert.equal(v.shape.testBoot,'1',label+'_TEST_BOOT_DROPPED');
+                assert.equal(v.shape.productionDisplay,'none',label+'_OLD_PRODUCTION_VISIBLE');
                 assert.equal(v.shape.visible,true,label+'_PANEL_NOT_VISIBLE');
                 assert(new URL(v.shape.url).searchParams.get('b46pm')==='all',label+'_ROUTE_LOST');
                 assert.equal(new URL(v.shape.url).hostname,'ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev',label+'_LEFT_TEST_ORIGIN');
