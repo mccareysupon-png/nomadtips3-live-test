@@ -25,7 +25,7 @@ jobs:
             const [r,js,css]=await Promise.all([fetch(url,{cache:'no-store'}),fetch(base+'/__b46_prematch_client.js',{cache:'no-store'}),fetch(base)]);
             if(r.ok&&js.ok&&css.ok){
               data=await r.json();src=await js.text();styles=await css.text();
-              if(src.includes('const avgOdds=items=>')&&src.includes("e.target?.closest?.('#b46-prematch-panel')")&&src.includes('b46pm-minute-mark')&&src.includes("window.addEventListener('click'")&&src.includes('function clearNativeActive()')&&src.includes('change.target===side')&&src.includes('b46pm-stats-board')&&src.includes('b46PmPeriod')&&src.includes('function readRoute()')&&src.includes('function syncRoute()'))break;
+              if(src.includes('const avgOdds=items=>')&&src.includes("e.target?.closest?.('#b46-prematch-panel')")&&src.includes('b46pm-minute-mark')&&src.includes("window.addEventListener('click'")&&src.includes('function clearNativeActive()')&&src.includes('change.target===side')&&src.includes('b46pm-stats-board')&&src.includes('b46PmPeriod')&&src.includes('function readRoute()')&&src.includes('function syncRoute()')&&src.includes('function membershipBanner()'))break;
             }
             await new Promise(r=>setTimeout(r,2200));
           }
@@ -37,6 +37,7 @@ jobs:
           assert(src.includes('change.target===side'),'LATEST_NAVIGATION_OBSERVER_NOT_DEPLOYED');
           assert(src.includes('b46pm-stats-board')&&src.includes('b46PmPeriod'),'UNIFIED_STATS_PANEL_NOT_DEPLOYED');
           assert(src.includes('function readRoute()')&&src.includes('function syncRoute()'),'PREMATCH_REFRESH_ROUTING_NOT_DEPLOYED');
+          assert(src.includes('function membershipBanner()')&&src.includes('b46pm-membership-promo'),'PREMATCH_MEMBERSHIP_BANNER_NOT_DEPLOYED');
           assert.equal(data.testLedger?.mode,'TEST_ONLY');
           const expected=rows=>{const n=rows.map(x=>Number(x.price)).filter(x=>Number.isFinite(x)&&x>1);return n.length?(n.reduce((a,b)=>a+b,0)/n.length).toFixed(2):'—'};
           const allAvg=expected(data.testLedger.rows),w=data.dailyBook.window;
@@ -59,6 +60,50 @@ jobs:
                 const target=rect?document.elementFromPoint(rect.x+rect.width/2,rect.y+rect.height/2):null;
                 return {drawerClass:drawer?.className,drawerHidden:drawer?.getAttribute('aria-hidden'),overlayClass:overlay?.className,overlayPointer:overlay&&getComputedStyle(overlay).pointerEvents,centerTarget:target?.outerHTML.slice(0,230)}
               });console.log('PREMATCH_MOBILE_DRAWER_STATE '+JSON.stringify(navStatus));}
+              // The original Membership V12 promo must appear once, above Pre-Match
+              // content, retaining its official artwork, destination and sticky placement.
+              await p.locator('#b46-prematch-panel>#b46pm-membership-promo').waitFor({timeout:10000});
+              if(mobile)await p.waitForFunction(()=>{const i=document.querySelector('#b46pm-membership-promo .b46pm-membership-image');return i?.complete&&i.naturalWidth>0},null,{timeout:12000});
+              const promo=await p.evaluate(isMobile=>{
+                const panel=document.querySelector('#b46-prematch-panel');
+                const banner=panel?.querySelector(':scope > #b46pm-membership-promo');
+                const desktop=banner?.querySelector('.b46pm-membership-desktop');
+                const mobile=banner?.querySelector('.b46pm-membership-mobile');
+                const img=mobile?.querySelector('img');
+                const art=banner?.querySelector('.b46-exact-art');
+                const artImages=art?[...art.children].map(x=>getComputedStyle(x).backgroundImage):[];
+                const beforeHead=banner?.nextElementSibling?.classList.contains('b46pm-head');
+                const rect=banner?.getBoundingClientRect();
+                return {
+                  count:document.querySelectorAll('#b46-prematch-panel>#b46pm-membership-promo').length,
+                  href:[...banner.querySelectorAll('a')].map(a=>a.href),
+                  targets:[...banner.querySelectorAll('a')].map(a=>a.target),
+                  position:getComputedStyle(banner).position,top:getComputedStyle(banner).top,
+                  width:rect?.width,height:rect?.height,beforeHead,
+                  visibleDesktop:getComputedStyle(desktop).display!=='none',
+                  visibleMobile:getComputedStyle(mobile).display!=='none',
+                  src:img?.getAttribute('src'),imgLoaded:!!(img?.complete&&img.naturalWidth>0),
+                  artImages, originalStillPresent:!!document.querySelector('[data-workspace-panel="statistics"] .b46-stat-member-top')
+                };
+              },mobile);
+              assert.equal(promo.count,1,'DUPLICATE_PROMO_BANNER');
+              assert.equal(promo.position,'sticky','PROMO_NOT_STICKY');
+              assert.equal(promo.top,'0px','PROMO_STICKY_OFFSET_WRONG');
+              assert.equal(promo.beforeHead,true,'PROMO_NOT_TOP_OF_PREMATCH');
+              assert(promo.width>100&&promo.height>20,'PROMO_NO_VISIBLE_GEOMETRY');
+              assert.deepEqual(promo.href,['https://member.ball46.com/pricing','https://member.ball46.com/pricing'],'PROMO_LINK_CHANGED');
+              assert(promo.targets.every(x=>x==='_blank'),'PROMO_NEW_TAB_BROKEN');
+              if(mobile){
+                assert.equal(promo.visibleDesktop,false,'DESKTOP_PROMO_SHOWN_ON_MOBILE');
+                assert.equal(promo.visibleMobile,true,'MOBILE_PROMO_HIDDEN');
+                assert(promo.imgLoaded,'MOBILE_ART_NOT_LOADED');
+                assert(promo.src.includes('label-mobile-'+theme+'-v12.webp'),'MOBILE_THEME_ART_WRONG '+JSON.stringify(promo));
+              }else{
+                assert.equal(promo.visibleDesktop,true,'DESKTOP_PROMO_HIDDEN');
+                assert.equal(promo.visibleMobile,false,'MOBILE_PROMO_SHOWN_ON_DESKTOP');
+                assert(promo.artImages.some(x=>x.includes('label-'+theme)),'DESKTOP_THEME_ART_WRONG '+JSON.stringify(promo));
+              }
+              console.log('PREMATCH_MEMBERSHIP_PROMO_PASS '+JSON.stringify({mobile,theme,position:promo.position,dim:[promo.width,promo.height],loaded:mobile?promo.imgLoaded:true,src:promo.src,href:promo.href[0],originalPreserved:promo.originalStillPresent}));
               const readStats=()=>p.evaluate(()=>{
                 const board=document.querySelector('#b46-prematch-panel .b46pm-stats-board');
                 const entries=[...board.querySelectorAll('.b46pm-stat')];
