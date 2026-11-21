@@ -53,23 +53,32 @@ jobs:
                 const jsErrors=[];p.on('pageerror',e=>jsErrors.push(e.message));
                 await p.addInitScript(t=>localStorage.setItem('nomad343_dashboard_theme_v1',t),theme);
                 await p.goto(base+'/?b46prematchqa='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
-                await p.waitForSelector('[data-b46-prematch-route="predictions"]',{timeout:25000});
-                await p.waitForSelector('[data-b46-prematch-route="1x2"]',{timeout:25000});
+                const nativeScope=mobile?'#b46m-drawer ':'aside.left-rail ';
+                const route=id=>p.locator(nativeScope+'[data-b46-prematch-route="'+id+'"]');
+                await p.waitForSelector(nativeScope+'[data-b46-prematch-route="predictions"]',{state:'attached',timeout:25000});
+                await p.waitForSelector(nativeScope+'[data-b46-prematch-route="1x2"]',{state:'attached',timeout:25000});
+                if(mobile)await p.locator('[data-b46m-open]').click();
+                await route('predictions').waitFor({state:'visible',timeout:10000});
                 const old=await p.locator('[data-b46-sidebar-row]').evaluateAll(els=>els.filter(e=>!e.hasAttribute('data-b46-prematch-route')).map(e=>e.dataset.b46SidebarRow));
-                await p.locator('[data-b46-prematch-route="predictions"]').evaluate(e=>e.click());
+                await route('predictions').evaluate(e=>e.click());
                 await p.waitForFunction(()=>document.body.dataset.b46PrematchView==='1'&&document.querySelector('#b46-prematch-panel .b46pm-summary'));
                 const first=await p.evaluate(()=>{
                   const panel=document.querySelector('#b46-prematch-panel');const menu=document.querySelector('[data-b46-prematch-route="predictions"]');return {heading:document.querySelector('[data-workspace-heading]')?.textContent,panelWidth:panel.getBoundingClientRect().width,sideWidth:document.querySelector('aside.left-rail')?.getBoundingClientRect().width,screenWidth:innerWidth,scrollWidth:document.documentElement.scrollWidth,menuActive:menu.classList.contains('active'),summary:[...panel.querySelectorAll('.b46pm-card')].map(x=>x.textContent),matches:panel.querySelectorAll('.b46pm-match').length}}); 
                 assert(first.menuActive&&first.summary.some(s=>s==='TOTAL8')&&first.panelWidth>200&&first.panelWidth<=first.screenWidth+5,JSON.stringify(first));
                 await p.screenshot({path:'evidence/native-prematch/'+(mobile?'mobile':'desktop')+'-'+theme+'-predictions.png',fullPage:true});
-                await p.locator('[data-b46-prematch-route="1x2"]').evaluate(e=>e.click());
+                if(mobile)await p.locator('[data-b46m-open]').click();
+                await route('1x2').waitFor({state:'visible',timeout:10000});
+                await route('1x2').evaluate(e=>e.click());
                 await p.waitForFunction(()=>document.querySelector('#b46-prematch-panel .b46pm-match')&&document.querySelector('[data-b46-prematch-route="1x2"]').classList.contains('active'));
                 const stat=await p.evaluate(()=>({title:document.querySelector('#b46-prematch-panel .b46pm-title').textContent,count:document.querySelectorAll('#b46-prematch-panel .b46pm-match').length,route:document.querySelector('[data-b46-prematch-route="1x2"]').getAttribute('aria-current')}));
                 assert.equal(stat.count,8);assert.equal(stat.route,'page');
                 await p.screenshot({path:'evidence/native-prematch/'+(mobile?'mobile':'desktop')+'-'+theme+'-1x2.png',fullPage:true});
-                await p.locator('[data-b46-prematch-route="btts"]').evaluate(e=>e.click());
+                if(mobile)await p.locator('[data-b46m-open]').click();
+                await route('btts').waitFor({state:'visible',timeout:10000});
+                await route('btts').evaluate(e=>e.click());
                 assert(await p.locator('#b46-prematch-panel').textContent().then(t=>t.includes('No predictions recorded yet')));
-                await p.locator('[data-b46-sidebar-row="status-signal"]').evaluate(e=>e.click());
+                if(mobile){await p.locator('[data-b46m-open]').click();await p.locator('#b46m-drawer [data-b46m-page="signal"]').evaluate(e=>e.click())}
+                else await p.locator('[data-b46-sidebar-row="status-signal"]').evaluate(e=>e.click());
                 await p.waitForFunction(()=>!document.body.dataset.b46PrematchView);
                 const after=await p.locator('[data-b46-sidebar-row]').evaluateAll(els=>els.filter(e=>!e.hasAttribute('data-b46-prematch-route')).map(e=>e.dataset.b46SidebarRow));
                 assert.deepEqual(after,old,'ORIGINAL_LIVE_SIDEBAR_CHANGED');assert.equal(jsErrors.length,0,JSON.stringify(jsErrors));
