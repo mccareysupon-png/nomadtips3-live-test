@@ -104,6 +104,30 @@ jobs:
                 assert(promo.artImages.some(x=>x.includes('label-'+theme)),'DESKTOP_THEME_ART_WRONG '+JSON.stringify(promo));
               }
               console.log('PREMATCH_MEMBERSHIP_PROMO_PASS '+JSON.stringify({mobile,theme,position:promo.position,dim:[promo.width,promo.height],loaded:mobile?promo.imgLoaded:true,src:promo.src,href:promo.href[0],originalPreserved:promo.originalStillPresent}));
+              // Read-only probe: identify which scroll root moves the entire page
+              // before the new sticky promo takes effect, and check text overlap.
+              const sampleScroll=()=>p.evaluate(()=>{
+                const banner=document.querySelector('#b46pm-membership-promo');
+                const panel=document.querySelector('#b46-prematch-panel');
+                const head=panel.querySelector('.b46pm-head');
+                const ancestors=[];let node=banner;
+                while(node&&ancestors.length<9){
+                  const c=getComputedStyle(node),r=node.getBoundingClientRect();
+                  ancestors.push({tag:node.tagName,id:node.id,cls:String(node.className).slice(0,64),x:r.x,y:r.y,h:r.height,scrollTop:node.scrollTop,scrollHeight:node.scrollHeight,clientHeight:node.clientHeight,overflowY:c.overflowY,position:c.position,top:c.top,background:c.backgroundColor});
+                  node=node.parentElement;
+                }
+                const br=banner.getBoundingClientRect(),hr=head.getBoundingClientRect();
+                return {ancestors,windowY:scrollY,docY:document.scrollingElement?.scrollTop,bannerY:br.y,headY:hr.y,bannerHeight:br.height,rootHeight:document.scrollingElement?.scrollHeight};
+              });
+              const probeBefore=await sampleScroll();
+              await p.locator('#b46-prematch-panel .b46pm-head').evaluate(x=>x.scrollIntoView({block:'nearest'}));
+              await p.mouse.move(Math.min(280,promo.width*0.5),Math.min(230,promo.height+130));
+              await p.mouse.wheel(0,50);
+              await p.waitForTimeout(240);
+              const probeAfter=await sampleScroll();
+              console.log('PREMATCH_SCROLL_FIRST_WHEEL_PROBE '+JSON.stringify({mobile,theme,before:probeBefore,after:probeAfter}));
+              await p.mouse.wheel(0,-110);
+              await p.waitForTimeout(200);
               const readStats=()=>p.evaluate(()=>{
                 const board=document.querySelector('#b46-prematch-panel .b46pm-stats-board');
                 const entries=[...board.querySelectorAll('.b46pm-stat')];
