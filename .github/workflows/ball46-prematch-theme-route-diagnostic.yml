@@ -31,7 +31,10 @@ jobs:
             for(const mobile of [false,true]){
               const p=await browser.newPage(mobile?{...devices['iPhone 13'],serviceWorkers:'block'}:{viewport:{width:1440,height:920},serviceWorkers:'block'});
               const errs=[];p.on('pageerror',e=>errs.push(String(e.message).slice(0,220)));
-              await p.addInitScript(()=>localStorage.setItem('nomad343_dashboard_theme_v1','dark'));
+              // Initialize this browser profile ONCE. An initScript would
+              // reset light->dark on EVERY reload and falsely fail persistence.
+              await p.goto(base+'/?themeProfileInit=1',{waitUntil:'domcontentloaded',timeout:60000});
+              await p.evaluate(()=>localStorage.setItem('nomad343_dashboard_theme_v1','dark'));
               await p.goto(base+'/?b46pm=all&b46pmPeriod=all&themeRouteDiagnostic=1',{waitUntil:'domcontentloaded',timeout:60000});
               await p.waitForFunction(()=>document.body.dataset.b46PrematchView==='1'&&!!document.querySelector('#b46-prematch-panel .b46pm-performance'),null,{timeout:20000});
               if(mobile)await p.locator('button[data-b46-mobile-theme-toggle]').waitFor({state:'visible',timeout:20000});
