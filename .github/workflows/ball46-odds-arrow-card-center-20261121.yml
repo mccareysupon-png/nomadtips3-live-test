@@ -1,0 +1,26 @@
+name: BALL46 odds arrow centered within colored card 6s isolated QA
+on:
+  push:
+    branches: [test/ball46-premium-match-colors-20261120]
+    paths:
+      - 'qa/odds-movement-20261121/verify-card-center.mjs'
+      - '.github/workflows/ball46-odds-arrow-card-center-20261121.yml'
+permissions:
+  contents: read
+jobs:
+  center-qa:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check independent arrow-center browser test source
+        run: node --check qa/odds-movement-20261121/verify-card-center.mjs
+      - name: Install isolated browser
+        run: |
+          npm install --no-save --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium --only-shell
+      - name: Assert card 50 percent arrow alignment, 3px gutter, six pulses lasting six seconds
+        run: node qa/odds-movement-20261121/verify-card-center.mjs
