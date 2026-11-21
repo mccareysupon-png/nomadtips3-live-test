@@ -61,8 +61,10 @@ try{
   assert.equal(probe.initialFlash,0,'INITIAL_FLASH_'+mode);
   assert(probe.stats.baselines>0,'NO_BASELINE_'+mode);
   assert(probe.bookmakers>=2&&probe.markets>=3,'MISSING_BOOKS_OR_MARKETS_'+mode);
-  const cell=p.locator('.expand-full-market-card .fmb-market[data-market="1x2"] tbody tr').filter({has:p.locator('th:text-is("LIVE")')}).locator('td').first();
-  assert(await cell.count(),'NO_LIVE_1X2_PRICE_CELL_'+mode);
+  const liveCells=p.locator('.expand-full-market-card .fmb-market[data-market="1x2"] tbody tr').filter({has:p.locator('th:text-is("LIVE")')}).locator('td');
+  const priceIndex=await liveCells.evaluateAll(els=>els.findIndex(e=>Number(e.textContent.trim())>1&&Number(e.textContent.trim())<1000));
+  assert(priceIndex>=0,'NO_VALID_LIVE_1X2_PRICE_CELL_'+mode);
+  const cell=liveCells.nth(priceIndex);
   const init=await cell.evaluate(td=>{const r=td.getBoundingClientRect();return {value:td.textContent.trim(),width:r.width,height:r.height,font:getComputedStyle(td).fontSize,color:getComputedStyle(td).color}});
   assert(Number(init.value)>1,'LIVE_PRICE_INVALID_'+mode);
   const set=async v=>cell.evaluate((td,x)=>{td.textContent=x.toFixed(2)},v);
