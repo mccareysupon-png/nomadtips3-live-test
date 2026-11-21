@@ -2,7 +2,7 @@ name: BALL46 premium match colors isolated QA
 on:
   push:
     branches: [test/ball46-premium-match-colors-20261120]
-    paths: ['.github/workflows/premium-match-colors-test.yml', 'qa/odds-movement-20261121/odds-movement.mjs', 'qa/prematch-native-ui-20261121/prematch-client.mjs', 'qa/signal-stable-20261121/signal-stable.mjs']
+    paths: ['.github/workflows/premium-match-colors-test.yml', 'qa/odds-movement-20261121/odds-movement.mjs', 'qa/prematch-native-ui-20261121/prematch-client.mjs', 'qa/prematch-native-ui-20261121/prematch-live-score-mirror.mjs', 'qa/signal-stable-20261121/signal-stable.mjs']
 concurrency:
   group: ball46-premium-match-colors-test-20261120
   cancel-in-progress: true
@@ -152,6 +152,7 @@ jobs:
           cat > premium-qa/worker.mjs <<'EOF'
           import palette from './palette.json';
           import {prematchClientScript,prematchStyles} from './prematch-client.mjs';
+          import {prematchMirrorClientScript,prematchMirrorStyles} from './prematch-live-score-mirror.mjs';
           import {oddsMovementStyles,oddsMovementScript} from './odds-movement.mjs';
           import {signalStableStyles,signalStableScript} from './signal-stable.mjs';
           export default {async fetch(req,env){
@@ -159,6 +160,7 @@ jobs:
             if(!['GET','HEAD'].includes(req.method))return new Response('READ_ONLY',{status:405});
             if(u.pathname==='/_premium_health')return Response.json({ok:true,scope:'TEST_ONLY_CSS',revision:'PREMIUM_LEAGUE_SOLID_V14',prematchNative:true,oddsMovement:'DOM_PRICES_V1',oddsMovementStyle:oddsMovementStyles,oddsMovementScript:oddsMovementScript,signalStable:'SIGNAL_CREATEDAT_SORT_AND_FLOW_FREEZE_TEST',signalStableStyles,signalStableScript,...palette});
             if(u.pathname==='/__b46_prematch_client.js')return new Response(prematchClientScript,{headers:{'content-type':'application/javascript; charset=utf-8','cache-control':'no-store','x-robots-tag':'noindex,nofollow'}});
+            if(u.pathname==='/__b46_prematch_mirror.js')return new Response(prematchMirrorClientScript,{headers:{'content-type':'application/javascript; charset=utf-8','cache-control':'no-store','x-robots-tag':'noindex,nofollow'}});
             if(u.pathname==='/__b46_prematch_data')return env.PREMATCH_STORE.fetch('https://prematch.internal/preview-data');
             // Separate TEST-ONLY Receiver service. No production or provider calls.
             if(u.pathname==='/__b46_prematch_graph'){
@@ -176,12 +178,12 @@ jobs:
             if(req.method!=='GET'||!r.ok||!['/','/index','/index.html'].includes(u.pathname)||!h.get('content-type')?.includes('text/html'))return new Response(req.method==='HEAD'?null:r.body,{status:r.status,headers:h});
             for(const k of ['content-length','content-encoding','etag','last-modified'])h.delete(k);
             h.set('cache-control','no-store');
-            const pmStyles=prematchStyles+'#b46-prematch-panel{--b46pm-gradient:'+palette.reference.cum.backgroundImage+';--b46pm-bg:'+palette.reference.cum.backgroundColor+'}';
+            const pmStyles=prematchStyles+prematchMirrorStyles+'#b46-prematch-panel{--b46pm-gradient:'+palette.reference.cum.backgroundImage+';--b46pm-bg:'+palette.reference.cum.backgroundColor+'}';
             const directPreMatchTest=['predictions','all','1x2','btts'].includes(u.searchParams.get('b46pm'));
             if(directPreMatchTest)h.set('x-b46-page-scope','PREMATCH_TEST_ONLY');
             // Stamp the TEST scope onto HTML before parsing the production
             // workspace markup. Prevents old Live/Statistics stage flash.
-            return new HTMLRewriter().on('html',{element(e){if(directPreMatchTest)e.setAttribute('data-b46-pm-boot','1')}}).on('head',{element(e){e.prepend('<style id="b46-premium-match-test">'+palette.css+'</style><style id="b46-prematch-native-styles">'+pmStyles+'</style><style id="b46-odds-movement-styles-test">'+oddsMovementStyles+'</style><style id="b46-signal-stable-styles-test">'+signalStableStyles+'</style><script id="b46-signal-stable-script-test">'+signalStableScript+'</script><script id="b46-premium-user-action-test">'+palette.reference.activationScript+'</script><script id="b46-odds-movement-script-test">'+oddsMovementScript+'</script>',{html:true})}}).on('body',{element(e){e.append('<script defer src="/__b46_prematch_client.js"></script>',{html:true})}}).transform(new Response(r.body,{status:r.status,headers:h}));
+            return new HTMLRewriter().on('html',{element(e){if(directPreMatchTest)e.setAttribute('data-b46-pm-boot','1')}}).on('head',{element(e){e.prepend('<style id="b46-premium-match-test">'+palette.css+'</style><style id="b46-prematch-native-styles">'+pmStyles+'</style><style id="b46-odds-movement-styles-test">'+oddsMovementStyles+'</style><style id="b46-signal-stable-styles-test">'+signalStableStyles+'</style><script id="b46-signal-stable-script-test">'+signalStableScript+'</script><script id="b46-premium-user-action-test">'+palette.reference.activationScript+'</script><script id="b46-odds-movement-script-test">'+oddsMovementScript+'</script>',{html:true})}}).on('body',{element(e){e.append('<script defer src="/__b46_prematch_mirror.js"></script><script defer src="/__b46_prematch_client.js"></script>',{html:true})}}).transform(new Response(r.body,{status:r.status,headers:h}));
           }};
           EOF
           cat > premium-qa/wrangler.toml <<'EOF'
@@ -201,10 +203,12 @@ jobs:
           service = "ball46-prematch-performance-test-20261121"
           EOF
           cp qa/prematch-native-ui-20261121/prematch-client.mjs premium-qa/prematch-client.mjs
+          cp qa/prematch-native-ui-20261121/prematch-live-score-mirror.mjs premium-qa/prematch-live-score-mirror.mjs
           cp qa/odds-movement-20261121/odds-movement.mjs premium-qa/odds-movement.mjs
           cp qa/signal-stable-20261121/signal-stable.mjs premium-qa/signal-stable.mjs
           node --check premium-qa/worker.mjs
           node --check premium-qa/prematch-client.mjs
+          node --check premium-qa/prematch-live-score-mirror.mjs
           node --check premium-qa/odds-movement.mjs
           node --check premium-qa/signal-stable.mjs
           npx --yes wrangler@4.50.0 deploy --config premium-qa/wrangler.toml --name ball46-premium-match-colors-test-20261120
