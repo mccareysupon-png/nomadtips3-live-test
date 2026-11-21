@@ -13,7 +13,9 @@ for(const [resource,marker] of [
  ['/expanded-match-343.js',"board.scrollBy(0,delta)"]
 ]){
  const r=await fetch(ready+resource+'?perf='+Date.now(),{signal:AbortSignal.timeout(20000)});
- if(!r.ok||!(await r.text()).includes(marker))throw Error('OPTIMIZED_NATIVE_SCRIPT_MISSING_'+resource);
+ const body=await r.text();
+ console.log('B46_NATIVE_OPT_RESOURCE '+JSON.stringify({resource,status:r.status,contentType:r.headers.get('content-type'),perfHeader:r.headers.get('x-b46-test-native-perf'),bytes:body.length,hasMarker:body.includes(marker),start:body.slice(0,250)}));
+ if(!r.ok||!body.includes(marker))throw Error('OPTIMIZED_NATIVE_SCRIPT_MISSING_'+resource);
 }
 const url='https://ball46-fullmarket-odds-v3-test-20261121.mccarey-supon.workers.dev/?view=live';
 const sessions=[['live-scroll-no-default-v3',false],['expanded-fullmarket-native-tab',true]];
