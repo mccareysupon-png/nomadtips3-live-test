@@ -1,0 +1,90 @@
+name: BALL46 native Pre-Match integration PC and mobile QA
+on:
+  push:
+    branches: [test/ball46-premium-match-colors-20261120]
+    paths: ['.github/workflows/ball46-prematch-native-integration-qa.yml']
+permissions: {contents: read}
+jobs:
+  qa:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install browser
+        run: |
+          npm install --no-save --no-package-lock playwright@1.55.0
+          npx playwright install chromium --only-shell
+      - name: Validate actual full-site test menus and prediction ledger
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          mkdir -p evidence/native-prematch
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {chromium,devices} from 'playwright';
+          import fs from 'node:fs';
+          const base='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev';
+          const root='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+'/workers';
+          const cf=async p=>{const r=await fetch(root+p,{headers:{authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN}});const j=await r.json();assert(r.ok&&j.success,p);return j.result};
+          const prodBefore=(await cf('/scripts/ball46-production/deployments?per_page=1')).deployments[0].versions;
+          let data,health;
+          for(let i=0;i<24;i++){
+            try{
+              const h=await fetch(base+'/_premium_health',{cache:'no-store'});
+              if(!h.ok)throw Error('health '+h.status);
+              health=await h.json();
+              const d=await fetch(base+'/__b46_prematch_data',{cache:'no-store'});
+              if(!d.ok)throw Error('data '+d.status);
+              data=await d.json();
+              if(health.prematchNative===true&&data.testLedger?.stats?.total>=8)break;
+            }catch(e){console.log('PROPAGATION '+i+' '+String(e.message))}
+            await new Promise(r=>setTimeout(r,2500));
+          }
+          assert.equal(health?.prematchNative,true,'PREMATCH_MODULE_NOT_ACTIVE');
+          assert.equal(data?.testLedger?.mode,'TEST_ONLY');
+          assert.equal(data.testLedger.stats.total,8);
+          const browser=await chromium.launch();
+          const cases=[];
+          try{
+            for(const mobile of [false,true]){
+              for(const theme of ['dark','light']){
+                const p=await browser.newPage(mobile?{...devices['iPhone 13'],serviceWorkers:'block'}:{viewport:{width:1440,height:1000},serviceWorkers:'block'});
+                const jsErrors=[];p.on('pageerror',e=>jsErrors.push(e.message));
+                await p.addInitScript(t=>localStorage.setItem('nomad343_dashboard_theme_v1',t),theme);
+                await p.goto(base+'/?b46prematchqa='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+                await p.waitForSelector('[data-b46-prematch-route="predictions"]',{timeout:25000});
+                await p.waitForSelector('[data-b46-prematch-route="1x2"]',{timeout:25000});
+                const old=await p.locator('[data-b46-sidebar-row]').evaluateAll(els=>els.filter(e=>!e.hasAttribute('data-b46-prematch-route')).map(e=>e.dataset.b46SidebarRow));
+                await p.locator('[data-b46-prematch-route="predictions"]').evaluate(e=>e.click());
+                await p.waitForFunction(()=>document.body.dataset.b46PrematchView==='1'&&document.querySelector('#b46-prematch-panel .b46pm-summary'));
+                const first=await p.evaluate(()=>{
+                  const panel=document.querySelector('#b46-prematch-panel');const menu=document.querySelector('[data-b46-prematch-route="predictions"]');return {heading:document.querySelector('[data-workspace-heading]')?.textContent,panelWidth:panel.getBoundingClientRect().width,sideWidth:document.querySelector('aside.left-rail')?.getBoundingClientRect().width,screenWidth:innerWidth,scrollWidth:document.documentElement.scrollWidth,menuActive:menu.classList.contains('active'),summary:[...panel.querySelectorAll('.b46pm-card')].map(x=>x.textContent),matches:panel.querySelectorAll('.b46pm-match').length}}); 
+                assert(first.menuActive&&first.summary.some(s=>s==='TOTAL8')&&first.panelWidth>200&&first.panelWidth<=first.screenWidth+5,JSON.stringify(first));
+                await p.screenshot({path:'evidence/native-prematch/'+(mobile?'mobile':'desktop')+'-'+theme+'-predictions.png',fullPage:true});
+                await p.locator('[data-b46-prematch-route="1x2"]').evaluate(e=>e.click());
+                await p.waitForFunction(()=>document.querySelector('#b46-prematch-panel .b46pm-match')&&document.querySelector('[data-b46-prematch-route="1x2"]').classList.contains('active'));
+                const stat=await p.evaluate(()=>({title:document.querySelector('#b46-prematch-panel .b46pm-title').textContent,count:document.querySelectorAll('#b46-prematch-panel .b46pm-match').length,route:document.querySelector('[data-b46-prematch-route="1x2"]').getAttribute('aria-current')}));
+                assert.equal(stat.count,8);assert.equal(stat.route,'page');
+                await p.screenshot({path:'evidence/native-prematch/'+(mobile?'mobile':'desktop')+'-'+theme+'-1x2.png',fullPage:true});
+                await p.locator('[data-b46-prematch-route="btts"]').evaluate(e=>e.click());
+                assert(await p.locator('#b46-prematch-panel').textContent().then(t=>t.includes('No predictions recorded yet')));
+                await p.locator('[data-b46-sidebar-row="status-signal"]').evaluate(e=>e.click());
+                await p.waitForFunction(()=>!document.body.dataset.b46PrematchView);
+                const after=await p.locator('[data-b46-sidebar-row]').evaluateAll(els=>els.filter(e=>!e.hasAttribute('data-b46-prematch-route')).map(e=>e.dataset.b46SidebarRow));
+                assert.deepEqual(after,old,'ORIGINAL_LIVE_SIDEBAR_CHANGED');assert.equal(jsErrors.length,0,JSON.stringify(jsErrors));
+                const result={mobile,theme,first,stat,nativeNavigationRestored:true,jsErrors};cases.push(result);console.log('NATIVE_PREMATCH_CASE '+JSON.stringify(result));await p.close();
+              }
+            }
+          }finally{await browser.close()}
+          const prodAfter=(await cf('/scripts/ball46-production/deployments?per_page=1')).deployments[0].versions;
+          assert.deepEqual(prodAfter,prodBefore,'PRODUCTION_CHANGED');
+          console.log('NATIVE_PREMATCH_PASS '+JSON.stringify({url:base,menuCount:4,stored:data.testLedger.stats,cases:cases.length,published:0,productionUnchanged:true}));
+          fs.writeFileSync('evidence/native-prematch/report.json',JSON.stringify({url:base,stats:data.testLedger.stats,cases,productionUnchanged:true},null,2));
+          JS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-prematch-pc-mobile-proof
+          path: evidence/native-prematch/
+          retention-days: 7
