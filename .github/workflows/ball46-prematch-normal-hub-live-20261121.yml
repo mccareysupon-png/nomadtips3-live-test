@@ -20,7 +20,7 @@ jobs:
           node --check qa/prematch-history-20261120/prematch-only-worker.mjs
           node --check qa/prematch-history-20261120/normal-hub-monitor.mjs
           node --check qa/prematch-history-20261120/deploy-normal-hub-monitor.mjs
-          node --test qa/prematch-history-20261120/normal-hub-monitor.test.mjs qa/prematch-history-20261120/test-pick-ledger.test.mjs qa/prematch-history-20261120/london-cutoff.test.mjs
+          node --test qa/prematch-history-20261120/normal-hub-monitor.test.mjs qa/prematch-history-20261120/test-pick-ledger.test.mjs qa/prematch-history-20261120/london-cutoff.test.mjs qa/prematch-history-20261120/history-five-rounds.test.mjs
       - name: Test only - consume standard cached HUB feed and settle genuine full times
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
