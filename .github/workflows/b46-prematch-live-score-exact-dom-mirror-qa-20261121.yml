@@ -27,7 +27,7 @@ jobs:
             ]);
             const mirrorJS=a.ok?await a.text():'';
             const prematchJS=b.ok?await b.text():'';
-            if(mirrorJS.includes(version)&&mirrorJS.includes('allowedLanes')&&prematchJS.includes(version))break;
+            if(mirrorJS.includes(version)&&mirrorJS.includes('allowedLanes')&&mirrorJS.includes('B46_PM_NATIVE_PIXEL_PARITY_326_142_V1')&&prematchJS.includes(version))break;
             if(i===69)throw Error('MIRROR_CLIENT_WORKER_NOT_DEPLOYED');
             await new Promise(r=>setTimeout(r,1800));
           }
@@ -102,6 +102,8 @@ jobs:
                 assert(card.pick?.includes(Number(sourceRow.price).toFixed(2)),'PICK_ODDS_CHANGED');
                 assert(card.teams.every(Boolean),'TEAM_NAME_MISSING');
                 assert(card.style.h>40&&card.style.h<(mobile?190:115),'ROW_TOO_TALL '+JSON.stringify({h:card.style.h,mobile,cols:card.style.cols}));
+                if(mobile)assert(Math.abs(card.style.h-142)<2,'MOBILE_CARD_HEIGHT_NOT_NATIVE_142PX');
+                else assert(Math.abs(card.style.h-69.046875)<1,'PC_CARD_HEIGHT_NOT_NATIVE_69PX');
                 assert(!card.pick.includes('Bet365'),'BOOKMAKER_MISREPRESENTED');
               }
               const first=p.locator('#b46-prematch-panel '+rowSelector).first();
@@ -145,6 +147,7 @@ jobs:
             assert.equal(mirrored.background,natural.background,'LIVE_CARD_GRADIENT_NOT_IDENTICAL');
             assert.equal(mirrored.padding,natural.padding,'LIVE_CARD_PADDING_NOT_IDENTICAL');
             assert.equal(mirrored.gap,natural.gap,'LIVE_CARD_GRID_GAP_NOT_IDENTICAL');
+            assert.equal(mirrored.columns,natural.columns,'LIVE_CARD_GRID_COLUMNS_NOT_PIXEL_IDENTICAL');
             console.log('B46_EXACT_LIVE_SCORE_STYLE_PARITY_PASS '+JSON.stringify({natural,mirrored}));
             await ref.close();
           }finally{await b.close()}
