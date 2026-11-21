@@ -39,3 +39,14 @@ jobs:
           console.log('TEST_ONLY_READBACK',JSON.stringify(result));
           if(!css || !js) throw new Error('ODDS_MOVEMENT_MISSING');
           NODE
+      - name: Inspect 6 flashes in 6 seconds, read-only
+        shell: bash
+        run: |
+          curl --fail --silent --show-error --max-time 30 --header 'Cache-Control: no-cache' 'https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev/_premium_health' > /tmp/odds-health.json
+          node - <<'NODE'
+          const h=JSON.parse(require('node:fs').readFileSync('/tmp/odds-health.json','utf8'));
+          const css=String(h.oddsMovementStyle||''), js=String(h.oddsMovementScript||'');
+          const extract=(s,terms)=>terms.flatMap(t=>[...s.matchAll(t)].slice(0,5).map(m=>s.slice(Math.max(0,m.index-80),Math.min(s.length,m.index+140)).replace(/\\n/g,' '))).slice(0,18);
+          console.log('BLINK_JS_EVIDENCE',JSON.stringify(extract(js,[/6000/g,/\b6\b/g,/animation/gi,/setInterval/g,/setTimeout/g])));
+          console.log('BLINK_CSS_EVIDENCE',JSON.stringify(extract(css,[/animation/gi,/@keyframes/gi,/3px/g,/top:50%/g])));
+          NODE
