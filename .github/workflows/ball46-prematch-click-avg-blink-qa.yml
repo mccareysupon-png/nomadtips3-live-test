@@ -25,13 +25,13 @@ jobs:
             const [r,js,css]=await Promise.all([fetch(url,{cache:'no-store'}),fetch(base+'/__b46_prematch_client.js',{cache:'no-store'}),fetch(base)]);
             if(r.ok&&js.ok&&css.ok){
               data=await r.json();src=await js.text();styles=await css.text();
-              if(src.includes('const avgOdds=items=>')&&src.includes("e.target?.closest?.('#b46-prematch-panel')")&&src.includes('b46pm-live-minute')&&src.includes("window.addEventListener('click'"))break;
+              if(src.includes('const avgOdds=items=>')&&src.includes("e.target?.closest?.('#b46-prematch-panel')")&&src.includes('b46pm-minute-mark')&&src.includes("window.addEventListener('click'"))break;
             }
             await new Promise(r=>setTimeout(r,2200));
           }
           assert(src.includes("e.target?.closest?.('#b46-prematch-panel')"),'CONTENT_CLICK_GUARD_NOT_DEPLOYED');
           assert(src.includes('const avgOdds=items=>'),'AVG_ODDS_NOT_DEPLOYED');
-          assert(src.includes('b46pm-live-minute'),'LIVE_MINUTE_BLINK_NOT_DEPLOYED');
+          assert(src.includes('b46pm-minute-mark'),'APOSTROPHE_ONLY_BLINK_NOT_DEPLOYED');
           assert(src.includes("window.addEventListener('click'"),'WINDOW_CAPTURE_SHIELD_NOT_DEPLOYED');
           assert.equal(data.testLedger?.mode,'TEST_ONLY');
           const expected=rows=>{const n=rows.map(x=>Number(x.price)).filter(x=>Number.isFinite(x)&&x>1);return n.length?(n.reduce((a,b)=>a+b,0)/n.length).toFixed(2):'—'};
@@ -98,11 +98,11 @@ jobs:
             await p.route('**/__b46_prematch_data',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(injected)}));
             await p.goto(base+'/?pmminute='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
             await p.locator('aside.left-rail [data-b46-prematch-route="predictions"]').evaluate(x=>x.click());
-            await p.locator('#b46-prematch-panel .b46pm-live-minute').first().waitFor({timeout:10000});
-            const minute=await p.locator('#b46-prematch-panel .b46pm-live-minute').first().evaluate(x=>({text:x.textContent,animation:getComputedStyle(x).animationName,color:getComputedStyle(x).color}));
-            assert.equal(minute.text,"63'");assert(minute.animation.includes('b46pm-live-minute-blink'),'NOT_BLINKING');
+            await p.locator('#b46-prematch-panel .b46pm-minute-mark').first().waitFor({timeout:10000});
+            const minute=await p.locator('#b46-prematch-panel .b46pm-clock').first().evaluate(x=>({fullText:x.textContent,number:x.querySelector('.b46pm-minute-digits')?.textContent,numberAnimation:getComputedStyle(x.querySelector('.b46pm-minute-digits')).animationName,mark:x.querySelector('.b46pm-minute-mark')?.textContent,markAnimation:getComputedStyle(x.querySelector('.b46pm-minute-mark')).animationName,color:getComputedStyle(x).color,clockAnimation:getComputedStyle(x).animationName}));
+            assert.equal(minute.fullText,"63'");assert.equal(minute.number,'63');assert.equal(minute.mark,"'");assert.equal(minute.numberAnimation,'none','DIGITS_MUST_NOT_BLINK');assert.equal(minute.clockAnimation,'none','CLOCK_MUST_NOT_BLINK');assert(minute.markAnimation.includes('b46pm-apostrophe-blink'),'ONLY_APOSTROPHE_MUST_BLINK');
             await p.emulateMedia({reducedMotion:'reduce'});
-            const reduced=await p.locator('#b46-prematch-panel .b46pm-live-minute').first().evaluate(x=>getComputedStyle(x).animationName);
+            const reduced=await p.locator('#b46-prematch-panel .b46pm-minute-mark').first().evaluate(x=>getComputedStyle(x).animationName);
             assert.equal(reduced,'none','REDUCED_MOTION_NOT_HONORED');
             await p.close();
             console.log('PREMATCH_LIVE_MINUTE_VERIFIED '+JSON.stringify({minute,reducedMotionAnimation:reduced,isSimulatedBrowserTest:true}));
