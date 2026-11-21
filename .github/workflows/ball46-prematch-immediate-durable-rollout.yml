@@ -1,0 +1,52 @@
+name: BALL46 immediately activate test Pre-Match Durable Object mission
+on:
+  push:
+    branches: [test/ball46-prematch-v1-20261120]
+    paths: ['.github/workflows/ball46-prematch-immediate-durable-rollout.yml']
+permissions: {contents: read}
+concurrency:
+  group: ball46-prematch-only-test
+  cancel-in-progress: false
+jobs:
+  activate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - name: Activate latest verified test-only version without losing SQLite state
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import crypto from 'node:crypto';
+          const account=process.env.CLOUDFLARE_ACCOUNT_ID,token=process.env.CLOUDFLARE_API_TOKEN,n='ball46-prematch-only-test-20261120';
+          const root='https://api.cloudflare.com/client/v4/accounts/'+account+'/workers',host='https://'+n+'.mccarey-supon.workers.dev';
+          const secret=crypto.createHmac('sha256',token).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
+          const cf=async (p,o={})=>{const r=await fetch(root+p,{...o,headers:{authorization:'Bearer '+token,...o.headers},signal:AbortSignal.timeout(30000)});const j=await r.json();assert(r.ok&&j.success,p+' '+r.status+' '+JSON.stringify(j.errors||[]));return j.result};
+          const get=async p=>{const r=await fetch(host+p,{headers:{authorization:'Bearer '+secret},cache:'no-store',signal:AbortSignal.timeout(20000)});assert(r.ok,p+' '+r.status);return r.json()};
+          const protectedNames=['ball46-production','nomadtips3-engine-343','nomadtips3-5usd-hub-343'];
+          const protect=()=>Promise.all(protectedNames.map(async x=>({name:x,versions:(await cf('/scripts/'+x+'/deployments?per_page=1')).deployments[0].versions})));
+          const before=await protect();
+          const prev=await get('/test-ledger');assert(prev.mode==='TEST_ONLY'&&prev.stats.total>=8);
+          const dep=(await cf('/scripts/'+n+'/deployments?per_page=1')).deployments[0];
+          const id=dep.versions[0].version_id,version=await cf('/workers/'+n+'/versions/'+id+'?include=modules');
+          const code=Buffer.from(version.modules.find(m=>m.name===version.main_module).content_base64,'base64').toString();
+          assert(code.includes('if(history.completed<5)for(let roundNo=1;roundNo<=5;roundNo++)'),'LATEST_COMPLETED_TRIP_GUARD_MISSING');
+          assert(code.includes('runDailyMission(now)')&&code.includes('scheduledFromNormalHub(snapshot,now)'),'LATEST_AUTO_PIPELINE_MISSING');
+          assert(version.modules.some(x=>x.name==='hub-upcoming-feed.mjs'),'HUB_1X2_ADAPTER_MISSING');
+          assert(!code.includes('api.5dollarfootballapi.com'),'UNSAFE_DIRECT_PROVIDER_CALL');
+          const switched=await cf('/scripts/'+n+'/deployments',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({strategy:'percentage',versions:[{version_id:id,percentage:100}],code_update_strategy:{mode:'immediate'}})});
+          console.log('TEST_DURABLE_OBJECT_IMMEDIATE_DEPLOY '+JSON.stringify({version:id,deploymentId:switched.id||null}));
+          let live=null;
+          for(let i=0;i<25;i++){
+           try{const [h,d]=await Promise.all([get('/health'),get('/daily-mission-state')]);if(Object.hasOwn(h,'dailyMission')&&d.extraProviderCalls===0&&d.history?.maxRounds===5&&d.history?.maxPerDay===500){live={health:h,state:d};break}}
+           catch(e){if(i%5===0)console.log('TEST_DURABLE_OBJECT_PROPAGATION '+i+' '+String(e.message).slice(0,120))}
+           await new Promise(r=>setTimeout(r,1700));
+          }
+          assert(live,'LATEST_TEST_DURABLE_OBJECT_NOT_SERVING');
+          const afterLedger=await get('/test-ledger');
+          for(const x of prev.rows){const y=afterLedger.rows.find(r=>r.fixture_id===x.fixture_id);assert(y&&y.price===x.price&&y.pick===x.pick&&y.picked_at===x.picked_at,'EXISTING_PREDICTION_CHANGED')}
+          assert.deepEqual(await protect(),before,'PRODUCTION_OR_HUB_TOUCHED');
+          console.log('TEST_DURABLE_OBJECT_AUTO_MISSION_VERIFIED '+JSON.stringify({version:id,route:'/daily-mission',day:live.state.history.businessDay,completed:live.state.history.completed,imported:live.state.history.imported,mission:live.state.mission?.state??null,storedPicks:afterLedger.stats.total,protectedUnchanged:true,providerCalls:0,nextStep:'London 06 first scheduled 15-minute tick'}));
+          JS
