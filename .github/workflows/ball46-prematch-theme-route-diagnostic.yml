@@ -104,6 +104,35 @@ jobs:
               const reloaded=await examine();
               console.log('PREMATCH_THEME_DIAG_AFTER_REFRESH '+JSON.stringify({mobile,...reloaded,errors:errs}));
               assertScene(reloaded,'dark','AFTER_REFRESH');
+              // A theme switch must not drop us back into the native
+              // production-origin view when selecting another Pre-Match tab.
+              const navRoot=mobile?'#b46m-drawer':'aside.left-rail';
+              const switchPrematch=async route=>{
+                const nav=p.locator(navRoot+' [data-b46-prematch-route="'+route+'"]');
+                if(mobile&&!await nav.isVisible()){
+                  await p.locator('[data-b46m-open]').first().click({timeout:7000});
+                }
+                await nav.waitFor({state:'visible',timeout:12000});
+                await nav.evaluate(x=>x.click());
+                await p.waitForFunction(route=>{
+                  const p=new URL(location.href).searchParams;
+                  return document.body.dataset.b46PrematchView==='1'
+                    &&p.get('b46pm')===route
+                    &&!!document.querySelector('#b46-prematch-panel:not([hidden])');
+                },route,{timeout:15000});
+              };
+              await switchPrematch('predictions');
+              assert.equal(await p.locator('#b46-prematch-panel .b46pm-stats-board').count(),1,'RETURN_TO_PREMATCH_PREDICTIONS_DID_NOT_LOAD');
+              const predictions=await examine();
+              assert(predictions.shape.nativeView==='Pre-Match Predictions','PREDICTIONS_ARE_NATIVE_PAGE');
+              await switchPrematch('all');
+              await p.waitForFunction(()=>document.querySelector('#b46-prematch-panel .b46pm-performance-provenance')?.textContent.includes('Pre-Match Receiver'),null,{timeout:15000});
+              const graphResponse=await p.request.get(base+'/__b46_prematch_graph?market=1X2&variant=all&filter=all&range=all');
+              assert.equal(graphResponse.ok(),true,'TEST_RECEIVER_NOT_CONNECTED_AFTER_THEME');
+              const graph=await graphResponse.json();
+              assert.equal(graph.scope,'PREMATCH_TEST_ONLY','PRODUCTION_RECEIVER_EXPOSED_AFTER_THEME');
+              assert.equal(graph.source,'RECEIVER','PREMATCH_RECEIVER_SOURCE_CHANGED');
+              console.log('PREMATCH_THEME_NAV_ROUNDTRIP_PASS '+JSON.stringify({mobile,predictions:predictions.shape.url,statsRoute:(await examine()).shape.url,graphScope:graph.scope,receiverSequence:graph.sequence}));
               assert.deepEqual(errs,[],'UNHANDLED_PAGE_ERRORS');
               console.log('PREMATCH_THEME_ROUTING_PASS '+JSON.stringify({mobile,modes:['dark','light','dark','refresh'],keptTestOrigin:true,route:'all'}));
               await p.close();
