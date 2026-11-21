@@ -1,0 +1,24 @@
+name: BALL46 audit cached HUB scheduled odds for auto singles
+on:
+  push:
+    branches: [test/ball46-prematch-v1-20261120]
+    paths: ['.github/workflows/ball46-auto-single-feed-audit.yml']
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - name: Read standard HUB snapshot only
+        run: |
+          node --input-type=module <<'JS'
+          const r=await fetch('https://nomadtips3-5usd-hub-343.mccarey-supon.workers.dev/snapshot',{signal:AbortSignal.timeout(18000)});
+          if(!r.ok)throw Error('HUB '+r.status);
+          const j=await r.json(),now=Math.floor(Date.now()/1000);
+          const scheduled=j.fixtures?.filter(f=>f.boardState==='scheduled'||f.status==='scheduled')||[];
+          const epoch=x=>Number.isSafeInteger(Number(x))&&Number(x)>1e9?Math.floor(Number(x)>1e12?Number(x)/1000:Number(x)):Math.floor(Date.parse(x)/1000);
+          const matches=scheduled.map(f=>({f,k:epoch(f.kickoffUtc||f.kickoffAt)}));
+          const valid=matches.filter(x=>x.k>now);
+          const odds=valid.filter(x=>[x.f.providerOdds?.odds?.['1x2']?.closing?.home,x.f.providerOdds?.odds?.['1x2']?.closing?.draw,x.f.providerOdds?.odds?.['1x2']?.closing?.away].every(n=>typeof n==='number'&&Number.isFinite(n)&&n>1));
+          console.log('AUTO_SINGLE_HUB_AUDIT '+JSON.stringify({snapshotKeys:Object.keys(j),fetchAt:j.fetchedAt,ageMs:j.ageMs,stale:j.stale,cacheOnly:j.cacheOnly,externalRequestsAdded:j.externalRequestsAdded,counts:j.counts,scheduled:scheduled.length,future:valid.length,validPrices:odds.length,sample:odds.slice(0,3).map(({f,k})=>({fixtureId:f.fixtureId,keys:Object.keys(f),status:f.status,boardState:f.boardState,kickoff:k,home:f.home,away:f.away,providerOddsKeys:Object.keys(f.providerOdds||{}),providerOdds:f.providerOdds,league:f.league})),badScheduled:scheduled.slice(0,2).map(f=>({kickoffUtc:f.kickoffUtc,odds:!!f.providerOdds,fixtureId:f.fixtureId})),providerCalls:0}));
+          JS
