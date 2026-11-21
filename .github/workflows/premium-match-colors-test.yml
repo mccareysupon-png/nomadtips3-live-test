@@ -152,10 +152,11 @@ jobs:
           cat > premium-qa/worker.mjs <<'EOF'
           import palette from './palette.json';
           import {prematchClientScript,prematchStyles} from './prematch-client.mjs';
+          import {oddsMovementStyles,oddsMovementScript} from './odds-movement.mjs';
           export default {async fetch(req,env){
             const u=new URL(req.url);
             if(!['GET','HEAD'].includes(req.method))return new Response('READ_ONLY',{status:405});
-            if(u.pathname==='/_premium_health')return Response.json({ok:true,scope:'TEST_ONLY_CSS',revision:'PREMIUM_LEAGUE_SOLID_V14',prematchNative:true,...palette});
+            if(u.pathname==='/_premium_health')return Response.json({ok:true,scope:'TEST_ONLY_CSS',revision:'PREMIUM_LEAGUE_SOLID_V14',prematchNative:true,oddsMovement:'DOM_PRICES_V1',...palette});
             if(u.pathname==='/__b46_prematch_client.js')return new Response(prematchClientScript,{headers:{'content-type':'application/javascript; charset=utf-8','cache-control':'no-store','x-robots-tag':'noindex,nofollow'}});
             if(u.pathname==='/__b46_prematch_data')return env.PREMATCH_STORE.fetch('https://prematch.internal/preview-data');
             if(/^\/(admin|internal)(\/|$)/i.test(u.pathname))return new Response('Forbidden',{status:403});
@@ -167,7 +168,7 @@ jobs:
             for(const k of ['content-length','content-encoding','etag','last-modified'])h.delete(k);
             h.set('cache-control','no-store');
             const pmStyles=prematchStyles+'#b46-prematch-panel{--b46pm-gradient:'+palette.reference.cum.backgroundImage+';--b46pm-bg:'+palette.reference.cum.backgroundColor+'}';
-            return new HTMLRewriter().on('head',{element(e){e.prepend('<style id="b46-premium-match-test">'+palette.css+'</style><style id="b46-prematch-native-styles">'+pmStyles+'</style><script id="b46-premium-user-action-test">'+palette.reference.activationScript+'</script>',{html:true})}}).on('body',{element(e){e.append('<script defer src="/__b46_prematch_client.js"></script>',{html:true})}}).transform(new Response(r.body,{status:r.status,headers:h}));
+            return new HTMLRewriter().on('head',{element(e){e.prepend('<style id="b46-premium-match-test">'+palette.css+'</style><style id="b46-prematch-native-styles">'+pmStyles+'</style><style id="b46-odds-movement-styles-test">'+oddsMovementStyles+'</style><script id="b46-premium-user-action-test">'+palette.reference.activationScript+'</script><script id="b46-odds-movement-script-test">'+oddsMovementScript+'</script>',{html:true})}}).on('body',{element(e){e.append('<script defer src="/__b46_prematch_client.js"></script>',{html:true})}}).transform(new Response(r.body,{status:r.status,headers:h}));
           }};
           EOF
           cat > premium-qa/wrangler.toml <<'EOF'
@@ -184,8 +185,10 @@ jobs:
           service = "ball46-prematch-only-test-20261120"
           EOF
           cp qa/prematch-native-ui-20261121/prematch-client.mjs premium-qa/prematch-client.mjs
+          cp qa/odds-movement-20261121/odds-movement.mjs premium-qa/odds-movement.mjs
           node --check premium-qa/worker.mjs
           node --check premium-qa/prematch-client.mjs
+          node --check premium-qa/odds-movement.mjs
           npx --yes wrangler@4.50.0 deploy --config premium-qa/wrangler.toml --name ball46-premium-match-colors-test-20261120
       - name: Verify PC dark and light
         run: |
@@ -194,7 +197,7 @@ jobs:
           import assert from 'node:assert/strict';
           const base='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev';
           let h;for(let i=0;i<15;i++){try{const r=await fetch(base+'/_premium_health');if(r.ok){const candidate=await r.json();if(candidate.revision==='PREMIUM_LEAGUE_SOLID_V14'){h=candidate;break}}}catch{}await new Promise(r=>setTimeout(r,2000))}
-          assert.equal(h?.scope,'TEST_ONLY_CSS');assert.equal(h?.revision,'PREMIUM_LEAGUE_SOLID_V14');
+          assert.equal(h?.scope,'TEST_ONLY_CSS');assert.equal(h?.revision,'PREMIUM_LEAGUE_SOLID_V14');assert.equal(h?.oddsMovement,'DOM_PRICES_V1');
           const browser=await chromium.launch();
           try{for(const mobile of [false])for(const theme of ['dark','light']){
             const p=await browser.newPage(mobile?{...devices['iPhone 13'],serviceWorkers:'block'}:{viewport:{width:1440,height:950},serviceWorkers:'block'});
@@ -269,6 +272,28 @@ jobs:
               assert.deepEqual(await price(),originalPit,'PRICE_PIT_CHANGED_ON_ACTIVE');
               await p.screenshot({path:process.env.RUNNER_TEMP+'/premium-proof/active.png'});
               console.log('INTERACTION_PASS',JSON.stringify({hover,active,stillActive,persistent:true,oldEffectsRemoved:true}));
+              // Controlled browser-only mutations simulate a real odds-field DOM update.
+              // No upstream API, worker storage, Engine or shared data is written.
+              const odd=chosen.locator('.market-cell .b46-v3-quote strong[data-nomad-odds-raw]').first();
+              await p.waitForFunction(()=>window.__b46OddsMovementStats?.ready===true);
+              const originalPrice=await odd.evaluate(el=>({raw:el.getAttribute('data-nomad-odds-raw'),text:el.textContent.trim(),align:el.dataset.b46Align,quote:el.closest('.b46-v3-quote')?.getAttribute('data-b46-odds-move')||null}));
+              assert(Number(originalPrice.raw)>1&&Number.isFinite(Number(originalPrice.raw)),'ODDS_RAW_NOT_NUMERIC');
+              const readMove=()=>odd.evaluate(el=>{const q=el.closest('.b46-v3-quote'),s=getComputedStyle(q),v=getComputedStyle(q,'::after');return {direction:q.getAttribute('data-b46-odds-move'),priceColor:getComputedStyle(el).color,quoteColor:s.backgroundColor,arrow:v.content,cellBg:getComputedStyle(el.closest('.market-cell')).backgroundColor,stats:{...window.__b46OddsMovementStats}}});
+              const change=async value=>odd.evaluate((el,v)=>{el.setAttribute('data-nomad-odds-raw',v.toFixed(2));el.textContent=v.toFixed(2)},value);
+              const initialMove=await readMove();assert(!initialMove.direction,'ODDS_FLASH_ON_INITIAL_LOAD');assert.equal(initialMove.cellBg,h.reference.pitColor);
+              const initialValue=Number(originalPrice.raw),upValue=Number((initialValue+.07).toFixed(2));
+              await change(upValue);
+              await p.waitForFunction(()=>!!document.querySelector('.b46-v3-quote[data-b46-odds-move="up"]'),null,{timeout:3000});
+              const up=await readMove();assert.equal(up.direction,'up');assert(up.arrow.includes('↑'));assert.equal(up.cellBg,h.reference.pitColor);
+              await p.screenshot({path:process.env.RUNNER_TEMP+'/premium-proof/odds-up.png'});
+              await p.waitForTimeout(850);assert.equal((await readMove()).direction,null,'ODDS_UP_NOT_RESET_AFTER_700MS');
+              await change(initialValue);
+              await p.waitForFunction(()=>!!document.querySelector('.b46-v3-quote[data-b46-odds-move="down"]'),null,{timeout:3000});
+              const down=await readMove();assert.equal(down.direction,'down');assert(down.arrow.includes('↓'));assert.equal(down.cellBg,h.reference.pitColor);
+              await p.screenshot({path:process.env.RUNNER_TEMP+'/premium-proof/odds-down.png'});
+              await p.waitForTimeout(850);const afterFlash=await readMove();assert.equal(afterFlash.direction,null,'ODDS_DOWN_NOT_RESET_AFTER_700MS');
+              assert(afterFlash.stats.ups>=1&&afterFlash.stats.downs>=1,'ODDS_MOVEMENT_COUNTS_MISSING');
+              console.log('ODDS_MOVEMENT_PASS',JSON.stringify({originalPrice,up,down,afterFlash,domOnly:true,apiCallsAdded:0}));
             }
             await p.close();
           }}finally{await browser.close()}
