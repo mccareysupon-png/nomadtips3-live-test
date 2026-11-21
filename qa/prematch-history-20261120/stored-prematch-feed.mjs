@@ -8,7 +8,11 @@ function normalize(f,now){
   const prices={};for(const k of keys){const p=o.prices?.[k];if(typeof p==='number'&&Number.isFinite(p)&&p>1)prices[k]=p}
   if(Object.keys(prices).length)odds={bookmaker:'bet365',observed:o.observed,prices};
  }
- return {id:String(f.id),status:'scheduled',kickoff_ts:f.kickoff_ts,teams:{home:{id:Number(f.teams.home.id),name:f.teams.home.name},away:{id:Number(f.teams.away.id),name:f.teams.away.name}},...(odds?{storedBet365:odds}:{})};
+ const rawHub=f.storedHub1x2;let hub=null;
+ if(rawHub?.bookmaker==='5usd-hub'&&Number.isSafeInteger(rawHub.observed)&&rawHub.observed>0&&rawHub.observed<=now&&rawHub.observed<f.kickoff_ts&&['1X2_HOME','1X2_DRAW','1X2_AWAY'].every(k=>typeof rawHub.prices?.[k]==='number'&&Number.isFinite(rawHub.prices[k])&&rawHub.prices[k]>1)){
+  hub={bookmaker:'5usd-hub',observed:rawHub.observed,source:'NORMAL_HUB_CACHED_ODDS',prices:{'1X2_HOME':rawHub.prices['1X2_HOME'],'1X2_DRAW':rawHub.prices['1X2_DRAW'],'1X2_AWAY':rawHub.prices['1X2_AWAY']}};
+ }
+ return {id:String(f.id),status:'scheduled',kickoff_ts:f.kickoff_ts,teams:{home:{id:Number(f.teams.home.id),name:f.teams.home.name},away:{id:Number(f.teams.away.id),name:f.teams.away.name}},...(odds?{storedBet365:odds}:{}),...(hub?{storedHub1x2:hub}:{})};
 }
 export function mergeStoredPrematch(existing,incoming,now){
  const map=new Map(),stats={received:incoming.length,accepted:0,rejected:0,conflicts:0};
@@ -16,8 +20,9 @@ export function mergeStoredPrematch(existing,incoming,now){
  for(const f of incoming){const n=normalize(f,now);if(!n){stats.rejected++;continue}const prev=map.get(n.id);
  if(prev&&(prev.kickoff_ts!==n.kickoff_ts||prev.teams.home.id!==n.teams.home.id||prev.teams.away.id!==n.teams.away.id)){stats.conflicts++;continue}
  if(prev?.storedBet365&&(!n.storedBet365||prev.storedBet365.observed>n.storedBet365.observed))n.storedBet365=prev.storedBet365;
+ if(prev?.storedHub1x2&&(!n.storedHub1x2||prev.storedHub1x2.observed>n.storedHub1x2.observed))n.storedHub1x2=prev.storedHub1x2;
  map.set(n.id,n);stats.accepted++}
  const fixtures=[...map.values()].sort((a,b)=>a.kickoff_ts-b.kickoff_ts||a.id.localeCompare(b.id));
  if(fixtures.length>1000)throw Error('PREMATCH_CAPACITY_EXCEEDED');
- return {fixtures,stats:{...stats,stored:fixtures.length,bttsPrices:fixtures.filter(f=>['BTTS_YES','BTTS_NO'].every(k=>f.storedBet365?.prices[k]>1)).length,oneX2Prices:fixtures.filter(f=>['1X2_HOME','1X2_DRAW','1X2_AWAY'].every(k=>f.storedBet365?.prices[k]>1)).length}};
+ return {fixtures,stats:{...stats,stored:fixtures.length,bttsPrices:fixtures.filter(f=>['BTTS_YES','BTTS_NO'].every(k=>f.storedBet365?.prices[k]>1)).length,oneX2Prices:fixtures.filter(f=>['1X2_HOME','1X2_DRAW','1X2_AWAY'].every(k=>(f.storedHub1x2??f.storedBet365)?.prices[k]>1)).length}};
 }
