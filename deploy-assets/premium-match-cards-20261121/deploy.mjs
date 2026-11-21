@@ -23,7 +23,14 @@ async function active(){
  const d=await cf('/scripts/'+SCRIPT+'/deployments?per_page=3'),v=d.deployments?.[0]?.versions;
  assert(v?.length===1&&Number(v[0].percentage)===100,'ACTIVE_VERSION_NOT_100_PERCENT');return v[0].version_id;
 }
-const version=id=>cf('/workers/'+SCRIPT+'/versions/'+id+'?include=modules');
+async function version(id){
+  let last;
+  for(let i=0;i<20;i++){
+    try{return await cf('/workers/'+SCRIPT+'/versions/'+id+'?include=modules')}
+    catch(e){last=e;const m=String(e);if(!m.includes('10071')||i===19)throw e;await delay(2000)}
+  }
+  throw last;
+}
 const settings=()=>cf('/scripts/'+SCRIPT+'/settings');
 async function crons(){const a=await cf('/scripts/'+SCRIPT+'/schedules'),b=Array.isArray(a)?a:a.schedules;assert(Array.isArray(b),'CRONS_MISSING');return b.map(x=>x.cron).sort()}
 async function read(url){
@@ -86,7 +93,7 @@ async function upload(v,source){
   form.append(m.name,new Blob([bytes],{type:type(m,v.main_module)}),m.name);
  }
  const result=await cf('/scripts/'+SCRIPT+'/versions',{method:'POST',body:form});
- assert(result?.id&&result.id!==base,'CANDIDATE_ID_MISSING');return result.id;
+ assert(result?.id&&result.id!==base,'CANDIDATE_ID_MISSING');console.log('PREVIEW_VERSION_UPLOAD',{id:result.id,fields:Object.keys(result)});return result.id;
 }
 function verify(v,old,source){
  assert.equal(v.main_module,old.main_module,'MAIN_MODULE_CHANGED');
