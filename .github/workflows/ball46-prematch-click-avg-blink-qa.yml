@@ -47,6 +47,13 @@ jobs:
               const nav=mobile?'#b46m-drawer [data-b46-prematch-route="predictions"]':'aside.left-rail [data-b46-prematch-route="predictions"]';
               await p.locator(nav).evaluate(x=>x.click());
               await p.waitForFunction(()=>document.body.dataset.b46PrematchView==='1'&&document.querySelectorAll('#b46-prematch-panel .b46pm-card').length>=8,null,{timeout:20000});
+              await p.waitForTimeout(600);
+              if(mobile){const navStatus=await p.evaluate(()=>{
+                const drawer=document.querySelector('#b46m-drawer'),overlay=document.querySelector('[data-b46m-overlay]');
+                const rect=document.querySelector('#b46-prematch-panel .b46pm-title')?.getBoundingClientRect();
+                const target=rect?document.elementFromPoint(rect.x+rect.width/2,rect.y+rect.height/2):null;
+                return {drawerClass:drawer?.className,drawerHidden:drawer?.getAttribute('aria-hidden'),overlayClass:overlay?.className,overlayPointer:overlay&&getComputedStyle(overlay).pointerEvents,centerTarget:target?.outerHTML.slice(0,230)}
+              });console.log('PREMATCH_MOBILE_DRAWER_STATE '+JSON.stringify(navStatus));}
               const metrics=await p.evaluate(()=>{
                 const cards=[...document.querySelectorAll('#b46-prematch-panel .b46pm-summary .b46pm-card')].map(x=>[x.querySelector('.b46pm-label')?.textContent,x.querySelector('.b46pm-value')?.textContent]);
                 const day=[...document.querySelectorAll('#b46-prematch-panel .b46pm-daybar-cell')].map(x=>[x.querySelector('small')?.textContent,x.querySelector('strong')?.textContent]);
@@ -61,9 +68,14 @@ jobs:
                if(!await locator.count())continue;
                await p.waitForFunction(()=>document.body.dataset.b46PrematchView==='1');
                try{
-                 await locator.scrollIntoViewIfNeeded({timeout:7000});
-                 const box=await locator.boundingBox();
-                 if(!box)continue;
+                 const box=await p.evaluate(sel=>{
+                   const x=document.querySelector('#b46-prematch-panel '+sel);
+                   if(!x)return null;
+                   x.scrollIntoView({block:'center'});
+                   const r=x.getBoundingClientRect();
+                   return {x:r.x,y:r.y,width:r.width,height:r.height};
+                 },sel);
+                 if(!box||box.width<2||box.height<2)continue;
                  await p.mouse.click(box.x+Math.min(box.width/2,Math.max(5,box.width-5)),box.y+Math.min(box.height/2,Math.max(5,box.height-5)));
                  await p.waitForTimeout(120);
                  const result=await p.evaluate(()=>({url:location.href,mode:document.body.dataset.b46PrematchView,title:document.querySelector('#b46-prematch-panel .b46pm-title')?.textContent,overlay:document.querySelector('[data-b46m-overlay]')&&getComputedStyle(document.querySelector('[data-b46m-overlay]')).pointerEvents}));
