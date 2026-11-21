@@ -93,7 +93,7 @@ try{
    const downState=await cell.evaluate(td=>({dir:td.getAttribute('data-b46-fmb-odds-move'),color:getComputedStyle(td).color,clip:getComputedStyle(td,'::after').clipPath,stats:{...window.__b46FullMarketOddsV3Stats}}));
    assert.equal(downState.dir,'down','DOWN_NOT_DETECTED');
    assert.equal(downState.color,'rgb(255, 159, 165)','DOWN_COLOR_WRONG');
-   assert(downState.clip.startsWith('polygon(0 0'),'DOWN_ARROW_WRONG');
+   assert(/^polygon\(0(?:px)? 0(?:px)?,/.test(downState.clip),'DOWN_ARROW_WRONG_'+downState.clip);
    await p.screenshot({path:'qa-fullmarket-v3-updown.png'});
    // Historical OPEN/CLOSE must NEVER react: they are not current quotes.
    const oldPrice=p.locator('.expand-full-market-card .fmb-market[data-market="1x2"] tbody tr').filter({has:p.locator('th:text-is("OPEN")')}).locator('td').first();
