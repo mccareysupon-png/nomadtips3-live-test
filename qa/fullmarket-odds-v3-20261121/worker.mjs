@@ -6,7 +6,7 @@ const OVERSCROLL_TEST='<style id="b46-native-scroll-containment-test">@media(min
  // Market renderer, odds detector, Event Flow chart and all service bindings.
 const NATIVE_ASSETS=new Set(['/dashboard-v2-stage3-featured-facts-20261013a.js','/ui-sync-fixes-343-v2.js','/expanded-match-343.js']);
 function replaceStrict(source,oldText,newText,label){
- if(source.split(oldText).length!==2)throw Error('UNEXPECTED_NATIVE_SOURCE_'+label);
+ if(source.split(oldText).length!==2)return source; // Fail OPEN in isolated TEST: native site JS must never be broken.
  return source.replace(oldText,newText);
 }
 function nativeOptimized(path,src){
@@ -45,10 +45,11 @@ export default {async fetch(req,env){
  // No production asset, origin database, engine, Cloudflare route, or API is written.
  if(req.method==='GET'&&source.ok&&NATIVE_ASSETS.has(u.pathname)){
   const text=await source.text();
+  if(u.searchParams.get('b46NativeRaw')==='1'){const rawHeaders=new Headers(out);for(const k of ['content-length','content-encoding','etag','last-modified'])rawHeaders.delete(k);rawHeaders.set('cache-control','no-store');rawHeaders.set('content-type','application/javascript; charset=utf-8');return new Response(text,{status:source.status,statusText:source.statusText,headers:rawHeaders})}
   let patched;
   try{patched=nativeOptimized(u.pathname,text)}
   catch(e){return new Response('B46_TEST_NATIVE_PATCH_FAILURE_'+u.pathname+':'+String(e)+'; bytes='+text.length,{status:500,headers:{'content-type':'text/plain; charset=utf-8','cache-control':'no-store'}})}
-  if(patched===text)return new Response('NATIVE_OPTIMIZATION_NOT_APPLIED',{status:500});
+  if(patched===text){const passthrough=new Headers(out);passthrough.set('x-b46-test-native-perf','passthrough');return new Response(text,{status:source.status,statusText:source.statusText,headers:passthrough})}
   for(const k of ['content-length','content-encoding','etag','last-modified'])out.delete(k);
   out.set('content-type','application/javascript; charset=utf-8');out.set('cache-control','no-store');
   out.set('x-b46-test-native-perf','scoped');
