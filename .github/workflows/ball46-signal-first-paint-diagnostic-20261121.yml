@@ -42,15 +42,14 @@ jobs:
                   const k=JSON.stringify({...event,at:0});
                   if(k!==s.last){s.last=k;s.events.push(event)}
                 };
-                new MutationObserver(()=>{if(document.body)sample()}).observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['data-workspace-view','data-inline-signal-count','class']});
-                addEventListener('DOMContentLoaded',()=>{sample();let ticks=0;const id=setInterval(()=>{sample();if(++ticks>180)clearInterval(id)},50)});
+                addEventListener('DOMContentLoaded',()=>{new MutationObserver(()=>sample()).observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['data-workspace-view','data-inline-signal-count','class']});sample();let ticks=0;const id=setInterval(()=>{sample();if(++ticks>115)clearInterval(id)},50)});
               });
               p.on('response',r=>{
                 if(/\/api\/engine\/(signals|board)|\/api\/hub\/snapshot/.test(r.url()))p.evaluate(d=>window.__b46PaintQA?.responses.push({...d,at:Math.round(performance.now())}),{status:r.status(),url:new URL(r.url()).pathname}).catch(()=>{});
               });
               const started=Date.now();
               let error=null;
-              try{await p.goto(url+'&qaFirstPaint='+n+'-'+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});await p.waitForTimeout(9600)}catch(e){error=String(e)}
+              try{await p.goto(url+'&qaFirstPaint='+n+'-'+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});await p.waitForTimeout(6300)}catch(e){error=String(e)}
               const state=await p.evaluate(()=>({events:window.__b46PaintQA?.events?.slice(0,120),responses:window.__b46PaintQA?.responses,longTasks:window.__b46PaintQA?.longTasks,final:window.__b46SignalStableQA?.state?.(),loading:document.readyState,counts:[...document.querySelectorAll('[data-inline-signal-count]')].map(x=>x.getAttribute('data-inline-signal-count')).slice(0,10),dataState:document.querySelector('[data-state]')?.textContent}));
               out.push({name,n,totalMs:Date.now()-started,error,...state});
               await p.close();
