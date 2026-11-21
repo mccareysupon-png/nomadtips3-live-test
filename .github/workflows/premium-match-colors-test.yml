@@ -81,6 +81,8 @@ jobs:
             reference.cum=v;reference.outcome=v;reference.rate=v;
             await p.goto('https://ball46.com/',{waitUntil:'domcontentloaded'});
             await p.waitForFunction(()=>[...document.querySelectorAll('[data-match-id]')].filter(e=>e.getBoundingClientRect().width>100&&e.querySelector('.market-cell')).length>=2,null,{timeout:60000});
+            const oddsSample=await p.evaluate(()=>[...document.querySelectorAll('[data-match-id].match-row')].filter(e=>e.getBoundingClientRect().width>100&&e.querySelector('.market-cell')).slice(0,3).map(row=>({matchId:row.dataset.matchId,cells:[...row.querySelectorAll('.market-cell')].slice(0,4).map(cell=>({text:cell.textContent.trim().slice(0,100),outer:cell.outerHTML.slice(0,1800)}))})));
+            console.log('REAL_ODDS_DOM_SAMPLE',JSON.stringify(oddsSample));
             const pair=await p.evaluate(()=>[...document.querySelectorAll('[data-match-id]')].filter(e=>e.getBoundingClientRect().width>100&&e.querySelector('.market-cell')).slice(0,2).map(e=>e.dataset.matchId));
             const clickRow=async id=>{await p.locator('[data-match-id="'+id.replaceAll('"','\\"')+'"]').first().evaluate(e=>e.click());await p.waitForTimeout(500)};
             const state=async()=>p.evaluate(ids=>ids.map(id=>{const e=[...document.querySelectorAll('[data-match-id]')].find(x=>x.dataset.matchId===id&&x.getBoundingClientRect().width>100);return e?{id,classes:[...e.classList],attrs:[...e.attributes].filter(a=>/^(aria-|data-)/.test(a.name)&&/active|selected|current|focus/i.test(a.name)).map(a=>[a.name,a.value])}:null}),pair);
