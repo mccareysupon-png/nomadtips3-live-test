@@ -1,0 +1,69 @@
+name: BALL46 read-only LIVE Stats layout vs Pre-Match TEST scroll reference
+on:
+  push:
+    branches: [test/ball46-premium-match-colors-20261120]
+    paths: ['.github/workflows/b46-prematch-live-stats-scroll-reference-qa.yml']
+permissions: { contents: read }
+jobs:
+  reference:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          npm install --no-save --no-package-lock playwright@1.55.0
+          npx playwright install chromium --only-shell
+      - name: Inspect deployed Live Stats scroll CSS and independent test panel
+        run: |
+          node --input-type=module <<'JS'
+          import {chromium,devices} from 'playwright';
+          const b=await chromium.launch();
+          const base='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev';
+          try{
+            for(const mobile of [false,true]){
+              const p=await b.newPage(mobile?{...devices['iPhone 13'],serviceWorkers:'block'}:{viewport:{width:1440,height:920},serviceWorkers:'block'});
+              await p.addInitScript(()=>localStorage.setItem('nomad343_dashboard_theme_v1','dark'));
+              for(const {route,name} of [
+                {route:'/?view=statistics',name:'LIVE_STATS_REFERENCE'},
+                {route:'/?b46pm=all',name:'PREMATCH_TEST_GRAPH'},
+                {route:'/?b46pm=predictions',name:'PREMATCH_TEST_PREDICTIONS'}]){
+                await p.goto(base+route,{waitUntil:'domcontentloaded',timeout:60000});
+                await p.waitForTimeout(2200);
+                const info=await p.evaluate(()=>{
+                  const selectors=['html','body','section.workspace.singlepage','aside.left-rail','.workspace-stage',
+                    '.workspace-stage>.workspace-scorebar-slot','.workspace-stage .sp-stats-content',
+                    '.workspace-stage .sp-results','.workspace-stage .b46-perf-shell',
+                    '.workspace-stage .sp-stats-wrapper','#b46-prematch-panel',
+                    '#b46pm-membership-promo','#b46pm-scroll-region',
+                    '#b46-data-orbit-loading','[data-workspace-heading]','[data-workspace-subtitle]'];
+                  const describe=e=>{
+                    if(!e)return null;
+                    const s=getComputedStyle(e),r=e.getBoundingClientRect();
+                    return {tag:e.tagName,id:e.id,cls:String(e.className||'').slice(0,160),
+                      display:s.display,visibility:s.visibility,position:s.position,overflow:s.overflow,overflowY:s.overflowY,overflowX:s.overflowX,
+                      height:s.height,maxHeight:s.maxHeight,minHeight:s.minHeight,scrollbarWidth:s.scrollbarWidth,contain:s.contain,
+                      scrollbarGutter:s.scrollbarGutter,scrollHeight:e.scrollHeight,clientHeight:e.clientHeight,scrollTop:e.scrollTop,
+                      top:r.top,bottom:r.bottom,width:r.width,parent:e.parentElement?.className?.toString()?.slice(0,80),text:e.textContent?.trim().slice(0,85)};
+                  };
+                  const layout=Object.fromEntries(selectors.map(sel=>[sel,describe(document.querySelector(sel))]));
+                  const scroll=Array.from(document.querySelectorAll('*')).filter(e=>{const s=getComputedStyle(e);return ['auto','scroll'].includes(s.overflowY)&&e.scrollHeight>e.clientHeight+15&&e.getBoundingClientRect().width>50&&e.getBoundingClientRect().height>80}).map(describe).slice(0,28);
+                  const matchedRules=[];
+                  const target=document.querySelector('.workspace-stage')||document.querySelector('#b46-prematch-panel');
+                  const explore=(rules,from)=>{for(const rule of rules){
+                    if(rule.selectorText&&/(workspace-stage|workspace\.singlepage|sp-stats-content|sp-results|b46-prematch-panel|b46pm-scroll-region)/.test(rule.selectorText)
+                      &&/(overflow|scrollbar|position|height|grid|flex)/.test(rule.style?.cssText||'')){
+                        matchedRules.push({selector:rule.selectorText.slice(0,260),css:rule.style.cssText.slice(0,550),from:from?.slice(0,95)});
+                    }
+                    if(rule.cssRules)try{explore(rule.cssRules,from)}catch{}
+                  }};
+                  for(const sheet of [...document.styleSheets])try{explore(sheet.cssRules,sheet.href||sheet.ownerNode?.id||'inline')}catch{}
+                  return {url:location.href,html:document.documentElement.dataset.theme,bodyMode:document.body.dataset.b46PrematchView,
+                    workspaceChildren:[...document.querySelector('section.workspace.singlepage')?.children||[]].map(describe).slice(0,10),
+                    layout,scroll,matchedRules:matchedRules.slice(-120)};
+                });
+                console.log('LIVE_STATS_SCROLL_REFERENCE '+JSON.stringify({mobile,name,...info}));
+              }
+              await p.close();
+            }
+          }finally{await b.close()}
+          JS
