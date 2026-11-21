@@ -59,3 +59,33 @@
 - QA verifies projection formulas in Node and multi-day chart rendering
   using **browser-only synthetic response interception**, without writing
   artificial matches, results, or snapshots into a Worker, DB or Production.
+
+
+## Verified against actual Live Statistics Production — 21 Nov 2026
+- Read-only audit ran against `https://ball46.com/longterm-performance-343.js`
+  and the live `/b46-receiver-v1/graph?market=all&variant=all&filter=all&range=all`.
+- Latest Live graph is **receiver-first**. The browser validates
+  `ok:true,source:'RECEIVER',schema:1`, exact echoed market/variant/filter/range,
+  integer `sequence`, summary and daily `series.units/roi/rate` points
+  (`{date:<epoch milliseconds>,value:<number>}`). It reuses valid points
+  and caches the current market/range briefly. History loads separately.
+- Live keeps a **legacy full-ledger fallback** after receiver errors, which can
+  be expensive. Pre-Match deliberately does **not** copy that fallback.
+- The graph contract is now represented by `receiverGraph()` and
+  `validReceiverGraph()` in the pure Pre-Match staging projection.
+- On the browser, `performanceGraphs[market][range]` or `performanceGraph`
+  is preferred only when the same Receiver schema and exact query match.
+  If absent, show the **honestly limited** stored day rather than fabricating
+  90 days of history or loading a bulk statistics endpoint.
+- Live `summary.avgOdds` is for settled outcomes; Pre-Match Today pick
+  AVG ODDS separately uses all Bot-selected locked prices.
+- Live `summary.maxDD` represents peak-to-valley movement of the settled
+  equity path, not only daily closes. The Pre-Match receiver projection
+  returns null for this KPI until the writer holds an authoritative
+  per-settlement drawdown measure. Do not pass off daily drawdown as exact.
+- This audit verifies the **read contract and deployed frontend**. It does
+  not inspect the hidden production Durable Object transaction/writer.
+  Atomic commit/unique sequence requirements still require storage-side
+  verification before any Pre-Match production rollout.
+- Production live values observed during audit are intentionally not copied
+  into Pre-Match test data, storage, graphics or counter labels.
