@@ -1,0 +1,17 @@
+name: BALL46 read-only cached odds freshness audit
+on:
+  push:
+    branches: [test/ball46-prematch-v1-20261120]
+    paths: ['.github/workflows/ball46-auto-single-feed-freshness.yml']
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - run: |
+          node --input-type=module <<'JS'
+          const r=await fetch('https://nomadtips3-5usd-hub-343.mccarey-supon.workers.dev/snapshot',{signal:AbortSignal.timeout(14000)});if(!r.ok)throw Error('HUB '+r.status);const j=await r.json();const f=(j.fixtures||[]).filter(x=>x.boardState==='scheduled'),agg={};
+          for(const x of f){const k=String(x.providerOddsHeld)+':'+String(x.providerOddsUpdatedAt!=null)+':'+String(x.providerOddsFreshAt!=null);agg[k]=(agg[k]||0)+1}
+          console.log('HUB_ODDS_PROVENANCE '+JSON.stringify({count:f.length,source:j.provider,stale:j.stale,fetchedAt:j.fetchedAt,heldFlags:agg,samples:f.slice(0,4).map(x=>({id:x.fixtureId,oddsUpdatedAt:x.providerOddsUpdatedAt,oddsFreshAt:x.providerOddsFreshAt,oddsHeld:x.providerOddsHeld,heldSince:x.providerOddsHeldSince,openingAt:x.providerOdds?.odds?.['1x2']?.opening?.opened_at,league:x.league?.id})),providerCalls:0}));
+          JS
