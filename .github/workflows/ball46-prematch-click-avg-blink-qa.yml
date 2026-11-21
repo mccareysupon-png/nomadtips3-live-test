@@ -375,7 +375,7 @@ jobs:
               }
               await page.route('**/__b46_prematch_data',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(preview)}));
               await page.route('**/__b46_prematch_graph?*',route=>route.fulfill({
-                status:200,contentType:'application/json',body:JSON.stringify({...graph,scope:'PREMATCH_TEST_ONLY'})
+                status:200,contentType:'application/json',body:JSON.stringify({...graph,range:'all',scope:'PREMATCH_TEST_ONLY'})
               }));
               await page.goto(base+'/?b46pm=all&pmThreeTone='+scenario.name,{waitUntil:'domcontentloaded',timeout:60000});
               await page.waitForFunction(()=>document.querySelector('#b46-prematch-panel .b46pm-performance-provenance')?.textContent.includes('Pre-Match Receiver'),null,{timeout:17000});
