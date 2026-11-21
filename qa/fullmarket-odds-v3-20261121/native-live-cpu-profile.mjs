@@ -1,5 +1,20 @@
 import {chromium} from 'playwright';
 const browser=await chromium.launch();
+const ready='https://ball46-fullmarket-odds-v3-test-20261121.mccarey-supon.workers.dev';
+let deployed=false;
+for(let i=0;i<44;i++){
+ try{const r=await fetch(ready+'/__fullmarket_health?perf='+Date.now(),{signal:AbortSignal.timeout(18000)});if(r.ok){const h=await r.json();if(h.nativePerfTest==='DASHBOARD_PIN_CACHE_FLOW_PATH_CACHE_EXPANDED_SCROLL_SCOPE'){deployed=true;break}}}catch{}
+ await new Promise(r=>setTimeout(r,1300));
+}
+if(!deployed)throw Error('OPTIMIZED_NATIVE_ASSETS_NOT_DEPLOYED');
+for(const [resource,marker] of [
+ ['/dashboard-v2-stage3-featured-facts-20261013a.js','b46PinExpandedCacheTick'],
+ ['/ui-sync-fixes-343-v2.js','b46FlowPathLengthCache'],
+ ['/expanded-match-343.js',"board.scrollBy(0,delta)"]
+]){
+ const r=await fetch(ready+resource+'?perf='+Date.now(),{signal:AbortSignal.timeout(20000)});
+ if(!r.ok||!(await r.text()).includes(marker))throw Error('OPTIMIZED_NATIVE_SCRIPT_MISSING_'+resource);
+}
 const url='https://ball46-fullmarket-odds-v3-test-20261121.mccarey-supon.workers.dev/?view=live';
 const sessions=[['live-scroll-no-default-v3',false],['expanded-fullmarket-native-tab',true]];
 try{
@@ -42,6 +57,7 @@ try{
     });
     await p.waitForTimeout(700);
     after.now=await p.evaluate(()=>({board:document.querySelector('.board-sections').scrollTop,doc:document.scrollingElement.scrollTop,fullHeight:document.querySelector('.expand-full-market-card')?.getBoundingClientRect().height}));
+    if(after.before.board!==after.now.board||after.before.doc!==after.now.doc)throw Error('NATIVE_BOOKMAKER_CLICK_SCROLL_JUMP_'+JSON.stringify(after));
   }else{
     await p.evaluate(()=>{document.querySelector('.board-sections').scrollTop=430;document.scrollingElement.scrollTop=0});
   }
