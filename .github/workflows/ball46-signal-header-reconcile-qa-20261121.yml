@@ -1,0 +1,71 @@
+name: BALL46 Signal native league ghost-header reconciliation TEST
+on:
+  push:
+    branches: [test/ball46-premium-match-colors-20261120]
+    paths:
+      - '.github/workflows/ball46-signal-header-reconcile-qa-20261121.yml'
+      - 'qa/signal-stable-20261121/signal-stable.mjs'
+permissions: {contents: read}
+jobs:
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: |
+          node --check qa/signal-stable-20261121/signal-stable.mjs
+          npm install --no-save --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium --only-shell
+      - name: Check self-healing of duplicated stale header and native header updates (browser-only)
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import {chromium,devices} from 'playwright';
+          const b=await chromium.launch();
+          const url='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev/?view=signal';
+          for(const mode of ['desktop','mobile']){
+           const opt=mode==='desktop'?{viewport:{width:1440,height:940},serviceWorkers:'block'}:{...devices['iPhone 13'],viewport:{width:390,height:844},serviceWorkers:'block'};
+           const p=await b.newPage(opt);
+           await p.goto(url,{waitUntil:'domcontentloaded',timeout:70000});
+           await p.waitForFunction(()=>window.__b46SignalStableStatus?.seenSource===true&&document.querySelector('.status-section .b46-signal-native-head'),null,{timeout:45000});
+           await p.waitForTimeout(250);
+           const inject=await p.evaluate(()=>{
+             const section=document.querySelector('.status-section[data-status-section="live"]');
+             const row=section.querySelector('.league-block > .match-row'),header=row.previousElementSibling,block=row.parentElement;
+             if(!header?.matches('.b46-signal-native-head'))return {error:'NO_NATIVE_HEADER'};
+             const duplicate=header.cloneNode(true);
+             duplicate.dataset.b46Skip='0';duplicate.dataset.b46GhostQA='1';
+             block.insertBefore(duplicate,header);
+             const original=block.querySelector(':scope > .league-head:not(.b46-signal-native-head)');
+             const label=original?.querySelector('.league-label')||original?.querySelector('strong');
+             if(label)label.textContent=label.textContent+' QATEST'; 
+             return {id:row.dataset.matchId,newLabel:label?.textContent};
+           });
+           assert(!inject.error,JSON.stringify(inject));
+           await p.evaluate(()=>window.__b46SignalStableQA.forceSync());
+           await p.waitForTimeout(500);
+           const state=await p.evaluate(id=>{
+             const s=document.querySelector('.status-section[data-status-section="live"]');
+             const row=s.querySelector('.match-row[data-match-id="'+id+'"]');
+             const headers=[...s.querySelectorAll('.b46-signal-native-head[data-b46-signal-native-for="'+id+'"]')];
+             const allHeaders=[...s.querySelectorAll('.b46-signal-native-head')];
+             const allRows=[...s.querySelectorAll('.league-block > .match-row')];
+             const ok=allRows.every(r=>[...s.querySelectorAll('.b46-signal-native-head')].filter(h=>h.dataset.b46SignalNativeFor===r.dataset.matchId).length===1);
+             const text=row.previousElementSibling?.querySelector('.league-label')?.textContent||row.previousElementSibling?.querySelector('strong')?.textContent;
+             const flag=row.previousElementSibling?.querySelector('.league-flag');
+             const native=row.parentElement.querySelector(':scope > .league-head:not(.b46-signal-native-head)');
+             return {headers:headers.length,allHeaders:allHeaders.length,allRows:allRows.length,ghosts:s.querySelectorAll('[data-b46-ghost-qa]').length,prevCorrect:row.previousElementSibling===headers[0],label:text,nativeLabel:native.querySelector('.league-label')?.textContent,flagLoaded:!!flag?.complete&&flag?.naturalWidth>0,allClonesUnique:ok,sort:window.__b46SignalStableQA.state().lastOrder,view:document.body.dataset.workspaceView};
+           },inject.id);
+           console.log('BALL46_SIGNAL_HEADER_RECONCILE_'+mode+' '+JSON.stringify({inject,state}));
+           assert.equal(state.headers,1,'STALE_DUPLICATE_HEADER_NOT_CLEANED_'+mode);
+           assert.equal(state.ghosts,0,'GHOST_HEADER_REMAINS_'+mode);
+           assert(state.prevCorrect&&state.allClonesUnique,'HEADER_MISMATCH_'+mode);
+           assert.equal(state.label,inject.newLabel,'NATIVE_HEADER_NAME_NOT_REFRESHED_'+mode);
+           assert(state.flagLoaded,'COUNTRY_FLAG_MISSING_'+mode);
+           await p.close();
+          }
+          await b.close();
+          console.log('BALL46_SIGNAL_HEADER_RECONCILE_PASS');
+          NODE
