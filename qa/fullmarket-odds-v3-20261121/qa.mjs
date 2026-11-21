@@ -69,7 +69,25 @@ try{
   assert.equal(probe.initialFlash,0,'INITIAL_FLASH_'+mode);
   assert(probe.stats.baselines>0,'NO_BASELINE_'+mode);
   assert(probe.bookmakers>=2&&probe.markets>=3,'MISSING_BOOKS_OR_MARKETS_'+mode);
-  const liveCells=p.locator('.expand-full-market-card .fmb-market[data-market="1x2"] tbody tr').filter({has:p.locator('th:text-is("LIVE")')}).locator('td');
+  // Freeze one REAL bookmaker card as a browser-local fixture so production's
+  // real-time feed cannot overwrite controlled price changes mid-assertion.
+  // This clone is off-screen, never persisted, and never sends API requests.
+  const localFixture=await p.evaluate(()=>{
+    const native=document.querySelector('.expand-full-market-card');
+    if(!native||!native.querySelector('.fmb-panel:not([hidden])'))return null;
+    const shell=document.createElement('section');
+    shell.setAttribute('data-expanded-match','B46_QA_LOCAL_FULLMARKET_V3');
+    shell.id='b46-fmb-qa-fixture';
+    shell.style.cssText='position:fixed;left:-10000px;top:0;width:850px;z-index:-1000;opacity:0;pointer-events:none';
+    const card=native.cloneNode(true);
+    card.classList.add('b46-fmb-qa-copy');
+    shell.append(card);
+    document.body.insertBefore(shell,document.body.firstChild);
+    return {id:'B46_QA_LOCAL_FULLMARKET_V3',book:card.querySelector('.fmb-tab.active')?.dataset.fmbBook,markets:card.querySelectorAll('.fmb-market').length};
+  });
+  assert(localFixture?.book&&localFixture.markets>=3,'NATIVE_DOM_CLONE_FAILED_'+mode);
+  await p.waitForFunction(()=>window.__b46FullMarketOddsV3Stats?.activeKey?.startsWith('B46_QA_LOCAL_FULLMARKET_V3|'),null,{timeout:3000});
+  const liveCells=p.locator('.b46-fmb-qa-copy .fmb-market[data-market="1x2"] tbody tr').filter({has:p.locator('th:text-is("LIVE")')}).locator('td');
   const priceIndex=await liveCells.evaluateAll(els=>els.findIndex(e=>Number(e.textContent.trim())>1&&Number(e.textContent.trim())<1000));
   assert(priceIndex>=0,'NO_VALID_LIVE_1X2_PRICE_CELL_'+mode);
   const cell=liveCells.nth(priceIndex);
@@ -108,13 +126,13 @@ try{
    if(expired.flashes===downState.stats.flashes)assert.equal(expired.direction,null,'SIX_SECOND_CLEANUP_FAILED');
    await p.screenshot({path:'qa-fullmarket-v3-updown.png'});
    // Historical OPEN/CLOSE must NEVER react: they are not current quotes.
-   const oldPrice=p.locator('.expand-full-market-card .fmb-market[data-market="1x2"] tbody tr').filter({has:p.locator('th:text-is("OPEN")')}).locator('td').first();
+   const oldPrice=p.locator('.b46-fmb-qa-copy .fmb-market[data-market="1x2"] tbody tr').filter({has:p.locator('th:text-is("OPEN")')}).locator('td').first();
    await oldPrice.evaluate(td=>td.textContent=(Number(td.textContent)+.08).toFixed(2));
    await p.waitForTimeout(180);
    assert.equal(await oldPrice.getAttribute('data-b46-fmb-odds-move'),null,'HISTORICAL_PRICE_FLASHED');
    // Change an AH LINE and quote together: this is a new line, not comparable odds.
    const ah=await p.evaluate(()=>{
-    const tr=[...document.querySelectorAll('.expand-full-market-card .fmb-market[data-market="asian_handicap"] tbody tr')].find(r=>r.querySelector('th')?.textContent.trim()==='LIVE');
+    const tr=[...document.querySelectorAll('.b46-fmb-qa-copy .fmb-market[data-market="asian_handicap"] tbody tr')].find(r=>r.querySelector('th')?.textContent.trim()==='LIVE');
     if(!tr)return {skipped:true};
     const td=[...tr.querySelectorAll('td')],line=td[0],price=td[1],before=price?.textContent.trim();
     if(!line||!price||!Number(before))return {skipped:true};
@@ -123,28 +141,40 @@ try{
     return {skipped:false};
    });
    await p.waitForTimeout(300);
-   if(!ah.skipped)assert.equal(await p.locator('.expand-full-market-card .fmb-market[data-market="asian_handicap"] tbody tr').filter({has:p.locator('th:text-is("LIVE")')}).locator('td').nth(1).getAttribute('data-b46-fmb-odds-move'),null,'AH_LINE_CHANGED_FALSE_FLASH');
+   if(!ah.skipped)assert.equal(await p.locator('.b46-fmb-qa-copy .fmb-market[data-market="asian_handicap"] tbody tr').filter({has:p.locator('th:text-is("LIVE")')}).locator('td').nth(1).getAttribute('data-b46-fmb-odds-move'),null,'AH_LINE_CHANGED_FALSE_FLASH');
   }else{
    assert.equal(checkMove.dir,null,'MOVEMENT_OUTSIDE_DEFAULT_V3_SCOPE_'+mode);
   }
   // Switching bookmaker is a new baseline, not a price change of the previous bookmaker.
   const bookB=await buttons.nth(1).getAttribute('data-fmb-book');
-  await buttons.nth(1).click({force:true});
+  await p.evaluate(target=>{
+    const clone=document.querySelector('.b46-fmb-qa-copy');
+    for(const tab of clone.querySelectorAll('.fmb-tab[data-fmb-book]')){
+      const match=tab.dataset.fmbBook===target;
+      tab.classList.toggle('active',match);tab.setAttribute('aria-pressed',String(match));
+    }
+  },bookB);
   await p.waitForTimeout(450);
   const switchState=await p.evaluate(()=>({
-   book:document.querySelector('.fmb-tab.active')?.getAttribute('data-fmb-book'),
-   active:document.querySelectorAll('.expand-full-market-card td[data-b46-fmb-odds-move]').length,
+   book:document.querySelector('.b46-fmb-qa-copy .fmb-tab.active')?.getAttribute('data-fmb-book'),
+   active:document.querySelectorAll('.b46-fmb-qa-copy td[data-b46-fmb-odds-move]').length,
    stats:{...window.__b46FullMarketOddsV3Stats}
   }));
   assert.equal(switchState.book,bookB,'BOOK_SWITCH_FAILED_'+mode);
   assert.equal(switchState.active,0,'FALSE_FLASH_ON_BOOK_SWITCH_'+mode);
-  const switchBack=p.locator('.expand-full-market-card .fmb-tab[data-fmb-book="'+bookA+'"]');
-  await switchBack.click({force:true});await p.waitForTimeout(350);
-  assert.equal(await p.locator('.expand-full-market-card td[data-b46-fmb-odds-move]').count(),0,'FALSE_FLASH_ON_RETURN_TO_BOOK_'+mode);
+  const switchBack=p.locator('.b46-fmb-qa-copy .fmb-tab[data-fmb-book="'+bookA+'"]');
+  await p.evaluate(target=>{
+    const clone=document.querySelector('.b46-fmb-qa-copy');
+    for(const tab of clone.querySelectorAll('.fmb-tab[data-fmb-book]')){
+      const match=tab.dataset.fmbBook===target;
+      tab.classList.toggle('active',match);tab.setAttribute('aria-pressed',String(match));
+    }
+  },bookA);await p.waitForTimeout(350);
+  assert.equal(await p.locator('.b46-fmb-qa-copy td[data-b46-fmb-odds-move]').count(),0,'FALSE_FLASH_ON_RETURN_TO_BOOK_'+mode);
   // No false movement when native bookmaker panel re-renders at exactly same price.
-  await p.evaluate(()=>{const panel=document.querySelector('.expand-full-market-card .fmb-panel');panel.innerHTML=panel.innerHTML});
+  await p.evaluate(()=>{const panel=document.querySelector('.b46-fmb-qa-copy .fmb-panel');panel.innerHTML=panel.innerHTML});
   await p.waitForTimeout(350);
-  assert.equal(await p.locator('.expand-full-market-card td[data-b46-fmb-odds-move]').count(),0,'FALSE_FLASH_ON_PANEL_RERENDER_'+mode);
+  assert.equal(await p.locator('.b46-fmb-qa-copy td[data-b46-fmb-odds-move]').count(),0,'FALSE_FLASH_ON_PANEL_RERENDER_'+mode);
   const after=await p.evaluate(()=>({...window.__b46FullMarketOddsV3Stats}));
   console.log('B46_FULLMARKET_V3_TEST_PASS '+JSON.stringify({mode,fixture,bookmakers:count,bookA,bookB,marketCount:probe.markets,initialFlash:0,defaultUnchanged:true,noAddedApi:after.sourceRequestsAdded===0,priceMovementDesktopDarkOnly:true,upDownTested:desktop&&dark}));
   assert.deepEqual(errors,[],'BROWSER_ERRORS_'+mode+':'+JSON.stringify(errors));
