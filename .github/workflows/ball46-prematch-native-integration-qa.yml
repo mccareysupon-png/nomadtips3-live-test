@@ -55,9 +55,9 @@ jobs:
                 await p.goto(base+'/?b46prematchqa='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
                 const nativeScope=mobile?'#b46m-drawer ':'aside.left-rail ';
                 const route=id=>p.locator(nativeScope+'[data-b46-prematch-route="'+id+'"]');
+                if(mobile)await p.locator('[data-b46m-open]').click();
                 await p.waitForSelector(nativeScope+'[data-b46-prematch-route="predictions"]',{state:'attached',timeout:25000});
                 await p.waitForSelector(nativeScope+'[data-b46-prematch-route="1x2"]',{state:'attached',timeout:25000});
-                if(mobile)await p.locator('[data-b46m-open]').click();
                 await route('predictions').waitFor({state:'visible',timeout:10000});
                 const old=await p.locator('[data-b46-sidebar-row]').evaluateAll(els=>els.filter(e=>!e.hasAttribute('data-b46-prematch-route')).map(e=>e.dataset.b46SidebarRow));
                 await route('predictions').evaluate(e=>e.click());
