@@ -1,0 +1,44 @@
+name: "[Codex PC] BALL46 Full Market V3 production"
+
+on:
+  push:
+    branches: [codex-pc/release-ball46-fullmarket-v3-20261121]
+    paths:
+      - .github/workflows/codex-pc-fullmarket-production.yml
+      - qa/codex-pc-fullmarket-production/**
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ball46-production-ui-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: github.ref == 'refs/heads/codex-pc/release-ball46-fullmarket-v3-20261121'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Prepare the existing browser QA
+        run: |
+          for file in qa/codex-pc-fullmarket-production/*.mjs; do node --check "$file" || exit; done
+          npm install --no-save --no-package-lock --no-audit --no-fund playwright@1.55.0
+          ./node_modules/.bin/playwright install chromium --only-shell
+      - name: Back up Production, verify inactive version and release
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: node qa/codex-pc-fullmarket-production/release.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-fullmarket-v3-production-evidence
+          path: ${{ runner.temp }}/codex-pc-fullmarket-production-proof
+          if-no-files-found: ignore

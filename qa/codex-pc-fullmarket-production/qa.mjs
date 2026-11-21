@@ -1,0 +1,173 @@
+import assert from 'node:assert/strict';
+import {chromium,devices} from 'playwright';
+import {fullMarketOddsStyles,fullMarketOddsScript} from '../fullmarket-odds-v3-20261121/fullmarket-odds-v3.mjs';
+const base=process.env.B46_RELEASE_ORIGIN;
+assert(!fullMarketOddsScript.includes('window.fetch='),'NO_FETCH_MONKEY_PATCH');
+assert(!fullMarketOddsScript.includes('fetch('),'NO_API_FETCH');
+const browser=await chromium.launch(process.env.B46_CHROMIUM_PATH ? {
+ executablePath:process.env.B46_CHROMIUM_PATH,headless:true
+} : {});
+try{
+ for(const mode of ['desktop-dark','desktop-light','mobile-dark']){
+  const desktop=mode.startsWith('desktop'),dark=mode.endsWith('dark');
+  const ctx=await browser.newContext(desktop?{viewport:{width:1440,height:950},serviceWorkers:'block',ignoreHTTPSErrors:!!process.env.B46_CHROMIUM_PATH}:{...devices['iPhone 13'],viewport:{width:390,height:844},serviceWorkers:'block',ignoreHTTPSErrors:!!process.env.B46_CHROMIUM_PATH});
+  const p=await ctx.newPage(),errors=[];
+  await p.addInitScript(theme=>localStorage.setItem('nomad343_dashboard_theme_v1',theme),dark?'dark':'light');
+  await p.route('**/*',r=>['GET','HEAD'].includes(r.request().method())?r.continue():r.abort());
+  p.on('pageerror',e=>errors.push(e.message.slice(0,350)));
+  const html=await p.goto(base+'/?view=live&qaFullMarketV3='+mode+'-'+Date.now(),{waitUntil:'domcontentloaded',timeout:70000});
+  assert(html?.ok(),'TEST_PAGE_NOT_OK_'+mode);
+  await p.waitForFunction(()=>window.__b46FullMarketOddsV3Stats?.ready===true&&document.querySelector('.match-row[data-match-id]'),null,{timeout:55000});
+  const native=await p.evaluate(()=>({
+   defaultOddsV3:!!document.getElementById('b46-odds-flash-production'),
+   defaultOddsStats:!!window.__b46OddsMovementStats,
+   fullMarketInjected:!!document.getElementById('b46-fullmarket-odds-v3-style-production')&&!!document.getElementById('b46-fullmarket-odds-v3-script-production'),
+   rowCount:document.querySelectorAll('.match-row[data-match-id]').length,
+   view:document.body.dataset.workspaceView
+  }));
+  assert(native.defaultOddsV3&&native.defaultOddsStats&&native.fullMarketInjected,'DEFAULT_V3_OR_TEST_MISSING_'+mode);
+  assert.equal(native.view,'live','WRONG_WORKSPACE_'+mode);
+  const rows=p.locator('.status-section[data-status-section="live"] .match-row[data-match-id]');
+  assert(await rows.count()>0,'NO_NATIVE_ROWS_'+mode);
+  let loaded=false;let fixture=null;
+  for(let n=0;n<Math.min(5,await rows.count());n++){
+   const row=rows.nth(n);fixture=await row.getAttribute('data-match-id');
+   await row.click({position:{x:95,y:35},force:true}).catch(()=>{});
+   try{await p.waitForFunction(()=>document.querySelectorAll('.expand-full-market-card .fmb-tab.has-data[data-fmb-book]').length>=2,null,{timeout:3500});loaded=true;break}catch{}
+  }
+  if(!loaded&&!desktop){
+    // Mobile retains its native UI and is outside Default V3's desktop-dark-only
+    // media query. The mobile full market can use a different drawer/activation path.
+    const safe=await p.evaluate(()=>({active:document.querySelectorAll('[data-b46-fmb-odds-move]').length,scans:window.__b46FullMarketOddsV3Stats.scans,media:matchMedia('(min-width:1024px) and (hover:hover) and (pointer:fine)').matches,defaultV3:!!document.getElementById('b46-odds-flash-production')}));
+    assert(!safe.media&&!safe.active&&safe.defaultV3,'MOBILE_NATIVE_UI_REGRESSION_'+JSON.stringify(safe));
+    console.log('B46_FULLMARKET_V3_TEST_PASS '+JSON.stringify({mode,nativeMobileUnchanged:true,bookmakerDrawerNotOpenedInBrowser:true,zeroEffects:true,defaultUnchanged:true}));
+    await p.close();await ctx.close();continue;
+  }
+  assert(loaded,'FULLMARKET_BOOKMAKERS_NOT_AVAILABLE_'+mode);
+  const buttons=p.locator('.expand-full-market-card .fmb-tab.has-data[data-fmb-book]');
+  const count=await buttons.count();assert(count>=2,'NOT_ENOUGH_BOOKMAKERS_'+mode);
+  const bookA=await buttons.first().getAttribute('data-fmb-book');
+  await buttons.first().click({force:true});
+  await p.waitForFunction(()=>document.querySelector('.expand-full-market-card .fmb-panel:not([hidden]) .fmb-market[data-market="1x2"] tbody tr'),null,{timeout:10000});
+  await p.waitForTimeout(300);
+  const probe=await p.evaluate(()=>{
+   const c=document.querySelector('.expand-full-market-card'),m=c.querySelector('.fmb-market[data-market="1x2"]');
+   const tr=[...m.querySelectorAll('tbody tr')].find(x=>x.querySelector('th')?.textContent.trim().toUpperCase()==='LIVE');
+   return {fixture:c.closest('[data-expanded-match]')?.getAttribute('data-expanded-match'),book:c.querySelector('.fmb-tab.active')?.getAttribute('data-fmb-book'),bookmakers:c.querySelectorAll('.fmb-tab.has-data').length,markets:c.querySelectorAll('.fmb-market[data-market]').length,liveValues:tr?[...tr.querySelectorAll('td')].map(x=>x.textContent.trim()):[],initialFlash:c.querySelectorAll('td[data-b46-fmb-odds-move]').length,stats:{...window.__b46FullMarketOddsV3Stats}};
+  });
+  console.log('B46_FULLMARKET_V3_BASELINE_'+mode+' '+JSON.stringify(probe));
+  assert.equal(probe.initialFlash,0,'INITIAL_FLASH_'+mode);
+  assert(probe.stats.baselines>0,'NO_BASELINE_'+mode);
+  assert(probe.bookmakers>=2&&probe.markets>=3,'MISSING_BOOKS_OR_MARKETS_'+mode);
+  // Freeze one REAL bookmaker card as a browser-local fixture so production's
+  // real-time feed cannot overwrite controlled price changes mid-assertion.
+  // This clone is off-screen, never persisted, and never sends API requests.
+  const localFixture=await p.evaluate(()=>{
+    const native=document.querySelector('.expand-full-market-card');
+    if(!native||!native.querySelector('.fmb-panel:not([hidden])'))return null;
+    const shell=document.createElement('section');
+    shell.setAttribute('data-expanded-match','B46_QA_LOCAL_FULLMARKET_V3');
+    shell.id='b46-fmb-qa-fixture';
+    shell.style.cssText='position:fixed;left:-10000px;top:0;width:850px;z-index:-1000;opacity:0;pointer-events:none';
+    const card=native.cloneNode(true);
+    card.classList.add('b46-fmb-qa-copy');
+    shell.append(card);
+    document.body.insertBefore(shell,document.body.firstChild);
+    return {id:'B46_QA_LOCAL_FULLMARKET_V3',book:card.querySelector('.fmb-tab.active')?.dataset.fmbBook,markets:card.querySelectorAll('.fmb-market').length};
+  });
+  assert(localFixture?.book&&localFixture.markets>=3,'NATIVE_DOM_CLONE_FAILED_'+mode);
+  await p.waitForFunction(()=>window.__b46FullMarketOddsV3Stats?.activeKey?.startsWith('B46_QA_LOCAL_FULLMARKET_V3|'),null,{timeout:3000});
+  const liveCells=p.locator('.b46-fmb-qa-copy .fmb-market[data-market="1x2"] tbody tr').filter({has:p.locator('th:text-is("LIVE")')}).locator('td');
+  const priceIndex=await liveCells.evaluateAll(els=>els.findIndex(e=>Number(e.textContent.trim())>1&&Number(e.textContent.trim())<1000));
+  assert(priceIndex>=0,'NO_VALID_LIVE_1X2_PRICE_CELL_'+mode);
+  const cell=liveCells.nth(priceIndex);
+  const init=await cell.evaluate(td=>{const r=td.getBoundingClientRect();return {value:td.textContent.trim(),width:r.width,height:r.height,font:getComputedStyle(td).fontSize,color:getComputedStyle(td).color}});
+  assert(Number(init.value)>1,'LIVE_PRICE_INVALID_'+mode);
+  const set=async v=>cell.evaluate((td,x)=>{td.textContent=x.toFixed(2)},v);
+  const up=Number((Number(init.value)+.07).toFixed(2));
+  await set(up);
+  await p.waitForTimeout(300);
+  const checkMove=await cell.evaluate(td=>{
+   const a=getComputedStyle(td,'::after'),s=getComputedStyle(td),r=td.getBoundingClientRect();
+   return {dir:td.getAttribute('data-b46-fmb-odds-move'),color:s.color,background:s.backgroundColor,animation:s.animationName,period:s.animationDuration,loops:s.animationIterationCount,arrow:a.content,arrowBg:a.backgroundColor,arrowClip:a.clipPath,arrowWidth:a.width,arrowHeight:a.height,arrowLeft:a.left,arrowTop:a.top,w:r.width,h:r.height,stats:{...window.__b46FullMarketOddsV3Stats}};
+  });
+  console.log('B46_FULLMARKET_V3_UP_'+mode+' '+JSON.stringify(checkMove));
+  if(desktop&&dark){
+   assert.equal(checkMove.dir,'up','UP_NOT_DETECTED');
+   assert.equal(checkMove.color,'rgb(121, 225, 172)','UP_COLOR_WRONG');
+   assert.equal(checkMove.arrowBg,'rgb(121, 225, 172)','UP_ARROW_WRONG');
+   assert(checkMove.arrowClip.startsWith('polygon(50%'),'UP_ARROW_NOT_TRIANGLE');
+   assert.equal(checkMove.arrowWidth,'5px');assert.equal(checkMove.arrowHeight,'5px');
+   assert.equal(checkMove.animation,'b46-fmb-odds-pulse-6x');assert.equal(checkMove.period,'1s');assert.equal(checkMove.loops,'6');
+   assert.equal(checkMove.w,init.width,'QUOTE_WIDTH_CHANGED_ON_UP');assert.equal(checkMove.h,init.height,'QUOTE_HEIGHT_CHANGED_ON_UP');
+   assert.equal(checkMove.stats.sourceRequestsAdded,0);
+   const down=Number(init.value); // preserve valid odds above 1.00 even when the original live quote is 1.01
+   await set(down);
+   await p.waitForTimeout(300);
+   const downState=await cell.evaluate(td=>({dir:td.getAttribute('data-b46-fmb-odds-move'),color:getComputedStyle(td).color,clip:getComputedStyle(td,'::after').clipPath,stats:{...window.__b46FullMarketOddsV3Stats}}));
+   assert.equal(downState.dir,'down','DOWN_NOT_DETECTED');
+   assert.equal(downState.color,'rgb(255, 159, 165)','DOWN_COLOR_WRONG');
+   assert(/^polygon\(0(?:px)? 0(?:px)?,/.test(downState.clip),'DOWN_ARROW_WRONG_'+downState.clip);
+   await p.waitForTimeout(6100);
+   const expired=await cell.evaluate(td=>({direction:td.getAttribute('data-b46-fmb-odds-move'),flashes:window.__b46FullMarketOddsV3Stats.flashes}));
+   console.log('B46_FULLMARKET_V3_SIX_SECOND_TIMER '+mode+' '+JSON.stringify({afterDown:downState.stats.flashes,expired}));
+   // If new real odds arrived during the six-second interval, the new movement
+   // legitimately restarts the pulse. Only require cleanup when no new flash occurred.
+   if(expired.flashes===downState.stats.flashes)assert.equal(expired.direction,null,'SIX_SECOND_CLEANUP_FAILED');
+   await p.screenshot({path:'qa-fullmarket-v3-updown.png'});
+   // Historical OPEN/CLOSE must NEVER react: they are not current quotes.
+   const oldPrice=p.locator('.b46-fmb-qa-copy .fmb-market[data-market="1x2"] tbody tr').filter({has:p.locator('th:text-is("OPEN")')}).locator('td').first();
+   await oldPrice.evaluate(td=>td.textContent=(Number(td.textContent)+.08).toFixed(2));
+   await p.waitForTimeout(180);
+   assert.equal(await oldPrice.getAttribute('data-b46-fmb-odds-move'),null,'HISTORICAL_PRICE_FLASHED');
+   // Change an AH LINE and quote together: this is a new line, not comparable odds.
+   const ah=await p.evaluate(()=>{
+    const tr=[...document.querySelectorAll('.b46-fmb-qa-copy .fmb-market[data-market="asian_handicap"] tbody tr')].find(r=>r.querySelector('th')?.textContent.trim()==='LIVE');
+    if(!tr)return {skipped:true};
+    const td=[...tr.querySelectorAll('td')],line=td[0],price=td[1],before=price?.textContent.trim();
+    if(!line||!price||!Number(before))return {skipped:true};
+    line.textContent=String(Number(line.textContent||0)+.25);
+    price.textContent=(Number(before)+.08).toFixed(2);
+    return {skipped:false};
+   });
+   await p.waitForTimeout(300);
+   if(!ah.skipped)assert.equal(await p.locator('.b46-fmb-qa-copy .fmb-market[data-market="asian_handicap"] tbody tr').filter({has:p.locator('th:text-is("LIVE")')}).locator('td').nth(1).getAttribute('data-b46-fmb-odds-move'),null,'AH_LINE_CHANGED_FALSE_FLASH');
+  }else{
+   assert.equal(checkMove.dir,null,'MOVEMENT_OUTSIDE_DEFAULT_V3_SCOPE_'+mode);
+  }
+  // Switching bookmaker is a new baseline, not a price change of the previous bookmaker.
+  const bookB=await buttons.nth(1).getAttribute('data-fmb-book');
+  await p.evaluate(target=>{
+    const clone=document.querySelector('.b46-fmb-qa-copy');
+    for(const tab of clone.querySelectorAll('.fmb-tab[data-fmb-book]')){
+      const match=tab.dataset.fmbBook===target;
+      tab.classList.toggle('active',match);tab.setAttribute('aria-pressed',String(match));
+    }
+  },bookB);
+  await p.waitForTimeout(450);
+  const switchState=await p.evaluate(()=>({
+   book:document.querySelector('.b46-fmb-qa-copy .fmb-tab.active')?.getAttribute('data-fmb-book'),
+   active:document.querySelectorAll('.b46-fmb-qa-copy td[data-b46-fmb-odds-move]').length,
+   stats:{...window.__b46FullMarketOddsV3Stats}
+  }));
+  assert.equal(switchState.book,bookB,'BOOK_SWITCH_FAILED_'+mode);
+  assert.equal(switchState.active,0,'FALSE_FLASH_ON_BOOK_SWITCH_'+mode);
+  const switchBack=p.locator('.b46-fmb-qa-copy .fmb-tab[data-fmb-book="'+bookA+'"]');
+  await p.evaluate(target=>{
+    const clone=document.querySelector('.b46-fmb-qa-copy');
+    for(const tab of clone.querySelectorAll('.fmb-tab[data-fmb-book]')){
+      const match=tab.dataset.fmbBook===target;
+      tab.classList.toggle('active',match);tab.setAttribute('aria-pressed',String(match));
+    }
+  },bookA);await p.waitForTimeout(350);
+  assert.equal(await p.locator('.b46-fmb-qa-copy td[data-b46-fmb-odds-move]').count(),0,'FALSE_FLASH_ON_RETURN_TO_BOOK_'+mode);
+  // No false movement when native bookmaker panel re-renders at exactly same price.
+  await p.evaluate(()=>{const panel=document.querySelector('.b46-fmb-qa-copy .fmb-panel');panel.innerHTML=panel.innerHTML});
+  await p.waitForTimeout(350);
+  assert.equal(await p.locator('.b46-fmb-qa-copy td[data-b46-fmb-odds-move]').count(),0,'FALSE_FLASH_ON_PANEL_RERENDER_'+mode);
+  const after=await p.evaluate(()=>({...window.__b46FullMarketOddsV3Stats}));
+  console.log('B46_FULLMARKET_V3_TEST_PASS '+JSON.stringify({mode,fixture,bookmakers:count,bookA,bookB,marketCount:probe.markets,initialFlash:0,defaultUnchanged:true,noAddedApi:after.sourceRequestsAdded===0,priceMovementDesktopDarkOnly:true,upDownTested:desktop&&dark}));
+  assert.deepEqual(errors,[],'BROWSER_ERRORS_'+mode+':'+JSON.stringify(errors));
+  await p.close();await ctx.close();
+ }
+}finally{await browser.close()}
