@@ -1,0 +1,39 @@
+name: BALL46 verify active London 06 cutover on isolated test
+on:
+  push:
+    branches: [test/ball46-prematch-v1-20261120]
+    paths: ['.github/workflows/ball46-prematch-london-cutoff-verify.yml']
+permissions: {contents: read}
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import crypto from 'node:crypto';
+          const base='https://ball46-prematch-only-test-20261120.mccarey-supon.workers.dev';
+          const secret=crypto.createHmac('sha256',process.env.CLOUDFLARE_API_TOKEN).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
+          const req=async path=>{const r=await fetch(base+path,{headers:{authorization:'Bearer '+secret},cache:'no-store',signal:AbortSignal.timeout(15000)});assert(r.ok,path+' '+r.status);return r.json()};
+          let health,data,state;
+          for(let i=0;i<32;i++){
+            try{
+              health=await req('/health');data=await req('/preview-data');state=await req('/bot-state');
+              if(data.dailyBook?.window?.timezone==='Europe/London'&&health.dailyBook?.window?.cutoffLocal==='06:00')break;
+              console.log('CUTOFF_PROPAGATING '+JSON.stringify({i,healthVersion:health.system,keys:Object.keys(data),cutoff:data.dailyBook?.window}));
+            }catch(e){console.log('CUTOFF_PROPAGATING '+i+' '+String(e.message))}
+            await new Promise(r=>setTimeout(r,1700));
+          }
+          const b=data?.dailyBook;assert(b?.window?.timezone==='Europe/London'&&b?.window?.cutoffLocal==='06:00','LONDON_DAILY_NOT_ACTIVE');
+          const sec=Math.floor(Date.now()/1000);assert(b.window.begin<=sec&&b.window.end>sec,'DAY_WINDOW_INVALID');
+          assert(b.providerCalls===0);
+          assert(health.providerCalls===0);
+          assert.equal(state?.dailyBook?.window?.businessDay,b.window.businessDay);
+          assert(data.testLedger?.stats.total>=8&&data.testLedger.stats.settled>=3);
+          const routes=await Promise.all(['/daily-run','/bot-run'].map(async p=>{if(p==='/bot-run')return 'NOT_CALLED';const r=await fetch(base+p,{method:'POST',headers:{authorization:'Bearer '+secret},signal:AbortSignal.timeout(15000)});return {path:p,status:r.status,body:await r.json()}}));
+          assert.equal(routes[0].status,409);assert.equal(routes[0].body.providerCalls,0);
+          console.log('LONDON_CUTOFF_VERIFIED '+JSON.stringify({day:b.window.businessDay,begin:b.window.begin,end:b.window.end,bangkokHour:b.window.thailandCutoffHour,cutoff:b.window.cutoffLocal,selected:b.selected,settled:b.settled,carriedPending:b.carriedPending,total:data.testLedger.stats.total,providerCalls:0,dailyProviderDisabled:true,botCycle:'*/15 * * * *',noNewProviderSchedule:true}));
+          JS
