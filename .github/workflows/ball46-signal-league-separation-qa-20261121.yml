@@ -46,7 +46,12 @@ jobs:
                 const cell=r.querySelector('.teams-cell');
                 const names=cell?[...cell.querySelectorAll(':scope > b')]:[];
                 const scores=cell?[...cell.querySelectorAll(':scope > strong')]:[];
-                return {id:r.dataset.matchId,row:boxes(r),strip:strip?{text:strip.textContent.trim(),id:strip.dataset.b46SignalLeagueFor,box:boxes(strip)}:null,oldChip:!!cell?.querySelector('.b46-signal-league-chip'),names:names.map(boxes),scores:scores.map(boxes),cell:cell?boxes(cell):null,order:getComputedStyle(r).order};
+                const nativeFlag=r.parentElement?.querySelector(':scope > .league-head .league-flag');
+                const flag=strip?.querySelector(':scope > .b46-signal-league-flag');
+                const leagueName=strip?.querySelector(':scope > .b46-signal-league-name');
+                const flagInfo=flag?{src:flag.getAttribute('src'),originalSrc:nativeFlag?.getAttribute('src'),box:boxes(flag),naturalWidth:flag.naturalWidth,loaded:flag.complete,alt:flag.getAttribute('alt')}:null;
+                const nameInfo=leagueName?{text:leagueName.textContent,box:boxes(leagueName)}:null;
+                return {id:r.dataset.matchId,row:boxes(r),strip:strip?{text:strip.textContent.trim(),id:strip.dataset.b46SignalLeagueFor,box:boxes(strip)}:null,flag:flagInfo,leagueName:nameInfo,oldChip:!!cell?.querySelector('.b46-signal-league-chip'),names:names.map(boxes),scores:scores.map(boxes),cell:cell?boxes(cell):null,order:getComputedStyle(r).order};
               }).sort((a,b)=>a.row.y-b.row.y);
               const hdr=[...status.querySelectorAll('.league-head')].filter(e=>e.getBoundingClientRect().height>0);
               return {rows,viewport:innerWidth,docWidth:document.documentElement.scrollWidth,headerCount:hdr.length,signalState:window.__b46SignalStableQA.state()};
@@ -58,6 +63,12 @@ jobs:
             for(let i=0;i<proof.rows.length;i++){
               const x=proof.rows[i];assert(x.strip,'LEAGUE_LABEL_MISSING_'+x.id);assert.equal(x.strip.id,x.id,'LEAGUE_MISMATCH_'+x.id);
               assert(x.strip.text&&x.strip.text!==x.id,'LEAGUE_TEXT_INVALID_'+x.id);
+              assert(x.flag&&x.leagueName,'LEAGUE_FLAG_OR_NAME_MISSING_'+x.id);
+              assert(x.flag.src?.includes('/flags/')&&x.flag.src===x.flag.originalSrc,'LEAGUE_FLAG_NOT_NATIVE_SOURCE_'+x.id);
+              assert(x.flag.box.width>=15.5&&x.flag.box.width<=16.5&&x.flag.box.height>=11.5&&x.flag.box.height<=12.5,'LEAGUE_FLAG_DIMENSIONS_BAD_'+x.id);
+              assert(x.flag.box.right<=x.leagueName.box.x-4,'LEAGUE_FLAG_TEXT_GAP_MISSING_'+x.id);
+              assert(x.flag.box.y>=x.strip.box.y-1&&x.flag.box.bottom<=x.strip.box.bottom+1,'LEAGUE_FLAG_OUTSIDE_STRIP_'+x.id);
+              assert(x.flag.alt==='','LEAGUE_FLAG_ACCESSIBILITY_'+x.id);
               assert(!x.oldChip,'OLD_OVERLAY_CHIP_PERSISTS_'+x.id);
               assert(x.strip.box.bottom<=x.row.y+1,'LEAGUE_STRIP_OVERLAPS_CARD_'+x.id);
               assert(x.row.width<=proof.viewport+1,'CARD_TOO_WIDE_'+x.id);
@@ -70,7 +81,7 @@ jobs:
             await p.waitForFunction(id=>document.querySelector('.status-section .match-row.active[data-match-id="'+id+'"]')?.parentElement?.querySelector('.expand-flow-card')&&window.__b46SignalStableQA.state().frozen===id,proof.rows[0].id,{timeout:22000});
             const liveOrder=await p.evaluate(()=>({frozen:window.__b46SignalStableQA.state().frozen,flow:!!document.querySelector('.status-section .expand-flow-card'),strips:document.querySelectorAll('.status-section .b46-signal-league-strip').length}));
             assert(liveOrder.flow&&liveOrder.frozen===proof.rows[0].id,'EVENT_FLOW_BROKEN_'+mode);
-            console.log('BALL46_SIGNAL_LEAGUE_NO_OVERLAP_PASS_'+mode+' '+JSON.stringify({matches:proof.rows.length,headerCount:proof.headerCount,liveOrder}));
+            console.log('BALL46_SIGNAL_LEAGUE_NO_OVERLAP_PASS_'+mode+' '+JSON.stringify({matches:proof.rows.length,flags:proof.rows.filter(x=>x.flag?.src).length,loadedFlags:proof.rows.filter(x=>x.flag?.loaded&&x.flag?.naturalWidth>0).length,headerCount:proof.headerCount,liveOrder}));
             await p.close();
           }
           await b.close();
