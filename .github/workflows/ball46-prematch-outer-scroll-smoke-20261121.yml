@@ -1,0 +1,73 @@
+name: BALL46 Pre-Match ONE outer scrollbar and wheel under fixed promo TEST
+on:
+  push:
+    branches: [test/ball46-premium-match-colors-20261120]
+    paths: ['.github/workflows/ball46-prematch-outer-scroll-smoke-20261121.yml','qa/prematch-native-ui-20261121/prematch-client.mjs']
+permissions: {contents: read}
+jobs:
+  outer-scroll:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          npm install --no-save --no-package-lock playwright@1.55.0
+          npx playwright install chromium --only-shell
+      - name: Assert mouse wheel scrolls single outer Pre-Match frame beneath sticky banner
+        run: |
+          node --input-type=module <<'JS'
+          import {chromium,devices} from 'playwright';
+          import assert from 'node:assert/strict';
+          const base='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev';
+          const marker='scroll architecture V2: one outer scrollbar';
+          for(let i=0;i<45;i++){
+            const r=await fetch(base+'/__b46_prematch_client.js',{cache:'no-store',signal:AbortSignal.timeout(15000)});
+            if(r.ok&&(await r.text()).includes(marker))break;
+            if(i===44)throw Error('OUTER_SCROLL_CLIENT_NOT_DEPLOYED');
+            await new Promise(resolve=>setTimeout(resolve,2000));
+          }
+          const browser=await chromium.launch();
+          try{
+            for(const mobile of [false,true])for(const theme of ['dark','light']){
+              const page=await browser.newPage(mobile?{...devices['iPhone 13'],serviceWorkers:'block'}:{viewport:{width:1440,height:880},serviceWorkers:'block'});
+              await page.addInitScript(value=>localStorage.setItem('nomad343_dashboard_theme_v1',value),theme);
+              await page.goto(base+'/?b46pm=predictions&outerScrollQA=1',{waitUntil:'domcontentloaded',timeout:60000});
+              await page.waitForFunction(()=>!!document.querySelector('#b46-prematch-panel>.b46pm-membership-promo')&&document.body.dataset.b46PrematchView==='1',null,{timeout:18000});
+              await page.waitForTimeout(240);
+              const before=await page.evaluate(()=>{
+                const panel=document.querySelector('#b46-prematch-panel'),banner=panel.querySelector('.b46pm-membership-promo'),inner=panel.querySelector('.b46pm-scroll-region');
+                panel.scrollTop=0;
+                const pr=panel.getBoundingClientRect(),br=banner.getBoundingClientRect();
+                return {panelX:pr.x,panelY:pr.y,panelWidth:pr.width,panelHeight:pr.height,bannerY:br.y,bannerHeight:br.height,bodyY:scrollY,scrollTop:panel.scrollTop,canScroll:panel.scrollHeight>panel.clientHeight,
+                  outerOverflow:getComputedStyle(panel).overflowY,innerOverflow:getComputedStyle(inner).overflowY,
+                  bannerPosition:getComputedStyle(banner).position,innerScroll:inner.scrollTop,
+                  theme:document.documentElement.dataset.theme,route:new URL(location.href).searchParams.get('b46pm')};
+              });
+              assert.equal(before.route,'predictions');assert.equal(before.theme,theme);
+              assert.equal(before.outerOverflow,'auto');assert.equal(before.innerOverflow,'visible');
+              assert.equal(before.bannerPosition,'sticky');assert(before.canScroll,'OUTER_SCROLL_HEIGHT_MISSING');
+              const mouseX=before.panelX+Math.min(150,before.panelWidth/2),mouseY=Math.min(before.panelY+before.panelHeight-45,before.bannerY+before.bannerHeight+75);
+              await page.mouse.move(mouseX,mouseY);await page.mouse.wheel(0,90);await page.waitForTimeout(280);
+              const next=await page.evaluate(()=>{
+                const panel=document.querySelector('#b46-prematch-panel'),banner=panel.querySelector('.b46pm-membership-promo'),inner=panel.querySelector('.b46pm-scroll-region');
+                return {panelScroll:panel.scrollTop,innerScroll:inner.scrollTop,bannerY:banner.getBoundingClientRect().y,docY:scrollY,
+                  panelY:panel.getBoundingClientRect().y,hit:!!document.elementFromPoint(banner.getBoundingClientRect().left+banner.getBoundingClientRect().width/2,banner.getBoundingClientRect().top+20)?.closest('.b46pm-membership-promo')};
+              });
+              assert(next.panelScroll>=50,'WHEEL_DID_NOT_SCROLL_OUTER '+JSON.stringify({mobile,theme,next}));
+              assert.equal(next.innerScroll,0,'INNER_SCROLLBAR_SCROLLING');
+              assert.equal(next.docY,before.bodyY,'MAIN_DOCUMENT_MOVED');
+              assert(Math.abs(next.bannerY-before.bannerY)<1,'BANNER_MOVED');
+              assert(next.hit,'CONTENT_PAINTED_OVER_BANNER');
+              await page.mouse.move(mouseX,before.bannerY+Math.min(32,before.bannerHeight/2));
+              await page.mouse.wheel(0,55);await page.waitForTimeout(250);
+              const over=await page.evaluate(()=>({panelY:document.querySelector('#b46-prematch-panel').getBoundingClientRect().y,
+                bannerY:document.querySelector('.b46pm-membership-promo').getBoundingClientRect().y,
+                panelScroll:document.querySelector('#b46-prematch-panel').scrollTop,docY:scrollY}));
+              assert(over.panelScroll>next.panelScroll+20,'WHEEL_ON_PROMO_NOT_SCROLLING');
+              assert(Math.abs(over.bannerY-before.bannerY)<1,'PROMO_NOT_FIXED_WHEN_WHEEL_ON_BANNER');
+              assert.equal(over.docY,before.bodyY,'DOCUMENT_MOVED_WHEN_WHEEL_ON_BANNER');
+              console.log('PREMATCH_OUTER_SCROLL_SMOKE_PASS '+JSON.stringify({mobile,theme,outerScroll:next.panelScroll,afterBanner:over.panelScroll,originalBannerY:before.bannerY,finalBannerY:over.bannerY,docY:over.docY,nestedScroll:next.innerScroll}));
+              await page.close();
+            }
+          }finally{await browser.close()}
+          JS
