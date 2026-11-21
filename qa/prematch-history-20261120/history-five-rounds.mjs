@@ -60,8 +60,8 @@ export function importHistoryRoundFromCache(db,snapshot,now){
  const selected=candidates.slice(0,Math.min(HISTORY_MAX_ROWS_PER_ROUND,before.remainingCapacity));
  // Reserve the current 4h window BEFORE importing; an uncertain failure
  // cannot trigger a replay or exceed 100 rows/round.
- const reserved=db.exec("INSERT INTO prematch_history_rounds(business_day,round_no,attempted_at,source,state,imported,received,provider_calls) VALUES(?,?,?,'NORMAL_HUB_CACHED_FINISHED','RESERVED',0,0,0) ON CONFLICT DO NOTHING",s.businessDay,s.slot,now);
- if(Number(reserved?.changes??0)!==1)return {state:'ALREADY_EXECUTED',...historyRoundState(db,now)};
+ db.exec("INSERT INTO prematch_history_rounds(business_day,round_no,attempted_at,source,state,imported,received,provider_calls) VALUES(?,?,?,'NORMAL_HUB_CACHED_FINISHED','RESERVED',0,0,0) ON CONFLICT DO NOTHING",s.businessDay,s.slot,now);
+ if(Number(rows(db,'SELECT changes() AS changed')[0]?.changed??0)!==1)return {state:'ALREADY_EXECUTED',...historyRoundState(db,now)};
  let imported=0;
  try{
   const stats=selected.length?ingest(db,selected,observed):{added:0,corrected:0,duplicate:0,rejected:0};
