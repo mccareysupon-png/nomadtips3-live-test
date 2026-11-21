@@ -62,14 +62,11 @@ jobs:
           assert(mainCode.includes('settlePicks(this.db,now)'),'ACTIVE_SETTLEMENT_CALLSITE_DRIFT');
           const settings=await cf(root+'/scripts/'+test+'/settings');
           const bindingNames=(settings.bindings||[]).map(b=>b.name).sort();
-          assert.deepEqual(bindingNames,['HUB','OWNER_SECRET','STORE'],'ACTIVE_TEST_BINDINGS_DRIFT');
+          assert.deepEqual(bindingNames,['FIVEDOLLAR_API_KEY','HUB','OWNER_SECRET','STORE'],'ACTIVE_TEST_BINDINGS_DRIFT');
           assert(settings.bindings.find(b=>b.name==='HUB')?.service==='nomadtips3-5usd-hub-343','UNEXPECTED_HUB');
-          const secret=crypto.createHmac('sha256',token).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
-          const bindings=[
-            {name:'STORE',type:'durable_object_namespace',class_name:'PrematchStore'},
-            {name:'OWNER_SECRET',type:'secret_text',text:secret},
-            {name:'HUB',type:'service',service:'nomadtips3-5usd-hub-343',environment:'production'}
-          ];
+          // Cloudflare inherited bindings keep ALL live test-worker secrets unchanged,
+          // including the pre-existing provider secret, without reading their values.
+          const bindings=bindingNames.map(name=>({name,type:'inherit'}));
           const form=new FormData();
           const metadata={main_module:version.main_module,compatibility_date:version.compatibility_date||'2026-11-20',bindings};
           form.append('metadata',new Blob([JSON.stringify(metadata)],{type:'application/json'}),'metadata.json');
@@ -79,9 +76,11 @@ jobs:
               Buffer.from(entry.content_base64,'base64');
             form.append(entry.name,new Blob([body],{type:'application/javascript+module'}),entry.name);
           }
-          const deployed=await cf(root+'/scripts/'+test,{method:'PUT',body:form});
+          const deployed=await cf(root+'/scripts/'+test+'?bindings_inherit=strict',{method:'PUT',body:form});
           const afterVersion=await activeVersion(test);
           assert(afterVersion,'TEST_WORKER_DEPLOY_VERSION_MISSING');
+          const settingsAfter=await cf(root+'/scripts/'+test+'/settings');
+          assert.deepEqual((settingsAfter.bindings||[]).map(b=>b.name).sort(),bindingNames,'EXISTING_BINDINGS_CHANGED');
           const smoke=await fetch('https://ball46-prematch-only-test-20261120.mccarey-supon.workers.dev/preview-data',{cache:'no-store',signal:AbortSignal.timeout(25000)});
           assert(smoke.ok,'TEST_DATA_HTTP_'+smoke.status);
           const sample=await smoke.json();
