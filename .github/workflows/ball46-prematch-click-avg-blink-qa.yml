@@ -2,7 +2,7 @@ name: BALL46 test Pre-Match click stability, blinking minutes and AVG ODDS
 on:
   push:
     branches: [test/ball46-premium-match-colors-20261120]
-    paths: ['.github/workflows/ball46-prematch-click-avg-blink-qa.yml']
+    paths: ['.github/workflows/ball46-prematch-click-avg-blink-qa.yml', 'qa/prematch-native-ui-20261121/prematch-client.mjs']
 permissions: {contents: read}
 jobs:
   qa:
@@ -25,7 +25,7 @@ jobs:
             const [r,js,css]=await Promise.all([fetch(url,{cache:'no-store'}),fetch(base+'/__b46_prematch_client.js',{cache:'no-store'}),fetch(base)]);
             if(r.ok&&js.ok&&css.ok){
               data=await r.json();src=await js.text();styles=await css.text();
-              if(src.includes('const avgOdds=items=>')&&src.includes("e.target?.closest?.('#b46-prematch-panel')")&&src.includes('b46pm-minute-mark')&&src.includes("window.addEventListener('click'")&&src.includes('function clearNativeActive()')&&src.includes('change.target===side')&&src.includes('b46pm-stats-board')&&src.includes('b46PmPeriod')&&src.includes('function readRoute()')&&src.includes('function syncRoute()')&&src.includes('function membershipBanner()')&&src.includes('function syncPrematchViewport()')&&src.includes('b46pm-scroll-region')&&src.includes('function performancePanel()'))break;
+              if(src.includes('const avgOdds=items=>')&&src.includes("e.target?.closest?.('#b46-prematch-panel')")&&src.includes('b46pm-minute-mark')&&src.includes("window.addEventListener('click'")&&src.includes('function clearNativeActive()')&&src.includes('change.target===side')&&src.includes('b46pm-stats-board')&&src.includes('b46PmPeriod')&&src.includes('function readRoute()')&&src.includes('function syncRoute()')&&src.includes('function membershipBanner()')&&src.includes('function syncPrematchViewport()')&&src.includes('b46pm-scroll-region')&&src.includes('function performancePanel()')&&src.includes('B46_PM_PERFORMANCE_DAILY_DATE_V2'))break;
             }
             await new Promise(r=>setTimeout(r,2200));
           }
@@ -40,6 +40,7 @@ jobs:
           assert(src.includes('function membershipBanner()')&&src.includes('b46pm-membership-promo'),'PREMATCH_MEMBERSHIP_BANNER_NOT_DEPLOYED');
           assert(src.includes('function syncPrematchViewport()')&&src.includes('b46pm-scroll-region'),'CLIPPED_SCROLL_REGION_NOT_DEPLOYED');
           assert(src.includes('function performancePanel()'),'PERFORMANCE_DASHBOARD_NOT_DEPLOYED');
+          assert(src.includes('B46_PM_PERFORMANCE_DAILY_DATE_V2'),'CORRECTED_PERFORMANCE_VERSION_NOT_DEPLOYED');
           assert.equal(data.testLedger?.mode,'TEST_ONLY');
           const expected=rows=>{const n=rows.map(x=>Number(x.price)).filter(x=>Number.isFinite(x)&&x>1);return n.length?(n.reduce((a,b)=>a+b,0)/n.length).toFixed(2):'—'};
           const allAvg=expected(data.testLedger.rows),w=data.dailyBook.window;
@@ -281,6 +282,38 @@ jobs:
               console.log('PREMATCH_CLICK_ODDS_CASE '+JSON.stringify(results.at(-1)));
               await p.close();
             }
+            // Browser-only multi-day snapshot. This never writes fake ledger rows.
+            const historical=structuredClone(data);
+            const dates=['2026-11-16','2026-11-17','2026-11-18','2026-11-19','2026-11-20'];
+            let totalUnits=0;
+            const days=dates.map((date,i)=>{
+              const units=[-1,1.5,1.2,-1,2.4][i];totalUnits+=units;
+              return {date,picks:1,settled:1,win:units>0?1:0,loss:units<0?1:0,draw:0,
+                halfWin:0,halfLoss:0,netUnits:units,cumulativeUnits:Number(totalUnits.toFixed(2)),
+                stakedUnits:1,oddsSum:2.4,oddsCount:1};
+            });
+            historical.performanceSnapshot={schema:1,market:'1X2',netUnits:Number(totalUnits.toFixed(2)),
+              stakedUnits:5,settled:5,pending:0,win:3,loss:2,draw:0,halfWin:0,halfLoss:0,oddsSum:12,oddsCount:5,daily:days};
+            const cp=await b.newPage({viewport:{width:1440,height:940},serviceWorkers:'block'});
+            await cp.route('**/__b46_prematch_data',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(historical)}));
+            await cp.goto(base+'/?b46pm=all&b46pmPeriod=all&pmPerfQA=1',{waitUntil:'domcontentloaded',timeout:60000});
+            await cp.waitForFunction(()=>document.querySelector('#b46-prematch-panel .b46pm-performance-provenance')?.textContent.includes('stored daily snapshots'),null,{timeout:16000});
+            const chartProof=await cp.evaluate(()=>{
+              const svg=document.querySelector('#b46-prematch-panel .b46pm-chart-stage svg');
+              return {hasChart:!!svg,linePaths:svg?.querySelectorAll('path[stroke="#4af3ca"]').length,
+                hero:document.querySelector('#b46-prematch-panel .b46pm-performance-hero')?.textContent,
+                cardCount:document.querySelectorAll('#b46-prematch-panel .b46pm-performance-item').length};
+            });
+            assert.equal(chartProof.hasChart,true,'PREMATCH_HISTORY_GRAPH_MISSING');
+            assert.equal(chartProof.linePaths,1,'MULTI_DAY_LINE_MISSING');
+            assert.equal(chartProof.cardCount,8,'LONG_TERM_METRIC_COUNT');
+            assert.equal(chartProof.hero,'+3.10U','SNAPSHOT_TOTAL_NOT_USED');
+            await cp.locator('#b46-prematch-panel [data-b46pm-perf-range="7D"]').click();
+            await cp.locator('#b46-prematch-panel [data-b46pm-perf-metric="roi"]').click();
+            assert.equal(await cp.locator('#b46-prematch-panel [data-b46pm-perf-range="7D"][aria-pressed="true"]').count(),1);
+            assert.equal(await cp.locator('#b46-prematch-panel [data-b46pm-perf-metric="roi"][aria-pressed="true"]').count(),1);
+            console.log('PREMATCH_LONGTERM_SYNTHETIC_BROWSER_PASS '+JSON.stringify({...chartProof,browserOnly:true,sourceWrite:false}));
+            await cp.close();
             const p=await b.newPage({viewport:{width:1440,height:900},serviceWorkers:'block'});
             const injected=structuredClone(data),pending=injected.testLedger.rows.find(x=>x.status==='PENDING');
             assert(pending,'NO_PENDING_TO_TEST_LIVE_MINUTES');
