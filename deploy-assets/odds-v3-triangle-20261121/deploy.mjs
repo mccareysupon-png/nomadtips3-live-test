@@ -148,28 +148,38 @@ async function browserCheck(origin,label,full){
    await page.waitForFunction(()=>[...document.querySelectorAll('[data-match-id].match-row .market-cell .b46-v3-quote strong[data-nomad-odds-raw]')].some(e=>e.getBoundingClientRect().width>0&&Number(e.getAttribute('data-nomad-odds-raw'))>1),null,{timeout:65000});
    const data=await page.evaluate(async()=>{
     const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-    const odds=[...document.querySelectorAll('[data-match-id].match-row .market-cell .b46-v3-quote strong[data-nomad-odds-raw]')];
-    const n=odds.find(e=>e.getBoundingClientRect().width>0&&Number(e.getAttribute('data-nomad-odds-raw'))>1&&Number(e.getAttribute('data-nomad-odds-raw'))<900);
-    if(!n)return {error:'NO_ODDS'};
-    const q=n.closest('.b46-v3-quote'),cell=q.closest('.market-cell'),width=q.getBoundingClientRect().width,cellWidth=cell.getBoundingClientRect().width;
-    const original={text:n.textContent,raw:n.getAttribute('data-nomad-odds-raw')},val=Number(original.raw);
+    const real=[...document.querySelectorAll('[data-match-id].match-row .market-cell .b46-v3-quote strong[data-nomad-odds-raw]')].find(e=>e.getBoundingClientRect().width>0);
+    if(!real)return {error:'NO_NATIVE_ODDS'};
+    const nativeFont=getComputedStyle(real).fontSize;
+    if(nativeFont!=='11.5px')return {error:'LIVE_NUMBER_FONT_CHANGED_'+nativeFont};
+    // Browser-local fixture makes the differential test deterministic while retaining the actual DOM/CSS/MutationObserver.
+    // No upstream prices, Worker storage, API, production records, or Engine are mutated.
+    const fixture=document.createElement('div');fixture.className='match-row';
+    fixture.setAttribute('data-match-id','B46_QA_LOCAL_TRIANGLE_PROD_20261121');
+    fixture.style.cssText='position:fixed;left:-250px;top:-250px;width:180px;height:100px;pointer-events:none;';
+    fixture.innerHTML='<div class="market-cell market-cell-1x2" title="QA · Browser Only"><div class="market-prices b46-v3-quotes" style="--b46-quote-count:3"><div class="market-quote b46-v3-quote" data-side="H"><i>H</i><strong data-b46-align="1x2-H" data-nomad-odds-raw="1.90">1.90</strong></div></div><small>QA</small></div>';
+    document.body.append(fixture);
+    const n=fixture.querySelector('strong'),q=fixture.querySelector('.b46-v3-quote'),cell=q.closest('.market-cell');
+    n.style.fontSize=nativeFont;
+    const width=q.getBoundingClientRect().width,cellWidth=cell.getBoundingClientRect().width,original={text:n.textContent,raw:n.getAttribute('data-nomad-odds-raw')},val=Number(original.raw);
     const sample=()=>{
      const qr=q.getBoundingClientRect(),nr=n.getBoundingClientRect(),ps=getComputedStyle(q,'::after'),plate=getComputedStyle(q,'::before'),style=getComputedStyle(q),num=getComputedStyle(n);
      return {
-      direction:q.getAttribute('data-b46-odds-move'),
-      arrowContent:ps.content,arrowFill:ps.backgroundColor,clip:ps.clipPath,
-      arrowWidth:ps.width,arrowHeight:ps.height,
-      arrowGap:qr.left+parseFloat(ps.left)-nr.right,arrowCenterOffset:qr.top+parseFloat(ps.top)-nr.top-nr.height/2,
+      direction:q.getAttribute('data-b46-odds-move'),arrowContent:ps.content,arrowFill:ps.backgroundColor,clip:ps.clipPath,
+      arrowWidth:ps.width,arrowHeight:ps.height,arrowGap:qr.left+parseFloat(ps.left)-nr.right,arrowCenterOffset:qr.top+parseFloat(ps.top)-nr.top-nr.height/2,
       numFont:num.fontSize,numColor:num.color,plateColor:plate.backgroundColor,plateRadius:plate.borderTopLeftRadius,plateRight:plate.right,
       cycles:style.animationIterationCount,period:style.animationDuration,animation:style.animationName,
       quoteWidth:qr.width,cellWidth:cell.getBoundingClientRect().width
      };
     };
-    const set=async v=>{const s=v.toFixed(2);n.setAttribute('data-nomad-odds-raw',s);n.textContent=s;await sleep(260)};
-    const initial=sample();await set(val+.07);const up=sample();
-    await sleep(6350);const afterUp=sample();
-    await set(val);const down=sample();await sleep(6350);const afterDown=sample();
-    return {initial,up,afterUp,down,afterDown,original,originalQuoteWidth:width,originalCellWidth:cellWidth,stats:{...window.__b46OddsMovementStats}};
+    const set=async v=>{const s=v.toFixed(2);n.setAttribute('data-nomad-odds-raw',s);n.textContent=s;await sleep(230)};
+    try{
+     await sleep(400);const initial=sample();await set(val+.07);const up=sample();
+     await sleep(6400);const afterUp=sample();
+     await set(val);const down=sample();
+     await sleep(6400);const afterDown=sample();
+     return {initial,up,afterUp,down,afterDown,original,originalQuoteWidth:width,originalCellWidth:cellWidth,realPriceFont:nativeFont,stats:{...window.__b46OddsMovementStats}};
+    }finally{fixture.remove()}
    });
    assert(!data.error,'NO_ODDS_TEST_DATA');
    const moves=[['up',data.up,'rgb(121, 225, 172)','rgb(42, 163, 103)'],['down',data.down,'rgb(255, 159, 165)','rgb(178, 65, 74)']];
