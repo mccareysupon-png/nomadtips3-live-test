@@ -196,8 +196,8 @@ jobs:
           import {chromium,devices} from 'playwright';
           import assert from 'node:assert/strict';
           const base='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev';
-          let h;for(let i=0;i<15;i++){try{const r=await fetch(base+'/_premium_health');if(r.ok){const candidate=await r.json();if(candidate.revision==='PREMIUM_LEAGUE_SOLID_V14'&&candidate.oddsMovementScript?.includes('DURATION=2000')&&candidate.oddsMovementStyle?.includes('box-shadow:none!important')&&candidate.oddsMovementStyle?.includes('border-radius:6px!important')&&candidate.oddsMovementStyle?.includes('inset:0 -1px 0 0!important')&&candidate.oddsMovementStyle?.includes('#b46-odds-specificity#b46-odds-specificity#b46-odds-specificity#b46-odds-specificity')&&candidate.oddsMovementStyle?.includes('transform:translateY(-50%)!important')&&!candidate.oddsMovementStyle?.includes('inset 0 0 0 1px')){h=candidate;break}}}catch{}await new Promise(r=>setTimeout(r,2000))}
-          assert.equal(h?.scope,'TEST_ONLY_CSS');assert.equal(h?.revision,'PREMIUM_LEAGUE_SOLID_V14');assert.equal(h?.oddsMovement,'DOM_PRICES_V1');assert(h?.oddsMovementScript?.includes('DURATION=2000'),'WORKER_HAS_OLD_DURATION');assert(h?.oddsMovementStyle?.includes('box-shadow:none!important'),'WORKER_HAS_OLD_BORDER_STYLE');
+          let h;for(let i=0;i<15;i++){try{const r=await fetch(base+'/_premium_health');if(r.ok){const candidate=await r.json();if(candidate.revision==='PREMIUM_LEAGUE_SOLID_V14'&&candidate.oddsMovementScript?.includes('DURATION=5000')&&candidate.oddsMovementStyle?.includes('b46-odds-soft-blink-5x')&&candidate.oddsMovementStyle?.includes('content:none!important')&&candidate.oddsMovementStyle?.includes('opacity:.55')&&candidate.oddsMovementStyle?.includes('background-color:transparent!important')&&candidate.oddsMovementStyle?.includes('transform:translateY(-50%)!important')){h=candidate;break}}}catch{}await new Promise(r=>setTimeout(r,2000))}
+          assert.equal(h?.scope,'TEST_ONLY_CSS');assert.equal(h?.revision,'PREMIUM_LEAGUE_SOLID_V14');assert.equal(h?.oddsMovement,'DOM_PRICES_V1');assert(h?.oddsMovementScript?.includes('DURATION=5000'),'WORKER_HAS_OLD_DURATION');assert(!h.oddsMovementStyle?.includes('inset:0 -1px 0 0!important'),'WORKER_STILL_HAS_COLORED_SHEET');
           const browser=await chromium.launch();
           try{for(const mobile of [false])for(const theme of ['dark','light']){
             const p=await browser.newPage(mobile?{...devices['iPhone 13'],serviceWorkers:'block'}:{viewport:{width:1440,height:950},serviceWorkers:'block'});
@@ -279,46 +279,68 @@ jobs:
               const originalPrice=await odd.evaluate(el=>({raw:el.getAttribute('data-nomad-odds-raw'),text:el.textContent.trim(),align:el.dataset.b46Align,quote:el.closest('.b46-v3-quote')?.getAttribute('data-b46-odds-move')||null}));
               assert(Number(originalPrice.raw)>1&&Number.isFinite(Number(originalPrice.raw)),'ODDS_RAW_NOT_NUMERIC');
               const readMove=()=>odd.evaluate(el=>{const q=el.closest('.b46-v3-quote'),s=getComputedStyle(q),v=getComputedStyle(q,'::after');return {direction:q.getAttribute('data-b46-odds-move'),priceColor:getComputedStyle(el).color,quoteColor:s.backgroundColor,arrow:v.content,cellBg:getComputedStyle(el.closest('.market-cell')).backgroundColor,stats:{...window.__b46OddsMovementStats}}});
+              const dimensions=()=>odd.evaluate(el=>({numberWidth:el.getBoundingClientRect().width,quoteWidth:el.closest('.b46-v3-quote').getBoundingClientRect().width,cellWidth:el.closest('.market-cell').getBoundingClientRect().width}));
+              const beforeDimensions=await dimensions();
               const simulate=async value=>odd.evaluate(async (el,v)=>{
                 el.setAttribute('data-nomad-odds-raw',v.toFixed(2));
                 el.textContent=v.toFixed(2);
                 await new Promise(resolve=>setTimeout(resolve,130));
-                const q=el.closest('.b46-v3-quote'),s=getComputedStyle(q),arrow=getComputedStyle(q,'::after'),plate=getComputedStyle(q,'::before');
-                return {direction:q.getAttribute('data-b46-odds-move'),priceColor:getComputedStyle(el).color,quoteColor:s.backgroundColor,quoteShadow:s.boxShadow,quoteDisplay:s.display,quotePosition:s.position,quoteRect:{top:q.getBoundingClientRect().top,h:q.getBoundingClientRect().height,w:q.getBoundingClientRect().width},plateColor:plate.backgroundColor,plateRight:plate.right,plateRadius:plate.borderTopLeftRadius,plateShadow:plate.boxShadow,plateContent:plate.content,arrowRight:arrow.right,arrowVisibleInset:parseFloat(arrow.right)-parseFloat(plate.right),numberRect:{top:el.getBoundingClientRect().top,h:el.getBoundingClientRect().height,w:el.getBoundingClientRect().width},numberDisplay:getComputedStyle(el).display,numberPosition:getComputedStyle(el).position,rounding:s.borderTopLeftRadius,border:s.borderTopWidth,outline:s.outlineStyle,arrow:arrow.content,arrowTop:arrow.top,arrowTransform:arrow.transform,arrowOffsetFromPriceCenter:Math.round((q.getBoundingClientRect().top+parseFloat(arrow.top)-(el.getBoundingClientRect().top+el.getBoundingClientRect().height/2))*10)/10,cellBg:getComputedStyle(el.closest('.market-cell')).backgroundColor,stats:{...window.__b46OddsMovementStats}};
+                const q=el.closest('.b46-v3-quote'),s=getComputedStyle(q),arrow=getComputedStyle(q,'::after'),plate=getComputedStyle(q,'::before'),num=getComputedStyle(el);
+                return {direction:q.getAttribute('data-b46-odds-move'),numberColor:num.color,arrowColor:arrow.color,quoteColor:s.backgroundColor,quoteShadow:s.boxShadow,plateContent:plate.content,plateDisplay:plate.display,plateBg:plate.backgroundColor,numberAnimation:num.animationName,arrowAnimation:arrow.animationName,numberDuration:num.animationDuration,arrowDuration:arrow.animationDuration,numberIterations:num.animationIterationCount,arrowIterations:arrow.animationIterationCount,arrow:arrow.content,arrowTop:arrow.top,arrowOffsetFromPriceCenter:Math.round((q.getBoundingClientRect().top+parseFloat(arrow.top)-(el.getBoundingClientRect().top+el.getBoundingClientRect().height/2))*10)/10,quoteWidth:q.getBoundingClientRect().width,cellWidth:el.closest('.market-cell').getBoundingClientRect().width,cellBg:getComputedStyle(el.closest('.market-cell')).backgroundColor,stats:{...window.__b46OddsMovementStats}};
               },value);
-              const nativeSpacing=await odd.evaluate(el=>{
-                const cell=el.closest('.market-cell');
-                const quotes=[...cell.querySelectorAll('.b46-v3-quote')].filter(q=>q.getBoundingClientRect().width>0);
-                let pair=null;
-                for(let i=0;i<quotes.length-1;i++){
-                  const first=quotes[i].getBoundingClientRect(),next=quotes[i+1].getBoundingClientRect();
-                  if(first.width>0&&next.width>0&&next.left>first.right){
-                    pair={firstWidth:first.width,secondWidth:next.width,rawGap:Number((next.left-first.right).toFixed(2)),visibleSheetGap:Number((next.left-first.right-1).toFixed(2))};
-                    break;
-                  }
-                }
-                return pair;
+              const pulse=()=>odd.evaluate(el=>{
+                const n=getComputedStyle(el),a=getComputedStyle(el.closest('.b46-v3-quote'),'::after');
+                return {numberOpacity:parseFloat(n.opacity),arrowOpacity:parseFloat(a.opacity),numberAnimation:n.animationName,arrowAnimation:a.animationName};
               });
-              console.log('ODDS_ADJACENT_SHEET_GAP',JSON.stringify(nativeSpacing));
-              assert(nativeSpacing&&nativeSpacing.rawGap>0,'ADJACENT_QUOTE_PAIR_NOT_FOUND');
-              assert(Math.abs(nativeSpacing.visibleSheetGap-3)<0.6,'COLORED_SHEET_GAP_NOT_3PX');
-              const initialMove=await readMove();assert(!initialMove.direction,'ODDS_FLASH_ON_INITIAL_LOAD');assert.equal(initialMove.cellBg,h.reference.pitColor);
+              const initialMove=await readMove();
+              assert(!initialMove.direction,'ODDS_FLASH_ON_INITIAL_LOAD');
+              assert.equal(initialMove.cellBg,h.reference.pitColor);
               const initialValue=Number(originalPrice.raw),upValue=Number((initialValue+.07).toFixed(2));
+              const checkDirection=(result,direction)=>{
+                assert.equal(result.direction,direction,'MOVEMENT_DIRECTION_NOT_DETECTED_'+direction);
+                assert(result.arrow.includes(direction==='up'?'↑':'↓'),'MOVEMENT_ARROW_MISSING_'+direction);
+                assert.equal(result.numberColor,direction==='up'?'rgb(121, 225, 172)':'rgb(255, 159, 165)','PRICE_COLOR_INCORRECT_'+direction);
+                assert.equal(result.arrowColor,result.numberColor,'ARROW_AND_NUMBER_COLOR_MISMATCH_'+direction);
+                assert.equal(result.quoteColor,'rgba(0, 0, 0, 0)','OLD_QUOTE_BG_REMAINS_'+direction);
+                assert.equal(result.quoteShadow,'none','OLD_QUOTE_SHADOW_REMAINS_'+direction);
+                assert.equal(result.plateContent,'none','OLD_SHEET_PSEUDO_CONTENT_REMAINS_'+direction);
+                assert.equal(result.plateDisplay,'none','OLD_SHEET_PSEUDO_DISPLAY_REMAINS_'+direction);
+                assert.equal(result.numberAnimation,'b46-odds-soft-blink-5x','NUMBER_BLINK_MISSING_'+direction);
+                assert.equal(result.arrowAnimation,result.numberAnimation,'NUMBER_ARROW_ANIMATION_MISMATCH_'+direction);
+                assert.equal(result.numberDuration,'1s','BLINK_PERIOD_NOT_ONE_SECOND_'+direction);
+                assert.equal(result.arrowDuration,'1s','ARROW_BLINK_PERIOD_CHANGED_'+direction);
+                assert.equal(result.numberIterations,'5','NOT_FIVE_BLINK_CYCLES_'+direction);
+                assert.equal(result.arrowIterations,'5','ARROW_NOT_FIVE_BLINK_CYCLES_'+direction);
+                assert(Math.abs(result.arrowOffsetFromPriceCenter)<=2,'ARROW_NOT_CENTERED_'+direction);
+                assert.equal(result.cellBg,h.reference.pitColor,'PRICE_RECESS_CHANGED_'+direction);
+                assert(Math.abs(result.quoteWidth-beforeDimensions.quoteWidth)<.2,'QUOTE_WIDTH_CHANGED_'+direction);
+                assert(Math.abs(result.cellWidth-beforeDimensions.cellWidth)<.2,'MARKET_WIDTH_CHANGED_'+direction);
+              };
               const up=await simulate(upValue);
-              console.log('ODDS_UP_PROOF',JSON.stringify(up));
-              assert.equal(up.direction,'up','ODDS_UP_WAS_NOT_DETECTED');assert(up.arrow.includes('↑'));assert.equal(up.cellBg,h.reference.pitColor);assert.equal(up.quoteShadow,'none','UP_SHEET_HAS_BORDER_SHADOW');assert.equal(up.rounding,'6px','UP_SHEET_NOT_ROUNDED');assert.equal(up.plateRadius,'6px','UP_BACKPLATE_NOT_ROUNDED');assert.equal(up.plateShadow,'none','UP_BACKPLATE_HAS_SHADOW');assert.equal(up.plateColor,'rgba(42, 163, 103, 0.2)','UP_BACKPLATE_COLOR_DRIFT');assert.equal(up.quoteColor,'rgba(0, 0, 0, 0)','UP_DOUBLE_TINT_NOT_REMOVED');assert.equal(up.arrowVisibleInset,3,'UP_ARROW_SHEET_INSET_NOT_3PX');assert(up.arrowTransform!=='none','UP_ARROW_NOT_CENTERED');assert(Math.abs(up.arrowOffsetFromPriceCenter)<=2,'UP_ARROW_MISALIGNED_WITH_NUMBER');assert.equal(up.border,'0px','UP_SHEET_HAS_BORDER');assert.equal(up.outline,'none','UP_SHEET_HAS_OUTLINE');
-              await p.waitForTimeout(500);assert.equal((await readMove()).direction,'up','UP_HIGHLIGHT_TOO_SHORT');
+              console.log('ODDS_UP_PROOF',JSON.stringify(up));checkDirection(up,'up');
+              await p.waitForTimeout(360);
+              const upPulse=await pulse();
+              console.log('ODDS_UP_PULSE',JSON.stringify(upPulse));
+              assert(upPulse.numberOpacity<.90&&upPulse.numberOpacity>=.54,'NUMBER_NOT_SOFT_PULSING_UP');
+              assert(Math.abs(upPulse.numberOpacity-upPulse.arrowOpacity)<.05,'ARROW_NOT_PULSING_WITH_PRICE_UP');
               await p.screenshot({path:process.env.RUNNER_TEMP+'/premium-proof/odds-up.png'});
-              await p.waitForTimeout(2150);assert.equal((await readMove()).direction,null,'ODDS_UP_NOT_RESET_AFTER_2000MS');
-              const unchanged=await simulate(upValue);assert.equal(unchanged.direction,null,'SAME_PRICE_TRIGGERED_FALSE_FLASH');
+              await p.waitForTimeout(4750);
+              assert.equal((await readMove()).direction,null,'ODDS_UP_NOT_RESET_AFTER_5000MS');
+              const unchanged=await simulate(upValue);
+              assert.equal(unchanged.direction,null,'SAME_PRICE_TRIGGERED_FALSE_FLASH');
               const down=await simulate(initialValue);
-              console.log('ODDS_DOWN_PROOF',JSON.stringify(down));
-              assert.equal(down.direction,'down','ODDS_DOWN_WAS_NOT_DETECTED');assert(down.arrow.includes('↓'));assert.equal(down.cellBg,h.reference.pitColor);assert.equal(down.quoteShadow,'none','DOWN_SHEET_HAS_BORDER_SHADOW');assert.equal(down.rounding,'6px','DOWN_SHEET_NOT_ROUNDED');assert.equal(down.plateRadius,'6px','DOWN_BACKPLATE_NOT_ROUNDED');assert.equal(down.plateShadow,'none','DOWN_BACKPLATE_HAS_SHADOW');assert.equal(down.plateColor,'rgba(178, 65, 74, 0.19)','DOWN_BACKPLATE_COLOR_DRIFT');assert.equal(down.quoteColor,'rgba(0, 0, 0, 0)','DOWN_DOUBLE_TINT_NOT_REMOVED');assert.equal(down.arrowVisibleInset,3,'DOWN_ARROW_SHEET_INSET_NOT_3PX');assert(down.arrowTransform!=='none','DOWN_ARROW_NOT_CENTERED');assert(Math.abs(down.arrowOffsetFromPriceCenter)<=2,'DOWN_ARROW_MISALIGNED_WITH_NUMBER');assert.equal(down.border,'0px','DOWN_SHEET_HAS_BORDER');assert.equal(down.outline,'none','DOWN_SHEET_HAS_OUTLINE');
-              await p.waitForTimeout(500);assert.equal((await readMove()).direction,'down','DOWN_HIGHLIGHT_TOO_SHORT');
+              console.log('ODDS_DOWN_PROOF',JSON.stringify(down));checkDirection(down,'down');
+              await p.waitForTimeout(360);
+              const downPulse=await pulse();
+              console.log('ODDS_DOWN_PULSE',JSON.stringify(downPulse));
+              assert(downPulse.numberOpacity<.90&&downPulse.numberOpacity>=.54,'NUMBER_NOT_SOFT_PULSING_DOWN');
+              assert(Math.abs(downPulse.numberOpacity-downPulse.arrowOpacity)<.05,'ARROW_NOT_PULSING_WITH_PRICE_DOWN');
               await p.screenshot({path:process.env.RUNNER_TEMP+'/premium-proof/odds-down.png'});
-              await p.waitForTimeout(2150);const afterFlash=await readMove();assert.equal(afterFlash.direction,null,'ODDS_DOWN_NOT_RESET_AFTER_2000MS');
+              await p.waitForTimeout(4750);
+              const afterFlash=await readMove();
+              assert.equal(afterFlash.direction,null,'ODDS_DOWN_NOT_RESET_AFTER_5000MS');
               assert(afterFlash.stats.ups>=1&&afterFlash.stats.downs>=1,'ODDS_MOVEMENT_COUNTS_MISSING');
-              console.log('ODDS_MOVEMENT_PASS',JSON.stringify({originalPrice,up,down,afterFlash,domOnly:true,apiCallsAdded:0}));
+              console.log('ODDS_MOVEMENT_PASS',JSON.stringify({originalPrice,up,down,upPulse,downPulse,afterFlash,mode:'color-only',pulseCycles:5,durationMs:5000,domOnly:true,apiCallsAdded:0}));
             }
             await p.close();
           }}finally{await browser.close()}
