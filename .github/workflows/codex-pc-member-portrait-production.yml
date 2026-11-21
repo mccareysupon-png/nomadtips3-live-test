@@ -1,0 +1,44 @@
+name: "[Codex PC] Ball46 member portrait production"
+
+on:
+  push:
+    branches: [codex-pc/release-ball46-member-portrait]
+    paths:
+      - .github/workflows/codex-pc-member-portrait-production.yml
+      - qa/codex-pc-member-portrait-release/**
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ball46-production-ui-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: github.ref == 'refs/heads/codex-pc/release-ball46-member-portrait'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Prepare browser and check release files
+        run: |
+          for file in qa/codex-pc-member-portrait-release/*.mjs; do node --check "$file" || exit; done
+          npm install --prefix "$RUNNER_TEMP/codex-pc-member-portrait-runtime" --no-package-lock --no-audit --no-fund playwright@1.55.0
+          "$RUNNER_TEMP/codex-pc-member-portrait-runtime/node_modules/.bin/playwright" install chromium --only-shell
+      - name: Verify candidate and deploy the membership portrait
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: node qa/codex-pc-member-portrait-release/release.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: codex-pc-member-portrait-production-evidence
+          path: ${{ runner.temp }}/codex-pc-member-portrait-production-proof
+          if-no-files-found: ignore
