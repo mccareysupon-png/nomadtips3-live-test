@@ -25,7 +25,7 @@ jobs:
             const [r,js,css]=await Promise.all([fetch(url,{cache:'no-store'}),fetch(base+'/__b46_prematch_client.js',{cache:'no-store'}),fetch(base)]);
             if(r.ok&&js.ok&&css.ok){
               data=await r.json();src=await js.text();styles=await css.text();
-              if(src.includes('const avgOdds=items=>')&&src.includes("e.target?.closest?.('#b46-prematch-panel')")&&src.includes('b46pm-minute-mark')&&src.includes("window.addEventListener('click'")&&src.includes('function clearNativeActive()')&&src.includes('change.target===side')&&src.includes('b46pm-stats-board')&&src.includes('b46PmPeriod'))break;
+              if(src.includes('const avgOdds=items=>')&&src.includes("e.target?.closest?.('#b46-prematch-panel')")&&src.includes('b46pm-minute-mark')&&src.includes("window.addEventListener('click'")&&src.includes('function clearNativeActive()')&&src.includes('change.target===side')&&src.includes('b46pm-stats-board')&&src.includes('b46PmPeriod')&&src.includes('function readRoute()')&&src.includes('function syncRoute()'))break;
             }
             await new Promise(r=>setTimeout(r,2200));
           }
@@ -36,6 +36,7 @@ jobs:
           assert(src.includes('function clearNativeActive()'),'NATIVE_ACTIVE_EXCLUSIVITY_NOT_DEPLOYED');
           assert(src.includes('change.target===side'),'LATEST_NAVIGATION_OBSERVER_NOT_DEPLOYED');
           assert(src.includes('b46pm-stats-board')&&src.includes('b46PmPeriod'),'UNIFIED_STATS_PANEL_NOT_DEPLOYED');
+          assert(src.includes('function readRoute()')&&src.includes('function syncRoute()'),'PREMATCH_REFRESH_ROUTING_NOT_DEPLOYED');
           assert.equal(data.testLedger?.mode,'TEST_ONLY');
           const expected=rows=>{const n=rows.map(x=>Number(x.price)).filter(x=>Number.isFinite(x)&&x>1);return n.length?(n.reduce((a,b)=>a+b,0)/n.length).toFixed(2):'—'};
           const allAvg=expected(data.testLedger.rows),w=data.dailyBook.window;
@@ -86,6 +87,34 @@ jobs:
               await p.locator('#b46-prematch-panel [data-b46-pm-period="today"]').click();
               checkPeriod(await readStats(),'today');
               console.log('PREMATCH_UNIFIED_STATS_PASS '+JSON.stringify({mobile,theme,today:today.pairs,all:all.pairs,borderless:true,exclusive:true}));
+              // Verify deep-link continuity across a real hard refresh, not only same-page clicks.
+              const reloadRoute=mobile?(theme==='dark'?'1x2':'btts'):(theme==='dark'?'predictions':'all');
+              const reloadPeriod=theme==='dark'?'all':'today';
+              await p.locator('#b46-prematch-panel [data-b46-pm-period="'+reloadPeriod+'"]').evaluate(x=>x.click());
+              const preReloadNav=(mobile?'#b46m-drawer':'aside.left-rail')+' [data-b46-prematch-route="'+reloadRoute+'"]';
+              await p.locator(preReloadNav).evaluate(x=>x.click());
+              const beforeReload=await p.evaluate(()=>({route:new URL(location.href).searchParams.get('b46pm'),period:new URL(location.href).searchParams.get('b46pmPeriod')}));
+              assert.equal(beforeReload.route,reloadRoute,'ROUTE_NOT_PERSISTED_TO_URL');
+              assert.equal(beforeReload.period,reloadPeriod,'PERIOD_NOT_PERSISTED_TO_URL');
+              await p.reload({waitUntil:'domcontentloaded',timeout:60000});
+              await p.waitForFunction(({route,period})=>{
+                const url=new URL(location.href);
+                return document.body.dataset.b46PrematchView==='1'
+                  && !document.querySelector('#b46-prematch-panel')?.hidden
+                  && url.searchParams.get('b46pm')===route
+                  && url.searchParams.get('b46pmPeriod')===period
+                  && document.querySelector('#b46-prematch-panel .b46pm-stats-board')?.dataset.b46PmPeriod===period
+                  && [...document.querySelectorAll('[data-b46-prematch-route="'+route+'"]')].some(e=>e.classList.contains('active'));
+              },{route:reloadRoute,period:reloadPeriod},{timeout:22000});
+              const reloaded=await p.evaluate(isMobile=>{
+                const root=document.querySelector(isMobile?'#b46m-drawer':'aside.left-rail');
+                return [...root.querySelectorAll('[data-b46-sidebar-row],.b46m-item')].filter(n=>n.classList.contains('active')||n.getAttribute('aria-current')==='page').map(n=>n.dataset.b46PrematchRoute||null);
+              },mobile);
+              assert.deepEqual(reloaded,[reloadRoute],'RELOAD_ACTIVE_LOST_OR_DUPLICATED');
+              console.log('PREMATCH_REFRESH_ROUTE_PASS '+JSON.stringify({mobile,theme,route:reloadRoute,period:reloadPeriod,active:reloaded,url:await p.url()}));
+              // Return to the prediction page for the original 48 content-click checks.
+              const predictionsNav=(mobile?'#b46m-drawer':'aside.left-rail')+' [data-b46-prematch-route="predictions"]';
+              await p.locator(predictionsNav).evaluate(x=>x.click());
               // Only one sidebar item may be active in the visible navigation context.
               // Test each Pre-Match sub-route and then return to predictions for click QA.
               for(const route of ['predictions','all','1x2','btts','predictions']){
