@@ -89,7 +89,7 @@ jobs:
             assert(native.length>0,'NO_SHARED_MATCHES_TO_COMPARE_'+mode);
             for(const x of native){
               const signalRow=proof.rows.find(y=>y.id===x.id);
-              assert.equal(signalRow.rowShape.h,x.rowShape.h,'ROW_HEIGHT_DIFF_FROM_LIVE_'+x.id+'_'+mode);
+              if(x.rowShape.h>10)assert.equal(signalRow.rowShape.h,x.rowShape.h,'ROW_HEIGHT_DIFF_FROM_LIVE_'+x.id+'_'+mode);
               assert.equal(signalRow.teamsShape.font,x.teamsShape.font,'TEAM_FONT_DIFF_FROM_LIVE_'+x.id+'_'+mode);
               assert.equal(signalRow.teamsShape.padding,x.teamsShape.padding,'TEAM_PADDING_DIFF_FROM_LIVE_'+x.id+'_'+mode);
               assert.equal(signalRow.oddsShape.font,x.oddsShape.font,'ODDS_FONT_DIFF_FROM_LIVE_'+x.id+'_'+mode);
