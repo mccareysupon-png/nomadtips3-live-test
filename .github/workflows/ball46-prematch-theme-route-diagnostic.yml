@@ -2,7 +2,7 @@ name: BALL46 Pre-Match TEST theme navigation diagnostic
 on:
   push:
     branches: [test/ball46-premium-match-colors-20261120]
-    paths: ['.github/workflows/ball46-prematch-theme-route-diagnostic.yml']
+    paths: ['.github/workflows/ball46-prematch-theme-route-diagnostic.yml', 'qa/prematch-native-ui-20261121/prematch-client.mjs']
 permissions: { contents: read }
 jobs:
   diagnose:
@@ -16,10 +16,18 @@ jobs:
       - name: Diagnose real theme click with Pre-Match open, desktop and mobile
         run: |
           node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
           import { chromium,devices } from 'playwright';
           const browser=await chromium.launch();
           const base='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev';
           try{
+            for(let i=0;i<80;i++){
+              const r=await fetch(base+'/__b46_prematch_client.js?version=theme-route',{cache:'no-store'});
+              const t=r.ok?await r.text():'';
+              if(t.includes('Theme toggles change appearance only'))break;
+              if(i===79)throw Error('TEST_WORKER_NOT_UPDATED_WITH_THEME_GUARD');
+              await new Promise(res=>setTimeout(res,2000));
+            }
             for(const mobile of [false,true]){
               const p=await browser.newPage(mobile?{...devices['iPhone 13'],serviceWorkers:'block'}:{viewport:{width:1440,height:920},serviceWorkers:'block'});
               const errs=[];p.on('pageerror',e=>errs.push(String(e.message).slice(0,220)));
@@ -46,25 +54,40 @@ jobs:
                 return {shape:shape(),clickable};
               });
               const before=await examine();console.log('PREMATCH_THEME_DIAG_BEFORE '+JSON.stringify({mobile,...before}));
-              const candidates=[
-                '[data-theme-toggle]','[data-b46-theme-toggle]','[data-theme-switch]','[data-theme]',
-                'button[aria-label*="theme" i]','button[title*="theme" i]',
-                'button[aria-label*="light" i]','button[title*="light" i]',
-                'button[aria-label*="mode" i]','button[title*="mode" i]',
-                '.theme-toggle','button.theme-btn','[data-b46m-theme]'
-              ];
+              const candidates=mobile?['button[data-b46-mobile-theme-toggle]']:['button[data-theme-toggle]'];
               let clicked=null;
               for(const c of candidates){const nodes=p.locator(c);for(let i=0;i<Math.min(await nodes.count(),5);i++){
                 const node=nodes.nth(i);if(await node.isVisible().catch(()=>false)){
                   try{const tag=await node.evaluate(x=>x.outerHTML.slice(0,450));await node.click({timeout:2500});clicked={selector:c,index:i,html:tag};break}catch(e){console.log('THEME_DIAG_CLICK_ERROR '+JSON.stringify({selector:c,error:String(e).slice(0,220)}))}
                 }
               }if(clicked)break}
-              if(!clicked){console.log('PREMATCH_THEME_DIAG_NO_BUTTON '+JSON.stringify({mobile}));await p.close();continue;}
+              assert(clicked,'THEME_CONTROL_NOT_CLICKED '+(mobile?'MOBILE':'DESKTOP'));
               await p.waitForTimeout(750);
               const after=await examine();
               console.log('PREMATCH_THEME_DIAG_AFTER '+JSON.stringify({mobile,clicked,...after,errors:errs}));
-              if(after.shape.theme!=='light')console.log('PREMATCH_THEME_DIAG_NOT_LIGHT '+JSON.stringify({mobile,clicked}));
-              // Do not assert: this diagnostic must report the actual regression.
+              const assertScene=(v,theme,label)=>{
+                assert.equal(v.shape.theme,theme,label+'_THEME');
+                assert.equal(v.shape.mode,'1',label+'_MODE');
+                assert.equal(v.shape.visible,true,label+'_PANEL_NOT_VISIBLE');
+                assert(new URL(v.shape.url).searchParams.get('b46pm')==='all',label+'_ROUTE_LOST');
+                assert.equal(new URL(v.shape.url).hostname,'ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev',label+'_LEFT_TEST_ORIGIN');
+                assert(v.shape.nativeView==='Pre-Match Statistics',label+'_PRODUCTION_VIEW_SHOWING');
+                assert(v.shape.activePreMatch.every(x=>x==='all')&&v.shape.activePreMatch.length>0,label+'_ACTIVE_NOT_RESTORED');
+              };
+              assertScene(after,'light','TO_LIGHT');
+              const backButton=p.locator(candidates[0]);
+              await backButton.click({timeout:6000});
+              await p.waitForTimeout(550);
+              const reversed=await examine();
+              console.log('PREMATCH_THEME_DIAG_DARK_RETURN '+JSON.stringify({mobile,...reversed,errors:errs}));
+              assertScene(reversed,'dark','BACK_TO_DARK');
+              await p.reload({waitUntil:'domcontentloaded',timeout:60000});
+              await p.waitForFunction(()=>document.body.dataset.b46PrematchView==='1'&&!!document.querySelector('#b46-prematch-panel .b46pm-performance'),null,{timeout:20000});
+              const reloaded=await examine();
+              console.log('PREMATCH_THEME_DIAG_AFTER_REFRESH '+JSON.stringify({mobile,...reloaded,errors:errs}));
+              assertScene(reloaded,'dark','AFTER_REFRESH');
+              assert.deepEqual(errs,[],'UNHANDLED_PAGE_ERRORS');
+              console.log('PREMATCH_THEME_ROUTING_PASS '+JSON.stringify({mobile,modes:['dark','light','dark','refresh'],keptTestOrigin:true,route:'all'}));
               await p.close();
             }
           }finally{await browser.close()}
