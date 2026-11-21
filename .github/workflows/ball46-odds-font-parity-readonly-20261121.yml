@@ -1,0 +1,51 @@
+name: BALL46 odds price font compare TEST versus Production (read-only)
+on:
+  push:
+    branches: [test/ball46-premium-match-colors-20261120]
+    paths: ['.github/workflows/ball46-odds-font-parity-readonly-20261121.yml']
+permissions:
+  contents: read
+jobs:
+  font-compare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm install --no-save --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium --only-shell
+      - name: Measure native odds typography in both origins without modifying Worker
+        run: |
+          node --input-type=module <<'NODE'
+          import {chromium} from 'playwright';
+          const browser=await chromium.launch();
+          try{
+            const result={};
+            for(const [name,url] of Object.entries({production:'https://ball46.com/',test:'https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev/'})){
+              const page=await browser.newPage({viewport:{width:1440,height:900},serviceWorkers:'block'});
+              await page.addInitScript(()=>localStorage.setItem('nomad343_dashboard_theme_v1','dark'));
+              await page.goto(url,{waitUntil:'domcontentloaded',timeout:70000});
+              await page.waitForFunction(()=>document.querySelectorAll('[data-match-id].match-row .market-cell .b46-v3-quote strong[data-nomad-odds-raw]').length>0,null,{timeout:45000});
+              await page.waitForTimeout(1500);
+              result[name]=await page.evaluate(()=>{
+                const els=[...document.querySelectorAll('[data-match-id].match-row .market-cell .b46-v3-quote strong[data-nomad-odds-raw]')].filter(e=>e.getBoundingClientRect().height>0).slice(0,70);
+                const values=els.map(e=>{
+                  const s=getComputedStyle(e),p=getComputedStyle(e.parentElement);
+                  const r=e.getBoundingClientRect(),q=e.closest('.b46-v3-quote');
+                  return {id:e.closest('[data-match-id]')?.getAttribute('data-match-id'),raw:e.getAttribute('data-nomad-odds-raw'),display:e.textContent.trim(),fontSize:s.fontSize,fontFamily:s.fontFamily,fontWeight:s.fontWeight,lineHeight:s.lineHeight,letterSpacing:s.letterSpacing,transform:s.transform,zoom:s.zoom,fontStretch:s.fontStretch,priceWidth:r.width,priceHeight:r.height,quoteWidth:q?.getBoundingClientRect().width,quoteHeight:q?.getBoundingClientRect().height,quoteFont:p.fontSize};
+                });
+                const distinct=[...new Set(values.map(x=>[x.fontSize,x.fontWeight,x.lineHeight,x.fontFamily,x.priceHeight,x.quoteFont].join(' | ')))];
+                return {count:values.length,distinct,samples:values.slice(0,8)};
+              });
+              console.log('FONT_COMPARE_'+name.toUpperCase()+' '+JSON.stringify(result[name]));
+              await page.close();
+            }
+            const a=result.production,b=result.test;
+            const pKey=a.samples?.[0]?[a.samples[0].fontSize,a.samples[0].fontWeight,a.samples[0].lineHeight]:[];
+            const tKey=b.samples?.[0]?[b.samples[0].fontSize,b.samples[0].fontWeight,b.samples[0].lineHeight]:[];
+            console.log('ODDS_FONT_PARITY_FIRST',JSON.stringify({production:pKey,test:tKey,same:JSON.stringify(pKey)===JSON.stringify(tKey)}));
+          }finally{await browser.close()}
+          NODE
