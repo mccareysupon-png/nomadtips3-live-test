@@ -3,7 +3,7 @@ const browser=await chromium.launch();
 const ready='https://ball46-fullmarket-odds-v3-test-20261121.mccarey-supon.workers.dev';
 let deployed=false;
 for(let i=0;i<44;i++){
- try{const r=await fetch(ready+'/__fullmarket_health?perf='+Date.now(),{signal:AbortSignal.timeout(18000)});if(r.ok){const h=await r.json();if(h.nativePerfTest==='FLOW_POLYLINE_FAST_EXPANDED_SCROLL_SCOPE_OVERSCROLL_TEST'){deployed=true;break}}}catch{}
+ try{const r=await fetch(ready+'/__fullmarket_health?perf='+Date.now(),{signal:AbortSignal.timeout(18000)});if(r.ok){const h=await r.json();if(h.nativePerfTest==='FLOW_POLYLINE_INPUT_QA_20261121'){deployed=true;break}}}catch{}
  await new Promise(r=>setTimeout(r,1300));
 }
 if(!deployed)throw Error('OPTIMIZED_NATIVE_ASSETS_NOT_DEPLOYED');
@@ -67,11 +67,11 @@ try{
      const paths=[...root?.querySelectorAll('path.expand-flow-line')||[]];
      const icons=[...root?.querySelectorAll('[data-b46-event-icon]')||[]].map(e=>{
       const t=e.getAttribute('transform')||'',m=t.match(/translate\(([-\d.]+)\s+([-\d.]+)\)/);
-      return m?{x:Number(m[1]),y:Number(m[2])}:null
+      return m?{x:Number(m[1]),y:Number(m[2]),requestedX:Number(e.getAttribute('data-b46-fmb-perf-input-x'))}:null
      }).filter(Boolean);
      const normal=(path,x)=>{const len=path.getTotalLength();let lo=0,hi=len;for(let i=0;i<24;i++){const mid=(lo+hi)/2,q=path.getPointAtLength(mid);if(q.x<x)lo=mid;else hi=mid}return path.getPointAtLength((lo+hi)/2)};
-     const errors=icons.map(v=>Math.min(...paths.map(path=>{const p=normal(path,v.x);return Math.hypot(p.x-v.x,p.y-v.y)})));
-     return {paths:paths.length,icons:icons.length,maxErrorPx:Math.max(0,...errors),meanErrorPx:errors.length?errors.reduce((a,b)=>a+b,0)/errors.length:0,allPolyline:paths.every(p=>/^[MLml\d.,\s+-]+$/.test(p.getAttribute('d')||''))};
+     const errors=icons.map(v=>Math.min(...paths.map(path=>{const p=normal(path,v.requestedX);return Math.hypot(p.x-v.x,p.y-v.y)})));
+     return {paths:paths.length,icons:icons.length,exactInputRecorded:icons.every(v=>Number.isFinite(v.requestedX)),maxErrorPx:Math.max(0,...errors),meanErrorPx:errors.length?errors.reduce((a,b)=>a+b,0)/errors.length:0,allPolyline:paths.every(p=>/^[MLml\d.,\s+-]+$/.test(p.getAttribute('d')||''))};
     });
     console.log('B46_NATIVE_FLOW_POLYLINE_ACCURACY '+JSON.stringify(accuracy));
     if(accuracy.icons>0&&accuracy.maxErrorPx>0.3)throw Error('FLOW_ICON_GEOMETRY_REGRESSION_'+JSON.stringify(accuracy));
