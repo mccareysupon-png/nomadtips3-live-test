@@ -27,7 +27,7 @@ const ledgerBefore=await api('/test-ledger');
 assert(ledgerBefore.mode==='TEST_ONLY'&&ledgerBefore.stats.total>=8,'OLD_PICKS_NOT_FOUND');
 const frozenPrices=new Map(ledgerBefore.rows.map(r=>[r.fixture_id,{price:r.price,pick:r.pick,observed:r.observed,selected:r.picked_at,status:r.status}]));
 const code=fs.readFileSync('qa/prematch-history-20261120/prematch-only-worker.mjs','utf8');
-assert(code.includes('runDailyMission(now)')&&code.includes('for(let roundNo=1;roundNo<=5;roundNo++)'),'FIVE_ROUND_MISSION_MISSING');
+assert(code.includes('runDailyMission(now)')&&code.includes('if(history.completed<5)for(let roundNo=1;roundNo<=5;roundNo++)'),'FIVE_ROUND_ONCE_PER_DAY_MISSION_MISSING');
 assert(code.includes('scheduledFromNormalHub(snapshot,now)')&&code.includes("mergeStoredPrematch(await this.ctx.storage.get('botFixtures')"),'AUTO_BOT_INPUT_MISSING');
 assert(!code.includes('api.5dollarfootballapi.com'),'UNAUTHORIZED_PROVIDER_FETCH');
 assert(code.includes("event.cron!=='*/15 * * * *'"),'NORMAL_BOT_SCHEDULE_CHANGED');
