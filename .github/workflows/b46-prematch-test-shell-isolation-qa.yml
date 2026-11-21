@@ -1,0 +1,120 @@
+name: BALL46 TEST Pre-Match shell isolation and Live Statistics scroll parity
+on:
+  push:
+    branches: [test/ball46-premium-match-colors-20261120]
+    paths:
+      - '.github/workflows/b46-prematch-test-shell-isolation-qa.yml'
+      - '.github/workflows/premium-match-colors-test.yml'
+      - 'qa/prematch-native-ui-20261121/prematch-client.mjs'
+permissions: { contents: read }
+jobs:
+  test-shell:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          npm install --no-save --no-package-lock playwright@1.55.0
+          npx playwright install chromium --only-shell
+      - name: Verify no first-paint Production stage, isolated names and native wheel scroll
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {chromium,devices} from 'playwright';
+          const base='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev';
+          const suffix='B46_PM_TEST_SHELL_NO_PRODUCTION_FLASH_V1';
+          for(let i=0;i<60;i++){
+            const [r,h]=await Promise.all([
+              fetch(base+'/__b46_prematch_client.js?check=scope',{cache:'no-store',signal:AbortSignal.timeout(18000)}),
+              fetch(base+'/?b46pm=all',{cache:'no-store',signal:AbortSignal.timeout(18000)})
+            ]);
+            if(r.ok&&h.ok&&(await r.text()).includes(suffix)&&(await h.text()).includes('data-b46-pm-boot="1"'))break;
+            if(i===59)throw Error('TEST_SCOPE_WORKER_NOT_DEPLOYED');
+            await new Promise(ok=>setTimeout(ok,1800));
+          }
+          const b=await chromium.launch();
+          try{
+            // With JavaScript disabled, the Production HTML remains present
+            // as the supporting shell but MUST already be visually hidden.
+            const plain=await b.newPage({javaScriptEnabled:false,viewport:{width:1440,height:900}});
+            const rr=await plain.goto(base+'/?b46pm=all&firstPaint=1',{waitUntil:'domcontentloaded',timeout:60000});
+            assert.equal(rr.headers()['x-b46-page-scope'],'PREMATCH_TEST_ONLY');
+            const first=await plain.evaluate(()=>({
+              boot:document.documentElement.dataset.b46PmBoot,
+              stage:document.querySelector('section.workspace.singlepage > .workspace-stage'),
+              styles:!!document.getElementById('b46-prematch-native-styles')
+            }));
+            assert.equal(first.boot,'1','SERVER_BOOT_SCOPE_MISSING');
+            assert.equal(first.styles,true,'TEST_CSS_NOT_INJECTED');
+            const firstNative=await plain.evaluate(()=>{
+              const stage=document.querySelector('section.workspace.singlepage > .workspace-stage');
+              return stage?getComputedStyle(stage).display:'absent';
+            });
+            assert(['none','absent'].includes(firstNative),'NATIVE_PRODUCTION_CONTENT_FLASHES_BEFORE_JS');
+            console.log('PREMATCH_NO_PRODUCTION_FIRST_PAINT_PASS '+JSON.stringify({boot:first.boot,native:firstNative,scope:rr.headers()['x-b46-page-scope']}));
+            await plain.close();
+            for(const mobile of [false,true])for(const theme of ['dark','light']){
+              const p=await b.newPage(mobile?{...devices['iPhone 13'],serviceWorkers:'block'}:{viewport:{width:1440,height:920},serviceWorkers:'block'});
+              const errors=[];p.on('pageerror',e=>errors.push(e.message));
+              await p.addInitScript(t=>localStorage.setItem('nomad343_dashboard_theme_v1',t),theme);
+              await p.goto(base+'/?b46pm=all&b46pmPeriod=all&scopeQA=1',{waitUntil:'domcontentloaded',timeout:60000});
+              await p.waitForFunction(()=>document.body.dataset.b46PrematchView==='1'
+                &&document.querySelector('#b46-prematch-panel .b46pm-performance')
+                &&document.querySelector('#b46-prematch-panel .b46pm-performance-provenance')?.textContent.includes('Pre-Match Receiver'),null,{timeout:20000});
+              const data=await p.evaluate(()=>{
+                const panel=document.querySelector('#b46-prematch-panel');
+                const stage=document.querySelector('section.workspace.singlepage>.workspace-stage');
+                const promo=panel.querySelector('#b46pm-membership-promo');
+                const inner=panel.querySelector('#b46pm-scroll-region');
+                const cs=getComputedStyle(panel),pStyle=getComputedStyle(promo),innerStyle=getComputedStyle(inner);
+                return {
+                  htmlScope:document.documentElement.dataset.b46PmBoot,
+                  scope:panel.dataset.b46Scope,
+                  nativeDisplay:stage?getComputedStyle(stage).display:'absent',
+                  testLabel:panel.querySelector('.b46pm-description')?.textContent,
+                  navLabel:document.querySelector('#b46pm-stats-navigation .b46pm-nav-heading')?.textContent,
+                  mobileLabel:document.querySelector('#b46pm-mobile-navigation .b46m-grouplabel')?.textContent,
+                  visiblePanels:document.querySelectorAll('#b46-prematch-panel:not([hidden])').length,
+                  outerOverflow:cs.overflowY,innerOverflow:innerStyle.overflowY,
+                  outerTop:panel.getBoundingClientRect().top,outerBottom:panel.getBoundingClientRect().bottom,
+                  promoTop:promo.getBoundingClientRect().top,position:pStyle.position,
+                  nativeTop:stage?.getBoundingClientRect().top,scrollY,
+                  scrollHeight:panel.scrollHeight,clientHeight:panel.clientHeight
+                };
+              });
+              assert.equal(data.htmlScope,'1','EARLY_TEST_SCOPE_LOST');
+              assert.equal(data.scope,'PREMATCH_TEST_ONLY','WRONG_VIEW_SCOPE');
+              assert.equal(data.nativeDisplay,'none','OLD_PRODUCTION_STAGE_VISIBLE');
+              assert(data.testLabel.includes('TEST ONLY')&&(mobile?data.mobileLabel:data.navLabel).includes('TEST'),'TEST_NAMES_NOT_EXPLICIT');
+              assert.equal(data.visiblePanels,1,'DUPLICATE_TEST_PANEL');
+              assert.equal(data.outerOverflow,'auto','OUTER_SCROLLBAR_MISSING');
+              assert.equal(data.innerOverflow,'visible','NESTED_SCROLLBAR_PRESENT');
+              assert.equal(data.position,'sticky','PROMO_NOT_STICKY');
+              assert(data.scrollHeight>data.clientHeight,'NOTHING_TO_SCROLL');
+              const rect=await p.locator('#b46-prematch-panel').boundingBox();
+              await p.mouse.move(rect.x+Math.min(150,rect.width/2),rect.y+Math.min(160,rect.height/3));
+              await p.mouse.wheel(0,75);await p.waitForTimeout(240);
+              const post=await p.evaluate(()=>{
+                const panel=document.querySelector('#b46-prematch-panel');
+                const promo=panel.querySelector('#b46pm-membership-promo');
+                return {scroll:panel.scrollTop,y:scrollY,promoY:promo.getBoundingClientRect().top,
+                 stage:getComputedStyle(document.querySelector('section.workspace.singlepage>.workspace-stage')).display};
+              });
+              assert(post.scroll>=30,'TEST_WHEEL_DID_NOT_SCROLL '+JSON.stringify(post));
+              assert.equal(post.y,data.scrollY,'DOCUMENT_MOVED');
+              assert(Math.abs(post.promoY-data.promoTop)<1,'PROMO_MOVED');
+              assert.equal(post.stage,'none','PRODUCTION_RETURNED_WHEN_SCROLLING');
+              assert.deepEqual(errors,[],'PAGE_ERRORS');
+              console.log('PREMATCH_TEST_SHELL_ISOLATION_PASS '+JSON.stringify({mobile,theme,...data,scroll:post.scroll,productionVisible:false,errors}));
+              await p.close();
+            }
+            // A non-Pre-Match URL must NOT inherit the test boot marker:
+            // Live Statistics remains available as before.
+            const normal=await b.newPage({viewport:{width:1280,height:850}});
+            const live=await normal.goto(base+'/?view=statistics',{waitUntil:'domcontentloaded',timeout:60000});
+            assert(!('x-b46-page-scope' in live.headers()),'NORMAL_LIVE_ROUTE_MARKED_AS_TEST');
+            assert.equal(await normal.evaluate(()=>document.documentElement.dataset.b46PmBoot),undefined,'LIVE_STATS_INHERITS_TEST_BOOT');
+            console.log('LIVE_PRODUCTION_SHELL_UNCHANGED_PASS '+JSON.stringify({url:normal.url()}));
+            await normal.close();
+          }finally{await b.close()}
+          JS
