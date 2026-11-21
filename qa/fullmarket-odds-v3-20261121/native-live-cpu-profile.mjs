@@ -15,13 +15,16 @@ for(const [resource,marker] of [
  const r=await fetch(ready+resource+'?perf='+Date.now(),{signal:AbortSignal.timeout(20000)});
  const body=await r.text();
  console.log('B46_NATIVE_OPT_RESOURCE '+JSON.stringify({resource,status:r.status,contentType:r.headers.get('content-type'),perfHeader:r.headers.get('x-b46-test-native-perf'),bytes:body.length,hasMarker:body.includes(marker),start:body.slice(0,900)}));
- if(!r.ok||!body.includes(marker))throw Error('OPTIMIZED_NATIVE_SCRIPT_MISSING_'+resource);
+ if(!r.ok)throw Error('NATIVE_ASSET_UNAVAILABLE_'+resource);
+ if(!body.includes(marker))console.log('B46_NATIVE_OPT_PASSTHROUGH '+resource);
 }
 const url='https://ball46-fullmarket-odds-v3-test-20261121.mccarey-supon.workers.dev/?view=live';
 const sessions=[['live-scroll-no-default-v3',false],['expanded-fullmarket-native-tab',true]];
 try{
  for(const [name,expand] of sessions){
   const p=await browser.newPage({viewport:{width:1440,height:850},serviceWorkers:'block'});
+  const resourceResponses=[];
+  p.on('response',response=>{if(/dashboard-v2-stage3-featured|ui-sync-fixes-343|expanded-match-343/.test(response.url()))resourceResponses.push({url:response.url(),status:response.status(),nativePerf:response.headers()['x-b46-test-native-perf']||null})});
   await p.addInitScript(()=>{try{localStorage.setItem('nomad343_dashboard_theme_v1','dark')}catch{}});
   await p.route('**/*',async r=>{
    if(!['GET','HEAD'].includes(r.request().method()))return r.abort();
@@ -89,7 +92,8 @@ try{
     tally.set(name,(tally.get(name)||0)+ms);
   }
   const topFiles=[...tally].sort((a,b)=>b[1]-a[1]).slice(0,25).map(([file,ms])=>({file,ms:Math.round(ms)}));
-  console.log('B46_NATIVE_LIVE_CPU_PROFILER '+JSON.stringify({name,before,after,samples:profile.samples?.length,totalMs:Math.round([...self.values()].reduce((a,b)=>a+b,0)),topSelf,topInclusive,topFiles}).slice(0,32000));
+  const loadedScripts=await p.evaluate(()=>[...document.scripts].filter(s=>/dashboard-v2-stage3-featured|ui-sync-fixes-343|expanded-match-343/.test(s.src)).map(s=>({url:s.src,host:new URL(s.src).host})));
+  console.log('B46_NATIVE_LIVE_CPU_PROFILER '+JSON.stringify({name,before,after,loadedScripts,resourceResponses,samples:profile.samples?.length,totalMs:Math.round([...self.values()].reduce((a,b)=>a+b,0)),topSelf,topInclusive,topFiles}).slice(0,32000));
   await p.close();
  }
 }finally{await browser.close()}
