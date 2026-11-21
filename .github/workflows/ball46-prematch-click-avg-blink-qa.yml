@@ -90,7 +90,7 @@ jobs:
               // Verify deep-link continuity across a real hard refresh, not only same-page clicks.
               const reloadRoute=mobile?(theme==='dark'?'1x2':'btts'):(theme==='dark'?'predictions':'all');
               const reloadPeriod=theme==='dark'?'all':'today';
-              await p.locator('#b46-prematch-panel [data-b46-pm-period="'+reloadPeriod+'"]').evaluate(x=>x.click());
+              await p.locator('#b46-prematch-panel .b46pm-period-btn[data-b46-pm-period="'+reloadPeriod+'"]').evaluate(x=>x.click());
               const preReloadNav=(mobile?'#b46m-drawer':'aside.left-rail')+' [data-b46-prematch-route="'+reloadRoute+'"]';
               await p.locator(preReloadNav).evaluate(x=>x.click());
               const beforeReload=await p.evaluate(()=>({route:new URL(location.href).searchParams.get('b46pm'),period:new URL(location.href).searchParams.get('b46pmPeriod')}));
