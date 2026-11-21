@@ -110,3 +110,4 @@ try{
   await p.close();
  }
 }finally{await browser.close()}
+// QA recheck: horizontal and vertical native SVG line segments after optimized lookup.
