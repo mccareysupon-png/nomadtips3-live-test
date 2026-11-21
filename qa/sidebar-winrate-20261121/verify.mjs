@@ -20,14 +20,22 @@ async function capture(page){
 }
 async function oneCase(mode){
  const context=await browser.newContext({viewport:{width:mode.mobile?390:1440,height:mode.mobile?844:920},serviceWorkers:'block'});
- const page=await context.newPage(),graph=[],history=[],errors=[];
+ const page=await context.newPage(),graph=[],history=[],errors=[],graphResponses=[];
  if(mode.theme)await page.addInitScript(t=>localStorage.setItem('nomad343_dashboard_theme_v1',t),mode.theme);
  page.on('request',r=>{const u=new URL(r.url());if(u.pathname==='/b46-receiver-v1/graph')graph.push(u.pathname+u.search);if(u.pathname==='/api/engine/statistics')history.push(u.pathname)});
  page.on('pageerror',e=>errors.push(e.message.slice(0,300)));
+ page.on('response',r=>{try{if(new URL(r.url()).pathname==='/b46-receiver-v1/graph')graphResponses.push({status:r.status(),headers:{'x-b46-monitor-rates':r.headers()['x-b46-monitor-rates']?.slice(0,200)||null,'content-type':r.headers()['content-type']||null}})}catch{}});
  const res=await page.goto(BASE+'/index.html?sidebarFresh='+mode.label,{waitUntil:'domcontentloaded',timeout:65000});
  assert.equal(res.status(),200,'INDEX_NOT_200_'+mode.label);
  await page.waitForFunction(()=>window.__B46_SIDEBAR_HYDRATE?.initialized===true,{timeout:10000});
- await page.waitForFunction(()=>document.querySelector('[data-b46-rate-snapshot="all"]')?.dataset.b46MonitorLive==='1',{timeout:14000});
+ await page.waitForTimeout(2700);
+ const beforeClick=await capture(page);
+ console.log('SIDEBAR_HYDRATION_EARLY_DIAG',JSON.stringify({label:mode.label,state:beforeClick.state,all:beforeClick.values.all,graph,graphResponses,errors}));
+ if(!beforeClick.values.all?.live){
+  const probe=await page.evaluate(async()=>{try{const r=await fetch('/b46-receiver-v1/graph?market=all&variant=all&filter=all&range=all');return {status:r.status,header:r.headers.get('x-b46-monitor-rates')?.slice(0,350)||null,contentType:r.headers.get('content-type')}}catch(e){return {error:String(e)}}});
+  console.log('SIDEBAR_GRAPH_DIRECT_DIAG',JSON.stringify({label:mode.label,probe}));
+ }
+ await page.waitForFunction(()=>document.querySelector('[data-b46-rate-snapshot="all"]')?.dataset.b46MonitorLive==='1',null,{timeout:6000});
  const populated=await capture(page);
  assert(populated.cached?.rates&&populated.cached.sequence>=0,'RECEIVER_HEADER_NOT_CACHED_'+mode.label);
  for(const k of expectedKeys){
