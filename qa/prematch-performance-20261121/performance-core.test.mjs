@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {londonBusinessDay,emptyPerformance,applyLedgerEvent,performanceView} from './performance-core.mjs';
+import {londonBusinessDay,emptyPerformance,applyLedgerEvent,performanceView,receiverGraph,validReceiverGraph} from './performance-core.mjs';
 
 test('Cutoff is 06:00 Europe/London in winter and summer',()=>{
  assert.equal(londonBusinessDay('2026-11-21T05:59:59Z'),'2026-11-20');
@@ -90,4 +90,35 @@ test('Each newly recorded day inherits the prior closing balance without replayi
   assert.equal(s.daily[1].cumulativeUnits,firstClose);
   push({action:'SETTLED',signalId:'B',settledAt:'2026-11-18T20:00:00Z',odds:2,status:'LOSS'});
   assert.deepEqual(s.daily.map(x=>x.cumulativeUnits),[2,1]);
+});
+
+test('Pre-Match graph matches CURRENT live receiver schema, query and daily series format',()=>{
+ let s=emptyPerformance(),seq=0;
+ const add=e=>s=applyLedgerEvent(s,{sequence:++seq,...e}).snapshot;
+ add({action:'SELECTED',signalId:'A',pickedAt:'2026-10-01T10:00:00Z',odds:2});
+ add({action:'SETTLED',signalId:'A',settledAt:'2026-10-01T20:00:00Z',odds:2,status:'WIN'});
+ add({action:'SELECTED',signalId:'B',pickedAt:'2026-11-20T10:00:00Z',odds:3});
+ add({action:'SETTLED',signalId:'B',settledAt:'2026-11-20T20:00:00Z',odds:3,status:'LOSS'});
+ add({action:'SELECTED',signalId:'C',pickedAt:'2026-11-20T20:05:00Z',odds:5});
+ const q={market:'1X2',variant:'all',filter:'all',range:'all'};
+ const g=receiverGraph(s,q);
+ assert(validReceiverGraph(g,q));
+ assert.equal(g.source,'RECEIVER');assert.equal(g.schema,1);assert.equal(g.sequence,5);
+ assert.deepEqual(g.counts,{WIN:1,LOSS:1,HALF_WIN:0,HALF_LOSS:0,PUSH:0});
+ assert.equal(g.summary.rows,2);assert.equal(g.summary.wins,1);assert.equal(g.summary.losses,1);
+ assert.equal(g.summary.net,0);assert.equal(g.summary.stake,2);assert.equal(g.summary.avgOdds,2.5);
+ assert.equal(g.summary.maxDD,null,'do not misrepresent per-event drawdown with daily-only totals');
+ assert.equal(g.series.units.length,2);
+ assert(g.series.units.every(p=>Number.isFinite(p.date)&&Number.isFinite(p.value)));
+ assert.equal(g.series.roi.length,2);assert.equal(g.series.rate.length,2);
+ assert.equal(validReceiverGraph({...g,source:'LEGACY'},q),false);
+ assert.equal(validReceiverGraph({...g,market:'BTTS'},q),false);
+ const window={market:'1X2',variant:'all',filter:'all',range:'d7',endDay:'2026-11-20'};
+ const w=receiverGraph(s,window);
+ assert(validReceiverGraph(w,window));assert.equal(w.summary.rows,1);
+ assert.deepEqual(w.counts,{WIN:0,LOSS:1,HALF_WIN:0,HALF_LOSS:0,PUSH:0});
+ assert.equal(w.summary.net,-1);assert.equal(w.summary.roi,-100);
+ assert.equal(w.series.units.length,1);
+ assert.throws(()=>receiverGraph(s,{market:'BTTS'}),/QUERY_UNSUPPORTED/);
+ assert.throws(()=>receiverGraph(s,{market:'1X2',range:'WRONG'}),/QUERY_UNSUPPORTED/);
 });
