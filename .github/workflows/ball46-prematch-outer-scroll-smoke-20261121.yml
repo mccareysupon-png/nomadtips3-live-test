@@ -47,12 +47,24 @@ jobs:
               assert.equal(before.outerOverflow,'auto');assert.equal(before.innerOverflow,'visible');
               assert.equal(before.bannerPosition,'sticky');assert(before.canScroll,'OUTER_SCROLL_HEIGHT_MISSING');
               const mouseX=before.panelX+Math.min(150,before.panelWidth/2),mouseY=Math.min(before.panelY+before.panelHeight-45,before.bannerY+before.bannerHeight+75);
+              const beforeHit=await page.evaluate(({x,y})=>{
+                const el=document.elementFromPoint(x,y),panel=document.querySelector('#b46-prematch-panel'),
+                  banner=panel?.querySelector('.b46pm-membership-promo'),inner=panel?.querySelector('.b46pm-scroll-region');
+                const chain=[];let n=el;
+                while(n&&chain.length<8){chain.push({id:n.id,cls:typeof n.className==='string'?n.className.slice(0,90):'',tag:n.tagName});n=n.parentElement}
+                const elementStyle=getComputedStyle(panel),innerStyle=getComputedStyle(inner);
+                return {point:{x,y},chain,scrollHeight:panel.scrollHeight,clientHeight:panel.clientHeight,
+                  innerHeight:inner.scrollHeight,innerClient:inner.clientHeight,css:{position:elementStyle.position,overflow:elementStyle.overflowY,contain:elementStyle.contain},
+                  bannerRect:banner.getBoundingClientRect().toJSON(),innerRect:inner.getBoundingClientRect().toJSON()};
+              },{x:mouseX,y:mouseY});
+              console.log('PREMATCH_OUTER_SCROLL_DIAG_BEFORE '+JSON.stringify({mobile,theme,before,beforeHit}));
               await page.mouse.move(mouseX,mouseY);await page.mouse.wheel(0,90);await page.waitForTimeout(280);
               const next=await page.evaluate(()=>{
                 const panel=document.querySelector('#b46-prematch-panel'),banner=panel.querySelector('.b46pm-membership-promo'),inner=panel.querySelector('.b46pm-scroll-region');
                 return {panelScroll:panel.scrollTop,innerScroll:inner.scrollTop,bannerY:banner.getBoundingClientRect().y,docY:scrollY,
                   panelY:panel.getBoundingClientRect().y,hit:!!document.elementFromPoint(banner.getBoundingClientRect().left+banner.getBoundingClientRect().width/2,banner.getBoundingClientRect().top+20)?.closest('.b46pm-membership-promo')};
               });
+              console.log('PREMATCH_OUTER_SCROLL_DIAG_AFTER '+JSON.stringify({mobile,theme,next}));
               assert(next.panelScroll>=50,'WHEEL_DID_NOT_SCROLL_OUTER '+JSON.stringify({mobile,theme,next}));
               assert.equal(next.innerScroll,0,'INNER_SCROLLBAR_SCROLLING');
               assert.equal(next.docY,before.bodyY,'MAIN_DOCUMENT_MOVED');
