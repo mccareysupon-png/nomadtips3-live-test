@@ -1,0 +1,49 @@
+name: BALL46 investigate stray Pre-Match clicks and ancestors
+on:
+  push:
+    branches: [test/ball46-premium-match-colors-20261120]
+    paths: ['.github/workflows/ball46-prematch-click-diagnostics.yml']
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          npm install --no-save --no-package-lock playwright@1.55.0
+          npx playwright install chromium --only-shell
+      - run: |
+          node --input-type=module <<'JS'
+          import {chromium,devices} from 'playwright';
+          const base='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev';
+          const browser=await chromium.launch();
+          for(const mobile of [false,true]){
+           const p=await browser.newPage(mobile?{...devices['iPhone 13'],serviceWorkers:'block'}:{viewport:{width:1440,height:900},serviceWorkers:'block'});
+           p.on('pageerror',e=>console.log('CLICK_JS_ERROR '+e.message));
+           p.on('framenavigated',f=>console.log('CLICK_FRAME_NAV '+JSON.stringify({mobile,url:f.url()})));
+           await p.goto(base+'/?click-audit='+Date.now(),{waitUntil:'domcontentloaded'});
+           if(mobile){await p.locator('[data-b46m-open]').click();await p.locator('#b46m-drawer [data-b46-prematch-route="predictions"]').waitFor({state:'visible',timeout:15000})}
+           const nav=mobile?'#b46m-drawer [data-b46-prematch-route="predictions"]':'aside.left-rail [data-b46-prematch-route="predictions"]';
+           await p.locator(nav).evaluate(e=>e.click());
+           await p.waitForFunction(()=>document.body.dataset.b46PrematchView==='1'&&document.querySelectorAll('#b46-prematch-panel .b46pm-match').length>=1,null,{timeout:12000});
+           const audit=await p.evaluate(()=>{
+            const panel=document.querySelector('#b46-prematch-panel');let node=panel;const chain=[];while(node&&chain.length<8){const st=getComputedStyle(node),r=node.getBoundingClientRect();chain.push({tag:node.tagName,id:node.id,cls:String(node.className).slice(0,180),pointerEvents:st.pointerEvents,position:st.position,z:st.zIndex,rect:[r.x,r.y,r.width,r.height]});node=node.parentElement}
+            return {chain,centerTarget:(()=>{const r=panel.querySelector('.b46pm-card').getBoundingClientRect();const e=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return e?.outerHTML.slice(0,350)})(),links:[...panel.querySelectorAll('a,button,[onclick]')].map(e=>e.outerHTML.slice(0,400))};
+           });
+           console.log('CLICK_PAGE_AUDIT '+JSON.stringify({mobile,...audit}));
+           for(const selector of ['.b46pm-card','.b46pm-daybar','.b46pm-head','.b46pm-match','.b46pm-pick','.b46pm-details']){
+            const elem=p.locator('#b46-prematch-panel '+selector).first();if(await elem.count()===0)continue;
+            try{
+             await elem.scrollIntoViewIfNeeded();
+             const before=await p.evaluate(()=>({url:location.href,mode:document.body.dataset.b46PrematchView,active:[...document.querySelectorAll('[data-b46-prematch-route].active')].map(e=>e.dataset.b46PrematchRoute).slice(0,2)}));
+             await elem.click({timeout:8000});await p.waitForTimeout(180);
+             const after=await p.evaluate(()=>({url:location.href,mode:document.body.dataset.b46PrematchView,title:document.querySelector('#b46-prematch-panel .b46pm-title')?.textContent}));
+             console.log('CLICK_PAGE_RESULT '+JSON.stringify({mobile,selector,before,after}));
+             if(!after.mode){break}
+            }catch(e){console.log('CLICK_PAGE_ERROR '+JSON.stringify({mobile,selector,message:String(e).slice(0,350)}))}
+           }
+           await p.close();
+          }
+          await browser.close();
+          JS
