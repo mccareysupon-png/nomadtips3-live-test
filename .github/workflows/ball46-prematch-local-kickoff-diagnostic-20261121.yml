@@ -1,0 +1,41 @@
+name: BALL46 Pre-Match local kickoff vs status TEST-only audit
+on:
+  push:
+    branches: [test/ball46-premium-match-colors-20261120]
+    paths: [.github/workflows/ball46-prematch-local-kickoff-diagnostic-20261121.yml]
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Read TEST-only Prematch Store and compare UTC and Bangkok wall time
+        run: |
+          node --input-type=module <<'NODE'
+          const root='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev';
+          const r=await fetch(root+'/__b46_prematch_data',{cache:'no-store',signal:AbortSignal.timeout(20000)});
+          if(!r.ok)throw Error('TEST_DATA_HTTP_'+r.status);
+          const data=await r.json();
+          if(data.testLedger?.mode!=='TEST_ONLY')throw Error('NOT_TEST_ONLY');
+          const rows=data.testLedger?.rows||[];
+          const monitors=data.testMonitor?.monitor||{};
+          const tz='Asia/Bangkok';
+          const fmt=new Intl.DateTimeFormat('en-GB',{timeZone:tz,day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',hourCycle:'h23'});
+          const utcFmt=new Intl.DateTimeFormat('en-GB',{timeZone:'UTC',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',hourCycle:'h23'});
+          const now=Date.now()/1000;
+          const sample=rows.map(row=>{
+            const ts=Number(row.kickoff),dt=new Date(ts*1000),mon=monitors[row.fixture_id]??null;
+            return {id:row.fixture_id,home:row.home,away:row.away,status:row.status,kickoffRaw:row.kickoff,
+              kickoffUTC:Number.isFinite(ts)?utcFmt.format(dt):null,
+              kickoffThai:Number.isFinite(ts)?fmt.format(dt):null,
+              sinceStartMinutes:Number.isFinite(ts)?Math.round((now-ts)/60):null,
+              monitorPhase:mon?.phase||null,monitorMinute:mon?.minute??null,
+              monitorScore:mon?.score||null};
+          });
+          const overdue=sample.filter(x=>x.status==='PENDING'&&x.sinceStartMinutes>45).sort((a,b)=>b.sinceStartMinutes-a.sinceStartMinutes);
+          const timeOfScreenshot=sample.filter(x=>x.kickoffThai?.includes('21 Nov')&&(x.kickoffThai.includes('19:00')||x.kickoffThai.includes('20:00')));
+          console.log('TEST_PREMATCH_AUDIT',JSON.stringify({nowUTC:new Date().toISOString(),nowThai:fmt.format(new Date()),
+             rows:sample.length,stats:data.testLedger.stats,monitorKeys:Object.keys(monitors).length,overdueCount:overdue.length,
+             screenshotClockCandidates:timeOfScreenshot.slice(0,25),overdue:overdue.slice(0,35),recent:sample.slice(0,10)}));
+          NODE
