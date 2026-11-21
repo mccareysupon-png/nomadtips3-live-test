@@ -176,7 +176,11 @@ jobs:
             for(const k of ['content-length','content-encoding','etag','last-modified'])h.delete(k);
             h.set('cache-control','no-store');
             const pmStyles=prematchStyles+'#b46-prematch-panel{--b46pm-gradient:'+palette.reference.cum.backgroundImage+';--b46pm-bg:'+palette.reference.cum.backgroundColor+'}';
-            return new HTMLRewriter().on('head',{element(e){e.prepend('<style id="b46-premium-match-test">'+palette.css+'</style><style id="b46-prematch-native-styles">'+pmStyles+'</style><style id="b46-odds-movement-styles-test">'+oddsMovementStyles+'</style><script id="b46-premium-user-action-test">'+palette.reference.activationScript+'</script><script id="b46-odds-movement-script-test">'+oddsMovementScript+'</script>',{html:true})}}).on('body',{element(e){e.append('<script defer src="/__b46_prematch_client.js"></script>',{html:true})}}).transform(new Response(r.body,{status:r.status,headers:h}));
+            const directPreMatchTest=['predictions','all','1x2','btts'].includes(u.searchParams.get('b46pm'));
+            if(directPreMatchTest)h.set('x-b46-page-scope','PREMATCH_TEST_ONLY');
+            // Stamp the TEST scope onto HTML before parsing the production
+            // workspace markup. Prevents old Live/Statistics stage flash.
+            return new HTMLRewriter().on('html',{element(e){if(directPreMatchTest)e.setAttribute('data-b46-pm-boot','1')}}).on('head',{element(e){e.prepend('<style id="b46-premium-match-test">'+palette.css+'</style><style id="b46-prematch-native-styles">'+pmStyles+'</style><style id="b46-odds-movement-styles-test">'+oddsMovementStyles+'</style><script id="b46-premium-user-action-test">'+palette.reference.activationScript+'</script><script id="b46-odds-movement-script-test">'+oddsMovementScript+'</script>',{html:true})}}).on('body',{element(e){e.append('<script defer src="/__b46_prematch_client.js"></script>',{html:true})}}).transform(new Response(r.body,{status:r.status,headers:h}));
           }};
           EOF
           cat > premium-qa/wrangler.toml <<'EOF'
