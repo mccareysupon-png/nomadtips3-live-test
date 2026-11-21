@@ -1,0 +1,50 @@
+name: BALL46 Pre-Match live score and FT card QA
+on:
+  push:
+    branches: [test/ball46-premium-match-colors-20261120]
+    paths: ['.github/workflows/ball46-prematch-live-score-qa.yml']
+permissions: {contents: read}
+jobs:
+  qa:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          npm install --no-save --no-package-lock playwright@1.55.0
+          npx playwright install chromium --only-shell
+      - name: Check cached HUB scoreboard and settled decisions in native BALL46 test UI
+        run: |
+          mkdir -p evidence/prematch-live-score
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';import fs from 'node:fs';import {chromium,devices} from 'playwright';
+          const base='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev';
+          const response=await fetch(base+'/__b46_prematch_data',{cache:'no-store',signal:AbortSignal.timeout(20000)});
+          assert(response.ok,'TEST_UI_DATA_HTTP_'+response.status);
+          const d=await response.json(),l=d.testLedger,m=d.testMonitor;
+          assert.equal(l?.stats?.total,8);assert(l.stats.win>=2&&l.stats.loss>=1,'ORIGINAL_FT_NOT_DECIDED');assert(m?.cacheOnly===true&&m?.providerCalls===0&&m?.details?.matches>=4,'HUB_CACHE_NOT_READY');
+          const br=await chromium.launch();
+          const tests=[];try{for(const mobile of [false,true])for(const theme of ['dark','light']){
+            const p=await br.newPage(mobile?{...devices['iPhone 13'],serviceWorkers:'block'}:{viewport:{width:1440,height:900},serviceWorkers:'block'});
+            const errors=[];p.on('pageerror',e=>errors.push(e.message));
+            await p.addInitScript(t=>localStorage.setItem('nomad343_dashboard_theme_v1',t),theme);
+            await p.goto(base+'/?pm_live_qa='+Date.now(),{waitUntil:'domcontentloaded',timeout:50000});
+            if(mobile){await p.locator('[data-b46m-open]').click();await p.locator('#b46m-drawer [data-b46-prematch-route="predictions"]').waitFor({state:'visible',timeout:15000})}
+            const locator=mobile?'#b46m-drawer [data-b46-prematch-route="predictions"]':'aside.left-rail [data-b46-prematch-route="predictions"]';
+            await p.locator(locator).evaluate(e=>e.click());
+            await p.waitForFunction(()=>document.querySelectorAll('#b46-prematch-panel .b46pm-match').length===8&&document.querySelectorAll('#b46-prematch-panel .b46pm-ft').length>=3,null,{timeout:25000});
+            const view=await p.evaluate(()=>({total:document.querySelectorAll('#b46-prematch-panel .b46pm-match').length,decided:document.querySelectorAll('#b46-prematch-panel .b46pm-ft').length,scores:[...document.querySelectorAll('#b46-prematch-panel .b46pm-scoreboard')].map(e=>e.textContent),live:[...document.querySelectorAll('#b46-prematch-panel .b46pm-scoreboard.live')].map(e=>e.textContent),kpis:[...document.querySelectorAll('#b46-prematch-panel .b46pm-summary .b46pm-card')].map(e=>e.textContent),panelWidth:document.querySelector('#b46-prematch-panel').getBoundingClientRect().width,screen:innerWidth,pageScroll:document.documentElement.scrollWidth}));
+            assert(view.decided>=3&&view.scores.length>=3,'SCORE_CARD_NOT_PRESENT '+JSON.stringify(view));assert(view.pageScroll<=view.screen+2,'MOBILE_OVERFLOW '+JSON.stringify(view));assert.equal(errors.length,0,JSON.stringify(errors));
+            await p.screenshot({path:'evidence/prematch-live-score/'+(mobile?'mobile':'desktop')+'-'+theme+'.png',fullPage:true});
+            tests.push({mobile,theme,...view,errors});console.log('PREMATCH_LIVE_UI_CASE '+JSON.stringify({mobile,theme,total:view.total,decided:view.decided,scores:view.scores,live:view.live,kpis:view.kpis,scroll:view.pageScroll}));
+            await p.close();
+          }}finally{await br.close()}
+          fs.writeFileSync('evidence/prematch-live-score/report.json',JSON.stringify({checkedAt:new Date().toISOString(),source:m.source,providerCalls:0,stats:l.stats,tests},null,2));
+          console.log('PREMATCH_LIVE_UI_VERIFIED '+JSON.stringify({url:base,cases:tests.length,stats:l.stats,hubCacheOnly:true,providerCalls:0,productionWrites:0}));
+          JS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-prematch-live-score-ui-evidence
+          path: evidence/prematch-live-score/
+          retention-days: 7
