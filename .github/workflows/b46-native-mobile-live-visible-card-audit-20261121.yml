@@ -1,0 +1,46 @@
+name: BALL46 actual LIVE mobile visible match card DOM audit READ ONLY
+on:
+  push:
+    branches: [test/ball46-premium-match-colors-20261120]
+    paths: ['.github/workflows/b46-native-mobile-live-visible-card-audit-20261121.yml']
+permissions: {contents: read}
+jobs:
+  mobile:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          npm install --no-save --no-package-lock playwright@1.55.0
+          npx playwright install chromium --only-shell
+      - name: Identify visible card on original LIVE mobile, not hidden PC article
+        run: |
+          node --input-type=module <<'JS'
+          import {chromium,devices} from 'playwright';
+          const b=await chromium.launch();
+          for(const theme of ['dark','light']){
+            const p=await b.newPage({...devices['iPhone 13'],serviceWorkers:'block'});
+            await p.addInitScript(t=>localStorage.setItem('nomad343_dashboard_theme_v1',t),theme);
+            await p.goto('https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev/?mobileNativeAudit=1',{waitUntil:'domcontentloaded',timeout:60000});
+            await p.waitForTimeout(2800);
+            const out=await p.evaluate(()=>{
+              const select=['.match-row','.b46m-match-row','.mobile-match-row','.match-card','[data-match-id]','.b46m-row','.b46m-score-card','[data-b46m-match]','[data-mobile-match]'];
+              const names=Object.fromEntries(select.map(q=>[q,[...document.querySelectorAll(q)].slice(0,4).map(e=>{
+                const r=e.getBoundingClientRect(),s=getComputedStyle(e);return {cls:e.className,w:r.width,h:r.height,display:s.display,text:e.textContent?.slice(0,150)};})]));
+              const matches=[];
+              for(const e of document.querySelectorAll('article,section,div,details,li')){
+                const r=e.getBoundingClientRect(),s=getComputedStyle(e);
+                if(r.width<260||r.height<40||r.height>330||s.visibility==='hidden'||s.display==='none')continue;
+                const text=(e.textContent||'').trim().replace(/\s+/g,' ');
+                if(!/Central Coast Mariners|Perth Glory|Brisbane Roar|Sydney FC \(W\)/i.test(text))continue;
+                matches.push({tag:e.tagName,cls:String(e.className).slice(0,130),w:r.width,h:r.height,display:s.display,cols:s.gridTemplateColumns,background:s.backgroundImage,bgColor:s.backgroundColor,padding:s.padding,html:e.outerHTML.slice(0,3400)});
+                if(matches.length>=10)break;
+              }
+              const classSamples=[...document.querySelectorAll('[class]')].filter(x=>/mobile|b46m-|score|fixture|league/i.test(String(x.className))&&x.getBoundingClientRect().width>260&&x.getBoundingClientRect().height>35).slice(0,25).map(x=>({cls:String(x.className).slice(0,150),w:x.getBoundingClientRect().width,h:x.getBoundingClientRect().height}));
+              return {theme:document.documentElement.dataset.theme,names,matches,classSamples};
+            });
+            console.log('B46_NATIVE_MOBILE_VISIBLE_MATCH '+JSON.stringify({theme,...out}));
+            await p.close();
+          }
+          await b.close();
+          JS
