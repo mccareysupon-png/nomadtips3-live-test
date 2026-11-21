@@ -216,8 +216,13 @@ async function browserCheck(origin,label,full){
     const before=await p.evaluate(()=>({order:window.__b46SignalStableQA.state().lastOrder.join(','),frozen:window.__b46SignalStableQA.state().frozen,top:document.querySelector('.status-section .match-row.active')?.getBoundingClientRect().top}));
     const local=state.sorted.map((x,i)=>({fixtureId:x.id,createdAt:1795245000000+i*1000}));
     await p.evaluate(signals=>window.__b46SignalStableQA.applySignals({signals}),local);
-    await p.waitForTimeout(500);
+    await p.waitForFunction(anchor=>{
+      const s=window.__b46SignalStableQA.state(),r=document.querySelector('.status-section .match-row.active');
+      const top=r?.getBoundingClientRect().top;
+      return s.frozen===anchor.frozen&&s.lastOrder.join(',')===anchor.order&&Number.isFinite(top)&&Math.abs(top-anchor.top)<3;
+    },before,{timeout:3500,polling:100});
     const after=await p.evaluate(()=>({order:window.__b46SignalStableQA.state().lastOrder.join(','),frozen:window.__b46SignalStableQA.state().frozen,top:document.querySelector('.status-section .match-row.active')?.getBoundingClientRect().top}));
+    console.log('BALL46_GHOST_FIX_FLOW_ANCHOR_CHECK_'+label+'_'+mode.name+' '+JSON.stringify({before,after}));
     assert.equal(after.frozen,id,'EVENTFLOW_FROZEN_MATCH_CHANGED');
     assert.equal(after.order,before.order,'EVENTFLOW_REORDERED_WHILE_OPEN');
     assert(Math.abs(after.top-before.top)<3,'EVENTFLOW_VIEWPORT_SHIFTED');
@@ -245,6 +250,7 @@ try{
  const payload=prepare(h);
  report.testApproved={cssSha:sha(payload.css),jsSha:sha(payload.js),testScope:h.scope};save();
  base=await active();
+ console.log('BALL46_GHOST_FIX_ACTIVE_BEFORE_RELEASE '+JSON.stringify({active:base}));
  report.oldVersion=base;save();
  const old=await version(base),source=main(old);
  report.beforeActiveVersion=base; // Existing code is verified byte-for-byte against baseline Signal CSS/JS inside patch().
