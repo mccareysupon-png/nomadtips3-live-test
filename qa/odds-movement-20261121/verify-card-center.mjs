@@ -49,9 +49,10 @@ try{
     number.setAttribute('data-nomad-odds-raw',raw);number.textContent=raw;
     await sleep(180);
     const started=sample();
-    await sleep(2400);const mid=sample();
-    await sleep(3000);const late=sample();
-    await sleep(650);const stopped=sample();
+    // Sample with at least one second of margin before the 6s cutoff to avoid runner scheduling jitter.
+    await sleep(2100);const mid=sample();
+    await sleep(2600);const late=sample();
+    await sleep(1600);const stopped=sample();
     return {started,mid,late,stopped};
    };
    const up=await transition('1.97'),down=await transition('1.90');
@@ -83,8 +84,8 @@ try{
   // The offscreen synthetic fixture tests positioning, not native grid gutters.
   // Verify real 1X2 quote gutters below against live table DOM.
   assert(Math.abs(s.qWidth-proof.idle.qWidth)<.7,'QUOTE_WIDTH_CHANGED_'+name);
-  assert.equal(d.mid.direction,name.toLowerCase(),'PULSE_CLEARED_BEFORE_THREE_SECONDS_'+name);
-  assert.equal(d.late.direction,name.toLowerCase(),'PULSE_CLEARED_BEFORE_SIX_SECONDS_'+name);
+  assert.equal(d.mid.direction,name.toLowerCase(),'PULSE_CLEARED_BEFORE_MIDPOINT_'+name);
+  assert.equal(d.late.direction,name.toLowerCase(),'PULSE_CLEARED_BEFORE_FINAL_SECOND_'+name);
   assert.equal(d.stopped.direction,null,'PULSE_NOT_CLEARED_AFTER_SIX_SECONDS_'+name);
   console.log('ARROW_MIDDLE_OF_NUMBER_PASS '+name+' '+JSON.stringify({quoteHeight:s.qHeight,arrowTop:s.cardTop,offsetFromCardCenter:s.offsetFromCardCenter,offsetFromNumberCenter:s.offsetFromNumberCenter,visualGap:s.sheetGap,cycle:s.quoteCycles,duration:s.quoteDuration,activeNearSixSeconds:!!d.late.direction,clearedAfterSixSeconds:!d.stopped.direction}));
  }

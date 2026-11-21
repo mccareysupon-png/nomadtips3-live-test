@@ -22,5 +22,5 @@ jobs:
         run: |
           npm install --no-save --no-audit --no-fund playwright@1.55.0
           npx playwright install chromium --only-shell
-      - name: Assert 8.5px arrow aligned to price numerals, 3px gutter, six pulses lasting six seconds
+      - name: Assert 7.6px arrow aligned to price numerals, 3px gutter, six pulses lasting six seconds
         run: node qa/odds-movement-20261121/verify-card-center.mjs
