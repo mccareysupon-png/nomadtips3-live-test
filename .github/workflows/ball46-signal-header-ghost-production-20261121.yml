@@ -1,0 +1,41 @@
+name: BALL46 Signal Ghost Header Hotfix — guarded Production
+on:
+  push:
+    branches: [release/ball46-signal-header-ghost-fix-20261121]
+    paths:
+      - '.github/workflows/ball46-signal-header-ghost-production-20261121.yml'
+permissions:
+  contents: read
+  statuses: write
+concurrency:
+  group: ball46-production-deploy
+  cancel-in-progress: false
+jobs:
+  signal-ghost-hotfix:
+    if: github.ref == 'refs/heads/release/ball46-signal-header-ghost-fix-20261121'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Syntax and exact baseline guard
+        run: |
+          node --check deploy-assets/signal-latest-20261121/deploy.mjs
+          node --check qa/signal-stable-20261121/signal-stable.mjs
+          node --check deploy-assets/signal-latest-20261121/signal-stable-baseline.mjs
+          npm install --no-save --no-audit --no-fund acorn@8 playwright@1.55.0
+          npx playwright install chromium --only-shell
+      - name: Candidate preview, header ghost regression PC/mobile, production switch and rollback guard
+        working-directory: deploy-assets/signal-latest-20261121
+        run: node deploy.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-signal-ghost-hotfix-audit-${{ github.run_id }}
+          path: deploy-assets/signal-latest-20261121/audit
+          if-no-files-found: warn
+          retention-days: 30
