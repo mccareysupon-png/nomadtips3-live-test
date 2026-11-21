@@ -1,0 +1,45 @@
+name: "[Codex PC] Ball46 mobile statistics card alignment"
+
+on:
+  push:
+    branches:
+      - codex-pc/release-ball46-mobile-stats-cards
+    paths:
+      - .github/workflows/codex-pc-mobile-stats-production.yml
+      - qa/codex-pc-mobile-stats-release/**
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ball46-production-ui-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: github.ref == 'refs/heads/codex-pc/release-ball46-mobile-stats-cards'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Prepare browser and check release files
+        run: |
+          for file in qa/codex-pc-mobile-stats-release/*.mjs; do node --check "$file" || exit; done
+          npm install --prefix "$RUNNER_TEMP/codex-pc-mobile-runtime" --no-package-lock --no-audit --no-fund playwright@1.55.0
+          "$RUNNER_TEMP/codex-pc-mobile-runtime/node_modules/.bin/playwright" install chromium --only-shell
+      - name: Verify inactive version and publish mobile statistics layout
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: node qa/codex-pc-mobile-stats-release/release.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: codex-pc-mobile-stats-production-evidence
+          path: ${{ runner.temp }}/codex-pc-mobile-stats-production-proof
+          if-no-files-found: ignore

@@ -1,0 +1,60 @@
+@media (max-width: 760px) {
+  html:root body[data-workspace-view="statistics"] .workspace.singlepage .workspace-panel[data-workspace-panel="statistics"] {
+    --mobile-stats-spacing: 12px;
+    --mobile-stats-radius: 12px;
+    --mobile-stats-inner-radius: 10px;
+    padding-block-start: var(--mobile-stats-spacing) !important;
+    padding-inline: var(--mobile-stats-spacing) !important;
+  }
+
+  html:root body[data-workspace-view="statistics"] .workspace.singlepage .workspace-panel[data-workspace-panel="statistics"] > :is(.workspace-view-head, .b46-exact-mobile) {
+    margin: 0 0 var(--mobile-stats-spacing) !important;
+  }
+
+  html:root body[data-workspace-view="statistics"] .workspace.singlepage .workspace-panel[data-workspace-panel="statistics"] > .sp-stats-content {
+    padding-inline: 0 !important;
+  }
+
+  html:root body[data-workspace-view="statistics"] .workspace.singlepage .workspace-panel[data-workspace-panel="statistics"] .sp-stats-content > :is(.b46m14-strip, #b46-finance-chart-card#b46-finance-chart-card) {
+    margin: 0 0 var(--mobile-stats-spacing) !important;
+  }
+
+  html:root body[data-workspace-view="statistics"] .workspace.singlepage .sp-stats-content > .sp-results {
+    margin: 0 !important;
+  }
+
+  html:root body[data-workspace-view="statistics"] .workspace.singlepage .workspace-panel[data-workspace-panel="statistics"] :is(
+    .workspace-view-head, .b46-exact-link, #b46-finance-chart-card, .f46-card, .sp-results
+  ) {
+    border: 0 !important;
+    border-radius: var(--mobile-stats-radius) !important;
+  }
+
+  html:root body[data-workspace-view="statistics"] .workspace.singlepage .workspace-panel[data-workspace-panel="statistics"] :is(
+    .b46m14-card, .b46-market-unified-outcomes, .b46-stage-outcomes, .f46-metrics > div,
+    .b46-stage-summary-item, .b46-v1-market-detail, .b46m-hcard
+  ) {
+    border: 0 !important;
+    border-radius: var(--mobile-stats-inner-radius) !important;
+  }
+
+  html:root body[data-workspace-view="statistics"] .workspace.singlepage .workspace-panel[data-workspace-panel="statistics"] :is(
+    .workspace-view-head, .b46-exact-link, #b46-finance-chart-card, .f46-card, .sp-results,
+    .b46m14-card, .b46-market-unified-outcomes, .b46-stage-outcomes, .f46-metrics > div,
+    .b46-stage-summary-item, .b46-v1-market-detail, .b46m-hcard
+  ):not(:focus-visible),
+  html:root body[data-workspace-view="statistics"] .workspace.singlepage #b46-finance-chart-card .f46-card::before,
+  html:root body[data-workspace-view="statistics"] .workspace.singlepage #b46-finance-chart-card .f46-card::after {
+    box-shadow: none !important;
+  }
+
+  html:root body[data-workspace-view="statistics"] .workspace.singlepage .workspace-panel[data-workspace-panel="statistics"] :is(
+    .workspace-view-head, .f46-heading, .f46-overview, .f46-details, .sp-results-head, .sp-pager, .b46m-history
+  ) {
+    padding-inline: var(--mobile-stats-spacing) !important;
+  }
+
+  html:root body[data-workspace-view="statistics"] .workspace.singlepage #b46-finance-chart-card .f46-card > :is(.f46-controls, .f46-plot, .f46-foot) {
+    margin-inline: var(--mobile-stats-spacing) !important;
+  }
+}
