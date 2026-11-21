@@ -181,12 +181,19 @@
     .workspace.singlepage .right-rail > .prediction-card[data-codex-vote-state="retry"] #pv8-confirm {
       grid-column: 2;
       grid-row: 1;
+      gap: 6px !important;
       width: auto !important;
       min-height: 28px !important;
       margin: 0 !important;
       padding: 4px 8px !important;
       font-size: 9px !important;
+      letter-spacing: 0.04em !important;
       white-space: nowrap !important;
+    }
+
+    .workspace.singlepage .right-rail > .prediction-card[data-codex-vote-state="retry"] #pv8-confirm svg {
+      width: 12px !important;
+      height: 12px !important;
     }
 
     .workspace.singlepage .right-rail > .prediction-card[data-codex-vote-state] #pv8-vote-message {
