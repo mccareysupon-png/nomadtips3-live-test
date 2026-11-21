@@ -47,5 +47,12 @@ jobs:
             const pKey=a.samples?.[0]?[a.samples[0].fontSize,a.samples[0].fontWeight,a.samples[0].lineHeight]:[];
             const tKey=b.samples?.[0]?[b.samples[0].fontSize,b.samples[0].fontWeight,b.samples[0].lineHeight]:[];
             console.log('ODDS_FONT_PARITY_FIRST',JSON.stringify({production:pKey,test:tKey,same:JSON.stringify(pKey)===JSON.stringify(tKey)}));
+            if(!a.count || !b.count)throw new Error('PRICE_FONT_SAMPLE_MISSING');
+            if(JSON.stringify(pKey)!==JSON.stringify(tKey))throw new Error('ODDS_NUMBER_FONT_CHANGED_IN_TEST');
+            const sameFontFamily=a.samples[0].fontFamily===b.samples[0].fontFamily;
+            const sameLetterSpacing=a.samples[0].letterSpacing===b.samples[0].letterSpacing;
+            const sameTextGeometry=Math.abs(a.samples[0].priceHeight-b.samples[0].priceHeight)<0.51;
+            if(!sameFontFamily||!sameLetterSpacing||!sameTextGeometry)throw new Error('ODDS_NUMBER_TYPOGRAPHY_DRIFT');
+            console.log('TEST_ONLY_ODDS_FONT_SIZE_PRESERVED',JSON.stringify({size:a.samples[0].fontSize,weight:a.samples[0].fontWeight,lineHeight:a.samples[0].lineHeight,sameFontFamily,sameLetterSpacing,sameTextGeometry}));
           }finally{await browser.close()}
           NODE
