@@ -34,6 +34,7 @@ jobs:
               await p.addInitScript(()=>localStorage.setItem('nomad343_dashboard_theme_v1','dark'));
               await p.goto(base+'/?b46pm=all&b46pmPeriod=all&themeRouteDiagnostic=1',{waitUntil:'domcontentloaded',timeout:60000});
               await p.waitForFunction(()=>document.body.dataset.b46PrematchView==='1'&&!!document.querySelector('#b46-prematch-panel .b46pm-performance'),null,{timeout:20000});
+              if(mobile)await p.locator('button[data-b46-mobile-theme-toggle]').waitFor({state:'visible',timeout:20000});
               const examine=()=>p.evaluate(()=>{
                 const shape=()=>({
                   url:location.href,pathname:location.pathname,search:location.search,hash:location.hash,
@@ -75,6 +76,12 @@ jobs:
                 assert(v.shape.activePreMatch.every(x=>x==='all')&&v.shape.activePreMatch.length>0,label+'_ACTIVE_NOT_RESTORED');
               };
               assertScene(after,'light','TO_LIGHT');
+              await p.reload({waitUntil:'domcontentloaded',timeout:60000});
+              await p.waitForFunction(()=>document.body.dataset.b46PrematchView==='1'&&!!document.querySelector('#b46-prematch-panel .b46pm-performance'),null,{timeout:20000});
+              const lightReload=await examine();
+              console.log('PREMATCH_THEME_DIAG_LIGHT_REFRESH '+JSON.stringify({mobile,...lightReload,errors:errs}));
+              assertScene(lightReload,'light','LIGHT_AFTER_REFRESH');
+              if(mobile)await p.locator('button[data-b46-mobile-theme-toggle]').waitFor({state:'visible',timeout:20000});
               const backButton=p.locator(candidates[0]);
               await backButton.click({timeout:6000});
               await p.waitForTimeout(550);
