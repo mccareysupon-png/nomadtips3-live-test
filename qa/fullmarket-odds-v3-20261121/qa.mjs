@@ -85,7 +85,7 @@ try{
    assert.equal(checkMove.stats.sourceRequestsAdded,0);
    await p.waitForTimeout(6100);
    assert.equal(await cell.getAttribute('data-b46-fmb-odds-move'),null,'SIX_SECOND_CLEANUP_FAILED');
-   const down=Number((Number(init.value)-.07).toFixed(2));
+   const down=Number(init.value); // preserve valid odds above 1.00 even when the original live quote is 1.01
    await set(down);
    await p.waitForTimeout(300);
    const downState=await cell.evaluate(td=>({dir:td.getAttribute('data-b46-fmb-odds-move'),color:getComputedStyle(td).color,clip:getComputedStyle(td,'::after').clipPath,stats:{...window.__b46FullMarketOddsV3Stats}}));
