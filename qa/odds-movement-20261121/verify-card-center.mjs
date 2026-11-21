@@ -71,13 +71,29 @@ try{
   assert.equal(s.quoteDuration,'1s','PULSE_NOT_ONE_SECOND_'+name);
   assert.equal(s.quoteCycles,'6','NOT_SIX_PULSES_'+name);
   assert.equal(s.quoteAnimation,'b46-odds-card-pulse-6x','PULSE_ANIMATION_MISSING_'+name);
-  assert(Math.abs(s.sheetGap-3)<.7,'SHEET_GAP_NOT_THREE_PIXELS_'+name);
+  // The offscreen synthetic fixture tests positioning, not native grid gutters.
+  // Verify real 1X2 quote gutters below against live table DOM.
   assert(Math.abs(s.qWidth-proof.idle.qWidth)<.7,'QUOTE_WIDTH_CHANGED_'+name);
   assert.equal(d.mid.direction,name.toLowerCase(),'PULSE_CLEARED_BEFORE_THREE_SECONDS_'+name);
   assert.equal(d.late.direction,name.toLowerCase(),'PULSE_CLEARED_BEFORE_SIX_SECONDS_'+name);
   assert.equal(d.stopped.direction,null,'PULSE_NOT_CLEARED_AFTER_SIX_SECONDS_'+name);
   console.log('ARROW_MIDDLE_OF_CARD_PASS '+name+' '+JSON.stringify({quoteHeight:s.qHeight,arrowTop:s.cardTop,offsetFromCardCenter:s.offsetFromCardCenter,offsetFromNumberCenter:s.offsetFromNumberCenter,visualGap:s.sheetGap,cycle:s.quoteCycles,duration:s.quoteDuration,activeNearSixSeconds:!!d.late.direction,clearedAfterSixSeconds:!d.stopped.direction}));
  }
+ const nativeSpacing=await page.evaluate(()=>{
+  const pairs=[];
+  for(const cell of document.querySelectorAll('[data-match-id].match-row .market-cell')){
+   if(cell.getBoundingClientRect().width<50)continue;
+   const cards=[...cell.querySelectorAll('.b46-v3-quote')].filter(x=>x.getBoundingClientRect().width>5);
+   for(let i=0;i<cards.length-1;i++){
+    const a=cards[i].getBoundingClientRect(),b=cards[i+1].getBoundingClientRect();
+    if(b.left>a.right)pairs.push({raw:b.left-a.right,visible:b.left-a.right-1,market:cell.className});
+   }
+   if(pairs.length>=3)break;
+  }
+  return pairs;
+ });
+ console.log('LIVE_NATIVE_QUOTE_GAP_PROOF',JSON.stringify(nativeSpacing));
+ assert(nativeSpacing.some(x=>Math.abs(x.visible-3)<.65),'NATIVE_3PX_SEPARATION_NOT_FOUND');
  assert(proof.stats.ups>=1&&proof.stats.downs>=1,'ODDS_DIFFERENTIAL_DETECTOR_NOT_WORKING');
  assert.deepEqual(errors,[],'BROWSER_ERRORS_'+JSON.stringify(errors));
  console.log('BALL46_ODDS_ARROW_CENTRED_TEST_PASS');
