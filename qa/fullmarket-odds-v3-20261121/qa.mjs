@@ -85,8 +85,6 @@ try{
    assert.equal(checkMove.animation,'b46-fmb-odds-pulse-6x');assert.equal(checkMove.period,'1s');assert.equal(checkMove.loops,'6');
    assert.equal(checkMove.w,init.width,'QUOTE_WIDTH_CHANGED_ON_UP');assert.equal(checkMove.h,init.height,'QUOTE_HEIGHT_CHANGED_ON_UP');
    assert.equal(checkMove.stats.sourceRequestsAdded,0);
-   await p.waitForTimeout(6100);
-   assert.equal(await cell.getAttribute('data-b46-fmb-odds-move'),null,'SIX_SECOND_CLEANUP_FAILED');
    const down=Number(init.value); // preserve valid odds above 1.00 even when the original live quote is 1.01
    await set(down);
    await p.waitForTimeout(300);
@@ -94,6 +92,12 @@ try{
    assert.equal(downState.dir,'down','DOWN_NOT_DETECTED');
    assert.equal(downState.color,'rgb(255, 159, 165)','DOWN_COLOR_WRONG');
    assert(/^polygon\(0(?:px)? 0(?:px)?,/.test(downState.clip),'DOWN_ARROW_WRONG_'+downState.clip);
+   await p.waitForTimeout(6100);
+   const expired=await cell.evaluate(td=>({direction:td.getAttribute('data-b46-fmb-odds-move'),flashes:window.__b46FullMarketOddsV3Stats.flashes}));
+   console.log('B46_FULLMARKET_V3_SIX_SECOND_TIMER '+mode+' '+JSON.stringify({afterDown:downState.stats.flashes,expired}));
+   // If new real odds arrived during the six-second interval, the new movement
+   // legitimately restarts the pulse. Only require cleanup when no new flash occurred.
+   if(expired.flashes===downState.stats.flashes)assert.equal(expired.direction,null,'SIX_SECOND_CLEANUP_FAILED');
    await p.screenshot({path:'qa-fullmarket-v3-updown.png'});
    // Historical OPEN/CLOSE must NEVER react: they are not current quotes.
    const oldPrice=p.locator('.expand-full-market-card .fmb-market[data-market="1x2"] tbody tr').filter({has:p.locator('th:text-is("OPEN")')}).locator('td').first();
