@@ -1,0 +1,71 @@
+(() => {
+  'use strict';
+
+  const railSelector = '.workspace.singlepage .live-stage-grid > .right-rail';
+  const comparisonSelector = '[data-featured-stats]';
+  const voteSelector = '[data-prediction-card]';
+  const observed = comparisonSelector + ', ' + voteSelector;
+  const comparableValue = element => /^\d+(?:[.,]\d+)?%?$/.test(element?.textContent.trim() || '');
+
+  function markComparison(stats) {
+    const rows = stats.querySelectorAll(':scope > .stat-row');
+    const hasComparison = Array.from(rows).some(row =>
+      comparableValue(row.firstElementChild) && comparableValue(row.lastElementChild));
+    const state = hasComparison ? 'ready' : 'empty';
+    if (stats.dataset.codexComparison !== state) stats.dataset.codexComparison = state;
+  }
+
+  function markVoting(card) {
+    const total = card.querySelector('#pv8-total');
+    const heading = card.querySelector('.audience-head');
+    if (!total || !heading) return;
+
+    let status = heading.querySelector('.codex-vote-status');
+    if (/^\d/.test(total.textContent.trim())) {
+      if (card.dataset.codexVoteState) delete card.dataset.codexVoteState;
+      status?.remove();
+      return;
+    }
+
+    const confirmLabel = card.querySelector('#pv8-confirm > span')?.textContent.trim();
+    const state = confirmLabel === 'RETRY VOTES' ? 'retry' :
+      card.dataset.loading === 'true' ? 'waiting' :
+        card.dataset.fixtureId ? 'unavailable' : 'idle';
+    if (card.dataset.codexVoteState !== state) card.dataset.codexVoteState = state;
+    if (!status) {
+      status = document.createElement('span');
+      status.className = 'codex-vote-status';
+      status.hidden = true;
+      status.setAttribute('aria-hidden', 'true');
+      heading.append(status);
+    }
+    const label = { retry: 'Unavailable', waiting: 'Loading…', unavailable: 'Unavailable', idle: 'Select a match' }[state];
+    if (status.textContent !== label) status.textContent = label;
+  }
+
+  function start() {
+    const rail = document.querySelector(railSelector);
+    if (!rail) return;
+    let frame = 0;
+    function update() {
+      frame = 0;
+      const stats = rail.querySelector(comparisonSelector);
+      const vote = rail.querySelector(voteSelector);
+      if (stats) markComparison(stats);
+      if (vote) markVoting(vote);
+    }
+    new MutationObserver(records => {
+      if (!frame && records.some(({ target }) =>
+        target === rail || (target.nodeType === 1 ? target : target.parentElement)?.closest(observed))) {
+        frame = requestAnimationFrame(update);
+      }
+    }).observe(rail, {
+      childList: true, subtree: true, characterData: true, attributes: true,
+      attributeFilter: ['data-loading', 'data-fixture-id'],
+    });
+    update();
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });
+  else start();
+})();

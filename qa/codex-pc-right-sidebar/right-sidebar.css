@@ -1,0 +1,202 @@
+/* The live dashboard ships legacy unlayered !important styles for these cards. */
+@layer codex-pc-right-sidebar {
+  @media (min-width: 761px) {
+    .workspace.singlepage .live-stage-grid > .right-rail {
+      --sidebar-card: #0b1911;
+      --sidebar-edge: rgba(255, 255, 255, 0.08);
+      --sidebar-ink: #edf7ef;
+      --sidebar-muted: #a4bcae;
+      --sidebar-radius: 14px;
+      gap: 14px !important;
+    }
+
+    html[data-theme="light"] .workspace.singlepage .live-stage-grid > .right-rail {
+      --sidebar-card: #edf5ef;
+      --sidebar-edge: rgba(21, 66, 40, 0.14);
+      --sidebar-ink: #193e2b;
+      --sidebar-muted: #43624f;
+    }
+
+    .workspace.singlepage .right-rail > :is(.b46mp-card, .featured-card[data-featured], .b46-match-monitor, .prediction-card),
+    .workspace.singlepage .right-rail > .b46-home-member-promo > a {
+      box-sizing: border-box !important;
+      width: 100% !important;
+      min-width: 0 !important;
+      margin: 0 !important;
+      border: 1px solid var(--sidebar-edge) !important;
+      border-radius: var(--sidebar-radius) !important;
+      background: var(--sidebar-card) !important;
+      box-shadow: none !important;
+    }
+
+    .workspace.singlepage .right-rail > .b46-home-member-promo {
+      order: 1000 !important;
+      margin: 0 !important;
+    }
+
+    .workspace.singlepage .right-rail > .b46mp-card[data-b46mp-theme="dark"] .b46mp-photo {
+      filter: brightness(0.88) contrast(1.05) !important;
+    }
+
+    .workspace.singlepage .right-rail > .b46mp-card[data-b46mp-theme="dark"]::before {
+      background: linear-gradient(90deg, #0b1911 35%, rgba(11, 25, 17, 0.4) 75%, rgba(11, 25, 17, 0.15) 100%) !important;
+    }
+
+    .workspace.singlepage .right-rail > .b46mp-card[data-b46mp-theme="dark"]::after {
+      background: linear-gradient(0deg, #0b1911, rgba(11, 25, 17, 0.38) 20%, transparent 52%) !important;
+      box-shadow: none !important;
+    }
+
+    .workspace.singlepage .right-rail > [data-featured] .feature-score {
+      align-items: stretch !important;
+    }
+
+    .workspace.singlepage .right-rail > [data-featured] .feature-score > div {
+      display: flex !important;
+      flex-direction: column !important;
+      justify-content: flex-start !important;
+      align-items: center !important;
+      min-width: 0 !important;
+    }
+
+    .workspace.singlepage .right-rail > [data-featured] .feature-score :is([data-featured-home], [data-featured-away]) {
+      display: flex !important;
+      flex: 1 0 auto !important;
+      align-items: center !important;
+      justify-content: center !important;
+      min-height: 2.5rem !important;
+      width: 100% !important;
+      text-align: center !important;
+    }
+
+    .workspace.singlepage .right-rail > [data-featured] .feature-score > [data-featured-score] {
+      align-self: center !important;
+    }
+
+    .workspace.singlepage .right-rail > [data-featured] .feature-stats[data-codex-comparison="empty"],
+    .workspace.singlepage .right-rail > [data-featured] .feature-stats:not(:has(> .stat-row)) {
+      display: none !important;
+    }
+
+    .workspace.singlepage .right-rail > .b46-match-monitor[data-state="awaiting"],
+    .workspace.singlepage .right-rail > .b46-match-monitor[data-state="ended"]:has(.mini-outcome[aria-label$="probability unavailable"]) {
+      display: grid !important;
+      grid-template-columns: auto minmax(0, 1fr) !important;
+      align-items: center !important;
+      gap: 8px !important;
+      min-height: 40px !important;
+      padding: 8px 12px !important;
+    }
+
+    .workspace.singlepage .right-rail > .b46-match-monitor:is([data-state="awaiting"], [data-state="ended"]:has(.mini-outcome[aria-label$="probability unavailable"])) > :not(h2, .mini-note) {
+      display: none !important;
+    }
+
+    .workspace.singlepage .right-rail > .b46-match-monitor:is([data-state="awaiting"], [data-state="ended"]:has(.mini-outcome[aria-label$="probability unavailable"])) > :is(h2, .mini-note) {
+      min-width: 0 !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      border: 0 !important;
+      background: transparent !important;
+      white-space: nowrap !important;
+      line-height: 1.3 !important;
+    }
+
+    .workspace.singlepage .right-rail > .b46-match-monitor:is([data-state="awaiting"], [data-state="ended"]:has(.mini-outcome[aria-label$="probability unavailable"])) > h2 {
+      color: var(--sidebar-ink) !important;
+      font-size: 11px !important;
+    }
+
+    .workspace.singlepage .right-rail > .b46-match-monitor:is([data-state="awaiting"], [data-state="ended"]:has(.mini-outcome[aria-label$="probability unavailable"])) > .mini-note {
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+      color: var(--sidebar-muted) !important;
+      font-size: 10px !important;
+    }
+
+    .workspace.singlepage .right-rail > .prediction-card > .prediction {
+      border: 0 !important;
+      border-radius: inherit !important;
+      background: transparent !important;
+      box-shadow: none !important;
+    }
+
+    .workspace.singlepage .right-rail > .prediction-card[data-codex-vote-state] > .prediction {
+      display: grid !important;
+      grid-template-columns: minmax(0, 1fr) auto !important;
+      align-items: center !important;
+      gap: 0 8px !important;
+      min-height: 38px !important;
+      margin: 0 !important;
+      padding: 5px 10px !important;
+    }
+
+    .workspace.singlepage .right-rail > .prediction-card[data-codex-vote-state] > .prediction > :not(.audience, #pv8-confirm, #pv8-vote-message, .form:has(button:not(:disabled), .form-model-bars:not([hidden]), .last5-detail:not([hidden]))) {
+      display: none !important;
+    }
+
+    .workspace.singlepage .right-rail > .prediction-card[data-codex-vote-state] .form {
+      grid-column: 1 / -1;
+    }
+
+    .workspace.singlepage .right-rail > .prediction-card[data-codex-vote-state] .audience {
+      grid-column: 1;
+      grid-row: 1;
+      min-width: 0 !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      border: 0 !important;
+      background: transparent !important;
+      box-shadow: none !important;
+    }
+
+    .workspace.singlepage .right-rail > .prediction-card[data-codex-vote-state] .audience > :not(.audience-head),
+    .workspace.singlepage .right-rail > .prediction-card[data-codex-vote-state] .audience-head :is(h3, #pv8-total),
+    .workspace.singlepage .right-rail > .prediction-card[data-codex-vote-state]:not([data-codex-vote-state="retry"]) #pv8-confirm {
+      display: none !important;
+    }
+
+    .workspace.singlepage .right-rail > .prediction-card[data-codex-vote-state] .audience-head {
+      display: flex !important;
+      justify-content: flex-start !important;
+      align-items: center !important;
+      gap: 6px !important;
+      margin: 0 !important;
+      white-space: nowrap !important;
+    }
+
+    .workspace.singlepage .right-rail > .prediction-card[data-codex-vote-state] .audience-head .eyebrow {
+      color: var(--sidebar-ink) !important;
+      font-size: 9px !important;
+    }
+
+    .workspace.singlepage .right-rail > .prediction-card[data-codex-vote-state] .codex-vote-status {
+      display: inline !important;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: var(--sidebar-muted);
+      font-size: 10px;
+    }
+
+    .workspace.singlepage .right-rail > .prediction-card[data-codex-vote-state="retry"] #pv8-confirm {
+      grid-column: 2;
+      grid-row: 1;
+      width: auto !important;
+      min-height: 28px !important;
+      margin: 0 !important;
+      padding: 4px 8px !important;
+      font-size: 9px !important;
+      white-space: nowrap !important;
+    }
+
+    .workspace.singlepage .right-rail > .prediction-card[data-codex-vote-state] #pv8-vote-message {
+      position: absolute !important;
+      clip-path: inset(50%) !important;
+      overflow: hidden !important;
+      width: 1px !important;
+      height: 1px !important;
+      padding: 0 !important;
+      margin: 0 !important;
+    }
+  }
+}

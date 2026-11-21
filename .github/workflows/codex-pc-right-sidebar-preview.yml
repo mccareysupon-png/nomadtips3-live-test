@@ -1,0 +1,61 @@
+name: "[Codex PC] Ball46 right sidebar preview"
+
+on:
+  push:
+    branches: [codex-pc/ball46-right-sidebar-preview]
+    paths:
+      - qa/codex-pc-right-sidebar/**
+      - .github/workflows/codex-pc-right-sidebar-preview.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ball46-codex-pc-right-sidebar-preview
+  cancel-in-progress: false
+
+jobs:
+  deploy-preview:
+    if: github.ref == 'refs/heads/codex-pc/ball46-right-sidebar-preview'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: qa/codex-pc-right-sidebar
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check the test target
+        run: |
+          node --check worker.mjs
+          node --check < right-sidebar.js.txt
+          node -e 'const c = JSON.parse(require("node:fs").readFileSync("wrangler.jsonc")); require("node:assert/strict")(c.name === "ball46-codex-pc-right-sidebar-preview" && c.workers_dev && !c.route && !c.routes)'
+      - name: Publish the Codex PC test Worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: '4.50.0'
+          workingDirectory: qa/codex-pc-right-sidebar
+          command: deploy --config wrangler.jsonc --name ball46-codex-pc-right-sidebar-preview
+      - name: Verify the test site
+        env:
+          PREVIEW: https://ball46-codex-pc-right-sidebar-preview.mccarey-supon.workers.dev
+        run: |
+          curl -fsS --retry 8 --retry-all-errors --retry-delay 2 "$PREVIEW/_codex-pc-right-sidebar/health" |
+            jq -e '.name == "ball46-codex-pc-right-sidebar-preview" and .scope == "test"'
+          page="$RUNNER_TEMP/right-sidebar-test.html"
+          for attempt in {1..10}; do
+            if curl -fsS --max-time 10 "$PREVIEW/index.html?status=live" -o "$page" &&
+              grep -Fq 'id="codex-pc-right-sidebar"' "$page" &&
+              grep -Fq 'id="codex-pc-right-sidebar-view"' "$page"; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Preview styles were unavailable after deployment" >&2
+          exit 1

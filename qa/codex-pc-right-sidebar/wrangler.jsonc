@@ -1,0 +1,9 @@
+{
+  "name": "ball46-codex-pc-right-sidebar-preview",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-11-20",
+  "workers_dev": true,
+  "preview_urls": false,
+  "rules": [{ "type": "Text", "globs": ["**/*.css", "**/*.js.txt"] }],
+  "services": [{ "binding": "B46_PRODUCTION_READ", "service": "ball46-production" }]
+}
