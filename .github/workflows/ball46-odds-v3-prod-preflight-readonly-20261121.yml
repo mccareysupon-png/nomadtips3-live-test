@@ -1,0 +1,58 @@
+name: BALL46 Odds V3 production active source read-only preflight
+on:
+  push:
+    branches: [test/ball46-premium-match-colors-20261120]
+    paths: ['.github/workflows/ball46-odds-v3-prod-preflight-readonly-20261121.yml']
+permissions:
+  contents: read
+jobs:
+  preflight:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Inspect active BALL46 Worker and existing odds injection (read-only only)
+        run: |
+          node --input-type=module <<'NODE'
+          import {createHash} from 'node:crypto';
+          import assert from 'node:assert/strict';
+          const sha=x=>createHash('sha256').update(x).digest('hex').slice(0,16);
+          const root='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+'/workers';
+          const cf=async path=>{
+            const r=await fetch(root+path,{headers:{authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN},signal:AbortSignal.timeout(45000)});
+            const j=await r.json();assert(r.ok&&j.success,JSON.stringify(j.errors||[]));return j.result;
+          };
+          const live=await cf('/scripts/ball46-production/deployments?per_page=2');
+          const ver=live.deployments?.[0]?.versions?.[0];assert.equal(ver?.percentage,100);
+          const id=ver.version_id;
+          const v=await cf('/workers/ball46-production/versions/'+id+'?include=modules');
+          const main=v.modules?.find(x=>x.name===v.main_module);
+          assert(main?.content_base64,'MISSING_MAIN');
+          const source=Buffer.from(main.content_base64,'base64').toString('utf8');
+          const key='__b46HeadOddsFlash20261121',ix=source.indexOf(key),name='b46-odds-flash-production';
+          const cp='<!-- B46_ODDS_FLASH_ROUNDED_ARROW_20261121 -->';
+          const findings={
+            version:id,mainModule:v.main_module,mainBytes:source.length,mainSha:sha(source),
+            modules:v.modules.map(m=>({name:m.name,bytes:Buffer.from(m.content_base64||'','base64').length})),
+            bindings:v.bindings?.map(b=>({name:b.name,type:b.type})),
+            compatibilityDate:v.compatibility_date,assets:!!v.assets,
+            oddsHeadLiteralCount:source.split(key).length-1,oddsProductionStyleCount:source.split(name).length-1,
+            oddsMarkerCount:source.split(cp).length-1,sidebarHydrator:source.includes('B46_SIDEBAR_WINRATE_HYDRATE_20261121'),
+            premiumMarker:source.includes('B46_PREMIUM_MATCH_CARDS_20261121'),
+            sourceHasTriangle:source.includes('clip-path:polygon(50% 0,100% 100%,0 100%)'),
+            sourceHasSixSec:source.includes('DURATION=6000'),sourceHasTwoSec:source.includes('DURATION=2000'),
+            oddsInlineTokenPosition:ix,nearby:ix<0?null:source.slice(Math.max(0,ix-110),ix+180).replace(/\\/g,''),
+          };
+          const home=await fetch('https://ball46.com/index.html?prodPreflight='+Date.now(),{signal:AbortSignal.timeout(45000)});
+          const html=await home.text();findings.homeStatus=home.status;findings.homeLength=html.length;
+          findings.homeOddsStyle=html.includes(name);findings.homePremium=html.includes('b46-premium-match-production');findings.homeSidebar=html.includes('b46-sidebar-winrate-production');
+          findings.homeSixSec=html.includes('DURATION=6000');
+          findings.homeTriangle=html.includes('clip-path:polygon(50% 0,100% 100%,0 100%)');
+          console.log('BALL46_ODDS_V3_PRODUCTION_PREFLIGHT '+JSON.stringify(findings));
+          NODE
