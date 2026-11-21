@@ -53,9 +53,9 @@ jobs:
             const first=await read();
             console.log('SIGNAL_INITIAL_TEST '+JSON.stringify(first));
             assert(first.info.seenSource&&first.visible.length>1,'NO_REAL_SIGNALS_FOR_SORT');
-            assert(first.headers.some(x=>x.text.includes('LATEST LIVE PREDICTIONS')&&x.height>10),'ONE_GLOBAL_HEADER_MISSING');
-            assert(first.headers.some(x=>x.text.includes(first.visible.length+' '+(first.visible.length===1?'match':'matches'))),'GLOBAL_HEADER_MATCH_COUNT_WRONG');
-            assert.equal(first.headers.filter(x=>x.height>10).length,1,'DUPLICATE_LEAGUE_HEADERS_SHOWN');
+            assert(first.headers.some(x=>x.height>10&&/A-League|Super League|J-League|League|Cup/i.test(x.text)),'NATIVE_LEAGUE_HEADERS_MISSING');
+            assert(!first.headers.some(x=>x.text.includes('LATEST LIVE PREDICTIONS')),'CUSTOM_SIGNAL_HEADER_MUST_NOT_EXIST');
+            assert(first.headers.filter(x=>x.height>10).length>=1,'NATIVE_FLAG_HEADER_MISSING');
             const expected=[...first.visible].sort((a,b)=>{
               const at=id=>first.api.find(t=>t.id===id)?.at||0;
               return at(b.id)-at(a.id)||0;
