@@ -1,0 +1,44 @@
+name: "[Codex PC] Ball46 right sidebar production"
+
+on:
+  push:
+    branches: [codex-pc/release-ball46-right-sidebar]
+    paths:
+      - .github/workflows/codex-pc-right-sidebar-production.yml
+      - qa/codex-pc-right-sidebar-release/**
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ball46-production-ui-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: github.ref == 'refs/heads/codex-pc/release-ball46-right-sidebar'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Prepare browser and check release files
+        run: |
+          for file in qa/codex-pc-right-sidebar-release/*.mjs; do node --check "$file" || exit; done
+          npm install --prefix "$RUNNER_TEMP/codex-pc-right-sidebar-runtime" --no-package-lock --no-audit --no-fund playwright@1.55.0
+          "$RUNNER_TEMP/codex-pc-right-sidebar-runtime/node_modules/.bin/playwright" install chromium --only-shell
+      - name: Verify candidate and deploy the right sidebar
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: node qa/codex-pc-right-sidebar-release/release.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: codex-pc-right-sidebar-production-evidence
+          path: ${{ runner.temp }}/codex-pc-right-sidebar-production-proof
+          if-no-files-found: ignore
