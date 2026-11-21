@@ -3,13 +3,13 @@ const browser=await chromium.launch();
 const ready='https://ball46-fullmarket-odds-v3-test-20261121.mccarey-supon.workers.dev';
 let deployed=false;
 for(let i=0;i<44;i++){
- try{const r=await fetch(ready+'/__fullmarket_health?perf='+Date.now(),{signal:AbortSignal.timeout(18000)});if(r.ok){const h=await r.json();if(h.nativePerfTest==='DASHBOARD_PIN_CACHE_FLOW_PATH_CACHE_EXPANDED_SCROLL_SCOPE'){deployed=true;break}}}catch{}
+ try{const r=await fetch(ready+'/__fullmarket_health?perf='+Date.now(),{signal:AbortSignal.timeout(18000)});if(r.ok){const h=await r.json();if(h.nativePerfTest==='FLOW_POLYLINE_FAST_EXPANDED_SCROLL_SCOPE_OVERSCROLL_TEST'){deployed=true;break}}}catch{}
  await new Promise(r=>setTimeout(r,1300));
 }
 if(!deployed)throw Error('OPTIMIZED_NATIVE_ASSETS_NOT_DEPLOYED');
 for(const [resource,marker] of [
  ['/dashboard-v2-stage3-featured-facts-20261013a.js','b46PinExpandedCacheTick'],
- ['/ui-sync-fixes-343-v2.js','b46FlowPathLengthCache'],
+ ['/ui-sync-fixes-343-v2.js','b46FlowPolylineCache'],
  ['/expanded-match-343.js',"board.scrollBy(0,delta)"]
 ]){
  const r=await fetch(ready+resource+'?perf='+Date.now(),{signal:AbortSignal.timeout(20000)});
@@ -62,6 +62,19 @@ try{
     });
     await p.waitForTimeout(700);
     after.now=await p.evaluate(()=>({board:document.querySelector('.board-sections').scrollTop,doc:document.scrollingElement.scrollTop,fullHeight:document.querySelector('.expand-full-market-card')?.getBoundingClientRect().height}));
+    const accuracy=await p.evaluate(()=>{
+     const root=document.querySelector('.expand-flow-chart svg');
+     const paths=[...root?.querySelectorAll('path.expand-flow-line')||[]];
+     const icons=[...root?.querySelectorAll('[data-b46-event-icon]')||[]].map(e=>{
+      const t=e.getAttribute('transform')||'',m=t.match(/translate\(([-\d.]+)\s+([-\d.]+)\)/);
+      return m?{x:Number(m[1]),y:Number(m[2])}:null
+     }).filter(Boolean);
+     const normal=(path,x)=>{const len=path.getTotalLength();let lo=0,hi=len;for(let i=0;i<24;i++){const mid=(lo+hi)/2,q=path.getPointAtLength(mid);if(q.x<x)lo=mid;else hi=mid}return path.getPointAtLength((lo+hi)/2)};
+     const errors=icons.map(v=>Math.min(...paths.map(path=>{const p=normal(path,v.x);return Math.hypot(p.x-v.x,p.y-v.y)})));
+     return {paths:paths.length,icons:icons.length,maxErrorPx:Math.max(0,...errors),meanErrorPx:errors.length?errors.reduce((a,b)=>a+b,0)/errors.length:0,allPolyline:paths.every(p=>/^[MLml\d.,\s+-]+$/.test(p.getAttribute('d')||''))};
+    });
+    console.log('B46_NATIVE_FLOW_POLYLINE_ACCURACY '+JSON.stringify(accuracy));
+    if(accuracy.icons>0&&accuracy.maxErrorPx>0.3)throw Error('FLOW_ICON_GEOMETRY_REGRESSION_'+JSON.stringify(accuracy));
     if(after.before.board!==after.now.board||after.before.doc!==after.now.doc)throw Error('NATIVE_BOOKMAKER_CLICK_SCROLL_JUMP_'+JSON.stringify(after));
   }else{
     await p.evaluate(()=>{document.querySelector('.board-sections').scrollTop=430;document.scrollingElement.scrollTop=0});
