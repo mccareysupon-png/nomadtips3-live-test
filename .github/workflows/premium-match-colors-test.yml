@@ -196,7 +196,7 @@ jobs:
           import {chromium,devices} from 'playwright';
           import assert from 'node:assert/strict';
           const base='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev';
-          let h;for(let i=0;i<15;i++){try{const r=await fetch(base+'/_premium_health');if(r.ok){const candidate=await r.json();if(candidate.revision==='PREMIUM_LEAGUE_SOLID_V14'&&candidate.oddsMovementScript?.includes('DURATION=5000')&&candidate.oddsMovementStyle?.includes('b46-odds-soft-blink-5x')&&candidate.oddsMovementStyle?.includes('content:none!important')&&candidate.oddsMovementStyle?.includes('opacity:.55')&&candidate.oddsMovementStyle?.includes('background-color:transparent!important')&&candidate.oddsMovementStyle?.includes('transform:translateY(-50%)!important')){h=candidate;break}}}catch{}await new Promise(r=>setTimeout(r,2000))}
+          let h;for(let i=0;i<15;i++){try{const r=await fetch(base+'/_premium_health');if(r.ok){const candidate=await r.json();if(candidate.revision==='PREMIUM_LEAGUE_SOLID_V14'&&candidate.oddsMovementScript?.includes('DURATION=5000')&&candidate.oddsMovementStyle?.includes('b46-odds-soft-blink-5x')&&candidate.oddsMovementStyle?.includes('content:none!important')&&candidate.oddsMovementStyle?.includes('filter:brightness(.55)')&&candidate.oddsMovementStyle?.includes('background-color:transparent!important')&&candidate.oddsMovementStyle?.includes('transform:translateY(-50%)!important')){h=candidate;break}}}catch{}await new Promise(r=>setTimeout(r,2000))}
           assert.equal(h?.scope,'TEST_ONLY_CSS');assert.equal(h?.revision,'PREMIUM_LEAGUE_SOLID_V14');assert.equal(h?.oddsMovement,'DOM_PRICES_V1');assert(h?.oddsMovementScript?.includes('DURATION=5000'),'WORKER_HAS_OLD_DURATION');assert(!h.oddsMovementStyle?.includes('inset:0 -1px 0 0!important'),'WORKER_STILL_HAS_COLORED_SHEET');
           const browser=await chromium.launch();
           try{for(const mobile of [false])for(const theme of ['dark','light']){
@@ -290,7 +290,8 @@ jobs:
               },value);
               const pulse=()=>odd.evaluate(el=>{
                 const n=getComputedStyle(el),a=getComputedStyle(el.closest('.b46-v3-quote'),'::after');
-                return {numberOpacity:parseFloat(n.opacity),arrowOpacity:parseFloat(a.opacity),numberAnimation:n.animationName,arrowAnimation:a.animationName};
+                const brightness=x=>x==='none'?1:Number(x.match(/brightness\\(([^)]+)\\)/)?.[1]||NaN);
+                return {numberFilter:n.filter,arrowFilter:a.filter,numberBrightness:brightness(n.filter),arrowBrightness:brightness(a.filter),numberAnimation:n.animationName,arrowAnimation:a.animationName};
               });
               const initialMove=await readMove();
               assert(!initialMove.direction,'ODDS_FLASH_ON_INITIAL_LOAD');
@@ -318,25 +319,34 @@ jobs:
               };
               const up=await simulate(upValue);
               console.log('ODDS_UP_PROOF',JSON.stringify(up));checkDirection(up,'up');
-              await p.waitForTimeout(360);
-              const upPulse=await pulse();
-              console.log('ODDS_UP_PULSE',JSON.stringify(upPulse));
-              assert(upPulse.numberOpacity<.90&&upPulse.numberOpacity>=.54,'NUMBER_NOT_SOFT_PULSING_UP');
-              assert(Math.abs(upPulse.numberOpacity-upPulse.arrowOpacity)<.05,'ARROW_NOT_PULSING_WITH_PRICE_UP');
+              const readPulseSeries=async()=>{
+                const samples=[];
+                for(let k=0;k<10;k++){await p.waitForTimeout(110);samples.push(await pulse());}
+                return samples;
+              };
+              const verifyPulse=(samples,label)=>{
+                const values=samples.map(x=>x.numberBrightness);
+                assert(values.every(Number.isFinite),'PULSE_FILTER_NOT_NUMERIC_'+label);
+                assert(Math.min(...values)<.80,'NUMBER_DID_NOT_DIM_'+label);
+                assert(Math.max(...values)>.85,'NUMBER_DID_NOT_BRIGHTEN_'+label);
+                for(const sample of samples){
+                  assert(Number.isFinite(sample.arrowBrightness),'ARROW_PULSE_FILTER_NOT_NUMERIC_'+label);
+                  assert(Math.abs(sample.numberBrightness-sample.arrowBrightness)<.07,'ARROW_AND_PRICE_NOT_PULSING_TOGETHER_'+label);
+                }
+              };
+              const upPulse=await readPulseSeries();
+              console.log('ODDS_UP_PULSE',JSON.stringify(upPulse));verifyPulse(upPulse,'UP');
               await p.screenshot({path:process.env.RUNNER_TEMP+'/premium-proof/odds-up.png'});
-              await p.waitForTimeout(4750);
+              await p.waitForTimeout(4200);
               assert.equal((await readMove()).direction,null,'ODDS_UP_NOT_RESET_AFTER_5000MS');
               const unchanged=await simulate(upValue);
               assert.equal(unchanged.direction,null,'SAME_PRICE_TRIGGERED_FALSE_FLASH');
               const down=await simulate(initialValue);
               console.log('ODDS_DOWN_PROOF',JSON.stringify(down));checkDirection(down,'down');
-              await p.waitForTimeout(360);
-              const downPulse=await pulse();
-              console.log('ODDS_DOWN_PULSE',JSON.stringify(downPulse));
-              assert(downPulse.numberOpacity<.90&&downPulse.numberOpacity>=.54,'NUMBER_NOT_SOFT_PULSING_DOWN');
-              assert(Math.abs(downPulse.numberOpacity-downPulse.arrowOpacity)<.05,'ARROW_NOT_PULSING_WITH_PRICE_DOWN');
+              const downPulse=await readPulseSeries();
+              console.log('ODDS_DOWN_PULSE',JSON.stringify(downPulse));verifyPulse(downPulse,'DOWN');
               await p.screenshot({path:process.env.RUNNER_TEMP+'/premium-proof/odds-down.png'});
-              await p.waitForTimeout(4750);
+              await p.waitForTimeout(4200);
               const afterFlash=await readMove();
               assert.equal(afterFlash.direction,null,'ODDS_DOWN_NOT_RESET_AFTER_5000MS');
               assert(afterFlash.stats.ups>=1&&afterFlash.stats.downs>=1,'ODDS_MOVEMENT_COUNTS_MISSING');
