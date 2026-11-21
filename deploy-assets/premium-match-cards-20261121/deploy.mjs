@@ -142,8 +142,9 @@ async function browserCheck(origin,label,p,full=false){
     const afterClick=await pg.evaluate(id=>{const e=[...document.querySelectorAll('[data-match-id].match-row')].find(x=>x.dataset.matchId===id);return {id,chosenClass:e?.className,chosenState:e?getComputedStyle(e).getPropertyValue('--b46-premium-state').trim():null,clicked:document.body?.getAttribute('data-b46-premium-interacted'),nativeActiveIds:[...document.querySelectorAll('[data-match-id].match-row.active')].map(x=>x.dataset.matchId).slice(0,8),script:!!document.getElementById('b46-premium-user-action-production'),scriptRan:!!window.__b46PremiumUserAction}},chosenId);
     console.log('PREMIUM_CLICK_DIAG '+label+' '+JSON.stringify(afterClick));
     await pg.waitForFunction(id=>{const e=[...document.querySelectorAll('[data-match-id].match-row')].find(x=>x.dataset.matchId===id);return e?.classList.contains('active')&&document.body?.getAttribute('data-b46-premium-interacted')==='1'&&getComputedStyle(e).getPropertyValue('--b46-premium-state').trim()==='active'},chosenId,{timeout:12000});
-    assert.equal(await target.evaluate(e=>getComputedStyle(e).getPropertyValue('--b46-premium-state').trim()),'active','ACTIVE_NOT_APPLIED');
-    const oddsAfter=await target.locator('.market-cell').first().evaluate(e=>{const s=getComputedStyle(e);return [s.backgroundImage,s.backgroundColor,s.boxShadow]});
+    const selected=pg.locator('[data-match-id="'+chosenId+'"].match-row').first();
+    assert.equal(await selected.evaluate(e=>getComputedStyle(e).getPropertyValue('--b46-premium-state').trim()),'active','ACTIVE_NOT_APPLIED');
+    const oddsAfter=await selected.locator('.market-cell').first().evaluate(e=>{const s=getComputedStyle(e);return [s.backgroundImage,s.backgroundColor,s.boxShadow]});
     assert.deepEqual(oddsAfter,oddsBefore,'ODDS_CHANGED_ON_ACTIVE');
    }else{assert.notEqual(proof.league.color,p.league,'LIGHT_OR_MOBILE_OVERRIDDEN')}
    await pg.screenshot({path:'audit/'+label+'-'+cfg.name+'.png'});results[cfg.name]=proof;
