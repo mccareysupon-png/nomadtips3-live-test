@@ -57,3 +57,17 @@ test('no eligible finished matches still counts one used slot, never repeats',()
  assert.equal(historyRoundState(db,now).completed,1);
  assert.equal(importHistoryRoundFromCache(db,snapshot(now+30),now+30).state,'ALREADY_EXECUTED');
 });
+
+test('run five complete deliveries consecutively at same 06:00 London cutoff',()=>{
+ const db=database(),now=sec('2026-11-22T06:00:00Z'),s=snapshot(now,650);
+ for(let roundNo=1;roundNo<=5;roundNo++){
+  const v=importHistoryRoundFromCache(db,s,now,{roundNo});
+  assert.equal(v.state,'COMPLETED');assert.equal(v.current.slot,roundNo);assert.equal(v.current.imported,100);
+  assert.equal(v.imported,100*roundNo);
+ }
+ assert.equal(totals(db).finished,500);
+ assert.equal(historyRoundState(db,now).completed,5);
+ assert.equal(importHistoryRoundFromCache(db,s,now,{roundNo:3}).state,'ALREADY_EXECUTED');
+ assert.equal(totals(db).finished,500);
+ assert.throws(()=>importHistoryRoundFromCache(db,s,now,{roundNo:6}),/INVALID_HISTORY_ROUND/);
+});
