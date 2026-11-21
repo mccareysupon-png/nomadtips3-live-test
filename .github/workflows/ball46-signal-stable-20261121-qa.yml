@@ -54,6 +54,7 @@ jobs:
             console.log('SIGNAL_INITIAL_TEST '+JSON.stringify(first));
             assert(first.info.seenSource&&first.visible.length>1,'NO_REAL_SIGNALS_FOR_SORT');
             assert(first.headers.some(x=>x.text.includes('LATEST LIVE PREDICTIONS')&&x.height>10),'ONE_GLOBAL_HEADER_MISSING');
+            assert(first.headers.some(x=>x.text.includes(first.visible.length+' '+(first.visible.length===1?'match':'matches'))),'GLOBAL_HEADER_MATCH_COUNT_WRONG');
             assert.equal(first.headers.filter(x=>x.height>10).length,1,'DUPLICATE_LEAGUE_HEADERS_SHOWN');
             const expected=[...first.visible].sort((a,b)=>{
               const at=id=>first.api.find(t=>t.id===id)?.at||0;
@@ -76,6 +77,34 @@ jobs:
             assert.equal(opened.info.frozen,last,'EVENT_FLOW_NOT_FROZEN');
             assert(opened.flow,'EVENT_FLOW_NOT_OPEN');
             const frozenTop=opened.visible.map(x=>x.id).join('|');
+            const board=p.locator('.board-sections');
+            const bb=await board.boundingBox();
+            if(bb){await p.mouse.move(bb.x+Math.min(bb.width-25,340),bb.y+Math.min(bb.height-25,380));await p.mouse.wheel(0,200);await p.waitForTimeout(300)}
+            const scrolledOpen=await read();
+            console.log('SIGNAL_EVENTFLOW_SCROLL_POSITION '+JSON.stringify({board:scrolledOpen.board,active:scrolledOpen.activeId,flow:scrolledOpen.flow}));
+            // Browser-only arrival of a new fixture/league while Event Flow stays open.
+            await p.evaluate(()=>{
+              const status=document.querySelector('.status-section[data-status-section="live"]');
+              const source=status.querySelector('section.league-block');
+              const row=source.querySelector(':scope > .match-row');
+              if(!source||!row)return;
+              const temp=document.createElement('section');temp.className='league-block';temp.dataset.b46SignalTemporaryQa='1';
+              const header=source.querySelector(':scope > .league-head')?.cloneNode(true);
+              if(header)temp.append(header);
+              const match=row.cloneNode(true);match.dataset.matchId='__B46_BROWSER_ONLY_NEW_FIXTURE__';match.classList.remove('active');
+              temp.append(match);status.insertBefore(temp,source);
+            });
+            await p.waitForTimeout(550);
+            const afterAdded=await read();
+            console.log('SIGNAL_EVENTFLOW_NEW_FIXTURE_TEST '+JSON.stringify({order:afterAdded.visible.map(x=>x.id),scroll:afterAdded.board.top,active:afterAdded.activeId}));
+            assert(afterAdded.flow&&afterAdded.activeId===last,'FLOW_CHANGED_AFTER_NEW_MATCH_DOM');
+            assert.equal(afterAdded.visible[0].id,last,'NEW_FIXTURE_PUSHED_MATCH_ABOVE_OPEN_FLOW');
+            assert(Math.abs(afterAdded.board.top-scrolledOpen.board.top)<3,'VIEWPORT_JUMPED_WITH_NEW_FIXTURE');
+            await p.evaluate(()=>document.querySelector('[data-b46-signal-temporary-qa="1"]')?.remove());
+            await p.waitForTimeout(400);
+            const afterRemoved=await read();
+            assert(afterRemoved.flow&&afterRemoved.activeId===last,'FLOW_COLLAPSED_ON_FIXTURE_REMOVAL');
+            assert(Math.abs(afterRemoved.board.top-scrolledOpen.board.top)<3,'VIEWPORT_JUMPED_AFTER_FIXTURE_REMOVAL');
             // New signal on a different match must not reorder the viewport while event detail is open.
             const alternative=opened.visible.at(-1).id;
             const advanced=opened.visible.map(x=>({fixtureId:x.id,createdAt:x.id===alternative?1795249999999:1795245000000}));
@@ -85,7 +114,7 @@ jobs:
             console.log('SIGNAL_EVENTFLOW_FROZEN_TEST '+JSON.stringify({opened:{order:opened.visible.map(x=>x.id),scroll:opened.board.top,active:opened.activeId},whileOpen:{order:whileOpen.visible.map(x=>x.id),scroll:whileOpen.board.top,active:whileOpen.activeId,pending:whileOpen.info.pendingChanges}}));
             assert.equal(whileOpen.visible.map(x=>x.id).join('|'),frozenTop,'EVENT_FLOW_REORDERED_WHILE_OPEN');
             assert(whileOpen.flow&&whileOpen.activeId===last,'OPEN_EVENT_FLOW_CHANGED_MATCH');
-            assert(Math.abs(whileOpen.board.top-opened.board.top)<3,'EVENT_FLOW_SCROLL_JUMPED_ON_NEW_PREDICTION');
+            assert(Math.abs(whileOpen.board.top-scrolledOpen.board.top)<3,'EVENT_FLOW_SCROLL_JUMPED_ON_NEW_PREDICTION');
             await selected.click({position:{x:95,y:25},force:true});
             await p.waitForTimeout(1100);
             const closed=await read();
