@@ -18,7 +18,10 @@ function nativeOptimized(path,src){
    'DASHBOARD_PIN_QUERY_CACHE');
  }
  if(path==='/ui-sync-fixes-343-v2.js'){
-  return replaceStrict(src,"function pointAtX(path,x){try{const len=path.getTotalLength();if(!Number.isFinite(len)||len<=0)return null;let lo=0,hi=len;for(let i=0;i<24;i++){const mid=(lo+hi)/2,p=path.getPointAtLength(mid);if(p.x<x)lo=mid;else hi=mid}return path.getPointAtLength((lo+hi)/2)}catch{return null}}",FLOW_FAST_POINT,'FLOW_EXACT_POLYLINE_FAST_LOOKUP');
+  return replaceStrict(replaceStrict(src,"function pointAtX(path,x){try{const len=path.getTotalLength();if(!Number.isFinite(len)||len<=0)return null;let lo=0,hi=len;for(let i=0;i<24;i++){const mid=(lo+hi)/2,p=path.getPointAtLength(mid);if(p.x<x)lo=mid;else hi=mid}return path.getPointAtLength((lo+hi)/2)}catch{return null}}",FLOW_FAST_POINT,'FLOW_EXACT_POLYLINE_FAST_LOOKUP'),
+   "g.setAttribute('pointer-events','all');",
+   "g.setAttribute('data-b46-fmb-perf-input-x',String(x));g.setAttribute('pointer-events','all');",
+   'FLOW_TEST_ONLY_EXACT_INPUT_X');
  }
  if(path==='/expanded-match-343.js'){
   return replaceStrict(src,
