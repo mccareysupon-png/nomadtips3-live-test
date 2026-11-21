@@ -1,0 +1,99 @@
+name: BALL46 TEST-only backend revised kickoff safe overlay
+on:
+  push:
+    branches: [test/ball46-prematch-v1-20261120]
+    paths:
+      - '.github/workflows/b46-prematch-reschedule-deploy-test-20261121.yml'
+permissions:
+  contents: read
+concurrency:
+  group: ball46-prematch-test-backend-only
+  cancel-in-progress: false
+jobs:
+  validate-and-deploy-test-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Regression suite before mutation
+        run: |
+          node --test qa/prematch-history-20261120/normal-hub-monitor.test.mjs qa/prematch-history-20261120/rescheduled-ledger.test.mjs qa/prematch-history-20261120/stored-prematch-feed.test.mjs
+      - name: Overlay ONLY 3 verified modules in isolated TEST Worker
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import fs from 'node:fs';
+          import crypto from 'node:crypto';
+          const token=process.env.CLOUDFLARE_API_TOKEN,account=process.env.CLOUDFLARE_ACCOUNT_ID;
+          assert(token&&account,'CF_DEPLOY_CREDENTIALS_MISSING');
+          const prefix='https://api.cloudflare.com/client/v4/accounts/'+account;
+          const root=prefix+'/workers';
+          const test='ball46-prematch-only-test-20261120';
+          const protectedWorkers=['ball46-production','nomadtips3-engine-343','nomadtips3-5usd-hub-343'];
+          const modules=['normal-hub-monitor.mjs','test-pick-ledger.mjs','stored-prematch-feed.mjs'];
+          async function cf(url,options={}){
+            const response=await fetch(url,{...options,headers:{authorization:'Bearer '+token,...(options.headers||{})},signal:AbortSignal.timeout(40000)});
+            const body=await response.json();
+            assert(response.ok&&body.success,'CLOUDFLARE_REQUEST_FAILED '+response.status+' '+url.split('?')[0]+' '+JSON.stringify(body.errors||[]));
+            return body.result;
+          }
+          async function activeVersion(name){
+            const result=await cf(root+'/scripts/'+name+'/deployments?per_page=1');
+            const version=result.deployments?.[0]?.versions?.[0]?.version_id;
+            assert(version,'CLOUDFLARE_VERSION_MISSING_'+name);
+            return version;
+          }
+          const prodBefore=await Promise.all(protectedWorkers.map(activeVersion));
+          const originalVersion=await activeVersion(test);
+          const version=await cf(root+'/workers/'+test+'/versions/'+originalVersion+'?include=modules');
+          const original=version.modules;
+          assert(Array.isArray(original)&&original.length>8,'ACTIVE_TEST_WORKER_MODULES_MISSING');
+          assert(typeof version.main_module==='string'&&version.main_module.endsWith('prematch-only-worker.mjs'),'UNEXPECTED_TEST_WORKER_MAIN');
+          for(const mod of original)assert(mod.name&&mod.name.endsWith('.mjs')&&typeof mod.content_base64==='string','UNEXPECTED_MODULE_TYPE_'+mod.name);
+          for(const name of modules)assert(original.some(x=>x.name===name),'TARGET_MODULE_NOT_ACTIVE_'+name);
+          const originalMain=original.find(x=>x.name===version.main_module);
+          const mainCode=Buffer.from(originalMain.content_base64,'base64').toString('utf8');
+          assert(mainCode.includes('matchNormalHub(snapshot,ledger(this.db).rows,now)'),'ACTIVE_MONITOR_CALLSITE_DRIFT');
+          assert(mainCode.includes('settlePicks(this.db,now)'),'ACTIVE_SETTLEMENT_CALLSITE_DRIFT');
+          const settings=await cf(root+'/scripts/'+test+'/settings');
+          const bindingNames=(settings.bindings||[]).map(b=>b.name).sort();
+          assert.deepEqual(bindingNames,['HUB','OWNER_SECRET','STORE'],'ACTIVE_TEST_BINDINGS_DRIFT');
+          assert(settings.bindings.find(b=>b.name==='HUB')?.service==='nomadtips3-5usd-hub-343','UNEXPECTED_HUB');
+          const secret=crypto.createHmac('sha256',token).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
+          const bindings=[
+            {name:'STORE',type:'durable_object_namespace',class_name:'PrematchStore'},
+            {name:'OWNER_SECRET',type:'secret_text',text:secret},
+            {name:'HUB',type:'service',service:'nomadtips3-5usd-hub-343',environment:'production'}
+          ];
+          const form=new FormData();
+          const metadata={main_module:version.main_module,compatibility_date:version.compatibility_date||'2026-11-20',bindings};
+          form.append('metadata',new Blob([JSON.stringify(metadata)],{type:'application/json'}),'metadata.json');
+          for(const entry of original){
+            const body=modules.includes(entry.name)?
+              fs.readFileSync('qa/prematch-history-20261120/'+entry.name,'utf8'):
+              Buffer.from(entry.content_base64,'base64');
+            form.append(entry.name,new Blob([body],{type:'application/javascript+module'}),entry.name);
+          }
+          const deployed=await cf(root+'/scripts/'+test,{method:'PUT',body:form});
+          const afterVersion=await activeVersion(test);
+          assert(afterVersion,'TEST_WORKER_DEPLOY_VERSION_MISSING');
+          const smoke=await fetch('https://ball46-prematch-only-test-20261120.mccarey-supon.workers.dev/preview-data',{cache:'no-store',signal:AbortSignal.timeout(25000)});
+          assert(smoke.ok,'TEST_DATA_HTTP_'+smoke.status);
+          const sample=await smoke.json();
+          assert(sample.testLedger?.mode==='TEST_ONLY','TEST_LEDGER_NOT_TEST_ONLY');
+          assert(sample.testMonitor?.cacheOnly===true&&sample.testMonitor?.providerCalls===0,'PROVIDER_CALL_DETECTED');
+          assert(Number.isInteger(sample.testMonitor?.details?.rescheduled),'NEW_TEST_MONITOR_NOT_SERVING');
+          assert(Array.isArray(sample.testLedger?.rows),'TEST_LEDGER_UNAVAILABLE');
+          const prodAfter=await Promise.all(protectedWorkers.map(activeVersion));
+          assert.deepEqual(prodAfter,prodBefore,'PROTECTED_WORKERS_CHANGED_DURING_DEPLOY');
+          console.log('PREMATCH_TEST_SCHEDULE_OVERLAY_SUCCESS '+JSON.stringify({
+            worker:test,beforeVersion:originalVersion,afterVersion,modulesChanged:modules,
+            count:sample.testLedger.rows.length,pending:sample.testLedger.stats?.pending,
+            hubDetails:sample.testMonitor.details,providerCalls:0,productionWrites:0
+          }));
+          NODE
