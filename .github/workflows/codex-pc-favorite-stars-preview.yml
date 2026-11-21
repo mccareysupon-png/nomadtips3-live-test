@@ -47,6 +47,14 @@ jobs:
         run: |
           curl -fsS --retry 8 --retry-all-errors --retry-delay 2 "$PREVIEW/_codex-pc-favorite-stars/health" |
             jq -e '.name == "ball46-codex-pc-favorite-stars-preview" and .scope == "test"'
-          curl -fsS --retry 5 --retry-all-errors "$PREVIEW/index.html?view=signal&signalMarket=ah" -o "$RUNNER_TEMP/favorite-stars-test.html"
-          grep -Fq 'id="codex-pc-favorite-stars"' "$RUNNER_TEMP/favorite-stars-test.html"
-          grep -Fq 'id="codex-pc-mobile-footer"' "$RUNNER_TEMP/favorite-stars-test.html"
+          page="$RUNNER_TEMP/favorite-stars-test.html"
+          for attempt in {1..10}; do
+            if curl -fsS --max-time 10 "$PREVIEW/index.html?view=signal&signalMarket=ah" -o "$page" &&
+              grep -Fq 'id="codex-pc-favorite-stars"' "$page" &&
+              grep -Fq 'id="codex-pc-mobile-footer"' "$page"; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Preview styles were unavailable after deployment" >&2
+          exit 1
