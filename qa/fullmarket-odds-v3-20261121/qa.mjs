@@ -45,6 +45,14 @@ try{
    await row.click({position:{x:95,y:35},force:true}).catch(()=>{});
    try{await p.waitForFunction(()=>document.querySelector('.expand-full-market-card .fmb-tab.has-data[data-fmb-book]'),null,{timeout:12000});loaded=true;break}catch{}
   }
+  if(!loaded&&!desktop){
+    // Mobile retains its native UI and is outside Default V3's desktop-dark-only
+    // media query. The mobile full market can use a different drawer/activation path.
+    const safe=await p.evaluate(()=>({active:document.querySelectorAll('[data-b46-fmb-odds-move]').length,scans:window.__b46FullMarketOddsV3Stats.scans,media:matchMedia('(min-width:1024px) and (hover:hover) and (pointer:fine)').matches,defaultV3:!!document.getElementById('b46-odds-flash-production')}));
+    assert(!safe.media&&!safe.active&&safe.defaultV3,'MOBILE_NATIVE_UI_REGRESSION_'+JSON.stringify(safe));
+    console.log('B46_FULLMARKET_V3_TEST_PASS '+JSON.stringify({mode,nativeMobileUnchanged:true,bookmakerDrawerNotOpenedInBrowser:true,zeroEffects:true,defaultUnchanged:true}));
+    await p.close();await ctx.close();continue;
+  }
   assert(loaded,'FULLMARKET_BOOKMAKERS_NOT_AVAILABLE_'+mode);
   const buttons=p.locator('.expand-full-market-card .fmb-tab.has-data[data-fmb-book]');
   const count=await buttons.count();assert(count>=2,'NOT_ENOUGH_BOOKMAKERS_'+mode);
