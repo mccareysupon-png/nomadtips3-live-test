@@ -2,7 +2,7 @@ name: BALL46 premium match colors isolated QA
 on:
   push:
     branches: [test/ball46-premium-match-colors-20261120]
-    paths: ['.github/workflows/premium-match-colors-test.yml']
+    paths: ['.github/workflows/premium-match-colors-test.yml', 'qa/odds-movement-20261121/odds-movement.mjs']
 concurrency:
   group: ball46-premium-match-colors-test-20261120
   cancel-in-progress: false
@@ -284,19 +284,19 @@ jobs:
                 el.textContent=v.toFixed(2);
                 await new Promise(resolve=>setTimeout(resolve,130));
                 const q=el.closest('.b46-v3-quote'),s=getComputedStyle(q),arrow=getComputedStyle(q,'::after');
-                return {direction:q.getAttribute('data-b46-odds-move'),priceColor:getComputedStyle(el).color,quoteColor:s.backgroundColor,arrow:arrow.content,cellBg:getComputedStyle(el.closest('.market-cell')).backgroundColor,stats:{...window.__b46OddsMovementStats}};
+                return {direction:q.getAttribute('data-b46-odds-move'),priceColor:getComputedStyle(el).color,quoteColor:s.backgroundColor,quoteShadow:s.boxShadow,border:s.borderTopWidth,outline:s.outlineStyle,arrow:arrow.content,cellBg:getComputedStyle(el.closest('.market-cell')).backgroundColor,stats:{...window.__b46OddsMovementStats}};
               },value);
               const initialMove=await readMove();assert(!initialMove.direction,'ODDS_FLASH_ON_INITIAL_LOAD');assert.equal(initialMove.cellBg,h.reference.pitColor);
               const initialValue=Number(originalPrice.raw),upValue=Number((initialValue+.07).toFixed(2));
               const up=await simulate(upValue);
               console.log('ODDS_UP_PROOF',JSON.stringify(up));
-              assert.equal(up.direction,'up','ODDS_UP_WAS_NOT_DETECTED');assert(up.arrow.includes('↑'));assert.equal(up.cellBg,h.reference.pitColor);
+              assert.equal(up.direction,'up','ODDS_UP_WAS_NOT_DETECTED');assert(up.arrow.includes('↑'));assert.equal(up.cellBg,h.reference.pitColor);assert.equal(up.quoteShadow,'none','UP_SHEET_HAS_BORDER_SHADOW');assert.equal(up.border,'0px','UP_SHEET_HAS_BORDER');assert.equal(up.outline,'none','UP_SHEET_HAS_OUTLINE');
               await p.screenshot({path:process.env.RUNNER_TEMP+'/premium-proof/odds-up.png'});
               await p.waitForTimeout(850);assert.equal((await readMove()).direction,null,'ODDS_UP_NOT_RESET_AFTER_700MS');
               const unchanged=await simulate(upValue);assert.equal(unchanged.direction,null,'SAME_PRICE_TRIGGERED_FALSE_FLASH');
               const down=await simulate(initialValue);
               console.log('ODDS_DOWN_PROOF',JSON.stringify(down));
-              assert.equal(down.direction,'down','ODDS_DOWN_WAS_NOT_DETECTED');assert(down.arrow.includes('↓'));assert.equal(down.cellBg,h.reference.pitColor);
+              assert.equal(down.direction,'down','ODDS_DOWN_WAS_NOT_DETECTED');assert(down.arrow.includes('↓'));assert.equal(down.cellBg,h.reference.pitColor);assert.equal(down.quoteShadow,'none','DOWN_SHEET_HAS_BORDER_SHADOW');assert.equal(down.border,'0px','DOWN_SHEET_HAS_BORDER');assert.equal(down.outline,'none','DOWN_SHEET_HAS_OUTLINE');
               await p.screenshot({path:process.env.RUNNER_TEMP+'/premium-proof/odds-down.png'});
               await p.waitForTimeout(850);const afterFlash=await readMove();assert.equal(afterFlash.direction,null,'ODDS_DOWN_NOT_RESET_AFTER_700MS');
               assert(afterFlash.stats.ups>=1&&afterFlash.stats.downs>=1,'ODDS_MOVEMENT_COUNTS_MISSING');
