@@ -25,7 +25,7 @@ jobs:
             const [r,js,css]=await Promise.all([fetch(url,{cache:'no-store'}),fetch(base+'/__b46_prematch_client.js',{cache:'no-store'}),fetch(base)]);
             if(r.ok&&js.ok&&css.ok){
               data=await r.json();src=await js.text();styles=await css.text();
-              if(src.includes('const avgOdds=items=>')&&src.includes("e.target?.closest?.('#b46-prematch-panel')")&&src.includes('b46pm-minute-mark')&&src.includes("window.addEventListener('click'")&&src.includes('function clearNativeActive()')&&src.includes('change.target===side')&&src.includes('b46pm-stats-board')&&src.includes('b46PmPeriod')&&src.includes('function readRoute()')&&src.includes('function syncRoute()')&&src.includes('function membershipBanner()')&&src.includes('function syncPrematchViewport()')&&src.includes('b46pm-scroll-region')&&src.includes('function performancePanel()')&&src.includes('B46_PM_PERFORMANCE_DAILY_DATE_V2')&&src.includes('B46_PM_RECEIVER_SCHEMA_V1')&&src.includes('B46_PM_PERSISTED_TEST_RECEIVER_V1')&&src.includes('const resultTone=n=>')&&src.includes('b46pm-performance-three-tone')&&src.includes('scroll architecture V2: one outer scrollbar'))break;
+              if(src.includes('const avgOdds=items=>')&&src.includes("e.target?.closest?.('#b46-prematch-panel')")&&src.includes('b46pm-minute-mark')&&src.includes("window.addEventListener('click'")&&src.includes('function clearNativeActive()')&&src.includes('change.target===side')&&src.includes('b46pm-stats-board')&&src.includes('b46PmPeriod')&&src.includes('function readRoute()')&&src.includes('function syncRoute()')&&src.includes('function membershipBanner()')&&src.includes('function syncPrematchViewport()')&&src.includes('b46pm-scroll-region')&&src.includes('function performancePanel()')&&src.includes('B46_PM_PERFORMANCE_DAILY_DATE_V2')&&src.includes('B46_PM_RECEIVER_SCHEMA_V1')&&src.includes('B46_PM_PERSISTED_TEST_RECEIVER_V1')&&src.includes('const resultTone=n=>')&&src.includes('b46pm-performance-three-tone')&&src.includes('The outer Pre-Match frame is the ONLY content scrollbar'))break;
             }
             await new Promise(r=>setTimeout(r,2200));
           }
@@ -44,7 +44,7 @@ jobs:
           assert(src.includes('B46_PM_RECEIVER_SCHEMA_V1'),'RECEIVER_PARITY_UI_NOT_DEPLOYED');
           assert(src.includes('B46_PM_PERSISTED_TEST_RECEIVER_V1'),'PERSISTED_TEST_GRAPH_UI_NOT_DEPLOYED');
           assert(src.includes('const resultTone=n=>')&&src.includes('b46pm-performance-three-tone'),'THREE_TONE_PREMATCH_UI_NOT_DEPLOYED');
-          assert(src.includes('scroll architecture V2: one outer scrollbar'),'SINGLE_OUTER_SCROLLBAR_NOT_DEPLOYED');
+          assert(src.includes('The outer Pre-Match frame is the ONLY content scrollbar'),'SINGLE_OUTER_SCROLLBAR_NOT_DEPLOYED');
           assert.equal(data.testLedger?.mode,'TEST_ONLY');
           const expected=rows=>{const n=rows.map(x=>Number(x.price)).filter(x=>Number.isFinite(x)&&x>1);return n.length?(n.reduce((a,b)=>a+b,0)/n.length).toFixed(2):'—'};
           const allAvg=expected(data.testLedger.rows),w=data.dailyBook.window;
