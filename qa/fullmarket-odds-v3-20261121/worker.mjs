@@ -44,7 +44,10 @@ export default {async fetch(req,env){
  // JS resources are patched ONLY for this isolated workers.dev TEST origin.
  // No production asset, origin database, engine, Cloudflare route, or API is written.
  if(req.method==='GET'&&source.ok&&NATIVE_ASSETS.has(u.pathname)){
-  const text=await source.text(),patched=nativeOptimized(u.pathname,text);
+  const text=await source.text();
+  let patched;
+  try{patched=nativeOptimized(u.pathname,text)}
+  catch(e){return new Response('B46_TEST_NATIVE_PATCH_FAILURE_'+u.pathname+':'+String(e)+'; bytes='+text.length,{status:500,headers:{'content-type':'text/plain; charset=utf-8','cache-control':'no-store'}})}
   if(patched===text)return new Response('NATIVE_OPTIMIZATION_NOT_APPLIED',{status:500});
   for(const k of ['content-length','content-encoding','etag','last-modified'])out.delete(k);
   out.set('content-type','application/javascript; charset=utf-8');out.set('cache-control','no-store');
