@@ -14,7 +14,7 @@ async function request(p){const r=await fetch(host+p,{headers:{authorization:'Be
 const protectedNames=['ball46-production','nomadtips3-engine-343','nomadtips3-5usd-hub-343'];
 const before=await Promise.all(protectedNames.map(async n=>({name:n,versions:(await cf('/scripts/'+n+'/deployments?per_page=1')).deployments[0].versions})));
 const old=await request('/test-ledger');assert.equal(old.mode,'TEST_ONLY');assert.equal(old.stats.total,8);
-const modules=['prematch-only-worker.mjs','history.mjs','prematch-bot.mjs','stored-prematch-feed.mjs','stored-signal-adapter.mjs','evaluate-btts-signal.mjs','evaluate-1x2-signal.mjs','market-1x2.mjs','test-pick-ledger.mjs','normal-hub-monitor.mjs'];
+const modules=['prematch-only-worker.mjs','history.mjs','prematch-bot.mjs','stored-prematch-feed.mjs','stored-signal-adapter.mjs','evaluate-btts-signal.mjs','evaluate-1x2-signal.mjs','market-1x2.mjs','test-pick-ledger.mjs','normal-hub-monitor.mjs','london-cutoff.mjs'];
 const main=fs.readFileSync('qa/prematch-history-20261120/prematch-only-worker.mjs','utf8');
 assert(main.includes('this.env.HUB.fetch(\'https://hub.internal/snapshot\''));
 assert(!main.includes('api.5dollarfootballapi.com'));
@@ -48,6 +48,9 @@ let d;for(let i=0;i<25;i++){
 }
 assert(d?.testMonitor?.details?.matches>=4&&!d.testMonitor.error,'CACHE_ONLY_HUB_CONNECTION_NOT_VERIFIED');
 assert(d.testMonitor.cacheOnly===true&&d.testMonitor.providerCalls===0,'NOT_CACHE_ONLY');
+assert(d.dailyBook?.window?.timezone==='Europe/London'&&d.dailyBook?.window?.cutoffLocal==='06:00','LIVE_LONDON_CUTOFF_NOT_CONNECTED');
+assert(d.dailyBook.window.begin<=Math.floor(Date.now()/1000)&&d.dailyBook.window.end>Math.floor(Date.now()/1000),'LONDON_DAY_WINDOW_INVALID');
+assert(d.dailyBook.providerCalls===0&&d.dailyBook.selected&&d.dailyBook.settled&&Number.isInteger(d.dailyBook.carriedPending),'DAILY_ACCOUNT_MISSING');
 assert(d.testLedger.stats.total===8,'PICKS_MISSING');
 assert(d.testLedger.stats.settled>=3,'KNOWN_FULL_TIME_NOT_SETTLED');
 const byId=new Map(d.testLedger.rows.map(x=>[x.fixture_id,x]));
@@ -61,4 +64,4 @@ const direct=await fetch(host+'/daily-run',{method:'POST',headers:{authorization
 const stop=await direct.json();assert.equal(stop.providerCalls,0);
 const settings=await cf('/scripts/'+name+'/settings');assert(settings.bindings?.some(b=>b.name==='HUB'&&b.type==='service'&&b.service==='nomadtips3-5usd-hub-343'));
 const after=await Promise.all(protectedNames.map(async n=>({name:n,versions:(await cf('/scripts/'+n+'/deployments?per_page=1')).deployments[0].versions})));
-console.log('NORMAL_HUB_MONITOR_VERIFIED '+JSON.stringify({url:host,activeVersion:active,source:d.testMonitor.source,hubCacheOnly:d.testMonitor.cacheOnly,hubDetails:d.testMonitor.details,monitor:d.testMonitor.monitor,stats:d.testLedger.stats,settled:d.testLedger.rows.filter(x=>x.status!=='PENDING').map(x=>({fixture:x.fixture_id,home:x.home,away:x.away,score:[x.hg,x.ag],status:x.status,units:x.units})),pending:d.testLedger.stats.pending,extra5usdCalls:0,duplicateSettlement:false,protectedUnchanged:JSON.stringify(before)===JSON.stringify(after)}));
+console.log('NORMAL_HUB_MONITOR_VERIFIED '+JSON.stringify({url:host,activeVersion:active,source:d.testMonitor.source,hubCacheOnly:d.testMonitor.cacheOnly,hubDetails:d.testMonitor.details,monitor:d.testMonitor.monitor,stats:d.testLedger.stats,settled:d.testLedger.rows.filter(x=>x.status!=='PENDING').map(x=>({fixture:x.fixture_id,home:x.home,away:x.away,score:[x.hg,x.ag],status:x.status,units:x.units})),pending:d.testLedger.stats.pending,dailyBook:d.dailyBook,extra5usdCalls:0,duplicateSettlement:false,protectedUnchanged:JSON.stringify(before)===JSON.stringify(after)}));
