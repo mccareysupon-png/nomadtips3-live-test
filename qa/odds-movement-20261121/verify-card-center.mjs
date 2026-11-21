@@ -12,6 +12,9 @@ assert(h?.scope==='TEST_ONLY_CSS','TEST_WORKER_NOT_RUNNING_EXPECTED_VERSION');
 assert(h.oddsMovementScript.includes('DURATION=6000')&&h.oddsMovementScript.includes("style.setProperty('--b46-odds-arrow-price-center'") ,'PRICE_CENTER_SCRIPT_MISSING');
 assert(h.oddsMovementStyle.includes('top:var(--b46-odds-arrow-price-center,50%)!important'),'ARROW_NOT_PRICE_CENTERED');
 assert(h.oddsMovementStyle.includes('font:700 7.6px/1 Arial,sans-serif!important'),'SMALL_ARROW_FONT_MISSING');
+assert(h.oddsMovementStyle.includes('width:5px!important;height:5px!important'),'TRIANGLE_SIZE_MISSING');
+assert(h.oddsMovementStyle.includes('clip-path:polygon(50% 0,100% 100%,0 100%)!important'),'UP_SOLID_TRIANGLE_MISSING');
+assert(h.oddsMovementStyle.includes('clip-path:polygon(0 0,100% 0,50% 100%)!important'),'DOWN_SOLID_TRIANGLE_MISSING');
 assert(h.oddsMovementStyle.includes('left:var(--b46-odds-arrow-price-left,auto)!important;right:auto!important'),'ARROW_NOT_NUMBER_RELATIVE');
 assert(h.oddsMovementScript.includes("style.setProperty('--b46-odds-arrow-price-left'"),'ARROW_NUMBER_MEASURE_MISSING');
 assert(h.oddsMovementStyle.includes('inset:0 -1px 0 0!important'),'3PX_SHEET_GAP_LOST');
@@ -41,7 +44,7 @@ try{
   number.style.fontSize='11.5px';
   const sample=()=>{
    const r=quote.getBoundingClientRect(),n=number.getBoundingClientRect(),m=middle.getBoundingClientRect(),p=getComputedStyle(quote,'::after'),bg=getComputedStyle(quote,'::before'),s=getComputedStyle(quote);
-   return {direction:quote.getAttribute('data-b46-odds-move'),qWidth:r.width,qHeight:r.height,nWidth:n.width,offsetFromCardCenter:parseFloat(p.top)-r.height/2,offsetFromNumberCenter:r.top+parseFloat(p.top)-n.top-n.height/2,cardTop:parseFloat(p.top),arrow:p.content,arrowColor:p.color,priceColor:getComputedStyle(number).color,numberFontSize:getComputedStyle(number).fontSize,arrowFontSize:p.fontSize,arrowLeft:p.left,arrowGap:r.left+parseFloat(p.left)-n.right,plateColor:bg.backgroundColor,plateRight:bg.right,plateRadius:bg.borderTopLeftRadius,quoteBackground:s.backgroundColor,quoteAnimation:s.animationName,quoteDuration:s.animationDuration,quoteCycles:s.animationIterationCount,quoteFilter:s.filter,rawGap:m.left-r.right,sheetGap:m.left-r.right-1};
+   return {direction:quote.getAttribute('data-b46-odds-move'),qWidth:r.width,qHeight:r.height,nWidth:n.width,offsetFromCardCenter:parseFloat(p.top)-r.height/2,offsetFromNumberCenter:r.top+parseFloat(p.top)-n.top-n.height/2,cardTop:parseFloat(p.top),arrow:p.content,arrowColor:p.color,arrowFill:p.backgroundColor,arrowClip:p.clipPath,arrowWidth:p.width,arrowHeight:p.height,priceColor:getComputedStyle(number).color,numberFontSize:getComputedStyle(number).fontSize,arrowFontSize:p.fontSize,arrowLeft:p.left,arrowGap:r.left+parseFloat(p.left)-n.right,plateColor:bg.backgroundColor,plateRight:bg.right,plateRadius:bg.borderTopLeftRadius,quoteBackground:s.backgroundColor,quoteAnimation:s.animationName,quoteDuration:s.animationDuration,quoteCycles:s.animationIterationCount,quoteFilter:s.filter,rawGap:m.left-r.right,sheetGap:m.left-r.right-1};
   };
   try{
    await sleep(450);const idle=sample();
@@ -64,11 +67,15 @@ try{
  assert(!proof.error,'FIXTURE_GEOMETRY_FAILED');
  assert.equal(proof.idle.direction,null,'INIT_FLASH_UNEXPECTED');
  for(const [name,d,color,arrow,plateColor] of [
-  ['UP',proof.up,'rgb(121, 225, 172)','↑','rgba(42, 163, 103, 0.2)'],
-  ['DOWN',proof.down,'rgb(255, 159, 165)','↓','rgba(178, 65, 74, 0.19)']]){
+  ['UP',proof.up,'rgb(121, 225, 172)','polygon(50%','rgba(42, 163, 103, 0.2)'],
+  ['DOWN',proof.down,'rgb(255, 159, 165)','polygon(0%','rgba(178, 65, 74, 0.19)']]){
   const s=d.started;
   assert.equal(s.direction,name.toLowerCase(),'FLASH_NOT_DETECTED_'+name);
-  assert(s.arrow.includes(arrow),'ARROW_MISSING_'+name);
+  assert.equal(s.arrow,'\"\"','OLD_SHAFT_ARROW_PRESENT_'+name);
+  assert.equal(s.arrowFill,color,'SOLID_TRIANGLE_FILL_MISSING_'+name);
+  assert.equal(s.arrowWidth,'5px','TRIANGLE_NOT_5PX_WIDE_'+name);
+  assert.equal(s.arrowHeight,'5px','TRIANGLE_NOT_5PX_HIGH_'+name);
+  assert(s.arrowClip.startsWith(arrow),'SOLID_TRIANGLE_ORIENTATION_WRONG_'+name);
   assert.equal(s.priceColor,color,'PRICE_COLOR_WRONG_'+name);
   assert.equal(s.arrowColor,color,'ARROW_COLOR_WRONG_'+name);
   assert.equal(s.plateColor,plateColor,'CARD_PLATE_LOST_'+name);
