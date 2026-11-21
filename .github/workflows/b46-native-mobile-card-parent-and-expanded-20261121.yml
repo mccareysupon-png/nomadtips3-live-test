@@ -1,0 +1,48 @@
+name: BALL46 current mobile LIVE card entire DOM and expansion READ ONLY
+on:
+  push:
+    branches: [test/ball46-premium-match-colors-20261120]
+    paths: ['.github/workflows/b46-native-mobile-card-parent-and-expanded-20261121.yml']
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          npm install --no-save --no-package-lock playwright@1.55.0
+          npx playwright install chromium --only-shell
+      - name: Inspect real mobile LIVE card parent DOM and expanded sections
+        run: |
+          node --input-type=module <<'JS'
+          import {chromium,devices} from 'playwright';
+          const b=await chromium.launch();const p=await b.newPage({...devices['iPhone 13'],serviceWorkers:'block'});
+          await p.goto('https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev/?gnAudit=1',{waitUntil:'domcontentloaded',timeout:60000});
+          await p.waitForFunction(()=>!!document.querySelector('.b46gn-cardbody'),null,{timeout:24000});
+          const snap=()=>p.evaluate(()=>{
+            const card=document.querySelector('.b46gn-cardbody');
+            const result=[];let e=card;
+            while(e&&result.length<6){
+              const s=getComputedStyle(e),r=e.getBoundingClientRect();result.push({tag:e.tagName,cls:String(e.className).slice(0,150),attrs:[...e.attributes].filter(a=>a.name.startsWith('data-')).map(a=>[a.name,a.value.slice(0,80)]),
+                w:r.width,h:r.height,display:s.display,grid:s.gridTemplateColumns,gridAreas:s.gridTemplateAreas,
+                padding:s.padding,gap:s.gap,background:s.backgroundColor,bgImage:s.backgroundImage,position:s.position,
+                html:e.outerHTML.slice(0,result.length===1?16000:3200)});
+              e=e.parentElement;
+            }
+            return {chain:result,targets:[...document.querySelectorAll('.b46gn-cardbody')].length};
+          });
+          console.log('B46_LIVE_MOBILE_CARD_PARENT_BEFORE '+JSON.stringify(await snap()));
+          await p.locator('.b46gn-cardbody').first().click();await p.waitForTimeout(1500);
+          const after=await snap();
+          const extra=await p.evaluate(()=>{
+            const card=document.querySelector('.b46gn-cardbody');
+            const parent=card?.parentElement;
+            const siblings=[...parent?.parentElement?.children||[]].slice(0,9).map(e=>({cls:String(e.className).slice(0,150),html:e.outerHTML.slice(0,7000)}));
+            const detail=[...document.querySelectorAll('[class]')].filter(x=>/b46gn-(detail|expand|flow|event|market)/.test(String(x.className)))
+              .filter(x=>{const r=x.getBoundingClientRect();return r.width>100&&r.height>20}).slice(0,7).map(x=>({cls:x.className,html:x.outerHTML.slice(0,12500)}));
+            return {siblings,detail};
+          });
+          console.log('B46_LIVE_MOBILE_CARD_PARENT_AFTER '+JSON.stringify({after,extra}));
+          await p.close();await b.close();
+          JS
