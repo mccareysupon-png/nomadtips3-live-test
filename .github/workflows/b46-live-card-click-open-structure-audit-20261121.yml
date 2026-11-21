@@ -1,0 +1,47 @@
+name: BALL46 current LIVE row click expand / stylesheet audit read-only
+on:
+  push:
+    branches: [test/ball46-premium-match-colors-20261120]
+    paths: ['.github/workflows/b46-live-card-click-open-structure-audit-20261121.yml']
+permissions: {contents: read}
+jobs:
+  observe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          npm install --no-save --no-package-lock playwright@1.55.0
+          npx playwright install chromium --only-shell
+      - name: Capture exact visible live card before after click including surrounding layout
+        run: |
+          node --input-type=module <<'JS'
+          import {chromium,devices} from 'playwright';
+          const b=await chromium.launch();
+          const base='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev';
+          for(const mobile of [false,true]){
+            const p=await b.newPage(mobile?{...devices['iPhone 13'],serviceWorkers:'block'}:{viewport:{width:1440,height:900},serviceWorkers:'block'});
+            await p.goto(base+'/?liveOpenAudit=1',{waitUntil:'domcontentloaded',timeout:60000});
+            await p.waitForFunction(()=>document.querySelectorAll('.match-row[data-match-id]').length>0,null,{timeout:16000});
+            const snapshot=()=>p.evaluate(()=>{
+              const row=document.querySelector('.match-row[data-match-id]');
+              const info=e=>{if(!e)return null;const c=getComputedStyle(e),r=e.getBoundingClientRect();return {tag:e.tagName,cls:String(e.className).slice(0,170),id:e.id,height:r.height,width:r.width,grid:c.gridTemplateColumns,display:c.display,padding:c.padding,gap:c.gap,background:c.backgroundImage,bgColor:c.backgroundColor,position:c.position,overflow:c.overflow,text:e.textContent?.replace(/\s+/g,' ').trim().slice(0,95),data:e.dataset?.b46Kind}};
+              const anchor=row?.closest('.workspace-stage'),parent=row?.parentElement;
+              const nearby=(row?[row,...[...row.parentElement.children].slice(0,4),...row.parentElement.parentElement.children].filter(x=>x!==row):[]);
+              const direct=[...row?.children||[]].map(info);
+              const shirts=[...document.querySelectorAll('.match-row .b46-shared-kit')].map(x=>({kit:x.dataset.kit,src:x.querySelector('img')?.getAttribute('src')})).filter((x,i,a)=>a.findIndex(y=>y.kit===x.kit)===i).sort((a,b)=>a.kit.localeCompare(b.kit));
+              return {row:info(row),parent:info(parent),ancestor:info(anchor),parents:[parent,parent?.parentElement,parent?.parentElement?.parentElement].map(info),children:direct,nearby:nearby.slice(0,10).map(info),kits:shirts,rootHtml:row?.parentElement?.outerHTML.slice(0,4200),url:location.href};
+            });
+            const before=await snapshot();
+            await p.locator('.match-row[data-match-id]').first().click();
+            await p.waitForTimeout(350);
+            const after=await snapshot();
+            const modal=await p.evaluate(()=>{
+              const candidates=[...document.querySelectorAll('[id],[class],dialog')].filter(x=>/detail|expand|modal|overlay|timeline|event-flow|match-flow/i.test(x.id+' '+(typeof x.className==='string'?x.className:'')));
+              return candidates.filter(x=>{const s=getComputedStyle(x),r=x.getBoundingClientRect();return s.display!=='none'&&r.width>300&&r.height>40}).slice(0,18).map(x=>({tag:x.tagName,id:x.id,cls:String(x.className).slice(0,150),html:x.outerHTML.slice(0,11000),visible:true}));
+            });
+            console.log('B46_REAL_LIVE_CARD_STRUCTURE '+JSON.stringify({mobile,before,after,opened:modal}));
+            await p.close();
+          }
+          await b.close();
+          JS
