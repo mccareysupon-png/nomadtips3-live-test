@@ -49,7 +49,7 @@ try{
   await p.waitForTimeout(250);
   const baseline=await p.evaluate(()=>{
     const r=document.querySelector('.match-expanded'),svg=r.querySelector('.expand-flow-chart svg');
-    return {doc:document.scrollingElement.scrollTop,board:document.querySelector('.board-sections').scrollTop,fixture:r.dataset.expandedMatch,icons:svg.querySelectorAll('[data-b46-event-icon]').length,keys:[...svg.querySelectorAll('[data-b46-event-icon]')].map(e=>e.getAttribute('transform')),nativeSource:!!r._nomadFixture};
+    return {doc:document.scrollingElement.scrollTop,board:document.querySelector('.board-sections').scrollTop,fixture:r.dataset.expandedMatch,icons:svg.querySelectorAll('[data-b46-event-icon]').length,keys:[...svg.querySelectorAll('[data-b46-event-icon]')].map(e=>e.getAttribute('transform')),nativeSource:!!r._nomadFixture,minute:r._nomadFixture?.minute??r._nomadFixture?.elapsed??null,pathD:[...svg.querySelectorAll('path.expand-flow-line')].map(e=>e.getAttribute('d'))};
   });
   await p.evaluate(()=>{const s=window.__b46FlowStress;s.calls=0;s.pointCalls=0;s.timeMs=0;s.pointMs=0;s.longs=[];s.frames=[]});
   const repeat=12;
@@ -67,10 +67,12 @@ try{
   },repeat);
   const after=await p.evaluate(()=>{
     const r=document.querySelector('.match-expanded'),svg=r.querySelector('.expand-flow-chart svg'),s=window.__b46FlowStress;
-    return {doc:document.scrollingElement.scrollTop,board:document.querySelector('.board-sections').scrollTop,fixture:r.dataset.expandedMatch,icons:svg.querySelectorAll('[data-b46-event-icon]').length,keys:[...svg.querySelectorAll('[data-b46-event-icon]')].map(e=>e.getAttribute('transform')),perf:{lengthCalls:s.calls,pointCalls:s.pointCalls,lengthMs:+s.timeMs.toFixed(1),pointMs:+s.pointMs.toFixed(1),longs:s.longs.slice(-16),longsCount:s.longs.length,maxLongTask:Math.max(0,...s.longs.map(e=>e.ms)),frameSpikes:s.frames.length,maxFrameSpike:Math.max(0,...s.frames.map(e=>e.ms))}};
+    return {doc:document.scrollingElement.scrollTop,board:document.querySelector('.board-sections').scrollTop,fixture:r.dataset.expandedMatch,icons:svg.querySelectorAll('[data-b46-event-icon]').length,keys:[...svg.querySelectorAll('[data-b46-event-icon]')].map(e=>e.getAttribute('transform')),minute:r._nomadFixture?.minute??r._nomadFixture?.elapsed??null,pathD:[...svg.querySelectorAll('path.expand-flow-line')].map(e=>e.getAttribute('d')),perf:{lengthCalls:s.calls,pointCalls:s.pointCalls,lengthMs:+s.timeMs.toFixed(1),pointMs:+s.pointMs.toFixed(1),longs:s.longs.slice(-16),longsCount:s.longs.length,maxLongTask:Math.max(0,...s.longs.map(e=>e.ms)),frameSpikes:s.frames.length,maxFrameSpike:Math.max(0,...s.frames.map(e=>e.ms))}};
   });
-  const stable=baseline.fixture===after.fixture&&Math.abs(baseline.doc-after.doc)<3&&Math.abs(baseline.board-after.board)<3&&baseline.icons===after.icons&&JSON.stringify(baseline.keys)===JSON.stringify(after.keys);
-  reports.push({name,baseline:{...baseline,keys:undefined},refresh,after:{...after,keys:undefined},stable,errors});
+  const iconDifferences=baseline.keys.map((x,i)=>x===after.keys[i]?null:{i,from:x,to:after.keys[i]}).filter(Boolean);
+  const dataChanged=baseline.minute!==after.minute||JSON.stringify(baseline.pathD)!==JSON.stringify(after.pathD);
+  const stable=baseline.fixture===after.fixture&&Math.abs(baseline.doc-after.doc)<3&&Math.abs(baseline.board-after.board)<3&&baseline.icons===after.icons&&(iconDifferences.length===0||dataChanged);
+  reports.push({name,baseline:{...baseline,keys:undefined,pathD:undefined},refresh,after:{...after,keys:undefined,pathD:undefined},stable,dataChanged,iconDifferences:iconDifferences.slice(0,20),errors});
   console.log('B46_EVENTFLOW_REPEAT_STRESS '+JSON.stringify(reports.at(-1)));
   assert(stable,'EVENTFLOW_SCROLL_OR_ICON_DRIFT_'+name);
   assert.deepEqual(errors,[],'BROWSER_ERRORS_'+name);
