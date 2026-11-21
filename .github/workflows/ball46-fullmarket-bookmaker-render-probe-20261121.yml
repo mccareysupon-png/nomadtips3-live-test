@@ -32,7 +32,7 @@ jobs:
           const view=await p.evaluate(()=>{
            const card=document.querySelector('.expand-full-market-card');
            const nodes=[...card?.querySelectorAll('button,[role=button],select,option,a,input,[class*=fmb]')||[]];
-           return {fixture:card?.closest('[data-expanded-match]')?.getAttribute('data-expanded-match'),html:card?.outerHTML.slice(0,20000),text:card?.innerText.slice(0,5000),nodes:nodes.slice(0,100).map(e=>({tag:e.tagName,cls:String(e.className),html:e.outerHTML.slice(0,1500)})),list:[...card.querySelectorAll('[data-*]')].length};
+           return {fixture:card?.closest('[data-expanded-match]')?.getAttribute('data-expanded-match'),html:card?.outerHTML.slice(0,20000),text:card?.innerText.slice(0,5000),nodes:nodes.slice(0,100).map(e=>({tag:e.tagName,cls:String(e.className),html:e.outerHTML.slice(0,1500)})),list:card.querySelectorAll('*').length};
           });
           console.log('FULL_MARKET_RENDERED_CARD '+JSON.stringify(view).slice(0,35000));
           const choice=await p.evaluate(()=>{
