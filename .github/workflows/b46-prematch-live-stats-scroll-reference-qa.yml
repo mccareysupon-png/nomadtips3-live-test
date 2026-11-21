@@ -30,7 +30,7 @@ jobs:
                 await p.goto(base+route,{waitUntil:'domcontentloaded',timeout:60000});
                 await p.waitForTimeout(2200);
                 const info=await p.evaluate(()=>{
-                  const selectors=['html','body','section.workspace.singlepage','aside.left-rail','.workspace-stage',
+                  const selectors=['html','body','section.workspace.singlepage','aside.left-rail','.workspace-stage','.workspace-panel','.workspace-panel>.workspace-scroll',
                     '.workspace-stage>.workspace-scorebar-slot','.workspace-stage .sp-stats-content',
                     '.workspace-stage .sp-results','.workspace-stage .b46-perf-shell',
                     '.workspace-stage .sp-stats-wrapper','#b46-prematch-panel',
@@ -46,6 +46,16 @@ jobs:
                       top:r.top,bottom:r.bottom,width:r.width,parent:e.parentElement?.className?.toString()?.slice(0,80),text:e.textContent?.trim().slice(0,85)};
                   };
                   const layout=Object.fromEntries(selectors.map(sel=>[sel,describe(document.querySelector(sel))]));
+                  const nativePanel=document.querySelector('.workspace-panel');
+                  const nativeRules=[];
+                  const walkRules=(rules,origin)=>{for(const rule of rules){
+                    if(rule.selectorText&&/(workspace-panel|workspace-stage|scroll-external|workspace\.singlepage)/.test(rule.selectorText)
+                    &&/(overflow|height|scrollbar|position|flex|grid)/.test(rule.style?.cssText||''))nativeRules.push({
+                      selector:rule.selectorText.slice(0,500),css:rule.style.cssText.slice(0,800),origin:origin.slice(0,130)
+                    });
+                    if(rule.cssRules)try{walkRules(rule.cssRules,origin)}catch{}
+                  }};
+                  for(const sheet of [...document.styleSheets])try{walkRules(sheet.cssRules,sheet.href||sheet.ownerNode?.id||'inline')}catch{}
                   const scroll=Array.from(document.querySelectorAll('*')).filter(e=>{const s=getComputedStyle(e);return ['auto','scroll'].includes(s.overflowY)&&e.scrollHeight>e.clientHeight+15&&e.getBoundingClientRect().width>50&&e.getBoundingClientRect().height>80}).map(describe).slice(0,28);
                   const matchedRules=[];
                   const target=document.querySelector('.workspace-stage')||document.querySelector('#b46-prematch-panel');
@@ -59,7 +69,7 @@ jobs:
                   for(const sheet of [...document.styleSheets])try{explore(sheet.cssRules,sheet.href||sheet.ownerNode?.id||'inline')}catch{}
                   return {url:location.href,html:document.documentElement.dataset.theme,bodyMode:document.body.dataset.b46PrematchView,
                     workspaceChildren:[...document.querySelector('section.workspace.singlepage')?.children||[]].map(describe).slice(0,10),
-                    layout,scroll,matchedRules:matchedRules.slice(-120)};
+                    layout,scroll,nativeRules:nativeRules.filter(x=>/workspace-panel|scroll-external/.test(x.selector)).slice(-65),matchedRules:matchedRules.slice(-15)};
                 });
                 console.log('LIVE_STATS_SCROLL_REFERENCE '+JSON.stringify({mobile,name,...info}));
               }
