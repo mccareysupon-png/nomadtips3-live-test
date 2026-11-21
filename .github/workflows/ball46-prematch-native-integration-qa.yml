@@ -38,13 +38,14 @@ jobs:
               if(!d.ok)throw Error('data '+d.status);
               data=await d.json();
               const client=await(await fetch(base+'/__b46_prematch_client.js',{cache:'no-store'})).text();
-              if(health.prematchNative===true&&data.testLedger?.stats?.total>=8&&client.includes('setTimeout(updateMenu,0)'))break;
+              if(health.prematchNative===true&&data.testLedger?.stats?.total>=8&&data.dailyBook?.window?.cutoffLocal==='06:00'&&client.includes('b46pm-daybar'))break;
             }catch(e){console.log('PROPAGATION '+i+' '+String(e.message))}
             await new Promise(r=>setTimeout(r,2500));
           }
           assert.equal(health?.prematchNative,true,'PREMATCH_MODULE_NOT_ACTIVE');
           assert.equal(data?.testLedger?.mode,'TEST_ONLY');
           assert.equal(data.testLedger.stats.total,8);
+          assert.equal(data.dailyBook.window.timezone,'Europe/London');assert.equal(data.dailyBook.providerCalls,0);
           const browser=await chromium.launch();
           const cases=[];
           try{
@@ -63,10 +64,11 @@ jobs:
                 const old=await p.locator('[data-b46-sidebar-row]').evaluateAll(els=>els.filter(e=>!e.hasAttribute('data-b46-prematch-route')).map(e=>e.dataset.b46SidebarRow));
                 await route('predictions').evaluate(e=>e.click());
                 if(mobile){await p.waitForTimeout(500);const d=await p.evaluate(()=>({mode:document.body.dataset.b46PrematchView,body:document.body.getAttribute('data-b46-prematch-view'),panel:!!document.querySelector('#b46-prematch-panel'),panelHidden:document.querySelector('#b46-prematch-panel')?.hidden,cardCount:document.querySelectorAll('#b46-prematch-panel .b46pm-card').length,active:[...document.querySelectorAll('[data-b46-prematch-route].active')].map(e=>e.dataset.b46PrematchRoute),drawer:document.querySelector('#b46m-drawer')?.getAttribute('aria-hidden'),scripts:[...document.scripts].filter(x=>x.src.includes('prematch')).map(x=>x.src)}));console.log('MOBILE_ACTION_DIAG '+JSON.stringify({d,jsErrors}));}
-                await p.waitForFunction(()=>document.body.dataset.b46PrematchView==='1'&&document.querySelector('#b46-prematch-panel .b46pm-summary'));
+                await p.waitForFunction(()=>document.body.dataset.b46PrematchView==='1'&&document.querySelector('#b46-prematch-panel .b46pm-summary')&&document.querySelector('#b46-prematch-panel .b46pm-daybar'));
                 const first=await p.evaluate(mobile=>{
                   const panel=document.querySelector('#b46-prematch-panel');const menu=document.querySelector((mobile?'#b46m-drawer ':'aside.left-rail ')+'[data-b46-prematch-route="predictions"]');return {heading:document.querySelector('[data-workspace-heading]')?.textContent,panelWidth:panel.getBoundingClientRect().width,sideWidth:document.querySelector('aside.left-rail')?.getBoundingClientRect().width,screenWidth:innerWidth,scrollWidth:document.documentElement.scrollWidth,menuActive:menu.classList.contains('active'),summary:[...panel.querySelectorAll('.b46pm-card')].map(x=>x.textContent),matches:panel.querySelectorAll('.b46pm-match').length}},mobile); 
                 assert((mobile||first.menuActive)&&first.summary.some(s=>s==='TOTAL8')&&first.panelWidth>200&&first.panelWidth<=first.screenWidth+5,JSON.stringify(first));
+                const dailyText=await p.locator('#b46-prematch-panel .b46pm-daybar').innerText();assert(dailyText.includes(data.dailyBook.window.businessDay)&&dailyText.includes('London')&&dailyText.includes('PICKS TODAY')&&dailyText.includes('P/L TODAY'),dailyText);
                 await p.screenshot({path:'evidence/native-prematch/'+(mobile?'mobile':'desktop')+'-'+theme+'-predictions.png',fullPage:true});
                 if(mobile){await p.locator('[data-b46m-open]').click();await p.waitForFunction(()=>document.querySelector('#b46m-drawer [data-b46-prematch-route="predictions"]')?.classList.contains('active'),null,{timeout:8000})}
                 await route('1x2').waitFor({state:'visible',timeout:10000});
@@ -90,7 +92,7 @@ jobs:
           }finally{await browser.close()}
           const prodAfter=(await cf('/scripts/ball46-production/deployments?per_page=1')).deployments[0].versions;
           assert.deepEqual(prodAfter,prodBefore,'PRODUCTION_CHANGED');
-          console.log('NATIVE_PREMATCH_PASS '+JSON.stringify({url:base,menuCount:4,stored:data.testLedger.stats,cases:cases.length,published:0,productionUnchanged:true}));
+          console.log('NATIVE_PREMATCH_PASS '+JSON.stringify({url:base,menuCount:4,stored:data.testLedger.stats,dailyBook:data.dailyBook,cases:cases.length,published:0,productionUnchanged:true}));
           fs.writeFileSync('evidence/native-prematch/report.json',JSON.stringify({url:base,stats:data.testLedger.stats,cases,productionUnchanged:true},null,2));
           JS
       - uses: actions/upload-artifact@v4
