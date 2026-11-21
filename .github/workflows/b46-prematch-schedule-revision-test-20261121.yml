@@ -1,0 +1,25 @@
+name: BALL46 Pre-Match revised fixture schedule regression TEST
+on:
+  push:
+    branches: [test/ball46-prematch-v1-20261120]
+    paths:
+      - 'qa/prematch-history-20261120/normal-hub-monitor.mjs'
+      - 'qa/prematch-history-20261120/test-pick-ledger.mjs'
+      - 'qa/prematch-history-20261120/stored-prematch-feed.mjs'
+      - 'qa/prematch-history-20261120/normal-hub-monitor.test.mjs'
+      - 'qa/prematch-history-20261120/rescheduled-ledger.test.mjs'
+      - '.github/workflows/b46-prematch-schedule-revision-test-20261121.yml'
+permissions:
+  contents: read
+jobs:
+  verify-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Offline-only fixture schedules and immutable SQLite ledger
+        run: |
+          node --test qa/prematch-history-20261120/normal-hub-monitor.test.mjs qa/prematch-history-20261120/rescheduled-ledger.test.mjs qa/prematch-history-20261120/stored-prematch-feed.test.mjs
+          echo 'PASS: no network/provider call and no deployment'
