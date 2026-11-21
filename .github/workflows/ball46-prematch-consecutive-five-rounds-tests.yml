@@ -1,0 +1,22 @@
+name: BALL46 test five back-to-back historical cargo rounds and automatic Bot input
+on:
+  push:
+    branches: [test/ball46-prematch-v1-20261120]
+    paths: ['.github/workflows/ball46-prematch-consecutive-five-rounds-tests.yml']
+permissions: {contents: read}
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify test-only automatic pipeline
+        run: |
+          node --check qa/prematch-history-20261120/prematch-only-worker.mjs
+          node --check qa/prematch-history-20261120/hub-upcoming-feed.mjs
+          node --check qa/prematch-history-20261120/history-five-rounds.mjs
+          node --test qa/prematch-history-20261120/hub-upcoming-feed.test.mjs qa/prematch-history-20261120/history-five-rounds.test.mjs qa/prematch-history-20261120/london-cutoff.test.mjs qa/prematch-history-20261120/normal-hub-monitor.test.mjs qa/prematch-history-20261120/market-1x2.test.mjs qa/prematch-history-20261120/test-pick-ledger.test.mjs
+          ! grep -q 'api.5dollarfootballapi.com' qa/prematch-history-20261120/prematch-only-worker.mjs
