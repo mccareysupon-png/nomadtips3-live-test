@@ -1,0 +1,113 @@
+name: BALL46 TEST exact Live Score DOM mirror and Pre-Match isolation
+on:
+  push:
+    branches: [test/ball46-premium-match-colors-20261120]
+    paths: ['.github/workflows/b46-prematch-live-score-exact-dom-mirror-qa-20261121.yml','.github/workflows/premium-match-colors-test.yml','qa/prematch-native-ui-20261121/prematch-client.mjs','qa/prematch-native-ui-20261121/prematch-live-score-mirror.mjs']
+permissions: {contents: read}
+jobs:
+  mirror:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          npm install --no-save --no-package-lock playwright@1.55.0
+          npx playwright install chromium --only-shell
+      - name: Verify exact actual Live Score row DOM copy, no signal leakage and native scroll/theme
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {chromium,devices} from 'playwright';
+          const base='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev';
+          const version='B46_PM_EXACT_LIVE_SCORE_DOM_MIRROR_V1';
+          for(let i=0;i<70;i++){
+            const [a,b]=await Promise.all([
+              fetch(base+'/__b46_prematch_mirror.js',{cache:'no-store',signal:AbortSignal.timeout(16000)}),
+              fetch(base+'/__b46_prematch_client.js',{cache:'no-store',signal:AbortSignal.timeout(16000)})
+            ]);
+            if(a.ok&&b.ok&&(await a.text()).includes(version)&&(await b.text()).includes(version))break;
+            if(i===69)throw Error('MIRROR_CLIENT_WORKER_NOT_DEPLOYED');
+            await new Promise(r=>setTimeout(r,1800));
+          }
+          const dataRes=await fetch(base+'/__b46_prematch_data',{cache:'no-store'});assert(dataRes.ok);
+          const dataset=await dataRes.json();assert.equal(dataset.testLedger.mode,'TEST_ONLY');
+          const ledgerRows=dataset.testLedger.rows,ledgerSet=new Set(ledgerRows.map(r=>String(r.fixture_id)));
+          const b=await chromium.launch();
+          try{
+            for(const mobile of [false,true])for(const theme of ['dark','light']){
+              const p=await b.newPage(mobile?{...devices['iPhone 13'],serviceWorkers:'block'}:{viewport:{width:1440,height:950},serviceWorkers:'block'});
+              const errors=[];p.on('pageerror',err=>errors.push(String(err.message)));
+              await p.addInitScript(t=>localStorage.setItem('nomad343_dashboard_theme_v1',t),theme);
+              await p.goto(base+'/?b46pm=predictions&mirrorQA=1',{waitUntil:'domcontentloaded',timeout:60000});
+              await p.waitForFunction(count=>document.querySelectorAll('#b46-prematch-panel .b46pm-live-mirror-row').length===count,ledgerRows.length,{timeout:26000});
+              const mirror=await p.evaluate(()=>{
+                const content=document.querySelector('#b46-prematch-panel'),native=document.querySelector('section.workspace.singlepage > .workspace-stage .match-row');
+                const rows=[...content.querySelectorAll('.b46pm-live-mirror-row')];
+                const cls=el=>[...el.children].map(x=>x.className);
+                const css=(el)=>{const c=getComputedStyle(el),r=el.getBoundingClientRect();return {
+                  h:r.height,w:r.width,padding:c.padding,gap:c.gap,background:c.backgroundImage,display:c.display,cols:c.gridTemplateColumns}};
+                return {htmlScope:document.documentElement.dataset.b46PmBoot,route:new URL(location.href).searchParams.get('b46pm'),
+                  styleEl:!!document.getElementById('b46-prematch-native-styles'),
+                  mirrorVersion:window.B46PreMatchLiveMirror?.version,kitCount:window.B46PreMatchLiveMirror?.kits,
+                  native: native&&{structure:cls(native),style:css(native)},
+                  rows:rows.map(r=>({fixture:r.parentElement?.dataset.b46PmMirrorFixture,tag:r.tagName,role:r.getAttribute('role'),
+                    children:cls(r),style:css(r),stars:r.querySelectorAll('[data-b46-pin-v2]').length,
+                    status:r.dataset.b46Kind,signal:r.dataset.signal,
+                    teams:[...r.querySelectorAll('.teams-cell b')].map(x=>x.textContent),
+                    kits:[...r.querySelectorAll('.b46-shared-kit img')].map(x=>({src:x.getAttribute('src'),loaded:x.complete&&x.naturalWidth>0})),
+                    pick:r.querySelector('.b46pm-live-mirror-pick')?.textContent,
+                    quote:r.querySelector('.market-cell-1x2')?.textContent,
+                    renderedExpanded:!!r.nextElementSibling?.matches('.match-expanded') })),
+                  hiddenNative: getComputedStyle(document.querySelector('section.workspace.singlepage > .workspace-stage')).display,
+                  panelOverflow:getComputedStyle(content).overflowY,
+                  originalRows:document.querySelectorAll('section.workspace.singlepage > .workspace-stage .match-row').length
+                };
+              });
+              assert.equal(mirror.htmlScope,'1');assert.equal(mirror.route,'predictions');
+              assert.equal(mirror.mirrorVersion,version);assert.equal(mirror.kitCount,20);
+              assert.equal(mirror.hiddenNative,'none','NATIVE_LIVE_STAGE_NOT_HIDDEN');
+              assert.equal(mirror.panelOverflow,'auto','OUTER_SCROLLBAR_CHANGED');
+              assert.equal(mirror.rows.length,ledgerRows.length,'MIRRORED_UNPREDICTED_MATCHES');
+              assert(mirror.native?.structure?.length>=5,'NO_ACTUAL_LIVE_TEMPLATE_LOADED');
+              for(const card of mirror.rows){
+                assert(ledgerSet.has(card.fixture),'MIRROR_ADDED_UNKNOWN_FIXTURE');
+                assert.equal(card.tag,'ARTICLE');assert.equal(card.role,'button');
+                assert.equal(card.children.length,6,'MUST_USE_SIX_NATIVE_COLUMNS '+JSON.stringify(card.children));
+                assert(card.children[0]==='teams-cell'&&card.children[1]==='score-cell','NOT_ACTUAL_LIVE_SCORE_STRUCTURE');
+                assert(card.children[2].includes('market-cell-1x2')&&card.children[3].includes('market-cell-ah')&&card.children[4].includes('market-cell-ou'),'LIVE_MARKET_LANES_DIFFER');
+                assert(card.children[5].includes('b46pm-live-mirror-pick'),'PREDICTION_NOT_IN_NATIVE_SIXTH_COLUMN');
+                assert.equal(card.stars,0,'FAVORITES_BLEED_THROUGH');
+                assert.equal(card.signal,undefined,'LIVE_SIGNAL_LEAKED');
+                assert.equal(card.status,undefined,'LIVE_SIGNAL_STATE_COPIED');
+                assert.equal(card.kits.length,2,'SHARED_KIT_COUNT');
+                assert(card.kits.every(k=>k.src?.startsWith('/b46-kit-')&&k.src?.endsWith('-20261030.webp')&&k.loaded),'NATIVE_KIT_ASSET_MISSING');
+                assert(card.renderedExpanded,'LIVE_DETAIL_CONTAINER_NOT_MIRRORED');
+                const sourceRow=ledgerRows.find(x=>String(x.fixture_id)===card.fixture);
+                assert(card.pick?.includes(Number(sourceRow.price).toFixed(2)),'PICK_ODDS_CHANGED');
+                assert(card.teams.every(Boolean),'TEAM_NAME_MISSING');
+                assert(card.style.h>40&&card.style.h<(mobile?190:115),'ROW_TOO_TALL '+JSON.stringify({h:card.style.h,mobile,cols:card.style.cols}));
+                assert(!card.pick.includes('Bet365'),'BOOKMAKER_MISREPRESENTED');
+              }
+              const first=p.locator('#b46-prematch-panel .b46pm-live-mirror-row').first();
+              const second=p.locator('#b46-prematch-panel .b46pm-live-mirror-row').nth(1);
+              await first.click();
+              assert.equal(await first.getAttribute('aria-expanded'),'true');
+              assert.equal(await p.locator('#b46-prematch-panel .b46pm-live-mirror-expanded:visible').count(),1);
+              const expanded=await p.locator('#b46-prematch-panel .b46pm-live-mirror-expanded:visible').first().innerText();
+              assert(expanded.includes('BALL46 PRE-MATCH PREDICTION'),'PREMATCH_ANALYSIS_NOT_ADDED');
+              assert(expanded.includes('LOCKED ODDS'),'LOCKED_ODDS_NOT_ADDED');
+              await second.click();
+              assert.equal(await first.getAttribute('aria-expanded'),'false');
+              assert.equal(await second.getAttribute('aria-expanded'),'true');
+              assert.equal(await p.locator('#b46-prematch-panel .b46pm-live-mirror-expanded:visible').count(),1);
+              await second.click();
+              assert.equal(await p.locator('#b46-prematch-panel .b46pm-live-mirror-expanded:visible').count(),0);
+              assert.equal(new URL(p.url()).searchParams.get('b46pm'),'predictions','MIRROR_CLICK_NAVIGATED_AWAY');
+              assert.deepEqual(errors,[],'PAGE_ERRORS');
+              console.log('B46_EXACT_LIVE_SCORE_DOM_MIRROR_PASS '+JSON.stringify({mobile,theme,rows:mirror.rows.length,nativeCount:mirror.originalRows,
+                nativeHeight:mirror.native.style.h,firstMirrorHeight:mirror.rows[0].style.h,kitAssets:'official shared 20261030',mirrorVersion:version,
+                sixSameStructure:true,nonNativeSignal:false,opened:true,codeIsolation:'TEST_ONLY'}));
+              await p.close();
+            }
+          }finally{await b.close()}
+          JS
