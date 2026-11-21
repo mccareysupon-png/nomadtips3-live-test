@@ -53,7 +53,7 @@ export class PrematchStore extends DurableObject{
   const feed=scheduledFromNormalHub(snapshot,now);
   if(feed.status!=='READY')return {state:feed.status,day:window.businessDay,history,feed:feed.stats,extraProviderCalls:0};
   const roundResults=[];
-  for(let roundNo=1;roundNo<=5;roundNo++){
+  if(history.completed<5)for(let roundNo=1;roundNo<=5;roundNo++){
    const round=importHistoryRoundFromCache(this.db,snapshot,now,{roundNo});
    roundResults.push({roundNo,state:round.state,imported:round.current?.imported??0});
    if(!['COMPLETED','ALREADY_EXECUTED'].includes(round.state)){
