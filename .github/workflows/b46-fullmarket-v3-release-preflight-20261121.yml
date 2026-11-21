@@ -1,0 +1,59 @@
+name: BALL46 Full Market V3 production source guarded preflight
+on:
+  push:
+    branches: [test/ball46-fullmarket-odds-v3-20261121]
+    paths: ['.github/workflows/b46-fullmarket-v3-release-preflight-20261121.yml']
+permissions: {contents: read}
+concurrency:
+  group: ball46-production-ui-release
+  cancel-in-progress: false
+jobs:
+  verify-current:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Verify production baseline and exactly matching native assets without writing
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import {createHash} from 'node:crypto';
+          assert(process.env.CLOUDFLARE_API_TOKEN&&process.env.CLOUDFLARE_ACCOUNT_ID,'CF_CREDENTIALS_MISSING');
+          const sha=s=>createHash('sha256').update(s).digest('hex').slice(0,20);
+          const api='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+'/workers';
+          async function cf(p){
+           const r=await fetch(api+p,{headers:{authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN},signal:AbortSignal.timeout(45000)});
+           const j=await r.json();assert(r.ok&&j.success,JSON.stringify(j.errors||[]));return j.result;
+          }
+          async function active(n){
+           const x=(await cf('/scripts/'+n+'/deployments?per_page=1')).deployments[0].versions;
+           assert(x.length===1&&Number(x[0].percentage)===100,'TRAFFIC_SPLIT '+n);
+           return x[0].version_id;
+          }
+          const versions={site:await active('ball46-production'),engine:await active('nomadtips3-engine-343'),receiver:await active('ball46-shadow-receiver-production')};
+          const v=await cf('/workers/ball46-production/versions/'+versions.site+'?include=modules');
+          const paths=['/dashboard-v2-stage3-featured-facts-20261013a.js','/ui-sync-fixes-343-v2.js','/expanded-match-343.js'];
+          const needles=[
+           ["function b46PinExpanded(){return !!document.querySelector('.match-expanded[data-expanded-match]')}"],
+           ["function pointAtX(path,x){try{const len=path.getTotalLength();if(!Number.isFinite(len)||len<=0)return null;let lo=0,hi=len;for(let i=0;i<24;i++){const mid=(lo+hi)/2,p=path.getPointAtLength(mid);if(p.x<x)lo=mid;else hi=mid}return path.getPointAtLength((lo+hi)/2)}catch{return null}}","g.setAttribute('pointer-events','all');"],
+           ["if(!eventFlowViewportExpanded&&lastAnchorTop!==null&&Number.isFinite(top)){const delta=top-lastAnchorTop;if(Math.abs(delta)>1&&document.visibilityState==='visible')window.scrollBy(0,delta)}"]
+          ];
+          const report=[];
+          for(let i=0;i<paths.length;i++){
+           const r=await fetch('https://ball46-production.mccarey-supon.workers.dev'+paths[i],{headers:{'cache-control':'no-cache'},signal:AbortSignal.timeout(30000)});
+           assert.equal(r.status,200,'ASSET_HTTP '+paths[i]);
+           const s=await r.text();
+           report.push({path:paths[i],bytes:s.length,sha:sha(s),match:needles[i].map(n=>s.split(n).length-1)});
+          }
+          const home=await fetch('https://ball46-production.mccarey-supon.workers.dev/index.html',{signal:AbortSignal.timeout(30000)});
+          const html=await home.text();
+          const info={versions,main:v.main_module,modules:v.modules?.length,bindings:v.bindings?.map(b=>({name:b.name,type:b.type})),assets:!!v.assets,compatibility_date:v.compatibility_date,homeStatus:home.status,homeBytes:html.length,existingFullMarketV3:html.includes('b46-fullmarket-odds-v3-style-test'),report};
+          console.log('B46_FULLMARKET_V3_PRODUCTION_SOURCE_PREFLIGHT '+JSON.stringify(info));
+          assert(home.status===200&&report.every((r,i)=>r.match.every(x=>x===1)),'SOURCE_DRIFT_OR_PATCH_ALREADY_APPLIED');
+          console.log('B46_FULLMARKET_V3_PREFLIGHT_PASS_READ_ONLY');
+          NODE
