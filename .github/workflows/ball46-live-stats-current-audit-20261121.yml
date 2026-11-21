@@ -1,0 +1,19 @@
+name: BALL46 Read-only audit current Live Statistics pipeline
+on:
+  push:
+    branches: [test/ball46-premium-match-colors-20261120]
+    paths:
+      - '.github/workflows/ball46-live-stats-current-audit-20261121.yml'
+      - 'qa/prematch-performance-20261121/inspect-current-live-stats.mjs'
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Inspect deployed JS and receiver API with GET only
+        run: |
+          node qa/prematch-performance-20261121/inspect-current-live-stats.mjs
