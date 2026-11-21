@@ -127,7 +127,11 @@ jobs:
               });
               const probeBefore=await sampleScroll();
               await p.locator('#b46-prematch-panel .b46pm-head').evaluate(x=>x.scrollIntoView({block:'nearest'}));
-              await p.mouse.move(Math.min(280,promo.width*0.5),Math.min(230,promo.height+130));
+              // Scroll from an actual point inside the Pre-Match content viewport,
+              // not a fixed page coordinate that may overlap native sidebar layers.
+              const scrollArea=await p.locator('#b46pm-scroll-region').boundingBox();
+              assert(scrollArea&&scrollArea.width>100&&scrollArea.height>100,'SCROLL_REGION_BOUNDS_NOT_FOUND');
+              await p.mouse.move(scrollArea.x+Math.min(180,scrollArea.width/2),scrollArea.y+Math.min(135,scrollArea.height/3));
               await p.mouse.wheel(0,50);
               await p.waitForTimeout(240);
               const probeAfter=await sampleScroll();
