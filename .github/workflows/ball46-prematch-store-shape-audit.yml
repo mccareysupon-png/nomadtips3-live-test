@@ -1,0 +1,32 @@
+name: BALL46 Pre-Match TEST-only store shape audit
+on:
+  push:
+    branches: [test/ball46-premium-match-colors-20261120]
+    paths: ['.github/workflows/ball46-prematch-store-shape-audit.yml']
+permissions: { contents: read }
+jobs:
+  read-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Inspect test ledger schema using GET only
+        run: |
+          node --input-type=module <<'NODE'
+          const base='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev';
+          const r=await fetch(base+'/__b46_prematch_data',{cache:'no-store',signal:AbortSignal.timeout(15000)});
+          if(!r.ok)throw Error('TEST_DATA_HTTP_'+r.status);
+          const j=await r.json();
+          if(j?.testLedger?.mode!=='TEST_ONLY')throw Error('NOT_TEST_LEDGER');
+          const projection=row=>Object.fromEntries(Object.entries(row||{}).map(([key,v])=>[key,typeof v==='object'?{type:Array.isArray(v)?'array':'object',keys:Object.keys(v||{}).slice(0,20)}:typeof v==='string'&&/(?:id|name|team|home|away|league|selection|fixture)/i.test(key)?'<redacted>':v]).slice(0,55));
+          console.log('TEST_PREMATCH_STORE_SHAPE',JSON.stringify({
+            rootKeys:Object.keys(j),ledgerKeys:Object.keys(j.testLedger),
+            stats:j.testLedger.stats,rows:j.testLedger.rows?.length,first:projection(j.testLedger.rows?.[0]),
+            settled:projection(j.testLedger.rows?.find(x=>x.status!=='PENDING')),
+            pending:projection(j.testLedger.rows?.find(x=>x.status==='PENDING')),
+            dailyBookKeys:Object.keys(j.dailyBook||{}),dailyBookWindow:j.dailyBook?.window,
+            hasReceiver:!!j.performanceGraph,hasPerformanceSnapshots:!!j.performanceSnapshot,
+            monitorKeys:Object.keys(j.testMonitor||{}),providerCalls:j.dailyBook?.providerCalls
+          }));
+          NODE
