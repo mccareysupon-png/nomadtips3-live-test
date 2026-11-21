@@ -48,4 +48,4 @@ jobs:
           curl -fsS --retry 8 --retry-all-errors --retry-delay 2 "$PREVIEW/_codex-pc-favorite-stars/health" |
             jq -e '.name == "ball46-codex-pc-favorite-stars-preview" and .scope == "test"'
           curl -fsS --retry 5 --retry-all-errors "$PREVIEW/index.html?view=signal&signalMarket=ah" -o "$RUNNER_TEMP/favorite-stars-test.html"
-          rg -Fq 'id="codex-pc-favorite-stars"' "$RUNNER_TEMP/favorite-stars-test.html"
+          grep -Fq 'id="codex-pc-favorite-stars"' "$RUNNER_TEMP/favorite-stars-test.html"
