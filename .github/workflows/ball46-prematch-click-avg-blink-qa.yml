@@ -25,7 +25,7 @@ jobs:
             const [r,js,css]=await Promise.all([fetch(url,{cache:'no-store'}),fetch(base+'/__b46_prematch_client.js',{cache:'no-store'}),fetch(base)]);
             if(r.ok&&js.ok&&css.ok){
               data=await r.json();src=await js.text();styles=await css.text();
-              if(src.includes('const avgOdds=items=>')&&src.includes("e.target?.closest?.('#b46-prematch-panel')")&&src.includes('b46pm-minute-mark')&&src.includes("window.addEventListener('click'")&&src.includes('function clearNativeActive()')&&src.includes('change.target===side')&&src.includes('b46pm-stats-board')&&src.includes('b46PmPeriod')&&src.includes('function readRoute()')&&src.includes('function syncRoute()')&&src.includes('function membershipBanner()')&&src.includes('function syncPrematchViewport()')&&src.includes('b46pm-scroll-region')&&src.includes('function performancePanel()')&&src.includes('B46_PM_PERFORMANCE_DAILY_DATE_V2')&&src.includes('B46_PM_RECEIVER_SCHEMA_V1'))break;
+              if(src.includes('const avgOdds=items=>')&&src.includes("e.target?.closest?.('#b46-prematch-panel')")&&src.includes('b46pm-minute-mark')&&src.includes("window.addEventListener('click'")&&src.includes('function clearNativeActive()')&&src.includes('change.target===side')&&src.includes('b46pm-stats-board')&&src.includes('b46PmPeriod')&&src.includes('function readRoute()')&&src.includes('function syncRoute()')&&src.includes('function membershipBanner()')&&src.includes('function syncPrematchViewport()')&&src.includes('b46pm-scroll-region')&&src.includes('function performancePanel()')&&src.includes('B46_PM_PERFORMANCE_DAILY_DATE_V2')&&src.includes('B46_PM_RECEIVER_SCHEMA_V1')&&src.includes('B46_PM_PERSISTED_TEST_RECEIVER_V1'))break;
             }
             await new Promise(r=>setTimeout(r,2200));
           }
@@ -42,6 +42,7 @@ jobs:
           assert(src.includes('function performancePanel()'),'PERFORMANCE_DASHBOARD_NOT_DEPLOYED');
           assert(src.includes('B46_PM_PERFORMANCE_DAILY_DATE_V2'),'CORRECTED_PERFORMANCE_VERSION_NOT_DEPLOYED');
           assert(src.includes('B46_PM_RECEIVER_SCHEMA_V1'),'RECEIVER_PARITY_UI_NOT_DEPLOYED');
+          assert(src.includes('B46_PM_PERSISTED_TEST_RECEIVER_V1'),'PERSISTED_TEST_GRAPH_UI_NOT_DEPLOYED');
           assert.equal(data.testLedger?.mode,'TEST_ONLY');
           const expected=rows=>{const n=rows.map(x=>Number(x.price)).filter(x=>Number.isFinite(x)&&x>1);return n.length?(n.reduce((a,b)=>a+b,0)/n.length).toFixed(2):'—'};
           const allAvg=expected(data.testLedger.rows),w=data.dailyBook.window;
@@ -232,10 +233,11 @@ jobs:
                 await p.locator('#b46-prematch-panel .b46pm-performance').waitFor({timeout:10000});
                 assert.equal(await p.locator('#b46-prematch-panel .b46pm-performance').count(),1);
                 assert.equal(await p.locator('#b46-prematch-panel .b46pm-stats-board').count(),0,'DUPLICATED_STATS_IN_PERFORMANCE');
+                await p.waitForFunction(()=>document.querySelector('#b46-prematch-panel .b46pm-performance-provenance')?.textContent.includes('Pre-Match Receiver'),null,{timeout:20000});
                 const displayed=await p.locator('#b46-prematch-panel .b46pm-performance').innerText();
                 assert(displayed.includes('LONG-TERM PERFORMANCE')&&displayed.includes('CUMULATIVE UNITS')&&displayed.includes('ROI')&&displayed.includes('MAX DRAWDOWN'),'DASHBOARD_FIELDS_MISSING');
-                assert(displayed.includes('TEST DATA')&&displayed.includes('Historical snapshots not yet connected'),'HISTORY_WITHOUT_SOURCE_NOT_DISCLOSED');
-                assert(displayed.includes('+4.70U'),'UNIT_LEDGER_VALUE_NOT_SHOWN');
+                assert(displayed.includes('Pre-Match Receiver'),'TEST_RECEIVER_NOT_CONNECTED');
+                assert(displayed.includes('+4.70U'),'PERSISTED_TEST_RECEIVER_UNITS_WRONG');
                 for(const range of ['7D','30D','90D','ALL'])await p.locator('#b46-prematch-panel [data-b46pm-perf-range="'+range+'"]').click();
                 for(const metric of ['units','roi','winRate'])await p.locator('#b46-prematch-panel [data-b46pm-perf-metric="'+metric+'"]').click();
                 const metrics=await p.evaluate(()=>({
@@ -246,6 +248,7 @@ jobs:
                 }));
                 assert.deepEqual(metrics.metric,['winRate']);assert.deepEqual(metrics.range,['ALL']);
                 assert.equal(metrics.pointCount,1,'A SINGLE REAL DAILY CLOSE MUST BE ONE POINT NOT A FAKE TREND');
+                assert(metrics.source.includes('Pre-Match Receiver'),'REAL_RECEIVER_SOURCE_LOST');
                 console.log('PREMATCH_PERFORMANCE_BASE_PASS '+JSON.stringify({mobile,theme,route,metrics}));
               }
               const bttsNav=(mobile?'#b46m-drawer':'aside.left-rail')+' [data-b46-prematch-route="btts"]';
@@ -312,6 +315,11 @@ jobs:
 
             const cp=await b.newPage({viewport:{width:1440,height:940},serviceWorkers:'block'});
             await cp.route('**/__b46_prematch_data',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(historical)}));
+            await cp.route('**/__b46_prematch_graph?*',route=>{
+              const url=new URL(route.request().url());
+              const range=url.searchParams.get('range')||'all';
+              return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({...baseGraph,range,scope:'PREMATCH_TEST_ONLY'})});
+            });
             await cp.goto(base+'/?b46pm=all&b46pmPeriod=all&pmPerfQA=1',{waitUntil:'domcontentloaded',timeout:60000});
             await cp.waitForFunction(()=>document.querySelector('#b46-prematch-panel .b46pm-performance-provenance')?.textContent.includes('Pre-Match Receiver'),null,{timeout:16000});
             const chartProof=await cp.evaluate(()=>{
