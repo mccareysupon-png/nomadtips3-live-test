@@ -40,6 +40,12 @@ form.append('metadata',new Blob([JSON.stringify({main_module:modules[0],compatib
 for(const m of modules)form.append(m,new Blob([fs.readFileSync('qa/prematch-history-20261120/'+m)],{type:'application/javascript+module'}),m);
 const uploaded=await cf('/scripts/'+script,{method:'PUT',body:form});
 console.log('AUTO_MISSION_UPLOADED '+JSON.stringify({script,version:uploaded.deployment_id}));
+const intended=(await cf('/scripts/'+script+'/deployments?per_page=1')).deployments[0].versions[0].version_id;
+const intendedModules=await cf('/workers/'+script+'/versions/'+intended+'?include=modules');
+const intendedCode=Buffer.from(intendedModules.modules.find(m=>m.name===intendedModules.main_module).content_base64,'base64').toString();
+assert(intendedCode.includes('if(history.completed<5)for(let roundNo=1;roundNo<=5;roundNo++)'),'DEPLOYED_VERSION_UNEXPECTED');
+await cf('/scripts/'+script+'/deployments',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({strategy:'percentage',versions:[{version_id:intended,percentage:100}],code_update_strategy:{mode:'immediate'}})});
+console.log('AUTO_MISSION_TEST_DURABLE_OBJECT_IMMEDIATE '+intended);
 let serving=null,health=null,state=null;
 for(let i=0;i<70;i++){
  try{
