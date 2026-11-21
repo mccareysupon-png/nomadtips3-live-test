@@ -59,7 +59,6 @@ jobs:
                   try{const tag=await node.evaluate(x=>x.outerHTML.slice(0,450));await node.click({timeout:2500});clicked={selector:c,index:i,html:tag};break}catch(e){console.log('THEME_DIAG_CLICK_ERROR '+JSON.stringify({selector:c,error:String(e).slice(0,220)}))}
                 }
               }if(clicked)break}
-              }
               if(!clicked){console.log('PREMATCH_THEME_DIAG_NO_BUTTON '+JSON.stringify({mobile}));await p.close();continue;}
               await p.waitForTimeout(750);
               const after=await examine();
