@@ -1,0 +1,40 @@
+name: BALL46 verify 5x100 historical rounds in test Worker
+on:
+  push:
+    branches: [test/ball46-prematch-v1-20261120]
+    paths: ['.github/workflows/ball46-history-five-round-live-verify.yml']
+permissions: {contents: read}
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';import crypto from 'node:crypto';
+          const name='ball46-prematch-only-test-20261120',root='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+'/workers';
+          const token=process.env.CLOUDFLARE_API_TOKEN,secret=crypto.createHmac('sha256',token).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
+          const host='https://'+name+'.mccarey-supon.workers.dev',headers={authorization:'Bearer '+secret};
+          async function req(path,method='GET'){const r=await fetch(host+path,{method,headers,cache:'no-store',signal:AbortSignal.timeout(25000)});assert(r.ok,path+': '+r.status);return r.json()}
+          const before=await req('/history-round-state'),old=await req('/test-ledger');
+          assert.equal(before.maxRounds,5);assert.equal(before.maxPerRound,100);assert.equal(before.maxPerDay,500);
+          assert.equal(before.providerCalls,0);
+          const first=await req('/history-round-tick','POST');
+          const again=await req('/history-round-tick','POST');
+          const after=await req('/history-round-state'),archive=await req('/merge-summary'),ledger=await req('/test-ledger');
+          assert.equal(first.providerCalls,0);assert.equal(again.providerCalls,0);
+          assert.equal(first.rounds.imported,again.rounds.imported);
+          assert.equal(first.rounds.completed,again.rounds.completed);
+          assert.equal(after.imported,again.rounds.imported);
+          assert.equal(after.completed,again.rounds.completed);
+          assert(after.completed<=5&&after.imported<=500);
+          assert(after.records.every(x=>x.imported<=100&&x.provider_calls===0));
+          assert.equal(old.stats.total,ledger.stats.total,'PICKS_CHANGED');
+          const prod=async n=>{const r=await fetch(root+'/scripts/'+n+'/deployments?per_page=1',{headers:{authorization:'Bearer '+token}});const j=await r.json();return j.result.deployments[0].versions};
+          const protectedNames=['ball46-production','nomadtips3-engine-343','nomadtips3-5usd-hub-343'];
+          const versions=Object.fromEntries(await Promise.all(protectedNames.map(async n=>[n,await prod(n)])));
+          console.log('FIVE_ROUND_LIVE_VERIFIED '+JSON.stringify({before,after,first:first.history?.state,second:again.history?.state,stored:archive.stored,picks:ledger.stats,protectedVersions:versions,extraProviderCalls:0}));
+          JS
