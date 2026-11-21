@@ -1,0 +1,75 @@
+name: BALL46 TEST Predictions live kickoff and exceptional status browser audit
+on:
+  push:
+    branches: [test/ball46-premium-match-colors-20261120]
+    paths:
+      - '.github/workflows/b46-prematch-revised-kickoff-ui-audit-20261121.yml'
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Install browser for TEST read-only audit
+        run: |
+          npm install --no-save --no-package-lock playwright@1.55.0
+          npx playwright install chromium --only-shell
+      - name: Browser test in Thai and London timezones (desktop and mobile)
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {chromium} from 'playwright';
+          const base='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev';
+          const resp=await fetch(base+'/__b46_prematch_data',{cache:'no-store',signal:AbortSignal.timeout(25000)});
+          assert(resp.ok,'BACKEND_DATA_HTTP_'+resp.status);
+          const payload=await resp.json();
+          assert.equal(payload.testLedger?.mode,'TEST_ONLY');
+          assert.equal(payload.testMonitor?.cacheOnly,true);
+          assert.equal(payload.testMonitor?.providerCalls,0);
+          assert(Number.isInteger(payload.testMonitor?.details?.rescheduled),'BACKEND_NOT_NEW_VERSION');
+          const browser=await chromium.launch();
+          const results=[];
+          try{
+            for(const tz of ['Asia/Bangkok','Europe/London'])for(const mobile of [false,true]){
+              const context=await browser.newContext({timezoneId:tz,viewport:mobile?{width:390,height:844}:{width:1440,height:900},isMobile:mobile});
+              const page=await context.newPage();
+              await page.route('**/*',r=>['GET','HEAD'].includes(r.request().method())?r.continue():r.abort());
+              await page.goto(base+'/?b46pm=predictions',{waitUntil:'domcontentloaded',timeout:60000});
+              await page.waitForFunction(()=>{
+                const host=document.querySelector('#b46-prematch-panel');
+                return !!host&&host.querySelectorAll('[data-b46-pm-mirror-row],.b46pm-premium-match').length>=1;
+              },null,{timeout:35000});
+              const result=await page.evaluate(()=>{
+                const panel=document.querySelector('#b46-prematch-panel');
+                const cards=[...panel.querySelectorAll('[data-b46-pm-mirror-row],.b46pm-premium-match')];
+                const timeNodes=[...panel.querySelectorAll('time.b46pm-kickoff-local,time.b46pm-premium-kickoff')];
+                const tz=Intl.DateTimeFormat().resolvedOptions().timeZone;
+                let validTimes=0,invalid=[];
+                for(const time of timeNodes){
+                  const d=new Date(time.dataset.b46PmKickoffUtc||time.dateTime);
+                  const actualClock=time.querySelector('.b46pm-kickoff-clock')?.textContent?.trim();
+                  const actualDay=time.querySelector('.b46pm-kickoff-date')?.textContent?.trim();
+                  const clock=new Intl.DateTimeFormat('en-GB',{timeZone:tz,hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(d);
+                  const day=new Intl.DateTimeFormat('en-GB',{timeZone:tz,day:'2-digit',month:'short'}).format(d);
+                  if(clock===actualClock&&day===actualDay)validTimes++;
+                  else invalid.push({clock,day,actualClock,actualDay,utc:d.toISOString()});
+                }
+                const statusUnverified=[...panel.querySelectorAll('.b46pm-schedule-unverified')].length;
+                const special=[...panel.querySelectorAll('.b46pm-status-exception')].map(e=>e.textContent.trim());
+                return {tz,cardCount:cards.length,timeCount:timeNodes.length,validTimes,invalid,statusUnverified,special,htmlLength:panel.innerHTML.length,
+                  hasKO:timeNodes.some(t=>/\bKO\b/.test(t.textContent||''))};
+              });
+              assert.equal(result.tz,tz);
+              assert(result.cardCount>=1,'NO_PREMATCH_CARDS '+JSON.stringify(result));
+              assert.equal(result.timeCount,result.validTimes,'LOCAL_TIME_MISMATCH '+JSON.stringify(result));
+              assert.equal(result.hasKO,false);
+              results.push({mobile,...result});
+              await context.close();
+            }
+          }finally{await browser.close()}
+          console.log('TEST_PREMATCH_BROWSER_TIME_VERIFIED '+JSON.stringify({sourceCount:payload.testLedger.rows.length,monitor:payload.testMonitor.details,results}));
+          JS
