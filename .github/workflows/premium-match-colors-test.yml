@@ -5,7 +5,7 @@ on:
     paths: ['.github/workflows/premium-match-colors-test.yml']
 concurrency:
   group: ball46-premium-match-colors-test-20261120
-  cancel-in-progress: true
+  cancel-in-progress: false
 permissions:
   contents: read
   statuses: write
