@@ -44,7 +44,7 @@ jobs:
                 return [...panel.querySelectorAll('.b46pm-premium-match')].map(row=>{
                   const summary=row.querySelector('.b46pm-premium-summary');
                   const r=summary.getBoundingClientRect();
-                  const jerseys=[...row.querySelectorAll('.b46pm-premium-shirt')].map(img=>({src:img.getAttribute('src'),set:img.dataset.b46PmJerseySet,width:img.getBoundingClientRect().width}));
+                  const jerseys=[...row.querySelectorAll('.b46pm-premium-shirt')].map(img=>({src:img.getAttribute('src'),set:img.dataset.b46PmJerseySet,width:img.getBoundingClientRect().width,imageReady:img.complete&&img.naturalWidth>0}));
                   const pick=row.querySelector('.b46pm-premium-pick');
                   const metrics=[...row.querySelectorAll('.b46pm-premium-quick-metric')].map(n=>n.textContent);
                   return {fixture:row.dataset.b46PmJerseyFixture,height:r.height,width:r.width,
@@ -60,6 +60,7 @@ jobs:
                 assert.equal(row.numberOfColumns,6,'NOT_SIX_COLUMN_PREMIUM_ROW');
                 assert.equal(row.jerseys.length,2,'NO_HOME_AWAY_SHIRTS');
                 assert(row.jerseys.every(x=>x.src?.startsWith('data:image/svg+xml;charset=UTF-8,')&&Number(x.set)>=1&&Number(x.set)<=12),'MUST_REUSE_BALL46_12_KIT_COLLECTION');
+                assert(row.jerseys.every(x=>x.imageReady),'JERSEY_SVG_DID_NOT_RENDER_IN_BROWSER');
                 assert.notEqual(row.jerseys[0].src,row.jerseys[1].src,'SHIRTS_MUST_BE_DISTINCT_HOME_AWAY');
                 assert(row.height>63&&row.height<(mobile?152:110),'COMPACT_ROW_HEIGHT_INVALID '+JSON.stringify({mobile,theme,row:row.height}));
                 assert.equal(row.expanded,'false');assert.equal(row.detailHidden,true);
