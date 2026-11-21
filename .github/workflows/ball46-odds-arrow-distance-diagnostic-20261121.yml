@@ -25,7 +25,11 @@ jobs:
           const p=await browser.newPage({viewport:{width:1440,height:950},serviceWorkers:'block'});
           await p.addInitScript(()=>localStorage.setItem('nomad343_dashboard_theme_v1','dark'));
           try{
-            await p.goto('https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev/',{waitUntil:'domcontentloaded',timeout:70000});
+            const origin='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev';
+            let ready=false;
+            for(let k=0;k<24;k++){const r=await fetch(origin+'/_premium_health');if(r.ok){const h=await r.json();if(h.oddsMovementStyle?.includes('left:var(--b46-odds-arrow-price-left,auto)!important')){ready=true;break}}await new Promise(r=>setTimeout(r,1400))}
+            if(!ready)throw new Error('NEW_NUMBER_RELATIVE_ARROW_NOT_DEPLOYED');
+            await p.goto(origin+'/',{waitUntil:'domcontentloaded',timeout:70000});
             await p.waitForFunction(()=>[...document.querySelectorAll('[data-match-id].match-row .market-cell .b46-v3-quote strong[data-nomad-odds-raw]')].some(e=>e.getBoundingClientRect().width>0),null,{timeout:45000});
             const result=await p.evaluate(()=>{
               const candidates=[...document.querySelectorAll('[data-match-id].match-row .market-cell .b46-v3-quote strong[data-nomad-odds-raw]')].filter(e=>e.getBoundingClientRect().width>0);
@@ -37,16 +41,24 @@ jobs:
                 if(seen.has(key))continue;
                 seen.add(key);
                 q.style.setProperty('--b46-odds-arrow-price-center',(num.top+num.height/2-rect.top).toFixed(2)+'px');
+                q.style.setProperty('--b46-odds-arrow-price-left',(num.right-rect.left+1.5).toFixed(2)+'px');
                 q.setAttribute('data-b46-odds-move','up');
                 const arrow=getComputedStyle(q,'::after');
-                const arrowWidth=parseFloat(arrow.width),arrowLeft=rect.right-parseFloat(arrow.right)-arrowWidth;
-                samples.push({market:type,price:strong.textContent.trim(),quote:{x:rect.x,width:rect.width},numeral:{x:num.x,width:num.width,right:num.right},arrow:{left:arrowLeft,width:arrowWidth,right:arrowLeft+arrowWidth},gap:arrowLeft-num.right,availableQuoteRoom:rect.right-num.right,cardOverflow:(arrowLeft+arrowWidth)-rect.right});
-                q.removeAttribute('data-b46-odds-move');q.style.removeProperty('--b46-odds-arrow-price-center');
+                const arrowWidth=parseFloat(arrow.width),arrowLeft=rect.left+parseFloat(arrow.left);
+                const next=q.nextElementSibling?.matches?.('.b46-v3-quote')?q.nextElementSibling.getBoundingClientRect():null;
+                samples.push({market:type,price:strong.textContent.trim(),quote:{x:rect.x,width:rect.width},numeral:{x:num.x,width:num.width,right:num.right},arrow:{left:arrowLeft,width:arrowWidth,right:arrowLeft+arrowWidth},gap:arrowLeft-num.right,availableQuoteRoom:rect.right-num.right,cardOverflow:(arrowLeft+arrowWidth)-rect.right,nextQuoteClearance:next?next.left-(arrowLeft+arrowWidth):null,quoteOverflow:getComputedStyle(q).overflow,parentOverflow:getComputedStyle(q.parentElement).overflow});
+                q.removeAttribute('data-b46-odds-move');q.style.removeProperty('--b46-odds-arrow-price-center');q.style.removeProperty('--b46-odds-arrow-price-left');
                 if(samples.length>=20)break;
               }
               return samples;
             });
             console.log('REAL_ODDS_ARROW_TEXT_GAPS '+JSON.stringify(result));
             if(!result.length)throw new Error('NO_LIVE_ODDS_GEOMETRY');
+            for(const s of result){
+              if(Math.abs(s.gap-1.5)>.6)throw new Error('WRONG_NUMBER_TO_ARROW_GAP '+JSON.stringify(s));
+              if(s.nextQuoteClearance!==null&&s.nextQuoteClearance<.2)throw new Error('ARROW_OVERLAPS_ADJACENT_QUOTE '+JSON.stringify(s));
+              if(s.cardOverflow>0.2&&(s.quoteOverflow==='hidden'||s.parentOverflow==='hidden'))throw new Error('CLIPPED_ARROW_OUTSIDE_QUOTE '+JSON.stringify(s));
+            }
+            console.log('LIVE_MARKET_NUMBER_TO_ARROW_1_5PX_PASS '+JSON.stringify({count:result.length,markets:[...new Set(result.map(s=>s.market))]}));
           }finally{await p.close();await browser.close()}
           NODE
