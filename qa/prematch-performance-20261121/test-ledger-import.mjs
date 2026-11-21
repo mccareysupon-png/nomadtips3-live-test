@@ -23,7 +23,7 @@ export function validateTestPreview(json){
   const time=Number(raw.picked_at);
   const odds=Number(raw.price);
   const pick=String(raw.pick||'').trim().toUpperCase();
-  if(!Number.isSafeInteger(fixture)||fixture<=0||!['HOME','DRAW','AWAY','1','X','2'].includes(pick))throw Error('INVALID_TEST_SELECTION');
+  if(!Number.isSafeInteger(fixture)||fixture<=0||!/^[A-Z0-9_ +\/-]{1,40}$/.test(pick))throw Error('INVALID_TEST_SELECTION');
   if(!Number.isFinite(odds)||odds<=1||odds>1000)throw Error('INVALID_LOCKED_ODDS');
   const pickedAt=isoSeconds(time,'PICKED_AT');
   const status=statusValue(raw.status);
