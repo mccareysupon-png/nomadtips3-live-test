@@ -1,0 +1,21 @@
+# ISOLATED TEST worker. Does not reference or route production services.
+name = "ball46-prematch-performance-test-20261121"
+main = "test-receiver-worker.mjs"
+compatibility_date = "2026-11-21"
+workers_dev = true
+preview_urls = false
+
+[triggers]
+crons = ["*/5 * * * *"]
+
+[[services]]
+binding = "PREMATCH_STORE"
+service = "ball46-prematch-only-test-20261120"
+
+[[durable_objects.bindings]]
+name = "PREMATCH_PERF_STATE"
+class_name = "PrematchPerformanceIsolatedDO"
+
+[[migrations]]
+tag = "prematch-performance-isolated-test-20261121-v1"
+new_sqlite_classes = ["PrematchPerformanceIsolatedDO"]
