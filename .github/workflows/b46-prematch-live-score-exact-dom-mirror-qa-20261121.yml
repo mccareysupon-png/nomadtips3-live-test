@@ -68,7 +68,11 @@ jobs:
               assert.equal(mirror.hiddenNative,'none','NATIVE_LIVE_STAGE_NOT_HIDDEN');
               assert.equal(mirror.panelOverflow,'auto','OUTER_SCROLLBAR_CHANGED');
               assert.equal(mirror.rows.length,ledgerRows.length,'MIRRORED_UNPREDICTED_MATCHES');
-              assert(mirror.native?.structure?.length>=5,'NO_ACTUAL_LIVE_TEMPLATE_LOADED');
+              // Direct Pre-Match load may initialize before the hidden live
+              // shell has populated its rows. That must use the same native
+              // six-cell DOM fallback, not fake a live scoreboard.
+              if(mirror.native)assert(mirror.native.structure.length>=5,'NATIVE_LIVE_TEMPLATE_INCOMPLETE');
+              assert(mirror.rows[0].children.length===6,'FALLBACK_TEMPLATE_INCOMPLETE');
               for(const card of mirror.rows){
                 assert(ledgerSet.has(card.fixture),'MIRROR_ADDED_UNKNOWN_FIXTURE');
                 assert.equal(card.tag,'ARTICLE');assert.equal(card.role,'button');
@@ -105,9 +109,31 @@ jobs:
               assert.equal(new URL(p.url()).searchParams.get('b46pm'),'predictions','MIRROR_CLICK_NAVIGATED_AWAY');
               assert.deepEqual(errors,[],'PAGE_ERRORS');
               console.log('B46_EXACT_LIVE_SCORE_DOM_MIRROR_PASS '+JSON.stringify({mobile,theme,rows:mirror.rows.length,nativeCount:mirror.originalRows,
-                nativeHeight:mirror.native.style.h,firstMirrorHeight:mirror.rows[0].style.h,kitAssets:'official shared 20261030',mirrorVersion:version,
+                nativeHeight:mirror.native?.style?.h??null,firstMirrorHeight:mirror.rows[0].style.h,kitAssets:'official shared 20261030',mirrorVersion:version,
                 sixSameStructure:true,nonNativeSignal:false,opened:true,codeIsolation:'TEST_ONLY'}));
               await p.close();
             }
+            // Compare visible real Live Score row to mirror geometry at the
+            // same viewport. Navigate through first-party sidebar so native
+            // source DOM definitely exists before it is hidden by Pre-Match.
+            const ref=await b.newPage({viewport:{width:1440,height:950},serviceWorkers:'block'});
+            await ref.goto(base+'/?cardParity=1',{waitUntil:'domcontentloaded',timeout:60000});
+            await ref.waitForFunction(()=>document.querySelectorAll('section.workspace.singlepage>.workspace-stage .match-row[data-match-id]').length>=4,null,{timeout:20000});
+            const natural=await ref.locator('section.workspace.singlepage>.workspace-stage .match-row[data-match-id]').first().evaluate(x=>{
+              const r=x.getBoundingClientRect(),c=getComputedStyle(x);
+              return {height:r.height,background:c.backgroundImage,padding:c.padding,gap:c.gap,columns:c.gridTemplateColumns};
+            });
+            await ref.locator('aside.left-rail [data-b46-prematch-route="predictions"]').first().evaluate(x=>x.click());
+            await ref.waitForFunction(()=>document.querySelectorAll('#b46-prematch-panel .b46pm-live-mirror-row').length>=4,null,{timeout:22000});
+            const mirrored=await ref.locator('#b46-prematch-panel .b46pm-live-mirror-row').first().evaluate(x=>{
+              const r=x.getBoundingClientRect(),c=getComputedStyle(x);
+              return {height:r.height,background:c.backgroundImage,padding:c.padding,gap:c.gap,columns:c.gridTemplateColumns};
+            });
+            assert(Math.abs(natural.height-mirrored.height)<=2,'LIVE_CARD_MIRROR_HEIGHT_DRIFT '+JSON.stringify({natural,mirrored}));
+            assert.equal(mirrored.background,natural.background,'LIVE_CARD_GRADIENT_NOT_IDENTICAL');
+            assert.equal(mirrored.padding,natural.padding,'LIVE_CARD_PADDING_NOT_IDENTICAL');
+            assert.equal(mirrored.gap,natural.gap,'LIVE_CARD_GRID_GAP_NOT_IDENTICAL');
+            console.log('B46_EXACT_LIVE_SCORE_STYLE_PARITY_PASS '+JSON.stringify({natural,mirrored}));
+            await ref.close();
           }finally{await b.close()}
           JS
