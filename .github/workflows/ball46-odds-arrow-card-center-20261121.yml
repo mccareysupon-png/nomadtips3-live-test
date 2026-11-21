@@ -1,4 +1,4 @@
-name: BALL46 odds arrow centered within colored card 6s isolated QA
+name: BALL46 small odds arrow centered on price numerals 6s isolated QA
 on:
   push:
     branches: [test/ball46-premium-match-colors-20261120]
@@ -22,5 +22,5 @@ jobs:
         run: |
           npm install --no-save --no-audit --no-fund playwright@1.55.0
           npx playwright install chromium --only-shell
-      - name: Assert card 50 percent arrow alignment, 3px gutter, six pulses lasting six seconds
+      - name: Assert 8.5px arrow aligned to price numerals, 3px gutter, six pulses lasting six seconds
         run: node qa/odds-movement-20261121/verify-card-center.mjs

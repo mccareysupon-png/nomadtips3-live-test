@@ -207,8 +207,8 @@ jobs:
           import {chromium,devices} from 'playwright';
           import assert from 'node:assert/strict';
           const base='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev';
-          let h;for(let i=0;i<15;i++){try{const r=await fetch(base+'/_premium_health');if(r.ok){const c=await r.json();if(c.revision==='PREMIUM_LEAGUE_SOLID_V14'&&c.oddsMovementScript?.includes('DURATION=6000')&&c.oddsMovementStyle?.includes('b46-odds-card-pulse-6x')&&c.oddsMovementStyle?.includes('top:50%!important')&&!c.oddsMovementScript?.includes('b46-odds-arrow-y')&&c.oddsMovementStyle?.includes('inset:0 -1px 0 0!important')&&c.oddsMovementStyle?.includes('background-color:rgba(42,163,103,.20)')&&c.oddsMovementStyle?.includes('background-color:rgba(178,65,74,.19)')){h=c;break}}}catch{}await new Promise(r=>setTimeout(r,2000))}
-          assert.equal(h?.scope,'TEST_ONLY_CSS');assert.equal(h?.oddsMovement,'DOM_PRICES_V1');assert(h.oddsMovementScript.includes('DURATION=6000'),'ODDS_DURATION_NOT_6S');assert(h.oddsMovementStyle.includes('top:50%!important'),'ARROW_CARD_CENTER_STYLE_MISSING');assert(!h.oddsMovementScript.includes('b46-odds-arrow-y'),'OLD_PRICE_RELATIVE_ARROW_CODE_STILL_RUNNING');
+          let h;for(let i=0;i<15;i++){try{const r=await fetch(base+'/_premium_health');if(r.ok){const c=await r.json();if(c.revision==='PREMIUM_LEAGUE_SOLID_V14'&&c.oddsMovementScript?.includes('DURATION=6000')&&c.oddsMovementStyle?.includes('b46-odds-card-pulse-6x')&&c.oddsMovementStyle?.includes('top:var(--b46-odds-arrow-price-center,50%)!important')&&c.oddsMovementStyle?.includes('font:700 8.5px/1 Arial,sans-serif!important')&&c.oddsMovementScript?.includes('style.setProperty(\'--b46-odds-arrow-price-center\'')&&c.oddsMovementStyle?.includes('inset:0 -1px 0 0!important')&&c.oddsMovementStyle?.includes('background-color:rgba(42,163,103,.20)')&&c.oddsMovementStyle?.includes('background-color:rgba(178,65,74,.19)')){h=c;break}}}catch{}await new Promise(r=>setTimeout(r,2000))}
+          assert.equal(h?.scope,'TEST_ONLY_CSS');assert.equal(h?.oddsMovement,'DOM_PRICES_V1');assert(h.oddsMovementScript.includes('DURATION=6000'),'ODDS_DURATION_NOT_6S');assert(h.oddsMovementStyle.includes('top:var(--b46-odds-arrow-price-center,50%)!important'),'ARROW_PRICE_CENTER_STYLE_MISSING');assert(h.oddsMovementStyle.includes('font:700 8.5px/1 Arial,sans-serif!important'),'ARROW_SMALL_FONT_MISSING');
           const browser=await chromium.launch();
           try{for(const mobile of [false])for(const theme of ['dark','light']){
             const p=await browser.newPage(mobile?{...devices['iPhone 13'],serviceWorkers:'block'}:{viewport:{width:1440,height:950},serviceWorkers:'block'});
@@ -295,7 +295,7 @@ jobs:
                 el.setAttribute('data-nomad-odds-raw',v.toFixed(2));el.textContent=v.toFixed(2);
                 await new Promise(r=>setTimeout(r,140));
                 const q=el.closest('.b46-v3-quote'),style=getComputedStyle(q),plate=getComputedStyle(q,'::before'),arr=getComputedStyle(q,'::after'),number=getComputedStyle(el),qr=q.getBoundingClientRect(),nr=el.getBoundingClientRect();
-                return {direction:q.dataset.b46OddsMove||null,numberColor:number.color,arrowColor:arr.color,arrow:arr.content,quoteBg:style.backgroundColor,plateBg:plate.backgroundColor,plateRight:plate.right,plateRadius:plate.borderTopLeftRadius,plateDisplay:plate.display,plateContent:plate.content,shadow:plate.boxShadow,anim:style.animationName,seconds:style.animationDuration,cycles:style.animationIterationCount,arrowOffset:(qr.top+parseFloat(arr.top))-(qr.top+qr.height/2),arrowOffsetFromPrice:(qr.top+parseFloat(arr.top))-(nr.top+nr.height/2),cardHeight:qr.height,arrowTop:arr.top,qWidth:qr.width,cWidth:el.closest('.market-cell').getBoundingClientRect().width};
+                return {direction:q.dataset.b46OddsMove||null,numberColor:number.color,arrowColor:arr.color,arrow:arr.content,quoteBg:style.backgroundColor,plateBg:plate.backgroundColor,plateRight:plate.right,plateRadius:plate.borderTopLeftRadius,plateDisplay:plate.display,plateContent:plate.content,shadow:plate.boxShadow,anim:style.animationName,seconds:style.animationDuration,cycles:style.animationIterationCount,arrowOffset:(qr.top+parseFloat(arr.top))-(qr.top+qr.height/2),arrowOffsetFromPrice:(qr.top+parseFloat(arr.top))-(nr.top+nr.height/2),cardHeight:qr.height,arrowTop:arr.top,arrowFontSize:arr.fontSize,priceFontSize:number.fontSize,qWidth:qr.width,cWidth:el.closest('.market-cell').getBoundingClientRect().width};
               },value);
               const readPulse=()=>odd.evaluate(el=>{
                 const style=getComputedStyle(el.closest('.b46-v3-quote')),f=style.filter;
@@ -319,7 +319,7 @@ jobs:
                 assert.equal(o.anim,'b46-odds-card-pulse-6x','CARD_PULSE_NOT_ACTIVE_'+dir);
                 assert.equal(o.seconds,'1s','CARD_PULSE_PERIOD_'+dir);
                 assert.equal(o.cycles,'6','CARD_CYCLE_COUNT_'+dir);
-                assert(Math.abs(o.arrowOffset)<=.6,'ARROW_NOT_CENTERED_IN_CARD_'+dir);assert(o.arrowTop==='50%'||Math.abs(parseFloat(o.arrowTop)-o.cardHeight/2)<=.6,'ARROW_TOP_NOT_HALF_CARD_HEIGHT_'+dir);
+                assert(Math.abs(o.arrowOffsetFromPrice)<=.6,'ARROW_NOT_CENTERED_ON_PRICE_'+dir);assert.equal(o.arrowFontSize,'8.5px','ARROW_SIZE_INCORRECT_'+dir);assert(parseFloat(o.arrowFontSize)<parseFloat(o.priceFontSize),'ARROW_NOT_SMALLER_THAN_PRICE_'+dir);
                 assert(Math.abs(o.qWidth-startDimensions.q)<.2&&Math.abs(o.cWidth-startDimensions.c)<.2,'QUOTE_WIDTH_CHANGED_'+dir);
               };
               const initial=await readMove();assert(!initial.direction,'INITIAL_FLASH_UNEXPECTED');

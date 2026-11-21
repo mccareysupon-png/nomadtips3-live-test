@@ -9,8 +9,8 @@ for(let k=0;k<24;k++){
  await sleep(1300);
 }
 assert(h?.scope==='TEST_ONLY_CSS','TEST_WORKER_NOT_RUNNING_EXPECTED_VERSION');
-assert(h.oddsMovementScript.includes('DURATION=6000')&&!h.oddsMovementScript.includes('--b46-odds-arrow-y'),'JS_STILL_NUMBER_RELATIVE');
-assert(h.oddsMovementStyle.includes('top:50%!important')&&!h.oddsMovementStyle.includes('--b46-odds-arrow-y'),'CSS_STILL_NUMBER_RELATIVE');
+assert(h.oddsMovementScript.includes('DURATION=6000')&&h.oddsMovementScript.includes("style.setProperty('--b46-odds-arrow-price-center'") ,'PRICE_CENTER_SCRIPT_MISSING');
+assert(h.oddsMovementStyle.includes('top:var(--b46-odds-arrow-price-center,50%)!important'),'ARROW_NOT_PRICE_CENTERED');\nassert(h.oddsMovementStyle.includes('font:700 8.5px/1 Arial,sans-serif!important'),'SMALL_ARROW_FONT_MISSING');
 assert(h.oddsMovementStyle.includes('inset:0 -1px 0 0!important'),'3PX_SHEET_GAP_LOST');
 assert(h.oddsMovementStyle.includes('b46-odds-card-pulse-6x'),'6_CYCLE_ANIMATION_LOST');
 console.log('TEST_ONLY_SOURCE_PIN_PASS',JSON.stringify({scriptSize:h.oddsMovementScript.length,cssSize:h.oddsMovementStyle.length}));
@@ -35,7 +35,7 @@ try{
   const quote=f.querySelector('.b46-v3-quote'),number=quote.querySelector('strong'),middle=f.querySelectorAll('.b46-v3-quote')[1];
   const sample=()=>{
    const r=quote.getBoundingClientRect(),n=number.getBoundingClientRect(),m=middle.getBoundingClientRect(),p=getComputedStyle(quote,'::after'),bg=getComputedStyle(quote,'::before'),s=getComputedStyle(quote);
-   return {direction:quote.getAttribute('data-b46-odds-move'),qWidth:r.width,qHeight:r.height,nWidth:n.width,offsetFromCardCenter:parseFloat(p.top)-r.height/2,offsetFromNumberCenter:r.top+parseFloat(p.top)-n.top-n.height/2,cardTop:parseFloat(p.top),arrow:p.content,arrowColor:p.color,priceColor:getComputedStyle(number).color,plateColor:bg.backgroundColor,plateRight:bg.right,plateRadius:bg.borderTopLeftRadius,quoteBackground:s.backgroundColor,quoteAnimation:s.animationName,quoteDuration:s.animationDuration,quoteCycles:s.animationIterationCount,quoteFilter:s.filter,rawGap:m.left-r.right,sheetGap:m.left-r.right-1};
+   return {direction:quote.getAttribute('data-b46-odds-move'),qWidth:r.width,qHeight:r.height,nWidth:n.width,offsetFromCardCenter:parseFloat(p.top)-r.height/2,offsetFromNumberCenter:r.top+parseFloat(p.top)-n.top-n.height/2,cardTop:parseFloat(p.top),arrow:p.content,arrowColor:p.color,priceColor:getComputedStyle(number).color,numberFontSize:getComputedStyle(number).fontSize,arrowFontSize:p.fontSize,plateColor:bg.backgroundColor,plateRight:bg.right,plateRadius:bg.borderTopLeftRadius,quoteBackground:s.backgroundColor,quoteAnimation:s.animationName,quoteDuration:s.animationDuration,quoteCycles:s.animationIterationCount,quoteFilter:s.filter,rawGap:m.left-r.right,sheetGap:m.left-r.right-1};
   };
   try{
    await sleep(450);const idle=sample();
@@ -67,7 +67,7 @@ try{
   assert.equal(s.plateColor,plateColor,'CARD_PLATE_LOST_'+name);
   assert.equal(s.plateRight,'-1px','CARD_GUTTER_EXTENSION_CHANGED_'+name);
   assert.equal(s.plateRadius,'6px','CARD_RADIUS_CHANGED_'+name);
-  assert(Math.abs(s.offsetFromCardCenter)<.65,'ARROW_NOT_AT_CARD_CENTER_'+name);
+  assert(Math.abs(s.offsetFromNumberCenter)<.65,'ARROW_NOT_ALIGNED_TO_PRICE_NUMBER_'+name);\n  assert.equal(s.numberFontSize,proof.idle.numberFontSize,'PRICE_NUMBER_FONT_CHANGED_'+name);\n  assert.equal(s.arrowFontSize,'8.5px','ARROW_FONT_CHANGED_'+name);\n  assert(parseFloat(s.arrowFontSize)/parseFloat(s.numberFontSize)>=.70&&parseFloat(s.arrowFontSize)/parseFloat(s.numberFontSize)<=.80,'ARROW_NOT_70_TO_80_PERCENT_OF_NUMBER_'+name);
   assert.equal(s.quoteDuration,'1s','PULSE_NOT_ONE_SECOND_'+name);
   assert.equal(s.quoteCycles,'6','NOT_SIX_PULSES_'+name);
   assert.equal(s.quoteAnimation,'b46-odds-card-pulse-6x','PULSE_ANIMATION_MISSING_'+name);
@@ -77,7 +77,7 @@ try{
   assert.equal(d.mid.direction,name.toLowerCase(),'PULSE_CLEARED_BEFORE_THREE_SECONDS_'+name);
   assert.equal(d.late.direction,name.toLowerCase(),'PULSE_CLEARED_BEFORE_SIX_SECONDS_'+name);
   assert.equal(d.stopped.direction,null,'PULSE_NOT_CLEARED_AFTER_SIX_SECONDS_'+name);
-  console.log('ARROW_MIDDLE_OF_CARD_PASS '+name+' '+JSON.stringify({quoteHeight:s.qHeight,arrowTop:s.cardTop,offsetFromCardCenter:s.offsetFromCardCenter,offsetFromNumberCenter:s.offsetFromNumberCenter,visualGap:s.sheetGap,cycle:s.quoteCycles,duration:s.quoteDuration,activeNearSixSeconds:!!d.late.direction,clearedAfterSixSeconds:!d.stopped.direction}));
+  console.log('ARROW_MIDDLE_OF_NUMBER_PASS '+name+' '+JSON.stringify({quoteHeight:s.qHeight,arrowTop:s.cardTop,offsetFromCardCenter:s.offsetFromCardCenter,offsetFromNumberCenter:s.offsetFromNumberCenter,visualGap:s.sheetGap,cycle:s.quoteCycles,duration:s.quoteDuration,activeNearSixSeconds:!!d.late.direction,clearedAfterSixSeconds:!d.stopped.direction}));
  }
  const nativeSpacing=await page.evaluate(()=>{
   const pairs=[];
@@ -96,6 +96,6 @@ try{
  assert(nativeSpacing.some(x=>Math.abs(x.visible-3)<.65),'NATIVE_3PX_SEPARATION_NOT_FOUND');
  assert(proof.stats.ups>=1&&proof.stats.downs>=1,'ODDS_DIFFERENTIAL_DETECTOR_NOT_WORKING');
  assert.deepEqual(errors,[],'BROWSER_ERRORS_'+JSON.stringify(errors));
- console.log('BALL46_ODDS_ARROW_CENTRED_TEST_PASS');
+ console.log('BALL46_ODDS_SMALL_ARROW_PRICE_CENTER_TEST_PASS');
  await ctx.close();
 }finally{await browser.close()}
