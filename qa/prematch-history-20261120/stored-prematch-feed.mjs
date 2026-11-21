@@ -15,10 +15,13 @@ function normalize(f,now){
  return {id:String(f.id),status:'scheduled',kickoff_ts:f.kickoff_ts,teams:{home:{id:Number(f.teams.home.id),name:f.teams.home.name},away:{id:Number(f.teams.away.id),name:f.teams.away.name}},...(odds?{storedBet365:odds}:{}),...(hub?{storedHub1x2:hub}:{})};
 }
 export function mergeStoredPrematch(existing,incoming,now){
- const map=new Map(),stats={received:incoming.length,accepted:0,rejected:0,conflicts:0};
+ const map=new Map(),stats={received:incoming.length,accepted:0,rejected:0,conflicts:0,rescheduled:0};
  for(const f of existing){const n=normalize(f,now);if(n)map.set(n.id,n)}
  for(const f of incoming){const n=normalize(f,now);if(!n){stats.rejected++;continue}const prev=map.get(n.id);
- if(prev&&(prev.kickoff_ts!==n.kickoff_ts||prev.teams.home.id!==n.teams.home.id||prev.teams.away.id!==n.teams.away.id)){stats.conflicts++;continue}
+ if(prev&&(prev.teams.home.id!==n.teams.home.id||prev.teams.away.id!==n.teams.away.id)){stats.conflicts++;continue}
+  // The provider can revise kickoff for the SAME fixture/team IDs. That is
+  // not a new selection and does not alter the immutable pick ledger.
+  if(prev&&prev.kickoff_ts!==n.kickoff_ts)stats.rescheduled++;
  if(prev?.storedBet365&&(!n.storedBet365||prev.storedBet365.observed>n.storedBet365.observed))n.storedBet365=prev.storedBet365;
  if(prev?.storedHub1x2&&(!n.storedHub1x2||prev.storedHub1x2.observed>n.storedHub1x2.observed))n.storedHub1x2=prev.storedHub1x2;
  map.set(n.id,n);stats.accepted++}
