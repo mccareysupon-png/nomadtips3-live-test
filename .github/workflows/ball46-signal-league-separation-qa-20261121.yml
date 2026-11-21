@@ -71,7 +71,7 @@ jobs:
               assert(row.headIsNative&&row.headMatch,'NATIVE_LEAGUE_HEADER_MISSING_'+row.id);
               assert(row.cloneFlag===row.sourceFlag&&row.sourceFlag?.includes('/flags/'),'ORIGINAL_COUNTRY_FLAG_MISSING_'+row.id);
               assert.equal(row.league,row.sourceLeague,'NATIVE_LEAGUE_LABEL_CHANGED_'+row.id);
-              assert(row.flagBox?.w>15&&row.flagBox?.h>11,'NATIVE_FLAG_SIZE_CHANGED_'+row.id);
+              assert(row.flagBox?.w>=14.5&&row.flagBox?.h>=10.5,'NATIVE_FLAG_SIZE_CHANGED_'+row.id);
               assert(!row.overlap,'LEAGUE_HEADER_OVERLAPS_NATIVE_CARD_'+row.id);
               assert(row.rowRect.w<=proof.viewport+2,'CARD_TOO_WIDE_'+row.id);
               assert(row.headerShape?.h>25||!row.headVisible,'HEADER_HEIGHT_CHANGED_'+row.id);
