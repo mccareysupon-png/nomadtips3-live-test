@@ -25,7 +25,7 @@ jobs:
             const [r,js,css]=await Promise.all([fetch(url,{cache:'no-store'}),fetch(base+'/__b46_prematch_client.js',{cache:'no-store'}),fetch(base)]);
             if(r.ok&&js.ok&&css.ok){
               data=await r.json();src=await js.text();styles=await css.text();
-              if(src.includes('const avgOdds=items=>')&&src.includes("e.target?.closest?.('#b46-prematch-panel')")&&src.includes('b46pm-minute-mark')&&src.includes("window.addEventListener('click'")&&src.includes('function clearNativeActive()')&&src.includes('change.target===side')&&src.includes('b46pm-stats-board')&&src.includes('b46PmPeriod')&&src.includes('function readRoute()')&&src.includes('function syncRoute()')&&src.includes('function membershipBanner()')&&src.includes('function syncPrematchViewport()')&&src.includes('b46pm-scroll-region')&&src.includes('function performancePanel()')&&src.includes('B46_PM_PERFORMANCE_DAILY_DATE_V2')&&src.includes('B46_PM_RECEIVER_SCHEMA_V1')&&src.includes('B46_PM_PERSISTED_TEST_RECEIVER_V1')&&src.includes('const resultTone=n=>')&&src.includes('b46pm-performance-three-tone'))break;
+              if(src.includes('const avgOdds=items=>')&&src.includes("e.target?.closest?.('#b46-prematch-panel')")&&src.includes('b46pm-minute-mark')&&src.includes("window.addEventListener('click'")&&src.includes('function clearNativeActive()')&&src.includes('change.target===side')&&src.includes('b46pm-stats-board')&&src.includes('b46PmPeriod')&&src.includes('function readRoute()')&&src.includes('function syncRoute()')&&src.includes('function membershipBanner()')&&src.includes('function syncPrematchViewport()')&&src.includes('b46pm-scroll-region')&&src.includes('function performancePanel()')&&src.includes('B46_PM_PERFORMANCE_DAILY_DATE_V2')&&src.includes('B46_PM_RECEIVER_SCHEMA_V1')&&src.includes('B46_PM_PERSISTED_TEST_RECEIVER_V1')&&src.includes('const resultTone=n=>')&&src.includes('b46pm-performance-three-tone')&&src.includes('scroll architecture V2: one outer scrollbar'))break;
             }
             await new Promise(r=>setTimeout(r,2200));
           }
@@ -44,6 +44,7 @@ jobs:
           assert(src.includes('B46_PM_RECEIVER_SCHEMA_V1'),'RECEIVER_PARITY_UI_NOT_DEPLOYED');
           assert(src.includes('B46_PM_PERSISTED_TEST_RECEIVER_V1'),'PERSISTED_TEST_GRAPH_UI_NOT_DEPLOYED');
           assert(src.includes('const resultTone=n=>')&&src.includes('b46pm-performance-three-tone'),'THREE_TONE_PREMATCH_UI_NOT_DEPLOYED');
+          assert(src.includes('scroll architecture V2: one outer scrollbar'),'SINGLE_OUTER_SCROLLBAR_NOT_DEPLOYED');
           assert.equal(data.testLedger?.mode,'TEST_ONLY');
           const expected=rows=>{const n=rows.map(x=>Number(x.price)).filter(x=>Number.isFinite(x)&&x>1);return n.length?(n.reduce((a,b)=>a+b,0)/n.length).toFixed(2):'—'};
           const allAvg=expected(data.testLedger.rows),w=data.dailyBook.window;
@@ -93,8 +94,8 @@ jobs:
                 };
               },mobile);
               assert.equal(promo.count,1,'DUPLICATE_PROMO_BANNER');
-              assert.equal(promo.position,'relative','PROMO_NOT_FIXED_OUTSIDE_SCROLL');
-              assert(['auto','0px'].includes(promo.top),'PROMO_FIXED_OFFSET_WRONG '+promo.top);
+              assert.equal(promo.position,'sticky','PROMO_NOT_STICKY_INSIDE_OUTER_FRAME');
+              assert.equal(promo.top,'0px','PROMO_STICKY_TOP_NOT_ZERO');
               assert.equal(promo.beforeHead,true,'PROMO_NOT_TOP_OF_PREMATCH');
               assert(promo.width>100&&promo.height>20,'PROMO_NO_VISIBLE_GEOMETRY');
               assert.deepEqual(promo.href,['https://member.ball46.com/pricing','https://member.ball46.com/pricing'],'PROMO_LINK_CHANGED');
@@ -125,37 +126,56 @@ jobs:
                 const br=banner.getBoundingClientRect(),hr=head.getBoundingClientRect();
                 return {ancestors,windowY:scrollY,docY:document.scrollingElement?.scrollTop,bannerY:br.y,headY:hr.y,bannerHeight:br.height,rootHeight:document.scrollingElement?.scrollHeight};
               });
+              // Single right-edge scrollbar, content must scroll underneath
+              // pinned banner by native mouse-wheel (including over banner).
+              await p.evaluate(()=>document.querySelector('#b46-prematch-panel').scrollTop=0);
               const probeBefore=await sampleScroll();
-              await p.locator('#b46-prematch-panel .b46pm-head').evaluate(x=>x.scrollIntoView({block:'nearest'}));
-              // Scroll from an actual point inside the Pre-Match content viewport,
-              // not a fixed page coordinate that may overlap native sidebar layers.
+              const frame=await p.locator('#b46-prematch-panel').boundingBox();
               const scrollArea=await p.locator('#b46pm-scroll-region').boundingBox();
-              assert(scrollArea&&scrollArea.width>100&&scrollArea.height>100,'SCROLL_REGION_BOUNDS_NOT_FOUND');
-              await p.mouse.move(scrollArea.x+Math.min(180,scrollArea.width/2),scrollArea.y+Math.min(135,scrollArea.height/3));
-              await p.mouse.wheel(0,50);
-              await p.waitForTimeout(240);
+              assert(frame&&frame.width>100&&frame.height>100,'OUTER_SCROLL_FRAME_NOT_FOUND');
+              assert(scrollArea&&scrollArea.width>100,'CONTENT_BOUNDS_NOT_FOUND');
+              await p.mouse.move(scrollArea.x+Math.min(160,scrollArea.width/2),Math.min(frame.y+frame.height-40,Math.max(frame.y+promo.height+25,scrollArea.y+55)));
+              await p.mouse.wheel(0,65);
+              await p.waitForTimeout(250);
               const probeAfter=await sampleScroll();
               console.log('PREMATCH_SCROLL_FIRST_WHEEL_PROBE '+JSON.stringify({mobile,theme,before:probeBefore,after:probeAfter}));
-              // The banner must not move at all on the first tick. Only the
-              // child scrolling viewport advances, while the root stays locked.
-              const scrollRootBefore=probeBefore.ancestors.find(x=>x.id==='b46-prematch-panel');
-              const scrollRootAfter=probeAfter.ancestors.find(x=>x.id==='b46-prematch-panel');
-              assert(Math.abs(probeAfter.bannerY-probeBefore.bannerY)<1,'PROMO_FIRST_SCROLL_JUMP '+JSON.stringify({mobile,theme,before:probeBefore.bannerY,after:probeAfter.bannerY}));
-              assert(Math.abs(probeAfter.windowY-probeBefore.windowY)<1,'DOCUMENT_SCROLLED_IN_PREMATCH '+JSON.stringify({mobile,theme,before:probeBefore.windowY,after:probeAfter.windowY}));
-              assert(Math.abs(scrollRootAfter.y-scrollRootBefore.y)<1,'PREMATCH_FRAME_MOVED_ON_SCROLL');
+              const fixedFrameBefore=probeBefore.ancestors.find(x=>x.id==='b46-prematch-panel');
+              const fixedFrameAfter=probeAfter.ancestors.find(x=>x.id==='b46-prematch-panel');
+              assert(Math.abs(probeAfter.bannerY-probeBefore.bannerY)<1,'PROMO_JUMP_FIRST_WHEEL '+JSON.stringify({mobile,theme,before:probeBefore.bannerY,after:probeAfter.bannerY}));
+              assert(Math.abs(probeAfter.windowY-probeBefore.windowY)<1,'DOCUMENT_SCROLLED_IN_PREMATCH');
+              assert(Math.abs(fixedFrameAfter.y-fixedFrameBefore.y)<1,'OUTER_FRAME_MOVED');
+              assert(fixedFrameAfter.scrollTop>=35,'OUTER_SCROLLBAR_DID_NOT_MOVE '+JSON.stringify(fixedFrameAfter));
               const clip=await p.evaluate(()=>{
                 const banner=document.querySelector('#b46pm-membership-promo');
+                const panel=document.querySelector('#b46-prematch-panel');
                 const region=document.querySelector('#b46pm-scroll-region');
-                const br=banner.getBoundingClientRect(),rr=region.getBoundingClientRect(),s=getComputedStyle(region);
-                const center=document.elementFromPoint(br.left+br.width/2,br.top+Math.min(br.height-3,br.height/2));
-                return {regionTop:rr.top,bannerBottom:br.bottom,overflowY:s.overflowY,regionScrollTop:region.scrollTop,regionClient:region.clientHeight,regionScrollHeight:region.scrollHeight,rootY:scrollY,hitPromo:!!center?.closest?.('#b46pm-membership-promo'),rootOverflow:getComputedStyle(document.documentElement).overflowY};
+                const br=banner.getBoundingClientRect(),pr=panel.getBoundingClientRect();
+                const middle=document.elementFromPoint(br.left+br.width/2,br.top+br.height/2);
+                const pStyle=getComputedStyle(panel),rStyle=getComputedStyle(region);
+                return {
+                  panelOverflow:pStyle.overflowY,panelScrollTop:panel.scrollTop,
+                  panelRight:pr.right,regionScrollTop:region.scrollTop,regionOverflow:rStyle.overflowY,
+                  bannerY:br.top,bannerBottom:br.bottom,hitPromo:!!middle?.closest?.('#b46pm-membership-promo'),
+                  rootOverflow:getComputedStyle(document.documentElement).overflowY,
+                  scrollbarWidth:panel.offsetWidth-panel.clientWidth
+                };
               });
-              assert(clip.regionTop>=clip.bannerBottom-1,'CONTENT_OVERLAPS_PROMO');
-              assert.equal(clip.overflowY,'auto','MATCH_CONTENT_NOT_SCROLL_CLIPPED');
-              assert(clip.regionScrollTop>=30,'FIRST_SCROLL_DID_NOT_SCROLL_CONTENT '+JSON.stringify(clip));
-              assert(clip.hitPromo,'CONTENT_PAINTED_THROUGH_PROMO '+JSON.stringify(clip));
-              assert.equal(clip.rootOverflow,'hidden','PAGE_SCROLL_NOT_LOCKED');
-              console.log('PREMATCH_SCROLL_CLIP_PASS '+JSON.stringify({mobile,theme,bannerY:probeAfter.bannerY,documentY:probeAfter.windowY,internalScroll:clip.regionScrollTop,regionTop:clip.regionTop,bannerBottom:clip.bannerBottom,hitPromo:clip.hitPromo}));
+              assert(['auto','scroll'].includes(clip.panelOverflow),'SCROLLBAR_NOT_ON_OUTER_FRAME '+JSON.stringify(clip));
+              assert.equal(clip.regionOverflow,'visible','NESTED_SCROLLBAR_STILL_PRESENT');
+              assert.equal(clip.regionScrollTop,0,'NESTED_SCROLLBAR_MOVED');
+              assert(clip.hitPromo,'CONTENT_PAINTED_THROUGH_STICKY_PROMO '+JSON.stringify(clip));
+              assert.equal(clip.rootOverflow,'hidden','DOCUMENT_SCROLL_UNLOCKED');
+              assert(clip.scrollbarWidth>=0,'OUTER_SCROLLBAR_INVALID');
+              console.log('PREMATCH_SCROLL_CLIP_PASS '+JSON.stringify({mobile,theme,bannerY:probeAfter.bannerY,documentY:probeAfter.windowY,outerScroll:clip.panelScrollTop,scrollbarEdge:clip.panelRight,hitPromo:clip.hitPromo}));
+              // Wheel directly over the stationary banner still advances the
+              // outer scrollbar and never turns into document scrolling.
+              await p.mouse.move(frame.x+Math.min(170,frame.width/2),probeAfter.bannerY+Math.min(promo.height/2,35));
+              await p.mouse.wheel(0,38);
+              await p.waitForTimeout(160);
+              const overBanner=await p.evaluate(()=>({scroll:document.querySelector('#b46-prematch-panel').scrollTop,y:scrollY}));
+              assert(overBanner.scroll>clip.panelScrollTop+15,'WHEEL_ON_BANNER_DID_NOT_SCROLL_OUTER_FRAME');
+              assert.equal(overBanner.y,probeAfter.windowY,'WHEEL_ON_BANNER_SCROLLED_DOCUMENT');
+              console.log('PREMATCH_OUTER_SCROLLBAR_WHEEL_PASS '+JSON.stringify({mobile,theme,afterContent:clip.panelScrollTop,afterBanner:overBanner.scroll}));
               await p.mouse.wheel(0,-110);
               await p.waitForTimeout(200);
               const readStats=()=>p.evaluate(()=>{
