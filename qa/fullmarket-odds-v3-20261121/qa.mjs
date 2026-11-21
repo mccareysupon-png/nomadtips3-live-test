@@ -43,7 +43,7 @@ try{
   for(let n=0;n<Math.min(5,await rows.count());n++){
    const row=rows.nth(n);fixture=await row.getAttribute('data-match-id');
    await row.click({position:{x:95,y:35},force:true}).catch(()=>{});
-   try{await p.waitForFunction(()=>document.querySelector('.expand-full-market-card .fmb-tab.has-data[data-fmb-book]'),null,{timeout:12000});loaded=true;break}catch{}
+   try{await p.waitForFunction(()=>document.querySelectorAll('.expand-full-market-card .fmb-tab.has-data[data-fmb-book]').length>=2,null,{timeout:3500});loaded=true;break}catch{}
   }
   if(!loaded&&!desktop){
     // Mobile retains its native UI and is outside Default V3's desktop-dark-only
