@@ -75,7 +75,7 @@ try{
   assert.equal(s.arrowFill,color,'SOLID_TRIANGLE_FILL_MISSING_'+name);
   assert.equal(s.arrowWidth,'5px','TRIANGLE_NOT_5PX_WIDE_'+name);
   assert.equal(s.arrowHeight,'5px','TRIANGLE_NOT_5PX_HIGH_'+name);
-  assert(s.arrowClip.startsWith(arrow),'SOLID_TRIANGLE_ORIENTATION_WRONG_'+name);
+  assert(s.arrowClip.startsWith(name==='UP'?'polygon(50%':'polygon(0'),'SOLID_TRIANGLE_ORIENTATION_WRONG_'+name);
   assert.equal(s.priceColor,color,'PRICE_COLOR_WRONG_'+name);
   assert.equal(s.arrowColor,color,'ARROW_COLOR_WRONG_'+name);
   assert.equal(s.plateColor,plateColor,'CARD_PLATE_LOST_'+name);

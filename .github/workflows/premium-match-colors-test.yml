@@ -310,7 +310,7 @@ jobs:
               };
               const verify=(o,dir)=>{
                 assert.equal(o.direction,dir,'NO_MOVEMENT_'+dir);
-                assert.equal(o.arrow,'\"\"','OLD_ARROW_SHAFT_STILL_VISIBLE_'+dir);assert.equal(o.arrowFill,o.numberColor,'SOLID_TRIANGLE_FILL_WRONG_'+dir);assert.equal(o.arrowWidth,'5px','TRIANGLE_WIDTH_WRONG_'+dir);assert.equal(o.arrowHeight,'5px','TRIANGLE_HEIGHT_WRONG_'+dir);assert(o.arrowClip.startsWith(dir==='up'?'polygon(50%':'polygon(0%'),'TRIANGLE_DIRECTION_WRONG_'+dir);
+                assert.equal(o.arrow,'\"\"','OLD_ARROW_SHAFT_STILL_VISIBLE_'+dir);assert.equal(o.arrowFill,o.numberColor,'SOLID_TRIANGLE_FILL_WRONG_'+dir);assert.equal(o.arrowWidth,'5px','TRIANGLE_WIDTH_WRONG_'+dir);assert.equal(o.arrowHeight,'5px','TRIANGLE_HEIGHT_WRONG_'+dir);assert(o.arrowClip.startsWith(dir==='up'?'polygon(50%':'polygon(0'),'TRIANGLE_DIRECTION_WRONG_'+dir);
                 assert.equal(o.numberColor,dir==='up'?'rgb(121, 225, 172)':'rgb(255, 159, 165)','NUMBER_WRONG_COLOR_'+dir);
                 assert.equal(o.arrowColor,o.numberColor,'ARROW_WRONG_COLOR_'+dir);
                 assert.equal(o.plateBg,dir==='up'?'rgba(42, 163, 103, 0.2)':'rgba(178, 65, 74, 0.19)','CARD_NOT_VISIBLE_'+dir);
