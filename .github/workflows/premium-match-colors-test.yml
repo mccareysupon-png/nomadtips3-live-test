@@ -196,7 +196,7 @@ jobs:
           import {chromium,devices} from 'playwright';
           import assert from 'node:assert/strict';
           const base='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev';
-          let h;for(let i=0;i<15;i++){try{const r=await fetch(base+'/_premium_health');if(r.ok){const candidate=await r.json();if(candidate.revision==='PREMIUM_LEAGUE_SOLID_V14'&&candidate.oddsMovementScript?.includes('DURATION=2000')&&candidate.oddsMovementStyle?.includes('box-shadow:none!important')&&!candidate.oddsMovementStyle?.includes('inset 0 0 0 1px')){h=candidate;break}}}catch{}await new Promise(r=>setTimeout(r,2000))}
+          let h;for(let i=0;i<15;i++){try{const r=await fetch(base+'/_premium_health');if(r.ok){const candidate=await r.json();if(candidate.revision==='PREMIUM_LEAGUE_SOLID_V14'&&candidate.oddsMovementScript?.includes('DURATION=2000')&&candidate.oddsMovementStyle?.includes('box-shadow:none!important')&&candidate.oddsMovementStyle?.includes('border-radius:6px!important')&&candidate.oddsMovementStyle?.includes('transform:translateY(-50%)!important')&&!candidate.oddsMovementStyle?.includes('inset 0 0 0 1px')){h=candidate;break}}}catch{}await new Promise(r=>setTimeout(r,2000))}
           assert.equal(h?.scope,'TEST_ONLY_CSS');assert.equal(h?.revision,'PREMIUM_LEAGUE_SOLID_V14');assert.equal(h?.oddsMovement,'DOM_PRICES_V1');assert(h?.oddsMovementScript?.includes('DURATION=2000'),'WORKER_HAS_OLD_DURATION');assert(h?.oddsMovementStyle?.includes('box-shadow:none!important'),'WORKER_HAS_OLD_BORDER_STYLE');
           const browser=await chromium.launch();
           try{for(const mobile of [false])for(const theme of ['dark','light']){
@@ -284,20 +284,20 @@ jobs:
                 el.textContent=v.toFixed(2);
                 await new Promise(resolve=>setTimeout(resolve,130));
                 const q=el.closest('.b46-v3-quote'),s=getComputedStyle(q),arrow=getComputedStyle(q,'::after');
-                return {direction:q.getAttribute('data-b46-odds-move'),priceColor:getComputedStyle(el).color,quoteColor:s.backgroundColor,quoteShadow:s.boxShadow,border:s.borderTopWidth,outline:s.outlineStyle,arrow:arrow.content,cellBg:getComputedStyle(el.closest('.market-cell')).backgroundColor,stats:{...window.__b46OddsMovementStats}};
+                return {direction:q.getAttribute('data-b46-odds-move'),priceColor:getComputedStyle(el).color,quoteColor:s.backgroundColor,quoteShadow:s.boxShadow,rounding:s.borderTopLeftRadius,border:s.borderTopWidth,outline:s.outlineStyle,arrow:arrow.content,arrowTop:arrow.top,arrowTransform:arrow.transform,arrowOffsetFromPriceCenter:Math.round((q.getBoundingClientRect().top+parseFloat(arrow.top)-(el.getBoundingClientRect().top+el.getBoundingClientRect().height/2))*10)/10,cellBg:getComputedStyle(el.closest('.market-cell')).backgroundColor,stats:{...window.__b46OddsMovementStats}};
               },value);
               const initialMove=await readMove();assert(!initialMove.direction,'ODDS_FLASH_ON_INITIAL_LOAD');assert.equal(initialMove.cellBg,h.reference.pitColor);
               const initialValue=Number(originalPrice.raw),upValue=Number((initialValue+.07).toFixed(2));
               const up=await simulate(upValue);
               console.log('ODDS_UP_PROOF',JSON.stringify(up));
-              assert.equal(up.direction,'up','ODDS_UP_WAS_NOT_DETECTED');assert(up.arrow.includes('↑'));assert.equal(up.cellBg,h.reference.pitColor);assert.equal(up.quoteShadow,'none','UP_SHEET_HAS_BORDER_SHADOW');assert.equal(up.border,'0px','UP_SHEET_HAS_BORDER');assert.equal(up.outline,'none','UP_SHEET_HAS_OUTLINE');
+              assert.equal(up.direction,'up','ODDS_UP_WAS_NOT_DETECTED');assert(up.arrow.includes('↑'));assert.equal(up.cellBg,h.reference.pitColor);assert.equal(up.quoteShadow,'none','UP_SHEET_HAS_BORDER_SHADOW');assert.equal(up.rounding,'6px','UP_SHEET_NOT_ROUNDED');assert(up.arrowTransform!=='none','UP_ARROW_NOT_CENTERED');assert.equal(up.border,'0px','UP_SHEET_HAS_BORDER');assert.equal(up.outline,'none','UP_SHEET_HAS_OUTLINE');
               await p.waitForTimeout(500);assert.equal((await readMove()).direction,'up','UP_HIGHLIGHT_TOO_SHORT');
               await p.screenshot({path:process.env.RUNNER_TEMP+'/premium-proof/odds-up.png'});
               await p.waitForTimeout(2150);assert.equal((await readMove()).direction,null,'ODDS_UP_NOT_RESET_AFTER_2000MS');
               const unchanged=await simulate(upValue);assert.equal(unchanged.direction,null,'SAME_PRICE_TRIGGERED_FALSE_FLASH');
               const down=await simulate(initialValue);
               console.log('ODDS_DOWN_PROOF',JSON.stringify(down));
-              assert.equal(down.direction,'down','ODDS_DOWN_WAS_NOT_DETECTED');assert(down.arrow.includes('↓'));assert.equal(down.cellBg,h.reference.pitColor);assert.equal(down.quoteShadow,'none','DOWN_SHEET_HAS_BORDER_SHADOW');assert.equal(down.border,'0px','DOWN_SHEET_HAS_BORDER');assert.equal(down.outline,'none','DOWN_SHEET_HAS_OUTLINE');
+              assert.equal(down.direction,'down','ODDS_DOWN_WAS_NOT_DETECTED');assert(down.arrow.includes('↓'));assert.equal(down.cellBg,h.reference.pitColor);assert.equal(down.quoteShadow,'none','DOWN_SHEET_HAS_BORDER_SHADOW');assert.equal(down.rounding,'6px','DOWN_SHEET_NOT_ROUNDED');assert(down.arrowTransform!=='none','DOWN_ARROW_NOT_CENTERED');assert.equal(down.border,'0px','DOWN_SHEET_HAS_BORDER');assert.equal(down.outline,'none','DOWN_SHEET_HAS_OUTLINE');
               await p.waitForTimeout(500);assert.equal((await readMove()).direction,'down','DOWN_HIGHLIGHT_TOO_SHORT');
               await p.screenshot({path:process.env.RUNNER_TEMP+'/premium-proof/odds-down.png'});
               await p.waitForTimeout(2150);const afterFlash=await readMove();assert.equal(afterFlash.direction,null,'ODDS_DOWN_NOT_RESET_AFTER_2000MS');
