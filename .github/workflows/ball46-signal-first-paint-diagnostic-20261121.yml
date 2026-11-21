@@ -1,0 +1,60 @@
+name: BALL46 Signal first-paint timing comparison READ ONLY
+on:
+  push:
+    branches: [test/ball46-premium-match-colors-20261120]
+    paths: ['.github/workflows/ball46-signal-first-paint-diagnostic-20261121.yml']
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 11
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm install --no-save --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium --only-shell
+      - name: Compare original and TEST Signal count and badge paint timing
+        run: |
+          node --input-type=module <<'NODE'
+          import {chromium} from 'playwright';
+          const origins=[
+            ['production','https://ball46.com/index.html?view=signal'],
+            ['test','https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev/?view=signal']
+          ];
+          const b=await chromium.launch();
+          const out=[];
+          try{
+            for(const [name,url] of origins)for(let n=0;n<2;n++){
+              const p=await b.newPage({viewport:{width:1440,height:950},serviceWorkers:'block'});
+              await p.addInitScript(()=>{
+                localStorage.setItem('nomad343_dashboard_theme_v1','dark');
+                window.__b46PaintQA={started:performance.now(),events:[],responses:[],longTasks:[],last:null};
+                try{new PerformanceObserver(list=>{for(const e of list.getEntries())window.__b46PaintQA.longTasks.push({at:Math.round(e.startTime),ms:Math.round(e.duration)})}).observe({type:'longtask',buffered:true})}catch{}
+                const sample=()=>{
+                  const s=window.__b46PaintQA;
+                  const board=document.querySelector('.board-sections'),rows=[...document.querySelectorAll('.status-section[data-status-section="live"] .match-row')];
+                  const visible=rows.filter(x=>x.getBoundingClientRect().height>10),native=[...document.querySelectorAll('.signal-inline-stack')].filter(x=>x.getBoundingClientRect().height>5);
+                  const badges=[...document.querySelectorAll('[data-inline-signal-count]')].filter(x=>x.getBoundingClientRect().height>0);
+                  const event={at:Math.round(performance.now()),view:document.body?.dataset.workspaceView||null,rows:rows.length,visible:visible.length,badges:badges.length,firstCount:badges[0]?.getAttribute('data-inline-signal-count')||null,native:native.length,signalsText:visible[0]?.querySelector('.desktop-signal')?.textContent?.slice(0,100)||null,signalReady:window.__b46SignalStableStatus?.seenSource||false,sortReady:board?.getAttribute('data-b46-signal-sort-ready')||null};
+                  const k=JSON.stringify({...event,at:0});
+                  if(k!==s.last){s.last=k;s.events.push(event)}
+                };
+                new MutationObserver(()=>{if(document.body)sample()}).observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['data-workspace-view','data-inline-signal-count','class']});
+                addEventListener('DOMContentLoaded',()=>{sample();let ticks=0;const id=setInterval(()=>{sample();if(++ticks>180)clearInterval(id)},50)});
+              });
+              p.on('response',r=>{
+                if(/\/api\/engine\/(signals|board)|\/api\/hub\/snapshot/.test(r.url()))p.evaluate(d=>window.__b46PaintQA?.responses.push({...d,at:Math.round(performance.now())}),{status:r.status(),url:new URL(r.url()).pathname}).catch(()=>{});
+              });
+              const started=Date.now();
+              let error=null;
+              try{await p.goto(url+'&qaFirstPaint='+n+'-'+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});await p.waitForTimeout(9600)}catch(e){error=String(e)}
+              const state=await p.evaluate(()=>({events:window.__b46PaintQA?.events?.slice(0,120),responses:window.__b46PaintQA?.responses,longTasks:window.__b46PaintQA?.longTasks,final:window.__b46SignalStableQA?.state?.(),loading:document.readyState,counts:[...document.querySelectorAll('[data-inline-signal-count]')].map(x=>x.getAttribute('data-inline-signal-count')).slice(0,10),dataState:document.querySelector('[data-state]')?.textContent}));
+              out.push({name,n,totalMs:Date.now()-started,error,...state});
+              await p.close();
+            }
+          }finally{await b.close()}
+          for(const x of out)console.log('B46_FIRST_PAINT_COMPARISON '+JSON.stringify(x).slice(0,20000));
+          NODE
