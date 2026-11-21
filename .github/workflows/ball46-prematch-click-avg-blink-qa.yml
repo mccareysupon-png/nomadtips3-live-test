@@ -25,7 +25,7 @@ jobs:
             const [r,js,css]=await Promise.all([fetch(url,{cache:'no-store'}),fetch(base+'/__b46_prematch_client.js',{cache:'no-store'}),fetch(base)]);
             if(r.ok&&js.ok&&css.ok){
               data=await r.json();src=await js.text();styles=await css.text();
-              if(src.includes('const avgOdds=items=>')&&src.includes("e.target?.closest?.('#b46-prematch-panel')")&&src.includes('b46pm-minute-mark')&&src.includes("window.addEventListener('click'")&&src.includes('function clearNativeActive()')&&src.includes('change.target===side'))break;
+              if(src.includes('const avgOdds=items=>')&&src.includes("e.target?.closest?.('#b46-prematch-panel')")&&src.includes('b46pm-minute-mark')&&src.includes("window.addEventListener('click'")&&src.includes('function clearNativeActive()')&&src.includes('change.target===side')&&src.includes('b46pm-stats-board')&&src.includes('b46PmPeriod'))break;
             }
             await new Promise(r=>setTimeout(r,2200));
           }
@@ -35,6 +35,7 @@ jobs:
           assert(src.includes("window.addEventListener('click'"),'WINDOW_CAPTURE_SHIELD_NOT_DEPLOYED');
           assert(src.includes('function clearNativeActive()'),'NATIVE_ACTIVE_EXCLUSIVITY_NOT_DEPLOYED');
           assert(src.includes('change.target===side'),'LATEST_NAVIGATION_OBSERVER_NOT_DEPLOYED');
+          assert(src.includes('b46pm-stats-board')&&src.includes('b46PmPeriod'),'UNIFIED_STATS_PANEL_NOT_DEPLOYED');
           assert.equal(data.testLedger?.mode,'TEST_ONLY');
           const expected=rows=>{const n=rows.map(x=>Number(x.price)).filter(x=>Number.isFinite(x)&&x>1);return n.length?(n.reduce((a,b)=>a+b,0)/n.length).toFixed(2):'—'};
           const allAvg=expected(data.testLedger.rows),w=data.dailyBook.window;
@@ -49,7 +50,7 @@ jobs:
               if(mobile){await p.locator('[data-b46m-open]').click();await p.locator('#b46m-drawer [data-b46-prematch-route="predictions"]').waitFor({state:'visible',timeout:18000})}
               const nav=mobile?'#b46m-drawer [data-b46-prematch-route="predictions"]':'aside.left-rail [data-b46-prematch-route="predictions"]';
               await p.locator(nav).evaluate(x=>x.click());
-              await p.waitForFunction(()=>document.body.dataset.b46PrematchView==='1'&&document.querySelectorAll('#b46-prematch-panel .b46pm-card').length>=8,null,{timeout:20000});
+              await p.waitForFunction(()=>document.body.dataset.b46PrematchView==='1'&&document.querySelectorAll('#b46-prematch-panel .b46pm-stat').length===9,null,{timeout:20000});
               await p.waitForTimeout(600);
               if(mobile){const navStatus=await p.evaluate(()=>{
                 const drawer=document.querySelector('#b46m-drawer'),overlay=document.querySelector('[data-b46m-overlay]');
@@ -57,13 +58,34 @@ jobs:
                 const target=rect?document.elementFromPoint(rect.x+rect.width/2,rect.y+rect.height/2):null;
                 return {drawerClass:drawer?.className,drawerHidden:drawer?.getAttribute('aria-hidden'),overlayClass:overlay?.className,overlayPointer:overlay&&getComputedStyle(overlay).pointerEvents,centerTarget:target?.outerHTML.slice(0,230)}
               });console.log('PREMATCH_MOBILE_DRAWER_STATE '+JSON.stringify(navStatus));}
-              const metrics=await p.evaluate(()=>{
-                const cards=[...document.querySelectorAll('#b46-prematch-panel .b46pm-summary .b46pm-card')].map(x=>[x.querySelector('.b46pm-label')?.textContent,x.querySelector('.b46pm-value')?.textContent]);
-                const day=[...document.querySelectorAll('#b46-prematch-panel .b46pm-daybar-cell')].map(x=>[x.querySelector('small')?.textContent,x.querySelector('strong')?.textContent]);
-                return {cards,day};
+              const readStats=()=>p.evaluate(()=>{
+                const board=document.querySelector('#b46-prematch-panel .b46pm-stats-board');
+                const entries=[...board.querySelectorAll('.b46pm-stat')];
+                const pairs=entries.map(x=>[x.querySelector('.b46pm-stat-label')?.textContent,x.querySelector('.b46pm-stat-value')?.textContent]);
+                return {period:board.dataset.b46PmPeriod,pairs,borders:entries.map(x=>getComputedStyle(x).borderTopWidth),boardBorder:getComputedStyle(board).borderTopWidth,activeButtons:[...board.querySelectorAll('.b46pm-period-btn[aria-pressed="true"]')].map(x=>x.dataset.b46PmPeriod),scrollWidth:document.documentElement.scrollWidth,viewWidth:innerWidth};
               });
-              assert.equal(new Map(metrics.cards).get('AVG ODDS'),allAvg,'TOTAL_AVG_ODDS_WRONG');
-              assert.equal(new Map(metrics.day).get('AVG ODDS TODAY'),todayAvg,'TODAY_AVG_ODDS_WRONG');
+              const checkPeriod=(stats,period)=>{
+                assert.equal(stats.period,period);
+                assert.equal(stats.pairs.length,9,'STATS_MUST_HAVE_NINE_METRICS');
+                assert.equal(new Set(stats.pairs.map(x=>x[0])).size,9,'DUPLICATE_STATS_LABELS');
+                assert(stats.borders.every(x=>x==='0px'),'METRIC_BORDER_FOUND');
+                assert.equal(stats.boardBorder,'0px','BOARD_BORDER_FOUND');
+                assert.deepEqual(stats.activeButtons,[period],'PERIOD_NOT_EXCLUSIVE');
+                assert(stats.scrollWidth<=stats.viewWidth+1,'STATS_HORIZONTAL_OVERFLOW');
+              };
+              const today=await readStats();
+              checkPeriod(today,'today');
+              assert.equal(new Map(today.pairs).get('AVG ODDS'),todayAvg,'TODAY_AVG_ODDS_WRONG');
+              assert.equal(Number(new Map(today.pairs).get('PICKS')),Number(data.dailyBook.selected.total),'PICKS_TODAY_WRONG');
+              await p.locator('#b46-prematch-panel [data-b46-pm-period="all"]').click();
+              const all=await readStats();
+              checkPeriod(all,'all');
+              assert.equal(new Map(all.pairs).get('AVG ODDS'),allAvg,'ALL_AVG_ODDS_WRONG');
+              assert.equal(Number(new Map(all.pairs).get('TOTAL')),Number(data.testLedger.stats.total),'TOTAL_WRONG');
+              await p.screenshot({path:'evidence/prematch-click-avg-blink/'+(mobile?'mobile':'desktop')+'-'+theme+'-all.png',fullPage:true});
+              await p.locator('#b46-prematch-panel [data-b46-pm-period="today"]').click();
+              checkPeriod(await readStats(),'today');
+              console.log('PREMATCH_UNIFIED_STATS_PASS '+JSON.stringify({mobile,theme,today:today.pairs,all:all.pairs,borderless:true,exclusive:true}));
               // Only one sidebar item may be active in the visible navigation context.
               // Test each Pre-Match sub-route and then return to predictions for click QA.
               for(const route of ['predictions','all','1x2','btts','predictions']){
@@ -79,7 +101,7 @@ jobs:
                  assert.deepEqual(active.map(x=>x.route),[route],'DUPLICATE_ACTIVE '+JSON.stringify({mobile,theme,route,active}));
                  console.log('PREMATCH_SINGLE_ACTIVE_PASS '+JSON.stringify({mobile,theme,route,active}));
               }
-              const selections=['.b46pm-title','.b46pm-daybar','.b46pm-daybar-cell','.b46pm-card','.b46pm-label','.b46pm-value','.b46pm-list-head','.b46pm-match','.b46pm-meta','.b46pm-teams','.b46pm-pick','.b46pm-details'];
+              const selections=['.b46pm-title','.b46pm-stats-board','.b46pm-stats-toolbar','.b46pm-stat','.b46pm-stat-label','.b46pm-stat-value','.b46pm-list-head','.b46pm-match','.b46pm-meta','.b46pm-teams','.b46pm-pick','.b46pm-details'];
               const clickProof=[];
               for(const sel of selections){
                const locator=p.locator('#b46-prematch-panel '+sel).first();
