@@ -1,0 +1,23 @@
+name: BALL46 inspect normal HUB pre-match quote coverage read only
+on:
+  push:
+    branches: [test/ball46-prematch-v1-20261120]
+    paths: ['.github/workflows/ball46-prematch-regular-input-audit.yml']
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - run: |
+          node --input-type=module <<'JS'
+          const u='https://nomadtips3-5usd-hub-343.mccarey-supon.workers.dev/snapshot';
+          const r=await fetch(u,{signal:AbortSignal.timeout(16000),cache:'no-store'});
+          if(!r.ok)throw Error('CACHE_ONLY_HUB '+r.status);
+          const j=await r.json();
+          if(j.cacheOnly!==true||j.externalRequestsAdded!==0)throw Error('NOT_PROVEN_CACHE_ONLY');
+          const fixtures=(j.fixtures??[]).filter(x=>x.boardState==='scheduled'||x.status==='scheduled');
+          const withPrices=fixtures.filter(x=>x.providerOdds!=null);
+          const sample=withPrices.slice(0,2).map(x=>({fixtureId:x.fixtureId,leagueId:x.league?.id,oddsKeys:Object.keys(x.providerOdds||{}).slice(0,24),kind:typeof x.providerOdds,preview:JSON.stringify(x.providerOdds).slice(0,900)}));
+          console.log('NORMAL_PICK_INPUT_AUDIT '+JSON.stringify({fetchedAt:j.fetchedAt,snapshotCount:j.fixtures?.length,scheduled:fixtures.length,withAnyProviderOdds:withPrices.length,sample,additionalProviderCalls:0}));
+          JS
