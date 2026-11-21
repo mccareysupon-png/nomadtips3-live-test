@@ -195,7 +195,7 @@ jobs:
                   && !document.querySelector('#b46-prematch-panel')?.hidden
                   && url.searchParams.get('b46pm')===route
                   && url.searchParams.get('b46pmPeriod')===period
-                  && document.querySelector('#b46-prematch-panel .b46pm-stats-board')?.dataset.b46PmPeriod===period
+                  && (route==='predictions'?document.querySelector('#b46-prematch-panel .b46pm-stats-board')?.dataset.b46PmPeriod===period:!!document.querySelector('#b46-prematch-panel .b46pm-performance'))
                   && [...document.querySelectorAll('[data-b46-prematch-route="'+route+'"]')].some(e=>e.classList.contains('active'));
               },{route:reloadRoute,period:reloadPeriod},{timeout:22000});
               const reloaded=await p.evaluate(isMobile=>{
