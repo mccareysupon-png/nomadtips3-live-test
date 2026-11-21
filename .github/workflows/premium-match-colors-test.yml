@@ -271,3 +271,5 @@ jobs:
           gh api --method POST repos/${{ github.repository }}/statuses/${{ github.sha }} -f state="$state" -f context=ball46-premium-worker -f description="Worker verification: $JOB_STATUS" -f target_url=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
 # Include native BALL46 mobile drawer Pre-Match links (2026-11-21).
+
+# Delay mobile native menu insertion until drawer content is mounted.
