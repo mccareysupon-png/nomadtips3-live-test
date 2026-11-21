@@ -1,0 +1,23 @@
+name: BALL46 read-only Signal Engine API schema inspection
+on:
+  push:
+    branches: [test/ball46-premium-match-colors-20261120]
+    paths: ['.github/workflows/ball46-signal-api-schema-20261121.yml']
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Fetch Engine live signals once and map timestamp fields
+        run: |
+          node --input-type=module <<'NODE'
+          const base='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev';
+          const r=await fetch(base+'/api/engine/signals?schemaReadonly='+Date.now(),{signal:AbortSignal.timeout(45000)});
+          if(!r.ok)throw Error('SIGNALS_HTTP_'+r.status);
+          const j=await r.json();const shape=(o,n=0)=>{if(Array.isArray(o))return {kind:'array',len:o.length,sample:shape(o[0],n+1)};if(o&&typeof o==='object'){const keys=Object.keys(o);return {kind:'object',keys:keys.slice(0,45),samples:Object.fromEntries(keys.slice(0,n===0?15:35).map(k=>[k,n<3?shape(o[k],n+1):typeof o[k]]))}}return o};
+          console.log('B46_ENGINE_SIGNAL_SCHEMA '+JSON.stringify(shape(j)).slice(0,28000));
+          NODE
