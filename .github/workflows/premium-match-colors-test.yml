@@ -290,14 +290,14 @@ jobs:
               const initialValue=Number(originalPrice.raw),upValue=Number((initialValue+.07).toFixed(2));
               const up=await simulate(upValue);
               console.log('ODDS_UP_PROOF',JSON.stringify(up));
-              assert.equal(up.direction,'up','ODDS_UP_WAS_NOT_DETECTED');assert(up.arrow.includes('↑'));assert.equal(up.cellBg,h.reference.pitColor);assert.equal(up.quoteShadow,'none','UP_SHEET_HAS_BORDER_SHADOW');assert.equal(up.rounding,'6px','UP_SHEET_NOT_ROUNDED');assert(up.arrowTransform!=='none','UP_ARROW_NOT_CENTERED');assert.equal(up.border,'0px','UP_SHEET_HAS_BORDER');assert.equal(up.outline,'none','UP_SHEET_HAS_OUTLINE');
+              assert.equal(up.direction,'up','ODDS_UP_WAS_NOT_DETECTED');assert(up.arrow.includes('↑'));assert.equal(up.cellBg,h.reference.pitColor);assert.equal(up.quoteShadow,'none','UP_SHEET_HAS_BORDER_SHADOW');assert.equal(up.rounding,'6px','UP_SHEET_NOT_ROUNDED');assert(up.arrowTransform!=='none','UP_ARROW_NOT_CENTERED');assert(Math.abs(up.arrowOffsetFromPriceCenter)<=2,'UP_ARROW_MISALIGNED_WITH_NUMBER');assert.equal(up.border,'0px','UP_SHEET_HAS_BORDER');assert.equal(up.outline,'none','UP_SHEET_HAS_OUTLINE');
               await p.waitForTimeout(500);assert.equal((await readMove()).direction,'up','UP_HIGHLIGHT_TOO_SHORT');
               await p.screenshot({path:process.env.RUNNER_TEMP+'/premium-proof/odds-up.png'});
               await p.waitForTimeout(2150);assert.equal((await readMove()).direction,null,'ODDS_UP_NOT_RESET_AFTER_2000MS');
               const unchanged=await simulate(upValue);assert.equal(unchanged.direction,null,'SAME_PRICE_TRIGGERED_FALSE_FLASH');
               const down=await simulate(initialValue);
               console.log('ODDS_DOWN_PROOF',JSON.stringify(down));
-              assert.equal(down.direction,'down','ODDS_DOWN_WAS_NOT_DETECTED');assert(down.arrow.includes('↓'));assert.equal(down.cellBg,h.reference.pitColor);assert.equal(down.quoteShadow,'none','DOWN_SHEET_HAS_BORDER_SHADOW');assert.equal(down.rounding,'6px','DOWN_SHEET_NOT_ROUNDED');assert(down.arrowTransform!=='none','DOWN_ARROW_NOT_CENTERED');assert.equal(down.border,'0px','DOWN_SHEET_HAS_BORDER');assert.equal(down.outline,'none','DOWN_SHEET_HAS_OUTLINE');
+              assert.equal(down.direction,'down','ODDS_DOWN_WAS_NOT_DETECTED');assert(down.arrow.includes('↓'));assert.equal(down.cellBg,h.reference.pitColor);assert.equal(down.quoteShadow,'none','DOWN_SHEET_HAS_BORDER_SHADOW');assert.equal(down.rounding,'6px','DOWN_SHEET_NOT_ROUNDED');assert(down.arrowTransform!=='none','DOWN_ARROW_NOT_CENTERED');assert(Math.abs(down.arrowOffsetFromPriceCenter)<=2,'DOWN_ARROW_MISALIGNED_WITH_NUMBER');assert.equal(down.border,'0px','DOWN_SHEET_HAS_BORDER');assert.equal(down.outline,'none','DOWN_SHEET_HAS_OUTLINE');
               await p.waitForTimeout(500);assert.equal((await readMove()).direction,'down','DOWN_HIGHLIGHT_TOO_SHORT');
               await p.screenshot({path:process.env.RUNNER_TEMP+'/premium-proof/odds-down.png'});
               await p.waitForTimeout(2150);const afterFlash=await readMove();assert.equal(afterFlash.direction,null,'ODDS_DOWN_NOT_RESET_AFTER_2000MS');
