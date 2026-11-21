@@ -11,8 +11,8 @@ export function adaptStoredFixture(db,f,now){
  const k=f?.kickoff_ts,h=f?.teams?.home?.id,a=f?.teams?.away?.id;
  if(f?.status!=='scheduled'||!id(f.id)||!id(h)||!id(a)||Number(h)===Number(a)||!Number.isSafeInteger(k)||!Number.isSafeInteger(now)||k<=now)return null;
  const homeLast10=lastMatches(db,Number(h),k,now),awayLast10=lastMatches(db,Number(a),k,now);
- const stored=f.storedBet365, p=stored?.prices;
- const verified=stored?.bookmaker==='bet365'&&Number.isSafeInteger(stored.observed)&&stored.observed<=now&&stored.observed<k;
+ const stored=f.storedHub1x2&&(!f.storedBet365||f.storedHub1x2.observed>=f.storedBet365.observed)?f.storedHub1x2:f.storedBet365, p=stored?.prices;
+ const verified=['bet365','5usd-hub'].includes(stored?.bookmaker)&&Number.isSafeInteger(stored.observed)&&stored.observed<=now&&stored.observed<k;
  const meta=verified?{bookmaker:'bet365',observed:stored.observed}:null;
  const common={homeLast10,awayLast10,asOf:now,kickoff:k};
  const btts=meta&&price(p?.BTTS_YES)&&price(p?.BTTS_NO)?{...common,odds:{...meta,yes:p.BTTS_YES,no:p.BTTS_NO}}:null;
