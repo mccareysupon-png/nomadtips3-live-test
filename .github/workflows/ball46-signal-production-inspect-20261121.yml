@@ -1,0 +1,37 @@
+name: BALL46 Signal production source compatibility read-only
+on:
+  push:
+    branches: [release/ball46-signal-latest-stable-20261121]
+    paths: ['.github/workflows/ball46-signal-production-inspect-20261121.yml']
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: npm install --no-audit --no-fund acorn@8
+      - name: Read-only inspect production Worker source HTML insertion and live active version
+        run: |
+          node --input-type=module <<'NODE'
+          import {parse} from 'acorn';import {createHash} from 'node:crypto';
+          const ROOT='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+'/workers',SCRIPT='ball46-production';
+          const cf=async p=>{const r=await fetch(ROOT+p,{headers:{authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN},signal:AbortSignal.timeout(60000)});const x=await r.json();if(!r.ok||!x.success)throw Error('CF_'+r.status+'_'+JSON.stringify(x.errors));return x.result};
+          const d=await cf('/scripts/'+SCRIPT+'/deployments?per_page=3'),versions=d.deployments?.[0]?.versions; if(versions?.length!==1||versions[0].percentage!==100)throw Error('ACTIVE_VERSION_NOT_100_PERCENT');
+          const id=versions[0].version_id,v=await cf('/workers/'+SCRIPT+'/versions/'+id+'?include=modules');
+          const mm=v.modules?.find(m=>m.name===v.main_module);if(!mm?.content_base64)throw Error('NO_MAIN_MODULE');
+          const src=Buffer.from(mm.content_base64,'base64').toString('utf8');
+          const ast=parse(src,{ecmaVersion:'latest',sourceType:'module'});
+          const marked=['__b46HeadOddsFlash20261121','b46-premium-match-production','b46-odds-flash-production','b46-sidebar-winrate-production','<\/head>','new HTMLRewriter','data-workspace-view','signal-inline-stack','b46-signal-stable','__b46SignalStableV1'];
+          const counts=Object.fromEntries(marked.map(k=>[k,src.split(k).length-1]));
+          const defs=ast.body.flatMap(n=>n.type==='VariableDeclaration'?n.declarations.filter(d=>d.id?.name==='__b46HeadOddsFlash20261121'):[]);
+          const literal=defs[0]?.init?.value;
+          const tail=typeof literal==='string'?literal.slice(-650):null;
+          const markerAt=src.indexOf('__b46HeadOddsFlash20261121'),usage=src.indexOf('__b46HeadOddsFlash20261121',markerAt+1);
+          console.log('B46_PRODUCTION_SIGNAL_SOURCE_COMPAT '+JSON.stringify({activeVersion:id,sourceBytes:src.length,sha256:createHash('sha256').update(src).digest('hex'),moduleCount:v.modules.length,mainModule:v.main_module,cronBindingCount:v.bindings?.length,hasAssets:!!v.assets?.config,counts,headVar:{defs:defs.length,literalType:typeof literal,len:literal?.length,tail},firstUse:src.slice(Math.max(0,markerAt-170),markerAt+200),secondUse:src.slice(Math.max(0,usage-270),usage+280),inlineHeadCount:(literal||'').split('</script>').length-1,workerTopLevel:ast.body.slice(0,22).map(n=>n.type==='VariableDeclaration'?n.declarations.map(d=>d.id?.name):n.type)}));
+          NODE
