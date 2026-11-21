@@ -25,7 +25,7 @@ jobs:
             const [r,js,css]=await Promise.all([fetch(url,{cache:'no-store'}),fetch(base+'/__b46_prematch_client.js',{cache:'no-store'}),fetch(base)]);
             if(r.ok&&js.ok&&css.ok){
               data=await r.json();src=await js.text();styles=await css.text();
-              if(src.includes('const avgOdds=items=>')&&src.includes("e.target?.closest?.('#b46-prematch-panel')")&&src.includes('b46pm-minute-mark')&&src.includes("window.addEventListener('click'")&&src.includes('function clearNativeActive()')&&src.includes('change.target===side')&&src.includes('b46pm-stats-board')&&src.includes('b46PmPeriod')&&src.includes('function readRoute()')&&src.includes('function syncRoute()')&&src.includes('function membershipBanner()')&&src.includes('function syncPrematchViewport()')&&src.includes('b46pm-scroll-region')&&src.includes('function performancePanel()')&&src.includes('B46_PM_PERFORMANCE_DAILY_DATE_V2')&&src.includes('B46_PM_RECEIVER_SCHEMA_V1')&&src.includes('B46_PM_PERSISTED_TEST_RECEIVER_V1'))break;
+              if(src.includes('const avgOdds=items=>')&&src.includes("e.target?.closest?.('#b46-prematch-panel')")&&src.includes('b46pm-minute-mark')&&src.includes("window.addEventListener('click'")&&src.includes('function clearNativeActive()')&&src.includes('change.target===side')&&src.includes('b46pm-stats-board')&&src.includes('b46PmPeriod')&&src.includes('function readRoute()')&&src.includes('function syncRoute()')&&src.includes('function membershipBanner()')&&src.includes('function syncPrematchViewport()')&&src.includes('b46pm-scroll-region')&&src.includes('function performancePanel()')&&src.includes('B46_PM_PERFORMANCE_DAILY_DATE_V2')&&src.includes('B46_PM_RECEIVER_SCHEMA_V1')&&src.includes('B46_PM_PERSISTED_TEST_RECEIVER_V1')&&src.includes('const resultTone=n=>')&&src.includes('b46pm-performance-three-tone'))break;
             }
             await new Promise(r=>setTimeout(r,2200));
           }
@@ -43,6 +43,7 @@ jobs:
           assert(src.includes('B46_PM_PERFORMANCE_DAILY_DATE_V2'),'CORRECTED_PERFORMANCE_VERSION_NOT_DEPLOYED');
           assert(src.includes('B46_PM_RECEIVER_SCHEMA_V1'),'RECEIVER_PARITY_UI_NOT_DEPLOYED');
           assert(src.includes('B46_PM_PERSISTED_TEST_RECEIVER_V1'),'PERSISTED_TEST_GRAPH_UI_NOT_DEPLOYED');
+          assert(src.includes('const resultTone=n=>')&&src.includes('b46pm-performance-three-tone'),'THREE_TONE_PREMATCH_UI_NOT_DEPLOYED');
           assert.equal(data.testLedger?.mode,'TEST_ONLY');
           const expected=rows=>{const n=rows.map(x=>Number(x.price)).filter(x=>Number.isFinite(x)&&x>1);return n.length?(n.reduce((a,b)=>a+b,0)/n.length).toFixed(2):'—'};
           const allAvg=expected(data.testLedger.rows),w=data.dailyBook.window;
@@ -324,7 +325,7 @@ jobs:
             await cp.waitForFunction(()=>document.querySelector('#b46-prematch-panel .b46pm-performance-provenance')?.textContent.includes('Pre-Match Receiver'),null,{timeout:16000});
             const chartProof=await cp.evaluate(()=>{
               const svg=document.querySelector('#b46-prematch-panel .b46pm-chart-stage svg');
-              return {hasChart:!!svg,linePaths:svg?.querySelectorAll('path[stroke="#4af3ca"]').length,
+              return {hasChart:!!svg,linePaths:svg?.querySelectorAll('path[stroke="url(#b46pm-performance-three-tone)"]').length,
                 hero:document.querySelector('#b46-prematch-panel .b46pm-performance-hero')?.textContent,
                 cardCount:document.querySelectorAll('#b46-prematch-panel .b46pm-performance-item').length};
             });
@@ -332,6 +333,11 @@ jobs:
             assert.equal(chartProof.linePaths,1,'MULTI_DAY_LINE_MISSING');
             assert.equal(chartProof.cardCount,8,'LONG_TERM_METRIC_COUNT');
             assert.equal(chartProof.hero,'+2.45U','LATEST_RECEIVER_TOTAL_NOT_USED');
+            assert.equal(await cp.locator('#b46-prematch-panel .b46pm-performance-hero.positive').count(),1,'PROFIT_HERO_MUST_BE_GREEN');
+            assert.equal(await cp.locator('#b46-prematch-panel .b46pm-performance-item .b46pm-tone.positive').first().count(),1,'ROI_GREEN_MISSING');
+            const lineColors=await cp.locator('#b46-prematch-panel #b46pm-performance-three-tone stop').evaluateAll(nodes=>nodes.map(x=>x.getAttribute('stop-color')));
+            assert(lineColors.includes('#27c77e')&&lineColors.includes('#e4b82f')&&lineColors.includes('#eb6176'),'THREE_TONE_GRAPH_GRADIENT_MISSING');
+
             assert((await cp.locator('#b46-prematch-panel .b46pm-performance').innerText()).includes('-0.65 U'),'RECEIVER_MAX_DRAWDOWN_NOT_USED');
             await cp.locator('#b46-prematch-panel [data-b46pm-perf-range="7D"]').click();
             await cp.locator('#b46-prematch-panel [data-b46pm-perf-metric="roi"]').click();
@@ -340,6 +346,71 @@ jobs:
             assert((await cp.locator('#b46-prematch-panel .b46pm-performance-provenance').innerText()).includes('Pre-Match Receiver'),'RANGE_FELL_BACK_TO_DAILY_RECALC');
             console.log('PREMATCH_LONGTERM_SYNTHETIC_BROWSER_PASS '+JSON.stringify({...chartProof,browserOnly:true,sourceWrite:false}));
             await cp.close();
+            // Browser-only scenarios: green profits, yellow exact zero, red losses.
+            // No fake results or chart rows are saved in the test or live DO.
+            for(const scenario of [
+              {name:'break-even',tone:'neutral',net:0,roi:0,wins:1,losses:1,pushes:1,rows:3,staked:3,avgOdds:2,
+               point:0,expectedFill:'#e4b82f',maxDD:0,expectedDD:'0.00 U'},
+              {name:'loss',tone:'negative',net:-1.5,roi:-30,wins:1,losses:4,pushes:0,rows:5,staked:5,avgOdds:2.3,
+               point:-1.5,expectedFill:'#eb6176',maxDD:3,expectedDD:'-3.00 U'}
+            ]){
+              const graph={...baseGraph,
+                summary:{...baseGraph.summary,rows:scenario.rows,wins:scenario.wins,losses:scenario.losses,
+                  pushes:scenario.pushes,net:scenario.net,stake:scenario.staked,roi:scenario.roi,avgOdds:scenario.avgOdds,
+                  maxDD:scenario.maxDD},
+                series:{...baseGraph.series,
+                  units:[{date:Date.parse('2026-11-20T12:00:00Z'),value:scenario.point}],
+                  roi:[{date:Date.parse('2026-11-20T12:00:00Z'),value:scenario.roi}],
+                  rate:[{date:Date.parse('2026-11-20T12:00:00Z'),value:scenario.wins/(scenario.wins+scenario.losses)*100}]}
+              };
+              const page=await b.newPage({viewport:{width:1440,height:940},serviceWorkers:'block'});
+              const preview=structuredClone(data);
+              if(scenario.name==='break-even'){
+                const settled=preview.testLedger.rows.find(x=>x.status==='WIN');
+                settled.status='PUSH';settled.units=0;
+              }
+              await page.route('**/__b46_prematch_data',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(preview)}));
+              await page.route('**/__b46_prematch_graph?*',route=>route.fulfill({
+                status:200,contentType:'application/json',body:JSON.stringify({...graph,scope:'PREMATCH_TEST_ONLY'})
+              }));
+              await page.goto(base+'/?b46pm=all&pmThreeTone='+scenario.name,{waitUntil:'domcontentloaded',timeout:60000});
+              await page.waitForFunction(()=>document.querySelector('#b46-prematch-panel .b46pm-performance-provenance')?.textContent.includes('Pre-Match Receiver'),null,{timeout:17000});
+              const proof=await page.evaluate(()=>{
+                const root=document.querySelector('#b46-prematch-panel');
+                const items=[...root.querySelectorAll('.b46pm-performance-item')];
+                const find=label=>items.find(x=>x.querySelector('small')?.textContent===label)?.querySelector('strong');
+                const getColor=selector=>getComputedStyle(root.querySelector(selector)).color;
+                return {
+                  heroText:root.querySelector('.b46pm-performance-hero')?.textContent,
+                  heroTone:[...root.querySelector('.b46pm-performance-hero').classList],
+                  roiTone:[...(find('ROI')?.classList||[])],roiText:find('ROI')?.textContent,
+                  maxDD:find('MAX DRAWDOWN')?.textContent,maxDDTone:[...(find('MAX DRAWDOWN')?.classList||[])],
+                  outcomeColors:['win','draw','loss'].map(t=>getColor('.b46pm-outcome-item.'+t)),
+                  outcomeValues:[...root.querySelectorAll('.b46pm-performance-wdl .b46pm-tone')].map(x=>({tone:[...x.classList],text:x.textContent,color:getComputedStyle(x).color})),
+                  expectedColors:['--b46pm-win','--b46pm-draw','--b46pm-loss'].map(v=>{
+                    const node=document.createElement('span');node.style.color='var('+v+')';
+                    root.append(node);const color=getComputedStyle(node).color;node.remove();return color;
+                  }),
+                  circleFill:root.querySelector('.b46pm-chart-stage svg circle')?.getAttribute('fill'),
+                  lineGradient:!!root.querySelector('#b46pm-performance-three-tone')
+                };
+              });
+              assert(proof.heroTone.includes(scenario.tone),'HERO_COLOR_'+scenario.name);
+              assert(proof.roiTone.includes(scenario.tone),'ROI_COLOR_'+scenario.name);
+              assert.equal(proof.maxDD,scenario.expectedDD,'MAX_DD_TEXT_'+scenario.name);
+              assert(proof.maxDDTone.includes(scenario.maxDD===0?'neutral':'negative'),'MAX_DD_TONE_'+scenario.name);
+              assert.deepEqual(proof.outcomeColors,proof.expectedColors,'WIN_DRAW_LOSS_COLORS_'+scenario.name);
+              assert.deepEqual(proof.outcomeValues.map(x=>x.tone.includes('positive')?'positive':x.tone.includes('neutral')?'neutral':'negative'),['positive','neutral','negative'],'WDL_VALUE_COLORS');
+              assert.deepEqual(proof.outcomeValues.map(x=>x.color),proof.expectedColors,'WDL_RGB_COLORS');
+              assert.equal(proof.circleFill,scenario.expectedFill,'GRAPH_LAST_DOT_'+scenario.name);
+              assert.equal(proof.lineGradient,true,'GRAPH_GRADIENT_MISSING');
+              if(scenario.name==='break-even'){
+                const settledPush=page.locator('#b46-prematch-panel .b46pm-ft .b46pm-tone.neutral').first();
+                assert(await settledPush.count()>0,'PUSH_MUST_BE_YELLOW');
+              }
+              console.log('PREMATCH_THREE_TONE_BROWSER_PASS '+JSON.stringify({scenario:scenario.name,proof,browserOnly:true,storageWrites:0}));
+              await page.close();
+            }
             const p=await b.newPage({viewport:{width:1440,height:900},serviceWorkers:'block'});
             const injected=structuredClone(data),pending=injected.testLedger.rows.find(x=>x.status==='PENDING');
             assert(pending,'NO_PENDING_TO_TEST_LIVE_MINUTES');
