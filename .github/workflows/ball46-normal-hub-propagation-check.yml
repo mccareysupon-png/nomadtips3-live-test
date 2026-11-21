@@ -18,8 +18,8 @@ jobs:
           const token=process.env.CLOUDFLARE_API_TOKEN,acct=process.env.CLOUDFLARE_ACCOUNT_ID,base='https://api.cloudflare.com/client/v4/accounts/'+acct+'/workers',n='ball46-prematch-only-test-20261120';
           const secret=crypto.createHmac('sha256',token).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
           async function cf(p){const r=await fetch(base+p,{headers:{authorization:'Bearer '+token}});const j=await r.json();return {ok:r.ok,result:j.result,errors:j.errors}}
-          const deploy=await cf('/scripts/'+n+'/deployments?per_page=5'),settings=await cf('/scripts/'+n+'/settings'),active=await cf('/scripts/'+n);
-          console.log('PROBE_DEPLOY '+JSON.stringify({list:deploy.result?.deployments?.map(x=>({id:x.id,created_on:x.created_on,versions:x.versions})),bindings:settings.result?.bindings?.map(x=>({name:x.name,type:x.type,service:x.service,environment:x.environment})),scriptName:active.result?.id}));
+          const deploy=await cf('/scripts/'+n+'/deployments?per_page=5'),settings=await cf('/scripts/'+n+'/settings');
+          console.log('PROBE_DEPLOY '+JSON.stringify({list:deploy.result?.deployments?.map(x=>({id:x.id,created_on:x.created_on,versions:x.versions})),bindings:settings.result?.bindings?.map(x=>({name:x.name,type:x.type,service:x.service,environment:x.environment})),scriptName:n}));
           const host='https://'+n+'.mccarey-supon.workers.dev';
           for(const p of ['/health','/preview-data','/test-ledger']){
            const r=await fetch(host+p,{headers:{authorization:'Bearer '+secret},signal:AbortSignal.timeout(15000)});
