@@ -42,8 +42,10 @@ function toFinished(f,observed){
  if(!positive(kickoff)||kickoff>=observed)return null;
  return {id:Number(f.fixtureId),league:{id:Number(f.league.id)},teams:{home:{id:Number(f.home.id)},away:{id:Number(f.away.id)}},kickoff_ts:kickoff,status:'finished',status_code:'full',goals:{home:f.goals.home,away:f.goals.away}};
 }
-export function importHistoryRoundFromCache(db,snapshot,now){
- const s=historySlot(now);initHistoryRounds(db);
+export function importHistoryRoundFromCache(db,snapshot,now,{roundNo=null}={}){
+ const base=historySlot(now);
+ if(roundNo!==null&&(!Number.isInteger(roundNo)||roundNo<1||roundNo>HISTORY_MAX_ROUNDS))throw Error('INVALID_HISTORY_ROUND');
+ const s={...base,slot:roundNo??base.slot};initHistoryRounds(db);
  if(snapshot?.ok!==true||snapshot?.cacheOnly!==true||snapshot?.stale===true||!Array.isArray(snapshot.fixtures))return {state:'DEFERRED_CACHE_UNAVAILABLE',...historyRoundState(db,now)};
  const observed=toSecond(snapshot.fetchedAt);
  if(!positive(observed)||observed>now+60||now-observed>3600)return {state:'DEFERRED_CACHE_STALE',...historyRoundState(db,now)};
