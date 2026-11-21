@@ -25,7 +25,7 @@ jobs:
             const [r,js,css]=await Promise.all([fetch(url,{cache:'no-store'}),fetch(base+'/__b46_prematch_client.js',{cache:'no-store'}),fetch(base)]);
             if(r.ok&&js.ok&&css.ok){
               data=await r.json();src=await js.text();styles=await css.text();
-              if(src.includes('const avgOdds=items=>')&&src.includes("e.target?.closest?.('#b46-prematch-panel')")&&src.includes('b46pm-minute-mark')&&src.includes("window.addEventListener('click'")&&src.includes('function clearNativeActive()')&&src.includes('change.target===side')&&src.includes('b46pm-stats-board')&&src.includes('b46PmPeriod')&&src.includes('function readRoute()')&&src.includes('function syncRoute()')&&src.includes('function membershipBanner()')&&src.includes('function syncPrematchViewport()')&&src.includes('b46pm-scroll-region')&&src.includes('function performancePanel()')&&src.includes('B46_PM_PERFORMANCE_DAILY_DATE_V2')&&src.includes('B46_PM_RECEIVER_SCHEMA_V1')&&src.includes('B46_PM_PERSISTED_TEST_RECEIVER_V1')&&src.includes('const resultTone=n=>')&&src.includes('b46pm-performance-three-tone')&&src.includes('The outer Pre-Match frame is the ONLY content scrollbar'))break;
+              if(src.includes('const avgOdds=items=>')&&src.includes("e.target?.closest?.('#b46-prematch-panel')")&&src.includes('b46pm-minute-mark')&&src.includes("window.addEventListener('click'")&&src.includes('function clearNativeActive()')&&src.includes('change.target===side')&&src.includes('b46pm-stats-board')&&src.includes('b46PmPeriod')&&src.includes('function readRoute()')&&src.includes('function syncRoute()')&&src.includes('function membershipBanner()')&&src.includes('function syncPrematchViewport()')&&src.includes('b46pm-scroll-region')&&src.includes('function performancePanel()')&&src.includes('B46_PM_PERFORMANCE_DAILY_DATE_V2')&&src.includes('B46_PM_RECEIVER_SCHEMA_V1')&&src.includes('B46_PM_PERSISTED_TEST_RECEIVER_V1')&&src.includes('const resultTone=n=>')&&src.includes('b46pm-performance-three-tone')&&src.includes('The outer Pre-Match frame is the ONLY content scrollbar')&&src.includes('B46_PM_TEST_SHELL_NO_PRODUCTION_FLASH_V1'))break;
             }
             await new Promise(r=>setTimeout(r,2200));
           }
@@ -45,6 +45,7 @@ jobs:
           assert(src.includes('B46_PM_PERSISTED_TEST_RECEIVER_V1'),'PERSISTED_TEST_GRAPH_UI_NOT_DEPLOYED');
           assert(src.includes('const resultTone=n=>')&&src.includes('b46pm-performance-three-tone'),'THREE_TONE_PREMATCH_UI_NOT_DEPLOYED');
           assert(src.includes('The outer Pre-Match frame is the ONLY content scrollbar'),'SINGLE_OUTER_SCROLLBAR_NOT_DEPLOYED');
+          assert(src.includes('B46_PM_TEST_SHELL_NO_PRODUCTION_FLASH_V1'),'TEST_PREMATCH_SHELL_REVISION_NOT_DEPLOYED');
           assert.equal(data.testLedger?.mode,'TEST_ONLY');
           const expected=rows=>{const n=rows.map(x=>Number(x.price)).filter(x=>Number.isFinite(x)&&x>1);return n.length?(n.reduce((a,b)=>a+b,0)/n.length).toFixed(2):'—'};
           const allAvg=expected(data.testLedger.rows),w=data.dailyBook.window;
@@ -61,6 +62,22 @@ jobs:
               await p.locator(nav).evaluate(x=>x.click());
               await p.waitForFunction(()=>document.body.dataset.b46PrematchView==='1'&&document.querySelectorAll('#b46-prematch-panel .b46pm-stat').length===9,null,{timeout:20000});
               await p.waitForTimeout(600);
+              const scope=await p.evaluate(()=>{
+                const stage=document.querySelector('section.workspace.singlepage > .workspace-stage');
+                const panel=document.querySelector('#b46-prematch-panel');
+                return {testRoute:document.documentElement.dataset.b46PmBoot,
+                  testScope:panel?.dataset.b46Scope,
+                  nativeDisplay:stage?getComputedStyle(stage).display:'absent',
+                  title:panel?.querySelector('.b46pm-description')?.textContent,
+                  navText:document.querySelector('#b46pm-stats-navigation .b46pm-nav-heading')?.textContent,
+                  mobileNav:document.querySelector('#b46pm-mobile-navigation .b46m-grouplabel')?.textContent};
+              });
+              assert.equal(scope.testRoute,'1','PREMATCH_TEST_BOOT_MARKER_DROPPED');
+              assert.equal(scope.testScope,'PREMATCH_TEST_ONLY','PREMATCH_SCOPE_MISMATCH');
+              assert.equal(scope.nativeDisplay,'none','OLD_PRODUCTION_STAGE_STILL_VISIBLE');
+              assert(scope.title?.includes('TEST ONLY'),'PREMATCH_TITLE_NOT_DISTINGUISHED');
+              assert((mobile?scope.mobileNav:scope.navText)?.includes('TEST'),'TEST_NAVIGATION_LABEL_MISSING');
+              console.log('PREMATCH_TEST_ONLY_SHELL_PASS '+JSON.stringify({mobile,theme,...scope}));
               if(mobile){const navStatus=await p.evaluate(()=>{
                 const drawer=document.querySelector('#b46m-drawer'),overlay=document.querySelector('[data-b46m-overlay]');
                 const rect=document.querySelector('#b46-prematch-panel .b46pm-title')?.getBoundingClientRect();
