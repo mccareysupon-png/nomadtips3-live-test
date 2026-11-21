@@ -16,3 +16,16 @@ for(const path of paths){
   }
  }catch(e){console.log('SOURCE_ASSET_ERROR',JSON.stringify({path,error:String(e)}))}
 }
+
+for(const uri of ['/b46-receiver-v1/graph?market=all&variant=all&filter=all&range=all','/api/engine/statistics?paged=1']){
+ try{
+  const res=await fetch(base+uri,{signal:AbortSignal.timeout(30000),headers:{'cache-control':'no-cache'}});
+  const stamp=res.headers.get('x-b46-monitor-rates');
+  const result={uri,status:res.status,contentType:res.headers.get('content-type'),monitorHeader:stamp?JSON.parse(stamp):null};
+  try{
+    const b=await res.json();result.jsonKeys=Object.keys(b||{}).slice(0,35);
+    for(const k of ['ok','schema','sequence','total','asOf','market','variant','filter','range','summary','byMarket','markets','head','snapshotSavedAt'])if(b?.[k]!==undefined)result[k]=JSON.stringify(b[k]).slice(0,2500);
+  }catch(e){result.jsonError=String(e)}
+  console.log('SNAPSHOT_ENDPOINT_METADATA',JSON.stringify(result));
+ }catch(e){console.log('SNAPSHOT_ENDPOINT_ERROR',JSON.stringify({uri,error:String(e)}))}
+}
