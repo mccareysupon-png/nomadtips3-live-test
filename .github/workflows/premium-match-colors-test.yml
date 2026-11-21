@@ -290,7 +290,7 @@ jobs:
               },value);
               const pulse=()=>odd.evaluate(el=>{
                 const n=getComputedStyle(el),a=getComputedStyle(el.closest('.b46-v3-quote'),'::after');
-                const brightness=x=>x==='none'?1:Number(x.match(/brightness\\(([^)]+)\\)/)?.[1]||NaN);
+                const brightness=x=>x==='none'?1:Number(x.match(/brightness\(([^)]+)\)/)?.[1]||NaN);
                 return {numberFilter:n.filter,arrowFilter:a.filter,numberBrightness:brightness(n.filter),arrowBrightness:brightness(a.filter),numberAnimation:n.animationName,arrowAnimation:a.animationName};
               });
               const initialMove=await readMove();
