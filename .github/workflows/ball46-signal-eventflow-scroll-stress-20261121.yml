@@ -28,14 +28,12 @@ jobs:
             const real=await p.evaluate(()=>document.querySelector('.status-section[data-status-section="live"] .match-row[data-match-id]')?.dataset.matchId);
             assert(real,'NO_LIVE_PREDICTIONS');
             await p.evaluate(()=>{
-              const section=document.querySelector('.status-section[data-status-section="live"]');
-              const block=section.querySelector('.league-block'),header=block.querySelector(':scope > .league-head'),row=block.querySelector(':scope > .match-row');
-              const tmp=document.createElement('section');tmp.className='league-block';tmp.dataset.b46ScrollStress='1';
-              tmp.append(header.cloneNode(true));
-              for(let i=0;i<13;i++){const cloned=row.cloneNode(true);cloned.dataset.matchId='__B46_STRESS_'+i;cloned.classList.remove('active');cloned.setAttribute('aria-hidden','true');tmp.append(cloned)}
-              section.append(tmp);
+              const style=document.createElement('style');style.id='b46-test-scrollback';
+              style.textContent='body[data-workspace-view="signal"] .status-section[data-status-section="live"]::after{content:"";display:block!important;order:999999!important;flex:0 0 900px!important;height:900px!important;width:100%!important;pointer-events:none!important;}';
+              document.head.append(style);
+              window.__b46SignalStableQA.forceSync();
             });
-            await p.waitForTimeout(300);
+            await p.waitForTimeout(350);
             const picked=p.locator('.status-section[data-status-section="live"] .match-row[data-match-id="'+real+'"]');
             await picked.click({position:{x:90,y:20},force:true});
             await p.waitForFunction(()=>document.querySelector('.status-section[data-status-section="live"] .expand-flow-card')&&window.__b46SignalStableStatus?.frozen?.id,null,{timeout:20000});
@@ -48,20 +46,21 @@ jobs:
             console.log('FLOW_SCROLL_STRESS_BEFORE '+JSON.stringify(before));
             assert(before.maximum>220,'NOT_ENOUGH_TEST_SCROLL_SPACE');assert(before.scroll>170,'USER_SCROLL_NOT_PRESERVED');
             await p.evaluate(()=>{
-              const section=document.querySelector('.status-section[data-status-section="live"]');
-              const fake=document.createElement('div');fake.dataset.b46ScrollDisplacement='1';fake.style.cssText='height:45px;flex:0 0 45px;width:100%;order:0;pointer-events:none;';fake.setAttribute('aria-hidden','true');
-              section.insertBefore(fake,section.querySelector('.league-block'));
+              const style=document.createElement('style');style.id='b46-test-layout-bump';
+              style.textContent='body[data-workspace-view="signal"] .status-section[data-status-section="live"]::before{content:"";display:block!important;order:-199998!important;flex:0 0 45px!important;height:45px!important;width:100%!important;pointer-events:none!important;}';
+              document.head.append(style);
+              window.__b46SignalStableQA.forceSync();
             });
             await p.waitForTimeout(550);const after=await calc();
             console.log('FLOW_SCROLL_STRESS_AFTER_INSERT '+JSON.stringify(after));
             assert(after.flow&&after.frozen===real,'EXPANDED_FLOW_LOST_ON_INSERT');
             assert(Math.abs(after.top-before.top)<1.5,'FLOW_ANCHOR_SHIFTED_ON_HEIGHT_INSERT');
-            await p.evaluate(()=>document.querySelector('[data-b46-scroll-displacement]')?.remove());
+            await p.evaluate(()=>{document.getElementById('b46-test-layout-bump')?.remove();window.__b46SignalStableQA.forceSync()});
             await p.waitForTimeout(550);const restored=await calc();
             console.log('FLOW_SCROLL_STRESS_AFTER_REMOVE '+JSON.stringify(restored));
             assert(restored.flow&&restored.frozen===real,'FLOW_LOST_AFTER_REMOVAL');
             assert(Math.abs(restored.top-before.top)<1.5,'FLOW_ANCHOR_SHIFTED_ON_HEIGHT_REMOVE');
-            await p.evaluate(()=>document.querySelector('[data-b46-scroll-stress]')?.remove());
+            await p.evaluate(()=>document.getElementById('b46-test-scrollback')?.remove());
             console.log('BALL46_EVENTFLOW_SCROLL_STRESS_PASS '+JSON.stringify({visibleStable:true,flowStable:true,addedAndRemovedHeight:true}));
           }finally{await b.close()}
           NODE
