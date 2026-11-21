@@ -81,7 +81,7 @@ jobs:
             const bb=await board.boundingBox();
             if(bb){await p.mouse.move(bb.x+Math.min(bb.width-25,340),bb.y+Math.min(bb.height-25,380));await p.mouse.wheel(0,200);await p.waitForTimeout(300)}
             const scrolledOpen=await read();
-            console.log('SIGNAL_EVENTFLOW_SCROLL_POSITION '+JSON.stringify({board:scrolledOpen.board,activeTop:scrolledOpen.activeTop,active:scrolledOpen.activeId,flow:scrolledOpen.flow}));
+            console.log('SIGNAL_EVENTFLOW_SCROLL_POSITION '+JSON.stringify({board:scrolledOpen.board,activeTop:scrolledOpen.activeTop,active:scrolledOpen.activeId,info:scrolledOpen.info,flow:scrolledOpen.flow}));
             // Browser-only arrival of a new fixture/league while Event Flow stays open.
             await p.evaluate(()=>{
               const status=document.querySelector('.status-section[data-status-section="live"]');
@@ -96,13 +96,14 @@ jobs:
             });
             await p.waitForTimeout(550);
             const afterAdded=await read();
-            console.log('SIGNAL_EVENTFLOW_NEW_FIXTURE_TEST '+JSON.stringify({order:afterAdded.visible.map(x=>x.id),scroll:afterAdded.board.top,activeTop:afterAdded.activeTop,active:afterAdded.activeId}));
+            console.log('SIGNAL_EVENTFLOW_NEW_FIXTURE_TEST '+JSON.stringify({order:afterAdded.visible.map(x=>x.id),scroll:afterAdded.board.top,activeTop:afterAdded.activeTop,active:afterAdded.activeId,info:afterAdded.info}));
             assert(afterAdded.flow&&afterAdded.activeId===last,'FLOW_CHANGED_AFTER_NEW_MATCH_DOM');
             assert.equal(afterAdded.visible[0].id,last,'NEW_FIXTURE_PUSHED_MATCH_ABOVE_OPEN_FLOW');
             assert(Math.abs(afterAdded.activeTop-scrolledOpen.activeTop)<3,'VIEWPORT_JUMPED_WITH_NEW_FIXTURE');
             await p.evaluate(()=>document.querySelector('[data-b46-signal-temporary-qa="1"]')?.remove());
             await p.waitForTimeout(400);
             const afterRemoved=await read();
+            console.log('SIGNAL_EVENTFLOW_AFTER_REMOVAL '+JSON.stringify({scroll:afterRemoved.board.top,activeTop:afterRemoved.activeTop,info:afterRemoved.info}));
             assert(afterRemoved.flow&&afterRemoved.activeId===last,'FLOW_COLLAPSED_ON_FIXTURE_REMOVAL');
             assert(Math.abs(afterRemoved.activeTop-scrolledOpen.activeTop)<3,'VIEWPORT_JUMPED_AFTER_FIXTURE_REMOVAL');
             // New signal on a different match must not reorder the viewport while event detail is open.
@@ -111,7 +112,7 @@ jobs:
             await p.evaluate(signals=>window.__b46SignalStableQA.applySignals({signals}),advanced);
             await p.waitForTimeout(500);
             const whileOpen=await read();
-            console.log('SIGNAL_EVENTFLOW_FROZEN_TEST '+JSON.stringify({opened:{order:opened.visible.map(x=>x.id),scroll:opened.board.top,active:opened.activeId},whileOpen:{order:whileOpen.visible.map(x=>x.id),scroll:whileOpen.board.top,active:whileOpen.activeId,pending:whileOpen.info.pendingChanges}}));
+            console.log('SIGNAL_EVENTFLOW_FROZEN_TEST '+JSON.stringify({opened:{order:opened.visible.map(x=>x.id),scroll:opened.board.top,active:opened.activeId},whileOpen:{order:whileOpen.visible.map(x=>x.id),scroll:whileOpen.board.top,active:whileOpen.activeId,pending:whileOpen.info.pendingChanges,info:whileOpen.info,activeTop:whileOpen.activeTop}}));
             assert.equal(whileOpen.visible.map(x=>x.id).join('|'),frozenTop,'EVENT_FLOW_REORDERED_WHILE_OPEN');
             assert(whileOpen.flow&&whileOpen.activeId===last,'OPEN_EVENT_FLOW_CHANGED_MATCH');
             assert(Math.abs(whileOpen.activeTop-scrolledOpen.activeTop)<3,'EVENT_FLOW_SCROLL_JUMPED_ON_NEW_PREDICTION');
