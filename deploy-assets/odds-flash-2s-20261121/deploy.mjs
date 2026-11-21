@@ -59,7 +59,8 @@ function prepare(p){
 }
 function patchWorker(source,p){
  assert(!source.includes(MARK),'PRODUCTION_ALREADY_PATCHED');
- assert(source.includes('B46_PREMIUM_MATCH_CARDS_20261121'),'EXISTING_PREMIUM_CARD_RELEASE_NOT_ACTIVE');
+ // The current production Worker may have changed since the prior premium release.
+ // Validate the actual served HTML rather than requiring an obsolete source marker.
  const ast=parse(source,{ecmaVersion:'latest',sourceType:'module'});
  const ex=ast.body.filter(x=>x.type==='ExportDefaultDeclaration');
  assert(ex.length===1&&source.slice(ex[0].end).trim()==='','WORKER_EXPORT_UNEXPECTED');
@@ -224,6 +225,10 @@ try{
  const beforeSettings=same(await settings()),beforeCrons=same(await crons()),beforeHealth=await health();
  const homeBefore=await read(HOME+'/index.html'),directBefore=await read(DIRECT+'/index.html');
  report.originComparison={customHash:sha(homeBefore),directHash:sha(directBefore),customLength:homeBefore.length,directLength:directBefore.length,same:sha(homeBefore)===sha(directBefore)};
+ report.premiumBaseline={priorSourceMarker:source.includes('B46_PREMIUM_MATCH_CARDS_20261121'),publicHtmlStyle:homeBefore.includes('b46-premium-match-production'),directHtmlStyle:directBefore.includes('b46-premium-match-production'),publicHasOdds:homeBefore.includes('b46-odds-flash-production'),directHasOdds:directBefore.includes('b46-odds-flash-production')};
+ console.log('ODDS_PRODUCTION_BASELINE',JSON.stringify(report.premiumBaseline));
+ save();
+ assert(report.premiumBaseline.publicHtmlStyle&&report.premiumBaseline.directHtmlStyle,'EXISTING_PREMIUM_PRESENTATION_NOT_SERVED_STOP');
  assert(homeBefore.includes('<html')&&directBefore.includes('<html')&&homeBefore.includes('</html>')&&directBefore.includes('</html>'),'PRODUCTION_ORIGIN_HTML_INVALID');
  report.guards={mainSha:sha(source),settingsSha:sha(beforeSettings),crons:beforeCrons,health:beforeHealth,indexSha:sha(homeBefore)};save();
  const patched=patchWorker(source,p);
