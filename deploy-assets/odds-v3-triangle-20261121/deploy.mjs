@@ -71,6 +71,10 @@ function patchWorker(source,p){
  const si=old.indexOf(splitter,prefix.length);assert(si>prefix.length,'KNOWN_CSS_JS_SPLIT_MISSING');
  const ji=si+splitter.length,je=old.indexOf('</script>',ji);assert(je>ji,'KNOWN_JS_END_MISSING');
  const oldCss=old.slice(prefix.length,si),oldJs=old.slice(ji,je),suffix=old.slice(je);
+ if(oldCss!==originalOddsCss){
+  let diff=0;while(diff<Math.min(oldCss.length,originalOddsCss.length)&&oldCss[diff]===originalOddsCss[diff])diff++;
+  console.log('PRODUCTION_CSS_DRIFT_DIAGNOSTIC '+JSON.stringify({liveLength:oldCss.length,expectedLength:originalOddsCss.length,firstDiffIndex:diff,liveNear:oldCss.slice(Math.max(0,diff-160),diff+350),expectedNear:originalOddsCss.slice(Math.max(0,diff-160),diff+350),liveTail:oldCss.slice(-450)}));
+ }
  assert.equal(oldCss,originalOddsCss,'LIVE_PRODUCTION_CSS_BASELINE_DRIFT_STOP');
  assert.equal(oldJs,originalOddsJs,'LIVE_PRODUCTION_ODDS_JS_BASELINE_DRIFT_STOP');
  assert(suffix.includes('b46-sidebar-winrate-production')&&suffix.includes('B46_SIDEBAR_WINRATE_HYDRATE_20261121'),'SIDEBAR_HYDRATOR_MISSING_STOP');
