@@ -1,0 +1,11 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {matchNormalHub} from './normal-hub-monitor.mjs';
+const now=1795222200,kickoff=1795201200,observer=1795221174228;
+const row={fixture_id:203962150,home_id:4852,away_id:1114,kickoff,status:'PENDING'};
+const fixture={fixtureId:'203962150',home:{id:'4852'},away:{id:'1114'},kickoffUtc:new Date(kickoff*1000).toISOString(),league:{id:'121'},status:'finished',statusCode:'full',boardState:'finished',minute:null,goals:{home:3,away:0}};
+const s=(f=[fixture])=>({ok:true,cacheOnly:true,fetchedAt:observer,stale:false,fixtures:f});
+test('settle full-time result from unchanged cached fixture only',()=>{const r=matchNormalHub(s(),[row],now);assert.equal(r.finals.length,1);assert.equal(r.finals[0].status,'finished');assert.equal(r.monitor[203962150].label,'FT');assert.equal(r.providerCalls,0);assert.equal(r.details.finished,1)});
+test('half-time and in-play stay pending, display score and minutes',()=>{const f={...fixture,status:'in_play',statusCode:'half',boardState:'live',minute:null,goals:{home:2,away:2}};let r=matchNormalHub(s([f]),[row],now);assert.equal(r.monitor[203962150].phase,'LIVE');assert.equal(r.monitor[203962150].label,'HT');assert.equal(r.finals.length,0);r=matchNormalHub(s([{...f,statusCode:'2h',minute:63}]),[row],now);assert.equal(r.monitor[203962150].label,"63'")});
+test('missing or mismatched identity cannot settle',()=>{assert.equal(matchNormalHub(s([]),[row],now).monitor[203962150].phase,'NOT_IN_HUB');for(const diff of [{away:{id:'9'}},{kickoffUtc:'2026-11-30T21:00:00Z'}]){const r=matchNormalHub(s([{...fixture,...diff}]),[row],now);assert.equal(r.details.mismatch,1);assert.equal(r.finals.length,0)}});
+test('regulation-time result requires explicit full status and score',()=>{for(const diff of [{statusCode:'pen'},{status:'in_play'},{boardState:'live'},{goals:{home:null,away:0}}])assert.equal(matchNormalHub(s([{...fixture,...diff}]),[row],now).finals.length,0)});
+test('existing decided match is not reinserted',()=>assert.equal(matchNormalHub(s(),[{...row,status:'WIN'}],now).finals.length,0));
+test('invalid or non-cache-only feed rejected',()=>{assert.throws(()=>matchNormalHub({...s(),cacheOnly:false},[row],now));assert.throws(()=>matchNormalHub({...s(),fetchedAt:1795990000000},[row],now))});
