@@ -52,8 +52,19 @@ const output=await p.evaluate(()=>{
    const d=path.getAttribute('d')||'',re=/([ML])\s*(-?(?:\d+\.?\d*|\.\d+))[\s,]+(-?(?:\d+\.?\d*|\.\d+))/gi;
    const matches=[...d.matchAll(re)],points=matches.map(m=>({x:Number(m[2]),y:Number(m[3])}));
    const leftovers=d.replace(re,'').trim();
-   const monotonicFailures=points.map((q,i)=>i&&q.x<=points[i-1].x?{i,prev:points[i-1],next:q}:null).filter(Boolean);
-   result.push({d:d.slice(0,450),dEnd:d.slice(-450),len:+len.toFixed(2),segments:(d.match(/[MLCQAHVSZ]/gi)||[]).length,from:a.x,to:z.x,originalMs:Math.round(originalMs),parse:{matches:matches.length,commands:matches.reduce((a,m)=>(a[m[1].toUpperCase()]=(a[m[1].toUpperCase()]||0)+1,a),{}),leftovers:leftovers.slice(0,220),monotonicFailures:monotonicFailures.slice(0,5),valid:matches.length>=2&&matches[0][1].toUpperCase()==='M'&&matches.slice(1).every(m=>m[1].toUpperCase()==='L')&&!leftovers&&!monotonicFailures.length},methods});
+   const monotonicFailures=points.map((q,i)=>i&&q.x<points[i-1].x?{i,prev:points[i-1],next:q}:null).filter(Boolean);
+   const vertical=points.map((q,i)=>i&&q.x===points[i-1].x?q.x:null).filter(v=>v!==null);
+   const fast=x=>{
+     if(x<=points[0].x)return points[0];
+     if(x>=points[points.length-1].x)return points[points.length-1];
+     let lo=0,hi=points.length-1;
+     while(hi-lo>1){const mid=(lo+hi)>>>1;if(points[mid].x<x)lo=mid;else hi=mid}
+     const l=points[lo],r=points[hi],t=r.x>l.x?(x-l.x)/(r.x-l.x):0;
+     return {x,y:l.y+(r.y-l.y)*t};
+   };
+   const xSamples=[...xs,...vertical.flatMap(x=>[x-0.0001,x,x+0.0001])];
+   const errors=xSamples.map(x=>{const target=ref(path,x),estimate=fast(x);return {x,error:Math.hypot(target.x-estimate.x,target.y-estimate.y),oldY:target.y,fastY:estimate.y}}).sort((a,b)=>b.error-a.error);
+   result.push({d:d.slice(0,450),dEnd:d.slice(-450),len:+len.toFixed(2),segments:(d.match(/[MLCQAHVSZ]/gi)||[]).length,from:a.x,to:z.x,originalMs:Math.round(originalMs),parse:{matches:matches.length,commands:matches.reduce((a,m)=>(a[m[1].toUpperCase()]=(a[m[1].toUpperCase()]||0)+1,a),{}),leftovers:leftovers.slice(0,220),vertical,monotonicFailures:monotonicFailures.slice(0,5),valid:matches.length>=2&&matches[0][1].toUpperCase()==='M'&&matches.slice(1).every(m=>m[1].toUpperCase()==='L')&&!leftovers&&!monotonicFailures.length},fast:{maxErr:errors[0]?.error||0,top:errors.slice(0,8)},methods});
  }
  return {totalMs:Math.round(performance.now()-start),paths:result};
 });
