@@ -2,7 +2,7 @@ name: BALL46 premium match colors isolated QA
 on:
   push:
     branches: [test/ball46-premium-match-colors-20261120]
-    paths: ['.github/workflows/premium-match-colors-test.yml', 'qa/odds-movement-20261121/odds-movement.mjs']
+    paths: ['.github/workflows/premium-match-colors-test.yml', 'qa/odds-movement-20261121/odds-movement.mjs', 'qa/prematch-native-ui-20261121/prematch-client.mjs']
 concurrency:
   group: ball46-premium-match-colors-test-20261120
   cancel-in-progress: false
