@@ -207,8 +207,8 @@ jobs:
           import {chromium,devices} from 'playwright';
           import assert from 'node:assert/strict';
           const base='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev';
-          let h;for(let i=0;i<15;i++){try{const r=await fetch(base+'/_premium_health');if(r.ok){const candidate=await r.json();if(candidate.revision==='PREMIUM_LEAGUE_SOLID_V14'&&candidate.oddsMovementScript?.includes('DURATION=5000')&&candidate.oddsMovementStyle?.includes('b46-odds-soft-blink-5x')&&candidate.oddsMovementStyle?.includes('content:none!important')&&candidate.oddsMovementStyle?.includes('filter:brightness(.55)')&&candidate.oddsMovementStyle?.includes('background-color:transparent!important')&&candidate.oddsMovementStyle?.includes('transform:translateY(-50%)!important')){h=candidate;break}}}catch{}await new Promise(r=>setTimeout(r,2000))}
-          assert.equal(h?.scope,'TEST_ONLY_CSS');assert.equal(h?.revision,'PREMIUM_LEAGUE_SOLID_V14');assert.equal(h?.oddsMovement,'DOM_PRICES_V1');assert(h?.oddsMovementScript?.includes('DURATION=5000'),'WORKER_HAS_OLD_DURATION');assert(!h.oddsMovementStyle?.includes('inset:0 -1px 0 0!important'),'WORKER_STILL_HAS_COLORED_SHEET');
+          let h;for(let i=0;i<15;i++){try{const r=await fetch(base+'/_premium_health');if(r.ok){const c=await r.json();if(c.revision==='PREMIUM_LEAGUE_SOLID_V14'&&c.oddsMovementScript?.includes('DURATION=6000')&&c.oddsMovementStyle?.includes('b46-odds-card-pulse-6x')&&c.oddsMovementStyle?.includes('inset:0 -1px 0 0!important')&&c.oddsMovementStyle?.includes('background-color:rgba(42,163,103,.20)')&&c.oddsMovementStyle?.includes('background-color:rgba(178,65,74,.19)')){h=c;break}}}catch{}await new Promise(r=>setTimeout(r,2000))}
+          assert.equal(h?.scope,'TEST_ONLY_CSS');assert.equal(h?.oddsMovement,'DOM_PRICES_V1');assert(h.oddsMovementScript.includes('DURATION=6000'),'ODDS_DURATION_NOT_6S');
           const browser=await chromium.launch();
           try{for(const mobile of [false])for(const theme of ['dark','light']){
             const p=await browser.newPage(mobile?{...devices['iPhone 13'],serviceWorkers:'block'}:{viewport:{width:1440,height:950},serviceWorkers:'block'});
@@ -290,78 +290,60 @@ jobs:
               const originalPrice=await odd.evaluate(el=>({raw:el.getAttribute('data-nomad-odds-raw'),text:el.textContent.trim(),align:el.dataset.b46Align,quote:el.closest('.b46-v3-quote')?.getAttribute('data-b46-odds-move')||null}));
               assert(Number(originalPrice.raw)>1&&Number.isFinite(Number(originalPrice.raw)),'ODDS_RAW_NOT_NUMERIC');
               const readMove=()=>odd.evaluate(el=>{const q=el.closest('.b46-v3-quote'),s=getComputedStyle(q),v=getComputedStyle(q,'::after');return {direction:q.getAttribute('data-b46-odds-move'),priceColor:getComputedStyle(el).color,quoteColor:s.backgroundColor,arrow:v.content,cellBg:getComputedStyle(el.closest('.market-cell')).backgroundColor,stats:{...window.__b46OddsMovementStats}}});
-              const dimensions=()=>odd.evaluate(el=>({numberWidth:el.getBoundingClientRect().width,quoteWidth:el.closest('.b46-v3-quote').getBoundingClientRect().width,cellWidth:el.closest('.market-cell').getBoundingClientRect().width}));
-              const beforeDimensions=await dimensions();
-              const simulate=async value=>odd.evaluate(async (el,v)=>{
-                el.setAttribute('data-nomad-odds-raw',v.toFixed(2));
-                el.textContent=v.toFixed(2);
-                await new Promise(resolve=>setTimeout(resolve,130));
-                const q=el.closest('.b46-v3-quote'),s=getComputedStyle(q),arrow=getComputedStyle(q,'::after'),plate=getComputedStyle(q,'::before'),num=getComputedStyle(el);
-                return {direction:q.getAttribute('data-b46-odds-move'),numberColor:num.color,arrowColor:arrow.color,quoteColor:s.backgroundColor,quoteShadow:s.boxShadow,plateContent:plate.content,plateDisplay:plate.display,plateBg:plate.backgroundColor,numberAnimation:num.animationName,arrowAnimation:arrow.animationName,numberDuration:num.animationDuration,arrowDuration:arrow.animationDuration,numberIterations:num.animationIterationCount,arrowIterations:arrow.animationIterationCount,arrow:arrow.content,arrowTop:arrow.top,arrowOffsetFromPriceCenter:Math.round((q.getBoundingClientRect().top+parseFloat(arrow.top)-(el.getBoundingClientRect().top+el.getBoundingClientRect().height/2))*10)/10,quoteWidth:q.getBoundingClientRect().width,cellWidth:el.closest('.market-cell').getBoundingClientRect().width,cellBg:getComputedStyle(el.closest('.market-cell')).backgroundColor,stats:{...window.__b46OddsMovementStats}};
+              const startDimensions=await odd.evaluate(el=>({q:el.closest('.b46-v3-quote').getBoundingClientRect().width,c:el.closest('.market-cell').getBoundingClientRect().width}));
+              const simulate=async value=>odd.evaluate(async(el,v)=>{
+                el.setAttribute('data-nomad-odds-raw',v.toFixed(2));el.textContent=v.toFixed(2);
+                await new Promise(r=>setTimeout(r,140));
+                const q=el.closest('.b46-v3-quote'),style=getComputedStyle(q),plate=getComputedStyle(q,'::before'),arr=getComputedStyle(q,'::after'),number=getComputedStyle(el),qr=q.getBoundingClientRect(),nr=el.getBoundingClientRect();
+                return {direction:q.dataset.b46OddsMove||null,numberColor:number.color,arrowColor:arr.color,arrow:arr.content,quoteBg:style.backgroundColor,plateBg:plate.backgroundColor,plateRight:plate.right,plateRadius:plate.borderTopLeftRadius,plateDisplay:plate.display,plateContent:plate.content,shadow:plate.boxShadow,anim:style.animationName,seconds:style.animationDuration,cycles:style.animationIterationCount,arrowOffset:(qr.top+parseFloat(arr.top))-(nr.top+nr.height/2),qWidth:qr.width,cWidth:el.closest('.market-cell').getBoundingClientRect().width};
               },value);
-              const pulse=()=>odd.evaluate(el=>{
-                const n=getComputedStyle(el),a=getComputedStyle(el.closest('.b46-v3-quote'),'::after');
-                const brightness=x=>x==='none'?1:Number(x.match(/brightness\(([^)]+)\)/)?.[1]||NaN);
-                return {numberFilter:n.filter,arrowFilter:a.filter,numberBrightness:brightness(n.filter),arrowBrightness:brightness(a.filter),numberAnimation:n.animationName,arrowAnimation:a.animationName};
+              const readPulse=()=>odd.evaluate(el=>{
+                const style=getComputedStyle(el.closest('.b46-v3-quote')),f=style.filter;
+                return f==='none'?1:Number(f.match(/brightness\(([^)]+)\)/)?.[1]);
               });
-              const initialMove=await readMove();
-              assert(!initialMove.direction,'ODDS_FLASH_ON_INITIAL_LOAD');
-              assert.equal(initialMove.cellBg,h.reference.pitColor);
-              const initialValue=Number(originalPrice.raw),upValue=Number((initialValue+.07).toFixed(2));
-              const checkDirection=(result,direction)=>{
-                assert.equal(result.direction,direction,'MOVEMENT_DIRECTION_NOT_DETECTED_'+direction);
-                assert(result.arrow.includes(direction==='up'?'↑':'↓'),'MOVEMENT_ARROW_MISSING_'+direction);
-                assert.equal(result.numberColor,direction==='up'?'rgb(121, 225, 172)':'rgb(255, 159, 165)','PRICE_COLOR_INCORRECT_'+direction);
-                assert.equal(result.arrowColor,result.numberColor,'ARROW_AND_NUMBER_COLOR_MISMATCH_'+direction);
-                assert.equal(result.quoteColor,'rgba(0, 0, 0, 0)','OLD_QUOTE_BG_REMAINS_'+direction);
-                assert.equal(result.quoteShadow,'none','OLD_QUOTE_SHADOW_REMAINS_'+direction);
-                assert.equal(result.plateContent,'none','OLD_SHEET_PSEUDO_CONTENT_REMAINS_'+direction);
-                assert.equal(result.plateDisplay,'none','OLD_SHEET_PSEUDO_DISPLAY_REMAINS_'+direction);
-                assert.equal(result.numberAnimation,'b46-odds-soft-blink-5x','NUMBER_BLINK_MISSING_'+direction);
-                assert.equal(result.arrowAnimation,result.numberAnimation,'NUMBER_ARROW_ANIMATION_MISMATCH_'+direction);
-                assert.equal(result.numberDuration,'1s','BLINK_PERIOD_NOT_ONE_SECOND_'+direction);
-                assert.equal(result.arrowDuration,'1s','ARROW_BLINK_PERIOD_CHANGED_'+direction);
-                assert.equal(result.numberIterations,'5','NOT_FIVE_BLINK_CYCLES_'+direction);
-                assert.equal(result.arrowIterations,'5','ARROW_NOT_FIVE_BLINK_CYCLES_'+direction);
-                assert(Math.abs(result.arrowOffsetFromPriceCenter)<=2,'ARROW_NOT_CENTERED_'+direction);
-                assert.equal(result.cellBg,h.reference.pitColor,'PRICE_RECESS_CHANGED_'+direction);
-                assert(Math.abs(result.quoteWidth-beforeDimensions.quoteWidth)<.2,'QUOTE_WIDTH_CHANGED_'+direction);
-                assert(Math.abs(result.cellWidth-beforeDimensions.cellWidth)<.2,'MARKET_WIDTH_CHANGED_'+direction);
+              const readSeries=async()=>{
+                const vals=[];for(let k=0;k<10;k++){await p.waitForTimeout(110);vals.push(await readPulse())}return vals;
               };
-              const up=await simulate(upValue);
-              console.log('ODDS_UP_PROOF',JSON.stringify(up));checkDirection(up,'up');
-              const readPulseSeries=async()=>{
-                const samples=[];
-                for(let k=0;k<10;k++){await p.waitForTimeout(110);samples.push(await pulse());}
-                return samples;
+              const verify=(o,dir)=>{
+                assert.equal(o.direction,dir,'NO_MOVEMENT_'+dir);
+                assert(o.arrow.includes(dir==='up'?'↑':'↓'),'ARROW_MISSING_'+dir);
+                assert.equal(o.numberColor,dir==='up'?'rgb(121, 225, 172)':'rgb(255, 159, 165)','NUMBER_WRONG_COLOR_'+dir);
+                assert.equal(o.arrowColor,o.numberColor,'ARROW_WRONG_COLOR_'+dir);
+                assert.equal(o.plateBg,dir==='up'?'rgba(42, 163, 103, 0.2)':'rgba(178, 65, 74, 0.19)','CARD_NOT_VISIBLE_'+dir);
+                assert.equal(o.plateRight,'-1px','CARD_GUTTER_NOT_3PX_'+dir);
+                assert.equal(o.plateRadius,'6px','CARD_ROUNDING_NOT_6PX_'+dir);
+                assert.equal(o.plateDisplay,'block','CARD_NOT_DISPLAYED_'+dir);
+                assert.equal(o.plateContent,'""','CARD_NOT_PRESENT_'+dir);
+                assert.equal(o.quoteBg,'rgba(0, 0, 0, 0)','DOUBLE_TINT_'+dir);
+                assert.equal(o.shadow,'none','CARD_SHADOW_PRESENT_'+dir);
+                assert.equal(o.anim,'b46-odds-card-pulse-6x','CARD_PULSE_NOT_ACTIVE_'+dir);
+                assert.equal(o.seconds,'1s','CARD_PULSE_PERIOD_'+dir);
+                assert.equal(o.cycles,'6','CARD_CYCLE_COUNT_'+dir);
+                assert(Math.abs(o.arrowOffset)<=2,'ARROW_NOT_VERTICALLY_CENTERED_'+dir);
+                assert(Math.abs(o.qWidth-startDimensions.q)<.2&&Math.abs(o.cWidth-startDimensions.c)<.2,'QUOTE_WIDTH_CHANGED_'+dir);
               };
-              const verifyPulse=(samples,label)=>{
-                const values=samples.map(x=>x.numberBrightness);
-                assert(values.every(Number.isFinite),'PULSE_FILTER_NOT_NUMERIC_'+label);
-                assert(Math.min(...values)<.80,'NUMBER_DID_NOT_DIM_'+label);
-                assert(Math.max(...values)>.85,'NUMBER_DID_NOT_BRIGHTEN_'+label);
-                for(const sample of samples){
-                  assert(Number.isFinite(sample.arrowBrightness),'ARROW_PULSE_FILTER_NOT_NUMERIC_'+label);
-                  assert(Math.abs(sample.numberBrightness-sample.arrowBrightness)<.07,'ARROW_AND_PRICE_NOT_PULSING_TOGETHER_'+label);
-                }
-              };
-              const upPulse=await readPulseSeries();
-              console.log('ODDS_UP_PULSE',JSON.stringify(upPulse));verifyPulse(upPulse,'UP');
+              const initial=await readMove();assert(!initial.direction,'INITIAL_FLASH_UNEXPECTED');
+              assert.equal(initial.cellBg,h.reference.pitColor);
+              const value=Number(originalPrice.raw),upVal=Number((value+.07).toFixed(2));
+              const up=await simulate(upVal);verify(up,'up');console.log('ODDS_UP_PROOF',JSON.stringify(up));
+              const upPulse=await readSeries();assert(Math.min(...upPulse)<.8&&Math.max(...upPulse)>.85,'UP_CARD_NOT_PULSING');console.log('ODDS_UP_PULSE',JSON.stringify(upPulse));
               await p.screenshot({path:process.env.RUNNER_TEMP+'/premium-proof/odds-up.png'});
-              await p.waitForTimeout(4200);
-              assert.equal((await readMove()).direction,null,'ODDS_UP_NOT_RESET_AFTER_5000MS');
-              const unchanged=await simulate(upValue);
-              assert.equal(unchanged.direction,null,'SAME_PRICE_TRIGGERED_FALSE_FLASH');
-              const down=await simulate(initialValue);
-              console.log('ODDS_DOWN_PROOF',JSON.stringify(down));checkDirection(down,'down');
-              const downPulse=await readPulseSeries();
-              console.log('ODDS_DOWN_PULSE',JSON.stringify(downPulse));verifyPulse(downPulse,'DOWN');
+              await p.waitForTimeout(5250);assert.equal((await readMove()).direction,null,'UP_CARD_STILL_VISIBLE_AFTER_6S');
+              assert.equal((await simulate(upVal)).direction,null,'SAME_PRICE_FALSE_FLASH');
+              const down=await simulate(value);verify(down,'down');console.log('ODDS_DOWN_PROOF',JSON.stringify(down));
+              const downPulse=await readSeries();assert(Math.min(...downPulse)<.8&&Math.max(...downPulse)>.85,'DOWN_CARD_NOT_PULSING');console.log('ODDS_DOWN_PULSE',JSON.stringify(downPulse));
               await p.screenshot({path:process.env.RUNNER_TEMP+'/premium-proof/odds-down.png'});
-              await p.waitForTimeout(4200);
-              const afterFlash=await readMove();
-              assert.equal(afterFlash.direction,null,'ODDS_DOWN_NOT_RESET_AFTER_5000MS');
-              assert(afterFlash.stats.ups>=1&&afterFlash.stats.downs>=1,'ODDS_MOVEMENT_COUNTS_MISSING');
-              console.log('ODDS_MOVEMENT_PASS',JSON.stringify({originalPrice,up,down,upPulse,downPulse,afterFlash,mode:'color-only',pulseCycles:5,durationMs:5000,domOnly:true,apiCallsAdded:0}));
+              await p.waitForTimeout(5250);
+              const after=await readMove();assert.equal(after.direction,null,'DOWN_CARD_STILL_VISIBLE_AFTER_6S');
+              assert(after.stats.ups>=1&&after.stats.downs>=1,'PRICE_DETECTOR_STATS_MISSING');
+              const gaps=await odd.evaluate(el=>{
+                const quotes=[...el.closest('.market-cell').querySelectorAll('.b46-v3-quote')].filter(q=>q.getBoundingClientRect().width>0),out=[];
+                for(let i=0;i<quotes.length-1;i++){const a=quotes[i].getBoundingClientRect(),b=quotes[i+1].getBoundingClientRect();if(b.left>a.right)out.push({raw:b.left-a.right,colored:b.left-a.right-1})}
+                return out;
+              });
+              assert(gaps.length>0&&gaps.some(g=>Math.abs(g.colored-3)<.6),'COLORED_CARDS_DO_NOT_HAVE_3PX_GAP');
+              console.log('ODDS_SEPARATED_CARD_GAP_PASS',JSON.stringify(gaps));
+              console.log('ODDS_MOVEMENT_PASS',JSON.stringify({up,down,upPulse,downPulse,after,gapPx:3,cycles:6,durationMs:6000,domOnly:true,apiCallsAdded:0}));
             }
             await p.close();
           }}finally{await browser.close()}
