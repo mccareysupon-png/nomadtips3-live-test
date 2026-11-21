@@ -156,7 +156,7 @@ jobs:
           export default {async fetch(req,env){
             const u=new URL(req.url);
             if(!['GET','HEAD'].includes(req.method))return new Response('READ_ONLY',{status:405});
-            if(u.pathname==='/_premium_health')return Response.json({ok:true,scope:'TEST_ONLY_CSS',revision:'PREMIUM_LEAGUE_SOLID_V14',prematchNative:true,oddsMovement:'DOM_PRICES_V1',...palette});
+            if(u.pathname==='/_premium_health')return Response.json({ok:true,scope:'TEST_ONLY_CSS',revision:'PREMIUM_LEAGUE_SOLID_V14',prematchNative:true,oddsMovement:'DOM_PRICES_V1',oddsMovementStyle:oddsMovementStyles,oddsMovementScript:oddsMovementScript,...palette});
             if(u.pathname==='/__b46_prematch_client.js')return new Response(prematchClientScript,{headers:{'content-type':'application/javascript; charset=utf-8','cache-control':'no-store','x-robots-tag':'noindex,nofollow'}});
             if(u.pathname==='/__b46_prematch_data')return env.PREMATCH_STORE.fetch('https://prematch.internal/preview-data');
             if(/^\/(admin|internal)(\/|$)/i.test(u.pathname))return new Response('Forbidden',{status:403});
@@ -196,8 +196,8 @@ jobs:
           import {chromium,devices} from 'playwright';
           import assert from 'node:assert/strict';
           const base='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev';
-          let h;for(let i=0;i<15;i++){try{const r=await fetch(base+'/_premium_health');if(r.ok){const candidate=await r.json();if(candidate.revision==='PREMIUM_LEAGUE_SOLID_V14'){h=candidate;break}}}catch{}await new Promise(r=>setTimeout(r,2000))}
-          assert.equal(h?.scope,'TEST_ONLY_CSS');assert.equal(h?.revision,'PREMIUM_LEAGUE_SOLID_V14');assert.equal(h?.oddsMovement,'DOM_PRICES_V1');
+          let h;for(let i=0;i<15;i++){try{const r=await fetch(base+'/_premium_health');if(r.ok){const candidate=await r.json();if(candidate.revision==='PREMIUM_LEAGUE_SOLID_V14'&&candidate.oddsMovementScript?.includes('DURATION=1500')&&candidate.oddsMovementStyle?.includes('box-shadow:none!important')&&!candidate.oddsMovementStyle?.includes('inset 0 0 0 1px')){h=candidate;break}}}catch{}await new Promise(r=>setTimeout(r,2000))}
+          assert.equal(h?.scope,'TEST_ONLY_CSS');assert.equal(h?.revision,'PREMIUM_LEAGUE_SOLID_V14');assert.equal(h?.oddsMovement,'DOM_PRICES_V1');assert(h?.oddsMovementScript?.includes('DURATION=1500'),'WORKER_HAS_OLD_DURATION');assert(h?.oddsMovementStyle?.includes('box-shadow:none!important'),'WORKER_HAS_OLD_BORDER_STYLE');
           const browser=await chromium.launch();
           try{for(const mobile of [false])for(const theme of ['dark','light']){
             const p=await browser.newPage(mobile?{...devices['iPhone 13'],serviceWorkers:'block'}:{viewport:{width:1440,height:950},serviceWorkers:'block'});
