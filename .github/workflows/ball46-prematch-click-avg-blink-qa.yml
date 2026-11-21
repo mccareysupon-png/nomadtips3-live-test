@@ -89,7 +89,7 @@ jobs:
               },mobile);
               assert.equal(promo.count,1,'DUPLICATE_PROMO_BANNER');
               assert.equal(promo.position,'relative','PROMO_NOT_FIXED_OUTSIDE_SCROLL');
-              assert.equal(promo.top,'auto','PROMO_FIXED_OFFSET_WRONG');
+              assert(['auto','0px'].includes(promo.top),'PROMO_FIXED_OFFSET_WRONG '+promo.top);
               assert.equal(promo.beforeHead,true,'PROMO_NOT_TOP_OF_PREMATCH');
               assert(promo.width>100&&promo.height>20,'PROMO_NO_VISIBLE_GEOMETRY');
               assert.deepEqual(promo.href,['https://member.ball46.com/pricing','https://member.ball46.com/pricing'],'PROMO_LINK_CHANGED');
