@@ -17,10 +17,8 @@ function nativeOptimized(path,src){
    'DASHBOARD_PIN_QUERY_CACHE');
  }
  if(path==='/ui-sync-fixes-343-v2.js'){
-  return replaceStrict(src,
-   "function pointAtX(path,x){try{const len=path.getTotalLength();if(!Number.isFinite(len)||len<=0)return null;let lo=0,hi=len;for(let i=0;i<24;i++){const mid=(lo+hi)/2,p=path.getPointAtLength(mid);if(p.x<x)lo=mid;else hi=mid}return path.getPointAtLength((lo+hi)/2)}catch{return null}}",
-   "const b46FlowPathLengthCache=new WeakMap();function pointAtX(path,x){try{const d=path.getAttribute('d'),prior=b46FlowPathLengthCache.get(path);const len=prior&&prior.d===d?prior.len:path.getTotalLength();if(!prior||prior.d!==d)b46FlowPathLengthCache.set(path,{d,len});if(!Number.isFinite(len)||len<=0)return null;let lo=0,hi=len;for(let i=0;i<24;i++){const mid=(lo+hi)/2,p=path.getPointAtLength(mid);if(p.x<x)lo=mid;else hi=mid}return path.getPointAtLength((lo+hi)/2)}catch{return null}}",
-   'FLOW_SVG_GET_TOTAL_LENGTH_CACHE');
+  // Reverted: caching only getTotalLength regressed getPointAtLength on Chrome.
+  return src;
  }
  if(path==='/expanded-match-343.js'){
   return replaceStrict(src,
@@ -33,7 +31,7 @@ function nativeOptimized(path,src){
 export default {async fetch(req,env){
  const u=new URL(req.url);
  if(!['GET','HEAD'].includes(req.method))return new Response('READ_ONLY_TEST',{status:405,headers:{'cache-control':'no-store'}});
- if(u.pathname==='/__fullmarket_health')return Response.json({ok:true,scope:'ISOLATED_TEST_ONLY',feature:'FULLMARKET_ODDS_V3',name:SCRIPT,sourceRequestsAdded:0,defaultOddsUnchanged:true,nativePerfTest:'DASHBOARD_PIN_CACHE_FLOW_PATH_CACHE_EXPANDED_SCROLL_SCOPE',styles:fullMarketOddsStyles,script:fullMarketOddsScript},{headers:{'cache-control':'no-store','x-robots-tag':'noindex,nofollow'}});
+ if(u.pathname==='/__fullmarket_health')return Response.json({ok:true,scope:'ISOLATED_TEST_ONLY',feature:'FULLMARKET_ODDS_V3',name:SCRIPT,sourceRequestsAdded:0,defaultOddsUnchanged:true,nativePerfTest:'EXPANDED_SCROLL_SCOPE_OVERSCROLL_TEST',styles:fullMarketOddsStyles,script:fullMarketOddsScript},{headers:{'cache-control':'no-store','x-robots-tag':'noindex,nofollow'}});
  if(/^\/(admin|internal)(\/|$)/i.test(u.pathname))return new Response('Forbidden',{status:403});
  const headers=new Headers();
  for(const h of ['accept','accept-language','user-agent','sec-ch-ua-mobile']){const v=req.headers.get(h);if(v)headers.set(h,v)}
