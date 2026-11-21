@@ -20,46 +20,66 @@
   PUSH/DRAW never enters its denominator. Half decisions count as one event
   for win rate while their P/L remains half units.
 - ROI = net settled units / total settled staked units × 100.
-- AVG ODDS = mean of original locked selection odds, counting selections
-  once and never using changing live price.
+- Today AVG ODDS = all Bot-selected locked odds for that day.
+- Long-term AVG ODDS = settled selections' locked odds, consistent with Live Statistics.
+  Neither may use live-changing prices.
 - Daily close: 06:00 Europe/London, respecting daylight saving transitions.
-- Max drawdown: maximum peak-to-valley decline of **daily closing equity**;
-  it is not intraday drawdown.
+- Live-equivalent Max Drawdown must use the per-settlement equity path.
+  The TEST Receiver currently returns null (UI displays —) pending an exact
+  event-level writer; it must not substitute daily-close drawdown.
 - Unsettled counts pending items and is not included in ROI denominator.
 - W/D/L: DRAW represents settlement PUSH/void, **not** a 1X2 bet that
   predicted a drawn match.
 
-## Persistent incremental rollout contract (not yet wired)
-- `performance-core.mjs` is a pure incremental projection module.
-- The settlement owner must send a monotonically sequenced, already
-  validated, immutable `SELECTED` / `SETTLED` event exactly once after
-  ledger commit. Deduplicate on (market, signal_id, settlement transition).
-- Persist the updated `schema:1` snapshot and daily buckets in the same
-  durable transaction or via replayable outbox. Reject sequence gaps. Retry
-  only from outbox, never refetch provider matches for a chart.
-- Late settlements update the affected London daily bucket and subsequent
-  daily cumulative closings only at write time.
-- On reads: return `performanceSnapshot` from persisted rollups; do not
-  scan every historic match or recalculate all results.
-- A 7D/30D/90D/ALL request filters **daily snapshots**, not individual matches.
-  Retaining 10 years means roughly 3,653 daily points, not millions of raw
-  rows moved to the browser. Downsample for very dense chart view if needed.
-- Keep per-market snapshots separate (1X2, future BTTS). Never fabricate a
-  previous daily series. Preserve original ledger for audit.
+## Test-only Receiver is now connected (21 November 2026)
+- Independent deployment: `ball46-prematch-performance-test-20261121`.
+  Persistent storage: unique SQLite-backed Durable Object class
+  `PrematchPerformanceIsolatedDO`, not a production or Live Statistics namespace.
+- Sole upstream: **read-only internal** service binding `PREMATCH_STORE` to
+  `ball46-prematch-only-test-20261120` via GET `/preview-data`.
+  No provider URLs, no Engine API, no live scores writes, no 5USD calls.
+- First DO initialization imports only the confirmed TEST_ONLY Ledger.
+  Thereafter a scheduled job every 5 minutes checks the same internal test
+  data and applies **new selections / final settlement transitions only**.
+- Selection identity: 1X2 + fixture + picked_at + selection. Locked price
+  and final result are immutable. Retries do not add a second result.
+  Conflicting revisions fail closed and require explicit reconciliation.
+- Each import atomically persists the projection in its **own** DO state;
+  original Pre-Match Ledger remains unchanged. The persisted sequence is
+  monotonic; current verified initial state was 8 picks, 4 settled, 4 pending,
+  +4.70 U, sequence 12, one London daily close.
+- Receiver GET `/graph?market=1X2&variant=all&filter=all&range=all|d7|d30|d90`
+  serves the Live-compatible `schema:1, source:RECEIVER, sequence, summary,
+  counts, series.units/roi/rate` response from stored daily Snapshot,
+  **not** from a history scan. Browser fetches only selected ranges and
+  keeps valid results briefly.
+- Existing Premium Pre-Match test Worker GET route
+  `/__b46_prematch_graph` proxies strictly to this independent test Receiver;
+  the current `/__b46_prematch_data` and every Production route remain
+  untouched. External POST is blocked.
+- QA: isolated Receiver deploy/smoke
+  `44869135663`; browser integration/refresh/active/scroll/odds QA
+  `44869309898`. Browser-only multi-day fixtures do not write to storage.
 
-## Current staged coverage and outstanding prerequisite
-- On the isolated test Worker, the existing source exposes only TEST_ONLY
-  ledger rows plus a Today business-day aggregate; no multi-day persisted
-  `performanceSnapshot` is confirmed. The UI displays at most that one
-  recorded day and explicitly indicates that historical daily snapshots
-  are not yet connected. It does not synthesize a trend.
-- Production settlement writer and its Durable Object storage are **not**
-  modified by this branch. It is NOT accurate to claim long-term durable
-  data collection is live until the writer supplies the snapshot.
-- QA verifies projection formulas in Node and multi-day chart rendering
-  using **browser-only synthetic response interception**, without writing
-  artificial matches, results, or snapshots into a Worker, DB or Production.
-
+## Scope limits before any Production proposal
+- This proves a **separate eventual-consistency test projection**, not
+  atomic hooking into the actual Production settlement transaction. The
+  test importer reads a TEST_ONLY preview on a 5-minute cadence.
+- The available test Ledger contains **one day's** 8 test selections;
+  longer chart history must accumulate from genuine later test decisions.
+  Never fabricate historical settled days or mix Live results with Pre-Match.
+- The current 1X2 test Snapshot stores a compact rollup and selection
+  idempotency map in one DO state value. Before a high-volume/long-term
+  production rollout, partition historical daily rows and selection IDs
+  into dedicated SQLite records and test retention, late revisions, recovery
+  and failover on real write-side sequences.
+- Max Drawdown remains unavailable until an exact settled-equity-path
+  measure is stored. A Daily Max Drawdown number is not interchangeable.
+- A production settlement-writer integration, with outbox, unique
+  `(market,signal_id,transition)` keys and atomic persist, has **not** been
+  enabled; it must be separately reviewed, authorised and tested.
+- No Production worker, service, Bot selection, 5USD schedule, Live
+  Statistics or original Pre-Match TEST source writer was changed.
 
 ## Verified against actual Live Statistics Production — 21 Nov 2026
 - Read-only audit ran against `https://ball46.com/longterm-performance-343.js`
