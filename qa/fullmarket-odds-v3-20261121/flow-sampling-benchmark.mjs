@@ -3,7 +3,7 @@ const b=await chromium.launch();
 const base='https://ball46-fullmarket-odds-v3-test-20261121.mccarey-supon.workers.dev';
 let ready=false;
 for(let i=0;i<30;i++){
- try{const r=await fetch(base+'/__fullmarket_health?date='+Date.now());if(r.ok&&(await r.json()).nativePerfTest==='EXPANDED_SCROLL_SCOPE_OVERSCROLL_TEST'){ready=true;break}}catch{}
+ try{const r=await fetch(base+'/__fullmarket_health?date='+Date.now());if(r.ok&&(await r.json()).nativePerfTest==='FLOW_POLYLINE_FAST_EXPANDED_SCROLL_SCOPE_OVERSCROLL_TEST'){ready=true;break}}catch{}
  await new Promise(r=>setTimeout(r,1400));
 }
 if(!ready)throw Error('SAFE_FLOW_ROLLBACK_NOT_YET_DEPLOYED');
@@ -49,7 +49,11 @@ const output=await p.evaluate(()=>{
     for(let i=0;i<xs.length;i++){const err=Math.hypot(x.values[i].x-reference[i].x,x.values[i].y-reference[i].y);maxErr=Math.max(maxErr,err);meanErr+=err}
     return {n,builtMs:x.builtMs,lookupMs:x.lookupMs,maxErr:+maxErr.toFixed(2),meanErr:+(meanErr/xs.length).toFixed(2)};
    });
-   result.push({d:path.getAttribute('d')?.slice(0,450),len:+len.toFixed(2),segments:(path.getAttribute('d')?.match(/[MLCQAHVSZ]/gi)||[]).length,from:a.x,to:z.x,originalMs:Math.round(originalMs),methods});
+   const d=path.getAttribute('d')||'',re=/([ML])\s*(-?(?:\d+\.?\d*|\.\d+))[\s,]+(-?(?:\d+\.?\d*|\.\d+))/gi;
+   const matches=[...d.matchAll(re)],points=matches.map(m=>({x:Number(m[2]),y:Number(m[3])}));
+   const leftovers=d.replace(re,'').trim();
+   const monotonicFailures=points.map((q,i)=>i&&q.x<=points[i-1].x?{i,prev:points[i-1],next:q}:null).filter(Boolean);
+   result.push({d:d.slice(0,450),dEnd:d.slice(-450),len:+len.toFixed(2),segments:(d.match(/[MLCQAHVSZ]/gi)||[]).length,from:a.x,to:z.x,originalMs:Math.round(originalMs),parse:{matches:matches.length,commands:matches.reduce((a,m)=>(a[m[1].toUpperCase()]=(a[m[1].toUpperCase()]||0)+1,a),{}),leftovers:leftovers.slice(0,220),monotonicFailures:monotonicFailures.slice(0,5),valid:matches.length>=2&&matches[0][1].toUpperCase()==='M'&&matches.slice(1).every(m=>m[1].toUpperCase()==='L')&&!leftovers&&!monotonicFailures.length},methods});
  }
  return {totalMs:Math.round(performance.now()-start),paths:result};
 });
