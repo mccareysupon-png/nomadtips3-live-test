@@ -25,7 +25,9 @@ jobs:
               fetch(base+'/__b46_prematch_mirror.js',{cache:'no-store',signal:AbortSignal.timeout(16000)}),
               fetch(base+'/__b46_prematch_client.js',{cache:'no-store',signal:AbortSignal.timeout(16000)})
             ]);
-            if(a.ok&&b.ok&&(await a.text()).includes(version)&&(await b.text()).includes(version))break;
+            const mirrorJS=a.ok?await a.text():'';
+            const prematchJS=b.ok?await b.text():'';
+            if(mirrorJS.includes(version)&&mirrorJS.includes('allowedLanes')&&prematchJS.includes(version))break;
             if(i===69)throw Error('MIRROR_CLIENT_WORKER_NOT_DEPLOYED');
             await new Promise(r=>setTimeout(r,1800));
           }
