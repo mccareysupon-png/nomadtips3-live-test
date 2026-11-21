@@ -257,8 +257,18 @@ try{
  assert.equal(await active(),base,'PRODUCTION_MOVED_BEFORE_ACTIVATE');
  assert.equal(same(await settings()),beforeSettings,'PRODUCTION_SETTINGS_MOVED');
  assert.equal(same(await crons()),beforeCrons,'PRODUCTION_SCHEDULES_MOVED');
- await cf('/scripts/'+SCRIPT+'/deployments',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({strategy:'percentage',versions:[{version_id:candidate,percentage:100}],annotations:{'workers/message':'Deploy '+MARK}})});
- activated=true;assert.equal(await active(),candidate,'CANDIDATE_NOT_ACTIVE');
+ const deploymentResult=await cf('/scripts/'+SCRIPT+'/deployments',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({strategy:'percentage',versions:[{version_id:candidate,percentage:100}],annotations:{'workers/message':'Deploy '+MARK}})});
+ activated=true;
+ console.log('ODDS_DEPLOY_ACTIVATION_RESPONSE',JSON.stringify({beforeVersion:base,candidateVersion:candidate,apiResult:deploymentResult}));
+ let observedVersion=null;
+ for(let attempt=0;attempt<20;attempt++){
+  observedVersion=await active();
+  console.log('ODDS_ACTIVE_VERSION_PROPAGATION',JSON.stringify({attempt,observedVersion,candidateVersion:candidate,originalVersion:base}));
+  if(observedVersion===candidate)break;
+  assert.equal(observedVersion,base,'FOREIGN_PRODUCTION_VERSION_AFTER_CANDIDATE_ACTIVATION');
+  await delay(1600);
+ }
+ assert.equal(observedVersion,candidate,'CANDIDATE_NOT_ACTIVE_AFTER_PROPAGATION_WINDOW');
  let live=false;for(let i=0;i<40;i++){try{const h=await read(HOME+'/index.html');if(h.includes(MARK)&&h.includes('b46-odds-flash-production')){live=true;break}}catch{}await delay(1200)}
  assert(live,'PRODUCTION_STYLE_NOT_PROPAGATED');
  report.production=await browserCheck(HOME,'production',p,true);
