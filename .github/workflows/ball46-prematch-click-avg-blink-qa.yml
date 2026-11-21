@@ -1,0 +1,105 @@
+name: BALL46 test Pre-Match click stability, blinking minutes and AVG ODDS
+on:
+  push:
+    branches: [test/ball46-premium-match-colors-20261120]
+    paths: ['.github/workflows/ball46-prematch-click-avg-blink-qa.yml']
+permissions: {contents: read}
+jobs:
+  qa:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          npm install --no-save --no-package-lock playwright@1.55.0
+          npx playwright install chromium --only-shell
+      - run: |
+          mkdir -p evidence/prematch-click-avg-blink
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';import fs from 'node:fs';
+          import {chromium,devices} from 'playwright';
+          const base='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev';
+          const url=base+'/__b46_prematch_data';
+          let data,src,styles;
+          for(let i=0;i<28;i++){
+            const [r,js,css]=await Promise.all([fetch(url,{cache:'no-store'}),fetch(base+'/__b46_prematch_client.js',{cache:'no-store'}),fetch(base)]);
+            if(r.ok&&js.ok&&css.ok){
+              data=await r.json();src=await js.text();styles=await css.text();
+              if(src.includes('const avgOdds=items=>')&&src.includes("e.target?.closest?.('#b46-prematch-panel')")&&src.includes('b46pm-live-minute'))break;
+            }
+            await new Promise(r=>setTimeout(r,2200));
+          }
+          assert(src.includes("e.target?.closest?.('#b46-prematch-panel')"),'CONTENT_CLICK_GUARD_NOT_DEPLOYED');
+          assert(src.includes('const avgOdds=items=>'),'AVG_ODDS_NOT_DEPLOYED');
+          assert(src.includes('b46pm-live-minute'),'LIVE_MINUTE_BLINK_NOT_DEPLOYED');
+          assert.equal(data.testLedger?.mode,'TEST_ONLY');
+          const expected=rows=>{const n=rows.map(x=>Number(x.price)).filter(x=>Number.isFinite(x)&&x>1);return n.length?(n.reduce((a,b)=>a+b,0)/n.length).toFixed(2):'—'};
+          const allAvg=expected(data.testLedger.rows),w=data.dailyBook.window;
+          const todayAvg=expected(data.testLedger.rows.filter(x=>Number(x.picked_at)>=w.begin&&Number(x.picked_at)<w.end));
+          const b=await chromium.launch();const results=[];
+          try{
+            for(const mobile of [false,true])for(const theme of ['dark','light']){
+              const p=await b.newPage(mobile?{...devices['iPhone 13'],serviceWorkers:'block'}:{viewport:{width:1440,height:940},serviceWorkers:'block'});
+              const errors=[];p.on('pageerror',e=>errors.push(e.message));
+              await p.addInitScript(t=>localStorage.setItem('nomad343_dashboard_theme_v1',t),theme);
+              await p.goto(base+'/?pmclicktest='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+              if(mobile){await p.locator('[data-b46m-open]').click();await p.locator('#b46m-drawer [data-b46-prematch-route="predictions"]').waitFor({state:'visible',timeout:18000})}
+              const nav=mobile?'#b46m-drawer [data-b46-prematch-route="predictions"]':'aside.left-rail [data-b46-prematch-route="predictions"]';
+              await p.locator(nav).evaluate(x=>x.click());
+              await p.waitForFunction(()=>document.body.dataset.b46PrematchView==='1'&&document.querySelectorAll('#b46-prematch-panel .b46pm-card').length>=8,null,{timeout:20000});
+              const metrics=await p.evaluate(()=>{
+                const cards=[...document.querySelectorAll('#b46-prematch-panel .b46pm-summary .b46pm-card')].map(x=>[x.querySelector('.b46pm-label')?.textContent,x.querySelector('.b46pm-value')?.textContent]);
+                const day=[...document.querySelectorAll('#b46-prematch-panel .b46pm-daybar-cell')].map(x=>[x.querySelector('small')?.textContent,x.querySelector('strong')?.textContent]);
+                return {cards,day};
+              });
+              assert.equal(new Map(metrics.cards).get('AVG ODDS'),allAvg,'TOTAL_AVG_ODDS_WRONG');
+              assert.equal(new Map(metrics.day).get('AVG ODDS TODAY'),todayAvg,'TODAY_AVG_ODDS_WRONG');
+              const selections=['.b46pm-title','.b46pm-daybar','.b46pm-daybar-cell','.b46pm-card','.b46pm-label','.b46pm-value','.b46pm-list-head','.b46pm-match','.b46pm-meta','.b46pm-teams','.b46pm-pick','.b46pm-details'];
+              const clickProof=[];
+              for(const sel of selections){
+               const locator=p.locator('#b46-prematch-panel '+sel).first();
+               if(!await locator.count())continue;
+               await p.waitForFunction(()=>document.body.dataset.b46PrematchView==='1');
+               try{
+                 await locator.scrollIntoViewIfNeeded({timeout:7000});
+                 const box=await locator.boundingBox();
+                 if(!box)continue;
+                 await p.mouse.click(box.x+Math.min(box.width/2,Math.max(5,box.width-5)),box.y+Math.min(box.height/2,Math.max(5,box.height-5)));
+                 await p.waitForTimeout(120);
+                 const result=await p.evaluate(()=>({url:location.href,mode:document.body.dataset.b46PrematchView,title:document.querySelector('#b46-prematch-panel .b46pm-title')?.textContent,overlay:document.querySelector('[data-b46m-overlay]')&&getComputedStyle(document.querySelector('[data-b46m-overlay]')).pointerEvents}));
+                 assert.equal(result.mode,'1','UNEXPECTED_NAVIGATION '+sel+' '+JSON.stringify(result));
+                 assert.equal(result.title,'Pre-Match Predictions');
+                 clickProof.push(sel);
+               }catch(e){throw Error('CLICK_CASE '+(mobile?'mobile':'desktop')+' '+theme+' '+sel+' '+String(e))}
+              }
+              assert.equal(errors.length,0,JSON.stringify(errors));
+              await p.screenshot({path:'evidence/prematch-click-avg-blink/'+(mobile?'mobile':'desktop')+'-'+theme+'.png',fullPage:true});
+              results.push({mobile,theme,clicksPassed:clickProof,allAvg,todayAvg,errors});
+              console.log('PREMATCH_CLICK_ODDS_CASE '+JSON.stringify(results.at(-1)));
+              await p.close();
+            }
+            const p=await b.newPage({viewport:{width:1440,height:900},serviceWorkers:'block'});
+            const injected=structuredClone(data),pending=injected.testLedger.rows.find(x=>x.status==='PENDING');
+            assert(pending,'NO_PENDING_TO_TEST_LIVE_MINUTES');
+            injected.testMonitor={...(injected.testMonitor??{}),snapshotStale:false,monitor:{...(injected.testMonitor?.monitor??{}),[pending.fixture_id]:{phase:'LIVE',minute:63,label:"63'",score:{home:1,away:0}}}};
+            await p.route('**/__b46_prematch_data',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(injected)}));
+            await p.goto(base+'/?pmminute='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+            await p.locator('aside.left-rail [data-b46-prematch-route="predictions"]').evaluate(x=>x.click());
+            await p.locator('#b46-prematch-panel .b46pm-live-minute').first().waitFor({timeout:10000});
+            const minute=await p.locator('#b46-prematch-panel .b46pm-live-minute').first().evaluate(x=>({text:x.textContent,animation:getComputedStyle(x).animationName,color:getComputedStyle(x).color}));
+            assert.equal(minute.text,"63'");assert(minute.animation.includes('b46pm-live-minute-blink'),'NOT_BLINKING');
+            await p.emulateMedia({reducedMotion:'reduce'});
+            const reduced=await p.locator('#b46-prematch-panel .b46pm-live-minute').first().evaluate(x=>getComputedStyle(x).animationName);
+            assert.equal(reduced,'none','REDUCED_MOTION_NOT_HONORED');
+            await p.close();
+            console.log('PREMATCH_LIVE_MINUTE_VERIFIED '+JSON.stringify({minute,reducedMotionAnimation:reduced,isSimulatedBrowserTest:true}));
+          }finally{await b.close()}
+          fs.writeFileSync('evidence/prematch-click-avg-blink/summary.json',JSON.stringify({testedAt:new Date().toISOString(),results,liveMinuteIsMockedBrowserOnly:true},null,2));
+          console.log('PREMATCH_CLICK_ODDS_BLINK_PASS '+JSON.stringify({cases:results.length,totalClicks:results.reduce((n,x)=>n+x.clicksPassed.length,0),allAvg,todayAvg,worker:base}));
+          JS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-prematch-click-blink-average-qa
+          path: evidence/prematch-click-avg-blink/
+          retention-days: 7
