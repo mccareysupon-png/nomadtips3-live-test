@@ -17,5 +17,7 @@ jobs:
       - name: Syntax and date-based ledger snapshot formulas
         run: |
           node --check qa/prematch-performance-20261121/performance-core.mjs
-          node --test qa/prematch-performance-20261121/performance-core.test.mjs
-          echo 'PREMATCH_PERFORMANCE_CORE_PASS'
+          node --check qa/prematch-performance-20261121/test-ledger-import.mjs
+          node --check qa/prematch-performance-20261121/test-receiver-worker.mjs
+          node --test qa/prematch-performance-20261121/performance-core.test.mjs qa/prematch-performance-20261121/test-ledger-import.test.mjs
+          echo 'PREMATCH_PERFORMANCE_CORE_AND_IMPORT_PASS'
