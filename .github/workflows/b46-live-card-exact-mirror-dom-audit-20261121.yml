@@ -1,0 +1,60 @@
+name: BALL46 Live Score exact card DOM CSS audit READ ONLY
+on:
+  push:
+    branches: [test/ball46-premium-match-colors-20261120]
+    paths: ['.github/workflows/b46-live-card-exact-mirror-dom-audit-20261121.yml']
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          npm install --no-save --no-package-lock playwright@1.55.0
+          npx playwright install chromium --only-shell
+      - name: Audit actual deployed Live Score row with DOM and exact computed styles
+        run: |
+          node --input-type=module <<'JS'
+          import {chromium,devices} from 'playwright';
+          const b=await chromium.launch();
+          const base='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev';
+          try{
+            for(const mobile of [false,true]){
+              const p=await b.newPage(mobile?{...devices['iPhone 13'],serviceWorkers:'block'}:{viewport:{width:1440,height:950},serviceWorkers:'block'});
+              await p.goto(base+'/?view=live-score&liveCardAudit=1',{waitUntil:'domcontentloaded',timeout:60000});
+              await p.waitForTimeout(3200);
+              const data=await p.evaluate(()=>{
+                const selectors=['.match-wrap','.match-list','.match-row','.match-detail','[data-match-id]','.match-card','.fixture-card','[data-workspace-page="live-score"]','.workspace-score-row','.live-match-card','.live-score-row'];
+                const counts=Object.fromEntries(selectors.map(s=>[s,document.querySelectorAll(s).length]));
+                const all=[...document.querySelectorAll('article,details,summary,[data-match-id],.match-card,.match-row,.score-card')];
+                const picked=all.filter(x=>x.getBoundingClientRect().width>220&&x.getBoundingClientRect().height>24).slice(0,8);
+                const root=picked[0]||document.querySelector('section.workspace.singlepage');
+                const desc=e=>{
+                  if(!e)return null;const c=getComputedStyle(e),r=e.getBoundingClientRect();
+                  return {tag:e.tagName,id:e.id,cls:String(e.className||'').slice(0,200),role:e.getAttribute('role'),data:[...e.attributes].filter(a=>a.name.startsWith('data-')).slice(0,10).map(x=>[x.name,x.value.slice(0,90)]),
+                    display:c.display,gridTemplateColumns:c.gridTemplateColumns,gridTemplateAreas:c.gridTemplateAreas,alignItems:c.alignItems,gap:c.gap,padding:c.padding,margin:c.margin,
+                    bg:c.backgroundColor,bgImg:c.backgroundImage,color:c.color,border:c.border,borderRadius:c.borderRadius,shadow:c.boxShadow,
+                    fontSize:c.fontSize,fontWeight:c.fontWeight,height:r.height,width:r.width,overflow:c.overflow,position:c.position,
+                    text:e.textContent?.trim().replace(/\s+/g,' ').slice(0,100)};
+                };
+                const card=root?.matches('summary')?root.parentElement:root;
+                const nodes=card?[card,...card.querySelectorAll('*')].slice(0,48).map(desc):[];
+                const candidates=picked.map(desc);
+                const html=card?.outerHTML?.slice(0,11500);
+                const summary=card?.querySelector('summary');
+                return {url:location.href,theme:document.documentElement.dataset.theme,counts,candidates,nodes,html,body:document.body.className,heading:document.querySelector('[data-workspace-heading]')?.textContent};
+              });
+              console.log('B46_LIVE_SCORE_ACTUAL_CARD_AUDIT '+JSON.stringify({mobile,...data}));
+              // Explore native live card when detail toggles via actual user click.
+              if(await p.locator('.match-wrap > summary').count()){
+                await p.locator('.match-wrap > summary').first().click();
+                const expanded=await p.evaluate(()=>{const row=document.querySelector('.match-wrap');return {
+                  open:row?.open,className:row?.className,childTags:[...row?.children||[]].map(x=>x.tagName+'.'+x.className),
+                  detail:row?.querySelector('.match-detail')?.outerHTML.slice(0,12500)}});
+                console.log('B46_LIVE_SCORE_EXPANDED_AUDIT '+JSON.stringify({mobile,expanded}));
+              }
+              await p.close();
+            }
+          }finally{await b.close()}
+          JS
