@@ -5,7 +5,7 @@ on:
     paths: ['.github/workflows/premium-match-colors-test.yml', 'qa/odds-movement-20261121/odds-movement.mjs', 'qa/prematch-native-ui-20261121/prematch-client.mjs']
 concurrency:
   group: ball46-premium-match-colors-test-20261120
-  cancel-in-progress: false
+  cancel-in-progress: true
 permissions:
   contents: read
   statuses: write
