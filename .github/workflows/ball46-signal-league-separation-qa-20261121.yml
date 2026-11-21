@@ -1,4 +1,4 @@
-name: BALL46 Signal league strip no-overlap TEST QA
+name: BALL46 Signal exact native Live card and league header TEST QA
 on:
   push:
     branches: [test/ball46-premium-match-colors-20261120]
@@ -7,82 +7,97 @@ on:
       - 'qa/signal-stable-20261121/signal-stable.mjs'
 permissions: {contents: read}
 jobs:
-  validate:
+  native-parity:
     runs-on: ubuntu-24.04
-    timeout-minutes: 12
+    timeout-minutes: 13
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: {node-version: '22'}
       - run: |
           node --check qa/signal-stable-20261121/signal-stable.mjs
-          npm install --no-save --no-audit --no-fund playwright@1.55.0
+          npm install --no-audit --no-fund --no-save playwright@1.55.0
           npx playwright install chromium --only-shell
-      - name: Verify separate league line and preserve native team sizes on PC/mobile
+      - name: Compare authentic Live and Signal card anatomy and flags at desktop/mobile
         run: |
           node --input-type=module <<'NODE'
           import assert from 'node:assert/strict';
           import {chromium,devices} from 'playwright';
           const base='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev';
-          let ready=false;for(let i=0;i<42;i++){
-            try{const r=await fetch(base+'/_premium_health',{signal:AbortSignal.timeout(18000)});const h=await r.json();
-              if(h.signalStableStyles?.includes('b46-signal-league-strip')&&!h.signalStableStyles.includes('position:absolute;right:3px;bottom:1px')){ready=true;break}
+          let ready=false;
+          for(let i=0;i<34;i++){
+            try{
+              const h=await (await fetch(base+'/_premium_health',{signal:AbortSignal.timeout(18000)})).json();
+              if(h.signalStableStyles?.includes('b46-signal-native-head')&&!h.signalStableStyles?.includes('b46-signal-league-strip')){ready=true;break}
             }catch{}
             await new Promise(r=>setTimeout(r,1900));
           }
-          assert(ready,'LATEST_SIGNAL_LEAGUE_STRIP_NOT_DEPLOYED');
+          assert(ready,'NATIVE_LIVE_HEADER_RELEASE_NOT_ACTIVE');
           const b=await chromium.launch();
+          try{
           for(const mode of ['desktop','mobile']){
-            const p=await b.newPage(mode==='desktop'?{viewport:{width:1440,height:960},serviceWorkers:'block'}:{...devices['iPhone 13'],viewport:{width:390,height:844},serviceWorkers:'block'});
-            await p.addInitScript(()=>localStorage.setItem('nomad343_dashboard_theme_v1','dark'));
-            await p.goto(base+'/?view=signal',{waitUntil:'domcontentloaded',timeout:70000});
-            await p.waitForFunction(()=>window.__b46SignalStableStatus?.seenSource===true&&document.querySelector('.status-section .b46-signal-league-strip'),null,{timeout:45000});
-            await p.waitForTimeout(550);
-            const proof=await p.evaluate(()=>{
-              const status=document.querySelector('.status-section[data-status-section="live"]');
-              const boxes=e=>{const r=e.getBoundingClientRect();return {x:r.x,y:r.y,right:r.right,bottom:r.bottom,width:r.width,height:r.height}};
-              const rows=[...status.querySelectorAll('.league-block > .match-row')].map(r=>{
-                const strip=r.previousElementSibling?.matches('.b46-signal-league-strip')?r.previousElementSibling:null;
-                const cell=r.querySelector('.teams-cell');
-                const names=cell?[...cell.querySelectorAll(':scope > b')]:[];
-                const scores=cell?[...cell.querySelectorAll(':scope > strong')]:[];
-                const nativeFlag=r.parentElement?.querySelector(':scope > .league-head .league-flag');
-                const flag=strip?.querySelector(':scope > .b46-signal-league-flag');
-                const leagueName=strip?.querySelector(':scope > .b46-signal-league-name');
-                const flagInfo=flag?{src:flag.getAttribute('src'),originalSrc:nativeFlag?.getAttribute('src'),box:boxes(flag),naturalWidth:flag.naturalWidth,loaded:flag.complete,alt:flag.getAttribute('alt')}:null;
-                const nameInfo=leagueName?{text:leagueName.textContent,box:boxes(leagueName)}:null;
-                return {id:r.dataset.matchId,row:boxes(r),strip:strip?{text:strip.textContent.trim(),id:strip.dataset.b46SignalLeagueFor,box:boxes(strip)}:null,flag:flagInfo,leagueName:nameInfo,oldChip:!!cell?.querySelector('.b46-signal-league-chip'),names:names.map(boxes),scores:scores.map(boxes),cell:cell?boxes(cell):null,order:getComputedStyle(r).order};
-              }).sort((a,b)=>a.row.y-b.row.y);
-              const hdr=[...status.querySelectorAll('.league-head')].filter(e=>e.getBoundingClientRect().height>0);
-              return {rows,viewport:innerWidth,docWidth:document.documentElement.scrollWidth,headerCount:hdr.length,signalState:window.__b46SignalStableQA.state()};
+            const settings=mode==='desktop'?{viewport:{width:1440,height:960},serviceWorkers:'block'}:{...devices['iPhone 13'],viewport:{width:390,height:844},serviceWorkers:'block'};
+            const page=async view=>{
+              const p=await b.newPage(settings);
+              await p.addInitScript(()=>localStorage.setItem('nomad343_dashboard_theme_v1','dark'));
+              await p.goto(base+'/?view='+view,{waitUntil:'domcontentloaded',timeout:70000});
+              if(view==='signal')await p.waitForFunction(()=>window.__b46SignalStableStatus?.seenSource===true&&document.querySelector('.board-sections[data-b46-signal-sort-ready="1"] .status-section .b46-signal-native-head'),null,{timeout:45000});
+              else await p.waitForFunction(()=>document.querySelector('.status-section .match-row'),null,{timeout:45000});
+              await p.waitForTimeout(600);
+              return p;
+            };
+            const signal=await page('signal');
+            const proof=await signal.evaluate(()=>{
+              const rect=e=>{const r=e.getBoundingClientRect();return {x:r.x,y:r.y,right:r.right,bottom:r.bottom,w:r.width,h:r.height}};
+              const shape=e=>{const s=getComputedStyle(e);return {tag:e.tagName,classes:String(e.className).replace(/\s*active\b/g,''),font:s.fontSize,padding:s.padding,bg:s.backgroundImage,bgColor:s.backgroundColor,border:s.borderBottomColor,display:s.display,h:Math.round(e.getBoundingClientRect().height*10)/10}};
+              const section=document.querySelector('.status-section[data-status-section="live"]');
+              const rows=[...section.querySelectorAll('.league-block > .match-row[data-match-id]')].sort((a,b)=>a.getBoundingClientRect().y-b.getBoundingClientRect().y).map(row=>{
+                const head=row.previousElementSibling;
+                const original=row.parentElement.querySelector(':scope > .league-head:not(.b46-signal-native-head)');
+                const flag=head?.querySelector('.league-flag');
+                const originalFlag=original?.querySelector('.league-flag');
+                const label=head?.querySelector('.league-label');
+                const origLabel=original?.querySelector('.league-label');
+                return {id:row.dataset.matchId,headIsNative:!!head?.matches('.league-head.b46-signal-native-head'),headVisible:head?.getBoundingClientRect().height>0,headMatch:head?.dataset.b46SignalNativeFor===row.dataset.matchId,sourceFlag:originalFlag?.getAttribute('src'),cloneFlag:flag?.getAttribute('src'),flagLoaded:flag?.complete&&flag?.naturalWidth>0,flagBox:flag?rect(flag):null,league:label?.textContent?.trim(),sourceLeague:origLabel?.textContent?.trim(),rowShape:shape(row),headerShape:head?shape(head):null,teamsShape:shape(row.querySelector('.teams-cell')),oddsShape:shape(row.querySelector('.market-cell')),originalHeaderShape:original?shape(original):null,overlap:head?.getBoundingClientRect().bottom>row.getBoundingClientRect().top+.5,badge:row.querySelector('[data-inline-signal-count]')?.getAttribute('data-inline-signal-count')||null,rowRect:rect(row)};
+              });
+              return {rows,headings:section.querySelectorAll('.b46-signal-native-head').length,legacy:section.querySelectorAll('.b46-signal-league-strip,.b46-signal-unified-head,.b46-signal-league-chip').length,docWidth:document.documentElement.scrollWidth,viewport:innerWidth,signalState:window.__b46SignalStableQA.state(),customHeading:document.body.innerText.includes('LATEST LIVE PREDICTIONS')};
             });
-            console.log('B46_SIGNAL_LEAGUE_ROW_GEOMETRY_'+mode+' '+JSON.stringify(proof));
-            assert(proof.rows.length>=1,'NO_PREDICTIONS_'+mode);
-            assert.equal(proof.headerCount,1,'LEAGUE_HEADING_REPEATED_'+mode);
-            assert(proof.docWidth<=proof.viewport+1,'HORIZONTAL_OVERFLOW_'+mode);
-            for(let i=0;i<proof.rows.length;i++){
-              const x=proof.rows[i];assert(x.strip,'LEAGUE_LABEL_MISSING_'+x.id);assert.equal(x.strip.id,x.id,'LEAGUE_MISMATCH_'+x.id);
-              assert(x.strip.text&&x.strip.text!==x.id,'LEAGUE_TEXT_INVALID_'+x.id);
-              assert(x.flag&&x.leagueName,'LEAGUE_FLAG_OR_NAME_MISSING_'+x.id);
-              assert(x.flag.src?.includes('/flags/')&&x.flag.src===x.flag.originalSrc,'LEAGUE_FLAG_NOT_NATIVE_SOURCE_'+x.id);
-              assert(x.flag.box.width>=15.5&&x.flag.box.width<=16.5&&x.flag.box.height>=11.5&&x.flag.box.height<=12.5,'LEAGUE_FLAG_DIMENSIONS_BAD_'+x.id);
-              assert(x.flag.box.right<=x.leagueName.box.x-4,'LEAGUE_FLAG_TEXT_GAP_MISSING_'+x.id);
-              assert(x.flag.box.y>=x.strip.box.y-1&&x.flag.box.bottom<=x.strip.box.bottom+1,'LEAGUE_FLAG_OUTSIDE_STRIP_'+x.id);
-              assert(x.flag.alt==='','LEAGUE_FLAG_ACCESSIBILITY_'+x.id);
-              assert(!x.oldChip,'OLD_OVERLAY_CHIP_PERSISTS_'+x.id);
-              assert(x.strip.box.bottom<=x.row.y+1,'LEAGUE_STRIP_OVERLAPS_CARD_'+x.id);
-              assert(x.row.width<=proof.viewport+1,'CARD_TOO_WIDE_'+x.id);
-              assert(x.names.length===2&&x.scores.length===2,'TEAM_DETAILS_LOST_'+x.id);
-              for(const b of [...x.names,...x.scores])assert(b.y>=x.row.y-7&&b.bottom<=x.row.bottom+7,'TEAM_OVERFLOWS_CARD_'+x.id);
-              if(i>0)assert(x.strip.box.y>=proof.rows[i-1].row.bottom-1,'LEAGUE_LABEL_CLIPS_PRIOR_MATCH_'+x.id);
+            console.log('NATIVE_SIGNAL_CARD_PROOF_'+mode+' '+JSON.stringify(proof).slice(0,19000));
+            assert(proof.rows.length>=1,'NO_SIGNAL_ROWS_'+mode);
+            assert(!proof.customHeading&&!proof.legacy,'CUSTOM_UI_STILL_PRESENT_'+mode);
+            assert(proof.docWidth<=proof.viewport+1,'SIGNAL_DOCUMENT_HORIZONTAL_OVERFLOW_'+mode);
+            assert.equal(proof.headings,proof.rows.length,'NATIVE_HEADER_PAIRING_INCOMPLETE_'+mode);
+            for(const row of proof.rows){
+              assert(row.headIsNative&&row.headMatch,'NATIVE_LEAGUE_HEADER_MISSING_'+row.id);
+              assert(row.cloneFlag===row.sourceFlag&&row.sourceFlag?.includes('/flags/'),'ORIGINAL_COUNTRY_FLAG_MISSING_'+row.id);
+              assert.equal(row.league,row.sourceLeague,'NATIVE_LEAGUE_LABEL_CHANGED_'+row.id);
+              assert(row.flagBox?.w>15&&row.flagBox?.h>11,'NATIVE_FLAG_SIZE_CHANGED_'+row.id);
+              assert(!row.overlap,'LEAGUE_HEADER_OVERLAPS_NATIVE_CARD_'+row.id);
+              assert(row.rowRect.w<=proof.viewport+2,'CARD_TOO_WIDE_'+row.id);
+              assert(row.headerShape?.h>25||!row.headVisible,'HEADER_HEIGHT_CHANGED_'+row.id);
             }
-            const topMatch=p.locator('.status-section[data-status-section="live"] .match-row[data-match-id="'+proof.rows[0].id+'"]');
-            await topMatch.click({position:{x:70,y:32},force:true});
-            await p.waitForFunction(id=>document.querySelector('.status-section .match-row.active[data-match-id="'+id+'"]')?.parentElement?.querySelector('.expand-flow-card')&&window.__b46SignalStableQA.state().frozen===id,proof.rows[0].id,{timeout:22000});
-            const liveOrder=await p.evaluate(()=>({frozen:window.__b46SignalStableQA.state().frozen,flow:!!document.querySelector('.status-section .expand-flow-card'),strips:document.querySelectorAll('.status-section .b46-signal-league-strip').length}));
-            assert(liveOrder.flow&&liveOrder.frozen===proof.rows[0].id,'EVENT_FLOW_BROKEN_'+mode);
-            console.log('BALL46_SIGNAL_LEAGUE_NO_OVERLAP_PASS_'+mode+' '+JSON.stringify({matches:proof.rows.length,flags:proof.rows.filter(x=>x.flag?.src).length,loadedFlags:proof.rows.filter(x=>x.flag?.loaded&&x.flag?.naturalWidth>0).length,headerCount:proof.headerCount,liveOrder}));
-            await p.close();
+            const live=await page('live');
+            const same=proof.rows.map(x=>x.id);
+            const native=await live.evaluate(ids=>{
+              const shape=e=>{if(!e)return null;const s=getComputedStyle(e);return {font:s.fontSize,padding:s.padding,h:Math.round(e.getBoundingClientRect().height*10)/10,bg:s.backgroundImage,bgColor:s.backgroundColor}};
+              return ids.map(id=>{
+                const row=document.querySelector('.status-section .match-row[data-match-id="'+id+'"]');
+                return {id,match:!!row,rowShape:shape(row),teamsShape:shape(row?.querySelector('.teams-cell')),oddsShape:shape(row?.querySelector('.market-cell'))};
+              }).filter(x=>x.match);
+            },same);
+            console.log('LIVE_ORIGINAL_CARD_PARITY_'+mode+' '+JSON.stringify(native));
+            assert(native.length>0,'NO_SHARED_MATCHES_TO_COMPARE_'+mode);
+            for(const x of native){
+              const signalRow=proof.rows.find(y=>y.id===x.id);
+              assert.equal(signalRow.rowShape.h,x.rowShape.h,'ROW_HEIGHT_DIFF_FROM_LIVE_'+x.id+'_'+mode);
+              assert.equal(signalRow.teamsShape.font,x.teamsShape.font,'TEAM_FONT_DIFF_FROM_LIVE_'+x.id+'_'+mode);
+              assert.equal(signalRow.teamsShape.padding,x.teamsShape.padding,'TEAM_PADDING_DIFF_FROM_LIVE_'+x.id+'_'+mode);
+              assert.equal(signalRow.oddsShape.font,x.oddsShape.font,'ODDS_FONT_DIFF_FROM_LIVE_'+x.id+'_'+mode);
+            }
+            await signal.locator('.status-section[data-status-section="live"] .match-row[data-match-id="'+proof.rows[0].id+'"]').click({position:{x:70,y:32},force:true});
+            await signal.waitForFunction(id=>document.querySelector('.status-section .match-row.active[data-match-id="'+id+'"]')?.parentElement?.querySelector('.expand-flow-card')&&window.__b46SignalStableQA.state().frozen===id,proof.rows[0].id,{timeout:23000});
+            console.log('NATIVE_LIVE_PARITY_PASS_'+mode+' '+JSON.stringify({nativeCards:proof.rows.length,loadedFlags:proof.rows.filter(x=>x.flagLoaded).length,sharedLiveMatches:native.length,flowFrozen:true,legacyUI:0}));
+            await signal.close();await live.close();
           }
-          await b.close();
+          }finally{await b.close()}
           NODE
