@@ -4,16 +4,16 @@ import {chromium} from 'playwright';
 import {createHash} from 'node:crypto';
 import {mkdirSync,writeFileSync} from 'node:fs';
 import {signalStableStyles,signalStableScript} from '../../qa/signal-stable-20261121/signal-stable.mjs';
+import {signalStableStyles as baselineCss,signalStableScript as baselineJs} from './signal-stable-baseline.mjs';
 
-const SCRIPT='ball46-production',MARK='B46_SIGNAL_LATEST_STABLE_20261121';
+const SCRIPT='ball46-production',MARK='B46_SIGNAL_GHOST_HEADER_RECONCILE_20261121';
 const HOME='https://ball46.com',TEST='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev';
 const ROOT='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+'/workers';
-const EXPECTED_BASE='2fe9822b-7e5b-45af-ad18-b51fcb520e43';
-const EXPECTED_MAIN_SHA='7697b672083fd91f0fc5b1a0d7d973158f32c31b723da1b5af360d65f4a1155f';
+const PREVIOUS_MARK='B46_SIGNAL_LATEST_STABLE_20261121';
 const sha=x=>createHash('sha256').update(x).digest('hex');
 const delay=ms=>new Promise(r=>setTimeout(r,ms));
 const stableJson=o=>JSON.stringify(o,(k,v)=>k==='annotations'?undefined:v&&typeof v==='object'&&!Array.isArray(v)?Object.fromEntries(Object.entries(v).sort(([a],[b])=>a.localeCompare(b))):v);
-const report={marker:MARK,scope:'Add Signal newest-first sorting and stable Event Flow using exact TEST code, preserve native Live card, full league flag header, original engine/counter scripts and all unrelated modules/assets/bindings/crons.'};
+const report={marker:MARK,scope:'Replace ONLY existing production Signal runtime JS to self-heal duplicate/orphan league heads after native live refresh. No CSS, API, Engine, other modules, bindings, assets or cron changes.'};
 mkdirSync('audit',{recursive:true});const save=()=>writeFileSync('audit/report.json',JSON.stringify(report,null,2));
 let base=null,candidate=null,activated=false;
 function check(c,msg){assert(c,msg);return c}
@@ -60,6 +60,16 @@ function prepare(h){
  assert(signalStableScript.includes('nativeLeagueSource')&&signalStableScript.includes('seenSource'),'ORIGINAL_CARD_OR_FIRST_PAINT_NOT_PRESERVED');
  assert(!signalStableStyles.includes('</style>')&&!signalStableScript.includes('</script>'),'UNSAFE_INLINE_HTML_CLOSING_TAG');
  assert(!signalStableStyles.includes('<script')&&!signalStableScript.includes('<style'),'UNSAFE_NESTED_HTML');
+ assert.equal(signalStableStyles,baselineCss,'CSS_DRIFT: visual appearance must be byte-identical');
+ assert(baselineJs.includes("function ensureNativeLeagueHeads")&&!baselineJs.includes("b46NativeSignature"),'OLD_BASELINE_UNEXPECTED');
+ assert(signalStableScript.includes('b46NativeSignature')&&signalStableScript.includes('header.nextElementSibling!==row'),'FIX_NOT_INCLUDED');
+ const start=baselineJs.indexOf('function ensureNativeLeagueHeads('),end=baselineJs.indexOf('\nfunction applyOrder(',start);
+ const ns=signalStableScript.indexOf('function ensureNativeLeagueHeads('),ne=signalStableScript.indexOf('\nfunction applyOrder(',ns);
+ assert(start>=0&&end>start&&ns>=0&&ne>ns,'HEADER_PATCH_REGION_MISSING');
+ const oldObserver=baselineJs.slice(baselineJs.indexOf(' observer=new MutationObserver('),baselineJs.indexOf("\n document.addEventListener('click'"));
+ const newObserver=signalStableScript.slice(signalStableScript.indexOf(' observer=new MutationObserver('),signalStableScript.indexOf("\n document.addEventListener('click'"));
+ const backwards=signalStableScript.slice(0,ns)+baselineJs.slice(start,end)+signalStableScript.slice(ne);
+ assert.equal(backwards.replace(newObserver,oldObserver),baselineJs,'UNRELATED_SIGNAL_CODE_DRIFT');
  return {css:signalStableStyles,js:signalStableScript};
 }
 function patch(source,p){
@@ -71,16 +81,25 @@ function patch(source,p){
  assert(old.startsWith('<!-- B46_ODDS_FLASH_ROUNDED_ARROW_20261121 -->'),'ODDS_MARKER_CHANGED');
  assert(old.includes('B46_ODDS_V3_TRIANGLE_20261121'),'ODDS_V3_MISSING');
  assert(old.includes('b46-sidebar-winrate-production')&&old.includes('B46_SIDEBAR_WINRATE_HYDRATE_20261121'),'SIDEBAR_MISSING');
- assert(!old.includes(MARK)&&!source.includes('b46-signal-stable-production'),'SIGNAL_ALREADY_DEPLOYED');
- assert(old.endsWith('</script>'),'HEAD_CONTENT_EXPECTED_ENDING_CHANGED');
- const injection='<!-- '+MARK+' -->'+'<style id="b46-signal-stable-production">'+p.css+'</style>'+'<script id="b46-signal-stable-runtime-production">'+p.js+'</script>';
- const updated=JSON.stringify(old+injection);
- const next=source.slice(0,lit.start)+updated+source.slice(lit.end);
- assert(next.slice(0,lit.start)===source.slice(0,lit.start)&&next.slice(lit.start+updated.length)===source.slice(lit.end),'UNRELATED_CODE_CHANGED');
- assert(next.includes('b46-sidebar-winrate-production')&&next.includes('B46_ODDS_V3_TRIANGLE_20261121'),'EXISTING_HEAD_FEATURE_LOST');
- parse(next,{ecmaVersion:'latest',sourceType:'module'});
- report.patch={oldHeadLength:old.length,newHeadLength:old.length+injection.length,cssSha:sha(p.css),jsSha:sha(p.js),onlyLiteralChanged:true,mainSourceBefore:sha(source),mainSourceAfter:sha(next)};
- return next;
+ assert(old.includes('<!-- '+PREVIOUS_MARK+' -->'),'PREVIOUS_SIGNAL_RELEASE_MISSING');
+ assert(!old.includes(MARK)&&!old.includes('b46NativeSignature'),'FIX_ALREADY_INSTALLED');
+ const cssTag='<style id="b46-signal-stable-production">'+baselineCss+'</style>';
+ const oldTag='<script id="b46-signal-stable-runtime-production">'+baselineJs+'</script>';
+ const newTag='<script id="b46-signal-stable-runtime-production">'+p.js+'</script>';
+ assert.equal(old.split(cssTag).length-1,1,'EXISTING_SIGNAL_CSS_DRIFT');
+ assert.equal(old.split(oldTag).length-1,1,'EXISTING_SIGNAL_JS_DRIFT');
+ assert.equal(old.split('<script id="b46-signal-stable-runtime-production">').length-1,1,'SIGNAL_RUNTIME_TAG_NOT_UNIQUE');
+ assert.equal(p.css,baselineCss,'CSS_CHANGE_FORBIDDEN');
+ const nextHead=old.replace(oldTag,newTag);
+ const encoded=JSON.stringify(nextHead);
+ const patched=source.slice(0,lit.start)+encoded+source.slice(lit.end);
+ assert.equal(patched.slice(0,lit.start),source.slice(0,lit.start),'UNRELATED_MAIN_PREFIX_CHANGED');
+ assert.equal(patched.slice(lit.start+encoded.length),source.slice(lit.end),'UNRELATED_MAIN_SUFFIX_CHANGED');
+ assert.equal(nextHead.replace(newTag,oldTag),old,'HEAD_CHANGED_OUTSIDE_SIGNAL_RUNTIME');
+ assert(patched.includes('b46-sidebar-winrate-production')&&patched.includes('B46_ODDS_V3_TRIANGLE_20261121'),'PRIOR_FEATURES_LOST');
+ parse(patched,{ecmaVersion:'latest',sourceType:'module'});
+ report.patch={oldHeadLength:old.length,newHeadLength:nextHead.length,cssSha:sha(p.css),oldJsSha:sha(baselineJs),newJsSha:sha(p.js),onlySignalRuntimeChanged:true,mainSourceBefore:sha(source),mainSourceAfter:sha(patched)};
+ return patched;
 }
 function contentType(m,mainName){
  if(m.content_type)return m.content_type;
@@ -94,7 +113,7 @@ function contentType(m,mainName){
 }
 async function upload(old,patched){
  assert(old.assets?.config&&old.bindings?.some(x=>x.type==='assets'),'ASSETS_PRESERVATION_NOT_AVAILABLE');
- const metadata={main_module:old.main_module,compatibility_date:old.compatibility_date,compatibility_flags:old.compatibility_flags||[],bindings:old.bindings,keep_assets:true,assets:{config:old.assets.config},annotations:{'workers/tag':MARK,'workers/message':'Signal latest-first stable native Live cards'}};
+ const metadata={main_module:old.main_module,compatibility_date:old.compatibility_date,compatibility_flags:old.compatibility_flags||[],bindings:old.bindings,keep_assets:true,assets:{config:old.assets.config},annotations:{'workers/tag':MARK,'workers/message':'Signal native league ghost-header de-duplication only'}};
  if(old.placement)metadata.placement=old.placement;
  const form=new FormData();form.append('metadata',new Blob([JSON.stringify(metadata)],{type:'application/json'}),'metadata.json');
  for(const m of old.modules){
@@ -154,6 +173,33 @@ async function browserCheck(origin,label,full){
   for(let i=1;i<state.sorted.length;i++)assert(state.sorted[i-1].at>=state.sorted[i].at,'NOT_SORTED_NEWEST_FIRST_'+mode.name);
   if(state.nativeRows>0)assert.equal(state.headers,state.nativeRows,'NATIVE_LEAGUE_HEADER_MISSING_'+mode.name);
   if(state.nativeRows>0)assert.equal(state.visibleFlags,state.nativeRows,'NATIVE_LEAGUE_FLAG_MISSING_'+mode.name);
+  let ghostFixed=false;
+  if(state.sorted.length>0){
+   const id=state.sorted[0].id;
+   const ghost=await p.evaluate(id=>{
+     const row=document.querySelector('.status-section[data-status-section="live"] .match-row[data-match-id="'+id+'"]');
+     const block=row?.closest('.league-block'),original=block?.querySelector(':scope > .league-head:not(.b46-signal-native-head)');
+     const prior=row?.previousElementSibling;
+     if(!row||!original||!prior?.matches('.b46-signal-native-head'))return {error:'CANNOT_TEST_HEADER'};
+     const duplicate=prior.cloneNode(true);duplicate.dataset.b46Skip='0';duplicate.dataset.b46GhostReleaseQa='1';block.insertBefore(duplicate,prior);
+     const sourceText=original.querySelector('.league-label')||original.querySelector('strong');
+     if(!sourceText)return {error:'NO_NATIVE_LABEL'};
+     sourceText.textContent+=' QA-METADATA-UPDATE';
+     window.__b46SignalStableQA.forceSync();
+     return {sourceText:sourceText.textContent};
+   },id);
+   assert(!ghost.error,'BROWSER_GHOST_SETUP_FAILED_'+mode.name+'_'+JSON.stringify(ghost));
+   await p.waitForTimeout(400);
+   const correct=await p.evaluate(id=>{
+     const row=document.querySelector('.status-section[data-status-section="live"] .match-row[data-match-id="'+id+'"]');
+     const heads=[...document.querySelectorAll('.status-section[data-status-section="live"] .b46-signal-native-head[data-b46-signal-native-for="'+id+'"]')];
+     const label=heads[0]?.querySelector('.league-label')||heads[0]?.querySelector('strong');
+     const source=row.closest('.league-block').querySelector(':scope > .league-head:not(.b46-signal-native-head)');
+     return {count:heads.length,prev:row.previousElementSibling===heads[0],label:label?.textContent,src:source.querySelector('.league-label')?.textContent,ghosts:document.querySelectorAll('[data-b46-ghost-release-qa]').length};
+   },id);
+   assert(correct.count===1&&correct.prev&&correct.label===ghost.sourceText&&correct.ghosts===0,'GHOST_HEADER_NOT_RECONCILED_'+mode.name+'_'+JSON.stringify(correct));
+   ghostFixed=true;
+  }
   let flowChecked=false;
   if(state.sorted.length>0){
    const id=state.sorted[0].id;
@@ -172,13 +218,13 @@ async function browserCheck(origin,label,full){
    }catch(e){throw new Error('EVENTFLOW_CHECK_FAILED_'+mode.name+'_'+String(e))}
   }
   await p.screenshot({path:'audit/'+label+'-'+mode.name+'.png',fullPage:false});
-  checks.push({name:mode.name,...state,flowChecked,errors});
+  checks.push({name:mode.name,...state,flowChecked,ghostFixed,errors});
   assert.deepEqual(errors,[],'BROWSER_PAGE_ERRORS_'+mode.name+'_'+JSON.stringify(errors));
   await ctx.close();
  }
  }finally{await browser.close()}
- console.log('BALL46_SIGNAL_BROWSER_CHECK_'+label+' '+JSON.stringify(checks.map(x=>({profile:x.name,rows:x.nativeRows,flags:x.visibleFlags,flowChecked:x.flowChecked,sourceRequestsAdded:x.source.sourceRequestsAdded,sorted:x.sorted.length}))));
- return checks.map(x=>({profile:x.name,nativeRows:x.nativeRows,flags:x.visibleFlags,flowChecked:x.flowChecked,errors:x.errors}));
+ console.log('BALL46_SIGNAL_BROWSER_CHECK_'+label+' '+JSON.stringify(checks.map(x=>({profile:x.name,rows:x.nativeRows,flags:x.visibleFlags,flowChecked:x.flowChecked,ghostFixed:x.ghostFixed,sourceRequestsAdded:x.source.sourceRequestsAdded,sorted:x.sorted.length}))));
+ return checks.map(x=>({profile:x.name,nativeRows:x.nativeRows,flags:x.visibleFlags,flowChecked:x.flowChecked,ghostFixed:x.ghostFixed,errors:x.errors}));
 }
 async function rollback(){
  if(!activated)return;
@@ -192,14 +238,14 @@ try{
  const h=JSON.parse(await read(TEST+'/_premium_health'));
  const payload=prepare(h);
  report.testApproved={cssSha:sha(payload.css),jsSha:sha(payload.js),testScope:h.scope};save();
- base=await active();assert.equal(base,EXPECTED_BASE,'PRODUCTION_VERSION_MOVED_SINCE_READONLY_AUDIT');
+ base=await active();
  report.oldVersion=base;save();
  const old=await version(base),source=main(old);
- assert.equal(sha(source),EXPECTED_MAIN_SHA,'PRODUCTION_MAIN_CHANGED_SINCE_AUDIT');
+ report.beforeActiveVersion=base; // Existing code is verified byte-for-byte against baseline Signal CSS/JS inside patch().
  parse(source,{ecmaVersion:'latest',sourceType:'module'});
  const settingsBefore=stableJson(await settings()),cronBefore=stableJson(await crons()),healthBefore=await backendHealth();
  const publicBefore=await read(HOME+'/index.html');assert(publicBefore.includes('b46-odds-flash-production')&&publicBefore.includes('b46-sidebar-winrate-production'),'PRODUCTION_EXISTING_FEATURES_MISSING');
- assert(!publicBefore.includes(MARK),'PRODUCTION_ALREADY_PATCHED');
+ assert(!publicBefore.includes('b46NativeSignature'),'PRODUCTION_ALREADY_PATCHED');
  report.before={sourceSha:sha(source),settingsSha:sha(settingsBefore),crons:JSON.parse(cronBefore),health:healthBefore};save();
  const next=patch(source,payload);save();
  assert.equal(await active(),base,'PRODUCTION_MOVED_BEFORE_UPLOAD');
@@ -208,16 +254,16 @@ try{
  verify(await version(candidate),old,next);
  const preview='https://'+candidate.slice(0,8)+'-'+SCRIPT+'.mccarey-supon.workers.dev';report.preview=preview;save();
  const previewHtml=await read(preview+'/index.html?view=signal');
- assert(previewHtml.includes(MARK)&&previewHtml.includes('b46-sidebar-winrate-production'),'CANDIDATE_HTML_MISSING_INJECTION');
+ assert(previewHtml.includes('b46NativeSignature')&&previewHtml.includes('b46-sidebar-winrate-production'),'CANDIDATE_HTML_MISSING_FIX');
  report.previewCheck=await browserCheck(preview,'candidate',true);save();
  assert.equal(await active(),base,'PRODUCTION_CHANGED_DURING_CANARY');
  assert.equal(stableJson(await settings()),settingsBefore,'SETTINGS_CHANGED_BEFORE_ACTIVATION');
  assert.equal(stableJson(await crons()),cronBefore,'CRONS_CHANGED_BEFORE_ACTIVATION');
  await cf('/scripts/'+SCRIPT+'/deployments',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({strategy:'percentage',versions:[{version_id:candidate,percentage:100}],annotations:{'workers/message':'Deploy '+MARK}})});
- activated=true;console.log('BALL46_SIGNAL_PRODUCTION_ACTIVATED '+JSON.stringify({oldVersion:base,newVersion:candidate}));
+ activated=true;console.log('BALL46_SIGNAL_GHOST_FIX_ACTIVATED '+JSON.stringify({oldVersion:base,newVersion:candidate}));
  let confirmed=false;for(let i=0;i<22;i++){const x=await active();if(x===candidate){confirmed=true;break}assert.equal(x,base,'FOREIGN_ACTIVATION_VERSION');await delay(1100)}
  assert(confirmed,'ACTIVATION_NOT_CONFIRMED');
- let propagated=false;for(let i=0;i<40;i++){try{const html=await read(HOME+'/index.html?view=signal');if(html.includes(MARK)&&html.includes('b46-odds-flash-production')){propagated=true;break}}catch{}await delay(1350)}
+ let propagated=false;for(let i=0;i<40;i++){try{const html=await read(HOME+'/index.html?view=signal');if(html.includes('b46NativeSignature')&&html.includes('b46-odds-flash-production')){propagated=true;break}}catch{}await delay(1350)}
  assert(propagated,'PRODUCTION_SIGNAL_HTML_NOT_PROPAGATED');
  report.productionCheck=await browserCheck(HOME,'production',true);save();
  verify(await version(candidate),old,next);
@@ -226,7 +272,7 @@ try{
  assert.deepEqual(await backendHealth(),healthBefore,'BACKEND_HEALTH_CHANGED');
  assert.equal(await active(),candidate,'ACTIVE_VERSION_MOVED');
  report.result='SUCCESS';report.completedAt=new Date().toISOString();save();
- console.log('BALL46_SIGNAL_PRODUCTION_SUCCESS '+JSON.stringify({oldVersion:base,newVersion:candidate,cssSha:sha(payload.css),jsSha:sha(payload.js),moduleCount:old.modules.length,backendUnchanged:true}));
+ console.log('BALL46_SIGNAL_GHOST_FIX_SUCCESS '+JSON.stringify({oldVersion:base,newVersion:candidate,cssSha:sha(payload.css),jsSha:sha(payload.js),moduleCount:old.modules.length,backendUnchanged:true}));
 }catch(e){
  report.result=activated?'FAILED_AFTER_ACTIVATION':'FAILED_BEFORE_ACTIVATION';report.error=String(e?.stack||e);save();
  try{await rollback()}catch(x){report.rollbackError=String(x?.stack||x);save()}
