@@ -71,3 +71,39 @@ test('run five complete deliveries consecutively at same 06:00 London cutoff',()
  assert.equal(totals(db).finished,500);
  assert.throws(()=>importHistoryRoundFromCache(db,s,now,{roundNo:6}),/INVALID_HISTORY_ROUND/);
 });
+
+
+test('accept only 125 eligible fixtures: 100 + 25 + three empty trips; no sixth trip',()=>{
+ const db=database(),now=sec('2026-11-23T06:00:00Z'),data=snapshot(now,125);
+ const expected=[100,25,0,0,0];
+ for(let roundNo=1;roundNo<=5;roundNo++){
+  const v=importHistoryRoundFromCache(db,data,now,{roundNo});
+  assert.equal(v.state,'COMPLETED');
+  assert.equal(v.current.received,expected[roundNo-1]);
+  assert.equal(v.current.imported,expected[roundNo-1]);
+  assert.equal(v.completed,roundNo);
+  assert.equal(v.providerCalls,0);
+ }
+ const state=historyRoundState(db,now);
+ assert.equal(state.imported,125);
+ assert.equal(state.completed,5);
+ assert.equal(state.remainingRounds,0);
+ assert.equal(state.remainingCapacity,375);
+ assert.equal(importHistoryRoundFromCache(db,snapshot(now,500),now,{roundNo:1}).state,'ALREADY_EXECUTED');
+ assert.equal(totals(db).finished,125);
+});
+test('empty football day still uses at most 5 trips and allows the Bot to proceed',()=>{
+ const db=database(),now=sec('2026-11-24T06:00:00Z'),data=snapshot(now,0);
+ for(let roundNo=1;roundNo<=5;roundNo++){
+  const v=importHistoryRoundFromCache(db,data,now,{roundNo});
+  assert.equal(v.state,'COMPLETED');
+  assert.equal(v.current.received,0);
+  assert.equal(v.current.imported,0);
+ }
+ const state=historyRoundState(db,now);
+ assert.equal(state.completed,5);
+ assert.equal(state.imported,0);
+ assert.equal(state.remainingRounds,0);
+ assert.equal(state.providerCalls,0);
+ assert.equal(importHistoryRoundFromCache(db,data,now,{roundNo:5}).state,'ALREADY_EXECUTED');
+});
