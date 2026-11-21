@@ -65,10 +65,11 @@ jobs:
               for(const b of [...x.names,...x.scores])assert(b.y>=x.row.y-7&&b.bottom<=x.row.bottom+7,'TEAM_OVERFLOWS_CARD_'+x.id);
               if(i>0)assert(x.strip.box.y>=proof.rows[i-1].row.bottom-1,'LEAGUE_LABEL_CLIPS_PRIOR_MATCH_'+x.id);
             }
-            await p.locator('.status-section .match-row').first().click({position:{x:70,y:25},force:true});
-            await p.waitForFunction(()=>!!document.querySelector('.status-section .expand-flow-card'),null,{timeout:20000});
+            const topMatch=p.locator('.status-section[data-status-section="live"] .match-row[data-match-id="'+proof.rows[0].id+'"]');
+            await topMatch.click({position:{x:70,y:32},force:true});
+            await p.waitForFunction(id=>document.querySelector('.status-section .match-row.active[data-match-id="'+id+'"]')?.parentElement?.querySelector('.expand-flow-card')&&window.__b46SignalStableQA.state().frozen===id,proof.rows[0].id,{timeout:22000});
             const liveOrder=await p.evaluate(()=>({frozen:window.__b46SignalStableQA.state().frozen,flow:!!document.querySelector('.status-section .expand-flow-card'),strips:document.querySelectorAll('.status-section .b46-signal-league-strip').length}));
-            assert(liveOrder.flow&&liveOrder.frozen,'EVENT_FLOW_BROKEN_'+mode);
+            assert(liveOrder.flow&&liveOrder.frozen===proof.rows[0].id,'EVENT_FLOW_BROKEN_'+mode);
             console.log('BALL46_SIGNAL_LEAGUE_NO_OVERLAP_PASS_'+mode+' '+JSON.stringify({matches:proof.rows.length,headerCount:proof.headerCount,liveOrder}));
             await p.close();
           }
