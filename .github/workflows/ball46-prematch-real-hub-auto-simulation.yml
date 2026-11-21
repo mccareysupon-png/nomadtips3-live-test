@@ -1,0 +1,38 @@
+name: BALL46 real HUB cache automatic five-trip and 1X2 Bot simulation
+on:
+  push:
+    branches: [test/ball46-prematch-v1-20261120]
+    paths: ['.github/workflows/ball46-prematch-real-hub-auto-simulation.yml']
+permissions: {contents: read}
+jobs:
+  smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Read cached HUB only; simulate five trips, Bot selection and settlement with temporary local SQLite
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {DatabaseSync} from 'node:sqlite';
+          import {init,totals} from './qa/prematch-history-20261120/history.mjs';
+          import {initPickLedger,picksFromBot,recordPicks,ledger} from './qa/prematch-history-20261120/test-pick-ledger.mjs';
+          import {initHistoryRounds,importHistoryRoundFromCache,historyRoundState} from './qa/prematch-history-20261120/history-five-rounds.mjs';
+          import {scheduledFromNormalHub} from './qa/prematch-history-20261120/hub-upcoming-feed.mjs';
+          import {mergeStoredPrematch} from './qa/prematch-history-20261120/stored-prematch-feed.mjs';
+          import {dryRunStored,MARKET_SHADOW} from './qa/prematch-history-20261120/stored-signal-adapter.mjs';
+          const r=await fetch('https://nomadtips3-5usd-hub-343.mccarey-supon.workers.dev/snapshot',{signal:AbortSignal.timeout(16000)});assert(r.ok,'HUB_CACHE_HTTP_'+r.status);
+          const snap=await r.json(),now=Math.floor(Date.now()/1000);
+          const sql=new DatabaseSync(':memory:');
+          const db={exec:(q,...a)=>{const st=sql.prepare(q);return st.columns().length?st.all(...a):st.run(...a)},transaction:f=>{sql.exec('BEGIN');try{let v=f();sql.exec('COMMIT');return v}catch(e){sql.exec('ROLLBACK');throw e}}};
+          init(db);initPickLedger(db);initHistoryRounds(db);
+          const packages=[];for(let roundNo=1;roundNo<=5;roundNo++)packages.push(importHistoryRoundFromCache(db,snap,now,{roundNo}).current);
+          const batch=historyRoundState(db,now);assert(batch.imported<=500&&batch.completed===5&&batch.providerCalls===0,'HISTORY_LIMIT');
+          const feed=scheduledFromNormalHub(snap,now);assert.equal(feed.status,'READY');assert(feed.fixtures.length>0,'NO_UPCOMING_HUB_1X2');
+          const merged=mergeStoredPrematch([],feed.fixtures,now),bot=dryRunStored(db,merged.fixtures,now,1000,MARKET_SHADOW);
+          const signals=picksFromBot(bot,merged.fixtures,now),added=recordPicks(db,signals,now);
+          const latest=ledger(db);assert.equal(latest.stats.total,added.added);assert.equal(latest.mode,'TEST_ONLY');
+          console.log('REAL_HUB_CUTOVER_SIMULATION '+JSON.stringify({source:'CACHE_ONLY_FROM_5USD_HUB',hubSnapshotAt:snap.fetchedAt,historyBatches:packages,historyTotal:batch.imported,historyCeiling:500,upcomingFromHub:feed.stats,botSummary:bot.counts,qualified:bot.outcomes.oneX2,recorded:added,ledger:latest.stats,providerCalls:0,productionWrites:0}));
+          JS
