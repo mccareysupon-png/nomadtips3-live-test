@@ -27,5 +27,9 @@ jobs:
            return {elems,chain,bodyAttrs:[...document.body.attributes].map(a=>[a.name,a.value])};
           });
           console.log('MOBILE_NAV_INSPECT '+JSON.stringify(d));
+          await p.locator('[data-b46m-open]').click();
+          await p.waitForTimeout(150);
+          const drawer=await p.evaluate(()=>{const x=document.querySelector('#b46m-drawer');const visible=e=>e.getBoundingClientRect().width>0&&e.getBoundingClientRect().height>0;return {html:x?.outerHTML.slice(0,10000),classes:x?.className,display:x&&getComputedStyle(x).display,visible:x&&visible(x),links:[...x.querySelectorAll('a,button,[role="button"]')].map(e=>({tag:e.tagName,html:e.outerHTML.slice(0,500),text:e.textContent.trim(),visible:visible(e)}))}});
+          console.log('MOBILE_DRAWER_INSPECT '+JSON.stringify(drawer));
           await b.close();
           JS
