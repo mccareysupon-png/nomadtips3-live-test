@@ -289,6 +289,31 @@ jobs:
               const initialMove=await readMove();assert(!initialMove.direction,'ODDS_FLASH_ON_INITIAL_LOAD');assert.equal(initialMove.cellBg,h.reference.pitColor);
               const initialValue=Number(originalPrice.raw),upValue=Number((initialValue+.07).toFixed(2));
               const up=await simulate(upValue);
+              const trials=await odd.evaluate(el=>{
+                const q=el.closest('.b46-v3-quote');
+                const row=el.closest('.match-row');
+                const before=q.style.paddingRight;
+                const originalPriority=q.style.getPropertyPriority('padding-right');
+                const style=document.createElement('style');
+                style.textContent='html:root[data-theme="dark"] body [data-match-id].match-row .market-cell :is(#b46-odds-specificity#b46-odds-specificity#b46-odds-specificity,.b46-v3-quote[data-b46-odds-move])::after{right:6px!important;}';
+                document.head.append(style);
+                const captures=[];
+                const dim=e=>{const r=e.getBoundingClientRect();return {l:Math.round(r.left*10)/10,r:Math.round(r.right*10)/10,w:Math.round(r.width*10)/10,h:Math.round(r.height*10)/10}};
+                for(const pad of [0,6,9,12,14]){
+                  q.style.setProperty('padding-right',pad+'px','important');
+                  const qRect=q.getBoundingClientRect(),nRect=el.getBoundingClientRect();
+                  const pseudo=getComputedStyle(q,'::after');
+                  const canvas=document.createElement('canvas');const ctx=canvas.getContext('2d');ctx.font=pseudo.font;
+                  const arrowWidth=ctx.measureText('↑').width;
+                  const arrowLeft=qRect.right-parseFloat(pseudo.right)-arrowWidth;
+                  const next=q.nextElementSibling?.getBoundingClientRect();
+                  captures.push({pad,quote:dim(q),num:dim(el),neighbor:q.nextElementSibling?dim(q.nextElementSibling):null,arrowRight:pseudo.right,arrowWidth:Math.round(arrowWidth*10)/10,numberToArrowGap:Math.round((arrowLeft-nRect.right)*10)/10,arrowToNextGap:next?Math.round((next.left-(arrowLeft+arrowWidth))*10)/10:null,rowWidth:dim(row).w,computedPadding:getComputedStyle(q).paddingRight});
+                }
+                if(before)q.style.setProperty('padding-right',before,originalPriority);else q.style.removeProperty('padding-right');
+                style.remove();
+                return captures;
+              });
+              console.log('ODDS_SPACING_TRIAL',JSON.stringify(trials));
               console.log('ODDS_UP_PROOF',JSON.stringify(up));
               assert.equal(up.direction,'up','ODDS_UP_WAS_NOT_DETECTED');assert(up.arrow.includes('↑'));assert.equal(up.cellBg,h.reference.pitColor);assert.equal(up.quoteShadow,'none','UP_SHEET_HAS_BORDER_SHADOW');assert.equal(up.rounding,'6px','UP_SHEET_NOT_ROUNDED');assert(up.arrowTransform!=='none','UP_ARROW_NOT_CENTERED');assert(Math.abs(up.arrowOffsetFromPriceCenter)<=2,'UP_ARROW_MISALIGNED_WITH_NUMBER');assert.equal(up.border,'0px','UP_SHEET_HAS_BORDER');assert.equal(up.outline,'none','UP_SHEET_HAS_OUTLINE');
               await p.waitForTimeout(500);assert.equal((await readMove()).direction,'up','UP_HIGHLIGHT_TOO_SHORT');
