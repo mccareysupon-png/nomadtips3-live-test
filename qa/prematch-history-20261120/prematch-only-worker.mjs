@@ -5,11 +5,12 @@ import {dryRunStored,BASELINE_SHADOW,ACCUMULATION_SHADOW,TRIAL_SHADOW,MARKET_SHA
 import {initPickLedger,recordPicks,settlePicks,ledger,picksFromBot} from './test-pick-ledger.mjs';
 import {matchNormalHub} from './normal-hub-monitor.mjs';
 import {preMatchDailyBook} from './london-cutoff.mjs';
+import {initHistoryRounds,historyRoundState,importHistoryRoundFromCache} from './history-five-rounds.mjs';
 const AUTO_PROFILE_VERSION='auto-shadow-market-1x2-v1';
 const json=x=>Response.json(x,{headers:{'cache-control':'no-store'}});
 export class PrematchStore extends DurableObject{
- constructor(ctx,env){super(ctx,env);this.db={exec:(q,...a)=>ctx.storage.sql.exec(q,...a),transaction:f=>ctx.storage.transactionSync(f)};init(this.db);initPickLedger(this.db)}
- async syncNormalHub(now,force=false){
+ constructor(ctx,env){super(ctx,env);this.db={exec:(q,...a)=>ctx.storage.sql.exec(q,...a),transaction:f=>ctx.storage.transactionSync(f)};init(this.db);initPickLedger(this.db);initHistoryRounds(this.db)}
+ async syncNormalHub(now,force=false,withHistory=false){
   const stored=await this.ctx.storage.get('normalHubState');
   if(!force&&stored&&now-stored.checkedAt<20)return stored;
   if(!this.env.HUB)return stored??{source:'NOMAD_343_HUB_CACHED_SNAPSHOT',error:'READ_ONLY_HUB_BINDING_MISSING',monitor:{},providerCalls:0};
@@ -20,7 +21,8 @@ export class PrematchStore extends DurableObject{
    const parsed=matchNormalHub(snapshot,ledger(this.db).rows,now);
    const imported=parsed.finals.length?ingest(this.db,parsed.finals,parsed.observed):{added:0,duplicate:0,corrected:0,rejected:0};
    const settled=await this.ctx.storage.get('testLedgerEnabled')?settlePicks(this.db,now):0;
-   const next={...parsed,finals:undefined,checkedAt:now,imported,settled};
+   const historyRound=withHistory?importHistoryRoundFromCache(this.db,snapshot,now):historyRoundState(this.db,now);
+   const next={...parsed,finals:undefined,checkedAt:now,imported,settled,historyRound};
    await this.ctx.storage.put('normalHubState',next);
    return next;
   }catch(e){
@@ -37,7 +39,7 @@ export class PrematchStore extends DurableObject{
  const rows=Array.from(this.db.exec("SELECT r.* FROM result_version r WHERE r.status='finished' AND r.observed=(SELECT MAX(v.observed) FROM result_version v WHERE v.fixture_id=r.fixture_id) ORDER BY r.kickoff DESC LIMIT 50"));
  const allTeams=Array.from(this.db.exec("WITH latest AS (SELECT r.* FROM result_version r WHERE r.status='finished' AND r.observed=(SELECT MAX(v.observed) FROM result_version v WHERE v.fixture_id=r.fixture_id)), team_rows AS (SELECT home_id AS team FROM latest UNION ALL SELECT away_id AS team FROM latest) SELECT team,COUNT(*) AS matches FROM team_rows GROUP BY team"));
  const saved=await this.ctx.storage.get('previewSelections');
- return json({system:'BALL46_PREMATCH_ONLY',stored:totals(this.db),teams:allTeams.length,teamsWith10:allTeams.filter(n=>n.matches>=10).length,results:rows,selection:saved??null,testLedger:ledger(this.db),dailyBook:preMatchDailyBook(this.db,now),testMonitor});
+ return json({system:'BALL46_PREMATCH_ONLY',stored:totals(this.db),teams:allTeams.length,teamsWith10:allTeams.filter(n=>n.matches>=10).length,results:rows,selection:saved??null,testLedger:ledger(this.db),dailyBook:preMatchDailyBook(this.db,now),historyRounds:historyRoundState(this.db,now),testMonitor});
  }
  if(path==='/merge-archive'&&req.method==='POST'){
  const j=await req.json();if(!Array.isArray(j.rows)||j.rows.length>2000)return new Response('Invalid archive',{status:400});
@@ -63,13 +65,15 @@ export class PrematchStore extends DurableObject{
  const shadow=dryRunStored(this.db,merged.fixtures,now,1000,MARKET_SHADOW);return json({system:'BALL46_PREMATCH_ONLY',stored:merged.stats.stored,feed:merged.stats,rows:shadow.rows.map(x=>({...x,picks:[]})),counts:shadow.counts,probability:shadow.probability,diagnostics:shadow.diagnostics,published:0,ruleState:'READ_ONLY_SHADOW',networkCalls:0});
  }
  if(path==='/bot-switch'&&req.method==='POST')return new Response('Publication disabled in test shadow',{status:409});
- if(path==='/test-ledger'&&req.method==='GET'){const testMonitor=await this.syncNormalHub(now);return json({...ledger(this.db),dailyBook:preMatchDailyBook(this.db,now),testMonitor})}
+ if(path==='/test-ledger'&&req.method==='GET'){const testMonitor=await this.syncNormalHub(now);return json({...ledger(this.db),dailyBook:preMatchDailyBook(this.db,now),historyRounds:historyRoundState(this.db,now),testMonitor})}
  if(path==='/test-ledger-start'&&req.method==='POST'){
  const j=await req.json();const matches=await this.ctx.storage.get('botFixtures')??[];const map=new Map(matches.map(f=>[String(f.id),f]));
  if(!Array.isArray(j.picks)||j.picks.some(p=>{const f=map.get(String(p.id));return !f||f.kickoff_ts!==p.kickoff||Number(f.teams.home.id)!==Number(p.homeId)||Number(f.teams.away.id)!==Number(p.awayId)}))return new Response('Frozen evidence does not match stored fixtures',{status:400});
  const recorded=recordPicks(this.db,j.picks,now);if(recorded.rejected)return json({error:'INVALID_PICK',recorded});
  await this.ctx.storage.put('testLedgerEnabled',true);const settled=settlePicks(this.db,now);return json({recorded,settled,...ledger(this.db)});
  }
+ if(path==='/history-round-state'&&req.method==='GET')return json(historyRoundState(this.db,now));
+ if(path==='/history-round-tick'&&req.method==='POST'){const h=await this.syncNormalHub(now,true,true);return json({rounds:historyRoundState(this.db,now),history:h.historyRound??null,providerCalls:0})}
  if(path==='/bot-run'&&req.method==='POST'){
  const fixtures=await this.ctx.storage.get('botFixtures')??[];
  const report=dryRunStored(this.db,fixtures,now,1000,MARKET_SHADOW);
@@ -87,7 +91,7 @@ export class PrematchStore extends DurableObject{
  if(!old){const seed={cycle:'1795154400',state:'complete',source:'verified_import_run_44723780062',requests:2,accepted:113};const n=Number(totals(this.db).finished);if(n<113)return new Response('Missing verified import',{status:409});await this.ctx.storage.put('dailyImport',seed)}
  return json({daily:await this.ctx.storage.get('dailyImport'),stored:totals(this.db)})}
  if(path==='/daily-run'&&req.method==='POST')return new Response(JSON.stringify({state:'DISABLED_NO_ADDITIONAL_PROVIDER_RUNS',providerCalls:0}),{status:409,headers:{'content-type':'application/json'}});
- if(path==='/health')return json({system:'BALL46_PREMATCH_ONLY',stored:totals(this.db),liveBindings:0,hubReadOnly:true,cutoff:'06:00 Europe/London',dailyBook:preMatchDailyBook(this.db,now),providerCalls:0});
+ if(path==='/health')return json({system:'BALL46_PREMATCH_ONLY',stored:totals(this.db),liveBindings:0,hubReadOnly:true,cutoff:'06:00 Europe/London',dailyBook:preMatchDailyBook(this.db,now),historyRounds:historyRoundState(this.db,now),providerCalls:0});
  if(path==='/import'&&req.method==='POST'){const j=await req.json();if(!Array.isArray(j.rows)||j.rows.length>100||j.rows.some(f=>normalize(f)?.status!=='finished'||f.kickoff_ts>=now))return new Response('Invalid rows',{status:400});const stats=ingest(this.db,j.rows,now);const settled=await this.ctx.storage.get('testLedgerEnabled')?settlePicks(this.db,now):0;return json({ok:true,stats,settled,stored:totals(this.db),providerCalls:0})}
  return new Response('Not found',{status:404})
  }}
@@ -96,4 +100,4 @@ const html=`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="vie
 const el=id=>document.getElementById(id);function cell(tr,v){const td=document.createElement('td');td.textContent=v;tr.append(td)}
 async function load(){try{const r=await fetch('/preview-data',{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);const d=await r.json();el('status').textContent='Connected to independent Pre-Match archive';el('cards').replaceChildren();for(const [label,value] of [['Finished results',d.stored.finished||0],['Teams in archive',d.teams],['Teams with 10+',d.teamsWith10],['Published picks',d.selection?.published??0]]){const c=document.createElement('div');c.className='card';c.textContent=label;const b=document.createElement('b');b.textContent=value;c.append(b);el('cards').append(c)}el('selection').textContent=d.selection?'Candidates: '+d.selection.rows.length+' · '+d.selection.ruleState:'No upcoming fixtures submitted yet. Initial league backfill and selection rules are pending.';el('selection').className='warn';const rows=d.selection?.rows??[];const market=rows.filter(x=>x.oneX2?.signal!=='NO_SIGNAL'&&x.oneX2?.metrics?.method==='market-anchored-1x2-v1');el('selection').textContent=d.selection?'Evaluated: '+(d.selection.probability?.oneX2?.computed??0)+' · Probability passed: '+(d.selection.probability?.oneX2?.passed??0)+' · Experimental candidates: '+market.length:'No stored evaluation';el('market').replaceChildren();for(const x of market){const m=x.oneX2.metrics,s=m.sides.find(v=>v.signal===x.oneX2.signal);if(!s)continue;const tr=document.createElement('tr');for(const v of [x.home+' vs '+x.away,s.signal,(s.model*100).toFixed(2)+'%',s.price.toFixed(2),(s.edge*100).toFixed(2)+'%',(s.ev*100).toFixed(2)+'%',x.homeCount+'/'+x.awayCount,m.evidenceTier==='sparse'?'Low sample':'3+ each'])cell(tr,v);el('market').append(tr)}el('results').replaceChildren();for(const x of d.results){const tr=document.createElement('tr');for(const v of [x.fixture_id,new Date(x.kickoff*1000).toISOString().slice(0,16).replace('T',' '),x.home_id,x.hg+' : '+x.ag,x.away_id,x.league_id])cell(tr,v);el('results').append(tr)}}catch(e){el('status').textContent='Load failed: '+e.message}}load();
 </script></html>`;
-export default {async scheduled(event,env){if(event.cron!=='*/15 * * * *'){console.log('PREMATCH_EXTRA_PROVIDER_CYCLE_DISABLED');return}const stub=env.STORE.get(env.STORE.idFromName('prematch-only-v1'));const r=await stub.fetch('https://prematch.internal/bot-run',{method:'POST'});console.log('PREMATCH_LOCAL_BOT '+r.status)},async fetch(req,env){const p=new URL(req.url).pathname;if(req.method==='GET'&&p==='/preview')return new Response(html,{headers:{'content-type':'text/html;charset=utf-8','cache-control':'no-store','x-robots-tag':'noindex,nofollow'}});if(req.method==='GET'&&p==='/preview-data')return env.STORE.get(env.STORE.idFromName('prematch-only-v1')).fetch(req);if(!env.OWNER_SECRET||req.headers.get('Authorization')!=='Bearer '+env.OWNER_SECRET)return new Response('Not found',{status:404});return env.STORE.get(env.STORE.idFromName('prematch-only-v1')).fetch(req)}};
+export default {async scheduled(event,env){if(event.cron!=='*/15 * * * *'){console.log('PREMATCH_EXTRA_PROVIDER_CYCLE_DISABLED');return}const stub=env.STORE.get(env.STORE.idFromName('prematch-only-v1'));const h=await stub.fetch('https://prematch.internal/history-round-tick',{method:'POST'});console.log('PREMATCH_HISTORY_LOCAL_ROUND '+h.status);const r=await stub.fetch('https://prematch.internal/bot-run',{method:'POST'});console.log('PREMATCH_LOCAL_BOT '+r.status)},async fetch(req,env){const p=new URL(req.url).pathname;if(req.method==='GET'&&p==='/preview')return new Response(html,{headers:{'content-type':'text/html;charset=utf-8','cache-control':'no-store','x-robots-tag':'noindex,nofollow'}});if(req.method==='GET'&&p==='/preview-data')return env.STORE.get(env.STORE.idFromName('prematch-only-v1')).fetch(req);if(!env.OWNER_SECRET||req.headers.get('Authorization')!=='Bearer '+env.OWNER_SECRET)return new Response('Not found',{status:404});return env.STORE.get(env.STORE.idFromName('prematch-only-v1')).fetch(req)}};
