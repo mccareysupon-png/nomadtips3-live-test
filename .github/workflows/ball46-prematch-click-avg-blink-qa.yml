@@ -25,7 +25,7 @@ jobs:
             const [r,js,css]=await Promise.all([fetch(url,{cache:'no-store'}),fetch(base+'/__b46_prematch_client.js',{cache:'no-store'}),fetch(base)]);
             if(r.ok&&js.ok&&css.ok){
               data=await r.json();src=await js.text();styles=await css.text();
-              if(src.includes('const avgOdds=items=>')&&src.includes("e.target?.closest?.('#b46-prematch-panel')")&&src.includes('b46pm-minute-mark')&&src.includes("window.addEventListener('click'")&&src.includes('function clearNativeActive()')&&src.includes('change.target===side')&&src.includes('b46pm-stats-board')&&src.includes('b46PmPeriod')&&src.includes('function readRoute()')&&src.includes('function syncRoute()')&&src.includes('function membershipBanner()'))break;
+              if(src.includes('const avgOdds=items=>')&&src.includes("e.target?.closest?.('#b46-prematch-panel')")&&src.includes('b46pm-minute-mark')&&src.includes("window.addEventListener('click'")&&src.includes('function clearNativeActive()')&&src.includes('change.target===side')&&src.includes('b46pm-stats-board')&&src.includes('b46PmPeriod')&&src.includes('function readRoute()')&&src.includes('function syncRoute()')&&src.includes('function membershipBanner()')&&src.includes('function syncPrematchViewport()')&&src.includes('b46pm-scroll-region'))break;
             }
             await new Promise(r=>setTimeout(r,2200));
           }
@@ -38,6 +38,7 @@ jobs:
           assert(src.includes('b46pm-stats-board')&&src.includes('b46PmPeriod'),'UNIFIED_STATS_PANEL_NOT_DEPLOYED');
           assert(src.includes('function readRoute()')&&src.includes('function syncRoute()'),'PREMATCH_REFRESH_ROUTING_NOT_DEPLOYED');
           assert(src.includes('function membershipBanner()')&&src.includes('b46pm-membership-promo'),'PREMATCH_MEMBERSHIP_BANNER_NOT_DEPLOYED');
+          assert(src.includes('function syncPrematchViewport()')&&src.includes('b46pm-scroll-region'),'CLIPPED_SCROLL_REGION_NOT_DEPLOYED');
           assert.equal(data.testLedger?.mode,'TEST_ONLY');
           const expected=rows=>{const n=rows.map(x=>Number(x.price)).filter(x=>Number.isFinite(x)&&x>1);return n.length?(n.reduce((a,b)=>a+b,0)/n.length).toFixed(2):'—'};
           const allAvg=expected(data.testLedger.rows),w=data.dailyBook.window;
@@ -72,7 +73,7 @@ jobs:
                 const img=mobile?.querySelector('img');
                 const art=banner?.querySelector('.b46-exact-art');
                 const artImages=art?[...art.children].map(x=>getComputedStyle(x).backgroundImage):[];
-                const beforeHead=banner?.nextElementSibling?.classList.contains('b46pm-head');
+                const beforeHead=banner?.nextElementSibling?.id==='b46pm-scroll-region'&&banner.nextElementSibling.firstElementChild?.classList.contains('b46pm-head');
                 const rect=banner?.getBoundingClientRect();
                 return {
                   count:document.querySelectorAll('#b46-prematch-panel>#b46pm-membership-promo').length,
@@ -87,8 +88,8 @@ jobs:
                 };
               },mobile);
               assert.equal(promo.count,1,'DUPLICATE_PROMO_BANNER');
-              assert.equal(promo.position,'sticky','PROMO_NOT_STICKY');
-              assert.equal(promo.top,'0px','PROMO_STICKY_OFFSET_WRONG');
+              assert.equal(promo.position,'relative','PROMO_NOT_FIXED_OUTSIDE_SCROLL');
+              assert.equal(promo.top,'auto','PROMO_FIXED_OFFSET_WRONG');
               assert.equal(promo.beforeHead,true,'PROMO_NOT_TOP_OF_PREMATCH');
               assert(promo.width>100&&promo.height>20,'PROMO_NO_VISIBLE_GEOMETRY');
               assert.deepEqual(promo.href,['https://member.ball46.com/pricing','https://member.ball46.com/pricing'],'PROMO_LINK_CHANGED');
@@ -126,6 +127,26 @@ jobs:
               await p.waitForTimeout(240);
               const probeAfter=await sampleScroll();
               console.log('PREMATCH_SCROLL_FIRST_WHEEL_PROBE '+JSON.stringify({mobile,theme,before:probeBefore,after:probeAfter}));
+              // The banner must not move at all on the first tick. Only the
+              // child scrolling viewport advances, while the root stays locked.
+              const scrollRootBefore=probeBefore.ancestors.find(x=>x.id==='b46-prematch-panel');
+              const scrollRootAfter=probeAfter.ancestors.find(x=>x.id==='b46-prematch-panel');
+              assert(Math.abs(probeAfter.bannerY-probeBefore.bannerY)<1,'PROMO_FIRST_SCROLL_JUMP '+JSON.stringify({mobile,theme,before:probeBefore.bannerY,after:probeAfter.bannerY}));
+              assert(Math.abs(probeAfter.windowY-probeBefore.windowY)<1,'DOCUMENT_SCROLLED_IN_PREMATCH '+JSON.stringify({mobile,theme,before:probeBefore.windowY,after:probeAfter.windowY}));
+              assert(Math.abs(scrollRootAfter.y-scrollRootBefore.y)<1,'PREMATCH_FRAME_MOVED_ON_SCROLL');
+              const clip=await p.evaluate(()=>{
+                const banner=document.querySelector('#b46pm-membership-promo');
+                const region=document.querySelector('#b46pm-scroll-region');
+                const br=banner.getBoundingClientRect(),rr=region.getBoundingClientRect(),s=getComputedStyle(region);
+                const center=document.elementFromPoint(br.left+br.width/2,br.top+Math.min(br.height-3,br.height/2));
+                return {regionTop:rr.top,bannerBottom:br.bottom,overflowY:s.overflowY,regionScrollTop:region.scrollTop,regionClient:region.clientHeight,regionScrollHeight:region.scrollHeight,rootY:scrollY,hitPromo:!!center?.closest?.('#b46pm-membership-promo'),rootOverflow:getComputedStyle(document.documentElement).overflowY};
+              });
+              assert(clip.regionTop>=clip.bannerBottom-1,'CONTENT_OVERLAPS_PROMO');
+              assert.equal(clip.overflowY,'auto','MATCH_CONTENT_NOT_SCROLL_CLIPPED');
+              assert(clip.regionScrollTop>=30,'FIRST_SCROLL_DID_NOT_SCROLL_CONTENT '+JSON.stringify(clip));
+              assert(clip.hitPromo,'CONTENT_PAINTED_THROUGH_PROMO '+JSON.stringify(clip));
+              assert.equal(clip.rootOverflow,'hidden','PAGE_SCROLL_NOT_LOCKED');
+              console.log('PREMATCH_SCROLL_CLIP_PASS '+JSON.stringify({mobile,theme,bannerY:probeAfter.bannerY,documentY:probeAfter.windowY,internalScroll:clip.regionScrollTop,regionTop:clip.regionTop,bannerBottom:clip.bannerBottom,hitPromo:clip.hitPromo}));
               await p.mouse.wheel(0,-110);
               await p.waitForTimeout(200);
               const readStats=()=>p.evaluate(()=>{
