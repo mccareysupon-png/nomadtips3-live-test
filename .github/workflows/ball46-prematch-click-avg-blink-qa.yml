@@ -25,7 +25,7 @@ jobs:
             const [r,js,css]=await Promise.all([fetch(url,{cache:'no-store'}),fetch(base+'/__b46_prematch_client.js',{cache:'no-store'}),fetch(base)]);
             if(r.ok&&js.ok&&css.ok){
               data=await r.json();src=await js.text();styles=await css.text();
-              if(src.includes('const avgOdds=items=>')&&src.includes("e.target?.closest?.('#b46-prematch-panel')")&&src.includes('b46pm-minute-mark')&&src.includes("window.addEventListener('click'")&&src.includes('function clearNativeActive()')&&src.includes('change.target===side')&&src.includes('b46pm-stats-board')&&src.includes('b46PmPeriod')&&src.includes('function readRoute()')&&src.includes('function syncRoute()')&&src.includes('function membershipBanner()')&&src.includes('function syncPrematchViewport()')&&src.includes('b46pm-scroll-region'))break;
+              if(src.includes('const avgOdds=items=>')&&src.includes("e.target?.closest?.('#b46-prematch-panel')")&&src.includes('b46pm-minute-mark')&&src.includes("window.addEventListener('click'")&&src.includes('function clearNativeActive()')&&src.includes('change.target===side')&&src.includes('b46pm-stats-board')&&src.includes('b46PmPeriod')&&src.includes('function readRoute()')&&src.includes('function syncRoute()')&&src.includes('function membershipBanner()')&&src.includes('function syncPrematchViewport()')&&src.includes('b46pm-scroll-region')&&src.includes('function performancePanel()'))break;
             }
             await new Promise(r=>setTimeout(r,2200));
           }
@@ -39,6 +39,7 @@ jobs:
           assert(src.includes('function readRoute()')&&src.includes('function syncRoute()'),'PREMATCH_REFRESH_ROUTING_NOT_DEPLOYED');
           assert(src.includes('function membershipBanner()')&&src.includes('b46pm-membership-promo'),'PREMATCH_MEMBERSHIP_BANNER_NOT_DEPLOYED');
           assert(src.includes('function syncPrematchViewport()')&&src.includes('b46pm-scroll-region'),'CLIPPED_SCROLL_REGION_NOT_DEPLOYED');
+          assert(src.includes('function performancePanel()'),'PERFORMANCE_DASHBOARD_NOT_DEPLOYED');
           assert.equal(data.testLedger?.mode,'TEST_ONLY');
           const expected=rows=>{const n=rows.map(x=>Number(x.price)).filter(x=>Number.isFinite(x)&&x>1);return n.length?(n.reduce((a,b)=>a+b,0)/n.length).toFixed(2):'—'};
           const allAvg=expected(data.testLedger.rows),w=data.dailyBook.window;
@@ -220,6 +221,37 @@ jobs:
                  assert.deepEqual(active.map(x=>x.route),[route],'DUPLICATE_ACTIVE '+JSON.stringify({mobile,theme,route,active}));
                  console.log('PREMATCH_SINGLE_ACTIVE_PASS '+JSON.stringify({mobile,theme,route,active}));
               }
+
+              // Pre-Match 1X2 summary is intentionally separate from the
+              // prediction Today's card grid; it must never inherit Live Stats.
+              for(const route of ['all','1x2']){
+                const navPerf=(mobile?'#b46m-drawer':'aside.left-rail')+' [data-b46-prematch-route="'+route+'"]';
+                await p.locator(navPerf).evaluate(e=>e.click());
+                await p.locator('#b46-prematch-panel .b46pm-performance').waitFor({timeout:10000});
+                assert.equal(await p.locator('#b46-prematch-panel .b46pm-performance').count(),1);
+                assert.equal(await p.locator('#b46-prematch-panel .b46pm-stats-board').count(),0,'DUPLICATED_STATS_IN_PERFORMANCE');
+                const displayed=await p.locator('#b46-prematch-panel .b46pm-performance').innerText();
+                assert(displayed.includes('LONG-TERM PERFORMANCE')&&displayed.includes('CUMULATIVE UNITS')&&displayed.includes('ROI')&&displayed.includes('MAX DRAWDOWN'),'DASHBOARD_FIELDS_MISSING');
+                assert(displayed.includes('TEST DATA')&&displayed.includes('Historical snapshots not yet connected'),'HISTORY_WITHOUT_SOURCE_NOT_DISCLOSED');
+                assert(displayed.includes('+4.70U'),'UNIT_LEDGER_VALUE_NOT_SHOWN');
+                for(const range of ['7D','30D','90D','ALL'])await p.locator('#b46-prematch-panel [data-b46pm-perf-range="'+range+'"]').click();
+                for(const metric of ['units','roi','winRate'])await p.locator('#b46-prematch-panel [data-b46pm-perf-metric="'+metric+'"]').click();
+                const metrics=await p.evaluate(()=>({
+                  metric:[...document.querySelectorAll('#b46-prematch-panel [data-b46pm-perf-metric][aria-pressed="true"]')].map(e=>e.dataset.b46pmPerfMetric),
+                  range:[...document.querySelectorAll('#b46-prematch-panel [data-b46pm-perf-range][aria-pressed="true"]')].map(e=>e.dataset.b46pmPerfRange),
+                  pointCount:document.querySelectorAll('#b46-prematch-panel .b46pm-chart-stage svg circle').length,
+                  source:document.querySelector('#b46-prematch-panel .b46pm-performance-provenance')?.textContent
+                }));
+                assert.deepEqual(metrics.metric,['winRate']);assert.deepEqual(metrics.range,['ALL']);
+                assert.equal(metrics.pointCount,1,'A SINGLE REAL DAILY CLOSE MUST BE ONE POINT NOT A FAKE TREND');
+                console.log('PREMATCH_PERFORMANCE_BASE_PASS '+JSON.stringify({mobile,theme,route,metrics}));
+              }
+              const bttsNav=(mobile?'#b46m-drawer':'aside.left-rail')+' [data-b46-prematch-route="btts"]';
+              await p.locator(bttsNav).evaluate(e=>e.click());
+              const noBtts=await p.locator('#b46-prematch-panel .b46pm-performance').innerText();
+              assert(noBtts.includes('No BTTS settlements recorded'),'BTTS_MUST_NOT_SHOW_1X2_DATA');
+              const returnPred=(mobile?'#b46m-drawer':'aside.left-rail')+' [data-b46-prematch-route="predictions"]';
+              await p.locator(returnPred).evaluate(e=>e.click());
               const selections=['.b46pm-title','.b46pm-stats-board','.b46pm-stats-toolbar','.b46pm-stat','.b46pm-stat-label','.b46pm-stat-value','.b46pm-list-head','.b46pm-match','.b46pm-meta','.b46pm-teams','.b46pm-pick','.b46pm-details'];
               const clickProof=[];
               for(const sel of selections){
