@@ -62,3 +62,32 @@ test('Half W/L count as full decisions in win-rate, half returns in P/L',()=>{
  const v=performanceView(s);
  assert.equal(v.netUnits,0.5);assert.equal(v.winRate,50);assert.equal(v.roi,25);
 });
+
+test('Late settlement updates only the affected and later daily closing snapshots',()=>{
+  let s=emptyPerformance(),seq=0;
+  const push=e=>s=applyLedgerEvent(s,{sequence:++seq,...e}).snapshot;
+  // Select all three independent matches before their authoritative finals.
+  for(const [id,date] of [['A','2026-11-17T09:00:00Z'],['B','2026-11-18T09:00:00Z'],['C','2026-11-19T09:00:00Z']]){
+    push({action:'SELECTED',signalId:id,pickedAt:date,odds:2});
+  }
+  push({action:'SETTLED',signalId:'B',settledAt:'2026-11-18T21:00:00Z',odds:2,status:'WIN'});
+  push({action:'SETTLED',signalId:'C',settledAt:'2026-11-19T21:00:00Z',odds:2,status:'WIN'});
+  assert.deepEqual(s.daily.map(d=>d.cumulativeUnits),[0,1,2]);
+  // A final arrives late but is posted to its authentic London settlement day.
+  push({action:'SETTLED',signalId:'A',settledAt:'2026-11-17T23:00:00Z',odds:2,status:'LOSS'});
+  assert.deepEqual(s.daily.map(d=>d.cumulativeUnits),[-1,0,1]);
+  assert.equal(s.netUnits,1);
+  assert.equal(performanceView(s,'ALL').maxDrawdown,1);
+});
+test('Each newly recorded day inherits the prior closing balance without replaying old results',()=>{
+  let s=emptyPerformance(),seq=0;
+  const push=e=>s=applyLedgerEvent(s,{sequence:++seq,...e}).snapshot;
+  push({action:'SELECTED',signalId:'A',pickedAt:'2026-11-17T12:00:00Z',odds:3});
+  push({action:'SETTLED',signalId:'A',settledAt:'2026-11-17T20:00:00Z',odds:3,status:'WIN'});
+  const firstClose=s.daily[0].cumulativeUnits;
+  push({action:'SELECTED',signalId:'B',pickedAt:'2026-11-18T12:00:00Z',odds:2});
+  assert.equal(s.daily[0].cumulativeUnits,firstClose);
+  assert.equal(s.daily[1].cumulativeUnits,firstClose);
+  push({action:'SETTLED',signalId:'B',settledAt:'2026-11-18T20:00:00Z',odds:2,status:'LOSS'});
+  assert.deepEqual(s.daily.map(x=>x.cumulativeUnits),[2,1]);
+});
