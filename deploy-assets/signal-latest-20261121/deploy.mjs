@@ -166,13 +166,19 @@ async function browserCheck(origin,label,full){
    const list=window.__b46SignalStableQA.latest(),byId=new Map(list.map(x=>[x.id,x.at]));
    const sorted=[...rows].sort((a,b)=>a.getBoundingClientRect().top-b.getBoundingClientRect().top).map(e=>({id:e.dataset.matchId,at:byId.get(e.dataset.matchId)||0}));
    const heads=[...document.querySelectorAll('.status-section .b46-signal-native-head')];
-   return {view:document.body.dataset.workspaceView,source:window.__b46SignalStableQA.state(),sorted,headers:heads.length,visibleFlags:heads.filter(h=>h.getBoundingClientRect().height>10&&h.querySelector('.league-flag')).length,nativeRows:rows.length,hasCustomHeading:!!document.querySelector('.b46-signal-unified-head,.b46-signal-league-strip'),style:!!document.getElementById('b46-signal-stable-production'),script:!!document.getElementById('b46-signal-stable-runtime-production'),odds:!!document.getElementById('b46-odds-flash-production'),sidebar:!!document.getElementById('b46-sidebar-winrate-production'),scrollY:document.querySelector('.board-sections')?.scrollTop};
+   const visibleHeads=heads.filter(h=>h.getBoundingClientRect().height>10);
+   const nativeFlagParity=visibleHeads.every(h=>{
+     const src=h.parentElement?.querySelector(':scope > .league-head:not(.b46-signal-native-head) .league-flag')?.getAttribute('src')||'';
+     const actual=h.querySelector('.league-flag')?.getAttribute('src')||'';
+     return src===actual;
+   });
+   return {visibleHeads:visibleHeads.length,nativeFlagParity,view:document.body.dataset.workspaceView,source:window.__b46SignalStableQA.state(),sorted,headers:heads.length,visibleFlags:heads.filter(h=>h.getBoundingClientRect().height>10&&h.querySelector('.league-flag')).length,nativeRows:rows.length,hasCustomHeading:!!document.querySelector('.b46-signal-unified-head,.b46-signal-league-strip'),style:!!document.getElementById('b46-signal-stable-production'),script:!!document.getElementById('b46-signal-stable-runtime-production'),odds:!!document.getElementById('b46-odds-flash-production'),sidebar:!!document.getElementById('b46-sidebar-winrate-production'),scrollY:document.querySelector('.board-sections')?.scrollTop};
   });
   assert(state.style&&state.script&&state.odds&&state.sidebar,'PRODUCTION_HEAD_INJECTION_INCOMPLETE_'+mode.name);
   assert(!state.hasCustomHeading&&state.source.sourceRequestsAdded===0,'UNEXPECTED_UI_OR_EXTRA_REQUESTS_'+mode.name);
   for(let i=1;i<state.sorted.length;i++)assert(state.sorted[i-1].at>=state.sorted[i].at,'NOT_SORTED_NEWEST_FIRST_'+mode.name);
   if(state.nativeRows>0)assert.equal(state.headers,state.nativeRows,'NATIVE_LEAGUE_HEADER_MISSING_'+mode.name);
-  if(state.nativeRows>0)assert.equal(state.visibleFlags,state.nativeRows,'NATIVE_LEAGUE_FLAG_MISSING_'+mode.name);
+  if(state.nativeRows>0)assert(state.nativeFlagParity,'NATIVE_LEAGUE_FLAG_DIFFERS_FROM_SOURCE_'+mode.name);
   let ghostFixed=false;
   if(state.sorted.length>0){
    const id=state.sorted[0].id;
