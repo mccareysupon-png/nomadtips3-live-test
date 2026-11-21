@@ -1,0 +1,38 @@
+html[data-theme="dark"] {
+  --b46-favorite-outline: #8dd7bf;
+  --b46-favorite-filled: #f2c94c;
+}
+
+html:root :is([data-b46-pin-v2], #b46gn-cards [data-b46-pin-mobile]) {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  color: var(--b46-favorite-outline, #176b58);
+  font: 700 20px/1 Arial, sans-serif;
+  font-variant-emoji: text;
+  text-shadow: none;
+}
+
+html:root :is([data-b46-pin-v2][aria-pressed="true"], #b46gn-cards [data-b46-pin-mobile][data-on="1"]) {
+  color: var(--b46-favorite-filled, #946500);
+}
+
+html:root :is([data-b46-pin-v2], #b46gn-cards [data-b46-pin-mobile]):focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 1px;
+}
+
+html:root [data-b46-pin-v2] {
+  width: 24px;
+  height: 24px;
+  left: 5px;
+}
+
+@media (max-width: 760px) {
+  html:root [data-b46-pin-v2] {
+    width: 30px;
+    height: 30px;
+    left: 2px;
+  }
+}

@@ -1,0 +1,51 @@
+name: "[Codex PC] Ball46 favorite stars preview"
+
+on:
+  push:
+    branches: [codex-pc/ball46-favorite-stars]
+    paths:
+      - qa/codex-pc-favorite-stars/**
+      - .github/workflows/codex-pc-favorite-stars-preview.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ball46-codex-pc-favorite-stars-preview
+  cancel-in-progress: false
+
+jobs:
+  deploy-preview:
+    if: github.ref == 'refs/heads/codex-pc/ball46-favorite-stars'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: qa/codex-pc-favorite-stars
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check the test target
+        run: |
+          node --check worker.mjs
+          node -e 'const c = JSON.parse(require("node:fs").readFileSync("wrangler.jsonc")); require("node:assert/strict")(c.name === "ball46-codex-pc-favorite-stars-preview" && c.workers_dev && !c.route && !c.routes)'
+      - name: Publish the Codex PC test Worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: '4.50.0'
+          workingDirectory: qa/codex-pc-favorite-stars
+          command: deploy --config wrangler.jsonc --name ball46-codex-pc-favorite-stars-preview
+      - name: Verify the test site
+        env:
+          PREVIEW: https://ball46-codex-pc-favorite-stars-preview.mccarey-supon.workers.dev
+        run: |
+          curl -fsS --retry 8 --retry-all-errors --retry-delay 2 "$PREVIEW/_codex-pc-favorite-stars/health" |
+            jq -e '.name == "ball46-codex-pc-favorite-stars-preview" and .scope == "test"'
+          curl -fsS --retry 5 --retry-all-errors "$PREVIEW/index.html?view=signal&signalMarket=ah" -o "$RUNNER_TEMP/favorite-stars-test.html"
+          rg -Fq 'id="codex-pc-favorite-stars"' "$RUNNER_TEMP/favorite-stars-test.html"
