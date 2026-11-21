@@ -114,6 +114,17 @@ async function browserCheck(origin,label,p,full=false){
    await pg.addInitScript(t=>localStorage.setItem('nomad343_dashboard_theme_v1',t),cfg.theme);
    await pg.route('**/*',route=>['GET','HEAD'].includes(route.request().method())?route.continue():route.abort());
    await pg.goto(origin+'/?releaseProbe='+Date.now(),{waitUntil:'domcontentloaded',timeout:70000});
+   if(cfg.width<1024){
+     await pg.waitForTimeout(1500);
+     const mobile=await pg.evaluate(()=>({injected:!!document.getElementById('b46-premium-match-production'),script:!!document.getElementById('b46-premium-user-action-production'),desktopQuery:matchMedia('(min-width:1024px)').matches,interacted:document.body?.hasAttribute('data-b46-premium-interacted'),width:document.documentElement.clientWidth,layoutWidth:document.documentElement.scrollWidth,styleRuleCount:(()=>{try{return document.getElementById('b46-premium-match-production').sheet?.cssRules?.length}catch{return -1}})()}));
+     assert(mobile.injected&&mobile.script,'MOBILE_PATCH_MARKER_MISSING');
+     assert.equal(mobile.desktopQuery,false,'DESKTOP_CSS_ENABLED_ON_MOBILE');
+     assert.equal(mobile.interacted,false,'MOBILE_ACTIVE_SCRIPT_ALREADY_RUNNING');
+     assert(mobile.styleRuleCount>0,'MOBILE_STYLESHEET_MISSING');
+     console.log('MOBILE_UNCHANGED_MEDIA_CHECK '+label+' '+JSON.stringify(mobile));
+     await pg.screenshot({path:'audit/'+label+'-'+cfg.name+'.png'});results[cfg.name]=mobile;
+     await pg.close();continue;
+   }
    await pg.waitForFunction(()=>[...document.querySelectorAll('[data-match-id].match-row')].some(x=>x.getBoundingClientRect().width>100&&x.querySelector('.market-cell')),null,{timeout:90000});
    const proof=await pg.evaluate(()=>{
     const visible=e=>e&&e.getBoundingClientRect().width>100&&e.getBoundingClientRect().height>15;
