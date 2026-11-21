@@ -21,11 +21,11 @@ export const londonBusinessDay=(when)=>{
 export const emptyPerformance=()=>({
   schema:SCHEMA,market:'1X2',unitStake:1,timezone:'Europe/London',cutoff:'06:00',
   lastSequence:0,picks:0,pending:0,settled:0,win:0,draw:0,loss:0,halfWin:0,halfLoss:0,
-  netUnits:0,stakedUnits:0,oddsSum:0,oddsCount:0,daily:[],updatedAt:null,
+  netUnits:0,stakedUnits:0,oddsSum:0,oddsCount:0,settledOddsSum:0,settledOddsCount:0,daily:[],updatedAt:null,
   // The source Ledger must enforce unique (market,signalId) on SELECTED and
   // unique SETTLED transition; monotonic event sequences are required.
 });
-const dayRow=date=>({date,picks:0,settled:0,win:0,draw:0,loss:0,halfWin:0,halfLoss:0,netUnits:0,stakedUnits:0,oddsSum:0,oddsCount:0,cumulativeUnits:0});
+const dayRow=date=>({date,picks:0,settled:0,win:0,draw:0,loss:0,halfWin:0,halfLoss:0,netUnits:0,stakedUnits:0,oddsSum:0,oddsCount:0,settledOddsSum:0,settledOddsCount:0,cumulativeUnits:0});
 // Keep the per-day book ordered; a new day inherits the prior closing balance.
 // Recent in-order settlements update one day only. A rare late correction must
 // adjust the affected day and later closing balances, never replay match history.
@@ -72,8 +72,9 @@ export function applyLedgerEvent(snapshot,event){
     // Unit values derive only from the ODDS LOCKED AT SELECTION.
     if(event.units!==undefined&&Math.abs(numeric(event.units,'UNITS')-units)>0.00001)throw Error('UNITS_NOT_MATCHING_LOCKED_ODDS');
     next.pending--;next.settled++;next.netUnits=round(next.netUnits+units);next.stakedUnits=round(next.stakedUnits+1);
+    next.settledOddsSum=round(next.settledOddsSum+selectionOdds);next.settledOddsCount++;
     const {row:r,index}=getDay(next,date);
-    r.settled++;r.netUnits=round(r.netUnits+units);r.stakedUnits=round(r.stakedUnits+1);
+    r.settled++;r.netUnits=round(r.netUnits+units);r.stakedUnits=round(r.stakedUnits+1);r.settledOddsSum=round(r.settledOddsSum+selectionOdds);r.settledOddsCount++;
     // Fast path for chronological events: update only today's closing balance.
     // A late authoritative settlement changes subsequent daily closes, not
     // previous match records or the underlying selection ledger.
@@ -102,8 +103,8 @@ export function performanceView(snapshot,range='ALL',endDay=null){
   const staked=entries.reduce((t,r)=>t+r.stakedUnits,0);
   const net=round(entries.reduce((t,r)=>t+r.netUnits,0));
   const picks=entries.reduce((t,r)=>t+r.picks,0);
-  const oddsSum=round(entries.reduce((t,r)=>t+r.oddsSum,0));
-  const oddsCount=entries.reduce((t,r)=>t+r.oddsCount,0);
+  const oddsSum=round(entries.reduce((t,r)=>t+(r.settledOddsSum??0),0));
+  const oddsCount=entries.reduce((t,r)=>t+(r.settledOddsCount??0),0);
   const points=entries.map(r=>({date:r.date,netUnits:round(r.cumulativeUnits-previous)}));
   let st=0,w=0,l=0,hi=0,maxDD=0;
   const series=entries.map((r,i)=>{
@@ -116,4 +117,40 @@ export function performanceView(snapshot,range='ALL',endDay=null){
     roi:staked>0?round(net/staked*100):null,winRate:win+loss>0?round(win/(win+loss)*100):null,
     avgOdds:oddsCount>0?round(oddsSum/oddsCount):null,settledDays:entries.filter(r=>r.settled>0).length,
     maxDrawdown:round(maxDD),pending:range==='ALL'?snapshot.pending:null,series};
+}
+
+/** Same lightweight response shape as /b46-receiver-v1/graph from Live Stats.
+ * Independent Pre-Match 1X2 ledger. Pure read-model projection: the Durable
+ * Object owner persists/caches it at ledger-commit time, not on UI requests.
+ * The chart uses epoch milliseconds, exactly as Live Receiver does.
+ */
+export function receiverGraph(snapshot,query={}){
+ if(snapshot?.schema!==SCHEMA||snapshot.market!=='1X2')throw Error('PREMATCH_LEDGER_REQUIRED');
+ const market=query.market??'1X2',variant=query.variant??'all',filter=query.filter??'all',range=query.range??'all';
+ if(market!=='1X2'||variant!=='all'||filter!=='all'||!['d7','d30','d90','all'].includes(range))throw Error('PREMATCH_RECEIVER_QUERY_UNSUPPORTED');
+ const view=performanceView(snapshot,range==='all'?'ALL':range.toUpperCase(),query.endDay||null);
+ const out=points=>points.map(p=>({date:Date.parse(p.date+'T12:00:00Z'),value:p.value}));
+ const verifiedDD=Number.isFinite(snapshot.maxDrawdown)&&range==='all'?snapshot.maxDrawdown:null;
+ return {
+  ok:true,schema:1,source:'RECEIVER',market,variant,filter,range,
+  sequence:snapshot.lastSequence,asOf:snapshot.updatedAt,generation:'pre-match-1x2-test-projection-v1',
+  summary:{rows:view.settled,wins:view.win,losses:view.loss,pushes:view.draw,
+   priced:view.settled,net:view.netUnits,stake:view.stakedUnits,roi:view.roi,
+   avgOdds:view.avgOdds,settledDays:view.settledDays,
+   // Latest Live Stats Max DD follows per-settlement equity, not daily closes.
+   // Do not claim exact parity until the writer persists that metric.
+   maxDD:verifiedDD,peak:null,bestRun:null},
+  counts:{WIN:snapshot.win,LOSS:snapshot.loss,HALF_WIN:snapshot.halfWin,
+   HALF_LOSS:snapshot.halfLoss,PUSH:snapshot.draw},
+  series:{units:out(view.series.map(p=>({date:p.date,value:p.netUnits}))),
+   roi:out(view.series.filter(p=>p.roi!==null).map(p=>({date:p.date,value:p.roi}))),
+   rate:out(view.series.filter(p=>p.winRate!==null).map(p=>({date:p.date,value:p.winRate})))}
+ };
+}
+export function validReceiverGraph(g,q){
+ return !!(g&&g.ok===true&&g.source==='RECEIVER'&&g.schema===1
+  &&g.market===q.market&&g.variant===q.variant&&g.filter===q.filter&&g.range===q.range
+  &&Number.isSafeInteger(g.sequence)&&Number.isSafeInteger(g.summary?.rows)
+  &&Number.isFinite(g.summary?.net)
+  &&['units','roi','rate'].every(k=>Array.isArray(g.series?.[k])&&g.series[k].every(p=>Number.isFinite(p.date)&&Number.isFinite(p.value))));
 }
