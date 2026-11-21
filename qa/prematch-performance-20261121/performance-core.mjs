@@ -26,10 +26,21 @@ export const emptyPerformance=()=>({
   // unique SETTLED transition; monotonic event sequences are required.
 });
 const dayRow=date=>({date,picks:0,settled:0,win:0,draw:0,loss:0,halfWin:0,halfLoss:0,netUnits:0,stakedUnits:0,oddsSum:0,oddsCount:0,cumulativeUnits:0});
+// Keep the per-day book ordered; a new day inherits the prior closing balance.
+// Recent in-order settlements update one day only. A rare late correction must
+// adjust the affected day and later closing balances, never replay match history.
 const getDay=(snapshot,date)=>{
-  let row=snapshot.daily.find(r=>r.date===date);
-  if(!row){row=dayRow(date);snapshot.daily.push(row);snapshot.daily.sort((a,b)=>a.date.localeCompare(b.date));}
-  return row;
+  const rows=snapshot.daily;
+  let lo=0,hi=rows.length;
+  while(lo<hi){
+    const mid=(lo+hi)>>>1;
+    if(rows[mid].date<date)lo=mid+1;else hi=mid;
+  }
+  if(lo<rows.length&&rows[lo].date===date)return {row:rows[lo],index:lo};
+  const row=dayRow(date);
+  row.cumulativeUnits=lo?rows[lo-1].cumulativeUnits:0;
+  rows.splice(lo,0,row);
+  return {row,index:lo};
 };
 const outcomeOf=(status,odds)=>{
   const state=String(status||'').trim().toUpperCase().replace(/[_-]/g,' ');
@@ -52,7 +63,7 @@ export function applyLedgerEvent(snapshot,event){
   if(action==='SELECTED'){
     const date=londonBusinessDay(event.pickedAt);
     next.picks++;next.pending++;next.oddsCount++;next.oddsSum=round(next.oddsSum+selectionOdds);
-    const r=getDay(next,date);r.picks++;r.oddsCount++;r.oddsSum=round(r.oddsSum+selectionOdds);
+    const {row:r}=getDay(next,date);r.picks++;r.oddsCount++;r.oddsSum=round(r.oddsSum+selectionOdds);
   }else if(action==='SETTLED'){
     if(next.pending<=0)throw Error('SETTLEMENT_WITHOUT_PENDING');
     const date=londonBusinessDay(event.settledAt);
@@ -61,12 +72,17 @@ export function applyLedgerEvent(snapshot,event){
     // Unit values derive only from the ODDS LOCKED AT SELECTION.
     if(event.units!==undefined&&Math.abs(numeric(event.units,'UNITS')-units)>0.00001)throw Error('UNITS_NOT_MATCHING_LOCKED_ODDS');
     next.pending--;next.settled++;next.netUnits=round(next.netUnits+units);next.stakedUnits=round(next.stakedUnits+1);
-    const r=getDay(next,date);r.settled++;r.netUnits=round(r.netUnits+units);r.stakedUnits=round(r.stakedUnits+1);
+    const {row:r,index}=getDay(next,date);
+    r.settled++;r.netUnits=round(r.netUnits+units);r.stakedUnits=round(r.stakedUnits+1);
+    // Fast path for chronological events: update only today's closing balance.
+    // A late authoritative settlement changes subsequent daily closes, not
+    // previous match records or the underlying selection ledger.
+    for(let i=index;i<next.daily.length;i++){
+      next.daily[i].cumulativeUnits=round(next.daily[i].cumulativeUnits+units);
+    }
     const field=state==='WIN'?'win':state==='LOSS'?'loss':state==='HALF WIN'?'halfWin':state==='HALF LOSS'?'halfLoss':'draw';
     next[field]++;r[field]++;
   }else throw Error('UNSUPPORTED_LEDGER_EVENT');
-  let total=0;
-  for(const r of next.daily){total=round(total+r.netUnits);r.cumulativeUnits=total;}
   next.lastSequence=seq;
   next.updatedAt=String(event.settledAt||event.pickedAt);
   return {snapshot:next,applied:true};
@@ -88,7 +104,7 @@ export function performanceView(snapshot,range='ALL',endDay=null){
   const picks=entries.reduce((t,r)=>t+r.picks,0);
   const oddsSum=round(entries.reduce((t,r)=>t+r.oddsSum,0));
   const oddsCount=entries.reduce((t,r)=>t+r.oddsCount,0);
-  const points=entries.map(r=>({date:r.date,netUnits:round(r.cumulativeUnits-previous),roi:r.stakedUnits?null:null,winRate:null}));
+  const points=entries.map(r=>({date:r.date,netUnits:round(r.cumulativeUnits-previous)}));
   let st=0,w=0,l=0,hi=0,maxDD=0;
   const series=entries.map((r,i)=>{
     st+=r.stakedUnits;w+=r.win+r.halfWin;l+=r.loss+r.halfLoss;
