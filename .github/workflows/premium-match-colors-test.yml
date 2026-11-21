@@ -196,8 +196,8 @@ jobs:
           import {chromium,devices} from 'playwright';
           import assert from 'node:assert/strict';
           const base='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev';
-          let h;for(let i=0;i<15;i++){try{const r=await fetch(base+'/_premium_health');if(r.ok){const candidate=await r.json();if(candidate.revision==='PREMIUM_LEAGUE_SOLID_V14'&&candidate.oddsMovementScript?.includes('DURATION=1500')&&candidate.oddsMovementStyle?.includes('box-shadow:none!important')&&!candidate.oddsMovementStyle?.includes('inset 0 0 0 1px')){h=candidate;break}}}catch{}await new Promise(r=>setTimeout(r,2000))}
-          assert.equal(h?.scope,'TEST_ONLY_CSS');assert.equal(h?.revision,'PREMIUM_LEAGUE_SOLID_V14');assert.equal(h?.oddsMovement,'DOM_PRICES_V1');assert(h?.oddsMovementScript?.includes('DURATION=1500'),'WORKER_HAS_OLD_DURATION');assert(h?.oddsMovementStyle?.includes('box-shadow:none!important'),'WORKER_HAS_OLD_BORDER_STYLE');
+          let h;for(let i=0;i<15;i++){try{const r=await fetch(base+'/_premium_health');if(r.ok){const candidate=await r.json();if(candidate.revision==='PREMIUM_LEAGUE_SOLID_V14'&&candidate.oddsMovementScript?.includes('DURATION=2000')&&candidate.oddsMovementStyle?.includes('box-shadow:none!important')&&!candidate.oddsMovementStyle?.includes('inset 0 0 0 1px')){h=candidate;break}}}catch{}await new Promise(r=>setTimeout(r,2000))}
+          assert.equal(h?.scope,'TEST_ONLY_CSS');assert.equal(h?.revision,'PREMIUM_LEAGUE_SOLID_V14');assert.equal(h?.oddsMovement,'DOM_PRICES_V1');assert(h?.oddsMovementScript?.includes('DURATION=2000'),'WORKER_HAS_OLD_DURATION');assert(h?.oddsMovementStyle?.includes('box-shadow:none!important'),'WORKER_HAS_OLD_BORDER_STYLE');
           const browser=await chromium.launch();
           try{for(const mobile of [false])for(const theme of ['dark','light']){
             const p=await browser.newPage(mobile?{...devices['iPhone 13'],serviceWorkers:'block'}:{viewport:{width:1440,height:950},serviceWorkers:'block'});
@@ -293,14 +293,14 @@ jobs:
               assert.equal(up.direction,'up','ODDS_UP_WAS_NOT_DETECTED');assert(up.arrow.includes('↑'));assert.equal(up.cellBg,h.reference.pitColor);assert.equal(up.quoteShadow,'none','UP_SHEET_HAS_BORDER_SHADOW');assert.equal(up.border,'0px','UP_SHEET_HAS_BORDER');assert.equal(up.outline,'none','UP_SHEET_HAS_OUTLINE');
               await p.waitForTimeout(500);assert.equal((await readMove()).direction,'up','UP_HIGHLIGHT_TOO_SHORT');
               await p.screenshot({path:process.env.RUNNER_TEMP+'/premium-proof/odds-up.png'});
-              await p.waitForTimeout(1650);assert.equal((await readMove()).direction,null,'ODDS_UP_NOT_RESET_AFTER_1500MS');
+              await p.waitForTimeout(2150);assert.equal((await readMove()).direction,null,'ODDS_UP_NOT_RESET_AFTER_2000MS');
               const unchanged=await simulate(upValue);assert.equal(unchanged.direction,null,'SAME_PRICE_TRIGGERED_FALSE_FLASH');
               const down=await simulate(initialValue);
               console.log('ODDS_DOWN_PROOF',JSON.stringify(down));
               assert.equal(down.direction,'down','ODDS_DOWN_WAS_NOT_DETECTED');assert(down.arrow.includes('↓'));assert.equal(down.cellBg,h.reference.pitColor);assert.equal(down.quoteShadow,'none','DOWN_SHEET_HAS_BORDER_SHADOW');assert.equal(down.border,'0px','DOWN_SHEET_HAS_BORDER');assert.equal(down.outline,'none','DOWN_SHEET_HAS_OUTLINE');
               await p.waitForTimeout(500);assert.equal((await readMove()).direction,'down','DOWN_HIGHLIGHT_TOO_SHORT');
               await p.screenshot({path:process.env.RUNNER_TEMP+'/premium-proof/odds-down.png'});
-              await p.waitForTimeout(1650);const afterFlash=await readMove();assert.equal(afterFlash.direction,null,'ODDS_DOWN_NOT_RESET_AFTER_1500MS');
+              await p.waitForTimeout(2150);const afterFlash=await readMove();assert.equal(afterFlash.direction,null,'ODDS_DOWN_NOT_RESET_AFTER_2000MS');
               assert(afterFlash.stats.ups>=1&&afterFlash.stats.downs>=1,'ODDS_MOVEMENT_COUNTS_MISSING');
               console.log('ODDS_MOVEMENT_PASS',JSON.stringify({originalPrice,up,down,afterFlash,domOnly:true,apiCallsAdded:0}));
             }
