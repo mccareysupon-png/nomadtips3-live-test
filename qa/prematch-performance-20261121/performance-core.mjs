@@ -128,9 +128,12 @@ export function receiverGraph(snapshot,query={}){
  if(snapshot?.schema!==SCHEMA||snapshot.market!=='1X2')throw Error('PREMATCH_LEDGER_REQUIRED');
  const market=query.market??'1X2',variant=query.variant??'all',filter=query.filter??'all',range=query.range??'all';
  if(market!=='1X2'||variant!=='all'||filter!=='all'||!['d7','d30','d90','all'].includes(range))throw Error('PREMATCH_RECEIVER_QUERY_UNSUPPORTED');
- const view=performanceView(snapshot,range==='all'?'ALL':range.toUpperCase(),query.endDay||null);
+ const view=performanceView(snapshot,range==='all'?'ALL':range.slice(1)+'D',query.endDay||null);
  const out=points=>points.map(p=>({date:Date.parse(p.date+'T12:00:00Z'),value:p.value}));
  const verifiedDD=Number.isFinite(snapshot.maxDrawdown)&&range==='all'?snapshot.maxDrawdown:null;
+ const selectedDays=new Set(view.series.map(p=>p.date));
+ const byStatus=snapshot.daily.filter(d=>selectedDays.has(d.date));
+ const countOf=key=>byStatus.reduce((n,d)=>n+Number(d[key]||0),0);
  return {
   ok:true,schema:1,source:'RECEIVER',market,variant,filter,range,
   sequence:snapshot.lastSequence,asOf:snapshot.updatedAt,generation:'pre-match-1x2-test-projection-v1',
@@ -140,8 +143,8 @@ export function receiverGraph(snapshot,query={}){
    // Latest Live Stats Max DD follows per-settlement equity, not daily closes.
    // Do not claim exact parity until the writer persists that metric.
    maxDD:verifiedDD,peak:null,bestRun:null},
-  counts:{WIN:snapshot.win,LOSS:snapshot.loss,HALF_WIN:snapshot.halfWin,
-   HALF_LOSS:snapshot.halfLoss,PUSH:snapshot.draw},
+  counts:{WIN:countOf('win'),LOSS:countOf('loss'),HALF_WIN:countOf('halfWin'),
+   HALF_LOSS:countOf('halfLoss'),PUSH:countOf('draw')},
   series:{units:out(view.series.map(p=>({date:p.date,value:p.netUnits}))),
    roi:out(view.series.filter(p=>p.roi!==null).map(p=>({date:p.date,value:p.roi}))),
    rate:out(view.series.filter(p=>p.winRate!==null).map(p=>({date:p.date,value:p.winRate})))}
