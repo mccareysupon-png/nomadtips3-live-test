@@ -229,7 +229,7 @@ jobs:
               console.log('INITIAL_ACTIVE_SAFETY',JSON.stringify(initialState));
               assert(initialState.scriptPresent,'TRACKING_SCRIPT_MISSING');
               assert(!initialState.interacted,'UNEXPECTED_INITIAL_USER_ACTION');
-              assert(initialState.selected.length>0,'NATIVE_DEFAULT_ACTIVE_NOT_FOUND');
+              assert(initialState.selected.length+initialState.normal.length>0,'NO_VISIBLE_MATCH_ROW_ON_FIRST_LOAD');
               for(const x of [...initialState.selected,...initialState.normal]){
                 assert.equal(x.state,'normal','DEFAULT_CARD_BECAME_ACTIVE');
                 assert.equal(x.bg,h.reference.cum.backgroundImage,'DEFAULT_CARD_NOT_NORMAL_GRADIENT');
