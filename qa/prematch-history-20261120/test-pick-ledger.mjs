@@ -14,9 +14,12 @@ export function recordPicks(db,picks,now){
  db.exec('INSERT INTO test_pick_1x2 (fixture_id,home_id,away_id,home,away,kickoff,picked_at,observed,pick,price,probability,edge,ev,tier,home_count,away_count,model) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',id,h,a,p.home,p.away,p.kickoff,p.selectedAt,p.observed,p.pick,p.price,p.probability,p.edge,p.ev,p.tier,...p.history,p.model);added++;
  }});return {added,duplicate,rejected}
 }
+// Match final evidence on immutable Fixture ID + teams, not a mutable kickoff.
+// Require the locked selection to pre-date the actual revised kickoff. Never
+// rewrite p.kickoff or settle POSTPONED/CANCELLED/ABANDONED/UNKNOWN.
 export function settlePicks(db,now){
  let settled=0;
- db.transaction(()=>{const rows=arr(db,"SELECT p.*,r.hg AS result_hg,r.ag AS result_ag,r.observed AS result_observed FROM test_pick_1x2 p JOIN result_version r ON r.fixture_id=p.fixture_id AND r.home_id=p.home_id AND r.away_id=p.away_id AND r.kickoff=p.kickoff WHERE p.status='PENDING' AND p.kickoff<? AND r.status='finished' AND r.observed>p.kickoff AND r.observed<=? AND r.observed=(SELECT MAX(v.observed) FROM result_version v WHERE v.fixture_id=r.fixture_id AND v.observed<=?)",now,now,now);
+ db.transaction(()=>{const rows=arr(db,"SELECT p.*,r.hg AS result_hg,r.ag AS result_ag,r.observed AS result_observed FROM test_pick_1x2 p JOIN result_version r ON r.fixture_id=p.fixture_id AND r.home_id=p.home_id AND r.away_id=p.away_id WHERE p.status='PENDING' AND p.picked_at<r.kickoff AND r.kickoff<? AND r.status='finished' AND r.observed>r.kickoff AND r.observed<=? AND r.observed=(SELECT MAX(v.observed) FROM result_version v WHERE v.fixture_id=r.fixture_id AND v.observed<=?)",now,now,now);
  for(const p of rows){const actual=p.result_hg>p.result_ag?'HOME_WIN':p.result_hg===p.result_ag?'DRAW':'AWAY_WIN',win=p.pick===actual;db.exec("UPDATE test_pick_1x2 SET status=?,hg=?,ag=?,settled_at=?,units=? WHERE fixture_id=? AND status='PENDING'",win?'WIN':'LOSS',p.result_hg,p.result_ag,now,win?p.price-1:-1,p.fixture_id);settled++}});
  return settled
 }
