@@ -1,13 +1,15 @@
 // BALL46 O/U Math V1 — Pre-Match TEST only. Probability-only research,
 // never invent O/U odds, EV, ROI or P/L. Independent persisted ledger/snapshot.
+// Available-history policy: use 0–10 prior FT matches per side, require at least
+// one authentic earlier match overall. League prior shrinks sparse samples.
 import {londonAccountingWindow} from './london-cutoff.mjs';
 import {bttsLastMatches} from './btts-history-private.mjs';
 const get=(db,q,...v)=>Array.from(db.exec(q,...v));
 const num=x=>typeof x==='number'&&Number.isFinite(x);
 const id=x=>Number.isSafeInteger(Number(x))&&Number(x)>0;
 const clamp=(x,l,h)=>Math.max(l,Math.min(h,x));
-export const OU_MODEL='ou-poisson-shrinkage-2p5-v1';
-export const OU_POLICY=Object.freeze({model:OU_MODEL,line:2.5,minHistory:3,maxHistory:10,minProbability:.64,maxLookaheadSec:259200,providerCalls:0,quoteStatus:'MODEL_ONLY'});
+export const OU_MODEL='ou-poisson-shrinkage-2p5-v1p1-available-history';
+export const OU_POLICY=Object.freeze({model:OU_MODEL,line:2.5,minHistory:0,minCombinedHistory:1,maxHistory:10,minProbability:.64,maxLookaheadSec:259200,providerCalls:0,quoteStatus:'MODEL_ONLY'});
 export function poissonOver25(lambda){
  if(!num(lambda)||lambda<=0||lambda>15)throw Error('INVALID_OU_LAMBDA');
  return clamp(1-Math.exp(-lambda)*(1+lambda+lambda*lambda/2),0,1);
@@ -21,7 +23,7 @@ const mean=(xs,field,prior,pseudo=6)=>{
  return sum/n;
 };
 export function estimateOu25(home,away,league={home:1.38,away:1.15}){
- if(!Array.isArray(home)||!Array.isArray(away)||home.length<3||away.length<3)return {state:'INSUFFICIENT_HISTORY'};
+ if(!Array.isArray(home)||!Array.isArray(away)||home.length+away.length<OU_POLICY.minCombinedHistory)return {state:'INSUFFICIENT_HISTORY'};
  const lh=clamp(league.home,.6,2.8),la=clamp(league.away,.5,2.4),mid=(lh+la)/2;
  const hgf=mean(home,'gf',mid),hga=mean(home,'ga',mid);
  const agf=mean(away,'gf',mid),aga=mean(away,'ga',mid);
@@ -63,7 +65,7 @@ export function screenOu(db,fixtures,now,limit=350){
   if(!id(fid)||seen.has(fid)||!id(home)||!id(away)||home===away||f?.status!=='scheduled'||!Number.isSafeInteger(kickoff)||kickoff<=now+300||kickoff>now+OU_POLICY.maxLookaheadSec){counts.invalid++;continue}
   seen.add(fid);counts.checked++;
   const hh=bttsLastMatches(db,home,kickoff,now,10),aa=bttsLastMatches(db,away,kickoff,now,10);
-  if(hh.length<OU_POLICY.minHistory||aa.length<OU_POLICY.minHistory){counts.insufficient++;continue}
+  if(hh.length+aa.length<OU_POLICY.minCombinedHistory){counts.insufficient++;continue}
   const m=estimateOu25(hh,aa,leaguePrior(db,f.league?.id,kickoff,cache));
   if(m.state!=='QUALIFIED'){counts.probabilityBelow++;continue}
   counts.qualified++;
@@ -86,7 +88,7 @@ export function recordOu(db,report,now){
  if(!Array.isArray(report?.qualified)||!Number.isSafeInteger(now))throw Error('INVALID_OU_RECORD');
  let added=0,duplicate=0,rejected=0;
  db.transaction(()=>{for(const p of report.qualified){
-  if(!id(p.fixture_id)||!id(p.home_id)||!id(p.away_id)||p.picked_at!==now||p.kickoff<=now||p.line!==2.5||!['OVER_2.5','UNDER_2.5'].includes(p.pick)||!num(p.probability)||p.probability<.64||p.probability>1||p.home_count<3||p.away_count<3||p.price!==null||p.model!==OU_MODEL){rejected++;continue}
+  if(!id(p.fixture_id)||!id(p.home_id)||!id(p.away_id)||p.picked_at!==now||p.kickoff<=now||p.line!==2.5||!['OVER_2.5','UNDER_2.5'].includes(p.pick)||!num(p.probability)||p.probability<.64||p.probability>1||p.home_count+p.away_count<OU_POLICY.minCombinedHistory||p.price!==null||p.model!==OU_MODEL){rejected++;continue}
   db.exec("INSERT INTO b46_ou_pick_v1_test(fixture_id,home_id,away_id,league_id,league_name,home,away,kickoff,picked_at,observed,pick,line,probability,over_probability,lambda_home,lambda_away,expected_total,home_count,away_count,model) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(fixture_id) DO NOTHING",
    p.fixture_id,p.home_id,p.away_id,p.league_id,p.league_name,p.home,p.away,p.kickoff,now,now,p.pick,2.5,p.probability,p.overProbability,p.lambdaHome,p.lambdaAway,p.expectedTotalGoals,p.home_count,p.away_count,OU_MODEL);
   const n=Number(get(db,'SELECT changes() AS n')[0]?.n??0);
@@ -159,7 +161,7 @@ export function historicalOuBacktest(db,limit=350){
  const stats={examined:games.length,historyReady:0,qualified:0,win:0,loss:0,over:0,under:0,winRate:null};
  for(const g of games){
   const hh=historicalMatches(db,g.home_id,g.kickoff),aa=historicalMatches(db,g.away_id,g.kickoff);
-  if(hh.length<3||aa.length<3)continue;
+  if(hh.length+aa.length<OU_POLICY.minCombinedHistory)continue;
   stats.historyReady++;
   const m=estimateOu25(hh,aa,leaguePrior(db,g.league_id,g.kickoff,cache));
   if(m.state!=='QUALIFIED')continue;
