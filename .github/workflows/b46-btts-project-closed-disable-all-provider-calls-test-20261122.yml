@@ -58,8 +58,8 @@ jobs:
           once("async recordQualifiedBtts(now,","async recordQualifiedBtts(now,",'KEEP_FUNCTION');
           once(" async recordQualifiedBtts(now,providedFixtures=null,providedQuotes=null){",
             " async recordQualifiedBtts(now,providedFixtures=null,providedQuotes=null){return "+stopped+";",'STOP_ISSUANCE');
-          once(" async fetch(req){\n  const path=new URL(req.url).pathname,now=Math.floor(Date.now()/1000);",
-            " async fetch(req){\n  const path=new URL(req.url).pathname,now=Math.floor(Date.now()/1000);\n"+
+          once(" async fetch(req){\n const path=new URL(req.url).pathname,now=Math.floor(Date.now()/1000);",
+            " async fetch(req){\n const path=new URL(req.url).pathname,now=Math.floor(Date.now()/1000);\n"+
             "  if(path==='/btts-project-shutdown-test'&&req.method==='POST'){"+
             "await this.ctx.storage.put('bttsBulkModeV2',{mode:'CLOSED',closedAt:now,reason:'USER_DIRECTIVE_2026_11_22'});"+
             "await this.ctx.storage.put('bttsProjectClosedAt',now);"+
