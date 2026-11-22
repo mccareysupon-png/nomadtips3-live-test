@@ -1,0 +1,30 @@
+name: BALL46 O-U UI READONLY INSPECT
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-ou-prematch-ui-inspect-20261122.yml]
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Inspect existing PRE MATCH client navigation UI without updates
+        run: |
+          node --input-type=module <<'JS'
+          const token=process.env.CLOUDFLARE_API_TOKEN,account=process.env.CLOUDFLARE_ACCOUNT_ID;
+          if(!token||!account)throw Error('ACCESS_MISSING');
+          const front='ball46-premium-match-colors-test-20261120',root='https://api.cloudflare.com/client/v4/accounts/'+account+'/workers';
+          async function cf(path){const r=await fetch(root+path,{headers:{authorization:'Bearer '+token},signal:AbortSignal.timeout(20000)});const j=await r.json();if(!r.ok||!j.success)throw Error('READ_ONLY_'+r.status);return j.result}
+          const v=(await cf('/scripts/'+front+'/deployments?per_page=1')).deployments[0].versions[0].version_id;
+          const active=await cf('/workers/'+front+'/versions/'+v+'?include=modules');
+          const source=Buffer.from(active.modules[0].content_base64,'base64').toString('utf8');
+          const m=source.match(/var prematchClientScript = ("(?:\\.|[^"\\])*");/);if(!m)throw Error('NO_CLIENT');
+          const client=JSON.parse(m[1]),anchors=['const routes=','const routes =','function draw(pageOnly=false){','function performancePanel(){','function makeNav','function setRoute','function premiumMatchRow','const activeLedger=','mode===\'all\'','function updateNav','function render'];
+          const find=(anchor)=>{const pos=client.indexOf(anchor);return{anchor,pos,part:pos<0?'':client.slice(Math.max(0,pos-350),Math.min(client.length,pos+3200))}};
+          const snippets=anchors.map(find);
+          console.log('BALL46_OU_UI_SOURCE_REPORT '+JSON.stringify({version:v,main:active.main_module,sourceBytes:source.length,clientBytes:client.length,snippets,uniqueRoutes:(client.match(/\{id:['"][^'"]+/g)||[]).slice(0,20),providerCalls:0,writes:0}));
+          JS
