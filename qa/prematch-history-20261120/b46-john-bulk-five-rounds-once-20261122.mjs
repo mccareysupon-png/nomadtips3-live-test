@@ -226,7 +226,7 @@ async function run(){
   version(WORKER)
  ]);
  report.privateFTAfter=afterHist.archive.privateFT;
- report.newPrivateFT=afterHist.archive.privateFT-beforeHist.archive.privateFT;
+ report.newPrivateFT=afterHist.archive.privateFT-beforeHistory.archive.privateFT;
  report.evaluation={before:beforeBot.totals,after:afterBot.totals,
    modelReadyDelta:afterBot.totals.modelProbabilityReady-beforeBot.totals.modelProbabilityReady,
    historyReadyDelta:afterBot.totals.historyReady-beforeBot.totals.historyReady,
