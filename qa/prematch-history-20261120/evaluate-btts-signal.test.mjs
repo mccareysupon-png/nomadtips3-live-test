@@ -6,7 +6,8 @@ test('YES; exact market and model',()=>{const r=evaluateBttsSignal(base,cfg);ass
 test('NO on blanks',()=>{const r=evaluateBttsSignal({...base,homeLast10:make(0,1,1),awayLast10:make(0,1,21)},cfg);assert.equal(r.signal,'BTTS_NO');assert.equal(r.metrics.home.blank,1)});
 test('owner OFF',()=>assert.equal(evaluateBttsSignal(base).reason,'OWNER_OFF'));
 test('range gate',()=>assert.equal(evaluateBttsSignal(base,{...cfg,maxPrice:1.7}).signal,'NO_SIGNAL'));
-test('missing history',()=>assert.equal(evaluateBttsSignal({...base,homeLast10:base.homeLast10.slice(1)},cfg).reason,'INVALID_OR_INCOMPLETE_HISTORY'));
+test('fewer than 3 history games is rejected',()=>assert.equal(evaluateBttsSignal({...base,homeLast10:base.homeLast10.slice(0,2)},cfg).reason,'INVALID_OR_INCOMPLETE_HISTORY'));
+test('3 to 10 real history games per team are accepted',()=>{for(const [h,a] of [[3,3],[4,10],[10,3],[10,10]]){const r=evaluateBttsSignal({...base,homeLast10:base.homeLast10.slice(0,h),awayLast10:base.awayLast10.slice(0,a)},cfg);assert.equal(r.signal,'BTTS_YES')}});
 test('duplicate history',()=>assert.equal(evaluateBttsSignal({...base,homeLast10:Array(10).fill(base.homeLast10[0])},cfg).reason,'INVALID_OR_INCOMPLETE_HISTORY'));
 test('missing price',()=>assert.equal(evaluateBttsSignal({...base,odds:{...base.odds,no:null}},cfg).reason,'INVALID_BET365_ODDS'));
 test('post kickoff',()=>assert.equal(evaluateBttsSignal({...base,asOf:400},cfg).reason,'INVALID_PREMATCH_TIME'));
