@@ -1,0 +1,86 @@
+name: BALL46 O/U vs 1X2 odds stored-source audit READONLY
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-ou-odds-source-audit-readonly-20261122.yml]
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Read original HUB cache payload fields, prematch store, source routes, NO upstream calls
+        run: |
+          node --input-type=module <<'JS'
+          import crypto from 'node:crypto';
+          const token=process.env.CLOUDFLARE_API_TOKEN,account=process.env.CLOUDFLARE_ACCOUNT_ID,headers={authorization:'Bearer '+token};
+          const cfRoot='https://api.cloudflare.com/client/v4/accounts/'+account+'/workers';
+          const names=['ball46-prematch-only-test-20261120','nomadtips3-5usd-hub-343'];
+          async function cf(path){const r=await fetch(cfRoot+path,{headers,signal:AbortSignal.timeout(40000)});const j=await r.json();if(!j.success)throw Error('CF_FAILED_'+path);return j.result;}
+          for(const name of names){
+            const deployment=await cf('/scripts/'+name+'/deployments?per_page=1');
+            const version=deployment.deployments[0].versions[0].version_id;
+            const active=await cf('/workers/'+name+'/versions/'+version+'?include=modules');
+            console.log('ODDS_WORKER '+JSON.stringify({name,version,modules:active.modules.map(x=>x.name)}));
+            for(const m of active.modules){
+              if(!m.content_base64)continue;
+              const src=Buffer.from(m.content_base64,'base64').toString('utf8');
+              if(name.includes('prematch-only')&&m.name!=='prematch-only-worker.mjs'&&!/feed|odd|price|market/.test(m.name))continue;
+              if(name.includes('hub-343')&&src.length>270000)continue;
+              const lines=src.split('\n');
+              const found=[];
+              for(let i=0;i<lines.length;i++){
+                if(/providerOdds|over.?under|market.?[:=].?(?:total|ou)|odds.*1x2|market=btts|odds\??\.|closing|asian.?total/i.test(lines[i])){
+                  found.push({line:i+1,fragment:lines.slice(Math.max(0,i-2),Math.min(lines.length,i+3)).join(' ').slice(0,500)});
+                  if(found.length>=20)break;
+                }
+              }
+              if(found.length)console.log('ODDS_ACTIVE_SOURCE '+JSON.stringify({worker:name,module:m.name,found}).slice(0,13000));
+            }
+          }
+          const key=crypto.createHmac('sha256',token).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
+          const base='https://ball46-prematch-only-test-20261120.mccarey-supon.workers.dev';
+          async function owner(path){
+            const r=await fetch(base+path,{headers:{authorization:'Bearer '+key},cache:'no-store',signal:AbortSignal.timeout(40000)});
+            if(!r.ok)throw Error('OWNER_READ_'+path+'_'+r.status);
+            return r.json();
+          }
+          const cargo=await owner('/history-cargo-full');
+          console.log('ODDS_FULL_CARGO_ROUNDS '+JSON.stringify({
+            count:cargo.roundsTracked,fixtureRecords:cargo.fixtureRecords,
+            rounds:cargo.rounds.slice(0,8).map(x=>({
+              day:x.businessDay,round:x.roundNo,delivered:x.delivered,
+              fields:x.fixtureFields,nested:x.nestedFields.filter(z=>/odds|market|price|total|ou|under|over/i.test(z))
+            }))
+          }).slice(0,16000));
+          const sampleRounds=cargo.rounds.filter(r=>r.fixtureIds?.length);
+          let sampled=0,cached1x2=0,cachedOU=0;
+          const topAndNested=new Map(),exemplars=[];
+          for(const round of sampleRounds.slice(0,5)){
+            for(const fixtureId of round.fixtureIds.slice(0,4)){
+              const raw=await owner('/history-cargo-full?day='+round.businessDay+'&round='+round.roundNo+'&fixture='+fixtureId+'&detail=1');
+              const f=raw.fixture;
+              if(!f)continue;sampled++;
+              const odds=f.providerOdds;
+              const keys=odds&&typeof odds==='object'?Object.keys(odds):[];
+              const markets=odds?.odds&&typeof odds.odds==='object'?Object.keys(odds.odds):[];
+              if(markets.some(k=>/1x2/i.test(k)))cached1x2++;
+              if(markets.some(k=>/over.?under|totals|^ou$|^o\/u$/i.test(k)))cachedOU++;
+              const o={keys,markets,marketObjects:markets.map(k=>({market:k,keys:Object.keys(odds.odds[k]||{}),closingKeys:Object.keys(odds.odds[k]?.closing||{})}))};
+              const sig=JSON.stringify(o);
+              if(!topAndNested.has(sig)){topAndNested.set(sig,1);exemplars.push({day:round.businessDay,round:round.roundNo,schema:o});}
+              else topAndNested.set(sig,topAndNested.get(sig)+1);
+            }
+          }
+          console.log('ODDS_FULL_CARGO_MARKET_SHAPES '+JSON.stringify({sampled,cached1x2,cachedOU,distinctSchemas:exemplars.slice(0,7)}).slice(0,16500));
+          const [state,bulk]=await Promise.all([owner('/bot-state'),owner('/btts-bulk-v2-state')]);
+          console.log('ODDS_FEED_METRICS '+JSON.stringify({
+            botFeedState:state.feedState??state.storedFeed??null,
+            bulkState:bulk.config?.mode,bulkCalls:bulk.transport?.providerCalls,providerCallsAdded:0
+          }).slice(0,2600));
+          JS
