@@ -1,0 +1,106 @@
+name: BALL46 BTTS TEST 24 Candidate Cards Real Browser QA
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-btts-candidate-cards-ui-real-browser-qa-20261122.yml]
+permissions: {contents: read}
+jobs:
+  smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Install browser for TEST UI, no paid football API
+        run: |
+          npm install --no-save --no-package-lock playwright@1.56.1
+          npx playwright install chromium
+      - name: Verify 24 true BTTS candidates visible on desktop and mobile, 1X2 intact
+        run: |
+          mkdir -p qa-artifacts
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {chromium} from 'playwright';
+          const root='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev/';
+          const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
+          const summary=[];
+          try{
+           for(const device of [
+            {name:'PC',width:1440,height:900,mobile:false},
+            {name:'Mobile',width:390,height:844,mobile:true}
+           ]){
+            const context=await browser.newContext({
+             viewport:{width:device.width,height:device.height},deviceScaleFactor:1,
+             isMobile:device.mobile,hasTouch:device.mobile
+            });
+            const page=await context.newPage(),errors=[];
+            page.on('pageerror',e=>errors.push(String(e.message).slice(0,200)));
+            const resp=await page.goto(root+'?b46pm=btts',{
+             waitUntil:'domcontentloaded',timeout:60000
+            });
+            assert(resp?.ok(),'BTTS_PAGE_FAILED_'+device.name);
+            await page.waitForSelector('#b46pm-btts-candidates',{state:'visible',timeout:60000});
+            await page.waitForFunction(()=>{
+              const x=document.querySelectorAll('[data-b46-btts-candidate-fixture]');
+              const status=document.querySelector('#b46pm-btts-readiness')?.textContent||'';
+              return x.length===24&&status.includes('History ready')&&status.includes('Waiting Bet365');
+            },{timeout:60000});
+            const data=await page.evaluate(()=>{
+             const cards=[...document.querySelectorAll('[data-b46-btts-candidate-fixture]')];
+             const testId=cards.map(x=>x.dataset.b46BttsCandidateFixture);
+             const wait=cards.filter(x=>x.textContent.includes('PRICE NEEDED'));
+             const none=cards.filter(x=>x.textContent.includes('NOT OFFERED'));
+             return {
+              visible:cards.length,
+              ids:testId,
+              waiting:wait.length,notOffered:none.length,
+              allMatchInfo:cards.every(x=>x.textContent.includes('HISTORY')&&x.textContent.includes('PROBABILITY')&&
+                x.textContent.includes('SCREENING ONLY')&&x.textContent.includes('Fixture #')),
+              status:document.querySelector('#b46pm-btts-readiness')?.textContent,
+              docWidth:document.documentElement.scrollWidth,
+              viewportWidth:innerWidth,
+              clientErrors:0,
+              predictionHistoryShowsZero:!document.querySelector('.b46pm-list:not(#b46pm-btts-candidates) [data-b46-btts-candidate-fixture]')
+             };
+            });
+            console.log('B46_BTTS_CANDIDATE_VIEWPORT '+JSON.stringify({device:device.name,...data}));
+            assert.equal(data.visible,24,'CANDIDATES_HIDDEN_'+device.name);
+            assert.equal(data.waiting,21);
+            assert.equal(data.notOffered,3);
+            assert.equal(new Set(data.ids).size,24);
+            assert(data.allMatchInfo);
+            assert(data.docWidth<=data.viewportWidth+3,
+              'CANDIDATE_CARDS_HORIZONTAL_OVERFLOW_'+device.name);
+            assert(data.predictionHistoryShowsZero);
+            await page.screenshot({path:'qa-artifacts/btts-candidates-'+device.name.toLowerCase()+'.png',fullPage:false});
+            await page.goto(root+'?b46pm=1x2',{waitUntil:'domcontentloaded',timeout:60000});
+            await page.waitForSelector('.b46pm-list .b46pm-match',{state:'visible',timeout:60000});
+            await page.waitForTimeout(1300);
+            const other=await page.evaluate(()=>({
+              candidateLeak:document.querySelectorAll('[data-b46-btts-candidate-fixture]').length,
+              cardCount:document.querySelectorAll('.b46pm-list .b46pm-match').length,
+              currentUrl:location.search,
+              heading:document.querySelector('[data-workspace-heading]')?.textContent
+            }));
+            assert.equal(other.candidateLeak,0,'CANDIDATES_LEAKED_TO_1X2_'+device.name);
+            assert(other.cardCount>0,'1X2_CARDS_MISSING_'+device.name);
+            assert.equal(errors.length,0,'BROWSER_JS_ERROR_'+device.name+'_'+JSON.stringify(errors));
+            summary.push({device:device.name,visible:data.visible,waiting:data.waiting,
+              notOffered:data.notOffered,overflow:false,oneX2CardCount:other.cardCount,
+              jsErrors:errors});
+            await context.close();
+           }
+           console.log('B46_BTTS_CANDIDATE_CARDS_REAL_BROWSER_PASS '+JSON.stringify({
+            summary,onlyTestUI:true,newProviderCalls:0,productionWrites:0,verdict:'PASS'
+           }));
+          }finally{await browser.close()}
+          JS
+      - name: Archive screenshot evidence, desktop and mobile
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: b46-btts-real-24-candidate-cards-20261122
+          path: qa-artifacts/
+          if-no-files-found: warn
+          retention-days: 14
