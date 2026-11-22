@@ -1,0 +1,75 @@
+name: BALL46 HCR V1 system audit - five cargo trips and supply inventory
+on:
+  push:
+    branches: [test/ball46-prematch-v1-20261120]
+    paths: ['.github/workflows/b46-hcr-v1-system-audit-20261122.yml']
+permissions: {contents: read}
+jobs:
+  read-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Audit TEST Worker cron, manifest registry and inventory, no provider
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import fs from 'node:fs';
+          import crypto from 'node:crypto';
+          const token=process.env.CLOUDFLARE_API_TOKEN,acct=process.env.CLOUDFLARE_ACCOUNT_ID;
+          assert(token&&acct);
+          const worker='ball46-prematch-only-test-20261120',api='https://api.cloudflare.com/client/v4/accounts/'+acct+'/workers';
+          const access='Bearer '+crypto.createHmac('sha256',token).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
+          async function cf(path){
+            const r=await fetch(api+path,{headers:{authorization:'Bearer '+token},signal:AbortSignal.timeout(20000)});
+            const j=await r.json();assert(r.ok&&j.success,'CF_FAILED_'+r.status);
+            return j.result;
+          }
+          async function get(path){
+            const r=await fetch('https://'+worker+'.mccarey-supon.workers.dev'+path,
+              {headers:{authorization:access},signal:AbortSignal.timeout(20000),cache:'no-store'});
+            assert(r.ok,'GET_FAILED_'+path+'_'+r.status);return r.json();
+          }
+          const schedule=await cf('/scripts/'+worker+'/schedules');
+          const dep=await cf('/scripts/'+worker+'/deployments?per_page=1');
+          const version=dep.deployments?.[0]?.versions?.[0]?.version_id;
+          const crons=(Array.isArray(schedule)?schedule:schedule.schedules||[]).map(x=>x.cron);
+          const report=await get('/history-cargo-registry?detail=0'),
+            state=await get('/history-round-state'),health=await get('/health');
+          assert.equal(report.registry?.code,'HCR-V1');
+          assert.equal(report.registry?.providerCalls,0);
+          assert.equal(state.providerCalls,0);
+          assert.equal(health.providerCalls,0);
+          assert(crons.includes('*/15 * * * *'),'HCR_SOURCE_CRON_NOT_ENABLED');
+          const summary={
+            id:report.registry.code,name:report.registry.name,worker,version,crons,
+            historicFT:report.inventory.finishedFixtures,
+            currentBusinessDay:state.businessDay,roundsCompleted:state.completed,
+            importedThisBusinessDay:state.imported,
+            trackedRounds:report.scope.trackedRounds,
+            oldUntrackedRounds:report.scope.legacyUntrackedRounds,
+            completedUpcoming:report.supplyPlanning.readyFixtures,
+            upcoming:report.supplyPlanning.upcomingFixtures,
+            uniqueTeams:report.supplyPlanning.uniqueTeams,
+            missing10Teams:report.supplyPlanning.uniqueTeamsNeedingHistory,
+            missingLeagueIdUntilNormalRefresh:report.supplyPlanning.upcomingLeagueIdsMissing,
+            extraProviderCalls:0,productionWrites:0
+          };
+          console.log('BALL46_HCR_V1_SYSTEM_VERIFIED '+JSON.stringify(summary));
+          if(process.env.GITHUB_STEP_SUMMARY)fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,
+            '# BALL46 HCR V1 — ทะเบียนสัมภาระข้อมูลย้อนหลัง\n\n'+
+            '| รายการ | ผลตรวจ |\n|---|---:|\n'+
+            '| คลังผล FT | '+summary.historicFT+' คู่ |\n'+
+            '| รอบที่เสร็จในวันบัญชีนี้ | '+summary.roundsCompleted+'/5 |\n'+
+            '| รับเข้าคลังวันนี้ | '+summary.importedThisBusinessDay+' คู่ |\n'+
+            '| ทะเบียน HCR รุ่นใหม่ | '+summary.trackedRounds+' รอบ |\n'+
+            '| รอบเก่าที่แจกแจง ID ไม่ได้ | '+summary.oldUntrackedRounds+' รอบ |\n'+
+            '| Upcoming ที่ตรวจสำหรับ BTTS | '+summary.upcoming+' คู่ |\n'+
+            '| ทีมไม่ซ้ำที่ต้องเติมประวัติ | '+summary.missing10Teams+' ทีม |\n'+
+            '| เรียกผู้ให้บริการเพิ่ม | 0 |\n\n'+
+            '**สถานะรถ:** Cron ทุก 15 นาที (รถประวัติจำกัด 5 รอบ/วัน)\n'+
+            '**ขอบเขต:** Worker ทดสอบเท่านั้น ไม่มีการเปลี่ยน Production\n'+
+            '**หมายเหตุ:** รายชื่อ Fixture ID และทีมอยู่ในรายงานผู้ดูแลที่ป้องกันด้วยสิทธิ์ ไม่เผยแพร่ใน GitHub สาธารณะ\n');
+          JS
