@@ -56,11 +56,11 @@ test('combine preserves 1X2 on same fixture; two independent cards chronological
  assert.equal(settleBttsPicks(d,1500),1);
  assert.equal(settleBttsPicks(d,1510),0);
  const s=bttsPickLedger(d).stats;
- assert.equal(s.win,1);assert.equal(s.loss,0);assert.equal(s.units,.85);assert.equal(s.winRate,100);
+ assert.equal(s.win,1);assert.equal(s.loss,0);assert.ok(Math.abs(s.units-.85)<1e-10);assert.equal(s.winRate,100);
  assert.equal(ledger(d).stats.pending,1); // 1X2 untouched.
  const all=combinedPrematchLedgers(ledger(d),bttsPickLedger(d));
  assert.equal(all.stats.win,1);assert.equal(all.stats.pending,1);
- assert.equal(all.stats.winRate,100);assert.equal(all.stats.units,.85);
+ assert.equal(all.stats.winRate,100);assert.ok(Math.abs(all.stats.units-.85)<1e-10);
  assert.equal(ledger(d).rows[0].status,'PENDING');
 });
 test('BTTS_NO wins only when at least one team scores zero, settlement requires confirmed FT',()=>{
