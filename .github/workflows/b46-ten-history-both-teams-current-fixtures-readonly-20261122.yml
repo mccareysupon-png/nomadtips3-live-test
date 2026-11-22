@@ -1,0 +1,50 @@
+name: BALL46 READ ONLY fixtures with ten history each team
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-ten-history-both-teams-current-fixtures-readonly-20261122.yml]
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: inspect existing stored history counts upcoming only NO provider calls
+        run: |
+          node --input-type=module <<'JS'
+          import crypto from 'node:crypto';
+          const token=process.env.CLOUDFLARE_API_TOKEN;if(!token)throw Error('MISSING_READ_ACCESS');
+          const url='https://ball46-prematch-only-test-20261120.mccarey-supon.workers.dev';
+          const auth='Bearer '+crypto.createHmac('sha256',token).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
+          async function get(p){
+            const r=await fetch(url+p,{headers:{authorization:auth},cache:'no-store',signal:AbortSignal.timeout(18000)});
+            if(!r.ok)throw Error('READ_ONLY_'+p+'_'+r.status);
+            return r.json();
+          }
+          const at=Math.floor(Date.now()/1000),all=[];
+          let pages=1;
+          for(let page=1;page<=50&&page<=pages;page++){
+            const data=await get('/btts-preview-data?filter=ALL&page='+page);
+            if(!data.preview?.rows)throw Error('NO_STORED_PREVIEW_ROWS');
+            pages=data.preview.pages;
+            all.push(...data.preview.rows);
+          }
+          const future=all.filter(r=>Number(r.kickoff)>at).sort((a,b)=>a.kickoff-b.kickoff);
+          const both10=future.filter(r=>r.homeHistory>=10&&r.awayHistory>=10);
+          const any10=future.filter(r=>r.homeHistory>=10||r.awayHistory>=10);
+          const hcr=await get('/history-cargo-registry?detail=0');
+          console.log('BALL46_10_MATCH_HISTORY_CURRENT '+JSON.stringify({
+            checkedAt:new Date(at*1000).toISOString(),source:'PRIVATE_FT_ARCHIVE_STORED',
+            totalUpcoming:future.length,bothTeams10:both10.length,atLeastOneTeam10:any10.length,
+            both10:both10.slice(0,60).map(r=>({home:r.home,away:r.away,fixtureId:r.fixtureId,
+              homeHistory:r.homeHistory,awayHistory:r.awayHistory,
+              kickoffTH:new Date((Number(r.kickoff)+25200)*1000).toISOString().slice(0,16).replace('T',' ')})),
+            oneTeam10:any10.slice(0,30).map(r=>({home:r.home,away:r.away,fixtureId:r.fixtureId,
+              homeHistory:r.homeHistory,awayHistory:r.awayHistory,
+              kickoffTH:new Date((Number(r.kickoff)+25200)*1000).toISOString().slice(0,16).replace('T',' ')})),
+            HCR:{finished:hcr.inventory?.finishedFixtures,trackedRounds:hcr.scope?.trackedRounds},
+            providerCalls:0,productionWrites:0
+          }));
+          JS
