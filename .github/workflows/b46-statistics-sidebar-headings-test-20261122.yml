@@ -1,4 +1,4 @@
-name: BALL46 TEST finalize Live and Pre-Match statistics headings mobile
+name: BALL46 TEST finalize statistics headings after mobile drawer mount
 on:
   push:
     branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
@@ -20,11 +20,11 @@ jobs:
         with: {node-version: '22'}
       - name: Verify fail-closed heading substitutions and deployment syntax
         run: |
-          node --check qa/prematch-history-20261120/patch-mobile-live-statistics-heading-test-20261122.mjs
-          node --check qa/prematch-history-20261120/deploy-mobile-live-statistics-heading-test-20261122.mjs
+          node --check qa/prematch-history-20261120/patch-deferred-mobile-live-heading-test-20261122.mjs
+          node --check qa/prematch-history-20261120/deploy-deferred-mobile-live-heading-test-20261122.mjs
           node --test qa/prematch-history-20261120/patch-statistics-sidebar-headings.test.mjs
       - name: Guarded deployment — only embedded client on Pre-Match TEST frontend
-        run: node qa/prematch-history-20261120/deploy-mobile-live-statistics-heading-test-20261122.mjs
+        run: node qa/prematch-history-20261120/deploy-deferred-mobile-live-heading-test-20261122.mjs
       - name: Install Chromium browser driver
         run: |
           npm install --no-save playwright@1.55.0
