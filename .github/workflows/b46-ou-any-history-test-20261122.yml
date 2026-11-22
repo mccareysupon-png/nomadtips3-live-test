@@ -1,0 +1,27 @@
+name: BALL46 TEST O/U use available history rollout
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-ou-any-history-test-20261122.yml]
+permissions: {contents: read}
+concurrency:
+  group: ball46-prematch-only-test-20261120
+  cancel-in-progress: false
+jobs:
+  deploy-and-qa:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 14
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Validate 0-10 historical samples and no fake odds
+        run: |
+          node --check qa/prematch-history-20261120/ou-math-v1-test.mjs
+          node --check qa/prematch-history-20261120/deploy-ou-any-history-test-20261122.mjs
+          node --test qa/prematch-history-20261120/ou-math-v1.test.mjs
+      - name: Deploy exactly one isolated TEST Worker module, audit real data
+        run: node qa/prematch-history-20261120/deploy-ou-any-history-test-20261122.mjs
