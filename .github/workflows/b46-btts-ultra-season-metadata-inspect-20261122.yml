@@ -1,0 +1,33 @@
+name: BALL46 BTTS Ultra League Season Metadata READ ONLY
+on:
+  push:
+    branches: [fix/ball46-btts-backend-only-test-20261122]
+    paths: [.github/workflows/b46-btts-ultra-season-metadata-inspect-20261122.yml]
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    env:
+      FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
+    steps:
+      - name: One single 5USD league metadata read, no storage, no retries
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          assert.equal(process.env.GITHUB_RUN_ATTEMPT,'1');
+          assert(process.env.FIVEDOLLAR_API_KEY);
+          const r=await fetch('https://api.5dollarfootballapi.com/v1/leagues/354',{
+            headers:{authorization:'Bearer '+process.env.FIVEDOLLAR_API_KEY,accept:'application/json'},
+            redirect:'manual',signal:AbortSignal.timeout(16000)});
+          const j=await r.json();
+          assert(r.ok&&j.success===1&&Number(j.data?.id)===354,'INVALID_LEAGUE_METADATA_'+r.status);
+          const seasons=Array.isArray(j.data.seasons)?j.data.seasons:[];
+          console.log('B46_BTTS_ULTRA_354_SEASON_INSPECT '+JSON.stringify({
+            leagueId:354,leagueName:j.data.name??null,keys:Object.keys(j.data),
+            seasonCount:seasons.length,seasons:seasons.slice(-25),
+            remaining:r.headers.get('x-ratelimit-remaining'),providerCalls:1,
+            pageWrites:0,oneX2Writes:0,HCRWrites:0,productionWrites:0
+          }));
+          JS
