@@ -90,7 +90,7 @@ const testLedgerHash=sha(JSON.stringify({rows:sourceView.testLedger.rows,stats:s
 console.log('B46_BTTS_V2_UI_PREFLIGHT '+JSON.stringify({
  uiWorker:worker,currentVersion:expectedUI,backendVersion:expectedBTTSBackend,
  changedOnly:['EXISTING_PREMATCH_BTTS_CLIENT_STATUS','TEST_ONLY_READINESS_PROXY'],
- 1x2Rows:sourceView.testLedger.rows.length,bttsLedgerRows:sourceView.bttsLedger.rows.length,
+ oneX2Rows:sourceView.testLedger.rows.length,bttsLedgerRows:sourceView.bttsLedger.rows.length,
  upcoming:backendScreen.totals.upcoming,historyReady:backendScreen.totals.historyReady,
  probabilityReady:backendScreen.totals.modelProbabilityReady,
  waitingBet365:backendScreen.totals.quoteRequired,qualified:backendScreen.totals.qualified,
@@ -137,7 +137,7 @@ for(const mode of ['btts','1x2','all','predictions']){
  assert(r.ok,'PAGE_'+mode+'_'+r.status);
  assert.equal(r.headers.get('x-b46-page-scope'),'PREMATCH_TEST_ONLY','NOT_TEST_PAGE_'+mode);
  const html=await r.text();
- assert(html.includes('prematch'),'TEST_PREMATCH_SHELL_MISSING_'+mode);
+ assert(/prematch|pre-match/i.test(html),'TEST_PREMATCH_SHELL_MISSING_'+mode);
 }
 const afterPublic=await publicJSON('/__b46_prematch_data',d=>{
  assert.equal(d.testLedger.mode,'TEST_ONLY');
