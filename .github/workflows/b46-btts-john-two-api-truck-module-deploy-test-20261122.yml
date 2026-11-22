@@ -1,0 +1,128 @@
+name: BALL46 BTTS John 2 API per truck only TEST deployment
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-btts-john-two-api-truck-module-deploy-test-20261122.yml]
+permissions: {contents: read}
+concurrency:
+  group: ball46-prematch-only-test-20261120
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Verify John's reused Bet365 prices and strict five trucks times two calls tests
+        run: |
+          node --experimental-sqlite --test qa/prematch-history-20261120/btts-priced-fixture-pickup.test.mjs
+          node --experimental-sqlite --test qa/prematch-history-20261120/btts-ultra-shadow.test.mjs
+      - name: Update ONLY BTTS odds pickup module of existing TEST worker, without calling 5USD
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import fs from 'node:fs';
+          import crypto from 'node:crypto';
+          const token=process.env.CLOUDFLARE_API_TOKEN,account=process.env.CLOUDFLARE_ACCOUNT_ID;
+          assert(token&&account,'NO_TEST_DEPLOY_ACCESS');
+          const worker='ball46-prematch-only-test-20261120';
+          const originalVersion='7628a253-951d-42be-ad6e-5bb4da4c0cb0';
+          const moduleName='btts-priced-fixture-pickup-test.mjs';
+          const src=fs.readFileSync('qa/prematch-history-20261120/'+moduleName,'utf8');
+          assert(src.includes('maxPerLondonBusinessDay:5,maxPerTick:1,maxTotalPerTruck:2')&&
+             src.includes('maxAllTruckCallsDaily:10')&&
+             src.includes('bttsBulkV2Slot')&&
+             src.includes("state:'BET365_PRICE_NEEDED'")===false&&
+             src.includes("c.state==='BET365_PRICE_NEEDED'")&&
+             src.includes('parseBet365BttsOdds')&&
+             src.includes("before.truck.state!=='COMPLETED'"),
+             'SAFETY_AND_JOHN_REUSE_RULES_MISSING');
+          const api='https://api.cloudflare.com/client/v4/accounts/'+account+'/workers';
+          async function cf(p,opts={}){
+            const r=await fetch(api+p,{...opts,headers:{authorization:'Bearer '+token,...opts.headers},
+              signal:AbortSignal.timeout(45000)});
+            const j=await r.json();
+            assert(r.ok&&j.success,'CF_'+r.status+'_'+JSON.stringify(j.errors??[]));
+            return j.result;
+          }
+          async function version(n){
+            const r=await cf('/scripts/'+n+'/deployments?per_page=1');
+            return r.deployments?.[0]?.versions?.[0]?.version_id;
+          }
+          const protectedWorkers=['ball46-production','nomadtips3-engine-343',
+            'nomadtips3-5usd-hub-343','ball46-premium-match-colors-test-20261120'];
+          const originalProtected=Object.fromEntries(await Promise.all(protectedWorkers.map(async n=>[n,await version(n)])));
+          assert.equal(await version(worker),originalVersion,'TEST_VERSION_DRIFT_REFUSE_DEPLOY');
+          const active=await cf('/workers/'+worker+'/versions/'+originalVersion+'?include=modules');
+          const oldPrice=active.modules.find(m=>m.name===moduleName);
+          const main=active.modules.find(m=>m.name==='prematch-only-worker.mjs');
+          assert(oldPrice?.content_base64&&main?.content_base64,'MISSING_EXISTING_MODULES');
+          const original=Buffer.from(oldPrice.content_base64,'base64').toString('utf8');
+          assert(original.includes('maxPerLondonBusinessDay:12,maxPerTick:2')&&
+            !original.includes("before.truck.state!=='COMPLETED'"),'ODDS_MODULE_NOT_EXPECTED_BASELINE');
+          const beforeHashes=Object.fromEntries(active.modules.map(m=>[m.name,
+             crypto.createHash('sha256').update(Buffer.from(m.content_base64,'base64')).digest('hex')]));
+          const mainBody=Buffer.from(main.content_base64,'base64').toString('utf8');
+          assert(mainBody.includes("const quoteTick=await stub.fetch('https://prematch.internal/btts-price-pickup-tick'"),
+            'PRICE_CRON_NOT_PRESENT');
+          const settings=await cf('/scripts/'+worker+'/settings');
+          const bindings=settings.bindings.map(b=>b.name).sort();
+          assert.deepEqual(bindings,['FIVEDOLLAR_API_KEY','HUB','OWNER_SECRET','STORE']);
+          console.log('B46_JOHN_TWO_API_TRUCK_PREFLIGHT '+JSON.stringify({
+            version:originalVersion,modifiedModule:moduleName,oldMaxPricesPerTick:2,
+            newMaxPricesPerTruck:1,newMaxTotalAPIsPerTruck:2,
+            fiveTrucksMaximumTotalAPI:10,otherModulesPreserved:active.modules.length-1,
+            productionWrites:0,providerCalls:0}));
+          assert.equal(await version(worker),originalVersion,'CONCURRENT_WORKER_CHANGE_REFUSE_DEPLOY');
+          const form=new FormData();
+          form.append('metadata',new Blob([JSON.stringify({
+            main_module:active.main_module,
+            compatibility_date:active.compatibility_date||'2026-11-20',
+            bindings:bindings.map(name=>({name,type:'inherit'})),
+            ...(active.compatibility_flags?.length?{compatibility_flags:active.compatibility_flags}:{})
+          })],{type:'application/json'}),'metadata.json');
+          for(const m of active.modules){
+            const b=m.name===moduleName?src:Buffer.from(m.content_base64,'base64');
+            form.append(m.name,new Blob([b],{type:'application/javascript+module'}),m.name);
+          }
+          await cf('/scripts/'+worker+'?bindings_inherit=strict',{method:'PUT',body:form});
+          let next=null,installed=null;
+          for(let i=0;i<35;i++){
+            next=await version(worker);
+            if(next!==originalVersion){
+              try{
+                installed=await cf('/workers/'+worker+'/versions/'+next+'?include=modules');
+                const updated=installed.modules.find(m=>m.name===moduleName);
+                if(updated?.content_base64&&
+                  Buffer.from(updated.content_base64,'base64').toString('utf8')===src)break;
+              }catch{}
+            }
+            await new Promise(resolve=>setTimeout(resolve,1200));
+          }
+          assert(next&&next!==originalVersion&&installed?.modules,'NEW_TEST_WORKER_NOT_ACTIVE');
+          assert.equal(installed.modules.length,active.modules.length,'UNEXPECTED_MODULE_COUNT_CHANGE');
+          for(const m of active.modules){
+            if(m.name===moduleName)continue;
+            const current=installed.modules.find(n=>n.name===m.name);
+            assert(current?.content_base64,'MODULE_MISSING_'+m.name);
+            const h=crypto.createHash('sha256').update(Buffer.from(current.content_base64,'base64')).digest('hex');
+            assert.equal(h,beforeHashes[m.name],'UNRELATED_MODULE_CHANGED_'+m.name);
+          }
+          assert.deepEqual((await cf('/scripts/'+worker+'/settings')).bindings.map(x=>x.name).sort(),bindings,
+             'BINDINGS_CHANGED');
+          assert.deepEqual(Object.fromEntries(await Promise.all(protectedWorkers.map(async n=>[n,await version(n)]))),
+             originalProtected,'PRODUCTION_OR_FRONTEND_VERSION_CHANGED');
+          console.log('B46_JOHN_TWO_API_TRUCK_DEPLOY_PASS '+JSON.stringify({
+            worker,from:originalVersion,to:next,
+            onlyChanged:moduleName,
+            originalBTTSHistoryTruckUnchanged:true,
+            maxHistoryCallsPerTruck:1,maxOddsCallsPerTruck:1,
+            totalCombinedPerTruck:2,maxTotalCombinedDaily:10,
+            noExtraProviderRequestsOnDeploy:true,productionWrites:0
+          }));
+          JS
