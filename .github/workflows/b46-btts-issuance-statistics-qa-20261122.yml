@@ -1,0 +1,22 @@
+name: BALL46 BTTS TEST Issuance and Three Market Statistics QA
+on:
+  push:
+    branches: [fix/ball46-btts-issuance-statistics-test-20261122]
+    paths: [.github/workflows/b46-btts-issuance-statistics-qa-20261122.yml]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Confirm syntax and isolated BTTS issuance, settlement, separate and combined Win Rate
+        run: |
+          node --check qa/prematch-history-20261120/btts-pick-ledger-test.mjs
+          node --check qa/prematch-history-20261120/prematch-only-worker.mjs
+          node --check qa/prematch-history-20261120/btts-ultra-shadow.mjs
+          node --test qa/prematch-history-20261120/btts-pick-ledger-test.test.mjs qa/prematch-history-20261120/btts-history-private.test.mjs qa/prematch-history-20261120/btts-ultra-shadow.test.mjs qa/prematch-history-20261120/test-pick-ledger.test.mjs qa/prematch-history-20261120/market-1x2.test.mjs qa/prematch-history-20261120/history-cargo-registry.test.mjs
