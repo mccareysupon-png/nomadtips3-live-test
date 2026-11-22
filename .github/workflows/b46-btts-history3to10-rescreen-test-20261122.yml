@@ -1,4 +1,4 @@
-name: BALL46 BTTS History 3-10 TEST Rescreen and Audit
+name: BALL46 BTTS 3-10 Stored Data Re-screen TEST ONLY
 on:
   push:
     branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
@@ -11,7 +11,7 @@ concurrency:
 jobs:
   rescreen:
     runs-on: ubuntu-24.04
-    timeout-minutes: 12
+    timeout-minutes: 8
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -22,14 +22,98 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Regression and static source safety checks
+      - name: Read actual TEST deployment code, re-screen stored BTTS fixtures once, audit Ledger and Snapshot
         run: |
-          node --check qa/prematch-history-20261120/deploy-and-rescreen-btts-history3to10-test-20261122.mjs
-          node --check qa/prematch-history-20261120/prematch-only-worker.mjs
-          node --check qa/prematch-history-20261120/btts-ultra-shadow.mjs
-          node --check qa/prematch-history-20261120/btts-pick-ledger-test.mjs
-          node --check qa/prematch-history-20261120/evaluate-btts-signal.mjs
-          node --check qa/prematch-history-20261120/btts-human-web.mjs
-          node --test qa/prematch-history-20261120/evaluate-btts-signal.test.mjs qa/prematch-history-20261120/btts-ultra-shadow.test.mjs qa/prematch-history-20261120/btts-pick-ledger-test.test.mjs qa/prematch-history-20261120/btts-human-web.test.mjs qa/prematch-history-20261120/prematch-stats-registry-test.test.mjs qa/prematch-history-20261120/test-pick-ledger.test.mjs qa/prematch-history-20261120/history-cargo-registry.test.mjs
-      - name: Deploy only PreMatch TEST Worker and re-screen stored BTTS fixtures once
-        run: node qa/prematch-history-20261120/deploy-and-rescreen-btts-history3to10-test-20261122.mjs
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import crypto from 'node:crypto';
+          import fs from 'node:fs';
+          const token=process.env.CLOUDFLARE_API_TOKEN;
+          const account=process.env.CLOUDFLARE_ACCOUNT_ID;
+          assert(token&&account,'MISSING_TEST_CLOUDFLARE_CREDENTIALS');
+          const worker='ball46-prematch-only-test-20261120';
+          const root='https://api.cloudflare.com/client/v4/accounts/'+account+'/workers';
+          const host='https://'+worker+'.mccarey-supon.workers.dev';
+          const auth='Bearer '+crypto.createHmac('sha256',token).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
+          const changed=['evaluate-btts-signal.mjs','btts-ultra-shadow.mjs','btts-pick-ledger-test.mjs','btts-human-web.mjs','prematch-only-worker.mjs'];
+          const protectedWorkers=['ball46-production','nomadtips3-engine-343',
+            'nomadtips3-5usd-hub-343','ball46-premium-match-colors-test-20261120'];
+          async function cf(p){
+            const r=await fetch(root+p,{headers:{authorization:'Bearer '+token},signal:AbortSignal.timeout(30000)});
+            const j=await r.json();assert(r.ok&&j.success,'CF_READ_ERROR_'+r.status+'_'+JSON.stringify(j.errors||[]));
+            return j.result;
+          }
+          async function version(name){
+            const d=await cf('/scripts/'+name+'/deployments?per_page=1');
+            const v=d.deployments?.[0]?.versions?.[0]?.version_id;assert(v,'MISSING_ACTIVE_VERSION_'+name);return v;
+          }
+          async function owner(path,method='GET'){
+            const r=await fetch(host+path,{method,headers:{authorization:auth},cache:'no-store',signal:AbortSignal.timeout(25000)});
+            const raw=await r.text();assert(r.ok,'PREMATCH_OWNER_FAILED_'+path+'_'+r.status+'_'+raw.slice(0,160));
+            return JSON.parse(raw);
+          }
+          const protectedBefore=Object.fromEntries(await Promise.all(protectedWorkers.map(async n=>[n,await version(n)])));
+          const v=await version(worker);
+          const active=await cf('/workers/'+worker+'/versions/'+v+'?include=modules');
+          assert.equal(active.main_module,'prematch-only-worker.mjs');
+          for(const n of changed){
+            const m=active.modules.find(x=>x.name===n);
+            assert(m?.content_base64,'DEPLOYED_MODULE_MISSING_'+n);
+            assert.equal(Buffer.from(m.content_base64,'base64').toString('utf8'),
+              fs.readFileSync('qa/prematch-history-20261120/'+n,'utf8'),'ACTIVE_MODULE_NOT_LATEST_'+n);
+          }
+          assert(active.modules.some(x=>x.name==='prematch-stats-registry-test.mjs'),'STATS_REGISTRY_MISSING');
+          let shadow,propagationError;
+          for(let i=0;i<24;i++){
+            try{shadow=await owner('/btts-shadow');assert.equal(shadow.policy.minHistory,3,'POLICY_NOT_3_MATCHES');break}
+            catch(e){propagationError=e;if(i<23)await new Promise(r=>setTimeout(r,1000))}
+          }
+          assert(shadow,'BTTS_CODE_NOT_PROPAGATED_'+String(propagationError));
+          assert.equal(shadow.policy.minProbability,.60);
+          assert.equal(shadow.policy.minPrice,1.5);
+          assert.equal(shadow.policy.maxPrice,10);
+          assert.equal(shadow.policy.minEdge,.05);
+          assert.equal(shadow.policy.minEV,.05);
+          assert.equal(shadow.providerCalls,0);assert.equal(shadow.published,0);
+          const [ledgerBefore,statsBefore,hcrBefore]=await Promise.all([
+            owner('/test-ledger'),owner('/prematch-stats-registry-test?days=90'),
+            owner('/history-cargo-registry?detail=0')
+          ]);
+          const ledgerHash=crypto.createHash('sha256').update(JSON.stringify({rows:ledgerBefore.rows,stats:ledgerBefore.stats})).digest('hex');
+          const cycle=await owner('/btts-cycle-test','POST');
+          assert.equal(cycle.mode,'BTTS_ISSUANCE_TEST_ONLY');
+          assert.equal(cycle.providerCalls,0);
+          assert.equal(cycle.published,0);
+          assert.equal(cycle.oneX2Modified,false);
+          const [ledgerAfter,statsAfter,hcrAfter,audit,postShadow]=await Promise.all([
+            owner('/test-ledger'),owner('/prematch-stats-registry-test?days=90'),
+            owner('/history-cargo-registry?detail=0'),owner('/prematch-stats-registry-audit-test'),
+            owner('/btts-shadow')
+          ]);
+          const afterHash=crypto.createHash('sha256').update(JSON.stringify({rows:ledgerAfter.rows,stats:ledgerAfter.stats})).digest('hex');
+          assert.equal(afterHash,ledgerHash,'1X2_SOURCE_LEDGER_CHANGED');
+          assert.equal(audit.verified,true,'LEDGER_SNAPSHOT_REGISTRY_MISMATCH');
+          assert.equal(statsAfter.markets.TOTAL.total,statsAfter.markets['1X2'].total+statsAfter.markets.BTTS.total);
+          assert.equal(statsAfter.markets['1X2'].total,ledgerBefore.rows.length);
+          assert(hcrAfter.inventory.finishedFixtures>=hcrBefore.inventory.finishedFixtures,'HCR_ARCHIVE_LOST');
+          assert.equal(postShadow.policy.minHistory,3);
+          assert.deepEqual(Object.fromEntries(await Promise.all(protectedWorkers.map(async n=>[n,await version(n)]))),protectedBefore,'PROTECTED_WORKER_CHANGED');
+          console.log('B46_BTTS_REAL_RESCREEN_3TO10_RESULTS '+JSON.stringify({
+            code:'B46_BTTS_PREMATCH_TEST_3TO10',version:v,selectionPolicy:shadow.policy,
+            totals:postShadow.totals,
+            checkedFixtures:postShadow.totals.upcoming,
+            screenedHistoryReady:postShadow.totals.historyReady,
+            priced:postShadow.totals.availableQuote,
+            qualifying:postShadow.totals.qualified,
+            decisions:postShadow.decisions.map(x=>({
+              fixtureId:x.fixtureId,home:x.home,away:x.away,homeHistory:x.homeHistory,
+              awayHistory:x.awayHistory,pick:x.signal,oddsYes:x.oddsYes,oddsNo:x.oddsNo,
+              probabilityYes:x.probabilityYes,probabilityNo:x.probabilityNo
+            })),
+            cycle:cycle.trial,settled:cycle.settled,
+            registry:{oneX2:statsAfter.markets['1X2'].total,btts:statsAfter.markets.BTTS.total,
+              total:statsAfter.markets.TOTAL.total},
+            registryAudit:audit.verified,hcrFT:hcrAfter.inventory.finishedFixtures,
+            providerCallsAdded:0,published:0,productionWrites:0
+          }));
+          JS
