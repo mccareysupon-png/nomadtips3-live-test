@@ -1,0 +1,29 @@
+name: BALL46 BTTS Existing Predictions UI Contract READ ONLY
+on:
+  push:
+    branches: [fix/ball46-btts-backend-only-test-20261122]
+    paths: [.github/workflows/b46-btts-prediction-ui-contract-readonly-20261122.yml]
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Inspect existing PreMatch TEST front-end rendering functions, no writes
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          const t=process.env.CLOUDFLARE_API_TOKEN,a=process.env.CLOUDFLARE_ACCOUNT_ID;
+          const root='https://api.cloudflare.com/client/v4/accounts/'+a+'/workers',name='ball46-premium-match-colors-test-20261120';
+          const call=async p=>{const r=await fetch(root+p,{headers:{authorization:'Bearer '+t},signal:AbortSignal.timeout(24000)});const j=await r.json();assert(r.ok&&j.success,'CF_'+r.status);return j.result};
+          const v=(await call('/scripts/'+name+'/deployments?per_page=1')).deployments[0].versions[0].version_id;
+          const m=(await call('/workers/'+name+'/versions/'+v+'?include=modules')).modules[0];
+          const src=Buffer.from(m.content_base64,'base64').toString('utf8');
+          for(const [a,b] of [[42000,46500],[57500,66500],[85000,100500],[102000,110500],[270000,275300]]){
+           console.log('B46_UI_SLICE '+JSON.stringify({start:a,end:b,source:src.slice(a,b)}));
+          }
+          JS
