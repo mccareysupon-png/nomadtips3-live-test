@@ -1,4 +1,4 @@
-name: BALL46 HCR Inspect ALL Stored Fields for Fixture 203963222
+name: BALL46 HCR Existing Team History + Cached Cargo Evidence READ ONLY
 on:
   push:
     branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
@@ -6,43 +6,65 @@ on:
 permissions:
   contents: read
 jobs:
-  inspect:
+  verify:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
     steps:
-      - name: Read-only inspect complete existing raw FT fixture, no external API
+      - name: Inspect stored cargo and historical results for Galatasaray and Samsunspor without new provider calls
         run: |
           node --input-type=module <<'JS'
           import assert from 'node:assert/strict';
           import crypto from 'node:crypto';
           const token=process.env.CLOUDFLARE_API_TOKEN;assert(token);
           const host='https://ball46-prematch-only-test-20261120.mccarey-supon.workers.dev';
-          const auth='Bearer '+crypto.createHmac('sha256',token).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
-          async function get(path) {
-            const r=await fetch(host+path,{headers:{authorization:auth},cache:'no-store',signal:AbortSignal.timeout(25000)});
-            assert(r.ok,'TEST_WORKER_GET_'+path+'_HTTP_'+r.status);
-            return r.json();
+          const headers={authorization:'Bearer '+crypto.createHmac('sha256',token).update('BALL46_PREMATCH_ONLY_V1').digest('hex')};
+          async function get(p){
+            const r=await fetch(host+p,{headers,cache:'no-store',signal:AbortSignal.timeout(25000)});
+            assert(r.ok,'OWNER_READ_'+p+'_'+r.status);return r.json();
           }
-          const [full,hcr]=await Promise.all([
-            get('/history-cargo-full?day=2026-11-22&round=4&fixture=203963222&detail=1'),
-            get('/history-cargo-registry?day=2026-11-22&detail=1')
+          const [hcr,archive,source,shadow]=await Promise.all([
+            get('/history-cargo-registry?detail=1'),get('/preview-data'),
+            get('/history-cargo-full'),get('/btts-shadow')
           ]);
-          assert.equal(full.registry,'HISTORY-CARGO-FULL-V1');
-          const fixture=full.fixture;
-          assert(fixture,'MISSING_RAW_FIXTURE');
-          assert.equal(String(fixture.fixtureId),'203963222');
-          const trip=hcr.rounds.find(x=>x.businessDay==='2026-11-22'&&x.roundNo===4);
-          assert(trip&&trip.manifestStatus==='TRACKED','MISSING_TRACKED_TRIP');
-          const item=trip.items.find(x=>String(x.fixtureId)==='203963222');
-          assert(item&&item.archiveStatus==='FINISHED','MISSING_ARCHIVED_FT');
-          assert.equal(String(fixture.home.id),String(item.homeTeamId));
-          assert.equal(String(fixture.away.id),String(item.awayTeamId));
-          assert.equal(fixture.goals.home,item.homeGoals);
-          assert.equal(fixture.goals.away,item.awayGoals);
-          console.log('B46_HCR_ALL_FIELDS_META '+JSON.stringify({id:fixture.fixtureId,round:4,day:'2026-11-22',archive:item,fieldCount:Object.keys(fixture).length,fields:Object.keys(fixture),upstreamCalls:0,prodWrites:0}));
-          for(const [field,value] of Object.entries(fixture)) {
-            console.log('B46_HCR_ALL_FIELDS '+JSON.stringify({field,value}));
-          }
+          const targets=[{id:640,name:'Galatasaray'},{id:2940,name:'Samsunspor'}];
+          const all=(hcr.rounds||[]).flatMap(r=>(r.items||[])
+            .filter(x=>x.archiveStatus==='FINISHED')
+            .map(x=>({...x,manifestDay:r.businessDay,manifestRound:r.roundNo})));
+          const names=new Map([[640,'Galatasaray'],[2940,'Samsunspor']]);
+          const compact=r=>({
+            fixtureId:r.fixtureId,
+            leagueId:r.leagueId,
+            kickoffUTC:r.kickoffUTC,
+            homeTeamId:r.homeTeamId,
+            awayTeamId:r.awayTeamId,
+            homeGoals:r.homeGoals,
+            awayGoals:r.awayGoals,
+            btts:Number(r.homeGoals)>0&&Number(r.awayGoals)>0,
+            trip:r.manifestDay+'/'+r.manifestRound
+          });
+          const recent=(archive.results||[]).filter(r=>r.status==='finished')
+            .map(r=>({
+               fixtureId:r.fixture_id,leagueId:r.league_id,
+               kickoffUTC:new Date(Number(r.kickoff)*1000).toISOString(),
+               homeTeamId:r.home_id,awayTeamId:r.away_id,homeGoals:r.hg,awayGoals:r.ag,
+               btts:r.hg>0&&r.ag>0
+             }));
+          const teams=targets.map(t=>({
+            teamId:t.id,name:t.name,
+            trackedHcr:all.filter(r=>Number(r.homeTeamId)===t.id||Number(r.awayTeamId)===t.id)
+              .sort((a,b)=>b.kickoffUTC.localeCompare(a.kickoffUTC)).slice(0,10).map(compact),
+            latestArchive50:recent.filter(r=>Number(r.homeTeamId)===t.id||Number(r.awayTeamId)===t.id)
+              .sort((a,b)=>b.kickoffUTC.localeCompare(a.kickoffUTC)).slice(0,10)
+          }));
+          const h2h=all.filter(r=>[640,2940].includes(Number(r.homeTeamId))&&
+            [640,2940].includes(Number(r.awayTeamId))).map(compact);
+          const report={archiveFinished:hcr.inventory.finishedFixtures,trackedRaw:source.fixtureRecords,
+            trackedRoundCount:source.roundsTracked,rawFieldSets:source.rounds.slice(0,2).map(x=>({
+              day:x.businessDay,round:x.roundNo,fields:x.fixtureFields,nested:x.nestedFields
+            })),upcoming:shadow.totals.upcoming,ready3:shadow.totals.historyReady,
+            history:{teams,h2h},providerCalls:0,productionWrites:0,
+            disclaimer:'Team history is limited to HCR tracked fixtures and the last 50 archived FT; legacy 933 FT cannot all be inspected using existing read-only endpoints'};
+          console.log('B46_HCR_TEAM_HISTORY_REAL '+JSON.stringify(report));
           JS
