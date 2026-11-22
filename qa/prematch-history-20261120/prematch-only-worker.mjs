@@ -15,6 +15,7 @@ import {evaluateBttsUltra,mergeBet365BttsQuotes,parseBet365BttsOdds} from './btt
 import {bttsTestHtml} from './btts-human-web.mjs';
 import {initBttsHistory,importBttsFinished,importBttsTeamFallback,bttsHistoryCoverage,candidateBttsLeagues} from './btts-history-private.mjs';
 import {initBttsPickLedger,bttsPicksFromScreen,recordBttsPicks,settleBttsPicks,bttsPickLedger,combinedPrematchLedgers,marketDailyBooks,bttsDailySeries} from './btts-pick-ledger-test.mjs';
+import {initPreMarketStatsRegistry,syncPreMarketStatsRegistry,readPreMarketStatsRegistry,auditPreMarketStatsRegistry} from './prematch-stats-registry-test.mjs';
 const AUTO_PROFILE_VERSION='auto-shadow-market-1x2-v1';
 const json=x=>Response.json(x,{headers:{'cache-control':'no-store'}});
 // Only attribute a finished result's league ID to the exact locked fixture and teams.
@@ -23,7 +24,7 @@ const archivedLeagueIdsForPicks=db=>{
  return Object.fromEntries(rows.filter(r=>Number.isSafeInteger(r.league_id)&&r.league_id>0).map(r=>[String(r.fixture_id),r.league_id]));
 };
 export class PrematchStore extends DurableObject{
- constructor(ctx,env){super(ctx,env);this.db={exec:(q,...a)=>ctx.storage.sql.exec(q,...a),transaction:f=>ctx.storage.transactionSync(f)};this.missionInFlight=null;init(this.db);initPickLedger(this.db);initHistoryRounds(this.db);initBttsHistory(this.db);initBttsPickLedger(this.db)}
+ constructor(ctx,env){super(ctx,env);this.db={exec:(q,...a)=>ctx.storage.sql.exec(q,...a),transaction:f=>ctx.storage.transactionSync(f)};this.missionInFlight=null;init(this.db);initPickLedger(this.db);initHistoryRounds(this.db);initBttsHistory(this.db);initBttsPickLedger(this.db);initPreMarketStatsRegistry(this.db)}
  async recordQualifiedBtts(now,providedFixtures=null,providedQuotes=null){
   // Local BTTS-only screen. Select only fixtures with actual Bet365 BTTS
   // quote evidence; ZERO new provider/HUB calls, no changes to 1X2/HCR.
@@ -65,6 +66,7 @@ export class PrematchStore extends DurableObject{
    const imported=parsed.finals.length?ingest(this.db,parsed.finals,parsed.observed):{added:0,duplicate:0,corrected:0,rejected:0};
    const settled=await this.ctx.storage.get('testLedgerEnabled')?settlePicks(this.db,now):0;
    const bttsSettled=settleBttsPicks(this.db,now);
+   if(settled||bttsSettled)syncPreMarketStatsRegistry(this.db,now);
    const historyRound=withHistory?importHistoryRoundFromCache(this.db,snapshot,now):historyRoundState(this.db,now);
    const next={...parsed,finals:undefined,checkedAt:now,imported,settled,bttsSettled,historyRound};
    await this.ctx.storage.put('normalHubState',next);
@@ -141,9 +143,13 @@ export class PrematchStore extends DurableObject{
  if(path==='/preview-data'&&req.method==='GET'){
  const testMonitor=await this.syncNormalHub(now);
  const ledgerNow=ledger(this.db);
- const bttsLedgerNow=bttsPickLedger(this.db);
- const allLedgerNow=combinedPrematchLedgers(ledgerNow,bttsLedgerNow);
- const dailyMarkets=marketDailyBooks(this.db,now);
+ const registry=readPreMarketStatsRegistry(this.db,now);
+ const bttsRaw=bttsPickLedger(this.db);
+ const bttsLedgerNow={...bttsRaw,stats:registry.markets.BTTS};
+ const allRaw=combinedPrematchLedgers(ledgerNow,bttsRaw);
+ const allLedgerNow={...allRaw,stats:registry.markets.TOTAL};
+ const dailyMarkets={oneX2:registry.dailyBooks['1X2'],
+  btts:registry.dailyBooks.BTTS,all:registry.dailyBooks.TOTAL};
  const knownLeagueNames=await this.ctx.storage.get('prematchLeagueNamesV1')??{};
  const knownFixtures=await this.ctx.storage.get('botFixtures')??[];
  const catalog=await this.ctx.storage.get('prematchLeagueCatalogV1')??{};
@@ -152,7 +158,8 @@ export class PrematchStore extends DurableObject{
  const allTeams=Array.from(this.db.exec("WITH latest AS (SELECT r.* FROM result_version r WHERE r.status='finished' AND r.observed=(SELECT MAX(v.observed) FROM result_version v WHERE v.fixture_id=r.fixture_id)), team_rows AS (SELECT home_id AS team FROM latest UNION ALL SELECT away_id AS team FROM latest) SELECT team,COUNT(*) AS matches FROM team_rows GROUP BY team"));
  const saved=await this.ctx.storage.get('previewSelections');
  return json({system:'BALL46_PREMATCH_ONLY',stored:totals(this.db),teams:allTeams.length,teamsWith10:allTeams.filter(n=>n.matches>=10).length,results:rows,selection:saved??null,testLedger:ledgerNow,bttsLedger:bttsLedgerNow,allLedger:allLedgerNow,marketDailyBooks:dailyMarkets,
-  bttsDailySeries:bttsDailySeries(this.db,'BTTS'),allDailySeries:bttsDailySeries(this.db,'ALL'),
+  statsRegistry:{code:registry.code,mode:registry.mode,registryEvents:registry.registryEvents,rangeDays:registry.rangeDays},
+  bttsDailySeries:registry.dailySeries.BTTS,allDailySeries:registry.dailySeries.TOTAL,
   dailyBook:preMatchDailyBook(this.db,now),historyRounds:historyRoundState(this.db,now),testMonitor:displayMonitor});
  }
  if(path==='/merge-archive'&&req.method==='POST'){
@@ -271,11 +278,25 @@ export class PrematchStore extends DurableObject{
    return new Response(JSON.stringify({error:String(error.message)}),{status:422,headers:{'content-type':'application/json'}});
   }
  }
+ // Dedicated historical statistics registry. Read Snapshot only on GET.
+ // The write path compares changed source-ledger events; never edits either ledger.
+ if(path==='/prematch-stats-registry-test'&&req.method==='GET'){
+  const days=new URL(req.url).searchParams.get('days')==='30'?30:90;
+  return json(readPreMarketStatsRegistry(this.db,now,{rangeDays:days}));
+ }
+ if(path==='/prematch-stats-registry-audit-test'&&req.method==='GET')
+  return json(auditPreMarketStatsRegistry(this.db));
+ if(path==='/prematch-stats-registry-sync-test'&&req.method==='POST'){
+  const update=syncPreMarketStatsRegistry(this.db,now);
+  return json({update,snapshot:readPreMarketStatsRegistry(this.db,now),
+   audit:auditPreMarketStatsRegistry(this.db)});
+ }
  // Test-only explicit local BTTS check, without any upstream request.
  if(path==='/btts-cycle-test'&&req.method==='POST'){
   const trial=await this.recordQualifiedBtts(now);
   const settled=settleBttsPicks(this.db,now);
-  return json({mode:'BTTS_ISSUANCE_TEST_ONLY',trial,settled,ledger:bttsPickLedger(this.db).stats,
+  const registry=syncPreMarketStatsRegistry(this.db,now);
+  return json({mode:'BTTS_ISSUANCE_TEST_ONLY',trial,settled,registry,ledger:bttsPickLedger(this.db).stats,
     providerCalls:0,oneX2Modified:false,published:0});
  }
  if(path==='/btts-shadow'&&req.method==='GET'){
@@ -310,7 +331,8 @@ export class PrematchStore extends DurableObject{
   if(JSON.stringify(updated.quotes)!==JSON.stringify(previous))
    await this.ctx.storage.put('prematchBttsBet365QuotesV1',updated.quotes);
   const issued=updated.state==='PRICED'?await this.recordQualifiedBtts(now,fixtures,updated.quotes):null;
-  return json({mode:'BET365_BTTS_TEST_ONLY',fixtureId:wanted,state:updated.state,issued,
+  const registry=issued?.added?syncPreMarketStatsRegistry(this.db,now):null;
+  return json({mode:'BET365_BTTS_TEST_ONLY',fixtureId:wanted,state:updated.state,issued,registry,
    sourceQuote:parsed.sourceQuote??null,providerCalls:0,published:0,
    oneX2LedgerChanged:false});
  }
@@ -370,8 +392,9 @@ export class PrematchStore extends DurableObject{
  }
  const monitorRun=await this.syncNormalHub(now);
  const bttsIssued=await this.recordQualifiedBtts(now,fixtures);
+ const statsRegistry=syncPreMarketStatsRegistry(this.db,now);
  const dailyBook=preMatchDailyBook(this.db,now);
- const out={...report,rows,system:'BALL46_PREMATCH_ONLY',ruleState:'READ_ONLY_SHADOW',autoVersion:AUTO_PROFILE_VERSION,checkedAt:now,networkCalls:0,archiveCoverage,qualified:rows.filter(x=>x.btts.signal!=='NO_SIGNAL'||x.oneX2.signal!=='NO_SIGNAL').length,dailyBook,bttsIssued};
+ const out={...report,rows,system:'BALL46_PREMATCH_ONLY',ruleState:'READ_ONLY_SHADOW',autoVersion:AUTO_PROFILE_VERSION,checkedAt:now,networkCalls:0,archiveCoverage,qualified:rows.filter(x=>x.btts.signal!=='NO_SIGNAL'||x.oneX2.signal!=='NO_SIGNAL').length,dailyBook,bttsIssued,statsRegistry};
  await this.ctx.storage.put('botRun',{checkedAt:now,inputs:fixtures.length,checked:report.counts.upcoming,archiveCoverage,complete:report.counts.historyComplete,qualified:out.qualified,networkCalls:0,mode:out.mode,profile:report.profile,counts:report.counts,outcomes:report.outcomes,probability:report.probability,diagnostics:report.diagnostics,autoVersion:AUTO_PROFILE_VERSION,published:0});await this.ctx.storage.put('previewSelections',out);return json(out)}
  if(path==='/daily-state'&&req.method==='GET')return json({stored:totals(this.db),daily:await this.ctx.storage.get('dailyImport')??null});
  if(path==='/daily-init'&&req.method==='POST'){
@@ -380,7 +403,7 @@ export class PrematchStore extends DurableObject{
  return json({daily:await this.ctx.storage.get('dailyImport'),stored:totals(this.db)})}
  if(path==='/daily-run'&&req.method==='POST')return new Response(JSON.stringify({state:'DISABLED_NO_ADDITIONAL_PROVIDER_RUNS',providerCalls:0}),{status:409,headers:{'content-type':'application/json'}});
  if(path==='/health')return json({system:'BALL46_PREMATCH_ONLY',stored:totals(this.db),liveBindings:0,hubReadOnly:true,cutoff:'06:00 Europe/London',dailyBook:preMatchDailyBook(this.db,now),historyRounds:historyRoundState(this.db,now),dailyMission:await this.ctx.storage.get('dailyMission')??null,providerCalls:0});
- if(path==='/import'&&req.method==='POST'){const j=await req.json();if(!Array.isArray(j.rows)||j.rows.length>100||j.rows.some(f=>normalize(f)?.status!=='finished'||f.kickoff_ts>=now))return new Response('Invalid rows',{status:400});const stats=ingest(this.db,j.rows,now);const settled=await this.ctx.storage.get('testLedgerEnabled')?settlePicks(this.db,now):0;const bttsSettled=settleBttsPicks(this.db,now);return json({ok:true,stats,settled,bttsSettled,stored:totals(this.db),providerCalls:0})}
+ if(path==='/import'&&req.method==='POST'){const j=await req.json();if(!Array.isArray(j.rows)||j.rows.length>100||j.rows.some(f=>normalize(f)?.status!=='finished'||f.kickoff_ts>=now))return new Response('Invalid rows',{status:400});const stats=ingest(this.db,j.rows,now);const settled=await this.ctx.storage.get('testLedgerEnabled')?settlePicks(this.db,now):0;const bttsSettled=settleBttsPicks(this.db,now);const statsRegistry=syncPreMarketStatsRegistry(this.db,now);return json({ok:true,stats,settled,bttsSettled,statsRegistry,stored:totals(this.db),providerCalls:0})}
  return new Response('Not found',{status:404})
  }}
 const html=`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>BALL46 | Pre-Match Test</title><style>
