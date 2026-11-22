@@ -21,7 +21,7 @@ export function scheduledFromNormalHub(snapshot,now,{max=1000,maxDays=3,earliest
   if(!at||at>now+60||now-at>maxPriceAgeSec||at>=start){stats.oldPrices++;continue}
   const id=String(f.fixtureId);
   if(rows.has(id)){stats.duplicates++;continue}
-  rows.set(id,{id,status:'scheduled',kickoff_ts:start,teams:{home:{id:Number(f.home.id),name:String(f.home.name??f.home.id)},away:{id:Number(f.away.id),name:String(f.away.name??f.away.id)}},storedHub1x2:{bookmaker:'5usd-hub',observed:at,source:'NORMAL_HUB_CACHED_ODDS',prices:{'1X2_HOME':odds.home,'1X2_DRAW':odds.draw,'1X2_AWAY':odds.away}}});
+  rows.set(id,{id,status:'scheduled',kickoff_ts:start,league:{id:Number(f.league.id),name:String(f.league.name||'')},teams:{home:{id:Number(f.home.id),name:String(f.home.name??f.home.id)},away:{id:Number(f.away.id),name:String(f.away.name??f.away.id)}},storedHub1x2:{bookmaker:'5usd-hub',observed:at,source:'NORMAL_HUB_CACHED_ODDS',prices:{'1X2_HOME':odds.home,'1X2_DRAW':odds.draw,'1X2_AWAY':odds.away}}});
   if(rows.size>=max)break;
  }
  const fixtures=[...rows.values()].sort((a,b)=>a.kickoff_ts-b.kickoff_ts||a.id.localeCompare(b.id));
