@@ -85,7 +85,8 @@ test('full details are never returned by an unfiltered/unspecified browse reques
  const db=database();importHistoryRoundFromCache(db,snapshot(dayNow,1),dayNow,{roundNo:1});
  const summary=historyFullCargoReport(db,{day:'2026-11-23'});
  assert.equal(summary.fixture,undefined);
- assert(!JSON.stringify(summary).includes('provider_extra'));
+ assert(!JSON.stringify(summary).includes('all-fields-retained'));
+ assert(summary.rounds[0].nestedFields.includes('providerOdds.provider_extra'));
  assert.throws(()=>historyFullCargoReport(db,{includeRaw:true}),/FULL_CARGO_BAD_QUERY/);
  assert.throws(()=>historyFullCargoReport(db,{day:'2026-11-23',roundNo:6}),/FULL_CARGO_BAD_QUERY/);
  assert.equal(historyFullCargoReport(db,{day:'2026-11-23',roundNo:1,fixtureId:840000,includeRaw:false}).fixture,undefined);
