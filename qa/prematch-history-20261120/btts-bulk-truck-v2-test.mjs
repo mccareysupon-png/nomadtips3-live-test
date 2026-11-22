@@ -11,13 +11,25 @@ const positive=n=>Number.isSafeInteger(n)&&n>0;
 const cap=Object.freeze({maxRoundsPerDay:5,maxProviderCallsPerRound:1,maxRowsPerRound:100,
   maxDailyProviderCalls:5,maxDailyRows:500,legacyCargoWrites:0,sharedLiveWrites:0});
 export const B46_BULK_V2_CAP=cap;
+// Dedicated BTTS dispatch windows, offset +2h from the original 1X2/HCR
+// 06,10,14,18,22 London timetable. This changes ONLY BTTS truck timing.
+// Keep the 06:00 Europe/London accounting boundary from historySlot.
+const londonHour=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',hour:'2-digit',hourCycle:'h23'});
+export function bttsBulkV2Slot(now){
+ const base=historySlot(now);
+ const hour=Number(londonHour.format(new Date(now*1000)));
+ if(!Number.isInteger(hour)||hour<0||hour>23)throw Error('INVALID_BTTS_LONDON_HOUR');
+ const slot=hour>=8&&hour<12?1:hour>=12&&hour<16?2:
+  hour>=16&&hour<20?3:hour>=20?4:hour<6?5:0;
+ return {...base,slot,btTsScheduledLocal:['08:00','12:00','16:00','20:00','00:00'],offsetFromLegacyHours:2};
+}
 export function initBttsBulkV2(db){
  db.exec("CREATE TABLE IF NOT EXISTS b46_btts_bulk_v2_rounds (business_day TEXT NOT NULL, round_no INTEGER NOT NULL, reserved_at INTEGER NOT NULL, completed_at INTEGER, state TEXT NOT NULL, league_id INTEGER, page INTEGER, provider_calls INTEGER NOT NULL, received INTEGER NOT NULL DEFAULT 0, added INTEGER NOT NULL DEFAULT 0, duplicates INTEGER NOT NULL DEFAULT 0, corrected INTEGER NOT NULL DEFAULT 0, has_more INTEGER, quota_remaining INTEGER, error TEXT, source TEXT NOT NULL DEFAULT '5USD_ULTRA_LEAGUE_WINDOW', PRIMARY KEY(business_day,round_no))");
  db.exec("CREATE TABLE IF NOT EXISTS b46_btts_bulk_v2_originals (business_day TEXT NOT NULL, round_no INTEGER NOT NULL, league_id INTEGER NOT NULL, page INTEGER NOT NULL, fetched_at INTEGER NOT NULL, payload TEXT NOT NULL, PRIMARY KEY(business_day,round_no))");
  db.exec("CREATE TABLE IF NOT EXISTS b46_btts_bulk_v2_cursors (league_id INTEGER PRIMARY KEY, next_page INTEGER NOT NULL, updated_at INTEGER NOT NULL, exhausted INTEGER NOT NULL DEFAULT 0)");
 }
 export function bulkV2State(db,now){
- const slot=historySlot(now);
+ const slot=bttsBulkV2Slot(now);
  const all=rows(db,'SELECT business_day,round_no,state,league_id,page,provider_calls,received,added,duplicates,corrected,has_more,quota_remaining,error FROM b46_btts_bulk_v2_rounds WHERE business_day=? ORDER BY round_no',slot.businessDay);
  const calls=all.reduce((n,x)=>n+x.provider_calls,0);
  const received=all.reduce((n,x)=>n+x.received,0);
@@ -33,6 +45,7 @@ function historyCount(db,team,kickoff,now){
 }
 export function planBulkV2(db,fixtures,now){
  const state=bulkV2State(db,now);
+ if(state.slot===0)return {state:'NOT_IN_BTTS_WINDOW',current:state};
  if(state.rounds.some(r=>r.round_no===state.slot))return {state:'ALREADY_EXECUTED',current:state};
  const upcoming=Array.isArray(fixtures)?fixtures.filter(f=>f.status==='scheduled'&&
    positive(f.kickoff_ts)&&f.kickoff_ts>now&&positive(Number(f.league?.id))):[];
