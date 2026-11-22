@@ -1,6 +1,6 @@
 // Pure BTTS filter. No fetch, timers, storage, or production dependencies.
 // Provisional model: 40% home BTTS, 40% away BTTS, 20% cross scoring/conceding.
-export const DEFAULT_BTTS=Object.freeze({enabled:false,minHistory:10,minPrice:1.5,maxPrice:10,minEdge:0.05,minEV:0.05,minProbability:0.60});
+export const DEFAULT_BTTS=Object.freeze({enabled:false,minHistory:3,minPrice:1.5,maxPrice:10,minEdge:0.05,minEV:0.05,minProbability:0.60});
 export function evaluateBttsSignal(input,options={}){
  const cfg={...DEFAULT_BTTS,...options};
  const no=(reason,metrics=null)=>({signal:'NO_SIGNAL',reason,metrics});
