@@ -1,0 +1,27 @@
+name: BALL46 BTTS copy SAME prediction card from Statistics 1X2 to BTTS TEST
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-btts-clone-statistics-1x2-prediction-card-test-20261122.yml]
+permissions: {contents: read}
+concurrency:
+  group: ball46-premium-match-colors-test-20261120
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Assert BTTS actually uses existing 1X2 premiumMatchRow, not recreated CSS
+        run: |
+          node --check qa/prematch-history-20261120/btts-use-exact-1x2-history-cards-20261122.mjs
+          node --check qa/prematch-history-20261120/deploy-btts-clone-1x2-card-test-20261122.mjs
+          node --test qa/prematch-history-20261120/btts-use-exact-1x2-history-cards.test.mjs
+      - name: Update ONLY BTTS candidate card renderer in current TEST UI Worker
+        run: node qa/prematch-history-20261120/deploy-btts-clone-1x2-card-test-20261122.mjs
