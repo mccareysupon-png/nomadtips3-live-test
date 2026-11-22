@@ -20,7 +20,7 @@ test('BTTS screening calls exactly the same 1X2 Statistics premium card renderer
  assert.doesNotMatch(result.code,/grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
  assert.equal(result.code.split('function premiumMatchRow(item,hub,stale){').length-1,1);
  assert.match(result.code,/function makeBttsCandidatesSection\(\)/);
- assert.throws(()=>patchBttsCloneExactOneX2Cards(result.code),/SOURCE_DRIFT/);
+ assert.throws(()=>patchBttsCloneExactOneX2Cards(result.code),/ALREADY_APPLIED/);
 });
 test('fail closed if original 1X2 card renderer or existing candidate layout unavailable',()=>{
  assert.throws(()=>patchBttsCloneExactOneX2Cards('function makeBttsCandidateCard(r){}'),
