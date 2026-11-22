@@ -21,4 +21,25 @@ export function patchStatisticsSidebarHeadingsClient(original){
    "const title=el('div','b46pm-nav-heading','PRE-MATCH · TEST');wrapper.append(title);",
    "const title=el('div','b46pm-nav-heading','PRE-MATCH STATISTICS');wrapper.append(title);",
    'DESKTOP_PREMATCH_HEADING');
- const helper=String.raw
+ const helper=[
+"  // Rename only native Live Statistics sidebar headings; preserve navigation.",
+"  function b46RenameNativeLiveStatsHeading(){",
+"    for(const node of document.querySelectorAll('aside.left-rail .rail-title > span')){",
+"      if(node.textContent.trim()==='STATISTICS')node.textContent='LIVE STATISTICS';",
+"    }",
+"    const mobile=document.querySelector('#b46m-drawer [data-b46m-page=\\\"statistics\\\"] > span:last-child');",
+"    if(mobile&&mobile.textContent.trim().toLowerCase()==='statistics')mobile.textContent='LIVE STATISTICS';",
+"  }",
+ ].join('\\n')+'\\n';
+ s=replaceOnce(s,'  function draw(pageOnly=false){',
+   helper+'  function draw(pageOnly=false){','SCOPED_LIVE_HEADING_HELPER');
+ s=replaceOnce(s,'    mobileNav();','    mobileNav();\\n    b46RenameNativeLiveStatsHeading();',
+   'RENAME_AFTER_NAV_MOUNT');
+ if(s.includes("'PRE-MATCH · TEST'")||
+    !s.includes("el('div','b46pm-nav-heading','PRE-MATCH STATISTICS')")||
+    !s.includes("el('div','b46m-grouplabel','PRE-MATCH STATISTICS')")||
+    !s.includes("node.textContent='LIVE STATISTICS'"))
+  throw Error('HEADING_PATCH_INVARIANT_FAILED');
+ return {code:s,scope:'TEST_UI_HEADINGS_ONLY',live:'LIVE STATISTICS',prematch:'PRE-MATCH STATISTICS',
+   routesChanged:false,backendChanged:false,providerCallsAdded:0};
+}
