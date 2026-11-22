@@ -1,0 +1,20 @@
+name: BALL46 BTTS History Stats Registry Snapshot V1 TEST QA
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-btts-stats-registry-snapshot-qa-20261122.yml]
+permissions:
+  contents: read
+jobs:
+  qa:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate persistent registry event journal and market/day snapshots
+        run: |
+          node --check qa/prematch-history-20261120/prematch-stats-registry-test.mjs
+          node --test qa/prematch-history-20261120/prematch-stats-registry-test.test.mjs qa/prematch-history-20261120/btts-pick-ledger-test.test.mjs qa/prematch-history-20261120/btts-ultra-shadow.test.mjs qa/prematch-history-20261120/test-pick-ledger.test.mjs qa/prematch-history-20261120/history-cargo-registry.test.mjs
