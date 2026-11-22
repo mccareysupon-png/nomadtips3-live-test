@@ -1,0 +1,55 @@
+name: BALL46 BTTS Backend ONLY Active TEST Verify
+on:
+  push:
+    branches: [fix/ball46-btts-backend-only-test-20261122]
+    paths: [.github/workflows/b46-btts-backend-only-active-verify-20261122.yml]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read-only compare actual BTTS TEST Worker and unmodified UI
+        run: |
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          import assert from 'node:assert/strict';
+          import crypto from 'node:crypto';
+          const token=process.env.CLOUDFLARE_API_TOKEN,account=process.env.CLOUDFLARE_ACCOUNT_ID;
+          assert(token&&account);
+          const n='ball46-prematch-only-test-20261120',root='https://api.cloudflare.com/client/v4/accounts/'+account+'/workers';
+          const host='https://'+n+'.mccarey-supon.workers.dev',auth='Bearer '+crypto.createHmac('sha256',token).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
+          async function cf(p){const r=await fetch(root+p,{headers:{authorization:'Bearer '+token},signal:AbortSignal.timeout(25000)});const j=await r.json();assert(r.ok&&j.success,'CF_'+r.status);return j.result;}
+          async function v(name){const x=await cf('/scripts/'+name+'/deployments?per_page=1');return x.deployments?.[0]?.versions?.[0]?.version_id}
+          async function owner(p){const r=await fetch(host+p,{headers:{authorization:auth},cache:'no-store',signal:AbortSignal.timeout(15000)});assert(r.ok,'OWNER_'+p+'_'+r.status);return r.json();}
+          const active=await v(n);
+          let details;
+          for(let i=0;i<25;i++){try{details=await cf('/workers/'+n+'/versions/'+active+'?include=modules');break}catch(e){if(i===24)throw e;await new Promise(r=>setTimeout(r,1100))}}
+          for(const name of ['prematch-only-worker.mjs','btts-ultra-shadow.mjs','btts-history-private.mjs']){
+            const m=details.modules.find(x=>x.name===name);
+            assert(m?.content_base64,'MISSING_NEW_BTTS_MODULE_'+name);
+            assert.equal(Buffer.from(m.content_base64,'base64').toString('utf8'),fs.readFileSync('qa/prematch-history-20261120/'+name,'utf8'),'ACTIVE_BTTS_SOURCE_DRIFT_'+name);
+          }
+          let history,btts;
+          for(let i=0;i<30;i++){try{history=await owner('/btts-history-private-test');btts=await owner('/btts-shadow');break}catch(e){if(i===29)throw e;await new Promise(r=>setTimeout(r,1200))}}
+          assert.equal(history.mode,'BTTS_PRIVATE_HISTORY_TEST');
+          assert.equal(btts.mode,'READ_ONLY_BTTS_SHADOW');
+          assert.equal(btts.providerCalls,0);
+          assert.equal(btts.published,0);
+          const [ledger,hcr,league]=await Promise.all([owner('/test-ledger'),owner('/history-cargo-registry?detail=0'),owner('/league-name-audit')]);
+          assert.equal(ledger.rows.length,75);assert.equal(hcr.registry.code,'HCR-V1');assert.equal(league.code,'PREMATCH_LEAGUE_ID_CATALOG_V1');
+          console.log('B46_BTTS_BACKEND_ONLY_ACTIVE_VERIFIED '+JSON.stringify({
+            active,history:history.archive,leagueCandidates:history.leagues.slice(0,8),
+            upcomingBTTS:btts.totals.upcoming,readyBTTS:btts.totals.historyReady,
+            pickRows1X2:ledger.rows.length,archivedFT:hcr.inventory.finishedFixtures,
+            currentLeagueRegistry:league.catalogLeagues,providerCalls:0,published:0,
+            productionWrites:0,uiWorkerChanged:false,oneX2FormulaChanged:false,
+            production:await v('ball46-production'),hub:await v('nomadtips3-5usd-hub-343'),
+            frontend:await v('ball46-premium-match-colors-test-20261120')
+          }));
+          JS
