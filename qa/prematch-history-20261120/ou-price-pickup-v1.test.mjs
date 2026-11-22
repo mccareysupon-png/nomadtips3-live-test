@@ -45,7 +45,7 @@ test('one confirmed price imported, exact same pre-match fixture and selected si
  const d=db();try{
   put(d);let calls=0;
   const args={fixtures:fixtures(),now,feedAt:now-100,hubreview:async()=>h,
-   provider:async path=>{calls++;assert.equal(path,'/v1/fixtures/3007/odds?market=goalline_fixed');return offer()},clock:tick};
+   provider:async path=>{calls++;assert.equal(path,'/v1/fixtures/3007/odds');return offer()},clock:tick};
   const first=await runOuPricePickup(d,args);
   assert.equal(first.state,'PRICED_IMPORTED');assert.equal(first.providerCalls,1);
   assert.equal(first.priced.selectedPrice,1.92);
@@ -122,4 +122,45 @@ test('HUB health acceptance needs measurable, conservative live headroom',()=>{
    {...h,ageMs:1000000},{...h,retryAfterSec:60},{...h,lastError:'429'}]){
   assert.equal(inspectOuPickupHealth(bad).allowed,false);
  }
+});
+
+
+test('native full-odds response reads main 2.5 when fixed ladder has no 2.5 quote, in ONE request',async()=>{
+ const d=db();try{
+  put(d);let providerCalls=0;
+  const res=await runOuPricePickup(d,{fixtures:fixtures(),now,feedAt:now-50,hubreview:async()=>h,
+   provider:async path=>{
+    providerCalls++;assert.equal(path,'/v1/fixtures/3007/odds');
+    return {ok:true,status:200,body:{success:1,data:{fixture_id:3007,bookmakers:[
+      {name:'Bet 365',slug:'bet365',odds:{
+       '1x2':{closing:{home:1.4,draw:4.5,away:7.0}},
+       goal_line_fixed:[],
+       goal_line:{opening:{line:2.75,over:1.85,under:1.95},
+        closing:{line:2.5,over:1.97,under:1.84},inplay:null}
+      }}
+    ]}}};
+   },clock:tick});
+  assert.equal(res.providerCalls,1);
+  assert.equal(providerCalls,1);
+  assert.equal(res.state,'PRICED_IMPORTED');
+  assert.equal(res.priced.source,'BET365_MAIN_GOAL_LINE_CLOSING');
+  assert.equal(res.priced.selectedPrice,1.84);
+  assert.equal(d.exec("SELECT price FROM b46_ou_pick_v1_test WHERE fixture_id=?",3007)[0].price,1.84);
+ }finally{d.close()}
+});
+test('native full-odds response prefers fixed 2.5 to moving 2.75 in same call',async()=>{
+ const d=db();try{
+  put(d);let providerCalls=0;
+  const res=await runOuPricePickup(d,{fixtures:fixtures(),now,feedAt:now-50,hubreview:async()=>h,
+   provider:async path=>{providerCalls++;assert.equal(path,'/v1/fixtures/3007/odds');
+     return {ok:true,status:200,body:{success:1,data:{fixture_id:3007,bookmakers:[{slug:'bet365',odds:{
+      '1x2':{closing:{home:1.50,draw:4.0,away:6.0}},
+      goal_line_fixed:[{line:2.5,closing:{over:1.87,under:1.93}}],
+      goal_line:{closing:{line:2.75,over:1.90,under:1.90}}
+     }}]}}};
+    },clock:tick});
+  assert.equal(providerCalls,1);assert.equal(res.providerCalls,1);
+  assert.equal(res.state,'PRICED_IMPORTED');assert.equal(res.priced.selectedPrice,1.93);
+  assert.equal(res.priced.source,'BET365_GOAL_LINE_FIXED_CLOSING');
+ }finally{d.close()}
 });
