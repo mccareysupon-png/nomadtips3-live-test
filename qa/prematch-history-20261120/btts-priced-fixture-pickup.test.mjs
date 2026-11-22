@@ -8,7 +8,7 @@ import {evaluateBttsUltra,mergeBet365BttsQuotes} from './btts-ultra-shadow.mjs';
 import {runBttsPricePickup,bttsPricePickupState,B46_BTTS_PRICE_PICKUP_CAP} from './btts-priced-fixture-pickup-test.mjs';
 import {patchBttsPriceBridgeMain} from './patch-btts-price-bridge-into-existing-test-worker.mjs';
 
-const now=700,kickoff=1200;
+const now=700,kickoff=2400;
 function db(){
  const sqlite=new DatabaseSync(':memory:');
  const d={exec:(sql,...p)=>{const q=sqlite.prepare(sql);return /^\s*(SELECT|WITH|PRAGMA)/i.test(sql)?q.all(...p):(q.run(...p),[])},
