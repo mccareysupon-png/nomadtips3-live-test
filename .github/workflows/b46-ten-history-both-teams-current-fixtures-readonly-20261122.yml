@@ -1,4 +1,4 @@
-name: BALL46 READ ONLY fixtures with 3 to 10 history each team
+name: BALL46 READ ONLY count unique upcoming teams with 5 plus stored finished results
 on:
   push:
     branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
@@ -32,16 +32,16 @@ jobs:
             all.push(...data.preview.rows);
           }
           const future=all.filter(r=>Number(r.kickoff)>at).sort((a,b)=>a.kickoff-b.kickoff);
-          const both10=future.filter(r=>r.homeHistory>=3&&r.awayHistory>=3&&r.homeHistory<=10&&r.awayHistory<=10);
-          const any10=future.filter(r=>(r.homeHistory>=3&&r.homeHistory<=10)||(r.awayHistory>=3&&r.awayHistory<=10));
+          const teams=new Map();for(const r of future){for(const side of ['home','away']){const n=String(r[side]??'').trim(),key=n.toLowerCase();if(!key)continue;const cnt=Number(r[side+'History']??0);const prev=teams.get(key);if(!prev||cnt>prev.matches)teams.set(key,{team:n,matches:cnt,exampleFixtureId:r.fixtureId,fixture:r.home+' vs '+r.away});}}const teams5=[...teams.values()].filter(t=>t.matches>=5).sort((a,b)=>b.matches-a.matches||a.team.localeCompare(b.team));
+          
           const hcr=await get('/history-cargo-registry?detail=0');
-          console.log('BALL46_3TO10_MATCH_HISTORY_CURRENT '+JSON.stringify({
+          console.log('BALL46_5PLUS_UNIQUE_TEAMS_CURRENT '+JSON.stringify({
             checkedAt:new Date(at*1000).toISOString(),source:'PRIVATE_FT_ARCHIVE_STORED',
-            totalUpcoming:future.length,bothTeams3to10:both10.length,atLeastOneTeam3to10:any10.length,
-            both3to10:both10.slice(0,60).map(r=>({home:r.home,away:r.away,fixtureId:r.fixtureId,
+            totalUpcomingFixtures:future.length,uniqueUpcomingTeamNames:teams.size,teamsWithAtLeast5History:teams5.length,
+            teamsWith5:teams5,unusedFormer:future.filter(r=>false).map(r=>({home:r.home,away:r.away,fixtureId:r.fixtureId,
               homeHistory:r.homeHistory,awayHistory:r.awayHistory,
               kickoffTH:new Date((Number(r.kickoff)+25200)*1000).toISOString().slice(0,16).replace('T',' ')})),
-            oneTeam3to10:any10.slice(0,30).map(r=>({home:r.home,away:r.away,fixtureId:r.fixtureId,
+            unusedFormer2:future.filter(r=>false).map(r=>({home:r.home,away:r.away,fixtureId:r.fixtureId,
               homeHistory:r.homeHistory,awayHistory:r.awayHistory,
               kickoffTH:new Date((Number(r.kickoff)+25200)*1000).toISOString().slice(0,16).replace('T',' ')})),
             HCR:{finished:hcr.inventory?.finishedFixtures,trackedRounds:hcr.scope?.trackedRounds},
