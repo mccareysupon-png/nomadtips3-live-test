@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {DatabaseSync} from 'node:sqlite';
 import {init,ingest} from './history.mjs';
+import {initBttsHistory} from './btts-history-private.mjs';
 import {evaluateBttsUltra,mergeBet365BttsQuotes,parseBet365BttsOdds} from './btts-ultra-shadow.mjs';
 const now=300,kickoff=400;
 const fixture={id:'999',status:'scheduled',kickoff_ts:kickoff,league:{id:8,name:'Qatar Stars League'},
@@ -47,7 +48,7 @@ function db(){
   const stmt=sql.prepare(q);if(/^\s*(SELECT|WITH|PRAGMA)/i.test(q))return stmt.all(...args);
   return (stmt.run(...args),[]);
  },transaction:f=>{sql.exec('BEGIN');try{const r=f();sql.exec('COMMIT');return r}catch(e){sql.exec('ROLLBACK');throw e}}};
- init(conn);return conn;
+ init(conn);initBttsHistory(conn);return conn;
 }
 function seed(conn,h=10,a=10){
  const fixtures=[];
