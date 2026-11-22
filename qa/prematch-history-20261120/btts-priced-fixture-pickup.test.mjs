@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {DatabaseSync} from 'node:sqlite';
 import {init} from './history.mjs';
 import {initBttsHistory,importBttsTeamFallback} from './btts-history-private.mjs';
+import {initBttsBulkV2,bttsBulkV2Slot} from './btts-bulk-truck-v2-test.mjs';
 import {initBttsPickLedger,bttsPicksFromScreen,recordBttsPicks,bttsPickLedger} from './btts-pick-ledger-test.mjs';
 import {evaluateBttsUltra,mergeBet365BttsQuotes} from './btts-ultra-shadow.mjs';
 import {runBttsPricePickup,bttsPricePickupState,B46_BTTS_PRICE_PICKUP_CAP} from './btts-priced-fixture-pickup-test.mjs';
@@ -13,7 +14,10 @@ function db(){
  const sqlite=new DatabaseSync(':memory:');
  const d={exec:(sql,...p)=>{const q=sqlite.prepare(sql);return /^\s*(SELECT|WITH|PRAGMA)/i.test(sql)?q.all(...p):(q.run(...p),[])},
   transaction:f=>{sqlite.exec('BEGIN');try{const r=f();sqlite.exec('COMMIT');return r}catch(e){sqlite.exec('ROLLBACK');throw e}}};
- init(d);initBttsHistory(d);initBttsPickLedger(d);return d;
+ init(d);initBttsHistory(d);initBttsPickLedger(d);initBttsBulkV2(d);
+ const truck=bttsBulkV2Slot(now);
+ d.exec("INSERT INTO b46_btts_bulk_v2_rounds (business_day,round_no,reserved_at,state,league_id,page,provider_calls) VALUES (?,?,?,'COMPLETED',8,1,1)",truck.businessDay,truck.slot,now-60);
+ return d;
 }
 const fixture=(id=999)=>({id:String(id),status:'scheduled',kickoff_ts:kickoff,
   league:{id:8,name:'Test League'},
@@ -102,7 +106,7 @@ test('HTTP 429 never retries, leaves distinct test-only SQL evidence and blocks 
  assert.equal(first.selected[0].state,'FAIL_429');
  assert.equal(bttsPickLedger(d).stats.total,0);
  const second=await runBttsPricePickup(d,x.args);
- assert.equal(second.state,'SHARED_RATE_LIMIT_STOP_FOR_DAY');
+ assert.equal(second.state,'TWO_APIS_PER_TRUCK_CAP');
  assert.equal(second.providerCalls,0);
  assert.equal(n,1);
 });
@@ -117,9 +121,35 @@ test('wrong provider fixture ID or non-Bet365 book does not create any pick',asy
   assert.equal(bttsPickLedger(d).stats.total,0);
  }
 });
-test('transport preserves the user 5-round historical limit by using its own price quota',()=>{
- assert.equal(B46_BTTS_PRICE_PICKUP_CAP.maxPerLondonBusinessDay,12);
- assert.equal(B46_BTTS_PRICE_PICKUP_CAP.maxPerTick,2);
+test('one truck = one history API plus at most one Bet365 odds API; five trucks max ten APIs/day',()=>{
+ assert.equal(B46_BTTS_PRICE_PICKUP_CAP.maxPerLondonBusinessDay,5);
+ assert.equal(B46_BTTS_PRICE_PICKUP_CAP.maxPerTick,1);
+ assert.equal(B46_BTTS_PRICE_PICKUP_CAP.maxTotalPerTruck,2);
+ assert.equal(B46_BTTS_PRICE_PICKUP_CAP.maxAllTruckCallsDaily,10);
+});
+test('reuse previously stored genuine Bet365 BTTS prices without a fresh API request',async()=>{
+ const d=db();ready(d);
+ const f={...fixture(),storedBet365:{bookmaker:'bet365',observed:650,
+   prices:{BTTS_YES:1.85,BTTS_NO:2.1}}};
+ const x=input(d,{fixtures:[f]});
+ const report=await runBttsPricePickup(d,x.args);
+ assert.equal(report.state,'NO_NEW_PROBABILITY_READY_FIXTURES');
+ assert.equal(report.providerCalls,0);
+ assert.deepEqual(x.calls,[]);
+ const eligible=evaluateBttsUltra(d,[f],now,{},1000);
+ assert.equal(eligible.totals.qualified,1);
+ assert.equal(recordBttsPicks(d,bttsPicksFromScreen(eligible,[f],now),now).added,1);
+ assert.equal(bttsPickLedger(d).stats.total,1);
+});
+test('no history truck means no standalone odds API for every 15-minute cron',async()=>{
+ const d=db();ready(d);
+ const x=input(d);
+ const truck=bttsBulkV2Slot(now);
+ d.exec('DELETE FROM b46_btts_bulk_v2_rounds WHERE business_day=? AND round_no=?',truck.businessDay,truck.slot);
+ const out=await runBttsPricePickup(d,x.args);
+ assert.equal(out.state,'AWAIT_COMPLETED_BTTS_HISTORY_TRUCK');
+ assert.equal(out.providerCalls,0);
+ assert.deepEqual(x.calls,[]);
 });
 test('main worker patch only appends BTTS price pipeline without changing old bot/truck',()=>{
  const stub=[
