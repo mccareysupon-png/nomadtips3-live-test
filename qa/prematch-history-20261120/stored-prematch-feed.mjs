@@ -22,6 +22,7 @@ export function mergeStoredPrematch(existing,incoming,now){
   // The provider can revise kickoff for the SAME fixture/team IDs. That is
   // not a new selection and does not alter the immutable pick ledger.
   if(prev&&prev.kickoff_ts!==n.kickoff_ts)stats.rescheduled++;
+ if(prev?.league&&!n.league)n.league=prev.league;
  if(prev?.storedBet365&&(!n.storedBet365||prev.storedBet365.observed>n.storedBet365.observed))n.storedBet365=prev.storedBet365;
  if(prev?.storedHub1x2&&(!n.storedHub1x2||prev.storedHub1x2.observed>n.storedHub1x2.observed))n.storedHub1x2=prev.storedHub1x2;
  map.set(n.id,n);stats.accepted++}
