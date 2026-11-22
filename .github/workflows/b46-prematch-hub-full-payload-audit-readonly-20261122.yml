@@ -1,0 +1,50 @@
+name: BALL46 Full Cargo upstream HUB source audit READ ONLY
+on:
+  push:
+    branches:
+      - fix/ball46-prematch-cargo-league-capture-20261122
+    paths:
+      - .github/workflows/b46-prematch-hub-full-payload-audit-readonly-20261122.yml
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Check HUB Worker upstream raw-projection handling, no network to provider
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          const token=process.env.CLOUDFLARE_API_TOKEN,account=process.env.CLOUDFLARE_ACCOUNT_ID;
+          assert(token&&account,'MISSING_READONLY_CLOUDFLARE_AUTH');
+          const worker='nomadtips3-5usd-hub-343';
+          const root='https://api.cloudflare.com/client/v4/accounts/'+account+'/workers';
+          async function cf(url){
+            const r=await fetch(url,{headers:{authorization:'Bearer '+token},signal:AbortSignal.timeout(25000)});
+            const j=await r.json();assert(r.ok&&j.success,'CF_READ_FAILED');return j.result;
+          }
+          const deployments=await cf(root+'/scripts/'+worker+'/deployments?per_page=1');
+          const version=deployments.deployments?.[0]?.versions?.[0]?.version_id;
+          const active=await cf(root+'/workers/'+worker+'/versions/'+version+'?include=modules');
+          const summaries=(active.modules||[]).map(m=>{
+            const source=Buffer.from(m.content_base64||'','base64').toString('utf8');
+            const hit=(word)=>source.includes(word);
+            const windows=(term)=>{const x=source.indexOf(term);return x<0?[]:[source.slice(Math.max(0,x-260),Math.min(source.length,x+400))
+              .replace(/(Bearer\s+|key=|api_key=|token=)[^\s"']+/ig,'$1[REDACTED]')]};
+            return {module:m.name,size:source.length,
+              flags:{
+                snapshotPath:hit('/snapshot'),fixtureNormalizer:hit('normalizeFixture'),
+                providerResult:hit('providerOdds'),leagueName:hit('league.name'),
+                providerFetch:hit('fetch('),rawMirror:hit('raw')||hit('original'),
+                responseData:hit('body.data'),fieldMap:hit('fixtureId:')||hit('fixtureId =')
+              },
+              snapshotWindow:windows("'/snapshot'").map(x=>x.slice(0,400)),
+              fixtureWindow:windows('fixtureId:').map(x=>x.slice(0,370))
+            };
+          });
+          console.log('B46_UPSTREAM_HUB_READ_ONLY '+JSON.stringify({worker,version,modules:summaries}));
+          JS
