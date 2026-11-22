@@ -1,0 +1,36 @@
+name: BALL46 BTTS Render Anchors READ ONLY
+on:
+  push:
+    branches: [fix/ball46-btts-backend-only-test-20261122]
+    paths: [.github/workflows/b46-btts-render-patch-anchor-audit-20261122.yml]
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Read existing UI client JS exact function anchors, no writes
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          const t=process.env.CLOUDFLARE_API_TOKEN,a=process.env.CLOUDFLARE_ACCOUNT_ID;
+          const root='https://api.cloudflare.com/client/v4/accounts/'+a+'/workers',name='ball46-premium-match-colors-test-20261120';
+          async function cf(p){const r=await fetch(root+p,{headers:{authorization:'Bearer '+t}});const j=await r.json();assert(r.ok&&j.success);return j.result}
+          const v=(await cf('/scripts/'+name+'/deployments?per_page=1')).deployments[0].versions[0].version_id;
+          const d=await cf('/workers/'+name+'/versions/'+v+'?include=modules');
+          const text=Buffer.from(d.modules[0].content_base64,'base64').toString('utf8');
+          const m=text.match(/var prematchClientScript = ("(?:\\.|[^"\\])*");/);
+          assert(m,'CANNOT_EXTRACT_CLIENT_SCRIPT');
+          const client=JSON.parse(m[1]);
+          const words=['function draw(','function premiumMatchRow(','function updateMenu(','function perfSource(','function performancePanel(','const outcome=','const b46pmId=','const visible=[...rows]','if(mode===\'btts\'){list.append','async function load()','function load()','function avgOdds(','const mirrorOn=','function render('];
+          for(const x of words){
+            const p=client.indexOf(x);
+            console.log('B46_RENDER_ANCHOR '+JSON.stringify({word:x,index:p,
+              excerpt:p>=0?client.slice(Math.max(0,p-400),Math.min(client.length,p+(x==='function draw('?6500:x==='function premiumMatchRow('?4500:2300))):''}));
+          }
+          console.log('B46_UI_SOURCE_INFO '+JSON.stringify({worker:name,version:v,codeLen:text.length,clientLen:client.length}));
+          JS
