@@ -1,0 +1,157 @@
+name: EMERGENCY BALL46 BTTS CLOSED disable all paid API TEST
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-btts-project-closed-disable-all-provider-calls-test-20261122.yml]
+permissions: {contents: read}
+concurrency:
+  group: ball46-prematch-only-test-20261120
+  cancel-in-progress: false
+jobs:
+  close-btts:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Permanently disable BTTS paid API paths and scheduler in active TEST, preserve other modules, save durable CLOSED state
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import crypto from 'node:crypto';
+          import fs from 'node:fs';
+          import {execFileSync} from 'node:child_process';
+          const token=process.env.CLOUDFLARE_API_TOKEN,acc=process.env.CLOUDFLARE_ACCOUNT_ID;
+          assert(token&&acc,'MISSING_CLOUDFLARE_SECRETS');
+          const worker='ball46-prematch-only-test-20261120';
+          const expected='33f1c7c3-f4fd-4b1d-9f39-d30f06316c27';
+          const api='https://api.cloudflare.com/client/v4/accounts/'+acc+'/workers';
+          const base='https://'+worker+'.mccarey-supon.workers.dev';
+          async function cf(p,opts={}){
+            const r=await fetch(api+p,{...opts,headers:{authorization:'Bearer '+token,...opts.headers},
+              signal:AbortSignal.timeout(45000)});
+            const j=await r.json();assert(r.ok&&j.success,'CLOUDFLARE_'+r.status+'_'+JSON.stringify(j.errors??[]));return j.result;
+          }
+          async function version(n){
+            const d=await cf('/scripts/'+n+'/deployments?per_page=1');
+            return d.deployments?.[0]?.versions?.[0]?.version_id;
+          }
+          const protectedNames=['ball46-production','nomadtips3-engine-343','nomadtips3-5usd-hub-343',
+            'ball46-premium-match-colors-test-20261120'];
+          const beforeProtected=Object.fromEntries(await Promise.all(protectedNames.map(async n=>[n,await version(n)])));
+          assert.equal(await version(worker),expected,'EXPECTED_TEST_VERSION_DRIFT_REFUSE');
+          const active=await cf('/workers/'+worker+'/versions/'+expected+'?include=modules');
+          assert.equal(active.main_module,'prematch-only-worker.mjs','MAIN_MODULE_DRIFT');
+          const module=active.modules.find(m=>m.name==='prematch-only-worker.mjs');
+          assert(module?.content_base64,'SOURCE_MISSING');
+          const original=Buffer.from(module.content_base64,'base64').toString('utf8');
+          let code=original;
+          function once(a,b,label){
+            const n=code.split(a).length-1;
+            assert.equal(n,1,'CLOSE_ANCHOR_'+label+'_EXPECTED_ONE_GOT_'+n);
+            code=code.replace(a,b);
+          }
+          const stopped="{state:'BTTS_PROJECT_CLOSED',providerCalls:0,productionWrites:0}";
+          once("async runBulkV2Tick(now){","async runBulkV2Tick(now){return "+stopped+";",'NO_HISTORY_API');
+          once("async runBttsPricePickupTick(now){","async runBttsPricePickupTick(now){return "+stopped+";",'NO_BET365_API');
+          once("async recordQualifiedBtts(now,","async recordQualifiedBtts(now,",'KEEP_FUNCTION');
+          once("  async recordQualifiedBtts(now,providedFixtures=null,providedQuotes=null){",
+            "  async recordQualifiedBtts(now,providedFixtures=null,providedQuotes=null){return "+stopped+";",'STOP_ISSUANCE');
+          once("  async fetch(req){\n  const path=new URL(req.url).pathname,now=Math.floor(Date.now()/1000);",
+            "  async fetch(req){\n  const path=new URL(req.url).pathname,now=Math.floor(Date.now()/1000);\n"+
+            "  if(path==='/btts-project-shutdown-test'&&req.method==='POST'){"+
+            "await this.ctx.storage.put('bttsBulkModeV2',{mode:'CLOSED',closedAt:now,reason:'USER_DIRECTIVE_2026_11_22'});"+
+            "await this.ctx.storage.put('bttsProjectClosedAt',now);"+
+            "return json({state:'BTTS_PROJECT_CLOSED',providerCalls:0,productionWrites:0});}\n"+
+            "  if(req.method==='POST'&&(/^\\/btts-(bulk-v2-(?:control|trip)|price-pickup-tick|cycle-test|quote-import-test|history-import-test|team-fallback-test)$/.test(path)))"+
+            "return json({state:'BTTS_PROJECT_CLOSED',providerCalls:0,productionWrites:0});\n",
+            'NO_MANUAL_RESTART');
+          const start=code.indexOf("const truck=await stub.fetch('https://prematch.internal/btts-bulk-v2-trip'");
+          assert(start>0,'CRON_HISTORY_CALL_MISSING');
+          const end=code.indexOf("const h=await stub.fetch('https://prematch.internal/daily-mission'",start);
+          assert(end>start&&end-start<950,'CRON_HISTORY_BLOCK_UNEXPECTED');
+          code=code.slice(0,start)+"console.log('BTTS_HISTORY_API_DISABLED_PROJECT_CLOSED');"+code.slice(end);
+          const quoteStart=code.indexOf("const quoteTick=await stub.fetch('https://prematch.internal/btts-price-pickup-tick'");
+          assert(quoteStart>0,'CRON_QUOTE_CALL_MISSING');
+          const quoteEnd=code.indexOf("const b=await stub.fetch('https://prematch.internal/btts-cycle-test'",quoteStart);
+          assert(quoteEnd>quoteStart&&quoteEnd-quoteStart<850,'CRON_PRICE_BLOCK_UNEXPECTED');
+          code=code.slice(0,quoteStart)+"console.log('BTTS_BET365_API_DISABLED_PROJECT_CLOSED');"+code.slice(quoteEnd);
+          once("const b=await stub.fetch('https://prematch.internal/btts-cycle-test',{method:'POST'});console.log('BTTS_TEST_ONLY_CYCLE '+b.status)",
+            "console.log('BTTS_CYCLE_DISABLED_PROJECT_CLOSED')",'NO_CRON_BTTS_CYCLE');
+          assert(!code.includes("stub.fetch('https://prematch.internal/btts-bulk-v2-trip'")&&
+            !code.includes("stub.fetch('https://prematch.internal/btts-price-pickup-tick'")&&
+            !code.includes("stub.fetch('https://prematch.internal/btts-cycle-test'"),'BTTS_CRON_NOT_REMOVED');
+          assert(code.includes("const h=await stub.fetch('https://prematch.internal/daily-mission'")&&
+            code.includes("const r=await stub.fetch('https://prematch.internal/bot-run'"),'NON_BTTS_1X2_CRON_CHANGED');
+          fs.writeFileSync('/tmp/b46-btts-closed.mjs',code);
+          execFileSync(process.execPath,['--check','/tmp/b46-btts-closed.mjs']);
+          const settings=await cf('/scripts/'+worker+'/settings');
+          const bindings=settings.bindings.map(x=>x.name).sort();
+          assert(bindings.includes('STORE')&&bindings.includes('HUB')&&bindings.includes('OWNER_SECRET'));
+          const hashes=Object.fromEntries(active.modules.map(m=>[m.name,crypto.createHash('sha256').update(Buffer.from(m.content_base64,'base64')).digest('hex')]));
+          console.log('B46_BTTS_CLOSE_PREFLIGHT '+JSON.stringify({worker,oldVersion:expected,
+            disabled:['BTTS historical 5USD','BTTS Bet365 per fixture 5USD','BTTS cron cycle','BTTS issuance','manual BTTS restart routes'],
+            preserveModules:active.modules.length-1,nonBttsCronPreserved:true,productionWrites:0,providerCalls:0}));
+          assert.equal(await version(worker),expected,'TEST_CONCURRENT_CHANGE_REFUSE');
+          const form=new FormData();
+          form.append('metadata',new Blob([JSON.stringify({
+            main_module:active.main_module,compatibility_date:active.compatibility_date||'2026-11-20',
+            bindings:bindings.map(name=>({name,type:'inherit'})),
+            ...(active.compatibility_flags?.length?{compatibility_flags:active.compatibility_flags}:{})
+          })],{type:'application/json'}),'metadata.json');
+          for(const m of active.modules)
+            form.append(m.name,new Blob([m.name===active.main_module?code:Buffer.from(m.content_base64,'base64')],
+              {type:'application/javascript+module'}),m.name);
+          await cf('/scripts/'+worker+'?bindings_inherit=strict',{method:'PUT',body:form});
+          let newVersion=null,installed=null;
+          for(let i=0;i<35;i++){
+            newVersion=await version(worker);
+            if(newVersion!==expected){
+              try{
+                installed=await cf('/workers/'+worker+'/versions/'+newVersion+'?include=modules');
+                const main=installed.modules.find(m=>m.name===active.main_module);
+                if(main?.content_base64&&Buffer.from(main.content_base64,'base64').toString('utf8')===code)break;
+              }catch{}
+            }
+            await new Promise(r=>setTimeout(r,1100));
+          }
+          assert(installed?.modules&&newVersion!==expected,'SHUTDOWN_WORKER_NOT_ACTIVE');
+          for(const m of active.modules){
+            if(m.name===active.main_module)continue;
+            const current=installed.modules.find(x=>x.name===m.name);
+            assert(current?.content_base64,'PROTECTED_MODULE_REMOVED_'+m.name);
+            assert.equal(crypto.createHash('sha256').update(Buffer.from(current.content_base64,'base64')).digest('hex'),
+              hashes[m.name],'PROTECTED_MODULE_CHANGED_'+m.name);
+          }
+          const secret='Bearer '+crypto.createHmac('sha256',token).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
+          async function owner(path,method='GET'){
+            const r=await fetch(base+path,{method,headers:{authorization:secret},cache:'no-store',signal:AbortSignal.timeout(20000)});
+            const data=await r.text();
+            assert(r.ok,'SHUTDOWN_OWNER_'+path+'_'+r.status+'_'+data.slice(0,160));
+            return JSON.parse(data);
+          }
+          const confirm=await owner('/btts-project-shutdown-test','POST');
+          assert.equal(confirm.state,'BTTS_PROJECT_CLOSED');
+          const [history,odds,bulk,preview,stats]=await Promise.all([
+            owner('/btts-bulk-v2-trip','POST'),owner('/btts-price-pickup-tick','POST'),
+            owner('/btts-bulk-v2-state'),owner('/btts-preview-data'),
+            owner('/prematch-stats-registry-audit-test')
+          ]);
+          assert.equal(history.providerCalls,0);
+          assert.equal(odds.providerCalls,0);
+          assert.equal(history.state,'BTTS_PROJECT_CLOSED');
+          assert.equal(odds.state,'BTTS_PROJECT_CLOSED');
+          assert.equal(bulk.config.mode,'CLOSED');
+          assert.equal(stats.verified,true);
+          assert.deepEqual(Object.fromEntries(await Promise.all(protectedNames.map(async n=>[n,await version(n)]))),
+            beforeProtected,'PRODUCTION_OR_OTHER_WORKER_CHANGED');
+          console.log('B46_BTTS_PROJECT_CLOSED_CONFIRMED '+JSON.stringify({
+            worker,oldVersion:expected,newVersion,config:bulk.config,
+            historicalBTTSAPI:'DISABLED',Bet365BTTSAPI:'DISABLED',manualBTTSAPI:'DISABLED',
+            BTTScron:'REMOVED',BTTSissuance:'DISABLED',
+            originalDataRetained:true,oneX2WorkerAndCronRetained:true,
+            otherWorkersUnchanged:true,providerCallsDuringShutdown:0,
+            originalStatsValidated:true,productionWrites:0
+          }));
+          JS
