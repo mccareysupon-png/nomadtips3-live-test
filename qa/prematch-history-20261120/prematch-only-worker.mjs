@@ -14,6 +14,7 @@ import {londonAccountingWindow} from './london-cutoff.mjs';
 import {evaluateBttsUltra,mergeBet365BttsQuotes,parseBet365BttsOdds} from './btts-ultra-shadow.mjs';
 import {bttsTestHtml} from './btts-human-web.mjs';
 import {initBttsHistory,importBttsFinished,importBttsTeamFallback,bttsHistoryCoverage,candidateBttsLeagues} from './btts-history-private.mjs';
+import {initBttsPickLedger,bttsPicksFromScreen,recordBttsPicks,settleBttsPicks,bttsPickLedger,combinedPrematchLedgers,marketDailyBooks,bttsDailySeries} from './btts-pick-ledger-test.mjs';
 const AUTO_PROFILE_VERSION='auto-shadow-market-1x2-v1';
 const json=x=>Response.json(x,{headers:{'cache-control':'no-store'}});
 // Only attribute a finished result's league ID to the exact locked fixture and teams.
@@ -22,7 +23,25 @@ const archivedLeagueIdsForPicks=db=>{
  return Object.fromEntries(rows.filter(r=>Number.isSafeInteger(r.league_id)&&r.league_id>0).map(r=>[String(r.fixture_id),r.league_id]));
 };
 export class PrematchStore extends DurableObject{
- constructor(ctx,env){super(ctx,env);this.db={exec:(q,...a)=>ctx.storage.sql.exec(q,...a),transaction:f=>ctx.storage.transactionSync(f)};this.missionInFlight=null;init(this.db);initPickLedger(this.db);initHistoryRounds(this.db);initBttsHistory(this.db)}
+ constructor(ctx,env){super(ctx,env);this.db={exec:(q,...a)=>ctx.storage.sql.exec(q,...a),transaction:f=>ctx.storage.transactionSync(f)};this.missionInFlight=null;init(this.db);initPickLedger(this.db);initHistoryRounds(this.db);initBttsHistory(this.db);initBttsPickLedger(this.db)}
+ async recordQualifiedBtts(now,providedFixtures=null,providedQuotes=null){
+  // Local BTTS-only screen. Select only fixtures with actual Bet365 BTTS
+  // quote evidence; ZERO new provider/HUB calls, no changes to 1X2/HCR.
+  const fixtures=providedFixtures??await this.ctx.storage.get('botFixtures')??[];
+  const saved=providedQuotes??await this.ctx.storage.get('prematchBttsBet365QuotesV1')??{};
+  const priced=fixtures.filter(f=>{
+   if(f?.status!=='scheduled'||!Number.isSafeInteger(f.kickoff_ts)||f.kickoff_ts<=now)return false;
+   const q=saved[String(f.id)],direct=f.storedBet365;
+   return (q?.state==='PRICED'||(direct?.bookmaker==='bet365'&&
+    Number.isFinite(direct?.prices?.BTTS_YES)&&Number.isFinite(direct?.prices?.BTTS_NO)));
+  });
+  if(!priced.length)return {checked:0,qualified:0,added:0,duplicate:0,rejected:0,published:0,providerCalls:0};
+  const result=evaluateBttsUltra(this.db,priced,now,saved,1000);
+  const picks=bttsPicksFromScreen(result,priced,now);
+  const recorded=recordBttsPicks(this.db,picks,now);
+  return {checked:result.totals.upcoming,qualified:result.totals.qualified,...recorded,
+   published:0,providerCalls:0};
+ }
  async rememberLeagueCatalog(snapshot){
   const previous=await this.ctx.storage.get('prematchLeagueCatalogV1')??{};
   const storedFixtures=await this.ctx.storage.get('botFixtures')??[];
@@ -45,8 +64,9 @@ export class PrematchStore extends DurableObject{
    await this.rememberLeagueCatalog(snapshot);
    const imported=parsed.finals.length?ingest(this.db,parsed.finals,parsed.observed):{added:0,duplicate:0,corrected:0,rejected:0};
    const settled=await this.ctx.storage.get('testLedgerEnabled')?settlePicks(this.db,now):0;
+   const bttsSettled=settleBttsPicks(this.db,now);
    const historyRound=withHistory?importHistoryRoundFromCache(this.db,snapshot,now):historyRoundState(this.db,now);
-   const next={...parsed,finals:undefined,checkedAt:now,imported,settled,historyRound};
+   const next={...parsed,finals:undefined,checkedAt:now,imported,settled,bttsSettled,historyRound};
    await this.ctx.storage.put('normalHubState',next);
    return next;
   }catch(e){
@@ -121,6 +141,9 @@ export class PrematchStore extends DurableObject{
  if(path==='/preview-data'&&req.method==='GET'){
  const testMonitor=await this.syncNormalHub(now);
  const ledgerNow=ledger(this.db);
+ const bttsLedgerNow=bttsPickLedger(this.db);
+ const allLedgerNow=combinedPrematchLedgers(ledgerNow,bttsLedgerNow);
+ const dailyMarkets=marketDailyBooks(this.db,now);
  const knownLeagueNames=await this.ctx.storage.get('prematchLeagueNamesV1')??{};
  const knownFixtures=await this.ctx.storage.get('botFixtures')??[];
  const catalog=await this.ctx.storage.get('prematchLeagueCatalogV1')??{};
@@ -128,7 +151,9 @@ export class PrematchStore extends DurableObject{
  const rows=Array.from(this.db.exec("SELECT r.* FROM result_version r WHERE r.status='finished' AND r.observed=(SELECT MAX(v.observed) FROM result_version v WHERE v.fixture_id=r.fixture_id) ORDER BY r.kickoff DESC LIMIT 50"));
  const allTeams=Array.from(this.db.exec("WITH latest AS (SELECT r.* FROM result_version r WHERE r.status='finished' AND r.observed=(SELECT MAX(v.observed) FROM result_version v WHERE v.fixture_id=r.fixture_id)), team_rows AS (SELECT home_id AS team FROM latest UNION ALL SELECT away_id AS team FROM latest) SELECT team,COUNT(*) AS matches FROM team_rows GROUP BY team"));
  const saved=await this.ctx.storage.get('previewSelections');
- return json({system:'BALL46_PREMATCH_ONLY',stored:totals(this.db),teams:allTeams.length,teamsWith10:allTeams.filter(n=>n.matches>=10).length,results:rows,selection:saved??null,testLedger:ledgerNow,dailyBook:preMatchDailyBook(this.db,now),historyRounds:historyRoundState(this.db,now),testMonitor:displayMonitor});
+ return json({system:'BALL46_PREMATCH_ONLY',stored:totals(this.db),teams:allTeams.length,teamsWith10:allTeams.filter(n=>n.matches>=10).length,results:rows,selection:saved??null,testLedger:ledgerNow,bttsLedger:bttsLedgerNow,allLedger:allLedgerNow,marketDailyBooks:dailyMarkets,
+  bttsDailySeries:bttsDailySeries(this.db,'BTTS'),allDailySeries:bttsDailySeries(this.db,'ALL'),
+  dailyBook:preMatchDailyBook(this.db,now),historyRounds:historyRoundState(this.db,now),testMonitor:displayMonitor});
  }
  if(path==='/merge-archive'&&req.method==='POST'){
  const j=await req.json();if(!Array.isArray(j.rows)||j.rows.length>2000)return new Response('Invalid archive',{status:400});
@@ -246,6 +271,13 @@ export class PrematchStore extends DurableObject{
    return new Response(JSON.stringify({error:String(error.message)}),{status:422,headers:{'content-type':'application/json'}});
   }
  }
+ // Test-only explicit local BTTS check, without any upstream request.
+ if(path==='/btts-cycle-test'&&req.method==='POST'){
+  const trial=await this.recordQualifiedBtts(now);
+  const settled=settleBttsPicks(this.db,now);
+  return json({mode:'BTTS_ISSUANCE_TEST_ONLY',trial,settled,ledger:bttsPickLedger(this.db).stats,
+    providerCalls:0,oneX2Modified:false,published:0});
+ }
  if(path==='/btts-shadow'&&req.method==='GET'){
   const fixtures=await this.ctx.storage.get('botFixtures')??[];
   const savedQuotes=await this.ctx.storage.get('prematchBttsBet365QuotesV1')??{};
@@ -277,7 +309,8 @@ export class PrematchStore extends DurableObject{
   catch(error){return new Response(JSON.stringify({error:String(error.message)}),{status:409,headers:{'content-type':'application/json'}})}
   if(JSON.stringify(updated.quotes)!==JSON.stringify(previous))
    await this.ctx.storage.put('prematchBttsBet365QuotesV1',updated.quotes);
-  return json({mode:'BET365_BTTS_TEST_ONLY',fixtureId:wanted,state:updated.state,
+  const issued=updated.state==='PRICED'?await this.recordQualifiedBtts(now,fixtures,updated.quotes):null;
+  return json({mode:'BET365_BTTS_TEST_ONLY',fixtureId:wanted,state:updated.state,issued,
    sourceQuote:parsed.sourceQuote??null,providerCalls:0,published:0,
    oneX2LedgerChanged:false});
  }
@@ -336,8 +369,9 @@ export class PrematchStore extends DurableObject{
   }catch(error){console.log('PREMATCH_LEAGUE_DISPLAY_CACHE_WARNING',String(error?.message||error).slice(0,120))}
  }
  const monitorRun=await this.syncNormalHub(now);
+ const bttsIssued=await this.recordQualifiedBtts(now,fixtures);
  const dailyBook=preMatchDailyBook(this.db,now);
- const out={...report,rows,system:'BALL46_PREMATCH_ONLY',ruleState:'READ_ONLY_SHADOW',autoVersion:AUTO_PROFILE_VERSION,checkedAt:now,networkCalls:0,archiveCoverage,qualified:rows.filter(x=>x.btts.signal!=='NO_SIGNAL'||x.oneX2.signal!=='NO_SIGNAL').length,dailyBook};
+ const out={...report,rows,system:'BALL46_PREMATCH_ONLY',ruleState:'READ_ONLY_SHADOW',autoVersion:AUTO_PROFILE_VERSION,checkedAt:now,networkCalls:0,archiveCoverage,qualified:rows.filter(x=>x.btts.signal!=='NO_SIGNAL'||x.oneX2.signal!=='NO_SIGNAL').length,dailyBook,bttsIssued};
  await this.ctx.storage.put('botRun',{checkedAt:now,inputs:fixtures.length,checked:report.counts.upcoming,archiveCoverage,complete:report.counts.historyComplete,qualified:out.qualified,networkCalls:0,mode:out.mode,profile:report.profile,counts:report.counts,outcomes:report.outcomes,probability:report.probability,diagnostics:report.diagnostics,autoVersion:AUTO_PROFILE_VERSION,published:0});await this.ctx.storage.put('previewSelections',out);return json(out)}
  if(path==='/daily-state'&&req.method==='GET')return json({stored:totals(this.db),daily:await this.ctx.storage.get('dailyImport')??null});
  if(path==='/daily-init'&&req.method==='POST'){
@@ -346,7 +380,7 @@ export class PrematchStore extends DurableObject{
  return json({daily:await this.ctx.storage.get('dailyImport'),stored:totals(this.db)})}
  if(path==='/daily-run'&&req.method==='POST')return new Response(JSON.stringify({state:'DISABLED_NO_ADDITIONAL_PROVIDER_RUNS',providerCalls:0}),{status:409,headers:{'content-type':'application/json'}});
  if(path==='/health')return json({system:'BALL46_PREMATCH_ONLY',stored:totals(this.db),liveBindings:0,hubReadOnly:true,cutoff:'06:00 Europe/London',dailyBook:preMatchDailyBook(this.db,now),historyRounds:historyRoundState(this.db,now),dailyMission:await this.ctx.storage.get('dailyMission')??null,providerCalls:0});
- if(path==='/import'&&req.method==='POST'){const j=await req.json();if(!Array.isArray(j.rows)||j.rows.length>100||j.rows.some(f=>normalize(f)?.status!=='finished'||f.kickoff_ts>=now))return new Response('Invalid rows',{status:400});const stats=ingest(this.db,j.rows,now);const settled=await this.ctx.storage.get('testLedgerEnabled')?settlePicks(this.db,now):0;return json({ok:true,stats,settled,stored:totals(this.db),providerCalls:0})}
+ if(path==='/import'&&req.method==='POST'){const j=await req.json();if(!Array.isArray(j.rows)||j.rows.length>100||j.rows.some(f=>normalize(f)?.status!=='finished'||f.kickoff_ts>=now))return new Response('Invalid rows',{status:400});const stats=ingest(this.db,j.rows,now);const settled=await this.ctx.storage.get('testLedgerEnabled')?settlePicks(this.db,now):0;const bttsSettled=settleBttsPicks(this.db,now);return json({ok:true,stats,settled,bttsSettled,stored:totals(this.db),providerCalls:0})}
  return new Response('Not found',{status:404})
  }}
 const html=`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>BALL46 | Pre-Match Test</title><style>
@@ -354,4 +388,4 @@ const html=`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="vie
 const el=id=>document.getElementById(id);function cell(tr,v){const td=document.createElement('td');td.textContent=v;tr.append(td)}
 async function load(){try{const r=await fetch('/preview-data',{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);const d=await r.json();el('status').textContent='Connected to independent Pre-Match archive';el('cards').replaceChildren();for(const [label,value] of [['Finished results',d.stored.finished||0],['Teams in archive',d.teams],['Teams with 10+',d.teamsWith10],['Published picks',d.selection?.published??0]]){const c=document.createElement('div');c.className='card';c.textContent=label;const b=document.createElement('b');b.textContent=value;c.append(b);el('cards').append(c)}el('selection').textContent=d.selection?'Candidates: '+d.selection.rows.length+' · '+d.selection.ruleState:'No upcoming fixtures submitted yet. Initial league backfill and selection rules are pending.';el('selection').className='warn';const rows=d.selection?.rows??[];const market=rows.filter(x=>x.oneX2?.signal!=='NO_SIGNAL'&&x.oneX2?.metrics?.method==='market-anchored-1x2-v1');el('selection').textContent=d.selection?'Evaluated: '+(d.selection.probability?.oneX2?.computed??0)+' · Probability passed: '+(d.selection.probability?.oneX2?.passed??0)+' · Experimental candidates: '+market.length:'No stored evaluation';el('market').replaceChildren();for(const x of market){const m=x.oneX2.metrics,s=m.sides.find(v=>v.signal===x.oneX2.signal);if(!s)continue;const tr=document.createElement('tr');for(const v of [x.home+' vs '+x.away,s.signal,(s.model*100).toFixed(2)+'%',s.price.toFixed(2),(s.edge*100).toFixed(2)+'%',(s.ev*100).toFixed(2)+'%',x.homeCount+'/'+x.awayCount,m.evidenceTier==='sparse'?'Low sample':'3+ each'])cell(tr,v);el('market').append(tr)}el('results').replaceChildren();for(const x of d.results){const tr=document.createElement('tr');for(const v of [x.fixture_id,new Date(x.kickoff*1000).toISOString().slice(0,16).replace('T',' '),x.home_id,x.hg+' : '+x.ag,x.away_id,x.league_id])cell(tr,v);el('results').append(tr)}}catch(e){el('status').textContent='Load failed: '+e.message}}load();
 </script></html>`;
-export default {async scheduled(event,env){if(event.cron!=='*/15 * * * *'){console.log('PREMATCH_EXTRA_PROVIDER_CYCLE_DISABLED');return}const stub=env.STORE.get(env.STORE.idFromName('prematch-only-v1'));const h=await stub.fetch('https://prematch.internal/daily-mission',{method:'POST'});if(!h.ok){console.log('PREMATCH_DAILY_MISSION_ERROR '+h.status);return}const mission=await h.json();console.log('PREMATCH_DAILY_MISSION '+mission.state+' rounds='+(mission.history?.completed??0));if(mission.state==='HISTORY_DELIVERED_BOT_READY'){const r=await stub.fetch('https://prematch.internal/bot-run',{method:'POST'});console.log('PREMATCH_AUTOMATIC_BOT '+r.status)}else{const r=await stub.fetch('https://prematch.internal/monitor',{method:'POST'});console.log('PREMATCH_SETTLEMENT_MONITOR '+r.status)}},async fetch(req,env){const p=new URL(req.url).pathname;if(req.method==='GET'&&p==='/preview')return new Response(html,{headers:{'content-type':'text/html;charset=utf-8','cache-control':'no-store','x-robots-tag':'noindex,nofollow'}});if(req.method==='GET'&&p==='/btts')return new Response(bttsTestHtml,{headers:{'content-type':'text/html;charset=utf-8','cache-control':'no-store','x-robots-tag':'noindex,nofollow'}});if(req.method==='GET'&&(p==='/preview-data'||p==='/btts-preview-data'))return env.STORE.get(env.STORE.idFromName('prematch-only-v1')).fetch(req);if(!env.OWNER_SECRET||req.headers.get('Authorization')!=='Bearer '+env.OWNER_SECRET)return new Response('Not found',{status:404});return env.STORE.get(env.STORE.idFromName('prematch-only-v1')).fetch(req)}};
+export default {async scheduled(event,env){if(event.cron!=='*/15 * * * *'){console.log('PREMATCH_EXTRA_PROVIDER_CYCLE_DISABLED');return}const stub=env.STORE.get(env.STORE.idFromName('prematch-only-v1'));const h=await stub.fetch('https://prematch.internal/daily-mission',{method:'POST'});if(!h.ok){console.log('PREMATCH_DAILY_MISSION_ERROR '+h.status);return}const mission=await h.json();console.log('PREMATCH_DAILY_MISSION '+mission.state+' rounds='+(mission.history?.completed??0));if(mission.state==='HISTORY_DELIVERED_BOT_READY'){const r=await stub.fetch('https://prematch.internal/bot-run',{method:'POST'});console.log('PREMATCH_AUTOMATIC_BOT '+r.status)}else{const r=await stub.fetch('https://prematch.internal/monitor',{method:'POST'});console.log('PREMATCH_SETTLEMENT_MONITOR '+r.status)}const b=await stub.fetch('https://prematch.internal/btts-cycle-test',{method:'POST'});console.log('BTTS_TEST_ONLY_CYCLE '+b.status)}},async fetch(req,env){const p=new URL(req.url).pathname;if(req.method==='GET'&&p==='/preview')return new Response(html,{headers:{'content-type':'text/html;charset=utf-8','cache-control':'no-store','x-robots-tag':'noindex,nofollow'}});if(req.method==='GET'&&p==='/btts')return new Response(bttsTestHtml,{headers:{'content-type':'text/html;charset=utf-8','cache-control':'no-store','x-robots-tag':'noindex,nofollow'}});if(req.method==='GET'&&(p==='/preview-data'||p==='/btts-preview-data'))return env.STORE.get(env.STORE.idFromName('prematch-only-v1')).fetch(req);if(!env.OWNER_SECRET||req.headers.get('Authorization')!=='Bearer '+env.OWNER_SECRET)return new Response('Not found',{status:404});return env.STORE.get(env.STORE.idFromName('prematch-only-v1')).fetch(req)}};
