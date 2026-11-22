@@ -42,6 +42,8 @@ export function matchNormalHub(snapshot,ledgerRows,now){
    phase,label,minute:phase==='LIVE'&&Number.isFinite(Number(f.minute))&&f.minute!=null?Number(f.minute):null,
    score:validScore&&(phase==='LIVE'||phase==='FINISHED')?{home:f.goals.home,away:f.goals.away}:null,
    observed,hubStatus:status,hubStatusCode:code,lockedKickoff,
+   // Existing read-only cached league metadata; verified fixture ID + both team IDs above.
+   leagueName:typeof f.league?.name==='string'&&f.league.name.trim()?f.league.name.trim():null,
    scheduledKickoff:kickoff,scheduleChanged,scheduleObservedAt:observed
   };
   // Settle only authoritative FULL time; no automatic settlement for delays,
