@@ -8,7 +8,7 @@ import {parseOuPriceFromExistingPayload} from './ou-verified-price-ingest-v1-tes
 const get=(db,q,...args)=>Array.from(db.exec(q,...args));
 const isInt=x=>Number.isSafeInteger(x)&&x>0;
 export const OUV1_PICKUP_POLICY=Object.freeze({
- model:'B46_OU_2P5_QUOTE_PICKUP_TEST_V1',quoteMarket:'goalline_fixed',
+ model:'B46_OU_2P5_QUOTE_PICKUP_TEST_V1',quoteMarket:'full_fixture_odds',
  targetLine:2.5,bookmaker:'bet365',
  maxProviderCallsPerLondonDay:1,maxProviderCallsPerTick:1,
  minimumSecondsBeforeKickoff:900,maximumSecondsBeforeKickoff:3*86400,
@@ -102,7 +102,8 @@ export async function runOuPricePickup(db,{fixtures,now,feedAt,hubreview,provide
  });
  if(!reserved)return {state:'DUPLICATE_OR_DAY_CAP',providerCalls:0};
  let state='RESERVED',error=null,priced=null,observed=clock(),providerRemaining=null;
- const path='/v1/fixtures/'+candidate.fixture_id+'/odds?market=goalline_fixed';
+ // market is intentionally omitted: one native API call returns BOTH fixed ladder and moving goal_line.
+ const path='/v1/fixtures/'+candidate.fixture_id+'/odds';
  try{
   const response=await provider(path);
   observed=clock();providerRemaining=response?.remaining??null;
