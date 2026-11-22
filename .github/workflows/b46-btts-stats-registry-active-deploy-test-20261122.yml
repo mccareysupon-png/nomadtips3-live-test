@@ -1,4 +1,4 @@
-name: BALL46 BTTS Historical Statistics Registry V1 TEST Deploy
+name: BALL46 BTTS History 3-10 Real Rescreen TEST ONLY
 on:
   push:
     branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
@@ -9,9 +9,9 @@ concurrency:
   group: ball46-prematch-only-test-20261120
   cancel-in-progress: false
 jobs:
-  deploy:
+  rescreen:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 12
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -22,11 +22,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Require event-journal and snapshot regression, no 1X2/HCR changes
+      - name: Regression including BTTS 3-10 and unchanged 1X2 and HCR
         run: |
-          node --check qa/prematch-history-20261120/deploy-btts-stats-registry-snapshot-test-20261122.mjs
+          node --check qa/prematch-history-20261120/deploy-and-rescreen-btts-history3to10-test-20261122.mjs
           node --check qa/prematch-history-20261120/prematch-only-worker.mjs
-          node --check qa/prematch-history-20261120/prematch-stats-registry-test.mjs
-          node --test qa/prematch-history-20261120/prematch-stats-registry-test.test.mjs qa/prematch-history-20261120/btts-pick-ledger-test.test.mjs qa/prematch-history-20261120/test-pick-ledger.test.mjs qa/prematch-history-20261120/history-cargo-registry.test.mjs
-      - name: Deploy isolated PreMatch TEST stats registry and bootstrap/audit saved 1X2 and BTTS history
-        run: node qa/prematch-history-20261120/deploy-btts-stats-registry-snapshot-test-20261122.mjs
+          node --check qa/prematch-history-20261120/btts-ultra-shadow.mjs
+          node --check qa/prematch-history-20261120/btts-pick-ledger-test.mjs
+          node --check qa/prematch-history-20261120/evaluate-btts-signal.mjs
+          node --check qa/prematch-history-20261120/btts-human-web.mjs
+          node --test qa/prematch-history-20261120/evaluate-btts-signal.test.mjs qa/prematch-history-20261120/btts-ultra-shadow.test.mjs qa/prematch-history-20261120/btts-pick-ledger-test.test.mjs qa/prematch-history-20261120/btts-human-web.test.mjs qa/prematch-history-20261120/prematch-stats-registry-test.test.mjs qa/prematch-history-20261120/test-pick-ledger.test.mjs qa/prematch-history-20261120/history-cargo-registry.test.mjs
+      - name: Deploy isolated test BTTS only and re-screen actual stored fixtures once
+        run: node qa/prematch-history-20261120/deploy-and-rescreen-btts-history3to10-test-20261122.mjs
