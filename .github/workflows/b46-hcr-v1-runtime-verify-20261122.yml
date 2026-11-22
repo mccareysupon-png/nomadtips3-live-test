@@ -1,0 +1,64 @@
+name: BALL46 HCR V1 live TEST Worker module and admin report verify READ ONLY
+on:
+  push:
+    branches: [test/ball46-prematch-v1-20261120]
+    paths: ['.github/workflows/b46-hcr-v1-runtime-verify-20261122.yml']
+permissions: {contents: read}
+jobs:
+  verify-actual:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Verify deployed Worker source and test Durable Object response
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import crypto from 'node:crypto';
+          const token=process.env.CLOUDFLARE_API_TOKEN,acct=process.env.CLOUDFLARE_ACCOUNT_ID;
+          assert(token&&acct);
+          const worker='ball46-prematch-only-test-20261120';
+          const root='https://api.cloudflare.com/client/v4/accounts/'+acct+'/workers';
+          async function cf(path){
+            const r=await fetch(root+path,{headers:{authorization:'Bearer '+token},signal:AbortSignal.timeout(30000)});
+            const j=await r.json();assert(r.ok&&j.success,'CF_ERROR_'+r.status);return j.result;
+          }
+          const dep=await cf('/scripts/'+worker+'/deployments?per_page=1');
+          const version=dep.deployments?.[0]?.versions?.[0]?.version_id;
+          assert(version,'VERSION_NOT_FOUND');
+          const active=await cf('/workers/'+worker+'/versions/'+version+'?include=modules');
+          const cargo=active.modules.find(m=>m.name==='history-cargo-registry.mjs');
+          assert(cargo,'HCR_MODULE_MISSING');
+          const source=Buffer.from(cargo.content_base64,'base64').toString('utf8');
+          const built=source.includes('priorityTeams:priorityTeams.slice(0,50)');
+          const auth='Bearer '+crypto.createHmac('sha256',token).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
+          let sample,last={};
+          for(let attempt=0;attempt<16;attempt++){
+            const r=await fetch('https://'+worker+'.mccarey-supon.workers.dev/history-cargo-registry?detail=0',
+              {headers:{authorization:auth},cache:'no-store',signal:AbortSignal.timeout(16000)});
+            assert(r.ok,'TEST_RUNTIME_HTTP_'+r.status);
+            sample=await r.json();
+            last={attempt,keys:Object.keys(sample.supplyPlanning||{}),
+              uniqueTeams:sample.supplyPlanning?.uniqueTeams,
+              registry:sample.registry?.code,
+              roundCount:sample.scope?.rounds};
+            if(Array.isArray(sample.supplyPlanning?.priorityTeams)&&Array.isArray(sample.supplyPlanning?.priorityLeagues))break;
+            await new Promise(res=>setTimeout(res,1500));
+          }
+          console.log('HCR_ACTUAL_TEST_WORKER_INSPECTION '+JSON.stringify({worker,version,moduleUpdated:built,...last}));
+          assert(built,'DEPLOYED_MODULE_SOURCE_OLD');
+          assert(Array.isArray(sample?.supplyPlanning?.priorityTeams),'ACTIVE_WORKER_RESPONSE_OLD');
+          assert.equal(sample.registry?.providerCalls,0);
+          console.log('HCR_V1_LIVE_ADMIN_REPORT_READY '+JSON.stringify({
+            archived:sample.inventory?.finishedFixtures,
+            incoming:sample.supplyPlanning.upcomingFixtures,
+            uniqueTeams:sample.supplyPlanning.uniqueTeams,
+            missingHistoryTeams:sample.supplyPlanning.uniqueTeamsNeedingHistory,
+            deduplicatedTeamMatchGaps:sample.supplyPlanning.deduplicatedTeamMatchGaps,
+            missingLeague:sample.supplyPlanning.upcomingLeagueIdsMissing,
+            priorityTeams:sample.supplyPlanning.priorityTeams.slice(0,5),
+            providerCalls:0,productionWrites:0
+          }));
+          JS
