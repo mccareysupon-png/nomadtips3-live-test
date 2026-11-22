@@ -7,7 +7,7 @@ export const HCR_NAME='BALL46 History Cargo Registry';
 export const HCR_CODE='HCR-V1';
 const sql=(db,q,...args)=>Array.from(db.exec(q,...args));
 const positive=x=>Number.isSafeInteger(Number(x))&&Number(x)>0;
-const dateKey=x=>/^20\\d{2}-(0[1-9]|1[0-2])-([0-2]\\d|3[01])$/.test(String(x??''));
+const dateKey=x=>/^20\d{2}-(0[1-9]|1[0-2])-([0-2]\d|3[01])$/.test(String(x??''));
 export function initHistoryCargoRegistry(db){
  db.exec("CREATE TABLE IF NOT EXISTS prematch_history_cargo_manifest (business_day TEXT NOT NULL,round_no INTEGER NOT NULL,created_at INTEGER NOT NULL,source TEXT NOT NULL,fixture_ids_json TEXT NOT NULL,imported INTEGER NOT NULL,schema_version INTEGER NOT NULL DEFAULT 1,PRIMARY KEY(business_day,round_no))");
 }
