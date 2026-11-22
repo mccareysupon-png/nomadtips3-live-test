@@ -1,0 +1,19 @@
+name: BALL46 O/U verified payout source parser TEST-only QA 2026-11-23
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-ou-real-price-parser-readonly-qa-20261123.yml]
+permissions: {contents: read}
+jobs:
+  test-parser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Syntax-check and run 10 offline source-contract tests, no tokens
+        run: |
+          node --check qa/prematch-history-20261120/ou-verified-price-ingest-v1-test.mjs
+          node --test qa/prematch-history-20261120/ou-verified-price-ingest-v1.test.mjs
+          echo 'B46_OU_VERIFIED_PRICE_PARSER_TEST_PASS: offline only; zero provider calls; no Worker deploy'
