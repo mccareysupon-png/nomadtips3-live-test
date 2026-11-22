@@ -10,6 +10,7 @@ test('normal cached HUB scheduled 1X2 odds feed is valid and does not falsely cl
  const data=scheduledFromNormalHub(snapshot(),now);
  assert.equal(data.status,'READY');assert.equal(data.stats.accepted,1);assert.equal(data.stats.providerCalls,0);
  assert.equal(data.fixtures[0].storedHub1x2.bookmaker,'5usd-hub');
+ assert.equal(data.fixtures[0].league.id,422,'HCR requires verified source league ID');
  assert.equal(data.fixtures[0].storedBet365,undefined);
  const merged=mergeStoredPrematch([],data.fixtures,now);
  assert.equal(merged.stats.oneX2Prices,1);
