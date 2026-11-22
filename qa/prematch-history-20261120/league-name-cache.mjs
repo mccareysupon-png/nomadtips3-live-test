@@ -88,3 +88,35 @@ export function enrichLeagueNamesOnMonitor(monitorResult,rows,fixtures,registry,
  }
  return {...result,monitor:enriched};
 }
+
+// Only for test-owner maintenance: restore missing per-pick league metadata from
+// verbatim 5USD fixture rows verified by exact fixture AND home/away team IDs.
+// Result/pick records and odds are never rewritten. Ignore unverified guesses.
+export function restoreLeagueNamesFromOriginalRows(previous,picks,rawRows,archiveLeagueIds={}){
+ const input=previous&&typeof previous==='object'&&!Array.isArray(previous)?previous:{};
+ const result={...input};
+ const ledgerMap=new Map((Array.isArray(picks)?picks:[]).filter(p=>id(p?.fixture_id)).map(p=>[id(p.fixture_id),p]));
+ const seen=new Set();
+ const stats={received:0,restored:0,existing:0,unmatched:0,mismatch:0,invalid:0,conflicts:0};
+ for(const raw of (Array.isArray(rawRows)?rawRows:[])){
+  stats.received++;
+  const fixtureId=id(raw?.fixtureId),homeId=id(raw?.homeId),awayId=id(raw?.awayId);
+  const leagueId=id(raw?.leagueId),name=validName(raw?.leagueName);
+  if(!fixtureId||!homeId||!awayId||!leagueId||!name){stats.invalid++;continue}
+  if(seen.has(fixtureId)){stats.conflicts++;continue}
+  seen.add(fixtureId);
+  const pick=ledgerMap.get(fixtureId);
+  if(!pick){stats.unmatched++;continue}
+  if(id(pick.home_id)!==homeId||id(pick.away_id)!==awayId){stats.mismatch++;continue}
+  const inArchive=id(archiveLeagueIds?.[fixtureId]);
+  if(inArchive&&inArchive!==leagueId){stats.mismatch++;continue}
+  const prior=input[fixtureId];
+  if(prior&&storedMatches(pick,prior)&&validName(prior.name)){
+   if(validName(prior.name)!==name){stats.conflicts++;continue}
+   stats.existing++;continue;
+  }
+  result[fixtureId]={fixtureId,homeId,awayId,leagueId,name,source:'VERIFIED_5USD_ORIGINAL_FIXTURE'};
+  stats.restored++;
+ }
+ return {registry:result,stats};
+}
