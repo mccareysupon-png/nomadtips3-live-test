@@ -14,6 +14,7 @@ import {londonAccountingWindow} from './london-cutoff.mjs';
 import {evaluateBttsUltra,mergeBet365BttsQuotes,parseBet365BttsOdds} from './btts-ultra-shadow.mjs';
 import {bttsTestHtml} from './btts-human-web.mjs';
 import {initBttsHistory,importBttsFinished,importBttsTeamFallback,bttsHistoryCoverage,candidateBttsLeagues} from './btts-history-private.mjs';
+import {initBttsBulkV2,bulkV2State,planBulkV2,runBttsBulkV2} from './btts-bulk-truck-v2-test.mjs';
 import {initBttsPickLedger,bttsPicksFromScreen,recordBttsPicks,settleBttsPicks,bttsPickLedger,combinedPrematchLedgers,marketDailyBooks,bttsDailySeries} from './btts-pick-ledger-test.mjs';
 import {initPreMarketStatsRegistry,syncPreMarketStatsRegistry,readPreMarketStatsRegistry,auditPreMarketStatsRegistry} from './prematch-stats-registry-test.mjs';
 const AUTO_PROFILE_VERSION='auto-shadow-market-1x2-v1';
@@ -24,7 +25,7 @@ const archivedLeagueIdsForPicks=db=>{
  return Object.fromEntries(rows.filter(r=>Number.isSafeInteger(r.league_id)&&r.league_id>0).map(r=>[String(r.fixture_id),r.league_id]));
 };
 export class PrematchStore extends DurableObject{
- constructor(ctx,env){super(ctx,env);this.db={exec:(q,...a)=>ctx.storage.sql.exec(q,...a),transaction:f=>ctx.storage.transactionSync(f)};this.missionInFlight=null;init(this.db);initPickLedger(this.db);initHistoryRounds(this.db);initBttsHistory(this.db);initBttsPickLedger(this.db);initPreMarketStatsRegistry(this.db)}
+ constructor(ctx,env){super(ctx,env);this.db={exec:(q,...a)=>ctx.storage.sql.exec(q,...a),transaction:f=>ctx.storage.transactionSync(f)};this.missionInFlight=null;init(this.db);initPickLedger(this.db);initHistoryRounds(this.db);initBttsHistory(this.db);initBttsBulkV2(this.db);initBttsPickLedger(this.db);initPreMarketStatsRegistry(this.db)}
  async recordQualifiedBtts(now,providedFixtures=null,providedQuotes=null){
   // Local BTTS-only screen. Select only fixtures with actual Bet365 BTTS
   // quote evidence; ZERO new provider/HUB calls, no changes to 1X2/HCR.
@@ -79,11 +80,46 @@ export class PrematchStore extends DurableObject{
  }
 
 
+ async runBulkV2Tick(now){
+  const config=await this.ctx.storage.get('bttsBulkModeV2');
+  if(config?.mode!=='ACTIVE')return {state:'NOT_ACTIVE',providerCalls:0};
+  if(this.bulkInFlight)return this.bulkInFlight;
+  // Every 4-hour London slot can burn at most ONE provider call;
+  // the durable SQL reservation is stored before fetching the paid API.
+  this.bulkInFlight=runBttsBulkV2(this.db,{
+   fixtures:await this.ctx.storage.get('botFixtures')??[],now,
+   hubreview:async()=>{
+    if(!this.env.HUB)return {ok:false,reason:'NO_SHARED_HUB'};
+    try{
+     const r=await this.env.HUB.fetch('https://hub.internal/health',{
+      headers:{accept:'application/json'},signal:AbortSignal.timeout(13000)});
+     if(!r.ok)return {ok:false,reason:'HUB_HTTP_'+r.status};
+     const h=await r.json();
+     return {ok:h.ok===true,retryAfterSec:h.retryAfterSec??0,
+      lastError:h.lastError??null};
+    }catch(error){return {ok:false,reason:'SHARED_HUB_HEALTH_UNAVAILABLE'}}
+   },
+   provider:async(path)=>{
+    if(!this.env.FIVEDOLLAR_API_KEY)throw Error('MISSING_TEST_PROVIDER_CREDENTIAL');
+    const r=await fetch('https://api.5dollarfootballapi.com'+path,{
+      headers:{authorization:'Bearer '+this.env.FIVEDOLLAR_API_KEY,accept:'application/json'},
+      redirect:'manual',signal:AbortSignal.timeout(26000)
+    });
+    const quota=r.headers.get('x-ratelimit-remaining');
+    const remaining=quota!=null&&/^\d+$/.test(quota)?Number(quota):null;
+    if(r.status===429)return {ok:false,status:'429_NO_RETRY_'+(r.headers.get('retry-after')||'UNKNOWN'),remaining};
+    if(!r.ok)return {ok:false,status:r.status,remaining};
+    const body=await r.json();return {ok:true,status:200,body,remaining}
+   }
+  }).finally(()=>{this.bulkInFlight=null});
+  return this.bulkInFlight
+ }
  async runDailyMission(now){
   const window=londonAccountingWindow(now);
   const current=await this.ctx.storage.get('dailyMission')??null;
   const history=historyRoundState(this.db,now);
-  if(current?.day!==window.businessDay&&now-window.begin>7200){
+  const bulkActive=(await this.ctx.storage.get('bttsBulkModeV2'))?.mode==='ACTIVE';
+  if(!bulkActive&&current?.day!==window.businessDay&&now-window.begin>7200){
    return {state:'AWAIT_NEXT_CUTOFF',day:window.businessDay,nextCutoffAt:window.end,history,extraProviderCalls:0};
   }
   if(!this.env.HUB)return {state:'HUB_READ_ONLY_BINDING_MISSING',day:window.businessDay,history,extraProviderCalls:0};
@@ -99,7 +135,7 @@ export class PrematchStore extends DurableObject{
   const feed=scheduledFromNormalHub(snapshot,now);
   if(feed.status!=='READY')return {state:feed.status,day:window.businessDay,history,feed:feed.stats,extraProviderCalls:0};
   const roundResults=[];
-  if(history.completed<5)for(let roundNo=1;roundNo<=5;roundNo++){
+  if(!bulkActive&&history.completed<5)for(let roundNo=1;roundNo<=5;roundNo++){
    const round=importHistoryRoundFromCache(this.db,snapshot,now,{roundNo});
    roundResults.push({roundNo,state:round.state,imported:round.current?.imported??0});
    if(!['COMPLETED','ALREADY_EXECUTED'].includes(round.state)){
@@ -108,7 +144,7 @@ export class PrematchStore extends DurableObject{
    }
   }
   const updatedHistory=historyRoundState(this.db,now);
-  if(updatedHistory.completed!==5)return {state:'HISTORY_INCOMPLETE',day:window.businessDay,history:updatedHistory,roundResults,extraProviderCalls:0};
+  if(!bulkActive&&updatedHistory.completed!==5)return {state:'HISTORY_INCOMPLETE',day:window.businessDay,history:updatedHistory,roundResults,extraProviderCalls:0};
   let merged;
   try{
    merged=mergeStoredPrematch(await this.ctx.storage.get('botFixtures')??[],feed.fixtures,now);
@@ -120,7 +156,7 @@ export class PrematchStore extends DurableObject{
   await this.ctx.storage.put('botFixtures',merged.fixtures);
   await this.ctx.storage.put('botFeedState',{at:now,source:'NORMAL_HUB_SNAPSHOT_AUTOMATIC',stats:merged.stats,rawStats:feed.stats,providerCalls:0});
   await this.syncNormalHub(now,true,false,snapshot);
-  const out={state:'HISTORY_DELIVERED_BOT_READY',day:window.businessDay,checkedAt:now,history:updatedHistory,roundResults,feed:{...feed.stats,stored:merged.stats.stored,readyFor1X2:merged.stats.oneX2Prices},extraProviderCalls:0,botWillRun:true};
+  const out={state:'HISTORY_DELIVERED_BOT_READY',day:window.businessDay,checkedAt:now,history:updatedHistory,roundResults,transport:bulkActive?'BTTS_ULTRA_BULK_V2':'LEGACY_HUB_CACHED_FT',bulkV2:bulkActive?bulkV2State(this.db,now):null,feed:{...feed.stats,stored:merged.stats.stored,readyFor1X2:merged.stats.oneX2Prices},extraProviderCalls:0,botWillRun:true};
   await this.ctx.storage.put('dailyMission',out);
   return out;
  }
@@ -352,6 +388,51 @@ export class PrematchStore extends DurableObject{
  }
  // Owner-only inventory: no HUB fetch, no provider call, no Ledger mutation.
  // The public /preview-data route deliberately never includes cargo records.
+ // Owner-only TEST transport switch. The legacy HCR ledger is preserved but
+ // is not run by the Daily Mission when V2 is ACTIVE. Pause restores fallback.
+ if(path==='/btts-bulk-v2-state'&&req.method==='GET'){
+  return json({system:'BTTS_ULTRA_BULK_V2_TEST',config:await this.ctx.storage.get('bttsBulkModeV2')??{mode:'STAGED'},
+   transport:bulkV2State(this.db,now),providerCalls:0,productionWrites:0});
+ }
+ if(path==='/btts-bulk-v2-control'&&req.method==='POST'){
+  const data=await req.json().catch(()=>null);
+  if(!['activate','pause'].includes(data?.action))return new Response('INVALID_CONTROL_ACTION',{status:400});
+  const prior=await this.ctx.storage.get('bttsBulkModeV2')??{mode:'STAGED'};
+  if(data.action==='activate'){
+   if(data.proofRun!==44995706285)return new Response('MISSING_VERIFIED_BULK_AUDIT_REFERENCE',{status:409});
+   const bttsArchive=bttsHistoryCoverage(this.db);
+   const fixtures=await this.ctx.storage.get('botFixtures')??[];
+   const quotes=await this.ctx.storage.get('prematchBttsBet365QuotesV1')??{};
+   const verified=evaluateBttsUltra(this.db,fixtures,now,quotes);
+   if(bttsArchive.privateFT<595||verified.totals.historyReady<33||ledger(this.db).rows.length<76||
+      !auditPreMarketStatsRegistry(this.db).verified)
+     return json({state:'PREFLIGHT_UNMET',privateFT:bttsArchive.privateFT,historyReady:verified.totals.historyReady,
+      providerCalls:0,productionWrites:0});
+   const next={mode:'ACTIVE',startedAt:now,proofRun:data.proofRun,previousMode:prior.mode};
+   await this.ctx.storage.put('bttsBulkModeV2',next);
+   return json({state:'ACTIVATED',config:next,oldHistoryCargoVehicle:'STOPPED_WHILE_ACTIVE',
+    bulk:bulkV2State(this.db,now),privateFT:bttsArchive.privateFT,providerCalls:0,productionWrites:0});
+  }
+  const next={mode:'PAUSED',pausedAt:now,previousMode:prior.mode};
+  await this.ctx.storage.put('bttsBulkModeV2',next);
+  return json({state:'PAUSED',config:next,oldHistoryCargoVehicle:'FALLBACK_REENABLED',
+    providerCalls:0,productionWrites:0});
+ }
+ if(path==='/btts-bulk-v2-trip'&&req.method==='POST'){
+  const result=await this.runBulkV2Tick(now);
+  return json({...result,transport:bulkV2State(this.db,now),
+    publication:false,oneX2AndHCRWrites:0,productionWrites:0})
+ }
+ if(path==='/btts-bulk-v2-raw'&&req.method==='GET'){
+  const u=new URL(req.url),day=u.searchParams.get('day')||bulkV2State(this.db,now).businessDay,
+   no=Number(u.searchParams.get('round')??'');
+  if(!Number.isInteger(no)||no<1||no>5||! /^\d{4}-\d\d-\d\d$/.test(day))
+   return new Response('INVALID_BULK_V2_RAW_QUERY',{status:400});
+  const r=Array.from(this.db.exec('SELECT league_id,page,fetched_at,payload FROM b46_btts_bulk_v2_originals WHERE business_day=? AND round_no=?',day,no))[0];
+  if(!r)return new Response('NO_CARGO_FOR_ROUND',{status:404});
+  return json({day,round:no,leagueId:r.league_id,page:r.page,obtainedAt:r.fetched_at,
+    body:JSON.parse(r.payload),providerCalls:0});
+ }
  if(path==='/history-cargo-registry'&&req.method==='GET'){
   const url=new URL(req.url),day=url.searchParams.get('day'),detail=url.searchParams.get('detail')!=='0';
   try{
@@ -411,4 +492,4 @@ const html=`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="vie
 const el=id=>document.getElementById(id);function cell(tr,v){const td=document.createElement('td');td.textContent=v;tr.append(td)}
 async function load(){try{const r=await fetch('/preview-data',{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);const d=await r.json();el('status').textContent='Connected to independent Pre-Match archive';el('cards').replaceChildren();for(const [label,value] of [['Finished results',d.stored.finished||0],['Teams in archive',d.teams],['Teams with 10+',d.teamsWith10],['Published picks',d.selection?.published??0]]){const c=document.createElement('div');c.className='card';c.textContent=label;const b=document.createElement('b');b.textContent=value;c.append(b);el('cards').append(c)}el('selection').textContent=d.selection?'Candidates: '+d.selection.rows.length+' · '+d.selection.ruleState:'No upcoming fixtures submitted yet. Initial league backfill and selection rules are pending.';el('selection').className='warn';const rows=d.selection?.rows??[];const market=rows.filter(x=>x.oneX2?.signal!=='NO_SIGNAL'&&x.oneX2?.metrics?.method==='market-anchored-1x2-v1');el('selection').textContent=d.selection?'Evaluated: '+(d.selection.probability?.oneX2?.computed??0)+' · Probability passed: '+(d.selection.probability?.oneX2?.passed??0)+' · Experimental candidates: '+market.length:'No stored evaluation';el('market').replaceChildren();for(const x of market){const m=x.oneX2.metrics,s=m.sides.find(v=>v.signal===x.oneX2.signal);if(!s)continue;const tr=document.createElement('tr');for(const v of [x.home+' vs '+x.away,s.signal,(s.model*100).toFixed(2)+'%',s.price.toFixed(2),(s.edge*100).toFixed(2)+'%',(s.ev*100).toFixed(2)+'%',x.homeCount+'/'+x.awayCount,m.evidenceTier==='sparse'?'Low sample':'3+ each'])cell(tr,v);el('market').append(tr)}el('results').replaceChildren();for(const x of d.results){const tr=document.createElement('tr');for(const v of [x.fixture_id,new Date(x.kickoff*1000).toISOString().slice(0,16).replace('T',' '),x.home_id,x.hg+' : '+x.ag,x.away_id,x.league_id])cell(tr,v);el('results').append(tr)}}catch(e){el('status').textContent='Load failed: '+e.message}}load();
 </script></html>`;
-export default {async scheduled(event,env){if(event.cron!=='*/15 * * * *'){console.log('PREMATCH_EXTRA_PROVIDER_CYCLE_DISABLED');return}const stub=env.STORE.get(env.STORE.idFromName('prematch-only-v1'));const h=await stub.fetch('https://prematch.internal/daily-mission',{method:'POST'});if(!h.ok){console.log('PREMATCH_DAILY_MISSION_ERROR '+h.status);return}const mission=await h.json();console.log('PREMATCH_DAILY_MISSION '+mission.state+' rounds='+(mission.history?.completed??0));if(mission.state==='HISTORY_DELIVERED_BOT_READY'){const r=await stub.fetch('https://prematch.internal/bot-run',{method:'POST'});console.log('PREMATCH_AUTOMATIC_BOT '+r.status)}else{const r=await stub.fetch('https://prematch.internal/monitor',{method:'POST'});console.log('PREMATCH_SETTLEMENT_MONITOR '+r.status)}const b=await stub.fetch('https://prematch.internal/btts-cycle-test',{method:'POST'});console.log('BTTS_TEST_ONLY_CYCLE '+b.status)},async fetch(req,env){const p=new URL(req.url).pathname;if(req.method==='GET'&&p==='/preview')return new Response(html,{headers:{'content-type':'text/html;charset=utf-8','cache-control':'no-store','x-robots-tag':'noindex,nofollow'}});if(req.method==='GET'&&p==='/btts')return new Response(bttsTestHtml,{headers:{'content-type':'text/html;charset=utf-8','cache-control':'no-store','x-robots-tag':'noindex,nofollow'}});if(req.method==='GET'&&(p==='/preview-data'||p==='/btts-preview-data'))return env.STORE.get(env.STORE.idFromName('prematch-only-v1')).fetch(req);if(!env.OWNER_SECRET||req.headers.get('Authorization')!=='Bearer '+env.OWNER_SECRET)return new Response('Not found',{status:404});return env.STORE.get(env.STORE.idFromName('prematch-only-v1')).fetch(req)}};
+export default {async scheduled(event,env){if(event.cron!=='*/15 * * * *'){console.log('PREMATCH_EXTRA_PROVIDER_CYCLE_DISABLED');return}const stub=env.STORE.get(env.STORE.idFromName('prematch-only-v1'));const truck=await stub.fetch('https://prematch.internal/btts-bulk-v2-trip',{method:'POST'});if(truck.ok){const t=await truck.json();console.log('BTTS_ULTRA_BULK_V2_TRANSPORT '+t.state+' upstreamCalls='+(t.providerCalls??0)+' rawReceived='+(t.received??0))}else console.log('BTTS_BULK_V2_TRANSPORT_ERROR '+truck.status);const h=await stub.fetch('https://prematch.internal/daily-mission',{method:'POST'});if(!h.ok){console.log('PREMATCH_DAILY_MISSION_ERROR '+h.status);return}const mission=await h.json();console.log('PREMATCH_DAILY_MISSION '+mission.state+' rounds='+(mission.history?.completed??0));if(mission.state==='HISTORY_DELIVERED_BOT_READY'){const r=await stub.fetch('https://prematch.internal/bot-run',{method:'POST'});console.log('PREMATCH_AUTOMATIC_BOT '+r.status)}else{const r=await stub.fetch('https://prematch.internal/monitor',{method:'POST'});console.log('PREMATCH_SETTLEMENT_MONITOR '+r.status)}const b=await stub.fetch('https://prematch.internal/btts-cycle-test',{method:'POST'});console.log('BTTS_TEST_ONLY_CYCLE '+b.status)},async fetch(req,env){const p=new URL(req.url).pathname;if(req.method==='GET'&&p==='/preview')return new Response(html,{headers:{'content-type':'text/html;charset=utf-8','cache-control':'no-store','x-robots-tag':'noindex,nofollow'}});if(req.method==='GET'&&p==='/btts')return new Response(bttsTestHtml,{headers:{'content-type':'text/html;charset=utf-8','cache-control':'no-store','x-robots-tag':'noindex,nofollow'}});if(req.method==='GET'&&(p==='/preview-data'||p==='/btts-preview-data'))return env.STORE.get(env.STORE.idFromName('prematch-only-v1')).fetch(req);if(!env.OWNER_SECRET||req.headers.get('Authorization')!=='Bearer '+env.OWNER_SECRET)return new Response('Not found',{status:404});return env.STORE.get(env.STORE.idFromName('prematch-only-v1')).fetch(req)}};
