@@ -17,4 +17,9 @@ jobs:
       - name: Validate persistent registry event journal and market/day snapshots
         run: |
           node --check qa/prematch-history-20261120/prematch-stats-registry-test.mjs
-          node --test qa/prematch-history-20261120/prematch-stats-registry-test.test.mjs qa/prematch-history-20261120/btts-pick-ledger-test.test.mjs qa/prematch-history-20261120/btts-ultra-shadow.test.mjs qa/prematch-history-20261120/test-pick-ledger.test.mjs qa/prematch-history-20261120/history-cargo-registry.test.mjs
+          node --check qa/prematch-history-20261120/evaluate-btts-signal.mjs
+          node --check qa/prematch-history-20261120/btts-ultra-shadow.mjs
+          node --check qa/prematch-history-20261120/btts-pick-ledger-test.mjs
+          node --check qa/prematch-history-20261120/btts-human-web.mjs
+          node --check qa/prematch-history-20261120/prematch-only-worker.mjs
+          node --test qa/prematch-history-20261120/prematch-stats-registry-test.test.mjs qa/prematch-history-20261120/btts-pick-ledger-test.test.mjs qa/prematch-history-20261120/evaluate-btts-signal.test.mjs qa/prematch-history-20261120/btts-human-web.test.mjs qa/prematch-history-20261120/btts-ultra-shadow.test.mjs qa/prematch-history-20261120/test-pick-ledger.test.mjs qa/prematch-history-20261120/history-cargo-registry.test.mjs
