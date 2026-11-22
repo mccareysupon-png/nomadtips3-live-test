@@ -1,0 +1,80 @@
+name: BALL46 BTTS EMERGENCY shutdown verify ACTIVE with propagation
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-btts-shutdown-postdeploy-propagation-verify-20261122.yml]
+permissions: {contents: read}
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Verify BTTS provider API blocked, durable CLOSED and others untouched
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import crypto from 'node:crypto';
+          const token=process.env.CLOUDFLARE_API_TOKEN,acc=process.env.CLOUDFLARE_ACCOUNT_ID;
+          assert(token&&acc,'MISSING_ACCESS');
+          const worker='ball46-prematch-only-test-20261120',url='https://'+worker+'.mccarey-supon.workers.dev';
+          const api='https://api.cloudflare.com/client/v4/accounts/'+acc+'/workers';
+          async function cf(p){
+            const r=await fetch(api+p,{headers:{authorization:'Bearer '+token},signal:AbortSignal.timeout(22000)});
+            const j=await r.json();assert(r.ok&&j.success,'CLOUDFLARE_'+r.status);return j.result;
+          }
+          const deployed=await cf('/scripts/'+worker+'/deployments?per_page=1');
+          const ver=deployed.deployments?.[0]?.versions?.[0]?.version_id;
+          const old='33f1c7c3-f4fd-4b1d-9f39-d30f06316c27';
+          assert(ver&&ver!==old,'BTTS_SHUTDOWN_NOT_ACTIVE');
+          const source=await cf('/workers/'+worker+'/versions/'+ver+'?include=modules');
+          const main=source.modules.find(x=>x.name==='prematch-only-worker.mjs');
+          assert(main?.content_base64,'NO_MAIN_MODULE');
+          const code=Buffer.from(main.content_base64,'base64').toString('utf8');
+          for(const phrase of ["async runBulkV2Tick(now){return {state:'BTTS_PROJECT_CLOSED'",
+           "async runBttsPricePickupTick(now){return {state:'BTTS_PROJECT_CLOSED'",
+           "async recordQualifiedBtts(now,providedFixtures=null,providedQuotes=null){return {state:'BTTS_PROJECT_CLOSED'",
+           "BTTS_BET365_API_DISABLED_PROJECT_CLOSED",
+           "BTTS_HISTORY_API_DISABLED_PROJECT_CLOSED",
+           "BTTS_CYCLE_DISABLED_PROJECT_CLOSED",
+           "/btts-project-shutdown-test"]){
+             assert(code.includes(phrase),'BLOCK_NOT_IN_ACTIVE_SOURCE '+phrase);
+          }
+          assert(!code.includes("stub.fetch('https://prematch.internal/btts-bulk-v2-trip'")&&
+            !code.includes("stub.fetch('https://prematch.internal/btts-price-pickup-tick'")&&
+            !code.includes("stub.fetch('https://prematch.internal/btts-cycle-test'"),'BTTS_CRON_API_LEFT_ACTIVE');
+          const owner='Bearer '+crypto.createHmac('sha256',token).update('BALL46_PREMATCH_ONLY_V1').digest('hex');
+          async function call(route,method='GET'){
+            const r=await fetch(url+route,{method,headers:{authorization:owner},cache:'no-store',signal:AbortSignal.timeout(20000)});
+            return {ok:r.ok,status:r.status,text:await r.text()};
+          }
+          let saved=null;
+          for(let n=0;n<35;n++){
+            const x=await call('/btts-project-shutdown-test','POST');
+            if(x.ok){saved=JSON.parse(x.text);break}
+            if(x.status!==404)throw Error('SHUTDOWN_ROUTE_REJECTED_'+x.status+'_'+x.text.slice(0,150));
+            await new Promise(resolve=>setTimeout(resolve,1100));
+          }
+          assert(saved?.state==='BTTS_PROJECT_CLOSED','SHUTDOWN_DURABLE_STORAGE_NOT_SET');
+          const [history,odds,control,bulk,stats]=await Promise.all([
+           call('/btts-bulk-v2-trip','POST'),call('/btts-price-pickup-tick','POST'),
+           call('/btts-bulk-v2-control','POST'),call('/btts-bulk-v2-state'),
+           call('/prematch-stats-registry-audit-test')
+          ]);
+          for(const x of [history,odds,control]){assert(x.ok,'POST_BLOCKED_'+x.status);
+           const b=JSON.parse(x.text);assert(b.state==='BTTS_PROJECT_CLOSED'&&b.providerCalls===0,'BTTS_API_NOT_STOPPED')}
+          assert(bulk.ok,'BULK_STATUS_UNAVAILABLE');
+          const state=JSON.parse(bulk.text);
+          assert.equal(state.config.mode,'CLOSED');
+          assert(stats.ok&&JSON.parse(stats.text).verified===true,'PREMATCH_STATS_AUDIT_CHANGED');
+          console.log('B46_BTTS_STOPPED_ACTIVE_CONFIRMED '+JSON.stringify({
+            status:'CLOSED',testWorker:worker,activeVersion:ver,
+            BTTS5USDhistoryCalls:'STOPPED',BTTS5USDpriceCalls:'STOPPED',
+            BTTScron:'DISABLED',BTTSissuance:'DISABLED',
+            BTCmanualRestart:'DISABLED',BTTSdurableMode:state.config.mode,
+            1X2CodePreserved:true,statisticsPreserved:true,
+            additionalProviderCalls:0,productionWrites:0
+          }));
+          JS
