@@ -1,0 +1,74 @@
+name: BALL46 TEST equal sidebar section heading typography
+on:
+  push:
+    branches: [fix/ball46-btts-stats-registry-snapshot-test-20261122]
+    paths: [.github/workflows/b46-sidebar-section-typography-deploy-test-20261122.yml]
+permissions: {contents: read}
+concurrency:
+  group: ball46-premium-match-colors-test-20261120
+  cancel-in-progress: false
+jobs:
+  deploy-and-qa:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Validate heading typography patch and guarded deploy
+        run: |
+          node --check qa/prematch-history-20261120/patch-sidebar-section-typography-test-20261122.mjs
+          node --check qa/prematch-history-20261120/deploy-sidebar-section-typography-test-20261122.mjs
+          node --test qa/prematch-history-20261120/patch-sidebar-section-typography.test.mjs
+      - name: Deploy CSS-only section heading harmonization to isolated TEST frontend
+        run: node qa/prematch-history-20261120/deploy-sidebar-section-typography-test-20261122.mjs
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.55.0
+          if ! command -v google-chrome >/dev/null 2>&1; then npx playwright install chromium; fi
+      - name: Compare computed title styles, menu routes and mobile layout
+        run: |
+          node --input-type=module <<'JS'
+          import {chromium} from 'playwright';
+          const chrome=(await import('node:child_process')).execSync('command -v google-chrome || true',{encoding:'utf8'}).trim();
+          const browser=await chromium.launch(chrome?{executablePath:chrome,headless:true,args:['--no-sandbox']}:{headless:true,args:['--no-sandbox']});
+          const base='https://ball46-premium-match-colors-test-20261120.mccarey-supon.workers.dev/';
+          const results=[];
+          for(const [device,w,h] of [['pc',1440,900],['mobile',390,844]]){
+            const page=await browser.newPage({viewport:{width:w,height:h},timezoneId:'Asia/Bangkok'});
+            const errors=[];page.on('pageerror',e=>errors.push(e.message));
+            await page.goto(base+'?b46pm=1x2',{waitUntil:'domcontentloaded',timeout:45000});
+            await page.locator('#b46pm-stats-navigation .b46pm-nav-heading').waitFor({state:'attached',timeout:30000});
+            await page.waitForTimeout(850);
+            const data=await page.evaluate(()=>{
+              const style=e=>{const s=getComputedStyle(e);return {fontSize:s.fontSize,fontWeight:s.fontWeight,letterSpacing:s.letterSpacing,lineHeight:s.lineHeight,padding:s.padding,color:s.color,opacity:s.opacity}};
+              const ref=document.querySelector('aside.left-rail #b46pm-stats-navigation .b46pm-nav-heading');
+              const natives=[...document.querySelectorAll('aside.left-rail .rail-title')].map(e=>({label:e.innerText.trim().replace(/\s*V2$/,''),...style(e)}));
+              const mobile=[...document.querySelectorAll('#b46m-drawer .b46m-grouplabel')].map(e=>({label:e.textContent.trim(),...style(e)}));
+              return {reference:style(ref),natives,mobile,menu:[...document.querySelectorAll('aside.left-rail [data-b46-prematch-route]')].map(x=>x.dataset.b46PrematchRoute),css:!!document.getElementById('b46-sidebar-section-type-v1'),overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth};
+            });
+            if(!data.css||data.menu.join(',')!=='predictions,all,1x2,ou,btts'||data.overflow>3)
+              throw Error('NAV_OR_CSS_INVARIANT_'+device+' '+JSON.stringify(data));
+            if(device==='pc'){
+              if(data.natives.length!==3)throw Error('UNEXPECTED_NATIVE_HEADINGS '+JSON.stringify(data.natives));
+              for(const item of data.natives)
+                for(const key of ['fontSize','fontWeight','letterSpacing','lineHeight','padding'])
+                  if(item[key]!==data.reference[key])throw Error('TYPOGRAPHY_MISMATCH_'+item.label+'_'+key+'_'+item[key]+' versus '+data.reference[key]);
+            }else{
+              const ref=data.mobile.find(x=>x.label==='PRE-MATCH STATISTICS');
+              if(!ref)throw Error('MOBILE_PREMATCH_REFERENCE_MISSING');
+              for(const item of data.mobile)
+                for(const key of ['fontSize','fontWeight','letterSpacing','lineHeight'])
+                  if(item[key]!==ref[key])throw Error('MOBILE_HEADING_MISMATCH_'+item.label+'_'+key);
+            }
+            if(errors.length)throw Error('JS_ERRORS_'+device+' '+errors.join(' | '));
+            console.log('B46_SECTION_HEADING_QA_'+device+' '+JSON.stringify(data));
+            results.push({device,titleCount:data.natives.length,menuPreserved:true,styleMatches:true,overflow:data.overflow,jsErrors:0});
+            await page.close();
+          }
+          await browser.close();
+          console.log('B46_SECTION_HEADING_QA_PASS '+JSON.stringify(results));
+          JS
