@@ -82,8 +82,8 @@ test('league candidates use real fixture IDs only, ranked by upcoming count',()=
 
 test('Ultra team fallback can contain mixed verified leagues and provide 10+10 BTTS history',()=>{
  const db=makeDb();
- const home=Array.from({length:10},(_,i)=>result(500+i,11,1000+i,i%2===0?77:80));
- const away=Array.from({length:10},(_,i)=>result(600+i,22,2000+i,i%2===0?77:81));
+ const home=Array.from({length:10},(_,i)=>result(i,11,1000+i,i%2===0?77:80));
+ const away=Array.from({length:10},(_,i)=>result(20+i,22,2000+i,i%2===0?77:81));
  assert.equal(importBttsTeamFallback(db,home,500,{teamId:11}).added,10);
  assert.equal(importBttsTeamFallback(db,away,500,{teamId:22}).added,10);
  const f={id:'999',status:'scheduled',kickoff_ts:900,league:{id:77,name:'Test League'},
