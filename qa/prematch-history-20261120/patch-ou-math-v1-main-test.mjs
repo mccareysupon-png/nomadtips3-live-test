@@ -15,7 +15,7 @@ export function patchOuMain(old){
   "import {initPreMarketStatsRegistry,syncPreMarketStatsRegistry,readPreMarketStatsRegistry,auditPreMarketStatsRegistry} from './prematch-stats-registry-test.mjs';\n"+
   "import {initOu,screenOu,recordOu,settleOu,syncOuSnapshot,readOuLedger,readOuSnapshot,historicalOuBacktest,OU_POLICY} from './ou-math-v1-test.mjs';",
   'MODULE_IMPORT');
- s=once(s,"initPreMarketStatsRegistry(this.db)}","initPreMarketStatsRegistry(this.db);initOu(this.db)}",'NEW_LEDGER_BOOT');
+ s=once(s,"initPreMarketStatsRegistry(this.db)","initPreMarketStatsRegistry(this.db);initOu(this.db)",'NEW_LEDGER_BOOT');
  s=once(s,
   "const bttsSettled=settleBttsPicks(this.db,now);\n   if(settled||bttsSettled)syncPreMarketStatsRegistry(this.db,now);",
   "const bttsSettled=settleBttsPicks(this.db,now);\n   const ouSettled=settleOu(this.db,now);\n   if(ouSettled.settled)syncOuSnapshot(this.db,now);\n   if(settled||bttsSettled)syncPreMarketStatsRegistry(this.db,now);",
@@ -58,10 +58,10 @@ export function patchOuMain(old){
   "dailyBook,bttsIssued,ouRun,statsRegistry};",
   'BOT_OWNER_REPORT');
  s=once(s,
-  "const b=await stub.fetch('https://prematch.internal/btts-cycle-test',{method:'POST'});console.log('BTTS_TEST_ONLY_CYCLE '+b.status)",
-  "const b=await stub.fetch('https://prematch.internal/btts-cycle-test',{method:'POST'});console.log('BTTS_TEST_ONLY_CYCLE '+b.status);const ou=await stub.fetch('https://prematch.internal/ou-cycle-test',{method:'POST'});console.log('OU_MATH_V1_TEST_CYCLE '+ou.status)",
-  'CRON_15MIN_EXISTING_CYCLE');
- const necessary=["from './ou-math-v1-test.mjs'","initOu(this.db)","ouLedger:ouLedgerNow","const ouSettled=settleOu(this.db,now)","path==='/ou-cycle-test'","path==='/ou-backtest-test'","OU_MATH_V1_TEST_CYCLE"];
+  "if(path==='/monitor'&&req.method==='POST')return json({monitor:await this.syncNormalHub(now),ledger:ledger(this.db).stats,extraProviderCalls:0});",
+  "if(path==='/monitor'&&req.method==='POST'){const monitor=await this.syncNormalHub(now);const fixtures=await this.ctx.storage.get('botFixtures')??[];const trial=screenOu(this.db,fixtures,now,350);const issued=recordOu(this.db,trial,now);const settled=settleOu(this.db,now);const sync=syncOuSnapshot(this.db,now);return json({monitor,ledger:ledger(this.db).stats,ou:{checked:trial.counts.checked,qualified:trial.counts.qualified,issued,settled,snapshotEvents:sync.processed},extraProviderCalls:0});}",
+  'MONITOR_TRIGGERS_OU_15MIN');
+ const necessary=["from './ou-math-v1-test.mjs'","initOu(this.db)","ouLedger:ouLedgerNow","const ouSettled=settleOu(this.db,now)","path==='/ou-cycle-test'","path==='/ou-backtest-test'","ou:{checked:trial.counts.checked"];
  if(necessary.some(x=>!s.includes(x)))throw Error('OU_TEST_SOURCE_WIRING_INCOMPLETE');
  return {code:s,scope:'ISOLATED_PREMATCH_TEST_WORKER',newModule:'ou-math-v1-test.mjs',providerCallsAdded:0,oneX2ModelChanged:false,btTsModelChanged:false,productionChanged:false};
 }
